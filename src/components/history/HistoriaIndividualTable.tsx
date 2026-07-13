@@ -16,6 +16,7 @@ import {
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { IconTrash2, IconPencil, IconX } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { procurementCancelNoteLabelClass } from "@/lib/ui/ontime-theme";
 
@@ -66,12 +67,20 @@ export function HistoriaIndividualTable({
             const canEditNote = canOperateOrders && canEditProcurementCancelNote(o);
 
             return (
-              <tr key={o.id} className={cn(individualHistoryRowClass(o.status))}>
+              <tr key={o.id} className={cn(individualHistoryRowClass(o.status), "transition-colors hover:bg-slate-50/50")}>
                 <td className="whitespace-nowrap text-slate-800 tabular-nums">
                   {formatPlDate(o.action_at?.slice(0, 10))}
                 </td>
                 <td className="font-medium text-slate-900">
-                  {o.supplier?.name ?? "—"}
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-xs font-bold text-indigo-700 ring-1 ring-inset ring-indigo-100/60"
+                      aria-hidden
+                    >
+                      {(o.supplier?.name ?? "?").charAt(0).toUpperCase()}
+                    </span>
+                    <span className="truncate">{o.supplier?.name ?? "—"}</span>
+                  </div>
                 </td>
                 <td className="text-slate-700">{o.sales_person?.name ?? "—"}</td>
                 <td className="max-w-[280px]">
@@ -106,9 +115,11 @@ export function HistoriaIndividualTable({
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="gap-1"
                           disabled={pending}
                           onClick={() => onCancel?.(o)}
                         >
+                          <IconX size={13} className="shrink-0" />
                           Anuluj
                         </Button>
                       ) : null}
@@ -116,9 +127,11 @@ export function HistoriaIndividualTable({
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="gap-1"
                           disabled={pending}
                           onClick={() => onEditNote?.(o)}
                         >
+                          <IconPencil size={13} className="shrink-0" />
                           Edytuj wiadomość
                         </Button>
                       ) : null}
@@ -126,9 +139,11 @@ export function HistoriaIndividualTable({
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="gap-1 text-rose-600 hover:text-rose-700"
                           disabled={pending}
                           onClick={() => onRemove(o.id)}
                         >
+                          <IconTrash2 size={13} className="shrink-0" />
                           Usuń
                         </Button>
                       ) : null}

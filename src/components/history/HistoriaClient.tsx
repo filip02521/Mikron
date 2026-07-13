@@ -24,7 +24,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { IconArchive, IconClipboardList } from "@/components/icons/StrokeIcons";
+import { IconArchive, IconClipboardList, IconChevronRight } from "@/components/icons/StrokeIcons";
 import { navIconTileClassForTone } from "@/components/icons/NavIcon";
 import { HistoriaHelp } from "@/components/history/HistoriaHelp";
 import { ProcurementCancelDialog } from "@/components/procurement/ProcurementCancelDialog";
@@ -54,27 +54,37 @@ function HistorySummaryStrip({
         "py-3"
       )}
     >
-      <div className="rounded-md border border-indigo-100/80 bg-white px-3 py-2.5 shadow-sm">
-        <p className={panelTypography.caption}>Prośby indywidualne</p>
-        <p className={cn(panelTypography.rowTitle, "mt-0.5 tabular-nums")}>
-          {individualTotal}
-          <span className="ml-1.5 text-sm font-normal text-slate-500">
-            {individualOpen > 0
-              ? `· ${individualOpen} otwartych`
-              : individualCompleted > 0
-                ? `· ${individualCompleted} zakończonych`
-                : ""}
-          </span>
-        </p>
+      <div className="flex items-center gap-3 rounded-md border border-indigo-100/80 bg-white px-3 py-2.5 shadow-sm">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-indigo-100 text-indigo-700">
+          <IconClipboardList size={16} />
+        </div>
+        <div className="min-w-0">
+          <p className={panelTypography.caption}>Prośby indywidualne</p>
+          <p className={cn(panelTypography.rowTitle, "mt-0.5 tabular-nums")}>
+            {individualTotal}
+            <span className="ml-1.5 text-sm font-normal text-slate-500">
+              {individualOpen > 0
+                ? `· ${individualOpen} otwartych`
+                : individualCompleted > 0
+                  ? `· ${individualCompleted} zakończonych`
+                  : ""}
+            </span>
+          </p>
+        </div>
       </div>
-      <div className="rounded-md border border-slate-200/80 bg-white px-3 py-2.5 shadow-sm">
-        <p className={panelTypography.caption}>Akcje standardowe</p>
-        <p className={cn(panelTypography.rowTitle, "mt-0.5 tabular-nums")}>
-          {normalTotal}
-          <span className="ml-1.5 text-sm font-normal text-slate-500">
-            · zbiorcze w panelu dziennym
-          </span>
-        </p>
+      <div className="flex items-center gap-3 rounded-md border border-slate-200/80 bg-white px-3 py-2.5 shadow-sm">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600">
+          <IconArchive size={16} />
+        </div>
+        <div className="min-w-0">
+          <p className={panelTypography.caption}>Akcje standardowe</p>
+          <p className={cn(panelTypography.rowTitle, "mt-0.5 tabular-nums")}>
+            {normalTotal}
+            <span className="ml-1.5 text-sm font-normal text-slate-500">
+              · zbiorcze w panelu dziennym
+            </span>
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -89,7 +99,8 @@ function HistoryShowAllFooter({
 }) {
   return (
     <div className={cn("border-t border-slate-100 py-3", panelChromeInsetClass)}>
-      <Button variant="outline" size="sm" className="w-full sm:w-auto" onClick={onOpen}>
+      <Button variant="outline" size="sm" className="gap-1.5 w-full sm:w-auto" onClick={onOpen}>
+        <IconChevronRight size={14} className="shrink-0" />
         Pokaż pełną historię ({total} {total === 1 ? "wpis" : "wpisów"})
       </Button>
     </div>

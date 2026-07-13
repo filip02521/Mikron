@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Field";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { IconArchive, IconClipboardList } from "@/components/icons/StrokeIcons";
+import { IconArchive, IconClipboardList, IconX } from "@/components/icons/StrokeIcons";
 import { navIconTileClassForTone } from "@/components/icons/NavIcon";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { cn } from "@/lib/cn";
@@ -137,8 +137,14 @@ export function HistoriaBrowseSheet({
                 </p>
               </div>
             </div>
-            <Button variant="ghost" size="sm" className={controlFocusClass} onClick={handleClose}>
-              Zamknij
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(controlFocusClass, "h-8 w-8 shrink-0 p-0")}
+              onClick={handleClose}
+              aria-label="Zamknij"
+            >
+              <IconX size={16} />
             </Button>
           </div>
           <label className="mt-3 block">
