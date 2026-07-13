@@ -359,6 +359,7 @@ export function AppShellClient({
             role={role}
             realRole={realRole}
             procurementWorkspace={procurementWorkspace}
+            canSwitchProcurementWorkspace={canSwitchProcurementWorkspace}
             assignedWorkspaces={assignedWorkspaces}
             navBadges={navBadges}
           />
@@ -368,6 +369,7 @@ export function AppShellClient({
             role={role}
             realRole={realRole}
             procurementWorkspace={procurementWorkspace}
+            canSwitchProcurementWorkspace={canSwitchProcurementWorkspace}
             assignedWorkspaces={assignedWorkspaces}
             navBadges={navBadges}
           />
@@ -377,6 +379,7 @@ export function AppShellClient({
             role={role}
             realRole={realRole}
             procurementWorkspace={procurementWorkspace}
+            canSwitchProcurementWorkspace={canSwitchProcurementWorkspace}
             assignedWorkspaces={assignedWorkspaces}
             navBadges={navBadges}
           />

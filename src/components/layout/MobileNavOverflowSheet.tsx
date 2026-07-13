@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -37,11 +38,13 @@ export function MobileNavOverflowSheet({
   previewDla = null,
   adminSalesPreview = false,
   navLocked = false,
+  switcher = null,
 }: {
   items: NavItem[];
   previewDla?: string | null;
   adminSalesPreview?: boolean;
   navLocked?: boolean;
+  switcher?: React.ReactNode;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -66,7 +69,7 @@ export function MobileNavOverflowSheet({
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  if (items.length === 0) return null;
+  if (items.length === 0 && !switcher) return null;
 
   const sheet =
     open && hydrated
@@ -93,6 +96,9 @@ export function MobileNavOverflowSheet({
                   Pozostałe sekcje i narzędzia
                 </p>
               </div>
+              {switcher ? (
+                <div className="border-b border-slate-100 px-3 py-3">{switcher}</div>
+              ) : null}
               <ul className="space-y-1 p-2">
                 {items.map((item) => {
                   const active = overflowItemActive(pathname, item, allHrefs);

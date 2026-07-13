@@ -26,6 +26,8 @@ import {
   sidebarNavToneActiveClass,
 } from "@/lib/ui/ontime-theme";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
+import { ProcurementWorkspaceSwitcher } from "@/components/layout/ProcurementWorkspaceSwitcher";
+import { PROCUREMENT_WORKSPACE_OPTIONS } from "@/lib/auth/procurement-workspace";
 import { isAdmin } from "@/lib/auth-roles";
 import type { UserRole, Workspace } from "@/types/database";
 
@@ -33,12 +35,14 @@ export function MobileOperationsNav({
   role,
   realRole = null,
   procurementWorkspace = null,
+  canSwitchProcurementWorkspace = false,
   assignedWorkspaces,
   navBadges = { nowe: 0, weryfikacja: 0, realizacja: 0 },
 }: {
   role: UserRole;
   realRole?: UserRole | null;
   procurementWorkspace?: ProcurementWorkspace | null;
+  canSwitchProcurementWorkspace?: boolean;
   assignedWorkspaces?: Workspace[];
   navBadges?: {
     nowe?: number;
@@ -142,7 +146,19 @@ export function MobileOperationsNav({
             </li>
           );
         })}
-        <MobileNavOverflowSheet items={overflowItems} />
+        <MobileNavOverflowSheet
+          items={overflowItems}
+          switcher={
+            canSwitchProcurementWorkspace && procurementWorkspace ? (
+              <ProcurementWorkspaceSwitcher
+                current={procurementWorkspace}
+                options={PROCUREMENT_WORKSPACE_OPTIONS.filter((opt) =>
+                  assignedWorkspaces?.includes(opt.value)
+                )}
+              />
+            ) : null
+          }
+        />
       </ul>
     </nav>
   );
