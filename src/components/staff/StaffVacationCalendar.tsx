@@ -207,7 +207,7 @@ export function StaffVacationCalendar({
     note: "",
   });
 
-  const canEdit = !adminMode;
+  const canEdit = true;
   const colorMap = vacationColorMap(staff);
 
   const anchorRef = useRef<HTMLButtonElement>(null);
@@ -394,7 +394,7 @@ export function StaffVacationCalendar({
                 <p className="rounded-md bg-slate-50/60 px-2.5 py-1.5 text-xs text-slate-600">{period.note}</p>
               ) : null}
 
-              {isOwn ? (
+              {isOwn || adminMode ? (
                 <>
                   <div className="border-t border-slate-100 my-2" />
                   <Button
