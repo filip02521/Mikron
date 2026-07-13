@@ -62,7 +62,7 @@ export function MobileOperationsNav({
           badges: navBadges,
         })
       : navForRole(role, navBadges);
-  const groups = filterNavGroupsByAccess(rawGroups, role, assignedWorkspaces);
+  const groups = filterNavGroupsByAccess(rawGroups, role, assignedWorkspaces, procurementWorkspace);
   const primaryItems = navMobilePrimaryItems(groups);
   const overflowItems = navMobileOverflowItems(groups);
   const allPrimaryHrefs = primaryItems.map((item) => item.href);

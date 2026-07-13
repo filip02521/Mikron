@@ -306,8 +306,9 @@ export function Sidebar({
           }),
           role,
           assignedWorkspaces,
+          procurementWorkspace,
         )
-      : filterNavGroupsByAccess(navForRole(role, navBadges), role, assignedWorkspaces)
+      : filterNavGroupsByAccess(navForRole(role, navBadges), role, assignedWorkspaces, procurementWorkspace)
     : [];
   const workspaceSubtitle = subtitleForProcurementWorkspace(procurementWorkspace);
 

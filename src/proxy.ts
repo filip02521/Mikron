@@ -303,11 +303,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (matchesPrefix(pathname, PROCUREMENT_PREFIXES) && !canAccessOperations(role, workspaces)) {
-    if (pathname === "/zakupy/tablica" || pathname.startsWith("/zakupy/tablica/")) {
-      if (!canAccessTeethPanel(role, workspaces)) {
-        return redirectWithSession(request, sessionResponse, homePathForRole(role, workspaces));
-      }
-    } else if (
+    if (
       pathname.startsWith("/zakupy/dostawcy") ||
       pathname.startsWith("/zakupy/urlopy")
     ) {

@@ -65,6 +65,12 @@ export default async function ZakupyDostawcyPage({
           Żaden lab nie ma jeszcze cyklu zębów. Otwórz kartę dostawcy i włącz sekcję „Cykl zębów”.
         </Alert>
       ) : null}
+      {teethLane && suppliers.length === 0 && !loadError ? (
+        <Alert tone="info">
+          Brak dostawców powiązanych z zębami. Dodaj produkt zębowy do zamówienia lub ustaw cykl
+          zębów w karcie dostawcy, aby pojawił się w tym widoku.
+        </Alert>
+      ) : null}
       <SuppliersAdminClient
         initial={suppliers}
         allowDelete={false}

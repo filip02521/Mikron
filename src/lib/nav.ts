@@ -637,13 +637,14 @@ export function filterNavGroupsByAccess(
   groups: NavGroup[],
   role: UserRole,
   workspaces?: Workspace[],
+  procurementWorkspace?: ProcurementWorkspace | null,
 ): NavGroup[] {
   return groups
     .map((group) => ({
       ...group,
       items: group.items.filter((item) => {
         const pathname = item.href.split("?")[0]!;
-        return canAccessPath(role, pathname, { workspaces });
+        return canAccessPath(role, pathname, { workspaces, procurementWorkspace });
       }),
     }))
     .filter((group) => group.items.length > 0);
