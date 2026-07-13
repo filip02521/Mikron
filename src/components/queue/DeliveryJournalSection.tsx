@@ -447,6 +447,7 @@ export function DeliveryJournalSection({
   const [archiveSearchSeed, setArchiveSearchSeed] = useState("");
   const [carriersModalOpen, setCarriersModalOpen] = useState(false);
   const formPanelRef = useRef<HTMLDivElement>(null);
+  const hintCountsAppliedFor = useRef<string | null>(null);
   const defaultCarrier = useMemo(() => defaultWarehouseCarrierSlug(carriers), [carriers]);
   const formCarrier = resolveWarehouseFormCarrier(form.carrier, carriers, defaultCarrier);
   const visibleCarrierHint =
@@ -523,16 +524,22 @@ export function DeliveryJournalSection({
         setCarrierHintLabel(null);
         return;
       }
-      setForm((f) => ({
-        ...f,
-        carrier: hint.carrier,
-        shipmentForm: hint.shipmentForm,
-        ...countsToFormFields(
-          hint.shipmentForm,
-          hint.typicalPackageCount,
-          hint.typicalPalletCount
-        ),
-      }));
+      setForm((f) => {
+        const hintAlreadyApplied = hintCountsAppliedFor.current === form.supplierId;
+        return {
+          ...f,
+          carrier: hint.carrier,
+          shipmentForm: hint.shipmentForm,
+          ...(hintAlreadyApplied
+            ? {}
+            : countsToFormFields(
+                hint.shipmentForm,
+                hint.typicalPackageCount,
+                hint.typicalPalletCount
+              )),
+        };
+      });
+      hintCountsAppliedFor.current = form.supplierId;
       const sourceLabel =
         hint.source === "default" ? "Z katalogu dostawcy" : "Z historii wpisów";
       setCarrierHintForSupplierId(form.supplierId);
@@ -602,6 +609,7 @@ export function DeliveryJournalSection({
         setForm(formStateForNextEntry(snapshot));
         setCarrierHintLabel(null);
         setCarrierHintForSupplierId(null);
+        hintCountsAppliedFor.current = null;
         setSupplierFieldKey((key) => key + 1);
         setFormOpen(true);
         setToast(WAREHOUSE_TOAST.savedDeliveryEntry);
