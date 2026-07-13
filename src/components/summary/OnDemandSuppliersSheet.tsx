@@ -35,12 +35,12 @@ export function OnDemandSuppliersSheet({
     <>
       <button
         type="button"
-        className="fixed inset-0 z-40 cursor-pointer bg-slate-900/30"
+        className="panel-slide-backdrop-enter fixed inset-0 z-40 cursor-pointer bg-slate-900/30"
         aria-label="Zamknij listę"
         onClick={onClose}
       />
       <aside
-        className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-xl"
+        className="panel-slide-enter fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-xl"
         aria-labelledby="on-demand-sheet-title"
       >
         <header className="shrink-0 border-b border-slate-100 px-4 py-4 sm:px-5">

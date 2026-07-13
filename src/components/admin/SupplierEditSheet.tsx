@@ -41,12 +41,12 @@ export function SupplierEditSheet({
     <>
       <button
         type="button"
-        className={cn(modalBackdropClass, "z-[58]")}
+        className={cn(modalBackdropClass, "panel-slide-backdrop-enter z-[58]")}
         aria-label="Zamknij edycję"
         onClick={pending ? undefined : onClose}
       />
       <aside
-        className="fixed inset-y-0 right-0 z-[60] flex w-full max-w-xl flex-col border-l border-slate-200 bg-white shadow-2xl"
+        className="panel-slide-enter fixed inset-y-0 right-0 z-[60] flex w-full max-w-xl flex-col border-l border-slate-200 bg-white shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="supplier-edit-sheet-title"

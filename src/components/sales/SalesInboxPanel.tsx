@@ -101,7 +101,7 @@ export function SalesInboxPanel({
       <button
         type="button"
         aria-label="Zamknij powiadomienia"
-        className="absolute inset-0 bg-slate-900/35 backdrop-blur-[1px]"
+        className="panel-slide-backdrop-enter absolute inset-0 bg-slate-900/35 backdrop-blur-[1px]"
         onClick={handleClose}
       />
       <aside
@@ -112,7 +112,7 @@ export function SalesInboxPanel({
         aria-label="Pilne sprawy"
         className={cn(
           "absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-slate-200/90 bg-white shadow-2xl",
-          "sales-inbox-panel-enter"
+          "panel-slide-enter"
         )}
         {...{ [SCROLL_LOCK_ALLOW_ATTR]: true }}
       >

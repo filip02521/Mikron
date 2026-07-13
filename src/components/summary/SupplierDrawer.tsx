@@ -117,12 +117,12 @@ export function SupplierDrawer({
     <>
       <button
         type="button"
-        className="supplier-drawer-backdrop-enter fixed inset-0 z-40 cursor-pointer bg-slate-900/30"
+        className="panel-slide-backdrop-enter fixed inset-0 z-40 cursor-pointer bg-slate-900/30"
         aria-label="Zamknij panel"
         onClick={onClose}
       />
       <aside
-        className="supplier-drawer-enter fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-slate-200 bg-white shadow-xl"
+        className="panel-slide-enter fixed right-0 top-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-slate-200 bg-white shadow-xl"
         aria-labelledby="supplier-drawer-title"
       >
         <header className="shrink-0 border-b border-slate-100 px-5 py-4">

@@ -788,8 +788,8 @@ input[type="checkbox"].toggle-switch.toggle-indigo:checked {
   background: rgb(79 70 229);
 }
 
-/* ——— Supplier drawer — slide-in + backdrop fade ——— */
-@keyframes supplier-drawer-enter {
+/* ——— Slide-in drawer + backdrop fade (shared by all side panels) ——— */
+@keyframes panel-slide-enter {
   from {
     transform: translateX(100%);
     box-shadow: 0 0 0 rgba(0, 0, 0, 0);
@@ -803,7 +803,7 @@ input[type="checkbox"].toggle-switch.toggle-indigo:checked {
   }
 }
 
-@keyframes supplier-drawer-backdrop-enter {
+@keyframes panel-slide-backdrop-enter {
   from {
     opacity: 0;
   }
@@ -812,15 +812,26 @@ input[type="checkbox"].toggle-switch.toggle-indigo:checked {
   }
 }
 
+.panel-slide-enter {
+  animation: panel-slide-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.panel-slide-backdrop-enter {
+  animation: panel-slide-backdrop-enter 0.28s ease-out both;
+}
+
+/* Keep old class names as aliases for backward compatibility */
 .supplier-drawer-enter {
-  animation: supplier-drawer-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: panel-slide-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .supplier-drawer-backdrop-enter {
-  animation: supplier-drawer-backdrop-enter 0.28s ease-out both;
+  animation: panel-slide-backdrop-enter 0.28s ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .panel-slide-enter,
+  .panel-slide-backdrop-enter,
   .supplier-drawer-enter,
   .supplier-drawer-backdrop-enter {
     animation: none;
