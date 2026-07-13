@@ -20,6 +20,52 @@ export type ChangelogEntry = {
 };
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
+  // ═══ 2026-07-13 — URLOPY DZIAŁU + KATEGORIE ═══
+  {
+    id: "2026-07-13-staff-vacation-calendar",
+    version: "2026-07-13",
+    date: "2026-07-13",
+    category: "new",
+    audience: "operations",
+    highlight: true,
+    title: "Kalendarz urlopów dla całego działu",
+    description:
+      "Zastąpiliśmy prostą listę urlopów pełnym kalendarzem — taki sam jak mają handlowcy. Widzisz w nim urlopy wszystkich członków zespołu w widoku miesięcznym, możesz dodawać własne urlopy i usuwać je bezpośrednio z kalendarza. Cały zespół widzi urlopy na wzajem, co ułatwia planowanie.",
+    link: { href: "/urlopy", label: "Przejdź do kalendarza urlopów" },
+  },
+  {
+    id: "2026-07-13-vacation-categories",
+    version: "2026-07-13",
+    date: "2026-07-13",
+    category: "new",
+    audience: "all",
+    highlight: true,
+    title: "Kategorie nieobecności w urlopach",
+    description:
+      "Przy dodawaniu urlopu możesz teraz wybrać rodzaj nieobecności: urlop wypoczynkowy, odbiór nadgodzin, urlop na żądanie, L4 / chorobowe, sprawa osobista lub inne (z notatką). Kategoria wyświetla się w kalendarzu i w oknie szczegółów urlopu. Działa zarówno dla działów non-sales, jak i handlowców.",
+  },
+  {
+    id: "2026-07-13-cross-department-visibility",
+    version: "2026-07-13",
+    date: "2026-07-13",
+    category: "improvement",
+    audience: "operations",
+    title: "Widoczność urlopów między działami",
+    description:
+      "Działy non-sales (zakupy, magazyn) widzą teraz urlopy wszystkich innych działów non-sales, nie tylko własnego. Dzięki temu wiesz, kto z innych działów jest niedostępny, co ułatwia koordynację pracy.",
+  },
+  {
+    id: "2026-07-13-vacation-popover-redesign",
+    version: "2026-07-13",
+    date: "2026-07-13",
+    category: "improvement",
+    audience: "all",
+    minor: true,
+    title: "Nowoczesne okno szczegółów urlopu",
+    description:
+      "Po kliknięciu urlopu w kalendarzu pojawia się przebudowane okno z czytelnymi datami (np. „15 lip 2025 – 28 lip 2025”), liczbą dni, pełną nazwą kategorii i notatką w osobnym bloku. Spójne dla kalendarzy działu i handlowców.",
+  },
+
   // ═══ WAŻNE ZMIANY (highlight) ═══
   {
     id: "2026-07-09-teeth-panel",
