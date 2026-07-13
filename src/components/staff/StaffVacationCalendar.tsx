@@ -453,7 +453,7 @@ export function StaffVacationCalendar({
                     onClick={() => {
                       setDeleteTarget({
                         id: period.id,
-                        label: `urlop ${period.startDate} → ${period.endDate}`,
+                        label: `${staffVacationCategoryLabel(period.category)} • ${formatRangeLabel(period.startDate, period.endDate)}`,
                       });
                     }}
                   >
@@ -504,7 +504,7 @@ export function StaffVacationCalendar({
         <div className="mb-3 space-y-3 rounded-lg border border-slate-200/80 bg-slate-50/40 p-3.5 shadow-sm shadow-slate-200/40">
           <div className="flex items-center gap-2 rounded-md bg-indigo-50/70 px-3 py-2 text-xs font-medium text-indigo-700 ring-1 ring-indigo-100/60">
             <IconSun size={14} className="shrink-0" />
-            Dodajesz urlop dla siebie. Pozostali członkowie działu widzą go w kalendarzu.
+            Dodajesz urlop dla siebie. Pozostali członkowie zespołu widzą go w kalendarzu.
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Od">
@@ -573,8 +573,8 @@ export function StaffVacationCalendar({
               icon={<IconSun size={28} />}
               title="Brak urlopów w tym miesiącu"
               description={canEdit
-                ? 'Nie masz zaplanowanych urlopów w tym miesiącu. Kliknij „Dodaj mój urlop", aby zaplanować.'
-                : 'Kliknij ‹ › aby przejść do innego miesiąca.'
+                ? 'Nie masz zaplanowanych urlopów w tym miesiącu. Kliknij „Dodaj mój urlop”, aby zaplanować.'
+                : 'Przejdź do innego miesiąca strzałkami ‹ ›.'
               }
             />
           </div>
@@ -656,7 +656,7 @@ export function StaffVacationCalendar({
                               c.dot,
                             )}
                             onClick={(e) => onBarClick(e, p.period.id, p.userId)}
-                            title={p.userName}
+                            title={`${p.userName} — ${staffVacationCategoryShort(p.period.category)}`}
                           />
                         );
                       })}
@@ -700,8 +700,8 @@ export function StaffVacationCalendar({
         <ConfirmDialog
           open
           tier="stack"
-          title="Usunąć urlop?"
-          message={`${deleteTarget.label} zostanie usunięty.`}
+          title="Usunąć ten urlop?"
+          message={`„${deleteTarget.label}” zostanie usunięty.`}
           confirmLabel="Usuń"
           cancelLabel="Anuluj"
           danger

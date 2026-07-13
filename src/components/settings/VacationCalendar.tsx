@@ -682,7 +682,7 @@ export function VacationCalendar({
                       setDeleteTarget({
                         kind: "vacation",
                         id: period.id,
-                        label: `urlop ${sp.name} (${period.startDate} → ${period.endDate})`,
+                        label: `${staffVacationCategoryLabel(period.category)} • ${sp.name} (${formatRangeLabel(period.startDate, period.endDate)})`,
                       });
                     }}
                   >
@@ -828,8 +828,8 @@ export function VacationCalendar({
               icon={<IconSun size={28} />}
               title="Brak urlopów w tym miesiącu"
               description={editableSalesPersonId
-                ? "Nie masz zaplanowanych urlopów w tym miesiącu. Kliknij „Dodaj mój urlop\" aby zaplanować."
-                : "Kliknij ‹ › aby przejść do innego miesiąca."
+                ? 'Nie masz zaplanowanych urlopów w tym miesiącu. Kliknij „Dodaj mój urlop”, aby zaplanować.'
+                : 'Przejdź do innego miesiąca strzałkami ‹ ›.'
               }
             />
           </div>
@@ -929,7 +929,7 @@ export function VacationCalendar({
                               c.dot
                             )}
                             onClick={(e) => onBarClick(e, p.period.id, p.salesPersonId)}
-                            title={p.salesPersonName}
+                            title={`${p.salesPersonName} — ${staffVacationCategoryShort(p.period.category)}`}
                           />
                         );
                       })}
@@ -975,8 +975,8 @@ export function VacationCalendar({
         <ConfirmDialog
           open
           tier="stack"
-          title={deleteTarget.kind === "vacation" ? "Usunąć urlop?" : "Usunąć zastępcę?"}
-          message={`${deleteTarget.label} zostanie usunięty.`}
+          title={deleteTarget.kind === "vacation" ? "Usunąć ten urlop?" : "Usunąć zastępcę?"}
+          message={`„${deleteTarget.label}” zostanie usunięty.`}
           confirmLabel="Usuń"
           cancelLabel="Anuluj"
           danger

@@ -240,8 +240,8 @@ export function VacationPeriodsSection({
       {deleteTarget ? (
         <ConfirmDialog
           open
-          title="Usunąć urlop?"
-          message={`Urlop od ${deleteTarget.startDate} do ${deleteTarget.endDate} zostanie usunięty.`}
+          title="Usunąć ten urlop?"
+          message={`„${staffVacationCategoryLabel(deleteTarget.category)} • ${deleteTarget.startDate} → ${deleteTarget.endDate}” zostanie usunięty.`}
           confirmLabel="Usuń"
           cancelLabel="Anuluj"
           danger
