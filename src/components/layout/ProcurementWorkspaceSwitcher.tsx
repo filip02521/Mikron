@@ -88,7 +88,11 @@ export function ProcurementWorkspaceSwitcher({
                 "flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors",
                 controlFocusClass,
                 isActive
-                  ? "bg-slate-100 ring-1 ring-slate-200/80"
+                  ? tone === "sky"
+                    ? "bg-sky-50 ring-1 ring-sky-200/60"
+                    : tone === "emerald"
+                      ? "bg-emerald-50 ring-1 ring-emerald-200/60"
+                      : "bg-indigo-50 ring-1 ring-indigo-200/60"
                   : "hover:bg-slate-50",
                 pending && "cursor-wait"
               )}
@@ -113,6 +117,20 @@ export function ProcurementWorkspaceSwitcher({
                   {opt.label}
                 </span>
               </span>
+              {isActive ? (
+                <span
+                  className={cn(
+                    "shrink-0 text-[10px] font-bold uppercase tracking-wide",
+                    tone === "sky"
+                      ? "text-sky-600"
+                      : tone === "emerald"
+                        ? "text-emerald-600"
+                        : "text-indigo-600"
+                  )}
+                >
+                  ●
+                </span>
+              ) : null}
             </button>
           );
         })}

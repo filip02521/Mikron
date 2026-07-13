@@ -49,7 +49,7 @@ import { ProcurementWorkspaceSwitcher } from "@/components/layout/ProcurementWor
 import { actionClearAdminPanelContext } from "@/app/actions/admin-panel-context";
 import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
-import { PROCUREMENT_WORKSPACE_OPTIONS, subtitleForProcurementWorkspace, grantedProcurementFunctions } from "@/lib/auth/procurement-workspace";
+import { PROCUREMENT_WORKSPACE_OPTIONS, subtitleForProcurementWorkspace, labelForProcurementWorkspace, grantedProcurementFunctions } from "@/lib/auth/procurement-workspace";
 import { isAdmin } from "@/lib/auth-roles";
 import { hrefWithAdminSalesPreview, shouldPreserveSalesPreviewInNav } from "@/lib/nav/sales-preview-href";
 import { ChangelogTriggerButton } from "@/components/changelog/ChangelogTriggerButton";
@@ -339,6 +339,51 @@ export function Sidebar({
           activeDelegations={activeDelegations}
         />
       </header>
+
+      {procurementWorkspace ? (
+        <div className={cn(
+          "mx-3 mb-1 flex items-center gap-2.5 rounded-lg px-3 py-2 ring-1 ring-inset",
+          procurementWorkspace === "zeby"
+            ? "bg-sky-50/80 ring-sky-200/60"
+            : procurementWorkspace === "magazyn"
+              ? "bg-emerald-50/80 ring-emerald-200/60"
+              : "bg-indigo-50/80 ring-indigo-200/60"
+        )}>
+          <span
+            className={cn(
+              "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
+              procurementWorkspace === "zeby"
+                ? "bg-sky-100 text-sky-900"
+                : procurementWorkspace === "magazyn"
+                  ? "bg-emerald-100 text-emerald-900"
+                  : "bg-indigo-100 text-indigo-900"
+            )}
+            aria-hidden
+          >
+            <NavIcon
+              navKey={procurementWorkspace === "zeby" ? "teeth" : procurementWorkspace === "magazyn" ? "warehouse" : "dailyPanel"}
+              size={procurementWorkspace === "zeby" ? 18 : 16}
+            />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Obszar pracy
+            </p>
+            <p
+              className={cn(
+                "truncate text-sm font-bold leading-tight",
+                procurementWorkspace === "zeby"
+                  ? "text-sky-900"
+                  : procurementWorkspace === "magazyn"
+                    ? "text-emerald-900"
+                    : "text-indigo-900"
+              )}
+            >
+              {labelForProcurementWorkspace(procurementWorkspace)}
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <nav className={cn(brandSidebarNavScroll, navLocked && "opacity-80")}>
         {groups.map((g, index) => (
