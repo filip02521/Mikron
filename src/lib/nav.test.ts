@@ -158,12 +158,12 @@ describe("navForRole struktura zakupów", () => {
 });
 
 describe("teethNavGroups", () => {
-  it("ma sekcje Dziś, Zespół i Dostawcy (workflow od góry)", () => {
+  it("ma sekcje Dziś, Dostawcy i Zespół (workflow od góry)", () => {
     const groups = teethNavGroups();
     expect(groups.map((g) => g.title)).toEqual([
       NAV_SECTION_TODAY,
-      NAV_SECTION_TEAM,
       NAV_SECTION_SUPPLIERS,
+      NAV_SECTION_TEAM,
     ]);
   });
 
@@ -200,10 +200,10 @@ describe("teethNavGroups", () => {
   it("rzadsze pozycje są compact w overflow", () => {
     const overflow = navMobileOverflowItems(teethNavGroups());
     expect(overflow.map((item) => item.label)).toEqual([
+      "Karty dostawców",
       "Tablica",
       "Notatki",
       "Urlopy działu",
-      "Karty dostawców",
     ]);
     expect(overflow.every((item) => item.tier === "compact")).toBe(true);
   });
@@ -235,8 +235,8 @@ describe("navForRole zakupy_zeby", () => {
     const groups = navForRole("zakupy_zeby");
     expect(groups.map((g) => g.title)).toEqual([
       NAV_SECTION_TODAY,
-      NAV_SECTION_TEAM,
       NAV_SECTION_SUPPLIERS,
+      NAV_SECTION_TEAM,
     ]);
   });
 

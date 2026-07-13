@@ -293,8 +293,8 @@ function teethTeamNavItems(badges: {
 export function teethNavGroups(badges: NavBadges = {}): NavGroup[] {
   return [
     { title: NAV_SECTION_TODAY, items: teethTodayNavItems(badges) },
-    { title: NAV_SECTION_TEAM, items: teethTeamNavItems(badges) },
     { title: NAV_SECTION_SUPPLIERS, items: teethSupplierNavItems() },
+    { title: NAV_SECTION_TEAM, items: teethTeamNavItems(badges) },
   ];
 }
 
