@@ -16,8 +16,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { AddButton } from "@/components/ui/AddButton";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { SystemNotice } from "@/components/ui/SystemNotice";
-import { IconUsers, IconClipboardList, IconNotebook, IconFilePlus, IconEye } from "@/components/icons/StrokeIcons";
+import { IconUsers, IconClipboardList, IconNotebook, IconFilePlus, IconEye, IconMail, IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 
@@ -136,15 +135,18 @@ function SalesPersonCard({
           </div>
         </div>
       </div>
-      <div className="space-y-2.5 px-4 py-3">
-        <dl className="grid grid-cols-2 gap-x-3 gap-y-2">
-          <div className="min-w-0">
+      <div className="space-y-3 px-4 py-3">
+        <dl className="grid grid-cols-2 gap-2">
+          <div className="rounded-md bg-slate-50/80 px-2.5 py-2">
             <dt className={salesTypography.statLabel}>Zamówienia</dt>
-            <dd className={salesTypography.statValue}>{row.orderCount}</dd>
+            <dd className={cn(salesTypography.statValue, "tabular-nums")}>{row.orderCount}</dd>
           </div>
-          <div className="min-w-0">
+          <div className={cn(
+            "rounded-md px-2.5 py-2",
+            row.pendingZkCount > 0 ? "bg-amber-50/80" : "bg-slate-50/80"
+          )}>
             <dt className={salesTypography.statLabel}>Czeka na towar</dt>
-            <dd className={salesTypography.statValue}>
+            <dd className={cn(salesTypography.statValue, "tabular-nums")}>
               {row.pendingZkCount > 0 ? (
                 <Link
                   href={buildNotatnikPageHref({ extraParams: { dla: row.id } })}
@@ -157,9 +159,12 @@ function SalesPersonCard({
               )}
             </dd>
           </div>
-          <div className="min-w-0">
+          <div className={cn(
+            "rounded-md px-2.5 py-2",
+            row.followUpDueZkCount > 0 ? "bg-violet-50/80" : "bg-slate-50/80"
+          )}>
             <dt className={salesTypography.statLabel}>Przyp. ZK</dt>
-            <dd className={salesTypography.statValue}>
+            <dd className={cn(salesTypography.statValue, "tabular-nums")}>
               {row.followUpDueZkCount > 0 ? (
                 <Link
                   href={buildNotatnikPageHref({ extraParams: { dla: row.id } })}
@@ -172,9 +177,12 @@ function SalesPersonCard({
               )}
             </dd>
           </div>
-          <div className="min-w-0">
+          <div className={cn(
+            "rounded-md px-2.5 py-2",
+            row.followUpDueNotesCount > 0 ? "bg-indigo-50/80" : "bg-slate-50/80"
+          )}>
             <dt className={salesTypography.statLabel}>Przyp. not.</dt>
-            <dd className={salesTypography.statValue}>
+            <dd className={cn(salesTypography.statValue, "tabular-nums")}>
               {row.followUpDueNotesCount > 0 ? (
                 <Link
                   href={buildNotatnikPageHref({
@@ -191,19 +199,22 @@ function SalesPersonCard({
               )}
             </dd>
           </div>
-          <div className="min-w-0 col-span-2 sm:col-span-1">
-            <dt className={salesTypography.statLabel}>Konto</dt>
-            <dd
-              className={cn(
-                salesTypography.rowBody,
-                row.linkedUserEmail ? "text-slate-800" : "text-slate-500"
-              )}
-              title={formatSalesPersonAccountStatusTitle(row)}
-            >
-              {formatSalesPersonAccountStatus(row)}
-            </dd>
-          </div>
         </dl>
+        <div className={cn(
+          "flex items-center gap-2 rounded-md border px-2.5 py-2 text-xs",
+          row.linkedUserEmail
+            ? "border-emerald-100/80 bg-emerald-50/40 text-slate-700"
+            : "border-slate-100 bg-slate-50/40 text-slate-500"
+        )}>
+          {row.linkedUserEmail ? (
+            <IconCircleCheck size={14} className="shrink-0 text-emerald-600" />
+          ) : (
+            <IconMail size={14} className="shrink-0 text-slate-400" />
+          )}
+          <span className="min-w-0 truncate" title={formatSalesPersonAccountStatusTitle(row)}>
+            {formatSalesPersonAccountStatus(row)}
+          </span>
+        </div>
         <SalesPersonCardActions
           rowId={row.id}
           isSelf={isSelf}
@@ -260,30 +271,41 @@ export function SalesTeamOverview({
   return (
     <div className="space-y-8">
       {totalPending > 0 || totalFollowUpDue > 0 || totalNotesFollowUpDue > 0 ? (
-        <SystemNotice
-          variant="pinned"
-          title="Podsumowanie zespołu"
-          description={
-            <span className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-slate-700">
-              {totalPending > 0 ? (
-                <span className="font-medium">
-                  {totalPending}{" "}
-                  {totalPending === 1 ? "ZK czeka na towar" : "ZK czekają na towar"}
-                </span>
-              ) : null}
-              {totalFollowUpDue > 0 ? (
-                <Badge variant="purple" className="text-[10px]">
-                  {totalFollowUpDue} przyp. ZK
-                </Badge>
-              ) : null}
-              {totalNotesFollowUpDue > 0 ? (
-                <Badge variant="info" className="text-[10px]">
-                  {totalNotesFollowUpDue} przyp. notatek
-                </Badge>
-              ) : null}
-            </span>
-          }
-        />
+        <div className="grid gap-2 sm:grid-cols-3">
+          {totalPending > 0 ? (
+            <div className="flex items-center gap-2.5 rounded-lg border border-amber-200/70 bg-amber-50/50 px-3 py-2.5">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-700">
+                <IconClipboardList size={16} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-amber-900">ZK czekają na towar</p>
+                <p className="text-lg font-bold tabular-nums text-amber-800">{totalPending}</p>
+              </div>
+            </div>
+          ) : null}
+          {totalFollowUpDue > 0 ? (
+            <div className="flex items-center gap-2.5 rounded-lg border border-violet-200/70 bg-violet-50/50 px-3 py-2.5">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-violet-100 text-violet-700">
+                <IconClipboardList size={16} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-violet-900">Przypomnienia ZK</p>
+                <p className="text-lg font-bold tabular-nums text-violet-800">{totalFollowUpDue}</p>
+              </div>
+            </div>
+          ) : null}
+          {totalNotesFollowUpDue > 0 ? (
+            <div className="flex items-center gap-2.5 rounded-lg border border-indigo-200/70 bg-indigo-50/50 px-3 py-2.5">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-indigo-100 text-indigo-700">
+                <IconNotebook size={16} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-indigo-900">Przypomnienia notatek</p>
+                <p className="text-lg font-bold tabular-nums text-indigo-800">{totalNotesFollowUpDue}</p>
+              </div>
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
       {sections.map((section) => {
@@ -324,7 +346,7 @@ export function SalesTeamOverview({
               </span>
             </div>
             {section.rows.length ? (
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {section.rows.map((row) => (
                   <SalesPersonCard
                     key={row.id}

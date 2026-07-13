@@ -30,7 +30,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
-import { IconPencil, IconTrash2 } from "@/components/icons/StrokeIcons";
+import { IconPencil, IconTrash2, IconLink, IconUserCog, IconKeyRound } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { brandLinkClass, controlFocusClass, panelChoiceChipClass, panelChoiceChipIdleClass, panelChoiceChipSelectedClass, salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 
@@ -401,22 +401,25 @@ export function SalesAdminClient({
                             <Button
                               variant="outline"
                               size="sm"
+                              className="gap-1.5"
                               disabled={pending || !p.email?.trim()}
                               title={
                                 !p.email?.trim() ? "Uzupełnij e-mail handlowca" : undefined
                               }
                               onClick={() => openInviteLink(p.id)}
                             >
+                              <IconLink size={13} className="shrink-0" />
                               Link zaproszenia
                             </Button>
                             {!managerMode ? (
                               <Link
                                 href={`/admin/uzytkownicy?handlowiec=${p.id}`}
                                 className={cn(
-                                  "inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium",
+                                  "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium",
                                   "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                                 )}
                               >
+                                <IconUserCog size={13} className="shrink-0" />
                                 Ręcznie
                               </Link>
                             ) : null}
@@ -425,20 +428,23 @@ export function SalesAdminClient({
                           <Button
                             variant="outline"
                             size="sm"
+                            className="gap-1.5"
                             disabled={pending}
                             onClick={() => setResetTarget(p)}
                           >
+                            <IconKeyRound size={13} className="shrink-0" />
                             Reset hasła
                           </Button>
                         ) : (
                           <Link
                             href="/admin/uzytkownicy"
                             className={cn(
-                              "inline-flex items-center rounded-md px-3 py-1.5 text-xs font-medium",
+                              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium",
                               brandLinkClass,
                               "no-underline hover:bg-indigo-50/80"
                             )}
                           >
+                            <IconUserCog size={13} className="shrink-0" />
                             Konto
                           </Link>
                         )}

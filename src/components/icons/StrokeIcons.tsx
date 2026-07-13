@@ -728,3 +728,13 @@ export function IconEye(props: StrokeIconProps) {
     </Svg>
   );
 }
+
+/** Klucz / reset hasła */
+export function IconKeyRound(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="8" cy="15" r="4" />
+      <path d="M10.85 12.15L19 4M18 5l2 2M15 8l2 2" />
+    </Svg>
+  );
+}

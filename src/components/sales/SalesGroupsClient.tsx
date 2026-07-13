@@ -11,10 +11,12 @@ import {
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
+import { AddButton } from "@/components/ui/AddButton";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
+import { IconPencil, IconTrash2, IconUsers } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
 
@@ -107,14 +109,14 @@ export function SalesGroupsClient({
       }
       action={
         canCreateGroups && !readOnlyPreview && !formOpen ? (
-          <Button
+          <AddButton
             variant="outline"
             size="sm"
             onClick={openCreateForm}
             className={embeddedInTeamWorkspace ? undefined : "sm:min-h-9"}
           >
-            + Nowa grupa
-          </Button>
+            Nowa grupa
+          </AddButton>
         ) : null
       }
     />
@@ -127,58 +129,70 @@ export function SalesGroupsClient({
         description="Dodaj Sklep, Biuro lub własne działy — potem przypisz handlowców."
       />
     ) : (
-      <ul className="divide-y divide-slate-100">
+      <ul className="space-y-1.5 p-2 sm:p-3 lg:p-4">
         {groups.map((g) => (
           <li
             key={g.id}
             className={cn(
-              "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3",
-              embeddedInTeamWorkspace ? salesChromeInsetClass : "px-4 sm:px-5"
+              "rounded-lg border border-slate-100 bg-white px-3 py-3 transition-all sm:px-4 lg:px-5",
+              "hover:border-slate-200 hover:shadow-sm"
             )}
           >
-            <div className="min-w-0">
-              <p className={salesTypography.rowTitle}>{g.name}</p>
-              <p
-                className={cn(
-                  salesTypography.rowMeta,
-                  "mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1"
-                )}
-              >
-                <span>Kolejność: {g.sortOrder}</span>
-                <span title="Handlowcy widoczni w podglądzie zespołu">
-                  <Badge variant="default" className="text-[10px]">
-                    {g.memberCount}{" "}
-                    {g.memberCount === 1
-                      ? "handlowiec"
-                      : g.memberCount < 5
-                        ? "handlowcy"
-                        : "handlowców"}
-                  </Badge>
-                </span>
-              </p>
-            </div>
-            <div className="flex shrink-0 gap-2">
-              {!readOnlyPreview ? (
-                <Button variant="ghost" size="sm" onClick={() => startEdit(g)}>
-                  Edytuj
-                </Button>
-              ) : null}
-              {canCreateGroups && !readOnlyPreview ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-rose-600 hover:text-rose-700"
-                  disabled={g.memberCount > 0}
-                  title={
-                    g.memberCount > 0
-                      ? "Najpierw przenieś handlowców do innej grupy"
-                      : undefined
-                  }
-                  onClick={() => setDeleteTarget(g)}
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-100/60"
+                  aria-hidden
                 >
-                  Usuń
-                </Button>
-              ) : null}
+                  <IconUsers size={15} />
+                </span>
+                <div className="min-w-0">
+                  <p className={salesTypography.rowTitle}>{g.name}</p>
+                  <p
+                    className={cn(
+                      salesTypography.rowMeta,
+                      "mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1"
+                    )}
+                  >
+                    <span>Kolejność: {g.sortOrder}</span>
+                    <span title="Handlowcy widoczni w podglądzie zespołu">
+                      <Badge variant="default" className="text-[10px]">
+                        {g.memberCount}{" "}
+                        {g.memberCount === 1
+                          ? "handlowiec"
+                          : g.memberCount < 5
+                            ? "handlowcy"
+                            : "handlowców"}
+                      </Badge>
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                {!readOnlyPreview ? (
+                  <Button variant="ghost" size="sm" className="gap-1" onClick={() => startEdit(g)}>
+                    <IconPencil size={13} className="shrink-0" />
+                    Edytuj
+                  </Button>
+                ) : null}
+                {canCreateGroups && !readOnlyPreview ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1 text-rose-600 hover:text-rose-700"
+                    disabled={g.memberCount > 0}
+                    title={
+                      g.memberCount > 0
+                        ? "Najpierw przenieś handlowców do innej grupy"
+                        : undefined
+                    }
+                    onClick={() => setDeleteTarget(g)}
+                  >
+                    <IconTrash2 size={13} className="shrink-0" />
+                    Usuń
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </li>
         ))}
