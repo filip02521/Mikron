@@ -332,22 +332,22 @@ export function LocationScheduleClient({
                             ) : null}
                           </p>
                           {row.interval_hint ? (
-                            <p className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-normal text-slate-500">
-                              <IconClock size={11} className="text-slate-400" />
+                            <p className="mt-0.5 flex items-center gap-1 text-[11px] font-normal text-slate-500">
+                              <IconClock size={11} className="shrink-0 text-slate-400" />
                               {row.interval_hint}
                             </p>
                           ) : null}
                           <Link
                             href={cardHref(cardsBasePath, row.name)}
-                            className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-900 hover:underline"
+                            className="mt-1 flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-900 hover:underline"
                           >
                             Karta dostawcy
                             <LinkChevron size={13} tone="sky" />
                           </Link>
                           {savedId === row.id ? (
-                            <span className="ml-2 text-xs font-normal text-emerald-700">
+                            <p className="mt-0.5 text-xs font-normal text-emerald-700">
                               Zapisano
-                            </span>
+                            </p>
                           ) : null}
                         </div>
                       </div>
