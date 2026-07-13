@@ -20,7 +20,11 @@ import {
   actionSetVacationDelegation,
   actionRemoveVacationDelegation,
 } from "@/app/actions/vacation-delegations";
-import type { VacationPeriodRow } from "@/lib/data/sales-vacation-periods";
+import type { VacationPeriodRow, VacationCategory } from "@/lib/data/sales-vacation-periods";
+import {
+  STAFF_VACATION_CATEGORIES,
+  staffVacationCategoryShort,
+} from "@/lib/data/staff-vacation-periods";
 import type { VacationDelegationRow, DelegateOption } from "@/lib/data/vacation-delegations";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
@@ -246,10 +250,17 @@ export function VacationCalendar({
   const [selectedDelegateId, setSelectedDelegateId] = useState("");
 
   const [vacationFormOpen, setVacationFormOpen] = useState(false);
-  const [vacationForm, setVacationForm] = useState({
+  const [vacationForm, setVacationForm] = useState<{
+    salesPersonId: string;
+    startDate: string;
+    endDate: string;
+    category: VacationCategory;
+    note: string;
+  }>({
     salesPersonId: editableSalesPersonId ?? (salesPeople.length === 1 ? salesPeople[0].id : ""),
     startDate: todayDateKey,
     endDate: addDaysToDateKey(todayDateKey, 14),
+    category: "urlop",
     note: "",
   });
 
@@ -380,6 +391,7 @@ export function VacationCalendar({
       salesPersonId: editableSalesPersonId ?? (salesPeople.length === 1 ? salesPeople[0].id : ""),
       startDate: todayDateKey,
       endDate: addDaysToDateKey(todayDateKey, 14),
+      category: "urlop",
       note: "",
     });
     setVacationFormOpen(false);
@@ -404,6 +416,7 @@ export function VacationCalendar({
         salesPersonId,
         startDate: vacationForm.startDate,
         endDate: vacationForm.endDate,
+        category: vacationForm.category,
         note: vacationForm.note || null,
       });
       if ("error" in r) {
@@ -521,6 +534,9 @@ export function VacationCalendar({
               </p>
               <div className="flex items-center gap-2">
                 {statusBadge(period.startDate, period.endDate, todayDateKey)}
+                <Badge variant="default" className="text-[10px]">
+                  {staffVacationCategoryShort(period.category)}
+                </Badge>
               </div>
               {period.note ? (
                 <p className="rounded-md bg-slate-50/60 px-2.5 py-1.5 text-xs text-slate-600">{period.note}</p>
@@ -726,6 +742,21 @@ export function VacationCalendar({
               />
             </Field>
           </div>
+          <Field label="Rodzaj nieobecności">
+            <select
+              className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200/40"
+              value={vacationForm.category}
+              onChange={(e) =>
+                setVacationForm({ ...vacationForm, category: e.target.value as VacationCategory })
+              }
+            >
+              {STAFF_VACATION_CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </Field>
           <Field label="Notatka (opcjonalna)">
             <Input
               type="text"
@@ -819,11 +850,16 @@ export function VacationCalendar({
                               c.text
                             )}
                             onClick={(e) => onBarClick(e, p.period.id, p.salesPersonId)}
-                            title={p.salesPersonName}
+                            title={`${p.salesPersonName} — ${staffVacationCategoryShort(p.period.category)}`}
                           >
                             <span className="truncate">
                               {p.salesPersonName}
                             </span>
+                            {p.period.category !== "urlop" ? (
+                              <span className="ml-0.5 shrink-0 opacity-70">
+                                · {staffVacationCategoryShort(p.period.category)}
+                              </span>
+                            ) : null}
                             {(() => {
                               const delegations = delegationsBySalesPerson[p.salesPersonId] ?? [];
                               const hasDelegate = delegations.some(

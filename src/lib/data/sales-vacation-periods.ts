@@ -1,9 +1,13 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
+import type { StaffVacationCategory } from "@/lib/data/staff-vacation-periods";
+
+export type VacationCategory = StaffVacationCategory;
 
 export type VacationPeriodRow = {
   id: string;
   salesPersonId: string;
+  category: VacationCategory;
   startDate: string;
   endDate: string;
   note: string | null;
@@ -13,6 +17,7 @@ export type VacationPeriodRow = {
 type VacationPeriodDbRow = {
   id: string;
   sales_person_id: string;
+  category: string;
   start_date: string;
   end_date: string;
   note: string | null;
@@ -23,6 +28,7 @@ function mapRow(row: VacationPeriodDbRow): VacationPeriodRow {
   return {
     id: row.id,
     salesPersonId: row.sales_person_id,
+    category: (row.category as VacationCategory) ?? "urlop",
     startDate: row.start_date,
     endDate: row.end_date,
     note: row.note,
@@ -39,7 +45,7 @@ export async function fetchVacationPeriodsForSalesPerson(
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("sales_vacation_periods")
-    .select("id, sales_person_id, start_date, end_date, note, created_at")
+    .select("id, sales_person_id, category, start_date, end_date, note, created_at")
     .eq("sales_person_id", salesPersonId)
     .order("start_date", { ascending: false });
 
@@ -57,7 +63,7 @@ export async function fetchActiveVacationPeriod(
   const today = todayDateKeyInWarsaw();
   const { data, error } = await supabase
     .from("sales_vacation_periods")
-    .select("id, sales_person_id, start_date, end_date, note, created_at")
+    .select("id, sales_person_id, category, start_date, end_date, note, created_at")
     .eq("sales_person_id", salesPersonId)
     .lte("start_date", today)
     .gte("end_date", today)
@@ -73,6 +79,7 @@ export async function createVacationPeriod(input: {
   salesPersonId: string;
   startDate: string;
   endDate: string;
+  category?: VacationCategory;
   note?: string | null;
 }): Promise<VacationPeriodRow> {
   if (!hasSupabaseConfig()) throw new Error("Brak konfiguracji Supabase.");
@@ -82,6 +89,7 @@ export async function createVacationPeriod(input: {
   }
 
   const note = input.note?.trim().slice(0, 500) || null;
+  const category = input.category ?? "urlop";
 
   const supabase = createAdminClient();
   const { data, error } = await supabase
@@ -90,9 +98,10 @@ export async function createVacationPeriod(input: {
       sales_person_id: input.salesPersonId,
       start_date: input.startDate,
       end_date: input.endDate,
+      category,
       note,
     })
-    .select("id, sales_person_id, start_date, end_date, note, created_at")
+    .select("id, sales_person_id, category, start_date, end_date, note, created_at")
     .single();
 
   if (error) throw new Error(error.message);
@@ -125,7 +134,7 @@ export async function fetchVacationPeriodsForManager(
 
   const { data, error } = await supabase
     .from("sales_vacation_periods")
-    .select("id, sales_person_id, start_date, end_date, note, created_at")
+    .select("id, sales_person_id, category, start_date, end_date, note, created_at")
     .in("sales_person_id", salesPersonIds)
     .order("start_date", { ascending: false });
 
@@ -149,7 +158,7 @@ export async function fetchVacationPeriodsForSalesPeople(
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("sales_vacation_periods")
-    .select("id, sales_person_id, start_date, end_date, note, created_at")
+    .select("id, sales_person_id, category, start_date, end_date, note, created_at")
     .in("sales_person_id", salesPersonIds)
     .order("start_date", { ascending: false });
 

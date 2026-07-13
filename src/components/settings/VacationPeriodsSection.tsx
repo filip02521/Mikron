@@ -7,7 +7,11 @@ import {
   actionRemoveVacationPeriod,
   actionFetchVacationPeriods,
 } from "@/app/actions/sales-vacation-periods";
-import type { VacationPeriodRow } from "@/lib/data/sales-vacation-periods";
+import type { VacationPeriodRow, VacationCategory } from "@/lib/data/sales-vacation-periods";
+import {
+  STAFF_VACATION_CATEGORIES,
+  staffVacationCategoryShort,
+} from "@/lib/data/staff-vacation-periods";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
@@ -56,14 +60,20 @@ export function VacationPeriodsSection({
   const dismiss = useCallback(() => setToast(null), []);
   const [deleteTarget, setDeleteTarget] = useState<VacationPeriodRow | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    startDate: string;
+    endDate: string;
+    category: VacationCategory;
+    note: string;
+  }>({
     startDate: todayStr(),
     endDate: addDaysStr(14),
+    category: "urlop",
     note: "",
   });
 
   const resetForm = () => {
-    setForm({ startDate: todayStr(), endDate: addDaysStr(14), note: "" });
+    setForm({ startDate: todayStr(), endDate: addDaysStr(14), category: "urlop", note: "" });
     setFormOpen(false);
   };
 
@@ -81,6 +91,7 @@ export function VacationPeriodsSection({
         salesPersonId,
         startDate: form.startDate,
         endDate: form.endDate,
+        category: form.category,
         note: form.note || null,
       });
       if ("error" in r) {
@@ -155,6 +166,19 @@ export function VacationPeriodsSection({
                 />
               </Field>
             </div>
+            <Field label="Rodzaj nieobecności">
+              <select
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200/40"
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value as VacationCategory })}
+              >
+                {STAFF_VACATION_CATEGORIES.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
             <Field label="Notatka (opcjonalna)">
               <Input
                 type="text"
@@ -191,6 +215,9 @@ export function VacationPeriodsSection({
                   </p>
                   <p className={cn(salesTypography.rowMeta, "mt-0.5 flex items-center gap-2")}>
                     {statusBadge(p.startDate, p.endDate)}
+                    <Badge variant="default" className="text-[10px]">
+                      {staffVacationCategoryShort(p.category)}
+                    </Badge>
                     {p.note ? <span className="text-slate-500">{p.note}</span> : null}
                   </p>
                 </div>

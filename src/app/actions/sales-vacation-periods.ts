@@ -11,10 +11,15 @@ import {
   removeVacationPeriod,
   fetchVacationPeriodsForSalesPerson,
   type VacationPeriodRow,
+  type VacationCategory,
 } from "@/lib/data/sales-vacation-periods";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+const VALID_CATEGORIES: VacationCategory[] = [
+  "urlop", "nadgodziny", "na_zadanie", "chorobowe", "osobiste", "inne",
+];
 
 function isValidIsoDate(value: string): boolean {
   if (!ISO_DATE_RE.test(value)) return false;
@@ -49,6 +54,7 @@ export async function actionSetVacationPeriod(input: {
   salesPersonId: string;
   startDate: string;
   endDate: string;
+  category?: VacationCategory;
   note?: string | null;
 }): Promise<{ success: true } | { error: string }> {
   try {
@@ -59,6 +65,8 @@ export async function actionSetVacationPeriod(input: {
     const startDate = input.startDate.trim();
     const endDate = input.endDate.trim();
     const note = input.note?.trim().slice(0, 500) || null;
+    const category: VacationCategory =
+      input.category && VALID_CATEGORIES.includes(input.category) ? input.category : "urlop";
 
     if (!salesPersonId) {
       return { error: "Brak handlowca." };
@@ -75,7 +83,7 @@ export async function actionSetVacationPeriod(input: {
 
     await assertCanManageVacationPeriods(user, salesPersonId);
 
-    await createVacationPeriod({ salesPersonId, startDate, endDate, note });
+    await createVacationPeriod({ salesPersonId, startDate, endDate, category, note });
 
     revalidateVacationPaths();
     return { success: true };
