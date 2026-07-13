@@ -279,7 +279,7 @@ function teethTeamNavItems(badges: {
     },
     {
       href: "/urlopy",
-      label: "Urlopy",
+      label: "Urlopy działu",
       mobileLabel: "Urlopy",
       description: "Urlopy działu — kto jest niedostępny",
       icon: "vacation",
@@ -366,7 +366,7 @@ function operationsTeamItems(badges: {
     },
     {
       href: "/urlopy",
-      label: "Urlopy",
+      label: "Urlopy działu",
       mobileLabel: "Urlopy",
       description: "Urlopy działu — kto jest niedostępny",
       icon: "vacation",
@@ -395,7 +395,7 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
       },
       {
         href: "/zakupy/urlopy",
-        label: "Urlopy",
+        label: "Urlopy dostawców",
         description: "Niedostępność dostawcy",
         icon: "vacation",
         tone: "sky",
@@ -424,7 +424,7 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
       },
       {
         href: "/zakupy/urlopy",
-        label: "Urlopy",
+        label: "Urlopy dostawców",
         description: "Niedostępność dostawcy",
         icon: "vacation",
         tone: "sky",
@@ -453,7 +453,7 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
     },
     {
       href: paths.vacations,
-      label: "Urlopy",
+      label: "Urlopy dostawców",
       description: "Niedostępność dostawcy",
       icon: "vacation",
       tone: "sky",
@@ -590,7 +590,7 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
         },
         {
           href: "/urlopy",
-          label: "Urlopy",
+          label: "Urlopy działu",
           mobileLabel: "Urlopy",
           description: "Urlopy działu — kto jest niedostępny",
           icon: "vacation",
@@ -813,7 +813,10 @@ export function pageTitle(pathname: string): string {
     return "Karty dostawców";
   }
   if (pathname.startsWith("/admin/urlopy") || pathname.startsWith("/zakupy/urlopy")) {
-    return "Urlopy";
+    return "Urlopy dostawców";
+  }
+  if (pathname === "/urlopy" || pathname.startsWith("/urlopy/")) {
+    return "Urlopy działu";
   }
   if (pathname.startsWith("/lokalizacje/")) return "Terminy zamówień";
   if (pathname.startsWith("/zeby/przyjecie")) return "Przyjęcie";

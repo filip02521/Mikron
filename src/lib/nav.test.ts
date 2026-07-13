@@ -98,7 +98,7 @@ describe("pageTitle", () => {
   it("zwraca Karty dostawców dla admin dostawcy", () => {
     expect(pageTitle("/admin/dostawcy")).toBe("Karty dostawców");
     expect(pageTitle("/admin/dostawcy/nieaktywni")).toBe("Nieaktywni dostawcy");
-    expect(pageTitle("/admin/urlopy")).toBe("Urlopy");
+    expect(pageTitle("/admin/urlopy")).toBe("Urlopy dostawców");
   });
 
   it("zwraca ZK czekające dla /notatnik i /zk", () => {
@@ -202,7 +202,7 @@ describe("teethNavGroups", () => {
     expect(overflow.map((item) => item.label)).toEqual([
       "Tablica",
       "Notatki",
-      "Urlopy",
+      "Urlopy działu",
       "Karty dostawców",
     ]);
     expect(overflow.every((item) => item.tier === "compact")).toBe(true);
