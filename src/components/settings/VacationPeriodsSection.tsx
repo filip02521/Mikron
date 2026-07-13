@@ -10,7 +10,7 @@ import {
 import type { VacationPeriodRow, VacationCategory } from "@/lib/data/sales-vacation-periods";
 import {
   STAFF_VACATION_CATEGORIES,
-  staffVacationCategoryShort,
+  staffVacationCategoryLabel,
 } from "@/lib/data/staff-vacation-periods";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Field";
@@ -38,12 +38,12 @@ function addDaysStr(days: number): string {
 function statusBadge(startDate: string, endDate: string) {
   const today = todayStr();
   if (today < startDate) {
-    return <Badge variant="default" className="text-[10px]">Nadchodzące</Badge>;
+    return <Badge variant="default" className="text-[10px]">Nadchodzący</Badge>;
   }
   if (today > endDate) {
-    return <Badge variant="default" className="text-[10px] opacity-60">Zakończone</Badge>;
+    return <Badge variant="default" className="text-[10px] opacity-60">Zakończony</Badge>;
   }
-  return <Badge variant="success" className="text-[10px]">Aktywne</Badge>;
+  return <Badge variant="success" className="text-[10px]">Trwa teraz</Badge>;
 }
 
 export function VacationPeriodsSection({
@@ -216,7 +216,7 @@ export function VacationPeriodsSection({
                   <p className={cn(salesTypography.rowMeta, "mt-0.5 flex items-center gap-2")}>
                     {statusBadge(p.startDate, p.endDate)}
                     <Badge variant="default" className="text-[10px]">
-                      {staffVacationCategoryShort(p.category)}
+                      {staffVacationCategoryLabel(p.category)}
                     </Badge>
                     {p.note ? <span className="text-slate-500">{p.note}</span> : null}
                   </p>

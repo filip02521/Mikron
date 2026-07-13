@@ -19,6 +19,7 @@ import type { StaffVacationRow, StaffVacationCategory } from "@/lib/data/staff-v
 import {
   STAFF_VACATION_CATEGORIES,
   staffVacationCategoryShort,
+  staffVacationCategoryLabel,
 } from "@/lib/data/staff-vacation-periods";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
@@ -68,9 +69,24 @@ type DayCell = {
 };
 
 function statusBadge(startDate: string, endDate: string, todayKey: string) {
-  if (todayKey < startDate) return <Badge variant="default" className="text-[10px]">Nadchodzące</Badge>;
-  if (todayKey > endDate) return <Badge variant="default" className="text-[10px] opacity-60">Zakończone</Badge>;
-  return <Badge variant="success" className="text-[10px]">Aktywne</Badge>;
+  if (todayKey < startDate) return <Badge variant="default" className="text-[10px]">Nadchodzący</Badge>;
+  if (todayKey > endDate) return <Badge variant="default" className="text-[10px] opacity-60">Zakończony</Badge>;
+  return <Badge variant="success" className="text-[10px]">Trwa teraz</Badge>;
+}
+
+function formatRangeLabel(startDate: string, endDate: string): string {
+  const fmt = (d: string) => {
+    const [y, m, day] = d.split("-").map(Number);
+    const months = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"];
+    return `${day} ${months[m - 1]} ${y}`;
+  };
+  return startDate === endDate ? fmt(startDate) : `${fmt(startDate)} – ${fmt(endDate)}`;
+}
+
+function vacationDuration(startDate: string, endDate: string): number {
+  const start = new Date(startDate + "T00:00:00");
+  const end = new Date(endDate + "T00:00:00");
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
 }
 
 function buildCalendarCells(
@@ -385,36 +401,55 @@ export function StaffVacationCalendar({
           const isOwn = member.id === currentUserId;
 
           return (
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               <div className="flex items-center gap-2">
                 {color ? (
-                  <span className={cn("h-2.5 w-2.5 rounded-full", color.dot)} />
+                  <span className={cn("h-3 w-3 rounded-full ring-2 ring-white", color.dot)} />
                 ) : null}
-                <span className={salesTypography.rowTitle}>
+                <span className="text-sm font-semibold text-slate-900">
                   {member.name}
-                  {isOwn ? <span className="ml-1.5 text-xs text-indigo-400">(Ty)</span> : null}
                 </span>
+                {isOwn ? (
+                  <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-600">Ty</span>
+                ) : null}
               </div>
-              <p className={cn(salesTypography.rowMeta, "font-medium")}>
-                {period.startDate} → {period.endDate}
-              </p>
-              <div className="flex items-center gap-2">
+
+              <div className="rounded-lg bg-slate-50/70 p-2.5 space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <IconSun size={13} className="shrink-0 text-slate-400" />
+                  <span className="text-xs font-medium text-slate-700">
+                    {formatRangeLabel(period.startDate, period.endDate)}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  {vacationDuration(period.startDate, period.endDate) === 1
+                    ? "1 dzień"
+                    : `${vacationDuration(period.startDate, period.endDate)} dni`
+                  }
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5">
                 {statusBadge(period.startDate, period.endDate, todayDateKey)}
                 <Badge variant="default" className="text-[10px]">
-                  {staffVacationCategoryShort(period.category)}
+                  {staffVacationCategoryLabel(period.category)}
                 </Badge>
               </div>
+
               {period.note ? (
-                <p className="rounded-md bg-slate-50/60 px-2.5 py-1.5 text-xs text-slate-600">{period.note}</p>
+                <div className="rounded-md border border-slate-100 bg-white px-2.5 py-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Notatka</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{period.note}</p>
+                </div>
               ) : null}
 
               {isOwn || adminMode ? (
                 <>
-                  <div className="border-t border-slate-100 my-2" />
+                  <div className="border-t border-slate-100" />
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-rose-600 hover:text-rose-700"
+                    className="w-full justify-center text-rose-600 hover:text-rose-700 hover:bg-rose-50/60"
                     onClick={() => {
                       setDeleteTarget({
                         id: period.id,
@@ -422,7 +457,7 @@ export function StaffVacationCalendar({
                       });
                     }}
                   >
-                    Usuń urlop
+                    Usuń ten urlop
                   </Button>
                 </>
               ) : null}
