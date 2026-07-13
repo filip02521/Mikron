@@ -614,26 +614,17 @@ export function TeethReceiveLinesPanel({
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {productSearchActive || productLineFilter ? (
-              <span
-                role="button"
-                tabIndex={0}
+              <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   setProductLineFilter("");
                   clearProductSearch();
                 }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    setProductLineFilter("");
-                    clearProductSearch();
-                  }
-                }}
                 className="text-[10px] font-medium text-indigo-700 transition hover:text-indigo-900"
               >
                 Wyczyść
-              </span>
+              </button>
             ) : null}
           </div>
         </button>
@@ -660,7 +651,7 @@ export function TeethReceiveLinesPanel({
               ) : null}
             </div>
 
-            <div className={cn(receiveQueueToolbarSectionClass, "border-slate-200/80")}>
+            <div className={cn(receiveQueueToolbarSectionClass, "border-slate-200/80 shadow-none")}>
               <SupplierFilterChips
                 chips={productLineChips}
                 value={productLineFilter}

@@ -101,24 +101,16 @@ export function TeethPanelFiltersBar({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {activeCount > 0 ? (
-            <span
-              role="button"
-              tabIndex={0}
+            <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 onChange(EMPTY_TEETH_PANEL_FILTERS);
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  onChange(EMPTY_TEETH_PANEL_FILTERS);
-                }
-              }}
               className="text-[10px] font-medium text-indigo-700 transition hover:text-indigo-900"
             >
               Wyczyść
-            </span>
+            </button>
           ) : null}
         </div>
       </button>

@@ -556,7 +556,7 @@ export function StaffVacationCalendar({
         </div>
       ) : null}
 
-      <div className="grid grid-cols-7 rounded-t-lg border-t border-l border-slate-100 bg-slate-50/30">
+      <div className="grid grid-cols-7 rounded-t-lg overflow-hidden border-t border-l border-slate-100 bg-slate-50/30">
         {WEEKDAY_LABELS.map((label) => (
           <div
             key={label}
@@ -568,7 +568,7 @@ export function StaffVacationCalendar({
       </div>
 
       {!monthHasPeriods ? (
-        <div className="grid grid-cols-7 border-l border-slate-100">
+        <div className="grid grid-cols-7 border-l border-slate-100 rounded-b-lg overflow-hidden">
           <div className="col-span-7 border-b border-r border-slate-100 rounded-b-lg">
             <EmptyState
               brandAccent
@@ -582,7 +582,7 @@ export function StaffVacationCalendar({
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-7 border-l border-slate-100">
+        <div className="grid grid-cols-7 border-l border-slate-100 rounded-b-lg overflow-hidden">
           {cells.map((cell, i) => {
             const bgClasses = cn(
               !cell.isCurrentMonth && "bg-slate-50/20",
