@@ -81,7 +81,7 @@ function SalesPersonCardActions({
         <TeamCardActionLink href={`/prosba?dla=${rowId}`} className="col-span-2">
           <Button size="sm" variant="outline" className={cn(NOTATNIK_ZK_BTN_CLASS, "gap-1.5 w-full")}>
             {prosbaReadOnly ? <IconEye size={14} className="shrink-0" /> : <IconFilePlus size={14} className="shrink-0" />}
-            {prosbaReadOnly ? "Podgląd prośby" : "Prośba w imieniu handlowca"}
+            {prosbaReadOnly ? "Podgląd formularza" : "Prośba w imieniu handlowca"}
           </Button>
         </TeamCardActionLink>
       ) : null}
