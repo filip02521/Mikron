@@ -137,22 +137,27 @@ export function TeethVisionUpload({
 
   return (
     <div className="relative flex flex-col gap-1.5">
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={disabled || loading}
-        onClick={() => inputRef.current?.click()}
-        aria-label="Wczytaj listę zębów ze zdjęcia kartki"
-        aria-busy={loading}
-      >
-        {loading ? (
-          <Spinner size="sm" className="border-indigo-200 border-t-indigo-600" />
-        ) : (
-          <IconCamera size={16} />
-        )}
-        {loading ? "Analizuję zdjęcie…" : "Ze zdjęcia"}
-      </Button>
+      <div className="flex items-center gap-1.5">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={disabled || loading}
+          onClick={() => inputRef.current?.click()}
+          aria-label="Wczytaj listę zębów ze zdjęcia kartki (BETA)"
+          aria-busy={loading}
+        >
+          {loading ? (
+            <Spinner size="sm" className="border-indigo-200 border-t-indigo-600" />
+          ) : (
+            <IconCamera size={16} />
+          )}
+          {loading ? "Analizuję zdjęcie…" : "Ze zdjęcia"}
+        </Button>
+        <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-indigo-400">
+          Beta
+        </span>
+      </div>
       <input
         ref={inputRef}
         type="file"
