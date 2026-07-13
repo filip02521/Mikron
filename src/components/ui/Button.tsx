@@ -2,9 +2,9 @@ import { forwardRef } from "react";
 import { cn } from "@/lib/cn";
 import { buttonPrimaryClass } from "@/lib/ui/ontime-theme";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger" | "outline";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "outline";
 
-const variants: Record<Variant, string> = {
+const variants: Record<ButtonVariant, string> = {
   primary: buttonPrimaryClass,
   secondary:
     "border border-[var(--card-border)] bg-[var(--card)] text-slate-700 shadow-sm hover:bg-slate-50",
@@ -17,7 +17,7 @@ const variants: Record<Variant, string> = {
 export const Button = forwardRef<
   HTMLButtonElement,
   React.ButtonHTMLAttributes<HTMLButtonElement> & {
-    variant?: Variant;
+    variant?: ButtonVariant;
     size?: "sm" | "md" | "lg";
   }
 >(function Button(

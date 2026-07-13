@@ -22,6 +22,7 @@ import {
   staffVacationCategoryLabel,
 } from "@/lib/data/staff-vacation-periods";
 import { Button } from "@/components/ui/Button";
+import { AddButton } from "@/components/ui/AddButton";
 import { Field, Input } from "@/components/ui/Field";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -489,14 +490,14 @@ export function StaffVacationCalendar({
           ) : null}
         </div>
         {canEdit ? (
-          <Button
+          <AddButton
             variant="outline"
             size="sm"
             onClick={() => setVacationFormOpen((v) => !v)}
             className="h-8"
           >
-            {vacationFormOpen ? "Anuluj" : "+ Dodaj mój urlop"}
-          </Button>
+            {vacationFormOpen ? "Anuluj" : "Dodaj mój urlop"}
+          </AddButton>
         ) : null}
       </div>
 

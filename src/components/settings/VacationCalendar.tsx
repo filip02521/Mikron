@@ -28,6 +28,7 @@ import {
 } from "@/lib/data/staff-vacation-periods";
 import type { VacationDelegationRow, DelegateOption } from "@/lib/data/vacation-delegations";
 import { Button } from "@/components/ui/Button";
+import { AddButton } from "@/components/ui/AddButton";
 import { Field, Input } from "@/components/ui/Field";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -718,14 +719,14 @@ export function VacationCalendar({
           ) : null}
         </div>
         {canEdit ? (
-          <Button
+          <AddButton
             variant="outline"
             size="sm"
             onClick={() => setVacationFormOpen((v) => !v)}
             className="h-8"
           >
-            {vacationFormOpen ? "Anuluj" : editableSalesPersonId ? "+ Dodaj mój urlop" : "+ Dodaj urlop"}
-          </Button>
+            {vacationFormOpen ? "Anuluj" : editableSalesPersonId ? "Dodaj mój urlop" : "Dodaj urlop"}
+          </AddButton>
         ) : null}
       </div>
 

@@ -11,12 +11,13 @@ import {
 } from "@/app/actions/warehouse-carriers";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Button } from "@/components/ui/Button";
+import { AddButton } from "@/components/ui/AddButton";
 import { Field, Input } from "@/components/ui/Field";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { brandLinkClass, panelTypography } from "@/lib/ui/ontime-theme";
+import { panelTypography } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
 
 type FormState = { slug?: string; label: string; sortOrder: string };
@@ -146,16 +147,16 @@ export function WarehouseCarriersModal({
               łącznie
             </p>
             {!formOpen ? (
-              <button
-                type="button"
-                className={brandLinkClass}
+              <AddButton
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   setForm(emptyForm());
                   setFormOpen(true);
                 }}
               >
-                + Dodaj kuriera
-              </button>
+                Dodaj kuriera
+              </AddButton>
             ) : null}
           </div>
 

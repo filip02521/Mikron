@@ -24,6 +24,7 @@ import type { SalesInviteLinkResult } from "@/lib/users/sales-invite";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
+import { AddButton } from "@/components/ui/AddButton";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
@@ -282,15 +283,15 @@ export function SalesAdminClient({
             </Badge>
           ) : null}
           {!formOpen ? (
-            <Button
+            <AddButton
               variant="outline"
               size="sm"
               onClick={openCreateForm}
               disabled={createDisabled}
               title={createDisabled ? "Brak przypisanych grup — poproś administratora" : undefined}
             >
-              + Dodaj handlowca
-            </Button>
+              Dodaj handlowca
+            </AddButton>
           ) : null}
         </div>
       }

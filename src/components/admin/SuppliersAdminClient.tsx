@@ -16,6 +16,7 @@ import { isSupplierActive } from "@/lib/suppliers/active";
 import { formatSupplierCycleSummary, formatSupplierListMeta } from "@/lib/suppliers/supplier-list-labels";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { AddButton } from "@/components/ui/AddButton";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { SupplierAdminCardsFilterBar } from "@/components/admin/SupplierHubListFilters";
@@ -390,9 +391,9 @@ export function SuppliersAdminClient({
 
       <section className="space-y-4">
         {!formOpen ? (
-          <Button variant="outline" onClick={openNew} disabled={readOnly}>
-            + Dodaj dostawcę
-          </Button>
+          <AddButton onClick={openNew} disabled={readOnly}>
+            Dodaj dostawcę
+          </AddButton>
         ) : null}
 
         <Card padding={false} className="overflow-hidden">

@@ -14,6 +14,7 @@ import { buildNotatnikPageHref } from "@/lib/sales/notepad-page-tabs";
 import { NOTATNIK_ZK_BTN_CLASS } from "@/components/notatnik/notatnik-layout";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { AddButton } from "@/components/ui/AddButton";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import { cn } from "@/lib/cn";
@@ -225,7 +226,7 @@ export function SalesTeamOverview({
         action={
           teamUi?.readOnlyPreview || (teamUi?.isManager && !teamUi.hasTeamScope) ? undefined : (
             <Link href="/zespol/handlowcy">
-              <Button>Dodaj handlowca</Button>
+              <AddButton variant="primary">Dodaj handlowca</AddButton>
             </Link>
           )
         }

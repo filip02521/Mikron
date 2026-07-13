@@ -15,6 +15,7 @@ import {
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
+import { AddButton } from "@/components/ui/AddButton";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { VACATION_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -148,9 +149,9 @@ export function VacationPeriodsSection({
         }
         action={
           !formOpen ? (
-            <Button variant="outline" size="sm" onClick={() => setFormOpen(true)}>
-              + Dodaj urlop
-            </Button>
+            <AddButton variant="outline" size="sm" onClick={() => setFormOpen(true)}>
+              Dodaj urlop
+            </AddButton>
           ) : null
         }
       />

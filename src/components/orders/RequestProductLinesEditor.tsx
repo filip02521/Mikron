@@ -54,7 +54,7 @@ export function RequestProductLinesEditor({
   onChange,
   requestKind,
   minLines = 1,
-  addLabel = "+ Dodaj pozycję",
+  addLabel = "Dodaj pozycję",
   showClientField = false,
   appearance = "default",
   suppliers,

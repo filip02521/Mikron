@@ -12,6 +12,7 @@ import { formatPlDate, vacationNoteLabel } from "@/lib/display-labels";
 import { useActionPending } from "@/hooks/useActionPending";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { AddButton } from "@/components/ui/AddButton";
 import { Badge } from "@/components/ui/Badge";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -506,9 +507,9 @@ export function VacationsAdminClient({
       </SupplierEditSheet>
 
       {!formOpen ? (
-        <Button variant="outline" onClick={openCreate} disabled={readOnly || pending}>
-          + Dodaj urlop
-        </Button>
+        <AddButton onClick={openCreate} disabled={readOnly || pending}>
+          Dodaj urlop
+        </AddButton>
       ) : null}
 
       <div className="flex items-center gap-3">
