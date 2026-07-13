@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { IconBell, IconSun } from "@/components/icons/StrokeIcons";
+import { IconBell, IconSun, IconX } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { SalesDayStartItemRow } from "@/components/sales/SalesDayStartItemRow";
 import { useSalesInbox } from "@/components/sales/SalesInboxContext";
@@ -22,12 +22,11 @@ import {
 } from "@/lib/ui/moje-shipment-row-styles";
 import {
   brandLinkClass,
-  controlFocusClass,
-  panelTypography,
   salesTypography,
   sectionIconTileBrandClass,
 } from "@/lib/ui/ontime-theme";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
+import { sidePanelBackdropClass, sidePanelCloseButtonClass, sidePanelHeaderClass } from "@/lib/ui/surfaces";
 import { EmptyState } from "@/components/ui/EmptyState";
 
 export const SALES_INBOX_PANEL_ID = "sales-inbox-panel";
@@ -101,7 +100,7 @@ export function SalesInboxPanel({
       <button
         type="button"
         aria-label="Zamknij powiadomienia"
-        className="panel-slide-backdrop-enter absolute inset-0 bg-slate-900/35 backdrop-blur-[1px]"
+        className={cn(sidePanelBackdropClass, "z-[58]", "panel-slide-backdrop-enter")}
         onClick={handleClose}
       />
       <aside
@@ -111,38 +110,41 @@ export function SalesInboxPanel({
         aria-modal="true"
         aria-label="Pilne sprawy"
         className={cn(
-          "absolute inset-y-0 right-0 flex w-full max-w-md flex-col border-l border-slate-200/90 bg-white shadow-2xl",
+          "absolute inset-y-0 right-0 z-[60] flex w-full max-w-md flex-col border-l border-slate-200/80 bg-white shadow-2xl",
           "panel-slide-enter"
         )}
         {...{ [SCROLL_LOCK_ALLOW_ATTR]: true }}
       >
-        <header className="border-b border-slate-100 px-4 py-4 sm:px-5">
-          <div className="flex items-start gap-3">
-            <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
-              <IconSun size={20} />
-            </SectionHeadingIcon>
-            <div className="min-w-0 flex-1">
-              <h2 className={panelTypography.sectionTitle}>Pilne sprawy</h2>
-              <p className={cn("mt-0.5", salesTypography.sectionHint)}>
-                {cleared
-                  ? "Brak pilnych spraw — możesz wrócić do pracy."
-                  : salesDayStartPanelDescription(count)}
-              </p>
+        <header className={sidePanelHeaderClass}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
+                <IconSun size={20} />
+              </SectionHeadingIcon>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-lg font-semibold text-slate-900">Pilne sprawy</h2>
+                <p className={cn("mt-0.5 text-sm leading-relaxed", salesTypography.sectionHint)}>
+                  {cleared
+                    ? "Brak pilnych spraw — możesz wrócić do pracy."
+                    : salesDayStartPanelDescription(count)}
+                </p>
+              </div>
             </div>
             <button
               type="button"
+              className={sidePanelCloseButtonClass}
               onClick={handleClose}
-              className={cn(
-                "min-h-9 rounded-md border border-slate-200 px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50",
-                controlFocusClass
-              )}
+              aria-label="Zamknij"
             >
-              Zamknij
+              <IconX size={18} />
             </button>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-3 py-3 sm:px-4">
+        <div
+          className="flex-1 overflow-y-auto px-5 py-5"
+          {...{ [SCROLL_LOCK_ALLOW_ATTR]: true }}
+        >
           {cleared ? (
             <EmptyState
               brandAccent

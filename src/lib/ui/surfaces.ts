@@ -15,6 +15,26 @@ export const surface = {
 export const modalBackdropClass =
   "fixed inset-0 cursor-pointer bg-slate-900/45 backdrop-blur-sm";
 
+/** Backdrop dla panelu bocznego (drawer/sheet) — ciemniejszy, z blur. */
+export const sidePanelBackdropClass =
+  "fixed inset-0 z-40 cursor-pointer bg-slate-900/40 backdrop-blur-sm";
+
+/** Powłoka panelu bocznego — spójna border, shadow, rounded-left. */
+export const sidePanelShellClass =
+  "fixed inset-y-0 right-0 z-50 flex h-full w-full max-w-lg flex-col border-l border-slate-200/80 bg-white shadow-2xl";
+
+/** Przycisk zamykania panelu — ikonowy, zaokrąglony kafelek. */
+export const sidePanelCloseButtonClass =
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300";
+
+/** Nagłówek panelu bocznego — spójny padding i border. */
+export const sidePanelHeaderClass =
+  "shrink-0 border-b border-slate-100 px-5 py-4";
+
+/** Treść panelu bocznego — scrollowalna, spójny padding. */
+export const sidePanelContentClass =
+  "flex-1 overflow-y-auto px-5 py-5";
+
 export const modalPanelClass =
   "relative flex flex-col overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)] ring-1 ring-slate-900/5";
 

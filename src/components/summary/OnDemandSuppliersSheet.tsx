@@ -11,6 +11,8 @@ import { panelNameLinkClass } from "@/lib/ui/ontime-theme";
 import { PanelRowActionsInlineEnd } from "@/components/summary/PanelRowActionsInlineEnd";
 import { panelRowClearFocusOnLeave, panelRowGroupClass } from "@/lib/ui/panel-row-actions-reveal";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
+import { sidePanelBackdropClass, sidePanelShellClass, sidePanelCloseButtonClass, sidePanelHeaderClass, sidePanelContentClass } from "@/lib/ui/surfaces";
+import { IconX } from "@/components/icons/StrokeIcons";
 
 export function OnDemandSuppliersSheet({
   open,
@@ -35,36 +37,41 @@ export function OnDemandSuppliersSheet({
     <>
       <button
         type="button"
-        className="panel-slide-backdrop-enter fixed inset-0 z-40 cursor-pointer bg-slate-900/30"
+        className={cn(sidePanelBackdropClass, "panel-slide-backdrop-enter")}
         aria-label="Zamknij listę"
         onClick={onClose}
       />
       <aside
-        className="panel-slide-enter fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col border-l border-slate-200 bg-white shadow-xl"
+        className={cn(sidePanelShellClass, "max-w-md", "panel-slide-enter")}
         aria-labelledby="on-demand-sheet-title"
       >
-        <header className="shrink-0 border-b border-slate-100 px-4 py-4 sm:px-5">
+        <header className={sidePanelHeaderClass}>
           <div className="flex items-start justify-between gap-3">
-            <div>
+            <div className="min-w-0">
               <h2
                 id="on-demand-sheet-title"
-                className="text-base font-semibold text-slate-900"
+                className="text-lg font-semibold text-slate-900"
               >
                 W razie potrzeby
               </h2>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm leading-relaxed text-slate-500">
                 Dostawcy bez stałego terminu w harmonogramie — zamów, gdy coś jest
                 potrzebne.
               </p>
             </div>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              Zamknij
-            </Button>
+            <button
+              type="button"
+              className={sidePanelCloseButtonClass}
+              onClick={onClose}
+              aria-label="Zamknij"
+            >
+              <IconX size={18} />
+            </button>
           </div>
         </header>
 
         <div
-          className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-5"
+          className={sidePanelContentClass}
           {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
         >
           {suppliers.length === 0 ? (
