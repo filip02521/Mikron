@@ -383,3 +383,32 @@ export async function fetchAvailableSuppliersForTeethSchedule(): Promise<
     .filter((s) => !existingIds.has(s.id as string))
     .map((s) => ({ id: s.id as string, name: s.name as string }));
 }
+
+/**
+ * Zwróć ID dostawców powiązanych z zębami:
+ * - dostawcy z harmonogramem zębów (teeth_supplier_schedules)
+ * - dostawcy z zamówieniami zębowymi (individual_orders where is_teeth = true)
+ */
+export async function fetchTeethSupplierIds(): Promise<Set<string>> {
+  if (!hasSupabaseConfig()) return new Set();
+
+  const supabase = createAdminClient();
+
+  const [schedResult, ordersResult] = await Promise.all([
+    supabase.from("teeth_supplier_schedules").select("supplier_id"),
+    supabase
+      .from("individual_orders")
+      .select("supplier_id")
+      .eq("is_teeth", true)
+      .not("supplier_id", "is", null),
+  ]);
+
+  const ids = new Set<string>();
+  for (const row of schedResult.data ?? []) {
+    if (row.supplier_id) ids.add(String(row.supplier_id));
+  }
+  for (const row of ordersResult.data ?? []) {
+    if (row.supplier_id) ids.add(String(row.supplier_id));
+  }
+  return ids;
+}

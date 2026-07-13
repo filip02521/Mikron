@@ -1,5 +1,5 @@
 import { countInactiveSuppliers, fetchSuppliersWithSchedules } from "@/lib/data/queries";
-import { fetchTeethSchedules } from "@/lib/data/teeth-schedule";
+import { fetchTeethSchedules, fetchTeethSupplierIds } from "@/lib/data/teeth-schedule";
 import { fetchWarehouseCarriers } from "@/lib/data/warehouse-carriers";
 import { SuppliersAdminClient } from "@/components/admin/SuppliersAdminClient";
 import { SuppliersHubShell } from "@/components/admin/SuppliersHubShell";
@@ -34,8 +34,12 @@ export default async function ZakupyDostawcyPage({
       fetchWarehouseCarriers(),
     ]);
     if (teethLane) {
-      const teethSchedules = await fetchTeethSchedules();
+      const [teethSchedules, teethSupplierIds] = await Promise.all([
+        fetchTeethSchedules(),
+        fetchTeethSupplierIds(),
+      ]);
       teethScheduleSupplierIds = teethSchedules.map((row) => row.supplier_id);
+      suppliers = suppliers.filter((s) => teethSupplierIds.has(s.id));
     }
   } catch (e) {
     loadError = e instanceof Error ? e.message : "Nie udało się wczytać listy dostawców.";
