@@ -1,22 +1,37 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import {
   actionSetStaffVacationPeriod,
   actionRemoveStaffVacationPeriod,
 } from "@/app/actions/staff-vacation-periods";
 import type { StaffVacationRow } from "@/lib/data/staff-vacation-periods";
-import { Card, CardHeader } from "@/components/ui/Card";
-import { Field, Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
+import { Field, Input } from "@/components/ui/Field";
+import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { IconSun } from "@/components/icons/StrokeIcons";
+import {
+  IconSun,
+  IconChevronLeft,
+  IconChevronRight,
+} from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
-import { ROLE_LABELS } from "@/lib/users/labels";
+import { salesTypography, panelDropdownShellClass } from "@/lib/ui/ontime-theme";
+import { computeAnchoredDropdownPosition } from "@/lib/ui/dropdown-anchor";
+import { vacationColorMap } from "@/lib/ui/vacation-colors";
+import { VACATION_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
 import type { UserRole } from "@/types/database";
 
 type StaffMember = {
@@ -25,16 +40,133 @@ type StaffMember = {
   role: UserRole;
 };
 
+const MONTH_NAMES = [
+  "Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec",
+  "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień",
+];
+
+const WEEKDAY_LABELS = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Niedz"];
+
+function addDaysToDateKey(dateKey: string, days: number): string {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  date.setDate(date.getDate() + days);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+type DayCell = {
+  dateKey: string;
+  dayOfMonth: number;
+  isCurrentMonth: boolean;
+  isWeekend: boolean;
+  isToday: boolean;
+  periods: { period: StaffVacationRow; userId: string; userName: string; isFirstDay: boolean }[];
+};
+
 function statusBadge(startDate: string, endDate: string, todayKey: string) {
   if (todayKey < startDate) return <Badge variant="default" className="text-[10px]">Nadchodzące</Badge>;
   if (todayKey > endDate) return <Badge variant="default" className="text-[10px] opacity-60">Zakończone</Badge>;
   return <Badge variant="success" className="text-[10px]">Aktywne</Badge>;
 }
 
-function addDaysStr(days: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+function buildCalendarCells(
+  year: number,
+  month: number,
+  periodsByUser: Record<string, StaffVacationRow[]>,
+  staff: StaffMember[],
+  todayKey: string,
+): DayCell[] {
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const firstWeekday = (firstDay.getDay() + 6) % 7;
+  const daysInMonth = lastDay.getDate();
+  const prevMonthLastDay = new Date(year, month, 0).getDate();
+
+  const cells: DayCell[] = [];
+  const fmtKey = (y: number, m: number, d: number) =>
+    `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const isWeekend = (weekday: number) => weekday === 5 || weekday === 6;
+
+  const allPeriods: { period: StaffVacationRow; userId: string; userName: string }[] = [];
+  for (const s of staff) {
+    const periods = periodsByUser[s.id] ?? [];
+    for (const period of periods) {
+      allPeriods.push({ period, userId: s.id, userName: s.name });
+    }
+  }
+
+  const getPeriodsForDate = (dateKey: string): DayCell["periods"] => {
+    const result: DayCell["periods"] = [];
+    for (const { period, userId, userName } of allPeriods) {
+      if (dateKey >= period.startDate && dateKey <= period.endDate) {
+        result.push({ period, userId, userName, isFirstDay: dateKey === period.startDate });
+      }
+    }
+    return result;
+  };
+
+  for (let i = 0; i < firstWeekday; i++) {
+    const day = prevMonthLastDay - firstWeekday + i + 1;
+    const m = month - 1 < 0 ? 11 : month - 1;
+    const y = month - 1 < 0 ? year - 1 : year;
+    const dateKey = fmtKey(y, m, day);
+    cells.push({
+      dateKey, dayOfMonth: day, isCurrentMonth: false,
+      isWeekend: isWeekend(i), isToday: dateKey === todayKey, periods: [],
+    });
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateKey = fmtKey(year, month, d);
+    const weekday = (firstWeekday + d - 1) % 7;
+    cells.push({
+      dateKey, dayOfMonth: d, isCurrentMonth: true,
+      isWeekend: isWeekend(weekday), isToday: dateKey === todayKey,
+      periods: getPeriodsForDate(dateKey),
+    });
+  }
+
+  while (cells.length % 7 !== 0) {
+    const nextDay = cells.length - firstWeekday - daysInMonth + 1;
+    const m = month + 1 > 11 ? 0 : month + 1;
+    const y = month + 1 > 11 ? year + 1 : year;
+    const dateKey = fmtKey(y, m, nextDay);
+    cells.push({
+      dateKey, dayOfMonth: nextDay, isCurrentMonth: false,
+      isWeekend: isWeekend(cells.length % 7), isToday: dateKey === todayKey, periods: [],
+    });
+  }
+
+  return cells;
+}
+
+function hasAnyPeriodInMonth(
+  year: number,
+  month: number,
+  periodsByUser: Record<string, StaffVacationRow[]>,
+): boolean {
+  const monthStart = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const monthEnd = `${year}-${String(month + 1).padStart(2, "0")}-31`;
+  for (const periods of Object.values(periodsByUser)) {
+    for (const p of periods) {
+      if (p.startDate <= monthEnd && p.endDate >= monthStart) return true;
+    }
+  }
+  return false;
+}
+
+function getActiveStaffInMonth(
+  year: number,
+  month: number,
+  periodsByUser: Record<string, StaffVacationRow[]>,
+  staff: StaffMember[],
+): StaffMember[] {
+  const monthStart = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const monthEnd = `${year}-${String(month + 1).padStart(2, "0")}-31`;
+  return staff.filter((s) => {
+    const periods = periodsByUser[s.id] ?? [];
+    return periods.some((p) => p.startDate <= monthEnd && p.endDate >= monthStart);
+  });
 }
 
 export function StaffVacationCalendar({
@@ -52,217 +184,461 @@ export function StaffVacationCalendar({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [formOpen, setFormOpen] = useState(false);
-  const [form, setForm] = useState({
+  const [toast, setToast] = useState<ToastNotice | null>(null);
+  const dismiss = useCallback(() => setToast(null), []);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
+
+  const today = (() => {
+    const [y, m] = todayDateKey.split("-").map(Number);
+    return { month: m - 1, year: y };
+  })();
+  const [currentMonth, setCurrentMonth] = useState(today.month);
+  const [currentYear, setCurrentYear] = useState(today.year);
+
+  const [selectedPeriod, setSelectedPeriod] = useState<{
+    periodId: string;
+    userId: string;
+  } | null>(null);
+
+  const [vacationFormOpen, setVacationFormOpen] = useState(false);
+  const [vacationForm, setVacationForm] = useState({
     startDate: todayDateKey,
-    endDate: addDaysStr(7),
+    endDate: addDaysToDateKey(todayDateKey, 14),
     note: "",
   });
-  const [deleteTarget, setDeleteTarget] = useState<StaffVacationRow | null>(null);
 
-  const resetForm = useCallback(() => {
-    setForm({ startDate: todayDateKey, endDate: addDaysStr(7), note: "" });
-    setFormOpen(false);
-  }, [todayDateKey]);
+  const canEdit = !adminMode;
+  const colorMap = vacationColorMap(staff);
 
-  const save = useCallback(() => {
-    if (!form.startDate || !form.endDate) return;
-    if (form.startDate > form.endDate) return;
+  const anchorRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [popoverPos, setPopoverPos] = useState<{
+    top: number; left: number; width: number; maxHeight: number;
+  } | null>(null);
+  const panelId = useId();
+
+  const selectedPeriodData = selectedPeriod
+    ? (() => {
+        const periods = periodsByUser[selectedPeriod.userId] ?? [];
+        const period = periods.find((p) => p.id === selectedPeriod.periodId);
+        if (!period) return null;
+        const member = staff.find((s) => s.id === selectedPeriod.userId);
+        return { period, member };
+      })()
+    : null;
+
+  const updatePopoverPos = useCallback(() => {
+    const el = anchorRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const measured = panelRef.current?.scrollHeight ?? panelRef.current?.offsetHeight ?? 200;
+    setPopoverPos(computeAnchoredDropdownPosition(r, measured, { minWidth: 256 }));
+  }, []);
+
+  const closePopover = useCallback(() => {
+    setSelectedPeriod(null);
+    setPopoverPos(null);
+    anchorRef.current = null;
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!selectedPeriod) return;
+    updatePopoverPos();
+    const raf = requestAnimationFrame(updatePopoverPos);
+    const onScroll = () => updatePopoverPos();
+    const onResize = () => updatePopoverPos();
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [selectedPeriod, updatePopoverPos]);
+
+  useEffect(() => {
+    if (!selectedPeriod) return;
+    const onDoc = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (anchorRef.current?.contains(t)) return;
+      if (panelRef.current?.contains(t)) return;
+      closePopover();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closePopover();
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [selectedPeriod, closePopover]);
+
+  const cells = buildCalendarCells(
+    currentYear, currentMonth, periodsByUser, staff, todayDateKey,
+  );
+
+  const monthHasPeriods = hasAnyPeriodInMonth(currentYear, currentMonth, periodsByUser);
+  const activeStaff = getActiveStaffInMonth(currentYear, currentMonth, periodsByUser, staff);
+  const isCurrentMonth = currentMonth === today.month && currentYear === today.year;
+
+  const goToPrevMonth = () => {
+    if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear((y) => y - 1); }
+    else setCurrentMonth((m) => m - 1);
+  };
+  const goToNextMonth = () => {
+    if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear((y) => y + 1); }
+    else setCurrentMonth((m) => m + 1);
+  };
+  const goToToday = () => { setCurrentMonth(today.month); setCurrentYear(today.year); };
+
+  const resetVacationForm = () => {
+    setVacationForm({ startDate: todayDateKey, endDate: addDaysToDateKey(todayDateKey, 14), note: "" });
+    setVacationFormOpen(false);
+  };
+
+  const saveVacation = () => {
+    if (!vacationForm.startDate || !vacationForm.endDate) {
+      setToast(VACATION_TOAST.missingDates);
+      return;
+    }
+    if (vacationForm.startDate > vacationForm.endDate) {
+      setToast(VACATION_TOAST.invalidDateRange);
+      return;
+    }
     start(async () => {
       const r = await actionSetStaffVacationPeriod({
         userId: currentUserId,
-        startDate: form.startDate,
-        endDate: form.endDate,
-        note: form.note || null,
+        startDate: vacationForm.startDate,
+        endDate: vacationForm.endDate,
+        note: vacationForm.note || null,
       });
-      if ("error" in r) return;
-      resetForm();
+      if ("error" in r) {
+        setToast(toastFromError(r.error));
+        return;
+      }
+      resetVacationForm();
+      setToast(VACATION_TOAST.savedPeriod);
+      const [vy, vm] = vacationForm.startDate.split("-").map(Number);
+      setCurrentMonth(vm - 1);
+      setCurrentYear(vy);
       router.refresh();
     });
-  }, [form, currentUserId, resetForm, router]);
+  };
 
-  const removePeriod = useCallback((id: string) => {
+  const removePeriod = (target: NonNullable<typeof deleteTarget>) => {
     start(async () => {
-      const r = await actionRemoveStaffVacationPeriod(id);
-      if ("error" in r) return;
+      const r = await actionRemoveStaffVacationPeriod(target.id);
+      if ("error" in r) {
+        setToast(toastFromError(r.error));
+        return;
+      }
+      setToast(VACATION_TOAST.removedPeriod);
       setDeleteTarget(null);
+      closePopover();
       router.refresh();
     });
-  }, [router]);
+  };
 
-  const sortedStaff = [...staff].sort((a, b) => a.name.localeCompare(b.name));
-  const myPeriods = (periodsByUser[currentUserId] ?? []).sort((a, b) =>
-    b.startDate.localeCompare(a.startDate)
-  );
+  const onBarClick = (
+    e: React.MouseEvent<HTMLButtonElement>,
+    periodId: string,
+    userId: string,
+  ) => {
+    e.stopPropagation();
+    if (selectedPeriod?.periodId === periodId && selectedPeriod?.userId === userId) {
+      closePopover();
+      return;
+    }
+    anchorRef.current = e.currentTarget;
+    setSelectedPeriod({ periodId, userId });
+  };
 
-  return (
-    <div className="space-y-4">
-      {/* Moje urlopy */}
-      <Card padding={false} className="overflow-hidden">
-        <CardHeader
-          inset
-          density="compact"
-          title="Moje urlopy"
-          description="Ustaw daty swojego urlopu, aby współpracownicy z Twojego działu wiedzieli, kiedy jesteś niedostępny."
-          leading={
-            <SectionHeadingIcon tileClassName="bg-amber-100 text-amber-800">
-              <IconSun size={20} />
-            </SectionHeadingIcon>
-          }
-          action={
-            !formOpen ? (
-              <Button variant="outline" size="sm" onClick={() => setFormOpen(true)}>
-                + Dodaj urlop
-              </Button>
-            ) : null
-          }
-        />
-        <div className="p-4">
-          {formOpen ? (
-            <div className="mb-4 space-y-4 rounded-md border border-slate-200 bg-slate-50/50 p-4">
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Od">
-                  <Input
-                    type="date"
-                    value={form.startDate}
-                    onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                  />
-                </Field>
-                <Field label="Do">
-                  <Input
-                    type="date"
-                    value={form.endDate}
-                    onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                  />
-                </Field>
+  const popover =
+    selectedPeriod && selectedPeriodData && popoverPos && typeof document !== "undefined" ? (
+      <div
+        ref={panelRef}
+        id={panelId}
+        role="dialog"
+        className={cn(
+          "fixed z-[70] min-w-[16rem] w-[min(100vw-2rem,20rem)] p-3",
+          panelDropdownShellClass,
+        )}
+        style={{ top: popoverPos.top, left: popoverPos.left, maxHeight: popoverPos.maxHeight }}
+      >
+        {(() => {
+          const { period, member } = selectedPeriodData;
+          if (!member) return null;
+          const color = colorMap.get(member.id);
+          const isOwn = member.id === currentUserId;
+
+          return (
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2">
+                {color ? (
+                  <span className={cn("h-2.5 w-2.5 rounded-full", color.dot)} />
+                ) : null}
+                <span className={salesTypography.rowTitle}>
+                  {member.name}
+                  {isOwn ? <span className="ml-1.5 text-xs text-indigo-400">(Ty)</span> : null}
+                </span>
               </div>
-              <Field label="Notatka (opcjonalna)">
-                <Input
-                  type="text"
-                  value={form.note}
-                  maxLength={500}
-                  onChange={(e) => setForm({ ...form, note: e.target.value })}
-                />
-              </Field>
-              <div className="flex justify-end gap-2">
-                <Button variant="ghost" size="sm" onClick={resetForm}>
-                  Anuluj
-                </Button>
-                <Button size="sm" onClick={save} disabled={pending}>
-                  Zapisz
-                </Button>
+              <p className={cn(salesTypography.rowMeta, "font-medium")}>
+                {period.startDate} → {period.endDate}
+              </p>
+              <div className="flex items-center gap-2">
+                {statusBadge(period.startDate, period.endDate, todayDateKey)}
               </div>
-            </div>
-          ) : null}
+              {period.note ? (
+                <p className="rounded-md bg-slate-50/60 px-2.5 py-1.5 text-xs text-slate-600">{period.note}</p>
+              ) : null}
 
-          {!myPeriods.length ? (
-            <p className="py-4 text-center text-sm text-slate-500">
-              Brak zaplanowanych urlopów. Kliknij „Dodaj urlop”, aby ustawić daty.
-            </p>
-          ) : (
-            <ul className="divide-y divide-slate-100">
-              {myPeriods.map((p) => (
-                <li
-                  key={p.id}
-                  className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3"
-                >
-                  <div className="min-w-0">
-                    <p className="font-medium text-slate-900 tabular-nums">
-                      {p.startDate} → {p.endDate}
-                    </p>
-                    <p className="mt-0.5 flex items-center gap-2 text-sm text-slate-500">
-                      {statusBadge(p.startDate, p.endDate, todayDateKey)}
-                      {p.note ? <span className="text-slate-500">{p.note}</span> : null}
-                    </p>
-                  </div>
+              {isOwn ? (
+                <>
+                  <div className="border-t border-slate-100 my-2" />
                   <Button
                     variant="ghost"
                     size="sm"
                     className="text-rose-600 hover:text-rose-700"
-                    disabled={pending}
-                    onClick={() => setDeleteTarget(p)}
+                    onClick={() => {
+                      setDeleteTarget({
+                        id: period.id,
+                        label: `urlop ${period.startDate} → ${period.endDate}`,
+                      });
+                    }}
                   >
-                    Usuń
+                    Usuń urlop
                   </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </Card>
+                </>
+              ) : null}
+            </div>
+          );
+        })()}
+      </div>
+    ) : null;
 
-      {/* Urlopy działu */}
-      <Card padding={false} className="overflow-hidden">
-        <CardHeader
-          inset
-          density="compact"
-          title="Urlopy działu"
-          description="Osoby z Twojego działu i ich zaplanowane urlopy."
-          leading={
-            <SectionHeadingIcon tileClassName="bg-sky-100 text-sky-800">
-              <IconSun size={20} />
-            </SectionHeadingIcon>
-          }
-        />
-        <div className="p-4">
-          {sortedStaff.length <= 1 && !adminMode ? (
+  return (
+    <div>
+      {toast ? <NoticeToast notice={toast} onDismiss={dismiss} /> : null}
+
+      <div className="mb-3 flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-1.5 rounded-lg border border-slate-200/70 bg-slate-50/40 p-1">
+          <Button variant="ghost" size="sm" onClick={goToPrevMonth} aria-label="Poprzedni miesiąc" className="h-8 w-8 p-0">
+            <IconChevronLeft size={16} />
+          </Button>
+          <span className={cn(salesTypography.blockTitle, "px-1 select-none")}>
+            {MONTH_NAMES[currentMonth]} {currentYear}
+          </span>
+          <Button variant="ghost" size="sm" onClick={goToNextMonth} aria-label="Następny miesiąc" className="h-8 w-8 p-0">
+            <IconChevronRight size={16} />
+          </Button>
+          {!isCurrentMonth ? (
+            <Button variant="outline" size="sm" onClick={goToToday} className="ml-1 h-8">
+              Dziś
+            </Button>
+          ) : null}
+        </div>
+        {canEdit ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setVacationFormOpen((v) => !v)}
+            className="h-8"
+          >
+            {vacationFormOpen ? "Anuluj" : "+ Dodaj mój urlop"}
+          </Button>
+        ) : null}
+      </div>
+
+      {vacationFormOpen && canEdit ? (
+        <div className="mb-3 space-y-3 rounded-lg border border-slate-200/80 bg-slate-50/40 p-3.5 shadow-sm shadow-slate-200/40">
+          <div className="flex items-center gap-2 rounded-md bg-indigo-50/70 px-3 py-2 text-xs font-medium text-indigo-700 ring-1 ring-indigo-100/60">
+            <IconSun size={14} className="shrink-0" />
+            Dodajesz urlop dla siebie. Pozostali członkowie działu widzą go w kalendarzu.
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Od">
+              <Input
+                type="date"
+                value={vacationForm.startDate}
+                onChange={(e) => setVacationForm({ ...vacationForm, startDate: e.target.value })}
+              />
+            </Field>
+            <Field label="Do">
+              <Input
+                type="date"
+                value={vacationForm.endDate}
+                onChange={(e) => setVacationForm({ ...vacationForm, endDate: e.target.value })}
+              />
+            </Field>
+          </div>
+          <Field label="Notatka (opcjonalna)">
+            <Input
+              type="text"
+              value={vacationForm.note}
+              maxLength={500}
+              onChange={(e) => setVacationForm({ ...vacationForm, note: e.target.value })}
+            />
+          </Field>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={resetVacationForm}>
+              Anuluj
+            </Button>
+            <Button size="sm" onClick={saveVacation} disabled={pending}>
+              Zapisz urlop
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="grid grid-cols-7 rounded-t-lg border-t border-l border-slate-100 bg-slate-50/30">
+        {WEEKDAY_LABELS.map((label) => (
+          <div
+            key={label}
+            className="border-b border-r border-slate-100 px-1.5 py-2.5 text-center font-semibold uppercase tracking-wider text-[10px] text-slate-400"
+          >
+            {label}
+          </div>
+        ))}
+      </div>
+
+      {!monthHasPeriods ? (
+        <div className="grid grid-cols-7 border-l border-slate-100">
+          <div className="col-span-7 border-b border-r border-slate-100 rounded-b-lg">
             <EmptyState
               brandAccent
               icon={<IconSun size={28} />}
-              title="Tylko Ty w tym dziale"
-              description="Nie ma innych osób z Twoim działem, które mogłyby planować urlopy."
+              title="Brak urlopów w tym miesiącu"
+              description={canEdit
+                ? 'Nie masz zaplanowanych urlopów w tym miesiącu. Kliknij „Dodaj mój urlop", aby zaplanować.'
+                : 'Kliknij ‹ › aby przejść do innego miesiąca.'
+              }
             />
-          ) : (
-            <ul className="divide-y divide-slate-100">
-              {sortedStaff.map((member) => {
-                const periods = (periodsByUser[member.id] ?? []).sort((a, b) =>
-                  b.startDate.localeCompare(a.startDate)
-                );
-                const isMe = member.id === currentUserId;
-                return (
-                  <li key={member.id} className="py-3">
-                    <div className="flex items-center gap-2">
-                      <span className={cn("font-medium", isMe ? "text-indigo-700" : "text-slate-900")}>
-                        {member.name}
-                        {isMe ? <span className="ml-1.5 text-xs text-indigo-400">(Ty)</span> : null}
-                      </span>
-                      <span className="text-xs text-slate-400">
-                        {ROLE_LABELS[member.role]}
-                      </span>
-                    </div>
-                    {!periods.length ? (
-                      <p className="mt-1 text-sm text-slate-400">Brak zaplanowanych urlopów.</p>
-                    ) : (
-                      <div className="mt-1.5 flex flex-wrap gap-2">
-                        {periods.map((p) => (
-                          <span
-                            key={p.id}
-                            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs tabular-nums text-slate-700"
-                          >
-                            {statusBadge(p.startDate, p.endDate, todayDateKey)}
-                            {p.startDate} → {p.endDate}
-                            {p.note ? <span className="text-slate-400">· {p.note}</span> : null}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+          </div>
         </div>
-      </Card>
+      ) : (
+        <div className="grid grid-cols-7 border-l border-slate-100">
+          {cells.map((cell, i) => {
+            const bgClasses = cn(
+              !cell.isCurrentMonth && "bg-slate-50/20",
+              cell.isWeekend && cell.isCurrentMonth && "bg-slate-50/25",
+              cell.isToday && "bg-sky-50/40 ring-1 ring-inset ring-sky-200/40",
+            );
+
+            return (
+              <div
+                key={cell.dateKey + "-" + i}
+                className={cn(
+                  "min-h-[3.5rem] border-b border-r border-slate-100 p-1 transition-colors sm:min-h-[6rem] sm:p-1.5",
+                  bgClasses,
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <span
+                    className={cn(
+                      "text-xs font-semibold",
+                      cell.isCurrentMonth ? "text-slate-900" : "text-slate-300",
+                    )}
+                  >
+                    {cell.dayOfMonth}
+                  </span>
+                  {cell.isToday ? (
+                    <Badge variant="info" className="text-[9px] uppercase">Dziś</Badge>
+                  ) : null}
+                </div>
+                {cell.isCurrentMonth && cell.periods.length > 0 ? (
+                  <div className="mt-1 space-y-0.5">
+                    <div className="hidden sm:block">
+                      {cell.periods.slice(0, 3).map((p, idx) => {
+                        const c = colorMap.get(p.userId);
+                        if (!c) return null;
+                        const isOwn = p.userId === currentUserId;
+                        return (
+                          <button
+                            key={p.period.id + "-" + idx}
+                            type="button"
+                            className={cn(
+                              "flex w-full items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-medium truncate cursor-pointer transition hover:ring-1 hover:ring-slate-300/50",
+                              isOwn && "ring-1 ring-slate-400/30 font-semibold",
+                              c.bg, c.text,
+                            )}
+                            onClick={(e) => onBarClick(e, p.period.id, p.userId)}
+                            title={p.userName}
+                          >
+                            <span className="truncate">{p.userName}</span>
+                          </button>
+                        );
+                      })}
+                      {cell.periods.length > 3 ? (
+                        <p className="text-[10px] text-slate-400">+{cell.periods.length - 3} więcej</p>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap gap-1 sm:hidden">
+                      {cell.periods.slice(0, 4).map((p, idx) => {
+                        const c = colorMap.get(p.userId);
+                        if (!c) return null;
+                        const isOwn = p.userId === currentUserId;
+                        return (
+                          <button
+                            key={p.period.id + "-" + idx}
+                            type="button"
+                            className={cn(
+                              "rounded-full cursor-pointer transition hover:ring-1 hover:ring-slate-300/50",
+                              isOwn ? "h-2.5 w-2.5 ring-1 ring-slate-400/40" : "h-2 w-2",
+                              c.dot,
+                            )}
+                            onClick={(e) => onBarClick(e, p.period.id, p.userId)}
+                            title={p.userName}
+                          />
+                        );
+                      })}
+                      {cell.periods.length > 4 ? (
+                        <span className="text-[10px] text-slate-400">+{cell.periods.length - 4}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {activeStaff.length > 0 ? (
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 rounded-md border border-slate-100 bg-slate-50/30 px-3 py-2">
+          {activeStaff.map((s) => {
+            const c = colorMap.get(s.id);
+            if (!c) return null;
+            const isOwn = s.id === currentUserId;
+            return (
+              <div key={s.id} className="flex items-center gap-1.5">
+                <span className={cn("h-2.5 w-2.5 rounded-full", c.dot)} />
+                <span className={cn(
+                  "text-[10px]",
+                  isOwn ? "font-semibold text-slate-700" : "text-slate-500",
+                )}>
+                  {s.name}
+                  {isOwn ? " (Ty)" : ""}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {popover ? createPortal(popover, document.body) : null}
 
       {deleteTarget ? (
         <ConfirmDialog
           open
+          tier="stack"
           title="Usunąć urlop?"
-          message={`Urlop od ${deleteTarget.startDate} do ${deleteTarget.endDate} zostanie usunięty.`}
+          message={`${deleteTarget.label} zostanie usunięty.`}
           confirmLabel="Usuń"
           cancelLabel="Anuluj"
           danger
-          onConfirm={() => removePeriod(deleteTarget.id)}
+          onConfirm={() => removePeriod(deleteTarget)}
           onCancel={() => setDeleteTarget(null)}
         />
       ) : null}
