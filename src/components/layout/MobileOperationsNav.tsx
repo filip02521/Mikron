@@ -10,6 +10,7 @@ import {
   navItemHasDueReminders,
   navMobileOverflowItems,
   navMobilePrimaryItems,
+  filterNavGroupsByAccess,
 } from "@/lib/nav";
 import { useOperationsUpdates } from "@/components/operations/OperationsUpdatesContext";
 import { useTeethUpdates } from "@/components/zeby/TeethUpdatesContext";
@@ -26,17 +27,19 @@ import {
 } from "@/lib/ui/ontime-theme";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import { isAdmin } from "@/lib/auth-roles";
-import type { UserRole } from "@/types/database";
+import type { UserRole, Workspace } from "@/types/database";
 
 export function MobileOperationsNav({
   role,
   realRole = null,
   procurementWorkspace = null,
+  assignedWorkspaces,
   navBadges = { nowe: 0, weryfikacja: 0, realizacja: 0 },
 }: {
   role: UserRole;
   realRole?: UserRole | null;
   procurementWorkspace?: ProcurementWorkspace | null;
+  assignedWorkspaces?: Workspace[];
   navBadges?: {
     nowe?: number;
     weryfikacja?: number;
@@ -50,7 +53,7 @@ export function MobileOperationsNav({
   const pathname = usePathname();
   const operationsUpdates = useOperationsUpdates();
   const teethUpdates = useTeethUpdates();
-  const groups =
+  const rawGroups =
     realRole && !isAdmin(realRole)
       ? navForAppContext({
           realRole,
@@ -59,6 +62,7 @@ export function MobileOperationsNav({
           badges: navBadges,
         })
       : navForRole(role, navBadges);
+  const groups = filterNavGroupsByAccess(rawGroups, role, assignedWorkspaces);
   const primaryItems = navMobilePrimaryItems(groups);
   const overflowItems = navMobileOverflowItems(groups);
   const allPrimaryHrefs = primaryItems.map((item) => item.href);

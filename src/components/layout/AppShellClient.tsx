@@ -359,6 +359,7 @@ export function AppShellClient({
             role={role}
             realRole={realRole}
             procurementWorkspace={procurementWorkspace}
+            assignedWorkspaces={assignedWorkspaces}
             navBadges={navBadges}
           />
         ) : null}
@@ -367,6 +368,7 @@ export function AppShellClient({
             role={role}
             realRole={realRole}
             procurementWorkspace={procurementWorkspace}
+            assignedWorkspaces={assignedWorkspaces}
             navBadges={navBadges}
           />
         ) : null}
@@ -375,6 +377,7 @@ export function AppShellClient({
             role={role}
             realRole={realRole}
             procurementWorkspace={procurementWorkspace}
+            assignedWorkspaces={assignedWorkspaces}
             navBadges={navBadges}
           />
         ) : null}

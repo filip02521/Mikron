@@ -1,5 +1,5 @@
-import type { UserRole } from "@/types/database";
-import { isSalesManager } from "@/lib/auth-roles";
+import type { UserRole, Workspace } from "@/types/database";
+import { isSalesManager, canAccessPath } from "@/lib/auth-roles";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import { salesManagerNavTeamDescriptions } from "@/lib/sales/team-ui";
 import { supplierHubPaths } from "@/lib/supplier-hub";
@@ -631,6 +631,22 @@ export function navForAppContext(ctx: NavAppContext): NavGroup[] {
 
 export function flattenNavGroups(groups: NavGroup[]): NavItem[] {
   return groups.flatMap((group) => group.items);
+}
+
+export function filterNavGroupsByAccess(
+  groups: NavGroup[],
+  role: UserRole,
+  workspaces?: Workspace[],
+): NavGroup[] {
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        const pathname = item.href.split("?")[0]!;
+        return canAccessPath(role, pathname, { workspaces });
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
 }
 
 export function navMobilePrimaryItems(groups: NavGroup[]): NavItem[] {

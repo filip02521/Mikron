@@ -8,6 +8,7 @@ import {
   navForRole,
   navItemDisplayTone,
   navItemHasDueReminders,
+  filterNavGroupsByAccess,
   type NavGroup,
   type NavItem,
 } from "@/lib/nav";
@@ -296,13 +297,17 @@ export function Sidebar({
   const navLocked = useSalesNavLocked();
   const groups = role
     ? realRole && !isAdmin(realRole)
-      ? navForAppContext({
-          realRole,
-          navRole: role,
-          procurementWorkspace,
-          badges: navBadges,
-        })
-      : navForRole(role, navBadges)
+      ? filterNavGroupsByAccess(
+          navForAppContext({
+            realRole,
+            navRole: role,
+            procurementWorkspace,
+            badges: navBadges,
+          }),
+          role,
+          assignedWorkspaces,
+        )
+      : filterNavGroupsByAccess(navForRole(role, navBadges), role, assignedWorkspaces)
     : [];
   const workspaceSubtitle = subtitleForProcurementWorkspace(procurementWorkspace);
 

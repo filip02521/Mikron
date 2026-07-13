@@ -137,7 +137,7 @@ function canAccessPathForRole(
     return canAccessTeethPanel(role, ws);
   }
   if (pathname === "/zakupy/tablica" || pathname.startsWith("/zakupy/tablica/")) {
-    return canAccessOperations(role, ws) || canAccessTeethPanel(role, ws);
+    return canAccessOperations(role, ws);
   }
   if (
     pathname.startsWith("/zakupy/dostawcy") ||
