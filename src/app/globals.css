@@ -213,6 +213,26 @@ select:disabled,
   background-color: #f5f3ff;
 }
 
+/* Kolejka przyjęcia — animacja rozwinięcia wierszy */
+@keyframes receive-queue-row-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.receive-queue-row-enter {
+  animation: receive-queue-row-enter 0.2s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .receive-queue-row-enter {
+    animation: none;
+  }
+}
+
 /* ——— Formularze ——— */
 input[type="text"],
 input[type="email"],

@@ -811,10 +811,13 @@ export function VacationCalendar({
       ) : null}
 
       <div className="grid grid-cols-7 rounded-t-lg border-t border-l border-slate-100 bg-slate-50/30">
-        {WEEKDAY_LABELS.map((label) => (
+        {WEEKDAY_LABELS.map((label, idx) => (
           <div
             key={label}
-            className="border-b border-r border-slate-100 px-1.5 py-2.5 text-center font-semibold uppercase tracking-wider text-[10px] text-slate-400"
+            className={cn(
+              "border-b border-r border-slate-100 px-1.5 py-2.5 text-center font-semibold uppercase tracking-wider text-[10px]",
+              idx >= 5 ? "bg-slate-100/60 text-slate-400" : "text-slate-400"
+            )}
           >
             {label}
           </div>
@@ -840,7 +843,7 @@ export function VacationCalendar({
           {cells.map((cell, i) => {
             const bgClasses = cn(
               !cell.isCurrentMonth && "bg-slate-50/20",
-              cell.isWeekend && cell.isCurrentMonth && "bg-slate-50/25",
+              cell.isWeekend && cell.isCurrentMonth && "bg-slate-100/50",
               cell.isToday && "bg-sky-50/40 ring-1 ring-inset ring-sky-200/40"
             );
 
@@ -856,7 +859,9 @@ export function VacationCalendar({
                   <span
                     className={cn(
                       "text-xs font-semibold",
-                      cell.isCurrentMonth ? "text-slate-900" : "text-slate-300"
+                      cell.isCurrentMonth
+                        ? cell.isWeekend ? "text-slate-400" : "text-slate-900"
+                        : "text-slate-300"
                     )}
                   >
                     {cell.dayOfMonth}

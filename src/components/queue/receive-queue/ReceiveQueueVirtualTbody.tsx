@@ -192,6 +192,7 @@ export function ReceiveQueueVirtualTbody({
         const group = supplierGroups[item.groupIndex]!;
         const o = item.order;
         const rowIndex = item.rowIndex;
+        const isLastInGroup = rowIndex === group.orders.length - 1;
         const isInfo = isInformacjaRequest(o);
         const prevKey =
           rowIndex > 0 ? informacjaProductKey(group.orders[rowIndex - 1]!) : null;
@@ -233,6 +234,7 @@ export function ReceiveQueueVirtualTbody({
               toggleProductGroup(group.orders, rowIndex, checked)
             }
             onAckCancelDisposition={() => ackCancelDisposition(o)}
+            isLastInGroup={isLastInGroup}
             rowRef={measureRef}
             dataIndex={dataIndex}
           />

@@ -56,17 +56,17 @@ export function supplierGroupIndexByOrderId(
 }
 
 const DELIVERY_GROUP_STYLES = [
-  { bg: "bg-white", border: "border-l-violet-500" },
-  { bg: "bg-slate-50", border: "border-l-slate-500" },
-  { bg: "bg-violet-50/80", border: "border-l-violet-400" },
-  { bg: "bg-indigo-50/60", border: "border-l-indigo-400" },
+  { headerBg: "bg-slate-100/90", itemBg: "bg-white", border: "border-l-violet-500" },
+  { headerBg: "bg-slate-100/80", itemBg: "bg-slate-50/40", border: "border-l-slate-500" },
+  { headerBg: "bg-violet-100/70", itemBg: "bg-violet-50/30", border: "border-l-violet-400" },
+  { headerBg: "bg-indigo-100/60", itemBg: "bg-indigo-50/25", border: "border-l-indigo-400" },
 ] as const;
 
 const INFORMACJA_GROUP_STYLES = [
-  { bg: "bg-white", border: "border-l-sky-500" },
-  { bg: "bg-sky-50/80", border: "border-l-sky-400" },
-  { bg: "bg-slate-50", border: "border-l-slate-400" },
-  { bg: "bg-cyan-50/50", border: "border-l-cyan-500" },
+  { headerBg: "bg-slate-100/90", itemBg: "bg-white", border: "border-l-sky-500" },
+  { headerBg: "bg-sky-100/70", itemBg: "bg-sky-50/30", border: "border-l-sky-400" },
+  { headerBg: "bg-slate-100/80", itemBg: "bg-slate-50/40", border: "border-l-slate-400" },
+  { headerBg: "bg-cyan-100/50", itemBg: "bg-cyan-50/25", border: "border-l-cyan-500" },
 ] as const;
 
 type QueueTableVariant = "delivery" | "informacja";
@@ -84,24 +84,30 @@ export function queueSupplierRowClass(
     variant?: QueueTableVariant;
     isPartial?: boolean;
     isFirstInSupplierGroup?: boolean;
+    isHeader?: boolean;
+    isLastInGroup?: boolean;
     stripeIndex?: number;
   }
 ): string {
   const variant = options?.variant ?? "delivery";
   const palette = supplierGroupPalette(options?.stripeIndex ?? groupIndex, variant);
+  const isHeader = options?.isHeader ?? false;
 
   return cn(
-    options?.isPartial ? "bg-amber-50/85" : palette.bg,
-    options?.isFirstInSupplierGroup === false && "border-t border-slate-200/90"
+    options?.isPartial ? "bg-amber-50/85" : isHeader ? palette.headerBg : palette.itemBg,
+    !isHeader && options?.isFirstInSupplierGroup === true && "border-t border-slate-200/80",
+    !isHeader && options?.isFirstInSupplierGroup === false && "border-t border-slate-200/60",
+    !isHeader && options?.isLastInGroup === true && "border-b border-slate-200/60"
   );
 }
 
 /** Lewy pasek grupy — musi być na pierwszej komórce wiersza (border na `<tr>` nie renderuje się przy border-collapse). */
 export function queueSupplierLeadingCellClass(
   groupIndex: number,
-  options?: { variant?: QueueTableVariant; stripeIndex?: number }
+  options?: { variant?: QueueTableVariant; isHeader?: boolean; stripeIndex?: number }
 ): string {
   const variant = options?.variant ?? "delivery";
   const palette = supplierGroupPalette(options?.stripeIndex ?? groupIndex, variant);
-  return cn("border-l-[3px]", palette.border);
+  const isHeader = options?.isHeader ?? false;
+  return cn(isHeader ? "border-l-[3px]" : "border-l-2", palette.border);
 }

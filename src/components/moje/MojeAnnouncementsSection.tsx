@@ -264,7 +264,6 @@ export function MojeAnnouncementsSection({
 
   function markReadLocally(id: string) {
     setOptimisticReadIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-    refresh();
   }
 
   const sectionSummary =

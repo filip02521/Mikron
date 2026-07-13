@@ -1030,6 +1030,7 @@ export function ReceiveQueueTable({
                                 toggleProductGroup(group.orders, rowIndex, checked)
                               }
                               onAckCancelDisposition={() => ackCancelDisposition(o)}
+                              isLastInGroup={rowIndex === group.orders.length - 1}
                             />
                           );
                         })

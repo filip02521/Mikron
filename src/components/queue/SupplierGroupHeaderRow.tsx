@@ -100,14 +100,15 @@ export function SupplierGroupHeaderRow({
       data-index={dataIndex}
       className={queueSupplierRowClass(groupIndex, {
         variant,
+        isHeader: true,
         isFirstInSupplierGroup: true,
       })}
     >
       <td
         colSpan={colSpan}
         className={cn(
-          queueSupplierLeadingCellClass(groupIndex, { variant }),
-          "!py-2 !pl-3 sm:!pl-4",
+          queueSupplierLeadingCellClass(groupIndex, { variant, isHeader: true }),
+          "!py-2.5 !pl-3 sm:!pl-4",
         )}
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -120,7 +121,7 @@ export function SupplierGroupHeaderRow({
             <Chevron open={isOpen} />
             <span className="min-w-0">
               <span className="flex flex-wrap items-center gap-1.5">
-                <span className="truncate text-sm font-bold leading-tight text-slate-900">
+                <span className="truncate text-[14px] font-bold leading-tight text-slate-900">
                   {group.supplierKey}
                 </span>
                 {scheduleDate ? (
@@ -154,7 +155,7 @@ export function SupplierGroupHeaderRow({
                   </span>
                 ) : null}
               </span>
-              <span className="mt-0.5 block text-[10px] font-medium leading-snug text-slate-500">
+              <span className="mt-0.5 block text-[10px] font-medium leading-snug text-slate-600">
                 {summary}
               </span>
             </span>

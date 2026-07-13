@@ -98,6 +98,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
   onNotifyInformacja,
   onToggleProductGroup,
   onAckCancelDisposition,
+  isLastInGroup = false,
   rowRef,
   dataIndex,
 }: {
@@ -119,6 +120,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
   onNotifyInformacja: (ids: string[]) => void;
   onToggleProductGroup: (checked: boolean) => void;
   onAckCancelDisposition: () => void;
+  isLastInGroup?: boolean;
   rowRef?: (element: Element | null) => void;
   dataIndex?: number;
 }) {
@@ -180,7 +182,9 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
           variant: "delivery",
           isPartial,
           isFirstInSupplierGroup: rowIndex === 0,
+          isLastInGroup,
         }),
+        "receive-queue-row-enter",
         isInfo && "bg-sky-50/40",
         salesCancelRow && "bg-amber-50/50",
         selected && "ring-1 ring-inset ring-violet-300/80"
@@ -191,6 +195,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
           "w-10 text-center",
           queueSupplierLeadingCellClass(groupIndex, {
             variant: isInfo ? "informacja" : "delivery",
+            isHeader: false,
           })
         )}
       >
@@ -208,12 +213,12 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
         <div className="flex items-center gap-1.5">
           <span
             className={cn(
-              "size-1.5 shrink-0 rounded-full",
+              "size-2 shrink-0 rounded-full",
               isInfo ? "bg-sky-500" : "bg-emerald-500"
             )}
             title={isInfo ? "Informacja" : "Zamówienie"}
           />
-          <span className="truncate font-semibold text-slate-900" title={personName}>
+          <span className="truncate text-[13px] font-semibold text-slate-900" title={personName}>
             {personName}
           </span>
         </div>
@@ -251,7 +256,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
               <SearchHighlightText
                 text={order.products}
                 searchQuery={searchQuery}
-                className="truncate font-medium text-slate-800"
+                className="truncate text-[13px] font-medium text-slate-700"
                 as="p"
               />
               {order.is_teeth ? (
@@ -264,7 +269,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
               <SearchHighlightText
                 text={order.symbol}
                 searchQuery={searchQuery}
-                className="truncate text-[11px] text-slate-500"
+                className="truncate text-[11px] text-slate-400"
                 as="p"
               />
             ) : null}
@@ -395,7 +400,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
             </button>
           </div>
         ) : (
-          <div className="inline-flex items-center justify-end gap-1 tabular-nums">
+          <div className="inline-flex items-center justify-end gap-1 rounded-lg bg-slate-50/50 px-1.5 py-1 tabular-nums">
             <button
               type="button"
               disabled={pending || ordered == null}
