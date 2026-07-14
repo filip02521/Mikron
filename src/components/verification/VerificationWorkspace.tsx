@@ -4,6 +4,7 @@ import { ADMIN_PREVIEW_TOAST, REQUEST_EDIT_FORM, VERIFICATION_TOAST, formMessage
 import { useState, useTransition, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { IndividualOrder, IndividualRequestKind } from "@/types/database";
+import { SAFETY_TIMEOUT_MS } from "@/hooks/useActionPending";
 import {
   emptyVerificationForm,
   orderToVerificationForm,
@@ -99,6 +100,14 @@ export function VerificationWorkspace({
   const teethExemptTwIds = useTeethExemptTwIds();
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  const pendingSafetyRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pendingSafetyRef.current) window.clearTimeout(pendingSafetyRef.current);
+    };
+  }, []);
+
   const [toast, setToast] = useState<ToastNotice | null>(null);
   const [activeId, setActiveId] = useState<string | null>(orders[0]?.id ?? null);
   const [validationAttempted, setValidationAttempted] = useState(false);
@@ -370,6 +379,8 @@ export function VerificationWorkspace({
   const performSave = (options?: { acknowledgeSufficientStock?: boolean }) => {
     if (!active) return;
     setPendingMessage("Zapisywanie i przekazywanie do panelu…");
+    if (pendingSafetyRef.current) window.clearTimeout(pendingSafetyRef.current);
+    pendingSafetyRef.current = window.setTimeout(() => setPendingMessage(null), SAFETY_TIMEOUT_MS);
     start(async () => {
       try {
         await actionCompleteVerification(active.id, {
@@ -411,6 +422,10 @@ export function VerificationWorkspace({
           }
         );
       } finally {
+        if (pendingSafetyRef.current) {
+          window.clearTimeout(pendingSafetyRef.current);
+          pendingSafetyRef.current = null;
+        }
         setPendingMessage(null);
       }
     });
@@ -508,6 +523,8 @@ export function VerificationWorkspace({
     if (!cancelTargetId) return;
     const id = cancelTargetId;
     setPendingMessage("Anulowanie prośby…");
+    if (pendingSafetyRef.current) window.clearTimeout(pendingSafetyRef.current);
+    pendingSafetyRef.current = window.setTimeout(() => setPendingMessage(null), SAFETY_TIMEOUT_MS);
     start(async () => {
       try {
         const result = await actionCancelVerification(id, note);
@@ -516,6 +533,10 @@ export function VerificationWorkspace({
       } catch (e) {
         setToast(toastFromError(e instanceof Error ? e.message : undefined, VERIFICATION_TOAST.cancelFailed.text));
       } finally {
+        if (pendingSafetyRef.current) {
+          window.clearTimeout(pendingSafetyRef.current);
+          pendingSafetyRef.current = null;
+        }
         setPendingMessage(null);
         setCancelTargetId(null);
       }

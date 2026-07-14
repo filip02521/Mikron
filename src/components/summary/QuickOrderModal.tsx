@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { actionAddIndividualOrders } from "@/app/actions/admin";
+import { SAFETY_TIMEOUT_MS } from "@/hooks/useActionPending";
 import { Button } from "@/components/ui/Button";
 import { Field, Select } from "@/components/ui/Field";
 import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
@@ -70,6 +71,14 @@ export function QuickOrderModal({
   const teethExemptTwIds = useTeethExemptTwIds();
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  const pendingSafetyRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pendingSafetyRef.current) window.clearTimeout(pendingSafetyRef.current);
+    };
+  }, []);
+
   const [requestKind, setRequestKind] = useState<IndividualRequestKind>("zamowienie");
   const [informacjaPath, setInformacjaPath] = useState<InformacjaFlowPath>(
     DEFAULT_INFORMACJA_FLOW_PATH
@@ -254,6 +263,8 @@ export function QuickOrderModal({
     options?: { acknowledgeSufficientStock?: boolean }
   ) => {
     setPendingMessage("Zapisywanie prośby…");
+    if (pendingSafetyRef.current) window.clearTimeout(pendingSafetyRef.current);
+    pendingSafetyRef.current = window.setTimeout(() => setPendingMessage(null), SAFETY_TIMEOUT_MS);
     start(async () => {
       try {
         const r = await actionAddIndividualOrders({
@@ -295,6 +306,10 @@ export function QuickOrderModal({
           }
         );
       } finally {
+        if (pendingSafetyRef.current) {
+          window.clearTimeout(pendingSafetyRef.current);
+          pendingSafetyRef.current = null;
+        }
         setPendingMessage(null);
       }
     });

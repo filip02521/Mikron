@@ -1,7 +1,7 @@
 "use client";
 import { ADMIN_PREVIEW_TOAST, DAILY_PANEL_TOAST, toastFromError, toastSuccess, type ToastNotice } from "@/lib/ui/notice-copy";
 
-import { useCallback, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actionUndoDailyPanelChange } from "@/app/actions/admin";
 import type { DailyPanelActionResult } from "@/lib/orders/daily-panel-undo";
@@ -12,6 +12,7 @@ import {
   undoWindowBannerDescription,
 } from "@/lib/orders/daily-panel-undo";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
+import { SAFETY_TIMEOUT_MS } from "@/hooks/useActionPending";
 
 export const DAILY_PANEL_SCOPE_BULK = "__bulk__";
 export const DAILY_PANEL_SCOPE_GLOBAL = "__global__";
@@ -50,6 +51,28 @@ export function useDailyPanelRunner() {
   const [undo, setUndo] = useState<UndoState | null>(null);
   const [flash, setFlash] = useState<ToastNotice | null>(null);
   const undoPayloadRef = useRef<DailyPanelUndoPayload | null>(null);
+  const safetyTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (safetyTimerRef.current) window.clearTimeout(safetyTimerRef.current);
+    };
+  }, []);
+
+  const clearSafetyTimer = useCallback(() => {
+    if (safetyTimerRef.current) {
+      window.clearTimeout(safetyTimerRef.current);
+      safetyTimerRef.current = null;
+    }
+  }, []);
+
+  const startSafetyTimer = useCallback(() => {
+    clearSafetyTimer();
+    safetyTimerRef.current = window.setTimeout(() => {
+      setPendingScope(null);
+      setPendingMessage(null);
+    }, SAFETY_TIMEOUT_MS);
+  }, [clearSafetyTimer]);
 
   const dismissFlash = useCallback(() => setFlash(null), []);
   const dismissUndo = useCallback(() => {
@@ -80,6 +103,7 @@ export function useDailyPanelRunner() {
       if (useOverlay) {
         setPendingMessage(pendingMsg);
       }
+      startSafetyTimer();
 
       start(async () => {
         try {
@@ -109,12 +133,13 @@ export function useDailyPanelRunner() {
           undoPayloadRef.current = null;
           setFlash(toastFromError(e instanceof Error ? e.message : undefined, DAILY_PANEL_TOAST.genericError.text));
         } finally {
+          clearSafetyTimer();
           setPendingScope(null);
           setPendingMessage(null);
         }
       });
     },
-    [readOnly, router]
+    [readOnly, router, startSafetyTimer, clearSafetyTimer]
   );
 
   const handleUndo = useCallback(() => {
@@ -132,6 +157,7 @@ export function useDailyPanelRunner() {
     }
     setPendingScope(DAILY_PANEL_SCOPE_GLOBAL);
     setPendingMessage("Cofanie ostatniej akcji…");
+    startSafetyTimer();
     start(async () => {
       try {
         await actionUndoDailyPanelChange(payload);
@@ -148,11 +174,12 @@ export function useDailyPanelRunner() {
         }
         router.refresh();
       } finally {
+        clearSafetyTimer();
         setPendingScope(null);
         setPendingMessage(null);
       }
     });
-  }, [readOnly, undo, router]);
+  }, [readOnly, undo, router, startSafetyTimer, clearSafetyTimer]);
 
   const notify = useCallback((text: string, tone: "success" | "error" = "success") => {
     setUndo(null);

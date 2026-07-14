@@ -110,8 +110,11 @@ export function MojeOrdersShell({
         />
       ) : null}
       <DelegatePreviewProvider delegateFor={isDelegatePreview ? salesPersonId : null}>
-      {!isDelegatePreview && activeDelegations.length > 0 ? (
-        <DelegateSwitcher delegations={activeDelegations} activeDelegateFor={null} />
+      {activeDelegations.length > 0 ? (
+        <DelegateSwitcher
+          delegations={activeDelegations}
+          activeDelegateFor={isDelegatePreview ? salesPersonId : null}
+        />
       ) : null}
       <MojeOrdersView
       {...viewProps}

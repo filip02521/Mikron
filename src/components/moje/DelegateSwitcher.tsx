@@ -16,12 +16,28 @@ function initialsFromName(name: string): string {
   return name.slice(0, 2).toUpperCase();
 }
 
+export type DelegateSwitcherSurface = "moje" | "zk" | "notatnik";
+
+const SURFACE_BASE_HREF: Record<DelegateSwitcherSurface, string> = {
+  moje: "/moje",
+  zk: "/zk",
+  notatnik: "/notatnik",
+};
+
+const SURFACE_LABEL: Record<DelegateSwitcherSurface, string> = {
+  moje: "panelu zamówień",
+  zk: "ZK czekających",
+  notatnik: "notatnika",
+};
+
 export function DelegateSwitcher({
   delegations,
   activeDelegateFor,
+  surface = "moje",
 }: {
   delegations: VacationDelegationRow[];
   activeDelegateFor: string | null;
+  surface?: DelegateSwitcherSurface;
 }) {
   const searchParams = useSearchParams();
 
@@ -32,9 +48,11 @@ export function DelegateSwitcher({
     : null;
 
   if (activeDelegation) {
-    const dateRange = activeDelegation.startDate && activeDelegation.endDate
-      ? `${activeDelegation.startDate} → ${activeDelegation.endDate}`
-      : `do ${activeDelegation.endDate}`;
+    const otherDelegations = delegations.filter(
+      (d) => d.salesPersonId !== activeDelegateFor
+    );
+    if (otherDelegations.length === 0) return null;
+
     return (
       <SystemNotice
         variant="action"
@@ -42,21 +60,41 @@ export function DelegateSwitcher({
         title={
           <span className="inline-flex items-center gap-2">
             <IconSun size={16} className="text-amber-500" />
-            {`Zastępujesz: ${activeDelegation.salesPersonName}`}
+            {`Inne aktywne zastępstwa (${otherDelegations.length})`}
           </span>
         }
         description={
           <span>
-            <span className="font-medium text-slate-700">Aktywne zastępstwo: {dateRange}</span>
-            <span className="mt-0.5 block">Możesz potwierdzać odbiory i zamykać ZK. Edycja i anulowanie są wyłączone.</span>
+            <span className="font-medium text-slate-700">Przełącz na innego handlowca</span>
+            <span className="mt-0.5 block">Masz kilka aktywnych zastępstw — wybierz, czyj {SURFACE_LABEL[surface]} chcesz otworzyć.</span>
           </span>
         }
         action={
-          <Link href="/moje">
-            <Button size="sm" variant="outline" className={salesTouchTargetClass}>
-              Wróć do mojego panelu
-            </Button>
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            {otherDelegations.map((d) => {
+              const href = `${SURFACE_BASE_HREF[surface]}?dla=${d.salesPersonId}`;
+              return (
+                <Link key={d.id} href={href}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className={salesTouchTargetClass}
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      <span
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[9px] font-semibold text-violet-700"
+                        aria-hidden
+                      >
+                        {initialsFromName(d.salesPersonName)}
+                      </span>
+                      <span>{d.salesPersonName}</span>
+                      <span className="text-[10px] font-normal text-slate-400">do {d.endDate}</span>
+                    </span>
+                  </Button>
+                </Link>
+              );
+            })}
+          </div>
         }
       />
     );
@@ -78,13 +116,13 @@ export function DelegateSwitcher({
       }
       description={
         delegations.length === 1
-          ? `Aktywne zastępstwo do ${delegations[0].endDate}. Przejdź do panelu handlowca, aby potwierdzać odbiory i zamykać ZK.`
-          : "Wybierz panel handlowca do przełączenia. Możesz potwierdzać odbiory i zamykać ZK."
+          ? `Aktywne zastępstwo do ${delegations[0].endDate}. Przejdź do ${SURFACE_LABEL[surface]} handlowca, aby potwierdzać odbiory i zamykać ZK.`
+          : `Wybierz ${SURFACE_LABEL[surface]} handlowca do przełączenia. Możesz potwierdzać odbiory i zamykać ZK.`
       }
       action={
         <div className="flex flex-wrap gap-2">
           {delegations.map((d) => {
-            const href = `/moje?dla=${d.salesPersonId}`;
+            const href = `${SURFACE_BASE_HREF[surface]}?dla=${d.salesPersonId}`;
             const isActive = currentDla === d.salesPersonId;
             return (
               <Link key={d.id} href={href}>

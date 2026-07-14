@@ -80,6 +80,8 @@ import { mergeSalesPreviewSearchParams } from "@/lib/nav/sales-preview-href";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 import { NOTEPAD_UNDO_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
 import { SalesPageAlerts } from "@/components/sales/SalesPageAlerts";
+import { DelegateSwitcher } from "@/components/moje/DelegateSwitcher";
+import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { NotatnikZkStatusChrome } from "./NotatnikZkStatusChrome";
 import { NotatnikGuide } from "./NotatnikGuide";
 import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
@@ -164,6 +166,7 @@ export function NotatnikClient({
   linkError = null,
   loadError = null,
   teamPreview = null,
+  activeDelegations = [],
 }: {
   initial: SalesNotepadData;
   initialFocusWatchId?: string | null;
@@ -184,6 +187,7 @@ export function NotatnikClient({
     startDate?: string | null;
     endDate?: string | null;
   } | null;
+  activeDelegations?: VacationDelegationRow[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1161,6 +1165,14 @@ export function NotatnikClient({
         linkError={linkError}
         linkErrorClassName="mb-4"
       />
+
+      {activeDelegations.length > 0 ? (
+        <DelegateSwitcher
+          delegations={activeDelegations}
+          activeDelegateFor={delegatePreview && teamPreview ? teamPreview.salesPersonId : null}
+          surface={isZkSurface ? "zk" : "notatnik"}
+        />
+      ) : null}
 
       <Card padding={false} className="overflow-hidden">
         <CardHeader

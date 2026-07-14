@@ -93,6 +93,20 @@ export function ManagerPreviewBanner({
   const actions = isDelegate ? (
     <>
       {backToOwnPanel}
+      {scope === "orders" ? (
+        <>
+          <Link href={`/zk?dla=${salesPersonId}`}>
+            <Button size="sm" variant="secondary" className={salesTouchTargetClass}>
+              ZK czekające
+            </Button>
+          </Link>
+          <Link href={`/notatnik?dla=${salesPersonId}`}>
+            <Button size="sm" variant="outline" className={salesTouchTargetClass}>
+              Notatnik
+            </Button>
+          </Link>
+        </>
+      ) : null}
       {scope === "notatnik" || scope === "zk" ? (
         <Link href={`/moje?dla=${salesPersonId}`}>
           <Button size="sm" variant="secondary" className={salesTouchTargetClass}>
@@ -100,17 +114,17 @@ export function ManagerPreviewBanner({
           </Button>
         </Link>
       ) : null}
-      {scope === "notatnik" || scope === "zk" ? (
-        <Link
-          href={buildNotatnikPageHref({
-            preview: true,
-            salesPersonId,
-            tab: scope === "zk" ? "zk" : "notes",
-            surface: scope === "zk" ? "zk" : "notes",
-          })}
-        >
+      {scope === "notatnik" ? (
+        <Link href={`/zk?dla=${salesPersonId}`}>
           <Button size="sm" variant="outline" className={salesTouchTargetClass}>
-            {scope === "zk" ? "Moje ZK" : "Mój notatnik"}
+            ZK czekające
+          </Button>
+        </Link>
+      ) : null}
+      {scope === "zk" ? (
+        <Link href={`/notatnik?dla=${salesPersonId}`}>
+          <Button size="sm" variant="outline" className={salesTouchTargetClass}>
+            Notatnik
           </Button>
         </Link>
       ) : null}

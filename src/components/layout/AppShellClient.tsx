@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { LegacyProcurementRouteRedirect } from "@/components/layout/LegacyProcurementRouteRedirect";
 import { AdminPanelPreviewProvider } from "./AdminPanelPreviewContext";
@@ -39,6 +39,7 @@ import {
 import { cn } from "@/lib/cn";
 import { useNotificationSoundUnlockOnGesture } from "@/lib/client/use-notification-sound-unlock";
 import { useDueDeliveryNotificationSafetyFlush } from "@/lib/client/use-delivery-notification-flush";
+import { forceUnlockAllScroll } from "@/lib/ui/page-scroll-lock";
 import { salesMobileChromeRoot } from "@/lib/ui/sales-mobile-chrome";
 import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { appMainClass, appMainInsetClass, appShellClass } from "@/lib/ui/ontime-theme";
@@ -165,6 +166,10 @@ export function AppShellClient({
   } = useAppShellMetrics();
   useNotificationSoundUnlockOnGesture();
   const pathname = usePathname();
+
+  useEffect(() => {
+    forceUnlockAllScroll();
+  }, [pathname]);
   const isAuthScreen =
     pathname === "/login" ||
     pathname === "/setup" ||

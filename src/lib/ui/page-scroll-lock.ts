@@ -111,6 +111,31 @@ export function unlockPageScroll(): void {
   flushAfterUnlockQueue();
 }
 
+/**
+ * Awaryjny reset — wymusza odblokowanie scrolla niezależnie od licznika depth.
+ * Wywoływana przy zmianie trasy, aby wyczyścić zablokowane stany po unmount.
+ */
+export function forceUnlockAllScroll(): void {
+  if (depth === 0 && !saved) return;
+
+  depth = 0;
+
+  document.documentElement.classList.remove(LOCK_CLASS);
+  document.body.classList.remove(LOCK_CLASS);
+  document.documentElement.style.overflow = saved?.htmlOverflow ?? "";
+  document.body.style.overflow = saved?.bodyOverflow ?? "";
+  document.body.style.paddingRight = saved?.bodyPaddingRight ?? "";
+
+  const main = queryMain();
+  if (main) {
+    main.style.overflow = saved?.mainOverflow ?? "";
+  }
+
+  detachScrollBlockListeners();
+  saved = null;
+  afterUnlockQueue.length = 0;
+}
+
 /** Po zamknięciu overlayu — krótka pauza po odblokowaniu `<main>` (layout + smooth scroll). */
 export const SCROLL_AFTER_UNLOCK_MS = 100;
 

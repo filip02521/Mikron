@@ -77,7 +77,7 @@ export default async function ZespolUrlopyPage() {
 
   let delegateOptions: Awaited<ReturnType<typeof fetchDelegateOptions>> = [];
   try {
-    delegateOptions = await fetchDelegateOptions(user.id);
+    delegateOptions = await fetchDelegateOptions();
   } catch {}
 
   return (

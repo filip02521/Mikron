@@ -122,6 +122,7 @@ export default async function ZkPage({
             }
           : null
       }
+      activeDelegations={access.activeDelegations}
     />
   );
 }

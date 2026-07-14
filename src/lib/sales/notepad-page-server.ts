@@ -5,6 +5,7 @@ import { getAppRole } from "@/lib/auth-dev";
 import { logDevPageError } from "@/lib/dev/log-page-error";
 import { isAdmin, isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import type { UserRole } from "@/types/database";
+import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 
 export type SalesNotepadPageAccess = {
   role: UserRole | null;
@@ -16,6 +17,7 @@ export type SalesNotepadPageAccess = {
   previewSalesPersonId: string | null;
   delegationStartDate: string | null;
   delegationEndDate: string | null;
+  activeDelegations: VacationDelegationRow[];
 };
 
 /** Wspólna autoryzacja i podgląd handlowca dla /zk oraz /notatnik. */
@@ -32,6 +34,7 @@ export async function resolveSalesNotepadPageAccess(input: {
   let isDelegatePreview = false;
   let delegationStartDate: string | null = null;
   let delegationEndDate: string | null = null;
+  let activeDelegations: VacationDelegationRow[] = [];
 
   try {
     const user = await getSessionUser();
@@ -59,6 +62,16 @@ export async function resolveSalesNotepadPageAccess(input: {
       } else {
         salesPersonId = own?.id ?? null;
         salesPersonName = own?.name ?? null;
+        if (
+          user.role === "sales" ||
+          user.role === "sales_manager"
+        ) {
+          try {
+            const { fetchActiveDelegationsForDelegate } = await import("@/lib/data/vacation-delegations");
+            activeDelegations = await fetchActiveDelegationsForDelegate(user.id);
+          } catch {}
+        }
+
         if (
           user.role === "sales" &&
           previewSalesPersonId &&
@@ -110,6 +123,7 @@ export async function resolveSalesNotepadPageAccess(input: {
     previewSalesPersonId,
     delegationStartDate,
     delegationEndDate,
+    activeDelegations,
   };
 }
 

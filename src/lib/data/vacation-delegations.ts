@@ -132,9 +132,6 @@ export async function createDelegation(input: {
   if (input.startDate > input.endDate) {
     throw new Error("Data rozpoczęcia nie może być późniejsza niż data zakończenia.");
   }
-  if (input.delegateProfileId === input.createdBy) {
-    throw new Error("Nie możesz wyznaczyć siebie jako zastępcę.");
-  }
 
   const supabase = createAdminClient();
 
@@ -250,18 +247,15 @@ export async function fetchDelegationsForSalesPeople(
   return bySalesPerson;
 }
 
-/** Lista możliwych zastępców dla zalogowanego użytkownika (role sales + sales_manager, bez siebie). */
-export async function fetchDelegateOptions(
-  excludeUserId: string
-): Promise<DelegateOption[]> {
+/** Lista możliwych zastępców (role sales + sales_manager). */
+export async function fetchDelegateOptions(): Promise<DelegateOption[]> {
   if (!hasSupabaseConfig()) return [];
 
   const supabase = createAdminClient();
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id, email, role, sales_person_id")
-    .in("role", ["sales", "sales_manager"])
-    .neq("id", excludeUserId);
+    .in("role", ["sales", "sales_manager"]);
   const { data: salesPeople } = await supabase
     .from("sales_people")
     .select("id, name");

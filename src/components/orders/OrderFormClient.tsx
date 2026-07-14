@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { actionAddIndividualOrders } from "@/app/actions/admin";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
+import { SAFETY_TIMEOUT_MS } from "@/hooks/useActionPending";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { NoticeToast } from "@/components/ui/NoticeToast";
@@ -213,6 +214,14 @@ export function OrderFormClient({
   );
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  const pendingSafetyRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pendingSafetyRef.current) window.clearTimeout(pendingSafetyRef.current);
+    };
+  }, []);
+
   const [msg, setMsg] = useState<
     (TransientNotice & { actionHref?: string; actionLabel?: string }) | null
   >(null);
@@ -512,6 +521,8 @@ export function OrderFormClient({
     setPendingMessage(
       singleGroup ? "Wysyłanie prośby…" : "Zapisywanie zamówień…"
     );
+    if (pendingSafetyRef.current) window.clearTimeout(pendingSafetyRef.current);
+    pendingSafetyRef.current = window.setTimeout(() => setPendingMessage(null), SAFETY_TIMEOUT_MS);
     start(async () => {
       const zkCtx = zkProsbaLinkContext;
       try {
@@ -617,6 +628,10 @@ export function OrderFormClient({
           }
         );
       } finally {
+        if (pendingSafetyRef.current) {
+          window.clearTimeout(pendingSafetyRef.current);
+          pendingSafetyRef.current = null;
+        }
         setPendingMessage(null);
       }
     });

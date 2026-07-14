@@ -122,6 +122,7 @@ export default async function NotatnikPage({
               }
             : null
         }
+        activeDelegations={access.activeDelegations}
       />
     </Suspense>
   );

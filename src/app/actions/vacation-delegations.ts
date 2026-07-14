@@ -98,9 +98,14 @@ export async function actionSetVacationDelegation(input: {
       return { error: "Zastępca musi mieć konto handlowca lub kierownika." };
     }
 
-    // Nie można wyznaczyć siebie jako zastępcę
-    if (delegateProfileId === user.id) {
-      return { error: "Nie możesz wyznaczyć siebie jako zastępcę." };
+    // Nie można wyznaczyć siebie jako zastępcę własnego urlopu
+    // (ale kierownik może być zastępcą za innego handlowca)
+    if (
+      delegateProfileId === user.id &&
+      isSalesAccount(user.role) &&
+      user.salesPersonId === salesPersonId
+    ) {
+      return { error: "Nie możesz wyznaczyć siebie jako zastępcę za siebie samego." };
     }
 
     // Nie można wyznaczyć samego zarządzanego handlowca jako zastępcę

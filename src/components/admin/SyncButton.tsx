@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
+import { SAFETY_TIMEOUT_MS } from "@/hooks/useActionPending";
 
 export function SyncButton({
   action,
@@ -22,6 +23,13 @@ export function SyncButton({
 }) {
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  const safetyRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (safetyRef.current) window.clearTimeout(safetyRef.current);
+    };
+  }, []);
 
   return (
     <>
@@ -37,6 +45,8 @@ export function SyncButton({
         disabled={pending}
         onClick={() => {
           setPendingMessage(loadingMessage);
+          if (safetyRef.current) window.clearTimeout(safetyRef.current);
+          safetyRef.current = window.setTimeout(() => setPendingMessage(null), SAFETY_TIMEOUT_MS);
           start(async () => {
             try {
               const r = await action();
@@ -50,6 +60,10 @@ export function SyncButton({
                   );
               }
             } finally {
+              if (safetyRef.current) {
+                window.clearTimeout(safetyRef.current);
+                safetyRef.current = null;
+              }
               setPendingMessage(null);
             }
           });

@@ -34,6 +34,7 @@ import type { SalesCancelUndoRestore } from "@/lib/orders/sales-cancel-db";
 import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 import { useMyOrderPickupShelfDialog } from "@/components/moje/MyOrderPickupShelfDialogProvider";
 import { useMyOrderShipmentUndo } from "@/components/moje/MyOrderShipmentUndoProvider";
+import { useDelegateFor } from "@/components/moje/DelegatePreviewContext";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import type { EditIndividualRequestInitial } from "@/components/orders/EditIndividualRequestModal";
@@ -205,6 +206,7 @@ export function MyOrderShipmentList({
   const [pending, start] = useTransition();
   const { shelfNoticeOpen, requestShelfPickupNotice } = useMyOrderPickupShelfDialog();
   const { reportUndo } = useMyOrderShipmentUndo();
+  const delegateFor = useDelegateFor() ?? undefined;
   const ackPending = pending || shelfNoticeOpen;
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [cancelConfirm, setCancelConfirm] = useState<CancelConfirmState | null>(
@@ -227,7 +229,7 @@ export function MyOrderShipmentList({
       setPendingMessage(n === 1 ? "Potwierdzanie odbioru…" : `Potwierdzanie ${n} pozycji…`);
       start(async () => {
         try {
-          await actionAcknowledgePickup(orderIds);
+          await actionAcknowledgePickup(orderIds, delegateFor);
           if (options?.markShelfNotice) markPickupShelfNoticeSeen();
           reportUndo({
             orderIds,
@@ -243,7 +245,7 @@ export function MyOrderShipmentList({
         }
       });
     },
-    [router, tourPreview, reportUndo]
+    [router, tourPreview, reportUndo, delegateFor]
   );
 
   const requestPickup = useCallback(
@@ -269,7 +271,7 @@ export function MyOrderShipmentList({
       );
       start(async () => {
         try {
-          await actionAcknowledgeCancelled(orderIds);
+          await actionAcknowledgeCancelled(orderIds, delegateFor);
           reportUndo({
             orderIds,
             kind: "dismiss",
@@ -286,7 +288,7 @@ export function MyOrderShipmentList({
         }
       });
     },
-    [router, tourPreview, reportUndo]
+    [router, tourPreview, reportUndo, delegateFor]
   );
 
   const runAcknowledgeCancelNotice = useCallback(
@@ -300,7 +302,7 @@ export function MyOrderShipmentList({
       );
       start(async () => {
         try {
-          await actionAcknowledgeSalesCancelNotice(orderIds);
+          await actionAcknowledgeSalesCancelNotice(orderIds, delegateFor);
           reportUndo({
             orderIds,
             kind: "dismiss",
@@ -317,7 +319,7 @@ export function MyOrderShipmentList({
         }
       });
     },
-    [router, tourPreview, reportUndo]
+    [router, tourPreview, reportUndo, delegateFor]
   );
 
   const saveClient = useCallback(

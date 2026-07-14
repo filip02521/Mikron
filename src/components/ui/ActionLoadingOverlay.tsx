@@ -25,6 +25,9 @@ export function ActionLoadingOverlay({
         ? "absolute inset-0 z-20 rounded-lg"
         : "absolute inset-0 z-30 rounded-md";
 
+  const pointerEvents =
+    variant === "viewport" ? "pointer-events-none" : "";
+
   return (
     <div
       role="status"
@@ -33,11 +36,15 @@ export function ActionLoadingOverlay({
       className={cn(
         position,
         "flex items-center justify-center bg-slate-900/20 backdrop-blur-[3px]",
+        pointerEvents,
         className
       )}
     >
       <div className="action-loading-shimmer pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
-      <div className="mx-4 flex max-w-sm items-center gap-3.5 rounded-lg border border-slate-200/90 bg-white px-5 py-4 shadow-xl ring-1 ring-slate-900/5">
+      <div className={cn(
+        "mx-4 flex max-w-sm items-center gap-3.5 rounded-lg border border-slate-200/90 bg-white px-5 py-4 shadow-xl ring-1 ring-slate-900/5",
+        variant === "viewport" && "pointer-events-auto"
+      )}>
         <Spinner size="md" />
         <div className="min-w-0">
           <p className="text-sm font-semibold text-slate-900">{message}</p>

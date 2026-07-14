@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { actionAcknowledgeZdFulfillmentDeadlineChange } from "@/app/actions/my-orders";
+import { useDelegateFor } from "@/components/moje/DelegatePreviewContext";
 import {
   buildZdDeadlineChangeToastMessage,
   zdDeadlineChangeToastTone,
@@ -57,6 +58,7 @@ export function ZdFulfillmentDeadlineChangeAutoAck({
   tourPreview?: boolean;
 }) {
   const router = useRouter();
+  const delegateFor = useDelegateFor() ?? undefined;
   const [toast, setToast] = useState<{
     message: string;
     tone: "success" | "warning";
@@ -89,7 +91,7 @@ export function ZdFulfillmentDeadlineChangeAutoAck({
 
     void (async () => {
       try {
-        const result = await actionAcknowledgeZdFulfillmentDeadlineChange(orderIds);
+        const result = await actionAcknowledgeZdFulfillmentDeadlineChange(orderIds, delegateFor);
         delete failedAttemptsRef.current[key];
         if (result.count > 0) {
           setToast({
@@ -121,7 +123,7 @@ export function ZdFulfillmentDeadlineChangeAutoAck({
         }
       }
     })();
-  }, [canAcknowledge, rows, router, tourPreview, retryNonce]);
+  }, [canAcknowledge, rows, router, tourPreview, retryNonce, delegateFor]);
 
   if (!toast) return null;
 
