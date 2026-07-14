@@ -12,16 +12,15 @@
 
 import javascript
 
-/** Wywołanie metody filtra Supabase query builder. */
+/** Wywołanie metody filtra Supabase query builder — zawsze method calls. */
 predicate isSupabaseFilterCall(CallExpr call) {
-  call.getCallee().getName() in ["eq", "in", "like", "ilike", "match", "filter"]
+  exists(PropAccess p | p = call.getCallee() and p.getPropertyName() in ["eq", "in", "like", "ilike", "match", "filter"])
 }
 
-/** Drugi argument to surowy parametr z input (bez .trim() / walidacji). */
+/** Drugi argument to surowy parametr z input (PropAccess np. input.supplierId).
+ *  input.supplierId.trim() to MethodCallExpr, nie PropAccess — więc nie matchuje. */
 predicate isRawInput(Expr arg) {
-  // Parametr funkcji używany bezpośrednio — np. input.supplierId
-  exists(PropAccess p | p = arg) and
-  not arg.anyExpr().toString().matches("%.trim()%")
+  arg instanceof PropAccess
 }
 
 from CallExpr call, Expr filterValue

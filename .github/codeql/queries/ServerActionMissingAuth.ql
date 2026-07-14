@@ -38,14 +38,17 @@ predicate isAuthFunction(string name) {
 
 /** Wywołanie funkcji autentykacyjnej w ciele funkcji. */
 predicate isAuthCall(CallExpr call) {
-  isAuthFunction(call.getCallee().getName())
+  exists(VarRef v | v = call.getCallee() and isAuthFunction(v.getName()))
+  or
+  exists(PropAccess p | p = call.getCallee() and isAuthFunction(p.getPropertyName()))
 }
 
-/** Exported async function o nazwie zaczynającej się od "action". */
+/** Exported async function o nazwie zaczynającej się od "action".
+ *  Sprawdzenie exportu pominięte — CodeQL JS API nie exposes getModifiers() na Function.
+ *  False positive rate negligible: non-exported async functions starting with "action" are rare. */
 predicate isServerAction(Function f) {
   f.getName().matches("action%") and
-  f.isAsync() and
-  exists(f.getModifiers().any().toString() = "export")
+  f.isAsync()
 }
 
 from Function f

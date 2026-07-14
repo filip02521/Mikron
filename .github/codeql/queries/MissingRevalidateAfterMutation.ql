@@ -14,18 +14,17 @@ import javascript
 
 predicate isServerAction(Function f) {
   f.getName().matches("action%") and
-  f.isAsync() and
-  exists(f.getModifiers().any().toString() = "export")
+  f.isAsync()
 }
 
-/** Wywołanie mutacji Supabase (.insert, .update, .delete, .upsert). */
+/** Wywołanie mutacji Supabase (.insert, .update, .delete, .upsert) — zawsze method calls. */
 predicate isMutationCall(CallExpr call) {
-  call.getCallee().getName() in ["insert", "update", "delete", "upsert"]
+  exists(PropAccess p | p = call.getCallee() and p.getPropertyName() in ["insert", "update", "delete", "upsert"])
 }
 
-/** Wywołanie revalidatePath lub revalidateTag. */
+/** Wywołanie revalidatePath lub revalidateTag — zawsze direct function calls. */
 predicate isRevalidateCall(CallExpr call) {
-  call.getCallee().getName() in ["revalidatePath", "revalidateTag"]
+  exists(VarRef v | v = call.getCallee() and v.getName() in ["revalidatePath", "revalidateTag"])
 }
 
 from Function f

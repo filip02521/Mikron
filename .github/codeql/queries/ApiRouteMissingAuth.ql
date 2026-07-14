@@ -28,13 +28,23 @@ predicate isAuthFunction(string name) {
 }
 
 predicate isAuthCall(CallExpr call) {
-  isAuthFunction(call.getCallee().getName())
+  exists(VarRef v | v = call.getCallee() and isAuthFunction(v.getName()))
+  or
+  exists(PropAccess p | p = call.getCallee() and isAuthFunction(p.getPropertyName()))
 }
 
 /** Plik route.ts lub route.tsx w katalogu app/api. */
 predicate isApiRouteFile(File f) {
-  f.getBaseName().matches("%route.ts") or
-  f.getBaseName().matches("%route.tsx")
+  f.getBaseName() = "route.ts" or
+  f.getBaseName() = "route.tsx"
+}
+
+/** Trasy celowo publiczne — logowanie, reset hasła, health/live.
+ *  Te endpointy nie używają sesji bo użytkownik nie jest zalogowany. */
+predicate isPublicRoute(File f) {
+  f.getPath().regexpMatch(".*/api/auth/login.*") or
+  f.getPath().regexpMatch(".*/api/auth/password-reset.*") or
+  f.getPath().regexpMatch(".*/api/health/live.*")
 }
 
 /** Exported function z nazwą HTTP method. */
@@ -46,6 +56,7 @@ predicate isHttpHandler(Function f) {
 from Function f
 where
   isHttpHandler(f) and
+  not isPublicRoute(f.getFile()) and
   not exists(CallExpr c |
     c.getEnclosingFunction+() = f and
     isAuthCall(c)

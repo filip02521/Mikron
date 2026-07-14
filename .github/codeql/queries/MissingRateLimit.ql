@@ -12,8 +12,8 @@
 import javascript
 
 predicate isApiRouteFile(File f) {
-  f.getBaseName().matches("%route.ts") or
-  f.getBaseName().matches("%route.tsx")
+  f.getBaseName() = "route.ts" or
+  f.getBaseName() = "route.tsx"
 }
 
 predicate isHttpHandler(Function f) {
@@ -26,16 +26,20 @@ predicate isSensitivePath(File f) {
   f.getPath().regexpMatch(".*/api/teeth-vision.*")
 }
 
+/** Trasy celowo bez rate limitu — login-form to tylko redirect. */
+predicate isExcludedPath(File f) {
+  f.getPath().regexpMatch(".*/api/auth/login-form.*")
+}
+
 predicate isRateLimitCall(CallExpr call) {
-  call.getCallee().getName().matches("%RateLimit%") or
-  call.getCallee().getName().matches("%rateLimit%") or
-  call.getCallee().getName() = "consumeAuthRateLimit"
+  exists(VarRef v | v = call.getCallee() and v.getName().matches("%RateLimit%"))
 }
 
 from Function f
 where
   isHttpHandler(f) and
   isSensitivePath(f.getFile()) and
+  not isExcludedPath(f.getFile()) and
   not exists(CallExpr c |
     c.getEnclosingFunction+() = f and
     isRateLimitCall(c)
