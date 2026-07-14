@@ -22,13 +22,13 @@ predicate isHttpHandler(Function f) {
 }
 
 predicate isSensitivePath(File f) {
-  f.getPath().regexpMatch(".*/api/auth/.*") or
-  f.getPath().regexpMatch(".*/api/teeth-vision.*")
+  f.getAbsolutePath().regexpMatch(".*/api/auth/.*") or
+  f.getAbsolutePath().regexpMatch(".*/api/teeth-vision.*")
 }
 
 /** Trasy celowo bez rate limitu — login-form to tylko redirect. */
 predicate isExcludedPath(File f) {
-  f.getPath().regexpMatch(".*/api/auth/login-form.*")
+  f.getAbsolutePath().regexpMatch(".*/api/auth/login-form.*")
 }
 
 predicate isRateLimitCall(CallExpr call) {
@@ -44,4 +44,4 @@ where
     c.getEnclosingFunction+() = f and
     isRateLimitCall(c)
   )
-select f, "API route '" + f.getName() + "' w " + f.getFile().getPath() + " obsługuje wrażliwą operację bez rate limitingu."
+select f, "API route '" + f.getName() + "' w " + f.getFile().getAbsolutePath() + " obsługuje wrażliwą operację bez rate limitingu."

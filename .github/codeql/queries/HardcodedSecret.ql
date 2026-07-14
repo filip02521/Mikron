@@ -32,13 +32,13 @@ predicate looksLikeSecret(StringLiteral s) {
   s.getValue().regexpMatch("[A-Za-z0-9_\\-]{16,}")
 }
 
-from VarDecl v, StringLiteral s
+from VariableDeclarator v, StringLiteral s
 where
-  isSecretVarName(v.getName()) and
+  isSecretVarName(v.getBindingPattern().getName()) and
   v.getInit() = s and
   looksLikeSecret(s) and
   // Wyklucz pliki testowe i konfiguracyjne
-  not v.getFile().getPath().regexpMatch(".*\\.test\\..*") and
-  not v.getFile().getPath().regexpMatch(".*\\.spec\\..*") and
-  not v.getFile().getPath().regexpMatch(".*scripts/.*")
-select v, "Potencjalnie hardcoded sekret w zmiennej '" + v.getName() + "' — użyj zmiennej środowiskowej."
+  not v.getFile().getAbsolutePath().regexpMatch(".*\\.test\\..*") and
+  not v.getFile().getAbsolutePath().regexpMatch(".*\\.spec\\..*") and
+  not v.getFile().getAbsolutePath().regexpMatch(".*scripts/.*")
+select v, "Potencjalnie hardcoded sekret w zmiennej '" + v.getBindingPattern().getName() + "' — użyj zmiennej środowiskowej."

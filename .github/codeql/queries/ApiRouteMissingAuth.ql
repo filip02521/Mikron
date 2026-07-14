@@ -42,9 +42,9 @@ predicate isApiRouteFile(File f) {
 /** Trasy celowo publiczne — logowanie, reset hasła, health/live.
  *  Te endpointy nie używają sesji bo użytkownik nie jest zalogowany. */
 predicate isPublicRoute(File f) {
-  f.getPath().regexpMatch(".*/api/auth/login.*") or
-  f.getPath().regexpMatch(".*/api/auth/password-reset.*") or
-  f.getPath().regexpMatch(".*/api/health/live.*")
+  f.getAbsolutePath().regexpMatch(".*/api/auth/login.*") or
+  f.getAbsolutePath().regexpMatch(".*/api/auth/password-reset.*") or
+  f.getAbsolutePath().regexpMatch(".*/api/health/live.*")
 }
 
 /** Exported function z nazwą HTTP method. */
