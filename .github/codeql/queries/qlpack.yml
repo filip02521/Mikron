@@ -1,0 +1,6 @@
+name: mikron-codeql
+
+version: 0.0.0
+
+dependencies:
+  codeql/javascript-queries: "*"

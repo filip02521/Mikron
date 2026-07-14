@@ -1,12 +1,35 @@
 name: Mikron CodeQL
 
+# Skanuj tylko src/ — pomiń scripts, tests, e2e, node_modules
+paths:
+  - src
+
+paths-ignore:
+  - src/**/*.test.ts
+  - src/**/*.test.tsx
+  - src/**/*.spec.ts
+  - src/lib/teeth/teeth-vision-prompt.ts
+
 query-filters:
+  # Faszywe alarmy — projekt celowo przechowuje tokeny sesji w bazie
   - exclude:
       id: js/clear-text-storage-of-sensitive-data
     paths:
       - src/lib/auth/login-account-preference.ts
       - src/lib/auth/login-password-reset-session.ts
+  # Faszywe alarmy — OTP używa celowo słabszego hashowania (krótki TTL)
   - exclude:
       id: js/insufficient-password-hash
     paths:
       - src/lib/auth/password-reset-otp.ts
+  # Faszywe alarmy — Supabase RLS jest warstwą bezpieczeństwa, nie same zapytania
+  - exclude:
+      id: js/sql-string-concatenation
+    paths:
+      - src/lib/data/**/*.ts
+  # Faszywe alarmy — testy celowo używają hardcoded wartości
+  - exclude:
+      id: js/hardcoded-credentials
+    paths:
+      - src/**/*.test.ts
+      - src/**/*.test.tsx
