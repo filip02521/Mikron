@@ -12,18 +12,18 @@
 import javascript
 
 /** Nazwa zmiennej sugeruje sekret lub klucz. */
-predicate isSecretVarName(string name) {
-  name.matches("%SECRET%") or
-  name.matches("%secret%") or
-  name.matches("%API_KEY%") or
-  name.matches("%apiKey%") or
-  name.matches("%APIKEY%") or
-  name.matches("%TOKEN%") or
-  name.matches("%token%") or
-  name.matches("%PASSWORD%") or
-  name.matches("%password%") or
-  name.matches("%PRIVATE_KEY%") or
-  name.matches("%privateKey%")
+predicate isSecretVarName(string varName) {
+  varName.matches("%SECRET%") or
+  varName.matches("%secret%") or
+  varName.matches("%API_KEY%") or
+  varName.matches("%apiKey%") or
+  varName.matches("%APIKEY%") or
+  varName.matches("%TOKEN%") or
+  varName.matches("%token%") or
+  varName.matches("%PASSWORD%") or
+  varName.matches("%password%") or
+  varName.matches("%PRIVATE_KEY%") or
+  varName.matches("%privateKey%")
 }
 
 /** String literal wygląda jak klucz/token (długość > 16, zawiera alphanum). */

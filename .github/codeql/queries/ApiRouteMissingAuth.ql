@@ -11,8 +11,8 @@
 
 import javascript
 
-predicate isAuthFunction(string name) {
-  name in [
+predicate isAuthFunction(string fnName) {
+  fnName in [
     "getSessionUser",
     "requireAdmin",
     "requireAdminForMutation",
