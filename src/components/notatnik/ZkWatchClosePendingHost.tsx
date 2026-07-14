@@ -194,7 +194,7 @@ function ZkWatchClosePendingHostActive({
 
     void (async () => {
       try {
-        const { items: preview } = await actionFetchZkWatchClosePendingPreview(watch.id);
+        const { items: preview } = await actionFetchZkWatchClosePendingPreview(watch.id, delegateFor);
         if (cancelled || epochRef.current !== epoch) return;
         setItems(preview);
         if (preview.length > 0) {
@@ -203,7 +203,7 @@ function ZkWatchClosePendingHostActive({
           void confirmPendingAndClose();
           return;
         }
-        const { closedAt } = await actionCloseZkWatch(watch.id);
+        const { closedAt } = await actionCloseZkWatch(watch.id, delegateFor);
         if (cancelled || epochRef.current !== epoch) return;
         onFlowError?.(watch.id, null);
         onClosed(watch.id, closedAt);

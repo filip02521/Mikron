@@ -350,8 +350,8 @@ export async function actionRestoreZkWatch(watchId: string) {
 }
 
 /** Cofnięcie zamknięcia ZK (toast undo) — w odróżnieniu od przywrócenia zachowuje notatkę i przypomnienie. */
-export async function actionUndoCloseZkWatch(watchId: string) {
-  const salesPersonId = await salesPersonIdForAction();
+export async function actionUndoCloseZkWatch(watchId: string, delegateFor?: string) {
+  const salesPersonId = await salesPersonIdForAction(delegateFor);
   const supabase = createAdminClient();
   const now = new Date().toISOString();
 

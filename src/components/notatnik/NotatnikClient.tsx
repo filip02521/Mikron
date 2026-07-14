@@ -365,7 +365,10 @@ export function NotatnikClient({
         flashNotepadAnchor(`note-${note.id}`);
         navigateToTab("notes", { hash: `note-${note.id}` });
       } else if (snapshot.type === "close-zk") {
-        const { watch } = await actionUndoCloseZkWatch(snapshot.watch.id);
+        const { watch } = await actionUndoCloseZkWatch(
+          snapshot.watch.id,
+          effectiveDelegatePreview && teamPreview ? teamPreview.salesPersonId : undefined,
+        );
         setArchivedWatches((prev) => prev.filter((w) => w.id !== watch.id));
         setZkWatches((prev) => uniqueById(sortZkWatches([watch, ...prev])));
         setRecentlyClosedWatchId((id) => (id === watch.id ? null : id));
@@ -387,7 +390,7 @@ export function NotatnikClient({
         toastFromError(e instanceof Error ? e.message : undefined, NOTEPAD_UNDO_TOAST.failed.text)
       );
     }
-  }, [undo, navigateToTab, refresh]);
+  }, [undo, navigateToTab, refresh, effectiveDelegatePreview, teamPreview]);
 
   useEffect(() => {
     if (!undo || effectiveReadOnly) return;
