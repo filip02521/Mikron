@@ -38,6 +38,10 @@ async function compressImage(file: File): Promise<Blob> {
   return blob;
 }
 
+/**
+ * @deprecated Use TeethOcrWizard instead — provides two-phase recognition
+ * (line detection + per-line OCR) with better accuracy.
+ */
 export function TeethVisionUpload({
   productLine,
   onResult,

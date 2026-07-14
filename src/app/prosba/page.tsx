@@ -8,6 +8,7 @@ import { isAdminReadOnlyPanelPreview } from "@/lib/auth/admin-panel-context";
 import { isAdmin, isSalesManager } from "@/lib/auth-roles";
 import { readAdminPanelContextForSession } from "@/lib/auth/read-admin-panel-context";
 import { SalesPageAlerts } from "@/components/sales/SalesPageAlerts";
+import { DelegateModeBackground } from "@/components/moje/DelegatePreviewContext";
 import { ProsbaFormSuspenseFallback } from "@/components/orders/ProsbaFormSuspenseFallback";
 import {
   filterRowsByGroupScope,
@@ -122,7 +123,7 @@ export default async function ProsbaPage({
       resolveProsbaSupplierId(dostawca, suppliers.map((s) => s.id)) ?? null;
 
     return (
-      <div className={salesPageShellClass}>
+      <DelegateModeBackground active={true} label={lockedSalesPerson.name} className={salesPageShellClass}>
         <SalesPageAlerts
           teamPreview={{
             salesPersonId: lockedSalesPerson.id,
@@ -141,7 +142,7 @@ export default async function ProsbaPage({
             forceReadOnly
           />
         </Suspense>
-      </div>
+      </DelegateModeBackground>
     );
   }
 
@@ -175,11 +176,13 @@ export default async function ProsbaPage({
   const initialSupplierId =
     resolveProsbaSupplierId(dostawca, suppliers.map((s) => s.id)) ?? null;
 
+  const isManagerPreview = Boolean(isManager && lockedSalesPerson && lockedSalesPerson.id !== managerSelfId);
+
   return (
-    <div className={salesPageShellClass}>
+    <DelegateModeBackground active={Boolean(isManagerPreview)} label={isManagerPreview && lockedSalesPerson ? lockedSalesPerson.name : null} className={salesPageShellClass}>
       <SalesPageAlerts
         teamPreview={
-          isManager && lockedSalesPerson && lockedSalesPerson.id !== managerSelfId
+          isManagerPreview && lockedSalesPerson
             ? {
                 salesPersonId: lockedSalesPerson.id,
                 salesPersonName: lockedSalesPerson.name,
@@ -221,6 +224,6 @@ export default async function ProsbaPage({
         />
       )}
       </Suspense>
-    </div>
+    </DelegateModeBackground>
   );
 }

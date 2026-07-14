@@ -80,15 +80,17 @@ import {
   readZkProsbaPrefill,
   type ZkProsbaPrefill,
 } from "@/lib/orders/zk-watch-prosba-prefill";
+import { readTeethOcrProsbaPrefill, clearTeethOcrProsbaPrefill } from "@/lib/orders/teeth-ocr-prosba-prefill";
 import { clearUnseenNewZkLineKeys, removeUnseenNewZkLineKeys } from "@/lib/client/zk-watch-new-lines-snapshot";
 import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
 import { buildProsbaSubmitStockConfirm, buildProsbaSubmitZkQuantityConfirm, formatProsbaZkQuantityFormBanner, applyProsbaLineStockMap, collectProsbaLineTwIdsMissingStock } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
-import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
+import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 import {
   classifyProsbaLinesByLane,
   procurementSubmitSuccessMessage,
 } from "@/lib/teeth/teeth-procurement-flow-copy";
+import { resolveTeethCatalogProduct } from "@/lib/teeth/teeth-dual-kind";
 
 function formatSubmitResult(
   r: {
@@ -204,6 +206,7 @@ export function OrderFormClient({
   const readOnly = forceReadOnly || panelReadOnly;
   const tourDemo = useSalesOnboardingDemo("prosba");
   const teethExemptTwIds = useTeethExemptTwIds();
+  const teethProductInfo = useTeethProductInfo();
   const lockedId = lockedSalesPerson?.id ?? "";
   const [requestKind, setRequestKind] = useState<IndividualRequestKind>("zamowienie");
   const [informacjaPath, setInformacjaPath] = useState<InformacjaFlowPath>(
@@ -440,6 +443,48 @@ export function OrderFormClient({
       cancelled = true;
     };
   }, [lockedId, searchParams, tourDemo, teethExemptTwIds]);
+
+  const teethOcrPrefillAppliedRef = useRef(false);
+  useEffect(() => {
+    if (tourDemo) return;
+    if (teethOcrPrefillAppliedRef.current) return;
+    const prefill = readTeethOcrProsbaPrefill();
+    if (!prefill?.lines.length) return;
+    const { registryIndex } = teethProductInfo;
+    const hasRegistry = registryIndex.byLineAndKind.size > 0;
+    if (!hasRegistry) return;
+    teethOcrPrefillAppliedRef.current = true;
+    clearTeethOcrProsbaPrefill();
+    const t = setTimeout(() => {
+      setRequestKind("zamowienie");
+      setValidationAttempted(false);
+      setFormNotice(null);
+      setMsg(null);
+      setGroups([
+        prefill.lines.map((line) => {
+          const resolved =
+            line.teethProductLine && line.teethKind
+              ? resolveTeethCatalogProduct(
+                  registryIndex,
+                  line.teethProductLine,
+                  line.teethKind,
+                )
+              : null;
+          return {
+            ...line,
+            supplierId: "",
+            salesPersonId: lockedId,
+            subiektTwId: resolved?.twId ?? line.subiektTwId,
+            symbol: resolved?.symbol?.trim() || line.symbol,
+            mikranCode: resolved?.plu?.trim() || line.mikranCode,
+            product: resolved?.name || line.product,
+            source: resolved ? "catalog" : line.source,
+          };
+        }),
+      ]);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [lockedId, tourDemo, teethProductInfo]);
 
   const supplierRefs = useMemo(() => toAppSupplierRefs(suppliers), [suppliers]);
 

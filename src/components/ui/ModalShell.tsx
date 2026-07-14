@@ -8,7 +8,7 @@ import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 
-export type ModalTier = "standard" | "raised" | "top" | "stack";
+export type ModalTier = "standard" | "raised" | "top" | "stack" | "overlay";
 export type ModalSize = "sm" | "md" | "lg" | "xl";
 
 const tierZ: Record<ModalTier, { backdrop: string; panel: string }> = {
@@ -17,6 +17,8 @@ const tierZ: Record<ModalTier, { backdrop: string; panel: string }> = {
   top: { backdrop: "z-[70]", panel: "z-[71]" },
   /** Potwierdzenia nad innymi modalami (np. stock check w formularzu prośby). */
   stack: { backdrop: "z-[80]", panel: "z-[81]" },
+  /** Wizard / overlay nad modem stack (np. TeethOcrWizard nad TeethOrderBuilderModal). */
+  overlay: { backdrop: "z-[90]", panel: "z-[91]" },
 };
 
 const sizeClass: Record<ModalSize, string> = {

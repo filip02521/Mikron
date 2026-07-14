@@ -5,6 +5,7 @@ import {
   purgeDataRetention,
   type DataRetentionResult,
 } from "@/lib/services/history-cleanup";
+import { cleanupStaleTeethOcrImages, type TeethOcrCleanupResult } from "@/lib/services/teeth-ocr-cleanup";
 import {
   dataRetentionCutoffDateOnly,
   dataRetentionCutoffIso,
@@ -41,6 +42,7 @@ export type MorningRoutineResult = {
   deliveries: Awaited<ReturnType<typeof processMarkedDeliveries>>;
   historyCleanup: DataRetentionResult;
   historyRetentionSkipped: boolean;
+  teethOcrCleanup: TeethOcrCleanupResult;
 };
 
 /**
@@ -52,7 +54,8 @@ export async function runMorningRoutine(): Promise<MorningRoutineResult> {
   const deliveries = await processMarkedDeliveries({ lockedBy: "morning-cron" });
   const { cleanup: historyCleanup, skipped: historyRetentionSkipped } =
     await runMorningHistoryCleanup();
-  return { sync, deliveries, historyCleanup, historyRetentionSkipped };
+  const teethOcrCleanup = await cleanupStaleTeethOcrImages();
+  return { sync, deliveries, historyCleanup, historyRetentionSkipped, teethOcrCleanup };
 }
 
 async function runMorningHistoryCleanup(): Promise<{

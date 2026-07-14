@@ -8,6 +8,26 @@ export function plPozycja(count: number): string {
   return "pozycji";
 }
 
+/** Odmiana „prośba” — np. 1 prośba, 2 prośby, 5 próśb. */
+export function plProsba(count: number): string {
+  const n = Math.abs(Math.trunc(count));
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (n === 1) return "prośba";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "prośby";
+  return "próśb";
+}
+
+/** Odmiana „wiersz” — np. 1 wiersz, 2 wiersze, 5 wierszy. */
+export function plWiersz(count: number): string {
+  const n = Math.abs(Math.trunc(count));
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (n === 1) return "wiersz";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "wiersze";
+  return "wierszy";
+}
+
 /** Odmiana „zaznaczona pozycja” w dopełniaczu — np. dla 2 zaznaczonych pozycji. */
 export function plZaznaczonaPozycja(count: number): string {
   const n = Math.abs(Math.trunc(count));

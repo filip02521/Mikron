@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import {
   parseTeethManufacturer,
@@ -46,7 +47,7 @@ function mapRow(row: Record<string, unknown>): TeethProductRow {
   };
 }
 
-export async function fetchTeethProducts(): Promise<TeethProductRow[]> {
+export const fetchTeethProducts = cache(async function fetchTeethProducts(): Promise<TeethProductRow[]> {
   if (!hasSupabaseConfig()) return [];
 
   const supabase = createAdminClient();
@@ -69,7 +70,7 @@ export async function fetchTeethProducts(): Promise<TeethProductRow[]> {
     throw new Error(error.message);
   }
   return (data ?? []).map((row) => mapRow(row as Record<string, unknown>));
-}
+});
 
 export async function fetchTeethProductTwIds(): Promise<number[]> {
   const rows = await fetchTeethProducts();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { formatPlDate } from "@/lib/display-labels";
 import type { DayOfWeek, TeethSupplierSchedule } from "@/types/database";
 import { DAY_OF_WEEK_LABELS } from "@/lib/data/teeth-schedule";
@@ -43,6 +43,9 @@ export function TeethSupplierScheduleFields({
   const [shiftDate, setShiftDate] = useState("");
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
 
+  const onToastRef = useRef(onToast);
+  useEffect(() => { onToastRef.current = onToast; });
+
   const reload = useCallback(async () => {
     try {
       const row = await actionFetchTeethScheduleForSupplier(supplierId);
@@ -53,43 +56,48 @@ export function TeethSupplierScheduleFields({
         setShiftDate(row.shift_date ?? "");
       }
     } catch (e) {
-      onToast(toastFromError(e instanceof Error ? e.message : undefined, TEETH_SCHEDULE_TOAST.loadFailed.text));
+      onToastRef.current(toastFromError(e instanceof Error ? e.message : undefined, TEETH_SCHEDULE_TOAST.loadFailed.text));
       setSchedule(null);
     }
-  }, [supplierId, onToast]);
+  }, [supplierId]);
 
   useEffect(() => {
+    let cancelled = false;
     queueMicrotask(() => {
-      void reload();
+      void (async () => {
+        if (cancelled) return;
+        await reload();
+      })();
     });
+    return () => { cancelled = true; };
   }, [reload]);
 
   const handleUpsert = useCallback(async () => {
     setPending(true);
     try {
       await actionUpsertTeethSchedule(supplierId, orderDay, intervalWeeks);
-      onToast(TEETH_SCHEDULE_TOAST.saved);
+      onToastRef.current(TEETH_SCHEDULE_TOAST.saved);
       await reload();
     } catch (e) {
-      onToast(toastFromError(e instanceof Error ? e.message : undefined, TEETH_SCHEDULE_TOAST.saveFailed.text));
+      onToastRef.current(toastFromError(e instanceof Error ? e.message : undefined, TEETH_SCHEDULE_TOAST.saveFailed.text));
     } finally {
       setPending(false);
     }
-  }, [supplierId, orderDay, intervalWeeks, reload, onToast]);
+  }, [supplierId, orderDay, intervalWeeks, reload]);
 
   const handleRemove = useCallback(async () => {
     setConfirmRemoveOpen(false);
     setPending(true);
     try {
       await actionRemoveTeethSchedule(supplierId);
-      onToast(TEETH_SCHEDULE_TOAST.disabled);
+      onToastRef.current(TEETH_SCHEDULE_TOAST.disabled);
       await reload();
     } catch (e) {
-      onToast(toastFromError(e instanceof Error ? e.message : undefined, TEETH_SCHEDULE_TOAST.removeFailed.text));
+      onToastRef.current(toastFromError(e instanceof Error ? e.message : undefined, TEETH_SCHEDULE_TOAST.removeFailed.text));
     } finally {
       setPending(false);
     }
-  }, [supplierId, reload, onToast]);
+  }, [supplierId, reload]);
 
   const handleShift = useCallback(
     async (clear: boolean) => {
@@ -97,7 +105,7 @@ export function TeethSupplierScheduleFields({
       setPending(true);
       try {
         await actionShiftTeethSchedule(supplierId, clear ? null : shiftDate || null);
-        onToast(
+        onToastRef.current(
           clear
             ? TEETH_SCHEDULE_TOAST.shiftRestored
             : shiftDate
@@ -106,12 +114,12 @@ export function TeethSupplierScheduleFields({
         );
         await reload();
       } catch (e) {
-        onToast(toastFromError(e instanceof Error ? e.message : undefined, TEETH_SCHEDULE_TOAST.shiftFailed.text));
+        onToastRef.current(toastFromError(e instanceof Error ? e.message : undefined, TEETH_SCHEDULE_TOAST.shiftFailed.text));
       } finally {
         setPending(false);
       }
     },
-    [supplierId, shiftDate, reload, onToast]
+    [supplierId, shiftDate, reload]
   );
 
   if (schedule === undefined) {

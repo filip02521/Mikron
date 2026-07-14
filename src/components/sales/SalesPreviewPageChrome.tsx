@@ -3,6 +3,7 @@ import {
   SalesPageAlerts,
   type SalesTeamPreview,
 } from "@/components/sales/SalesPageAlerts";
+import { DelegateModeBackground } from "@/components/moje/DelegatePreviewContext";
 
 /** Wspólny układ stron podglądu handlowca (?dla=) — bez drugiego salesPageShellClass. */
 export function SalesPreviewPageChrome({
@@ -20,14 +21,16 @@ export function SalesPreviewPageChrome({
   }
 
   return (
-    <div className="space-y-4">
-      <SalesPageAlerts
-        teamPreview={teamPreview}
-        linkError={linkError}
-        linkErrorClassName="mb-0"
-        linkErrorWarningOnIgnored={false}
-      />
-      {children}
-    </div>
+    <DelegateModeBackground active={Boolean(teamPreview)} label={teamPreview?.salesPersonName ?? null}>
+      <div className="space-y-4">
+        <SalesPageAlerts
+          teamPreview={teamPreview}
+          linkError={linkError}
+          linkErrorClassName="mb-0"
+          linkErrorWarningOnIgnored={false}
+        />
+        {children}
+      </div>
+    </DelegateModeBackground>
   );
 }

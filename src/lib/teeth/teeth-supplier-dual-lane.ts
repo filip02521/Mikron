@@ -18,11 +18,6 @@ export function teethSupplierCardsHref(): string {
   return "/zakupy/dostawcy?tor=zeby";
 }
 
-/** @deprecated Użyj {@link teethSupplierCardsHref} */
-export function teethPanelHarmonogramHref(): string {
-  return teethSupplierCardsHref();
-}
-
 export function teethPanelKolejkaHref(supplierId?: string | null): string {
   if (!supplierId) return "/zeby/kolejka";
   return `/zeby/kolejka?dostawca=${encodeURIComponent(supplierId)}`;

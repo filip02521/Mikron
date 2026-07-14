@@ -14,6 +14,7 @@ import { createPortal } from "react-dom";
 import {
   actionSetStaffVacationPeriod,
   actionRemoveStaffVacationPeriod,
+  actionUpdateStaffVacationPeriod,
 } from "@/app/actions/staff-vacation-periods";
 import type { StaffVacationRow, StaffVacationCategory } from "@/lib/data/staff-vacation-periods";
 import {
@@ -33,6 +34,7 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconTrash2,
+  IconPencil,
 } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { salesTypography, panelDropdownShellClass } from "@/lib/ui/ontime-theme";
@@ -221,6 +223,13 @@ export function StaffVacationCalendar({
     periodId: string;
     userId: string;
   } | null>(null);
+  const [editingPeriod, setEditingPeriod] = useState(false);
+  const [editForm, setEditForm] = useState<{
+    startDate: string;
+    endDate: string;
+    category: StaffVacationCategory;
+    note: string;
+  }>({ startDate: "", endDate: "", category: "urlop", note: "" });
 
   const [vacationFormOpen, setVacationFormOpen] = useState(false);
   const [vacationForm, setVacationForm] = useState<{
@@ -265,6 +274,7 @@ export function StaffVacationCalendar({
 
   const closePopover = useCallback(() => {
     setSelectedPeriod(null);
+    setEditingPeriod(false);
     setPopoverPos(null);
     anchorRef.current = null;
   }, []);
@@ -282,7 +292,7 @@ export function StaffVacationCalendar({
       window.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("resize", onResize);
     };
-  }, [selectedPeriod, updatePopoverPos]);
+  }, [selectedPeriod, editingPeriod, updatePopoverPos]);
 
   useEffect(() => {
     if (!selectedPeriod) return;
@@ -370,6 +380,56 @@ export function StaffVacationCalendar({
     });
   };
 
+  const startEdit = () => {
+    if (!selectedPeriodData) return;
+    const { period } = selectedPeriodData;
+    setEditForm({
+      startDate: period.startDate,
+      endDate: period.endDate,
+      category: period.category,
+      note: period.note ?? "",
+    });
+    setEditingPeriod(true);
+  };
+
+  const cancelEdit = () => {
+    setEditingPeriod(false);
+    setEditForm({ startDate: "", endDate: "", category: "urlop", note: "" });
+  };
+
+  const saveEdit = () => {
+    if (!selectedPeriodData) return;
+    if (!editForm.startDate || !editForm.endDate) {
+      setToast(VACATION_TOAST.missingDates);
+      return;
+    }
+    if (editForm.startDate > editForm.endDate) {
+      setToast(VACATION_TOAST.invalidDateRange);
+      return;
+    }
+    const periodId = selectedPeriodData.period.id;
+    start(async () => {
+      const r = await actionUpdateStaffVacationPeriod({
+        id: periodId,
+        startDate: editForm.startDate,
+        endDate: editForm.endDate,
+        category: editForm.category,
+        note: editForm.note || null,
+      });
+      if ("error" in r) {
+        setToast(toastFromError(r.error));
+        return;
+      }
+      setToast(VACATION_TOAST.updatedPeriod);
+      cancelEdit();
+      const [vy, vm] = editForm.startDate.split("-").map(Number);
+      setCurrentMonth(vm - 1);
+      setCurrentYear(vy);
+      closePopover();
+      router.refresh();
+    });
+  };
+
   const onBarClick = (
     e: React.MouseEvent<HTMLButtonElement>,
     periodId: string,
@@ -416,54 +476,110 @@ export function StaffVacationCalendar({
                 ) : null}
               </div>
 
-              <div className="rounded-lg bg-slate-50/70 p-2.5 space-y-1.5">
-                <div className="flex items-center gap-1.5">
-                  <IconSun size={13} className="shrink-0 text-slate-400" />
-                  <span className="text-xs font-medium text-slate-700">
-                    {formatRangeLabel(period.startDate, period.endDate)}
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  {vacationDuration(period.startDate, period.endDate) === 1
-                    ? "1 dzień"
-                    : `${vacationDuration(period.startDate, period.endDate)} dni`
-                  }
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-1.5">
-                {statusBadge(period.startDate, period.endDate, todayDateKey)}
-                <Badge variant="default" className="text-[10px]">
-                  {staffVacationCategoryLabel(period.category)}
-                </Badge>
-              </div>
-
-              {period.note ? (
-                <div className="rounded-md border border-slate-100 bg-white px-2.5 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Notatka</p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{period.note}</p>
-                </div>
-              ) : null}
-
-              {isOwn || adminMode ? (
+              {editingPeriod ? (
                 <>
-                  <div className="border-t border-slate-100" />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-center gap-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50/60"
-                    onClick={() => {
-                      setDeleteTarget({
-                        id: period.id,
-                        label: `${staffVacationCategoryLabel(period.category)} • ${formatRangeLabel(period.startDate, period.endDate)}`,
-                      });
-                    }}
-                  >
-                    <IconTrash2 size={14} className="shrink-0" />
-                    Usuń ten urlop
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Od">
+                      <Input
+                        type="date"
+                        value={editForm.startDate}
+                        onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="Do">
+                      <Input
+                        type="date"
+                        value={editForm.endDate}
+                        onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
+                      />
+                    </Field>
+                  </div>
+                  <Field label="Rodzaj">
+                    <Select
+                      value={editForm.category}
+                      onChange={(e) => setEditForm({ ...editForm, category: e.target.value as StaffVacationCategory })}
+                    >
+                      {STAFF_VACATION_CATEGORIES.map((c) => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="Notatka">
+                    <Input
+                      type="text"
+                      value={editForm.note}
+                      maxLength={500}
+                      onChange={(e) => setEditForm({ ...editForm, note: e.target.value })}
+                    />
+                  </Field>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" size="sm" onClick={cancelEdit}>Anuluj</Button>
+                    <Button size="sm" onClick={saveEdit} disabled={pending}>Zapisz zmiany</Button>
+                  </div>
                 </>
-              ) : null}
+              ) : (
+                <>
+                  <div className="rounded-lg bg-slate-50/70 p-2.5 space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <IconSun size={13} className="shrink-0 text-slate-400" />
+                      <span className="text-xs font-medium text-slate-700">
+                        {formatRangeLabel(period.startDate, period.endDate)}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      {vacationDuration(period.startDate, period.endDate) === 1
+                        ? "1 dzień"
+                        : `${vacationDuration(period.startDate, period.endDate)} dni`
+                      }
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {statusBadge(period.startDate, period.endDate, todayDateKey)}
+                    <Badge variant="default" className="text-[10px]">
+                      {staffVacationCategoryLabel(period.category)}
+                    </Badge>
+                  </div>
+
+                  {period.note ? (
+                    <div className="rounded-md border border-slate-100 bg-white px-2.5 py-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Notatka</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{period.note}</p>
+                    </div>
+                  ) : null}
+
+                  {isOwn || adminMode ? (
+                    <>
+                      <div className="border-t border-slate-100" />
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1 justify-center gap-1.5 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50/60"
+                          onClick={startEdit}
+                        >
+                          <IconPencil size={14} className="shrink-0" />
+                          Edytuj
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="flex-1 justify-center gap-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50/60"
+                          onClick={() => {
+                            setDeleteTarget({
+                              id: period.id,
+                              label: `${staffVacationCategoryLabel(period.category)} • ${formatRangeLabel(period.startDate, period.endDate)}`,
+                            });
+                          }}
+                        >
+                          <IconTrash2 size={14} className="shrink-0" />
+                          Usuń
+                        </Button>
+                      </div>
+                    </>
+                  ) : null}
+                </>
+              )}
             </div>
           );
         })()}

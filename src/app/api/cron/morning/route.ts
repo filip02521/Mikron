@@ -84,6 +84,8 @@ export async function GET(request: NextRequest) {
         subiektZdIndexDeleted: result.historyCleanup.subiektZdIndexDeleted,
         authRateLimitEventsDeleted: result.historyCleanup.authRateLimitEventsDeleted,
         dataRetentionCutoff: result.historyCleanup.cutoffDateOnly,
+        teethOcrScanned: result.teethOcrCleanup.scanned,
+        teethOcrImagesRemoved: result.teethOcrCleanup.imagesRemoved,
         issues,
       },
       error: blockingIssues.length ? blockingIssues.join("; ") : undefined,
@@ -94,6 +96,7 @@ export async function GET(request: NextRequest) {
       sync: result.sync,
       deliveries: result.deliveries,
       historyCleanup: result.historyCleanup,
+      teethOcrCleanup: result.teethOcrCleanup,
       issues,
     });
   } catch (e) {

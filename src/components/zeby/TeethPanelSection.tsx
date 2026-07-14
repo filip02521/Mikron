@@ -76,11 +76,13 @@ export function TeethPanelEmpty({
   description,
   icon,
   tone = "emerald",
+  action,
 }: {
   title: string;
   description?: string;
   icon: ReactNode;
   tone?: "emerald" | "sky" | "amber";
+  action?: ReactNode;
 }) {
   const iconShellClass =
     tone === "sky"
@@ -104,6 +106,7 @@ export function TeethPanelEmpty({
         {description ? (
           <p className={cn(panelTypography.caption, "mx-auto mt-1.5 max-w-md")}>{description}</p>
         ) : null}
+        {action ? <div className="mt-4">{action}</div> : null}
       </div>
     </div>
   );

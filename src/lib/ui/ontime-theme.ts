@@ -8,7 +8,7 @@ import { panelActionSegmentClass } from "@/lib/ui/surfaces";
 import type { NavTone } from "@/lib/nav";
 
 /** Tło całej aplikacji — kolumna flex, żeby `<main>` miał realną wysokość scrolla. */
-export const appShellClass = "flex h-dvh flex-col overflow-hidden bg-transparent";
+export const appShellClass = "relative z-0 flex h-dvh flex-col overflow-hidden bg-transparent";
 
 /** Obszar treści — jedyny pionowy scroll w AppShell (flex-1 + min-h-0). */
 export const appMainClass =
@@ -442,7 +442,7 @@ export const controlFocusRingClass =
   "focus:border-indigo-500 focus:ring-2 focus:ring-sky-500/15";
 
 export const checkboxBrandClass =
-  "rounded border-slate-300 text-indigo-600 focus:ring-sky-500/15";
+  "rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-sky-500/15 focus-visible:ring-2 focus-visible:ring-sky-500/30";
 
 /** Kafelki ikon sekcji */
 export const sectionIconTileBrandClass = "bg-indigo-100 text-indigo-800";

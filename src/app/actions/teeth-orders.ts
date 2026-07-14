@@ -6,7 +6,6 @@ import { revalidatePath } from "next/cache";
 import { requireTeethPanel } from "@/lib/auth";
 import {
   fetchTeethQueue,
-  fetchTeethHistory,
   fetchTeethHistoryGroups,
   fetchTeethHistoryPage,
   markTeethOrdered,
@@ -17,6 +16,7 @@ import {
   fetchTeethVerificationQueue,
   countTeethVerificationQueue,
   approveTeethOcr,
+  isScheduledItem,
   type TeethHistoryFetchOptions,
   type TeethQueueGroup,
   type TeethQueueItem,
@@ -38,6 +38,7 @@ import {
 } from "@/lib/data/teeth-schedule";
 import type { DayOfWeek, TeethSupplierSchedule, TeethSupplierScheduleWithSupplier } from "@/types/database";
 import type { SessionUser } from "@/lib/auth";
+import { assertMaxBatchSize, MAX_BATCH_ORDER_LINES } from "@/lib/security/text-limits";
 
 function teethHistoryActor(user: SessionUser) {
   return { id: user.id, email: user.email };
@@ -56,13 +57,6 @@ export async function actionFetchTeethQueue(): Promise<TeethQueueResult> {
   await requireTeethPanel("read");
   const groups = await fetchTeethQueue();
   return { groups };
-}
-
-export async function actionFetchTeethHistory(
-  options?: TeethHistoryFetchOptions
-): Promise<TeethQueueItem[]> {
-  await requireTeethPanel("read");
-  return fetchTeethHistory(options);
 }
 
 export async function actionFetchTeethHistoryGroups(
@@ -97,6 +91,7 @@ export async function actionMarkTeethOrdered(
   orderIds: string[]
 ): Promise<{ success: boolean; updated: number }> {
   const user = await requireTeethPanel("mutate");
+  assertMaxBatchSize(orderIds.length, MAX_BATCH_ORDER_LINES, "pozycji do zamówienia");
   const result = await markTeethOrdered(orderIds, user.id, teethHistoryActor(user));
   revalidatePath("/zeby");
   revalidatePath("/podsumowanie");
@@ -109,6 +104,7 @@ export async function actionMarkTeethPositionsOrdered(
   selections: TeethPositionSelection[]
 ): Promise<{ success: boolean; updated: number; ordersCompleted: number }> {
   const user = await requireTeethPanel("mutate");
+  assertMaxBatchSize(selections.length, MAX_BATCH_ORDER_LINES, "pozycji do zamówienia");
   const result = await markTeethPositionsOrdered(selections, user.id, teethHistoryActor(user));
   revalidatePath("/zeby");
   revalidatePath("/podsumowanie");
@@ -159,7 +155,9 @@ export async function actionUpsertTeethSchedule(
   intervalWeeks: number
 ): Promise<{ success: boolean }> {
   await requireTeethPanel("mutate");
-  await upsertTeethSchedule(supplierId, orderDayOfWeek, intervalWeeks);
+  const id = supplierId?.trim();
+  if (!id) throw new Error("Brak identyfikatora dostawcy");
+  await upsertTeethSchedule(id, orderDayOfWeek, intervalWeeks);
   revalidateTeethSupplierPaths();
   return { success: true };
 }
@@ -168,7 +166,9 @@ export async function actionRemoveTeethSchedule(
   supplierId: string
 ): Promise<{ success: boolean }> {
   await requireTeethPanel("mutate");
-  await removeTeethSchedule(supplierId);
+  const id = supplierId?.trim();
+  if (!id) throw new Error("Brak identyfikatora dostawcy");
+  await removeTeethSchedule(id);
   revalidateTeethSupplierPaths();
   return { success: true };
 }
@@ -178,8 +178,15 @@ export async function actionShiftTeethSchedule(
   manualDate: string | null
 ): Promise<{ success: boolean }> {
   const user = await requireTeethPanel("mutate");
-  const date = manualDate ? new Date(manualDate) : null;
-  await shiftTeethSchedule(supplierId, date, teethHistoryActor(user));
+  const id = supplierId?.trim();
+  if (!id) throw new Error("Brak identyfikatora dostawcy");
+  let date: Date | null = null;
+  if (manualDate) {
+    const parsed = new Date(manualDate);
+    if (isNaN(parsed.getTime())) throw new Error("Nieprawidłowy format daty");
+    date = parsed;
+  }
+  await shiftTeethSchedule(id, date, teethHistoryActor(user));
   revalidateTeethSupplierPaths();
   return { success: true };
 }
@@ -188,7 +195,9 @@ export async function actionMarkTeethScheduleOrdered(
   supplierId: string
 ): Promise<{ success: boolean }> {
   await requireTeethPanel("mutate");
-  await markTeethScheduleOrdered(supplierId, new Date());
+  const id = supplierId?.trim();
+  if (!id) throw new Error("Brak identyfikatora dostawcy");
+  await markTeethScheduleOrdered(id, new Date());
   revalidateTeethSupplierPaths();
   return { success: true };
 }
@@ -198,6 +207,9 @@ export async function actionOverrideTeethDeliveryDate(
   deliveryDate: string
 ): Promise<{ success: boolean; updated: number }> {
   const user = await requireTeethPanel("mutate");
+  assertMaxBatchSize(orderIds.length, MAX_BATCH_ORDER_LINES, "pozycji do aktualizacji");
+  const parsed = new Date(deliveryDate);
+  if (isNaN(parsed.getTime())) throw new Error("Nieprawidłowy format daty dostawy");
   const result = await overrideTeethDeliveryDate(
     orderIds,
     deliveryDate,
@@ -245,7 +257,7 @@ export async function actionGetOcrImageUrl(
   imagePath: string,
 ): Promise<{ url: string | null }> {
   await requireTeethPanel("read");
-  if (!imagePath || !imagePath.startsWith("teeth-ocr/")) return { url: null };
+  if (!imagePath || !imagePath.startsWith("teeth-ocr/") || imagePath.includes("..")) return { url: null };
   try {
     const { createAdminClient, hasSupabaseConfig } = await import("@/lib/supabase/admin");
     if (!hasSupabaseConfig()) return { url: null };
@@ -341,6 +353,7 @@ export async function actionAcknowledgeTeethCancellation(
   await requireTeethPanel("mutate");
   const ids = [...new Set(orderIds.filter(Boolean))];
   if (!ids.length) return { success: true, count: 0 };
+  assertMaxBatchSize(ids.length, MAX_BATCH_ORDER_LINES, "pozycji do rozliczenia");
 
   const { createAdminClient, hasSupabaseConfig } = await import("@/lib/supabase/admin");
   if (!hasSupabaseConfig()) {
@@ -439,4 +452,51 @@ export async function actionAddTeethSpecGroup(
   revalidatePath("/zeby/weryfikacja");
   revalidatePath("/zeby");
   return { success: true };
+}
+
+export async function actionExportTeethSupplierCsv(
+  supplierId: string,
+  format: "batch" | "detailed",
+): Promise<{ success: boolean; csv?: string; filename?: string; error?: string }> {
+  await requireTeethPanel("read");
+
+  const groups = await fetchTeethQueue();
+  const group = groups.find((g) => g.supplierId === supplierId);
+  if (!group) return { success: false, error: "Nie znaleziono dostawcy" };
+
+  const { buildTeethSupplierBatchSummary } = await import("@/lib/teeth/teeth-panel-aggregate");
+  const { teethBatchSummaryToCsv, teethOrderSpecsToCsv } = await import("@/lib/teeth/teeth-csv-export");
+  const { fetchTeethProductInfo } = await import("@/lib/data/teeth-products");
+  const { teethPanelReadinessContextFromMaps } = await import("@/lib/teeth/teeth-panel-order-readiness");
+
+  const products = await fetchTeethProductInfo().catch(() => []);
+  const ctx = teethPanelReadinessContextFromMaps({
+    twIds: new Set(products.map((p) => p.twId)),
+    productLineByTwId: new Map(products.map((p) => [p.twId, p.productLine])),
+    manufacturerByTwId: new Map(products.map((p) => [p.twId, p.manufacturer])),
+    kindByTwId: new Map(products.map((p) => [p.twId, p.kind])),
+  });
+
+  const orders = group.items
+    .filter((item): item is TeethQueueItem => !isScheduledItem(item))
+    .map((item) => ({
+      id: item.id,
+      products: item.products,
+      symbol: item.symbol,
+      quantity: item.quantity,
+      sales_person_name: item.sales_person_name,
+      teeth_details: item.teeth_details,
+      subiekt_tw_id: item.subiekt_tw_id,
+    }));
+
+  const summary = buildTeethSupplierBatchSummary(orders, ctx);
+  const csv = format === "batch"
+    ? teethBatchSummaryToCsv(summary)
+    : teethOrderSpecsToCsv(summary);
+
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const safeName = group.supplierName.replace(/[^a-zA-Z0-9]/g, "_");
+  const filename = `zeby_${safeName}_${dateStr}.csv`;
+
+  return { success: true, csv, filename };
 }

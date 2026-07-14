@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import { addWeeks } from "date-fns";
@@ -167,7 +168,7 @@ export async function fetchTeethSupplierLaneIndex(): Promise<
 }
 
 /** Pobierz wszystkie harmonogramy zębów z nazwami dostawców. */
-export async function fetchTeethSchedules(): Promise<TeethSupplierScheduleWithSupplier[]> {
+export const fetchTeethSchedules = cache(async function fetchTeethSchedules(): Promise<TeethSupplierScheduleWithSupplier[]> {
   if (!hasSupabaseConfig()) return [];
 
   const supabase = createAdminClient();
@@ -178,7 +179,7 @@ export async function fetchTeethSchedules(): Promise<TeethSupplierScheduleWithSu
 
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => mapScheduleWithSupplierRow(row as Record<string, unknown>));
-}
+});
 
 /** Pobierz harmonogram zębów dla konkretnego dostawcy. */
 export async function fetchTeethScheduleForSupplier(

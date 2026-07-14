@@ -26,7 +26,6 @@ import {
 import {
   allTeethGroupsComplete,
   createTeethGroupDraft,
-  isTeethGroupComplete,
   teethGroupsFromDetails,
   totalTeethCountFromGroups,
   type TeethCatalogRef,
@@ -61,26 +60,15 @@ function draftFromGroup(group: TeethGroupDraft): DraftSpec {
   };
 }
 
-function pickGroupForInitialEdit(
-  groups: TeethGroupDraft[],
-  catalog: TeethCatalogRef,
-): TeethGroupDraft | null {
-  if (groups.length === 0) return null;
-  return groups.find((group) => !isTeethGroupComplete(group, catalog)) ?? groups[0];
-}
-
 function createSectionState(
   initialDetails: TeethLineDetail[] | undefined,
   lockedKind: TeethKind,
-  productLine: TeethProductLine,
 ) {
-  const catalog: TeethCatalogRef = { productLine };
   const groups = teethGroupsFromDetails(initialDetails);
-  const editTarget = pickGroupForInitialEdit(groups, catalog);
   return {
     groups,
-    draft: editTarget ? draftFromGroup(editTarget) : emptyDraft(lockedKind),
-    editingId: editTarget?.id ?? null,
+    draft: emptyDraft(lockedKind),
+    editingId: null,
   };
 }
 
@@ -122,13 +110,13 @@ export const TeethOrderBuilderSection = forwardRef<
 ) {
   const catalog = useMemo<TeethCatalogRef>(() => ({ productLine }), [productLine]);
   const [groups, setGroups] = useState<TeethGroupDraft[]>(
-    () => createSectionState(initialDetails, lockedKind, productLine).groups,
+    () => createSectionState(initialDetails, lockedKind).groups,
   );
   const [draft, setDraft] = useState<DraftSpec>(
-    () => createSectionState(initialDetails, lockedKind, productLine).draft,
+    () => createSectionState(initialDetails, lockedKind).draft,
   );
   const [editingId, setEditingId] = useState<string | null>(
-    () => createSectionState(initialDetails, lockedKind, productLine).editingId,
+    () => createSectionState(initialDetails, lockedKind).editingId,
   );
 
   const totalCount = totalTeethCountFromGroups(groups);
@@ -171,8 +159,7 @@ export const TeethOrderBuilderSection = forwardRef<
     if (editingId) {
       const nextGroup = createTeethGroupDraft({ ...fullDraft, id: editingId });
       setGroups((prev) => prev.map((g) => (g.id === editingId ? nextGroup : g)));
-      setEditingId(nextGroup.id);
-      setDraft(draftFromGroup(nextGroup));
+      resetDraft();
       return;
     }
 
@@ -187,6 +174,8 @@ export const TeethOrderBuilderSection = forwardRef<
   };
 
   const handleRemove = (id: string) => {
+    const group = groups.find((g) => g.id === id);
+    if (group && !confirm(`Usunąć pozycję ${group.color || "?"} ${group.mould ?? ""} (${group.count} szt.)?`)) return;
     setGroups((prev) => prev.filter((g) => g.id !== id));
     if (editingId === id) resetDraft();
   };
@@ -219,6 +208,16 @@ export const TeethOrderBuilderSection = forwardRef<
   const formBlock = (
     <TeethBuilderFormShell
       title={editingId ? "Edytuj pozycję" : "Nowa pozycja"}
+      mode={editingId ? "edit" : "new"}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && !e.shiftKey && draftComplete) {
+          e.preventDefault();
+          handleAddOrUpdate();
+        } else if (e.key === "Escape" && editingId) {
+          e.preventDefault();
+          resetDraft();
+        }
+      }}
       headerAction={
         editingId ? (
           <Button type="button" variant="ghost" size="sm" onClick={resetDraft} disabled={disabled}>
@@ -235,6 +234,7 @@ export const TeethOrderBuilderSection = forwardRef<
           jawModeBoth={draft.jawMode === "both"}
           onCountChange={(count) => setDraft((p) => ({ ...p, count }))}
           onAddOrUpdate={handleAddOrUpdate}
+          onCancelEdit={resetDraft}
         />
       }
     >
@@ -271,6 +271,8 @@ export const TeethOrderBuilderSection = forwardRef<
         dense={dense}
         onEdit={handleEdit}
         onRemove={handleRemove}
+        onAddNew={editingId ? resetDraft : undefined}
+        addNewLabel={editingId ? "Dodaj nową pozycję" : "+ Dodaj kolejną pozycję"}
       />
     ) : (
       <TeethBuilderEmptyList

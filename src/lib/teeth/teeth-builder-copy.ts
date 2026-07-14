@@ -82,6 +82,7 @@ export type TeethBuilderStep = {
   number: number;
   label: string;
   done: boolean;
+  stepKey?: string;
 };
 
 export function teethBuilderJawStepDone(
@@ -110,21 +111,22 @@ export function teethBuilderSteps(input: {
   let n = 1;
 
   if (input.includeKindStep) {
-    steps.push({ number: n++, label: "Typ", done: input.kindSelected ?? !!input.kind });
+    steps.push({ number: n++, label: "Typ", done: input.kindSelected ?? !!input.kind, stepKey: "kind" });
   }
 
-  steps.push({ number: n++, label: "Kolor", done: !!input.color.trim() });
-  steps.push({ number: n++, label: "Kształt · fason", done: !!input.mould?.trim() });
+  steps.push({ number: n++, label: "Kolor", done: !!input.color.trim(), stepKey: "color" });
+  steps.push({ number: n++, label: "Kształt · fason", done: !!input.mould?.trim(), stepKey: "mould" });
 
   if (input.kind === "posterior") {
     steps.push({
       number: n++,
       label: "Szczęka",
       done: teethBuilderJawStepDone(input.jawMode, input.jaw),
+      stepKey: "jaw",
     });
   }
 
-  steps.push({ number: n, label: "Ilość", done: false });
+  steps.push({ number: n, label: "Ilość", done: false, stepKey: "quantity" });
   return steps;
 }
 

@@ -15,6 +15,7 @@ import { createPortal } from "react-dom";
 import {
   actionSetVacationPeriod,
   actionRemoveVacationPeriod,
+  actionUpdateVacationPeriod,
 } from "@/app/actions/sales-vacation-periods";
 import {
   actionSetVacationDelegation,
@@ -29,7 +30,7 @@ import {
 import type { VacationDelegationRow, DelegateOption } from "@/lib/data/vacation-delegations";
 import { Button } from "@/components/ui/Button";
 import { AddButton } from "@/components/ui/AddButton";
-import { Field, Input } from "@/components/ui/Field";
+import { Field, Input, Select } from "@/components/ui/Field";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge } from "@/components/ui/Badge";
@@ -39,6 +40,8 @@ import {
   IconUsers,
   IconChevronLeft,
   IconChevronRight,
+  IconPencil,
+  IconTrash2,
 } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { salesTypography, panelDropdownShellClass } from "@/lib/ui/ontime-theme";
@@ -265,6 +268,13 @@ export function VacationCalendar({
   } | null>(null);
   const [assigningDelegate, setAssigningDelegate] = useState(false);
   const [selectedDelegateId, setSelectedDelegateId] = useState("");
+  const [editingPeriod, setEditingPeriod] = useState(false);
+  const [editForm, setEditForm] = useState<{
+    startDate: string;
+    endDate: string;
+    category: VacationCategory;
+    note: string;
+  }>({ startDate: "", endDate: "", category: "urlop", note: "" });
 
   const [vacationFormOpen, setVacationFormOpen] = useState(false);
   const [vacationForm, setVacationForm] = useState<{
@@ -323,6 +333,7 @@ export function VacationCalendar({
     setSelectedPeriod(null);
     setAssigningDelegate(false);
     setSelectedDelegateId("");
+    setEditingPeriod(false);
     setPopoverPos(null);
     anchorRef.current = null;
   }, []);
@@ -340,7 +351,7 @@ export function VacationCalendar({
       window.removeEventListener("scroll", onScroll, true);
       window.removeEventListener("resize", onResize);
     };
-  }, [selectedPeriod, assigningDelegate, updatePopoverPos]);
+  }, [selectedPeriod, assigningDelegate, editingPeriod, updatePopoverPos]);
 
   useEffect(() => {
     if (!selectedPeriod) return;
@@ -498,6 +509,56 @@ export function VacationCalendar({
     });
   };
 
+  const startEdit = () => {
+    if (!selectedPeriodData) return;
+    const { period } = selectedPeriodData;
+    setEditForm({
+      startDate: period.startDate,
+      endDate: period.endDate,
+      category: period.category,
+      note: period.note ?? "",
+    });
+    setEditingPeriod(true);
+  };
+
+  const cancelEdit = () => {
+    setEditingPeriod(false);
+    setEditForm({ startDate: "", endDate: "", category: "urlop", note: "" });
+  };
+
+  const saveEdit = () => {
+    if (!selectedPeriodData) return;
+    if (!editForm.startDate || !editForm.endDate) {
+      setToast(VACATION_TOAST.missingDates);
+      return;
+    }
+    if (editForm.startDate > editForm.endDate) {
+      setToast(VACATION_TOAST.invalidDateRange);
+      return;
+    }
+    const periodId = selectedPeriodData.period.id;
+    start(async () => {
+      const r = await actionUpdateVacationPeriod({
+        id: periodId,
+        startDate: editForm.startDate,
+        endDate: editForm.endDate,
+        category: editForm.category,
+        note: editForm.note || null,
+      });
+      if ("error" in r) {
+        setToast(toastFromError(r.error));
+        return;
+      }
+      setToast(VACATION_TOAST.updatedPeriod);
+      cancelEdit();
+      const [vy, vm] = editForm.startDate.split("-").map(Number);
+      setCurrentMonth(vm - 1);
+      setCurrentYear(vy);
+      closePopover();
+      router.refresh();
+    });
+  };
+
   const onBarClick = (
     e: React.MouseEvent<HTMLButtonElement>,
     periodId: string,
@@ -547,150 +608,207 @@ export function VacationCalendar({
                 <span className="text-sm font-semibold text-slate-900">{sp.name}</span>
               </div>
 
-              <div className="rounded-lg bg-slate-50/70 p-2.5 space-y-1.5">
-                <div className="flex items-center gap-1.5">
-                  <IconSun size={13} className="shrink-0 text-slate-400" />
-                  <span className="text-xs font-medium text-slate-700">
-                    {formatRangeLabel(period.startDate, period.endDate)}
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500">
-                  {vacationDuration(period.startDate, period.endDate) === 1
-                    ? "1 dzień"
-                    : `${vacationDuration(period.startDate, period.endDate)} dni`
-                  }
-                </p>
-              </div>
+              {editingPeriod ? (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Od">
+                      <Input
+                        type="date"
+                        value={editForm.startDate}
+                        onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })}
+                      />
+                    </Field>
+                    <Field label="Do">
+                      <Input
+                        type="date"
+                        value={editForm.endDate}
+                        onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })}
+                      />
+                    </Field>
+                  </div>
+                  <Field label="Rodzaj">
+                    <Select
+                      value={editForm.category}
+                      onChange={(e) => setEditForm({ ...editForm, category: e.target.value as VacationCategory })}
+                    >
+                      {STAFF_VACATION_CATEGORIES.map((c) => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="Notatka">
+                    <Input
+                      type="text"
+                      value={editForm.note}
+                      maxLength={500}
+                      onChange={(e) => setEditForm({ ...editForm, note: e.target.value })}
+                    />
+                  </Field>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" size="sm" onClick={cancelEdit}>Anuluj</Button>
+                    <Button size="sm" onClick={saveEdit} disabled={pending}>Zapisz zmiany</Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="rounded-lg bg-slate-50/70 p-2.5 space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <IconSun size={13} className="shrink-0 text-slate-400" />
+                      <span className="text-xs font-medium text-slate-700">
+                        {formatRangeLabel(period.startDate, period.endDate)}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      {vacationDuration(period.startDate, period.endDate) === 1
+                        ? "1 dzień"
+                        : `${vacationDuration(period.startDate, period.endDate)} dni`
+                      }
+                    </p>
+                  </div>
 
-              <div className="flex flex-wrap items-center gap-1.5">
-                {statusBadge(period.startDate, period.endDate, todayDateKey)}
-                <Badge variant="default" className="text-[10px]">
-                  {staffVacationCategoryLabel(period.category)}
-                </Badge>
-              </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {statusBadge(period.startDate, period.endDate, todayDateKey)}
+                    <Badge variant="default" className="text-[10px]">
+                      {staffVacationCategoryLabel(period.category)}
+                    </Badge>
+                  </div>
 
-              {period.note ? (
-                <div className="rounded-md border border-slate-100 bg-white px-2.5 py-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Notatka</p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{period.note}</p>
-                </div>
-              ) : null}
+                  {period.note ? (
+                    <div className="rounded-md border border-slate-100 bg-white px-2.5 py-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Notatka</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{period.note}</p>
+                    </div>
+                  ) : null}
 
-              <div className="border-t border-slate-100" />
+                  <div className="border-t border-slate-100" />
 
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5">
-                  <IconUsers size={14} className="text-indigo-500" />
-                  <span className="text-xs font-medium text-slate-600">Zastępca</span>
-                </div>
-                {delegation && !assigningDelegate ? (
-                  <div className="space-y-1.5">
-                    <p className="font-medium text-sm text-slate-800">{delegateName}</p>
-                    {canEditPeriod(sp.id) ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <IconUsers size={14} className="text-indigo-500" />
+                      <span className="text-xs font-medium text-slate-600">Zastępca</span>
+                    </div>
+                    {delegation && !assigningDelegate ? (
+                      <div className="space-y-1.5">
+                        <p className="font-medium text-sm text-slate-800">{delegateName}</p>
+                        {canEditPeriod(sp.id) ? (
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-indigo-600"
+                              onClick={() => {
+                                setAssigningDelegate(true);
+                                setSelectedDelegateId("");
+                              }}
+                            >
+                              Zmień
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs text-rose-600"
+                              onClick={() =>
+                                setDeleteTarget({
+                                  kind: "delegation",
+                                  id: delegation.id,
+                                  label: `zastępcę z urlopu ${formatRangeLabel(period.startDate, period.endDate)}`,
+                                })
+                              }
+                              disabled={pending}
+                            >
+                              Usuń zastępcę
+                            </Button>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : assigningDelegate ? (
+                      <div className="space-y-2">
+                        <select
+                          className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200/40"
+                          value={selectedDelegateId}
+                          onChange={(e) => setSelectedDelegateId(e.target.value)}
+                        >
+                          <option value="">— wybierz zastępcę —</option>
+                          {delegateOptions
+                            .filter((d) => d.id !== sp.linkedUserId)
+                            .map((d) => (
+                              <option key={d.id} value={d.id}>
+                                {d.name} {d.email ? `(${d.email})` : ""}
+                              </option>
+                            ))}
+                        </select>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="h-7"
+                            onClick={assignDelegate}
+                            disabled={pending}
+                          >
+                            Przypisz
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7"
+                            onClick={() => {
+                              setAssigningDelegate(false);
+                              setSelectedDelegateId("");
+                            }}
+                          >
+                            Anuluj
+                          </Button>
+                        </div>
+                      </div>
+                    ) : canEditPeriod(sp.id) ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs text-indigo-600"
+                        onClick={() => {
+                          setAssigningDelegate(true);
+                          setSelectedDelegateId("");
+                        }}
+                      >
+                        Wyznacz zastępcę
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-slate-400">Brak zastępcy</span>
+                    )}
+                  </div>
+
+                  {canEditPeriod(sp.id) ? (
+                    <>
+                      <div className="border-t border-slate-100" />
                       <div className="flex gap-2">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 px-2 text-xs text-indigo-600"
-                          onClick={() => {
-                            setAssigningDelegate(true);
-                            setSelectedDelegateId("");
-                          }}
+                          className="flex-1 justify-center gap-1.5 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50/60"
+                          onClick={startEdit}
                         >
-                          Zmień
+                          <IconPencil size={14} className="shrink-0" />
+                          Edytuj
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 px-2 text-xs text-rose-600"
-                          onClick={() =>
+                          className="flex-1 justify-center gap-1.5 text-rose-600 hover:text-rose-700 hover:bg-rose-50/60"
+                          onClick={() => {
                             setDeleteTarget({
-                              kind: "delegation",
-                              id: delegation.id,
-                              label: `zastępcę z urlopu ${formatRangeLabel(period.startDate, period.endDate)}`,
-                            })
-                          }
-                          disabled={pending}
+                              kind: "vacation",
+                              id: period.id,
+                              label: `${staffVacationCategoryLabel(period.category)} • ${sp.name} (${formatRangeLabel(period.startDate, period.endDate)})`,
+                            });
+                          }}
                         >
-                          Usuń zastępcę
+                          <IconTrash2 size={14} className="shrink-0" />
+                          Usuń
                         </Button>
                       </div>
-                    ) : null}
-                  </div>
-                ) : assigningDelegate ? (
-                  <div className="space-y-2">
-                    <select
-                      className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-900 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-200/40"
-                      value={selectedDelegateId}
-                      onChange={(e) => setSelectedDelegateId(e.target.value)}
-                    >
-                      <option value="">— wybierz zastępcę —</option>
-                      {delegateOptions
-                        .filter((d) => d.id !== sp.linkedUserId)
-                        .map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {d.name} {d.email ? `(${d.email})` : ""}
-                          </option>
-                        ))}
-                    </select>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        className="h-7"
-                        onClick={assignDelegate}
-                        disabled={pending}
-                      >
-                        Przypisz
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7"
-                        onClick={() => {
-                          setAssigningDelegate(false);
-                          setSelectedDelegateId("");
-                        }}
-                      >
-                        Anuluj
-                      </Button>
-                    </div>
-                  </div>
-                ) : canEditPeriod(sp.id) ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-xs text-indigo-600"
-                    onClick={() => {
-                      setAssigningDelegate(true);
-                      setSelectedDelegateId("");
-                    }}
-                  >
-                    Wyznacz zastępcę
-                  </Button>
-                ) : (
-                  <span className="text-xs text-slate-400">Brak zastępcy</span>
-                )}
-              </div>
-
-              {canEditPeriod(sp.id) ? (
-                <>
-                  <div className="border-t border-slate-100" />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-center text-rose-600 hover:text-rose-700 hover:bg-rose-50/60"
-                    onClick={() => {
-                      setDeleteTarget({
-                        kind: "vacation",
-                        id: period.id,
-                        label: `${staffVacationCategoryLabel(period.category)} • ${sp.name} (${formatRangeLabel(period.startDate, period.endDate)})`,
-                      });
-                    }}
-                  >
-                    Usuń ten urlop
-                  </Button>
+                    </>
+                  ) : null}
                 </>
-              ) : null}
+              )}
             </div>
           );
         })()}

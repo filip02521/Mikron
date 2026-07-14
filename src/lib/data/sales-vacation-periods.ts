@@ -185,3 +185,37 @@ export async function removeVacationPeriod(id: string): Promise<void> {
 
   if (error) throw new Error(error.message);
 }
+
+/** Aktualizuje okres urlopu. */
+export async function updateVacationPeriod(input: {
+  id: string;
+  startDate: string;
+  endDate: string;
+  category?: VacationCategory;
+  note?: string | null;
+}): Promise<VacationPeriodRow> {
+  if (!hasSupabaseConfig()) throw new Error("Brak konfiguracji Supabase.");
+
+  if (input.startDate > input.endDate) {
+    throw new Error("Data rozpoczęcia nie może być późniejsza niż data zakończenia.");
+  }
+
+  const note = input.note?.trim().slice(0, 500) || null;
+  const category = input.category ?? "urlop";
+
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("sales_vacation_periods")
+    .update({
+      start_date: input.startDate,
+      end_date: input.endDate,
+      category,
+      note,
+    })
+    .eq("id", input.id)
+    .select("id, sales_person_id, category, start_date, end_date, note, created_at")
+    .single();
+
+  if (error) throw new Error(error.message);
+  return mapRow(data as unknown as VacationPeriodDbRow);
+}

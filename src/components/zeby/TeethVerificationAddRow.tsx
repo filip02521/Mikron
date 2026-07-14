@@ -87,7 +87,8 @@ export function TeethVerificationAddRow({
         setCount("1");
         onSaved?.();
       }
-    } catch {
+    } catch (e) {
+      console.error("[TeethVerificationAddRow] addTeethSpecGroup failed:", e);
       setError("Nie udało się dodać pozycji");
     } finally {
       setSaving(false);

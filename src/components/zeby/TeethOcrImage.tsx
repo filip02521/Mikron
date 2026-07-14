@@ -124,7 +124,7 @@ export function TeethOcrImage({
         <div className="flex items-center justify-center">
           <Image
             src={state.url}
-            alt="Zdjęcie kartki z zamówieniem zębów"
+            alt="Powiększone zdjęcie kartki z zamówieniem zębów"
             width={800}
             height={600}
             unoptimized

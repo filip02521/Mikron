@@ -15,6 +15,7 @@ import {
   salesPageShellClass,
 } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
+import { DelegateModeBackground } from "@/components/moje/DelegatePreviewContext";
 import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkRequired";
 import { SalesPageAlerts } from "@/components/sales/SalesPageAlerts";
 import { SystemNotice } from "@/components/ui/SystemNotice";
@@ -189,7 +190,7 @@ export default async function MojePage({
     : null;
 
   return (
-    <div className={salesPageShellClass}>
+    <DelegateModeBackground active={isDelegatePreview || isTeamPreview} label={salesPersonName} className={salesPageShellClass}>
       <SalesPageAlerts
         teamPreview={
           isTeamPreview && salesPersonId && salesPersonName
@@ -282,6 +283,6 @@ export default async function MojePage({
         boardAnnouncementsError={boardAnnouncementsError}
         focusAnnouncementId={focusAnnouncementParam?.trim() || null}
       />
-    </div>
+    </DelegateModeBackground>
   );
 }

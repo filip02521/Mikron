@@ -6,12 +6,14 @@ import { panelSubsectionInsetClass, panelTypography } from "@/lib/ui/ontime-them
 import { teethPanelSupplierCardClass } from "@/lib/teeth/teeth-panel-ui";
 import { plPozycja } from "@/lib/ui/polish-plurals";
 import { Button } from "@/components/ui/Button";
+import { Spinner } from "@/components/ui/Spinner";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { TeethPanelEmpty } from "@/components/zeby/TeethPanelSection";
 import { TeethVerificationInlineList } from "@/components/zeby/TeethVerificationInlineList";
 import { TeethPanelSupplierGroupHeader } from "@/components/zeby/TeethPanelSupplierGroupHeader";
 import { TeethOcrImage } from "@/components/zeby/TeethOcrImage";
 import { IconScanLine, IconCircleCheck, IconAlertCircle } from "@/components/icons/StrokeIcons";
+import Link from "next/link";
 import { useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 import {
   teethPanelReadinessContextFromMaps,
@@ -53,7 +55,8 @@ export function TeethPanelWeryfikacjaView({
         `Zatwierdzono ${result.updated} ${plPozycja(result.updated)} — trafią do kolejki.`,
         "success",
       );
-    } catch {
+    } catch (e) {
+      console.error("[TeethPanelWeryfikacjaView] approveTeethOcr failed:", e);
       onApproveDone("Nie udało się zatwierdzić pozycji. Spróbuj ponownie.", "error");
     } finally {
       setLocalPending(false);
@@ -80,6 +83,16 @@ export function TeethPanelWeryfikacjaView({
     g.items.filter((item): item is TeethQueueItem => !isScheduledItem(item)).map((item) => item.id),
   );
 
+  const missingDataCount = groups.flatMap((g) =>
+    g.items
+      .filter((item): item is TeethQueueItem => !isScheduledItem(item))
+      .filter((item) => {
+        const details = item.teeth_details ?? [];
+        if (details.length === 0) return true;
+        return details.some((d) => !d.color || !d.kind);
+      }),
+  ).length;
+
   if (groups.length === 0) {
     return (
       <TeethPanelEmpty
@@ -87,12 +100,30 @@ export function TeethPanelWeryfikacjaView({
         description="Prośby z listą zębów wczytaną ze zdjęcia pojawią się tutaj do weryfikacji przed zamówieniem."
         icon={<IconScanLine size={24} strokeWidth={1.75} />}
         tone="amber"
+        action={
+          <Link
+            href="/zeby/kolejka"
+            className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+          >
+            Przejdź do kolejki
+          </Link>
+        }
       />
     );
   }
 
   return (
     <div className="space-y-3">
+      {missingDataCount > 0 ? (
+        <div className="flex items-center gap-2 rounded-md border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-sm text-amber-800">
+          <IconAlertCircle size={18} className="shrink-0 text-amber-600" />
+          <span>
+            <strong>{missingDataCount}</strong>{" "}
+            {missingDataCount === 1 ? "pozycja ma niekompletne dane" : missingDataCount < 5 ? "pozycje mają niekompletne dane" : "pozycji ma niekompletne dane"}
+            {" — uzupełnij przed zatwierdzeniem"}
+          </span>
+        </div>
+      ) : null}
       <div className="flex items-center justify-between gap-2 px-1">
         <p className={panelTypography.chrome}>
           {allOrderIds.length} {plPozycja(allOrderIds.length)} oczekuje na weryfikację
@@ -102,9 +133,11 @@ export function TeethPanelWeryfikacjaView({
           variant="primary"
           size="sm"
           disabled={pending || localPending}
+          aria-busy={localPending}
+          aria-label={`Zatwierdź wszystkie — ${allOrderIds.length} ${plPozycja(allOrderIds.length)}`}
           onClick={() => requestApprove(allOrderIds, "wszystkie pozycje")}
         >
-          <IconCircleCheck size={16} />
+          {localPending ? <Spinner size="sm" /> : <IconCircleCheck size={16} />}
           Zatwierdź wszystkie
         </Button>
       </div>

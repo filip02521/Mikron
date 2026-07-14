@@ -258,10 +258,6 @@ export function MojeAnnouncementsSection({
     );
   }
 
-  function refresh() {
-    router.refresh();
-  }
-
   function markReadLocally(id: string) {
     setOptimisticReadIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
   }

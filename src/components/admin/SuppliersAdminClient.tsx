@@ -377,7 +377,7 @@ export function SuppliersAdminClient({
             onPatchCycleFields={patchCycleFields}
             carrierOptions={warehouseCarriers}
             showTeethSchedule={teethLane}
-            onTeethScheduleToast={(notice) => setToast(notice)}
+            onTeethScheduleToast={setToast}
             onSubiektLinked={(khId) => {
               setForm((f) => ({ ...f, subiekt_kh_id: khId }));
               if (form.id) {

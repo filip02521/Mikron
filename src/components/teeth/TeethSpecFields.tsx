@@ -134,14 +134,14 @@ export function TeethSpecFields({
   return (
     <div className={cn(tight ? "space-y-2" : "space-y-3")}>
       {hideKindField ? null : lockedKind ? (
-        <div className={sectionGap}>
+        <div className={sectionGap} data-step="kind">
           <FieldLabel>Typ</FieldLabel>
           <span className={cn(panelChoiceChipClass, choicePad, panelChoiceChipSelectedClass)}>
             {TEETH_KIND_LABELS[lockedKind]}
           </span>
         </div>
       ) : (
-        <div className={sectionGap}>
+        <div className={sectionGap} data-step="kind">
           <FieldLabel required={!kind}>Typ</FieldLabel>
           <div className="flex gap-2">
             <ChoiceButton
@@ -162,7 +162,7 @@ export function TeethSpecFields({
         </div>
       )}
 
-      <div className={sectionGap}>
+      <div className={sectionGap} data-step="color">
         <FieldLabel required={!detail.color.trim()}>Kolor</FieldLabel>
         <div className="flex flex-wrap gap-1">
           {colors.map((c) => (
@@ -208,6 +208,7 @@ export function TeethSpecFields({
       </div>
 
       {showMouldChips && kind ? (
+        <div data-step="mould">
         <TeethMouldShapePicker
           key={`${productLine}-${kind}`}
           productLine={productLine}
@@ -219,8 +220,9 @@ export function TeethSpecFields({
           builderMode={builderMode}
           required={mouldRequired}
         />
+        </div>
       ) : kind != null ? (
-        <div className={sectionGap}>
+        <div className={sectionGap} data-step="mould">
           <FieldLabel required={false}>Fason / wielkość</FieldLabel>
           <input
             type="text"
@@ -238,7 +240,7 @@ export function TeethSpecFields({
       ) : null}
 
       {showJaw ? (
-        <div className={sectionGap}>
+        <div className={sectionGap} data-step="jaw">
           <FieldLabel required={!isJawModeSatisfied(kind, jaw, jawMode)}>Szczęka</FieldLabel>
           <div className="flex flex-wrap gap-1.5">
             <ChoiceButton

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { IndividualRequestKind } from "@/types/database";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
@@ -20,6 +20,7 @@ import {
 import {
   focusLineIdAfterTeethSave,
   shouldCollapseProsbaLine,
+  isProsbaLineReady,
 } from "@/lib/orders/prosba-product-line-ui";
 import type { TeethDualKindCommitSummary } from "@/lib/teeth/teeth-dual-kind";
 import { ProsbaProductStockSummary } from "@/components/orders/ProsbaProductStockStatus";
@@ -139,6 +140,20 @@ export function RequestProductLinesEditor({
       : focusedLineId === null
         ? ""
         : (lines[lines.length - 1]?.id ?? "");
+  const prevLineIdsRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!prosba || lines.length <= 1) return;
+    const currentIds = lines.map((l) => l.id).join("|");
+    if (prevLineIdsRef.current === currentIds) return;
+    const prevIds = prevLineIdsRef.current;
+    prevLineIdsRef.current = currentIds;
+    if (prevIds === null) return;
+    const allReady = lines.every((l) => isProsbaLineReady(l, requestKind));
+    const allNew = !lines.some((l) => prevIds.includes(l.id));
+    if (allNew && allReady) {
+      setFocusedLineId(null);
+    }
+  }, [lines, prosba, requestKind]);
   const [subiektOfflineFeedback, setSubiektOfflineFeedback] =
     useState<SubiektFeedback | null>(null);
   const visibleSubiektOfflineFeedback = prosba ? subiektOfflineFeedback : null;

@@ -8,6 +8,7 @@ import { isAdmin } from "@/lib/auth-roles";
 import {
   createStaffVacationPeriod,
   removeStaffVacationPeriod,
+  updateStaffVacationPeriod,
   type StaffVacationCategory,
 } from "@/lib/data/staff-vacation-periods";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -99,5 +100,61 @@ export async function actionRemoveStaffVacationPeriod(
     return { success: true };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Nie udało się usunąć urlopu." };
+  }
+}
+
+export async function actionUpdateStaffVacationPeriod(input: {
+  id: string;
+  startDate: string;
+  endDate: string;
+  category?: StaffVacationCategory;
+  note?: string | null;
+}): Promise<{ success: true } | { error: string }> {
+  try {
+    const user = await getSessionUser();
+    if (!user) return { error: "Wymagane logowanie." };
+
+    const id = input.id.trim();
+    const startDate = input.startDate.trim();
+    const endDate = input.endDate.trim();
+    const note = input.note?.trim().slice(0, 500) || null;
+    const category: StaffVacationCategory =
+      input.category && VALID_CATEGORIES.includes(input.category) ? input.category : "urlop";
+
+    if (!id) return { error: "Brak identyfikatora urlopu." };
+    if (!startDate || !endDate) return { error: "Podaj datę rozpoczęcia i zakończenia." };
+    if (!isValidIsoDate(startDate) || !isValidIsoDate(endDate)) {
+      return { error: "Nieprawidłowy format daty." };
+    }
+    if (startDate > endDate) {
+      return { error: "Data rozpoczęcia nie może być późniejsza niż data zakończenia." };
+    }
+
+    if (isAdmin(user.role)) {
+      await updateStaffVacationPeriod({ id, startDate, endDate, category, note });
+      revalidateStaffVacationPaths();
+      return { success: true };
+    }
+
+    const supabase = createAdminClient();
+    const { data: period, error: fetchErr } = await supabase
+      .from("staff_vacation_periods")
+      .select("user_id")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (fetchErr || !period) {
+      return { error: "Nie znaleziono urlopu." };
+    }
+
+    if (period.user_id !== user.id) {
+      return { error: "Możesz edytować tylko własne urlopy." };
+    }
+
+    await updateStaffVacationPeriod({ id, startDate, endDate, category, note });
+    revalidateStaffVacationPaths();
+    return { success: true };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Nie udało się zaktualizować urlopu." };
   }
 }

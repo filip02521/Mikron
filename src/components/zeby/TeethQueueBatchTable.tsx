@@ -30,7 +30,7 @@ import {
 import { parseTeethJaw, parseTeethKind } from "@/lib/teeth/teeth-catalog-types";
 import { jawRequiredForKind } from "@/lib/teeth/teeth-mould-shape-groups";
 import { Badge } from "@/components/ui/Badge";
-import { plPozycja } from "@/lib/ui/polish-plurals";
+import { plPozycja, plProsba, plWiersz } from "@/lib/ui/polish-plurals";
 import type { TeethQueueItem } from "@/lib/data/teeth-queue";
 
 const JAW_LABELS = { upper: "Góra", lower: "Dół" } as const;
@@ -260,7 +260,7 @@ export function TeethQueueBatchTable({
           <span className={panelTypography.rowTitle}>Do zamówienia u dostawcy</span>
           <span className={cn(panelTypography.caption, "text-slate-600")}>
             {totalPieces} {plPozycja(totalPieces)} · {orderCount}{" "}
-            {orderCount === 1 ? "prośba" : orderCount < 5 ? "prośby" : "prośb"}
+            {plProsba(orderCount)}
           </span>
           {ordersWithIssues.length > 0 ? (
             <Badge variant="warning" className="text-[10px]">
@@ -270,14 +270,15 @@ export function TeethQueueBatchTable({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[34rem] text-left text-xs">
+          <table className="w-full min-w-[28rem] sm:min-w-[34rem] text-left text-xs">
             <thead>
               <tr className="border-b border-slate-200/80 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
                 <th className="py-1.5 pl-3 pr-1 sm:pl-4 lg:pl-5" />
                 <th className="py-1.5 px-2">Kolor</th>
                 <th className="py-1.5 px-2">Fason</th>
-                <th className="py-1.5 px-2">Szczęka</th>
-                <th className="py-1.5 px-2">Typ</th>
+                <th className="py-1.5 px-2 hidden sm:table-cell">Szczęka</th>
+                <th className="py-1.5 px-2 hidden sm:table-cell">Typ</th>
+                <th className="py-1.5 px-2 sm:hidden">Szczęka / Typ</th>
                 <th className="py-1.5 px-2 text-right tabular-nums">Szt.</th>
                 <th className="py-1.5 pr-3 pl-2 sm:pr-4 lg:pr-5" />
               </tr>
@@ -363,7 +364,7 @@ export function TeethQueueBatchTable({
                               {row.salesPersonName ?? "Bez handlowca"}
                             </span>
                             <span className="text-[10px] text-slate-400">
-                              {salesRowCount} {salesRowCount === 1 ? "wiersz" : salesRowCount < 5 ? "wiersze" : "wierszy"}
+                              {salesRowCount} {plWiersz(salesRowCount)}
                             </span>
                             {salesIssues && (salesIssues.missingList || salesIssues.incomplete || salesIssues.needsHeader || salesIssues.informacja) ? (
                               <div className="flex flex-wrap items-center gap-1">
@@ -431,11 +432,14 @@ export function TeethQueueBatchTable({
                     <td className={cn("py-1.5 px-2 font-medium", allOrdered ? "text-slate-400" : "text-slate-800")}>
                       {noSpec ? "—" : row.mould?.trim() || "—"}
                     </td>
-                    <td className={cn("py-1.5 px-2", allOrdered ? "text-slate-400" : "text-slate-700")}>
+                    <td className={cn("py-1.5 px-2 hidden sm:table-cell", allOrdered ? "text-slate-400" : "text-slate-700")}>
                       {noSpec ? "—" : jawLabel(row.jaw, row.kind)}
                     </td>
-                    <td className={cn("py-1.5 px-2", allOrdered ? "text-slate-400" : "text-slate-700")}>
+                    <td className={cn("py-1.5 px-2 hidden sm:table-cell", allOrdered ? "text-slate-400" : "text-slate-700")}>
                       {noSpec ? "—" : kindLabel(row.kind)}
+                    </td>
+                    <td className={cn("py-1.5 px-2 sm:hidden", allOrdered ? "text-slate-400" : "text-slate-700")}>
+                      {noSpec ? "—" : `${jawLabel(row.jaw, row.kind)} · ${kindLabel(row.kind)}`}
                     </td>
                     <td className={cn("py-1.5 px-2 text-right font-semibold tabular-nums", allOrdered ? "text-slate-400" : "text-slate-800")}>
                       {noSpec ? "—" : row.totalOrdered > 0 ? (

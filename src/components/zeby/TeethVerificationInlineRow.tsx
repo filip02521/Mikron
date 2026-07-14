@@ -190,11 +190,20 @@ export function TeethVerificationInlineRow({
         e.preventDefault();
         const order: EditField[] = ["color", "mould", ...(showJaw ? ["jaw" as const] : []), "count"];
         const currentIdx = order.indexOf(editField);
-        const nextField = order[currentIdx + 1];
-        if (nextField) {
-          void commitEdit().then(() => startEdit(nextField));
+        if (e.shiftKey) {
+          const prevField = order[currentIdx - 1];
+          if (prevField) {
+            void commitEdit().then(() => startEdit(prevField));
+          } else {
+            void commitEdit();
+          }
         } else {
-          void commitEdit();
+          const nextField = order[currentIdx + 1];
+          if (nextField) {
+            void commitEdit().then(() => startEdit(nextField));
+          } else {
+            void commitEdit();
+          }
         }
       }
     },

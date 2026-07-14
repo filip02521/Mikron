@@ -7,6 +7,7 @@ import {
   isValidOcrKind,
   isValidOcrJaw,
   isValidOcrProductLine,
+  buildTeethVisionPromptForLine,
 } from "./teeth-vision-prompt";
 
 describe("teeth-vision-prompt", () => {
@@ -146,6 +147,66 @@ describe("teeth-vision-prompt", () => {
 
     it("false dla błędnej linii", () => {
       expect(isValidOcrProductLine("unknown_line")).toBe(false);
+    });
+  });
+
+  describe("buildTeethVisionPromptForLine", () => {
+    it("zawiera tylko katalog wskazanej linii (wiedent_estetic)", () => {
+      const prompt = buildTeethVisionPromptForLine("wiedent_estetic");
+      expect(prompt).toContain("wiedent_estetic");
+      expect(prompt).toContain("Wiedent Estetic");
+      expect(prompt).not.toContain("Phonares");
+      expect(prompt).not.toContain("Ivostar");
+      expect(prompt).not.toContain("AmberLux");
+    });
+
+    it("nie zawiera katalogów innych linii (ivoclar_phonares_ii)", () => {
+      const prompt = buildTeethVisionPromptForLine("ivoclar_phonares_ii");
+      expect(prompt).toContain("ivoclar_phonares_ii");
+      expect(prompt).not.toContain("Wiedent Classic");
+      expect(prompt).not.toContain("Major Super Lux");
+    });
+
+    it("zawiera per-liniowe wskazówki (skala W dla wiedent_estetic)", () => {
+      const prompt = buildTeethVisionPromptForLine("wiedent_estetic");
+      expect(prompt).toContain("skala W");
+      expect(prompt).toContain("G1");
+      expect(prompt).toContain("N2");
+    });
+
+    it("zawiera wzorce uniwersalne A,B,D,F,G,H,I,J,K,L,M,O", () => {
+      const prompt = buildTeethVisionPromptForLine("wiedent_classic");
+      for (const p of ["**A.", "**B.", "**D.", "**F.", "**G.", "**H.", "**I.", "**J.", "**K.", "**L.", "**M.", "**O."]) {
+        expect(prompt, `should contain ${p}`).toContain(p);
+      }
+    });
+
+    it("dla ivoclar_ivostar zawiera wzorce N i P", () => {
+      const prompt = buildTeethVisionPromptForLine("ivoclar_ivostar");
+      expect(prompt).toContain("**N.");
+      expect(prompt).toContain("**P.");
+    });
+
+    it("dla ivoclar_gnathostar zawiera wzorzec P ale nie N", () => {
+      const prompt = buildTeethVisionPromptForLine("ivoclar_gnathostar");
+      expect(prompt).toContain("**P.");
+      expect(prompt).not.toContain("**N.");
+    });
+
+    it("dla major_super_lux zawiera wzorce C i E", () => {
+      const prompt = buildTeethVisionPromptForLine("major_super_lux");
+      expect(prompt).toContain("**C.");
+      expect(prompt).toContain("**E.");
+    });
+
+    it("zawiera DOKŁADNOŚĆ PRZED SZYBKOŚCIĄ", () => {
+      const prompt = buildTeethVisionPromptForLine("dentex_amberlux");
+      expect(prompt).toContain("DOKŁADNOŚĆ PRZED SZYBKOŚCIĄ");
+    });
+
+    it("zawiera wskazówki specyficzne dla linii", () => {
+      const prompt = buildTeethVisionPromptForLine("ivoclar_phonares_ii");
+      expect(prompt).toContain("Wskazówki specyficzne dla tej linii");
     });
   });
 });

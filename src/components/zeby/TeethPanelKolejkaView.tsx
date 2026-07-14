@@ -16,6 +16,11 @@ import { TeethPanelEmpty } from "@/components/zeby/TeethPanelSection";
 
 import { TeethQueueBatchTable } from "@/components/zeby/TeethQueueBatchTable";
 import { TeethPanelScheduleBanner } from "@/components/zeby/TeethPanelScheduleBanner";
+import { TeethCsvExportButton } from "@/components/zeby/TeethCsvExportButton";
+import { TeethPanelStatsBar } from "@/components/zeby/TeethPanelStatsBar";
+import { detectTeethDuplicates } from "@/lib/teeth/teeth-duplicate-detect";
+import { useMemo } from "react";
+import { IconAlertCircle } from "@/components/icons/StrokeIcons";
 
 import {
 
@@ -109,6 +114,12 @@ export function TeethPanelKolejkaView({
 
 }) {
 
+  const duplicates = useMemo(() => detectTeethDuplicates(groups), [groups]);
+  const today = new Date().toISOString().slice(0, 10);
+  const dueToday = groups.filter(
+    (g) => g.dueSchedule?.computed_next_date && g.dueSchedule.computed_next_date <= today,
+  );
+
   if (!groups.length || groups.every((g) => !g.items.length)) {
 
     return (
@@ -127,11 +138,42 @@ export function TeethPanelKolejkaView({
 
   }
 
-
-
   return (
 
     <>
+
+      <TeethPanelStatsBar groups={groups} readinessCtx={readinessCtx} className="mb-3" />
+
+      {dueToday.length > 0 ? (
+        <div className="mb-3 rounded-md border border-sky-200/80 bg-sky-50/80 px-3 py-2 text-sm text-sky-800">
+          <p className="font-semibold">Do zamówienia dzisiaj</p>
+          <p className="mt-0.5 text-xs text-sky-700">
+            {dueToday.map((g) => g.supplierName).join(", ")}
+          </p>
+        </div>
+      ) : null}
+
+      {duplicates.length > 0 ? (
+          <div className="mb-3 flex items-start gap-2 rounded-md border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-sm text-amber-800">
+            <IconAlertCircle size={18} className="mt-0.5 shrink-0 text-amber-600" />
+            <div>
+              <p className="font-semibold">Możliwe duplikaty ({duplicates.length})</p>
+              <ul className="mt-1 space-y-0.5 text-xs">
+                {duplicates.slice(0, 5).map((d) => (
+                  <li key={`${d.salesPersonName}-${d.color}-${d.mould}-${d.jaw}-${d.kind}`}>
+                    {d.salesPersonName}: {d.color}
+                    {d.mould ? ` ${d.mould}` : ""}
+                    {d.jaw ? ` ${d.jaw === "upper" ? "Góra" : "Dół"}` : ""}
+                    {d.kind ? ` ${d.kind === "anterior" ? "przednie" : "boczne"}` : ""}
+                    {" — "}
+                    {d.orderIds.length}×
+                  </li>
+                ))}
+                {duplicates.length > 5 ? <li>… i {duplicates.length - 5} więcej</li> : null}
+              </ul>
+            </div>
+          </div>
+      ) : null}
 
       {selectedPositionCount > 0 ? (
 
@@ -288,21 +330,27 @@ export function TeethPanelKolejkaView({
 
               actions={
 
-                <TeethPanelSupplierQueueActions
+                <div className="flex items-center gap-2">
 
-                  allSelected={allSelected}
+                  {group.supplierId ? <TeethCsvExportButton supplierId={group.supplierId} /> : null}
 
-                  pending={pending}
+                  <TeethPanelSupplierQueueActions
 
-                  showSelectAll={realItems.length > 0}
+                    allSelected={allSelected}
 
-                  canMark={realItems.length > 0 || scheduleOnly}
+                    pending={pending}
 
-                  onToggleAll={() => onToggleSelectAllInGroup(group)}
+                    showSelectAll={realItems.length > 0}
 
-                  onMark={handleMarkGroup}
+                    canMark={realItems.length > 0 || scheduleOnly}
 
-                />
+                    onToggleAll={() => onToggleSelectAllInGroup(group)}
+
+                    onMark={handleMarkGroup}
+
+                  />
+
+                </div>
 
               }
 

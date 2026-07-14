@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { fetchTeethQueue, fetchTeethVerificationQueue } from "@/lib/data/teeth-queue";
+import { fetchTeethQueue, fetchTeethVerificationQueue, fetchTeethHistoryPage, groupTeethItemsBySupplier } from "@/lib/data/teeth-queue";
 import { TeethPanelClient } from "@/components/zeby/TeethPanelClient";
 import { Alert } from "@/components/ui/Alert";
 import { cn } from "@/lib/cn";
@@ -30,6 +30,16 @@ export async function TeethPanelRoute({ tab }: { tab: Tab }) {
     }
   }
 
+  let initialHistoryGroups: Awaited<ReturnType<typeof groupTeethItemsBySupplier>> | null = null;
+  if (tab === "historia") {
+    try {
+      const page = await fetchTeethHistoryPage({ limit: 50, offset: 0 });
+      initialHistoryGroups = groupTeethItemsBySupplier(page.items);
+    } catch {
+      // Client-side fallback in TeethPanelHistoriaView
+    }
+  }
+
   return (
     <>
       {error ? (
@@ -40,7 +50,7 @@ export async function TeethPanelRoute({ tab }: { tab: Tab }) {
       ) : null}
 
       <Suspense fallback={<PanelDailyRouteLoadingSkeleton />}>
-        <TeethPanelClient initialGroups={groups} activeTab={tab} />
+        <TeethPanelClient initialGroups={groups} activeTab={tab} initialHistoryGroups={initialHistoryGroups} />
       </Suspense>
     </>
   );

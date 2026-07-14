@@ -1,6 +1,6 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
-import { estimateTeethDeliveryEta, resolveTeethDeliveryDate } from "@/lib/data/teeth-delivery-eta";
+import { estimateTeethDeliveryEtaBatch, resolveTeethDeliveryDate } from "@/lib/data/teeth-delivery-eta";
 import { markTeethScheduleOrdered, fetchTeethSchedules } from "@/lib/data/teeth-schedule";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import { formatDateString } from "@/lib/orders/dates";
@@ -163,22 +163,21 @@ async function enrichTeethGroupsWithDeliveryEta(
   ];
 
   const etaMap = new Map<string, TeethSupplierDeliveryEta>();
-  await Promise.all(
-    supplierIds.map(async (supplierId) => {
-      try {
-        const estimate = await estimateTeethDeliveryEta(supplierId, placementAt);
-        if (!estimate) return;
+  if (supplierIds.length > 0) {
+    try {
+      const batchResult = await estimateTeethDeliveryEtaBatch(supplierIds, placementAt);
+      for (const [supplierId, estimate] of batchResult) {
         etaMap.set(supplierId, {
           expectedDate: formatDateString(estimate.expectedDate),
           avgBusinessDays: estimate.avgBusinessDays,
           sampleCount: estimate.sampleCount,
           lowConfidence: estimate.lowConfidence ?? false,
         });
-      } catch {
-        // ETA opcjonalne
       }
-    })
-  );
+    } catch {
+      // ETA opcjonalne
+    }
+  }
 
   return groups.map((group) => ({
     ...group,
@@ -270,32 +269,11 @@ export async function fetchTeethHistoryGroups(
 export async function fetchTeethHistoryPage(
   options?: TeethHistoryFetchOptions
 ): Promise<TeethHistoryPage> {
-  const items = await fetchTeethHistory(options);
-  const limit = options?.limit ?? TEETH_HISTORY_PAGE_SIZE;
-  return {
-    items,
-    hasMore: items.length >= limit,
-  };
-}
-
-/** @deprecated Preferuj fetchTeethHistoryPage — zachowane dla kompatybilności. */
-export async function fetchTeethHistory(
-  supplierIdOrOptions?: string | null | TeethHistoryFetchOptions,
-  legacySalesPersonId?: string | null
-): Promise<TeethQueueItem[]> {
-  const options: TeethHistoryFetchOptions =
-    supplierIdOrOptions != null && typeof supplierIdOrOptions === "object"
-      ? supplierIdOrOptions
-      : {
-          supplierId: supplierIdOrOptions ?? undefined,
-          salesPersonId: legacySalesPersonId ?? undefined,
-        };
-
-  if (!hasSupabaseConfig()) return [];
+  if (!hasSupabaseConfig()) return { items: [], hasMore: false };
 
   const supabase = createAdminClient();
-  const limit = Math.min(Math.max(options.limit ?? TEETH_HISTORY_PAGE_SIZE, 1), 200);
-  const offset = Math.max(options.offset ?? 0, 0);
+  const limit = Math.min(Math.max(options?.limit ?? TEETH_HISTORY_PAGE_SIZE, 1), 200);
+  const offset = Math.max(options?.offset ?? 0, 0);
 
   let query = supabase
     .from("individual_orders")
@@ -306,10 +284,10 @@ export async function fetchTeethHistory(
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
-  if (options.supplierId) {
+  if (options?.supplierId) {
     query = query.eq("supplier_id", options.supplierId);
   }
-  if (options.salesPersonId) {
+  if (options?.salesPersonId) {
     query = query.eq("sales_person_id", options.salesPersonId);
   }
 
@@ -318,7 +296,109 @@ export async function fetchTeethHistory(
 
   const orders = normalizeIndividualOrders(data ?? []);
   const ordersWithTeeth = await attachTeethDetailsToIndividualOrders(orders);
-  return mapQueueItems(ordersWithTeeth);
+  const items = mapQueueItems(ordersWithTeeth);
+  return {
+    items,
+    hasMore: items.length >= limit,
+  };
+}
+
+type SupabaseAdminClient = ReturnType<typeof createAdminClient>;
+
+type BeforeUpdateRow = { id: string; supplier_id: string | null; teeth_delivery_date: string | null };
+
+async function postMarkOrderedCleanup(
+  supabase: SupabaseAdminClient,
+  updatedIds: string[],
+  beforeUpdate: BeforeUpdateRow[] | null,
+  now: string,
+  userId: string,
+  actor?: TeethOrderHistoryActor
+): Promise<void> {
+  if (updatedIds.length === 0) return;
+
+  const supplierIds = new Set<string>();
+  const ordersNeedingDeliveryDate: { orderId: string; supplierId: string }[] = [];
+  for (const row of beforeUpdate ?? []) {
+    const supplierId = row.supplier_id as string | null;
+    if (!supplierId) continue;
+    supplierIds.add(supplierId);
+    if (!row.teeth_delivery_date) {
+      ordersNeedingDeliveryDate.push({ orderId: row.id as string, supplierId });
+    }
+  }
+
+  const deliveryDateBySupplier = new Map<string, string>();
+  if (supplierIds.size > 0) {
+    try {
+      const batchResult = await estimateTeethDeliveryEtaBatch([...supplierIds], now);
+      for (const [supplierId, estimate] of batchResult) {
+        const deliveryDate = resolveTeethDeliveryDate(null, estimate);
+        if (deliveryDate) deliveryDateBySupplier.set(supplierId, deliveryDate);
+      }
+    } catch {
+      // ETA opcjonalne — błąd nie przerywa oznaczania
+    }
+  }
+
+  const ordersBySupplierForDate = new Map<string, string[]>();
+  for (const { orderId, supplierId } of ordersNeedingDeliveryDate) {
+    const date = deliveryDateBySupplier.get(supplierId);
+    if (!date) continue;
+    const list = ordersBySupplierForDate.get(supplierId) ?? [];
+    list.push(orderId);
+    ordersBySupplierForDate.set(supplierId, list);
+  }
+
+  await Promise.all(
+    [...ordersBySupplierForDate.entries()].map(async ([supplierId, orderIds]) => {
+      const date = deliveryDateBySupplier.get(supplierId)!;
+      await supabase
+        .from("individual_orders")
+        .update({ teeth_delivery_date: date })
+        .in("id", orderIds)
+        .eq("is_teeth", true);
+    })
+  );
+
+  const today = todayInWarsaw();
+  const historyActor: TeethOrderHistoryActor = {
+    id: actor?.id ?? userId,
+    email: actor?.email ?? null,
+  };
+  const ordersBySupplier = new Map<string, string[]>();
+  for (const row of beforeUpdate ?? []) {
+    const supplierId = row.supplier_id as string | null;
+    const orderId = row.id as string;
+    if (!supplierId || !updatedIds.includes(orderId)) continue;
+    const list = ordersBySupplier.get(supplierId) ?? [];
+    list.push(orderId);
+    ordersBySupplier.set(supplierId, list);
+  }
+
+  for (const supplierId of supplierIds) {
+    try {
+      await markTeethScheduleOrdered(supplierId, today);
+      await appendTeethOrderHistory({
+        action: "schedule_ordered",
+        actor: historyActor,
+        supplierId,
+        orderIds: ordersBySupplier.get(supplierId) ?? [],
+      });
+    } catch {
+      // Harmonogram opcjonalny — błąd nie przerywa
+    }
+  }
+
+  for (const [supplierId, ids] of ordersBySupplier) {
+    await appendTeethOrderHistory({
+      action: "ordered",
+      actor: historyActor,
+      supplierId,
+      orderIds: ids,
+      meta: { batchSize: ids.length },
+    });
+  }
 }
 
 /** Oznacz pozycje zębów jako zamówione — tylko z kompletną listą, status Nowe. */
@@ -398,90 +478,7 @@ export async function markTeethOrdered(
   const updatedIds = (data ?? []).map((r) => r.id as string);
   if (updatedIds.length === 0) return { updated: 0 };
 
-  // Ustaw teeth_delivery_date — batch per dostawca (ETA raz, update wszystkich zamówień)
-  const supplierIds = new Set<string>();
-  const ordersNeedingDeliveryDate: { orderId: string; supplierId: string }[] = [];
-  for (const row of beforeUpdate ?? []) {
-    const supplierId = row.supplier_id as string | null;
-    if (!supplierId) continue;
-    supplierIds.add(supplierId);
-    if (!row.teeth_delivery_date) {
-      ordersNeedingDeliveryDate.push({ orderId: row.id as string, supplierId });
-    }
-  }
-
-  const deliveryDateBySupplier = new Map<string, string>();
-  await Promise.all(
-    [...supplierIds].map(async (supplierId) => {
-      try {
-        const estimate = await estimateTeethDeliveryEta(supplierId, now);
-        const deliveryDate = resolveTeethDeliveryDate(null, estimate);
-        if (deliveryDate) deliveryDateBySupplier.set(supplierId, deliveryDate);
-      } catch {
-        // ETA opcjonalne — błąd nie przerywa oznaczania
-      }
-    })
-  );
-
-  const ordersBySupplierForDate = new Map<string, string[]>();
-  for (const { orderId, supplierId } of ordersNeedingDeliveryDate) {
-    const date = deliveryDateBySupplier.get(supplierId);
-    if (!date) continue;
-    const list = ordersBySupplierForDate.get(supplierId) ?? [];
-    list.push(orderId);
-    ordersBySupplierForDate.set(supplierId, list);
-  }
-
-  await Promise.all(
-    [...ordersBySupplierForDate.entries()].map(async ([supplierId, orderIds]) => {
-      const date = deliveryDateBySupplier.get(supplierId)!;
-      await supabase
-        .from("individual_orders")
-        .update({ teeth_delivery_date: date })
-        .in("id", orderIds)
-        .eq("is_teeth", true);
-    })
-  );
-
-  // Zaktualizuj harmonogramy dostawców zębów
-  const today = todayInWarsaw();
-  const historyActor: TeethOrderHistoryActor = {
-    id: actor?.id ?? userId,
-    email: actor?.email ?? null,
-  };
-  const ordersBySupplier = new Map<string, string[]>();
-  for (const row of beforeUpdate ?? []) {
-    const supplierId = row.supplier_id as string | null;
-    const orderId = row.id as string;
-    if (!supplierId || !updatedIds.includes(orderId)) continue;
-    const list = ordersBySupplier.get(supplierId) ?? [];
-    list.push(orderId);
-    ordersBySupplier.set(supplierId, list);
-  }
-
-  for (const supplierId of supplierIds) {
-    try {
-      await markTeethScheduleOrdered(supplierId, today);
-      await appendTeethOrderHistory({
-        action: "schedule_ordered",
-        actor: historyActor,
-        supplierId,
-        orderIds: ordersBySupplier.get(supplierId) ?? [],
-      });
-    } catch {
-      // Harmonogram opcjonalny — błąd nie przerywa
-    }
-  }
-
-  for (const [supplierId, ids] of ordersBySupplier) {
-    await appendTeethOrderHistory({
-      action: "ordered",
-      actor: historyActor,
-      supplierId,
-      orderIds: ids,
-      meta: { batchSize: ids.length },
-    });
-  }
+  await postMarkOrderedCleanup(supabase, updatedIds, beforeUpdate, now, userId, actor);
 
   return { updated: updatedIds.length };
 }
@@ -628,90 +625,7 @@ export async function markTeethPositionsOrdered(
 
     if (orderErr) throw new Error(orderErr.message);
 
-    // Ustaw teeth_delivery_date — batch per dostawca (ETA raz, update wszystkich zamówień)
-    const supplierIds = new Set<string>();
-    const ordersNeedingDeliveryDate: { orderId: string; supplierId: string }[] = [];
-    for (const row of beforeUpdate ?? []) {
-      const supplierId = row.supplier_id as string | null;
-      if (!supplierId) continue;
-      supplierIds.add(supplierId);
-      if (!row.teeth_delivery_date) {
-        ordersNeedingDeliveryDate.push({ orderId: row.id as string, supplierId });
-      }
-    }
-
-    const deliveryDateBySupplier = new Map<string, string>();
-    await Promise.all(
-      [...supplierIds].map(async (supplierId) => {
-        try {
-          const estimate = await estimateTeethDeliveryEta(supplierId, now);
-          const deliveryDate = resolveTeethDeliveryDate(null, estimate);
-          if (deliveryDate) deliveryDateBySupplier.set(supplierId, deliveryDate);
-        } catch {
-          // ETA opcjonalne
-        }
-      })
-    );
-
-    const ordersBySupplierForDate = new Map<string, string[]>();
-    for (const { orderId, supplierId } of ordersNeedingDeliveryDate) {
-      const date = deliveryDateBySupplier.get(supplierId);
-      if (!date) continue;
-      const list = ordersBySupplierForDate.get(supplierId) ?? [];
-      list.push(orderId);
-      ordersBySupplierForDate.set(supplierId, list);
-    }
-
-    await Promise.all(
-      [...ordersBySupplierForDate.entries()].map(async ([supplierId, orderIds]) => {
-        const date = deliveryDateBySupplier.get(supplierId)!;
-        await supabase
-          .from("individual_orders")
-          .update({ teeth_delivery_date: date })
-          .in("id", orderIds)
-          .eq("is_teeth", true);
-      })
-    );
-
-    // Historia + harmonogram
-    const today = todayInWarsaw();
-    const historyActor: TeethOrderHistoryActor = {
-      id: actor?.id ?? userId,
-      email: actor?.email ?? null,
-    };
-    const ordersBySupplier = new Map<string, string[]>();
-    for (const row of beforeUpdate ?? []) {
-      const supplierId = row.supplier_id as string | null;
-      const orderId = row.id as string;
-      if (!supplierId || !ordersCompleted.includes(orderId)) continue;
-      const list = ordersBySupplier.get(supplierId) ?? [];
-      list.push(orderId);
-      ordersBySupplier.set(supplierId, list);
-    }
-
-    for (const supplierId of supplierIds) {
-      try {
-        await markTeethScheduleOrdered(supplierId, today);
-        await appendTeethOrderHistory({
-          action: "schedule_ordered",
-          actor: historyActor,
-          supplierId,
-          orderIds: ordersBySupplier.get(supplierId) ?? [],
-        });
-      } catch {
-        // Harmonogram opcjonalny
-      }
-    }
-
-    for (const [supplierId, ids] of ordersBySupplier) {
-      await appendTeethOrderHistory({
-        action: "ordered",
-        actor: historyActor,
-        supplierId,
-        orderIds: ids,
-        meta: { batchSize: ids.length },
-      });
-    }
+    await postMarkOrderedCleanup(supabase, ordersCompleted, beforeUpdate, now, userId, actor);
   }
 
   return { updated: updatedCount, ordersCompleted: ordersCompleted.length };

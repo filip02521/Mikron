@@ -3,7 +3,7 @@ import {
   geminiModelCandidates,
   isGeminiQuotaExceeded,
   isRetryableGeminiError,
-} from "@/lib/teeth/teeth-vision-ocr";
+} from "@/lib/teeth/teeth-vision-gemini";
 
 const QUOTA_ERROR = new Error(
   '{"error":{"code":429,"message":"You exceeded your current quota, please check your plan and billing details. limit: 0, model: gemini-2.0-flash FreeTier","status":"RESOURCE_EXHAUSTED"}}',

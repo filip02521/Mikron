@@ -18,47 +18,71 @@ export async function estimateTeethDeliveryEta(
   supplierId: string,
   placementAt: string
 ): Promise<DeliveryEtaEstimate | null> {
-  if (!hasSupabaseConfig()) return null;
+  const map = await estimateTeethDeliveryEtaBatch([supplierId], placementAt);
+  return map.get(supplierId) ?? null;
+}
+
+/**
+ * Wsadowe szacowanie ETA dla wielu dostawców — jedno zapytanie do DB zamiast N.
+ */
+export async function estimateTeethDeliveryEtaBatch(
+  supplierIds: string[],
+  placementAt: string
+): Promise<Map<string, DeliveryEtaEstimate>> {
+  const result = new Map<string, DeliveryEtaEstimate>();
+  if (!hasSupabaseConfig() || supplierIds.length === 0) return result;
 
   const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from("individual_orders")
-    .select("teeth_ordered_at, ordered_at, delivery_at")
+    .select("supplier_id, teeth_ordered_at, ordered_at, delivery_at")
     .eq("is_teeth", true)
-    .eq("supplier_id", supplierId)
+    .in("supplier_id", supplierIds)
     .eq("status", "Zrealizowane")
     .not("delivery_at", "is", null)
     .order("delivery_at", { ascending: false })
-    .limit(20);
+    .limit(200);
 
   if (error) throw new Error(error.message);
-  if (!data || data.length === 0) return null;
+  if (!data || data.length === 0) return result;
 
-  const samples: number[] = [];
+  const bySupplier = new Map<string, typeof data>();
   for (const row of data) {
-    const orderedAt = row.teeth_ordered_at ?? row.ordered_at;
-    if (!orderedAt || !row.delivery_at) continue;
-    const start = parseDateOnly(orderedAt);
-    const end = parseDateOnly(row.delivery_at as string);
-    if (!start || !end) continue;
-    const days = calculateBusinessDays(start, end);
-    if (days >= 0) samples.push(days);
+    const sid = row.supplier_id as string;
+    if (!sid) continue;
+    const list = bySupplier.get(sid) ?? [];
+    list.push(row);
+    bySupplier.set(sid, list);
   }
 
-  if (samples.length === 0) return null;
-
-  const avg = samples.reduce((sum, d) => sum + d, 0) / samples.length;
-  const avgRounded = Math.round(avg);
   const start = parseDateOnly(placementAt);
-  if (!start || avgRounded <= 0) return null;
+  if (!start) return result;
 
-  return {
-    avgBusinessDays: avgRounded,
-    expectedDate: calculateBusinessDate(start, avgRounded),
-    sampleCount: samples.length,
-    lowConfidence: samples.length < 3,
-  };
+  for (const [supplierId, rows] of bySupplier) {
+    const samples: number[] = [];
+    for (const row of rows.slice(0, 20)) {
+      const orderedAt = row.teeth_ordered_at ?? row.ordered_at;
+      if (!orderedAt || !row.delivery_at) continue;
+      const s = parseDateOnly(orderedAt);
+      const e = parseDateOnly(row.delivery_at as string);
+      if (!s || !e) continue;
+      const days = calculateBusinessDays(s, e);
+      if (days >= 0) samples.push(days);
+    }
+    if (samples.length === 0) continue;
+    const avg = samples.reduce((sum, d) => sum + d, 0) / samples.length;
+    const avgRounded = Math.round(avg);
+    if (avgRounded <= 0) continue;
+    result.set(supplierId, {
+      avgBusinessDays: avgRounded,
+      expectedDate: calculateBusinessDate(start, avgRounded),
+      sampleCount: samples.length,
+      lowConfidence: samples.length < 3,
+    });
+  }
+
+  return result;
 }
 
 /**

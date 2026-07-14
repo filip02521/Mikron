@@ -191,21 +191,32 @@ export function filterTeethHistoryGroups(
   groups: TeethQueueGroup[],
   filters: TeethPanelFilters,
   ctx?: TeethPanelReadinessContext,
+  searchSpec?: string,
 ): TeethQueueGroup[] {
   const historyFilters: TeethPanelFilters = {
     ...filters,
     missingSpecOnly: false,
     verificationOnly: false,
   };
+  const searchLower = searchSpec?.trim().toLowerCase() ?? "";
   const result: TeethQueueGroup[] = [];
   for (const group of groups) {
     if (historyFilters.supplierId && group.supplierId !== historyFilters.supplierId) continue;
     const orders = group.items.filter(
       (item): item is TeethQueueItem => !isScheduledItem(item)
     );
-    const filteredOrders = orders.filter((item) =>
-      matchesTeethItemFilters(item, historyFilters, ctx),
-    );
+    const filteredOrders = orders.filter((item) => {
+      if (!matchesTeethItemFilters(item, historyFilters, ctx)) return false;
+      if (searchLower) {
+        const productMatch = (item.products ?? "").toLowerCase().includes(searchLower);
+        const detailsMatch = (item.teeth_details ?? []).some((d) =>
+          [d.color, d.mould, d.jaw, d.kind].filter(Boolean).some((v) => v!.toLowerCase().includes(searchLower))
+        );
+        const salesMatch = (item.sales_person_name ?? "").toLowerCase().includes(searchLower);
+        if (!productMatch && !detailsMatch && !salesMatch) return false;
+      }
+      return true;
+    });
     if (filteredOrders.length === 0) continue;
     result.push({ ...group, items: filteredOrders, scheduledOnly: false });
   }

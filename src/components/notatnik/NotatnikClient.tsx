@@ -75,6 +75,7 @@ import { NotatnikArchiveCrossLink } from "./NotatnikArchiveCrossLink";
 import { TodayTasksSection } from "./TodayTasksSection";
 import { NotatnikTabBar } from "./NotatnikTabBar";
 import { NOTATNIK_PAGE_CLASS } from "./notatnik-layout";
+import { DelegateModeBackground } from "@/components/moje/DelegatePreviewContext";
 import { ZkWatchSection } from "./ZkWatchSection";
 import { mergeSalesPreviewSearchParams } from "@/lib/nav/sales-preview-href";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
@@ -1124,7 +1125,7 @@ export function NotatnikClient({
 
   return (
     <MyOrderPickupShelfDialogProvider>
-    <div className={NOTATNIK_PAGE_CLASS}>
+    <DelegateModeBackground active={effectiveDelegatePreview || Boolean(teamPreview)} label={teamPreview?.salesPersonName ?? null} className={NOTATNIK_PAGE_CLASS}>
       {warehouseToast && !effectiveReadOnly ? (
         <NoticeToast notice={warehouseToast} onDismiss={() => setWarehouseToast(null)} />
       ) : null}
@@ -1368,7 +1369,7 @@ export function NotatnikClient({
           onScopePatched={handleRefreshScopePatched}
         />
       ) : null}
-    </div>
+    </DelegateModeBackground>
     </MyOrderPickupShelfDialogProvider>
   );
 }

@@ -49,7 +49,8 @@ import {
 } from "@/components/teeth/TeethOrderBuilderParts";
 import { IconAlertCircle, IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { partitionTeethDetailsByKind, catalogLineForDualKind } from "@/lib/teeth/teeth-dual-kind";
-import { TeethVisionUpload } from "@/components/teeth/TeethVisionUpload";
+import { TeethOcrWizard } from "@/components/teeth/TeethOcrWizard";
+import { IconCamera } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { panelChoiceChipClass, panelChoiceChipIdleClass, panelChoiceChipSelectedClass } from "@/lib/ui/ontime-theme";
 
@@ -259,6 +260,7 @@ function TeethDualKindOrderBuilderModal({
   );
   const [dualFromOcr, setDualFromOcr] = useState(initialFromOcr ?? false);
   const [dualOcrImagePath, setDualOcrImagePath] = useState<string | null>(initialOcrImagePath ?? null);
+  const [dualOcrWizardOpen, setDualOcrWizardOpen] = useState(false);
 
   const manufacturerName = teethManufacturerLabel(manufacturer);
   const lineName = teethProductLineLabel(productLine);
@@ -301,56 +303,76 @@ function TeethDualKindOrderBuilderModal({
       titleHint={TEETH_DUAL_MODAL_TITLE_HINT}
       {...TEETH_MODAL_SHELL_LAYOUT}
       footer={
-        <div className="flex w-full flex-wrap items-center gap-2">
-          <TeethVisionUpload
-            disabled={disabled}
-            shouldReplaceExistingList={() =>
-              (anteriorCount === 0 && posteriorCount === 0) ||
-              window.confirm("Masz już pozycje na liście. Czy wczytać z zdjęcia i zastąpić obecną listę?")
-            }
-            onResult={(ocrGroups, _detectedProductLines, imagePath) => {
-              const anterior = ocrGroups.filter((g) => g.kind === "anterior");
-              const posterior = ocrGroups.filter((g) => g.kind === "posterior");
-              if (anterior.length) anteriorRef.current?.setGroups(anterior);
-              if (posterior.length) posteriorRef.current?.setGroups(posterior);
-              setDualFromOcr(true);
-              setDualOcrImagePath(imagePath);
-            }}
-          />
-          <div className="ml-auto min-w-0 space-y-0.5 text-right">
-            <span className="block text-sm font-medium text-slate-600 tabular-nums">
-              {anteriorCount > 0 || posteriorCount > 0 ? (
-                <>
-                  {TEETH_DUAL_KIND_LABELS.anterior}:{" "}
-                  <span className="text-indigo-700">{anteriorCount}</span>
-                  {" · "}
-                  {TEETH_DUAL_KIND_LABELS.posterior}:{" "}
-                  <span className="text-indigo-700">{posteriorCount}</span>
-                  {" · "}
-                  razem <span className="text-indigo-700">{totalCount}</span> szt.
-                </>
-              ) : (
-                <>
-                  Razem: <span className="text-indigo-700">0</span> szt.
-                </>
-              )}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+              onClick={() => setDualOcrWizardOpen(true)}
+            >
+              <IconCamera size={16} />
+              Ze zdjęcia
+            </Button>
+            <span className="group relative inline-flex">
+              <span
+                className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-indigo-400 transition-colors group-hover:bg-indigo-100"
+                aria-label="Funkcja testowa — sczytywanie zębów ze zdjęcia za pomocą AI"
+              >
+                Beta
+              </span>
+              <span
+                role="tooltip"
+                className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-indigo-200/90 bg-indigo-50/95 px-2.5 py-1.5 text-[11px] font-medium leading-relaxed text-indigo-900 shadow-md group-hover:block group-focus-within:block"
+              >
+                To funkcja testowa — sczytywanie listy zębów ze zdjęcia za pomocą AI. Może jeszcze nie działać prawidłowo we wszystkich przypadkach. Wynik zawsze sprawdź przed zapisaniem.
+              </span>
             </span>
-            {previewMessage ? (
-              <span className="block text-[11px] font-medium text-slate-500">{previewMessage}</span>
-            ) : null}
+            <TeethOcrWizard
+              open={dualOcrWizardOpen}
+              onClose={() => setDualOcrWizardOpen(false)}
+              disabled={disabled}
+              onResult={(ocrGroups, _detectedProductLines, imagePath) => {
+                const anterior = ocrGroups.filter((g) => g.kind === "anterior");
+                const posterior = ocrGroups.filter((g) => g.kind === "posterior");
+                if (anterior.length) anteriorRef.current?.setGroups(anterior);
+                if (posterior.length) posteriorRef.current?.setGroups(posterior);
+                setDualFromOcr(true);
+                setDualOcrImagePath(imagePath);
+              }}
+            />
+            <div className="ml-auto flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 tabular-nums">
+              <span>
+                {TEETH_DUAL_KIND_LABELS.anterior}: <span className="text-indigo-700">{anteriorCount}</span>
+              </span>
+              <span className="text-slate-300">·</span>
+              <span>
+                {TEETH_DUAL_KIND_LABELS.posterior}: <span className="text-indigo-700">{posteriorCount}</span>
+              </span>
+              <span className="text-slate-300">·</span>
+              <span>
+                Razem: <span className="text-indigo-700">{totalCount}</span> szt.
+              </span>
+            </div>
           </div>
-          <Button type="button" variant="secondary" onClick={onClose} disabled={disabled}>
-            Anuluj
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            disabled={disabled || !canSave}
-            title={saveBlockReason ?? undefined}
-            onClick={validateAndSave}
-          >
-            Zapisz listę
-          </Button>
+          {previewMessage ? (
+            <p className="text-[11px] font-medium text-slate-500">{previewMessage}</p>
+          ) : null}
+          <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-2">
+            <Button type="button" variant="secondary" onClick={onClose} disabled={disabled}>
+              Anuluj
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              disabled={disabled || !canSave}
+              title={saveBlockReason ?? undefined}
+              onClick={validateAndSave}
+            >
+              Zapisz listę
+            </Button>
+          </div>
         </div>
       }
     >
@@ -529,10 +551,21 @@ function TeethSingleKindOrderBuilderModal({
   );
   const [fromOcr, setFromOcr] = useState(initialFromOcr ?? false);
   const [ocrImagePath, setOcrImagePath] = useState<string | null>(initialOcrImagePath ?? null);
+  const [ocrWizardOpen, setOcrWizardOpen] = useState(false);
 
   const manufacturerName = teethManufacturerLabel(manufacturer);
   const lineName = teethProductLineLabel(productLine);
   const totalCount = totalTeethCountFromGroups(groups);
+  const kindBreakdown = useMemo(() => {
+    let anterior = 0;
+    let posterior = 0;
+    for (const g of groups) {
+      const k = defaultKind ?? g.kind;
+      if (k === "anterior") anterior += Math.max(1, g.count);
+      else if (k === "posterior") posterior += Math.max(1, g.count);
+    }
+    return { anterior, posterior };
+  }, [groups, defaultKind]);
   const draftComplete = isTeethBuilderDraftComplete(
     { ...draft, kind: defaultKind ?? draft.kind },
     catalog,
@@ -559,8 +592,7 @@ function TeethSingleKindOrderBuilderModal({
         id: editingId,
       });
       setGroups((prev) => prev.map((g) => (g.id === editingId ? nextGroup : g)));
-      setEditingId(nextGroup.id);
-      setDraft(draftFromGroup(nextGroup));
+      resetDraft();
       return;
     }
 
@@ -575,6 +607,8 @@ function TeethSingleKindOrderBuilderModal({
   };
 
   const handleRemove = (id: string) => {
+    const group = groups.find((g) => g.id === id);
+    if (group && !confirm(`Usunąć pozycję ${group.color || "?"} ${group.mould ?? ""} (${group.count} szt.)?`)) return;
     setGroups((prev) => prev.filter((g) => g.id !== id));
     if (editingId === id) resetDraft();
   };
@@ -634,36 +668,78 @@ function TeethSingleKindOrderBuilderModal({
       titleHint={teethSingleModalTitleHint(productLine)}
       {...TEETH_MODAL_SHELL_LAYOUT}
       footer={
-        <div className="flex w-full flex-wrap items-center gap-2">
-          <TeethVisionUpload
-            disabled={disabled}
-            shouldReplaceExistingList={() =>
-              groups.length === 0 ||
-              window.confirm("Masz już pozycje na liście. Czy wczytać z zdjęcia i zastąpić obecną listę?")
-            }
-            onResult={(ocrGroups, _detectedProductLines, imagePath) => {
-              setGroups(ocrGroups);
-              setEditingId(null);
-              setDraft({ ...EMPTY_DRAFT(), kind: defaultKind ?? null });
-              setFromOcr(true);
-              setOcrImagePath(imagePath);
-            }}
-          />
-          <span className="ml-auto text-sm font-medium text-slate-600 tabular-nums">
-            Razem: <span className="text-indigo-700">{totalCount || 0}</span> szt.
-          </span>
-          <Button type="button" variant="secondary" onClick={onClose} disabled={disabled}>
-            Anuluj
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            disabled={disabled || !listComplete}
-            title={saveBlockReason ?? undefined}
-            onClick={handleSave}
-          >
-            Zapisz listę
-          </Button>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+              onClick={() => setOcrWizardOpen(true)}
+            >
+              <IconCamera size={16} />
+              Ze zdjęcia
+            </Button>
+            <span className="group relative inline-flex">
+              <span
+                className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-indigo-400 transition-colors group-hover:bg-indigo-100"
+                aria-label="Funkcja testowa — sczytywanie zębów ze zdjęcia za pomocą AI"
+              >
+                Beta
+              </span>
+              <span
+                role="tooltip"
+                className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-indigo-200/90 bg-indigo-50/95 px-2.5 py-1.5 text-[11px] font-medium leading-relaxed text-indigo-900 shadow-md group-hover:block group-focus-within:block"
+              >
+                To funkcja testowa — sczytywanie listy zębów ze zdjęcia za pomocą AI. Może jeszcze nie działać prawidłowo we wszystkich przypadkach. Wynik zawsze sprawdź przed zapisaniem.
+              </span>
+            </span>
+            <TeethOcrWizard
+              open={ocrWizardOpen}
+              onClose={() => setOcrWizardOpen(false)}
+              disabled={disabled}
+              onResult={(ocrGroups, _detectedProductLines, imagePath) => {
+                setGroups(ocrGroups.map((g) => ({ ...g })));
+                setFromOcr(true);
+                setOcrImagePath(imagePath);
+              }}
+            />
+            <div className="ml-auto flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 tabular-nums">
+              {kindBreakdown.anterior > 0 ? (
+                <span>
+                  <span className="text-indigo-700">{kindBreakdown.anterior}</span> prz.
+                </span>
+              ) : null}
+              {kindBreakdown.anterior > 0 && kindBreakdown.posterior > 0 ? (
+                <span className="text-slate-300">·</span>
+              ) : null}
+              {kindBreakdown.posterior > 0 ? (
+                <span>
+                  <span className="text-indigo-700">{kindBreakdown.posterior}</span> bocz.
+                </span>
+              ) : null}
+              {(kindBreakdown.anterior > 0 || kindBreakdown.posterior > 0) ? (
+                <span className="text-slate-300">·</span>
+              ) : null}
+              <span>
+                Razem: <span className="text-indigo-700">{totalCount || 0}</span> szt.
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-2">
+            <Button type="button" variant="secondary" onClick={onClose} disabled={disabled}>
+              Anuluj
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              disabled={disabled || !listComplete}
+              title={saveBlockReason ?? undefined}
+              onClick={handleSave}
+            >
+              Zapisz listę
+            </Button>
+          </div>
         </div>
       }
     >
@@ -673,6 +749,16 @@ function TeethSingleKindOrderBuilderModal({
         form={
           <TeethBuilderFormShell
             title={editingId ? "Edytuj pozycję" : "Nowa pozycja"}
+            mode={editingId ? "edit" : "new"}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey && draftComplete) {
+                e.preventDefault();
+                handleAddOrUpdate();
+              } else if (e.key === "Escape" && editingId) {
+                e.preventDefault();
+                resetDraft();
+              }
+            }}
             headerAction={
               editingId ? (
                 <Button type="button" variant="ghost" size="sm" onClick={resetDraft} disabled={disabled}>
@@ -689,6 +775,7 @@ function TeethSingleKindOrderBuilderModal({
                 jawModeBoth={draft.jawMode === "both"}
                 onCountChange={(count) => setDraft((p) => ({ ...p, count }))}
                 onAddOrUpdate={handleAddOrUpdate}
+                onCancelEdit={resetDraft}
               />
             }
           >
@@ -722,6 +809,8 @@ function TeethSingleKindOrderBuilderModal({
               disabled={disabled}
               onEdit={handleEdit}
               onRemove={handleRemove}
+              onAddNew={editingId ? resetDraft : undefined}
+              addNewLabel={editingId ? "Dodaj nową pozycję" : "+ Dodaj kolejną pozycję"}
             />
           ) : (
             <TeethBuilderEmptyList

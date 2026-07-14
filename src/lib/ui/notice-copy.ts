@@ -161,6 +161,7 @@ export const VACATION_TOAST = {
     "Wybierz osobę zastępującą w tym okresie.",
   ),
   savedPeriod: toastSuccess("Zapisano", "Okres urlopu został dodany."),
+  updatedPeriod: toastSuccess("Zaktualizowano", "Okres urlopu został zaktualizowany."),
   savedDelegation: toastSuccess("Zapisano", "Zastępstwo zostało przypisane."),
   savedDelegationToVacation: toastSuccess(
     "Zapisano",
