@@ -223,12 +223,12 @@ select:disabled,
   }
 }
 
-.receive-queue-row-enter {
+.receive-queue-row-enter > td {
   animation: receive-queue-row-enter 0.2s ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .receive-queue-row-enter {
+  .receive-queue-row-enter > td {
     animation: none;
   }
 }
