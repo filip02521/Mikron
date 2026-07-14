@@ -7,8 +7,8 @@ paths:
 paths-ignore:
   - src/**/*.test.ts
   - src/**/*.test.tsx
-  - src/**/*.spec.ts
   - src/lib/teeth/teeth-vision-prompt.ts
+  - src/lib/teeth/teeth-vision-line-hints.ts
 
 query-filters:
   # Faszywe alarmy — projekt celowo przechowuje tokeny sesji w bazie
@@ -22,11 +22,6 @@ query-filters:
       id: js/insufficient-password-hash
     paths:
       - src/lib/auth/password-reset-otp.ts
-  # Faszywe alarmy — Supabase RLS jest warstwą bezpieczeństwa, nie same zapytania
-  - exclude:
-      id: js/sql-string-concatenation
-    paths:
-      - src/lib/data/**/*.ts
   # Faszywe alarmy — testy celowo używają hardcoded wartości
   - exclude:
       id: js/hardcoded-credentials

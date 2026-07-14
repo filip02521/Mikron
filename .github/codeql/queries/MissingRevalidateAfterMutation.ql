@@ -22,9 +22,13 @@ predicate isMutationCall(CallExpr call) {
   exists(PropAccess p | p = call.getCallee() and p.getPropertyName() in ["insert", "update", "delete", "upsert"])
 }
 
-/** Wywołanie revalidatePath lub revalidateTag — zawsze direct function calls. */
-predicate isRevalidateCall(CallExpr call) {
-  exists(VarRef v | v = call.getCallee() and v.getName() in ["revalidatePath", "revalidateTag"])
+/** Wywołanie revalidatePath/revalidateTag/updateTag (direct) LUB helpera (revalidate*).
+ *  Projekt używa helperów jak revalidateAll(), revalidateVacationPaths() itp.
+ *  updateTag to odpowiednik revalidateTag w tej wersji Next.js. */
+predicate isAnyRevalidateCall(CallExpr call) {
+  exists(VarRef v | v = call.getCallee() and v.getName().matches("revalidate%"))
+  or
+  exists(VarRef v | v = call.getCallee() and v.getName() = "updateTag")
 }
 
 from Function f
@@ -36,6 +40,6 @@ where
   ) and
   not exists(CallExpr c |
     c.getEnclosingFunction+() = f and
-    isRevalidateCall(c)
+    isAnyRevalidateCall(c)
   )
-select f, "Server action '" + f.getName() + "' wykonuje mutację bazy danych ale nie wywołuje revalidatePath/revalidateTag — dane mogą być nieaktualne."
+select f, "Server action '" + f.getName() + "' wykonuje mutację bazy danych ale nie wywołuje revalidatePath/revalidateTag (ani helpera revalidate*) — dane mogą być nieaktualne."

@@ -32,7 +32,15 @@ predicate isAuthFunction(string name) {
     "requireReceiveMutateForOrders",
     "requireReceiveNotificationFlush",
     "requireSupplierManagement",
-    "requireSubiektLookup"
+    "requireSubiektLookup",
+    // Helper functions that internally call getSessionUser*()
+    "assertSalesAccess",
+    "assertProcurementAccess",
+    "userIdForMutation",
+    "salesPersonIdForAction",
+    "salesReporterForAction",
+    // Bootstrap action uses setup token instead of session auth
+    "validateSetupToken"
   ]
 }
 
