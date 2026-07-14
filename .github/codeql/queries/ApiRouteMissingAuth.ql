@@ -11,6 +11,7 @@
 
 import javascript
 
+bindingset[fnName]
 predicate isAuthFunction(string fnName) {
   fnName in [
     "getSessionUser",

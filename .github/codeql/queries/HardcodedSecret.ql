@@ -12,6 +12,7 @@
 import javascript
 
 /** Nazwa zmiennej sugeruje sekret lub klucz. */
+bindingset[varName]
 predicate isSecretVarName(string varName) {
   varName.matches("%SECRET%") or
   varName.matches("%secret%") or

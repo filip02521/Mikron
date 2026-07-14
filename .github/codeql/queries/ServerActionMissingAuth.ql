@@ -16,6 +16,7 @@ import javascript
  * Funkcje autentykacyjne używane w projekcie Mikron.
  * Każda server action musi wywołać przynajmniej jedną z nich.
  */
+bindingset[fnName]
 predicate isAuthFunction(string fnName) {
   fnName in [
     "getSessionUser",
