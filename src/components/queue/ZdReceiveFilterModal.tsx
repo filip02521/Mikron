@@ -159,6 +159,7 @@ export function ZdReceiveFilterModal({
   const [resolvingDokId, setResolvingDokId] = useState<number | null>(null);
   const [pending, start] = useTransition();
   const offlineNotifiedRef = useRef(false);
+  const receiveQueueRef = useRef(receiveQueue);
   const debouncedValue = useDebouncedValue(value, 300);
 
   const notifySubiektOffline = useCallback(() => {
@@ -166,6 +167,10 @@ export function ZdReceiveFilterModal({
     offlineNotifiedRef.current = true;
     onSubiektOffline?.();
   }, [onSubiektOffline]);
+
+  useEffect(() => {
+    receiveQueueRef.current = receiveQueue;
+  }, [receiveQueue]);
 
   const reset = useCallback(() => {
     setValue("");
@@ -207,7 +212,7 @@ export function ZdReceiveFilterModal({
           return;
         }
         setPreview(
-          buildPreviewFromFilter(receiveQueue, result.filter, result.subiektOffline)
+          buildPreviewFromFilter(receiveQueueRef.current, result.filter, result.subiektOffline)
         );
       } catch (e) {
         if (cancelled) return;
@@ -221,7 +226,7 @@ export function ZdReceiveFilterModal({
     return () => {
       cancelled = true;
     };
-  }, [previewQueryKey, notifySubiektOffline, receiveQueue]);
+  }, [previewQueryKey, notifySubiektOffline]);
 
   const canApply = preview.status === "ready";
 
