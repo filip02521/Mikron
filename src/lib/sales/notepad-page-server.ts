@@ -55,7 +55,27 @@ export async function resolveSalesNotepadPageAccess(input: {
         if (preview) {
           salesPersonId = preview.id;
           salesPersonName = preview.name;
-          isTeamPreview = preview.id !== ownSalesPersonId;
+          try {
+            const { fetchActiveDelegationsForDelegate } = await import("@/lib/data/vacation-delegations");
+            activeDelegations = await fetchActiveDelegationsForDelegate(user.id);
+          } catch {}
+          // Sprawdź czy kierownik jest aktywnym zastępcą dla tego handlowca
+          try {
+            const { isProfileActiveDelegateForSalesPerson } = await import("@/lib/data/vacation-delegations");
+            const isDelegate = await isProfileActiveDelegateForSalesPerson(user.id, preview.id);
+            if (isDelegate && preview.id !== ownSalesPersonId) {
+              isDelegatePreview = true;
+              const match = activeDelegations.find((d) => d.salesPersonId === preview.id);
+              if (match) {
+                delegationStartDate = match.startDate;
+                delegationEndDate = match.endDate;
+              }
+            } else {
+              isTeamPreview = preview.id !== ownSalesPersonId;
+            }
+          } catch {
+            isTeamPreview = preview.id !== ownSalesPersonId;
+          }
         } else {
           linkError = "Nie znaleziono handlowca do podglądu.";
         }
