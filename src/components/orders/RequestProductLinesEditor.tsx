@@ -351,7 +351,22 @@ export function RequestProductLinesEditor({
               requestKind={requestKind}
               productFieldClassName={prosba ? undefined : "sm:col-span-2"}
               suppliers={suppliers}
-              onSupplierResolved={onSupplierResolved}
+              onSupplierResolved={
+                onSupplierResolved
+                  ? (result) => {
+                      if (deferSupplierResolve) {
+                        onChange(
+                          lines.map((line, i) =>
+                            i === index
+                              ? { ...line, supplierId: result.supplierId }
+                              : line
+                          )
+                        );
+                      }
+                      onSupplierResolved(result);
+                    }
+                  : undefined
+              }
               onSupplierResolveFeedback={onSupplierResolveFeedback}
               onSupplierMappingMissing={onSupplierMappingMissing}
               delegateAlerts={unifiedFeedback}

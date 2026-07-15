@@ -1294,9 +1294,11 @@ export function OrderFormClient({
                   showClientField
                   suppliers={supplierRefs}
                   deferSupplierResolve={deferSupplierResolve}
-                  onSupplierResolved={({ supplierId }) =>
-                    applySupplierFromSubiekt(supplierId, 0)
-                  }
+                  onSupplierResolved={({ supplierId }) => {
+                    if (!deferSupplierResolve) {
+                      applySupplierFromSubiekt(supplierId, 0);
+                    }
+                  }}
                   onResolvingSupplierChange={setResolvingSupplier}
                   validationAttempted={validationAttempted}
                   liveValidation={!tourDemo}
