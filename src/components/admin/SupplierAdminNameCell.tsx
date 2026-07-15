@@ -9,11 +9,13 @@ export function SupplierAdminNameCell({
   isEditing,
   onEdit,
   trailingBadge,
+  teethLane = false,
 }: {
   supplier: SupplierWithSchedule;
   isEditing: boolean;
   onEdit: () => void;
   trailingBadge?: React.ReactNode;
+  teethLane?: boolean;
 }) {
   const initial = s.name.charAt(0).toUpperCase() || "?";
   return (
@@ -35,7 +37,7 @@ export function SupplierAdminNameCell({
             {s.name}
           </span>
           {trailingBadge}
-          {isSupplierOrderOnDemand(s) ? (
+          {!teethLane && isSupplierOrderOnDemand(s) ? (
             <Badge variant="purple" className="text-[10px]">
               Na żądanie
             </Badge>

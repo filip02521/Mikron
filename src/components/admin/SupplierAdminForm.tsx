@@ -47,6 +47,7 @@ export function SupplierAdminForm({
   onSubiektLinked,
   carrierOptions = [],
   showTeethSchedule = false,
+  teethLane = false,
   onTeethScheduleToast,
 }: {
   form: SupplierAdminFormState;
@@ -59,6 +60,8 @@ export function SupplierAdminForm({
   carrierOptions?: WarehouseCarrierRow[];
   /** Sekcja cyklu zębów — karty dostawców z ?tor=zeby */
   showTeethSchedule?: boolean;
+  /** Tryb toru zębów — pola karty tylko do odczytu, edytowalny tylko cykl zębów */
+  teethLane?: boolean;
   onTeethScheduleToast?: (notice: ToastNotice) => void;
 }) {
   const carriers = activeWarehouseCarrierOptions(
@@ -71,10 +74,11 @@ export function SupplierAdminForm({
           isActive: true,
         }))
   );
+  const fieldDisabled = disabled || teethLane;
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       {form.id ? (
-        <div className="sm:col-span-2">
+        <div className={teethLane ? "opacity-60 sm:col-span-2" : "sm:col-span-2"}>
           <SupplierSubiektLinkField
             supplierId={form.id}
             supplierName={form.name}
@@ -86,14 +90,14 @@ export function SupplierAdminForm({
 
       <Field label="Nazwa dostawcy">
         <Input
-          disabled={disabled}
+          disabled={fieldDisabled}
           value={form.name}
           onChange={(e) => onChange({ ...form, name: e.target.value })}
         />
       </Field>
       <Field label="Lokalizacja">
         <Select
-          disabled={disabled}
+          disabled={fieldDisabled}
           value={form.location}
           onChange={(e) =>
             onChange({ ...form, location: e.target.value as SupplierLocation })
@@ -110,11 +114,11 @@ export function SupplierAdminForm({
       <SupplierFormSection
         title="Kontakt i zamówienie"
         description="Sposób składania zamówienia i dane kontaktowe"
-        defaultOpen
+        defaultOpen={!teethLane}
       >
         <Field label="Sposób zamówienia" className="sm:col-span-2">
           <Select
-            disabled={disabled}
+            disabled={fieldDisabled}
             value={form.notes}
             onChange={(e) => onChange({ ...form, notes: e.target.value })}
           >
@@ -126,7 +130,7 @@ export function SupplierAdminForm({
         </Field>
         <Field label="E-mail i strony www" className="sm:col-span-2">
           <Input
-            disabled={disabled}
+            disabled={fieldDisabled}
             placeholder="adres@firma.pl, https://…"
             value={form.mails}
             onChange={(e) => onChange({ ...form, mails: e.target.value })}
@@ -138,14 +142,14 @@ export function SupplierAdminForm({
           hint="Np. osoba kontaktowa, godziny, minimalna kwota zamówienia."
         >
           <Input
-            disabled={disabled}
+            disabled={fieldDisabled}
             value={form.extra_info}
             onChange={(e) => onPatchCycleFields({ extra_info: e.target.value })}
           />
         </Field>
       </SupplierFormSection>
 
-      <div className="rounded-lg border border-indigo-200/50 bg-indigo-50/30 p-4 sm:col-span-2">
+      <div className={teethLane ? "rounded-lg border border-slate-200 bg-slate-50/50 p-4 opacity-60 sm:col-span-2" : "rounded-lg border border-indigo-200/50 bg-indigo-50/30 p-4 sm:col-span-2"}>
         <div className="mb-3.5 flex flex-wrap items-start justify-between gap-2">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
@@ -191,7 +195,7 @@ export function SupplierAdminForm({
             onChange={(raw) => onPatchCycleFields({ interval_raw: raw })}
             presets={SUPPLIER_INTERVAL_PRESETS}
             customPlaceholder="np. 6, 6 tyg., 2 miesiące, kwartał"
-            disabled={disabled}
+            disabled={fieldDisabled}
           />
           <SupplierCycleField
             key={`stock-${form.id ?? "new"}`}
@@ -208,7 +212,7 @@ export function SupplierAdminForm({
             onChange={(raw) => onPatchCycleFields({ stock_raw: raw })}
             presets={SUPPLIER_STOCK_PRESETS}
             customPlaceholder="np. 4 miesiące, 2 MIESIĄCE, W RAZIE POTRZEBY"
-            disabled={disabled}
+            disabled={fieldDisabled}
           />
           <Field
             label={
@@ -224,7 +228,7 @@ export function SupplierAdminForm({
             }
           >
             <Select
-              disabled={disabled}
+              disabled={fieldDisabled}
               value={form.stats_mode}
               onChange={(e) =>
                 onChange({ ...form, stats_mode: e.target.value as StatsMode })
@@ -235,12 +239,12 @@ export function SupplierAdminForm({
             </Select>
           </Field>
         </div>
-        <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg bg-white/60 p-2.5 ring-1 ring-inset ring-indigo-100/50 transition hover:bg-white">
+        <label className={teethLane ? "mt-4 flex cursor-not-allowed items-start gap-2.5 rounded-lg bg-white/60 p-2.5 ring-1 ring-inset ring-indigo-100/50 sm:col-span-2" : "mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg bg-white/60 p-2.5 ring-1 ring-inset ring-indigo-100/50 transition hover:bg-white"}>
           <input
             type="checkbox"
             className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-indigo-600"
             checked={form.order_on_demand}
-            disabled={disabled}
+            disabled={fieldDisabled}
             onChange={(e) => onChange({ ...form, order_on_demand: e.target.checked })}
           />
           <span className="text-sm text-slate-700">
@@ -249,12 +253,12 @@ export function SupplierAdminForm({
         </label>
       </div>
 
-      <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-slate-200/70 bg-slate-50/40 p-3 transition hover:border-slate-300/60 sm:col-span-2">
+      <label className={teethLane ? "flex cursor-not-allowed items-start gap-2.5 rounded-lg border border-slate-200/70 bg-slate-50/40 p-3 opacity-60 sm:col-span-2" : "flex cursor-pointer items-start gap-2.5 rounded-lg border border-slate-200/70 bg-slate-50/40 p-3 transition hover:border-slate-300/60 sm:col-span-2"}>
         <input
           type="checkbox"
           className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-indigo-600"
           checked={form.is_active}
-          disabled={disabled}
+          disabled={fieldDisabled}
           onChange={(e) => onChange({ ...form, is_active: e.target.checked })}
         />
         <span className="text-sm text-slate-700">
@@ -267,10 +271,11 @@ export function SupplierAdminForm({
       <SupplierFormSection
         title="Magazyn — domyślny kurier"
         description="Opcjonalnie; puste = system uczy się z wpisów magazynu"
+        defaultOpen={!teethLane}
       >
         <Field label="Kurier">
           <Select
-            disabled={disabled}
+            disabled={fieldDisabled}
             value={form.default_delivery_carrier}
             onChange={(e) =>
               onChange({ ...form, default_delivery_carrier: e.target.value })
@@ -286,7 +291,7 @@ export function SupplierAdminForm({
         </Field>
         <Field label="Forma przesyłki">
           <Select
-            disabled={disabled}
+            disabled={fieldDisabled}
             value={form.default_delivery_shipment_form}
             onChange={(e) =>
               onChange({ ...form, default_delivery_shipment_form: e.target.value })
@@ -305,21 +310,22 @@ export function SupplierAdminForm({
       <SupplierFormSection
         title="Odbiór u dostawcy"
         description="Kierowca / paleta"
+        defaultOpen={!teethLane}
       >
-        <label className="flex cursor-pointer items-center gap-2.5 rounded-lg bg-slate-50/60 px-3 py-2.5 text-sm transition hover:bg-slate-50 sm:col-span-2">
+        <label className={teethLane ? "flex cursor-not-allowed items-center gap-2.5 rounded-lg bg-slate-50/60 px-3 py-2.5 text-sm opacity-60 sm:col-span-2" : "flex cursor-pointer items-center gap-2.5 rounded-lg bg-slate-50/60 px-3 py-2.5 text-sm transition hover:bg-slate-50 sm:col-span-2"}>
           <input
             type="checkbox"
-            disabled={disabled}
+            disabled={fieldDisabled}
             checked={form.pickup_mikran}
             onChange={(e) => onChange({ ...form, pickup_mikran: e.target.checked })}
             className="h-4 w-4 rounded border-slate-300 accent-indigo-600"
           />
           Kierowca Mikran odbiera towar
         </label>
-        <label className="flex cursor-pointer items-center gap-2.5 rounded-lg bg-slate-50/60 px-3 py-2.5 text-sm transition hover:bg-slate-50 sm:col-span-2">
+        <label className={teethLane ? "flex cursor-not-allowed items-center gap-2.5 rounded-lg bg-slate-50/60 px-3 py-2.5 text-sm opacity-60 sm:col-span-2" : "flex cursor-pointer items-center gap-2.5 rounded-lg bg-slate-50/60 px-3 py-2.5 text-sm transition hover:bg-slate-50 sm:col-span-2"}>
           <input
             type="checkbox"
-            disabled={disabled}
+            disabled={fieldDisabled}
             checked={form.pickup_pallet}
             onChange={(e) => onChange({ ...form, pickup_pallet: e.target.checked })}
             className="h-4 w-4 rounded border-slate-300 accent-indigo-600"

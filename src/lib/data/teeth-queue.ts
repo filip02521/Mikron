@@ -59,6 +59,7 @@ export type TeethScheduledItem = {
   supplier_name: string;
   computed_next_date: string | null;
   shift_date: string | null;
+  vacation_note: string | null;
   is_scheduled: true;
 };
 
@@ -143,6 +144,7 @@ function scheduledItemFromSchedule(sched: {
   supplier_name: string;
   computed_next_date: string | null;
   shift_date: string | null;
+  vacation_note: string | null;
 }): TeethScheduledItem {
   return {
     id: `sched:${sched.supplier_id}`,
@@ -150,6 +152,7 @@ function scheduledItemFromSchedule(sched: {
     supplier_name: sched.supplier_name,
     computed_next_date: sched.computed_next_date,
     shift_date: sched.shift_date,
+    vacation_note: sched.vacation_note,
     is_scheduled: true,
   };
 }

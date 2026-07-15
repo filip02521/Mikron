@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { formatPlDate } from "@/lib/display-labels";
+import { formatPlDate, vacationNoteLabel } from "@/lib/display-labels";
 import type { DayOfWeek, TeethSupplierSchedule } from "@/types/database";
 import { DAY_OF_WEEK_LABELS } from "@/lib/data/teeth-schedule";
 import { TEETH_DUAL_LANE_COPY } from "@/lib/teeth/teeth-supplier-dual-lane";
 import {
   actionFetchTeethScheduleForSupplier,
-  actionRemoveTeethSchedule,
+  actionDisableTeethSchedule,
   actionShiftTeethSchedule,
   actionUpsertTeethSchedule,
 } from "@/app/actions/teeth-orders";
@@ -89,7 +89,7 @@ export function TeethSupplierScheduleFields({
     setConfirmRemoveOpen(false);
     setPending(true);
     try {
-      await actionRemoveTeethSchedule(supplierId);
+      await actionDisableTeethSchedule(supplierId);
       onToastRef.current(TEETH_SCHEDULE_TOAST.disabled);
       await reload();
     } catch (e) {
@@ -151,6 +151,11 @@ export function TeethSupplierScheduleFields({
               {schedule.computed_next_date ? (
                 <Badge variant="info">
                   Następne zamówienie: {formatPlDate(schedule.computed_next_date)}
+                </Badge>
+              ) : null}
+              {schedule.vacation_note ? (
+                <Badge variant="warning">
+                  {vacationNoteLabel(schedule.vacation_note)}
                 </Badge>
               ) : null}
               {schedule.shift_date ? (
@@ -277,6 +282,7 @@ export function TeethSupplierScheduleFields({
         title="Przesuń termin cyklu zębów"
         description="Jednorazowa data następnego zamówienia. „Wyczyść” przywraca automatyczne wyliczenie."
         size="sm"
+        bodyClassName="p-5 sm:p-6"
         footer={
           <>
             <Button
@@ -284,6 +290,7 @@ export function TeethSupplierScheduleFields({
               variant="ghost"
               disabled={pending}
               onClick={() => void handleShift(true)}
+              className="text-slate-600 hover:bg-slate-100"
             >
               Wyczyść przesunięcie
             </Button>
@@ -293,14 +300,26 @@ export function TeethSupplierScheduleFields({
           </>
         }
       >
-        <Field label="Data następnego zamówienia">
-          <Input
-            type="date"
-            value={shiftDate}
-            disabled={pending}
-            onChange={(e) => setShiftDate(e.target.value)}
-          />
-        </Field>
+        <div className="space-y-4">
+          <div className="flex items-start gap-3 rounded-xl border border-sky-100 bg-sky-50/60 px-3.5 py-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-600">
+              <IconCalendar size={16} />
+            </span>
+            <p className="text-xs leading-relaxed text-sky-900">
+              Wybierz datę, na którą chcesz jednorazowo przesunąć następne zamówienie u{" "}
+              <strong>{supplierName}</strong>. Po tym terminie cykl wróci do automatycznego wyliczenia.
+            </p>
+          </div>
+          <Field label="Data następnego zamówienia">
+            <Input
+              type="date"
+              value={shiftDate}
+              disabled={pending}
+              onChange={(e) => setShiftDate(e.target.value)}
+              className="w-full"
+            />
+          </Field>
+        </div>
       </ModalShell>
 
       <ConfirmDialog

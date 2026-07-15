@@ -31,6 +31,7 @@ import {
   recalcSingleSupplierSchedule,
   syncSuppliersFromSettings,
 } from "@/lib/services/sync";
+import { recalcTeethSchedule } from "@/lib/data/teeth-schedule";
 import {
   markStandardOrdered,
   shiftSupplierOrder,
@@ -151,6 +152,7 @@ function revalidateAll() {
   revalidatePath("/zespol", "page");
   revalidatePath("/zespol/handlowcy", "page");
   revalidatePath("/zespol/grupy", "page");
+  revalidatePath("/zakupy/dostawcy");
 }
 
 export async function actionDeleteIndividualHistory(orderId: string) {
@@ -1254,6 +1256,7 @@ export async function actionUpsertVacation(form: {
   for (const supplierId of recalcTargets) {
     try {
       await recalcSingleSupplierSchedule(supplierId);
+      await recalcTeethSchedule(supplierId);
     } catch (e) {
       recalcErrors.push(
         e instanceof Error ? e.message : "Błąd przeliczenia harmonogramu"
@@ -1381,6 +1384,7 @@ export async function actionDeleteVacation(id: string) {
 
   try {
     await recalcSingleSupplierSchedule(row.supplier_id);
+    await recalcTeethSchedule(row.supplier_id);
   } catch (e) {
     throw new Error(
       e instanceof Error ? e.message : "Urlop usunięty, ale przeliczenie harmonogramu nie powiodło się."

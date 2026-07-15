@@ -8,11 +8,19 @@ import {
   snapToBusinessDay,
   toDateOnly,
 } from "@/lib/orders/dates";
-import type { DayOfWeek, TeethSupplierSchedule, TeethSupplierScheduleWithSupplier } from "@/types/database";
+import type { DayOfWeek, SupplierLocation, TeethSupplierSchedule, TeethSupplierScheduleWithSupplier, VacationNote } from "@/types/database";
 import {
   appendTeethOrderHistory,
   type TeethOrderHistoryActor,
 } from "@/lib/data/teeth-order-history";
+import {
+  applyVacationLogic,
+  filterApplicableVacationPeriods,
+  isDateInVacationWindow,
+  parseVacationPeriodRow,
+  resolveVacationConflictOnShift,
+  type VacationPeriod,
+} from "@/lib/orders/vacations";
 
 export const DAY_OF_WEEK_LABELS: Record<DayOfWeek, string> = {
   1: "Poniedziałek",
@@ -30,6 +38,19 @@ export const DAY_OF_WEEK_SHORT: Record<DayOfWeek, string> = {
   5: "Pt",
 };
 
+const VALID_VACATION_NOTES: ReadonlySet<string> = new Set([
+  "PRZESUNIETE_PO",
+  "PRZYSPIESZONE_PRZED",
+  "OSTATNIE_ZAMOWIENIE",
+]);
+
+function parseVacationNote(value: unknown): VacationNote | null {
+  if (typeof value === "string" && VALID_VACATION_NOTES.has(value)) {
+    return value as VacationNote;
+  }
+  return null;
+}
+
 function mapScheduleRow(row: Record<string, unknown>): TeethSupplierSchedule {
   return {
     id: String(row.id),
@@ -39,6 +60,7 @@ function mapScheduleRow(row: Record<string, unknown>): TeethSupplierSchedule {
     last_order_date: row.last_order_date != null ? String(row.last_order_date) : null,
     shift_date: row.shift_date != null ? String(row.shift_date) : null,
     computed_next_date: row.computed_next_date != null ? String(row.computed_next_date) : null,
+    vacation_note: parseVacationNote(row.vacation_note),
     created_at: String(row.created_at ?? ""),
     updated_at: String(row.updated_at ?? ""),
   };
@@ -69,14 +91,37 @@ export function computeTeethNextDate(
   >,
   today = todayInWarsaw()
 ): Date | null {
+  return computeTeethNextDateWithVacations(schedule, [], "POLSKA", today).date;
+}
+
+export function computeTeethNextDateWithVacations(
+  schedule: Pick<
+    TeethSupplierSchedule,
+    "order_day_of_week" | "interval_weeks" | "last_order_date" | "shift_date"
+  >,
+  vacations: VacationPeriod[],
+  location: SupplierLocation = "POLSKA",
+  today = todayInWarsaw()
+): { date: Date | null; vacationNote: VacationNote | null } {
   const todayOnly = toDateOnly(today);
   const targetDow = schedule.order_day_of_week;
   const interval = schedule.interval_weeks;
+  const applicableVacations = filterApplicableVacationPeriods(vacations, today);
 
-  // 1. shift_date nadpisuje
+  // 1. shift_date nadpisuje — ale sprawdź urlopy
   const shiftDate = parseDateOnly(schedule.shift_date);
   if (shiftDate && toDateOnly(shiftDate).getTime() >= todayOnly.getTime()) {
-    return snapToBusinessDay(shiftDate);
+    const shiftInVacation = applicableVacations.some((vac) => isDateInVacationWindow(shiftDate, vac));
+    if (!shiftInVacation) {
+      return { date: snapToBusinessDay(shiftDate), vacationNote: null };
+    }
+    // shift_date wpada w urlop — rozwiąż konflikt
+    const resolved = resolveVacationConflictOnShift(shiftDate, location, applicableVacations, null);
+    const vacationNote: VacationNote | null =
+      location === "ZAGRANICA" ? "PRZYSPIESZONE_PRZED" : "PRZESUNIETE_PO";
+    // Snap resolved date to the correct order_day_of_week
+    const snapped = findNextWeekday(resolved, targetDow);
+    return { date: snapToBusinessDay(snapped), vacationNote };
   }
 
   // 2. Oblicz bazę: last_order_date + interval_weeks, lub dziś jeśli brak
@@ -99,8 +144,37 @@ export function computeTeethNextDate(
     guard++;
   }
 
-  if (!candidate) return null;
-  return snapToBusinessDay(candidate);
+  if (!candidate) return { date: null, vacationNote: null };
+
+  // 5. Apply vacation logic — always call to detect both vacation override
+  // (PRZESUNIETE_PO / PRZYSPIESZONE_PRZED) and OSTATNIE_ZAMOWIENIE (next interval
+  // would fall during vacation).
+  const vacationResult = applyVacationLogic({
+    orderDate: lastOrder ?? candidate,
+    shiftDate: candidate,
+    interval: { unit: "weeks", value: interval },
+    location,
+    vacations: applicableVacations,
+  });
+
+  let finalDate = candidate;
+  let vacationNote: VacationNote | null = null;
+
+  if (vacationResult.nextDate) {
+    if (
+      vacationResult.vacationNote === "PRZESUNIETE_PO" ||
+      vacationResult.vacationNote === "PRZYSPIESZONE_PRZED"
+    ) {
+      // Vacation override — snap result back to the correct order_day_of_week
+      finalDate = findNextWeekday(vacationResult.nextDate, targetDow);
+    } else {
+      // OSTATNIE_ZAMOWIENIE or no vacation — use result as-is
+      finalDate = vacationResult.nextDate;
+    }
+    vacationNote = vacationResult.vacationNote;
+  }
+
+  return { date: snapToBusinessDay(finalDate), vacationNote };
 }
 
 /** Znajdź najbliższy dzień tygodnia >= date (jeśli date już jest ten dzień, zwróć date). */
@@ -125,6 +199,7 @@ export type TeethSupplierLaneSnapshot = {
   lastOrderDate: string | null;
   orderDayOfWeek: DayOfWeek | null;
   intervalWeeks: number | null;
+  vacationNote: VacationNote | null;
 };
 
 function mapLaneSnapshot(row: Record<string, unknown>): TeethSupplierLaneSnapshot {
@@ -138,6 +213,7 @@ function mapLaneSnapshot(row: Record<string, unknown>): TeethSupplierLaneSnapsho
       row.interval_weeks != null && Number.isFinite(Number(row.interval_weeks))
         ? Number(row.interval_weeks)
         : null,
+    vacationNote: parseVacationNote(row.vacation_note),
   };
 }
 
@@ -151,7 +227,7 @@ export async function fetchTeethSupplierLaneIndex(): Promise<
   const { data, error } = await supabase
     .from("teeth_supplier_schedules")
     .select(
-      "supplier_id, computed_next_date, shift_date, last_order_date, order_day_of_week, interval_weeks"
+      "supplier_id, computed_next_date, shift_date, last_order_date, order_day_of_week, interval_weeks, vacation_note"
     );
 
   if (error) {
@@ -199,6 +275,37 @@ export async function fetchTeethScheduleForSupplier(
   return mapScheduleRow(data as Record<string, unknown>);
 }
 
+/** Pobierz aktywne urlopy dostawcy jako VacationPeriod[]. */
+async function fetchVacationsForSupplier(supplierId: string): Promise<VacationPeriod[]> {
+  if (!hasSupabaseConfig()) return [];
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("vacations")
+    .select("start_date, end_date, last_order_date")
+    .eq("supplier_id", supplierId)
+    .eq("active", true);
+  if (error) return [];
+  const periods: VacationPeriod[] = [];
+  for (const row of data ?? []) {
+    const period = parseVacationPeriodRow(row);
+    if (period) periods.push(period);
+  }
+  return periods;
+}
+
+/** Pobierz lokalizację dostawcy. */
+async function fetchSupplierLocation(supplierId: string): Promise<SupplierLocation> {
+  if (!hasSupabaseConfig()) return "POLSKA";
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("suppliers")
+    .select("location")
+    .eq("id", supplierId)
+    .maybeSingle();
+  if (error || !data) return "POLSKA";
+  return (data.location as SupplierLocation) ?? "POLSKA";
+}
+
 /** Dodaj lub zaktualizuj harmonogram zębów dla dostawcy. */
 export async function upsertTeethSchedule(
   supplierId: string,
@@ -218,13 +325,19 @@ export async function upsertTeethSchedule(
 
   const now = new Date().toISOString();
 
+  // Pobierz urlopy i lokalizację dostawcy
+  const [vacations, location] = await Promise.all([
+    fetchVacationsForSupplier(supplierId),
+    fetchSupplierLocation(supplierId),
+  ]);
+
   // Oblicz next_date dla nowego/aktualizowanego harmonogramu
-  const nextDate = computeTeethNextDate({
+  const { date: nextDate, vacationNote } = computeTeethNextDateWithVacations({
     order_day_of_week: orderDayOfWeek,
     interval_weeks: intervalWeeks,
     last_order_date: existing?.last_order_date ?? null,
     shift_date: existing?.shift_date ?? null,
-  });
+  }, vacations, location);
 
   const { error } = await supabase
     .from("teeth_supplier_schedules")
@@ -234,6 +347,7 @@ export async function upsertTeethSchedule(
         order_day_of_week: orderDayOfWeek,
         interval_weeks: intervalWeeks,
         computed_next_date: nextDate ? formatDateString(nextDate) : null,
+        vacation_note: vacationNote,
         updated_at: now,
       },
       { onConflict: "supplier_id" }
@@ -270,12 +384,17 @@ export async function recalcTeethSchedule(supplierId: string): Promise<void> {
   if (!data) return;
 
   const schedule = mapScheduleRow(data as Record<string, unknown>);
-  const nextDate = computeTeethNextDate(schedule);
+  const [vacations, location] = await Promise.all([
+    fetchVacationsForSupplier(supplierId),
+    fetchSupplierLocation(supplierId),
+  ]);
+  const { date: nextDate, vacationNote } = computeTeethNextDateWithVacations(schedule, vacations, location);
 
   const { error: updateErr } = await supabase
     .from("teeth_supplier_schedules")
     .update({
       computed_next_date: nextDate ? formatDateString(nextDate) : null,
+      vacation_note: vacationNote,
       updated_at: new Date().toISOString(),
     })
     .eq("supplier_id", supplierId);
@@ -298,6 +417,7 @@ export async function markTeethScheduleOrdered(
     .update({
       last_order_date: orderDateKey,
       shift_date: null,
+      vacation_note: null,
       updated_at: new Date().toISOString(),
     })
     .eq("supplier_id", supplierId);

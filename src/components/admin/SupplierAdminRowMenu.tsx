@@ -7,16 +7,20 @@ export function SupplierAdminRowMenu({
   supplier,
   allowDelete,
   disabled,
+  teethLane = false,
   onEdit,
   onDeactivate,
   onDelete,
+  onRemoveFromTeeth,
 }: {
   supplier: SupplierWithSchedule;
   allowDelete: boolean;
   disabled?: boolean;
+  teethLane?: boolean;
   onEdit: () => void;
   onDeactivate: () => void;
   onDelete: () => void;
+  onRemoveFromTeeth: () => void;
 }) {
   return (
     <OverflowMenu
@@ -27,12 +31,20 @@ export function SupplierAdminRowMenu({
       variant="segment"
     >
       <OverflowMenuItem onClick={onEdit}>Edytuj kartę</OverflowMenuItem>
-      <OverflowMenuItem onClick={onDeactivate}>Dezaktywuj</OverflowMenuItem>
-      {allowDelete ? (
-        <OverflowMenuItem danger onClick={onDelete}>
-          Usuń rekord
+      {teethLane ? (
+        <OverflowMenuItem danger onClick={onRemoveFromTeeth}>
+          Usuń z toru zębów
         </OverflowMenuItem>
-      ) : null}
+      ) : (
+        <>
+          <OverflowMenuItem onClick={onDeactivate}>Dezaktywuj</OverflowMenuItem>
+          {allowDelete ? (
+            <OverflowMenuItem danger onClick={onDelete}>
+              Usuń rekord
+            </OverflowMenuItem>
+          ) : null}
+        </>
+      )}
     </OverflowMenu>
   );
 }

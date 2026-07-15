@@ -7,7 +7,6 @@ import {
   actionListSupplierSubiektKhAliases,
   actionAddSupplierSubiektKhAlias,
   actionRemoveSupplierSubiektKhAlias,
-  actionResolveKontrahentLabels,
 } from "@/app/actions/subiekt";
 import { kontrahentDisplayName } from "@/lib/subiekt/resolve-kontrahent-labels";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
@@ -34,47 +33,14 @@ export function SupplierSubiektLinkField({
   const [results, setResults] = useState<SubiektKontrahent[]>([]);
   const [feedback, setFeedback] = useState<SubiektFeedback | null>(null);
   const [linkedLabel, setLinkedLabel] = useState<string | null>(null);
-  const [primaryLabel, setPrimaryLabel] = useState<string | null>(null);
-  const [resolvedPrimaryKhId, setResolvedPrimaryKhId] = useState<number | null>(null);
   const [aliases, setAliases] = useState<SupplierSubiektKhAliasRow[]>([]);
   const [pending, start] = useTransition();
-
-  useEffect(() => {
-    if (subiektKhId == null || linkedLabel) return;
-    if (resolvedPrimaryKhId === subiektKhId) return;
-    start(async () => {
-      try {
-        const labels = await actionResolveKontrahentLabels([subiektKhId]);
-        setPrimaryLabel(labels[subiektKhId] ?? null);
-        setResolvedPrimaryKhId(subiektKhId);
-      } catch {
-        setPrimaryLabel(null);
-        setResolvedPrimaryKhId(subiektKhId);
-      }
-    });
-  }, [subiektKhId, linkedLabel, resolvedPrimaryKhId]);
-
-  if (subiektKhId == null && (primaryLabel !== null || resolvedPrimaryKhId !== null)) {
-    setPrimaryLabel(null);
-    setResolvedPrimaryKhId(null);
-  }
 
   const reloadAliases = useCallback(() => {
     start(async () => {
       try {
         const rows = await actionListSupplierSubiektKhAliases(supplierId);
-        const missingKh = rows.filter((r) => !r.kontrahentLabel).map((r) => r.subiektKhId);
-        if (missingKh.length === 0) {
-          setAliases(rows);
-          return;
-        }
-        const labels = await actionResolveKontrahentLabels(missingKh);
-        setAliases(
-          rows.map((r) => ({
-            ...r,
-            kontrahentLabel: r.kontrahentLabel ?? labels[r.subiektKhId] ?? null,
-          }))
-        );
+        setAliases(rows);
       } catch {
         setAliases([]);
       }
@@ -166,7 +132,7 @@ export function SupplierSubiektLinkField({
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-indigo-900">
-              {kontrahentDisplayName(linkedLabel ?? primaryLabel, subiektKhId)}
+              {kontrahentDisplayName(linkedLabel, subiektKhId)}
             </p>
             <p className="text-[11px] text-indigo-600/80">
               id {subiektKhId}

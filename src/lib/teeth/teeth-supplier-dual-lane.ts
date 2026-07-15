@@ -1,4 +1,4 @@
-import { formatPlDate } from "@/lib/display-labels";
+import { formatPlDate, vacationNoteLabel } from "@/lib/display-labels";
 import { DAY_OF_WEEK_LABELS } from "@/lib/data/teeth-schedule";
 import type { TeethSupplierLaneSnapshot } from "@/lib/data/teeth-schedule";
 import { plCoTydzien } from "@/lib/ui/polish-plurals";
@@ -55,6 +55,9 @@ export function describeTeethLaneForDailyPanel(
   }
   if (lane.lastOrderDate) {
     rhythm.push(`ostatnio ${formatPlDate(lane.lastOrderDate)}`);
+  }
+  if (lane.vacationNote) {
+    rhythm.push(vacationNoteLabel(lane.vacationNote));
   }
 
   return {

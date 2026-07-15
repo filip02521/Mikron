@@ -36,6 +36,7 @@ import {
   markTeethScheduleOrdered,
   fetchAvailableSuppliersForTeethSchedule,
 } from "@/lib/data/teeth-schedule";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 import type { DayOfWeek, TeethSupplierSchedule, TeethSupplierScheduleWithSupplier } from "@/types/database";
 import type { SessionUser } from "@/lib/auth";
 import { assertMaxBatchSize, MAX_BATCH_ORDER_LINES } from "@/lib/security/text-limits";
@@ -47,6 +48,8 @@ function teethHistoryActor(user: SessionUser) {
 function revalidateTeethSupplierPaths() {
   revalidatePath("/zeby");
   revalidatePath("/zakupy/dostawcy");
+  revalidatePath("/podsumowanie");
+  revalidatePath("/moje");
 }
 
 export type TeethQueueResult = {
@@ -162,6 +165,38 @@ export async function actionUpsertTeethSchedule(
   return { success: true };
 }
 
+export async function actionAddSupplierToTeethLane(
+  supplierId: string
+): Promise<{ success: boolean }> {
+  await requireTeethPanel("mutate");
+  const id = supplierId?.trim();
+  if (!id) throw new Error("Brak identyfikatora dostawcy");
+
+  const { createAdminClient, hasSupabaseConfig } = await import("@/lib/supabase/admin");
+  if (!hasSupabaseConfig()) return { success: true };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("teeth_supplier_schedules")
+    .upsert(
+      {
+        supplier_id: id,
+        order_day_of_week: 1,
+        interval_weeks: 1,
+        computed_next_date: null,
+        last_order_date: null,
+        shift_date: null,
+        vacation_note: null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "supplier_id" }
+    );
+
+  if (error) throw new Error(error.message);
+  revalidateTeethSupplierPaths();
+  return { success: true };
+}
+
 export async function actionRemoveTeethSchedule(
   supplierId: string
 ): Promise<{ success: boolean }> {
@@ -169,6 +204,33 @@ export async function actionRemoveTeethSchedule(
   const id = supplierId?.trim();
   if (!id) throw new Error("Brak identyfikatora dostawcy");
   await removeTeethSchedule(id);
+  revalidateTeethSupplierPaths();
+  return { success: true };
+}
+
+export async function actionDisableTeethSchedule(
+  supplierId: string
+): Promise<{ success: boolean }> {
+  await requireTeethPanel("mutate");
+  const id = supplierId?.trim();
+  if (!id) throw new Error("Brak identyfikatora dostawcy");
+
+  const { createAdminClient, hasSupabaseConfig } = await import("@/lib/supabase/admin");
+  if (!hasSupabaseConfig()) return { success: true };
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("teeth_supplier_schedules")
+    .update({
+      computed_next_date: null,
+      last_order_date: null,
+      shift_date: null,
+      vacation_note: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("supplier_id", id);
+
+  if (error) throw new Error(error.message);
   revalidateTeethSupplierPaths();
   return { success: true };
 }
@@ -197,7 +259,7 @@ export async function actionMarkTeethScheduleOrdered(
   await requireTeethPanel("mutate");
   const id = supplierId?.trim();
   if (!id) throw new Error("Brak identyfikatora dostawcy");
-  await markTeethScheduleOrdered(id, new Date());
+  await markTeethScheduleOrdered(id, todayInWarsaw());
   revalidateTeethSupplierPaths();
   return { success: true };
 }

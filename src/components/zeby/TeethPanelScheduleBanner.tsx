@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
-import { formatPlDate } from "@/lib/display-labels";
+import { formatPlDate, vacationNoteLabel } from "@/lib/display-labels";
 import { IconCalendar } from "@/components/icons/StrokeIcons";
 import type { TeethScheduledItem } from "@/lib/data/teeth-queue";
 
@@ -46,6 +46,11 @@ export function TeethPanelScheduleBanner({
               ) : (
                 formatPlDate(nextDate)
               )}
+            </span>
+          ) : null}
+          {schedule.vacation_note ? (
+            <span className="text-xs font-medium text-amber-700">
+              {vacationNoteLabel(schedule.vacation_note)}
             </span>
           ) : null}
         </div>

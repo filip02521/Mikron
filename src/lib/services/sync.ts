@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { formatContactHref } from "@/lib/orders/supplier-contact";
 import { recalcScheduleRow } from "@/lib/orders/recalc";
 import { buildScheduleUpsertFromRecalc } from "@/lib/orders/schedule-persist";
+import { recalcTeethSchedule } from "@/lib/data/teeth-schedule";
 import {
   filterApplicableVacationPeriods,
   parseVacationPeriodRow,
@@ -175,7 +176,14 @@ export async function syncSuppliersFromSettings(): Promise<{
       );
 
       if (upsertErr) errors.push(`${s.name}: ${upsertErr.message}`);
-      else processed++;
+      else {
+        processed++;
+        try {
+          await recalcTeethSchedule(s.id);
+        } catch {
+          // Teeth schedule recalc failure is non-fatal for main sync
+        }
+      }
     } catch (e) {
       errors.push(`${s.name}: ${e instanceof Error ? e.message : "błąd"}`);
     }

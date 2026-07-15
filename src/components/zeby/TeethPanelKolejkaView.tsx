@@ -37,6 +37,9 @@ import type { TeethQueueGroup, TeethQueueItem, TeethPositionSelection } from "@/
 
 import { isScheduledItem } from "@/lib/data/teeth-queue";
 
+import { formatDateString } from "@/lib/orders/dates";
+import { todayInWarsaw } from "@/lib/time/warsaw";
+
 import {
 
   IconClipboardList,
@@ -115,7 +118,7 @@ export function TeethPanelKolejkaView({
 }) {
 
   const duplicates = useMemo(() => detectTeethDuplicates(groups), [groups]);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = formatDateString(todayInWarsaw());
   const dueToday = groups.filter(
     (g) => g.dueSchedule?.computed_next_date && g.dueSchedule.computed_next_date <= today,
   );

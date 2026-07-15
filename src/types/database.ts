@@ -210,6 +210,7 @@ export interface TeethSupplierSchedule {
   last_order_date: string | null;
   shift_date: string | null;
   computed_next_date: string | null;
+  vacation_note: VacationNote | null;
   created_at: string;
   updated_at: string;
 }

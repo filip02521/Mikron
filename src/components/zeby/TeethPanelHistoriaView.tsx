@@ -26,6 +26,8 @@ import {
   isScheduledItem,
   TEETH_HISTORY_PAGE_SIZE,
 } from "@/lib/data/teeth-queue";
+import { formatDateString } from "@/lib/orders/dates";
+import { todayInWarsaw } from "@/lib/time/warsaw";
 import {
   actionFetchTeethHistoryPage,
   actionOverrideTeethDeliveryDate,
@@ -263,7 +265,7 @@ export function TeethPanelHistoriaView({
     .filter((item) => {
       if (item.status === "Zrealizowane" || item.status === "Anulowane") return false;
       if (!item.teeth_delivery_date) return false;
-      const today = new Date().toISOString().slice(0, 10);
+      const today = formatDateString(todayInWarsaw());
       return item.teeth_delivery_date < today;
     });
 

@@ -5,7 +5,7 @@ import { SuppliersAdminClient } from "@/components/admin/SuppliersAdminClient";
 import { SuppliersHubShell } from "@/components/admin/SuppliersHubShell";
 import { Alert } from "@/components/ui/Alert";
 import { supplierHubShellDescription } from "@/lib/supplier-hub";
-import type { SupplierWithSchedule } from "@/types/database";
+import type { SupplierWithSchedule, TeethSupplierSchedule } from "@/types/database";
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
@@ -23,9 +23,11 @@ export default async function ZakupyDostawcyPage({
   const teethLane = tor === "zeby";
 
   let suppliers: SupplierWithSchedule[] = [];
+  let allSuppliers: SupplierWithSchedule[] = [];
   let inactiveCount = 0;
   let warehouseCarriers: Awaited<ReturnType<typeof fetchWarehouseCarriers>> = [];
   let teethScheduleSupplierIds: string[] = [];
+  let teethScheduleMap: Record<string, TeethSupplierSchedule> = {};
   let loadError: string | null = null;
   try {
     [suppliers, inactiveCount, warehouseCarriers] = await Promise.all([
@@ -33,12 +35,18 @@ export default async function ZakupyDostawcyPage({
       countInactiveSuppliers(),
       fetchWarehouseCarriers(),
     ]);
+    allSuppliers = suppliers;
     if (teethLane) {
       const [teethSchedules, teethSupplierIds] = await Promise.all([
         fetchTeethSchedules(),
         fetchTeethSupplierIds(),
       ]);
+      // IDs z tabeli teeth_supplier_schedules — do pickera, badge'ów, sortowania
       teethScheduleSupplierIds = teethSchedules.map((row) => row.supplier_id);
+      teethScheduleMap = Object.fromEntries(
+        teethSchedules.map((row) => [row.supplier_id, row])
+      );
+      // Filtr listy: harmonogram LUB zamówienia zębowe (fetchTeethSupplierIds)
       suppliers = suppliers.filter((s) => teethSupplierIds.has(s.id));
     }
   } catch (e) {
@@ -73,9 +81,11 @@ export default async function ZakupyDostawcyPage({
       ) : null}
       <SuppliersAdminClient
         initial={suppliers}
+        allSuppliers={teethLane ? allSuppliers : undefined}
         allowDelete={false}
         warehouseCarriers={warehouseCarriers}
         teethScheduleSupplierIds={teethLane ? teethScheduleSupplierIds : undefined}
+        teethScheduleMap={teethLane ? teethScheduleMap : undefined}
       />
     </SuppliersHubShell>
   );

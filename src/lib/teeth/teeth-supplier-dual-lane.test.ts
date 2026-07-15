@@ -13,6 +13,7 @@ const lane: TeethSupplierLaneSnapshot = {
   lastOrderDate: "2026-07-01",
   orderDayOfWeek: 2,
   intervalWeeks: 2,
+  vacationNote: null,
 };
 
 describe("teeth-supplier-dual-lane", () => {
@@ -33,5 +34,13 @@ describe("teeth-supplier-dual-lane", () => {
     expect(d.primary).toContain("15.07.2026");
     expect(d.secondary).toContain("Wtorek");
     expect(d.secondary).toContain("Co 2 tygodnie");
+  });
+
+  it("wyświetla notatkę urlopową w opisie panelu dziennego", () => {
+    const d = describeTeethLaneForDailyPanel({
+      ...lane,
+      vacationNote: "PRZESUNIETE_PO",
+    });
+    expect(d.secondary).toContain("Przesunięte po urlopie");
   });
 });

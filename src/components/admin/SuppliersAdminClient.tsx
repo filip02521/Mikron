@@ -6,19 +6,23 @@ import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition, useCallback } from "react";
 import { useLatest } from "@/hooks/useLatest";
-import type { SupplierLocation, SupplierWithSchedule } from "@/types/database";
+import type { SupplierLocation, SupplierWithSchedule, TeethSupplierSchedule } from "@/types/database";
 import {
   actionUpsertSupplier,
   actionDeleteSupplier,
   actionSetSupplierActive,
 } from "@/app/actions/admin";
+import { actionAddSupplierToTeethLane, actionRemoveTeethSchedule } from "@/app/actions/teeth-orders";
 import { isSupplierActive } from "@/lib/suppliers/active";
 import { formatSupplierCycleSummary, formatSupplierListMeta } from "@/lib/suppliers/supplier-list-labels";
+import { formatTeethCycleSummary } from "@/lib/teeth/teeth-cycle-summary";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { AddButton } from "@/components/ui/AddButton";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ModalShell } from "@/components/ui/ModalShell";
+import { Input } from "@/components/ui/Field";
 import { SupplierAdminCardsFilterBar } from "@/components/admin/SupplierHubListFilters";
 import { SupplierAdminRowMenu } from "@/components/admin/SupplierAdminRowMenu";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -45,7 +49,7 @@ import { SUPPLIER_HUB_LIST_META_DESCRIPTION } from "@/lib/supplier-hub";
 import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import { Badge } from "@/components/ui/Badge";
-import { IconPencil, IconMapPin } from "@/components/icons/StrokeIcons";
+import { IconPencil, IconMapPin, IconSearch, IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 
 function scheduleHref(location: SupplierLocation, name: string): string {
@@ -66,15 +70,21 @@ function parseSubiektFilter(raw: string | null): SupplierSubiektFilter {
 
 export function SuppliersAdminClient({
   initial,
+  allSuppliers,
   allowDelete = true,
   warehouseCarriers = [],
   teethScheduleSupplierIds,
+  teethScheduleMap,
 }: {
   initial: SupplierWithSchedule[];
+  /** Wszyscy dostawcy (nieprzefiltrowani) — do pickera w torze zębów */
+  allSuppliers?: SupplierWithSchedule[];
   allowDelete?: boolean;
   warehouseCarriers?: WarehouseCarrierRow[];
   /** ID dostawców z aktywnym cyklem zębów — tor ?tor=zeby */
   teethScheduleSupplierIds?: string[];
+  /** Mapa harmonogramów zębów (supplierId → TeethSupplierSchedule) */
+  teethScheduleMap?: Record<string, TeethSupplierSchedule>;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -98,6 +108,9 @@ export function SuppliersAdminClient({
     null
   );
   const [powiazHandled, setPowiazHandled] = useState(false);
+  const [teethPickerOpen, setTeethPickerOpen] = useState(false);
+  const [teethPickerSearch, setTeethPickerSearch] = useState("");
+  const [teethRemoveTarget, setTeethRemoveTarget] = useState<SupplierWithSchedule | null>(null);
 
   const initialKey = initial.map((row) => `${row.id}\0${row.name}\0${row.subiekt_kh_id ?? ""}`).join("\n");
   const [appliedInitialKey, setAppliedInitialKey] = useState(initialKey);
@@ -140,6 +153,43 @@ export function SuppliersAdminClient({
     () => new Set(teethScheduleSupplierIds ?? []),
     [teethScheduleSupplierIds]
   );
+
+  const availableTeethSuppliers = useMemo(() => {
+    if (!teethLane || !allSuppliers) return [];
+    const needle = teethPickerSearch.trim().toLowerCase();
+    return allSuppliers
+      .filter((s) => isSupplierActive(s) && !teethScheduleIds.has(s.id))
+      .filter((s) => !needle || s.name.toLowerCase().includes(needle))
+      .sort((a, b) => a.name.localeCompare(b.name, "pl"));
+  }, [teethLane, allSuppliers, teethScheduleIds, teethPickerSearch]);
+
+  const addSupplierToTeeth = (supplierId: string) => {
+    if (blockIfReadOnly()) return;
+    start(async () => {
+      try {
+        await actionAddSupplierToTeethLane(supplierId);
+        setTeethPickerOpen(false);
+        setTeethPickerSearch("");
+        setToast({ text: "Dodano dostawcę do toru zębów", tone: "success" });
+        router.refresh();
+      } catch (e) {
+        setToast(toastFromError(e instanceof Error ? e.message : undefined));
+      }
+    });
+  };
+
+  const removeSupplierFromTeeth = (supplierId: string) => {
+    start(async () => {
+      try {
+        await actionRemoveTeethSchedule(supplierId);
+        setTeethRemoveTarget(null);
+        setToast({ text: "Usunięto dostawcę z toru zębów", tone: "success" });
+        router.refresh();
+      } catch (e) {
+        setToast(toastFromError(e instanceof Error ? e.message : undefined));
+      }
+    });
+  };
 
   const sortedRows = useMemo(() => {
     if (!teethLane || teethScheduleIds.size === 0) return rows;
@@ -346,6 +396,24 @@ export function SuppliersAdminClient({
         />
       ) : null}
 
+      <ConfirmDialog
+        open={!!teethRemoveTarget}
+        title="Usunąć z toru zębów?"
+        message={
+          teethRemoveTarget
+            ? `„${teethRemoveTarget.name}" zniknie z toru zębów. Karta dostawcy pozostanie w głównym dziale dostaw. Historia i cykl zębów zostaną usunięte.`
+            : ""
+        }
+        confirmLabel="Usuń z toru zębów"
+        danger
+        pending={pending}
+        onCancel={() => setTeethRemoveTarget(null)}
+        onConfirm={() => {
+          if (!teethRemoveTarget) return;
+          removeSupplierFromTeeth(teethRemoveTarget.id);
+        }}
+      />
+
       <SupplierEditSheet
         open={formOpen}
         title={sheetTitle}
@@ -354,11 +422,13 @@ export function SuppliersAdminClient({
         pending={pending}
         footer={
           <>
-            <Button type="submit" form="supplier-admin-form" disabled={readOnly || pending}>
-              {form.id ? "Zapisz zmiany" : "Dodaj dostawcę"}
-            </Button>
+            {teethLane ? null : (
+              <Button type="submit" form="supplier-admin-form" disabled={readOnly || pending}>
+                {form.id ? "Zapisz zmiany" : "Dodaj dostawcę"}
+              </Button>
+            )}
             <Button type="button" variant="ghost" disabled={pending} onClick={resetForm}>
-              Anuluj
+              Zamknij
             </Button>
           </>
         }
@@ -377,6 +447,7 @@ export function SuppliersAdminClient({
             onPatchCycleFields={patchCycleFields}
             carrierOptions={warehouseCarriers}
             showTeethSchedule={teethLane}
+            teethLane={teethLane}
             onTeethScheduleToast={setToast}
             onSubiektLinked={(khId) => {
               setForm((f) => ({ ...f, subiekt_kh_id: khId }));
@@ -392,9 +463,15 @@ export function SuppliersAdminClient({
 
       <section className="space-y-4">
         {!formOpen ? (
-          <AddButton onClick={openNew} disabled={readOnly}>
-            Dodaj dostawcę
-          </AddButton>
+          teethLane ? (
+            <AddButton onClick={() => setTeethPickerOpen(true)} disabled={readOnly || pending}>
+              Dodaj dostawcę do zębów
+            </AddButton>
+          ) : (
+            <AddButton onClick={openNew} disabled={readOnly}>
+              Dodaj dostawcę
+            </AddButton>
+          )
         ) : null}
 
         <Card padding={false} className="overflow-hidden">
@@ -421,13 +498,23 @@ export function SuppliersAdminClient({
             <EmptyState
               title="Brak dostawców w tym widoku"
               description={
-                search.trim() || subiektFilter !== "all"
-                  ? "Zmień wyszukiwanie lub filtry."
-                  : "Wybierz inną lokalizację albo dodaj nowego dostawcę."
+                teethLane
+                  ? search.trim()
+                    ? "Zmień wyszukiwanie lub filtry."
+                    : "Dodaj istniejącego dostawcę do toru zębów."
+                  : search.trim() || subiektFilter !== "all"
+                    ? "Zmień wyszukiwanie lub filtry."
+                    : "Wybierz inną lokalizację albo dodaj nowego dostawcę."
               }
               action={
                 !search.trim() && subiektFilter === "all" && !readOnly ? (
-                  <AddButton onClick={openNew}>Dodaj dostawcę</AddButton>
+                  teethLane ? (
+                    <AddButton onClick={() => setTeethPickerOpen(true)}>
+                      Dodaj dostawcę do zębów
+                    </AddButton>
+                  ) : (
+                    <AddButton onClick={openNew}>Dodaj dostawcę</AddButton>
+                  )
                 ) : undefined
               }
             />
@@ -450,7 +537,9 @@ export function SuppliersAdminClient({
               <ul className="space-y-1.5 p-2 sm:p-3 lg:p-4">
                 {filtered.map((s) => {
                   const isEditing = formOpen && form.id === s.id;
-                  const cycleSummary = formatSupplierCycleSummary(s);
+                  const cycleSummary = teethLane
+                    ? formatTeethCycleSummary(teethScheduleMap?.[s.id])
+                    : formatSupplierCycleSummary(s);
                   const cycleIncomplete = cycleSummary === "Uzupełnij cykl";
                   const isActive = isSupplierActive(s);
                   return (
@@ -479,6 +568,7 @@ export function SuppliersAdminClient({
                               supplier={s}
                               isEditing={isEditing}
                               onEdit={() => startEdit(s)}
+                              teethLane={teethLane}
                               trailingBadge={
                                 teethLane && !teethScheduleIds.has(s.id) ? (
                                   <Badge variant="warning" className="text-[10px]">
@@ -530,6 +620,7 @@ export function SuppliersAdminClient({
                             supplier={s}
                             allowDelete={allowDelete}
                             disabled={readOnly || pending}
+                            teethLane={teethLane}
                             onEdit={() => startEdit(s)}
                             onDeactivate={() => {
                               if (blockIfReadOnly()) return;
@@ -538,6 +629,10 @@ export function SuppliersAdminClient({
                             onDelete={() => {
                               if (blockIfReadOnly()) return;
                               setDeleteTarget(s);
+                            }}
+                            onRemoveFromTeeth={() => {
+                              if (blockIfReadOnly()) return;
+                              setTeethRemoveTarget(s);
                             }}
                           />
                         </div>
@@ -550,6 +645,85 @@ export function SuppliersAdminClient({
           )}
         </Card>
       </section>
+
+      {teethLane ? (
+        <ModalShell
+          open={teethPickerOpen}
+          onClose={() => { setTeethPickerOpen(false); setTeethPickerSearch(""); }}
+          title="Dodaj dostawcę do toru zębów"
+          description="Wybierz istniejącego dostawcę, aby utworzyć dla niego osobny cykl zębów — niezależny od zwykłych produktów."
+          size="md"
+          bodyClassName="p-5 sm:p-6"
+        >
+          <div className="space-y-4">
+            <div className="relative">
+              <IconSearch
+                size={16}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <Input
+                value={teethPickerSearch}
+                onChange={(e) => setTeethPickerSearch(e.target.value)}
+                placeholder="Szukaj dostawcy po nazwie…"
+                autoFocus
+                className="pl-9"
+              />
+            </div>
+
+            {availableTeethSuppliers.length === 0 ? (
+              <div className="flex flex-col items-center gap-2 py-10 text-center">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-400">
+                  <IconSearch size={18} />
+                </span>
+                <p className="text-sm text-slate-500">
+                  {teethPickerSearch.trim()
+                    ? "Brak dostawców pasujących do wyszukiwania."
+                    : "Wszyscy aktywni dostawcy są już w torze zębów."}
+                </p>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs font-medium text-slate-400">
+                  {availableTeethSuppliers.length}{" "}
+                  {availableTeethSuppliers.length === 1 ? "dostępny" : "dostępnych"}
+                </p>
+                <ul className="max-h-80 space-y-1.5 overflow-y-auto">
+                  {availableTeethSuppliers.map((s) => (
+                    <li key={s.id}>
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() => addSupplierToTeeth(s.id)}
+                        className={cn(
+                          "group flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-white px-3.5 py-3 text-left transition-all",
+                          "hover:border-indigo-200 hover:bg-indigo-50/40 hover:shadow-sm",
+                          "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-100 disabled:hover:bg-white disabled:hover:shadow-none"
+                        )}
+                      >
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-600">
+                          <IconMapPin size={16} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-slate-900">
+                            {s.name}
+                          </p>
+                          <p className="mt-0.5 truncate text-xs text-slate-500">
+                            {formatSupplierListMeta(s)}
+                          </p>
+                        </div>
+                        <span className="flex shrink-0 items-center gap-1 rounded-lg bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-600 opacity-0 transition-opacity group-hover:opacity-100">
+                          <IconPlusCircle size={14} />
+                          Dodaj
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        </ModalShell>
+      ) : null}
     </>
   );
 }
