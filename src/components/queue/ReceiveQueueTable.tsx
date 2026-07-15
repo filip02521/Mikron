@@ -24,7 +24,7 @@ import { SupplierFilterChips } from "@/components/queue/SupplierFilterChips";
 import { ReceiveQueueSearchField } from "@/components/queue/ReceiveQueueSearchField";
 import { ReceiveQueueActiveFilters } from "@/components/queue/ReceiveQueueActiveFilters";
 import { ZdReceiveFilterModal } from "@/components/queue/ZdReceiveFilterModal";
-import { IconClipboardList } from "@/components/icons/StrokeIcons";
+import { IconClipboardList, IconChevronDown, IconSearch } from "@/components/icons/StrokeIcons";
 import { SupplierGroupHeaderRow } from "@/components/queue/SupplierGroupHeaderRow";
 import { ReceiveQueueGroupMenu } from "@/components/queue/receive-queue/ReceiveQueueGroupMenu";
 import { ReceiveQueueRow } from "@/components/queue/receive-queue/ReceiveQueueRow";
@@ -148,6 +148,7 @@ export function ReceiveQueueTable({
   const [productSearchResetToken, setProductSearchResetToken] = useState(0);
   const [zdFilter, setZdFilter] = useState<ZdReceiveFilterState | null>(null);
   const [zdModalOpen, setZdModalOpen] = useState(false);
+  const [searchCollapsed, setSearchCollapsed] = useState(true);
   const supplierBeforeZdRef = useRef<string | undefined>(undefined);
   const [batchSaveConfirm, setBatchSaveConfirm] = useState<{
     orderIds: string[];
@@ -232,6 +233,7 @@ export function ReceiveQueueTable({
   }, [receiveQueue, supplierFilter, zdFilter, productSearch]);
 
   const productSearchActive = searchQueryTokens(productSearch).length > 0;
+  const hasActiveFilters = productSearchActive || Boolean(zdFilter);
 
   const zdUnmatchedLineCount = useMemo(() => {
     if (!zdFilter) return 0;
@@ -277,6 +279,10 @@ export function ReceiveQueueTable({
     collapse.expandAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- expand when search results set changes
   }, [productSearchActive, supplierGroupsSignature]);
+
+  useEffect(() => {
+    if (hasActiveFilters) setSearchCollapsed(false);
+  }, [hasActiveFilters]);
 
   const selectedIds = useMemo(
     () => filtered.filter((o) => selected[o.id]).map((o) => o.id),
@@ -650,62 +656,104 @@ export function ReceiveQueueTable({
     <div className="border-b border-slate-100 px-3 py-3 sm:px-4 lg:px-6">
       <div className="space-y-3">
         <div className={receiveQueueToolbarSectionClass}>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_12rem] sm:items-end">
-            <ReceiveQueueSearchField
-              key={`receive-product-search-${productSearchResetToken}`}
-              onDebouncedChange={setProductSearch}
-            />
-            <div className="flex min-w-0 flex-col">
-              <span className={queueToolbarFieldLabelClass}>Dokument ZD</span>
-              <button
-                type="button"
-                onClick={() => setZdModalOpen(true)}
-                className={cn(
-                  panelChoiceChipClass,
-                  queueToolbarControlClass,
-                  zdFilter
-                    ? panelChoiceChipSuccessSelectedClass
-                    : "border-emerald-200/90 bg-emerald-50/60 text-emerald-900 hover:bg-emerald-50",
-                  "inline-flex w-full items-center justify-center gap-2 px-3 font-semibold",
-                )}
-              >
-                <IconClipboardList size={16} className="shrink-0" aria-hidden />
-                <span className="truncate">Szukaj ZD</span>
-              </button>
-            </div>
-          </div>
-
-          {productSearchActive || zdFilter ? (
-            <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
-              <ReceiveQueueActiveFilters
-                productSearch={productSearch}
-                onClearProductSearch={clearProductSearch}
-                zdFilter={zdFilter}
-                onClearZdFilter={clearZdFilter}
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setSearchCollapsed((v) => !v)}
+              className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700 transition hover:text-slate-900"
+              aria-expanded={!searchCollapsed}
+              aria-controls="receive-search-panel"
+            >
+              <IconSearch size={15} className="shrink-0 text-slate-400" />
+              <span>Wyszukiwanie</span>
+              {hasActiveFilters ? (
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-100 px-1 text-[10px] font-bold text-indigo-700">
+                  {productSearchActive ? 1 : 0}
+                  {zdFilter ? (productSearchActive ? 1 : 1) : 0}
+                </span>
+              ) : null}
+              <IconChevronDown
+                open={!searchCollapsed}
+                size={16}
+                className="shrink-0 text-slate-400 transition-transform"
               />
-              <div className="space-y-0.5">
+            </button>
+            {searchCollapsed && hasActiveFilters ? (
+              <div className="flex flex-wrap items-center gap-1.5">
                 {productSearchActive ? (
-                  <p className="text-[11px] font-medium text-slate-700">
-                    {receiveQueueSearchToolbarLabel(
-                      filtered.length,
-                      zdScoped.length,
-                      productSearch
-                    )}
-                  </p>
+                  <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 text-[11px] font-medium text-slate-700">
+                    Szukaj: {productSearch.trim()}
+                  </span>
                 ) : null}
                 {zdFilter ? (
-                  <>
-                    <p className="text-[11px] font-medium text-emerald-800">
-                      {zdFilterToolbarLabel(filtered.length, supplierFiltered.length)}
-                    </p>
-                    {zdFilterUnmatchedLinesLabel(zdUnmatchedLineCount) ? (
-                      <p className="text-[10px] text-amber-800">
-                        {zdFilterUnmatchedLinesLabel(zdUnmatchedLineCount)}
-                      </p>
-                    ) : null}
-                  </>
+                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-1 text-[11px] font-medium text-emerald-800">
+                    ZD: {zdFilter.docNumber}
+                  </span>
                 ) : null}
               </div>
+            ) : null}
+          </div>
+
+          {!searchCollapsed ? (
+            <div id="receive-search-panel" className="mt-3 space-y-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_12rem] sm:items-end">
+                <ReceiveQueueSearchField
+                  key={`receive-product-search-${productSearchResetToken}`}
+                  onDebouncedChange={setProductSearch}
+                />
+                <div className="flex min-w-0 flex-col">
+                  <span className={queueToolbarFieldLabelClass}>Dokument ZD</span>
+                  <button
+                    type="button"
+                    onClick={() => setZdModalOpen(true)}
+                    className={cn(
+                      panelChoiceChipClass,
+                      queueToolbarControlClass,
+                      zdFilter
+                        ? panelChoiceChipSuccessSelectedClass
+                        : "border-emerald-200/90 bg-emerald-50/60 text-emerald-900 hover:bg-emerald-50",
+                      "inline-flex w-full items-center justify-center gap-2 px-3 font-semibold",
+                    )}
+                  >
+                    <IconClipboardList size={16} className="shrink-0" aria-hidden />
+                    <span className="truncate">Szukaj ZD</span>
+                  </button>
+                </div>
+              </div>
+
+              {hasActiveFilters ? (
+                <div className="space-y-2 border-t border-slate-100 pt-3">
+                  <ReceiveQueueActiveFilters
+                    productSearch={productSearch}
+                    onClearProductSearch={clearProductSearch}
+                    zdFilter={zdFilter}
+                    onClearZdFilter={clearZdFilter}
+                  />
+                  <div className="space-y-0.5">
+                    {productSearchActive ? (
+                      <p className="text-[11px] font-medium text-slate-700">
+                        {receiveQueueSearchToolbarLabel(
+                          filtered.length,
+                          zdScoped.length,
+                          productSearch
+                        )}
+                      </p>
+                    ) : null}
+                    {zdFilter ? (
+                      <>
+                        <p className="text-[11px] font-medium text-emerald-800">
+                          {zdFilterToolbarLabel(filtered.length, supplierFiltered.length)}
+                        </p>
+                        {zdFilterUnmatchedLinesLabel(zdUnmatchedLineCount) ? (
+                          <p className="text-[10px] text-amber-800">
+                            {zdFilterUnmatchedLinesLabel(zdUnmatchedLineCount)}
+                          </p>
+                        ) : null}
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

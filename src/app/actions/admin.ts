@@ -132,6 +132,7 @@ function revalidateAll() {
   revalidatePath("/");
   revalidatePath("/podsumowanie");
   revalidatePath("/kolejka");
+  revalidatePath("/dostawy");
   revalidatePath("/historia");
   revalidatePath("/moje");
   revalidatePath("/plan");

@@ -361,15 +361,19 @@ function groupBySupplier(
       ? warehouseCarrierLabel(carrierHint.carrier, carriers)
       : null;
 
+    const adjustedDelivered = hasJournalReceipt && totalDelivered === 0 && totalQuantity > 0
+      ? Math.max(1, Math.ceil(totalQuantity * 0.01))
+      : totalDelivered;
+
+    if (adjustedDelivered >= totalQuantity && totalQuantity > 0) continue;
+
     result.push({
       supplierId,
       supplierName,
       zdDocNumber,
       positionCount,
       totalQuantity,
-      totalDelivered: hasJournalReceipt && totalDelivered === 0 && totalQuantity > 0
-        ? Math.max(1, Math.ceil(totalQuantity * 0.01))
-        : totalDelivered,
+      totalDelivered: adjustedDelivered,
       salesPeople,
       carrierHint,
       carrierLabel,
@@ -569,6 +573,7 @@ async function mergeZdIndexDeliveries(
           }
         }
       } else {
+        if (entry.fulfilled) continue;
         const supplierName = supplierNames.get(supplierId) ?? "—";
         const carrierHint = hintMap.get(supplierId) ?? null;
         const carrierLabel = carrierHint

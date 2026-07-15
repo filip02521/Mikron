@@ -52,7 +52,7 @@ import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import { PROCUREMENT_WORKSPACE_OPTIONS, subtitleForProcurementWorkspace, labelForProcurementWorkspace, grantedProcurementFunctions } from "@/lib/auth/procurement-workspace";
 import { isAdmin } from "@/lib/auth-roles";
 import { hrefWithAdminSalesPreview, shouldPreserveSalesPreviewInNav } from "@/lib/nav/sales-preview-href";
-import { ChangelogTriggerButton } from "@/components/changelog/ChangelogTriggerButton";
+import { ChangelogTriggerIconButton } from "@/components/changelog/ChangelogTriggerIconButton";
 
 function NavLink({
   item,
@@ -422,8 +422,8 @@ export function Sidebar({
           </Link>
         ) : (
           <>
-            <ChangelogTriggerButton />
             <div className="flex items-stretch gap-2">
+              <ChangelogTriggerIconButton />
               <Link
                 href="/ustawienia"
                 className="flex min-h-10 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"

@@ -144,6 +144,7 @@ export async function actionCreateDeliveryReceipt(input: {
     createdBy: user.id,
   });
   revalidatePath("/kolejka");
+  revalidatePath("/dostawy");
   return receipt;
 }
 
@@ -173,6 +174,7 @@ export async function actionUpdateDeliveryReceipt(input: {
     updatedBy: user.id,
   });
   revalidatePath("/kolejka");
+  revalidatePath("/dostawy");
   return receipt;
 }
 
@@ -180,6 +182,7 @@ export async function actionDeleteDeliveryReceipt(id: string) {
   await requireWarehouse("mutate");
   await deleteDeliveryReceipt(id);
   revalidatePath("/kolejka");
+  revalidatePath("/dostawy");
   return { success: true as const };
 }
 
