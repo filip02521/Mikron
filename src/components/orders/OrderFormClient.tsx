@@ -915,8 +915,9 @@ export function OrderFormClient({
           ...group,
           {
             ...newLine,
-            // Dziedziczy dostawcę grupy (np. prefill z harmonogramu ?dostawca=).
-            supplierId: group[0]?.supplierId ?? "",
+            // W trybie sales each line resolves its own supplier from Subiekt.
+            // Inherit only when not deferring (e.g. prefill z harmonogramu ?dostawca=).
+            supplierId: deferSupplierResolve ? "" : (group[0]?.supplierId ?? ""),
             salesPersonId: lockedId,
             clientName: inheritClient?.clientName,
             clientKhId: inheritClient?.clientKhId ?? null,
