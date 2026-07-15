@@ -2,9 +2,9 @@ import type { TeethProductLine } from "./teeth-catalog-types";
 
 export type PatternId =
   | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J"
-  | "K" | "L" | "M" | "N" | "O" | "P";
+  | "K" | "L" | "M" | "N" | "O" | "P" | "Q";
 
-const UNIVERSAL_PATTERNS: PatternId[] = ["A", "B", "D", "F", "G", "H", "I", "J", "K", "L", "M", "O"];
+const UNIVERSAL_PATTERNS: PatternId[] = ["A", "B", "D", "F", "G", "H", "I", "J", "K", "L", "M", "O", "Q"];
 
 export function selectPatternsForLine(productLine: TeethProductLine): PatternId[] {
   const patterns = [...UNIVERSAL_PATTERNS];
