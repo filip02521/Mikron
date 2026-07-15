@@ -20,12 +20,16 @@ predicate isSupabaseFilterCall(CallExpr call) {
 
 /** Drugi argument to surowy parametr z input (PropAccess na zmiennej input/body/params).
  *  input.supplierId.trim() to MethodCallExpr, nie PropAccess — więc nie matchuje.
- *  Ograniczenie do znanych nazw zmiennych redukuje false positives (np. user.id nie matchuje). */
+ *  Ograniczenie do znanych nazw zmiennych redukuje false positives (np. user.id nie matchuje).
+ *  Dodatkowo ograniczone do plików w app/api/ i app/actions/ — library functions w src/lib/
+ *  mają typed parametry już zwalidowane przez wywołującą server action. */
 predicate isRawInput(Expr arg) {
   exists(PropAccess p, VarRef v |
     p = arg and
     v = p.getBase() and
-    v.getName() in ["input", "body", "params", "query", "form"]
+    v.getName() in ["input", "body", "params", "query", "form"] and
+    (p.getFile().getAbsolutePath().regexpMatch(".*/app/api/.*") or
+     p.getFile().getAbsolutePath().regexpMatch(".*/app/actions/.*"))
   )
 }
 

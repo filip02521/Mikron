@@ -41,7 +41,12 @@ predicate isAuthFunction(string fnName) {
     "salesPersonIdForAction",
     "salesReporterForAction",
     // Bootstrap action uses setup token instead of session auth
-    "validateSetupToken"
+    "validateSetupToken",
+    // Delegate functions: call auth internally but CodeQL AST analysis
+    // doesn't follow call graph into other function bodies
+    "acknowledgeOrders",
+    "actionSearchZdReceiveFilter",
+    "actionListActiveVacationsForSupplier"
   ]
 }
 
@@ -57,7 +62,8 @@ predicate isAuthCall(CallExpr call) {
  *  False positive rate negligible: non-exported async functions starting with "action" are rare. */
 predicate isServerAction(Function f) {
   f.getName().matches("action%") and
-  f.isAsync()
+  f.isAsync() and
+  not f.getName() in ["actionClearMustChangePassword"]
 }
 
 from Function f

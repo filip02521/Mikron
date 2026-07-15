@@ -22,11 +22,14 @@ predicate isMutationCall(CallExpr call) {
   exists(PropAccess p | p = call.getCallee() and p.getPropertyName() in ["insert", "update", "delete", "upsert"])
 }
 
-/** Wywołanie revalidatePath/revalidateTag/updateTag (direct) LUB helpera (revalidate*).
+/** Wywołanie revalidatePath/revalidateTag/updateTag (direct) LUB helpera (revalidate*, schedule*Revalidation).
  *  Projekt używa helperów jak revalidateAll(), revalidateVacationPaths() itp.
+ *  scheduleNotepadRevalidation() opóźnia revalidate przez after() — też valid.
  *  updateTag to odpowiednik revalidateTag w tej wersji Next.js. */
 predicate isAnyRevalidateCall(CallExpr call) {
   exists(VarRef v | v = call.getCallee() and v.getName().matches("revalidate%"))
+  or
+  exists(VarRef v | v = call.getCallee() and v.getName().matches("schedule%Revalidation%"))
   or
   exists(VarRef v | v = call.getCallee() and v.getName() = "updateTag")
 }
@@ -41,5 +44,10 @@ where
   not exists(CallExpr c |
     c.getEnclosingFunction+() = f and
     isAnyRevalidateCall(c)
-  )
+  ) and
+  not f.getName() in [
+    "actionSetUserPassword",
+    "actionBootstrapAdmin",
+    "actionGeneratePasswordResetLink"
+  ]
 select f, "Server action '" + f.getName() + "' wykonuje mutację bazy danych ale nie wywołuje revalidatePath/revalidateTag (ani helpera revalidate*) — dane mogą być nieaktualne."

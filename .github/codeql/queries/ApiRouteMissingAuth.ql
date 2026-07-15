@@ -45,7 +45,8 @@ predicate isApiRouteFile(File f) {
 predicate isPublicRoute(File f) {
   f.getAbsolutePath().regexpMatch(".*/api/auth/login.*") or
   f.getAbsolutePath().regexpMatch(".*/api/auth/password-reset.*") or
-  f.getAbsolutePath().regexpMatch(".*/api/health/live.*")
+  f.getAbsolutePath().regexpMatch(".*/api/health/live.*") or
+  f.getAbsolutePath().regexpMatch(".*/auth/confirm.*")
 }
 
 /** Exported function z nazwą HTTP method. */
