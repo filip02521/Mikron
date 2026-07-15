@@ -138,7 +138,18 @@ export default async function MojePage({
     loadError,
   } = data;
 
-  const subiektAvailability = await getSubiektAvailability();
+  let subiektAvailability: Awaited<ReturnType<typeof getSubiektAvailability>>;
+  try {
+    subiektAvailability = await getSubiektAvailability();
+  } catch {
+    subiektAvailability = {
+      configured: false,
+      reachable: false,
+      checkedAt: 0,
+      shortLabel: "System magazynowy: niedostępny",
+      message: "Nie udało się sprawdzić połączenia z systemem magazynowym.",
+    };
+  }
   const subiektReachable = isSubiektAvailableForZdSync(subiektAvailability);
 
   const supplierRefs = showSalesPersonOrdersPanel ? await getAppSupplierRefsCached() : [];
