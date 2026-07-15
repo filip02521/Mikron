@@ -80,7 +80,7 @@ import {
   readZkProsbaPrefill,
   type ZkProsbaPrefill,
 } from "@/lib/orders/zk-watch-prosba-prefill";
-import { readTeethOcrProsbaPrefill, clearTeethOcrProsbaPrefill } from "@/lib/orders/teeth-ocr-prosba-prefill";
+import { readTeethOcrProsbaPrefill, clearTeethOcrProsbaPrefill, resolveSupplierForTeethPrefill } from "@/lib/orders/teeth-ocr-prosba-prefill";
 import { clearUnseenNewZkLineKeys, removeUnseenNewZkLineKeys } from "@/lib/client/zk-watch-new-lines-snapshot";
 import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
 import { buildProsbaSubmitStockConfirm, buildProsbaSubmitZkQuantityConfirm, formatProsbaZkQuantityFormBanner, applyProsbaLineStockMap, collectProsbaLineTwIdsMissingStock } from "@/lib/orders/prosba-stock-check";
@@ -450,41 +450,41 @@ export function OrderFormClient({
     if (teethOcrPrefillAppliedRef.current) return;
     const prefill = readTeethOcrProsbaPrefill();
     if (!prefill?.lines.length) return;
-    const { registryIndex } = teethProductInfo;
-    const hasRegistry = registryIndex.byLineAndKind.size > 0;
-    if (!hasRegistry) return;
     teethOcrPrefillAppliedRef.current = true;
     clearTeethOcrProsbaPrefill();
-    const t = setTimeout(() => {
-      setRequestKind("zamowienie");
-      setValidationAttempted(false);
-      setFormNotice(null);
-      setMsg(null);
-      setGroups([
-        prefill.lines.map((line) => {
-          const resolved =
-            line.teethProductLine && line.teethKind
-              ? resolveTeethCatalogProduct(
-                  registryIndex,
-                  line.teethProductLine,
-                  line.teethKind,
-                )
-              : null;
-          return {
-            ...line,
-            supplierId: "",
-            salesPersonId: lockedId,
-            subiektTwId: resolved?.twId ?? line.subiektTwId,
-            symbol: resolved?.symbol?.trim() || line.symbol,
-            mikranCode: resolved?.plu?.trim() || line.mikranCode,
-            product: resolved?.name || line.product,
-            source: resolved ? "catalog" : line.source,
-          };
-        }),
-      ]);
-    }, 0);
-    return () => clearTimeout(t);
-  }, [lockedId, tourDemo, teethProductInfo]);
+
+    const { registryIndex } = teethProductInfo;
+    const hasRegistry = registryIndex.byLineAndKind.size > 0;
+
+    const resolvedSupplierId = resolveSupplierForTeethPrefill(prefill.lines, suppliers);
+
+    setRequestKind("zamowienie");
+    setValidationAttempted(false);
+    setFormNotice(null);
+    setMsg(null);
+    setGroups([
+      prefill.lines.map((line) => {
+        const resolved =
+          hasRegistry && line.teethProductLine && line.teethKind
+            ? resolveTeethCatalogProduct(
+                registryIndex,
+                line.teethProductLine,
+                line.teethKind,
+              )
+            : null;
+        return {
+          ...line,
+          supplierId: resolvedSupplierId,
+          salesPersonId: lockedId,
+          subiektTwId: resolved?.twId ?? line.subiektTwId,
+          symbol: resolved?.symbol?.trim() || line.symbol,
+          mikranCode: resolved?.plu?.trim() || line.mikranCode,
+          product: resolved?.name || line.product,
+          source: resolved ? "catalog" : line.source,
+        };
+      }),
+    ]);
+  }, [lockedId, tourDemo, teethProductInfo, suppliers]);
 
   const supplierRefs = useMemo(() => toAppSupplierRefs(suppliers), [suppliers]);
 

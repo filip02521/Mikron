@@ -5,7 +5,7 @@ import type {
   TeethProductLine,
   TeethKind,
 } from "@/lib/teeth/teeth-catalog";
-import { expandTeethGroups, totalTeethCountFromGroups, TEETH_KIND_LABELS } from "@/lib/teeth/teeth-catalog";
+import { expandTeethGroups, totalTeethCountFromGroups, TEETH_KIND_LABELS, TEETH_MANUFACTURERS } from "@/lib/teeth/teeth-catalog";
 import { teethProductLineLabel } from "@/lib/teeth/teeth-catalog";
 import type { TeethOcrGroup } from "@/components/teeth/TeethOcrWizard";
 
@@ -130,4 +130,38 @@ export function readTeethOcrProsbaPrefill(): TeethOcrProsbaPrefill | null {
 export function clearTeethOcrProsbaPrefill(): void {
   if (typeof sessionStorage === "undefined") return;
   sessionStorage.removeItem(TEETH_OCR_PROSBA_PREFILL_STORAGE_KEY);
+}
+
+/**
+ * Resolve a supplier ID from the suppliers list by matching teeth manufacturer names.
+ * Tries to find a supplier whose name contains the manufacturer label (e.g. "Wiedent", "Ivoclar", "Major Dental").
+ * If lines have multiple manufacturers, returns the first match.
+ */
+export function resolveSupplierForTeethPrefill(
+  lines: ProductLineDraft[],
+  suppliers: Array<{ id: string; name: string }>,
+): string {
+  if (!suppliers.length || !lines.length) return "";
+
+  const manufacturerLabels = TEETH_MANUFACTURERS;
+  const usedManufacturers = new Set<string>();
+  for (const line of lines) {
+    if (line.teethManufacturer) {
+      usedManufacturers.add(line.teethManufacturer);
+    }
+  }
+  if (usedManufacturers.size === 0) return "";
+
+  for (const mfr of manufacturerLabels) {
+    if (!usedManufacturers.has(mfr.id)) continue;
+    const labelLower = mfr.label.toLowerCase();
+    for (const s of suppliers) {
+      const supplierLower = s.name.toLowerCase();
+      if (supplierLower.includes(labelLower) || labelLower.includes(supplierLower)) {
+        return s.id;
+      }
+    }
+  }
+
+  return "";
 }
