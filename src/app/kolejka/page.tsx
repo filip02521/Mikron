@@ -9,6 +9,7 @@ import { runOrderMaintenanceBeforePageLoad } from "@/lib/services/deferred-order
 import { actionFetchTodayDeliveryJournal, actionListWarehouseAssignSuppliers } from "@/app/actions/warehouse-delivery";
 import { getSessionUser } from "@/lib/auth";
 import { canManageSuppliers, isMagazyn } from "@/lib/auth-roles";
+import { hasProcurementFunction } from "@/lib/auth/procurement-workspace";
 import { fetchWarehouseCarriers } from "@/lib/data/warehouse-carriers";
 import { QueueClient } from "@/components/queue/QueueClient";
 import type { IndividualOrder, SupplierWithSchedule } from "@/types/database";
@@ -76,6 +77,8 @@ export default async function KolejkaPage() {
       warehouseCarriers={warehouseCarriers}
       canManageCarriers={role != null && canManageSuppliers(role, session?.assignedWorkspaces)}
       isMagazynRole={role != null && isMagazyn(role, session?.assignedWorkspaces)}
+      showDailyPanelLink={role != null && hasProcurementFunction(role, "dostawy", session?.assignedWorkspaces) && !isMagazyn(role, session?.assignedWorkspaces)}
+      showTeethLink={role != null && hasProcurementFunction(role, "zeby", session?.assignedWorkspaces) && !isMagazyn(role, session?.assignedWorkspaces)}
       loadError={error}
     />
   );

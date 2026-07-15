@@ -29,7 +29,8 @@ export function QueuePanelToolbar({
   pickupReadyCount,
   inventoryCount = 0,
   journalCount = 0,
-  showProcurementLinks = true,
+  showDailyPanelLink = false,
+  showTeethLink = false,
 }: {
   view: QueueView;
   onViewChange: (view: QueueView) => void;
@@ -37,7 +38,8 @@ export function QueuePanelToolbar({
   pickupReadyCount: number;
   inventoryCount?: number;
   journalCount?: number;
-  showProcurementLinks?: boolean;
+  showDailyPanelLink?: boolean;
+  showTeethLink?: boolean;
 }) {
   const receiveHint = buildReceiveHint(summary);
   const inventoryHint =
@@ -91,17 +93,27 @@ export function QueuePanelToolbar({
           onClick={() => onViewChange("inventory")}
         />
       </div>
-      {showProcurementLinks ? (
+      {showDailyPanelLink || showTeethLink ? (
         <div className="mt-2.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 rounded-lg bg-slate-50/60 px-3 py-1.5 text-[10px] text-slate-500">
-          <span>Brak dostawcy uzupełnia zakupy w</span>
-          <Link href="/podsumowanie" className={cn(brandLinkClass, "font-medium")}>
-            panelu dziennym
-          </Link>
-          <span aria-hidden className="text-slate-300">·</span>
-          <span>Zęby przyjmujesz w</span>
-          <Link href="/zeby/przyjecie" className={cn(brandLinkClass, "font-medium")}>
-            panelu zębów
-          </Link>
+          {showDailyPanelLink ? (
+            <>
+              <span>Brak dostawcy uzupełnia zakupy w</span>
+              <Link href="/podsumowanie" className={cn(brandLinkClass, "font-medium")}>
+                panelu dziennym
+              </Link>
+            </>
+          ) : null}
+          {showDailyPanelLink && showTeethLink ? (
+            <span aria-hidden className="text-slate-300">·</span>
+          ) : null}
+          {showTeethLink ? (
+            <>
+              <span>Zęby przyjmujesz w</span>
+              <Link href="/zeby/przyjecie" className={cn(brandLinkClass, "font-medium")}>
+                panelu zębów
+              </Link>
+            </>
+          ) : null}
         </div>
       ) : null}
     </div>

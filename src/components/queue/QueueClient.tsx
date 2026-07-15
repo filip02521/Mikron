@@ -46,6 +46,8 @@ export function QueueClient({
   warehouseCarriers,
   canManageCarriers = false,
   isMagazynRole = false,
+  showDailyPanelLink = false,
+  showTeethLink = false,
   loadError = null,
 }: {
   orders: IndividualOrder[];
@@ -63,6 +65,8 @@ export function QueueClient({
   warehouseCarriers: WarehouseCarrierRow[];
   canManageCarriers?: boolean;
   isMagazynRole?: boolean;
+  showDailyPanelLink?: boolean;
+  showTeethLink?: boolean;
   loadError?: string | null;
 }) {
   const [view, setView] = useState<QueueView>("receive");
@@ -181,7 +185,8 @@ export function QueueClient({
           pickupReadyCount={pickupReadyCount}
           inventoryCount={inventoryCount}
           journalCount={deliveryJournal.summary.receiptCount}
-          showProcurementLinks={!isMagazynRole}
+          showDailyPanelLink={showDailyPanelLink}
+          showTeethLink={showTeethLink}
         />
 
         <div
