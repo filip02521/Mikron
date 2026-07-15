@@ -33,6 +33,7 @@ function normalizeCycleRaw(value: string): string {
   return value
     .trim()
     .toLowerCase()
+    .replace(/ł/g, "l")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/\s+/g, " ");
