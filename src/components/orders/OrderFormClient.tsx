@@ -458,6 +458,7 @@ export function OrderFormClient({
 
     const resolvedSupplierId = resolveSupplierForTeethPrefill(prefill.lines, suppliers);
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time OCR prefill from localStorage
     setRequestKind("zamowienie");
     setValidationAttempted(false);
     setFormNotice(null);
