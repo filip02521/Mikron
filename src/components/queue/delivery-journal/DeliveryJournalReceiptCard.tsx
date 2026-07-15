@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts";
 import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import {
@@ -50,7 +49,6 @@ export function DeliveryJournalReceiptCard({
   carrierCatalog?: WarehouseCarrierRow[];
   pendingCount?: number;
 }) {
-  const router = useRouter();
   const note = receipt.note.trim();
   const quantitySuffix = formatShipmentQuantitySuffix(
     receipt.shipmentForm,
@@ -64,7 +62,8 @@ export function DeliveryJournalReceiptCard({
     if (receipt.supplierName && receipt.supplierName !== "—") {
       params.set("supplier", receipt.supplierName);
     }
-    router.push(`/kolejka${params.toString() ? `?${params.toString()}` : ""}`);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    window.location.href = `/kolejka${query}#kolejka-przyjecie`;
   };
 
   return (
