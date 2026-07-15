@@ -139,6 +139,7 @@ function ReceiptRow({
   onError,
   canManageCarriers,
   onManageCarriers,
+  pendingCount,
 }: {
   receipt: WarehouseDeliveryReceipt;
   suppliers: SupplierOption[];
@@ -151,6 +152,7 @@ function ReceiptRow({
   onError: (message: string) => void;
   canManageCarriers?: boolean;
   onManageCarriers?: () => void;
+  pendingCount?: number;
 }) {
   const [editing, setEditing] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -212,6 +214,7 @@ function ReceiptRow({
         receipt={receipt}
         highlightQuery={highlightQuery}
         carrierCatalog={carriers}
+        pendingCount={pendingCount}
         actions={
           !readOnly ? (
             <>
@@ -423,6 +426,7 @@ export function DeliveryJournalSection({
     date: string;
     receipts: WarehouseDeliveryReceipt[];
     summary: { receiptCount: number; packageCount: number; palletCount: number };
+    pendingBySupplier?: Record<string, number>;
   };
   todayDateKey: string;
   isMagazynRole?: boolean;
@@ -434,6 +438,7 @@ export function DeliveryJournalSection({
   );
   const [pending, start] = useTransition();
   const [journal, setJournal] = useState(initialJournal);
+  const pendingBySupplier = journal.pendingBySupplier ?? {};
   const [viewDate, setViewDate] = useState(initialJournal.date);
   const [subView, setSubView] = useState<JournalSubView>("entries");
   const [formOpen, setFormOpen] = useState(true);
@@ -869,6 +874,7 @@ export function DeliveryJournalSection({
                 highlightQuery={entrySearch.trim() || undefined}
                 canManageCarriers={canManageCarriers}
                 onManageCarriers={() => setCarriersModalOpen(true)}
+                pendingCount={r.supplierId ? pendingBySupplier[r.supplierId] : undefined}
               />
             ))}
           </ul>

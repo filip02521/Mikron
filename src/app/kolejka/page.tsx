@@ -35,6 +35,7 @@ export default async function KolejkaPage() {
     date: "",
     receipts: [] as Awaited<ReturnType<typeof actionFetchTodayDeliveryJournal>>["receipts"],
     summary: { receiptCount: 0, packageCount: 0, palletCount: 0 },
+    pendingBySupplier: {} as Record<string, number>,
   };
   let journalSuppliers: Awaited<ReturnType<typeof actionListWarehouseAssignSuppliers>> = [];
   let warehouseCarriers: Awaited<ReturnType<typeof fetchWarehouseCarriers>> = [];

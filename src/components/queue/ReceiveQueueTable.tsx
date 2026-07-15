@@ -143,7 +143,11 @@ export function ReceiveQueueTable({
   const [pending, start] = useTransition();
   const [qty, setQty] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [supplierFilter, setSupplierFilter] = useState("");
+  const [supplierFilter, setSupplierFilter] = useState(() => {
+    if (typeof window === "undefined") return "";
+    const params = new URLSearchParams(window.location.search);
+    return params.get("supplier") ?? "";
+  });
   const [productSearch, setProductSearch] = useState("");
   const [productSearchResetToken, setProductSearchResetToken] = useState(0);
   const [zdFilter, setZdFilter] = useState<ZdReceiveFilterState | null>(null);
@@ -283,6 +287,14 @@ export function ReceiveQueueTable({
   useEffect(() => {
     if (hasActiveFilters) setSearchCollapsed(false);
   }, [hasActiveFilters]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("supplier")) {
+      router.replace("/kolejka", { scroll: false });
+    }
+  }, [router]);
 
   const selectedIds = useMemo(
     () => filtered.filter((o) => selected[o.id]).map((o) => o.id),

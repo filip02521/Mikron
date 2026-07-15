@@ -57,6 +57,7 @@ export function QueueClient({
     date: string;
     receipts: WarehouseDeliveryReceipt[];
     summary: { receiptCount: number; packageCount: number; palletCount: number };
+    pendingBySupplier?: Record<string, number>;
   };
   journalSuppliers: Array<{ id: string; name: string; subiektKhId: number | null }>;
   warehouseCarriers: WarehouseCarrierRow[];

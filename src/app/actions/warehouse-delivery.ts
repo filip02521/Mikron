@@ -72,7 +72,29 @@ export type DeliveryJournalPayload = {
   date: string;
   receipts: WarehouseDeliveryReceipt[];
   summary: { receiptCount: number; packageCount: number; palletCount: number };
+  pendingBySupplier: Record<string, number>;
 };
+
+async function fetchPendingOrderCountBySupplier(
+  supplierIds: string[]
+): Promise<Record<string, number>> {
+  if (!supplierIds.length) return {};
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("individual_orders")
+    .select("supplier_id")
+    .in("supplier_id", supplierIds)
+    .in("status", ["Zamowione", "Czesciowo_zrealizowane"])
+    .is("sales_cancelled_at", null)
+    .eq("request_kind", "zamowienie");
+  if (error) return {};
+  const counts: Record<string, number> = {};
+  for (const row of data ?? []) {
+    const sid = String(row.supplier_id);
+    counts[sid] = (counts[sid] ?? 0) + 1;
+  }
+  return counts;
+}
 
 async function buildDeliveryJournalForDate(date: string): Promise<DeliveryJournalPayload> {
   assertJournalDateReadable(date);
@@ -80,7 +102,9 @@ async function buildDeliveryJournalForDate(date: string): Promise<DeliveryJourna
     fetchDeliveryReceiptsForDate(date),
     summarizeDeliveryReceiptsForDate(date),
   ]);
-  return { date, receipts, summary };
+  const supplierIds = [...new Set(receipts.map((r) => r.supplierId).filter(Boolean) as string[])];
+  const pendingBySupplier = await fetchPendingOrderCountBySupplier(supplierIds);
+  return { date, receipts, summary, pendingBySupplier };
 }
 
 export async function actionFetchTodayDeliveryJournal(): Promise<DeliveryJournalPayload> {
