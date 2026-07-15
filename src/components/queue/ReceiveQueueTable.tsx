@@ -143,11 +143,7 @@ export function ReceiveQueueTable({
   const [pending, start] = useTransition();
   const [qty, setQty] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [supplierFilter, setSupplierFilter] = useState(() => {
-    if (typeof window === "undefined") return "";
-    const params = new URLSearchParams(window.location.search);
-    return params.get("supplier") ?? "";
-  });
+  const [supplierFilter, setSupplierFilter] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [productSearchResetToken, setProductSearchResetToken] = useState(0);
   const [zdFilter, setZdFilter] = useState<ZdReceiveFilterState | null>(null);
@@ -291,7 +287,10 @@ export function ReceiveQueueTable({
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    if (params.has("supplier")) {
+    const supplierParam = params.get("supplier");
+    if (supplierParam) {
+      setSupplierFilter(supplierParam);
+      setSearchCollapsed(false);
       router.replace("/kolejka", { scroll: false });
     }
   }, [router]);
