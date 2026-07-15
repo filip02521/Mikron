@@ -787,10 +787,13 @@ export async function updateIndividualRequestGroup(
   });
 
   const teethDetailsToSave: { orderId: string; isTeeth: boolean; teethDetails: TeethLineDetail[] | null }[] = [];
+  const existingOrderById = new Map(existing.map((o) => [o.id, o]));
 
   for (const line of payload.lines) {
     const kind = payload.requestKind;
     const existingLineId = resolveIndividualRequestEditLineId(line.id, existingOrderIds);
+    const existingOrder = existingLineId ? existingOrderById.get(existingLineId) : null;
+    const effectiveSupplierId = payload.supplierId.trim() || (existingOrder?.supplier_id ?? "");
     const informacjaFlags = resolveInformacjaFlags(existingLineId);
     const sanitized = sanitizeOrderDraftFields({
       symbol: line.symbol,
@@ -799,7 +802,7 @@ export async function updateIndividualRequestGroup(
       quantity: line.quantity,
     });
     const draft = {
-      supplierId: payload.supplierId,
+      supplierId: effectiveSupplierId,
       symbol: sanitized.symbol,
       mikranCode: sanitized.mikranCode,
       product: sanitized.product,
@@ -856,7 +859,7 @@ export async function updateIndividualRequestGroup(
         )
       : null;
     const rowPayload = {
-      supplier_id: payload.supplierId.trim() || null,
+      supplier_id: effectiveSupplierId.trim() || null,
       sales_person_id: payload.salesPersonId,
       symbol,
       products,
