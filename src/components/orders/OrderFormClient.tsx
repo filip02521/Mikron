@@ -1048,14 +1048,16 @@ export function OrderFormClient({
   };
 
   const updateGroupLines = (gi: number, lines: Entry[]) => {
-    const supplierId = groups[gi]?.[0]?.supplierId ?? "";
+    const groupSupplierId = groups[gi]?.[0]?.supplierId ?? "";
     const salesPersonId = groups[gi]?.[0]?.salesPersonId ?? lockedId;
     setGroups((g) =>
       g.map((gr, i) =>
         i === gi
-          ? lines.map((line) => ({
+          ? lines.map((line, lineIdx) => ({
               ...line,
-              supplierId,
+              supplierId: deferSupplierResolve
+                ? (line.supplierId || gr[lineIdx]?.supplierId || "")
+                : groupSupplierId,
               salesPersonId,
             }))
           : gr
