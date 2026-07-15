@@ -73,17 +73,21 @@ function buildDetectPrompt(): string {
   }
 
   parts.push(`\n## Reguły:`);
-  parts.push(`1. Zwróć WSZYSTKIE linie widoczne na kartce.`);
+  parts.push(`1. Zwróć WSZYSTKIE linie widoczne na kartce. Kartka może zawierać sekcje Ivostar, Wiedent, Major i innych jednocześnie — nie zatrzymuj się na pierwszej.`);
   parts.push(`2. Jeśli nie pewien — zwróć z confidence < 0.5.`);
   parts.push(`3. Pary linii: Ivostar+Gnathostar i Vivodent+Orthotyp często występują razem (przody + boki = osobne towary).`);
-  parts.push(`4. Rozróżnij linie o tych samych fasonach po KOLORACH:`);
-  parts.push(`   - Wiedent Estetic (skala W): kolory G/N/R`);
-  parts.push(`   - Wiedent Estetic wg Vity: kolory VITA (A1-D4)`);
-  parts.push(`   - Dentex AmberLux: kolory A1-R5 (bez sufiksa)`);
-  parts.push(`   - Dentex AmberLux skala V: kolory z sufiksem V (A1V-D4V)`);
-  parts.push(`5. Ignoruj przedrukowany tekst (nagłówki, logo) — rozpoznaj tylko ODRĘCZNE wpisy.`);
-  parts.push(`6. Skreślone pozycje pomiń — rozpoznaj linie na podstawie nieprzekreślonych wpisów.`);
-  parts.push(`7. confidence: 0.0-1.0, gdzie 1.0 = absolutna pewność, 0.5 = prawdopodobne.`);
+  parts.push(`4. Rozróżnij linie po KOLORACH i FASONACH:`);
+  parts.push(`   - Ivostar Chromascop: kolory z cyfrą i literą (01, 1A, 2A, 2B, 1C, 2C, 3C, 3E, 4A, 4B, 4C, 4D, 6B, 6C, 6D) oraz VITA, fasony 01-45 (przody) i 80-88 (boki).`);
+  parts.push(`   - Wiedent Estetic (skala W): kolory G/N/R (G1, G2, G3, N2, N3, N5, R1, R3, R5) + A1-B3, fasony 2-cyfrowe (12-50, 00-011, 60-80).`);
+  parts.push(`   - Wiedent Classic/Almamiss: kolory A1-D4 + OM, fasony Classic 3-4 cyfrowe (402, 421, 635, 733) lub Almamiss 3-cyfrowe (210, 320, 650, 790).`);
+  parts.push(`   - Major Super Lux: kolory A1-D4 + 2C-3R, fasony "0/8", "1/60", "70N-79N".`);
+  parts.push(`   - Major Composite: kolory A1-D4, fasony B/L/M/S/A/T.`);
+  parts.push(`   - Dentex AmberLux: kolory A1-R5 (bez sufiksa), fasony 0-48 lub I-X.`);
+  parts.push(`   - Dentex AmberLux skala V: kolory z sufiksem V (A1V-D4V).`);
+  parts.push(`5. Linie z prefixem "ivo" to Ivoclar; prefix "W" to Wiedent; prefix "M" to Major. Prefix jest najsilniejszym sygnałem, ale zweryfikuj kolor/fasony.`);
+  parts.push(`6. Ignoruj przedrukowany tekst (nagłówki, logo) — rozpoznaj tylko ODRĘCZNE wpisy.`);
+  parts.push(`7. Skreślone pozycje pomiń — rozpoznaj linie na podstawie nieprzekreślonych wpisów.`);
+  parts.push(`8. confidence: 0.0-1.0, gdzie 1.0 = absolutna pewność, 0.5 = prawdopodobne.`);
   parts.push(`\n## Format odpowiedzi:`);
   parts.push(`Zwróć JSON z tablicą "lines", gdzie każdy element ma: productLine (dokładnie jedno z ID powyżej), confidence (liczba 0-1), note (opcjonalny komentarz).`);
 

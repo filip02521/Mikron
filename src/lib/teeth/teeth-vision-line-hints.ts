@@ -128,6 +128,12 @@ Nie ucinaj wiodącego zero!
 - Przody: 01-05, 11-16, 31-35, 41-45 (2-cyfrowe, bez strzałek).
 - NIE MA boków — boki to Gnathostar (odrębna linia). Jeśli widzisz "D80-D88" lub "80-88" — POMIŃ (to Gnathostar).
 
+### KOLOR NA POCZĄTKU WIERSZA (KRYTYCZNE):
+W formacie "kolor fason1 fason2 ..." PIERWSZY token (lub token bezpośrednio po prefixie "ivo") to KOLOR.
+Nie przesuwaj koloru na kolejny token tylko dlatego, że kolejny też wygląda jak kolor/fason.
+Przykład: "2B 01 15 31 42" = kolor 2B, fasony 01, 15, 31, 42 (wszystkie przody, productLine "ivoclar_ivostar").
+Przykład: "ivo 1C 03 14 45" = kolor 1C, fasony 03, 14, 45.
+
 ### KOLOR "01" vs FASON "01" (KRYTYCZNE):
 "01" może być:
 - KOLOR Chromascop (skrót od "110/01") — gdy występuje jako nagłówek/początek wiersza
@@ -142,6 +148,11 @@ Jeśli "01" występuje po ustanowionym kolorze → to FASON.
 - Kolory: identyczne jak Ivostar (VITA + BL + Chromascop).
 - Boki: D80, D82, D84, D86, D88. Klienci ZAWSZE piszą bez "D" ("84" → "D84").
 - NIE MA przodów — przody to Ivostar. Jeśli widzisz fasony 2-cyfrowe (01-45) — POMIŃ (to Ivostar).
+
+### KOLOR NA POCZĄTKU WIERSZA (KRYTYCZNE):
+W formacie "kolor fason1 fason2 ..." PIERWSZY token (lub token bezpośrednio po prefixie "ivo") to KOLOR.
+Kolejne tokeny to boki Gnathostar (80-88) z opcjonalnymi strzałkami.
+Przykład: "1C 84↑ 80↕" = kolor 1C, fasony 84 góra (×1), 80 góra (×1) + 80 dół (×1).
 
 ### "80" vs "D80" — KONTEKST:
 "80" na kartce = D80 (klienci pomijają "D"). ALE "80" jest też fasonem Wiedent Estetic.
