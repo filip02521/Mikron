@@ -26,6 +26,7 @@ export interface SessionUser {
   mustChangePassword: boolean;
   salesOnboardingCompletedAt: string | null;
   assignedWorkspaces: Workspace[];
+  uniformBackground: boolean;
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
@@ -40,6 +41,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     mustChangePassword: profile.must_change_password,
     salesOnboardingCompletedAt: profile.sales_onboarding_completed_at,
     assignedWorkspaces: profile.assigned_workspaces,
+    uniformBackground: profile.uniform_background,
   };
 }
 

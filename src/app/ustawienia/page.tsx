@@ -25,7 +25,7 @@ export default async function UstawieniaPage() {
 
         <AutoRefreshSettingsSection role={user.role} />
 
-        <AppearanceSettingsSection />
+        <AppearanceSettingsSection uniformBackground={user.uniformBackground} />
       </SettingsWorkspace>
     </div>
   );

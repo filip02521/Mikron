@@ -89,10 +89,12 @@ function OperationsGlobalPinnedStrip({
 function AppShellMain({
   children,
   mobileChrome,
+  uniformBackground,
   topNotices,
 }: {
   children: React.ReactNode;
   mobileChrome: boolean;
+  uniformBackground: boolean;
   topNotices?: React.ReactNode;
 }) {
   const coachPadding = useSalesCoachPaddingClass();
@@ -108,7 +110,7 @@ function AppShellMain({
         coachPadding
       )}
     >
-      <AppWorkspaceBackdrop />
+      <AppWorkspaceBackdrop uniformBackground={uniformBackground} />
       <div className={cn(appMainInsetClass, "relative z-[1]")}>
         {topNotices}
         <SalesOnboardingTourBanner />
@@ -134,6 +136,7 @@ export function AppShellClient({
   teethProductInfo = [],
   assignedWorkspaces = [],
   activeDelegations = [],
+  uniformBackground = false,
 }: {
   children: React.ReactNode;
   role: UserRole | null;
@@ -151,6 +154,7 @@ export function AppShellClient({
   salesOnboardingActive?: boolean;
   teethProductInfo?: { twId: number; manufacturer: string | null; productLine?: string | null; kind?: string | null }[];
   activeDelegations?: VacationDelegationRow[];
+  uniformBackground?: boolean;
 }) {
   const {
     navBadges,
@@ -307,6 +311,7 @@ export function AppShellClient({
         ) : null}
         <AppShellMain
           mobileChrome={mobileChrome}
+          uniformBackground={uniformBackground}
           topNotices={
             adminPanelPreview ? (
               <>

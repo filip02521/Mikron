@@ -9,16 +9,19 @@ export type ProfileRow = {
   must_change_password: boolean;
   sales_onboarding_completed_at: string | null;
   assigned_workspaces: Workspace[];
+  uniform_background: boolean;
 };
 
 const PROFILE_SELECT =
-  "role, sales_person_id, email, must_change_password, sales_onboarding_completed_at, assigned_workspaces";
+  "role, sales_person_id, email, must_change_password, sales_onboarding_completed_at, assigned_workspaces, preferences";
 
 function mapProfileRow(data: Record<string, unknown>): ProfileRow {
   const rawWorkspaces = data.assigned_workspaces;
   const workspaces = Array.isArray(rawWorkspaces)
     ? (rawWorkspaces.filter((w) => typeof w === "string") as Workspace[])
     : [];
+  const rawPrefs = data.preferences;
+  const prefs = (rawPrefs && typeof rawPrefs === "object") ? rawPrefs as Record<string, unknown> : {};
   return {
     role: data.role as UserRole,
     sales_person_id: data.sales_person_id as string | null,
@@ -26,6 +29,7 @@ function mapProfileRow(data: Record<string, unknown>): ProfileRow {
     must_change_password: Boolean(data.must_change_password),
     sales_onboarding_completed_at: (data.sales_onboarding_completed_at as string | null) ?? null,
     assigned_workspaces: workspaces,
+    uniform_background: Boolean(prefs.uniform_background ?? false),
   };
 }
 

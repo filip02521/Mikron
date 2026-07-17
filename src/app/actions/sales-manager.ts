@@ -259,7 +259,7 @@ export async function actionCompletePasswordChange(
     const admin = createAdminClient();
     const { data: profile } = await admin
       .from("profiles")
-      .select("id, email, role, sales_person_id, must_change_password, sales_onboarding_completed_at, assigned_workspaces")
+      .select("id, email, role, sales_person_id, must_change_password, sales_onboarding_completed_at, assigned_workspaces, preferences")
       .eq("id", authUser.id)
       .maybeSingle();
     
@@ -273,6 +273,7 @@ export async function actionCompletePasswordChange(
       mustChangePassword: profile.must_change_password,
       salesOnboardingCompletedAt: profile.sales_onboarding_completed_at,
       assignedWorkspaces: (profile.assigned_workspaces ?? []) as Workspace[],
+      uniformBackground: Boolean((profile.preferences as Record<string, unknown> | null)?.uniform_background ?? false),
     };
   }
 

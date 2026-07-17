@@ -22,6 +22,7 @@ const adminUser: SessionUser = {
   mustChangePassword: false,
   salesOnboardingCompletedAt: null,
   assignedWorkspaces: [],
+  uniformBackground: false,
 };
 
 describe("assertCanSubmitIndividualOrders", () => {

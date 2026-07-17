@@ -1,23 +1,29 @@
 "use client";
 
-import { useCallback } from "react";
-import { usePersistedFlag } from "@/lib/client/use-persisted-flag";
-import { useClientHydrated } from "@/lib/client/use-client-hydrated";
-import { uniformBackgroundStore } from "@/lib/client/uniform-background-store";
+import { useOptimistic, useTransition } from "react";
+import { actionSetUniformBackground } from "@/app/actions/user-preferences";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconGlobe } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 
-export function AppearanceSettingsSection() {
-  const uniformBg = usePersistedFlag(uniformBackgroundStore);
-  const hydrated = useClientHydrated();
-  const value = hydrated ? uniformBg : false;
+type AppearanceSettingsSectionProps = {
+  uniformBackground: boolean;
+};
 
-  const setUniformBg = useCallback((v: boolean) => {
-    uniformBackgroundStore.setValue(v);
-  }, []);
+export function AppearanceSettingsSection({
+  uniformBackground,
+}: AppearanceSettingsSectionProps) {
+  const [optimistic, setOptimistic] = useOptimistic(uniformBackground);
+  const [, startTransition] = useTransition();
+
+  function toggle(value: boolean) {
+    startTransition(async () => {
+      setOptimistic(value);
+      await actionSetUniformBackground(value);
+    });
+  }
 
   return (
     <Card padding={false} className="overflow-hidden">
@@ -36,7 +42,7 @@ export function AppearanceSettingsSection() {
         <label
           className={cn(
             "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-all",
-            value
+            optimistic
               ? "border-sky-200/80 bg-sky-50/40"
               : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
           )}
@@ -50,10 +56,10 @@ export function AppearanceSettingsSection() {
           <input
             type="checkbox"
             role="switch"
-            aria-checked={value}
+            aria-checked={optimistic}
             aria-label="Jednolite tło — ukrywa okręgi w tle aplikacji"
-            checked={value}
-            onChange={(e) => setUniformBg(e.target.checked)}
+            checked={optimistic}
+            onChange={(e) => toggle(e.target.checked)}
             className="toggle-switch toggle-sky"
           />
         </label>

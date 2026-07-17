@@ -77,6 +77,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       teethProductInfo={teethProductInfo}
       assignedWorkspaces={session?.assignedWorkspaces ?? []}
       activeDelegations={activeDelegations}
+      uniformBackground={session?.uniformBackground ?? false}
     >
       {children}
     </AppShellClient>
