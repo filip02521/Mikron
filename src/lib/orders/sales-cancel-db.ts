@@ -44,7 +44,8 @@ export function salesCancelOrderSelect(caps: SalesCancelDbCaps): string {
 }
 
 export function salesCancelAckSelect(caps: SalesCancelDbCaps): string {
-  const base = "id, status, sales_person_id, sales_acknowledged_at, quantity, delivered_quantity";
+  const base =
+    "id, status, sales_person_id, sales_acknowledged_at, quantity, delivered_quantity, request_kind";
   if (!caps.hasCancelledAt) return base;
   const withCancel = caps.hasCancelPhase
     ? `${base}, sales_cancelled_at, sales_cancel_phase`

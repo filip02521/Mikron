@@ -130,6 +130,10 @@ export interface IndividualOrder {
   sales_request_note?: string | null;
   /** Wiadomość od działu dostaw przy anulowaniu — widoczna u handlowca w Moje zamówienia. */
   procurement_cancel_note?: string | null;
+  /** Timestamp ostatniej zmiany uwag przez zakupy — do powiadomień handlowca. */
+  sales_request_note_updated_at?: string | null;
+  /** Timestamp ostatniej zmiany wiadomości przy anuleniu — do powiadomień handlowca. */
+  procurement_cancel_note_updated_at?: string | null;
   /** kh_Id odbiorcy z Subiekta — powiązanie z ZK / wyszukiwanie. */
   sales_client_kh_id?: number | null;
   /** Karta ZK z notatnika (przycisk Prośba). */
@@ -148,6 +152,10 @@ export interface IndividualOrder {
   warehouse_cancel_fulfilled_at?: string | null;
   /** Fizyczna lokalizacja na magazynie (regał / strefa). */
   warehouse_shelf?: string | null;
+  /** Magazyn zdjął pozycję z regału (ręcznie, nie potwierdzenie handlowca). */
+  warehouse_cleared_at?: string | null;
+  /** Kto zdjął z regału (email/ID z sesji magazynu). */
+  warehouse_cleared_by?: string | null;
   /** ID towaru w Subiekcie (tw_Id) — wybor z kartoteki; brak = wpis ręczny. */
   subiekt_tw_id?: number | null;
   /** Kod Mikran (tw_PLU) — opcjonalnie przy prośbie. */

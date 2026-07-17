@@ -45,7 +45,9 @@ export async function rollbackZkWatchPendingAck(
   const caps = await getSalesCancelDbCaps(supabase);
   const { data: rowsRaw, error: fetchError } = await supabase
     .from("individual_orders")
-    .select(salesCancelAckSelect(caps))
+    .select(
+      `${salesCancelAckSelect(caps)}, source_zk_watch_id, source_zk_number, sales_client_kh_id, sales_client_name, is_teeth, products, symbol, mikran_code, subiekt_tw_id`
+    )
     .in("id", rolledBack.salesAckIds)
     .eq("sales_person_id", salesPersonId);
 
@@ -144,7 +146,9 @@ export async function acknowledgeOrdersWithClient(
 
   const { data: rowsRaw, error: fetchError } = await supabase
     .from("individual_orders")
-    .select(salesCancelAckSelect(caps))
+    .select(
+      `${salesCancelAckSelect(caps)}, source_zk_watch_id, source_zk_number, sales_client_kh_id, sales_client_name, is_teeth, products, symbol, mikran_code, subiekt_tw_id`
+    )
     .in("id", orderIds);
 
   if (fetchError) throw new Error(fetchError.message);

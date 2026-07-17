@@ -24,10 +24,6 @@ import {
 import {
   MY_ORDER_NO_HISTORY_ESTIMATE_YET_SUBLINE,
 } from "@/lib/orders/my-order-history-estimate-copy";
-import {
-  ZD_ETA_OVERDUE_NO_MATCH_SUBLINE,
-  ZD_ETA_OVERDUE_PENDING_SUBLINE,
-} from "@/lib/orders/my-order-zd-eta-copy";
 
 export type SupplierKhIdsLookup = Record<string, readonly number[]>;
 
@@ -271,7 +267,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
       return {
         headline: "Po przewidywanym terminie",
         headlineTone: "warning",
-        subline: ZD_ETA_OVERDUE_PENDING_SUBLINE,
+        subline: null,
         sortPriority: 4,
       };
     }
@@ -279,7 +275,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
       return {
         headline: "Po przewidywanym terminie",
         headlineTone: "warning",
-        subline: ZD_ETA_OVERDUE_NO_MATCH_SUBLINE,
+        subline: null,
         sortPriority: 4,
       };
     }

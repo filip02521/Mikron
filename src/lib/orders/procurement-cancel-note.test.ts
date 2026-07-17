@@ -131,6 +131,7 @@ describe("buildProcurementCancelUpdate", () => {
       informacja_queue_via_daily_panel: false,
       informacja_stock_out_reorder: false,
       procurement_cancel_note: "brak towaru",
+      procurement_cancel_note_updated_at: expect.any(String),
     });
   });
 });

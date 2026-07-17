@@ -40,6 +40,7 @@ import {
   actionMarkQuestionThreadSeen,
   actionReplyToQuestion,
 } from "@/app/actions/department-board";
+import { isStaleAnsweredQuestion } from "@/lib/department-board/attention";
 
 function procurementReplyLabel(indexAmongProcurement: number): string {
   return indexAmongProcurement === 0 ? "Odpowiedź" : "Doprecyzowanie";
@@ -82,6 +83,7 @@ export function QuestionThreadCard({
   const replyCount = question.posts.length;
   const showUnseen = unseenReply && !locallySeen;
   const hasProduct = boardQuestionHasProduct(question);
+  const stale = isStaleAnsweredQuestion(question);
 
   const latestActivityPost = useMemo(() => {
     if (question.posts.length === 0) return null;
@@ -195,6 +197,7 @@ export function QuestionThreadCard({
               open: isOpen,
               expanded,
               alternate: rowAlternate,
+              stale,
             })
           : "rounded-md border border-slate-200/90 bg-white shadow-sm"
       )}

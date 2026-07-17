@@ -101,4 +101,30 @@ describe("warehouse inventory", () => {
     });
     expect(row && waitingLabel(row)).toContain("od ostatniego przyjęcia");
   });
+
+  it("pomija pozycję zdjętą z regału (warehouse_cleared_at)", () => {
+    expect(
+      buildWarehouseInventoryRow({
+        ...base,
+        warehouse_cleared_at: "2026-06-01T10:00:00Z",
+      })
+    ).toBeNull();
+  });
+
+  it("klasyfikuje pozycję jako expired po ≥ 21 dniach roboczych", () => {
+    const row = buildWarehouseInventoryRow({
+      ...base,
+      delivery_at: "2026-01-01T10:00:00Z",
+    });
+    expect(row?.waitingLevel).toBe("expired");
+  });
+
+  it("liczy staleExpired w podsumowaniu", () => {
+    const rows = buildWarehouseInventoryRows([
+      { ...base, delivery_at: "2026-01-01T10:00:00Z" },
+      { ...base, id: "2", delivery_at: new Date().toISOString() },
+    ]);
+    const s = summarizeWarehouseInventory(rows);
+    expect(s.staleExpired).toBe(1);
+  });
 });

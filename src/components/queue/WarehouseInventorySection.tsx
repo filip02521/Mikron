@@ -3,7 +3,7 @@ import { ToastNotice, WAREHOUSE_TOAST } from "@/lib/ui/notice-copy";
 
 import { Fragment, useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { actionSetWarehouseShelf } from "@/app/actions/admin";
+import { actionSetWarehouseShelf, actionClearFromShelf } from "@/app/actions/admin";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import {
@@ -12,6 +12,7 @@ import {
   IconClock,
   IconPackageCheck,
   IconWarehouse,
+  IconX,
 } from "@/components/icons/StrokeIcons";
 import { QueueGroupExpandControl } from "@/components/queue/QueueGroupExpandControl";
 import { QueueMetricTab } from "@/components/queue/QueueMetricTab";
@@ -20,6 +21,7 @@ import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { Button } from "@/components/ui/Button";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { SupplierFilterChips } from "@/components/queue/SupplierFilterChips";
 import { SupplierGroupHeaderRow } from "@/components/queue/SupplierGroupHeaderRow";
 import { cn } from "@/lib/cn";
@@ -55,7 +57,7 @@ import {
   type SupplierOrderGroup,
 } from "@/lib/orders/queue-supplier-groups";
 
-type InventoryFilter = "all" | "stale" | "critical" | "unassigned";
+type InventoryFilter = "all" | "stale" | "critical" | "expired" | "unassigned";
 
 function ShelfEditor({
   initial,
@@ -121,11 +123,13 @@ function ShelfEditor({
 
 function WaitingBadge({ row }: { row: WarehouseInventoryRow }) {
   const tone =
-    row.waitingLevel === "critical"
-      ? "bg-rose-100 text-rose-900"
-      : row.waitingLevel === "warn"
-        ? "bg-amber-100 text-amber-900"
-        : "bg-slate-100 text-slate-700";
+    row.waitingLevel === "expired"
+      ? "bg-purple-100 text-purple-900"
+      : row.waitingLevel === "critical"
+        ? "bg-rose-100 text-rose-900"
+        : row.waitingLevel === "warn"
+          ? "bg-amber-100 text-amber-900"
+          : "bg-slate-100 text-slate-700";
   return (
     <span className={cn("inline-block rounded px-1.5 py-0.5 text-[11px] font-medium tabular-nums", tone)}>
       {waitingLabel(row)}
@@ -154,10 +158,13 @@ function salesGroupKey(row: WarehouseInventoryRow): string {
 export function WarehouseInventorySection({
   orders,
   deliveryQueueOrders = [],
+  canClearFromShelf = false,
 }: {
   orders: IndividualOrder[];
   /** Do podsumowania w nagłówku: ile od dostawcy czeka w kolejce przyjęcia. */
   deliveryQueueOrders?: IndividualOrder[];
+  /** Czy bieżący użytkownik może zdjąć pozycję z regału (magazyn/admin). */
+  canClearFromShelf?: boolean;
 }) {
   const router = useRouter();
   const [toast, setToast] = useState<ToastNotice | null>(null);
@@ -170,6 +177,8 @@ export function WarehouseInventorySection({
   const [supplierFilter, setSupplierFilter] = useState("");
   const [sortMode, setSortMode] = useState<WarehouseInventorySortMode>("supplier");
   const [search, setSearch] = useState("");
+  const [clearConfirmId, setClearConfirmId] = useState<string | null>(null);
+  const [clearPending, startClear] = useTransition();
 
   const rows = useMemo(() => buildWarehouseInventoryRows(orders), [orders]);
   const supplierMetrics = useMemo(
@@ -183,13 +192,14 @@ export function WarehouseInventorySection({
     setFilter((prev) => (prev === next && next !== "all" ? "all" : next));
   }, []);
 
-  const summaryKey = `${summary.staleWarn}:${summary.staleCritical}:${summary.unassignedShelf}`;
+  const summaryKey = `${summary.staleWarn}:${summary.staleCritical}:${summary.staleExpired}:${summary.unassignedShelf}`;
   const [appliedSummaryKey, setAppliedSummaryKey] = useState(summaryKey);
   if (summaryKey !== appliedSummaryKey) {
     setAppliedSummaryKey(summaryKey);
     setFilter((prev) => {
-      if (prev === "stale" && summary.staleWarn + summary.staleCritical === 0) return "all";
+      if (prev === "stale" && summary.staleWarn + summary.staleCritical + summary.staleExpired === 0) return "all";
       if (prev === "critical" && summary.staleCritical === 0) return "all";
+      if (prev === "expired" && summary.staleExpired === 0) return "all";
       if (prev === "unassigned" && summary.unassignedShelf === 0) return "all";
       return prev;
     });
@@ -209,6 +219,7 @@ export function WarehouseInventorySection({
     return bySupplier.filter((row) => {
       if (filter === "stale" && row.waitingLevel === "ok") return false;
       if (filter === "critical" && row.waitingLevel !== "critical") return false;
+      if (filter === "expired" && row.waitingLevel !== "expired") return false;
       if (filter === "unassigned" && !isWarehouseShelfUnset(row.order.warehouse_shelf)) {
         return false;
       }
@@ -242,7 +253,7 @@ export function WarehouseInventorySection({
   }, [filtered, sortMode]);
 
   const groupBySupplier = sortMode === "supplier";
-  const tableColSpan = groupBySupplier ? 5 : 6;
+  const tableColSpan = groupBySupplier ? 6 : 7;
 
   const inventoryGroupsAsSupplier = useMemo((): SupplierOrderGroup[] => {
     return inventoryGroups.map((g) => ({
@@ -266,6 +277,26 @@ export function WarehouseInventorySection({
         } catch (e) {
           setToast({
             text: e instanceof Error ? e.message : "Nie udało się zapisać regału",
+            tone: "error",
+          });
+        }
+      });
+    },
+    [blockIfReadOnly, router]
+  );
+
+  const clearFromShelf = useCallback(
+    (orderId: string) => {
+      if (blockIfReadOnly()) return;
+      startClear(async () => {
+        try {
+          await actionClearFromShelf([orderId]);
+          setToast({ text: "Pozycja zdjęta z regału", tone: "success" });
+          setClearConfirmId(null);
+          router.refresh();
+        } catch (e) {
+          setToast({
+            text: e instanceof Error ? e.message : "Nie udało się zdjąć z regału",
             tone: "error",
           });
         }
@@ -301,6 +332,7 @@ export function WarehouseInventorySection({
             isPartial: row.kind === "pickup_partial",
             isFirstInSupplierGroup: false,
           }),
+          row.waitingLevel === "expired" && "ring-1 ring-inset ring-purple-200/80",
           row.waitingLevel === "critical" && "ring-1 ring-inset ring-rose-200/80",
           row.waitingLevel === "warn" && "ring-1 ring-inset ring-amber-100"
         )}
@@ -368,6 +400,20 @@ export function WarehouseInventorySection({
             </span>
           </div>
         </td>
+        <td className="align-top">
+          {canClearFromShelf ? (
+            <button
+              type="button"
+              disabled={pending || clearPending}
+              onClick={() => setClearConfirmId(o.id)}
+              className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-40"
+              title="Zdejmij z regału"
+            >
+              <IconX size={13} />
+              <span className="hidden sm:inline">Zdejmij</span>
+            </button>
+          ) : null}
+        </td>
       </tr>
     );
   };
@@ -391,7 +437,7 @@ export function WarehouseInventorySection({
         <div
           role="tablist"
           aria-label="Filtr inwentaryzacji"
-          className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 sm:gap-2"
+          className="grid grid-cols-2 gap-1.5 sm:grid-cols-5 sm:gap-2"
         >
           <QueueMetricTab
             active={filter === "all"}
@@ -409,14 +455,14 @@ export function WarehouseInventorySection({
           />
           <QueueMetricTab
             active={filter === "stale"}
-            count={summary.staleWarn + summary.staleCritical}
+            count={summary.staleWarn + summary.staleCritical + summary.staleExpired}
             label="≥ 3 dni"
             hint="czeka na odbiór"
             icon={<IconClock size={14} />}
             tileClassName="bg-amber-100 text-amber-800"
             title="Pozycje czekające co najmniej 3 dni robocze"
             onClick={() => setInventoryFilter("stale")}
-            disabled={summary.staleWarn + summary.staleCritical === 0}
+            disabled={summary.staleWarn + summary.staleCritical + summary.staleExpired === 0}
           />
           <QueueMetricTab
             active={filter === "critical"}
@@ -428,6 +474,17 @@ export function WarehouseInventorySection({
             title="Pozycje czekające co najmniej 7 dni roboczych"
             onClick={() => setInventoryFilter("critical")}
             disabled={summary.staleCritical === 0}
+          />
+          <QueueMetricTab
+            active={filter === "expired"}
+            count={summary.staleExpired}
+            label="≥ 21 dni"
+            hint="zaraz auto-ack"
+            icon={<IconAlertCircle size={14} />}
+            tileClassName="bg-purple-100 text-purple-800"
+            title="Pozycje czekające co najmniej 21 dni roboczych — zaraz automatycznie potwierdzone"
+            onClick={() => setInventoryFilter("expired")}
+            disabled={summary.staleExpired === 0}
           />
           <QueueMetricTab
             active={filter === "unassigned"}
@@ -523,6 +580,7 @@ export function WarehouseInventorySection({
                   <th className="min-w-[6rem]">Dla kogo</th>
                   <th className="w-14">Ilość</th>
                   <th className="min-w-[5.5rem]">Odbiór</th>
+                  <th className="w-16">Akcja</th>
                 </tr>
               </thead>
               <tbody>
@@ -565,6 +623,18 @@ export function WarehouseInventorySection({
           </div>
         </TableScroll>
       )}
+      <ConfirmDialog
+        open={clearConfirmId !== null}
+        title="Zdjąć z regału?"
+        message="Pozycja zniknie z inwentaryzacji i z listy handlowca. Handlowiec nie dostanie powiadomienia."
+        confirmLabel="Zdejmij z regału"
+        danger
+        pending={clearPending}
+        onCancel={() => setClearConfirmId(null)}
+        onConfirm={() => {
+          if (clearConfirmId) clearFromShelf(clearConfirmId);
+        }}
+      />
     </section>
   );
 }

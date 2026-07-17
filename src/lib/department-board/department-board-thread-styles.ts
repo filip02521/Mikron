@@ -49,8 +49,11 @@ export function boardQuestionRowClass(opts: {
   expanded: boolean;
   /** Co drugi wiersz (index % 2 === 1) — tylko gdy zwinięty. */
   alternate?: boolean;
+  /** Odpowiedź starsza niż 1 dzień roboczy — mniej zauważalna. */
+  stale?: boolean;
 }): string {
   const alt = opts.alternate ?? false;
+  const stale = opts.stale ?? false;
 
   if (opts.expanded) {
     return cn(
@@ -63,7 +66,9 @@ export function boardQuestionRowClass(opts: {
     ? "border-l-2 border-l-indigo-500/85"
     : opts.open
       ? "border-l-2 border-l-amber-400/80"
-      : "border-l-2 border-l-indigo-300/50";
+      : stale
+        ? "border-l-2 border-l-slate-200/60"
+        : "border-l-2 border-l-indigo-300/50";
 
   if (opts.unseen) {
     return cn(
@@ -83,6 +88,17 @@ export function boardQuestionRowClass(opts: {
       alt
         ? "bg-amber-50/28 hover:bg-amber-50/38"
         : "bg-amber-50/14 hover:bg-amber-50/26"
+    );
+  }
+
+  if (stale) {
+    return cn(
+      accent,
+      "transition-[background-color,box-shadow,ring-color,border-color] duration-200 ease-out motion-reduce:transition-none",
+      alt
+        ? "bg-slate-50/40 hover:bg-slate-100/50"
+        : "bg-slate-50/20 hover:bg-slate-100/40",
+      "opacity-70"
     );
   }
 

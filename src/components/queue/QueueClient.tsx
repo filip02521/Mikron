@@ -46,6 +46,7 @@ export function QueueClient({
   warehouseCarriers,
   canManageCarriers = false,
   isMagazynRole = false,
+  canClearFromShelf = false,
   showDailyPanelLink = false,
   showTeethLink = false,
   loadError = null,
@@ -65,6 +66,7 @@ export function QueueClient({
   warehouseCarriers: WarehouseCarrierRow[];
   canManageCarriers?: boolean;
   isMagazynRole?: boolean;
+  canClearFromShelf?: boolean;
   showDailyPanelLink?: boolean;
   showTeethLink?: boolean;
   loadError?: string | null;
@@ -241,6 +243,7 @@ export function QueueClient({
           <WarehouseInventorySection
             orders={warehouseInventory}
             deliveryQueueOrders={orders}
+            canClearFromShelf={canClearFromShelf}
           />
         </div>
 

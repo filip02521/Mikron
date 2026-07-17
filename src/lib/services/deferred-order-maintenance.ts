@@ -1,5 +1,6 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import { runRepairIncompleteIndividualOrders } from "@/lib/services/repair-incomplete-orders-runner";
+import { autoAcknowledgeStaleWarehouseInventory } from "@/lib/services/auto-ack-stale-shelf";
 
 export type OrderMaintenanceOnLoadOptions = {
   /** Uzupełnienie supplier_id w Weryfikacji — przed pierwszym fetch listy (/weryfikacja). */
@@ -17,6 +18,7 @@ export async function runOrderMaintenanceBeforePageLoad(
   if (!hasSupabaseConfig()) return;
 
   const supabase = createAdminClient();
+  await autoAcknowledgeStaleWarehouseInventory(supabase);
   await runRepairIncompleteIndividualOrders(supabase);
 
   if (options.autoAssign) {

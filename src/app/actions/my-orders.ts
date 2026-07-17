@@ -479,7 +479,7 @@ export async function actionUnacknowledgePickup(orderIds: string[]) {
 
   const { data: rows, error: fetchError } = await supabase
     .from("individual_orders")
-    .select("id, status, sales_person_id, sales_acknowledged_at")
+    .select("id, status, sales_person_id, sales_acknowledged_at, sales_client_kh_id, sales_client_name, source_zk_watch_id, source_zk_number, quantity, delivered_quantity, request_kind, is_teeth, products, symbol, mikran_code, subiekt_tw_id")
     .in("id", orderIds);
 
   if (fetchError) throw new Error(fetchError.message);
@@ -640,7 +640,7 @@ export async function actionUnacknowledgeSalesCancel(
   try {
     const { data: restoredRows } = await supabase
       .from("individual_orders")
-      .select("id, sales_person_id, status, sales_acknowledged_at, delivered_quantity, source_zk_watch_id, source_zk_number")
+      .select("id, sales_person_id, status, sales_acknowledged_at, delivered_quantity, source_zk_watch_id, source_zk_number, sales_client_kh_id, sales_client_name, quantity, request_kind, is_teeth, products, symbol, mikran_code, subiekt_tw_id")
       .in("id", orderIds);
     if (restoredRows?.length) {
       const { syncZkWatchLineChecksFromOrder } = await import(

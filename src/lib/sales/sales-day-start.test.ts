@@ -363,6 +363,119 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(snapshot.cleared).toBe(true);
     expect(snapshot.items).toHaveLength(0);
   });
+
+  it("pokazuje powiadomienie o uwagach zakupów gdy maxNoteUpdatedAt ustawione", () => {
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [
+        row({
+          id: "n1",
+          supplierName: "Mikran",
+          requestNote: "Pilne — sprawdź termin",
+          maxNoteUpdatedAt: "2025-01-01T00:00:00Z",
+          orderIds: ["o-n1"],
+        }),
+      ],
+    });
+
+    const item = snapshot.items.find((i) => i.source === "note_from_procurement");
+    expect(item).toBeDefined();
+    expect(item?.count).toBe(1);
+    expect(item?.title).toBe("Mikran");
+    expect(item?.subtitle).toBe("Pilne — sprawdź termin");
+    expect(item?.scrollTarget).toBe("moje-section-action");
+    expect(item?.href).toContain("focusOrders=o-n1");
+  });
+
+  it("nie pokazuje powiadomienia o uwagach gdy brak maxNoteUpdatedAt", () => {
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [
+        row({
+          id: "n2",
+          requestNote: "Uwaga bez timestampu",
+          orderIds: ["o-n2"],
+        }),
+      ],
+    });
+
+    expect(snapshot.items.find((i) => i.source === "note_from_procurement")).toBeUndefined();
+  });
+
+  it("agreguje ≥2 wiersze z uwagami w jedno powiadomienie zbiorcze", () => {
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [
+        row({
+          id: "n3",
+          requestNote: "Uwaga 1",
+          maxNoteUpdatedAt: "2025-01-01T00:00:00Z",
+          orderIds: ["o-n3"],
+        }),
+        row({
+          id: "n4",
+          requestNote: "Uwaga 2",
+          maxNoteUpdatedAt: "2025-01-02T00:00:00Z",
+          orderIds: ["o-n4"],
+        }),
+      ],
+    });
+
+    const items = snapshot.items.filter((i) => i.source === "note_from_procurement");
+    expect(items).toHaveLength(1);
+    expect(items[0]?.count).toBe(2);
+    expect(items[0]?.title).toBe("Zakupy dodały uwagi do 2 próśb");
+    expect(items[0]?.subtitle).toBe("Sprawdź uwagi przy poszczególnych pozycjach");
+  });
+
+  it("nie duplikuje powiadomienia o uwagach gdy wiersz jest już w cancel_ack", () => {
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [
+        row({
+          id: "n5",
+          acknowledgeMode: "cancelled",
+          statusTitle: "Anulowane",
+          procurementCancelNote: "Anulowane — brak na stanie",
+          maxNoteUpdatedAt: "2025-01-01T00:00:00Z",
+          orderIds: ["o-n5"],
+        }),
+      ],
+    });
+
+    expect(snapshot.items.find((i) => i.source === "note_from_procurement")).toBeUndefined();
+    expect(snapshot.items.find((i) => i.source === "cancel_ack")).toBeDefined();
+  });
+
+  it("uwzględnia note_from_procurement w totalActionCount", () => {
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [
+        row({
+          id: "n6",
+          requestNote: "Uwaga",
+          maxNoteUpdatedAt: "2025-01-01T00:00:00Z",
+          orderIds: ["o-n6"],
+        }),
+      ],
+    });
+
+    expect(snapshot.totalActionCount).toBeGreaterThanOrEqual(1);
+    expect(snapshot.cleared).toBe(false);
+  });
+
+  it("pokazuje subtitle fallback gdy notatka to agregat różnych notatek", () => {
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [
+        row({
+          id: "n7",
+          supplierName: "Mikran",
+          requestNote: "2 różnych notatek",
+          maxNoteUpdatedAt: "2025-01-01T00:00:00Z",
+          orderIds: ["o-n7"],
+        }),
+      ],
+    });
+
+    const item = snapshot.items.find((i) => i.source === "note_from_procurement");
+    expect(item).toBeDefined();
+    expect(item?.subtitle).toBe("Zakupy dodały uwagi — sprawdź przy pozycji");
+  });
 });
 
 describe("salesDayStartNavCount", () => {

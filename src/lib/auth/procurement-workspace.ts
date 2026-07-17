@@ -131,7 +131,7 @@ export function buildProcurementWorkspaceCookie(workspace: ProcurementWorkspace)
     name: PROCUREMENT_WORKSPACE_COOKIE,
     value: workspace,
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: false,
     sameSite: "lax" as const,
     path: "/",
     maxAge: PROCUREMENT_WORKSPACE_COOKIE_MAX_AGE,

@@ -6,7 +6,7 @@ import type { IndividualOrder } from "@/types/database";
 
 export type WarehouseInventoryKind = "pickup_full" | "pickup_partial" | "informacja_ready";
 
-export type WarehouseWaitingLevel = "ok" | "warn" | "critical";
+export type WarehouseWaitingLevel = "ok" | "warn" | "critical" | "expired";
 
 export type WarehouseInventoryRow = {
   order: IndividualOrder;
@@ -24,6 +24,7 @@ export type WarehouseInventorySummary = {
   uniqueSalesPeople: number;
   staleWarn: number;
   staleCritical: number;
+  staleExpired: number;
   unassignedShelf: number;
   byShelf: { shelf: string; count: number }[];
 };
@@ -45,13 +46,15 @@ export function isWarehouseShelfUnset(raw: string | null | undefined): boolean {
 }
 
 function waitingLevel(days: number): WarehouseWaitingLevel {
+  if (days >= 21) return "expired";
   if (days >= 7) return "critical";
   if (days >= 3) return "warn";
   return "ok";
 }
 
-function classifyOnShelf(order: IndividualOrder): WarehouseInventoryKind | null {
+export function classifyOnShelf(order: IndividualOrder): WarehouseInventoryKind | null {
   if (order.sales_acknowledged_at || order.sales_cancelled_at) return null;
+  if (order.warehouse_cleared_at) return null;
   if (order.is_teeth) return null;
 
   if (order.request_kind === "informacja" && order.status === "Zrealizowane") {
@@ -80,7 +83,7 @@ function waitingSinceDate(order: IndividualOrder): string | null {
   return order.delivery_at ?? order.action_at ?? null;
 }
 
-function businessDaysWaiting(since: string | null): number {
+export function businessDaysWaiting(since: string | null): number {
   const start = parseDateOnly(since);
   if (!start) return 0;
   const today = todayInWarsaw();
@@ -151,6 +154,7 @@ export function summarizeWarehouseInventory(rows: WarehouseInventoryRow[]): Ware
   const people = new Set<string>();
   let staleWarn = 0;
   let staleCritical = 0;
+  let staleExpired = 0;
   let unassignedShelf = 0;
   const shelfCounts = new Map<string, number>();
 
@@ -158,6 +162,7 @@ export function summarizeWarehouseInventory(rows: WarehouseInventoryRow[]): Ware
     people.add(row.order.sales_person_id);
     if (row.waitingLevel === "warn") staleWarn++;
     if (row.waitingLevel === "critical") staleCritical++;
+    if (row.waitingLevel === "expired") staleExpired++;
     if (isWarehouseShelfUnset(row.order.warehouse_shelf)) unassignedShelf++;
     shelfCounts.set(row.shelfLabel, (shelfCounts.get(row.shelfLabel) ?? 0) + 1);
   }
@@ -175,6 +180,7 @@ export function summarizeWarehouseInventory(rows: WarehouseInventoryRow[]): Ware
     uniqueSalesPeople: people.size,
     staleWarn,
     staleCritical,
+    staleExpired,
     unassignedShelf,
     byShelf,
   };

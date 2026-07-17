@@ -26,6 +26,8 @@ export function salesDayStartSourceRowAccent(source: SalesDayStartItem["source"]
       return "border-l-violet-500 hover:bg-violet-50/40";
     case "cancel_ack":
       return "border-l-amber-500 hover:bg-amber-50/50";
+    case "note_from_procurement":
+      return "border-l-indigo-500 hover:bg-indigo-50/35";
     case "informacja_ready":
       return "border-l-violet-400 hover:bg-violet-50/40";
     case "zk_follow_up":
@@ -50,6 +52,8 @@ function salesDayStartSourceTagClass(source: SalesDayStartItem["source"]): strin
       return "bg-emerald-50 text-emerald-900 ring-emerald-100";
     case "cancel_ack":
       return "bg-amber-50 text-amber-900 ring-amber-100";
+    case "note_from_procurement":
+      return "bg-indigo-50 text-indigo-800 ring-indigo-100";
     case "informacja_ready":
       return "bg-violet-50 text-violet-800 ring-violet-100";
     case "zk_follow_up":

@@ -833,6 +833,11 @@ export async function updateIndividualRequestGroup(
           : existingLineId
             ? undefined
             : null;
+    const isProcurementEdit = !options.salesPersonIdConstraint;
+    const noteChanged =
+      isProcurementEdit &&
+      salesRequestNote !== undefined &&
+      normalizeSalesRequestNote(existingOrder?.sales_request_note) !== salesRequestNote;
     const isTeeth =
       line.subiektTwId != null && line.subiektTwId > 0
         ? teethTwIdSet.has(Math.trunc(line.subiektTwId))
@@ -872,6 +877,7 @@ export async function updateIndividualRequestGroup(
           ? Math.trunc(line.clientKhId)
           : null,
       ...(salesRequestNote !== undefined ? { sales_request_note: salesRequestNote } : {}),
+      ...(noteChanged ? { sales_request_note_updated_at: new Date().toISOString() } : {}),
       subiekt_tw_id:
         line.subiektTwId != null && line.subiektTwId > 0 ? line.subiektTwId : null,
       mikran_code: sanitized.mikranCode?.trim() || null,

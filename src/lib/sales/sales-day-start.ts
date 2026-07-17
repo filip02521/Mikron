@@ -17,6 +17,8 @@ import {
   MOJE_MIXED_ACTION_SECTION_ID,
   MOJE_TEETH_ACTION_SECTION_ID,
 } from "@/lib/orders/my-order-inbox-sections";
+import { isRequestNotesAggregateSummary } from "@/lib/orders/sales-request-note";
+import { isProcurementCancelNotesAggregateSummary } from "@/lib/orders/procurement-cancel-note";
 import type { SalesNote, SalesZkWatch } from "@/types/database";
 
 export type SalesDayStartSource =
@@ -25,6 +27,7 @@ export type SalesDayStartSource =
   | "mixed_pickup"
   | "zk_warehouse"
   | "cancel_ack"
+  | "note_from_procurement"
   | "informacja_ready"
   | "zk_follow_up"
   | "note_follow_up"
@@ -57,6 +60,7 @@ const PRIORITY: Record<SalesDayStartSource, number> = {
   teeth_handover: 12,
   zk_warehouse: 15,
   cancel_ack: 20,
+  note_from_procurement: 25,
   informacja_ready: 30,
   zk_follow_up: 40,
   note_follow_up: 50,
@@ -373,6 +377,60 @@ function buildBoardItems(
   return items;
 }
 
+function buildNoteFromProcurementItems(rows: MyOrderRow[]): SalesDayStartItem[] {
+  const noteRows = rows.filter((row) => {
+    if (!row.maxNoteUpdatedAt) return false;
+    const ui = enrichMyOrderSalesUi(row);
+    if (ui.sortPriority === 3) return false;
+    return Boolean(row.requestNote || row.procurementCancelNote);
+  });
+
+  if (noteRows.length === 0) return [];
+
+  if (noteRows.length === 1) {
+    const row = noteRows[0];
+    const rawNote = row.requestNote ?? row.procurementCancelNote ?? "";
+    const isAggregate =
+      isRequestNotesAggregateSummary(rawNote) ||
+      isProcurementCancelNotesAggregateSummary(rawNote);
+    const subtitle = isAggregate
+      ? "Zakupy dodały uwagi — sprawdź przy pozycji"
+      : rawNote
+        ? rawNote.slice(0, 120)
+        : "Zakupy dodały uwagi — sprawdź przy pozycji";
+    const baseHref = `/moje#${MOJE_ACTION_SECTION}`;
+    const href = appendMojeFocusOrderIds(baseHref, [row.orderIds[0]].filter(Boolean));
+    return [
+      {
+        id: `note-procurement-${row.id}`,
+        source: "note_from_procurement",
+        priority: PRIORITY.note_from_procurement,
+        title: row.supplierName?.trim() || "Do ustalenia",
+        subtitle,
+        href,
+        scrollTarget: MOJE_ACTION_SECTION,
+        count: 1,
+        ctaLabel: "Przejdź",
+      },
+    ];
+  }
+
+  const baseHref = `/moje#${MOJE_ACTION_SECTION}`;
+  return [
+    {
+      id: "note-procurement-aggregate",
+      source: "note_from_procurement",
+      priority: PRIORITY.note_from_procurement,
+      title: `Zakupy dodały uwagi do ${noteRows.length} próśb`,
+      subtitle: "Sprawdź uwagi przy poszczególnych pozycjach",
+      href: baseHref,
+      scrollTarget: MOJE_ACTION_SECTION,
+      count: noteRows.length,
+      ctaLabel: "Przejdź",
+    },
+  ];
+}
+
 export function buildSalesDayStartSnapshot(input: {
   rows: MyOrderRow[];
   watches?: SalesZkWatch[];
@@ -386,10 +444,11 @@ export function buildSalesDayStartSnapshot(input: {
   const inboxSummary = summarizeMyOrdersInbox(rows);
 
   const orderItems = buildOrderActionItems(rows);
+  const noteItems = buildNoteFromProcurementItems(rows);
   const notepadItems = buildNotepadItems(watches, notes, previewDla, unseenWarehouseWatchIds);
   const boardItems = boardAttention ? buildBoardItems(boardAttention, previewDla) : [];
 
-  const items = [...orderItems, ...notepadItems, ...boardItems].sort(
+  const items = [...orderItems, ...noteItems, ...notepadItems, ...boardItems].sort(
     (a, b) => a.priority - b.priority || (b.count ?? 0) - (a.count ?? 0)
   );
 
@@ -397,6 +456,7 @@ export function buildSalesDayStartSnapshot(input: {
     inboxSummary.pickupCount +
     inboxSummary.cancelAckCount +
     inboxSummary.informacjaReadyCount +
+    noteItems.reduce((sum, i) => sum + (i.count ?? 1), 0) +
     notepadItems.length +
     boardItems.reduce((sum, i) => sum + (i.count ?? 1), 0);
 
@@ -419,6 +479,8 @@ export function salesDayStartSourceLabel(source: SalesDayStartSource): string {
       return "Na regale";
     case "cancel_ack":
       return "Anulowanie";
+    case "note_from_procurement":
+      return "Uwagi zakupów";
     case "informacja_ready":
       return "Do potwierdzenia";
     case "zk_follow_up":

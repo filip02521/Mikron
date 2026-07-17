@@ -244,6 +244,8 @@ export type MyOrderRow = MyOrderRowCore &
     requestNote: string | null;
     /** Wspólna wiadomość od zakupów przy anulowaniu (meta). */
     procurementCancelNote: string | null;
+    /** Najnowszy timestamp zmiany uwag przez zakupy w tej grupie. */
+    maxNoteUpdatedAt?: string | null;
     /** Powiązanie z kartą ZK w notatniku (przycisk Prośba). */
     sourceZkWatchId?: string | null;
     sourceZkNumber?: string | null;
@@ -424,6 +426,12 @@ function withAckMeta(
     clientLabel: clientNamesSummary(visible),
     requestNote: requestNotesSummary(visible),
     procurementCancelNote: procurementCancelNotesSummary(visible),
+    maxNoteUpdatedAt:
+      visible
+        .flatMap((o) => [o.sales_request_note_updated_at, o.procurement_cancel_note_updated_at])
+        .filter((v): v is string => Boolean(v))
+        .sort()
+        .pop() ?? null,
     sourceZkWatchId:
       visible.map((o) => o.source_zk_watch_id).find(Boolean) ??
       orders.map((o) => o.source_zk_watch_id).find(Boolean) ??

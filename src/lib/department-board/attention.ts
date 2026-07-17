@@ -1,4 +1,5 @@
 import type { DepartmentBoardThreadRow } from "@/lib/data/department-board";
+import { calculateBusinessDays } from "@/lib/orders/dates";
 
 export function isBoardAnswerUnseen(
   readAt: string | null | undefined,
@@ -17,6 +18,16 @@ export function latestQuestionActivityAt(
   if (answeredAt) candidates.push(answeredAt);
   if (!candidates.length) return null;
   return candidates.reduce((max, t) => (t > max ? t : max));
+}
+
+/** Czy odpowiedź na pytanie jest starsza niż 1 dzień roboczy (mniej zauważalna na liście). */
+export function isStaleAnsweredQuestion(
+  question: { status: string; answered_at: string | null; posts: { created_at: string }[] }
+): boolean {
+  if (question.status !== "answered") return false;
+  const latest = latestQuestionActivityAt(question.answered_at, question.posts.map((p) => p.created_at));
+  if (!latest) return false;
+  return calculateBusinessDays(new Date(latest), new Date()) >= 1;
 }
 
 export type UnseenBoardAnswer = {

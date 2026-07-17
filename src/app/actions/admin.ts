@@ -543,9 +543,13 @@ export async function actionUpdateProcurementCancelNote(
 
   const normalizedNote = normalizeProcurementCancelNote(note);
   const previousNote = normalizeProcurementCancelNote(raw.procurement_cancel_note);
+  const noteChanged = normalizedNote !== previousNote;
   const { data, error } = await supabase
     .from("individual_orders")
-    .update({ procurement_cancel_note: normalizedNote })
+    .update({
+      procurement_cancel_note: normalizedNote,
+      ...(noteChanged ? { procurement_cancel_note_updated_at: new Date().toISOString() } : {}),
+    })
     .eq("id", orderId)
     .select("id");
   if (error) {
@@ -556,7 +560,7 @@ export async function actionUpdateProcurementCancelNote(
     throw new Error("Nie znaleziono pozycji — odśwież listę i spróbuj ponownie.");
   }
 
-  if (normalizedNote === previousNote) {
+  if (!noteChanged) {
     revalidateAll();
     return { success: true, emailSent: 0 };
   }
@@ -886,6 +890,68 @@ export async function actionSetWarehouseShelf(orderId: string, shelf: string) {
   }
   revalidateAll();
   return { success: true };
+}
+
+const WAREHOUSE_CLEARED_MIGRATION_HINT =
+  "Brak kolumny warehouse_cleared_at — uruchom supabase/migrations/100_warehouse_cleared_at.sql";
+
+export async function actionClearFromShelf(orderIds: string[]): Promise<{
+  success: true;
+  count: number;
+}> {
+  const ids = [...new Set(orderIds.filter(Boolean))];
+  if (!ids.length) return { success: true, count: 0 };
+
+  const { requireWarehouse } = await import("@/lib/auth");
+  await requireWarehouse("mutate");
+  const user = await getSessionUser();
+  if (!user) throw new Error("Wymagane logowanie");
+  const supabase = createAdminClient();
+  const now = new Date().toISOString();
+
+  const { data: updated, error: updErr } = await supabase
+    .from("individual_orders")
+    .update({
+      sales_acknowledged_at: now,
+      warehouse_cleared_at: now,
+      warehouse_cleared_by: user.email ?? user.id,
+    })
+    .in("id", ids)
+    .is("sales_acknowledged_at", null)
+    .select(
+      "id, sales_person_id, source_zk_watch_id, source_zk_number, sales_client_kh_id, sales_client_name, is_teeth, products, symbol, mikran_code, subiekt_tw_id, status, quantity, delivered_quantity, request_kind, sales_acknowledged_at, sales_cancelled_at"
+    );
+
+  if (updErr) {
+    if (updErr.message?.includes("warehouse_cleared_at")) {
+      throw new Error(WAREHOUSE_CLEARED_MIGRATION_HINT);
+    }
+    throw new Error(updErr.message);
+  }
+
+  const ackedRows = (updated ?? []) as unknown as import("@/types/database").IndividualOrder[];
+  const count = ackedRows.length;
+
+  if (count > 0) {
+    try {
+      const { syncZkWatchLineChecksFromOrder } = await import(
+        "@/lib/sales/zk-watch-order-sync"
+      );
+      await Promise.all(
+        ackedRows.map((row) =>
+          syncZkWatchLineChecksFromOrder({
+            ...row,
+            sales_acknowledged_at: now,
+          })
+        )
+      );
+    } catch (e) {
+      console.error("[actionClearFromShelf syncZkWatch]", e);
+    }
+  }
+
+  revalidateAll();
+  return { success: true, count };
 }
 
 export async function actionBatchUpdateDelivered(

@@ -43,13 +43,19 @@ export function buildProcurementCancelUpdate(
   informacja_queue_via_daily_panel: false;
   informacja_stock_out_reorder: false;
   procurement_cancel_note?: string;
+  procurement_cancel_note_updated_at?: string;
 } {
   const normalizedNote = normalizeProcurementCancelNote(procurementCancelNote);
   return {
     status: "Anulowane",
     informacja_queue_via_daily_panel: false,
     informacja_stock_out_reorder: false,
-    ...(normalizedNote != null ? { procurement_cancel_note: normalizedNote } : {}),
+    ...(normalizedNote != null
+      ? {
+          procurement_cancel_note: normalizedNote,
+          procurement_cancel_note_updated_at: new Date().toISOString(),
+        }
+      : {}),
   };
 }
 

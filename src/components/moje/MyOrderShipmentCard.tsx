@@ -17,7 +17,6 @@ import {
 } from "@/components/moje/InformacjaEmailSentMeta";
 import { ZdFulfillmentDateMeta } from "@/components/orders/ZdFulfillmentDateMeta";
 import { ZdEtaPendingMeta } from "@/components/orders/ZdEtaPendingMeta";
-import { ZdEtaNoMatchMeta } from "@/components/orders/ZdEtaNoMatchMeta";
 import { resolveMyOrderHistoryDeliveryEstimate } from "@/lib/orders/delivery-date-meta-label";
 import { MyOrderKindBadge } from "@/components/moje/MyOrderKindBadge";
 import { MyOrderProductLaneBadge } from "@/components/moje/MyOrderProductLaneBadge";
@@ -577,7 +576,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   const productSummary = showCollapsedProductSummary ? productSummaryRaw : null;
   const plannedOrderDate = row.plannedOrderDate ?? null;
   const zdEtaPending = Boolean(row.zdEtaPending && subiektReachable);
-  const zdEtaNoMatch = Boolean(row.zdEtaNoMatch && !zdEtaPending);
   const showInformacjaTimingMeta = shouldShowInformacjaEmailSentMeta(row);
   const historyDeliveryEstimate = resolveMyOrderHistoryDeliveryEstimate(row);
   const showEstimatedDeliveryMeta =
@@ -587,8 +585,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   const showZdEtaPendingMeta = zdEtaPending;
   const showZdEtaPendingWithEstimate =
     zdEtaPending && (historyDeliveryEstimate !== null || zdFulfillment !== null);
-  const showZdEtaNoMatchMeta =
-    zdEtaNoMatch && !zdEtaPending && !historyDeliveryEstimate && !zdFulfillment;
   const showExpandedStatusBadge = shouldShowExpandedOrderStatusBadge(row, {
     hasRequestProgress: Boolean(requestProgress),
     hasExpandedDeliveryTiming: Boolean(showExpandedDeliveryTiming),
@@ -1059,7 +1055,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             {showZdEtaPendingMeta ? (
               <ZdEtaPendingMeta compact={showZdEtaPendingWithEstimate} />
             ) : null}
-            {showZdEtaNoMatchMeta ? <ZdEtaNoMatchMeta /> : null}
             {plannedOrderDate ? <PlannedOrderDateMeta display={plannedOrderDate} /> : null}
             {showStatusBadge ? (
               <MyOrderStatusPill
@@ -1095,7 +1090,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
         plannedOrderDate ||
         zdFulfillment ||
         showZdEtaPendingMeta ||
-        showZdEtaNoMatchMeta ||
         showInformacjaTimingMeta ||
         showEstimatedDeliveryMeta) ? (
         <div className="flex flex-wrap items-center justify-end gap-1.5 px-3 pb-1 pt-0 sm:hidden">
@@ -1115,7 +1109,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           {showZdEtaPendingMeta ? (
             <ZdEtaPendingMeta compact={showZdEtaPendingWithEstimate} />
           ) : null}
-          {showZdEtaNoMatchMeta ? <ZdEtaNoMatchMeta /> : null}
           {plannedOrderDate ? <PlannedOrderDateMeta display={plannedOrderDate} /> : null}
           {showStatusBadge ? (
             <MyOrderStatusPill
