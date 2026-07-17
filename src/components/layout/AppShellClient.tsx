@@ -47,11 +47,13 @@ import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
 import { isAdminOperationsPreviewReadOnly } from "@/lib/auth/admin-panel-context";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import type { UserRole, Workspace } from "@/types/database";
+import type { FontScale } from "@/lib/auth/profile";
 import { canAccessOperations, canAccessTeethPanel, canAccessWarehouse, isSalesAccount } from "@/lib/auth-roles";
 import { MobileOperationsNav } from "./MobileOperationsNav";
 import { MobileOperationsHeader } from "./MobileOperationsHeader";
 import { useAppShellMetrics } from "./AppShellMetricsContext";
 import { AppWorkspaceBackdrop } from "./AppWorkspaceBackdrop";
+import { FontScaleSync } from "./FontScaleSync";
 import { TeethExemptProvider } from "@/components/layout/TeethExemptContext";
 import { ChangelogProvider } from "@/components/changelog/ChangelogProvider";
 import { ChangelogAutoOpen } from "@/components/changelog/ChangelogAutoOpen";
@@ -137,6 +139,7 @@ export function AppShellClient({
   assignedWorkspaces = [],
   activeDelegations = [],
   uniformBackground = false,
+  fontScale = "default",
 }: {
   children: React.ReactNode;
   role: UserRole | null;
@@ -155,6 +158,7 @@ export function AppShellClient({
   teethProductInfo?: { twId: number; manufacturer: string | null; productLine?: string | null; kind?: string | null }[];
   activeDelegations?: VacationDelegationRow[];
   uniformBackground?: boolean;
+  fontScale?: FontScale;
 }) {
   const {
     navBadges,
@@ -249,6 +253,7 @@ export function AppShellClient({
       >
       <ChangelogProvider role={role}>
       <ChangelogAutoOpen />
+      <FontScaleSync fontScale={fontScale} />
       <LegacyProcurementRouteRedirect />
       <div
         className={cn(

@@ -78,6 +78,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       assignedWorkspaces={session?.assignedWorkspaces ?? []}
       activeDelegations={activeDelegations}
       uniformBackground={session?.uniformBackground ?? false}
+      fontScale={session?.fontScale ?? "default"}
     >
       {children}
     </AppShellClient>

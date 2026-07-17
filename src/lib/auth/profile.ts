@@ -2,6 +2,25 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import type { UserRole, Workspace } from "@/types/database";
 
+export type FontScale = "default" | "large" | "xlarge";
+
+export const FONT_SCALE_VALUES: Record<FontScale, number> = {
+  default: 100,
+  large: 110,
+  xlarge: 125,
+};
+
+export const FONT_SCALE_LABELS: Record<FontScale, string> = {
+  default: "Standardowa",
+  large: "Większa",
+  xlarge: "Największa",
+};
+
+export function normalizeFontScale(value: unknown): FontScale {
+  if (value === "large" || value === "xlarge") return value;
+  return "default";
+}
+
 export type ProfileRow = {
   role: UserRole;
   sales_person_id: string | null;
@@ -10,6 +29,7 @@ export type ProfileRow = {
   sales_onboarding_completed_at: string | null;
   assigned_workspaces: Workspace[];
   uniform_background: boolean;
+  font_scale: FontScale;
 };
 
 const PROFILE_SELECT =
@@ -30,6 +50,7 @@ function mapProfileRow(data: Record<string, unknown>): ProfileRow {
     sales_onboarding_completed_at: (data.sales_onboarding_completed_at as string | null) ?? null,
     assigned_workspaces: workspaces,
     uniform_background: Boolean(prefs.uniform_background ?? false),
+    font_scale: normalizeFontScale(prefs.font_scale),
   };
 }
 

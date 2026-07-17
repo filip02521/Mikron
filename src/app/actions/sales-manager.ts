@@ -12,6 +12,7 @@ import {
 } from "@/lib/data/sales-group-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeFontScale } from "@/lib/auth/profile";
 import { assertUniqueSalesPersonLink } from "@/lib/users/sales-person-link";
 import type { Workspace } from "@/types/database";
 import {
@@ -274,6 +275,7 @@ export async function actionCompletePasswordChange(
       salesOnboardingCompletedAt: profile.sales_onboarding_completed_at,
       assignedWorkspaces: (profile.assigned_workspaces ?? []) as Workspace[],
       uniformBackground: Boolean((profile.preferences as Record<string, unknown> | null)?.uniform_background ?? false),
+      fontScale: normalizeFontScale((profile.preferences as Record<string, unknown> | null)?.font_scale),
     };
   }
 

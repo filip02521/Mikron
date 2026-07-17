@@ -18,6 +18,8 @@ import type { UserRole, Workspace } from "@/types/database";
 
 type AuthIntent = "read" | "mutate";
 
+import type { FontScale } from "./auth/profile";
+
 export interface SessionUser {
   id: string;
   email: string;
@@ -27,6 +29,7 @@ export interface SessionUser {
   salesOnboardingCompletedAt: string | null;
   assignedWorkspaces: Workspace[];
   uniformBackground: boolean;
+  fontScale: FontScale;
 }
 
 export async function getSessionUser(): Promise<SessionUser | null> {
@@ -42,6 +45,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     salesOnboardingCompletedAt: profile.sales_onboarding_completed_at,
     assignedWorkspaces: profile.assigned_workspaces,
     uniformBackground: profile.uniform_background,
+    fontScale: profile.font_scale,
   };
 }
 

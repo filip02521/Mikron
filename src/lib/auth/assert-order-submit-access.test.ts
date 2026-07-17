@@ -23,6 +23,7 @@ const adminUser: SessionUser = {
   salesOnboardingCompletedAt: null,
   assignedWorkspaces: [],
   uniformBackground: false,
+  fontScale: "default",
 };
 
 describe("assertCanSubmitIndividualOrders", () => {

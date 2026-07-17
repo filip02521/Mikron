@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CryptoPolyfillInit } from "@/components/CryptoPolyfillScript";
+import { FontScaleScript } from "@/components/layout/FontScaleScript";
 import { AppShell } from "@/components/layout/AppShell";
 import { defaultAppMetadata } from "@/lib/ui/page-metadata";
 
@@ -33,7 +34,9 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
       className={`${geistSans.variable} ${geistMono.variable}`}
     >
-      <head />
+      <head>
+        <FontScaleScript />
+      </head>
       <body className="min-h-screen font-sans antialiased">
         <CryptoPolyfillInit />
         <AppShell>{children}</AppShell>
