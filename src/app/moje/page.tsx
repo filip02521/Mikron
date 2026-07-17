@@ -243,7 +243,7 @@ export default async function MojePage({
         </div>
       ) : null}
 
-      {role && canAccessOperations(role, workspaces) && !salesPersonId && isAdmin(role ?? "admin") ? (
+      {canAccessOperations(role ?? "sales", workspaces) && !salesPersonId && isAdmin(role ?? "admin") ? (
         <SystemNotice
           variant="action"
           className="mb-4"

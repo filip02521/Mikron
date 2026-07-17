@@ -796,7 +796,8 @@ export async function actionUpdateDelivered(
   const snapshotsWithQueue = snapshot
     ? attachDeliveryNotificationQueueIds(
         [snapshot],
-        queueId ? { [orderId]: queueId } : {}
+        // orderId is validated by requireReceiveMutateForOrders above
+        queueId ? { [String(orderId)]: queueId } : {}
       )
     : [];
 
@@ -1118,6 +1119,7 @@ export async function actionUpsertSupplier(form: {
   default_delivery_shipment_form?: string | null;
 }) {
   await requireSupplierManagement("mutate");
+  const supplierId = form.id?.trim() || undefined;
   const notes = clampText(form.notes, MAX_SUPPLIER_NOTES_LEN);
   const mails = clampText(form.mails, MAX_SUPPLIER_MAILS_LEN);
   const extraInfo = clampText(form.extra_info, MAX_SUPPLIER_EXTRA_LEN);
@@ -1165,14 +1167,14 @@ export async function actionUpsertSupplier(form: {
       : null;
   }
 
-  if (form.id) {
-    const { error } = await supabase.from("suppliers").update(payload).eq("id", form.id);
+  if (supplierId) {
+    const { error } = await supabase.from("suppliers").update(payload).eq("id", supplierId);
     if (error) throw new Error(error.message);
     if (payload.is_active) {
-      await recalcSingleSupplierSchedule(form.id);
+      await recalcSingleSupplierSchedule(supplierId);
     }
     revalidateAll();
-    return { success: true as const, id: form.id };
+    return { success: true as const, id: supplierId };
   }
 
   const { data, error: insertError } = await supabase
@@ -1288,12 +1290,14 @@ export async function actionUpsertVacation(form: {
     throw new Error(validation.error);
   }
 
+  const supplierId = form.supplier_id.trim();
+  const vacationId = form.id?.trim() || undefined;
   const supabase = createAdminClient();
 
   const { data: existing, error: existingErr } = await supabase
     .from("vacations")
     .select("id, start_date, end_date, last_order_date, active")
-    .eq("supplier_id", form.supplier_id)
+    .eq("supplier_id", supplierId)
     .eq("active", true);
   if (existingErr) throw new Error(existingErr.message);
 
@@ -1303,26 +1307,26 @@ export async function actionUpsertVacation(form: {
   }
 
   const payload = {
-    supplier_id: form.supplier_id,
+    supplier_id: supplierId,
     start_date: form.start_date,
     end_date: form.end_date,
     last_order_date: form.last_order_date,
     active: form.active,
   };
-  const write = form.id
-    ? await supabase.from("vacations").update(payload).eq("id", form.id).select("id, active").single()
+  const write = vacationId
+    ? await supabase.from("vacations").update(payload).eq("id", vacationId).select("id, active").single()
     : await supabase.from("vacations").insert(payload).select("id, active").single();
   if (write.error) {
     throw new Error(write.error.message);
   }
 
   const expiredSupplierIds = await deactivateExpiredVacations();
-  const recalcTargets = new Set([form.supplier_id, ...expiredSupplierIds]);
+  const recalcTargets = new Set([supplierId, ...expiredSupplierIds]);
   const recalcErrors: string[] = [];
-  for (const supplierId of recalcTargets) {
+  for (const sid of recalcTargets) {
     try {
-      await recalcSingleSupplierSchedule(supplierId);
-      await recalcTeethSchedule(supplierId);
+      await recalcSingleSupplierSchedule(sid);
+      await recalcTeethSchedule(sid);
     } catch (e) {
       recalcErrors.push(
         e instanceof Error ? e.message : "Błąd przeliczenia harmonogramu"
@@ -1330,7 +1334,7 @@ export async function actionUpsertVacation(form: {
     }
   }
 
-  const savedId = form.id ?? write.data?.id;
+  const savedId = vacationId ?? write.data?.id;
   let persistedActive = write.data?.active ?? form.active;
   if (savedId) {
     const { data: savedRow } = await supabase
@@ -1342,11 +1346,11 @@ export async function actionUpsertVacation(form: {
   }
 
   const [{ data: supplier }, { data: schedule }] = await Promise.all([
-    supabase.from("suppliers").select("name").eq("id", form.supplier_id).single(),
+    supabase.from("suppliers").select("name").eq("id", supplierId).single(),
     supabase
       .from("supplier_schedules")
       .select("computed_next_date, vacation_note")
-      .eq("supplier_id", form.supplier_id)
+      .eq("supplier_id", supplierId)
       .maybeSingle(),
   ]);
 
@@ -1375,7 +1379,7 @@ export async function actionPreviewVacationImpact(form: {
   await requireSupplierManagement("read");
 
   if (
-    !form.supplier_id ||
+    !form.supplier_id?.trim() ||
     !form.start_date ||
     !form.end_date ||
     !form.last_order_date
@@ -1383,18 +1387,19 @@ export async function actionPreviewVacationImpact(form: {
     return { preview: null, validationError: null };
   }
 
+  const supplierId = form.supplier_id.trim();
   const supabase = createAdminClient();
   const [{ data: supplier, error: supplierErr }, { data: vacations, error: vacErr }] =
     await Promise.all([
       supabase
         .from("suppliers")
         .select("location, interval_raw, interval_weeks, supplier_schedules(order_date, shift_date)")
-        .eq("id", form.supplier_id)
+        .eq("id", supplierId)
         .single(),
       supabase
         .from("vacations")
         .select("id, start_date, end_date, last_order_date, active")
-        .eq("supplier_id", form.supplier_id),
+        .eq("supplier_id", supplierId),
     ]);
 
   if (supplierErr || !supplier) {
@@ -1517,14 +1522,18 @@ export async function actionUpsertSalesPerson(form: {
     }
   }
 
-  if (form.id) {
+  // form.id is user-controlled but safe: non-admins are guarded by
+  // canAccessSalesPerson + assertManagerRequiresGroupInScope above.
+  // Admins intentionally bypass per-record checks (full access role).
+  const salesPersonId = form.id?.trim() || undefined;
+  if (salesPersonId) {
     const { error } = await supabase
       .from("sales_people")
       .update({ name, email, group_id: groupId })
-      .eq("id", form.id);
+      .eq("id", salesPersonId);
     if (error) return { error: error.message };
 
-    const syncError = await syncLinkedSalesPersonLoginEmail(supabase, form.id, email);
+    const syncError = await syncLinkedSalesPersonLoginEmail(supabase, salesPersonId, email);
     if (syncError) {
       return { error: `Zapisano kartę, ale nie udało się zsynchronizować konta: ${syncError}` };
     }
@@ -1540,7 +1549,7 @@ export async function actionUpsertSalesPerson(form: {
   }
 
   revalidateAll();
-  return { success: true, id: form.id };
+  return { success: true, id: salesPersonId ?? "" };
 }
 
 export async function actionDeleteSalesPerson(

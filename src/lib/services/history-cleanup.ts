@@ -52,7 +52,7 @@ export function scheduleHistoryRetentionPurge(): void {
     try {
       await purgeDataRetention();
     } catch (e) {
-      console.error("[data-retention] purge failed:", e);
+      console.error("[data-retention] purge failed:", e instanceof Error ? e.message : "unknown error");
     }
   })();
 }

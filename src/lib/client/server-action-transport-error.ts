@@ -17,13 +17,13 @@ export function isServerActionTransportError(error: unknown): boolean {
     return true;
   }
 
-  if (typeof error === "object" && error !== null && "digest" in error) {
+  if (typeof error === "object" && error != null && "digest" in error) {
     const digest = String((error as { digest?: string }).digest ?? "");
     if (digest.includes("E394")) return true;
   }
 
   const code =
-    typeof error === "object" && error !== null && "code" in error
+    typeof error === "object" && error != null && "code" in error
       ? String((error as { code?: string }).code)
       : "";
   return code === "E394";

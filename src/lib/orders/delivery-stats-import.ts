@@ -145,7 +145,7 @@ export function normalizeSupplierName(name: string): string {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, " ")
-    .replace(/[""]/g, '"');
+    .replace(/["]/g, '"');
 }
 
 export function matchSupplierId(

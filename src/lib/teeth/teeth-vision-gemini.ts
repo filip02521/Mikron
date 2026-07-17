@@ -69,7 +69,7 @@ export const GEMINI_QUOTA_EXCEEDED_USER_MESSAGE =
 export function isRetryableGeminiError(error: unknown): boolean {
   if (!error || isGeminiQuotaExceeded(error)) return false;
   const status =
-    typeof error === "object" && error !== null && "status" in error
+    typeof error === "object" && error != null && "status" in error
       ? Number((error as { status?: unknown }).status)
       : NaN;
   if (status === 503) return true;

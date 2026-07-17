@@ -540,11 +540,12 @@ export async function actionStartZdImportSupplierJob(input: {
   monthsBack?: number;
 }): Promise<ZdImportSupplierJobState> {
   await requireAdminForMutation();
+  const supplierId = input.supplierId.trim();
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("suppliers")
     .select("id, name, subiekt_kh_id")
-    .eq("id", input.supplierId)
+    .eq("id", supplierId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Nie znaleziono dostawcy.");

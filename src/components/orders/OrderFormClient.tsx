@@ -1467,7 +1467,7 @@ export function OrderFormClient({
                   accent="indigo"
                   icon={<IconUserGroup size={17} />}
                   tileClassName="bg-indigo-100 text-indigo-800"
-                  className={lockedSalesPerson ? undefined : "sm:col-span-2"}
+                  className="sm:col-span-2"
                 >
                   <div className="grid gap-3 sm:grid-cols-2 sm:items-start">
                     <Field labelClassName="inline-flex min-h-6 items-center" label="Dla kogo (handlowiec)">

@@ -18,7 +18,7 @@ import { pageMetadataFor } from "@/lib/ui/page-metadata";
 export const metadata: Metadata = pageMetadataFor("admin");
 
 export default async function AdminPage() {
-  let status = { isHealthy: true, issues: [] as string[] };
+  let status: { isHealthy: boolean; issues: string[] };
   try {
     status = await actionGetSystemStatus();
   } catch {

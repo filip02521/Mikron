@@ -44,25 +44,26 @@ export async function actionUpsertSalesGroup(form: {
       : 0;
 
   const supabase = createAdminClient();
+  const groupId = form.id?.trim() || undefined;
 
   const duplicateQuery = supabase
     .from("sales_groups")
     .select("id, name")
     .ilike("name", escapeIlikePattern(name));
-  if (form.id) duplicateQuery.neq("id", form.id);
+  if (groupId) duplicateQuery.neq("id", groupId);
   const { data: duplicate } = await duplicateQuery.maybeSingle();
   if (duplicate) {
     return { error: `Grupa „${duplicate.name}" już istnieje.` };
   }
 
-  if (form.id) {
+  if (groupId) {
     const { error } = await supabase
       .from("sales_groups")
       .update({ name, sort_order: sortOrder })
-      .eq("id", form.id);
+      .eq("id", groupId);
     if (error) return { error: error.message };
     revalidateGroupPaths();
-    return { success: true, id: form.id };
+    return { success: true, id: groupId };
   }
 
   const { data: inserted, error } = await supabase

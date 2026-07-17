@@ -385,7 +385,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                     <option value="anterior">{TEETH_KIND_LABELS.anterior}</option>
                     <option value="posterior">{TEETH_KIND_LABELS.posterior}</option>
                   </select>
-                  {selectedHit && !addKind && detectTeethKind(selectedHit.name) ? (
+                  {!addKind && detectTeethKind(selectedHit.name) ? (
                     <p className="mt-1 text-xs text-slate-500">
                       Wykryto: {TEETH_KIND_LABELS[detectTeethKind(selectedHit.name)!]}
                     </p>

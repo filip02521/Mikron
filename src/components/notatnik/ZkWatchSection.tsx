@@ -427,7 +427,7 @@ export function ZkWatchSection({
         ) : null}
 
         {error && !embedded ? (
-          <div className={cn(embedded && salesChromeInsetClass)}>
+          <div className={salesChromeInsetClass}>
             <Alert tone="error">{error}</Alert>
           </div>
         ) : null}

@@ -44,7 +44,7 @@ export async function TeethPanelRoute({ tab }: { tab: Tab }) {
     <>
       {error ? (
         <Alert tone="warning" className={cn(panelWorkspaceShellClass, "mb-4")}>
-          Nie udało się wczytać kolejki zębów{error ? `: ${error}` : ""}. Odśwież stronę lub
+          Nie udało się wczytać kolejki zębów: {error}. Odśwież stronę lub
           spróbuj ponownie za chwilę.
         </Alert>
       ) : null}

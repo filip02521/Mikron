@@ -328,8 +328,8 @@ export function evaluateCronJob(
             : false
     : false;
 
-  let tone: CronMonitorTone = "neutral";
-  let statusLabel = "Brak danych";
+  let tone: CronMonitorTone;
+  let statusLabel: string;
 
   if (job.id === "catalog_zd_sync") {
     if (!run && !catalogState) {

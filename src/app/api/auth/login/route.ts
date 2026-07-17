@@ -217,7 +217,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let redirectTo = "/";
+  let redirectTo: string;
   if (profile.must_change_password) {
     redirectTo = "/ustaw-haslo?wymagane=1";
   } else {

@@ -342,15 +342,11 @@ export function buildZkLineProsbaQuantityMeta(
 
   if (orderedQty > 0 && zkQty != null && orderedQty < zkQty) {
     const stockGap = zkQty - orderedQty;
-    const stockNote =
-      stockGap > 0 ? ` · ${stockGap} szt. ze stanu` : "";
     return {
-      displayLabel: `${zkLabel} · w prośbie ${orderedQty} szt.${stockNote}`,
+      displayLabel: `${zkLabel} · w prośbie ${orderedQty} szt. · ${stockGap} szt. ze stanu`,
       title:
         `W ZK jest ${zkQty} szt., w prośbie zamówiono ${orderedQty} szt.` +
-        (stockGap > 0
-          ? ` Pozostałe ${stockGap} szt. powinny być już na stanie magazynowym.`
-          : "") +
+        ` Pozostałe ${stockGap} szt. powinny być już na stanie magazynowym.` +
         " Przy odbiorze z regału licz się na ilość z prośby, nie na pełną ilość ZK.",
     };
   }
@@ -703,7 +699,7 @@ export function mergeZkLineChecksFromDeliveredOrders(
       arrived = false;
     } else if (arrived && !completedManually) {
       const coverage = computeZkWatchLineCoverage(v, relevant, watch);
-      if (coverage !== undefined && !inStockSet.has(v.key)) {
+      if (!inStockSet.has(v.key)) {
         arrived = false;
       }
     }

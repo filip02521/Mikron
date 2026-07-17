@@ -83,6 +83,7 @@ export async function actionUpdateSalesBugReport(input: {
 
   try {
     const supabase = createAdminClient();
+    const bugReportId = input.id.trim();
     const { data, error } = await supabase
       .from("sales_bug_reports")
       .update({
@@ -90,7 +91,7 @@ export async function actionUpdateSalesBugReport(input: {
         admin_note: input.adminNote?.trim() || null,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", input.id)
+      .eq("id", bugReportId)
       .select("*")
       .single();
     if (error || !data) throw new Error(error?.message ?? "Nie znaleziono zgłoszenia.");

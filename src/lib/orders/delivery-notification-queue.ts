@@ -234,7 +234,7 @@ export async function sendDeliveryNotificationDirect(
       skipped.length === 1
         ? `${skipped[0]}: brak e-maila — zapisano bez powiadomienia`
         : `${skipped.length} handlowców bez e-maila — zapisano bez powiadomienia`;
-    error = error ? `${error}; ${skipNote}` : skipNote;
+    error = skipNote;
   }
 
   return { sent, error };
@@ -302,7 +302,7 @@ export async function sendPendingDeliveryNotifications(ids: string[]): Promise<{
       skipped.length === 1
         ? `${skipped[0]}: brak e-maila — zapisano bez powiadomienia`
         : `${skipped.length} handlowców bez e-maila — zapisano bez powiadomienia`;
-    error = error ? `${error}; ${skipNote}` : skipNote;
+    error = skipNote;
   }
 
   // Bez zewnętrznego cronu nie ma sensu ponawiać, więc oznaczamy wpisy jako obsłużone,

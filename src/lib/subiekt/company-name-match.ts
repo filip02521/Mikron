@@ -25,7 +25,7 @@ function baseNormalize(text: string): string {
     .toLowerCase()
     .normalize("NFD")
     .replace(/\p{M}/gu, "")
-    .replace(/[„""'']/g, "")
+    .replace(/[„"']/g, "")
     .replace(/[.,()[\]{}]/g, " ")
     .replace(/[-_/]+/g, " ")
     .replace(/\s+/g, " ")

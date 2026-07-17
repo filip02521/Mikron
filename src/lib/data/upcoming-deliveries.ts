@@ -291,7 +291,7 @@ export async function groupUpcomingDeliveries(
     }
   }
 
-  let hintMap = new Map<string, WarehouseCarrierHint>();
+  let hintMap: Map<string, WarehouseCarrierHint>;
   try {
     hintMap = await fetchCarrierHintsForSuppliers([...allSupplierIds]);
   } catch {

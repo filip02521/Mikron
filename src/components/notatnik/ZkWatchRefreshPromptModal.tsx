@@ -263,9 +263,7 @@ export function ZkWatchRefreshPromptModal({
             ? "Dodaj brakujące do prośby"
             : `Dodaj do prośby (${linesToAddCount})`
           : allOnStock
-            ? patching
-              ? "Zapisuję…"
-              : "Oznacz na stanie i kontynuuj"
+            ? "Oznacz na stanie i kontynuuj"
             : "Zaznacz pozycje do prośby";
 
   const primaryLinkButtonClass = cn(

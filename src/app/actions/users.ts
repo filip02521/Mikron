@@ -95,11 +95,12 @@ export async function actionCreateAppUser(form: {
   }
 
   let salesPersonName: string | null = null;
-  if (roleRequiresSalesPerson(form.role) && form.salesPersonId) {
+  if (roleRequiresSalesPerson(form.role) && form.salesPersonId?.trim()) {
+    const salesPersonId = form.salesPersonId.trim();
     const { data: sp } = await supabase
       .from("sales_people")
       .select("name")
-      .eq("id", form.salesPersonId)
+      .eq("id", salesPersonId)
       .maybeSingle();
     salesPersonName = sp?.name ?? null;
   }
@@ -135,28 +136,29 @@ export async function actionUpdateAppUser(form: {
   }
 
   const supabase = createAdminClient();
+  const userId = form.userId.trim();
 
   const { data: before } = await supabase
     .from("profiles")
     .select("role, sales_person_id")
-    .eq("id", form.userId)
+    .eq("id", userId)
     .maybeSingle();
 
   const linkError = await assertUniqueSalesPersonLink(
     supabase,
     roleRequiresSalesPerson(form.role) ? form.salesPersonId : null,
-    form.userId
+    userId
   );
   if (linkError) return { error: linkError };
 
   const wasManager = before?.role === "sales_manager";
   const willBeManager = form.role === "sales_manager";
   if (wasManager && !willBeManager) {
-    const clearErr = await deleteSalesManagerGroupsForProfile(supabase, form.userId);
+    const clearErr = await deleteSalesManagerGroupsForProfile(supabase, userId);
     if (clearErr) return { error: clearErr };
   }
 
-  if (form.userId === current.id && form.role !== "admin") {
+  if (userId === current.id && form.role !== "admin") {
     const { count } = await supabase
       .from("profiles")
       .select("id", { count: "exact", head: true })
@@ -173,7 +175,7 @@ export async function actionUpdateAppUser(form: {
       sales_person_id: roleRequiresSalesPerson(form.role) ? form.salesPersonId : null,
       ...(form.role !== "zakupy" ? { assigned_workspaces: [] } : {}),
     })
-    .eq("id", form.userId);
+    .eq("id", userId);
 
   if (error) return { error: error.message };
 
@@ -207,17 +209,18 @@ export async function actionSaveAppUserPermissions(form: {
   }
 
   const supabase = createAdminClient();
+  const userId = form.userId.trim();
 
   const { data: before } = await supabase
     .from("profiles")
     .select("role, sales_person_id")
-    .eq("id", form.userId)
+    .eq("id", userId)
     .maybeSingle();
 
   const linkError = await assertUniqueSalesPersonLink(
     supabase,
     roleRequiresSalesPerson(form.role) ? form.salesPersonId : null,
-    form.userId
+    userId
   );
   if (linkError) return { error: linkError };
 
@@ -225,11 +228,11 @@ export async function actionSaveAppUserPermissions(form: {
   const willBeManager = form.role === "sales_manager";
 
   if (wasManager && !willBeManager) {
-    const clearErr = await deleteSalesManagerGroupsForProfile(supabase, form.userId);
+    const clearErr = await deleteSalesManagerGroupsForProfile(supabase, userId);
     if (clearErr) return { error: clearErr };
   }
 
-  if (form.userId === current.id && form.role !== "admin") {
+  if (userId === current.id && form.role !== "admin") {
     const { count } = await supabase
       .from("profiles")
       .select("id", { count: "exact", head: true })
@@ -248,14 +251,14 @@ export async function actionSaveAppUserPermissions(form: {
         ? { assigned_workspaces: form.assignedWorkspaces ?? [] }
         : { assigned_workspaces: [] }),
     })
-    .eq("id", form.userId);
+    .eq("id", userId);
 
   if (error) return { error: error.message };
 
   if (willBeManager) {
     const groupErr = await replaceSalesManagerGroupsForProfile(
       supabase,
-      form.userId,
+      userId,
       form.managerGroupIds
     );
     if (groupErr) return { error: groupErr };

@@ -279,8 +279,8 @@ export async function actionCompletePasswordChange(
     };
   }
 
-  if (!user) return { error: "Brak aktywnej sesji." };
-
+  // user is guaranteed non-null here: the if(!user) block above either
+  // returns early or assigns a valid user object.
   const passwordError = passwordValidationError(password);
   if (passwordError) return { error: passwordError };
 

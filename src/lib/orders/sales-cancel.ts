@@ -518,7 +518,7 @@ export function salesCancelOverflowLabel(
   const base = kind === "informacja" ? "Anuluj informację" : "Anuluj prośbę";
   if (cancellableCount <= 1) return base;
   const n = cancellableCount;
-  const pozycja = n === 1 ? "pozycję" : n < 5 ? "pozycje" : "pozycji";
+  const pozycja = n < 5 ? "pozycje" : "pozycji";
   return `Anuluj wszystkie pozycje (${n} ${pozycja})`;
 }
 

@@ -55,8 +55,9 @@ export async function actionUpsertWarehouseCarrier(form: {
     return { error: `Kurier „${duplicateLabel.label}" już jest na liście.` };
   }
 
-  if (form.slug) {
-    const current = existing.find((carrier) => carrier.slug === form.slug);
+  if (form.slug?.trim()) {
+    const slug = form.slug.trim();
+    const current = existing.find((carrier) => carrier.slug === slug);
     if (!current) return { error: "Nie znaleziono kuriera." };
 
     const { error } = await supabase
@@ -67,11 +68,11 @@ export async function actionUpsertWarehouseCarrier(form: {
         is_active: form.isActive ?? current.isActive,
         updated_at: new Date().toISOString(),
       })
-      .eq("slug", form.slug);
+      .eq("slug", slug);
 
     if (error) return { error: error.message };
     revalidateCarrierPaths();
-    return { success: true, slug: form.slug };
+    return { success: true, slug };
   }
 
   const slug = uniqueWarehouseCarrierSlug(label, taken);

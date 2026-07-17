@@ -202,11 +202,11 @@ export function AppShellClient({
     procurementWorkspace === "dostawy" ||
     (procurementWorkspace == null && role != null && canAccessOperations(role, assignedWorkspaces) && !inTeethWorkspace);
   const operationsLive =
-    Boolean(role && inDostawyWorkspace && canAccessOperations(role ?? "sales", assignedWorkspaces)) && !salesLive;
+    !!(role && inDostawyWorkspace && canAccessOperations(role ?? "sales", assignedWorkspaces)) && !salesLive;
   const teethLive =
-    Boolean(role && inTeethWorkspace && canAccessTeethPanel(role ?? "sales", assignedWorkspaces)) && !salesLive;
+    !!(role && inTeethWorkspace && canAccessTeethPanel(role ?? "sales", assignedWorkspaces)) && !salesLive;
   const magazynLive =
-    Boolean(role && inMagazynWorkspace && canAccessWarehouse(role ?? "sales", assignedWorkspaces)) && !salesLive && !operationsLive && !teethLive;
+    !!(role && inMagazynWorkspace && canAccessWarehouse(role ?? "sales", assignedWorkspaces)) && !salesLive && !operationsLive && !teethLive;
   const teethInitialVersion = teethPanelVersion;
   const mobileChrome = salesLive || operationsLive || teethLive || magazynLive;
 
