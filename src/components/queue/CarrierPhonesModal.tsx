@@ -12,7 +12,6 @@ import {
 } from "@/app/actions/carrier-phones";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Button } from "@/components/ui/Button";
-
 import { Field, Input } from "@/components/ui/Field";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -29,7 +28,6 @@ import { panelTypography } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
 
 type PhoneFormState = {
-  id?: string;
   label: string;
   phone: string;
 };
@@ -138,7 +136,7 @@ export function CarrierPhonesModal({
 
   const startEdit = (phone: CarrierPhoneRow) => {
     setEditingId(phone.id);
-    setEditForm({ id: phone.id, label: phone.label, phone: phone.phone });
+    setEditForm({ label: phone.label, phone: phone.phone });
   };
 
   const saveEdit = () => {
@@ -209,7 +207,7 @@ export function CarrierPhonesModal({
         <div className="space-y-3 px-5 py-4 sm:px-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className={cn(panelTypography.caption, "text-slate-500")}>
-              {totalPhones} {totalPhones === 1 ? "numer" : totalPhones < 5 ? "numery" : "numerów"} · {carriers.length} kurierów
+              {totalPhones} {totalPhones === 1 ? "numer" : totalPhones >= 2 && totalPhones <= 4 ? "numery" : "numerów"} · {carriers.length} kurierów
             </p>
             <Input
               value={search}
@@ -260,7 +258,7 @@ export function CarrierPhonesModal({
                         <p className="text-[11px] text-slate-400">
                           {carrierPhones.length === 0
                             ? "Brak numerów"
-                            : `${carrierPhones.length} ${carrierPhones.length === 1 ? "numer" : "numery"}`}
+                            : `${carrierPhones.length} ${carrierPhones.length === 1 ? "numer" : carrierPhones.length >= 2 && carrierPhones.length <= 4 ? "numery" : "numerów"}`}
                         </p>
                       </div>
                       {!carrier.isActive ? (
@@ -334,7 +332,7 @@ export function CarrierPhonesModal({
                                       >
                                         Zadzwoń
                                       </a>
-                                      <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                                      <div className="flex shrink-0 gap-1 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
                                         <Button
                                           type="button"
                                           size="sm"

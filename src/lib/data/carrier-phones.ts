@@ -39,10 +39,6 @@ export async function fetchCarrierPhones(
   return (data ?? []).map((row) => mapRow(row as Record<string, unknown>));
 }
 
-export async function fetchAllCarrierPhones(): Promise<CarrierPhoneRow[]> {
-  return fetchCarrierPhones();
-}
-
 export async function createCarrierPhone(input: {
   carrierSlug: string;
   label: string;
