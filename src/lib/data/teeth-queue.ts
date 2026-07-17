@@ -20,6 +20,8 @@ import {
   TEETH_MARK_ORDERED_BLOCKED_MESSAGE,
 } from "@/lib/teeth/teeth-mark-ordered";
 import { teethPanelReadinessContextFromMaps } from "@/lib/teeth/teeth-panel-order-readiness";
+import { resolveSupplierForTeethManufacturer } from "@/lib/orders/teeth-ocr-prosba-prefill";
+import { fetchSuppliersForForm } from "@/lib/data/queries";
 
 export { fetchTeethDetailsForOrders } from "@/lib/data/teeth-order-details";
 
@@ -462,6 +464,30 @@ export async function markTeethOrdered(
     .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
     .is("sales_cancelled_at", null);
 
+  // Auto-przypisz dostawcę dla zębów bez supplier_id na podstawie producenta
+  const ordersWithoutSupplier = (orders ?? []).filter(
+    (o) => idsToMark.includes(o.id) && !o.supplier_id
+  );
+  if (ordersWithoutSupplier.length > 0) {
+    const suppliers = await fetchSuppliersForForm().catch(() => [] as Array<{ id: string; name: string }>);
+    const manufacturerByTwId = new Map(teethProducts.map((row) => [row.twId, row.manufacturer]));
+    for (const order of ordersWithoutSupplier) {
+      const twId = order.subiekt_tw_id != null && order.subiekt_tw_id > 0
+        ? Math.trunc(order.subiekt_tw_id)
+        : null;
+      if (!twId) continue;
+      const manufacturer = manufacturerByTwId.get(twId);
+      if (!manufacturer) continue;
+      const resolvedSupplierId = resolveSupplierForTeethManufacturer(manufacturer, suppliers);
+      if (resolvedSupplierId) {
+        await supabase
+          .from("individual_orders")
+          .update({ supplier_id: resolvedSupplierId })
+          .eq("id", order.id);
+      }
+    }
+  }
+
   const { data, error } = await supabase
     .from("individual_orders")
     .update({
@@ -612,6 +638,30 @@ export async function markTeethPositionsOrdered(
       .eq("is_teeth", true)
       .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
       .is("sales_cancelled_at", null);
+
+    // Auto-przypisz dostawcę dla zębów bez supplier_id na podstawie producenta
+    const completedOrdersWithoutSupplier = (orders ?? []).filter(
+      (o) => ordersCompleted.includes(o.id) && !o.supplier_id
+    );
+    if (completedOrdersWithoutSupplier.length > 0) {
+      const suppliers = await fetchSuppliersForForm().catch(() => [] as Array<{ id: string; name: string }>);
+      const manufacturerByTwId = new Map(teethProducts.map((row) => [row.twId, row.manufacturer]));
+      for (const order of completedOrdersWithoutSupplier) {
+        const twId = order.subiekt_tw_id != null && order.subiekt_tw_id > 0
+          ? Math.trunc(order.subiekt_tw_id)
+          : null;
+        if (!twId) continue;
+        const manufacturer = manufacturerByTwId.get(twId);
+        if (!manufacturer) continue;
+        const resolvedSupplierId = resolveSupplierForTeethManufacturer(manufacturer, suppliers);
+        if (resolvedSupplierId) {
+          await supabase
+            .from("individual_orders")
+            .update({ supplier_id: resolvedSupplierId })
+            .eq("id", order.id);
+        }
+      }
+    }
 
     const { error: orderErr } = await supabase
       .from("individual_orders")

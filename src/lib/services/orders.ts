@@ -106,6 +106,8 @@ import {
   supplierNamesWithoutOrderInterval,
 } from "@/lib/orders/glowne-interval-validation";
 import { shouldSyncZkWatchLineChecksAfterDeliveryChange } from "@/lib/sales/zk-watch-order-sync";
+import { resolveSupplierForTeethManufacturer } from "@/lib/orders/teeth-ocr-prosba-prefill";
+import { fetchSuppliersForForm } from "@/lib/data/queries";
 
 async function recalcSupplierSchedule(supplierId: string) {
   await recalcSingleSupplierSchedule(supplierId);
@@ -272,6 +274,7 @@ export async function batchAddIndividualOrders(
   const teethTwIdSet = await fetchTeethProductTwIdSet().catch(() => new Set<number>());
   const teethProductInfo = await fetchTeethProductInfo().catch(() => []);
   const teethInfoByTwId = new Map(teethProductInfo.map((row) => [row.twId, row]));
+  const suppliersForTeeth = await fetchSuppliersForForm().catch(() => [] as Array<{ id: string; name: string }>);
   try {
     let complete = 0;
     let verification = 0;
@@ -345,9 +348,21 @@ export async function batchAddIndividualOrders(
       const { products, symbol } = normalizeDraftProducts(draft);
       // Stare podejście (dopasowanie dostawcy z ZD w tle) zostało wycofane.
 
+      const isTeethLine =
+        draft.subiektTwId != null &&
+        draft.subiektTwId > 0 &&
+        teethTwIdSet.has(Math.trunc(draft.subiektTwId));
+      let resolvedSupplierId = e.supplierId?.trim() || null;
+      if (!resolvedSupplierId && isTeethLine && draft.subiektTwId) {
+        const teethInfo = teethInfoByTwId.get(Math.trunc(draft.subiektTwId));
+        if (teethInfo?.manufacturer) {
+          resolvedSupplierId = resolveSupplierForTeethManufacturer(teethInfo.manufacturer, suppliersForTeeth) || null;
+        }
+      }
+
       return {
         id: crypto.randomUUID(),
-        supplier_id: e.supplierId?.trim() || null,
+        supplier_id: resolvedSupplierId,
         sales_person_id: e.salesPersonId,
         symbol,
         products,
@@ -696,6 +711,7 @@ export async function updateIndividualRequestGroup(
   const teethTwIdSet = await fetchTeethProductTwIdSet().catch(() => new Set<number>());
   const teethProductInfo = await fetchTeethProductInfo().catch(() => []);
   const teethInfoByTwId = new Map(teethProductInfo.map((row) => [row.twId, row]));
+  const suppliersForTeeth = await fetchSuppliersForForm().catch(() => [] as Array<{ id: string; name: string }>);
   const { data: rawRows, error: fetchError } = await supabase
     .from("individual_orders")
     .select("*")
@@ -863,8 +879,15 @@ export async function updateIndividualRequestGroup(
             : null
         )
       : null;
+    let resolvedSupplierId = effectiveSupplierId.trim() || null;
+    if (!resolvedSupplierId && isTeeth && line.subiektTwId) {
+      const teethInfo = teethInfoByTwId.get(Math.trunc(line.subiektTwId));
+      if (teethInfo?.manufacturer) {
+        resolvedSupplierId = resolveSupplierForTeethManufacturer(teethInfo.manufacturer, suppliersForTeeth) || null;
+      }
+    }
     const rowPayload = {
-      supplier_id: effectiveSupplierId.trim() || null,
+      supplier_id: resolvedSupplierId,
       sales_person_id: payload.salesPersonId,
       symbol,
       products,

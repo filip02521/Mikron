@@ -133,6 +133,27 @@ export function clearTeethOcrProsbaPrefill(): void {
 }
 
 /**
+ * Resolve a supplier ID by matching a single teeth manufacturer label
+ * against supplier names (e.g. manufacturer "Wiedent" → supplier "Wiedent Sp. z o.o.").
+ */
+export function resolveSupplierForTeethManufacturer(
+  manufacturerId: string | null | undefined,
+  suppliers: Array<{ id: string; name: string }>,
+): string {
+  if (!manufacturerId || !suppliers.length) return "";
+  const mfr = TEETH_MANUFACTURERS.find((m) => m.id === manufacturerId);
+  if (!mfr) return "";
+  const labelLower = mfr.label.toLowerCase();
+  for (const s of suppliers) {
+    const supplierLower = s.name.toLowerCase();
+    if (supplierLower.includes(labelLower) || labelLower.includes(supplierLower)) {
+      return s.id;
+    }
+  }
+  return "";
+}
+
+/**
  * Resolve a supplier ID from the suppliers list by matching teeth manufacturer names.
  * Tries to find a supplier whose name contains the manufacturer label (e.g. "Wiedent", "Ivoclar", "Major Dental").
  * If lines have multiple manufacturers, returns the first match.
@@ -143,7 +164,6 @@ export function resolveSupplierForTeethPrefill(
 ): string {
   if (!suppliers.length || !lines.length) return "";
 
-  const manufacturerLabels = TEETH_MANUFACTURERS;
   const usedManufacturers = new Set<string>();
   for (const line of lines) {
     if (line.teethManufacturer) {
@@ -152,15 +172,10 @@ export function resolveSupplierForTeethPrefill(
   }
   if (usedManufacturers.size === 0) return "";
 
-  for (const mfr of manufacturerLabels) {
+  for (const mfr of TEETH_MANUFACTURERS) {
     if (!usedManufacturers.has(mfr.id)) continue;
-    const labelLower = mfr.label.toLowerCase();
-    for (const s of suppliers) {
-      const supplierLower = s.name.toLowerCase();
-      if (supplierLower.includes(labelLower) || labelLower.includes(supplierLower)) {
-        return s.id;
-      }
-    }
+    const resolved = resolveSupplierForTeethManufacturer(mfr.id, suppliers);
+    if (resolved) return resolved;
   }
 
   return "";
