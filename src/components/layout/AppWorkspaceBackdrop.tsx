@@ -1,8 +1,15 @@
 /** Subtelne tło panelu — echo tarczy OnTime z logowania (rogi viewportu, bez animacji). */
 
+"use client";
+
 import { authTickLines } from "@/components/auth/auth-background-geometry";
+import { usePersistedFlag } from "@/lib/client/use-persisted-flag";
+import { uniformBackgroundStore } from "@/lib/client/uniform-background-store";
 
 export function AppWorkspaceBackdrop() {
+  const uniformBg = usePersistedFlag(uniformBackgroundStore);
+  if (uniformBg) return null;
+
   const topRightCx = 680;
   const topRightCy = 60;
   const topRightTicks = authTickLines(topRightCx, topRightCy, 200, 0.9, 3);

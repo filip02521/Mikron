@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { NotificationSettingsSection } from "@/components/settings/NotificationSettingsSection";
 import { AutoRefreshSettingsSection } from "@/components/settings/AutoRefreshSettingsSection";
+import { AppearanceSettingsSection } from "@/components/settings/AppearanceSettingsSection";
 import { SettingsWorkspace } from "@/components/settings/SettingsWorkspace";
 import { salesPageShellClass } from "@/lib/ui/ontime-theme";
 import { pageMetadata } from "@/lib/ui/page-metadata";
@@ -23,6 +24,8 @@ export default async function UstawieniaPage() {
         <NotificationSettingsSection role={user.role} />
 
         <AutoRefreshSettingsSection role={user.role} />
+
+        <AppearanceSettingsSection />
       </SettingsWorkspace>
     </div>
   );

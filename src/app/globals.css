@@ -934,6 +934,10 @@ input[type="checkbox"].toggle-switch.toggle-indigo:checked {
   background: rgb(79 70 229);
 }
 
+input[type="checkbox"].toggle-switch.toggle-sky:checked {
+  background: rgb(2 132 199);
+}
+
 /* ——— Slide-in drawer + backdrop fade (shared by all side panels) ——— */
 @keyframes panel-slide-enter {
   from {
