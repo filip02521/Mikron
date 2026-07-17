@@ -117,7 +117,6 @@ export function QuestionThreadCard({
         void actionMarkQuestionThreadSeen(question.id)
           .then(() => {
             setLocallySeen(true);
-            onChanged?.();
           })
           .catch(() => {
             markSeenRequestedRef.current = false;
@@ -134,7 +133,6 @@ export function QuestionThreadCard({
     showUnseen,
     question.id,
     question.posts.length,
-    onChanged,
   ]);
 
   function toggleExpanded() {

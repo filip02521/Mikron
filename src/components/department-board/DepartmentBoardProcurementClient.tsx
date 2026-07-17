@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
@@ -156,9 +156,9 @@ export function DepartmentBoardProcurementClient({
     Boolean(focusQuestionId) && activeTab === "questions"
   );
 
-  function refresh() {
+  const refresh = useCallback(() => {
     router.refresh();
-  }
+  }, [router]);
 
   async function submitAnnouncement() {
     if (blockIfReadOnly()) return;

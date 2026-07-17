@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import {
   buildOnboardingBoardAttention,
@@ -185,9 +185,9 @@ export function DepartmentBoardSalesClient({
     [board.questions, activeQuestionFilter, questionSearch, filterCtx, focusQuestionId]
   );
 
-  function refresh() {
+  const refresh = useCallback(() => {
     router.refresh();
-  }
+  }, [router]);
 
   useDeepLinkScrollOnce(
     focusQuestionId ? `question-${focusQuestionId}` : null,
