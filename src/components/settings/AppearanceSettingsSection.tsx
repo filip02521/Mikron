@@ -37,6 +37,21 @@ export function AppearanceSettingsSection({
   function changeFontScale(value: FontScale) {
     startTransition(async () => {
       setOptimisticFont(value);
+      const html = document.documentElement;
+      if (value === "default") {
+        html.removeAttribute("data-font-scale");
+      } else {
+        html.setAttribute("data-font-scale", value);
+      }
+      try {
+        if (value === "default") {
+          localStorage.removeItem("fontScale");
+        } else {
+          localStorage.setItem("fontScale", value);
+        }
+      } catch {
+        // ignore
+      }
       await actionSetFontScale(value);
     });
   }

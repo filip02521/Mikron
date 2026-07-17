@@ -4,12 +4,6 @@ import type { UserRole, Workspace } from "@/types/database";
 
 export type FontScale = "default" | "large" | "xlarge";
 
-export const FONT_SCALE_VALUES: Record<FontScale, number> = {
-  default: 100,
-  large: 110,
-  xlarge: 125,
-};
-
 export const FONT_SCALE_LABELS: Record<FontScale, string> = {
   default: "Standardowa",
   large: "Większa",
