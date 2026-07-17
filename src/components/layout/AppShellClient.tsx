@@ -47,7 +47,7 @@ import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
 import { isAdminOperationsPreviewReadOnly } from "@/lib/auth/admin-panel-context";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import type { UserRole, Workspace } from "@/types/database";
-import type { FontScale } from "@/lib/auth/profile";
+import type { FontScale } from "@/lib/auth/font-scale";
 import { canAccessOperations, canAccessTeethPanel, canAccessWarehouse, isSalesAccount } from "@/lib/auth-roles";
 import { MobileOperationsNav } from "./MobileOperationsNav";
 import { MobileOperationsHeader } from "./MobileOperationsHeader";

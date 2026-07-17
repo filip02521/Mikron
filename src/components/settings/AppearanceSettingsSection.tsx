@@ -10,7 +10,7 @@ import { salesChromeInsetClass } from "@/lib/ui/ontime-theme";
 import {
   FONT_SCALE_LABELS,
   type FontScale,
-} from "@/lib/auth/profile";
+} from "@/lib/auth/font-scale";
 
 type AppearanceSettingsSectionProps = {
   uniformBackground: boolean;

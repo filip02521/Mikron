@@ -1,19 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import type { UserRole, Workspace } from "@/types/database";
+import { normalizeFontScale, type FontScale } from "@/lib/auth/font-scale";
 
-export type FontScale = "default" | "large" | "xlarge";
-
-export const FONT_SCALE_LABELS: Record<FontScale, string> = {
-  default: "Standardowa",
-  large: "Większa",
-  xlarge: "Największa",
-};
-
-export function normalizeFontScale(value: unknown): FontScale {
-  if (value === "large" || value === "xlarge") return value;
-  return "default";
-}
+export type { FontScale, FONT_SCALE_LABELS } from "@/lib/auth/font-scale";
+export { normalizeFontScale } from "@/lib/auth/font-scale";
 
 export type ProfileRow = {
   role: UserRole;

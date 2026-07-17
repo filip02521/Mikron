@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import type { FontScale } from "@/lib/auth/profile";
+import type { FontScale } from "@/lib/auth/font-scale";
 
 /**
  * Synchronizes data-font-scale attribute on <html> with the server-side
