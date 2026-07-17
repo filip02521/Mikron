@@ -86,11 +86,12 @@ function formCountsForSubmit(form: FormState): {
   packageCount: number;
   palletCount: number;
 } {
-  return normalizeShipmentCounts(
-    form.shipmentForm,
-    Number(form.packageCount) || 0,
-    Number(form.palletCount) || 0
-  );
+  const rawPackages = Number(form.packageCount) || 0;
+  const rawPallets = Number(form.palletCount) || 0;
+  if (shipmentFormShowsPackages(form.shipmentForm) && rawPackages < 1) {
+    throw new Error("Liczba paczek musi wynosić co najmniej 1.");
+  }
+  return normalizeShipmentCounts(form.shipmentForm, rawPackages, rawPallets);
 }
 
 function formatTodayLabel(dateKey: string): string {
@@ -174,13 +175,20 @@ function ReceiptRow({
   const save = () => {
     const supplierId = form.supplierId || null;
     const supplierLabel = supplierId ? undefined : form.supplierOther.trim();
+    let counts;
+    try {
+      counts = formCountsForSubmit(form);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Nieprawidłowe dane.");
+      return;
+    }
     void actionUpdateDeliveryReceipt({
       id: receipt.id,
       supplierId,
       supplierLabel,
       carrier: formCarrier,
       shipmentForm: form.shipmentForm,
-      ...formCountsForSubmit(form),
+      ...counts,
       note: form.note,
     })
       .then(() => {
@@ -376,7 +384,7 @@ function ReceiptFormFields({
         <Field label="Liczba paczek">
           <Input
             type="number"
-            min={0}
+            min={1}
             inputMode="numeric"
             value={form.packageCount}
             onChange={(e) => setForm((f) => ({ ...f, packageCount: e.target.value }))}

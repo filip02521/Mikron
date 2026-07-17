@@ -50,6 +50,7 @@ import {
 import { assertWarehouseCarrierSlug } from "@/app/actions/warehouse-carriers";
 import {
   parseWarehouseShipmentForm,
+  shipmentFormShowsPackages,
 } from "@/lib/warehouse/delivery-carriers";
 import {
   searchDeliveryReceipts,
@@ -156,6 +157,9 @@ export async function actionCreateDeliveryReceipt(input: {
   const user = await requireWarehouse("mutate");
   const carrier = await assertWarehouseCarrierSlug(input.carrier);
   const shipmentForm = parseWarehouseShipmentForm(input.shipmentForm);
+  if (shipmentFormShowsPackages(shipmentForm) && input.packageCount < 1) {
+    throw new Error("Liczba paczek musi wynosić co najmniej 1.");
+  }
   const receipt = await createDeliveryReceipt({
     receivedDate: warsawTodayDateKey(),
     supplierId: input.supplierId,
@@ -185,6 +189,9 @@ export async function actionUpdateDeliveryReceipt(input: {
   const user = await requireWarehouse("mutate");
   const carrier = await assertWarehouseCarrierSlug(input.carrier);
   const shipmentForm = parseWarehouseShipmentForm(input.shipmentForm);
+  if (shipmentFormShowsPackages(shipmentForm) && input.packageCount < 1) {
+    throw new Error("Liczba paczek musi wynosić co najmniej 1.");
+  }
   const receipt = await updateDeliveryReceipt({
     id: input.id,
     receivedDate: warsawTodayDateKey(),
