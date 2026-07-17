@@ -529,22 +529,20 @@ export function DeliveryJournalSection({
         setCarrierHintLabel(null);
         return;
       }
-      setForm((f) => {
-        const hintAlreadyApplied = hintCountsAppliedFor.current === form.supplierId;
-        return {
+      const hintAlreadyApplied = hintCountsAppliedFor.current === form.supplierId;
+      if (!hintAlreadyApplied) {
+        setForm((f) => ({
           ...f,
           carrier: hint.carrier,
           shipmentForm: hint.shipmentForm,
-          ...(hintAlreadyApplied
-            ? {}
-            : countsToFormFields(
-                hint.shipmentForm,
-                hint.typicalPackageCount,
-                hint.typicalPalletCount
-              )),
-        };
-      });
-      hintCountsAppliedFor.current = form.supplierId;
+          ...countsToFormFields(
+            hint.shipmentForm,
+            hint.typicalPackageCount,
+            hint.typicalPalletCount
+          ),
+        }));
+        hintCountsAppliedFor.current = form.supplierId;
+      }
       const sourceLabel =
         hint.source === "default" ? "Z katalogu dostawcy" : "Z historii wpisów";
       setCarrierHintForSupplierId(form.supplierId);
@@ -555,7 +553,7 @@ export function DeliveryJournalSection({
     return () => {
       cancelled = true;
     };
-  }, [form.supplierId, carriers]);
+  }, [form.supplierId, carriersCatalogKey]);
 
   const summaryLine = useMemo(() => {
     const parts: string[] = [];
