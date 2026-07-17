@@ -6,24 +6,17 @@ import { runServerActionWithRedirect } from "@/lib/client/server-action-redirect
 import {
   PROCUREMENT_WORKSPACE_OPTIONS,
   type ProcurementWorkspace,
-  subtitleForProcurementWorkspace,
-  workspaceTone,
   workspaceToneBg,
   workspaceToneRing,
   workspaceToneText,
-  workspaceToneIconBg,
   workspaceToneAccent,
 } from "@/lib/auth/procurement-workspace";
 import { cn } from "@/lib/cn";
 import { NavIcon } from "@/components/icons/NavIcon";
 import {
-  navIconTileActiveClassForTone,
-  navIconTileClassForTone,
-} from "@/components/icons/NavIcon";
-import {
   controlFocusClass,
 } from "@/lib/ui/ontime-theme";
-import type { NavIconKey, NavTone } from "@/lib/nav";
+import type { NavIconKey } from "@/lib/nav";
 
 const WORKSPACE_ICON: Record<ProcurementWorkspace, NavIconKey> = {
   dostawy: "dailyPanel",
@@ -44,7 +37,7 @@ export function ProcurementWorkspaceSwitcher({
 
   return (
     <div className="mb-3">
-      <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+      <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
         Przełącz obszar
       </p>
       {error ? (
@@ -56,15 +49,13 @@ export function ProcurementWorkspaceSwitcher({
         </div>
       ) : null}
       <div
-        className={cn("grid gap-1.5 px-2", pending && "opacity-60")}
+        className={cn("flex gap-1 px-2", pending && "opacity-60")}
         role="group"
         aria-label="Wybór obszaru pracy"
-        style={{ gridTemplateColumns: `repeat(${Math.min(options.length, 2)}, minmax(0, 1fr))` }}
       >
         {options.map((opt) => {
           const isActive = opt.value === current;
           const iconKey = WORKSPACE_ICON[opt.value];
-          const tone = workspaceTone(opt.value) as NavTone;
 
           return (
             <button
@@ -86,7 +77,7 @@ export function ProcurementWorkspaceSwitcher({
                 });
               }}
               className={cn(
-                "flex flex-col gap-1.5 rounded-lg px-2.5 py-2 text-left transition-all",
+                "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-center transition-all",
                 controlFocusClass,
                 isActive
                   ? cn(workspaceToneBg(opt.value), workspaceToneRing(opt.value), "ring-1 ring-inset shadow-sm")
@@ -94,41 +85,24 @@ export function ProcurementWorkspaceSwitcher({
                 pending && "cursor-wait"
               )}
             >
-              <div className="flex items-center gap-2">
+              <NavIcon navKey={iconKey} size={14} />
+              <span
+                className={cn(
+                  "min-w-0 truncate text-[11px] font-medium leading-tight",
+                  isActive ? cn("font-semibold", workspaceToneText(opt.value)) : "text-slate-600"
+                )}
+              >
+                {opt.label}
+              </span>
+              {isActive ? (
                 <span
                   className={cn(
-                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors",
-                    isActive
-                      ? navIconTileActiveClassForTone(tone)
-                      : navIconTileClassForTone(tone)
+                    "shrink-0 h-1.5 w-1.5 rounded-full bg-current",
+                    workspaceToneAccent(opt.value),
                   )}
-                >
-                  <NavIcon navKey={iconKey} size={15} />
-                </span>
-                <span
-                  className={cn(
-                    "min-w-0 flex-1 truncate text-[13px] font-medium leading-snug",
-                    isActive ? cn("font-semibold", workspaceToneText(opt.value)) : "text-slate-600"
-                  )}
-                >
-                  {opt.label}
-                </span>
-                {isActive ? (
-                  <span
-                    className={cn(
-                      "shrink-0 h-1.5 w-1.5 rounded-full bg-current",
-                      workspaceToneAccent(opt.value),
-                    )}
-                    aria-hidden
-                  />
-                ) : null}
-              </div>
-              <p className={cn(
-                "truncate text-[10px] leading-tight",
-                isActive ? "text-slate-500" : "text-slate-400",
-              )}>
-                {subtitleForProcurementWorkspace(opt.value)}
-              </p>
+                  aria-hidden
+                />
+              ) : null}
             </button>
           );
         })}
