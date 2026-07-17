@@ -140,10 +140,7 @@ function withUrgency(
     tone,
     urgency: meta.urgency === "overdue" || meta.urgency === "today" ? meta.urgency : undefined,
     urgencyLabel,
-    detail:
-      meta.urgency === "overdue"
-        ? meta.detailLabel ?? display.detail
-        : display.detail ?? meta.detailLabel,
+    detail: display.detail ?? meta.detailLabel,
   };
 }
 
