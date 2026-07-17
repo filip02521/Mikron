@@ -6,6 +6,13 @@ import { runServerActionWithRedirect } from "@/lib/client/server-action-redirect
 import {
   PROCUREMENT_WORKSPACE_OPTIONS,
   type ProcurementWorkspace,
+  subtitleForProcurementWorkspace,
+  workspaceTone,
+  workspaceToneBg,
+  workspaceToneRing,
+  workspaceToneText,
+  workspaceToneIconBg,
+  workspaceToneAccent,
 } from "@/lib/auth/procurement-workspace";
 import { cn } from "@/lib/cn";
 import { NavIcon } from "@/components/icons/NavIcon";
@@ -24,12 +31,6 @@ const WORKSPACE_ICON: Record<ProcurementWorkspace, NavIconKey> = {
   magazyn: "warehouse",
 };
 
-const WORKSPACE_TONE: Record<ProcurementWorkspace, NavTone> = {
-  dostawy: "indigo",
-  zeby: "sky",
-  magazyn: "emerald",
-};
-
 export function ProcurementWorkspaceSwitcher({
   current,
   options = PROCUREMENT_WORKSPACE_OPTIONS,
@@ -43,8 +44,8 @@ export function ProcurementWorkspaceSwitcher({
 
   return (
     <div className="mb-3">
-      <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-        Obszar pracy
+      <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+        Przełącz obszar
       </p>
       {error ? (
         <div className="mb-1.5 mx-2 flex items-center justify-between gap-2 rounded-md bg-rose-50 px-2.5 py-1.5 text-xs text-rose-700 ring-1 ring-inset ring-rose-100">
@@ -55,7 +56,7 @@ export function ProcurementWorkspaceSwitcher({
         </div>
       ) : null}
       <div
-        className={cn("grid gap-1 px-2", pending && "opacity-60")}
+        className={cn("grid gap-1.5 px-2", pending && "opacity-60")}
         role="group"
         aria-label="Wybór obszaru pracy"
         style={{ gridTemplateColumns: `repeat(${Math.min(options.length, 2)}, minmax(0, 1fr))` }}
@@ -63,7 +64,7 @@ export function ProcurementWorkspaceSwitcher({
         {options.map((opt) => {
           const isActive = opt.value === current;
           const iconKey = WORKSPACE_ICON[opt.value];
-          const tone = WORKSPACE_TONE[opt.value];
+          const tone = workspaceTone(opt.value) as NavTone;
 
           return (
             <button
@@ -85,52 +86,49 @@ export function ProcurementWorkspaceSwitcher({
                 });
               }}
               className={cn(
-                "flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors",
+                "flex flex-col gap-1.5 rounded-lg px-2.5 py-2 text-left transition-all",
                 controlFocusClass,
                 isActive
-                  ? tone === "sky"
-                    ? "bg-sky-50 ring-1 ring-sky-200/60"
-                    : tone === "emerald"
-                      ? "bg-emerald-50 ring-1 ring-emerald-200/60"
-                      : "bg-indigo-50 ring-1 ring-indigo-200/60"
-                  : "hover:bg-slate-50",
+                  ? cn(workspaceToneBg(opt.value), workspaceToneRing(opt.value), "ring-1 ring-inset shadow-sm")
+                  : "hover:bg-slate-50 ring-1 ring-transparent",
                 pending && "cursor-wait"
               )}
             >
-              <span
-                className={cn(
-                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
-                  isActive
-                    ? navIconTileActiveClassForTone(tone)
-                    : navIconTileClassForTone(tone)
-                )}
-              >
-                <NavIcon navKey={iconKey} size={15} />
-              </span>
-              <span className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
                 <span
                   className={cn(
-                    "block truncate text-[13px] font-medium leading-snug",
-                    isActive ? "font-semibold text-slate-900" : "text-slate-700"
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors",
+                    isActive
+                      ? navIconTileActiveClassForTone(tone)
+                      : navIconTileClassForTone(tone)
+                  )}
+                >
+                  <NavIcon navKey={iconKey} size={15} />
+                </span>
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 truncate text-[13px] font-medium leading-snug",
+                    isActive ? cn("font-semibold", workspaceToneText(opt.value)) : "text-slate-600"
                   )}
                 >
                   {opt.label}
                 </span>
-              </span>
-              {isActive ? (
-                <span
-                  className={cn(
-                    "shrink-0 text-[10px] font-bold uppercase tracking-wide",
-                    tone === "sky"
-                      ? "text-sky-600"
-                      : tone === "emerald"
-                        ? "text-emerald-600"
-                        : "text-indigo-600"
-                  )}
-                >
-                  ●
-                </span>
-              ) : null}
+                {isActive ? (
+                  <span
+                    className={cn(
+                      "shrink-0 h-1.5 w-1.5 rounded-full bg-current",
+                      workspaceToneAccent(opt.value),
+                    )}
+                    aria-hidden
+                  />
+                ) : null}
+              </div>
+              <p className={cn(
+                "truncate text-[10px] leading-tight",
+                isActive ? "text-slate-500" : "text-slate-400",
+              )}>
+                {subtitleForProcurementWorkspace(opt.value)}
+              </p>
             </button>
           );
         })}

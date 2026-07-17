@@ -49,7 +49,7 @@ import { ProcurementWorkspaceSwitcher } from "@/components/layout/ProcurementWor
 import { actionClearAdminPanelContext } from "@/app/actions/admin-panel-context";
 import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
-import { PROCUREMENT_WORKSPACE_OPTIONS, subtitleForProcurementWorkspace, labelForProcurementWorkspace, grantedProcurementFunctions } from "@/lib/auth/procurement-workspace";
+import { PROCUREMENT_WORKSPACE_OPTIONS, subtitleForProcurementWorkspace, labelForProcurementWorkspace, grantedProcurementFunctions, workspaceToneBg, workspaceToneRing, workspaceToneText, workspaceToneIconBg } from "@/lib/auth/procurement-workspace";
 import { isAdmin } from "@/lib/auth-roles";
 import { hrefWithAdminSalesPreview, shouldPreserveSalesPreviewInNav } from "@/lib/nav/sales-preview-href";
 import { ChangelogTriggerIconButton } from "@/components/changelog/ChangelogTriggerIconButton";
@@ -342,45 +342,34 @@ export function Sidebar({
 
       {procurementWorkspace ? (
         <div className={cn(
-          "mx-3 mb-1 flex items-center gap-2.5 rounded-lg px-3 py-2 ring-1 ring-inset",
-          procurementWorkspace === "zeby"
-            ? "bg-sky-50/80 ring-sky-200/60"
-            : procurementWorkspace === "magazyn"
-              ? "bg-emerald-50/80 ring-emerald-200/60"
-              : "bg-indigo-50/80 ring-indigo-200/60"
+          "mx-3 mb-1.5 flex items-center gap-3 rounded-xl px-3 py-2.5 ring-1 ring-inset transition-colors",
+          workspaceToneBg(procurementWorkspace),
+          workspaceToneRing(procurementWorkspace),
         )}>
           <span
             className={cn(
-              "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
-              procurementWorkspace === "zeby"
-                ? "bg-sky-100 text-sky-900"
-                : procurementWorkspace === "magazyn"
-                  ? "bg-emerald-100 text-emerald-900"
-                  : "bg-indigo-100 text-indigo-900"
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg shadow-sm",
+              workspaceToneIconBg(procurementWorkspace),
             )}
             aria-hidden
           >
             <NavIcon
               navKey={procurementWorkspace === "zeby" ? "teeth" : procurementWorkspace === "magazyn" ? "warehouse" : "dailyPanel"}
-              size={procurementWorkspace === "zeby" ? 18 : 16}
+              size={18}
             />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               Obszar pracy
             </p>
-            <p
-              className={cn(
-                "truncate text-sm font-bold leading-tight",
-                procurementWorkspace === "zeby"
-                  ? "text-sky-900"
-                  : procurementWorkspace === "magazyn"
-                    ? "text-emerald-900"
-                    : "text-indigo-900"
-              )}
-            >
+            <p className={cn("truncate text-sm font-bold leading-tight", workspaceToneText(procurementWorkspace))}>
               {labelForProcurementWorkspace(procurementWorkspace)}
             </p>
+            {subtitleForProcurementWorkspace(procurementWorkspace) ? (
+              <p className="truncate text-[11px] leading-tight text-slate-400">
+                {subtitleForProcurementWorkspace(procurementWorkspace)}
+              </p>
+            ) : null}
           </div>
         </div>
       ) : null}

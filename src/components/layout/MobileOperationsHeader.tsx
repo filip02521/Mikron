@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { UserRole } from "@/types/database";
 import { mobileSalesHeaderClass } from "@/lib/ui/ontime-theme";
 import { NavIcon } from "@/components/icons/NavIcon";
-import { labelForProcurementWorkspace, type ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
+import { labelForProcurementWorkspace, workspaceToneBg, workspaceToneRing, workspaceToneText, type ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import { cn } from "@/lib/cn";
 
 export function MobileOperationsHeader({
@@ -37,12 +37,10 @@ export function MobileOperationsHeader({
         {procurementWorkspace ? (
           <span
             className={cn(
-              "ml-auto flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-bold ring-1 ring-inset",
-              procurementWorkspace === "zeby"
-                ? "bg-sky-50 text-sky-900 ring-sky-200/60"
-                : procurementWorkspace === "magazyn"
-                  ? "bg-emerald-50 text-emerald-900 ring-emerald-200/60"
-                  : "bg-indigo-50 text-indigo-900 ring-indigo-200/60"
+              "ml-auto flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset",
+              workspaceToneBg(procurementWorkspace),
+              workspaceToneRing(procurementWorkspace),
+              workspaceToneText(procurementWorkspace),
             )}
           >
             <NavIcon
