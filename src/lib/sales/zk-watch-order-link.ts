@@ -698,7 +698,6 @@ export function mergeZkLineChecksFromDeliveredOrders(
     if (inStockSet.has(v.key) && arrived && !completedManually) {
       arrived = false;
     } else if (arrived && !completedManually) {
-      const coverage = computeZkWatchLineCoverage(v, relevant, watch);
       if (!inStockSet.has(v.key)) {
         arrived = false;
       }

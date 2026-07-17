@@ -51,8 +51,8 @@ export function scheduleHistoryRetentionPurge(): void {
     if (!acquired) return;
     try {
       await purgeDataRetention();
-    } catch (e) {
-      console.error("[data-retention] purge failed:", e instanceof Error ? e.message : "unknown error");
+    } catch {
+      console.error("[data-retention] purge failed");
     }
   })();
 }

@@ -796,8 +796,9 @@ export async function actionUpdateDelivered(
   const snapshotsWithQueue = snapshot
     ? attachDeliveryNotificationQueueIds(
         [snapshot],
-        // orderId is validated by requireReceiveMutateForOrders above
-        queueId ? { [String(orderId)]: queueId } : {}
+        // orderId is validated by requireReceiveMutateForOrders above;
+        // use snapshot.orderId (from DB) as key to avoid user-controlled property injection.
+        queueId ? { [snapshot.orderId]: queueId } : {}
       )
     : [];
 
@@ -1484,6 +1485,9 @@ export async function actionUpsertSalesPerson(form: {
 
   const supabase = createAdminClient();
   const salesPersonId = form.id?.trim() || undefined;
+  if (salesPersonId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(salesPersonId)) {
+    return { error: "Nieprawidłowy identyfikator handlowca." };
+  }
 
   const duplicateQuery = supabase
     .from("sales_people")
@@ -1523,9 +1527,9 @@ export async function actionUpsertSalesPerson(form: {
     }
   }
 
-  // form.id is user-controlled but safe: non-admins are guarded by
-  // canAccessSalesPerson + assertManagerRequiresGroupInScope above.
-  // Admins intentionally bypass per-record checks (full access role).
+  // salesPersonId is validated as UUID above and authorization is checked
+  // via canAccessSalesPerson + assertManagerRequiresGroupInScope for non-admins.
+  // Admins intentionally have full access (admin role check on line above).
   if (salesPersonId) {
     const { error } = await supabase
       .from("sales_people")
