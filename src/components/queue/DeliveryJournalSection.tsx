@@ -24,6 +24,8 @@ import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import { WarehouseCarriersModal } from "@/components/queue/WarehouseCarriersModal";
+import { CarrierPhonesModal } from "@/components/queue/CarrierPhonesModal";
+import { IconPhone } from "@/components/icons/StrokeIcons";
 import {
   WAREHOUSE_SHIPMENT_FORMS,
   defaultWarehouseCarrierSlug,
@@ -417,7 +419,7 @@ export function DeliveryJournalSection({
   carriers,
   initialJournal,
   todayDateKey,
-  isMagazynRole = false,
+  canEditJournal = false,
   canManageCarriers = false,
 }: {
   suppliers: SupplierOption[];
@@ -429,7 +431,7 @@ export function DeliveryJournalSection({
     pendingBySupplier?: Record<string, number>;
   };
   todayDateKey: string;
-  isMagazynRole?: boolean;
+  canEditJournal?: boolean;
   canManageCarriers?: boolean;
 }) {
   const [toast, setToast] = useState<ToastNotice | null>(null);
@@ -442,7 +444,7 @@ export function DeliveryJournalSection({
   const [viewDate, setViewDate] = useState(initialJournal.date);
   const [subView, setSubView] = useState<JournalSubView>("entries");
   const [formOpen, setFormOpen] = useState(true);
-  const canEditTodayEntries = isMagazynRole;
+  const canEditTodayEntries = canEditJournal;
   const isViewingToday = journal.date === todayDateKey;
   const [form, setForm] = useState<FormState>(() => createEmptyDeliveryJournalForm("inpost"));
   const [carrierHintLabel, setCarrierHintLabel] = useState<string | null>(null);
@@ -451,6 +453,7 @@ export function DeliveryJournalSection({
   const [entrySearch, setEntrySearch] = useState("");
   const [archiveSearchSeed, setArchiveSearchSeed] = useState("");
   const [carriersModalOpen, setCarriersModalOpen] = useState(false);
+  const [phonesModalOpen, setPhonesModalOpen] = useState(false);
   const formPanelRef = useRef<HTMLDivElement>(null);
   const hintCountsAppliedFor = useRef<string | null>(null);
   const defaultCarrier = useMemo(() => defaultWarehouseCarrierSlug(carriers), [carriers]);
@@ -682,7 +685,7 @@ export function DeliveryJournalSection({
                         .
                       </>
                     ) : (
-                      <> Podgląd — nowe wpisy dodaje magazyn.</>
+                      <> Podgląd — nie masz uprawnień do dodawania wpisów.</>
                     )}
                   </>
                 ) : (
@@ -698,16 +701,28 @@ export function DeliveryJournalSection({
               </p>
             )}
           </div>
-          {showEntries && isViewingToday && canEditTodayEntries ? (
-            <Button
-              variant={formOpen ? "secondary" : "primary"}
-              size="sm"
-              disabled={pending}
-              onClick={() => setFormOpen((open) => !open)}
-            >
-              {formOpen ? "Zwiń formularz" : "+ Dostawa"}
-            </Button>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {showEntries ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPhonesModalOpen(true)}
+              >
+                <IconPhone size={15} className="mr-1.5" aria-hidden />
+                Telefony kurierów
+              </Button>
+            ) : null}
+            {showEntries && isViewingToday && canEditTodayEntries ? (
+              <Button
+                variant={formOpen ? "secondary" : "primary"}
+                size="sm"
+                disabled={pending}
+                onClick={() => setFormOpen((open) => !open)}
+              >
+                {formOpen ? "Zwiń formularz" : "+ Dostawa"}
+              </Button>
+            ) : null}
+          </div>
         </div>
 
         <div className="mt-3">
@@ -896,7 +911,7 @@ export function DeliveryJournalSection({
                 isViewingToday
                   ? canEditTodayEntries
                     ? "Dodaj pierwszą dostawę przyciskiem „+ Dostawa”."
-                    : "Magazyn dodaje dostawy w zakładce Dzień."
+                    : "Dostawy można dodawać w zakładce Dzień."
                   : "Wybierz inną datę lub wróć na dziś."
               }
               action={
@@ -919,6 +934,11 @@ export function DeliveryJournalSection({
           initial={carriers}
         />
       ) : null}
+      <CarrierPhonesModal
+        open={phonesModalOpen}
+        onClose={() => setPhonesModalOpen(false)}
+        carriers={carriers}
+      />
     </section>
   );
 }

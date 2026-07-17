@@ -49,7 +49,7 @@ import { ProcurementWorkspaceSwitcher } from "@/components/layout/ProcurementWor
 import { actionClearAdminPanelContext } from "@/app/actions/admin-panel-context";
 import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
-import { PROCUREMENT_WORKSPACE_OPTIONS, subtitleForProcurementWorkspace, labelForProcurementWorkspace, grantedProcurementFunctions, workspaceToneBg, workspaceToneRing, workspaceToneText, workspaceToneIconBg, workspaceToneAccent } from "@/lib/auth/procurement-workspace";
+import { PROCUREMENT_WORKSPACE_OPTIONS, subtitleForProcurementWorkspace, labelForProcurementWorkspace, grantedProcurementFunctions, workspaceToneText, workspaceToneIconBg, workspaceToneAccent } from "@/lib/auth/procurement-workspace";
 import { isAdmin } from "@/lib/auth-roles";
 import { hrefWithAdminSalesPreview, shouldPreserveSalesPreviewInNav } from "@/lib/nav/sales-preview-href";
 import { ChangelogTriggerIconButton } from "@/components/changelog/ChangelogTriggerIconButton";
@@ -342,33 +342,31 @@ export function Sidebar({
 
       {procurementWorkspace ? (
         <div className={cn(
-          "mx-3 mb-1.5 flex items-center gap-2.5 rounded-xl px-2.5 py-2 ring-1 ring-inset transition-colors",
-          workspaceToneBg(procurementWorkspace),
-          workspaceToneRing(procurementWorkspace),
+          "mx-3 mt-3 mb-1 flex items-center gap-2 rounded-lg bg-slate-50/80 px-2.5 py-1.5 ring-1 ring-inset ring-slate-200/60",
         )}>
           <span
             className={cn(
-              "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg shadow-sm",
+              "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
               workspaceToneIconBg(procurementWorkspace),
             )}
             aria-hidden
           >
             <NavIcon
               navKey={procurementWorkspace === "zeby" ? "teeth" : procurementWorkspace === "magazyn" ? "warehouse" : "dailyPanel"}
-              size={16}
+              size={15}
             />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">
               Obszar pracy
             </p>
-            <p className={cn("truncate text-[13px] font-bold leading-tight", workspaceToneText(procurementWorkspace))}>
+            <p className={cn("truncate text-[12px] font-bold leading-tight", workspaceToneText(procurementWorkspace))}>
               {labelForProcurementWorkspace(procurementWorkspace)}
             </p>
           </div>
           <span
             className={cn(
-              "shrink-0 h-2 w-2 rounded-full bg-current",
+              "shrink-0 h-1.5 w-1.5 rounded-full bg-current",
               workspaceToneAccent(procurementWorkspace),
             )}
             aria-hidden

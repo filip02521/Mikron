@@ -35,6 +35,8 @@ export function ProcurementWorkspaceSwitcher({
   const [error, setError] = useState<string | null>(null);
   const dismissError = useCallback(() => setError(null), []);
 
+  const stacked = options.length >= 3;
+
   return (
     <div className="mb-3">
       <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
@@ -49,7 +51,11 @@ export function ProcurementWorkspaceSwitcher({
         </div>
       ) : null}
       <div
-        className={cn("flex gap-1 px-2", pending && "opacity-60")}
+        className={cn(
+          "px-2",
+          stacked ? "space-y-1" : "flex gap-1",
+          pending && "opacity-60",
+        )}
         role="group"
         aria-label="Wybór obszaru pracy"
       >
@@ -77,7 +83,8 @@ export function ProcurementWorkspaceSwitcher({
                 });
               }}
               className={cn(
-                "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-center transition-all",
+                "flex items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-all",
+                stacked ? "w-full" : "flex-1 justify-center gap-1.5 text-center",
                 controlFocusClass,
                 isActive
                   ? cn(workspaceToneBg(opt.value), workspaceToneRing(opt.value), "ring-1 ring-inset shadow-sm")
@@ -85,10 +92,11 @@ export function ProcurementWorkspaceSwitcher({
                 pending && "cursor-wait"
               )}
             >
-              <NavIcon navKey={iconKey} size={14} />
+              <NavIcon navKey={iconKey} size={stacked ? 16 : 14} />
               <span
                 className={cn(
                   "min-w-0 truncate text-[11px] font-medium leading-tight",
+                  stacked && "flex-1",
                   isActive ? cn("font-semibold", workspaceToneText(opt.value)) : "text-slate-600"
                 )}
               >

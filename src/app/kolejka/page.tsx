@@ -76,7 +76,7 @@ export default async function KolejkaPage() {
       journalSuppliers={journalSuppliers}
       warehouseCarriers={warehouseCarriers}
       canManageCarriers={role != null && canManageSuppliers(role, session?.assignedWorkspaces)}
-      isMagazynRole={role != null && isMagazyn(role, session?.assignedWorkspaces)}
+      canEditJournal={role != null && canAccessWarehouse(role, session?.assignedWorkspaces)}
       canClearFromShelf={role != null && canAccessWarehouse(role, session?.assignedWorkspaces)}
       showDailyPanelLink={role != null && hasProcurementFunction(role, "dostawy", session?.assignedWorkspaces) && !isMagazyn(role, session?.assignedWorkspaces)}
       showTeethLink={role != null && hasProcurementFunction(role, "zeby", session?.assignedWorkspaces) && !isMagazyn(role, session?.assignedWorkspaces)}

@@ -45,7 +45,7 @@ export function QueueClient({
   journalSuppliers,
   warehouseCarriers,
   canManageCarriers = false,
-  isMagazynRole = false,
+  canEditJournal = false,
   canClearFromShelf = false,
   showDailyPanelLink = false,
   showTeethLink = false,
@@ -65,7 +65,7 @@ export function QueueClient({
   journalSuppliers: Array<{ id: string; name: string; subiektKhId: number | null }>;
   warehouseCarriers: WarehouseCarrierRow[];
   canManageCarriers?: boolean;
-  isMagazynRole?: boolean;
+  canEditJournal?: boolean;
   canClearFromShelf?: boolean;
   showDailyPanelLink?: boolean;
   showTeethLink?: boolean;
@@ -229,7 +229,7 @@ export function QueueClient({
             carriers={warehouseCarriers}
             initialJournal={deliveryJournal}
             todayDateKey={deliveryJournal.date}
-            isMagazynRole={isMagazynRole}
+            canEditJournal={canEditJournal}
             canManageCarriers={canManageCarriers}
           />
         </div>
