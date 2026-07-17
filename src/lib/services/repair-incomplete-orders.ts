@@ -2,6 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { isProcurementDraftReady } from "@/lib/orders/procurement-readiness";
 import { isTeethZamowienie } from "@/lib/teeth/teeth-lifecycle";
 import type { IndividualOrderStatus, IndividualRequestKind, IndividualOrder } from "@/types/database";
+import { fetchTeethProductInfo } from "@/lib/data/teeth-products";
+import { fetchSuppliersForForm } from "@/lib/data/queries";
+import { resolveSupplierForTeethManufacturer } from "@/lib/orders/teeth-ocr-prosba-prefill";
 
 const REPAIR_STATUSES: IndividualOrderStatus[] = [
   "Nowe",
@@ -15,7 +18,7 @@ export async function repairTeethOrdersFromVerification(
 ): Promise<number> {
   const { data, error } = await supabase
     .from("individual_orders")
-    .select("id")
+    .select("id, subiekt_tw_id, supplier_id")
     .eq("is_teeth", true)
     .eq("status", "Weryfikacja")
     .eq("teeth_ocr_pending", false);
@@ -23,6 +26,29 @@ export async function repairTeethOrdersFromVerification(
   if (error) throw new Error(error.message);
   const ids = (data ?? []).map((r) => String(r.id));
   if (!ids.length) return 0;
+
+  // Auto-przypisz dostawcę dla zębów bez supplier_id na podstawie producenta
+  const teethProducts = await fetchTeethProductInfo().catch(() => []);
+  const manufacturerByTwId = new Map(teethProducts.map((row) => [row.twId, row.manufacturer]));
+  const ordersWithoutSupplier = (data ?? []).filter((r) => !r.supplier_id);
+  if (ordersWithoutSupplier.length > 0) {
+    const suppliers = await fetchSuppliersForForm().catch(() => [] as Array<{ id: string; name: string }>);
+    for (const row of ordersWithoutSupplier) {
+      const twId = row.subiekt_tw_id != null && row.subiekt_tw_id > 0
+        ? Math.trunc(row.subiekt_tw_id)
+        : null;
+      if (!twId) continue;
+      const manufacturer = manufacturerByTwId.get(twId);
+      if (!manufacturer) continue;
+      const resolvedSupplierId = resolveSupplierForTeethManufacturer(manufacturer, suppliers);
+      if (resolvedSupplierId) {
+        await supabase
+          .from("individual_orders")
+          .update({ supplier_id: resolvedSupplierId })
+          .eq("id", row.id);
+      }
+    }
+  }
 
   const { error: updErr } = await supabase
     .from("individual_orders")

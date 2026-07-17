@@ -953,11 +953,34 @@ export async function approveTeethOcr(orderIds: string[]): Promise<{ updated: nu
   // Pobierz ścieżki zdjęć przed aktualizacją, żeby móc je usunąć po zatwierdzeniu.
   const { data: beforeRows } = await supabase
     .from("individual_orders")
-    .select("id, teeth_ocr_image_path")
+    .select("id, teeth_ocr_image_path, subiekt_tw_id, supplier_id")
     .in("id", orderIds)
     .eq("is_teeth", true)
     .eq("teeth_ocr_pending", true)
     .is("sales_cancelled_at", null);
+
+  // Auto-przypisz dostawcę dla zębów bez supplier_id na podstawie producenta
+  const teethProducts = await fetchTeethProductInfo().catch(() => []);
+  const manufacturerByTwId = new Map(teethProducts.map((row) => [row.twId, row.manufacturer]));
+  const ordersWithoutSupplier = (beforeRows ?? []).filter((r) => !r.supplier_id);
+  if (ordersWithoutSupplier.length > 0) {
+    const suppliers = await fetchSuppliersForForm().catch(() => [] as Array<{ id: string; name: string }>);
+    for (const row of ordersWithoutSupplier) {
+      const twId = row.subiekt_tw_id != null && row.subiekt_tw_id > 0
+        ? Math.trunc(row.subiekt_tw_id)
+        : null;
+      if (!twId) continue;
+      const manufacturer = manufacturerByTwId.get(twId);
+      if (!manufacturer) continue;
+      const resolvedSupplierId = resolveSupplierForTeethManufacturer(manufacturer, suppliers);
+      if (resolvedSupplierId) {
+        await supabase
+          .from("individual_orders")
+          .update({ supplier_id: resolvedSupplierId })
+          .eq("id", row.id);
+      }
+    }
+  }
 
   const { data, error } = await supabase
     .from("individual_orders")
