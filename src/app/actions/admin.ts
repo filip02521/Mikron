@@ -1483,12 +1483,13 @@ export async function actionUpsertSalesPerson(form: {
   }
 
   const supabase = createAdminClient();
+  const salesPersonId = form.id?.trim() || undefined;
 
   const duplicateQuery = supabase
     .from("sales_people")
     .select("id, name")
     .ilike("email", email);
-  if (form.id) duplicateQuery.neq("id", form.id);
+  if (salesPersonId) duplicateQuery.neq("id", salesPersonId);
   const { data: duplicate } = await duplicateQuery.maybeSingle();
   if (duplicate) {
     return { error: `Ten e-mail jest już przypisany do handlowca „${duplicate.name}".` };
@@ -1505,13 +1506,13 @@ export async function actionUpsertSalesPerson(form: {
   }
 
   if (!isAdmin(actor.role)) {
-    if (!form.id) {
+    if (!salesPersonId) {
       return {
         error:
           "Kierownik nie może tworzyć samych kart handlowca — użyj formularza w sekcji Handlowcy (konto zakładane automatycznie).",
       };
     }
-    const allowed = await canAccessSalesPerson(actor, form.id);
+    const allowed = await canAccessSalesPerson(actor, salesPersonId);
     if (!allowed) {
       return { error: "Nie masz uprawnień do edycji tego handlowca." };
     }
@@ -1525,7 +1526,6 @@ export async function actionUpsertSalesPerson(form: {
   // form.id is user-controlled but safe: non-admins are guarded by
   // canAccessSalesPerson + assertManagerRequiresGroupInScope above.
   // Admins intentionally bypass per-record checks (full access role).
-  const salesPersonId = form.id?.trim() || undefined;
   if (salesPersonId) {
     const { error } = await supabase
       .from("sales_people")
