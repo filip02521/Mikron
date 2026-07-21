@@ -1514,20 +1514,13 @@ export async function actionUpsertSalesPerson(form: {
     if (!allowed) {
       return { error: "Nie masz uprawnień do edycji tego handlowca." };
     }
-  } else if (!isAdmin(actor.role)) {
-    return {
-      error:
-        "Kierownik nie może tworzyć samych kart handlowca — użyj formularza w sekcji Handlowcy (konto zakładane automatycznie).",
-    };
-  }
 
-  try {
-    await assertManagerRequiresGroupInScope(actor, groupId);
-  } catch (e) {
-    return { error: e instanceof Error ? e.message : "Brak uprawnień do grupy." };
-  }
+    try {
+      await assertManagerRequiresGroupInScope(actor, groupId);
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : "Brak uprawnień do grupy." };
+    }
 
-  if (salesPersonId) {
     const { error } = await supabase
       .from("sales_people")
       .update({ name, email, group_id: groupId })
@@ -1539,6 +1532,19 @@ export async function actionUpsertSalesPerson(form: {
       return { error: `Zapisano kartę, ale nie udało się zsynchronizować konta: ${syncError}` };
     }
   } else {
+    if (!isAdmin(actor.role)) {
+      return {
+        error:
+          "Kierownik nie może tworzyć samych kart handlowca — użyj formularza w sekcji Handlowcy (konto zakładane automatycznie).",
+      };
+    }
+
+    try {
+      await assertManagerRequiresGroupInScope(actor, groupId);
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : "Brak uprawnień do grupy." };
+    }
+
     const { data: inserted, error } = await supabase
       .from("sales_people")
       .insert({ name, email, group_id: groupId })
