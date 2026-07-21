@@ -7,13 +7,7 @@ import {
   actionFetchZkWatchClosePendingPreview,
 } from "@/app/actions/my-orders";
 import { actionCloseZkWatch } from "@/app/actions/sales-notepad";
-import { useMyOrderPickupShelfDialog } from "@/components/moje/MyOrderPickupShelfDialogProvider";
 import {
-  markPickupShelfNoticeSeen,
-  shouldShowPickupShelfNotice,
-} from "@/lib/orders/my-order-pickup-shelf-notice";
-import {
-  collectZkWatchPendingAckOrderIdsFromItems,
   type ZkWatchPendingAckItem,
 } from "@/lib/sales/zk-watch-close-pending";
 import type { SalesZkWatch } from "@/types/database";
@@ -59,7 +53,6 @@ function ZkWatchClosePendingHostActive({
   onFlowError,
 }: ZkWatchClosePendingHostProps & { session: ZkWatchClosePendingSession }) {
   const router = useRouter();
-  const { requestShelfPickupNotice } = useMyOrderPickupShelfDialog();
   const watch = session.watch;
   const { linesModalOpen, closeLinesModal } = session;
 
@@ -140,36 +133,12 @@ function ZkWatchClosePendingHostActive({
     router,
   ]);
 
-  const proceedAfterShelfNotice = useCallback(async () => {
-    try {
-      const next = await refreshPreview();
-      if (next.length === 0) {
-        setOpen(false);
-        await markClosed();
-        return;
-      }
-      await runAcknowledgeAndClose();
-    } catch {
-      /* błąd w runAcknowledgeAndClose → actionError w modalu */
-    }
-  }, [markClosed, refreshPreview, runAcknowledgeAndClose]);
-
   const confirmPendingAndClose = useCallback(async () => {
     if (!canEdit || acknowledging || listRefreshing) return;
     const next = await refreshPreview();
     if (next.length === 0) {
       setOpen(false);
       await markClosed();
-      return;
-    }
-    const hasRegularPickup = next.some((item) => item.kind === "pickup");
-    const needsShelfNotice =
-      hasRegularPickup && shouldShowPickupShelfNotice();
-    if (needsShelfNotice) {
-      requestShelfPickupNotice(collectZkWatchPendingAckOrderIdsFromItems(next), () => {
-        markPickupShelfNoticeSeen();
-        void proceedAfterShelfNotice();
-      });
       return;
     }
     await runAcknowledgeAndClose();
@@ -179,8 +148,6 @@ function ZkWatchClosePendingHostActive({
     listRefreshing,
     refreshPreview,
     markClosed,
-    requestShelfPickupNotice,
-    proceedAfterShelfNotice,
     runAcknowledgeAndClose,
   ]);
 
