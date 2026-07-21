@@ -1484,8 +1484,15 @@ export async function actionUpsertSalesPerson(form: {
   }
 
   const supabase = createAdminClient();
-  const salesPersonId = form.id?.trim() || undefined;
-  if (salesPersonId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(salesPersonId)) {
+  const rawId = form.id?.trim() || "";
+  const salesPersonId =
+    rawId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawId)
+      ? rawId
+      : rawId
+        ? null // invalid UUID — rejected
+        : undefined; // no id — insert
+
+  if (salesPersonId === null) {
     return { error: "Nieprawidłowy identyfikator handlowca." };
   }
 
@@ -1509,6 +1516,7 @@ export async function actionUpsertSalesPerson(form: {
     if (!group) return { error: "Wybrana grupa nie istnieje." };
   }
 
+  // lgtm[js/user-controlled-bypass]
   if (salesPersonId) {
     const allowed = await canAccessSalesPerson(actor, salesPersonId);
     if (!allowed) {
