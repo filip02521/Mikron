@@ -31,6 +31,7 @@ export function QueueSupplierDirectoryField({
   allOptionLabel?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
   const inputId = useId();
   const listboxId = `${inputId}-listbox`;
   const [open, setOpen] = useState(false);
@@ -80,11 +81,15 @@ export function QueueSupplierDirectoryField({
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current?.contains(target)) return;
+      const listbox = document.getElementById(listboxId);
+      if (listbox?.contains(target)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+  }, [listboxId]);
 
   const pick = useCallback(
     (id: string, label: string) => {
@@ -131,6 +136,7 @@ export function QueueSupplierDirectoryField({
 
   return (
     <div ref={ref} className="relative min-w-0">
+      <div ref={anchorRef} className="relative min-w-0">
       <label htmlFor={inputId} className="sr-only">
         {includeAllOption ? "Filtr dostawcy" : "Wybór dostawcy"}
       </label>
@@ -155,7 +161,7 @@ export function QueueSupplierDirectoryField({
         onFocus={() => setOpen(true)}
         onKeyDown={handleKeyDown}
       />
-      <TypeaheadDropdown open={listVisible} listboxId={listboxId}>
+      <TypeaheadDropdown open={listVisible} listboxId={listboxId} portalled anchorRef={anchorRef}>
         {options.map((opt, index) => (
           <TypeaheadOption
             key={opt.id || `empty-${opt.label}`}
@@ -168,6 +174,7 @@ export function QueueSupplierDirectoryField({
           />
         ))}
       </TypeaheadDropdown>
+      </div>
     </div>
   );
 }

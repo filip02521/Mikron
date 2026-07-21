@@ -126,6 +126,9 @@ export function RequestProductLinesEditor({
 }) {
   const canRemove = lines.length > minLines;
   const prosba = appearance === "prosba";
+
+  const linesRef = useRef(lines);
+  linesRef.current = lines;
   const lineNotes = showLineNotes ?? prosba;
   const copyNoteLines = prosba ? copyProsbaLineNoteToAllLines(lines) : null;
   const showLineLabel = !prosba || lines.length > 1;
@@ -356,7 +359,7 @@ export function RequestProductLinesEditor({
                   ? (result) => {
                       if (deferSupplierResolve) {
                         onChange(
-                          lines.map((line, i) =>
+                          linesRef.current.map((line, i) =>
                             i === index
                               ? { ...line, supplierId: result.supplierId }
                               : line
@@ -400,9 +403,11 @@ export function RequestProductLinesEditor({
                 teethOcrPending: line.teethOcrPending,
                 teethOcrImagePath: line.teethOcrImagePath,
               }}
-              onChange={(patch) =>
-                onChange(updateProductLine(lines, index, patch))
-              }
+              onChange={(patch) => {
+                const next = updateProductLine(lines, index, patch);
+                linesRef.current = next;
+                onChange(next);
+              }}
               onTeethDualKindCommit={(payload) => {
                 onChange(payload.lines);
                 setFocusedLineId(

@@ -151,11 +151,14 @@ export async function resolveZkBySubiektDokId(
     throw new Error("Nieprawidłowy identyfikator ZK.");
   }
   const doc = await getSubiektZk(id);
-  return loadFullZkDocument(doc);
+  return mapZkDocument(doc);
 }
 
-/** Lista ZK bywa bez embedów — pobieramy pełny dokument po dok_Id. */
+/** Lista ZK bywa bez embedów — pobieramy pełny dokument tylko gdy brakuje pozycji. */
 async function loadFullZkDocument(doc: SubiektDocument): Promise<ResolvedZkDocument> {
+  if (doc.dok_Pozycja && doc.dok_Pozycja.length > 0) {
+    return mapZkDocument(doc);
+  }
   const id = Math.trunc(Number(doc.dok_Id));
   if (Number.isFinite(id) && id > 0) {
     try {

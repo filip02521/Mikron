@@ -42,6 +42,7 @@ export function SubiektClientNameField({
   placeholder?: string;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
   const searchGenerationRef = useRef(0);
   const typeaheadId = useId();
   const listboxId = `${typeaheadId}-listbox`;
@@ -86,13 +87,15 @@ export function SubiektClientNameField({
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      const target = e.target as Node;
+      if (rootRef.current?.contains(target)) return;
+      const listbox = document.getElementById(listboxId);
+      if (listbox?.contains(target)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+  }, [listboxId]);
 
   useEffect(() => {
     if (!searchActive) return;
@@ -191,6 +194,7 @@ export function SubiektClientNameField({
   return (
     <div ref={rootRef} className="space-y-1.5">
       <div
+        ref={anchorRef}
         className={cn(
           "relative rounded-md transition-[box-shadow]",
           typeaheadPanelVisible && "z-30 ring-2 ring-indigo-400/80 ring-offset-2"
@@ -233,6 +237,8 @@ export function SubiektClientNameField({
           <TypeaheadDropdown
             open
             listboxId={listboxId}
+            portalled
+            anchorRef={anchorRef}
             emptyMessage={visibleStatus === "loading" ? "Szukam klientów w Subiekcie…" : undefined}
             footer={typeaheadListVisible ? KEYBOARD_HINT : undefined}
           >

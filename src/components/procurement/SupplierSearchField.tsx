@@ -35,6 +35,7 @@ export function SupplierSearchField({
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const mounted = useClientHydrated();
   const ref = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
   const typeaheadId = useId();
   const listboxId = `${typeaheadId}-listbox`;
 
@@ -57,11 +58,15 @@ export function SupplierSearchField({
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current?.contains(target)) return;
+      const listbox = document.getElementById(listboxId);
+      if (listbox?.contains(target)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+  }, [listboxId]);
 
   const pick = useCallback(
     (supplier: SupplierDirectoryEntry) => {
@@ -136,6 +141,7 @@ export function SupplierSearchField({
       )}
     >
       <div ref={ref} className="relative w-full min-w-0">
+        <div ref={anchorRef} className="relative w-full min-w-0">
         <label htmlFor={inputId} className="sr-only">
           Szukaj dostawcy
         </label>
@@ -158,7 +164,7 @@ export function SupplierSearchField({
           onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
         />
-        <TypeaheadDropdown open={listVisible} listboxId={listboxId}>
+        <TypeaheadDropdown open={listVisible} listboxId={listboxId} portalled anchorRef={anchorRef}>
           {filtered.map((s, index) => (
             <TypeaheadOption
               key={s.id}
@@ -171,6 +177,7 @@ export function SupplierSearchField({
             />
           ))}
         </TypeaheadDropdown>
+        </div>
       </div>
     </div>
   );

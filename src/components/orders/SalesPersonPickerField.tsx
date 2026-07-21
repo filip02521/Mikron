@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/Field";
 import {
   TypeaheadDropdown,
@@ -27,6 +27,9 @@ export function SalesPersonPickerField({
   placeholder?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const typeaheadId = useId();
+  const listboxId = `${typeaheadId}-listbox`;
   const normalized = useMemo(() => normalizeSalesPeopleForPicker(people), [people]);
   const selected = useMemo(
     () => normalized.find((p) => p.id === value),
@@ -42,11 +45,15 @@ export function SalesPersonPickerField({
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current?.contains(target)) return;
+      const listbox = document.getElementById(listboxId);
+      if (listbox?.contains(target)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+  }, [listboxId]);
 
   const displayValue = open ? query : (selected?.name ?? "");
 
@@ -64,25 +71,29 @@ export function SalesPersonPickerField({
 
   return (
     <div ref={ref} className="relative">
-      <Input
-        disabled={disabled}
-        placeholder={placeholder}
-        value={displayValue}
-        autoComplete="off"
-        onChange={(e) => {
-          const v = e.target.value;
-          setQuery(v);
-          setOpen(true);
-          if (value && v !== selected?.name) onChange("");
-        }}
-        onFocus={() => {
-          setOpen(true);
-          setQuery(selected?.name ?? query);
-        }}
-      />
+      <div ref={anchorRef} className="relative">
+        <Input
+          disabled={disabled}
+          placeholder={placeholder}
+          value={displayValue}
+          autoComplete="off"
+          onChange={(e) => {
+            const v = e.target.value;
+            setQuery(v);
+            setOpen(true);
+            if (value && v !== selected?.name) onChange("");
+          }}
+          onFocus={() => {
+            setOpen(true);
+            setQuery(selected?.name ?? query);
+          }}
+        />
+      </div>
       <TypeaheadDropdown
         open={open && (matches.length > 0 || query.length > 0)}
-        className="left-0 right-0 z-20"
+        listboxId={listboxId}
+        portalled
+        anchorRef={anchorRef}
         emptyMessage={
           query.trim() ? "Brak handlowca — sprawdź pisownię" : "Wpisz fragment imienia"
         }

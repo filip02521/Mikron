@@ -254,6 +254,8 @@ export function SubiektProductLineFields({
   autoOpenTeethList?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const productAnchorRef = useRef<HTMLDivElement>(null);
+  const pluAnchorRef = useRef<HTMLDivElement>(null);
   const searchGenerationRef = useRef(0);
   const typeaheadInstanceId = useId();
   const [enabled, setEnabled] = useState(false);
@@ -261,6 +263,7 @@ export function SubiektProductLineFields({
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [configFeedback, setConfigFeedback] = useState<SubiektFeedback | null>(null);
   const [activeField, setActiveField] = useState<ActiveField>("name");
+  const listboxId = `${typeaheadInstanceId}-${activeField}`;
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<SubiektProduct[]>([]);
   const [status, setStatus] = useState<"idle" | "loading">("idle");
@@ -554,11 +557,15 @@ export function SubiektProductLineFields({
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (ref.current?.contains(target)) return;
+      const listbox = document.getElementById(listboxId);
+      if (listbox?.contains(target)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
+  }, [listboxId]);
 
   useEffect(() => {
     if (!searchActive) return;
@@ -595,8 +602,6 @@ export function SubiektProductLineFields({
     !linkedFromSubiekt &&
     (visibleStatus === "loading" || typeaheadListVisible);
 
-  const listboxId = `${typeaheadInstanceId}-${activeField}`;
-
   const pick = useCallback(
     (p: SubiektProduct) => {
       searchGenerationRef.current++;
@@ -625,7 +630,7 @@ export function SubiektProductLineFields({
         value.teethManufacturer !== finalManufacturer
         || value.teethKind !== detectedKind
         || value.teethProductLine !== autoLine;
-      onChange({
+      const finalPatch = {
         ...patch,
         subiektTwId: patch.subiektTwId,
         ...mergeStockIntoLinePatch(stockSnap),
@@ -639,7 +644,8 @@ export function SubiektProductLineFields({
           isTeethProduct && finalManufacturer && specChanged
             ? ""
             : patch.quantity,
-      });
+      };
+      onChange(finalPatch);
       if (isTeethProduct && finalManufacturer && requestKind === "zamowienie") {
         pendingTeethModalRef.current = true;
       }
@@ -831,12 +837,15 @@ export function SubiektProductLineFields({
     const resultLabel =
       visibleItems.length === 1 ? "1 wynik" : `${visibleItems.length} wyników`;
 
+    const activeAnchor = activeField === "plu" ? pluAnchorRef : productAnchorRef;
+
     return (
       <TypeaheadDropdown
         open
         size={typeaheadSize}
         listboxId={listboxId}
-        className="left-0 right-0"
+        portalled
+        anchorRef={activeAnchor}
         emptyMessage={visibleStatus === "loading" ? (catalogFallback ? "Szukam w bazie…" : "Szukam w Subiekcie…") : undefined}
         footer={typeaheadListVisible ? TYPEAHEAD_KEYBOARD_HINT : undefined}
       >
@@ -932,6 +941,7 @@ export function SubiektProductLineFields({
         }
       >
         <div
+          ref={productAnchorRef}
           className={cn(
             "relative rounded-md transition-[box-shadow]",
             typeaheadPanelVisible &&
@@ -1020,6 +1030,7 @@ export function SubiektProductLineFields({
         }
       >
         <div
+          ref={pluAnchorRef}
           className={cn(
             "relative rounded-md transition-[box-shadow]",
             typeaheadPanelVisible &&

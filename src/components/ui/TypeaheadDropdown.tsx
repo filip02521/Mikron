@@ -122,6 +122,7 @@ function PortalledTypeaheadDropdown({
   anchorRef: RefObject<HTMLElement | null>;
 }) {
   const [portalPosition, setPortalPosition] = useState<TypeaheadDropdownPosition | null>(null);
+  const lastPositionRef = useRef<TypeaheadDropdownPosition | null>(null);
 
   const updatePortalPosition = useCallback(() => {
     const anchor = anchorRef.current;
@@ -132,13 +133,27 @@ function PortalledTypeaheadDropdown({
     const spaceAbove = rect.top - TYPEAHEAD_PORTAL_GAP;
     const openAbove = spaceBelow < Math.min(maxHeight, 120) && spaceAbove > spaceBelow;
 
-    setPortalPosition({
+    const next: TypeaheadDropdownPosition = {
       top: openAbove ? undefined : rect.bottom + TYPEAHEAD_PORTAL_GAP,
       bottom: openAbove ? window.innerHeight - rect.top + TYPEAHEAD_PORTAL_GAP : undefined,
       left: rect.left,
       width: rect.width,
       maxHeight,
-    });
+    };
+
+    const prev = lastPositionRef.current;
+    if (
+      prev &&
+      prev.top === next.top &&
+      prev.bottom === next.bottom &&
+      prev.left === next.left &&
+      prev.width === next.width &&
+      prev.maxHeight === next.maxHeight
+    ) {
+      return;
+    }
+    lastPositionRef.current = next;
+    setPortalPosition(next);
   }, [anchorRef, size]);
 
   useLayoutEffect(() => {
@@ -151,7 +166,7 @@ function PortalledTypeaheadDropdown({
       window.removeEventListener("resize", updatePortalPosition);
       window.removeEventListener("scroll", updatePortalPosition, true);
     };
-  }, [updatePortalPosition, panelProps.children]);
+  }, [updatePortalPosition]);
 
   if (!portalPosition) return null;
 
