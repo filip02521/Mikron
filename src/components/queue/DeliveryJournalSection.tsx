@@ -502,6 +502,10 @@ export function DeliveryJournalSection({
     setViewDate(initialJournal.date);
   }
 
+  const carriersRef = useRef(carriers);
+  useEffect(() => {
+    carriersRef.current = carriers;
+  }, [carriers]);
   const carriersCatalogKey = useMemo(
     () => carriers.map((carrier) => `${carrier.slug}:${carrier.isActive}:${carrier.label}`).join("\0"),
     [carriers]
@@ -535,7 +539,7 @@ export function DeliveryJournalSection({
         setCarrierHintLabel(null);
         return;
       }
-      if (!carriers.some((carrier) => carrier.slug === hint.carrier)) {
+      if (!carriersRef.current.some((carrier) => carrier.slug === hint.carrier)) {
         setCarrierHintForSupplierId(form.supplierId);
         setCarrierHintLabel(null);
         return;
@@ -558,7 +562,7 @@ export function DeliveryJournalSection({
         hint.source === "default" ? "Z katalogu dostawcy" : "Z historii wpisów";
       setCarrierHintForSupplierId(form.supplierId);
       setCarrierHintLabel(
-        `${sourceLabel}: ${warehouseCarrierLabel(hint.carrier, carriers)} · ${warehouseShipmentFormLabel(hint.shipmentForm)}`
+        `${sourceLabel}: ${warehouseCarrierLabel(hint.carrier, carriersRef.current)} · ${warehouseShipmentFormLabel(hint.shipmentForm)}`
       );
     });
     return () => {

@@ -926,7 +926,7 @@ export function OrderFormClient({
         ],
       ];
     });
-  }, [singleGroup, lockedSalesPerson, lockedId, clearFormNotice]);
+  }, [singleGroup, lockedSalesPerson, lockedId, clearFormNotice, deferSupplierResolve]);
 
   const addProcurementProductLine = useCallback(() => {
     if (singleGroup && lockedSalesPerson) return;
