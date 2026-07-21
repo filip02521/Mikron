@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: github/codeql-action/init@v3
+      - uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
           config-file: .github/codeql/codeql-config.yml
@@ -33,6 +33,6 @@ jobs:
           # security-and-quality: reguły jakości + bezpieczeństwa
           queries: security-extended,security-and-quality,./.github/codeql/queries
 
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@v4
         with:
           category: "/language/javascript-typescript"
