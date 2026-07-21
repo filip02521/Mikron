@@ -1509,27 +1509,24 @@ export async function actionUpsertSalesPerson(form: {
     if (!group) return { error: "Wybrana grupa nie istnieje." };
   }
 
-  if (!isAdmin(actor.role)) {
-    if (!salesPersonId) {
-      return {
-        error:
-          "Kierownik nie może tworzyć samych kart handlowca — użyj formularza w sekcji Handlowcy (konto zakładane automatycznie).",
-      };
-    }
+  if (salesPersonId) {
     const allowed = await canAccessSalesPerson(actor, salesPersonId);
     if (!allowed) {
       return { error: "Nie masz uprawnień do edycji tego handlowca." };
     }
-    try {
-      await assertManagerRequiresGroupInScope(actor, groupId);
-    } catch (e) {
-      return { error: e instanceof Error ? e.message : "Brak uprawnień do grupy." };
-    }
+  } else if (!isAdmin(actor.role)) {
+    return {
+      error:
+        "Kierownik nie może tworzyć samych kart handlowca — użyj formularza w sekcji Handlowcy (konto zakładane automatycznie).",
+    };
   }
 
-  // salesPersonId is validated as UUID above and authorization is checked
-  // via canAccessSalesPerson + assertManagerRequiresGroupInScope for non-admins.
-  // Admins intentionally have full access (admin role check on line above).
+  try {
+    await assertManagerRequiresGroupInScope(actor, groupId);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Brak uprawnień do grupy." };
+  }
+
   if (salesPersonId) {
     const { error } = await supabase
       .from("sales_people")
