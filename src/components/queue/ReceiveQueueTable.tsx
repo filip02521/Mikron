@@ -281,6 +281,7 @@ export function ReceiveQueueTable({
   }, [productSearchActive, supplierGroupsSignature]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- expand panel when filters become active
     if (hasActiveFilters) setSearchCollapsed(false);
   }, [hasActiveFilters]);
 
@@ -289,6 +290,7 @@ export function ReceiveQueueTable({
     const params = new URLSearchParams(window.location.search);
     const supplierParam = params.get("supplier");
     if (supplierParam) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync from URL param on mount
       setSupplierFilter(supplierParam);
       setSearchCollapsed(false);
       router.replace("/kolejka", { scroll: false });
