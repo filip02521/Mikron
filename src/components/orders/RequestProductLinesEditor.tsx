@@ -128,7 +128,9 @@ export function RequestProductLinesEditor({
   const prosba = appearance === "prosba";
 
   const linesRef = useRef(lines);
-  linesRef.current = lines;
+  useEffect(() => {
+    linesRef.current = lines;
+  }, [lines]);
   const lineNotes = showLineNotes ?? prosba;
   const copyNoteLines = prosba ? copyProsbaLineNoteToAllLines(lines) : null;
   const showLineLabel = !prosba || lines.length > 1;
