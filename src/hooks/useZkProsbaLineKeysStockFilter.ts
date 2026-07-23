@@ -72,6 +72,7 @@ export function useZkProsbaLineKeysStockFilter(
 
   return {
     stockByTwId,
+    rawStockByTwId,
     stockLoading,
     stockFetchTimedOut,
     lineKeysToOrder,

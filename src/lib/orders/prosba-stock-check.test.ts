@@ -310,6 +310,66 @@ describe("formatZkProsbaScopeLineBadge", () => {
       })
     ).toBe("Na stanie: 10 szt.");
   });
+
+  it("sufficient z rezerwacją z tego ZK — pokazuje Zarezerwowane w ZK", () => {
+    expect(
+      formatZkProsbaScopeLineBadge({
+        sufficient: true,
+        markedForOrder: false,
+        available: 2,
+        hasStockData: true,
+        onHand: 2,
+        reserved: 0,
+        zkLineQty: 2,
+        rawReserved: 2,
+      })
+    ).toBe("Zarezerwowane w ZK: 2 szt.");
+  });
+
+  it("sufficient z częściową rezerwacją z ZK — pokazuje Zarezerwowane w ZK", () => {
+    expect(
+      formatZkProsbaScopeLineBadge({
+        sufficient: true,
+        markedForOrder: false,
+        available: 5,
+        hasStockData: true,
+        onHand: 7,
+        reserved: 2,
+        zkLineQty: 3,
+        rawReserved: 5,
+      })
+    ).toBe("Zarezerwowane w ZK: 3 szt.");
+  });
+
+  it("sufficient bez rezerwacji z ZK (rawReserved=0) — pokazuje Na stanie", () => {
+    expect(
+      formatZkProsbaScopeLineBadge({
+        sufficient: true,
+        markedForOrder: false,
+        available: 10,
+        hasStockData: true,
+        onHand: 10,
+        reserved: 0,
+        zkLineQty: 2,
+        rawReserved: 0,
+      })
+    ).toBe("Na stanie: 10 szt.");
+  });
+
+  it("sufficient z rezerwacją z ZK ale zaznaczone do zamówienia — pokazuje Do zamówienia", () => {
+    expect(
+      formatZkProsbaScopeLineBadge({
+        sufficient: true,
+        markedForOrder: true,
+        available: 2,
+        hasStockData: true,
+        onHand: 2,
+        reserved: 0,
+        zkLineQty: 2,
+        rawReserved: 2,
+      })
+    ).toBe("Do zamówienia");
+  });
 });
 
 describe("zkProsbaScopeLineNeedsOrdering", () => {

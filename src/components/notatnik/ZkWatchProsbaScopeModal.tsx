@@ -124,6 +124,7 @@ function useZkProsbaScopeSelection(watch: SalesZkWatch, open: boolean) {
     orderMarked,
     setOrderMarked: setOrderMarkedWithTouch,
     stockByTwId,
+    rawStockByTwId,
     stockLoading,
     stockFetchTimedOut,
     hasExistingScope: existingScope !== null,
@@ -145,7 +146,7 @@ export function ZkWatchProsbaScopeModal({
   onSaved: (watch: SalesZkWatch) => void;
 }) {
   const teethExemptTwIds = useTeethExemptTwIds();
-  const { productLines, orderMarked, setOrderMarked, stockByTwId, stockLoading, stockFetchTimedOut, hasExistingScope } =
+  const { productLines, orderMarked, setOrderMarked, stockByTwId, rawStockByTwId, stockLoading, stockFetchTimedOut, hasExistingScope } =
     useZkProsbaScopeSelection(watch, open);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -260,7 +261,7 @@ export function ZkWatchProsbaScopeModal({
             <p className="text-sm font-semibold text-indigo-950">Zaznacz pozycje do zamówienia</p>
             <p className="mt-0.5 text-xs leading-relaxed text-indigo-900/70">
               Zaznaczone pozycje trafią do prośby u zakupów. Odznacz towar, który macie na stanie w
-              Subiekcie. Oznaczenie &bdquo;na magazynie&rdquo; pojawi się dopiero po dostawie z prośby.
+              Subiekcie — system uwzględnia rezerwacje z tego ZK. Oznaczenie &bdquo;na magazynie&rdquo; pojawi się dopiero po dostawie z prośby.
             </p>
           </div>
         </div>
@@ -328,6 +329,7 @@ export function ZkWatchProsbaScopeModal({
               hasStockData: snap != null,
               available: snap?.available ?? null,
             });
+            const rawSnap = twId ? rawStockByTwId[twId] : undefined;
             const stockBadgeLabel = formatZkProsbaScopeLineBadge({
               sufficient,
               markedForOrder,
@@ -335,6 +337,8 @@ export function ZkWatchProsbaScopeModal({
               hasStockData: snap != null,
               onHand: snap?.onHand ?? null,
               reserved: snap?.reserved ?? null,
+              zkLineQty: line.quantity,
+              rawReserved: rawSnap?.reserved ?? null,
             });
 
             return (
@@ -398,7 +402,7 @@ export function ZkWatchProsbaScopeModal({
         allLinesSufficient ? (
           <div className="flex items-start gap-2.5 rounded-lg border border-emerald-200/70 bg-emerald-50/50 px-3.5 py-2.5 text-xs leading-relaxed text-emerald-900">
             <IconCircleCheck size={16} className="mt-0.5 shrink-0 text-emerald-600" />
-            <span>Subiekt potwierdza wystarczający stan na wszystkich pozycjach — zapisz, jeśli nic nie trzeba zamawiać.</span>
+            <span>Wszystkie pozycje są na stanie i zarezerwowane w tym ZK — zapisz, jeśli nic nie trzeba zamawiać u dostawcy.</span>
           </div>
         ) : (
           <div className="flex items-start gap-2.5 rounded-lg border border-amber-200/70 bg-amber-50/50 px-3.5 py-2.5 text-xs leading-relaxed text-amber-900">

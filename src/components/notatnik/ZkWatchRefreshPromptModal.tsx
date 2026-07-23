@@ -109,6 +109,7 @@ export function ZkWatchRefreshPromptModal({
 
   const {
     stockByTwId,
+    rawStockByTwId,
     stockLoading,
     lineKeysToOrder,
     unmarkedCount,
@@ -431,6 +432,7 @@ export function ZkWatchRefreshPromptModal({
               hasStockData: snap != null,
               available: snap?.available ?? null,
             });
+            const rawSnap = twId ? rawStockByTwId[twId] : undefined;
             const stockBadgeLabel = formatZkProsbaScopeLineBadge({
               sufficient,
               markedForOrder,
@@ -438,6 +440,8 @@ export function ZkWatchRefreshPromptModal({
               hasStockData: snap != null,
               onHand: snap?.onHand ?? null,
               reserved: snap?.reserved ?? null,
+              zkLineQty: line.quantity,
+              rawReserved: rawSnap?.reserved ?? null,
             });
 
             return (

@@ -175,11 +175,23 @@ export function formatZkProsbaScopeLineBadge(input: {
   hasStockData: boolean;
   onHand?: number | null;
   reserved?: number | null;
+  /** Ilość z linii ZK (do komunikatu o rezerwacji tego ZK). */
+  zkLineQty?: number | null;
+  /** Oryginalna rezerwacja z Subiekta (przed korektą o to ZK). */
+  rawReserved?: number | null;
 }): string {
   const reserveSuffix =
     input.hasStockData && input.reserved != null && input.reserved > 0
       ? ` (−${input.reserved} rez.)`
       : "";
+
+  const zkReservedQty =
+    input.zkLineQty != null && input.zkLineQty > 0
+      ? Math.min(
+          input.zkLineQty,
+          input.rawReserved ?? 0
+        )
+      : 0;
 
   if (input.markedForOrder) {
     if (input.hasStockData && input.available != null && input.available > 0 && !input.sufficient) {
@@ -188,6 +200,9 @@ export function formatZkProsbaScopeLineBadge(input: {
     return "Do zamówienia";
   }
   if (input.sufficient && input.available != null) {
+    if (zkReservedQty > 0) {
+      return `Zarezerwowane w ZK: ${zkReservedQty} szt.`;
+    }
     return `Na stanie: ${input.available} szt.${reserveSuffix}`;
   }
   if (!input.sufficient) {
