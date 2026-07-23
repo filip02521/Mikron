@@ -215,9 +215,7 @@ export function ReceiveQueueTable({
     [deliveryOrders, informacjaOrders]
   );
 
-  const [stockAvailableOnly, setStockAvailableOnly] = useState(false);
-
-  const { stockByTwId, availableTwIds, availableCount, loading: stockAlertLoading } =
+  const { stockByTwId, availableCount, loading: stockAlertLoading } =
     useReceiveQueueStockAlert(deliveryOrders, true);
 
   const handleStockBadgeClick = useCallback((orderId: string) => {
@@ -233,29 +231,22 @@ export function ReceiveQueueTable({
   }, [deliveryOrders, stockByTwId]);
 
   const { filtered, supplierFiltered, zdScoped } = useMemo(() => {
-    const baseQueue = stockAvailableOnly
-      ? receiveQueue.filter((o) => {
-          if (isInformacjaRequest(o)) return false;
-          const twId = o.subiekt_tw_id;
-          return twId != null && twId > 0 && availableTwIds.has(Math.trunc(twId));
-        })
-      : receiveQueue;
-    const supplierFiltered = filterOrdersBySupplier(baseQueue, supplierFilter);
-    const zdScoped = filterReceiveQueueTable(baseQueue, {
+    const supplierFiltered = filterOrdersBySupplier(receiveQueue, supplierFilter);
+    const zdScoped = filterReceiveQueueTable(receiveQueue, {
       supplierFilter,
       zdProfile: zdFilter?.profile ?? null,
       productSearch: "",
     });
     const filtered =
       productSearch.trim().length > 0
-        ? filterReceiveQueueTable(baseQueue, {
+        ? filterReceiveQueueTable(receiveQueue, {
             supplierFilter,
             zdProfile: zdFilter?.profile ?? null,
             productSearch,
           })
         : zdScoped;
     return { filtered, supplierFiltered, zdScoped };
-  }, [receiveQueue, supplierFilter, zdFilter, productSearch, stockAvailableOnly, availableTwIds]);
+  }, [receiveQueue, supplierFilter, zdFilter, productSearch]);
 
   const productSearchActive = searchQueryTokens(productSearch).length > 0;
   const hasActiveFilters = productSearchActive || Boolean(zdFilter);
@@ -808,24 +799,6 @@ export function ReceiveQueueTable({
             }}
             totalLabel="Wszyscy"
           />
-          {availableCount > 0 ? (
-            <button
-              type="button"
-              onClick={() => setStockAvailableOnly((v) => !v)}
-              className={cn(
-                panelChoiceChipClass,
-                stockAvailableOnly
-                  ? panelChoiceChipSuccessSelectedClass
-                  : "border-emerald-200/90 bg-emerald-50/60 text-emerald-900 hover:bg-emerald-50",
-                "inline-flex items-center gap-1.5 px-2.5 font-semibold",
-              )}
-            >
-              <svg aria-hidden viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" className="size-3.5 shrink-0">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.5l3 3 7-7" />
-              </svg>
-              Na stanie: {availableCount}
-            </button>
-          ) : null}
         </div>
 
         {availableCount > 0 && !stockAlertLoading ? (
@@ -836,23 +809,6 @@ export function ReceiveQueueTable({
             <span>
               {availableCount} {availableCount === 1 ? "pozycja jest na stanie" : availableCount <= 4 ? "pozycje są na stanie" : "pozycji jest na stanie"} Subiekta — oznacz przyjęcie i przygotuj na regale.
             </span>
-            {!stockAvailableOnly ? (
-              <button
-                type="button"
-                onClick={() => setStockAvailableOnly(true)}
-                className="ml-auto shrink-0 rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-900 transition hover:bg-emerald-200"
-              >
-                Pokaż tylko na stanie
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setStockAvailableOnly(false)}
-                className="ml-auto shrink-0 rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-900 transition hover:bg-emerald-200"
-              >
-                Pokaż wszystkie
-              </button>
-            )}
           </div>
         ) : null}
 

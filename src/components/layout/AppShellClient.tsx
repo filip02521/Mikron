@@ -57,6 +57,7 @@ import { FontScaleSync } from "./FontScaleSync";
 import { TeethExemptProvider } from "@/components/layout/TeethExemptContext";
 import { ChangelogProvider } from "@/components/changelog/ChangelogProvider";
 import { ChangelogAutoOpen } from "@/components/changelog/ChangelogAutoOpen";
+import { MonthlySummaryNotice } from "@/components/monthly-summary/MonthlySummaryNotice";
 
 function SalesGlobalPinnedStrip({
   attention,
@@ -333,6 +334,9 @@ export function AppShellClient({
                 {adminPanelPreview === "admin" || adminPanelPreview === "zakupy" ? (
                   <OperationsBoardQuestionsNotice />
                 ) : null}
+                {adminPanelPreview === "admin" || adminPanelPreview === "zakupy" ? (
+                  <MonthlySummaryNotice />
+                ) : null}
               </>
             ) : salesLive ? (
               <>
@@ -349,6 +353,7 @@ export function AppShellClient({
                   <OperationsGlobalPinnedStrip pinned={operationsPinnedAnnouncements} />
                 ) : null}
                 <OperationsBoardQuestionsNotice />
+                <MonthlySummaryNotice />
                 <OperationsUpdatesBanner />
                 <TeethUpdatesBanner />
               </>

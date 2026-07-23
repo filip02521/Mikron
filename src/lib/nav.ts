@@ -464,6 +464,16 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
 
 const archiveToolItems: NavItem[] = [
   {
+    href: "/podsumowanie-miesieczne",
+    label: "Podsumowanie miesiąca",
+    mobileLabel: "Miesiąc",
+    description: "Statystyki miesięczne — handlowcy, dostawy, zakupy",
+    icon: "history",
+    tone: "violet",
+    tier: "compact",
+    mobileSlot: "overflow",
+  },
+  {
     href: "/historia",
     label: "Historia",
     mobileLabel: "Historia",
