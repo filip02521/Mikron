@@ -22,6 +22,7 @@ export function DepartmentBoardClient({
   pageTitle,
   previewHint,
   currentSalesPersonId = null,
+  currentUserId = null,
 }: {
   initial: DepartmentBoardData | DepartmentBoardQuestionsSlice;
   audience: "sales" | "procurement";
@@ -36,11 +37,12 @@ export function DepartmentBoardClient({
   pageTitle?: string;
   previewHint?: string;
   currentSalesPersonId?: string | null;
+  currentUserId?: string | null;
 }) {
   if (audience === "sales") {
     const questionsInitial: DepartmentBoardQuestionsSlice =
       "announcements" in initial
-        ? { questions: initial.questions }
+        ? { questions: initial.questions, closedQuestions: initial.closedQuestions }
         : initial;
 
     return (
@@ -55,6 +57,7 @@ export function DepartmentBoardClient({
         pageTitle={pageTitle}
         previewHint={previewHint}
         currentSalesPersonId={currentSalesPersonId}
+        currentUserId={currentUserId}
       />
     );
   }

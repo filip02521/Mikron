@@ -26,7 +26,7 @@ export default async function ProcurementBoardPage({
   }
 
   let loadError: string | null = null;
-  let board = { announcements: [], questions: [], readAnnouncementIds: [] } as Awaited<
+  let board = { announcements: [], questions: [], closedQuestions: [], readAnnouncementIds: [] } as Awaited<
     ReturnType<typeof fetchDepartmentBoard>
   >;
 

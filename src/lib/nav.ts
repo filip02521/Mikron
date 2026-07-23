@@ -2,6 +2,7 @@ import type { UserRole, Workspace } from "@/types/database";
 import { isSalesManager, canAccessPath } from "@/lib/auth-roles";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import { salesManagerNavTeamDescriptions } from "@/lib/sales/team-ui";
+import { isMonthlySummaryAvailable } from "@/lib/data/monthly-stats";
 import { supplierHubPaths } from "@/lib/supplier-hub";
 import { ROLE_LABELS } from "@/lib/users/labels";
 
@@ -90,6 +91,22 @@ const DEPARTMENT_BOARD_PROCUREMENT_PATH = "/zakupy/tablica";
 
 const SALES_DUE_REMINDER_NAV_PATHS = new Set(["/notatnik", "/zk"]);
 const PROCUREMENT_BOARD_ATTENTION_PATHS = new Set([DEPARTMENT_BOARD_PROCUREMENT_PATH]);
+
+const MONTHLY_SUMMARY_NAV_ITEM: NavItem = {
+  href: "/podsumowanie-miesieczne",
+  label: "Podsumowanie miesiąca",
+  mobileLabel: "Miesiąc",
+  description: "Statystyki za miniony miesiąc — handlowcy, dostawy, zakupy",
+  icon: "chartTrend",
+  tone: "violet",
+  tier: "compact",
+  highlight: true,
+  mobileSlot: "overflow",
+};
+
+function monthlySummaryNavItem(): NavItem | null {
+  return isMonthlySummaryAvailable() ? MONTHLY_SUMMARY_NAV_ITEM : null;
+}
 
 /** Notatnik, ZK lub tablica z otwartymi pytaniami — subtelne podświetlenie w menu. */
 export function navItemHasDueReminders(item: NavItem): boolean {
@@ -297,16 +314,7 @@ export function teethNavGroups(badges: NavBadges = {}): NavGroup[] {
     { title: NAV_SECTION_SUPPLIERS, items: teethSupplierNavItems() },
     { title: NAV_SECTION_TEAM, items: teethTeamNavItems(badges) },
     { title: NAV_SECTION_TOOLS, items: [
-      {
-        href: "/podsumowanie-miesieczne",
-        label: "Podsumowanie miesiąca",
-        mobileLabel: "Miesiąc",
-        description: "Statystyki miesięczne — handlowcy, dostawy, zakupy",
-        icon: "chartTrend",
-        tone: "violet",
-        tier: "compact",
-        mobileSlot: "overflow",
-      },
+      ...(monthlySummaryNavItem() ? [monthlySummaryNavItem()!] : []),
     ] },
   ];
 }
@@ -476,16 +484,7 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
 }
 
 const archiveToolItems: NavItem[] = [
-  {
-    href: "/podsumowanie-miesieczne",
-    label: "Podsumowanie miesiąca",
-    mobileLabel: "Miesiąc",
-    description: "Statystyki miesięczne — handlowcy, dostawy, zakupy",
-    icon: "chartTrend",
-    tone: "violet",
-    tier: "compact",
-    mobileSlot: "overflow",
-  },
+  ...(monthlySummaryNavItem() ? [monthlySummaryNavItem()!] : []),
   {
     href: "/historia",
     label: "Historia",
@@ -621,16 +620,7 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
           tier: "compact",
           mobileSlot: "overflow",
         },
-        {
-          href: "/podsumowanie-miesieczne",
-          label: "Podsumowanie miesiąca",
-          mobileLabel: "Miesiąc",
-          description: "Statystyki miesięczne — handlowcy, dostawy, zakupy",
-          icon: "chartTrend",
-          tone: "violet",
-          tier: "compact",
-          mobileSlot: "overflow",
-        },
+        ...(monthlySummaryNavItem() ? [monthlySummaryNavItem()!] : []),
       ],
     },
   ];
@@ -779,17 +769,12 @@ export function navForRole(
       mobileSlot: "primary",
       badge: badges.salesTablica,
     },
-    {
-      href: "/podsumowanie-miesieczne",
-      label: "Podsumowanie miesiąca",
-      mobileLabel: "Miesiąc",
-      description: "Statystyki miesięczne — handlowcy, dostawy, zakupy",
-      icon: "chartTrend",
-      tone: "violet",
-      tier: "compact",
-      mobileSlot: "overflow",
-    },
   ];
+
+  const monthlyItem = monthlySummaryNavItem();
+  if (monthlyItem) {
+    infoItems.push(monthlyItem);
+  }
 
   const groups: NavGroup[] = [
     { title: NAV_SECTION_DAILY, items: dailyItems },

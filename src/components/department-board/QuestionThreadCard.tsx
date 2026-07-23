@@ -37,7 +37,9 @@ import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import {
   actionArchiveQuestion,
+  actionCloseQuestion,
   actionMarkQuestionThreadSeen,
+  actionReopenQuestion,
   actionReplyToQuestion,
 } from "@/app/actions/department-board";
 import { isStaleAnsweredQuestion } from "@/lib/department-board/attention";
@@ -50,6 +52,9 @@ export function QuestionThreadCard({
   question,
   canReply = false,
   canArchive = false,
+  canClose = false,
+  canReopen = false,
+  audience = "procurement",
   defaultExpanded = false,
   embedded = false,
   unseenReply = false,
@@ -60,6 +65,9 @@ export function QuestionThreadCard({
   question: DepartmentBoardQuestion;
   canReply?: boolean;
   canArchive?: boolean;
+  canClose?: boolean;
+  canReopen?: boolean;
+  audience?: "sales" | "procurement";
   defaultExpanded?: boolean;
   embedded?: boolean;
   unseenReply?: boolean;
@@ -80,7 +88,11 @@ export function QuestionThreadCard({
 
   const author = questionAuthorLabel(question.sales_person, question.author);
   const isOpen = question.status === "open";
+  const isClosed = question.archived_at != null;
   const replyCount = question.posts.length;
+  const closedByLabel = question.closed_by_profile
+    ? authorLabelFromProfile(question.closed_by_profile)
+    : null;
   const showUnseen = unseenReply && !locallySeen;
   const hasProduct = boardQuestionHasProduct(question);
   const stale = isStaleAnsweredQuestion(question);
@@ -173,13 +185,47 @@ export function QuestionThreadCard({
     }
   }
 
-  const statusLabel = isOpen
-    ? "Bez odpowiedzi"
-    : showUnseen
-      ? "Nowa odpowiedź"
-      : replyCount > 0
-        ? boardReplyCountLabel(replyCount)
-        : "Odpowiedziano";
+  async function closeThread() {
+    setBusy(true);
+    setError(null);
+    try {
+      await actionCloseQuestion(question.id);
+      onChanged?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Nie udało się zamknąć wątku.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function reopenThread() {
+    setBusy(true);
+    setError(null);
+    try {
+      await actionReopenQuestion(question.id);
+      onChanged?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Nie udało się otworzyć wątku.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const statusLabel = isClosed
+    ? "Zakończone"
+    : isOpen
+      ? "Bez odpowiedzi"
+      : showUnseen
+        ? "Nowa odpowiedź"
+        : replyCount > 0
+          ? boardReplyCountLabel(replyCount)
+          : "Odpowiedziano";
+
+  const replyLabel = audience === "sales"
+    ? "Twoja wiadomość"
+    : isOpen
+      ? "Odpowiedź działu zakupów"
+      : "Doprecyzowanie";
 
   const showInlineReplyForm = inlineReply && !expanded && canReply;
   const expandLabel = `Pytanie: ${question.title}`;
@@ -262,7 +308,7 @@ export function QuestionThreadCard({
           </span>
         </button>
 
-        {canReply && !expanded ? (
+        {canReply && !expanded && !isClosed ? (
           <Button
             type="button"
             size="sm"
@@ -285,7 +331,7 @@ export function QuestionThreadCard({
             className={cn(salesTypography.rowMeta, "block font-medium text-indigo-700")}
             htmlFor={`inline-reply-${question.id}`}
           >
-            {isOpen ? "Odpowiedź działu zakupów" : "Doprecyzowanie"}
+            {replyLabel}
           </label>
           <textarea
             id={`inline-reply-${question.id}`}
@@ -321,7 +367,7 @@ export function QuestionThreadCard({
               const fromOps = isOperationsAuthorRole(post.author?.role ?? null);
               const replyKind = fromOps
                 ? procurementReplyLabel(procurementReplyIndex++)
-                : undefined;
+                : "Doprecyzowanie handlowca";
               return (
                 <BoardThreadMessage
                   key={post.id}
@@ -340,13 +386,13 @@ export function QuestionThreadCard({
           </div>
         )}
 
-        {canReply ? (
+        {canReply && !isClosed ? (
           <div className={boardReplyFormShellClass}>
             <label
               className={cn(salesTypography.rowMeta, "block font-medium text-indigo-700")}
               htmlFor={`reply-${question.id}`}
             >
-              {isOpen ? "Odpowiedź działu zakupów" : "Doprecyzowanie"}
+              {replyLabel}
             </label>
             <textarea
               id={`reply-${question.id}`}
@@ -366,7 +412,44 @@ export function QuestionThreadCard({
           <p className="text-xs text-red-600">{error}</p>
         ) : null}
 
-        {canArchive ? (
+        {isClosed ? (
+          <p className="text-xs text-slate-400">
+            {closedByLabel
+              ? `Zamknięto: ${closedByLabel}`
+              : "Zamknięto automatycznie"}
+            {question.archived_at ? ` · ${formatBoardDate(question.archived_at)}` : ""}
+          </p>
+        ) : null}
+
+        {canReopen && isClosed ? (
+          <div className="pt-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs text-indigo-600"
+              disabled={busy}
+              onClick={() => void reopenThread()}
+            >
+              Otwórz ponownie
+            </Button>
+          </div>
+        ) : null}
+
+        {canClose && !isClosed ? (
+          <div className="pt-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs text-slate-400"
+              disabled={busy}
+              onClick={() => void closeThread()}
+            >
+              Zamknij wątek
+            </Button>
+          </div>
+        ) : null}
+
+        {canArchive && !isClosed ? (
           <div className="pt-1">
             <Button
               size="sm"

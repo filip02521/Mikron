@@ -12,6 +12,7 @@ const baseCounts = {
   all: 5,
   open: 2,
   answered: 3,
+  closed: 0,
   unseen: 1,
   own_unseen: 1,
   mine: 2,
@@ -77,7 +78,7 @@ describe("DepartmentBoardQuestionFilters", () => {
       />
     );
 
-    expect(screen.getByRole("button", { name: /Wszystkie/i }).textContent).toContain("5");
+    expect(screen.getByRole("button", { name: /Aktywne/i }).textContent).toContain("5");
     expect(screen.getByRole("button", { name: /Bez odpowiedzi/i }).textContent).toContain("2");
     expect(screen.getByRole("button", { name: /Odpowiedziane/i }).textContent).toContain("3");
     expect(screen.getByRole("button", { name: /Tylko moje/i }).textContent).toContain("2");

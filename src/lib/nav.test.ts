@@ -200,13 +200,11 @@ describe("teethNavGroups", () => {
 
   it("rzadsze pozycje są compact w overflow", () => {
     const overflow = navMobileOverflowItems(teethNavGroups());
-    expect(overflow.map((item) => item.label)).toEqual([
-      "Karty dostawców",
-      "Tablica",
-      "Notatki",
-      "Urlopy działu",
-      "Podsumowanie miesiąca",
-    ]);
+    const expectedLabels = ["Karty dostawców", "Tablica", "Notatki", "Urlopy działu"];
+    if (new Date().getDate() <= 7) {
+      expectedLabels.push("Podsumowanie miesiąca");
+    }
+    expect(overflow.map((item) => item.label)).toEqual(expectedLabels);
     expect(overflow.every((item) => item.tier === "compact")).toBe(true);
   });
 });

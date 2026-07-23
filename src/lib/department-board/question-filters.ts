@@ -18,15 +18,19 @@ export function filterDepartmentBoardQuestionsByStatus(
       return questions.filter((q) => q.status === "open");
     case "answered":
       return questions.filter((q) => q.status === "answered");
+    case "closed":
+      return questions.filter((q) => q.archived_at != null);
     case "unseen":
       return questions.filter((q) => ctx.unseenIds?.has(q.id) ?? false);
     case "own_unseen":
       return questions.filter((q) => ctx.unseenOwnIds?.has(q.id) ?? false);
     case "mine":
       if (!ctx.currentSalesPersonId) return [];
-      return questions.filter((q) => q.sales_person_id === ctx.currentSalesPersonId);
+      return questions.filter(
+        (q) => q.sales_person_id === ctx.currentSalesPersonId && q.archived_at == null
+      );
     default:
-      return questions;
+      return questions.filter((q) => q.archived_at == null);
   }
 }
 
@@ -39,20 +43,20 @@ export function filterDepartmentBoardQuestions(
     focusQuestionId?: string | null;
   }
 ): DepartmentBoardQuestion[] {
+  const searched = filterDepartmentBoardQuestionsByQuery(questions, opts.search ?? "");
   const statusFiltered = filterDepartmentBoardQuestionsByStatus(
-    questions,
+    searched,
     opts.filter,
     opts.ctx ?? {}
   );
-  const searched = filterDepartmentBoardQuestionsByQuery(statusFiltered, opts.search ?? "");
   const focusId = opts.focusQuestionId?.trim();
-  if (!focusId || searched.some((q) => q.id === focusId)) {
-    return searched;
+  if (!focusId || statusFiltered.some((q) => q.id === focusId)) {
+    return statusFiltered;
   }
   const focused =
     statusFiltered.find((q) => q.id === focusId) ??
-    questions.find((q) => q.id === focusId);
-  return focused ? [focused, ...searched] : searched;
+    searched.find((q) => q.id === focusId);
+  return focused ? [focused, ...statusFiltered] : statusFiltered;
 }
 
 export function countDepartmentBoardQuestionsByFilter(
@@ -90,13 +94,14 @@ export function departmentBoardQuestionFilterCounts(
   const searched = filterDepartmentBoardQuestionsByQuery(questions, opts.search ?? "");
   const ctx = opts.ctx ?? {};
   return {
-    all: searched.length,
-    open: searched.filter((q) => q.status === "open").length,
-    answered: searched.filter((q) => q.status === "answered").length,
+    all: searched.filter((q) => q.archived_at == null).length,
+    open: searched.filter((q) => q.status === "open" && q.archived_at == null).length,
+    answered: searched.filter((q) => q.status === "answered" && q.archived_at == null).length,
+    closed: searched.filter((q) => q.archived_at != null).length,
     unseen: searched.filter((q) => ctx.unseenIds?.has(q.id) ?? false).length,
     own_unseen: searched.filter((q) => ctx.unseenOwnIds?.has(q.id) ?? false).length,
     mine: ctx.currentSalesPersonId
-      ? searched.filter((q) => q.sales_person_id === ctx.currentSalesPersonId).length
+      ? searched.filter((q) => q.sales_person_id === ctx.currentSalesPersonId && q.archived_at == null).length
       : 0,
   };
 }

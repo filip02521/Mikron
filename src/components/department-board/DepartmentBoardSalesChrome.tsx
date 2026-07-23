@@ -12,7 +12,7 @@ import {
   salesTypography,
 } from "@/lib/ui/ontime-theme";
 export type DepartmentBoardTab = "announcements" | "questions";
-export type DepartmentBoardQuestionFilter = "all" | "open" | "answered" | "unseen" | "own_unseen" | "mine";
+export type DepartmentBoardQuestionFilter = "all" | "open" | "answered" | "closed" | "unseen" | "own_unseen" | "mine";
 
 const TAB_CHIP_CLASS = cn(
   panelChoiceChipClass,
@@ -132,9 +132,10 @@ export function DepartmentBoardQuestionFilters({
   showUnseen?: boolean;
 }) {
   const filters: QuestionFilterChip[] = [
-    { id: "all", label: "Wszystkie", count: counts.all },
+    { id: "all", label: "Aktywne", count: counts.all },
     { id: "open", label: "Bez odpowiedzi", count: counts.open },
     { id: "answered", label: "Odpowiedziane", count: counts.answered },
+    { id: "closed", label: "Zakończone", count: counts.closed },
   ];
 
   if (showUnseen) {

@@ -2,11 +2,11 @@ import { DEPARTMENT_BOARD_SUCCESS_TOAST } from "@/lib/ui/notice-copy";
 
 export const DEPARTMENT_BOARD_SALES_PAGE_TITLE = "Pytania zespołu";
 export const DEPARTMENT_BOARD_SALES_PAGE_DESC =
-  "Wspólne pytania i odpowiedzi z działem zakupów. Ogłoszenia od zakupów znajdziesz w Moje zamówienia.";
+  "Wspólne pytania i odpowiedzi z działem zakupów. Ogłoszenia od zakupów znajdziesz w Moje zamówienia. Możesz doprecyzować pytanie lub zamknąć wątek, gdy uzyskasz odpowiedź. Wątki bez aktywności przez 2 dni po odpowiedzi zakupów zamykają się automatycznie.";
 
 export const DEPARTMENT_BOARD_PROCUREMENT_PAGE_TITLE = "Tablica";
 export const DEPARTMENT_BOARD_PROCUREMENT_PAGE_DESC =
-  "Ogłoszenia dla handlowców (jednokierunkowo) oraz pytania zespołu sprzedaży z odpowiedziami widocznymi dla wszystkich.";
+  "Ogłoszenia dla handlowców (jednokierunkowo) oraz pytania zespołu sprzedaży z odpowiedziami widocznymi dla wszystkich. Handlowcy mogą doprecyzować pytania i zamykać wątki.";
 
 export const DEPARTMENT_BOARD_ANNOUNCEMENTS_EXPLAINER = {
   title: "Ogłoszenia od zakupów",
@@ -49,9 +49,10 @@ export const DEPARTMENT_BOARD_QUESTIONS_FILTERS = {
   searchHint:
     "Szukaj po temacie, treści pytania, produkcie, autorze lub fragmencie odpowiedzi zakupów.",
   chips: {
-    all: "Wszystkie aktywne pytania na tablicy.",
+    all: "Aktywne pytania — bez zakończonych wątków.",
     open: "Pytania bez odpowiedzi działu zakupów.",
     answered: "Pytania z co najmniej jedną odpowiedzią zakupów.",
+    closed: "Zakończone wątki — zamknięte przez handlowca lub zakupy.",
     unseen: "Odpowiedzi zakupów, których jeszcze nie otworzyłeś.",
     own_unseen: "Twoje pytania z nową odpowiedzią zakupów, której jeszcze nie otworzyłeś.",
     mine: "Pytania złożone przez Ciebie (powiązane z Twoim profilem handlowca).",

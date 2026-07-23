@@ -837,7 +837,7 @@ export function SubiektProductLineFields({
     const resultLabel =
       visibleItems.length === 1 ? "1 wynik" : `${visibleItems.length} wyników`;
 
-    const activeAnchor = activeField === "plu" ? pluAnchorRef : productAnchorRef;
+    const activeAnchor = productAnchorRef;
 
     return (
       <TypeaheadDropdown

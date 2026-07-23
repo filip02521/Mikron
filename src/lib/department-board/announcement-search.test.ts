@@ -20,6 +20,7 @@ function testAnnouncement(
     expires_at: null,
     answered_at: null,
     archived_at: null,
+    closed_by: null,
     created_at: "",
     updated_at: "",
     author: { email: "zakupy@firma.pl", role: "zakupy" },

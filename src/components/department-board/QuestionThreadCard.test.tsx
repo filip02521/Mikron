@@ -10,6 +10,8 @@ vi.mock("@/app/actions/department-board", () => ({
   actionMarkQuestionThreadSeen: vi.fn().mockResolvedValue({ ok: true }),
   actionReplyToQuestion: vi.fn(),
   actionArchiveQuestion: vi.fn(),
+  actionCloseQuestion: vi.fn(),
+  actionReopenQuestion: vi.fn(),
 }));
 
 import { actionMarkQuestionThreadSeen } from "@/app/actions/department-board";
@@ -55,6 +57,7 @@ function testQuestion(): DepartmentBoardQuestion {
     expires_at: null,
     answered_at: "2026-01-02T10:00:00Z",
     archived_at: null,
+    closed_by: null,
     created_at: "2026-01-01T10:00:00Z",
     updated_at: "2026-01-02T10:00:00Z",
     sales_person: { id: "sp1", name: "Anna" },

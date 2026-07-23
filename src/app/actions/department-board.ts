@@ -226,27 +226,48 @@ export async function actionCreateQuestion(
 }
 
 export async function actionReplyToQuestion(threadId: string, body: string) {
-  const userId = await assertProcurementAccess();
+  const user = await getSessionUser();
+  if (!user?.id) throw new Error("Zaloguj się ponownie.");
+
+  const isProcurement = canAccessOperations(user.role, user.assignedWorkspaces);
+  const isSales = isSalesAccount(user.role);
+  if (!isProcurement && !isSales) {
+    throw new Error("Brak uprawnień do tablicy.");
+  }
+
+  if (isSales) {
+    await assertAdminNotInReadOnlyPanelPreview(user);
+    const salesPerson = await resolveSalesPersonForUser(user);
+    if (!salesPerson?.id) {
+      throw new Error(
+        "Twoje konto nie jest przypisane do profilu handlowca. Poproś administratora o przypisanie."
+      );
+    }
+  }
+
   const trimmedBody = trimBody(body);
-  if (!trimmedBody) throw new Error("Odpowiedź nie może być pusta.");
+  if (!trimmedBody) throw new Error("Wiadomość nie może być pusta.");
 
   const thread = await fetchThread(threadId);
   if (thread.kind !== "question") {
     throw new Error("Odpowiedź można dodać tylko do pytania.");
   }
   if (thread.archived_at) {
-    throw new Error("To pytanie jest zarchiwizowane.");
+    throw new Error("Ten wątek jest zakończony i nie można na niego odpowiadać.");
+  }
+
+  if (isSales && thread.created_by !== user.id) {
+    throw new Error("Możesz odpowiadać tylko we własnych pytaniach.");
   }
 
   const supabase = createAdminClient();
-  const answeredAt = new Date().toISOString();
-  const firstReply = thread.status === "open";
+  const now = new Date().toISOString();
 
   const { data: post, error: postError } = await supabase
     .from("department_board_posts")
     .insert({
       thread_id: threadId,
-      created_by: userId,
+      created_by: user.id,
       body: trimmedBody,
     })
     .select(DEPARTMENT_BOARD_POST_SELECT)
@@ -254,13 +275,16 @@ export async function actionReplyToQuestion(threadId: string, body: string) {
 
   if (postError) throw new Error(postError.message);
 
+  // Procurement reply → answered; Sales reply (doprecyzowanie) → open
+  const nextStatus = isProcurement ? "answered" as const : "open" as const;
+  const firstProcurementReply = isProcurement && thread.status === "open";
+
   const { error: threadError } = await supabase
     .from("department_board_threads")
     .update({
-      ...(firstReply
-        ? { status: "answered" as const, answered_at: answeredAt }
-        : {}),
-      updated_at: answeredAt,
+      status: nextStatus,
+      ...(firstProcurementReply ? { answered_at: now } : {}),
+      updated_at: now,
     })
     .eq("id", threadId);
 
@@ -271,7 +295,7 @@ export async function actionReplyToQuestion(threadId: string, body: string) {
 }
 
 export async function actionArchiveQuestion(threadId: string) {
-  await assertProcurementAccess();
+  const userId = await assertProcurementAccess();
   const thread = await fetchThread(threadId);
   if (thread.kind !== "question") {
     throw new Error("Można archiwizować tylko pytania.");
@@ -279,12 +303,90 @@ export async function actionArchiveQuestion(threadId: string) {
   if (thread.archived_at) return { thread };
 
   const supabase = createAdminClient();
+  const now = new Date().toISOString();
   const { data, error } = await supabase
     .from("department_board_threads")
     .update({
-      archived_at: new Date().toISOString(),
+      archived_at: now,
+      closed_by: userId,
       status: "archived",
-      updated_at: new Date().toISOString(),
+      updated_at: now,
+    })
+    .eq("id", threadId)
+    .select(DEPARTMENT_BOARD_THREAD_SELECT)
+    .single();
+
+  if (error) throw new Error(error.message);
+  revalidateDepartmentBoard();
+  return { thread: data as unknown as DepartmentBoardThreadRow };
+}
+
+export async function actionCloseQuestion(threadId: string) {
+  const { userId } = await assertSalesAccess();
+  const thread = await fetchThread(threadId);
+  if (thread.kind !== "question") {
+    throw new Error("Zamykanie dotyczy tylko pytań.");
+  }
+  if (thread.archived_at) return { thread };
+  if (thread.created_by !== userId) {
+    throw new Error("Możesz zamknąć tylko własne pytanie.");
+  }
+
+  const supabase = createAdminClient();
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("department_board_threads")
+    .update({
+      archived_at: now,
+      closed_by: userId,
+      status: "archived",
+      updated_at: now,
+    })
+    .eq("id", threadId)
+    .select(DEPARTMENT_BOARD_THREAD_SELECT)
+    .single();
+
+  if (error) throw new Error(error.message);
+  revalidateDepartmentBoard();
+  return { thread: data as unknown as DepartmentBoardThreadRow };
+}
+
+export async function actionReopenQuestion(threadId: string) {
+  const user = await getSessionUser();
+  if (!user?.id) throw new Error("Zaloguj się ponownie.");
+
+  const isProcurement = canAccessOperations(user.role, user.assignedWorkspaces);
+  const isSales = isSalesAccount(user.role);
+  if (!isProcurement && !isSales) {
+    throw new Error("Brak uprawnień do tablicy.");
+  }
+
+  const thread = await fetchThread(threadId);
+  if (thread.kind !== "question") {
+    throw new Error("Ponowne otwarcie dotyczy tylko pytań.");
+  }
+  if (!thread.archived_at) return { thread };
+
+  if (isSales && thread.created_by !== user.id) {
+    throw new Error("Możesz otworzyć ponownie tylko własne pytanie.");
+  }
+
+  const supabase = createAdminClient();
+  const now = new Date().toISOString();
+  const hasReplies = await supabase
+    .from("department_board_posts")
+    .select("id", { count: "exact", head: true })
+    .eq("thread_id", threadId);
+
+  const nextStatus = (hasReplies.count ?? 0) > 0 ? "answered" as const : "open" as const;
+
+  const { data, error } = await supabase
+    .from("department_board_threads")
+    .update({
+      archived_at: null,
+      closed_by: null,
+      status: nextStatus,
+      updated_at: now,
     })
     .eq("id", threadId)
     .select(DEPARTMENT_BOARD_THREAD_SELECT)

@@ -65,6 +65,7 @@ export function DepartmentBoardSalesClient({
   pageTitle,
   previewHint,
   currentSalesPersonId = null,
+  currentUserId = null,
 }: {
   initial: DepartmentBoardQuestionsSlice;
   loadError?: string | null;
@@ -76,6 +77,7 @@ export function DepartmentBoardSalesClient({
   pageTitle?: string;
   previewHint?: string;
   currentSalesPersonId?: string | null;
+  currentUserId?: string | null;
 }) {
   const router = useRouter();
   const {
@@ -87,7 +89,11 @@ export function DepartmentBoardSalesClient({
   } = useDepartmentBoardSalesQuestionUrl();
   const tourDemo = useSalesOnboardingDemo("tablica");
   const demoBoard = useMemo(() => buildOnboardingTablicaDemo(), []);
-  const board = tourDemo ? { questions: demoBoard.questions } : initial;
+  const board = tourDemo ? { questions: demoBoard.questions, closedQuestions: [] } : initial;
+  const allQuestions = useMemo(
+    () => [...board.questions, ...board.closedQuestions],
+    [board.questions, board.closedQuestions]
+  );
   const effectiveUnseenQuestionIds = useMemo(
     () => (tourDemo ? [...ONBOARDING_TABLICA_UNSEEN_QUESTION_IDS] : unseenQuestionIds),
     [tourDemo, unseenQuestionIds]
@@ -156,33 +162,33 @@ export function DepartmentBoardSalesClient({
 
   const questionFilterCounts = useMemo(
     () =>
-      departmentBoardQuestionFilterCounts(board.questions, {
+      departmentBoardQuestionFilterCounts(allQuestions, {
         search: questionSearch,
         ctx: filterCtx,
       }),
-    [board.questions, questionSearch, filterCtx]
+    [allQuestions, questionSearch, filterCtx]
   );
 
   const statusFilteredQuestions = useMemo(
     () =>
-      filterDepartmentBoardQuestions(board.questions, {
+      filterDepartmentBoardQuestions(allQuestions, {
         filter: activeQuestionFilter,
         search: "",
         ctx: filterCtx,
       }),
-    [board.questions, activeQuestionFilter, filterCtx]
+    [allQuestions, activeQuestionFilter, filterCtx]
   );
 
   const questionSearchNeedle = questionSearch.trim();
   const filteredQuestions = useMemo(
     () =>
-      filterDepartmentBoardQuestions(board.questions, {
+      filterDepartmentBoardQuestions(allQuestions, {
         filter: activeQuestionFilter,
         search: questionSearch,
         ctx: filterCtx,
         focusQuestionId,
       }),
-    [board.questions, activeQuestionFilter, questionSearch, filterCtx, focusQuestionId]
+    [allQuestions, activeQuestionFilter, questionSearch, filterCtx, focusQuestionId]
   );
 
   const refresh = useCallback(() => {
@@ -321,7 +327,7 @@ export function DepartmentBoardSalesClient({
             onSearchChange={setQuestionSearch}
             matchCount={filteredQuestions.length}
             totalCount={statusFilteredQuestions.length}
-            showSearch={board.questions.length > 0}
+            showSearch={allQuestions.length > 0}
             filterCounts={questionFilterCounts}
             showMine={Boolean(currentSalesPersonId)}
             showUnseen={unseenAnswersCount > 0}
@@ -353,6 +359,10 @@ export function DepartmentBoardSalesClient({
                   rowAlternate={index % 2 === 1}
                   unseenReply={unseenSet.has(question.id)}
                   autoMarkSeen={!tourDemo && !readOnly && question.status === "answered"}
+                  canReply={!readOnly && !tourDemo && question.created_by === currentUserId}
+                  canClose={!readOnly && !tourDemo}
+                  canReopen={!readOnly && !tourDemo}
+                  audience="sales"
                   defaultExpanded={
                     focusQuestionId === question.id ||
                     (tourDemo && (ONBOARDING_TABLICA_UNSEEN_QUESTION_IDS as readonly string[]).includes(question.id))

@@ -6,7 +6,7 @@ import {
   pickUnseenAnswerPreview,
   type UnseenBoardAnswer,
 } from "@/lib/department-board/attention";
-import { sortAnnouncements, sortQuestions } from "@/lib/department-board/sort";
+import { sortAnnouncements, sortClosedQuestions, sortQuestions } from "@/lib/department-board/sort";
 import { salesMojeAnnouncementHref } from "@/lib/department-board/moje-announcements-ui";
 import type {
   DepartmentBoardPost,
@@ -15,7 +15,7 @@ import type {
 } from "@/types/database";
 
 export const DEPARTMENT_BOARD_THREAD_SELECT =
-  "id, kind, status, created_by, sales_person_id, title, body, product_symbol, product_name, subiekt_tw_id, mikran_code, color, pinned, published_at, expires_at, answered_at, archived_at, created_at, updated_at, author:profiles!created_by(email, role), sales_person:sales_people(id, name)";
+  "id, kind, status, created_by, sales_person_id, title, body, product_symbol, product_name, subiekt_tw_id, mikran_code, color, pinned, published_at, expires_at, answered_at, archived_at, closed_by, created_at, updated_at, author:profiles!created_by(email, role), sales_person:sales_people(id, name), closed_by_profile:profiles!closed_by(email, role)";
 
 export const DEPARTMENT_BOARD_POST_SELECT =
   "*, author:profiles!created_by(email, role)";
@@ -28,6 +28,7 @@ export type DepartmentBoardAuthor = {
 export type DepartmentBoardThreadRow = DepartmentBoardThread & {
   author?: DepartmentBoardAuthor | null;
   sales_person?: { id: string; name: string } | null;
+  closed_by_profile?: DepartmentBoardAuthor | null;
 };
 
 export type DepartmentBoardPostRow = DepartmentBoardPost & {
@@ -41,6 +42,7 @@ export type DepartmentBoardQuestion = DepartmentBoardThreadRow & {
 export type DepartmentBoardData = {
   announcements: DepartmentBoardThreadRow[];
   questions: DepartmentBoardQuestion[];
+  closedQuestions: DepartmentBoardQuestion[];
   readAnnouncementIds: string[];
 };
 
@@ -57,6 +59,7 @@ export function activeAnnouncementExpiryOr(nowIso: string): string {
 
 export type DepartmentBoardQuestionsSlice = {
   questions: DepartmentBoardQuestion[];
+  closedQuestions: DepartmentBoardQuestion[];
 };
 
 export type DepartmentBoardAnnouncementsSlice = {
@@ -78,28 +81,61 @@ export async function fetchDepartmentBoardThreadKind(
   return data.kind;
 }
 
+/** Zamyka wątki pytań bez aktywności przez 2 dni, jeśli zakupy choć raz odpisały. */
+async function autoCloseStaleBoardQuestions(): Promise<void> {
+  const supabase = createAdminClient();
+  const cutoff = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+  const now = new Date().toISOString();
+
+  await supabase
+    .from("department_board_threads")
+    .update({
+      archived_at: now,
+      closed_by: null,
+      status: "archived",
+      updated_at: now,
+    })
+    .eq("kind", "question")
+    .is("archived_at", null)
+    .not("answered_at", "is", null)
+    .lt("updated_at", cutoff);
+}
+
 /** Tylko pytania — dla /tablica handlowca (bez ogłoszeń). */
 export async function fetchDepartmentBoardQuestions(): Promise<DepartmentBoardQuestionsSlice> {
   const supabase = createAdminClient();
 
-  const questionsRes = await supabase
-    .from("department_board_threads")
-    .select(DEPARTMENT_BOARD_THREAD_SELECT)
-    .eq("kind", "question")
-    .is("archived_at", null)
-    .order("created_at", { ascending: false });
+  await autoCloseStaleBoardQuestions();
 
-  if (questionsRes.error) throw new Error(questionsRes.error.message);
+  const [activeRes, closedRes] = await Promise.all([
+    supabase
+      .from("department_board_threads")
+      .select(DEPARTMENT_BOARD_THREAD_SELECT)
+      .eq("kind", "question")
+      .is("archived_at", null)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("department_board_threads")
+      .select(DEPARTMENT_BOARD_THREAD_SELECT)
+      .eq("kind", "question")
+      .not("archived_at", "is", null)
+      .order("archived_at", { ascending: false }),
+  ]);
 
-  const questionRows = (questionsRes.data ?? []) as unknown as DepartmentBoardThreadRow[];
-  const questionIds = questionRows.map((q) => q.id);
+  if (activeRes.error) throw new Error(activeRes.error.message);
+  if (closedRes.error) throw new Error(closedRes.error.message);
+
+  const activeRows = (activeRes.data ?? []) as unknown as DepartmentBoardThreadRow[];
+  const closedRows = (closedRes.data ?? []) as unknown as DepartmentBoardThreadRow[];
+  const allRows = [...activeRows, ...closedRows];
+  const allIds = allRows.map((q) => q.id);
 
   let posts: DepartmentBoardPostRow[] = [];
-  if (questionIds.length) {
+  if (allIds.length) {
     const postsRes = await supabase
       .from("department_board_posts")
       .select(DEPARTMENT_BOARD_POST_SELECT)
-      .in("thread_id", questionIds)
+      .in("thread_id", allIds)
       .order("created_at", { ascending: true });
     if (postsRes.error) throw new Error(postsRes.error.message);
     posts = (postsRes.data ?? []) as unknown as DepartmentBoardPostRow[];
@@ -112,9 +148,18 @@ export async function fetchDepartmentBoardQuestions(): Promise<DepartmentBoardQu
     postsByThread.set(post.thread_id, list);
   }
 
+  const buildQuestions = (rows: DepartmentBoardThreadRow[]) =>
+    sortQuestions(
+      rows.map((row) => ({
+        ...row,
+        posts: postsByThread.get(row.id) ?? [],
+      }))
+    );
+
   return {
-    questions: sortQuestions(
-      questionRows.map((row) => ({
+    questions: buildQuestions(activeRows),
+    closedQuestions: sortClosedQuestions(
+      closedRows.map((row) => ({
         ...row,
         posts: postsByThread.get(row.id) ?? [],
       }))
@@ -172,6 +217,7 @@ export async function fetchDepartmentBoard(
     announcements: announcementsSlice.announcements,
     readAnnouncementIds: announcementsSlice.readAnnouncementIds,
     questions: questionsSlice.questions,
+    closedQuestions: questionsSlice.closedQuestions,
   };
 }
 

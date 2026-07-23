@@ -457,6 +457,7 @@ export function buildOnboardingTablicaDemo(): DepartmentBoardData {
         expires_at: null,
         answered_at: null,
         archived_at: null,
+        closed_by: null,
         created_at: now,
         updated_at: now,
         author: { email: "zakupy@firma.pl", role: "zakupy" },
@@ -481,6 +482,7 @@ export function buildOnboardingTablicaDemo(): DepartmentBoardData {
         expires_at: null,
         answered_at: now,
         archived_at: null,
+        closed_by: null,
         created_at: now,
         updated_at: now,
         author: { email: "anna@firma.pl", role: "sales" },
@@ -514,6 +516,7 @@ export function buildOnboardingTablicaDemo(): DepartmentBoardData {
         expires_at: null,
         answered_at: null,
         archived_at: null,
+        closed_by: null,
         created_at: now,
         updated_at: now,
         author: { email: "piotr@firma.pl", role: "sales" },
@@ -521,6 +524,7 @@ export function buildOnboardingTablicaDemo(): DepartmentBoardData {
         posts: [],
       },
     ],
+    closedQuestions: [],
     readAnnouncementIds: [],
   };
 }

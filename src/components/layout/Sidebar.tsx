@@ -88,7 +88,12 @@ function NavLink({
               "border border-transparent text-slate-700",
               sidebarNavToneHighlightIdleClass(item.tone) ?? navLinkIdleClass
             )
-          : navLinkIdleClass,
+          : item.highlight
+            ? cn(
+                "border border-transparent text-slate-700",
+                sidebarNavToneHighlightIdleClass(item.tone) ?? navLinkIdleClass
+              )
+            : navLinkIdleClass,
     locked &&
       !active &&
       "cursor-not-allowed opacity-45 hover:border-transparent hover:bg-transparent hover:text-inherit"

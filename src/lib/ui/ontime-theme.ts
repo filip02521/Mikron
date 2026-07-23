@@ -129,6 +129,8 @@ export function sidebarNavToneHighlightIdleClass(tone: NavTone): string | undefi
       return cn(`${navFineHover}bg-orange-50/55`, `${navFineHover}text-slate-900`);
     case "emerald":
       return cn(`${navFineHover}bg-emerald-50/50`, `${navFineHover}text-slate-900`);
+    case "violet":
+      return cn(`${navFineHover}bg-violet-50/50`, `${navFineHover}text-slate-900`);
     default:
       return undefined;
   }

@@ -106,13 +106,17 @@ export function DepartmentBoardProcurementClient({
   const [successToast, setSuccessToast] = useState(false);
 
   const openQuestionsCount = initial.questions.filter((q) => q.status === "open").length;
+  const allQuestions = useMemo(
+    () => [...initial.questions, ...initial.closedQuestions],
+    [initial.questions, initial.closedQuestions]
+  );
 
   const questionFilterCounts = useMemo(
     () =>
-      departmentBoardQuestionFilterCounts(initial.questions, {
+      departmentBoardQuestionFilterCounts(allQuestions, {
         search: questionSearch,
       }),
-    [initial.questions, questionSearch]
+    [allQuestions, questionSearch]
   );
 
   const announcementSearchNeedle = announcementSearch.trim();
@@ -123,22 +127,22 @@ export function DepartmentBoardProcurementClient({
 
   const statusFilteredQuestions = useMemo(
     () =>
-      filterDepartmentBoardQuestions(initial.questions, {
+      filterDepartmentBoardQuestions(allQuestions, {
         filter: activeQuestionFilter,
         search: "",
       }),
-    [initial.questions, activeQuestionFilter]
+    [allQuestions, activeQuestionFilter]
   );
 
   const questionSearchNeedle = questionSearch.trim();
   const filteredQuestions = useMemo(
     () =>
-      filterDepartmentBoardQuestions(initial.questions, {
+      filterDepartmentBoardQuestions(allQuestions, {
         filter: activeQuestionFilter,
         search: questionSearch,
         focusQuestionId,
       }),
-    [focusQuestionId, initial.questions, questionSearch, activeQuestionFilter]
+    [focusQuestionId, allQuestions, questionSearch, activeQuestionFilter]
   );
 
   const syncTabToUrl = useDepartmentBoardTabUrl();
@@ -371,7 +375,7 @@ export function DepartmentBoardProcurementClient({
                 onSearchChange={setQuestionSearch}
                 matchCount={filteredQuestions.length}
                 totalCount={statusFilteredQuestions.length}
-                showSearch={initial.questions.length > 0}
+                showSearch={allQuestions.length > 0}
                 filterCounts={questionFilterCounts}
                 searchLabel="Szukaj w pytaniach handlowców"
                 searchActive={Boolean(questionSearchNeedle)}
@@ -395,6 +399,7 @@ export function DepartmentBoardProcurementClient({
                       rowAlternate={index % 2 === 1}
                       canReply={!readOnly}
                       canArchive={!readOnly}
+                      canReopen={!readOnly}
                       defaultExpanded={focusQuestionId === question.id}
                       onChanged={refresh}
                     />

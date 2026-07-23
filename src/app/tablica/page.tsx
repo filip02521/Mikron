@@ -133,6 +133,7 @@ export default async function SalesBoardPage({
 
   let loadError: string | null = null;
   let questions = [] as Awaited<ReturnType<typeof fetchDepartmentBoardQuestions>>["questions"];
+  let closedQuestions = [] as Awaited<ReturnType<typeof fetchDepartmentBoardQuestions>>["closedQuestions"];
   let unseenQuestionIds: string[] = [];
   let unseenOwnQuestionIds: string[] = [];
   let boardAttention = null;
@@ -145,6 +146,7 @@ export default async function SalesBoardPage({
         : Promise.resolve(null),
     ]);
     questions = questionsData.questions;
+    closedQuestions = questionsData.closedQuestions;
     unseenQuestionIds = attention?.unseenQuestionIds ?? [];
     unseenOwnQuestionIds = attention?.unseenOwnQuestionIds ?? [];
     boardAttention = attention;
@@ -169,7 +171,7 @@ export default async function SalesBoardPage({
 
   const boardClient = (
     <DepartmentBoardClient
-      initial={{ questions }}
+      initial={{ questions, closedQuestions }}
       audience="sales"
       loadError={loadError}
       unseenQuestionIds={unseenQuestionIds}
@@ -184,6 +186,7 @@ export default async function SalesBoardPage({
           : undefined
       }
       currentSalesPersonId={salesPersonId}
+      currentUserId={boardProfileId}
     />
   );
 

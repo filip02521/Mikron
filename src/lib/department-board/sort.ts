@@ -26,3 +26,14 @@ export function sortQuestions<
     return b.created_at.localeCompare(a.created_at);
   });
 }
+
+/** Zakończone pytania: sort po dacie zamknięcia malejąco. */
+export function sortClosedQuestions<
+  T extends Pick<DepartmentBoardThread, "archived_at" | "created_at">,
+>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => {
+    const aDate = a.archived_at ?? a.created_at;
+    const bDate = b.archived_at ?? b.created_at;
+    return bDate.localeCompare(aDate);
+  });
+}
