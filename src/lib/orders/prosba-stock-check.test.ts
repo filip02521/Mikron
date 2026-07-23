@@ -311,7 +311,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
     ).toBe("Na stanie: 10 szt.");
   });
 
-  it("sufficient z rezerwacją z tego ZK — pokazuje Zarezerwowane w ZK", () => {
+  it("sufficient z rezerwacją z tego ZK — pokazuje breakdown", () => {
     expect(
       formatZkProsbaScopeLineBadge({
         sufficient: true,
@@ -323,10 +323,10 @@ describe("formatZkProsbaScopeLineBadge", () => {
         zkLineQty: 2,
         rawReserved: 2,
       })
-    ).toBe("Zarezerwowane w ZK: 2 szt.");
+    ).toBe("Stan 2 · ZK 2 · dost. 2");
   });
 
-  it("sufficient z częściową rezerwacją z ZK — pokazuje Zarezerwowane w ZK", () => {
+  it("sufficient z częściową rezerwacją z ZK i innymi rezerwacjami — pełny breakdown", () => {
     expect(
       formatZkProsbaScopeLineBadge({
         sufficient: true,
@@ -338,7 +338,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
         zkLineQty: 3,
         rawReserved: 5,
       })
-    ).toBe("Zarezerwowane w ZK: 3 szt.");
+    ).toBe("Stan 7 · ZK 3 · inne rez. 2 · dost. 5");
   });
 
   it("sufficient bez rezerwacji z ZK (rawReserved=0) — pokazuje Na stanie", () => {

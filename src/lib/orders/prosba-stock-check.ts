@@ -193,21 +193,36 @@ export function formatZkProsbaScopeLineBadge(input: {
         )
       : 0;
 
+  const onHand = input.onHand ?? null;
+  const available = input.available ?? null;
+
+  /**
+   * Pełny breakdown stanu gdy mamy onHand i rezerwację z tego ZK:
+   * „Stan 280 · ZK 250 · Dostępne 30"
+   */
+  function stockBreakdown(): string | null {
+    if (onHand == null || available == null || zkReservedQty <= 0) return null;
+    const otherReserved = Math.max(0, (input.rawReserved ?? 0) - zkReservedQty);
+    if (otherReserved > 0) {
+      return `Stan ${onHand} · ZK ${zkReservedQty} · inne rez. ${otherReserved} · dost. ${available}`;
+    }
+    return `Stan ${onHand} · ZK ${zkReservedQty} · dost. ${available}`;
+  }
+
   if (input.markedForOrder) {
-    if (input.hasStockData && input.available != null && input.available > 0 && !input.sufficient) {
-      return `Do zamówienia · stan ${input.available} szt.${reserveSuffix}`;
+    if (input.hasStockData && available != null && available > 0 && !input.sufficient) {
+      return `Do zamówienia · stan ${available} szt.${reserveSuffix}`;
     }
     return "Do zamówienia";
   }
-  if (input.sufficient && input.available != null) {
-    if (zkReservedQty > 0) {
-      return `Zarezerwowane w ZK: ${zkReservedQty} szt.`;
-    }
-    return `Na stanie: ${input.available} szt.${reserveSuffix}`;
+  if (input.sufficient && available != null) {
+    const breakdown = stockBreakdown();
+    if (breakdown) return breakdown;
+    return `Na stanie: ${available} szt.${reserveSuffix}`;
   }
   if (!input.sufficient) {
-    if (input.hasStockData && input.available != null && input.available > 0) {
-      return `Do zamówienia · stan ${input.available} szt.${reserveSuffix}`;
+    if (input.hasStockData && available != null && available > 0) {
+      return `Do zamówienia · stan ${available} szt.${reserveSuffix}`;
     }
     return "Do zamówienia";
   }
