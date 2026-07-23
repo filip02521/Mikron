@@ -247,8 +247,11 @@ describe("formatZkProsbaScopeLineBadge", () => {
         markedForOrder: true,
         available: 3,
         hasStockData: true,
+        onHand: 5,
+        reserved: 2,
+        rawReserved: 2,
       })
-    ).toBe("Do zamówienia · stan 3 szt.");
+    ).toBe("Do zamówienia · Stan 5 · rez. 2 · dost. 3");
   });
 
   it("częściowy stan bez zaznaczenia — do zamówienia ze stanem", () => {
@@ -258,8 +261,11 @@ describe("formatZkProsbaScopeLineBadge", () => {
         markedForOrder: false,
         available: 3,
         hasStockData: true,
+        onHand: 5,
+        reserved: 2,
+        rawReserved: 2,
       })
-    ).toBe("Do zamówienia · stan 3 szt.");
+    ).toBe("Do zamówienia · Stan 5 · rez. 2 · dost. 3");
   });
 
   it("brak pokrycia stanem bez zaznaczenia — do zamówienia", () => {
@@ -282,8 +288,9 @@ describe("formatZkProsbaScopeLineBadge", () => {
         hasStockData: true,
         onHand: 10,
         reserved: 2,
+        rawReserved: 2,
       })
-    ).toBe("Na stanie: 8 szt. (−2 rez.)");
+    ).toBe("Stan 10 · rez. 2 · dost. 8");
   });
 
   it("częściowy stan z rezerwacją — pokazuje rezerwację", () => {
@@ -295,8 +302,9 @@ describe("formatZkProsbaScopeLineBadge", () => {
         hasStockData: true,
         onHand: 5,
         reserved: 2,
+        rawReserved: 2,
       })
-    ).toBe("Do zamówienia · stan 3 szt. (−2 rez.)");
+    ).toBe("Do zamówienia · Stan 5 · rez. 2 · dost. 3");
   });
 
   it("brak rezerwacji — nie pokazuje sufiksu", () => {
@@ -309,7 +317,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
         onHand: 10,
         reserved: 0,
       })
-    ).toBe("Na stanie: 10 szt.");
+    ).toBe("Stan 10 · dost. 10");
   });
 
   it("sufficient z rezerwacją z tego ZK — pokazuje breakdown", () => {
@@ -354,7 +362,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
         zkLineQty: 2,
         rawReserved: 0,
       })
-    ).toBe("Na stanie: 10 szt.");
+    ).toBe("Stan 10 · dost. 10");
   });
 
   it("sufficient z innymi rezerwacjami (bez ZK) — pełny breakdown", () => {
@@ -384,7 +392,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
         zkLineQty: 2,
         rawReserved: 2,
       })
-    ).toBe("Do zamówienia");
+    ).toBe("Do zamówienia · Stan 2 · ZK 2 · dost. 0");
   });
 });
 

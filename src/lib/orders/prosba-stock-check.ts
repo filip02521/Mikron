@@ -180,11 +180,6 @@ export function formatZkProsbaScopeLineBadge(input: {
   /** Oryginalna rezerwacja z Subiekta (przed korektą o to ZK). */
   rawReserved?: number | null;
 }): string {
-  const reserveSuffix =
-    input.hasStockData && input.reserved != null && input.reserved > 0
-      ? ` (−${input.reserved} rez.)`
-      : "";
-
   const zkReservedQty =
     input.zkLineQty != null && input.zkLineQty > 0
       ? Math.min(
@@ -195,16 +190,17 @@ export function formatZkProsbaScopeLineBadge(input: {
 
   const onHand = input.onHand ?? null;
   const available = input.available ?? null;
+  const rawReserved = input.rawReserved ?? 0;
 
   /**
-   * Pełny breakdown stanu gdy mamy onHand:
+   * Pełny breakdown stanu:
    * - z rezerwacją z tego ZK: „Stan 280 · ZK 250 · dost. 30"
    * - z rezerwacją z tego ZK i innymi: „Stan 280 · ZK 250 · inne rez. 5 · dost. 25"
    * - z innymi rezerwacjami (bez ZK): „Stan 50 · rez. 2 · dost. 48"
+   * - bez rezerwacji: „Stan 10 · dost. 10"
    */
   function stockBreakdown(): string | null {
     if (onHand == null || available == null) return null;
-    const rawReserved = input.rawReserved ?? 0;
     const realAvailable = Math.max(0, onHand - rawReserved);
     if (zkReservedQty > 0) {
       const otherReserved = Math.max(0, rawReserved - zkReservedQty);
@@ -216,24 +212,22 @@ export function formatZkProsbaScopeLineBadge(input: {
     if (rawReserved > 0) {
       return `Stan ${onHand} · rez. ${rawReserved} · dost. ${realAvailable}`;
     }
-    return null;
+    return `Stan ${onHand} · dost. ${onHand}`;
   }
 
   if (input.markedForOrder) {
-    if (input.hasStockData && available != null && available > 0 && !input.sufficient) {
-      return `Do zamówienia · stan ${available} szt.${reserveSuffix}`;
-    }
+    const breakdown = stockBreakdown();
+    if (breakdown) return `Do zamówienia · ${breakdown}`;
     return "Do zamówienia";
   }
   if (input.sufficient && available != null) {
     const breakdown = stockBreakdown();
     if (breakdown) return breakdown;
-    return `Na stanie: ${available} szt.${reserveSuffix}`;
+    return `Na stanie: ${available} szt.`;
   }
   if (!input.sufficient) {
-    if (input.hasStockData && available != null && available > 0) {
-      return `Do zamówienia · stan ${available} szt.${reserveSuffix}`;
-    }
+    const breakdown = stockBreakdown();
+    if (breakdown) return `Do zamówienia · ${breakdown}`;
     return "Do zamówienia";
   }
   return "Pominięte";
