@@ -167,25 +167,33 @@ export function formatZkProsbaAutoMarkedHint(count: number): string {
   return `${count} ${noun} ${verb} zamówienia — zaznaczono do prośby. Odznacz pozycje, które macie na stanie.`;
 }
 
-/** Etykieta statusu w modalu zakresu ZK (checkbox = pozycja do zamówienia). */
+/** Krótka etykieta statusu w modalu zakresu ZK. */
 export function formatZkProsbaScopeLineBadge(input: {
   sufficient: boolean;
   markedForOrder: boolean;
   available: number | null;
   hasStockData: boolean;
+}): string {
+  if (input.markedForOrder) return "Do zamówienia";
+  if (input.sufficient && input.available != null) {
+    return `Dla ZK: ${input.available}`;
+  }
+  return "Do zamówienia";
+}
+
+/** Szczegółowy breakdown stanu pod nazwą produktu. */
+export function formatZkProsbaScopeLineStockDetail(input: {
+  sufficient: boolean;
+  available: number | null;
+  hasStockData: boolean;
   onHand?: number | null;
   reserved?: number | null;
-  /** Ilość z linii ZK (do komunikatu o rezerwacji tego ZK). */
   zkLineQty?: number | null;
-  /** Oryginalna rezerwacja z Subiekta (przed korektą o to ZK). */
   rawReserved?: number | null;
-}): string {
+}): string | null {
   const zkReservedQty =
     input.zkLineQty != null && input.zkLineQty > 0
-      ? Math.min(
-          input.zkLineQty,
-          input.rawReserved ?? 0
-        )
+      ? Math.min(input.zkLineQty, input.rawReserved ?? 0)
       : 0;
 
   const onHand = input.onHand ?? null;
@@ -193,59 +201,23 @@ export function formatZkProsbaScopeLineBadge(input: {
   const rawReserved = input.rawReserved ?? 0;
   const otherReserved = Math.max(0, rawReserved - zkReservedQty);
 
-  /**
-   * Pełny breakdown stanu — co jest na magazynie, co odejmuje, ile dla ZK:
-   * - z rezerwacją z tego ZK: „Stan 280 · ZK 250 · dla ZK 280"
-   * - z rezerwacją ZK i innymi: „Stan 280 · ZK 250 · inne rez. 5 · dla ZK 25"
-   * - z innymi rezerwacjami: „Stan 50 · rez. 2 · dla ZK 48"
-   * - bez rezerwacji: „Stan 10 · dla ZK 10"
-   *
-   * „dla ZK" = onHand − inneRezerwacje (własna rezerwacja ZK nie odejmuje).
-   */
-  function stockBreakdown(): string | null {
-    if (onHand == null || available == null) return null;
-    if (zkReservedQty > 0) {
-      const parts = [`Stan ${onHand}`, `ZK ${zkReservedQty}`];
-      if (otherReserved > 0) parts.push(`inne rez. ${otherReserved}`);
-      parts.push(`dla ZK ${available}`);
-      return parts.join(" · ");
-    }
-    if (rawReserved > 0) {
-      return `Stan ${onHand} · rez. ${rawReserved} · dla ZK ${available}`;
-    }
-    return `Stan ${onHand} · dla ZK ${available}`;
-  }
+  if (onHand == null || available == null) return null;
 
-  /** Ile brakuje do pokrycia ilości z linii ZK. */
-  function shortfall(): number | null {
-    if (available == null || input.zkLineQty == null || input.zkLineQty <= 0) return null;
-    return Math.max(0, input.zkLineQty - available);
+  const parts: string[] = [`Stan ${onHand}`];
+  if (zkReservedQty > 0) {
+    parts.push(`ZK ${zkReservedQty}`);
+    if (otherReserved > 0) parts.push(`inne rez. ${otherReserved}`);
+  } else if (rawReserved > 0) {
+    parts.push(`rez. ${rawReserved}`);
   }
+  parts.push(`dla ZK ${available}`);
 
-  if (input.markedForOrder) {
-    const breakdown = stockBreakdown();
-    const missing = shortfall();
-    if (breakdown && missing != null && missing > 0) {
-      return `Do zamówienia · ${breakdown} · brakuje ${missing}`;
-    }
-    if (breakdown) return `Do zamówienia · ${breakdown}`;
-    return "Do zamówienia";
-  }
-  if (input.sufficient && available != null) {
-    const breakdown = stockBreakdown();
-    if (breakdown) return breakdown;
-    return `Na stanie: ${available} szt.`;
-  }
-  if (!input.sufficient) {
-    const breakdown = stockBreakdown();
-    const missing = shortfall();
-    if (breakdown && missing != null && missing > 0) {
-      return `Do zamówienia · ${breakdown} · brakuje ${missing}`;
-    }
-    if (breakdown) return `Do zamówienia · ${breakdown}`;
-    return "Do zamówienia";
-  }
-  return "Pominięte";
+  const missing = input.zkLineQty != null && input.zkLineQty > 0
+    ? Math.max(0, input.zkLineQty - available)
+    : 0;
+  if (missing > 0) parts.push(`brakuje ${missing}`);
+
+  return parts.join(" · ");
 }
 
 /** Czy ta pozycja ma rezerwację z dodawanego ZK (rawReserved ≥ zkLineQty > 0). */

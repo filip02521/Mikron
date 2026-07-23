@@ -20,6 +20,7 @@ import {
   formatProsbaSufficientStockBanner,
   formatZkProsbaAutoMarkedHint,
   formatZkProsbaScopeLineBadge,
+  formatZkProsbaScopeLineStockDetail,
   hasZkReservation,
   isProsbaLineStockSufficient,
   isProsbaStockAckRequiredError,
@@ -229,7 +230,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
     ).toBe("Do zamówienia");
   });
 
-  it("odznaczone na stanie — pokazuje stan", () => {
+  it("odznaczone na stanie — pokazuje dostępne dla ZK", () => {
     expect(
       formatZkProsbaScopeLineBadge({
         sufficient: true,
@@ -237,38 +238,21 @@ describe("formatZkProsbaScopeLineBadge", () => {
         available: 12,
         hasStockData: true,
       })
-    ).toBe("Na stanie: 12 szt.");
+    ).toBe("Dla ZK: 12");
   });
 
-  it("częściowy stan z zaznaczeniem — pokazuje stan", () => {
-    expect(
-      formatZkProsbaScopeLineBadge({
-        sufficient: false,
-        markedForOrder: true,
-        available: 3,
-        hasStockData: true,
-        onHand: 5,
-        reserved: 2,
-        rawReserved: 2,
-      })
-    ).toBe("Do zamówienia · Stan 5 · rez. 2 · dla ZK 3");
-  });
-
-  it("częściowy stan bez zaznaczenia — do zamówienia ze stanem", () => {
+  it("częściowy stan bez zaznaczenia — do zamówienia", () => {
     expect(
       formatZkProsbaScopeLineBadge({
         sufficient: false,
         markedForOrder: false,
         available: 3,
         hasStockData: true,
-        onHand: 5,
-        reserved: 2,
-        rawReserved: 2,
       })
-    ).toBe("Do zamówienia · Stan 5 · rez. 2 · dla ZK 3");
+    ).toBe("Do zamówienia");
   });
 
-  it("brak pokrycia stanem bez zaznaczenia — do zamówienia", () => {
+  it("brak pokrycia stanem — do zamówienia", () => {
     expect(
       formatZkProsbaScopeLineBadge({
         sufficient: false,
@@ -278,53 +262,13 @@ describe("formatZkProsbaScopeLineBadge", () => {
       })
     ).toBe("Do zamówienia");
   });
+});
 
-  it("odznaczone na stanie z rezerwacją — pokazuje rezerwację", () => {
+describe("formatZkProsbaScopeLineStockDetail", () => {
+  it("sufficient z rezerwacją z tego ZK — breakdown", () => {
     expect(
-      formatZkProsbaScopeLineBadge({
+      formatZkProsbaScopeLineStockDetail({
         sufficient: true,
-        markedForOrder: false,
-        available: 8,
-        hasStockData: true,
-        onHand: 10,
-        reserved: 2,
-        rawReserved: 2,
-      })
-    ).toBe("Stan 10 · rez. 2 · dla ZK 8");
-  });
-
-  it("częściowy stan z rezerwacją — pokazuje rezerwację", () => {
-    expect(
-      formatZkProsbaScopeLineBadge({
-        sufficient: false,
-        markedForOrder: true,
-        available: 3,
-        hasStockData: true,
-        onHand: 5,
-        reserved: 2,
-        rawReserved: 2,
-      })
-    ).toBe("Do zamówienia · Stan 5 · rez. 2 · dla ZK 3");
-  });
-
-  it("brak rezerwacji — nie pokazuje sufiksu", () => {
-    expect(
-      formatZkProsbaScopeLineBadge({
-        sufficient: true,
-        markedForOrder: false,
-        available: 10,
-        hasStockData: true,
-        onHand: 10,
-        reserved: 0,
-      })
-    ).toBe("Stan 10 · dla ZK 10");
-  });
-
-  it("sufficient z rezerwacją z tego ZK — pokazuje breakdown", () => {
-    expect(
-      formatZkProsbaScopeLineBadge({
-        sufficient: true,
-        markedForOrder: false,
         available: 2,
         hasStockData: true,
         onHand: 2,
@@ -337,9 +281,8 @@ describe("formatZkProsbaScopeLineBadge", () => {
 
   it("sufficient z częściową rezerwacją z ZK i innymi rezerwacjami — pełny breakdown", () => {
     expect(
-      formatZkProsbaScopeLineBadge({
+      formatZkProsbaScopeLineStockDetail({
         sufficient: true,
-        markedForOrder: false,
         available: 5,
         hasStockData: true,
         onHand: 7,
@@ -350,11 +293,10 @@ describe("formatZkProsbaScopeLineBadge", () => {
     ).toBe("Stan 7 · ZK 3 · inne rez. 2 · dla ZK 5");
   });
 
-  it("sufficient bez rezerwacji z ZK (rawReserved=0) — pokazuje Na stanie", () => {
+  it("sufficient bez rezerwacji z ZK (rawReserved=0)", () => {
     expect(
-      formatZkProsbaScopeLineBadge({
+      formatZkProsbaScopeLineStockDetail({
         sufficient: true,
-        markedForOrder: false,
         available: 10,
         hasStockData: true,
         onHand: 10,
@@ -365,11 +307,10 @@ describe("formatZkProsbaScopeLineBadge", () => {
     ).toBe("Stan 10 · dla ZK 10");
   });
 
-  it("sufficient z innymi rezerwacjami (bez ZK) — pełny breakdown", () => {
+  it("sufficient z innymi rezerwacjami (bez ZK)", () => {
     expect(
-      formatZkProsbaScopeLineBadge({
+      formatZkProsbaScopeLineStockDetail({
         sufficient: true,
-        markedForOrder: false,
         available: 48,
         hasStockData: true,
         onHand: 50,
@@ -380,26 +321,10 @@ describe("formatZkProsbaScopeLineBadge", () => {
     ).toBe("Stan 50 · rez. 2 · dla ZK 48");
   });
 
-  it("sufficient z rezerwacją z ZK ale zaznaczone do zamówienia — pokazuje Do zamówienia", () => {
-    expect(
-      formatZkProsbaScopeLineBadge({
-        sufficient: true,
-        markedForOrder: true,
-        available: 2,
-        hasStockData: true,
-        onHand: 2,
-        reserved: 0,
-        zkLineQty: 2,
-        rawReserved: 2,
-      })
-    ).toBe("Do zamówienia · Stan 2 · ZK 2 · dla ZK 2");
-  });
-
   it("insufficient z brakami — pokazuje brakuje N", () => {
     expect(
-      formatZkProsbaScopeLineBadge({
+      formatZkProsbaScopeLineStockDetail({
         sufficient: false,
-        markedForOrder: false,
         available: 3,
         hasStockData: true,
         onHand: 5,
@@ -407,14 +332,13 @@ describe("formatZkProsbaScopeLineBadge", () => {
         rawReserved: 2,
         zkLineQty: 10,
       })
-    ).toBe("Do zamówienia · Stan 5 · ZK 2 · dla ZK 3 · brakuje 7");
+    ).toBe("Stan 5 · ZK 2 · dla ZK 3 · brakuje 7");
   });
 
-  it("insufficient z rezerwacją ZK i brakami — pokazuje brakuje N", () => {
+  it("insufficient z rezerwacją ZK i brakami", () => {
     expect(
-      formatZkProsbaScopeLineBadge({
+      formatZkProsbaScopeLineStockDetail({
         sufficient: false,
-        markedForOrder: true,
         available: 5,
         hasStockData: true,
         onHand: 10,
@@ -422,7 +346,17 @@ describe("formatZkProsbaScopeLineBadge", () => {
         rawReserved: 5,
         zkLineQty: 8,
       })
-    ).toBe("Do zamówienia · Stan 10 · ZK 5 · dla ZK 5 · brakuje 3");
+    ).toBe("Stan 10 · ZK 5 · dla ZK 5 · brakuje 3");
+  });
+
+  it("brak onHand — zwraca null", () => {
+    expect(
+      formatZkProsbaScopeLineStockDetail({
+        sufficient: false,
+        available: 0,
+        hasStockData: true,
+      })
+    ).toBe(null);
   });
 });
 

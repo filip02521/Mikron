@@ -14,8 +14,7 @@ import {
   deriveZkProsbaScopeSuggestedOrderKeys,
   formatZkProsbaAutoMarkedHint,
   formatZkProsbaScopeLineBadge,
-  hasZkReservation,
-  isZkProsbaScopePartialStock,
+  formatZkProsbaScopeLineStockDetail,
   type ZkProsbaScopeLineInput,
 } from "@/lib/orders/prosba-stock-check";
 import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
@@ -28,7 +27,6 @@ import {
 import { buildMojeClientLink } from "@/lib/sales/notepad-follow-up";
 import { formatZkWatchDisplayNumber } from "@/lib/sales/notepad-format";
 import { formatZkProsbaCoverageSummary } from "@/lib/sales/zk-watch-coverage-summary";
-import { zkWatchLineUiStateMeta } from "@/lib/sales/zk-watch-line-ui-state";
 import type { ZkWatchRefreshDiff } from "@/lib/sales/zk-watch-refresh-diff";
 import {
   buildZkWatchLineViews,
@@ -172,8 +170,6 @@ export function ZkWatchRefreshPromptModal({
     hasOpenMatchingProsba,
     linesToAddCount,
   });
-  const scopeSkippedMeta = zkWatchLineUiStateMeta("scope_excluded");
-  const scopeOrderMeta = zkWatchLineUiStateMeta("uncovered");
 
   const supplementOptions = {
     lineKeys: lineKeysToOrder,
@@ -428,19 +424,15 @@ export function ZkWatchRefreshPromptModal({
               snap != null &&
               assessProsbaLineStock({ requestedQty: line.quantity, stock: snap }) ===
                 "sufficient";
-            const partialStock = isZkProsbaScopePartialStock({
-              sufficient,
-              hasStockData: snap != null,
-              available: snap?.available ?? null,
-            });
             const rawSnap = twId ? rawStockByTwId[twId] : undefined;
-            const zkReserved = hasZkReservation({
-              zkLineQty: line.quantity,
-              rawReserved: rawSnap?.reserved ?? null,
-            });
             const stockBadgeLabel = formatZkProsbaScopeLineBadge({
               sufficient,
               markedForOrder,
+              available: snap?.available ?? null,
+              hasStockData: snap != null,
+            });
+            const stockDetail = formatZkProsbaScopeLineStockDetail({
+              sufficient,
               available: snap?.available ?? null,
               hasStockData: snap != null,
               onHand: snap?.onHand ?? null,
@@ -454,13 +446,9 @@ export function ZkWatchRefreshPromptModal({
                 <label
                   className={cn(
                     "flex cursor-pointer items-start gap-3 px-3 py-2.5 transition",
-                    markedForOrder
-                      ? "bg-indigo-50/40 hover:bg-indigo-50/55"
-                      : sufficient
-                        ? zkReserved
-                          ? "bg-emerald-50/50 hover:bg-emerald-50/65"
-                          : scopeSkippedMeta.rowTintClass
-                        : scopeOrderMeta.rowTintClass
+                    sufficient && !markedForOrder
+                      ? "bg-emerald-50/40 hover:bg-emerald-50/55"
+                      : "bg-amber-50/40 hover:bg-amber-50/55"
                   )}
                 >
                   <input
@@ -482,6 +470,11 @@ export function ZkWatchRefreshPromptModal({
                         {[line.symbol, line.quantityLabel].filter(Boolean).join(" · ")}
                       </p>
                     )}
+                    {stockDetail && (
+                      <p className="mt-0.5 text-[11px] leading-tight text-slate-400">
+                        {stockDetail}
+                      </p>
+                    )}
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
                     <Badge variant="warning" className="text-[9px]">
@@ -492,15 +485,9 @@ export function ZkWatchRefreshPromptModal({
                         className={cn(
                           salesTypography.kindTag,
                           "rounded-full px-1.5 py-0.5",
-                          markedForOrder
-                            ? partialStock
-                              ? "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80"
-                              : "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/70"
-                            : sufficient
-                              ? zkReserved
-                                ? "bg-emerald-100 text-emerald-950 ring-1 ring-emerald-200/80"
-                                : scopeSkippedMeta.badgeClass
-                              : scopeOrderMeta.badgeClass
+                          sufficient && !markedForOrder
+                            ? "bg-emerald-100 text-emerald-950 ring-1 ring-emerald-200/80"
+                            : "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80"
                         )}
                       >
                         {stockBadgeLabel}

@@ -52,6 +52,14 @@ export function useDailyPanelRunner() {
   const [flash, setFlash] = useState<ToastNotice | null>(null);
   const undoPayloadRef = useRef<DailyPanelUndoPayload | null>(null);
   const safetyTimerRef = useRef<number | null>(null);
+  const needsRefreshRef = useRef(false);
+
+  useEffect(() => {
+    if (!isPending && needsRefreshRef.current) {
+      needsRefreshRef.current = false;
+      router.refresh();
+    }
+  }, [isPending, router]);
 
   useEffect(() => {
     return () => {
@@ -127,11 +135,12 @@ export function useDailyPanelRunner() {
             setFlash(toastSuccess(successMessage));
           }
           options?.onSuccess?.();
-          router.refresh();
+          needsRefreshRef.current = true;
         } catch (e) {
           setUndo(null);
           undoPayloadRef.current = null;
           setFlash(toastFromError(e instanceof Error ? e.message : undefined, DAILY_PANEL_TOAST.genericError.text));
+          needsRefreshRef.current = true;
         } finally {
           clearSafetyTimer();
           setPendingScope(null);
@@ -139,7 +148,7 @@ export function useDailyPanelRunner() {
         }
       });
     },
-    [readOnly, router, startSafetyTimer, clearSafetyTimer]
+    [readOnly, startSafetyTimer, clearSafetyTimer]
   );
 
   const handleUndo = useCallback(() => {
@@ -164,7 +173,7 @@ export function useDailyPanelRunner() {
         setUndo(null);
         undoPayloadRef.current = null;
         setFlash(DAILY_PANEL_TOAST.undoSuccess);
-        router.refresh();
+        needsRefreshRef.current = true;
       } catch (e) {
         const message = e instanceof Error ? e.message : "Nie udało się cofnąć";
         setFlash(toastFromError(message, DAILY_PANEL_TOAST.undoFailed.text));
@@ -172,14 +181,14 @@ export function useDailyPanelRunner() {
           setUndo(null);
           undoPayloadRef.current = null;
         }
-        router.refresh();
+        needsRefreshRef.current = true;
       } finally {
         clearSafetyTimer();
         setPendingScope(null);
         setPendingMessage(null);
       }
     });
-  }, [readOnly, undo, router, startSafetyTimer, clearSafetyTimer]);
+  }, [readOnly, undo, startSafetyTimer, clearSafetyTimer]);
 
   const notify = useCallback((text: string, tone: "success" | "error" = "success") => {
     setUndo(null);
