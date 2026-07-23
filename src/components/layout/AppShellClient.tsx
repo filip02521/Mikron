@@ -196,6 +196,7 @@ export function AppShellClient({
     return <div className="min-h-dvh overflow-x-hidden">{children}</div>;
   }
 
+  const isOnMonthlySummaryPage = pathname === "/podsumowanie-miesieczne" || pathname.startsWith("/podsumowanie-miesieczne/");
   const salesLive = role ? isSalesAccount(role) : false;
   const inTeethWorkspace = procurementWorkspace === "zeby";
   const inMagazynWorkspace = procurementWorkspace === "magazyn";
@@ -335,7 +336,7 @@ export function AppShellClient({
                   <OperationsBoardQuestionsNotice />
                 ) : null}
                 {adminPanelPreview === "admin" || adminPanelPreview === "zakupy" ? (
-                  <MonthlySummaryNotice />
+                  !isOnMonthlySummaryPage ? <MonthlySummaryNotice /> : null
                 ) : null}
               </>
             ) : salesLive ? (
@@ -345,6 +346,7 @@ export function AppShellClient({
                     <SalesGlobalPinnedStrip attention={salesBoardAttention} />
                   </Suspense>
                 ) : null}
+                {!isOnMonthlySummaryPage ? <MonthlySummaryNotice /> : null}
                 <SalesUpdatesBanner />
               </>
             ) : operationsLive && !salesLive ? (
@@ -353,14 +355,20 @@ export function AppShellClient({
                   <OperationsGlobalPinnedStrip pinned={operationsPinnedAnnouncements} />
                 ) : null}
                 <OperationsBoardQuestionsNotice />
-                <MonthlySummaryNotice />
+                {!isOnMonthlySummaryPage ? <MonthlySummaryNotice /> : null}
                 <OperationsUpdatesBanner />
                 <TeethUpdatesBanner />
               </>
             ) : teethLive && !salesLive ? (
-              <TeethUpdatesBanner />
+              <>
+                {!isOnMonthlySummaryPage ? <MonthlySummaryNotice /> : null}
+                <TeethUpdatesBanner />
+              </>
             ) : magazynLive && !salesLive ? (
-              <OperationsUpdatesBanner />
+              <>
+                {!isOnMonthlySummaryPage ? <MonthlySummaryNotice /> : null}
+                <OperationsUpdatesBanner />
+              </>
             ) : null
           }
         >

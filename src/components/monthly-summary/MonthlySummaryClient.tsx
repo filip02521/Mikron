@@ -17,9 +17,9 @@ import type { MonthlyStats, MonthlySummaryTab } from "@/lib/data/monthly-stats";
 import { isMonthlySummaryAvailable } from "@/lib/data/monthly-stats";
 
 const TAB_META: Record<MonthlySummaryTab, { label: string; hint: string; icon: string }> = {
-  handlowcy: { label: "Handlowcy", hint: "Statystyki prośb i ZK per handlowiec", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
-  dostawy: { label: "Dostawy", hint: "Przyjęte paczki, palety i kurierzy", icon: "M3 7h11v10H3zM14 10h4l3 3v4h-7" },
-  zakupy: { label: "Zakupy", hint: "Zamówienia u dostawców i czasy realizacji", icon: "M3 3h2l2.4 12.5a2 2 0 002 1.5h7.7a2 2 0 002-1.6L21 8H6" },
+  handlowcy: { label: "Handlowcy", hint: "Złożone prośby i dokumenty ZK dla każdego handlowca", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
+  dostawy: { label: "Dostawy", hint: "Przyjęcia towaru wg kurierów z podziałem na paczki i palety", icon: "M3 7h11v10H3zM14 10h4l3 3v4h-7" },
+  zakupy: { label: "Zakupy", hint: "Zamówienia u dostawców, czasy realizacji i ranking", icon: "M3 3h2l2.4 12.5a2 2 0 002 1.5h7.7a2 2 0 002-1.6L21 8H6" },
 };
 
 const TAB_ORDER: MonthlySummaryTab[] = ["handlowcy", "dostawy", "zakupy"];
@@ -42,20 +42,22 @@ const TONE_STYLES: Record<string, { bg: string; text: string; ring: string; icon
 };
 
 const STAT_ICONS: Record<string, string> = {
-  "Łącznie próśb": "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 5a2 2 0 002 2h2a2 2 0 002-2",
-  "Zrealizowane": "M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-  "Anulowane": "M10 14L21 3M21 3v6M21 3h-6M21 14a7 7 0 11-14 0 7 7 0 0114 0z",
-  "ZK zamknięte": "M5 13l4 4L19 7",
-  "ZK otwarte": "M12 8v4l3 3M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-  "Skuteczność": "M3 3v18h18M7 14l4-4 3 3 5-5",
-  "Łącznie przyjęć": "M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z",
-  "Paczki": "M3 7h18v10H3zM3 7l3-4h12l3 4",
-  "Palety": "M3 7h18v10H3zM7 7v10M11 7v10M15 7v10",
-  "Zamówienia": "M3 3h2l2.4 12.5a2 2 0 002 1.5h7.7a2 2 0 002-1.6L21 8H6",
-  "Główne": "M11 3a8 8 0 100 16 8 8 0 000-16zM11 7v4l3 2",
-  "Poboczne": "M19 21l-7-5-7 5M5 3v18M19 3v18",
-  "Informacje": "M12 16v-4M12 8h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
-  "Śr. czas realizacji": "M12 8v4l3 3M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+  "Wszystkie złożone prośby": "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 5a2 2 0 002 2h2a2 2 0 002-2",
+  "Zrealizowane prośby": "M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+  "Anulowane prośby": "M10 14L21 3M21 3v6M21 3h-6M21 14a7 7 0 11-14 0 7 7 0 0114 0z",
+  "Zamknięte dokumenty ZK": "M5 13l4 4L19 7",
+  "Otwarte dokumenty ZK": "M12 8v4l3 3M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+  "Wskaźnik skuteczności": "M3 3v18h18M7 14l4-4 3 3 5-5",
+  "Liczba przyjęć towaru": "M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z",
+  "Paczki łącznie": "M3 7h18v10H3zM3 7l3-4h12l3 4",
+  "Palety łącznie": "M3 7h18v10H3zM7 7v10M11 7v10M15 7v10",
+  "Wszystkie zamówienia": "M3 3h2l2.4 12.5a2 2 0 002 1.5h7.7a2 2 0 002-1.6L21 8H6",
+  "Zamówienia główne": "M11 3a8 8 0 100 16 8 8 0 000-16zM11 7v4l3 2",
+  "Zamówienia poboczne": "M19 21l-7-5-7 5M5 3v18M19 3v18",
+  "Zlecenia informacyjne": "M12 16v-4M12 8h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+  "Zrealizowane zamówienia": "M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+  "Anulowane zamówienia": "M10 14L21 3M21 3v6M21 3h-6M21 14a7 7 0 11-14 0 7 7 0 0114 0z",
+  "Średni czas realizacji": "M12 8v4l3 3M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
 };
 
 function StatCard({
@@ -132,7 +134,7 @@ function MonthSelector({
           <line x1="8" y1="2" x2="8" y2="6" />
           <line x1="3" y1="10" x2="21" y2="10" />
         </svg>
-        Miesiąc
+        Wybierz miesiąc
       </span>
       <div className="flex flex-wrap gap-1.5">
         {availableMonths.map((m) => {
@@ -233,9 +235,9 @@ function TopPerformerCard({ name, requests, completed, zkClosed }: { name: strin
           <p className="text-[11px] font-semibold uppercase tracking-wide text-indigo-600">Lider miesiąca</p>
           <p className="mt-0.5 truncate text-lg font-bold text-slate-900">{name}</p>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
-            <span><strong className="tabular-nums text-slate-900">{requests}</strong> próśb</span>
-            <span><strong className="tabular-nums text-emerald-700">{completed}</strong> zrealizowanych</span>
-            <span><strong className="tabular-nums text-violet-700">{zkClosed}</strong> ZK zamkniętych</span>
+            <span><strong className="tabular-nums text-slate-900">{requests}</strong> złożonych próśb</span>
+            <span><strong className="tabular-nums text-emerald-700">{completed}</strong> zrealizowanych próśb</span>
+            <span><strong className="tabular-nums text-violet-700">{zkClosed}</strong> zamkniętych ZK</span>
           </div>
         </div>
       </div>
@@ -271,16 +273,16 @@ function SalesTab({ stats }: { stats: MonthlyStats }) {
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <StatCard label="Łącznie próśb" value={totalRequests} tone="indigo" />
-        <StatCard label="Zrealizowane" value={totalCompleted} tone="emerald" progress={successRate} />
-        <StatCard label="Anulowane" value={totalCancelled} tone="amber" hint={totalRequests > 0 ? `${Math.round((totalCancelled / totalRequests) * 100)}% wszystkich` : undefined} />
-        <StatCard label="ZK zamknięte" value={totalZkClosed} tone="violet" />
-        <StatCard label="ZK otwarte" value={totalZkOpen} tone="sky" />
+        <StatCard label="Wszystkie złożone prośby" value={totalRequests} tone="indigo" hint="Łączna liczba próśb od handlowców" />
+        <StatCard label="Zrealizowane prośby" value={totalCompleted} tone="emerald" hint={totalRequests > 0 ? `${Math.round((totalCompleted / totalRequests) * 100)}% wszystkich złożonych` : undefined} progress={successRate} />
+        <StatCard label="Anulowane prośby" value={totalCancelled} tone="amber" hint={totalRequests > 0 ? `${Math.round((totalCancelled / totalRequests) * 100)}% wszystkich złożonych` : undefined} />
+        <StatCard label="Zamknięte dokumenty ZK" value={totalZkClosed} tone="violet" hint="Dokumenty ZK zamknięte w tym miesiącu" />
+        <StatCard label="Otwarte dokumenty ZK" value={totalZkOpen} tone="sky" hint="Dokumenty ZK oczekujące na zamknięcie" />
         <StatCard
-          label="Skuteczność"
+          label="Wskaźnik skuteczności"
           value={`${successRate}%`}
           tone="slate"
-          hint="Zrealizowane / łącznie próśb"
+          hint="Stosunek zrealizowanych do wszystkich złożonych próśb"
           progress={successRate}
         />
       </div>
@@ -298,12 +300,12 @@ function SalesTab({ stats }: { stats: MonthlyStats }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-left text-[11px] uppercase tracking-wide text-slate-500">
-                <th className="px-4 py-2.5 font-medium">#</th>
+                <th className="px-4 py-2.5 font-medium">Miejsce</th>
                 <th className="px-4 py-2.5 font-medium">Handlowiec</th>
-                <th className="px-4 py-2.5 text-right font-medium">Próśb</th>
-                <th className="px-4 py-2.5 text-right font-medium">Zrealiz.</th>
-                <th className="px-4 py-2.5 text-right font-medium">Anulow.</th>
-                <th className="px-4 py-2.5 text-right font-medium">ZK zamkn.</th>
+                <th className="px-4 py-2.5 text-right font-medium">Złożone prośby</th>
+                <th className="px-4 py-2.5 text-right font-medium">Zrealizowane</th>
+                <th className="px-4 py-2.5 text-right font-medium">Anulowane</th>
+                <th className="px-4 py-2.5 text-right font-medium">ZK zamknięte</th>
                 <th className="px-4 py-2.5 text-right font-medium">ZK otwarte</th>
               </tr>
             </thead>
@@ -386,12 +388,12 @@ function DeliveryTab({ stats }: { stats: MonthlyStats }) {
               </svg>
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-600">Najwięcej przyjęć</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-600">Kurier z największą liczbą przyjęć</p>
               <p className="mt-0.5 truncate text-lg font-bold text-slate-900">
                 {CARRIER_LABELS[topCarrier.carrier] ?? topCarrier.carrier}
               </p>
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
-                <span><strong className="tabular-nums text-slate-900">{topCarrier.count}</strong> przyjęć</span>
+                <span><strong className="tabular-nums text-slate-900">{topCarrier.count}</strong> przyjęć towaru</span>
                 <span><strong className="tabular-nums text-sky-700">{topCarrier.packages}</strong> paczek</span>
                 <span><strong className="tabular-nums text-amber-700">{topCarrier.pallets}</strong> palet</span>
               </div>
@@ -401,9 +403,9 @@ function DeliveryTab({ stats }: { stats: MonthlyStats }) {
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatCard label="Łącznie przyjęć" value={delivery.totalReceipts} tone="emerald" />
-        <StatCard label="Paczki" value={delivery.totalPackages} tone="sky" />
-        <StatCard label="Palety" value={delivery.totalPallets} tone="amber" />
+        <StatCard label="Liczba przyjęć towaru" value={delivery.totalReceipts} tone="emerald" hint="Wszystkie zarejestrowane przyjęcia na magazyn" />
+        <StatCard label="Paczki łącznie" value={delivery.totalPackages} tone="sky" hint="Suma paczek ze wszystkich przyjęć" />
+        <StatCard label="Palety łącznie" value={delivery.totalPallets} tone="amber" hint="Suma palet ze wszystkich przyjęć" />
       </div>
 
       {delivery.byCarrier.length > 0 ? (
@@ -415,7 +417,7 @@ function DeliveryTab({ stats }: { stats: MonthlyStats }) {
               <circle cx="17" cy="18" r="2" />
             </svg>
             <h3 className={cn(panelTypography.rowTitle, "font-semibold text-slate-900")}>
-              Według kuriera
+              Przyjęcia wg kuriera
             </h3>
           </div>
           <div className="divide-y divide-slate-50">
@@ -439,6 +441,7 @@ function DeliveryTab({ stats }: { stats: MonthlyStats }) {
                     <div className="mt-1.5 flex gap-4 text-[11px] text-slate-500">
                       <span><strong className="tabular-nums text-sky-700">{c.packages}</strong> paczek</span>
                       <span><strong className="tabular-nums text-amber-700">{c.pallets}</strong> palet</span>
+                      <span className="text-slate-400">z {c.count} przyjęć</span>
                     </div>
                   </div>
                 </div>
@@ -477,11 +480,11 @@ function ProcurementTab({ stats }: { stats: MonthlyStats }) {
               </svg>
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-600">Najaktywniejszy dostawca</p>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-600">Najbardziej aktywny dostawca</p>
               <p className="mt-0.5 truncate text-lg font-bold text-slate-900">{topSupplier.supplierName}</p>
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
-                <span><strong className="tabular-nums text-slate-900">{topSupplier.orders}</strong> zamówień</span>
-                <span><strong className="tabular-nums text-emerald-700">{topSupplier.completed}</strong> zrealizowanych</span>
+                <span><strong className="tabular-nums text-slate-900">{topSupplier.orders}</strong> złożonych zamówień</span>
+                <span><strong className="tabular-nums text-emerald-700">{topSupplier.completed}</strong> zrealizowanych zamówień</span>
               </div>
             </div>
           </div>
@@ -489,23 +492,23 @@ function ProcurementTab({ stats }: { stats: MonthlyStats }) {
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Zamówienia" value={procurement.totalOrders} tone="indigo" />
-        <StatCard label="Główne" value={procurement.mainOrders} tone="emerald" progress={procurement.totalOrders > 0 ? Math.round((procurement.mainOrders / procurement.totalOrders) * 100) : 0} />
-        <StatCard label="Poboczne" value={procurement.sideOrders} tone="sky" />
-        <StatCard label="Informacje" value={procurement.informacjaCount} tone="slate" />
-        <StatCard label="Zrealizowane" value={procurement.completedOrders} tone="emerald" progress={successRate} />
-        <StatCard label="Anulowane" value={procurement.cancelledOrders} tone="amber" />
+        <StatCard label="Wszystkie zamówienia" value={procurement.totalOrders} tone="indigo" hint="Łączna liczba zamówień u dostawców" />
+        <StatCard label="Zamówienia główne" value={procurement.mainOrders} tone="emerald" hint={procurement.totalOrders > 0 ? `${Math.round((procurement.mainOrders / procurement.totalOrders) * 100)}% wszystkich zamówień` : undefined} progress={procurement.totalOrders > 0 ? Math.round((procurement.mainOrders / procurement.totalOrders) * 100) : 0} />
+        <StatCard label="Zamówienia poboczne" value={procurement.sideOrders} tone="sky" hint={procurement.totalOrders > 0 ? `${Math.round((procurement.sideOrders / procurement.totalOrders) * 100)}% wszystkich zamówień` : undefined} />
+        <StatCard label="Zlecenia informacyjne" value={procurement.informacjaCount} tone="slate" hint="Zapytania informacyjne (nie zamówienia)" />
+        <StatCard label="Zrealizowane zamówienia" value={procurement.completedOrders} tone="emerald" hint={procurement.totalOrders > 0 ? `${successRate}% wszystkich zamówień` : undefined} progress={successRate} />
+        <StatCard label="Anulowane zamówienia" value={procurement.cancelledOrders} tone="amber" hint={procurement.totalOrders > 0 ? `${Math.round((procurement.cancelledOrders / procurement.totalOrders) * 100)}% wszystkich zamówień` : undefined} />
         <StatCard
-          label="Śr. czas realizacji"
-          value={procurement.avgDeliveryDays != null ? `${procurement.avgDeliveryDays} dni` : "—"}
+          label="Średni czas realizacji"
+          value={procurement.avgDeliveryDays != null ? `${procurement.avgDeliveryDays} dni` : "brak danych"}
           tone="violet"
-          hint="Od zamówienia do dostawy"
+          hint="Od zamówienia u dostawcy do dostawy (średnia)"
         />
         <StatCard
-          label="Skuteczność"
+          label="Wskaźnik skuteczności"
           value={`${successRate}%`}
           tone="slate"
-          hint="Zrealizowane / łącznie zamówień"
+          hint="Stosunek zrealizowanych do wszystkich zamówień"
           progress={successRate}
         />
       </div>
@@ -519,7 +522,7 @@ function ProcurementTab({ stats }: { stats: MonthlyStats }) {
               <circle cx="18" cy="20" r="1" />
             </svg>
             <h3 className={cn(panelTypography.rowTitle, "font-semibold text-slate-900")}>
-              Top dostawcy
+              Ranking dostawców
             </h3>
           </div>
           <div className="divide-y divide-slate-50">
@@ -549,9 +552,9 @@ function ProcurementTab({ stats }: { stats: MonthlyStats }) {
                       <span className="shrink-0 text-[10px] tabular-nums text-slate-500">{pct}%</span>
                     </div>
                     <div className="mt-1 text-[11px] text-slate-500">
-                      <strong className="tabular-nums text-emerald-700">{s.completed}</strong> zrealizowanych
+                      <strong className="tabular-nums text-emerald-700">{s.completed}</strong> zrealizowanych zamówień
                       <span className="mx-1.5 text-slate-300">·</span>
-                      <span className="tabular-nums">{completionRate}% skuteczności</span>
+                      <span className="tabular-nums">{completionRate}% skuteczności realizacji</span>
                     </div>
                   </div>
                 </div>
@@ -573,6 +576,10 @@ export function MonthlySummaryClient({ stats }: { stats: MonthlyStats }) {
   );
 
   const showBanner = useMemo(() => isMonthlySummaryAvailable(), []);
+  const quote = useMemo(() => {
+    const idx = parseInt(stats.monthKey.split("-")[1] ?? "1", 10) - 1;
+    return MOTIVATIONAL_QUOTES[idx % MOTIVATIONAL_QUOTES.length];
+  }, [stats.monthKey]);
 
   function handleTabChange(tab: MonthlySummaryTab) {
     setActiveTab(tab);
@@ -590,9 +597,9 @@ export function MonthlySummaryClient({ stats }: { stats: MonthlyStats }) {
   return (
     <div className={cn(panelWorkspaceShellClass, "space-y-5")}>
       {showBanner ? (
-        <div className="flex items-center gap-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <div className="flex items-center gap-3 rounded-xl border border-indigo-200/70 bg-gradient-to-r from-indigo-50 to-violet-50 px-4 py-3 shadow-sm">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
               <line x1="16" y1="2" x2="16" y2="6" />
               <line x1="8" y1="2" x2="8" y2="6" />
@@ -604,25 +611,47 @@ export function MonthlySummaryClient({ stats }: { stats: MonthlyStats }) {
               Dostępne jest podsumowanie za {stats.monthLabel}
             </p>
             <p className="text-xs text-indigo-700">
-              Sprawdź statystyki swojego zespołu na początki miesiąca.
+              Sprawdź statystyki zespołu za miniony miesiąc.
             </p>
           </div>
         </div>
       ) : null}
 
       <Card padding={false}>
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 px-5 py-4">
-          <div>
-            <h1 className="text-lg font-bold tracking-tight text-slate-900">
-              Podsumowanie miesiąca
-            </h1>
-            <p className="mt-0.5 text-sm text-slate-500">{stats.monthLabel}</p>
+        <div className="relative overflow-hidden border-b border-slate-100 px-5 py-5">
+          <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-indigo-50/50 blur-3xl" />
+          <div className="relative flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-md shadow-indigo-600/15">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 3v18h18" />
+                    <path d="M7 14l4-4 3 3 5-5" />
+                  </svg>
+                </span>
+                <div>
+                  <h1 className={cn("text-xl font-bold tracking-tight", brandGradientTextClass)}>
+                    Podsumowanie miesiąca
+                  </h1>
+                  <p className="mt-0.5 text-sm font-medium text-slate-500">{stats.monthLabel}</p>
+                </div>
+              </div>
+            </div>
+            <MonthSelector
+              availableMonths={stats.availableMonths}
+              currentKey={stats.monthKey}
+              onSelect={handleMonthSelect}
+            />
           </div>
-          <MonthSelector
-            availableMonths={stats.availableMonths}
-            currentKey={stats.monthKey}
-            onSelect={handleMonthSelect}
-          />
+        </div>
+
+        <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50/40 px-5 py-3">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-violet-400">
+            <path d="M6 17l6-5 6 5M6 12l6-5 6 5" />
+          </svg>
+          <p className="text-xs italic leading-relaxed text-slate-500">
+            {quote}
+          </p>
         </div>
 
         <div className="px-5 pt-4">

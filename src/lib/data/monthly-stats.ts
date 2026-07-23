@@ -63,22 +63,31 @@ export function monthLabelFromKey(key: string): string {
   return `${MONTH_LABELS_PL[monthIdx]} ${year}`;
 }
 
-function startOfMonthISO(key: string): string {
-  return `${key}-01T00:00:00.000Z`;
-}
-
-function endOfMonthISO(key: string): string {
-  const [yearStr, monthStr] = key.split("-");
-  const year = Number(yearStr);
+/** Zwraca offset strefy warszawskiej dla danego miesiąca (+01:00 lub +02:00). */
+function warsawOffsetForMonth(key: string): string {
+  const [, monthStr] = key.split("-");
   const month = Number(monthStr);
-  if (isNaN(year) || isNaN(month)) return new Date().toISOString();
-  const nextMonth = month === 12 ? 1 : month + 1;
-  const nextYear = month === 12 ? year + 1 : year;
-  return `${nextYear}-${String(nextMonth).padStart(2, "0")}-01T00:00:00.000Z`;
+  // DST w Europie: ostatnia niedziela marca → ostatnia niedziela października
+  // Miesiące letnie (IV–IX) zawsze +02:00; marzec zależy od dnia, październik też,
+  // ale dla pierwszego dnia miesiąca wystarczy sprawdzić czy to miesiąc DST.
+  const isDST = month >= 4 && month <= 9;
+  // Dla marca: DST zaczyna się od ostatniej niedzieli — 1 marca jest zawsze CET
+  // Dla października: DST kończy się ostatniej niedzieli — 1 paź jest zawsze CEST
+  if (month === 10) return "+02:00";
+  if (month === 3) return "+01:00";
+  return isDST ? "+02:00" : "+01:00";
 }
 
 function warsawMonthStart(key: string): string {
-  return `${key}-01T00:00:00+02:00`;
+  return `${key}-01T00:00:00${warsawOffsetForMonth(key)}`;
+}
+
+/** Wyciąga klucz miesiąca (YYYY-MM) z ISO timestamp w strefie warszawskiej. */
+function warsawMonthKeyFromISO(iso: string): string {
+  const d = new Date(iso);
+  // Przesuń o 2h (max offset warszawski) żeby dostać lokalny czas, potem użyj UTC
+  const waw = new Date(d.getTime() + 2 * 60 * 60 * 1000);
+  return `${waw.getUTCFullYear()}-${String(waw.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
 function warsawMonthEnd(key: string): string {
@@ -88,7 +97,8 @@ function warsawMonthEnd(key: string): string {
   if (isNaN(year) || isNaN(month)) return new Date().toISOString();
   const nextMonth = month === 12 ? 1 : month + 1;
   const nextYear = month === 12 ? year + 1 : year;
-  return `${nextYear}-${String(nextMonth).padStart(2, "0")}-01T00:00:00+02:00`;
+  const nextKey = `${nextYear}-${String(nextMonth).padStart(2, "0")}`;
+  return `${nextKey}-01T00:00:00${warsawOffsetForMonth(nextKey)}`;
 }
 
 export async function fetchAvailableMonths(limit = 12): Promise<{ key: string; label: string }[]> {
@@ -111,13 +121,13 @@ export async function fetchAvailableMonths(limit = 12): Promise<{ key: string; l
   for (const row of data ?? []) {
     const iso = (row as { action_at: string }).action_at;
     if (!iso) continue;
-    const d = new Date(iso);
-    months.add(monthKeyFromDate(d));
+    const key = warsawMonthKeyFromISO(iso);
+    months.add(key);
     if (months.size >= limit) break;
   }
 
   const now = new Date();
-  months.add(monthKeyFromDate(now));
+  months.add(warsawMonthKeyFromISO(now.toISOString()));
 
   const sorted = [...months].sort((a, b) => b.localeCompare(a)).slice(0, limit);
   return sorted.map((key) => ({ key, label: monthLabelFromKey(key) }));
@@ -147,8 +157,6 @@ export async function fetchMonthlyStats(monthKey: string): Promise<MonthlyStats>
   }
 
   const supabase = createAdminClient();
-  const monthStart = startOfMonthISO(monthKey);
-  const monthEnd = endOfMonthISO(monthKey);
   const wawStart = warsawMonthStart(monthKey);
   const wawEnd = warsawMonthEnd(monthKey);
 
@@ -156,8 +164,8 @@ export async function fetchMonthlyStats(monthKey: string): Promise<MonthlyStats>
     supabase
       .from("individual_orders")
       .select("id, sales_person_id, request_kind, status, order_type, action_at, delivery_at, ordered_at, supplier_id, supplier:suppliers(name)")
-      .gte("action_at", monthStart)
-      .lt("action_at", monthEnd),
+      .gte("action_at", wawStart)
+      .lt("action_at", wawEnd),
     supabase
       .from("sales_zk_watches")
       .select("id, sales_person_id, closed_at, archived_at, created_at")
@@ -249,12 +257,14 @@ export async function fetchMonthlyStats(monthKey: string): Promise<MonthlyStats>
       salesMap.set(order.sales_person_id, fallback);
       continue;
     }
+    if (order.request_kind === "informacja") continue;
     stat.requestsCreated++;
     if (order.status === "Zrealizowane") stat.requestsCompleted++;
     if (order.status === "Anulowane") stat.requestsCancelled++;
   }
 
   const sales = [...salesMap.values()]
+    .filter((s) => s.salesPersonName !== "STAN")
     .filter((s) => s.requestsCreated > 0 || s.zkClosed > 0 || s.zkOpen > 0)
     .sort((a, b) => b.requestsCreated - a.requestsCreated);
 

@@ -26,7 +26,8 @@ export type NavIconKey =
   | "team"
   | "teamAccounts"
   | "teamGroups"
-  | "teeth";
+  | "teeth"
+  | "chartTrend";
 
 export type NavTone = "indigo" | "amber" | "orange" | "emerald" | "sky" | "slate" | "violet";
 
@@ -295,6 +296,18 @@ export function teethNavGroups(badges: NavBadges = {}): NavGroup[] {
     { title: NAV_SECTION_TODAY, items: teethTodayNavItems(badges) },
     { title: NAV_SECTION_SUPPLIERS, items: teethSupplierNavItems() },
     { title: NAV_SECTION_TEAM, items: teethTeamNavItems(badges) },
+    { title: NAV_SECTION_TOOLS, items: [
+      {
+        href: "/podsumowanie-miesieczne",
+        label: "Podsumowanie miesiąca",
+        mobileLabel: "Miesiąc",
+        description: "Statystyki miesięczne — handlowcy, dostawy, zakupy",
+        icon: "chartTrend",
+        tone: "violet",
+        tier: "compact",
+        mobileSlot: "overflow",
+      },
+    ] },
   ];
 }
 
@@ -468,7 +481,7 @@ const archiveToolItems: NavItem[] = [
     label: "Podsumowanie miesiąca",
     mobileLabel: "Miesiąc",
     description: "Statystyki miesięczne — handlowcy, dostawy, zakupy",
-    icon: "history",
+    icon: "chartTrend",
     tone: "violet",
     tier: "compact",
     mobileSlot: "overflow",
@@ -605,6 +618,16 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
           description: "Urlopy działu — kto jest niedostępny",
           icon: "vacation",
           tone: "indigo",
+          tier: "compact",
+          mobileSlot: "overflow",
+        },
+        {
+          href: "/podsumowanie-miesieczne",
+          label: "Podsumowanie miesiąca",
+          mobileLabel: "Miesiąc",
+          description: "Statystyki miesięczne — handlowcy, dostawy, zakupy",
+          icon: "chartTrend",
+          tone: "violet",
           tier: "compact",
           mobileSlot: "overflow",
         },
@@ -755,6 +778,16 @@ export function navForRole(
       tier: "primary",
       mobileSlot: "primary",
       badge: badges.salesTablica,
+    },
+    {
+      href: "/podsumowanie-miesieczne",
+      label: "Podsumowanie miesiąca",
+      mobileLabel: "Miesiąc",
+      description: "Statystyki miesięczne — handlowcy, dostawy, zakupy",
+      icon: "chartTrend",
+      tone: "violet",
+      tier: "compact",
+      mobileSlot: "overflow",
     },
   ];
 

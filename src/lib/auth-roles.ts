@@ -81,7 +81,6 @@ const WAREHOUSE_PATH_PREFIXES = ["/kolejka", "/dostawy", "/notatki", "/ustawieni
 
 const OPERATIONS_PATH_PREFIXES = [
   "/podsumowanie",
-  "/podsumowanie-miesieczne",
   "/kolejka",
   "/dostawy",
   "/historia",
@@ -155,6 +154,9 @@ function canAccessPathForRole(
     return canAccessOperations(role, ws);
   }
   if (pathname === "/zespol/urlopy" && isSalesAccount(role)) return true;
+  if (pathname === "/podsumowanie-miesieczne" || pathname.startsWith("/podsumowanie-miesieczne/")) {
+    return true;
+  }
   if (pathname === "/urlopy" || pathname.startsWith("/urlopy/")) {
     return !isSalesAccount(role);
   }

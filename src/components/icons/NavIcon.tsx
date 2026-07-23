@@ -3,6 +3,7 @@ import {
   IconBuilding,
   IconCalendar,
   IconCalendarRange,
+  IconChartTrend,
   IconClipboardList,
   IconClipboardPen,
   IconInbox,
@@ -51,10 +52,12 @@ const NAV_ICON_BY_KEY: Record<
   teamAccounts: IconUserCog,
   teamGroups: IconUserGroup,
   teeth: IconTooth,
+  chartTrend: IconChartTrend,
 };
 
 const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
   "/podsumowanie": "dailyPanel",
+  "/podsumowanie-miesieczne": "chartTrend",
   "/weryfikacja": "verification",
   "/kolejka": "warehouse",
   "/dostawy": "schedule",

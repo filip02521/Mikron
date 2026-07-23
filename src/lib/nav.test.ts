@@ -158,12 +158,13 @@ describe("navForRole struktura zakupów", () => {
 });
 
 describe("teethNavGroups", () => {
-  it("ma sekcje Dziś, Dostawcy i Zespół (workflow od góry)", () => {
+  it("ma sekcje Dziś, Dostawcy, Zespół i Narzędzia (workflow od góry)", () => {
     const groups = teethNavGroups();
     expect(groups.map((g) => g.title)).toEqual([
       NAV_SECTION_TODAY,
       NAV_SECTION_SUPPLIERS,
       NAV_SECTION_TEAM,
+      NAV_SECTION_TOOLS,
     ]);
   });
 
@@ -204,6 +205,7 @@ describe("teethNavGroups", () => {
       "Tablica",
       "Notatki",
       "Urlopy działu",
+      "Podsumowanie miesiąca",
     ]);
     expect(overflow.every((item) => item.tier === "compact")).toBe(true);
   });
@@ -237,6 +239,7 @@ describe("navForRole zakupy_zeby", () => {
       NAV_SECTION_TODAY,
       NAV_SECTION_SUPPLIERS,
       NAV_SECTION_TEAM,
+      NAV_SECTION_TOOLS,
     ]);
   });
 

@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { fetchMonthlyStats } from "@/lib/data/monthly-stats";
 import { getSessionUser } from "@/lib/auth";
-import { canAccessOperations } from "@/lib/auth-roles";
 import { Alert } from "@/components/ui/Alert";
 import { MonthlySummaryClient } from "@/components/monthly-summary/MonthlySummaryClient";
 import { PanelRouteLoading } from "@/components/layout/PanelRouteLoading";
@@ -30,13 +29,11 @@ export default async function MonthlySummaryPage({
 }) {
   const session = await getSessionUser();
   const role = session?.role ?? null;
-  const workspaces = session?.assignedWorkspaces ?? [];
-  const canView = role ? canAccessOperations(role, workspaces) : false;
 
-  if (!canView) {
+  if (!role) {
     return (
       <div className={cn(panelWorkspaceShellClass, "rounded-lg border border-slate-200 bg-white p-6")}>
-        <Alert tone="warning">Nie masz uprawnień do podglądu tego panelu.</Alert>
+        <Alert tone="warning">Zaloguj się, aby zobaczyć podsumowanie miesiąca.</Alert>
       </div>
     );
   }
