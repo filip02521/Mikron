@@ -14,6 +14,7 @@ import {
   deriveZkProsbaScopeSuggestedOrderKeys,
   formatZkProsbaAutoMarkedHint,
   formatZkProsbaScopeLineBadge,
+  hasZkReservation,
   isZkProsbaScopePartialStock,
   type ZkProsbaScopeLineInput,
 } from "@/lib/orders/prosba-stock-check";
@@ -433,6 +434,10 @@ export function ZkWatchRefreshPromptModal({
               available: snap?.available ?? null,
             });
             const rawSnap = twId ? rawStockByTwId[twId] : undefined;
+            const zkReserved = hasZkReservation({
+              zkLineQty: line.quantity,
+              rawReserved: rawSnap?.reserved ?? null,
+            });
             const stockBadgeLabel = formatZkProsbaScopeLineBadge({
               sufficient,
               markedForOrder,
@@ -452,7 +457,9 @@ export function ZkWatchRefreshPromptModal({
                     markedForOrder
                       ? "bg-indigo-50/40 hover:bg-indigo-50/55"
                       : sufficient
-                        ? scopeSkippedMeta.rowTintClass
+                        ? zkReserved
+                          ? "bg-emerald-50/50 hover:bg-emerald-50/65"
+                          : scopeSkippedMeta.rowTintClass
                         : scopeOrderMeta.rowTintClass
                   )}
                 >
@@ -490,7 +497,9 @@ export function ZkWatchRefreshPromptModal({
                               ? "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80"
                               : "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/70"
                             : sufficient
-                              ? scopeSkippedMeta.badgeClass
+                              ? zkReserved
+                                ? "bg-emerald-100 text-emerald-950 ring-1 ring-emerald-200/80"
+                                : scopeSkippedMeta.badgeClass
                               : scopeOrderMeta.badgeClass
                         )}
                       >

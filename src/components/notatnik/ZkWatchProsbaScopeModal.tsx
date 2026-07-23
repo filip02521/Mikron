@@ -15,6 +15,7 @@ import {
   deriveZkProsbaScopeSuggestedOrderKeys,
   formatZkProsbaAutoMarkedHint,
   formatZkProsbaScopeLineBadge,
+  hasZkReservation,
   isZkProsbaScopePartialStock,
   zkProsbaScopeAllLinesSufficient,
   zkProsbaScopeLineKeysToOrder,
@@ -330,6 +331,10 @@ export function ZkWatchProsbaScopeModal({
               available: snap?.available ?? null,
             });
             const rawSnap = twId ? rawStockByTwId[twId] : undefined;
+            const zkReserved = hasZkReservation({
+              zkLineQty: line.quantity,
+              rawReserved: rawSnap?.reserved ?? null,
+            });
             const stockBadgeLabel = formatZkProsbaScopeLineBadge({
               sufficient,
               markedForOrder,
@@ -349,7 +354,9 @@ export function ZkWatchProsbaScopeModal({
                     markedForOrder
                       ? "bg-indigo-50/50 hover:bg-indigo-50/70"
                       : sufficient
-                        ? cn(scopeSkippedMeta.rowTintClass, "hover:bg-slate-50/80")
+                        ? zkReserved
+                          ? "bg-emerald-50/50 hover:bg-emerald-50/70"
+                          : cn(scopeSkippedMeta.rowTintClass, "hover:bg-slate-50/80")
                         : cn(scopeOrderMeta.rowTintClass, "hover:bg-slate-50/80")
                   )}
                 >
@@ -384,7 +391,9 @@ export function ZkWatchProsbaScopeModal({
                           ? "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80"
                           : "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/70"
                         : sufficient
-                          ? scopeSkippedMeta.badgeClass
+                          ? zkReserved
+                            ? "bg-emerald-100 text-emerald-950 ring-1 ring-emerald-200/80"
+                            : scopeSkippedMeta.badgeClass
                           : scopeOrderMeta.badgeClass
                     )}
                   >

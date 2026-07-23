@@ -239,6 +239,18 @@ export function formatZkProsbaScopeLineBadge(input: {
   return "Pominięte";
 }
 
+/** Czy ta pozycja ma rezerwację z dodawanego ZK (rawReserved ≥ zkLineQty > 0). */
+export function hasZkReservation(input: {
+  zkLineQty?: number | null;
+  rawReserved?: number | null;
+}): boolean {
+  return (
+    input.zkLineQty != null &&
+    input.zkLineQty > 0 &&
+    (input.rawReserved ?? 0) > 0
+  );
+}
+
 export function isZkProsbaScopePartialStock(input: {
   sufficient: boolean;
   hasStockData: boolean;

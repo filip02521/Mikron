@@ -20,6 +20,7 @@ import {
   formatProsbaSufficientStockBanner,
   formatZkProsbaAutoMarkedHint,
   formatZkProsbaScopeLineBadge,
+  hasZkReservation,
   isProsbaLineStockSufficient,
   isProsbaStockAckRequiredError,
   isZkProsbaScopePartialStock,
@@ -809,5 +810,24 @@ describe("adjustStockMapForZkLines", () => {
     expect(adjusted[2]?.reserved).toBe(0);
     expect(adjusted[2]?.available).toBe(5);
     expect(adjusted[1]).toBeUndefined();
+  });
+});
+
+describe("hasZkReservation", () => {
+  it("true gdy zkLineQty > 0 i rawReserved > 0", () => {
+    expect(hasZkReservation({ zkLineQty: 2, rawReserved: 2 })).toBe(true);
+    expect(hasZkReservation({ zkLineQty: 2, rawReserved: 5 })).toBe(true);
+  });
+
+  it("false gdy zkLineQty = 0 lub null", () => {
+    expect(hasZkReservation({ zkLineQty: 0, rawReserved: 5 })).toBe(false);
+    expect(hasZkReservation({ zkLineQty: null, rawReserved: 5 })).toBe(false);
+    expect(hasZkReservation({ rawReserved: 5 })).toBe(false);
+  });
+
+  it("false gdy rawReserved = 0 lub null", () => {
+    expect(hasZkReservation({ zkLineQty: 2, rawReserved: 0 })).toBe(false);
+    expect(hasZkReservation({ zkLineQty: 2, rawReserved: null })).toBe(false);
+    expect(hasZkReservation({ zkLineQty: 2 })).toBe(false);
   });
 });
