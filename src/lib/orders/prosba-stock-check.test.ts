@@ -798,18 +798,30 @@ describe("adjustStockMapForZkLines", () => {
     expect(adjusted[1]?.available).toBe(10);
   });
 
-  it("pomija linie bez tw_Id lub z zerową ilością", () => {
+  it("pomija linie bez tw_Id lub z zerową ilością — zachowuje passthrough", () => {
     const weirdLines = [
       { key: "a", subiektTwId: null, quantity: 2 },
       { key: "b", subiektTwId: 1, quantity: 0 },
       { key: "c", subiektTwId: 2, quantity: 3 },
     ];
     const adjusted = adjustStockMapForZkLines(weirdLines, {
+      1: { onHand: 10, reserved: 1, available: 9, source: "subiekt" as const },
       2: { onHand: 5, reserved: 3, available: 2, source: "subiekt" as const },
     });
     expect(adjusted[2]?.reserved).toBe(0);
     expect(adjusted[2]?.available).toBe(5);
-    expect(adjusted[1]).toBeUndefined();
+    // twId 1 ma quantity=0 w ZK — passthrough bez korekty
+    expect(adjusted[1]).toEqual({ onHand: 10, reserved: 1, available: 9, source: "subiekt" });
+  });
+
+  it("zachowuje entries ze stockByTwId bez linii ZK", () => {
+    const lines = [{ key: "a", subiektTwId: 1, quantity: 2 }];
+    const adjusted = adjustStockMapForZkLines(lines, {
+      1: { onHand: 5, reserved: 3, available: 2, source: "subiekt" as const },
+      2: { onHand: 10, reserved: 0, available: 10, source: "subiekt" as const },
+    });
+    expect(adjusted[1]?.reserved).toBe(1);
+    expect(adjusted[2]).toEqual({ onHand: 10, reserved: 0, available: 10, source: "subiekt" });
   });
 });
 

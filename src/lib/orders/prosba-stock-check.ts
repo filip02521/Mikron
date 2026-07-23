@@ -403,16 +403,19 @@ export function adjustStockMapForZkLines(
   }
 
   const adjusted: Record<number, ProsbaLineStockSnapshot> = {};
-  for (const [twId, qty] of qtyByTwId) {
-    const snap = stockByTwId[twId];
-    if (!snap) continue;
-    const adjustedReserved = Math.max(0, snap.reserved - qty);
-    adjusted[twId] = {
-      onHand: snap.onHand,
-      reserved: adjustedReserved,
-      available: snap.onHand - adjustedReserved,
-      source: snap.source,
-    };
+  for (const [twId, snap] of Object.entries(stockByTwId)) {
+    const qty = qtyByTwId.get(Number(twId));
+    if (qty != null && qty > 0) {
+      const adjustedReserved = Math.max(0, snap.reserved - qty);
+      adjusted[Number(twId)] = {
+        onHand: snap.onHand,
+        reserved: adjustedReserved,
+        available: snap.onHand - adjustedReserved,
+        source: snap.source,
+      };
+    } else {
+      adjusted[Number(twId)] = snap;
+    }
   }
   return adjusted;
 }

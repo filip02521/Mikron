@@ -160,7 +160,7 @@ export function ZkWatchProsbaScopeModal({
   const noneMarkedForOrder = orderMarked.size === 0 && productLines.length > 0;
   const stockUnavailable =
     !stockLoading &&
-    (stockFetchTimedOut || zkProsbaScopeStockFetchFailed(productLines, stockByTwId));
+    (stockFetchTimedOut || zkProsbaScopeStockFetchFailed(productLines, rawStockByTwId));
   const awaitingAutoMark = stockLoading && !hasExistingScope && !stockFetchTimedOut;
   const autoMarkedCount =
     !stockLoading && !hasExistingScope

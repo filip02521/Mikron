@@ -68,7 +68,7 @@ export function useZkProsbaLineKeysStockFilter(
   const stockFetchFailed =
     enabled &&
     !stockLoading &&
-    (stockFetchTimedOut || zkProsbaScopeStockFetchFailed(scopeLines, stockByTwId));
+    (stockFetchTimedOut || zkProsbaScopeStockFetchFailed(scopeLines, rawStockByTwId));
 
   return {
     stockByTwId,
