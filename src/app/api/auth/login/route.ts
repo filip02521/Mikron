@@ -161,6 +161,9 @@ export async function POST(request: NextRequest) {
       }
     });
   });
+  // Prevent unhandled rejection if the promise rejects before we await it
+  // (e.g. when signInWithPassword fails and we return early).
+  cookiesReady.catch(() => {});
 
   const { data: signData, error: signError } = await supabase.auth.signInWithPassword({
     email,
