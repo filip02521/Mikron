@@ -98,12 +98,13 @@ export function buildProsbaLineStockStatusView(
   const availLabel = formatAvailable(stock.available);
   const reserveSuffix =
     stock.reserved > 0 ? ` (na stanie ${stock.onHand} szt., rezerwacja ${stock.reserved} szt.)` : "";
+  const reserveShort = stock.reserved > 0 ? ` (−${stock.reserved} rez.)` : "";
 
   if (assessment === "sufficient" && requestedQty != null) {
     return {
       assessment,
       tone: "amber",
-      shortLabel: `Stan ${availLabel}`,
+      shortLabel: `Stan ${availLabel}${reserveShort}`,
       title: "Wystarczający stan magazynowy",
       detail: `Dostępne ${availLabel}${reserveSuffix} przy zamówieniu ${requestedQty} szt. — sprawdź, czy prośba jest potrzebna.`,
     };
@@ -113,7 +114,7 @@ export function buildProsbaLineStockStatusView(
     return {
       assessment,
       tone: "sky",
-      shortLabel: `Dostępne ${availLabel}`,
+      shortLabel: `Dostępne ${availLabel}${reserveShort}`,
       title: "Częściowy stan magazynowy",
       detail: `Dostępne ${availLabel}${reserveSuffix}, zamawiasz ${requestedQty} szt. — reszta u dostawcy.`,
     };
@@ -135,7 +136,7 @@ export function buildProsbaLineStockStatusView(
   return {
     assessment: "unknown",
     tone: "slate",
-    shortLabel: `Stan ${availLabel}`,
+    shortLabel: `Stan ${availLabel}${reserveShort}`,
     title: "Stan magazynowy",
     detail:
       stock.reserved > 0

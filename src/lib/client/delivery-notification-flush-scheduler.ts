@@ -12,36 +12,56 @@ export type DeliveryNotificationFlushSchedulerDeps = {
   now?: () => number;
   setTimer: (fn: () => void, delayMs: number) => number;
   clearTimer: (id: number) => void;
-  onFlush: (queueId: string) => void;
+  onFlush: (queueIds: string[]) => void;
+};
+
+type PendingBatch = {
+  queueIds: Set<string>;
+  timerId: number;
 };
 
 export function createDeliveryNotificationFlushScheduler(
   deps: DeliveryNotificationFlushSchedulerDeps
 ) {
-  const timers = new Map<string, number>();
+  const pendingByQueueId = new Map<string, PendingBatch>();
+  const batchesByTimerId = new Map<number, PendingBatch>();
   const now = deps.now ?? (() => Date.now());
+
+  function removeFromBatch(queueId: string): void {
+    const existing = pendingByQueueId.get(queueId);
+    if (!existing) return;
+    existing.queueIds.delete(queueId);
+    pendingByQueueId.delete(queueId);
+    if (existing.queueIds.size === 0) {
+      deps.clearTimer(existing.timerId);
+      batchesByTimerId.delete(existing.timerId);
+    }
+  }
 
   function schedule(batch: ScheduledFlush): void {
     const delay = computeNotificationFlushDelay(batch.expiresAt, now());
-    for (const queueId of batch.queueIds) {
-      const existing = timers.get(queueId);
-      if (existing != null) deps.clearTimer(existing);
 
-      const timerId = deps.setTimer(() => {
-        timers.delete(queueId);
-        deps.onFlush(queueId);
-      }, delay);
-      timers.set(queueId, timerId);
+    for (const queueId of batch.queueIds) {
+      removeFromBatch(queueId);
+    }
+
+    const queueIdsSet = new Set(batch.queueIds);
+    const timerId = deps.setTimer(() => {
+      batchesByTimerId.delete(timerId);
+      for (const qid of queueIdsSet) pendingByQueueId.delete(qid);
+      deps.onFlush([...queueIdsSet]);
+    }, delay);
+
+    const pending: PendingBatch = { queueIds: queueIdsSet, timerId };
+    batchesByTimerId.set(timerId, pending);
+    for (const queueId of batch.queueIds) {
+      pendingByQueueId.set(queueId, pending);
     }
   }
 
   function cancel(queueIds: string[]): void {
     for (const queueId of queueIds) {
-      const timerId = timers.get(queueId);
-      if (timerId != null) {
-        deps.clearTimer(timerId);
-        timers.delete(queueId);
-      }
+      removeFromBatch(queueId);
     }
   }
 

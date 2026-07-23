@@ -74,7 +74,7 @@ describe("buildProsbaLineStockStatusView", () => {
     expect(view?.tone).toBe("slate");
   });
 
-  it("wystarczający stan z rezerwacją — pokazuje rezerwację w detail", () => {
+  it("wystarczający stan z rezerwacją — pokazuje rezerwację w detail i shortLabel", () => {
     const view = buildProsbaLineStockStatusView(
       line({
         stockSource: "subiekt",
@@ -88,9 +88,10 @@ describe("buildProsbaLineStockStatusView", () => {
     expect(view?.assessment).toBe("sufficient");
     expect(view?.detail).toContain("rezerwacja 3 szt.");
     expect(view?.detail).toContain("na stanie 10 szt.");
+    expect(view?.shortLabel).toContain("−3 rez.");
   });
 
-  it("częściowy stan z rezerwacją — pokazuje rezerwację w detail", () => {
+  it("częściowy stan z rezerwacją — pokazuje rezerwację w detail i shortLabel", () => {
     const view = buildProsbaLineStockStatusView(
       line({
         stockSource: "subiekt",
@@ -103,6 +104,7 @@ describe("buildProsbaLineStockStatusView", () => {
     );
     expect(view?.assessment).toBe("insufficient");
     expect(view?.detail).toContain("rezerwacja 2 szt.");
+    expect(view?.shortLabel).toContain("−2 rez.");
   });
 });
 

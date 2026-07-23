@@ -15,16 +15,16 @@ import type { DeliveryUndoPayload } from "@/lib/orders/receive-queue-undo";
 import { collectDeliveryNotificationQueueIds } from "@/lib/orders/receive-queue-undo";
 
 function flushDeliveryNotificationWithRetry(
-  queueId: string,
+  queueIds: string[],
   attempt = 0,
   scheduleRetry: (fn: () => void, delayMs: number) => number = (fn, ms) =>
     window.setTimeout(fn, ms)
 ): void {
-  void actionFlushDeliveryNotifications([queueId])
+  void actionFlushDeliveryNotifications(queueIds)
     .then((result) => {
       if (shouldRetryNotificationFlush(result.sent, attempt)) {
         scheduleRetry(
-          () => flushDeliveryNotificationWithRetry(queueId, attempt + 1, scheduleRetry),
+          () => flushDeliveryNotificationWithRetry(queueIds, attempt + 1, scheduleRetry),
           NOTIFICATION_FLUSH_RETRY_MS
         );
       }
@@ -32,7 +32,7 @@ function flushDeliveryNotificationWithRetry(
     .catch(() => {
       if (attempt + 1 < NOTIFICATION_FLUSH_MAX_ATTEMPTS) {
         scheduleRetry(
-          () => flushDeliveryNotificationWithRetry(queueId, attempt + 1, scheduleRetry),
+          () => flushDeliveryNotificationWithRetry(queueIds, attempt + 1, scheduleRetry),
           NOTIFICATION_FLUSH_RETRY_MS
         );
       }
@@ -42,8 +42,8 @@ function flushDeliveryNotificationWithRetry(
 const browserScheduler = createDeliveryNotificationFlushScheduler({
   setTimer: (fn, delayMs) => window.setTimeout(fn, delayMs),
   clearTimer: (id) => window.clearTimeout(id),
-  onFlush: (queueId) => {
-    flushDeliveryNotificationWithRetry(queueId);
+  onFlush: (queueIds: string[]) => {
+    flushDeliveryNotificationWithRetry(queueIds);
   },
 });
 
