@@ -356,6 +356,21 @@ describe("formatZkProsbaScopeLineBadge", () => {
     ).toBe("Na stanie: 10 szt.");
   });
 
+  it("sufficient z innymi rezerwacjami (bez ZK) — pełny breakdown", () => {
+    expect(
+      formatZkProsbaScopeLineBadge({
+        sufficient: true,
+        markedForOrder: false,
+        available: 48,
+        hasStockData: true,
+        onHand: 50,
+        reserved: 2,
+        zkLineQty: 0,
+        rawReserved: 2,
+      })
+    ).toBe("Stan 50 · rez. 2 · dost. 48");
+  });
+
   it("sufficient z rezerwacją z ZK ale zaznaczone do zamówienia — pokazuje Do zamówienia", () => {
     expect(
       formatZkProsbaScopeLineBadge({

@@ -197,18 +197,26 @@ export function formatZkProsbaScopeLineBadge(input: {
   const available = input.available ?? null;
 
   /**
-   * Pełny breakdown stanu gdy mamy onHand i rezerwację z tego ZK:
-   * „Stan 280 · ZK 250 · Dostępne 30"
+   * Pełny breakdown stanu gdy mamy onHand:
+   * - z rezerwacją z tego ZK: „Stan 280 · ZK 250 · dost. 30"
+   * - z rezerwacją z tego ZK i innymi: „Stan 280 · ZK 250 · inne rez. 5 · dost. 25"
+   * - z innymi rezerwacjami (bez ZK): „Stan 50 · rez. 2 · dost. 48"
    */
   function stockBreakdown(): string | null {
-    if (onHand == null || available == null || zkReservedQty <= 0) return null;
+    if (onHand == null || available == null) return null;
     const rawReserved = input.rawReserved ?? 0;
     const realAvailable = Math.max(0, onHand - rawReserved);
-    const otherReserved = Math.max(0, rawReserved - zkReservedQty);
-    if (otherReserved > 0) {
-      return `Stan ${onHand} · ZK ${zkReservedQty} · inne rez. ${otherReserved} · dost. ${realAvailable}`;
+    if (zkReservedQty > 0) {
+      const otherReserved = Math.max(0, rawReserved - zkReservedQty);
+      if (otherReserved > 0) {
+        return `Stan ${onHand} · ZK ${zkReservedQty} · inne rez. ${otherReserved} · dost. ${realAvailable}`;
+      }
+      return `Stan ${onHand} · ZK ${zkReservedQty} · dost. ${realAvailable}`;
     }
-    return `Stan ${onHand} · ZK ${zkReservedQty} · dost. ${realAvailable}`;
+    if (rawReserved > 0) {
+      return `Stan ${onHand} · rez. ${rawReserved} · dost. ${realAvailable}`;
+    }
+    return null;
   }
 
   if (input.markedForOrder) {
