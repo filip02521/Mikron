@@ -202,11 +202,13 @@ export function formatZkProsbaScopeLineBadge(input: {
    */
   function stockBreakdown(): string | null {
     if (onHand == null || available == null || zkReservedQty <= 0) return null;
-    const otherReserved = Math.max(0, (input.rawReserved ?? 0) - zkReservedQty);
+    const rawReserved = input.rawReserved ?? 0;
+    const realAvailable = Math.max(0, onHand - rawReserved);
+    const otherReserved = Math.max(0, rawReserved - zkReservedQty);
     if (otherReserved > 0) {
-      return `Stan ${onHand} · ZK ${zkReservedQty} · inne rez. ${otherReserved} · dost. ${available}`;
+      return `Stan ${onHand} · ZK ${zkReservedQty} · inne rez. ${otherReserved} · dost. ${realAvailable}`;
     }
-    return `Stan ${onHand} · ZK ${zkReservedQty} · dost. ${available}`;
+    return `Stan ${onHand} · ZK ${zkReservedQty} · dost. ${realAvailable}`;
   }
 
   if (input.markedForOrder) {

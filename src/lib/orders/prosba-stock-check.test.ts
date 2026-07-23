@@ -323,7 +323,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
         zkLineQty: 2,
         rawReserved: 2,
       })
-    ).toBe("Stan 2 · ZK 2 · dost. 2");
+    ).toBe("Stan 2 · ZK 2 · dost. 0");
   });
 
   it("sufficient z częściową rezerwacją z ZK i innymi rezerwacjami — pełny breakdown", () => {
@@ -338,7 +338,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
         zkLineQty: 3,
         rawReserved: 5,
       })
-    ).toBe("Stan 7 · ZK 3 · inne rez. 2 · dost. 5");
+    ).toBe("Stan 7 · ZK 3 · inne rez. 2 · dost. 2");
   });
 
   it("sufficient bez rezerwacji z ZK (rawReserved=0) — pokazuje Na stanie", () => {
