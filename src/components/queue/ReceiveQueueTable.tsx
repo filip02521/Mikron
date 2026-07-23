@@ -31,6 +31,7 @@ import { ReceiveQueueRow } from "@/components/queue/receive-queue/ReceiveQueueRo
 import { ReceiveQueueVirtualTbody } from "@/components/queue/receive-queue/ReceiveQueueVirtualTbody";
 import { ReceiveQueueSelectionBar } from "@/components/queue/receive-queue/ReceiveQueueSelectionBar";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
+import { useReceiveQueueStockAlert } from "@/hooks/useReceiveQueueStockAlert";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 import { useDeliveryNotificationFlush, cancelScheduledNotificationFlushes } from "@/lib/client/use-delivery-notification-flush";
 import {
@@ -214,23 +215,47 @@ export function ReceiveQueueTable({
     [deliveryOrders, informacjaOrders]
   );
 
+  const [stockAvailableOnly, setStockAvailableOnly] = useState(false);
+
+  const { stockByTwId, availableTwIds, availableCount, loading: stockAlertLoading } =
+    useReceiveQueueStockAlert(deliveryOrders, true);
+
+  const handleStockBadgeClick = useCallback((orderId: string) => {
+    const order = deliveryOrders.find((o) => o.id === orderId);
+    if (!order) return;
+    const twId = order.subiekt_tw_id;
+    if (twId == null || twId <= 0) return;
+    const snap = stockByTwId[Math.trunc(twId)];
+    if (!snap) return;
+    const ordered = receiveQueueTargetQuantity(order) ?? parseOrderQuantity(order.quantity);
+    const fillQty = ordered != null ? Math.min(snap.available, ordered) : snap.available;
+    setQty((s) => ({ ...s, [orderId]: String(fillQty) }));
+  }, [deliveryOrders, stockByTwId]);
+
   const { filtered, supplierFiltered, zdScoped } = useMemo(() => {
-    const supplierFiltered = filterOrdersBySupplier(receiveQueue, supplierFilter);
-    const zdScoped = filterReceiveQueueTable(receiveQueue, {
+    const baseQueue = stockAvailableOnly
+      ? receiveQueue.filter((o) => {
+          if (isInformacjaRequest(o)) return false;
+          const twId = o.subiekt_tw_id;
+          return twId != null && twId > 0 && availableTwIds.has(Math.trunc(twId));
+        })
+      : receiveQueue;
+    const supplierFiltered = filterOrdersBySupplier(baseQueue, supplierFilter);
+    const zdScoped = filterReceiveQueueTable(baseQueue, {
       supplierFilter,
       zdProfile: zdFilter?.profile ?? null,
       productSearch: "",
     });
     const filtered =
       productSearch.trim().length > 0
-        ? filterReceiveQueueTable(receiveQueue, {
+        ? filterReceiveQueueTable(baseQueue, {
             supplierFilter,
             zdProfile: zdFilter?.profile ?? null,
             productSearch,
           })
         : zdScoped;
     return { filtered, supplierFiltered, zdScoped };
-  }, [receiveQueue, supplierFilter, zdFilter, productSearch]);
+  }, [receiveQueue, supplierFilter, zdFilter, productSearch, stockAvailableOnly, availableTwIds]);
 
   const productSearchActive = searchQueryTokens(productSearch).length > 0;
   const hasActiveFilters = productSearchActive || Boolean(zdFilter);
@@ -783,7 +808,53 @@ export function ReceiveQueueTable({
             }}
             totalLabel="Wszyscy"
           />
+          {availableCount > 0 ? (
+            <button
+              type="button"
+              onClick={() => setStockAvailableOnly((v) => !v)}
+              className={cn(
+                panelChoiceChipClass,
+                stockAvailableOnly
+                  ? panelChoiceChipSuccessSelectedClass
+                  : "border-emerald-200/90 bg-emerald-50/60 text-emerald-900 hover:bg-emerald-50",
+                "inline-flex items-center gap-1.5 px-2.5 font-semibold",
+              )}
+            >
+              <svg aria-hidden viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" className="size-3.5 shrink-0">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.5l3 3 7-7" />
+              </svg>
+              Na stanie: {availableCount}
+            </button>
+          ) : null}
         </div>
+
+        {availableCount > 0 && !stockAlertLoading ? (
+          <div className="flex items-center gap-2 rounded-lg bg-emerald-50/70 px-3 py-2 text-[11px] font-medium text-emerald-900 ring-1 ring-inset ring-emerald-200/50">
+            <svg aria-hidden viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" className="size-4 shrink-0 text-emerald-700">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.5l3 3 7-7" />
+            </svg>
+            <span>
+              {availableCount} {availableCount === 1 ? "pozycja jest na stanie" : availableCount <= 4 ? "pozycje są na stanie" : "pozycji jest na stanie"} Subiekta — oznacz przyjęcie i przygotuj na regale.
+            </span>
+            {!stockAvailableOnly ? (
+              <button
+                type="button"
+                onClick={() => setStockAvailableOnly(true)}
+                className="ml-auto shrink-0 rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-900 transition hover:bg-emerald-200"
+              >
+                Pokaż tylko na stanie
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setStockAvailableOnly(false)}
+                className="ml-auto shrink-0 rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-900 transition hover:bg-emerald-200"
+              >
+                Pokaż wszystkie
+              </button>
+            )}
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-md border border-slate-100 bg-slate-50/60 px-3 py-2">
           <p className="min-w-0 text-[10px] leading-relaxed text-slate-500">
@@ -996,6 +1067,8 @@ export function ReceiveQueueTable({
             saveDelivery={saveDelivery}
             toggleProductGroup={toggleProductGroup}
             ackCancelDisposition={ackCancelDisposition}
+            stockByTwId={stockByTwId}
+            onStockBadgeClick={handleStockBadgeClick}
             renderClassic={() =>
               supplierGroups.map((group, groupIndex) => {
                 const groupIds = group.orders.map((o) => o.id);
@@ -1062,6 +1135,10 @@ export function ReceiveQueueTable({
                             productGroupIds.every((id) => selected[id]);
                           const ordered = receiveQueueTargetQuantity(o);
                           const inputVal = getQty(o);
+                          const twId = o.subiekt_tw_id;
+                          const stockAvailable = twId != null && twId > 0 && stockByTwId
+                            ? stockByTwId[Math.trunc(twId)]?.available ?? null
+                            : null;
 
                           return (
                             <ReceiveQueueRow
@@ -1076,6 +1153,7 @@ export function ReceiveQueueTable({
                               selected={!!selected[o.id]}
                               pending={pending}
                               inputVal={inputVal}
+                              stockAvailable={stockAvailable}
                               searchQuery={productSearchActive ? productSearch : null}
                               onToggleSelected={() => toggleSelected(o.id)}
                               onQtyChange={(value) =>
@@ -1091,6 +1169,7 @@ export function ReceiveQueueTable({
                                 toggleProductGroup(group.orders, rowIndex, checked)
                               }
                               onAckCancelDisposition={() => ackCancelDisposition(o)}
+                              onStockBadgeClick={handleStockBadgeClick ? () => handleStockBadgeClick(o.id) : undefined}
                               isLastInGroup={rowIndex === group.orders.length - 1}
                             />
                           );

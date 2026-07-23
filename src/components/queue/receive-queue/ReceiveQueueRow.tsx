@@ -91,6 +91,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
   pending,
   inputVal,
   searchQuery = null,
+  stockAvailable = null,
   onToggleSelected,
   onQtyChange,
   onSaveDelivery,
@@ -98,6 +99,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
   onNotifyInformacja,
   onToggleProductGroup,
   onAckCancelDisposition,
+  onStockBadgeClick,
   isLastInGroup = false,
   rowRef,
   dataIndex,
@@ -113,6 +115,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
   pending: boolean;
   inputVal: string;
   searchQuery?: string | null;
+  stockAvailable?: number | null;
   onToggleSelected: () => void;
   onQtyChange: (value: string) => void;
   onSaveDelivery: () => void;
@@ -120,6 +123,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
   onNotifyInformacja: (ids: string[]) => void;
   onToggleProductGroup: (checked: boolean) => void;
   onAckCancelDisposition: () => void;
+  onStockBadgeClick?: () => void;
   isLastInGroup?: boolean;
   rowRef?: (element: Element | null) => void;
   dataIndex?: number;
@@ -187,6 +191,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
         "receive-queue-row-enter",
         isInfo && "bg-sky-50/40",
         salesCancelRow && "bg-amber-50/50",
+        stockAvailable != null && stockAvailable > 0 && !isInfo && "bg-emerald-50/30",
         selected && "ring-1 ring-inset ring-violet-300/80"
       )}
     >
@@ -272,6 +277,20 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
                 className="truncate text-[11px] text-slate-400"
                 as="p"
               />
+            ) : null}
+            {!isInfo && stockAvailable != null && stockAvailable > 0 ? (
+              <button
+                type="button"
+                disabled={pending}
+                onClick={onStockBadgeClick}
+                title={`Towar na stanie Subiekta (${stockAvailable} szt.) — kliknij, aby przyjąć ${Math.min(stockAvailable, ordered ?? stockAvailable)} szt.`}
+                className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 ring-1 ring-inset ring-emerald-200/60 transition hover:bg-emerald-200 disabled:opacity-50"
+              >
+                <svg aria-hidden viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" className="size-3 shrink-0">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.5l3 3 7-7" />
+                </svg>
+                Na stanie: {stockAvailable}
+              </button>
             ) : null}
             {showProductGroupLink ? (
               <button

@@ -81,6 +81,7 @@ const WAREHOUSE_PATH_PREFIXES = ["/kolejka", "/dostawy", "/notatki", "/ustawieni
 
 const OPERATIONS_PATH_PREFIXES = [
   "/podsumowanie",
+  "/podsumowanie-miesieczne",
   "/kolejka",
   "/dostawy",
   "/historia",

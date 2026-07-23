@@ -45,6 +45,7 @@ export const PAGE_TITLES = {
   teamSales: "Handlowcy zespołu",
   teamGroups: "Grupy handlowe",
   locations: "Lokalizacje",
+  monthlySummary: "Podsumowanie miesiąca",
 } as const;
 
 export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>> = {
@@ -56,6 +57,7 @@ export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>
   zeby: "Prośby handlowców na zęby syntetyczne — kolejka zamówień u dostawcy",
   dostawy: "Nadchodzące dostawy — terminy ZD i prognoza paczek",
   admin: "Konfiguracja systemu, użytkownicy i narzędzia serwisowe",
+  monthlySummary: "Statystyki miesięczne — handlowcy, dostawy i zakupy",
   adminTeethProducts:
     "Lista towarów z wyłączoną kontrolą stanu magazynowego przy prośbach o zamówienie",
 };

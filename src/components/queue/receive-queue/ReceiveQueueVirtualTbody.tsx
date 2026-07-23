@@ -70,6 +70,8 @@ export function ReceiveQueueVirtualTbody({
   saveDelivery,
   toggleProductGroup,
   ackCancelDisposition,
+  stockByTwId,
+  onStockBadgeClick,
   renderClassic,
 }: {
   /** Tabela — punkt odniesienia scrollMargin (scroll strony, nie wewnętrzny panel). */
@@ -94,6 +96,8 @@ export function ReceiveQueueVirtualTbody({
   saveDelivery: (order: IndividualOrder, value: string) => void;
   toggleProductGroup: (list: IndividualOrder[], startIndex: number, checked: boolean) => void;
   ackCancelDisposition: (order: IndividualOrder) => void;
+  stockByTwId?: Record<number, { available: number }>;
+  onStockBadgeClick?: (orderId: string) => void;
   renderClassic: () => React.ReactNode;
 }) {
   const virtualItems = buildReceiveQueueVirtualItems(supplierGroups, (key) =>
@@ -207,6 +211,10 @@ export function ReceiveQueueVirtualTbody({
           productGroupIds.length > 0 && productGroupIds.every((id) => selected[id]);
         const targetQty = receiveQueueTargetQuantity(o);
         const inputVal = getQty(o);
+        const twId = o.subiekt_tw_id;
+        const stockAvailable = twId != null && twId > 0 && stockByTwId
+          ? stockByTwId[Math.trunc(twId)]?.available ?? null
+          : null;
 
         return (
           <ReceiveQueueRow
@@ -221,6 +229,7 @@ export function ReceiveQueueVirtualTbody({
             selected={!!selected[o.id]}
             pending={pending}
             inputVal={inputVal}
+            stockAvailable={stockAvailable}
             searchQuery={productSearchActive ? productSearch : null}
             onToggleSelected={() => toggleSelected(o.id)}
             onQtyChange={(value) => setQty((s) => ({ ...s, [o.id]: value }))}
@@ -234,6 +243,7 @@ export function ReceiveQueueVirtualTbody({
               toggleProductGroup(group.orders, rowIndex, checked)
             }
             onAckCancelDisposition={() => ackCancelDisposition(o)}
+            onStockBadgeClick={onStockBadgeClick ? () => onStockBadgeClick(o.id) : undefined}
             isLastInGroup={isLastInGroup}
             rowRef={measureRef}
             dataIndex={dataIndex}
