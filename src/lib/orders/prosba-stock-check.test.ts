@@ -272,7 +272,6 @@ describe("formatZkProsbaScopeLineStockDetail", () => {
         available: 2,
         hasStockData: true,
         onHand: 2,
-        reserved: 0,
         zkLineQty: 2,
         rawReserved: 2,
       })
@@ -286,7 +285,6 @@ describe("formatZkProsbaScopeLineStockDetail", () => {
         available: 5,
         hasStockData: true,
         onHand: 7,
-        reserved: 2,
         zkLineQty: 3,
         rawReserved: 5,
       })
@@ -300,7 +298,6 @@ describe("formatZkProsbaScopeLineStockDetail", () => {
         available: 10,
         hasStockData: true,
         onHand: 10,
-        reserved: 0,
         zkLineQty: 2,
         rawReserved: 0,
       })
@@ -314,7 +311,6 @@ describe("formatZkProsbaScopeLineStockDetail", () => {
         available: 48,
         hasStockData: true,
         onHand: 50,
-        reserved: 2,
         zkLineQty: 0,
         rawReserved: 2,
       })
@@ -328,7 +324,6 @@ describe("formatZkProsbaScopeLineStockDetail", () => {
         available: 3,
         hasStockData: true,
         onHand: 5,
-        reserved: 2,
         rawReserved: 2,
         zkLineQty: 10,
       })
@@ -342,7 +337,6 @@ describe("formatZkProsbaScopeLineStockDetail", () => {
         available: 5,
         hasStockData: true,
         onHand: 10,
-        reserved: 2,
         rawReserved: 5,
         zkLineQty: 8,
       })

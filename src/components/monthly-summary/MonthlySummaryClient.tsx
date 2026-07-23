@@ -10,25 +10,52 @@ import {
   panelTypography,
   controlFocusClass,
   buttonPrimaryClass,
+  brandGradientTextClass,
+  surfaceCardClass,
 } from "@/lib/ui/ontime-theme";
 import type { MonthlyStats, MonthlySummaryTab } from "@/lib/data/monthly-stats";
 import { isMonthlySummaryAvailable } from "@/lib/data/monthly-stats";
 
-const TAB_META: Record<MonthlySummaryTab, { label: string; hint: string }> = {
-  handlowcy: { label: "Handlowcy", hint: "Statystyki prośb i ZK per handlowiec" },
-  dostawy: { label: "Dostawy", hint: "Przyjęte paczki, palety i kurierzy" },
-  zakupy: { label: "Zakupy", hint: "Zamówienia u dostawców i czasy realizacji" },
+const TAB_META: Record<MonthlySummaryTab, { label: string; hint: string; icon: string }> = {
+  handlowcy: { label: "Handlowcy", hint: "Statystyki prośb i ZK per handlowiec", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
+  dostawy: { label: "Dostawy", hint: "Przyjęte paczki, palety i kurierzy", icon: "M3 7h11v10H3zM14 10h4l3 3v4h-7" },
+  zakupy: { label: "Zakupy", hint: "Zamówienia u dostawców i czasy realizacji", icon: "M3 3h2l2.4 12.5a2 2 0 002 1.5h7.7a2 2 0 002-1.6L21 8H6" },
 };
 
 const TAB_ORDER: MonthlySummaryTab[] = ["handlowcy", "dostawy", "zakupy"];
 
-const TONE_STYLES: Record<string, { bg: string; text: string; ring: string }> = {
-  indigo: { bg: "bg-indigo-50", text: "text-indigo-700", ring: "ring-indigo-200" },
-  emerald: { bg: "bg-emerald-50", text: "text-emerald-700", ring: "ring-emerald-200" },
-  amber: { bg: "bg-amber-50", text: "text-amber-700", ring: "ring-amber-200" },
-  sky: { bg: "bg-sky-50", text: "text-sky-700", ring: "ring-sky-200" },
-  violet: { bg: "bg-violet-50", text: "text-violet-700", ring: "ring-violet-200" },
-  slate: { bg: "bg-slate-50", text: "text-slate-700", ring: "ring-slate-200" },
+const MOTIVATIONAL_QUOTES = [
+  "Dobra organizacja to połowa sukcesu — a statystyki to jej zwierciadło.",
+  "Każde zamówienie to historia zaufania. Liczby mówią, jak dobrze ją opowiadamy.",
+  "Czas to waluta. Każdy dzień realizacji to inwestycja w relację z klientem.",
+  "Najlepszy miesiąc to nie ten bez błędów — to ten, z którego najwięcej się uczymy.",
+  "Pomiar jest początkiem wiedzy. To, co mierzymy, rośnie.",
+];
+
+const TONE_STYLES: Record<string, { bg: string; text: string; ring: string; iconBg: string; iconText: string; bar: string }> = {
+  indigo: { bg: "bg-indigo-50/80", text: "text-indigo-700", ring: "ring-indigo-200/70", iconBg: "bg-indigo-100", iconText: "text-indigo-600", bar: "bg-indigo-500" },
+  emerald: { bg: "bg-emerald-50/80", text: "text-emerald-700", ring: "ring-emerald-200/70", iconBg: "bg-emerald-100", iconText: "text-emerald-600", bar: "bg-emerald-500" },
+  amber: { bg: "bg-amber-50/80", text: "text-amber-700", ring: "ring-amber-200/70", iconBg: "bg-amber-100", iconText: "text-amber-600", bar: "bg-amber-500" },
+  sky: { bg: "bg-sky-50/80", text: "text-sky-700", ring: "ring-sky-200/70", iconBg: "bg-sky-100", iconText: "text-sky-600", bar: "bg-sky-500" },
+  violet: { bg: "bg-violet-50/80", text: "text-violet-700", ring: "ring-violet-200/70", iconBg: "bg-violet-100", iconText: "text-violet-600", bar: "bg-violet-500" },
+  slate: { bg: "bg-slate-50/80", text: "text-slate-700", ring: "ring-slate-200/70", iconBg: "bg-slate-100", iconText: "text-slate-600", bar: "bg-slate-400" },
+};
+
+const STAT_ICONS: Record<string, string> = {
+  "Łącznie próśb": "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 012-2h2a2 2 0 012 2M9 5a2 2 0 002 2h2a2 2 0 002-2",
+  "Zrealizowane": "M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+  "Anulowane": "M10 14L21 3M21 3v6M21 3h-6M21 14a7 7 0 11-14 0 7 7 0 0114 0z",
+  "ZK zamknięte": "M5 13l4 4L19 7",
+  "ZK otwarte": "M12 8v4l3 3M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+  "Skuteczność": "M3 3v18h18M7 14l4-4 3 3 5-5",
+  "Łącznie przyjęć": "M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z",
+  "Paczki": "M3 7h18v10H3zM3 7l3-4h12l3 4",
+  "Palety": "M3 7h18v10H3zM7 7v10M11 7v10M15 7v10",
+  "Zamówienia": "M3 3h2l2.4 12.5a2 2 0 002 1.5h7.7a2 2 0 002-1.6L21 8H6",
+  "Główne": "M11 3a8 8 0 100 16 8 8 0 000-16zM11 7v4l3 2",
+  "Poboczne": "M19 21l-7-5-7 5M5 3v18M19 3v18",
+  "Informacje": "M12 16v-4M12 8h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+  "Śr. czas realizacji": "M12 8v4l3 3M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
 };
 
 function StatCard({
@@ -36,18 +63,53 @@ function StatCard({
   value,
   hint,
   tone = "slate",
+  progress,
 }: {
   label: string;
   value: string | number;
   hint?: string;
   tone?: keyof typeof TONE_STYLES;
+  progress?: number;
 }) {
   const t = TONE_STYLES[tone];
+  const iconPath = STAT_ICONS[label] ?? "M12 8v4l3 3M21 12a9 9 0 11-18 0 9 9 0 0118 0z";
   return (
-    <div className={cn("rounded-lg p-4 ring-1 ring-inset", t.bg, t.ring)}>
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className={cn("mt-1.5 text-2xl font-bold tabular-nums", t.text)}>{value}</p>
-      {hint ? <p className="mt-1 text-xs text-slate-500">{hint}</p> : null}
+    <div
+      className={cn(
+        "group relative overflow-hidden rounded-xl p-4 ring-1 ring-inset transition-shadow",
+        "hover:shadow-[var(--shadow-card-elevated)]",
+        t.bg,
+        t.ring
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+          <p className={cn("mt-2 text-3xl font-bold tabular-nums leading-none", t.text)}>
+            {value}
+          </p>
+          {hint ? <p className="mt-2 text-xs text-slate-500">{hint}</p> : null}
+        </div>
+        <span
+          className={cn(
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+            t.iconBg,
+            t.iconText
+          )}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d={iconPath} />
+          </svg>
+        </span>
+      </div>
+      {progress != null ? (
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-200/60">
+          <div
+            className={cn("h-full rounded-full transition-all duration-500", t.bar)}
+            style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -63,7 +125,15 @@ function MonthSelector({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Miesiąc:</span>
+      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+          <line x1="16" y1="2" x2="16" y2="6" />
+          <line x1="8" y1="2" x2="8" y2="6" />
+          <line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+        Miesiąc
+      </span>
       <div className="flex flex-wrap gap-1.5">
         {availableMonths.map((m) => {
           const active = m.key === currentKey;
@@ -73,11 +143,11 @@ function MonthSelector({
               type="button"
               onClick={() => onSelect(m.key)}
               className={cn(
-                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                "rounded-lg px-3 py-1.5 text-sm font-medium transition-all",
                 controlFocusClass,
                 active
                   ? cn(buttonPrimaryClass, "shadow-sm")
-                  : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                  : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800"
               )}
               aria-pressed={active}
             >
@@ -99,7 +169,7 @@ function TabBar({
 }) {
   return (
     <div
-      className="flex flex-wrap gap-1 rounded-md bg-slate-50/60 p-1"
+      className="flex flex-wrap gap-1 rounded-xl bg-slate-100/70 p-1.5"
       role="tablist"
       aria-label="Sekcje podsumowania"
     >
@@ -115,17 +185,60 @@ function TabBar({
             title={meta.hint}
             onClick={() => onChange(tab)}
             className={cn(
-              "rounded-md px-4 py-2 text-sm font-medium transition-colors",
+              "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all",
               controlFocusClass,
               isActive
-                ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80"
+                : "text-slate-500 hover:text-slate-800"
             )}
           >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={cn(isActive ? "text-indigo-600" : "text-slate-400")}
+            >
+              <path d={meta.icon} />
+            </svg>
             {meta.label}
           </button>
         );
       })}
+    </div>
+  );
+}
+
+const MEDAL_META = [
+  { label: "1.", icon: "M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z", bg: "bg-amber-100", text: "text-amber-700", ring: "ring-amber-300/60" },
+  { label: "2.", icon: "M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z", bg: "bg-slate-200", text: "text-slate-600", ring: "ring-slate-400/50" },
+  { label: "3.", icon: "M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z", bg: "bg-orange-100", text: "text-orange-700", ring: "ring-orange-300/60" },
+];
+
+function TopPerformerCard({ name, requests, completed, zkClosed }: { name: string; requests: number; completed: number; zkClosed: number }) {
+  return (
+    <div className={cn("relative overflow-hidden rounded-xl p-5 ring-1 ring-inset", "bg-gradient-to-br from-indigo-50 to-violet-50", "ring-indigo-200/60")}>
+      <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-indigo-100/40 blur-2xl" />
+      <div className="relative flex items-center gap-4">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-md shadow-amber-500/20">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" />
+          </svg>
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-indigo-600">Lider miesiąca</p>
+          <p className="mt-0.5 truncate text-lg font-bold text-slate-900">{name}</p>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+            <span><strong className="tabular-nums text-slate-900">{requests}</strong> próśb</span>
+            <span><strong className="tabular-nums text-emerald-700">{completed}</strong> zrealizowanych</span>
+            <span><strong className="tabular-nums text-violet-700">{zkClosed}</strong> ZK zamkniętych</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -143,33 +256,49 @@ function SalesTab({ stats }: { stats: MonthlyStats }) {
   const totalCancelled = sales.reduce((sum, s) => sum + s.requestsCancelled, 0);
   const totalZkClosed = sales.reduce((sum, s) => sum + s.zkClosed, 0);
   const totalZkOpen = sales.reduce((sum, s) => sum + s.zkOpen, 0);
+  const successRate = totalRequests > 0 ? Math.round((totalCompleted / totalRequests) * 100) : 0;
+  const topPerformer = sales[0];
 
   return (
     <div className="space-y-5">
+      {topPerformer ? (
+        <TopPerformerCard
+          name={topPerformer.salesPersonName}
+          requests={topPerformer.requestsCreated}
+          completed={topPerformer.requestsCompleted}
+          zkClosed={topPerformer.zkClosed}
+        />
+      ) : null}
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard label="Łącznie próśb" value={totalRequests} tone="indigo" />
-        <StatCard label="Zrealizowane" value={totalCompleted} tone="emerald" />
-        <StatCard label="Anulowane" value={totalCancelled} tone="amber" />
+        <StatCard label="Zrealizowane" value={totalCompleted} tone="emerald" progress={successRate} />
+        <StatCard label="Anulowane" value={totalCancelled} tone="amber" hint={totalRequests > 0 ? `${Math.round((totalCancelled / totalRequests) * 100)}% wszystkich` : undefined} />
         <StatCard label="ZK zamknięte" value={totalZkClosed} tone="violet" />
         <StatCard label="ZK otwarte" value={totalZkOpen} tone="sky" />
         <StatCard
           label="Skuteczność"
-          value={totalRequests > 0 ? `${Math.round((totalCompleted / totalRequests) * 100)}%` : "—"}
+          value={`${successRate}%`}
           tone="slate"
           hint="Zrealizowane / łącznie próśb"
+          progress={successRate}
         />
       </div>
 
-      <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]">
-        <div className="border-b border-slate-100 px-4 py-3">
+      <div className={cn(surfaceCardClass, "overflow-hidden")}>
+        <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600">
+            <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
           <h3 className={cn(panelTypography.rowTitle, "font-semibold text-slate-900")}>
-            Handlowcy
+            Ranking handlowców
           </h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr className="border-b border-slate-100 text-left text-[11px] uppercase tracking-wide text-slate-500">
+                <th className="px-4 py-2.5 font-medium">#</th>
                 <th className="px-4 py-2.5 font-medium">Handlowiec</th>
                 <th className="px-4 py-2.5 text-right font-medium">Próśb</th>
                 <th className="px-4 py-2.5 text-right font-medium">Zrealiz.</th>
@@ -179,16 +308,41 @@ function SalesTab({ stats }: { stats: MonthlyStats }) {
               </tr>
             </thead>
             <tbody>
-              {sales.map((s) => (
-                <tr key={s.salesPersonId} className="border-b border-slate-50 last:border-0">
-                  <td className="px-4 py-3 font-medium text-slate-800">{s.salesPersonName}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-700">{s.requestsCreated}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-emerald-700">{s.requestsCompleted}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-amber-700">{s.requestsCancelled}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-violet-700">{s.zkClosed}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-sky-700">{s.zkOpen}</td>
-                </tr>
-              ))}
+              {sales.map((s, idx) => {
+                const medal = idx < 3 ? MEDAL_META[idx] : null;
+                const rate = s.requestsCreated > 0 ? Math.round((s.requestsCompleted / s.requestsCreated) * 100) : 0;
+                return (
+                  <tr key={s.salesPersonId} className="border-b border-slate-50 last:border-0 transition-colors hover:bg-slate-50/50">
+                    <td className="px-4 py-3">
+                      {medal ? (
+                        <span className={cn("inline-flex h-7 w-7 items-center justify-center rounded-full ring-1", medal.bg, medal.text, medal.ring)}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d={medal.icon} />
+                          </svg>
+                        </span>
+                      ) : (
+                        <span className="inline-flex h-7 w-7 items-center justify-center text-xs font-semibold tabular-nums text-slate-400">
+                          {idx + 1}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-slate-800">{s.salesPersonName}</p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <div className="h-1.5 w-20 overflow-hidden rounded-full bg-slate-100">
+                          <div className="h-full rounded-full bg-indigo-400" style={{ width: `${rate}%` }} />
+                        </div>
+                        <span className="text-[10px] tabular-nums text-slate-500">{rate}%</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums font-semibold text-slate-700">{s.requestsCreated}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-emerald-700">{s.requestsCompleted}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-amber-700">{s.requestsCancelled}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-violet-700">{s.zkClosed}</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-sky-700">{s.zkOpen}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -197,26 +351,55 @@ function SalesTab({ stats }: { stats: MonthlyStats }) {
   );
 }
 
+const CARRIER_LABELS: Record<string, string> = {
+  inpost: "InPost",
+  dhl: "DHL",
+  dpd: "DPD",
+  gls: "GLS",
+  fedex: "FedEx",
+  poczta: "Poczta",
+  kurier_dostawcy: "Kurier dostawcy",
+  odbior_wlasny: "Odbiór własny",
+  inne: "Inne",
+};
+
 function DeliveryTab({ stats }: { stats: MonthlyStats }) {
   const { delivery } = stats;
   if (delivery.totalReceipts === 0) {
     return <Alert tone="info">Brak przyjęć towaru w tym miesiącu.</Alert>;
   }
 
-  const CARRIER_LABELS: Record<string, string> = {
-    inpost: "InPost",
-    dhl: "DHL",
-    dpd: "DPD",
-    gls: "GLS",
-    fedex: "FedEx",
-    poczta: "Poczta",
-    kurier_dostawcy: "Kurier dostawcy",
-    odbior_wlasny: "Odbiór własny",
-    inne: "Inne",
-  };
+  const maxCarrierCount = Math.max(...delivery.byCarrier.map((c) => c.count), 1);
+  const topCarrier = delivery.byCarrier[0];
 
   return (
     <div className="space-y-5">
+      {topCarrier ? (
+        <div className={cn("relative overflow-hidden rounded-xl p-5 ring-1 ring-inset", "bg-gradient-to-br from-emerald-50 to-sky-50", "ring-emerald-200/60")}>
+          <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-emerald-100/40 blur-2xl" />
+          <div className="relative flex items-center gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-sky-600 text-white shadow-md shadow-emerald-500/20">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 7h11v10H3zM14 10h4l3 3v4h-7" />
+                <circle cx="7" cy="18" r="2" />
+                <circle cx="17" cy="18" r="2" />
+              </svg>
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-600">Najwięcej przyjęć</p>
+              <p className="mt-0.5 truncate text-lg font-bold text-slate-900">
+                {CARRIER_LABELS[topCarrier.carrier] ?? topCarrier.carrier}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                <span><strong className="tabular-nums text-slate-900">{topCarrier.count}</strong> przyjęć</span>
+                <span><strong className="tabular-nums text-sky-700">{topCarrier.packages}</strong> paczek</span>
+                <span><strong className="tabular-nums text-amber-700">{topCarrier.pallets}</strong> palet</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid gap-3 sm:grid-cols-3">
         <StatCard label="Łącznie przyjęć" value={delivery.totalReceipts} tone="emerald" />
         <StatCard label="Paczki" value={delivery.totalPackages} tone="sky" />
@@ -224,35 +407,43 @@ function DeliveryTab({ stats }: { stats: MonthlyStats }) {
       </div>
 
       {delivery.byCarrier.length > 0 ? (
-        <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]">
-          <div className="border-b border-slate-100 px-4 py-3">
+        <div className={cn(surfaceCardClass, "overflow-hidden")}>
+          <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600">
+              <path d="M3 7h11v10H3zM14 10h4l3 3v4h-7" />
+              <circle cx="7" cy="18" r="2" />
+              <circle cx="17" cy="18" r="2" />
+            </svg>
             <h3 className={cn(panelTypography.rowTitle, "font-semibold text-slate-900")}>
               Według kuriera
             </h3>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
-                  <th className="px-4 py-2.5 font-medium">Kurier</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Przyjęcia</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Paczki</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Palety</th>
-                </tr>
-              </thead>
-              <tbody>
-                {delivery.byCarrier.map((c) => (
-                  <tr key={c.carrier} className="border-b border-slate-50 last:border-0">
-                    <td className="px-4 py-3 font-medium text-slate-800">
-                      {CARRIER_LABELS[c.carrier] ?? c.carrier}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-slate-700">{c.count}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-sky-700">{c.packages}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-amber-700">{c.pallets}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="divide-y divide-slate-50">
+            {delivery.byCarrier.map((c) => {
+              const pct = Math.round((c.count / maxCarrierCount) * 100);
+              return (
+                <div key={c.carrier} className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-slate-50/50">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="truncate text-sm font-medium text-slate-800">
+                        {CARRIER_LABELS[c.carrier] ?? c.carrier}
+                      </p>
+                      <span className="shrink-0 text-sm font-bold tabular-nums text-slate-900">{c.count}</span>
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+                        <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-sky-500 transition-all duration-500" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="shrink-0 text-[10px] tabular-nums text-slate-500">{pct}%</span>
+                    </div>
+                    <div className="mt-1.5 flex gap-4 text-[11px] text-slate-500">
+                      <span><strong className="tabular-nums text-sky-700">{c.packages}</strong> paczek</span>
+                      <span><strong className="tabular-nums text-amber-700">{c.pallets}</strong> palet</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       ) : null}
@@ -266,14 +457,43 @@ function ProcurementTab({ stats }: { stats: MonthlyStats }) {
     return <Alert tone="info">Brak zamówień w tym miesiącu.</Alert>;
   }
 
+  const successRate = procurement.totalOrders > 0
+    ? Math.round((procurement.completedOrders / procurement.totalOrders) * 100)
+    : 0;
+  const topSupplier = procurement.bySupplier[0];
+  const maxSupplierOrders = Math.max(...procurement.bySupplier.map((s) => s.orders), 1);
+
   return (
     <div className="space-y-5">
+      {topSupplier ? (
+        <div className={cn("relative overflow-hidden rounded-xl p-5 ring-1 ring-inset", "bg-gradient-to-br from-amber-50 to-indigo-50", "ring-amber-200/60")}>
+          <div className="absolute -right-4 -top-4 h-20 w-20 rounded-full bg-amber-100/40 blur-2xl" />
+          <div className="relative flex items-center gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-indigo-600 text-white shadow-md shadow-amber-500/20">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 3h2l2.4 12.5a2 2 0 002 1.5h7.7a2 2 0 002-1.6L21 8H6" />
+                <circle cx="9" cy="20" r="1" />
+                <circle cx="18" cy="20" r="1" />
+              </svg>
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-600">Najaktywniejszy dostawca</p>
+              <p className="mt-0.5 truncate text-lg font-bold text-slate-900">{topSupplier.supplierName}</p>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                <span><strong className="tabular-nums text-slate-900">{topSupplier.orders}</strong> zamówień</span>
+                <span><strong className="tabular-nums text-emerald-700">{topSupplier.completed}</strong> zrealizowanych</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Zamówienia" value={procurement.totalOrders} tone="indigo" />
-        <StatCard label="Główne" value={procurement.mainOrders} tone="emerald" />
+        <StatCard label="Główne" value={procurement.mainOrders} tone="emerald" progress={procurement.totalOrders > 0 ? Math.round((procurement.mainOrders / procurement.totalOrders) * 100) : 0} />
         <StatCard label="Poboczne" value={procurement.sideOrders} tone="sky" />
         <StatCard label="Informacje" value={procurement.informacjaCount} tone="slate" />
-        <StatCard label="Zrealizowane" value={procurement.completedOrders} tone="emerald" />
+        <StatCard label="Zrealizowane" value={procurement.completedOrders} tone="emerald" progress={successRate} />
         <StatCard label="Anulowane" value={procurement.cancelledOrders} tone="amber" />
         <StatCard
           label="Śr. czas realizacji"
@@ -283,42 +503,60 @@ function ProcurementTab({ stats }: { stats: MonthlyStats }) {
         />
         <StatCard
           label="Skuteczność"
-          value={
-            procurement.totalOrders > 0
-              ? `${Math.round((procurement.completedOrders / procurement.totalOrders) * 100)}%`
-              : "—"
-          }
+          value={`${successRate}%`}
           tone="slate"
           hint="Zrealizowane / łącznie zamówień"
+          progress={successRate}
         />
       </div>
 
       {procurement.bySupplier.length > 0 ? (
-        <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]">
-          <div className="border-b border-slate-100 px-4 py-3">
+        <div className={cn(surfaceCardClass, "overflow-hidden")}>
+          <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600">
+              <path d="M3 3h2l2.4 12.5a2 2 0 002 1.5h7.7a2 2 0 002-1.6L21 8H6" />
+              <circle cx="9" cy="20" r="1" />
+              <circle cx="18" cy="20" r="1" />
+            </svg>
             <h3 className={cn(panelTypography.rowTitle, "font-semibold text-slate-900")}>
               Top dostawcy
             </h3>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
-                  <th className="px-4 py-2.5 font-medium">Dostawca</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Zamówienia</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Zrealizowane</th>
-                </tr>
-              </thead>
-              <tbody>
-                {procurement.bySupplier.map((s) => (
-                  <tr key={s.supplierId} className="border-b border-slate-50 last:border-0">
-                    <td className="px-4 py-3 font-medium text-slate-800">{s.supplierName}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-slate-700">{s.orders}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-emerald-700">{s.completed}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="divide-y divide-slate-50">
+            {procurement.bySupplier.map((s, idx) => {
+              const pct = Math.round((s.orders / maxSupplierOrders) * 100);
+              const completionRate = s.orders > 0 ? Math.round((s.completed / s.orders) * 100) : 0;
+              return (
+                <div key={s.supplierId} className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-slate-50/50">
+                  <span className={cn(
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold tabular-nums",
+                    idx === 0 ? "bg-amber-100 text-amber-700 ring-1 ring-amber-300/60"
+                    : idx === 1 ? "bg-slate-200 text-slate-600 ring-1 ring-slate-400/50"
+                    : idx === 2 ? "bg-orange-100 text-orange-700 ring-1 ring-orange-300/60"
+                    : "text-slate-400"
+                  )}>
+                    {idx + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="truncate text-sm font-medium text-slate-800">{s.supplierName}</p>
+                      <span className="shrink-0 text-sm font-bold tabular-nums text-slate-900">{s.orders}</span>
+                    </div>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+                        <div className="h-full rounded-full bg-gradient-to-r from-amber-400 to-indigo-500 transition-all duration-500" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="shrink-0 text-[10px] tabular-nums text-slate-500">{pct}%</span>
+                    </div>
+                    <div className="mt-1 text-[11px] text-slate-500">
+                      <strong className="tabular-nums text-emerald-700">{s.completed}</strong> zrealizowanych
+                      <span className="mx-1.5 text-slate-300">·</span>
+                      <span className="tabular-nums">{completionRate}% skuteczności</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       ) : null}

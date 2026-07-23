@@ -191,7 +191,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
         "receive-queue-row-enter",
         isInfo && "bg-sky-50/40",
         salesCancelRow && "bg-amber-50/50",
-        stockAvailable != null && stockAvailable > 0 && !isInfo && "bg-emerald-50/30",
+        stockAvailable != null && stockAvailable > 0 && !isInfo && !salesCancelRow && "bg-emerald-50/30",
         selected && "ring-1 ring-inset ring-violet-300/80"
       )}
     >

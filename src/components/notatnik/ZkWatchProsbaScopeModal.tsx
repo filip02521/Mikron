@@ -333,7 +333,6 @@ export function ZkWatchProsbaScopeModal({
               available: snap?.available ?? null,
               hasStockData: snap != null,
               onHand: snap?.onHand ?? null,
-              reserved: snap?.reserved ?? null,
               zkLineQty: line.quantity,
               rawReserved: rawSnap?.reserved ?? null,
             });

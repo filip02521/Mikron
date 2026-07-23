@@ -187,7 +187,6 @@ export function formatZkProsbaScopeLineStockDetail(input: {
   available: number | null;
   hasStockData: boolean;
   onHand?: number | null;
-  reserved?: number | null;
   zkLineQty?: number | null;
   rawReserved?: number | null;
 }): string | null {
