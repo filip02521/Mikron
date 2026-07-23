@@ -270,6 +270,45 @@ describe("formatZkProsbaScopeLineBadge", () => {
       })
     ).toBe("Do zamówienia");
   });
+
+  it("odznaczone na stanie z rezerwacją — pokazuje rezerwację", () => {
+    expect(
+      formatZkProsbaScopeLineBadge({
+        sufficient: true,
+        markedForOrder: false,
+        available: 8,
+        hasStockData: true,
+        onHand: 10,
+        reserved: 2,
+      })
+    ).toBe("Na stanie: 8 szt. (−2 rez.)");
+  });
+
+  it("częściowy stan z rezerwacją — pokazuje rezerwację", () => {
+    expect(
+      formatZkProsbaScopeLineBadge({
+        sufficient: false,
+        markedForOrder: true,
+        available: 3,
+        hasStockData: true,
+        onHand: 5,
+        reserved: 2,
+      })
+    ).toBe("Do zamówienia · stan 3 szt. (−2 rez.)");
+  });
+
+  it("brak rezerwacji — nie pokazuje sufiksu", () => {
+    expect(
+      formatZkProsbaScopeLineBadge({
+        sufficient: true,
+        markedForOrder: false,
+        available: 10,
+        hasStockData: true,
+        onHand: 10,
+        reserved: 0,
+      })
+    ).toBe("Na stanie: 10 szt.");
+  });
 });
 
 describe("zkProsbaScopeLineNeedsOrdering", () => {

@@ -173,19 +173,26 @@ export function formatZkProsbaScopeLineBadge(input: {
   markedForOrder: boolean;
   available: number | null;
   hasStockData: boolean;
+  onHand?: number | null;
+  reserved?: number | null;
 }): string {
+  const reserveSuffix =
+    input.hasStockData && input.reserved != null && input.reserved > 0
+      ? ` (−${input.reserved} rez.)`
+      : "";
+
   if (input.markedForOrder) {
     if (input.hasStockData && input.available != null && input.available > 0 && !input.sufficient) {
-      return `Do zamówienia · stan ${input.available} szt.`;
+      return `Do zamówienia · stan ${input.available} szt.${reserveSuffix}`;
     }
     return "Do zamówienia";
   }
   if (input.sufficient && input.available != null) {
-    return `Na stanie: ${input.available} szt.`;
+    return `Na stanie: ${input.available} szt.${reserveSuffix}`;
   }
   if (!input.sufficient) {
     if (input.hasStockData && input.available != null && input.available > 0) {
-      return `Do zamówienia · stan ${input.available} szt.`;
+      return `Do zamówienia · stan ${input.available} szt.${reserveSuffix}`;
     }
     return "Do zamówienia";
   }

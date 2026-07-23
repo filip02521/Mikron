@@ -436,6 +436,8 @@ export function ZkWatchRefreshPromptModal({
               markedForOrder,
               available: snap?.available ?? null,
               hasStockData: snap != null,
+              onHand: snap?.onHand ?? null,
+              reserved: snap?.reserved ?? null,
             });
 
             return (

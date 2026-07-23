@@ -96,6 +96,8 @@ export function buildProsbaLineStockStatusView(
   const assessment = assessProsbaLineStockFromDraft(line, requestKind, stockExemptTwIds);
   const requestedQty = parseOrderQuantity(line.quantity);
   const availLabel = formatAvailable(stock.available);
+  const reserveSuffix =
+    stock.reserved > 0 ? ` (na stanie ${stock.onHand} szt., rezerwacja ${stock.reserved} szt.)` : "";
 
   if (assessment === "sufficient" && requestedQty != null) {
     return {
@@ -103,7 +105,7 @@ export function buildProsbaLineStockStatusView(
       tone: "amber",
       shortLabel: `Stan ${availLabel}`,
       title: "Wystarczający stan magazynowy",
-      detail: `Dostępne ${availLabel} przy zamówieniu ${requestedQty} szt. — sprawdź, czy prośba jest potrzebna.`,
+      detail: `Dostępne ${availLabel}${reserveSuffix} przy zamówieniu ${requestedQty} szt. — sprawdź, czy prośba jest potrzebna.`,
     };
   }
 
@@ -113,7 +115,7 @@ export function buildProsbaLineStockStatusView(
       tone: "sky",
       shortLabel: `Dostępne ${availLabel}`,
       title: "Częściowy stan magazynowy",
-      detail: `Dostępne ${availLabel}, zamawiasz ${requestedQty} szt. — reszta u dostawcy.`,
+      detail: `Dostępne ${availLabel}${reserveSuffix}, zamawiasz ${requestedQty} szt. — reszta u dostawcy.`,
     };
   }
 
@@ -125,8 +127,8 @@ export function buildProsbaLineStockStatusView(
       title: "Brak dostępnego stanu",
       detail:
         requestedQty != null
-          ? `Dostępne 0 szt. przy zamówieniu ${requestedQty} szt.`
-          : "Dostępne 0 szt. na magazynie.",
+          ? `Dostępne 0 szt.${reserveSuffix} przy zamówieniu ${requestedQty} szt.`
+          : `Dostępne 0 szt.${reserveSuffix} na magazynie.`,
     };
   }
 

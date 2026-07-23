@@ -73,6 +73,37 @@ describe("buildProsbaLineStockStatusView", () => {
     expect(view?.assessment).toBe("unavailable");
     expect(view?.tone).toBe("slate");
   });
+
+  it("wystarczający stan z rezerwacją — pokazuje rezerwację w detail", () => {
+    const view = buildProsbaLineStockStatusView(
+      line({
+        stockSource: "subiekt",
+        onHand: 10,
+        reserved: 3,
+        available: 7,
+        quantity: "5",
+      }),
+      "zamowienie"
+    );
+    expect(view?.assessment).toBe("sufficient");
+    expect(view?.detail).toContain("rezerwacja 3 szt.");
+    expect(view?.detail).toContain("na stanie 10 szt.");
+  });
+
+  it("częściowy stan z rezerwacją — pokazuje rezerwację w detail", () => {
+    const view = buildProsbaLineStockStatusView(
+      line({
+        stockSource: "subiekt",
+        onHand: 5,
+        reserved: 2,
+        available: 3,
+        quantity: "10",
+      }),
+      "zamowienie"
+    );
+    expect(view?.assessment).toBe("insufficient");
+    expect(view?.detail).toContain("rezerwacja 2 szt.");
+  });
 });
 
 describe("buildProsbaSufficientStockSummary", () => {
