@@ -191,32 +191,43 @@ export function formatZkProsbaScopeLineBadge(input: {
   const onHand = input.onHand ?? null;
   const available = input.available ?? null;
   const rawReserved = input.rawReserved ?? 0;
+  const otherReserved = Math.max(0, rawReserved - zkReservedQty);
 
   /**
-   * Pełny breakdown stanu:
-   * - z rezerwacją z tego ZK: „Stan 280 · ZK 250 · dost. 30"
-   * - z rezerwacją z tego ZK i innymi: „Stan 280 · ZK 250 · inne rez. 5 · dost. 25"
-   * - z innymi rezerwacjami (bez ZK): „Stan 50 · rez. 2 · dost. 48"
-   * - bez rezerwacji: „Stan 10 · dost. 10"
+   * Pełny breakdown stanu — co jest na magazynie, co odejmuje, ile dla ZK:
+   * - z rezerwacją z tego ZK: „Stan 280 · ZK 250 · dla ZK 280"
+   * - z rezerwacją ZK i innymi: „Stan 280 · ZK 250 · inne rez. 5 · dla ZK 25"
+   * - z innymi rezerwacjami: „Stan 50 · rez. 2 · dla ZK 48"
+   * - bez rezerwacji: „Stan 10 · dla ZK 10"
+   *
+   * „dla ZK" = onHand − inneRezerwacje (własna rezerwacja ZK nie odejmuje).
    */
   function stockBreakdown(): string | null {
     if (onHand == null || available == null) return null;
-    const realAvailable = Math.max(0, onHand - rawReserved);
     if (zkReservedQty > 0) {
-      const otherReserved = Math.max(0, rawReserved - zkReservedQty);
-      if (otherReserved > 0) {
-        return `Stan ${onHand} · ZK ${zkReservedQty} · inne rez. ${otherReserved} · dost. ${realAvailable}`;
-      }
-      return `Stan ${onHand} · ZK ${zkReservedQty} · dost. ${realAvailable}`;
+      const parts = [`Stan ${onHand}`, `ZK ${zkReservedQty}`];
+      if (otherReserved > 0) parts.push(`inne rez. ${otherReserved}`);
+      parts.push(`dla ZK ${available}`);
+      return parts.join(" · ");
     }
     if (rawReserved > 0) {
-      return `Stan ${onHand} · rez. ${rawReserved} · dost. ${realAvailable}`;
+      return `Stan ${onHand} · rez. ${rawReserved} · dla ZK ${available}`;
     }
-    return `Stan ${onHand} · dost. ${onHand}`;
+    return `Stan ${onHand} · dla ZK ${available}`;
+  }
+
+  /** Ile brakuje do pokrycia ilości z linii ZK. */
+  function shortfall(): number | null {
+    if (available == null || input.zkLineQty == null || input.zkLineQty <= 0) return null;
+    return Math.max(0, input.zkLineQty - available);
   }
 
   if (input.markedForOrder) {
     const breakdown = stockBreakdown();
+    const missing = shortfall();
+    if (breakdown && missing != null && missing > 0) {
+      return `Do zamówienia · ${breakdown} · brakuje ${missing}`;
+    }
     if (breakdown) return `Do zamówienia · ${breakdown}`;
     return "Do zamówienia";
   }
@@ -227,6 +238,10 @@ export function formatZkProsbaScopeLineBadge(input: {
   }
   if (!input.sufficient) {
     const breakdown = stockBreakdown();
+    const missing = shortfall();
+    if (breakdown && missing != null && missing > 0) {
+      return `Do zamówienia · ${breakdown} · brakuje ${missing}`;
+    }
     if (breakdown) return `Do zamówienia · ${breakdown}`;
     return "Do zamówienia";
   }

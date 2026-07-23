@@ -251,7 +251,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
         reserved: 2,
         rawReserved: 2,
       })
-    ).toBe("Do zamówienia · Stan 5 · rez. 2 · dost. 3");
+    ).toBe("Do zamówienia · Stan 5 · rez. 2 · dla ZK 3");
   });
 
   it("częściowy stan bez zaznaczenia — do zamówienia ze stanem", () => {
@@ -265,7 +265,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
         reserved: 2,
         rawReserved: 2,
       })
-    ).toBe("Do zamówienia · Stan 5 · rez. 2 · dost. 3");
+    ).toBe("Do zamówienia · Stan 5 · rez. 2 · dla ZK 3");
   });
 
   it("brak pokrycia stanem bez zaznaczenia — do zamówienia", () => {
@@ -290,7 +290,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
         reserved: 2,
         rawReserved: 2,
       })
-    ).toBe("Stan 10 · rez. 2 · dost. 8");
+    ).toBe("Stan 10 · rez. 2 · dla ZK 8");
   });
 
   it("częściowy stan z rezerwacją — pokazuje rezerwację", () => {
@@ -304,7 +304,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
         reserved: 2,
         rawReserved: 2,
       })
-    ).toBe("Do zamówienia · Stan 5 · rez. 2 · dost. 3");
+    ).toBe("Do zamówienia · Stan 5 · rez. 2 · dla ZK 3");
   });
 
   it("brak rezerwacji — nie pokazuje sufiksu", () => {
@@ -317,7 +317,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
         onHand: 10,
         reserved: 0,
       })
-    ).toBe("Stan 10 · dost. 10");
+    ).toBe("Stan 10 · dla ZK 10");
   });
 
   it("sufficient z rezerwacją z tego ZK — pokazuje breakdown", () => {
@@ -332,7 +332,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
         zkLineQty: 2,
         rawReserved: 2,
       })
-    ).toBe("Stan 2 · ZK 2 · dost. 0");
+    ).toBe("Stan 2 · ZK 2 · dla ZK 2");
   });
 
   it("sufficient z częściową rezerwacją z ZK i innymi rezerwacjami — pełny breakdown", () => {
@@ -347,7 +347,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
         zkLineQty: 3,
         rawReserved: 5,
       })
-    ).toBe("Stan 7 · ZK 3 · inne rez. 2 · dost. 2");
+    ).toBe("Stan 7 · ZK 3 · inne rez. 2 · dla ZK 5");
   });
 
   it("sufficient bez rezerwacji z ZK (rawReserved=0) — pokazuje Na stanie", () => {
@@ -362,7 +362,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
         zkLineQty: 2,
         rawReserved: 0,
       })
-    ).toBe("Stan 10 · dost. 10");
+    ).toBe("Stan 10 · dla ZK 10");
   });
 
   it("sufficient z innymi rezerwacjami (bez ZK) — pełny breakdown", () => {
@@ -377,7 +377,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
         zkLineQty: 0,
         rawReserved: 2,
       })
-    ).toBe("Stan 50 · rez. 2 · dost. 48");
+    ).toBe("Stan 50 · rez. 2 · dla ZK 48");
   });
 
   it("sufficient z rezerwacją z ZK ale zaznaczone do zamówienia — pokazuje Do zamówienia", () => {
@@ -392,7 +392,37 @@ describe("formatZkProsbaScopeLineBadge", () => {
         zkLineQty: 2,
         rawReserved: 2,
       })
-    ).toBe("Do zamówienia · Stan 2 · ZK 2 · dost. 0");
+    ).toBe("Do zamówienia · Stan 2 · ZK 2 · dla ZK 2");
+  });
+
+  it("insufficient z brakami — pokazuje brakuje N", () => {
+    expect(
+      formatZkProsbaScopeLineBadge({
+        sufficient: false,
+        markedForOrder: false,
+        available: 3,
+        hasStockData: true,
+        onHand: 5,
+        reserved: 2,
+        rawReserved: 2,
+        zkLineQty: 10,
+      })
+    ).toBe("Do zamówienia · Stan 5 · ZK 2 · dla ZK 3 · brakuje 7");
+  });
+
+  it("insufficient z rezerwacją ZK i brakami — pokazuje brakuje N", () => {
+    expect(
+      formatZkProsbaScopeLineBadge({
+        sufficient: false,
+        markedForOrder: true,
+        available: 5,
+        hasStockData: true,
+        onHand: 10,
+        reserved: 2,
+        rawReserved: 5,
+        zkLineQty: 8,
+      })
+    ).toBe("Do zamówienia · Stan 10 · ZK 5 · dla ZK 5 · brakuje 3");
   });
 });
 
