@@ -39,6 +39,8 @@ export function createDeliveryNotificationFlushScheduler(
   }
 
   function schedule(batch: ScheduledFlush): void {
+    if (!batch.queueIds.length) return;
+
     const delay = computeNotificationFlushDelay(batch.expiresAt, now());
 
     for (const queueId of batch.queueIds) {

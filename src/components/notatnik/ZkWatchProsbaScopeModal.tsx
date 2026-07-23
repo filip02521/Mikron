@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { useProsbaLineStockBatchFetch } from "@/hooks/useProsbaLineStockBatchFetch";
 import { cn } from "@/lib/cn";
 import {
+  adjustStockMapForZkLines,
   assessProsbaLineStock,
   buildZkProsbaScopeInitialOrderMarked,
   collectZkProsbaScopeLineTwIds,
@@ -54,10 +55,15 @@ function useZkProsbaScopeSelection(watch: SalesZkWatch, open: boolean) {
   const twIds = useMemo(() => collectZkProsbaScopeLineTwIds(productLines), [productLines]);
 
   const {
-    stockByTwId,
+    stockByTwId: rawStockByTwId,
     loading: stockLoading,
     timedOut: stockFetchTimedOut,
   } = useProsbaLineStockBatchFetch(twIds, open);
+
+  const stockByTwId = useMemo(
+    () => adjustStockMapForZkLines(productLines, rawStockByTwId),
+    [productLines, rawStockByTwId]
+  );
 
   /** Zaznaczone = do zamówienia (prośba). */
   const [orderMarked, setOrderMarked] = useState<Set<string>>(() => new Set());

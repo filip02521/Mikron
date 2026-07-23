@@ -327,6 +327,45 @@ export function collectZkProsbaScopeLineTwIds(lines: ZkProsbaScopeLineInput[]): 
 }
 
 /**
+ * Koryguje mapę stanu o rezerwacje z dodawanego ZK.
+ *
+ * Subiekt trzyma w tw_StanRez sumę rezerwacji ze wszystkich dokumentów,
+ * w tym z dodawanego ZK. Bez korekty towar z pełnym stanem zarezerwowanym
+ * przez to ZK pokazuje się jako „brak — do zamówienia”, podczas gdy
+ * fizycznie jest na magazynie i zarezerwowany właśnie dla tego ZK.
+ *
+ * Korekta: reserved = max(0, reserved − suma ilości z linii ZK dla tw_Id),
+ * available = onHand − adjustedReserved.
+ */
+export function adjustStockMapForZkLines(
+  lines: ZkProsbaScopeLineInput[],
+  stockByTwId: Record<number, ProsbaLineStockSnapshot>
+): Record<number, ProsbaLineStockSnapshot> {
+  const qtyByTwId = new Map<number, number>();
+  for (const line of lines) {
+    if (line.subiektTwId == null || line.quantity == null || line.quantity <= 0) continue;
+    qtyByTwId.set(
+      line.subiektTwId,
+      (qtyByTwId.get(line.subiektTwId) ?? 0) + line.quantity
+    );
+  }
+
+  const adjusted: Record<number, ProsbaLineStockSnapshot> = {};
+  for (const [twId, qty] of qtyByTwId) {
+    const snap = stockByTwId[twId];
+    if (!snap) continue;
+    const adjustedReserved = Math.max(0, snap.reserved - qty);
+    adjusted[twId] = {
+      onHand: snap.onHand,
+      reserved: adjustedReserved,
+      available: snap.onHand - adjustedReserved,
+      source: snap.source,
+    };
+  }
+  return adjusted;
+}
+
+/**
  * Czy pobranie stanu z Subiekta nie powiodło się: są towary do sprawdzenia,
  * a mapa stanu jest pusta lub brakuje wpisów dla żądanych tw_Id.
  */

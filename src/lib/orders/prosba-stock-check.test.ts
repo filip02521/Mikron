@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import type { SubiektProduct } from "@/lib/subiekt/types";
 import {
+  adjustStockMapForZkLines,
   applyProsbaLineStockMap,
   assessProsbaLineStock,
   assessProsbaLineStockFromDraft,
@@ -657,5 +658,81 @@ describe("assessProsbaLineZkQuantity", () => {
     );
     expect(confirm?.title).toBe("Częściowy stan magazynowy");
     expect(confirm?.message).toContain("Implant");
+  });
+});
+
+describe("adjustStockMapForZkLines", () => {
+  const lines = [
+    { key: "a", subiektTwId: 1, quantity: 2 },
+    { key: "b", subiektTwId: 2, quantity: 5 },
+  ];
+
+  it("odejmuje rezerwację z dodawanego ZK od tw_StanRez", () => {
+    const stockByTwId = {
+      1: { onHand: 2, reserved: 2, available: 0, source: "subiekt" as const },
+      2: { onHand: 10, reserved: 5, available: 5, source: "subiekt" as const },
+    };
+    const adjusted = adjustStockMapForZkLines(lines, stockByTwId);
+    expect(adjusted[1]).toEqual({
+      onHand: 2,
+      reserved: 0,
+      available: 2,
+      source: "subiekt",
+    });
+    expect(adjusted[2]).toEqual({
+      onHand: 10,
+      reserved: 0,
+      available: 10,
+      source: "subiekt",
+    });
+  });
+
+  it("nie daje ujemnych rezerwacji (max 0)", () => {
+    const adjusted = adjustStockMapForZkLines(lines, {
+      1: { onHand: 2, reserved: 1, available: 1, source: "subiekt" as const },
+    });
+    expect(adjusted[1]?.reserved).toBe(0);
+    expect(adjusted[1]?.available).toBe(2);
+  });
+
+  it("zachowuje rezerwacje od innych dokumentów", () => {
+    const adjusted = adjustStockMapForZkLines(lines, {
+      1: { onHand: 5, reserved: 4, available: 1, source: "subiekt" as const },
+    });
+    // reserved 4, ZK needs 2 → adjusted reserved = 4 - 2 = 2
+    expect(adjusted[1]?.reserved).toBe(2);
+    expect(adjusted[1]?.available).toBe(3);
+  });
+
+  it("zwraca pusty obiekt gdy brak danych stanu", () => {
+    const adjusted = adjustStockMapForZkLines(lines, {});
+    expect(adjusted).toEqual({});
+  });
+
+  it("sumuje ilości gdy ten sam tw_Id w wielu liniach", () => {
+    const multiLines = [
+      { key: "a", subiektTwId: 1, quantity: 2 },
+      { key: "b", subiektTwId: 1, quantity: 3 },
+    ];
+    const adjusted = adjustStockMapForZkLines(multiLines, {
+      1: { onHand: 10, reserved: 5, available: 5, source: "subiekt" as const },
+    });
+    // total qty = 5, reserved 5 → adjusted reserved = 0
+    expect(adjusted[1]?.reserved).toBe(0);
+    expect(adjusted[1]?.available).toBe(10);
+  });
+
+  it("pomija linie bez tw_Id lub z zerową ilością", () => {
+    const weirdLines = [
+      { key: "a", subiektTwId: null, quantity: 2 },
+      { key: "b", subiektTwId: 1, quantity: 0 },
+      { key: "c", subiektTwId: 2, quantity: 3 },
+    ];
+    const adjusted = adjustStockMapForZkLines(weirdLines, {
+      2: { onHand: 5, reserved: 3, available: 2, source: "subiekt" as const },
+    });
+    expect(adjusted[2]?.reserved).toBe(0);
+    expect(adjusted[2]?.available).toBe(5);
+    expect(adjusted[1]).toBeUndefined();
   });
 });

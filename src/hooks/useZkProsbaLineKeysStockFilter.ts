@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useProsbaLineStockBatchFetch } from "@/hooks/useProsbaLineStockBatchFetch";
 import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 import {
+  adjustStockMapForZkLines,
   collectZkProsbaScopeLineTwIds,
   filterZkProsbaScopeLineKeysNeedingOrder,
   zkProsbaScopeStockFetchFailed,
@@ -26,8 +27,13 @@ export function useZkProsbaLineKeysStockFilter(
   const teethExemptTwIds = useTeethExemptTwIds();
   const twIds = useMemo(() => collectZkProsbaScopeLineTwIds(scopeLines), [scopeLines]);
   const fetchEnabled = enabled && sourceKeys.length > 0 && twIds.length > 0;
-  const { stockByTwId, loading: stockLoading, timedOut: stockFetchTimedOut } =
+  const { stockByTwId: rawStockByTwId, loading: stockLoading, timedOut: stockFetchTimedOut } =
     useProsbaLineStockBatchFetch(twIds, fetchEnabled);
+
+  const stockByTwId = useMemo(
+    () => adjustStockMapForZkLines(scopeLines, rawStockByTwId),
+    [scopeLines, rawStockByTwId]
+  );
 
   const orderMarkedKeys = options?.orderMarkedKeys;
 
