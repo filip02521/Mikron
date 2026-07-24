@@ -13,6 +13,7 @@ CREATE INDEX IF NOT EXISTS idx_individual_orders_teeth_order_file_path
   WHERE teeth_order_file_path IS NOT NULL;
 
 -- Insert the storage bucket record if it doesn't exist
+-- Bucket is private (public=false) — all access via server actions using service role key (bypasses RLS)
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
   'teeth-order-files',
@@ -28,16 +29,3 @@ VALUES (
   ]
 )
 ON CONFLICT (id) DO NOTHING;
-
--- RLS policies for the bucket: only service role (admin client) can manage files
--- Sales users get signed URLs via server actions, not direct storage access
-ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
-
--- Allow service role full access to teeth-order-files bucket
-DROP POLICY IF EXISTS "teeth_order_files_service_all" ON storage.objects;
-CREATE POLICY "teeth_order_files_service_all"
-  ON storage.objects
-  FOR ALL
-  TO service_role
-  USING (bucket_id = 'teeth-order-files')
-  WITH CHECK (bucket_id = 'teeth-order-files');
