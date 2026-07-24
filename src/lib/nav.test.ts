@@ -189,6 +189,19 @@ describe("teethNavGroups", () => {
     ]);
   });
 
+  it("sekcje Dostawcy i Narzędzia są zwijane (jak w operacjach)", () => {
+    const groups = teethNavGroups();
+    const collapsibleSections = groups.filter((g) => g.collapsible);
+    expect(collapsibleSections.map((g) => g.title)).toEqual([
+      NAV_SECTION_SUPPLIERS,
+      NAV_SECTION_TOOLS,
+    ]);
+    const defaultCollapsed = groups.filter((g) => g.defaultCollapsed);
+    expect(defaultCollapsed.map((g) => g.title)).toEqual([
+      NAV_SECTION_TOOLS,
+    ]);
+  });
+
   it("sekcja Dziś — kolejność workflow: kolejka, weryfikacja, przyjęcie, historia", () => {
     const today = teethNavGroups().find((g) => g.title === NAV_SECTION_TODAY);
     expect(today?.items.map((item) => item.href)).toEqual([
@@ -266,6 +279,60 @@ describe("navForRole zakupy_zeby", () => {
     const groups = navForRole("zakupy");
     const allHrefs = groups.flatMap((g) => g.items.map((i) => i.href));
     expect(allHrefs.some((href) => href.startsWith("/zeby"))).toBe(false);
+  });
+});
+
+describe("navForRole magazyn", () => {
+  it("ma sekcje Dziś, Zespół, Archiwum i Kurierzy (jak operacje)", () => {
+    const groups = navForRole("magazyn");
+    expect(groups.map((g) => g.title)).toEqual([
+      NAV_SECTION_TODAY,
+      "Zespół",
+      NAV_SECTION_TOOLS,
+      NAV_SECTION_CARRIERS,
+    ]);
+  });
+
+  it("sekcje Archiwum i Kurierzy są zwijane", () => {
+    const groups = navForRole("magazyn");
+    const collapsibleSections = groups.filter((g) => g.collapsible);
+    expect(collapsibleSections.map((g) => g.title)).toEqual([
+      NAV_SECTION_TOOLS,
+      NAV_SECTION_CARRIERS,
+    ]);
+  });
+
+  it("sekcja Archiwum jest domyślnie zwinięta", () => {
+    const groups = navForRole("magazyn");
+    const defaultCollapsed = groups.filter((g) => g.defaultCollapsed);
+    expect(defaultCollapsed.map((g) => g.title)).toEqual([
+      NAV_SECTION_TOOLS,
+    ]);
+  });
+
+  it("mobile primary — Przyjęcie towaru, Plan dostaw, Notatki", () => {
+    const primary = navMobilePrimaryItems(navForRole("magazyn"));
+    expect(primary.map((item) => item.mobileLabel ?? item.label)).toEqual([
+      "Magazyn",
+      "Dostawy",
+      "Notatki",
+    ]);
+  });
+
+  it("sekcja Dziś ma Przyjęcie i Plan dostaw", () => {
+    const today = navForRole("magazyn").find((g) => g.title === NAV_SECTION_TODAY);
+    expect(today?.items.map((item) => item.href)).toEqual([
+      "/kolejka",
+      "/dostawy",
+    ]);
+  });
+
+  it("sekcja Zespół ma Notatki i Urlopy", () => {
+    const team = navForRole("magazyn").find((g) => g.title === "Zespół");
+    expect(team?.items.map((item) => item.href)).toEqual([
+      "/notatki?dzial=magazyn",
+      "/urlopy",
+    ]);
   });
 });
 

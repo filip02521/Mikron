@@ -319,11 +319,20 @@ function teethTeamNavItems(badges: {
 export function teethNavGroups(badges: NavBadges = {}): NavGroup[] {
   return [
     { title: NAV_SECTION_TODAY, items: teethTodayNavItems(badges) },
-    { title: NAV_SECTION_SUPPLIERS, items: teethSupplierNavItems() },
+    {
+      title: NAV_SECTION_SUPPLIERS,
+      items: teethSupplierNavItems(),
+      collapsible: true,
+    },
     { title: NAV_SECTION_TEAM, items: teethTeamNavItems(badges) },
-    { title: NAV_SECTION_TOOLS, items: [
-      ...(monthlySummaryNavItem() ? [monthlySummaryNavItem()!] : []),
-    ] },
+    {
+      title: NAV_SECTION_TOOLS,
+      items: [
+        ...(monthlySummaryNavItem() ? [monthlySummaryNavItem()!] : []),
+      ],
+      collapsible: true,
+      defaultCollapsed: true,
+    },
   ];
 }
 
@@ -615,7 +624,7 @@ function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
 }
 
 function magazynNavGroups(badges: NavBadges): NavGroup[] {
-  return [
+  const groups: NavGroup[] = [
     {
       title: NAV_SECTION_TODAY,
       items: [
@@ -641,6 +650,11 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
           tier: "primary",
           mobileSlot: "primary",
         },
+      ],
+    },
+    {
+      title: NAV_SECTION_TEAM,
+      items: [
         {
           href: OPERATIONS_NOTATKI_MAGAZYN,
           label: "Notatki",
@@ -662,10 +676,24 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
           tier: "compact",
           mobileSlot: "overflow",
         },
-        ...(monthlySummaryNavItem() ? [monthlySummaryNavItem()!] : []),
       ],
     },
+    {
+      title: NAV_SECTION_TOOLS,
+      items: [
+        ...(monthlySummaryNavItem() ? [monthlySummaryNavItem()!] : []),
+      ],
+      collapsible: true,
+      defaultCollapsed: true,
+    },
+    {
+      title: NAV_SECTION_CARRIERS,
+      items: carrierContactItems,
+      collapsible: true,
+    },
   ];
+
+  return groups;
 }
 
 export type NavAppContext = {
