@@ -47,7 +47,7 @@ export function MyOrderLineClientField({
           className
         )}
       >
-        <MyOrderAssignedClient name={trimmed} className="min-w-0" />
+        <MyOrderAssignedClient name={trimmed} clientKhId={clientKhId} className="min-w-0" />
         <span className="inline-flex shrink-0 items-center gap-1.5 text-[0.68rem]">
           <button
             type="button"

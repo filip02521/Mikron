@@ -1136,3 +1136,17 @@ export async function actionFetchProsbaLineStock(
   await requireSubiektLookup();
   return fetchProsbaLineStock(twIds);
 }
+
+/** NIP klienta po kh_Id z Subiekta — do kopiowania z badge'a "Klient". */
+export async function actionFetchClientNip(
+  khId: number
+): Promise<{ nip: string | null }> {
+  await requireSubiektLookup();
+  const kh = Math.trunc(khId);
+  if (!Number.isFinite(kh) || kh <= 0) return { nip: null };
+  const { lookupSubiektKontrahentByKhId } = await import(
+    "@/lib/subiekt/lookup-kontrahent"
+  );
+  const kontrahent = await lookupSubiektKontrahentByKhId(kh);
+  return { nip: kontrahent?.adr_NIP?.trim() || null };
+}

@@ -467,6 +467,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
           ) : !hideClientLabel && line.clientName?.trim() ? (
             <MyOrderAssignedClient
               name={line.clientName}
+              clientKhId={line.clientKhId}
               searchQuery={searchQuery}
               className={cn("mt-2 border-t border-slate-100 pt-2", !compact && "pl-5")}
             />

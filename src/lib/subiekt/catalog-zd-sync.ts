@@ -9,9 +9,11 @@ import {
 import {
   importAndMarkZdDocumentToCatalog,
 } from "@/lib/subiekt/zd-catalog-import";
-import { warsawNowParts } from "@/lib/time/warsaw";
+import { warsawNowParts, warsawDateKeyDaysAgo } from "@/lib/time/warsaw";
 import { resolveKhLabelForZdDocument } from "@/lib/subiekt/kontrahent-from-document";
 import { parseZdFulfillmentDeadline } from "@/lib/subiekt/zd-fulfillment-date";
+import { extractDocKhIds } from "@/lib/subiekt/zd-document-kh";
+import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
 import type { SubiektDocument } from "@/lib/subiekt/types";
 
 export const CATALOG_ZD_SYNC_STATE_KEY = "catalog_zd_sync_state";
@@ -32,39 +34,8 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-function normalizeNumeric(value: unknown): number | null {
-  if (value == null) return null;
-  const n = Number(value);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  return Math.trunc(n);
-}
-
-function extractDocKhIds(doc: SubiektDocument): number[] {
-  const ids: number[] = [];
-  ids.push(
-    ...[
-      normalizeNumeric((doc as SubiektDocument & { dok_OdbiorcaId?: unknown }).dok_OdbiorcaId),
-      normalizeNumeric((doc as SubiektDocument & { dok_PlatnikId?: unknown }).dok_PlatnikId),
-      normalizeNumeric((doc as SubiektDocument & { kh_Id?: unknown }).kh_Id),
-      normalizeNumeric((doc as SubiektDocument & { dok_KontrahentId?: unknown }).dok_KontrahentId),
-      normalizeNumeric((doc as SubiektDocument & { dok_KhId?: unknown }).dok_KhId),
-      normalizeNumeric((doc as SubiektDocument & { dok_DostawcaId?: unknown }).dok_DostawcaId),
-    ].filter((n): n is number => n != null)
-  );
-  for (const k of [
-    (doc as SubiektDocument & { kh__Kontrahent_Platnik?: { kh_Id?: unknown } }).kh__Kontrahent_Platnik,
-    (doc as SubiektDocument & { kh__Kontrahent_Odbiorca?: { kh_Id?: unknown } }).kh__Kontrahent_Odbiorca,
-  ]) {
-    const n = normalizeNumeric(k?.kh_Id);
-    if (n != null) ids.push(n);
-  }
-  return [...new Set(ids)].filter((n) => Number.isFinite(n) && n > 0);
-}
-
 export function catalogSyncDataOd(daysBack = CATALOG_SYNC_DAYS_BACK): string {
-  const d = new Date();
-  d.setDate(d.getDate() - daysBack);
-  return d.toISOString().slice(0, 10);
+  return warsawDateKeyDaysAgo(daysBack);
 }
 
 /** Okno nocnej synchronizacji katalogu: 1:00–4:59 w Warszawie (dowolny dzień tygodnia). */
@@ -165,15 +136,14 @@ async function loadSupplierByKh(): Promise<Map<number, string>> {
   return loadSupplierIdByKhMap();
 }
 
-async function countPendingImports(dataOd: string): Promise<number> {
+async function countPendingImports(): Promise<number> {
   const supabase = createAdminClient();
   const { count, error } = await supabase
     .from("subiekt_zd_index")
     .select("dok_id", { count: "exact", head: true })
     .eq("verified", true)
     .not("supplier_id", "is", null)
-    .is("catalog_imported_at", null)
-    .gte("dok_data_wyst", dataOd);
+    .is("catalog_imported_at", null);
   if (error) throw new Error(error.message);
   return count ?? 0;
 }
@@ -281,7 +251,6 @@ async function importBatch(
     .eq("verified", true)
     .not("supplier_id", "is", null)
     .is("catalog_imported_at", null)
-    .gte("dok_data_wyst", state.dataOd)
     .order("dok_data_wyst", { ascending: false })
     .order("dok_id", { ascending: false })
     .limit(maxDocs);
@@ -294,7 +263,7 @@ async function importBatch(
   }>;
 
   if (!slice.length) {
-    const pending = await countPendingImports(state.dataOd);
+    const pending = await countPendingImports();
     return {
       ...state,
       importComplete: true,
@@ -317,7 +286,7 @@ async function importBatch(
     lastDocNumber = row.dok_nr_pelny ?? lastDocNumber;
   }
 
-  const pending = await countPendingImports(state.dataOd);
+  const pending = await countPendingImports();
   const importComplete = pending === 0;
 
   return {
@@ -375,6 +344,8 @@ export function resolveCatalogZdSyncStartState(
   };
 }
 
+export const CATALOG_ZD_SYNC_LOCK_KEY = "job_catalog_zd_sync";
+
 export async function runCatalogZdSync(options?: {
   force?: boolean;
   /** Pełny restart indeksu+importu (np. test po zakończonym przebiegu). */
@@ -411,7 +382,23 @@ export async function runCatalogZdSync(options?: {
     return { ok: true, skipped: true, reason: "already_ran_today", state: prev, timedOut: false };
   }
 
+  const locked = await tryAcquireLock(
+    CATALOG_ZD_SYNC_LOCK_KEY,
+    Math.ceil(maxDurationMs / 1000) + 60,
+    "catalog_zd_sync",
+  );
+  if (!locked) {
+    return {
+      ok: true,
+      skipped: true,
+      reason: "lock_held",
+      state: prev ?? freshState(runId),
+      timedOut: false,
+    };
+  }
+
   let state = resolveCatalogZdSyncStartState(prev, runId, options);
+  let autoAssignUpdated = state.autoAssignUpdated;
 
   const supplierByKh = await loadSupplierByKh();
 
@@ -421,6 +408,12 @@ export async function runCatalogZdSync(options?: {
         state = await indexBatch(state, supplierByKh, indexBatchDocs);
       } else if (!state.importComplete) {
         state = await importBatch(state, importBatchDocs);
+
+        if (state.importProcessedDocs > 0 && !state.importComplete) {
+          const auto = await autoAssignMissingSuppliersFromCatalog({ limit: 80 });
+          autoAssignUpdated += auto.updated;
+          state = { ...state, autoAssignUpdated, lastUpdatedAt: nowIso() };
+        }
       } else {
         break;
       }
@@ -435,9 +428,10 @@ export async function runCatalogZdSync(options?: {
 
     if (allDone) {
       const auto = await autoAssignMissingSuppliersFromCatalog({ limit: 120 });
+      autoAssignUpdated += auto.updated;
       state = {
         ...state,
-        autoAssignUpdated: auto.updated,
+        autoAssignUpdated,
         status: "done",
         finishedAt: nowIso(),
         lastUpdatedAt: nowIso(),
@@ -445,6 +439,7 @@ export async function runCatalogZdSync(options?: {
     } else if (timedOut) {
       state = {
         ...state,
+        autoAssignUpdated,
         status: "running",
         lastUpdatedAt: nowIso(),
       };
@@ -462,11 +457,14 @@ export async function runCatalogZdSync(options?: {
     const message = e instanceof Error ? e.message : "catalog sync failed";
     state = {
       ...state,
+      autoAssignUpdated,
       status: "failed",
       lastError: message,
       lastUpdatedAt: nowIso(),
     };
     await writeCatalogZdSyncState(state);
     return { ok: false, state, timedOut: false };
+  } finally {
+    await releaseLock(CATALOG_ZD_SYNC_LOCK_KEY);
   }
 }

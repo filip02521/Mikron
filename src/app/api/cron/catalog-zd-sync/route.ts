@@ -76,6 +76,14 @@ export async function GET(request: NextRequest) {
     }
 
     if (result.skipped) {
+      if (result.reason === "lock_held") {
+        return NextResponse.json({
+          success: true,
+          skipped: true,
+          reason: "lock_held",
+          ...detail,
+        });
+      }
       return NextResponse.json({
         success: true,
         skipped: true,
