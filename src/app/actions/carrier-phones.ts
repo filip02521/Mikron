@@ -3,7 +3,7 @@
 // @service-role-ok — autoryzacja requireWarehouse(); service role z pełnym scope po warstwie aplikacji.
 
 import { revalidatePath } from "next/cache";
-import { requireWarehouse } from "@/lib/auth";
+import { requireWarehouse, requireOperations } from "@/lib/auth";
 import {
   fetchCarrierPhones,
   createCarrierPhone,
@@ -20,6 +20,13 @@ export async function actionFetchCarrierPhones(
   carrierSlug?: string
 ): Promise<CarrierPhoneRow[]> {
   await requireWarehouse();
+  return fetchCarrierPhones(carrierSlug);
+}
+
+export async function actionFetchCarrierPhonesForOperations(
+  carrierSlug?: string
+): Promise<CarrierPhoneRow[]> {
+  await requireOperations();
   return fetchCarrierPhones(carrierSlug);
 }
 

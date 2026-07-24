@@ -13,10 +13,12 @@ import {
   IconNotepad,
   IconPackage,
   IconPackageCheck,
+  IconPhone,
   IconPlusCircle,
   IconTooth,
   IconSettings,
   IconSun,
+  IconTruck,
   IconUserCog,
   IconUserGroup,
   IconUsers,
@@ -53,6 +55,8 @@ const NAV_ICON_BY_KEY: Record<
   teamGroups: IconUserGroup,
   teeth: IconTooth,
   chartTrend: IconChartTrend,
+  phone: IconPhone,
+  truck: IconTruck,
 };
 
 const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
@@ -85,6 +89,7 @@ const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
   "/zespol/urlopy": "vacation",
   "/ustawienia": "admin",
   "/zeby": "teeth",
+  "/kurierzy": "phone",
 };
 
 export function navIconKeyFromHref(href: string): NavIconKey {

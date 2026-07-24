@@ -28,7 +28,9 @@ export type NavIconKey =
   | "teamAccounts"
   | "teamGroups"
   | "teeth"
-  | "chartTrend";
+  | "chartTrend"
+  | "phone"
+  | "truck";
 
 export type NavTone = "indigo" | "amber" | "orange" | "emerald" | "sky" | "slate" | "violet";
 
@@ -58,6 +60,10 @@ export type NavItem = {
 export type NavGroup = {
   title: string;
   items: NavItem[];
+  /** Czy sekcja może być zwijana/rozwijana w sidebarze. */
+  collapsible?: boolean;
+  /** Domyślnie zwinięta (tylko gdy collapsible). */
+  defaultCollapsed?: boolean;
 };
 
 export const NAV_SECTION_TODAY = "Dziś";
@@ -70,6 +76,8 @@ export const NAV_SECTION_ZK = "ZK i terminy";
 export const NAV_SECTION_INFO = "Informacje";
 export const NAV_SECTION_REALIZATION = "Realizacja";
 export const NAV_SECTION_HELP = "Pomoc";
+export const NAV_SECTION_CARRIERS = "Kurierzy";
+export const NAV_SECTION_EXTRAS = "Dodatkowe opcje";
 
 /**
  * Sidebar „Administracja” (/admin) = hub system + konta + handlowcy.
@@ -484,7 +492,6 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
 }
 
 const archiveToolItems: NavItem[] = [
-  ...(monthlySummaryNavItem() ? [monthlySummaryNavItem()!] : []),
   {
     href: "/historia",
     label: "Historia",
@@ -501,6 +508,19 @@ const archiveToolItems: NavItem[] = [
     description: "Formularz zbiorczy",
     icon: "groupOrder",
     tone: "slate",
+    tier: "compact",
+    mobileSlot: "overflow",
+  },
+];
+
+const carrierContactItems: NavItem[] = [
+  {
+    href: "/kurierzy",
+    label: "Numery kurierów",
+    mobileLabel: "Kurierzy",
+    description: "Telefony i kontakty do kurierów",
+    icon: "phone",
+    tone: "emerald",
     tier: "compact",
     mobileSlot: "overflow",
   },
@@ -561,12 +581,34 @@ function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
   const groups: NavGroup[] = [
     { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges) },
     { title: NAV_SECTION_TEAM, items: operationsTeamItems(badges) },
-    { title: NAV_SECTION_SUPPLIERS, items: supplierHubItemsForRole(role) },
-    { title: NAV_SECTION_TOOLS, items: archiveToolItems },
+    {
+      title: NAV_SECTION_SUPPLIERS,
+      items: supplierHubItemsForRole(role),
+      collapsible: true,
+    },
+    {
+      title: NAV_SECTION_TOOLS,
+      items: [
+        ...(monthlySummaryNavItem() ? [monthlySummaryNavItem()!] : []),
+        ...archiveToolItems,
+      ],
+      collapsible: true,
+      defaultCollapsed: true,
+    },
+    {
+      title: NAV_SECTION_CARRIERS,
+      items: carrierContactItems,
+      collapsible: true,
+    },
   ];
 
   if (role === "admin") {
-    groups.push({ title: NAV_SECTION_SYSTEM, items: adminSystemItems(badges) });
+    groups.push({
+      title: NAV_SECTION_SYSTEM,
+      items: adminSystemItems(badges),
+      collapsible: true,
+      defaultCollapsed: true,
+    });
   }
 
   return groups;

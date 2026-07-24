@@ -3,6 +3,8 @@ import {
   fetchIndividualOrders,
   fetchSalesCancelledOrders,
   fetchSuppliersWithSchedules,
+  countDeliveryQueue,
+  countInformacjaQueue,
 } from "@/lib/data/queries";
 import { countOpenDepartmentBoardQuestions } from "@/lib/data/department-board";
 import { fetchSalesPeopleForPicker } from "@/lib/data/sales-people-admin";
@@ -19,6 +21,8 @@ export type OperationsDailyPanelMetrics = {
   navBadge: number;
   verificationCount: number;
   openBoardQuestionsCount: number;
+  realizacjaCount: number;
+  operationsNotatkiCount: number;
 };
 
 function maxSubmittedAt(groups: { submittedAtLatest: string }[]): string {
@@ -91,12 +95,26 @@ async function fetchOperationsDailyPanelWorkspace(): Promise<SummaryWorkspaceDat
 }
 
 /** Jedno pobranie workspace + wersji (AppShell, polling API). */
-export async function fetchOperationsDailyPanelMetrics(): Promise<OperationsDailyPanelMetrics> {
-  const [workspace, verificationCount, openBoardQuestionsCount] = await Promise.all([
+export async function fetchOperationsDailyPanelMetrics(
+  options?: {
+    userId?: string;
+    departments?: import("@/types/database").OperationsDepartment[];
+  }
+): Promise<OperationsDailyPanelMetrics> {
+  const [workspace, verificationCount, openBoardQuestionsCount, deliveryCount, informacjaCount, operationsNotatkiCount] = await Promise.all([
     fetchOperationsDailyPanelWorkspace(),
     countVerificationOrders(),
     countOpenDepartmentBoardQuestions().catch(() => 0),
+    countDeliveryQueue().catch(() => 0),
+    countInformacjaQueue().catch(() => 0),
+    options?.userId && options?.departments?.length
+      ? import("@/lib/data/operations-notepad").then((m) =>
+          m.countOperationsNotepadBadge(options.userId!, options.departments!).catch(() => 0)
+        )
+      : Promise.resolve(0),
   ]);
+
+  const realizacjaCount = deliveryCount + informacjaCount;
 
   return {
     version: computeOperationsDailyPanelVersion({
@@ -107,5 +125,7 @@ export async function fetchOperationsDailyPanelMetrics(): Promise<OperationsDail
     navBadge: countDailyPanelNavBadge(workspace),
     verificationCount,
     openBoardQuestionsCount,
+    realizacjaCount,
+    operationsNotatkiCount,
   };
 }

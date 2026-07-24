@@ -73,10 +73,10 @@ export const navLinkIdleClass = cn(
 
 /** Sidebar — nagłówek grupy nawigacji. */
 export const sidebarNavSectionTitleClass =
-  "mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500";
+  "px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400";
 
-/** Sidebar — separator między grupami. */
-export const sidebarNavSectionDividerClass = "mt-3 border-t border-indigo-100/70 pt-3";
+/** Sidebar — separator między grupami (subtelny). */
+export const sidebarNavSectionDividerClass = "mt-2.5 pt-2.5";
 
 /** Sidebar — wyróżniony punkt startowy (Panel / Moje) w stanie spoczynku. */
 export const sidebarNavPrimaryHighlightIdleClass = cn(

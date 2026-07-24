@@ -55,23 +55,35 @@ export function useOperationsUpdates() {
 async function fetchVersion(): Promise<{
   version: string | null;
   openBoardQuestions: number | null;
+  navBadge: number | null;
+  verificationCount: number | null;
+  realizacjaCount: number | null;
+  operationsNotatki: number | null;
 }> {
   try {
     const res = await fetch("/api/operations/daily-panel-version", {
       cache: "no-store",
     });
-    if (!res.ok) return { version: null, openBoardQuestions: null };
+    if (!res.ok) return { version: null, openBoardQuestions: null, navBadge: null, verificationCount: null, realizacjaCount: null, operationsNotatki: null };
     const body = (await res.json()) as {
       version?: string;
       openBoardQuestions?: number;
+      navBadge?: number;
+      verificationCount?: number;
+      realizacjaCount?: number;
+      operationsNotatki?: number;
     };
     return {
       version: body.version ?? null,
       openBoardQuestions:
         typeof body.openBoardQuestions === "number" ? body.openBoardQuestions : null,
+      navBadge: typeof body.navBadge === "number" ? body.navBadge : null,
+      verificationCount: typeof body.verificationCount === "number" ? body.verificationCount : null,
+      realizacjaCount: typeof body.realizacjaCount === "number" ? body.realizacjaCount : null,
+      operationsNotatki: typeof body.operationsNotatki === "number" ? body.operationsNotatki : null,
     };
   } catch {
-    return { version: null, openBoardQuestions: null };
+    return { version: null, openBoardQuestions: null, navBadge: null, verificationCount: null, realizacjaCount: null, operationsNotatki: null };
   }
 }
 
@@ -123,6 +135,19 @@ export function OperationsUpdatesProvider({
     [patchNavBadges]
   );
 
+  const patchLiveBadges = useCallback(
+    (data: Awaited<ReturnType<typeof fetchVersion>>) => {
+      const patch: Partial<Record<string, number>> = {};
+      if (data.openBoardQuestions != null) patch.departmentBoardQuestions = data.openBoardQuestions;
+      if (data.navBadge != null) patch.nowe = data.navBadge;
+      if (data.verificationCount != null) patch.weryfikacja = data.verificationCount;
+      if (data.realizacjaCount != null) patch.realizacja = data.realizacjaCount;
+      if (data.operationsNotatki != null) patch.operationsNotatki = data.operationsNotatki;
+      if (Object.keys(patch).length > 0) patchNavBadges(patch);
+    },
+    [patchNavBadges]
+  );
+
   const { applyCount: applyOpenBoardQuestionsCount } = useBoardNotificationSoundEffects({
     enabled,
     soundEnabled: hydrated && boardQuestionsSound,
@@ -142,9 +167,10 @@ export function OperationsUpdatesProvider({
     router.refresh();
     if (latest) setBaseline(latest);
     void fetchVersion()
-      .then(({ version, openBoardQuestions }) => {
+      .then(({ version, openBoardQuestions, ...rest }) => {
         if (version) syncBaseline(version);
         applyOpenBoardQuestionsCount(openBoardQuestions);
+        patchLiveBadges({ version, openBoardQuestions, ...rest });
         const now = Date.now();
         setLastSyncedAt(now);
         setLastPollAt(now);
@@ -154,7 +180,7 @@ export function OperationsUpdatesProvider({
       .finally(() => {
         syncingRef.current = false;
       });
-  }, [router, latest, syncBaseline, applyOpenBoardQuestionsCount]);
+  }, [router, latest, syncBaseline, applyOpenBoardQuestionsCount, patchLiveBadges]);
 
   const setAutoRefresh = useCallback((value: boolean) => {
     autoRefreshStore.setValue(value);
@@ -164,14 +190,15 @@ export function OperationsUpdatesProvider({
   }, [enabled, latest, baseline, refreshNow]);
 
   const poll = useCallback(async () => {
-    const { version, openBoardQuestions } = await fetchVersion();
-    applyOpenBoardQuestionsCount(openBoardQuestions);
-    if (!version) return;
+    const data = await fetchVersion();
+    applyOpenBoardQuestionsCount(data.openBoardQuestions);
+    patchLiveBadges(data);
+    if (!data.version) return;
     const now = Date.now();
-    setLatest(version);
+    setLatest(data.version);
     setLastPollAt(now);
-    setBaseline((prev) => prev ?? version);
-  }, [applyOpenBoardQuestionsCount]);
+    setBaseline((prev) => prev ?? data.version);
+  }, [applyOpenBoardQuestionsCount, patchLiveBadges]);
 
   useEffect(() => {
     if (!enabled) return;

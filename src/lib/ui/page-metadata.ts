@@ -46,6 +46,7 @@ export const PAGE_TITLES = {
   teamGroups: "Grupy handlowe",
   locations: "Lokalizacje",
   monthlySummary: "Podsumowanie miesiąca",
+  carriers: "Kurierzy",
 } as const;
 
 export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>> = {
@@ -58,6 +59,7 @@ export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>
   dostawy: "Nadchodzące dostawy — terminy ZD i prognoza paczek",
   admin: "Konfiguracja systemu, użytkownicy i narzędzia serwisowe",
   monthlySummary: "Statystyki miesięczne — handlowcy, dostawy i zakupy",
+  carriers: "Numery telefonów i kontakty do kurierów — szybki dostęp z dziennika dostaw",
   adminTeethProducts:
     "Lista towarów z wyłączoną kontrolą stanu magazynowego przy prośbach o zamówienie",
 };

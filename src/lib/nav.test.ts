@@ -13,6 +13,7 @@ import {
   NAV_SECTION_TOOLS,
   NAV_SECTION_ZK,
   NAV_SECTION_INFO,
+  NAV_SECTION_CARRIERS,
   navForAppContext,
   teethNavGroups,
   pageTitle,
@@ -117,12 +118,31 @@ describe("navForRole admin dostawcy", () => {
 });
 
 describe("navForRole struktura zakupów", () => {
-  it("grupuje workflow w sekcji Dziś, Zespół, Dostawcy i Archiwum", () => {
+  it("grupuje workflow w sekcji Dziś, Zespół, Dostawcy, Archiwum i Kurierzy", () => {
     const groups = navForRole("zakupy");
     expect(groups.map((g) => g.title)).toEqual([
       NAV_SECTION_TODAY,
       "Zespół",
       NAV_SECTION_SUPPLIERS,
+      NAV_SECTION_TOOLS,
+      NAV_SECTION_CARRIERS,
+    ]);
+  });
+
+  it("sekcje od Dostawców są zwijane", () => {
+    const groups = navForRole("zakupy");
+    const collapsibleSections = groups.filter((g) => g.collapsible);
+    expect(collapsibleSections.map((g) => g.title)).toEqual([
+      NAV_SECTION_SUPPLIERS,
+      NAV_SECTION_TOOLS,
+      NAV_SECTION_CARRIERS,
+    ]);
+  });
+
+  it("sekcje Archiwum i System są domyślnie zwinięte", () => {
+    const groups = navForRole("zakupy");
+    const defaultCollapsed = groups.filter((g) => g.defaultCollapsed);
+    expect(defaultCollapsed.map((g) => g.title)).toEqual([
       NAV_SECTION_TOOLS,
     ]);
   });
@@ -147,13 +167,14 @@ describe("navForRole struktura zakupów", () => {
     ]);
   });
 
-  it("mobile overflow zawiera notatki i narzędzia bez panelu zębów", () => {
+  it("mobile overflow zawiera notatki, narzędzia i numery kurierów", () => {
     const groups = navForRole("zakupy");
     const labels = navMobileOverflowItems(groups).map((item) => item.label);
     expect(labels).toContain("Notatki");
     expect(labels).not.toContain("Panel zębów");
     expect(labels).toContain("Historia");
     expect(labels).toContain("Zamówienie grupowe");
+    expect(labels).toContain("Numery kurierów");
   });
 });
 

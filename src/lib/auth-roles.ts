@@ -87,6 +87,7 @@ const OPERATIONS_PATH_PREFIXES = [
   "/lokalizacje",
   "/zamowienia",
   "/weryfikacja",
+  "/kurierzy",
   ...PROCUREMENT_PREFIXES,
 ];
 

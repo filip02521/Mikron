@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -41,7 +42,7 @@ import type { UserRole, Workspace } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
 import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from "@/components/icons/NavIcon";
-import { IconSettings } from "@/components/icons/StrokeIcons";
+import { IconSettings, IconChevronRight } from "@/components/icons/StrokeIcons";
 import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { useSalesNavLocked } from "@/components/sales/SalesOnboardingContext";
 import { AdminPanelContextSwitcher } from "@/components/layout/AdminPanelContextSwitcher";
@@ -197,6 +198,152 @@ function NavLink({
   );
 }
 
+function CollapsibleNavSection({
+  group,
+  isFirst,
+  navLocked,
+  previewDla,
+  adminSalesPreview,
+}: {
+  group: NavGroup;
+  isFirst: boolean;
+  navLocked: boolean;
+  previewDla: string | null;
+  adminSalesPreview: boolean;
+}) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeSearch = searchParams.toString() ? `?${searchParams.toString()}` : "";
+  const salesUpdates = useSalesUpdates();
+  const operationsUpdates = useOperationsUpdates();
+  const teethUpdates = useTeethUpdates();
+  const allHrefs = group.items.map((item) => item.href);
+
+  const storageKey = `nav-collapsed:${group.title}`;
+  const [collapsed, setCollapsed] = useState(group.defaultCollapsed ?? false);
+  const [hydrated, setHydrated] = useState(false);
+  const autoExpandedRef = useRef(false);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored !== null) {
+        setCollapsed(stored === "1");
+      }
+    } catch {
+      // ignore
+    }
+    setHydrated(true);
+  }, [storageKey]);
+
+  const toggle = useCallback(() => {
+    autoExpandedRef.current = true;
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(storageKey, next ? "1" : "0");
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, [storageKey]);
+
+  const hasActiveItem = allHrefs.some((href) =>
+    isNavItemActive(pathname, href, allHrefs, activeSearch)
+  );
+
+  useEffect(() => {
+    if (hydrated && hasActiveItem && collapsed && !autoExpandedRef.current) {
+      autoExpandedRef.current = true;
+      setCollapsed(false);
+    }
+  }, [hasActiveItem, collapsed, hydrated]);
+
+  const totalBadge = group.items.reduce(
+    (sum, item) => sum + (item.badge != null && item.badge > 0 ? item.badge : 0),
+    0
+  );
+
+  return (
+    <section className={cn(!isFirst && sidebarNavSectionDividerClass)}>
+      <button
+        type="button"
+        onClick={toggle}
+        className={cn(
+          "group/section flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-all",
+          controlFocusClass,
+          collapsed
+            ? "hover:bg-slate-50/70"
+            : "bg-slate-50/40 hover:bg-slate-50/70",
+          hasActiveItem && !collapsed && "bg-slate-50/60"
+        )}
+        aria-expanded={!collapsed}
+      >
+        <span
+          className={cn(
+            "flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-all duration-200",
+            collapsed
+              ? "text-slate-300 group-hover/section:text-slate-400"
+              : "text-slate-500 group-hover/section:text-slate-600"
+          )}
+        >
+          <span
+            className={cn(
+              "transition-transform duration-200",
+              collapsed ? "rotate-0" : "rotate-90"
+            )}
+          >
+            <IconChevronRight size={13} aria-hidden />
+          </span>
+        </span>
+        <h2
+          className={cn(
+            "flex-1 text-[10px] font-bold uppercase tracking-[0.12em]",
+            collapsed ? "text-slate-400" : "text-slate-500"
+          )}
+        >
+          {group.title}
+        </h2>
+        {totalBadge > 0 ? (
+          <span className="shrink-0 rounded-md bg-slate-200/80 px-1.5 py-0.5 text-[9px] font-bold tabular-nums text-slate-600">
+            {totalBadge > 99 ? "99+" : totalBadge}
+          </span>
+        ) : null}
+      </button>
+      {collapsed ? null : (
+        <ul className="mt-1 space-y-0.5">
+          {group.items.map((item) => {
+            const active = isNavItemActive(pathname, item.href, allHrefs, activeSearch);
+            const showDot =
+              (item.href === "/moje" && Boolean(salesUpdates?.hasUpdates) && !active) ||
+              (item.href === "/podsumowanie" &&
+                Boolean(operationsUpdates?.hasUpdates) &&
+                !active) ||
+              (item.href === "/zeby/kolejka" &&
+                Boolean(teethUpdates?.hasUpdates) &&
+                !active);
+
+            const href = hrefWithAdminSalesPreview(item.href, previewDla, adminSalesPreview);
+
+            return (
+              <li key={item.href}>
+                <NavLink
+                  item={item}
+                  href={href}
+                  active={active}
+                  showDot={showDot}
+                  locked={navLocked}
+                />
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 function NavSection({
   group,
   isFirst,
@@ -218,9 +365,24 @@ function NavSection({
   const teethUpdates = useTeethUpdates();
   const allHrefs = group.items.map((item) => item.href);
 
+  if (group.collapsible) {
+    return (
+      <CollapsibleNavSection
+        group={group}
+        isFirst={isFirst}
+        navLocked={navLocked}
+        previewDla={previewDla}
+        adminSalesPreview={adminSalesPreview}
+      />
+    );
+  }
+
   return (
     <section className={cn(!isFirst && sidebarNavSectionDividerClass)}>
-      <h2 className={sidebarNavSectionTitleClass}>{group.title}</h2>
+      <div className="flex items-center gap-2 px-2.5 py-2">
+        <span className="h-5 w-5 shrink-0" aria-hidden />
+        <h2 className={cn(sidebarNavSectionTitleClass, "flex-1")}>{group.title}</h2>
+      </div>
       <ul className="space-y-0.5">
         {group.items.map((item) => {
           const active = isNavItemActive(pathname, item.href, allHrefs, activeSearch);
