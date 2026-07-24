@@ -9,7 +9,6 @@ import { sortIndividualOrdersBySupplier } from "@/lib/orders/queue-sort";
 import { sortInformacjaQueueForDisplay } from "@/lib/orders/queue-product-groups";
 import {
   countDeliveryQueueActivePartialRows,
-  countDeliveryQueueCancelledRows,
   countInformacjaWarehouseQueueRows,
 } from "@/lib/data/queue-counts";
 import { isInformacjaWarehouseQueueOrder } from "@/lib/orders/informacja-warehouse-queue";
@@ -19,7 +18,6 @@ import {
 } from "@/lib/teeth/teeth-lifecycle";
 import {
   hasActiveSupplierFulfillment,
-  isSalesCancelledForQueue,
 } from "@/lib/orders/sales-cancel";
 import { isAwaitingSalesPickup } from "@/lib/orders/sales-pickup";
 import { historyRetentionCutoffIso } from "@/lib/orders/history-retention";
@@ -327,14 +325,11 @@ export async function countDeliveryQueue(): Promise<number> {
     throw new Error(cancelledRes.error.message);
   }
 
-  const cancelledForQueue = countDeliveryQueueCancelledRows(
-    (cancelledRes.data ?? []) as import("@/lib/data/queue-counts").DeliveryQueueCancelledCountRow[]
-  );
   const partialActive = countDeliveryQueueActivePartialRows(
     (cancelledRes.data ?? []) as import("@/lib/data/queue-counts").DeliveryQueueCancelledCountRow[]
   );
 
-  return (activeRes.count ?? 0) + cancelledForQueue + partialActive;
+  return (activeRes.count ?? 0) + partialActive;
 }
 
 /** Całość na regale — u handlowców świeci na zielono do odbioru (poza kolejką przyjęcia). */
@@ -442,13 +437,6 @@ export async function fetchDeliveryQueue(options?: {
     }
   }
 
-  const cancelledForQueue = normalizeIndividualOrders(cancelledRows).filter(
-    (o) =>
-      !o.warehouse_cancel_fulfilled_at &&
-      isSalesCancelledForQueue(o) &&
-      Boolean(o.procurement_cancel_disposition)
-  );
-
   const partialActive = normalizeIndividualOrders(cancelledRows).filter(
     (o) =>
       o.request_kind === "zamowienie" &&
@@ -459,7 +447,6 @@ export async function fetchDeliveryQueue(options?: {
 
   const active = normalizeIndividualOrders(activeRes.data ?? []);
   const merged = sortIndividualOrdersBySupplier([
-    ...cancelledForQueue,
     ...partialActive,
     ...active,
   ]);

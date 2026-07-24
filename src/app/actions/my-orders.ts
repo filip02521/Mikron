@@ -10,10 +10,12 @@ import { isProfileActiveDelegateForSalesPerson } from "@/lib/data/vacation-deleg
 import { createClient } from "@/lib/supabase/server";
 import {
   effectiveSalesCancelPhase,
+  mergeAutoFulfillCancelDisposition,
   mergeSalesCancelUserAutoAck,
   planSalesCancelQuantity,
   resolveSalesCancelPhase,
   salesCancelUndoRestoreStatus,
+  type SalesCancelPhase,
 } from "@/lib/orders/sales-cancel";
 import { normalizeSalesClientAssignment } from "@/lib/orders/sales-client-label";
 import {
@@ -262,6 +264,10 @@ export async function actionSalesCancelOrders(
       throw new Error(SALES_CANCEL_MIGRATION_HINT);
     }
     mergeSalesCancelUserAutoAck(update, row as IndividualOrder, caps, now);
+    const isFullCancellation = !quantityPlan?.keepLineActiveForSales;
+    if (isFullCancellation) {
+      mergeAutoFulfillCancelDisposition(update, phase, now);
+    }
 
     const q = supabase
       .from("individual_orders")
@@ -429,6 +435,10 @@ export async function actionSalesCancelTeethGroups(
 
   if (!keepLineActive) {
     update.sales_acknowledged_at = now;
+  }
+
+  if (fullyWithdrawn) {
+    mergeAutoFulfillCancelDisposition(update, phase, now);
   }
 
   const { data: updatedRows, error: updateError } = await supabase

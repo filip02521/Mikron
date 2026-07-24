@@ -153,6 +153,10 @@ describe("sales-cancel-db", () => {
       sales_cancel_phase: null,
       sales_cancelled_quantity: null,
       status: "Nowe",
+      procurement_cancel_disposition: null,
+      procurement_cancel_disposition_at: null,
+      procurement_sales_cancel_ack_at: null,
+      warehouse_cancel_fulfilled_at: null,
     });
     expect(
       buildSalesCancelUndoUpdate(
@@ -164,6 +168,10 @@ describe("sales-cancel-db", () => {
       sales_cancelled_at: null,
       sales_cancel_phase: null,
       sales_cancelled_quantity: null,
+      procurement_cancel_disposition: null,
+      procurement_cancel_disposition_at: null,
+      procurement_sales_cancel_ack_at: null,
+      warehouse_cancel_fulfilled_at: null,
     });
   });
 
@@ -185,7 +193,33 @@ describe("sales-cancel-db", () => {
       sales_cancel_phase: "in_transit",
       sales_cancelled_quantity: "2",
       status: "Zamowione",
+      procurement_cancel_disposition: null,
+      procurement_cancel_disposition_at: null,
+      procurement_sales_cancel_ack_at: null,
+      warehouse_cancel_fulfilled_at: null,
     });
+  });
+
+  it("buildSalesCancelUndoUpdate — czyści auto-fulfill pola po cofnięciu pełnej rezygnacji", () => {
+    const restore = {
+      sales_cancelled_at: null,
+      sales_cancelled_quantity: null,
+      sales_cancel_phase: null,
+      status: "Zamowione" as const,
+      procurement_cancel_disposition: null,
+      procurement_cancel_disposition_at: null,
+      procurement_sales_cancel_ack_at: null,
+      warehouse_cancel_fulfilled_at: null,
+    };
+    const update = buildSalesCancelUndoUpdate(
+      { hasCancelledAt: true, hasCancelPhase: true, hasCancelledQuantity: true },
+      "Zamowione",
+      restore
+    );
+    expect(update.procurement_cancel_disposition).toBeNull();
+    expect(update.procurement_cancel_disposition_at).toBeNull();
+    expect(update.procurement_sales_cancel_ack_at).toBeNull();
+    expect(update.warehouse_cancel_fulfilled_at).toBeNull();
   });
 
   it("salesCancelUndoRestoreStatus — tylko before_order z Anulowane", () => {

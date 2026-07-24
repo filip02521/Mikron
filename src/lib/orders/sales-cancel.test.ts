@@ -6,6 +6,7 @@ import {
   effectiveSalesCancelPhase,
   isSalesCancelNoticePending,
   isSalesCancelledForQueue,
+  mergeAutoFulfillCancelDisposition,
   mergeSalesCancelUserAutoAck,
   maxSalesCancelQuantity,
   defaultSalesCancelQuantity,
@@ -198,6 +199,29 @@ describe("sales-cancel", () => {
     };
     mergeSalesCancelUserAutoAck(update, before, { hasCancelledAt: true }, "2026-06-01T10:01:00Z");
     expect(update.sales_acknowledged_at).toBeUndefined();
+  });
+
+  it("mergeAutoFulfillCancelDisposition — in_transit ustawia disposition + fulfilled_at", () => {
+    const update: Record<string, unknown> = {};
+    mergeAutoFulfillCancelDisposition(update, "in_transit", "2026-06-01T10:00:00Z");
+    expect(update.procurement_cancel_disposition).toBe("to_stock");
+    expect(update.procurement_cancel_disposition_at).toBe("2026-06-01T10:00:00Z");
+    expect(update.procurement_sales_cancel_ack_at).toBe("2026-06-01T10:00:00Z");
+    expect(update.warehouse_cancel_fulfilled_at).toBe("2026-06-01T10:00:00Z");
+  });
+
+  it("mergeAutoFulfillCancelDisposition — on_stock ustawia disposition + fulfilled_at", () => {
+    const update: Record<string, unknown> = {};
+    mergeAutoFulfillCancelDisposition(update, "on_stock", "2026-06-01T10:00:00Z");
+    expect(update.procurement_cancel_disposition).toBe("to_stock");
+    expect(update.warehouse_cancel_fulfilled_at).toBe("2026-06-01T10:00:00Z");
+  });
+
+  it("mergeAutoFulfillCancelDisposition — before_order nie ustawia nic", () => {
+    const update: Record<string, unknown> = {};
+    mergeAutoFulfillCancelDisposition(update, "before_order", "2026-06-01T10:00:00Z");
+    expect(update.procurement_cancel_disposition).toBeUndefined();
+    expect(update.warehouse_cancel_fulfilled_at).toBeUndefined();
   });
 
   it("salesCancelConfirmCopy ma teksty dla każdej fazy", () => {

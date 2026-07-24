@@ -471,6 +471,23 @@ export function mergeSalesCancelUserAutoAck(
   }
 }
 
+/**
+ * Auto-fulfill rezygnacji: ustawia disposition=to_stock i warehouse_cancel_fulfilled_at
+ * — pomija ręczny flow decyzji zakupów i rozliczenia magazynu.
+ * Tylko dla pełnych rezygnacji (in_transit / on_stock), nie dla częściowych.
+ */
+export function mergeAutoFulfillCancelDisposition(
+  update: Record<string, unknown>,
+  phase: SalesCancelPhase,
+  now: string
+): void {
+  if (phase !== "in_transit" && phase !== "on_stock") return;
+  update.procurement_cancel_disposition = "to_stock";
+  update.procurement_cancel_disposition_at = now;
+  update.procurement_sales_cancel_ack_at = now;
+  update.warehouse_cancel_fulfilled_at = now;
+}
+
 /** Najostrzejsza faza w grupie (do komunikatu potwierdzenia). */
 export function resolveGroupSalesCancelPhase(
   orders: IndividualOrder[]
@@ -665,12 +682,12 @@ export function salesCancelArchiveDetail(
     case "in_transit":
       return {
         statusTitle: "Rezygnacja — towar w drodze",
-        statusDetail: `${when}${partialNote} Jeśli towar dotrze, magazyn rozliczy go w zakładce Przyjęcie towaru.`,
+        statusDetail: `${when}${partialNote} Towar trafi na stan magazynu po dostawie.`,
       };
     case "on_stock":
       return {
         statusTitle: "Rezygnacja — towar na magazynie",
-        statusDetail: `${when}${partialNote} Magazyn rozliczy towar w zakładce Przyjęcie towaru (stan lub zwrot).`,
+        statusDetail: `${when}${partialNote} Towar trafi na stan magazynu, poza rezerwacją handlowca.`,
       };
     default:
       return {

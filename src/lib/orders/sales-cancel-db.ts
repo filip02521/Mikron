@@ -50,8 +50,10 @@ export function salesCancelAckSelect(caps: SalesCancelDbCaps): string {
   const withCancel = caps.hasCancelPhase
     ? `${base}, sales_cancelled_at, sales_cancel_phase`
     : `${base}, sales_cancelled_at`;
-  if (!caps.hasCancelledQuantity) return withCancel;
-  return `${withCancel}, sales_cancelled_quantity`;
+  const withQty = caps.hasCancelledQuantity
+    ? `${withCancel}, sales_cancelled_quantity`
+    : withCancel;
+  return `${withQty}, procurement_cancel_disposition, procurement_cancel_disposition_at, procurement_sales_cancel_ack_at, warehouse_cancel_fulfilled_at`;
 }
 
 export function buildSalesCancelUpdate(
@@ -106,13 +108,24 @@ export type SalesCancelUndoRestore = {
   sales_cancelled_quantity?: string | null;
   sales_cancel_phase?: string | null;
   status?: IndividualOrderStatus | null;
+  procurement_cancel_disposition?: string | null;
+  procurement_cancel_disposition_at?: string | null;
+  procurement_sales_cancel_ack_at?: string | null;
+  warehouse_cancel_fulfilled_at?: string | null;
 };
 
 /** Migawka przed rezygnacją — do przywrócenia przy cofnięciu (⌘Z). */
 export function salesCancelUndoRestoreSnapshot(
   order: Pick<
     IndividualOrder,
-    "sales_cancelled_at" | "sales_cancelled_quantity" | "sales_cancel_phase" | "status"
+    | "sales_cancelled_at"
+    | "sales_cancelled_quantity"
+    | "sales_cancel_phase"
+    | "status"
+    | "procurement_cancel_disposition"
+    | "procurement_cancel_disposition_at"
+    | "procurement_sales_cancel_ack_at"
+    | "warehouse_cancel_fulfilled_at"
   >
 ): SalesCancelUndoRestore {
   return {
@@ -120,6 +133,10 @@ export function salesCancelUndoRestoreSnapshot(
     sales_cancelled_quantity: order.sales_cancelled_quantity ?? null,
     sales_cancel_phase: order.sales_cancel_phase ?? null,
     status: order.status,
+    procurement_cancel_disposition: order.procurement_cancel_disposition ?? null,
+    procurement_cancel_disposition_at: order.procurement_cancel_disposition_at ?? null,
+    procurement_sales_cancel_ack_at: order.procurement_sales_cancel_ack_at ?? null,
+    warehouse_cancel_fulfilled_at: order.warehouse_cancel_fulfilled_at ?? null,
   };
 }
 
@@ -166,5 +183,21 @@ export function buildSalesCancelUndoUpdate(
   } else if (restoreStatus) {
     update.status = restoreStatus;
   }
+  update.procurement_cancel_disposition =
+    restore && "procurement_cancel_disposition" in restore
+      ? restore.procurement_cancel_disposition
+      : null;
+  update.procurement_cancel_disposition_at =
+    restore && "procurement_cancel_disposition_at" in restore
+      ? restore.procurement_cancel_disposition_at
+      : null;
+  update.procurement_sales_cancel_ack_at =
+    restore && "procurement_sales_cancel_ack_at" in restore
+      ? restore.procurement_sales_cancel_ack_at
+      : null;
+  update.warehouse_cancel_fulfilled_at =
+    restore && "warehouse_cancel_fulfilled_at" in restore
+      ? restore.warehouse_cancel_fulfilled_at
+      : null;
   return update;
 }
