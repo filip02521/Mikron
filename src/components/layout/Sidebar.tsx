@@ -402,10 +402,11 @@ function NavSection({
 
   return (
     <section className={cn(!isFirst && sidebarNavSectionDividerClass)}>
-      <div className="flex items-center gap-2 px-2.5 py-2">
+      <div className="flex items-center gap-2 px-2.5 pb-1.5 pt-2">
         <span className="h-5 w-5 shrink-0" aria-hidden />
-        <h2 className={cn(sidebarNavSectionTitleClass, "flex-1")}>{group.title}</h2>
+        <h2 className={cn(sidebarNavSectionTitleClass, "flex-1 text-slate-500")}>{group.title}</h2>
       </div>
+      <div className="mx-2.5 mb-1 h-px bg-slate-200/60" aria-hidden />
       <ul className="space-y-0.5">
         {group.items.map((item) => {
           const active = isNavItemActive(pathname, item.href, allHrefs, activeSearch);
