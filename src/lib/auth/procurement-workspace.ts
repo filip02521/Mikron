@@ -46,6 +46,7 @@ export function canSwitchProcurementWorkspace(role: UserRole, workspaces?: Works
 export function defaultProcurementWorkspace(role: UserRole, workspaces?: Workspace[]): ProcurementWorkspace | null {
   const fns = grantedProcurementFunctions(role, workspaces);
   if (fns.length === 0) return null;
+  if (isAdmin(role)) return "dostawy";
   if (fns.includes("zeby")) return "zeby";
   if (fns.includes("dostawy")) return "dostawy";
   return "magazyn";
