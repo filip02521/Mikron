@@ -1790,7 +1790,7 @@ export async function updateSupplierStats(
   const isMain = orderType === "Glowne";
   const { data: existing } = await supabase
     .from("delivery_stats")
-    .select("id, main_sum, side_sum, main_count, side_count")
+    .select("main_sum, side_sum, main_count, side_count")
     .eq("supplier_id", supplierId)
     .maybeSingle();
 
