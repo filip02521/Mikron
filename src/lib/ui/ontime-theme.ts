@@ -138,7 +138,24 @@ export function sidebarNavToneHighlightIdleClass(tone: NavTone): string | undefi
 
 /** Sidebar — badge licznika dopasowany do tonu pozycji. */
 export function sidebarNavBadgeClassForTone(tone: NavTone, active: boolean): string {
-  if (active) return "bg-slate-200/90 text-slate-800";
+  if (active) {
+    switch (tone) {
+      case "amber":
+        return "bg-amber-500 text-white";
+      case "orange":
+        return "bg-orange-500 text-white";
+      case "emerald":
+        return "bg-emerald-600 text-white";
+      case "indigo":
+        return "bg-indigo-600 text-white";
+      case "sky":
+        return "bg-sky-600 text-white";
+      case "violet":
+        return "bg-violet-600 text-white";
+      default:
+        return "bg-slate-600 text-white";
+    }
+  }
   switch (tone) {
     case "amber":
       return sidebarNavBadgeWarningClass;
