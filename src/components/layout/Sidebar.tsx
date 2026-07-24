@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -54,6 +54,39 @@ import { PROCUREMENT_WORKSPACE_OPTIONS, subtitleForProcurementWorkspace, labelFo
 import { isAdmin } from "@/lib/auth-roles";
 import { hrefWithAdminSalesPreview, shouldPreserveSalesPreviewInNav } from "@/lib/nav/sales-preview-href";
 import { ChangelogTriggerIconButton } from "@/components/changelog/ChangelogTriggerIconButton";
+
+const emptySubscribe = () => () => {};
+const clientSnapshot = (key: string) => {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+const serverSnapshot = () => null;
+
+function useLocalStorageCollapsed(
+  storageKey: string,
+  defaultValue: boolean
+): [boolean, (next: boolean) => void, boolean] {
+  const stored = useSyncExternalStore(
+    emptySubscribe,
+    () => clientSnapshot(storageKey),
+    serverSnapshot
+  );
+  const collapsed = stored === null ? defaultValue : stored === "1";
+  const setCollapsed = useCallback(
+    (next: boolean) => {
+      try {
+        localStorage.setItem(storageKey, next ? "1" : "0");
+      } catch {
+        // ignore
+      }
+    },
+    [storageKey]
+  );
+  return [collapsed, setCollapsed, true];
+}
 
 function NavLink({
   item,
@@ -220,45 +253,35 @@ function CollapsibleNavSection({
   const allHrefs = group.items.map((item) => item.href);
 
   const storageKey = `nav-collapsed:${group.title}`;
-  const [collapsed, setCollapsed] = useState(group.defaultCollapsed ?? false);
-  const [hydrated, setHydrated] = useState(false);
+  const [storedCollapsed, setStoredCollapsed] = useLocalStorageCollapsed(
+    storageKey,
+    group.defaultCollapsed ?? false
+  );
   const autoExpandedRef = useRef(false);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored !== null) {
-        setCollapsed(stored === "1");
-      }
-    } catch {
-      // ignore
-    }
-    setHydrated(true);
-  }, [storageKey]);
-
-  const toggle = useCallback(() => {
-    autoExpandedRef.current = true;
-    setCollapsed((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem(storageKey, next ? "1" : "0");
-      } catch {
-        // ignore
-      }
-      return next;
-    });
-  }, [storageKey]);
 
   const hasActiveItem = allHrefs.some((href) =>
     isNavItemActive(pathname, href, allHrefs, activeSearch)
   );
 
+  const [overrideCollapsed, setOverrideCollapsed] = useState<boolean | null>(null);
+  const collapsed = overrideCollapsed ?? storedCollapsed;
+
   useEffect(() => {
-    if (hydrated && hasActiveItem && collapsed && !autoExpandedRef.current) {
+    if (hasActiveItem && collapsed && !autoExpandedRef.current) {
       autoExpandedRef.current = true;
-      setCollapsed(false);
+      setOverrideCollapsed(false);
+      setStoredCollapsed(false);
     }
-  }, [hasActiveItem, collapsed, hydrated]);
+  }, [hasActiveItem, collapsed, setStoredCollapsed]);
+
+  const toggle = useCallback(() => {
+    autoExpandedRef.current = true;
+    setOverrideCollapsed((prev) => {
+      const next = !(prev ?? storedCollapsed);
+      setStoredCollapsed(next);
+      return next;
+    });
+  }, [storedCollapsed, setStoredCollapsed]);
 
   const totalBadge = group.items.reduce(
     (sum, item) => sum + (item.badge != null && item.badge > 0 ? item.badge : 0),

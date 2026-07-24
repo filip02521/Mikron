@@ -15,7 +15,6 @@ import {
   planSalesCancelQuantity,
   resolveSalesCancelPhase,
   salesCancelUndoRestoreStatus,
-  type SalesCancelPhase,
 } from "@/lib/orders/sales-cancel";
 import { normalizeSalesClientAssignment } from "@/lib/orders/sales-client-label";
 import {
