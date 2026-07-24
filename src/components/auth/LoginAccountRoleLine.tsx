@@ -15,6 +15,8 @@ export function LoginAccountRoleLine({
   compact?: boolean;
   className?: string;
 }) {
+  const groups = assignmentLabel?.split(", ").filter(Boolean) ?? [];
+
   return (
     <span
       className={cn(
@@ -31,14 +33,24 @@ export function LoginAccountRoleLine({
         )}
         aria-hidden
       />
-      <span className="inline-flex min-w-0 items-baseline gap-x-1.5 leading-none">
+      <span className="inline-flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5 leading-none">
         <span className="truncate">{roleLabel}</span>
-        {assignmentLabel ? (
+        {groups.length > 0 ? (
           <>
             <span className="shrink-0 text-slate-300" aria-hidden>
               ·
             </span>
-            <span className="truncate text-slate-400">{assignmentLabel}</span>
+            {groups.map((g, i) => (
+              <span
+                key={`${g}-${i}`}
+                className={cn(
+                  "inline-flex items-center rounded bg-slate-100/80 font-medium text-slate-500",
+                  compact ? "px-1 py-px text-[9px]" : "px-1.5 py-px text-[10px]"
+                )}
+              >
+                {g}
+              </span>
+            ))}
           </>
         ) : null}
       </span>

@@ -1,5 +1,13 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 
+function monthEndDateString(monthKey: string): string {
+  const [yearStr, monthStr] = monthKey.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const lastDay = new Date(year, month, 0).getDate();
+  return `${monthKey}-${String(lastDay).padStart(2, "0")}`;
+}
+
 export type MonthlySummaryTab = "handlowcy" | "dostawy" | "zakupy";
 
 export type MonthlyStatCard = {
@@ -174,7 +182,7 @@ export async function fetchMonthlyStats(monthKey: string): Promise<MonthlyStats>
       .from("warehouse_delivery_receipts")
       .select("id, carrier, shipment_form, package_count, pallet_count, received_date, supplier_id, supplier:suppliers(name)")
       .gte("received_date", `${monthKey}-01`)
-      .lte("received_date", `${monthKey}-31`),
+      .lte("received_date", monthEndDateString(monthKey)),
     supabase
       .from("sales_people")
       .select("id, name, email")

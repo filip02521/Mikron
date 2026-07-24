@@ -65,10 +65,10 @@ function roleFilterChipClass(active: boolean): string {
 
 function managerGroupToggleClass(active: boolean): string {
   return cn(
-    "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+    "rounded-md border px-2 py-0.5 text-[11px] font-medium leading-tight transition-colors",
     active
-      ? "border-indigo-200 bg-indigo-50 text-indigo-800"
-      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+      ? "border-indigo-200/70 bg-indigo-50/80 text-indigo-700"
+      : "border-slate-200/70 bg-slate-50/50 text-slate-500 hover:border-slate-300 hover:bg-slate-100/70"
   );
 }
 
@@ -783,7 +783,7 @@ export function UsersAdminClient({
                         </td>
                         <td>
                           {edit?.role === "sales_manager" && salesGroups.length ? (
-                            <div className="flex max-w-xs flex-wrap gap-1.5">
+                            <div className="flex flex-wrap gap-1">
                               {salesGroups.map((g) => {
                                 const checked = (managerGroups[u.id] ?? []).includes(g.id);
                                 return (
