@@ -245,7 +245,7 @@ export async function getSessionUserForMutation(): Promise<SessionUser> {
 /** Podpowiedzi Subiekt przy składaniu / edycji próśb (handlowiec, zakupy, admin). */
 export async function requireSubiektLookup(): Promise<SessionUser> {
   const user = await getSessionUser();
-  if (!user || (!isSalesAccount(user.role) && !canAccessOperations(user.role, user.assignedWorkspaces) && !canAccessTeethPanel(user.role, user.assignedWorkspaces))) {
+  if (!user || (!isSalesAccount(user.role) && !canAccessOperations(user.role, user.assignedWorkspaces) && !canAccessTeethPanel(user.role, user.assignedWorkspaces) && !canAccessWarehouse(user.role, user.assignedWorkspaces))) {
     throw new Error("Brak uprawnień do podpowiedzi Subiekt");
   }
   return user;
