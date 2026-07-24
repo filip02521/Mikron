@@ -27,7 +27,6 @@ describe("applyAdminFormToSupplierRow", () => {
       subiekt_kh_id: 42,
       default_delivery_carrier: "DHL",
       default_delivery_shipment_form: "paleta",
-      default_fulfillment_days: 5,
     });
     expect(next.name).toBe("Nowy");
     expect(next.location).toBe("ZAGRANICA");

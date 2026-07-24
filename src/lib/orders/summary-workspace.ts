@@ -75,7 +75,6 @@ export type SupplierSummaryMeta = {
   vacation_note: string | null;
   stats_mode: StatsMode;
   subiekt_kh_id: number | null;
-  default_fulfillment_days?: number | null;
 };
 
 export type ForSomeoneLine = {
@@ -205,7 +204,6 @@ function toMeta(s: SupplierWithSchedule): SupplierSummaryMeta {
     vacation_note: sch?.vacation_note ?? null,
     stats_mode: (s.stats_mode ?? "LACZNIE") as StatsMode,
     subiekt_kh_id: s.subiekt_kh_id ?? null,
-    default_fulfillment_days: s.default_fulfillment_days ?? null,
   };
 }
 

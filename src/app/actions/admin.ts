@@ -1118,7 +1118,6 @@ export async function actionUpsertSupplier(form: {
   is_active: boolean;
   default_delivery_carrier?: string | null;
   default_delivery_shipment_form?: string | null;
-  default_fulfillment_days?: number | null;
 }) {
   await requireSupplierManagement("mutate");
   const supplierId = form.id?.trim() || undefined;
@@ -1167,13 +1166,6 @@ export async function actionUpsertSupplier(form: {
     payload.default_delivery_shipment_form = form.default_delivery_shipment_form?.trim()
       ? parseWarehouseShipmentForm(form.default_delivery_shipment_form)
       : null;
-  }
-  if (form.default_fulfillment_days !== undefined) {
-    const days = form.default_fulfillment_days;
-    payload.default_fulfillment_days =
-      days != null && Number.isFinite(days) && days >= 1 && days <= 60
-        ? Math.trunc(days)
-        : null;
   }
 
   if (supplierId) {

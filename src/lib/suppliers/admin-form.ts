@@ -22,7 +22,6 @@ export function emptySupplierAdminForm(): SupplierAdminFormState {
     subiekt_kh_id: null,
     default_delivery_carrier: "",
     default_delivery_shipment_form: "",
-    default_fulfillment_days: null,
   };
 }
 
@@ -44,7 +43,6 @@ export function supplierToAdminForm(s: SupplierWithSchedule): SupplierAdminFormS
     subiekt_kh_id: s.subiekt_kh_id ?? null,
     default_delivery_carrier: s.default_delivery_carrier ?? "",
     default_delivery_shipment_form: s.default_delivery_shipment_form ?? "",
-    default_fulfillment_days: s.default_fulfillment_days ?? null,
   };
 }
 
@@ -70,6 +68,5 @@ export function applyAdminFormToSupplierRow(
     subiekt_kh_id: form.subiekt_kh_id,
     default_delivery_carrier: form.default_delivery_carrier.trim() || null,
     default_delivery_shipment_form: form.default_delivery_shipment_form.trim() || null,
-    default_fulfillment_days: form.default_fulfillment_days,
   };
 }

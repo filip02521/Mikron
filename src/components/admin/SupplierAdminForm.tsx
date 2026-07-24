@@ -37,7 +37,6 @@ export type SupplierAdminFormState = {
   subiekt_kh_id: number | null;
   default_delivery_carrier: string;
   default_delivery_shipment_form: string;
-  default_fulfillment_days: number | null;
 };
 
 export function SupplierAdminForm({
@@ -238,24 +237,6 @@ export function SupplierAdminForm({
               <option value="LACZNIE">Łącznie</option>
               <option value="OSOBNO">Osobno</option>
             </Select>
-          </Field>
-          <Field
-            label="Domyślny okres realizacji"
-            hint="Liczba dni roboczych (np. 5). Puste = brak wartości domyślnej."
-          >
-            <Input
-              type="number"
-              min={1}
-              max={60}
-              disabled={fieldDisabled}
-              placeholder="—"
-              value={form.default_fulfillment_days ?? ""}
-              onChange={(e) => {
-                const v = e.target.value.trim();
-                const n = v === "" ? null : Math.max(1, Math.min(60, Math.trunc(Number(v))));
-                onChange({ ...form, default_fulfillment_days: n != null && Number.isFinite(n) ? n : null });
-              }}
-            />
           </Field>
         </div>
         <label className={teethLane ? "mt-4 flex cursor-not-allowed items-start gap-2.5 rounded-lg bg-white/60 p-2.5 ring-1 ring-inset ring-indigo-100/50 sm:col-span-2" : "mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg bg-white/60 p-2.5 ring-1 ring-inset ring-indigo-100/50 transition hover:bg-white"}>

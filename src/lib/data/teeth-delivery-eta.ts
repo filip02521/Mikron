@@ -24,8 +24,6 @@ export async function estimateTeethDeliveryEta(
 
 /**
  * Wsadowe szacowanie ETA dla wielu dostawców — jedno zapytanie do DB zamiast N.
- * Jeśli dostawca nie ma historii zrealizowanych zamówień zębowych, używa
- * `default_fulfillment_days` z karty dostawcy jako fallback.
  */
 export async function estimateTeethDeliveryEtaBatch(
   supplierIds: string[],
@@ -36,35 +34,18 @@ export async function estimateTeethDeliveryEtaBatch(
 
   const supabase = createAdminClient();
 
-  const [orderResult, supplierResult] = await Promise.all([
-    supabase
-      .from("individual_orders")
-      .select("supplier_id, teeth_ordered_at, ordered_at, delivery_at")
-      .eq("is_teeth", true)
-      .in("supplier_id", supplierIds)
-      .eq("status", "Zrealizowane")
-      .not("delivery_at", "is", null)
-      .order("delivery_at", { ascending: false })
-      .limit(200),
-    supabase
-      .from("suppliers")
-      .select("id, default_fulfillment_days")
-      .in("id", supplierIds),
-  ]);
+  const { data, error } = await supabase
+    .from("individual_orders")
+    .select("supplier_id, teeth_ordered_at, ordered_at, delivery_at")
+    .eq("is_teeth", true)
+    .in("supplier_id", supplierIds)
+    .eq("status", "Zrealizowane")
+    .not("delivery_at", "is", null)
+    .order("delivery_at", { ascending: false })
+    .limit(200);
 
-  if (orderResult.error) throw new Error(orderResult.error.message);
-  if (supplierResult.error) throw new Error(supplierResult.error.message);
-
-  const data = orderResult.data ?? [];
-  const suppliers = supplierResult.data ?? [];
-
-  const defaultDaysBySupplier = new Map<string, number>();
-  for (const s of suppliers) {
-    const days = s.default_fulfillment_days;
-    if (days != null && Number.isFinite(days) && days > 0) {
-      defaultDaysBySupplier.set(String(s.id), Math.trunc(days));
-    }
-  }
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) return result;
 
   const bySupplier = new Map<string, typeof data>();
   for (const row of data) {
@@ -78,8 +59,7 @@ export async function estimateTeethDeliveryEtaBatch(
   const start = parseDateOnly(placementAt);
   if (!start) return result;
 
-  for (const supplierId of supplierIds) {
-    const rows = bySupplier.get(supplierId) ?? [];
+  for (const [supplierId, rows] of bySupplier) {
     const samples: number[] = [];
     for (const row of rows.slice(0, 20)) {
       const orderedAt = row.teeth_ordered_at ?? row.ordered_at;
@@ -90,28 +70,16 @@ export async function estimateTeethDeliveryEtaBatch(
       const days = calculateBusinessDays(s, e);
       if (days >= 0) samples.push(days);
     }
-
-    if (samples.length > 0) {
-      const avg = samples.reduce((sum, d) => sum + d, 0) / samples.length;
-      const avgRounded = Math.round(avg);
-      if (avgRounded <= 0) continue;
-      result.set(supplierId, {
-        avgBusinessDays: avgRounded,
-        expectedDate: calculateBusinessDate(start, avgRounded),
-        sampleCount: samples.length,
-        lowConfidence: samples.length < 3,
-      });
-    } else {
-      const defaultDays = defaultDaysBySupplier.get(supplierId);
-      if (defaultDays != null && defaultDays > 0) {
-        result.set(supplierId, {
-          avgBusinessDays: defaultDays,
-          expectedDate: calculateBusinessDate(start, defaultDays),
-          sampleCount: 0,
-          lowConfidence: true,
-        });
-      }
-    }
+    if (samples.length === 0) continue;
+    const avg = samples.reduce((sum, d) => sum + d, 0) / samples.length;
+    const avgRounded = Math.round(avg);
+    if (avgRounded <= 0) continue;
+    result.set(supplierId, {
+      avgBusinessDays: avgRounded,
+      expectedDate: calculateBusinessDate(start, avgRounded),
+      sampleCount: samples.length,
+      lowConfidence: samples.length < 3,
+    });
   }
 
   return result;
