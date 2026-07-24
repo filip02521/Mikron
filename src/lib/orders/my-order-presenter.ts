@@ -180,6 +180,8 @@ export type MyOrderLine = {
   teethDetails?: TeethLineDetail[];
   /** Linia zębowa (tor panelu zębów). */
   isTeeth?: boolean;
+  /** Nazwa pliku zamówienia załączonego przez panel zębów (do pobrania przez handlowca). */
+  teethOrderFileName?: string | null;
   /** Tryb potwierdzenia odbioru dla tej linii. */
   lineAcknowledgeMode?: import("@/lib/orders/my-order-pickup-ack-copy").MyOrderPickupAckMode | "none";
   /** Przyjęte sztuki per linia spec (klucz: teethReceiveGroupKey). */
@@ -368,6 +370,7 @@ function rowToLine(
     historyEstimateLowConfidence: historyEstimate?.lowConfidence ?? false,
     teethDetails: mapOrderTeethDetailsToEdit(order.teeth_details),
     isTeeth: Boolean(order.is_teeth),
+    teethOrderFileName: order.teeth_order_file_name ?? null,
     lineAcknowledgeMode: resolveLinePickupAckMode(order),
     teethLineDelivered: order.teeth_line_delivered ?? null,
     deliveredQuantity: order.delivered_quantity ?? null,

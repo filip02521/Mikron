@@ -12,6 +12,7 @@ import {
   teethPanelIncompleteDetailClass,
 } from "@/lib/teeth/teeth-panel-ui";
 import { TeethPanelEditOrderTrigger } from "@/components/zeby/TeethPanelEditOrderTrigger";
+import { TeethOrderFileUpload } from "@/components/zeby/TeethOrderFileUpload";
 import { ProcurementSalesRequestNote } from "@/components/orders/ProcurementSalesRequestNote";
 import {
   orderHasIncompleteTeethSpec,
@@ -182,6 +183,7 @@ export function TeethQueueBatchTable({
   onTogglePosition,
   onEditSaved,
   alwaysShowEdit = false,
+  onFileChanged,
 }: {
   items: TeethQueueItem[];
   positionSelection: Map<string, Set<number>>;
@@ -189,6 +191,8 @@ export function TeethQueueBatchTable({
   onEditSaved?: (message?: string) => void;
   /** Pokaż przycisk "Edytuj listę" przy każdej pozycji, nie tylko przy problemowych (np. weryfikacja OCR). */
   alwaysShowEdit?: boolean;
+  /** Callback gdy plik zamówienia został wgrany/usunięty — do odświeżenia stanu blokady. */
+  onFileChanged?: (orderId: string, hasFile: boolean) => void;
 }) {
   const teethProductInfo = useTeethProductInfo();
   const readinessCtx = useMemo(
@@ -280,6 +284,7 @@ export function TeethQueueBatchTable({
                 <th className="py-1.5 px-2 hidden sm:table-cell">Typ</th>
                 <th className="py-1.5 px-2 sm:hidden">Szczęka / Typ</th>
                 <th className="py-1.5 px-2 text-right tabular-nums">Szt.</th>
+                <th className="py-1.5 px-2 hidden lg:table-cell">Plik</th>
                 <th className="py-1.5 pr-3 pl-2 sm:pr-4 lg:pr-5" />
               </tr>
             </thead>
@@ -447,6 +452,19 @@ export function TeethQueueBatchTable({
                           {row.totalOrdered}/{row.totalCount}
                         </span>
                       ) : row.totalCount}
+                    </td>
+                    <td className="py-1.5 px-2 hidden lg:table-cell">
+                      <div className="flex flex-col gap-0.5">
+                        {row.orderEntries.map((e) => (
+                          <TeethOrderFileUpload
+                            key={e.orderId}
+                            orderId={e.orderId}
+                            existingFileName={e.item.teeth_order_file_name ?? null}
+                            onUploaded={() => onFileChanged?.(e.orderId, true)}
+                            onRemoved={() => onFileChanged?.(e.orderId, false)}
+                          />
+                        ))}
+                      </div>
                     </td>
                     <td className="py-1.5 pr-3 pl-2 sm:pr-4 lg:pr-5">
                       {onEditSaved ? (

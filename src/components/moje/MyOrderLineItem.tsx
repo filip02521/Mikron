@@ -23,6 +23,7 @@ import { MyOrderLineClientField } from "@/components/moje/MyOrderLineClientField
 import { MyOrderLineActionBar } from "@/components/moje/MyOrderLineActionBar";
 import { MyOrderLineCancelMenu } from "@/components/moje/MyOrderLineCancelMenu";
 import { TeethOrderDetailDialog } from "@/components/moje/TeethOrderDetailDialog";
+import { TeethOrderFileDownload } from "@/components/moje/TeethOrderFileDownload";
 import { TeethGroupChips } from "@/components/teeth/TeethGroupChips";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import type { SalesClientAssignment } from "@/lib/orders/sales-client-label";
@@ -323,14 +324,22 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
   const showActionInColumn = showLineActionBar && !inlineLineActionBar;
 
   const teethDetailBlock = showTeethDetail ? (
-    <TeethOrderDetailDialog
-      teethDetails={line.teethDetails!}
-      teethLineDelivered={line.teethLineDelivered}
-      deliveredQuantity={line.deliveredQuantity}
-      triggerSize="sm"
-      triggerVariant="ghost"
-      triggerClassName="text-[10px] font-medium text-indigo-700 hover:text-indigo-900"
-    />
+    <div className="flex items-center gap-2">
+      <TeethOrderDetailDialog
+        teethDetails={line.teethDetails!}
+        teethLineDelivered={line.teethLineDelivered}
+        deliveredQuantity={line.deliveredQuantity}
+        triggerSize="sm"
+        triggerVariant="ghost"
+        triggerClassName="text-[10px] font-medium text-indigo-700 hover:text-indigo-900"
+      />
+      {line.teethOrderFileName ? (
+        <TeethOrderFileDownload
+          orderId={line.id}
+          fileName={line.teethOrderFileName}
+        />
+      ) : null}
+    </div>
   ) : null;
 
   const lineSideMeta =

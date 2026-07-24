@@ -562,3 +562,223 @@ export async function actionExportTeethSupplierCsv(
 
   return { success: true, csv, filename };
 }
+
+const ALLOWED_TEETH_ORDER_FILE_TYPES = [
+  "application/xml",
+  "text/xml",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "application/pdf",
+];
+
+const MAX_TEETH_ORDER_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+export async function actionUploadTeethOrderFile(
+  orderId: string,
+  file: File,
+): Promise<{ success: boolean; error?: string; fileName?: string }> {
+  await requireTeethPanel("mutate");
+
+  if (!file || file.size === 0) {
+    return { success: false, error: "Plik jest pusty." };
+  }
+  if (file.size > MAX_TEETH_ORDER_FILE_SIZE) {
+    return { success: false, error: "Plik jest za duży (max 10 MB)." };
+  }
+  if (!ALLOWED_TEETH_ORDER_FILE_TYPES.includes(file.type)) {
+    return { success: false, error: "Nieobsługiwany typ pliku. Dozwolone: XML, Excel, PDF." };
+  }
+
+  const { createAdminClient, hasSupabaseConfig } = await import("@/lib/supabase/admin");
+  if (!hasSupabaseConfig()) {
+    return { success: false, error: "Brak konfiguracji Storage." };
+  }
+  const supabase = createAdminClient();
+
+  // Verify the order exists and is a teeth order
+  const { data: order, error: orderError } = await supabase
+    .from("individual_orders")
+    .select("id, is_teeth, status, sales_cancelled_at")
+    .eq("id", orderId)
+    .single();
+
+  if (orderError || !order) {
+    return { success: false, error: "Zamówienie nie istnieje." };
+  }
+  if (!order.is_teeth) {
+    return { success: false, error: "To nie jest zamówienie zębowe." };
+  }
+  if (order.sales_cancelled_at) {
+    return { success: false, error: "Zamówienie zostało anulowane." };
+  }
+
+  // Remove old file if exists
+  const { data: existingOrder } = await supabase
+    .from("individual_orders")
+    .select("teeth_order_file_path")
+    .eq("id", orderId)
+    .single();
+
+  if (existingOrder?.teeth_order_file_path) {
+    await supabase.storage
+      .from("teeth-order-files")
+      .remove([existingOrder.teeth_order_file_path])
+      .catch(() => {});
+  }
+
+  // Upload new file
+  const { randomUUID } = await import("crypto");
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+  const storagePath = `teeth-orders/${orderId}/${randomUUID()}.${ext}`;
+
+  const arrayBuffer = await file.arrayBuffer();
+  const { error: uploadError } = await supabase.storage
+    .from("teeth-order-files")
+    .upload(storagePath, arrayBuffer, {
+      contentType: file.type,
+      upsert: false,
+    });
+
+  if (uploadError) {
+    console.error("[actionUploadTeethOrderFile] Upload error:", uploadError.message);
+    return { success: false, error: "Nie udało się wgrać pliku." };
+  }
+
+  // Update order record
+  const { error: updateError } = await supabase
+    .from("individual_orders")
+    .update({
+      teeth_order_file_path: storagePath,
+      teeth_order_file_name: file.name,
+    })
+    .eq("id", orderId);
+
+  if (updateError) {
+    console.error("[actionUploadTeethOrderFile] DB update error:", updateError.message);
+    // Clean up orphaned file
+    await supabase.storage.from("teeth-order-files").remove([storagePath]).catch(() => {});
+    return { success: false, error: "Nie udało się zapisać informacji o pliku." };
+  }
+
+  revalidatePath("/zeby");
+  revalidatePath("/kolejka");
+  revalidatePath("/moje");
+
+  return { success: true, fileName: file.name };
+}
+
+export async function actionRemoveTeethOrderFile(
+  orderId: string,
+): Promise<{ success: boolean; error?: string }> {
+  await requireTeethPanel("mutate");
+
+  const { createAdminClient, hasSupabaseConfig } = await import("@/lib/supabase/admin");
+  if (!hasSupabaseConfig()) {
+    return { success: false, error: "Brak konfiguracji Storage." };
+  }
+  const supabase = createAdminClient();
+
+  const { data: order, error: orderError } = await supabase
+    .from("individual_orders")
+    .select("id, is_teeth, teeth_order_file_path, status")
+    .eq("id", orderId)
+    .single();
+
+  if (orderError || !order) {
+    return { success: false, error: "Zamówienie nie istnieje." };
+  }
+  if (!order.is_teeth) {
+    return { success: false, error: "To nie jest zamówienie zębowe." };
+  }
+  if (order.status === "Zamowione") {
+    return { success: false, error: "Nie można usunąć pliku z już zamówionej pozycji." };
+  }
+
+  if (order.teeth_order_file_path) {
+    await supabase.storage
+      .from("teeth-order-files")
+      .remove([order.teeth_order_file_path])
+      .catch(() => {});
+  }
+
+  const { error: updateError } = await supabase
+    .from("individual_orders")
+    .update({
+      teeth_order_file_path: null,
+      teeth_order_file_name: null,
+    })
+    .eq("id", orderId);
+
+  if (updateError) {
+    return { success: false, error: "Nie udało się zaktualizować zamówienia." };
+  }
+
+  revalidatePath("/zeby");
+  revalidatePath("/kolejka");
+  revalidatePath("/moje");
+
+  return { success: true };
+}
+
+export async function actionGetTeethOrderFileUrl(
+  orderId: string,
+): Promise<{ url: string | null; fileName: string | null }> {
+  await requireTeethPanel("read");
+
+  const { createAdminClient, hasSupabaseConfig } = await import("@/lib/supabase/admin");
+  if (!hasSupabaseConfig()) return { url: null, fileName: null };
+  const supabase = createAdminClient();
+
+  const { data: order, error } = await supabase
+    .from("individual_orders")
+    .select("teeth_order_file_path, teeth_order_file_name")
+    .eq("id", orderId)
+    .single();
+
+  if (error || !order?.teeth_order_file_path) {
+    return { url: null, fileName: null };
+  }
+
+  const { data, error: urlError } = await supabase.storage
+    .from("teeth-order-files")
+    .createSignedUrl(order.teeth_order_file_path, 3600);
+
+  if (urlError) {
+    console.error("[actionGetTeethOrderFileUrl] Error:", urlError.message);
+    return { url: null, fileName: order.teeth_order_file_name ?? null };
+  }
+
+  return { url: data?.signedUrl ?? null, fileName: order.teeth_order_file_name ?? null };
+}
+
+export async function actionGetTeethOrderFileUrlForSales(
+  orderId: string,
+): Promise<{ url: string | null; fileName: string | null }> {
+  const { requireSalesAccount } = await import("@/lib/auth");
+  await requireSalesAccount();
+
+  const { createAdminClient, hasSupabaseConfig } = await import("@/lib/supabase/admin");
+  if (!hasSupabaseConfig()) return { url: null, fileName: null };
+  const supabase = createAdminClient();
+
+  const { data: order, error } = await supabase
+    .from("individual_orders")
+    .select("teeth_order_file_path, teeth_order_file_name, is_teeth")
+    .eq("id", orderId)
+    .single();
+
+  if (error || !order?.is_teeth || !order?.teeth_order_file_path) {
+    return { url: null, fileName: null };
+  }
+
+  const { data, error: urlError } = await supabase.storage
+    .from("teeth-order-files")
+    .createSignedUrl(order.teeth_order_file_path, 3600);
+
+  if (urlError) {
+    console.error("[actionGetTeethOrderFileUrlForSales] Error:", urlError.message);
+    return { url: null, fileName: order.teeth_order_file_name ?? null };
+  }
+
+  return { url: data?.signedUrl ?? null, fileName: order.teeth_order_file_name ?? null };
+}

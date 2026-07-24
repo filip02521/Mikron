@@ -188,6 +188,10 @@ export interface IndividualOrder {
   teeth_ordered_at?: string | null;
   /** Planowana data dostawy dla zamówień zębowych (ręczna lub wyliczona z historii zębowej). */
   teeth_delivery_date?: string | null;
+  /** Ścieżka do pliku zamówienia (XML/Excel/PDF) w Supabase Storage (bucket teeth-order-files). */
+  teeth_order_file_path?: string | null;
+  /** Oryginalna nazwa pliku zamówienia załączonego przez panel zębów. */
+  teeth_order_file_name?: string | null;
   /** Szczegóły zębowe (kolor, wzór, rozmiar) per pozycja — dołączone przy pobieraniu. */
   teeth_details?: IndividualOrderTeethDetail[] | null;
   /** Przyjęte sztuki per linia spec (klucz: teethReceiveGroupKey). */

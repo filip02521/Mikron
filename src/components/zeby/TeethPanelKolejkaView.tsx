@@ -16,10 +16,9 @@ import { TeethPanelEmpty } from "@/components/zeby/TeethPanelSection";
 
 import { TeethQueueBatchTable } from "@/components/zeby/TeethQueueBatchTable";
 import { TeethPanelScheduleBanner } from "@/components/zeby/TeethPanelScheduleBanner";
-import { TeethCsvExportButton } from "@/components/zeby/TeethCsvExportButton";
 import { TeethPanelStatsBar } from "@/components/zeby/TeethPanelStatsBar";
 import { detectTeethDuplicates } from "@/lib/teeth/teeth-duplicate-detect";
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { IconAlertCircle } from "@/components/icons/StrokeIcons";
 
 import {
@@ -86,6 +85,8 @@ export function TeethPanelKolejkaView({
 
   onEditSaved,
 
+  onFileChanged,
+
 }: {
 
   groups: TeethQueueGroup[];
@@ -115,6 +116,8 @@ export function TeethPanelKolejkaView({
 
   onEditSaved?: (message?: string) => void;
 
+  onFileChanged?: (orderId: string, hasFile: boolean) => void;
+
 }) {
 
   const duplicates = useMemo(() => detectTeethDuplicates(groups), [groups]);
@@ -122,6 +125,46 @@ export function TeethPanelKolejkaView({
   const dueToday = groups.filter(
     (g) => g.dueSchedule?.computed_next_date && g.dueSchedule.computed_next_date <= today,
   );
+
+  // Track which orders have files attached — initialized from order data
+  const ordersById = useMemo(() => {
+    const map = new Map<string, TeethQueueItem>();
+    for (const group of groups) {
+      for (const item of group.items) {
+        if (!isScheduledItem(item)) {
+          map.set(item.id, item);
+        }
+      }
+    }
+    return map;
+  }, [groups]);
+
+  const [fileStateOverrides, setFileStateOverrides] = useState<Map<string, boolean>>(new Map());
+
+  const orderHasFile = useCallback((orderId: string): boolean => {
+    const override = fileStateOverrides.get(orderId);
+    if (override != null) return override;
+    const order = ordersById.get(orderId);
+    return Boolean(order?.teeth_order_file_name);
+  }, [fileStateOverrides, ordersById]);
+
+  const handleFileChanged = useCallback((orderId: string, hasFile: boolean) => {
+    setFileStateOverrides((prev) => {
+      const next = new Map(prev);
+      next.set(orderId, hasFile);
+      return next;
+    });
+    onFileChanged?.(orderId, hasFile);
+  }, [onFileChanged]);
+
+  // Check if all selected orders have files attached
+  const selectedOrdersHaveFiles = useMemo(() => {
+    if (positionSelection.size === 0) return false;
+    for (const orderId of positionSelection.keys()) {
+      if (!orderHasFile(orderId)) return false;
+    }
+    return true;
+  }, [positionSelection, orderHasFile]);
 
   if (!groups.length || groups.every((g) => !g.items.length)) {
 
@@ -244,11 +287,11 @@ export function TeethPanelKolejkaView({
 
               }}
 
-              disabled={pending}
+              disabled={pending || !selectedOrdersHaveFiles}
 
               className="min-h-9"
 
-              title={TEETH_MARK_ORDERED_TITLE}
+              title={selectedOrdersHaveFiles ? TEETH_MARK_ORDERED_TITLE : "Załącz plik zamówienia do wszystkich zaznaczonych pozycji, aby móc oznaczyć jako zamówione"}
 
             >
 
@@ -335,8 +378,6 @@ export function TeethPanelKolejkaView({
 
                 <div className="flex items-center gap-2">
 
-                  {group.supplierId ? <TeethCsvExportButton supplierId={group.supplierId} /> : null}
-
                   <TeethPanelSupplierQueueActions
 
                     allSelected={allSelected}
@@ -372,6 +413,7 @@ export function TeethPanelKolejkaView({
                 positionSelection={positionSelection}
                 onTogglePosition={onTogglePosition}
                 onEditSaved={onEditSaved}
+                onFileChanged={handleFileChanged}
               />
             ) : null}
           </div>

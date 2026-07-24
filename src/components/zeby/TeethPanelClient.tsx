@@ -467,6 +467,9 @@ export function TeethPanelClient({
                   setToast(toastSuccess("Zapisano", message ?? "Lista zębów została zaktualizowana."));
                   void reloadQueue();
                 }}
+                onFileChanged={() => {
+                  void reloadQueue();
+                }}
               />
             )}
           </TeethPanelTabPanel>
