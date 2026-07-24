@@ -45,6 +45,8 @@ export interface Supplier {
   /** Domyślny kurier w dzienniku dostaw magazynu. */
   default_delivery_carrier?: string | null;
   default_delivery_shipment_form?: string | null;
+  /** Domyślny okres realizacji w dniach roboczych (np. 5). NULL = brak. */
+  default_fulfillment_days?: number | null;
 }
 
 export interface SupplierSchedule {

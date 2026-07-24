@@ -44,6 +44,7 @@ function formFromSupplier(s: SupplierSummaryMeta | null) {
       order_on_demand: false,
       is_active: true,
       subiekt_kh_id: null as number | null,
+      default_fulfillment_days: null as number | null,
     };
   }
   return {
@@ -66,6 +67,7 @@ function formFromSupplier(s: SupplierSummaryMeta | null) {
     }),
     is_active: s.is_active !== false,
     subiekt_kh_id: s.subiekt_kh_id ?? null,
+    default_fulfillment_days: s.default_fulfillment_days ?? null,
   };
 }
 
@@ -245,6 +247,24 @@ function SupplierEditModalInner({
             />
           </div>
         </div>
+        <Field
+          label="Domyślny okres realizacji"
+          hint="Liczba dni roboczych (np. 5). Puste = brak."
+        >
+          <Input
+            type="number"
+            min={1}
+            max={60}
+            disabled={pending}
+            placeholder="—"
+            value={form.default_fulfillment_days ?? ""}
+            onChange={(e) => {
+              const v = e.target.value.trim();
+              const n = v === "" ? null : Math.max(1, Math.min(60, Math.trunc(Number(v))));
+              setForm({ ...form, default_fulfillment_days: n != null && Number.isFinite(n) ? n : null });
+            }}
+          />
+        </Field>
         <Field label="Sposób zamówienia" className="sm:col-span-2">
           <Select
             disabled={pending}
