@@ -14,7 +14,11 @@ export function TeethPanelSupplierEta({
   return (
     <span className={teethPanelHeaderMetaClass}>
       · dostawa ~{formatPlDate(eta.expectedDate)}
-      {eta.lowConfidence ? " (mała próbka)" : null}
+      {eta.sampleCount === 0
+        ? " (z karty)"
+        : eta.lowConfidence
+          ? " (mała próbka)"
+          : null}
     </span>
   );
 }
