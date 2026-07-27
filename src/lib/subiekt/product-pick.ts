@@ -31,6 +31,18 @@ export function productSuggestSearchField(
   return activeField === "plu" ? "plu" : "combined";
 }
 
+/** Ogranicza podpowiedzi Subiekta do dozwolonych `tw_Id` (np. katalog zębów). */
+export function filterSubiektProductsByAllowedTwIds(
+  products: SubiektProduct[],
+  allowedTwIds?: ReadonlySet<number> | null
+): SubiektProduct[] {
+  if (!allowedTwIds) return products;
+  return products.filter((p) => {
+    const twId = Math.trunc(Number(p.tw_Id));
+    return twId > 0 && allowedTwIds.has(twId);
+  });
+}
+
 /** Scalone pole produktu — równoległe wyszukiwanie po symbolu i nazwie. */
 export function isCombinedProductSearchField(
   field: ProductSearchField

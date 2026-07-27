@@ -75,6 +75,7 @@ export function RequestProductLinesEditor({
   onTeethListCommitNotice,
   onTeethDualKindCommit,
   autoOpenTeethList = false,
+  allowedTwIds,
 }: {
   lines: ProductLineDraft[];
   onChange: (lines: ProductLineDraft[]) => void;
@@ -123,6 +124,8 @@ export function RequestProductLinesEditor({
   }) => void;
   /** Otwiera modal listy zębów dla pierwszej linii (panel zakupów). */
   autoOpenTeethList?: boolean;
+  /** Ogranicza typeahead do katalogu zębów (panel działu zębowego). */
+  allowedTwIds?: ReadonlySet<number>;
 }) {
   const canRemove = lines.length > minLines;
   const prosba = appearance === "prosba";
@@ -442,6 +445,7 @@ export function RequestProductLinesEditor({
                 onAfterTeethListSave?.(index, teethDetails, totalQuantity, saveResult);
               }}
               autoOpenTeethList={autoOpenTeethList && index === 0}
+              allowedTwIds={allowedTwIds}
             />
 
             {prosba ? (

@@ -1,4 +1,5 @@
 import type { Tab } from "@/components/zeby/teeth-panel-types";
+import { formError } from "@/lib/ui/notice-copy";
 
 export const TEETH_PANEL_TITLE = "Panel zębów";
 
@@ -41,4 +42,23 @@ export const TEETH_TAB_HINTS: Record<Tab, string> = {
     "Zamówienia u dostawcy pogrupowane wg labu. Korekta daty dostawy, cofnięcie błędnego oznaczenia i dziennik operacji.",
 };
 
-
+export const TEETH_QUICK_ORDER_COPY = {
+  title: "Nowa prośba zębowa",
+  titleHint:
+    "Tylko produkty z katalogu zębów. Po zapisie prośba trafia do kolejki panelu zębów — nie do panelu dziennego.",
+  banner: "Formularz tylko dla zębów syntetycznych — inne towary tu nie przejdą.",
+  delegateHint: "Prośba będzie widoczna u wybranego handlowca w Moje zamówienia.",
+  submitLabel: "Dodaj prośbę zębową",
+  ctaLabel: "Nowa prośba zębowa",
+  emptyCatalog: formError(
+    "Brak katalogu zębów",
+    "Dodaj produkty w Admin → Produkty zębowe, zanim złożysz prośbę z tego panelu.",
+  ),
+  nonTeethProduct: formError(
+    "Tylko produkty zębowe",
+    "Wybierz produkt z katalogu zębów i uzupełnij listę zębów.",
+  ),
+  emptyQueueAction: "Dodaj prośbę zębową",
+  emptyQueueDescription:
+    "Dodaj prośbę zębową z tego panelu albo poczekaj, aż handlowiec złoży ją w formularzu prośby — wtedy pojawi się tu do zamówienia u dostawcy.",
+} as const;

@@ -16,13 +16,14 @@ import {
   type ToastNotice,
 } from "@/lib/ui/notice-copy";
 import { Input } from "@/components/ui/Field";
-import { IconTooth, IconArchive } from "@/components/icons/StrokeIcons";
+import { IconTooth, IconArchive, IconPlusCircle } from "@/components/icons/StrokeIcons";
 import type { TeethQueueGroup, TeethQueueItem, TeethPositionSelection } from "@/lib/data/teeth-queue";
 import { isScheduledItem } from "@/lib/data/teeth-queue";
 import { TeethPanelTabs } from "@/components/zeby/TeethPanelTabs";
 import {
   TEETH_TAB_HINTS,
   TEETH_TAB_PAGE_TITLES,
+  TEETH_QUICK_ORDER_COPY,
 } from "@/components/zeby/teeth-panel-copy";
 import { TeethPanelEmpty, TeethPanelTabPanel } from "@/components/zeby/TeethPanelSection";
 import { TeethPanelWorkspaceCard } from "@/components/zeby/TeethPanelWorkspaceCard";
@@ -32,6 +33,8 @@ import { sortTeethQueueGroups, TEETH_SORT_LABELS, type TeethSortKey } from "@/li
 import { TeethPanelWeryfikacjaView } from "@/components/zeby/TeethPanelWeryfikacjaView";
 import { TeethPanelHistoriaView } from "@/components/zeby/TeethPanelHistoriaView";
 import { TeethPanelMarkOrderedDialog } from "@/components/zeby/TeethPanelMarkOrderedDialog";
+import { TeethQuickOrderModal } from "@/components/zeby/TeethQuickOrderModal";
+import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import {
   TEETH_KOLEJKA_ICON_TILE,
   TEETH_WERYFIKACJA_ICON_TILE,
@@ -70,10 +73,14 @@ export function TeethPanelClient({
   initialGroups,
   activeTab: activeTabProp,
   initialHistoryGroups = null,
+  suppliers = [],
+  salesPeople = [],
 }: {
   initialGroups: TeethQueueGroup[];
   activeTab?: Tab;
   initialHistoryGroups?: TeethQueueGroup[] | null;
+  suppliers?: OrderFormSupplierOption[];
+  salesPeople?: { id: string; name: string; email: string }[];
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -119,6 +126,7 @@ export function TeethPanelClient({
   const [markSelections, setMarkSelections] = useState<TeethPositionSelection[]>([]);
   const [markSupplierName, setMarkSupplierName] = useState<string | null>(null);
   const [historyGroupsForFilters, setHistoryGroupsForFilters] = useState<TeethQueueGroup[]>([]);
+  const [quickOrderOpen, setQuickOrderOpen] = useState(false);
 
   const reloadHistoryFilterOptions = useCallback(() => {
     void actionFetchTeethHistoryGroups()
@@ -397,6 +405,16 @@ export function TeethPanelClient({
           : tab === "historia" ? TEETH_HISTORIA_ICON_TILE
           : TEETH_KOLEJKA_ICON_TILE
         }
+        headerAside={
+          <Button
+            size="sm"
+            className="h-9 gap-1.5 px-3 text-xs"
+            onClick={() => setQuickOrderOpen(true)}
+          >
+            <IconPlusCircle size={15} />
+            {TEETH_QUICK_ORDER_COPY.ctaLabel}
+          </Button>
+        }
         beforeCard={
           toast ? (
             <NoticeToast notice={toast} onDismiss={() => setToast(null)} />
@@ -439,15 +457,21 @@ export function TeethPanelClient({
             {groups.length === 0 ? (
               <TeethPanelEmpty
                 title="Kolejka jest pusta"
-                description="Gdy handlowiec złoży prośbę na zęby syntetyczne, pozycja pojawi się tutaj do zamówienia u dostawcy."
+                description={TEETH_QUICK_ORDER_COPY.emptyQueueDescription}
                 icon={<IconTooth size={24} strokeWidth={1.75} />}
                 action={
-                  <Link
-                    href="/zeby/weryfikacja"
-                    className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
-                  >
-                    Przejdź do weryfikacji
-                  </Link>
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <Button size="sm" className="gap-1.5" onClick={() => setQuickOrderOpen(true)}>
+                      <IconPlusCircle size={15} />
+                      {TEETH_QUICK_ORDER_COPY.emptyQueueAction}
+                    </Button>
+                    <Link
+                      href="/zeby/weryfikacja"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                    >
+                      Przejdź do weryfikacji
+                    </Link>
+                  </div>
                 }
               />
             ) : (
@@ -525,6 +549,16 @@ export function TeethPanelClient({
           setMarkAnalysis(null);
           setMarkSelections([]);
           setMarkSupplierName(null);
+        }}
+      />
+
+      <TeethQuickOrderModal
+        open={quickOrderOpen}
+        onClose={() => setQuickOrderOpen(false)}
+        suppliers={suppliers}
+        salesPeople={salesPeople}
+        onCreated={() => {
+          void reloadQueue();
         }}
       />
 

@@ -3,6 +3,7 @@ import {
   buildProductPickFromSubiekt,
   combinedProductSearchDisplay,
   combinedProductSymbolPreview,
+  filterSubiektProductsByAllowedTwIds,
   formatSubiektProductOption,
   inferCombinedProductSearchField,
   inferProductZdLookupSearchField,
@@ -34,6 +35,23 @@ describe("productSuggestSearchField", () => {
     expect(productSuggestSearchField("name")).toBe("combined");
     expect(productSuggestSearchField("symbol")).toBe("combined");
     expect(productSuggestSearchField("plu")).toBe("plu");
+  });
+});
+
+describe("filterSubiektProductsByAllowedTwIds", () => {
+  const products = [
+    { tw_Id: 10, tw_Symbol: "A", tw_Nazwa: "Ząb A" },
+    { tw_Id: 20, tw_Symbol: "B", tw_Nazwa: "Inny" },
+  ] as import("./types").SubiektProduct[];
+
+  it("bez filtra zwraca wszystkie", () => {
+    expect(filterSubiektProductsByAllowedTwIds(products)).toHaveLength(2);
+  });
+
+  it("zostawia tylko dozwolone tw_Id", () => {
+    expect(filterSubiektProductsByAllowedTwIds(products, new Set([10]))).toEqual([
+      products[0],
+    ]);
   });
 });
 

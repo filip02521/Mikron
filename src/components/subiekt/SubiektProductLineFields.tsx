@@ -23,6 +23,7 @@ import {
   buildProductPickFromSubiekt,
   combinedProductSearchDisplay,
   combinedProductSymbolPreview,
+  filterSubiektProductsByAllowedTwIds,
   formatSubiektProductOption,
   inferCombinedProductSearchField,
   minProductSearchLength,
@@ -207,6 +208,7 @@ export function SubiektProductLineFields({
   onTeethDualKindCommit,
   onTeethListCommitNotice,
   autoOpenTeethList = false,
+  allowedTwIds,
 }: {
   value: SubiektProductLineValue;
   onChange: (patch: Partial<SubiektProductLineValue>) => void;
@@ -252,6 +254,8 @@ export function SubiektProductLineFields({
   ) => void;
   /** Otwiera modal listy zębów po wejściu w edycję (panel zakupów). */
   autoOpenTeethList?: boolean;
+  /** Gdy ustawione — podpowiedzi tylko z tych `tw_Id` (katalog zębów). */
+  allowedTwIds?: ReadonlySet<number>;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const productAnchorRef = useRef<HTMLDivElement>(null);
@@ -348,10 +352,26 @@ export function SubiektProductLineFields({
       ? getSubiektFeedback("short_query")
       : null;
   const visibleItems = useMemo(
-    () => (searchActive ? items : []),
-    [items, searchActive]
+    () =>
+      searchActive
+        ? filterSubiektProductsByAllowedTwIds(items, allowedTwIds)
+        : [],
+    [items, searchActive, allowedTwIds]
   );
-  const visibleFeedback = searchActive ? feedback : shortQueryFeedback;
+  const teethOnlyNoMatchFeedback =
+    allowedTwIds &&
+    searchActive &&
+    status === "idle" &&
+    !isPending &&
+    items.length > 0 &&
+    visibleItems.length === 0
+      ? getSubiektFeedback("not_found_product", {
+          hint: "W tym panelu widać tylko produkty z katalogu zębów (Admin → Produkty zębowe).",
+        })
+      : null;
+  const visibleFeedback = searchActive
+    ? (teethOnlyNoMatchFeedback ?? feedback)
+    : shortQueryFeedback;
   const visibleStatus = searchActive ? (isPending ? "loading" : status) : "idle";
   const itemsKey = `${activeField}\0${visibleItems.map((item) => item.tw_Id).join("\0")}`;
   const [appliedItemsKey, setAppliedItemsKey] = useState(itemsKey);

@@ -23,6 +23,15 @@ describe("department-board format", () => {
     ).toBe("Anna K.");
   });
 
+  it("uses sales person name for follow-up replies instead of email local-part", () => {
+    expect(
+      questionAuthorLabel(
+        { name: "Anna Kowalska" },
+        { email: "anna.kowalska@firma.pl", role: "sales" }
+      )
+    ).toBe("Anna Kowalska");
+  });
+
   it("formats reply count in Polish", () => {
     expect(boardReplyCountLabel(1)).toBe("1 odpowiedź");
     expect(boardReplyCountLabel(2)).toBe("2 odpowiedzi");
