@@ -18,11 +18,12 @@ export const DEPARTMENT_BOARD_THREAD_SELECT =
   "id, kind, status, created_by, sales_person_id, title, body, product_symbol, product_name, subiekt_tw_id, mikran_code, color, pinned, published_at, expires_at, answered_at, archived_at, closed_by, created_at, updated_at, author:profiles!created_by(email, role), sales_person:sales_people(id, name), closed_by_profile:profiles!closed_by(email, role)";
 
 export const DEPARTMENT_BOARD_POST_SELECT =
-  "*, author:profiles!created_by(email, role)";
+  "*, author:profiles!created_by(email, role, sales_person:sales_people(id, name))";
 
 export type DepartmentBoardAuthor = {
   email: string | null;
   role: UserRole | null;
+  sales_person?: { id: string; name: string } | null;
 };
 
 export type DepartmentBoardThreadRow = DepartmentBoardThread & {

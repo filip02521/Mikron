@@ -110,6 +110,27 @@ describe("QuestionThreadCard", () => {
     expect(screen.getByText("Odpowiedź")).toBeTruthy();
   });
 
+  it("pokazuje nazwę karty handlowca przy doprecyzowaniu w wątku", () => {
+    const question = testQuestion();
+    question.posts.push({
+      id: "p2",
+      thread_id: "q1",
+      body: "Doprecyzowanie pytania.",
+      created_by: "u1",
+      created_at: "2026-01-02T11:00:00Z",
+      author: {
+        email: "anna.kowalski@firma.pl",
+        role: "sales",
+        sales_person: { id: "sp1", name: "Anna" },
+      },
+    });
+
+    render(<QuestionThreadCard question={question} embedded defaultExpanded />);
+
+    expect(screen.getAllByText("Anna").length).toBeGreaterThan(1);
+    expect(screen.queryByText("anna.kowalski")).toBeNull();
+  });
+
   it("oznacza wątek po rozwinięciu i wejściu w widok", async () => {
     vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
 

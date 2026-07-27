@@ -23,6 +23,16 @@ describe("department-board format", () => {
     ).toBe("Anna K.");
   });
 
+  it("falls back to the profile email when a reply has no sales person card", () => {
+    expect(questionAuthorLabel(null, { email: "anna.kowalski@firma.pl", role: "sales" })).toBe(
+      "anna.kowalski"
+    );
+  });
+
+  it("falls back to Handlowiec when a reply has no email", () => {
+    expect(questionAuthorLabel({ name: "   " }, { email: null, role: "sales" })).toBe("Handlowiec");
+  });
+
   it("formats reply count in Polish", () => {
     expect(boardReplyCountLabel(1)).toBe("1 odpowiedź");
     expect(boardReplyCountLabel(2)).toBe("2 odpowiedzi");
