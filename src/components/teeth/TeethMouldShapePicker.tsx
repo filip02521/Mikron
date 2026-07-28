@@ -28,6 +28,7 @@ export function TeethMouldShapePicker({
   compact,
   required,
   builderMode = false,
+  allowOther = true,
 }: {
   productLine: TeethProductLine;
   kind: TeethKind;
@@ -37,6 +38,8 @@ export function TeethMouldShapePicker({
   compact?: boolean;
   required?: boolean;
   builderMode?: boolean;
+  /** Chip „inny” + wolne pole — wyłącz w kontekstach katalogowych (np. braki). */
+  allowOther?: boolean;
 }) {
   const groups = useMemo(() => {
     const raw = mouldShapeGroupsFor(productLine, kind);
@@ -50,7 +53,8 @@ export function TeethMouldShapePicker({
   const [customMouldOpen, setCustomMouldOpen] = useState(false);
 
   const onPalette = !!(mould?.trim() && allMoulds.includes(mould.trim()));
-  const customMouldActive = mouldIsCustom(mould, allMoulds) || (customMouldOpen && !onPalette);
+  const customMouldActive =
+    allowOther && (mouldIsCustom(mould, allMoulds) || (customMouldOpen && !onPalette));
 
   const selectMould = (code: string) => {
     if (disabled) return;
@@ -59,7 +63,7 @@ export function TeethMouldShapePicker({
   };
 
   const selectOther = () => {
-    if (disabled) return;
+    if (disabled || !allowOther) return;
     setCustomMouldOpen(true);
     if (!customMouldActive) onMouldChange("");
   };
@@ -79,6 +83,7 @@ export function TeethMouldShapePicker({
           disabled={disabled}
           compact={compact || builderMode}
           chipPad={chipPad}
+          allowOther={allowOther}
           onSelectMould={selectMould}
           onSelectOther={selectOther}
         />
@@ -94,13 +99,15 @@ export function TeethMouldShapePicker({
               onSelect={() => selectMould(code)}
             />
           ))}
-          <MouldChip
-            label={TEETH_CHIP_OTHER}
-            selected={customMouldActive}
-            disabled={disabled}
-            className={chipPad}
-            onSelect={selectOther}
-          />
+          {allowOther ? (
+            <MouldChip
+              label={TEETH_CHIP_OTHER}
+              selected={customMouldActive}
+              disabled={disabled}
+              className={chipPad}
+              onSelect={selectOther}
+            />
+          ) : null}
         </div>
       )}
 
@@ -129,6 +136,7 @@ function GroupedMouldSections({
   disabled,
   compact,
   chipPad,
+  allowOther = true,
   onSelectMould,
   onSelectOther,
 }: {
@@ -138,6 +146,7 @@ function GroupedMouldSections({
   disabled?: boolean;
   compact?: boolean;
   chipPad: string;
+  allowOther?: boolean;
   onSelectMould: (code: string) => void;
   onSelectOther: () => void;
 }) {
@@ -171,15 +180,17 @@ function GroupedMouldSections({
           </section>
         ))}
       </div>
-      <div className="flex flex-wrap gap-1 border-t border-indigo-100/60 bg-slate-50/30 p-1.5">
-        <MouldChip
-          label={TEETH_CHIP_OTHER}
-          selected={customMouldActive}
-          disabled={disabled}
-          className={chipPad}
-          onSelect={onSelectOther}
-        />
-      </div>
+      {allowOther ? (
+        <div className="flex flex-wrap gap-1 border-t border-indigo-100/60 bg-slate-50/30 p-1.5">
+          <MouldChip
+            label={TEETH_CHIP_OTHER}
+            selected={customMouldActive}
+            disabled={disabled}
+            className={chipPad}
+            onSelect={onSelectOther}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

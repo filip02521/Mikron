@@ -10,8 +10,9 @@ import {
 import { readAdminPanelContextForSession } from "@/lib/auth/read-admin-panel-context";
 import { readProcurementWorkspaceForSession } from "@/lib/auth/read-procurement-workspace";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
-import { isSalesAccount } from "@/lib/auth-roles";
+import { isSalesAccount, canAccessTeethPanel, canAccessOperations } from "@/lib/auth-roles";
 import { fetchTeethProductInfo } from "@/lib/data/teeth-products";
+import { fetchActiveTeethShortages } from "@/lib/data/teeth-shortages";
 import { fetchActiveDelegationsForDelegate, type VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { AppShellClient } from "./AppShellClient";
 import { AppShellMetricsProvider } from "./AppShellMetricsContext";
@@ -53,6 +54,22 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         })
       : [];
 
+  const loadTeethShortages =
+    !!session &&
+    !lightShell &&
+    !!role &&
+    (isSalesAccount(role) ||
+      canAccessTeethPanel(role, session.assignedWorkspaces ?? []) ||
+      // Quick Order / edycja na panelu dziennym (zakupy) też buduje listy zębów.
+      canAccessOperations(role, session.assignedWorkspaces ?? []));
+
+  const activeTeethShortages = loadTeethShortages
+    ? await fetchActiveTeethShortages().catch((e) => {
+        console.error("[AppShell] fetchActiveTeethShortages failed:", e?.message ?? e);
+        return [];
+      })
+    : [];
+
   const activeDelegations: VacationDelegationRow[] =
     session && !lightShell && isSalesAccount(session.role)
       ? await fetchActiveDelegationsForDelegate(session.id).catch((e) => {
@@ -75,6 +92,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       salesOnboardingCompletedAt={session?.salesOnboardingCompletedAt ?? null}
       salesOnboardingActive={showSalesOnboarding}
       teethProductInfo={teethProductInfo}
+      activeTeethShortages={activeTeethShortages}
       assignedWorkspaces={session?.assignedWorkspaces ?? []}
       activeDelegations={activeDelegations}
       uniformBackground={session?.uniformBackground ?? false}

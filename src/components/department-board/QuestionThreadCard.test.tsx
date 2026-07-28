@@ -112,22 +112,33 @@ describe("QuestionThreadCard", () => {
 
   it("pokazuje nazwę karty handlowca przy doprecyzowaniu w wątku", () => {
     const question = testQuestion();
-    question.posts.push({
-      id: "p2",
-      thread_id: "q1",
-      body: "Doprecyzowanie pytania.",
-      created_by: "u1",
-      created_at: "2026-01-02T11:00:00Z",
-      author: {
-        email: "anna.kowalski@firma.pl",
-        role: "sales",
-        sales_person: { id: "sp1", name: "Anna" },
+    question.posts = [
+      {
+        id: "p1",
+        thread_id: "q1",
+        body: "Jutro potwierdzimy.",
+        created_by: "u2",
+        created_at: "2026-01-02T10:00:00Z",
+        author: { email: "zakupy@firma.pl", role: "zakupy" },
       },
-    });
+      {
+        id: "p2",
+        thread_id: "q1",
+        body: "Chodzi o wariant A.",
+        created_by: "u1",
+        created_at: "2026-01-02T11:00:00Z",
+        author: {
+          email: "anna.kowalski@firma.pl",
+          role: "sales",
+          sales_person: { id: "sp1", name: "Anna" },
+        },
+      },
+    ];
 
     render(<QuestionThreadCard question={question} embedded defaultExpanded />);
 
-    expect(screen.getAllByText("Anna").length).toBeGreaterThan(1);
+    expect(screen.getByText("Doprecyzowanie handlowca")).toBeTruthy();
+    expect(screen.getAllByText("Anna").length).toBeGreaterThanOrEqual(2);
     expect(screen.queryByText("anna.kowalski")).toBeNull();
   });
 

@@ -23,6 +23,15 @@ describe("department-board format", () => {
     ).toBe("Anna K.");
   });
 
+  it("uses sales person name for follow-up replies instead of email local-part", () => {
+    expect(
+      questionAuthorLabel(
+        { name: "Anna Kowalska" },
+        { email: "anna.kowalska@firma.pl", role: "sales" }
+      )
+    ).toBe("Anna Kowalska");
+  });
+
   it("falls back to the profile email when a reply has no sales person card", () => {
     expect(questionAuthorLabel(null, { email: "anna.kowalski@firma.pl", role: "sales" })).toBe(
       "anna.kowalski"

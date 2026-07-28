@@ -361,7 +361,7 @@ export async function actionUpdateTeethSpecGroup(
   const { fetchTeethProductInfo } = await import("@/lib/data/teeth-products");
   const { resolveTeethProductLineForPanelOrder, teethPanelReadinessContextFromMaps } =
     await import("@/lib/teeth/teeth-panel-order-readiness");
-  const { validateInlineSpec, validateCount } = await import("@/lib/teeth/teeth-verification-inline");
+  const { validateInlineSpec, validateCount, withInferredJawPatch } = await import("@/lib/teeth/teeth-verification-inline");
 
   const teethProducts = await fetchTeethProductInfo().catch(() => []);
   const ctx = teethPanelReadinessContextFromMaps({
@@ -373,7 +373,17 @@ export async function actionUpdateTeethSpecGroup(
   const productLine = resolveTeethProductLineForPanelOrder(order, ctx);
   if (!productLine) return { success: false, error: "Nie udało się ustalić linii produktu" };
 
-  const specValidation = validateInlineSpec(newSpec, productLine);
+  const inferredNewSpec = withInferredJawPatch(
+    newSpec,
+    productLine,
+    {
+      mould: spec.mould,
+      jaw: (spec.jaw as "upper" | "lower" | null) ?? null,
+      kind: (spec.kind as "anterior" | "posterior" | null) ?? null,
+    },
+  );
+
+  const specValidation = validateInlineSpec(inferredNewSpec, productLine);
   if (!specValidation.ok) return { success: false, error: specValidation.error };
 
   if (newCount !== undefined) {
@@ -399,7 +409,7 @@ export async function actionUpdateTeethSpecGroup(
 
   const { updateTeethSpecGroup } = await import("@/lib/data/teeth-order-details");
   try {
-    await updateTeethSpecGroup(supabase, orderId, spec, newSpec, newCount);
+    await updateTeethSpecGroup(supabase, orderId, spec, inferredNewSpec, newCount);
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Nie udało się zapisać" };
   }
@@ -483,7 +493,7 @@ export async function actionAddTeethSpecGroup(
   const { fetchTeethProductInfo } = await import("@/lib/data/teeth-products");
   const { resolveTeethProductLineForPanelOrder, teethPanelReadinessContextFromMaps } =
     await import("@/lib/teeth/teeth-panel-order-readiness");
-  const { validateInlineSpec, validateCount } = await import("@/lib/teeth/teeth-verification-inline");
+  const { validateInlineSpec, validateCount, withInferredJawPatch } = await import("@/lib/teeth/teeth-verification-inline");
 
   const teethProducts = await fetchTeethProductInfo().catch(() => []);
   const ctx = teethPanelReadinessContextFromMaps({
@@ -495,10 +505,17 @@ export async function actionAddTeethSpecGroup(
   const productLine = resolveTeethProductLineForPanelOrder(order, ctx);
   if (!productLine) return { success: false, error: "Nie udało się ustalić linii produktu" };
 
-  const specValidation = validateInlineSpec(
+  const inferredSpec = withInferredJawPatch(
     { color: spec.color, mould: spec.mould, jaw: spec.jaw, kind: spec.kind },
     productLine,
+    {
+      mould: spec.mould,
+      jaw: (spec.jaw as "upper" | "lower" | null) ?? null,
+      kind: (spec.kind as "anterior" | "posterior" | null) ?? null,
+    },
   );
+
+  const specValidation = validateInlineSpec(inferredSpec, productLine);
   if (!specValidation.ok) return { success: false, error: specValidation.error };
 
   const countValidation = validateCount(count);
@@ -506,7 +523,20 @@ export async function actionAddTeethSpecGroup(
 
   const { insertTeethSpecGroup } = await import("@/lib/data/teeth-order-details");
   try {
-    await insertTeethSpecGroup(supabase, orderId, spec, count);
+    await insertTeethSpecGroup(
+      supabase,
+      orderId,
+      {
+        color: inferredSpec.color ?? spec.color,
+        mould: inferredSpec.mould !== undefined ? inferredSpec.mould : spec.mould,
+        jaw:
+          inferredSpec.jaw !== undefined
+            ? ((inferredSpec.jaw as string | null) ?? null)
+            : spec.jaw,
+        kind: inferredSpec.kind ?? spec.kind,
+      },
+      count,
+    );
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Nie udało się dodać pozycji" };
   }

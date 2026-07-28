@@ -7,6 +7,7 @@ import {
   resolveTeethProductLineForPanelOrder,
 } from "@/lib/teeth/teeth-panel-order-readiness";
 import { buildSpecGroups, type SpecGroup } from "@/lib/teeth/teeth-verification-inline";
+import { shouldShowJawForLine } from "@/lib/teeth/teeth-mould-shape-groups";
 import { TeethVerificationInlineRow } from "@/components/zeby/TeethVerificationInlineRow";
 import { TeethVerificationAddRow } from "@/components/zeby/TeethVerificationAddRow";
 import { TeethPanelEditOrderTrigger } from "@/components/zeby/TeethPanelEditOrderTrigger";
@@ -231,7 +232,10 @@ function OrderRows({
             );
           })}
           {posteriorSpecs.length > 0 ? (
-            <KindSectionHeader label="Boki" hasJaw={true} />
+            <KindSectionHeader
+              label="Boki"
+              hasJaw={shouldShowJawForLine("posterior", order.productLine)}
+            />
           ) : null}
           {posteriorSpecs.map((spec, idx) => {
             const rowKey = `${order.orderId}-post-${idx}`;
@@ -242,7 +246,7 @@ function OrderRows({
                 orderId={order.orderId}
                 spec={spec}
                 productLine={order.productLine}
-                showJaw={true}
+                showJaw={shouldShowJawForLine("posterior", order.productLine)}
                 isActive={activeRowKey === rowKey}
                 isVisited={visitedRows.has(rowKey)}
                 onSaved={onSaved}

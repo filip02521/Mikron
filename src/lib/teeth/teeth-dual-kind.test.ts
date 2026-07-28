@@ -427,3 +427,96 @@ describe("teeth-dual-kind ivostar/gnathostar", () => {
     expect(findTeethSiblingLineIndex([anterior, posterior], 1)).toBe(0);
   });
 });
+
+const VIVODENT_LINE = "ivoclar_vivodent_dcl" as const;
+const ORTHOTYP_LINE = "ivoclar_orthotyp_dcl" as const;
+
+const vivodentOrthotypRegistry: TeethRegistryEntry[] = [
+  {
+    twId: 401,
+    manufacturer: "ivoclar",
+    productLine: VIVODENT_LINE,
+    kind: "anterior",
+    symbol: "VV-PRZ",
+    name: "Vivodent DCL przednie",
+    plu: "4001",
+  },
+  {
+    twId: 402,
+    manufacturer: "ivoclar",
+    productLine: ORTHOTYP_LINE,
+    kind: "posterior",
+    symbol: "OT-BOC",
+    name: "Orthotyp DCL boczne",
+    plu: "4002",
+  },
+];
+
+const vivodentOrthotypIndex = buildTeethRegistryIndex(vivodentOrthotypRegistry);
+
+describe("teeth-dual-kind Vivodent/Orthotyp", () => {
+  it("supports dual and resolves cross-line catalog products", () => {
+    expect(supportsDualKindBuilder(vivodentOrthotypIndex, VIVODENT_LINE)).toBe(true);
+    expect(supportsDualKindBuilder(vivodentOrthotypIndex, ORTHOTYP_LINE)).toBe(true);
+    expect(resolveTeethCatalogProduct(vivodentOrthotypIndex, VIVODENT_LINE, "posterior")?.twId).toBe(402);
+    expect(resolveTeethCatalogProduct(vivodentOrthotypIndex, ORTHOTYP_LINE, "anterior")?.twId).toBe(401);
+  });
+
+  it("commit zapisuje Orthotyp z jaw z fasonu N5U/N5L nawet gdy jaw=null w grupie", () => {
+    const anchor = {
+      ...newProductLine(),
+      id: "vivodent-anchor",
+      product: "Vivodent DCL przednie",
+      symbol: "VV-PRZ",
+      mikranCode: "4001",
+      subiektTwId: 401,
+      teethManufacturer: "ivoclar" as const,
+      teethProductLine: VIVODENT_LINE,
+      teethKind: "anterior" as const,
+      clientName: "Anna Nowak",
+    };
+    const result = commitDualKindTeethLines(
+      [anchor],
+      0,
+      [
+        createTeethGroupDraft({
+          color: "A2",
+          mould: "A14",
+          jaw: null,
+          kind: "anterior",
+          count: 2,
+        }),
+      ],
+      [
+        createTeethGroupDraft({
+          color: "A2",
+          mould: "N5U",
+          jaw: null,
+          kind: "posterior",
+          count: 1,
+        }),
+        createTeethGroupDraft({
+          color: "A2",
+          mould: "N5L",
+          jaw: null,
+          kind: "posterior",
+          count: 1,
+        }),
+      ],
+      vivodentOrthotypIndex,
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const anterior = result.lines.find((l) => l.teethKind === "anterior");
+    const posterior = result.lines.find((l) => l.teethKind === "posterior");
+    expect(anterior?.teethProductLine).toBe(VIVODENT_LINE);
+    expect(posterior?.teethProductLine).toBe(ORTHOTYP_LINE);
+    expect(posterior?.teethDetails).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ mould: "N5U", jaw: "upper", kind: "posterior" }),
+        expect.objectContaining({ mould: "N5L", jaw: "lower", kind: "posterior" }),
+      ]),
+    );
+    expect(anterior?.teethDetails?.every((d) => d.jaw == null)).toBe(true);
+  });
+});

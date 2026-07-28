@@ -183,7 +183,7 @@ export function buildProcurementWorkspaceCookie(workspace: ProcurementWorkspace)
   };
 }
 
-/** Wspólne ścieżki wszystkich obszarów zakupów (tablica, notatki, karty/urlopy). */
+/** Wspólne ścieżki wszystkich obszarów zakupów (tablica, notatki, karty/urlopy, kurierzy). */
 const PROCUREMENT_SHARED_PATH_PREFIXES = [
   "/notatki",
   "/zakupy/tablica",
@@ -191,6 +191,7 @@ const PROCUREMENT_SHARED_PATH_PREFIXES = [
   "/zakupy/urlopy",
   "/ustawienia",
   "/urlopy",
+  "/kurierzy",
 ];
 
 const DOSTAWY_WORKSPACE_PATH_PREFIXES = [

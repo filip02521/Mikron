@@ -88,6 +88,36 @@ describe("teeth-draft-jaw", () => {
     expect(rows[1]).toMatchObject({ jaw: "lower", mould: "N5L" });
   });
 
+  it("Orthotyp bez jawMode ustawia szczękę z fasonu N5L", () => {
+    const rows = expandDraftToJawGroups(
+      {
+        color: "A2",
+        mould: "N5L",
+        jaw: null,
+        kind: "posterior",
+        count: 2,
+      },
+      "ivoclar_orthotyp_dcl",
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ jaw: "lower", mould: "N5L" });
+  });
+
+  it("isTeethBuilderDraftComplete akceptuje Orthotyp bez jaw gdy fason ma U/L", () => {
+    expect(
+      isTeethBuilderDraftComplete(
+        {
+          color: "A2",
+          mould: "N5U",
+          jaw: null,
+          kind: "posterior",
+          count: 2,
+        },
+        { productLine: "ivoclar_orthotyp_dcl" },
+      ),
+    ).toBe(true);
+  });
+
   it("isTeethBuilderDraftComplete akceptuje jawMode both", () => {
     expect(
       isTeethBuilderDraftComplete(

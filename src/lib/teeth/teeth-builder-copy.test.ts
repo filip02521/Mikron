@@ -32,6 +32,16 @@ describe("teethBuilderSteps", () => {
     ]);
     expect(steps[2]?.done).toBe(true);
   });
+
+  it("omits jaw step when Orthotyp encodes jaw in mould", () => {
+    const steps = teethBuilderSteps({
+      kind: "posterior",
+      color: "A2",
+      mould: "N5U",
+      productLine: "ivoclar_orthotyp_dcl",
+    });
+    expect(steps.map((s) => s.label)).toEqual(["Kolor", "Kształt · fason", "Ilość"]);
+  });
 });
 
 describe("teethDualSaveReady", () => {

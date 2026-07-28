@@ -1,7 +1,7 @@
 import {
   TEETH_KIND_LABELS,
 } from "@/lib/teeth/teeth-catalog";
-import { jawRequiredForKind } from "@/lib/teeth/teeth-mould-shape-groups";
+import { jawRequiredForKind, resolveTeethJaw } from "@/lib/teeth/teeth-mould-shape-groups";
 import type { TeethSupplierBatchSummary } from "@/lib/teeth/teeth-panel-aggregate";
 
 const JAW_LABELS: Record<string, string> = { upper: "Góra", lower: "Dół" };
@@ -27,7 +27,7 @@ export function teethBatchSummaryToCsv(summary: TeethSupplierBatchSummary): stri
         block.productLineLabel,
         group.color,
         group.mould ?? "",
-        jawLabel(group.jaw, group.kind),
+        jawLabel(group.jaw, group.kind, group.mould),
         kindLabel(group.kind),
         String(group.count),
       ].map(csvEscape).join(","));
@@ -40,7 +40,7 @@ export function teethBatchSummaryToCsv(summary: TeethSupplierBatchSummary): stri
         "Do zamówienia",
         group.color,
         group.mould ?? "",
-        jawLabel(group.jaw, group.kind),
+        jawLabel(group.jaw, group.kind, group.mould),
         kindLabel(group.kind),
         String(group.count),
       ].map(csvEscape).join(","));
@@ -86,7 +86,7 @@ export function teethOrderSpecsToCsv(summary: TeethSupplierBatchSummary): string
         order.symbol ?? "",
         group.color,
         group.mould ?? "",
-        jawLabel(group.jaw, group.kind),
+        jawLabel(group.jaw, group.kind, group.mould),
         kindLabel(group.kind),
         String(group.count),
       ].map(csvEscape).join(","));
@@ -96,9 +96,11 @@ export function teethOrderSpecsToCsv(summary: TeethSupplierBatchSummary): string
   return "\uFEFF" + rows.join("\r\n");
 }
 
-function jawLabel(jaw: string | null, kind: string | null): string {
+function jawLabel(jaw: string | null, kind: string | null, mould?: string | null): string {
   if (!kind || !jawRequiredForKind(kind as never)) return "—";
-  return JAW_LABELS[jaw ?? ""] ?? "—";
+  // CSV: pokaż szczękę z jaw lub z fasonu (N5U → Góra), nie ukrywaj.
+  const resolved = resolveTeethJaw(mould, (jaw as "upper" | "lower" | null) ?? null);
+  return JAW_LABELS[resolved ?? ""] ?? "—";
 }
 
 function kindLabel(kind: string | null): string {

@@ -142,14 +142,14 @@ export function isAdminReadOnlyPanelPreview(
 
 /**
  * UI read-only dla operacji zakupowych i magazynu.
- * Podgląd „Zakupy” to realna praca operacyjna (zgodnie z assertAdminPanelAllowsOperationsMutations).
+ * Podgląd „Zakupy” i „Zęby” to realna praca operacyjna (zgodnie z assert*Mutations).
  */
 export function isAdminOperationsPreviewReadOnly(
   realRole: UserRole | null | undefined,
   panelContext: AdminPanelContext | null | undefined
 ): boolean {
   if (!isAdminPanelPreview(realRole, panelContext)) return false;
-  return panelContext !== "zakupy";
+  return panelContext !== "zakupy" && panelContext !== "zakupy_zeby";
 }
 
 /**

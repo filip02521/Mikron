@@ -18,6 +18,10 @@ import {
 import {
   shouldShowJawPicker,
   isJawModeSatisfied,
+  inferJawFromMould,
+  productLineEncodesJawInMould,
+  mouldEncodesExplicitJaw,
+  resolveTeethJaw,
   type TeethJawMode,
 } from "@/lib/teeth/teeth-mould-shape-groups";
 import { TeethMouldShapePicker } from "@/components/teeth/TeethMouldShapePicker";
@@ -72,7 +76,7 @@ export function TeethSpecFields({
   const showMouldChips = kind != null && hasMouldsForKind(catalog, kind);
   const freeformMould = lineOptionalMould(productLine);
   const mouldRequired = kind != null && mouldRequiredForKind(catalog, kind);
-  const showJaw = shouldShowJawPicker(kind);
+  const showJaw = shouldShowJawPicker(kind, productLine);
 
   const [customColorOpen, setCustomColorOpen] = useState(() =>
     colorIsCustom(detail.color, colors),
@@ -82,7 +86,10 @@ export function TeethSpecFields({
 
   const isComplete =
     kind != null &&
-    isJawModeSatisfied(kind, jaw, jawMode) &&
+    isJawModeSatisfied(kind, jaw, jawMode, {
+      productLine,
+      mould: detail.mould,
+    }) &&
     isTeethDetailComplete(
       {
         position: 1,
@@ -94,7 +101,7 @@ export function TeethSpecFields({
               ? "upper"
               : jawMode === "upper" || jawMode === "lower"
                 ? jawMode
-                : jaw
+                : resolveTeethJaw(detail.mould, jaw, productLine)
             : null,
         kind,
       },
@@ -214,7 +221,18 @@ export function TeethSpecFields({
           productLine={productLine}
           kind={kind}
           mould={detail.mould ?? null}
-          onMouldChange={(m) => onChange({ mould: m })}
+          onMouldChange={(m) => {
+            if (!productLineEncodesJawInMould(productLine)) {
+              onChange({ mould: m });
+              return;
+            }
+            const inferred = inferJawFromMould(m, productLine);
+            onChange({
+              mould: m,
+              jaw: inferred,
+              jawMode: inferred,
+            });
+          }}
           disabled={disabled}
           compact={compact}
           builderMode={builderMode}
@@ -228,7 +246,19 @@ export function TeethSpecFields({
             type="text"
             value={detail.mould ?? ""}
             disabled={disabled}
-            onChange={(e) => onChange({ mould: e.target.value || null })}
+            onChange={(e) => {
+              const m = e.target.value || null;
+              if (!productLineEncodesJawInMould(productLine)) {
+                onChange({ mould: m });
+                return;
+              }
+              const inferred = inferJawFromMould(m, productLine);
+              onChange({
+                mould: m,
+                jaw: inferred,
+                jawMode: inferred,
+              });
+            }}
             placeholder={freeformMould ? "Wpisz fason (opcjonalnie)" : "Wpisz fason lub zostaw puste"}
             className={cn(
               "w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs",
@@ -241,7 +271,16 @@ export function TeethSpecFields({
 
       {showJaw ? (
         <div className={sectionGap} data-step="jaw">
-          <FieldLabel required={!isJawModeSatisfied(kind, jaw, jawMode)}>Szczęka</FieldLabel>
+          <FieldLabel
+            required={
+              !isJawModeSatisfied(kind, jaw, jawMode, {
+                productLine,
+                mould: detail.mould,
+              })
+            }
+          >
+            Szczęka
+          </FieldLabel>
           <div className="flex flex-wrap gap-1.5">
             <ChoiceButton
               label="Górna"
@@ -286,16 +325,24 @@ export function TeethSpecFields({
               />
             </svg>
           ) : null}
-          <TeethSpecPreview detail={detail} />
+          <TeethSpecPreview detail={detail} productLine={productLine} />
         </div>
       ) : null}
     </div>
   );
 }
 
-export function TeethSpecPreview({ detail }: { detail: TeethSpecFieldsDetail }) {
+export function TeethSpecPreview({
+  detail,
+  productLine,
+}: {
+  detail: TeethSpecFieldsDetail;
+  productLine?: TeethProductLine | null;
+}) {
   const parts: string[] = [];
-  if (detail.kind === "posterior") {
+  const hideJawLabel =
+    productLineEncodesJawInMould(productLine) || mouldEncodesExplicitJaw(detail.mould);
+  if (detail.kind === "posterior" && !hideJawLabel) {
     if (detail.jawMode === "both") parts.push("Oba");
     else if (detail.jaw === "upper") parts.push("Górna");
     else if (detail.jaw === "lower") parts.push("Dolna");

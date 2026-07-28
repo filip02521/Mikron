@@ -8,7 +8,7 @@ import {
   type TeethLineDetail,
   type TeethProductLine,
 } from "./teeth-catalog";
-import { jawRequiredForKind } from "./teeth-mould-shape-groups";
+import { jawRequiredForKind, resolveTeethJaw } from "./teeth-mould-shape-groups";
 import {
   buildTeethVisionPrompt,
   buildTeethVisionPromptForLine,
@@ -157,7 +157,11 @@ export async function analyzeTeethImage(
       continue;
     }
     const rawJaw = (jawRaw === "upper" || jawRaw === "lower" ? jawRaw : null) as TeethJaw | null;
-    const jaw = kind === "anterior" ? null : rawJaw;
+    const mouldForJaw = resolvedMould && resolvedMould.length > 0 ? resolvedMould : null;
+    const jaw =
+      kind === "anterior"
+        ? null
+        : resolveTeethJaw(mouldForJaw, rawJaw, productLine);
 
     if (jawRequiredForKind(kind) && !jaw) {
       rejectedCount++;
@@ -170,7 +174,7 @@ export async function analyzeTeethImage(
       console.warn(`[teeth-vision-ocr] rejected: mould not in catalog`, JSON.stringify(item), { resolvedMould, resolvedKind: kind });
       continue;
     }
-    const mould = resolvedMould && resolvedMould.length > 0 ? resolvedMould : null;
+    const mould = mouldForJaw;
 
     const countRawParsed =
       typeof item.count === "number" ? item.count : parseInt(String(item.count), 10);
@@ -307,7 +311,11 @@ export async function analyzeTeethImageForLine(
       continue;
     }
     const rawJaw = (jawRaw === "upper" || jawRaw === "lower" ? jawRaw : null) as TeethJaw | null;
-    const jaw = kind === "anterior" ? null : rawJaw;
+    const mouldForJaw = resolvedMould && resolvedMould.length > 0 ? resolvedMould : null;
+    const jaw =
+      kind === "anterior"
+        ? null
+        : resolveTeethJaw(mouldForJaw, rawJaw, productLine);
 
     if (jawRequiredForKind(kind) && !jaw) {
       rejectedCount++;
@@ -318,7 +326,7 @@ export async function analyzeTeethImageForLine(
       rejectedCount++;
       continue;
     }
-    const mould = resolvedMould && resolvedMould.length > 0 ? resolvedMould : null;
+    const mould = mouldForJaw;
 
     const countRawParsed =
       typeof item.count === "number" ? item.count : parseInt(String(item.count), 10);

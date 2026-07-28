@@ -93,6 +93,8 @@ export const TeethOrderBuilderSection = forwardRef<
     dense?: boolean;
     onTotalsChange?: (count: number) => void;
     onStatusChange?: (status: { hasItems: boolean; complete: boolean }) => void;
+    /** Pełna lista grup — np. live matching braków przy zmianie koloru/fasonu. */
+    onGroupsChange?: (groups: TeethGroupDraft[]) => void;
   }
 >(function TeethOrderBuilderSection(
   {
@@ -105,6 +107,7 @@ export const TeethOrderBuilderSection = forwardRef<
     dense = false,
     onTotalsChange,
     onStatusChange,
+    onGroupsChange,
   },
   ref,
 ) {
@@ -129,7 +132,11 @@ export const TeethOrderBuilderSection = forwardRef<
 
   useEffect(() => {
     onStatusChange?.({ hasItems: groups.length > 0, complete: listComplete });
-  }, [onStatusChange, groups.length, listComplete]);
+  }, [onStatusChange, groups, listComplete]);
+
+  useEffect(() => {
+    onGroupsChange?.(groups);
+  }, [onGroupsChange, groups]);
 
   useImperativeHandle(
     ref,
@@ -157,8 +164,19 @@ export const TeethOrderBuilderSection = forwardRef<
     if (!isTeethBuilderDraftComplete(fullDraft, catalog)) return;
 
     if (editingId) {
-      const nextGroup = createTeethGroupDraft({ ...fullDraft, id: editingId });
-      setGroups((prev) => prev.map((g) => (g.id === editingId ? nextGroup : g)));
+      const expanded = draftSpecToGroupInputs(fullDraft, productLine);
+      setGroups((prev) => {
+        const idx = prev.findIndex((g) => g.id === editingId);
+        if (idx < 0) {
+          return [...prev, ...expanded.map((row) => createTeethGroupDraft(row))];
+        }
+        const next = [...prev];
+        const replacement = expanded.map((row, i) =>
+          createTeethGroupDraft({ ...row, id: i === 0 ? editingId : undefined }),
+        );
+        next.splice(idx, 1, ...replacement);
+        return next;
+      });
       resetDraft();
       return;
     }
@@ -199,8 +217,9 @@ export const TeethOrderBuilderSection = forwardRef<
         mould: draft.mould,
         jawMode: draft.jawMode,
         jaw: draft.jaw,
+        productLine,
       }),
-    [lockedKind, draft.color, draft.mould, draft.jawMode, draft.jaw],
+    [lockedKind, draft.color, draft.mould, draft.jawMode, draft.jaw, productLine],
   );
 
   const wideLayout = teethBuilderModalSize(productLine, lockedKind) === "xl";
@@ -265,6 +284,7 @@ export const TeethOrderBuilderSection = forwardRef<
       <TeethBuilderGroupList
         groups={groups}
         lockedKind={lockedKind}
+        productLine={productLine}
         editingId={editingId}
         listComplete={listComplete}
         disabled={disabled}

@@ -113,13 +113,23 @@ describe("assertMinimalTeethDetailsForDb", () => {
 });
 
 describe("normalizeTeethDetailsForSave", () => {
-  it("fills missing kind from admin default", () => {
+  it("fills missing kind from admin default and clears jaw for anterior", () => {
     expect(
       normalizeTeethDetailsForSave(
         [{ position: 1, color: "A1", mould: "12", jaw: "upper", kind: null }],
         "anterior"
       )
-    ).toEqual([{ position: 1, color: "A1", mould: "12", jaw: "upper", kind: "anterior" }]);
+    ).toEqual([{ position: 1, color: "A1", mould: "12", jaw: null, kind: "anterior" }]);
+  });
+
+  it("fills Orthotyp jaw from mould when missing", () => {
+    expect(
+      normalizeTeethDetailsForSave(
+        [{ position: 1, color: "A1", mould: "N5L", jaw: null, kind: "posterior" }],
+        "posterior",
+        "ivoclar_orthotyp_dcl",
+      )
+    ).toEqual([{ position: 1, color: "A1", mould: "N5L", jaw: "lower", kind: "posterior" }]);
   });
 });
 

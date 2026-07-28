@@ -215,6 +215,7 @@ Kontekst decyduje: kolor na początku, fason po kolorze.
 - Boki Typ: N3U, N4U, N5U, N6U (upper), N3L, N4L, N5L, N6L (lower).
 - Boki Lingual: LU3, LU5, LU6 (upper), LL3, LL5, LL6 (lower).
 - Kody legacy: N3, N4, N5, N6 (bez sufiksu → upper/górne).
+- Szczęka (jaw) wynika ZAWSZE z fasonu (U=upper, L=lower) — nie pytaj osobno o jaw przy tych kodach; jeśli jaw w JSON jest null, i tak ustaw z litery fasonu.
 - NIE MA przodów — przody to Vivodent DCL.
 
 ### BOKI TYPU — FORMAT "N3U" NIE "NU3" (KRYTYCZNE):

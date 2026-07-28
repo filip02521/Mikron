@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
-
+  inferJawFromMould,
   inferShapeIdForMould,
-
+  mouldEncodesExplicitJaw,
   mouldShapeGroupsFor,
-
+  productLineEncodesJawInMould,
   resolvePosteriorMouldPair,
-
+  resolveTeethJaw,
+  shouldShowJawPicker,
 } from "./teeth-mould-shape-groups";
 
 
@@ -41,6 +42,27 @@ describe("teeth-mould-shape-groups", () => {
       upper: "N4U",
       lower: "N4L",
     });
+  });
+
+  it("inferJawFromMould czyta U/L z Orthotyp i Phonares", () => {
+    expect(inferJawFromMould("N5U", "ivoclar_orthotyp_dcl")).toBe("upper");
+    expect(inferJawFromMould("N5L", "ivoclar_orthotyp_dcl")).toBe("lower");
+    expect(inferJawFromMould("LU5", "ivoclar_orthotyp_dcl")).toBe("upper");
+    expect(inferJawFromMould("LL5", "ivoclar_orthotyp_dcl")).toBe("lower");
+    expect(inferJawFromMould("NU6", "ivoclar_phonares_ii")).toBe("upper");
+    expect(inferJawFromMould("NL6", "ivoclar_phonares_ii")).toBe("lower");
+    expect(inferJawFromMould("N4", "ivoclar_orthotyp_dcl")).toBe("upper");
+    expect(inferJawFromMould("N4", null)).toBeNull();
+    expect(inferJawFromMould("N4", "ivoclar_vivodent_dcl")).toBeNull();
+    expect(productLineEncodesJawInMould("ivoclar_orthotyp_dcl")).toBe(true);
+    expect(productLineEncodesJawInMould("ivoclar_vivodent_dcl")).toBe(false);
+    expect(shouldShowJawPicker("posterior", "ivoclar_orthotyp_dcl")).toBe(false);
+    expect(shouldShowJawPicker("posterior", "wiedent_estetic")).toBe(true);
+    expect(mouldEncodesExplicitJaw("N5U")).toBe(true);
+    expect(mouldEncodesExplicitJaw("N5")).toBe(false);
+    // Fason z U/L wygrywa nad jawnym jaw (np. błędny OCR).
+    expect(resolveTeethJaw("N5U", "lower", "ivoclar_orthotyp_dcl")).toBe("upper");
+    expect(resolveTeethJaw("N5L", "upper", "ivoclar_orthotyp_dcl")).toBe("lower");
   });
 
   it("grupuje Phonares przody na Soft / Bold / Dolne", () => {

@@ -2,8 +2,8 @@
 
 import {
   IconClipboardPen,
+  IconInbox,
   IconMessageSquare,
-  IconWarehouse,
 } from "@/components/icons/StrokeIcons";
 import { formatBoardDate } from "@/lib/department-board/format";
 import {
@@ -25,7 +25,7 @@ function threadRoleLabel(tone: BoardThreadMessageTone, replyKind?: string): stri
 function ThreadAvatar({ tone }: { tone: BoardThreadMessageTone }) {
   const className = "size-4";
   if (tone === "question") return <IconClipboardPen size={16} className={className} />;
-  if (tone === "procurement") return <IconWarehouse size={16} className={className} />;
+  if (tone === "procurement") return <IconInbox size={16} className={className} />;
   return <IconMessageSquare size={16} className={className} />;
 }
 

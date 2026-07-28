@@ -11,6 +11,11 @@ import {
   jawOptions,
   kindOptions,
 } from "@/lib/teeth/teeth-verification-inline";
+import {
+  inferJawFromMould,
+  mouldEncodesExplicitJaw,
+  productLineEncodesJawInMould,
+} from "@/lib/teeth/teeth-mould-shape-groups";
 import type { TeethProductLine, TeethKind } from "@/lib/teeth/teeth-catalog-types";
 
 const selectClass = "rounded border border-slate-300 bg-white px-1.5 py-1 text-xs font-medium outline-none focus:ring-2 focus:ring-indigo-400";
@@ -61,17 +66,32 @@ export function TeethVerificationAddRow({
     setJaw("");
   };
 
+  const handleMouldChange = (next: string) => {
+    setMould(next);
+    if (productLineEncodesJawInMould(productLine) || mouldEncodesExplicitJaw(next)) {
+      const inferred = inferJawFromMould(next || null, productLine);
+      setJaw(inferred ?? "");
+    }
+  };
+
   const handleAdd = async () => {
     if (!productLine) return;
     setError(null);
     setSaving(true);
     try {
+      const kindTyped = kind as TeethKind;
+      const resolvedJaw =
+        kindTyped === "anterior"
+          ? null
+          : productLineEncodesJawInMould(productLine)
+            ? inferJawFromMould(mould || null, productLine)
+            : jaw || null;
       const result = await actionAddTeethSpecGroup(
         orderId,
         {
           color,
           mould: mould || null,
-          jaw: jaw || null,
+          jaw: resolvedJaw,
           kind,
         },
         parseInt(count, 10) || 1,
@@ -110,6 +130,7 @@ export function TeethVerificationAddRow({
   }
 
   const kindTyped = kind as TeethKind;
+  const showJawField = !productLineEncodesJawInMould(productLine) && kindTyped === "posterior";
 
   return (
     <div ref={containerRef} className="border-t border-slate-100 px-2 py-2">
@@ -131,7 +152,7 @@ export function TeethVerificationAddRow({
           <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Fason</span>
           <select
             value={mould}
-            onChange={(e) => setMould(e.target.value)}
+            onChange={(e) => handleMouldChange(e.target.value)}
             className={selectClass}
           >
             {mouldOptions(productLine, kindTyped).map((m) => (
@@ -141,21 +162,23 @@ export function TeethVerificationAddRow({
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-0.5">
-          <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Szczęka</span>
-          <select
-            value={jaw}
-            onChange={(e) => setJaw(e.target.value)}
-            className={selectClass}
-            disabled={!jawOptions(kindTyped).some((o) => o.value !== null)}
-          >
-            {jawOptions(kindTyped).map((opt) => (
-              <option key={opt.value ?? "__none"} value={opt.value ?? ""}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        {showJawField ? (
+          <label className="flex flex-col gap-0.5">
+            <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Szczęka</span>
+            <select
+              value={jaw}
+              onChange={(e) => setJaw(e.target.value)}
+              className={selectClass}
+              disabled={!jawOptions(kindTyped, productLine).some((o) => o.value !== null)}
+            >
+              {jawOptions(kindTyped, productLine).map((opt) => (
+                <option key={opt.value ?? "__none"} value={opt.value ?? ""}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
         <label className="flex flex-col gap-0.5">
           <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Typ</span>
           <select

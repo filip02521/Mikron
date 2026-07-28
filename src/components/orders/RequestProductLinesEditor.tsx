@@ -75,6 +75,8 @@ export function RequestProductLinesEditor({
   onTeethListCommitNotice,
   onTeethDualKindCommit,
   autoOpenTeethList = false,
+  allowedTwIds,
+  groupSupplierId,
 }: {
   lines: ProductLineDraft[];
   onChange: (lines: ProductLineDraft[]) => void;
@@ -97,7 +99,7 @@ export function RequestProductLinesEditor({
   onConfigFeedbackChange?: (feedback: SubiektFeedback | null) => void;
   onResolvingSupplierChange?: (resolving: boolean) => void;
   deferSupplierResolve?: boolean;
-  /** Po nieudanej próbie wysłania — podświetlenie braków we wszystkich pozycjach. */
+  /** Po nieudanej próbie wysyłania — podświetlenie braków we wszystkich pozycjach. */
   validationAttempted?: boolean;
   /** Walidacja na żywo — pola z brakami bez czekania na klik „Wyślij”. */
   liveValidation?: boolean;
@@ -123,6 +125,10 @@ export function RequestProductLinesEditor({
   }) => void;
   /** Otwiera modal listy zębów dla pierwszej linii (panel zakupów). */
   autoOpenTeethList?: boolean;
+  /** Ogranicza typeahead do katalogu zębów (panel działu zębowego). */
+  allowedTwIds?: ReadonlySet<number>;
+  /** Dostawca z nagłówka grupy — do dopasowania braków przy liście zębów. */
+  groupSupplierId?: string | null;
 }) {
   const canRemove = lines.length > minLines;
   const prosba = appearance === "prosba";
@@ -442,6 +448,8 @@ export function RequestProductLinesEditor({
                 onAfterTeethListSave?.(index, teethDetails, totalQuantity, saveResult);
               }}
               autoOpenTeethList={autoOpenTeethList && index === 0}
+              allowedTwIds={allowedTwIds}
+              groupSupplierId={groupSupplierId}
             />
 
             {prosba ? (
