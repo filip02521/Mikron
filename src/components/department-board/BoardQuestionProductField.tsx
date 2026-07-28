@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useId, useRef, useState, useTransition } from "react";
 import type { KeyboardEvent } from "react";
-import { actionSubiektSuggestProductsForZdLookup } from "@/app/actions/subiekt";
+import {
+  actionSubiektSuggestProductsForZdLookup,
+  actionSubiektSuggestionsEnabled,
+} from "@/app/actions/subiekt";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { IconCircleCheck, IconPackage } from "@/components/icons/StrokeIcons";
@@ -205,12 +208,16 @@ export function BoardQuestionProductField({
   }
 
   useEffect(() => {
+    let cancelled = false;
     void (async () => {
-      const { actionSubiektSuggestionsEnabled } = await import("@/app/actions/subiekt");
       const r = await actionSubiektSuggestionsEnabled();
+      if (cancelled) return;
       setEnabled(r.enabled);
       setConfigFeedback(r.feedback ?? null);
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const listboxId = `${typeaheadInstanceId}-product`;
