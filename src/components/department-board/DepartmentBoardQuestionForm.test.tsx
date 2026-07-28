@@ -15,6 +15,11 @@ vi.mock("@/components/ui/ModalShell", () => ({
   }) => (open ? <div data-testid="question-modal">{children}</div> : null),
 }));
 
+/** Stub pola produktu — bez łańcucha importów Subiekt/Supabase (EnvironmentTeardownError na CI). */
+vi.mock("@/components/department-board/BoardQuestionProductField", () => ({
+  BoardQuestionProductField: () => <div data-testid="question-product-field-stub" />,
+}));
+
 vi.mock("@/app/actions/subiekt", () => ({
   actionSubiektSuggestProductsForZdLookup: vi.fn().mockResolvedValue({ ok: true, items: [] }),
   actionSubiektSuggestionsEnabled: vi.fn().mockResolvedValue({ enabled: false }),
@@ -23,7 +28,6 @@ vi.mock("@/app/actions/subiekt", () => ({
 describe("DepartmentBoardQuestionForm", () => {
   afterEach(() => {
     cleanup();
-    vi.restoreAllMocks();
   });
 
   const baseProps = {
