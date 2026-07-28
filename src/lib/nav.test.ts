@@ -11,6 +11,7 @@ import {
   NAV_SECTION_TEAM,
   NAV_SECTION_TODAY,
   NAV_SECTION_TOOLS,
+  NAV_SECTION_TEETH_TOOLS,
   NAV_SECTION_ZK,
   NAV_SECTION_INFO,
   NAV_SECTION_CARRIERS,
@@ -184,7 +185,7 @@ describe("teethNavGroups", () => {
     expect(groups.map((g) => g.title)).toEqual([
       NAV_SECTION_TODAY,
       NAV_SECTION_TEAM,
-      NAV_SECTION_TOOLS,
+      NAV_SECTION_TEETH_TOOLS,
     ]);
   });
 
@@ -245,7 +246,7 @@ describe("teethNavGroups", () => {
 
   it("Dziś zawiera /zeby/braki; Narzędzia — karty dostawców i kurierzy", () => {
     const today = teethNavGroups().find((g) => g.title === NAV_SECTION_TODAY);
-    const tools = teethNavGroups().find((g) => g.title === NAV_SECTION_TOOLS);
+    const tools = teethNavGroups().find((g) => g.title === NAV_SECTION_TEETH_TOOLS);
     expect(today?.items.some((item) => item.href === "/zeby/braki")).toBe(true);
     expect(tools?.items.some((item) => item.href.startsWith("/zakupy/dostawcy"))).toBe(true);
     expect(tools?.items.some((item) => item.href === "/kurierzy")).toBe(true);
@@ -280,7 +281,7 @@ describe("navForRole zakupy_zeby", () => {
     expect(groups.map((g) => g.title)).toEqual([
       NAV_SECTION_TODAY,
       NAV_SECTION_TEAM,
-      NAV_SECTION_TOOLS,
+      NAV_SECTION_TEETH_TOOLS,
     ]);
   });
 

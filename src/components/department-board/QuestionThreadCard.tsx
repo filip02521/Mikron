@@ -375,7 +375,10 @@ export function QuestionThreadCard({
                   authorLabel={
                     fromOps
                       ? BOARD_PROCUREMENT_AUTHOR_LABEL
-                      : questionAuthorLabel(post.author?.sales_person, post.author)
+                      : questionAuthorLabel(
+                          post.author?.sales_person ?? question.sales_person,
+                          post.author,
+                        )
                   }
                   body={post.body}
                   createdAt={post.created_at}

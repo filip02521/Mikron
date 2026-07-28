@@ -70,6 +70,8 @@ export const NAV_SECTION_TODAY = "Dziś";
 export const NAV_SECTION_TEAM = "Zespół";
 export const NAV_SECTION_SUPPLIERS = "Dostawcy";
 export const NAV_SECTION_TOOLS = "Archiwum i narzędzia";
+/** Sekcja narzędzi w menu działu zębów (bez „Archiwum” — tu nie ma historii). */
+export const NAV_SECTION_TEETH_TOOLS = "Narzędzia";
 export const NAV_SECTION_SYSTEM = "System";
 export const NAV_SECTION_DAILY = "Codziennie";
 export const NAV_SECTION_ZK = "ZK i terminy";
@@ -237,7 +239,7 @@ function teethTodayNavItems(
       href: "/zeby/przyjecie",
       label: "Przyjęcie",
       mobileLabel: "Przyjęcie",
-      description: "Co dotarło od labu — wpisz ilości i braki",
+      description: "Co dotarło od dostawcy — wpisz ilości i braki",
       icon: "warehouse",
       tone: "slate",
       iconTone: "emerald",
@@ -332,7 +334,7 @@ export function teethNavGroups(badges: NavBadges = {}): NavGroup[] {
   return [
     { title: NAV_SECTION_TODAY, items: teethTodayNavItems(badges) },
     { title: NAV_SECTION_TEAM, items: teethTeamNavItems(badges) },
-    { title: NAV_SECTION_TOOLS, items: teethToolsNavItems() },
+    { title: NAV_SECTION_TEETH_TOOLS, items: teethToolsNavItems() },
   ];
 }
 

@@ -36,7 +36,7 @@ export function HistoriaHelp() {
 
       <HelpBlock title="Zamówienia zębowe">
         <p>
-          Historia zamówień zębów (oznaczenia w panelu zębów, ETA labu) jest w{" "}
+          Historia zamówień zębów (oznaczenia w panelu zębów, ETA dostawcy) jest w{" "}
           <strong>panelu zębów → Historia</strong> — nie w tej sekcji indywidualnej.
         </p>
       </HelpBlock>
