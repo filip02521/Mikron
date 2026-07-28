@@ -5,7 +5,7 @@ import {
   hasMouldsForLineKind,
   lineOptionalMould,
 } from "./teeth-lines-data";
-import { jawRequiredForKind } from "./teeth-mould-shape-groups";
+import { jawRequiredForKind, productLineEncodesJawInMould } from "./teeth-mould-shape-groups";
 import {
   teethProductLineLabel,
   isTeethProductLine,
@@ -237,7 +237,7 @@ export function teethVisionPromptInfo(catalog: TeethCatalogRef): TeethVisionProm
     colors: teethColorsForLine(catalog.productLine),
     anteriorMoulds: toothMouldsForLine(catalog.productLine, "anterior"),
     posteriorMoulds: toothMouldsForLine(catalog.productLine, "posterior"),
-    jawRequiredForPosterior: jawRequiredForKind("posterior"),
+    jawRequiredForPosterior: !productLineEncodesJawInMould(catalog.productLine) && jawRequiredForKind("posterior"),
     mouldOptional: lineOptionalMould(catalog.productLine),
   };
 }

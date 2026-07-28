@@ -346,6 +346,7 @@ export function TeethQuickOrderModal({
               validationAttempted={validationAttempted}
               liveValidation
               allowedTwIds={teethExemptTwIds}
+              groupSupplierId={supplierId}
               onSupplierResolved={({ supplierId: id }) => {
                 setSupplierId(id);
               }}
@@ -358,6 +359,7 @@ export function TeethQuickOrderModal({
               requestKind={requestKind}
               salesSubmitPlan={prosbaReadiness.plan}
               formMessage={formNotice}
+              supplierId={supplierId}
               resolvingSupplier={resolvingSupplier}
               validationAttempted={validationAttempted}
               teethExemptTwIds={teethExemptTwIds}

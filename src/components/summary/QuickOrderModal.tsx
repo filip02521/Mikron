@@ -475,6 +475,7 @@ export function QuickOrderModal({
               }}
               onSupplierMappingMissing={() => setSupplierId("")}
               onResolvingSupplierChange={setResolvingSupplier}
+              groupSupplierId={supplierId}
             />
 
             <ProsbaFormReadiness
@@ -482,6 +483,7 @@ export function QuickOrderModal({
               requestKind={requestKind}
               salesSubmitPlan={prosbaReadiness.plan}
               formMessage={formNotice}
+              supplierId={supplierId}
               resolvingSupplier={resolvingSupplier}
               informacjaPath={informacjaPath}
               validationAttempted={validationAttempted}

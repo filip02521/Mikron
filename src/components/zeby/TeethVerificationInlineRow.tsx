@@ -10,8 +10,10 @@ import {
   jawOptions,
   validateInlineSpec,
   validateCount,
+  withInferredJawPatch,
   type SpecGroup,
 } from "@/lib/teeth/teeth-verification-inline";
+import { productLineEncodesJawInMould } from "@/lib/teeth/teeth-mould-shape-groups";
 import type { TeethProductLine, TeethKind } from "@/lib/teeth/teeth-catalog-types";
 
 type EditField = "color" | "mould" | "jaw" | "count" | null;
@@ -111,6 +113,21 @@ export function TeethVerificationInlineRow({
         return;
       }
       newSpec.mould = val;
+      if (productLineEncodesJawInMould(productLine) || val) {
+        // Orthotyp/Phonares: szczęka z fasonu; przy zmianie fasonu też dla innych linii U/L.
+        const inferredPatch = withInferredJawPatch(
+          { mould: val, kind: spec.kind ?? "posterior" },
+          productLine,
+          {
+            mould: spec.mould,
+            jaw: spec.jaw,
+            kind: (spec.kind as TeethKind | null) ?? "posterior",
+          },
+        );
+        if (inferredPatch.jaw !== undefined) {
+          newSpec.jaw = inferredPatch.jaw;
+        }
+      }
     } else if (editField === "jaw") {
       const val = editValue === "" ? null : editValue;
       if (val === spec.jaw) {
@@ -294,9 +311,9 @@ export function TeethVerificationInlineRow({
                 onBlur={() => void commitEdit()}
                 onKeyDown={handleKeyDown}
                 className={editControlClass}
-                disabled={!jawRequiredForKindChecked(spec.kind)}
+                disabled={!jawOptions(spec.kind, productLine).some((o) => o.value !== null)}
               >
-                {jawOptions(spec.kind).map((opt) => (
+                {jawOptions(spec.kind, productLine).map((opt) => (
                   <option key={opt.value ?? "__none"} value={opt.value ?? ""}>
                     {opt.label}
                   </option>
@@ -344,6 +361,3 @@ export function TeethVerificationInlineRow({
   );
 }
 
-function jawRequiredForKindChecked(kind: TeethKind | null): boolean {
-  return kind === "posterior";
-}

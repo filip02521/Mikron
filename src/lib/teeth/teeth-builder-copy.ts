@@ -1,6 +1,7 @@
 import type { TeethKind, TeethProductLine } from "@/lib/teeth/teeth-catalog";
 import { TEETH_KIND_LABELS, teethProductLineLabel } from "@/lib/teeth/teeth-catalog";
 import type { TeethJawMode } from "@/lib/teeth/teeth-mould-shape-groups";
+import { productLineEncodesJawInMould } from "@/lib/teeth/teeth-mould-shape-groups";
 
 export const TEETH_SECTION_LABELS = TEETH_KIND_LABELS;
 export const TEETH_DUAL_KIND_LABELS = TEETH_KIND_LABELS;
@@ -11,13 +12,13 @@ export const TEETH_SINGLE_MODAL_TITLE_HINT_DEFAULT =
 /** Podpowiedź w nagłówku modala listy — zależna od linii produktowej. */
 export function teethSingleModalTitleHint(productLine?: TeethProductLine | null): string {
   if (productLine === "ivoclar_phonares_ii") {
-    return "Phonares II: przody Soft (S*) / Bold (B*) / dolne L* — bez wyboru szczęki. Boki Typ (NU/NL) lub Lingual (LU/LL) — „Oba” tworzy parę góra/dół.";
+    return "Phonares II: przody Soft (S*) / Bold (B*) / dolne L* — bez wyboru szczęki. Boki Typ (NU/NL) lub Lingual (LU/LL) — szczęka z litery w fasonie.";
   }
   if (productLine === "ivoclar_vivodent_dcl") {
-    return "Vivodent S DCL: przody trójkątne / owalne / kwadratowe lub dolne A3–A10 — bez pola szczęki. W trybie dual uzupełnij też boki Orthotyp.";
+    return "Vivodent S DCL: przody trójkątne / owalne / kwadratowe lub dolne A3–A10 — bez pola szczęki. W trybie dual uzupełnij też boki Orthotyp (N*U/N*L — szczęka z fasonu).";
   }
   if (productLine === "ivoclar_orthotyp_dcl") {
-    return "Orthotyp S DCL: boki Orthotyp (N*U/N*L) lub Lingual (LU*/LL*) — wybierz szczękę; „Oba” tworzy parę góra/dół.";
+    return "Orthotyp S DCL: boki Orthotyp (N*U = góra, N*L = dół) lub Lingual (LU*/LL*) — szczęka wynika z fasonu, bez osobnego wyboru.";
   }
   return TEETH_SINGLE_MODAL_TITLE_HINT_DEFAULT;
 }
@@ -32,7 +33,7 @@ export const TEETH_DUAL_EMPTY_SECTIONS =
   "Dodaj co najmniej jedną pozycję — wybierz typ Przednie lub Boczne i uzupełnij listę.";
 
 export const TEETH_DUAL_MODAL_TITLE_HINT =
-  "Przełącz typ i uzupełnij listy z kartki — u przodów bez pola szczęki, u boków „Oba” tworzy dwie pozycje.";
+  "Przełącz typ i uzupełnij listy z kartki — u przodów bez pola szczęki; u Orthotyp/Phonares szczęka jest w fasonie (U/L).";
 
 export const TEETH_BUILDER_BOTH_JAW_HINT =
   "„Oba” doda dwie pozycje na liście (góra i dół) z tą samą ilością.";
@@ -62,13 +63,13 @@ export function teethBuilderEmptyListExample(
     return "Dodaj pierwszą pozycję — np. A2 · S61 × 4 szt. (Soft) lub L50 (dolne).";
   }
   if (productLine === "ivoclar_phonares_ii" && kind === "posterior") {
-    return "Dodaj pierwszą pozycję — np. A2 · NU5 · góra × 2 szt. (Typ) lub LU5 (Lingual).";
+    return "Dodaj pierwszą pozycję — np. A2 · NU5 × 2 szt. (Typ, U=góra) lub LU5 (Lingual).";
   }
   if (productLine === "ivoclar_vivodent_dcl" && kind === "anterior") {
     return "Dodaj pierwszą pozycję — np. A2 · A25 × 4 szt. (owalne) lub A7 (dolne).";
   }
   if (productLine === "ivoclar_orthotyp_dcl" && kind === "posterior") {
-    return "Dodaj pierwszą pozycję — np. A2 · N5U · góra × 2 szt. (Orthotyp) lub LU5 (Lingual).";
+    return "Dodaj pierwszą pozycję — np. A2 · N5U × 2 szt. (góra) lub N5L (dół) / LU5 (Lingual).";
   }
   if (kind === "anterior") {
     return "Dodaj pierwszą pozycję — np. A2 · S61 × 4 szt.";
@@ -106,6 +107,7 @@ export function teethBuilderSteps(input: {
   jaw?: "upper" | "lower" | null;
   includeKindStep?: boolean;
   kindSelected?: boolean;
+  productLine?: TeethProductLine | null;
 }): TeethBuilderStep[] {
   const steps: TeethBuilderStep[] = [];
   let n = 1;
@@ -117,7 +119,7 @@ export function teethBuilderSteps(input: {
   steps.push({ number: n++, label: "Kolor", done: !!input.color.trim(), stepKey: "color" });
   steps.push({ number: n++, label: "Kształt · fason", done: !!input.mould?.trim(), stepKey: "mould" });
 
-  if (input.kind === "posterior") {
+  if (input.kind === "posterior" && !productLineEncodesJawInMould(input.productLine)) {
     steps.push({
       number: n++,
       label: "Szczęka",
@@ -130,8 +132,12 @@ export function teethBuilderSteps(input: {
   return steps;
 }
 
-export function teethBuilderQuantityStepNumber(kind: TeethKind | null): number {
-  return kind === "posterior" ? 4 : 3;
+export function teethBuilderQuantityStepNumber(
+  kind: TeethKind | null,
+  productLine?: TeethProductLine | null,
+): number {
+  if (kind === "posterior" && !productLineEncodesJawInMould(productLine)) return 4;
+  return 3;
 }
 
 export function teethDualSaveReady(

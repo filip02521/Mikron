@@ -7,6 +7,21 @@ export const TEETH_PRZYJECIE_PAGE_TITLE = "Przyjęcie";
 export const TEETH_PRZYJECIE_PAGE_HINT =
   "Porównaj dostawę z zamówieniem u dostawcy — wpisz co dotarło, a czego brakuje. Bez e-maila i regału.";
 
+export const TEETH_BRAKI_PAGE_TITLE = "Braki u dostawców";
+export const TEETH_BRAKI_PAGE_HINT =
+  "Warianty zębów niedostępne u dostawcy — handlowiec zobaczy ostrzeżenie przy prośbie (bez blokady wysyłki).";
+
+export const TEETH_BRAKI_ADD_COPY = {
+  ctaLabel: "Dodaj brak",
+  ctaHint: "Wariant niedostępny u dostawcy",
+  emptyTitle: "Lista braków jest pusta",
+  emptyDescription:
+    "Dodaj kolor i fason, którego dostawca chwilowo nie ma — handlowiec zobaczy ostrzeżenie przy prośbie.",
+  emptyFilteredTitle: "Brak wyników",
+  emptyFilteredDescription:
+    "Żaden wpis nie pasuje do filtrów. Wyczyść filtry albo dodaj nowy brak.",
+  emptyAction: "Dodaj pierwszy brak",
+} as const;
 export const TEETH_TAB_PAGE_TITLES: Record<Tab, string> = {
   kolejka: "Kolejka",
   weryfikacja: "Weryfikacja zębów",

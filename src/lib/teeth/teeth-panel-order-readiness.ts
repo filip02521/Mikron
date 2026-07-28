@@ -113,7 +113,11 @@ export function orderTeethListReadyForOrder(
       ? Math.trunc(order.subiekt_tw_id)
       : null;
   const info = twId != null ? ctx?.teethInfoByTwId?.get(twId) : undefined;
-  const lineDetails = normalizeTeethDetailsForSave(toLineDetails(raw), info?.kind ?? null);
+  const lineDetails = normalizeTeethDetailsForSave(
+    toLineDetails(raw),
+    info?.kind ?? null,
+    info?.productLine ?? null,
+  );
 
   return teethLineDetailsComplete({
     teethDetails: lineDetails ?? undefined,

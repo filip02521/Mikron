@@ -5,6 +5,7 @@ import { IconAvailability, IconPackageCheck, IconPlusCircle } from "@/components
 import { InformacjaFlowPicker } from "@/components/orders/InformacjaFlowPicker";
 import { ProsbaFormMetaStrip } from "@/components/orders/ProsbaFormMetaStrip";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
+import { TeethShortageLookupButton } from "@/components/teeth/TeethShortageLookupModal";
 import { RequestKindToggle } from "@/components/orders/RequestKindToggle";
 import { SalesKeyboardShortcutsStrip } from "@/components/sales/SalesKeyboardShortcutsStrip";
 import { PROSBA_FORM_SECTION_COPY } from "@/lib/orders/prosba-form-section-copy";
@@ -112,12 +113,14 @@ export function ProsbaFormProductsSection({
   hint,
   children,
   className,
+  showShortageLookup = true,
 }: {
   requestKind: IndividualRequestKind;
   informacjaPath: InformacjaFlowPath;
   hint?: string;
   children: ReactNode;
   className?: string;
+  showShortageLookup?: boolean;
 }) {
   const isInformacja = requestKind === "informacja";
   const productsHint =
@@ -137,6 +140,14 @@ export function ProsbaFormProductsSection({
       }
       className={className}
     >
+      {showShortageLookup && !isInformacja ? (
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200/70 bg-amber-50/40 px-2.5 py-2">
+          <p className="min-w-0 text-[11px] leading-snug text-amber-900/85">
+            Zanim wyślesz prośbę o zęby — sprawdź, czy wariant nie jest na liście braków.
+          </p>
+          <TeethShortageLookupButton className="shrink-0" />
+        </div>
+      ) : null}
       {children}
     </ProsbaFormSection>
   );
