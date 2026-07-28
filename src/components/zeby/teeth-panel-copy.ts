@@ -54,7 +54,7 @@ export const TEETH_TAB_HINTS: Record<Tab, string> = {
     "Prośby z listą zębów wczytaną ze zdjęcia. Zweryfikuj pozycje i zatwierdź, lub popraw przed zamówieniem.",
 
   historia:
-    "Zamówienia u dostawcy pogrupowane wg labu. Korekta daty dostawy, cofnięcie błędnego oznaczenia i dziennik operacji.",
+    "Zamówienia pogrupowane wg dostawcy. Korekta daty dostawy, cofnięcie błędnego oznaczenia i dziennik operacji.",
 };
 
 export const TEETH_QUICK_ORDER_COPY = {

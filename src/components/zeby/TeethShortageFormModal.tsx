@@ -145,7 +145,7 @@ function clientValidate(
       suppliers,
     );
   if (!supplierId) {
-    return "Nie znaleziono dostawcy dla tej marki w kartach dostawców — dopisz lab o nazwie producenta.";
+    return "Nie znaleziono dostawcy dla tej marki w kartach dostawców — dopisz dostawcę o nazwie producenta.";
   }
   if (!form.color.trim()) return "Wybierz kolor z katalogu.";
   if (form.color.trim() === TEETH_CHIP_OTHER) return "Wybierz kolor z katalogu (bez „inny”).";
@@ -402,7 +402,7 @@ export function TeethShortageFormModal({
 
       <Section
         title="Linia produktu"
-        hint="Marka w liście odpowiada dostawcy — lab dopasuje się sam."
+        hint="Marka w liście odpowiada dostawcy — dopasuje się sam."
       >
         <Field
           label={
@@ -451,7 +451,7 @@ export function TeethShortageFormModal({
                 Dostawca: <span className="font-medium text-slate-800">{supplierName}</span>
               </>
             ) : (
-              "Nie znaleziono labu o nazwie tej marki w kartach dostawców."
+              "Nie znaleziono dostawcy o nazwie tej marki w kartach dostawców."
             )}
           </p>
         ) : null}

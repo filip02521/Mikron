@@ -51,4 +51,4 @@ CREATE POLICY teeth_supplier_shortages_write ON teeth_supplier_shortages
   WITH CHECK (public.can_access_teeth_panel());
 
 COMMENT ON TABLE teeth_supplier_shortages IS
-  'Braki zębów u labu — wariant (linia/kolor/fason); available_from NULL = data nieustalona.';
+  'Braki zębów u dostawcy — wariant (linia/kolor/fason); available_from NULL = data nieustalona.';

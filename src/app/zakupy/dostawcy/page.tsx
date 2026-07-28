@@ -70,7 +70,7 @@ export default async function ZakupyDostawcyPage({
       {loadError ? <Alert tone="error">{loadError}</Alert> : null}
       {teethLane && teethScheduleSupplierIds.length === 0 && suppliers.length > 0 && !loadError ? (
         <Alert tone="info">
-          Żaden lab nie ma jeszcze cyklu zębów. Otwórz kartę dostawcy i włącz sekcję „Cykl zębów”.
+          Żaden dostawca nie ma jeszcze cyklu zębów. Otwórz kartę dostawcy i włącz sekcję „Cykl zębów”.
         </Alert>
       ) : null}
       {teethLane && suppliers.length === 0 && !loadError ? (

@@ -10,6 +10,15 @@ import type { TeethShortageMatchInput } from "@/lib/teeth/teeth-shortage-match";
 const SELECT_COLS =
   "id, supplier_id, manufacturer, product_line, color, mould, kind, available_from, note, active, created_by, updated_by, created_at, updated_at";
 
+/** Jawny komunikat gdy migracja 114 nie jest zastosowana — nie ukrywamy jako „pusta lista”. */
+export const TEETH_SHORTAGES_TABLE_MISSING_MESSAGE =
+  "Brak tabeli braków zębowych w bazie — uruchom migrację 114_teeth_supplier_shortages (npm run db:migrate:teeth-shortages).";
+
+function isMissingShortagesTable(error: { message?: string; code?: string }): boolean {
+  const message = error.message ?? "";
+  return error.code === "42P01" || message.includes("teeth_supplier_shortages");
+}
+
 function mapRow(row: Record<string, unknown>): TeethSupplierShortage {
   return {
     id: String(row.id),
@@ -43,8 +52,9 @@ export const fetchActiveTeethShortages = cache(
       .order("color");
 
     if (error) {
-      if (error.message.includes("teeth_supplier_shortages") || error.code === "42P01") {
-        return [];
+      if (isMissingShortagesTable(error)) {
+        // AppShell łapie i loguje — prośba nie pada; ostrzeżenia po prostu nie będzie.
+        throw new Error(TEETH_SHORTAGES_TABLE_MISSING_MESSAGE);
       }
       throw new Error(error.message);
     }
@@ -88,8 +98,8 @@ export async function fetchTeethShortages(options?: {
 
   const { data, error } = await q;
   if (error) {
-    if (error.message.includes("teeth_supplier_shortages") || error.code === "42P01") {
-      return [];
+    if (isMissingShortagesTable(error)) {
+      throw new Error(TEETH_SHORTAGES_TABLE_MISSING_MESSAGE);
     }
     throw new Error(error.message);
   }

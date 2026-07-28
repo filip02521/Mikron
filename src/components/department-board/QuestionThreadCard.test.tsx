@@ -142,6 +142,37 @@ describe("QuestionThreadCard", () => {
     expect(screen.queryByText("anna.kowalski")).toBeNull();
   });
 
+  it("przy doprecyzowaniu bierze kartę z pytania, gdy profil autora nie ma sales_person", () => {
+    const question = testQuestion();
+    question.posts = [
+      {
+        id: "p1",
+        thread_id: "q1",
+        body: "Jutro potwierdzimy.",
+        created_by: "u2",
+        created_at: "2026-01-02T10:00:00Z",
+        author: { email: "zakupy@firma.pl", role: "zakupy" },
+      },
+      {
+        id: "p2",
+        thread_id: "q1",
+        body: "Chodzi o wariant A.",
+        created_by: "u1",
+        created_at: "2026-01-02T11:00:00Z",
+        author: {
+          email: "anna.kowalski@firma.pl",
+          role: "sales",
+        },
+      },
+    ];
+
+    render(<QuestionThreadCard question={question} embedded defaultExpanded />);
+
+    expect(screen.getByText("Doprecyzowanie handlowca")).toBeTruthy();
+    expect(screen.getAllByText("Anna").length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText("anna.kowalski")).toBeNull();
+  });
+
   it("oznacza wątek po rozwinięciu i wejściu w widok", async () => {
     vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
 

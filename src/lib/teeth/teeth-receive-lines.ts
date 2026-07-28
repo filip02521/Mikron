@@ -288,7 +288,7 @@ export function formatTeethReceiveProductLineSummary(
     `${lineCount} ${lineCount === 1 ? "linia" : lineCount < 5 ? "linie" : "linii"}`,
   ];
   if (group.supplierNames.length > 0) {
-    parts.push(`lab: ${group.supplierNames.join(", ")}`);
+    parts.push(`dostawca: ${group.supplierNames.join(", ")}`);
   }
   return parts.join(" · ");
 }

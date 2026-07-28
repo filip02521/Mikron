@@ -14,19 +14,19 @@ export const TEETH_PROCUREMENT_FLOW_STAGES = [
     stage: "Kolejka zakupów",
     actor: "Zakupy zęby",
     where: "Panel zębów → Kolejka",
-    detail: "Specyfikacja, batch per lab",
+    detail: "Specyfikacja, batch per dostawca",
   },
   {
     stage: "Zamówione",
     actor: "Zakupy zęby",
     where: "Panel zębów → Historia",
-    detail: "Data zamówienia, ETA labu",
+    detail: "Data zamówienia, ETA dostawcy",
   },
   {
     stage: "Przyjęcie",
     actor: "Zakupy zęby",
     where: "Panel zębów → Przyjęcie",
-    detail: "Co dotarło od labu — bez maila",
+    detail: "Co dotarło od dostawcy — bez maila",
   },
   {
     stage: "Odbiór",
