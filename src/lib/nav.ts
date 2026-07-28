@@ -326,6 +326,11 @@ export function teethNavGroups(badges: NavBadges = {}): NavGroup[] {
     },
     { title: NAV_SECTION_TEAM, items: teethTeamNavItems(badges) },
     {
+      title: NAV_SECTION_CARRIERS,
+      items: carrierContactItems,
+      collapsible: true,
+    },
+    {
       title: NAV_SECTION_TOOLS,
       items: [
         ...(monthlySummaryNavItem() ? [monthlySummaryNavItem()!] : []),

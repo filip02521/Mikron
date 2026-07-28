@@ -179,21 +179,23 @@ describe("navForRole struktura zakupów", () => {
 });
 
 describe("teethNavGroups", () => {
-  it("ma sekcje Dziś, Dostawcy, Zespół i Narzędzia (workflow od góry)", () => {
+  it("ma sekcje Dziś, Dostawcy, Zespół, Kurierzy i Narzędzia (workflow od góry)", () => {
     const groups = teethNavGroups();
     expect(groups.map((g) => g.title)).toEqual([
       NAV_SECTION_TODAY,
       NAV_SECTION_SUPPLIERS,
       NAV_SECTION_TEAM,
+      NAV_SECTION_CARRIERS,
       NAV_SECTION_TOOLS,
     ]);
   });
 
-  it("sekcje Dostawcy i Narzędzia są zwijane (jak w operacjach)", () => {
+  it("sekcje Dostawcy, Kurierzy i Narzędzia są zwijane (jak w operacjach)", () => {
     const groups = teethNavGroups();
     const collapsibleSections = groups.filter((g) => g.collapsible);
     expect(collapsibleSections.map((g) => g.title)).toEqual([
       NAV_SECTION_SUPPLIERS,
+      NAV_SECTION_CARRIERS,
       NAV_SECTION_TOOLS,
     ]);
     const defaultCollapsed = groups.filter((g) => g.defaultCollapsed);
@@ -234,7 +236,13 @@ describe("teethNavGroups", () => {
 
   it("rzadsze pozycje są compact w overflow", () => {
     const overflow = navMobileOverflowItems(teethNavGroups());
-    const expectedLabels = ["Karty dostawców", "Tablica", "Notatki", "Urlopy działu"];
+    const expectedLabels = [
+      "Karty dostawców",
+      "Tablica",
+      "Notatki",
+      "Urlopy działu",
+      "Numery kurierów",
+    ];
     if (new Date().getDate() <= 7) {
       expectedLabels.push("Podsumowanie miesiąca");
     }
@@ -271,6 +279,7 @@ describe("navForRole zakupy_zeby", () => {
       NAV_SECTION_TODAY,
       NAV_SECTION_SUPPLIERS,
       NAV_SECTION_TEAM,
+      NAV_SECTION_CARRIERS,
       NAV_SECTION_TOOLS,
     ]);
   });
