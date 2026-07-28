@@ -10,6 +10,10 @@ describe("isAdminOperationsPreviewReadOnly", () => {
     expect(isAdminOperationsPreviewReadOnly("admin", "zakupy")).toBe(false);
   });
 
+  it("zezwalają na mutacje w podglądzie zębów", () => {
+    expect(isAdminOperationsPreviewReadOnly("admin", "zakupy_zeby")).toBe(false);
+  });
+
   it("blokują mutacje w podglądzie magazynu i handlowca", () => {
     expect(isAdminOperationsPreviewReadOnly("admin", "magazyn")).toBe(true);
     expect(isAdminOperationsPreviewReadOnly("admin", "sales")).toBe(true);

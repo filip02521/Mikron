@@ -6,8 +6,8 @@ import type { IndividualRequestKind } from "@/types/database";
 export const TEETH_PROCUREMENT_FLOW_STAGES = [
   {
     stage: "Prośba",
-    actor: "Handlowiec",
-    where: "Formularz prośby",
+    actor: "Handlowiec / Zakupy zęby",
+    where: "Formularz prośby / Panel zębów",
     detail: "Lista zębów, badge Zęby",
   },
   {

@@ -3,6 +3,8 @@
 import { Button } from "@/components/ui/Button";
 import { IconClipboardList, IconCircleCheck, IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { TeethGroupChips } from "@/components/teeth/TeethGroupChips";
+import { TeethShortageWarningBanner } from "@/components/teeth/TeethShortageWarningBanner";
+import { useTeethShortageHits } from "@/components/layout/TeethShortagesContext";
 import {
   TEETH_KIND_LABELS,
   teethProductLineLabel,
@@ -37,6 +39,7 @@ export function TeethOrderBuilderCard({
   defaultKind,
   details,
   dualKindMode = false,
+  supplierId,
   disabled,
   onOpenModal,
 }: {
@@ -46,9 +49,16 @@ export function TeethOrderBuilderCard({
   defaultKind?: TeethKind | null;
   details?: TeethLineDetail[];
   dualKindMode?: boolean;
+  supplierId?: string | null;
   disabled?: boolean;
   onOpenModal: () => void;
 }) {
+  const shortageHits = useTeethShortageHits({
+    productLine,
+    details,
+    supplierId,
+    dualKindMode,
+  });
   const counts = countTeethDetailsByKind(details);
   const total = details?.length ?? 0;
   const anteriorCatalogLine =
@@ -131,6 +141,7 @@ export function TeethOrderBuilderCard({
   );
 
   return (
+    <div className="space-y-2">
     <div
       role="status"
       className={cn(
@@ -184,6 +195,10 @@ export function TeethOrderBuilderCard({
 
         {complete ? <TeethGroupChips details={details} className="mt-2" /> : null}
       </div>
+    </div>
+    {complete && shortageHits.length > 0 ? (
+      <TeethShortageWarningBanner hits={shortageHits} compact />
+    ) : null}
     </div>
   );
 }

@@ -453,7 +453,10 @@ export async function batchAddIndividualOrders(
             entries[i]?.teethDetails,
             row.subiekt_tw_id != null && row.subiekt_tw_id > 0
               ? (teethInfoByTwId.get(Math.trunc(row.subiekt_tw_id))?.kind ?? null)
-              : null
+              : null,
+            row.subiekt_tw_id != null && row.subiekt_tw_id > 0
+              ? (teethInfoByTwId.get(Math.trunc(row.subiekt_tw_id))?.productLine ?? null)
+              : null,
           ),
         })),
       );
@@ -616,11 +619,19 @@ export async function completeVerificationOrder(
     data.subiektTwId != null && data.subiektTwId > 0
       ? (teethInfoByTwId.get(Math.trunc(data.subiektTwId))?.kind ?? null)
       : null;
+  const adminProductLine =
+    data.subiektTwId != null && data.subiektTwId > 0
+      ? (teethInfoByTwId.get(Math.trunc(data.subiektTwId))?.productLine ?? null)
+      : null;
   await saveTeethDetailsForOrders(supabase, [
     {
       orderId,
       isTeeth,
-      teethDetails: normalizeTeethDetailsForSave(data.teethDetails ?? null, adminKind),
+      teethDetails: normalizeTeethDetailsForSave(
+        data.teethDetails ?? null,
+        adminKind,
+        adminProductLine,
+      ),
     },
   ]);
 
@@ -876,7 +887,10 @@ export async function updateIndividualRequestGroup(
           line.teethDetails,
           line.subiektTwId != null && line.subiektTwId > 0
             ? (teethInfoByTwId.get(Math.trunc(line.subiektTwId))?.kind ?? null)
-            : null
+            : null,
+          line.subiektTwId != null && line.subiektTwId > 0
+            ? (teethInfoByTwId.get(Math.trunc(line.subiektTwId))?.productLine ?? null)
+            : null,
         )
       : null;
     let resolvedSupplierId = effectiveSupplierId.trim() || null;

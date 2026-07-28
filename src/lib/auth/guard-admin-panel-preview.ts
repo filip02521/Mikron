@@ -56,6 +56,20 @@ export async function assertAdminPanelAllowsOperationsMutations(
 }
 
 /**
+ * Panel zębów — admin może mutować w cookie admin lub zakupy_zeby
+ * (podgląd zębów to realna praca operacyjna, jak zakupy w podglądzie zakupów).
+ */
+export async function assertAdminPanelAllowsTeethPanelMutations(
+  user: Pick<SessionUser, "role"> | null | undefined
+): Promise<void> {
+  if (!user || !isAdmin(user.role)) return;
+
+  const ctx = await adminPanelContextFromCookie();
+  if (ctx === "admin" || ctx === "zakupy_zeby") return;
+  throw new Error(ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED);
+}
+
+/**
  * Magazyn — admin może mutować w cookie admin lub zakupy (rola zakupy ma dostęp do magazynu).
  * Podgląd magazynu (cookie magazyn) pozostaje read-only.
  */

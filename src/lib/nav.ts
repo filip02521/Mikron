@@ -256,10 +256,20 @@ function teethTodayNavItems(
       tier: "primary",
       mobileSlot: "primary",
     },
+    {
+      href: "/zeby/braki",
+      label: "Braki",
+      mobileLabel: "Braki",
+      description: "Niedostępne warianty u dostawcy — ostrzeżenie przy prośbie",
+      icon: "catalog",
+      tone: "amber",
+      tier: "compact",
+      mobileSlot: "overflow",
+    },
   ];
 }
 
-function teethSupplierNavItems(): NavItem[] {
+function teethToolsNavItems(): NavItem[] {
   const compact = {
     tier: "compact" as const,
     mobileSlot: "overflow" as const,
@@ -268,11 +278,13 @@ function teethSupplierNavItems(): NavItem[] {
     {
       href: TEETH_SUPPLIERS_PATH,
       label: "Karty dostawców",
-      description: "Cykl zębów, kontakt i dane labu",
+      description: "Cykl zębów, kontakt i dane dostawcy",
       icon: "suppliers",
       tone: "sky",
       ...compact,
     },
+    ...carrierContactItems,
+    ...(monthlySummaryNavItem() ? [monthlySummaryNavItem()!] : []),
   ];
 }
 
@@ -319,20 +331,8 @@ function teethTeamNavItems(badges: {
 export function teethNavGroups(badges: NavBadges = {}): NavGroup[] {
   return [
     { title: NAV_SECTION_TODAY, items: teethTodayNavItems(badges) },
-    {
-      title: NAV_SECTION_SUPPLIERS,
-      items: teethSupplierNavItems(),
-      collapsible: true,
-    },
     { title: NAV_SECTION_TEAM, items: teethTeamNavItems(badges) },
-    {
-      title: NAV_SECTION_TOOLS,
-      items: [
-        ...(monthlySummaryNavItem() ? [monthlySummaryNavItem()!] : []),
-      ],
-      collapsible: true,
-      defaultCollapsed: true,
-    },
+    { title: NAV_SECTION_TOOLS, items: teethToolsNavItems() },
   ];
 }
 
@@ -938,6 +938,7 @@ export function pageTitle(pathname: string): string {
   if (pathname.startsWith("/zeby/kolejka")) return "Kolejka";
   if (pathname.startsWith("/zeby/weryfikacja")) return "Weryfikacja zębów";
   if (pathname.startsWith("/zeby/historia")) return "Historia";
+  if (pathname.startsWith("/zeby/braki")) return "Braki";
   if (pathname.startsWith("/zeby")) return "Kolejka";
 
   for (const role of ["admin", "zakupy", "zakupy_zeby", "magazyn", "sales", "sales_manager"] as const) {

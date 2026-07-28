@@ -4,7 +4,7 @@ import {
   lineOptionalMould,
   hasMouldsForLineKind,
 } from "./teeth-lines-data";
-import { jawRequiredForKind } from "./teeth-mould-shape-groups";
+import { jawRequiredForKind, mouldEncodesExplicitJaw, inferJawFromMould, productLineEncodesJawInMould } from "./teeth-mould-shape-groups";
 import type { TeethProductLine, TeethKind, TeethJaw } from "./teeth-catalog-types";
 
 export type InlineSpecPatch = {
@@ -45,7 +45,7 @@ export function validateInlineSpec(
   }
 
   if (patch.jaw !== undefined) {
-    if (jawRequiredForKind(kind)) {
+    if (jawRequiredForKind(kind) && !productLineEncodesJawInMould(productLine)) {
       if (patch.jaw !== "upper" && patch.jaw !== "lower") {
         return { ok: false, error: "Szczęka (góra/dół) jest wymagana dla zębów bocznych" };
       }
@@ -53,6 +53,25 @@ export function validateInlineSpec(
   }
 
   return { ok: true };
+}
+
+/** Uzupełnia jaw z fasonu przy zapisie inline (Orthotyp / Phonares). */
+export function withInferredJawPatch(
+  patch: InlineSpecPatch,
+  productLine: TeethProductLine,
+  current: { mould: string | null; jaw: TeethJaw | null; kind: TeethKind | null },
+): InlineSpecPatch {
+  const kind = (patch.kind as TeethKind | undefined) ?? current.kind;
+  if (kind !== "posterior") {
+    if (patch.kind === "anterior") return { ...patch, jaw: null };
+    return patch;
+  }
+  const mould = patch.mould !== undefined ? patch.mould : current.mould;
+  if (productLineEncodesJawInMould(productLine) || mouldEncodesExplicitJaw(mould)) {
+    const inferred = inferJawFromMould(mould, productLine);
+    return { ...patch, jaw: inferred };
+  }
+  return patch;
 }
 
 export function colorOptions(productLine: TeethProductLine): string[] {
@@ -67,8 +86,11 @@ export function mouldOptions(productLine: TeethProductLine, kind: TeethKind): (s
   return [...moulds];
 }
 
-export function jawOptions(kind: TeethKind | null): { value: string | null; label: string }[] {
-  if (!kind || !jawRequiredForKind(kind)) {
+export function jawOptions(
+  kind: TeethKind | null,
+  productLine?: TeethProductLine | null,
+): { value: string | null; label: string }[] {
+  if (!kind || !jawRequiredForKind(kind) || productLineEncodesJawInMould(productLine)) {
     return [{ value: null, label: "—" }];
   }
   return [

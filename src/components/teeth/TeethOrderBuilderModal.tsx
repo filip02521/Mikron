@@ -51,6 +51,8 @@ import { IconAlertCircle, IconCircleCheck } from "@/components/icons/StrokeIcons
 import { partitionTeethDetailsByKind, catalogLineForDualKind } from "@/lib/teeth/teeth-dual-kind";
 import { TeethOcrWizard } from "@/components/teeth/TeethOcrWizard";
 import { IconCamera } from "@/components/icons/StrokeIcons";
+import { TeethShortageWarningBanner } from "@/components/teeth/TeethShortageWarningBanner";
+import { useTeethShortageHits } from "@/components/layout/TeethShortagesContext";
 import { cn } from "@/lib/cn";
 import { panelChoiceChipClass, panelChoiceChipIdleClass, panelChoiceChipSelectedClass } from "@/lib/ui/ontime-theme";
 
@@ -117,6 +119,7 @@ export function TeethOrderBuilderModal({
   dualKindMode = false,
   initialFromOcr,
   initialOcrImagePath,
+  supplierId,
   onSave,
   disabled,
   tier = "stack",
@@ -138,6 +141,7 @@ export function TeethOrderBuilderModal({
   initialFromOcr?: boolean;
   /** Ścieżka zdjęcia OCR zapisana wcześniej — zachowaj przy edycji bez ponownego uploadu. */
   initialOcrImagePath?: string | null;
+  supplierId?: string | null;
   onSave: (result: TeethOrderBuilderSaveResult) => void | boolean;
   disabled?: boolean;
   tier?: ModalTier;
@@ -154,6 +158,7 @@ export function TeethOrderBuilderModal({
         dualKindInitialDetails={dualKindInitialDetails}
         initialFromOcr={initialFromOcr}
         initialOcrImagePath={initialOcrImagePath}
+        supplierId={supplierId}
         onSave={onSave}
         disabled={disabled}
         tier={tier}
@@ -172,6 +177,7 @@ export function TeethOrderBuilderModal({
       initialDetails={initialDetails}
       initialFromOcr={initialFromOcr}
       initialOcrImagePath={initialOcrImagePath}
+      supplierId={supplierId}
       onSave={onSave}
       disabled={disabled}
       tier={tier}
@@ -202,6 +208,7 @@ function TeethDualKindOrderBuilderModal({
   dualKindInitialDetails,
   initialFromOcr,
   initialOcrImagePath,
+  supplierId,
   onSave,
   disabled,
   tier,
@@ -218,6 +225,7 @@ function TeethDualKindOrderBuilderModal({
   };
   initialFromOcr?: boolean;
   initialOcrImagePath?: string | null;
+  supplierId?: string | null;
   onSave: (result: TeethOrderBuilderSaveResult) => void | boolean;
   disabled?: boolean;
   tier?: ModalTier;
@@ -258,6 +266,12 @@ function TeethDualKindOrderBuilderModal({
   const [posteriorCount, setPosteriorCount] = useState(
     () => totalTeethCountFromGroups(teethGroupsFromDetails(partitioned.posterior)),
   );
+  const [anteriorGroupsLive, setAnteriorGroupsLive] = useState<TeethGroupDraft[]>(() =>
+    teethGroupsFromDetails(partitioned.anterior),
+  );
+  const [posteriorGroupsLive, setPosteriorGroupsLive] = useState<TeethGroupDraft[]>(() =>
+    teethGroupsFromDetails(partitioned.posterior),
+  );
   const [dualFromOcr, setDualFromOcr] = useState(initialFromOcr ?? false);
   const [dualOcrImagePath, setDualOcrImagePath] = useState<string | null>(initialOcrImagePath ?? null);
   const [dualOcrWizardOpen, setDualOcrWizardOpen] = useState(false);
@@ -271,6 +285,26 @@ function TeethDualKindOrderBuilderModal({
   const activeCount = activeKind === "anterior" ? anteriorCount : posteriorCount;
   const activeCatalogLine = activeKind === "anterior" ? anteriorCatalogLine : posteriorCatalogLine;
   const modalSize = teethBuilderModalSize(activeCatalogLine, activeKind);
+
+  const liveShortageDetails = useMemo(() => {
+    if (!canSave) return [] as TeethLineDetail[];
+    const anterior = expandTeethGroups(anteriorGroupsLive).map((d) => ({
+      ...d,
+      kind: "anterior" as const,
+    }));
+    const posterior = expandTeethGroups(posteriorGroupsLive).map((d) => ({
+      ...d,
+      kind: "posterior" as const,
+    }));
+    return [...anterior, ...posterior];
+  }, [canSave, anteriorGroupsLive, posteriorGroupsLive]);
+
+  const shortageHits = useTeethShortageHits({
+    productLine,
+    details: liveShortageDetails,
+    supplierId,
+    dualKindMode: true,
+  });
 
   const validateAndSave = () => {
     if (!canSave) return;
@@ -359,6 +393,9 @@ function TeethDualKindOrderBuilderModal({
           {previewMessage ? (
             <p className="text-[11px] font-medium text-slate-500">{previewMessage}</p>
           ) : null}
+          {shortageHits.length > 0 ? (
+            <TeethShortageWarningBanner hits={shortageHits} compact />
+          ) : null}
           <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-2">
             <Button type="button" variant="secondary" onClick={onClose} disabled={disabled}>
               Anuluj
@@ -409,6 +446,7 @@ function TeethDualKindOrderBuilderModal({
               dense
               onTotalsChange={setAnteriorCount}
               onStatusChange={setAnteriorStatus}
+              onGroupsChange={setAnteriorGroupsLive}
             />
           </div>
           <div className={activeKind === "posterior" ? undefined : "hidden"} aria-hidden={activeKind !== "posterior"}>
@@ -422,6 +460,7 @@ function TeethDualKindOrderBuilderModal({
               dense
               onTotalsChange={setPosteriorCount}
               onStatusChange={setPosteriorStatus}
+              onGroupsChange={setPosteriorGroupsLive}
             />
           </div>
         </div>
@@ -522,6 +561,7 @@ function TeethSingleKindOrderBuilderModal({
   initialDetails,
   initialFromOcr,
   initialOcrImagePath,
+  supplierId,
   onSave,
   disabled,
   tier,
@@ -535,6 +575,7 @@ function TeethSingleKindOrderBuilderModal({
   initialDetails?: TeethLineDetail[];
   initialFromOcr?: boolean;
   initialOcrImagePath?: string | null;
+  supplierId?: string | null;
   onSave: (result: TeethOrderBuilderSaveResult) => void | boolean;
   disabled?: boolean;
   tier?: ModalTier;
@@ -572,6 +613,12 @@ function TeethSingleKindOrderBuilderModal({
   );
   const listComplete = allTeethGroupsComplete(groups, catalog);
 
+  const shortageHits = useTeethShortageHits({
+    productLine,
+    details: listComplete ? expandTeethGroups(groups) : [],
+    supplierId,
+  });
+
   const resetDraft = useCallback(() => {
     setDraft({ ...EMPTY_DRAFT(), kind: defaultKind ?? null });
     setEditingId(null);
@@ -583,15 +630,19 @@ function TeethSingleKindOrderBuilderModal({
     if (!isTeethBuilderDraftComplete(fullDraft, catalog)) return;
 
     if (editingId) {
-      const nextGroup = createTeethGroupDraft({
-        color: fullDraft.color,
-        mould: fullDraft.mould,
-        jaw: fullDraft.jaw,
-        kind: fullDraft.kind,
-        count: fullDraft.count,
-        id: editingId,
+      const expanded = draftSpecToGroupInputs(fullDraft, productLine);
+      setGroups((prev) => {
+        const idx = prev.findIndex((g) => g.id === editingId);
+        if (idx < 0) {
+          return [...prev, ...expanded.map((row) => createTeethGroupDraft(row))];
+        }
+        const next = [...prev];
+        const replacement = expanded.map((row, i) =>
+          createTeethGroupDraft({ ...row, id: i === 0 ? editingId : undefined }),
+        );
+        next.splice(idx, 1, ...replacement);
+        return next;
       });
-      setGroups((prev) => prev.map((g) => (g.id === editingId ? nextGroup : g)));
       resetDraft();
       return;
     }
@@ -641,8 +692,9 @@ function TeethSingleKindOrderBuilderModal({
         jaw: draft.jaw,
         includeKindStep: !defaultKind,
         kindSelected: !!resolvedKind,
+        productLine,
       }),
-    [resolvedKind, draft.color, draft.mould, draft.jawMode, draft.jaw, defaultKind],
+    [resolvedKind, draft.color, draft.mould, draft.jawMode, draft.jaw, defaultKind, productLine],
   );
   const modalSize = teethBuilderModalSize(productLine, resolvedKind);
   const wideLayout = modalSize === "xl";
@@ -726,6 +778,9 @@ function TeethSingleKindOrderBuilderModal({
               </span>
             </div>
           </div>
+          {shortageHits.length > 0 ? (
+            <TeethShortageWarningBanner hits={shortageHits} compact />
+          ) : null}
           <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-2">
             <Button type="button" variant="secondary" onClick={onClose} disabled={disabled}>
               Anuluj
@@ -805,6 +860,7 @@ function TeethSingleKindOrderBuilderModal({
             <TeethBuilderGroupList
               groups={groups}
               editingId={editingId}
+              productLine={productLine}
               listComplete={listComplete}
               disabled={disabled}
               onEdit={handleEdit}

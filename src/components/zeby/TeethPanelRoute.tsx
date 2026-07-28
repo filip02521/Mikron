@@ -8,6 +8,8 @@ import { PanelDailyRouteLoadingSkeleton } from "@/components/layout/PanelRouteLo
 import { requireTeethPanel } from "@/lib/auth";
 import { runOrderMaintenanceBeforePageLoad } from "@/lib/services/deferred-order-maintenance";
 import type { Tab } from "@/components/zeby/teeth-panel-types";
+import { fetchSuppliersForRequestForms } from "@/lib/data/queries";
+import { fetchSalesPeopleForPicker } from "@/lib/data/sales-people-admin";
 
 export async function TeethPanelRoute({ tab }: { tab: Tab }) {
   await requireTeethPanel("read");
@@ -15,6 +17,13 @@ export async function TeethPanelRoute({ tab }: { tab: Tab }) {
 
   let groups: Awaited<ReturnType<typeof fetchTeethQueue>> = [];
   let error: string | null = null;
+  let suppliers: Awaited<ReturnType<typeof fetchSuppliersForRequestForms>> = [];
+  let salesPeople: Awaited<ReturnType<typeof fetchSalesPeopleForPicker>> = [];
+
+  const formContextPromise = Promise.all([
+    fetchSuppliersForRequestForms().catch(() => [] as typeof suppliers),
+    fetchSalesPeopleForPicker().catch(() => [] as typeof salesPeople),
+  ]);
 
   if (tab === "kolejka") {
     try {
@@ -40,6 +49,12 @@ export async function TeethPanelRoute({ tab }: { tab: Tab }) {
     }
   }
 
+  try {
+    [suppliers, salesPeople] = await formContextPromise;
+  } catch {
+    /* modal prośby działa bez list — pola będą puste */
+  }
+
   return (
     <>
       {error ? (
@@ -50,7 +65,13 @@ export async function TeethPanelRoute({ tab }: { tab: Tab }) {
       ) : null}
 
       <Suspense fallback={<PanelDailyRouteLoadingSkeleton />}>
-        <TeethPanelClient initialGroups={groups} activeTab={tab} initialHistoryGroups={initialHistoryGroups} />
+        <TeethPanelClient
+          initialGroups={groups}
+          activeTab={tab}
+          initialHistoryGroups={initialHistoryGroups}
+          suppliers={suppliers}
+          salesPeople={salesPeople}
+        />
       </Suspense>
     </>
   );

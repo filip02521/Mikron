@@ -623,6 +623,17 @@ export function IconTooth(props: StrokeIconProps) {
   );
 }
 
+/** Brak zębowy — ząb z oznaczeniem niedostępności */
+export function IconToothShortage(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M8.2 3.2c-1.7 0-3 1.3-3 3.4 0 1.7.4 3 0.9 4.7.4 1.7.4 3.4.9 5.1.2 1 .7 1.7 1.3 1.7.5 0 .9-.7.9-1.7 0-1.3.4-2.6 1.7-2.6s1.7 1.3 1.7 2.6c0 1 .4 1.7.9 1.7s1.1-.7 1.3-1.7c.4-1.7.4-3.4.9-5.1.4-1.7.9-3 .9-4.7 0-2.1-1.3-3.4-3-3.4-1.3 0-1.7.4-2.6.4s-1.3-.4-2.6-.4z" />
+      <circle cx="18.2" cy="6.2" r="3.4" fill="currentColor" stroke="none" opacity="0.2" />
+      <path d="M18.2 4.6v2.2M18.2 8.6h.01" strokeWidth={1.8} />
+    </Svg>
+  );
+}
+
 export function dailySectionIconTileClass(kind: DailySectionIconKind): string {
   switch (kind) {
     case "dzis":

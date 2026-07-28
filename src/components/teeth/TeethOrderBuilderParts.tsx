@@ -14,7 +14,7 @@ import {
   type TeethKind,
   type TeethProductLine,
 } from "@/lib/teeth/teeth-catalog";
-import { jawRequiredForKind, mouldShapeGroupsFor } from "@/lib/teeth/teeth-mould-shape-groups";
+import { jawRequiredForKind, mouldEncodesExplicitJaw, mouldShapeGroupsFor, resolveTeethJaw } from "@/lib/teeth/teeth-mould-shape-groups";
 import { teethColorSwatch } from "@/lib/teeth/teeth-color-swatches";
 import type { ModalSize } from "@/components/ui/ModalShell";
 import { cn } from "@/lib/cn";
@@ -146,6 +146,7 @@ export function TeethBuilderEmptyList({
 export function TeethBuilderGroupList({
   groups,
   lockedKind,
+  productLine,
   editingId,
   listComplete,
   disabled,
@@ -157,6 +158,7 @@ export function TeethBuilderGroupList({
 }: {
   groups: TeethGroupDraft[];
   lockedKind?: TeethKind | null;
+  productLine?: TeethProductLine | null;
   editingId: string | null;
   listComplete: boolean;
   disabled?: boolean;
@@ -199,8 +201,10 @@ export function TeethBuilderGroupList({
       >
         {groups.map((g) => {
           const effectiveKind = lockedKind ?? g.kind;
+          const resolvedJaw = resolveTeethJaw(g.mould, g.jaw, productLine);
           const needsJaw = jawRequiredForKind(effectiveKind);
-          const jawIcon = g.jaw === "upper" ? "↑" : g.jaw === "lower" ? "↓" : null;
+          const jawIcon =
+            resolvedJaw === "upper" ? "↑" : resolvedJaw === "lower" ? "↓" : null;
           const swatch = teethColorSwatch(g.color);
           return (
           <li
@@ -223,8 +227,8 @@ export function TeethBuilderGroupList({
               {g.mould?.trim() ? (
                 <span className="text-xs font-medium text-slate-700">{g.mould.trim()}</span>
               ) : null}
-              {needsJaw && jawIcon ? (
-                <span className="text-xs font-bold text-slate-500" title={g.jaw === "upper" ? "Górna" : "Dolna"}>
+              {needsJaw && jawIcon && !mouldEncodesExplicitJaw(g.mould) ? (
+                <span className="text-xs font-bold text-slate-500" title={resolvedJaw === "upper" ? "Górna" : "Dolna"}>
                   {jawIcon}
                 </span>
               ) : null}

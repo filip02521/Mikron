@@ -40,6 +40,9 @@ describe("procurement-workspace", () => {
     expect(pathAllowedForProcurementWorkspace("/zeby/kolejka", "dostawy")).toBe(false);
     expect(pathAllowedForProcurementWorkspace("/notatki", "zeby")).toBe(true);
     expect(pathAllowedForProcurementWorkspace("/zakupy/dostawcy", "zeby")).toBe(true);
+    expect(pathAllowedForProcurementWorkspace("/kurierzy", "dostawy")).toBe(true);
+    expect(pathAllowedForProcurementWorkspace("/kurierzy", "zeby")).toBe(true);
+    expect(pathAllowedForProcurementWorkspace("/kurierzy", "magazyn")).toBe(true);
     expect(pathAllowedForProcurementWorkspace("/lokalizacje/POLSKA", "dostawy")).toBe(true);
     expect(pathAllowedForProcurementWorkspace("/lokalizacje/POLSKA", "zeby")).toBe(false);
   });

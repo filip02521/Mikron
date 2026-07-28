@@ -3,6 +3,7 @@ import { assertPasswordChangeCompleted } from "@/lib/auth/must-change-password-g
 import {
   assertAdminNotInReadOnlyPanelPreview,
   assertAdminPanelAllowsOperationsMutations,
+  assertAdminPanelAllowsTeethPanelMutations,
   assertAdminPanelAllowsWarehouseMutations,
 } from "@/lib/auth/guard-admin-panel-preview";
 import {
@@ -153,7 +154,7 @@ export async function requireTeethPanel(
     throw new Error("Brak uprawnień do panelu zębów");
   }
   if (intent === "mutate") {
-    await assertAdminPanelAllowsOperationsMutations(user);
+    await assertAdminPanelAllowsTeethPanelMutations(user);
   }
   return user;
 }

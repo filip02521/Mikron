@@ -179,46 +179,40 @@ describe("navForRole struktura zakupów", () => {
 });
 
 describe("teethNavGroups", () => {
-  it("ma sekcje Dziś, Dostawcy, Zespół i Narzędzia (workflow od góry)", () => {
+  it("ma sekcje Dziś, Zespół i Narzędzia (workflow od góry, bez zbędnych zwijań)", () => {
     const groups = teethNavGroups();
     expect(groups.map((g) => g.title)).toEqual([
       NAV_SECTION_TODAY,
-      NAV_SECTION_SUPPLIERS,
       NAV_SECTION_TEAM,
       NAV_SECTION_TOOLS,
     ]);
   });
 
-  it("sekcje Dostawcy i Narzędzia są zwijane (jak w operacjach)", () => {
+  it("żadna sekcja nie jest zwijana (pojedyncze linki zawsze widoczne)", () => {
     const groups = teethNavGroups();
-    const collapsibleSections = groups.filter((g) => g.collapsible);
-    expect(collapsibleSections.map((g) => g.title)).toEqual([
-      NAV_SECTION_SUPPLIERS,
-      NAV_SECTION_TOOLS,
-    ]);
-    const defaultCollapsed = groups.filter((g) => g.defaultCollapsed);
-    expect(defaultCollapsed.map((g) => g.title)).toEqual([
-      NAV_SECTION_TOOLS,
-    ]);
+    expect(groups.every((g) => !g.collapsible)).toBe(true);
+    expect(groups.every((g) => !g.defaultCollapsed)).toBe(true);
   });
 
-  it("sekcja Dziś — kolejność workflow: kolejka, weryfikacja, przyjęcie, historia", () => {
+  it("sekcja Dziś — kolejność workflow: kolejka, weryfikacja, przyjęcie, historia, braki", () => {
     const today = teethNavGroups().find((g) => g.title === NAV_SECTION_TODAY);
     expect(today?.items.map((item) => item.href)).toEqual([
       "/zeby/kolejka",
       "/zeby/weryfikacja",
       "/zeby/przyjecie",
       "/zeby/historia",
+      "/zeby/braki",
     ]);
   });
 
-  it("sekcja Dziś ma rozróżnialne tony i rozmiary (primary)", () => {
+  it("sekcja Dziś ma rozróżnialne tony — primary workflow + compact Braki", () => {
     const today = teethNavGroups().find((g) => g.title === NAV_SECTION_TODAY);
     expect(today?.items.map((item) => [item.label, item.tone, item.iconTone, item.tier, item.highlight])).toEqual([
       ["Kolejka", "slate", "indigo", "primary", true],
       ["Weryfikacja", "slate", "amber", "primary", undefined],
       ["Przyjęcie", "slate", "emerald", "primary", undefined],
       ["Historia", "slate", "sky", "primary", undefined],
+      ["Braki", "amber", undefined, "compact", undefined],
     ]);
   });
 
@@ -232,14 +226,30 @@ describe("teethNavGroups", () => {
     ]);
   });
 
-  it("rzadsze pozycje są compact w overflow", () => {
+  it("rzadsze pozycje są compact w overflow (Braki zaraz po workflow)", () => {
     const overflow = navMobileOverflowItems(teethNavGroups());
-    const expectedLabels = ["Karty dostawców", "Tablica", "Notatki", "Urlopy działu"];
+    const expectedLabels = [
+      "Braki",
+      "Tablica",
+      "Notatki",
+      "Urlopy działu",
+      "Karty dostawców",
+      "Numery kurierów",
+    ];
     if (new Date().getDate() <= 7) {
       expectedLabels.push("Podsumowanie miesiąca");
     }
     expect(overflow.map((item) => item.label)).toEqual(expectedLabels);
     expect(overflow.every((item) => item.tier === "compact")).toBe(true);
+  });
+
+  it("Dziś zawiera /zeby/braki; Narzędzia — karty dostawców i kurierzy", () => {
+    const today = teethNavGroups().find((g) => g.title === NAV_SECTION_TODAY);
+    const tools = teethNavGroups().find((g) => g.title === NAV_SECTION_TOOLS);
+    expect(today?.items.some((item) => item.href === "/zeby/braki")).toBe(true);
+    expect(tools?.items.some((item) => item.href.startsWith("/zakupy/dostawcy"))).toBe(true);
+    expect(tools?.items.some((item) => item.href === "/kurierzy")).toBe(true);
+    expect(tools?.items.some((item) => item.href === "/zeby/braki")).toBe(false);
   });
 });
 
@@ -269,7 +279,6 @@ describe("navForRole zakupy_zeby", () => {
     const groups = navForRole("zakupy_zeby");
     expect(groups.map((g) => g.title)).toEqual([
       NAV_SECTION_TODAY,
-      NAV_SECTION_SUPPLIERS,
       NAV_SECTION_TEAM,
       NAV_SECTION_TOOLS,
     ]);

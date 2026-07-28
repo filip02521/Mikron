@@ -2,7 +2,11 @@ import type { TeethGroupDraft, TeethCatalogRef } from "@/lib/teeth/teeth-catalog
 import { isTeethDetailComplete } from "@/lib/teeth/teeth-catalog";
 import type { TeethKind, TeethJaw, TeethProductLine } from "@/lib/teeth/teeth-catalog-types";
 import type { TeethJawMode } from "@/lib/teeth/teeth-mould-shape-groups";
-import { resolvePosteriorMouldPair, isJawModeSatisfied } from "@/lib/teeth/teeth-mould-shape-groups";
+import {
+  resolvePosteriorMouldPair,
+  isJawModeSatisfied,
+  resolveTeethJaw,
+} from "@/lib/teeth/teeth-mould-shape-groups";
 
 export type TeethBuilderDraftSpec = {
   color: string;
@@ -59,12 +63,15 @@ export function expandDraftToJawGroups(
     ];
   }
 
-  const jaw = jawMode === "upper" || jawMode === "lower" ? jawMode : draft.jaw;
+  const jaw =
+    (jawMode === "upper" || jawMode === "lower" ? jawMode : null) ??
+    resolveTeethJaw(draft.mould, draft.jaw, productLine);
+
   return [
     {
       color: draft.color,
       mould: draft.mould,
-      jaw: jaw ?? null,
+      jaw,
       kind,
       count: draft.count,
       id: draft.id,
@@ -93,7 +100,14 @@ export function isTeethBuilderDraftComplete(
 ): boolean {
   const kind = draft.kind;
   if (!kind || draft.count < 1) return false;
-  if (!isJawModeSatisfied(kind, draft.jaw, draft.jawMode)) return false;
+  if (
+    !isJawModeSatisfied(kind, draft.jaw, draft.jawMode, {
+      productLine: catalog.productLine,
+      mould: draft.mould,
+    })
+  ) {
+    return false;
+  }
 
   const jawForCheck =
     kind === "posterior"
@@ -101,7 +115,7 @@ export function isTeethBuilderDraftComplete(
         ? ("upper" as const)
         : draft.jawMode === "upper" || draft.jawMode === "lower"
           ? draft.jawMode
-          : draft.jaw
+          : resolveTeethJaw(draft.mould, draft.jaw, catalog.productLine)
       : null;
 
   return isTeethDetailComplete(

@@ -19,6 +19,7 @@ import {
   isCrossLineDualKindPair,
   TEETH_CROSS_LINE_DUAL_KIND_PAIRS,
 } from "@/lib/teeth/teeth-cross-line-pairs";
+import { resolveTeethJaw } from "@/lib/teeth/teeth-mould-shape-groups";
 import {
   TEETH_DUAL_EMPTY_SECTIONS,
   TEETH_DUAL_LINE_LIMIT_MESSAGE,
@@ -201,9 +202,17 @@ export function teethGroupsForKind(
 function expandGroupsWithKind(
   groups: TeethGroupDraft[],
   kind: TeethKind,
+  productLine?: TeethProductLine | null,
 ): TeethLineDetail[] {
   const normalized = groups.map((g) => ({ ...g, kind }));
-  return expandTeethGroups(normalized).map((d) => ({ ...d, kind }));
+  return expandTeethGroups(normalized).map((d) => ({
+    ...d,
+    kind,
+    jaw:
+      kind === "posterior"
+        ? resolveTeethJaw(d.mould, d.jaw, productLine)
+        : null,
+  }));
 }
 
 function isPairedTeethLine(line: ProductLineDraft, anchor: ProductLineDraft): boolean {
@@ -287,8 +296,18 @@ export function commitDualKindTeethLines(
   }
 
   const productLine = anchor.teethProductLine;
-  const anteriorDetails = expandGroupsWithKind(anteriorGroups, "anterior");
-  const posteriorDetails = expandGroupsWithKind(posteriorGroups, "posterior");
+  const anteriorCatalogLine = catalogLineForDualKind(productLine, "anterior");
+  const posteriorCatalogLine = catalogLineForDualKind(productLine, "posterior");
+  const anteriorDetails = expandGroupsWithKind(
+    anteriorGroups,
+    "anterior",
+    anteriorCatalogLine,
+  );
+  const posteriorDetails = expandGroupsWithKind(
+    posteriorGroups,
+    "posterior",
+    posteriorCatalogLine,
+  );
 
   if (anteriorDetails.length === 0 && posteriorDetails.length === 0) {
     return { ok: false, error: TEETH_DUAL_EMPTY_SECTIONS };

@@ -231,6 +231,28 @@ export interface TeethSupplierScheduleWithSupplier extends TeethSupplierSchedule
   supplier_name: string;
 }
 
+/** Brak zębów u dostawcy — wariant katalogowy (linia + kolor + fason). */
+export interface TeethSupplierShortage {
+  id: string;
+  supplier_id: string;
+  manufacturer: string;
+  product_line: string;
+  color: string;
+  mould: string;
+  kind: "anterior" | "posterior" | null;
+  available_from: string | null;
+  note: string;
+  active: boolean;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TeethSupplierShortageWithSupplier extends TeethSupplierShortage {
+  supplier_name: string;
+}
+
 export type OperationsDepartment = "zakupy" | "magazyn";
 export type OperationsNoteVisibility = "private" | "public";
 
