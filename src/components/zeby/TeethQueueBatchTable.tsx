@@ -29,15 +29,20 @@ import {
   type TeethKind,
 } from "@/lib/teeth/teeth-catalog";
 import { parseTeethJaw, parseTeethKind } from "@/lib/teeth/teeth-catalog-types";
-import { jawRequiredForKind } from "@/lib/teeth/teeth-mould-shape-groups";
+import { jawRequiredForKind, mouldEncodesExplicitJaw } from "@/lib/teeth/teeth-mould-shape-groups";
 import { Badge } from "@/components/ui/Badge";
 import { plPozycja, plProsba, plWiersz } from "@/lib/ui/polish-plurals";
 import type { TeethQueueItem } from "@/lib/data/teeth-queue";
 
 const JAW_LABELS = { upper: "Góra", lower: "Dół" } as const;
 
-function jawLabel(jaw: TeethJaw | null, kind: TeethKind | null): string {
+function jawLabel(
+  jaw: TeethJaw | null,
+  kind: TeethKind | null,
+  mould?: string | null,
+): string {
   if (!kind || !jawRequiredForKind(kind)) return "—";
+  if (mouldEncodesExplicitJaw(mould)) return "—";
   if (jaw === "upper") return JAW_LABELS.upper;
   if (jaw === "lower") return JAW_LABELS.lower;
   return "—";
@@ -438,13 +443,13 @@ export function TeethQueueBatchTable({
                       {noSpec ? "—" : row.mould?.trim() || "—"}
                     </td>
                     <td className={cn("py-1.5 px-2 hidden sm:table-cell", allOrdered ? "text-slate-400" : "text-slate-700")}>
-                      {noSpec ? "—" : jawLabel(row.jaw, row.kind)}
+                      {noSpec ? "—" : jawLabel(row.jaw, row.kind, row.mould)}
                     </td>
                     <td className={cn("py-1.5 px-2 hidden sm:table-cell", allOrdered ? "text-slate-400" : "text-slate-700")}>
                       {noSpec ? "—" : kindLabel(row.kind)}
                     </td>
                     <td className={cn("py-1.5 px-2 sm:hidden", allOrdered ? "text-slate-400" : "text-slate-700")}>
-                      {noSpec ? "—" : `${jawLabel(row.jaw, row.kind)} · ${kindLabel(row.kind)}`}
+                      {noSpec ? "—" : `${jawLabel(row.jaw, row.kind, row.mould)} · ${kindLabel(row.kind)}`}
                     </td>
                     <td className={cn("py-1.5 px-2 text-right font-semibold tabular-nums", allOrdered ? "text-slate-400" : "text-slate-800")}>
                       {noSpec ? "—" : row.totalOrdered > 0 ? (

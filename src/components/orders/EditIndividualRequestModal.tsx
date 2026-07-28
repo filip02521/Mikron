@@ -668,6 +668,7 @@ export function EditIndividualRequestModal({
               }
               onTeethDualKindCommit={handleTeethDualKindCommit}
               autoOpenTeethList={autoSaveAfterTeethList && open}
+              groupSupplierId={supplierId}
             />
 
             <ProsbaFormReadiness
@@ -677,6 +678,7 @@ export function EditIndividualRequestModal({
                 mode === "sales" ? salesSubmitPlan : procurementReadiness?.plan ?? null
               }
               formMessage={formNotice}
+              supplierId={supplierId}
               informacjaPath={informacjaPath}
               resolvingSupplier={resolvingSupplier}
               validationAttempted={validationAttempted}

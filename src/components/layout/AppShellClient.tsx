@@ -55,6 +55,8 @@ import { useAppShellMetrics } from "./AppShellMetricsContext";
 import { AppWorkspaceBackdrop } from "./AppWorkspaceBackdrop";
 import { FontScaleSync } from "./FontScaleSync";
 import { TeethExemptProvider } from "@/components/layout/TeethExemptContext";
+import { TeethShortagesProvider } from "@/components/layout/TeethShortagesContext";
+import type { ActiveTeethShortageEntry } from "@/lib/data/teeth-shortages";
 import { ChangelogProvider } from "@/components/changelog/ChangelogProvider";
 import { ChangelogAutoOpen } from "@/components/changelog/ChangelogAutoOpen";
 import { MonthlySummaryNotice } from "@/components/monthly-summary/MonthlySummaryNotice";
@@ -137,6 +139,7 @@ export function AppShellClient({
   salesOnboardingCompletedAt = null,
   salesOnboardingActive = false,
   teethProductInfo = [],
+  activeTeethShortages = [],
   assignedWorkspaces = [],
   activeDelegations = [],
   uniformBackground = false,
@@ -157,6 +160,7 @@ export function AppShellClient({
   /** Tour onboarding — wyłącz live badge i polling zamówień. */
   salesOnboardingActive?: boolean;
   teethProductInfo?: { twId: number; manufacturer: string | null; productLine?: string | null; kind?: string | null }[];
+  activeTeethShortages?: ActiveTeethShortageEntry[];
   activeDelegations?: VacationDelegationRow[];
   uniformBackground?: boolean;
   fontScale?: FontScale;
@@ -217,6 +221,7 @@ export function AppShellClient({
 
   return (
     <TeethExemptProvider teethProductInfo={teethProductInfo}>
+    <TeethShortagesProvider shortages={activeTeethShortages}>
     <AdminPanelPreviewProvider
       readOnly={isAdminOperationsPreviewReadOnly(realRole, adminPanelPreview)}
       panelContext={adminPanelPreview}
@@ -425,6 +430,7 @@ export function AppShellClient({
     </OperationsUpdatesProvider>
     </AppRoleProvider>
     </AdminPanelPreviewProvider>
+    </TeethShortagesProvider>
     </TeethExemptProvider>
   );
 }

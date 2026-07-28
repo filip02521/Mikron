@@ -170,6 +170,22 @@ describe("teeth-catalog", () => {
         isTeethDetailComplete({ position: 1, color: "A1", jaw: null, kind: "anterior" }, hansen),
       ).toBe(true);
     });
+
+    it("Orthotyp posterior is complete when jaw is encoded in mould", () => {
+      const orthotyp: TeethCatalogRef = { productLine: "ivoclar_orthotyp_dcl" };
+      expect(
+        isTeethDetailComplete(
+          { position: 1, color: "A1", mould: "N5U", jaw: null, kind: "posterior" },
+          orthotyp,
+        ),
+      ).toBe(true);
+      expect(
+        isTeethDetailComplete(
+          { position: 1, color: "A1", mould: "LL3", jaw: null, kind: "posterior" },
+          orthotyp,
+        ),
+      ).toBe(true);
+    });
   });
 
   describe("teeth group builder", () => {
@@ -183,6 +199,18 @@ describe("teeth-catalog", () => {
           count: 4,
         }),
       ).toBe("A2 · S61 · przednie × 4 szt.");
+    });
+
+    it("formatTeethGroupLabel omits redundant jaw when mould has U/L", () => {
+      expect(
+        formatTeethGroupLabel({
+          color: "A2",
+          mould: "N5U",
+          jaw: "upper",
+          kind: "posterior",
+          count: 2,
+        }),
+      ).toBe("A2 · N5U · boczne × 2 szt.");
     });
 
     it("formatTeethGroupLabel renders Major Super Lux posterior example", () => {

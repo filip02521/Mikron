@@ -19,6 +19,7 @@ import { SubmitHintChevron } from "@/components/ui/UiGlyphs";
 import { FormNoticeMessage } from "@/components/ui/FormNoticeMessage";
 import type { FormMessage } from "@/lib/ui/notice-content";
 import { cn } from "@/lib/cn";
+import { useTeethShortageWarningForLines } from "@/components/teeth/useTeethShortageWarningForLines";
 
 function StepIcon({ state }: { state: ProsbaReadinessStepState }) {
   if (state === "done") {
@@ -113,6 +114,8 @@ export function ProsbaFormReadiness({
   requestKind,
   salesSubmitPlan,
   formMessage,
+  warningMessage,
+  supplierId,
   resolvingSupplier = false,
   informacjaPath = "direct",
   validationAttempted = false,
@@ -124,6 +127,10 @@ export function ProsbaFormReadiness({
   requestKind: IndividualRequestKind;
   salesSubmitPlan: SalesRequestSubmitPlan | null;
   formMessage?: FormMessage | null;
+  /** Nadpisanie nieblokującego ostrzeżenia (domyślnie: braki zębowe). */
+  warningMessage?: FormMessage | null;
+  /** Dostawca grupy — dopasowanie braków zębowych. */
+  supplierId?: string | null;
   resolvingSupplier?: boolean;
   informacjaPath?: InformacjaFlowPath;
   /** Po nieudanej próbie wysłania — rozwiń checklistę kroków. */
@@ -133,6 +140,12 @@ export function ProsbaFormReadiness({
   className?: string;
   teethExemptTwIds?: ReadonlySet<number>;
 }) {
+  const shortage = useTeethShortageWarningForLines(
+    requestKind === "zamowienie" ? lines : [],
+    supplierId,
+  );
+  const effectiveWarning = warningMessage ?? shortage.warningMessage;
+
   const view = buildProsbaFormReadiness(lines, requestKind, salesSubmitPlan, {
     resolvingSupplier,
     informacjaPath,
@@ -140,7 +153,7 @@ export function ProsbaFormReadiness({
   });
   const styles = toneStyles(view.tone);
 
-  if (compact && view.canSubmit && !formMessage) {
+  if (compact && view.canSubmit && !formMessage && !effectiveWarning) {
     return null;
   }
 
@@ -161,6 +174,11 @@ export function ProsbaFormReadiness({
         {formMessage ? (
           <div className="mb-2">
             <FormNoticeMessage message={formMessage} />
+          </div>
+        ) : null}
+        {effectiveWarning ? (
+          <div className="mb-2">
+            <FormNoticeMessage message={effectiveWarning} />
           </div>
         ) : null}
 
@@ -197,6 +215,11 @@ export function ProsbaFormReadiness({
       {formMessage ? (
         <div className="border-b">
           <FormNoticeMessage message={formMessage} className="rounded-none border-0 border-b" />
+        </div>
+      ) : null}
+      {effectiveWarning ? (
+        <div className="border-b">
+          <FormNoticeMessage message={effectiveWarning} className="rounded-none border-0 border-b" />
         </div>
       ) : null}
 

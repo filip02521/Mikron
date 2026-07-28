@@ -10,7 +10,7 @@ import {
   lineOptionalMould,
   type TeethLineDefinition,
 } from "./teeth-lines-data";
-import { jawRequiredForKind } from "./teeth-mould-shape-groups";
+import { jawRequiredForKind, mouldEncodesExplicitJaw, resolveTeethJaw } from "./teeth-mould-shape-groups";
 import { TEETH_CHIP_OTHER } from "./teeth-palettes";
 import type {
   TeethManufacturer,
@@ -262,7 +262,10 @@ export function isTeethDetailComplete(
 ): boolean {
   if (!detail.color.trim() || detail.color === TEETH_CHIP_OTHER) return false;
   if (!detail.kind) return false;
-  if (jawRequiredForKind(detail.kind) && !detail.jaw) return false;
+  if (jawRequiredForKind(detail.kind)) {
+    const jaw = resolveTeethJaw(detail.mould, detail.jaw, catalog.productLine);
+    if (!jaw) return false;
+  }
   if (mouldRequiredForKind(catalog, detail.kind) && !detail.mould?.trim()) return false;
   if (detail.mould === TEETH_CHIP_OTHER) return false;
   return true;
@@ -415,7 +418,9 @@ export function formatTeethGroupLabel(
   if (group.color.trim()) parts.push(group.color.trim());
   if (group.mould?.trim()) parts.push(group.mould.trim());
   if (group.kind && jawRequiredForKind(group.kind) && group.jaw) {
-    parts.push(JAW_SHORT[group.jaw]);
+    if (!mouldEncodesExplicitJaw(group.mould)) {
+      parts.push(JAW_SHORT[group.jaw]);
+    }
   }
   if (group.kind) parts.push(TEETH_KIND_LABELS[group.kind].toLowerCase());
   const spec = parts.length > 0 ? parts.join(" · ") : "—";

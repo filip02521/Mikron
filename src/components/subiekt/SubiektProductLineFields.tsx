@@ -209,6 +209,7 @@ export function SubiektProductLineFields({
   onTeethListCommitNotice,
   autoOpenTeethList = false,
   allowedTwIds,
+  groupSupplierId,
 }: {
   value: SubiektProductLineValue;
   onChange: (patch: Partial<SubiektProductLineValue>) => void;
@@ -256,6 +257,8 @@ export function SubiektProductLineFields({
   autoOpenTeethList?: boolean;
   /** Gdy ustawione — podpowiedzi tylko z tych `tw_Id` (katalog zębów). */
   allowedTwIds?: ReadonlySet<number>;
+  /** Dostawca z nagłówka grupy / formularza — do dopasowania braków. */
+  groupSupplierId?: string | null;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const productAnchorRef = useRef<HTMLDivElement>(null);
@@ -1174,6 +1177,7 @@ export function SubiektProductLineFields({
             defaultKind={value.teethKind ?? null}
             details={dualKindMode ? combinedDualDetails : (value.teethDetails ?? undefined)}
             dualKindMode={dualKindMode}
+            supplierId={groupSupplierId}
             disabled={disabled}
             onOpenModal={openTeethModal}
           />
@@ -1199,6 +1203,7 @@ export function SubiektProductLineFields({
           initialOcrImagePath={value.teethOcrImagePath ?? siblingLine?.teethOcrImagePath ?? null}
           dualKindMode={dualKindMode}
           dualKindInitialDetails={dualKindInitialDetails}
+          supplierId={groupSupplierId}
           disabled={disabled}
           onSave={handleTeethModalSave}
         />

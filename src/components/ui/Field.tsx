@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { cn } from "@/lib/cn";
 
 export type FieldVisualState = "default" | "warning" | "error" | "success";
@@ -67,21 +68,21 @@ export function Field({
   );
 }
 
-export function Input({
-  state = "default",
-  className,
-  ...props
-}: React.InputHTMLAttributes<HTMLInputElement> & {
-  state?: FieldVisualState;
-}) {
+export const Input = forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement> & {
+    state?: FieldVisualState;
+  }
+>(function Input({ state = "default", className, ...props }, ref) {
   return (
     <input
+      ref={ref}
       className={fieldControlClass(state, className)}
       aria-invalid={state === "error" ? true : undefined}
       {...props}
     />
   );
-}
+});
 
 export function Select({
   state = "default",

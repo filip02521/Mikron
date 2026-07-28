@@ -6,11 +6,11 @@ import {
   type TeethManufacturer,
   type TeethProductLine,
 } from "@/lib/teeth/teeth-catalog";
-import { jawRequiredForKind } from "@/lib/teeth/teeth-mould-shape-groups";
+import { jawRequiredForKind, resolveTeethJaw } from "@/lib/teeth/teeth-mould-shape-groups";
 import type { IndividualOrderTeethDetail } from "@/types/database";
 
 export const TEETH_LIST_INCOMPLETE_MESSAGE =
-  "Uzupełnij listę zębów — przy każdej pozycji podaj kolor, fason i typ; u boków także szczękę.";
+  "Uzupełnij listę zębów — przy każdej pozycji podaj kolor, fason i typ; u boków także szczękę (chyba że wynika z fasonu, np. N5U/N5L).";
 
 export type TeethLineValidationInput = {
   teethDetails: TeethLineDetail[] | null | undefined;
@@ -23,11 +23,14 @@ export type TeethLineValidationInput = {
 };
 
 export function isMinimalTeethDetailRowComplete(
-  detail: Pick<TeethLineDetail, "color" | "jaw" | "kind">
+  detail: Pick<TeethLineDetail, "color" | "jaw" | "kind" | "mould">,
+  productLine?: TeethProductLine | null,
 ): boolean {
   const color = detail.color?.trim() ?? "";
   if (!color || !detail.kind) return false;
-  if (jawRequiredForKind(detail.kind) && !detail.jaw) return false;
+  if (jawRequiredForKind(detail.kind)) {
+    if (!resolveTeethJaw(detail.mould, detail.jaw, productLine)) return false;
+  }
   return true;
 }
 
@@ -85,13 +88,22 @@ export function enrichTeethDetailsForDisplay(
 
 export function normalizeTeethDetailsForSave(
   teethDetails: TeethLineDetail[] | null | undefined,
-  adminKind?: TeethKind | null
+  adminKind?: TeethKind | null,
+  productLine?: TeethProductLine | null,
 ): TeethLineDetail[] | null {
   if (!teethDetails?.length) return teethDetails ?? null;
-  return teethDetails.map((detail) => ({
-    ...detail,
-    kind: detail.kind ?? adminKind ?? null,
-  }));
+  return teethDetails.map((detail) => {
+    const kind = detail.kind ?? adminKind ?? null;
+    const jaw =
+      kind === "posterior"
+        ? resolveTeethJaw(detail.mould, detail.jaw, productLine)
+        : null;
+    return {
+      ...detail,
+      kind,
+      jaw,
+    };
+  });
 }
 
 /** Minimalna walidacja wiersza przed zapisem do bazy (gdy brak kontekstu katalogu). */
@@ -129,7 +141,11 @@ export function assertTeethOrderLineIfApplicable(input: {
       : null;
   if (twId == null || !input.teethTwIdSet.has(twId)) return;
   const info = input.teethInfoByTwId?.get(twId);
-  const teethDetails = normalizeTeethDetailsForSave(input.teethDetails, info?.kind ?? null);
+  const teethDetails = normalizeTeethDetailsForSave(
+    input.teethDetails,
+    info?.kind ?? null,
+    info?.productLine ?? null,
+  );
   assertTeethLineDetailsComplete(
     {
       teethDetails,

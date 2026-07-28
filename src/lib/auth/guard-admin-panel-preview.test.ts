@@ -3,6 +3,7 @@ import {
   assertAdminNotInReadOnlyPanelPreview,
   assertAdminPanelAllowsProcurementBoardMutations,
   assertAdminPanelAllowsOperationsMutations,
+  assertAdminPanelAllowsTeethPanelMutations,
   assertAdminPanelAllowsWarehouseMutations,
 } from "@/lib/auth/guard-admin-panel-preview";
 import { ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED } from "@/lib/auth/admin-panel-preview-messages";
@@ -65,6 +66,26 @@ describe("guard admin panel preview", () => {
 
     await expect(
       assertAdminPanelAllowsOperationsMutations({ role: "admin" })
+    ).rejects.toThrow(ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED);
+  });
+
+  it("zezwalają na mutacje panelu zębów w podglądzie zębów", async () => {
+    cookiesMock.mockReturnValue({
+      get: () => ({ value: "zakupy_zeby" }),
+    });
+
+    await expect(
+      assertAdminPanelAllowsTeethPanelMutations({ role: "admin" })
+    ).resolves.toBeUndefined();
+  });
+
+  it("blokują mutacje panelu zębów w podglądzie zakupów", async () => {
+    cookiesMock.mockReturnValue({
+      get: () => ({ value: "zakupy" }),
+    });
+
+    await expect(
+      assertAdminPanelAllowsTeethPanelMutations({ role: "admin" })
     ).rejects.toThrow(ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED);
   });
 

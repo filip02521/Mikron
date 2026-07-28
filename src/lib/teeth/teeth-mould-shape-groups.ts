@@ -245,12 +245,79 @@ export function resolvePosteriorMouldPair(
   return null;
 }
 
+/**
+ * Szczęka zakodowana w nazwie fasonu (katalog Ivoclar):
+ * Orthotyp N*U / N*L, Ortholingual/Phonares LU* / LL*, Phonares NU* / NL*.
+ * PDF: media.mikran.pl ... /13268.pdf
+ */
+export function inferJawFromMould(
+  mould: string | null | undefined,
+  productLine?: TeethProductLine | null,
+): TeethJaw | null {
+  const m = mould?.trim().toUpperCase() ?? "";
+  if (!m) return null;
+
+  if (/^N\dU$/.test(m) || /^NU\d/.test(m) || /^LU\d/.test(m)) return "upper";
+  if (/^N\dL$/.test(m) || /^NL\d/.test(m) || /^LL\d/.test(m)) return "lower";
+
+  // Legacy Orthotyp bez sufiksu (N3–N6) — tylko przy znanej linii Orthotyp.
+  if (productLine === "ivoclar_orthotyp_dcl" && /^N\d$/.test(m)) {
+    return "upper";
+  }
+
+  return null;
+}
+
+/** Linie, w których wybór fasonu jednoznacznie ustala szczękę — bez pickera Góra/Dół. */
+export function productLineEncodesJawInMould(
+  productLine: TeethProductLine | null | undefined,
+): boolean {
+  return (
+    productLine === "ivoclar_orthotyp_dcl" ||
+    productLine === "ivoclar_phonares_ii"
+  );
+}
+
+export function resolveTeethJaw(
+  mould: string | null | undefined,
+  jaw: TeethJaw | null | undefined,
+  productLine?: TeethProductLine | null,
+): TeethJaw | null {
+  // Orthotyp/Phonares (or U/L in mould name): fason is authoritative.
+  if (productLineEncodesJawInMould(productLine) || mouldEncodesExplicitJaw(mould)) {
+    return inferJawFromMould(mould, productLine) ?? jaw ?? null;
+  }
+  return jaw ?? inferJawFromMould(mould, productLine);
+}
+
+/** Czy etykieta góra/dół jest zbędna, bo fason już zawiera U/L (N5U, LU5, NU6…). */
+export function mouldEncodesExplicitJaw(mould: string | null | undefined): boolean {
+  const m = mould?.trim().toUpperCase() ?? "";
+  return /^N\d[UL]$/.test(m) || /^(NU|NL|LU|LL)\d/.test(m);
+}
+
+/**
+ * Czy pokazywać kolumnę/picker szczęki dla danej linii i typu.
+ * Orthotyp/Phonares: nie — szczęka z fasonu.
+ */
+export function shouldShowJawForLine(
+  kind: TeethKind | null | undefined,
+  productLine?: TeethProductLine | null,
+): boolean {
+  return shouldShowJawPicker(kind, productLine);
+}
+
 export function jawRequiredForKind(kind: TeethKind | null | undefined): boolean {
   return kind === "posterior";
 }
 
-export function shouldShowJawPicker(kind: TeethKind | null | undefined): boolean {
-  return kind === "posterior";
+export function shouldShowJawPicker(
+  kind: TeethKind | null | undefined,
+  productLine?: TeethProductLine | null,
+): boolean {
+  if (kind !== "posterior") return false;
+  if (productLineEncodesJawInMould(productLine)) return false;
+  return true;
 }
 
 /** Linie z kolumnowym pickerem fasonów wg katalogu PDF (stała kolejność sekcji). */
@@ -278,8 +345,15 @@ export function isJawModeSatisfied(
   kind: TeethKind | null | undefined,
   jaw: TeethJaw | null | undefined,
   jawMode: TeethJawMode | null | undefined,
+  options?: {
+    productLine?: TeethProductLine | null;
+    mould?: string | null;
+  },
 ): boolean {
   if (!jawRequiredForKind(kind)) return true;
   if (jawMode === "both" || jawMode === "upper" || jawMode === "lower") return true;
-  return jaw === "upper" || jaw === "lower";
+  if (jaw === "upper" || jaw === "lower") return true;
+  return (
+    resolveTeethJaw(options?.mould, jaw, options?.productLine) != null
+  );
 }

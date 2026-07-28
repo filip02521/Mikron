@@ -1298,6 +1298,7 @@ export function OrderFormClient({
                   showClientField
                   suppliers={supplierRefs}
                   deferSupplierResolve={deferSupplierResolve}
+                  groupSupplierId={group[0]?.supplierId || initialSupplierId || ""}
                   onSupplierResolved={({ supplierId }) => {
                     if (!deferSupplierResolve) {
                       applySupplierFromSubiekt(supplierId, 0);
@@ -1320,6 +1321,7 @@ export function OrderFormClient({
                   requestKind={requestKind}
                   salesSubmitPlan={salesSubmitPlan}
                   formMessage={formNotice}
+                  supplierId={group[0]?.supplierId || initialSupplierId || ""}
                   resolvingSupplier={resolvingSupplier}
                   informacjaPath={informacjaPath}
                   validationAttempted={validationAttempted}
@@ -1562,6 +1564,7 @@ export function OrderFormClient({
                   showClientField={Boolean(lockedSalesPerson)}
                   suppliers={supplierRefs}
                   unifiedFeedback
+                  groupSupplierId={group[0]?.supplierId ?? ""}
                   onSupplierResolved={({ supplierId }) =>
                     applySupplierFromSubiekt(supplierId, gi)
                   }
@@ -1596,6 +1599,7 @@ export function OrderFormClient({
                     ).plan
                   }
                   formMessage={gi === 0 ? formNotice : null}
+                  supplierId={group[0]?.supplierId ?? ""}
                   informacjaPath={informacjaPath}
                   resolvingSupplier={resolvingSupplier}
                   validationAttempted={validationAttempted}
