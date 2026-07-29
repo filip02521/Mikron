@@ -4,6 +4,7 @@
 CREATE OR REPLACE FUNCTION public.external_warehouse_zk_links_enforce_max()
 RETURNS trigger
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 DECLARE
   link_count integer;
@@ -25,6 +26,9 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+REVOKE ALL ON FUNCTION public.external_warehouse_zk_links_enforce_max() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.external_warehouse_zk_links_enforce_max() FROM anon, authenticated;
 
 DROP TRIGGER IF EXISTS external_warehouse_zk_links_max_bi
   ON public.external_warehouse_zk_links;
