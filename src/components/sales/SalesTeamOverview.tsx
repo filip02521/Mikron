@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import type { SalesPersonAdminRow } from "@/lib/data/sales-people-admin";
+import type { SalesPersonAdminRow } from "@/lib/data/sales-people-admin-shared";
 import {
   formatSalesPersonAccountStatus,
   formatSalesPersonAccountStatusTitle,
-} from "@/lib/data/sales-people-admin";
+} from "@/lib/data/sales-people-admin-shared";
 import type { SalesGroupRow } from "@/lib/data/sales-groups";
 import type { SalesTeamUiContext } from "@/lib/sales/team-ui";
 import { groupSalesPeopleForTeamView } from "@/lib/sales/team-grouping";

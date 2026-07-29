@@ -1,7 +1,7 @@
 import { filterIndividualOrdersForSalesMyOrders } from "@/lib/orders/informacja-stock-out-reorder";
 import { presentMyOrders } from "@/lib/orders/my-order-presenter";
 import { summarizeMyOrdersInbox } from "@/lib/orders/my-order-sales-ui";
-import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board";
+import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board-shared";
 import {
   buildSalesInboxSnapshotFromLoadedData,
   inboxNavBadgesFromLoadedData,
@@ -25,7 +25,7 @@ export type SalesShellMetrics = {
   zkNavBadge: number;
   /** Badge „Notatnik” — zaległe przypomnienia notatek. */
   notesNavBadge: number;
-  /** Badge na Komunikacji — nieprzeczytane odpowiedzi. */
+  /** Badge Tablica — własne aktywne pytania z nieprzeczytaną odpowiedzią. */
   boardNavBadge: number;
   inboxSnapshot: SalesDayStartSnapshot | null;
   boardAttention: SalesBoardAttentionSnapshot | null;

@@ -1,4 +1,27 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import {
+  isMonthlySummaryAvailable,
+  monthKeyFromDate,
+  monthLabelFromKey,
+  type DeliveryMonthlyStat,
+  type MonthlyStats,
+  type ProcurementMonthlyStat,
+  type SalesPersonMonthlyStat,
+} from "@/lib/data/monthly-stats-shared";
+
+export {
+  isMonthlySummaryAvailable,
+  monthKeyFromDate,
+  monthLabelFromKey,
+};
+export type {
+  DeliveryMonthlyStat,
+  MonthlyStatCard,
+  MonthlyStats,
+  MonthlySummaryTab,
+  ProcurementMonthlyStat,
+  SalesPersonMonthlyStat,
+} from "@/lib/data/monthly-stats-shared";
 
 function monthEndDateString(monthKey: string): string {
   const [yearStr, monthStr] = monthKey.split("-");
@@ -6,69 +29,6 @@ function monthEndDateString(monthKey: string): string {
   const month = Number(monthStr);
   const lastDay = new Date(year, month, 0).getDate();
   return `${monthKey}-${String(lastDay).padStart(2, "0")}`;
-}
-
-export type MonthlySummaryTab = "handlowcy" | "dostawy" | "zakupy";
-
-export type MonthlyStatCard = {
-  label: string;
-  value: string | number;
-  hint?: string;
-  tone: "indigo" | "emerald" | "amber" | "sky" | "violet" | "slate";
-};
-
-export type SalesPersonMonthlyStat = {
-  salesPersonId: string;
-  salesPersonName: string;
-  requestsCreated: number;
-  requestsCompleted: number;
-  requestsCancelled: number;
-  zkClosed: number;
-  zkOpen: number;
-};
-
-export type DeliveryMonthlyStat = {
-  totalReceipts: number;
-  totalPackages: number;
-  totalPallets: number;
-  byCarrier: { carrier: string; count: number; packages: number; pallets: number }[];
-};
-
-export type ProcurementMonthlyStat = {
-  totalOrders: number;
-  mainOrders: number;
-  sideOrders: number;
-  completedOrders: number;
-  cancelledOrders: number;
-  informacjaCount: number;
-  avgDeliveryDays: number | null;
-  bySupplier: { supplierId: string; supplierName: string; orders: number; completed: number }[];
-};
-
-export type MonthlyStats = {
-  monthKey: string;
-  monthLabel: string;
-  sales: SalesPersonMonthlyStat[];
-  delivery: DeliveryMonthlyStat;
-  procurement: ProcurementMonthlyStat;
-  availableMonths: { key: string; label: string }[];
-};
-
-const MONTH_LABELS_PL = [
-  "styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec",
-  "lipiec", "sierpień", "wrzesień", "październik", "listopad", "grudzień",
-];
-
-export function monthKeyFromDate(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-}
-
-export function monthLabelFromKey(key: string): string {
-  const [yearStr, monthStr] = key.split("-");
-  const year = Number(yearStr);
-  const monthIdx = Number(monthStr) - 1;
-  if (isNaN(year) || isNaN(monthIdx) || monthIdx < 0 || monthIdx > 11) return key;
-  return `${MONTH_LABELS_PL[monthIdx]} ${year}`;
 }
 
 /** Zwraca offset strefy warszawskiej dla danego miesiąca (+01:00 lub +02:00). */
@@ -350,9 +310,4 @@ export async function fetchMonthlyStats(monthKey: string): Promise<MonthlyStats>
     procurement,
     availableMonths,
   };
-}
-
-export function isMonthlySummaryAvailable(): boolean {
-  const now = new Date();
-  return now.getDate() <= 7;
 }

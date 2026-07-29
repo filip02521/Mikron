@@ -4,7 +4,7 @@ import { toastFromError, SALES_TOAST, type ToastNotice } from "@/lib/ui/notice-c
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition, useCallback } from "react";
-import type { SalesPersonAdminRow } from "@/lib/data/sales-people-admin";
+import type { SalesPersonAdminRow } from "@/lib/data/sales-people-admin-shared";
 import type { SalesGroupRow } from "@/lib/data/sales-groups";
 import {
   actionUpsertSalesPerson,

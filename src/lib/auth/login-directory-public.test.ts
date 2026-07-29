@@ -3,7 +3,7 @@ import {
   toPublicLoginDirectoryAccounts,
   type LoginDirectoryAccountPublic,
 } from "@/lib/auth/login-directory-public";
-import type { LoginDirectoryAccount } from "@/lib/auth/login-directory";
+import type { LoginDirectoryAccount } from "@/lib/auth/login-directory-shared";
 
 describe("toPublicLoginDirectoryAccounts", () => {
   it("usuwa e-mail z kont przekazywanych do klienta", () => {

@@ -1,43 +1,28 @@
-import { addDays } from "date-fns";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { formatDateString, parseDateOnly } from "@/lib/orders/dates";
-import { warsawNowParts } from "@/lib/time/warsaw";
 import {
   normalizeShipmentCounts,
   type WarehouseCarrier,
   type WarehouseShipmentForm,
 } from "@/lib/warehouse/delivery-carriers";
+import {
+  assertJournalDateReadable,
+  type WarehouseCarrierHint,
+  type WarehouseDeliveryDaySummary,
+  type WarehouseDeliveryReceipt,
+  warsawTodayDateKey,
+} from "@/lib/warehouse/delivery-receipts-shared";
 
-export type WarehouseDeliveryReceipt = {
-  id: string;
-  receivedDate: string;
-  supplierId: string | null;
-  supplierLabel: string;
-  supplierName: string;
-  carrier: WarehouseCarrier;
-  shipmentForm: WarehouseShipmentForm;
-  packageCount: number;
-  palletCount: number;
-  note: string;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-};
-
-export type WarehouseDeliveryDaySummary = {
-  receiptCount: number;
-  packageCount: number;
-  palletCount: number;
-};
-
-export type WarehouseCarrierHint = {
-  carrier: WarehouseCarrier;
-  shipmentForm: WarehouseShipmentForm;
-  typicalPackageCount: number;
-  typicalPalletCount: number;
-  useCount: number;
-  source: "default" | "learned";
-};
+export type {
+  WarehouseCarrierHint,
+  WarehouseDeliveryDaySummary,
+  WarehouseDeliveryReceipt,
+} from "@/lib/warehouse/delivery-receipts-shared";
+export {
+  assertJournalDateReadable,
+  parseJournalDateKey,
+  shiftJournalDateKey,
+  warsawTodayDateKey,
+} from "@/lib/warehouse/delivery-receipts-shared";
 
 function mapRow(row: Record<string, unknown>): WarehouseDeliveryReceipt {
   const suppliers = row.suppliers as { name?: string } | null;
@@ -68,31 +53,6 @@ function mapRow(row: Record<string, unknown>): WarehouseDeliveryReceipt {
     updatedAt: String(row.updated_at),
     createdBy: String(row.created_by),
   };
-}
-
-export function warsawTodayDateKey(date = new Date()): string {
-  return warsawNowParts(date).dateKey;
-}
-
-const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-export function parseJournalDateKey(value: string): string | null {
-  if (!DATE_KEY_RE.test(value)) return null;
-  return parseDateOnly(value) ? value : null;
-}
-
-export function shiftJournalDateKey(dateKey: string, deltaDays: number): string {
-  const parsed = parseJournalDateKey(dateKey);
-  if (!parsed) throw new Error("Nieprawidłowa data.");
-  return formatDateString(addDays(parseDateOnly(parsed)!, deltaDays));
-}
-
-export function assertJournalDateReadable(dateKey: string): void {
-  const parsed = parseJournalDateKey(dateKey);
-  if (!parsed) throw new Error("Nieprawidłowa data.");
-  if (parsed > warsawTodayDateKey()) {
-    throw new Error("Nie można przeglądać przyszłych dat.");
-  }
 }
 
 export async function fetchDeliveryDatesWithEntries(limit = 31): Promise<string[]> {

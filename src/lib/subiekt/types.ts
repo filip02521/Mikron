@@ -12,6 +12,27 @@ export type SubiektListEnvelope<T> = {
   pagination?: SubiektPagination;
 };
 
+export type SubiektListParams = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  symbol?: string;
+  email?: string;
+  id?: number | string;
+  /** Towar — tw_PLU (Kod Mikran). */
+  plu?: string;
+  /** Kontrahent (kh_Id) — w query nie filtruje listy ZD; używaj {@link zdListItemMatchesSupplierKhIds}. */
+  khId?: number;
+  /** Status dokumentu ZD — filtr API nieskuteczny; ETA filtruje 5/6/7 po stronie aplikacji. */
+  status?: number;
+  name?: string;
+  limit?: number;
+  typ?: number;
+  dataOd?: string;
+  dataDo?: string;
+  includeBlocked?: boolean;
+};
+
 export type SubiektSingleEnvelope<T> = {
   data: T;
 };

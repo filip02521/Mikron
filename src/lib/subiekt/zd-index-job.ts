@@ -7,21 +7,9 @@ import { extractDocKhIds } from "@/lib/subiekt/zd-document-kh";
 import { parseZdFulfillmentDeadline } from "@/lib/subiekt/zd-fulfillment-date";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
 import type { SubiektDocument } from "@/lib/subiekt/types";
+import type { ZdIndexJobState } from "@/lib/subiekt/zd-job-shared";
 
-export type ZdIndexJobState = {
-  status: "idle" | "running" | "paused" | "done" | "failed";
-  dataOd: string;
-  page: number;
-  pageSize: number;
-  totalPages: number | null;
-  processed: number;
-  mapped: number;
-  unmapped: number;
-  unverifiable: number;
-  lastDocNumber: string | null;
-  lastUpdatedAt: string;
-  lastError: string | null;
-};
+export type { ZdIndexJobState } from "@/lib/subiekt/zd-job-shared";
 
 const JOB_KEY = "job_zd_index_all";
 const LOCK_KEY = "job_zd_index_all_lock";

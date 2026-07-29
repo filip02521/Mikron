@@ -8,7 +8,7 @@ import {
   authorLabelFromProfile,
   formatBoardDate,
 } from "@/lib/department-board/format";
-import type { DepartmentBoardThreadRow } from "@/lib/data/department-board";
+import type { DepartmentBoardThreadRow } from "@/lib/data/department-board-shared";
 import { cn } from "@/lib/cn";
 import {
   boardAnnouncementAvatarClass,

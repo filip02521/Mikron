@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { actionAddSupplierSubiektKhAlias } from "@/app/actions/subiekt";
-import type { ZdUnmappedKhReport } from "@/lib/subiekt/zd-unmapped-kh";
-import { kontrahentDisplayName } from "@/lib/subiekt/resolve-kontrahent-labels";
+import type { ZdUnmappedKhReport } from "@/lib/subiekt/zd-unmapped-kh-shared";
+import { kontrahentDisplayName } from "@/lib/subiekt/kontrahent-display";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { supplierCardsHref } from "@/lib/supplier-hub";

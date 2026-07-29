@@ -1,5 +1,5 @@
-import type { CatalogZdSyncState } from "@/lib/subiekt/catalog-zd-sync";
-import type { CronRunPayload } from "@/lib/services/cron-run-log";
+import type { CatalogZdSyncState } from "@/lib/subiekt/catalog-zd-sync-shared";
+import type { CronRunPayload } from "@/lib/services/cron-run-shared";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
 
 export type CatalogZdSyncSummary = {

@@ -32,7 +32,7 @@ import { parseTeethJaw, parseTeethKind } from "@/lib/teeth/teeth-catalog-types";
 import { jawRequiredForKind, mouldEncodesExplicitJaw } from "@/lib/teeth/teeth-mould-shape-groups";
 import { Badge } from "@/components/ui/Badge";
 import { plPozycja, plProsba, plWiersz } from "@/lib/ui/polish-plurals";
-import type { TeethQueueItem } from "@/lib/data/teeth-queue";
+import type { TeethQueueItem } from "@/lib/data/teeth-queue-shared";
 
 const JAW_LABELS = { upper: "Góra", lower: "Dół" } as const;
 

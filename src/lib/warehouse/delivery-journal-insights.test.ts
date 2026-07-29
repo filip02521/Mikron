@@ -3,8 +3,8 @@ import {
   assertJournalSearchRange,
   deliveryJournalPresetRange,
   matchesDeliveryReceiptQuery,
-} from "@/lib/warehouse/delivery-journal-insights";
-import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts";
+} from "@/lib/warehouse/delivery-journal-shared";
+import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts-shared";
 
 function sampleReceipt(extra: Partial<WarehouseDeliveryReceipt> = {}): WarehouseDeliveryReceipt {
   return {

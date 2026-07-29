@@ -11,7 +11,7 @@ import type { VacationPeriodRow, VacationCategory } from "@/lib/data/sales-vacat
 import {
   STAFF_VACATION_CATEGORIES,
   staffVacationCategoryLabel,
-} from "@/lib/data/staff-vacation-periods";
+} from "@/lib/data/staff-vacation-shared";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";

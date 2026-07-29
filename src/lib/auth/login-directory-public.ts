@@ -1,7 +1,9 @@
-import type { LoginDirectoryAccount } from "@/lib/auth/login-directory";
+import type {
+  LoginDirectoryAccount,
+  LoginDirectoryAccountPublic,
+} from "@/lib/auth/login-directory-shared";
 
-/** Konto widoczne na ekranie logowania — bez adresu e-mail w kliencie. */
-export type LoginDirectoryAccountPublic = Omit<LoginDirectoryAccount, "email">;
+export type { LoginDirectoryAccountPublic };
 
 export function toPublicLoginDirectoryAccounts(
   accounts: LoginDirectoryAccount[]

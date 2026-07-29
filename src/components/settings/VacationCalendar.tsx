@@ -26,7 +26,7 @@ import {
   STAFF_VACATION_CATEGORIES,
   staffVacationCategoryShort,
   staffVacationCategoryLabel,
-} from "@/lib/data/staff-vacation-periods";
+} from "@/lib/data/staff-vacation-shared";
 import type { VacationDelegationRow, DelegateOption } from "@/lib/data/vacation-delegations";
 import { Button } from "@/components/ui/Button";
 import { AddButton } from "@/components/ui/AddButton";

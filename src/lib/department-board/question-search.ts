@@ -1,6 +1,6 @@
 import { questionAuthorLabel } from "@/lib/department-board/format";
 import { boardQuestionProductSearchText } from "@/lib/department-board/question-product";
-import type { DepartmentBoardQuestion } from "@/lib/data/department-board";
+import type { DepartmentBoardQuestion } from "@/lib/data/department-board-shared";
 
 /** Tekst przeszukiwany w wątku pytania (temat, treść, autor, produkt, odpowiedzi). */
 export function departmentBoardQuestionSearchHaystack(question: DepartmentBoardQuestion): string {

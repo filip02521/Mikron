@@ -13,8 +13,8 @@ import {
   brandGradientTextClass,
   surfaceCardClass,
 } from "@/lib/ui/ontime-theme";
-import type { MonthlyStats, MonthlySummaryTab } from "@/lib/data/monthly-stats";
-import { isMonthlySummaryAvailable } from "@/lib/data/monthly-stats";
+import type { MonthlyStats, MonthlySummaryTab } from "@/lib/data/monthly-stats-shared";
+import { isMonthlySummaryAvailable } from "@/lib/data/monthly-stats-shared";
 
 const TAB_META: Record<MonthlySummaryTab, { label: string; hint: string; icon: string }> = {
   handlowcy: { label: "Handlowcy", hint: "Złożone prośby i dokumenty ZK dla każdego handlowca", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },

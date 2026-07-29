@@ -21,6 +21,7 @@ import {
   salesBoardAnswerSoundMutedStore,
 } from "@/lib/client/sales-board-answer-sound";
 import { unlockNotificationSound } from "@/lib/client/notification-sound";
+import { usePatchAppShellNavBadges } from "@/components/layout/AppShellMetricsContext";
 
 const POLL_MS = 45_000;
 /** Pierwszy poll z opóźnieniem — SSR licznika może być nieaktualny; unikamy fałszywego dźwięku. */
@@ -96,6 +97,7 @@ export function SalesUpdatesProvider({
     previewDla && sessionSalesPersonId && previewDla !== sessionSalesPersonId
   );
   const effectiveEnabled = enabled && !teamPreviewActive;
+  const patchNavBadges = usePatchAppShellNavBadges();
   const [baseline, setBaseline] = useState(initialVersion);
   const [latest, setLatest] = useState(initialVersion);
   const autoRefresh = usePersistedFlag(autoRefreshStore);
@@ -126,11 +128,19 @@ export function SalesUpdatesProvider({
     }
   }, []);
 
+  const onUnseenOwnAnswersApplied = useCallback(
+    (nextCount: number) => {
+      patchNavBadges({ salesTablica: nextCount });
+    },
+    [patchNavBadges]
+  );
+
   const { applyCount: applyUnseenOwnAnswersCount } = useBoardNotificationSoundEffects({
     enabled: effectiveEnabled,
     soundEnabled: hydrated && boardAnswerSound,
     initialCount: initialUnseenOwnAnswers,
     baselineReady: soundBaselineReady,
+    onCountApplied: onUnseenOwnAnswersApplied,
   });
 
   const syncBaseline = useCallback((version: string | null) => {

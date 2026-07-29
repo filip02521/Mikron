@@ -7,45 +7,42 @@ import {
   type UnseenBoardAnswer,
 } from "@/lib/department-board/attention";
 import { sortAnnouncements, sortClosedQuestions, sortQuestions } from "@/lib/department-board/sort";
-import { salesMojeAnnouncementHref } from "@/lib/department-board/moje-announcements-ui";
-import type {
-  DepartmentBoardPost,
-  DepartmentBoardThread,
-  UserRole,
-} from "@/types/database";
+import type { DepartmentBoardThread } from "@/types/database";
+import {
+  procurementBoardAnnouncementHref,
+  procurementBoardQuestionHref,
+  procurementBoardQuestionsListHref,
+  salesBoardAnnouncementHref,
+  type DepartmentBoardAnnouncementsSlice,
+  type DepartmentBoardAuthor,
+  type DepartmentBoardData,
+  type DepartmentBoardPostRow,
+  type DepartmentBoardQuestion,
+  type DepartmentBoardQuestionsSlice,
+  type DepartmentBoardThreadRow,
+  type SalesBoardAttentionSnapshot,
+} from "@/lib/data/department-board-shared";
+
+export {
+  procurementBoardAnnouncementHref,
+  procurementBoardQuestionHref,
+  procurementBoardQuestionsListHref,
+  salesBoardAnnouncementHref,
+  type DepartmentBoardAnnouncementsSlice,
+  type DepartmentBoardAuthor,
+  type DepartmentBoardData,
+  type DepartmentBoardPostRow,
+  type DepartmentBoardQuestion,
+  type DepartmentBoardQuestionsSlice,
+  type DepartmentBoardThreadRow,
+  type SalesBoardAttentionSnapshot,
+};
 
 export const DEPARTMENT_BOARD_THREAD_SELECT =
   "id, kind, status, created_by, sales_person_id, title, body, product_symbol, product_name, subiekt_tw_id, mikran_code, color, pinned, published_at, expires_at, answered_at, archived_at, closed_by, created_at, updated_at, author:profiles!created_by(email, role), sales_person:sales_people(id, name), closed_by_profile:profiles!closed_by(email, role)";
 
 export const DEPARTMENT_BOARD_POST_SELECT =
   "*, author:profiles!created_by(email, role, sales_person:sales_people(id, name))";
-
-export type DepartmentBoardAuthor = {
-  email: string | null;
-  role: UserRole | null;
-  sales_person?: { id: string; name: string } | null;
-};
-
-export type DepartmentBoardThreadRow = DepartmentBoardThread & {
-  author?: DepartmentBoardAuthor | null;
-  sales_person?: { id: string; name: string } | null;
-  closed_by_profile?: DepartmentBoardAuthor | null;
-};
-
-export type DepartmentBoardPostRow = DepartmentBoardPost & {
-  author?: DepartmentBoardAuthor | null;
-};
-
-export type DepartmentBoardQuestion = DepartmentBoardThreadRow & {
-  posts: DepartmentBoardPostRow[];
-};
-
-export type DepartmentBoardData = {
-  announcements: DepartmentBoardThreadRow[];
-  questions: DepartmentBoardQuestion[];
-  closedQuestions: DepartmentBoardQuestion[];
-  readAnnouncementIds: string[];
-};
 
 function isAnnouncementActive(row: DepartmentBoardThread): boolean {
   if (row.archived_at) return false;
@@ -57,16 +54,6 @@ function isAnnouncementActive(row: DepartmentBoardThread): boolean {
 export function activeAnnouncementExpiryOr(nowIso: string): string {
   return `expires_at.is.null,expires_at.gt."${nowIso}"`;
 }
-
-export type DepartmentBoardQuestionsSlice = {
-  questions: DepartmentBoardQuestion[];
-  closedQuestions: DepartmentBoardQuestion[];
-};
-
-export type DepartmentBoardAnnouncementsSlice = {
-  announcements: DepartmentBoardThreadRow[];
-  readAnnouncementIds: string[];
-};
 
 export async function fetchDepartmentBoardThreadKind(
   threadId: string
@@ -222,7 +209,7 @@ export async function fetchDepartmentBoard(
   };
 }
 
-/** Zakupy/admin: pytania bez odpowiedzi. */
+/** Zakupy/admin: aktywne pytania bez odpowiedzi (status open, nie zarchiwizowane). */
 export async function countOpenDepartmentBoardQuestions(): Promise<number> {
   const supabase = createAdminClient();
   const { count, error } = await supabase
@@ -234,22 +221,6 @@ export async function countOpenDepartmentBoardQuestions(): Promise<number> {
 
   if (error) return 0;
   return count ?? 0;
-}
-
-export function salesBoardAnnouncementHref(threadId: string): string {
-  return salesMojeAnnouncementHref(threadId);
-}
-
-export function procurementBoardAnnouncementHref(threadId: string): string {
-  return `/zakupy/tablica?widok=ogloszenia&watek=${encodeURIComponent(threadId)}`;
-}
-
-export function procurementBoardQuestionHref(threadId: string): string {
-  return `/zakupy/tablica?widok=pytania&watek=${encodeURIComponent(threadId)}`;
-}
-
-export function procurementBoardQuestionsListHref(): string {
-  return "/zakupy/tablica?widok=pytania";
 }
 
 /** Przypięte, aktywne ogłoszenia — wspólne dla handlowców i panelu zakupów. */
@@ -280,30 +251,6 @@ export async function countActiveDepartmentBoardAnnouncements(): Promise<number>
   if (error) return 0;
   return count ?? 0;
 }
-
-export type SalesBoardAttentionSnapshot = {
-  /** Wszystkie nieprzeczytane — badge w menu. */
-  unreadAnnouncementCount: number;
-  unreadAnnouncementLatestTitle: string | null;
-  /** Nieprzeczytane poza przypiętymi (banner na /moje — bez duplikatu z paskiem). */
-  unreadAnnouncementBannerCount: number;
-  unreadAnnouncementBannerLatestTitle: string | null;
-  unreadAnnouncementBannerLatestId: string | null;
-  unseenAnswerCount: number;
-  /** Nieprzeczytane odpowiedzi na własne pytania handlowca. */
-  unseenOwnAnswerCount: number;
-  unseenAnswerPreview: {
-    threadId: string;
-    title: string;
-    isOwnQuestion: boolean;
-  } | null;
-  unseenQuestionIds: string[];
-  /** Nieprzeczytane odpowiedzi wyłącznie na własne pytania handlowca. */
-  unseenOwnQuestionIds: string[];
-  pinnedAnnouncements: DepartmentBoardThreadRow[];
-  /** Badge /moje: tylko nieprzeczytane odpowiedzi na własne pytania (bez ogłoszeń i cudzych wątków). */
-  navBadgeCount: number;
-};
 
 async function activeAnnouncementsQuery(supabase: ReturnType<typeof createAdminClient>) {
   const nowIso = new Date().toISOString();
@@ -432,8 +379,8 @@ export async function fetchSalesBoardAttentionSnapshot(
   };
 }
 
-/** Badge na /tablica — tylko nowe odpowiedzi (ogłoszenia są na /moje). */
+/** Badge na /tablica — własne aktywne pytania z nową odpowiedzią (nie wszystkie wątki działu). */
 export async function countSalesTablicaNavBadge(profileId: string): Promise<number> {
   const snapshot = await fetchSalesBoardAttentionSnapshot(profileId);
-  return snapshot.unseenAnswerCount;
+  return snapshot.unseenOwnAnswerCount;
 }

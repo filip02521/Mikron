@@ -1,5 +1,5 @@
 import { formatPlDate, vacationNoteLabel } from "@/lib/display-labels";
-import { DAY_OF_WEEK_LABELS } from "@/lib/data/teeth-schedule";
+import { DAY_OF_WEEK_LABELS } from "@/lib/data/teeth-schedule-shared";
 import type { TeethSupplierLaneSnapshot } from "@/lib/data/teeth-schedule";
 import { plCoTydzien } from "@/lib/ui/polish-plurals";
 

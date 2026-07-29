@@ -1,4 +1,4 @@
-import { collectKhIdsForSupplierRef } from "@/lib/data/supplier-subiekt-kh";
+import { collectKhIdsForSupplierRef } from "@/lib/subiekt/supplier-kh-ids";
 import type { AppSupplierRef } from "@/lib/subiekt/match-supplier";
 
 /**

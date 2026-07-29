@@ -11,8 +11,8 @@ import {
   NOTIFICATION_FLUSH_RETRY_MS,
   shouldRetryNotificationFlush,
 } from "@/lib/client/delivery-notification-flush-retry";
-import type { DeliveryUndoPayload } from "@/lib/orders/receive-queue-undo";
-import { collectDeliveryNotificationQueueIds } from "@/lib/orders/receive-queue-undo";
+import type { DeliveryUndoPayload } from "@/lib/orders/receive-queue-undo-shared";
+import { collectDeliveryNotificationQueueIds } from "@/lib/orders/receive-queue-undo-shared";
 
 function flushDeliveryNotificationWithRetry(
   queueIds: string[],

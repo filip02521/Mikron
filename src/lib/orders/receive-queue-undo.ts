@@ -1,42 +1,25 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { UNDO_WINDOW_MS } from "@/lib/orders/daily-panel-undo";
 import { parseTeethLineDelivered } from "@/lib/teeth/teeth-receive-picker";
 import type { IndividualOrder } from "@/types/database";
+import {
+  attachDeliveryNotificationQueueIds,
+  buildDeliveryUndoPayload,
+  collectDeliveryNotificationQueueIds,
+  isDeliveryUndoExpired,
+  type DeliverySnapshot,
+  type DeliveryUndoPayload,
+  type DeliveryUndoToken,
+} from "@/lib/orders/receive-queue-undo-shared";
 
-export type DeliverySnapshot = {
-  orderId: string;
-  deliveredQuantity: string;
-  status: string;
-  deliveryAt: string | null;
-  warehouseShelf: string | null;
-  teethLineDelivered?: Record<string, number> | null;
-  /** Identyfikator wpisu w kolejce opóźnionych powiadomień e-mail. */
-  queueId?: string;
+export {
+  attachDeliveryNotificationQueueIds,
+  buildDeliveryUndoPayload,
+  collectDeliveryNotificationQueueIds,
+  isDeliveryUndoExpired,
+  type DeliverySnapshot,
+  type DeliveryUndoPayload,
+  type DeliveryUndoToken,
 };
-
-export type DeliveryUndoToken = {
-  kind: "delivery";
-  snapshots: DeliverySnapshot[];
-};
-
-export type DeliveryUndoPayload = {
-  token: DeliveryUndoToken;
-  performedAt: number;
-  expiresAt: number;
-};
-
-export function buildDeliveryUndoPayload(token: DeliveryUndoToken): DeliveryUndoPayload {
-  const performedAt = Date.now();
-  return {
-    token,
-    performedAt,
-    expiresAt: performedAt + UNDO_WINDOW_MS,
-  };
-}
-
-export function isDeliveryUndoExpired(payload: DeliveryUndoPayload, at = Date.now()): boolean {
-  return at > payload.expiresAt;
-}
 
 export async function captureDeliverySnapshot(orderId: string): Promise<DeliverySnapshot | null> {
   const supabase = createAdminClient();
@@ -96,27 +79,6 @@ export async function revertDeliverySnapshots(snapshots: DeliverySnapshot[]): Pr
   for (const snapshot of snapshots) {
     await revertDeliverySnapshot(snapshot);
   }
-}
-
-export function attachDeliveryNotificationQueueIds(
-  snapshots: DeliverySnapshot[],
-  queueIdByOrderId: Record<string, string>
-): DeliverySnapshot[] {
-  if (!Object.keys(queueIdByOrderId).length) return snapshots;
-  return snapshots.map((snapshot) => ({
-    ...snapshot,
-    queueId: queueIdByOrderId[snapshot.orderId] ?? snapshot.queueId,
-  }));
-}
-
-export function collectDeliveryNotificationQueueIds(
-  snapshots: DeliverySnapshot[]
-): string[] {
-  return [
-    ...new Set(
-      snapshots.map((snapshot) => snapshot.queueId).filter((id): id is string => Boolean(id))
-    ),
-  ];
 }
 
 const ZK_SYNC_ORDER_SELECT =

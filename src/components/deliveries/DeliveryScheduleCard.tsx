@@ -2,7 +2,7 @@ import { cn } from "@/lib/cn";
 import { locationLabel } from "@/lib/display-labels";
 import { getVacationMessage } from "@/lib/orders/colors";
 import { IconSun, IconMapPin } from "@/components/icons/StrokeIcons";
-import type { DeliveryScheduleSupplier } from "@/lib/data/upcoming-deliveries";
+import type { DeliveryScheduleSupplier } from "@/lib/data/upcoming-deliveries-shared";
 
 export function DeliveryScheduleCard({
   supplier,

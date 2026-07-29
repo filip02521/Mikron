@@ -20,7 +20,7 @@ import {
 import {
   collectOperationsTodayTasks,
   type OperationsNotepadData,
-} from "@/lib/data/operations-notepad";
+} from "@/lib/data/operations-notepad-shared";
 import { flashNotepadAnchor } from "@/lib/sales/notepad-anchor";
 import {
   OPERATIONS_DEPARTMENT_LABELS,

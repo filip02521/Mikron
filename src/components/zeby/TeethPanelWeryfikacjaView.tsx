@@ -23,7 +23,7 @@ import {
   isScheduledItem,
   type TeethQueueGroup,
   type TeethQueueItem,
-} from "@/lib/data/teeth-queue";
+} from "@/lib/data/teeth-queue-shared";
 import { actionApproveTeethOcr } from "@/app/actions/teeth-orders";
 
 export function TeethPanelWeryfikacjaView({

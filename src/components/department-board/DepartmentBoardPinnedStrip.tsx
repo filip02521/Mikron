@@ -1,6 +1,6 @@
 import { IconPin } from "@/components/icons/StrokeIcons";
 import { SystemNotice } from "@/components/ui/SystemNotice";
-import type { DepartmentBoardThreadRow } from "@/lib/data/department-board";
+import type { DepartmentBoardThreadRow } from "@/lib/data/department-board-shared";
 import { MICROCOPY } from "@/lib/ui/microcopy";
 
 export function DepartmentBoardPinnedStrip({

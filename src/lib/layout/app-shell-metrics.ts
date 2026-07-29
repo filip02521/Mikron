@@ -100,17 +100,22 @@ export async function fetchAppShellMetrics(
     try {
       const { countTeethQueue, countTeethVerificationQueue, fetchTeethQueueVersion } = await import("@/lib/data/teeth-queue");
       const { fetchTeethWarehouseStatus } = await import("@/lib/data/teeth-warehouse-status");
-      const [teethCount, teethVerificationCount, teethVersion, warehouseStatus] = await Promise.all([
-        countTeethQueue(),
-        countTeethVerificationQueue(),
-        fetchTeethQueueVersion(),
-        fetchTeethWarehouseStatus().catch(() => null),
-      ]);
+      const [teethCount, teethVerificationCount, teethVersion, warehouseStatus, openBoardQuestionsCount] =
+        await Promise.all([
+          countTeethQueue(),
+          countTeethVerificationQueue(),
+          fetchTeethQueueVersion(),
+          fetchTeethWarehouseStatus().catch(() => null),
+          import("@/lib/data/department-board").then((m) =>
+            m.countOpenDepartmentBoardQuestions().catch(() => 0)
+          ),
+        ]);
       navBadges = {
         ...navBadges,
         teethQueue: teethCount,
         teethVerification: teethVerificationCount,
         teethReceivePending: warehouseStatus?.summary.activeCount ?? 0,
+        departmentBoardQuestions: openBoardQuestionsCount,
       };
       teethPanelVersion = teethVersion;
     } catch {

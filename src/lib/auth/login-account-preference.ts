@@ -1,4 +1,4 @@
-import type { LoginDirectoryAccount } from "@/lib/auth/login-directory";
+import type { LoginDirectoryAccount } from "@/lib/auth/login-directory-shared";
 
 export const LOGIN_LAST_ACCOUNT_STORAGE_KEY = "mikron.login.lastAccountId";
 export const LOGIN_RECENT_ACCOUNTS_STORAGE_KEY = "mikron.login.recentAccountIds";

@@ -67,7 +67,7 @@ import { MyOrderSectionEmptyState } from "@/components/moje/MyOrderSectionEmptyS
 import { MojeOrdersSyncStrip } from "@/components/moje/MojeOrdersSyncStrip";
 import { SubiektStatusBar } from "@/components/subiekt/SubiektStatusBar";
 import type { SubiektAvailability } from "@/lib/subiekt/availability";
-import type { DepartmentBoardAnnouncementsSlice } from "@/lib/data/department-board";
+import type { DepartmentBoardAnnouncementsSlice } from "@/lib/data/department-board-shared";
 
 function cardDomId(rowId: string) {
   return `moje-card-${rowId}`;

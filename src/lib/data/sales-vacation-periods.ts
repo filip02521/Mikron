@@ -1,6 +1,6 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
-import type { StaffVacationCategory } from "@/lib/data/staff-vacation-periods";
+import type { StaffVacationCategory } from "@/lib/data/staff-vacation-shared";
 
 export type VacationCategory = StaffVacationCategory;
 

@@ -8,15 +8,9 @@ import {
   zdEtaSyncOrderPriority,
   zdEtaSyncSupplierOrderPriority,
   isZdEtaOverdueCandidate,
-  isZdEtaSyncEligible,
   needsZdEtaSync,
   zdEtaPerOrderDocBudget,
   selectZdEtaSyncCandidates,
-  shouldMarkMojeZdEtaSessionDone,
-  shouldRefreshMojeZdEtaPage,
-  shouldRetryMojeZdEtaSync,
-  shouldSkipMojeZdEtaSessionSync,
-  buildMojeZdEtaSessionState,
   tryRefreshKnownZdDocumentForOrder,
   refreshKnownZdDocumentForOrder,
   zdDocumentMatchesSupplierKhIds,
@@ -25,11 +19,19 @@ import {
   zdFulfillmentPersistOnMissAction,
   ZD_ETA_GLOBAL_ORDER_SCAN_MAX,
   ZD_ETA_GLOBAL_ORDER_SCAN_PAGE,
-  ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS,
   ZD_ETA_SYNC_KNOWN_ZD_TTL_MS,
   ZD_ETA_SYNC_MISS_TTL_MS,
   ZD_ETA_SYNC_TTL_MS,
 } from "./zd-eta-sync";
+import {
+  buildMojeZdEtaSessionState,
+  isZdEtaSyncEligible,
+  shouldMarkMojeZdEtaSessionDone,
+  shouldRefreshMojeZdEtaPage,
+  shouldRetryMojeZdEtaSync,
+  shouldSkipMojeZdEtaSessionSync,
+  ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS,
+} from "./zd-eta-sync-shared";
 import type { IndividualOrder } from "@/types/database";
 
 function baseOrder(overrides: Partial<IndividualOrder> = {}): IndividualOrder {

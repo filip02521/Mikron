@@ -5,14 +5,14 @@ import {
   actionSearchDeliveryJournal,
   actionSummarizeDeliveryJournal,
 } from "@/app/actions/warehouse-delivery";
-import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts";
+import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts-shared";
 import {
   deliveryJournalPresetRange,
   formatJournalPresetLabel,
   journalInsightsDefaultRange,
   type DeliveryJournalDatePreset,
   type DeliveryJournalRangeSummary,
-} from "@/lib/warehouse/delivery-journal-insights";
+} from "@/lib/warehouse/delivery-journal-shared";
 import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import {
   warehouseCarrierLabel,

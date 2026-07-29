@@ -14,7 +14,7 @@ import { TeethPanelEditOrderTrigger } from "@/components/zeby/TeethPanelEditOrde
 import { Button } from "@/components/ui/Button";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { teethPanelEditLinkClass } from "@/lib/teeth/teeth-panel-ui";
-import type { TeethQueueItem } from "@/lib/data/teeth-queue";
+import type { TeethQueueItem } from "@/lib/data/teeth-queue-shared";
 import type { TeethProductLine } from "@/lib/teeth/teeth-catalog-types";
 
 type OrderWithSpecs = {

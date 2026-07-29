@@ -17,7 +17,7 @@ import { MOJE_ANNOUNCEMENTS_SECTION_ID } from "@/lib/department-board/moje-annou
 import type {
   DepartmentBoardAnnouncementsSlice,
   DepartmentBoardThreadRow,
-} from "@/lib/data/department-board";
+} from "@/lib/data/department-board-shared";
 import { actionMarkAnnouncementRead } from "@/app/actions/department-board";
 import { cn } from "@/lib/cn";
 import { useDeepLinkScrollOnce } from "@/hooks/use-deep-link-scroll-once";

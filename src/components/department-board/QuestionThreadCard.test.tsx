@@ -3,7 +3,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import type { DepartmentBoardQuestion } from "@/lib/data/department-board";
+import type { DepartmentBoardQuestion } from "@/lib/data/department-board-shared";
 import { QuestionThreadCard } from "./QuestionThreadCard";
 
 vi.mock("@/app/actions/department-board", () => ({

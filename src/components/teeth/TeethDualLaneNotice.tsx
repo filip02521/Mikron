@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { TeethSupplierLaneSnapshot } from "@/lib/data/teeth-schedule";
+import type { TeethSupplierLaneSnapshot } from "@/lib/data/teeth-schedule-shared";
 import {
   describeTeethLaneForDailyPanel,
   TEETH_DUAL_LANE_COPY,

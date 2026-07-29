@@ -2,21 +2,17 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { collectKhIdsForSupplierRef } from "@/lib/data/supplier-subiekt-kh";
 import type { AppSupplierRef } from "@/lib/subiekt/match-supplier";
 import { scoreCompanyNameMatch } from "@/lib/subiekt/company-name-match";
-import type { ZdUnmappedKhRow } from "@/lib/subiekt/zd-unmapped-kh";
+import type {
+  KhSupplierSuggestion,
+  ZdUnmappedKhRow,
+  ZdUnmappedKhRowWithSuggestion,
+} from "@/lib/subiekt/zd-unmapped-kh-shared";
 
-export type KhSupplierSuggestionAction = "add_alias" | "reindex";
-
-export type KhSupplierSuggestion = {
-  supplierId: string;
-  supplierName: string;
-  score: number;
-  reason: string;
-  action: KhSupplierSuggestionAction;
-};
-
-export type ZdUnmappedKhRowWithSuggestion = ZdUnmappedKhRow & {
-  suggestion: KhSupplierSuggestion | null;
-};
+export type {
+  KhSupplierSuggestion,
+  KhSupplierSuggestionAction,
+  ZdUnmappedKhRowWithSuggestion,
+} from "@/lib/subiekt/zd-unmapped-kh-shared";
 
 const MIN_SCORE_ALIAS = 58;
 

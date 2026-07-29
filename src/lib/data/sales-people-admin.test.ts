@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatSalesPersonAccountStatus,
   formatSalesPersonAccountStatusTitle,
-} from "./sales-people-admin";
+} from "./sales-people-admin-shared";
 
 describe("formatSalesPersonAccountStatus", () => {
   it("pokazuje brak konta bez powiązania", () => {

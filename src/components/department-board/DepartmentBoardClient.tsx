@@ -4,7 +4,7 @@ import type { DepartmentBoardAttentionBanners } from "@/lib/department-board/boa
 import type {
   DepartmentBoardData,
   DepartmentBoardQuestionsSlice,
-} from "@/lib/data/department-board";
+} from "@/lib/data/department-board-shared";
 import { DepartmentBoardSalesClient } from "@/components/department-board/DepartmentBoardSalesClient";
 import { DepartmentBoardProcurementClient } from "@/components/department-board/DepartmentBoardProcurementClient";
 

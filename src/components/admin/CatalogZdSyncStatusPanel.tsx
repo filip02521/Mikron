@@ -5,8 +5,8 @@ import { useMemo } from "react";
 import {
   CATALOG_ZD_SYNC_CRON_SCHEDULE_LABEL,
   type CatalogZdSyncState,
-} from "@/lib/subiekt/catalog-zd-sync";
-import type { CronRunPayload } from "@/lib/services/cron-run-log";
+} from "@/lib/subiekt/catalog-zd-sync-shared";
+import type { CronRunPayload } from "@/lib/services/cron-run-shared";
 import {
   catalogZdSyncIsRunning,
   summarizeCatalogZdSync,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ProductCatalogRow } from "@/lib/data/product-catalog-queries";
+import type { ProductCatalogRow } from "@/lib/data/product-catalog-shared";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Field";
 import { cn } from "@/lib/cn";

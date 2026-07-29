@@ -1,4 +1,4 @@
-import type { LoginDirectoryAccount } from "@/lib/auth/login-directory";
+import type { LoginDirectoryAccount } from "@/lib/auth/login-directory-shared";
 import { ROLE_LABELS } from "@/lib/users/labels";
 
 /** CI / Playwright (`next start`) — serwer bez prawdziwego Supabase. Na deployu blokowane przez verify-auth-production-env. */

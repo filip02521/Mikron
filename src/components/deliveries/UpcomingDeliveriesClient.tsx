@@ -9,7 +9,7 @@ import {
   summarizeDeliverySchedule,
   upcomingDeliveryPresetRange,
   type UpcomingDeliveryRangePreset,
-} from "@/lib/data/upcoming-deliveries";
+} from "@/lib/data/upcoming-deliveries-shared";
 import { formatDateString } from "@/lib/orders/dates";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";

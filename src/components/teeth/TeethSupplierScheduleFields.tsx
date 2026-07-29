@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatPlDate, vacationNoteLabel } from "@/lib/display-labels";
 import type { DayOfWeek, TeethSupplierSchedule } from "@/types/database";
-import { DAY_OF_WEEK_LABELS } from "@/lib/data/teeth-schedule";
+import { DAY_OF_WEEK_LABELS } from "@/lib/data/teeth-schedule-shared";
 import { TEETH_DUAL_LANE_COPY } from "@/lib/teeth/teeth-supplier-dual-lane";
 import {
   actionFetchTeethScheduleForSupplier,

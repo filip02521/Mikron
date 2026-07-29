@@ -36,7 +36,7 @@ import {
   resolveTeethProductLineForPanelOrder,
   type TeethPanelReadinessContext,
 } from "@/lib/teeth/teeth-panel-order-readiness";
-import type { TeethQueueItem } from "@/lib/data/teeth-queue";
+import type { TeethQueueItem } from "@/lib/data/teeth-queue-shared";
 import { IconCalendar, IconChevronLeft } from "@/components/icons/StrokeIcons";
 import type { IndividualOrderTeethDetail } from "@/types/database";
 

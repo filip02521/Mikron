@@ -3,7 +3,7 @@ import {
   assertJournalDateReadable,
   parseJournalDateKey,
   shiftJournalDateKey,
-} from "@/lib/warehouse/delivery-receipts";
+} from "@/lib/warehouse/delivery-receipts-shared";
 
 describe("delivery journal dates", () => {
   it("parses YYYY-MM-DD", () => {

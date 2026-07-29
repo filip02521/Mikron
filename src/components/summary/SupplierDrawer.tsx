@@ -35,7 +35,7 @@ import {
 import { useSupplierHubContext } from "@/components/layout/AppRoleContext";
 import { supplierCardsHref } from "@/lib/supplier-hub";
 import { TeethDualLaneNotice } from "@/components/teeth/TeethDualLaneNotice";
-import type { TeethSupplierLaneSnapshot } from "@/lib/data/teeth-schedule";
+import type { TeethSupplierLaneSnapshot } from "@/lib/data/teeth-schedule-shared";
 import { TEETH_DUAL_LANE_COPY } from "@/lib/teeth/teeth-supplier-dual-lane";
 
 type HistoryRow = {

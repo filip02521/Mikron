@@ -2,7 +2,7 @@ import { parseDateOnly, formatDateString } from "@/lib/orders/dates";
 import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
 import {
   isZdEtaSyncEligible,
-} from "@/lib/subiekt/zd-eta-sync";
+} from "@/lib/subiekt/zd-eta-sync-shared";
 import type { ZdFulfillmentDeadlineChangeDisplay } from "@/lib/orders/zd-fulfillment-deadline-change";
 import { resolveZdFulfillmentDeadlineChangeDisplay } from "@/lib/orders/zd-fulfillment-deadline-change";
 import { pickLatestZdFulfillmentDeadlineChange } from "@/lib/orders/zd-fulfillment-deadline-change";

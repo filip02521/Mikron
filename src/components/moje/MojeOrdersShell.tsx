@@ -16,7 +16,7 @@ import {
   buildOnboardingMojeArchiveDemo,
   buildOnboardingMojeAnnouncements,
 } from "@/lib/sales/sales-onboarding-demo-data";
-import type { DepartmentBoardAnnouncementsSlice } from "@/lib/data/department-board";
+import type { DepartmentBoardAnnouncementsSlice } from "@/lib/data/department-board-shared";
 import type { SalesDayStartContext } from "@/lib/sales/sales-day-start";
 import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { DelegatePreviewProvider } from "@/components/moje/DelegatePreviewContext";

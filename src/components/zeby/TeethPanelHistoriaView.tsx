@@ -20,12 +20,12 @@ import {
   type TeethPanelFilters,
 } from "@/lib/teeth/teeth-panel-filters";
 import { teethPanelHistoryOrdersListClass, teethPanelSupplierCardClass } from "@/lib/teeth/teeth-panel-ui";
-import type { TeethQueueGroup, TeethQueueItem } from "@/lib/data/teeth-queue";
+import type { TeethQueueGroup, TeethQueueItem } from "@/lib/data/teeth-queue-shared";
 import {
   groupTeethItemsBySupplier,
   isScheduledItem,
   TEETH_HISTORY_PAGE_SIZE,
-} from "@/lib/data/teeth-queue";
+} from "@/lib/data/teeth-queue-shared";
 import { formatDateString } from "@/lib/orders/dates";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import {

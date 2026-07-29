@@ -2,14 +2,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isFollowUpDue } from "@/lib/sales/notepad-follow-up";
 import type { OperationsDepartment, OperationsNote } from "@/types/database";
 import { sortOperationsNotes } from "@/lib/operations/operations-note-sort";
+import type { OperationsNotepadData } from "@/lib/data/operations-notepad-shared";
+
+export type { OperationsNotepadData } from "@/lib/data/operations-notepad-shared";
+export { collectOperationsTodayTasks } from "@/lib/data/operations-notepad-shared";
 
 export const OPERATIONS_NOTE_SELECT = "*, author:profiles!created_by(email)";
-
-export type OperationsNotepadData = {
-  privateNotes: OperationsNote[];
-  publicNotes: OperationsNote[];
-  archivedNotes: OperationsNote[];
-};
 
 const NOTE_SELECT = OPERATIONS_NOTE_SELECT;
 
@@ -100,17 +98,4 @@ export async function countOperationsNotepadBadgePerDepartment(
     result[row.department] = (result[row.department] ?? 0) + 1;
   }
   return result;
-}
-
-export function collectOperationsTodayTasks(
-  privateNotes: OperationsNote[],
-  publicNotes: OperationsNote[],
-  userId: string
-): OperationsNote[] {
-  const due = [...privateNotes, ...publicNotes].filter((n) => {
-    if (!isFollowUpDue(n.follow_up_at)) return false;
-    if (n.visibility === "public") return true;
-    return n.created_by === userId;
-  });
-  return sortOperationsNotes(due);
 }

@@ -1,5 +1,10 @@
 import { Suspense } from "react";
-import { fetchTeethQueue, fetchTeethVerificationQueue, fetchTeethHistoryPage, groupTeethItemsBySupplier } from "@/lib/data/teeth-queue";
+import {
+  fetchTeethQueue,
+  fetchTeethVerificationQueue,
+  fetchTeethHistoryPage,
+} from "@/lib/data/teeth-queue";
+import { groupTeethItemsBySupplier } from "@/lib/data/teeth-queue-shared";
 import { TeethPanelClient } from "@/components/zeby/TeethPanelClient";
 import { Alert } from "@/components/ui/Alert";
 import { cn } from "@/lib/cn";

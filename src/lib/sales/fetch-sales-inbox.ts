@@ -98,6 +98,7 @@ export function inboxNavBadgesFromLoadedData(data: SalesInboxLoadedData): {
   return {
     zkNavBadge: countZkDueFromWatches(data.notepadSlice.zkWatches),
     notesNavBadge: countNotesDueFromSlice(data.notepadSlice.notes),
-    boardNavBadge: data.boardAttention?.unseenAnswerCount ?? 0,
+    // Tablica: tylko własne aktywne pytania z nieprzeczytaną odpowiedzią — nie wszystkie wątki działu.
+    boardNavBadge: data.boardAttention?.unseenOwnAnswerCount ?? 0,
   };
 }
