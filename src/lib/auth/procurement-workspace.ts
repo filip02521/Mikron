@@ -202,6 +202,7 @@ const DOSTAWY_WORKSPACE_PATH_PREFIXES = [
   "/dostawy",
   "/historia",
   "/zamowienia",
+  "/zakupy/gadki",
 ];
 
 const ZEBY_WORKSPACE_PATH_PREFIXES = ["/zeby"];

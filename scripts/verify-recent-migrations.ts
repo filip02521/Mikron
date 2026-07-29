@@ -151,18 +151,25 @@ async function main() {
          ORDER BY polname`
       );
       const policyNames = policies.rows.map((r) => r.polname);
+      // Po migracji 110 polityki 068 są skonsolidowane (select + admin_*).
       const expected068 = [
+        "supplier_subiekt_kh_aliases_select",
+        "supplier_subiekt_kh_aliases_admin_write",
+      ];
+      const legacy068 = [
         "supplier_subiekt_kh_aliases_admin",
         "supplier_subiekt_kh_aliases_operations_read",
       ];
-      const missing068 = expected068.filter((name) => !policyNames.includes(name));
-      if (missing068.length) {
+      const has068 =
+        expected068.every((name) => policyNames.includes(name)) ||
+        legacy068.every((name) => policyNames.includes(name));
+      if (!has068) {
         console.error(
-          `✗ Brak polityk RLS 068 na supplier_subiekt_kh_aliases: ${missing068.join(", ")}`
+          `✗ Brak polityk RLS 068/110 na supplier_subiekt_kh_aliases (oczekiwano select+admin_write lub legacy admin+operations_read). Jest: ${policyNames.join(", ") || "—"}`
         );
         markFail();
       } else {
-        console.log("✓ migracja 068 — supplier_subiekt_kh_aliases RLS");
+        console.log("✓ migracja 068/110 — supplier_subiekt_kh_aliases RLS");
       }
 
       const fn069 = await client.query<{ proname: string }>(
@@ -193,16 +200,19 @@ async function main() {
       );
       const spPolicyNames = spPolicies.rows.map((r) => r.polname);
       if (spPolicyNames.includes("sales_read_sales_people")) {
-        console.error("✗ Nadal aktywna polityka sales_read_sales_people — uruchom migrację 070.");
+        console.error("✗ Nadal aktywna polityka sales_read_sales_people — uruchom migrację 070/109.");
         markFail();
       }
-      const expected070 = [
-        "sales_rep_read_own_sales_person",
-        "sales_manager_read_team_sales_people",
-      ];
-      const missing070 = expected070.filter((name) => !spPolicyNames.includes(name));
-      if (missing070.length) {
-        console.error(`✗ Brak polityk RLS 070 na sales_people: ${missing070.join(", ")}`);
+      // Po 109: jedna polityka sales_people_select obejmuje rep+manager+ops.
+      // Legacy 070: osobne sales_rep_read_own / sales_manager_read_team.
+      const has070Consolidated = spPolicyNames.includes("sales_people_select");
+      const has070Legacy =
+        spPolicyNames.includes("sales_rep_read_own_sales_person") &&
+        spPolicyNames.includes("sales_manager_read_team_sales_people");
+      if (!has070Consolidated && !has070Legacy) {
+        console.error(
+          `✗ Brak scoped RLS 070/109 na sales_people. Jest: ${spPolicyNames.join(", ") || "—"}`
+        );
         markFail();
       } else {
         const isSalesRep = await client.query<{ proname: string }>(
@@ -212,7 +222,7 @@ async function main() {
           console.error("✗ Brak funkcji is_sales_rep — uruchom migrację 070.");
           markFail();
         } else {
-          console.log("✓ migracja 070 — sales_people scoped RLS");
+          console.log("✓ migracja 070/109 — sales_people scoped RLS");
         }
       }
 
@@ -222,13 +232,38 @@ async function main() {
          ORDER BY polname`
       );
       const ioPolicyNames = ioPolicies.rows.map((r) => r.polname);
-      const expected071 = ["sales_team_orders_update", "sales_team_orders_delete"];
-      const missing071 = expected071.filter((name) => !ioPolicyNames.includes(name));
-      if (missing071.length) {
-        console.error(`✗ Brak polityk RLS 071 na individual_orders: ${missing071.join(", ")}`);
-        markFail();
-      } else {
+      // Po 110: individual_orders_update/delete zawierają scope sales (can_read_sales_order).
+      // Legacy 071: sales_team_orders_update/delete.
+      const has071Legacy =
+        ioPolicyNames.includes("sales_team_orders_update") &&
+        ioPolicyNames.includes("sales_team_orders_delete");
+      const has071Consolidated =
+        ioPolicyNames.includes("individual_orders_update") &&
+        ioPolicyNames.includes("individual_orders_delete");
+
+      if (has071Legacy) {
         console.log("✓ migracja 071 — individual_orders sales UPDATE/DELETE RLS");
+      } else if (has071Consolidated) {
+        const updDef = await client.query<{ def: string }>(
+          `SELECT pg_get_expr(pol.polqual, pol.polrelid) AS def
+           FROM pg_policy pol
+           JOIN pg_class c ON c.oid = pol.polrelid
+           WHERE c.relname = 'individual_orders' AND pol.polname = 'individual_orders_update'`
+        );
+        const def = updDef.rows[0]?.def ?? "";
+        if (!def.includes("can_read_sales_order")) {
+          console.error(
+            "✗ individual_orders_update bez can_read_sales_order — brak scope sales (071/110)."
+          );
+          markFail();
+        } else {
+          console.log("✓ migracja 071/110 — individual_orders sales UPDATE/DELETE (skonsolidowane)");
+        }
+      } else {
+        console.error(
+          `✗ Brak polityk RLS 071/110 na individual_orders. Jest: ${ioPolicyNames.join(", ") || "—"}`
+        );
+        markFail();
       }
 
       const mySpFn = await client.query<{ def: string }>(

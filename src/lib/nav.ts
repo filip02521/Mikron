@@ -470,6 +470,14 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
         tone: "sky",
         ...compact,
       },
+      {
+        href: "/zakupy/gadki",
+        label: "Magazyn Gądki",
+        description: "ZK magazynu zewnętrznego",
+        icon: "warehouse",
+        tone: "sky",
+        ...compact,
+      },
     ];
   }
 
@@ -496,6 +504,14 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
       label: "Urlopy dostawców",
       description: "Niedostępność dostawcy",
       icon: "vacation",
+      tone: "sky",
+      ...compact,
+    },
+    {
+      href: "/zakupy/gadki",
+      label: "Magazyn Gądki",
+      description: "ZK magazynu zewnętrznego",
+      icon: "warehouse",
       tone: "sky",
       ...compact,
     },
@@ -932,6 +948,7 @@ export function pageTitle(pathname: string): string {
   if (pathname.startsWith("/admin/urlopy") || pathname.startsWith("/zakupy/urlopy")) {
     return "Urlopy dostawców";
   }
+  if (pathname.startsWith("/zakupy/gadki")) return "Magazyn Gądki";
   if (pathname === "/urlopy" || pathname.startsWith("/urlopy/")) {
     return "Urlopy działu";
   }

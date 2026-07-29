@@ -253,6 +253,75 @@ export interface TeethSupplierShortageWithSupplier extends TeethSupplierShortage
   supplier_name: string;
 }
 
+/** Magazyn zewnętrzny (Gądki) — site konfiguracji stałych ZK. */
+export interface ExternalWarehouseSite {
+  id: string;
+  slug: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExternalWarehouseZkLink {
+  id: string;
+  site_id: string;
+  subiekt_dok_id: number;
+  zk_number: string;
+  client_label: string;
+  label: string | null;
+  last_snapshot: Record<string, unknown> | null;
+  line_summary: string | null;
+  snapshot_hash: string | null;
+  last_synced_at: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExternalWarehouseLineMeta {
+  id: string;
+  zk_link_id: string;
+  line_key: string;
+  pallet_label: string | null;
+  note: string | null;
+  updated_by: string | null;
+  updated_at: string;
+  created_at: string;
+}
+
+export interface ExternalWarehouseNote {
+  id: string;
+  site_id: string;
+  zk_link_id: string | null;
+  body: string;
+  created_by: string | null;
+  updated_at: string;
+  created_at: string;
+  archived_at: string | null;
+}
+
+export type ExternalWarehouseChangeKind =
+  | "zk_linked"
+  | "zk_unlinked"
+  | "lines_added"
+  | "lines_removed"
+  | "qty_changed"
+  | "pallet_changed"
+  | "pallet_renamed"
+  | "line_note"
+  | "site_note";
+
+export interface ExternalWarehouseChangeLog {
+  id: string;
+  site_id: string;
+  zk_link_id: string | null;
+  kind: ExternalWarehouseChangeKind;
+  summary: string;
+  meta: Record<string, unknown>;
+  actor_user_id: string | null;
+  created_at: string;
+}
+
 export type OperationsDepartment = "zakupy" | "magazyn";
 export type OperationsNoteVisibility = "private" | "public";
 

@@ -45,5 +45,8 @@ describe("procurement-workspace", () => {
     expect(pathAllowedForProcurementWorkspace("/kurierzy", "magazyn")).toBe(true);
     expect(pathAllowedForProcurementWorkspace("/lokalizacje/POLSKA", "dostawy")).toBe(true);
     expect(pathAllowedForProcurementWorkspace("/lokalizacje/POLSKA", "zeby")).toBe(false);
+    expect(pathAllowedForProcurementWorkspace("/zakupy/gadki", "dostawy")).toBe(true);
+    expect(pathAllowedForProcurementWorkspace("/zakupy/gadki", "zeby")).toBe(false);
+    expect(pathAllowedForProcurementWorkspace("/zakupy/gadki", "magazyn")).toBe(false);
   });
 });

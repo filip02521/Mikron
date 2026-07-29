@@ -58,6 +58,8 @@
     "db:migrate:sales-request-note": "tsx scripts/apply-sql-migration.ts supabase/migrations/058_individual_orders_sales_request_note.sql",
     "db:migrate:teeth-order-file": "tsx scripts/apply-sql-migration.ts supabase/migrations/113_teeth_order_file_attachment.sql",
     "db:migrate:teeth-shortages": "tsx scripts/apply-sql-migration.ts supabase/migrations/114_teeth_supplier_shortages.sql",
+    "db:migrate:gadki": "tsx scripts/apply-sql-migration.ts supabase/migrations/115_external_warehouse_gadki.sql",
+    "db:migrate:gadki-max-links": "tsx scripts/apply-sql-migration.ts supabase/migrations/116_external_warehouse_zk_max_links.sql",
     "verify-sales-request-note": "tsx scripts/verify-sales-request-note-migration.ts"
   },
   "dependencies": {
