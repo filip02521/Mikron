@@ -40,8 +40,15 @@ describe("procurement-workspace", () => {
     expect(pathAllowedForProcurementWorkspace("/zeby/kolejka", "dostawy")).toBe(false);
     expect(pathAllowedForProcurementWorkspace("/notatki", "zeby")).toBe(true);
     expect(pathAllowedForProcurementWorkspace("/zakupy/dostawcy", "zeby")).toBe(true);
+    expect(pathAllowedForProcurementWorkspace("/podsumowanie-miesieczne", "zeby")).toBe(true);
+    // Tablica / urlopy działu / kurierzy — tylko Dostawy (i magazyn dla urlopów/kurierów), nie zęby
+    expect(pathAllowedForProcurementWorkspace("/zakupy/tablica", "zeby")).toBe(false);
+    expect(pathAllowedForProcurementWorkspace("/zakupy/tablica", "dostawy")).toBe(true);
+    expect(pathAllowedForProcurementWorkspace("/urlopy", "zeby")).toBe(false);
+    expect(pathAllowedForProcurementWorkspace("/urlopy", "dostawy")).toBe(true);
+    expect(pathAllowedForProcurementWorkspace("/urlopy", "magazyn")).toBe(true);
     expect(pathAllowedForProcurementWorkspace("/kurierzy", "dostawy")).toBe(true);
-    expect(pathAllowedForProcurementWorkspace("/kurierzy", "zeby")).toBe(true);
+    expect(pathAllowedForProcurementWorkspace("/kurierzy", "zeby")).toBe(false);
     expect(pathAllowedForProcurementWorkspace("/kurierzy", "magazyn")).toBe(true);
     expect(pathAllowedForProcurementWorkspace("/lokalizacje/POLSKA", "dostawy")).toBe(true);
     expect(pathAllowedForProcurementWorkspace("/lokalizacje/POLSKA", "zeby")).toBe(false);

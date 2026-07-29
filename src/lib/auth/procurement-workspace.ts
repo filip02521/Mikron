@@ -183,15 +183,13 @@ export function buildProcurementWorkspaceCookie(workspace: ProcurementWorkspace)
   };
 }
 
-/** Wspólne ścieżki wszystkich obszarów zakupów (tablica, notatki, karty/urlopy, kurierzy). */
+/** Wspólne ścieżki: notatki, karty/urlopy dostawców, ustawienia, podsumowanie miesiąca. */
 const PROCUREMENT_SHARED_PATH_PREFIXES = [
   "/notatki",
-  "/zakupy/tablica",
   "/zakupy/dostawcy",
   "/zakupy/urlopy",
   "/ustawienia",
-  "/urlopy",
-  "/kurierzy",
+  "/podsumowanie-miesieczne",
 ];
 
 const DOSTAWY_WORKSPACE_PATH_PREFIXES = [
@@ -203,6 +201,9 @@ const DOSTAWY_WORKSPACE_PATH_PREFIXES = [
   "/historia",
   "/zamowienia",
   "/zakupy/gadki",
+  "/zakupy/tablica",
+  "/urlopy",
+  "/kurierzy",
 ];
 
 const ZEBY_WORKSPACE_PATH_PREFIXES = ["/zeby"];
@@ -210,6 +211,8 @@ const ZEBY_WORKSPACE_PATH_PREFIXES = ["/zeby"];
 const MAGAZYN_WORKSPACE_PATH_PREFIXES = [
   "/kolejka",
   "/dostawy",
+  "/urlopy",
+  "/kurierzy",
 ];
 
 function matchesPathPrefix(pathname: string, prefixes: readonly string[]): boolean {

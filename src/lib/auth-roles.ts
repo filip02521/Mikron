@@ -159,7 +159,8 @@ function canAccessPathForRole(
     return true;
   }
   if (pathname === "/urlopy" || pathname.startsWith("/urlopy/")) {
-    return !isSalesAccount(role);
+    // Urlopy działu — Dostawy / Magazyn (nie obszar zębów).
+    return canAccessOperations(role, ws) || isMagazyn(role, ws);
   }
   if (SALES_TEAM_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return canManageSalesTeam(role);

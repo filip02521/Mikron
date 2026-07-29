@@ -74,12 +74,27 @@ describe("auth-roles zakupy_zeby", () => {
     expect(canAccessTeethPanel("sales")).toBe(false);
   });
 
-  it("canAccessPath zezwala zakupy_zeby na /zeby, /notatki, /zakupy/tablica, /zakupy/dostawcy", () => {
+  it("canAccessPath zezwala zakupy_zeby na /zeby, /notatki, /zakupy/dostawcy (tablica tylko poza obszarem zębów)", () => {
     expect(canAccessPath("zakupy_zeby", "/zeby/kolejka")).toBe(true);
     expect(canAccessPath("zakupy_zeby", "/notatki")).toBe(true);
     expect(canAccessPath("zakupy_zeby", "/zakupy/tablica")).toBe(true);
     expect(canAccessPath("zakupy_zeby", "/zakupy/dostawcy")).toBe(true);
     expect(canAccessPath("zakupy_zeby", "/podsumowanie")).toBe(true);
+    expect(
+      canAccessPath("zakupy_zeby", "/zakupy/tablica", { procurementWorkspace: "zeby" })
+    ).toBe(false);
+    expect(
+      canAccessPath("zakupy_zeby", "/urlopy", { procurementWorkspace: "zeby" })
+    ).toBe(false);
+    expect(
+      canAccessPath("zakupy_zeby", "/kurierzy", { procurementWorkspace: "zeby" })
+    ).toBe(false);
+    expect(
+      canAccessPath("zakupy_zeby", "/zakupy/tablica", { procurementWorkspace: "dostawy" })
+    ).toBe(true);
+    expect(
+      canAccessPath("zakupy_zeby", "/kurierzy", { procurementWorkspace: "dostawy" })
+    ).toBe(true);
   });
 
   it("canAccessPath odrzuca /moje i /admin", () => {
