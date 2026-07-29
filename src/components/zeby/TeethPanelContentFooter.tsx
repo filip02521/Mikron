@@ -31,9 +31,6 @@ export function TeethPanelContentFooter() {
         <Link href={teethSupplierCardsHref()} className={panelContentFooterLinkClass}>
           Karty dostawców
         </Link>
-        <Link href="/zakupy/tablica" className={panelContentFooterLinkClass}>
-          Tablica
-        </Link>
         <HelpPopover
           label="Pomoc — panel zębów"
           title="Panel zębów"

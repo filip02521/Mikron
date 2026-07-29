@@ -184,13 +184,19 @@ describe("navForRole struktura zakupów", () => {
 });
 
 describe("teethNavGroups", () => {
-  it("ma sekcje Dziś, Zespół i Narzędzia (workflow od góry, bez zbędnych zwijań)", () => {
+  it("ma sekcje Dziś → Dostawcy → Zespół (+ Narzędzia gdy jest podsumowanie miesiąca)", () => {
     const groups = teethNavGroups();
-    expect(groups.map((g) => g.title)).toEqual([
+    const titles = groups.map((g) => g.title);
+    expect(titles.slice(0, 3)).toEqual([
       NAV_SECTION_TODAY,
+      NAV_SECTION_SUPPLIERS,
       NAV_SECTION_TEAM,
-      NAV_SECTION_TEETH_TOOLS,
     ]);
+    if (new Date().getDate() <= 7) {
+      expect(titles).toContain(NAV_SECTION_TEETH_TOOLS);
+    } else {
+      expect(titles).not.toContain(NAV_SECTION_TEETH_TOOLS);
+    }
   });
 
   it("żadna sekcja nie jest zwijana (pojedyncze linki zawsze widoczne)", () => {
@@ -199,25 +205,43 @@ describe("teethNavGroups", () => {
     expect(groups.every((g) => !g.defaultCollapsed)).toBe(true);
   });
 
-  it("sekcja Dziś — kolejność workflow: kolejka, weryfikacja, przyjęcie, historia, braki", () => {
+  it("sekcja Dziś — pipeline: kolejka → weryfikacja → przyjęcie → historia", () => {
     const today = teethNavGroups().find((g) => g.title === NAV_SECTION_TODAY);
     expect(today?.items.map((item) => item.href)).toEqual([
       "/zeby/kolejka",
       "/zeby/weryfikacja",
       "/zeby/przyjecie",
       "/zeby/historia",
-      "/zeby/braki",
     ]);
   });
 
-  it("sekcja Dziś ma rozróżnialne tony — primary workflow + compact Braki", () => {
+  it("sekcja Dostawcy — braki i karty (bez tablicy/urlopów/kurierów)", () => {
+    const suppliers = teethNavGroups().find((g) => g.title === NAV_SECTION_SUPPLIERS);
+    expect(suppliers?.items.map((item) => item.href)).toEqual([
+      "/zeby/braki",
+      "/zakupy/dostawcy?tor=zeby",
+    ]);
+  });
+
+  it("sekcja Zespół — tylko notatki", () => {
+    const team = teethNavGroups().find((g) => g.title === NAV_SECTION_TEAM);
+    expect(team?.items.map((item) => item.href)).toEqual(["/notatki"]);
+  });
+
+  it("menu zębów nie zawiera tablicy, urlopów działu ani kurierów", () => {
+    const hrefs = teethNavGroups().flatMap((g) => g.items.map((i) => i.href));
+    expect(hrefs).not.toContain("/zakupy/tablica");
+    expect(hrefs).not.toContain("/urlopy");
+    expect(hrefs).not.toContain("/kurierzy");
+  });
+
+  it("sekcja Dziś ma rozróżnialne tony — primary workflow", () => {
     const today = teethNavGroups().find((g) => g.title === NAV_SECTION_TODAY);
     expect(today?.items.map((item) => [item.label, item.tone, item.iconTone, item.tier, item.highlight])).toEqual([
       ["Kolejka", "slate", "indigo", "primary", true],
       ["Weryfikacja", "slate", "amber", "primary", undefined],
       ["Przyjęcie", "slate", "emerald", "primary", undefined],
       ["Historia", "slate", "sky", "primary", undefined],
-      ["Braki", "amber", undefined, "compact", undefined],
     ]);
   });
 
@@ -231,30 +255,14 @@ describe("teethNavGroups", () => {
     ]);
   });
 
-  it("rzadsze pozycje są compact w overflow (Braki zaraz po workflow)", () => {
+  it("overflow — braki, karty, notatki (bez tablicy/urlopów/kurierów)", () => {
     const overflow = navMobileOverflowItems(teethNavGroups());
-    const expectedLabels = [
-      "Braki",
-      "Tablica",
-      "Notatki",
-      "Urlopy działu",
-      "Karty dostawców",
-      "Numery kurierów",
-    ];
+    const expectedLabels = ["Braki", "Karty dostawców", "Notatki"];
     if (new Date().getDate() <= 7) {
       expectedLabels.push("Podsumowanie miesiąca");
     }
     expect(overflow.map((item) => item.label)).toEqual(expectedLabels);
     expect(overflow.every((item) => item.tier === "compact")).toBe(true);
-  });
-
-  it("Dziś zawiera /zeby/braki; Narzędzia — karty dostawców i kurierzy", () => {
-    const today = teethNavGroups().find((g) => g.title === NAV_SECTION_TODAY);
-    const tools = teethNavGroups().find((g) => g.title === NAV_SECTION_TEETH_TOOLS);
-    expect(today?.items.some((item) => item.href === "/zeby/braki")).toBe(true);
-    expect(tools?.items.some((item) => item.href.startsWith("/zakupy/dostawcy"))).toBe(true);
-    expect(tools?.items.some((item) => item.href === "/kurierzy")).toBe(true);
-    expect(tools?.items.some((item) => item.href === "/zeby/braki")).toBe(false);
   });
 });
 
@@ -280,12 +288,12 @@ describe("navForAppContext", () => {
 });
 
 describe("navForRole zakupy_zeby", () => {
-  it("domyślnie zwraca pełne menu obszaru zębów", () => {
+  it("domyślnie zwraca menu obszaru zębów (Dziś → Dostawcy → Zespół)", () => {
     const groups = navForRole("zakupy_zeby");
-    expect(groups.map((g) => g.title)).toEqual([
+    expect(groups.map((g) => g.title).slice(0, 3)).toEqual([
       NAV_SECTION_TODAY,
+      NAV_SECTION_SUPPLIERS,
       NAV_SECTION_TEAM,
-      NAV_SECTION_TEETH_TOOLS,
     ]);
   });
 

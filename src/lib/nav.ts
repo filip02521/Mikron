@@ -70,7 +70,7 @@ export const NAV_SECTION_TODAY = "Dziś";
 export const NAV_SECTION_TEAM = "Zespół";
 export const NAV_SECTION_SUPPLIERS = "Dostawcy";
 export const NAV_SECTION_TOOLS = "Archiwum i narzędzia";
-/** Sekcja narzędzi w menu działu zębów (bez „Archiwum” — tu nie ma historii). */
+/** Sekcja narzędzi w menu działu zębów — opcjonalne (np. podsumowanie miesiąca). */
 export const NAV_SECTION_TEETH_TOOLS = "Narzędzia";
 export const NAV_SECTION_SYSTEM = "System";
 export const NAV_SECTION_DAILY = "Codziennie";
@@ -258,6 +258,12 @@ function teethTodayNavItems(
       tier: "primary",
       mobileSlot: "primary",
     },
+  ];
+}
+
+/** Braki + karty — odniesienia do dostawców, poza dziennym pipeline’em. */
+function teethSuppliersNavItems(): NavItem[] {
+  return [
     {
       href: "/zeby/braki",
       label: "Braki",
@@ -268,44 +274,22 @@ function teethTodayNavItems(
       tier: "compact",
       mobileSlot: "overflow",
     },
-  ];
-}
-
-function teethToolsNavItems(): NavItem[] {
-  const compact = {
-    tier: "compact" as const,
-    mobileSlot: "overflow" as const,
-  };
-  return [
     {
       href: TEETH_SUPPLIERS_PATH,
       label: "Karty dostawców",
       description: "Cykl zębów, kontakt i dane dostawcy",
       icon: "suppliers",
       tone: "sky",
-      ...compact,
+      tier: "compact",
+      mobileSlot: "overflow",
     },
-    ...carrierContactItems,
-    ...(monthlySummaryNavItem() ? [monthlySummaryNavItem()!] : []),
   ];
 }
 
 function teethTeamNavItems(badges: {
   operationsNotatki?: number;
-  departmentBoardQuestions?: number;
 }): NavItem[] {
   return [
-    {
-      href: DEPARTMENT_BOARD_PROCUREMENT_PATH,
-      label: "Tablica",
-      mobileLabel: "Tablica",
-      description: "Ogłoszenia i pytania handlowców",
-      icon: "board",
-      tone: "indigo",
-      tier: "compact",
-      mobileSlot: "overflow",
-      badge: badges.departmentBoardQuestions,
-    },
     {
       href: OPERATIONS_NOTATKI_PATH,
       label: "Notatki",
@@ -317,25 +301,36 @@ function teethTeamNavItems(badges: {
       mobileSlot: "overflow",
       badge: badges.operationsNotatki,
     },
-    {
-      href: "/urlopy",
-      label: "Urlopy działu",
-      mobileLabel: "Urlopy",
-      description: "Urlopy działu — kto jest niedostępny",
-      icon: "vacation",
-      tone: "indigo",
-      tier: "compact",
-      mobileSlot: "overflow",
-    },
   ];
 }
 
+/** Rzadsze narzędzia (np. podsumowanie miesiąca w pierwszych dniach). */
+function teethExtrasNavItems(): NavItem[] {
+  const monthly = monthlySummaryNavItem();
+  return monthly ? [monthly] : [];
+}
+
+/**
+ * Menu obszaru zębów — bez tablicy, urlopów działu i kurierów
+ * (te zostają w Dostawach / Magazynie).
+ *
+ * Separatory sekcji:
+ * 1. Dziś — pipeline dnia (kolejka → weryfikacja → przyjęcie → historia)
+ * 2. Dostawcy — braki i karty (odniesienia do labsów)
+ * 3. Zespół — notatki
+ * 4. Narzędzia — tylko gdy jest podsumowanie miesiąca
+ */
 export function teethNavGroups(badges: NavBadges = {}): NavGroup[] {
-  return [
+  const groups: NavGroup[] = [
     { title: NAV_SECTION_TODAY, items: teethTodayNavItems(badges) },
+    { title: NAV_SECTION_SUPPLIERS, items: teethSuppliersNavItems() },
     { title: NAV_SECTION_TEAM, items: teethTeamNavItems(badges) },
-    { title: NAV_SECTION_TEETH_TOOLS, items: teethToolsNavItems() },
   ];
+  const extras = teethExtrasNavItems();
+  if (extras.length > 0) {
+    groups.push({ title: NAV_SECTION_TEETH_TOOLS, items: extras });
+  }
+  return groups;
 }
 
 function operationsTodayItems(badges: Pick<NavBadges, "nowe" | "weryfikacja" | "realizacja">): NavItem[] {
