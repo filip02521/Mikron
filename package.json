@@ -60,6 +60,7 @@
     "db:migrate:teeth-shortages": "tsx scripts/apply-sql-migration.ts supabase/migrations/114_teeth_supplier_shortages.sql",
     "db:migrate:gadki": "tsx scripts/apply-sql-migration.ts supabase/migrations/115_external_warehouse_gadki.sql",
     "db:migrate:gadki-max-links": "tsx scripts/apply-sql-migration.ts supabase/migrations/116_external_warehouse_zk_max_links.sql",
+    "db:migrate:advisor-harden-117": "tsx scripts/apply-sql-migration.ts supabase/migrations/117_advisor_harden_gadki_and_related.sql",
     "verify-sales-request-note": "tsx scripts/verify-sales-request-note-migration.ts"
   },
   "dependencies": {
