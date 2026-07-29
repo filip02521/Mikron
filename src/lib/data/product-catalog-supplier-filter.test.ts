@@ -26,7 +26,7 @@ describe("mergeUniqueTwIds", () => {
 });
 
 describe("formatCatalogSupplierSubtitle", () => {
-  it("pokazuje dostawcę z filtra i głównego gdy się różnią", () => {
+  it("przy filtrze pokazuje najpierw głównego dostawcę gdy się różni", () => {
     const text = formatCatalogSupplierSubtitle(
       row({
         subiektTwId: 1,
@@ -35,7 +35,7 @@ describe("formatCatalogSupplierSubtitle", () => {
       "a",
       "Alfa"
     );
-    expect(text).toBe("Alfa (filtr) · główny: Beta (12)");
+    expect(text).toBe("Beta (12) · filtr: Alfa");
   });
 
   it("bez filtra pokazuje głównego dostawcę", () => {
@@ -46,6 +46,18 @@ describe("formatCatalogSupplierSubtitle", () => {
       }),
       null,
       null
+    );
+    expect(text).toBe("Alfa (3)");
+  });
+
+  it("przy tym samym filtrze i głównym nie dubluje etykiety", () => {
+    const text = formatCatalogSupplierSubtitle(
+      row({
+        subiektTwId: 1,
+        topSupplier: { id: "a", name: "Alfa", orderCount: 3 },
+      }),
+      "a",
+      "Alfa"
     );
     expect(text).toBe("Alfa (3)");
   });

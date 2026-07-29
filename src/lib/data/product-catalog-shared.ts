@@ -30,14 +30,20 @@ export function formatCatalogSupplierSubtitle(
   filteredSupplierId: string | null,
   filteredSupplierName: string | null
 ): string {
-  if (filteredSupplierId && filteredSupplierName) {
-    const main =
-      row.topSupplier && row.topSupplier.id !== filteredSupplierId
-        ? ` · główny: ${row.topSupplier.name} (${row.topSupplier.orderCount})`
-        : "";
-    return `${filteredSupplierName} (filtr)${main}`;
+  if (row.topSupplier) {
+    const main = `${row.topSupplier.name} (${row.topSupplier.orderCount})`;
+    if (
+      filteredSupplierId &&
+      filteredSupplierName &&
+      row.topSupplier.id !== filteredSupplierId
+    ) {
+      return `${main} · filtr: ${filteredSupplierName}`;
+    }
+    return main;
   }
-  if (row.topSupplier) return `${row.topSupplier.name} (${row.topSupplier.orderCount})`;
+  if (filteredSupplierId && filteredSupplierName) {
+    return `${filteredSupplierName} (filtr) · bez głównego`;
+  }
   return "bez dostawcy";
 }
 

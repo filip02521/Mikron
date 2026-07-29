@@ -18,13 +18,17 @@ export function ProductCatalogSupplierAssign({
   suppliers: Array<{ id: string; name: string; subiektKhId: number | null }>;
   disabled?: boolean;
   onAssign: (subiektTwId: number, supplierId: string) => void;
-  /** Gdy ustawiony (filtr katalogu), dropdown startuje od tego dostawcy. */
+  /**
+   * Hint z filtra katalogu — używany tylko gdy produkt nie ma jeszcze głównego
+   * dostawcy. Główny (`row.topSupplier`) zawsze wygrywa, inaczej po grupowym
+   * przypisaniu UI dalej pokazywałby dostawcę z filtra mimo zapisu w bazie.
+   */
   preferredSupplierId?: string | null;
   /** Zwarty wiersz na liście katalogu (bez ramki i długich podpowiedzi). */
   compact?: boolean;
 }) {
   const preferredId = preferredSupplierId?.trim() || null;
-  const defaultSupplierId = preferredId ?? row.topSupplier?.id ?? "";
+  const defaultSupplierId = row.topSupplier?.id ?? preferredId ?? "";
   const supplierKey = `${row.subiektTwId}\0${defaultSupplierId}`;
   const [supplierId, setSupplierId] = useState(defaultSupplierId);
   const [appliedSupplierKey, setAppliedSupplierKey] = useState(supplierKey);
@@ -33,7 +37,8 @@ export function ProductCatalogSupplierAssign({
     setSupplierId(defaultSupplierId);
   }
 
-  const unchanged = Boolean(defaultSupplierId && defaultSupplierId === supplierId);
+  const primaryId = row.topSupplier?.id ?? "";
+  const unchanged = Boolean(supplierId) && supplierId === primaryId;
   const canSave = Boolean(supplierId) && !unchanged;
 
   const controls = (
