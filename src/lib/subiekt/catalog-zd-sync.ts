@@ -16,7 +16,6 @@ import { extractDocKhIds } from "@/lib/subiekt/zd-document-kh";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
 import type { SubiektDocument } from "@/lib/subiekt/types";
 import {
-  CATALOG_ZD_SYNC_CRON_BUDGET_MS,
   CATALOG_ZD_SYNC_STATE_KEY,
   CATALOG_SYNC_DAYS_BACK,
   CATALOG_SYNC_IMPORT_BATCH_DOCS,

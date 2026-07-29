@@ -547,7 +547,8 @@ export async function actionUpdateGadkiSiteNote(input: {
 }): Promise<{ ok: true } | { ok: false; message: string }> {
   const user = await requireOperations("mutate");
   const site = await requireGadkiSite();
-  if (!isExternalWarehouseUuid(input.noteId)) {
+  const noteId = input.noteId.trim();
+  if (!isExternalWarehouseUuid(noteId)) {
     return { ok: false, message: "Nieprawidłowa notatka" };
   }
 
@@ -558,7 +559,7 @@ export async function actionUpdateGadkiSiteNote(input: {
   const { data: existing, error: fetchErr } = await supabase
     .from("external_warehouse_notes")
     .select("id")
-    .eq("id", input.noteId)
+    .eq("id", noteId)
     .eq("site_id", site.id)
     .is("archived_at", null)
     .maybeSingle();
@@ -568,7 +569,7 @@ export async function actionUpdateGadkiSiteNote(input: {
   const { error } = await supabase
     .from("external_warehouse_notes")
     .update({ body, updated_at: new Date().toISOString() })
-    .eq("id", input.noteId)
+    .eq("id", noteId)
     .eq("site_id", site.id);
 
   if (error) return { ok: false, message: error.message };
@@ -578,7 +579,7 @@ export async function actionUpdateGadkiSiteNote(input: {
     zk_link_id: null,
     kind: "site_note",
     summary: "Zaktualizowano notatkę magazynu",
-    meta: { note_id: input.noteId },
+    meta: { note_id: noteId },
     actor_user_id: user.id,
   });
 
@@ -591,7 +592,8 @@ export async function actionDeleteGadkiSiteNote(
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   const user = await requireOperations("mutate");
   const site = await requireGadkiSite();
-  if (!isExternalWarehouseUuid(noteId)) {
+  const id = noteId.trim();
+  if (!isExternalWarehouseUuid(id)) {
     return { ok: false, message: "Nieprawidłowa notatka" };
   }
 
@@ -599,7 +601,7 @@ export async function actionDeleteGadkiSiteNote(
   const { data: existing, error: fetchErr } = await supabase
     .from("external_warehouse_notes")
     .select("id")
-    .eq("id", noteId)
+    .eq("id", id)
     .eq("site_id", site.id)
     .is("archived_at", null)
     .maybeSingle();
@@ -609,7 +611,7 @@ export async function actionDeleteGadkiSiteNote(
   const { error } = await supabase
     .from("external_warehouse_notes")
     .update({ archived_at: new Date().toISOString() })
-    .eq("id", noteId)
+    .eq("id", id)
     .eq("site_id", site.id);
 
   if (error) return { ok: false, message: error.message };
@@ -619,7 +621,7 @@ export async function actionDeleteGadkiSiteNote(
     zk_link_id: null,
     kind: "site_note",
     summary: "Usunięto notatkę magazynu",
-    meta: { note_id: noteId, archived: true },
+    meta: { note_id: id, archived: true },
     actor_user_id: user.id,
   });
 

@@ -224,8 +224,8 @@ export async function syncExternalWarehouseZkLink(
 
     let pruned: ExternalWarehousePrunedSnapshot;
     let lineSummary: string | null;
-    let zkNumberFresh = zkNumber;
-    let clientLabel = link.client_label;
+    let zkNumberFresh: string;
+    let clientLabel: string | null;
     try {
       const doc = await getSubiektZk(link.subiekt_dok_id);
       const mapped = mapZkDocument(doc);
