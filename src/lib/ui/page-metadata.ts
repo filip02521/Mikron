@@ -40,6 +40,7 @@ export const PAGE_TITLES = {
   procurementBoard: "Tablica",
   procurementSuppliers: "Dostawcy",
   procurementVacations: "Urlopy",
+  magazynGadki: "Magazyn Gądki",
   inactiveSuppliers: "Nieaktywni dostawcy",
   team: "Zespół",
   teamSales: "Handlowcy zespołu",
@@ -60,6 +61,7 @@ export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>
   admin: "Konfiguracja systemu, użytkownicy i narzędzia serwisowe",
   monthlySummary: "Statystyki miesięczne — handlowcy, dostawy i zakupy",
   carriers: "Numery telefonów i kontakty do kurierów — szybki dostęp z dziennika dostaw",
+  magazynGadki: "Podgląd stałych ZK magazynu zewnętrznego Gądki",
   adminTeethProducts:
     "Lista towarów z wyłączoną kontrolą stanu magazynowego przy prośbach o zamówienie",
 };

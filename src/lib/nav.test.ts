@@ -103,6 +103,10 @@ describe("pageTitle", () => {
     expect(pageTitle("/admin/urlopy")).toBe("Urlopy dostawców");
   });
 
+  it("zwraca Magazyn Gądki dla /zakupy/gadki", () => {
+    expect(pageTitle("/zakupy/gadki")).toBe("Magazyn Gądki");
+  });
+
   it("zwraca ZK czekające dla /notatnik i /zk", () => {
     expect(pageTitle("/notatnik")).toBe("Notatnik");
     expect(pageTitle("/zk")).toBe("ZK czekające");
@@ -289,6 +293,15 @@ describe("navForRole zakupy_zeby", () => {
     const groups = navForRole("zakupy");
     const allHrefs = groups.flatMap((g) => g.items.map((i) => i.href));
     expect(allHrefs.some((href) => href.startsWith("/zeby"))).toBe(false);
+  });
+
+  it("zakupy ma Magazyn Gądki w sekcji Dostawcy; zęby/magazyn — nie", () => {
+    const suppliers = navForRole("zakupy").find((g) => g.title === NAV_SECTION_SUPPLIERS);
+    expect(suppliers?.items.some((i) => i.href === "/zakupy/gadki")).toBe(true);
+    const teethHrefs = navForRole("zakupy_zeby").flatMap((g) => g.items.map((i) => i.href));
+    expect(teethHrefs.includes("/zakupy/gadki")).toBe(false);
+    const magHrefs = navForRole("magazyn").flatMap((g) => g.items.map((i) => i.href));
+    expect(magHrefs.includes("/zakupy/gadki")).toBe(false);
   });
 });
 
