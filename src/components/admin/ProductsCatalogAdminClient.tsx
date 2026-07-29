@@ -894,13 +894,16 @@ export function ProductsCatalogAdminClient({
     start(async () => {
       try {
         const { row, autoAssign } = await actionAssignProductSupplier(subiektTwId, supplierId);
+        const leftFilteredView = Boolean(
+          catalogSupplierId && row.topSupplier?.id !== catalogSupplierId
+        );
         setRows((prev) => {
-          if (listMode === "noSupplier") {
+          if (listMode === "noSupplier" || leftFilteredView) {
             return prev.filter((r) => r.subiektTwId !== subiektTwId);
           }
           return prev.map((r) => (r.subiektTwId === subiektTwId ? row : r));
         });
-        if (listMode === "noSupplier") {
+        if (listMode === "noSupplier" || leftFilteredView) {
           setTotal((t) => Math.max(0, t - 1));
           setLoaded((n) => Math.max(0, n - 1));
         }
@@ -909,9 +912,12 @@ export function ProductsCatalogAdminClient({
           autoAssign.updated > 0
             ? ` · uzupełniono ${autoAssign.updated} prośb w weryfikacji`
             : "";
+        const filterNote = leftFilteredView
+          ? " · usunięto z aktualnego filtra (główny dostawca się zmienił)"
+          : "";
         setToast(
           catalogAdminNotice(
-            `Przypisano dostawcę: ${row.topSupplier?.name ?? "—"}${extra}.`,
+            `Przypisano dostawcę: ${row.topSupplier?.name ?? "—"}${extra}${filterNote}.`,
             "success",
           ),
         );
@@ -927,15 +933,26 @@ export function ProductsCatalogAdminClient({
       try {
         const result = await actionBulkAssignProductSuppliers(selectedTwIds, bulkSupplierId);
         const rowById = new Map(result.rows.map((row) => [row.subiektTwId, row]));
+        const leftFilterTwIds = catalogSupplierId
+          ? result.succeededTwIds.filter(
+              (twId) => rowById.get(twId)?.topSupplier?.id !== catalogSupplierId
+            )
+          : [];
+        const leftFilterSet = new Set(leftFilterTwIds);
         setRows((prev) => {
           if (listMode === "noSupplier") {
             return prev.filter((r) => !result.succeededTwIds.includes(r.subiektTwId));
           }
-          return prev.map((r) => rowById.get(r.subiektTwId) ?? r);
+          return prev
+            .map((r) => rowById.get(r.subiektTwId) ?? r)
+            .filter((r) => !leftFilterSet.has(r.subiektTwId));
         });
         if (listMode === "noSupplier") {
           setTotal((t) => Math.max(0, t - result.succeededTwIds.length));
           setLoaded((n) => Math.max(0, n - result.succeededTwIds.length));
+        } else if (leftFilterTwIds.length) {
+          setTotal((t) => Math.max(0, t - leftFilterTwIds.length));
+          setLoaded((n) => Math.max(0, n - leftFilterTwIds.length));
         }
         clearSelection();
         refreshCoverage();
@@ -950,9 +967,13 @@ export function ProductsCatalogAdminClient({
             ? ` · nie udało się: ${result.failed.length}`
             : "";
         const limitNote = result.truncated ? " · limit 150 na operację" : "";
+        const filterNote =
+          leftFilterTwIds.length > 0
+            ? ` · ${leftFilterTwIds.length} usunięto z filtra (nowy główny dostawca)`
+            : "";
         setToast(
           catalogAdminNotice(
-            `Przypisano ${supplierName} do ${result.succeededTwIds.length} produktów${extra}${partial}${limitNote}.`,
+            `Przypisano ${supplierName} do ${result.succeededTwIds.length} produktów${extra}${partial}${limitNote}${filterNote}.`,
             result.failed.length ? "error" : "success",
           ),
         );
