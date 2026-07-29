@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts";
+import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts-shared";
 import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import {
   formatShipmentQuantitySuffix,

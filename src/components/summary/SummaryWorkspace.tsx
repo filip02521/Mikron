@@ -49,7 +49,7 @@ import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { brandIconTileClass, panelChromeInsetClass, panelSectionInsetClass, panelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
 import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 import { cn } from "@/lib/cn";
-import type { TeethSupplierLaneSnapshot } from "@/lib/data/teeth-schedule";
+import type { TeethSupplierLaneSnapshot } from "@/lib/data/teeth-schedule-shared";
 
 export function SummaryWorkspace({
   workspace,

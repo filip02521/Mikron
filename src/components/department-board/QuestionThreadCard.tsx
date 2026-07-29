@@ -27,7 +27,7 @@ import {
   boardQuestionInlineReplyShellClass,
   boardQuestionRowHeaderClass,
 } from "@/lib/department-board/department-board-questions-ui";
-import type { DepartmentBoardQuestion } from "@/lib/data/department-board";
+import type { DepartmentBoardQuestion } from "@/lib/data/department-board-shared";
 import { NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
 import { BoardQuestionProductChip } from "@/components/department-board/BoardQuestionProductChip";
 import { BoardQuestionProductContext } from "@/components/department-board/BoardQuestionProductContext";

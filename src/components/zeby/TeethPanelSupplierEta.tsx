@@ -1,7 +1,7 @@
 "use client";
 
 import { formatPlDate } from "@/lib/display-labels";
-import type { TeethSupplierDeliveryEta } from "@/lib/data/teeth-queue";
+import type { TeethSupplierDeliveryEta } from "@/lib/data/teeth-queue-shared";
 import { teethPanelHeaderMetaClass } from "@/lib/teeth/teeth-panel-ui";
 
 export function TeethPanelSupplierEta({

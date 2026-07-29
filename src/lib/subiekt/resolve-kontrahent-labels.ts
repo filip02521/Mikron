@@ -1,20 +1,12 @@
 import { formatSubiektKontrahentLabel } from "@/lib/subiekt/match-supplier";
 import { lookupSubiektKontrahentByKhId } from "@/lib/subiekt/lookup-kontrahent";
 
+export {
+  fallbackKontrahentDisplay,
+  kontrahentDisplayName,
+} from "@/lib/subiekt/kontrahent-display";
+
 const DEFAULT_CONCURRENCY = 4;
-
-/** Nazwa kontrahenta do wyświetlenia (gdy brak odpowiedzi z API). */
-export function fallbackKontrahentDisplay(khId: number): string {
-  return `Kontrahent (id ${khId})`;
-}
-
-export function kontrahentDisplayName(
-  label: string | null | undefined,
-  khId: number
-): string {
-  const trimmed = label?.trim();
-  return trimmed && trimmed.length > 0 ? trimmed : fallbackKontrahentDisplay(khId);
-}
 
 /**
  * Uzupełnia brakujące etykiety z API Subiekta.

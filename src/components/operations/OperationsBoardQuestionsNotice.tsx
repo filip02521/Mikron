@@ -10,7 +10,7 @@ import {
   DEPARTMENT_BOARD_PROCUREMENT_OPEN_QUESTIONS_HINT,
   departmentBoardOpenQuestionsLabel,
 } from "@/lib/department-board/copy";
-import { procurementBoardQuestionsListHref } from "@/lib/data/department-board";
+import { procurementBoardQuestionsListHref } from "@/lib/data/department-board-shared";
 import { surfaceCardClass } from "@/lib/ui/ontime-theme";
 
 export function OperationsBoardQuestionsNotice({ className }: { className?: string }) {

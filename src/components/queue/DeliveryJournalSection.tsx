@@ -14,13 +14,13 @@ import {
   createEmptyDeliveryJournalForm,
   type DeliveryJournalFormState,
 } from "@/lib/warehouse/delivery-journal-form";
-import { shiftJournalDateKey } from "@/lib/warehouse/delivery-receipts";
-import { matchesDeliveryReceiptQuery } from "@/lib/warehouse/delivery-journal-insights";
+import { shiftJournalDateKey } from "@/lib/warehouse/delivery-receipts-shared";
+import { matchesDeliveryReceiptQuery } from "@/lib/warehouse/delivery-journal-shared";
 import { DeliveryJournalReceiptCard } from "@/components/queue/delivery-journal/DeliveryJournalReceiptCard";
 import { DeliveryJournalSearchField } from "@/components/queue/delivery-journal/DeliveryJournalSearchField";
 import { DeliveryJournalInsightsPanel } from "@/components/queue/DeliveryJournalInsightsPanel";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts";
+import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts-shared";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import { WarehouseCarriersModal } from "@/components/queue/WarehouseCarriersModal";

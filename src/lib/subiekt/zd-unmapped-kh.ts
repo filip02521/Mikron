@@ -1,30 +1,19 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import type {
+  ZdUnmappedKhReason,
+  ZdUnmappedKhReport,
+  ZdUnmappedKhRow,
+} from "@/lib/subiekt/zd-unmapped-kh-shared";
+
+export type {
+  KhSupplierSuggestion,
+  ZdUnmappedKhReason,
+  ZdUnmappedKhReport,
+  ZdUnmappedKhRow,
+  ZdUnmappedKhRowWithSuggestion,
+} from "@/lib/subiekt/zd-unmapped-kh-shared";
 
 const PAGE = 1000;
-
-export type ZdUnmappedKhReason =
-  | "no_supplier_kh"
-  | "supplier_exists_reindex";
-
-export type ZdUnmappedKhRow = {
-  subiektKhId: number;
-  /** Nazwa kontrahenta z Subiekta (do wyszukiwania w programie). */
-  kontrahentLabel: string | null;
-  zdCount: number;
-  sampleDocNumbers: string[];
-  lastDocDate: string | null;
-  reason: ZdUnmappedKhReason;
-  /** Gdy reason = supplier_exists_reindex — dostawca z tym kh_Id w kartotece. */
-  supplierHint: string | null;
-};
-
-export type { KhSupplierSuggestion, ZdUnmappedKhRowWithSuggestion } from "@/lib/subiekt/kontrahent-supplier-suggestions";
-
-export type ZdUnmappedKhReport = {
-  rows: import("@/lib/subiekt/kontrahent-supplier-suggestions").ZdUnmappedKhRowWithSuggestion[];
-  totalUnmappedZd: number;
-  indexedAt: string | null;
-};
 
 type IndexRow = {
   subiekt_kh_id: number;

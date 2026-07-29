@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/cn";
 import { panelTypography } from "@/lib/ui/ontime-theme";
-import type { UpcomingDeliveryDay } from "@/lib/data/upcoming-deliveries";
+import type { UpcomingDeliveryDay } from "@/lib/data/upcoming-deliveries-shared";
 import { UpcomingDeliverySupplierCard } from "@/components/deliveries/UpcomingDeliverySupplierCard";
 
 function dayBadgeClass(day: UpcomingDeliveryDay): string {

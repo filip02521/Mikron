@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildSupplierKhIdsBySupplierId,
   collectKhIdsForSupplierRef,
-} from "./supplier-subiekt-kh";
+} from "@/lib/subiekt/supplier-kh-ids";
 import type { AppSupplierRef } from "@/lib/subiekt/match-supplier";
 
 describe("collectKhIdsForSupplierRef", () => {

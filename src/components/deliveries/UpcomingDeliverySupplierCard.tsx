@@ -9,7 +9,7 @@ import {
   WAREHOUSE_SHIPMENT_FORMS,
   type WarehouseShipmentForm,
 } from "@/lib/warehouse/delivery-carriers";
-import type { UpcomingDeliverySupplier } from "@/lib/data/upcoming-deliveries";
+import type { UpcomingDeliverySupplier } from "@/lib/data/upcoming-deliveries-shared";
 import type { IndividualOrderStatus } from "@/types/database";
 import {
   IconChevronRight,

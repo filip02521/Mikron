@@ -8,28 +8,9 @@ import {
   type PendingZdIndexRow,
 } from "@/lib/subiekt/zd-catalog-import";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
+import type { ZdImportAllSuppliersJobState } from "@/lib/subiekt/zd-job-shared";
 
-export type ZdImportAllSuppliersJobState = {
-  status: "idle" | "running" | "paused" | "done" | "failed";
-  dataOd: string;
-  // supplier cursor
-  supplierIds: string[];
-  supplierIndex: number;
-  supplierId: string | null;
-  supplierName: string | null;
-  // doc cursor for current supplier
-  indexOffset: number;
-  indexTotalDocs: number | null;
-  batchDocs: number;
-  // metrics
-  processedSuppliers: number;
-  processedDocs: number;
-  processedLines: number;
-  linksUpserted: number;
-  lastDocNumber: string | null;
-  lastUpdatedAt: string;
-  lastError: string | null;
-};
+export type { ZdImportAllSuppliersJobState } from "@/lib/subiekt/zd-job-shared";
 
 const JOB_KEY = "job_zd_import_all_suppliers";
 const LOCK_KEY = "job_zd_import_all_suppliers_lock";

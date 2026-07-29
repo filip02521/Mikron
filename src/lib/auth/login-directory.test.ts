@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   filterLoginDirectoryAccounts,
-  fetchLoginDirectoryAccountsByIds,
   isAuthUserLoginEligible,
   isLoginDirectoryAccountId,
   isLoginDirectoryQueryValid,
   loginDirectoryDisplayName,
   sortLoginDirectoryAccounts,
   type LoginDirectoryAccount,
-} from "./login-directory";
+} from "./login-directory-shared";
+import { fetchLoginDirectoryAccountsByIds } from "./login-directory";
 
 vi.mock("@/lib/e2e-lab/mode", () => ({
   isE2ELab: () => true,

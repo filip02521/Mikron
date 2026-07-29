@@ -1,4 +1,4 @@
-import type { DepartmentBoardThreadRow } from "@/lib/data/department-board";
+import type { DepartmentBoardThreadRow } from "@/lib/data/department-board-shared";
 import { calculateBusinessDays } from "@/lib/orders/dates";
 
 export function isBoardAnswerUnseen(

@@ -16,12 +16,13 @@ import {
   actionRemoveStaffVacationPeriod,
   actionUpdateStaffVacationPeriod,
 } from "@/app/actions/staff-vacation-periods";
-import type { StaffVacationRow, StaffVacationCategory } from "@/lib/data/staff-vacation-periods";
+import type { StaffVacationRow } from "@/lib/data/staff-vacation-shared";
+import type { StaffVacationCategory } from "@/lib/data/staff-vacation-shared";
 import {
   STAFF_VACATION_CATEGORIES,
   staffVacationCategoryShort,
   staffVacationCategoryLabel,
-} from "@/lib/data/staff-vacation-periods";
+} from "@/lib/data/staff-vacation-shared";
 import { Button } from "@/components/ui/Button";
 import { AddButton } from "@/components/ui/AddButton";
 import { Field, Input, Select } from "@/components/ui/Field";

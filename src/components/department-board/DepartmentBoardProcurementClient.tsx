@@ -43,7 +43,7 @@ import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterB
 import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
 import { SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
 import { boardAnnouncementListClass, boardQuestionListClass } from "@/lib/department-board/department-board-thread-styles";
-import type { DepartmentBoardData } from "@/lib/data/department-board";
+import type { DepartmentBoardData } from "@/lib/data/department-board-shared";
 import type { SalesNoteColor } from "@/types/database";
 import { cn } from "@/lib/cn";
 import {

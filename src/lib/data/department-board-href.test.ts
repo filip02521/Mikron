@@ -4,7 +4,7 @@ import {
   procurementBoardQuestionHref,
   procurementBoardQuestionsListHref,
   salesBoardAnnouncementHref,
-} from "./department-board";
+} from "./department-board-shared";
 
 describe("salesBoardAnnouncementHref", () => {
   it("otwiera /moje na konkretnym ogłoszeniu", () => {

@@ -6,7 +6,7 @@ import {
   filterLoginDirectoryAccounts,
   isLoginDirectoryQueryValid,
   LOGIN_DIRECTORY_MIN_QUERY_LENGTH,
-} from "@/lib/auth/login-directory";
+} from "@/lib/auth/login-directory-shared";
 import { readLoginRecentAccountIds } from "@/lib/auth/login-account-preference";
 
 type DirectoryApiResponse = {

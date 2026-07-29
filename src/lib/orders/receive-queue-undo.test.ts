@@ -3,7 +3,7 @@ import {
   attachDeliveryNotificationQueueIds,
   collectDeliveryNotificationQueueIds,
   type DeliverySnapshot,
-} from "./receive-queue-undo";
+} from "./receive-queue-undo-shared";
 
 describe("receive-queue-undo notification queue", () => {
   const snapshots: DeliverySnapshot[] = [

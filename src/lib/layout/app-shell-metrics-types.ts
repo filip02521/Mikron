@@ -1,4 +1,4 @@
-import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board";
+import type { SalesBoardAttentionSnapshot } from "@/lib/data/department-board-shared";
 import type { SalesDayStartSnapshot } from "@/lib/sales/sales-day-start";
 
 export type AppShellNavBadges = {

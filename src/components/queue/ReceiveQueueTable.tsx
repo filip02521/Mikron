@@ -5,8 +5,8 @@ import { isUndoExpired, undoWindowBannerDescription } from "@/lib/orders/daily-p
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { IndividualOrder, SupplierWithSchedule } from "@/types/database";
-import type { DeliveryUndoPayload } from "@/lib/orders/receive-queue-undo";
-import { collectDeliveryNotificationQueueIds } from "@/lib/orders/receive-queue-undo";
+import type { DeliveryUndoPayload } from "@/lib/orders/receive-queue-undo-shared";
+import { collectDeliveryNotificationQueueIds } from "@/lib/orders/receive-queue-undo-shared";
 import {
   actionAcknowledgeWarehouseCancelDisposition,
   actionBatchUpdateDelivered,

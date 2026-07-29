@@ -7,7 +7,7 @@ import { teethPanelHeaderMetaClass, teethPanelSupplierHeaderClass } from "@/lib/
 import { Button } from "@/components/ui/Button";
 import { TeethPanelSupplierEta } from "@/components/zeby/TeethPanelSupplierEta";
 import { TeethManualEtaEditor } from "@/components/zeby/TeethManualEtaEditor";
-import type { TeethQueueGroup } from "@/lib/data/teeth-queue";
+import type { TeethQueueGroup } from "@/lib/data/teeth-queue-shared";
 import { plPozycja } from "@/lib/ui/polish-plurals";
 import { IconTruck } from "@/components/icons/StrokeIcons";
 import {

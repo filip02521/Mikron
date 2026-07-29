@@ -7,7 +7,7 @@ import {
   IconBuilding,
   IconCalendar,
 } from "@/components/icons/StrokeIcons";
-import type { ExtendedDeliverySummary } from "@/lib/data/upcoming-deliveries";
+import type { ExtendedDeliverySummary } from "@/lib/data/upcoming-deliveries-shared";
 
 export function UpcomingDeliverySummaryTiles({
   summary,

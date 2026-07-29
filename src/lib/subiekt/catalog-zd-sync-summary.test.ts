@@ -3,8 +3,8 @@ import {
   catalogZdSyncNeedsContinue,
   summarizeCatalogZdSync,
 } from "@/lib/subiekt/catalog-zd-sync-summary";
+import type { CatalogZdSyncState } from "@/lib/subiekt/catalog-zd-sync-shared";
 import { resolveCatalogZdSyncStartState } from "@/lib/subiekt/catalog-zd-sync";
-import type { CatalogZdSyncState } from "@/lib/subiekt/catalog-zd-sync";
 
 function baseState(overrides: Partial<CatalogZdSyncState> = {}): CatalogZdSyncState {
   return {

@@ -1,4 +1,4 @@
-import type { DepartmentBoardData } from "@/lib/data/department-board";
+import type { DepartmentBoardData } from "@/lib/data/department-board-shared";
 
 export function countUnreadAnnouncements(data: {
   announcements: DepartmentBoardData["announcements"];

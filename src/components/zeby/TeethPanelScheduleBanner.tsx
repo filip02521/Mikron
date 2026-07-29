@@ -3,7 +3,7 @@
 import { cn } from "@/lib/cn";
 import { formatPlDate, vacationNoteLabel } from "@/lib/display-labels";
 import { IconCalendar } from "@/components/icons/StrokeIcons";
-import type { TeethScheduledItem } from "@/lib/data/teeth-queue";
+import type { TeethScheduledItem } from "@/lib/data/teeth-queue-shared";
 
 export function TeethPanelScheduleBanner({
   schedule,

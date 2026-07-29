@@ -17,8 +17,8 @@ import {
 } from "@/lib/ui/notice-copy";
 import { Input } from "@/components/ui/Field";
 import { IconTooth, IconArchive, IconPlusCircle } from "@/components/icons/StrokeIcons";
-import type { TeethQueueGroup, TeethQueueItem, TeethPositionSelection } from "@/lib/data/teeth-queue";
-import { isScheduledItem } from "@/lib/data/teeth-queue";
+import type { TeethQueueGroup, TeethQueueItem, TeethPositionSelection } from "@/lib/data/teeth-queue-shared";
+import { isScheduledItem } from "@/lib/data/teeth-queue-shared";
 import { TeethPanelTabs } from "@/components/zeby/TeethPanelTabs";
 import {
   TEETH_TAB_HINTS,

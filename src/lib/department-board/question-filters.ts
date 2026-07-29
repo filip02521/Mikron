@@ -1,5 +1,5 @@
 import type { DepartmentBoardQuestionFilter } from "@/components/department-board/DepartmentBoardSalesChrome";
-import type { DepartmentBoardQuestion } from "@/lib/data/department-board";
+import type { DepartmentBoardQuestion } from "@/lib/data/department-board-shared";
 import { filterDepartmentBoardQuestionsByQuery } from "@/lib/department-board/question-search";
 
 export type DepartmentBoardQuestionFilterContext = {

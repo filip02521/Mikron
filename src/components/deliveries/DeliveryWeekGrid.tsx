@@ -1,5 +1,5 @@
 import { cn } from "@/lib/cn";
-import type { DeliveryScheduleDay } from "@/lib/data/upcoming-deliveries";
+import type { DeliveryScheduleDay } from "@/lib/data/upcoming-deliveries-shared";
 import { UpcomingDeliverySupplierCard } from "@/components/deliveries/UpcomingDeliverySupplierCard";
 import { DeliveryScheduleCard } from "@/components/deliveries/DeliveryScheduleCard";
 import { IconCalendar } from "@/components/icons/StrokeIcons";

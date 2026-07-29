@@ -36,7 +36,7 @@ import {
   resolveQuestionFilterAfterUnseenCleared,
 } from "@/lib/department-board/question-filters";
 import { boardQuestionListClass } from "@/lib/department-board/department-board-thread-styles";
-import type { DepartmentBoardQuestionsSlice } from "@/lib/data/department-board";
+import type { DepartmentBoardQuestionsSlice } from "@/lib/data/department-board-shared";
 import { cn } from "@/lib/cn";
 import { AppBrandContentFooter } from "@/components/layout/AppBrandContentFooter";
 import {

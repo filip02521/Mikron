@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { cn } from "@/lib/cn";
 import { panelSubsectionInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
 import { teethQueueStatsBySupplier } from "@/lib/teeth/teeth-panel-filters";
-import type { TeethQueueGroup } from "@/lib/data/teeth-queue";
+import type { TeethQueueGroup } from "@/lib/data/teeth-queue-shared";
 import type { TeethPanelReadinessContext } from "@/lib/teeth/teeth-panel-order-readiness";
 import { plProsba } from "@/lib/ui/polish-plurals";
 

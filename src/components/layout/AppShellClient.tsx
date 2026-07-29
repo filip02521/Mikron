@@ -35,7 +35,7 @@ import {
   procurementBoardAnnouncementHref,
   salesBoardAnnouncementHref,
   type SalesBoardAttentionSnapshot,
-} from "@/lib/data/department-board";
+} from "@/lib/data/department-board-shared";
 import { cn } from "@/lib/cn";
 import { useNotificationSoundUnlockOnGesture } from "@/lib/client/use-notification-sound-unlock";
 import { useDueDeliveryNotificationSafetyFlush } from "@/lib/client/use-delivery-notification-flush";

@@ -1,4 +1,4 @@
-import type { SalesPersonAdminRow } from "@/lib/data/sales-people-admin";
+import type { SalesPersonAdminRow } from "@/lib/data/sales-people-admin-shared";
 import { formatPlDate } from "@/lib/display-labels";
 import { Badge } from "@/components/ui/Badge";
 

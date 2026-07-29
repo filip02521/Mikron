@@ -2,7 +2,7 @@ import type { UserRole, Workspace } from "@/types/database";
 import { isSalesManager, canAccessPath } from "@/lib/auth-roles";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import { salesManagerNavTeamDescriptions } from "@/lib/sales/team-ui";
-import { isMonthlySummaryAvailable } from "@/lib/data/monthly-stats";
+import { isMonthlySummaryAvailable } from "@/lib/data/monthly-stats-shared";
 import { supplierHubPaths } from "@/lib/supplier-hub";
 import { ROLE_LABELS } from "@/lib/users/labels";
 

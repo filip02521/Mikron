@@ -9,26 +9,9 @@ import {
   type PendingZdIndexRow,
 } from "@/lib/subiekt/zd-catalog-import";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
+import type { ZdImportSupplierJobState } from "@/lib/subiekt/zd-job-shared";
 
-export type ZdImportSupplierJobState = {
-  status: "idle" | "running" | "paused" | "done" | "failed";
-  supplierId: string;
-  supplierName: string;
-  subiektKhId: number;
-  // cursor
-  dataOd: string;
-  indexOffset: number;
-  indexTotalDocs: number | null;
-  batchDocs: number;
-  // metrics
-  processedDocs: number;
-  processedLines: number;
-  uniqueProductsSeen: number;
-  linksUpserted: number;
-  lastDocNumber: string | null;
-  lastUpdatedAt: string;
-  lastError: string | null;
-};
+export type { ZdImportSupplierJobState } from "@/lib/subiekt/zd-job-shared";
 
 function jobKey(supplierId: string): string {
   return `job_zd_import_supplier_${supplierId}`;

@@ -32,9 +32,9 @@ import {
 import type { TeethPanelReadinessContext } from "@/lib/teeth/teeth-panel-order-readiness";
 import { distinctTeethProductLineLabelsForOrders } from "@/lib/teeth/teeth-panel-order-readiness";
 
-import type { TeethQueueGroup, TeethQueueItem, TeethPositionSelection } from "@/lib/data/teeth-queue";
+import type { TeethQueueGroup, TeethQueueItem, TeethPositionSelection } from "@/lib/data/teeth-queue-shared";
 
-import { isScheduledItem } from "@/lib/data/teeth-queue";
+import { isScheduledItem } from "@/lib/data/teeth-queue-shared";
 
 import { formatDateString } from "@/lib/orders/dates";
 import { todayInWarsaw } from "@/lib/time/warsaw";

@@ -18,7 +18,7 @@ import { ReceiveQueueTable, type ReceiveQueueToast } from "@/components/queue/Re
 import { WarehouseInventorySection } from "@/components/queue/WarehouseInventorySection";
 import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import { DeliveryJournalSection } from "@/components/queue/DeliveryJournalSection";
-import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts";
+import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts-shared";
 import { buildWarehouseInventoryRows } from "@/lib/orders/warehouse-inventory";
 import { summarizeQueueInbox } from "@/lib/orders/queue-inbox";
 import { mergeReceiveQueueOrders } from "@/lib/orders/receive-queue";

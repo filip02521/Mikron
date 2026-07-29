@@ -12,11 +12,11 @@ import {
   type ProductCatalogCoverageStats,
   type ProductCatalogPage,
   type ProductCatalogRow,
-} from "@/lib/data/product-catalog-queries";
+} from "@/lib/data/product-catalog-shared";
 import { CatalogZdSyncStatusPanel } from "@/components/admin/CatalogZdSyncStatusPanel";
 import { ProductCatalogBulkAssignBar } from "@/components/admin/ProductCatalogBulkAssignBar";
 import { ZdUnmappedKhPanel } from "@/components/admin/ZdUnmappedKhPanel";
-import type { ZdUnmappedKhReport } from "@/lib/subiekt/zd-unmapped-kh";
+import type { ZdUnmappedKhReport } from "@/lib/subiekt/zd-unmapped-kh-shared";
 import { ProductCatalogSupplierAssign } from "@/components/admin/ProductCatalogSupplierAssign";
 import { Button } from "@/components/ui/Button";
 import { Input, Select } from "@/components/ui/Field";
@@ -57,9 +57,13 @@ import {
   actionReadCatalogZdSyncStatus,
   actionRunCatalogZdSyncNow,
 } from "@/app/actions/product-catalog";
-import type { ZdImportAllSuppliersJobState } from "@/lib/subiekt/zd-import-all-suppliers-job";
-import type { ZdImportSupplierJobState } from "@/lib/subiekt/zd-import-supplier-job";
-import type { ZdIndexJobState } from "@/lib/subiekt/zd-index-job";
+import type {
+  ZdImportAllSuppliersJobState,
+  ZdImportSupplierJobState,
+  ZdIndexJobState,
+} from "@/lib/subiekt/zd-job-shared";
+import type { CronRunPayload } from "@/lib/services/cron-run-shared";
+import type { CatalogZdSyncState } from "@/lib/subiekt/catalog-zd-sync-shared";
 
 type CatalogListMode = "all" | "noSupplier";
 
@@ -90,8 +94,8 @@ export function ProductsCatalogAdminClient({
   const tickTimer = useRef<number | null>(null);
   const tickImportRef = useRef<(() => Promise<void>) | null>(null);
   const [catalogSync, setCatalogSync] = useState<{
-    state: import("@/lib/subiekt/catalog-zd-sync").CatalogZdSyncState | null;
-    lastCron: import("@/lib/services/cron-run-log").CronRunPayload | null;
+    state: CatalogZdSyncState | null;
+    lastCron: CronRunPayload | null;
   } | null>(null);
   const [indexState, setIndexState] = useState<ZdIndexJobState | null>(null);
   const [zdUnmapped, setZdUnmapped] = useState<ZdUnmappedKhReport | null>(null);

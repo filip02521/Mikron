@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearMojeZdEtaSessionSync } from "@/components/moje/MojeZdEtaSyncClient";
-import type { MojeZdEtaRefreshResult } from "@/lib/subiekt/zd-eta-sync";
-import { ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS } from "@/lib/subiekt/zd-eta-sync";
+import type { MojeZdEtaRefreshResult } from "@/lib/subiekt/zd-eta-sync-shared";
+import { ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS } from "@/lib/subiekt/zd-eta-sync-shared";
 import { cn } from "@/lib/cn";
 
 /**

@@ -22,21 +22,13 @@ import {
   type VacationPeriod,
 } from "@/lib/orders/vacations";
 
-export const DAY_OF_WEEK_LABELS: Record<DayOfWeek, string> = {
-  1: "Poniedziałek",
-  2: "Wtorek",
-  3: "Środa",
-  4: "Czwartek",
-  5: "Piątek",
-};
+import type { TeethSupplierLaneSnapshot } from "@/lib/data/teeth-schedule-shared";
 
-export const DAY_OF_WEEK_SHORT: Record<DayOfWeek, string> = {
-  1: "Pn",
-  2: "Wt",
-  3: "Śr",
-  4: "Cz",
-  5: "Pt",
-};
+export {
+  DAY_OF_WEEK_LABELS,
+  DAY_OF_WEEK_SHORT,
+  type TeethSupplierLaneSnapshot,
+} from "@/lib/data/teeth-schedule-shared";
 
 const VALID_VACATION_NOTES: ReadonlySet<string> = new Set([
   "PRZESUNIETE_PO",
@@ -191,16 +183,6 @@ function findNextWeekday(date: Date, targetDow: DayOfWeek): Date {
   result.setDate(d.getDate() + diff);
   return result;
 }
-
-export type TeethSupplierLaneSnapshot = {
-  supplierId: string;
-  computedNextDate: string | null;
-  shiftDate: string | null;
-  lastOrderDate: string | null;
-  orderDayOfWeek: DayOfWeek | null;
-  intervalWeeks: number | null;
-  vacationNote: VacationNote | null;
-};
 
 function mapLaneSnapshot(row: Record<string, unknown>): TeethSupplierLaneSnapshot {
   return {

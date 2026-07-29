@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LoginDirectoryAccountPublic } from "@/lib/auth/login-directory-public";
-import { filterLoginDirectoryAccounts } from "@/lib/auth/login-directory";
+import { filterLoginDirectoryAccounts } from "@/lib/auth/login-directory-shared";
 import { IconCircleCheck, IconSearch } from "@/components/icons/StrokeIcons";
 import { Input } from "@/components/ui/Field";
 import {

@@ -1,6 +1,6 @@
 import type { IndividualRequestKind } from "@/types/database";
 import { parseOrderQuantity } from "@/lib/orders/individual";
-import type { SubiektListParams } from "@/lib/subiekt/api";
+import type { SubiektListParams } from "@/lib/subiekt/types";
 import type { SubiektProduct } from "@/lib/subiekt/types";
 
 export function subiektFieldText(v: unknown): string {

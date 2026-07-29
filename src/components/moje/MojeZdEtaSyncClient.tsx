@@ -12,7 +12,7 @@ import {
   type MojeZdEtaSessionState,
   ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS,
   ZD_ETA_MOJE_VISIBILITY_RESYNC_MS,
-} from "@/lib/subiekt/zd-eta-sync";
+} from "@/lib/subiekt/zd-eta-sync-shared";
 
 const LOCK_RETRY_MS = 5_000;
 const MAX_LOCK_RETRIES = 2;

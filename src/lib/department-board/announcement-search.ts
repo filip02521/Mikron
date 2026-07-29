@@ -1,4 +1,4 @@
-import type { DepartmentBoardThreadRow } from "@/lib/data/department-board";
+import type { DepartmentBoardThreadRow } from "@/lib/data/department-board-shared";
 import { authorLabelFromProfile } from "@/lib/department-board/format";
 
 export function departmentBoardAnnouncementSearchHaystack(

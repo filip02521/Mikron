@@ -8,7 +8,7 @@ import {
   actionAddSupplierSubiektKhAlias,
   actionRemoveSupplierSubiektKhAlias,
 } from "@/app/actions/subiekt";
-import { kontrahentDisplayName } from "@/lib/subiekt/resolve-kontrahent-labels";
+import { kontrahentDisplayName } from "@/lib/subiekt/kontrahent-display";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
