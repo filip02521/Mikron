@@ -8,6 +8,7 @@ function line(
 ): ExternalWarehouseLineDto {
   return {
     key,
+    rowKey: key,
     symbol: null,
     product: key,
     quantity: 1,

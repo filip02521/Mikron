@@ -23,6 +23,7 @@ import {
   isExternalWarehouseUuid,
   normalizeLineNote,
   normalizePalletLabel,
+  normalizePalletSharesInput,
   normalizeSiteNoteBody,
   normalizeZkLabel,
 } from "@/lib/external-warehouse/guards";
@@ -205,6 +206,11 @@ export async function actionUnlinkGadkiZk(
   const supabase = createAdminClient();
 
   await supabase
+    .from("external_warehouse_line_pallet_shares")
+    .delete()
+    .eq("zk_link_id", link.id);
+
+  await supabase
     .from("external_warehouse_line_meta")
     .delete()
     .eq("zk_link_id", link.id);
@@ -287,69 +293,190 @@ export async function actionSetGadkiLinePallet(input: {
 
   const pallet = normalizePalletLabel(input.palletLabel);
 
-  // Update-only pola palety (nie nadpisuje note). Brak wiersza → insert.
-  const supabase = createAdminClient();
-  const now = new Date().toISOString();
-  const { data: updated, error: updateError } = await supabase
-    .from("external_warehouse_line_meta")
-    .update({
-      pallet_label: pallet,
-      updated_by: user.id,
-      updated_at: now,
-    })
-    .eq("zk_link_id", link.id)
-    .eq("line_key", lineKey)
-    .select("id");
+  // Cała pozycja na jednej palecie — czyści rozbicie (shares).
+  const { tryAcquireLock, releaseLock } = await import("@/lib/services/locks");
+  const lockKey = `gadki-line-pallet:${link.id}:${lineKey}`;
+  const locked = await tryAcquireLock(lockKey, 15, "gadki-line-pallet");
+  if (!locked) {
+    return {
+      ok: false,
+      message: "Trwa inna zmiana tej pozycji — spróbuj ponownie za chwilę.",
+    };
+  }
 
-  if (updateError) return { ok: false, message: updateError.message };
-
-  if (!updated?.length) {
-    const { error: insertError } = await supabase
+  try {
+    const supabase = createAdminClient();
+    // Najpierw meta 1:1 — dopiero potem kasuj shares (żeby awaria meta nie gubiła rozbicia).
+    const now = new Date().toISOString();
+    const { data: updated, error: updateError } = await supabase
       .from("external_warehouse_line_meta")
-      .insert({
-        zk_link_id: link.id,
-        line_key: lineKey,
+      .update({
         pallet_label: pallet,
         updated_by: user.id,
         updated_at: now,
-      });
-    if (insertError) {
-      if (insertError.code === "23505") {
-        const { error: retryError } = await supabase
-          .from("external_warehouse_line_meta")
-          .update({
-            pallet_label: pallet,
-            updated_by: user.id,
-            updated_at: now,
-          })
-          .eq("zk_link_id", link.id)
-          .eq("line_key", lineKey);
-        if (retryError) return { ok: false, message: retryError.message };
-      } else {
-        return { ok: false, message: insertError.message };
+      })
+      .eq("zk_link_id", link.id)
+      .eq("line_key", lineKey)
+      .select("id");
+
+    if (updateError) return { ok: false, message: updateError.message };
+
+    if (!updated?.length) {
+      const { error: insertError } = await supabase
+        .from("external_warehouse_line_meta")
+        .insert({
+          zk_link_id: link.id,
+          line_key: lineKey,
+          pallet_label: pallet,
+          updated_by: user.id,
+          updated_at: now,
+        });
+      if (insertError) {
+        if (insertError.code === "23505") {
+          const { error: retryError } = await supabase
+            .from("external_warehouse_line_meta")
+            .update({
+              pallet_label: pallet,
+              updated_by: user.id,
+              updated_at: now,
+            })
+            .eq("zk_link_id", link.id)
+            .eq("line_key", lineKey);
+          if (retryError) return { ok: false, message: retryError.message };
+        } else {
+          return { ok: false, message: insertError.message };
+        }
       }
     }
+
+    const { error: clearSharesError } = await supabase
+      .from("external_warehouse_line_pallet_shares")
+      .delete()
+      .eq("zk_link_id", link.id)
+      .eq("line_key", lineKey);
+    if (clearSharesError) return { ok: false, message: clearSharesError.message };
+
+    await supabase.from("external_warehouse_change_log").insert({
+      site_id: site.id,
+      zk_link_id: link.id,
+      kind: "pallet_changed",
+      summary: pallet
+        ? `${link.zk_number}: paleta „${pallet}”`
+        : `${link.zk_number}: usunięto paletę`,
+      meta: { line_key: lineKey, pallet_label: pallet, cleared_shares: true },
+      actor_user_id: user.id,
+    });
+
+    revalidateGadki();
+    return { ok: true };
+  } finally {
+    await releaseLock(lockKey);
+  }
+}
+
+/**
+ * Rozbicie pozycji ZK na kilka nazwanych palet (replace-all udziałów).
+ * Pusta lista = usuń same udziały (nie rusza meta.pallet_label — 1:1 zostaje).
+ */
+export async function actionSetGadkiLinePalletShares(input: {
+  linkId: string;
+  lineKey: string;
+  shares: { palletLabel: string; qty: number; note?: string | null }[];
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const user = await requireOperations("mutate");
+  const site = await requireGadkiSite();
+  const link = await requireSiteScopedLink(input.linkId, site.id);
+
+  const normalized = normalizePalletSharesInput(
+    link.last_snapshot,
+    input.lineKey,
+    input.shares ?? []
+  );
+  if (!normalized.ok) return normalized;
+  const lineKey = input.lineKey.trim();
+  const shares = normalized.shares;
+
+  const { tryAcquireLock, releaseLock } = await import("@/lib/services/locks");
+  const lockKey = `gadki-line-pallet:${link.id}:${lineKey}`;
+  const locked = await tryAcquireLock(lockKey, 15, "gadki-line-pallet");
+  if (!locked) {
+    return {
+      ok: false,
+      message: "Trwa inna zmiana tej pozycji — spróbuj ponownie za chwilę.",
+    };
   }
 
-  await supabase.from("external_warehouse_change_log").insert({
-    site_id: site.id,
-    zk_link_id: link.id,
-    kind: "pallet_changed",
-    summary: pallet
-      ? `${link.zk_number}: paleta „${pallet}”`
-      : `${link.zk_number}: usunięto paletę`,
-    meta: { line_key: lineKey, pallet_label: pallet },
-    actor_user_id: user.id,
-  });
+  try {
+    const supabase = createAdminClient();
+    const { error: rpcError } = await supabase.rpc(
+      "replace_external_warehouse_line_pallet_shares",
+      {
+        p_zk_link_id: link.id,
+        p_line_key: lineKey,
+        p_shares: shares.map((s) => ({
+          pallet_label: s.palletLabel,
+          qty: s.qty,
+          note: s.note,
+        })),
+        p_updated_by: user.id,
+        p_max_qty: normalized.lineQty,
+      }
+    );
 
-  revalidateGadki();
-  return { ok: true };
+    if (rpcError) {
+      if (
+        rpcError.message.includes("shares_exceed_line_qty") ||
+        rpcError.message.includes("too_many_shares") ||
+        rpcError.message.includes("invalid_share") ||
+        rpcError.message.includes("share_note_too_long")
+      ) {
+        return {
+          ok: false,
+          message: rpcError.message.includes("shares_exceed_line_qty")
+            ? "Suma udziałów przekracza ilość w ZK"
+            : rpcError.message.includes("too_many_shares")
+              ? "Za dużo palet na jedną pozycję"
+              : rpcError.message.includes("share_note_too_long")
+                ? "Notatka udziału jest za długa"
+                : "Nieprawidłowe udziały palet",
+        };
+      }
+      return { ok: false, message: rpcError.message };
+    }
+
+    const shareSummary = shares.length
+      ? shares.map((s) => `„${s.palletLabel}”×${s.qty}`).join(", ")
+      : "wyczyszczono";
+
+    await supabase.from("external_warehouse_change_log").insert({
+      site_id: site.id,
+      zk_link_id: link.id,
+      kind: "pallet_shares_changed",
+      summary: `${link.zk_number}: rozbicie pozycji (${shareSummary})`,
+      meta: {
+        line_key: lineKey,
+        shares: shares.map((s) => ({
+          pallet_label: s.palletLabel,
+          qty: s.qty,
+          note: s.note,
+        })),
+      },
+      actor_user_id: user.id,
+    });
+
+    revalidateGadki();
+    return { ok: true };
+  } finally {
+    await releaseLock(lockKey);
+  }
 }
 
 export async function actionSetGadkiLineNote(input: {
   linkId: string;
   lineKey: string;
   note: string | null;
+  /** Gdy podane — notatka dotyczy konkretnego udziału palety. */
+  shareId?: string | null;
 }): Promise<{ ok: true } | { ok: false; message: string }> {
   const user = await requireOperations("mutate");
   const site = await requireGadkiSite();
@@ -360,10 +487,50 @@ export async function actionSetGadkiLineNote(input: {
   const lineKey = input.lineKey.trim();
 
   const note = normalizeLineNote(input.note);
-
-  // Update-only notatki (nie nadpisuje pallet_label). Brak wiersza → insert.
   const supabase = createAdminClient();
   const now = new Date().toISOString();
+
+  const shareId = input.shareId?.trim() || null;
+  if (shareId) {
+    if (!isExternalWarehouseUuid(shareId)) {
+      return { ok: false, message: "Nieprawidłowy udział palety" };
+    }
+    const { data: share, error: shareFetchError } = await supabase
+      .from("external_warehouse_line_pallet_shares")
+      .select("id")
+      .eq("id", shareId)
+      .eq("zk_link_id", link.id)
+      .eq("line_key", lineKey)
+      .maybeSingle();
+    if (shareFetchError) return { ok: false, message: shareFetchError.message };
+    if (!share) return { ok: false, message: "Udział palety nie znaleziony" };
+
+    const { error } = await supabase
+      .from("external_warehouse_line_pallet_shares")
+      .update({
+        note,
+        updated_by: user.id,
+        updated_at: now,
+      })
+      .eq("id", shareId)
+      .eq("zk_link_id", link.id)
+      .eq("line_key", lineKey);
+    if (error) return { ok: false, message: error.message };
+
+    await supabase.from("external_warehouse_change_log").insert({
+      site_id: site.id,
+      zk_link_id: link.id,
+      kind: "line_note",
+      summary: `${link.zk_number}: notatka udziału palety`,
+      meta: { line_key: lineKey, share_id: shareId },
+      actor_user_id: user.id,
+    });
+
+    revalidateGadki();
+    return { ok: true };
+  }
+
+  // Update-only notatki pozycji (nie nadpisuje pallet_label). Brak wiersza → insert.
   const { data: updated, error: updateError } = await supabase
     .from("external_warehouse_line_meta")
     .update({
@@ -435,19 +602,82 @@ export async function actionRenameGadkiPallet(input: {
   if (from === to) return { ok: true, updated: 0 };
 
   const supabase = createAdminClient();
+  const now = new Date().toISOString();
   const { data, error } = await supabase
     .from("external_warehouse_line_meta")
     .update({
       pallet_label: to,
       updated_by: user.id,
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     })
     .eq("zk_link_id", link.id)
     .eq("pallet_label", from)
     .select("id");
 
   if (error) return { ok: false, message: error.message };
-  const updated = data?.length ?? 0;
+  const metaUpdated = data?.length ?? 0;
+
+  const { data: fromShares, error: fromSharesError } = await supabase
+    .from("external_warehouse_line_pallet_shares")
+    .select("id, line_key, qty, note")
+    .eq("zk_link_id", link.id)
+    .eq("pallet_label", from);
+  if (fromSharesError) return { ok: false, message: fromSharesError.message };
+
+  let shareUpdated = 0;
+  for (const share of fromShares ?? []) {
+    const { data: target, error: targetError } = await supabase
+      .from("external_warehouse_line_pallet_shares")
+      .select("id, qty, note")
+      .eq("zk_link_id", link.id)
+      .eq("line_key", share.line_key)
+      .eq("pallet_label", to)
+      .maybeSingle();
+    if (targetError) return { ok: false, message: targetError.message };
+
+    if (target) {
+      const nextQty =
+        Math.round((Number(target.qty) + Number(share.qty)) * 10000) / 10000;
+      const sourceNote =
+        typeof share.note === "string" ? share.note.trim() || null : null;
+      const targetNote =
+        typeof target.note === "string" ? target.note.trim() || null : null;
+      const mergedNote =
+        !sourceNote
+          ? targetNote
+          : !targetNote || targetNote === sourceNote
+            ? sourceNote
+            : `${targetNote}; ${sourceNote}`.slice(0, 2000);
+      const { error: mergeError } = await supabase
+        .from("external_warehouse_line_pallet_shares")
+        .update({
+          qty: nextQty,
+          note: mergedNote,
+          updated_by: user.id,
+          updated_at: now,
+        })
+        .eq("id", target.id);
+      if (mergeError) return { ok: false, message: mergeError.message };
+      const { error: delError } = await supabase
+        .from("external_warehouse_line_pallet_shares")
+        .delete()
+        .eq("id", share.id);
+      if (delError) return { ok: false, message: delError.message };
+    } else {
+      const { error: renameError } = await supabase
+        .from("external_warehouse_line_pallet_shares")
+        .update({
+          pallet_label: to,
+          updated_by: user.id,
+          updated_at: now,
+        })
+        .eq("id", share.id);
+      if (renameError) return { ok: false, message: renameError.message };
+    }
+    shareUpdated += 1;
+  }
+
+  const updated = metaUpdated + shareUpdated;
 
   if (updated > 0) {
     await supabase.from("external_warehouse_change_log").insert({
@@ -455,7 +685,13 @@ export async function actionRenameGadkiPallet(input: {
       zk_link_id: link.id,
       kind: "pallet_renamed",
       summary: `${link.zk_number}: „${from}” → „${to}” (${updated})`,
-      meta: { from, to, count: updated },
+      meta: {
+        from,
+        to,
+        count: updated,
+        meta_count: metaUpdated,
+        share_count: shareUpdated,
+      },
       actor_user_id: user.id,
     });
   }
@@ -477,6 +713,13 @@ export async function actionPurgeGadkiOrphanMeta(input: {
   const lineKey = input.lineKey.trim();
 
   const supabase = createAdminClient();
+  const { error: shareDelError } = await supabase
+    .from("external_warehouse_line_pallet_shares")
+    .delete()
+    .eq("zk_link_id", link.id)
+    .eq("line_key", lineKey);
+  if (shareDelError) return { ok: false, message: shareDelError.message };
+
   const { error } = await supabase
     .from("external_warehouse_line_meta")
     .delete()

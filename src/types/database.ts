@@ -289,6 +289,19 @@ export interface ExternalWarehouseLineMeta {
   created_at: string;
 }
 
+/** Udział ilości pozycji ZK na jednej nazwanej palecie. */
+export interface ExternalWarehouseLinePalletShare {
+  id: string;
+  zk_link_id: string;
+  line_key: string;
+  pallet_label: string;
+  qty: number;
+  note: string | null;
+  updated_by: string | null;
+  updated_at: string;
+  created_at: string;
+}
+
 export interface ExternalWarehouseNote {
   id: string;
   site_id: string;
@@ -308,6 +321,7 @@ export type ExternalWarehouseChangeKind =
   | "qty_changed"
   | "pallet_changed"
   | "pallet_renamed"
+  | "pallet_shares_changed"
   | "line_note"
   | "site_note";
 
