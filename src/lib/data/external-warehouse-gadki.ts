@@ -13,6 +13,7 @@ import { collectPalletLabels } from "@/lib/external-warehouse/group-by-pallet";
 import type {
   ExternalWarehouseChangeLog,
   ExternalWarehouseLineMeta,
+  ExternalWarehouseLinePalletShare,
   ExternalWarehouseNote,
   ExternalWarehouseSite,
   ExternalWarehouseZkLink,
@@ -131,13 +132,25 @@ export async function fetchGadkiPageData(
   const linkIds = links.map((l) => l.id);
 
   let metaRows: ExternalWarehouseLineMeta[] = [];
+  let shareRows: ExternalWarehouseLinePalletShare[] = [];
   if (linkIds.length) {
-    const { data, error } = await supabase
-      .from("external_warehouse_line_meta")
-      .select("*")
-      .in("zk_link_id", linkIds);
-    if (error) throw new Error(error.message);
-    metaRows = (data ?? []) as ExternalWarehouseLineMeta[];
+    const [metaRes, shareRes] = await Promise.all([
+      supabase
+        .from("external_warehouse_line_meta")
+        .select("*")
+        .in("zk_link_id", linkIds),
+      supabase
+        .from("external_warehouse_line_pallet_shares")
+        .select("*")
+        .in("zk_link_id", linkIds),
+    ]);
+    if (metaRes.error) throw new Error(metaRes.error.message);
+    if (shareRes.error) throw new Error(shareRes.error.message);
+    metaRows = (metaRes.data ?? []) as ExternalWarehouseLineMeta[];
+    shareRows = (shareRes.data ?? []).map((row) => ({
+      ...(row as ExternalWarehouseLinePalletShare),
+      qty: Number((row as ExternalWarehouseLinePalletShare).qty),
+    }));
   }
 
   const metaByLink = new Map<string, ExternalWarehouseLineMeta[]>();
@@ -147,24 +160,58 @@ export async function fetchGadkiPageData(
     else metaByLink.set(m.zk_link_id, [m]);
   }
 
+  const sharesByLink = new Map<string, ExternalWarehouseLinePalletShare[]>();
+  for (const s of shareRows) {
+    const bucket = sharesByLink.get(s.zk_link_id);
+    if (bucket) bucket.push(s);
+    else sharesByLink.set(s.zk_link_id, [s]);
+  }
+
   const zkNumberById = new Map(links.map((l) => [l.id, l.zk_number]));
 
   const linkViews: GadkiZkLinkView[] = links.map((link) => {
     const snapshot = parsePrunedSnapshot(link.last_snapshot);
     const metas = metaByLink.get(link.id) ?? [];
+    const shares = sharesByLink.get(link.id) ?? [];
     const metaByKey = new Map(
       metas.map((m) => [
         m.line_key,
         { pallet_label: m.pallet_label, note: m.note },
       ])
     );
-    const lineDtos = lineDtosFromPrunedSnapshot(snapshot, metaByKey);
+    const sharesByKey = new Map<
+      string,
+      { id: string; pallet_label: string; qty: number; note: string | null }[]
+    >();
+    for (const s of shares) {
+      const item = {
+        id: s.id,
+        pallet_label: s.pallet_label,
+        qty: Number(s.qty),
+        note: s.note ?? null,
+      };
+      const bucket = sharesByKey.get(s.line_key);
+      if (bucket) bucket.push(item);
+      else sharesByKey.set(s.line_key, [item]);
+    }
+    const lineDtos = lineDtosFromPrunedSnapshot(
+      snapshot,
+      metaByKey,
+      sharesByKey
+    );
     const orphans = orphanLineDtosFromMeta(
       snapshot,
       metas.map((m) => ({
         line_key: m.line_key,
         pallet_label: m.pallet_label,
         note: m.note,
+      })),
+      shares.map((s) => ({
+        id: s.id,
+        line_key: s.line_key,
+        pallet_label: s.pallet_label,
+        qty: Number(s.qty),
+        note: s.note ?? null,
       }))
     );
     return {

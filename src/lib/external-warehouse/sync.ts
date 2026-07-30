@@ -21,6 +21,8 @@ import {
   hasExternalWarehouseRefreshDiff,
   type ExternalWarehouseRefreshDiff,
 } from "@/lib/external-warehouse/diff";
+import { rematchMetaAfterZkDiff } from "@/lib/external-warehouse/apply-line-key-rematch";
+import { buildZkDiffChangeLogEntries } from "@/lib/external-warehouse/change-log-copy";
 import type { ExternalWarehouseZkLink } from "@/types/database";
 
 export type SyncLinkResult = {
@@ -117,6 +119,8 @@ function changeLogEntriesForDiff(input: {
   linkId: string;
   zkNumber: string;
   diff: ExternalWarehouseRefreshDiff;
+  previous: ExternalWarehousePrunedSnapshot | null;
+  next: ExternalWarehousePrunedSnapshot;
   actorUserId?: string | null;
 }): {
   siteId: string;
@@ -126,50 +130,17 @@ function changeLogEntriesForDiff(input: {
   meta: Record<string, unknown>;
   actorUserId?: string | null;
 }[] {
-  const out: {
-    siteId: string;
-    zkLinkId: string;
-    kind: string;
-    summary: string;
-    meta: Record<string, unknown>;
-    actorUserId?: string | null;
-  }[] = [];
-
-  if (input.diff.addedLineKeys.length) {
-    out.push({
-      siteId: input.siteId,
-      zkLinkId: input.linkId,
-      kind: "lines_added",
-      summary: `${input.zkNumber}: dodano ${input.diff.addedLineKeys.length} poz.`,
-      meta: { keys: input.diff.addedLineKeys.slice(0, 40) },
-      actorUserId: input.actorUserId,
-    });
-  }
-  if (input.diff.removedLineKeys.length) {
-    out.push({
-      siteId: input.siteId,
-      zkLinkId: input.linkId,
-      kind: "lines_removed",
-      summary: `${input.zkNumber}: usunięto ${input.diff.removedLineKeys.length} poz.`,
-      meta: { keys: input.diff.removedLineKeys.slice(0, 40) },
-      actorUserId: input.actorUserId,
-    });
-  }
-  if (input.diff.quantityChanged.length) {
-    out.push({
-      siteId: input.siteId,
-      zkLinkId: input.linkId,
-      kind: "qty_changed",
-      summary: `${input.zkNumber}: zmieniono ilość (${input.diff.quantityChanged.length})`,
-      meta: { changes: input.diff.quantityChanged.slice(0, 40) },
-      actorUserId: input.actorUserId,
-    });
-  }
-  return out;
+  return buildZkDiffChangeLogEntries(input);
 }
 
 /**
  * Sync jednego linku ZK: debounce → lock → Subiekt → prune/hash → CAS → change_log.
+ *
+ * WAŻNE: sync NIGDY nie usuwa ani nie nadpisuje:
+ * - external_warehouse_line_meta (paleta 1:1, notatki),
+ * - external_warehouse_line_pallet_shares (rozbicie na palety).
+ * Zmiana ilości w ZK zostawia udziały bez zmian (ew. badge „nadmiar” w UI).
+ * Gdy Subiekt zmieni ob_Id pozycji, próbujemy 1:1 rematch meta/udziałów po towarze.
  */
 export async function syncExternalWarehouseZkLink(
   link: SyncableZkLink,
@@ -296,10 +267,50 @@ export async function syncExternalWarehouseZkLink(
       };
     }
 
+    // Meta / udziały palet są trwałe względem snapshotu.
+    // Przy zmianie kluczy pozycji (nowe ob_Id) przenieś je 1:1 po towarze.
+    if (
+      previous &&
+      diff.removedLineKeys.length > 0 &&
+      diff.addedLineKeys.length > 0
+    ) {
+      try {
+        const rematch = await rematchMetaAfterZkDiff({
+          zkLinkId: link.id,
+          previousLines: previous.lines,
+          nextLines: pruned.lines,
+          removedKeys: diff.removedLineKeys,
+          addedKeys: diff.addedLineKeys,
+        });
+        if (rematch.migrated > 0) {
+          await appendChangeLog([
+            {
+              siteId: link.site_id,
+              zkLinkId: link.id,
+              kind: "pallet_changed",
+              summary: `${zkNumberFresh}: przeniesiono meta/palety (${rematch.migrated}) po zmianie kluczy ZK`,
+              meta: {
+                rematched: rematch.migrated,
+                skipped: rematch.skipped,
+              },
+              actorUserId: options.actorUserId,
+            },
+          ]);
+        }
+      } catch (e) {
+        console.error(
+          "[external-warehouse] rematch",
+          e instanceof Error ? e.message : e
+        );
+      }
+    }
+
     const logDiff: ExternalWarehouseRefreshDiff =
       previous == null
         ? {
-            addedLineKeys: pruned.lines.map((l) => l.key),
+            // Pierwszy sync po powiązaniu — bez floodu „dodano N poz.”
+            // (jest już wpis zk_linked).
+            addedLineKeys: [],
             removedLineKeys: [],
             quantityChanged: [],
           }
@@ -312,6 +323,8 @@ export async function syncExternalWarehouseZkLink(
           linkId: link.id,
           zkNumber: zkNumberFresh,
           diff: logDiff,
+          previous,
+          next: pruned,
           actorUserId: options.actorUserId,
         })
       );

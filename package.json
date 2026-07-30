@@ -61,6 +61,9 @@
     "db:migrate:gadki": "tsx scripts/apply-sql-migration.ts supabase/migrations/115_external_warehouse_gadki.sql",
     "db:migrate:gadki-max-links": "tsx scripts/apply-sql-migration.ts supabase/migrations/116_external_warehouse_zk_max_links.sql",
     "db:migrate:advisor-harden-117": "tsx scripts/apply-sql-migration.ts supabase/migrations/117_advisor_harden_gadki_and_related.sql",
+    "db:migrate:gadki-pallet-shares": "tsx scripts/apply-sql-migration.ts supabase/migrations/118_external_warehouse_line_pallet_shares.sql",
+    "db:migrate:gadki-pallet-shares-rpc": "tsx scripts/apply-sql-migration.ts supabase/migrations/119_replace_gadki_line_pallet_shares_rpc.sql",
+    "db:migrate:gadki-share-notes": "tsx scripts/apply-sql-migration.ts supabase/migrations/120_gadki_pallet_share_notes.sql",
     "verify-sales-request-note": "tsx scripts/verify-sales-request-note-migration.ts"
   },
   "dependencies": {

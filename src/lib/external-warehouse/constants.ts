@@ -8,6 +8,8 @@ export const MAX_EXTERNAL_WAREHOUSE_NOTE_LEN = 2000;
 export const MAX_EXTERNAL_WAREHOUSE_PALLET_LABEL_LEN = 80;
 export const MAX_EXTERNAL_WAREHOUSE_ZK_LABEL_LEN = 120;
 export const MAX_EXTERNAL_WAREHOUSE_CHANGE_LOG_UI = 100;
+/** Max udziałów (palet) na jedną pozycję ZK. */
+export const MAX_EXTERNAL_WAREHOUSE_PALLET_SHARES_PER_LINE = 20;
 
 /** Min. odstęp między automatycznymi syncami Subiekta (wejście na stronę). */
 export const EXTERNAL_WAREHOUSE_SYNC_DEBOUNCE_MS = 45_000;

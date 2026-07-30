@@ -23,8 +23,22 @@ export type ExternalWarehousePrunedSnapshot = {
   lines: ExternalWarehousePrunedLine[];
 };
 
+export type ExternalWarehouseLineMetaFields = {
+  pallet_label: string | null;
+  note: string | null;
+};
+
+export type ExternalWarehouseLineShareInput = {
+  id: string;
+  pallet_label: string;
+  qty: number;
+  note?: string | null;
+};
+
 export type ExternalWarehouseLineDto = {
   key: string;
+  /** Unikalny klucz wiersza UI (pozycja / udział / reszta). */
+  rowKey: string;
   symbol: string | null;
   product: string;
   quantity: number | null;
@@ -32,6 +46,18 @@ export type ExternalWarehouseLineDto = {
   palletLabel: string | null;
   note: string | null;
   orphan?: boolean;
+  /** Notatka pozycji (line_meta) — widoczna też przy pełnym rozbiciu. */
+  lineNote?: string | null;
+  /** Id wiersza shares — gdy wiersz to konkretny udział. */
+  shareId?: string | null;
+  /** Ilość z ZK (cała pozycja) — przy rozbiciu. */
+  lineQuantity?: number | null;
+  /** Pozycja ma udziały na wielu paletach. */
+  isSplit?: boolean;
+  /** Reszta ilości bez palety (sum shares < qty ZK). */
+  isRemainder?: boolean;
+  /** Σ udziałów > qty ZK (np. po syncu zmniejszającym ilość). */
+  overAllocated?: boolean;
 };
 
 function parseLineQuantity(qty: number | null | undefined): number | null {
@@ -41,11 +67,117 @@ function parseLineQuantity(qty: number | null | undefined): number | null {
   return n === Math.trunc(n) ? Math.trunc(n) : n;
 }
 
-function formatLineQuantity(qty: number | null | undefined): string | null {
+export function formatLineQuantity(qty: number | null | undefined): string | null {
   if (qty == null || !Number.isFinite(Number(qty))) return null;
   const n = Number(qty);
   const label = n === Math.trunc(n) ? String(Math.trunc(n)) : String(n);
   return `${label} szt.`;
+}
+
+function roundQty(n: number): number {
+  return Math.round(n * 10000) / 10000;
+}
+
+function sumShareQty(shares: { qty: number }[]): number {
+  return roundQty(shares.reduce((acc, s) => acc + Number(s.qty || 0), 0));
+}
+
+function baseProductFields(line: {
+  key: string;
+  tw_Symbol?: string | null;
+  tw_Nazwa?: string | null;
+}): Pick<ExternalWarehouseLineDto, "key" | "symbol" | "product"> {
+  const product = (line.tw_Nazwa ?? line.tw_Symbol ?? "Pozycja").trim();
+  const symbol = line.tw_Symbol?.trim() || null;
+  return {
+    key: line.key,
+    symbol: symbol && symbol !== product ? symbol : null,
+    product: product || line.key,
+  };
+}
+
+/**
+ * Buduje DTO pozycji: 1 wiersz (meta.pallet) albo N udziałów + opcjonalna reszta.
+ */
+export function expandLineDtos(input: {
+  key: string;
+  tw_Symbol?: string | null;
+  tw_Nazwa?: string | null;
+  quantity: number | null;
+  meta?: ExternalWarehouseLineMetaFields | null;
+  shares?: ExternalWarehouseLineShareInput[];
+  orphan?: boolean;
+}): ExternalWarehouseLineDto[] {
+  const base = baseProductFields({
+    key: input.key,
+    tw_Symbol: input.tw_Symbol,
+    tw_Nazwa: input.tw_Nazwa,
+  });
+  const lineNote = input.meta?.note ?? null;
+  const shares = [...(input.shares ?? [])].sort((a, b) =>
+    a.pallet_label.localeCompare(b.pallet_label, "pl", { sensitivity: "base" })
+  );
+  const lineQty = input.quantity;
+
+  if (shares.length === 0) {
+    return [
+      {
+        ...base,
+        rowKey: input.key,
+        quantity: lineQty,
+        quantityLabel: formatLineQuantity(lineQty),
+        palletLabel: input.meta?.pallet_label ?? null,
+        note: lineNote,
+        orphan: input.orphan,
+        shareId: null,
+        lineQuantity: lineQty,
+        isSplit: false,
+      },
+    ];
+  }
+
+  const allocated = sumShareQty(shares);
+  const overAllocated =
+    lineQty != null && Number.isFinite(lineQty) && allocated > lineQty + 1e-9;
+  const rows: ExternalWarehouseLineDto[] = shares.map((share, index) => {
+    const qty = parseLineQuantity(share.qty) ?? Number(share.qty);
+    return {
+      ...base,
+      rowKey: `${input.key}#share:${share.id}`,
+      quantity: qty,
+      quantityLabel: formatLineQuantity(qty),
+      palletLabel: share.pallet_label,
+      note: share.note?.trim() || null,
+      lineNote: index === 0 ? lineNote : null,
+      orphan: input.orphan,
+      shareId: share.id,
+      lineQuantity: lineQty,
+      isSplit: true,
+      overAllocated: overAllocated || undefined,
+    };
+  });
+
+  if (lineQty != null && Number.isFinite(lineQty) && !overAllocated) {
+    const rem = roundQty(lineQty - allocated);
+    if (rem > 1e-9) {
+      rows.push({
+        ...base,
+        rowKey: `${input.key}#remainder`,
+        quantity: rem,
+        quantityLabel: formatLineQuantity(rem),
+        palletLabel: null,
+        note: lineNote,
+        lineNote: null,
+        orphan: input.orphan,
+        shareId: null,
+        lineQuantity: lineQty,
+        isSplit: true,
+        isRemainder: true,
+      });
+    }
+  }
+
+  return rows;
 }
 
 export function isExternalWarehouseShippingCostLine(
@@ -143,47 +275,88 @@ export function hashExternalWarehouseLines(
 
 export function lineDtosFromPrunedSnapshot(
   snapshot: ExternalWarehousePrunedSnapshot | null,
-  metaByKey: Map<string, { pallet_label: string | null; note: string | null }>
+  metaByKey: Map<string, ExternalWarehouseLineMetaFields>,
+  sharesByKey: Map<string, ExternalWarehouseLineShareInput[]> = new Map()
 ): ExternalWarehouseLineDto[] {
   if (!snapshot) return [];
-  return snapshot.lines.map((line) => {
-    const meta = metaByKey.get(line.key);
-    const product = (line.tw_Nazwa ?? line.tw_Symbol ?? "Pozycja").trim();
-    const symbol = line.tw_Symbol?.trim() || null;
-    return {
-      key: line.key,
-      symbol: symbol && symbol !== product ? symbol : null,
-      product,
-      quantity: line.ob_Ilosc,
-      quantityLabel: formatLineQuantity(line.ob_Ilosc),
-      palletLabel: meta?.pallet_label ?? null,
-      note: meta?.note ?? null,
-    };
-  });
+  const out: ExternalWarehouseLineDto[] = [];
+  for (const line of snapshot.lines) {
+    out.push(
+      ...expandLineDtos({
+        key: line.key,
+        tw_Symbol: line.tw_Symbol,
+        tw_Nazwa: line.tw_Nazwa,
+        quantity: line.ob_Ilosc,
+        meta: metaByKey.get(line.key) ?? null,
+        shares: sharesByKey.get(line.key) ?? [],
+      })
+    );
+  }
+  return out;
 }
 
-/** Meta bez linii w snapshotcie — sekcja „Usunięte z ZK”. */
+/** Meta / shares bez linii w snapshotcie — sekcja „Usunięte z ZK”. */
 export function orphanLineDtosFromMeta(
   snapshot: ExternalWarehousePrunedSnapshot | null,
-  metaRows: { line_key: string; pallet_label: string | null; note: string | null }[]
+  metaRows: { line_key: string; pallet_label: string | null; note: string | null }[],
+  shareRows: {
+    id: string;
+    line_key: string;
+    pallet_label: string;
+    qty: number;
+    note?: string | null;
+  }[] = []
 ): ExternalWarehouseLineDto[] {
   const live = new Set(snapshot?.lines.map((l) => l.key) ?? []);
-  return metaRows
-    .filter((m) => !live.has(m.line_key))
-    .map((m) => ({
-      key: m.line_key,
-      symbol: null,
-      product: m.line_key,
-      quantity: null,
-      quantityLabel: null,
-      palletLabel: m.pallet_label,
-      note: m.note,
-      orphan: true,
-    }));
+  const metaByKey = new Map(
+    metaRows
+      .filter((m) => !live.has(m.line_key))
+      .map((m) => [
+        m.line_key,
+        { pallet_label: m.pallet_label, note: m.note } satisfies ExternalWarehouseLineMetaFields,
+      ])
+  );
+  const sharesByKey = new Map<string, ExternalWarehouseLineShareInput[]>();
+  for (const s of shareRows) {
+    if (live.has(s.line_key)) continue;
+    const bucket = sharesByKey.get(s.line_key);
+    const item = {
+      id: s.id,
+      pallet_label: s.pallet_label,
+      qty: Number(s.qty),
+      note: s.note ?? null,
+    };
+    if (bucket) bucket.push(item);
+    else sharesByKey.set(s.line_key, [item]);
+  }
+
+  const keys = new Set([...metaByKey.keys(), ...sharesByKey.keys()]);
+  const out: ExternalWarehouseLineDto[] = [];
+  for (const key of keys) {
+    out.push(
+      ...expandLineDtos({
+        key,
+        tw_Nazwa: key,
+        quantity: null,
+        meta: metaByKey.get(key) ?? { pallet_label: null, note: null },
+        shares: sharesByKey.get(key) ?? [],
+        orphan: true,
+      })
+    );
+  }
+  return out;
 }
 
 export function snapshotLineKeys(
   snapshot: ExternalWarehousePrunedSnapshot | null
 ): Set<string> {
   return new Set(snapshot?.lines.map((l) => l.key) ?? []);
+}
+
+export function snapshotLineQty(
+  snapshot: ExternalWarehousePrunedSnapshot | null,
+  lineKey: string
+): number | null {
+  const line = snapshot?.lines.find((l) => l.key === lineKey);
+  return line?.ob_Ilosc ?? null;
 }

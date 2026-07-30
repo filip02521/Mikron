@@ -6,13 +6,15 @@ import {
   isExternalWarehouseUuid,
   normalizeLineNote,
   normalizePalletLabel,
+  normalizePalletSharesInput,
+  normalizeShareQty,
   normalizeSiteNoteBody,
 } from "./guards";
 import { MAX_EXTERNAL_WAREHOUSE_ZK_LINKS } from "./constants";
 
 const snap = {
   dok_Id: 1,
-  lines: [{ key: "ob:1", tw_Nazwa: "A", ob_Ilosc: 2 }],
+  lines: [{ key: "ob:1", tw_Nazwa: "A", ob_Ilosc: 10 }],
 };
 
 describe("external-warehouse guards", () => {
@@ -50,5 +52,38 @@ describe("external-warehouse guards", () => {
     expect(normalizeLineNote("n".repeat(3000))?.length).toBe(2000);
     expect(normalizeSiteNoteBody("  hello  ")).toBe("hello");
     expect(normalizePalletLabel("  ")).toBeNull();
+  });
+
+  it("normalizeShareQty odrzuca ≤0", () => {
+    expect(normalizeShareQty(2.5)).toBe(2.5);
+    expect(normalizeShareQty(0)).toBeNull();
+    expect(normalizeShareQty(-1)).toBeNull();
+    expect(normalizeShareQty("x")).toBeNull();
+  });
+
+  it("normalizePalletSharesInput scala palety i limituje sumę", () => {
+    const ok = normalizePalletSharesInput(snap, "ob:1", [
+      { palletLabel: " A ", qty: 3 },
+      { palletLabel: "A", qty: 2 },
+      { palletLabel: "B", qty: 4 },
+    ]);
+    expect(ok.ok).toBe(true);
+    if (ok.ok) {
+      expect(ok.shares).toEqual([
+        { palletLabel: "A", qty: 5, note: null },
+        { palletLabel: "B", qty: 4, note: null },
+      ]);
+    }
+
+    const over = normalizePalletSharesInput(snap, "ob:1", [
+      { palletLabel: "A", qty: 6 },
+      { palletLabel: "B", qty: 6 },
+    ]);
+    expect(over.ok).toBe(false);
+
+    const under = normalizePalletSharesInput(snap, "ob:1", [
+      { palletLabel: "A", qty: 3 },
+    ]);
+    expect(under.ok).toBe(true);
   });
 });
