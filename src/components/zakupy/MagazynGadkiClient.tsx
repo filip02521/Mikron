@@ -52,13 +52,13 @@ import {
   IconLayers,
   IconLink,
   IconLinkOff,
+  IconMagazynGadki,
   IconNotepad,
   IconPackage,
   IconPencil,
   IconPlusCircle,
   IconSearch,
   IconTrash2,
-  IconWarehouse,
 } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import {
@@ -278,8 +278,8 @@ export function MagazynGadkiClient({
           inset
           density="compact"
           leading={
-            <SectionHeadingIcon tileClassName={sectionIconTileBrandClass} className="h-9 w-9">
-              <IconWarehouse size={18} />
+            <SectionHeadingIcon tileClassName="bg-emerald-100 text-emerald-800" className="h-9 w-9">
+              <IconMagazynGadki size={18} />
             </SectionHeadingIcon>
           }
           title={siteName}

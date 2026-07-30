@@ -80,6 +80,11 @@ import {
   readZkProsbaPrefill,
   type ZkProsbaPrefill,
 } from "@/lib/orders/zk-watch-prosba-prefill";
+import {
+  clearBoardQuestionProsbaPrefill,
+  readBoardQuestionProsbaPrefill,
+} from "@/lib/orders/board-question-prosba-prefill";
+import { DEPARTMENT_BOARD_QUESTIONS_FORM } from "@/lib/department-board/copy";
 import { readTeethOcrProsbaPrefill, clearTeethOcrProsbaPrefill, resolveSupplierForTeethPrefill } from "@/lib/orders/teeth-ocr-prosba-prefill";
 import { clearUnseenNewZkLineKeys, removeUnseenNewZkLineKeys } from "@/lib/client/zk-watch-new-lines-snapshot";
 import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
@@ -486,6 +491,39 @@ export function OrderFormClient({
       }),
     ]);
   }, [lockedId, tourDemo, teethProductInfo, suppliers]);
+
+  const boardQuestionPrefillAppliedRef = useRef(false);
+  useEffect(() => {
+    if (tourDemo) return;
+    if (boardQuestionPrefillAppliedRef.current) return;
+    if (searchParams.get("fromBoard") !== "1") return;
+    const prefill = readBoardQuestionProsbaPrefill();
+    if (!prefill?.lines.length) return;
+    boardQuestionPrefillAppliedRef.current = true;
+    clearBoardQuestionProsbaPrefill();
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time board→prosba prefill
+    setRequestKind("zamowienie");
+    setValidationAttempted(false);
+    setFormNotice({
+      tone: "info",
+      text: DEPARTMENT_BOARD_QUESTIONS_FORM.quickProsbaPrefillNotice,
+    });
+    setMsg(null);
+    setZkProsbaLinkContext(null);
+    setGroups([
+      prefill.lines.map((line) => ({
+        ...emptyEntry(lockedId),
+        symbol: line.symbol,
+        mikranCode: line.mikranCode,
+        product: line.product,
+        quantity: line.quantity,
+        subiektTwId: line.subiektTwId ?? null,
+        source: line.source ?? null,
+        stockSource: line.stockSource ?? null,
+      })),
+    ]);
+  }, [lockedId, searchParams, tourDemo]);
 
   const supplierRefs = useMemo(() => toAppSupplierRefs(suppliers), [suppliers]);
 

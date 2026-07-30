@@ -238,6 +238,19 @@ export function IconWarehouse(props: StrokeIconProps) {
   );
 }
 
+/** Magazyn zewnętrzny Gądki — hala + palety */
+export function IconMagazynGadki(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3 20V9.5L12 4l9 5.5V20" />
+      <path d="M10 20v-5h4v5" />
+      <path d="M5 17h4M5.5 15h3" />
+      <path d="M15 17h4M15.5 15h3" />
+      <path d="M4.5 19h5M14.5 19h5" />
+    </Svg>
+  );
+}
+
 /** Karty dostawców */
 export function IconBuilding(props: StrokeIconProps) {
   return (

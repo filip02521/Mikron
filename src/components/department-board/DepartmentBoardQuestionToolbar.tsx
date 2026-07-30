@@ -6,7 +6,7 @@ import {
 } from "@/components/department-board/DepartmentBoardSalesChrome";
 import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterBar";
 import {
-  boardQuestionsListFooterClass,
+  boardQuestionsResultsMetaClass,
   boardQuestionsToolbarShellClass,
 } from "@/lib/department-board/department-board-questions-ui";
 import type { DepartmentBoardQuestionFilterCounts } from "@/lib/department-board/question-filters";
@@ -47,6 +47,8 @@ export function DepartmentBoardQuestionToolbar({
   searchLabel: string;
   searchActive?: boolean;
 }) {
+  const showResultsMeta = showSearch && (searchActive || matchCount !== totalCount);
+
   return (
     <div className={boardQuestionsToolbarShellClass}>
       {showSearch ? (
@@ -77,18 +79,22 @@ export function DepartmentBoardQuestionToolbar({
         showUnseen={showUnseen}
       />
 
-      {showSearch && (searchActive || matchCount !== totalCount) ? (
-        <p
-          className={cn(
-            boardQuestionsListFooterClass,
-            "mt-0 rounded-md border-0 bg-transparent px-0 py-0"
+      {showResultsMeta ? (
+        <p className={cn(boardQuestionsResultsMetaClass, "px-0.5")}>
+          {searchActive ? (
+            <>
+              Wyniki wyszukiwania:{" "}
+              <span className="font-semibold text-slate-700">{matchCount}</span>
+              {" z "}
+              <span className="font-semibold text-slate-700">{totalCount}</span>
+              {" w filtrze"}
+            </>
+          ) : (
+            <>
+              <span className="font-semibold text-slate-700">{matchCount}</span>
+              {" wątków w filtrze"}
+            </>
           )}
-        >
-          Wyniki:{" "}
-          <span className="font-semibold tabular-nums text-slate-800">{matchCount}</span>
-          {" z "}
-          <span className="font-semibold tabular-nums text-slate-800">{totalCount}</span>
-          {" w aktywnym filtrze"}
         </p>
       ) : null}
     </div>

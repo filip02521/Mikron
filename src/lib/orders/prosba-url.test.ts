@@ -39,6 +39,13 @@ describe("prosba-url", () => {
     );
   });
 
+  it("prosbaHref obsługuje prefill z Tablicy", () => {
+    expect(prosbaHref({ fromBoard: true })).toBe("/prosba?fromBoard=1");
+    expect(prosbaHref({ salesPersonId: "sp1", fromBoard: true })).toBe(
+      "/prosba?dla=sp1&fromBoard=1"
+    );
+  });
+
   it("resolveProsbaSupplierId odrzuca nieznane id", () => {
     expect(resolveProsbaSupplierId("s1", ["s1", "s2"])).toBe("s1");
     expect(resolveProsbaSupplierId("x", ["s1"])).toBeUndefined();

@@ -43,7 +43,6 @@ import {
   salesPageShellClass,
   sectionIconTileBrandClass,
   salesChromeInsetClass,
-  salesTypography,
 } from "@/lib/ui/ontime-theme";
 import { SalesListFilterEmptyHint } from "@/components/sales/SalesListEmptyHints";
 import { actionCreateQuestion } from "@/app/actions/department-board";
@@ -334,12 +333,6 @@ export function DepartmentBoardSalesClient({
             searchLabel="Szukaj w pytaniach zespołu"
             searchActive={Boolean(questionSearchNeedle)}
           />
-
-          {activeQuestionFilter === "own_unseen" ? (
-            <p className={cn(salesTypography.sectionHint, "-mt-2")}>
-              Tylko Twoje pytania z nową odpowiedzią zakupów, której jeszcze nie otworzyłeś.
-            </p>
-          ) : null}
 
           {questionSearchNeedle && filteredQuestions.length === 0 && statusFilteredQuestions.length > 0 ? (
             <SalesListFilterEmptyHint

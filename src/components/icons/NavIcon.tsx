@@ -9,6 +9,7 @@ import {
   IconInbox,
   IconLayers,
   IconLayoutPanel,
+  IconMagazynGadki,
   IconMessageSquare,
   IconNotepad,
   IconPackage,
@@ -36,6 +37,7 @@ const NAV_ICON_BY_KEY: Record<
   dailyPanel: IconLayoutPanel,
   verification: IconClipboardPen,
   warehouse: IconWarehouse,
+  magazynGadki: IconMagazynGadki,
   history: IconArchive,
   suppliers: IconBuilding,
   schedule: IconCalendarRange,
@@ -64,6 +66,7 @@ const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
   "/podsumowanie-miesieczne": "chartTrend",
   "/weryfikacja": "verification",
   "/kolejka": "warehouse",
+  "/zakupy/gadki": "magazynGadki",
   "/dostawy": "schedule",
   "/historia": "history",
   "/zakupy/dostawcy": "suppliers",
@@ -157,6 +160,7 @@ export function navIconTileIdleClass(key: NavIconKey): string {
     case "verification":
       return navIconTileClassForTone("amber");
     case "warehouse":
+    case "magazynGadki":
       return navIconTileClassForTone("emerald");
     case "suppliers":
     case "schedule":

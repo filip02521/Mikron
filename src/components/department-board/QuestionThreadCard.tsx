@@ -350,7 +350,13 @@ export function QuestionThreadCard({
 
       {expanded ? (
         <div className={boardQuestionExpandedShellClass}>
-        {hasProduct ? <BoardQuestionProductContext product={question} /> : null}
+        {hasProduct ? (
+          <BoardQuestionProductContext
+            product={question}
+            showQuickProsba={audience === "sales"}
+            threadId={question.id}
+          />
+        ) : null}
 
         <BoardThreadMessage
           tone="question"

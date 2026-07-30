@@ -305,6 +305,9 @@ describe("navForRole zakupy_zeby", () => {
 
   it("zakupy ma Magazyn Gądki w sekcji Dostawcy; zęby/magazyn — nie", () => {
     const suppliers = navForRole("zakupy").find((g) => g.title === NAV_SECTION_SUPPLIERS);
+    const gadki = suppliers?.items.find((i) => i.href === "/zakupy/gadki");
+    expect(gadki?.icon).toBe("magazynGadki");
+    expect(gadki?.iconTone).toBe("emerald");
     expect(suppliers?.items.some((i) => i.href === "/zakupy/gadki")).toBe(true);
     const teethHrefs = navForRole("zakupy_zeby").flatMap((g) => g.items.map((i) => i.href));
     expect(teethHrefs.includes("/zakupy/gadki")).toBe(false);

@@ -155,7 +155,19 @@ export const boardQuestionProductChipClass =
   "inline-flex max-w-full items-center gap-1.5 rounded-md border border-slate-200/90 bg-slate-100/80 px-2 py-0.5 text-[11px] font-semibold text-slate-700";
 
 export const boardQuestionProductContextClass =
-  "rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 py-2.5";
+  "overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)] ring-1 ring-slate-900/[0.02]";
+
+export const boardQuestionProductContextBodyClass =
+  "bg-gradient-to-br from-slate-50/90 via-white to-white px-3 py-2.5";
+
+export const boardQuestionQuickProsbaStripClass =
+  "flex flex-col gap-2 border-t border-indigo-100/80 bg-gradient-to-r from-indigo-50/55 via-indigo-50/25 to-white px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3";
+
+export const boardQuestionQuickProsbaHintClass =
+  "min-w-0 text-[11px] leading-snug text-slate-600 sm:text-xs";
+
+export const boardQuestionQuickProsbaCtaClass =
+  "shrink-0 gap-1.5 border-indigo-200/80 bg-white/90 text-indigo-800 shadow-sm shadow-indigo-900/[0.03] hover:border-indigo-300 hover:bg-indigo-50/80";
 
 export type BoardThreadMessageTone = "question" | "procurement" | "sales";
 
