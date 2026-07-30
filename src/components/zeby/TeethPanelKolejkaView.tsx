@@ -140,12 +140,19 @@ export function TeethPanelKolejkaView({
   }, [groups]);
 
   const [fileStateOverrides, setFileStateOverrides] = useState<Map<string, boolean>>(new Map());
+  const [overridesForGroups, setOverridesForGroups] = useState(groups);
+
+  // Po przeładowaniu kolejki nie trzymaj lokalnych override’ów (mogą odblokować fałszywie).
+  if (groups !== overridesForGroups) {
+    setOverridesForGroups(groups);
+    setFileStateOverrides(new Map());
+  }
 
   const orderHasFile = useCallback((orderId: string): boolean => {
     const override = fileStateOverrides.get(orderId);
     if (override != null) return override;
     const order = ordersById.get(orderId);
-    return Boolean(order?.teeth_order_file_name);
+    return Boolean(order?.teeth_order_file_path?.trim());
   }, [fileStateOverrides, ordersById]);
 
   const handleFileChanged = useCallback((orderId: string, hasFile: boolean) => {
@@ -255,6 +262,12 @@ export function TeethPanelKolejkaView({
 
           <div className="flex shrink-0 flex-wrap items-center gap-2">
 
+            {!selectedOrdersHaveFiles ? (
+              <span className="max-w-[16rem] text-[11px] leading-snug text-amber-800 sm:max-w-[20rem]">
+                Załącz plik zamówienia (Excel/PDF/XML) do zaznaczonych próśb — wtedy odblokuje się oznaczanie.
+              </span>
+            ) : null}
+
             <Button
 
               size="sm"
@@ -340,11 +353,22 @@ export function TeethPanelKolejkaView({
 
         const supplierId = group.supplierId ?? group.dueSchedule?.supplier_id ?? null;
 
+        const groupOrdersHaveFiles =
+          realItems.length > 0 && realItems.every((item) => orderHasFile(item.id));
+        const canMarkGroup =
+          (realItems.length > 0 && groupOrdersHaveFiles) ||
+          (scheduleOnly && realItems.length === 0);
+        const markDisabledReason =
+          realItems.length > 0 && !groupOrdersHaveFiles
+            ? "Załącz plik zamówienia (Excel/PDF/XML) do wszystkich próśb w grupie."
+            : null;
+
 
 
         const handleMarkGroup = () => {
 
           if (realItems.length > 0) {
+            if (!groupOrdersHaveFiles) return;
 
             const selections: TeethPositionSelection[] = [];
             for (const item of realItems) {
@@ -396,7 +420,9 @@ export function TeethPanelKolejkaView({
 
                     showSelectAll={realItems.length > 0}
 
-                    canMark={realItems.length > 0 || scheduleOnly}
+                    canMark={canMarkGroup}
+
+                    markDisabledReason={markDisabledReason}
 
                     onToggleAll={() => onToggleSelectAllInGroup(group)}
 

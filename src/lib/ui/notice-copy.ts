@@ -517,18 +517,31 @@ export function teethMarkOrderedToast(opts: {
   updated: number;
   ordersCompleted: number;
   skipped: number;
+  skippedFiles?: number;
   plPozycja: (n: number) => string;
 }): ToastNotice {
-  const { updated, ordersCompleted, skipped, plPozycja } = opts;
+  const { updated, ordersCompleted, skipped, skippedFiles = 0, plPozycja } = opts;
   const completed =
     ordersCompleted > 0
       ? ` Ukończono ${ordersCompleted} ${ordersCompleted === 1 ? "zamówienie" : "zamówień"}.`
       : "";
 
-  if (skipped > 0) {
+  const totalSkipped = skipped + skippedFiles;
+  if (totalSkipped > 0) {
+    const reasons: string[] = [];
+    if (skipped > 0) {
+      reasons.push(
+        `${skipped} ${skipped === 1 ? "pozycję" : "pozycji"} bez kompletnej listy zębów`
+      );
+    }
+    if (skippedFiles > 0) {
+      reasons.push(
+        `${skippedFiles} ${skippedFiles === 1 ? "prośbę" : "próśb"} bez pliku zamówienia`
+      );
+    }
     return toastWarning(
       "Oznaczono częściowo",
-      `Zaktualizowano ${updated} ${plPozycja(updated)}.${completed} Pominięto ${skipped} ${skipped === 1 ? "pozycję" : "pozycji"} z niekompletną listą zębów.`,
+      `Zaktualizowano ${updated} ${plPozycja(updated)}.${completed} Pominięto ${reasons.join(" oraz ")}.`,
     );
   }
 

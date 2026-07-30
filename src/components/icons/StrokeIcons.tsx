@@ -743,6 +743,17 @@ export function IconFilePlus(props: StrokeIconProps) {
   );
 }
 
+/** Pobieranie pliku */
+export function IconDownload(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M12 3v12" />
+      <path d="M7 10l5 5 5-5" />
+      <path d="M5 19h14" />
+    </Svg>
+  );
+}
+
 /** Oko / podgląd */
 export function IconEye(props: StrokeIconProps) {
   return (

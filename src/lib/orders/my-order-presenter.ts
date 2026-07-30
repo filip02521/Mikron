@@ -370,7 +370,9 @@ function rowToLine(
     historyEstimateLowConfidence: historyEstimate?.lowConfidence ?? false,
     teethDetails: mapOrderTeethDetailsToEdit(order.teeth_details),
     isTeeth: Boolean(order.is_teeth),
-    teethOrderFileName: order.teeth_order_file_name ?? null,
+    teethOrderFileName: order.teeth_order_file_path?.trim()
+      ? (order.teeth_order_file_name ?? null)
+      : null,
     lineAcknowledgeMode: resolveLinePickupAckMode(order),
     teethLineDelivered: order.teeth_line_delivered ?? null,
     deliveredQuantity: order.delivered_quantity ?? null,
