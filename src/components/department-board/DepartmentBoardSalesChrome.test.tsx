@@ -23,11 +23,13 @@ describe("DepartmentBoardQuestionFilters", () => {
     cleanup();
   });
 
-  it("wywołuje onChange po kliknięciu chipa", () => {
+  it("wywołuje onChange po kliknięciu chipa statusu", () => {
     const onChange = vi.fn();
-    render(<DepartmentBoardQuestionFilters value="all" onChange={onChange} counts={baseCounts} />);
+    render(
+      <DepartmentBoardQuestionFilters value="all" onChange={onChange} counts={baseCounts} />
+    );
 
-    fireEvent.click(screen.getByRole("button", { name: /Bez odpowiedzi/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Czekają/i }));
     expect(onChange).toHaveBeenCalledWith("open");
   });
 
@@ -43,15 +45,16 @@ describe("DepartmentBoardQuestionFilters", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /Bez odpowiedzi/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Czekają/i }));
     expect(onChange).not.toHaveBeenCalled();
     expect(screen.getByText("Filtry zablokowane.")).toBeTruthy();
   });
 
-  it("pokazuje filtr nowych odpowiedzi i tylko moje", () => {
+  it("sales: pokazuje Nowe i Moje w grupie Dla Ciebie, bez długiego Moje z nową", () => {
     const onChange = vi.fn();
     render(
       <DepartmentBoardQuestionFilters
+        domain="sales"
         value="all"
         onChange={onChange}
         counts={baseCounts}
@@ -60,16 +63,36 @@ describe("DepartmentBoardQuestionFilters", () => {
       />
     );
 
-    expect(screen.getByRole("button", { name: /Nowe odpowiedzi/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Moje z nową odpowiedzią/i })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Tylko moje/i })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Nowe odpowiedzi/i }));
+    expect(screen.getByText("Status")).toBeTruthy();
+    expect(screen.getByText("Dla Ciebie")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Nowe/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Moje/i })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Moje z nową odpowiedzią/i })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Nowe/i }));
     expect(onChange).toHaveBeenCalledWith("unseen");
   });
 
-  it("pokazuje liczniki na wszystkich chipach filtra", () => {
+  it("sales: own_unseen z URL pokazuje pasek z powrotem do wszystkich", () => {
+    const onChange = vi.fn();
     render(
       <DepartmentBoardQuestionFilters
+        domain="sales"
+        value="own_unseen"
+        onChange={onChange}
+        counts={baseCounts}
+        showMine
+      />
+    );
+
+    expect(screen.getByText(/Widok: Twoje pytania z nową odpowiedzią/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Pokaż wszystkie/i }));
+    expect(onChange).toHaveBeenCalledWith("all");
+  });
+
+  it("pokazuje liczniki na chipach statusu i Moje", () => {
+    render(
+      <DepartmentBoardQuestionFilters
+        domain="sales"
         value="open"
         onChange={vi.fn()}
         counts={baseCounts}
@@ -79,14 +102,32 @@ describe("DepartmentBoardQuestionFilters", () => {
     );
 
     expect(screen.getByRole("button", { name: /Aktywne/i }).textContent).toContain("5");
-    expect(screen.getByRole("button", { name: /Bez odpowiedzi/i }).textContent).toContain("2");
-    expect(screen.getByRole("button", { name: /Odpowiedziane/i }).textContent).toContain("3");
-    expect(screen.getByRole("button", { name: /Tylko moje/i }).textContent).toContain("2");
+    expect(screen.getByRole("button", { name: /Czekają/i }).textContent).toContain("2");
+    expect(screen.getByRole("button", { name: /Z odpowiedzią/i }).textContent).toContain("3");
+    expect(screen.getByRole("button", { name: /^Moje/i }).textContent).toContain("2");
   });
 
-  it("pokazuje chip nowych odpowiedzi nawet gdy wyszukiwanie daje zero wyników", () => {
+  it("panel: tylko status, bez grupy Dla Ciebie", () => {
     render(
       <DepartmentBoardQuestionFilters
+        domain="panel"
+        value="all"
+        onChange={vi.fn()}
+        counts={baseCounts}
+        showUnseen
+        showMine
+      />
+    );
+
+    expect(screen.queryByText("Dla Ciebie")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Nowe$/i })).toBeNull();
+    expect(screen.getByRole("button", { name: /Aktywne/i })).toBeTruthy();
+  });
+
+  it("pokazuje chip Nowe nawet gdy wyszukiwanie daje zero wyników", () => {
+    render(
+      <DepartmentBoardQuestionFilters
+        domain="sales"
         value="all"
         onChange={vi.fn()}
         counts={{ ...baseCounts, unseen: 0 }}
@@ -94,7 +135,7 @@ describe("DepartmentBoardQuestionFilters", () => {
       />
     );
 
-    expect(screen.getByRole("button", { name: /Nowe odpowiedzi/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Nowe/i })).toBeTruthy();
   });
 });
 

@@ -6,6 +6,8 @@ export function prosbaHref(options?: {
   supplierId?: string;
   /** Prefill z karty ZK w notatniku — linie produktów w sessionStorage. */
   fromZk?: boolean;
+  /** Prefill z pytania na Tablicy — produkt w sessionStorage. */
+  fromBoard?: boolean;
   zkWatchId?: string | null;
   zk?: string;
   klient?: string;
@@ -18,6 +20,7 @@ export function prosbaHref(options?: {
   if (options?.salesPersonId) params.set("dla", options.salesPersonId);
   if (options?.supplierId) params.set("dostawca", options.supplierId);
   if (options?.fromZk) params.set("fromZk", "1");
+  if (options?.fromBoard) params.set("fromBoard", "1");
   if (options?.zkWatchId?.trim()) params.set("zkWatch", options.zkWatchId.trim());
   if (options?.zk?.trim()) params.set("zk", options.zk.trim());
   if (options?.klient?.trim()) params.set("klient", options.klient.trim().slice(0, 80));

@@ -10,6 +10,7 @@ export type NavIconKey =
   | "dailyPanel"
   | "verification"
   | "warehouse"
+  | "magazynGadki"
   | "history"
   | "suppliers"
   | "schedule"
@@ -469,8 +470,9 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
         href: "/zakupy/gadki",
         label: "Magazyn Gądki",
         description: "ZK magazynu zewnętrznego",
-        icon: "warehouse",
+        icon: "magazynGadki",
         tone: "sky",
+        iconTone: "emerald",
         ...compact,
       },
     ];
@@ -506,8 +508,9 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
       href: "/zakupy/gadki",
       label: "Magazyn Gądki",
       description: "ZK magazynu zewnętrznego",
-      icon: "warehouse",
+      icon: "magazynGadki",
       tone: "sky",
+      iconTone: "emerald",
       ...compact,
     },
   ];

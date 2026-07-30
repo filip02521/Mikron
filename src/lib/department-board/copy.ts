@@ -38,24 +38,45 @@ export const DEPARTMENT_BOARD_QUESTIONS_FORM = {
   introBeforeLink: "Zamówienie towaru —",
   introLinkLabel: "Nowa prośba",
   expandHint: "Rozwiń",
+  quickProsbaHint:
+    "Pytanie na Tablicy nie zamawia towaru. Żeby go zamówić, złóż prośbę.",
+  quickProsbaCta: "Szybka prośba",
+  quickProsbaPrefillNotice:
+    "Uzupełniono produkt z pytania na Tablicy. Podaj ilość i dokończ prośbę.",
 };
 
 export const DEPARTMENT_BOARD_QUESTIONS_FILTERS = {
   focusDisabledHint:
     "Filtry są tymczasowo zablokowane — otworzyłeś konkretny wątek z linku.",
   toolbarLabel: "Filtruj listę",
+  /** Krótka etykieta grupy statusu (sales). */
+  statusGroupLabel: "Status",
+  /** Krótka etykieta grupy uwagi handlowca. */
+  attentionGroupLabel: "Dla Ciebie",
+  /** Gdy filtr own_unseen z URL / inbox bez chipa w UI. */
+  ownUnseenActiveHint: "Widok: Twoje pytania z nową odpowiedzią.",
+  ownUnseenClearLabel: "Pokaż wszystkie",
   toolbarHint:
-    "Zawęż wątki według statusu. Liczby przy chipach dotyczą wyników wyszukiwania (niezależnie od aktywnego filtra).",
+    "Zawęż listę według statusu lub zakresu. Liczby przy filtrach zależą od wyszukiwania.",
   searchHint:
     "Szukaj po temacie, treści pytania, produkcie, autorze lub fragmencie odpowiedzi zakupów.",
+  labels: {
+    all: "Aktywne",
+    open: "Czekają",
+    answered: "Z odpowiedzią",
+    closed: "Zakończone",
+    unseen: "Nowe",
+    own_unseen: "Moje nowe",
+    mine: "Moje",
+  },
   chips: {
-    all: "Aktywne pytania — bez zakończonych wątków.",
-    open: "Pytania bez odpowiedzi działu zakupów.",
-    answered: "Pytania z co najmniej jedną odpowiedzią zakupów.",
-    closed: "Zakończone wątki — zamknięte przez handlowca lub zakupy.",
-    unseen: "Odpowiedzi zakupów, których jeszcze nie otworzyłeś.",
-    own_unseen: "Twoje pytania z nową odpowiedzią zakupów, której jeszcze nie otworzyłeś.",
-    mine: "Pytania złożone przez Ciebie (powiązane z Twoim profilem handlowca).",
+    all: "Aktywne pytania zespołu — bez zakończonych.",
+    open: "Czekają na odpowiedź działu zakupów.",
+    answered: "Mają już odpowiedź zakupów.",
+    closed: "Zakończone przez handlowca lub zakupy.",
+    unseen: "Nowe odpowiedzi zakupów, których jeszcze nie otworzyłeś.",
+    own_unseen: "Twoje pytania z nową odpowiedzią, której jeszcze nie otworzyłeś.",
+    mine: "Tylko pytania złożone przez Ciebie.",
   },
 };
 
