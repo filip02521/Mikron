@@ -139,7 +139,7 @@ export function expandLineDtos(input: {
   const allocated = sumShareQty(shares);
   const overAllocated =
     lineQty != null && Number.isFinite(lineQty) && allocated > lineQty + 1e-9;
-  const rows: ExternalWarehouseLineDto[] = shares.map((share, index) => {
+  const rows: ExternalWarehouseLineDto[] = shares.map((share) => {
     const qty = parseLineQuantity(share.qty) ?? Number(share.qty);
     return {
       ...base,
@@ -148,7 +148,7 @@ export function expandLineDtos(input: {
       quantityLabel: formatLineQuantity(qty),
       palletLabel: share.pallet_label,
       note: share.note?.trim() || null,
-      lineNote: index === 0 ? lineNote : null,
+      lineNote,
       orphan: input.orphan,
       shareId: share.id,
       lineQuantity: lineQty,

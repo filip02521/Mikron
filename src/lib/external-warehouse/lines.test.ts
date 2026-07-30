@@ -123,6 +123,8 @@ describe("external-warehouse lines", () => {
     expect(dtos.map((d) => d.quantity)).toEqual([3, 4, 3]);
     expect(dtos.map((d) => d.note)).toEqual(["na A", "na B", "linia"]);
     expect(dtos[0]?.lineNote).toBe("linia");
+    expect(dtos[1]?.lineNote).toBe("linia");
+    expect(dtos[2]?.lineNote).toBeNull();
     expect(dtos[0]?.isSplit).toBe(true);
     expect(dtos[2]?.isRemainder).toBe(true);
     expect(dtos[0]?.rowKey).toBe("ob:1#share:s2");
