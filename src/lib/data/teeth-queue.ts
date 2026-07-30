@@ -18,6 +18,7 @@ import {
 import {
   analyzeTeethMarkOrdered,
   TEETH_MARK_ORDERED_BLOCKED_MESSAGE,
+  TEETH_MARK_ORDERED_FILE_REQUIRED_MESSAGE,
 } from "@/lib/teeth/teeth-mark-ordered";
 import { teethPanelReadinessContextFromMaps } from "@/lib/teeth/teeth-panel-order-readiness";
 import { resolveSupplierForTeethManufacturer } from "@/lib/orders/teeth-ocr-prosba-prefill";
@@ -409,6 +410,14 @@ export async function markTeethOrdered(
   const idsToMark = analysis.withSpecIds;
 
   if (!idsToMark.length) {
+    if (analysis.hasMissingFile && analysis.hasMissingSpec) {
+      throw new Error(
+        `${TEETH_MARK_ORDERED_BLOCKED_MESSAGE} Dodatkowo brakuje pliku zamówienia.`
+      );
+    }
+    if (analysis.hasMissingFile) {
+      throw new Error(TEETH_MARK_ORDERED_FILE_REQUIRED_MESSAGE);
+    }
     throw new Error(TEETH_MARK_ORDERED_BLOCKED_MESSAGE);
   }
 
@@ -506,15 +515,23 @@ export async function markTeethPositionsOrdered(
     kindByTwId: new Map(teethProducts.map((row) => [row.twId, row.kind])),
   });
 
-  // Filtruj pozycje z kompletną specyfikacją
+  // Filtruj pozycje z kompletną specyfikacją i załączonym plikiem zamówienia
   const validSelections: TeethPositionSelection[] = [];
+  let blockedByFile = false;
+  let blockedBySpec = false;
 
   for (const sel of filtered) {
     const order = ordersById.get(sel.orderId);
     if (!order) continue;
     const details = order.teeth_details ?? [];
-    const hasSpec = analyzeTeethMarkOrdered([sel.orderId], new Map([[sel.orderId, order]]), readinessCtx);
-    if (!hasSpec.canMarkAny) {
+    const readiness = analyzeTeethMarkOrdered(
+      [sel.orderId],
+      new Map([[sel.orderId, order]]),
+      readinessCtx
+    );
+    if (!readiness.canMarkAny) {
+      if (readiness.hasMissingFile) blockedByFile = true;
+      if (readiness.hasMissingSpec) blockedBySpec = true;
       continue;
     }
     // Filtruj pozycje które jeszcze nie są zamówione
@@ -528,7 +545,16 @@ export async function markTeethPositionsOrdered(
   }
 
   if (validSelections.length === 0) {
-    throw new Error(TEETH_MARK_ORDERED_BLOCKED_MESSAGE);
+    if (blockedByFile && blockedBySpec) {
+      throw new Error(
+        `${TEETH_MARK_ORDERED_BLOCKED_MESSAGE} Dodatkowo brakuje pliku zamówienia.`
+      );
+    }
+    throw new Error(
+      blockedByFile
+        ? TEETH_MARK_ORDERED_FILE_REQUIRED_MESSAGE
+        : TEETH_MARK_ORDERED_BLOCKED_MESSAGE
+    );
   }
 
   // Oznacz poszczególne pozycje w individual_order_teeth_details

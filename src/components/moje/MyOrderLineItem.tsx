@@ -323,16 +323,18 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
     compact && showLineActionBar && !showLinePickupAck;
   const showActionInColumn = showLineActionBar && !inlineLineActionBar;
 
-  const teethDetailBlock = showTeethDetail ? (
-    <div className="flex items-center gap-2">
-      <TeethOrderDetailDialog
-        teethDetails={line.teethDetails!}
-        teethLineDelivered={line.teethLineDelivered}
-        deliveredQuantity={line.deliveredQuantity}
-        triggerSize="sm"
-        triggerVariant="ghost"
-        triggerClassName="text-[10px] font-medium text-indigo-700 hover:text-indigo-900"
-      />
+  const teethDetailBlock = showTeethDetail || line.teethOrderFileName ? (
+    <div className="flex flex-wrap items-center gap-2">
+      {showTeethDetail ? (
+        <TeethOrderDetailDialog
+          teethDetails={line.teethDetails!}
+          teethLineDelivered={line.teethLineDelivered}
+          deliveredQuantity={line.deliveredQuantity}
+          triggerSize="sm"
+          triggerVariant="ghost"
+          triggerClassName="text-[10px] font-medium text-indigo-700 hover:text-indigo-900"
+        />
+      ) : null}
       {line.teethOrderFileName ? (
         <TeethOrderFileDownload
           orderId={line.id}
@@ -463,6 +465,10 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
             </div>
           ) : null}
 
+          {teethDetailBlock ? (
+            <div className={cn("mt-1.5", !compact && "pl-5")}>{teethDetailBlock}</div>
+          ) : null}
+
           {canEditClient && onSaveClient && onStartEditClient ? (
             <MyOrderLineClientField
               clientName={line.clientName}
@@ -499,7 +505,6 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
 
         {inlineLineActionBar ? (
           <div className="flex shrink-0 items-center gap-1.5 self-center">
-            {showTeethDetail ? teethDetailBlock : null}
             {lineActionBar}
           </div>
         ) : null}

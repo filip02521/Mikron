@@ -289,7 +289,14 @@ export function TeethQueueBatchTable({
                 <th className="py-1.5 px-2 hidden sm:table-cell">Typ</th>
                 <th className="py-1.5 px-2 sm:hidden">Szczęka / Typ</th>
                 <th className="py-1.5 px-2 text-right tabular-nums">Szt.</th>
-                <th className="py-1.5 px-2 hidden lg:table-cell">Plik</th>
+                <th className="py-1.5 px-2 min-w-[7.5rem]">
+                  <span className="inline-flex flex-col gap-0.5">
+                    <span>Plik</span>
+                    <span className="normal-case tracking-normal font-normal text-slate-400">
+                      Excel / PDF / XML
+                    </span>
+                  </span>
+                </th>
                 <th className="py-1.5 pr-3 pl-2 sm:pr-4 lg:pr-5" />
               </tr>
             </thead>
@@ -357,7 +364,7 @@ export function TeethQueueBatchTable({
                     {row.isFirstRowOfSalesPerson ? (
                       <tr>
                         <td
-                          colSpan={7}
+                          colSpan={9}
                           className={cn(
                             "border-b border-slate-200/80 bg-white/60 px-3 py-1.5 sm:px-4 lg:px-5",
                             index > 0 && "border-t border-slate-200/80",
@@ -458,13 +465,19 @@ export function TeethQueueBatchTable({
                         </span>
                       ) : row.totalCount}
                     </td>
-                    <td className="py-1.5 px-2 hidden lg:table-cell">
+                    <td className="py-1.5 px-2">
                       <div className="flex flex-col gap-0.5">
                         {row.orderEntries.map((e) => (
                           <TeethOrderFileUpload
                             key={e.orderId}
                             orderId={e.orderId}
-                            existingFileName={e.item.teeth_order_file_name ?? null}
+                            existingFileName={
+                              e.item.teeth_order_file_path?.trim()
+                                ? (e.item.teeth_order_file_name ?? null)
+                                : null
+                            }
+                            required
+                            locked={e.item.status !== "Nowe" && e.item.status !== "Weryfikacja"}
                             onUploaded={() => onFileChanged?.(e.orderId, true)}
                             onRemoved={() => onFileChanged?.(e.orderId, false)}
                           />

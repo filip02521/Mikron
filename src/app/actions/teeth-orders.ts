@@ -601,7 +601,32 @@ const ALLOWED_TEETH_ORDER_FILE_TYPES = [
   "application/pdf",
 ];
 
+const ALLOWED_TEETH_ORDER_FILE_EXTENSIONS = new Set(["xml", "xlsx", "xls", "pdf"]);
+
 const MAX_TEETH_ORDER_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+function isAllowedTeethOrderFile(file: File): boolean {
+  if (ALLOWED_TEETH_ORDER_FILE_TYPES.includes(file.type)) return true;
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return ALLOWED_TEETH_ORDER_FILE_EXTENSIONS.has(ext);
+}
+
+function teethOrderFileContentType(file: File): string {
+  if (file.type && ALLOWED_TEETH_ORDER_FILE_TYPES.includes(file.type)) return file.type;
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  switch (ext) {
+    case "pdf":
+      return "application/pdf";
+    case "xlsx":
+      return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    case "xls":
+      return "application/vnd.ms-excel";
+    case "xml":
+      return "application/xml";
+    default:
+      return file.type || "application/octet-stream";
+  }
+}
 
 export async function actionUploadTeethOrderFile(
   orderId: string,
@@ -615,7 +640,7 @@ export async function actionUploadTeethOrderFile(
   if (file.size > MAX_TEETH_ORDER_FILE_SIZE) {
     return { success: false, error: "Plik jest za duży (max 10 MB)." };
   }
-  if (!ALLOWED_TEETH_ORDER_FILE_TYPES.includes(file.type)) {
+  if (!isAllowedTeethOrderFile(file)) {
     return { success: false, error: "Nieobsługiwany typ pliku. Dozwolone: XML, Excel, PDF." };
   }
 
@@ -641,6 +666,12 @@ export async function actionUploadTeethOrderFile(
   if (order.sales_cancelled_at) {
     return { success: false, error: "Zamówienie zostało anulowane." };
   }
+  if (order.status !== "Nowe" && order.status !== "Weryfikacja") {
+    return {
+      success: false,
+      error: "Plik można załączać tylko przed oznaczeniem jako zamówione.",
+    };
+  }
 
   // Remove old file if exists
   const { data: existingOrder } = await supabase
@@ -665,7 +696,7 @@ export async function actionUploadTeethOrderFile(
   const { error: uploadError } = await supabase.storage
     .from("teeth-order-files")
     .upload(storagePath, arrayBuffer, {
-      contentType: file.type,
+      contentType: teethOrderFileContentType(file),
       upsert: false,
     });
 
@@ -720,7 +751,7 @@ export async function actionRemoveTeethOrderFile(
   if (!order.is_teeth) {
     return { success: false, error: "To nie jest zamówienie zębowe." };
   }
-  if (order.status === "Zamowione") {
+  if (order.status === "Zamowione" || order.status === "Czesciowo_zrealizowane" || order.status === "Zrealizowane") {
     return { success: false, error: "Nie można usunąć pliku z już zamówionej pozycji." };
   }
 
@@ -783,22 +814,51 @@ export async function actionGetTeethOrderFileUrl(
 
 export async function actionGetTeethOrderFileUrlForSales(
   orderId: string,
-): Promise<{ url: string | null; fileName: string | null }> {
-  const { requireSalesAccount } = await import("@/lib/auth");
-  await requireSalesAccount();
+): Promise<{ url: string | null; fileName: string | null; error?: string }> {
+  const { getSessionUser } = await import("@/lib/auth");
+  const { isAdmin, isSalesAccount, canManageSalesTeam } = await import("@/lib/auth-roles");
+  const { resolveSalesPersonForUser } = await import("@/lib/auth/sales-person");
+  const { isProfileActiveDelegateForSalesPerson } = await import(
+    "@/lib/data/vacation-delegations"
+  );
+
+  const user = await getSessionUser();
+  if (!user) {
+    return { url: null, fileName: null, error: "Wymagane logowanie." };
+  }
+  if (!isSalesAccount(user.role) && !canManageSalesTeam(user.role) && !isAdmin(user.role)) {
+    return { url: null, fileName: null, error: "Brak uprawnień." };
+  }
 
   const { createAdminClient, hasSupabaseConfig } = await import("@/lib/supabase/admin");
-  if (!hasSupabaseConfig()) return { url: null, fileName: null };
+  if (!hasSupabaseConfig()) return { url: null, fileName: null, error: "Brak konfiguracji Storage." };
   const supabase = createAdminClient();
 
   const { data: order, error } = await supabase
     .from("individual_orders")
-    .select("teeth_order_file_path, teeth_order_file_name, is_teeth")
+    .select("teeth_order_file_path, teeth_order_file_name, is_teeth, sales_person_id")
     .eq("id", orderId)
     .single();
 
   if (error || !order?.is_teeth || !order?.teeth_order_file_path) {
-    return { url: null, fileName: null };
+    return { url: null, fileName: null, error: "Plik zamówienia niedostępny." };
+  }
+
+  const orderSalesPersonId =
+    typeof order.sales_person_id === "string" ? order.sales_person_id : null;
+
+  let allowed = isAdmin(user.role) || canManageSalesTeam(user.role);
+  if (!allowed && orderSalesPersonId) {
+    const resolved = await resolveSalesPersonForUser(user);
+    if (resolved?.id === orderSalesPersonId) {
+      allowed = true;
+    } else {
+      allowed = await isProfileActiveDelegateForSalesPerson(user.id, orderSalesPersonId);
+    }
+  }
+
+  if (!allowed) {
+    return { url: null, fileName: null, error: "Brak uprawnień do tego pliku." };
   }
 
   const { data, error: urlError } = await supabase.storage
@@ -807,7 +867,11 @@ export async function actionGetTeethOrderFileUrlForSales(
 
   if (urlError) {
     console.error("[actionGetTeethOrderFileUrlForSales] Error:", urlError.message);
-    return { url: null, fileName: order.teeth_order_file_name ?? null };
+    return {
+      url: null,
+      fileName: order.teeth_order_file_name ?? null,
+      error: "Nie udało się przygotować pobierania.",
+    };
   }
 
   return { url: data?.signedUrl ?? null, fileName: order.teeth_order_file_name ?? null };

@@ -75,6 +75,7 @@ export function TeethPanelSupplierQueueActions({
   pending,
   showSelectAll,
   canMark,
+  markDisabledReason,
   onToggleAll,
   onMark,
 }: {
@@ -82,10 +83,12 @@ export function TeethPanelSupplierQueueActions({
   pending: boolean;
   showSelectAll: boolean;
   canMark: boolean;
+  /** Gdy canMark=false, opcjonalny powód (np. brak pliku). */
+  markDisabledReason?: string | null;
   onToggleAll: () => void;
   onMark: () => void;
 }) {
-  if (!canMark && !showSelectAll) return null;
+  if (!canMark && !showSelectAll && !markDisabledReason) return null;
 
   return (
     <>
@@ -98,18 +101,25 @@ export function TeethPanelSupplierQueueActions({
           {allSelected ? "Odznacz wszystkie" : "Zaznacz wszystkie"}
         </button>
       ) : null}
-      {canMark ? (
-        <Button
-          type="button"
-          size="sm"
-          disabled={pending}
-          className="min-h-8 text-xs"
-          title={TEETH_MARK_ORDERED_TITLE}
-          onClick={onMark}
-        >
-          <IconTruck size={14} strokeWidth={2} />
-          {TEETH_MARK_ORDERED_LABEL}
-        </Button>
+      {canMark || markDisabledReason ? (
+        <div className="flex max-w-full flex-col items-end gap-1">
+          {!canMark && markDisabledReason ? (
+            <span className="max-w-[14rem] text-right text-[10px] leading-snug text-amber-800">
+              {markDisabledReason}
+            </span>
+          ) : null}
+          <Button
+            type="button"
+            size="sm"
+            disabled={pending || !canMark}
+            className="min-h-8 text-xs"
+            title={canMark ? TEETH_MARK_ORDERED_TITLE : (markDisabledReason ?? TEETH_MARK_ORDERED_TITLE)}
+            onClick={onMark}
+          >
+            <IconTruck size={14} strokeWidth={2} />
+            {TEETH_MARK_ORDERED_LABEL}
+          </Button>
+        </div>
       ) : null}
     </>
   );

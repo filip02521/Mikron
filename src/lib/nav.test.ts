@@ -235,14 +235,20 @@ describe("teethNavGroups", () => {
     expect(hrefs).not.toContain("/kurierzy");
   });
 
-  it("sekcja Dziś ma rozróżnialne tony — primary workflow", () => {
+  it("sekcja Dziś ma semantyke jak Dostawy — bez osobnych iconTone", () => {
     const today = teethNavGroups().find((g) => g.title === NAV_SECTION_TODAY);
     expect(today?.items.map((item) => [item.label, item.tone, item.iconTone, item.tier, item.highlight])).toEqual([
-      ["Kolejka", "slate", "indigo", "primary", true],
-      ["Weryfikacja", "slate", "amber", "primary", undefined],
-      ["Przyjęcie", "slate", "emerald", "primary", undefined],
-      ["Historia", "slate", "sky", "primary", undefined],
+      ["Kolejka", "indigo", undefined, "primary", true],
+      ["Weryfikacja", "amber", undefined, "primary", undefined],
+      ["Przyjęcie", "emerald", undefined, "primary", undefined],
+      ["Historia", "slate", undefined, "primary", undefined],
     ]);
+  });
+
+  it("Karty dostawców są stonowane (slate)", () => {
+    const suppliers = teethNavGroups().find((g) => g.title === NAV_SECTION_SUPPLIERS);
+    const cards = suppliers?.items.find((i) => i.href === "/zakupy/dostawcy?tor=zeby");
+    expect(cards?.tone).toBe("slate");
   });
 
   it("mobile primary — cztery codzienne ekrany workflow", () => {

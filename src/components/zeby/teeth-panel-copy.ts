@@ -37,7 +37,7 @@ export const TEETH_PANEL_HINT =
 export const TEETH_MARK_ORDERED_LABEL = "Oznacz jako zamówione";
 
 export const TEETH_MARK_ORDERED_TITLE =
-  "Po zamówieniu u dostawcy: oznacza prośby z kompletną listą zębów i przesuwa harmonogram cyklu.";
+  "Po zamówieniu u dostawcy: wymaga pliku zamówienia (Excel/PDF/XML) i kompletnej listy zębów, potem przesuwa harmonogram cyklu.";
 
 /** @deprecated Użyj TEETH_MARK_ORDERED_LABEL */
 export const TEETH_SCHEDULE_ORDER_LABEL = TEETH_MARK_ORDERED_LABEL;
@@ -48,7 +48,7 @@ export const TEETH_TAB_HINTS: Record<Tab, string> = {
 
   kolejka:
 
-    "Prośby pogrupowane wg dostawcy. Jedno „Oznacz jako zamówione” — dla prośb handlowców i/lub cyklu z harmonogramu.",
+    "Prośby pogrupowane wg dostawcy. Załącz plik zamówienia (Excel/PDF/XML) — dopiero wtedy możesz oznaczyć prośby jako zamówione. Handlowiec pobierze ten plik w Moje.",
 
   weryfikacja:
     "Prośby z listą zębów wczytaną ze zdjęcia. Zweryfikuj pozycje i zatwierdź, lub popraw przed zamówieniem.",
