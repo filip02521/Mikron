@@ -667,13 +667,16 @@ export function MagazynGadkiClient({
                                       if (!res.ok) throw new Error(res.message);
                                     })
                                   }
-                                  onNote={(note) =>
+                                  onNote={(note, target) =>
                                     run(async () => {
                                       const res = await actionSetGadkiLineNote({
                                         linkId: link.id,
                                         lineKey: line.key,
                                         note,
-                                        shareId: line.shareId ?? null,
+                                        shareId:
+                                          target === "share"
+                                            ? line.shareId ?? null
+                                            : null,
                                       });
                                       if (!res.ok) throw new Error(res.message);
                                     })
@@ -1253,16 +1256,31 @@ function LineRow({
     qty: number;
     note?: string | null;
   }[]) => void;
-  onNote: (note: string | null) => void;
+  onNote: (note: string | null, target: "share" | "line") => void;
 }) {
   const [noteOpen, setNoteOpen] = useState(false);
+  const [noteTarget, setNoteTarget] = useState<"share" | "line">("line");
   const [noteDraft, setNoteDraft] = useState("");
   const [newPallet, setNewPallet] = useState(false);
   const [newPalletValue, setNewPalletValue] = useState("");
   const [splitOpen, setSplitOpen] = useState(false);
 
   const isSplit = Boolean(line.isSplit);
+  const canEditLineNote = isSplit && !line.isRemainder && Boolean(line.shareId);
   const editingOpen = splitOpen || noteOpen || newPallet;
+
+  function openNoteEditor(target: "share" | "line") {
+    setSplitOpen(false);
+    setNoteTarget(target);
+    setNoteDraft(
+      target === "share"
+        ? (line.note ?? "")
+        : canEditLineNote
+          ? (line.lineNote ?? "")
+          : (line.note ?? "")
+    );
+    setNoteOpen(true);
+  }
   const lineQtyLabel =
     line.lineQuantity != null
       ? `${line.lineQuantity === Math.trunc(line.lineQuantity) ? Math.trunc(line.lineQuantity) : line.lineQuantity} szt. w ZK`
@@ -1305,17 +1323,31 @@ function LineRow({
           <p className="mt-1 truncate text-sm font-medium leading-snug text-slate-900">
             {line.product}
           </p>
-          {line.note && !noteOpen ? (
+          {line.note && !(noteOpen && noteTarget === "share") ? (
             <p className="mt-1 line-clamp-2 text-xs leading-snug text-slate-500">
               <span className="font-medium text-slate-400">Notatka · </span>
               {line.note}
             </p>
           ) : null}
-          {line.lineNote && line.lineNote !== line.note ? (
-            <p className="mt-1 line-clamp-2 text-xs leading-snug text-slate-400">
-              <span className="font-medium text-slate-400">Pozycja · </span>
-              {line.lineNote}
-            </p>
+          {line.lineNote &&
+          line.lineNote !== line.note &&
+          !(noteOpen && noteTarget === "line") ? (
+            canMutate && canEditLineNote ? (
+              <button
+                type="button"
+                className="mt-1 line-clamp-2 max-w-full text-left text-xs leading-snug text-slate-400 transition-colors hover:text-sky-800"
+                disabled={disabled}
+                onClick={() => openNoteEditor("line")}
+              >
+                <span className="font-medium text-slate-400">Pozycja · </span>
+                {line.lineNote}
+              </button>
+            ) : (
+              <p className="mt-1 line-clamp-2 text-xs leading-snug text-slate-400">
+                <span className="font-medium text-slate-400">Pozycja · </span>
+                {line.lineNote}
+              </p>
+            )
           ) : null}
           {isSplit && lineQtyLabel ? (
             <p className="mt-1 text-[11px] tabular-nums text-slate-400">
@@ -1346,9 +1378,9 @@ function LineRow({
                 "flex items-center gap-1.5 overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-200 ease-out",
                 !editingOpen &&
                   "[@media(hover:hover)_and_(pointer:fine)]:max-w-0 [@media(hover:hover)_and_(pointer:fine)]:opacity-0 [@media(hover:hover)_and_(pointer:fine)]:pointer-events-none",
-                "[@media(hover:hover)_and_(pointer:fine)]:group-hover:max-w-[22rem] [@media(hover:hover)_and_(pointer:fine)]:group-hover:opacity-100 [@media(hover:hover)_and_(pointer:fine)]:group-hover:pointer-events-auto",
-                "[@media(hover:hover)_and_(pointer:fine)]:focus-within:max-w-[22rem] [@media(hover:hover)_and_(pointer:fine)]:focus-within:opacity-100 [@media(hover:hover)_and_(pointer:fine)]:focus-within:pointer-events-auto",
-                editingOpen && "max-w-[22rem] opacity-100 pointer-events-auto"
+                "[@media(hover:hover)_and_(pointer:fine)]:group-hover:max-w-[28rem] [@media(hover:hover)_and_(pointer:fine)]:group-hover:opacity-100 [@media(hover:hover)_and_(pointer:fine)]:group-hover:pointer-events-auto",
+                "[@media(hover:hover)_and_(pointer:fine)]:focus-within:max-w-[28rem] [@media(hover:hover)_and_(pointer:fine)]:focus-within:opacity-100 [@media(hover:hover)_and_(pointer:fine)]:focus-within:pointer-events-auto",
+                editingOpen && "max-w-[28rem] opacity-100 pointer-events-auto"
               )}
             >
               {!isSplit ? (
@@ -1440,18 +1472,50 @@ function LineRow({
                 disabled={disabled}
                 className={cn(
                   "gap-1 text-slate-600",
-                  noteOpen && "bg-sky-100/70 text-sky-900",
-                  line.note && !noteOpen && "text-sky-800"
+                  noteOpen &&
+                    noteTarget === (canEditLineNote ? "share" : "line") &&
+                    "bg-sky-100/70 text-sky-900",
+                  line.note &&
+                    !(noteOpen && noteTarget === (canEditLineNote ? "share" : "line")) &&
+                    "text-sky-800"
                 )}
                 onClick={() => {
-                  setSplitOpen(false);
-                  if (!noteOpen) setNoteDraft(line.note ?? "");
-                  setNoteOpen((v) => !v);
+                  const target = canEditLineNote ? "share" : "line";
+                  if (noteOpen && noteTarget === target) {
+                    setNoteOpen(false);
+                    return;
+                  }
+                  openNoteEditor(target);
                 }}
               >
                 <IconPencil size={12} />
                 Notatka
               </Button>
+              {canEditLineNote ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  disabled={disabled}
+                  className={cn(
+                    "gap-1 text-slate-600",
+                    noteOpen && noteTarget === "line" && "bg-sky-100/70 text-sky-900",
+                    line.lineNote &&
+                      !(noteOpen && noteTarget === "line") &&
+                      "text-sky-800"
+                  )}
+                  onClick={() => {
+                    if (noteOpen && noteTarget === "line") {
+                      setNoteOpen(false);
+                      return;
+                    }
+                    openNoteEditor("line");
+                  }}
+                >
+                  <IconPencil size={12} />
+                  Pozycja
+                </Button>
+              ) : null}
             </div>
           ) : line.palletLabel ? (
             <span className="max-w-[7rem] truncate text-right text-xs font-medium text-slate-500">
@@ -1484,7 +1548,7 @@ function LineRow({
           className="mt-3 flex flex-col gap-2 rounded-lg border border-sky-100 bg-sky-50/40 p-2.5 sm:flex-row sm:items-center"
           onSubmit={(e) => {
             e.preventDefault();
-            onNote(noteDraft.trim() || null);
+            onNote(noteDraft.trim() || null, noteTarget);
             setNoteOpen(false);
           }}
         >
@@ -1496,9 +1560,9 @@ function LineRow({
               "flex-1 border-sky-100 bg-white text-sm"
             )}
             placeholder={
-              line.shareId
+              noteTarget === "share"
                 ? "Notatka do tej palety…"
-                : "Notatka do pozycji…"
+                : "Notatka do pozycji ZK…"
             }
             disabled={disabled}
             autoFocus
