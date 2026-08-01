@@ -84,6 +84,16 @@ src/lib/orders/summary.ts
 src/lib/orders/vacations.ts
 src/lib/services/auto-assign-suppliers.ts
 src/lib/services/orders.ts
+src/lib/data/monthly-stats.ts
+src/lib/data/monthly-stats-shared.ts
+src/lib/data/monthly-summary-defaults.ts
+src/lib/client/notification-sound.ts
+src/lib/client/board-notification-sound-effects.ts
+src/lib/client/toast-notification-sound.ts
+src/lib/timing.ts
+src/components/monthly-summary/MonthlySummaryClient.tsx
+src/components/brand/NotFoundActions.tsx
+src/components/settings/NotificationSettingsSection.tsx
 src/app/actions/product-catalog.ts
 src/app/actions/subiekt.ts
 scripts/cleanup-test-history.ts

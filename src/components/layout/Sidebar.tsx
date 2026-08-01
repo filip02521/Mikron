@@ -50,10 +50,20 @@ import { ProcurementWorkspaceSwitcher } from "@/components/layout/ProcurementWor
 import { actionClearAdminPanelContext } from "@/app/actions/admin-panel-context";
 import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
-import { PROCUREMENT_WORKSPACE_OPTIONS, subtitleForProcurementWorkspace, labelForProcurementWorkspace, grantedProcurementFunctions, workspaceToneText, workspaceToneIconBg, workspaceToneAccent } from "@/lib/auth/procurement-workspace";
+import {
+  PROCUREMENT_WORKSPACE_OPTIONS,
+  subtitleForProcurementWorkspace,
+  labelForProcurementWorkspace,
+  grantedProcurementFunctions,
+  workspaceToneText,
+  workspaceToneIconBg,
+  workspaceToneAccent,
+} from "@/lib/auth/procurement-workspace";
 import { isAdmin } from "@/lib/auth-roles";
 import { hrefWithAdminSalesPreview, shouldPreserveSalesPreviewInNav } from "@/lib/nav/sales-preview-href";
 import { ChangelogTriggerIconButton } from "@/components/changelog/ChangelogTriggerIconButton";
+import { useMonthlySummaryNeedsAttention } from "@/hooks/useMonthlySummaryAttention";
+import { MONTHLY_SUMMARY_HREF } from "@/lib/monthly-summary-attention";
 
 const emptySubscribe = () => () => {};
 const clientSnapshot = (key: string) => {
@@ -94,12 +104,14 @@ function NavLink({
   showDot,
   locked,
   href,
+  monthlyAttention = false,
 }: {
   item: NavItem;
   active: boolean;
   showDot: boolean;
   locked?: boolean;
   href: string;
+  monthlyAttention?: boolean;
 }) {
   const compact = item.tier === "compact";
   const indented = Boolean(item.indent);
@@ -107,6 +119,11 @@ function NavLink({
   const showDescription = Boolean(item.description) && !compact;
   const displayTone = navItemDisplayTone(item, active);
   const attentionIdle = navItemHasDueReminders(item) && !active;
+  const isMonthlyHref = item.href === MONTHLY_SUMMARY_HREF || href.split("?")[0] === MONTHLY_SUMMARY_HREF;
+  const monthlyIdle = isMonthlyHref && monthlyAttention && !active;
+  const showHighlight =
+    !isMonthlyHref &&
+    (item.tier === "primary" || Boolean(item.highlight));
 
   const className = cn(
     "group block rounded-md",
@@ -117,12 +134,12 @@ function NavLink({
       ? sidebarNavToneActiveClass(item.tone)
       : attentionIdle
         ? sidebarNavAttentionIdleClass
-        : item.tier === "primary"
+        : monthlyIdle
           ? cn(
-              "border border-transparent text-slate-700",
-              sidebarNavToneHighlightIdleClass(item.tone) ?? navLinkIdleClass
+              "border border-violet-200/70 bg-violet-50/80 text-slate-800 shadow-sm",
+              "hover:border-violet-300/80 hover:bg-violet-50"
             )
-          : item.highlight
+          : showHighlight
             ? cn(
                 "border border-transparent text-slate-700",
                 sidebarNavToneHighlightIdleClass(item.tone) ?? navLinkIdleClass
@@ -190,8 +207,11 @@ function NavLink({
       <span className="flex shrink-0 items-center gap-1.5 pt-0.5">
         {showDot ? (
           <span
-            className="h-2 w-2 rounded-full bg-amber-400 ring-2 ring-white"
-            title="Nowe zmiany"
+            className={cn(
+              "h-2 w-2 rounded-full ring-2 ring-white",
+              monthlyIdle ? "bg-violet-500" : "bg-amber-400"
+            )}
+            title={monthlyIdle ? "Nowe podsumowanie miesiąca" : "Nowe zmiany"}
           />
         ) : null}
         {hasBadge ? (
@@ -250,6 +270,7 @@ function CollapsibleNavSection({
   const salesUpdates = useSalesUpdates();
   const operationsUpdates = useOperationsUpdates();
   const teethUpdates = useTeethUpdates();
+  const monthlyNeedsAttention = useMonthlySummaryNeedsAttention();
   const allHrefs = group.items.map((item) => item.href);
 
   const storageKey = `nav-collapsed:${group.title}`;
@@ -262,17 +283,20 @@ function CollapsibleNavSection({
   const hasActiveItem = allHrefs.some((href) =>
     isNavItemActive(pathname, href, allHrefs, activeSearch)
   );
+  const hasMonthlyAttention = group.items.some(
+    (item) => item.href === MONTHLY_SUMMARY_HREF && monthlyNeedsAttention
+  );
 
   const [overrideCollapsed, setOverrideCollapsed] = useState<boolean | null>(null);
   const collapsed = overrideCollapsed ?? storedCollapsed;
 
   useEffect(() => {
-    if (hasActiveItem && collapsed && !autoExpandedRef.current) {
+    if ((hasActiveItem || hasMonthlyAttention) && collapsed && !autoExpandedRef.current) {
       autoExpandedRef.current = true;
       setOverrideCollapsed(false);
       setStoredCollapsed(false);
     }
-  }, [hasActiveItem, collapsed, setStoredCollapsed]);
+  }, [hasActiveItem, hasMonthlyAttention, collapsed, setStoredCollapsed]);
 
   const toggle = useCallback(() => {
     autoExpandedRef.current = true;
@@ -299,7 +323,8 @@ function CollapsibleNavSection({
           collapsed
             ? "hover:bg-slate-50/70"
             : "bg-slate-50/40 hover:bg-slate-50/70",
-          hasActiveItem && !collapsed && "bg-slate-50/60"
+          hasActiveItem && !collapsed && "bg-slate-50/60",
+          hasMonthlyAttention && collapsed && "bg-violet-50/50"
         )}
         aria-expanded={!collapsed}
       >
@@ -328,6 +353,12 @@ function CollapsibleNavSection({
         >
           {group.title}
         </h2>
+        {hasMonthlyAttention && collapsed ? (
+          <span
+            className="h-2 w-2 shrink-0 rounded-full bg-violet-500 ring-2 ring-white"
+            title="Nowe podsumowanie miesiąca"
+          />
+        ) : null}
         {totalBadge > 0 ? (
           <span className="shrink-0 rounded-md bg-slate-200/80 px-1.5 py-0.5 text-[9px] font-bold tabular-nums text-slate-600">
             {totalBadge > 99 ? "99+" : totalBadge}
@@ -338,6 +369,7 @@ function CollapsibleNavSection({
         <ul className="mt-1 space-y-0.5">
           {group.items.map((item) => {
             const active = isNavItemActive(pathname, item.href, allHrefs, activeSearch);
+            const monthlyAttention = item.href === MONTHLY_SUMMARY_HREF && monthlyNeedsAttention;
             const showDot =
               (item.href === "/moje" && Boolean(salesUpdates?.hasUpdates) && !active) ||
               (item.href === "/podsumowanie" &&
@@ -345,7 +377,8 @@ function CollapsibleNavSection({
                 !active) ||
               (item.href === "/zeby/kolejka" &&
                 Boolean(teethUpdates?.hasUpdates) &&
-                !active);
+                !active) ||
+              (monthlyAttention && !active);
 
             const href = hrefWithAdminSalesPreview(item.href, previewDla, adminSalesPreview);
 
@@ -357,6 +390,7 @@ function CollapsibleNavSection({
                   active={active}
                   showDot={showDot}
                   locked={navLocked}
+                  monthlyAttention={monthlyAttention}
                 />
               </li>
             );
@@ -386,6 +420,7 @@ function NavSection({
   const salesUpdates = useSalesUpdates();
   const operationsUpdates = useOperationsUpdates();
   const teethUpdates = useTeethUpdates();
+  const monthlyNeedsAttention = useMonthlySummaryNeedsAttention();
   const allHrefs = group.items.map((item) => item.href);
 
   if (group.collapsible) {
@@ -410,6 +445,7 @@ function NavSection({
       <ul className="space-y-0.5">
         {group.items.map((item) => {
           const active = isNavItemActive(pathname, item.href, allHrefs, activeSearch);
+          const monthlyAttention = item.href === MONTHLY_SUMMARY_HREF && monthlyNeedsAttention;
           const showDot =
             (item.href === "/moje" && Boolean(salesUpdates?.hasUpdates) && !active) ||
             (item.href === "/podsumowanie" &&
@@ -417,7 +453,8 @@ function NavSection({
               !active) ||
             (item.href === "/zeby/kolejka" &&
               Boolean(teethUpdates?.hasUpdates) &&
-              !active);
+              !active) ||
+            (monthlyAttention && !active);
 
           const href = hrefWithAdminSalesPreview(item.href, previewDla, adminSalesPreview);
 
@@ -429,6 +466,7 @@ function NavSection({
                 active={active}
                 showDot={showDot}
                 locked={navLocked}
+                monthlyAttention={monthlyAttention}
               />
             </li>
           );

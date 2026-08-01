@@ -1,3 +1,5 @@
+import { toastNotificationSoundMutedStore } from "@/lib/client/toast-notification-sound";
+
 const BOARD_QUESTION_SOUND_SRC = "/sounds/pop3.mp3";
 const BOARD_QUESTION_SOUND_VOLUME = 0.55;
 const TOAST_SOUND_SRC = "/sounds/pop2.mp3";
@@ -22,21 +24,29 @@ function getPrimeAudio(): HTMLAudioElement | null {
   return primeAudio;
 }
 
-/** Odblokuj odtwarzanie w handlerze gestu użytkownika (polityka autoplay). */
+/**
+ * Odblokuj odtwarzanie w handlerze gestu użytkownika (polityka autoplay).
+ * Priming jest prawie niesłyszalny (volume ≈ 0) — bez `muted`, żeby Safari/Chrome
+ * nadal zaliczyły gest użytkownika dla późniejszych odtworzeń.
+ */
 export async function unlockNotificationSound(): Promise<boolean> {
   if (unlocked || typeof window === "undefined") return unlocked;
   const clip = getPrimeAudio();
   if (!clip) return false;
 
+  const previousVolume = clip.volume;
   try {
-    clip.volume = BOARD_QUESTION_SOUND_VOLUME;
+    clip.muted = false;
+    clip.volume = 0.001;
     clip.currentTime = 0;
     await clip.play();
     clip.pause();
     clip.currentTime = 0;
+    clip.volume = previousVolume || BOARD_QUESTION_SOUND_VOLUME;
     unlocked = true;
     return true;
   } catch {
+    clip.volume = previousVolume || BOARD_QUESTION_SOUND_VOLUME;
     return false;
   }
 }
@@ -54,6 +64,8 @@ export async function playPopNotificationSound(): Promise<boolean> {
   try {
     const clip = createClip();
     if (!clip) return false;
+    clip.muted = false;
+    clip.volume = BOARD_QUESTION_SOUND_VOLUME;
     clip.currentTime = 0;
     await clip.play();
     return true;
@@ -68,6 +80,7 @@ const TOAST_SOUND_DEBOUNCE_MS = 800;
 
 export async function playToastNotificationSound(): Promise<boolean> {
   if (typeof window === "undefined" || !unlocked) return false;
+  if (toastNotificationSoundMutedStore.getSnapshot()) return false;
   const now = Date.now();
   if (now - lastToastSoundAt < TOAST_SOUND_DEBOUNCE_MS) return false;
   lastToastSoundAt = now;
@@ -75,6 +88,7 @@ export async function playToastNotificationSound(): Promise<boolean> {
   try {
     const clip = new Audio(TOAST_SOUND_SRC);
     clip.preload = "auto";
+    clip.muted = false;
     clip.volume = TOAST_SOUND_VOLUME;
     clip.currentTime = 0;
     await clip.play();

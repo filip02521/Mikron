@@ -13,6 +13,11 @@ import { TEETH_LINE_DEFINITIONS } from "@/lib/teeth/teeth-lines-data";
 import type { TeethProductLine, TeethGroupDraft } from "@/lib/teeth/teeth-catalog";
 import { cn } from "@/lib/cn";
 import { saveTeethOcrProsbaPrefill } from "@/lib/orders/teeth-ocr-prosba-prefill";
+import {
+  TEETH_VISION_DETECT_CLIENT_TIMEOUT_MS,
+  TEETH_VISION_OCR_CLIENT_TIMEOUT_MS,
+} from "@/lib/teeth/teeth-vision-timeouts";
+import { createTimeoutAbort } from "@/lib/timing";
 
 export type TeethOcrGroup = TeethGroupDraft & {
   productLine: TeethProductLine;
@@ -152,17 +157,16 @@ export function TeethOcrWizard({
         const formData = new FormData();
         formData.append("image", compressed, "teeth-order.jpg");
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120_000);
+        const abort = createTimeoutAbort(TEETH_VISION_DETECT_CLIENT_TIMEOUT_MS);
         let res: Response;
         try {
           res = await fetch("/api/teeth-vision-detect", {
             method: "POST",
             body: formData,
-            signal: controller.signal,
+            signal: abort.signal,
           });
         } finally {
-          clearTimeout(timeoutId);
+          abort.clear();
         }
 
         if (!res.ok) {
@@ -288,17 +292,16 @@ export function TeethOcrWizard({
     formData.append("lines", JSON.stringify(selectedLines.map((l) => l.productLine)));
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 270_000);
+      const abort = createTimeoutAbort(TEETH_VISION_OCR_CLIENT_TIMEOUT_MS);
       let res: Response;
       try {
         res = await fetch("/api/teeth-vision-ocr", {
           method: "POST",
           body: formData,
-          signal: controller.signal,
+          signal: abort.signal,
         });
       } finally {
-        clearTimeout(timeoutId);
+        abort.clear();
       }
 
       if (!res.ok) {

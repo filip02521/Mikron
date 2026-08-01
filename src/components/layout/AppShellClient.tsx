@@ -45,6 +45,7 @@ import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { appMainClass, appMainInsetClass, appShellClass } from "@/lib/ui/ontime-theme";
 import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
 import { isAdminOperationsPreviewReadOnly } from "@/lib/auth/admin-panel-context";
+import { isAuthLayoutPath } from "@/lib/auth/auth-layout-paths";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import type { UserRole, Workspace } from "@/types/database";
 import type { FontScale } from "@/lib/auth/font-scale";
@@ -177,17 +178,13 @@ export function AppShellClient({
     operationsPinnedAnnouncements,
     ready: metricsReady,
   } = useAppShellMetrics();
-  useNotificationSoundUnlockOnGesture();
   const pathname = usePathname();
 
   useEffect(() => {
     forceUnlockAllScroll();
   }, [pathname]);
-  const isAuthScreen =
-    pathname === "/login" ||
-    pathname === "/setup" ||
-    pathname === "/ustaw-haslo" ||
-    pathname === "/auth/entering";
+  const isAuthScreen = isAuthLayoutPath(pathname);
+  useNotificationSoundUnlockOnGesture(!isAuthScreen);
   const receiveNotificationFlushEnabled = Boolean(
     role &&
       !isAuthScreen &&

@@ -14,6 +14,7 @@ import { resolveKhLabelForZdDocument } from "@/lib/subiekt/kontrahent-from-docum
 import { parseZdFulfillmentDeadline } from "@/lib/subiekt/zd-fulfillment-date";
 import { extractDocKhIds } from "@/lib/subiekt/zd-document-kh";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
+import { lockTtlSecondsForBudgetMs } from "@/lib/timing";
 import type { SubiektDocument } from "@/lib/subiekt/types";
 import {
   CATALOG_ZD_SYNC_STATE_KEY,
@@ -357,7 +358,7 @@ export async function runCatalogZdSync(options?: {
 
   const locked = await tryAcquireLock(
     CATALOG_ZD_SYNC_LOCK_KEY,
-    Math.ceil(maxDurationMs / 1000) + 60,
+    lockTtlSecondsForBudgetMs(maxDurationMs),
     "catalog_zd_sync",
   );
   if (!locked) {

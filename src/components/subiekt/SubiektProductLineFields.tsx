@@ -209,6 +209,8 @@ export function SubiektProductLineFields({
   onTeethListCommitNotice,
   autoOpenTeethList = false,
   allowedTwIds,
+  allowedTwIdsHint,
+  lockSubiektLink = false,
   groupSupplierId,
 }: {
   value: SubiektProductLineValue;
@@ -255,8 +257,12 @@ export function SubiektProductLineFields({
   ) => void;
   /** Otwiera modal listy zębów po wejściu w edycję (panel zakupów). */
   autoOpenTeethList?: boolean;
-  /** Gdy ustawione — podpowiedzi tylko z tych `tw_Id` (katalog zębów). */
+  /** Gdy ustawione — podpowiedzi tylko z tych `tw_Id`. */
   allowedTwIds?: ReadonlySet<number>;
+  /** Hint gdy wyszukiwanie nie zwraca nic z allowlisty. */
+  allowedTwIdsHint?: string;
+  /** Blokuje odpięcie powiązania Subiekta (np. prośba z ZK). */
+  lockSubiektLink?: boolean;
   /** Dostawca z nagłówka grupy / formularza — do dopasowania braków. */
   groupSupplierId?: string | null;
 }) {
@@ -361,7 +367,7 @@ export function SubiektProductLineFields({
         : [],
     [items, searchActive, allowedTwIds]
   );
-  const teethOnlyNoMatchFeedback =
+  const allowedOnlyNoMatchFeedback =
     allowedTwIds &&
     searchActive &&
     status === "idle" &&
@@ -369,11 +375,13 @@ export function SubiektProductLineFields({
     items.length > 0 &&
     visibleItems.length === 0
       ? getSubiektFeedback("not_found_product", {
-          hint: "W tym panelu widać tylko produkty z katalogu zębów (Admin → Produkty zębowe).",
+          hint:
+            allowedTwIdsHint ??
+            "W tym panelu widać tylko produkty z katalogu zębów (Admin → Produkty zębowe).",
         })
       : null;
   const visibleFeedback = searchActive
-    ? (teethOnlyNoMatchFeedback ?? feedback)
+    ? (allowedOnlyNoMatchFeedback ?? feedback)
     : shortQueryFeedback;
   const visibleStatus = searchActive ? (isPending ? "loading" : status) : "idle";
   const itemsKey = `${activeField}\0${visibleItems.map((item) => item.tw_Id).join("\0")}`;
@@ -1149,7 +1157,7 @@ export function SubiektProductLineFields({
     <div ref={ref} className="relative space-y-3">
       {productSearchRow}
 
-      {linkedFromSubiekt ? (
+      {linkedFromSubiekt && !lockSubiektLink ? (
         <div className="flex justify-end">
           <Button
             type="button"

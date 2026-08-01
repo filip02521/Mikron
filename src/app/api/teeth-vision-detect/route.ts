@@ -3,7 +3,7 @@ import { getSessionUser } from "@/lib/auth";
 import { analyzeTeethImageForLines } from "@/lib/teeth/teeth-vision-detect";
 import { TEETH_LINE_BY_ID } from "@/lib/teeth/teeth-lines-data";
 
-export const maxDuration = 120;
+export const maxDuration = 120; // sync: TEETH_VISION_DETECT_ROUTE_MAX_SEC
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;

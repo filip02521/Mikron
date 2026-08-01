@@ -4,7 +4,7 @@ import { ADMIN_PREVIEW_TOAST, REQUEST_EDIT_FORM, VERIFICATION_TOAST, formMessage
 import { useState, useTransition, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { IndividualOrder, IndividualRequestKind } from "@/types/database";
-import { SAFETY_TIMEOUT_MS } from "@/hooks/useActionPending";
+import { ACTION_PENDING_SAFETY_FORM_MS } from "@/lib/timing";
 import {
   emptyVerificationForm,
   orderToVerificationForm,
@@ -380,7 +380,7 @@ export function VerificationWorkspace({
     if (!active) return;
     setPendingMessage("Zapisywanie i przekazywanie do panelu…");
     if (pendingSafetyRef.current) window.clearTimeout(pendingSafetyRef.current);
-    pendingSafetyRef.current = window.setTimeout(() => setPendingMessage(null), SAFETY_TIMEOUT_MS);
+    pendingSafetyRef.current = window.setTimeout(() => setPendingMessage(null), ACTION_PENDING_SAFETY_FORM_MS);
     start(async () => {
       try {
         await actionCompleteVerification(active.id, {
@@ -524,7 +524,7 @@ export function VerificationWorkspace({
     const id = cancelTargetId;
     setPendingMessage("Anulowanie prośby…");
     if (pendingSafetyRef.current) window.clearTimeout(pendingSafetyRef.current);
-    pendingSafetyRef.current = window.setTimeout(() => setPendingMessage(null), SAFETY_TIMEOUT_MS);
+    pendingSafetyRef.current = window.setTimeout(() => setPendingMessage(null), ACTION_PENDING_SAFETY_FORM_MS);
     start(async () => {
       try {
         const result = await actionCancelVerification(id, note);

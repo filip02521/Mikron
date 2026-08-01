@@ -155,4 +155,23 @@ describe("buildProsbaFormReadiness", () => {
     expect(view.steps.find((s) => s.id === "path")?.detail).toContain("Brak na stanie");
     expect(view.subline).toContain("Moje zamówienia");
   });
+
+  it("ZK allowlista — blokuje produkt spoza ZK", () => {
+    const plan = planSalesRequestSubmit({
+      symbol: "A",
+      product: "Test",
+      quantity: "1",
+      subiektTwId: 99,
+      requestKind: "zamowienie",
+    });
+    const view = buildProsbaFormReadiness(
+      [{ symbol: "A", product: "Test", quantity: "1", subiektTwId: 99 }],
+      "zamowienie",
+      plan,
+      { zkAllowedTwIds: new Set([10, 20]) }
+    );
+    expect(view.canSubmit).toBe(false);
+    expect(view.tone).toBe("blocked");
+    expect(view.headline).toContain("ZK");
+  });
 });

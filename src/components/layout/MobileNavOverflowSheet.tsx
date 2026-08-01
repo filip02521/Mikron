@@ -24,6 +24,8 @@ import {
   sidebarNavToneActiveClass,
 } from "@/lib/ui/ontime-theme";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
+import { useMonthlySummaryNeedsAttention } from "@/hooks/useMonthlySummaryAttention";
+import { MONTHLY_SUMMARY_HREF } from "@/lib/monthly-summary-attention";
 
 function overflowItemActive(
   pathname: string,
@@ -49,6 +51,7 @@ export function MobileNavOverflowSheet({
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const hydrated = useClientHydrated();
+  const monthlyNeedsAttention = useMonthlySummaryNeedsAttention();
   const allHrefs = items.map((item) => item.href);
   const activeInOverflow = items.some((item) =>
     overflowItemActive(pathname, item, allHrefs)
@@ -57,6 +60,9 @@ export function MobileNavOverflowSheet({
     (max, item) => Math.max(max, item.badge != null && item.badge > 0 ? item.badge : 0),
     0
   );
+  const hasMonthlyInOverflow = items.some((item) => item.href === MONTHLY_SUMMARY_HREF);
+  const showMonthlyDot =
+    hasMonthlyInOverflow && monthlyNeedsAttention && !activeInOverflow;
 
   useBodyScrollLock(open);
 
@@ -104,6 +110,8 @@ export function MobileNavOverflowSheet({
                   const active = overflowItemActive(pathname, item, allHrefs);
                   const displayTone = navItemDisplayTone(item, active);
                   const attentionIdle = navItemHasDueReminders(item) && !active;
+                  const monthlyIdle =
+                    item.href === MONTHLY_SUMMARY_HREF && monthlyNeedsAttention && !active;
                   const href = hrefWithAdminSalesPreview(
                     item.href,
                     previewDla,
@@ -123,7 +131,9 @@ export function MobileNavOverflowSheet({
                             ? sidebarNavToneActiveClass(item.tone)
                             : attentionIdle
                               ? sidebarNavAttentionIdleClass
-                              : navLinkIdleClass,
+                              : monthlyIdle
+                                ? "border border-violet-200/70 bg-violet-50/80 text-slate-800"
+                                : navLinkIdleClass,
                           locked && "pointer-events-none opacity-40"
                         )}
                         aria-current={active ? "page" : undefined}
@@ -153,6 +163,12 @@ export function MobileNavOverflowSheet({
                             </span>
                           ) : null}
                         </span>
+                        {monthlyIdle ? (
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full bg-violet-500 ring-2 ring-white"
+                            title="Nowe podsumowanie miesiąca"
+                          />
+                        ) : null}
                         {hasBadge ? (
                           <span
                             className={cn(
@@ -200,6 +216,11 @@ export function MobileNavOverflowSheet({
               >
                 {overflowAttentionBadge > 9 ? "9+" : overflowAttentionBadge}
               </span>
+            ) : showMonthlyDot ? (
+              <span
+                className="absolute -right-1 top-0 h-2 w-2 rounded-full bg-violet-500 ring-2 ring-white"
+                title="Nowe podsumowanie miesiąca"
+              />
             ) : null}
           </span>
           <span className="max-w-full truncate leading-tight">Więcej</span>

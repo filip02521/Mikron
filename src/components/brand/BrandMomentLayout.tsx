@@ -2,9 +2,9 @@ import Link from "next/link";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 import { BrandCardAccent } from "@/components/brand/BrandCardAccent";
 import { cn } from "@/lib/cn";
-import { buttonPrimaryClass } from "@/lib/ui/ontime-theme";
+import { buttonPrimaryClass, controlFocusClass } from "@/lib/ui/ontime-theme";
 
-/** Karta marki — 404 i komunikaty wewnątrz AppShell. */
+/** Karta marki — komunikaty wewnątrz AppShell (poza dedykowanym 404). */
 export function BrandMomentCard({
   title,
   description,
@@ -65,23 +65,38 @@ export function BrandMomentLayout({
   );
 }
 
-export function BrandMomentHomeActions() {
+/** @deprecated Preferuj kontekstowe CTA w NotFoundScreen. */
+export function BrandMomentHomeActions({
+  primaryHref = "/login",
+  primaryLabel = "Logowanie",
+  secondaryHref = "/podsumowanie",
+  secondaryLabel = "Panel zakupów",
+}: {
+  primaryHref?: string;
+  primaryLabel?: string;
+  secondaryHref?: string;
+  secondaryLabel?: string;
+} = {}) {
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
       <Link
-        href="/login"
+        href={primaryHref}
         className={cn(
           buttonPrimaryClass,
-          "inline-flex min-h-11 items-center justify-center px-5 py-2.5 text-sm font-medium"
+          controlFocusClass,
+          "inline-flex min-h-11 items-center justify-center rounded-md px-5 py-2.5 text-sm font-medium"
         )}
       >
-        Logowanie
+        {primaryLabel}
       </Link>
       <Link
-        href="/podsumowanie"
-        className="inline-flex min-h-11 items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+        href={secondaryHref}
+        className={cn(
+          controlFocusClass,
+          "inline-flex min-h-11 items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+        )}
       >
-        Panel zakupów
+        {secondaryLabel}
       </Link>
     </div>
   );

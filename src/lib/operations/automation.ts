@@ -10,10 +10,10 @@ import {
   dataRetentionCutoffDateOnly,
   dataRetentionCutoffIso,
 } from "@/lib/data/data-retention";
+import { DATA_RETENTION_LOCK_TTL_SEC } from "@/lib/timing";
 
 const MORNING_LOCK = "MORNING_ROUTINE";
 const DATA_RETENTION_LOCK_KEY = "history_retention_purge";
-const DATA_RETENTION_LOCK_TTL_SEC = 24 * 60 * 60;
 
 export type MorningSyncResult = {
   schedulesProcessed: number;

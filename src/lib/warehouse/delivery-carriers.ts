@@ -56,7 +56,16 @@ export function warehouseCarrierLabel(
   catalog?: WarehouseCarrierRow[]
 ): string {
   const list = catalog ?? carrierCatalogFallback();
-  return list.find((carrier) => carrier.slug === value)?.label ?? value;
+  const known = list.find((carrier) => carrier.slug === value)?.label;
+  if (known) return known;
+  // Nieznany slug (np. historyczny) — czytelna etykieta zamiast podkreśleń.
+  const trimmed = value.trim();
+  if (!trimmed.includes("_")) return trimmed;
+  return trimmed
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 export function activeWarehouseCarrierOptions(

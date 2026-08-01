@@ -5,6 +5,10 @@ import { usePersistedFlag } from "@/lib/client/use-persisted-flag";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { salesBoardAnswerSoundMutedStore, isSalesBoardAnswerSoundEnabled } from "@/lib/client/sales-board-answer-sound";
 import { boardQuestionsSoundMutedStore, isBoardQuestionsSoundEnabled } from "@/lib/client/board-questions-sound";
+import {
+  toastNotificationSoundMutedStore,
+  isToastNotificationSoundEnabled,
+} from "@/lib/client/toast-notification-sound";
 import { unlockNotificationSound } from "@/lib/client/notification-sound";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
@@ -23,10 +27,12 @@ export function NotificationSettingsSection({ role }: NotificationSettingsSectio
 
   const salesMuted = usePersistedFlag(salesBoardAnswerSoundMutedStore);
   const opsMuted = usePersistedFlag(boardQuestionsSoundMutedStore);
+  const toastMuted = usePersistedFlag(toastNotificationSoundMutedStore);
   const hydrated = useClientHydrated();
 
   const salesSound = hydrated ? isSalesBoardAnswerSoundEnabled(salesMuted) : false;
   const opsSound = hydrated ? isBoardQuestionsSoundEnabled(opsMuted) : false;
+  const toastSound = hydrated ? isToastNotificationSoundEnabled(toastMuted) : false;
 
   const setSalesSound = useCallback((value: boolean) => {
     salesBoardAnswerSoundMutedStore.setValue(!value);
@@ -35,6 +41,11 @@ export function NotificationSettingsSection({ role }: NotificationSettingsSectio
 
   const setOpsSound = useCallback((value: boolean) => {
     boardQuestionsSoundMutedStore.setValue(!value);
+    if (value) void unlockNotificationSound();
+  }, []);
+
+  const setToastSound = useCallback((value: boolean) => {
+    toastNotificationSoundMutedStore.setValue(!value);
     if (value) void unlockNotificationSound();
   }, []);
 
@@ -102,11 +113,30 @@ export function NotificationSettingsSection({ role }: NotificationSettingsSectio
           </label>
         ) : null}
 
-        {!isSales && !isOperations ? (
-          <p className="py-4 text-center text-sm text-slate-400">
-            Brak dostępnych ustawień dźwięku dla Twojej roli.
-          </p>
-        ) : null}
+        <label
+          className={cn(
+            "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-all",
+            toastSound
+              ? "border-amber-200/80 bg-amber-50/40"
+              : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
+          )}
+        >
+          <span className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium text-slate-800">Dźwięk toastów</span>
+            <span className="text-[11px] leading-snug text-slate-400">
+              Odtwarza dźwięk przy komunikatach potwierdzenia i cofania
+            </span>
+          </span>
+          <input
+            type="checkbox"
+            role="switch"
+            aria-checked={toastSound}
+            aria-label="Powiadomienie dźwiękowe przy toastach"
+            checked={toastSound}
+            onChange={(e) => setToastSound(e.target.checked)}
+            className="toggle-switch toggle-amber"
+          />
+        </label>
       </div>
     </Card>
   );

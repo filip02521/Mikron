@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
-import { SAFETY_TIMEOUT_MS } from "@/hooks/useActionPending";
+import { ACTION_PENDING_SAFETY_LONG_MS } from "@/lib/timing";
 
 export function SyncButton({
   action,
@@ -46,7 +46,7 @@ export function SyncButton({
         onClick={() => {
           setPendingMessage(loadingMessage);
           if (safetyRef.current) window.clearTimeout(safetyRef.current);
-          safetyRef.current = window.setTimeout(() => setPendingMessage(null), SAFETY_TIMEOUT_MS);
+          safetyRef.current = window.setTimeout(() => setPendingMessage(null), ACTION_PENDING_SAFETY_LONG_MS);
           start(async () => {
             try {
               const r = await action();
