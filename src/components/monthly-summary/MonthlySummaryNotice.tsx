@@ -20,7 +20,7 @@ export function MonthlySummaryNotice() {
   return (
     <div
       className={cn(
-        "group relative flex items-center gap-2.5 overflow-hidden",
+        "group relative mb-4 flex items-center gap-2.5 overflow-hidden sm:mb-6",
         "rounded-lg border border-violet-200/50 bg-gradient-to-r from-violet-50/80 via-indigo-50/60 to-transparent",
         "px-3 py-2 shadow-sm transition-all hover:border-violet-300/60",
         "md:mr-12 md:max-w-[calc(100%-3.5rem)]"
