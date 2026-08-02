@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+/** sync: ZD_ETA_MOJE_ROUTE_MAX_DURATION_SEC */
+export const maxDuration = 75;
 import { revalidatePath } from "next/cache";
 import { getSessionUser } from "@/lib/auth";
 import { consumeAuthRateLimit } from "@/lib/auth/auth-rate-limit";
@@ -63,7 +64,8 @@ export async function POST(request: Request) {
 
   try {
     const result = await runZdEtaSyncForSalesPerson(salesPerson.id, {
-      force: true,
+      // Auto: lżejszy budżet; ręczne: force + wyższe limity.
+      force: !autoSync,
       allowLiveSearch: true,
     });
 

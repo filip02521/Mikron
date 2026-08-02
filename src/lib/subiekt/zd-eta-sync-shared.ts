@@ -3,8 +3,25 @@
 import { canEstimateDeliveryEta, orderPlacementAt } from "@/lib/orders/order-timing";
 import type { IndividualOrder } from "@/types/database";
 
-/** Limit czasu żądania z /moje — nieco powyżej budżetu serwera. */
-export const ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS = 60_000;
+import { clientFetchTimeoutMs } from "@/lib/timing";
+
+/**
+ * Soft-budget auto-sync na /moje (musi być < force < client < route maxDuration).
+ * Trzymane tu (shared), żeby klient mógł wyliczyć swój abort bez importu serwera.
+ */
+export const ZD_ETA_MOJE_MAX_DURATION_MS = 45_000;
+/** Soft-budget ręcznego odświeżenia ZD na /moje. */
+export const ZD_ETA_MOJE_FORCE_MAX_DURATION_MS = 50_000;
+/** Route `/api/sales/zd-eta-refresh` — twardy limit platformy (sekundy). Zapas nad klientem. */
+export const ZD_ETA_MOJE_ROUTE_MAX_DURATION_SEC = 75;
+/** Cron ZD ETA — soft budget wewnątrz maxDuration=300s. */
+export const ZD_ETA_CRON_BUDGET_MS = 280_000;
+
+/** Limit czasu żądania z /moje — powyżej budżetu force + zapas TTFB/JSON. */
+export const ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS = clientFetchTimeoutMs(
+  ZD_ETA_MOJE_FORCE_MAX_DURATION_MS,
+  15_000
+);
 /** Po tylu ms w tle na /moje — ponowny sync terminów ZD po powrocie do karty. */
 export const ZD_ETA_MOJE_VISIBILITY_RESYNC_MS = 30 * 60 * 1000;
 

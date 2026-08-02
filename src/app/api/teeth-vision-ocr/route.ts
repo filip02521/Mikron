@@ -5,7 +5,7 @@ import { analyzeTeethImage, analyzeTeethImageForLine, type TeethVisionOcrGroup }
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import { randomUUID } from "crypto";
 
-export const maxDuration = 260;
+export const maxDuration = 260; // sync: TEETH_VISION_OCR_ROUTE_MAX_SEC
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;

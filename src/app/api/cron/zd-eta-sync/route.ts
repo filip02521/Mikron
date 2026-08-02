@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { authorizeCronRequest } from "@/lib/services/cron-auth";
 import { recordCronRun } from "@/lib/services/cron-run-log";
-import { runZdEtaSync } from "@/lib/subiekt/zd-eta-sync";
+import { runZdEtaSync, ZD_ETA_CRON_BUDGET_MS } from "@/lib/subiekt/zd-eta-sync";
 import { isWarsawWorkHours } from "@/lib/time/warsaw";
 import { recordCronSkipped, warsawCronContext } from "@/lib/time/warsaw-cron";
 
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const result = await runZdEtaSync({
-      maxDurationMs: 280_000,
+      maxDurationMs: ZD_ETA_CRON_BUDGET_MS,
       force,
       allowLiveSearch: true,
     });

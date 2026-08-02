@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { actionAddIndividualOrders } from "@/app/actions/admin";
-import { SAFETY_TIMEOUT_MS } from "@/hooks/useActionPending";
+import { ACTION_PENDING_SAFETY_FORM_MS } from "@/lib/timing";
 import { Button } from "@/components/ui/Button";
 import { Field, Select } from "@/components/ui/Field";
 import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
@@ -264,7 +264,7 @@ export function QuickOrderModal({
   ) => {
     setPendingMessage("Zapisywanie prośby…");
     if (pendingSafetyRef.current) window.clearTimeout(pendingSafetyRef.current);
-    pendingSafetyRef.current = window.setTimeout(() => setPendingMessage(null), SAFETY_TIMEOUT_MS);
+    pendingSafetyRef.current = window.setTimeout(() => setPendingMessage(null), ACTION_PENDING_SAFETY_FORM_MS);
     start(async () => {
       try {
         const r = await actionAddIndividualOrders({

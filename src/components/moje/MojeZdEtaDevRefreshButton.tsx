@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { clearMojeZdEtaSessionSync } from "@/components/moje/MojeZdEtaSyncClient";
 import type { MojeZdEtaRefreshResult } from "@/lib/subiekt/zd-eta-sync-shared";
 import { ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS } from "@/lib/subiekt/zd-eta-sync-shared";
+import { createTimeoutAbort } from "@/lib/timing";
 import { cn } from "@/lib/cn";
 
 /**
@@ -26,16 +27,12 @@ export function MojeZdEtaDevRefreshButton({ className }: { className?: string })
     setLastResult(null);
     clearMojeZdEtaSessionSync();
 
-    const controller = new AbortController();
-    const timeoutId = window.setTimeout(
-      () => controller.abort(),
-      ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS
-    );
+    const abort = createTimeoutAbort(ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS);
 
     try {
       const res = await fetch("/api/sales/zd-eta-refresh", {
         method: "POST",
-        signal: controller.signal,
+        signal: abort.signal,
       });
       const body = (await res.json()) as MojeZdEtaRefreshResult & { error?: string };
       if (!res.ok) {
@@ -58,7 +55,7 @@ export function MojeZdEtaDevRefreshButton({ className }: { className?: string })
     } catch {
       setLastResult("Timeout lub błąd sieci");
     } finally {
-      window.clearTimeout(timeoutId);
+      abort.clear();
       setBusy(false);
     }
   };

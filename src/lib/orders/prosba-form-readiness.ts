@@ -17,6 +17,8 @@ import {
   MIXED_PROCUREMENT_READINESS_SUBLINE,
   classifyProsbaLinesByLane,
 } from "@/lib/teeth/teeth-procurement-flow-copy";
+import { prosbaLinesViolateZkCatalog } from "@/lib/orders/zk-prosba-catalog-guard";
+import { ZK_PROSBA_LINK_BANNER_COPY } from "@/lib/orders/zk-prosba-link-banner-copy";
 
 export type ProsbaReadinessStepState = "empty" | "done" | "action" | "handoff";
 
@@ -52,6 +54,8 @@ export type ProsbaFormReadinessOptions = {
   informacjaPath?: InformacjaFlowPath;
   resolvingSupplier?: boolean;
   teethExemptTwIds?: ReadonlySet<number>;
+  /** Gdy ustawione — każda pozycja z produktem musi mieć tw_Id z ZK. */
+  zkAllowedTwIds?: ReadonlySet<number>;
 };
 
 function linesWithProductHint(lines: ProsbaReadinessLine[]): ProsbaReadinessLine[] {
@@ -105,6 +109,7 @@ export function buildProsbaFormReadiness(
   void options?.resolvingSupplier;
 
   const productDone = filled.length > 0;
+  const zkCatalogBlocked = prosbaLinesViolateZkCatalog(filled, options?.zkAllowedTwIds);
   const quantityDone =
     !isZamowienie ||
     (filled.length > 0 &&
@@ -113,12 +118,14 @@ export function buildProsbaFormReadiness(
   const productStep: ProsbaReadinessStep = {
     id: "product",
     label: "Produkt",
-    state: productDone ? "done" : "empty",
-    detail: productDone
-      ? filled.length === 1
-        ? "Symbol, kod lub opis"
-        : `${filled.length} pozycje`
-      : "Symbol, kod Mikran lub nazwa",
+    state: !productDone ? "empty" : zkCatalogBlocked ? "action" : "done",
+    detail: zkCatalogBlocked
+      ? ZK_PROSBA_LINK_BANNER_COPY.readinessProductDetail
+      : productDone
+        ? filled.length === 1
+          ? "Symbol, kod lub opis"
+          : `${filled.length} pozycje`
+        : "Symbol, kod Mikran lub nazwa",
   };
 
   const quantityStep: ProsbaReadinessStep = {
@@ -191,6 +198,16 @@ export function buildProsbaFormReadiness(
       headline: "Wpisz produkt",
       subline: "Poniżej zobaczysz, co jest gotowe do wysłania.",
       tone: "neutral",
+      steps,
+      canSubmit: false,
+    };
+  }
+
+  if (zkCatalogBlocked) {
+    return {
+      headline: ZK_PROSBA_LINK_BANNER_COPY.readinessHeadline,
+      subline: ZK_PROSBA_LINK_BANNER_COPY.readinessSubline,
+      tone: "blocked",
       steps,
       canSubmit: false,
     };

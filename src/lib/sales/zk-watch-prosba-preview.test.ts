@@ -195,13 +195,15 @@ describe("resolveZkProsbaPreviewDelivery", () => {
   it("prefers ZD deadline over email estimate", () => {
     const delivery = resolveZkProsbaPreviewDelivery({
       ...baseOrder,
-      zd_fulfillment_deadline: "2026-08-01",
+      // Data w przyszłości — caption „Planowana dostawa” (po terminie: „Termin u dostawcy”).
+      zd_fulfillment_deadline: "2027-06-15",
       delivery_at: "2026-07-15",
     });
 
     expect(delivery.deliveryCaption).toContain("Planowana dostawa");
     expect(delivery.deliveryDisplay).not.toBeNull();
-    expect(delivery.deliveryDisplay?.title).toContain("2026");
+    expect(delivery.deliveryDisplay?.title).toContain("2027");
+    expect(delivery.deliveryCaption).not.toBe("Z historii");
   });
 
   it("uses delivery_at when ZD missing", () => {

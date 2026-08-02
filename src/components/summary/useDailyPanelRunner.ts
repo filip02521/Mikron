@@ -12,7 +12,7 @@ import {
   undoWindowBannerDescription,
 } from "@/lib/orders/daily-panel-undo";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
-import { SAFETY_TIMEOUT_MS } from "@/hooks/useActionPending";
+import { ACTION_PENDING_SAFETY_FORM_MS } from "@/lib/timing";
 
 export const DAILY_PANEL_SCOPE_BULK = "__bulk__";
 export const DAILY_PANEL_SCOPE_GLOBAL = "__global__";
@@ -79,7 +79,7 @@ export function useDailyPanelRunner() {
     safetyTimerRef.current = window.setTimeout(() => {
       setPendingScope(null);
       setPendingMessage(null);
-    }, SAFETY_TIMEOUT_MS);
+    }, ACTION_PENDING_SAFETY_FORM_MS);
   }, [clearSafetyTimer]);
 
   const dismissFlash = useCallback(() => setFlash(null), []);

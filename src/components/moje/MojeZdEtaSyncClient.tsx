@@ -13,6 +13,7 @@ import {
   ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS,
   ZD_ETA_MOJE_VISIBILITY_RESYNC_MS,
 } from "@/lib/subiekt/zd-eta-sync-shared";
+import { createTimeoutAbort } from "@/lib/timing";
 
 const LOCK_RETRY_MS = 5_000;
 const MAX_LOCK_RETRIES = 2;
@@ -99,16 +100,12 @@ export function MojeZdEtaSyncClient({
     };
 
     const run = async (lockRetry = 0, networkRetry = 0) => {
-      const controller = new AbortController();
-      const timeoutId = window.setTimeout(
-        () => controller.abort(),
-        ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS
-      );
+      const abort = createTimeoutAbort(ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS);
 
       try {
         const res = await fetch("/api/sales/zd-eta-refresh?auto=1", {
           method: "POST",
-          signal: controller.signal,
+          signal: abort.signal,
         });
         if (cancelled) return;
 
@@ -138,7 +135,7 @@ export function MojeZdEtaSyncClient({
           finish(null, networkRetry);
         }
       } finally {
-        window.clearTimeout(timeoutId);
+        abort.clear();
       }
     };
 

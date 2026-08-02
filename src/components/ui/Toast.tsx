@@ -23,6 +23,10 @@ import {
 } from "@/lib/ui/ontime-theme";
 import { NoticeContent } from "@/components/ui/NoticeContent";
 import { resolveNoticeCopy } from "@/lib/ui/notice-content";
+import {
+  TOAST_DURATION_DEFAULT_MS,
+  TOAST_DURATION_WITH_ACTION_MS,
+} from "@/lib/timing";
 
 type ToastTone = "success" | "error" | "warning";
 
@@ -68,7 +72,7 @@ export function Toast({
   stacked?: boolean;
 }) {
   const copy = resolveNoticeCopy({ title, description, message: message ?? text });
-  const autoMs = durationMs ?? (action ? 12_000 : 4500);
+  const autoMs = durationMs ?? (action ? TOAST_DURATION_WITH_ACTION_MS : TOAST_DURATION_DEFAULT_MS);
   const onDismissRef = useRef(onDismiss);
   useEffect(() => {
     onDismissRef.current = onDismiss;

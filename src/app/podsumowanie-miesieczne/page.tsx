@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { fetchMonthlyStats } from "@/lib/data/monthly-stats";
+import { resolveCompletedMonthlySummaryMonthKey } from "@/lib/data/monthly-stats-shared";
 import { getSessionUser } from "@/lib/auth";
 import { Alert } from "@/components/ui/Alert";
 import { MonthlySummaryClient } from "@/components/monthly-summary/MonthlySummaryClient";
@@ -14,23 +15,17 @@ export const metadata: Metadata = pageMetadataFor("monthlySummary");
 export const dynamic = "force-dynamic";
 
 function resolveMonthKey(searchParams: { month?: string }): string {
-  const now = new Date();
-  const currentKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  if (searchParams.month && /^\d{4}-\d{2}$/.test(searchParams.month)) {
-    return searchParams.month;
-  }
-  return currentKey;
+  return resolveCompletedMonthlySummaryMonthKey(searchParams.month);
 }
 
 export default async function MonthlySummaryPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ month?: string; tab?: string }>;
 }) {
   const session = await getSessionUser();
-  const role = session?.role ?? null;
 
-  if (!role) {
+  if (!session?.role) {
     return (
       <div className={cn(panelWorkspaceShellClass, "rounded-lg border border-slate-200 bg-white p-6")}>
         <Alert tone="warning">Zaloguj się, aby zobaczyć podsumowanie miesiąca.</Alert>
@@ -38,6 +33,7 @@ export default async function MonthlySummaryPage({
     );
   }
 
+  const role = session.role;
   const params = await searchParams;
   const monthKey = resolveMonthKey(params);
 
@@ -57,7 +53,13 @@ export default async function MonthlySummaryPage({
         </Alert>
       ) : null}
       <Suspense fallback={<PanelRouteLoading variant="admin" label="Ładowanie podsumowania" />}>
-        {stats ? <MonthlySummaryClient stats={stats} /> : null}
+        {stats ? (
+          <MonthlySummaryClient
+            stats={stats}
+            role={role}
+            workspaces={session.assignedWorkspaces ?? []}
+          />
+        ) : null}
       </Suspense>
     </>
   );

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actionAddIndividualOrders } from "@/app/actions/admin";
-import { SAFETY_TIMEOUT_MS } from "@/hooks/useActionPending";
+import { ACTION_PENDING_SAFETY_FORM_MS } from "@/lib/timing";
 import { Button } from "@/components/ui/Button";
 import { Field, Select } from "@/components/ui/Field";
 import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
@@ -23,6 +23,7 @@ import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import { buildProsbaFormReadinessWithSupplier } from "@/lib/orders/prosba-form-readiness";
 import { PROSBA_FORM_SECTION_COPY } from "@/lib/orders/prosba-form-section-copy";
+import { TEETH_ALLOWED_TW_IDS_HINT } from "@/lib/orders/zk-prosba-link-banner-copy";
 import { prosbaLineHasTeethBlockers } from "@/lib/orders/prosba-line-field-validation";
 import type { FormMessage } from "@/lib/ui/notice-content";
 import { formError, QUICK_ORDER_FORM } from "@/lib/ui/notice-copy";
@@ -121,7 +122,7 @@ export function TeethQuickOrderModal({
   const performSubmit = (entries: AddIndividualOrdersEntry[]) => {
     setPendingMessage("Zapisywanie prośby zębowej…");
     if (pendingSafetyRef.current) window.clearTimeout(pendingSafetyRef.current);
-    pendingSafetyRef.current = window.setTimeout(() => setPendingMessage(null), SAFETY_TIMEOUT_MS);
+    pendingSafetyRef.current = window.setTimeout(() => setPendingMessage(null), ACTION_PENDING_SAFETY_FORM_MS);
     start(async () => {
       try {
         const r = await actionAddIndividualOrders({ entries });
@@ -346,6 +347,7 @@ export function TeethQuickOrderModal({
               validationAttempted={validationAttempted}
               liveValidation
               allowedTwIds={teethExemptTwIds}
+              allowedTwIdsHint={TEETH_ALLOWED_TW_IDS_HINT}
               groupSupplierId={supplierId}
               onSupplierResolved={({ supplierId: id }) => {
                 setSupplierId(id);

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { IconCamera, IconAlertCircle } from "@/components/icons/StrokeIcons";
 import type { TeethProductLine, TeethGroupDraft } from "@/lib/teeth/teeth-catalog";
+import { TEETH_VISION_OCR_CLIENT_TIMEOUT_MS } from "@/lib/teeth/teeth-vision-timeouts";
+import { createTimeoutAbort } from "@/lib/timing";
 
 export type TeethOcrGroup = TeethGroupDraft & {
   productLine: TeethProductLine;
@@ -75,17 +77,16 @@ export function TeethVisionUpload({
         formData.append("image", compressed, "teeth-order.jpg");
         if (productLine) formData.append("productLine", productLine);
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 270_000);
+        const abort = createTimeoutAbort(TEETH_VISION_OCR_CLIENT_TIMEOUT_MS);
         let res: Response;
         try {
           res = await fetch("/api/teeth-vision-ocr", {
             method: "POST",
             body: formData,
-            signal: controller.signal,
+            signal: abort.signal,
           });
         } finally {
-          clearTimeout(timeoutId);
+          abort.clear();
         }
 
         if (!res.ok) {

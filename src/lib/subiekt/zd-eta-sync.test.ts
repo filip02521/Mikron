@@ -31,6 +31,9 @@ import {
   shouldRetryMojeZdEtaSync,
   shouldSkipMojeZdEtaSessionSync,
   ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS,
+  ZD_ETA_MOJE_FORCE_MAX_DURATION_MS,
+  ZD_ETA_MOJE_MAX_DURATION_MS,
+  ZD_ETA_MOJE_ROUTE_MAX_DURATION_SEC,
 } from "./zd-eta-sync-shared";
 import type { IndividualOrder } from "@/types/database";
 
@@ -202,8 +205,18 @@ describe("zdEtaSyncLockKey", () => {
     expect(zdEtaSyncLockKey("sp1")).toBe("job_zd_eta_sync:sp:sp1");
   });
 
-  it("ma limit czasu klienta powyżej budżetu serwera /moje", () => {
+  it("ma limit czasu klienta powyżej budżetu serwera /moje i poniżej limitu trasy", () => {
     expect(ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS).toBeGreaterThan(15_000);
+    expect(ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS).toBeGreaterThan(
+      ZD_ETA_MOJE_FORCE_MAX_DURATION_MS
+    );
+    expect(ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS).toBeLessThan(
+      ZD_ETA_MOJE_ROUTE_MAX_DURATION_SEC * 1000
+    );
+    expect(ZD_ETA_MOJE_FORCE_MAX_DURATION_MS).toBeLessThanOrEqual(
+      ZD_ETA_MOJE_ROUTE_MAX_DURATION_SEC * 1000
+    );
+    expect(ZD_ETA_MOJE_MAX_DURATION_MS).toBeLessThan(ZD_ETA_MOJE_FORCE_MAX_DURATION_MS);
   });
 
   it("globalny backup skanuje zamówienia stronicowo", () => {

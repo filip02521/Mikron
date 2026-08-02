@@ -122,6 +122,7 @@ export function ProsbaFormReadiness({
   compact = true,
   className,
   teethExemptTwIds,
+  zkAllowedTwIds,
 }: {
   lines: ProsbaReadinessLine[];
   requestKind: IndividualRequestKind;
@@ -139,6 +140,7 @@ export function ProsbaFormReadiness({
   compact?: boolean;
   className?: string;
   teethExemptTwIds?: ReadonlySet<number>;
+  zkAllowedTwIds?: ReadonlySet<number>;
 }) {
   const shortage = useTeethShortageWarningForLines(
     requestKind === "zamowienie" ? lines : [],
@@ -150,6 +152,7 @@ export function ProsbaFormReadiness({
     resolvingSupplier,
     informacjaPath,
     teethExemptTwIds,
+    zkAllowedTwIds,
   });
   const styles = toneStyles(view.tone);
 

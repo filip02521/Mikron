@@ -1,8 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { DEFAULT_JOB_LOCK_TTL_SEC } from "@/lib/timing";
 
 export async function tryAcquireLock(
   key: string,
-  ttlSeconds = 30,
+  ttlSeconds = DEFAULT_JOB_LOCK_TTL_SEC,
   lockedBy = "system"
 ): Promise<boolean> {
   const supabase = createAdminClient();

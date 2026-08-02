@@ -42,9 +42,11 @@ describe("WAREHOUSE_CARRIERS", () => {
     }
   });
 
-  it("zwraca etykietę lub surową wartość", () => {
+  it("zwraca etykietę lub czytelną wartość", () => {
     expect(warehouseCarrierLabel("dpd")).toBe("DPD");
+    expect(warehouseCarrierLabel("kuehne_nagel")).toBe("Kuehne + Nagel");
     expect(warehouseCarrierLabel("nieznany")).toBe("nieznany");
+    expect(warehouseCarrierLabel("custom_kurier_xyz")).toBe("Custom Kurier Xyz");
   });
 });
 

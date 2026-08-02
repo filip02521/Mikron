@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { actionAddIndividualOrders } from "@/app/actions/admin";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
-import { SAFETY_TIMEOUT_MS } from "@/hooks/useActionPending";
+import { ACTION_PENDING_SAFETY_FORM_MS } from "@/lib/timing";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { NoticeToast } from "@/components/ui/NoticeToast";
@@ -78,8 +78,11 @@ import {
   clearZkProsbaPrefill,
   parseProsbaZkLineKeysParam,
   readZkProsbaPrefill,
+  zkProsbaCatalogLocked,
   type ZkProsbaPrefill,
 } from "@/lib/orders/zk-watch-prosba-prefill";
+import { ZK_PROSBA_LINK_BANNER_COPY } from "@/lib/orders/zk-prosba-link-banner-copy";
+import { assertProsbaLinesBelongToZk } from "@/lib/orders/zk-prosba-catalog-guard";
 import {
   clearBoardQuestionProsbaPrefill,
   readBoardQuestionProsbaPrefill,
@@ -246,6 +249,7 @@ export function OrderFormClient({
     mode?: "full" | "supplement";
     supplementLineCount?: number;
     lineKeys?: string[];
+    allowedTwIds: ReadonlySet<number> | null;
   } | null>(null);
   const [validationAttempted, setValidationAttempted] = useState(false);
   const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
@@ -314,9 +318,36 @@ export function OrderFormClient({
 
     async function applyZkPrefill(prefill: ZkProsbaPrefill) {
       if (!prefill.lines.length) return;
-      const clientName = prefill.clientName?.trim() || "";
-      const clientKhId = prefill.clientKhId ?? null;
-      const nextRequestKind = prefill.requestKind ?? "zamowienie";
+      let resolved = prefill;
+      if (
+        !zkProsbaCatalogLocked(resolved) &&
+        resolved.zkWatchId?.trim()
+      ) {
+        try {
+          const fromWatch = await actionGetZkProsbaPrefillByWatchId(
+            resolved.zkWatchId,
+            searchParams.get("dla")?.trim() || lockedId || undefined,
+            resolved.lineKeys,
+            resolved.requestKind
+          );
+          if (fromWatch && zkProsbaCatalogLocked(fromWatch)) {
+            resolved = {
+              ...resolved,
+              allowedTwIds: fromWatch.allowedTwIds,
+            };
+          }
+        } catch {
+          /* allowlista — best effort */
+        }
+      }
+
+      const clientName = resolved.clientName?.trim() || "";
+      const clientKhId = resolved.clientKhId ?? null;
+      const nextRequestKind = resolved.requestKind ?? "zamowienie";
+      const allowedTwIds =
+        resolved.allowedTwIds && resolved.allowedTwIds.length > 0
+          ? new Set(resolved.allowedTwIds)
+          : null;
       setRequestKind(nextRequestKind);
       if (nextRequestKind === "informacja") {
         setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
@@ -324,18 +355,19 @@ export function OrderFormClient({
       setValidationAttempted(false);
       setFormNotice(null);
       setMsg(null);
-      if (prefill.zkWatchId || prefill.zkNumber.trim()) {
+      if (resolved.zkWatchId || resolved.zkNumber.trim()) {
         setZkProsbaLinkContext({
-          zkWatchId: prefill.zkWatchId,
-          zkNumber: prefill.zkNumber,
+          zkWatchId: resolved.zkWatchId,
+          zkNumber: resolved.zkNumber,
           clientLabel: clientName,
           clientKhId,
-          mode: prefill.mode,
-          supplementLineCount: prefill.supplementLineCount,
-          lineKeys: prefill.lineKeys,
+          mode: resolved.mode,
+          supplementLineCount: resolved.supplementLineCount,
+          lineKeys: resolved.lineKeys,
+          allowedTwIds,
         });
       }
-      let baseLines = prefill.lines.map((line) => ({
+      let baseLines = resolved.lines.map((line) => ({
         id: line.id,
         supplierId: "",
         salesPersonId: lockedId,
@@ -606,10 +638,11 @@ export function OrderFormClient({
       singleGroup ? "Wysyłanie prośby…" : "Zapisywanie zamówień…"
     );
     if (pendingSafetyRef.current) window.clearTimeout(pendingSafetyRef.current);
-    pendingSafetyRef.current = window.setTimeout(() => setPendingMessage(null), SAFETY_TIMEOUT_MS);
+    pendingSafetyRef.current = window.setTimeout(() => setPendingMessage(null), ACTION_PENDING_SAFETY_FORM_MS);
     start(async () => {
       const zkCtx = zkProsbaLinkContext;
       try {
+        assertProsbaLinesBelongToZk(entries, zkCtx?.allowedTwIds);
         const r = await actionAddIndividualOrders({
           entries: entries.map((e) => ({
             supplierId: e.supplierId || undefined,
@@ -1010,6 +1043,7 @@ export function OrderFormClient({
       resolvingSupplier,
       informacjaPath,
       teethExemptTwIds,
+      zkAllowedTwIds: zkProsbaLinkContext?.allowedTwIds ?? undefined,
     });
     return {
       group,
@@ -1027,6 +1061,7 @@ export function OrderFormClient({
     resolvingSupplier,
     informacjaPath,
     teethExemptTwIds,
+    zkProsbaLinkContext?.allowedTwIds,
   ]);
 
   const zkQuantityFormBanner = useMemo(() => {
@@ -1158,8 +1193,10 @@ export function OrderFormClient({
         resolvingSupplier,
         informacjaPath,
         teethExemptTwIds,
+        zkAllowedTwIds: zkProsbaLinkContext?.allowedTwIds ?? undefined,
       });
     const canSubmitProsba = salesProsbaSubmitState?.canSubmit ?? false;
+    const zkCatalogLocked = Boolean(zkProsbaLinkContext?.allowedTwIds?.size);
     /** Prefill z harmonogramu (?dostawca=) — pokazuj, dopóki Subiekt nie wskaże innego dostawcy. */
     const scheduleSupplier =
       initialSupplierId && group[0]?.supplierId === initialSupplierId
@@ -1222,6 +1259,7 @@ export function OrderFormClient({
               clientLabel={zkProsbaLinkContext.clientLabel}
               mode={zkProsbaLinkContext.mode}
               supplementLineCount={zkProsbaLinkContext.supplementLineCount}
+              catalogLocked={zkCatalogLocked}
             />
           ) : null}
 
@@ -1318,9 +1356,11 @@ export function OrderFormClient({
               requestKind={requestKind}
               informacjaPath={informacjaPath}
               hint={
-                requestKind === "informacja"
-                  ? informacjaProductsFormHint(informacjaPath)
-                  : PROSBA_FORM_SECTION_COPY.products.orderHint
+                zkCatalogLocked
+                  ? ZK_PROSBA_LINK_BANNER_COPY.productsSectionHint
+                  : requestKind === "informacja"
+                    ? informacjaProductsFormHint(informacjaPath)
+                    : PROSBA_FORM_SECTION_COPY.products.orderHint
               }
             >
               <div className="space-y-3">
@@ -1337,6 +1377,11 @@ export function OrderFormClient({
                   suppliers={supplierRefs}
                   deferSupplierResolve={deferSupplierResolve}
                   groupSupplierId={group[0]?.supplierId || initialSupplierId || ""}
+                  allowedTwIds={zkProsbaLinkContext?.allowedTwIds ?? undefined}
+                  allowedTwIdsHint={
+                    zkCatalogLocked ? ZK_PROSBA_LINK_BANNER_COPY.typeaheadHint : undefined
+                  }
+                  lockSubiektLink={zkCatalogLocked}
                   onSupplierResolved={({ supplierId }) => {
                     if (!deferSupplierResolve) {
                       applySupplierFromSubiekt(supplierId, 0);
@@ -1363,6 +1408,8 @@ export function OrderFormClient({
                   resolvingSupplier={resolvingSupplier}
                   informacjaPath={informacjaPath}
                   validationAttempted={validationAttempted}
+                  teethExemptTwIds={teethExemptTwIds}
+                  zkAllowedTwIds={zkProsbaLinkContext?.allowedTwIds ?? undefined}
                 />
               </div>
             </ProsbaFormProductsSection>
@@ -1584,9 +1631,11 @@ export function OrderFormClient({
               requestKind={requestKind}
               informacjaPath={informacjaPath}
               hint={
-                requestKind === "informacja"
-                  ? informacjaProductsFormHint(informacjaPath)
-                  : PROSBA_FORM_SECTION_COPY.products.orderHint
+                zkProsbaLinkContext?.allowedTwIds?.size
+                  ? ZK_PROSBA_LINK_BANNER_COPY.productsSectionHint
+                  : requestKind === "informacja"
+                    ? informacjaProductsFormHint(informacjaPath)
+                    : PROSBA_FORM_SECTION_COPY.products.orderHint
               }
             >
               <div className="space-y-3">
@@ -1603,6 +1652,13 @@ export function OrderFormClient({
                   suppliers={supplierRefs}
                   unifiedFeedback
                   groupSupplierId={group[0]?.supplierId ?? ""}
+                  allowedTwIds={zkProsbaLinkContext?.allowedTwIds ?? undefined}
+                  allowedTwIdsHint={
+                    zkProsbaLinkContext?.allowedTwIds?.size
+                      ? ZK_PROSBA_LINK_BANNER_COPY.typeaheadHint
+                      : undefined
+                  }
+                  lockSubiektLink={Boolean(zkProsbaLinkContext?.allowedTwIds?.size)}
                   onSupplierResolved={({ supplierId }) =>
                     applySupplierFromSubiekt(supplierId, gi)
                   }
@@ -1633,7 +1689,11 @@ export function OrderFormClient({
                       group,
                       group[0]?.supplierId ?? "",
                       requestKind,
-                      { informacjaPath, resolvingSupplier }
+                      {
+                        informacjaPath,
+                        resolvingSupplier,
+                        zkAllowedTwIds: zkProsbaLinkContext?.allowedTwIds ?? undefined,
+                      }
                     ).plan
                   }
                   formMessage={gi === 0 ? formNotice : null}
@@ -1641,6 +1701,7 @@ export function OrderFormClient({
                   informacjaPath={informacjaPath}
                   resolvingSupplier={resolvingSupplier}
                   validationAttempted={validationAttempted}
+                  zkAllowedTwIds={zkProsbaLinkContext?.allowedTwIds ?? undefined}
                 />
               </div>
             </ProsbaFormProductsSection>

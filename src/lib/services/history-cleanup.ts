@@ -7,6 +7,7 @@ import {
   HISTORY_TERMINAL_STATUSES,
 } from "@/lib/orders/history-retention";
 import { tryAcquireLock } from "@/lib/services/locks";
+import { DATA_RETENTION_LOCK_TTL_SEC } from "@/lib/timing";
 
 /** Krótszy TTL niż okno rate limit — tylko zapasowe sprzątanie zdarzeń auth. */
 const AUTH_RATE_LIMIT_RETENTION_MS = 48 * 60 * 60 * 1000;
@@ -34,7 +35,6 @@ export type HistoryCleanupResult = Pick<
 
 /** Co najwyżej jedno czyszczenie na 24 h (bez crona na serwerze aplikacji). */
 const DATA_RETENTION_LOCK_KEY = "history_retention_purge";
-const DATA_RETENTION_LOCK_TTL_SEC = 24 * 60 * 60;
 
 /**
  * Uruchamia czyszczenie w tle po zapisie do historii — nie blokuje żądania.

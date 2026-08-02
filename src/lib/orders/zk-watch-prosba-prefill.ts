@@ -27,6 +27,8 @@ export type ZkProsbaPrefill = {
   supplementLineCount?: number;
   lineKeys?: string[];
   requestKind?: IndividualRequestKind;
+  /** Wszystkie tw_Id towarów z ZK (pełny snapshot — także przy supplement). */
+  allowedTwIds?: number[];
 };
 
 export type ZkProsbaPrefillOptions = {
@@ -67,6 +69,31 @@ function normalizePrefillKhId(value: unknown): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+/** Unikalne tw_Id towarów z ZK — bez lineKeys, bez kosztów przesyłki (już w views). */
+export function collectZkWatchAllowedTwIds(watch: SalesZkWatch): number[] {
+  const ids = new Set<number>();
+  for (const view of buildZkWatchLineViews(watch)) {
+    if (view.key === "summary") continue;
+    const twId = normalizeSubiektTwId(view.subiektTwId);
+    if (twId != null) ids.add(twId);
+  }
+  return [...ids].sort((a, b) => a - b);
+}
+
+export function normalizeZkAllowedTwIds(value: unknown): number[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const ids = new Set<number>();
+  for (const item of value) {
+    const twId = normalizeSubiektTwId(item);
+    if (twId != null) ids.add(twId);
+  }
+  return ids.size > 0 ? [...ids].sort((a, b) => a - b) : undefined;
+}
+
+export function zkProsbaCatalogLocked(prefill: Pick<ZkProsbaPrefill, "allowedTwIds">): boolean {
+  return Boolean(prefill.allowedTwIds && prefill.allowedTwIds.length > 0);
+}
+
 /** Bezpieczny payload Server Action → klient (tylko JSON-serializowalne pola). */
 export function zkProsbaPrefillFromWatch(
   watch: SalesZkWatch,
@@ -92,6 +119,8 @@ export function zkProsbaPrefillFromWatch(
         ? "supplement"
         : "full");
 
+  const allowedTwIds = collectZkWatchAllowedTwIds(watch);
+
   return enrichZkProsbaPrefillWithStock(
     {
       zkWatchId: watch.id ? String(watch.id) : null,
@@ -103,6 +132,7 @@ export function zkProsbaPrefillFromWatch(
       ...(mode === "supplement" ? { supplementLineCount: lines.length } : {}),
       ...(options?.lineKeys?.length ? { lineKeys: [...options.lineKeys] } : {}),
       ...(options?.requestKind ? { requestKind: options.requestKind } : {}),
+      ...(allowedTwIds.length ? { allowedTwIds } : {}),
     },
     options?.stockByTwId
   );
@@ -182,6 +212,7 @@ export function readZkProsbaPrefill(): ZkProsbaPrefill | null {
   try {
     const parsed = JSON.parse(raw) as Partial<ZkProsbaPrefill>;
     if (!parsed?.lines?.length) return null;
+    const allowedTwIds = normalizeZkAllowedTwIds(parsed.allowedTwIds);
     return {
       zkWatchId: parsed.zkWatchId ?? null,
       clientName: parsed.clientName ?? "",
@@ -212,6 +243,7 @@ export function readZkProsbaPrefill(): ZkProsbaPrefill | null {
         parsed.requestKind === "informacja" || parsed.requestKind === "zamowienie"
           ? parsed.requestKind
           : undefined,
+      ...(allowedTwIds ? { allowedTwIds } : {}),
     };
   } catch {
     return null;

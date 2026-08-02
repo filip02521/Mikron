@@ -76,6 +76,8 @@ export function RequestProductLinesEditor({
   onTeethDualKindCommit,
   autoOpenTeethList = false,
   allowedTwIds,
+  allowedTwIdsHint,
+  lockSubiektLink = false,
   groupSupplierId,
 }: {
   lines: ProductLineDraft[];
@@ -125,8 +127,10 @@ export function RequestProductLinesEditor({
   }) => void;
   /** Otwiera modal listy zębów dla pierwszej linii (panel zakupów). */
   autoOpenTeethList?: boolean;
-  /** Ogranicza typeahead do katalogu zębów (panel działu zębowego). */
+  /** Ogranicza typeahead do podanych tw_Id. */
   allowedTwIds?: ReadonlySet<number>;
+  allowedTwIdsHint?: string;
+  lockSubiektLink?: boolean;
   /** Dostawca z nagłówka grupy — do dopasowania braków przy liście zębów. */
   groupSupplierId?: string | null;
 }) {
@@ -449,6 +453,8 @@ export function RequestProductLinesEditor({
               }}
               autoOpenTeethList={autoOpenTeethList && index === 0}
               allowedTwIds={allowedTwIds}
+              allowedTwIdsHint={allowedTwIdsHint}
+              lockSubiektLink={lockSubiektLink}
               groupSupplierId={groupSupplierId}
             />
 

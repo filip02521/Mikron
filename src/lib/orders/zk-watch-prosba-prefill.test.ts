@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildProsbaPrefillFromUrlParams,
+  collectZkWatchAllowedTwIds,
   enrichZkProsbaPrefillWithStock,
   extractProsbaLinesFromZkWatch,
   parseProsbaClientKhParam,
@@ -88,6 +89,28 @@ describe("zk-watch-prosba-prefill", () => {
     expect(JSON.stringify(prefill)).not.toContain("undefined");
     expect(prefill).not.toHaveProperty("supplementLineCount");
     expect(prefill).not.toHaveProperty("lineKeys");
+  });
+
+  it("collectZkWatchAllowedTwIds zbiera tw_Id z całego ZK (nie zawęża lineKeys)", () => {
+    const watchWithTwo = {
+      ...baseWatch,
+      subiekt_snapshot: {
+        dok_Pozycja: [
+          { tw_Nazwa: "Filtr", tw_Symbol: "FP-100", ob_Ilosc: 2, ob_TowId: 99, ob_Id: 1 },
+          { tw_Nazwa: "Uszczelka", tw_Symbol: "US-1", ob_Ilosc: 1, ob_TowId: 55, ob_Id: 2 },
+          {
+            tw_Nazwa: "pakowanie przesyłki/koszty dostawy",
+            tw_Symbol: "KOSZTY/2",
+            ob_Ilosc: 1,
+            ob_TowId: 1,
+          },
+        ],
+      },
+    };
+    expect(collectZkWatchAllowedTwIds(watchWithTwo)).toEqual([55, 99]);
+    const prefill = zkProsbaPrefillFromWatch(watchWithTwo, { lineKeys: ["ob:2"] });
+    expect(prefill.lines).toHaveLength(1);
+    expect(prefill.allowedTwIds).toEqual([55, 99]);
   });
 
   it("zwraca pustą listę gdy lineKeys nie pasują do żadnej pozycji", () => {

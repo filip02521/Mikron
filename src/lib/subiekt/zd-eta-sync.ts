@@ -49,6 +49,7 @@ import {
 } from "@/lib/subiekt/zd-search-scope";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
+import { isTimeBudgetExceeded, lockTtlSecondsForBudgetMs } from "@/lib/timing";
 import type { IndividualOrder, StatsMode } from "@/types/database";
 import type { SubiektDocument } from "@/lib/subiekt/types";
 import {
@@ -58,7 +59,11 @@ import {
   shouldRefreshMojeZdEtaPage,
   shouldRetryMojeZdEtaSync,
   shouldSkipMojeZdEtaSessionSync,
+  ZD_ETA_CRON_BUDGET_MS,
   ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS,
+  ZD_ETA_MOJE_FORCE_MAX_DURATION_MS,
+  ZD_ETA_MOJE_MAX_DURATION_MS,
+  ZD_ETA_MOJE_ROUTE_MAX_DURATION_SEC,
   ZD_ETA_MOJE_VISIBILITY_RESYNC_MS,
   type MojeZdEtaRefreshResult,
   type MojeZdEtaSessionState,
@@ -71,7 +76,11 @@ export {
   shouldRefreshMojeZdEtaPage,
   shouldRetryMojeZdEtaSync,
   shouldSkipMojeZdEtaSessionSync,
+  ZD_ETA_CRON_BUDGET_MS,
   ZD_ETA_MOJE_CLIENT_FETCH_TIMEOUT_MS,
+  ZD_ETA_MOJE_FORCE_MAX_DURATION_MS,
+  ZD_ETA_MOJE_MAX_DURATION_MS,
+  ZD_ETA_MOJE_ROUTE_MAX_DURATION_SEC,
   ZD_ETA_MOJE_VISIBILITY_RESYNC_MS,
   type MojeZdEtaRefreshResult,
   type MojeZdEtaSessionState,
@@ -123,12 +132,10 @@ export const ZD_ETA_INITIAL_POOL_MAX_DOCS = 10;
 /** Limity przy wejściu handlowca na /moje (after, bez crona). */
 export const ZD_ETA_MOJE_MAX_ORDERS = 16;
 export const ZD_ETA_MOJE_MAX_DOCS = 96;
-export const ZD_ETA_MOJE_MAX_DURATION_MS = 50_000;
 export const ZD_ETA_MOJE_INDEX_LIMIT_PER_SUPPLIER = 24;
 /** Wyższe limity przy ręcznym POST /api/sales/zd-eta-refresh (force). */
 export const ZD_ETA_MOJE_FORCE_MAX_ORDERS = 48;
 export const ZD_ETA_MOJE_FORCE_MAX_DOCS = 200;
-export const ZD_ETA_MOJE_FORCE_MAX_DURATION_MS = 60_000;
 
 /** Globalny backup — stronicowanie zamiast ładowania wszystkich wierszy naraz. */
 export const ZD_ETA_GLOBAL_ORDER_SCAN_PAGE = 100;
@@ -484,10 +491,6 @@ function supplierKhIds(supplier: SupplierRef | undefined): number[] {
 
 function supplierHasSubiektKh(supplier: SupplierRef | undefined): boolean {
   return supplierKhIds(supplier).length > 0;
-}
-
-function isTimeBudgetExceeded(startedMs: number, maxDurationMs: number): boolean {
-  return Date.now() - startedMs >= maxDurationMs;
 }
 
 /** kh_Id z indeksu ZD (aliasy kontrahenta widoczne w katalogu, np. dwie nazwy Marrodent). */
@@ -983,7 +986,11 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
   }
 
   const lockKey = zdEtaSyncLockKey(options.salesPersonId);
-  const locked = await tryAcquireLock(lockKey, 240, "zd_eta_sync");
+  const locked = await tryAcquireLock(
+    lockKey,
+    lockTtlSecondsForBudgetMs(maxDurationMs),
+    "zd_eta_sync"
+  );
   if (!locked) {
     return { ...empty, skipped: true, reason: "lock_held" };
   }

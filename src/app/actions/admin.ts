@@ -54,6 +54,8 @@ import {
   normalizeAddIndividualOrdersInput,
 } from "@/lib/orders/individual-request-edit";
 import { assertProsbaSubmitStockAllowed } from "@/lib/orders/prosba-stock-server";
+import { assertProsbaLinesBelongToZk } from "@/lib/orders/zk-prosba-catalog-guard";
+import { collectZkWatchAllowedTwIds } from "@/lib/orders/zk-watch-prosba-prefill";
 import type { ProcurementCancelDispositionInput } from "@/lib/orders/procurement-disposition";
 import {
   canEditProcurementCancelNote,
@@ -416,6 +418,23 @@ export async function actionAddIndividualOrders(
       requestKind: "zamowienie",
       acknowledgeSufficientStock,
     });
+  }
+
+  const sourceZkWatchId = normalized
+    .map((e) => (typeof e.sourceZkWatchId === "string" ? e.sourceZkWatchId.trim() : ""))
+    .find((id) => id.length > 0);
+  if (sourceZkWatchId) {
+    const supabase = createAdminClient();
+    const { data: watchRow, error: watchError } = await supabase
+      .from("sales_zk_watches")
+      .select("*")
+      .eq("id", sourceZkWatchId)
+      .maybeSingle();
+    if (watchError) throw new Error(watchError.message);
+    if (watchRow) {
+      const allowedTwIds = new Set(collectZkWatchAllowedTwIds(watchRow as import("@/types/database").SalesZkWatch));
+      assertProsbaLinesBelongToZk(normalized, allowedTwIds);
+    }
   }
 
   const createdBy = user.id === "dev" ? undefined : user.id;

@@ -10,6 +10,7 @@ import {
   getSubiektFeedback,
   type SubiektFeedback,
 } from "@/lib/subiekt/feedback";
+import { createTimeoutAbort } from "@/lib/timing";
 
 export type SubiektHealthResult = {
   ok: boolean;
@@ -81,14 +82,13 @@ export async function subiektFetch(
     headers.set("Content-Type", "application/json");
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
+  const abort = createTimeoutAbort(config.timeoutMs);
 
   try {
     return await fetch(resolveUrl(config, path), {
       ...init,
       headers,
-      signal: controller.signal,
+      signal: abort.signal,
       cache: "no-store",
     });
   } catch (e) {
@@ -98,7 +98,7 @@ export async function subiektFetch(
     const msg = e instanceof Error ? e.message : "fetch failed";
     throw new SubiektNetworkError(msg, e);
   } finally {
-    clearTimeout(timeout);
+    abort.clear();
   }
 }
 
@@ -147,14 +147,13 @@ export async function testSubiektConnection(options?: {
 
   try {
     const headers = new Headers(buildAuthHeaders(config));
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), probeTimeoutMs);
+    const abort = createTimeoutAbort(probeTimeoutMs);
     let res: Response;
     try {
       res = await fetch(resolveUrl(config, config.healthPath), {
         method: "GET",
         headers,
-        signal: controller.signal,
+        signal: abort.signal,
         cache: "no-store",
       });
     } catch (e) {
@@ -164,7 +163,7 @@ export async function testSubiektConnection(options?: {
       const msg = e instanceof Error ? e.message : "fetch failed";
       throw new SubiektNetworkError(msg, e);
     } finally {
-      clearTimeout(timeout);
+      abort.clear();
     }
     const durationMs = Date.now() - started;
     const text = await res.text();
