@@ -34,6 +34,8 @@ type Props = {
   definitions: ProcurementFlagDefinition[];
   onClose: () => void;
   onError?: (message: string) => void;
+  /** Po udanym zapisie definicji (lista się odświeży). */
+  onSuccess?: (message: string) => void;
 };
 
 function ColorSwatches({
@@ -187,6 +189,7 @@ export function ProcurementFlagDefinitionsManageModal({
   definitions,
   onClose,
   onError,
+  onSuccess,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -201,10 +204,11 @@ export function ProcurementFlagDefinitionsManageModal({
   const inactive = sorted.filter((d) => !d.isActive);
   const canAdd = active.length < MAX_PROCUREMENT_FLAG_DEFINITIONS;
 
-  const run = (fn: () => Promise<unknown>) => {
+  const run = (fn: () => Promise<unknown>, successMessage: string) => {
     startTransition(async () => {
       try {
         await fn();
+        onSuccess?.(successMessage);
         router.refresh();
       } catch (e) {
         onError?.(e instanceof Error ? e.message : "Nie udało się zapisać.");
@@ -219,7 +223,10 @@ export function ProcurementFlagDefinitionsManageModal({
     const [row] = next.splice(from, 1);
     next.splice(to, 0, row!);
     const ids = [...next.map((d) => d.id), ...inactive.map((d) => d.id)];
-    run(() => actionReorderProcurementFlagDefinitions(ids));
+    run(
+      () => actionReorderProcurementFlagDefinitions(ids),
+      "Zapisano kolejność flag"
+    );
   };
 
   if (!open) return null;
@@ -257,19 +264,25 @@ export function ProcurementFlagDefinitionsManageModal({
               showReorder
               onMove={(dir) => reorderActive(index, dir)}
               onSave={(patch) =>
-                run(() =>
-                  actionUpdateProcurementFlagDefinition(def.id, patch)
+                run(
+                  () => actionUpdateProcurementFlagDefinition(def.id, patch),
+                  "Zapisano flagę"
                 )
               }
               onToggleActive={() =>
-                run(() =>
-                  actionUpdateProcurementFlagDefinition(def.id, {
-                    isActive: false,
-                  })
+                run(
+                  () =>
+                    actionUpdateProcurementFlagDefinition(def.id, {
+                      isActive: false,
+                    }),
+                  "Dezaktywowano flagę"
                 )
               }
               onDelete={() =>
-                run(() => actionDeleteProcurementFlagDefinition(def.id))
+                run(
+                  () => actionDeleteProcurementFlagDefinition(def.id),
+                  "Usunięto flagę z listy"
+                )
               }
             />
           ))}
@@ -291,19 +304,25 @@ export function ProcurementFlagDefinitionsManageModal({
                   showReorder={false}
                   onMove={() => undefined}
                   onSave={(patch) =>
-                    run(() =>
-                      actionUpdateProcurementFlagDefinition(def.id, patch)
+                    run(
+                      () => actionUpdateProcurementFlagDefinition(def.id, patch),
+                      "Zapisano flagę"
                     )
                   }
                   onToggleActive={() =>
-                    run(() =>
-                      actionUpdateProcurementFlagDefinition(def.id, {
-                        isActive: true,
-                      })
+                    run(
+                      () =>
+                        actionUpdateProcurementFlagDefinition(def.id, {
+                          isActive: true,
+                        }),
+                      "Aktywowano flagę"
                     )
                   }
                   onDelete={() =>
-                    run(() => actionDeleteProcurementFlagDefinition(def.id))
+                    run(
+                      () => actionDeleteProcurementFlagDefinition(def.id),
+                      "Usunięto flagę z listy"
+                    )
                   }
                 />
               ))}
@@ -345,7 +364,7 @@ export function ProcurementFlagDefinitionsManageModal({
                 });
                 setNewLabel("");
                 setNewColor("rose");
-              })
+              }, "Dodano flagę")
             }
           >
             {PROCUREMENT_REQUEST_FLAG_COPY.manageAdd}

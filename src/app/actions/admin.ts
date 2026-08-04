@@ -126,6 +126,7 @@ import {
 } from "@/lib/orders/delivery-notification-queue";
 import {
   captureIndividualOrdersSnapshot,
+  captureProcurementFlagSnapshots,
   captureScheduleSnapshot,
   captureScheduleSnapshots,
   revertDailyPanelChange,
@@ -611,7 +612,7 @@ export async function actionSetProcurementRequestFlags(
   orderIds: string[],
   flag: string | null,
   note?: string | null
-) {
+): Promise<DailyPanelActionResult & { updated: number }> {
   const user = await requireOperations("mutate");
   const ids = [...new Set(orderIds.filter(Boolean))];
   if (!ids.length) throw new Error("Brak pozycji do oznaczenia flagą.");
@@ -663,6 +664,7 @@ export async function actionSetProcurementRequestFlags(
     }
   }
 
+  const before = await captureProcurementFlagSnapshots(ids);
   const normalizedNote = parsed ? normalizeProcurementFlagNote(note) : null;
   const now = new Date().toISOString();
   const { data, error } = await supabase
@@ -690,7 +692,14 @@ export async function actionSetProcurementRequestFlags(
   }
 
   revalidateAll();
-  return { success: true as const, updated: data.length };
+  return {
+    success: true,
+    updated: data.length,
+    undo: buildDailyPanelUndoPayload({
+      kind: "procurement_flags",
+      snapshots: before,
+    }),
+  };
 }
 
 /** Zakupy: ukrycie rezygnacji / wycofania zamówienia dla klienta w panelu dziennym. */

@@ -274,7 +274,7 @@ export function enrichForSomeoneGroup(
     headlineTone: infoViaPanel ? "info" : "neutral",
     statusTitle: infoViaPanel
       ? INFORMACJA_VIA_PANEL_STATUS_TITLE
-      : "Do zamówienia",
+      : "",
     statusDetail: infoViaPanel ? INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER : null,
     submittedLabel,
     submittedTitle: `Zgłoszono ${submittedLabel}`,

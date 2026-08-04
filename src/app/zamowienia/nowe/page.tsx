@@ -1,4 +1,4 @@
-import { fetchSupplierFormContext } from "@/lib/data/queries";
+import { fetchSupplierFormContext, fetchSuppliersOnVacationNow } from "@/lib/data/queries";
 import { fetchSalesPeopleForPicker } from "@/lib/data/sales-people-admin";
 import { OrderFormClient } from "@/components/orders/OrderFormClient";
 import { getAppRole } from "@/lib/auth-dev";
@@ -10,17 +10,23 @@ import { Alert } from "@/components/ui/Alert";
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 import { procurementArchivePageShellClass } from "@/lib/ui/ontime-theme";
+import type { SupplierOnVacationWindow } from "@/lib/orders/procurement-supplier-vacation";
 
 export const metadata: Metadata = pageMetadataFor("noweZamowienia");
 
 export default async function NoweZamowieniePage() {
   const role = await getAppRole();
   let suppliers: Awaited<ReturnType<typeof fetchSupplierFormContext>>["suppliers"] = [];
+  let suppliersOnVacationNow: Record<string, SupplierOnVacationWindow> = {};
   let salesPeople: { id: string; name: string }[] = [];
   let loadError: string | null = null;
   try {
-    const ctx = await fetchSupplierFormContext();
+    const [ctx, onVacation] = await Promise.all([
+      fetchSupplierFormContext(),
+      fetchSuppliersOnVacationNow(),
+    ]);
     suppliers = ctx.suppliers;
+    suppliersOnVacationNow = onVacation;
     salesPeople = await fetchSalesPeopleForPicker();
   } catch (error) {
     loadError = error instanceof Error ? error.message : "Nie udało się wczytać formularza.";
@@ -44,6 +50,7 @@ export default async function NoweZamowieniePage() {
         suppliers={suppliers}
         salesPeople={salesPeople}
         lockedSalesPerson={lockedSalesPerson}
+        suppliersOnVacationNow={suppliersOnVacationNow}
       />
     </div>
   );

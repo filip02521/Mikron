@@ -127,6 +127,7 @@ export default async function MojePage({
     orders,
     stats,
     suppliers,
+    suppliersOnVacationNow,
     archiwumRecent,
     archiwumExtended,
     supplierScheduleById,
@@ -276,6 +277,7 @@ export default async function MojePage({
         canEdit={!!viewingOwnPanel}
         showProsbaCta={isSalesAccount(role ?? "sales") && !isTeamPreview && !isDelegatePreview}
         suppliers={suppliers}
+        suppliersOnVacationNow={suppliersOnVacationNow}
         subiektAvailability={subiektAvailability}
         initialSearchQuery={initialSearchQuery}
         initialClientKhId={initialClientKhId}

@@ -98,6 +98,7 @@ export function MyOrderShipmentList({
   rowVisualTone = "default",
   focusRowIds,
   subiektReachable = true,
+  suppliersOnVacationNow = {},
 }: {
   rows: MyOrderRow[];
   listKind: "zamowienie" | "informacja";
@@ -106,6 +107,10 @@ export function MyOrderShipmentList({
   canEdit?: boolean;
   cardIdPrefix?: (rowId: string) => string;
   suppliers?: OrderFormSupplierOption[];
+  suppliersOnVacationNow?: Record<
+    string,
+    import("@/lib/orders/procurement-supplier-vacation").SupplierOnVacationWindow
+  >;
   /** Wewnątrz wspólnej obwódki sekcji (bez drugiego rounded-md). */
   embedded?: boolean;
   /** Kolejna lista w tej samej sekcji — separator u góry. */
@@ -535,6 +540,7 @@ export function MyOrderShipmentList({
         orderIds={editTarget?.orderIds ?? []}
         initial={editTarget?.initial ?? null}
         suppliers={suppliers}
+        suppliersOnVacationNow={suppliersOnVacationNow}
         onClose={() => setEditTarget(null)}
         onSaved={() => {
           setEditTarget(null);

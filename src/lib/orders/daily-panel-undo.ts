@@ -18,9 +18,19 @@ export type IndividualOrderSnapshot = {
   procurementCancelNote: string | null;
 };
 
+/** Snapshot flagi zakupów — osobny token (ustawianie / czyszczenie flagi). */
+export type ProcurementFlagSnapshot = {
+  orderId: string;
+  procurementFlag: string | null;
+  procurementFlagNote: string | null;
+  procurementFlagUpdatedAt: string | null;
+  procurementFlagUpdatedBy: string | null;
+};
+
 export type DailyPanelUndoToken =
   | { kind: "schedules"; snapshots: ScheduleSnapshot[] }
   | { kind: "individual"; snapshots: IndividualOrderSnapshot[] }
+  | { kind: "procurement_flags"; snapshots: ProcurementFlagSnapshot[] }
   | {
       kind: "combined";
       schedules: ScheduleSnapshot[];

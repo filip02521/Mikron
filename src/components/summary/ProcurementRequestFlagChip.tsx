@@ -76,11 +76,10 @@ export function ProcurementRequestFlagChip({
       <span className="truncate">{label}</span>
       {hasNote ? (
         <span
-          className="shrink-0 text-[9px] font-bold opacity-70"
-          title={PROCUREMENT_REQUEST_FLAG_COPY.flagNoteHint}
-          aria-hidden
+          className="max-w-[7rem] truncate text-[9px] font-medium opacity-80"
+          title={note!.trim()}
         >
-          ·
+          {shortProcurementFlagLabel(note!.trim(), 14)}
         </span>
       ) : null}
     </>
