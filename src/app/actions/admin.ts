@@ -63,6 +63,11 @@ import {
   throwIfProcurementCancelNoteColumnMissing,
   buildProcurementCancelUpdate,
 } from "@/lib/orders/procurement-cancel-note";
+import {
+  normalizeProcurementFlagNote,
+  parseProcurementFlagId,
+  throwIfProcurementFlagColumnMissing,
+} from "@/lib/orders/procurement-request-flag";
 import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncLinkedSalesPersonLoginEmail } from "@/lib/users/sync-sales-person-email";
@@ -589,6 +594,103 @@ export async function actionUpdateProcurementCancelNote(
   });
   revalidateAll();
   return { success: true, ...emailResult };
+}
+
+/** Wewnętrzna flaga zakupów na prośbie — tylko panel dzienny (ops). */
+export async function actionSetProcurementRequestFlag(
+  orderId: string,
+  flag: string | null,
+  note?: string | null
+) {
+  await requireOperations("mutate");
+  return actionSetProcurementRequestFlags([orderId], flag, note);
+}
+
+/** Flaga na wielu pozycjach — tylko przy jawnym „zastosuj do wszystkich”. */
+export async function actionSetProcurementRequestFlags(
+  orderIds: string[],
+  flag: string | null,
+  note?: string | null
+) {
+  const user = await requireOperations("mutate");
+  const ids = [...new Set(orderIds.filter(Boolean))];
+  if (!ids.length) throw new Error("Brak pozycji do oznaczenia flagą.");
+
+  const rawFlag = typeof flag === "string" ? flag.trim() : flag;
+  const parsed =
+    rawFlag == null || rawFlag === ""
+      ? null
+      : parseProcurementFlagId(rawFlag);
+  if (rawFlag != null && rawFlag !== "" && parsed == null) {
+    throw new Error("Nieznana flaga prośby.");
+  }
+
+  const supabase = createAdminClient();
+  if (parsed) {
+    const { data: def, error: defError } = await supabase
+      .from("procurement_flag_definitions")
+      .select("id, is_active")
+      .eq("id", parsed)
+      .maybeSingle();
+    if (defError) {
+      throwIfProcurementFlagColumnMissing(defError);
+      throw new Error(defError.message);
+    }
+    if (!def) {
+      throw new Error("Flaga nie istnieje — odśwież panel i spróbuj ponownie.");
+    }
+    if (!def.is_active) {
+      // Pozwól na update notatki / zachowanie tej samej nieaktywnej flagi —
+      // nie wolno nowo przypisać nieaktywnej do pozycji, które jej nie mają.
+      const { data: rows, error: rowsError } = await supabase
+        .from("individual_orders")
+        .select("id, procurement_flag")
+        .in("id", ids);
+      if (rowsError) {
+        throwIfProcurementFlagColumnMissing(rowsError);
+        throw new Error(rowsError.message);
+      }
+      const allKeepSame = (rows ?? []).every(
+        (r) =>
+          typeof r.procurement_flag === "string" &&
+          r.procurement_flag.toLowerCase() === parsed
+      );
+      if (!allKeepSame || (rows ?? []).length !== ids.length) {
+        throw new Error(
+          "Ta flaga jest nieaktywna — wybierz aktywną albo przywróć ją w zarządzaniu."
+        );
+      }
+    }
+  }
+
+  const normalizedNote = parsed ? normalizeProcurementFlagNote(note) : null;
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("individual_orders")
+    .update({
+      procurement_flag: parsed,
+      procurement_flag_note: normalizedNote,
+      procurement_flag_updated_at: now,
+      procurement_flag_updated_by: user.email,
+    })
+    .in("id", ids)
+    .select("id");
+
+  if (error) {
+    throwIfProcurementFlagColumnMissing(error);
+    throw new Error(error.message);
+  }
+  if (!data?.length) {
+    throw new Error("Nie znaleziono pozycji — odśwież listę i spróbuj ponownie.");
+  }
+  if (data.length !== ids.length) {
+    throw new Error(
+      `Zaktualizowano ${data.length} z ${ids.length} pozycji — odśwież listę i spróbuj ponownie.`
+    );
+  }
+
+  revalidateAll();
+  return { success: true as const, updated: data.length };
 }
 
 /** Zakupy: ukrycie rezygnacji / wycofania zamówienia dla klienta w panelu dziennym. */

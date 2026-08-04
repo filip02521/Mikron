@@ -125,6 +125,71 @@ async function main() {
     console.log("✓ migracja 063 — individual_orders.procurement_cancel_note");
   } else markFail();
 
+  if (await checkColumn(supabase, "procurement_flag", "121")) {
+    console.log("✓ migracja 121 — individual_orders.procurement_flag");
+  } else markFail();
+
+  {
+    const { error } = await supabase
+      .from("procurement_flag_definitions")
+      .select("id")
+      .limit(1);
+    if (
+      error &&
+      (error.message?.includes("procurement_flag_definitions") ||
+        error.message?.includes("does not exist") ||
+        error.message?.includes("schema cache"))
+    ) {
+      console.error(
+        "✗ Brak tabeli procurement_flag_definitions — uruchom migrację 122."
+      );
+      markFail();
+    } else if (error) {
+      console.error("✗ Błąd sprawdzania 122:", error.message);
+      markFail();
+    } else {
+      console.log("✓ migracja 122 — procurement_flag_definitions");
+    }
+  }
+
+  {
+    const { data, error } = await supabase
+      .from("individual_orders")
+      .select("procurement_flag")
+      .not("procurement_flag", "is", null)
+      .limit(1);
+    if (error && error.message?.includes("procurement_flag")) {
+      console.error("✗ Brak kolumny procurement_flag przy weryfikacji 123.");
+      markFail();
+    } else if (error) {
+      console.error("✗ Błąd sprawdzania orphan flag (123):", error.message);
+      markFail();
+    } else {
+      // Brak orphanów: każdy non-null flag musi istnieć w defs (lekki smoke).
+      const flagId = data?.[0]?.procurement_flag as string | undefined;
+      if (flagId) {
+        const { data: def, error: defErr } = await supabase
+          .from("procurement_flag_definitions")
+          .select("id")
+          .eq("id", flagId)
+          .maybeSingle();
+        if (defErr) {
+          console.error("✗ Błąd join 123:", defErr.message);
+          markFail();
+        } else if (!def) {
+          console.error(
+            "✗ Orphan procurement_flag — uruchom migrację 123_procurement_flag_orphan_cleanup.sql"
+          );
+          markFail();
+        } else {
+          console.log("✓ migracja 123 — brak orphan flag (smoke)");
+        }
+      } else {
+        console.log("✓ migracja 123 — brak wierszy z flagą (smoke OK)");
+      }
+    }
+  }
+
   const cols067 = [
     "zd_fulfillment_previous_deadline",
     "zd_fulfillment_deadline_changed_at",

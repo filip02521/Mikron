@@ -30,7 +30,10 @@ export type SalesCancelledNotice = {
   orderIds: string[];
 };
 
-export type SalesCancelledNoticeLine = ForSomeoneLine & {
+export type SalesCancelledNoticeLine = Omit<
+  ForSomeoneLine,
+  "procurementFlag" | "procurementFlagNote"
+> & {
   /** Czy ta pozycja wymaga decyzji stan / zwrot (nie dotyczy wycofania przed zamówieniem). */
   needsDisposition: boolean;
 };
@@ -120,8 +123,17 @@ export function buildSalesCancelledNotices(
       }),
       lines: items.map((item) => {
         const itemPhase = effectiveSalesCancelPhase(item);
+        const line = mapOrderToForSomeoneLine(item);
+        // Flagi zakupów — tylko panel dzienny; nie mapuj do sales-cancelled DTO.
+        const {
+          procurementFlag: _omitFlag,
+          procurementFlagNote: _omitFlagNote,
+          ...salesLine
+        } = line;
+        void _omitFlag;
+        void _omitFlagNote;
         return {
-          ...mapOrderToForSomeoneLine(item),
+          ...salesLine,
           needsDisposition:
             itemPhase !== null && salesCancelPhaseNeedsDisposition(itemPhase),
         };

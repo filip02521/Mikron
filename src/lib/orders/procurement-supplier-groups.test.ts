@@ -95,6 +95,43 @@ describe("buildProcurementSupplierBlocks", () => {
     const blocks = buildProcurementSupplierBlocks([seen, unseen]);
     expect(blocks[0]!.supplierName).toBe("Beta");
   });
+
+  it("po unseen stawia blok z pilne wyżej", () => {
+    const plain = group({
+      supplierId: "a",
+      supplierName: "Alpha",
+      person: "A",
+      salesPersonId: "1",
+      hasUnseen: false,
+      submittedAt: "2026-05-28T08:00:00",
+    });
+    const urgent = group({
+      supplierId: "b",
+      supplierName: "Beta",
+      person: "B",
+      salesPersonId: "2",
+      hasUnseen: false,
+      submittedAt: "2026-05-29T10:00:00",
+      lines: [
+        {
+          id: "l2",
+          products: "Y",
+          symbol: "",
+          quantity: "1",
+          mikranCode: "",
+          fromSubiekt: false,
+          submittedAt: "2026-05-29T10:00:00",
+          procurementFlag: "11111111-1111-4111-8111-111111111101",
+        },
+      ],
+    });
+
+    const blocks = buildProcurementSupplierBlocks([plain, urgent], {
+      "11111111-1111-4111-8111-111111111101": 0,
+    });
+    expect(blocks[0]!.supplierName).toBe("Beta");
+    expect(blocks[0]!.highestFlagPriority).toBe(0);
+  });
 });
 
 describe("formatProcurementSupplierBlockSummary", () => {

@@ -362,6 +362,7 @@ function rowToLine(
         ? Math.trunc(Number(order.sales_client_kh_id))
         : null,
     requestNote: normalizeSalesRequestNote(order.sales_request_note),
+    // Celowo bez procurement_flag* — flaga zakupów nie trafia do DTO /moje.
     procurementCancelNote: normalizeProcurementCancelNote(order.procurement_cancel_note),
     zdFulfillment: lineZdFulfillment,
     zdEtaPending: lineZdEtaPending,

@@ -5,6 +5,9 @@ import { notatnikZkWatchHref } from "@/lib/orders/notatnik-zk-watch-href";
 import { ZK_PROSBA_LINK_BANNER_COPY } from "@/lib/orders/zk-prosba-link-banner-copy";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 
+/**
+ * Sticky pasek kontekstu ZK na formularzu prośby — widoczny przy scrollu pól poniżej.
+ */
 export function ZkProsbaLinkBanner({
   zkNumber,
   zkWatchId,
@@ -33,64 +36,78 @@ export function ZkProsbaLinkBanner({
   const supplementCount = supplementLineCount ?? 0;
   const isSupplement = mode === "supplement" && supplementCount > 0;
 
+  const tone = isSupplement
+    ? {
+        strip: "border-amber-200/90 bg-amber-50/95 text-amber-950",
+        accent: "bg-amber-500",
+        title: "text-amber-950",
+        meta: "text-amber-900/85",
+        detail: "text-amber-900/90",
+        badge: "warning" as const,
+      }
+    : {
+        strip: "border-violet-200/90 bg-violet-50/95 text-violet-950",
+        accent: "bg-violet-500",
+        title: "text-violet-950",
+        meta: "text-violet-900/85",
+        detail: catalogLocked ? "text-violet-900/80" : "text-amber-950/85",
+        badge: "default" as const,
+      };
+
   return (
     <div
       className={cn(
-        "border-b px-3 py-2.5 sm:px-4",
-        isSupplement
-          ? "border-amber-200/90 bg-amber-50/85 text-amber-950"
-          : "border-indigo-100/90 bg-indigo-50/55 text-indigo-950"
+        "sticky top-0 z-20 border-b backdrop-blur-sm",
+        "shadow-[0_8px_20px_-16px_rgba(76,29,149,0.35)]",
+        tone.strip
       )}
       role="status"
+      aria-label={ZK_PROSBA_LINK_BANNER_COPY.formTitle}
     >
-      <div className="flex flex-wrap items-start gap-2">
-        <Badge
-          variant={isSupplement ? "warning" : "default"}
-          className="shrink-0 text-[10px]"
-        >
-          {ZK_PROSBA_LINK_BANNER_COPY.badge}
-        </Badge>
-        <div className="min-w-0 flex-1">
-          <p className={cn("leading-snug", salesTypography.rowTitle)}>
-            <span className={isSupplement ? "font-medium text-amber-950" : "font-medium text-indigo-950"}>
-              {ZK_PROSBA_LINK_BANNER_COPY.leadCreating}{" "}
-            </span>
-            <ZkProsbaLinkChip
-              zkNumber={nr}
-              href={href}
-              inline
-              className="text-sm"
-            />
-            {client ? (
-              <span className={isSupplement ? "text-amber-900/90" : "text-indigo-900/85"}>
-                {" "}
-                · {client}
+      <div className="flex gap-0">
+        <span className={cn("w-1 shrink-0 self-stretch", tone.accent)} aria-hidden />
+        <div className="min-w-0 flex-1 px-3 py-2.5 sm:px-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant={tone.badge} className="shrink-0 text-[10px]">
+              {isSupplement
+                ? ZK_PROSBA_LINK_BANNER_COPY.badgeSupplement
+                : ZK_PROSBA_LINK_BANNER_COPY.badge}
+            </Badge>
+            <p className={cn("min-w-0 flex-1 leading-snug", salesTypography.rowTitle, tone.title)}>
+              <span className="font-semibold">
+                {ZK_PROSBA_LINK_BANNER_COPY.leadCreating}{" "}
               </span>
-            ) : null}
+              <ZkProsbaLinkChip zkNumber={nr} href={href} inline className="text-sm" />
+              {client ? (
+                <span className={cn("font-medium", tone.meta)}>
+                  {" "}
+                  · {client}
+                </span>
+              ) : null}
+            </p>
+          </div>
+          <p className={cn("mt-1 text-xs leading-relaxed", tone.detail)}>
+            {isSupplement ? (
+              <>
+                <span className="font-semibold">Uzupełniająca prośba</span>
+                {" — "}
+                {supplementCount}{" "}
+                {supplementCount === 1
+                  ? "nowa pozycja"
+                  : supplementCount < 5
+                    ? "nowe pozycje"
+                    : "nowych pozycji"}{" "}
+                z ZK. Wcześniejsze pozycje są już w zamówieniu.
+                {catalogLocked
+                  ? ` ${ZK_PROSBA_LINK_BANNER_COPY.supplementLockedSuffix}`
+                  : null}
+              </>
+            ) : catalogLocked ? (
+              ZK_PROSBA_LINK_BANNER_COPY.fullLockedDetail
+            ) : (
+              ZK_PROSBA_LINK_BANNER_COPY.fullUnlockedDetail
+            )}
           </p>
-          {isSupplement ? (
-            <p className="mt-1 text-xs leading-relaxed text-amber-900/90">
-              <span className="font-semibold">Uzupełniająca prośba</span> — {supplementCount}{" "}
-              {supplementCount === 1
-                ? "nowa pozycja"
-                : supplementCount < 5
-                  ? "nowe pozycje"
-                  : "nowych pozycji"}{" "}
-              z ZK. Wcześniejsze pozycje są już w zamówieniu.
-              {catalogLocked ? ` ${ZK_PROSBA_LINK_BANNER_COPY.supplementLockedSuffix}` : null}
-            </p>
-          ) : (
-            <p
-              className={cn(
-                "mt-1 text-xs leading-relaxed",
-                catalogLocked ? "text-indigo-900/80" : "text-amber-900/90"
-              )}
-            >
-              {catalogLocked
-                ? ZK_PROSBA_LINK_BANNER_COPY.fullLockedDetail
-                : ZK_PROSBA_LINK_BANNER_COPY.fullUnlockedDetail}
-            </p>
-          )}
         </div>
       </div>
     </div>

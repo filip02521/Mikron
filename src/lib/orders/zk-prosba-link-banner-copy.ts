@@ -1,7 +1,10 @@
-/** Copy banera kontekstu ZK na formularzu prośby. */
+/** Copy kontekstu ZK na formularzu prośby (sticky baner + nagłówek). */
 export const ZK_PROSBA_LINK_BANNER_COPY = {
-  badge: "ZK",
+  badge: "Powiązana z ZK",
+  badgeSupplement: "Uzupełnienie ZK",
   leadCreating: "Tworzysz prośbę powiązaną z",
+  /** Nagłówek karty formularza gdy jest kontekst ZK. */
+  formTitle: "Nowa prośba z ZK",
   fullLockedDetail:
     "Pozycje pochodzą z tego zamówienia klienta. Możesz wybrać tylko produkty z ZK — po wysłaniu prośba pojawi się przy nim w notatniku.",
   fullUnlockedDetail:

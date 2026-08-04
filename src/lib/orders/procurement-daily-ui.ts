@@ -18,6 +18,7 @@ import {
   formatProcurementGroupSubmittedLabel,
 } from "@/lib/orders/procurement-request-timing";
 import { requestNotesProcurementSublineSuffix } from "@/lib/orders/sales-request-note";
+import { groupHighestFlagPriority } from "@/lib/orders/procurement-request-flag";
 import {
   buildPlannedOrderDateDisplay,
   type PlannedOrderDateDisplay,
@@ -313,16 +314,22 @@ export function enrichInformacjaGroup(
 }
 
 export function sortStockOutGroups(
-  groups: SummaryForSomeoneEnriched[]
+  groups: SummaryForSomeoneEnriched[],
+  sortById?: Map<string, number> | Record<string, number>
 ): SummaryForSomeoneEnriched[] {
-  return sortForSomeoneGroups(groups);
+  return sortForSomeoneGroups(groups, sortById);
 }
 
 export function sortForSomeoneGroups(
-  groups: SummaryForSomeoneEnriched[]
+  groups: SummaryForSomeoneEnriched[],
+  sortById: Map<string, number> | Record<string, number> = {}
 ): SummaryForSomeoneEnriched[] {
   return [...groups].sort((a, b) => {
     if (a.hasUnseen !== b.hasUnseen) return a.hasUnseen ? -1 : 1;
+    const byFlag =
+      groupHighestFlagPriority(a.lines, sortById) -
+      groupHighestFlagPriority(b.lines, sortById);
+    if (byFlag !== 0) return byFlag;
     const byTime =
       compareProcurementSubmittedAt(a.submittedAt, b.submittedAt) ||
       compareProcurementSubmittedAt(a.submittedAtLatest, b.submittedAtLatest);
