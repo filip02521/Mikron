@@ -602,6 +602,7 @@ export async function actionSetProcurementRequestFlag(
   flag: string | null,
   note?: string | null
 ) {
+  await requireOperations("mutate");
   return actionSetProcurementRequestFlags([orderId], flag, note);
 }
 
