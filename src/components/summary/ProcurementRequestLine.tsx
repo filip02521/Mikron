@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 import type { ForSomeoneLine } from "@/lib/orders/summary-workspace";
 import { ProductSourceBadge } from "@/components/orders/ProductSourceBadge";
 import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
@@ -38,6 +38,7 @@ export const ProcurementRequestLine = memo(function ProcurementRequestLine({
   className,
   suppressRequestNote = false,
   suppressClient = false,
+  flagSlot,
 }: {
   line: ForSomeoneLine;
   className?: string;
@@ -45,6 +46,7 @@ export const ProcurementRequestLine = memo(function ProcurementRequestLine({
   suppressRequestNote?: boolean;
   /** Gdy klient jest już w nagłówku grupy — nie duplikuj na pozycji. */
   suppressClient?: boolean;
+  flagSlot?: React.ReactNode;
 }) {
   return (
     <li
@@ -57,6 +59,7 @@ export const ProcurementRequestLine = memo(function ProcurementRequestLine({
         line={line}
         suppressRequestNote={suppressRequestNote}
         suppressClient={suppressClient}
+        flagSlot={flagSlot}
       />
     </li>
   );
@@ -91,11 +94,13 @@ function ProcurementRequestLineContent({
   compact = false,
   suppressRequestNote = false,
   suppressClient = false,
+  flagSlot,
 }: {
   line: ForSomeoneLine;
   compact?: boolean;
   suppressRequestNote?: boolean;
   suppressClient?: boolean;
+  flagSlot?: ReactNode;
 }) {
   const isInformacja = line.requestKind === "informacja";
   const hasMeta =
@@ -116,6 +121,7 @@ function ProcurementRequestLineContent({
         <span className="min-w-0 flex-1">
           {line.products}
         </span>
+        {flagSlot ? <span className="shrink-0">{flagSlot}</span> : null}
       </p>
       {hasMeta ? (
         <p className={cn("mt-0.5 text-slate-500", compact ? "pl-5 text-[10px]" : "text-xs")}>

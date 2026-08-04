@@ -109,6 +109,20 @@ export function ForSomeoneRequestsSectionHelp() {
             Badge <strong className="font-medium text-violet-800">Nowa</strong> — zakupy jeszcze
             nie otworzyły prośby. Znika po najechaniu lub obsłużeniu.
           </li>
+          <li>
+            Chip <strong className="font-medium text-amber-900">Urlop</strong> — dostawca ma dziś
+            aktywny urlop w kalendarzu (zakres dat w tooltipie). To nie jest flaga zakupów —
+            znika automatycznie po końcu urlopu.
+          </li>
+          <li>
+            Kolorowe chipy flag — własne oznaczenia zakupów (np. Pilne). Zarządzasz listą przy
+            filtrze („Zarządzaj”). Ustawisz flagę z menu „Więcej” albo klikając chip. Handlowiec
+            ich nie widzi.
+          </li>
+          <li>
+            Filtr <strong className="font-medium text-slate-800">Bez flagi</strong> — pozycje bez
+            ręcznej flagi i bez urlopu dostawcy (urlop-only trafia do filtra Urlop).
+          </li>
           <li className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
             Przy produkcie: <ProductSourceBadge fromSubiekt size={12} className="size-5" /> — z
             bazy Subiekt; <ProductSourceBadge fromSubiekt={false} size={12} className="size-5" /> —

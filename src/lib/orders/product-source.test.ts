@@ -42,13 +42,31 @@ describe("product source", () => {
     expect(line.requestKind).toBe("informacja");
   });
 
-  it("mapuje klienta handlowca", () => {
+  it("mapuje flagę zakupów do linii panelu dziennego", () => {
     const line = mapOrderToForSomeoneLine({
       ...base,
-      sales_client_name: "  Klinika Smile  ",
-      sales_client_kh_id: 42,
+      procurement_flag: "11111111-1111-4111-8111-111111111101",
+      procurement_flag_note: "  KH czeka  ",
     });
-    expect(line.clientName).toBe("Klinika Smile");
-    expect(line.clientKhId).toBe(42);
+    expect(line.procurementFlag).toBe(
+      "11111111-1111-4111-8111-111111111101"
+    );
+    expect(line.procurementFlagNote).toBe("KH czeka");
+  });
+
+  it("odrzuca nie-uuid flagę; zachowuje nieznany uuid", () => {
+    expect(
+      mapOrderToForSomeoneLine({
+        ...base,
+        procurement_flag: "xyz",
+      }).procurementFlag
+    ).toBeNull();
+    const orphan = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+    expect(
+      mapOrderToForSomeoneLine({
+        ...base,
+        procurement_flag: orphan,
+      }).procurementFlag
+    ).toBe(orphan);
   });
 });

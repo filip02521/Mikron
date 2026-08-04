@@ -98,4 +98,23 @@ describe("buildSalesCancelledNotices", () => {
     expect(notices[0].lines.find((l) => l.id === "z1")?.needsDisposition).toBe(true);
     expect(notices[0].lines.find((l) => l.id === "z2")?.needsDisposition).toBe(false);
   });
+
+  it("nie przenosi flag zakupów do DTO rezygnacji", () => {
+    const notices = buildSalesCancelledNotices(
+      [
+        order({
+          id: "z1",
+          sales_cancel_phase: "before_order",
+          status: "Anulowane",
+          procurement_flag: "11111111-1111-4111-8111-111111111101",
+          procurement_flag_note: "tajne",
+        }),
+      ],
+      salesById
+    );
+    expect(notices).toHaveLength(1);
+    const line = notices[0]!.lines[0]!;
+    expect(line).not.toHaveProperty("procurementFlag");
+    expect(line).not.toHaveProperty("procurementFlagNote");
+  });
 });

@@ -1224,7 +1224,12 @@ export function OrderFormClient({
           }
         />
 
-        <Card padding={false} className="overflow-hidden">
+        <Card
+          padding={false}
+          className={cn(
+            zkProsbaLinkContext && !tourDemo ? "overflow-visible" : "overflow-hidden"
+          )}
+        >
           <div className={cn(tourDemo && "pointer-events-none select-none")}>
           <CardHeader
             inset
@@ -1234,13 +1239,27 @@ export function OrderFormClient({
                 <IconPlusCircle size={20} />
               </SectionHeadingIcon>
             }
-            title="Nowa prośba"
+            title={
+              zkProsbaLinkContext && !tourDemo
+                ? ZK_PROSBA_LINK_BANNER_COPY.formTitle
+                : "Nowa prośba"
+            }
             hint={submitForOther ? undefined : PROSBA_PAGE_HEADER_HINTS.newRequest}
             hintAriaLabel="O formularzu prośby"
             description={
               submitForOther
                 ? `Zgłaszasz w imieniu: ${lockedSalesPerson.name}. Po wysłaniu prośba pojawi się w jego liście „Moje zamówienia”.`
-                : undefined
+                : zkProsbaLinkContext && !tourDemo
+                  ? [
+                      ZK_PROSBA_LINK_BANNER_COPY.leadCreating,
+                      zkProsbaLinkContext.zkNumber.trim(),
+                      zkProsbaLinkContext.clientLabel?.trim()
+                        ? `· ${zkProsbaLinkContext.clientLabel.trim()}`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")
+                  : undefined
             }
           />
 

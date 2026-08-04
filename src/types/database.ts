@@ -69,6 +69,17 @@ export interface Vacation {
   active: boolean;
 }
 
+/** Definicja flagi zakupów (panel dzienny). */
+export interface ProcurementFlagDefinitionRow {
+  id: string;
+  label: string;
+  color: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface SalesPerson {
   id: string;
   name: string;
@@ -144,6 +155,12 @@ export interface IndividualOrder {
   procurement_sales_cancel_ack_at?: string | null;
   /** Zakupy zapoznały się z prośbą w panelu dziennym — ukrywa badge „Nowa”. */
   procurement_seen_at?: string | null;
+  /** Wewnętrzna flaga zakupów (panel dzienny) — niewidoczna w UI handlowca. */
+  procurement_flag?: string | null;
+  /** Opcjonalny opis flagi zakupów. */
+  procurement_flag_note?: string | null;
+  procurement_flag_updated_at?: string | null;
+  procurement_flag_updated_by?: string | null;
   /** Rozliczenie rezygnacji: to_stock | return */
   procurement_cancel_disposition?: string | null;
   procurement_cancel_disposition_note?: string | null;

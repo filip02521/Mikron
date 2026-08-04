@@ -6,6 +6,7 @@ import type { SummaryForSomeoneEnriched } from "@/lib/orders/summary-workspace";
 import type { SupplierLocation } from "@/types/database";
 import { sortForSomeoneGroups } from "@/lib/orders/procurement-daily-ui";
 import { compareProcurementSubmittedAt } from "@/lib/orders/procurement-request-timing";
+import { groupHighestFlagPriority } from "@/lib/orders/procurement-request-flag";
 
 export type ProcurementSupplierBlock = {
   supplierId: string;
@@ -15,6 +16,8 @@ export type ProcurementSupplierBlock = {
   lineCount: number;
   unseenGroupCount: number;
   hasUnseen: boolean;
+  /** Najwyższy priorytet flagi w bloku (niższy = ważniejszy). */
+  highestFlagPriority: number;
   earliestSubmittedAt: string;
   supplierOrderOnDemand: boolean;
 };
@@ -34,6 +37,9 @@ function compareSupplierBlocks(
   b: ProcurementSupplierBlock
 ): number {
   if (a.hasUnseen !== b.hasUnseen) return a.hasUnseen ? -1 : 1;
+  if (a.highestFlagPriority !== b.highestFlagPriority) {
+    return a.highestFlagPriority - b.highestFlagPriority;
+  }
   const byTime = compareProcurementSubmittedAt(
     a.earliestSubmittedAt,
     b.earliestSubmittedAt
@@ -44,7 +50,8 @@ function compareSupplierBlocks(
 
 /** Prośby handlowców — najpierw dostawca, potem grupy (osoba) wewnątrz bloku. */
 export function buildProcurementSupplierBlocks(
-  groups: SummaryForSomeoneEnriched[]
+  groups: SummaryForSomeoneEnriched[],
+  sortById: Map<string, number> | Record<string, number> = {}
 ): ProcurementSupplierBlock[] {
   const bySupplier = new Map<string, SummaryForSomeoneEnriched[]>();
   for (const g of groups) {
@@ -55,8 +62,13 @@ export function buildProcurementSupplierBlocks(
 
   const blocks: ProcurementSupplierBlock[] = [];
   for (const [supplierId, rawGroups] of bySupplier) {
-    const requestGroups = sortForSomeoneGroups(rawGroups);
+    const requestGroups = sortForSomeoneGroups(rawGroups, sortById);
     const first = requestGroups[0]!;
+    let highestFlagPriority = groupHighestFlagPriority(first.lines, sortById);
+    for (const g of requestGroups) {
+      const p = groupHighestFlagPriority(g.lines, sortById);
+      if (p < highestFlagPriority) highestFlagPriority = p;
+    }
     blocks.push({
       supplierId,
       supplierName: first.supplierName,
@@ -65,6 +77,7 @@ export function buildProcurementSupplierBlocks(
       lineCount: requestGroups.reduce((n, g) => n + g.lines.length, 0),
       unseenGroupCount: requestGroups.filter((g) => g.hasUnseen).length,
       hasUnseen: requestGroups.some((g) => g.hasUnseen),
+      highestFlagPriority,
       earliestSubmittedAt: earliestSubmittedInBlock(requestGroups),
       supplierOrderOnDemand: first.supplierOrderOnDemand,
     });

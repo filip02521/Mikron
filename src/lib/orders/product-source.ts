@@ -11,6 +11,7 @@ import { isInformacjaQueueViaDailyPanel } from "@/lib/orders/informacja-via-dail
 import { mapOrderTeethDetailsToEdit } from "@/lib/orders/individual-request-edit";
 import { submittedAt } from "@/lib/orders/order-timing";
 import type { ForSomeoneLine } from "@/lib/orders/summary-workspace";
+import { parseProcurementRequestFlag, normalizeProcurementFlagNote } from "@/lib/orders/procurement-request-flag";
 
 /** Pozycja wybrana z kartoteki Subiekt (nie wpis ręczny). */
 export function isSubiektVerifiedOrder(
@@ -57,5 +58,7 @@ export function mapOrderToForSomeoneLine(item: IndividualOrder): ForSomeoneLine 
         : null,
     requestNote: normalizeSalesRequestNote(item.sales_request_note),
     teethDetails: mapOrderTeethDetailsToEdit(item.teeth_details),
+    procurementFlag: parseProcurementRequestFlag(item.procurement_flag),
+    procurementFlagNote: normalizeProcurementFlagNote(item.procurement_flag_note),
   };
 }

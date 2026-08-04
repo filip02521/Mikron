@@ -362,6 +362,42 @@ describe("procurement-daily-ui", () => {
     expect(sorted[0]?.person).toBe("Jan");
   });
 
+  it("sortForSomeoneGroups: po unseen — pilne przed resztą", () => {
+    const plain = testForSomeoneGroup({
+      supplierId: "a",
+      salesPersonId: "sp1",
+      person: "Anna",
+      hasUnseen: false,
+      unseenCount: 0,
+      submittedAt: "2026-05-28T08:00:00Z",
+      submittedAtLatest: "2026-05-28T08:00:00Z",
+    });
+    const urgent = testForSomeoneGroup({
+      supplierId: "b",
+      salesPersonId: "sp2",
+      person: "Jan",
+      hasUnseen: false,
+      unseenCount: 0,
+      submittedAt: "2026-05-28T12:00:00Z",
+      submittedAtLatest: "2026-05-28T12:00:00Z",
+      lines: [
+        {
+          id: "2",
+          products: "Y",
+          symbol: "-",
+          quantity: "1",
+          fromSubiekt: false,
+          submittedAt: "2026-05-28T12:00:00Z",
+          procurementFlag: "11111111-1111-4111-8111-111111111101",
+        },
+      ],
+    });
+    const sorted = sortForSomeoneGroups([plain, urgent], {
+      "11111111-1111-4111-8111-111111111101": 0,
+    });
+    expect(sorted[0]?.person).toBe("Jan");
+  });
+
   it("stock_out trafia do stockOutLeft, nie do forSomeoneLeft", () => {
     const today = new Date(2026, 4, 15);
     const ws = buildSummaryWorkspace(
