@@ -1,4 +1,4 @@
-import { fetchIndividualOrders, fetchDeliveryStats, fetchSalesAcknowledgedOrders, fetchSuppliersForRequestForms } from "@/lib/data/queries";
+import { fetchIndividualOrders, fetchDeliveryStats, fetchSalesAcknowledgedOrders, fetchSuppliersForRequestForms, fetchSuppliersOnVacationNow } from "@/lib/data/queries";
 import { fetchSalesBoardAttentionSnapshot, fetchDepartmentBoardAnnouncements, type SalesBoardAttentionSnapshot, type DepartmentBoardAnnouncementsSlice } from "@/lib/data/department-board";
 import { fetchSalesDayStartNotepadSlice } from "@/lib/data/sales-notepad";
 import { fetchActiveDelegationsForDelegate, type VacationDelegationRow } from "@/lib/data/vacation-delegations";
@@ -21,6 +21,7 @@ import { todayInWarsaw } from "@/lib/time/warsaw";
 import type { DeliveryStats, IndividualOrder, UserRole, Workspace } from "@/types/database";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { SalesDayStartContext } from "@/lib/sales/sales-day-start";
+import type { SupplierOnVacationWindow } from "@/lib/orders/procurement-supplier-vacation";
 
 export type MojePageContext = {
   role: UserRole | null;
@@ -166,6 +167,7 @@ export type MojePageData = {
   orders: IndividualOrder[];
   stats: DeliveryStats[];
   suppliers: OrderFormSupplierOption[];
+  suppliersOnVacationNow: Record<string, SupplierOnVacationWindow>;
   archiwumRecent: ReturnType<typeof presentArchivedMyOrders>;
   archiwumExtended: ReturnType<typeof presentArchivedMyOrders>;
   supplierScheduleById: Awaited<ReturnType<typeof loadPlannedOrderScheduleContext>>["supplierScheduleById"];
@@ -208,6 +210,7 @@ export async function loadMojePageData(
     orders: [],
     stats: [],
     suppliers: [],
+    suppliersOnVacationNow: {},
     archiwumRecent: [],
     archiwumExtended: [],
     supplierScheduleById: {},
@@ -230,6 +233,7 @@ export async function loadMojePageData(
         statsRows,
         acknowledgedRows_,
         supplierRows,
+        onVacationNow,
         boardSnap,
         notepadData,
         announcementsSlice,
@@ -243,6 +247,7 @@ export async function loadMojePageData(
             })
           : Promise.resolve([] as IndividualOrder[]),
         fetchSuppliersForRequestForms(),
+        fetchSuppliersOnVacationNow(todayDateKey),
         viewingOwnPanel && sessionUserId
           ? fetchSalesBoardAttentionSnapshot(sessionUserId).catch(() => null)
           : Promise.resolve(null),
@@ -295,6 +300,7 @@ export async function loadMojePageData(
         orders,
         stats,
         suppliers,
+        suppliersOnVacationNow: onVacationNow,
         archiwumRecent,
         archiwumExtended,
         supplierScheduleById,
@@ -306,10 +312,11 @@ export async function loadMojePageData(
         loadError: null,
       };
     } else if (ctx.role && canAccessOperations(ctx.role, ctx.workspaces)) {
-      const [orderRows, statsRows, supplierRows] = await Promise.all([
+      const [orderRows, statsRows, supplierRows, onVacationNow] = await Promise.all([
         fetchIndividualOrders({ salesPersonId }),
         fetchDeliveryStats(),
         fetchSuppliersForRequestForms(),
+        fetchSuppliersOnVacationNow(todayDateKey),
       ]);
 
       const orders = await attachTeethDetailsIfNeeded(orderRows);
@@ -324,6 +331,7 @@ export async function loadMojePageData(
         orders,
         stats,
         suppliers: supplierRows,
+        suppliersOnVacationNow: onVacationNow,
         supplierScheduleById,
         plannedOrderWeekDays: weekDays,
       };

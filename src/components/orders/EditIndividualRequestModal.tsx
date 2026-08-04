@@ -25,6 +25,7 @@ import {
   ProsbaFormRequestKindSection,
 } from "@/components/orders/ProsbaFormSharedSections";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
+import { ProsbaSupplierVacationNotice } from "@/components/orders/ProsbaSupplierVacationNotice";
 import { RequestProductLinesEditor } from "@/components/orders/RequestProductLinesEditor";
 import { newProductLine, appendProductLine, type ProductLineDraft } from "@/components/orders/request-product-lines";
 import { IconUserGroup } from "@/components/icons/StrokeIcons";
@@ -34,6 +35,11 @@ import {
 } from "@/lib/orders/informacja-flow-ui";
 import { PROSBA_FORM_SECTION_COPY } from "@/lib/orders/prosba-form-section-copy";
 import { PROSBA_PAGE_HEADER_HINTS } from "@/lib/orders/prosba-optional-section-copy";
+import {
+  buildProsbaSupplierVacationNoticeModel,
+  collectProsbaVacationHits,
+} from "@/lib/orders/prosba-supplier-vacation-copy";
+import type { SupplierOnVacationWindow } from "@/lib/orders/procurement-supplier-vacation";
 import {
   flagsFromInformacjaFlowPath,
   type InformacjaFlowPath,
@@ -84,6 +90,7 @@ export function EditIndividualRequestModal({
   onSaved,
   autoSaveAfterTeethList = false,
   teethRequest = false,
+  suppliersOnVacationNow = {},
 }: {
   open: boolean;
   onClose: () => void;
@@ -97,6 +104,7 @@ export function EditIndividualRequestModal({
   autoSaveAfterTeethList?: boolean;
   /** Jawny tryb edycji prośby zębowej (panel /zeby). */
   teethRequest?: boolean;
+  suppliersOnVacationNow?: Record<string, SupplierOnVacationWindow>;
 }) {
   const { pending, pendingMessage, run } = useActionPending();
   const teethExemptTwIds = useTeethExemptTwIds();
@@ -120,6 +128,14 @@ export function EditIndividualRequestModal({
   );
   const supplierRefs = useMemo(() => toAppSupplierRefs(suppliers), [suppliers]);
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
+
+  const vacationNoticeModel = useMemo(() => {
+    const hits = collectProsbaVacationHits([], suppliersOnVacationNow, {
+      fallbackSupplierId: supplierId,
+      supplierNames: Object.fromEntries(suppliers.map((s) => [s.id, s.name])),
+    });
+    return buildProsbaSupplierVacationNoticeModel(hits);
+  }, [supplierId, suppliers, suppliersOnVacationNow]);
 
   const procurementLanes = useMemo(
     () => classifyProsbaLinesByLane(lines, teethExemptTwIds),
@@ -634,6 +650,9 @@ export function EditIndividualRequestModal({
           }
         >
           <div className="space-y-3">
+            {vacationNoticeModel ? (
+              <ProsbaSupplierVacationNotice model={vacationNoticeModel} />
+            ) : null}
             <RequestProductLinesEditor
               lines={lines}
               onChange={(next) => {

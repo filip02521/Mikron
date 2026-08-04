@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { IconSun } from "@/components/icons/StrokeIcons";
 import {
@@ -20,6 +20,7 @@ import {
   procurementListFilterCountEmptyClass,
   procurementListFilterCountSelectedClass,
   procurementListFilterTrackClass,
+  procurementListFilterTrackFadeClass,
 } from "@/lib/ui/procurement-status-chips";
 
 type FilterItem = {
@@ -71,6 +72,8 @@ export function ProcurementRequestListFilterBar({
     [definitions]
   );
   const items = useMemo(() => buildFilterItems(activeDefs), [activeDefs]);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [showScrollFade, setShowScrollFade] = useState(false);
 
   useEffect(() => {
     if (value === "all" || value === "none" || value === "urlop_dostawcy") {
@@ -81,6 +84,27 @@ export function ProcurementRequestListFilterBar({
     );
     if (!stillValid) onChange("all");
   }, [activeDefs, value, onChange]);
+
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+
+    const updateFade = () => {
+      const overflow = el.scrollWidth > el.clientWidth + 1;
+      const notAtEnd = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+      setShowScrollFade(overflow && notAtEnd);
+    };
+
+    updateFade();
+    el.addEventListener("scroll", updateFade, { passive: true });
+    const ro =
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(updateFade) : null;
+    ro?.observe(el);
+    return () => {
+      el.removeEventListener("scroll", updateFade);
+      ro?.disconnect();
+    };
+  }, [items, counts]);
 
   return (
     <div
@@ -102,7 +126,7 @@ export function ProcurementRequestListFilterBar({
           </button>
         ) : null}
       </div>
-      <div className={procurementListFilterTrackClass}>
+      <div ref={trackRef} className={procurementListFilterTrackClass}>
         {items.map((item, index) => {
           const active = value === item.id;
           const count = counts?.[item.id];
@@ -164,6 +188,9 @@ export function ProcurementRequestListFilterBar({
             </span>
           );
         })}
+        {showScrollFade ? (
+          <div className={procurementListFilterTrackFadeClass} aria-hidden />
+        ) : null}
       </div>
     </div>
   );

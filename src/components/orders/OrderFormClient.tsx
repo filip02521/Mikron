@@ -72,6 +72,12 @@ import {
 } from "@/app/actions/sales-notepad";
 import { ProsbaVsBoardHint } from "@/components/department-board/ProsbaVsBoardHint";
 import { ZkProsbaLinkBanner } from "@/components/orders/ZkProsbaLinkBanner";
+import { ProsbaSupplierVacationNotice } from "@/components/orders/ProsbaSupplierVacationNotice";
+import {
+  buildProsbaSupplierVacationNoticeModel,
+  collectProsbaVacationHits,
+} from "@/lib/orders/prosba-supplier-vacation-copy";
+import type { SupplierOnVacationWindow } from "@/lib/orders/procurement-supplier-vacation";
 import { buildMojeClientLink } from "@/lib/sales/notepad-follow-up";
 import {
   buildProsbaPrefillFromUrlParams,
@@ -191,6 +197,7 @@ export function OrderFormClient({
   delegatePeople,
   managerSelfId,
   forceReadOnly = false,
+  suppliersOnVacationNow = {},
 }: {
   suppliers: OrderFormSupplierOption[];
   salesPeople: { id: string; name: string }[];
@@ -207,6 +214,8 @@ export function OrderFormClient({
   managerSelfId?: string;
   /** Wymusza tryb podglądu (np. admin z ?dla= bez cookie panelu). */
   forceReadOnly?: boolean;
+  /** Dostawcy z aktywnym urlopem obejmującym dziś (kalendarz). */
+  suppliersOnVacationNow?: Record<string, SupplierOnVacationWindow>;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -236,7 +245,7 @@ export function OrderFormClient({
   const [msg, setMsg] = useState<
     (TransientNotice & { actionHref?: string; actionLabel?: string }) | null
   >(null);
-  const dismissToast = useCallback(() => setMsg(null), []);
+  const dismissToast = useCallback(() => setMsg(null), [setMsg]);
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
   const deferSupplierResolve = Boolean(singleGroup && lockedSalesPerson);
   const [formNotice, setFormNotice] = useState<FormMessage | null>(null);
@@ -264,7 +273,7 @@ export function OrderFormClient({
   }>({});
   const submitRef = useRef<() => void>(() => {});
 
-  const clearFormNotice = useCallback(() => setFormNotice(null), []);
+  const clearFormNotice = useCallback(() => setFormNotice(null), [setFormNotice]);
 
   const applyProductZdStockOutPrefill = useCallback(
     (prefill: ProductZdLookupStockOutPrefill) => {
@@ -291,7 +300,16 @@ export function OrderFormClient({
         ],
       ]);
     },
-    [lockedId]
+    [
+      lockedId,
+      setRequestKind,
+      setInformacjaPath,
+      setValidationAttempted,
+      setFormNotice,
+      setMsg,
+      setZkProsbaLinkContext,
+      setGroups,
+    ]
   );
 
   const tourFormKey = tourDemo && lockedId ? lockedId : "";
@@ -627,7 +645,7 @@ export function OrderFormClient({
         )
       );
     },
-    []
+    [setGroups]
   );
 
   const performSubmit = (
@@ -997,7 +1015,14 @@ export function OrderFormClient({
         ],
       ];
     });
-  }, [singleGroup, lockedSalesPerson, lockedId, clearFormNotice, deferSupplierResolve]);
+  }, [
+    singleGroup,
+    lockedSalesPerson,
+    lockedId,
+    clearFormNotice,
+    deferSupplierResolve,
+    setGroups,
+  ]);
 
   const addProcurementProductLine = useCallback(() => {
     if (singleGroup && lockedSalesPerson) return;
@@ -1025,13 +1050,13 @@ export function OrderFormClient({
           : gr
       );
     });
-  }, [singleGroup, lockedSalesPerson, lockedId, clearFormNotice]);
+  }, [singleGroup, lockedSalesPerson, lockedId, clearFormNotice, setGroups]);
 
   const setProcurementRequestKind = useCallback((kind: IndividualRequestKind) => {
     setRequestKind(kind);
     if (kind === "informacja") setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
     else setInformacjaPath("direct");
-  }, []);
+  }, [setRequestKind, setInformacjaPath]);
 
   const salesProsbaSubmitState = useMemo(() => {
     if (!singleGroup || !lockedSalesPerson) {
@@ -1202,6 +1227,14 @@ export function OrderFormClient({
       initialSupplierId && group[0]?.supplierId === initialSupplierId
         ? suppliers.find((s) => s.id === initialSupplierId) ?? null
         : null;
+
+    const vacationHits = collectProsbaVacationHits(group, suppliersOnVacationNow, {
+      fallbackSupplierId: initialSupplierId,
+      supplierNames: Object.fromEntries(suppliers.map((s) => [s.id, s.name])),
+    });
+    const vacationNoticeModel = !tourDemo
+      ? buildProsbaSupplierVacationNoticeModel(vacationHits)
+      : null;
 
     const mojeHref = submitForOther ? `/moje?dla=${lockedSalesPerson.id}` : "/moje";
     const mojeLabel = submitForOther ? "Prośby handlowca" : "Moje zamówienia";
@@ -1383,6 +1416,9 @@ export function OrderFormClient({
               }
             >
               <div className="space-y-3">
+                {vacationNoticeModel ? (
+                  <ProsbaSupplierVacationNotice model={vacationNoticeModel} />
+                ) : null}
                 <RequestProductLinesEditor
                   lines={group}
                   onChange={(lines) => {
@@ -1510,7 +1546,15 @@ export function OrderFormClient({
         </div>
       </Card>
 
-      {groups.map((group, gi) => (
+      {groups.map((group, gi) => {
+        const groupVacationModel = buildProsbaSupplierVacationNoticeModel(
+          collectProsbaVacationHits(group, suppliersOnVacationNow, {
+            fallbackSupplierId: group[0]?.supplierId || initialSupplierId,
+            supplierNames: Object.fromEntries(suppliers.map((s) => [s.id, s.name])),
+          })
+        );
+
+        return (
         <Card key={gi} padding={false}>
           <CardHeader
             inset
@@ -1658,6 +1702,9 @@ export function OrderFormClient({
               }
             >
               <div className="space-y-3">
+                {groupVacationModel ? (
+                  <ProsbaSupplierVacationNotice model={groupVacationModel} />
+                ) : null}
                 <RequestProductLinesEditor
                   lines={group}
                   onChange={(lines) => {
@@ -1726,7 +1773,8 @@ export function OrderFormClient({
             </ProsbaFormProductsSection>
           </div>
         </Card>
-      ))}
+        );
+      })}
 
       <Card padding={false}>
         <div className="flex flex-col gap-3 bg-slate-50/90 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">

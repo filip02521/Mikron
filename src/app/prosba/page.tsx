@@ -1,5 +1,9 @@
 import { Suspense } from "react";
-import { fetchSalesPeople, fetchSupplierFormContext } from "@/lib/data/queries";
+import {
+  fetchSalesPeople,
+  fetchSupplierFormContext,
+  fetchSuppliersOnVacationNow,
+} from "@/lib/data/queries";
 import { OrderFormClient } from "@/components/orders/OrderFormClient";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
@@ -20,6 +24,7 @@ import { SalesAccountLinkRequired } from "@/components/sales/SalesAccountLinkReq
 import { Alert } from "@/components/ui/Alert";
 import { salesPageShellClass, brandLinkClass } from "@/lib/ui/ontime-theme";
 import { logDevPageError } from "@/lib/dev/log-page-error";
+import type { SupplierOnVacationWindow } from "@/lib/orders/procurement-supplier-vacation";
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
@@ -36,6 +41,7 @@ export default async function ProsbaPage({
   const { panelContext } = await readAdminPanelContextForSession();
   let adminReadOnlyPreview = false;
   let suppliers: Awaited<ReturnType<typeof fetchSupplierFormContext>>["suppliers"] = [];
+  let suppliersOnVacationNow: Record<string, SupplierOnVacationWindow> = {};
   let salesPeople: { id: string; name: string }[] = [];
   let lockedSalesPerson: { id: string; name: string } | null = null;
   let isSales = false;
@@ -43,8 +49,12 @@ export default async function ProsbaPage({
   let managerSelfId: string | null = null;
 
   try {
-    const ctx = await fetchSupplierFormContext();
+    const [ctx, onVacation] = await Promise.all([
+      fetchSupplierFormContext(),
+      fetchSuppliersOnVacationNow(),
+    ]);
     suppliers = ctx.suppliers;
+    suppliersOnVacationNow = onVacation;
   } catch (error) {
     logDevPageError("prosba/page:suppliers", error);
   }
@@ -140,6 +150,7 @@ export default async function ProsbaPage({
             singleGroup
             initialSupplierId={initialSupplierId}
             forceReadOnly
+            suppliersOnVacationNow={suppliersOnVacationNow}
           />
         </Suspense>
       </DelegateModeBackground>
@@ -211,6 +222,7 @@ export default async function ProsbaPage({
             isManager && delegatePeople.length > 0 ? delegatePeople : undefined
           }
           managerSelfId={managerSelfId ?? undefined}
+          suppliersOnVacationNow={suppliersOnVacationNow}
         />
       ) : (
         <OrderFormClient
@@ -221,6 +233,7 @@ export default async function ProsbaPage({
             isManager && delegatePeople.length > 0 ? delegatePeople : undefined
           }
           managerSelfId={managerSelfId ?? undefined}
+          suppliersOnVacationNow={suppliersOnVacationNow}
         />
       )}
       </Suspense>

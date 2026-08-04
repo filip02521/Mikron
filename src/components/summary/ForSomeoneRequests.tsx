@@ -91,7 +91,6 @@ import {
   panelQueueRowLayoutClass,
 } from "@/lib/ui/surfaces";
 import {
-  INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER,
   INFORMACJA_STOCK_OUT_PROCUREMENT_SECTION_HINT,
 } from "@/lib/orders/informacja-flow-copy";
 import {
@@ -104,6 +103,7 @@ import {
 } from "@/components/summary/daily-panel-list-styles";
 import { clientNamesSummaryFromLines } from "@/lib/orders/sales-client-label";
 import { PROCUREMENT_GLOWNE_ON_DEMAND_HINT } from "@/lib/orders/glowne-action-ui";
+import { requestNotesProcurementSublineSuffix } from "@/lib/orders/sales-request-note";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 
 function groupHasInformacjaFlow(g: SummaryForSomeoneEnriched): boolean {
@@ -478,12 +478,14 @@ export function ForSomeoneRequests({
           className="h-8 px-2 text-xs"
           onClick={() => setAllSupplierBlocksExpanded(!allSupplierBlocksExpanded)}
         >
-          {allSupplierBlocksExpanded ? "Zwiń dostawców" : "Rozwiń dostawców"}
+          {allSupplierBlocksExpanded
+            ? "Zwiń bloki dostawców"
+            : "Rozwiń bloki dostawców"}
         </Button>
       ) : null}
       {multiLineKeys.length > 1 ? (
         <Button variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setAll(!allExpanded)}>
-          {allExpanded ? "Zwiń produkty" : "Rozwiń produkty"}
+          {allExpanded ? "Zwiń wszystkie produkty" : "Pokaż wszystkie produkty"}
         </Button>
       ) : null}
       {isStockOutSection ? <StockOutSectionHelp /> : <ForSomeoneRequestsSectionHelp />}
@@ -581,7 +583,6 @@ export function ForSomeoneRequests({
       if (!focusedGroup) return;
       const group = focusedGroup;
       const key = groupKey(group);
-      const ui = enrichGroup(group);
 
       if (e.key === "Enter") {
         if (group.lines.length < 2) return;
@@ -610,7 +611,7 @@ export function ForSomeoneRequests({
         e.preventDefault();
         const glowneConfirm = group.supplierOrderOnDemand
           ? `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako główne bez terminu planowego?`
-          : `Oznaczyć „${ui.headline}” jako zamówienie główne?`;
+          : `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako zamówienie główne?`;
         if (!window.confirm(glowneConfirm)) {
           return;
         }
@@ -629,7 +630,7 @@ export function ForSomeoneRequests({
         e.preventDefault();
         if (
           !window.confirm(
-            `Oznaczyć „${ui.headline}” jako uzupełniające?`
+            `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako uzupełniające?`
           )
         ) {
           return;
@@ -645,7 +646,7 @@ export function ForSomeoneRequests({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [navigableGroups, focusedGroup, resolvedFocusedGroupKey, editTarget, cancelTarget, flagEditTarget, run, markGroupSeen, enrichGroup]);
+  }, [navigableGroups, focusedGroup, resolvedFocusedGroupKey, editTarget, cancelTarget, flagEditTarget, run, markGroupSeen]);
 
   const Wrapper = "section";
   const wrapperProps = {
@@ -684,6 +685,7 @@ export function ForSomeoneRequests({
         initial={editTarget?.initial ?? null}
         suppliers={suppliers}
         salesPeople={salesPeople}
+        suppliersOnVacationNow={suppliersOnVacationNow}
         onClose={() => setEditTarget(null)}
         onSaved={(msg) =>
           run(
@@ -717,6 +719,7 @@ export function ForSomeoneRequests({
           definitions={procurementFlagDefinitions}
           onClose={() => setManageFlagsOpen(false)}
           onError={(message) => notify?.(message, "error")}
+          onSuccess={(message) => notify?.(message, "success")}
         />
       ) : null}
       <ProcurementCancelDialog
@@ -796,8 +799,15 @@ export function ForSomeoneRequests({
                   pending={blockPending}
                   run={run}
                   unseenGroupCount={block.requestGroups.filter((g) => isGroupUnseen(g)).length}
+                  unseenPeopleNames={block.requestGroups
+                    .filter((g) => isGroupUnseen(g))
+                    .map((g) => g.person)}
                   unseenVariant={unseenVariant}
                   plannedOrderDate={blockPlannedOrderDate}
+                  vacationWindow={
+                    suppliersOnVacationNow[block.supplierId] ?? null
+                  }
+                  flagDefinitions={procurementFlagDefinitions}
                   onToggleCollapse={() => toggleSupplierCollapse(block.supplierId)}
                   onOpenSupplier={onOpenSupplier}
                 />
@@ -827,6 +837,7 @@ export function ForSomeoneRequests({
                       : hasInfoViaPanel
                         ? "info"
                         : "default";
+                    const showStatusBadge = Boolean(ui.statusTitle?.trim());
                     const singleLine = g.lines.length === 1 ? g.lines[0]! : null;
                     const hasMultiLine = g.lines.length >= 2;
                     const isOpen = hasMultiLine && expanded.has(key);
@@ -837,10 +848,19 @@ export function ForSomeoneRequests({
                     const suppressLineClient = shouldSuppressProcurementLineClient(clientLabel);
                     const suppressGroupPlannedOrderDate =
                       shouldSuppressProcurementGroupPlannedOrderDate(showSupplierHeader);
-                    const showSupplierFirst = !showSupplierHeader && !isStockOutSection;
+                    const noteSuffix = requestNotesProcurementSublineSuffix(g.lines);
+                    const showVacationOnRow =
+                      !showSupplierHeader &&
+                      Boolean(suppliersOnVacationNow[g.supplierId]);
                     const rowSubline = showSupplierHeader
-                      ? procurementNestedRowMeta({ countLabel })
-                      : ui.subline;
+                      ? procurementNestedRowMeta({
+                          countLabel,
+                          locationLabel: locationLabel(g.location),
+                          noteSuffix,
+                        })
+                      : isStockOutSection
+                        ? ui.subline
+                        : null;
                     const showRowLeadTime = !showSupplierHeader || !blockLeadTimeBrief;
                     const expandDividerClass =
                       unseenVariant === "stockOut"
@@ -878,21 +898,25 @@ export function ForSomeoneRequests({
                           <div className="px-2.5 py-2 sm:px-3">
                   <div className={panelQueueRowLayoutClass}>
                     <div className="min-w-0 flex-1">
-                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                        <p className={cn(panelTypography.rowTitle, "min-w-0")}>
-                          {showSupplierFirst ? (
-                            <button
-                              type="button"
-                              className={panelNameLinkClass}
-                              onClick={() => onOpenSupplier(g.supplierId)}
-                            >
-                              {g.supplierName}
-                            </button>
-                          ) : (
-                            ui.headline
-                          )}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-1">
+                      <p className={cn(panelTypography.rowTitle, "min-w-0")}>
+                        {isStockOutSection ? (
+                          ui.headline
+                        ) : showSupplierHeader ? (
+                          ui.headline
+                        ) : (
+                          <button
+                            type="button"
+                            className={panelNameLinkClass}
+                            onClick={() => onOpenSupplier(g.supplierId)}
+                          >
+                            {g.supplierName}
+                          </button>
+                        )}
+                      </p>
+                      {isUnseen ||
+                      showVacationOnRow ||
+                      g.lines.some((l) => Boolean(l.procurementFlag)) ? (
+                        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
                           {isUnseen ? (
                             <Badge
                               className={cn(
@@ -904,7 +928,7 @@ export function ForSomeoneRequests({
                               {ui.unseenCount > 1 ? ` (${ui.unseenCount})` : ""}
                             </Badge>
                           ) : null}
-                          {suppliersOnVacationNow[g.supplierId] ? (
+                          {showVacationOnRow ? (
                             <SupplierVacationNowChip
                               window={suppliersOnVacationNow[g.supplierId]!}
                             />
@@ -916,31 +940,20 @@ export function ForSomeoneRequests({
                             onClick={() => openFlagEditor(g)}
                           />
                         </div>
-                      </div>
+                      ) : null}
                       <p className={cn("mt-0.5", panelTypography.rowMeta)}>
                         {showSupplierHeader ? (
                           rowSubline
-                        ) : showSupplierFirst ? (
+                        ) : isStockOutSection ? (
+                          rowSubline
+                        ) : (
                           <>
                             {g.person}
                             {" · "}
                             {countLabel}
                             {" · "}
                             {locationLabel(g.location)}
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              className={panelNameLinkClass}
-                              onClick={() => onOpenSupplier(g.supplierId)}
-                            >
-                              {g.supplierName}
-                            </button>
-                            {" · "}
-                            {ui.subline}
-                            {" · "}
-                            {locationLabel(g.location)}
+                            {noteSuffix}
                           </>
                         )}
                       </p>
@@ -971,12 +984,14 @@ export function ForSomeoneRequests({
                           className="self-start sm:self-auto"
                         />
                       ) : null}
-                      <Badge
-                        variant={statusBadgeVariant}
-                        className="shrink-0 self-start whitespace-normal text-left text-[10px] leading-snug sm:self-auto sm:text-right"
-                      >
-                        {ui.statusTitle}
-                      </Badge>
+                      {showStatusBadge ? (
+                        <Badge
+                          variant={statusBadgeVariant}
+                          className="shrink-0 self-start whitespace-normal text-left text-[10px] leading-snug sm:self-auto sm:text-right"
+                        >
+                          {ui.statusTitle}
+                        </Badge>
+                      ) : null}
                       <PanelRowActionsInlineEnd
                         forceVisible={groupPending}
                         className={panelQueueRowActionsClass}
@@ -1018,11 +1033,7 @@ export function ForSomeoneRequests({
                       <div className="mt-1.5 rounded-md border border-slate-200/90 bg-slate-50/90 px-2 py-1 text-[11px] leading-snug text-slate-700">
                         <p>{PROCUREMENT_GLOWNE_ON_DEMAND_HINT}</p>
                       </div>
-                    ) : showViaPanelSectionCallout ? null : (
-                      <div className="mt-1.5 rounded-md border border-slate-200/90 bg-slate-50/90 px-2 py-1 text-[11px] leading-snug text-slate-700">
-                        <p>{INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER}</p>
-                      </div>
-                    )
+                    ) : null
                   ) : g.supplierOrderOnDemand && !isStockOutSection ? (
                     <div className="mt-1.5 rounded-md border border-slate-200/90 bg-slate-50/90 px-2 py-1 text-[11px] leading-snug text-slate-700">
                       <p>
@@ -1048,7 +1059,9 @@ export function ForSomeoneRequests({
                         });
                       }}
                     >
-                      {isOpen ? "Zwiń produkty" : `Pokaż produkty (${g.lines.length})`}
+                      {isOpen
+                        ? "Zwiń produkty"
+                        : `Pokaż produkty (${g.lines.length})`}
                     </Button>
                   ) : null}
                 </div>
