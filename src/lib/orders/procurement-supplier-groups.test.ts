@@ -5,6 +5,7 @@ import {
   collectProcurementSupplierBlockOrderIds,
   filterNavigableProcurementGroups,
   flattenProcurementSupplierBlocks,
+  formatProcurementSupplierBlockCollapsedHint,
   formatProcurementSupplierBlockSummary,
   procurementSupplierBlockConfirmCopy,
   procurementSupplierBlockScopeKey,
@@ -71,11 +72,11 @@ describe("buildProcurementSupplierBlocks", () => {
     });
 
     const blocks = buildProcurementSupplierBlocks([dtA, other, dtB]);
-    expect(blocks.map((b) => b.supplierName)).toEqual(["Polkard", "DT Shop"]);
-    expect(blocks[1]!.requestGroups.map((g) => g.person)).toEqual(["Kasia", "Kordian"]);
+    expect(blocks.map((b) => b.supplierName)).toEqual(["DT Shop", "Polkard"]);
+    expect(blocks[0]!.requestGroups.map((g) => g.person)).toEqual(["Kasia", "Kordian"]);
   });
 
-  it("stawia blok z nieprzeczytaną prośbą wyżej", () => {
+  it("układa bloki: najpierw Nowe, potem A→Z", () => {
     const seen = group({
       supplierId: "a",
       supplierName: "Alpha",
@@ -93,10 +94,10 @@ describe("buildProcurementSupplierBlocks", () => {
     });
 
     const blocks = buildProcurementSupplierBlocks([seen, unseen]);
-    expect(blocks[0]!.supplierName).toBe("Beta");
+    expect(blocks.map((b) => b.supplierName)).toEqual(["Beta", "Alpha"]);
   });
 
-  it("po unseen stawia blok z pilne wyżej", () => {
+  it("przy braku Nowych: flaga przed A→Z", () => {
     const plain = group({
       supplierId: "a",
       supplierName: "Alpha",
@@ -129,8 +130,27 @@ describe("buildProcurementSupplierBlocks", () => {
     const blocks = buildProcurementSupplierBlocks([plain, urgent], {
       "11111111-1111-4111-8111-111111111101": 0,
     });
-    expect(blocks[0]!.supplierName).toBe("Beta");
+    expect(blocks.map((b) => b.supplierName)).toEqual(["Beta", "Alpha"]);
     expect(blocks[0]!.highestFlagPriority).toBe(0);
+  });
+
+  it("przy remisie Nowe/flaga sortuje A→Z (pl)", () => {
+    const zulu = group({
+      supplierId: "z",
+      supplierName: "Żółty",
+      person: "Z",
+      salesPersonId: "1",
+      hasUnseen: true,
+    });
+    const alpha = group({
+      supplierId: "a",
+      supplierName: "Alpha",
+      person: "A",
+      salesPersonId: "2",
+      hasUnseen: true,
+    });
+    const blocks = buildProcurementSupplierBlocks([zulu, alpha]);
+    expect(blocks.map((b) => b.supplierName)).toEqual(["Alpha", "Żółty"]);
   });
 });
 
@@ -143,6 +163,74 @@ describe("formatProcurementSupplierBlockSummary", () => {
     expect(formatProcurementSupplierBlockSummary(block)).toContain("Kasia");
     expect(formatProcurementSupplierBlockSummary(block)).toContain("Kordian");
     expect(formatProcurementSupplierBlockSummary(block)).toContain("2 produkty");
+  });
+});
+
+describe("formatProcurementSupplierBlockCollapsedHint", () => {
+  it("bez nowych pokazuje liczbę produktów", () => {
+    const block = buildProcurementSupplierBlocks([
+      group({
+        supplierId: "dt",
+        supplierName: "DT",
+        person: "A",
+        salesPersonId: "1",
+        hasUnseen: false,
+      }),
+      group({
+        supplierId: "dt",
+        supplierName: "DT",
+        person: "B",
+        salesPersonId: "2",
+        hasUnseen: false,
+      }),
+    ])[0]!;
+    expect(formatProcurementSupplierBlockCollapsedHint(block, 0)).toBe(
+      "zwinięte · 2 produkty"
+    );
+  });
+
+  it("z nowymi wymienia osoby", () => {
+    const block = buildProcurementSupplierBlocks([
+      group({
+        supplierId: "dt",
+        supplierName: "DT",
+        person: "Kasia",
+        salesPersonId: "1",
+        hasUnseen: true,
+      }),
+      group({
+        supplierId: "dt",
+        supplierName: "DT",
+        person: "Ola",
+        salesPersonId: "2",
+        hasUnseen: true,
+      }),
+    ])[0]!;
+    expect(formatProcurementSupplierBlockCollapsedHint(block, 2)).toBe(
+      "zwinięte · 2 nowe · Kasia, Ola"
+    );
+  });
+
+  it("używa lokalnej listy osób gdy podana (mark-seen)", () => {
+    const block = buildProcurementSupplierBlocks([
+      group({
+        supplierId: "dt",
+        supplierName: "DT",
+        person: "Kasia",
+        salesPersonId: "1",
+        hasUnseen: true,
+      }),
+      group({
+        supplierId: "dt",
+        supplierName: "DT",
+        person: "Ola",
+        salesPersonId: "2",
+        hasUnseen: true,
+      }),
+    ])[0]!;
+    expect(
+      formatProcurementSupplierBlockCollapsedHint(block, 1, ["Ola"])
+    ).toBe("zwinięte · 1 nowa · Ola");
   });
 });
 

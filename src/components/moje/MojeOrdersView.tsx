@@ -206,6 +206,7 @@ function MyOrderShipmentBlock({
   showProgress,
   canAcknowledge,
   suppliers,
+  suppliersOnVacationNow = {},
   searchQuery,
   embedded = false,
   continuation = false,
@@ -220,6 +221,10 @@ function MyOrderShipmentBlock({
   showProgress: boolean;
   canAcknowledge: boolean;
   suppliers: OrderFormSupplierOption[];
+  suppliersOnVacationNow?: Record<
+    string,
+    import("@/lib/orders/procurement-supplier-vacation").SupplierOnVacationWindow
+  >;
   searchQuery?: string | null;
   embedded?: boolean;
   continuation?: boolean;
@@ -238,6 +243,7 @@ function MyOrderShipmentBlock({
       canAcknowledge={canAcknowledge}
       cardIdPrefix={cardDomId}
       suppliers={suppliers}
+      suppliersOnVacationNow={suppliersOnVacationNow}
       searchQuery={searchQuery}
       embedded={embedded}
       continuation={continuation}
@@ -372,6 +378,7 @@ function MojeOrdersViewContent({
   boardAnnouncements = null,
   boardAnnouncementsError = null,
   focusAnnouncementId = null,
+  suppliersOnVacationNow = {},
 }: {
   zamowienia: MyOrderRow[];
   informacje: MyOrderRow[];
@@ -382,6 +389,10 @@ function MojeOrdersViewContent({
   canEdit?: boolean;
   showProsbaCta?: boolean;
   suppliers?: OrderFormSupplierOption[];
+  suppliersOnVacationNow?: Record<
+    string,
+    import("@/lib/orders/procurement-supplier-vacation").SupplierOnVacationWindow
+  >;
   pageTitle?: string;
   pageDescription?: string;
   headerActions?: React.ReactNode;
@@ -818,6 +829,7 @@ function MojeOrdersViewContent({
     canAcknowledge,
     canEdit: canEditProp ?? canAcknowledge,
     suppliers,
+    suppliersOnVacationNow,
     searchQuery,
     tourPreview,
     compactActionLayout: true,

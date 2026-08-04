@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  collectProcurementSupplierBlockFlagLines,
+  formatProcurementSupplierBlockCollapsedHint,
   formatProcurementSupplierBlockSummary,
   procurementProductCountLabel,
   procurementUnseenGroupsLabel,
@@ -12,8 +14,12 @@ import { Badge } from "@/components/ui/Badge";
 import { IconChevronRight } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { ProcurementSupplierBlockActionBar } from "@/components/summary/ProcurementSupplierBlockActionBar";
+import { ProcurementRequestFlagGroupChip } from "@/components/summary/ProcurementRequestFlagChip";
+import { SupplierVacationNowChip } from "@/components/summary/SupplierVacationNowChip";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import type { PlannedOrderDateDisplay } from "@/lib/orders/planned-order-date-label";
+import type { ProcurementFlagDefinition } from "@/lib/orders/procurement-request-flag";
+import type { SupplierOnVacationWindow } from "@/lib/orders/procurement-supplier-vacation";
 import {
   controlFocusClass,
   dailyPanelUnseenBadgeClass,
@@ -50,6 +56,9 @@ export function ProcurementSupplierBlockBar({
   unseenGroupCount,
   unseenVariant = "prosby",
   plannedOrderDate = null,
+  vacationWindow = null,
+  flagDefinitions = [],
+  unseenPeopleNames,
 }: {
   block: ProcurementSupplierBlock;
   collapsed: boolean;
@@ -59,13 +68,25 @@ export function ProcurementSupplierBlockBar({
   pending?: boolean;
   run: DailyPanelRunFn;
   unseenGroupCount?: number;
+  /** Osoby z lokalnie niewidzianymi prośbami — musi być spójne z unseenGroupCount. */
+  unseenPeopleNames?: string[];
   unseenVariant?: DailyPanelUnseenVariant;
   plannedOrderDate?: PlannedOrderDateDisplay | null;
+  vacationWindow?: SupplierOnVacationWindow | null;
+  flagDefinitions?: ProcurementFlagDefinition[];
 }) {
   const summary = formatProcurementSupplierBlockSummary(block);
   const groupCount = block.requestGroups.length;
   const unseenCount = unseenGroupCount ?? block.unseenGroupCount;
   const productCount = procurementProductCountLabel(block.lineCount);
+  const collapsedHint = formatProcurementSupplierBlockCollapsedHint(
+    block,
+    unseenCount,
+    unseenPeopleNames
+  );
+  const flagLines = collapsed
+    ? collectProcurementSupplierBlockFlagLines(block)
+    : [];
 
   return (
     <div
@@ -117,17 +138,30 @@ export function ProcurementSupplierBlockBar({
                     {unseenCount} {procurementUnseenGroupsLabel(unseenCount)}
                   </Badge>
                 ) : null}
-                {collapsed ? (
-                  <span className={cn(panelTypography.caption, "text-slate-500")}>
-                    zwinięte · {productCount}
-                  </span>
+                {vacationWindow ? (
+                  <SupplierVacationNowChip window={vacationWindow} compact />
                 ) : null}
               </div>
-              <p className={cn("mt-0.5", panelTypography.rowMeta)}>
-                {locationLabel(block.location)}
-                {" · "}
-                {summary}
-              </p>
+              {collapsed ? (
+                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
+                  <span className={cn(panelTypography.caption, "text-slate-500")}>
+                    {collapsedHint}
+                  </span>
+                  {flagLines.some((l) => l.procurementFlag) ? (
+                    <ProcurementRequestFlagGroupChip
+                      lines={flagLines}
+                      definitions={flagDefinitions}
+                      disabled
+                    />
+                  ) : null}
+                </div>
+              ) : (
+                <p className={cn("mt-0.5", panelTypography.rowMeta)}>
+                  {locationLabel(block.location)}
+                  {" · "}
+                  {summary}
+                </p>
+              )}
               {leadTimeBrief ? (
                 <p className={cn("mt-0.5", panelTypography.caption)}>{leadTimeBrief}</p>
               ) : null}
@@ -140,7 +174,7 @@ export function ProcurementSupplierBlockBar({
                 className="self-start sm:self-auto"
               />
             ) : null}
-            <span className="text-[10px] font-medium text-slate-500 sm:text-right">
+            <span className={cn(panelTypography.caption, "font-medium text-slate-500 sm:text-right")}>
               Zamów razem · {productCount}
             </span>
             <ProcurementSupplierBlockActionBar block={block} pending={pending} run={run} />

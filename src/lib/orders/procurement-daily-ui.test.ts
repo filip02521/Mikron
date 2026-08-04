@@ -269,7 +269,7 @@ describe("procurement-daily-ui", () => {
     expect(zam.subline).toBe("1 produkt");
     expect(zam.subline).not.toContain("Dostawca");
     expect(zam.subline).not.toContain("uwagi przy produktach");
-    expect(zam.statusTitle).toBe("Do zamówienia");
+    expect(zam.statusTitle).toBe("");
     expect(zam.submittedLabel).toContain("dziś");
     expect(zam.isUnseen).toBe(true);
     expect(zam.plannedOrderDate).toBeNull();
@@ -284,6 +284,31 @@ describe("procurement-daily-ui", () => {
     });
     expect(info.headline).toContain("informacja");
     expect(info.statusTitle).toBe("Bez zamówienia");
+  });
+
+  it("enrichForSomeoneGroup pokazuje badge Magazyn → info przy via panel", () => {
+    const ui = enrichForSomeoneGroup(
+      testForSomeoneGroup({
+        supplierId: "a",
+        salesPersonId: "sp",
+        person: "Anna",
+        lines: [
+          {
+            id: "1",
+            products: "A",
+            symbol: "-",
+            quantity: "1",
+            fromSubiekt: false,
+            submittedAt: "2026-05-28T10:00:00Z",
+            procurementSeenAt: null,
+            informacjaViaPanel: true,
+          },
+        ],
+      }),
+      new Date(2026, 4, 28, 12)
+    );
+    expect(ui.statusTitle).toBe("Magazyn → info");
+    expect(ui.headlineTone).toBe("info");
   });
 
   it("enrichForSomeoneGroup dodaje sufiks subline przy różnych uwagach", () => {

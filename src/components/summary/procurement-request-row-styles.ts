@@ -44,7 +44,19 @@ export function procurementRequestRowClassName({
   );
 }
 
-/** Meta wiersza prośby w bloku dostawcy — bez powtarzania nazwy dostawcy. */
-export function procurementNestedRowMeta({ countLabel }: { countLabel: string }): string {
-  return countLabel;
+/** Meta wiersza prośby w bloku dostawcy — produkty · lokalizacja · uwagi. */
+export function procurementNestedRowMeta({
+  countLabel,
+  locationLabel: loc,
+  noteSuffix,
+}: {
+  countLabel: string;
+  locationLabel?: string | null;
+  noteSuffix?: string | null;
+}): string {
+  const parts = [countLabel];
+  if (loc?.trim()) parts.push(loc.trim());
+  const note = noteSuffix?.trim().replace(/^·\s*/, "") ?? "";
+  if (note) parts.push(note);
+  return parts.join(" · ");
 }
