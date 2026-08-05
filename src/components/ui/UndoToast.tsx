@@ -69,25 +69,24 @@ export function UndoToast({
 
   useToastNotificationSound(resolvedTitle, resolvedDescription);
 
-  const [remainingMs, setRemainingMs] = useState(durationMs);
+  // Stała długość animacji od mount — wcześniej aktualizacja co 200 ms
+  // restartowała CSS i pasek wyglądał na zepsuty.
+  const [animationMs] = useState(() =>
+    expiresAt != null ? Math.max(0, expiresAt - Date.now()) : durationMs
+  );
 
   useEffect(() => {
     if (expiresAt == null) {
       const t = setTimeout(() => onDismissRef.current(), durationMs);
       return () => clearTimeout(t);
     }
-    const syncRemaining = () => {
-      const next = Math.max(0, expiresAt - Date.now());
-      setRemainingMs(next);
-      if (next <= 0) onDismissRef.current();
-    };
-    syncRemaining();
-    const interval = window.setInterval(syncRemaining, 200);
-    const timeout = window.setTimeout(() => onDismissRef.current(), Math.max(0, expiresAt - Date.now()));
-    return () => {
-      window.clearInterval(interval);
-      window.clearTimeout(timeout);
-    };
+    const remaining = Math.max(0, expiresAt - Date.now());
+    if (remaining <= 0) {
+      onDismissRef.current();
+      return;
+    }
+    const timeout = window.setTimeout(() => onDismissRef.current(), remaining);
+    return () => window.clearTimeout(timeout);
   }, [durationMs, expiresAt]);
 
   const isError = tone === "error";
@@ -109,7 +108,7 @@ export function UndoToast({
         isError && "border-red-200/90",
         className
       )}
-      style={{ ["--undo-duration" as string]: `${remainingMs}ms` }}
+      style={{ ["--undo-duration" as string]: `${animationMs}ms` }}
     >
       <div className={undoNoticeProgressTrackClass} aria-hidden>
         <div

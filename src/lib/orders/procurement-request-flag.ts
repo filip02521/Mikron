@@ -140,6 +140,7 @@ export function procurementFlagLabelsEqual(a: string, b: string): boolean {
 }
 
 export function shortProcurementFlagLabel(label: string, max = 18): string {
+  /** Tylko kompaktowe miejsca (pasek filtrów) — chip w wierszu prośby pokazuje pełną nazwę. */
   const t = label.trim();
   if (t.length <= max) return t;
   return `${t.slice(0, max - 1)}…`;
@@ -380,6 +381,18 @@ export function procurementFlagDotClass(color: ProcurementFlagColor): string {
     default:
       return "bg-slate-400";
   }
+}
+
+/**
+ * Kiedy opis w chipie flagi startuje jako jednoliniowy podgląd
+ * (rozwinięcie = pełny tekst w tym samym obiekcie).
+ */
+export function procurementFlagNoteNeedsExpand(note: string): boolean {
+  const t = note.trim();
+  if (!t) return false;
+  if (/\r?\n/.test(t)) return true;
+  if (t.length > 48) return true;
+  return false;
 }
 
 export function procurementFlagModalChipSelectedClass(

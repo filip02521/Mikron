@@ -139,11 +139,11 @@ export function ProcurementSupplierBlockBar({
                   </Badge>
                 ) : null}
                 {vacationWindow ? (
-                  <SupplierVacationNowChip window={vacationWindow} compact />
+                  <SupplierVacationNowChip window={vacationWindow} />
                 ) : null}
               </div>
               {collapsed ? (
-                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
+                <div className="mt-1 flex min-w-0 flex-col gap-1.5">
                   <span className={cn(panelTypography.caption, "text-slate-500")}>
                     {collapsedHint}
                   </span>
@@ -152,6 +152,7 @@ export function ProcurementSupplierBlockBar({
                       lines={flagLines}
                       definitions={flagDefinitions}
                       disabled
+                      className="max-w-full"
                     />
                   ) : null}
                 </div>

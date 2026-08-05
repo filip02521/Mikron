@@ -37,9 +37,7 @@ export function SupplierVacationNowChip({
         {PROCUREMENT_REQUEST_FLAG_COPY.vacationChipShort}
       </span>
       {!compact ? (
-        <span className="hidden tabular-nums text-amber-800/75 sm:inline">
-          {rangeCompact}
-        </span>
+        <span className="tabular-nums text-amber-800/75">{rangeCompact}</span>
       ) : null}
     </span>
   );

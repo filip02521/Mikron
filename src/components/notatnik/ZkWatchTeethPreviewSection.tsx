@@ -25,6 +25,11 @@ const KIND_LABELS: Record<string, string> = {
   posterior: "Tylny",
 };
 
+/**
+ * Sekcja zębów w modalu ZK.
+ * Nie renderuje nagłówka, dopóki nie wiadomo, że są powiązane zamówienia zębowe —
+ * unikamy „migania” pustej sekcji przy ZK bez zębów.
+ */
 export function ZkWatchTeethPreviewSection({
   watch,
   tourPreview = false,
@@ -38,28 +43,34 @@ export function ZkWatchTeethPreviewSection({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchRows = useCallback(async (signal?: AbortSignal) => {
-    if (tourPreview) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await actionFetchZkWatchTeethPreview(watch.id);
-      if (signal?.aborted) return;
-      if (result.success) {
-        setRows(result.rows);
-      } else {
-        setError("Nie udało się pobrać danych zębów.");
+  const fetchRows = useCallback(
+    async (signal?: AbortSignal) => {
+      if (tourPreview) return;
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await actionFetchZkWatchTeethPreview(watch.id);
+        if (signal?.aborted) return;
+        if (result.success) {
+          setRows(result.rows);
+        } else {
+          setError("Nie udało się pobrać danych zębów.");
+        }
+      } catch (err) {
+        if (signal?.aborted) return;
+        setError(err instanceof Error ? err.message : "Nie udało się pobrać danych zębów.");
+        // Bez wcześniejszych wierszy nie pokazujemy pustej tabeli — zostawiamy rows=null.
+      } finally {
+        if (!signal?.aborted) setLoading(false);
       }
-    } catch (err) {
-      if (signal?.aborted) return;
-      setError(err instanceof Error ? err.message : "Nie udało się pobrać danych zębów.");
-    } finally {
-      if (!signal?.aborted) setLoading(false);
-    }
-  }, [watch.id, tourPreview]);
+    },
+    [watch.id, tourPreview]
+  );
 
   useEffect(() => {
     if (tourPreview) return;
+    setRows(null);
+    setError(null);
     const controller = new AbortController();
     const signal = controller.signal;
     queueMicrotask(() => {
@@ -70,21 +81,12 @@ export function ZkWatchTeethPreviewSection({
 
   if (tourPreview) return null;
 
-  if (loading && rows === null) {
-    return (
-      <ZkWatchModalSection
-        title={ZK_MODAL_SECTION_TITLES.teeth}
-        hint={ZK_MODAL_SECTION_HINTS.teeth}
-      >
-        <div className={cn(salesTypography.rowBody, "flex items-center gap-2 py-3")}>
-          <Spinner size="sm" />
-          Ładowanie zębów…
-        </div>
-      </ZkWatchModalSection>
-    );
+  // Pierwsze ładowanie / brak danych: nic nie pokazuj (ani loader z tytułem, ani pustej tabeli).
+  if (rows === null && !error) {
+    return null;
   }
 
-  if (error) {
+  if (error && (rows === null || rows.length === 0)) {
     return (
       <ZkWatchModalSection
         title={ZK_MODAL_SECTION_TITLES.teeth}
@@ -106,7 +108,7 @@ export function ZkWatchTeethPreviewSection({
     );
   }
 
-  if (rows && rows.length === 0) {
+  if (!rows || rows.length === 0) {
     return null;
   }
 
@@ -129,7 +131,7 @@ export function ZkWatchTeethPreviewSection({
             </tr>
           </thead>
           <tbody>
-            {rows?.map((row, i) => (
+            {rows.map((row, i) => (
               <tr
                 key={`${row.orderId}-${row.position}-${i}`}
                 className="border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/50"
@@ -167,7 +169,10 @@ export function ZkWatchTeethPreviewSection({
           </tbody>
         </table>
       </div>
-      <div className="flex justify-end pt-1.5">
+      <div className="flex items-center justify-end gap-2 pt-1.5">
+        {error ? (
+          <p className="mr-auto text-xs text-red-700">{error}</p>
+        ) : null}
         {!readOnly ? (
           <Button
             type="button"
@@ -176,7 +181,14 @@ export function ZkWatchTeethPreviewSection({
             onClick={() => void fetchRows()}
             disabled={loading}
           >
-            {loading ? "Odświeżanie…" : "Odśwież"}
+            {loading ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Spinner size="sm" />
+                Odświeżanie…
+              </span>
+            ) : (
+              "Odśwież"
+            )}
           </Button>
         ) : null}
       </div>
