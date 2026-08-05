@@ -340,24 +340,51 @@ export function ForSomeoneRequests({
     ? "stockOut"
     : "requests";
   const sectionRootRef = useRef<HTMLElement | null>(null);
-  const [flagPatches, setFlagPatches] = useState<Map<string, ProcurementFlagLinePatch>>(
-    () => new Map()
-  );
   const flagOptimisticEpoch = useSyncExternalStore(
     subscribeProcurementFlagOptimisticInvalidate,
     getProcurementFlagOptimisticEpoch,
     getProcurementFlagOptimisticEpochServerSnapshot
   );
 
-  useEffect(() => {
-    setFlagPatches((prev) => pruneSyncedProcurementFlagPatches(groups, prev));
-  }, [groups]);
+  /** Patche flag + kotwice sync (props / undo epoch) — bez setState w useEffect. */
+  const [flagOpt, setFlagOpt] = useState<{
+    patches: Map<string, ProcurementFlagLinePatch>;
+    groups: SummaryForSomeoneEnriched[];
+    epoch: number;
+  }>(() => ({
+    patches: new Map(),
+    groups,
+    epoch: flagOptimisticEpoch,
+  }));
 
-  useEffect(() => {
-    if (flagOptimisticEpoch > 0) {
-      setFlagPatches(new Map());
-    }
-  }, [flagOptimisticEpoch]);
+  if (flagOpt.groups !== groups || flagOpt.epoch !== flagOptimisticEpoch) {
+    const clearedByUndo =
+      flagOptimisticEpoch !== flagOpt.epoch && flagOptimisticEpoch > 0;
+    setFlagOpt({
+      groups,
+      epoch: flagOptimisticEpoch,
+      patches: clearedByUndo
+        ? new Map()
+        : pruneSyncedProcurementFlagPatches(groups, flagOpt.patches),
+    });
+  }
+
+  const flagPatches = flagOpt.patches;
+  const setFlagPatches = useCallback(
+    (
+      update:
+        | Map<string, ProcurementFlagLinePatch>
+        | ((
+            prev: Map<string, ProcurementFlagLinePatch>
+          ) => Map<string, ProcurementFlagLinePatch>)
+    ) => {
+      setFlagOpt((prev) => ({
+        ...prev,
+        patches: typeof update === "function" ? update(prev.patches) : update,
+      }));
+    },
+    []
+  );
 
   const displayGroups = useMemo(
     () => applyProcurementFlagPatchesToGroups(groups, flagPatches),
@@ -389,26 +416,69 @@ export function ForSomeoneRequests({
   const [collapsedLanes, setCollapsedLanes] = useState<Set<ProcurementRequestLaneId>>(
     () => new Set()
   );
-  const [fallbackFlagDefinitions, setFallbackFlagDefinitions] = useState(
-    procurementFlagDefinitions
-  );
-  const [fallbackLaneOrder, setFallbackLaneOrder] = useState(() =>
-    normalizeProcurementLaneOrder(procurementLaneOrder, procurementFlagDefinitions)
-  );
-  useEffect(() => {
-    if (lanePrefs) return;
-    setFallbackFlagDefinitions(procurementFlagDefinitions);
-    setFallbackLaneOrder(
-      normalizeProcurementLaneOrder(procurementLaneOrder, procurementFlagDefinitions)
-    );
-  }, [lanePrefs, procurementFlagDefinitions, procurementLaneOrder]);
+  const [fallbackPrefs, setFallbackPrefs] = useState(() => ({
+    defs: procurementFlagDefinitions,
+    order: normalizeProcurementLaneOrder(
+      procurementLaneOrder,
+      procurementFlagDefinitions
+    ),
+    sourceDefs: procurementFlagDefinitions,
+    sourceOrder: procurementLaneOrder,
+  }));
+
+  if (
+    !lanePrefs &&
+    (fallbackPrefs.sourceDefs !== procurementFlagDefinitions ||
+      fallbackPrefs.sourceOrder !== procurementLaneOrder)
+  ) {
+    setFallbackPrefs({
+      defs: procurementFlagDefinitions,
+      order: normalizeProcurementLaneOrder(
+        procurementLaneOrder,
+        procurementFlagDefinitions
+      ),
+      sourceDefs: procurementFlagDefinitions,
+      sourceOrder: procurementLaneOrder,
+    });
+  }
 
   const localFlagDefinitions =
-    lanePrefs?.localFlagDefinitions ?? fallbackFlagDefinitions;
-  const setLocalFlagDefinitions =
-    lanePrefs?.setLocalFlagDefinitions ?? setFallbackFlagDefinitions;
-  const localLaneOrder = lanePrefs?.localLaneOrder ?? fallbackLaneOrder;
-  const setLocalLaneOrder = lanePrefs?.setLocalLaneOrder ?? setFallbackLaneOrder;
+    lanePrefs?.localFlagDefinitions ?? fallbackPrefs.defs;
+  const setLocalFlagDefinitions = useCallback(
+    (
+      update:
+        | ProcurementFlagDefinition[]
+        | ((prev: ProcurementFlagDefinition[]) => ProcurementFlagDefinition[])
+    ) => {
+      if (lanePrefs) {
+        lanePrefs.setLocalFlagDefinitions(update);
+        return;
+      }
+      setFallbackPrefs((prev) => ({
+        ...prev,
+        defs: typeof update === "function" ? update(prev.defs) : update,
+      }));
+    },
+    [lanePrefs]
+  );
+  const localLaneOrder = lanePrefs?.localLaneOrder ?? fallbackPrefs.order;
+  const setLocalLaneOrder = useCallback(
+    (
+      update:
+        | ProcurementRequestLaneId[]
+        | ((prev: ProcurementRequestLaneId[]) => ProcurementRequestLaneId[])
+    ) => {
+      if (lanePrefs) {
+        lanePrefs.setLocalLaneOrder(update);
+        return;
+      }
+      setFallbackPrefs((prev) => ({
+        ...prev,
+        order: typeof update === "function" ? update(prev.order) : update,
+      }));
+    },
+    [lanePrefs]
+  );
 
   const flagSortById = useMemo(
     () => buildFlagSortOrderMap(localFlagDefinitions),
@@ -513,7 +583,7 @@ export function ForSomeoneRequests({
         }
       );
     },
-    [localFlagDefinitions, localLaneOrder, run]
+    [localFlagDefinitions, localLaneOrder, run, setLocalFlagDefinitions, setLocalLaneOrder]
   );
 
   const moveLane = useCallback(
@@ -534,7 +604,7 @@ export function ForSomeoneRequests({
         }
       );
     },
-    [localLaneOrder, run, visibleLaneIds]
+    [localLaneOrder, run, setLocalLaneOrder, visibleLaneIds]
   );
 
   const ensureLaneExpanded = useCallback((laneId: ProcurementRequestLaneId) => {
@@ -669,7 +739,7 @@ export function ForSomeoneRequests({
         setFlagPatches((prev) => omitProcurementFlagPatches(prev, orderIds));
       };
     },
-    []
+    [setFlagPatches]
   );
 
   const applyGroupFlag = useCallback(
