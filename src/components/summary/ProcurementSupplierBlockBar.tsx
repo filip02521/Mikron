@@ -168,11 +168,11 @@ export function ProcurementSupplierBlockBar({
               ) : null}
             </div>
           </div>
-          <div className="flex w-full flex-col items-stretch gap-1.5 sm:w-auto sm:shrink-0 sm:items-end">
+          <div className="flex w-full shrink-0 flex-col items-end gap-1.5 sm:w-auto sm:self-start">
             {plannedOrderDate ? (
               <PlannedOrderDateMeta
                 display={plannedOrderDate}
-                className="self-start sm:self-auto"
+                className="shrink-0"
               />
             ) : null}
             <span className={cn(panelTypography.caption, "font-medium text-slate-500 sm:text-right")}>

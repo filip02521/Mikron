@@ -11,6 +11,8 @@ export type SupplierContactUi = {
   methodKind: OrderMethodKind;
   /** Główny klikalny kontakt (mail / tel / www). */
   contactLink: SupplierContactLink | null;
+  /** Wyodrębniony e-mail — do kopiowania z badge „Mail”. */
+  email: string | null;
   /** Tekst do schowka, gdy nie da się zbudować linku. */
   copyText: string | null;
 };
@@ -139,7 +141,7 @@ export function buildSupplierContactUi(
   const contact = mergeContactFields(mails, extraInfo);
 
   if (!contact) {
-    return { methodLabel, methodKind, contactLink: null, copyText: null };
+    return { methodLabel, methodKind, contactLink: null, email: null, copyText: null };
   }
 
   const email = extractFirstEmail(contact);
@@ -151,6 +153,7 @@ export function buildSupplierContactUi(
     methodLabel,
     methodKind,
     contactLink,
+    email,
     copyText: contact,
   };
 }

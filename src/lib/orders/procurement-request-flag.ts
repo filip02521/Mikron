@@ -12,12 +12,13 @@ export const PROCUREMENT_FLAG_MIGRATION_HINT =
 export const PROCUREMENT_FLAG_DEFS_MIGRATION_HINT =
   "Brak tabeli procurement_flag_definitions — uruchom supabase/migrations/122_procurement_flag_definitions.sql";
 
-/** Stałe UUID seed z migracji 122. */
+/** Stałe UUID seed z migracji 122 + 125. */
 export const PROCUREMENT_FLAG_SEED = {
   pilne: "11111111-1111-4111-8111-111111111101",
   doWyjasnienia: "11111111-1111-4111-8111-111111111102",
   czekaNaKlienta: "11111111-1111-4111-8111-111111111103",
   wstrzymane: "11111111-1111-4111-8111-111111111104",
+  doSprawdzenia: "11111111-1111-4111-8111-111111111105",
 } as const;
 
 export type ProcurementFlagColor =

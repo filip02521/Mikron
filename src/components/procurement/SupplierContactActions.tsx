@@ -23,9 +23,15 @@ export function SupplierContactActions({
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
   const ui = buildSupplierContactUi(notes, mails, extraInfo);
+  const emailToCopy =
+    ui.email ??
+    (ui.contactLink?.kind === "mailto"
+      ? ui.contactLink.label
+      : null);
+  const canCopyEmail = Boolean(emailToCopy);
+  const copyMailFromBadge = ui.methodKind === "mail" && canCopyEmail;
 
-  const copyContact = async () => {
-    const text = ui.copyText;
+  const copyText = async (text: string) => {
     if (!text) return;
     setCopyFailed(false);
     try {
@@ -38,6 +44,25 @@ export function SupplierContactActions({
     }
   };
 
+  const copyContact = () => void copyText(ui.copyText ?? "");
+  const copyEmail = () => {
+    if (emailToCopy) void copyText(emailToCopy);
+  };
+
+  const mailCopyTitle = emailToCopy
+    ? copied
+      ? "Skopiowano"
+      : copyFailed
+        ? "Nie udało się skopiować"
+        : `Kliknij, aby skopiować: ${emailToCopy}`
+    : undefined;
+
+  const copyFeedbackLabel = copied
+    ? "Skopiowano"
+    : copyFailed
+      ? "Błąd kopiowania"
+      : null;
+
   if (display === "rowMeta") {
     if (!ui.contactLink && !ui.copyText && !notes.trim()) {
       return <span className="text-slate-400">Brak kontaktu</span>;
@@ -45,7 +70,19 @@ export function SupplierContactActions({
     return (
       <>
         <span className="text-slate-600">{ui.methodLabel}</span>
-        {ui.contactLink ? (
+        {ui.contactLink?.kind === "mailto" && emailToCopy ? (
+          <>
+            {" · "}
+            <button
+              type="button"
+              onClick={copyEmail}
+              className="font-medium text-indigo-700/85 transition-colors hover:text-indigo-950"
+              title={mailCopyTitle}
+            >
+              {copyFeedbackLabel ?? emailToCopy}
+            </button>
+          </>
+        ) : ui.contactLink ? (
           <>
             {" · "}
             <a
@@ -67,7 +104,7 @@ export function SupplierContactActions({
               className="font-medium text-indigo-700/85 transition-colors hover:text-indigo-950"
               title={ui.copyText}
             >
-              {copied ? "Skopiowano" : copyFailed ? "Błąd kopiowania" : "Kopiuj kontakt"}
+              {copyFeedbackLabel ?? "Kopiuj kontakt"}
             </button>
           </>
         ) : null}
@@ -86,8 +123,27 @@ export function SupplierContactActions({
 
   return (
     <div className={cn("flex flex-wrap items-center gap-x-2 gap-y-1", className)}>
-      <OrderMethodBadge notes={notes} />
-      {ui.contactLink ? (
+      <OrderMethodBadge
+        notes={notes}
+        onClick={copyMailFromBadge ? copyEmail : undefined}
+        title={copyMailFromBadge ? mailCopyTitle : undefined}
+        pressedLabel={copyMailFromBadge ? copyFeedbackLabel : null}
+      />
+      {ui.contactLink?.kind === "mailto" && emailToCopy ? (
+        <button
+          type="button"
+          onClick={copyEmail}
+          className={cn(
+            panelContactLinkClass,
+            "cursor-pointer rounded-md px-0.5 text-left",
+            "hover:bg-sky-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40",
+            copied && "text-emerald-700"
+          )}
+          title={mailCopyTitle}
+        >
+          {copyFeedbackLabel ?? emailToCopy}
+        </button>
+      ) : ui.contactLink ? (
         <a
           href={ui.contactLink.href}
           target={ui.contactLink.kind === "url" ? "_blank" : undefined}
@@ -104,7 +160,7 @@ export function SupplierContactActions({
           className="text-xs font-medium text-slate-600 transition-colors hover:text-slate-800"
           title={ui.copyText ?? undefined}
         >
-          {copied ? "Skopiowano" : copyFailed ? "Nie udało się skopiować" : "Kopiuj kontakt"}
+          {copyFeedbackLabel ?? "Kopiuj kontakt"}
         </button>
       )}
     </div>

@@ -13,6 +13,7 @@ import {
 } from "@/lib/orders/procurement-request-flag";
 import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
 import { fetchTeethSupplierLaneIndex } from "@/lib/data/teeth-schedule";
+import { fetchProcurementLaneOrderRaw } from "@/lib/data/procurement-lane-order";
 import { teethLaneIndexToRecord } from "@/lib/teeth/teeth-supplier-dual-lane";
 import { sortIndividualOrdersBySupplier } from "@/lib/orders/queue-sort";
 import { sortInformacjaQueueForDisplay } from "@/lib/orders/queue-product-groups";
@@ -470,7 +471,7 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
     schedules = allSchedules.filter((s) => allowed.has(s.id));
   }
   const { fetchSalesPeopleForPicker } = await import("@/lib/data/sales-people-admin");
-  const [allNewOrders, salesPeople, statsRows, formSuppliers, teethLaneIndex, onVacationNow, flagDefinitions] =
+  const [allNewOrders, salesPeople, statsRows, formSuppliers, teethLaneIndex, onVacationNow, flagDefinitions, laneOrderRaw] =
     await Promise.all([
     fetchIndividualOrders({ status: "Nowe", hideSalesAcknowledged: false, excludeTeeth: true, allowAll: true }),
     fetchSalesPeopleForPicker(),
@@ -479,6 +480,7 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
     fetchTeethSupplierLaneIndex(),
     fetchSuppliersOnVacationNow(),
     fetchProcurementFlagDefinitions(),
+    fetchProcurementLaneOrderRaw(),
   ]);
   const newOrders = options?.salesPersonId
     ? allNewOrders.filter((o) => o.sales_person_id === options.salesPersonId)
@@ -516,6 +518,7 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
       ...workspace,
       suppliersOnVacationNow: onVacationNow,
       procurementFlagDefinitions,
+      procurementLaneOrder: laneOrderRaw,
     },
     /** Wszyscy dostawcy (także nieaktywni) — formularze prośby / edycja w panelu. */
     suppliers: formSuppliers,

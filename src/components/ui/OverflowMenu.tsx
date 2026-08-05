@@ -47,6 +47,7 @@ export function OverflowMenu({
   className,
   variant = "standalone",
   triggerClassName,
+  menuClassName,
   iconOnly = false,
   triggerLabel,
 }: {
@@ -57,6 +58,8 @@ export function OverflowMenu({
   className?: string;
   variant?: "standalone" | "segment";
   triggerClassName?: string;
+  /** Klasy na panelu menu (np. szerszy min-width). */
+  menuClassName?: string;
   iconOnly?: boolean;
   /** Etykieta na przycisku (domyślnie „Więcej”). */
   triggerLabel?: string;
@@ -212,7 +215,8 @@ export function OverflowMenu({
           role="menu"
           className={cn(
             "fixed z-[200] min-w-[12.5rem] overflow-y-auto overscroll-y-contain",
-            panelDropdownShellClass
+            panelDropdownShellClass,
+            menuClassName
           )}
           style={{ top: menuPos.top, left: menuPos.left, maxHeight: menuPos.maxHeight }}
         >

@@ -27,7 +27,7 @@ export function SupplierVacationNowChip({
     <span
       className={cn(
         procurementStatusChipBaseClass,
-        "border border-amber-200/70 bg-gradient-to-b from-amber-50 to-amber-50/70 text-amber-950 ring-amber-200/50",
+        "w-fit max-w-full shrink-0 border border-amber-200/70 bg-gradient-to-b from-amber-50 to-amber-50/70 text-amber-950 ring-amber-200/50",
         className
       )}
       title={`${PROCUREMENT_REQUEST_FLAG_COPY.vacationChip} · ${rangeTitle}`}

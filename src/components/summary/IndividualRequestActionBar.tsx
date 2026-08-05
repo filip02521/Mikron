@@ -1,7 +1,10 @@
 "use client";
 
 import { ButtonGroup } from "@/components/ui/ButtonGroup";
-import { RequestGroupOverflowMenu } from "@/components/summary/RequestGroupOverflowMenu";
+import {
+  RequestGroupOverflowMenu,
+  type RequestGroupFlagShortcut,
+} from "@/components/summary/RequestGroupOverflowMenu";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import { cn } from "@/lib/cn";
 import { panelSegmentLastClass, panelSegmentOutlineClass, panelSegmentPrimaryClass } from "@/lib/ui/ontime-theme";
@@ -43,6 +46,10 @@ export function IndividualRequestActionBar({
   onCancel,
   onSetFlag,
   hasFlag = false,
+  currentFlagId = null,
+  flagShortcuts,
+  onSetFlagShortcut,
+  onClearFlag,
   density = "default",
 }: {
   orderIds: string[];
@@ -57,6 +64,12 @@ export function IndividualRequestActionBar({
   onCancel: () => void;
   onSetFlag?: () => void;
   hasFlag?: boolean;
+  /** Jednogłośna flaga grupy — podświetlenie w menu. */
+  currentFlagId?: string | null;
+  /** Skróty ustawienia flagi — tor układa się automatycznie. */
+  flagShortcuts?: RequestGroupFlagShortcut[];
+  onSetFlagShortcut?: (flagId: string) => void;
+  onClearFlag?: () => void;
   /** W bloku wieloosobowym u dostawcy — mniejsze przyciski, etykieta „tylko ta osoba”. */
   density?: "default" | "nested";
 }) {
@@ -136,6 +149,10 @@ export function IndividualRequestActionBar({
         onCancel={onCancel}
         onSetFlag={onSetFlag}
         hasFlag={hasFlag}
+        currentFlagId={currentFlagId}
+        flagShortcuts={flagShortcuts}
+        onSetFlagShortcut={onSetFlagShortcut}
+        onClearFlag={onClearFlag}
       />
     </ButtonGroup>
   );
