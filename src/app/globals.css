@@ -754,6 +754,57 @@ html.ontime-scroll-locked main {
   }
 }
 
+/* ——— Panel dzienny — rozwijanie / zwijanie toru próśb ——— */
+.procurement-lane-expand-grid {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.procurement-lane-expand-grid.procurement-lane-expand-grid--open {
+  grid-template-rows: 1fr;
+}
+
+.procurement-lane-expand-grid > .procurement-lane-expand-grid-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.procurement-lane-expand-grid:not(.procurement-lane-expand-grid--open) {
+  pointer-events: none;
+}
+
+.procurement-lane-expand-grid > .procurement-lane-expand-grid-inner > .procurement-lane-expand-content {
+  opacity: 0;
+  transform: translateY(-3px);
+  transition:
+    opacity 0.16s ease-out,
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.procurement-lane-expand-grid--open > .procurement-lane-expand-grid-inner > .procurement-lane-expand-content {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .procurement-lane-expand-grid {
+    transition: none;
+  }
+
+  .procurement-lane-expand-grid > .procurement-lane-expand-grid-inner > .procurement-lane-expand-content {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .procurement-lane-expand-grid:not(.procurement-lane-expand-grid--open)
+    > .procurement-lane-expand-grid-inner
+    > .procurement-lane-expand-content {
+    opacity: 0;
+  }
+}
+
 /* ——— Floating panel — rozwinięta karta /moje ——— */
 @keyframes moje-expand-panel-enter {
   from {

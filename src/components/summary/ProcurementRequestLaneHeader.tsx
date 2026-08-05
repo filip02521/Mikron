@@ -61,6 +61,7 @@ export function ProcurementRequestLaneHeader({
 }) {
   const resolvedTone = resolveProcurementRequestLaneTone(tone);
   const showMove = Boolean(onMoveUp || onMoveDown);
+  const hintText = hint?.trim() || null;
 
   return (
     <div
@@ -78,16 +79,28 @@ export function ProcurementRequestLaneHeader({
         <IconChevronDown
           size={14}
           open={!collapsed}
-          className="shrink-0 text-slate-400 transition-transform"
+          className="shrink-0 text-slate-400 transition-transform duration-200 ease-out motion-reduce:transition-none"
         />
         <span className={procurementRequestLaneDotClass(resolvedTone)} aria-hidden />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[12px] font-semibold tracking-tight text-slate-800">
             {label}
           </span>
-          {!collapsed && hint ? (
-            <span className="mt-0.5 block truncate text-[10px] font-medium leading-snug text-slate-500">
-              {hint}
+          {hintText ? (
+            <span
+              className={cn(
+                "grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none",
+                collapsed
+                  ? "grid-rows-[0fr] opacity-0"
+                  : "grid-rows-[1fr] opacity-100"
+              )}
+              aria-hidden={collapsed}
+            >
+              <span className="min-h-0 overflow-hidden">
+                <span className="mt-0.5 block truncate text-[10px] font-medium leading-snug text-slate-500">
+                  {hintText}
+                </span>
+              </span>
             </span>
           ) : null}
         </span>
@@ -104,7 +117,7 @@ export function ProcurementRequestLaneHeader({
         <div className="flex shrink-0 flex-col justify-center gap-0.5 border-l border-black/5 px-1 py-1">
           <button
             type="button"
-            className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 hover:bg-white/70 hover:text-slate-800 disabled:opacity-35"
+            className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 transition-colors hover:bg-white/70 hover:text-slate-800 disabled:opacity-35"
             disabled={movePending || !canMoveUp}
             title={PROCUREMENT_REQUEST_LANE_COPY.laneMoveUp}
             aria-label={`${PROCUREMENT_REQUEST_LANE_COPY.laneMoveUp}: ${label}`}
@@ -114,7 +127,7 @@ export function ProcurementRequestLaneHeader({
           </button>
           <button
             type="button"
-            className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 hover:bg-white/70 hover:text-slate-800 disabled:opacity-35"
+            className="rounded px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 transition-colors hover:bg-white/70 hover:text-slate-800 disabled:opacity-35"
             disabled={movePending || !canMoveDown}
             title={PROCUREMENT_REQUEST_LANE_COPY.laneMoveDown}
             aria-label={`${PROCUREMENT_REQUEST_LANE_COPY.laneMoveDown}: ${label}`}

@@ -112,8 +112,8 @@ export function procurementRequestLaneHeaderClass(
   collapsed = false
 ): string {
   return cn(
-    "sticky top-0 z-[1] flex w-full items-center gap-2 border-b px-2.5 py-2 text-left backdrop-blur-sm transition-colors sm:px-3",
-    "bg-white/75",
+    "sticky top-0 z-[1] flex w-full items-center gap-2 border-b px-2.5 py-2 text-left backdrop-blur-sm sm:px-3",
+    "bg-white/75 transition-[border-radius,background-color,border-color] duration-200 ease-out",
     LANE_HEADER[tone],
     LANE_HEADER_HOVER[tone],
     collapsed ? "rounded-md border-b-transparent" : "rounded-t-md"

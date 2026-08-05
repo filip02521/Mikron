@@ -141,6 +141,7 @@ import {
   ProcurementRequestLaneHeader,
   procurementRequestLaneHint,
 } from "@/components/summary/ProcurementRequestLaneHeader";
+import { ProcurementRequestLaneCollapse } from "@/components/summary/ProcurementRequestLaneCollapse";
 
 function groupHasInformacjaFlow(g: SummaryForSomeoneEnriched): boolean {
   return g.lines.some((l) => l.informacjaViaPanel);
@@ -1122,7 +1123,7 @@ export function ForSomeoneRequests({
                 onMoveUp={() => moveLane(laneRow.laneId, -1)}
                 onMoveDown={() => moveLane(laneRow.laneId, 1)}
               />
-              {laneCollapsed ? null : (
+              <ProcurementRequestLaneCollapse open={!laneCollapsed}>
                 <ul className={procurementRequestLaneContentClass}>
                   {laneRow.blocks.map((block) => {
                     const showSupplierHeader = showProcurementSupplierBlockHeader(block);
@@ -1462,7 +1463,7 @@ export function ForSomeoneRequests({
                     );
                   })}
                 </ul>
-              )}
+              </ProcurementRequestLaneCollapse>
             </section>
           );
         })}
