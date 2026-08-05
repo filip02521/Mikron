@@ -5,6 +5,7 @@ import {
   renderDeliveryArrivedEmail,
   renderInformacjaArrivedEmail,
   renderProcurementCancelEmail,
+  renderRequestNoteUpdateEmail,
 } from "@/lib/email/sales-email-templates";
 
 function getEmailOverrideTo(): string | undefined {
@@ -148,6 +149,42 @@ export async function sendProcurementCancelEmails(
       recipientName: name,
       items: cancelItems,
       noteUpdated,
+    });
+
+    const send = await sendHtmlEmail({
+      to,
+      subject,
+      html,
+    });
+
+    if (send.ok) {
+      result.sent++;
+    } else {
+      result.failures.push({ to: send.to, error: send.error });
+    }
+  }
+
+  return result;
+}
+
+/** E-mail do handlowca: zakupy zmieniły uwagi przy prośbie. */
+export async function sendRequestNoteUpdateEmails(
+  notifications: Map<string, SalesPersonEmailBatch>
+): Promise<EmailSendResult> {
+  const result: EmailSendResult = { sent: 0, failures: [] };
+
+  for (const { email, name, items } of notifications.values()) {
+    const noteItems = items.filter((i) => i.kind === "request_note_update");
+    if (!noteItems.length) continue;
+    const to = email.trim();
+    if (!to) {
+      result.failures.push({ to: "(brak adresu)", error: "Handlowiec bez e-maila w bazie" });
+      continue;
+    }
+
+    const { subject, html } = renderRequestNoteUpdateEmail({
+      recipientName: name,
+      items: noteItems,
     });
 
     const send = await sendHtmlEmail({

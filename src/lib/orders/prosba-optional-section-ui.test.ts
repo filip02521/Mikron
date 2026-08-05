@@ -19,6 +19,9 @@ describe("prosbaOptionalSectionMeta", () => {
 describe("PROSBA_OPTIONAL_SECTION_COPY", () => {
   it("sekcje z opisem mają krótki tekst pod tytułem", () => {
     expect(PROSBA_OPTIONAL_SECTION_COPY.lineNote.description).toContain("Kontekst");
+    expect(PROSBA_OPTIONAL_SECTION_COPY.lineNote.procurementDescription).toContain(
+      "powiadomi handlowca"
+    );
     expect(PROSBA_OPTIONAL_SECTION_COPY.keyboard.description).toContain("Subiekta");
     expect(PROSBA_OPTIONAL_SECTION_COPY.readiness.title).toContain("uzupełnienia");
     expect("description" in PROSBA_OPTIONAL_SECTION_COPY.readiness).toBe(false);

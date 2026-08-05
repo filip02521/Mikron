@@ -35,6 +35,13 @@ export function ProsbaFormHelp({
           </Link>
           .
         </p>
+        <ul className="mt-2 list-disc space-y-1.5 pl-4">
+          <li>
+            Jeśli dostawca ma dziś aktywny urlop, zobaczysz subtelną informację —{" "}
+            <strong className="font-medium text-slate-800">nie blokuje</strong> wysyłki; zakupy
+            zobaczą to przy obsłudze.
+          </li>
+        </ul>
       </HelpBlock>
 
       <HelpBlock title="Rodzaj prośby">

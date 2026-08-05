@@ -269,7 +269,7 @@ describe("procurement-daily-ui", () => {
     expect(zam.subline).toBe("1 produkt");
     expect(zam.subline).not.toContain("Dostawca");
     expect(zam.subline).not.toContain("uwagi przy produktach");
-    expect(zam.statusTitle).toBe("Do zamówienia");
+    expect(zam.statusTitle).toBe("");
     expect(zam.submittedLabel).toContain("dziś");
     expect(zam.isUnseen).toBe(true);
     expect(zam.plannedOrderDate).toBeNull();
@@ -284,6 +284,31 @@ describe("procurement-daily-ui", () => {
     });
     expect(info.headline).toContain("informacja");
     expect(info.statusTitle).toBe("Bez zamówienia");
+  });
+
+  it("enrichForSomeoneGroup pokazuje badge Magazyn → info przy via panel", () => {
+    const ui = enrichForSomeoneGroup(
+      testForSomeoneGroup({
+        supplierId: "a",
+        salesPersonId: "sp",
+        person: "Anna",
+        lines: [
+          {
+            id: "1",
+            products: "A",
+            symbol: "-",
+            quantity: "1",
+            fromSubiekt: false,
+            submittedAt: "2026-05-28T10:00:00Z",
+            procurementSeenAt: null,
+            informacjaViaPanel: true,
+          },
+        ],
+      }),
+      new Date(2026, 4, 28, 12)
+    );
+    expect(ui.statusTitle).toBe("Magazyn → info");
+    expect(ui.headlineTone).toBe("info");
   });
 
   it("enrichForSomeoneGroup dodaje sufiks subline przy różnych uwagach", () => {
@@ -359,6 +384,42 @@ describe("procurement-daily-ui", () => {
       submittedAtLatest: "2026-05-28T12:00:00Z",
     });
     const sorted = sortForSomeoneGroups([seen, unseen]);
+    expect(sorted[0]?.person).toBe("Jan");
+  });
+
+  it("sortForSomeoneGroups: po unseen — pilne przed resztą", () => {
+    const plain = testForSomeoneGroup({
+      supplierId: "a",
+      salesPersonId: "sp1",
+      person: "Anna",
+      hasUnseen: false,
+      unseenCount: 0,
+      submittedAt: "2026-05-28T08:00:00Z",
+      submittedAtLatest: "2026-05-28T08:00:00Z",
+    });
+    const urgent = testForSomeoneGroup({
+      supplierId: "b",
+      salesPersonId: "sp2",
+      person: "Jan",
+      hasUnseen: false,
+      unseenCount: 0,
+      submittedAt: "2026-05-28T12:00:00Z",
+      submittedAtLatest: "2026-05-28T12:00:00Z",
+      lines: [
+        {
+          id: "2",
+          products: "Y",
+          symbol: "-",
+          quantity: "1",
+          fromSubiekt: false,
+          submittedAt: "2026-05-28T12:00:00Z",
+          procurementFlag: "11111111-1111-4111-8111-111111111101",
+        },
+      ],
+    });
+    const sorted = sortForSomeoneGroups([plain, urgent], {
+      "11111111-1111-4111-8111-111111111101": 0,
+    });
     expect(sorted[0]?.person).toBe("Jan");
   });
 

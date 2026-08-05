@@ -364,14 +364,15 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(snapshot.items).toHaveLength(0);
   });
 
-  it("pokazuje powiadomienie o uwagach zakupów gdy maxNoteUpdatedAt ustawione", () => {
+  it("pokazuje powiadomienie o uwagach zakupów gdy requestNoteUnread", () => {
     const snapshot = buildSalesDayStartSnapshot({
       rows: [
         row({
           id: "n1",
           supplierName: "Mikran",
           requestNote: "Pilne — sprawdź termin",
-          maxNoteUpdatedAt: "2025-01-01T00:00:00Z",
+          requestNoteUnread: true,
+          unreadRequestNoteOrderIds: ["o-n1"],
           orderIds: ["o-n1"],
         }),
       ],
@@ -382,11 +383,12 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(item?.count).toBe(1);
     expect(item?.title).toBe("Mikran");
     expect(item?.subtitle).toBe("Pilne — sprawdź termin");
-    expect(item?.scrollTarget).toBe("moje-section-action");
+    expect(item?.scrollTarget).toBeUndefined();
+    expect(item?.ctaLabel).toBe("Zobacz");
     expect(item?.href).toContain("focusOrders=o-n1");
   });
 
-  it("nie pokazuje powiadomienia o uwagach gdy brak maxNoteUpdatedAt", () => {
+  it("nie pokazuje powiadomienia o uwagach gdy brak requestNoteUnread", () => {
     const snapshot = buildSalesDayStartSnapshot({
       rows: [
         row({
@@ -406,13 +408,15 @@ describe("buildSalesDayStartSnapshot", () => {
         row({
           id: "n3",
           requestNote: "Uwaga 1",
-          maxNoteUpdatedAt: "2025-01-01T00:00:00Z",
+          requestNoteUnread: true,
+          unreadRequestNoteOrderIds: ["o-n3"],
           orderIds: ["o-n3"],
         }),
         row({
           id: "n4",
           requestNote: "Uwaga 2",
-          maxNoteUpdatedAt: "2025-01-02T00:00:00Z",
+          requestNoteUnread: true,
+          unreadRequestNoteOrderIds: ["o-n4"],
           orderIds: ["o-n4"],
         }),
       ],
@@ -421,8 +425,8 @@ describe("buildSalesDayStartSnapshot", () => {
     const items = snapshot.items.filter((i) => i.source === "note_from_procurement");
     expect(items).toHaveLength(1);
     expect(items[0]?.count).toBe(2);
-    expect(items[0]?.title).toBe("Zakupy dodały uwagi do 2 próśb");
-    expect(items[0]?.subtitle).toBe("Sprawdź uwagi przy poszczególnych pozycjach");
+    expect(items[0]?.title).toBe("Zakupy zaktualizowały uwagi przy 2 prośbach");
+    expect(items[0]?.subtitle).toBe("Otwórz prośbę i potwierdź „Widziałem” przy uwagach");
   });
 
   it("nie duplikuje powiadomienia o uwagach gdy wiersz jest już w cancel_ack", () => {
@@ -432,8 +436,10 @@ describe("buildSalesDayStartSnapshot", () => {
           id: "n5",
           acknowledgeMode: "cancelled",
           statusTitle: "Anulowane",
+          requestNote: "Uwaga",
+          requestNoteUnread: true,
+          unreadRequestNoteOrderIds: ["o-n5"],
           procurementCancelNote: "Anulowane — brak na stanie",
-          maxNoteUpdatedAt: "2025-01-01T00:00:00Z",
           orderIds: ["o-n5"],
         }),
       ],
@@ -449,7 +455,8 @@ describe("buildSalesDayStartSnapshot", () => {
         row({
           id: "n6",
           requestNote: "Uwaga",
-          maxNoteUpdatedAt: "2025-01-01T00:00:00Z",
+          requestNoteUnread: true,
+          unreadRequestNoteOrderIds: ["o-n6"],
           orderIds: ["o-n6"],
         }),
       ],
@@ -466,7 +473,8 @@ describe("buildSalesDayStartSnapshot", () => {
           id: "n7",
           supplierName: "Mikran",
           requestNote: "2 różnych notatek",
-          maxNoteUpdatedAt: "2025-01-01T00:00:00Z",
+          requestNoteUnread: true,
+          unreadRequestNoteOrderIds: ["o-n7"],
           orderIds: ["o-n7"],
         }),
       ],
@@ -474,7 +482,7 @@ describe("buildSalesDayStartSnapshot", () => {
 
     const item = snapshot.items.find((i) => i.source === "note_from_procurement");
     expect(item).toBeDefined();
-    expect(item?.subtitle).toBe("Zakupy dodały uwagi — sprawdź przy pozycji");
+    expect(item?.subtitle).toBe("Zakupy zaktualizowały uwagi — sprawdź przy pozycji");
   });
 });
 

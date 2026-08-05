@@ -101,13 +101,33 @@ export function ForSomeoneRequestsSectionHelp() {
       <HelpBlock title="Oznaczenia">
         <ul className="list-disc space-y-1.5 pl-4">
           <li>
+            Tytuł wiersza to zawsze <strong className="font-medium text-slate-800">dostawca</strong>
+            (w bloku wielu osób — handlowiec, bo dostawca jest w nagłówku bloku); pod nim pas
+            sygnałów: Nowa → Urlop → flaga.
+          </li>
+          <li>
             Badge <strong className="font-medium text-indigo-800">{INFORMACJA_VIA_PANEL_BADGE}</strong>{" "}
-            — w prawym górnym rogu wiersza: prośba informacyjna przez panel (najpierw zamów u
-            dostawcy, potem magazyn wyśle e-mail).
+            — po prawej tylko przy wyjątku Informacji przez panel (zwykłe prośby nie mają badge
+            „Do zamówienia”).
           </li>
           <li>
             Badge <strong className="font-medium text-violet-800">Nowa</strong> — zakupy jeszcze
             nie otworzyły prośby. Znika po najechaniu lub obsłużeniu.
+          </li>
+          <li>
+            Chip <strong className="font-medium text-amber-900">Urlop</strong> — na nagłówku bloku
+            dostawcy (gdy jest kilka osób) albo w wierszu, gdy dostawca jest sam. Zakres dat w
+            tooltipie — to nie jest flaga zakupów.
+          </li>
+          <li>
+            Kolorowe chipy flag — własne oznaczenia zakupów (np. Pilne). Zarządzasz listą przy
+            filtrze („Zarządzaj”). Ustawisz flagę z menu „Więcej” albo klikając chip. Notatka flagi
+            widać skrótem na chipie. Po zapisie flagi masz 10&nbsp;s na cofnięcie (jak przy Główne).
+            Handlowiec ich nie widzi.
+          </li>
+          <li>
+            Filtr <strong className="font-medium text-slate-800">Bez flagi</strong> — pozycje bez
+            ręcznej flagi i bez urlopu dostawcy (urlop-only trafia do filtra Urlop).
           </li>
           <li className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
             Przy produkcie: <ProductSourceBadge fromSubiekt size={12} className="size-5" /> — z
@@ -122,7 +142,7 @@ export function ForSomeoneRequestsSectionHelp() {
           Użyj <strong className="font-medium text-slate-800">Zamów razem</strong> (wszyscy) albo{" "}
           <strong className="font-medium text-slate-800">Tylko ta osoba</strong> w wierszu. Przy
           trzech i więcej osobach lista domyślnie jest zwinięta — rozwija się, gdy pojawi się badge
-          Nowa.
+          Nowa. Zwinięty nagłówek pokazuje kto ma nowe prośby i skrót flag.
         </p>
       </HelpBlock>
     </HelpPopover>

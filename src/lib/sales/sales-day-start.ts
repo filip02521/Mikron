@@ -18,7 +18,6 @@ import {
   MOJE_TEETH_ACTION_SECTION_ID,
 } from "@/lib/orders/my-order-inbox-sections";
 import { isRequestNotesAggregateSummary } from "@/lib/orders/sales-request-note";
-import { isProcurementCancelNotesAggregateSummary } from "@/lib/orders/procurement-cancel-note";
 import type { SalesNote, SalesZkWatch } from "@/types/database";
 
 export type SalesDayStartSource =
@@ -379,27 +378,25 @@ function buildBoardItems(
 
 function buildNoteFromProcurementItems(rows: MyOrderRow[]): SalesDayStartItem[] {
   const noteRows = rows.filter((row) => {
-    if (!row.maxNoteUpdatedAt) return false;
+    if (!row.requestNoteUnread) return false;
     const ui = enrichMyOrderSalesUi(row);
     if (ui.sortPriority === 3) return false;
-    return Boolean(row.requestNote || row.procurementCancelNote);
+    return Boolean(row.requestNote);
   });
 
   if (noteRows.length === 0) return [];
 
   if (noteRows.length === 1) {
     const row = noteRows[0];
-    const rawNote = row.requestNote ?? row.procurementCancelNote ?? "";
-    const isAggregate =
-      isRequestNotesAggregateSummary(rawNote) ||
-      isProcurementCancelNotesAggregateSummary(rawNote);
+    const rawNote = row.requestNote ?? "";
+    const isAggregate = isRequestNotesAggregateSummary(rawNote);
     const subtitle = isAggregate
-      ? "Zakupy dodały uwagi — sprawdź przy pozycji"
+      ? "Zakupy zaktualizowały uwagi — sprawdź przy pozycji"
       : rawNote
         ? rawNote.slice(0, 120)
-        : "Zakupy dodały uwagi — sprawdź przy pozycji";
-    const baseHref = `/moje#${MOJE_ACTION_SECTION}`;
-    const href = appendMojeFocusOrderIds(baseHref, [row.orderIds[0]].filter(Boolean));
+        : "Zakupy zaktualizowały uwagi — sprawdź przy pozycji";
+    const focusId = row.unreadRequestNoteOrderIds?.[0] ?? row.orderIds[0];
+    const href = appendMojeFocusOrderIds("/moje", [focusId].filter(Boolean));
     return [
       {
         id: `note-procurement-${row.id}`,
@@ -408,25 +405,26 @@ function buildNoteFromProcurementItems(rows: MyOrderRow[]): SalesDayStartItem[] 
         title: row.supplierName?.trim() || "Do ustalenia",
         subtitle,
         href,
-        scrollTarget: MOJE_ACTION_SECTION,
         count: 1,
-        ctaLabel: "Przejdź",
+        ctaLabel: "Zobacz",
       },
     ];
   }
 
-  const baseHref = `/moje#${MOJE_ACTION_SECTION}`;
+  const focusIds = noteRows.flatMap(
+    (row) => row.unreadRequestNoteOrderIds?.slice(0, 1) ?? row.orderIds.slice(0, 1)
+  );
+  const href = appendMojeFocusOrderIds("/moje", focusIds.filter(Boolean).slice(0, 8));
   return [
     {
       id: "note-procurement-aggregate",
       source: "note_from_procurement",
       priority: PRIORITY.note_from_procurement,
-      title: `Zakupy dodały uwagi do ${noteRows.length} próśb`,
-      subtitle: "Sprawdź uwagi przy poszczególnych pozycjach",
-      href: baseHref,
-      scrollTarget: MOJE_ACTION_SECTION,
+      title: `Zakupy zaktualizowały uwagi przy ${noteRows.length} prośbach`,
+      subtitle: "Otwórz prośbę i potwierdź „Widziałem” przy uwagach",
+      href,
       count: noteRows.length,
-      ctaLabel: "Przejdź",
+      ctaLabel: "Zobacz",
     },
   ];
 }

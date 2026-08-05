@@ -41,6 +41,8 @@ export function IndividualRequestActionBar({
   run,
   onEdit,
   onCancel,
+  onSetFlag,
+  hasFlag = false,
   density = "default",
 }: {
   orderIds: string[];
@@ -53,6 +55,8 @@ export function IndividualRequestActionBar({
   run: DailyPanelRunFn;
   onEdit: () => void;
   onCancel: () => void;
+  onSetFlag?: () => void;
+  hasFlag?: boolean;
   /** W bloku wieloosobowym u dostawcy — mniejsze przyciski, etykieta „tylko ta osoba”. */
   density?: "default" | "nested";
 }) {
@@ -130,6 +134,8 @@ export function IndividualRequestActionBar({
         className={nested ? "border-0 border-l border-slate-200" : panelSegmentLastClass}
         onEdit={onEdit}
         onCancel={onCancel}
+        onSetFlag={onSetFlag}
+        hasFlag={hasFlag}
       />
     </ButtonGroup>
   );

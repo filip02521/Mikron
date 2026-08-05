@@ -70,6 +70,7 @@ export function RequestProductLinesEditor({
   validationAttempted = false,
   liveValidation = false,
   showLineNotes,
+  noteAudience = "sales",
   typeaheadSize = "default",
   onAfterTeethListSave,
   onTeethListCommitNotice,
@@ -107,6 +108,8 @@ export function RequestProductLinesEditor({
   liveValidation?: boolean;
   /** Notatka per pozycja (panel dzienny) — domyślnie przy `appearance=prosba`. */
   showLineNotes?: boolean;
+  /** Podpowiedź przy notatce — zakupy vs handlowiec. */
+  noteAudience?: "sales" | "procurement";
   /** Wyższa lista podpowiedzi Subiekta / dostawcy w modalach. */
   typeaheadSize?: "default" | "comfortable";
   onAfterTeethListSave?: (
@@ -501,6 +504,7 @@ export function RequestProductLinesEditor({
                 onChange={(requestNote) =>
                   onChange(updateProductLine(lines, index, { requestNote }))
                 }
+                audience={noteAudience}
                 className={showClientField || wrapLine ? "mt-2" : undefined}
               />
             ) : null}

@@ -29,10 +29,21 @@ export type SalesProcurementCancelNotificationItem = {
   procurementCancelNote: string | null;
 };
 
+/** Zmiana uwag (`sales_request_note`) przez dział zakupów. */
+export type SalesRequestNoteUpdateNotificationItem = {
+  kind: "request_note_update";
+  supplierName: string;
+  products: string;
+  symbol: string | null;
+  clientName: string | null;
+  requestNote: string | null;
+};
+
 export type SalesNotificationItem =
   | SalesDeliveryNotificationItem
   | SalesInformacjaNotificationItem
-  | SalesProcurementCancelNotificationItem;
+  | SalesProcurementCancelNotificationItem
+  | SalesRequestNoteUpdateNotificationItem;
 
 export type SalesPersonEmailBatch = {
   email: string;

@@ -21,6 +21,11 @@ import {
   type SalesCancelledNotice,
 } from "@/lib/orders/sales-cancelled-notices";
 import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
+import type {
+  ProcurementFlagDefinition,
+  ProcurementRequestFlag,
+} from "@/lib/orders/procurement-request-flag";
+import type { SupplierOnVacationWindow } from "@/lib/orders/procurement-supplier-vacation";
 import { mapOrderToForSomeoneLine } from "@/lib/orders/product-source";
 import { isInformacjaStockOutReorder } from "@/lib/orders/informacja-stock-out-reorder";
 import {
@@ -73,6 +78,8 @@ export type SupplierSummaryMeta = {
   shift_date: string | null;
   computed_next_date: string | null;
   vacation_note: string | null;
+  /** Dziś w aktywnym oknie urlopu (kalendarz) — nakładka panelu dziennego. */
+  on_vacation_now?: boolean;
   stats_mode: StatsMode;
   subiekt_kh_id: number | null;
 };
@@ -101,6 +108,9 @@ export type ForSomeoneLine = {
   requestNote?: string | null;
   /** Lista zębów — gdy pozycja zębowa. */
   teethDetails?: TeethLineDetail[];
+  /** Wewnętrzna flaga zakupów (panel dzienny; nie mapować do /moje). */
+  procurementFlag?: ProcurementRequestFlag | null;
+  procurementFlagNote?: string | null;
 };
 
 export type SummaryForSomeoneEnriched = {
@@ -158,6 +168,13 @@ export type SummaryWorkspaceData = SummaryView & {
   /** Klucz kalendarzowy „dziś” (Europe/Warsaw) z momentu budowy workspace — spójny SSR/klient. */
   todayDateKey: string;
   supplierMeta: Record<string, SupplierSummaryMeta>;
+  /**
+   * Dostawcy z aktywnym urlopem obejmującym dziś (nie mylić z vacation_note).
+   * Klucz = supplierId — niezależnie od kompletności supplierMeta.
+   */
+  suppliersOnVacationNow: Record<string, SupplierOnVacationWindow>;
+  /** Definicje flag (wszystkie — aktywne i nieaktywne) — panel dzienny / manage. */
+  procurementFlagDefinitions: ProcurementFlagDefinition[];
   onDemandSuppliers: OnDemandSupplierRow[];
   thisWeekDays: WeekDayPlan[];
   nextWeekDays: WeekDayPlan[];
@@ -513,8 +530,9 @@ export function buildSummaryWorkspace(
     right,
     rightHeader,
     supplierMeta,
-    onDemandSuppliers,
-    thisWeekDays,
+    suppliersOnVacationNow: {},
+    procurementFlagDefinitions: [],
+    onDemandSuppliers,    thisWeekDays,
     nextWeekDays,
     forSomeoneLeft,
     stockOutLeft,

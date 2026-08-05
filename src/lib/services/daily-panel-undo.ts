@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type {
   DailyPanelUndoToken,
   IndividualOrderSnapshot,
+  ProcurementFlagSnapshot,
   ScheduleSnapshot,
 } from "@/lib/orders/daily-panel-undo";
 import { recalcSupplierSchedule } from "@/lib/services/orders";
@@ -10,6 +11,7 @@ import { glowneScheduleSupplierIds, glowneSchedulableSupplierIds } from "@/lib/o
 import {
   isProcurementCancelNoteColumnMissing,
 } from "@/lib/orders/procurement-cancel-note";
+import { throwIfProcurementFlagColumnMissing } from "@/lib/orders/procurement-request-flag";
 
 export { buildScheduleFeedback } from "@/lib/orders/daily-panel-action-feedback";
 
@@ -136,6 +138,66 @@ async function restoreIndividualOrderSnapshot(
   if (error) throw new Error(error.message);
 }
 
+export async function captureProcurementFlagSnapshots(
+  orderIds: string[]
+): Promise<ProcurementFlagSnapshot[]> {
+  if (!orderIds.length) return [];
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("individual_orders")
+    .select(
+      "id, procurement_flag, procurement_flag_note, procurement_flag_updated_at, procurement_flag_updated_by"
+    )
+    .in("id", orderIds);
+
+  if (error) {
+    throwIfProcurementFlagColumnMissing(error);
+    throw new Error(error.message);
+  }
+
+  const byId = new Map(
+    (data ?? []).map((row) => [
+      row.id as string,
+      {
+        orderId: row.id as string,
+        procurementFlag: (row.procurement_flag as string | null) ?? null,
+        procurementFlagNote: (row.procurement_flag_note as string | null) ?? null,
+        procurementFlagUpdatedAt:
+          (row.procurement_flag_updated_at as string | null) ?? null,
+        procurementFlagUpdatedBy:
+          (row.procurement_flag_updated_by as string | null) ?? null,
+      } satisfies ProcurementFlagSnapshot,
+    ])
+  );
+
+  const missing = orderIds.filter((id) => !byId.has(id));
+  if (missing.length) {
+    throw new Error("Nie znaleziono pozycji — odśwież listę i spróbuj ponownie.");
+  }
+
+  return orderIds.map((id) => byId.get(id)!);
+}
+
+async function restoreProcurementFlagSnapshot(
+  snapshot: ProcurementFlagSnapshot
+): Promise<void> {
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("individual_orders")
+    .update({
+      procurement_flag: snapshot.procurementFlag,
+      procurement_flag_note: snapshot.procurementFlagNote,
+      procurement_flag_updated_at: snapshot.procurementFlagUpdatedAt,
+      procurement_flag_updated_by: snapshot.procurementFlagUpdatedBy,
+    })
+    .eq("id", snapshot.orderId);
+
+  if (error) {
+    throwIfProcurementFlagColumnMissing(error);
+    throw new Error(error.message);
+  }
+}
+
 export async function revertDailyPanelChange(
   token: DailyPanelUndoToken
 ): Promise<void> {
@@ -149,6 +211,13 @@ export async function revertDailyPanelChange(
   if (token.kind === "individual") {
     for (const o of token.snapshots) {
       await restoreIndividualOrderSnapshot(o);
+    }
+    return;
+  }
+
+  if (token.kind === "procurement_flags") {
+    for (const o of token.snapshots) {
+      await restoreProcurementFlagSnapshot(o);
     }
     return;
   }

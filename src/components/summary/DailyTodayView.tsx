@@ -45,6 +45,7 @@ export function DailyTodayView({
   onOpenVerification,
   onOpenWeek,
   highlightFresh = false,
+  notify,
 }: {
   workspace: SummaryWorkspaceData;
   verificationCount: number;
@@ -78,6 +79,7 @@ export function DailyTodayView({
   onOpenVerification: () => void;
   onOpenWeek: () => void;
   highlightFresh?: boolean;
+  notify?: (text: string, tone?: "success" | "error") => void;
 }) {
   const hasCancelled = workspace.salesCancelledNotices.length > 0;
   const showEmpty = !hasTodayWork && verificationCount === 0 && !hasCancelled;
@@ -146,6 +148,11 @@ export function DailyTodayView({
                     weekDays={workspace.thisWeekDays}
                     sectionId="kolejka-brak-na-stanie"
                     highlightFresh={highlightFresh}
+                    suppliersOnVacationNow={workspace.suppliersOnVacationNow}
+                    procurementFlagDefinitions={
+                      workspace.procurementFlagDefinitions
+                    }
+                    notify={notify}
                   />
                 ) : null}
 
@@ -164,6 +171,11 @@ export function DailyTodayView({
                     todayDateKey={workspace.todayDateKey}
                     weekDays={workspace.thisWeekDays}
                     highlightFresh={highlightFresh}
+                    suppliersOnVacationNow={workspace.suppliersOnVacationNow}
+                    procurementFlagDefinitions={
+                      workspace.procurementFlagDefinitions
+                    }
+                    notify={notify}
                   />
                 ) : null}
 

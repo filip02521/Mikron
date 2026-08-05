@@ -3,6 +3,7 @@ import type {
   SalesDeliveryNotificationItem,
   SalesInformacjaNotificationItem,
   SalesProcurementCancelNotificationItem,
+  SalesRequestNoteUpdateNotificationItem,
 } from "@/lib/email/sales-notification-types";
 import {
   polishPozycjeLabel,
@@ -389,6 +390,89 @@ export function renderProcurementCancelEmail(params: {
       headerTitle: noteUpdated ? "Zaktualizowano wiadomość" : "Prośba anulowana",
       headerSubtitle: "Dział dostaw",
       accentColor: EMAIL_THEME.warning,
+      bodyHtml: body,
+    }),
+  };
+}
+
+function renderRequestNoteUpdateItem(
+  item: SalesRequestNoteUpdateNotificationItem,
+  cardOpts?: ItemCardOpts
+): string {
+  const rows: string[] = [
+    emailDataRow("Produkt", item.products),
+    item.symbol ? emailDataRow("Symbol", item.symbol) : "",
+    item.clientName ? emailDataRow("Klient", item.clientName) : "",
+    item.requestNote ? emailDataRow("Uwagi", item.requestNote) : "",
+  ].filter(Boolean);
+
+  return emailItemCard(
+    {
+      label: "Uwagi zaktualizowane",
+      bg: EMAIL_THEME.infoBg,
+      color: EMAIL_THEME.info,
+      border: EMAIL_THEME.infoBorder,
+    },
+    rows.join(""),
+    {
+      positionLabel: positionLabel(cardOpts),
+      supplierName: item.supplierName,
+    }
+  );
+}
+
+function renderRequestNoteUpdateItems(
+  items: SalesRequestNoteUpdateNotificationItem[]
+): string {
+  const sorted = sortBySupplierThenProduct(items);
+  return sorted
+    .map((item, i) => renderRequestNoteUpdateItem(item, itemCardOpts(i, sorted.length)))
+    .join("");
+}
+
+export function renderRequestNoteUpdateEmail(params: {
+  recipientName: string;
+  items: SalesRequestNoteUpdateNotificationItem[];
+}): { subject: string; html: string } {
+  const sorted = sortBySupplierThenProduct(params.items);
+  const count = sorted.length;
+  const suppliers = uniqueSupplierCount(sorted);
+
+  const leadFixed =
+    count === 1
+      ? "Dział zakupów zaktualizował uwagi przy Twojej prośbie indywidualnej."
+      : `Dział zakupów zaktualizował uwagi przy <strong>${polishPozycjeLabel(count)}</strong> Twoich prośbach.`;
+
+  const body = [
+    emailGreeting(firstName(params.recipientName)),
+    emailParagraph(leadFixed),
+    suppliers > 1
+      ? emailMutedParagraph(
+          `Poniżej ${polishPozycjeLabel(count)} od <strong>${suppliers}</strong> dostawców.`
+        )
+      : "",
+    emailMutedParagraph(
+      "Treść uwag jest przy konkretnej prośbie w Moje zamówienia — po przeczytaniu potwierdź „Widziałem”, żeby sygnał zniknął ze Startu dnia."
+    ),
+    renderRequestNoteUpdateItems(sorted),
+    emailButton(mojeUrl(), "Otwórz Moje zamówienia"),
+    emailMutedParagraph(
+      "To automatyczna wiadomość z systemu OnTime (Mikran). Nie odpowiadaj na ten e-mail."
+    ),
+  ].join("");
+
+  const preheader =
+    count === 1
+      ? `${sorted[0]!.supplierName} — zaktualizowano uwagi`
+      : `${polishPozycjeLabel(count)} z uwagami od zakupów`;
+
+  return {
+    subject: subjectForItems("OnTime · Zaktualizowano uwagi", sorted),
+    html: emailDocument({
+      preheader,
+      headerTitle: "Zaktualizowano uwagi",
+      headerSubtitle: "Dział zakupów",
+      accentColor: EMAIL_THEME.info,
       bodyHtml: body,
     }),
   };

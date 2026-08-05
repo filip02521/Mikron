@@ -6,6 +6,7 @@ import type { SummaryForSomeoneEnriched } from "@/lib/orders/summary-workspace";
 import type { SupplierLocation } from "@/types/database";
 import { sortForSomeoneGroups } from "@/lib/orders/procurement-daily-ui";
 import { compareProcurementSubmittedAt } from "@/lib/orders/procurement-request-timing";
+import { groupHighestFlagPriority } from "@/lib/orders/procurement-request-flag";
 
 export type ProcurementSupplierBlock = {
   supplierId: string;
@@ -15,6 +16,8 @@ export type ProcurementSupplierBlock = {
   lineCount: number;
   unseenGroupCount: number;
   hasUnseen: boolean;
+  /** Najwyższy priorytet flagi w bloku (niższy = ważniejszy). */
+  highestFlagPriority: number;
   earliestSubmittedAt: string;
   supplierOrderOnDemand: boolean;
 };
@@ -33,18 +36,23 @@ function compareSupplierBlocks(
   a: ProcurementSupplierBlock,
   b: ProcurementSupplierBlock
 ): number {
+  // Kolejka dnia: najpierw Nowe / flaga, potem alfabet dostawcy.
   if (a.hasUnseen !== b.hasUnseen) return a.hasUnseen ? -1 : 1;
-  const byTime = compareProcurementSubmittedAt(
+  if (a.highestFlagPriority !== b.highestFlagPriority) {
+    return a.highestFlagPriority - b.highestFlagPriority;
+  }
+  const byName = a.supplierName.localeCompare(b.supplierName, "pl");
+  if (byName !== 0) return byName;
+  return compareProcurementSubmittedAt(
     a.earliestSubmittedAt,
     b.earliestSubmittedAt
   );
-  if (byTime !== 0) return byTime;
-  return a.supplierName.localeCompare(b.supplierName, "pl");
 }
 
 /** Prośby handlowców — najpierw dostawca, potem grupy (osoba) wewnątrz bloku. */
 export function buildProcurementSupplierBlocks(
-  groups: SummaryForSomeoneEnriched[]
+  groups: SummaryForSomeoneEnriched[],
+  sortById: Map<string, number> | Record<string, number> = {}
 ): ProcurementSupplierBlock[] {
   const bySupplier = new Map<string, SummaryForSomeoneEnriched[]>();
   for (const g of groups) {
@@ -55,8 +63,13 @@ export function buildProcurementSupplierBlocks(
 
   const blocks: ProcurementSupplierBlock[] = [];
   for (const [supplierId, rawGroups] of bySupplier) {
-    const requestGroups = sortForSomeoneGroups(rawGroups);
+    const requestGroups = sortForSomeoneGroups(rawGroups, sortById);
     const first = requestGroups[0]!;
+    let highestFlagPriority = groupHighestFlagPriority(first.lines, sortById);
+    for (const g of requestGroups) {
+      const p = groupHighestFlagPriority(g.lines, sortById);
+      if (p < highestFlagPriority) highestFlagPriority = p;
+    }
     blocks.push({
       supplierId,
       supplierName: first.supplierName,
@@ -65,6 +78,7 @@ export function buildProcurementSupplierBlocks(
       lineCount: requestGroups.reduce((n, g) => n + g.lines.length, 0),
       unseenGroupCount: requestGroups.filter((g) => g.hasUnseen).length,
       hasUnseen: requestGroups.some((g) => g.hasUnseen),
+      highestFlagPriority,
       earliestSubmittedAt: earliestSubmittedInBlock(requestGroups),
       supplierOrderOnDemand: first.supplierOrderOnDemand,
     });
@@ -128,6 +142,38 @@ export function formatProcurementSupplierBlockSummary(
     parts.push(groupCount < 5 ? `${groupCount} grupy` : `${groupCount} grup`);
   }
   return parts.join(" · ");
+}
+
+/** Skrót przy zwiniętym bloku: kto ma „Nowe” (opcjonalnie lokalnie niewidziane osoby). */
+export function formatProcurementSupplierBlockCollapsedHint(
+  block: ProcurementSupplierBlock,
+  unseenGroupCount: number,
+  unseenPeopleNames?: string[]
+): string {
+  const productCount = procurementProductCountLabel(block.lineCount);
+  if (unseenGroupCount <= 0) {
+    return `zwinięte · ${productCount}`;
+  }
+  const unseenPeople =
+    unseenPeopleNames ??
+    block.requestGroups.filter((g) => g.hasUnseen).map((g) => g.person);
+  const peoplePart =
+    unseenPeople.length === 0
+      ? null
+      : unseenPeople.length <= 2
+        ? unseenPeople.join(", ")
+        : `${unseenPeople.slice(0, 2).join(", ")} +${unseenPeople.length - 2}`;
+  const unseenLabel = `${unseenGroupCount} ${procurementUnseenGroupsLabel(unseenGroupCount)}`;
+  return peoplePart
+    ? `zwinięte · ${unseenLabel} · ${peoplePart}`
+    : `zwinięte · ${unseenLabel} · ${productCount}`;
+}
+
+/** Linie z flagami w bloku — do chipów w zwiniętym nagłówku. */
+export function collectProcurementSupplierBlockFlagLines(
+  block: ProcurementSupplierBlock
+): { id: string; products: string; symbol: string; procurementFlag?: string | null; procurementFlagNote?: string | null }[] {
+  return block.requestGroups.flatMap((g) => g.lines);
 }
 
 /** Nagłówek bloku tylko gdy u tego dostawcy jest więcej niż jedna grupa (osoba). */

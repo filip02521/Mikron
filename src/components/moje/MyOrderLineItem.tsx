@@ -125,6 +125,9 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
   onStartEditClient,
   hideClientLabel = false,
   hideRequestNote = false,
+  requestNoteUnread = false,
+  onAcknowledgeRequestNote,
+  acknowledgeRequestNotePending = false,
   hideProcurementCancelNote = false,
   hideZdLineDetail = false,
   hideWarehouseProgress = false,
@@ -170,6 +173,10 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
   hideClientLabel?: boolean;
   /** Gdy notatka jest już na karcie grupy — nie duplikuj przy produkcie. */
   hideRequestNote?: boolean;
+  /** Zakupy zaktualizowały uwagi — wyróżnij i pokaż „Widziałem”. */
+  requestNoteUnread?: boolean;
+  onAcknowledgeRequestNote?: () => void;
+  acknowledgeRequestNotePending?: boolean;
   /** Gdy wiadomość od zakupów jest już na karcie grupy — nie duplikuj przy produkcie. */
   hideProcurementCancelNote?: boolean;
   /** Gdy termin ZD jest już w sekcji „Informacje o dostawie” grupy. */
@@ -491,6 +498,10 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
             <MyOrderRequestNote
               note={line.requestNote}
               searchQuery={searchQuery}
+              unread={requestNoteUnread}
+              acknowledgePending={acknowledgeRequestNotePending}
+              tourPreview={tourPreview}
+              onAcknowledge={onAcknowledgeRequestNote}
               className={cn("mt-1.5", !compact && "pl-5")}
             />
           ) : null}

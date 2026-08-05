@@ -3,6 +3,15 @@ import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
 import { runRepairIncompleteIndividualOrders } from "@/lib/services/repair-incomplete-orders-runner";
 import { mapRowToOrderFormSupplier, mapRowsToOrderFormSuppliers } from "@/lib/orders/order-form-suppliers";
 import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
+import {
+  buildSuppliersOnVacationNow,
+  type VacationCalendarRow,
+} from "@/lib/orders/procurement-supplier-vacation";
+import {
+  mapFlagDefinitionRow,
+  type ProcurementFlagDefinition,
+} from "@/lib/orders/procurement-request-flag";
+import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
 import { fetchTeethSupplierLaneIndex } from "@/lib/data/teeth-schedule";
 import { teethLaneIndexToRecord } from "@/lib/teeth/teeth-supplier-dual-lane";
 import { sortIndividualOrdersBySupplier } from "@/lib/orders/queue-sort";
@@ -461,13 +470,15 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
     schedules = allSchedules.filter((s) => allowed.has(s.id));
   }
   const { fetchSalesPeopleForPicker } = await import("@/lib/data/sales-people-admin");
-  const [allNewOrders, salesPeople, statsRows, formSuppliers, teethLaneIndex] =
+  const [allNewOrders, salesPeople, statsRows, formSuppliers, teethLaneIndex, onVacationNow, flagDefinitions] =
     await Promise.all([
     fetchIndividualOrders({ status: "Nowe", hideSalesAcknowledged: false, excludeTeeth: true, allowAll: true }),
     fetchSalesPeopleForPicker(),
     fetchDeliveryStats(),
     fetchSuppliersForRequestForms(),
     fetchTeethSupplierLaneIndex(),
+    fetchSuppliersOnVacationNow(),
+    fetchProcurementFlagDefinitions(),
   ]);
   const newOrders = options?.salesPersonId
     ? allNewOrders.filter((o) => o.sales_person_id === options.salesPersonId)
@@ -483,6 +494,17 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
     salesPeople.map((p) => ({ id: p.id, name: p.name })),
     salesCancelledOrders
   );
+
+  for (const [id, meta] of Object.entries(workspace.supplierMeta)) {
+    if (onVacationNow[id]) {
+      meta.on_vacation_now = true;
+    }
+  }
+
+  // Pełna lista defs (aktywne + nieaktywne seed/soft-delete) — manage + chipy.
+  // Filtr/assign używa tylko isActive lokalnie w UI.
+  const procurementFlagDefinitions = flagDefinitions;
+
   const statsBySupplierId = Object.fromEntries(
     statsRows.map((s) => [s.supplier_id, s])
   );
@@ -490,7 +512,11 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
     schedules.map((s) => [s.id, (s.stats_mode ?? "LACZNIE") as import("@/types/database").StatsMode])
   );
   return {
-    workspace,
+    workspace: {
+      ...workspace,
+      suppliersOnVacationNow: onVacationNow,
+      procurementFlagDefinitions,
+    },
     /** Wszyscy dostawcy (także nieaktywni) — formularze prośby / edycja w panelu. */
     suppliers: formSuppliers,
     supplierDirectory: schedules.map((s) => ({
@@ -540,6 +566,54 @@ export async function fetchVacations() {
     .select("*, suppliers(name)")
     .order("start_date", { ascending: false });
   return data ?? [];
+}
+
+/** Aktywne urlopy obejmujące dziś (panel dzienny — nakładka na prośbach). */
+export async function fetchSuppliersOnVacationNow(
+  todayKey: string = todayDateKeyInWarsaw()
+): Promise<Record<string, { startDate: string; endDate: string }>> {
+  if (!hasSupabaseConfig()) return {};
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("vacations")
+    .select("supplier_id, start_date, end_date, active")
+    .eq("active", true)
+    .lte("start_date", todayKey)
+    .gte("end_date", todayKey);
+  if (error) {
+    console.error("fetchSuppliersOnVacationNow:", error.message);
+    return {};
+  }
+  return buildSuppliersOnVacationNow(
+    (data ?? []) as VacationCalendarRow[],
+    todayKey
+  );
+}
+
+/** Definicje flag zakupów — aktywne i nieaktywne (sort_order). */
+export async function fetchProcurementFlagDefinitions(): Promise<
+  ProcurementFlagDefinition[]
+> {
+  if (!hasSupabaseConfig()) return [];
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("procurement_flag_definitions")
+    .select("id, label, color, sort_order, is_active")
+    .order("sort_order", { ascending: true });
+  if (error) {
+    if (
+      error.message?.includes("procurement_flag_definitions") ||
+      error.message?.includes("does not exist") ||
+      error.message?.includes("schema cache")
+    ) {
+      return [];
+    }
+    console.error("fetchProcurementFlagDefinitions:", error.message);
+    return [];
+  }
+  return (data ?? [])
+    .map((row) => mapFlagDefinitionRow(row))
+    .filter((d): d is ProcurementFlagDefinition => Boolean(d));
 }
 
 export async function fetchDeliveryStats() {

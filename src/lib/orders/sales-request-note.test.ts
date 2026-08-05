@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   isRequestNotesAggregateSummary,
+  isSalesRequestNoteUnread,
   linesHaveMixedRequestNotes,
   normalizeSalesRequestNote,
   requestNotesProcurementSublineSuffix,
   requestNotesSummary,
   sharedRequestNoteFromLines,
+  unreadSalesRequestNoteOrderIds,
 } from "@/lib/orders/sales-request-note";
 
 describe("normalizeSalesRequestNote", () => {
@@ -21,6 +23,68 @@ describe("normalizeSalesRequestNote", () => {
 
   it("zachowuje podział wierszy w notatce", () => {
     expect(normalizeSalesRequestNote("  linia 1\nlinia 2  ")).toBe("linia 1\nlinia 2");
+  });
+});
+
+describe("isSalesRequestNoteUnread", () => {
+  it("wymaga treści i updatedAt", () => {
+    expect(
+      isSalesRequestNoteUnread({
+        note: "pilne",
+        updatedAt: null,
+        seenAt: null,
+      })
+    ).toBe(false);
+    expect(
+      isSalesRequestNoteUnread({
+        note: "",
+        updatedAt: "2025-01-01T00:00:00Z",
+        seenAt: null,
+      })
+    ).toBe(false);
+  });
+
+  it("jest nieprzeczytane gdy brak seenAt lub seenAt starsze", () => {
+    expect(
+      isSalesRequestNoteUnread({
+        note: "pilne",
+        updatedAt: "2025-01-02T00:00:00Z",
+        seenAt: null,
+      })
+    ).toBe(true);
+    expect(
+      isSalesRequestNoteUnread({
+        note: "pilne",
+        updatedAt: "2025-01-02T00:00:00Z",
+        seenAt: "2025-01-01T00:00:00Z",
+      })
+    ).toBe(true);
+    expect(
+      isSalesRequestNoteUnread({
+        note: "pilne",
+        updatedAt: "2025-01-02T00:00:00Z",
+        seenAt: "2025-01-02T00:00:00Z",
+      })
+    ).toBe(false);
+  });
+
+  it("zbiera ID nieprzeczytanych pozycji", () => {
+    expect(
+      unreadSalesRequestNoteOrderIds([
+        {
+          id: "a",
+          sales_request_note: "x",
+          sales_request_note_updated_at: "2025-01-02T00:00:00Z",
+          sales_request_note_seen_at: null,
+        },
+        {
+          id: "b",
+          sales_request_note: "y",
+          sales_request_note_updated_at: "2025-01-02T00:00:00Z",
+          sales_request_note_seen_at: "2025-01-03T00:00:00Z",
+        },
+      ])
+    ).toEqual(["a"]);
   });
 });
 

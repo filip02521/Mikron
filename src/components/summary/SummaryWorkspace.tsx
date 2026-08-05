@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import type { SummaryWorkspaceData } from "@/lib/orders/summary-workspace";
 import type { DeliveryStats, IndividualOrder, StatsMode } from "@/types/database";
 import type { SummaryStandardItem } from "@/lib/orders/summary";
@@ -48,6 +49,7 @@ import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { brandIconTileClass, panelChromeInsetClass, panelSectionInsetClass, panelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
 import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
+import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { cn } from "@/lib/cn";
 import type { TeethSupplierLaneSnapshot } from "@/lib/data/teeth-schedule-shared";
 
@@ -86,6 +88,7 @@ export function SummaryWorkspace({
 
   const { view: panelView, setView: setPanelView } = useDailyPanelView();
   const highlightFresh = useDailyPanelFreshHighlight();
+  const hydrated = useClientHydrated();
   const undoShortcut = useUndoShortcutLabel();
 
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -296,21 +299,28 @@ export function SummaryWorkspace({
       {pendingMessage ? (
         <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
       ) : null}
-      {flash && !undo ? (
-        <NoticeToast notice={flash} onDismiss={dismissFlash} />
-      ) : null}
-      {undo ? (
-        <UndoToast
-          title={undo.title}
-          description={undo.description}
-          detailLines={undo.detailLines}
-          expiresAt={undo.expiresAt}
-          placement="inline"
-          onDismiss={dismissUndo}
-          onUndo={handleUndo}
-          undoShortcut={undoShortcut}
-        />
-      ) : null}
+      {hydrated
+        ? createPortal(
+            <>
+              {flash && !undo ? (
+                <NoticeToast notice={flash} onDismiss={dismissFlash} />
+              ) : null}
+              {undo ? (
+                <UndoToast
+                  title={undo.title}
+                  description={undo.description}
+                  detailLines={undo.detailLines}
+                  expiresAt={undo.expiresAt}
+                  placement="floating"
+                  onDismiss={dismissUndo}
+                  onUndo={handleUndo}
+                  undoShortcut={undoShortcut}
+                />
+              ) : null}
+            </>,
+            document.body
+          )
+        : null}
 
       <Card padding={false} className="overflow-x-clip">
         <CardHeader
@@ -404,6 +414,7 @@ export function SummaryWorkspace({
             onOpenVerification={() => setVerificationModalOpen(true)}
             onOpenWeek={() => setPanelView("tydzien")}
             highlightFresh={highlightFresh}
+            notify={notify}
           />
         ) : null}
 

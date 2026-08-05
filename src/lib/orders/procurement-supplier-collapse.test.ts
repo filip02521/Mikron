@@ -53,6 +53,7 @@ function block(
     lineCount: people.length,
     unseenGroupCount: hasUnseen ? 1 : 0,
     hasUnseen,
+    highestFlagPriority: 4,
     earliestSubmittedAt: "2026-05-28T10:00:00",
     supplierOrderOnDemand: false,
   };

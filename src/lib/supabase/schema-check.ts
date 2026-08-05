@@ -128,6 +128,31 @@ export async function hasProcurementSeenAtColumn(
   return columnExists(supabase, "procurement_seen_at");
 }
 
+export async function hasProcurementFlagColumn(
+  supabase: SupabaseClient
+): Promise<boolean> {
+  return columnExists(supabase, "procurement_flag");
+}
+
+export async function hasProcurementFlagDefinitionsTable(
+  supabase: SupabaseClient
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("procurement_flag_definitions")
+    .select("id")
+    .limit(1);
+  if (!error) return true;
+  const msg = error.message ?? "";
+  if (
+    msg.includes("procurement_flag_definitions") ||
+    msg.includes("does not exist") ||
+    msg.includes("schema cache")
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export async function hasZdFulfillmentDeadlineChangeColumns(
   supabase: SupabaseClient
 ): Promise<boolean> {
@@ -221,6 +246,16 @@ export async function runSchemaChecks(
   if (!(await hasProcurementCancelNoteColumn(supabase))) {
     issues.push(
       "Brak kolumny individual_orders.procurement_cancel_note — uruchom supabase/migrations/063_procurement_cancel_note.sql"
+    );
+  }
+  if (!(await hasProcurementFlagColumn(supabase))) {
+    issues.push(
+      "Brak kolumny individual_orders.procurement_flag — uruchom supabase/migrations/121_individual_orders_procurement_flag.sql"
+    );
+  }
+  if (!(await hasProcurementFlagDefinitionsTable(supabase))) {
+    issues.push(
+      "Brak tabeli procurement_flag_definitions — uruchom supabase/migrations/122_procurement_flag_definitions.sql"
     );
   }
   if (!(await hasSalesCancelledQuantityColumn(supabase))) {
