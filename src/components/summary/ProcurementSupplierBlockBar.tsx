@@ -139,7 +139,7 @@ export function ProcurementSupplierBlockBar({
                   </Badge>
                 ) : null}
                 {vacationWindow ? (
-                  <SupplierVacationNowChip window={vacationWindow} compact />
+                  <SupplierVacationNowChip window={vacationWindow} />
                 ) : null}
               </div>
               {collapsed ? (
@@ -152,7 +152,7 @@ export function ProcurementSupplierBlockBar({
                       lines={flagLines}
                       definitions={flagDefinitions}
                       disabled
-                      className="w-full min-w-0"
+                      className="max-w-full"
                     />
                   ) : null}
                 </div>

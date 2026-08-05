@@ -384,14 +384,14 @@ export function procurementFlagDotClass(color: ProcurementFlagColor): string {
 }
 
 /**
- * Kiedy opis w wierszu listy powinien startować zwinięty
- * (długi tekst nie rozpycha panelu przy skanowaniu).
+ * Kiedy opis w chipie flagi startuje jako jednoliniowy podgląd
+ * (rozwinięcie = pełny tekst w tym samym obiekcie).
  */
 export function procurementFlagNoteNeedsExpand(note: string): boolean {
   const t = note.trim();
   if (!t) return false;
-  if (t.length > 120) return true;
-  if (t.split(/\r?\n/).filter(Boolean).length > 2) return true;
+  if (/\r?\n/.test(t)) return true;
+  if (t.length > 48) return true;
   return false;
 }
 

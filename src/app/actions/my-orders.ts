@@ -6,8 +6,14 @@ import { revalidatePath } from "next/cache";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
 import { isSalesAccount } from "@/lib/auth-roles";
+import { canAccessSalesPerson } from "@/lib/data/sales-group-access";
 import { isProfileActiveDelegateForSalesPerson } from "@/lib/data/vacation-delegations";
+import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import {
+  canReadZkWatchTeethPreview,
+  zkTeethPreviewUsesOwnSalesPerson,
+} from "@/lib/sales/zk-watch-teeth-preview-access";
 import {
   effectiveSalesCancelPhase,
   mergeAutoFulfillCancelDisposition,
@@ -822,15 +828,53 @@ export async function actionAcknowledgeAndCloseZkWatch(watchId: string, delegate
   return { success: true as const, ackCount, closedAt };
 }
 
-/** Podgląd zamówionych zębów powiązanych z danym ZK (read-only). */
-export async function actionFetchZkWatchTeethPreview(watchId: string, delegateFor?: string) {
-  const salesPersonId = await salesPersonIdForAction(delegateFor);
-  const supabase = await salesOrderSupabase();
-  const watch = await loadZkWatchForPendingAck(supabase, watchId, salesPersonId);
+/**
+ * Podgląd zamówionych zębów powiązanych z danym ZK (read-only).
+ * Dostęp: właściciel notatnika, zastępca urlopowy, kierownik/admin z dostępem do karty.
+ * Działa też dla zamkniętych ZK (archiwum) — bez mutacji.
+ */
+export async function actionFetchZkWatchTeethPreview(watchId: string) {
+  const user = await getSessionUser();
+  if (!user) throw new Error("Wymagane logowanie");
+  if (!hasSupabaseConfig()) throw new Error("Brak konfiguracji bazy.");
+
+  const supabase = createAdminClient();
+  const { data: watchRaw, error: watchError } = await supabase
+    .from("sales_zk_watches")
+    .select("*")
+    .eq("id", watchId)
+    .maybeSingle();
+
+  if (watchError) throw new Error(watchError.message);
+  if (!watchRaw) throw new Error("Nie znaleziono wpisu ZK.");
+
+  const watch = watchRaw as SalesZkWatch;
+  const own = zkTeethPreviewUsesOwnSalesPerson(user.role)
+    ? await resolveSalesPersonForUser(user)
+    : null;
+  const isActiveDelegate = await isProfileActiveDelegateForSalesPerson(
+    user.id,
+    watch.sales_person_id
+  );
+  const canAccessWatchOwner = await canAccessSalesPerson(user, watch.sales_person_id);
+
+  if (
+    !canReadZkWatchTeethPreview({
+      watchSalesPersonId: watch.sales_person_id,
+      ownSalesPersonId: own?.id ?? null,
+      isActiveDelegate,
+      canAccessWatchOwner,
+    })
+  ) {
+    throw new Error("Brak uprawnień do tego wpisu.");
+  }
 
   const teethOrders = await fetchTeethOrdersForZkWatch(watch, supabase);
   if (teethOrders.length === 0) {
-    return { success: true as const, rows: [] as import("@/lib/sales/zk-watch-teeth-preview").ZkTeethPreviewRow[] };
+    return {
+      success: true as const,
+      rows: [] as import("@/lib/sales/zk-watch-teeth-preview").ZkTeethPreviewRow[],
+    };
   }
 
   const teethDetailsMap = await fetchTeethDetailsForOrders(teethOrders.map((o) => o.id));
