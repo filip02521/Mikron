@@ -3,6 +3,8 @@ export const PROSBA_OPTIONAL_SECTION_COPY = {
   lineNote: {
     title: "Notatka do tej pozycji",
     description: "Kontekst dla zakupów — termin, pilność, ustalenia z klientem",
+    procurementDescription:
+      "Zmiana uwag powiadomi handlowca e-mailem i w Start dnia — potwierdzi „Widziałem” w Moje zamówienia.",
     copyToAllLines: "Skopiuj notatkę na wszystkie pozycje",
   },
   client: {

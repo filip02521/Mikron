@@ -80,6 +80,23 @@ describe("computeSalesActivityVersionFromRows", () => {
     expect(after).toContain("ZD/101/2026");
   });
 
+  it("zmienia się po aktualizacji / potwierdzeniu uwag zakupów", () => {
+    const before = computeSalesActivityVersionFromRows([row({})]);
+    const afterUpdate = computeSalesActivityVersionFromRows([
+      row({ sales_request_note_updated_at: "2026-07-01T10:00:00Z" }),
+    ]);
+    const afterSeen = computeSalesActivityVersionFromRows([
+      row({
+        sales_request_note_updated_at: "2026-07-01T10:00:00Z",
+        sales_request_note_seen_at: "2026-07-01T11:00:00Z",
+      }),
+    ]);
+    expect(before).not.toBe(afterUpdate);
+    expect(afterUpdate).not.toBe(afterSeen);
+    expect(afterUpdate).toContain("note:2026-07-01T10:00:00Z");
+    expect(afterSeen).toContain("seen:2026-07-01T11:00:00Z");
+  });
+
   it("ignoruje stock_out przy filtrowaniu (zgodnie z SSR handlowca)", () => {
     const visible = row({ action_at: "2026-01-01T10:00:00Z", status: "Nowe" });
     const stockOut = row({

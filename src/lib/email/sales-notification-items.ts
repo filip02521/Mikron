@@ -2,10 +2,12 @@ import type { IndividualOrder } from "@/types/database";
 import { parseOrderQuantity } from "@/lib/orders/individual";
 import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
 import { normalizeProcurementCancelNote } from "@/lib/orders/procurement-cancel-note";
+import { normalizeSalesRequestNote } from "@/lib/orders/sales-request-note";
 import type {
   SalesDeliveryNotificationItem,
   SalesInformacjaNotificationItem,
   SalesProcurementCancelNotificationItem,
+  SalesRequestNoteUpdateNotificationItem,
 } from "@/lib/email/sales-notification-types";
 
 type OrderForEmail = Pick<
@@ -17,6 +19,7 @@ type OrderForEmail = Pick<
   | "delivered_quantity"
   | "status"
   | "procurement_cancel_note"
+  | "sales_request_note"
 > & {
   supplier?: { name?: string } | null;
 };
@@ -100,5 +103,19 @@ export function buildProcurementCancelNotificationItem(
     symbol: symbolOrNull(order.symbol),
     clientName: clientOrNull(order),
     procurementCancelNote: normalizeProcurementCancelNote(order.procurement_cancel_note),
+  };
+}
+
+/** Zmiana uwag przy prośbie przez dział zakupów. */
+export function buildRequestNoteUpdateNotificationItem(
+  order: OrderForEmail
+): SalesRequestNoteUpdateNotificationItem {
+  return {
+    kind: "request_note_update",
+    supplierName: supplierName(order),
+    products: productsLabel(order.products),
+    symbol: symbolOrNull(order.symbol),
+    clientName: clientOrNull(order),
+    requestNote: normalizeSalesRequestNote(order.sales_request_note),
   };
 }

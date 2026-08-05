@@ -143,6 +143,8 @@ export interface IndividualOrder {
   procurement_cancel_note?: string | null;
   /** Timestamp ostatniej zmiany uwag przez zakupy — do powiadomień handlowca. */
   sales_request_note_updated_at?: string | null;
+  /** Kiedy handlowiec potwierdził przeczytanie uwag zaktualizowanych przez zakupy. */
+  sales_request_note_seen_at?: string | null;
   /** Timestamp ostatniej zmiany wiadomości przy anuleniu — do powiadomień handlowca. */
   procurement_cancel_note_updated_at?: string | null;
   /** kh_Id odbiorcy z Subiekta — powiązanie z ZK / wyszukiwanie. */

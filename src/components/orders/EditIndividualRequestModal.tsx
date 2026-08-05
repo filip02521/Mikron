@@ -268,17 +268,31 @@ export function EditIndividualRequestModal({
               acknowledgeSufficientStock: options?.acknowledgeSufficientStock,
             };
             if (mode === "procurement") {
-              await actionUpdateIndividualRequest(orderIds, payload);
-            } else {
-              await actionUpdateMyIndividualRequest(orderIds, payload);
-            }
-            onSaved?.(
-              isMixedProcurementEdit
+              const result = await actionUpdateIndividualRequest(orderIds, payload);
+              const base = isMixedProcurementEdit
                 ? "Zapisano zmiany — zęby w panelu /zeby, pozostałe pozycje w panelu dziennym."
                 : isTeethOnlyEdit
                   ? "Zapisano listę zębów — zmiany są widoczne w panelu zębów."
-                  : "Zapisano zmiany w prośbie."
-            );
+                  : "Zapisano zmiany w prośbie.";
+              const mailHint =
+                result.noteNotifyOrderIds?.length && result.emailSent
+                  ? " Handlowiec dostał powiadomienie o zmianie uwag."
+                  : result.noteNotifyOrderIds?.length && result.emailError
+                    ? ` Uwagi zapisane — ${result.emailError}`
+                    : result.noteNotifyOrderIds?.length
+                      ? " Handlowiec zobaczy zmianę uwag w Moje zamówienia."
+                      : "";
+              onSaved?.(`${base}${mailHint}`);
+            } else {
+              await actionUpdateMyIndividualRequest(orderIds, payload);
+              onSaved?.(
+                isMixedProcurementEdit
+                  ? "Zapisano zmiany — zęby w panelu /zeby, pozostałe pozycje w panelu dziennym."
+                  : isTeethOnlyEdit
+                    ? "Zapisano listę zębów — zmiany są widoczne w panelu zębów."
+                    : "Zapisano zmiany w prośbie."
+              );
+            }
             onClose();
             setStockConfirmOpen(false);
           } catch (e) {
@@ -663,6 +677,7 @@ export function EditIndividualRequestModal({
               appearance="prosba"
               addLabel="+ Kolejny produkt"
               showClientField
+              noteAudience={mode === "procurement" ? "procurement" : "sales"}
               deferSupplierResolve={mode === "sales"}
               typeaheadSize="comfortable"
               validationAttempted={validationAttempted}

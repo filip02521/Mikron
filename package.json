@@ -67,6 +67,7 @@
     "db:migrate:procurement-flag": "tsx scripts/apply-sql-migration.ts supabase/migrations/121_individual_orders_procurement_flag.sql",
     "db:migrate:procurement-flag-defs": "tsx scripts/apply-sql-migration.ts supabase/migrations/122_procurement_flag_definitions.sql",
     "db:migrate:procurement-flag-orphans": "tsx scripts/apply-sql-migration.ts supabase/migrations/123_procurement_flag_orphan_cleanup.sql",
+    "db:migrate:sales-request-note-seen": "tsx scripts/apply-sql-migration.ts supabase/migrations/124_sales_request_note_seen_at.sql",
     "verify-sales-request-note": "tsx scripts/verify-sales-request-note-migration.ts"
   },
   "dependencies": {

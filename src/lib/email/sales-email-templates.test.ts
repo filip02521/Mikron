@@ -3,6 +3,7 @@ import {
   renderDeliveryArrivedEmail,
   renderInformacjaArrivedEmail,
   renderProcurementCancelEmail,
+  renderRequestNoteUpdateEmail,
 } from "@/lib/email/sales-email-templates";
 
 describe("sales email templates", () => {
@@ -151,5 +152,26 @@ describe("sales email templates", () => {
     expect(subject).toContain("Zaktualizowano wiadomość");
     expect(html).toContain("zaktualizował wiadomość");
     expect(html).toContain("Nowa treść");
+  });
+
+  it("request note update email", () => {
+    const { html, subject } = renderRequestNoteUpdateEmail({
+      recipientName: "Anna",
+      items: [
+        {
+          kind: "request_note_update",
+          supplierName: "Mikran",
+          products: "Zestaw A",
+          symbol: "SYM-1",
+          clientName: "Klient",
+          requestNote: "Termin na piątek",
+        },
+      ],
+    });
+    expect(subject).toContain("Zaktualizowano uwagi");
+    expect(html).toContain("zaktualizował uwagi");
+    expect(html).toContain("Termin na piątek");
+    expect(html).toContain("Widziałem");
+    expect(html).toContain("/moje");
   });
 });

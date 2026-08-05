@@ -50,6 +50,7 @@ import { resolveZkWatchPendingAckItemsForWatch, fetchTeethOrdersForZkWatch } fro
 import {
   acknowledgeOrdersWithClient,
   acknowledgeZdDeadlineWithClient,
+  acknowledgeSalesRequestNoteWithClient,
   executeZkWatchPendingAckPlan,
   type AckOptions,
 } from "@/lib/sales/zk-watch-pending-ack-plan";
@@ -769,6 +770,17 @@ export async function actionAcknowledgeZdFulfillmentDeadlineChange(orderIds: str
   const salesPersonId = await salesPersonIdForAction(delegateFor);
   const supabase = await salesOrderSupabase();
   const { count } = await acknowledgeZdDeadlineWithClient(supabase, salesPersonId, uniqueIds);
+  return { success: true as const, count };
+}
+
+/** Potwierdza przeczytanie uwag zaktualizowanych przez dział zakupów. */
+export async function actionAcknowledgeSalesRequestNote(orderIds: string[], delegateFor?: string) {
+  const uniqueIds = [...new Set(orderIds.map((id) => id.trim()).filter(Boolean))];
+  if (!uniqueIds.length) throw new Error("Brak pozycji do potwierdzenia.");
+
+  const salesPersonId = await salesPersonIdForAction(delegateFor);
+  const supabase = await salesOrderSupabase();
+  const { count } = await acknowledgeSalesRequestNoteWithClient(supabase, salesPersonId, uniqueIds);
   return { success: true as const, count };
 }
 

@@ -46,6 +46,7 @@ import {
   completeVerificationOrder,
   updateIndividualRequestGroup,
   notifyProcurementCancelForOrders,
+  notifySalesRequestNoteUpdatedForOrders,
 } from "@/lib/services/orders";
 import {
   type AddIndividualOrdersEntry,
@@ -476,8 +477,15 @@ export async function actionUpdateIndividualRequest(
     await assertAdminPanelAllowsOperationsMutations(user);
   }
   const result = await updateIndividualRequestGroup(orderIds, payload, {});
+  let emailSent = 0;
+  let emailError: string | undefined;
+  if (result.noteNotifyOrderIds.length) {
+    const mail = await notifySalesRequestNoteUpdatedForOrders(result.noteNotifyOrderIds);
+    emailSent = mail.emailSent;
+    emailError = mail.emailError;
+  }
   revalidateAll();
-  return { success: true as const, ...result };
+  return { success: true as const, ...result, emailSent, emailError };
 }
 
 export async function actionCompleteVerification(

@@ -13,24 +13,29 @@ export function ProsbaProductLineNoteField({
   onChange,
   disabled,
   className,
+  audience = "sales",
 }: {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
   className?: string;
+  /** Zakupy: podpowiedź, że zmiana powiadomi handlowca. */
+  audience?: "sales" | "procurement";
 }) {
   const reactId = useId();
   const textareaId = `prosba-line-note-${reactId}`;
   const hasNote = value.trim().length > 0;
   const length = value.trim().length;
   const copy = PROSBA_OPTIONAL_SECTION_COPY.lineNote;
+  const description =
+    audience === "procurement" ? copy.procurementDescription : copy.description;
 
   return (
     <ProsbaOptionalSection
       kind="line-note"
       title={copy.title}
-      description={copy.description}
-      defaultOpen={hasNote}
+      description={description}
+      defaultOpen={hasNote || audience === "procurement"}
       teaser={hasNote ? value.trim() : null}
       className={className}
     >

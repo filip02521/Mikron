@@ -13,6 +13,23 @@ export function normalizeSalesRequestNote(
     : trimmed.slice(0, MAX_SALES_REQUEST_NOTE_LEN);
 }
 
+/**
+ * Czy handlowiec powinien zobaczyć sygnał o uwagach zaktualizowanych przez zakupy.
+ * Wymaga treści notatki + `sales_request_note_updated_at` bez późniejszego „Widziałem”.
+ */
+export function isSalesRequestNoteUnread(input: {
+  note?: string | null;
+  updatedAt?: string | null;
+  seenAt?: string | null;
+}): boolean {
+  if (!normalizeSalesRequestNote(input.note)) return false;
+  const updatedAt = input.updatedAt?.trim();
+  if (!updatedAt) return false;
+  const seenAt = input.seenAt?.trim();
+  if (!seenAt) return true;
+  return seenAt < updatedAt;
+}
+
 export function requestNotesSummary(
   orders: Pick<IndividualOrder, "sales_request_note">[]
 ): string | null {
@@ -81,4 +98,22 @@ export function requestNotesProcurementSublineSuffix(
 ): string {
   if (!linesHaveMixedRequestNotes(lines)) return "";
   return " · uwagi przy produktach";
+}
+
+/** ID pozycji z nieprzeczytaną zmianą uwag od zakupów. */
+export function unreadSalesRequestNoteOrderIds(
+  orders: Pick<
+    IndividualOrder,
+    "id" | "sales_request_note" | "sales_request_note_updated_at" | "sales_request_note_seen_at"
+  >[]
+): string[] {
+  return orders
+    .filter((o) =>
+      isSalesRequestNoteUnread({
+        note: o.sales_request_note,
+        updatedAt: o.sales_request_note_updated_at,
+        seenAt: o.sales_request_note_seen_at,
+      })
+    )
+    .map((o) => o.id);
 }
