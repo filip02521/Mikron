@@ -307,6 +307,7 @@ export function SummaryWorkspace({
               ) : null}
               {undo ? (
                 <UndoToast
+                  key={undo.payload.performedAt}
                   title={undo.title}
                   description={undo.description}
                   detailLines={undo.detailLines}

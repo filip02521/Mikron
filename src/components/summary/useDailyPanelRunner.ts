@@ -1,16 +1,23 @@
 "use client";
 import { ADMIN_PREVIEW_TOAST, DAILY_PANEL_TOAST, toastFromError, toastSuccess, type ToastNotice } from "@/lib/ui/notice-copy";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { actionUndoDailyPanelChange } from "@/app/actions/admin";
 import type { DailyPanelActionResult } from "@/lib/orders/daily-panel-undo";
 import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
 import {
   isUndoPayloadExpired,
-  undoPayloadExpiresAt,
   undoWindowBannerDescription,
 } from "@/lib/orders/daily-panel-undo";
+import {
+  clearDailyPanelUndo,
+  consumeDailyPanelUndoRefreshFlag,
+  getDailyPanelUndoServerSnapshot,
+  getDailyPanelUndoSnapshot,
+  setDailyPanelUndoFromAction,
+  subscribeDailyPanelUndo,
+} from "@/lib/client/daily-panel-undo-store";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import { ACTION_PENDING_SAFETY_FORM_MS } from "@/lib/timing";
 
@@ -34,21 +41,17 @@ export type DailyPanelRunFn = (
   options?: DailyPanelRunOptions
 ) => void;
 
-type UndoState = {
-  title: string;
-  description?: string;
-  detailLines?: string[];
-  payload: DailyPanelUndoPayload;
-  expiresAt: number;
-};
-
 export function useDailyPanelRunner() {
   const router = useRouter();
   const { readOnly } = useAdminPanelPreview();
   const [isPending, start] = useTransition();
   const [pendingScope, setPendingScope] = useState<string | null>(null);
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
-  const [undo, setUndo] = useState<UndoState | null>(null);
+  const undo = useSyncExternalStore(
+    subscribeDailyPanelUndo,
+    getDailyPanelUndoSnapshot,
+    getDailyPanelUndoServerSnapshot
+  );
   const [flash, setFlash] = useState<ToastNotice | null>(null);
   const undoPayloadRef = useRef<DailyPanelUndoPayload | null>(null);
   const safetyTimerRef = useRef<number | null>(null);
@@ -83,10 +86,14 @@ export function useDailyPanelRunner() {
   }, [clearSafetyTimer]);
 
   const dismissFlash = useCallback(() => setFlash(null), []);
+
   const dismissUndo = useCallback(() => {
-    setUndo(null);
+    clearDailyPanelUndo();
     undoPayloadRef.current = null;
-  }, []);
+    if (consumeDailyPanelUndoRefreshFlag()) {
+      router.refresh();
+    }
+  }, [router]);
 
   const isScopePending = useCallback(
     (scope: string) => isPending && pendingScope === scope,
@@ -117,28 +124,31 @@ export function useDailyPanelRunner() {
         try {
           const result = await action();
           if (result.undo) {
-            const expiresAt = undoPayloadExpiresAt(result.undo);
             undoPayloadRef.current = result.undo;
             setFlash(null);
-            setUndo({
+            setDailyPanelUndoFromAction({
               title: successMessage,
               description: undoWindowBannerDescription(
                 result.feedbackLines?.length ? "Sprawdź terminy poniżej" : undefined
               ),
               detailLines: result.feedbackLines,
               payload: result.undo,
-              expiresAt,
             });
+            // Nie ustawiaj needsRefreshRef — revalidatePath z akcji odświeża dane;
+            // natychmiastowy router.refresh() + remount layoutu gubił toast (Główne/Poboczne).
+            // Refresh po dismissUndo / udanym Cofnij (flaga w store).
           } else {
-            setUndo(null);
+            clearDailyPanelUndo();
             undoPayloadRef.current = null;
+            consumeDailyPanelUndoRefreshFlag();
             setFlash(toastSuccess(successMessage));
+            needsRefreshRef.current = true;
           }
           options?.onSuccess?.();
-          needsRefreshRef.current = true;
         } catch (e) {
-          setUndo(null);
+          clearDailyPanelUndo();
           undoPayloadRef.current = null;
+          consumeDailyPanelUndoRefreshFlag();
           setFlash(toastFromError(e instanceof Error ? e.message : undefined, DAILY_PANEL_TOAST.genericError.text));
           needsRefreshRef.current = true;
         } finally {
@@ -159,9 +169,11 @@ export function useDailyPanelRunner() {
     const payload = undo?.payload ?? undoPayloadRef.current;
     if (!payload) return;
     if (isUndoPayloadExpired(payload)) {
-      setUndo(null);
+      clearDailyPanelUndo();
       undoPayloadRef.current = null;
+      consumeDailyPanelUndoRefreshFlag();
       setFlash(DAILY_PANEL_TOAST.undoExpired);
+      needsRefreshRef.current = true;
       return;
     }
     setPendingScope(DAILY_PANEL_SCOPE_GLOBAL);
@@ -170,16 +182,18 @@ export function useDailyPanelRunner() {
     start(async () => {
       try {
         await actionUndoDailyPanelChange(payload);
-        setUndo(null);
+        clearDailyPanelUndo();
         undoPayloadRef.current = null;
+        consumeDailyPanelUndoRefreshFlag();
         setFlash(DAILY_PANEL_TOAST.undoSuccess);
         needsRefreshRef.current = true;
       } catch (e) {
         const message = e instanceof Error ? e.message : "Nie udało się cofnąć";
         setFlash(toastFromError(message, DAILY_PANEL_TOAST.undoFailed.text));
         if (isUndoPayloadExpired(payload)) {
-          setUndo(null);
+          clearDailyPanelUndo();
           undoPayloadRef.current = null;
+          consumeDailyPanelUndoRefreshFlag();
         }
         needsRefreshRef.current = true;
       } finally {
@@ -191,8 +205,9 @@ export function useDailyPanelRunner() {
   }, [readOnly, undo, startSafetyTimer, clearSafetyTimer]);
 
   const notify = useCallback((text: string, tone: "success" | "error" = "success") => {
-    setUndo(null);
+    clearDailyPanelUndo();
     undoPayloadRef.current = null;
+    consumeDailyPanelUndoRefreshFlag();
     setFlash(tone === "error" ? toastFromError(text) : toastSuccess(text));
   }, []);
 
