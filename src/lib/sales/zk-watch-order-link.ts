@@ -64,6 +64,64 @@ function orderHasExplicitZkLink(
 
 export { orderHasExplicitZkLink };
 
+function parseTimelineMs(value: string | null | undefined): number | null {
+  if (!value?.trim()) return null;
+  const ms = Date.parse(value);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/**
+ * Kotwica czasu ZK: data dokumentu z Subiekta, inaczej utworzenie karty w notatniku.
+ * Dzięki zk_issued_at późne dodanie starego ZK nadal widzi ówczesne prośby.
+ */
+export function zkWatchTimelineAnchorMs(
+  watch: Pick<SalesZkWatch, "zk_issued_at" | "created_at">
+): number | null {
+  return parseTimelineMs(watch.zk_issued_at) ?? parseTimelineMs(watch.created_at);
+}
+
+/** Kiedy prośba „wydarzyła się” operacyjnie (dostawa / akcja / zamówienie / ack). */
+export function zkLinkableOrderTimelineAnchorMs(
+  order: Pick<
+    ZkLinkableOrder,
+    "delivery_at" | "action_at" | "ordered_at" | "sales_acknowledged_at"
+  >
+): number | null {
+  return (
+    parseTimelineMs(order.delivery_at) ??
+    parseTimelineMs(order.action_at) ??
+    parseTimelineMs(order.ordered_at) ??
+    parseTimelineMs(order.sales_acknowledged_at)
+  );
+}
+
+/**
+ * Historyczna prośba bez source_zk_* może pokrywać ZK tylko gdy
+ * wydarzyła się nie wcześniej niż dokument/karta ZK — inaczej czerwcowa
+ * dostawa tego samego towaru oznacza nowe ZK jako „Obsłużone”.
+ */
+export function nonExplicitHistoricalOrderOverlapsWatch(
+  order: Pick<
+    ZkLinkableOrder,
+    "delivery_at" | "action_at" | "ordered_at" | "sales_acknowledged_at"
+  >,
+  watch: Pick<SalesZkWatch, "zk_issued_at" | "created_at">
+): boolean {
+  const watchMs = zkWatchTimelineAnchorMs(watch);
+  const orderMs = zkLinkableOrderTimelineAnchorMs(order);
+  if (watchMs == null || orderMs == null) return false;
+  return orderMs >= watchMs;
+}
+
+/** Zamknięta / historyczna — nie otwarta prośba ani nieodebrana informacja. */
+function isNonExplicitHistoricalCoverageOrder(order: ZkLinkableOrder): boolean {
+  if (isOpenProsbaOrder(order)) return false;
+  if (isInformacjaWarehouseReadyOrder(order) && !order.sales_acknowledged_at) {
+    return false;
+  }
+  return true;
+}
+
 function orderRelevantToZkWatch(
   order: ZkLinkableOrder,
   watch: SalesZkWatch
@@ -72,7 +130,11 @@ function orderRelevantToZkWatch(
   if (orderHasExplicitZkLink(order)) {
     return orderExplicitlyLinkedToZkWatch(order, watch);
   }
-  return clientsMatchForZk(watch, order);
+  if (!clientsMatchForZk(watch, order)) return false;
+  if (isNonExplicitHistoricalCoverageOrder(order)) {
+    return nonExplicitHistoricalOrderOverlapsWatch(order, watch);
+  }
+  return true;
 }
 
 /** Czy zmiana tej prośby może wpłynąć na line_checks danego ZK. */
