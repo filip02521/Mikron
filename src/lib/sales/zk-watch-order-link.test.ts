@@ -7,6 +7,7 @@ import {
   isOrderRelevantToZkWatch,
   isOpenProsbaOrder,
   isZkLineFullyDeliveredByOrders,
+  nonExplicitHistoricalOrderOverlapsWatch,
   buildZkLineProsbaQuantityMeta,
   effectiveRequiredQtyForZkLine,
   mergeZkLineChecksFromDeliveredOrders,
@@ -382,6 +383,77 @@ describe("computeZkWatchOrderHints", () => {
     expect(hints.lineCoverageByKey["ob:1"]).toBe("delivered");
   });
 
+  it("nowe ZK nie jest Obsłużone przez starą dostawę tego samego towaru bez source_zk", () => {
+    const newWatch = watch({
+      id: "w-aug",
+      zk_number: "ZK/88/08/2026",
+      zk_issued_at: "2026-08-01T10:00:00Z",
+      created_at: "2026-08-05T09:00:00Z",
+    });
+    const juneDelivery = linkOrder({
+      id: "june-done",
+      status: "Zrealizowane",
+      quantity: "2",
+      delivered_quantity: "2",
+      source_zk_watch_id: null,
+      source_zk_number: null,
+      action_at: "2026-06-10T12:00:00Z",
+      delivery_at: "2026-06-12T12:00:00Z",
+      sales_acknowledged_at: "2026-06-12T15:00:00Z",
+    });
+
+    expect(isOrderRelevantToZkWatch(juneDelivery, newWatch)).toBe(false);
+    const hints = computeZkWatchOrderHints(newWatch, [juneDelivery]);
+    expect(hints.uncoveredLineKeys).toEqual(["ob:1"]);
+    expect(hints.lineCoverageByKey["ob:1"]).toBe("uncovered");
+    expect(hints.matchedDeliveredLineKeys).toEqual([]);
+  });
+
+  it("późno dodane stare ZK nadal widzi ówczesną dostawę bez source_zk (zk_issued_at)", () => {
+    const lateAddedJuneWatch = watch({
+      id: "w-june-late",
+      zk_number: "ZK/12/06/2026",
+      zk_issued_at: "2026-06-01T08:00:00Z",
+      created_at: "2026-08-05T09:00:00Z",
+    });
+    const juneDelivery = linkOrder({
+      id: "june-done",
+      status: "Zrealizowane",
+      quantity: "2",
+      delivered_quantity: "2",
+      source_zk_watch_id: null,
+      source_zk_number: null,
+      action_at: "2026-06-10T12:00:00Z",
+      delivery_at: "2026-06-12T12:00:00Z",
+    });
+
+    expect(isOrderRelevantToZkWatch(juneDelivery, lateAddedJuneWatch)).toBe(true);
+    const hints = computeZkWatchOrderHints(lateAddedJuneWatch, [juneDelivery]);
+    expect(hints.uncoveredLineKeys).toEqual([]);
+    expect(hints.lineCoverageByKey["ob:1"]).toBe("delivered");
+  });
+
+  it("potwierdzona informacja z czerwca nie blokuje nowego ZK tego samego towaru", () => {
+    const newWatch = watch({
+      id: "w-new-info",
+      zk_issued_at: "2026-08-01T00:00:00Z",
+      created_at: "2026-08-05T00:00:00Z",
+    });
+    const juneInfo = linkOrder({
+      id: "info-june",
+      request_kind: "informacja",
+      status: "Zrealizowane",
+      quantity: "-",
+      delivered_quantity: "-",
+      source_zk_watch_id: null,
+      action_at: "2026-06-01T08:00:00Z",
+      sales_acknowledged_at: "2026-06-02T08:00:00Z",
+    });
+    const hints = computeZkWatchOrderHints(newWatch, [juneInfo]);
+    expect(hints.uncoveredLineKeys).toEqual(["ob:1"]);
+    expect(hints.informacjaAcknowledgedLineKeys).not.toContain("ob:1");
+  });
+
   it("liczy otwartą prośbę powiązaną po source_zk_watch_id bez dopasowania towaru", () => {
     const w = watch({ id: "w-zk" });
     const hints = computeZkWatchOrderHints(w, [
@@ -613,6 +685,63 @@ describe("resolveZkWatchIdsForOrderSync", () => {
       "w-a",
       "w-b",
     ]);
+  });
+
+  it("historyczna dostawa bez source_zk nie syncuje nowszego ZK", () => {
+    const oldWatch = watch({
+      id: "w-old",
+      client_kh_id: 42,
+      zk_issued_at: "2026-06-01T00:00:00Z",
+      created_at: "2026-06-01T00:00:00Z",
+    });
+    const newWatch = watch({
+      id: "w-new",
+      client_kh_id: 42,
+      zk_issued_at: "2026-08-01T00:00:00Z",
+      created_at: "2026-08-05T00:00:00Z",
+    });
+    const delivered = linkOrder({
+      id: "done",
+      status: "Zrealizowane",
+      quantity: "2",
+      delivered_quantity: "2",
+      sales_client_kh_id: 42,
+      action_at: "2026-06-10T00:00:00Z",
+      delivery_at: "2026-06-12T00:00:00Z",
+    });
+
+    expect(resolveZkWatchIdsForOrderSync(delivered, [oldWatch, newWatch])).toEqual(["w-old"]);
+  });
+
+  it("nonExplicitHistoricalOrderOverlapsWatch — kotwica zk_issued_at vs created_at", () => {
+    expect(
+      nonExplicitHistoricalOrderOverlapsWatch(
+        linkOrder({
+          id: "o",
+          action_at: "2026-06-10T00:00:00Z",
+          delivery_at: null,
+        }),
+        watch({
+          id: "w",
+          zk_issued_at: "2026-06-01T00:00:00Z",
+          created_at: "2026-08-01T00:00:00Z",
+        })
+      )
+    ).toBe(true);
+    expect(
+      nonExplicitHistoricalOrderOverlapsWatch(
+        linkOrder({
+          id: "o2",
+          action_at: "2026-06-10T00:00:00Z",
+          delivery_at: null,
+        }),
+        watch({
+          id: "w2",
+          zk_issued_at: "2026-08-01T00:00:00Z",
+          created_at: "2026-08-01T00:00:00Z",
+        })
+      )
+    ).toBe(false);
   });
 
   it("pomija zamknięte i zarchiwizowane ZK", () => {

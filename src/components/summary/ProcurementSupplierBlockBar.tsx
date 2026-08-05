@@ -143,7 +143,7 @@ export function ProcurementSupplierBlockBar({
                 ) : null}
               </div>
               {collapsed ? (
-                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
+                <div className="mt-1 flex min-w-0 flex-col gap-1.5">
                   <span className={cn(panelTypography.caption, "text-slate-500")}>
                     {collapsedHint}
                   </span>
@@ -152,6 +152,7 @@ export function ProcurementSupplierBlockBar({
                       lines={flagLines}
                       definitions={flagDefinitions}
                       disabled
+                      className="w-full min-w-0"
                     />
                   ) : null}
                 </div>

@@ -37,4 +37,6 @@ export const PROCUREMENT_REQUEST_FLAG_COPY = {
   mixedChip: "Flagi",
   emptyChipTitle: "Brak flagi",
   flagNoteHint: "Ma opis",
+  flagNoteExpand: "Pokaż cały opis",
+  flagNoteCollapse: "Zwiń opis",
 } as const;

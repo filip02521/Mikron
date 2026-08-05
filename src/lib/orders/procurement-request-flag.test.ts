@@ -12,6 +12,8 @@ import {
   PROCUREMENT_FLAG_SEED,
   procurementFlagLabelsEqual,
   procurementFlagPriority,
+  procurementFlagNoteNeedsExpand,
+  shortProcurementFlagLabel,
   summarizeGroupProcurementFlags,
 } from "./procurement-request-flag";
 
@@ -247,5 +249,28 @@ describe("buildProcurementListFilterCounts", () => {
     expect(counts[PROCUREMENT_FLAG_SEED.pilne]).toBe(1);
     expect(counts.none).toBe(1); // s2 only — s3 on vacation
     expect(counts.urlop_dostawcy).toBe(1);
+  });
+});
+
+describe("shortProcurementFlagLabel", () => {
+  it("skraca tylko długie etykiety (pasek filtrów — chip wiersza pokazuje pełną nazwę)", () => {
+    expect(shortProcurementFlagLabel("Pilne")).toBe("Pilne");
+    expect(shortProcurementFlagLabel("Bardzo długa nazwa flagi zakupów", 14)).toBe(
+      "Bardzo długa …"
+    );
+    expect(shortProcurementFlagLabel("x".repeat(18))).toBe("x".repeat(18));
+    expect(shortProcurementFlagLabel("x".repeat(19))).toBe(`${"x".repeat(17)}…`);
+  });
+});
+
+describe("procurementFlagNoteNeedsExpand", () => {
+  it("nie rozwija krótkiego opisu", () => {
+    expect(procurementFlagNoteNeedsExpand("Czekamy na KH")).toBe(false);
+    expect(procurementFlagNoteNeedsExpand("")).toBe(false);
+  });
+
+  it("rozwija długi lub wieloliniowy opis", () => {
+    expect(procurementFlagNoteNeedsExpand("x".repeat(121))).toBe(true);
+    expect(procurementFlagNoteNeedsExpand("a\nb\nc")).toBe(true);
   });
 });

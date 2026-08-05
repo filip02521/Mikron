@@ -140,6 +140,7 @@ export function procurementFlagLabelsEqual(a: string, b: string): boolean {
 }
 
 export function shortProcurementFlagLabel(label: string, max = 18): string {
+  /** Tylko kompaktowe miejsca (pasek filtrów) — chip w wierszu prośby pokazuje pełną nazwę. */
   const t = label.trim();
   if (t.length <= max) return t;
   return `${t.slice(0, max - 1)}…`;
@@ -380,6 +381,18 @@ export function procurementFlagDotClass(color: ProcurementFlagColor): string {
     default:
       return "bg-slate-400";
   }
+}
+
+/**
+ * Kiedy opis w wierszu listy powinien startować zwinięty
+ * (długi tekst nie rozpycha panelu przy skanowaniu).
+ */
+export function procurementFlagNoteNeedsExpand(note: string): boolean {
+  const t = note.trim();
+  if (!t) return false;
+  if (t.length > 120) return true;
+  if (t.split(/\r?\n/).filter(Boolean).length > 2) return true;
+  return false;
 }
 
 export function procurementFlagModalChipSelectedClass(

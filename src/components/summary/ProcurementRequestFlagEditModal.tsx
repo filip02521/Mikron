@@ -302,23 +302,33 @@ function ProcurementRequestFlagEditModalForm({
         </fieldset>
 
         <label className="block">
-          <span className="text-[11px] font-medium text-slate-600">
-            {PROCUREMENT_REQUEST_FLAG_COPY.noteLabel}
+          <span className="flex items-baseline justify-between gap-2 text-[11px] font-medium text-slate-600">
+            <span>{PROCUREMENT_REQUEST_FLAG_COPY.noteLabel}</span>
+            <span
+              className={cn(
+                "tabular-nums font-normal",
+                note.length > MAX_PROCUREMENT_FLAG_NOTE_LEN * 0.9
+                  ? "text-amber-700"
+                  : "text-slate-400"
+              )}
+            >
+              {note.length}/{MAX_PROCUREMENT_FLAG_NOTE_LEN}
+            </span>
           </span>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            rows={3}
+            rows={4}
             maxLength={MAX_PROCUREMENT_FLAG_NOTE_LEN}
             disabled={pending || flag == null}
             placeholder={PROCUREMENT_REQUEST_FLAG_COPY.notePlaceholder}
             className={cn(
-              "mt-1 w-full resize-y rounded-md border border-slate-200 px-2.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400",
+              "mt-1 min-h-[5.5rem] w-full resize-y rounded-md border border-slate-200 px-2.5 py-2 text-xs leading-relaxed text-slate-800 placeholder:text-slate-400",
               controlFocusClass
             )}
           />
           <p className={cn(panelTypography.caption, "mt-1")}>
-            Max {MAX_PROCUREMENT_FLAG_NOTE_LEN} znaków.
+            Opis widać pod flagą w panelu — krótkie zdanie czyta się najlepiej.
           </p>
         </label>
       </div>

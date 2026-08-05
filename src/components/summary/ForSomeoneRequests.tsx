@@ -916,28 +916,33 @@ export function ForSomeoneRequests({
                       {isUnseen ||
                       showVacationOnRow ||
                       g.lines.some((l) => Boolean(l.procurementFlag)) ? (
-                        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1">
-                          {isUnseen ? (
-                            <Badge
-                              className={cn(
-                                "h-5 px-1.5 py-0 text-[10px] font-semibold leading-none",
-                                dailyPanelUnseenBadgeClass(unseenVariant)
-                              )}
-                            >
-                              Nowa
-                              {ui.unseenCount > 1 ? ` (${ui.unseenCount})` : ""}
-                            </Badge>
-                          ) : null}
-                          {showVacationOnRow ? (
-                            <SupplierVacationNowChip
-                              window={suppliersOnVacationNow[g.supplierId]!}
-                            />
+                        <div className="mt-1 flex min-w-0 flex-col items-stretch gap-1.5">
+                          {isUnseen || showVacationOnRow ? (
+                            <div className="flex min-w-0 flex-wrap items-center gap-1">
+                              {isUnseen ? (
+                                <Badge
+                                  className={cn(
+                                    "h-5 px-1.5 py-0 text-[10px] font-semibold leading-none",
+                                    dailyPanelUnseenBadgeClass(unseenVariant)
+                                  )}
+                                >
+                                  Nowa
+                                  {ui.unseenCount > 1 ? ` (${ui.unseenCount})` : ""}
+                                </Badge>
+                              ) : null}
+                              {showVacationOnRow ? (
+                                <SupplierVacationNowChip
+                                  window={suppliersOnVacationNow[g.supplierId]!}
+                                />
+                              ) : null}
+                            </div>
                           ) : null}
                           <ProcurementRequestFlagGroupChip
                             lines={g.lines}
                             definitions={procurementFlagDefinitions}
                             disabled={groupPending}
                             onClick={() => openFlagEditor(g)}
+                            className="w-full min-w-0 max-w-full"
                           />
                         </div>
                       ) : null}

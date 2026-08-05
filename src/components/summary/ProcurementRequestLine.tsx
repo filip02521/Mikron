@@ -121,8 +121,10 @@ function ProcurementRequestLineContent({
         <span className="min-w-0 flex-1">
           {line.products}
         </span>
-        {flagSlot ? <span className="shrink-0">{flagSlot}</span> : null}
       </p>
+      {flagSlot ? (
+        <div className={cn("mt-1 min-w-0", compact ? "pl-5" : "pl-0")}>{flagSlot}</div>
+      ) : null}
       {hasMeta ? (
         <p className={cn("mt-0.5 text-slate-500", compact ? "pl-5 text-[10px]" : "text-xs")}>
           {line.symbol && line.symbol !== "-" ? line.symbol : null}
