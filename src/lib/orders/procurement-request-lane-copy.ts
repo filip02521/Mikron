@@ -1,0 +1,32 @@
+/** Copy PL — tory próśb w panelu dziennym. */
+export const PROCUREMENT_REQUEST_LANE_COPY = {
+  triage: "Do rozdzielenia",
+  doZamowienia: "Do zamówienia",
+  magazynInfo: "Magazyn → info",
+  urlop: "Urlop",
+  orphanFlag: "Nieznana flaga",
+  /** @deprecated seed labels — zostawione dla skrótów fallback */
+  pilne: "Pilne",
+  doSprawdzenia: "Do sprawdzenia",
+  czekaNaKlienta: "Czeka na klienta",
+  doWyjasnienia: "Do wyjaśnienia",
+  wstrzymane: "Wstrzymane",
+  inneFlagi: "Inne flagi",
+  navLabel: "Tory",
+  manageFlags: "Zarządzaj",
+  /** Skrót w menu — ustawia flagę; tor układa się sam. */
+  setFlag: "Flaga:",
+  clearFlag: "Wyczyść flagę",
+  flagOrderToast: "Zapisano kolejność torów",
+  flagSetToast: "Ustawiono flagę",
+  flagClearedToast: "Usunięto flagę",
+  triageHint: "Nowe lub jeszcze nierozdzielone — ustaw flagę albo zamów.",
+  doSprawdzeniaHint: "Sprawdzenie ceny / dostępności u dostawcy przed zamówieniem.",
+  doZamowieniaHint: "Gotowe do Główne / Uzupełniające.",
+  magazynInfoHint: "Prośby z panelu Informacja — do potwierdzenia magazynu.",
+  urlopHint: "Dostawca na urlopie — zamówienie poczeka albo inna ścieżka.",
+  laneCollapse: "Zwiń tor",
+  laneExpand: "Rozwiń tor",
+  laneMoveUp: "Tor wyżej",
+  laneMoveDown: "Tor niżej",
+} as const;

@@ -13,7 +13,7 @@ export const procurementStatusChipDisabledClass = "cursor-not-allowed opacity-55
 
 /** Filtr sekcji — pasek pod nagłówkiem. */
 export const procurementListFilterBarClass =
-  "flex flex-col gap-1.5 border-b border-slate-100/90 bg-gradient-to-b from-slate-50/80 to-white/40 px-2.5 py-2 sm:px-3";
+  "flex flex-col gap-1 border-b border-slate-100/90 bg-gradient-to-b from-slate-50/90 via-slate-50/40 to-white/30 px-2.5 py-2 sm:px-3";
 
 export const procurementListFilterTrackClass =
   "relative flex max-w-full flex-nowrap items-center gap-1 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";

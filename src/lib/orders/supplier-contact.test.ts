@@ -2,13 +2,14 @@ import { describe, expect, it } from "vitest";
 import { buildSupplierContactUi } from "./supplier-contact";
 
 describe("buildSupplierContactUi", () => {
-  it("mail — jeden klikalny adres zamiast osobnego przycisku", () => {
+  it("mail — adres + email do kopiowania z badge", () => {
     const ui = buildSupplierContactUi("MAILOWO", "zamowienia@dostawca.pl");
     expect(ui.contactLink).toEqual({
       kind: "mailto",
       href: "mailto:zamowienia@dostawca.pl",
       label: "zamowienia@dostawca.pl",
     });
+    expect(ui.email).toBe("zamowienia@dostawca.pl");
   });
 
   it("telefon — link tel:", () => {
@@ -43,6 +44,7 @@ describe("buildSupplierContactUi", () => {
   it("bez kontaktu zwraca null", () => {
     const ui = buildSupplierContactUi("MAILOWO", "");
     expect(ui.contactLink).toBeNull();
+    expect(ui.email).toBeNull();
     expect(ui.copyText).toBeNull();
   });
 

@@ -1,7 +1,13 @@
 /** Copy PL flag zakupów na prośbach. */
 export const PROCUREMENT_REQUEST_FLAG_COPY = {
-  overflowSet: "Ustaw flagę…",
-  overflowChange: "Zmień flagę…",
+  overflowSectionRequest: "Prośba",
+  overflowSectionFlag: "Flaga",
+  overflowEdit: "Popraw dane",
+  overflowCancelRequest: "Anuluj prośbę",
+  overflowFlagActive: "teraz",
+  /** Modal z opisem / wyborem pozycji — poniżej szybkich skrótów. */
+  overflowSet: "Ustaw z opisem…",
+  overflowChange: "Edytuj z opisem…",
   modalTitle: "Flaga prośby (zakupy)",
   modalTitleMulti: "Flaga dla wybranych pozycji",
   modalHint: "Widoczna tylko w panelu dziennym — handlowiec jej nie widzi.",
@@ -19,7 +25,7 @@ export const PROCUREMENT_REQUEST_FLAG_COPY = {
   manageFlags: "Zarządzaj",
   manageModalTitle: "Flagi zakupów",
   manageModalHint:
-    "Dodaj własne flagi z kolorem. Widoczne tylko w panelu dziennym.",
+    "Kolejność flag (↑↓) ustawia kolejność torów flag i która flaga wygrywa w grupie mieszanej. Tory systemowe (Do zamówienia, Urlop…) przestawiasz strzałkami na nagłówku toru.",
   manageAdd: "Dodaj flagę",
   manageLabelPlaceholder: "Nazwa flagi",
   manageDeactivate: "Dezaktywuj",

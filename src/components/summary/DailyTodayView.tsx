@@ -16,6 +16,7 @@ import {
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import { panelSectionInsetClass } from "@/lib/ui/ontime-theme";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
+import { useProcurementLanePrefs } from "@/components/summary/useProcurementLanePrefs";
 
 export function DailyTodayView({
   workspace,
@@ -83,6 +84,10 @@ export function DailyTodayView({
 }) {
   const hasCancelled = workspace.salesCancelledNotices.length > 0;
   const showEmpty = !hasTodayWork && verificationCount === 0 && !hasCancelled;
+  const lanePrefs = useProcurementLanePrefs(
+    workspace.procurementFlagDefinitions,
+    workspace.procurementLaneOrder
+  );
 
   return (
     <div
@@ -152,6 +157,8 @@ export function DailyTodayView({
                     procurementFlagDefinitions={
                       workspace.procurementFlagDefinitions
                     }
+                    procurementLaneOrder={workspace.procurementLaneOrder}
+                    lanePrefs={lanePrefs}
                     notify={notify}
                   />
                 ) : null}
@@ -175,6 +182,8 @@ export function DailyTodayView({
                     procurementFlagDefinitions={
                       workspace.procurementFlagDefinitions
                     }
+                    procurementLaneOrder={workspace.procurementLaneOrder}
+                    lanePrefs={lanePrefs}
                     notify={notify}
                   />
                 ) : null}

@@ -175,6 +175,8 @@ export type SummaryWorkspaceData = SummaryView & {
   suppliersOnVacationNow: Record<string, SupplierOnVacationWindow>;
   /** Definicje flag (wszystkie — aktywne i nieaktywne) — panel dzienny / manage. */
   procurementFlagDefinitions: ProcurementFlagDefinition[];
+  /** Zapisana kolejność torów (app_settings); null = domyślna. */
+  procurementLaneOrder: unknown;
   onDemandSuppliers: OnDemandSupplierRow[];
   thisWeekDays: WeekDayPlan[];
   nextWeekDays: WeekDayPlan[];
@@ -532,6 +534,7 @@ export function buildSummaryWorkspace(
     supplierMeta,
     suppliersOnVacationNow: {},
     procurementFlagDefinitions: [],
+    procurementLaneOrder: null,
     onDemandSuppliers,    thisWeekDays,
     nextWeekDays,
     forSomeoneLeft,

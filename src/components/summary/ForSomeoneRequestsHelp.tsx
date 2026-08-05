@@ -54,6 +54,12 @@ export function StockOutSectionHelp() {
           — w prawym górnym rogu wiersza (bez powtórzenia przy produkcie).
         </p>
       </HelpBlock>
+      <HelpBlock title="Tory">
+        <p>
+          Ta sama organizacja torów co w Prośbach (bez „Magazyn → info”). Każda flaga ma własny tor
+          w kolorze z definicji. Urlop i Do rozdzielenia działają jak w prośbach handlowców.
+        </p>
+      </HelpBlock>
     </HelpPopover>
   );
 }
@@ -98,6 +104,34 @@ export function ForSomeoneRequestsSectionHelp() {
         <KeyboardShortcutsHint items={[...FOR_SOMEONE_KEYBOARD_HINTS]} />
       </HelpBlock>
 
+      <HelpBlock title="Tory (organizacja kolejki)">
+        <ul className="list-disc space-y-1.5 pl-4">
+          <li>
+            Prośby są w torach: <strong className="font-medium text-slate-800">Do rozdzielenia</strong>{" "}
+            (jeszcze nieprzeczytane), potem <strong className="font-medium text-slate-800">osobny tor
+            na każdą flagę</strong> (kolor z Zarządzaj), potem{" "}
+            <strong className="font-medium text-slate-800">Do zamówienia</strong>, Magazyn→info, Urlop.
+          </li>
+          <li>
+            <strong className="font-medium text-slate-800">Tor ustawia się po fladze</strong> — nie
+            przesuwasz ręcznie. Menu „Więcej → Flaga: …”, chip albo edytor flagi zapisuje oznaczenie;
+            prośba od razu pojawia się w <em>osobnym torze tej flagi</em> (kolor tła = kolor flagi
+            z Zarządzaj).
+          </li>
+          <li>
+            <strong className="font-medium text-slate-800">Wyczyść flagę</strong> wraca do reguł
+            systemowych (Do rozdzielenia / Do zamówienia / Urlop / Magazyn→info).
+          </li>
+          <li>
+            Badge <strong className="font-medium text-violet-800">Nowa</strong> znika po najechaniu —
+            to nie przenosi od razu z „Do rozdzielenia” (dopiero po odświeżeniu danych z serwera).
+          </li>
+          <li>
+            „Zamów razem” działa tylko dla osób w <em>tym samym</em> torze u dostawcy.
+          </li>
+        </ul>
+      </HelpBlock>
+
       <HelpBlock title="Oznaczenia">
         <ul className="list-disc space-y-1.5 pl-4">
           <li>
@@ -107,27 +141,15 @@ export function ForSomeoneRequestsSectionHelp() {
           </li>
           <li>
             Badge <strong className="font-medium text-indigo-800">{INFORMACJA_VIA_PANEL_BADGE}</strong>{" "}
-            — po prawej tylko przy wyjątku Informacji przez panel (zwykłe prośby nie mają badge
-            „Do zamówienia”).
-          </li>
-          <li>
-            Badge <strong className="font-medium text-violet-800">Nowa</strong> — zakupy jeszcze
-            nie otworzyły prośby. Znika po najechaniu lub obsłużeniu.
+            — po prawej tylko przy wyjątku Informacji przez panel; w torze „Magazyn → info” gdy bez
+            silniejszej flagi.
           </li>
           <li>
             Chip <strong className="font-medium text-amber-900">Urlop</strong> — na nagłówku bloku
-            dostawcy (gdy jest kilka osób) albo w wierszu, gdy dostawca jest sam. Zakres dat w
-            tooltipie — to nie jest flaga zakupów.
+            dostawcy albo w wierszu. Zakres dat w tooltipie — to nie jest flaga zakupów.
           </li>
           <li>
-            Kolorowe chipy flag — własne oznaczenia zakupów (np. Pilne). Zarządzasz listą przy
-            filtrze („Zarządzaj”). Ustawisz flagę z menu „Więcej” albo klikając chip. Notatka flagi
-            widać skrótem na chipie. Po zapisie flagi masz 10&nbsp;s na cofnięcie (jak przy Główne).
-            Handlowiec ich nie widzi.
-          </li>
-          <li>
-            Filtr <strong className="font-medium text-slate-800">Bez flagi</strong> — pozycje bez
-            ręcznej flagi i bez urlopu dostawcy (urlop-only trafia do filtra Urlop).
+            Kolorowe chipy flag — oznaczenia zakupów. Kolejność <strong className="font-medium text-slate-800">wszystkich torów</strong> (także Do zamówienia / Urlop): strzałki ↑↓ na nagłówku toru albo w „Zarządzaj” dla flag. Handlowiec flag nie widzi.
           </li>
           <li className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
             Przy produkcie: <ProductSourceBadge fromSubiekt size={12} className="size-5" /> — z
@@ -139,10 +161,10 @@ export function ForSomeoneRequestsSectionHelp() {
 
       <HelpBlock title="Wielu handlowców u dostawcy">
         <p>
-          Użyj <strong className="font-medium text-slate-800">Zamów razem</strong> (wszyscy) albo{" "}
-          <strong className="font-medium text-slate-800">Tylko ta osoba</strong> w wierszu. Przy
-          trzech i więcej osobach lista domyślnie jest zwinięta — rozwija się, gdy pojawi się badge
-          Nowa. Zwinięty nagłówek pokazuje kto ma nowe prośby i skrót flag.
+          Użyj <strong className="font-medium text-slate-800">Zamów razem</strong> (wszyscy w tym
+          torze) albo <strong className="font-medium text-slate-800">Tylko ta osoba</strong> w
+          wierszu. Przy trzech i więcej osobach lista domyślnie jest zwinięta — rozwija się, gdy
+          pojawi się badge Nowa.
         </p>
       </HelpBlock>
     </HelpPopover>

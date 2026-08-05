@@ -653,9 +653,9 @@ export function procurementSupplierBlockHeaderClass(
   variant: DailyPanelUnseenVariant = "prosby"
 ): string {
   if (variant === "stockOut") {
-    return "border-b border-amber-200/65 bg-amber-50/55";
+    return "border-b border-amber-100/80 bg-amber-50/40";
   }
-  return "border-b border-indigo-200/60 bg-indigo-50/45";
+  return "border-b border-slate-100/90 bg-slate-50/55";
 }
 
 /** Lista prośb wewnątrz bloku dostawcy — wspólny kontener, bez osobnych ramek. */

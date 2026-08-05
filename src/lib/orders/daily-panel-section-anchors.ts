@@ -6,6 +6,12 @@ export const DAILY_PANEL_QUEUE_SECTION = {
   today: "kolejka-harmonogram-dzis",
 } as const;
 
+/** Prefiks kotwic torów próśb / braków (pełne id buduje procurementLaneAnchorId). */
+export const DAILY_PANEL_LANE_ANCHOR_PREFIX = {
+  prosby: "prosby-tor",
+  stockOut: "brak-tor",
+} as const;
+
 /** Kotwice sekcji zakładki Tydzień. */
 export const DAILY_PANEL_WEEK_SECTION = {
   onDemand: "plan-na-zadanie",

@@ -18,6 +18,7 @@ import {
   setDailyPanelUndoFromAction,
   subscribeDailyPanelUndo,
 } from "@/lib/client/daily-panel-undo-store";
+import { invalidateProcurementFlagOptimistic } from "@/lib/orders/procurement-flag-optimistic";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import { ACTION_PENDING_SAFETY_FORM_MS } from "@/lib/timing";
 
@@ -32,6 +33,8 @@ export type DailyPanelRunOptions = {
   overlay?: boolean;
   /** Wywołane po udanej akcji (przed refresh). */
   onSuccess?: () => void;
+  /** Wywołane po nieudanej akcji (przed refresh). */
+  onError?: () => void;
 };
 
 export type DailyPanelRunFn = (
@@ -108,6 +111,7 @@ export function useDailyPanelRunner() {
     (action, successMessage, pendingMsg = "Przetwarzanie…", options) => {
       if (readOnly) {
         setFlash(ADMIN_PREVIEW_TOAST);
+        options?.onError?.();
         return;
       }
 
@@ -151,6 +155,7 @@ export function useDailyPanelRunner() {
           consumeDailyPanelUndoRefreshFlag();
           setFlash(toastFromError(e instanceof Error ? e.message : undefined, DAILY_PANEL_TOAST.genericError.text));
           needsRefreshRef.current = true;
+          options?.onError?.();
         } finally {
           clearSafetyTimer();
           setPendingScope(null);
@@ -185,6 +190,7 @@ export function useDailyPanelRunner() {
         clearDailyPanelUndo();
         undoPayloadRef.current = null;
         consumeDailyPanelUndoRefreshFlag();
+        invalidateProcurementFlagOptimistic();
         setFlash(DAILY_PANEL_TOAST.undoSuccess);
         needsRefreshRef.current = true;
       } catch (e) {
