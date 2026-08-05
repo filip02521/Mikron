@@ -942,7 +942,7 @@ export function ForSomeoneRequests({
                             definitions={procurementFlagDefinitions}
                             disabled={groupPending}
                             onClick={() => openFlagEditor(g)}
-                            className="w-full min-w-0 max-w-full"
+                            className="max-w-full"
                           />
                         </div>
                       ) : null}

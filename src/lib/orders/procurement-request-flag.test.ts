@@ -264,13 +264,14 @@ describe("shortProcurementFlagLabel", () => {
 });
 
 describe("procurementFlagNoteNeedsExpand", () => {
-  it("nie rozwija krótkiego opisu", () => {
+  it("nie rozwija krótkiego opisu w jednej linii", () => {
     expect(procurementFlagNoteNeedsExpand("Czekamy na KH")).toBe(false);
     expect(procurementFlagNoteNeedsExpand("")).toBe(false);
+    expect(procurementFlagNoteNeedsExpand("x".repeat(48))).toBe(false);
   });
 
-  it("rozwija długi lub wieloliniowy opis", () => {
-    expect(procurementFlagNoteNeedsExpand("x".repeat(121))).toBe(true);
-    expect(procurementFlagNoteNeedsExpand("a\nb\nc")).toBe(true);
+  it("rozwija dłuższy lub wieloliniowy opis", () => {
+    expect(procurementFlagNoteNeedsExpand("x".repeat(49))).toBe(true);
+    expect(procurementFlagNoteNeedsExpand("a\nb")).toBe(true);
   });
 });

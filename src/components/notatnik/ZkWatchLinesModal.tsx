@@ -286,6 +286,7 @@ export function ZkWatchLinesModal({
               showSubiektRealizedCloseHint={showSubiektRealizedCloseHint}
             />
             <ZkWatchTeethPreviewSection
+              key={`${watchKey}-teeth`}
               watch={watch}
               tourPreview={tourPreview}
               readOnly={readOnly}

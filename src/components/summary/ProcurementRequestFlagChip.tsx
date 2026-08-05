@@ -2,6 +2,7 @@
 
 import { useState, type KeyboardEvent, type MouseEvent } from "react";
 import { cn } from "@/lib/cn";
+import { IconChevronDown } from "@/components/icons/StrokeIcons";
 import {
   buildFlagSortOrderMap,
   findFlagDefinition,
@@ -23,8 +24,9 @@ import {
 } from "@/lib/ui/procurement-status-chips";
 
 /**
- * Jedna flaga = jeden obiekt UI: nazwa + opis w tym samym chipie.
- * Długi opis zwija się wewnątrz (bez osobnego bloku pod spodem).
+ * Flaga = jeden kompaktowy obiekt.
+ * Domyślnie jedna linia: ● Nazwa · podgląd opisu…
+ * Rozwinięcie (gdy opis długi) zostaje w tym samym chipie.
  */
 export function ProcurementRequestFlagChip({
   flag,
@@ -44,8 +46,9 @@ export function ProcurementRequestFlagChip({
   className?: string;
 }) {
   const def = findFlagDefinition(definitions, flag);
-  const noteText = note?.trim() || "";
-  const hasNote = Boolean(noteText);
+  const noteText = note?.trim().replace(/\s+/g, " ") || "";
+  const noteRaw = note?.trim() || "";
+  const hasNote = Boolean(noteRaw);
   const isOrphan = !def;
   const color: ProcurementFlagColor = def?.color ?? "slate";
   const baseLabel = def?.label ?? PROCUREMENT_REQUEST_FLAG_COPY.orphanChipLabel;
@@ -53,9 +56,9 @@ export function ProcurementRequestFlagChip({
     mixedCount != null && mixedCount > 1
       ? `${baseLabel} +${mixedCount - 1}`
       : baseLabel;
-  const needsExpand = hasNote && procurementFlagNoteNeedsExpand(noteText);
+  const needsExpand = hasNote && procurementFlagNoteNeedsExpand(noteRaw);
   const [expanded, setExpanded] = useState(false);
-  const showFullNote = !needsExpand || expanded;
+  const showFullNote = Boolean(hasNote && needsExpand && expanded);
 
   const titleParts = [
     mixedCount != null && mixedCount > 1
@@ -63,14 +66,17 @@ export function ProcurementRequestFlagChip({
       : baseLabel,
     def && !def.isActive ? "Nieaktywna" : null,
     isOrphan ? "Brak definicji — odśwież lub wyczyść flagę" : null,
-    hasNote ? PROCUREMENT_REQUEST_FLAG_COPY.flagNoteHint : null,
+    hasNote ? noteRaw : null,
     onClick && !disabled ? "Kliknij, aby zmienić" : null,
   ].filter(Boolean);
 
   const interactive = Boolean(onClick) && !disabled;
   const shellClass = cn(
     procurementStatusChipBaseClass,
-    "h-auto min-h-5 w-full max-w-full flex-col items-stretch gap-1 whitespace-normal px-2 py-1.5 text-left leading-snug",
+    "h-auto min-h-5 w-fit max-w-full whitespace-normal px-2 py-1 text-left leading-snug",
+    showFullNote
+      ? "flex-col items-stretch gap-1"
+      : "items-center gap-1.5",
     procurementFlagChipClass(color),
     (isOrphan || (def && !def.isActive)) && "opacity-70",
     interactive && procurementStatusChipInteractiveClass,
@@ -96,44 +102,68 @@ export function ProcurementRequestFlagChip({
     }
   };
 
+  const toggleExpand = (e: MouseEvent) => {
+    e.stopPropagation();
+    setExpanded((v) => !v);
+  };
+
+  const headerRow = (
+    <span
+      className={cn(
+        "flex min-w-0 items-center gap-1.5",
+        showFullNote ? "w-full" : "max-w-full"
+      )}
+    >
+      <span
+        className={cn("size-1.5 shrink-0 rounded-full", procurementFlagDotClass(color))}
+        aria-hidden
+      />
+      <span className="shrink-0 font-semibold">{label}</span>
+      {hasNote && !showFullNote ? (
+        <>
+          <span className="shrink-0 font-normal opacity-35" aria-hidden>
+            ·
+          </span>
+          <span className="min-w-0 truncate font-medium opacity-80">{noteText}</span>
+        </>
+      ) : null}
+      {needsExpand ? (
+        <button
+          type="button"
+          data-flag-note-toggle
+          className={cn(
+            "ml-0.5 inline-flex shrink-0 items-center gap-0.5 rounded px-0.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide opacity-70",
+            "hover:bg-black/5 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40"
+          )}
+          aria-expanded={showFullNote}
+          aria-label={
+            showFullNote
+              ? PROCUREMENT_REQUEST_FLAG_COPY.flagNoteCollapse
+              : PROCUREMENT_REQUEST_FLAG_COPY.flagNoteExpand
+          }
+          title={
+            showFullNote
+              ? PROCUREMENT_REQUEST_FLAG_COPY.flagNoteCollapse
+              : PROCUREMENT_REQUEST_FLAG_COPY.flagNoteExpand
+          }
+          onClick={toggleExpand}
+        >
+          <IconChevronDown
+            size={12}
+            open={showFullNote}
+            className="opacity-80"
+          />
+        </button>
+      ) : null}
+    </span>
+  );
+
   const body = (
     <>
-      <span className="flex min-w-0 items-start gap-1.5">
-        <span
-          className={cn(
-            "mt-[3px] size-1.5 shrink-0 rounded-full",
-            procurementFlagDotClass(color)
-          )}
-          aria-hidden
-        />
-        <span className="min-w-0 break-words font-semibold">{label}</span>
-      </span>
-      {hasNote ? (
-        <span className="flex min-w-0 flex-col gap-0.5 pl-3">
-          <span
-            className={cn(
-              "min-w-0 whitespace-pre-wrap break-words text-[10px] font-medium leading-snug opacity-90",
-              !showFullNote && "line-clamp-3"
-            )}
-          >
-            {noteText}
-          </span>
-          {needsExpand ? (
-            <button
-              type="button"
-              data-flag-note-toggle
-              className="self-start text-[10px] font-semibold underline-offset-2 opacity-80 hover:underline hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40"
-              aria-expanded={showFullNote}
-              onClick={(e) => {
-                e.stopPropagation();
-                setExpanded((v) => !v);
-              }}
-            >
-              {showFullNote
-                ? PROCUREMENT_REQUEST_FLAG_COPY.flagNoteCollapse
-                : PROCUREMENT_REQUEST_FLAG_COPY.flagNoteExpand}
-            </button>
-          ) : null}
+      {headerRow}
+      {showFullNote ? (
+        <span className="min-w-0 max-w-[min(100%,22rem)] whitespace-pre-wrap break-words pl-3 text-[10px] font-medium leading-relaxed opacity-90">
+          {noteRaw}
         </span>
       ) : null}
     </>
@@ -155,10 +185,7 @@ export function ProcurementRequestFlagChip({
   }
 
   return (
-    <div
-      className={shellClass}
-      title={titleParts.join(" — ") || undefined}
-    >
+    <div className={shellClass} title={titleParts.join(" — ") || undefined}>
       {body}
     </div>
   );
