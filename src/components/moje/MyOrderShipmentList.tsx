@@ -1,5 +1,5 @@
 "use client";
-import { MY_ORDERS_TOAST, type ToastNotice } from "@/lib/ui/notice-copy";
+import { MY_ORDERS_TOAST, toastSuccess, type ToastNotice } from "@/lib/ui/notice-copy";
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -10,6 +10,7 @@ import {
   actionAcknowledgePickup,
   actionAcknowledgeCancelled,
   actionAcknowledgeSalesCancelNotice,
+  actionAcknowledgeSalesRequestNote,
   actionSalesCancelOrders,
   actionSalesCancelTeethGroups,
   actionUpdateSalesClientName,
@@ -327,6 +328,32 @@ export function MyOrderShipmentList({
     [router, tourPreview, reportUndo, delegateFor]
   );
 
+  const runAcknowledgeRequestNote = useCallback(
+    (orderIds: string[]) => {
+      if (tourPreview) return;
+      const n = orderIds.length;
+      setPendingMessage(n === 1 ? "Potwierdzanie uwag…" : `Potwierdzanie ${n} uwag…`);
+      start(async () => {
+        try {
+          await actionAcknowledgeSalesRequestNote(orderIds, delegateFor);
+          setSuccessToast(
+            toastSuccess(
+              n === 1
+                ? "Uwagi od zakupów oznaczone jako przeczytane"
+                : `Przeczytano uwagi przy ${n} pozycjach`
+            )
+          );
+          router.refresh();
+        } catch (e) {
+          setErrorToast(MY_ORDERS_TOAST.actionFailed(e instanceof Error ? e.message : undefined));
+        } finally {
+          setPendingMessage(null);
+        }
+      });
+    },
+    [router, tourPreview, delegateFor]
+  );
+
   const saveClient = useCallback(
     async (orderId: string, patch: SalesClientAssignment) => {
       if (tourPreview) return;
@@ -457,6 +484,11 @@ export function MyOrderShipmentList({
             ? runAcknowledgeCancelNotice
             : undefined
         }
+        onAcknowledgeRequestNote={
+          canAcknowledge && (row.unreadRequestNoteOrderIds?.length ?? 0) > 0
+            ? runAcknowledgeRequestNote
+            : undefined
+        }
         onCancelRequest={
           (canEditProp ?? canAcknowledge) && row.salesCancelOrderIds.length && row.salesCancelPhase
             ? requestCancel
@@ -495,6 +527,7 @@ export function MyOrderShipmentList({
       rowVisualTone,
       runAcknowledgeCancelNotice,
       runAcknowledgeCancelled,
+      runAcknowledgeRequestNote,
       saveClient,
       searchQuery,
       showProgress,

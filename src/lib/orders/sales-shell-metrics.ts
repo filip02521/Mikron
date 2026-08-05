@@ -71,6 +71,8 @@ export async function fetchSalesShellMetrics(
     zd_fulfillment_synced_at: o.zd_fulfillment_synced_at,
     zd_fulfillment_dok_id: o.zd_fulfillment_dok_id,
     zd_fulfillment_dok_nr: o.zd_fulfillment_dok_nr,
+    sales_request_note_updated_at: o.sales_request_note_updated_at,
+    sales_request_note_seen_at: o.sales_request_note_seen_at,
   }));
 
   const ordersPart = computeSalesActivityVersionFromRows(activityRows);

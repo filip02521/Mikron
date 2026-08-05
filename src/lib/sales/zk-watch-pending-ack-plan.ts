@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { isSalesCancelNoticePending } from "@/lib/orders/sales-cancel";
+import { isSalesRequestNoteUnread } from "@/lib/orders/sales-request-note";
 import {
   getSalesCancelDbCaps,
   SALES_CANCEL_MIGRATION_HINT,
@@ -124,6 +125,80 @@ export async function acknowledgeZdDeadlineWithClient(
   if (error) throw new Error(error.message);
 
   const ackedIds = (updatedRows ?? []).map((r) => r.id);
+
+  if (options?.revalidate !== false) {
+    revalidatePath("/moje");
+  }
+
+  return { count: ackedIds.length, ackedIds };
+}
+
+/** Handlowiec potwierdza przeczytanie uwag zaktualizowanych przez zakupy. */
+export async function acknowledgeSalesRequestNoteWithClient(
+  supabase: SupabaseClient,
+  salesPersonId: string,
+  orderIds: string[],
+  options?: { revalidate?: boolean }
+): Promise<AckMutationResult> {
+  const uniqueIds = [...new Set(orderIds.map((id) => id.trim()).filter(Boolean))];
+  if (!uniqueIds.length) return { count: 0, ackedIds: [] };
+
+  const now = new Date().toISOString();
+  const { data: rowsRaw, error: fetchError } = await supabase
+    .from("individual_orders")
+    .select(
+      "id, sales_person_id, sales_request_note, sales_request_note_updated_at, sales_request_note_seen_at"
+    )
+    .in("id", uniqueIds);
+
+  if (fetchError) throw new Error(fetchError.message);
+  const rows = rowsRaw ?? [];
+  if (!rows.length) throw new Error("Nie znaleziono pozycji.");
+
+  const pendingIds: string[] = [];
+  for (const row of rows) {
+    if (row.sales_person_id !== salesPersonId) {
+      throw new Error("Brak uprawnień do tej pozycji.");
+    }
+    if (
+      !isSalesRequestNoteUnread({
+        note: row.sales_request_note as string | null,
+        updatedAt: row.sales_request_note_updated_at as string | null,
+        seenAt: row.sales_request_note_seen_at as string | null,
+      })
+    ) {
+      continue;
+    }
+    pendingIds.push(row.id);
+  }
+
+  if (!pendingIds.length) return { count: 0, ackedIds: [] };
+
+  const pendingById = new Map(
+    rows
+      .filter((r) => pendingIds.includes(r.id))
+      .map((r) => [
+        r.id as string,
+        (r.sales_request_note_updated_at as string | null)?.trim() || null,
+      ])
+  );
+
+  const ackedIds: string[] = [];
+  for (const id of pendingIds) {
+    const expectedUpdatedAt = pendingById.get(id);
+    if (!expectedUpdatedAt) continue;
+
+    // Guard: nie oznaczaj „Widziałem” nowszej zmiany zakupów, która weszła między fetch a update.
+    const { data: updatedRows, error } = await supabase
+      .from("individual_orders")
+      .update({ sales_request_note_seen_at: now })
+      .eq("id", id)
+      .eq("sales_person_id", salesPersonId)
+      .eq("sales_request_note_updated_at", expectedUpdatedAt)
+      .select("id");
+    if (error) throw new Error(error.message);
+    if (updatedRows?.[0]?.id) ackedIds.push(updatedRows[0].id);
+  }
 
   if (options?.revalidate !== false) {
     revalidatePath("/moje");

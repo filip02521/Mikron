@@ -59,6 +59,7 @@ import {
 import { isLineZdDetailRedundantWithExpandedGroupTiming } from "@/lib/orders/my-order-zd-fulfillment-display";
 import { resolveMyOrderDeliveryRowVisual } from "@/lib/orders/my-order-delivery-urgency";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
+import { MyOrderRequestNote } from "@/components/moje/MyOrderRequestNote";
 import { isRequestNotesAggregateSummary } from "@/lib/orders/sales-request-note";
 import { isProcurementCancelNotesAggregateSummary } from "@/lib/orders/procurement-cancel-note";
 import { MyOrderLineItem } from "@/components/moje/MyOrderLineItem";
@@ -339,6 +340,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   onAcknowledgePickup,
   onAcknowledgeCancelled,
   onAcknowledgeCancelNotice,
+  onAcknowledgeRequestNote,
   onCancelRequest,
   onPartialCancelRequest,
   onSaveClient,
@@ -366,6 +368,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   onAcknowledgePickup: (orderIds: string[], shelfPickup?: boolean) => void;
   onAcknowledgeCancelled?: (orderIds: string[]) => void;
   onAcknowledgeCancelNotice?: (orderIds: string[]) => void;
+  onAcknowledgeRequestNote?: (orderIds: string[]) => void;
   onCancelRequest?: (orderIds: string[], lines: SalesCancelLineContext[]) => void;
   onPartialCancelRequest?: (
     orderId: string,
@@ -757,7 +760,13 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     row.requestNote && !isRequestNotesAggregateSummary(row.requestNote)
       ? row.requestNote
       : null;
-  const hideLineRequestNote = false;
+  const unreadRequestNoteIds = row.unreadRequestNoteOrderIds ?? [];
+  const canActOnRequestNote = canAcknowledge && Boolean(onAcknowledgeRequestNote);
+  const showUnreadRequestNoteChrome =
+    Boolean(row.requestNoteUnread) && canActOnRequestNote;
+  const showSharedUnreadRequestNote =
+    showUnreadRequestNoteChrome && Boolean(sharedRequestNote && unreadRequestNoteIds.length);
+  const hideLineRequestNote = showSharedUnreadRequestNote;
   const sharedProcurementCancelNote =
     row.procurementCancelNote &&
     !isProcurementCancelNotesAggregateSummary(row.procurementCancelNote)
@@ -786,6 +795,18 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     hideClientLabel: hideLineClient,
     hideRequestNote: hideLineRequestNote,
     hideProcurementCancelNote: hideLineProcurementCancelNote,
+    requestNoteUnread:
+      showUnreadRequestNoteChrome &&
+      Boolean(line.requestNoteUnread) &&
+      !showSharedUnreadRequestNote,
+    onAcknowledgeRequestNote:
+      showUnreadRequestNoteChrome &&
+      onAcknowledgeRequestNote &&
+      line.requestNoteUnread &&
+      !showSharedUnreadRequestNote
+        ? () => onAcknowledgeRequestNote([line.id])
+        : undefined,
+    acknowledgeRequestNotePending: pending,
     hideZdLineDetail: isLineZdDetailRedundantWithExpandedGroupTiming(
       row,
       line,
@@ -1002,14 +1023,33 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             ) : null}
             {/* Client/note/procurement note — only in expanded view */}
           </div>
-          {(row.sourceZkNumber || sharedRequestNote || sharedProcurementCancelNote) ? (
+          {(row.sourceZkNumber ||
+            sharedRequestNote ||
+            sharedProcurementCancelNote ||
+            showUnreadRequestNoteChrome) ? (
             <div className="mt-0.5 flex items-center gap-1.5">
-              {sharedRequestNote || sharedProcurementCancelNote ? (
-                <span className="shrink-0 inline-flex items-center gap-0.5 rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-indigo-500 ring-1 ring-inset ring-indigo-200/70" title="Prośba zawiera uwagi">
+              {sharedRequestNote ||
+              sharedProcurementCancelNote ||
+              showUnreadRequestNoteChrome ? (
+                <span
+                  className={cn(
+                    "shrink-0 inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium leading-none ring-1 ring-inset",
+                    showUnreadRequestNoteChrome
+                      ? "bg-indigo-100 text-indigo-800 ring-indigo-300/80"
+                      : "bg-indigo-50 text-indigo-500 ring-indigo-200/70"
+                  )}
+                  title={
+                    showUnreadRequestNoteChrome
+                      ? showSharedUnreadRequestNote
+                        ? "Zakupy zaktualizowały uwagi — przeczytaj poniżej i potwierdź Widziałem"
+                        : "Zakupy zaktualizowały uwagi — rozwiń, aby przeczytać"
+                      : "Prośba zawiera uwagi"
+                  }
+                >
                   <svg viewBox="0 0 16 16" className="size-3" fill="currentColor" aria-hidden>
                     <path d="M3 2a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h6a1 1 0 0 0 .7-.3l3-3a1 1 0 0 0 .3-.7V3a1 1 0 0 0-1-1H3Zm1 2h7v5H8a1 1 0 0 0-1 1v2H4V4Z" />
                   </svg>
-                  Uwagi
+                  {showUnreadRequestNoteChrome ? "Nowe uwagi" : "Uwagi"}
                 </span>
               ) : null}
               {row.sourceZkNumber ? (
@@ -1082,6 +1122,27 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           {toolbar}
         </div>
       </div>
+
+      {showSharedUnreadRequestNote && sharedRequestNote ? (
+        <div
+          className="border-t border-indigo-100/80 bg-gradient-to-r from-indigo-50/60 via-white to-sky-50/30 px-3 py-2.5 sm:px-4"
+          onClick={(event) => event.stopPropagation()}
+          onMouseDown={(event) => event.stopPropagation()}
+        >
+          <MyOrderRequestNote
+            note={sharedRequestNote}
+            unread
+            searchQuery={searchQuery}
+            acknowledgePending={pending}
+            tourPreview={tourPreview}
+            onAcknowledge={
+              canActOnRequestNote
+                ? () => onAcknowledgeRequestNote!(unreadRequestNoteIds)
+                : undefined
+            }
+          />
+        </div>
+      ) : null}
 
       {/* Mobile meta — single inline row, no border-t duplication */}
       {!expanded &&

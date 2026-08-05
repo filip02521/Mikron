@@ -35,6 +35,7 @@ import {
   sendDeliveryNotificationEmails,
   sendInformacjaArrivedEmails,
   sendProcurementCancelEmails,
+  sendRequestNoteUpdateEmails,
 } from "@/lib/services/email";
 import type { IndividualRequestKind } from "@/types/database";
 import { INFORMACJA_NO_QUANTITY, quantityForRequestKind } from "@/lib/orders/individual";
@@ -73,6 +74,7 @@ import {
   buildDeliveryNotificationItem,
   buildInformacjaNotificationItem,
   buildProcurementCancelNotificationItem,
+  buildRequestNoteUpdateNotificationItem,
 } from "@/lib/email/sales-notification-items";
 import {
   assessRequestCompleteness,
@@ -706,7 +708,13 @@ export async function updateIndividualRequestGroup(
     /** Sesja użytkownika (JWT) — np. edycja prośby z /moje; domyślnie service role. */
     supabase?: SupabaseClient;
   }
-): Promise<{ updated: number; inserted: number; removed: number }> {
+): Promise<{
+  updated: number;
+  inserted: number;
+  removed: number;
+  /** Pozycje, przy których zakupy zmieniły uwagi — do e-maila / Start dnia. */
+  noteNotifyOrderIds: string[];
+}> {
   if (!orderIds.length) throw new Error("Brak pozycji do edycji.");
   if (!payload.lines.length) throw new Error("Dodaj co najmniej jedną pozycję.");
   assertMaxBatchSize(payload.lines.length, MAX_REQUEST_EDIT_LINES, "pozycji w prośbie");
@@ -761,6 +769,7 @@ export async function updateIndividualRequestGroup(
   const keptIds = new Set<string>();
   let updated = 0;
   let inserted = 0;
+  const noteNotifyOrderIds: string[] = [];
   // Stare podejście (dopasowanie dostawcy z ZD) zostało wycofane.
 
   const resolveInformacjaFlags = (lineId?: string) => {
@@ -861,10 +870,32 @@ export async function updateIndividualRequestGroup(
             ? undefined
             : null;
     const isProcurementEdit = !options.salesPersonIdConstraint;
-    const noteChanged =
-      isProcurementEdit &&
-      salesRequestNote !== undefined &&
-      normalizeSalesRequestNote(existingOrder?.sales_request_note) !== salesRequestNote;
+    const existingNote = normalizeSalesRequestNote(existingOrder?.sales_request_note);
+    const noteContentChanged =
+      salesRequestNote !== undefined && existingNote !== salesRequestNote;
+    const noteChanged = isProcurementEdit && noteContentChanged;
+    const noteNotify = noteChanged && Boolean(salesRequestNote);
+    /** Edycja handlowca nie może zostawić „Uwagi od zakupów” na własnym tekście. */
+    const salesClearsProcurementUnread =
+      !isProcurementEdit &&
+      noteContentChanged &&
+      Boolean(existingOrder?.sales_request_note_updated_at);
+    const noteTimestampPatch = noteChanged
+      ? salesRequestNote
+        ? {
+            sales_request_note_updated_at: new Date().toISOString(),
+            sales_request_note_seen_at: null,
+          }
+        : {
+            sales_request_note_updated_at: null,
+            sales_request_note_seen_at: null,
+          }
+      : salesClearsProcurementUnread
+        ? {
+            sales_request_note_updated_at: null,
+            sales_request_note_seen_at: null,
+          }
+        : {};
     const isTeeth =
       line.subiektTwId != null && line.subiektTwId > 0
         ? teethTwIdSet.has(Math.trunc(line.subiektTwId))
@@ -914,7 +945,7 @@ export async function updateIndividualRequestGroup(
           ? Math.trunc(line.clientKhId)
           : null,
       ...(salesRequestNote !== undefined ? { sales_request_note: salesRequestNote } : {}),
-      ...(noteChanged ? { sales_request_note_updated_at: new Date().toISOString() } : {}),
+      ...noteTimestampPatch,
       subiekt_tw_id:
         line.subiektTwId != null && line.subiektTwId > 0 ? line.subiektTwId : null,
       mikran_code: sanitized.mikranCode?.trim() || null,
@@ -934,6 +965,7 @@ export async function updateIndividualRequestGroup(
       if (error) throw new Error(error.message);
       keptIds.add(existingLineId);
       updated++;
+      if (noteNotify) noteNotifyOrderIds.push(existingLineId);
       teethDetailsToSave.push({ orderId: existingLineId, isTeeth, teethDetails: teethDetailsForSave });
 
       try {
@@ -965,6 +997,7 @@ export async function updateIndividualRequestGroup(
       });
       if (error) throw new Error(formatDbError(error));
       inserted++;
+      if (noteNotify) noteNotifyOrderIds.push(newId);
       teethDetailsToSave.push({ orderId: newId, isTeeth, teethDetails: teethDetailsForSave });
 
       try {
@@ -1002,7 +1035,7 @@ export async function updateIndividualRequestGroup(
     removed = removeIds.length;
   }
 
-  return { updated, inserted, removed };
+  return { updated, inserted, removed, noteNotifyOrderIds: [...new Set(noteNotifyOrderIds)] };
 }
 
 type IndividualOrderProcessSnapshot = {
@@ -1326,6 +1359,78 @@ export async function notifyProcurementCancelForOrders(
     const mailResult = await sendProcurementCancelEmails(notifications, {
       noteUpdated: opts?.noteUpdated,
     });
+    emailSent = mailResult.sent;
+    if (mailResult.failures.length) {
+      emailError = `${mailResult.failures[0].to}: ${mailResult.failures[0].error}`;
+    }
+  } else if (loaded > 0) {
+    emailError = "Brak adresu e-mail handlowca — zapisano bez powiadomienia";
+  }
+  if (notifySkipped.length) {
+    const skipNote =
+      notifySkipped.length === 1
+        ? `${notifySkipped[0]}: brak e-maila — zapisano bez powiadomienia`
+        : `${notifySkipped.length} handlowców bez e-maila — zapisano bez powiadomienia`;
+    emailError = emailError ? `${emailError}; ${skipNote}` : skipNote;
+  }
+
+  return { emailSent, emailError };
+}
+
+/** Powiadomienia e-mail po zmianie uwag przy prośbie przez dział zakupów. */
+export async function notifySalesRequestNoteUpdatedForOrders(
+  orderIds: string[]
+): Promise<ProcurementCancelEmailResult> {
+  const uniqueIds = [...new Set(orderIds)];
+  if (!uniqueIds.length) {
+    return { emailSent: 0 };
+  }
+
+  const supabase = createAdminClient();
+  const personEmailCache = new Map<string, Awaited<ReturnType<typeof resolveSalesPersonEmail>>>();
+  const notifications = new Map<string, SalesPersonEmailBatch>();
+  const notifySkipped: string[] = [];
+  let loaded = 0;
+
+  for (const id of uniqueIds) {
+    const { data: raw } = await supabase
+      .from("individual_orders")
+      .select("*, supplier:suppliers(*), sales_person:sales_people(*)")
+      .eq("id", id)
+      .single();
+    const order = raw ? normalizeIndividualOrder(raw) : null;
+    if (!order) continue;
+    if (!normalizeSalesRequestNote(order.sales_request_note)) continue;
+    if (!order.sales_request_note_updated_at) continue;
+    loaded++;
+
+    let person = personEmailCache.get(order.sales_person_id);
+    if (person === undefined) {
+      person = await resolveSalesPersonEmail(supabase, order);
+      personEmailCache.set(order.sales_person_id, person);
+    }
+
+    if (person) {
+      const item = buildRequestNoteUpdateNotificationItem(order);
+      const existingBatch = notifications.get(person.personId);
+      if (existingBatch) {
+        existingBatch.items.push(item);
+      } else {
+        notifications.set(person.personId, {
+          email: person.email,
+          name: person.name,
+          items: [item],
+        });
+      }
+    } else if (order.sales_person_id) {
+      notifySkipped.push(order.sales_person?.name?.trim() ?? "Handlowiec");
+    }
+  }
+
+  let emailSent = 0;
+  let emailError: string | undefined;
+  if (notifications.size) {
+    const mailResult = await sendRequestNoteUpdateEmails(notifications);
     emailSent = mailResult.sent;
     if (mailResult.failures.length) {
       emailError = `${mailResult.failures[0].to}: ${mailResult.failures[0].error}`;

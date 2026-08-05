@@ -79,6 +79,8 @@ import { clientNamesSummary } from "@/lib/orders/sales-client-label";
 import {
   normalizeSalesRequestNote,
   requestNotesSummary,
+  isSalesRequestNoteUnread,
+  unreadSalesRequestNoteOrderIds,
 } from "@/lib/orders/sales-request-note";
 import {
   isProcurementInitiatedCancel,
@@ -168,6 +170,8 @@ export type MyOrderLine = {
   clientName: string | null;
   clientKhId: number | null;
   requestNote: string | null;
+  /** Zakupy zmieniły uwagi — czekają na „Widziałem”. */
+  requestNoteUnread?: boolean;
   procurementCancelNote: string | null;
   /** Termin z ZD dla tej pozycji (grupy wieloproduktowe). */
   zdFulfillment?: MyOrderZdFulfillment | null;
@@ -244,6 +248,10 @@ export type MyOrderRow = MyOrderRowCore &
     clientLabel: string | null;
     /** Wspólna notatka do zakupów (meta). */
     requestNote: string | null;
+    /** Zakupy zaktualizowały uwagi — handlowiec jeszcze nie potwierdził. */
+    requestNoteUnread?: boolean;
+    /** Pozycje z nieprzeczytaną zmianą uwag (do „Widziałem”). */
+    unreadRequestNoteOrderIds?: string[];
     /** Wspólna wiadomość od zakupów przy anulowaniu (meta). */
     procurementCancelNote: string | null;
     /** Najnowszy timestamp zmiany uwag przez zakupy w tej grupie. */
@@ -362,6 +370,11 @@ function rowToLine(
         ? Math.trunc(Number(order.sales_client_kh_id))
         : null,
     requestNote: normalizeSalesRequestNote(order.sales_request_note),
+    requestNoteUnread: isSalesRequestNoteUnread({
+      note: order.sales_request_note,
+      updatedAt: order.sales_request_note_updated_at,
+      seenAt: order.sales_request_note_seen_at,
+    }),
     // Celowo bez procurement_flag* — flaga zakupów nie trafia do DTO /moje.
     procurementCancelNote: normalizeProcurementCancelNote(order.procurement_cancel_note),
     zdFulfillment: lineZdFulfillment,
@@ -431,6 +444,8 @@ function withAckMeta(
       .map((o) => o.id),
     clientLabel: clientNamesSummary(visible),
     requestNote: requestNotesSummary(visible),
+    unreadRequestNoteOrderIds: unreadSalesRequestNoteOrderIds(visible),
+    requestNoteUnread: unreadSalesRequestNoteOrderIds(visible).length > 0,
     procurementCancelNote: procurementCancelNotesSummary(visible),
     maxNoteUpdatedAt:
       visible
