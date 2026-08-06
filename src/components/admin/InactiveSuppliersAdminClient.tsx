@@ -38,6 +38,7 @@ import {
   supplierToAdminForm,
 } from "@/lib/suppliers/admin-form";
 import { suggestOrderOnDemandAfterFieldChange } from "@/lib/orders/supplier-on-demand";
+import { validateSupplierContactFields } from "@/lib/orders/validate-supplier-contact";
 import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import { cn } from "@/lib/cn";
@@ -85,7 +86,6 @@ export function InactiveSuppliersAdminClient({
   const [subiektFilter, setSubiektFilter] = useState<SupplierSubiektFilter>("all");
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<SupplierAdminFormState>(emptySupplierAdminForm);
-  const formRef = useLatest(form);
 
   const initialKey = initial.map((row) => `${row.id}\0${row.name}\0${row.subiekt_kh_id ?? ""}`).join("\n");
   const [appliedInitialKey, setAppliedInitialKey] = useState(initialKey);
@@ -188,8 +188,20 @@ export function InactiveSuppliersAdminClient({
       setToast(SUPPLIER_TOAST.missingName);
       return;
     }
+    const snapshot = { ...form };
+    const contactError = validateSupplierContactFields(
+      snapshot.notes,
+      snapshot.mails,
+      snapshot.extra_info
+    );
+    if (contactError) {
+      setToast({
+        text: contactError,
+        tone: "error",
+      });
+      return;
+    }
     start(async () => {
-      const snapshot = { ...formRef.current };
       try {
         await actionUpsertSupplier(snapshot);
         if (snapshot.id) {

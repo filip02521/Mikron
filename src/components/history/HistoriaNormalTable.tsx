@@ -11,6 +11,7 @@ export type NormalHistoryRow = {
   id: string;
   action_at: string;
   user_email: string;
+  supplier_id?: string | null;
   suppliers?: { name: string };
   action: string;
   next_date: string | null;
