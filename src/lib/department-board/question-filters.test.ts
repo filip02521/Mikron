@@ -87,6 +87,24 @@ describe("filterDepartmentBoardQuestions", () => {
     expect(result[0]?.id).toBe("q2");
   });
 
+  it("dokleja zarchiwizowane pytanie przy filtrze all", () => {
+    const withClosed: typeof questions = [
+      ...questions,
+      {
+        ...questions[0]!,
+        id: "q-closed",
+        status: "archived",
+        archived_at: "2026-01-10T10:00:00Z",
+        title: "Zamknięte",
+      },
+    ];
+    const result = filterDepartmentBoardQuestions(withClosed, {
+      filter: "all",
+      focusQuestionId: "q-closed",
+    });
+    expect(result[0]?.id).toBe("q-closed");
+  });
+
   it("łączy filtr statusu z wyszukiwaniem", () => {
     const result = filterDepartmentBoardQuestions(questions, {
       filter: "answered",

@@ -70,8 +70,24 @@ Wszystkie listy zwracają envelope:
 | GET | `/documents/zk` | Zamówienia od klientów (typ 16) |
 | GET | `/documents/zd` | Zamówienia do dostawców (typ 15) |
 | GET | `/documents/zd/:id` | Jedno ZD (pełne linie) |
+| GET | `/groups` | Grupy towarowe (`sl_GrupaTw`) — zwykle na hoście ORDERS |
+| GET | `/orders/zd/estimate` | Szacunek ilości do ZD — sandbox `/zakupy/szacunek` |
 | GET | `/examples` | Przykłady zapytań |
 | GET | `/docs` | Dokumentacja OpenAPI (HTML) |
+
+### Host szacunku ZD (`SUBIEKT_API_ORDERS_BASE_URL`) — tylko test :5082
+
+Sandbox `/zakupy/szacunek` **nigdy** nie używa live `SUBIEKT_API_BASE_URL` (:5080).
+
+Wymagane:
+
+```text
+SUBIEKT_API_BASE_URL=http://192.168.0.140:5080/api/v1
+SUBIEKT_API_ORDERS_BASE_URL=http://192.168.0.140:5082/api/v1
+```
+
+Bez `ORDERS` / gdy ORDERS = live / gdy port ≠ 5082 — szacunek jest **zablokowany**
+(brak cichego fallbacku). Codzienne ETA/stany/katalog nadal idą na :5080.
 
 ### Semantyka `GET /documents/zd` (lista)
 

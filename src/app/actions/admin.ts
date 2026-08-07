@@ -75,7 +75,10 @@ import { syncLinkedSalesPersonLoginEmail } from "@/lib/users/sync-sales-person-e
 import { intervalWeeksForStorage, parseInterval } from "@/lib/orders/dates";
 import { resolveOrderOnDemandForSave } from "@/lib/orders/supplier-on-demand";
 import { WAREHOUSE_SHELF_DEFAULT } from "@/lib/orders/warehouse-inventory";
-import { validateSupplierContactFields } from "@/lib/orders/validate-supplier-contact";
+import {
+  canonicalizeOrderMethodNotes,
+  validateSupplierContactFields,
+} from "@/lib/orders/validate-supplier-contact";
 import {
   parseWarehouseShipmentForm,
 } from "@/lib/warehouse/delivery-carriers";
@@ -1259,7 +1262,9 @@ export async function actionUpsertSupplier(form: {
 }) {
   await requireSupplierManagement("mutate");
   const supplierId = form.id?.trim() || undefined;
-  const notes = clampText(form.notes, MAX_SUPPLIER_NOTES_LEN);
+  const notes = canonicalizeOrderMethodNotes(
+    clampText(form.notes, MAX_SUPPLIER_NOTES_LEN)
+  );
   const mails = clampText(form.mails, MAX_SUPPLIER_MAILS_LEN);
   const extraInfo = clampText(form.extra_info, MAX_SUPPLIER_EXTRA_LEN);
   const contactError = validateSupplierContactFields(notes, mails, extraInfo);

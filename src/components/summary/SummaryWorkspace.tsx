@@ -455,7 +455,18 @@ export function SummaryWorkspace({
 
       <SupplierDrawer
         supplier={drawerSupplier}
+        vacationWindow={
+          drawerId ? workspace.suppliersOnVacationNow[drawerId] ?? null : null
+        }
         teethLane={drawerId ? teethLaneBySupplierId[drawerId] ?? null : null}
+        deliveryStats={drawerId ? statsBySupplierId[drawerId] ?? null : null}
+        statsMode={
+          drawerId
+            ? supplierStatsMode[drawerId] ??
+              drawerSupplier?.stats_mode ??
+              "LACZNIE"
+            : "LACZNIE"
+        }
         onClose={() => setDrawerId(null)}
         isScopePending={isScopePending}
         run={run}

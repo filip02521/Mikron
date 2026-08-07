@@ -131,6 +131,7 @@ describe("buildSalesDayStartSnapshot", () => {
       unreadAnnouncementBannerLatestId: "ann-1",
       unseenAnswerCount: 2,
       unseenOwnAnswerCount: 1,
+      latestOwnAnswerActivityAt: "2026-01-01T10:00:00Z",
       unseenAnswerPreview: {
         threadId: "t1",
         title: "Termin",
@@ -183,6 +184,7 @@ describe("buildSalesDayStartSnapshot", () => {
       unreadAnnouncementBannerLatestId: null,
       unseenAnswerCount: 3,
       unseenOwnAnswerCount: 2,
+      latestOwnAnswerActivityAt: "2026-01-02T10:00:00Z",
       unseenAnswerPreview: {
         threadId: "t1",
         title: "Termin",
@@ -213,6 +215,7 @@ describe("buildSalesDayStartSnapshot", () => {
       unreadAnnouncementBannerLatestId: null,
       unseenAnswerCount: 1,
       unseenOwnAnswerCount: 1,
+      latestOwnAnswerActivityAt: "2026-01-01T12:00:00Z",
       unseenAnswerPreview: {
         threadId: "t-own",
         title: "Moje pytanie",
@@ -243,6 +246,7 @@ describe("buildSalesDayStartSnapshot", () => {
       unreadAnnouncementBannerLatestId: null,
       unseenAnswerCount: 1,
       unseenOwnAnswerCount: 0,
+      latestOwnAnswerActivityAt: null,
       unseenAnswerPreview: {
         threadId: "t2",
         title: "Pytanie kolegi",
@@ -272,6 +276,7 @@ describe("buildSalesDayStartSnapshot", () => {
       unreadAnnouncementBannerLatestId: "ann-1",
       unseenAnswerCount: 0,
       unseenOwnAnswerCount: 0,
+      latestOwnAnswerActivityAt: null,
       unseenAnswerPreview: null,
       unseenQuestionIds: [],
       unseenOwnQuestionIds: [],

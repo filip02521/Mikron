@@ -31,12 +31,22 @@ import {
   IconCircleCheck,
   IconSun,
   IconMail,
+  IconClipboardList,
+  IconArchive,
 } from "@/components/icons/StrokeIcons";
 import { useSupplierHubContext } from "@/components/layout/AppRoleContext";
 import { supplierCardsHref } from "@/lib/supplier-hub";
 import { TeethDualLaneNotice } from "@/components/teeth/TeethDualLaneNotice";
 import type { TeethSupplierLaneSnapshot } from "@/lib/data/teeth-schedule-shared";
 import { TEETH_DUAL_LANE_COPY } from "@/lib/teeth/teeth-supplier-dual-lane";
+import { SupplierDrawerLeadTime } from "@/components/summary/SupplierDrawerLeadTime";
+import type { DeliveryStats, StatsMode } from "@/types/database";
+import { supplierHistoriaHref } from "@/lib/orders/historia-links";
+import {
+  formatSupplierVacationRangeCompact,
+  formatSupplierVacationRangeTitle,
+  type SupplierOnVacationWindow,
+} from "@/lib/orders/procurement-supplier-vacation";
 
 type HistoryRow = {
   action_at: string;
@@ -53,7 +63,10 @@ const supplierHistoryCache = new Map<
 
 export function SupplierDrawer({
   supplier,
+  vacationWindow = null,
   teethLane,
+  deliveryStats,
+  statsMode = "LACZNIE",
   onClose,
   isScopePending,
   run,
@@ -61,7 +74,12 @@ export function SupplierDrawer({
   onEdit,
 }: {
   supplier: SupplierSummaryMeta | null;
+  /** Aktywne okno urlopu obejmujące dziś (kalendarz) — z datami. */
+  vacationWindow?: SupplierOnVacationWindow | null;
   teethLane?: TeethSupplierLaneSnapshot | null;
+  /** Statystyki z `delivery_stats` — średni czas dostawy (SSR panelu). */
+  deliveryStats?: DeliveryStats | null;
+  statsMode?: StatsMode;
   onClose: () => void;
   isScopePending: (supplierId: string) => boolean;
   run: DailyPanelRunFn;
@@ -150,10 +168,26 @@ export function SupplierDrawer({
               >
                 {supplier.name}
               </h2>
-              {supplier.vacation_note ? (
-                <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-200/60">
-                  <IconSun size={12} className="shrink-0" />
-                  {vacationNoteLabel(supplier.vacation_note)}
+              {vacationWindow || supplier.vacation_note ? (
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  {vacationWindow ? (
+                    <div
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900 ring-1 ring-inset ring-amber-200/70"
+                      title={`Urlop ${formatSupplierVacationRangeTitle(vacationWindow)}`}
+                    >
+                      <IconSun size={12} className="shrink-0 text-amber-600" />
+                      <span>Na urlopie</span>
+                      <span className="tabular-nums text-amber-800/80">
+                        {formatSupplierVacationRangeCompact(vacationWindow)}
+                      </span>
+                    </div>
+                  ) : null}
+                  {supplier.vacation_note ? (
+                    <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-200/80">
+                      <IconCalendar size={12} className="shrink-0 text-slate-400" />
+                      {vacationNoteLabel(supplier.vacation_note)}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -240,6 +274,12 @@ export function SupplierDrawer({
               emphasize
             />
           </div>
+
+          <SupplierDrawerLeadTime
+            className="mt-3"
+            stats={deliveryStats}
+            statsMode={supplier.stats_mode ?? statsMode}
+          />
 
           {supplier.shift_date ? (
             <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-slate-100/70 px-3 py-1.5 text-xs text-slate-600">
@@ -362,6 +402,34 @@ export function SupplierDrawer({
                 ))}
               </ol>
             )}
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link
+                href={supplierHistoriaHref("individual", {
+                  id: supplier.id,
+                  name: supplier.name,
+                })}
+                title="Historia indywidualna — prośby handlowców u tego dostawcy"
+                className={cn(
+                  "inline-flex items-center justify-center gap-1.5 rounded-md border border-[var(--card-border)] bg-[var(--card)] px-2.5 py-1.5 text-xs font-medium leading-none text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+                )}
+              >
+                <IconClipboardList size={13} className="shrink-0 text-slate-500" />
+                Historia indywidualna
+              </Link>
+              <Link
+                href={supplierHistoriaHref("normal", {
+                  id: supplier.id,
+                  name: supplier.name,
+                })}
+                title="Historia standardowa — zamówienia z panelu dziennego"
+                className={cn(
+                  "inline-flex items-center justify-center gap-1.5 rounded-md border border-[var(--card-border)] bg-[var(--card)] px-2.5 py-1.5 text-xs font-medium leading-none text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+                )}
+              >
+                <IconArchive size={13} className="shrink-0 text-slate-500" />
+                Historia standardowa
+              </Link>
+            </div>
           </DrawerBlock>
 
           <DrawerBlock title="Odbiór towaru" icon={<IconTruck size={13} />} className="mt-7">

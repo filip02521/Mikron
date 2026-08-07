@@ -239,6 +239,9 @@ export function AppShellClient({
       enabled={salesLive && !salesOnboardingActive && !adminPanelPreview}
       initialVersion={salesActivityVersion}
       initialUnseenOwnAnswers={salesBoardAttention?.unseenOwnAnswerCount ?? 0}
+      initialLatestOwnAnswerActivityAt={
+        salesBoardAttention?.latestOwnAnswerActivityAt ?? null
+      }
       sessionSalesPersonId={salesPersonId}
       soundBaselineReady={metricsReady}
     >

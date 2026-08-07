@@ -24,5 +24,6 @@ export async function GET() {
   return NextResponse.json({
     version,
     unseenOwnAnswers: boardAttention?.unseenOwnAnswerCount ?? 0,
+    latestOwnAnswerActivityAt: boardAttention?.latestOwnAnswerActivityAt ?? null,
   });
 }

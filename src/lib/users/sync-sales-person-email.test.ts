@@ -10,7 +10,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: vi.fn(),
 }));
 
-import { syncLinkedSalesPersonLoginEmail } from "./sync-sales-person-email";
+import { syncLinkedSalesPersonLoginEmail, syncSalesPersonCardEmailFromProfile } from "./sync-sales-person-email";
 
 describe("syncLinkedSalesPersonLoginEmail", () => {
   beforeEach(() => {
@@ -71,5 +71,39 @@ describe("syncLinkedSalesPersonLoginEmail", () => {
     const error = await syncLinkedSalesPersonLoginEmail(supabase as never, "sp-1", "a@b.pl");
     expect(error).toBeNull();
     expect(updateUserById).not.toHaveBeenCalled();
+  });
+});
+
+describe("syncSalesPersonCardEmailFromProfile", () => {
+  it("aktualizuje kartę gdy e-mail konta różni się od karty", async () => {
+    const cardUpdate = vi.fn().mockResolvedValue({ error: null });
+    const supabase = {
+      from: vi.fn((table: string) => {
+        if (table === "sales_people") {
+          return {
+            select: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { email: "stary@firma.pl" },
+                  error: null,
+                }),
+              })),
+            })),
+            update: vi.fn(() => ({
+              eq: cardUpdate,
+            })),
+          };
+        }
+        throw new Error(table);
+      }),
+    };
+
+    const error = await syncSalesPersonCardEmailFromProfile(
+      supabase as never,
+      "sp-1",
+      "Nowy@Firma.pl"
+    );
+    expect(error).toBeNull();
+    expect(cardUpdate).toHaveBeenCalled();
   });
 });

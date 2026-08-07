@@ -34,3 +34,35 @@ export async function syncLinkedSalesPersonLoginEmail(
   if (profileError) return profileError.message;
   return null;
 }
+
+/**
+ * Po powiązaniu konta z handlowcem — ustaw e-mail na karcie = e-mail logowania,
+ * żeby powiadomienia (Tablica, regał…) trafiały tam, gdzie wskazuje panel Użytkownicy.
+ */
+export async function syncSalesPersonCardEmailFromProfile(
+  supabase: SupabaseClient,
+  salesPersonId: string,
+  profileEmail: string | null | undefined
+): Promise<string | null> {
+  const normalized = profileEmail?.trim().toLowerCase();
+  if (!normalized) return null;
+
+  const { data: sp, error: lookupError } = await supabase
+    .from("sales_people")
+    .select("email")
+    .eq("id", salesPersonId)
+    .maybeSingle();
+
+  if (lookupError) return lookupError.message;
+  if (!sp) return null;
+
+  const current = (sp.email ?? "").trim().toLowerCase();
+  if (current === normalized) return null;
+
+  const { error } = await supabase
+    .from("sales_people")
+    .update({ email: normalized })
+    .eq("id", salesPersonId);
+
+  return error?.message ?? null;
+}

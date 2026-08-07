@@ -6,6 +6,8 @@ export const SUBIEKT_PATHS = {
   docs: "/docs",
   products: "/products",
   product: (id: number | string) => `/products/${id}`,
+  productsGroup: (id: number | string) => `/products/group/${id}`,
+  groups: "/groups",
   kontrahenci: "/kontrahenci",
   kontrahent: (id: number | string) => `/kontrahenci/${id}`,
   dostawcy: "/kontrahenci/dostawcy",
@@ -16,4 +18,8 @@ export const SUBIEKT_PATHS = {
   documentZk: (id: number | string) => `/documents/zk/${id}`,
   documentsZd: "/documents/zd",
   documentZd: (id: number | string) => `/documents/zd/${id}`,
+  documentsFs: "/documents/fs",
+  documentFs: (id: number | string) => `/documents/fs/${id}`,
+  /** Szacunek ilości do ZD (sprzedaż FS + stany + otwarte ZK/ZD). */
+  ordersZdEstimate: "/orders/zd/estimate",
 } as const;

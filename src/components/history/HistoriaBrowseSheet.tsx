@@ -33,6 +33,8 @@ export function HistoriaBrowseSheet({
   canOperateOrders,
   canManageHistory,
   pending,
+  initialQuery = "",
+  supplierId = null,
   onClose,
   onRemoveIndividual,
   onRemoveNormal,
@@ -46,6 +48,10 @@ export function HistoriaBrowseSheet({
   canOperateOrders: boolean;
   canManageHistory: boolean;
   pending: boolean;
+  /** Prefill wyszukiwania (np. nazwa z deep-linku). */
+  initialQuery?: string;
+  /** Precyzyjny filtr po dostawcy (deep-link z panelu). */
+  supplierId?: string | null;
   onClose: () => void;
   onRemoveIndividual: (id: string) => void;
   onRemoveNormal: (id: string) => void;
@@ -53,7 +59,8 @@ export function HistoriaBrowseSheet({
   onEditNoteIndividual?: (order: IndividualOrder) => void;
 }) {
   const hydrated = useClientHydrated();
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
+  const supplierKey = supplierId?.toLowerCase() ?? null;
 
   const handleClose = useCallback(() => {
     setQuery("");
@@ -72,12 +79,24 @@ export function HistoriaBrowseSheet({
   useBodyScrollLock(open);
 
   const filteredIndividual = useMemo(
-    () => individual.filter((o) => matchesIndividualSearch(o, query)),
-    [individual, query]
+    () =>
+      individual.filter((o) => {
+        if (supplierKey && (o.supplier_id ?? "").toLowerCase() !== supplierKey) {
+          return false;
+        }
+        return matchesIndividualSearch(o, query);
+      }),
+    [individual, query, supplierKey]
   );
   const filteredNormal = useMemo(
-    () => normal.filter((h) => matchesNormalSearch(h, query)),
-    [normal, query]
+    () =>
+      normal.filter((h) => {
+        if (supplierKey && (h.supplier_id ?? "").toLowerCase() !== supplierKey) {
+          return false;
+        }
+        return matchesNormalSearch(h, query);
+      }),
+    [normal, query, supplierKey]
   );
 
   if (!open || !hydrated) return null;
@@ -85,11 +104,16 @@ export function HistoriaBrowseSheet({
   const isIndividual = kind === "individual";
   const total = isIndividual ? individual.length : normal.length;
   const shown = isIndividual ? filteredIndividual.length : filteredNormal.length;
+  const hasActiveFilter = Boolean(query.trim() || supplierKey);
   const title = isIndividual ? "Historia indywidualna" : "Zamówienia standardowe";
   const searchPlaceholder = isIndividual
     ? "Nazwa produktu, symbol, dostawca, handlowiec…"
     : "Użytkownik, dostawca, akcja…";
   const retentionLabel = `${HISTORY_RETENTION_MONTHS} miesięcy`;
+  const emptyFilterDescription =
+    supplierKey && !query.trim()
+      ? "Brak wpisów dla tego dostawcy w ostatnim okresie."
+      : `Nie znaleziono pasujących do „${query.trim()}”.`;
 
   return createPortal(
     <div
@@ -131,9 +155,14 @@ export function HistoriaBrowseSheet({
                   {title}
                 </h2>
                 <p className={cn(panelTypography.caption, "mt-0.5")}>
-                  {query.trim()
+                  {hasActiveFilter
                     ? `${shown} z ${total} wpisów (ostatnie ${retentionLabel})`
                     : `${total} wpisów z ostatnich ${retentionLabel}`}
+                  {supplierKey ? (
+                    <span className="mt-0.5 block text-indigo-700/80">
+                      Filtr: wybrany dostawca (z panelu)
+                    </span>
+                  ) : null}
                 </p>
               </div>
             </div>
@@ -173,7 +202,7 @@ export function HistoriaBrowseSheet({
               <div className="px-4 py-8 sm:px-5">
                 <EmptyState
                   title="Brak wyników"
-                  description={`Nie znaleziono pasujących do „${query.trim()}”.`}
+                  description={emptyFilterDescription}
                 />
               </div>
             ) : (
@@ -195,7 +224,7 @@ export function HistoriaBrowseSheet({
             <div className="px-4 py-8 sm:px-5">
               <EmptyState
                 title="Brak wyników"
-                description={`Nie znaleziono pasujących do „${query.trim()}”.`}
+                description={emptyFilterDescription}
               />
             </div>
           ) : (

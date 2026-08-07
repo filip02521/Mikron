@@ -90,4 +90,107 @@ describe("buildSummaryWorkspace — Ten tydzień", () => {
     expect(ws.left.filter((i) => i.kind === "standard")).toHaveLength(1);
     expect(ws.thisWeekDays.find((d) => d.dateKey === todayStr)?.items).toHaveLength(1);
   });
+
+  it("uzupełnia supplierMeta z joina zamówienia gdy brak w aktywnym harmonogramie", () => {
+    const today = new Date(2026, 4, 15);
+    const ws = buildSummaryWorkspace(
+      [],
+      [
+        {
+          id: "so1",
+          supplier_id: "inactive-1",
+          sales_person_id: "sp1",
+          symbol: "X",
+          products: "Towar",
+          quantity: "-",
+          delivered_quantity: "-",
+          order_type: "Glowne",
+          request_kind: "informacja",
+          informacja_stock_out_reorder: true,
+          status: "Nowe",
+          action_at: "2026-05-15T10:00:00Z",
+          ordered_at: null,
+          delivery_at: null,
+          supplier: {
+            id: "inactive-1",
+            name: "Nieaktywny SA",
+            location: "POLSKA",
+            pickup_mikran: false,
+            pickup_pallet: false,
+            notes: "",
+            mails: "a@b.pl",
+            extra_info: "",
+            interval_raw: null,
+            interval_weeks: null,
+            stock_raw: null,
+            stock: null,
+            stats_mode: "LACZNIE",
+            order_on_demand: false,
+            is_active: false,
+          },
+          sales_person: { id: "sp1", name: "Jan" } as never,
+        },
+      ],
+      today,
+      [{ id: "sp1", name: "Jan" }]
+    );
+
+    expect(ws.stockOutLeft).toHaveLength(1);
+    expect(ws.supplierMeta["inactive-1"]?.name).toBe("Nieaktywny SA");
+    expect(ws.supplierMeta["inactive-1"]?.mails).toBe("a@b.pl");
+    expect(ws.supplierMeta["inactive-1"]?.is_active).toBe(false);
+  });
+
+  it("nie nadpisuje supplierMeta z harmonogramu joinami zamówień", () => {
+    const today = new Date(2026, 4, 15);
+    const todayStr = "2026-05-15";
+    const scheduled = supplier("a", "Z Harmonogramu", todayStr);
+    scheduled.mails = "schedule@x.pl";
+
+    const ws = buildSummaryWorkspace(
+      [scheduled],
+      [
+        {
+          id: "so1",
+          supplier_id: "a",
+          sales_person_id: "sp1",
+          symbol: "X",
+          products: "Towar",
+          quantity: "-",
+          delivered_quantity: "-",
+          order_type: "Glowne",
+          request_kind: "informacja",
+          informacja_stock_out_reorder: true,
+          status: "Nowe",
+          action_at: "2026-05-15T10:00:00Z",
+          ordered_at: null,
+          delivery_at: null,
+          supplier: {
+            id: "a",
+            name: "Z Zamówienia",
+            location: "POLSKA",
+            pickup_mikran: false,
+            pickup_pallet: false,
+            notes: "",
+            mails: "order@x.pl",
+            extra_info: "",
+            interval_raw: null,
+            interval_weeks: null,
+            stock_raw: null,
+            stock: null,
+            stats_mode: "LACZNIE",
+            order_on_demand: false,
+            is_active: true,
+          },
+          sales_person: { id: "sp1", name: "Jan" } as never,
+        },
+      ],
+      today,
+      [{ id: "sp1", name: "Jan" }]
+    );
+
+    expect(ws.supplierMeta.a?.name).toBe("Z Harmonogramu");
+    expect(ws.supplierMeta.a?.mails).toBe("schedule@x.pl");
+    expect(ws.supplierMeta.a?.computed_next_date).toBe(todayStr);
+  });
 });

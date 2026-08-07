@@ -327,6 +327,133 @@ select:disabled,
   background-color: rgb(248 250 252 / 0.45);
 }
 
+/* Szacunek ZD — czytelne wiersze (nie queue-table) */
+.data-table.zd-estimate-table {
+  min-width: 82rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.data-table.zd-estimate-table th,
+.data-table.zd-estimate-table td {
+  padding: 0.8125rem 1rem;
+  vertical-align: top;
+}
+
+/* Checkbox — sticky left */
+.data-table.zd-estimate-table th.zd-estimate-check-col,
+.data-table.zd-estimate-table td.zd-estimate-check-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 2.75rem;
+  min-width: 2.75rem;
+  max-width: 2.75rem;
+  padding-left: 1rem;
+  padding-right: 0.5rem;
+  vertical-align: middle;
+  background: #fff;
+  box-shadow: none;
+}
+
+/* Symbol — sticky za checkboxem */
+.data-table.zd-estimate-table th.zd-estimate-symbol-col,
+.data-table.zd-estimate-table td.zd-estimate-symbol-col,
+.data-table.zd-estimate-table tbody td.zd-estimate-symbol-col {
+  position: sticky;
+  left: 2.75rem;
+  z-index: 1;
+  background: #fff;
+  box-shadow: 1px 0 0 #e2e8f0;
+}
+
+.data-table.zd-estimate-table thead th.zd-estimate-symbol-col {
+  left: 2.75rem;
+}
+
+.data-table.zd-estimate-table th:last-child,
+.data-table.zd-estimate-table td:last-child {
+  padding-right: 0.875rem;
+  padding-left: 0.5rem;
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: #fff;
+  box-shadow: -1px 0 0 #e2e8f0;
+  width: 3.25rem;
+  min-width: 3.25rem;
+}
+
+.data-table.zd-estimate-table thead th {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+  color: #64748b;
+  padding-top: 0.9375rem;
+  padding-bottom: 0.9375rem;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  box-shadow: 0 1px 0 #e2e8f0;
+  background: #f8fafc;
+  white-space: nowrap;
+}
+
+.data-table.zd-estimate-table thead th.zd-estimate-check-col,
+.data-table.zd-estimate-table thead th.zd-estimate-symbol-col {
+  z-index: 4;
+  background: #f8fafc;
+}
+
+.data-table.zd-estimate-table thead th.zd-estimate-symbol-col {
+  box-shadow: 1px 0 0 #e2e8f0, 0 1px 0 #e2e8f0;
+}
+
+.data-table.zd-estimate-table thead th.zd-estimate-check-col {
+  box-shadow: 0 1px 0 #e2e8f0;
+}
+
+.data-table.zd-estimate-table thead th:last-child {
+  z-index: 4;
+  background: #f8fafc;
+  box-shadow: -1px 0 0 #e2e8f0, 0 1px 0 #e2e8f0;
+}
+
+.data-table.zd-estimate-table tbody tr:nth-child(even):not([class*="bg-"]) td {
+  background-color: rgb(248 250 252 / 0.7);
+}
+
+.data-table.zd-estimate-table tbody tr:nth-child(even):not([class*="bg-"]) td.zd-estimate-check-col,
+.data-table.zd-estimate-table tbody tr:nth-child(even):not([class*="bg-"]) td.zd-estimate-symbol-col,
+.data-table.zd-estimate-table tbody tr:nth-child(even):not([class*="bg-"]) td:last-child {
+  background-color: #f8fafc;
+}
+
+.data-table.zd-estimate-table tbody tr:hover td {
+  background-color: #f1f5f9;
+}
+
+.data-table.zd-estimate-table tbody tr:hover td.zd-estimate-check-col,
+.data-table.zd-estimate-table tbody tr:hover td.zd-estimate-symbol-col,
+.data-table.zd-estimate-table tbody tr:hover td:last-child {
+  background-color: #f1f5f9;
+}
+
+.data-table.zd-estimate-table tbody tr[class*="bg-slate"] td.zd-estimate-check-col,
+.data-table.zd-estimate-table tbody tr[class*="bg-slate"] td.zd-estimate-symbol-col,
+.data-table.zd-estimate-table tbody tr[class*="bg-slate"] td:last-child {
+  background-color: #f8fafc;
+}
+
+.data-table.zd-estimate-table tbody tr[class*="bg-indigo"] td.zd-estimate-check-col,
+.data-table.zd-estimate-table tbody tr[class*="bg-indigo"] td.zd-estimate-symbol-col,
+.data-table.zd-estimate-table tbody tr[class*="bg-indigo"] td:last-child {
+  background-color: #eef2ff;
+}
+
 /* Kolejka przyjęcia — czytelniejsze wiersze */
 .data-table.receive-queue-table tbody tr:hover td {
   background-color: #f1f5f9;

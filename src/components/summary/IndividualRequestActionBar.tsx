@@ -44,6 +44,7 @@ export function IndividualRequestActionBar({
   run,
   onEdit,
   onCancel,
+  onOpenSupplierDetails,
   onSetFlag,
   hasFlag = false,
   currentFlagId = null,
@@ -62,6 +63,7 @@ export function IndividualRequestActionBar({
   run: DailyPanelRunFn;
   onEdit: () => void;
   onCancel: () => void;
+  onOpenSupplierDetails?: () => void;
   onSetFlag?: () => void;
   hasFlag?: boolean;
   /** Jednogłośna flaga grupy — podświetlenie w menu. */
@@ -147,6 +149,7 @@ export function IndividualRequestActionBar({
         className={nested ? "border-0 border-l border-slate-200" : panelSegmentLastClass}
         onEdit={onEdit}
         onCancel={onCancel}
+        onOpenSupplierDetails={onOpenSupplierDetails}
         onSetFlag={onSetFlag}
         hasFlag={hasFlag}
         currentFlagId={currentFlagId}
