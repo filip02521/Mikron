@@ -68,9 +68,10 @@ function snippet(text: string, max = 240): string {
 /** Niskopoziomowe wywołanie HTTP do API Subiekta (mostek REST / własny serwis). */
 export async function subiektFetch(
   path: string,
-  init: RequestInit = {}
+  init: RequestInit = {},
+  configOverride?: SubiektConfig | null
 ): Promise<Response> {
-  const config = getSubiektConfig();
+  const config = configOverride ?? getSubiektConfig();
   if (!config) throw new SubiektNotConfiguredError();
 
   const headers = new Headers(buildAuthHeaders(config));
@@ -104,9 +105,10 @@ export async function subiektFetch(
 
 export async function subiektJson<T>(
   path: string,
-  init: RequestInit = {}
+  init: RequestInit = {},
+  configOverride?: SubiektConfig | null
 ): Promise<T> {
-  const res = await subiektFetch(path, init);
+  const res = await subiektFetch(path, init, configOverride);
   const text = await res.text();
   if (!res.ok) {
     throw new SubiektRequestError(res.status, snippet(text || res.statusText));

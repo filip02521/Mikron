@@ -122,8 +122,13 @@ export function DepartmentBoardSalesClient({
   );
 
   const filtersLockedByFocus = Boolean(focusQuestionId);
+  const focusedQuestion = focusQuestionId
+    ? allQuestions.find((question) => question.id === focusQuestionId)
+    : undefined;
   const activeQuestionFilter: DepartmentBoardQuestionFilter = filtersLockedByFocus
-    ? "all"
+    ? focusedQuestion?.archived_at
+      ? "closed"
+      : "all"
     : resolveQuestionFilterAfterUnseenCleared(
         questionFilter,
         unseenAnswersCount,
@@ -147,9 +152,7 @@ export function DepartmentBoardSalesClient({
     filtersLockedByFocus,
     setQuestionFilter,
   ]);
-  const focusQuestionMissing = Boolean(
-    focusQuestionId && !board.questions.some((question) => question.id === focusQuestionId)
-  );
+  const focusQuestionMissing = Boolean(focusQuestionId && !focusedQuestion);
   const [questionTitle, setQuestionTitle] = useState("");
   const [questionBody, setQuestionBody] = useState("");
   const [questionProduct, setQuestionProduct] = useState<BoardQuestionProductDraft>(

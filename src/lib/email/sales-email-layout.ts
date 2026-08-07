@@ -26,6 +26,11 @@ export const EMAIL_THEME = {
   info: "#4f46e5",
   infoBg: "#eef2ff",
   infoBorder: "#c7d2fe",
+  /** Tablica / wiadomości (sky) — odróżnia od maili zamówień indywidualnych. */
+  board: "#0369a1",
+  boardHover: "#0c4a6e",
+  boardBg: "#f0f9ff",
+  boardBorder: "#7dd3fc",
 } as const;
 
 export function emailDocument(params: {
@@ -33,10 +38,13 @@ export function emailDocument(params: {
   headerTitle: string;
   headerSubtitle: string;
   accentColor?: string;
+  /** Koniec gradientu nagłówka; domyślnie indigo (jak dotychczas). */
+  accentEndColor?: string;
   bodyHtml: string;
   footerNote?: string;
 }): string {
   const accent = params.accentColor ?? EMAIL_THEME.primary;
+  const accentEnd = params.accentEndColor ?? EMAIL_THEME.primaryHover;
   const preheader = escapeHtml(params.preheader);
   const title = escapeHtml(params.headerTitle);
   const subtitle = escapeHtml(params.headerSubtitle);
@@ -60,7 +68,7 @@ export function emailDocument(params: {
       <td align="center">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
           <tr>
-            <td bgcolor="${accent}" style="background-color:${accent};background:linear-gradient(135deg, ${accent} 0%, ${EMAIL_THEME.primaryHover} 100%);border-radius:12px 12px 0 0;padding:24px 28px;">
+            <td bgcolor="${accent}" style="background-color:${accent};background:linear-gradient(135deg, ${accent} 0%, ${accentEnd} 100%);border-radius:12px 12px 0 0;padding:24px 28px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td width="48" valign="middle">
@@ -104,10 +112,11 @@ export function emailMutedParagraph(html: string): string {
 export function emailButton(href: string, label: string): string {
   const safeHref = escapeHtml(href);
   const safeLabel = escapeHtml(label);
+  // Bez target=_blank — w klientach poczty _blank + rewrite linków często kończy się about:blank.
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 24px;">
     <tr>
       <td bgcolor="${EMAIL_THEME.primary}" style="border-radius:10px;background-color:${EMAIL_THEME.primary};">
-        <a href="${safeHref}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:12px 22px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">${safeLabel}</a>
+        <a href="${safeHref}" style="display:inline-block;padding:12px 22px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;">${safeLabel}</a>
       </td>
     </tr>
   </table>`;
@@ -123,7 +132,12 @@ export function emailDataRow(label: string, value: string): string {
 export function emailItemCard(
   badge: { label: string; bg: string; color: string; border: string },
   rowsHtml: string,
-  opts?: { positionLabel?: string; supplierName?: string }
+  opts?: {
+    positionLabel?: string;
+    supplierName?: string;
+    /** Extra HTML pod wierszami (np. wieloliniowa odpowiedź z Tablicy). */
+    afterRowsHtml?: string;
+  }
 ): string {
   const supplierLine = opts?.supplierName
     ? `<div style="margin-top:8px;font-size:15px;font-weight:600;color:${EMAIL_THEME.foreground};">${escapeHtml(opts.supplierName)}</div>`
@@ -131,6 +145,7 @@ export function emailItemCard(
   const positionLine = opts?.positionLabel
     ? `<span style="font-size:11px;font-weight:600;color:${EMAIL_THEME.muted};letter-spacing:0.03em;text-transform:uppercase;">${escapeHtml(opts.positionLabel)}</span>`
     : "";
+  const afterRows = opts?.afterRowsHtml ?? "";
 
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 14px;border:1px solid ${EMAIL_THEME.border};border-radius:10px;overflow:hidden;">
     <tr>
@@ -143,6 +158,7 @@ export function emailItemCard(
     <tr>
       <td style="padding:14px 16px 16px;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rowsHtml}</table>
+        ${afterRows}
       </td>
     </tr>
   </table>`;

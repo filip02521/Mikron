@@ -471,6 +471,15 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
         iconTone: "emerald",
         ...compact,
       },
+      {
+        href: "/zakupy/szacunek",
+        label: "Szacunek ZD",
+        description: "Lista do zamówienia z grupy",
+        icon: "groupOrder",
+        tone: "sky",
+        iconTone: "violet",
+        ...compact,
+      },
     ];
   }
 
@@ -507,6 +516,15 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
       icon: "magazynGadki",
       tone: "sky",
       iconTone: "emerald",
+      ...compact,
+    },
+    {
+      href: "/zakupy/szacunek",
+      label: "Szacunek ZD",
+      description: "Lista do zamówienia z grupy",
+      icon: "groupOrder",
+      tone: "sky",
+      iconTone: "violet",
       ...compact,
     },
   ];
@@ -943,6 +961,7 @@ export function pageTitle(pathname: string): string {
     return "Urlopy dostawców";
   }
   if (pathname.startsWith("/zakupy/gadki")) return "Magazyn Gądki";
+  if (pathname.startsWith("/zakupy/szacunek")) return "Szacunek ZD";
   if (pathname === "/urlopy" || pathname.startsWith("/urlopy/")) {
     return "Urlopy działu";
   }

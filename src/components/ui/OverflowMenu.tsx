@@ -270,9 +270,9 @@ export function OverflowMenuItem({
       role="menuitem"
       disabled={disabled}
       className={cn(
-        "block w-full cursor-pointer px-3 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50",
+        "block w-full cursor-pointer px-3 py-2.5 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50",
         danger
-          ? "text-red-700 hover:bg-red-50"
+          ? "text-red-700 hover:bg-red-50 focus-visible:bg-red-50"
           : "text-slate-700 hover:bg-indigo-50/80 hover:text-indigo-950",
         className
       )}

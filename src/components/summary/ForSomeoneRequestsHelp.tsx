@@ -54,10 +54,16 @@ export function StockOutSectionHelp() {
           — w prawym górnym rogu wiersza (bez powtórzenia przy produkcie).
         </p>
       </HelpBlock>
-      <HelpBlock title="Tory">
+      <HelpBlock title="Szczegóły dostawcy">
         <p>
-          Ta sama organizacja torów co w Prośbach (bez „Magazyn → info”). Każda flaga ma własny tor
-          w kolorze z definicji. Urlop i Do rozdzielenia działają jak w prośbach handlowców.
+          Kliknij nazwę dostawcy (pod produktem albo w tytule przy wielu pozycjach). W bloku kilku
+          osób — nazwę w nagłówku bloku. Albo „Szczegóły dostawcy” w menu ⋮.
+        </p>
+      </HelpBlock>
+      <HelpBlock title="Flagi">
+        <p>
+          Opcjonalne etykiety na wierszu (menu ⋮) — bez osobnych torów i filtrów. Ta sekcja to jedna
+          płaska lista sygnałów.
         </p>
       </HelpBlock>
     </HelpPopover>

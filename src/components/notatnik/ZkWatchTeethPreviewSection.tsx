@@ -69,12 +69,13 @@ export function ZkWatchTeethPreviewSection({
 
   useEffect(() => {
     if (tourPreview) return;
-    setRows(null);
-    setError(null);
     const controller = new AbortController();
     const signal = controller.signal;
     queueMicrotask(() => {
-      if (!signal.aborted) void fetchRows(signal);
+      if (signal.aborted) return;
+      setRows(null);
+      setError(null);
+      void fetchRows(signal);
     });
     return () => controller.abort();
   }, [fetchRows, tourPreview]);

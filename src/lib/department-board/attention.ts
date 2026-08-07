@@ -41,6 +41,18 @@ export function countUnseenOwnBoardAnswers(items: readonly UnseenBoardAnswer[]):
   return items.filter((item) => item.isOwnQuestion).length;
 }
 
+/** Max `latestActivityAt` wśród nieprzeczytanych odpowiedzi na własne pytania. */
+export function latestOwnUnseenAnswerActivityAt(
+  items: readonly UnseenBoardAnswer[]
+): string | null {
+  let latest: string | null = null;
+  for (const item of items) {
+    if (!item.isOwnQuestion) continue;
+    if (!latest || item.latestActivityAt > latest) latest = item.latestActivityAt;
+  }
+  return latest;
+}
+
 export function pickUnseenAnswerPreview(
   items: UnseenBoardAnswer[]
 ): UnseenBoardAnswer | null {

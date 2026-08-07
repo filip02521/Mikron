@@ -4,6 +4,7 @@ import {
   renderInformacjaArrivedEmail,
   renderProcurementCancelEmail,
   renderRequestNoteUpdateEmail,
+  renderBoardQuestionReplyEmail,
 } from "@/lib/email/sales-email-templates";
 
 describe("sales email templates", () => {
@@ -173,5 +174,34 @@ describe("sales email templates", () => {
     expect(html).toContain("Termin na piątek");
     expect(html).toContain("Widziałem");
     expect(html).toContain("/moje");
+  });
+
+  it("board question reply email zawiera odpowiedź, deep-link i wyróżnia Tablicę", () => {
+    const { html, subject } = renderBoardQuestionReplyEmail({
+      recipientName: "Jan Kowalski",
+      threadId: "q-42",
+      questionTitle: "Termin <dostawy>?",
+      questionBody: "Kiedy będzie & produkt?",
+      productSymbol: "ABC",
+      productName: "Produkt X",
+      replyBody: "W czwartek.\nPotwierdzone.",
+    });
+    expect(subject).toContain("Tablica");
+    expect(subject).toContain("odpowiedź");
+    expect(subject).not.toContain("Moje zamówienia");
+    expect(html).toContain("Wiadomość z Tablicy");
+    expect(html).toContain("Odpowiedź na Twoje pytanie");
+    expect(html).not.toContain("zamówienia indywidualnego");
+    expect(html).toContain("Tablica · wiadomość");
+    expect(html).toContain("Odpowiedź działu zakupów");
+    expect(html).toContain("W czwartek.<br />Potwierdzone.");
+    expect(html).toContain("Termin &lt;dostawy&gt;?");
+    expect(html).toContain("Kiedy będzie &amp; produkt?");
+    expect(html).toContain("ABC");
+    expect(html).toContain("/tablica?watek=q-42");
+    expect(html).not.toContain("#question-");
+    expect(html).toContain("Otwórz pytanie na Tablicy");
+    expect(html).not.toContain("/moje");
+    expect(html).not.toContain("Moje zamówienia");
   });
 });

@@ -65,6 +65,7 @@ import { ProcurementFlagDefinitionsManageModal } from "@/components/summary/Proc
 import {
   dailyPanelUnseenBadgeClass,
   panelNameLinkClass,
+  panelTextLinkClass,
   panelTypography,
   type DailyPanelUnseenVariant,
 } from "@/lib/ui/ontime-theme";
@@ -488,8 +489,9 @@ export function ForSomeoneRequests({
     useProcurementSeenTracker(laneVariant);
 
   const laneBuckets = useMemo(
-    () =>
-      partitionForSomeoneGroups(displayGroups, {
+    () => {
+      if (isStockOutSection) return [];
+      return partitionForSomeoneGroups(displayGroups, {
         variant: laneVariant,
         suppliersOnVacationNow,
         flagSortById,
@@ -498,8 +500,10 @@ export function ForSomeoneRequests({
       }).map((bucket) => ({
         ...bucket,
         groups: sortForSomeoneGroups(bucket.groups, flagSortById),
-      })),
+      }));
+    },
     [
+      isStockOutSection,
       displayGroups,
       laneVariant,
       suppliersOnVacationNow,
@@ -608,13 +612,14 @@ export function ForSomeoneRequests({
   );
 
   const ensureLaneExpanded = useCallback((laneId: ProcurementRequestLaneId) => {
+    if (isStockOutSection) return;
     setCollapsedLanes((prev) => {
       if (!prev.has(laneId)) return prev;
       const next = new Set(prev);
       next.delete(laneId);
       return next;
     });
-  }, []);
+  }, [isStockOutSection]);
 
   const unanimousGroupFlagNote = useCallback(
     (lines: SummaryForSomeoneEnriched["lines"]): string | null => {
@@ -634,6 +639,15 @@ export function ForSomeoneRequests({
     blocks: ProcurementSupplierBlock[];
   };
 
+  /** Brak na stanie: jedna płaska lista (bez torów / filtrów). Prośby: bloki per tor. */
+  const stockOutBlocks = useMemo(() => {
+    if (!isStockOutSection) return [] as ProcurementSupplierBlock[];
+    return buildProcurementSupplierBlocks(
+      sortForSomeoneGroups(displayGroups, flagSortById),
+      flagSortById
+    );
+  }, [isStockOutSection, displayGroups, flagSortById]);
+
   const laneBlockRows: LaneBlockRow[] = useMemo(
     () =>
       laneBuckets.map((bucket) => ({
@@ -647,9 +661,34 @@ export function ForSomeoneRequests({
   );
 
   const supplierBlocks = useMemo(
-    () => laneBlockRows.flatMap((row) => row.blocks),
-    [laneBlockRows]
+    () => (isStockOutSection ? stockOutBlocks : laneBlockRows.flatMap((row) => row.blocks)),
+    [isStockOutSection, stockOutBlocks, laneBlockRows]
   );
+
+  const listSections = useMemo(() => {
+    if (isStockOutSection) {
+      return [
+        {
+          key: "stock-out-flat",
+          showLaneChrome: false as const,
+          laneId: null as ProcurementRequestLaneId | null,
+          anchorId: undefined as string | undefined,
+          label: "",
+          tone: "amber" as ReturnType<typeof resolveProcurementRequestLaneTone>,
+          blocks: stockOutBlocks,
+        },
+      ];
+    }
+    return laneBlockRows.map((row) => ({
+      key: row.laneId,
+      showLaneChrome: true as const,
+      laneId: row.laneId as ProcurementRequestLaneId | null,
+      anchorId: row.anchorId as string | undefined,
+      label: row.label,
+      tone: row.tone,
+      blocks: row.blocks,
+    }));
+  }, [isStockOutSection, stockOutBlocks, laneBlockRows]);
 
   const forceExpandedSupplierIds = useMemo(() => {
     const ids = new Set<string>();
@@ -669,6 +708,9 @@ export function ForSomeoneRequests({
   } = useProcurementSupplierCollapse(supplierBlocks, forceExpandedSupplierIds);
 
   const navigableGroups = useMemo(() => {
+    if (isStockOutSection) {
+      return filterNavigableProcurementGroups(stockOutBlocks, collapsedSuppliers);
+    }
     const out: SummaryForSomeoneEnriched[] = [];
     for (const row of laneBlockRows) {
       if (collapsedLanes.has(row.laneId)) continue;
@@ -677,7 +719,13 @@ export function ForSomeoneRequests({
       );
     }
     return out;
-  }, [laneBlockRows, collapsedLanes, collapsedSuppliers]);
+  }, [
+    isStockOutSection,
+    stockOutBlocks,
+    laneBlockRows,
+    collapsedLanes,
+    collapsedSuppliers,
+  ]);
 
   const unseenGroupCount = useMemo(
     () => displayGroups.filter((g) => isGroupUnseen(g)).length,
@@ -1150,7 +1198,7 @@ export function ForSomeoneRequests({
         }}
       />
       {subsectionHeader}
-      {flagLaneNav}
+      {!isStockOutSection ? flagLaneNav : null}
 
       {!showViaPanelSectionCallout ? null : (
         <InformacjaViaPanelProcurementCallout className="mx-0" />
@@ -1165,35 +1213,17 @@ export function ForSomeoneRequests({
       ) : null}
 
       <div className={procurementRequestLanesBodyClass}>
-        {laneBlockRows.map((laneRow) => {
-          const laneCollapsed = collapsedLanes.has(laneRow.laneId);
+        {listSections.map((laneRow) => {
+          const showLaneChrome = laneRow.showLaneChrome;
+          const laneCollapsed =
+            showLaneChrome &&
+            laneRow.laneId != null &&
+            collapsedLanes.has(laneRow.laneId);
           const laneGroupCount = laneRow.blocks.reduce(
             (n, b) => n + b.requestGroups.length,
             0
           );
-          return (
-            <section
-              key={laneRow.laneId}
-              id={laneRow.anchorId}
-              className={cn(
-                "scroll-mt-36",
-                procurementRequestLaneShellClass(laneRow.tone)
-              )}
-            >
-              <ProcurementRequestLaneHeader
-                label={laneRow.label}
-                count={laneGroupCount}
-                collapsed={laneCollapsed}
-                tone={laneRow.tone}
-                hint={procurementRequestLaneHint(laneRow.laneId)}
-                onToggle={() => toggleLaneCollapsed(laneRow.laneId)}
-                canMoveUp={canMoveVisibleLane(visibleLaneIds, laneRow.laneId, -1)}
-                canMoveDown={canMoveVisibleLane(visibleLaneIds, laneRow.laneId, 1)}
-                movePending={isScopePending("__flag_defs_order__")}
-                onMoveUp={() => moveLane(laneRow.laneId, -1)}
-                onMoveDown={() => moveLane(laneRow.laneId, 1)}
-              />
-              <ProcurementRequestLaneCollapse open={!laneCollapsed}>
+          const blocksList = (
                 <ul className={procurementRequestLaneContentClass}>
                   {laneRow.blocks.map((block) => {
                     const showSupplierHeader = showProcurementSupplierBlockHeader(block);
@@ -1218,7 +1248,7 @@ export function ForSomeoneRequests({
 
                     return (
                       <li
-                        key={`${laneRow.laneId}-${block.supplierId}`}
+                        key={`${laneRow.key}-${block.supplierId}`}
                         className={cn(
                           showSupplierHeader &&
                             procurementRequestLaneSupplierShellClass(unseenVariant)
@@ -1340,7 +1370,24 @@ export function ForSomeoneRequests({
                                         <div className="min-w-0 flex-1">
                                           <p className={cn(panelTypography.rowTitle, "min-w-0")}>
                                             {isStockOutSection ? (
-                                              ui.headline
+                                              // Bez bloku dostawcy: gdy tytuł = nazwa dostawcy (wiele pozycji) — klikalny.
+                                              !showSupplierHeader &&
+                                              g.supplierId &&
+                                              ui.headline === g.supplierName ? (
+                                                <button
+                                                  type="button"
+                                                  className={panelNameLinkClass}
+                                                  onClick={() => onOpenSupplier(g.supplierId)}
+                                                >
+                                                  {g.supplierName}
+                                                </button>
+                                              ) : showSupplierHeader &&
+                                                ui.headline === g.supplierName ? (
+                                                // W bloku dostawcy nie powtarzaj nazwy — pokaż osobę.
+                                                g.person
+                                              ) : (
+                                                ui.headline
+                                              )
                                             ) : showSupplierHeader ? (
                                               ui.headline
                                             ) : (
@@ -1382,7 +1429,27 @@ export function ForSomeoneRequests({
                                               />
                                             </div>
                                           ) : null}
-                                          {!isStockOutSection && !showSupplierHeader ? (
+                                          {isStockOutSection &&
+                                          !showSupplierHeader &&
+                                          g.supplierId &&
+                                          ui.headline !== g.supplierName ? (
+                                            <p className={cn(panelTypography.rowMeta, "mt-0.5 text-slate-500")}>
+                                              <button
+                                                type="button"
+                                                className={cn(
+                                                  panelTextLinkClass,
+                                                  "inline-flex min-w-0 max-w-full truncate align-baseline text-left"
+                                                )}
+                                                onClick={() => onOpenSupplier(g.supplierId)}
+                                                aria-label={`Szczegóły dostawcy ${g.supplierName}`}
+                                              >
+                                                {g.supplierName}
+                                              </button>
+                                              {rowSubline ? (
+                                                <span>{` · ${rowSubline}`}</span>
+                                              ) : null}
+                                            </p>
+                                          ) : !isStockOutSection && !showSupplierHeader ? (
                                             <p className={cn(panelTypography.rowMeta, "mt-0.5 text-slate-500")}>
                                               {ui.headline}
                                               {rowSubline ? ` · ${rowSubline}` : null}
@@ -1476,6 +1543,11 @@ export function ForSomeoneRequests({
                                                 applyGroupFlag(g, flagId)
                                               }
                                               onClearFlag={() => applyGroupFlag(g, null)}
+                                              onOpenSupplierDetails={
+                                                g.supplierId
+                                                  ? () => onOpenSupplier(g.supplierId)
+                                                  : undefined
+                                              }
                                               onEdit={() => {
                                                 markGroupSeen(g);
                                                 setEditTarget({
@@ -1533,6 +1605,39 @@ export function ForSomeoneRequests({
                     );
                   })}
                 </ul>
+          );
+
+          if (!showLaneChrome) {
+            return (
+              <div key={laneRow.key}>{blocksList}</div>
+            );
+          }
+
+          const laneId = laneRow.laneId!;
+          return (
+            <section
+              key={laneRow.key}
+              id={laneRow.anchorId}
+              className={cn(
+                "scroll-mt-36",
+                procurementRequestLaneShellClass(laneRow.tone)
+              )}
+            >
+              <ProcurementRequestLaneHeader
+                label={laneRow.label}
+                count={laneGroupCount}
+                collapsed={laneCollapsed}
+                tone={laneRow.tone}
+                hint={procurementRequestLaneHint(laneId)}
+                onToggle={() => toggleLaneCollapsed(laneId)}
+                canMoveUp={canMoveVisibleLane(visibleLaneIds, laneId, -1)}
+                canMoveDown={canMoveVisibleLane(visibleLaneIds, laneId, 1)}
+                movePending={isScopePending("__flag_defs_order__")}
+                onMoveUp={() => moveLane(laneId, -1)}
+                onMoveDown={() => moveLane(laneId, 1)}
+              />
+              <ProcurementRequestLaneCollapse open={!laneCollapsed}>
+                {blocksList}
               </ProcurementRequestLaneCollapse>
             </section>
           );

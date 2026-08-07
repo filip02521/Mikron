@@ -54,9 +54,71 @@ export type SubiektProduct = {
   tw_PLU?: string | null;
   tw_Rodzaj?: number | null;
   tw_Zablokowany?: number | null;
+  tw_IdGrupa?: number | null;
+  grt_Nazwa?: string | null;
   tw_Stan?: number | null;
   tw_StanRez?: number | null;
   [key: string]: unknown;
+};
+
+/** grupa towarowa — GET /groups */
+export type SubiektProductGroup = {
+  grt_Id: number;
+  grt_Nazwa?: string | null;
+  [key: string]: unknown;
+};
+
+/** Parametry wywołania GET /orders/zd/estimate (echo z API). */
+export type SubiektZdEstimateParams = {
+  dataOd?: string | null;
+  dataDo?: string | null;
+  dniOkresu?: number | null;
+  dniZapasu?: number | null;
+  zapasMin?: number | null;
+  grupaId?: number | null;
+  towarId?: number | null;
+  tylkoBraki?: boolean | null;
+  [key: string]: unknown;
+};
+
+/**
+ * Pozycja szacunku ZD — GET /orders/zd/estimate.
+ * Wzór API: doZamowienia = max(0, celZapasu + otwarteZkBezRez − dostepne − otwarteZd).
+ */
+export type SubiektZdEstimateLine = {
+  tw_Id: number;
+  tw_Symbol?: string | null;
+  tw_Nazwa?: string | null;
+  tw_IdGrupa?: number | null;
+  grt_Nazwa?: string | null;
+  tw_Stan?: number | null;
+  tw_StanRez?: number | null;
+  dostepne?: number | null;
+  sprzedazOkres?: number | null;
+  sprzedazDziennie?: number | null;
+  celZapasu?: number | null;
+  otwarteZkBezRez?: number | null;
+  otwarteZkZarezerwowane?: number | null;
+  otwarteZd?: number | null;
+  doZamowienia?: number | null;
+  [key: string]: unknown;
+};
+
+export type SubiektZdEstimateData = {
+  parametry: SubiektZdEstimateParams;
+  pozycje: SubiektZdEstimateLine[];
+};
+
+export type SubiektZdEstimateParamsInput = {
+  dataOd?: string;
+  dataDo?: string;
+  dniZapasu?: number;
+  zapasMin?: number;
+  grupaId?: number;
+  towarId?: number;
+  tylkoBraki?: boolean;
+  page?: number;
+  pageSize?: number;
 };
 
 /** kontrahent + adres (adr_TypAdresu = 1) */

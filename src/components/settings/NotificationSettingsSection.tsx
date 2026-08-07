@@ -73,14 +73,16 @@ export function NotificationSettingsSection({ role }: NotificationSettingsSectio
             )}
           >
             <span className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium text-slate-800">Dźwięk przy powiadomieniach</span>
-              <span className="text-[11px] leading-snug text-slate-400">Odtwarza dźwięk, gdy pojawi się nowa pilna sprawa w dzwonku</span>
+              <span className="text-sm font-medium text-slate-800">Dźwięk przy odpowiedzi na Tablicy</span>
+              <span className="text-[11px] leading-snug text-slate-400">
+                Odtwarza dźwięk, gdy dział zakupów odpowie na Twoje pytanie
+              </span>
             </span>
             <input
               type="checkbox"
               role="switch"
               aria-checked={salesSound}
-              aria-label="Powiadomienie dźwiękowe, gdy pojawi się nowa pilna sprawa w dzwonku"
+              aria-label="Powiadomienie dźwiękowe przy odpowiedzi na pytanie na Tablicy"
               checked={salesSound}
               onChange={(e) => setSalesSound(e.target.checked)}
               className="toggle-switch toggle-amber"

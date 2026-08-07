@@ -15,6 +15,7 @@ import {
   DEPARTMENT_BOARD_THREAD_SELECT,
   type DepartmentBoardThreadRow,
 } from "@/lib/data/department-board";
+import { notifyBoardQuestionReplyToSales } from "@/lib/department-board/notify-board-reply";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SalesNoteColor } from "@/types/database";
 import {
@@ -245,6 +246,10 @@ export async function actionReplyToQuestion(threadId: string, body: string) {
     }
   }
 
+  if (isProcurement) {
+    await assertAdminPanelAllowsProcurementBoardMutations(user);
+  }
+
   const trimmedBody = trimBody(body);
   if (!trimmedBody) throw new Error("Wiadomość nie może być pusta.");
 
@@ -276,8 +281,13 @@ export async function actionReplyToQuestion(threadId: string, body: string) {
   if (postError) throw new Error(postError.message);
 
   // Procurement reply → answered; Sales reply (doprecyzowanie) → open
-  const nextStatus = isProcurement ? "answered" as const : "open" as const;
-  const firstProcurementReply = isProcurement && thread.status === "open";
+  // Przy podwójnej roli (handlowiec + zakupy) doprecyzowanie własnego pytania
+  // traktujemy jak odpowiedź handlowca — bez statusu „answered” i bez maila.
+  const isAskerClarification = isSales && thread.created_by === user.id;
+  const countsAsProcurementReply = isProcurement && !isAskerClarification;
+  const nextStatus = countsAsProcurementReply ? ("answered" as const) : ("open" as const);
+  const firstProcurementReply =
+    countsAsProcurementReply && thread.status === "open";
 
   const { error: threadError } = await supabase
     .from("department_board_threads")
@@ -289,6 +299,34 @@ export async function actionReplyToQuestion(threadId: string, body: string) {
     .eq("id", threadId);
 
   if (threadError) throw new Error(threadError.message);
+
+  // Tylko odpowiedź zakupów → e-mail do handlowca (doprecyzowanie handlowca bez maila).
+  // Await (nie after+void): wcześniej floating Promise w after() bywał ucinany po
+  // zakończeniu Server Action — odpowiedź zapisywała się, mail nie wychodził.
+  // Błąd SMTP nie cofa zapisu odpowiedzi.
+  if (countsAsProcurementReply) {
+    try {
+      const result = await notifyBoardQuestionReplyToSales({
+        threadId,
+        salesPersonId: thread.sales_person_id,
+        createdByProfileId: thread.created_by,
+        questionTitle: thread.title,
+        questionBody: thread.body,
+        productSymbol: thread.product_symbol,
+        productName: thread.product_name,
+        replyBody: trimmedBody,
+      });
+      if (!result.emailSent) {
+        console.warn(
+          "[board-reply-email] not sent",
+          threadId,
+          result.skippedReason ?? result.error ?? "unknown"
+        );
+      }
+    } catch (err) {
+      console.error("[board-reply-email] notify failed", threadId, err);
+    }
+  }
 
   revalidateDepartmentBoard();
   return { post };

@@ -455,6 +455,9 @@ export function SummaryWorkspace({
 
       <SupplierDrawer
         supplier={drawerSupplier}
+        vacationWindow={
+          drawerId ? workspace.suppliersOnVacationNow[drawerId] ?? null : null
+        }
         teethLane={drawerId ? teethLaneBySupplierId[drawerId] ?? null : null}
         deliveryStats={drawerId ? statsBySupplierId[drawerId] ?? null : null}
         statsMode={

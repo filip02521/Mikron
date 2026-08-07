@@ -27,6 +27,7 @@ export function RequestGroupOverflowMenu({
   disabled,
   onEdit,
   onCancel,
+  onOpenSupplierDetails,
   onSetFlag,
   hasFlag = false,
   currentFlagId = null,
@@ -45,6 +46,8 @@ export function RequestGroupOverflowMenu({
   disabled?: boolean;
   onEdit: () => void;
   onCancel: () => void;
+  /** Panel szczegółów dostawcy (drawer) — jak „Szczegóły” w harmonogramie. */
+  onOpenSupplierDetails?: () => void;
   onSetFlag?: () => void;
   /** Gdy grupa ma już flagę — etykiety „zmień / usuń”. */
   hasFlag?: boolean;
@@ -79,6 +82,11 @@ export function RequestGroupOverflowMenu({
       <OverflowMenuItem disabled={disabled} onClick={onEdit}>
         {PROCUREMENT_REQUEST_FLAG_COPY.overflowEdit}
       </OverflowMenuItem>
+      {onOpenSupplierDetails ? (
+        <OverflowMenuItem disabled={disabled} onClick={onOpenSupplierDetails}>
+          {PROCUREMENT_REQUEST_FLAG_COPY.overflowSupplierDetails}
+        </OverflowMenuItem>
+      ) : null}
 
       {showFlagSection ? (
         <>

@@ -56,6 +56,11 @@ export type SalesBoardAttentionSnapshot = {
   unseenAnswerCount: number;
   /** Nieprzeczytane odpowiedzi na własne pytania handlowca. */
   unseenOwnAnswerCount: number;
+  /**
+   * Najnowsza aktywność (ISO) wśród nieprzeczytanych odpowiedzi na własne pytania.
+   * Używane do dźwięku przy kolejnej odpowiedzi w tym samym wątku (gdy licznik się nie zmienia).
+   */
+  latestOwnAnswerActivityAt: string | null;
   unseenAnswerPreview: {
     threadId: string;
     title: string;
@@ -71,6 +76,11 @@ export type SalesBoardAttentionSnapshot = {
 
 export function salesBoardAnnouncementHref(threadId: string): string {
   return salesMojeAnnouncementHref(threadId);
+}
+
+/** Deep-link do pytania handlowca na /tablica. */
+export function salesBoardQuestionHref(threadId: string): string {
+  return `/tablica?watek=${encodeURIComponent(threadId.trim())}`;
 }
 
 export function procurementBoardAnnouncementHref(threadId: string): string {

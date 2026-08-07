@@ -6,6 +6,7 @@ import {
   renderInformacjaArrivedEmail,
   renderProcurementCancelEmail,
   renderRequestNoteUpdateEmail,
+  renderBoardQuestionReplyEmail,
 } from "@/lib/email/sales-email-templates";
 
 function getEmailOverrideTo(): string | undefined {
@@ -201,4 +202,33 @@ export async function sendRequestNoteUpdateEmails(
   }
 
   return result;
+}
+
+/** E-mail do handlowca: odpowiedź zakupów na pytanie na Tablicy. */
+export async function sendBoardQuestionReplyEmail(params: {
+  to: string;
+  recipientName: string;
+  threadId: string;
+  questionTitle: string;
+  questionBody?: string | null;
+  productSymbol?: string | null;
+  productName?: string | null;
+  replyBody: string;
+}): Promise<{ ok: true; id: string } | { ok: false; error: string; to: string }> {
+  const to = params.to.trim();
+  if (!to) {
+    return { ok: false, error: "Handlowiec bez e-maila w bazie", to: "(brak adresu)" };
+  }
+
+  const { subject, html } = renderBoardQuestionReplyEmail({
+    recipientName: params.recipientName,
+    threadId: params.threadId,
+    questionTitle: params.questionTitle,
+    questionBody: params.questionBody,
+    productSymbol: params.productSymbol,
+    productName: params.productName,
+    replyBody: params.replyBody,
+  });
+
+  return sendHtmlEmail({ to, subject, html });
 }
