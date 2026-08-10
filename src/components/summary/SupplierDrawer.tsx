@@ -102,16 +102,14 @@ export function SupplierDrawer({
   const hubContext = useSupplierHubContext();
   useBodyScrollLock(Boolean(supplier));
   const supplierId = supplier?.id ?? null;
-  const [markConfirmOpen, setMarkConfirmOpen] = useState(false);
+  /** Confirm „Zamówione” — powiązany z id; zmiana dostawcy zamyka dialog bez effectu. */
+  const [markConfirmForId, setMarkConfirmForId] = useState<string | null>(null);
+  const markConfirmOpen = Boolean(supplierId && markConfirmForId === supplierId);
   const [historyState, setHistoryState] = useState<{
     supplierId: string | null;
     rows: HistoryRow[];
     loading: boolean;
   }>({ supplierId: null, rows: [], loading: false });
-
-  useEffect(() => {
-    setMarkConfirmOpen(false);
-  }, [supplierId]);
 
   useEffect(() => {
     if (!supplierId) return;
@@ -159,7 +157,7 @@ export function SupplierDrawer({
       if (markConfirmOpen) return;
       if (isScopePending(supplier.id)) return;
       e.preventDefault();
-      setMarkConfirmOpen(true);
+      setMarkConfirmForId(supplier.id);
     };
 
     window.addEventListener("keydown", onKey);
@@ -188,11 +186,11 @@ export function SupplierDrawer({
       {
         ...scope,
         onSuccess: () => {
-          setMarkConfirmOpen(false);
+          setMarkConfirmForId(null);
           onClose();
         },
         onError: () => {
-          setMarkConfirmOpen(false);
+          setMarkConfirmForId(null);
         },
       }
     );
@@ -209,7 +207,7 @@ export function SupplierDrawer({
         tier="raised"
         onCancel={() => {
           if (rowPending) return;
-          setMarkConfirmOpen(false);
+          setMarkConfirmForId(null);
         }}
         onConfirm={confirmMarkOrdered}
       />
@@ -267,7 +265,7 @@ export function SupplierDrawer({
               className={sidePanelCloseButtonClass}
               onClick={() => {
                 if (rowPending) return;
-                setMarkConfirmOpen(false);
+                setMarkConfirmForId(null);
                 onClose();
               }}
               aria-label="Zamknij"
@@ -284,7 +282,7 @@ export function SupplierDrawer({
               disabled={rowPending}
               aria-busy={rowPending}
               className="w-full justify-center"
-              onClick={() => setMarkConfirmOpen(true)}
+              onClick={() => setMarkConfirmForId(supplier.id)}
             >
               <IconCircleCheck
                 size={15}
