@@ -2072,7 +2072,7 @@ export async function actionCreateZdFromEstimate(input: {
 
   let pairsForMark: Awaited<ReturnType<typeof fetchZdProductPairs>> = [];
   let bomsForMark: Awaited<ReturnType<typeof fetchZdProductBoms>> = [];
-  let teethForMark = new Set<number>();
+  let teethForMark: Set<number>;
   try {
     ;[pairsForMark, bomsForMark] = await Promise.all([
       fetchZdProductPairs(),

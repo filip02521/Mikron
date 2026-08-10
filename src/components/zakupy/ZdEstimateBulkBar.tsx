@@ -149,10 +149,7 @@ export function ZdEstimateBulkBar({
               onClick={onBulkClearPackaging}
               title="Usuń opakowanie — zamawianie na sztuki 1:1"
             >
-              Usuń opak.
-              {packagingClearEligibleCount > 0
-                ? ` (${packagingClearEligibleCount})`
-                : ""}
+              Usuń opak. ({packagingClearEligibleCount})
             </Button>
           ) : null}
           {restoreEligibleCount > 0 ? (

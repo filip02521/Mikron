@@ -51,7 +51,11 @@ async function syncCardEmailAfterSalesLink(
     profile?.email
   );
   if (syncError) {
-    console.warn("[users] syncSalesPersonCardEmailFromProfile", spId, syncError);
+    console.warn(
+      "[users] syncSalesPersonCardEmailFromProfile",
+      String(spId).replace(/[\r\n]+/g, " "),
+      String(syncError).replace(/[\r\n]+/g, " ")
+    );
   }
 }
 

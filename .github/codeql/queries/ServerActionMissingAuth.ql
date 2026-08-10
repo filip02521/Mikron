@@ -28,6 +28,7 @@ predicate isAuthFunction(string fnName) {
     "requireSalesAccountOrTeamManagement",
     "requireSalesTeamManagement",
     "requireOperations",
+    "requireZdEstimateAdmin",
     "requireWarehouse",
     "requireTeethPanel",
     "requireReceiveMutateForOrders",
