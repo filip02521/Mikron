@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import { cn } from "@/lib/cn";
+import { getSessionUser } from "@/lib/auth";
+import { isAdmin } from "@/lib/auth-roles";
 import { fetchSummaryWorkspace, fetchVerificationOrders } from "@/lib/data/queries";
 import { runOrderMaintenanceBeforePageLoad } from "@/lib/services/deferred-order-maintenance";
 import { SummaryWorkspace } from "@/components/summary/SummaryWorkspace";
@@ -20,6 +22,9 @@ const emptyWorkspace = buildSummaryWorkspace([], []);
 
 export default async function PodsumowaniePage() {
   await runOrderMaintenanceBeforePageLoad();
+
+  const session = await getSessionUser();
+  const canPrepareZd = Boolean(session?.role && isAdmin(session.role));
 
   let workspace = emptyWorkspace;
   let suppliers: OrderFormSupplierOption[] = [];
@@ -71,6 +76,7 @@ export default async function PodsumowaniePage() {
           supplierStatsMode={supplierStatsMode}
           verificationOrders={verificationOrders}
           teethLaneBySupplierId={teethLaneBySupplierId}
+          canPrepareZd={canPrepareZd}
         />
       </Suspense>
     </>

@@ -2,20 +2,41 @@
  * Szacunek listy do zamówienia ZD — tryb „jak ręcznie”.
  *
  * Proces ręczny (zakupy):
- * 1. Wybór grupy towarowej w Subiekcie (np. Falcon, Ivoclar).
+ * 1. Wybór zakresu w Subiekcie — grupa towarowa (np. Falcon) albo cecha (np. Ivoclar).
  * 2. Dla każdego produktu: sprzedaż w okresie ≈ zapas dostawcy (OnTime).
  * 3. Porównanie ze stanem dostępnym.
  * 4. Odjęcie ilości już na otwartych ZD.
  *
  * Formuła qty (bez otwartych ZK — ZK tylko informacyjnie):
- *   doZamowieniaReczne = max(0, ceil(celZapasu − dostepne − otwarteZd))
+ *   doZamowieniaReczne = max(0, ceil(celŚledzony − dostepne − otwarteZd))
  *
  * celZapasu liczy API: (sprzedazOkres / dniOkresu) × dniZapasu + zapasMin
+ * celŚledzony = celZapasu ± korekta „podążania za sprzedażą”
+ *   (cienkie/grube pokrycie, sell-through, martwy SKU — zd-estimate-sales-track).
  * Gdy dniOkresu ≈ dniZapasu, cel ≈ sprzedaż w oknie zapasu.
  */
 
 import type { OrderInterval } from "@/lib/orders/dates";
 import { resolveSupplierInterval } from "@/lib/orders/dates";
+import {
+  computeSalesTrackedCel,
+  resolveSprzedazDziennie,
+  type SalesTrackReason,
+} from "@/lib/orders/zd-estimate-sales-track";
+import { applyZdEstimateHistoryCuts } from "@/lib/orders/zd-estimate-history-track";
+import { zdDocumentUnitsToPieces } from "@/lib/orders/zd-estimate-units";
+import {
+  applyZdEstimateBoms,
+  type ZdProductBomRef,
+} from "@/lib/orders/zd-estimate-bom";
+import {
+  applyZdEstimatePairs,
+  effectiveUnitsPerPackageForTwId,
+} from "@/lib/orders/zd-estimate-pairs";
+import {
+  indexZdProductPairs,
+  type ZdProductPairRef,
+} from "@/lib/orders/zd-product-pair-units";
 import type {
   SubiektZdEstimateLine,
   SubiektZdEstimateParams,
@@ -24,7 +45,7 @@ import type {
 /** Domyślny zapas w dniach, gdy brak ustawienia dostawcy. */
 export const DEFAULT_DNI_ZAPASU = 30;
 
-/** Bezpieczny limit stron przy dociąganiu całej grupy z API. */
+/** Bezpieczny limit stron przy dociąganiu całego zakresu z API. */
 export const ZD_ESTIMATE_MAX_PAGES = 40;
 
 /** pageSize przy dociąganiu (max API = 200). */
@@ -34,6 +55,8 @@ export type ManualZdEstimateLine = {
   tw_Id: number;
   tw_Symbol: string;
   tw_Nazwa: string;
+  /** Kod Mikran / PLU z Subiekta (gdy API zwraca). */
+  tw_PLU?: string | null;
   tw_IdGrupa: number | null;
   grt_Nazwa: string;
   tw_Stan: number;
@@ -41,7 +64,13 @@ export type ManualZdEstimateLine = {
   dostepne: number;
   sprzedazOkres: number;
   sprzedazDziennie: number;
+  /** Cel z API Subiekta (bez podbicia). */
   celZapasu: number;
+  /** Cel po podążaniu za sprzedażą — używany do qty. */
+  celZapasuTracked: number;
+  /** Signed delta celu ze śledzenia sprzedaży (+/−). */
+  salesTrackDelta: number;
+  salesTrackReasons: SalesTrackReason[];
   otwarteZkBezRez: number;
   otwarteZkZarezerwowane: number;
   otwarteZd: number;
@@ -54,11 +83,21 @@ export type ManualZdEstimateLine = {
   doZamowieniaReczne: number;
   /** Różnica API − ręcznie (= wkład otwartych ZK bez rez. przy typowych danych). */
   wkladZk: number;
+  /** Meta pary montaż/demontaż (gdy SKU w zd_product_pairs). */
+  pair?: import("@/lib/orders/zd-estimate-pairs").ZdEstimatePairMeta | null;
+  /** Meta składu/promocji (BOM). */
+  bom?: import("@/lib/orders/zd-estimate-bom").ZdEstimateBomMeta | null;
 };
 
 export type ManualZdEstimateResult = {
   parametry: SubiektZdEstimateParams;
   pozycje: ManualZdEstimateLine[];
+  /**
+   * Linie 1:1 z Subiekta (sales-track solo), **przed** BOM i parami.
+   * UI trzyma to do natychmiastowego przeliczenia po zmianie BOM/par/opakowań
+   * bez ponownego API (o ile partnerzy/komponenty są już w zakresie).
+   */
+  pozycjeBase: ManualZdEstimateLine[];
   /** Wszystkie pozycje z odpowiedzi Subiekta (po ewentualnym filtrze UI). */
   totalFromSubiekt: number;
   /** Pozycje z doZamowieniaReczne > 0. */
@@ -111,6 +150,7 @@ export function stockPeriodToDniZapasu(
  * Ilość do zamówienia jak w procesie ręcznym (bez ZK).
  * Zaokrąglenie w górę — nie zamawiamy ułamków z API.
  * `dostepne` / `otwarteZd` clamp ≥ 0 (ujemny stan z API nie zawyża qty).
+ * `celZapasu` tu = cel już po ewentualnym śledzeniu sprzedaży.
  */
 export function computeManualOrderQty(input: {
   celZapasu: number;
@@ -125,8 +165,27 @@ export function computeManualOrderQty(input: {
   return Math.ceil(raw - Number.EPSILON);
 }
 
+export type MapZdEstimateLineOptions = {
+  /** Dni zapasu dostawcy / run — do oceny cienkiego pokrycia. */
+  dniZapasu?: number | null;
+  /** Długość okna FS z API — fallback tempa dziennego. */
+  dniOkresu?: number | null;
+  /** Domyślnie true — podążanie za sprzedażą. */
+  salesTrack?: boolean;
+  /** Domyślnie true — sygnały cięcia (fat cover / low ST / dead). */
+  salesTrackCuts?: boolean;
+  /** Ostatnie zamówienie z snapshotu ZD (Faza 3) — qty w sztukach. */
+  history?: { lastOrderedQty: number; linkedAt: string } | null;
+  /**
+   * Sztuk na 1 jednostkę ZD — do cover/qty (otwarte ZD z API = paczki).
+   * 1 / brak = traktuj otwarte ZD jako sztuki.
+   */
+  unitsPerPackage?: number | null;
+};
+
 export function mapZdEstimateLineToManual(
-  line: SubiektZdEstimateLine
+  line: SubiektZdEstimateLine,
+  options?: MapZdEstimateLineOptions
 ): ManualZdEstimateLine {
   const tw_Stan = asFiniteNumber(line.tw_Stan);
   const tw_StanRez = asFiniteNumber(line.tw_StanRez);
@@ -136,27 +195,98 @@ export function mapZdEstimateLineToManual(
       : asFiniteNumber(line.dostepne);
 
   const celZapasu = asFiniteNumber(line.celZapasu);
+  const sprzedazOkres = asFiniteNumber(line.sprzedazOkres);
+  const sprzedazDziennieRaw = asFiniteNumber(line.sprzedazDziennie);
   const otwarteZd = asFiniteNumber(line.otwarteZd);
+  const otwarteZdPieces = zdDocumentUnitsToPieces(
+    otwarteZd,
+    options?.unitsPerPackage
+  );
   const otwarteZkBezRez = asFiniteNumber(line.otwarteZkBezRez);
   const doZamowieniaApi = asFiniteNumber(line.doZamowienia);
-  const doZamowieniaReczne = computeManualOrderQty({
+
+  const dniZapasu =
+    options?.dniZapasu != null && Number.isFinite(options.dniZapasu)
+      ? Number(options.dniZapasu)
+      : DEFAULT_DNI_ZAPASU;
+
+  const dniOkresu =
+    options?.dniOkresu != null && Number.isFinite(options.dniOkresu)
+      ? Number(options.dniOkresu)
+      : null;
+
+  const track = computeSalesTrackedCel({
     celZapasu,
+    sprzedazOkres,
+    sprzedazDziennie: sprzedazDziennieRaw,
     dostepne,
-    otwarteZd,
+    otwarteZd: otwarteZdPieces,
+    dniZapasu,
+    dniOkresu,
+    enabled: options?.salesTrack !== false,
+    cutsEnabled: options?.salesTrackCuts !== false,
+  });
+
+  let celTracked = track.celTracked;
+  let salesTrackDelta = track.deltaPieces;
+  const salesTrackReasons: SalesTrackReason[] = [...track.reasons];
+
+  const hist = options?.history;
+  if (
+    hist &&
+    options?.salesTrack !== false &&
+    options?.salesTrackCuts !== false
+  ) {
+    const tempo = resolveSprzedazDziennie({
+      sprzedazOkres,
+      sprzedazDziennie: sprzedazDziennieRaw,
+      dniOkresu,
+      fallbackDniOkresu: dniZapasu,
+    });
+    const histAdj = applyZdEstimateHistoryCuts({
+      celTracked,
+      celBase: celZapasu,
+      sprzedazOkres,
+      sprzedazDziennie: tempo,
+      coverStock: Math.max(0, dostepne) + otwarteZdPieces,
+      dniZapasu,
+      dniOkresu,
+      lastOrderedQty: hist.lastOrderedQty,
+      linkedAt: hist.linkedAt,
+    });
+    if (histAdj.reasons.length > 0) {
+      celTracked = histAdj.celTracked;
+      salesTrackDelta = celTracked - celZapasu;
+      salesTrackReasons.push(...histAdj.reasons);
+    }
+  }
+
+  const doZamowieniaReczne = computeManualOrderQty({
+    celZapasu: celTracked,
+    dostepne,
+    otwarteZd: otwarteZdPieces,
   });
 
   return {
     tw_Id: asFiniteNumber(line.tw_Id),
     tw_Symbol: String(line.tw_Symbol ?? "").trim() || "—",
     tw_Nazwa: String(line.tw_Nazwa ?? "").trim() || "—",
+    tw_PLU: (() => {
+      const raw = line.tw_PLU ?? (line as { Tw_PLU?: unknown }).Tw_PLU;
+      const s = String(raw ?? "").trim();
+      return s && s !== "-" ? s : null;
+    })(),
     tw_IdGrupa: asOptionalInt(line.tw_IdGrupa),
     grt_Nazwa: String(line.grt_Nazwa ?? "").trim() || "—",
     tw_Stan,
     tw_StanRez,
     dostepne,
-    sprzedazOkres: asFiniteNumber(line.sprzedazOkres),
-    sprzedazDziennie: asFiniteNumber(line.sprzedazDziennie),
+    sprzedazOkres,
+    sprzedazDziennie: sprzedazDziennieRaw,
     celZapasu,
+    celZapasuTracked: celTracked,
+    salesTrackDelta,
+    salesTrackReasons,
     otwarteZkBezRez,
     otwarteZkZarezerwowane: asFiniteNumber(line.otwarteZkZarezerwowane),
     otwarteZd,
@@ -169,15 +299,110 @@ export function mapZdEstimateLineToManual(
 export function buildManualZdEstimateResult(
   parametry: SubiektZdEstimateParams,
   lines: SubiektZdEstimateLine[],
-  options?: { onlyManualBraki?: boolean }
+  options?: {
+    onlyManualBraki?: boolean;
+    /** Domyślnie true. */
+    salesTrack?: boolean;
+    /** Domyślnie true. */
+    salesTrackCuts?: boolean;
+    /** tw_Id → ostatnie zamówienie ze snapshotu (qty w sztukach). */
+    historyByTwId?: ReadonlyMap<
+      number,
+      { lastOrderedQty: number; linkedAt: string }
+    > | null;
+    /** tw_Id → sztuk / 1 jednostka ZD. */
+    packagingByTwId?: ReadonlyMap<number, { unitsPerPackage: number }> | null;
+    /** Pary pack↔piece. */
+    productPairs?: readonly ZdProductPairRef[] | null;
+    /** Składy/promocje (BOM) — przed parami. */
+    productBoms?: readonly ZdProductBomRef[] | null;
+    /** Partnerzy których nie udało się dociągnąć. */
+    missingPartnerTwIds?: ReadonlySet<number> | null;
+    /** Komponenty BOM których nie udało się dociągnąć. */
+    missingBomTwIds?: ReadonlySet<number> | null;
+    /** Wykluczenia (pack wykluczony → qty 0). */
+    excludedTwIds?: ReadonlySet<number> | null;
+    zapasMin?: number | null;
+  }
 ): ManualZdEstimateResult {
   const onlyManualBraki = options?.onlyManualBraki === true;
-  const mapped = lines.map(mapZdEstimateLineToManual);
-  const orderSummary = summarizeManualOrderQty(mapped);
+  const dniZapasu =
+    parametry.dniZapasu != null && Number.isFinite(Number(parametry.dniZapasu))
+      ? Number(parametry.dniZapasu)
+      : DEFAULT_DNI_ZAPASU;
+  const dniOkresu =
+    parametry.dniOkresu != null && Number.isFinite(Number(parametry.dniOkresu))
+      ? Number(parametry.dniOkresu)
+      : null;
+  const historyByTwId = options?.historyByTwId ?? null;
+  const packagingByTwId = options?.packagingByTwId ?? null;
+  const pairs = options?.productPairs ?? [];
+  const boms = options?.productBoms ?? [];
+  const pairIndex = indexZdProductPairs(pairs);
+  const zapasMin =
+    options?.zapasMin ??
+    (parametry.zapasMin != null ? Number(parametry.zapasMin) : 0);
+
+  const mapped = lines.map((line) => {
+    const twId = asFiniteNumber(line.tw_Id);
+    const inPair = pairIndex.has(twId);
+    const hist = inPair ? null : historyByTwId?.get(twId) ?? null;
+    const packUnits = effectiveUnitsPerPackageForTwId(
+      twId,
+      pairIndex,
+      packagingByTwId?.get(twId)?.unitsPerPackage
+    );
+    return mapZdEstimateLineToManual(line, {
+      dniZapasu,
+      dniOkresu,
+      // Pary: track/history po merge.
+      salesTrack: inPair ? false : options?.salesTrack,
+      salesTrackCuts: inPair ? false : options?.salesTrackCuts,
+      history: hist,
+      unitsPerPackage: packUnits,
+    });
+  });
+
+  const pozycjeBase = mapped.map((l) => ({
+    ...l,
+    pair: null as null,
+    bom: null as null,
+  }));
+
+  const afterBom =
+    boms.length > 0
+      ? applyZdEstimateBoms(mapped, boms, {
+          dniZapasu,
+          dniOkresu,
+          zapasMin,
+          salesTrack: options?.salesTrack,
+          salesTrackCuts: options?.salesTrackCuts,
+          historyByTwId,
+          packagingByTwId,
+          productPairs: pairs,
+          missingComponentTwIds: options?.missingBomTwIds,
+        })
+      : mapped.map((l) => ({ ...l, bom: null as null }));
+
+  const withPairs =
+    pairs.length > 0
+      ? applyZdEstimatePairs(afterBom, pairs, {
+          dniZapasu,
+          dniOkresu,
+          zapasMin,
+          salesTrack: options?.salesTrack,
+          salesTrackCuts: options?.salesTrackCuts,
+          excludedTwIds: options?.excludedTwIds,
+          historyByTwId,
+          missingPartnerTwIds: options?.missingPartnerTwIds,
+        })
+      : afterBom.map((l) => ({ ...l, pair: null }));
+
+  const orderSummary = summarizeManualOrderQty(withPairs);
 
   const pozycje = onlyManualBraki
-    ? mapped.filter((p) => p.doZamowieniaReczne > 0)
-    : mapped;
+    ? withPairs.filter((p) => p.doZamowieniaReczne > 0)
+    : withPairs;
 
   pozycje.sort((a, b) => {
     if (b.doZamowieniaReczne !== a.doZamowieniaReczne) {
@@ -189,7 +414,8 @@ export function buildManualZdEstimateResult(
   return {
     parametry,
     pozycje,
-    totalFromSubiekt: mapped.length,
+    pozycjeBase,
+    totalFromSubiekt: withPairs.length,
     doZamowieniaCount: orderSummary.doZamowieniaCount,
     doZamowieniaSuma: orderSummary.doZamowieniaSuma,
   };
@@ -257,6 +483,8 @@ export function manualLinesToTsv(
     "dostepne",
     "sprzedaz_okres",
     "cel_zapasu",
+    "cel_sledzony",
+    "delta_sledzenia",
     "otwarte_zd",
     "otwarte_zk_bez_rez",
     "tw_Id",
@@ -285,6 +513,8 @@ export function manualLinesToTsv(
       formatQty(l.dostepne),
       formatQty(l.sprzedazOkres),
       formatQty(l.celZapasu),
+      formatQty(l.celZapasuTracked),
+      Math.abs(l.salesTrackDelta) > 1e-9 ? formatQty(l.salesTrackDelta) : "",
       formatQty(l.otwarteZd),
       formatQty(l.otwarteZkBezRez),
       l.tw_Id,

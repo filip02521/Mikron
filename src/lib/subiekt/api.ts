@@ -1,21 +1,27 @@
-import { subiektJson } from "@/lib/subiekt/client";
+import { subiektFetch, subiektJson } from "@/lib/subiekt/client";
 import { resolveSubiektOrdersConfig } from "@/lib/subiekt/config";
+import { SubiektRequestError } from "@/lib/subiekt/errors";
 import { SUBIEKT_PATHS } from "@/lib/subiekt/paths";
 import { subiektQueryString } from "@/lib/subiekt/query";
 import type { SubiektConfig } from "@/lib/subiekt/config";
 import type {
+  SubiektCreateZdInput,
   SubiektDocument,
   SubiektHealthData,
   SubiektKontrahent,
   SubiektListEnvelope,
   SubiektListParams,
   SubiektProduct,
+  SubiektProductCecha,
   SubiektProductGroup,
   SubiektSingleEnvelope,
   SubiektZdEstimateData,
   SubiektZdEstimateLine,
   SubiektZdEstimateParamsInput,
 } from "@/lib/subiekt/types";
+
+/** Timeout Sfery przy tworzeniu ZD (strona szacunku ma maxDuration=180). */
+export const SUBIEKT_ORDERS_ZD_CREATE_TIMEOUT_MS = 180_000;
 import {
   ZD_ESTIMATE_MAX_PAGES,
   ZD_ESTIMATE_PAGE_SIZE,
@@ -191,6 +197,17 @@ export async function searchSubiektProductGroups(
   );
 }
 
+/** Słownik cech towarów — GET /cechy/towarow (host orders / test :5082). */
+export async function searchSubiektProductCechy(
+  params: SubiektListParams = {}
+): Promise<SubiektListEnvelope<SubiektProductCecha>> {
+  return subiektList<SubiektProductCecha>(
+    SUBIEKT_PATHS.cechyTowarow,
+    params,
+    ordersConfigOrThrow()
+  );
+}
+
 /** Jedna strona szacunku ZD — GET /orders/zd/estimate. */
 export async function fetchSubiektZdEstimatePage(
   params: SubiektZdEstimateParamsInput = {}
@@ -205,6 +222,7 @@ export async function fetchSubiektZdEstimatePage(
     dniZapasu: params.dniZapasu,
     zapasMin: params.zapasMin,
     grupaId: params.grupaId,
+    cechaId: params.cechaId,
     towarId: params.towarId,
     tylkoBraki: params.tylkoBraki,
     page: params.page,
@@ -213,14 +231,97 @@ export async function fetchSubiektZdEstimatePage(
   return subiektJson(`${SUBIEKT_PATHS.ordersZdEstimate}${qs}`, {}, config);
 }
 
+/** Lista ZD na hoście ORDERS (:5082) — do powiązania ze szacunkiem. */
+export async function searchSubiektOrdersZd(
+  params: Omit<SubiektListParams, "typ"> = {}
+): Promise<SubiektListEnvelope<SubiektDocument>> {
+  return subiektList<SubiektDocument>(
+    SUBIEKT_PATHS.documentsZd,
+    params,
+    ordersConfigOrThrow()
+  );
+}
+
+/** Pełne ZD (z liniami) na hoście ORDERS (:5082). */
+export async function getSubiektOrdersZd(
+  id: number | string
+): Promise<SubiektDocument> {
+  const res = await subiektGet<SubiektDocument>(
+    SUBIEKT_PATHS.documentZd(id),
+    ordersConfigOrThrow()
+  );
+  return res.data;
+}
+
 /**
- * Pobiera wszystkie strony estimate dla grupy/towaru z hosta testowego (:5082).
- * Domyślnie tylkoBraki=false — pełna lista towarów grupy z Subiekta (jak informator).
+ * Tworzy ZD przez Sferę na ORDERS :5082 (`POST /documents/zd/create`).
+ * Timeout 180s — nie używać na live :5080.
  */
+export async function createSubiektOrdersZd(
+  body: SubiektCreateZdInput
+): Promise<SubiektDocument> {
+  const base = ordersConfigOrThrow();
+  const config: SubiektConfig = {
+    ...base,
+    timeoutMs: SUBIEKT_ORDERS_ZD_CREATE_TIMEOUT_MS,
+  };
+  const res = await subiektFetch(
+    SUBIEKT_PATHS.documentsZdCreate,
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+    config
+  );
+  const text = await res.text();
+  if (!res.ok) {
+    // Pełne body (nie snippet) — Sfera/validation zwracają JSON z code/error.
+    throw new SubiektRequestError(res.status, text || res.statusText);
+  }
+  if (!text) {
+    throw new Error("Subiekt create ZD: pusta odpowiedź.");
+  }
+  let parsed: SubiektSingleEnvelope<SubiektDocument>;
+  try {
+    parsed = JSON.parse(text) as SubiektSingleEnvelope<SubiektDocument>;
+  } catch {
+    throw new SubiektRequestError(res.status, "Odpowiedź create ZD nie jest JSON");
+  }
+  if (!parsed.data?.dok_Id) {
+    throw new Error("Subiekt create ZD: brak dok_Id w odpowiedzi.");
+  }
+  return parsed.data;
+}
+
+/**
+ * Pobiera wszystkie strony estimate dla zakresu (grupa / cecha / towar)
+ * z hosta testowego (:5082).
+ * Domyślnie tylkoBraki=false — pełna lista towarów zakresu z Subiekta (jak informator).
+ *
+ * `validateFirstPage` — zaraz po 1. stronie, przed paginacją (np. echo filtra:
+ * bez tego stary API mógłby dociągnąć cały katalog).
+ */
+export class SubiektZdEstimateFirstPageRejectedError extends Error {
+  readonly title: string;
+
+  constructor(title: string, message: string) {
+    super(message);
+    this.name = "SubiektZdEstimateFirstPageRejectedError";
+    this.title = title;
+  }
+}
+
 export async function fetchSubiektZdEstimateAll(
   params: Omit<SubiektZdEstimateParamsInput, "page" | "pageSize"> & {
     pageSize?: number;
     maxPages?: number;
+  },
+  options?: {
+    validateFirstPage?: (input: {
+      parametry: SubiektZdEstimateData["parametry"];
+      pozycje: SubiektZdEstimateLine[];
+      totalCountApi: number;
+    }) => { ok: true } | { ok: false; title: string; message: string };
   }
 ): Promise<{
   parametry: SubiektZdEstimateData["parametry"];
@@ -251,6 +352,21 @@ export async function fetchSubiektZdEstimateAll(
   const pozycje: SubiektZdEstimateLine[] = [...data.pozycje];
   const totalPages = Math.max(1, first.pagination?.totalPages ?? 1);
   const totalCountApi = first.pagination?.totalCount ?? pozycje.length;
+
+  if (options?.validateFirstPage) {
+    const gate = options.validateFirstPage({
+      parametry: data.parametry ?? {},
+      pozycje,
+      totalCountApi,
+    });
+    if (!gate.ok) {
+      throw new SubiektZdEstimateFirstPageRejectedError(
+        gate.title,
+        gate.message
+      );
+    }
+  }
+
   const pagesToFetch = Math.min(totalPages, maxPages);
   let pagesFetched = 1;
   let stoppedEarly = false;
@@ -285,4 +401,36 @@ export async function fetchSubiektZdEstimateAll(
       stoppedEarly,
     }),
   };
+}
+
+export type SubiektProductKompletRow = {
+  kpl_Id: number;
+  kompletTwId: number;
+  skladnikTwId: number;
+  liczba: number;
+  kompletSymbol?: string | null;
+  skladnikSymbol?: string | null;
+};
+
+/** GET /products/komplety — wymaga wdrożenia na ORDERS :5082. */
+export async function searchSubiektProductKomplety(
+  params: {
+    kompletId?: number;
+    skladnikId?: number;
+    page?: number;
+    pageSize?: number;
+  } = {}
+): Promise<SubiektListEnvelope<SubiektProductKompletRow>> {
+  const config = ordersConfigOrThrow();
+  const qs = subiektQueryString({
+    kompletId: params.kompletId,
+    skladnikId: params.skladnikId,
+    page: params.page,
+    pageSize: params.pageSize,
+  });
+  return subiektJson(
+    `${SUBIEKT_PATHS.productsKomplety}${qs}`,
+    {},
+    config
+  );
 }

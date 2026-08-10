@@ -1378,6 +1378,7 @@ export function ForSomeoneRequests({
                                                   type="button"
                                                   className={panelNameLinkClass}
                                                   onClick={() => onOpenSupplier(g.supplierId)}
+                                                  aria-label={`Szczegóły dostawcy ${g.supplierName}`}
                                                 >
                                                   {g.supplierName}
                                                 </button>

@@ -41,6 +41,9 @@ export default async function ProsbaPage({
   const { panelContext } = await readAdminPanelContextForSession();
   let adminReadOnlyPreview = false;
   let suppliers: Awaited<ReturnType<typeof fetchSupplierFormContext>>["suppliers"] = [];
+  let statsBySupplierId: Awaited<
+    ReturnType<typeof fetchSupplierFormContext>
+  >["statsBySupplierId"] = {};
   let suppliersOnVacationNow: Record<string, SupplierOnVacationWindow> = {};
   let salesPeople: { id: string; name: string }[] = [];
   let lockedSalesPerson: { id: string; name: string } | null = null;
@@ -54,6 +57,7 @@ export default async function ProsbaPage({
       fetchSuppliersOnVacationNow(),
     ]);
     suppliers = ctx.suppliers;
+    statsBySupplierId = ctx.statsBySupplierId;
     suppliersOnVacationNow = onVacation;
   } catch (error) {
     logDevPageError("prosba/page:suppliers", error);
@@ -151,6 +155,7 @@ export default async function ProsbaPage({
             initialSupplierId={initialSupplierId}
             forceReadOnly
             suppliersOnVacationNow={suppliersOnVacationNow}
+            statsBySupplierId={statsBySupplierId}
           />
         </Suspense>
       </DelegateModeBackground>
@@ -223,6 +228,7 @@ export default async function ProsbaPage({
           }
           managerSelfId={managerSelfId ?? undefined}
           suppliersOnVacationNow={suppliersOnVacationNow}
+          statsBySupplierId={statsBySupplierId}
         />
       ) : (
         <OrderFormClient
@@ -234,6 +240,7 @@ export default async function ProsbaPage({
           }
           managerSelfId={managerSelfId ?? undefined}
           suppliersOnVacationNow={suppliersOnVacationNow}
+          statsBySupplierId={statsBySupplierId}
         />
       )}
       </Suspense>

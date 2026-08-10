@@ -555,7 +555,7 @@ describe("filterZkProsbaScopeLineKeysNeedingOrder", () => {
 });
 
 describe("collectProsbaLineTwIdsMissingStock", () => {
-  it("zbiera tw_Id bez stockSource", () => {
+  it("zbiera wszystkie tw_Id zamówienia — także z już wczytanym stanem (pair-aware refetch)", () => {
     const ids = collectProsbaLineTwIdsMissingStock(
       [
         { ...baseLine, id: "1", subiektTwId: 5 },
@@ -570,19 +570,57 @@ describe("collectProsbaLineTwIdsMissingStock", () => {
       ],
       "zamowienie"
     );
-    expect(ids).toEqual([5]);
+    expect(ids.sort()).toEqual([5, 6]);
   });
 });
 
 describe("prosbaLinesStockSyncSignature", () => {
-  it("łączy tw_Id i ilość", () => {
+  it("łączy tw_Id, ilość i czy stan jest wczytany", () => {
     expect(
       prosbaLinesStockSyncSignature(
         [{ ...baseLine, subiektTwId: 3, quantity: "4" }],
         "zamowienie"
       )
-    ).toBe("3:4");
+    ).toBe("3:4:m");
+    expect(
+      prosbaLinesStockSyncSignature(
+        [
+          {
+            ...baseLine,
+            subiektTwId: 3,
+            quantity: "4",
+            stockSource: "subiekt",
+            available: 10,
+            onHand: 10,
+          },
+        ],
+        "zamowienie"
+      )
+    ).toBe("3:4:h");
     expect(prosbaLinesStockSyncSignature([baseLine], "informacja")).toBe("");
+  });
+
+  it("re-pick (clear stock) zmienia sygnaturę przy tym samym twId:qty", () => {
+    const withStock = prosbaLinesStockSyncSignature(
+      [
+        {
+          ...baseLine,
+          subiektTwId: 200,
+          quantity: "50",
+          stockSource: "subiekt",
+          available: 0,
+          onHand: 0,
+        },
+      ],
+      "zamowienie"
+    );
+    const cleared = prosbaLinesStockSyncSignature(
+      [{ ...baseLine, subiektTwId: 200, quantity: "50" }],
+      "zamowienie"
+    );
+    expect(withStock).toBe("200:50:h");
+    expect(cleared).toBe("200:50:m");
+    expect(withStock).not.toBe(cleared);
   });
 });
 

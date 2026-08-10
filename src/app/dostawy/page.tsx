@@ -3,7 +3,7 @@ import { canAccessWarehouse } from "@/lib/auth-roles";
 import { fetchWarehouseCarriers } from "@/lib/data/warehouse-carriers";
 import { fetchSuppliersWithSchedules } from "@/lib/data/queries";
 import {
-  fetchUpcomingDeliveries,
+  fetchUpcomingDeliveriesWithMeta,
   summarizeUpcomingDeliveries,
   upcomingDeliveryPresetRange,
 } from "@/lib/data/upcoming-deliveries";
@@ -32,12 +32,19 @@ export default async function DostawyPage() {
     try {
       const { dateFrom, dateTo } = upcomingDeliveryPresetRange("week");
       const carriers = await fetchWarehouseCarriers();
-      const [days, schedules] = await Promise.all([
-        fetchUpcomingDeliveries(dateFrom, dateTo, carriers),
+      const [meta, schedules] = await Promise.all([
+        fetchUpcomingDeliveriesWithMeta(dateFrom, dateTo, carriers),
         fetchSuppliersWithSchedules(undefined, { activeOnly: true }),
       ]);
-      const summary = summarizeUpcomingDeliveries(days);
-      initialPayload = { days, summary, dateFrom, dateTo };
+      const summary = summarizeUpcomingDeliveries(meta.days);
+      initialPayload = {
+        days: meta.days,
+        summary,
+        dateFrom,
+        dateTo,
+        receivedSupplierIdsToday: meta.receivedSupplierIdsToday,
+        clearedSupplierIdsByDate: meta.clearedSupplierIdsByDate,
+      };
       supplierSchedules = schedules;
     } catch (e) {
       loadError = e instanceof Error ? e.message : "Nie udało się załadować dostaw.";

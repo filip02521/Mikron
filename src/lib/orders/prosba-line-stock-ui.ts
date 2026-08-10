@@ -101,12 +101,19 @@ export function buildProsbaLineStockStatusView(
   const reserveShort = stock.reserved > 0 ? ` (−${stock.reserved} rez.)` : "";
 
   if (assessment === "sufficient" && requestedQty != null) {
+    const pairSuffix = line.pairStockCover
+      ? " Cover pary obejmuje sztuki i paczki (wystarczy po demontażu)."
+      : "";
     return {
       assessment,
       tone: "amber",
-      shortLabel: `Stan ${availLabel}${reserveShort}`,
-      title: "Wystarczający stan magazynowy",
-      detail: `Dostępne ${availLabel}${reserveSuffix} przy zamówieniu ${requestedQty} szt. — sprawdź, czy prośba jest potrzebna.`,
+      shortLabel: line.pairStockCover
+        ? `Cover pary ${availLabel}${reserveShort}`
+        : `Stan ${availLabel}${reserveShort}`,
+      title: line.pairStockCover
+        ? "Wystarczający stan (para montaż/demontaż)"
+        : "Wystarczający stan magazynowy",
+      detail: `Dostępne ${availLabel}${reserveSuffix} przy zamówieniu ${requestedQty} szt.${pairSuffix} — sprawdź, czy prośba jest potrzebna.`,
     };
   }
 

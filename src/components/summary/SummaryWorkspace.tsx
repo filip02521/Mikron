@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import type { SummaryWorkspaceData } from "@/lib/orders/summary-workspace";
 import type { DeliveryStats, IndividualOrder, StatsMode } from "@/types/database";
 import type { SummaryStandardItem } from "@/lib/orders/summary";
-import { actionBulkOrdered, actionMarkOrdered } from "@/app/actions/admin";
+import { actionBulkOrdered } from "@/app/actions/admin";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -52,6 +52,10 @@ import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { cn } from "@/lib/cn";
 import type { TeethSupplierLaneSnapshot } from "@/lib/data/teeth-schedule-shared";
+import {
+  DAILY_PANEL_MARK_ORDERED_PENDING_OVERLAY,
+  dailyPanelMarkOrderedToastTitle,
+} from "@/lib/orders/daily-panel-mark-ordered-copy";
 
 export function SummaryWorkspace({
   workspace,
@@ -62,6 +66,7 @@ export function SummaryWorkspace({
   supplierStatsMode = {},
   verificationOrders = [],
   teethLaneBySupplierId = {},
+  canPrepareZd = false,
 }: {
   workspace: SummaryWorkspaceData;
   suppliers: OrderFormSupplierOption[];
@@ -71,6 +76,8 @@ export function SummaryWorkspace({
   supplierStatsMode?: Record<string, StatsMode>;
   verificationOrders?: IndividualOrder[];
   teethLaneBySupplierId?: Record<string, TeethSupplierLaneSnapshot>;
+  /** Przygotuj ZD w drawerze — wyłącznie administrator. */
+  canPrepareZd?: boolean;
 }) {
   const {
     pendingMessage,
@@ -206,17 +213,10 @@ export function SummaryWorkspace({
       if (!drawerId || !drawerSupplier) return;
 
       if (e.key === "Escape") {
+        // ConfirmDialog (alertdialog) nad szufladą — Escape zamyka tylko dialog.
+        if (document.querySelector('[role="alertdialog"]')) return;
         setDrawerId(null);
         return;
-      }
-      if (e.key === "z" || e.key === "Z") {
-        e.preventDefault();
-        run(
-          () => actionMarkOrdered(drawerId),
-          "Oznaczono jako zamówione",
-          "Oznaczanie jako zamówione…",
-          { scope: drawerId }
-        );
       }
     };
     window.addEventListener("keydown", onKey);
@@ -224,7 +224,6 @@ export function SummaryWorkspace({
   }, [
     drawerId,
     drawerSupplier,
-    run,
     undo,
     handleUndo,
     orderModalOpen,
@@ -262,10 +261,12 @@ export function SummaryWorkspace({
     run(
       () => actionBulkOrdered(ids),
       ids.length === 1
-        ? "Oznaczono jako zamówione."
-        : `Oznaczono jako zamówione (${ids.length} dostawców).`,
+        ? dailyPanelMarkOrderedToastTitle(
+            standardUrgentAll.find((item) => selected[item.supplierId])?.supplierName
+          )
+        : `Oznaczono jako zamówione (${ids.length} dostawców)`,
       ids.length === 1
-        ? "Oznaczanie jako zamówione…"
+        ? DAILY_PANEL_MARK_ORDERED_PENDING_OVERLAY
         : `Oznaczanie ${ids.length} dostawców…`,
       { scope: DAILY_PANEL_SCOPE_BULK }
     );
@@ -472,6 +473,7 @@ export function SummaryWorkspace({
         run={run}
         onVacation={() => drawerId && setVacationModalSupplierId(drawerId)}
         onEdit={() => drawerId && openEditFor(drawerId)}
+        canPrepareZd={canPrepareZd}
       />
 
       {vacationModalSupplierId && vacationModalName ? (
@@ -499,6 +501,7 @@ export function SummaryWorkspace({
         onClose={() => setOrderModalOpen(false)}
         suppliers={suppliers}
         salesPeople={salesPeople}
+        statsBySupplierId={statsBySupplierId}
       />
 
       <VerificationModal

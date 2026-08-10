@@ -3,7 +3,7 @@
 import { requireWarehouse } from "@/lib/auth";
 import { fetchWarehouseCarriers } from "@/lib/data/warehouse-carriers";
 import {
-  fetchUpcomingDeliveries,
+  fetchUpcomingDeliveriesWithMeta,
   summarizeUpcomingDeliveries,
   upcomingDeliveryPresetRange,
   type UpcomingDeliveryDay,
@@ -16,6 +16,10 @@ export type UpcomingDeliveriesPayload = {
   summary: UpcomingDeliverySummary;
   dateFrom: string;
   dateTo: string;
+  /** Dostawcy z wpisem w dzienniku przyjęć dokładnie na dziś. */
+  receivedSupplierIdsToday: string[];
+  /** Dostawcy w pełni odznaczeni per termin ZD. */
+  clearedSupplierIdsByDate: Record<string, string[]>;
 };
 
 export async function actionFetchUpcomingDeliveries(
@@ -24,9 +28,17 @@ export async function actionFetchUpcomingDeliveries(
 ): Promise<UpcomingDeliveriesPayload> {
   await requireWarehouse();
   const carriers = await fetchWarehouseCarriers();
-  const days = await fetchUpcomingDeliveries(dateFrom, dateTo, carriers);
+  const { days, receivedSupplierIdsToday, clearedSupplierIdsByDate } =
+    await fetchUpcomingDeliveriesWithMeta(dateFrom, dateTo, carriers);
   const summary = summarizeUpcomingDeliveries(days);
-  return { days, summary, dateFrom, dateTo };
+  return {
+    days,
+    summary,
+    dateFrom,
+    dateTo,
+    receivedSupplierIdsToday,
+    clearedSupplierIdsByDate,
+  };
 }
 
 export async function actionFetchUpcomingDeliveriesByPreset(
@@ -35,7 +47,15 @@ export async function actionFetchUpcomingDeliveriesByPreset(
   await requireWarehouse();
   const { dateFrom, dateTo } = upcomingDeliveryPresetRange(preset);
   const carriers = await fetchWarehouseCarriers();
-  const days = await fetchUpcomingDeliveries(dateFrom, dateTo, carriers);
+  const { days, receivedSupplierIdsToday, clearedSupplierIdsByDate } =
+    await fetchUpcomingDeliveriesWithMeta(dateFrom, dateTo, carriers);
   const summary = summarizeUpcomingDeliveries(days);
-  return { days, summary, dateFrom, dateTo };
+  return {
+    days,
+    summary,
+    dateFrom,
+    dateTo,
+    receivedSupplierIdsToday,
+    clearedSupplierIdsByDate,
+  };
 }

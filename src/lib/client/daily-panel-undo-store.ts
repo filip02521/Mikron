@@ -9,7 +9,7 @@
 import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
 import {
   isUndoPayloadExpired,
-  undoPayloadExpiresAt,
+  UNDO_WINDOW_MS,
 } from "@/lib/orders/daily-panel-undo";
 
 export type DailyPanelUndoUiState = {
@@ -47,8 +47,14 @@ export function getDailyPanelUndoSnapshot(): DailyPanelUndoUiState | null {
   return undoState;
 }
 
+/**
+ * Musi zwracać to samo co {@link getDailyPanelUndoSnapshot}.
+ * Wcześniej było zawsze `null` — po revalidate/remount (Główne / Uzupełniające)
+ * React brał „server snapshot” i kasował floating UndoToast, mimo że store
+ * nadal trzymał payload. „Zamówione” z Na dziś rzadziej wpadało w ten tor.
+ */
 export function getDailyPanelUndoServerSnapshot(): DailyPanelUndoUiState | null {
-  return null;
+  return undoState;
 }
 
 export function setDailyPanelUndo(next: DailyPanelUndoUiState) {
@@ -63,12 +69,20 @@ export function setDailyPanelUndoFromAction(input: {
   detailLines?: string[];
   payload: DailyPanelUndoPayload;
 }): DailyPanelUndoUiState {
+  // Okno 10 s liczymy od pojawienia się toastu, nie od performedAt na serwerze
+  // (latency + feedback potrafiły zjeść cały czas — zwłaszcza Uzupełniające).
+  const performedAt = Date.now();
+  const payload: DailyPanelUndoPayload = {
+    ...input.payload,
+    performedAt,
+    expiresAt: performedAt + UNDO_WINDOW_MS,
+  };
   const next: DailyPanelUndoUiState = {
     title: input.title,
     description: input.description,
     detailLines: input.detailLines,
-    payload: input.payload,
-    expiresAt: undoPayloadExpiresAt(input.payload),
+    payload,
+    expiresAt: performedAt + UNDO_WINDOW_MS,
   };
   setDailyPanelUndo(next);
   return next;

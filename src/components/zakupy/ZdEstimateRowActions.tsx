@@ -13,7 +13,10 @@ import {
  */
 export function ZdEstimateRowActions({
   symbol,
-  excluded,
+  /** Auto z nazwy (outlet / wycofane) — bez „Przywróć” z bazy. */
+  nameAutoExcluded = false,
+  /** Trwałe wykluczenie w bazie — można przywrócić. */
+  dbExcluded = false,
   packagingHint,
   disabled,
   pending,
@@ -22,7 +25,8 @@ export function ZdEstimateRowActions({
   onRestore,
 }: {
   symbol: string;
-  excluded: boolean;
+  nameAutoExcluded?: boolean;
+  dbExcluded?: boolean;
   /** np. „10 szt / 1 op.” albo null gdy 1:1 */
   packagingHint: string | null;
   disabled?: boolean;
@@ -31,6 +35,9 @@ export function ZdEstimateRowActions({
   onExclude: () => void;
   onRestore: () => void;
 }) {
+  const showRestore = dbExcluded;
+  const showExclude = !dbExcluded && !nameAutoExcluded;
+
   return (
     <OverflowMenu
       label={`Akcje: ${symbol}`}
@@ -51,24 +58,40 @@ export function ZdEstimateRowActions({
             : "1 na ZD = N sztuk (np. Falcon 10)"}
         </span>
       </OverflowMenuItem>
-      <OverflowMenuSeparator />
-      {excluded ? (
+      {nameAutoExcluded ? (
+        <>
+          <OverflowMenuSeparator />
+          <OverflowMenuItem disabled onClick={() => {}}>
+            <span className="block font-medium leading-snug text-slate-500">
+              Auto-wykluczenie
+            </span>
+            <span className="mt-0.5 block text-[11px] font-normal leading-snug text-slate-400">
+              Outlet / wycofane w nazwie albo katalog zębów
+            </span>
+          </OverflowMenuItem>
+        </>
+      ) : null}
+      {showRestore || showExclude ? <OverflowMenuSeparator /> : null}
+      {showRestore ? (
         <OverflowMenuItem disabled={disabled || pending} onClick={onRestore}>
           <span className="block font-medium leading-snug">
             {pending ? "Przywracam…" : "Przywróć"}
           </span>
           <span className="mt-0.5 block text-[11px] font-normal leading-snug text-slate-400">
-            Znowu na liście do zamówienia
+            {nameAutoExcluded
+              ? "Usuń z listy trwałej (auto z nazwy zostaje)"
+              : "Znowu na liście do zamówienia"}
           </span>
         </OverflowMenuItem>
-      ) : (
+      ) : null}
+      {showExclude ? (
         <OverflowMenuItem danger disabled={disabled || pending} onClick={onExclude}>
           <span className="block font-medium leading-snug">Wyklucz</span>
           <span className="mt-0.5 block text-[11px] font-normal leading-snug text-red-600/75">
             Ukryj przy kolejnych szacunkach
           </span>
         </OverflowMenuItem>
-      )}
+      ) : null}
     </OverflowMenu>
   );
 }

@@ -91,23 +91,191 @@ describe("mapZdEstimateLineToManual", () => {
   };
 
   it("liczy qty ręczne bez ZK — API zostaje w osobnym polu", () => {
-    const m = mapZdEstimateLineToManual(base);
+    const m = mapZdEstimateLineToManual(base, { salesTrack: false });
     expect(m.doZamowieniaReczne).toBe(8);
     expect(m.doZamowieniaApi).toBe(469.516);
     expect(m.wkladZk).toBeGreaterThan(400);
+    expect(m.celZapasuTracked).toBe(m.celZapasu);
+    expect(m.salesTrackDelta).toBe(0);
+  });
+
+  it("podążanie za sprzedażą podbija cel i qty przy cienkim pokryciu", () => {
+    const m = mapZdEstimateLineToManual(base, {
+      dniZapasu: 30,
+      salesTrack: true,
+    });
+    expect(m.doZamowieniaReczne).toBeGreaterThan(8);
+    expect(m.salesTrackDelta).toBeGreaterThan(0);
+    expect(m.celZapasuTracked).toBeGreaterThan(m.celZapasu);
+    expect(m.salesTrackReasons.length).toBeGreaterThan(0);
+  });
+
+  it("niski sell-through obniża qty względem samego celu Subiekta", () => {
+    const line = {
+      ...base,
+      celZapasu: 100,
+      dostepne: 55,
+      sprzedazOkres: 8,
+      sprzedazDziennie: 1,
+      otwarteZd: 0,
+      doZamowienia: 45,
+      otwarteZkBezRez: 0,
+    };
+    const off = mapZdEstimateLineToManual(line, {
+      dniZapasu: 30,
+      salesTrack: true,
+      salesTrackCuts: false,
+    });
+    const on = mapZdEstimateLineToManual(line, {
+      dniZapasu: 30,
+      salesTrack: true,
+      salesTrackCuts: true,
+    });
+    expect(on.salesTrackDelta).toBeLessThan(0);
+    expect(on.doZamowieniaReczne).toBeLessThan(off.doZamowieniaReczne);
+  });
+
+  it("martwy SKU z zapasem ≥ cel → qty 0", () => {
+    const m = mapZdEstimateLineToManual(
+      {
+        ...base,
+        celZapasu: 20,
+        dostepne: 25,
+        sprzedazOkres: 0,
+        sprzedazDziennie: 0,
+        otwarteZd: 0,
+        doZamowienia: 0,
+        otwarteZkBezRez: 0,
+      },
+      { salesTrack: true }
+    );
+    expect(m.celZapasuTracked).toBe(0);
+    expect(m.doZamowieniaReczne).toBe(0);
+    expect(m.salesTrackReasons).toContain("dead_stock");
+  });
+
+  it("historia wolnego ZD dodatkowo obniża cel", () => {
+    const linkedAt = new Date(
+      Date.now() - 20 * 24 * 60 * 60 * 1000
+    ).toISOString();
+    const line = {
+      ...base,
+      celZapasu: 100,
+      dostepne: 40,
+      sprzedazOkres: 8,
+      sprzedazDziennie: 1,
+      otwarteZd: 0,
+      doZamowienia: 60,
+      otwarteZkBezRez: 0,
+    };
+    const without = mapZdEstimateLineToManual(line, {
+      dniZapasu: 30,
+      salesTrackCuts: false,
+    });
+    const withHist = mapZdEstimateLineToManual(line, {
+      dniZapasu: 30,
+      salesTrackCuts: true,
+      history: { lastOrderedQty: 50, linkedAt },
+    });
+    expect(withHist.salesTrackReasons).toContain("history_slow");
+    expect(withHist.celZapasuTracked).toBeLessThan(without.celZapasuTracked);
+  });
+
+  it("opakowanie: otwarte ZD (paczki) → sztuki w qty i cover", () => {
+    const line = {
+      ...base,
+      celZapasu: 40,
+      dostepne: 10,
+      otwarteZd: 2, // 2 op. × 10 = 20 szt
+      sprzedazOkres: 0,
+      sprzedazDziennie: 0,
+      doZamowienia: 100,
+      otwarteZkBezRez: 0,
+    };
+    const raw = mapZdEstimateLineToManual(line, {
+      salesTrack: false,
+    });
+    const packed = mapZdEstimateLineToManual(line, {
+      salesTrack: false,
+      unitsPerPackage: 10,
+    });
+    // bez pack: 40−10−2=28; z pack: 40−10−20=10
+    expect(raw.doZamowieniaReczne).toBe(28);
+    expect(packed.doZamowieniaReczne).toBe(10);
+    expect(packed.otwarteZd).toBe(2); // surowe jednostki API
+  });
+
+  it("opakowanie × historia: snapshot qty w sztukach vs paczki w otwarteZd", () => {
+    const linkedAt = new Date(
+      Date.now() - 20 * 24 * 60 * 60 * 1000
+    ).toISOString();
+    const line = {
+      ...base,
+      celZapasu: 100,
+      dostepne: 50,
+      otwarteZd: 5, // 5 op. × 10 = 50 szt cover
+      sprzedazOkres: 5,
+      sprzedazDziennie: 1,
+      doZamowienia: 50,
+      otwarteZkBezRez: 0,
+    };
+    // cover bez pack: 55 dni; z pack: 100 szt / 1 = 100 dni — obie ≥ dniZapasu
+    const withHist = mapZdEstimateLineToManual(line, {
+      dniZapasu: 30,
+      unitsPerPackage: 10,
+      history: { lastOrderedQty: 100, linkedAt }, // sztuki z snapshotu
+    });
+    expect(withHist.salesTrackReasons).toContain("history_slow");
+  });
+
+  it("sales_spike: sprzedaż w oknie ≫ ostatnie ZD — obniża doZamowienia", () => {
+    const linkedAt = new Date(
+      Date.now() - 20 * 24 * 60 * 60 * 1000
+    ).toISOString();
+    const line = {
+      ...base,
+      celZapasu: 300,
+      dostepne: 0,
+      otwarteZd: 0,
+      sprzedazOkres: 300,
+      sprzedazDziennie: 10,
+      doZamowienia: 300,
+      otwarteZkBezRez: 0,
+    };
+    const without = mapZdEstimateLineToManual(line, {
+      dniZapasu: 30,
+      dniOkresu: 30,
+      salesTrack: true,
+      salesTrackCuts: true,
+    });
+    const withHist = mapZdEstimateLineToManual(line, {
+      dniZapasu: 30,
+      dniOkresu: 30,
+      salesTrack: true,
+      salesTrackCuts: true,
+      history: { lastOrderedQty: 100, linkedAt },
+    });
+    expect(withHist.salesTrackReasons).toContain("sales_spike");
+    expect(withHist.celZapasuTracked).toBeLessThan(without.celZapasuTracked);
+    expect(withHist.doZamowieniaReczne).toBeLessThan(without.doZamowieniaReczne);
   });
 
   it("liczy dostepne ze stanu gdy brak pola", () => {
-    const m = mapZdEstimateLineToManual({
-      ...base,
-      dostepne: undefined,
-      tw_Stan: 40,
-      tw_StanRez: 5,
-      celZapasu: 50,
-      otwarteZd: 0,
-      doZamowienia: 100,
-      otwarteZkBezRez: 65,
-    });
+    const m = mapZdEstimateLineToManual(
+      {
+        ...base,
+        dostepne: undefined,
+        tw_Stan: 40,
+        tw_StanRez: 5,
+        celZapasu: 50,
+        otwarteZd: 0,
+        doZamowienia: 100,
+        otwarteZkBezRez: 65,
+        sprzedazOkres: 0,
+        sprzedazDziennie: 0,
+      },
+      { salesTrack: false }
+    );
     expect(m.dostepne).toBe(35);
     expect(m.doZamowieniaReczne).toBe(15);
   });
@@ -266,21 +434,27 @@ describe("salesWindowFromDniZapasu", () => {
 
 describe("manualLinesToTsv", () => {
   it("eksportuje nagłówek i qty ręczne", () => {
-    const m = mapZdEstimateLineToManual({
-      tw_Id: 1,
-      tw_Symbol: "X",
-      tw_Nazwa: "Towar",
-      celZapasu: 10.2,
-      dostepne: 3,
-      otwarteZd: 1,
-      doZamowienia: 20,
-      otwarteZkBezRez: 13,
-      tw_Stan: 3,
-      tw_StanRez: 0,
-      sprzedazOkres: 10,
-    });
+    const m = mapZdEstimateLineToManual(
+      {
+        tw_Id: 1,
+        tw_Symbol: "X",
+        tw_Nazwa: "Towar",
+        celZapasu: 10.2,
+        dostepne: 3,
+        otwarteZd: 1,
+        doZamowienia: 20,
+        otwarteZkBezRez: 13,
+        tw_Stan: 3,
+        tw_StanRez: 0,
+        sprzedazOkres: 0,
+        sprzedazDziennie: 0,
+      },
+      { salesTrack: false }
+    );
     const tsv = manualLinesToTsv([m]);
     expect(tsv.split("\n")[0]).toContain("do_zd");
+    expect(tsv.split("\n")[0]).toContain("cel_sledzony");
+    expect(tsv.split("\n")[0]).toContain("delta_sledzenia");
     expect(tsv).toContain("\t7\t");
   });
 });

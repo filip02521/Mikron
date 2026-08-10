@@ -471,15 +471,6 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
         iconTone: "emerald",
         ...compact,
       },
-      {
-        href: "/zakupy/szacunek",
-        label: "Szacunek ZD",
-        description: "Lista do zamówienia z grupy",
-        icon: "groupOrder",
-        tone: "sky",
-        iconTone: "violet",
-        ...compact,
-      },
     ];
   }
 

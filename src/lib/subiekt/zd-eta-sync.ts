@@ -22,7 +22,17 @@ import {
   SubiektRequestError,
   SubiektTimeoutError,
 } from "@/lib/subiekt/errors";
-import { findBestMatchingZdDocument, isConfidentZdMatchForOrder, orderHasPartialDeliveryRemaining, orderMatchesZdDocument, orderRemainingQuantity, persistedZdFulfillsOrderRemaining } from "@/lib/subiekt/match-order-to-zd";
+import {
+  findBestMatchingZdDocument,
+  isConfidentZdMatchForOrder,
+  orderHasPartialDeliveryRemaining,
+  orderMatchesZdDocument,
+  orderRemainingQuantity,
+  persistedZdFulfillsOrderRemaining,
+  type ZdPairMatchIndex,
+} from "@/lib/subiekt/match-order-to-zd";
+import { twinTwIdsForPairMatch } from "@/lib/orders/zd-product-pair-units";
+import { loadZdPairMatchIndex } from "@/lib/orders/zd-product-pair-stock";
 import { extractDocKhIds, zdListItemMatchesSupplierKhIds } from "@/lib/subiekt/zd-document-kh";
 import { zdDocumentContainsTowId } from "@/lib/subiekt/zd-document-tow-id";
 import {
@@ -544,34 +554,39 @@ export function zdDocumentMatchesSupplierKhIds(
 function findMatchingZdDocumentForSupplier(
   order: IndividualOrder,
   docs: SubiektDocument[],
-  khIds: readonly number[]
+  khIds: readonly number[],
+  pairs?: ZdPairMatchIndex | null
 ): SubiektDocument | null {
   const scoped = docs.filter((doc) => zdDocumentMatchesSupplierKhIds(doc, khIds));
-  return findBestMatchingZdDocument(order, scoped);
+  return findBestMatchingZdDocument(order, scoped, { pairs });
 }
 
 /** Wczesne zatrzymanie odczytu indeksu — wybór najlepszego z pobranych, stop przy pewnym trafieniu. */
 export function buildZdIndexSearchEarlyStopHandlers(
   order: IndividualOrder,
-  khIds: readonly number[]
+  khIds: readonly number[],
+  pairs?: ZdPairMatchIndex | null
 ): Pick<
   import("@/lib/subiekt/zd-eta-index-search").FetchZdByDokIdsOptions,
   "selectBestFromDocs" | "shouldStopAfterBest"
 > {
   return {
-    selectBestFromDocs: (docs) => findMatchingZdDocumentForSupplier(order, docs, khIds),
+    selectBestFromDocs: (docs) =>
+      findMatchingZdDocumentForSupplier(order, docs, khIds, pairs),
     shouldStopAfterBest: (best, ctx) =>
-      isConfidentZdMatchForOrder(order, best) || ctx.fetched >= ctx.listedCount,
+      isConfidentZdMatchForOrder(order, best, pairs) ||
+      ctx.fetched >= ctx.listedCount,
   };
 }
 
 function orderZdConfidentMatchDoc(
   order: IndividualOrder,
-  khIds: readonly number[]
+  khIds: readonly number[],
+  pairs?: ZdPairMatchIndex | null
 ): (doc: SubiektDocument) => boolean {
   return (doc) =>
-    Boolean(findMatchingZdDocumentForSupplier(order, [doc], khIds)) &&
-    isConfidentZdMatchForOrder(order, doc);
+    Boolean(findMatchingZdDocumentForSupplier(order, [doc], khIds, pairs)) &&
+    isConfidentZdMatchForOrder(order, doc, pairs);
 }
 
 async function fetchZdDocumentSafe(
@@ -596,15 +611,17 @@ export async function refreshKnownZdDocumentForOrder(
   order: IndividualOrder,
   loadDoc: (dokId: number) => Promise<SubiektDocument | null>,
   khIds: readonly number[],
-  at: Date = new Date()
+  at: Date = new Date(),
+  pairs?: ZdPairMatchIndex | null
 ): Promise<KnownZdRefreshResult> {
   if (!hasKnownZdFulfillmentDocId(order)) return { kind: "missing" };
   const dokId = Math.trunc(order.zd_fulfillment_dok_id!);
   const doc = await loadDoc(dokId);
   if (!doc) return { kind: "missing" };
   if (!zdDocumentMatchesSupplierKhIds(doc, khIds)) return { kind: "missing" };
-  if (!orderMatchesZdDocument(order, doc)) return { kind: "missing" };
-  if (!persistedZdFulfillsOrderRemaining(order, doc, at)) return { kind: "inactive" };
+  if (!orderMatchesZdDocument(order, doc, pairs)) return { kind: "missing" };
+  if (!persistedZdFulfillsOrderRemaining(order, doc, at, pairs))
+    return { kind: "inactive" };
   return { kind: "active", doc };
 }
 
@@ -612,9 +629,16 @@ export async function tryRefreshKnownZdDocumentForOrder(
   order: IndividualOrder,
   loadDoc: (dokId: number) => Promise<SubiektDocument | null>,
   khIds: readonly number[],
-  at: Date = new Date()
+  at: Date = new Date(),
+  pairs?: ZdPairMatchIndex | null
 ): Promise<SubiektDocument | null> {
-  const refreshed = await refreshKnownZdDocumentForOrder(order, loadDoc, khIds, at);
+  const refreshed = await refreshKnownZdDocumentForOrder(
+    order,
+    loadDoc,
+    khIds,
+    at,
+    pairs
+  );
   return refreshed.kind === "active" ? refreshed.doc : null;
 }
 
@@ -623,13 +647,15 @@ export async function liveSearchZdDocsByTwIdForOrder(
   khIds: readonly number[],
   remainingDocBudget: number,
   knownDocIds: ReadonlySet<number>,
-  loadDoc: (dokId: number) => Promise<SubiektDocument | null>
+  loadDoc: (dokId: number) => Promise<SubiektDocument | null>,
+  pairs?: ZdPairMatchIndex | null
 ): Promise<{ doc: SubiektDocument | null; peeked: number }> {
   const twId = Math.trunc(Number(order.subiekt_tw_id));
   if (remainingDocBudget <= 0 || !khIds.length || !Number.isFinite(twId) || twId <= 0) {
     return { doc: null, peeked: 0 };
   }
 
+  const twIds = twinTwIdsForPairMatch(twId, pairs);
   const placement = zdSearchPlacementAt(order);
   let peeked = 0;
 
@@ -641,9 +667,9 @@ export async function liveSearchZdDocsByTwIdForOrder(
 
     const preview = await getSubiektZdDocumentCached(id);
     peeked++;
-    if (!preview || !zdDocumentContainsTowId(preview, twId)) return null;
+    if (!preview || !zdDocumentContainsTowId(preview, twIds)) return null;
     if (!zdDocumentMatchesSupplierKhIds(preview, khIds)) return null;
-    const hit = findMatchingZdDocumentForSupplier(order, [preview], khIds);
+    const hit = findMatchingZdDocumentForSupplier(order, [preview], khIds, pairs);
     if (!hit) return null;
 
     const loaded = await loadDoc(id);
@@ -679,27 +705,29 @@ export async function liveSearchZdDocsByTwIdForOrder(
   }
 
   const dataOd = zdTwIdListDataOd(placement);
-  for (let page = 1; page <= ZD_ETA_TW_ID_LIVE_SEARCH_MAX_PAGES; page++) {
-    if (peeked >= remainingDocBudget) break;
-
-    const list = await searchSubiektZdCachedForEta({
-      id: twId,
-      dataOd,
-      page,
-      pageSize: 25,
-    });
-    const items = list.data ?? [];
-    if (!items.length) break;
-
-    const { open: openItems, later: laterItems } = partitionZdListItemsForEtaLoad(items);
-    for (const item of [...openItems, ...laterItems]) {
+  for (const searchTwId of twIds) {
+    for (let page = 1; page <= ZD_ETA_TW_ID_LIVE_SEARCH_MAX_PAGES; page++) {
       if (peeked >= remainingDocBudget) break;
-      if (!zdListItemMatchesSupplierKhIds(item, khIds)) continue;
-      const doc = await tryListItem(item);
-      if (doc) return { doc, peeked };
-    }
 
-    if (items.length < 25) break;
+      const list = await searchSubiektZdCachedForEta({
+        id: searchTwId,
+        dataOd,
+        page,
+        pageSize: 25,
+      });
+      const items = list.data ?? [];
+      if (!items.length) break;
+
+      const { open: openItems, later: laterItems } = partitionZdListItemsForEtaLoad(items);
+      for (const item of [...openItems, ...laterItems]) {
+        if (peeked >= remainingDocBudget) break;
+        if (!zdListItemMatchesSupplierKhIds(item, khIds)) continue;
+        const doc = await tryListItem(item);
+        if (doc) return { doc, peeked };
+      }
+
+      if (items.length < 25) break;
+    }
   }
 
   return { doc: null, peeked };
@@ -712,7 +740,8 @@ export async function liveSearchZdDocsForOrder(
   remainingDocBudget: number,
   remainingSupplierDocBudget: number,
   knownDocIds: ReadonlySet<number>,
-  loadDoc: (dokId: number) => Promise<SubiektDocument | null>
+  loadDoc: (dokId: number) => Promise<SubiektDocument | null>,
+  pairs?: ZdPairMatchIndex | null
 ): Promise<{ docs: SubiektDocument[]; fetched: number; matched: SubiektDocument | null }> {
   const docBudget = Math.min(remainingDocBudget, remainingSupplierDocBudget);
   if (docBudget <= 0) return { docs: [], fetched: 0, matched: null };
@@ -738,6 +767,8 @@ export async function liveSearchZdDocsForOrder(
     if (fetched >= docBudget) break;
     const planTwId =
       plan.id != null && Number(plan.id) > 0 ? Math.trunc(Number(plan.id)) : null;
+    const planTwIds =
+      planTwId != null ? twinTwIdsForPairMatch(planTwId, pairs) : [];
     const maxPages =
       planTwId != null ? ZD_ETA_TW_ID_LIVE_SEARCH_MAX_PAGES : ZD_ETA_LIVE_SEARCH_MAX_PAGES;
     for (let page = 1; page <= maxPages; page++) {
@@ -758,22 +789,22 @@ export async function liveSearchZdDocsForOrder(
         seen.add(id);
         const preview = planTwId != null ? await getSubiektZdDocumentCached(id) : null;
         if (planTwId != null) {
-          if (!preview || !zdDocumentContainsTowId(preview, planTwId)) continue;
+          if (!preview || !zdDocumentContainsTowId(preview, planTwIds)) continue;
         }
         const full = await loadDoc(id);
         if (!full) continue;
-        if (planTwId != null && !zdDocumentContainsTowId(full, planTwId)) continue;
+        if (planTwId != null && !zdDocumentContainsTowId(full, planTwIds)) continue;
         fetched++;
         if (!zdDocumentMatchesSupplierKhIds(full, khIds)) continue;
         docs.push(full);
-        const hit = findMatchingZdDocumentForSupplier(order, [full], khIds);
+        const hit = findMatchingZdDocumentForSupplier(order, [full], khIds, pairs);
         if (hit) return { docs, fetched, matched: hit };
       }
       if (items.length < (plan.pageSize ?? 12)) break;
     }
   }
 
-  const matched = findMatchingZdDocumentForSupplier(order, docs, khIds);
+  const matched = findMatchingZdDocumentForSupplier(order, docs, khIds, pairs);
   return { docs, fetched, matched };
 }
 
@@ -784,7 +815,8 @@ export async function searchReplacementZdForInactiveKnown(
   knownDocIds: ReadonlySet<number>,
   loadDoc: (dokId: number) => Promise<SubiektDocument | null>,
   remainingBudget: number,
-  at: Date = new Date()
+  at: Date = new Date(),
+  pairs?: ZdPairMatchIndex | null
 ): Promise<{ doc: SubiektDocument | null; fetched: number }> {
   if (remainingBudget <= 0 || !khIds.length) {
     return { doc: null, fetched: 0 };
@@ -807,12 +839,12 @@ export async function searchReplacementZdForInactiveKnown(
     loadDoc,
     preferIssueDateNear: placement ?? undefined,
     matchDoc: (doc) =>
-      Boolean(findMatchingZdDocumentForSupplier(order, [doc], khIds)),
+      Boolean(findMatchingZdDocumentForSupplier(order, [doc], khIds, pairs)),
   });
 
   const doc =
     browse.matched ??
-    findMatchingZdDocumentForSupplier(order, browse.docs, khIds);
+    findMatchingZdDocumentForSupplier(order, browse.docs, khIds, pairs);
   return { doc, fetched: browse.fetched };
 }
 
@@ -1018,6 +1050,7 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
 
     const extraKhBySupplierId = await loadExtraKhIdsBySupplierIdFromZdIndex();
     const syncAt = new Date(nowMs);
+    const pairs = await loadZdPairMatchIndex();
 
     const bySupplier = new Map<string, IndividualOrder[]>();
     for (const order of candidates) {
@@ -1291,7 +1324,8 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
             order,
             fetchKnownZdDocument,
             khIds,
-            syncAt
+            syncAt,
+            pairs
           );
           if (knownRefresh.kind === "active") {
             matched = knownRefresh.doc;
@@ -1306,7 +1340,7 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
         }
 
         if (!matched) {
-          matched = findMatchingZdDocumentForSupplier(order, sharedDocs, khIds);
+          matched = findMatchingZdDocumentForSupplier(order, sharedDocs, khIds, pairs);
         }
 
         if (subiektOffline) break supplierLoop;
@@ -1346,13 +1380,13 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
                 loadDoc: loadDocExtended,
                 shouldStop: shouldStopGlobal,
                 preferIssueDateNear: orderPlacement ?? undefined,
-                ...buildZdIndexSearchEarlyStopHandlers(order, khIds),
+                ...buildZdIndexSearchEarlyStopHandlers(order, khIds, pairs),
               });
           indexStoppedEarly = indexSearch.stoppedEarly;
           for (const doc of indexSearch.docs) addSharedDoc(doc);
           matched =
             indexSearch.matched ??
-            findMatchingZdDocumentForSupplier(order, indexSearch.docs, khIds);
+            findMatchingZdDocumentForSupplier(order, indexSearch.docs, khIds, pairs);
         }
 
         const orderPlacementOld = Boolean(
@@ -1391,13 +1425,13 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
                   loadDoc: loadDocExtended,
                   shouldStop: shouldStopGlobal,
                   preferIssueDateNear: orderPlacement ?? undefined,
-                  matchDoc: orderZdConfidentMatchDoc(order, khIds),
+                  matchDoc: orderZdConfidentMatchDoc(order, khIds, pairs),
                 });
             browseStoppedEarly = browseFallback.stoppedEarly;
             for (const doc of browseFallback.docs) addSharedDoc(doc);
             matched =
               browseFallback.matched ??
-              findMatchingZdDocumentForSupplier(order, browseFallback.docs, khIds);
+              findMatchingZdDocumentForSupplier(order, browseFallback.docs, khIds, pairs);
           }
         };
 
@@ -1414,11 +1448,12 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
                 khIds,
                 liveBudget,
                 sharedDocIds,
-                loadDocExtended
+                loadDocExtended,
+                pairs
               );
               if (twSearch.doc) {
                 addSharedDoc(twSearch.doc);
-                matched = findMatchingZdDocumentForSupplier(order, [twSearch.doc], khIds);
+                matched = findMatchingZdDocumentForSupplier(order, [twSearch.doc], khIds, pairs);
               }
               if (!matched) {
                 const { docs: liveDocs, matched: liveMatched } =
@@ -1429,12 +1464,13 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
                     liveBudget,
                     liveBudget,
                     sharedDocIds,
-                    loadDocExtended
+                    loadDocExtended,
+                    pairs
                   );
                 for (const doc of liveDocs) addSharedDoc(doc);
                 matched =
                   liveMatched ??
-                  findMatchingZdDocumentForSupplier(order, sharedDocs, khIds);
+                  findMatchingZdDocumentForSupplier(order, sharedDocs, khIds, pairs);
               }
             } catch (e) {
               if (isSubiektOfflineError(e)) {
@@ -1488,7 +1524,8 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
             sharedDocIds,
             loadReplacementDoc,
             replacementBudget,
-            syncAt
+            syncAt,
+            pairs
           );
           if (replacement.doc) {
             matched = replacement.doc;

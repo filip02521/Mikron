@@ -12,6 +12,11 @@ import {
 import { isSubiektReachable } from "@/lib/subiekt/availability";
 import { isSubiektConfigured } from "@/lib/subiekt/config";
 import { getSubiektProduct } from "@/lib/subiekt/api";
+import {
+  applyPairAwareStockMap,
+  expandTwIdsWithPairTwins,
+  loadZdPairMatchIndex,
+} from "@/lib/orders/zd-product-pair-stock";
 
 async function mapWithConcurrency<T>(
   items: T[],
@@ -35,8 +40,14 @@ async function mapWithConcurrency<T>(
 export async function fetchProsbaLineStock(
   twIds: number[]
 ): Promise<Record<number, ProsbaLineStockSnapshot>> {
+  const pairs = await loadZdPairMatchIndex();
   const unique = [
-    ...new Set(twIds.filter((id) => Number.isFinite(id) && id > 0).map((id) => Math.trunc(id))),
+    ...new Set(
+      expandTwIdsWithPairTwins(
+        twIds.filter((id) => Number.isFinite(id) && id > 0).map((id) => Math.trunc(id)),
+        pairs
+      )
+    ),
   ];
   if (unique.length === 0) return {};
   if (!isSubiektConfigured()) return {};
@@ -56,12 +67,15 @@ export async function fetchProsbaLineStock(
         /* pojedynczy towar — pomijamy */
       }
     });
-    return out;
+    return applyPairAwareStockMap(out, pairs);
   };
 
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<Record<number, ProsbaLineStockSnapshot>>((resolve) => {
-    timeoutId = setTimeout(() => resolve({ ...out }), PROSBA_STOCK_FETCH_SERVER_TIMEOUT_MS);
+    timeoutId = setTimeout(
+      () => resolve(applyPairAwareStockMap({ ...out }, pairs)),
+      PROSBA_STOCK_FETCH_SERVER_TIMEOUT_MS
+    );
   });
 
   try {

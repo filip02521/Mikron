@@ -5,10 +5,17 @@ import { findSupplierBySubiektKhId } from "@/lib/subiekt/match-supplier";
 import { extractDocKhIds } from "@/lib/subiekt/zd-document-kh";
 import { lineTowId } from "@/lib/subiekt/zd-catalog-import";
 import { filterOrdersBySupplier } from "@/lib/orders/supplier-filter-summary";
-import { resolveOrderMatchSymbols } from "@/lib/subiekt/match-order-to-zd";
+import {
+  resolveOrderMatchSymbols,
+  type ZdPairMatchIndex,
+} from "@/lib/subiekt/match-order-to-zd";
+import { twinTwIdsForPairMatch } from "@/lib/orders/zd-product-pair-units";
+import { loadZdPairMatchIndex } from "@/lib/orders/zd-product-pair-stock";
 
 export type ZdMatchLinePreview = {
   towId: number | null;
+  /** Twin pack/piece (gdy mapa par). */
+  twinTwIds?: number[];
   symbol: string | null;
   name: string | null;
 };
@@ -39,18 +46,27 @@ function lineSymbol(line: SubiektDocumentLine): string | null {
   return normalizeSymbol(line.tw_Symbol ?? null);
 }
 
-export function buildZdMatchProfileFromDocument(doc: SubiektDocument): ZdMatchProfile {
+export function buildZdMatchProfileFromDocument(
+  doc: SubiektDocument,
+  pairs?: ZdPairMatchIndex | null
+): ZdMatchProfile {
   const lines = doc.dok_Pozycja ?? [];
   const twIdSet = new Set<number>();
   const symbolSet = new Set<string>();
 
   const preview: ZdMatchLinePreview[] = lines.map((line) => {
     const towId = lineTowId(line);
-    if (towId != null) twIdSet.add(towId);
+    const twinTwIds =
+      towId != null && pairs ? twinTwIdsForPairMatch(towId, pairs) : [];
+    if (towId != null) {
+      twIdSet.add(towId);
+      for (const t of twinTwIds) twIdSet.add(t);
+    }
     const symbol = lineSymbol(line);
     if (symbol) symbolSet.add(symbol);
     return {
       towId,
+      twinTwIds: twinTwIds.length > 1 ? twinTwIds.filter((id) => id !== towId) : [],
       symbol: line.tw_Symbol?.trim() || null,
       name: line.tw_Nazwa?.trim() || null,
     };
@@ -65,14 +81,39 @@ export function buildZdMatchProfileFromDocument(doc: SubiektDocument): ZdMatchPr
   };
 }
 
-/** Dopasowanie pozycji kolejki do profilu linii ZD (tw_Id, potem symbol). */
+function orderTwMatchesLine(
+  orderTw: number | null | undefined,
+  lineTow: number | null | undefined,
+  lineTwinTwIds: readonly number[] | undefined,
+  pairs?: ZdPairMatchIndex | null
+): boolean {
+  if (orderTw == null || !(orderTw > 0) || lineTow == null || !(lineTow > 0)) {
+    return false;
+  }
+  const o = Math.trunc(orderTw);
+  const l = Math.trunc(lineTow);
+  if (o === l) return true;
+  if (lineTwinTwIds?.includes(o)) return true;
+  if (pairs) {
+    const twins = twinTwIdsForPairMatch(l, pairs);
+    if (twins.includes(o)) return true;
+  }
+  return false;
+}
+
+/** Dopasowanie pozycji kolejki do profilu linii ZD (tw_Id, twin pary, symbol). */
 export function matchOrderToZdProfile(
   order: IndividualOrder,
-  profile: ZdMatchProfile
+  profile: ZdMatchProfile,
+  pairs?: ZdPairMatchIndex | null
 ): boolean {
   const twId = order.subiekt_tw_id;
   if (twId != null && twId > 0 && profile.twIds.includes(Math.trunc(twId))) {
     return true;
+  }
+  if (twId != null && twId > 0 && pairs) {
+    const twins = twinTwIdsForPairMatch(twId, pairs);
+    if (twins.some((id) => profile.twIds.includes(id))) return true;
   }
 
   const orderSymbols = resolveOrderMatchSymbols(order);
@@ -90,38 +131,52 @@ export function matchOrderToZdProfile(
 
 export function filterOrdersByZdProfile(
   orders: IndividualOrder[],
-  profile: ZdMatchProfile | null | undefined
+  profile: ZdMatchProfile | null | undefined,
+  pairs?: ZdPairMatchIndex | null
 ): IndividualOrder[] {
   if (!profile) return orders;
-  return orders.filter((order) => matchOrderToZdProfile(order, profile));
+  return orders.filter((order) => matchOrderToZdProfile(order, profile, pairs));
 }
 
 /** Filtr dostawcy, potem ZD (AND). */
 export function filterReceiveQueueBySupplierAndZd(
   orders: IndividualOrder[],
   supplierFilter: string,
-  zdProfile: ZdMatchProfile | null | undefined
+  zdProfile: ZdMatchProfile | null | undefined,
+  pairs?: ZdPairMatchIndex | null
 ): IndividualOrder[] {
   const bySupplier = filterOrdersBySupplier(orders, supplierFilter);
-  return filterOrdersByZdProfile(bySupplier, zdProfile);
+  return filterOrdersByZdProfile(bySupplier, zdProfile, pairs);
 }
 
 export function countZdMatches(
   orders: IndividualOrder[],
-  profile: ZdMatchProfile
+  profile: ZdMatchProfile,
+  pairs?: ZdPairMatchIndex | null
 ): number {
-  return orders.filter((order) => matchOrderToZdProfile(order, profile)).length;
+  return orders.filter((order) => matchOrderToZdProfile(order, profile, pairs))
+    .length;
 }
 
 export function countUnmatchedZdLines(
   profile: ZdMatchProfile,
-  orders: IndividualOrder[]
+  orders: IndividualOrder[],
+  pairs?: ZdPairMatchIndex | null
 ): number {
   if (!profile.lines?.length) return 0;
   return profile.lines.filter(
     (line) =>
       !orders.some((order) => {
-        if (line.towId != null && order.subiekt_tw_id === line.towId) return true;
+        if (
+          orderTwMatchesLine(
+            order.subiekt_tw_id,
+            line.towId,
+            line.twinTwIds,
+            pairs
+          )
+        ) {
+          return true;
+        }
         const symbol = normalizeSymbol(order.symbol);
         const lineSym = normalizeSymbol(line.symbol);
         return Boolean(symbol && lineSym && symbol === lineSym);
@@ -167,8 +222,9 @@ export function buildZdReceiveFilterState(input: {
   dokId: number;
   doc: SubiektDocument;
   supplier: AppSupplierRef;
+  pairs?: ZdPairMatchIndex | null;
 }): ZdReceiveFilterState {
-  const profile = buildZdMatchProfileFromDocument(input.doc);
+  const profile = buildZdMatchProfileFromDocument(input.doc, input.pairs);
   return {
     dokId: Math.trunc(input.dokId),
     docNumber: profile.docNumber,
@@ -176,4 +232,14 @@ export function buildZdReceiveFilterState(input: {
     supplierName: input.supplier.name,
     profile,
   };
+}
+
+/** Buduje filtr przyjęcia z mapą par (twin pack↔piece). */
+export async function buildZdReceiveFilterStateWithPairs(input: {
+  dokId: number;
+  doc: SubiektDocument;
+  supplier: AppSupplierRef;
+}): Promise<ZdReceiveFilterState> {
+  const pairs = await loadZdPairMatchIndex();
+  return buildZdReceiveFilterState({ ...input, pairs });
 }

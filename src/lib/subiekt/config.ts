@@ -84,6 +84,23 @@ export function isSubiektOrdersTestBaseUrl(baseUrl: string): boolean {
   return port === SUBIEKT_ORDERS_TEST_PORT;
 }
 
+/**
+ * Snapshot historii szacunku — zapis na ORDERS :5082 (host_kind=orders_test)
+ * oraz na przyszłym live. Filtr odczytu rozróżnia hosty.
+ */
+export function shouldPersistZdEstimateOrderSnapshots(baseUrl: string): boolean {
+  return Boolean(baseUrl?.trim());
+}
+
+export type ZdEstimateSnapshotHostKind = "orders_test" | "live";
+
+/** Tag hosta dla snapshotów historii. */
+export function zdEstimateSnapshotHostKind(
+  baseUrl: string
+): ZdEstimateSnapshotHostKind {
+  return isSubiektOrdersTestBaseUrl(baseUrl) ? "orders_test" : "live";
+}
+
 export function isSubiektConfigured(): boolean {
   return Boolean(trimOrUndefined(process.env.SUBIEKT_API_BASE_URL));
 }
@@ -132,7 +149,7 @@ export type SubiektOrdersConfigStatus =
     };
 
 /**
- * Host wyłącznie pod sandbox szacunku (`/groups`, `/orders/zd/estimate`).
+ * Host wyłącznie pod sandbox szacunku (`/groups`, `/cechy/towarow`, `/orders/zd/estimate`).
  *
  * **Nigdy** nie spada na `SUBIEKT_API_BASE_URL` (live :5080).
  * Wymaga jawnego `SUBIEKT_API_ORDERS_BASE_URL` na porcie testowym :5082

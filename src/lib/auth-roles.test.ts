@@ -110,13 +110,17 @@ describe("auth-roles zakupy_zeby", () => {
     expect(canAccessPath("admin", "/zeby/kolejka")).toBe(true);
   });
 
-  it("canAccessPath: Magazyn Gądki i Szacunek ZD tylko dla operacji dostaw, nie magazyn/sales", () => {
+  it("canAccessPath: Magazyn Gądki dla operacji dostaw; Szacunek ZD tylko admin", () => {
     expect(canAccessPath("zakupy", "/zakupy/gadki")).toBe(true);
     expect(canAccessPath("admin", "/zakupy/gadki")).toBe(true);
     expect(canAccessPath("magazyn", "/zakupy/gadki")).toBe(false);
     expect(canAccessPath("sales", "/zakupy/gadki")).toBe(false);
-    expect(canAccessPath("zakupy", "/zakupy/szacunek")).toBe(true);
+    expect(canAccessPath("zakupy", "/zakupy/szacunek")).toBe(false);
+    expect(canAccessPath("admin", "/zakupy/szacunek")).toBe(true);
     expect(canAccessPath("sales", "/zakupy/szacunek")).toBe(false);
+    expect(
+      canAccessPath("admin", "/zakupy/szacunek", { adminPanelContext: "zakupy" })
+    ).toBe(true);
     expect(
       canAccessPath("zakupy_zeby", "/zakupy/gadki", { procurementWorkspace: "zeby" })
     ).toBe(false);

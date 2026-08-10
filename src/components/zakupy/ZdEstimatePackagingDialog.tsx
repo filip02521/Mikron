@@ -20,6 +20,7 @@ function PackagingDialogForm({
   line,
   existing,
   pending,
+  individualExtraPieces = 0,
   onCancel,
   onSave,
   onClear,
@@ -27,6 +28,7 @@ function PackagingDialogForm({
   line: ManualZdEstimateLine;
   existing: ZdEstimatePackagingRow | null;
   pending?: boolean;
+  individualExtraPieces?: number;
   onCancel: () => void;
   onSave: (input: {
     unitsPerPackage: number;
@@ -47,10 +49,14 @@ function PackagingDialogForm({
   const unitsNum = Math.trunc(Number(units));
   const preview =
     Number.isFinite(unitsNum) && unitsNum >= 1
-      ? resolveOrderQtyForLine(line, {
-          unitsPerPackage: unitsNum,
-          packageLabel: label.trim() || "op.",
-        })
+      ? resolveOrderQtyForLine(
+          line,
+          {
+            unitsPerPackage: unitsNum,
+            packageLabel: label.trim() || "op.",
+          },
+          individualExtraPieces
+        )
       : null;
 
   const canSave = Number.isFinite(unitsNum) && unitsNum >= 1 && unitsNum <= 100_000;
@@ -131,6 +137,11 @@ function PackagingDialogForm({
               <span className="font-semibold text-slate-800">
                 {preview ? formatQty(preview.piecesNeeded) : "—"} szt
               </span>
+              {individualExtraPieces > 0 ? (
+                <span className="ml-1 font-semibold text-emerald-700">
+                  (w tym +{formatQty(individualExtraPieces)} z próśb)
+                </span>
+              ) : null}
             </p>
           </div>
         </div>
@@ -220,6 +231,7 @@ export function ZdEstimatePackagingDialog({
   line,
   existing,
   pending,
+  individualExtraPieces = 0,
   onCancel,
   onSave,
   onClear,
@@ -228,6 +240,7 @@ export function ZdEstimatePackagingDialog({
   line: ManualZdEstimateLine | null;
   existing: ZdEstimatePackagingRow | null;
   pending?: boolean;
+  individualExtraPieces?: number;
   onCancel: () => void;
   onSave: (input: {
     unitsPerPackage: number;
@@ -243,6 +256,7 @@ export function ZdEstimatePackagingDialog({
       line={line}
       existing={existing}
       pending={pending}
+      individualExtraPieces={individualExtraPieces}
       onCancel={onCancel}
       onSave={onSave}
       onClear={onClear}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { actionSuggestProducts } from "@/app/actions/subiekt";
 import type { IndividualRequestKind } from "@/types/database";
 import { Field, Input } from "@/components/ui/Field";
@@ -42,6 +42,7 @@ import {
   type ProsbaLineMessageItem,
 } from "@/components/orders/ProsbaLineFieldMessages";
 import { ProsbaProductStockStatus, ProsbaTeethExemptHint } from "@/components/orders/ProsbaProductStockStatus";
+import { ProsbaPairHint } from "@/components/orders/ProsbaPairHint";
 import type { ProsbaLineFieldMap } from "@/lib/orders/prosba-line-field-validation";
 import {
   MAX_MIKRAN_CODE_LEN,
@@ -212,6 +213,7 @@ export function SubiektProductLineFields({
   allowedTwIdsHint,
   lockSubiektLink = false,
   groupSupplierId,
+  linkedLeadTime = null,
 }: {
   value: SubiektProductLineValue;
   onChange: (patch: Partial<SubiektProductLineValue>) => void;
@@ -265,6 +267,8 @@ export function SubiektProductLineFields({
   lockSubiektLink?: boolean;
   /** Dostawca z nagłówka grupy / formularza — do dopasowania braków. */
   groupSupplierId?: string | null;
+  /** Meta czasu dostawy — pod „Powiązano z Subiektem” / „Z bazy”. */
+  linkedLeadTime?: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const productAnchorRef = useRef<HTMLDivElement>(null);
@@ -664,7 +668,10 @@ export function SubiektProductLineFields({
       const finalPatch = {
         ...patch,
         subiektTwId: patch.subiektTwId,
-        ...mergeStockIntoLinePatch(stockSnap),
+        // Zamówienie: nie embeduj stanu jednej karty — sync dociągnie cover pary (B1/B10).
+        ...(requestKind === "zamowienie"
+          ? mergeStockIntoLinePatch(null)
+          : mergeStockIntoLinePatch(stockSnap)),
         teethManufacturer: isTeethProduct ? finalManufacturer : null,
         teethProductLine: isTeethProduct ? autoLine : null,
         teethKind: isTeethProduct ? detectedKind : null,
@@ -1037,12 +1044,13 @@ export function SubiektProductLineFields({
             </p>
           ) : null}
           {linkedFromSubiekt ? (
-            <div className="mt-1.5">
+            <div className="mt-1.5 space-y-1">
               <SubiektLinkedLineBanner
                 symbol={symbolPreview}
                 mikranCode={value.mikranCode}
                 fromCatalog={value.source === "catalog"}
               />
+              {linkedLeadTime}
             </div>
           ) : null}
         </div>
@@ -1193,6 +1201,7 @@ export function SubiektProductLineFields({
           <>
             <ProsbaTeethExemptHint line={value as ProductLineDraft} />
             <ProsbaProductStockStatus line={value as ProductLineDraft} requestKind={requestKind} />
+            <ProsbaPairHint twId={value.subiektTwId} />
           </>
         )
       ) : null}

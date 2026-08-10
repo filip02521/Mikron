@@ -13,6 +13,12 @@ import {
   formatQty,
   type ManualZdEstimateLine,
 } from "@/lib/orders/zd-estimate-manual";
+import {
+  normalizeUnitsPerPackage,
+  zdDocumentUnitsToPieces,
+} from "@/lib/orders/zd-estimate-units";
+
+export { normalizeUnitsPerPackage, zdDocumentUnitsToPieces };
 
 export type ZdPackOrderQty = {
   /** Niedobór w sztukach (sprzedaż / stan). */
@@ -28,14 +34,6 @@ export type ZdPackOrderQty = {
   roundedUp: boolean;
   packageLabel: string;
 };
-
-export function normalizeUnitsPerPackage(
-  value: number | null | undefined
-): number {
-  const n = Math.trunc(Number(value));
-  if (!Number.isFinite(n) || n < 1) return 1;
-  return n;
-}
 
 /**
  * piecesNeeded (szt) → jednostki ZD + ile sztuk przyjdzie.
@@ -86,27 +84,61 @@ export function computeZdPackOrderQty(
   };
 }
 
+/** Rezerwa handlowca (sztuki) z mapy tw → extra. */
+export function individualExtraPiecesForTw(
+  twId: number,
+  extras?: ReadonlyMap<number, number> | null
+): number {
+  if (!extras) return 0;
+  const n = Number(extras.get(Math.trunc(twId)));
+  return Number.isFinite(n) && n > 0 ? Math.ceil(n) : 0;
+}
+
 /**
  * Pełne qty zamówienia dla pozycji: uwzględnia opakowanie przy otwartych ZD
  * i przelicza wynik na jednostki do wpisania w dokumencie.
+ * `individualExtraPieces` — rezerwa próśb (sztuki) dodana przed ceil opakowania.
  */
 export function resolveOrderQtyForLine(
   line: ManualZdEstimateLine,
   packaging?: {
     unitsPerPackage: number;
     packageLabel?: string;
-  } | null
+  } | null,
+  individualExtraPieces?: number
 ): ZdPackOrderQty {
+  const extra = Math.max(0, Math.ceil(Number(individualExtraPieces) || 0));
+
+  // BOM parent: nigdy na ZD (extras routowane wcześniej na service).
+  if (line.bom?.role === "parent") {
+    return computeZdPackOrderQty(0, 1, packaging?.packageLabel?.trim() || "op.");
+  }
+  // Para: qty już policzone w sztukach (cover/sales złączone) — nie przeliczaj z karty pack.
+  if (line.pair?.role === "piece") {
+    return computeZdPackOrderQty(0, 1, packaging?.packageLabel?.trim() || "op.");
+  }
+  if (line.pair?.role === "pack") {
+    const base = line.pair.partnerMissing
+      ? 0
+      : Math.max(0, Math.ceil(Number(line.doZamowieniaReczne) || 0));
+    const label = packaging?.packageLabel?.trim() || "op.";
+    return computeZdPackOrderQty(base + extra, line.pair.unitsPerPack, label);
+  }
+
   const pack = normalizeUnitsPerPackage(packaging?.unitsPerPackage);
   const label = packaging?.packageLabel?.trim() || "op.";
   const otwarteZdRaw = Math.max(0, Number(line.otwarteZd) || 0);
   // Przy opakowaniu Subiekt trzyma qty ZD w paczkach → na sztuki × pack.
-  const otwarteZdPieces = pack > 1 ? otwarteZdRaw * pack : otwarteZdRaw;
-  const piecesNeeded = computeManualOrderQty({
-    celZapasu: line.celZapasu,
-    dostepne: line.dostepne,
-    otwarteZd: otwarteZdPieces,
-  });
+  const otwarteZdPieces = zdDocumentUnitsToPieces(
+    otwarteZdRaw,
+    packaging?.unitsPerPackage
+  );
+  const piecesNeeded =
+    computeManualOrderQty({
+      celZapasu: line.celZapasuTracked ?? line.celZapasu,
+      dostepne: line.dostepne,
+      otwarteZd: otwarteZdPieces,
+    }) + extra;
   return computeZdPackOrderQty(piecesNeeded, pack, label);
 }
 
@@ -138,7 +170,8 @@ export type PackagingLookup = {
 export function summarizePackOrderQty(
   lines: ManualZdEstimateLine[],
   packagingById: ReadonlyMap<number, PackagingLookup>,
-  excludedTwIds?: ReadonlySet<number> | readonly number[] | null
+  excludedTwIds?: ReadonlySet<number> | readonly number[] | null,
+  individualExtraByTwId?: ReadonlyMap<number, number> | null
 ): {
   doZamowieniaCount: number;
   piecesNeededSuma: number;
@@ -155,7 +188,11 @@ export function summarizePackOrderQty(
   let piecesArrivingSuma = 0;
   for (const line of lines) {
     if (excluded.has(line.tw_Id)) continue;
-    const qty = resolveOrderQtyForLine(line, packagingById.get(line.tw_Id));
+    const qty = resolveOrderQtyForLine(
+      line,
+      packagingById.get(line.tw_Id),
+      individualExtraPiecesForTw(line.tw_Id, individualExtraByTwId)
+    );
     if (qty.zdUnits <= 0) continue;
     doZamowieniaCount += 1;
     piecesNeededSuma += qty.piecesNeeded;
@@ -173,7 +210,8 @@ export function summarizePackOrderQty(
 export function filterOrderableLinesWithPackaging(
   lines: ManualZdEstimateLine[],
   packagingById: ReadonlyMap<number, PackagingLookup>,
-  excludedTwIds?: ReadonlySet<number> | readonly number[] | null
+  excludedTwIds?: ReadonlySet<number> | readonly number[] | null,
+  individualExtraByTwId?: ReadonlyMap<number, number> | null
 ): ManualZdEstimateLine[] {
   const excluded =
     excludedTwIds instanceof Set
@@ -182,7 +220,11 @@ export function filterOrderableLinesWithPackaging(
   return lines.filter((line) => {
     if (excluded.has(line.tw_Id)) return false;
     return (
-      resolveOrderQtyForLine(line, packagingById.get(line.tw_Id)).zdUnits > 0
+      resolveOrderQtyForLine(
+        line,
+        packagingById.get(line.tw_Id),
+        individualExtraPiecesForTw(line.tw_Id, individualExtraByTwId)
+      ).zdUnits > 0
     );
   });
 }
@@ -190,7 +232,8 @@ export function filterOrderableLinesWithPackaging(
 /** TSV z qty uwzględniającym opakowania i otwarte ZD w paczkach. */
 export function orderableLinesToTsv(
   lines: ManualZdEstimateLine[],
-  packagingById: ReadonlyMap<number, PackagingLookup>
+  packagingById: ReadonlyMap<number, PackagingLookup>,
+  individualExtraByTwId?: ReadonlyMap<number, number> | null
 ): string {
   const header = [
     "symbol",
@@ -205,12 +248,18 @@ export function orderableLinesToTsv(
     "dostepne",
     "sprzedaz_okres",
     "cel_zapasu",
+    "cel_sledzony",
+    "delta_sledzenia",
     "otwarte_zd",
     "otwarte_zk_bez_rez",
     "tw_Id",
   ].join("\t");
   const rows = lines.map((line) => {
-    const qty = resolveOrderQtyForLine(line, packagingById.get(line.tw_Id));
+    const qty = resolveOrderQtyForLine(
+      line,
+      packagingById.get(line.tw_Id),
+      individualExtraPiecesForTw(line.tw_Id, individualExtraByTwId)
+    );
     return [
       line.tw_Symbol,
       line.tw_Nazwa,
@@ -224,6 +273,10 @@ export function orderableLinesToTsv(
       formatQty(line.dostepne),
       formatQty(line.sprzedazOkres),
       formatQty(line.celZapasu),
+      formatQty(line.celZapasuTracked),
+      Math.abs(line.salesTrackDelta) > 1e-9
+        ? formatQty(line.salesTrackDelta)
+        : "",
       formatQty(line.otwarteZd),
       formatQty(line.otwarteZkBezRez),
       line.tw_Id,

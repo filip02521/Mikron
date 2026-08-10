@@ -183,6 +183,11 @@ export function UpcomingDeliverySupplierCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             <p className={cn(panelTypography.rowTitle, "min-w-0 truncate", compact && "text-xs", deliveryStatus === "received" && "text-slate-500 line-through decoration-slate-400/60")}>{supplier.supplierName}</p>
+            {supplier.isOverdueDeadline ? (
+              <span className="shrink-0 rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-800 ring-1 ring-rose-200/80">
+                Po terminie
+              </span>
+            ) : null}
             <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold", badge.className)}>
               {badge.label}
             </span>

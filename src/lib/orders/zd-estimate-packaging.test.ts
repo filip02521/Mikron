@@ -38,6 +38,88 @@ describe("computeZdPackOrderQty", () => {
   });
 });
 
+describe("resolveOrderQtyForLine + para", () => {
+  it("używa doZamowieniaReczne i ratio pary — bez podwójnego × packaging", () => {
+    const q = resolveOrderQtyForLine(
+      {
+        tw_Id: 10,
+        tw_Symbol: "P",
+        tw_Nazwa: "P",
+        tw_IdGrupa: null,
+        grt_Nazwa: "—",
+        tw_Stan: 0,
+        tw_StanRez: 0,
+        dostepne: 0,
+        sprzedazOkres: 0,
+        sprzedazDziennie: 0,
+        celZapasu: 500,
+        celZapasuTracked: 500,
+        salesTrackDelta: 0,
+        salesTrackReasons: [],
+        otwarteZkBezRez: 0,
+        otwarteZkZarezerwowane: 0,
+        otwarteZd: 0,
+        doZamowieniaApi: 0,
+        doZamowieniaReczne: 50,
+        wkladZk: 0,
+        pair: {
+          role: "pack",
+          twinTwId: 20,
+          unitsPerPack: 100,
+          sprzedazSzt: 50,
+          coverSzt: 0,
+          pieceSprzedaz: 50,
+          packSprzedaz: 0,
+          pieceDostepne: 0,
+          packDostepne: 0,
+        },
+      },
+      { unitsPerPackage: 50, packageLabel: "op." } // konflikt DB — ignorowany
+    );
+    expect(q.piecesNeeded).toBe(50);
+    expect(q.unitsPerPackage).toBe(100);
+    expect(q.zdUnits).toBe(1);
+    expect(q.piecesArriving).toBe(100);
+  });
+
+  it("piece w parze → zdUnits 0 (TSV / orderable)", () => {
+    const q = resolveOrderQtyForLine({
+      tw_Id: 20,
+      tw_Symbol: "PC",
+      tw_Nazwa: "PC",
+      tw_IdGrupa: null,
+      grt_Nazwa: "—",
+      tw_Stan: 0,
+      tw_StanRez: 0,
+      dostepne: 0,
+      sprzedazOkres: 50,
+      sprzedazDziennie: 0,
+      celZapasu: 50,
+      celZapasuTracked: 50,
+      salesTrackDelta: 0,
+      salesTrackReasons: [],
+      otwarteZkBezRez: 0,
+      otwarteZkZarezerwowane: 0,
+      otwarteZd: 0,
+      doZamowieniaApi: 0,
+      doZamowieniaReczne: 0,
+      wkladZk: 0,
+      pair: {
+        role: "piece",
+        twinTwId: 10,
+        unitsPerPack: 100,
+        sprzedazSzt: 50,
+        coverSzt: 0,
+        pieceSprzedaz: 50,
+        packSprzedaz: 0,
+        pieceDostepne: 0,
+        packDostepne: 0,
+      },
+    });
+    expect(q.zdUnits).toBe(0);
+  });
+});
+
 describe("resolveOrderQtyForLine", () => {
   it("otwarte ZD w paczkach odejmuje sztuki × opakowanie", () => {
     const line = mapZdEstimateLineToManual({
@@ -106,5 +188,141 @@ describe("summarizePackOrderQty", () => {
     expect(s.doZamowieniaCount).toBe(2);
     expect(s.zdUnitsSuma).toBe(2 + 8);
     expect(s.piecesArrivingSuma).toBe(20 + 8);
+  });
+});
+
+describe("resolveOrderQtyForLine + individualExtra", () => {
+  it("solo + individualExtra podbija pieces przed opakowaniem", () => {
+    const line = mapZdEstimateLineToManual({
+      tw_Id: 1,
+      tw_Symbol: "DO.6312.03",
+      tw_Nazwa: "Falcon",
+      celZapasu: 10,
+      dostepne: 10,
+      otwarteZd: 0,
+      doZamowienia: 0,
+    });
+    // base 0 + extra 8 → 1 op.
+    const q = resolveOrderQtyForLine(
+      line,
+      { unitsPerPackage: 10, packageLabel: "op." },
+      8
+    );
+    expect(q.piecesNeeded).toBe(8);
+    expect(q.zdUnits).toBe(1);
+  });
+
+  it("pack + partnerMissing + extra → zdUnits > 0", () => {
+    const q = resolveOrderQtyForLine(
+      {
+        tw_Id: 10,
+        tw_Symbol: "P",
+        tw_Nazwa: "P",
+        tw_IdGrupa: null,
+        grt_Nazwa: "—",
+        tw_Stan: 0,
+        tw_StanRez: 0,
+        dostepne: 0,
+        sprzedazOkres: 0,
+        sprzedazDziennie: 0,
+        celZapasu: 0,
+        celZapasuTracked: 0,
+        salesTrackDelta: 0,
+        salesTrackReasons: [],
+        otwarteZkBezRez: 0,
+        otwarteZkZarezerwowane: 0,
+        otwarteZd: 0,
+        doZamowieniaApi: 0,
+        doZamowieniaReczne: 0,
+        wkladZk: 0,
+        pair: {
+          role: "pack",
+          twinTwId: 20,
+          unitsPerPack: 10,
+          sprzedazSzt: 0,
+          coverSzt: 0,
+          pieceSprzedaz: 0,
+          packSprzedaz: 0,
+          pieceDostepne: 0,
+          packDostepne: 0,
+          partnerMissing: true,
+        },
+      },
+      null,
+      15
+    );
+    expect(q.piecesNeeded).toBe(15);
+    expect(q.zdUnits).toBe(2);
+    expect(q.piecesArriving).toBe(20);
+  });
+
+  it("piece + extra nadal zdUnits 0", () => {
+    const q = resolveOrderQtyForLine(
+      {
+        tw_Id: 20,
+        tw_Symbol: "PC",
+        tw_Nazwa: "PC",
+        tw_IdGrupa: null,
+        grt_Nazwa: "—",
+        tw_Stan: 0,
+        tw_StanRez: 0,
+        dostepne: 0,
+        sprzedazOkres: 0,
+        sprzedazDziennie: 0,
+        celZapasu: 0,
+        celZapasuTracked: 0,
+        salesTrackDelta: 0,
+        salesTrackReasons: [],
+        otwarteZkBezRez: 0,
+        otwarteZkZarezerwowane: 0,
+        otwarteZd: 0,
+        doZamowieniaApi: 0,
+        doZamowieniaReczne: 0,
+        wkladZk: 0,
+        pair: {
+          role: "piece",
+          twinTwId: 10,
+          unitsPerPack: 100,
+          sprzedazSzt: 0,
+          coverSzt: 0,
+          pieceSprzedaz: 0,
+          packSprzedaz: 0,
+          pieceDostepne: 0,
+          packDostepne: 0,
+        },
+      },
+      null,
+      50
+    );
+    expect(q.zdUnits).toBe(0);
+  });
+});
+
+describe("resolveOrderQtyForLine + BOM parent", () => {
+  it("parent BOM → zdUnits 0", () => {
+    const q = resolveOrderQtyForLine({
+      tw_Id: 99,
+      tw_Symbol: "PROMO",
+      tw_Nazwa: "Promo",
+      tw_IdGrupa: null,
+      grt_Nazwa: "—",
+      tw_Stan: 0,
+      tw_StanRez: 0,
+      dostepne: 0,
+      sprzedazOkres: 5,
+      sprzedazDziennie: 0,
+      celZapasu: 5,
+      celZapasuTracked: 5,
+      salesTrackDelta: 0,
+      salesTrackReasons: [],
+      otwarteZkBezRez: 0,
+      otwarteZkZarezerwowane: 0,
+      otwarteZd: 0,
+      doZamowieniaApi: 5,
+      doZamowieniaReczne: 0,
+      wkladZk: 0,
+      bom: { role: "parent" },
+    });
+    expect(q.zdUnits).toBe(0);
   });
 });

@@ -329,17 +329,48 @@ select:disabled,
 
 /* Szacunek ZD — czytelne wiersze (nie queue-table) */
 .data-table.zd-estimate-table {
-  min-width: 82rem;
-  font-size: 0.875rem;
-  line-height: 1.45;
+  --zd-est-check-w: 2.75rem;
+  --zd-est-symbol-w: 7rem;
+  --zd-est-dozd-w: 5.75rem;
+  --zd-est-sticky-dozd-left: calc(var(--zd-est-check-w) + var(--zd-est-symbol-w));
+  min-width: 52rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
   border-collapse: separate;
   border-spacing: 0;
 }
 
+.data-table.zd-estimate-table.zd-estimate-table--detail {
+  min-width: 62rem;
+}
+
+.data-table.zd-estimate-table.zd-estimate-table--zk {
+  min-width: 70rem;
+}
+
+.data-table.zd-estimate-table.zd-estimate-table--detail.zd-estimate-table--zk {
+  min-width: 78rem;
+}
+
 .data-table.zd-estimate-table th,
 .data-table.zd-estimate-table td {
-  padding: 0.8125rem 1rem;
+  padding: 0.55rem 0.65rem;
   vertical-align: top;
+}
+
+.data-table.zd-estimate-table td.zd-estimate-num-col,
+.data-table.zd-estimate-table th.zd-estimate-num-col {
+  width: 4.5rem;
+  min-width: 4.5rem;
+  padding-left: 0.4rem;
+  padding-right: 0.65rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table.zd-estimate-table td.zd-estimate-pack-col,
+.data-table.zd-estimate-table th.zd-estimate-pack-col {
+  width: 5.25rem;
+  min-width: 5.25rem;
 }
 
 /* Checkbox — sticky left */
@@ -348,11 +379,11 @@ select:disabled,
   position: sticky;
   left: 0;
   z-index: 1;
-  width: 2.75rem;
-  min-width: 2.75rem;
-  max-width: 2.75rem;
-  padding-left: 1rem;
-  padding-right: 0.5rem;
+  width: var(--zd-est-check-w);
+  min-width: var(--zd-est-check-w);
+  max-width: var(--zd-est-check-w);
+  padding-left: 0.75rem;
+  padding-right: 0.3rem;
   vertical-align: middle;
   background: #fff;
   box-shadow: none;
@@ -363,37 +394,63 @@ select:disabled,
 .data-table.zd-estimate-table td.zd-estimate-symbol-col,
 .data-table.zd-estimate-table tbody td.zd-estimate-symbol-col {
   position: sticky;
-  left: 2.75rem;
+  left: var(--zd-est-check-w);
   z-index: 1;
+  width: var(--zd-est-symbol-w);
+  min-width: var(--zd-est-symbol-w);
+  max-width: var(--zd-est-symbol-w);
   background: #fff;
-  box-shadow: 1px 0 0 #e2e8f0;
+  box-shadow: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .data-table.zd-estimate-table thead th.zd-estimate-symbol-col {
-  left: 2.75rem;
+  left: var(--zd-est-check-w);
+}
+
+/* Do ZD — sticky decyzja (za symbolem), wyróżniona; qty zawsze od lewej */
+.data-table.zd-estimate-table th.zd-estimate-dozd-col,
+.data-table.zd-estimate-table td.zd-estimate-dozd-col {
+  position: sticky;
+  left: var(--zd-est-sticky-dozd-left);
+  z-index: 1;
+  width: var(--zd-est-dozd-w);
+  min-width: var(--zd-est-dozd-w);
+  max-width: var(--zd-est-dozd-w);
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+  text-align: left;
+  background-color: rgb(236 253 245 / 0.92);
+  box-shadow: inset 3px 0 0 0 #34d399, 1px 0 0 #a7f3d0;
+}
+
+.data-table.zd-estimate-table thead th.zd-estimate-dozd-col {
+  background-color: #ecfdf5;
+  color: #047857;
 }
 
 .data-table.zd-estimate-table th:last-child,
 .data-table.zd-estimate-table td:last-child {
-  padding-right: 0.875rem;
-  padding-left: 0.5rem;
+  padding-right: 0.65rem;
+  padding-left: 0.3rem;
   position: sticky;
   right: 0;
   z-index: 1;
   background: #fff;
   box-shadow: -1px 0 0 #e2e8f0;
-  width: 3.25rem;
-  min-width: 3.25rem;
+  width: 3.1rem;
+  min-width: 3.1rem;
 }
 
 .data-table.zd-estimate-table thead th {
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.045em;
+  letter-spacing: 0.05em;
   color: #64748b;
-  padding-top: 0.9375rem;
-  padding-bottom: 0.9375rem;
+  padding-top: 0.65rem;
+  padding-bottom: 0.65rem;
   position: sticky;
   top: 0;
   z-index: 2;
@@ -403,17 +460,23 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table thead th.zd-estimate-check-col,
-.data-table.zd-estimate-table thead th.zd-estimate-symbol-col {
+.data-table.zd-estimate-table thead th.zd-estimate-symbol-col,
+.data-table.zd-estimate-table thead th.zd-estimate-dozd-col {
   z-index: 4;
-  background: #f8fafc;
-}
-
-.data-table.zd-estimate-table thead th.zd-estimate-symbol-col {
-  box-shadow: 1px 0 0 #e2e8f0, 0 1px 0 #e2e8f0;
 }
 
 .data-table.zd-estimate-table thead th.zd-estimate-check-col {
+  background: #f8fafc;
   box-shadow: 0 1px 0 #e2e8f0;
+}
+
+.data-table.zd-estimate-table thead th.zd-estimate-symbol-col {
+  background: #f8fafc;
+  box-shadow: 0 1px 0 #e2e8f0;
+}
+
+.data-table.zd-estimate-table thead th.zd-estimate-dozd-col {
+  box-shadow: inset 3px 0 0 0 #34d399, 1px 0 0 #a7f3d0, 0 1px 0 #e2e8f0;
 }
 
 .data-table.zd-estimate-table thead th:last-child {
@@ -426,6 +489,10 @@ select:disabled,
   background-color: rgb(248 250 252 / 0.7);
 }
 
+.data-table.zd-estimate-table tbody tr:nth-child(even):not([class*="bg-"]) td.zd-estimate-dozd-col {
+  background-color: rgb(209 250 229 / 0.85);
+}
+
 .data-table.zd-estimate-table tbody tr:nth-child(even):not([class*="bg-"]) td.zd-estimate-check-col,
 .data-table.zd-estimate-table tbody tr:nth-child(even):not([class*="bg-"]) td.zd-estimate-symbol-col,
 .data-table.zd-estimate-table tbody tr:nth-child(even):not([class*="bg-"]) td:last-child {
@@ -434,6 +501,10 @@ select:disabled,
 
 .data-table.zd-estimate-table tbody tr:hover td {
   background-color: #f1f5f9;
+}
+
+.data-table.zd-estimate-table tbody tr:hover td.zd-estimate-dozd-col {
+  background-color: #a7f3d0;
 }
 
 .data-table.zd-estimate-table tbody tr:hover td.zd-estimate-check-col,
@@ -448,10 +519,31 @@ select:disabled,
   background-color: #f8fafc;
 }
 
+.data-table.zd-estimate-table tbody tr[class*="bg-slate"] td.zd-estimate-dozd-col {
+  background-color: rgb(226 232 240 / 0.95);
+}
+
 .data-table.zd-estimate-table tbody tr[class*="bg-indigo"] td.zd-estimate-check-col,
 .data-table.zd-estimate-table tbody tr[class*="bg-indigo"] td.zd-estimate-symbol-col,
 .data-table.zd-estimate-table tbody tr[class*="bg-indigo"] td:last-child {
   background-color: #eef2ff;
+}
+
+.data-table.zd-estimate-table tbody tr[class*="bg-indigo"] td.zd-estimate-dozd-col {
+  background-color: #a7f3d0;
+}
+
+.data-table.zd-estimate-table th.zd-estimate-name-col,
+.data-table.zd-estimate-table td.zd-estimate-name-col {
+  min-width: 13rem;
+  max-width: 20rem;
+}
+
+@media (min-width: 1280px) {
+  .data-table.zd-estimate-table th.zd-estimate-name-col,
+  .data-table.zd-estimate-table td.zd-estimate-name-col {
+    max-width: 24rem;
+  }
 }
 
 /* Kolejka przyjęcia — czytelniejsze wiersze */

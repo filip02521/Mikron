@@ -6,6 +6,7 @@ import {
 import {
   clearDailyPanelUndo,
   consumeDailyPanelUndoRefreshFlag,
+  getDailyPanelUndoServerSnapshot,
   getDailyPanelUndoSnapshot,
   peekDailyPanelUndoRefreshFlag,
   pruneExpiredDailyPanelUndo,
@@ -42,16 +43,18 @@ describe("daily-panel-undo-store", () => {
       payload,
     });
 
-    expect(getDailyPanelUndoSnapshot()?.title).toBe(
-      "Oznaczono jako zamówienie główne"
-    );
-    expect(getDailyPanelUndoSnapshot()?.payload).toEqual(payload);
+    const snap = getDailyPanelUndoSnapshot();
+    expect(snap?.title).toBe("Oznaczono jako zamówienie główne");
+    expect(snap?.payload.token).toEqual(payload.token);
+    expect(snap?.expiresAt).toBe(snap!.payload.performedAt + UNDO_WINDOW_MS);
     expect(peekDailyPanelUndoRefreshFlag()).toBe(true);
 
     // Symulacja remount: odczyt ze store bez setState w komponencie
     expect(getDailyPanelUndoSnapshot()?.expiresAt).toBe(
-      payload.performedAt + UNDO_WINDOW_MS
+      snap!.payload.performedAt + UNDO_WINDOW_MS
     );
+    // getServerSnapshot = getSnapshot — inaczej remount po revalidate zeruje toast
+    expect(getDailyPanelUndoServerSnapshot()).toEqual(getDailyPanelUndoSnapshot());
   });
 
   it("consumeDailyPanelUndoRefreshFlag czyści flagę jednorazowo", () => {

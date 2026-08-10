@@ -1106,22 +1106,137 @@ async function assertGlowneSuppliersHaveInterval(supplierIds: Set<string>): Prom
   }
 }
 
+/**
+ * Preflight Główne bez zapisu — te same reguły co processIndividualFromSummary
+ * (kompletność, zęby, interwał dla dostawców cyklicznych).
+ */
+export async function preflightProcessIndividualGlowne(
+  orderIds: string[]
+): Promise<{ ok: true; processableIds: string[] } | { ok: false; message: string }> {
+  try {
+    const requestedIds = [
+      ...new Set(orderIds.map((id) => String(id ?? "").trim()).filter(Boolean)),
+    ];
+    if (!requestedIds.length) {
+      return { ok: true, processableIds: [] };
+    }
+    const supabase = createAdminClient();
+    const { data: statusRows, error } = await supabase
+      .from("individual_orders")
+      .select(
+        "id, request_kind, status, supplier_id, symbol, products, quantity, informacja_queue_via_daily_panel, informacja_stock_out_reorder, is_teeth"
+      )
+      .in("id", requestedIds);
+    if (error) throw new Error(error.message);
+
+    const processableNowe = (statusRows ?? []).filter((r) => {
+      if (r.status !== "Nowe") return false;
+      if (r.is_teeth === true) return false;
+      const kind = r.request_kind ?? "zamowienie";
+      if (kind === "zamowienie") return true;
+      return (
+        kind === "informacja" &&
+        (r.informacja_queue_via_daily_panel === true ||
+          r.informacja_stock_out_reorder === true)
+      );
+    });
+
+    const incomplete = processableNowe.filter((r) => {
+      const kind = (r.request_kind ?? "zamowienie") as IndividualRequestKind;
+      const draft = {
+        supplierId: r.supplier_id ?? undefined,
+        symbol: r.symbol ?? undefined,
+        product: r.products ?? undefined,
+        quantity: r.quantity ?? undefined,
+        requestKind: kind,
+      };
+      if (kind === "zamowienie") return !isProcurementDraftReady(draft);
+      return (
+        assessRequestCompleteness({ ...draft, requestKind: "informacja" }) !==
+        "complete"
+      );
+    });
+    if (incomplete.length) {
+      const fieldsHint = incomplete.some(
+        (r) => (r.request_kind ?? "zamowienie") === "informacja"
+      )
+        ? "dostawca i produkt"
+        : "dostawca, produkt i ilość";
+      return {
+        ok: false,
+        message:
+          incomplete.length === 1
+            ? `Prośba niekompletna (${fieldsHint}) — uzupełnij przed Utwórz ZD / Główne.`
+            : `${incomplete.length} próśb niekompletnych (${fieldsHint}) — uzupełnij przed Utwórz ZD.`,
+      };
+    }
+
+    const processableIds = processableNowe.map((r) => r.id);
+    if (!processableIds.length) {
+      return {
+        ok: false,
+        message:
+          "Żadna z wybranych próśb nie kwalifikuje się już do Główne (status / zęby).",
+      };
+    }
+
+    const glowneCandidateIds = glowneScheduleSupplierIds(
+      processableNowe.map((r) => ({
+        supplier_id: r.supplier_id,
+        request_kind: (r.request_kind ?? "zamowienie") as IndividualOrder["request_kind"],
+        informacja_queue_via_daily_panel: r.informacja_queue_via_daily_panel,
+      })),
+      "GLOWNE"
+    );
+    if (glowneCandidateIds.size) {
+      const { data: supplierRows, error: supplierError } = await supabase
+        .from("suppliers")
+        .select("id, order_on_demand, stock_raw, interval_raw, extra_info")
+        .in("id", [...glowneCandidateIds]);
+      if (supplierError) throw new Error(supplierError.message);
+      const schedulable = glowneSchedulableSupplierIds(
+        glowneCandidateIds,
+        supplierRows ?? []
+      );
+      await assertGlowneSuppliersHaveInterval(schedulable);
+    }
+
+    return { ok: true, processableIds };
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        e instanceof Error
+          ? e.message
+          : "Nie można przygotować Główne dla próśb.",
+    };
+  }
+}
+
 export async function processIndividualFromSummary(
   orderIds: string[],
   action: "GLOWNE" | "POBOCZNE" | "ANULOWANO",
   userEmail: string,
   procurementCancelNote?: string | null,
-): Promise<{ processedCount: number; skippedTeethCount: number }> {
+): Promise<{
+  processedCount: number;
+  processedIds: string[];
+  skippedIds: string[];
+  skippedTeethCount: number;
+}> {
   const supabase = createAdminClient();
+  const requestedIds = [
+    ...new Set(orderIds.map((id) => String(id ?? "").trim()).filter(Boolean)),
+  ];
   const { data: statusRows } = await supabase
     .from("individual_orders")
     .select(
       "id, request_kind, status, supplier_id, symbol, products, quantity, informacja_queue_via_daily_panel, informacja_stock_out_reorder, is_teeth"
     )
-    .in("id", orderIds);
+    .in("id", requestedIds);
 
   const skippedTeethCount = (statusRows ?? []).filter(
-    (r) => r.is_teeth === true && orderIds.includes(r.id)
+    (r) => r.is_teeth === true && requestedIds.includes(r.id)
   ).length;
 
   const processableNowe = (statusRows ?? []).filter((r) => {
@@ -1163,6 +1278,7 @@ export async function processIndividualFromSummary(
   }
 
   const allowedIds = new Set(processableNowe.map((r) => r.id));
+  const skippedIds = requestedIds.filter((id) => !allowedIds.has(id));
 
   if (!allowedIds.size) {
     throw new Error(
@@ -1175,7 +1291,7 @@ export async function processIndividualFromSummary(
   const placementGroupId = crypto.randomUUID();
 
   const ordersToProcess: IndividualOrder[] = [];
-  for (const id of orderIds) {
+  for (const id of requestedIds) {
     if (!allowedIds.has(id)) continue;
     const { data: raw } = await supabase
       .from("individual_orders")
@@ -1214,6 +1330,8 @@ export async function processIndividualFromSummary(
       ? normalizeProcurementCancelNote(procurementCancelNote)
       : null;
 
+  const processedIds: string[] = [];
+
   for (const order of ordersToProcess) {
     const id = order.id;
     const seenPatch = { procurement_seen_at: batchOrderedAt };
@@ -1230,6 +1348,7 @@ export async function processIndividualFromSummary(
         throwIfProcurementCancelNoteColumnMissing(cancelErr);
         throw new Error(cancelErr.message);
       }
+      processedIds.push(id);
       continue;
     }
 
@@ -1237,7 +1356,7 @@ export async function processIndividualFromSummary(
       order.request_kind === "informacja" &&
       order.informacja_queue_via_daily_panel
     ) {
-      await supabase
+      const { error: infoErr } = await supabase
         .from("individual_orders")
         .update({
           informacja_queue_via_daily_panel: false,
@@ -1247,11 +1366,13 @@ export async function processIndividualFromSummary(
           ...seenPatch,
         })
         .eq("id", id);
+      if (infoErr) throw new Error(infoErr.message);
       zdEtaSyncSalesPersonIds.push(order.sales_person_id);
+      processedIds.push(id);
       continue;
     }
 
-    await supabase
+    const { error: updErr } = await supabase
       .from("individual_orders")
       .update({
         status: "Zamowione",
@@ -1261,8 +1382,10 @@ export async function processIndividualFromSummary(
         ...seenPatch,
       })
       .eq("id", id);
+    if (updErr) throw new Error(updErr.message);
 
     zdEtaSyncSalesPersonIds.push(order.sales_person_id);
+    processedIds.push(id);
   }
 
   if (action !== "ANULOWANO" && zdEtaSyncSalesPersonIds.length) {
@@ -1291,7 +1414,12 @@ export async function processIndividualFromSummary(
     }
   }
 
-  return { processedCount: ordersToProcess.length, skippedTeethCount };
+  return {
+    processedCount: processedIds.length,
+    processedIds,
+    skippedIds,
+    skippedTeethCount,
+  };
 }
 
 export type ProcurementCancelEmailResult = {

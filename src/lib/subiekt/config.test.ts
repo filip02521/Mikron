@@ -6,7 +6,9 @@ import {
   isSubiektConfigured,
   isSubiektOrdersTestBaseUrl,
   resolveSubiektOrdersConfig,
+  shouldPersistZdEstimateOrderSnapshots,
   subiektSameApiOrigin,
+  zdEstimateSnapshotHostKind,
 } from "./config";
 
 const ENV_KEYS = [
@@ -124,5 +126,24 @@ describe("subiekt config", () => {
         "http://192.168.0.140:5082/api/v1"
       )
     ).toBe(false);
+  });
+
+  it("shouldPersistZdEstimateOrderSnapshots na :5082 i live", () => {
+    expect(
+      shouldPersistZdEstimateOrderSnapshots("http://192.168.0.140:5082/api/v1")
+    ).toBe(true);
+    expect(
+      shouldPersistZdEstimateOrderSnapshots("http://192.168.0.140:5080/api/v1")
+    ).toBe(true);
+    expect(shouldPersistZdEstimateOrderSnapshots("")).toBe(false);
+  });
+
+  it("zdEstimateSnapshotHostKind rozróżnia :5082 vs live", () => {
+    expect(
+      zdEstimateSnapshotHostKind("http://192.168.0.140:5082/api/v1")
+    ).toBe("orders_test");
+    expect(
+      zdEstimateSnapshotHostKind("http://192.168.0.140:5080/api/v1")
+    ).toBe("live");
   });
 });

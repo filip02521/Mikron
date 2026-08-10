@@ -32,6 +32,18 @@ vi.mock("@/app/actions/subiekt", () => ({
   }),
 }));
 
+vi.mock("@/app/actions/zd-estimate", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/app/actions/zd-estimate")>();
+  return {
+    ...actual,
+    actionLookupZdProductPairForTwId: vi.fn().mockResolvedValue({
+      ok: true,
+      pair: null,
+      role: null,
+    }),
+  };
+});
+
 const baseValue = {
   symbol: "",
   mikranCode: "",

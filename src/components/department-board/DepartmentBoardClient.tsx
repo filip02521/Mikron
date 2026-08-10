@@ -19,6 +19,7 @@ export function DepartmentBoardClient({
   focusQuestionId = null,
   focusAnnouncementId = null,
   readOnly = false,
+  canDeleteClosed = false,
   pageTitle,
   previewHint,
   currentSalesPersonId = null,
@@ -34,6 +35,8 @@ export function DepartmentBoardClient({
   focusQuestionId?: string | null;
   focusAnnouncementId?: string | null;
   readOnly?: boolean;
+  /** Administrator — trwałe usuwanie zakończonych wątków. */
+  canDeleteClosed?: boolean;
   pageTitle?: string;
   previewHint?: string;
   currentSalesPersonId?: string | null;
@@ -68,6 +71,7 @@ export function DepartmentBoardClient({
       initialTab={initialTab}
       focusQuestionId={focusQuestionId}
       focusAnnouncementId={focusAnnouncementId}
+      canDeleteClosed={canDeleteClosed}
     />
   );
 }

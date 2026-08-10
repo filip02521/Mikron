@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { ZD_ESTIMATE_BULK_MAX } from "@/lib/orders/zd-estimate-bulk";
+import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 
 export function ZdEstimateBulkBar({
   selectedCount,
@@ -19,6 +20,8 @@ export function ZdEstimateBulkBar({
   onBulkRestore,
   onBulkPackaging,
   onBulkClearPackaging,
+  onCreatePair,
+  onCreateBom,
 }: {
   selectedCount: number;
   visibleCount: number;
@@ -35,6 +38,10 @@ export function ZdEstimateBulkBar({
   onBulkRestore: () => void;
   onBulkPackaging: () => void;
   onBulkClearPackaging: () => void;
+  /** Dokładnie 2 zaznaczone → otwórz formularz pary. */
+  onCreatePair?: () => void;
+  /** ≥2 zaznaczone → otwórz formularz składu (wskaż zestaw). */
+  onCreateBom?: () => void;
 }) {
   if (selectedCount <= 0) return null;
 
@@ -91,6 +98,38 @@ export function ZdEstimateBulkBar({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {onCreatePair ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={disabled || selectedCount !== 2}
+              onClick={onCreatePair}
+              title={
+                selectedCount === 2
+                  ? "Utwórz parę montaż/demontaż z zaznaczonych"
+                  : "Zaznacz dokładnie 2 towary, żeby utworzyć parę"
+              }
+            >
+              Para
+            </Button>
+          ) : null}
+          {onCreateBom ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={disabled || selectedCount < 2}
+              onClick={onCreateBom}
+              title={
+                selectedCount >= 2
+                  ? ZD_BOM_UI.bulkTitleReady
+                  : ZD_BOM_UI.bulkTitleNeed
+              }
+            >
+              {ZD_BOM_UI.bulkButton}
+            </Button>
+          ) : null}
           <Button
             type="button"
             size="sm"

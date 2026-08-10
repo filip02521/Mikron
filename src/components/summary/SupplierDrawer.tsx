@@ -13,6 +13,7 @@ import {
   vacationNoteLabel,
 } from "@/lib/display-labels";
 import { Button } from "@/components/ui/Button";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ShiftMenu } from "@/components/summary/ShiftMenu";
 import { actionFetchSupplierRecentHistory, actionMarkOrdered, actionShiftOrder } from "@/app/actions/admin";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
@@ -43,6 +44,15 @@ import { SupplierDrawerLeadTime } from "@/components/summary/SupplierDrawerLeadT
 import type { DeliveryStats, StatsMode } from "@/types/database";
 import { supplierHistoriaHref } from "@/lib/orders/historia-links";
 import {
+  DAILY_PANEL_MARK_ORDERED_LABEL,
+  DAILY_PANEL_MARK_ORDERED_PENDING,
+  DAILY_PANEL_MARK_ORDERED_PENDING_OVERLAY,
+  dailyPanelMarkOrderedConfirmLabel,
+  dailyPanelMarkOrderedConfirmMessage,
+  dailyPanelMarkOrderedConfirmTitle,
+  dailyPanelMarkOrderedToastTitle,
+} from "@/lib/orders/daily-panel-mark-ordered-copy";
+import {
   formatSupplierVacationRangeCompact,
   formatSupplierVacationRangeTitle,
   type SupplierOnVacationWindow,
@@ -72,6 +82,7 @@ export function SupplierDrawer({
   run,
   onVacation,
   onEdit,
+  canPrepareZd = false,
 }: {
   supplier: SupplierSummaryMeta | null;
   /** Aktywne okno urlopu obejmujące dziś (kalendarz) — z datami. */
@@ -85,15 +96,22 @@ export function SupplierDrawer({
   run: DailyPanelRunFn;
   onVacation: () => void;
   onEdit: () => void;
+  /** Przygotuj ZD / szacunek — wyłącznie administrator. */
+  canPrepareZd?: boolean;
 }) {
   const hubContext = useSupplierHubContext();
   useBodyScrollLock(Boolean(supplier));
   const supplierId = supplier?.id ?? null;
+  const [markConfirmOpen, setMarkConfirmOpen] = useState(false);
   const [historyState, setHistoryState] = useState<{
     supplierId: string | null;
     rows: HistoryRow[];
     loading: boolean;
   }>({ supplierId: null, rows: [], loading: false });
+
+  useEffect(() => {
+    setMarkConfirmOpen(false);
+  }, [supplierId]);
 
   useEffect(() => {
     if (!supplierId) return;
@@ -130,6 +148,24 @@ export function SupplierDrawer({
     };
   }, [supplierId]);
 
+  useEffect(() => {
+    if (!supplier) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (e.key !== "z" && e.key !== "Z") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (markConfirmOpen) return;
+      if (isScopePending(supplier.id)) return;
+      e.preventDefault();
+      setMarkConfirmOpen(true);
+    };
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [supplier, markConfirmOpen, isScopePending]);
+
   if (!supplier) return null;
 
   const history = historyState.supplierId === supplier.id ? historyState.rows : [];
@@ -143,13 +179,48 @@ export function SupplierDrawer({
     ...(supplier.subiekt_kh_id == null ? { powiaz: true as const } : {}),
   });
 
+  const confirmMarkOrdered = () => {
+    if (rowPending) return;
+    run(
+      () => actionMarkOrdered(supplier.id),
+      dailyPanelMarkOrderedToastTitle(supplier.name),
+      DAILY_PANEL_MARK_ORDERED_PENDING_OVERLAY,
+      {
+        ...scope,
+        onSuccess: () => {
+          setMarkConfirmOpen(false);
+          onClose();
+        },
+        onError: () => {
+          setMarkConfirmOpen(false);
+        },
+      }
+    );
+  };
+
   return (
     <>
+      <ConfirmDialog
+        open={markConfirmOpen}
+        title={dailyPanelMarkOrderedConfirmTitle()}
+        message={dailyPanelMarkOrderedConfirmMessage(supplier.name)}
+        confirmLabel={dailyPanelMarkOrderedConfirmLabel()}
+        pending={rowPending}
+        tier="raised"
+        onCancel={() => {
+          if (rowPending) return;
+          setMarkConfirmOpen(false);
+        }}
+        onConfirm={confirmMarkOrdered}
+      />
       <button
         type="button"
         className={cn(sidePanelBackdropClass, "panel-slide-backdrop-enter")}
         aria-label="Zamknij panel"
-        onClick={onClose}
+        onClick={() => {
+          if (markConfirmOpen || rowPending) return;
+          onClose();
+        }}
       />
       <aside
         className={cn(sidePanelShellClass, "panel-slide-enter")}
@@ -194,8 +265,13 @@ export function SupplierDrawer({
             <button
               type="button"
               className={sidePanelCloseButtonClass}
-              onClick={onClose}
+              onClick={() => {
+                if (rowPending) return;
+                setMarkConfirmOpen(false);
+                onClose();
+              }}
               aria-label="Zamknij"
+              disabled={rowPending}
             >
               <IconX size={18} />
             </button>
@@ -206,19 +282,31 @@ export function SupplierDrawer({
               variant="primary"
               size="sm"
               disabled={rowPending}
+              aria-busy={rowPending}
               className="w-full justify-center"
-              onClick={() =>
-                run(
-                  () => actionMarkOrdered(supplier.id),
-                  "Oznaczono jako zamówione",
-                  "Oznaczanie jako zamówione…",
-                  scope
-                )
-              }
+              onClick={() => setMarkConfirmOpen(true)}
             >
-              <IconCircleCheck size={15} className="shrink-0" />
-              Zamówione
+              <IconCircleCheck
+                size={15}
+                className={cn("shrink-0", rowPending && "animate-pulse")}
+              />
+              {rowPending ? DAILY_PANEL_MARK_ORDERED_PENDING : DAILY_PANEL_MARK_ORDERED_LABEL}
             </Button>
+            {canPrepareZd ? (
+              <Link
+                href={`/zakupy/szacunek?from=daily&supplierId=${encodeURIComponent(supplier.id)}&autorun=1`}
+                className="block w-full"
+              >
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="w-full justify-center"
+                >
+                  <IconClipboardList size={15} className="shrink-0" />
+                  Przygotuj ZD
+                </Button>
+              </Link>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <ShiftMenu
                 disabled={rowPending}

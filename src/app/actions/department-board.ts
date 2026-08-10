@@ -9,7 +9,7 @@ import {
   assertAdminPanelAllowsProcurementBoardMutations,
 } from "@/lib/auth/guard-admin-panel-preview";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
-import { canAccessOperations, isSalesAccount } from "@/lib/auth-roles";
+import { canAccessOperations, isAdmin, isSalesAccount } from "@/lib/auth-roles";
 import {
   DEPARTMENT_BOARD_POST_SELECT,
   DEPARTMENT_BOARD_THREAD_SELECT,
@@ -433,6 +433,31 @@ export async function actionReopenQuestion(threadId: string) {
   if (error) throw new Error(error.message);
   revalidateDepartmentBoard();
   return { thread: data as unknown as DepartmentBoardThreadRow };
+}
+
+/** Trwałe usunięcie zakończonego wątku — tylko administrator. */
+export async function actionDeleteClosedQuestion(threadId: string) {
+  const user = await getSessionUser();
+  if (!user?.id) throw new Error("Zaloguj się ponownie.");
+  if (!isAdmin(user.role)) {
+    throw new Error("Tylko administrator może trwale usuwać zakończone wątki.");
+  }
+  await assertAdminPanelAllowsProcurementBoardMutations(user);
+
+  const thread = await fetchThread(threadId);
+  if (thread.kind !== "question") {
+    throw new Error("Usuwanie dotyczy tylko pytań.");
+  }
+  if (!thread.archived_at) {
+    throw new Error("Można usuwać tylko zakończone wątki.");
+  }
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("department_board_threads").delete().eq("id", threadId);
+
+  if (error) throw new Error(error.message);
+  revalidateDepartmentBoard();
+  return { ok: true as const };
 }
 
 export async function actionToggleAnnouncementPin(threadId: string, pinned: boolean) {

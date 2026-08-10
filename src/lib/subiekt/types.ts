@@ -68,6 +68,13 @@ export type SubiektProductGroup = {
   [key: string]: unknown;
 };
 
+/** Cecha towaru — GET /cechy/towarow */
+export type SubiektProductCecha = {
+  ctw_Id: number;
+  ctw_Nazwa?: string | null;
+  [key: string]: unknown;
+};
+
 /** Parametry wywołania GET /orders/zd/estimate (echo z API). */
 export type SubiektZdEstimateParams = {
   dataOd?: string | null;
@@ -76,6 +83,7 @@ export type SubiektZdEstimateParams = {
   dniZapasu?: number | null;
   zapasMin?: number | null;
   grupaId?: number | null;
+  cechaId?: number | null;
   towarId?: number | null;
   tylkoBraki?: boolean | null;
   [key: string]: unknown;
@@ -115,6 +123,8 @@ export type SubiektZdEstimateParamsInput = {
   dniZapasu?: number;
   zapasMin?: number;
   grupaId?: number;
+  /** Filtr po cesze (`ctw_Id`) — XOR z grupaId po stronie OnTime. */
+  cechaId?: number;
   towarId?: number;
   tylkoBraki?: boolean;
   page?: number;
@@ -145,6 +155,21 @@ export type SubiektDocumentLine = {
   ob_CenaNetto?: number | null;
   ob_CenaBrutto?: number | null;
   [key: string]: unknown;
+};
+
+/** Pozycja body POST /documents/zd/create (i ZK/WZ create). */
+export type SubiektCreateDocumentLineInput = {
+  towarId?: number;
+  symbol?: string;
+  ilosc: number;
+  cenaNetto?: number | null;
+};
+
+/** Body POST /documents/zd/create — kontrahentId = dostawca (kh_Id). */
+export type SubiektCreateZdInput = {
+  kontrahentId: number;
+  uwagi?: string | null;
+  pozycje: SubiektCreateDocumentLineInput[];
 };
 
 /** dokument — GET /documents, /documents/zk, /documents/zd */

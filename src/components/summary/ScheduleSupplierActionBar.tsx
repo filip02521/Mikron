@@ -9,6 +9,12 @@ import type { SupplierLocation } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { panelSegmentPrimaryClass } from "@/lib/ui/ontime-theme";
 import { buttonGroupItemClass, panelActionBarShellClass } from "@/lib/ui/surfaces";
+import {
+  DAILY_PANEL_MARK_ORDERED_LABEL,
+  DAILY_PANEL_MARK_ORDERED_PENDING,
+  DAILY_PANEL_MARK_ORDERED_PENDING_OVERLAY,
+  dailyPanelMarkOrderedToastTitle,
+} from "@/lib/orders/daily-panel-mark-ordered-copy";
 
 /** Zamówione + Przesuń + menu Więcej — jeden segment wizualnie, osobne cele kliknięcia. */
 export function ScheduleSupplierActionBar({
@@ -39,8 +45,8 @@ export function ScheduleSupplierActionBar({
   const markOrdered = () =>
     run(
       () => actionMarkOrdered(supplierId),
-      "Oznaczono jako zamówione",
-      "Oznaczanie jako zamówione…",
+      dailyPanelMarkOrderedToastTitle(supplierName),
+      DAILY_PANEL_MARK_ORDERED_PENDING_OVERLAY,
       scope
     );
 
@@ -60,7 +66,7 @@ export function ScheduleSupplierActionBar({
           className="h-9 w-full rounded-md text-xs font-semibold sm:h-7"
           onClick={markOrdered}
         >
-          Zamówione
+          {pending ? DAILY_PANEL_MARK_ORDERED_PENDING : DAILY_PANEL_MARK_ORDERED_LABEL}
         </Button>
         <div className="flex gap-1">
           <ShiftMenu
@@ -121,7 +127,7 @@ export function ScheduleSupplierActionBar({
         )}
         onClick={markOrdered}
       >
-        Zamówione
+        {pending ? DAILY_PANEL_MARK_ORDERED_PENDING : DAILY_PANEL_MARK_ORDERED_LABEL}
       </button>
       <ShiftMenu
         grouped
