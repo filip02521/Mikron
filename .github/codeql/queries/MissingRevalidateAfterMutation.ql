@@ -51,5 +51,8 @@ where
     "actionGeneratePasswordResetLink",
     // False positive: Map.delete w merge partnerów, nie mutacja Supabase
     "actionRunZdEstimateManual",
+    // Świadomie bez revalidate: lokalny UI oznacza „seen”; pełny revalidate
+    // po hoverze + Główne/Uzupełniające potrafi zabić UndoToast (remount).
+    "actionMarkProcurementRequestsSeen",
   ]
 select f, "Server action '" + f.getName() + "' wykonuje mutację bazy danych ale nie wywołuje revalidatePath/revalidateTag (ani helpera revalidate*) — dane mogą być nieaktualne."

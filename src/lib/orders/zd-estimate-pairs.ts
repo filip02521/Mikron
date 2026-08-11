@@ -134,7 +134,7 @@ export function applyZdEstimatePairs(
       continue;
     }
 
-    const { pair, role } = hit;
+    const { pair } = hit;
     const packLine = byTw.get(pair.packTwId) ?? null;
     const pieceLine = byTw.get(pair.pieceTwId) ?? null;
     const partnerMissing =

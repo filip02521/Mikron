@@ -51,10 +51,11 @@ async function syncCardEmailAfterSalesLink(
     profile?.email
   );
   if (syncError) {
+    // CodeQL js/log-injection: usuń CR/LF (wzór jak w docs CodeQL).
     console.warn(
       "[users] syncSalesPersonCardEmailFromProfile",
-      String(spId).replace(/[\r\n]+/g, " "),
-      String(syncError).replace(/[\r\n]+/g, " ")
+      String(spId).replace(/\n|\r/g, ""),
+      String(syncError).replace(/\n|\r/g, "")
     );
   }
 }

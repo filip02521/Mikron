@@ -319,18 +319,18 @@ export async function actionReplyToQuestion(threadId: string, body: string) {
       if (!result.emailSent) {
         console.warn(
           "[board-reply-email] not sent",
-          String(threadId).replace(/[\r\n]+/g, " "),
+          String(threadId).replace(/\n|\r/g, ""),
           String(result.skippedReason ?? result.error ?? "unknown").replace(
-            /[\r\n]+/g,
-            " "
+            /\n|\r/g,
+            ""
           )
         );
       }
     } catch (err) {
       console.error(
         "[board-reply-email] notify failed",
-        String(threadId).replace(/[\r\n]+/g, " "),
-        err instanceof Error ? err.message.replace(/[\r\n]+/g, " ") : "unknown"
+        String(threadId).replace(/\n|\r/g, ""),
+        err instanceof Error ? err.message.replace(/\n|\r/g, "") : "unknown"
       );
     }
   }
