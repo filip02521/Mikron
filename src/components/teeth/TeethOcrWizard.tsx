@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { ModalShell } from "@/components/ui/ModalShell";
@@ -112,6 +113,7 @@ export function TeethOcrWizard({
   onResult?: (groups: TeethOcrGroup[], detectedProductLines: string[], imagePath: string | null) => void;
   disabled?: boolean;
 }) {
+  const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<WizardStep>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -364,9 +366,9 @@ export function TeethOcrWizard({
       onClose();
     } else {
       saveTeethOcrProsbaPrefill(resultGroups, resultImagePath);
-      window.location.href = "/prosba";
+      router.push("/prosba");
     }
-  }, [resultGroups, detectedLines, resultImagePath, onResult, reset, onClose]);
+  }, [resultGroups, detectedLines, resultImagePath, onResult, reset, onClose, router]);
 
   const isBusy = step === "uploading" || step === "detecting" || step === "reading";
 

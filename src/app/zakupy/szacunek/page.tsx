@@ -12,7 +12,10 @@ import { ZdEstimatePageIntro } from "@/components/zakupy/ZdEstimatePageIntro";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 import { zdEstimatePageShellClass } from "@/lib/ui/ontime-theme";
 import { parseZdEstimateLaunchQuery } from "@/lib/orders/zd-estimate-supplier-scope";
-import { zdEstimatePageHint } from "@/lib/orders/zd-estimate-ui-copy";
+import {
+  ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION,
+  zdEstimatePageHint,
+} from "@/lib/orders/zd-estimate-ui-copy";
 import { formatPlDate } from "@/lib/display-labels";
 
 export const metadata: Metadata = pageMetadataFor("zdEstimate");
@@ -117,7 +120,7 @@ export default async function ZdEstimatePage({
   return (
     <div className={zdEstimatePageShellClass}>
       <ZdEstimatePageIntro
-        description="Zakres Subiekta → lista do zamówienia → Utwórz ZD."
+        description={ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION}
         hint={zdEstimatePageHint({
           isLive: bootstrap.ordersIsLive,
           configured: bootstrap.configured,

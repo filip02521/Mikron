@@ -11,7 +11,6 @@ import {
   departmentBoardOpenQuestionsLabel,
 } from "@/lib/department-board/copy";
 import { procurementBoardQuestionsListHref } from "@/lib/data/department-board-shared";
-import { surfaceCardClass } from "@/lib/ui/ontime-theme";
 
 export function OperationsBoardQuestionsNotice({ className }: { className?: string }) {
   const pathname = usePathname();
@@ -28,14 +27,13 @@ export function OperationsBoardQuestionsNotice({ className }: { className?: stri
   return (
     <div
       className={cn(
-        surfaceCardClass,
-        "mb-3 flex flex-wrap items-center justify-between gap-3 border-amber-200/90 bg-amber-50/55 px-3.5 py-2.5 sm:mb-4 sm:px-4",
+        "mb-3 flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200/70 bg-amber-50/80 px-3.5 py-2.5 sm:mb-4 sm:px-4",
         className
       )}
       role="status"
     >
       <div className="flex min-w-0 items-center gap-2.5">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-amber-100/90 text-amber-800 ring-1 ring-amber-200/80">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-amber-100/90 text-amber-800">
           <IconInbox size={17} strokeWidth={2.25} aria-hidden />
         </span>
         <p className="min-w-0 text-sm leading-snug text-slate-800">
@@ -50,7 +48,7 @@ export function OperationsBoardQuestionsNotice({ className }: { className?: stri
       </div>
       <Link
         href={procurementBoardQuestionsListHref()}
-        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-amber-200/90 bg-white px-2.5 text-xs font-semibold text-amber-950 shadow-sm shadow-amber-900/5 transition hover:bg-amber-50"
+        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-amber-200/80 bg-white/90 px-2.5 text-xs font-semibold text-amber-950 transition hover:bg-amber-50/90"
       >
         Tablica pytań
         <LinkChevron size={13} tone="muted" />

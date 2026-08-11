@@ -51,10 +51,19 @@ import {
   ZD_ESTIMATE_UI,
   zdEstimateBlockedDailyCtaMessage,
   zdEstimateBlockedOrdersAlertBody,
+  zdEstimateCountingButtonLabel,
   zdEstimateEmptyListDescription,
+  zdEstimateNeedsSettingsHint,
   zdEstimatePrepCardHint,
   zdEstimateReadyFollowUp,
+  zdEstimateReadyToCountHint,
+  zdEstimateRecountListStatus,
+  zdEstimateRecountOverlayHint,
+  zdEstimateRecountOverlayMessage,
+  zdEstimateScopeChangedHint,
+  zdEstimateScopeDashedHint,
 } from "@/lib/orders/zd-estimate-ui-copy";
+import { shouldUseZdEstimateProgressShell } from "@/lib/orders/zd-estimate-progress-shell";
 import { applyGroupStockWindow } from "@/lib/orders/zd-estimate-group-stock";
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import {
@@ -173,6 +182,7 @@ import {
 } from "@/components/zakupy/ZdEstimateLaunchProgress";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
+import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { Alert } from "@/components/ui/Alert";
 import {
   launchProgressMinRevealWaitMs,
@@ -180,10 +190,12 @@ import {
 import {
   scrollZdEstimateIntoView,
   scrollZdEstimateWhenReady,
+  scrollZdEstimateRevealListWhenReady,
   ZD_ESTIMATE_ASSIGN_FOCUS_ID,
   ZD_ESTIMATE_ERROR_FOCUS_ID,
   ZD_ESTIMATE_LAUNCH_FOCUS_ID,
   ZD_ESTIMATE_LIST_FOCUS_ID,
+  ZD_ESTIMATE_POLICZ_CTA_ID,
   ZD_ESTIMATE_READY_FOCUS_ID,
   ZD_ESTIMATE_SERVICES_FOCUS_ID,
 } from "@/lib/orders/zd-estimate-launch-scroll";
@@ -392,6 +404,10 @@ export function ZdEstimateWorkbench({
   const [estimating, startEstimate] = useTransition();
   const [searching, startSearch] = useTransition();
   const [mutating, startMutate] = useTransition();
+  /** shell = panel postępu (pierwsze Policz); recount = overlay na liście. */
+  const [estimateUiMode, setEstimateUiMode] = useState<
+    "shell" | "recount" | null
+  >(null);
   const exclusionsGenRef = useRef(0);
   const packagingGenRef = useRef(0);
   const pairsGenRef = useRef(0);
@@ -503,6 +519,14 @@ export function ZdEstimateWorkbench({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [prepCollapsed, setPrepCollapsed] = useState(false);
   const [launchReadyMessage, setLaunchReadyMessage] = useState<string | null>(
+    null
+  );
+  /** EmptyState „Brak listy” tylko po nieudanym Policz. */
+  const [lastEstimateFailed, setLastEstimateFailed] = useState(false);
+  /** Po clear wyniku przez zmianę zakresu — hint w prep zamiast EmptyState. */
+  const [scopeNeedsRecount, setScopeNeedsRecount] = useState(false);
+  /** Krótki status po re-Policz (nie mylić z settingsLiveMessage). */
+  const [recountStatusMessage, setRecountStatusMessage] = useState<string | null>(
     null
   );
   const [launchStartedAtMs, setLaunchStartedAtMs] = useState<number | null>(
@@ -1484,6 +1508,8 @@ export function ZdEstimateWorkbench({
 
   const scopeSelected =
     scopeMode === "grupa" ? selectedGroup != null : selectedCecha != null;
+  const canPolicz =
+    bootstrap.configured && scopeSelected && settingsTrusted;
   const scopeLabel =
     scopeMode === "grupa"
       ? selectedGroup?.grt_Nazwa ?? null
@@ -1501,7 +1527,7 @@ export function ZdEstimateWorkbench({
       : selectedGroup?.supplierName) ??
     null;
 
-  const clearEstimateResult = () => {
+  const clearEstimateResult = (opts?: { fromScopeChange?: boolean }) => {
     estimateGenRef.current += 1;
     setLines(null);
     setLinesBase(null);
@@ -1525,6 +1551,12 @@ export function ZdEstimateWorkbench({
     setCreateZdOpen(false);
     setCreatingZd(false);
     setLinkNrPrefill(null);
+    setLaunchReadyMessage(null);
+    setRecountStatusMessage(null);
+    if (opts?.fromScopeChange) {
+      setLastEstimateFailed(false);
+      setScopeNeedsRecount(true);
+    }
   };
 
   const changeScopeMode = (mode: ZdEstimateRunMode) => {
@@ -1532,7 +1564,7 @@ export function ZdEstimateWorkbench({
     setScopeMode(mode);
     setFeedback(null);
     setErrorMessage(null);
-    clearEstimateResult();
+    clearEstimateResult({ fromScopeChange: lines != null });
     if (mode === "grupa") {
       setSelectedCecha(null);
       setCechaHits([]);
@@ -1562,8 +1594,9 @@ export function ZdEstimateWorkbench({
       bootstrap.salesEndKey
     );
     const supplierChanged = applied.supplierId !== supplierId;
-    if (scopeChanged || supplierChanged) clearEstimateResult();
-    else setCopyOk(false);
+    if (scopeChanged || supplierChanged) {
+      clearEstimateResult({ fromScopeChange: lines != null });
+    } else setCopyOk(false);
 
     setSupplierId(applied.supplierId);
     setDniZapasu(String(applied.dniZapasu));
@@ -1571,6 +1604,13 @@ export function ZdEstimateWorkbench({
       setDataOd(applied.dataOd);
       setDataDo(applied.dataDo);
     }
+    requestAnimationFrame(() => {
+      scrollZdEstimateIntoView(ZD_ESTIMATE_POLICZ_CTA_ID, {
+        behavior: "smooth",
+        block: "nearest",
+        offsetPx: 24,
+      });
+    });
   };
 
   const selectCecha = (cecha: ZdEstimateCechaOption) => {
@@ -1591,8 +1631,9 @@ export function ZdEstimateWorkbench({
       bootstrap.salesEndKey
     );
     const supplierChanged = applied.supplierId !== supplierId;
-    if (scopeChanged || supplierChanged) clearEstimateResult();
-    else setCopyOk(false);
+    if (scopeChanged || supplierChanged) {
+      clearEstimateResult({ fromScopeChange: lines != null });
+    } else setCopyOk(false);
 
     setSupplierId(applied.supplierId);
     setDniZapasu(String(applied.dniZapasu));
@@ -1600,6 +1641,13 @@ export function ZdEstimateWorkbench({
       setDataOd(applied.dataOd);
       setDataDo(applied.dataDo);
     }
+    requestAnimationFrame(() => {
+      scrollZdEstimateIntoView(ZD_ESTIMATE_POLICZ_CTA_ID, {
+        behavior: "smooth",
+        block: "nearest",
+        offsetPx: 24,
+      });
+    });
   };
 
   const onDniZapasuChange = (raw: string) => {
@@ -1615,7 +1663,7 @@ export function ZdEstimateWorkbench({
   const onSupplierOverride = (id: string) => {
     if (!id) {
       setSupplierId(null);
-      clearEstimateResult();
+      clearEstimateResult({ fromScopeChange: lines != null });
       return;
     }
     const prev = supplierId;
@@ -1623,7 +1671,7 @@ export function ZdEstimateWorkbench({
     setSupplierId(id);
     if (prev !== id) {
       // Inna historia kh — nie trzymaj cut poprzedniego dostawcy na liście.
-      clearEstimateResult();
+      clearEstimateResult({ fromScopeChange: lines != null });
     }
     if (!s?.dniZapasu) return;
     setDniZapasu(String(s.dniZapasu));
@@ -1702,6 +1750,7 @@ export function ZdEstimateWorkbench({
     setErrorMessage(null);
     setCopyOk(false);
     setLaunchReadyMessage(null);
+    setRecountStatusMessage(null);
     const mode = opts?.mode ?? scopeMode;
     const grupaId =
       opts?.grupaId ??
@@ -1709,14 +1758,23 @@ export function ZdEstimateWorkbench({
     const cechaId =
       opts?.cechaId ??
       (mode === "cecha" ? selectedCecha?.ctw_Id : undefined);
+    const useProgressShell = shouldUseZdEstimateProgressShell({
+      hasLines: lines != null,
+    });
+    setEstimateUiMode(useProgressShell ? "shell" : "recount");
+    const clearProgressBlocking = () => {
+      if (useProgressShell) setLaunchBlocking(false);
+    };
     if (mode === "grupa" && !grupaId) {
       setErrorMessage("Wybierz grupę (np. Falcon).");
-      if (opts?.fromLaunch) setLaunchBlocking(false);
+      setLastEstimateFailed(true);
+      clearProgressBlocking();
       return;
     }
     if (mode === "cecha" && !cechaId) {
       setErrorMessage("Wybierz cechę (np. Ivoclar).");
-      if (opts?.fromLaunch) setLaunchBlocking(false);
+      setLastEstimateFailed(true);
+      clearProgressBlocking();
       return;
     }
     if (!settingsTrusted) {
@@ -1729,17 +1787,20 @@ export function ZdEstimateWorkbench({
         teethProductsError,
       });
       setErrorMessage(msg);
-      if (opts?.fromLaunch) setLaunchBlocking(false);
+      setLastEstimateFailed(true);
+      clearProgressBlocking();
       return;
     }
-    const launchStartedCapture = opts?.fromLaunch
+    const launchStartedCapture = useProgressShell
       ? launchBlocking && launchStartedAtMs != null
         ? launchStartedAtMs
         : beginLaunchProgress()
       : null;
-    if (opts?.fromLaunch) {
+    if (useProgressShell) {
       setLaunchForceComplete(false);
     }
+    setLastEstimateFailed(false);
+    setScopeNeedsRecount(false);
     const estimateGen = ++estimateGenRef.current;
     startEstimate(async () => {
       const res = await actionRunZdEstimateManual({
@@ -1762,9 +1823,12 @@ export function ZdEstimateWorkbench({
         setMissingPartnerTwIds([]);
         setPrepCollapsed(false);
         setLaunchForceComplete(false);
-        if (opts?.fromLaunch) setLaunchBlocking(false);
+        setLastEstimateFailed(true);
+        setScopeNeedsRecount(false);
+        setRecountStatusMessage(null);
+        clearProgressBlocking();
         if (
-          opts?.fromLaunch &&
+          useProgressShell &&
           isZdEstimateLaunchTimeoutFeedback({
             code: res.feedback?.code,
             message: res.message,
@@ -1849,7 +1913,9 @@ export function ZdEstimateWorkbench({
         setFeedback(null);
         setErrorMessage(null);
         setLinkOkMessage(null);
-        if (opts?.fromLaunch) {
+        setLastEstimateFailed(false);
+        setScopeNeedsRecount(false);
+        if (useProgressShell) {
           setPrepCollapsed(true);
           const readyBits = [
             `${res.meta.doZamowieniaCount} pozycji do ZD`,
@@ -1860,10 +1926,18 @@ export function ZdEstimateWorkbench({
           setLaunchReadyMessage(`Gotowe — ${readyBits.join(" · ")}`);
           setLaunchForceComplete(false);
           setLaunchBlocking(false);
+          setRecountStatusMessage(null);
+        } else {
+          setRecountStatusMessage(
+            zdEstimateRecountListStatus({
+              doZamowieniaCount: res.meta.doZamowieniaCount,
+              durationMs: res.meta.durationMs,
+            })
+          );
         }
       };
 
-      if (opts?.fromLaunch) {
+      if (useProgressShell) {
         setLaunchForceComplete(true);
         const waitMs = launchProgressMinRevealWaitMs(
           launchStartedCapture ?? launchStartedAtMs
@@ -2074,13 +2148,10 @@ export function ZdEstimateWorkbench({
     };
   }, []);
 
-  /** Jeden spokojny panel — bez overlay na całym formularzu. */
+  /** Jeden spokojny panel — pierwsze Policz (menu i daily), bez overlay na formularzu. */
   const showLaunchProgress = Boolean(
     launchBlocking ||
-      (estimating &&
-        (launch?.autorun || launch?.fromDaily) &&
-        !lines &&
-        !launchReadyMessage)
+      (estimating && !lines && !launchReadyMessage)
   );
 
   /** Sticky Create/TSV/Link gdy są pozycje katalogowe lub usługi (nie sam launchReady). */
@@ -2150,27 +2221,39 @@ export function ZdEstimateWorkbench({
     return;
   }, [showLaunchProgress, assignHint, launch?.fromDaily]);
 
-  // Scroll: sukces → alert
-  useEffect(() => {
-    if (!launchReadyMessage) return;
-    return scrollZdEstimateWhenReady(ZD_ESTIMATE_READY_FOCUS_ID, {
-      initialDelayMs: 100,
-      block: "start",
-      offsetPx: 16,
-      maxAttempts: 16,
-    });
-  }, [launchReadyMessage]);
+  /** Overlay „Przeliczam” tylko przy re-Policz — nie po reveal pierwszego Policz. */
+  const showListRecountOverlay =
+    estimating && estimateUiMode === "recount";
 
-  // Scroll: błąd po launch (nie podczas postępu)
+  // Scroll na dół od razu po reveal listy (nawet jeśli settings refresh jeszcze trwa).
+  // Nie czekamy na !estimating — unikamy „pustego czekania” przed zjazdem.
+  useEffect(() => {
+    if (!launchReadyMessage || !lines || showLaunchProgress) {
+      return;
+    }
+    return scrollZdEstimateRevealListWhenReady({
+      initialDelayMs: 80,
+      settlePassesMs: [200, 420, 700],
+      maxAttempts: 28,
+    });
+  }, [launchReadyMessage, lines, showLaunchProgress]);
+
+  // Scroll: błąd po progress (menu i daily) — nie podczas postępu
   useEffect(() => {
     if (!errorMessage || showLaunchProgress) return;
-    if (!(launch?.fromDaily || launch?.autorun)) return;
+    if (!lastEstimateFailed && !(launch?.fromDaily || launch?.autorun)) return;
     return scrollZdEstimateWhenReady(ZD_ESTIMATE_ERROR_FOCUS_ID, {
       initialDelayMs: 80,
       block: "center",
       maxAttempts: 16,
     });
-  }, [errorMessage, showLaunchProgress, launch?.fromDaily, launch?.autorun]);
+  }, [
+    errorMessage,
+    showLaunchProgress,
+    lastEstimateFailed,
+    launch?.fromDaily,
+    launch?.autorun,
+  ]);
 
   const confirmAssignAndRun = () => {
     if (!launch?.supplierId) {
@@ -3065,7 +3148,9 @@ export function ZdEstimateWorkbench({
           scopeLabel={launchScopeLabel}
           scopeMode={launchScopeMode}
           startedAtMs={launchStartedAtMs}
-          scopeAlreadyResolved={launchHasRunnableScope(launch)}
+          scopeAlreadyResolved={
+            launchHasRunnableScope(launch) || Boolean(launchScopeLabel)
+          }
           forceComplete={launchForceComplete}
           ordersIsLive={bootstrap.ordersIsLive}
         />
@@ -3458,7 +3543,12 @@ export function ZdEstimateWorkbench({
           {scopeMode === "grupa" && selectedGroup ? (
             <section className="space-y-3.5">
               <p className={panelTypography.sectionLabel}>Parametry z wyboru</p>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div
+                className={cn(
+                  "grid gap-3 rounded-xl p-1 sm:grid-cols-2 xl:grid-cols-4",
+                  canPolicz && "ring-1 ring-indigo-200/80"
+                )}
+              >
                 <MetaPill label="Grupa" value={selectedGroup.grt_Nazwa} />
                 <MetaPill
                   label="Zapas"
@@ -3483,7 +3573,12 @@ export function ZdEstimateWorkbench({
           ) : scopeMode === "cecha" && selectedCecha ? (
             <section className="space-y-3.5">
               <p className={panelTypography.sectionLabel}>Parametry z wyboru</p>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div
+                className={cn(
+                  "grid gap-3 rounded-xl p-1 sm:grid-cols-2 xl:grid-cols-4",
+                  canPolicz && "ring-1 ring-indigo-200/80"
+                )}
+              >
                 <MetaPill label="Cecha" value={selectedCecha.ctw_Nazwa} />
                 <MetaPill
                   label="Zapas"
@@ -3507,13 +3602,14 @@ export function ZdEstimateWorkbench({
             </section>
           ) : (
             <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/70 px-5 py-5 text-sm leading-relaxed text-slate-600">
-              {scopeMode === "grupa"
-                ? "Wybierz grupę (Falcon, Ivoclar…) — zapas i daty ustawią się automatycznie."
-                : "Wyszukaj i wybierz cechę — zapas i daty ustawią się z nazwy cechy, jeśli jest karta dostawcy."}
+              {zdEstimateScopeDashedHint(scopeMode)}
             </div>
           )}
 
-          <div className="flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <div
+            id={ZD_ESTIMATE_POLICZ_CTA_ID}
+            className="scroll-mt-24 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between"
+          >
             <button
               type="button"
               className="inline-flex items-center gap-1.5 self-start text-sm font-medium text-slate-600 transition hover:text-slate-900"
@@ -3530,6 +3626,23 @@ export function ZdEstimateWorkbench({
               />
               {showAdvanced ? "Ukryj zaawansowane" : "Zaawansowane"}
             </button>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+              {scopeSelected && scopeNeedsRecount ? (
+                <p className="text-xs leading-snug text-amber-800">
+                  {zdEstimateScopeChangedHint()}
+                </p>
+              ) : null}
+              {scopeSelected && !scopeNeedsRecount && canPolicz ? (
+                <p className="text-xs leading-snug text-emerald-800">
+                  {zdEstimateReadyToCountHint()}
+                </p>
+              ) : null}
+              {scopeSelected && !settingsTrusted ? (
+                <p className="text-xs leading-snug text-amber-800">
+                  {zdEstimateNeedsSettingsHint()}
+                </p>
+              ) : null}
+              <div className="flex w-full flex-col gap-2 sm:flex-row sm:justify-end">
             <Button
               type="button"
               onClick={() => runEstimate()}
@@ -3550,11 +3663,16 @@ export function ZdEstimateWorkbench({
                         ? "Trwa przeliczanie"
                         : "Policz listę do ZD z Subiekta"
               }
-              className="h-11 w-full sm:w-auto sm:min-w-[12.5rem]"
+              className={cn(
+                "h-11 w-full sm:w-auto sm:min-w-[12.5rem]",
+                canPolicz &&
+                  !estimating &&
+                  "shadow-md shadow-indigo-500/20 ring-2 ring-indigo-500/25"
+              )}
             >
               {estimating ? (
                 <span className="inline-flex items-center gap-2">
-                  <Spinner className="size-4" /> Liczę…
+                  <Spinner className="size-4" /> {zdEstimateCountingButtonLabel()}
                 </span>
               ) : (
                 "Policz listę"
@@ -3577,6 +3695,8 @@ export function ZdEstimateWorkbench({
                 {mutating ? "Zapisuję…" : "Zapisz zakres i policz"}
               </Button>
             ) : null}
+              </div>
+            </div>
           </div>
 
           {showAdvanced ? (
@@ -3825,7 +3945,10 @@ export function ZdEstimateWorkbench({
         </Alert>
       ) : null}
 
-      {!lines && !estimating && !launchBlocking ? (
+      {!lines &&
+      !estimating &&
+      !launchBlocking &&
+      lastEstimateFailed ? (
         <Card padding={false}>
           <EmptyState
             brandAccent
@@ -3836,39 +3959,43 @@ export function ZdEstimateWorkbench({
         </Card>
       ) : null}
 
-      {estimating && !lines && !showLaunchProgress ? (
-        <Card padding={false}>
-          <div className="flex flex-col items-center gap-3 px-6 py-12 text-center sm:flex-row sm:items-start sm:text-left">
-            <Spinner className="size-6 shrink-0 text-indigo-600" />
-            <div className="min-w-0 space-y-1">
-              <p className="text-sm font-semibold text-slate-900">
-                Policz listę w toku
-              </p>
-              <p className="text-sm leading-snug text-slate-600">
-                Pobieram pełny zakres z Subiekta
-                {bootstrap.ordersIsLive
-                  ? " (aktualna baza)"
-                  : " (środowisko testowe)"}
-                , dociągam partnerów par i składów oraz prośby handlowców. Duża
-                cecha może potrwać do kilku minut.
-              </p>
-            </div>
-          </div>
-        </Card>
-      ) : null}
-
       {lines ? (
-        <div id={ZD_ESTIMATE_LIST_FOCUS_ID} className="scroll-mt-4">
-        <Card padding={false} className="relative overflow-visible">
+        <div
+          id={ZD_ESTIMATE_LIST_FOCUS_ID}
+          tabIndex={-1}
+          className="scroll-mt-4 outline-none"
+        >
+        <Card
+          padding={false}
+          className="relative overflow-visible"
+        >
+          {showListRecountOverlay ? (
+            <ActionLoadingOverlay
+              variant="section"
+              message={zdEstimateRecountOverlayMessage()}
+              hint={zdEstimateRecountOverlayHint(bootstrap.ordersIsLive)}
+            />
+          ) : null}
+          <div
+            className={cn(
+              showListRecountOverlay &&
+                "pointer-events-none opacity-60 transition-opacity duration-200"
+            )}
+          >
           <CardHeader
             inset
             density="default"
             title="Lista produktów"
             description={
-              scopeLabel
-                ? `${scopeLabel} · ${bootstrap.ordersHostLabel ?? `Subiekt :${bootstrap.ordersPort ?? bootstrap.testPort}`}`
-                : bootstrap.ordersHostLabel ??
-                  `Dane z Subiekta :${bootstrap.ordersPort ?? bootstrap.testPort}`
+              [
+                scopeLabel
+                  ? `${scopeLabel} · ${bootstrap.ordersHostLabel ?? `Subiekt :${bootstrap.ordersPort ?? bootstrap.testPort}`}`
+                  : bootstrap.ordersHostLabel ??
+                    `Dane z Subiekta :${bootstrap.ordersPort ?? bootstrap.testPort}`,
+                recountStatusMessage,
+              ]
+                .filter(Boolean)
+                .join(" — ")
             }
             leading={
               <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
@@ -4893,6 +5020,7 @@ export function ZdEstimateWorkbench({
             )}
             </div>
           </div>
+          </div>
         </Card>
         </div>
       ) : null}
@@ -4911,6 +5039,28 @@ export function ZdEstimateWorkbench({
         </Alert>
       ) : null}
         </>
+      ) : null}
+
+      {!showLaunchProgress && !lines && canPolicz && !prepCollapsed ? (
+        <div
+          className={cn(
+            "sticky z-20 flex items-center gap-3 border border-indigo-200/80 bg-white/95 px-3 py-3 shadow-[0_-4px_16px_-8px_rgba(15,23,42,0.12)] backdrop-blur-sm sm:px-4",
+            "bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] rounded-xl md:bottom-2 md:hidden"
+          )}
+        >
+          <p className="min-w-0 flex-1 truncate text-xs font-medium text-slate-700">
+            {scopeLabel ?? "Zakres gotowy"}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => runEstimate()}
+            disabled={estimating || !canPolicz}
+            className="shrink-0"
+          >
+            {estimating ? zdEstimateCountingButtonLabel() : "Policz listę"}
+          </Button>
+        </div>
       ) : null}
 
       {showLaunchStickyActions ? (

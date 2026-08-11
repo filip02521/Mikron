@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   COMPRESS_IMAGE_MAX_INPUT_BYTES,
   compressImageFile,
@@ -26,19 +26,13 @@ export function useBoardQuestionImages() {
   const [compressing, setCompressing] = useState(false);
   const imagesRef = useLatest(images);
 
-  useEffect(() => {
-    return () => {
-      for (const img of imagesRef.current) URL.revokeObjectURL(img.previewUrl);
-    };
-  }, [imagesRef]);
-
   const clearImages = useCallback(() => {
-    setImages((prev) => {
-      for (const img of prev) URL.revokeObjectURL(img.previewUrl);
-      return [];
-    });
+    for (const img of imagesRef.current) {
+      URL.revokeObjectURL(img.previewUrl);
+    }
+    setImages([]);
     setImagesError(null);
-  }, []);
+  }, [imagesRef]);
 
   const removeImage = useCallback((key: string) => {
     setImages((prev) => {
@@ -52,66 +46,71 @@ export function useBoardQuestionImages() {
     setImagesError(null);
   }, []);
 
-  const addFiles = useCallback(async (incoming: FileList | File[]) => {
-    const list = Array.from(incoming);
-    if (!list.length) return;
+  const addFiles = useCallback(
+    async (incoming: FileList | File[]) => {
+      const list = Array.from(incoming);
+      if (!list.length) return;
 
-    setImagesError(null);
-    setCompressing(true);
-    try {
-      const currentCount = imagesRef.current.length;
-      const slots = BOARD_IMAGE_MAX_COUNT - currentCount;
-      if (slots <= 0) {
-        setImagesError(DEPARTMENT_BOARD_QUESTIONS_FORM.imagesTooMany);
-        return;
-      }
-
-      const selected = list.slice(0, slots);
-      if (list.length > slots) {
-        setImagesError(DEPARTMENT_BOARD_QUESTIONS_FORM.imagesTooMany);
-      }
-
-      const created: BoardQuestionImageDraft[] = [];
-      for (const file of selected) {
-        if (!file.type.startsWith("image/")) {
-          setImagesError("Dozwolone są tylko pliki graficzne (JPEG, PNG, WebP).");
-          continue;
+      setImagesError(null);
+      setCompressing(true);
+      try {
+        const currentCount = imagesRef.current.length;
+        const slots = BOARD_IMAGE_MAX_COUNT - currentCount;
+        if (slots <= 0) {
+          setImagesError(DEPARTMENT_BOARD_QUESTIONS_FORM.imagesTooMany);
+          return;
         }
-        if (file.size > COMPRESS_IMAGE_MAX_INPUT_BYTES) {
-          setImagesError("Plik jest za duży (max 20 MB przed kompresją).");
-          continue;
-        }
-        try {
-          const blob = await compressImageFile(file);
-          const compressed = new File(
-            [blob],
-            file.name.replace(/\.[^.]+$/, "") + ".jpg",
-            { type: "image/jpeg", lastModified: Date.now() }
-          );
-          created.push({
-            key: newDraftKey(),
-            file: compressed,
-            previewUrl: URL.createObjectURL(compressed),
-          });
-        } catch {
-          setImagesError("Nie udało się przetworzyć jednego ze zdjęć.");
-        }
-      }
 
-      if (!created.length) return;
+        const selected = list.slice(0, slots);
+        if (list.length > slots) {
+          setImagesError(DEPARTMENT_BOARD_QUESTIONS_FORM.imagesTooMany);
+        }
 
-      const merged = [...imagesRef.current, ...created];
-      const batchErr = validateBoardImageBatch(merged.length);
-      if (batchErr) {
-        for (const img of created) URL.revokeObjectURL(img.previewUrl);
-        setImagesError(batchErr);
-        return;
+        const created: BoardQuestionImageDraft[] = [];
+        for (const file of selected) {
+          if (!file.type.startsWith("image/")) {
+            setImagesError(
+              "Dozwolone są tylko pliki graficzne (JPEG, PNG, WebP)."
+            );
+            continue;
+          }
+          if (file.size > COMPRESS_IMAGE_MAX_INPUT_BYTES) {
+            setImagesError("Plik jest za duży (max 20 MB przed kompresją).");
+            continue;
+          }
+          try {
+            const blob = await compressImageFile(file);
+            const compressed = new File(
+              [blob],
+              file.name.replace(/\.[^.]+$/, "") + ".jpg",
+              { type: "image/jpeg", lastModified: Date.now() }
+            );
+            created.push({
+              key: newDraftKey(),
+              file: compressed,
+              previewUrl: URL.createObjectURL(compressed),
+            });
+          } catch {
+            setImagesError("Nie udało się przetworzyć jednego ze zdjęć.");
+          }
+        }
+
+        if (!created.length) return;
+
+        const merged = [...imagesRef.current, ...created];
+        const batchErr = validateBoardImageBatch(merged.length);
+        if (batchErr) {
+          for (const img of created) URL.revokeObjectURL(img.previewUrl);
+          setImagesError(batchErr);
+          return;
+        }
+        setImages(merged);
+      } finally {
+        setCompressing(false);
       }
-      setImages(merged);
-    } finally {
-      setCompressing(false);
-    }
-  }, []);
+    },
+    [imagesRef]
+  );
 
   return {
     images,

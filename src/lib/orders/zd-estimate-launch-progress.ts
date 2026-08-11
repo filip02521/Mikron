@@ -7,6 +7,10 @@ export const ZD_ESTIMATE_LAUNCH_STEP_MS = 1600;
 export const ZD_ESTIMATE_LAUNCH_MIN_VISIBLE_MS = 3200;
 export const ZD_ESTIMATE_LAUNCH_STEP_COUNT = 4;
 
+/** Wolniejszy rytm dla route loading (bootstrap SSR) — mniej „skacze”, dłużej żyje. */
+export const ZD_ESTIMATE_ROUTE_LOADING_STEP_MS = 1100;
+export const ZD_ESTIMATE_ROUTE_LOADING_STEP_COUNT = 3;
+
 /**
  * @param elapsedMs — czas od startu panelu
  * @param scopeAlreadyResolved — po SSR zakres jest znany → krok 0 od razu „done”

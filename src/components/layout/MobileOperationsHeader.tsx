@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { MobileBrandBlock } from "@/components/layout/SidebarBrandBlock";
 import { ChangelogTriggerIconButton } from "@/components/changelog/ChangelogTriggerIconButton";
 import { createClient } from "@/lib/supabase/client";
@@ -20,10 +21,12 @@ export function MobileOperationsHeader({
   userAssignmentLabel?: string | null;
   procurementWorkspace?: ProcurementWorkspace | null;
 }) {
+  const router = useRouter();
+
   async function signOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
-    window.location.assign("/login");
+    router.push("/login");
   }
 
   return (

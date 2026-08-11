@@ -330,8 +330,11 @@ export function teethNavGroups(badges: NavBadges = {}): NavGroup[] {
   return groups;
 }
 
-function operationsTodayItems(badges: Pick<NavBadges, "nowe" | "weryfikacja" | "realizacja">): NavItem[] {
-  return [
+function operationsTodayItems(
+  badges: Pick<NavBadges, "nowe" | "weryfikacja" | "realizacja">,
+  role: UserRole
+): NavItem[] {
+  const items: NavItem[] = [
     {
       href: "/podsumowanie",
       label: "Panel dzienny",
@@ -367,6 +370,23 @@ function operationsTodayItems(badges: Pick<NavBadges, "nowe" | "weryfikacja" | "
       badge: badges.realizacja,
     },
   ];
+
+  // Szacunek ZD — tylko admin (requireZdEstimateAdmin); w „Dziś” obok panelu.
+  if (role === "admin") {
+    items.push({
+      href: "/zakupy/szacunek",
+      label: "Szacunek ZD",
+      mobileLabel: "Szacunek",
+      description: "Lista do zamówienia z grupy",
+      icon: "groupOrder",
+      tone: "violet",
+      iconTone: "violet",
+      tier: "compact",
+      mobileSlot: "overflow",
+    });
+  }
+
+  return items;
 }
 
 function operationsTeamItems(badges: {
@@ -509,15 +529,6 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
       iconTone: "emerald",
       ...compact,
     },
-    {
-      href: "/zakupy/szacunek",
-      label: "Szacunek ZD",
-      description: "Lista do zamówienia z grupy",
-      icon: "groupOrder",
-      tone: "sky",
-      iconTone: "violet",
-      ...compact,
-    },
   ];
 }
 
@@ -609,7 +620,7 @@ function adminSystemItems(badges: { adminBugReports?: number }): NavItem[] {
 
 function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
   const groups: NavGroup[] = [
-    { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges) },
+    { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges, role) },
     { title: NAV_SECTION_TEAM, items: operationsTeamItems(badges) },
     {
       title: NAV_SECTION_SUPPLIERS,

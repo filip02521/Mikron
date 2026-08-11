@@ -24,12 +24,15 @@ export function ZdEstimatePageIntro({
   hint,
   hintAriaLabel = "O szacunku ZD",
   host = null,
+  /** Rezerwuje miejsce na badge + strip podczas route loading (bez skoku layoutu). */
+  hostPlaceholder = false,
 }: {
   title?: string;
   description: string;
   hint?: string;
   hintAriaLabel?: string;
   host?: ZdEstimatePageIntroHost | null;
+  hostPlaceholder?: boolean;
 }) {
   const hostConfigured = host?.configured === true;
   const hostDetail =
@@ -73,6 +76,11 @@ export function ZdEstimatePageIntro({
               port: host.port,
             })}
           </Badge>
+        ) : hostPlaceholder ? (
+          <span
+            aria-hidden
+            className="mt-1 inline-block h-6 w-[5.5rem] shrink-0 self-start rounded-md bg-slate-100 motion-safe:animate-pulse"
+          />
         ) : null}
       </div>
 
@@ -95,6 +103,11 @@ export function ZdEstimatePageIntro({
           />
           <span className="min-w-0">{hostDetail}</span>
         </div>
+      ) : hostPlaceholder ? (
+        <div
+          aria-hidden
+          className="h-9 rounded-lg border border-slate-100 bg-slate-50/80 motion-safe:animate-pulse"
+        />
       ) : null}
     </header>
   );

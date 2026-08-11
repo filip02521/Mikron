@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { MobileBrandBlock } from "@/components/layout/SidebarBrandBlock";
 import { SalesInboxBellTrigger } from "@/components/sales/SalesInboxBell";
 import { ChangelogTriggerIconButton } from "@/components/changelog/ChangelogTriggerIconButton";
@@ -23,10 +24,12 @@ export function MobileSalesHeader({
   showInboxBell?: boolean;
   delegations?: VacationDelegationRow[];
 }) {
+  const router = useRouter();
+
   async function signOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
-    window.location.assign("/login");
+    router.push("/login");
   }
 
   return (

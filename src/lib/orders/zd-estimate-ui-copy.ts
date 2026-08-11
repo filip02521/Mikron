@@ -2,6 +2,117 @@
  * Teksty UI szacunku ZD — polszczyzna dla zakupów, bez żargonu API/SQL.
  */
 
+/** Krótki flow w intro — ten sam na loadingu i stronie (bez skoku copy). */
+export const ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION =
+  "Zakres Subiekta → lista do zamówienia → Utwórz ZD.";
+
+export function zdEstimateRouteLoadingAriaLabel(): string {
+  return "Wczytuję szacunek ZD";
+}
+
+export function zdEstimateRouteLoadingTitle(): string {
+  return "Wczytuję szacunek ZD";
+}
+
+export function zdEstimateRouteLoadingSubtitle(): string {
+  return "Ładuję ustawienia działu i połączenie z Subiektem…";
+}
+
+export function zdEstimateRouteLoadingFooter(): string {
+  return "To nie jest jeszcze liczenie listy — zaraz wybierzesz zakres i klikniesz „Policz listę”.";
+}
+
+/**
+ * Kroki bootstrapu trasy (SSR) — tylko to, co dzieje się przy wejściu,
+ * nie kroki „Policz listę” (te są w LaunchProgress po kliknięciu).
+ */
+export function zdEstimateRouteLoadingSteps(): ReadonlyArray<{
+  id: string;
+  title: string;
+  activeHint: string;
+  doneHint: string;
+}> {
+  return [
+    {
+      id: "settings",
+      title: "Ustawienia działu",
+      activeHint: "Wczytuję wykluczenia, opakowania, pary…",
+      doneHint: "Ustawienia gotowe",
+    },
+    {
+      id: "host",
+      title: "Połączenie z Subiektem",
+      activeHint: "Sprawdzam host szacunku…",
+      doneHint: "Host ustalony",
+    },
+    {
+      id: "ui",
+      title: "Ekran przygotowania",
+      activeHint: "Składam formularz zakresu…",
+      doneHint: "Możesz wybrać grupę lub cechę",
+    },
+  ];
+}
+
+export function zdEstimateScopeDashedHint(mode: "grupa" | "cecha"): string {
+  return mode === "grupa"
+    ? "Wybierz szybki chip (Falcon, Ivoclar…) albo wyszukaj grupę — zapas i daty ustawią się same. Potem „Policz listę”."
+    : "Wyszukaj i wybierz cechę — zapas i daty ustawią się z nazwy, jeśli jest karta dostawcy. Potem „Policz listę”.";
+}
+
+export function zdEstimateReadyToCountHint(): string {
+  return "Gotowe do policzenia — kliknij „Policz listę”.";
+}
+
+export function zdEstimateScopeChangedHint(): string {
+  return "Zakres zmieniony — policz ponownie, żeby odświeżyć listę.";
+}
+
+export function zdEstimateNeedsSettingsHint(): string {
+  return "Najpierw wczytaj ustawienia działu (baner powyżej), potem „Policz listę”.";
+}
+
+export function zdEstimateLaunchProgressTitle(input: {
+  manualWithScope: boolean;
+}): string {
+  return input.manualWithScope
+    ? "Liczy listę do ZD…"
+    : "Przygotowuję zamówienie ZD";
+}
+
+export function zdEstimateLaunchScopeResolvedHint(): string {
+  return "Zakres potwierdzony";
+}
+
+export function zdEstimateLaunchScopePendingHint(): string {
+  return "Potwierdzam grupę lub cechę…";
+}
+
+export function zdEstimateRecountOverlayMessage(): string {
+  return "Przeliczam listę…";
+}
+
+export function zdEstimateRecountOverlayHint(isLive: boolean): string {
+  return isLive
+    ? "Pobieram dane z aktualnej bazy Subiekta — lista zostaje na ekranie."
+    : "Pobieram dane z testowego Subiekta — lista zostaje na ekranie.";
+}
+
+export function zdEstimateRecountListStatus(input: {
+  doZamowieniaCount: number;
+  durationMs?: number | null;
+}): string {
+  const secs =
+    input.durationMs != null && input.durationMs >= 0
+      ? ` · ${(input.durationMs / 1000).toFixed(1)} s`
+      : "";
+  return `Przeliczono — ${input.doZamowieniaCount} pozycji do ZD${secs}`;
+}
+
+export function zdEstimateCountingButtonLabel(): string {
+  return "Liczę…";
+}
+
 export function zdEstimateHostBadgeLabel(input: {
   isLive: boolean;
   port: number | null;

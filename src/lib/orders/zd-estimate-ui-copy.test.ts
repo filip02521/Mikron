@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+  ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION,
   zdEstimateCreateConfirmLabel,
   zdEstimateEmptyListDescription,
   zdEstimateHostBadgeLabel,
   zdEstimateLaunchFetchHint,
+  zdEstimateLaunchProgressTitle,
   zdEstimatePageHint,
+  zdEstimateReadyToCountHint,
+  zdEstimateRecountOverlayHint,
+  zdEstimateRouteLoadingSteps,
+  zdEstimateRouteLoadingSubtitle,
+  zdEstimateScopeChangedHint,
+  zdEstimateScopeDashedHint,
 } from "./zd-estimate-ui-copy";
 
 describe("zd-estimate-ui-copy", () => {
@@ -49,5 +57,32 @@ describe("zd-estimate-ui-copy", () => {
     });
     expect(text).toMatch(/aktualnej bazie/);
     expect(text).toMatch(/katalogowe/);
+  });
+
+  it("route loading bez „dla dostawcy” i ze stałym flow description", () => {
+    expect(ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION).toMatch(/Zakres Subiekta/);
+    expect(zdEstimateRouteLoadingSubtitle()).not.toMatch(/dla dostawcy/i);
+    expect(zdEstimateRouteLoadingSteps().length).toBeGreaterThanOrEqual(2);
+    for (const step of zdEstimateRouteLoadingSteps()) {
+      expect(`${step.title} ${step.activeHint} ${step.doneHint}`).not.toMatch(
+        /dla dostawcy/i
+      );
+      expect(step.title).not.toMatch(/Lista do ZD/i);
+    }
+  });
+
+  it("prep / launch / recount copy", () => {
+    expect(zdEstimateScopeDashedHint("grupa")).toMatch(/Policz listę/);
+    expect(zdEstimateScopeDashedHint("cecha")).toMatch(/Policz listę/);
+    expect(zdEstimateReadyToCountHint()).toMatch(/Gotowe do policzenia/);
+    expect(zdEstimateScopeChangedHint()).toMatch(/Zakres zmieniony/);
+    expect(
+      zdEstimateLaunchProgressTitle({ manualWithScope: true })
+    ).toMatch(/Liczy listę/);
+    expect(
+      zdEstimateLaunchProgressTitle({ manualWithScope: false })
+    ).toMatch(/Przygotowuję zamówienie/);
+    expect(zdEstimateRecountOverlayHint(true)).toMatch(/aktualnej bazy/);
+    expect(zdEstimateRecountOverlayHint(false)).toMatch(/testowego/);
   });
 });
