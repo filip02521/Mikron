@@ -34,6 +34,7 @@ import {
   type SupplierSubiektFilter,
 } from "@/lib/supplier-locations";
 import { suggestOrderOnDemandAfterFieldChange } from "@/lib/orders/supplier-on-demand";
+import { validateSupplierContactFields } from "@/lib/orders/validate-supplier-contact";
 import {
   applyAdminFormToSupplierRow,
   emptySupplierAdminForm,
@@ -102,7 +103,6 @@ export function SuppliersAdminClient({
   const [subiektFilter, setSubiektFilter] = useState<SupplierSubiektFilter>("all");
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<SupplierAdminFormState>(emptySupplierAdminForm);
-  const formRef = useLatest(form);
   const [deleteTarget, setDeleteTarget] = useState<SupplierWithSchedule | null>(null);
   const [deactivateTarget, setDeactivateTarget] = useState<SupplierWithSchedule | null>(
     null
@@ -310,8 +310,17 @@ export function SuppliersAdminClient({
       setToast(SUPPLIER_TOAST.missingName);
       return;
     }
+    const snapshot = { ...form };
+    const contactError = validateSupplierContactFields(
+      snapshot.notes,
+      snapshot.mails,
+      snapshot.extra_info
+    );
+    if (contactError) {
+      setToast({ text: contactError, tone: "error" });
+      return;
+    }
     start(async () => {
-      const snapshot = { ...formRef.current };
       try {
         await actionUpsertSupplier(snapshot);
         if (snapshot.id) {

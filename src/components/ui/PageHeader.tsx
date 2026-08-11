@@ -29,7 +29,7 @@ export function PageHeader({
           ) : null}
         </div>
         {description ? (
-          <p className="max-w-2xl text-[0.9375rem] leading-relaxed text-slate-600">
+          <p className="max-w-3xl text-[0.9375rem] leading-relaxed text-slate-600">
             {description}
           </p>
         ) : null}

@@ -11,7 +11,7 @@ import {
 /** Klucz w app_settings (JSONB array stringów). */
 export const PROCUREMENT_LANE_ORDER_SETTING_KEY = "procurement_request_lane_order";
 
-/** Zawsze pełny zestaw torów systemowych — wariant stockOut filtruje magazyn dopiero w partition. */
+/** Zawsze pełny zestaw torów systemowych (kolejność zapisuje sekcja Prośby). */
 const ALL_SYSTEM_LANES: readonly ProcurementSystemLaneId[] = [
   "triage",
   "do_zamowienia",
@@ -104,8 +104,8 @@ function insertMissingSystemLane(
 
 /**
  * Scala zapisany porządek z aktualnymi flagami.
- * Zawsze pełny zestaw torów systemowych (w tym magazyn_info) — żeby zapis
- * z sekcji stockOut nie gubił pozycji „Magazyn / info”.
+ * Zawsze pełny zestaw torów systemowych (w tym magazyn_info) — kolejność jest
+ * współdzielona w prefsach panelu (Prośby); Brak na stanie nie renderuje torów.
  * Nieznane id pomija; brakujące dorzuca w domyślnych miejscach.
  */
 export function normalizeProcurementLaneOrder(

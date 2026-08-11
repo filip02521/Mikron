@@ -432,9 +432,10 @@ export async function actionBackfillOrdersSubiektTwIdFromSymbol(options?: {
 
     try {
       const res = await searchSubiektProducts({ symbol: o.symbol.trim(), pageSize: 12, page: 1 });
-      const exact = res.data.find((p) => normalizeSymbol(p.tw_Symbol) === sym) ?? null;
-      const picked = exact ?? res.data[0] ?? null;
-      const twId = picked?.tw_Id != null ? Number(picked.tw_Id) : null;
+      // Tylko dokładny symbol — nigdy pierwsze trafienie z wyszukiwarki (doklejało złe tw_Id).
+      const exact =
+        res.data.find((p) => normalizeSymbol(p.tw_Symbol) === sym) ?? null;
+      const twId = exact?.tw_Id != null ? Number(exact.tw_Id) : null;
       if (!twId || !Number.isFinite(twId) || twId <= 0) continue;
 
       const { error: updErr } = await supabase

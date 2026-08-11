@@ -13,6 +13,12 @@ import { panelRowClearFocusOnLeave, panelRowGroupClass } from "@/lib/ui/panel-ro
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 import { sidePanelBackdropClass, sidePanelShellClass, sidePanelCloseButtonClass, sidePanelHeaderClass, sidePanelContentClass } from "@/lib/ui/surfaces";
 import { IconX } from "@/components/icons/StrokeIcons";
+import {
+  DAILY_PANEL_MARK_ORDERED_LABEL,
+  DAILY_PANEL_MARK_ORDERED_PENDING,
+  DAILY_PANEL_MARK_ORDERED_PENDING_OVERLAY,
+  dailyPanelMarkOrderedToastTitle,
+} from "@/lib/orders/daily-panel-mark-ordered-copy";
 
 export function OnDemandSuppliersSheet({
   open,
@@ -118,16 +124,19 @@ export function OnDemandSuppliersSheet({
                           variant="primary"
                           size="sm"
                           disabled={rowPending}
+                          aria-busy={rowPending}
                           onClick={() =>
                             run(
                               () => actionMarkOrdered(row.supplierId),
-                              `Zamówiono: ${row.supplierName}`,
-                              "Oznaczanie jako zamówione…",
+                              dailyPanelMarkOrderedToastTitle(row.supplierName),
+                              DAILY_PANEL_MARK_ORDERED_PENDING_OVERLAY,
                               { scope: row.supplierId }
                             )
                           }
                         >
-                          Zamówione
+                          {rowPending
+                            ? DAILY_PANEL_MARK_ORDERED_PENDING
+                            : DAILY_PANEL_MARK_ORDERED_LABEL}
                         </Button>
                       </PanelRowActionsInlineEnd>
                     </div>

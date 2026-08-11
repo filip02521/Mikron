@@ -18,7 +18,7 @@ import {
   searchSubiektZdCached,
 } from "@/lib/subiekt/subiekt-runtime-cache";
 import {
-  buildZdReceiveFilterState,
+  buildZdReceiveFilterStateWithPairs,
   resolveSupplierForZdDocument,
   type ZdReceiveFilterState,
 } from "@/lib/warehouse/zd-receive-filter";
@@ -315,7 +315,7 @@ async function loadZdReceiveFilterByDokId(dokId: number): Promise<ZdReceiveFilte
     );
   }
 
-  return buildZdReceiveFilterState({
+  return buildZdReceiveFilterStateWithPairs({
     dokId: id,
     doc,
     supplier,

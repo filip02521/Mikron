@@ -58,4 +58,22 @@ describe("buildSupplierContactUi", () => {
     const ui = buildSupplierContactUi("TELEFONICZNIE", "", "tel. +48 501 234 567");
     expect(ui.contactLink?.kind).toBe("tel");
   });
+
+  it("telefon w extra_info mimo e-maila w mails", () => {
+    const ui = buildSupplierContactUi(
+      "TELEFONICZNIE",
+      "biuro@dostawca.pl",
+      "tel. +48 501 234 567"
+    );
+    expect(ui.contactLink?.kind).toBe("tel");
+    expect(ui.contactLink?.href).toMatch(/^tel:/);
+  });
+
+  it("telefon obok e-maila w jednym polu", () => {
+    const ui = buildSupplierContactUi(
+      "TELEFONICZNIE",
+      "biuro@dostawca.pl, 501 234 567"
+    );
+    expect(ui.contactLink?.kind).toBe("tel");
+  });
 });

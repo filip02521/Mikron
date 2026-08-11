@@ -17,7 +17,11 @@ import {
   findBestMatchingZdDocument,
   isConfidentZdMatchForOrder,
   orderMatchesZdDocument,
+  qtyToPiecesForPairMatch,
+  type ZdPairMatchIndex,
 } from "@/lib/subiekt/match-order-to-zd";
+import { loadZdPairMatchIndex } from "@/lib/orders/zd-product-pair-stock";
+import { twinTwIdsForPairMatch } from "@/lib/orders/zd-product-pair-units";
 import {
   getSubiektZdDocumentCached,
   searchSubiektZdCachedForEta,
@@ -374,15 +378,23 @@ export function productToZdLookupOrder(
   };
 }
 
-function matchedLineQuantity(product: SubiektProduct, doc: SubiektDocument): number | null {
+function matchedLineQuantity(
+  product: SubiektProduct,
+  doc: SubiektDocument,
+  pairs?: ZdPairMatchIndex | null
+): number | null {
   const order = productToZdLookupOrder(product);
-  if (!orderMatchesZdDocument(order, doc)) return null;
+  if (!orderMatchesZdDocument(order, doc, pairs)) return null;
   const twId = order.subiekt_tw_id;
+  const twins = twId != null ? twinTwIdsForPairMatch(twId, pairs) : [];
+  const twinSet = new Set(twins);
   for (const line of doc.dok_Pozycja ?? []) {
-    if (twId && lineTowId(line) === twId) {
+    const lineTw = lineTowId(line);
+    if (lineTw != null && (twinSet.has(lineTw) || (twId && lineTw === twId))) {
       const raw = line.ob_Ilosc;
       const qty = typeof raw === "number" ? raw : Number(raw);
-      return Number.isFinite(qty) ? qty : null;
+      if (!Number.isFinite(qty)) return null;
+      return qtyToPiecesForPairMatch(lineTw, qty, pairs);
     }
   }
   return null;
@@ -403,7 +415,8 @@ function toLookupMatch(
   product: SubiektProduct,
   doc: SubiektDocument,
   supplier: SupplierResolution,
-  appSuppliers: AppSupplierRef[]
+  appSuppliers: AppSupplierRef[],
+  pairs?: ZdPairMatchIndex | null
 ): ProductZdLookupMatch | null {
   const deadline = parseZdFulfillmentDeadline(doc);
   if (!deadline || !isActiveZdFulfillmentDocument(doc)) return null;
@@ -417,7 +430,7 @@ function toLookupMatch(
     supplierId: supplier.supplierId,
     supplierName:
       supplier.supplierName ?? supplierNameForDoc(doc, appSuppliers, supplier.supplierId),
-    quantity: matchedLineQuantity(product, doc),
+    quantity: matchedLineQuantity(product, doc, pairs),
   };
 }
 
@@ -435,13 +448,14 @@ export function collectActiveProductZdMatches(
   product: SubiektProduct,
   docs: SubiektDocument[],
   supplier: SupplierResolution,
-  appSuppliers: AppSupplierRef[]
+  appSuppliers: AppSupplierRef[],
+  pairs?: ZdPairMatchIndex | null
 ): ProductZdLookupMatch[] {
   const order = productToZdLookupOrder(product);
   const rankedDocs = docs
-    .filter((doc) => orderMatchesZdDocument(order, doc) && isActiveZdFulfillmentDocument(doc))
+    .filter((doc) => orderMatchesZdDocument(order, doc, pairs) && isActiveZdFulfillmentDocument(doc))
     .sort((a, b) => {
-      const best = findBestMatchingZdDocument(order, [a, b]);
+      const best = findBestMatchingZdDocument(order, [a, b], { pairs });
       if (best?.dok_Id === a.dok_Id) return -1;
       if (best?.dok_Id === b.dok_Id) return 1;
       const da = parseZdFulfillmentDeadline(a) ?? "";
@@ -452,7 +466,7 @@ export function collectActiveProductZdMatches(
   const matches: ProductZdLookupMatch[] = [];
   const seen = new Set<number>();
   for (const doc of rankedDocs) {
-    const match = toLookupMatch(product, doc, supplier, appSuppliers);
+    const match = toLookupMatch(product, doc, supplier, appSuppliers, pairs);
     if (!match || seen.has(match.dokId)) continue;
     seen.add(match.dokId);
     matches.push(match);
@@ -598,21 +612,23 @@ function isLookupSearchIncomplete(flags: LookupIncompleteFlags): boolean {
 function productZdDocumentMatchesLookup(
   order: IndividualOrder,
   doc: SubiektDocument,
-  khIds: readonly number[]
+  khIds: readonly number[],
+  pairs?: ZdPairMatchIndex | null
 ): boolean {
   if (khIds.length > 0 && !zdDocumentMatchesSupplierKhIds(doc, khIds)) return false;
-  if (!orderMatchesZdDocument(order, doc)) return false;
+  if (!orderMatchesZdDocument(order, doc, pairs)) return false;
   return isActiveZdFulfillmentDocument(doc);
 }
 
 function productZdConfidentMatchLookup(
   order: IndividualOrder,
   doc: SubiektDocument,
-  khIds: readonly number[]
+  khIds: readonly number[],
+  pairs?: ZdPairMatchIndex | null
 ): boolean {
   return (
-    productZdDocumentMatchesLookup(order, doc, khIds) &&
-    isConfidentZdMatchForOrder(order, doc)
+    productZdDocumentMatchesLookup(order, doc, khIds, pairs) &&
+    isConfidentZdMatchForOrder(order, doc, pairs)
   );
 }
 
@@ -628,7 +644,8 @@ export async function liveSearchProductZdBySymbolWindows(
   placementAt: string | null,
   budget: number,
   skipDocIds: ReadonlySet<number>,
-  loadDoc: (dokId: number) => Promise<SubiektDocument | null>
+  loadDoc: (dokId: number) => Promise<SubiektDocument | null>,
+  pairs?: ZdPairMatchIndex | null
 ): Promise<{ docs: SubiektDocument[]; fetched: number; matched: SubiektDocument | null }> {
   const symbol = effectiveProductSymbol(product);
   if (!symbol || symbol.length < 3 || budget <= 0) {
@@ -717,19 +734,19 @@ export async function liveSearchProductZdBySymbolWindows(
       fetched++;
       chunkFetched++;
       docs.push(full);
-      if (productZdConfidentMatchLookup(order, full, khIds)) {
+      if (productZdConfidentMatchLookup(order, full, khIds, pairs)) {
         return {
           docs,
           fetched,
-          matched: findBestMatchingZdDocument(order, docs) ?? full,
+          matched: findBestMatchingZdDocument(order, docs, { pairs }) ?? full,
         };
       }
     }
   }
 
-  const matchingDocs = docs.filter((doc) => productZdDocumentMatchesLookup(order, doc, khIds));
+  const matchingDocs = docs.filter((doc) => productZdDocumentMatchesLookup(order, doc, khIds, pairs));
   const matched = matchingDocs.length
-    ? findBestMatchingZdDocument(order, matchingDocs)
+    ? findBestMatchingZdDocument(order, matchingDocs, { pairs })
     : null;
   return { docs, fetched, matched };
 }
@@ -743,6 +760,7 @@ export async function searchProductZdWithSupplier(
   khIds: readonly number[]
 ): Promise<{ matches: ProductZdLookupMatch[]; searchIncomplete: boolean }> {
   const order = productLookupSearchOrder(product, placementAt);
+  const pairs = await loadZdPairMatchIndex();
 
   if (!khIds.length) {
     return { matches: [], searchIncomplete: false };
@@ -787,7 +805,7 @@ export async function searchProductZdWithSupplier(
   };
 
   const collectMatches = (): ProductZdLookupMatch[] =>
-    collectActiveProductZdMatches(product, docs, supplier, appSuppliers);
+    collectActiveProductZdMatches(product, docs, supplier, appSuppliers, pairs);
 
   const indexPlacementInputs = searchPlacements.length
     ? searchPlacements
@@ -817,7 +835,7 @@ export async function searchProductZdWithSupplier(
     skipDocIds,
     loadDoc: loadDocForLookup,
     preferIssueDateNear: placementAt ?? searchPlacements[0] ?? undefined,
-    ...buildZdIndexSearchEarlyStopHandlers(order, khIds),
+    ...buildZdIndexSearchEarlyStopHandlers(order, khIds, pairs),
   });
   fetched += indexSearch.fetched;
   incompleteFlags.indexStoppedEarly = indexSearch.stoppedEarly;
@@ -842,7 +860,8 @@ export async function searchProductZdWithSupplier(
       placementAt,
       symbolBudget,
       skipDocIds,
-      loadDocForLookup
+      loadDocForLookup,
+      pairs
     );
     fetched += symbolLive.fetched;
     incompleteFlags.symbolExhausted = symbolLive.fetched >= symbolBudget;
@@ -880,7 +899,7 @@ export async function searchProductZdWithSupplier(
       skipDocIds,
       loadDoc: loadDocForLookup,
       preferIssueDateNear: placementAt ?? searchPlacements[0] ?? undefined,
-      matchDoc: (doc) => productZdConfidentMatchLookup(order, doc, khIds),
+      matchDoc: (doc) => productZdConfidentMatchLookup(order, doc, khIds, pairs),
     });
     fetched += browse.fetched;
     if (browse.stoppedEarly) incompleteFlags.browseStoppedEarly = true;
@@ -900,7 +919,8 @@ export async function searchProductZdWithSupplier(
       khIds,
       twBudget,
       skipDocIds,
-      loadDocForLookup
+      loadDocForLookup,
+      pairs
     );
     if (!twSearch.doc) return false;
     liveSearchDocLoads += 1;
@@ -921,7 +941,8 @@ export async function searchProductZdWithSupplier(
       liveBudget,
       liveBudget,
       skipDocIds,
-      loadDocForLookup
+      loadDocForLookup,
+      pairs
     );
     fetched += live.fetched;
     liveSearchDocLoads += live.fetched;

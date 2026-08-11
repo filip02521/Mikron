@@ -7,6 +7,7 @@ import {
   searchZdFromIndexForOrder,
 } from "@/lib/subiekt/zd-eta-index-search";
 import { findBestMatchingZdDocument } from "@/lib/subiekt/match-order-to-zd";
+import { loadZdPairMatchIndex } from "@/lib/orders/zd-product-pair-stock";
 import { parseZdFulfillmentDeadline } from "@/lib/subiekt/zd-fulfillment-date";
 import { getSubiektZdDocumentCached } from "@/lib/subiekt/subiekt-runtime-cache";
 import {
@@ -76,10 +77,11 @@ function statsMapFromRows(
 function matchOrderDoc(
   order: IndividualOrder,
   doc: SubiektDocument,
-  khIds: readonly number[]
+  khIds: readonly number[],
+  pairs?: import("@/lib/subiekt/match-order-to-zd").ZdPairMatchIndex | null
 ): boolean {
   if (!zdDocumentMatchesSupplierKhIds(doc, khIds)) return false;
-  return Boolean(findBestMatchingZdDocument(order, [doc]));
+  return Boolean(findBestMatchingZdDocument(order, [doc], { pairs }));
 }
 
 async function fetchOrderPool(salesPersonId?: string): Promise<IndividualOrder[]> {
@@ -127,6 +129,7 @@ export async function diagnoseZdEtaForOrder(
   options?: { maxDocsPerOrder?: number }
 ): Promise<ZdEtaOrderDiagnosis> {
   const maxDocsPerPhase = options?.maxDocsPerOrder ?? ZD_ETA_EXTENDED_DOCS_PER_ORDER;
+  const pairs = await loadZdPairMatchIndex();
   const placement = zdSearchPlacementAt(order);
   const extendedDataOd = zdContractorExtendedDataOdForPlacement(placement);
   const browseMonthChunks =
@@ -199,7 +202,7 @@ export async function diagnoseZdEtaForOrder(
     skipDocIds: skip,
     loadDoc: loadDocForPhase(maxDocsPerPhase),
     preferIssueDateNear: placement ?? undefined,
-    ...buildZdIndexSearchEarlyStopHandlers(order, khIds),
+    ...buildZdIndexSearchEarlyStopHandlers(order, khIds, pairs),
   });
   for (const doc of indexSearch.docs) {
     skip.add(Math.trunc(Number(doc.dok_Id)));
@@ -208,11 +211,11 @@ export async function diagnoseZdEtaForOrder(
     return finish("index", indexSearch.matched);
   }
   const indexMatched = indexSearch.docs
-    .filter((doc) => matchOrderDoc(order, doc, khIds))
+    .filter((doc) => matchOrderDoc(order, doc, khIds, pairs))
     .map((doc) => doc);
   const indexBest =
     indexMatched.length > 0
-      ? findBestMatchingZdDocument(order, indexMatched)
+      ? findBestMatchingZdDocument(order, indexMatched, { pairs })
       : null;
   if (indexBest) {
     return finish("index", indexBest);
@@ -241,7 +244,7 @@ export async function diagnoseZdEtaForOrder(
       loadDoc: loadDocForPhase(maxDocsPerPhase),
       preferIssueDateNear: placement ?? undefined,
     });
-    const browseMatched = findBestMatchingZdDocument(order, browse.docs);
+    const browseMatched = findBestMatchingZdDocument(order, browse.docs, { pairs });
     if (browseMatched) {
       return {
         hit: finish("browse", browseMatched, { indexCandidates: indexRows.length }),
@@ -257,7 +260,8 @@ export async function diagnoseZdEtaForOrder(
       khIds,
       maxDocsPerPhase,
       skip,
-      loadDocForPhase(maxDocsPerPhase)
+      loadDocForPhase(maxDocsPerPhase),
+      pairs
     );
     if (twSearch.doc) {
       return finish("live", twSearch.doc, { indexCandidates: indexRows.length });
@@ -270,7 +274,8 @@ export async function diagnoseZdEtaForOrder(
       maxDocsPerPhase,
       maxDocsPerPhase,
       skip,
-      loadDocForPhase(maxDocsPerPhase)
+      loadDocForPhase(maxDocsPerPhase),
+      pairs
     );
     if (live.matched) {
       return finish("live", live.matched, { indexCandidates: indexRows.length });

@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   isBoardAnswerUnseen,
   countUnseenOwnBoardAnswers,
+  latestOwnUnseenAnswerActivityAt,
   latestQuestionActivityAt,
   pickUnseenAnswerPreview,
   type UnseenBoardAnswer,
@@ -353,6 +354,7 @@ export async function fetchSalesBoardAttentionSnapshot(
 
   const preview = pickUnseenAnswerPreview(unseenAnswerItems);
   const unseenOwnAnswerCount = countUnseenOwnBoardAnswers(unseenAnswerItems);
+  const latestOwnAnswerActivityAt = latestOwnUnseenAnswerActivityAt(unseenAnswerItems);
   const unseenOwnQuestionIds = unseenAnswerItems
     .filter((item) => item.isOwnQuestion)
     .map((item) => item.threadId);
@@ -365,6 +367,7 @@ export async function fetchSalesBoardAttentionSnapshot(
     unreadAnnouncementBannerLatestId,
     unseenAnswerCount: unseenAnswerItems.length,
     unseenOwnAnswerCount,
+    latestOwnAnswerActivityAt,
     unseenAnswerPreview: preview
       ? {
           threadId: preview.threadId,

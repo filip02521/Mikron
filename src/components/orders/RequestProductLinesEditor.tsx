@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { IndividualRequestKind } from "@/types/database";
+import type { IndividualRequestKind, DeliveryStats } from "@/types/database";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { IconPlusCircle } from "@/components/icons/StrokeIcons";
@@ -9,7 +9,9 @@ import { SubiektClientNameField } from "@/components/subiekt/SubiektClientNameFi
 import { SubiektProductLineFields } from "@/components/subiekt/SubiektProductLineFields";
 import { ProsbaProductLineCollapsedRow } from "@/components/orders/ProsbaProductLineCollapsedRow";
 import { ProsbaProductLineNoteField } from "@/components/orders/ProsbaProductLineNoteField";
+import { ProsbaSupplierLeadTimeMeta } from "@/components/orders/ProsbaSupplierLeadTimeMeta";
 import { cn } from "@/lib/cn";
+import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import {
   appendProductLine,
   newProductLine,
@@ -80,6 +82,10 @@ export function RequestProductLinesEditor({
   allowedTwIdsHint,
   lockSubiektLink = false,
   groupSupplierId,
+  formSuppliers,
+  statsBySupplierId,
+  showLinkedLeadTime = false,
+  linkedLeadTimeOmitSupplierIds,
 }: {
   lines: ProductLineDraft[];
   onChange: (lines: ProductLineDraft[]) => void;
@@ -136,6 +142,13 @@ export function RequestProductLinesEditor({
   lockSubiektLink?: boolean;
   /** Dostawca z nagłówka grupy — do dopasowania braków przy liście zębów. */
   groupSupplierId?: string | null;
+  /** Pełna lista dostawców z stats_mode — meta czasu dostawy pod powiązaniem produktu. */
+  formSuppliers?: OrderFormSupplierOption[];
+  statsBySupplierId?: Record<string, DeliveryStats>;
+  /** Meta dostawy pod „Powiązano z Subiektem” / „Z bazy” (tylko zamowienie). */
+  showLinkedLeadTime?: boolean;
+  /** Nie powtarzaj mety dla tych dostawców (np. już w banerze harmonogramu). */
+  linkedLeadTimeOmitSupplierIds?: readonly string[];
 }) {
   const canRemove = lines.length > minLines;
   const prosba = appearance === "prosba";
@@ -322,6 +335,32 @@ export function RequestProductLinesEditor({
             )
           : undefined;
 
+        const lineSupplierId =
+          (
+            line as ProductLineDraft & {
+              supplierId?: string;
+            }
+          ).supplierId?.trim() ||
+          groupSupplierId?.trim() ||
+          "";
+        const omitLeadTime =
+          Boolean(lineSupplierId) &&
+          (linkedLeadTimeOmitSupplierIds?.includes(lineSupplierId) ?? false);
+        const linkedLeadTime =
+          showLinkedLeadTime &&
+          requestKind === "zamowienie" &&
+          formSuppliers &&
+          statsBySupplierId &&
+          lineSupplierId &&
+          !omitLeadTime ? (
+            <ProsbaSupplierLeadTimeMeta
+              variant="underLink"
+              supplierIds={[lineSupplierId]}
+              suppliers={formSuppliers}
+              statsBySupplierId={statsBySupplierId}
+            />
+          ) : null;
+
         return (
           <div
             key={line.id}
@@ -459,6 +498,7 @@ export function RequestProductLinesEditor({
               allowedTwIdsHint={allowedTwIdsHint}
               lockSubiektLink={lockSubiektLink}
               groupSupplierId={groupSupplierId}
+              linkedLeadTime={linkedLeadTime}
             />
 
             {prosba ? (

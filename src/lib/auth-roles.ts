@@ -126,6 +126,11 @@ function canAccessPathForRole(
 ): boolean {
   const ws = options?.workspaces;
 
+  // Przed remapem panelu admina — realna rola `admin` (nie „zakupy” z cookie).
+  if (pathname === "/zakupy/szacunek" || pathname.startsWith("/zakupy/szacunek/")) {
+    return isAdmin(role);
+  }
+
   if (isAdmin(role) && options?.adminPanelContext && options.adminPanelContext !== "admin") {
     if (pathname === "/admin/wybor-handlowca") return true;
     return canAccessPathForRole(options.adminPanelContext, pathname, {

@@ -536,6 +536,7 @@ export function buildOnboardingBoardAttention() {
   return {
     unseenAnswerCount: 1,
     unseenOwnAnswerCount: 0,
+    latestOwnAnswerActivityAt: null,
     unseenAnswerPreview: {
       threadId: "demo-board-question-answered",
       title: "Próbki implantów poza harmonogramem?",
@@ -559,6 +560,7 @@ export function buildOnboardingDayStartContext(salesPersonId: string) {
       unreadAnnouncementBannerLatestId: "demo-board-announcement",
       unseenAnswerCount: 1,
       unseenOwnAnswerCount: 0,
+      latestOwnAnswerActivityAt: null,
       unseenAnswerPreview: {
         threadId: "demo-board-question-answered",
         title: "Próbki implantów poza harmonogramem?",

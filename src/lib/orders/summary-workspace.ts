@@ -226,6 +226,41 @@ function toMeta(s: SupplierWithSchedule): SupplierSummaryMeta {
   };
 }
 
+/** Minimalne meta z joina zamówienia — gdy dostawcy nie ma w aktywnym harmonogramie (drawer nadal działa). */
+function ensureSupplierMetaFromOrders(
+  supplierMeta: Record<string, SupplierSummaryMeta>,
+  orders: IndividualOrder[]
+) {
+  for (const order of orders) {
+    const id = order.supplier_id;
+    if (!id || supplierMeta[id]) continue;
+    const s = order.supplier;
+    if (!s?.id) continue;
+    supplierMeta[id] = {
+      id: s.id,
+      name: s.name,
+      location: s.location,
+      mails: s.mails ?? "",
+      notes: s.notes ?? "",
+      extra_info: s.extra_info ?? "",
+      interval_raw: s.interval_raw ?? null,
+      interval_weeks: s.interval_weeks != null ? Number(s.interval_weeks) : null,
+      stock_raw: s.stock_raw ?? null,
+      stock: s.stock != null ? Number(s.stock) : null,
+      pickup_mikran: Boolean(s.pickup_mikran),
+      pickup_pallet: Boolean(s.pickup_pallet),
+      order_on_demand: isSupplierOrderOnDemand(s),
+      is_active: s.is_active !== false,
+      order_date: null,
+      shift_date: null,
+      computed_next_date: null,
+      vacation_note: null,
+      stats_mode: (s.stats_mode ?? "LACZNIE") as StatsMode,
+      subiekt_kh_id: s.subiekt_kh_id ?? null,
+    };
+  }
+}
+
 function toStandardItem(t: TargetRow, note: string): SummaryStandardItem {
   return {
     kind: "standard",
@@ -330,6 +365,8 @@ export function buildSummaryWorkspace(
   for (const s of schedules) {
     supplierMeta[s.id] = toMeta(s);
   }
+  ensureSupplierMetaFromOrders(supplierMeta, newOrders);
+  ensureSupplierMetaFromOrders(supplierMeta, salesCancelledOrders);
 
   const onDemandSuppliers: OnDemandSupplierRow[] = schedules
     .filter((s) => isSupplierOrderOnDemand(s))

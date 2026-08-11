@@ -1,4 +1,6 @@
 import { getAppUrl } from "@/lib/env/app-config";
+import { salesBoardQuestionHref } from "@/lib/data/department-board-shared";
+import { escapeHtml } from "@/lib/security/escape-html";
 import type {
   SalesDeliveryNotificationItem,
   SalesInformacjaNotificationItem,
@@ -473,6 +475,115 @@ export function renderRequestNoteUpdateEmail(params: {
       headerTitle: "Zaktualizowano uwagi",
       headerSubtitle: "Dział zakupów",
       accentColor: EMAIL_THEME.info,
+      bodyHtml: body,
+    }),
+  };
+}
+
+function tablicaQuestionUrl(threadId: string): string {
+  return `${getAppUrl().replace(/\/$/, "")}${salesBoardQuestionHref(threadId)}`;
+}
+
+function escapeMultilineAsHtml(text: string): string {
+  return escapeHtml(text).replace(/\r\n|\r|\n/g, "<br />");
+}
+
+/** Blok wieloliniowy wewnątrz karty (odpowiedź / treść pytania). */
+function boardMessageBlock(label: string, text: string, emphasize = false): string {
+  const safeLabel = escapeHtml(label);
+  const body = escapeMultilineAsHtml(text.trim());
+  if (!body) return "";
+  const bg = emphasize ? EMAIL_THEME.boardBg : EMAIL_THEME.background;
+  const border = emphasize ? EMAIL_THEME.boardBorder : EMAIL_THEME.border;
+  const labelColor = emphasize ? EMAIL_THEME.board : EMAIL_THEME.muted;
+  return `<div style="margin-top:12px;padding:12px 14px;border-radius:8px;border:1px solid ${border};background-color:${bg};">
+  <div style="font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:${labelColor};margin-bottom:6px;">${safeLabel}</div>
+  <div style="font-size:14px;line-height:1.55;color:${EMAIL_THEME.foreground};word-break:break-word;">${body}</div>
+</div>`;
+}
+
+function renderBoardQuestionReplyCard(params: {
+  questionTitle: string;
+  questionBody?: string | null;
+  productSymbol?: string | null;
+  productName?: string | null;
+  replyBody: string;
+}): string {
+  const title = params.questionTitle.trim() || "Twoje pytanie";
+  const reply = params.replyBody.trim();
+  const rows: string[] = [
+    emailDataRow("Temat", title),
+    emailDataRow("Źródło", "Tablica (rozmowa z działem zakupów)"),
+  ];
+  if (params.productSymbol?.trim()) {
+    rows.push(emailDataRow("Symbol", params.productSymbol.trim()));
+  }
+  if (params.productName?.trim()) {
+    rows.push(emailDataRow("Produkt", params.productName.trim()));
+  }
+
+  const afterRowsHtml = [
+    params.questionBody?.trim()
+      ? boardMessageBlock("Treść Twojego pytania", params.questionBody)
+      : "",
+    boardMessageBlock("Odpowiedź działu zakupów", reply, true),
+  ].join("");
+
+  return emailItemCard(
+    {
+      label: "Tablica · wiadomość",
+      bg: EMAIL_THEME.boardBg,
+      color: EMAIL_THEME.board,
+      border: EMAIL_THEME.boardBorder,
+    },
+    rows.join(""),
+    { afterRowsHtml }
+  );
+}
+
+/** E-mail: dział zakupów odpowiedział na pytanie handlowca na Tablicy. */
+export function renderBoardQuestionReplyEmail(params: {
+  recipientName: string;
+  threadId: string;
+  questionTitle: string;
+  questionBody?: string | null;
+  productSymbol?: string | null;
+  productName?: string | null;
+  replyBody: string;
+}): { subject: string; html: string } {
+  const title = params.questionTitle.trim() || "Twoje pytanie";
+  const reply = params.replyBody.trim();
+
+  const body = [
+    emailGreeting(firstName(params.recipientName)),
+    emailParagraph(
+      "Dział zakupów odpowiedział na Twoje pytanie na <strong>Tablicy</strong>."
+    ),
+    renderBoardQuestionReplyCard({
+      questionTitle: title,
+      questionBody: params.questionBody,
+      productSymbol: params.productSymbol,
+      productName: params.productName,
+      replyBody: reply,
+    }),
+    emailMutedParagraph(
+      "Otwórz wątek w aplikacji, żeby zobaczyć całą rozmowę i oznaczyć odpowiedź jako przeczytaną."
+    ),
+    emailButton(tablicaQuestionUrl(params.threadId), "Otwórz pytanie na Tablicy"),
+    emailMutedParagraph(
+      "To automatyczna wiadomość z systemu OnTime (Mikran). Nie odpowiadaj na ten e-mail."
+    ),
+  ].join("");
+
+  const subjectTitle = truncateSubjectPart(title, 52);
+  return {
+    subject: `OnTime · Tablica: odpowiedź — ${subjectTitle}`,
+    html: emailDocument({
+      preheader: `Tablica · odpowiedź: ${truncateSubjectPart(reply || title, 80)}`,
+      headerTitle: "Wiadomość z Tablicy",
+      headerSubtitle: "Odpowiedź na Twoje pytanie",
+      accentColor: EMAIL_THEME.board,
+      accentEndColor: EMAIL_THEME.boardHover,
       bodyHtml: body,
     }),
   };

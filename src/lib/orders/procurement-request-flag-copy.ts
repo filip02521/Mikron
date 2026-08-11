@@ -3,6 +3,7 @@ export const PROCUREMENT_REQUEST_FLAG_COPY = {
   overflowSectionRequest: "Prośba",
   overflowSectionFlag: "Flaga",
   overflowEdit: "Popraw dane",
+  overflowSupplierDetails: "Szczegóły dostawcy",
   overflowCancelRequest: "Anuluj prośbę",
   overflowFlagActive: "teraz",
   /** Modal z opisem / wyborem pozycji — poniżej szybkich skrótów. */

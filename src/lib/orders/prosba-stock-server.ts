@@ -22,6 +22,8 @@ export type ProsbaStockServerLine = {
   reserved?: number | null;
   available?: number | null;
   stockSource?: "subiekt" | null;
+  pairStockCover?: boolean;
+  pairUnitsPerPack?: number | null;
 };
 
 export class ProsbaSufficientStockError extends Error {
@@ -38,7 +40,13 @@ export function formatProsbaServerStockRejectMessage(lines: ProsbaStockServerLin
     const name = line.product?.trim() || line.symbol?.trim() || line.mikranCode?.trim() || "Produkt";
     const qty = line.quantity?.trim() || "?";
     const avail = line.available;
-    const availPart = avail != null && Number.isFinite(avail) ? ` (stan: ${avail} szt.)` : "";
+    const pairHint = line.pairStockCover
+      ? " — cover pary (sztuki + paczki; wystarczy po demontażu)"
+      : "";
+    const availPart =
+      avail != null && Number.isFinite(avail)
+        ? ` (stan: ${avail} szt.${pairHint})`
+        : "";
     return `• ${name} — ${qty} szt.${availPart}`;
   });
   return `Część pozycji ma wystarczający stan magazynowy w Subiekcie:\n\n${names.join("\n")}\n\n${PROSBA_STOCK_ACK_REQUIRED_HINT} lub odśwież dane magazynowe.`;
@@ -94,10 +102,15 @@ export async function findProsbaLinesWithSufficientStock(input: {
     const snap = stockSnapshotForServerLine(line, stockByTwId);
     if (!snap) continue;
 
-    const lineWithAvail =
-      line.available == null && snap.available != null
-        ? { ...line, available: snap.available }
-        : line;
+    const lineWithAvail = {
+      ...line,
+      available: snap.available,
+      onHand: snap.onHand,
+      reserved: snap.reserved,
+      stockSource: "subiekt" as const,
+      pairStockCover: snap.pairAware === true ? true : undefined,
+      pairUnitsPerPack: snap.pairUnitsPerPack ?? null,
+    };
 
     if (
       assessProsbaLineStock({ requestedQty, stock: snap }) === "sufficient"

@@ -259,6 +259,12 @@ export const adminPageShellClass = salesTeamPageShellClass;
 /** Historia, zamówienie grupowe — jak karty dostawców (tabele bez ucinania). */
 export const procurementArchivePageShellClass = adminPageShellClass;
 
+/**
+ * Szacunek ZD — prawie pełna szerokość obszaru main (tabela z wieloma kolumnami).
+ */
+export const zdEstimatePageShellClass =
+  "relative mx-auto w-full max-w-[min(100%,100rem)] space-y-6";
+
 /** Treść wewnątrz karty huba administracji / dostawców. */
 export const adminHubBodyClass = "min-w-0 space-y-4 p-3 sm:p-4 lg:p-5";
 

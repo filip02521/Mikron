@@ -1,6 +1,6 @@
 # Integracja z Subiektem (REST API v1)
 
-Aplikacja łączy się z **HTTP REST API** Subiekta (odczyt SELECT z MSSQL) — nie bezpośrednio z Sferą ani SQL.
+Aplikacja łączy się z **HTTP REST API** Subiekta (odczyt SELECT z MSSQL; na ORDERS `:5082` także create ZD przez Sferę) — nie bezpośrednio z Sferą z procesu Next.
 
 ## Sieć firmowa (LAN)
 
@@ -47,7 +47,11 @@ Oczekiwana odpowiedź:
 | `SUBIEKT_API_HEALTH_PATH` | nie | Domyślnie `/health` |
 | `SUBIEKT_API_TIMEOUT_MS` | nie | Domyślnie `15000` |
 
-## Endpointy API (odczyt)
+## Endpointy API
+
+Host **live** (`SUBIEKT_API_BASE_URL`, zwykle `:5080`) — głównie **odczyt**.
+
+Host **ORDERS / test** (`SUBIEKT_API_ORDERS_BASE_URL`, `:5082`) — szacunek ZD oraz **tworzenie ZD przez Sferę**.
 
 Wszystkie listy zwracają envelope:
 
@@ -70,8 +74,82 @@ Wszystkie listy zwracają envelope:
 | GET | `/documents/zk` | Zamówienia od klientów (typ 16) |
 | GET | `/documents/zd` | Zamówienia do dostawców (typ 15) |
 | GET | `/documents/zd/:id` | Jedno ZD (pełne linie) |
+| POST | `/documents/zd/create` | **Tylko ORDERS `:5082`** — tworzy ZD (Sfera `DodajZD`). Live `:5080` → 404 |
+| GET | `/groups` | Grupy towarowe (`sl_GrupaTw`) — zwykle na hoście ORDERS |
+| GET | `/cechy/towarow` | Słownik cech towarów (`sl_CechaTw`) — host ORDERS |
+| GET | `/orders/zd/estimate` | Szacunek ilości do ZD — sandbox `/zakupy/szacunek` |
+| GET | `/products/komplety` | **Do wdrożenia:** komplety `tw_Komplet` (pack↔piece, `liczba`) — sync par w OnTime |
 | GET | `/examples` | Przykłady zapytań |
 | GET | `/docs` | Dokumentacja OpenAPI (HTML) |
+
+### `GET /orders/zd/estimate` — filtry zakresu
+
+Query (host ORDERS :5082): `dataOd`, `dataDo`, `dniZapasu`, `zapasMin`, `tylkoBraki`, `page`, `pageSize`, oraz **jeden** filtr zakresu:
+
+| Parametr | Znaczenie |
+|----------|-----------|
+| `grupaId` | `tw_IdGrupa` |
+| `cechaId` | `ctw_Id` (towary z `tw_CechaTw`) |
+| `towarId` | jeden `tw_Id` |
+
+OnTime wysyła XOR: albo `grupaId`, albo `cechaId` (nigdy oba, nigdy puste — bez filtra API zwraca cały katalog). Echo w `parametry.grupaId` / `parametry.cechaId` jest weryfikowane **zaraz po 1. stronie** (przed dociągnięciem kolejnych stron).
+
+`GET /cechy/towarow`: `search`, `id`, `page`, `pageSize` → `{ ctw_Id, ctw_Nazwa }`.
+
+### Spec `GET /products/komplety` (ORDERS :5082 — brakuje w API)
+
+Źródło SQL: `tw_Komplet` (`kpl_Id`, `kpl_IdKomplet`, `kpl_IdSkladnik`, `kpl_Liczba`).
+
+Query: `kompletId?`, `skladnikId?`, `page`, `pageSize`.
+
+Odpowiedź wiersza:
+
+```json
+{
+  "kpl_Id": 1,
+  "kompletTwId": 10,
+  "skladnikTwId": 20,
+  "liczba": 100,
+  "kompletSymbol": "…",
+  "skladnikSymbol": "…"
+}
+```
+
+OnTime sync (`actionSyncZdProductPairsFromSubiekt`) pomija komplety z ≠1 składnikiem lub niecałkowitą `liczba`. Do czasu wdrożenia endpointu pary dodaje się ręcznie w `/zakupy/szacunek`.
+
+### Host szacunku ZD (`SUBIEKT_API_ORDERS_BASE_URL`) — tylko test :5082
+
+Sandbox `/zakupy/szacunek` **nigdy** nie używa live `SUBIEKT_API_BASE_URL` (:5080).
+
+Wymagane:
+
+```text
+SUBIEKT_API_BASE_URL=http://192.168.0.140:5080/api/v1
+SUBIEKT_API_ORDERS_BASE_URL=http://192.168.0.140:5082/api/v1
+```
+
+Bez `ORDERS` / gdy ORDERS = live / gdy port ≠ 5082 — szacunek jest **zablokowany**
+(brak cichego fallbacku). Codzienne ETA/stany/katalog nadal idą na :5080.
+
+### `POST /documents/zd/create` (ORDERS `:5082`)
+
+Tworzy ZD przez Sferę. **Brak dry-run** — każde udane wywołanie zapisuje dokument.
+
+```json
+{
+  "kontrahentId": 1,
+  "uwagi": "opcjonalnie",
+  "pozycje": [
+    { "towarId": 1, "ilosc": 2 },
+    { "symbol": "517019", "ilosc": 1 }
+  ]
+}
+```
+
+- `kontrahentId` = dostawca (`kh_Id`)
+- `ilosc` = jednostki dokumentu ZD (paczki, gdy opakowanie)
+- Odpowiedź: `201` + dokument jak `GET /documents/zd/{id}`
+- OnTime (`/zakupy/szacunek`): przycisk **Utwórz ZD** — kh z `suppliers.subiekt_kh_id` (lub alias), potem re-GET i **zapis snapshotu historii** do `zd_estimate_order_snapshots` z `host_kind=orders_test` (persist na `:5082`). Historia przy Policz filtruje po `supplier_kh_id` (primary+aliasy) + zakresie (`cecha`/`grupa`) + `host_kind`; stare wiersze bez `scope_mode` (legacy) nadal pasują po kh+host. ZD ze statusem spełnionym (`dok_Status=8`) zapisuje się z `eligible_for_history=false` i nie wchodzi do cutów historii. Cut `history_slow` (wolno po ZD) oraz `sales_spike` (okno FS ≫ oczekiwane względem ostatniego zamówienia) korygują cel — snapshoty **nie** wchodzą do cover (`otwarteZd`). Timeout HTTP create: 180s.
 
 ### Semantyka `GET /documents/zd` (lista)
 

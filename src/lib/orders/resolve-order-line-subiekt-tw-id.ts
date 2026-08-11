@@ -19,8 +19,10 @@ export async function resolveOrderLineSubiektTwIdFromCatalog(
     input.subiektTwId != null ? Math.trunc(Number(input.subiektTwId)) : null;
   if (existing && Number.isFinite(existing) && existing > 0) return existing;
 
-  const symbol = String(input.symbol ?? "").trim();
-  const plu = String(input.mikranCode ?? "").trim();
+  const symbolRaw = String(input.symbol ?? "").trim();
+  const pluRaw = String(input.mikranCode ?? "").trim();
+  const symbol = symbolRaw && symbolRaw !== "-" ? symbolRaw : "";
+  const plu = pluRaw && pluRaw !== "-" ? pluRaw : "";
 
   if (symbol) {
     const pattern = escapeIlike(symbol);

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   countUnseenOwnBoardAnswers,
   isBoardAnswerUnseen,
+  latestOwnUnseenAnswerActivityAt,
   latestQuestionActivityAt,
   pickUnseenAnswerPreview,
 } from "@/lib/department-board/attention";
@@ -54,5 +55,31 @@ describe("department-board attention", () => {
         },
       ])
     ).toBe(1);
+  });
+
+  it("bierze max aktywności spośród własnych nieprzeczytanych", () => {
+    expect(
+      latestOwnUnseenAnswerActivityAt([
+        {
+          threadId: "a",
+          title: "Team",
+          isOwnQuestion: false,
+          latestActivityAt: "2026-01-09T10:00:00Z",
+        },
+        {
+          threadId: "b",
+          title: "Mine old",
+          isOwnQuestion: true,
+          latestActivityAt: "2026-01-01T10:00:00Z",
+        },
+        {
+          threadId: "c",
+          title: "Mine new",
+          isOwnQuestion: true,
+          latestActivityAt: "2026-01-05T10:00:00Z",
+        },
+      ])
+    ).toBe("2026-01-05T10:00:00Z");
+    expect(latestOwnUnseenAnswerActivityAt([])).toBeNull();
   });
 });

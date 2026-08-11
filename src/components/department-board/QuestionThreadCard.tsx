@@ -38,6 +38,7 @@ import { salesTypography } from "@/lib/ui/ontime-theme";
 import {
   actionArchiveQuestion,
   actionCloseQuestion,
+  actionDeleteClosedQuestion,
   actionMarkQuestionThreadSeen,
   actionReopenQuestion,
   actionReplyToQuestion,
@@ -54,6 +55,7 @@ export function QuestionThreadCard({
   canArchive = false,
   canClose = false,
   canReopen = false,
+  canDeleteClosed = false,
   audience = "procurement",
   defaultExpanded = false,
   embedded = false,
@@ -67,6 +69,8 @@ export function QuestionThreadCard({
   canArchive?: boolean;
   canClose?: boolean;
   canReopen?: boolean;
+  /** Administrator — trwałe usunięcie zakończonego wątku. */
+  canDeleteClosed?: boolean;
   audience?: "sales" | "procurement";
   defaultExpanded?: boolean;
   embedded?: boolean;
@@ -206,6 +210,27 @@ export function QuestionThreadCard({
       onChanged?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Nie udało się otworzyć wątku.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteClosedThread() {
+    if (busy) return;
+    if (
+      !window.confirm(
+        "Usunąć ten zakończony wątek na stałe? Tej operacji nie można cofnąć."
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await actionDeleteClosedQuestion(question.id);
+      onChanged?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Nie udało się usunąć wątku.");
     } finally {
       setBusy(false);
     }
@@ -430,17 +455,30 @@ export function QuestionThreadCard({
           </p>
         ) : null}
 
-        {canReopen && isClosed ? (
-          <div className="pt-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-xs text-indigo-600"
-              disabled={busy}
-              onClick={() => void reopenThread()}
-            >
-              Otwórz ponownie
-            </Button>
+        {isClosed && (canReopen || canDeleteClosed) ? (
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            {canReopen ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs text-indigo-600"
+                disabled={busy}
+                onClick={() => void reopenThread()}
+              >
+                Otwórz ponownie
+              </Button>
+            ) : null}
+            {canDeleteClosed ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-xs text-red-600 hover:text-red-700"
+                disabled={busy}
+                onClick={() => void deleteClosedThread()}
+              >
+                Usuń
+              </Button>
+            ) : null}
           </div>
         ) : null}
 

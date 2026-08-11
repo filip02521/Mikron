@@ -53,23 +53,31 @@ export function useSalesUpdates() {
 async function fetchVersion(): Promise<{
   version: string | null;
   unseenOwnAnswers: number | null;
+  latestOwnAnswerActivityAt: string | null;
 }> {
   try {
     const res = await fetch("/api/sales/activity-version", {
       cache: "no-store",
     });
-    if (!res.ok) return { version: null, unseenOwnAnswers: null };
+    if (!res.ok) {
+      return { version: null, unseenOwnAnswers: null, latestOwnAnswerActivityAt: null };
+    }
     const body = (await res.json()) as {
       version?: string;
       unseenOwnAnswers?: number;
+      latestOwnAnswerActivityAt?: string | null;
     };
     return {
       version: body.version ?? null,
       unseenOwnAnswers:
         typeof body.unseenOwnAnswers === "number" ? body.unseenOwnAnswers : null,
+      latestOwnAnswerActivityAt:
+        typeof body.latestOwnAnswerActivityAt === "string"
+          ? body.latestOwnAnswerActivityAt
+          : null,
     };
   } catch {
-    return { version: null, unseenOwnAnswers: null };
+    return { version: null, unseenOwnAnswers: null, latestOwnAnswerActivityAt: null };
   }
 }
 
@@ -77,6 +85,7 @@ export function SalesUpdatesProvider({
   children,
   initialVersion,
   initialUnseenOwnAnswers = 0,
+  initialLatestOwnAnswerActivityAt = null,
   enabled,
   sessionSalesPersonId = null,
   soundBaselineReady = true,
@@ -84,6 +93,7 @@ export function SalesUpdatesProvider({
   children: React.ReactNode;
   initialVersion: string | null;
   initialUnseenOwnAnswers?: number;
+  initialLatestOwnAnswerActivityAt?: string | null;
   enabled: boolean;
   /** Własny profil handlowca — do wykrycia podglądu ?dla= innego handlowca. */
   sessionSalesPersonId?: string | null;
@@ -135,11 +145,13 @@ export function SalesUpdatesProvider({
     [patchNavBadges]
   );
 
-  const { applyCount: applyUnseenOwnAnswersCount } = useBoardNotificationSoundEffects({
+  const { applyAttention: applyUnseenOwnAnswersAttention } = useBoardNotificationSoundEffects({
     enabled: effectiveEnabled,
     soundEnabled: hydrated && boardAnswerSound,
     initialCount: initialUnseenOwnAnswers,
+    initialLatestActivityAt: initialLatestOwnAnswerActivityAt,
     baselineReady: soundBaselineReady,
+    trackActivityAt: true,
     onCountApplied: onUnseenOwnAnswersApplied,
   });
 
@@ -163,9 +175,12 @@ export function SalesUpdatesProvider({
           }
         }
         router.refresh();
-        const { version, unseenOwnAnswers } = await fetchVersion();
+        const { version, unseenOwnAnswers, latestOwnAnswerActivityAt } = await fetchVersion();
         if (version) syncBaseline(version);
-        applyUnseenOwnAnswersCount(unseenOwnAnswers);
+        applyUnseenOwnAnswersAttention({
+          count: unseenOwnAnswers,
+          latestActivityAt: latestOwnAnswerActivityAt,
+        });
         const now = Date.now();
         setLastSyncedAt(now);
         setLastPollAt(now);
@@ -175,16 +190,19 @@ export function SalesUpdatesProvider({
     };
 
     void run();
-  }, [router, syncBaseline, pathname, teamPreviewActive, applyUnseenOwnAnswersCount]);
+  }, [router, syncBaseline, pathname, teamPreviewActive, applyUnseenOwnAnswersAttention]);
 
   const poll = useCallback(async () => {
-    const { version, unseenOwnAnswers } = await fetchVersion();
-    applyUnseenOwnAnswersCount(unseenOwnAnswers);
+    const { version, unseenOwnAnswers, latestOwnAnswerActivityAt } = await fetchVersion();
+    applyUnseenOwnAnswersAttention({
+      count: unseenOwnAnswers,
+      latestActivityAt: latestOwnAnswerActivityAt,
+    });
     if (!version) return;
     const now = Date.now();
     setLatest(version);
     setLastPollAt(now);
-  }, [applyUnseenOwnAnswersCount]);
+  }, [applyUnseenOwnAnswersAttention]);
 
   useEffect(() => {
     if (!effectiveEnabled) return;

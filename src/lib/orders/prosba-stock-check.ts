@@ -12,6 +12,10 @@ export type ProsbaLineStockSnapshot = {
   reserved: number;
   available: number;
   source: ProsbaLineStockSource;
+  /** Stan złączony z pary pack↔piece (available = cover). */
+  pairAware?: boolean;
+  pairUnitsPerPack?: number;
+  pairRole?: "pack" | "piece";
 };
 
 export type ProsbaLineStockAssessment = "unknown" | "unavailable" | "insufficient" | "sufficient";
@@ -454,7 +458,7 @@ export function zkProsbaScopeAllLinesSufficient(
   });
 }
 
-/** tw_Id pozycji prośby bez wczytanego stanu (do batch fetch). */
+/** tw_Id pozycji prośby do batch fetch stanu (zawsze — pair-aware wymaga obu kart). */
 export function collectProsbaLineTwIdsMissingStock(
   lines: ProductLineDraft[],
   requestKind: IndividualRequestKind,
@@ -466,13 +470,14 @@ export function collectProsbaLineTwIdsMissingStock(
     const twId = line.subiektTwId;
     if (twId == null || twId <= 0) continue;
     if (isStockExemptTwId(twId, stockExemptTwIds)) continue;
-    if (line.stockSource === "subiekt" && line.available != null) continue;
+    // Nie pomijaj linii z już wczytanym stanem — pick z Subiekta ma stan jednej karty;
+    // refetch musi złączyć cover pary (B1/B10).
     ids.add(Math.trunc(twId));
   }
   return [...ids];
 }
 
-/** Sygnatura linii do odświeżenia stanu (tw_Id + ilość). */
+/** Sygnatura linii do odświeżenia stanu (tw_Id + ilość + czy brak stanu). */
 export function prosbaLinesStockSyncSignature(
   lines: ProductLineDraft[],
   requestKind: IndividualRequestKind
@@ -482,7 +487,10 @@ export function prosbaLinesStockSyncSignature(
     .map((line) => {
       const twId = line.subiektTwId;
       if (twId == null || twId <= 0) return "";
-      return `${Math.trunc(twId)}:${line.quantity.trim()}`;
+      // „m” = missing stock → po picku (clear) wymusza refetch nawet przy tym samym twId:qty
+      const stockKey =
+        line.stockSource === "subiekt" && line.available != null ? "h" : "m";
+      return `${Math.trunc(twId)}:${line.quantity.trim()}:${stockKey}`;
     })
     .filter(Boolean)
     .join("\0");
@@ -514,7 +522,9 @@ export function applyProsbaLineStockMap(
       line.onHand === patch.onHand &&
       line.reserved === patch.reserved &&
       line.available === patch.available &&
-      line.stockSource === patch.stockSource
+      line.stockSource === patch.stockSource &&
+      line.pairStockCover === patch.pairStockCover &&
+      line.pairUnitsPerPack === patch.pairUnitsPerPack
     ) {
       return line;
     }
@@ -529,7 +539,13 @@ export function formatProsbaSubmitStockConfirmMessage(lines: ProductLineDraft[])
     const name = line.product.trim() || line.symbol.trim() || "Produkt";
     const qty = line.quantity.trim();
     const avail = line.available;
-    const availPart = avail != null ? ` (stan: ${avail} szt.)` : "";
+    const pairHint = line.pairStockCover
+      ? " — cover pary (sztuki + paczki po demontażu)"
+      : "";
+    const availPart =
+      avail != null
+        ? ` (stan: ${avail} szt.${pairHint})`
+        : "";
     return `• ${name} — ${qty} szt.${availPart}`;
   });
   return `Część pozycji ma wystarczający stan magazynowy:\n\n${names.join("\n")}\n\nCzy na pewno wysłać prośbę o zamówienie?`;
@@ -544,6 +560,8 @@ export function mergeStockIntoLinePatch(
       reserved: undefined,
       available: undefined,
       stockSource: undefined,
+      pairStockCover: undefined,
+      pairUnitsPerPack: undefined,
     };
   }
   return {
@@ -551,6 +569,8 @@ export function mergeStockIntoLinePatch(
     reserved: snap.reserved,
     available: snap.available,
     stockSource: snap.source,
+    pairStockCover: snap.pairAware === true ? true : undefined,
+    pairUnitsPerPack: snap.pairUnitsPerPack,
   };
 }
 

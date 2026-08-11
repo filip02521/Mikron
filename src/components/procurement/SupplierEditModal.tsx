@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useLatest } from "@/hooks/useLatest";
 import type { SupplierLocation, StatsMode } from "@/types/database";
 import type { SupplierSummaryMeta } from "@/lib/orders/summary-workspace";
 import { actionUpsertSupplier } from "@/app/actions/admin";
@@ -20,6 +19,10 @@ import {
   SUPPLIER_INTERVAL_PRESETS,
   SUPPLIER_STOCK_PRESETS,
 } from "@/lib/suppliers/cycle-presets";
+import {
+  canonicalizeOrderMethodNotes,
+  validateSupplierContactFields,
+} from "@/lib/orders/validate-supplier-contact";
 
 const LOCATIONS: { value: SupplierLocation; label: string }[] = [
   { value: "POLSKA", label: "Polska" },
@@ -52,7 +55,7 @@ function formFromSupplier(s: SupplierSummaryMeta | null) {
     location: s.location,
     pickup_mikran: s.pickup_mikran,
     pickup_pallet: s.pickup_pallet,
-    notes: s.notes,
+    notes: canonicalizeOrderMethodNotes(s.notes),
     mails: s.mails,
     extra_info: s.extra_info,
     interval_raw: s.interval_raw ?? "",
@@ -92,7 +95,6 @@ function SupplierEditModalInner({
   const { pending, pendingMessage, run } = useActionPending();
   const [form, setForm] = useState(() => formFromSupplier(supplier));
   const [saveError, setSaveError] = useState<string | null>(null);
-  const formRef = useLatest(form);
 
   const patchCycleFields = (
     patch: Partial<Pick<typeof form, "stock_raw" | "interval_raw" | "extra_info">>
@@ -111,14 +113,23 @@ function SupplierEditModalInner({
   };
 
   const save = () => {
-    if (!form.name.trim()) {
+    const snapshot = { ...form };
+    if (!snapshot.name.trim()) {
       setSaveError("Podaj nazwę dostawcy");
+      return;
+    }
+    const contactError = validateSupplierContactFields(
+      snapshot.notes,
+      snapshot.mails,
+      snapshot.extra_info
+    );
+    if (contactError) {
+      setSaveError(contactError);
       return;
     }
     setSaveError(null);
     run(
       async () => {
-        const snapshot = { ...formRef.current };
         const result = await actionUpsertSupplier(snapshot);
         const msg = !snapshot.is_active
           ? "Dostawca oznaczony jako nieaktywny — zniknie z cyklu w panelu dziennym."
@@ -128,7 +139,14 @@ function SupplierEditModalInner({
         onSaved?.(result.id, msg);
         onClose();
       },
-      isNew ? "Dodawanie dostawcy…" : "Zapisywanie karty dostawcy…"
+      isNew ? "Dodawanie dostawcy…" : "Zapisywanie karty dostawcy…",
+      {
+        onError: (error) => {
+          setSaveError(
+            error instanceof Error ? error.message : "Nie udało się zapisać dostawcy."
+          );
+        },
+      }
     );
   };
 
@@ -257,9 +275,14 @@ function SupplierEditModalInner({
             <option value="PRZEZ INTERNET">Internet</option>
           </Select>
         </Field>
-        <Field label="E-mail i strony" className="sm:col-span-2">
+        <Field
+          label="Kontakt (e-mail, telefon, strona)"
+          className="sm:col-span-2"
+          hint="Musi pasować do sposobu zamówienia — przy „Telefon” wpisz numer (min. 9 cyfr)."
+        >
           <Input
             disabled={pending}
+            placeholder="adres@firma.pl, 501 234 567, https://…"
             value={form.mails}
             onChange={(e) => setForm({ ...form, mails: e.target.value })}
           />

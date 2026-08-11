@@ -12,6 +12,11 @@ import { actionMarkOrdered, actionShiftOrder } from "@/app/actions/admin";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import type { SupplierLocation } from "@/types/database";
 import { computeAnchoredDropdownPosition } from "@/lib/ui/dropdown-anchor";
+import {
+  DAILY_PANEL_MARK_ORDERED_LABEL,
+  DAILY_PANEL_MARK_ORDERED_PENDING_OVERLAY,
+  dailyPanelMarkOrderedToastTitle,
+} from "@/lib/orders/daily-panel-mark-ordered-copy";
 
 function useMenuAnchor(align: "start" | "end") {
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -123,13 +128,13 @@ export function SupplierQuickActionsMenu({
                 close();
                 run(
                   () => actionMarkOrdered(supplierId),
-                  "Oznaczono jako zamówione",
-                  "Oznaczanie jako zamówione…",
+                  dailyPanelMarkOrderedToastTitle(supplierName),
+                  DAILY_PANEL_MARK_ORDERED_PENDING_OVERLAY,
                   scopeOpt
                 );
               }}
             >
-              Zamówione
+              {DAILY_PANEL_MARK_ORDERED_LABEL}
             </MenuItem>
             <div className="border-t border-slate-100 px-3 py-2">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">

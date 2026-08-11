@@ -9,12 +9,13 @@ import {
   assertAdminPanelAllowsProcurementBoardMutations,
 } from "@/lib/auth/guard-admin-panel-preview";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
-import { canAccessOperations, isSalesAccount } from "@/lib/auth-roles";
+import { canAccessOperations, isAdmin, isSalesAccount } from "@/lib/auth-roles";
 import {
   DEPARTMENT_BOARD_POST_SELECT,
   DEPARTMENT_BOARD_THREAD_SELECT,
   type DepartmentBoardThreadRow,
 } from "@/lib/data/department-board";
+import { notifyBoardQuestionReplyToSales } from "@/lib/department-board/notify-board-reply";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { SalesNoteColor } from "@/types/database";
 import {
@@ -245,6 +246,10 @@ export async function actionReplyToQuestion(threadId: string, body: string) {
     }
   }
 
+  if (isProcurement) {
+    await assertAdminPanelAllowsProcurementBoardMutations(user);
+  }
+
   const trimmedBody = trimBody(body);
   if (!trimmedBody) throw new Error("Wiadomość nie może być pusta.");
 
@@ -276,8 +281,13 @@ export async function actionReplyToQuestion(threadId: string, body: string) {
   if (postError) throw new Error(postError.message);
 
   // Procurement reply → answered; Sales reply (doprecyzowanie) → open
-  const nextStatus = isProcurement ? "answered" as const : "open" as const;
-  const firstProcurementReply = isProcurement && thread.status === "open";
+  // Przy podwójnej roli (handlowiec + zakupy) doprecyzowanie własnego pytania
+  // traktujemy jak odpowiedź handlowca — bez statusu „answered” i bez maila.
+  const isAskerClarification = isSales && thread.created_by === user.id;
+  const countsAsProcurementReply = isProcurement && !isAskerClarification;
+  const nextStatus = countsAsProcurementReply ? ("answered" as const) : ("open" as const);
+  const firstProcurementReply =
+    countsAsProcurementReply && thread.status === "open";
 
   const { error: threadError } = await supabase
     .from("department_board_threads")
@@ -289,6 +299,41 @@ export async function actionReplyToQuestion(threadId: string, body: string) {
     .eq("id", threadId);
 
   if (threadError) throw new Error(threadError.message);
+
+  // Tylko odpowiedź zakupów → e-mail do handlowca (doprecyzowanie handlowca bez maila).
+  // Await (nie after+void): wcześniej floating Promise w after() bywał ucinany po
+  // zakończeniu Server Action — odpowiedź zapisywała się, mail nie wychodził.
+  // Błąd SMTP nie cofa zapisu odpowiedzi.
+  if (countsAsProcurementReply) {
+    try {
+      const result = await notifyBoardQuestionReplyToSales({
+        threadId,
+        salesPersonId: thread.sales_person_id,
+        createdByProfileId: thread.created_by,
+        questionTitle: thread.title,
+        questionBody: thread.body,
+        productSymbol: thread.product_symbol,
+        productName: thread.product_name,
+        replyBody: trimmedBody,
+      });
+      if (!result.emailSent) {
+        console.warn(
+          "[board-reply-email] not sent",
+          String(threadId).replace(/[\r\n]+/g, " "),
+          String(result.skippedReason ?? result.error ?? "unknown").replace(
+            /[\r\n]+/g,
+            " "
+          )
+        );
+      }
+    } catch (err) {
+      console.error(
+        "[board-reply-email] notify failed",
+        String(threadId).replace(/[\r\n]+/g, " "),
+        err instanceof Error ? err.message.replace(/[\r\n]+/g, " ") : "unknown"
+      );
+    }
+  }
 
   revalidateDepartmentBoard();
   return { post };
@@ -395,6 +440,31 @@ export async function actionReopenQuestion(threadId: string) {
   if (error) throw new Error(error.message);
   revalidateDepartmentBoard();
   return { thread: data as unknown as DepartmentBoardThreadRow };
+}
+
+/** Trwałe usunięcie zakończonego wątku — tylko administrator. */
+export async function actionDeleteClosedQuestion(threadId: string) {
+  const user = await getSessionUser();
+  if (!user?.id) throw new Error("Zaloguj się ponownie.");
+  if (!isAdmin(user.role)) {
+    throw new Error("Tylko administrator może trwale usuwać zakończone wątki.");
+  }
+  await assertAdminPanelAllowsProcurementBoardMutations(user);
+
+  const thread = await fetchThread(threadId);
+  if (thread.kind !== "question") {
+    throw new Error("Usuwanie dotyczy tylko pytań.");
+  }
+  if (!thread.archived_at) {
+    throw new Error("Można usuwać tylko zakończone wątki.");
+  }
+
+  const supabase = createAdminClient();
+  const { error } = await supabase.from("department_board_threads").delete().eq("id", threadId);
+
+  if (error) throw new Error(error.message);
+  revalidateDepartmentBoard();
+  return { ok: true as const };
 }
 
 export async function actionToggleAnnouncementPin(threadId: string, pinned: boolean) {
