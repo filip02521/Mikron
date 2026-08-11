@@ -153,6 +153,83 @@ describe("buildZdCreatePreviewFromOrderable", () => {
     expect(karton?.ilosc).toBe(2); // ceil(80/40)
     expect(preview.lines.find((l) => l.symbol === "PLYN")?.ilosc).toBe(7);
   });
+
+  it("respektuje override jednostek dokumentu", () => {
+    const lines = [
+      baseLine({
+        tw_Id: 1,
+        tw_Symbol: "PLYN",
+        celZapasu: 7,
+        celZapasuTracked: 7,
+        doZamowieniaReczne: 7,
+      }),
+      baseLine({
+        tw_Id: 3,
+        tw_Symbol: "KARTON",
+        doZamowieniaReczne: 80,
+        pair: {
+          role: "pack",
+          twinTwId: 2,
+          unitsPerPack: 40,
+          sprzedazSzt: 0,
+          coverSzt: 0,
+          pieceSprzedaz: 0,
+          packSprzedaz: 0,
+          pieceDostepne: 0,
+          packDostepne: 0,
+          partnerMissing: false,
+        },
+      }),
+    ];
+    const pack = new Map([[3, { unitsPerPackage: 40, packageLabel: "op." }]]);
+    const overrides = new Map([
+      [1, 0],
+      [3, 5],
+    ]);
+    const preview = buildZdCreatePreviewFromOrderable(
+      lines,
+      pack,
+      null,
+      overrides
+    );
+    expect(preview.lines.map((l) => l.symbol).sort()).toEqual(["KARTON"]);
+    expect(preview.lines[0]?.ilosc).toBe(5);
+    expect(preview.lineCount).toBe(1);
+  });
+
+  it("extra_only: Create qty = ceil(prośba), bez stocku z doZamowieniaReczne", () => {
+    const lines = [
+      baseLine({
+        tw_Id: 3,
+        tw_Symbol: "KARTON",
+        doZamowieniaReczne: 500,
+        pair: {
+          role: "pack",
+          twinTwId: 2,
+          unitsPerPack: 40,
+          sprzedazSzt: 0,
+          coverSzt: 0,
+          pieceSprzedaz: 0,
+          packSprzedaz: 0,
+          pieceDostepne: 0,
+          packDostepne: 0,
+          partnerMissing: false,
+        },
+      }),
+    ];
+    const pack = new Map([[3, { unitsPerPackage: 40, packageLabel: "op." }]]);
+    const extras = new Map([[3, 25]]);
+    const preview = buildZdCreatePreviewFromOrderable(
+      lines,
+      pack,
+      extras,
+      null,
+      new Set([3])
+    );
+    expect(preview.lines).toHaveLength(1);
+    expect(preview.lines[0]?.ilosc).toBe(1); // ceil(25/40)
+    expect(preview.lines[0]?.individualExtraPieces).toBe(25);
+  });
 });
 
 describe("validateZdCreateClientLines", () => {
@@ -252,6 +329,36 @@ describe("canCreateZdFromEstimateState", () => {
         mutating: false,
         creating: false,
         createDoneDokId: 99,
+      }).ok
+    ).toBe(false);
+
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: false,
+        mutating: false,
+        creating: false,
+        createDoneDokId: 99,
+        createUnlockedAfterDone: true,
+      }).ok
+    ).toBe(true);
+
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: false,
+        mutating: false,
+        creating: false,
+        createDoneDokId: null,
+        packagingPairConflictCount: 2,
       }).ok
     ).toBe(false);
   });

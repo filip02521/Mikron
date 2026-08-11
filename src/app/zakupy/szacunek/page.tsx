@@ -8,11 +8,15 @@ import {
   ZdEstimateWorkbench,
   type ZdEstimateLaunchProps,
 } from "@/components/zakupy/ZdEstimateWorkbench";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { ZdEstimatePageIntro } from "@/components/zakupy/ZdEstimatePageIntro";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 import { zdEstimatePageShellClass } from "@/lib/ui/ontime-theme";
 import { parseZdEstimateLaunchQuery } from "@/lib/orders/zd-estimate-supplier-scope";
-import { zdEstimatePageHint } from "@/lib/orders/zd-estimate-ui-copy";
+import {
+  ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION,
+  zdEstimatePageHint,
+} from "@/lib/orders/zd-estimate-ui-copy";
+import { formatPlDate } from "@/lib/display-labels";
 
 export const metadata: Metadata = pageMetadataFor("zdEstimate");
 export const dynamic = "force-dynamic";
@@ -115,13 +119,21 @@ export default async function ZdEstimatePage({
 
   return (
     <div className={zdEstimatePageShellClass}>
-      <PageHeader
-        title="Szacunek ZD"
-        description="Zakres Subiekta → lista do zamówienia → Utwórz ZD. „Do ZD” to jednostki dokumentu (z opakowań i próśb)."
+      <ZdEstimatePageIntro
+        description={ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION}
         hint={zdEstimatePageHint({
           isLive: bootstrap.ordersIsLive,
           configured: bootstrap.configured,
         })}
+        host={{
+          configured: bootstrap.configured,
+          isLive: bootstrap.ordersIsLive,
+          port: bootstrap.ordersPort ?? bootstrap.testPort,
+          salesEndFromFs: bootstrap.salesEndFromFs,
+          salesEndKeyFormatted: bootstrap.salesEndFromFs
+            ? formatPlDate(bootstrap.salesEndKey)
+            : null,
+        }}
       />
       <ZdEstimateWorkbench bootstrap={bootstrap} launch={launch} />
     </div>

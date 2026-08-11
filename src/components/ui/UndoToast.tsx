@@ -30,6 +30,7 @@ export function UndoToast({
   undoShortcut,
   durationMs = UNDO_WINDOW_MS,
   expiresAt,
+  paused = false,
   placement = "floating",
   className,
 }: {
@@ -46,6 +47,11 @@ export function UndoToast({
   durationMs?: number;
   /** Koniec okna cofania (ms) — timer i pasek od tego momentu, nie od mount. */
   expiresAt?: number;
+  /**
+   * Wstrzymaj odliczanie (np. gdy nad toastem jest modal).
+   * Po wznowieniu kontynuuje pozostały czas.
+   */
+  paused?: boolean;
   /** Inline — w treści panelu; floating — nad dolną nawigacją. */
   placement?: UndoToastPlacement;
   className?: string;
@@ -69,25 +75,39 @@ export function UndoToast({
 
   useToastNotificationSound(resolvedTitle, resolvedDescription);
 
-  // Stała długość animacji od mount — wcześniej aktualizacja co 200 ms
-  // restartowała CSS i pasek wyglądał na zepsuty.
-  const [animationMs] = useState(() =>
+  const remainingMsRef = useRef<number | null>(null);
+  const [animationMs, setAnimationMs] = useState(() =>
     expiresAt != null ? Math.max(0, expiresAt - Date.now()) : durationMs
   );
+  const [animKey, setAnimKey] = useState(0);
 
   useEffect(() => {
-    if (expiresAt == null) {
-      const t = setTimeout(() => onDismissRef.current(), durationMs);
-      return () => clearTimeout(t);
+    if (remainingMsRef.current == null) {
+      remainingMsRef.current =
+        expiresAt != null ? Math.max(0, expiresAt - Date.now()) : durationMs;
     }
-    const remaining = Math.max(0, expiresAt - Date.now());
+
+    if (paused) return;
+
+    const remaining = remainingMsRef.current;
     if (remaining <= 0) {
       onDismissRef.current();
       return;
     }
+
+    setAnimationMs(remaining);
+    setAnimKey((k) => k + 1);
+    const startedAt = Date.now();
     const timeout = window.setTimeout(() => onDismissRef.current(), remaining);
-    return () => window.clearTimeout(timeout);
-  }, [durationMs, expiresAt]);
+    return () => {
+      window.clearTimeout(timeout);
+      const elapsed = Date.now() - startedAt;
+      remainingMsRef.current = Math.max(
+        0,
+        (remainingMsRef.current ?? 0) - elapsed
+      );
+    };
+  }, [paused, durationMs, expiresAt]);
 
   const isError = tone === "error";
 
@@ -96,6 +116,7 @@ export function UndoToast({
       role="status"
       aria-live="polite"
       aria-atomic="true"
+      aria-hidden={paused || undefined}
       className={cn(
         systemNoticeUndoClass,
         placement === "inline"
@@ -112,7 +133,9 @@ export function UndoToast({
     >
       <div className={undoNoticeProgressTrackClass} aria-hidden>
         <div
+          key={animKey}
           className={cn(undoNoticeProgressFillClass, isError && "bg-red-500")}
+          style={paused ? { animationPlayState: "paused" } : undefined}
         />
       </div>
 
@@ -152,6 +175,7 @@ export function UndoToast({
               size="sm"
               className="min-h-10 w-full sm:min-w-[7.5rem]"
               onClick={onUndo}
+              disabled={paused}
             >
               {undoLabel}
             </Button>
@@ -161,6 +185,7 @@ export function UndoToast({
               variant="ghost"
               className="min-h-10 w-full text-slate-600 sm:min-w-[7.5rem]"
               onClick={onDismiss}
+              disabled={paused}
             >
               Zamknij
             </Button>
@@ -172,6 +197,7 @@ export function UndoToast({
             variant="ghost"
             className="min-h-10 shrink-0 self-end text-slate-600 sm:self-start"
             onClick={onDismiss}
+            disabled={paused}
           >
             Zamknij
           </Button>

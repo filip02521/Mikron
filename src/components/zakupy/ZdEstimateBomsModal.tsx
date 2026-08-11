@@ -118,9 +118,10 @@ export function ZdEstimateBomsModal({
   }, [boms, query]);
 
   const seedParent = fromSeed ? seed![seedParentIndex] : null;
-  const seedComponents = fromSeed
-    ? seed!.filter((_, i) => i !== seedParentIndex)
-    : [];
+  const seedComponents = useMemo(
+    () => (fromSeed ? seed!.filter((_, i) => i !== seedParentIndex) : []),
+    [fromSeed, seed, seedParentIndex]
+  );
 
   const pieceWarning = useMemo(() => {
     const ids = fromSeed

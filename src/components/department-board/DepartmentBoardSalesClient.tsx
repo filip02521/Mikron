@@ -173,6 +173,12 @@ export function DepartmentBoardSalesClient({
     imageFiles,
   } = useBoardQuestionImages();
 
+  useEffect(() => {
+    return () => {
+      clearImages();
+    };
+  }, [clearImages]);
+
   const questionFilterCounts = useMemo(
     () =>
       departmentBoardQuestionFilterCounts(allQuestions, {

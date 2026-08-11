@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { mapZdEstimateLineToManual } from "./zd-estimate-manual";
+import {
+  mapZdEstimateLineToManual,
+  type ManualZdEstimateLine,
+} from "./zd-estimate-manual";
 import {
   computeZdPackOrderQty,
+  effectiveZdDocumentUnits,
+  filterOrderableLinesWithPackaging,
   formatZdPackHint,
+  lineAllowsZdDocumentUnitOverride,
+  pruneZdDocumentUnitOverrides,
   resolveOrderQtyForLine,
   summarizePackOrderQty,
 } from "./zd-estimate-packaging";
@@ -117,6 +124,60 @@ describe("resolveOrderQtyForLine + para", () => {
       },
     });
     expect(q.zdUnits).toBe(0);
+  });
+
+  it("override na piece / BOM parent jest ignorowany (nie wchodzi na ZD)", () => {
+    const piece = {
+      tw_Id: 20,
+      tw_Symbol: "PC",
+      tw_Nazwa: "PC",
+      tw_IdGrupa: null,
+      grt_Nazwa: "—",
+      tw_Stan: 0,
+      tw_StanRez: 0,
+      dostepne: 0,
+      sprzedazOkres: 0,
+      sprzedazDziennie: 0,
+      celZapasu: 0,
+      celZapasuTracked: 0,
+      salesTrackDelta: 0,
+      salesTrackReasons: [],
+      otwarteZkBezRez: 0,
+      otwarteZkZarezerwowane: 0,
+      otwarteZd: 0,
+      doZamowieniaApi: 0,
+      doZamowieniaReczne: 0,
+      wkladZk: 0,
+      pair: {
+        role: "piece" as const,
+        twinTwId: 10,
+        unitsPerPack: 100,
+        sprzedazSzt: 0,
+        coverSzt: 0,
+        pieceSprzedaz: 0,
+        packSprzedaz: 0,
+        pieceDostepne: 0,
+        packDostepne: 0,
+      },
+    } as ManualZdEstimateLine;
+    expect(lineAllowsZdDocumentUnitOverride(piece)).toBe(false);
+    expect(effectiveZdDocumentUnits(piece, null, 0, 99)).toBe(0);
+
+    const parent = {
+      ...piece,
+      tw_Id: 30,
+      pair: null,
+      bom: { role: "parent" as const, parentTwIds: [30] },
+    } as ManualZdEstimateLine;
+    expect(lineAllowsZdDocumentUnitOverride(parent)).toBe(false);
+    expect(effectiveZdDocumentUnits(parent, null, 0, 5)).toBe(0);
+
+    const pruned = pruneZdDocumentUnitOverrides(
+      { 20: 99, 30: 5 },
+      [piece, parent],
+      new Map()
+    );
+    expect(pruned).toEqual({});
   });
 });
 
@@ -324,5 +385,288 @@ describe("resolveOrderQtyForLine + BOM parent", () => {
       bom: { role: "parent" },
     });
     expect(q.zdUnits).toBe(0);
+  });
+});
+
+describe("effectiveZdDocumentUnits + override w summary/filter", () => {
+  const baseLine = {
+    tw_Id: 7,
+    tw_Symbol: "X",
+    tw_Nazwa: "X",
+    tw_IdGrupa: null,
+    grt_Nazwa: "—",
+    tw_Stan: 0,
+    tw_StanRez: 0,
+    dostepne: 0,
+    sprzedazOkres: 0,
+    sprzedazDziennie: 0,
+    celZapasu: 8,
+    celZapasuTracked: 8,
+    salesTrackDelta: 0,
+    salesTrackReasons: [],
+    otwarteZkBezRez: 0,
+    otwarteZkZarezerwowane: 0,
+    otwarteZd: 0,
+    doZamowieniaApi: 0,
+    doZamowieniaReczne: 8,
+    wkladZk: 0,
+  } as ManualZdEstimateLine;
+
+  it("override zastępuje wyliczone jednostki dokumentu", () => {
+    expect(
+      effectiveZdDocumentUnits(baseLine, { unitsPerPackage: 10 }, null, 3)
+    ).toBe(3);
+    expect(
+      effectiveZdDocumentUnits(baseLine, { unitsPerPackage: 10 }, null, null)
+    ).toBe(1);
+  });
+
+  it("summary i filter respektują mapę override (0 wypada z Do ZD)", () => {
+    const lines = [baseLine];
+    const pack = new Map([[7, { unitsPerPackage: 10, packageLabel: "op." }]]);
+    const overrides = new Map([[7, 0]]);
+    const sum = summarizePackOrderQty(lines, pack, null, null, overrides);
+    expect(sum.doZamowieniaCount).toBe(0);
+    expect(sum.zdUnitsSuma).toBe(0);
+    expect(
+      filterOrderableLinesWithPackaging(lines, pack, null, null, overrides)
+    ).toHaveLength(0);
+  });
+
+  it("pruneZdDocumentUnitOverrides usuwa równe wyliczeniu i martwe tw", () => {
+    const pack = new Map([[7, { unitsPerPackage: 10, packageLabel: "op." }]]);
+    const input = { 7: 1, 99: 5 };
+    const pruned = pruneZdDocumentUnitOverrides(input, [baseLine], pack, null);
+    expect(pruned).toEqual({});
+    expect(
+      pruneZdDocumentUnitOverrides({ 7: 3 }, [baseLine], pack, null)
+    ).toEqual({ 7: 3 });
+    const same = { 7: 3 };
+    expect(pruneZdDocumentUnitOverrides(same, [baseLine], pack, null)).toBe(
+      same
+    );
+  });
+});
+
+describe("resolveOrderQtyForLine extra_only", () => {
+  it("extra_only: ignoruje cel/stan — tylko sztuki prośby + ceil opakowania", () => {
+    const line = {
+      tw_Id: 7,
+      tw_Symbol: "X",
+      tw_Nazwa: "X",
+      tw_IdGrupa: null,
+      grt_Nazwa: "—",
+      tw_Stan: 0,
+      tw_StanRez: 0,
+      dostepne: 0,
+      sprzedazOkres: 0,
+      sprzedazDziennie: 0,
+      celZapasu: 500,
+      celZapasuTracked: 500,
+      salesTrackDelta: 0,
+      salesTrackReasons: [],
+      otwarteZkBezRez: 0,
+      otwarteZkZarezerwowane: 0,
+      otwarteZd: 0,
+      doZamowieniaApi: 0,
+      doZamowieniaReczne: 500,
+      wkladZk: 0,
+    } as ManualZdEstimateLine;
+    const q = resolveOrderQtyForLine(
+      line,
+      { unitsPerPackage: 10, packageLabel: "op." },
+      8,
+      true
+    );
+    expect(q.piecesNeeded).toBe(8);
+    expect(q.zdUnits).toBe(1);
+    expect(q.piecesArriving).toBe(10);
+  });
+
+  it("extra_only + para pack: baza 0 mimo doZamowieniaReczne; dzielnik = unitsPerPack", () => {
+    const line = {
+      tw_Id: 10,
+      tw_Symbol: "PACK",
+      tw_Nazwa: "P",
+      tw_IdGrupa: null,
+      grt_Nazwa: "—",
+      tw_Stan: 0,
+      tw_StanRez: 0,
+      dostepne: 0,
+      sprzedazOkres: 0,
+      sprzedazDziennie: 0,
+      celZapasu: 5000,
+      celZapasuTracked: 5000,
+      salesTrackDelta: 0,
+      salesTrackReasons: [],
+      otwarteZkBezRez: 0,
+      otwarteZkZarezerwowane: 0,
+      otwarteZd: 0,
+      doZamowieniaApi: 0,
+      doZamowieniaReczne: 500,
+      wkladZk: 0,
+      pair: {
+        role: "pack" as const,
+        twinTwId: 20,
+        unitsPerPack: 100,
+        sprzedazSzt: 0,
+        coverSzt: 0,
+        pieceSprzedaz: 0,
+        packSprzedaz: 0,
+        pieceDostepne: 0,
+        packDostepne: 0,
+        partnerMissing: false,
+      },
+    } as ManualZdEstimateLine;
+    const q = resolveOrderQtyForLine(
+      line,
+      { unitsPerPackage: 10, packageLabel: "op." },
+      25,
+      true
+    );
+    expect(q.piecesNeeded).toBe(25);
+    expect(q.unitsPerPackage).toBe(100);
+    expect(q.zdUnits).toBe(1);
+    expect(q.piecesArriving).toBe(100);
+  });
+
+  it("extra_only + para pack + partnerMissing: nadal tylko extra", () => {
+    const line = {
+      tw_Id: 10,
+      tw_Symbol: "PACK",
+      tw_Nazwa: "P",
+      tw_IdGrupa: null,
+      grt_Nazwa: "—",
+      tw_Stan: 0,
+      tw_StanRez: 0,
+      dostepne: 0,
+      sprzedazOkres: 0,
+      sprzedazDziennie: 0,
+      celZapasu: 0,
+      celZapasuTracked: 0,
+      salesTrackDelta: 0,
+      salesTrackReasons: [],
+      otwarteZkBezRez: 0,
+      otwarteZkZarezerwowane: 0,
+      otwarteZd: 0,
+      doZamowieniaApi: 0,
+      doZamowieniaReczne: 0,
+      wkladZk: 0,
+      pair: {
+        role: "pack" as const,
+        twinTwId: 20,
+        unitsPerPack: 40,
+        sprzedazSzt: 0,
+        coverSzt: 0,
+        pieceSprzedaz: 0,
+        packSprzedaz: 0,
+        pieceDostepne: 0,
+        packDostepne: 0,
+        partnerMissing: true,
+      },
+    } as ManualZdEstimateLine;
+    const q = resolveOrderQtyForLine(line, null, 80, true);
+    expect(q.piecesNeeded).toBe(80);
+    expect(q.zdUnits).toBe(2);
+  });
+});
+
+describe("pruneZdDocumentUnitOverrides + extraOnly", () => {
+  const baseLine = {
+    tw_Id: 7,
+    tw_Symbol: "X",
+    tw_Nazwa: "X",
+    tw_IdGrupa: null,
+    grt_Nazwa: "—",
+    tw_Stan: 0,
+    tw_StanRez: 0,
+    dostepne: 0,
+    sprzedazOkres: 0,
+    sprzedazDziennie: 0,
+    celZapasu: 500,
+    celZapasuTracked: 500,
+    salesTrackDelta: 0,
+    salesTrackReasons: [],
+    otwarteZkBezRez: 0,
+    otwarteZkZarezerwowane: 0,
+    otwarteZd: 0,
+    doZamowieniaApi: 0,
+    doZamowieniaReczne: 500,
+    wkladZk: 0,
+  } as ManualZdEstimateLine;
+
+  it("usuwa override równy wyliczeniu extra_only", () => {
+    const pack = new Map([
+      [7, { unitsPerPackage: 10, packageLabel: "op." }],
+    ]);
+    const extras = new Map([[7, 8]]);
+    const extraOnly = new Set([7]);
+    // ceil(8/10)=1
+    const pruned = pruneZdDocumentUnitOverrides(
+      { 7: 1 },
+      [baseLine],
+      pack,
+      extras,
+      extraOnly
+    );
+    expect(pruned).toEqual({});
+  });
+
+  it("zostawia override różne od extra_only", () => {
+    const pack = new Map([
+      [7, { unitsPerPackage: 10, packageLabel: "op." }],
+    ]);
+    const pruned = pruneZdDocumentUnitOverrides(
+      { 7: 5 },
+      [baseLine],
+      pack,
+      new Map([[7, 8]]),
+      new Set([7])
+    );
+    expect(pruned).toEqual({ 7: 5 });
+  });
+});
+
+describe("filterOrderableLinesWithPackaging + extraOnly", () => {
+  it("soft orderExcluded poza listą; lifted zostaje z qty z extra", () => {
+    const soft = {
+      tw_Id: 1,
+      tw_Symbol: "S",
+      tw_Nazwa: "soft",
+      tw_IdGrupa: null,
+      grt_Nazwa: "—",
+      tw_Stan: 0,
+      tw_StanRez: 0,
+      dostepne: 0,
+      sprzedazOkres: 0,
+      sprzedazDziennie: 0,
+      celZapasu: 100,
+      celZapasuTracked: 100,
+      salesTrackDelta: 0,
+      salesTrackReasons: [],
+      otwarteZkBezRez: 0,
+      otwarteZkZarezerwowane: 0,
+      otwarteZd: 0,
+      doZamowieniaApi: 0,
+      doZamowieniaReczne: 50,
+      wkladZk: 0,
+    } as ManualZdEstimateLine;
+    const lifted = { ...soft, tw_Id: 2, tw_Symbol: "L" } as ManualZdEstimateLine;
+    const pack = new Map([
+      [1, { unitsPerPackage: 10, packageLabel: "op." }],
+      [2, { unitsPerPackage: 10, packageLabel: "op." }],
+    ]);
+    const orderExcluded = new Set([1]);
+    const extras = new Map([[2, 12]]);
+    const extraOnly = new Set([2]);
+    const rows = filterOrderableLinesWithPackaging(
+      [soft, lifted],
+      pack,
+      orderExcluded,
+      extras,
+      null,
+      extraOnly
+    );
+    expect(rows.map((r) => r.tw_Id)).toEqual([2]);
   });
 });

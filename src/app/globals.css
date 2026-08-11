@@ -533,6 +533,31 @@ select:disabled,
   background-color: #a7f3d0;
 }
 
+/* Zaznaczenie wiersza — data-attr (nie zależymy od Tailwind bg-* / opacity). */
+.data-table.zd-estimate-table tbody tr[data-selected="true"] td {
+  background-color: #e0e7ff !important;
+}
+
+.data-table.zd-estimate-table tbody tr[data-selected="true"] td.zd-estimate-check-col,
+.data-table.zd-estimate-table tbody tr[data-selected="true"] td.zd-estimate-symbol-col,
+.data-table.zd-estimate-table tbody tr[data-selected="true"] td:last-child {
+  background-color: #c7d2fe !important;
+  box-shadow: inset 3px 0 0 0 #4f46e5;
+}
+
+.data-table.zd-estimate-table tbody tr[data-selected="true"] td.zd-estimate-dozd-col {
+  background-color: #a7f3d0 !important;
+  box-shadow: inset 3px 0 0 0 #34d399, 1px 0 0 #a7f3d0;
+}
+
+.data-table.zd-estimate-table tbody tr[data-selected="true"]:hover td {
+  background-color: #c7d2fe !important;
+}
+
+.data-table.zd-estimate-table tbody tr[data-selected="true"]:hover td.zd-estimate-dozd-col {
+  background-color: #6ee7b7 !important;
+}
+
 .data-table.zd-estimate-table th.zd-estimate-name-col,
 .data-table.zd-estimate-table td.zd-estimate-name-col {
   min-width: 13rem;

@@ -123,7 +123,7 @@ export function UpcomingDeliveriesClient({
     const to = dateToRef.current;
     if (!from || !to) return;
     loadData(from, to);
-  }, [loadData]);
+  }, [loadData, dateFromRef, dateToRef]);
 
   useEffect(() => {
     if (!isAuthorized) return;
@@ -165,7 +165,10 @@ export function UpcomingDeliveriesClient({
 
   const days = useMemo(() => payload?.days ?? [], [payload?.days]);
   const summary = payload?.summary;
-  const journalReceivedToday = payload?.receivedSupplierIdsToday ?? [];
+  const journalReceivedToday = useMemo(
+    () => payload?.receivedSupplierIdsToday ?? [],
+    [payload?.receivedSupplierIdsToday]
+  );
   const clearedByDate = useMemo(
     () => clearedSupplierIdsByDateFromPayload(payload?.clearedSupplierIdsByDate),
     [payload?.clearedSupplierIdsByDate]

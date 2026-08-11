@@ -10,23 +10,19 @@ import {
   departmentBoardOpenQuestionsLabel,
 } from "@/lib/department-board/copy";
 import { procurementBoardQuestionsListHref } from "@/lib/data/department-board-shared";
-import { surfaceCardClass } from "@/lib/ui/ontime-theme";
+
+/** Płaski pasek statusu — bez elevated shadow (nie wygląda jak karta w cieniu). */
+const bannerShellClass =
+  "flex flex-wrap items-center justify-between gap-3 border border-amber-200/70 bg-amber-50/80 px-3 py-2.5 sm:px-4";
 
 export function DailyPanelBoardQuestionsBanner({ className }: { className?: string }) {
   const count = useAppShellMetrics().navBadges.departmentBoardQuestions ?? 0;
   if (count <= 0) return null;
 
   return (
-    <div
-      className={cn(
-        surfaceCardClass,
-        "flex flex-wrap items-center justify-between gap-3 border-amber-200/85 bg-amber-50/40 px-3 py-2.5 sm:px-4",
-        className
-      )}
-      role="status"
-    >
+    <div className={cn(bannerShellClass, className)} role="status">
       <div className="flex min-w-0 items-start gap-2.5">
-        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-800">
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-100/90 text-amber-800">
           <IconInbox size={17} strokeWidth={2.25} aria-hidden />
         </span>
         <p className="min-w-0 text-sm text-slate-800">
@@ -41,7 +37,7 @@ export function DailyPanelBoardQuestionsBanner({ className }: { className?: stri
       </div>
       <Link
         href={procurementBoardQuestionsListHref()}
-        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-amber-200/90 bg-white px-2.5 text-xs font-medium text-amber-950 transition hover:bg-amber-50"
+        className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-amber-200/80 bg-white/90 px-2.5 text-xs font-medium text-amber-950 transition hover:bg-amber-50/90"
       >
         Tablica pytań
         <LinkChevron size={13} tone="muted" />
