@@ -17,15 +17,21 @@ describe("zd-estimate-ui-copy", () => {
     );
   });
 
-  it("page hint bez host_kind i bez powtórzenia LIVE", () => {
+  it("page hint bez host_kind i bez etykiety LIVE (status jest w intro)", () => {
     expect(zdEstimatePageHint({ isLive: true, configured: true })).not.toMatch(
       /host_kind/
     );
     expect(zdEstimatePageHint({ isLive: true, configured: true })).not.toMatch(
-      /LIVE|prawdziwy dokument/i
+      /\bLIVE\b/
     );
     expect(zdEstimatePageHint({ isLive: true, configured: true })).toMatch(
-      /do ZD/i
+      /Do ZD/i
+    );
+    expect(zdEstimatePageHint({ isLive: true, configured: true })).toMatch(
+      /prawdziwy dokument/i
+    );
+    expect(zdEstimatePageHint({ isLive: true, configured: true })).toMatch(
+      /tylko na prośbę/i
     );
   });
 

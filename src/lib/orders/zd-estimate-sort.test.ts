@@ -65,6 +65,30 @@ describe("sortZdEstimateLines", () => {
     expect(sorted.map((r) => r.tw_Id)).toEqual([2, 1]);
   });
 
+  it("Do ZD respektuje override jednostek", () => {
+    const packed = [
+      line({ tw_Id: 1, tw_Symbol: "X", tw_Nazwa: "x", celZapasu: 8 }),
+      line({ tw_Id: 2, tw_Symbol: "Y", tw_Nazwa: "y", celZapasu: 25 }),
+    ];
+    const pack = new Map([
+      [1, { unitsPerPackage: 10, packageLabel: "op." }],
+      [2, { unitsPerPackage: 10, packageLabel: "op." }],
+    ]);
+    const overrides = new Map([
+      [1, 9],
+      [2, 1],
+    ]);
+    const sorted = sortZdEstimateLines(
+      packed,
+      "doZd",
+      "desc",
+      pack,
+      null,
+      overrides
+    );
+    expect(sorted.map((r) => r.tw_Id)).toEqual([1, 2]);
+  });
+
   it("nie mutuje wejścia", () => {
     const copy = [...rows];
     sortZdEstimateLines(rows, "name", "asc");

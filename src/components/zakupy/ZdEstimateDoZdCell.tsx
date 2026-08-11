@@ -1,25 +1,36 @@
 "use client";
 
+import { useState } from "react";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import {
   formatZdPackHint,
   type ZdPackOrderQty,
 } from "@/lib/orders/zd-estimate-packaging";
 import { cn } from "@/lib/cn";
+import { controlFocusClass } from "@/lib/ui/ontime-theme";
 
 /**
- * Komórka „Do ZD” — duża liczba decyzji + krótki kontekst.
- * Rezerwa próśb: badge pod nazwą (bez duplikatu „+prośba” tutaj).
+ * Komórka „Do ZD” — duża liczba decyzji + opcjonalne nadpisanie przed Create.
  */
 export function ZdEstimateDoZdCell({
   qty,
   excluded,
+  overrideZdUnits,
+  onOverrideChange,
+  overrideDisabled,
 }: {
   qty: ZdPackOrderQty;
   excluded?: boolean;
   /** @deprecated rezerwa pokazana w badge pod nazwą — prop ignorowany. */
   individualExtraPieces?: number;
+  /** Nadpisanie jednostek dokumentu (null = wyliczone). */
+  overrideZdUnits?: number | null;
+  onOverrideChange?: (next: number | null) => void;
+  overrideDisabled?: boolean;
 }) {
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState("");
+
   if (excluded) {
     return (
       <span className="text-[13px] font-medium tabular-nums text-slate-300">
@@ -28,11 +39,103 @@ export function ZdEstimateDoZdCell({
     );
   }
 
+  const displayUnits =
+    overrideZdUnits != null && Number.isFinite(overrideZdUnits)
+      ? Math.trunc(overrideZdUnits)
+      : qty.zdUnits;
+  const overridden =
+    overrideZdUnits != null &&
+    Number.isFinite(overrideZdUnits) &&
+    Math.trunc(overrideZdUnits) !== qty.zdUnits;
+
   const hint = formatZdPackHint(qty);
   const showPieces =
+    !overridden &&
     qty.zdUnits > 0 &&
     qty.hasPackaging &&
     qty.piecesArriving !== qty.zdUnits;
+
+  const commitDraft = (raw: string) => {
+    if (!onOverrideChange) return;
+    const trimmed = raw.trim();
+    if (trimmed === "") {
+      onOverrideChange(null);
+      return;
+    }
+    const n = Number(trimmed);
+    if (!Number.isFinite(n) || n < 0) {
+      onOverrideChange(null);
+      return;
+    }
+    const units = Math.trunc(n);
+    onOverrideChange(units === qty.zdUnits ? null : units);
+  };
+
+  if (onOverrideChange) {
+    return (
+      <span className="inline-flex flex-col items-start gap-0.5">
+        <input
+          type="number"
+          min={0}
+          step={1}
+          inputMode="numeric"
+          value={focused ? draft : String(displayUnits)}
+          disabled={overrideDisabled}
+          title={
+            overridden
+              ? `Nadpisane (wyliczone: ${qty.zdUnits}). Puste/Enter przywraca.`
+              : hint || "Nadpisz ilość Do ZD przed Create"
+          }
+          aria-label="Do ZD — nadpisanie"
+          className={cn(
+            "h-8 w-[4.5rem] rounded-md border px-1.5 text-[1.05rem] font-semibold tabular-nums tracking-tight",
+            controlFocusClass,
+            overridden
+              ? "border-amber-300 bg-amber-50/80 text-amber-950"
+              : displayUnits > 0
+                ? "border-emerald-200/90 bg-white text-emerald-900"
+                : "border-slate-200 bg-white text-slate-400",
+            "disabled:cursor-not-allowed disabled:opacity-50"
+          )}
+          onFocus={() => {
+            setFocused(true);
+            setDraft(String(displayUnits));
+          }}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setDraft(raw);
+            const trimmed = raw.trim();
+            if (trimmed === "") {
+              onOverrideChange(null);
+              return;
+            }
+            const n = Number(trimmed);
+            if (!Number.isFinite(n) || n < 0) return;
+            const units = Math.trunc(n);
+            onOverrideChange(units === qty.zdUnits ? null : units);
+          }}
+          onBlur={() => {
+            commitDraft(draft);
+            setFocused(false);
+          }}
+        />
+        {overridden ? (
+          <button
+            type="button"
+            className="text-[10px] font-medium text-amber-800 underline-offset-2 hover:underline"
+            onClick={() => onOverrideChange(null)}
+            disabled={overrideDisabled}
+          >
+            wyliczone: {qty.zdUnits}
+          </button>
+        ) : showPieces ? (
+          <span className="text-[10px] font-medium leading-tight tabular-nums text-slate-500">
+            → {formatQty(qty.piecesArriving)} szt
+          </span>
+        ) : null}
+      </span>
+    );
+  }
 
   return (
     <span

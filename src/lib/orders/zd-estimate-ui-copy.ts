@@ -21,7 +21,7 @@ export function zdEstimateHostStripDetail(input: {
 }): string {
   const parts: string[] = [];
   if (input.isLive) {
-    parts.push("aktualna baza Subiekta — „Utwórz ZD” zapisuje prawdziwy dokument");
+    parts.push("aktualna baza Subiekta");
   } else {
     parts.push("środowisko testowe Subiekta");
   }
@@ -38,12 +38,14 @@ export function zdEstimatePageHint(input: {
   if (!input.configured) {
     return "Skonfiguruj połączenie z Subiektem (host szacunku), żeby policzyć listę i utworzyć ZD.";
   }
-  // LIVE/test jest na belce statusu — tu tylko kontekst pracy, bez powtórzeń.
-  return "Zakres Subiekta → lista do ZD → Utwórz ZD. Opakowania i wykluczenia są trwałe i wspólne dla działu zakupów.";
+  const hostNote = input.isLive
+    ? "„Utwórz ZD” zapisuje prawdziwy dokument w aktualnej bazie Subiekta."
+    : "„Utwórz ZD” idzie na środowisko testowe Subiekta.";
+  return `„Do ZD” = jednostki dokumentu (opakowania i prośby). Opakowania, wykluczenia, „tylko na prośbę”, pary i składy są wspólne dla działu. ${hostNote}`;
 }
 
 export function zdEstimatePrepCardHint(): string {
-  return "Wykluczenia, opakowania, pary i składy są trwałe i wspólne dla działu zakupów.";
+  return "Wykluczenia, „tylko na prośbę”, opakowania, pary i składy są trwałe i wspólne dla działu zakupów.";
 }
 
 export function zdEstimateEmptyListDescription(isLive: boolean): string {
@@ -107,9 +109,9 @@ export const ZD_ESTIMATE_UNITS_LEGEND =
 
 export const ZD_ESTIMATE_UI = {
   policzNeedsSettingsTitle:
-    "Wymaga wczytanych wykluczeń, opakowań, par, składów i katalogu zębów",
+    "Wymaga wczytanych wykluczeń, „tylko na prośbę”, opakowań, par, składów i katalogu zębów",
   createGateNeedsSettings:
-    "Najpierw wczytaj wykluczenia, opakowania, pary, składy i katalog zębów.",
+    "Najpierw wczytaj wykluczenia, listę „tylko na prośbę”, opakowania, pary, składy i katalog zębów.",
   createProgressDisclaimer:
     "Postęp jest szacunkowy (bez podglądu kroków po stronie Subiekta) — lista może zostać dłużej na „Tworzenie w Subiekcie”.",
   createQtyBumpNote:
@@ -121,13 +123,13 @@ export const ZD_ESTIMATE_UI = {
   packagingConflictTitle:
     "Opakowanie w OnTime różni się od przelicznika pary — sprawdź ustawienia przed utworzeniem ZD.",
   emptyOrderTitle: "Brak pozycji do ZD",
-  footerWindow: (
-    dataOd: string,
-    dataDo: string,
-    dniOkresu: string,
-    dniZapasu: string
-  ) =>
-    ` · okno sprzedaży ${dataOd}–${dataDo} · ${dniOkresu} dni w oknie · zapas ${dniZapasu} dni`,
+  emptyExcludedTitle: "Brak wykluczeń w tym zakresie",
+  emptyExcludedDescription:
+    "Żaden produkt nie jest wykluczony ręcznie, automatycznie (outlet / wycofane / zęby) ani „tylko na prośbę” bez aktywnej prośby.",
+  excludedFilterTitle:
+    "Hard + auto + tylko na prośbę bez aktywnej prośby. Z prośbą — w Do ZD (qty = prośba).",
   advancedZapasMinLabel: "Bufor minimum (szt.)",
   advancedZapasMinHint: "Dodatkowy zapas minimum doliczany do celu.",
+  onRequestVsHardExclude:
+    "„Tylko na prośbę” — poza Do ZD bez prośby; z prośbą qty = tylko prośba. Twarde wykluczenie — prośba trafia do usług/uwag.",
 } as const;

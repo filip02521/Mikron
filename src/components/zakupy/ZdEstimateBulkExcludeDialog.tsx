@@ -15,14 +15,12 @@ export type ZdEstimateBulkLinePreview = {
   tw_Nazwa: string;
 };
 
-export function ZdEstimateBulkExcludeDialog({
-  open,
+function BulkExcludeDialogForm({
   lines,
   pending,
   onCancel,
   onConfirm,
 }: {
-  open: boolean;
   lines: ZdEstimateBulkLinePreview[];
   pending?: boolean;
   onCancel: () => void;
@@ -30,8 +28,6 @@ export function ZdEstimateBulkExcludeDialog({
 }) {
   const noteId = useId();
   const [note, setNote] = useState("");
-
-  if (!open || lines.length === 0) return null;
 
   const preview = lines.slice(0, 8);
   const rest = lines.length - preview.length;
@@ -75,6 +71,16 @@ export function ZdEstimateBulkExcludeDialog({
             ) : (
               `Wyklucz ${actionCount}`
             )}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="min-h-11 w-full sm:w-auto"
+            onClick={() => onConfirm("")}
+            disabled={pending}
+            title="Bez notatki — szybciej przy oczywistych wykluczeniach"
+          >
+            Wyklucz bez notatki
           </Button>
         </div>
       }
@@ -167,5 +173,31 @@ export function ZdEstimateBulkExcludeDialog({
         </div>
       </label>
     </ModalShell>
+  );
+}
+
+export function ZdEstimateBulkExcludeDialog({
+  open,
+  lines,
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  lines: ZdEstimateBulkLinePreview[];
+  pending?: boolean;
+  onCancel: () => void;
+  onConfirm: (note: string) => void;
+}) {
+  if (!open || lines.length === 0) return null;
+
+  return (
+    <BulkExcludeDialogForm
+      key={lines.map((l) => l.tw_Id).join(",")}
+      lines={lines}
+      pending={pending}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+    />
   );
 }

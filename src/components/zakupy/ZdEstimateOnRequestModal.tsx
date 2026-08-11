@@ -2,10 +2,10 @@
 
 import { useId, useMemo, useRef, useState, useTransition } from "react";
 import {
-  actionRestoreZdEstimateProduct,
-  actionUpdateZdEstimateExclusionNote,
+  actionClearZdEstimateOnRequest,
+  actionUpdateZdEstimateOnRequestNote,
 } from "@/app/actions/zd-estimate";
-import type { ZdEstimateExclusionRow } from "@/lib/data/zd-estimate-exclusions";
+import type { ZdEstimateOnRequestRow } from "@/lib/data/zd-estimate-on-request";
 import { IconClipboardList, IconSearch, IconX } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -53,7 +53,7 @@ function GroupChip({
   );
 }
 
-function ExclusionRow({
+function OnRequestRow({
   row,
   editing,
   draftNote,
@@ -62,9 +62,9 @@ function ExclusionRow({
   onCancelEdit,
   onDraftNoteChange,
   onSaveNote,
-  onRestore,
+  onClear,
 }: {
-  row: ZdEstimateExclusionRow;
+  row: ZdEstimateOnRequestRow;
   editing: boolean;
   draftNote: string;
   pending: boolean;
@@ -72,7 +72,7 @@ function ExclusionRow({
   onCancelEdit: () => void;
   onDraftNoteChange: (value: string) => void;
   onSaveNote: () => void;
-  onRestore: () => void;
+  onClear: () => void;
 }) {
   return (
     <li
@@ -123,9 +123,9 @@ function ExclusionRow({
             size="sm"
             variant="secondary"
             disabled={pending}
-            onClick={onRestore}
+            onClick={onClear}
           >
-            Przywróć
+            Usuń
           </Button>
         </div>
       </div>
@@ -138,7 +138,7 @@ function ExclusionRow({
               value={draftNote}
               onChange={(e) => onDraftNoteChange(e.target.value)}
               maxLength={500}
-              placeholder="Dlaczego produkt jest wykluczony…"
+              placeholder="Dlaczego tylko na prośbę…"
               className="mt-1"
               autoFocus
               onKeyDown={(e) => {
@@ -178,17 +178,17 @@ function ExclusionRow({
   );
 }
 
-export function ZdEstimateExclusionsModal({
+export function ZdEstimateOnRequestModal({
   open,
   onClose,
-  exclusions,
-  onExclusionsChange,
+  onRequests,
+  onOnRequestsChange,
   onError,
 }: {
   open: boolean;
   onClose: () => void;
-  exclusions: ZdEstimateExclusionRow[];
-  onExclusionsChange: (rows: ZdEstimateExclusionRow[]) => void;
+  onRequests: ZdEstimateOnRequestRow[];
+  onOnRequestsChange: (rows: ZdEstimateOnRequestRow[]) => void;
   onError: (message: string) => void;
 }) {
   const searchId = useId();
@@ -201,18 +201,18 @@ export function ZdEstimateExclusionsModal({
 
   const groupCounts = useMemo(() => {
     const map = new Map<string, number>();
-    for (const e of exclusions) {
+    for (const e of onRequests) {
       const key = e.grtNazwa?.trim() || "Bez grupy";
       map.set(key, (map.get(key) ?? 0) + 1);
     }
     return [...map.entries()].sort((a, b) =>
       a[0].localeCompare(b[0], "pl")
     );
-  }, [exclusions]);
+  }, [onRequests]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return exclusions.filter((e) => {
+    return onRequests.filter((e) => {
       const groupKey = e.grtNazwa?.trim() || "Bez grupy";
       if (groupFilter !== "all" && groupKey !== groupFilter) return false;
       if (!q) return true;
@@ -227,7 +227,7 @@ export function ZdEstimateExclusionsModal({
         .toLowerCase();
       return hay.includes(q);
     });
-  }, [exclusions, query, groupFilter]);
+  }, [onRequests, query, groupFilter]);
 
   const hasActiveFilters = query.trim().length > 0 || groupFilter !== "all";
 
@@ -237,14 +237,14 @@ export function ZdEstimateExclusionsModal({
     searchRef.current?.focus();
   };
 
-  const beginEdit = (row: ZdEstimateExclusionRow) => {
+  const beginEdit = (row: ZdEstimateOnRequestRow) => {
     setEditingId(row.subiektTwId);
     setDraftNote(row.note);
   };
 
   const saveNote = (subiektTwId: number) => {
     start(async () => {
-      const res = await actionUpdateZdEstimateExclusionNote({
+      const res = await actionUpdateZdEstimateOnRequestNote({
         subiektTwId,
         note: draftNote,
       });
@@ -252,19 +252,19 @@ export function ZdEstimateExclusionsModal({
         onError(res.message);
         return;
       }
-      onExclusionsChange(res.exclusions);
+      onOnRequestsChange(res.onRequests);
       setEditingId(null);
     });
   };
 
-  const restore = (subiektTwId: number) => {
+  const clear = (subiektTwId: number) => {
     start(async () => {
-      const res = await actionRestoreZdEstimateProduct(subiektTwId);
+      const res = await actionClearZdEstimateOnRequest(subiektTwId);
       if (!res.ok) {
         onError(res.message);
         return;
       }
-      onExclusionsChange(res.exclusions);
+      onOnRequestsChange(res.onRequests);
       if (editingId === subiektTwId) setEditingId(null);
     });
   };
@@ -273,21 +273,21 @@ export function ZdEstimateExclusionsModal({
     <ModalShell
       open={open}
       onClose={onClose}
-      title="Wykluczenia ZD"
-      titleHint="Produkty na tej liście są pomijane przy każdym kolejnym szacunku zamówienia. Lista jest wspólna dla całego działu zakupów."
+      title="Tylko na prośbę"
+      titleHint="Bez aktywnej prośby handlowca produkt zostaje poza Do ZD. Z prośbą — na listę tylko w ilości z prośby (bez celu zapasu). Lista wspólna dla działu — nie mylić z „w razie potrzeby” u dostawcy."
       size="xl"
       bodyClassName="space-y-4 px-5 py-4 sm:px-6 sm:py-5"
       loadingMessage={pending ? "Zapisuję…" : null}
       footer={
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[11px] leading-snug text-slate-500">
-            {exclusions.length === 0
-              ? "Brak zapisanych wykluczeń"
+            {onRequests.length === 0
+              ? "Brak produktów „tylko na prośbę”"
               : hasActiveFilters
-                ? `Widoczne ${filtered.length} z ${exclusions.length}`
-                : exclusions.length === 1
+                ? `Widoczne ${filtered.length} z ${onRequests.length}`
+                : onRequests.length === 1
                   ? "1 produkt na liście"
-                  : `${exclusions.length} produktów na liście`}
+                  : `${onRequests.length} produktów na liście`}
           </p>
           <Button
             type="button"
@@ -310,11 +310,10 @@ export function ZdEstimateExclusionsModal({
           />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-900">
-              Trwałe pomijanie przy „Do ZD”
+              Zamawianie tylko przy prośbie
             </p>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Przywróć produkt, gdy znów ma wrócić na listę szacunku. Notatka
-              pomaga innym w dziale zrozumieć powód.{" "}
+              Usuń wpis, gdy produkt ma wrócić do zwykłego szacunku zapasu.{" "}
               {ZD_ESTIMATE_UI.onRequestVsHardExclude}
             </p>
           </div>
@@ -361,7 +360,7 @@ export function ZdEstimateExclusionsModal({
           <div className="flex flex-wrap items-center gap-1.5">
             <GroupChip
               label="Wszystkie"
-              count={exclusions.length}
+              count={onRequests.length}
               active={groupFilter === "all"}
               onClick={() => setGroupFilter("all")}
             />
@@ -389,22 +388,22 @@ export function ZdEstimateExclusionsModal({
 
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-[11px] font-medium text-slate-500">
-          {filtered.length === exclusions.length
-            ? "Lista wykluczeń"
-            : `Wyniki: ${filtered.length} z ${exclusions.length}`}
+          {filtered.length === onRequests.length
+            ? "Lista „tylko na prośbę”"
+            : `Wyniki: ${filtered.length} z ${onRequests.length}`}
         </p>
         {filtered.length > 0 ? (
           <p className="text-[10px] text-slate-400">
-            Przywróć = wraca na szacunek
+            Usuń = wraca na szacunek
           </p>
         ) : null}
       </div>
 
-      {exclusions.length === 0 ? (
+      {onRequests.length === 0 ? (
         <EmptyState
           icon={<IconClipboardList size={28} strokeWidth={1.75} />}
-          title="Brak wykluczeń"
-          description="Na liście szacunku otwórz menu ⋮ przy produkcie i wybierz „Wyklucz” — zapamiętamy go na kolejne zamówienia."
+          title="Brak wpisów"
+          description="Na liście szacunku otwórz menu ⋮ przy produkcie i wybierz „Tylko na prośbę” — poza Do ZD bez aktywnej prośby."
         />
       ) : filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/70 px-4 py-8 text-center">
@@ -429,7 +428,7 @@ export function ZdEstimateExclusionsModal({
       ) : (
         <ul className="max-h-[min(58vh,32rem)] space-y-2.5 overflow-y-auto overscroll-contain pr-0.5">
           {filtered.map((row) => (
-            <ExclusionRow
+            <OnRequestRow
               key={row.subiektTwId}
               row={row}
               editing={editingId === row.subiektTwId}
@@ -439,7 +438,7 @@ export function ZdEstimateExclusionsModal({
               onCancelEdit={() => setEditingId(null)}
               onDraftNoteChange={setDraftNote}
               onSaveNote={() => saveNote(row.subiektTwId)}
-              onRestore={() => restore(row.subiektTwId)}
+              onClear={() => clear(row.subiektTwId)}
             />
           ))}
         </ul>

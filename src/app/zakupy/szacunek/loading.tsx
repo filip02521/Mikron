@@ -1,5 +1,5 @@
 import { Spinner } from "@/components/ui/Spinner";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { ZdEstimatePageIntro } from "@/components/zakupy/ZdEstimatePageIntro";
 import { cn } from "@/lib/cn";
 import { zdEstimatePageShellClass } from "@/lib/ui/ontime-theme";
 
@@ -10,10 +10,7 @@ import { zdEstimatePageShellClass } from "@/lib/ui/ontime-theme";
 export default function ZdEstimateLoading() {
   return (
     <div className={zdEstimatePageShellClass}>
-      <PageHeader
-        title="Szacunek ZD"
-        description="Przygotowuję listę do zamówienia…"
-      />
+      <ZdEstimatePageIntro description="Przygotowuję listę do zamówienia…" />
       <section
         role="status"
         aria-live="polite"

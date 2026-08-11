@@ -1,7 +1,7 @@
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import {
+  effectiveZdDocumentUnits,
   individualExtraPiecesForTw,
-  resolveOrderQtyForLine,
 } from "@/lib/orders/zd-estimate-packaging";
 
 export type ZdEstimateListSortKey = "symbol" | "name" | "doZd";
@@ -18,14 +18,16 @@ function compareText(a: string, b: string): number {
 
 /**
  * Sortuje widoczne linie szacunku (kopia tablicy).
- * „Do ZD” = jednostki dokumentu po opakowaniu (`resolveOrderQtyForLine`).
+ * „Do ZD” = jednostki dokumentu (z nadpisaniem sesji jeśli podane).
  */
 export function sortZdEstimateLines(
   lines: readonly ManualZdEstimateLine[],
   sortKey: ZdEstimateListSortKey,
   sortDir: ZdEstimateListSortDir,
   packagingById?: ReadonlyMap<number, ZdEstimateSortPackaging> | null,
-  individualExtraByTwId?: ReadonlyMap<number, number> | null
+  individualExtraByTwId?: ReadonlyMap<number, number> | null,
+  qtyOverrideByTwId?: ReadonlyMap<number, number> | null,
+  extraOnlyTwIds?: ReadonlySet<number> | null
 ): ManualZdEstimateLine[] {
   const dir = sortDir === "asc" ? 1 : -1;
   const pack = packagingById ?? null;
@@ -37,16 +39,20 @@ export function sortZdEstimateLines(
     } else if (sortKey === "name") {
       cmp = compareText(a.tw_Nazwa, b.tw_Nazwa);
     } else {
-      const qa = resolveOrderQtyForLine(
+      const qa = effectiveZdDocumentUnits(
         a,
         pack?.get(a.tw_Id) ?? null,
-        individualExtraPiecesForTw(a.tw_Id, individualExtraByTwId)
-      ).zdUnits;
-      const qb = resolveOrderQtyForLine(
+        individualExtraPiecesForTw(a.tw_Id, individualExtraByTwId),
+        qtyOverrideByTwId?.get(a.tw_Id),
+        extraOnlyTwIds?.has(a.tw_Id) === true
+      );
+      const qb = effectiveZdDocumentUnits(
         b,
         pack?.get(b.tw_Id) ?? null,
-        individualExtraPiecesForTw(b.tw_Id, individualExtraByTwId)
-      ).zdUnits;
+        individualExtraPiecesForTw(b.tw_Id, individualExtraByTwId),
+        qtyOverrideByTwId?.get(b.tw_Id),
+        extraOnlyTwIds?.has(b.tw_Id) === true
+      );
       cmp = qa - qb;
     }
     if (cmp !== 0) return dir * cmp;

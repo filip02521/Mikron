@@ -21,6 +21,7 @@ function PackagingDialogForm({
   existing,
   pending,
   individualExtraPieces = 0,
+  extraOnly = false,
   onCancel,
   onSave,
   onClear,
@@ -29,6 +30,8 @@ function PackagingDialogForm({
   existing: ZdEstimatePackagingRow | null;
   pending?: boolean;
   individualExtraPieces?: number;
+  /** „Tylko na prośbę” z aktywną prośbą — podgląd qty bez celu zapasu. */
+  extraOnly?: boolean;
   onCancel: () => void;
   onSave: (input: {
     unitsPerPackage: number;
@@ -55,7 +58,8 @@ function PackagingDialogForm({
             unitsPerPackage: unitsNum,
             packageLabel: label.trim() || "op.",
           },
-          individualExtraPieces
+          individualExtraPieces,
+          extraOnly
         )
       : null;
 
@@ -137,7 +141,11 @@ function PackagingDialogForm({
               <span className="font-semibold text-slate-800">
                 {preview ? formatQty(preview.piecesNeeded) : "—"} szt
               </span>
-              {individualExtraPieces > 0 ? (
+              {extraOnly ? (
+                <span className="ml-1 font-semibold text-amber-800">
+                  (tylko prośba — bez celu zapasu)
+                </span>
+              ) : individualExtraPieces > 0 ? (
                 <span className="ml-1 font-semibold text-emerald-700">
                   (w tym +{formatQty(individualExtraPieces)} z próśb)
                 </span>
@@ -232,6 +240,7 @@ export function ZdEstimatePackagingDialog({
   existing,
   pending,
   individualExtraPieces = 0,
+  extraOnly = false,
   onCancel,
   onSave,
   onClear,
@@ -241,6 +250,7 @@ export function ZdEstimatePackagingDialog({
   existing: ZdEstimatePackagingRow | null;
   pending?: boolean;
   individualExtraPieces?: number;
+  extraOnly?: boolean;
   onCancel: () => void;
   onSave: (input: {
     unitsPerPackage: number;
@@ -252,11 +262,12 @@ export function ZdEstimatePackagingDialog({
   if (!open || !line) return null;
   return (
     <PackagingDialogForm
-      key={`${line.tw_Id}-${existing?.unitsPerPackage ?? 0}-${existing?.updatedAt ?? ""}`}
+      key={`${line.tw_Id}-${existing?.unitsPerPackage ?? 0}-${existing?.updatedAt ?? ""}-${extraOnly ? "eo" : "st"}`}
       line={line}
       existing={existing}
       pending={pending}
       individualExtraPieces={individualExtraPieces}
+      extraOnly={extraOnly}
       onCancel={onCancel}
       onSave={onSave}
       onClear={onClear}
