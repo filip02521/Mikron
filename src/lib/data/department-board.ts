@@ -124,7 +124,7 @@ export async function fetchDepartmentBoardQuestions(): Promise<DepartmentBoardQu
   const allIds = allRows.map((q) => q.id);
 
   let posts: DepartmentBoardPostRow[] = [];
-  let attachmentsByThread = new Map<string, BoardThreadAttachmentRow[]>();
+  const attachmentsByThread = new Map<string, BoardThreadAttachmentRow[]>();
   if (allIds.length) {
     const [postsRes, attachmentsRes] = await Promise.all([
       supabase
