@@ -548,7 +548,7 @@ export function buildIndividualServiceUwagiBlock(
     partOrderIds.push(line.requests.map((r) => r.orderId));
   }
   const prefix = "Usługi: ";
-  let text = prefix + parts.join("; ");
+  const text = prefix + parts.join("; ");
   if (text.length <= maxLen) {
     return {
       text,
@@ -557,8 +557,8 @@ export function buildIndividualServiceUwagiBlock(
       omittedOrderIds: [],
     };
   }
-  let kept: string[] = [];
-  let keptIds: string[] = [];
+  const kept: string[] = [];
+  const keptIds: string[] = [];
   let omitted = parts.length;
   for (let i = 0; i < parts.length; i++) {
     const trial = prefix + [...kept, parts[i]!].join("; ");

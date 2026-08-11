@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
@@ -8,10 +15,15 @@ import { MICROCOPY } from "@/lib/ui/microcopy";
 import { usePatchAppShellNavBadges } from "@/components/layout/AppShellMetricsContext";
 import { usePersistedFlag } from "@/lib/client/use-persisted-flag";
 import { teethAutoRefreshStore as autoRefreshStore } from "@/lib/client/teeth-auto-refresh-store";
+import {
+  isTeethPrimaryLiveRefreshPath,
+  LIVE_PANEL_AUTO_REFRESH_INTERVAL_MS,
+  shouldFireLivePanelAutoRefresh,
+} from "@/lib/client/live-panel-auto-refresh";
 
 const POLL_MS = 25_000;
 const INITIAL_POLL_DELAY_MS = 4_000;
-const AUTO_REFRESH_MS = 3 * 60_000;
+const AUTO_REFRESH_MS = LIVE_PANEL_AUTO_REFRESH_INTERVAL_MS;
 
 type TeethUpdatesContextValue = {
   hasUpdates: boolean;
@@ -22,9 +34,7 @@ type TeethUpdatesContextValue = {
   lastPollAt: number | null;
 };
 
-const TeethUpdatesContext = createContext<TeethUpdatesContextValue | null>(
-  null
-);
+const TeethUpdatesContext = createContext<TeethUpdatesContextValue | null>(null);
 
 export function useTeethUpdates() {
   return useContext(TeethUpdatesContext);
@@ -47,8 +57,7 @@ async function fetchTeethVersion(): Promise<{
     };
     return {
       version: body.version ?? null,
-      queueCount:
-        typeof body.queueCount === "number" ? body.queueCount : null,
+      queueCount: typeof body.queueCount === "number" ? body.queueCount : null,
       verificationCount:
         typeof body.verificationCount === "number" ? body.verificationCount : null,
     };
@@ -67,11 +76,15 @@ export function TeethUpdatesProvider({
   enabled: boolean;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const patchNavBadges = usePatchAppShellNavBadges();
   const [baseline, setBaseline] = useState(initialVersion);
   const [latest, setLatest] = useState(initialVersion);
   const autoRefresh = usePersistedFlag(autoRefreshStore);
   const syncingRef = useRef(false);
+  const lastPrimaryAutoRefreshAtRef = useRef(0);
+  const lastFlagAutoRefreshAtRef = useRef(0);
+  const [visibilityEpoch, setVisibilityEpoch] = useState(0);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [lastPollAt, setLastPollAt] = useState<number | null>(null);
   const versionKey = `${enabled}\0${initialVersion ?? ""}`;
@@ -82,10 +95,6 @@ export function TeethUpdatesProvider({
     setBaseline(initialVersion);
     setLatest(initialVersion);
   }
-
-  const setAutoRefresh = useCallback((value: boolean) => {
-    autoRefreshStore.setValue(value);
-  }, []);
 
   const syncBaseline = useCallback((version: string | null) => {
     setBaseline(version);
@@ -101,7 +110,9 @@ export function TeethUpdatesProvider({
       .then(({ version, queueCount, verificationCount }) => {
         if (version) syncBaseline(version);
         if (queueCount != null) patchNavBadges({ teethQueue: queueCount });
-        if (verificationCount != null) patchNavBadges({ teethVerification: verificationCount });
+        if (verificationCount != null) {
+          patchNavBadges({ teethVerification: verificationCount });
+        }
         const now = Date.now();
         setLastSyncedAt(now);
         setLastPollAt(now);
@@ -111,10 +122,22 @@ export function TeethUpdatesProvider({
       });
   }, [router, latest, syncBaseline, patchNavBadges]);
 
+  const setAutoRefresh = useCallback(
+    (value: boolean) => {
+      autoRefreshStore.setValue(value);
+      if (value && enabled && latest && baseline && latest !== baseline) {
+        refreshNow();
+      }
+    },
+    [enabled, latest, baseline, refreshNow]
+  );
+
   const poll = useCallback(async () => {
     const { version, queueCount, verificationCount } = await fetchTeethVersion();
     if (queueCount != null) patchNavBadges({ teethQueue: queueCount });
-    if (verificationCount != null) patchNavBadges({ teethVerification: verificationCount });
+    if (verificationCount != null) {
+      patchNavBadges({ teethVerification: verificationCount });
+    }
     if (!version) return;
     const now = Date.now();
     setLatest(version);
@@ -136,7 +159,9 @@ export function TeethUpdatesProvider({
       void poll();
     }, POLL_MS);
     const onVisible = () => {
-      if (document.visibilityState === "visible") void poll();
+      if (document.visibilityState !== "visible") return;
+      void poll();
+      setVisibilityEpoch((n) => n + 1);
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
@@ -144,6 +169,41 @@ export function TeethUpdatesProvider({
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [enabled, poll]);
+
+  /** /zeby/* — odśwież treść zaraz po zmianie wersji (bez wymogu toggle). */
+  useEffect(() => {
+    if (!enabled) return;
+    if (!latest || !baseline || latest === baseline) return;
+    if (!isTeethPrimaryLiveRefreshPath(pathname)) return;
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      return;
+    }
+
+    const decision = shouldFireLivePanelAutoRefresh({
+      lastFiredAt: lastPrimaryAutoRefreshAtRef.current,
+    });
+    if (!decision.fire) return;
+    lastPrimaryAutoRefreshAtRef.current = decision.nextFiredAt;
+    lastFlagAutoRefreshAtRef.current = decision.nextFiredAt;
+    refreshNow();
+  }, [enabled, latest, baseline, pathname, refreshNow, visibilityEpoch]);
+
+  /** Flaga ON poza /zeby — odśwież zaraz po diffie. */
+  useEffect(() => {
+    if (!enabled || !autoRefresh) return;
+    if (!latest || !baseline || latest === baseline) return;
+    if (isTeethPrimaryLiveRefreshPath(pathname)) return;
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      return;
+    }
+
+    const decision = shouldFireLivePanelAutoRefresh({
+      lastFiredAt: lastFlagAutoRefreshAtRef.current,
+    });
+    if (!decision.fire) return;
+    lastFlagAutoRefreshAtRef.current = decision.nextFiredAt;
+    refreshNow();
+  }, [enabled, autoRefresh, latest, baseline, pathname, refreshNow, visibilityEpoch]);
 
   useEffect(() => {
     if (!enabled || !autoRefresh) return;
@@ -179,7 +239,7 @@ export function TeethUpdatesProvider({
 export function TeethUpdatesBanner() {
   const ctx = useTeethUpdates();
   const pathname = usePathname();
-  if (!ctx?.hasUpdates || pathname.startsWith("/zeby")) return null;
+  if (!ctx?.hasUpdates || isTeethPrimaryLiveRefreshPath(pathname)) return null;
 
   return (
     <SystemNotice

@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 import { zdEstimatePageShellClass } from "@/lib/ui/ontime-theme";
 import { parseZdEstimateLaunchQuery } from "@/lib/orders/zd-estimate-supplier-scope";
+import { zdEstimatePageHint } from "@/lib/orders/zd-estimate-ui-copy";
 
 export const metadata: Metadata = pageMetadataFor("zdEstimate");
 export const dynamic = "force-dynamic";
@@ -117,7 +118,10 @@ export default async function ZdEstimatePage({
       <PageHeader
         title="Szacunek ZD"
         description="Zakres Subiekta → lista do zamówienia → Utwórz ZD. „Do ZD” to jednostki dokumentu (z opakowań i próśb)."
-        hint="Sandbox na testowym :5082. Live :5080 bez zmian. Opakowania i wykluczenia są trwałe i wspólne dla działu zakupów."
+        hint={zdEstimatePageHint({
+          isLive: bootstrap.ordersIsLive,
+          configured: bootstrap.configured,
+        })}
       />
       <ZdEstimateWorkbench bootstrap={bootstrap} launch={launch} />
     </div>

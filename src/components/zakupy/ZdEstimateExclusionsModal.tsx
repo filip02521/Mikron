@@ -309,7 +309,7 @@ export function ZdEstimateExclusionsModal({
           />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-900">
-              Trwałe pomijanie przy „Do zamówienia”
+              Trwałe pomijanie przy „Do ZD”
             </p>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
               Przywróć produkt, gdy znów ma wrócić na listę szacunku. Notatka

@@ -30,7 +30,7 @@ function ExcludeDialogForm({
       open
       onClose={onCancel}
       title="Wyklucz z listy"
-      titleHint="Produkt zniknie z „Do zamówienia” przy kolejnych szacunkach, aż go przywrócisz. Lista jest wspólna dla działu zakupów."
+      titleHint="Produkt zniknie z „Do ZD” przy kolejnych szacunkach, aż go przywrócisz. Lista jest wspólna dla działu zakupów."
       titleId="zd-estimate-exclude-title"
       size="md"
       tier="raised"

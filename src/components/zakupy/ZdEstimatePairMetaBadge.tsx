@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import type { ZdEstimatePairMeta } from "@/lib/orders/zd-estimate-pairs";
+import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import {
   formatPairPiecesUiHint,
   formatPairSalesChannelsBreakdown,
@@ -10,7 +11,7 @@ import {
 import { cn } from "@/lib/cn";
 
 /**
- * Badge pod nazwą: sprzedaż/cover pary w sztukach + rozbicie kanałów.
+ * Badge pod nazwą: sprzedaż/pokrycie pary w sztukach + rozbicie kanałów.
  */
 export function ZdEstimatePairMetaBadge({
   pair,
@@ -41,14 +42,14 @@ export function ZdEstimatePairMetaBadge({
   const isPack = pair.role === "pack";
 
   const title = pair.partnerMissing
-    ? "Brak partnera w wyniku szacunku — qty 0"
+    ? "Brak partnera w wyniku szacunku — ilość 0"
     : [
         isPack
           ? "SKU paczki: na ZD zamawiasz ten towar (op./kartony)."
           : "SKU sztuk: sprzedaż jednostkowa — nie zamawiasz tego wiersza na ZD.",
         `1 op. = ${pair.unitsPerPack} szt.`,
         channels.title,
-        `Cover pary: ${cover.piecesLabel}${cover.packsApproxLabel ? ` (${cover.packsApproxLabel})` : ""}.`,
+        `Pokrycie pary: ${cover.piecesLabel}${cover.packsApproxLabel ? ` (${cover.packsApproxLabel})` : ""}.`,
         `Stany: sztuki ${formatQty(pair.pieceDostepne)} dost. · paczki ${formatQty(pair.packDostepne)} op. ×${pair.unitsPerPack}.`,
       ].join(" ");
 
@@ -88,15 +89,18 @@ export function ZdEstimatePairMetaBadge({
           </span>
         )}
         {packagingConflict ? (
-          <span className="normal-case tracking-normal text-amber-800">
-            · konflikt
+          <span
+            className="rounded bg-amber-100 px-1 py-px font-semibold normal-case tracking-normal text-amber-950"
+            title={ZD_ESTIMATE_UI.packagingConflictTitle}
+          >
+            {ZD_ESTIMATE_UI.packagingConflictShort}
           </span>
         ) : null}
       </span>
 
       {pair.partnerMissing ? (
         <span className="text-[10px] font-medium normal-case tracking-normal text-amber-900">
-          Brak partnera — qty 0
+          Brak partnera — ilość 0
         </span>
       ) : (
         <span className="truncate text-[10px] font-medium normal-case tracking-normal text-slate-600">
@@ -107,7 +111,10 @@ export function ZdEstimatePairMetaBadge({
           <span className="tabular-nums text-slate-800">
             {cover.piecesLabel}
           </span>
-          <span className="text-slate-400"> cover</span>
+          <span className="text-slate-400">
+            {" "}
+            {ZD_ESTIMATE_UI.pairCoverLabel}
+          </span>
         </span>
       )}
     </span>

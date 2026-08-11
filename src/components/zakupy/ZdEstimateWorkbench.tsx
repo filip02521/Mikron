@@ -32,6 +32,17 @@ import type { ZdProductPairRow } from "@/lib/data/zd-product-pairs";
 import type { ZdProductBomRow } from "@/lib/data/zd-product-boms";
 import { bomRowsToRefs } from "@/lib/orders/zd-estimate-bom";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
+import {
+  ZD_ESTIMATE_UNITS_LEGEND,
+  ZD_ESTIMATE_UI,
+  zdEstimateBlockedDailyCtaMessage,
+  zdEstimateBlockedOrdersAlertBody,
+  zdEstimateEmptyListDescription,
+  zdEstimateHostBadgeLabel,
+  zdEstimateHostStripDetail,
+  zdEstimatePrepCardHint,
+  zdEstimateReadyFollowUp,
+} from "@/lib/orders/zd-estimate-ui-copy";
 import { applyGroupStockWindow } from "@/lib/orders/zd-estimate-group-stock";
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import {
@@ -228,6 +239,10 @@ type Bootstrap = {
   ordersBaseUrl: string | null;
   ordersBlockedReason: string | null;
   ordersMessage: string | null;
+  ordersPort: number | null;
+  ordersHostKind: "live" | "orders_test" | null;
+  ordersIsLive: boolean;
+  ordersHostLabel: string | null;
   testPort: number;
   todayKey: string;
   salesEndKey: string;
@@ -1628,18 +1643,23 @@ export function ZdEstimateWorkbench({
   useEffect(() => {
     const id = supplierId?.trim();
     if (!id) {
-      setPendingIndividuals([]);
-      setPendingIndividualsError(null);
-      setPendingIndividualsTruncated(false);
-      setPendingIndividualsLoading(false);
+      queueMicrotask(() => {
+        setPendingIndividuals([]);
+        setPendingIndividualsError(null);
+        setPendingIndividualsTruncated(false);
+        setPendingIndividualsLoading(false);
+      });
       return;
     }
     // Natychmiast czyść listę przy zmianie dostawcy — unikaj merge z poprzednim.
-    setPendingIndividuals([]);
-    setPendingIndividualsTruncated(false);
-    setPendingIndividualsError(null);
-    setPendingIndividualsLoading(true);
     const gen = ++pendingFetchGenRef.current;
+    queueMicrotask(() => {
+      if (gen !== pendingFetchGenRef.current) return;
+      setPendingIndividuals([]);
+      setPendingIndividualsTruncated(false);
+      setPendingIndividualsError(null);
+      setPendingIndividualsLoading(true);
+    });
     void (async () => {
       const res = await actionFetchZdEstimatePendingIndividuals(id);
       if (gen !== pendingFetchGenRef.current) return;
@@ -1888,7 +1908,7 @@ export function ZdEstimateWorkbench({
     if (!lines) return [];
     let filtered: ManualZdEstimateLine[];
     if (!settingsTrusted) {
-      // „Do zamówienia” wymaga DB + opakowań. Auto z nazwy można pokazać od razu.
+      // „Do ZD” wymaga DB + opakowań. Auto z nazwy można pokazać od razu.
       if (listFilter === "order") return [];
       if (listFilter === "excluded") {
         filtered = lines.filter((l) => nameAutoByTwId.has(l.tw_Id));
@@ -2400,6 +2420,7 @@ export function ZdEstimateWorkbench({
           startedAtMs={launchStartedAtMs}
           scopeAlreadyResolved={launchHasRunnableScope(launch)}
           forceComplete={launchForceComplete}
+          ordersIsLive={bootstrap.ordersIsLive}
         />
       ) : null}
 
@@ -2407,36 +2428,48 @@ export function ZdEstimateWorkbench({
       {!showLaunchProgress ? (
         <>
       {/* Status środowiska — kompaktowy, bez hałasu */}
+      {/* Jedyna belka środowiska — bez powtórzeń w hintach kart / page header. */}
       {bootstrap.configured ? (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-emerald-200/70 bg-emerald-50/50 px-4 py-3 text-sm text-emerald-950">
-          <Badge variant="success">Test :{bootstrap.testPort}</Badge>
-          <span className="min-w-0 truncate font-medium text-emerald-900/85">
-            {bootstrap.ordersBaseUrl}
+        <div
+          className={
+            bootstrap.ordersIsLive
+              ? "flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-amber-300/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-950"
+              : "flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-emerald-200/70 bg-emerald-50/50 px-4 py-3 text-sm text-emerald-950"
+          }
+        >
+          <Badge variant={bootstrap.ordersIsLive ? "warning" : "success"}>
+            {zdEstimateHostBadgeLabel({
+              isLive: bootstrap.ordersIsLive,
+              port: bootstrap.ordersPort ?? bootstrap.testPort,
+            })}
+          </Badge>
+          <span
+            className={
+              bootstrap.ordersIsLive
+                ? "min-w-0 text-amber-950/90"
+                : "min-w-0 text-emerald-900/85"
+            }
+          >
+            {zdEstimateHostStripDetail({
+              isLive: bootstrap.ordersIsLive,
+              salesEndFromFs: bootstrap.salesEndFromFs,
+              salesEndKeyFormatted: bootstrap.salesEndFromFs
+                ? formatPlDate(bootstrap.salesEndKey)
+                : null,
+            })}
           </span>
-          {bootstrap.salesEndFromFs ? (
-            <span className="text-emerald-800/70">
-              · FS do {formatPlDate(bootstrap.salesEndKey)}
-            </span>
-          ) : null}
         </div>
       ) : (
-        <Alert tone="error" title="Szacunek zablokowany — tylko test :5082">
-          {bootstrap.ordersMessage ??
-            "Brak bezpiecznej konfiguracji testowego API."}
-          <span className="mt-2 block text-sm">
-            <code className="text-xs">
-              SUBIEKT_API_ORDERS_BASE_URL=http://192.168.0.140:{bootstrap.testPort}
-              /api/v1
-            </code>
-          </span>
+        <Alert tone="error" title="Szacunek zablokowany">
+          {zdEstimateBlockedOrdersAlertBody(bootstrap.ordersMessage)}
         </Alert>
       )}
 
       {launchReadyMessage ? (
         <div id={ZD_ESTIMATE_READY_FOCUS_ID} className="scroll-mt-4">
           <Alert tone="success" title="Zamówienie gotowe">
-            {launchReadyMessage}. Użyj „Utwórz ZD” (test :5082) albo skopiuj TSV.
-            „Powiąż ZD” tylko gdy dokument powstał poza OnTime.
+            {launchReadyMessage}.{" "}
+            {zdEstimateReadyFollowUp(bootstrap.ordersIsLive)}
           </Alert>
         </div>
       ) : null}
@@ -2514,8 +2547,7 @@ export function ZdEstimateWorkbench({
       !assignHint &&
       !launchReadyMessage ? (
         <Alert tone="error" title="Nie przygotuję ZD">
-          Szacunek jest zablokowany (brak testowego API). CTA z panelu dziennego
-          otworzyło stronę, ale automatycznego wyliczenia nie uruchomiono.
+          {zdEstimateBlockedDailyCtaMessage()}
         </Alert>
       ) : null}
         </>
@@ -2530,9 +2562,9 @@ export function ZdEstimateWorkbench({
           description={
             prepCollapsed
               ? "Zakres ustawiony — lista poniżej. Rozwiń, żeby zmienić grupę/cechę."
-              : "Wybierz grupę lub cechę Subiekta. Zapas i okno sprzedaży ustawią się same. „Utwórz ZD” = test :5082 + historia."
+              : "Wybierz grupę lub cechę Subiekta. Zapas i okno sprzedaży ustawią się same. Potem „Policz listę” i ewentualnie „Utwórz ZD”."
           }
-          hint="Wykluczenia i opakowania są trwałe i wspólne dla działu zakupów. Sandbox tylko na :5082."
+          hint={zdEstimatePrepCardHint()}
           leading={
             <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
               <IconPackage size={18} strokeWidth={1.75} />
@@ -2867,6 +2899,17 @@ export function ZdEstimateWorkbench({
                 !scopeSelected ||
                 !settingsTrusted
               }
+              title={
+                !settingsTrusted
+                  ? ZD_ESTIMATE_UI.policzNeedsSettingsTitle
+                  : !bootstrap.configured
+                    ? "Brak połączenia z Subiektem"
+                    : !scopeSelected
+                      ? "Wybierz grupę lub cechę"
+                      : estimating
+                        ? "Trwa przeliczanie"
+                        : "Policz listę do ZD z Subiekta"
+              }
               className="h-11 w-full sm:w-auto sm:min-w-[12.5rem]"
             >
               {estimating ? (
@@ -2975,12 +3018,13 @@ export function ZdEstimateWorkbench({
                 </div>
               ) : null}
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Bufor szt. (zapasMin)">
+                <Field label={ZD_ESTIMATE_UI.advancedZapasMinLabel}>
                   <Input
                     type="number"
                     min={0}
                     value={zapasMin}
                     onChange={(e) => setZapasMin(e.target.value)}
+                    title={ZD_ESTIMATE_UI.advancedZapasMinHint}
                   />
                 </Field>
               </div>
@@ -3076,8 +3120,8 @@ export function ZdEstimateWorkbench({
         <Alert tone="error" title="Produkty zębowe niedostępne">
           {teethProductsError}
           <span className="mt-2 block">
-            Bez katalogu zębów pozycje z `prosba_teeth_products` mogłyby trafić
-            na listę do ZD. Wczytaj katalog przed szacunkiem.
+            Bez katalogu zębów towary zębowe mogłyby trafić na listę do ZD.
+            Wczytaj katalog przed szacunkiem.
           </span>
           <Button
             type="button"
@@ -3095,7 +3139,7 @@ export function ZdEstimateWorkbench({
         <Alert tone="warning" title="Brak partnera pary w szacunku">
           Nie udało się dociągnąć {pairPartnerMissingCount}{" "}
           {pairPartnerMissingCount === 1 ? "towaru" : "towarów"} z pary — linie
-          tych paczek mają qty 0 (bez cichego half-merge).
+          tych paczek mają ilość 0 (bez domyślnego scalenia połowy pary).
         </Alert>
       ) : null}
       {bomMissingCount > 0 ? (
@@ -3127,7 +3171,7 @@ export function ZdEstimateWorkbench({
             brandAccent
             icon={<IconClipboardList size={28} strokeWidth={1.75} />}
             title="Brak listy"
-            description="Wybierz zakres (grupę albo cechę) i kliknij „Policz listę”. Wynik pochodzi z testowego Subiekta — pełny zakres towarów."
+            description={zdEstimateEmptyListDescription(bootstrap.ordersIsLive)}
           />
         </Card>
       ) : null}
@@ -3141,9 +3185,12 @@ export function ZdEstimateWorkbench({
                 Policz listę w toku
               </p>
               <p className="text-sm leading-snug text-slate-600">
-                Pobieram pełny zakres z testowego Subiekta (:5082), dociągam
-                partnerów par / BOM i prośby handlowców. Duża cecha może potrwać
-                do kilku minut.
+                Pobieram pełny zakres z Subiekta
+                {bootstrap.ordersIsLive
+                  ? " (aktualna baza)"
+                  : " (środowisko testowe)"}
+                , dociągam partnerów par i składów oraz prośby handlowców. Duża
+                cecha może potrwać do kilku minut.
               </p>
             </div>
           </div>
@@ -3159,8 +3206,9 @@ export function ZdEstimateWorkbench({
             title="Lista produktów"
             description={
               scopeLabel
-                ? `${scopeLabel} · dane z Subiekta :${bootstrap.testPort}`
-                : `Dane z Subiekta :${bootstrap.testPort}`
+                ? `${scopeLabel} · ${bootstrap.ordersHostLabel ?? `Subiekt :${bootstrap.ordersPort ?? bootstrap.testPort}`}`
+                : bootstrap.ordersHostLabel ??
+                  `Dane z Subiekta :${bootstrap.ordersPort ?? bootstrap.testPort}`
             }
             leading={
               <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
@@ -3180,7 +3228,7 @@ export function ZdEstimateWorkbench({
                 options={[
                   {
                     value: "order",
-                    label: "Do zamówienia",
+                    label: "Do ZD",
                     title: "Qty > 0, bez wykluczonych",
                   },
                   {
@@ -3282,7 +3330,9 @@ export function ZdEstimateWorkbench({
                         disabled={!createZdGate.ok}
                         title={
                           createZdGate.ok
-                            ? "Tworzy ZD w testowym Subiekcie (:5082) z pozycji „Do zamówienia”"
+                            ? bootstrap.ordersIsLive
+                              ? "Tworzy ZD w aktualnej bazie Subiekta z pozycji „Do ZD”"
+                              : "Tworzy ZD w testowym Subiekcie z pozycji „Do ZD”"
                             : createZdGate.reason
                         }
                       >
@@ -3296,7 +3346,7 @@ export function ZdEstimateWorkbench({
                         disabled={!orderableLines.length || !settingsTrusted}
                         title={
                           settingsTrusted
-                            ? "Kopiuje do_zd (jednostki ZD) z uwzględnieniem opakowań"
+                            ? "Kopiuje kolumnę Do ZD (jednostki dokumentu) z uwzględnieniem opakowań"
                             : ZD_BOM_UI.copyNeedsSettings
                         }
                       >
@@ -3347,7 +3397,7 @@ export function ZdEstimateWorkbench({
                 className="px-3.5 py-3.5"
               />
               <PanelSummaryMetric
-                label="Do zamówienia"
+                label="Do ZD"
                 value={String(orderSummary.doZamowieniaCount)}
                 tone="success"
                 className="px-3.5 py-3.5"
@@ -3457,34 +3507,39 @@ export function ZdEstimateWorkbench({
 
             <div className="flex flex-wrap items-center justify-between gap-2">
               {meta?.truncated ? (
-                <Badge variant="warning">Lista ucięta limitem stron API</Badge>
+                <Badge variant="warning">
+                  Lista niepełna — limit stron Subiekta (przewiń / zawęź zakres)
+                </Badge>
               ) : (
                 <span />
               )}
-              <p className="text-xs tabular-nums text-slate-400">
-                Widoczne {visibleLines.length} / {lines.length}
-                {meta
-                  ? ` · ${meta.durationMs} ms · ${meta.pagesFetched} str.`
-                  : ""}
+              <p className="text-xs text-slate-500">
+                Widoczne {visibleLines.length} z {lines.length}
                 {paramInfo
-                  ? ` · okno ${String(paramInfo.dataOd ?? dataOd)}–${String(paramInfo.dataDo ?? dataDo)} · dniOkresu ${String(paramInfo.dniOkresu ?? "—")} · dniZapasu ${String(paramInfo.dniZapasu ?? "—")}`
+                  ? ZD_ESTIMATE_UI.footerWindow(
+                      String(paramInfo.dataOd ?? dataOd),
+                      String(paramInfo.dataDo ?? dataDo),
+                      String(paramInfo.dniOkresu ?? "—"),
+                      String(paramInfo.dniZapasu ?? "—")
+                    )
                   : ""}
               </p>
             </div>
+
+            <p className="text-[11px] leading-snug text-slate-500">
+              {ZD_ESTIMATE_UNITS_LEGEND}
+            </p>
 
             {visibleLines.length === 0 ? (
               <EmptyState
                 title={
                   !settingsTrusted && listFilter === "order"
                     ? "Ustawienia niewczytane"
-                    : listFilter === "order" &&
-                        individualBundle.serviceLines.length > 0
-                      ? "Brak towarów do ZD"
-                      : listFilter === "order"
-                        ? "Nic do zamówienia"
-                        : listFilter === "excluded"
-                          ? "Brak wykluczeń w tym zakresie"
-                          : "Brak pozycji"
+                    : listFilter === "order"
+                      ? ZD_ESTIMATE_UI.emptyOrderTitle
+                      : listFilter === "excluded"
+                        ? "Brak wykluczeń w tym zakresie"
+                        : "Brak pozycji"
                 }
                 description={
                   !settingsTrusted && listFilter === "order"
@@ -3493,9 +3548,9 @@ export function ZdEstimateWorkbench({
                       ? "Tu widać tylko auto-wykluczenia (outlet / wycofane / zęby). Wczytaj listę wykluczeń, żeby dołączyć pozycje z bazy."
                       : listFilter === "order" &&
                           individualBundle.serviceLines.length > 0
-                        ? "Powyżej są usługi z próśb (uwagi ZD). Do create potrzebna jest ≥1 pozycja katalogowa — albo obsłuż prośby w panelu Dziś."
+                        ? "Powyżej są usługi z próśb (uwagi ZD). Do utworzenia ZD potrzebna jest ≥1 pozycja katalogowa — albo obsłuż prośby w panelu Dziś."
                         : listFilter === "order"
-                          ? "Przy tych parametrach qty = 0 albo wszystkie braki są na liście wykluczeń. Przełącz filtr, żeby zobaczyć pełny zakres."
+                          ? "Przy tych parametrach ilość = 0 albo wszystkie braki są na liście wykluczeń. Przełącz filtr, żeby zobaczyć pełny zakres."
                           : listFilter === "excluded"
                             ? "Żaden produkt nie jest wykluczony ręcznie ani automatycznie (outlet / wycofane w nazwie, katalog zębów)."
                             : "Subiekt nie zwrócił pozycji dla tego zakresu."
@@ -3730,19 +3785,19 @@ export function ZdEstimateWorkbench({
                       </th>
                       <th
                         className="zd-estimate-num-col text-right"
-                        title="Sprzedaż w oknie zapasu"
+                        title="Sprzedaż w oknie (sztuki)"
                       >
                         Sprzed.
                       </th>
                       <th
                         className="zd-estimate-num-col text-right"
-                        title="Cel zapasu (po śledzeniu sprzedaży)"
+                        title="Cel zapasu w sztukach (po śledzeniu sprzedaży)"
                       >
                         Cel
                       </th>
                       <th
                         className="zd-estimate-num-col text-right"
-                        title="Otwarte zamówienia do dostawcy (ZD)"
+                        title="Otwarte ZD — jednostki dokumentu (przy opakowaniu także sztuki)"
                       >
                         Otwarte
                       </th>
@@ -3992,11 +4047,22 @@ export function ZdEstimateWorkbench({
                             </span>
                           </td>
                           <td className="zd-estimate-num-col whitespace-nowrap text-right tabular-nums text-slate-700">
-                            <span className="inline-flex flex-col items-end gap-0.5">
-                              <span>{formatQty(l.otwarteZd)}</span>
+                            <span
+                              className="inline-flex flex-col items-end gap-0.5"
+                              title={
+                                qty.hasPackaging && l.otwarteZd > 0
+                                  ? `${formatQty(l.otwarteZd)} j.dok. = ${formatQty(l.otwarteZd * qty.unitsPerPackage)} szt`
+                                  : `${formatQty(l.otwarteZd)} j.dok. (otwarte ZD)`
+                              }
+                            >
+                              <span>
+                                {formatQty(l.otwarteZd)}
+                                <span className="ml-0.5 text-[10px] font-medium text-slate-400">
+                                  j.dok.
+                                </span>
+                              </span>
                               {qty.hasPackaging && l.otwarteZd > 0 ? (
                                 <span className="text-[10px] text-slate-400">
-                                  =
                                   {formatQty(
                                     l.otwarteZd * qty.unitsPerPackage
                                   )}{" "}
@@ -4093,7 +4159,9 @@ export function ZdEstimateWorkbench({
             disabled={!createZdGate.ok}
             title={
               createZdGate.ok
-                ? "Tworzy ZD w testowym Subiekcie (:5082) z pozycji „Do zamówienia”"
+                ? bootstrap.ordersIsLive
+                  ? "Tworzy ZD w aktualnej bazie Subiekta z pozycji „Do ZD”"
+                  : "Tworzy ZD w testowym Subiekcie z pozycji „Do ZD”"
                 : createZdGate.reason
             }
           >
@@ -4107,7 +4175,7 @@ export function ZdEstimateWorkbench({
             disabled={!orderableLines.length || !settingsTrusted}
             title={
               settingsTrusted
-                ? "Kopiuje do_zd (jednostki ZD) z uwzględnieniem opakowań"
+                ? "Kopiuje kolumnę Do ZD (jednostki dokumentu) z uwzględnieniem opakowań"
                 : ZD_BOM_UI.copyNeedsSettings
             }
           >
@@ -4122,9 +4190,11 @@ export function ZdEstimateWorkbench({
               !lines?.length || !bootstrap.configured || !supplierId
             }
             title={
-              !supplierId
-                ? "Wybierz dostawcę — historia jest per kh / aliasy"
-                : "Gdy ZD powstało poza OnTime — zapisz snapshot historii"
+              !bootstrap.configured
+                ? "Wymaga połączenia z Subiektem"
+                : !supplierId
+                  ? "Wybierz dostawcę — historia jest per kontrahent"
+                  : "Gdy ZD powstało poza OnTime — zapisz snapshot historii"
             }
           >
             Powiąż ZD
@@ -4155,8 +4225,8 @@ export function ZdEstimateWorkbench({
         title={`Przywróć ${Math.min(restoreEligibleLines.length, ZD_ESTIMATE_BULK_MAX)}${restoreEligibleLines.length > ZD_ESTIMATE_BULK_MAX ? ` z ${restoreEligibleLines.length}` : ""}?`}
         message={
           restoreEligibleLines.length > ZD_ESTIMATE_BULK_MAX
-            ? `Zaznaczone wrócą na listę „Do zamówienia”. Limit ${ZD_ESTIMATE_BULK_MAX} na akcję — pierwsze ${ZD_ESTIMATE_BULK_MAX} zostaną przywrócone, reszta zostanie zaznaczona.`
-            : `Przywrócić ${restoreEligibleLines.length} ${restoreEligibleLines.length === 1 ? "produkt" : "produktów"} na listę „Do zamówienia”?`
+            ? `Zaznaczone wrócą na listę „Do ZD”. Limit ${ZD_ESTIMATE_BULK_MAX} na akcję — pierwsze ${ZD_ESTIMATE_BULK_MAX} zostaną przywrócone, reszta zostanie zaznaczona.`
+            : `Przywrócić ${restoreEligibleLines.length} ${restoreEligibleLines.length === 1 ? "produkt" : "produktów"} na listę „Do ZD”?`
         }
         confirmLabel={
           restoreEligibleLines.length > ZD_ESTIMATE_BULK_MAX
@@ -4371,6 +4441,9 @@ export function ZdEstimateWorkbench({
           }
           excludedWithIndividualCount={excludedRoutedToServicesCount}
           omittedServiceCount={createUwagiWithServices.omittedServiceCount}
+          ordersIsLive={bootstrap.ordersIsLive}
+          ordersPort={bootstrap.ordersPort ?? bootstrap.testPort}
+          ordersHostLabel={bootstrap.ordersHostLabel}
           onClose={() => {
             setCreateZdOpen(false);
             setCreatingZd(false);

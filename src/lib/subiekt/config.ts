@@ -11,8 +11,20 @@ export type SubiektConfig = {
   timeoutMs: number;
 };
 
-/** Port testowej kopii Subiekta (szacunek ZD / groups) — nigdy live :5080. */
+/** Port testowej kopii Subiekta (sandbox historyczny). */
 export const SUBIEKT_ORDERS_TEST_PORT = 5082;
+
+/**
+ * Port live Subiekta (aktualna baza MIKRAN).
+ * Szacunek ZD / create ZD mogą iść tutaj — świadomie, z host_kind=live.
+ */
+export const SUBIEKT_ORDERS_LIVE_PORT = 5080;
+
+/** Dozwolone porty hosta ORDERS (szacunek / create ZD). */
+export const SUBIEKT_ORDERS_ALLOWED_PORTS = [
+  SUBIEKT_ORDERS_LIVE_PORT,
+  SUBIEKT_ORDERS_TEST_PORT,
+] as const;
 
 function trimOrUndefined(value: string | undefined): string | undefined {
   const v = value?.trim();
@@ -75,30 +87,71 @@ export function subiektSameApiOrigin(a: string, b: string): boolean {
   return Boolean(ka && kb && ka === kb);
 }
 
-/**
- * Czy URL wygląda na testową kopię (:5082), a nie live (:5080).
- * Używane wyłącznie do sandboxu szacunku — zero ruchu na live.
- */
+/** Czy URL to testowa kopia (:5082). */
 export function isSubiektOrdersTestBaseUrl(baseUrl: string): boolean {
   const port = portOf(baseUrl);
   return port === SUBIEKT_ORDERS_TEST_PORT;
 }
 
+/** Czy URL to live Subiekt (:5080, aktualna baza). */
+export function isSubiektOrdersLiveBaseUrl(baseUrl: string): boolean {
+  const port = portOf(baseUrl);
+  return port === SUBIEKT_ORDERS_LIVE_PORT;
+}
+
+/** Czy URL jest dozwolonym hostem ORDERS (live lub test). */
+export function isSubiektOrdersAllowedBaseUrl(baseUrl: string): boolean {
+  const port = portOf(baseUrl);
+  return (
+    port === SUBIEKT_ORDERS_LIVE_PORT || port === SUBIEKT_ORDERS_TEST_PORT
+  );
+}
+
 /**
- * Snapshot historii szacunku — zapis na ORDERS :5082 (host_kind=orders_test)
- * oraz na przyszłym live. Filtr odczytu rozróżnia hosty.
+ * Snapshot historii szacunku — zapis na dozwolonym hoście ORDERS.
+ * Filtr odczytu rozróżnia hosty przez host_kind.
  */
 export function shouldPersistZdEstimateOrderSnapshots(baseUrl: string): boolean {
-  return Boolean(baseUrl?.trim());
+  return Boolean(baseUrl?.trim()) && isSubiektOrdersAllowedBaseUrl(baseUrl);
 }
 
 export type ZdEstimateSnapshotHostKind = "orders_test" | "live";
 
-/** Tag hosta dla snapshotów historii. */
+/**
+ * Tag hosta dla snapshotów historii.
+ * Tylko jawne porty :5080 → live, :5082 → orders_test.
+ */
 export function zdEstimateSnapshotHostKind(
   baseUrl: string
+): ZdEstimateSnapshotHostKind | null {
+  if (isSubiektOrdersLiveBaseUrl(baseUrl)) return "live";
+  if (isSubiektOrdersTestBaseUrl(baseUrl)) return "orders_test";
+  return null;
+}
+
+/** Jak `zdEstimateSnapshotHostKind`, ale rzuca gdy URL nie jest dozwolonym ORDERS. */
+export function requireZdEstimateSnapshotHostKind(
+  baseUrl: string
 ): ZdEstimateSnapshotHostKind {
-  return isSubiektOrdersTestBaseUrl(baseUrl) ? "orders_test" : "live";
+  const kind = zdEstimateSnapshotHostKind(baseUrl);
+  if (!kind) {
+    throw new Error(
+      `host_kind wymaga portu :${SUBIEKT_ORDERS_LIVE_PORT} lub :${SUBIEKT_ORDERS_TEST_PORT} (URL: ${baseUrl}).`
+    );
+  }
+  return kind;
+}
+
+/** Krótka etykieta hosta ORDERS do UI / logów. */
+export function zdEstimateOrdersHostLabel(baseUrl: string): string {
+  const port = portOf(baseUrl);
+  if (port === SUBIEKT_ORDERS_LIVE_PORT) {
+    return `LIVE baza aktualna (:${SUBIEKT_ORDERS_LIVE_PORT})`;
+  }
+  if (port === SUBIEKT_ORDERS_TEST_PORT) {
+    return `Test (:${SUBIEKT_ORDERS_TEST_PORT})`;
+  }
+  return port != null ? `Subiekt :${port}` : "Subiekt ORDERS";
 }
 
 export function isSubiektConfigured(): boolean {
@@ -138,22 +191,20 @@ export type SubiektOrdersConfigStatus =
   | { ok: true; config: SubiektConfig }
   | {
       ok: false;
-      reason:
-        | "missing_orders_url"
-        | "invalid_orders_url"
-        | "same_as_live"
-        | "not_test_port";
+      reason: "missing_orders_url" | "invalid_orders_url" | "not_allowed_port";
       message: string;
       ordersBaseUrl: string | null;
       liveBaseUrl: string | null;
     };
 
 /**
- * Host wyłącznie pod sandbox szacunku (`/groups`, `/cechy/towarow`, `/orders/zd/estimate`).
+ * Host pod szacunek ZD (`/groups`, `/cechy/towarow`, `/orders/zd/estimate`, create ZD).
  *
- * **Nigdy** nie spada na `SUBIEKT_API_BASE_URL` (live :5080).
- * Wymaga jawnego `SUBIEKT_API_ORDERS_BASE_URL` na porcie testowym :5082
- * i innym originie niż live.
+ * Wymaga jawnego `SUBIEKT_API_ORDERS_BASE_URL` na dozwolonym porcie:
+ * - `:5080` — LIVE, aktualna baza MIKRAN (produkcyjne dokumenty),
+ * - `:5082` — testowa kopia (gdy dostępna).
+ *
+ * Nie spada cicho na `SUBIEKT_API_BASE_URL` — ORDERS musi być ustawione wprost.
  */
 export function resolveSubiektOrdersConfig(): SubiektOrdersConfigStatus {
   const live = getSubiektConfig();
@@ -165,7 +216,7 @@ export function resolveSubiektOrdersConfig(): SubiektOrdersConfigStatus {
       ok: false,
       reason: "missing_orders_url",
       message:
-        "Brak SUBIEKT_API_ORDERS_BASE_URL — szacunek działa tylko na testowym Subiekcie (:5082), nie na live (:5080).",
+        "Brak SUBIEKT_API_ORDERS_BASE_URL — ustaw host szacunku (:5080 live / :5082 test).",
       ordersBaseUrl: null,
       liveBaseUrl,
     };
@@ -182,22 +233,14 @@ export function resolveSubiektOrdersConfig(): SubiektOrdersConfigStatus {
     };
   }
 
-  if (liveBaseUrl && subiektSameApiOrigin(liveBaseUrl, baseUrl)) {
+  if (!isSubiektOrdersAllowedBaseUrl(baseUrl)) {
+    const port = portOf(baseUrl);
     return {
       ok: false,
-      reason: "same_as_live",
-      message:
-        "SUBIEKT_API_ORDERS_BASE_URL wskazuje na ten sam host co live (SUBIEKT_API_BASE_URL). Szacunek jest zablokowany — ustaw :5082.",
-      ordersBaseUrl: baseUrl,
-      liveBaseUrl,
-    };
-  }
-
-  if (!isSubiektOrdersTestBaseUrl(baseUrl)) {
-    return {
-      ok: false,
-      reason: "not_test_port",
-      message: `Szacunek wymaga testowego portu :${SUBIEKT_ORDERS_TEST_PORT} (teraz: ${baseUrl}). Live :5080 jest zabroniony.`,
+      reason: "not_allowed_port",
+      message: `Szacunek wymaga portu :${SUBIEKT_ORDERS_LIVE_PORT} (live) lub :${SUBIEKT_ORDERS_TEST_PORT} (test) — teraz: ${
+        port != null ? `:${port}` : baseUrl
+      }.`,
       ordersBaseUrl: baseUrl,
       liveBaseUrl,
     };
@@ -240,8 +283,8 @@ export function resolveSubiektOrdersConfig(): SubiektOrdersConfigStatus {
 }
 
 /**
- * Konfiguracja testowego API zamówień — `null` gdy brak / niebezpiecznie (= live).
- * Nie używaj jako fallbacku do codziennego Subiekta.
+ * Konfiguracja API zamówień / szacunku — `null` gdy brak lub niedozwolony port.
+ * Nie używaj jako fallbacku do codziennego Subiekta bez świadomego ORDERS_URL.
  */
 export function getSubiektOrdersConfig(): SubiektConfig | null {
   const resolved = resolveSubiektOrdersConfig();
@@ -251,8 +294,7 @@ export function getSubiektOrdersConfig(): SubiektConfig | null {
 export type SubiektOrdersBlockReason =
   | "missing_orders_url"
   | "invalid_orders_url"
-  | "same_as_live"
-  | "not_test_port";
+  | "not_allowed_port";
 
 export function getSubiektConfigSummary(): {
   configured: boolean;
@@ -263,19 +305,34 @@ export function getSubiektConfigSummary(): {
   ordersConfigured: boolean;
   ordersBlockedReason: SubiektOrdersBlockReason | null;
   ordersMessage: string | null;
+  ordersHostKind: ZdEstimateSnapshotHostKind | null;
+  ordersIsLive: boolean;
+  ordersPort: number | null;
+  ordersHostLabel: string | null;
 } {
   const config = getSubiektConfig();
   const orders = resolveSubiektOrdersConfig();
+  const ordersBaseUrl = orders.ok
+    ? orders.config.baseUrl
+    : (orders.ordersBaseUrl ?? null);
+  const ordersHostKind = orders.ok
+    ? zdEstimateSnapshotHostKind(orders.config.baseUrl)
+    : null;
+  const ordersPort = orders.ok ? portOf(orders.config.baseUrl) : null;
   return {
     configured: Boolean(config),
     baseUrl: config?.baseUrl ?? null,
     authMode: config?.authMode ?? null,
     healthPath: config?.healthPath ?? null,
-    ordersBaseUrl: orders.ok
-      ? orders.config.baseUrl
-      : (orders.ordersBaseUrl ?? null),
+    ordersBaseUrl,
     ordersConfigured: orders.ok,
     ordersBlockedReason: orders.ok ? null : orders.reason,
     ordersMessage: orders.ok ? null : orders.message,
+    ordersHostKind,
+    ordersIsLive: ordersHostKind === "live",
+    ordersPort,
+    ordersHostLabel: orders.ok
+      ? zdEstimateOrdersHostLabel(orders.config.baseUrl)
+      : null,
   };
 }

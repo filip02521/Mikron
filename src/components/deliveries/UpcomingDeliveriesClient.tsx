@@ -14,6 +14,7 @@ import {
   type UpcomingDeliveryRangePreset,
 } from "@/lib/data/upcoming-deliveries-shared";
 import { formatDateString } from "@/lib/orders/dates";
+import { useLatest } from "@/hooks/useLatest";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -86,18 +87,18 @@ export function UpcomingDeliveriesClient({
   const [dateFrom, setDateFrom] = useState(initialPayload?.dateFrom ?? "");
   const [dateTo, setDateTo] = useState(initialPayload?.dateTo ?? "");
   const [pending, start] = useTransition();
-  const dateFromRef = useRef(dateFrom);
-  const dateToRef = useRef(dateTo);
+  const dateFromRef = useLatest(dateFrom);
+  const dateToRef = useLatest(dateTo);
   const loadGenerationRef = useRef(0);
-  dateFromRef.current = dateFrom;
-  dateToRef.current = dateTo;
 
   useEffect(() => {
     if (!initialPayload) return;
-    setPayload(initialPayload);
-    setDateFrom(initialPayload.dateFrom);
-    setDateTo(initialPayload.dateTo);
-    setError(loadError);
+    queueMicrotask(() => {
+      setPayload(initialPayload);
+      setDateFrom(initialPayload.dateFrom);
+      setDateTo(initialPayload.dateTo);
+      setError(loadError);
+    });
   }, [initialPayload, loadError]);
 
   const loadData = useCallback((from: string, to: string) => {

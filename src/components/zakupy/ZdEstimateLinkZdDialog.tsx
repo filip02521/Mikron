@@ -49,9 +49,11 @@ export function ZdEstimateLinkZdDialog({
 
   useEffect(() => {
     if (!open) return;
-    setNr(initialNr?.trim() ?? "");
-    setSelectedDokId(null);
-    setLoadError(null);
+    queueMicrotask(() => {
+      setNr(initialNr?.trim() ?? "");
+      setSelectedDokId(null);
+      setLoadError(null);
+    });
     startPending(async () => {
       const res = await actionSearchZdForEstimateLink({ days: 21 });
       if (!res.ok) {

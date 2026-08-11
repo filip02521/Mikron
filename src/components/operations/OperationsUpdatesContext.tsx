@@ -23,11 +23,16 @@ import {
 } from "@/lib/client/board-questions-sound";
 import { useBoardNotificationSoundEffects } from "@/lib/client/board-notification-sound-effects";
 import { unlockNotificationSound } from "@/lib/client/notification-sound";
+import {
+  isOperationsPrimaryLiveRefreshPath,
+  LIVE_PANEL_AUTO_REFRESH_INTERVAL_MS,
+  shouldFireLivePanelAutoRefresh,
+} from "@/lib/client/live-panel-auto-refresh";
 
 const POLL_MS = 25_000;
 /** Pierwszy poll z opóźnieniem — SSR licznika może być nieaktualny; unikamy fałszywego dźwięku. */
 const INITIAL_POLL_DELAY_MS = 4_000;
-const AUTO_REFRESH_MS = 3 * 60_000;
+const AUTO_REFRESH_MS = LIVE_PANEL_AUTO_REFRESH_INTERVAL_MS;
 const FRESH_HIGHLIGHT_MS = 5_000;
 const boardQuestionsSoundStore = boardQuestionsSoundMutedStore;
 
@@ -64,7 +69,16 @@ async function fetchVersion(): Promise<{
     const res = await fetch("/api/operations/daily-panel-version", {
       cache: "no-store",
     });
-    if (!res.ok) return { version: null, openBoardQuestions: null, navBadge: null, verificationCount: null, realizacjaCount: null, operationsNotatki: null };
+    if (!res.ok) {
+      return {
+        version: null,
+        openBoardQuestions: null,
+        navBadge: null,
+        verificationCount: null,
+        realizacjaCount: null,
+        operationsNotatki: null,
+      };
+    }
     const body = (await res.json()) as {
       version?: string;
       openBoardQuestions?: number;
@@ -78,12 +92,22 @@ async function fetchVersion(): Promise<{
       openBoardQuestions:
         typeof body.openBoardQuestions === "number" ? body.openBoardQuestions : null,
       navBadge: typeof body.navBadge === "number" ? body.navBadge : null,
-      verificationCount: typeof body.verificationCount === "number" ? body.verificationCount : null,
-      realizacjaCount: typeof body.realizacjaCount === "number" ? body.realizacjaCount : null,
-      operationsNotatki: typeof body.operationsNotatki === "number" ? body.operationsNotatki : null,
+      verificationCount:
+        typeof body.verificationCount === "number" ? body.verificationCount : null,
+      realizacjaCount:
+        typeof body.realizacjaCount === "number" ? body.realizacjaCount : null,
+      operationsNotatki:
+        typeof body.operationsNotatki === "number" ? body.operationsNotatki : null,
     };
   } catch {
-    return { version: null, openBoardQuestions: null, navBadge: null, verificationCount: null, realizacjaCount: null, operationsNotatki: null };
+    return {
+      version: null,
+      openBoardQuestions: null,
+      navBadge: null,
+      verificationCount: null,
+      realizacjaCount: null,
+      operationsNotatki: null,
+    };
   }
 }
 
@@ -101,6 +125,7 @@ export function OperationsUpdatesProvider({
   soundBaselineReady?: boolean;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const patchNavBadges = usePatchAppShellNavBadges();
   const hydrated = useClientHydrated();
   const [baseline, setBaseline] = useState(initialVersion);
@@ -113,6 +138,10 @@ export function OperationsUpdatesProvider({
   const [refreshGeneration, setRefreshGeneration] = useState(0);
   const [freshHighlightUntil, setFreshHighlightUntil] = useState(0);
   const syncingRef = useRef(false);
+  const lastPrimaryAutoRefreshAtRef = useRef(0);
+  const lastFlagAutoRefreshAtRef = useRef(0);
+  /** Bump przy powrocie na kartę — effecty auto-refresh muszą się odpalić ponownie. */
+  const [visibilityEpoch, setVisibilityEpoch] = useState(0);
   const versionKey = `${enabled}\0${initialVersion ?? ""}`;
   const [appliedVersionKey, setAppliedVersionKey] = useState("");
   if (enabled && initialVersion != null && versionKey !== appliedVersionKey) {
@@ -138,7 +167,9 @@ export function OperationsUpdatesProvider({
   const patchLiveBadges = useCallback(
     (data: Awaited<ReturnType<typeof fetchVersion>>) => {
       const patch: Partial<Record<string, number>> = {};
-      if (data.openBoardQuestions != null) patch.departmentBoardQuestions = data.openBoardQuestions;
+      if (data.openBoardQuestions != null) {
+        patch.departmentBoardQuestions = data.openBoardQuestions;
+      }
       if (data.navBadge != null) patch.nowe = data.navBadge;
       if (data.verificationCount != null) patch.weryfikacja = data.verificationCount;
       if (data.realizacjaCount != null) patch.realizacja = data.realizacjaCount;
@@ -182,12 +213,15 @@ export function OperationsUpdatesProvider({
       });
   }, [router, latest, syncBaseline, applyOpenBoardQuestionsCount, patchLiveBadges]);
 
-  const setAutoRefresh = useCallback((value: boolean) => {
-    autoRefreshStore.setValue(value);
-    if (value && enabled && latest && baseline && latest !== baseline) {
-      refreshNow();
-    }
-  }, [enabled, latest, baseline, refreshNow]);
+  const setAutoRefresh = useCallback(
+    (value: boolean) => {
+      autoRefreshStore.setValue(value);
+      if (value && enabled && latest && baseline && latest !== baseline) {
+        refreshNow();
+      }
+    },
+    [enabled, latest, baseline, refreshNow]
+  );
 
   const poll = useCallback(async () => {
     const data = await fetchVersion();
@@ -216,7 +250,11 @@ export function OperationsUpdatesProvider({
     }, POLL_MS);
 
     const onVisible = () => {
-      if (document.visibilityState === "visible") void poll();
+      if (document.visibilityState !== "visible") return;
+      void poll();
+      // Poll sam w sobie może nie zmienić `latest` (już ustawiony w tle) —
+      // epoch wymusza ponowną ocenę effectów primary/flag.
+      setVisibilityEpoch((n) => n + 1);
     };
     document.addEventListener("visibilitychange", onVisible);
 
@@ -226,6 +264,51 @@ export function OperationsUpdatesProvider({
     };
   }, [enabled, poll]);
 
+  /**
+   * Panel dzienny / weryfikacja / tablica zakupów: odśwież treść zaraz po zmianie
+   * wersji (jak /moje u handlowców) — bez wymogu toggle w ustawieniach.
+   *
+   * Nie sprawdzamy syncingRef tutaj — refreshNow i tak jest idempotentny;
+   * wczesny return przy syncing blokowałby retry po zakończeniu syncu.
+   */
+  useEffect(() => {
+    if (!enabled) return;
+    if (!latest || !baseline || latest === baseline) return;
+    if (!isOperationsPrimaryLiveRefreshPath(pathname)) return;
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      return;
+    }
+
+    const decision = shouldFireLivePanelAutoRefresh({
+      lastFiredAt: lastPrimaryAutoRefreshAtRef.current,
+    });
+    if (!decision.fire) return;
+    lastPrimaryAutoRefreshAtRef.current = decision.nextFiredAt;
+    lastFlagAutoRefreshAtRef.current = decision.nextFiredAt;
+    refreshNow();
+  }, [enabled, latest, baseline, pathname, refreshNow, visibilityEpoch]);
+
+  /**
+   * Flaga auto-odświeżania: na pozostałych ścieżkach ops odśwież zaraz po diffie
+   * (nie czekaj na timer 3 min). Primary path obsługuje osobny effect.
+   */
+  useEffect(() => {
+    if (!enabled || !autoRefresh) return;
+    if (!latest || !baseline || latest === baseline) return;
+    if (isOperationsPrimaryLiveRefreshPath(pathname)) return;
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      return;
+    }
+
+    const decision = shouldFireLivePanelAutoRefresh({
+      lastFiredAt: lastFlagAutoRefreshAtRef.current,
+    });
+    if (!decision.fire) return;
+    lastFlagAutoRefreshAtRef.current = decision.nextFiredAt;
+    refreshNow();
+  }, [enabled, autoRefresh, latest, baseline, pathname, refreshNow, visibilityEpoch]);
+
+  /** Backup: gdy flaga ON, okresowo doganiaj (np. po długiej niewidoczności karty). */
   useEffect(() => {
     if (!enabled || !autoRefresh) return;
     const id = window.setInterval(() => {
@@ -264,7 +347,8 @@ export function OperationsUpdatesProvider({
 export function OperationsUpdatesBanner() {
   const ctx = useOperationsUpdates();
   const pathname = usePathname();
-  if (!ctx?.hasUpdates || pathname === "/podsumowanie") return null;
+  // Primary paths odświeżają się same — banner zbędny (jak /moje u handlowców).
+  if (!ctx?.hasUpdates || isOperationsPrimaryLiveRefreshPath(pathname)) return null;
 
   return (
     <SystemNotice
@@ -281,7 +365,10 @@ export function OperationsUpdatesBanner() {
   );
 }
 
-/** Kompaktowy pasek w panelu — widoczny przy przewijaniu (sticky pod zakładkami). */
+/**
+ * Kompaktowy pasek w panelu — zwykle miga tylko chwilę przed auto-refresh.
+ * Zostaje jako awaryjny przycisk, gdy cooldown / ukryta karta wstrzymały sync.
+ */
 export function OperationsPanelRefreshStrip() {
   const ctx = useOperationsUpdates();
   if (!ctx?.hasUpdates) return null;

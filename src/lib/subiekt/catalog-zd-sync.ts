@@ -22,7 +22,6 @@ import {
   CATALOG_SYNC_IMPORT_BATCH_DOCS,
   CATALOG_SYNC_INDEX_BATCH_DOCS,
   CATALOG_SYNC_INDEX_PAGE_SIZE,
-  type CatalogZdSyncPhase,
   type CatalogZdSyncRunResult,
   type CatalogZdSyncState,
 } from "@/lib/subiekt/catalog-zd-sync-shared";

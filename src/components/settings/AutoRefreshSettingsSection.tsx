@@ -6,6 +6,9 @@ import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { salesAutoRefreshStore } from "@/lib/client/sales-auto-refresh-store";
 import { operationsAutoRefreshStore } from "@/lib/client/operations-auto-refresh-store";
 import { teethAutoRefreshStore } from "@/lib/client/teeth-auto-refresh-store";
+import { useOperationsUpdates } from "@/components/operations/OperationsUpdatesContext";
+import { useTeethUpdates } from "@/components/zeby/TeethUpdatesContext";
+import { useSalesUpdates } from "@/components/sales/SalesUpdatesContext";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { IconClock } from "@/components/icons/StrokeIcons";
@@ -28,19 +31,35 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
   const teethAutoRefresh = usePersistedFlag(teethAutoRefreshStore);
   const hydrated = useClientHydrated();
 
+  const opsSetAutoRefresh = useOperationsUpdates()?.setAutoRefresh;
+  const teethSetAutoRefresh = useTeethUpdates()?.setAutoRefresh;
+  const salesSetAutoRefresh = useSalesUpdates()?.setAutoRefresh;
+
   const salesValue = hydrated ? salesAutoRefresh : false;
   const opsValue = hydrated ? opsAutoRefresh : false;
   const teethValue = hydrated ? teethAutoRefresh : false;
 
-  const setSales = useCallback((value: boolean) => {
-    salesAutoRefreshStore.setValue(value);
-  }, []);
-  const setOps = useCallback((value: boolean) => {
-    operationsAutoRefreshStore.setValue(value);
-  }, []);
-  const setTeeth = useCallback((value: boolean) => {
-    teethAutoRefreshStore.setValue(value);
-  }, []);
+  const setSales = useCallback(
+    (value: boolean) => {
+      if (salesSetAutoRefresh) salesSetAutoRefresh(value);
+      else salesAutoRefreshStore.setValue(value);
+    },
+    [salesSetAutoRefresh]
+  );
+  const setOps = useCallback(
+    (value: boolean) => {
+      if (opsSetAutoRefresh) opsSetAutoRefresh(value);
+      else operationsAutoRefreshStore.setValue(value);
+    },
+    [opsSetAutoRefresh]
+  );
+  const setTeeth = useCallback(
+    (value: boolean) => {
+      if (teethSetAutoRefresh) teethSetAutoRefresh(value);
+      else teethAutoRefreshStore.setValue(value);
+    },
+    [teethSetAutoRefresh]
+  );
 
   const showSales = isSales;
   const showOps = isOperations || isMagazyn;
@@ -71,8 +90,13 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
             )}
           >
             <span className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium text-slate-800">Auto przy zmianach (panel sprzedaży)</span>
-              <span className="text-[11px] leading-snug text-slate-400">Automatycznie odświeża listę po wykryciu zmian</span>
+              <span className="text-sm font-medium text-slate-800">
+                Auto przy zmianach (panel sprzedaży)
+              </span>
+              <span className="text-[11px] leading-snug text-slate-400">
+                „Moje” i notatnik odświeżają się zawsze. Ta opcja odświeża też pozostałe
+                strony sprzedaży zaraz po wykryciu zmian.
+              </span>
             </span>
             <input
               type="checkbox"
@@ -96,8 +120,13 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
             )}
           >
             <span className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium text-slate-800">Auto przy zmianach (panel operacji)</span>
-              <span className="text-[11px] leading-snug text-slate-400">Automatycznie odświeża listę po wykryciu zmian</span>
+              <span className="text-sm font-medium text-slate-800">
+                Auto przy zmianach (panel operacji)
+              </span>
+              <span className="text-[11px] leading-snug text-slate-400">
+                Dziś, weryfikacja i tablica odświeżają się zawsze. Ta opcja obejmuje też
+                pozostałe strony (kolejka, historia…) zaraz po wykryciu zmian.
+              </span>
             </span>
             <input
               type="checkbox"
@@ -121,8 +150,13 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
             )}
           >
             <span className="flex flex-col gap-0.5">
-              <span className="text-sm font-medium text-slate-800">Auto przy zmianach (panel zębów)</span>
-              <span className="text-[11px] leading-snug text-slate-400">Automatycznie odświeża listę po wykryciu zmian</span>
+              <span className="text-sm font-medium text-slate-800">
+                Auto przy zmianach (panel zębów)
+              </span>
+              <span className="text-[11px] leading-snug text-slate-400">
+                Ścieżki /zeby odświeżają się zawsze. Ta opcja obejmuje też pozostałe strony
+                zaraz po wykryciu zmian.
+              </span>
             </span>
             <input
               type="checkbox"

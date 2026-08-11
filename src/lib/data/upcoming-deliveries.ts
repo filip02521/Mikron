@@ -16,9 +16,7 @@ import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import type { IndividualOrder } from "@/types/database";
 import type {
   UpcomingDeliveryDay,
-  UpcomingDeliveryRangePreset,
   UpcomingDeliverySalesPerson,
-  UpcomingDeliverySummary,
   UpcomingDeliverySupplier,
 } from "@/lib/data/upcoming-deliveries-shared";
 import { journalHasReceiptForDeadline } from "@/lib/data/upcoming-deliveries-shared";

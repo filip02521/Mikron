@@ -32,6 +32,10 @@ const MOJE_AUTO_REFRESH_COOLDOWN_MS = 12_000;
 
 import { isSalesZkNavPath } from "@/lib/sales/notepad-page-tabs";
 import { clearMojeZdEtaSessionSync } from "@/components/moje/MojeZdEtaSyncClient";
+import {
+  LIVE_PANEL_AUTO_REFRESH_COOLDOWN_MS,
+  shouldFireLivePanelAutoRefresh,
+} from "@/lib/client/live-panel-auto-refresh";
 
 type SalesUpdatesContextValue = {
   hasUpdates: boolean;
@@ -119,6 +123,8 @@ export function SalesUpdatesProvider({
   const syncingRef = useRef(false);
   const lastNotatnikAutoRefreshAtRef = useRef(0);
   const lastMojeAutoRefreshAtRef = useRef(0);
+  const lastFlagAutoRefreshAtRef = useRef(0);
+  const [visibilityEpoch, setVisibilityEpoch] = useState(0);
   const versionKey = `${effectiveEnabled}\0${initialVersion ?? ""}`;
   const [appliedVersionKey, setAppliedVersionKey] = useState("");
   if (effectiveEnabled && initialVersion && versionKey !== appliedVersionKey) {
@@ -126,10 +132,6 @@ export function SalesUpdatesProvider({
     setBaseline(initialVersion);
     setLatest(initialVersion);
   }
-
-  const setAutoRefresh = useCallback((value: boolean) => {
-    autoRefreshStore.setValue(value);
-  }, []);
 
   const setBoardAnswerSound = useCallback((value: boolean) => {
     salesBoardAnswerSoundMutedStore.setValue(!value);
@@ -192,6 +194,16 @@ export function SalesUpdatesProvider({
     void run();
   }, [router, syncBaseline, pathname, teamPreviewActive, applyUnseenOwnAnswersAttention]);
 
+  const setAutoRefresh = useCallback(
+    (value: boolean) => {
+      autoRefreshStore.setValue(value);
+      if (value && effectiveEnabled && latest && baseline && latest !== baseline) {
+        refreshNow();
+      }
+    },
+    [effectiveEnabled, latest, baseline, refreshNow]
+  );
+
   const poll = useCallback(async () => {
     const { version, unseenOwnAnswers, latestOwnAnswerActivityAt } = await fetchVersion();
     applyUnseenOwnAnswersAttention({
@@ -220,7 +232,9 @@ export function SalesUpdatesProvider({
     }, POLL_MS);
 
     const onVisible = () => {
-      if (document.visibilityState === "visible") void poll();
+      if (document.visibilityState !== "visible") return;
+      void poll();
+      setVisibilityEpoch((n) => n + 1);
     };
     document.addEventListener("visibilitychange", onVisible);
 
@@ -232,6 +246,7 @@ export function SalesUpdatesProvider({
 
   useEffect(() => {
     if (!effectiveEnabled || !autoRefresh || isSalesZkNavPath(pathname)) return;
+    if (pathname === "/moje") return;
     const id = window.setInterval(() => {
       if (document.visibilityState === "hidden") return;
       if (latest && baseline && latest !== baseline) {
@@ -243,31 +258,70 @@ export function SalesUpdatesProvider({
 
   /** Notatnik: odśwież widok od razu po wykryciu zmian (ZK, prośby). */
   useEffect(() => {
-    if (!effectiveEnabled || syncingRef.current) return;
+    if (!effectiveEnabled) return;
     if (!latest || !baseline || latest === baseline) return;
     if (!isSalesZkNavPath(pathname)) return;
-
-    const now = Date.now();
-    if (now - lastNotatnikAutoRefreshAtRef.current < NOTATNIK_AUTO_REFRESH_COOLDOWN_MS) {
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
       return;
     }
-    lastNotatnikAutoRefreshAtRef.current = now;
+
+    const decision = shouldFireLivePanelAutoRefresh({
+      lastFiredAt: lastNotatnikAutoRefreshAtRef.current,
+      cooldownMs: NOTATNIK_AUTO_REFRESH_COOLDOWN_MS,
+    });
+    if (!decision.fire) return;
+    lastNotatnikAutoRefreshAtRef.current = decision.nextFiredAt;
+    lastFlagAutoRefreshAtRef.current = decision.nextFiredAt;
     refreshNow();
-  }, [effectiveEnabled, latest, baseline, pathname, refreshNow]);
+  }, [effectiveEnabled, latest, baseline, pathname, refreshNow, visibilityEpoch]);
 
   /** Moje zamówienia: po sync ZD w tle odśwież listę, gdy wersja aktywności się zmieni. */
   useEffect(() => {
-    if (!effectiveEnabled || syncingRef.current) return;
+    if (!effectiveEnabled) return;
     if (!latest || !baseline || latest === baseline) return;
     if (pathname !== "/moje") return;
-
-    const now = Date.now();
-    if (now - lastMojeAutoRefreshAtRef.current < MOJE_AUTO_REFRESH_COOLDOWN_MS) {
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
       return;
     }
-    lastMojeAutoRefreshAtRef.current = now;
+
+    const decision = shouldFireLivePanelAutoRefresh({
+      lastFiredAt: lastMojeAutoRefreshAtRef.current,
+      cooldownMs: MOJE_AUTO_REFRESH_COOLDOWN_MS,
+    });
+    if (!decision.fire) return;
+    lastMojeAutoRefreshAtRef.current = decision.nextFiredAt;
+    lastFlagAutoRefreshAtRef.current = decision.nextFiredAt;
     refreshNow();
-  }, [effectiveEnabled, latest, baseline, pathname, refreshNow]);
+  }, [effectiveEnabled, latest, baseline, pathname, refreshNow, visibilityEpoch]);
+
+  /**
+   * Flaga auto: poza Moje/notatnikiem odśwież zaraz po diffie
+   * (wcześniej tylko timer 3 min — opis w ustawieniach obiecywał „zaraz”).
+   */
+  useEffect(() => {
+    if (!effectiveEnabled || !autoRefresh) return;
+    if (!latest || !baseline || latest === baseline) return;
+    if (pathname === "/moje" || isSalesZkNavPath(pathname)) return;
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      return;
+    }
+
+    const decision = shouldFireLivePanelAutoRefresh({
+      lastFiredAt: lastFlagAutoRefreshAtRef.current,
+      cooldownMs: LIVE_PANEL_AUTO_REFRESH_COOLDOWN_MS,
+    });
+    if (!decision.fire) return;
+    lastFlagAutoRefreshAtRef.current = decision.nextFiredAt;
+    refreshNow();
+  }, [
+    effectiveEnabled,
+    autoRefresh,
+    latest,
+    baseline,
+    pathname,
+    refreshNow,
+    visibilityEpoch,
+  ]);
 
   const hasUpdates = Boolean(
     effectiveEnabled && baseline && latest && latest !== baseline

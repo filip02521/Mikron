@@ -82,8 +82,8 @@ export const ZD_BOM_UI = {
       : "Wkład ze składu.",
   badgeSalesFromZestaw: (qtyLabel: string, parentId?: number) =>
     parentId != null
-      ? `+${qtyLabel} ze zestawu (id. ${parentId})`
-      : `+${qtyLabel} ze zestawu`,
+      ? `+${qtyLabel} z zestawu (id. ${parentId})`
+      : `+${qtyLabel} z zestawu`,
   badgeSalesZero: "brak wkładu ze sprzedaży",
   badgeCoverExtra: (qtyLabel: string) => ` · pokrycie +${qtyLabel}`,
 

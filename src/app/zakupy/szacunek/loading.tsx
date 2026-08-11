@@ -38,7 +38,7 @@ export default function ZdEstimateLoading() {
           {[
             { n: 1, title: "Zakres Subiekta", hint: "Trwa dopasowanie…", active: true },
             { n: 2, title: "Towary i stany", hint: "Oczekuje…", active: false },
-            { n: 3, title: "Sprzedaż i zapas", hint: "Oczekuje…", active: false },
+            { n: 3, title: "Sprzedaż, zapas i prośby", hint: "Oczekuje…", active: false },
             { n: 4, title: "Lista do ZD", hint: "Oczekuje…", active: false },
           ].map((step, i) => (
             <li

@@ -11,6 +11,7 @@ import {
   formatZdCreateElapsedLabel,
   ZD_CREATE_PROGRESS_STEPS,
 } from "@/lib/orders/zd-estimate-create-progress";
+import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 
 export function ZdEstimateCreateZdProgressPanel({
   startedAtMs,
@@ -67,6 +68,11 @@ export function ZdEstimateCreateZdProgressPanel({
                   : "Zapisuję wynik i zamykam okno…"
                 : active.activeHint}
             </p>
+            {!forceComplete ? (
+              <p className="mt-2 text-xs leading-snug text-slate-500">
+                {ZD_ESTIMATE_UI.createProgressDisclaimer}
+              </p>
+            ) : null}
             <div className="mt-3 flex flex-wrap gap-2">
               {supplierName ? (
                 <span className="inline-flex max-w-full items-center rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-800">

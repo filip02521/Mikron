@@ -23,16 +23,19 @@ describe("createZdProgressStepFromElapsed", () => {
     expect(createZdProgressStepFromElapsed(0, { lineCount: 20 })).toBe(0);
   });
 
-  it("parks on Sfera for two ticks", () => {
+  it("parks on Sfera through several ticks (szacunkowy postęp)", () => {
     const stepMs = createZdProgressStepMs(20);
     expect(createZdProgressStepFromElapsed(stepMs, { lineCount: 20 })).toBe(1);
     expect(createZdProgressStepFromElapsed(stepMs * 2, { lineCount: 20 })).toBe(
       1
     );
     expect(createZdProgressStepFromElapsed(stepMs * 3, { lineCount: 20 })).toBe(
-      2
+      1
     );
     expect(createZdProgressStepFromElapsed(stepMs * 4, { lineCount: 20 })).toBe(
+      2
+    );
+    expect(createZdProgressStepFromElapsed(stepMs * 5, { lineCount: 20 })).toBe(
       3
     );
   });

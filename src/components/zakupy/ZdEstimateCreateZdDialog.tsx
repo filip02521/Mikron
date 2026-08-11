@@ -14,6 +14,11 @@ import {
   ZD_CREATE_SOFT_WARN_LINES,
   type ZdCreatePreview,
 } from "@/lib/orders/zd-estimate-create-zd";
+import {
+  zdEstimateCreateConfirmLabel,
+  zdEstimateCreateTitleHint,
+  ZD_ESTIMATE_UI,
+} from "@/lib/orders/zd-estimate-ui-copy";
 import type { ZdEstimateRunMode } from "@/lib/orders/zd-estimate-scope";
 import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
 
@@ -44,6 +49,8 @@ export function ZdEstimateCreateZdDialog({
   onCreated,
   onError,
   onSubmitStart,
+  ordersIsLive,
+  ordersPort,
 }: {
   open: boolean;
   supplierId: string;
@@ -84,6 +91,10 @@ export function ZdEstimateCreateZdDialog({
   }) => void;
   onError: (message: string, opts?: { timeoutKhId?: number }) => void;
   onSubmitStart?: () => void;
+  /** true = LIVE :5080 (aktualna baza) — silniejsze ostrzeżenie + confirmLiveCreate. */
+  ordersIsLive: boolean;
+  ordersPort: number;
+  ordersHostLabel?: string | null;
 }) {
   const uwagiId = useId();
   const confirmId = useId();
@@ -105,18 +116,20 @@ export function ZdEstimateCreateZdDialog({
 
   useEffect(() => {
     if (!open) return;
-    setConfirmed(false);
-    setProgressStartedAtMs(null);
-    setProgressComplete(false);
-    setProgressSnapshotOk(null);
-    setUwagi(
-      (initialUwagi?.trim() ||
-        defaultZdCreateUwagi({
-          supplierName,
-          scopeLabel,
-          dateKey,
-        })).slice(0, baseMax)
-    );
+    queueMicrotask(() => {
+      setConfirmed(false);
+      setProgressStartedAtMs(null);
+      setProgressComplete(false);
+      setProgressSnapshotOk(null);
+      setUwagi(
+        (initialUwagi?.trim() ||
+          defaultZdCreateUwagi({
+            supplierName,
+            scopeLabel,
+            dateKey,
+          })).slice(0, baseMax)
+      );
+    });
   }, [open, supplierName, scopeLabel, dateKey, initialUwagi, baseMax]);
 
   const visibleLines = useMemo(
@@ -156,6 +169,7 @@ export function ZdEstimateCreateZdDialog({
           plu: l.plu ?? null,
         })),
         lineMeta: lineMeta ?? null,
+        confirmLiveCreate: ordersIsLive ? true : undefined,
         individualCatalogOrderIds: individualCatalogOrderIds ?? null,
         individualServiceOrderIds: individualServiceOrderIds ?? null,
       });
@@ -197,7 +211,10 @@ export function ZdEstimateCreateZdDialog({
       open
       onClose={onClose}
       title="Utwórz ZD w Subiekcie"
-      titleHint="Dokument powstanie na testowym Subiekcie (:5082). Nie da się cofnąć z OnTime. Termin realizacji ustawisz w Subiekcie. Historia szacunku zapisze się dla tego dostawcy, zakresu i hosta ORDERS. Po sukcesie odznaczymy włączone prośby jako Główne."
+      titleHint={zdEstimateCreateTitleHint({
+        isLive: ordersIsLive,
+        port: ordersPort,
+      })}
       titleId="zd-estimate-create-zd-title"
       size="lg"
       tier="raised"
@@ -244,7 +261,7 @@ export function ZdEstimateCreateZdDialog({
           <div className="rounded-lg border border-slate-200/90 bg-slate-50/80 px-3 py-2.5 text-sm text-slate-800">
             <p>
               <span className="font-medium">{supplierName}</span>
-              <span className="text-slate-500"> · kh_Id {khId}</span>
+              <span className="text-slate-500"> · kontrahent {khId}</span>
               {usedAlias ? (
                 <span className="ml-1 text-amber-800">
                   (alias — ustaw główny kh)
@@ -297,10 +314,16 @@ export function ZdEstimateCreateZdDialog({
             ) : null}
             {preview.softWarnOverLimit ? (
               <p className="mt-2 text-amber-900">
-                Dużo pozycji (&gt;{ZD_CREATE_SOFT_WARN_LINES}) — Sfera może
-                długo pracować; timeout create to 180 s.
+                Dużo pozycji (&gt;{ZD_CREATE_SOFT_WARN_LINES}) — Subiekt może
+                długo pracować; limit czasu to ok. 3 minuty.
               </p>
             ) : null}
+            <p className="mt-2 text-xs leading-snug text-slate-600">
+              {ZD_ESTIMATE_UI.createQtyBumpNote}
+            </p>
+            <p className="mt-1 text-xs leading-snug text-slate-600">
+              {ZD_ESTIMATE_UI.createTeethNote}
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -397,12 +420,11 @@ export function ZdEstimateCreateZdDialog({
               className="mt-1"
             />
             <span>
-              Potwierdzam utworzenie ZD na testowym Subiekcie (:5082). Operacji
-              nie da się cofnąć z OnTime
-              {markCount > 0
-                ? " — włączone prośby zostaną odznaczone jako Główne"
-                : ""}
-              .
+              {zdEstimateCreateConfirmLabel({
+                isLive: ordersIsLive,
+                port: ordersPort,
+                markCount,
+              })}
             </span>
           </label>
         </>
