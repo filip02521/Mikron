@@ -4,6 +4,7 @@ import { salesMojeAnnouncementHref } from "@/lib/department-board/moje-announcem
 import type {
   DepartmentBoardPost,
   DepartmentBoardThread,
+  DepartmentBoardThreadAttachment,
   UserRole,
 } from "@/types/database";
 
@@ -25,6 +26,7 @@ export type DepartmentBoardPostRow = DepartmentBoardPost & {
 
 export type DepartmentBoardQuestion = DepartmentBoardThreadRow & {
   posts: DepartmentBoardPostRow[];
+  attachments: DepartmentBoardThreadAttachment[];
 };
 
 export type DepartmentBoardData = {

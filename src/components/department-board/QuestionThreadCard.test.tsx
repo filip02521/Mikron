@@ -13,6 +13,7 @@ vi.mock("@/app/actions/department-board", () => ({
   actionCloseQuestion: vi.fn(),
   actionReopenQuestion: vi.fn(),
   actionDeleteClosedQuestion: vi.fn(),
+  actionGetBoardQuestionImageUrl: vi.fn().mockResolvedValue({ url: null }),
 }));
 
 import { actionMarkQuestionThreadSeen } from "@/app/actions/department-board";
@@ -73,6 +74,7 @@ function testQuestion(): DepartmentBoardQuestion {
         author: { email: "zakupy@firma.pl", role: "zakupy" },
       },
     ],
+    attachments: [],
   };
 }
 

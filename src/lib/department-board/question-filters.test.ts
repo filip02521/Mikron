@@ -32,6 +32,7 @@ function testQuestion(
     sales_person: { id: "sp1", name: "Anna" },
     author: { email: "anna@firma.pl", role: "sales" },
     posts: [],
+    attachments: [],
     ...partial,
   };
 }

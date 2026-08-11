@@ -32,6 +32,7 @@ import { NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
 import { BoardQuestionProductChip } from "@/components/department-board/BoardQuestionProductChip";
 import { BoardQuestionProductContext } from "@/components/department-board/BoardQuestionProductContext";
 import { BoardThreadMessage } from "@/components/department-board/BoardThreadMessage";
+import { BoardQuestionAttachmentsGallery } from "@/components/department-board/BoardQuestionAttachmentsGallery";
 import { boardQuestionHasProduct } from "@/lib/department-board/question-product";
 import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
@@ -389,6 +390,10 @@ export function QuestionThreadCard({
           body={question.body}
           createdAt={question.created_at}
         />
+
+        {question.attachments?.length ? (
+          <BoardQuestionAttachmentsGallery attachments={question.attachments} />
+        ) : null}
 
         {question.posts.length === 0 ? (
           <p className={boardAwaitingReplyClass}>Dział zakupów jeszcze nie odpowiedział.</p>

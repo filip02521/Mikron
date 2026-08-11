@@ -46,6 +46,7 @@ import {
 } from "@/lib/ui/ontime-theme";
 import { SalesListFilterEmptyHint } from "@/components/sales/SalesListEmptyHints";
 import { actionCreateQuestion } from "@/app/actions/department-board";
+import { useBoardQuestionImages } from "@/components/department-board/useBoardQuestionImages";
 import {
   emptyBoardQuestionProductDraft,
   type BoardQuestionProductDraft,
@@ -161,6 +162,16 @@ export function DepartmentBoardSalesClient({
   const [questionFormError, setQuestionFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [successToast, setSuccessToast] = useState(false);
+  const [warningToast, setWarningToast] = useState<string | null>(null);
+  const {
+    images,
+    imagesError,
+    compressing: imagesCompressing,
+    addFiles,
+    removeImage,
+    clearImages,
+    imageFiles,
+  } = useBoardQuestionImages();
 
   const questionFilterCounts = useMemo(
     () =>
@@ -206,22 +217,33 @@ export function DepartmentBoardSalesClient({
     setSaving(true);
     setQuestionFormError(null);
     try {
-      await actionCreateQuestion(questionTitle, questionBody, {
-        symbol: questionProduct.symbol,
-        productName: questionProduct.product,
-        subiektTwId: questionProduct.subiektTwId,
-        mikranCode: questionProduct.mikranCode,
-      });
+      const result = await actionCreateQuestion(
+        questionTitle,
+        questionBody,
+        {
+          symbol: questionProduct.symbol,
+          productName: questionProduct.product,
+          subiektTwId: questionProduct.subiektTwId,
+          mikranCode: questionProduct.mikranCode,
+        },
+        imageFiles
+      );
       setQuestionTitle("");
       setQuestionBody("");
       setQuestionProduct(emptyBoardQuestionProductDraft());
+      clearImages();
       const nextFilter = currentSalesPersonId ? "mine" : "all";
       setQuestionFilter(nextFilter);
-      setSuccessToast(true);
+      if (result.attachmentError) {
+        setWarningToast(result.attachmentError);
+      } else {
+        setSuccessToast(true);
+      }
       refresh();
     } catch (e) {
       const message = e instanceof Error ? e.message : "Nie udało się wysłać pytania.";
       setQuestionFormError(message);
+      throw e instanceof Error ? e : new Error(message);
     } finally {
       setSaving(false);
     }
@@ -245,6 +267,12 @@ export function DepartmentBoardSalesClient({
         <NoticeToast
           notice={DEPARTMENT_BOARD_QUESTIONS_FORM.successToast}
           onDismiss={() => setSuccessToast(false)}
+        />
+      ) : null}
+      {warningToast ? (
+        <NoticeToast
+          notice={{ title: "Pytanie wysłane", text: warningToast, tone: "warning" }}
+          onDismiss={() => setWarningToast(null)}
         />
       ) : null}
 
@@ -305,6 +333,9 @@ export function DepartmentBoardSalesClient({
               title={questionTitle}
               body={questionBody}
               product={questionProduct}
+              images={images}
+              imagesError={imagesError}
+              imagesCompressing={imagesCompressing}
               error={questionFormError}
               saving={saving}
               tourDemo={tourDemo}
@@ -315,7 +346,9 @@ export function DepartmentBoardSalesClient({
               onProductChange={(patch) =>
                 setQuestionProduct((current) => ({ ...current, ...patch }))
               }
-              onSubmit={() => void submitQuestion()}
+              onAddImages={addFiles}
+              onRemoveImage={removeImage}
+              onSubmit={() => submitQuestion()}
             />
           ) : null}
 

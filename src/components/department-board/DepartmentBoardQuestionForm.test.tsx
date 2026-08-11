@@ -34,6 +34,9 @@ describe("DepartmentBoardQuestionForm", () => {
     title: "Temat",
     body: "Treść pytania",
     product: { symbol: "", product: "", subiektTwId: null, mikranCode: "" },
+    images: [],
+    imagesError: null,
+    imagesCompressing: false,
     error: null,
     saving: false,
     tourDemo: false,
@@ -42,6 +45,8 @@ describe("DepartmentBoardQuestionForm", () => {
     onTitleChange: vi.fn(),
     onBodyChange: vi.fn(),
     onProductChange: vi.fn(),
+    onAddImages: vi.fn(),
+    onRemoveImage: vi.fn(),
     onSubmit: vi.fn().mockResolvedValue(undefined),
   };
 

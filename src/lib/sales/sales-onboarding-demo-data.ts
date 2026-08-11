@@ -497,6 +497,7 @@ export function buildOnboardingTablicaDemo(): DepartmentBoardData {
             author: { email: "zakupy@firma.pl", role: "zakupy" },
           },
         ],
+        attachments: [],
       },
       {
         id: openQuestionId,
@@ -522,6 +523,7 @@ export function buildOnboardingTablicaDemo(): DepartmentBoardData {
         author: { email: "piotr@firma.pl", role: "sales" },
         sales_person: { id: "demo-sales-peer-2", name: "Piotr M." },
         posts: [],
+        attachments: [],
       },
     ],
     closedQuestions: [],

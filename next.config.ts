@@ -33,8 +33,11 @@ const nextConfig: NextConfig = {
         ...defaultLanOrigins,
         ...extraActionOrigins,
       ],
-      /** Duże ZK z wieloma pozycjami — pełny snapshot w odpowiedzi action. */
-      bodySizeLimit: "4mb",
+      /**
+       * Pliki w Server Actions (zdjęcia Tablicy ≤3×5 MB, pliki zębów ≤10 MB).
+       * Wcześniej 4 MB — jedno skompresowane zdjęcie potrafiło już odrzucić request.
+       */
+      bodySizeLimit: "20mb",
     },
   },
 };
