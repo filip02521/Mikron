@@ -3,7 +3,7 @@ import type { KeyboardShortcutItem } from "@/components/ui/KeyboardShortcutsHint
 export function dailyPanelKeyboardHints(undoShortcut = "Ctrl+Z"): KeyboardShortcutItem[] {
   return [
     { keys: ["/"], label: "szukaj dostawcę" },
-    { keys: ["Z"], label: "zamówione (szuflada)" },
+    { keys: ["Z"], label: "zamówione — potwierdź" },
     { keys: [undoShortcut], label: "cofnij" },
   ];
 }

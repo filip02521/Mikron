@@ -1,7 +1,12 @@
+import {
+  DEPARTMENT_BOARD_ATTACHMENT_SELECT,
+  type BoardThreadAttachmentRow,
+} from "@/lib/department-board/attachments";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   isBoardAnswerUnseen,
   countUnseenOwnBoardAnswers,
+  latestOwnUnseenAnswerActivityAt,
   latestQuestionActivityAt,
   pickUnseenAnswerPreview,
   type UnseenBoardAnswer,
@@ -119,14 +124,35 @@ export async function fetchDepartmentBoardQuestions(): Promise<DepartmentBoardQu
   const allIds = allRows.map((q) => q.id);
 
   let posts: DepartmentBoardPostRow[] = [];
+  const attachmentsByThread = new Map<string, BoardThreadAttachmentRow[]>();
   if (allIds.length) {
-    const postsRes = await supabase
-      .from("department_board_posts")
-      .select(DEPARTMENT_BOARD_POST_SELECT)
-      .in("thread_id", allIds)
-      .order("created_at", { ascending: true });
+    const [postsRes, attachmentsRes] = await Promise.all([
+      supabase
+        .from("department_board_posts")
+        .select(DEPARTMENT_BOARD_POST_SELECT)
+        .in("thread_id", allIds)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("department_board_thread_attachments")
+        .select(DEPARTMENT_BOARD_ATTACHMENT_SELECT)
+        .in("thread_id", allIds)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true }),
+    ]);
     if (postsRes.error) throw new Error(postsRes.error.message);
     posts = (postsRes.data ?? []) as unknown as DepartmentBoardPostRow[];
+    if (attachmentsRes.error) {
+      // Migracja 133 może jeszcze nie być na środowisku — nie blokuj Tablicy.
+      if (!attachmentsRes.error.message?.includes("department_board_thread_attachments")) {
+        throw new Error(attachmentsRes.error.message);
+      }
+    } else {
+      for (const row of (attachmentsRes.data ?? []) as BoardThreadAttachmentRow[]) {
+        const list = attachmentsByThread.get(row.thread_id) ?? [];
+        list.push(row);
+        attachmentsByThread.set(row.thread_id, list);
+      }
+    }
   }
 
   const postsByThread = new Map<string, DepartmentBoardPostRow[]>();
@@ -141,6 +167,7 @@ export async function fetchDepartmentBoardQuestions(): Promise<DepartmentBoardQu
       rows.map((row) => ({
         ...row,
         posts: postsByThread.get(row.id) ?? [],
+        attachments: attachmentsByThread.get(row.id) ?? [],
       }))
     );
 
@@ -150,6 +177,7 @@ export async function fetchDepartmentBoardQuestions(): Promise<DepartmentBoardQu
       closedRows.map((row) => ({
         ...row,
         posts: postsByThread.get(row.id) ?? [],
+        attachments: attachmentsByThread.get(row.id) ?? [],
       }))
     ),
   };
@@ -353,6 +381,7 @@ export async function fetchSalesBoardAttentionSnapshot(
 
   const preview = pickUnseenAnswerPreview(unseenAnswerItems);
   const unseenOwnAnswerCount = countUnseenOwnBoardAnswers(unseenAnswerItems);
+  const latestOwnAnswerActivityAt = latestOwnUnseenAnswerActivityAt(unseenAnswerItems);
   const unseenOwnQuestionIds = unseenAnswerItems
     .filter((item) => item.isOwnQuestion)
     .map((item) => item.threadId);
@@ -365,6 +394,7 @@ export async function fetchSalesBoardAttentionSnapshot(
     unreadAnnouncementBannerLatestId,
     unseenAnswerCount: unseenAnswerItems.length,
     unseenOwnAnswerCount,
+    latestOwnAnswerActivityAt,
     unseenAnswerPreview: preview
       ? {
           threadId: preview.threadId,

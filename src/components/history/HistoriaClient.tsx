@@ -1,8 +1,8 @@
 "use client";
 import { HISTORY_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
 
-import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { IndividualOrder } from "@/types/database";
 import {
   actionDeleteIndividualHistory,
@@ -12,6 +12,11 @@ import {
 } from "@/app/actions/admin";
 import { HISTORY_PREVIEW_COUNT, HISTORY_RETENTION_MONTHS } from "@/lib/orders/history-retention";
 import { historySectionSummary } from "@/lib/orders/history-ui";
+import {
+  parseHistoriaBrowseTab,
+  parseHistoriaSupplierId,
+  type HistoriaBrowseTab,
+} from "@/lib/orders/historia-links";
 import { HistoriaIndividualTable } from "@/components/history/HistoriaIndividualTable";
 import {
   HistoriaNormalTable,
@@ -119,14 +124,42 @@ export function HistoriaClient({
   canOperateOrders?: boolean;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { readOnly } = useAdminPanelPreview();
   const effectiveCanManage = canManageHistory && !readOnly;
   const effectiveCanOperate = canOperateOrders && !readOnly;
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<ToastNotice | null>(null);
-  const [sheet, setSheet] = useState<"individual" | "normal" | null>(null);
+  const [sheet, setSheet] = useState<HistoriaBrowseTab | null>(null);
+  const [sheetQuery, setSheetQuery] = useState("");
+  const [sheetSupplierId, setSheetSupplierId] = useState<string | null>(null);
   const [cancelTarget, setCancelTarget] = useState<IndividualOrder | null>(null);
   const [editNoteTarget, setEditNoteTarget] = useState<IndividualOrder | null>(null);
+
+  useEffect(() => {
+    const tab = parseHistoriaBrowseTab(searchParams.get("tab"));
+    if (!tab) return;
+    const q = searchParams.get("q")?.trim() ?? "";
+    const supplierId = parseHistoriaSupplierId(searchParams.get("supplier"));
+    queueMicrotask(() => {
+      setSheet(tab);
+      setSheetQuery(q);
+      setSheetSupplierId(supplierId);
+    });
+    router.replace("/historia", { scroll: false });
+  }, [searchParams, router]);
+
+  const openSheet = (kind: HistoriaBrowseTab, query = "") => {
+    setSheetQuery(query);
+    setSheetSupplierId(null);
+    setSheet(kind);
+  };
+
+  const closeSheet = () => {
+    setSheet(null);
+    setSheetQuery("");
+    setSheetSupplierId(null);
+  };
 
   const previewIndividual = useMemo(
     () => individual.slice(0, HISTORY_PREVIEW_COUNT),
@@ -280,7 +313,10 @@ export function HistoriaClient({
               onRemove={removeIndividual}
             />
             {individual.length > HISTORY_PREVIEW_COUNT ? (
-              <HistoryShowAllFooter total={individual.length} onOpen={() => setSheet("individual")} />
+              <HistoryShowAllFooter
+                total={individual.length}
+                onOpen={() => openSheet("individual")}
+              />
             ) : null}
           </>
         )}
@@ -313,21 +349,31 @@ export function HistoriaClient({
               onRemove={removeNormal}
             />
             {normal.length > HISTORY_PREVIEW_COUNT ? (
-              <HistoryShowAllFooter total={normal.length} onOpen={() => setSheet("normal")} />
+              <HistoryShowAllFooter
+                total={normal.length}
+                onOpen={() => openSheet("normal")}
+              />
             ) : null}
           </>
         )}
       </Card>
 
       <HistoriaBrowseSheet
+        key={
+          sheet
+            ? `${sheet}:${sheetSupplierId ?? ""}:${sheetQuery}`
+            : "closed"
+        }
         open={sheet !== null}
         kind={sheet ?? "individual"}
+        initialQuery={sheetQuery}
+        supplierId={sheetSupplierId}
         individual={individual}
         normal={normal}
         canOperateOrders={effectiveCanOperate}
         canManageHistory={effectiveCanManage}
         pending={pending}
-        onClose={() => setSheet(null)}
+        onClose={closeSheet}
         onRemoveIndividual={removeIndividual}
         onRemoveNormal={removeNormal}
         onCancelIndividual={effectiveCanOperate ? cancelOrder : undefined}

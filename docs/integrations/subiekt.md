@@ -1,6 +1,6 @@
 # Integracja z Subiektem (REST API v1)
 
-Aplikacja łączy się z **HTTP REST API** Subiekta (odczyt SELECT z MSSQL) — nie bezpośrednio z Sferą ani SQL.
+Aplikacja łączy się z **HTTP REST API** Subiekta (odczyt SELECT z MSSQL; na hoście ORDERS także create ZD przez Sferę) — nie bezpośrednio z Sferą z procesu Next.
 
 ## Sieć firmowa (LAN)
 
@@ -40,6 +40,8 @@ Oczekiwana odpowiedź:
 | Zmienna | Wymagane | Opis |
 |---------|----------|------|
 | `SUBIEKT_API_BASE_URL` | tak | Bazowy URL z `/api/v1`, np. `http://192.168.0.140:5080/api/v1` |
+| `SUBIEKT_API_ORDERS_BASE_URL` | tak dla szacunku | Host ORDERS: `:5080` live (aktualna baza) lub `:5082` test — **bez cichego fallbacku** |
+| `SUBIEKT_API_ORDERS_TIMEOUT_MS` | nie | Timeout szacunku/create (domyślnie `60000`) |
 | `SUBIEKT_API_AUTH_MODE` | nie | `none` gdy klucz wyłączony; inaczej `bearer`, `basic`, `api-key-header` |
 | `SUBIEKT_API_KEY` | zależnie | Token — tylko gdy włączony na serwerze Subiekta |
 | `SUBIEKT_API_USER` / `SUBIEKT_API_PASSWORD` | zależnie | Basic auth |
@@ -47,7 +49,11 @@ Oczekiwana odpowiedź:
 | `SUBIEKT_API_HEALTH_PATH` | nie | Domyślnie `/health` |
 | `SUBIEKT_API_TIMEOUT_MS` | nie | Domyślnie `15000` |
 
-## Endpointy API (odczyt)
+## Endpointy API
+
+Host **live** (`SUBIEKT_API_BASE_URL`, zwykle `:5080`) — codzienna praca (stany, katalog, ETA) oraz — gdy ORDERS też wskazuje `:5080` — szacunek/create na **aktualnej bazie MIKRAN**.
+
+Host **ORDERS** (`SUBIEKT_API_ORDERS_BASE_URL`) — szacunek ZD oraz **tworzenie ZD przez Sferę**. Dozwolone porty: `:5080` (live) lub `:5082` (test).
 
 Wszystkie listy zwracają envelope:
 
@@ -70,8 +76,93 @@ Wszystkie listy zwracają envelope:
 | GET | `/documents/zk` | Zamówienia od klientów (typ 16) |
 | GET | `/documents/zd` | Zamówienia do dostawców (typ 15) |
 | GET | `/documents/zd/:id` | Jedno ZD (pełne linie) |
+| POST | `/documents/zd/create` | Host ORDERS (`:5080` live / `:5082` test) — tworzy ZD (Sfera `DodajZD`) |
+| GET | `/groups` | Grupy towarowe (`sl_GrupaTw`) — zwykle na hoście ORDERS |
+| GET | `/cechy/towarow` | Słownik cech towarów (`sl_CechaTw`) — host ORDERS |
+| GET | `/orders/zd/estimate` | Szacunek ilości do ZD — `/zakupy/szacunek` (host ORDERS) |
+| GET | `/products/komplety` | **Do wdrożenia:** komplety `tw_Komplet` (pack↔piece, `liczba`) — sync par w OnTime |
 | GET | `/examples` | Przykłady zapytań |
 | GET | `/docs` | Dokumentacja OpenAPI (HTML) |
+
+### `GET /orders/zd/estimate` — filtry zakresu
+
+Query (host ORDERS): `dataOd`, `dataDo`, `dniZapasu`, `zapasMin`, `tylkoBraki`, `page`, `pageSize`, oraz **jeden** filtr zakresu:
+
+| Parametr | Znaczenie |
+|----------|-----------|
+| `grupaId` | `tw_IdGrupa` |
+| `cechaId` | `ctw_Id` (towary z `tw_CechaTw`) |
+| `towarId` | jeden `tw_Id` |
+
+OnTime wysyła XOR: albo `grupaId`, albo `cechaId` (nigdy oba, nigdy puste — bez filtra API zwraca cały katalog). Echo w `parametry.grupaId` / `parametry.cechaId` jest weryfikowane **zaraz po 1. stronie** (przed dociągnięciem kolejnych stron).
+
+`GET /cechy/towarow`: `search`, `id`, `page`, `pageSize` → `{ ctw_Id, ctw_Nazwa }`.
+
+### Spec `GET /products/komplety` (host ORDERS — brakuje w API)
+
+Źródło SQL: `tw_Komplet` (`kpl_Id`, `kpl_IdKomplet`, `kpl_IdSkladnik`, `kpl_Liczba`).
+
+Query: `kompletId?`, `skladnikId?`, `page`, `pageSize`.
+
+Odpowiedź wiersza:
+
+```json
+{
+  "kpl_Id": 1,
+  "kompletTwId": 10,
+  "skladnikTwId": 20,
+  "liczba": 100,
+  "kompletSymbol": "…",
+  "skladnikSymbol": "…"
+}
+```
+
+OnTime sync (`actionSyncZdProductPairsFromSubiekt`) pomija komplety z ≠1 składnikiem lub niecałkowitą `liczba`. Do czasu wdrożenia endpointu pary dodaje się ręcznie w `/zakupy/szacunek`.
+
+### Host szacunku ZD (`SUBIEKT_API_ORDERS_BASE_URL`) — live `:5080` lub test `:5082`
+
+`/zakupy/szacunek` **nie** spada cicho na `SUBIEKT_API_BASE_URL` — wymaga jawnego `SUBIEKT_API_ORDERS_BASE_URL`.
+
+**Stan na 2026-08-11 (tymczasowo):** ORDERS = **live `:5080`** (baza API: **MIKRAN**).  
+Snapshoty historii: `host_kind=live`. **Utwórz ZD zapisuje prawdziwe dokumenty.**  
+Powrót na sandbox: ustaw ORDERS na `:5082`, gdy kopia testowa wstanie.
+
+Wymagane (obecny tryb live):
+
+```text
+SUBIEKT_API_BASE_URL=http://192.168.0.140:5080/api/v1
+SUBIEKT_API_ORDERS_BASE_URL=http://192.168.0.140:5080/api/v1
+```
+
+Sandbox testowy (gdy `:5082` dostępne):
+
+```text
+SUBIEKT_API_ORDERS_BASE_URL=http://192.168.0.140:5082/api/v1
+```
+
+Bez `ORDERS` / gdy port spoza `{5080, 5082}` — szacunek jest **zablokowany**.  
+Historia filtruje po `host_kind` — snapshoty z `:5082` (`orders_test`) **nie** mieszają się z live.
+
+### `POST /documents/zd/create` (host ORDERS)
+
+Tworzy ZD przez Sferę. **Brak dry-run** — każde udane wywołanie zapisuje dokument (na live: w aktualnej bazie).
+Timeout HTTP create: **180s** (osobno od `SUBIEKT_API_ORDERS_TIMEOUT_MS` używanego przy estimate).
+OnTime wymaga `confirmLiveCreate=true` przy hoście live.
+```json
+{
+  "kontrahentId": 1,
+  "uwagi": "opcjonalnie",
+  "pozycje": [
+    { "towarId": 1, "ilosc": 2 },
+    { "symbol": "517019", "ilosc": 1 }
+  ]
+}
+```
+
+- `kontrahentId` = dostawca (`kh_Id`)
+- `ilosc` = jednostki dokumentu ZD (paczki, gdy opakowanie)
+- Odpowiedź: `201` + dokument jak `GET /documents/zd/{id}`
+- OnTime (`/zakupy/szacunek`): przycisk **Utwórz ZD** — kh z `suppliers.subiekt_kh_id` (lub alias), potem re-GET i **zapis snapshotu historii** do `zd_estimate_order_snapshots` z `host_kind=live` (gdy ORDERS=:5080) albo `orders_test` (gdy :5082). Historia przy Policz filtruje po `supplier_kh_id` (primary+aliasy) + zakresie (`cecha`/`grupa`) + `host_kind`; stare wiersze bez `scope_mode` (legacy) nadal pasują po kh+host. ZD ze statusem spełnionym (`dok_Status=8`) zapisuje się z `eligible_for_history=false` i nie wchodzi do cutów historii. Cut `history_slow` (wolno po ZD) oraz `sales_spike` (okno FS ≫ oczekiwane względem ostatniego zamówienia) korygują cel — snapshoty **nie** wchodzą do cover (`otwarteZd`). Timeout HTTP create: 180s.
 
 ### Semantyka `GET /documents/zd` (lista)
 

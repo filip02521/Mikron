@@ -252,6 +252,12 @@ export async function actionReorderProcurementFlagDefinitions(
   ids: string[]
 ): Promise<{ success: true }> {
   await requireOperations("mutate");
+  await persistFlagDefinitionOrder(ids);
+  revalidateAll();
+  return { success: true };
+}
+
+async function persistFlagDefinitionOrder(ids: string[]): Promise<void> {
   const uniqueIds = [...new Set(ids.filter((id) => isProcurementFlagUuid(id)))];
   if (!uniqueIds.length) throw new Error("Brak flag do zmiany kolejności.");
   if (uniqueIds.length !== ids.length) {
@@ -284,7 +290,76 @@ export async function actionReorderProcurementFlagDefinitions(
       throw new Error(error.message);
     }
   }
+}
 
+async function persistNormalizedLaneOrder(orderIds: string[]): Promise<void> {
+  if (!Array.isArray(orderIds) || orderIds.length > 80) {
+    throw new Error("Nieprawidłowa kolejność torów.");
+  }
+  const cleaned = orderIds
+    .filter((id): id is string => typeof id === "string" && id.trim().length > 0)
+    .map((id) => id.trim().toLowerCase());
+  if (!cleaned.length) throw new Error("Brak kolejności torów do zapisu.");
+
+  const { fetchProcurementFlagDefinitions } = await import("@/lib/data/queries");
+  const { normalizeProcurementLaneOrder } = await import(
+    "@/lib/orders/procurement-request-lane-order"
+  );
+  const { saveProcurementLaneOrder } = await import(
+    "@/lib/data/procurement-lane-order"
+  );
+
+  const definitions = await fetchProcurementFlagDefinitions();
+  const normalized = normalizeProcurementLaneOrder(cleaned, definitions);
+  await saveProcurementLaneOrder(normalized);
+}
+
+export async function actionSetProcurementLaneOrder(
+  orderIds: string[]
+): Promise<{ success: true }> {
+  await requireOperations("mutate");
+  await persistNormalizedLaneOrder(orderIds);
+  revalidateAll();
+  return { success: true };
+}
+
+/**
+ * Jedna operacja: sort_order flag + kolejność torów.
+ * Przy awarii zapisu torów próbuje przywrócić poprzedni sort_order flag.
+ */
+export async function actionReorderProcurementFlagsAndLaneOrder(
+  flagIds: string[],
+  laneOrderIds: string[]
+): Promise<{ success: true }> {
+  await requireOperations("mutate");
+
+  const supabase = createAdminClient();
+  const uniqueIds = [...new Set(flagIds.filter((id) => isProcurementFlagUuid(id)))];
+  const { data: beforeRows, error: beforeError } = await supabase
+    .from("procurement_flag_definitions")
+    .select("id, sort_order")
+    .in("id", uniqueIds);
+  if (beforeError) {
+    throwIfDefsMissing(beforeError);
+    throw new Error(beforeError.message);
+  }
+  const previousOrder = [...(beforeRows ?? [])]
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .map((r) => r.id as string);
+
+  await persistFlagDefinitionOrder(flagIds);
+  try {
+    await persistNormalizedLaneOrder(laneOrderIds);
+  } catch (err) {
+    if (previousOrder.length === uniqueIds.length) {
+      try {
+        await persistFlagDefinitionOrder(previousOrder);
+      } catch {
+        /* best-effort rollback */
+      }
+    }
+    throw err;
+  }
   revalidateAll();
   return { success: true };
 }

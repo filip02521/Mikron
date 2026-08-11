@@ -17,6 +17,9 @@ export const metadata: Metadata = pageMetadataFor("noweZamowienia");
 export default async function NoweZamowieniePage() {
   const role = await getAppRole();
   let suppliers: Awaited<ReturnType<typeof fetchSupplierFormContext>>["suppliers"] = [];
+  let statsBySupplierId: Awaited<
+    ReturnType<typeof fetchSupplierFormContext>
+  >["statsBySupplierId"] = {};
   let suppliersOnVacationNow: Record<string, SupplierOnVacationWindow> = {};
   let salesPeople: { id: string; name: string }[] = [];
   let loadError: string | null = null;
@@ -26,6 +29,7 @@ export default async function NoweZamowieniePage() {
       fetchSuppliersOnVacationNow(),
     ]);
     suppliers = ctx.suppliers;
+    statsBySupplierId = ctx.statsBySupplierId;
     suppliersOnVacationNow = onVacation;
     salesPeople = await fetchSalesPeopleForPicker();
   } catch (error) {
@@ -51,6 +55,7 @@ export default async function NoweZamowieniePage() {
         salesPeople={salesPeople}
         lockedSalesPerson={lockedSalesPerson}
         suppliersOnVacationNow={suppliersOnVacationNow}
+        statsBySupplierId={statsBySupplierId}
       />
     </div>
   );

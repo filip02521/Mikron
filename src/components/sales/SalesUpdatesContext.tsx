@@ -32,6 +32,10 @@ const MOJE_AUTO_REFRESH_COOLDOWN_MS = 12_000;
 
 import { isSalesZkNavPath } from "@/lib/sales/notepad-page-tabs";
 import { clearMojeZdEtaSessionSync } from "@/components/moje/MojeZdEtaSyncClient";
+import {
+  LIVE_PANEL_AUTO_REFRESH_COOLDOWN_MS,
+  shouldFireLivePanelAutoRefresh,
+} from "@/lib/client/live-panel-auto-refresh";
 
 type SalesUpdatesContextValue = {
   hasUpdates: boolean;
@@ -53,23 +57,31 @@ export function useSalesUpdates() {
 async function fetchVersion(): Promise<{
   version: string | null;
   unseenOwnAnswers: number | null;
+  latestOwnAnswerActivityAt: string | null;
 }> {
   try {
     const res = await fetch("/api/sales/activity-version", {
       cache: "no-store",
     });
-    if (!res.ok) return { version: null, unseenOwnAnswers: null };
+    if (!res.ok) {
+      return { version: null, unseenOwnAnswers: null, latestOwnAnswerActivityAt: null };
+    }
     const body = (await res.json()) as {
       version?: string;
       unseenOwnAnswers?: number;
+      latestOwnAnswerActivityAt?: string | null;
     };
     return {
       version: body.version ?? null,
       unseenOwnAnswers:
         typeof body.unseenOwnAnswers === "number" ? body.unseenOwnAnswers : null,
+      latestOwnAnswerActivityAt:
+        typeof body.latestOwnAnswerActivityAt === "string"
+          ? body.latestOwnAnswerActivityAt
+          : null,
     };
   } catch {
-    return { version: null, unseenOwnAnswers: null };
+    return { version: null, unseenOwnAnswers: null, latestOwnAnswerActivityAt: null };
   }
 }
 
@@ -77,6 +89,7 @@ export function SalesUpdatesProvider({
   children,
   initialVersion,
   initialUnseenOwnAnswers = 0,
+  initialLatestOwnAnswerActivityAt = null,
   enabled,
   sessionSalesPersonId = null,
   soundBaselineReady = true,
@@ -84,6 +97,7 @@ export function SalesUpdatesProvider({
   children: React.ReactNode;
   initialVersion: string | null;
   initialUnseenOwnAnswers?: number;
+  initialLatestOwnAnswerActivityAt?: string | null;
   enabled: boolean;
   /** Własny profil handlowca — do wykrycia podglądu ?dla= innego handlowca. */
   sessionSalesPersonId?: string | null;
@@ -109,6 +123,8 @@ export function SalesUpdatesProvider({
   const syncingRef = useRef(false);
   const lastNotatnikAutoRefreshAtRef = useRef(0);
   const lastMojeAutoRefreshAtRef = useRef(0);
+  const lastFlagAutoRefreshAtRef = useRef(0);
+  const [visibilityEpoch, setVisibilityEpoch] = useState(0);
   const versionKey = `${effectiveEnabled}\0${initialVersion ?? ""}`;
   const [appliedVersionKey, setAppliedVersionKey] = useState("");
   if (effectiveEnabled && initialVersion && versionKey !== appliedVersionKey) {
@@ -116,10 +132,6 @@ export function SalesUpdatesProvider({
     setBaseline(initialVersion);
     setLatest(initialVersion);
   }
-
-  const setAutoRefresh = useCallback((value: boolean) => {
-    autoRefreshStore.setValue(value);
-  }, []);
 
   const setBoardAnswerSound = useCallback((value: boolean) => {
     salesBoardAnswerSoundMutedStore.setValue(!value);
@@ -135,11 +147,13 @@ export function SalesUpdatesProvider({
     [patchNavBadges]
   );
 
-  const { applyCount: applyUnseenOwnAnswersCount } = useBoardNotificationSoundEffects({
+  const { applyAttention: applyUnseenOwnAnswersAttention } = useBoardNotificationSoundEffects({
     enabled: effectiveEnabled,
     soundEnabled: hydrated && boardAnswerSound,
     initialCount: initialUnseenOwnAnswers,
+    initialLatestActivityAt: initialLatestOwnAnswerActivityAt,
     baselineReady: soundBaselineReady,
+    trackActivityAt: true,
     onCountApplied: onUnseenOwnAnswersApplied,
   });
 
@@ -163,9 +177,12 @@ export function SalesUpdatesProvider({
           }
         }
         router.refresh();
-        const { version, unseenOwnAnswers } = await fetchVersion();
+        const { version, unseenOwnAnswers, latestOwnAnswerActivityAt } = await fetchVersion();
         if (version) syncBaseline(version);
-        applyUnseenOwnAnswersCount(unseenOwnAnswers);
+        applyUnseenOwnAnswersAttention({
+          count: unseenOwnAnswers,
+          latestActivityAt: latestOwnAnswerActivityAt,
+        });
         const now = Date.now();
         setLastSyncedAt(now);
         setLastPollAt(now);
@@ -175,16 +192,29 @@ export function SalesUpdatesProvider({
     };
 
     void run();
-  }, [router, syncBaseline, pathname, teamPreviewActive, applyUnseenOwnAnswersCount]);
+  }, [router, syncBaseline, pathname, teamPreviewActive, applyUnseenOwnAnswersAttention]);
+
+  const setAutoRefresh = useCallback(
+    (value: boolean) => {
+      autoRefreshStore.setValue(value);
+      if (value && effectiveEnabled && latest && baseline && latest !== baseline) {
+        refreshNow();
+      }
+    },
+    [effectiveEnabled, latest, baseline, refreshNow]
+  );
 
   const poll = useCallback(async () => {
-    const { version, unseenOwnAnswers } = await fetchVersion();
-    applyUnseenOwnAnswersCount(unseenOwnAnswers);
+    const { version, unseenOwnAnswers, latestOwnAnswerActivityAt } = await fetchVersion();
+    applyUnseenOwnAnswersAttention({
+      count: unseenOwnAnswers,
+      latestActivityAt: latestOwnAnswerActivityAt,
+    });
     if (!version) return;
     const now = Date.now();
     setLatest(version);
     setLastPollAt(now);
-  }, [applyUnseenOwnAnswersCount]);
+  }, [applyUnseenOwnAnswersAttention]);
 
   useEffect(() => {
     if (!effectiveEnabled) return;
@@ -202,7 +232,9 @@ export function SalesUpdatesProvider({
     }, POLL_MS);
 
     const onVisible = () => {
-      if (document.visibilityState === "visible") void poll();
+      if (document.visibilityState !== "visible") return;
+      void poll();
+      setVisibilityEpoch((n) => n + 1);
     };
     document.addEventListener("visibilitychange", onVisible);
 
@@ -214,6 +246,7 @@ export function SalesUpdatesProvider({
 
   useEffect(() => {
     if (!effectiveEnabled || !autoRefresh || isSalesZkNavPath(pathname)) return;
+    if (pathname === "/moje") return;
     const id = window.setInterval(() => {
       if (document.visibilityState === "hidden") return;
       if (latest && baseline && latest !== baseline) {
@@ -225,31 +258,70 @@ export function SalesUpdatesProvider({
 
   /** Notatnik: odśwież widok od razu po wykryciu zmian (ZK, prośby). */
   useEffect(() => {
-    if (!effectiveEnabled || syncingRef.current) return;
+    if (!effectiveEnabled) return;
     if (!latest || !baseline || latest === baseline) return;
     if (!isSalesZkNavPath(pathname)) return;
-
-    const now = Date.now();
-    if (now - lastNotatnikAutoRefreshAtRef.current < NOTATNIK_AUTO_REFRESH_COOLDOWN_MS) {
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
       return;
     }
-    lastNotatnikAutoRefreshAtRef.current = now;
+
+    const decision = shouldFireLivePanelAutoRefresh({
+      lastFiredAt: lastNotatnikAutoRefreshAtRef.current,
+      cooldownMs: NOTATNIK_AUTO_REFRESH_COOLDOWN_MS,
+    });
+    if (!decision.fire) return;
+    lastNotatnikAutoRefreshAtRef.current = decision.nextFiredAt;
+    lastFlagAutoRefreshAtRef.current = decision.nextFiredAt;
     refreshNow();
-  }, [effectiveEnabled, latest, baseline, pathname, refreshNow]);
+  }, [effectiveEnabled, latest, baseline, pathname, refreshNow, visibilityEpoch]);
 
   /** Moje zamówienia: po sync ZD w tle odśwież listę, gdy wersja aktywności się zmieni. */
   useEffect(() => {
-    if (!effectiveEnabled || syncingRef.current) return;
+    if (!effectiveEnabled) return;
     if (!latest || !baseline || latest === baseline) return;
     if (pathname !== "/moje") return;
-
-    const now = Date.now();
-    if (now - lastMojeAutoRefreshAtRef.current < MOJE_AUTO_REFRESH_COOLDOWN_MS) {
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
       return;
     }
-    lastMojeAutoRefreshAtRef.current = now;
+
+    const decision = shouldFireLivePanelAutoRefresh({
+      lastFiredAt: lastMojeAutoRefreshAtRef.current,
+      cooldownMs: MOJE_AUTO_REFRESH_COOLDOWN_MS,
+    });
+    if (!decision.fire) return;
+    lastMojeAutoRefreshAtRef.current = decision.nextFiredAt;
+    lastFlagAutoRefreshAtRef.current = decision.nextFiredAt;
     refreshNow();
-  }, [effectiveEnabled, latest, baseline, pathname, refreshNow]);
+  }, [effectiveEnabled, latest, baseline, pathname, refreshNow, visibilityEpoch]);
+
+  /**
+   * Flaga auto: poza Moje/notatnikiem odśwież zaraz po diffie
+   * (wcześniej tylko timer 3 min — opis w ustawieniach obiecywał „zaraz”).
+   */
+  useEffect(() => {
+    if (!effectiveEnabled || !autoRefresh) return;
+    if (!latest || !baseline || latest === baseline) return;
+    if (pathname === "/moje" || isSalesZkNavPath(pathname)) return;
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      return;
+    }
+
+    const decision = shouldFireLivePanelAutoRefresh({
+      lastFiredAt: lastFlagAutoRefreshAtRef.current,
+      cooldownMs: LIVE_PANEL_AUTO_REFRESH_COOLDOWN_MS,
+    });
+    if (!decision.fire) return;
+    lastFlagAutoRefreshAtRef.current = decision.nextFiredAt;
+    refreshNow();
+  }, [
+    effectiveEnabled,
+    autoRefresh,
+    latest,
+    baseline,
+    pathname,
+    refreshNow,
+    visibilityEpoch,
+  ]);
 
   const hasUpdates = Boolean(
     effectiveEnabled && baseline && latest && latest !== baseline

@@ -23,6 +23,12 @@ import {
   dailyPanelListInsetClass,
   dailyPanelListRowPaddingClass,
 } from "@/components/summary/daily-panel-list-styles";
+import {
+  DAILY_PANEL_MARK_ORDERED_LABEL,
+  DAILY_PANEL_MARK_ORDERED_PENDING,
+  DAILY_PANEL_MARK_ORDERED_PENDING_OVERLAY,
+  dailyPanelMarkOrderedToastTitle,
+} from "@/lib/orders/daily-panel-mark-ordered-copy";
 
 export function DailyPanelOnDemandSection({
   suppliers,
@@ -93,17 +99,20 @@ export function DailyPanelOnDemandSection({
                     size="sm"
                     variant="primary"
                     disabled={rowPending}
+                    aria-busy={rowPending}
                     className="h-10 min-h-10 w-full sm:h-9 sm:min-h-9 sm:w-auto"
                     onClick={() =>
                       run(
                         () => actionMarkOrdered(row.supplierId),
-                        "Oznaczono jako zamówione",
-                        "Oznaczanie…",
+                        dailyPanelMarkOrderedToastTitle(row.supplierName),
+                        DAILY_PANEL_MARK_ORDERED_PENDING_OVERLAY,
                         { scope: row.supplierId }
                       )
                     }
                   >
-                    Zamówione
+                    {rowPending
+                      ? DAILY_PANEL_MARK_ORDERED_PENDING
+                      : DAILY_PANEL_MARK_ORDERED_LABEL}
                   </Button>
                 </div>
               </PanelRowActionsInlineEnd>

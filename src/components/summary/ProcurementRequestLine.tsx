@@ -102,9 +102,11 @@ function ProcurementRequestLineContent({
   suppressClient?: boolean;
   flagSlot?: ReactNode;
 }) {
-  const isInformacja = line.requestKind === "informacja";
-  const hasMeta =
-    (line.symbol && line.symbol !== "-") || (line.quantity && line.quantity !== "-" && !isInformacja);
+  const hasSymbol = Boolean(line.symbol && line.symbol !== "-");
+  const hasQty = Boolean(
+    line.quantity && line.quantity !== "-" && line.quantity !== "—"
+  );
+  const hasMeta = hasSymbol || hasQty;
 
   return (
     <>
@@ -127,15 +129,9 @@ function ProcurementRequestLineContent({
       ) : null}
       {hasMeta ? (
         <p className={cn("mt-0.5 text-slate-500", compact ? "pl-5 text-[10px]" : "text-xs")}>
-          {line.symbol && line.symbol !== "-" ? line.symbol : null}
-          {line.symbol && line.symbol !== "-" && line.quantity && line.quantity !== "-" && line.quantity !== "—" && !isInformacja
-            ? " · "
-            : null}
-          {isInformacja
-            ? "Informacja o dostępności"
-            : line.quantity && line.quantity !== "-" && line.quantity !== "—"
-              ? `Ilość: ${line.quantity}`
-              : null}
+          {hasSymbol ? line.symbol : null}
+          {hasSymbol && hasQty ? " · " : null}
+          {hasQty ? `Ilość: ${line.quantity}` : null}
         </p>
       ) : null}
       {line.clientName && !suppressClient ? (

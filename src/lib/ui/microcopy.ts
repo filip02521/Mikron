@@ -52,7 +52,8 @@ export const MICROCOPY = {
       "Status, termin lub dostawa mogły się zmienić — odśwież widok, aby zobaczyć aktualny stan.",
     operationsUpdates:
       "Handlowiec mógł dodać prośbę albo zmienić się kolejka — odśwież widok, aby zobaczyć aktualny stan.",
-    operationsQueueChanged: "Kolejka się zmieniła — odśwież, aby zobaczyć nowe prośby.",
+    operationsQueueChanged:
+      "Wykryto zmiany w kolejce — odświeżamy panel. Jeśli lista nadal stara, kliknij Odśwież.",
     teethUpdates:
       "Kolejka zamówień na zęby uległa zmianie — odśwież widok, aby zobaczyć aktualny stan.",
   },

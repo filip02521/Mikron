@@ -12,6 +12,8 @@ vi.mock("@/app/actions/department-board", () => ({
   actionArchiveQuestion: vi.fn(),
   actionCloseQuestion: vi.fn(),
   actionReopenQuestion: vi.fn(),
+  actionDeleteClosedQuestion: vi.fn(),
+  actionGetBoardQuestionImageUrl: vi.fn().mockResolvedValue({ url: null }),
 }));
 
 import { actionMarkQuestionThreadSeen } from "@/app/actions/department-board";
@@ -72,6 +74,7 @@ function testQuestion(): DepartmentBoardQuestion {
         author: { email: "zakupy@firma.pl", role: "zakupy" },
       },
     ],
+    attachments: [],
   };
 }
 
@@ -193,5 +196,24 @@ describe("QuestionThreadCard", () => {
     });
 
     vi.unstubAllGlobals();
+  });
+
+  it("dla administratora pokazuje Usuń na zakończonym wątku", () => {
+    const question = testQuestion();
+    question.archived_at = "2026-01-03T10:00:00Z";
+    question.status = "archived";
+
+    render(
+      <QuestionThreadCard
+        question={question}
+        embedded
+        defaultExpanded
+        canDeleteClosed
+        canReopen
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Usuń" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Otwórz ponownie" })).toBeTruthy();
   });
 });

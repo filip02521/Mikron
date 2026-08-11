@@ -13,7 +13,8 @@ import { NoticeToast } from "@/components/ui/NoticeToast";
 import type { FormMessage, TransientNotice } from "@/lib/ui/notice-content";
 import { Field, Select } from "@/components/ui/Field";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
-import type { IndividualRequestKind } from "@/types/database";
+import { ProsbaSupplierLeadTimeMeta } from "@/components/orders/ProsbaSupplierLeadTimeMeta";
+import type { DeliveryStats, IndividualRequestKind } from "@/types/database";
 import type { TeethManufacturer, TeethLineDetail, TeethProductLine, TeethKind } from "@/lib/teeth/teeth-catalog";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { prosbaHref } from "@/lib/orders/prosba-url";
@@ -198,6 +199,7 @@ export function OrderFormClient({
   managerSelfId,
   forceReadOnly = false,
   suppliersOnVacationNow = {},
+  statsBySupplierId = {},
 }: {
   suppliers: OrderFormSupplierOption[];
   salesPeople: { id: string; name: string }[];
@@ -216,6 +218,8 @@ export function OrderFormClient({
   forceReadOnly?: boolean;
   /** Dostawcy z aktywnym urlopem obejmującym dziś (kalendarz). */
   suppliersOnVacationNow?: Record<string, SupplierOnVacationWindow>;
+  /** Średnie czasy dostawy (`delivery_stats`) — meta przy znanym dostawcy. */
+  statsBySupplierId?: Record<string, DeliveryStats>;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1340,6 +1344,15 @@ export function OrderFormClient({
                 przypisany do innego dostawcy, dopasowanie zaktualizuje się
                 automatycznie.
               </p>
+              {requestKind === "zamowienie" ? (
+                <ProsbaSupplierLeadTimeMeta
+                  className="mt-2"
+                  supplierIds={[scheduleSupplier.id]}
+                  suppliers={suppliers}
+                  statsBySupplierId={statsBySupplierId}
+                  showSupplierNames={false}
+                />
+              ) : null}
             </div>
           ) : null}
 
@@ -1432,6 +1445,12 @@ export function OrderFormClient({
                   suppliers={supplierRefs}
                   deferSupplierResolve={deferSupplierResolve}
                   groupSupplierId={group[0]?.supplierId || initialSupplierId || ""}
+                  formSuppliers={suppliers}
+                  statsBySupplierId={statsBySupplierId}
+                  showLinkedLeadTime={!tourDemo}
+                  linkedLeadTimeOmitSupplierIds={
+                    scheduleSupplier ? [scheduleSupplier.id] : undefined
+                  }
                   allowedTwIds={zkProsbaLinkContext?.allowedTwIds ?? undefined}
                   allowedTwIdsHint={
                     zkCatalogLocked ? ZK_PROSBA_LINK_BANNER_COPY.typeaheadHint : undefined
@@ -1643,49 +1662,75 @@ export function OrderFormClient({
                       </Select>
                     </Field>
                     <Field labelClassName="inline-flex min-h-6 items-center" label="Dostawca">
-                      <SupplierPickerField
-                        suppliers={suppliers}
-                        value={group[0]?.supplierId ?? ""}
-                        onChange={(v) => {
-                          clearFormNotice();
-                          setGroups((g) =>
-                            g.map((gr, i) =>
-                              i === gi ? gr.map((row) => ({ ...row, supplierId: v })) : gr
-                            )
-                          );
-                        }}
-                        allowEmpty
-                        emptyLabel="Wybierz dostawcę"
-                        disabled={
-                          !isProcurementGroupForm && groupHasCatalogProduct(group)
-                        }
-                        placeholder="Szukaj dostawcy w systemie lub Subiekcie…"
-                        showInlineFeedback={false}
-                      />
+                      <div className="space-y-1.5">
+                        <SupplierPickerField
+                          suppliers={suppliers}
+                          value={group[0]?.supplierId ?? ""}
+                          onChange={(v) => {
+                            clearFormNotice();
+                            setGroups((g) =>
+                              g.map((gr, i) =>
+                                i === gi ? gr.map((row) => ({ ...row, supplierId: v })) : gr
+                              )
+                            );
+                          }}
+                          allowEmpty
+                          emptyLabel="Wybierz dostawcę"
+                          disabled={
+                            !isProcurementGroupForm && groupHasCatalogProduct(group)
+                          }
+                          placeholder="Szukaj dostawcy w systemie lub Subiekcie…"
+                          showInlineFeedback={false}
+                        />
+                        {requestKind === "zamowienie" ? (
+                          <ProsbaSupplierLeadTimeMeta
+                            supplierIds={
+                              group[0]?.supplierId?.trim()
+                                ? [group[0].supplierId.trim()]
+                                : []
+                            }
+                            suppliers={suppliers}
+                            statsBySupplierId={statsBySupplierId}
+                          />
+                        ) : null}
+                      </div>
                     </Field>
                   </div>
                 </ProsbaFormSection>
               ) : (
                 <Field labelClassName="inline-flex min-h-6 items-center" label="Dostawca">
-                  <SupplierPickerField
-                    suppliers={suppliers}
-                    value={group[0]?.supplierId ?? ""}
-                    onChange={(v) => {
-                      clearFormNotice();
-                      setGroups((g) =>
-                        g.map((gr, i) =>
-                          i === gi ? gr.map((row) => ({ ...row, supplierId: v })) : gr
-                        )
-                      );
-                    }}
-                    disabled={
-                      !isProcurementGroupForm && groupHasCatalogProduct(group)
-                    }
-                    allowEmpty
-                    emptyLabel="Wybierz dostawcę"
-                    placeholder="Szukaj dostawcy w systemie lub Subiekcie…"
-                    showInlineFeedback={false}
-                  />
+                  <div className="space-y-1.5">
+                    <SupplierPickerField
+                      suppliers={suppliers}
+                      value={group[0]?.supplierId ?? ""}
+                      onChange={(v) => {
+                        clearFormNotice();
+                        setGroups((g) =>
+                          g.map((gr, i) =>
+                            i === gi ? gr.map((row) => ({ ...row, supplierId: v })) : gr
+                          )
+                        );
+                      }}
+                      disabled={
+                        !isProcurementGroupForm && groupHasCatalogProduct(group)
+                      }
+                      allowEmpty
+                      emptyLabel="Wybierz dostawcę"
+                      placeholder="Szukaj dostawcy w systemie lub Subiekcie…"
+                      showInlineFeedback={false}
+                    />
+                    {requestKind === "zamowienie" ? (
+                      <ProsbaSupplierLeadTimeMeta
+                        supplierIds={
+                          group[0]?.supplierId?.trim()
+                            ? [group[0].supplierId.trim()]
+                            : []
+                        }
+                        suppliers={suppliers}
+                        statsBySupplierId={statsBySupplierId}
+                      />
+                    ) : null}
+                  </div>
                 </Field>
               )}
             </div>
@@ -1718,6 +1763,9 @@ export function OrderFormClient({
                   suppliers={supplierRefs}
                   unifiedFeedback
                   groupSupplierId={group[0]?.supplierId ?? ""}
+                  formSuppliers={suppliers}
+                  statsBySupplierId={statsBySupplierId}
+                  showLinkedLeadTime={false}
                   allowedTwIds={zkProsbaLinkContext?.allowedTwIds ?? undefined}
                   allowedTwIdsHint={
                     zkProsbaLinkContext?.allowedTwIds?.size

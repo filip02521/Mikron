@@ -11,6 +11,8 @@ export type SupplierContactUi = {
   methodKind: OrderMethodKind;
   /** Główny klikalny kontakt (mail / tel / www). */
   contactLink: SupplierContactLink | null;
+  /** Wyodrębniony e-mail — do kopiowania z badge „Mail”. */
+  email: string | null;
   /** Tekst do schowka, gdy nie da się zbudować linku. */
   copyText: string | null;
 };
@@ -24,17 +26,29 @@ export function hasSupplierContactText(mails: string, extraInfo?: string): boole
   return Boolean(normalizeContact(mails) || normalizeContact(extraInfo ?? ""));
 }
 
+/** Składa mails + uwagi — numer telefonu bywa w `extra_info`, a e-mail w `mails`. */
 function mergeContactFields(mails: string, extraInfo?: string): string {
   const primary = normalizeContact(mails);
-  if (primary) return primary;
-  return normalizeContact(extraInfo ?? "");
+  const secondary = normalizeContact(extraInfo ?? "");
+  if (primary && secondary) return `${primary} ${secondary}`;
+  return primary || secondary;
 }
 
 function extractTelHref(contact: string): string | null {
   const telLabel = contact.match(/tel[.:]?\s*([+\d\s()-]{9,})/i);
-  const source = telLabel?.[1] ?? contact;
+  if (telLabel?.[1]) {
+    const digits = telLabel[1].replace(/[^\d+]/g, "");
+    if (digits.replace(/\D/g, "").length >= 9) return `tel:${digits}`;
+  }
+
+  // Pomijamy fragmenty e-mail (cyfry w lokalnej części nie są numerem telefonu).
+  const withoutEmails = contact.replace(/[^\s,;]+@[^\s,;]+/g, " ");
+  const phoneToken = withoutEmails.match(
+    /(?:^|[\s,;/])([+()]?(?:\d[\d\s()-]{7,}\d))/
+  );
+  const source = phoneToken?.[1] ?? withoutEmails;
   const digits = source.replace(/[^\d+]/g, "");
-  if (digits.length < 9) return null;
+  if (digits.replace(/\D/g, "").length < 9) return null;
   return `tel:${digits}`;
 }
 
@@ -139,7 +153,7 @@ export function buildSupplierContactUi(
   const contact = mergeContactFields(mails, extraInfo);
 
   if (!contact) {
-    return { methodLabel, methodKind, contactLink: null, copyText: null };
+    return { methodLabel, methodKind, contactLink: null, email: null, copyText: null };
   }
 
   const email = extractFirstEmail(contact);
@@ -151,6 +165,7 @@ export function buildSupplierContactUi(
     methodLabel,
     methodKind,
     contactLink,
+    email,
     copyText: contact,
   };
 }

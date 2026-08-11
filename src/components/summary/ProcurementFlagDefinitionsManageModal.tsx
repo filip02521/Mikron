@@ -36,6 +36,12 @@ type Props = {
   onError?: (message: string) => void;
   /** Po udanym zapisie definicji (lista się odświeży). */
   onSuccess?: (message: string) => void;
+  /**
+   * Gdy podane — rodzic obsługuje reorder (optymistycznie + zapis).
+   * Inaczej modal woła actionReorder sam.
+   */
+  onReorderActive?: (fromActiveIndex: number, dir: -1 | 1) => void;
+  reorderPending?: boolean;
 };
 
 function ColorSwatches({
@@ -190,6 +196,8 @@ export function ProcurementFlagDefinitionsManageModal({
   onClose,
   onError,
   onSuccess,
+  onReorderActive,
+  reorderPending = false,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -203,6 +211,7 @@ export function ProcurementFlagDefinitionsManageModal({
   const active = sorted.filter((d) => d.isActive);
   const inactive = sorted.filter((d) => !d.isActive);
   const canAdd = active.length < MAX_PROCUREMENT_FLAG_DEFINITIONS;
+  const busy = pending || reorderPending;
 
   const run = (fn: () => Promise<unknown>, successMessage: string) => {
     startTransition(async () => {
@@ -217,6 +226,10 @@ export function ProcurementFlagDefinitionsManageModal({
   };
 
   const reorderActive = (from: number, dir: -1 | 1) => {
+    if (onReorderActive) {
+      onReorderActive(from, dir);
+      return;
+    }
     const to = from + dir;
     if (to < 0 || to >= active.length) return;
     const next = [...active];
@@ -239,11 +252,11 @@ export function ProcurementFlagDefinitionsManageModal({
       titleId="procurement-flag-defs-manage-title"
       size="md"
       tier="raised"
-      disableBackdropClose={pending}
-      loadingMessage={pending ? "Zapisywanie…" : null}
+      disableBackdropClose={busy}
+      loadingMessage={busy ? "Zapisywanie…" : null}
       bodyClassName="px-5 py-4 sm:px-6"
       footer={
-        <Button variant="ghost" className="min-h-11 w-full sm:w-auto" onClick={onClose} disabled={pending}>
+        <Button variant="ghost" className="min-h-11 w-full sm:w-auto" onClick={onClose} disabled={busy}>
           Zamknij
         </Button>
       }
@@ -260,7 +273,7 @@ export function ProcurementFlagDefinitionsManageModal({
               def={def}
               index={index}
               total={active.length}
-              pending={pending}
+              pending={busy}
               showReorder
               onMove={(dir) => reorderActive(index, dir)}
               onSave={(patch) =>
@@ -300,7 +313,7 @@ export function ProcurementFlagDefinitionsManageModal({
                   def={def}
                   index={index}
                   total={inactive.length}
-                  pending={pending}
+                  pending={busy}
                   showReorder={false}
                   onMove={() => undefined}
                   onSave={(patch) =>
@@ -340,7 +353,7 @@ export function ProcurementFlagDefinitionsManageModal({
           <input
             value={newLabel}
             maxLength={MAX_PROCUREMENT_FLAG_LABEL_LEN}
-            disabled={pending || !canAdd}
+            disabled={busy || !canAdd}
             placeholder={PROCUREMENT_REQUEST_FLAG_COPY.manageLabelPlaceholder}
             onChange={(e) => setNewLabel(e.target.value)}
             className={cn(
@@ -351,11 +364,11 @@ export function ProcurementFlagDefinitionsManageModal({
           <ColorSwatches
             value={newColor}
             onChange={setNewColor}
-            disabled={pending || !canAdd}
+            disabled={busy || !canAdd}
           />
           <Button
             className={cn(panelChoiceChipClass, panelChoiceChipIdleClass, "min-h-9")}
-            disabled={pending || !canAdd || !newLabel.trim()}
+            disabled={busy || !canAdd || !newLabel.trim()}
             onClick={() =>
               run(async () => {
                 await actionCreateProcurementFlagDefinition({

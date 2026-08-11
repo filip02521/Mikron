@@ -11,6 +11,40 @@ import {
   effectiveProductSymbol,
   extractAlphanumericProductCodeFromName,
 } from "@/lib/subiekt/zd-search-for-product";
+import {
+  pairQtyToPieces,
+  type ZdProductPairRef,
+  type ZdProductPairRole,
+} from "@/lib/orders/zd-product-pair-units";
+
+export type ZdPairMatchIndex = ReadonlyMap<
+  number,
+  { pair: ZdProductPairRef; role: ZdProductPairRole }
+>;
+
+function twinTwIdsMatch(
+  orderTw: number,
+  lineTw: number,
+  pairs?: ZdPairMatchIndex | null
+): boolean {
+  if (!pairs) return false;
+  const hit = pairs.get(Math.trunc(orderTw));
+  if (!hit) return false;
+  const id = Math.trunc(lineTw);
+  return hit.pair.packTwId === id || hit.pair.pieceTwId === id;
+}
+
+/** Qty linii / prośby → sztuki bazowe (gdy para znana). */
+export function qtyToPiecesForPairMatch(
+  twId: number | null | undefined,
+  qty: number,
+  pairs?: ZdPairMatchIndex | null
+): number {
+  if (!pairs || twId == null || !(twId > 0)) return qty;
+  const hit = pairs.get(Math.trunc(twId));
+  if (!hit) return qty;
+  return pairQtyToPieces(qty, hit.role, hit.pair.unitsPerPack);
+}
 
 function normalizeSymbol(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
@@ -116,11 +150,12 @@ export function persistedZdFulfillsOrderRemaining(
     | "delivered_quantity"
   >,
   doc: SubiektDocument,
-  at: Date = new Date()
+  at: Date = new Date(),
+  pairs?: ZdPairMatchIndex | null
 ): boolean {
   if (!isActiveZdFulfillmentDocument(doc, at)) return false;
-  if (!orderMatchesZdDocument(order, doc)) return false;
-  const qty = bestMatchingLineQuantity(order, doc);
+  if (!orderMatchesZdDocument(order, doc, pairs)) return false;
+  const qty = bestMatchingLineQuantity(order, doc, pairs);
   if (!qty.coversRemaining) return false;
   if (orderHasPartialDeliveryRemaining(order)) {
     return qty.tightness === 0;
@@ -128,10 +163,11 @@ export function persistedZdFulfillsOrderRemaining(
   return true;
 }
 
-/** Dopasowanie pozycji prośby do linii ZD (tw_Id, symbol, kod Mikran). */
+/** Dopasowanie pozycji prośby do linii ZD (tw_Id, symbol, kod Mikran; opcjonalnie twin pary). */
 export function matchOrderToZdLine(
   order: Pick<IndividualOrder, "subiekt_tw_id" | "symbol" | "products" | "mikran_code">,
-  line: SubiektDocumentLine
+  line: SubiektDocumentLine,
+  pairs?: ZdPairMatchIndex | null
 ): boolean {
   const towId = lineTowId(line);
   const orderTw = order.subiekt_tw_id;
@@ -140,6 +176,14 @@ export function matchOrderToZdLine(
     orderTw > 0 &&
     towId != null &&
     Math.trunc(orderTw) === towId
+  ) {
+    return true;
+  }
+  if (
+    orderTw != null &&
+    orderTw > 0 &&
+    towId != null &&
+    twinTwIdsMatch(orderTw, towId, pairs)
   ) {
     return true;
   }
@@ -169,12 +213,23 @@ export function matchOrderToZdLine(
 
 export function orderMatchesZdDocument(
   order: Pick<IndividualOrder, "subiekt_tw_id" | "symbol" | "products" | "mikran_code">,
-  doc: SubiektDocument
+  doc: SubiektDocument,
+  pairs?: ZdPairMatchIndex | null
 ): boolean {
   const profile = buildZdMatchProfileFromDocument(doc);
   const twId = order.subiekt_tw_id;
   if (twId != null && twId > 0 && profile.twIds.includes(Math.trunc(twId))) {
     return true;
+  }
+  if (twId != null && twId > 0 && pairs) {
+    const hit = pairs.get(Math.trunc(twId));
+    if (
+      hit &&
+      (profile.twIds.includes(hit.pair.packTwId) ||
+        profile.twIds.includes(hit.pair.pieceTwId))
+    ) {
+      return true;
+    }
   }
 
   const orderSymbols = resolveOrderMatchSymbols(order);
@@ -192,7 +247,9 @@ export function orderMatchesZdDocument(
     }
   }
 
-  return (doc.dok_Pozycja ?? []).some((line) => matchOrderToZdLine(order, line));
+  return (doc.dok_Pozycja ?? []).some((line) =>
+    matchOrderToZdLine(order, line, pairs)
+  );
 }
 
 function matchingLineQuantities(
@@ -200,13 +257,18 @@ function matchingLineQuantities(
     IndividualOrder,
     "subiekt_tw_id" | "symbol" | "products" | "mikran_code" | "quantity" | "delivered_quantity"
   >,
-  doc: SubiektDocument
+  doc: SubiektDocument,
+  pairs?: ZdPairMatchIndex | null
 ): number[] {
   const quantities: number[] = [];
   for (const line of doc.dok_Pozycja ?? []) {
-    if (!matchOrderToZdLine(order, line)) continue;
+    if (!matchOrderToZdLine(order, line, pairs)) continue;
     const qty = zdLineQuantity(line);
-    if (qty != null) quantities.push(qty);
+    if (qty == null) continue;
+    const towId = lineTowId(line);
+    quantities.push(
+      qtyToPiecesForPairMatch(towId, qty, pairs)
+    );
   }
   return quantities;
 }
@@ -216,13 +278,20 @@ function bestMatchingLineQuantity(
     IndividualOrder,
     "subiekt_tw_id" | "symbol" | "products" | "mikran_code" | "quantity" | "delivered_quantity"
   >,
-  doc: SubiektDocument
+  doc: SubiektDocument,
+  pairs?: ZdPairMatchIndex | null
 ): { coversRemaining: boolean; tightness: number | null } {
-  const remaining = orderRemainingQuantity(order);
-  const quantities = matchingLineQuantities(order, doc);
-  if (remaining == null || quantities.length === 0) {
+  const remainingRaw = orderRemainingQuantity(order);
+  const quantities = matchingLineQuantities(order, doc, pairs);
+  if (remainingRaw == null || quantities.length === 0) {
     return { coversRemaining: true, tightness: null };
   }
+
+  const remaining = qtyToPiecesForPairMatch(
+    order.subiekt_tw_id,
+    remainingRaw,
+    pairs
+  );
 
   const covering = quantities.filter((qty) => qty >= remaining);
   if (covering.length === 0) {
@@ -243,6 +312,8 @@ function compareNullableDates(a: string | null, b: string | null): number {
 export type FindBestMatchingZdDocumentOptions = {
   /** Domyślnie dziś — tylko ZD z terminem realizacji ≥ tej daty. */
   at?: Date;
+  /** Indeks par pack↔piece — twin match + qty w sztukach. */
+  pairs?: ZdPairMatchIndex | null;
 };
 
 /** Wybiera najtrafniejszy aktywny ZD — termin ≥ dziś, ilość reszty, najbliższy termin. */
@@ -261,6 +332,7 @@ export function findBestMatchingZdDocument(
   options?: FindBestMatchingZdDocumentOptions
 ): SubiektDocument | null {
   const at = options?.at ?? new Date();
+  const pairs = options?.pairs ?? null;
   const persistedDokId =
     order.zd_fulfillment_dok_id != null && order.zd_fulfillment_dok_id > 0
       ? Math.trunc(order.zd_fulfillment_dok_id)
@@ -268,7 +340,8 @@ export function findBestMatchingZdDocument(
 
   const candidates = docs.filter(
     (doc) =>
-      orderMatchesZdDocument(order, doc) && isActiveZdFulfillmentDocument(doc, at)
+      orderMatchesZdDocument(order, doc, pairs) &&
+      isActiveZdFulfillmentDocument(doc, at)
   );
   if (!candidates.length) return null;
 
@@ -276,7 +349,7 @@ export function findBestMatchingZdDocument(
 
   const ranked = candidates
     .map((doc) => {
-      const qty = bestMatchingLineQuantity(order, doc);
+      const qty = bestMatchingLineQuantity(order, doc, pairs);
       return {
         doc,
         persisted: persistedDokId != null && Math.trunc(Number(doc.dok_Id)) === persistedDokId,
@@ -324,17 +397,18 @@ export function isConfidentZdMatchForOrder(
     | "delivered_quantity"
     | "zd_fulfillment_dok_id"
   >,
-  doc: SubiektDocument
+  doc: SubiektDocument,
+  pairs?: ZdPairMatchIndex | null
 ): boolean {
   const persistedId = order.zd_fulfillment_dok_id;
   if (persistedId != null && persistedId > 0) {
     if (Math.trunc(Number(doc.dok_Id)) !== Math.trunc(persistedId)) return false;
-    const qty = bestMatchingLineQuantity(order, doc);
+    const qty = bestMatchingLineQuantity(order, doc, pairs);
     if (!qty.coversRemaining) return false;
     if (orderHasPartialDeliveryRemaining(order)) return qty.tightness === 0;
     return true;
   }
-  const qty = bestMatchingLineQuantity(order, doc);
+  const qty = bestMatchingLineQuantity(order, doc, pairs);
   return qty.coversRemaining && qty.tightness === 0;
 }
 

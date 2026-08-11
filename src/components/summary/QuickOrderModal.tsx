@@ -9,6 +9,7 @@ import { Field, Select } from "@/components/ui/Field";
 import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import { IconUserGroup } from "@/components/icons/StrokeIcons";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
+import { ProsbaSupplierLeadTimeMeta } from "@/components/orders/ProsbaSupplierLeadTimeMeta";
 import { ProsbaFormReadiness } from "@/components/orders/ProsbaFormReadiness";
 import {
   ProsbaFormInformacjaSection,
@@ -18,7 +19,7 @@ import {
 } from "@/components/orders/ProsbaFormSharedSections";
 import { ProsbaFormSection } from "@/components/orders/ProsbaFormSection";
 import { ModalShell } from "@/components/ui/ModalShell";
-import type { IndividualRequestKind } from "@/types/database";
+import type { DeliveryStats, IndividualRequestKind } from "@/types/database";
 import { hasValidOrderQuantity } from "@/lib/orders/request-completeness";
 import { assertProcurementEntryComplete } from "@/lib/orders/procurement-submit";
 import {
@@ -60,12 +61,14 @@ export function QuickOrderModal({
   onClose,
   suppliers,
   salesPeople,
+  statsBySupplierId = {},
 }: {
   open: boolean;
   onClose: () => void;
   suppliers: OrderFormSupplierOption[];
   /** Wyłącznie karty z Admin → Handlowcy (fetchSalesPeopleForPicker). */
   salesPeople: { id: string; name: string; email: string }[];
+  statsBySupplierId?: Record<string, DeliveryStats>;
 }) {
   const router = useRouter();
   const teethExemptTwIds = useTeethExemptTwIds();
@@ -436,16 +439,25 @@ export function QuickOrderModal({
               </Select>
             </Field>
             <Field labelClassName="inline-flex min-h-6 items-center" label="Dostawca">
-              <SupplierPickerField
-                suppliers={suppliers}
-                value={supplierId}
-                onChange={setSupplierId}
-                allowEmpty={false}
-                emptyLabel="Wybierz dostawcę"
-                placeholder="Szukaj dostawcy…"
-                showInlineFeedback={false}
-                dropdownSize="comfortable"
-              />
+              <div className="space-y-1.5">
+                <SupplierPickerField
+                  suppliers={suppliers}
+                  value={supplierId}
+                  onChange={setSupplierId}
+                  allowEmpty={false}
+                  emptyLabel="Wybierz dostawcę"
+                  placeholder="Szukaj dostawcy…"
+                  showInlineFeedback={false}
+                  dropdownSize="comfortable"
+                />
+                {requestKind === "zamowienie" ? (
+                  <ProsbaSupplierLeadTimeMeta
+                    supplierIds={supplierId.trim() ? [supplierId.trim()] : []}
+                    suppliers={suppliers}
+                    statsBySupplierId={statsBySupplierId}
+                  />
+                ) : null}
+              </div>
             </Field>
           </div>
         </ProsbaFormSection>
@@ -476,6 +488,9 @@ export function QuickOrderModal({
               onSupplierMappingMissing={() => setSupplierId("")}
               onResolvingSupplierChange={setResolvingSupplier}
               groupSupplierId={supplierId}
+              formSuppliers={suppliers}
+              statsBySupplierId={statsBySupplierId}
+              showLinkedLeadTime={false}
             />
 
             <ProsbaFormReadiness

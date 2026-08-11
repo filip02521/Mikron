@@ -22,6 +22,10 @@ import {
 } from "@/lib/department-board/department-board-questions-ui";
 import type { BoardQuestionProductDraft } from "@/lib/department-board/question-product";
 import { BoardQuestionProductField } from "@/components/department-board/BoardQuestionProductField";
+import {
+  BoardQuestionImagesField,
+  type BoardQuestionImageDraft,
+} from "@/components/department-board/BoardQuestionImagesField";
 import { cn } from "@/lib/cn";
 import { floatingToastBottomClass } from "@/lib/ui/sales-mobile-chrome";
 import { brandLinkClass, salesTypography } from "@/lib/ui/ontime-theme";
@@ -41,6 +45,9 @@ function QuestionFormFields({
   title,
   body,
   product,
+  images,
+  imagesError,
+  imagesCompressing,
   error,
   saving,
   tourDemo,
@@ -48,12 +55,17 @@ function QuestionFormFields({
   onTitleChange,
   onBodyChange,
   onProductChange,
+  onAddImages,
+  onRemoveImage,
   onSubmit,
   idPrefix,
 }: {
   title: string;
   body: string;
   product: BoardQuestionProductDraft;
+  images: BoardQuestionImageDraft[];
+  imagesError: string | null;
+  imagesCompressing: boolean;
   error: string | null;
   saving: boolean;
   tourDemo: boolean;
@@ -61,9 +73,12 @@ function QuestionFormFields({
   onTitleChange: (value: string) => void;
   onBodyChange: (value: string) => void;
   onProductChange: (patch: Partial<BoardQuestionProductDraft>) => void;
+  onAddImages: (files: FileList | File[]) => void | Promise<void>;
+  onRemoveImage: (key: string) => void;
   onSubmit: () => void | Promise<void>;
   idPrefix: string;
 }) {
+  const busy = saving || imagesCompressing;
   return (
     <div className={embedded ? boardQuestionsFormEmbeddedBodyClass : boardQuestionsFormBodyClass}>
       <QuestionFormIntro />
@@ -78,7 +93,7 @@ function QuestionFormFields({
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
           placeholder={DEPARTMENT_BOARD_QUESTIONS_FORM.titlePlaceholder}
-          disabled={tourDemo || saving}
+          disabled={tourDemo || busy}
           className={cn(NOTATNIK_INPUT_CLASS, "h-9 w-full text-sm")}
         />
       </div>
@@ -86,7 +101,7 @@ function QuestionFormFields({
       <BoardQuestionProductField
         value={product}
         onChange={onProductChange}
-        disabled={tourDemo || saving}
+        disabled={tourDemo || busy}
         idPrefix={idPrefix}
       />
 
@@ -100,24 +115,34 @@ function QuestionFormFields({
           value={body}
           onChange={(e) => onBodyChange(e.target.value)}
           placeholder={DEPARTMENT_BOARD_QUESTIONS_FORM.bodyPlaceholder}
-          disabled={tourDemo || saving}
+          disabled={tourDemo || busy}
           className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-sm leading-relaxed")}
         />
       </div>
+
+      <BoardQuestionImagesField
+        images={images}
+        disabled={tourDemo || busy}
+        error={imagesError}
+        onAddFiles={onAddImages}
+        onRemove={onRemoveImage}
+      />
 
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
 
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 pt-3">
         <Button
           size="sm"
-          disabled={tourDemo || saving || !title.trim() || !body.trim()}
+          disabled={tourDemo || busy || !title.trim() || !body.trim()}
           onClick={() => void onSubmit()}
         >
           {tourDemo
             ? "Podgląd — bez wysyłki"
-            : saving
-              ? DEPARTMENT_BOARD_QUESTIONS_FORM.submitting
-              : DEPARTMENT_BOARD_QUESTIONS_FORM.submit}
+            : imagesCompressing
+              ? DEPARTMENT_BOARD_QUESTIONS_FORM.imagesCompressing
+              : saving
+                ? DEPARTMENT_BOARD_QUESTIONS_FORM.submitting
+                : DEPARTMENT_BOARD_QUESTIONS_FORM.submit}
         </Button>
       </div>
     </div>
@@ -128,6 +153,9 @@ export function DepartmentBoardQuestionForm({
   title,
   body,
   product,
+  images,
+  imagesError,
+  imagesCompressing,
   error,
   saving,
   tourDemo,
@@ -137,11 +165,16 @@ export function DepartmentBoardQuestionForm({
   onTitleChange,
   onBodyChange,
   onProductChange,
+  onAddImages,
+  onRemoveImage,
   onSubmit,
 }: {
   title: string;
   body: string;
   product: BoardQuestionProductDraft;
+  images: BoardQuestionImageDraft[];
+  imagesError: string | null;
+  imagesCompressing: boolean;
   error: string | null;
   saving: boolean;
   tourDemo: boolean;
@@ -152,6 +185,8 @@ export function DepartmentBoardQuestionForm({
   onTitleChange: (value: string) => void;
   onBodyChange: (value: string) => void;
   onProductChange: (patch: Partial<BoardQuestionProductDraft>) => void;
+  onAddImages: (files: FileList | File[]) => void | Promise<void>;
+  onRemoveImage: (key: string) => void;
   onSubmit: () => void | Promise<void>;
 }) {
   const [userExpanded, setUserExpanded] = useState<boolean | null>(null);
@@ -165,6 +200,24 @@ export function DepartmentBoardQuestionForm({
     } catch {
       /* błąd zostaje w formularzu — modal otwarty */
     }
+  };
+
+  const fieldsProps = {
+    title,
+    body,
+    product,
+    images,
+    imagesError,
+    imagesCompressing,
+    error,
+    saving,
+    tourDemo,
+    onTitleChange,
+    onBodyChange,
+    onProductChange,
+    onAddImages,
+    onRemoveImage,
+    onSubmit: () => submit(),
   };
 
   return (
@@ -214,17 +267,8 @@ export function DepartmentBoardQuestionForm({
         {expanded ? (
           <div className="board-question-form-enter">
             <QuestionFormFields
-              title={title}
-              body={body}
-              product={product}
-              error={error}
-              saving={saving}
-              tourDemo={tourDemo}
+              {...fieldsProps}
               embedded={embedded}
-              onTitleChange={onTitleChange}
-              onBodyChange={onBodyChange}
-              onProductChange={onProductChange}
-              onSubmit={() => submit()}
               idPrefix="board-question-desktop"
             />
           </div>
@@ -254,19 +298,7 @@ export function DepartmentBoardQuestionForm({
         tier="raised"
         bodyClassName="p-0"
       >
-        <QuestionFormFields
-          title={title}
-          body={body}
-          product={product}
-          error={error}
-          saving={saving}
-          tourDemo={tourDemo}
-          onTitleChange={onTitleChange}
-          onBodyChange={onBodyChange}
-          onProductChange={onProductChange}
-          onSubmit={() => submit()}
-          idPrefix="board-question-mobile"
-        />
+        <QuestionFormFields {...fieldsProps} idPrefix="board-question-mobile" />
       </ModalShell>
     </>
   );

@@ -128,10 +128,14 @@ export function SupplierAdminForm({
             <option value="PRZEZ INTERNET">Internet / portal</option>
           </Select>
         </Field>
-        <Field label="E-mail i strony www" className="sm:col-span-2">
+        <Field
+          label="Kontakt (e-mail, telefon, strona)"
+          className="sm:col-span-2"
+          hint="Musi pasować do sposobu zamówienia — przy „Telefon” numer (min. 9 cyfr), przy „Mail” adres e-mail."
+        >
           <Input
             disabled={fieldDisabled}
-            placeholder="adres@firma.pl, https://…"
+            placeholder="adres@firma.pl, 501 234 567, https://…"
             value={form.mails}
             onChange={(e) => onChange({ ...form, mails: e.target.value })}
           />
@@ -139,7 +143,7 @@ export function SupplierAdminForm({
         <Field
           label="Uwagi do kontaktu"
           className="sm:col-span-2"
-          hint="Np. osoba kontaktowa, godziny, minimalna kwota zamówienia."
+          hint="Np. osoba kontaktowa, godziny, albo numer telefonu gdy główne pole ma tylko e-mail."
         >
           <Input
             disabled={fieldDisabled}

@@ -4,11 +4,18 @@ import {
   procurementBoardQuestionHref,
   procurementBoardQuestionsListHref,
   salesBoardAnnouncementHref,
+  salesBoardQuestionHref,
 } from "./department-board-shared";
 
 describe("salesBoardAnnouncementHref", () => {
   it("otwiera /moje na konkretnym ogłoszeniu", () => {
     expect(salesBoardAnnouncementHref("abc-123")).toBe("/moje?ogloszenie=abc-123");
+  });
+});
+
+describe("salesBoardQuestionHref", () => {
+  it("otwiera /tablica na konkretnym pytaniu", () => {
+    expect(salesBoardQuestionHref("q-1")).toBe("/tablica?watek=q-1");
   });
 });
 

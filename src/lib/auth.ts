@@ -131,6 +131,20 @@ export async function requireOperations(
   return user;
 }
 
+/**
+ * Szacunek ZD / Przygotuj ZD — wyłącznie administrator.
+ * Mutacje dozwolone w cookie panelu `admin` lub `zakupy` (jak pozostałe operacje).
+ */
+export async function requireZdEstimateAdmin(
+  intent: AuthIntent = "read"
+): Promise<SessionUser> {
+  const user = await requireAdmin();
+  if (intent === "mutate") {
+    await assertAdminPanelAllowsOperationsMutations(user);
+  }
+  return user;
+}
+
 /** Magazyn: przyjęcie towaru, dziennik dostaw (admin + zakupy + magazyn). */
 export async function requireWarehouse(
   intent: AuthIntent = "read"

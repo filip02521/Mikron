@@ -194,10 +194,146 @@ function daysLabel(n: number): string {
   return "dni roboczych";
 }
 
+function daysLabelShort(n: number): string {
+  if (n === 1) return "dzień roboczy";
+  if (n >= 2 && n <= 4) return "dni robocze";
+  return "dni roboczych";
+}
+
 function deliveriesLabel(n: number): string {
   if (n === 1) return "dostawy";
   if (n >= 2 && n <= 4) return "dostaw";
   return "dostaw";
+}
+
+function deliveriesCountLabel(n: number): string {
+  if (n === 1) return "1 dostawa";
+  if (n >= 2 && n <= 4) return `${n} dostawy`;
+  return `${n} dostaw`;
+}
+
+export type SupplierDrawerLeadTimePart = {
+  avgDays: number;
+  /** np. "~8" */
+  avgDisplay: string;
+  unitLabel: string;
+  sampleLabel: string;
+};
+
+export type SupplierDrawerLeadTimeModel =
+  | {
+      kind: "empty";
+      title: string;
+      detail: string;
+    }
+  | {
+      kind: "combined";
+      title: string;
+      primary: SupplierDrawerLeadTimePart;
+      sampleLabel: string;
+      modeLabel: string;
+      lowConfidence: boolean;
+      footnote: string | null;
+    }
+  | {
+      kind: "split";
+      title: string;
+      main: SupplierDrawerLeadTimePart | null;
+      side: SupplierDrawerLeadTimePart | null;
+      sampleLabel: string;
+      modeLabel: string;
+      lowConfidence: boolean;
+      footnote: string | null;
+    };
+
+/**
+ * Model karty „Średni czas dostawy” w podglądzie dostawcy (panel dzienny).
+ * Dane z `delivery_stats` + `stats_mode` dostawcy — bez dodatkowego fetcha.
+ */
+export function buildSupplierDrawerLeadTime(
+  stats: DeliveryStats | null | undefined,
+  statsMode: StatsMode
+): SupplierDrawerLeadTimeModel {
+  const title = "Średni czas dostawy";
+  const sampleCount = totalSampleCount(stats);
+  const lowConfidence = sampleCount > 0 && sampleCount < 3;
+  const footnote = lowConfidence
+    ? "Mało dostaw w historii — szacunek może się zmieniać."
+    : null;
+
+  if (!stats || sampleCount === 0) {
+    return {
+      kind: "empty",
+      title,
+      detail: "Brak historii — średnia pojawi się po pierwszych dostawach.",
+    };
+  }
+
+  if (statsMode === "LACZNIE") {
+    const avg = combinedAvgDays(stats);
+    if (avg == null || avg <= 0) {
+      return {
+        kind: "empty",
+        title,
+        detail: "Brak wiarygodnej średniej w statystykach dostaw.",
+      };
+    }
+    const n = Math.round(avg);
+    return {
+      kind: "combined",
+      title,
+      primary: {
+        avgDays: n,
+        avgDisplay: `~${n}`,
+        unitLabel: daysLabelShort(n),
+        sampleLabel: deliveriesCountLabel(sampleCount),
+      },
+      sampleLabel: `Na podstawie ${deliveriesCountLabel(sampleCount)}`,
+      modeLabel: "łącznie",
+      lowConfidence,
+      footnote,
+    };
+  }
+
+  const mainAvg = mainAvgDays(stats);
+  const sideAvg = sideAvgDays(stats);
+  const main =
+    mainAvg != null && mainAvg > 0 && (stats.main_count ?? 0) > 0
+      ? {
+          avgDays: Math.round(mainAvg),
+          avgDisplay: `~${Math.round(mainAvg)}`,
+          unitLabel: daysLabelShort(Math.round(mainAvg)),
+          sampleLabel: deliveriesCountLabel(stats.main_count ?? 0),
+        }
+      : null;
+  const side =
+    sideAvg != null && sideAvg > 0 && (stats.side_count ?? 0) > 0
+      ? {
+          avgDays: Math.round(sideAvg),
+          avgDisplay: `~${Math.round(sideAvg)}`,
+          unitLabel: daysLabelShort(Math.round(sideAvg)),
+          sampleLabel: deliveriesCountLabel(stats.side_count ?? 0),
+        }
+      : null;
+
+  if (!main && !side) {
+    return {
+      kind: "empty",
+      title,
+      detail: "Brak osobnych średnich dla zamówień głównych / pobocznych.",
+    };
+  }
+
+  return {
+    kind: "split",
+    title,
+    main,
+    side,
+    sampleLabel: `Na podstawie ${deliveriesCountLabel(sampleCount)}`,
+    modeLabel: "osobno",
+    lowConfidence,
+    footnote,
+  };
 }
 
 export function formatActualDeliveryDays(actionAt: string, deliveryAt: string): string | null {

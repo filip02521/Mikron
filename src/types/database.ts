@@ -415,6 +415,18 @@ export interface DepartmentBoardRead {
   read_at: string;
 }
 
+export interface DepartmentBoardThreadAttachment {
+  id: string;
+  thread_id: string;
+  created_by: string;
+  storage_path: string;
+  file_name: string;
+  mime_type: string;
+  byte_size: number | null;
+  sort_order: number;
+  created_at: string;
+}
+
 export interface SalesNote {
   id: string;
   sales_person_id: string;

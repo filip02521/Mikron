@@ -38,6 +38,12 @@ export const DEPARTMENT_BOARD_QUESTIONS_FORM = {
   introBeforeLink: "Zamówienie towaru —",
   introLinkLabel: "Nowa prośba",
   expandHint: "Rozwiń",
+  imagesLabel: "Zdjęcia (opcjonalnie)",
+  imagesHint: "Do 3 zdjęć — np. etykieta, opakowanie lub zrzut z Subiekta.",
+  imagesAdd: "Dodaj zdjęcie",
+  imagesAddMore: "Dodaj kolejne",
+  imagesCompressing: "Przetwarzanie zdjęć…",
+  imagesTooMany: "Możesz dodać maksymalnie 3 zdjęcia.",
   quickProsbaHint:
     "Pytanie na Tablicy nie zamawia towaru. Żeby go zamówić, złóż prośbę.",
   quickProsbaCta: "Szybka prośba",

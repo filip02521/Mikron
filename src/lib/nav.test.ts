@@ -107,6 +107,10 @@ describe("pageTitle", () => {
     expect(pageTitle("/zakupy/gadki")).toBe("Magazyn Gądki");
   });
 
+  it("zwraca Szacunek ZD dla /zakupy/szacunek", () => {
+    expect(pageTitle("/zakupy/szacunek")).toBe("Szacunek ZD");
+  });
+
   it("zwraca ZK czekające dla /notatnik i /zk", () => {
     expect(pageTitle("/notatnik")).toBe("Notatnik");
     expect(pageTitle("/zk")).toBe("ZK czekające");
@@ -309,14 +313,18 @@ describe("navForRole zakupy_zeby", () => {
     expect(allHrefs.some((href) => href.startsWith("/zeby"))).toBe(false);
   });
 
-  it("zakupy ma Magazyn Gądki w sekcji Dostawcy; zęby/magazyn — nie", () => {
+  it("zakupy ma Magazyn Gądki; Szacunek ZD tylko admin; zęby/magazyn — bez obu", () => {
     const suppliers = navForRole("zakupy").find((g) => g.title === NAV_SECTION_SUPPLIERS);
     const gadki = suppliers?.items.find((i) => i.href === "/zakupy/gadki");
     expect(gadki?.icon).toBe("magazynGadki");
     expect(gadki?.iconTone).toBe("emerald");
     expect(suppliers?.items.some((i) => i.href === "/zakupy/gadki")).toBe(true);
+    expect(suppliers?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(false);
+    const adminSuppliers = navForRole("admin").find((g) => g.title === NAV_SECTION_SUPPLIERS);
+    expect(adminSuppliers?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
     const teethHrefs = navForRole("zakupy_zeby").flatMap((g) => g.items.map((i) => i.href));
     expect(teethHrefs.includes("/zakupy/gadki")).toBe(false);
+    expect(teethHrefs.includes("/zakupy/szacunek")).toBe(false);
     const magHrefs = navForRole("magazyn").flatMap((g) => g.items.map((i) => i.href));
     expect(magHrefs.includes("/zakupy/gadki")).toBe(false);
   });

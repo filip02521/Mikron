@@ -3,6 +3,7 @@ import type { SupplierAdminFormState } from "@/components/admin/SupplierAdminFor
 import {
   defaultOrderOnDemandChecked,
 } from "@/lib/orders/supplier-on-demand";
+import { canonicalizeOrderMethodNotes } from "@/lib/orders/validate-supplier-contact";
 import { isSupplierActive } from "./active";
 
 export function emptySupplierAdminForm(): SupplierAdminFormState {
@@ -32,7 +33,7 @@ export function supplierToAdminForm(s: SupplierWithSchedule): SupplierAdminFormS
     location: s.location,
     pickup_mikran: s.pickup_mikran,
     pickup_pallet: s.pickup_pallet,
-    notes: s.notes,
+    notes: canonicalizeOrderMethodNotes(s.notes),
     mails: s.mails,
     extra_info: s.extra_info,
     interval_raw: s.interval_raw ?? "",

@@ -13,6 +13,7 @@ function boardAttention(
     unreadAnnouncementBannerLatestId: null,
     unseenAnswerCount: 5,
     unseenOwnAnswerCount: 2,
+    latestOwnAnswerActivityAt: null,
     unseenAnswerPreview: null,
     unseenQuestionIds: ["a", "b", "c", "d", "e"],
     unseenOwnQuestionIds: ["a", "b"],

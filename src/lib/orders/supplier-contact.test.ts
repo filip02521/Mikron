@@ -2,13 +2,14 @@ import { describe, expect, it } from "vitest";
 import { buildSupplierContactUi } from "./supplier-contact";
 
 describe("buildSupplierContactUi", () => {
-  it("mail — jeden klikalny adres zamiast osobnego przycisku", () => {
+  it("mail — adres + email do kopiowania z badge", () => {
     const ui = buildSupplierContactUi("MAILOWO", "zamowienia@dostawca.pl");
     expect(ui.contactLink).toEqual({
       kind: "mailto",
       href: "mailto:zamowienia@dostawca.pl",
       label: "zamowienia@dostawca.pl",
     });
+    expect(ui.email).toBe("zamowienia@dostawca.pl");
   });
 
   it("telefon — link tel:", () => {
@@ -43,6 +44,7 @@ describe("buildSupplierContactUi", () => {
   it("bez kontaktu zwraca null", () => {
     const ui = buildSupplierContactUi("MAILOWO", "");
     expect(ui.contactLink).toBeNull();
+    expect(ui.email).toBeNull();
     expect(ui.copyText).toBeNull();
   });
 
@@ -54,6 +56,24 @@ describe("buildSupplierContactUi", () => {
 
   it("telefon w extra_info gdy mails puste", () => {
     const ui = buildSupplierContactUi("TELEFONICZNIE", "", "tel. +48 501 234 567");
+    expect(ui.contactLink?.kind).toBe("tel");
+  });
+
+  it("telefon w extra_info mimo e-maila w mails", () => {
+    const ui = buildSupplierContactUi(
+      "TELEFONICZNIE",
+      "biuro@dostawca.pl",
+      "tel. +48 501 234 567"
+    );
+    expect(ui.contactLink?.kind).toBe("tel");
+    expect(ui.contactLink?.href).toMatch(/^tel:/);
+  });
+
+  it("telefon obok e-maila w jednym polu", () => {
+    const ui = buildSupplierContactUi(
+      "TELEFONICZNIE",
+      "biuro@dostawca.pl, 501 234 567"
+    );
     expect(ui.contactLink?.kind).toBe("tel");
   });
 });

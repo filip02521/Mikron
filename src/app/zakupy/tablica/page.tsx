@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
-import { canAccessOperations } from "@/lib/auth-roles";
+import { canAccessOperations, isAdmin } from "@/lib/auth-roles";
 import { DepartmentBoardClient } from "@/components/department-board/DepartmentBoardClient";
 import { fetchDepartmentBoard } from "@/lib/data/department-board";
 
@@ -47,6 +47,9 @@ export default async function ProcurementBoardPage({
     if (board.questions.some((question) => question.id === focusThreadId)) {
       focusQuestionId = focusThreadId;
       initialTab = "questions";
+    } else if (board.closedQuestions.some((question) => question.id === focusThreadId)) {
+      focusQuestionId = focusThreadId;
+      initialTab = "questions";
     } else if (board.announcements.some((announcement) => announcement.id === focusThreadId)) {
       focusAnnouncementId = focusThreadId;
       initialTab = "announcements";
@@ -62,6 +65,7 @@ export default async function ProcurementBoardPage({
         initialTab={initialTab}
         focusQuestionId={focusQuestionId}
         focusAnnouncementId={focusAnnouncementId}
+        canDeleteClosed={isAdmin(user.role)}
       />
     </Suspense>
   );

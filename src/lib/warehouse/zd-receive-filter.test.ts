@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { IndividualOrder } from "@/types/database";
 import type { SubiektDocument } from "@/lib/subiekt/types";
+import { indexZdProductPairs } from "@/lib/orders/zd-product-pair-units";
 import {
   buildZdMatchProfileFromDocument,
   countZdMatches,
+  countUnmatchedZdLines,
   filterReceiveQueueBySupplierAndZd,
   matchOrderToZdProfile,
   resolveSupplierForZdDocument,
@@ -64,6 +66,33 @@ describe("matchOrderToZdProfile", () => {
     expect(
       matchOrderToZdProfile(order({ id: "4", subiekt_tw_id: null, symbol: "-" }), profile)
     ).toBe(false);
+  });
+
+  it("dopasowuje piece SKU do ZD pack przez mapę par", () => {
+    const pairs = indexZdProductPairs([
+      { packTwId: 100, pieceTwId: 999, unitsPerPack: 100 },
+    ]);
+    const packOnlyDoc: SubiektDocument = {
+      dok_Id: 1,
+      dok_NrPelny: "ZD/1",
+      dok_Pozycja: [{ ob_TowId: 100, tw_Symbol: "PACK", tw_Nazwa: "Paczka" }],
+    };
+    const packProfile = buildZdMatchProfileFromDocument(packOnlyDoc, pairs);
+    expect(packProfile.twIds).toEqual(expect.arrayContaining([100, 999]));
+    expect(
+      matchOrderToZdProfile(
+        order({ id: "p", subiekt_tw_id: 999, symbol: "SZT" }),
+        packProfile,
+        pairs
+      )
+    ).toBe(true);
+    expect(
+      countUnmatchedZdLines(
+        packProfile,
+        [order({ id: "p", subiekt_tw_id: 999, symbol: "SZT" })],
+        pairs
+      )
+    ).toBe(0);
   });
 });
 

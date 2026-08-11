@@ -1,16 +1,20 @@
 "use client";
 
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { addDays } from "date-fns";
 import { actionFetchUpcomingDeliveries } from "@/app/actions/upcoming-deliveries";
 import type { UpcomingDeliveriesPayload } from "@/app/actions/upcoming-deliveries";
 import {
   buildDeliveryScheduleWeek,
+  buildDeliveryTodayDay,
+  clearedSupplierIdsByDateFromPayload,
+  hideScheduledReceivedToday,
   summarizeDeliverySchedule,
   upcomingDeliveryPresetRange,
   type UpcomingDeliveryRangePreset,
 } from "@/lib/data/upcoming-deliveries-shared";
 import { formatDateString } from "@/lib/orders/dates";
+import { useLatest } from "@/hooks/useLatest";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -38,6 +42,9 @@ const PRESET_OPTIONS: { value: UpcomingDeliveryRangePreset; label: string }[] = 
   { value: "7days", label: "7 dni" },
   { value: "14days", label: "14 dni" },
 ];
+
+/** Odświeżanie planu przy otwartej karcie — przyjęcia z innych zakładek. */
+const AUTO_REFRESH_MS = 45_000;
 
 function shiftDateRange(
   dateFrom: string,
@@ -80,23 +87,60 @@ export function UpcomingDeliveriesClient({
   const [dateFrom, setDateFrom] = useState(initialPayload?.dateFrom ?? "");
   const [dateTo, setDateTo] = useState(initialPayload?.dateTo ?? "");
   const [pending, start] = useTransition();
+  const dateFromRef = useLatest(dateFrom);
+  const dateToRef = useLatest(dateTo);
+  const loadGenerationRef = useRef(0);
 
-  const loadData = useCallback(
-    (from: string, to: string) => {
-      start(async () => {
-        try {
-          const next = await actionFetchUpcomingDeliveries(from, to);
-          setPayload(next);
-          setDateFrom(next.dateFrom);
-          setDateTo(next.dateTo);
-          setError(null);
-        } catch (e) {
-          setError(e instanceof Error ? e.message : "Błąd ładowania dostaw.");
-        }
-      });
-    },
-    []
-  );
+  useEffect(() => {
+    if (!initialPayload) return;
+    queueMicrotask(() => {
+      setPayload(initialPayload);
+      setDateFrom(initialPayload.dateFrom);
+      setDateTo(initialPayload.dateTo);
+      setError(loadError);
+    });
+  }, [initialPayload, loadError]);
+
+  const loadData = useCallback((from: string, to: string) => {
+    const generation = ++loadGenerationRef.current;
+    start(async () => {
+      try {
+        const next = await actionFetchUpcomingDeliveries(from, to);
+        if (generation !== loadGenerationRef.current) return;
+        setPayload(next);
+        setDateFrom(next.dateFrom);
+        setDateTo(next.dateTo);
+        setError(null);
+      } catch (e) {
+        if (generation !== loadGenerationRef.current) return;
+        setError(e instanceof Error ? e.message : "Błąd ładowania dostaw.");
+      }
+    });
+  }, []);
+
+  const refreshQuiet = useCallback(() => {
+    const from = dateFromRef.current;
+    const to = dateToRef.current;
+    if (!from || !to) return;
+    loadData(from, to);
+  }, [loadData]);
+
+  useEffect(() => {
+    if (!isAuthorized) return;
+    const onVis = () => {
+      if (document.visibilityState === "visible") refreshQuiet();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", refreshQuiet);
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") refreshQuiet();
+    }, AUTO_REFRESH_MS);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", refreshQuiet);
+      window.clearInterval(id);
+    };
+  }, [isAuthorized, refreshQuiet]);
 
   const handlePresetChange = useCallback(
     (value: UpcomingDeliveryRangePreset) => {
@@ -121,25 +165,45 @@ export function UpcomingDeliveriesClient({
 
   const days = useMemo(() => payload?.days ?? [], [payload?.days]);
   const summary = payload?.summary;
+  const journalReceivedToday = payload?.receivedSupplierIdsToday ?? [];
+  const clearedByDate = useMemo(
+    () => clearedSupplierIdsByDateFromPayload(payload?.clearedSupplierIdsByDate),
+    [payload?.clearedSupplierIdsByDate]
+  );
   const rangeLabel = useMemo(() => {
     if (!dateFrom || !dateTo) return "";
     return formatRangeLabel(dateFrom, dateTo);
   }, [dateFrom, dateTo]);
 
-  const weekDays = useMemo(
-    () => buildDeliveryScheduleWeek(supplierSchedules, days, todayDateKey, dateFrom || undefined),
-    [supplierSchedules, days, todayDateKey, dateFrom]
-  );
+  const weekDays = useMemo(() => {
+    const built = buildDeliveryScheduleWeek(
+      supplierSchedules,
+      days,
+      todayDateKey,
+      dateFrom || undefined
+    );
+    return hideScheduledReceivedToday(built, journalReceivedToday, clearedByDate);
+  }, [supplierSchedules, days, todayDateKey, dateFrom, journalReceivedToday, clearedByDate]);
 
-  const extendedSummary = useMemo(
-    () => (summary ? summarizeDeliverySchedule(summary, weekDays) : null),
-    [summary, weekDays]
-  );
+  const todayDay = useMemo(() => {
+    const fromWeek = weekDays.find((d) => d.isToday) ?? null;
+    if (fromWeek) return fromWeek;
+    // Sobota/niedziela: siatka Pn–Pt nie ma kolumny „dziś”.
+    const weekend = buildDeliveryTodayDay(supplierSchedules, days, todayDateKey);
+    if (!weekend) return null;
+    return hideScheduledReceivedToday([weekend], journalReceivedToday, clearedByDate)[0] ?? null;
+  }, [weekDays, supplierSchedules, days, todayDateKey, journalReceivedToday, clearedByDate]);
 
-  const todayDay = useMemo(
-    () => weekDays.find((d) => d.isToday) ?? null,
-    [weekDays]
-  );
+  const extendedSummary = useMemo(() => {
+    if (!summary) return null;
+    const base = summarizeDeliverySchedule(summary, weekDays);
+    if (!todayDay || weekDays.some((d) => d.isToday)) return base;
+    return {
+      ...base,
+      todayDeliveryCount: todayDay.deliveryDay?.suppliers.length ?? 0,
+      todayScheduledCount: todayDay.scheduledSuppliers.length,
+    };
+  }, [summary, weekDays, todayDay]);
 
   const weekGridEmpty = weekDays.every(
     (d) => d.scheduledSuppliers.length === 0 && (!d.deliveryDay || d.deliveryDay.suppliers.length === 0)
@@ -164,7 +228,7 @@ export function UpcomingDeliveriesClient({
         <CardHeader
           title="Plan dostaw"
           description="Centrum dowodzenia — planowi dostawcy i zamówienia ZD"
-          hint="Plan dostawców na podstawie harmonogramu + dokumenty ZD z Subiekta."
+          hint="Plan dostawców na podstawie harmonogramu + dokumenty ZD z Subiekta. Odświeża się automatycznie."
           density="compact"
           inset
           leading={
@@ -173,12 +237,23 @@ export function UpcomingDeliveriesClient({
             </SectionHeadingIcon>
           }
           action={
-            <SegmentedControl
-              value={preset === "custom" ? ("" as UpcomingDeliveryRangePreset) : preset}
-              onChange={handlePresetChange}
-              options={PRESET_OPTIONS}
-              ariaLabel="Zakres czasowy dostaw"
-            />
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={refreshQuiet}
+                disabled={pending || !dateFrom || !dateTo}
+                title="Odśwież plan"
+              >
+                Odśwież
+              </Button>
+              <SegmentedControl
+                value={preset === "custom" ? ("" as UpcomingDeliveryRangePreset) : preset}
+                onChange={handlePresetChange}
+                options={PRESET_OPTIONS}
+                ariaLabel="Zakres czasowy dostaw"
+              />
+            </div>
           }
         />
 

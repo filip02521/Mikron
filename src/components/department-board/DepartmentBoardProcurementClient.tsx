@@ -69,12 +69,14 @@ export function DepartmentBoardProcurementClient({
   initialTab,
   focusQuestionId = null,
   focusAnnouncementId = null,
+  canDeleteClosed = false,
 }: {
   initial: DepartmentBoardData;
   loadError?: string | null;
   initialTab?: DepartmentBoardTab;
   focusQuestionId?: string | null;
   focusAnnouncementId?: string | null;
+  canDeleteClosed?: boolean;
 }) {
   const router = useRouter();
   const { readOnly, blockIfReadOnly } = usePreviewMutationBlocker();
@@ -400,6 +402,7 @@ export function DepartmentBoardProcurementClient({
                       canReply={!readOnly}
                       canArchive={!readOnly}
                       canReopen={!readOnly}
+                      canDeleteClosed={canDeleteClosed && !readOnly}
                       defaultExpanded={focusQuestionId === question.id}
                       onChanged={refresh}
                     />

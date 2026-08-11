@@ -16,11 +16,10 @@ import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import type { IndividualOrder } from "@/types/database";
 import type {
   UpcomingDeliveryDay,
-  UpcomingDeliveryRangePreset,
   UpcomingDeliverySalesPerson,
-  UpcomingDeliverySummary,
   UpcomingDeliverySupplier,
 } from "@/lib/data/upcoming-deliveries-shared";
+import { journalHasReceiptForDeadline } from "@/lib/data/upcoming-deliveries-shared";
 
 export type {
   DeliveryScheduleDay,
@@ -34,6 +33,10 @@ export type {
 } from "@/lib/data/upcoming-deliveries-shared";
 export {
   buildDeliveryScheduleWeek,
+  buildDeliveryTodayDay,
+  clearedSupplierIdsByDateFromPayload,
+  hideScheduledReceivedToday,
+  journalHasReceiptForDeadline,
   summarizeDeliverySchedule,
   summarizeUpcomingDeliveries,
   upcomingDeliveryPresetRange,
@@ -84,40 +87,72 @@ function parseQty(value: string | null | undefined): number {
   return isNaN(q) ? 0 : q;
 }
 
-type JournalReceiptSet = Set<string>;
+/** supplierId → daty przyjęcia (YYYY-MM-DD) z dziennika magazynu. */
+type JournalReceiptIndex = Map<string, Set<string>>;
 
-function journalReceiptKey(dateKey: string, supplierId: string): string {
-  return `${dateKey}|${supplierId}`;
-}
-
-async function fetchJournalReceiptSet(
+async function fetchJournalReceiptIndex(
   dateFrom: string,
-  dateTo: string,
   todayKey: string
-): Promise<JournalReceiptSet> {
+): Promise<JournalReceiptIndex> {
   try {
+    // Szersze okno wstecz: zaległe ZD sprzed początku tygodnia + przyjęcia z ostatnich dni.
+    const fromDate = parseDateOnly(dateFrom);
+    const lookbackStart = fromDate
+      ? formatDateString(new Date(fromDate.getFullYear(), fromDate.getMonth(), fromDate.getDate() - 21))
+      : dateFrom;
     const receipts = await searchDeliveryReceipts({
-      dateFrom,
+      dateFrom: lookbackStart,
       dateTo: todayKey,
     });
-    const set = new Set<string>();
+    const index: JournalReceiptIndex = new Map();
     for (const r of receipts) {
-      if (r.supplierId) {
-        set.add(journalReceiptKey(r.receivedDate, r.supplierId));
-      }
+      if (!r.supplierId || !r.receivedDate) continue;
+      const set = index.get(r.supplierId) ?? new Set<string>();
+      set.add(r.receivedDate);
+      index.set(r.supplierId, set);
     }
-    return set;
+    return index;
   } catch {
-    return new Set();
+    return new Map();
   }
 }
+
+function supplierIdsReceivedOnDate(
+  journalReceipts: JournalReceiptIndex,
+  dateKey: string
+): string[] {
+  const ids: string[] = [];
+  for (const [supplierId, dates] of journalReceipts) {
+    if (dates.has(dateKey)) ids.push(supplierId);
+  }
+  return ids.sort();
+}
+
+export type UpcomingDeliveriesResult = {
+  days: UpcomingDeliveryDay[];
+  /** Dostawcy z wpisem dziennika przyjęć dokładnie na dziś. */
+  receivedSupplierIdsToday: string[];
+  /** Dostawcy w pełni odznaczeni dla danego terminu ZD (YYYY-MM-DD → ids). */
+  clearedSupplierIdsByDate: Record<string, string[]>;
+};
 
 export async function fetchUpcomingDeliveries(
   dateFrom: string,
   dateTo: string,
   carriers?: WarehouseCarrierRow[]
 ): Promise<UpcomingDeliveryDay[]> {
-  if (!hasSupabaseConfig()) return [];
+  const result = await fetchUpcomingDeliveriesWithMeta(dateFrom, dateTo, carriers);
+  return result.days;
+}
+
+export async function fetchUpcomingDeliveriesWithMeta(
+  dateFrom: string,
+  dateTo: string,
+  carriers?: WarehouseCarrierRow[]
+): Promise<UpcomingDeliveriesResult> {
+  if (!hasSupabaseConfig()) {
+    return { days: [], receivedSupplierIdsToday: [], clearedSupplierIdsByDate: {} };
+  }
 
   const supabase = createAdminClient();
   const todayKey = formatDateString(todayInWarsaw());
@@ -170,9 +205,32 @@ export async function fetchUpcomingDeliveries(
     seenOrderIds.add(o.id);
     return true;
   });
-  const journalReceipts = await fetchJournalReceiptSet(dateFrom, dateTo, todayKey);
-  const orderDays = await groupUpcomingDeliveries(allOrders, todayKey, carriers, journalReceipts);
-  return mergeZdIndexDeliveries(orderDays, dateFrom, dateTo, todayKey, carriers);
+  const journalReceipts = await fetchJournalReceiptIndex(dateFrom, todayKey);
+  const { days: orderDays, clearedSupplierIdsByDate, orderSupplierIdsByDate } =
+    await groupUpcomingDeliveries(allOrders, todayKey, carriers, journalReceipts);
+  const days = await mergeZdIndexDeliveries(
+    orderDays,
+    dateFrom,
+    dateTo,
+    todayKey,
+    carriers,
+    journalReceipts,
+    clearedSupplierIdsByDate,
+    orderSupplierIdsByDate
+  );
+  return {
+    days,
+    receivedSupplierIdsToday: supplierIdsReceivedOnDate(journalReceipts, todayKey),
+    clearedSupplierIdsByDate: mapSetsToRecord(clearedSupplierIdsByDate),
+  };
+}
+
+function mapSetsToRecord(map: Map<string, Set<string>>): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const [key, set] of map) {
+    if (set.size > 0) out[key] = [...set].sort();
+  }
+  return out;
 }
 
 async function fetchUpcomingDeliveriesLegacy(
@@ -180,7 +238,7 @@ async function fetchUpcomingDeliveriesLegacy(
   dateTo: string,
   todayKey: string,
   carriers?: WarehouseCarrierRow[]
-): Promise<UpcomingDeliveryDay[]> {
+): Promise<UpcomingDeliveriesResult> {
   const supabase = createAdminClient();
   const [rangeRes, overdueRes] = await Promise.all([
     supabase
@@ -220,17 +278,36 @@ async function fetchUpcomingDeliveriesLegacy(
     seenOrderIds.add(o.id);
     return true;
   });
-  const journalReceipts = await fetchJournalReceiptSet(dateFrom, dateTo, todayKey);
-  const orderDays = await groupUpcomingDeliveries(allOrders, todayKey, carriers, journalReceipts);
-  return mergeZdIndexDeliveries(orderDays, dateFrom, dateTo, todayKey, carriers);
+  const journalReceipts = await fetchJournalReceiptIndex(dateFrom, todayKey);
+  const { days: orderDays, clearedSupplierIdsByDate, orderSupplierIdsByDate } =
+    await groupUpcomingDeliveries(allOrders, todayKey, carriers, journalReceipts);
+  const days = await mergeZdIndexDeliveries(
+    orderDays,
+    dateFrom,
+    dateTo,
+    todayKey,
+    carriers,
+    journalReceipts,
+    clearedSupplierIdsByDate,
+    orderSupplierIdsByDate
+  );
+  return {
+    days,
+    receivedSupplierIdsToday: supplierIdsReceivedOnDate(journalReceipts, todayKey),
+    clearedSupplierIdsByDate: mapSetsToRecord(clearedSupplierIdsByDate),
+  };
 }
 
 export async function groupUpcomingDeliveries(
   orders: IndividualOrder[],
   todayKey: string,
   carriers?: WarehouseCarrierRow[],
-  journalReceipts?: JournalReceiptSet
-): Promise<UpcomingDeliveryDay[]> {
+  journalReceipts?: JournalReceiptIndex
+): Promise<{
+  days: UpcomingDeliveryDay[];
+  clearedSupplierIdsByDate: Map<string, Set<string>>;
+  orderSupplierIdsByDate: Map<string, Set<string>>;
+}> {
   const byDate = new Map<string, IndividualOrder[]>();
   for (const order of orders) {
     const deadline = order.zd_fulfillment_deadline?.trim();
@@ -256,10 +333,28 @@ export async function groupUpcomingDeliveries(
     hintMap = new Map();
   }
 
+  const clearedSupplierIdsByDate = new Map<string, Set<string>>();
+  const orderSupplierIdsByDate = new Map<string, Set<string>>();
   const days: UpcomingDeliveryDay[] = [];
   for (const dateKey of sortedDates) {
     const dayOrders = byDate.get(dateKey)!;
-    const suppliers = groupBySupplier(dayOrders, hintMap, carriers, journalReceipts, dateKey);
+    const orderIds = new Set<string>();
+    for (const o of dayOrders) {
+      if (o.supplier_id) orderIds.add(o.supplier_id);
+    }
+    orderSupplierIdsByDate.set(dateKey, orderIds);
+
+    const { suppliers, clearedIds } = groupBySupplier(
+      dayOrders,
+      hintMap,
+      carriers,
+      journalReceipts,
+      dateKey,
+      todayKey
+    );
+    if (clearedIds.length > 0) {
+      clearedSupplierIdsByDate.set(dateKey, new Set(clearedIds));
+    }
     days.push({
       dateKey,
       dateLabel: formatDayLabel(dateKey),
@@ -270,16 +365,25 @@ export async function groupUpcomingDeliveries(
     });
   }
 
-  return days;
+  return { days, clearedSupplierIdsByDate, orderSupplierIdsByDate };
+}
+
+function effectiveDeliveredQty(order: IndividualOrder): number {
+  const qty = parseQty(order.quantity);
+  const delivered = parseQty(order.delivered_quantity);
+  // Status „Zrealizowane” bez wpisanej ilości = pełne odznaczenie w planie.
+  if (order.status === "Zrealizowane" && qty > 0) return Math.max(delivered, qty);
+  return delivered;
 }
 
 function groupBySupplier(
   orders: IndividualOrder[],
   hintMap: Map<string, WarehouseCarrierHint>,
   carriers?: WarehouseCarrierRow[],
-  journalReceipts?: JournalReceiptSet,
-  dateKey?: string
-): UpcomingDeliverySupplier[] {
+  journalReceipts?: JournalReceiptIndex,
+  dateKey?: string,
+  todayKey?: string
+): { suppliers: UpcomingDeliverySupplier[]; clearedIds: string[] } {
   const bySupplier = new Map<string, IndividualOrder[]>();
   for (const order of orders) {
     const supplierId = order.supplier_id;
@@ -290,16 +394,18 @@ function groupBySupplier(
   }
 
   const result: UpcomingDeliverySupplier[] = [];
+  const clearedIds: string[] = [];
   for (const [supplierId, supplierOrders] of bySupplier) {
     const supplierName = supplierOrders[0]?.supplier?.name ?? "—";
     const zdDocNumber = supplierOrders.find((o) => o.zd_fulfillment_dok_nr?.trim())?.zd_fulfillment_dok_nr ?? null;
     const positionCount = supplierOrders.length;
     const totalQuantity = supplierOrders.reduce((sum, o) => sum + parseQty(o.quantity), 0);
-    const totalDelivered = supplierOrders.reduce((sum, o) => sum + parseQty(o.delivered_quantity), 0);
+    const totalDelivered = supplierOrders.reduce((sum, o) => sum + effectiveDeliveredQty(o), 0);
 
-    const hasJournalReceipt = journalReceipts && dateKey && supplierId
-      ? journalReceipts.has(journalReceiptKey(dateKey, supplierId))
-      : false;
+    const hasJournalReceipt =
+      journalReceipts && dateKey && todayKey && supplierId
+        ? journalHasReceiptForDeadline(journalReceipts, dateKey, supplierId, todayKey)
+        : false;
 
     const salesPeopleMap = new Map<string, UpcomingDeliverySalesPerson>();
     for (const o of supplierOrders) {
@@ -319,11 +425,18 @@ function groupBySupplier(
       ? warehouseCarrierLabel(carrierHint.carrier, carriers)
       : null;
 
-    const adjustedDelivered = hasJournalReceipt && totalDelivered === 0 && totalQuantity > 0
-      ? Math.max(1, Math.ceil(totalQuantity * 0.01))
-      : totalDelivered;
+    const adjustedDelivered =
+      hasJournalReceipt && totalDelivered === 0 && totalQuantity > 0
+        ? Math.max(1, Math.ceil(totalQuantity * 0.01))
+        : totalDelivered;
 
-    if (adjustedDelivered >= totalQuantity && totalQuantity > 0) continue;
+    const fullyCleared =
+      (adjustedDelivered >= totalQuantity && totalQuantity > 0) ||
+      (supplierOrders.every((o) => o.status === "Zrealizowane") && totalQuantity === 0);
+    if (fullyCleared) {
+      clearedIds.push(supplierId);
+      continue;
+    }
 
     result.push({
       supplierId,
@@ -340,7 +453,10 @@ function groupBySupplier(
     });
   }
 
-  return result.sort((a, b) => a.supplierName.localeCompare(b.supplierName));
+  return {
+    suppliers: result.sort((a, b) => a.supplierName.localeCompare(b.supplierName)),
+    clearedIds,
+  };
 }
 
 type ZdIndexRow = {
@@ -427,7 +543,10 @@ async function mergeZdIndexDeliveries(
   dateFrom: string,
   dateTo: string,
   todayKey: string,
-  carriers?: WarehouseCarrierRow[]
+  carriers?: WarehouseCarrierRow[],
+  journalReceipts?: JournalReceiptIndex,
+  clearedSupplierIdsByDate?: Map<string, Set<string>>,
+  orderSupplierIdsByDate?: Map<string, Set<string>>
 ): Promise<UpcomingDeliveryDay[]> {
   let zdIndexMap: Map<string, Map<string, ZdSupplierEntry>>;
   try {
@@ -439,10 +558,11 @@ async function mergeZdIndexDeliveries(
 
   const existingSuppliersByDate = new Map<string, Set<string>>();
   for (const day of orderDays) {
-    existingSuppliersByDate.set(
-      day.dateKey,
-      new Set(day.suppliers.map((s) => s.supplierId))
-    );
+    const touched = new Set<string>([
+      ...(orderSupplierIdsByDate?.get(day.dateKey) ?? []),
+      ...day.suppliers.map((s) => s.supplierId),
+    ]);
+    existingSuppliersByDate.set(day.dateKey, touched);
   }
 
   const trulyNewSupplierIds = new Set<string>();
@@ -502,8 +622,24 @@ async function mergeZdIndexDeliveries(
             }
           }
         }
+        // Zamówienia na ten termin już obsłużone (także cleared) — nie dodawaj karty „tylko ZD”.
       } else {
-        if (entry.fulfilled) continue;
+        if (entry.fulfilled) {
+          const cleared = clearedSupplierIdsByDate?.get(dateKey) ?? new Set<string>();
+          cleared.add(supplierId);
+          clearedSupplierIdsByDate?.set(dateKey, cleared);
+          continue;
+        }
+        // Przyjęcie w dzienniku (nawet po terminie) — nie pokazuj karty „tylko ZD”.
+        if (
+          journalReceipts &&
+          journalHasReceiptForDeadline(journalReceipts, dateKey, supplierId, todayKey)
+        ) {
+          const cleared = clearedSupplierIdsByDate?.get(dateKey) ?? new Set<string>();
+          cleared.add(supplierId);
+          clearedSupplierIdsByDate?.set(dateKey, cleared);
+          continue;
+        }
         const supplierName = supplierNames.get(supplierId) ?? "—";
         const carrierHint = hintMap.get(supplierId) ?? null;
         const carrierLabel = carrierHint

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { fetchIndividualHistory, fetchNormalHistory } from "@/lib/data/queries";
 import { HistoriaClient } from "@/components/history/HistoriaClient";
 import { getSessionUser } from "@/lib/auth";
@@ -39,12 +40,14 @@ export default async function HistoriaPage() {
           {loadError}. Sprawdź połączenie z Supabase.
         </Alert>
       ) : null}
-      <HistoriaClient
-      individual={individual}
-      normal={normal}
-      canManageHistory={canManageHistory}
-      canOperateOrders={canOperateOrders}
-    />
+      <Suspense fallback={null}>
+        <HistoriaClient
+          individual={individual}
+          normal={normal}
+          canManageHistory={canManageHistory}
+          canOperateOrders={canOperateOrders}
+        />
+      </Suspense>
     </div>
   );
 }

@@ -30,7 +30,35 @@ import {
   deleteSalesManagerGroupsForProfile,
   replaceSalesManagerGroupsForProfile,
 } from "@/lib/users/sales-manager-groups-db";
+import { syncSalesPersonCardEmailFromProfile } from "@/lib/users/sync-sales-person-email";
 import type { AppUserRow } from "@/lib/data/users";
+
+async function syncCardEmailAfterSalesLink(
+  supabase: ReturnType<typeof createAdminClient>,
+  userId: string,
+  salesPersonId: string | null | undefined
+) {
+  const spId = salesPersonId?.trim();
+  if (!spId) return;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("email")
+    .eq("id", userId)
+    .maybeSingle();
+  const syncError = await syncSalesPersonCardEmailFromProfile(
+    supabase,
+    spId,
+    profile?.email
+  );
+  if (syncError) {
+    // CodeQL js/log-injection: usuń CR/LF (wzór jak w docs CodeQL).
+    console.warn(
+      "[users] syncSalesPersonCardEmailFromProfile",
+      String(spId).replace(/\n|\r/g, ""),
+      String(syncError).replace(/\n|\r/g, "")
+    );
+  }
+}
 
 function revalidateUsers(opts?: { includeHandlowcy?: boolean; includeTeam?: boolean }) {
   revalidatePath("/admin/uzytkownicy", "page");
@@ -103,6 +131,7 @@ export async function actionCreateAppUser(form: {
       .eq("id", salesPersonId)
       .maybeSingle();
     salesPersonName = sp?.name ?? null;
+    await syncCardEmailAfterSalesLink(supabase, created.user.id, salesPersonId);
   }
 
   revalidateUsers({
@@ -186,6 +215,10 @@ export async function actionUpdateAppUser(form: {
     roleRequiresSalesPerson(prevRole) ||
     roleRequiresSalesPerson(form.role) ||
     prevSalesId !== nextSalesId;
+
+  if (nextSalesId) {
+    await syncCardEmailAfterSalesLink(supabase, userId, nextSalesId);
+  }
 
   revalidateUsers({
     includeHandlowcy: handlowcyTouched,
@@ -271,6 +304,10 @@ export async function actionSaveAppUserPermissions(form: {
     roleRequiresSalesPerson(prevRole) ||
     roleRequiresSalesPerson(form.role) ||
     prevSalesId !== nextSalesId;
+
+  if (nextSalesId) {
+    await syncCardEmailAfterSalesLink(supabase, userId, nextSalesId);
+  }
 
   revalidateUsers({
     includeHandlowcy: handlowcyTouched,

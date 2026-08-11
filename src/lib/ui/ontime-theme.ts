@@ -259,6 +259,12 @@ export const adminPageShellClass = salesTeamPageShellClass;
 /** Historia, zamówienie grupowe — jak karty dostawców (tabele bez ucinania). */
 export const procurementArchivePageShellClass = adminPageShellClass;
 
+/**
+ * Szacunek ZD — prawie pełna szerokość obszaru main (tabela z wieloma kolumnami).
+ */
+export const zdEstimatePageShellClass =
+  "relative mx-auto w-full max-w-[min(100%,100rem)] space-y-6";
+
 /** Treść wewnątrz karty huba administracji / dostawców. */
 export const adminHubBodyClass = "min-w-0 space-y-4 p-3 sm:p-4 lg:p-5";
 
@@ -653,9 +659,9 @@ export function procurementSupplierBlockHeaderClass(
   variant: DailyPanelUnseenVariant = "prosby"
 ): string {
   if (variant === "stockOut") {
-    return "border-b border-amber-200/65 bg-amber-50/55";
+    return "border-b border-amber-100/80 bg-amber-50/40";
   }
-  return "border-b border-indigo-200/60 bg-indigo-50/45";
+  return "border-b border-slate-100/90 bg-slate-50/55";
 }
 
 /** Lista prośb wewnątrz bloku dostawcy — wspólny kontener, bez osobnych ramek. */

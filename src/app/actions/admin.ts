@@ -75,7 +75,10 @@ import { syncLinkedSalesPersonLoginEmail } from "@/lib/users/sync-sales-person-e
 import { intervalWeeksForStorage, parseInterval } from "@/lib/orders/dates";
 import { resolveOrderOnDemandForSave } from "@/lib/orders/supplier-on-demand";
 import { WAREHOUSE_SHELF_DEFAULT } from "@/lib/orders/warehouse-inventory";
-import { validateSupplierContactFields } from "@/lib/orders/validate-supplier-contact";
+import {
+  canonicalizeOrderMethodNotes,
+  validateSupplierContactFields,
+} from "@/lib/orders/validate-supplier-contact";
 import {
   parseWarehouseShipmentForm,
 } from "@/lib/warehouse/delivery-carriers";
@@ -310,24 +313,35 @@ export async function actionProcessIndividual(
         }
       : { kind: "individual" as const, snapshots: individualsBefore };
 
-  const feedbackLines =
-    action === "ANULOWANO"
-      ? undefined
-      : [
-          ...(await buildProcessIndividualFeedback(orderIds, action, glowneSupplierIds)),
-          ...(processResult.skippedTeethCount > 0
-            ? [
-                processResult.skippedTeethCount === 1
-                  ? "1 pozycja zębowa realizowana jest w panelu /zeby — pominięto w panelu dziennym."
-                  : `${processResult.skippedTeethCount} pozycje zębowe realizowane są w panelu /zeby — pominięto w panelu dziennym.`,
-              ]
-            : []),
-        ];
+  // Feedback tylko ozdabia toast — błąd nie może zabić undo (Główne i Uzupełniające).
+  // Payload budujemy dopiero po feedbacku, żeby okno 10 s nie tykało podczas await.
+  let feedbackLines: string[] | undefined;
+  if (action !== "ANULOWANO") {
+    try {
+      feedbackLines = [
+        ...(await buildProcessIndividualFeedback(
+          orderIds,
+          action,
+          glowneSupplierIds
+        )),
+        ...(processResult.skippedTeethCount > 0
+          ? [
+              processResult.skippedTeethCount === 1
+                ? "1 pozycja zębowa realizowana jest w panelu /zeby — pominięto w panelu dziennym."
+                : `${processResult.skippedTeethCount} pozycje zębowe realizowane są w panelu /zeby — pominięto w panelu dziennym.`,
+            ]
+          : []),
+      ];
+      if (!feedbackLines.length) feedbackLines = undefined;
+    } catch {
+      feedbackLines = undefined;
+    }
+  }
 
   return {
     success: true,
     undo: buildDailyPanelUndoPayload(token),
-    feedbackLines: feedbackLines?.length ? feedbackLines : undefined,
+    feedbackLines,
   };
 }
 
@@ -797,7 +811,8 @@ export async function actionMarkProcurementRequestsSeen(
     );
   if (updErr) throw new Error(updErr.message);
 
-  revalidateAll();
+  // Bez revalidateAll — lokalny stan UI już oznacza „seen”.
+  // Pełny revalidate tuż po hoverze + Główne potrafił zabić UndoToast (remount).
   return { success: true };
 }
 
@@ -1259,7 +1274,9 @@ export async function actionUpsertSupplier(form: {
 }) {
   await requireSupplierManagement("mutate");
   const supplierId = form.id?.trim() || undefined;
-  const notes = clampText(form.notes, MAX_SUPPLIER_NOTES_LEN);
+  const notes = canonicalizeOrderMethodNotes(
+    clampText(form.notes, MAX_SUPPLIER_NOTES_LEN)
+  );
   const mails = clampText(form.mails, MAX_SUPPLIER_MAILS_LEN);
   const extraInfo = clampText(form.extra_info, MAX_SUPPLIER_EXTRA_LEN);
   const contactError = validateSupplierContactFields(notes, mails, extraInfo);

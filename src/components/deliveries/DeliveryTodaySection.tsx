@@ -26,7 +26,11 @@ export function DeliveryTodaySection({
           </p>
           <p className="text-[11px] text-slate-500">
             {totalCount > 0
-              ? `${zdSuppliers.length} dostaw ZD · ${scheduledSuppliers.length} planowych`
+              ? `${zdSuppliers.length} dostaw ZD · ${scheduledSuppliers.length} planowych${
+                  zdSuppliers.some((s) => s.isOverdueDeadline)
+                    ? ` · ${zdSuppliers.filter((s) => s.isOverdueDeadline).length} po terminie`
+                    : ""
+                }`
               : "Brak zaplanowanych dostaw"}
           </p>
         </div>

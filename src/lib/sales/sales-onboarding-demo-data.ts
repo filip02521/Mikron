@@ -497,6 +497,7 @@ export function buildOnboardingTablicaDemo(): DepartmentBoardData {
             author: { email: "zakupy@firma.pl", role: "zakupy" },
           },
         ],
+        attachments: [],
       },
       {
         id: openQuestionId,
@@ -522,6 +523,7 @@ export function buildOnboardingTablicaDemo(): DepartmentBoardData {
         author: { email: "piotr@firma.pl", role: "sales" },
         sales_person: { id: "demo-sales-peer-2", name: "Piotr M." },
         posts: [],
+        attachments: [],
       },
     ],
     closedQuestions: [],
@@ -536,6 +538,7 @@ export function buildOnboardingBoardAttention() {
   return {
     unseenAnswerCount: 1,
     unseenOwnAnswerCount: 0,
+    latestOwnAnswerActivityAt: null,
     unseenAnswerPreview: {
       threadId: "demo-board-question-answered",
       title: "Próbki implantów poza harmonogramem?",
@@ -559,6 +562,7 @@ export function buildOnboardingDayStartContext(salesPersonId: string) {
       unreadAnnouncementBannerLatestId: "demo-board-announcement",
       unseenAnswerCount: 1,
       unseenOwnAnswerCount: 0,
+      latestOwnAnswerActivityAt: null,
       unseenAnswerPreview: {
         threadId: "demo-board-question-answered",
         title: "Próbki implantów poza harmonogramem?",

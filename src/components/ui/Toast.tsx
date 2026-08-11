@@ -92,7 +92,7 @@ export function Toast({
       aria-atomic="true"
       className={cn(
         systemNoticeUndoClass,
-        "fixed z-[60] max-w-[min(100vw-1.5rem,26rem)]",
+        "fixed z-[65] max-w-[min(100vw-1.5rem,26rem)]",
         stacked ? floatingToastStackAboveClass : floatingToastBottomClass,
         "left-4 right-4 sm:left-auto sm:right-6",
       )}
