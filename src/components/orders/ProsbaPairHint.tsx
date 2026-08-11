@@ -16,7 +16,7 @@ export function ProsbaPairHint({
   useEffect(() => {
     const id = twId != null && twId > 0 ? Math.trunc(twId) : null;
     if (!id) {
-      setText(null);
+      queueMicrotask(() => setText(null));
       return;
     }
     let cancelled = false;

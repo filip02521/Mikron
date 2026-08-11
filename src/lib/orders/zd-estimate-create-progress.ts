@@ -40,13 +40,13 @@ export const ZD_CREATE_PROGRESS_STEPS: readonly ZdCreateProgressStepDef[] = [
   {
     id: "readback",
     title: "Odczyt ZD",
-    activeHint: "Pobieram świeży dokument z ORDERS…",
+    activeHint: "Pobieram świeży dokument z Subiekta…",
     doneHint: "Dokument odczytany",
   },
   {
     id: "snapshot",
     title: "Historia szacunku",
-    activeHint: "Zapisuję snapshot historii (dostawca + zakres, host ORDERS)…",
+    activeHint: "Zapisuję historię dla dostawcy i zakresu…",
     doneHint: "Historia zapisana",
   },
 ] as const;
@@ -75,13 +75,12 @@ export function createZdProgressStepFromElapsed(
   const safeElapsed = Number.isFinite(elapsedMs) ? Math.max(0, elapsedMs) : 0;
   const stepMs = opts?.stepMs ?? createZdProgressStepMs(opts?.lineCount ?? 0);
 
-  // Kroki: 0 prepare → 1 sfera (park) → po 2×stepMs: 2 readback → 3 snapshot (park do końca).
-  // Sfera dostaje 2 „ticki”, żeby nie skakać do snapshotu zbyt wcześnie.
+  // Kroki: 0 prepare → 1 sfera (park dłużej) → dopiero potem readback/snapshot.
+  // Świadomie zostajemy na Sferze — postęp jest szacunkowy, nie synchronizowany z POST.
   const raw = Math.floor(safeElapsed / stepMs);
   if (raw <= 0) return 0;
-  if (raw === 1) return 1;
-  if (raw === 2) return 1; // nadal Sfera
-  if (raw === 3) return 2;
+  if (raw <= 3) return 1; // prepare szybko, potem długo „Tworzenie w Subiekcie”
+  if (raw === 4) return 2;
   return last;
 }
 

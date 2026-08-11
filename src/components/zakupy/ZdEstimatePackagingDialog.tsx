@@ -191,7 +191,7 @@ function PackagingDialogForm({
           <p className="mt-0.5 text-[11px] leading-snug text-emerald-900/85">
             {formatZdPackHint(preview)}
             {preview.roundedUp
-              ? " — ceil opakowania (przyjdzie trochę więcej niż potrzeba)."
+              ? " — zaokrąglenie opakowania w górę (przyjdzie trochę więcej niż potrzeba)."
               : "."}
           </p>
         </div>

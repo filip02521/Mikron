@@ -90,7 +90,7 @@ export function assertZdEstimateFilterEcho(input: {
         ok: false,
         title: "Filtr grupy nie potwierdzony",
         message:
-          "API nie zwróciło parametry.grupaId zgodnego z żądaniem — lista mogłaby być nieprzefiltrowana. Sprawdź SUBIEKT_API_ORDERS_BASE_URL (:5082).",
+          "API nie zwróciło parametry.grupaId zgodnego z żądaniem — lista mogłaby być nieprzefiltrowana. Sprawdź SUBIEKT_API_ORDERS_BASE_URL (:5080/:5082).",
       };
     }
     return { ok: true };

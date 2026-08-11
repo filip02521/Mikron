@@ -1,38 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import { launchProgressStepFromElapsed } from "@/lib/orders/zd-estimate-launch-progress";
 import { ZD_ESTIMATE_LAUNCH_FOCUS_ID } from "@/lib/orders/zd-estimate-launch-scroll";
+import { zdEstimateLaunchFetchHint } from "@/lib/orders/zd-estimate-ui-copy";
 
-export const ZD_ESTIMATE_LAUNCH_PROGRESS_STEPS = [
-  {
-    id: "scope",
-    title: "Zakres Subiekta",
-    activeHint: "Potwierdzam grupę lub cechę dostawcy…",
-    doneHint: "Zakres ustawiony",
-  },
-  {
-    id: "fetch",
-    title: "Towary i stany",
-    activeHint: "Pobieram pełny zakres z testowego API…",
-    doneHint: "Dane z Subiekta wczytane",
-  },
-  {
-    id: "calc",
-    title: "Sprzedaż, zapas i prośby",
-    activeHint: "Analizuję sprzedaż, stany i dołączam prośby handlowców…",
-    doneHint: "Wyliczenia i prośby gotowe",
-  },
-  {
-    id: "list",
-    title: "Lista do ZD",
-    activeHint: "Składam pozycje „Do zamówienia”…",
-    doneHint: "Lista gotowa",
-  },
-] as const;
+function buildLaunchProgressSteps(isLive: boolean) {
+  return [
+    {
+      id: "scope",
+      title: "Zakres Subiekta",
+      activeHint: "Potwierdzam grupę lub cechę dostawcy…",
+      doneHint: "Zakres ustawiony",
+    },
+    {
+      id: "fetch",
+      title: "Towary i stany",
+      activeHint: zdEstimateLaunchFetchHint(isLive),
+      doneHint: "Dane z Subiekta wczytane",
+    },
+    {
+      id: "calc",
+      title: "Sprzedaż, zapas i prośby",
+      activeHint: "Analizuję sprzedaż, stany i dołączam prośby handlowców…",
+      doneHint: "Wyliczenia i prośby gotowe",
+    },
+    {
+      id: "list",
+      title: "Lista do ZD",
+      activeHint: "Składam pozycje „Do ZD”…",
+      doneHint: "Lista gotowa",
+    },
+  ] as const;
+}
+
+/** @deprecated użyj buildLaunchProgressSteps — zostawione dla importów testowych. */
+export const ZD_ESTIMATE_LAUNCH_PROGRESS_STEPS = buildLaunchProgressSteps(false);
 
 export function ZdEstimateLaunchProgressPanel({
   supplierName,
@@ -40,8 +46,8 @@ export function ZdEstimateLaunchProgressPanel({
   scopeMode,
   startedAtMs,
   scopeAlreadyResolved = true,
-  /** Wymuś ostatni krok (np. tuż przed reveal sukcesu). */
   forceComplete = false,
+  ordersIsLive = false,
 }: {
   supplierName?: string | null;
   scopeLabel?: string | null;
@@ -49,7 +55,12 @@ export function ZdEstimateLaunchProgressPanel({
   startedAtMs: number;
   scopeAlreadyResolved?: boolean;
   forceComplete?: boolean;
+  ordersIsLive?: boolean;
 }) {
+  const steps = useMemo(
+    () => buildLaunchProgressSteps(ordersIsLive),
+    [ordersIsLive]
+  );
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -59,16 +70,13 @@ export function ZdEstimateLaunchProgressPanel({
 
   const elapsedMs = Math.max(0, nowMs - startedAtMs);
   const activeStepIndex = forceComplete
-    ? ZD_ESTIMATE_LAUNCH_PROGRESS_STEPS.length - 1
+    ? steps.length - 1
     : launchProgressStepFromElapsed(elapsedMs, {
         scopeAlreadyResolved,
-        stepCount: ZD_ESTIMATE_LAUNCH_PROGRESS_STEPS.length,
+        stepCount: steps.length,
       });
 
-  const clamped = Math.max(
-    0,
-    Math.min(activeStepIndex, ZD_ESTIMATE_LAUNCH_PROGRESS_STEPS.length - 1)
-  );
+  const clamped = Math.max(0, Math.min(activeStepIndex, steps.length - 1));
   const elapsedSec = Math.floor(elapsedMs / 1000);
 
   return (
@@ -91,7 +99,7 @@ export function ZdEstimateLaunchProgressPanel({
             <p className="mt-1 text-sm leading-relaxed text-slate-600">
               {forceComplete
                 ? "Lista gotowa — pokazuję wynik…"
-                : ZD_ESTIMATE_LAUNCH_PROGRESS_STEPS[clamped]!.activeHint}
+                : steps[clamped]!.activeHint}
             </p>
             {supplierName || scopeLabel ? (
               <div className="mt-3 flex flex-wrap gap-2">
@@ -111,79 +119,56 @@ export function ZdEstimateLaunchProgressPanel({
                 ) : null}
               </div>
             ) : null}
+            <p className="mt-3 text-xs tabular-nums text-slate-400">
+              {elapsedSec}s · postęp szacunkowy
+            </p>
           </div>
         </div>
       </div>
 
-      <ol className="space-y-0 px-5 py-4 sm:px-6">
-        {ZD_ESTIMATE_LAUNCH_PROGRESS_STEPS.map((step, index) => {
-          const done = forceComplete || index < clamped;
-          const active = !forceComplete && index === clamped;
+      <ol className="divide-y divide-slate-100 px-5 py-2 sm:px-6">
+        {steps.map((step, index) => {
+          const done = index < clamped || forceComplete;
+          const active = index === clamped && !forceComplete;
           return (
             <li
               key={step.id}
               className={cn(
-                "relative flex gap-3 py-2.5 transition-colors duration-300",
-                index < ZD_ESTIMATE_LAUNCH_PROGRESS_STEPS.length - 1 &&
-                  "border-b border-slate-100/90"
+                "flex items-start gap-3 py-3",
+                done && "opacity-70",
+                active && "opacity-100"
               )}
             >
               <span
                 className={cn(
-                  "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold transition-colors duration-300",
-                  done && "bg-emerald-600 text-white",
-                  active && "bg-slate-900 text-white ring-2 ring-slate-900/20 ring-offset-2",
-                  !done && !active && "bg-slate-100 text-slate-400"
+                  "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold",
+                  done
+                    ? "bg-emerald-100 text-emerald-800"
+                    : active
+                      ? "bg-indigo-100 text-indigo-800"
+                      : "bg-slate-100 text-slate-500"
                 )}
                 aria-hidden
               >
                 {done ? "✓" : index + 1}
               </span>
-              <div className="min-w-0 pt-0.5">
+              <div className="min-w-0 flex-1">
                 <p
                   className={cn(
-                    "text-sm font-medium transition-colors duration-300",
-                    active
-                      ? "text-slate-900"
-                      : done
-                        ? "text-slate-700"
-                        : "text-slate-400"
+                    "text-sm font-medium",
+                    active ? "text-slate-900" : "text-slate-700"
                   )}
                 >
                   {step.title}
                 </p>
                 <p className={cn(panelTypography.caption, "mt-0.5")}>
-                  {done
-                    ? step.doneHint
-                    : active
-                      ? step.activeHint
-                      : "Oczekuje…"}
+                  {done ? step.doneHint : active ? step.activeHint : "Oczekuje…"}
                 </p>
               </div>
             </li>
           );
         })}
       </ol>
-
-      <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-3 sm:px-6">
-        <p className="text-xs leading-relaxed text-slate-500">
-          Duży zakres (np. cecha Ivoclar) może potrwać nawet kilka minut.
-          {elapsedSec >= 2
-            ? ` Minęło ${elapsedSec} s…`
-            : " Proszę nie zamykać tej karty."}
-        </p>
-        <div
-          className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-200/80"
-          aria-hidden
-        >
-          <div
-            className="h-full rounded-full bg-slate-800/85 transition-[width] duration-500 ease-out"
-            style={{
-              width: `${((clamped + (forceComplete ? 1 : 0.35)) / ZD_ESTIMATE_LAUNCH_PROGRESS_STEPS.length) * 100}%`,
-            }}
-          />
-        </div>
-      </div>
     </section>
   );
 }

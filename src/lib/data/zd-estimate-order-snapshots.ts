@@ -116,7 +116,7 @@ export type UpsertZdEstimateOrderSnapshotInput = {
   grtId?: number | null;
   cechaId?: number | null;
   scopeMode?: ZdEstimateSnapshotScopeMode | null;
-  hostKind?: ZdEstimateSnapshotHostKind;
+  hostKind: ZdEstimateSnapshotHostKind;
   eligibleForHistory?: boolean;
   lines: Array<{
     twId: number;
@@ -208,7 +208,10 @@ export async function upsertZdEstimateOrderSnapshot(
 
   const supabase = createAdminClient();
   const now = new Date().toISOString();
-  const hostKind = input.hostKind ?? "orders_test";
+  if (input.hostKind !== "live" && input.hostKind !== "orders_test") {
+    throw new Error("Zapis historii wymaga host_kind (live | orders_test).");
+  }
+  const hostKind = input.hostKind;
   const cechaId =
     scopeMode === "cecha" && input.cechaId != null && input.cechaId > 0
       ? Math.trunc(input.cechaId)
@@ -229,6 +232,7 @@ export async function upsertZdEstimateOrderSnapshot(
     .from("zd_estimate_order_snapshots")
     .select(SNAPSHOT_SELECT)
     .eq("dok_id", dokId)
+    .eq("host_kind", hostKind)
     .maybeSingle();
 
   let linkedAt = now;
@@ -295,7 +299,7 @@ export async function upsertZdEstimateOrderSnapshot(
         host_kind: hostKind,
         eligible_for_history: eligibleForHistory,
       },
-      { onConflict: "dok_id" }
+      { onConflict: "host_kind,dok_id" }
     )
     .select(SNAPSHOT_SELECT)
     .single();

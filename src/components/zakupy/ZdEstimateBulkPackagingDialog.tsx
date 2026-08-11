@@ -204,7 +204,7 @@ export function ZdEstimateBulkPackagingDialog({
             Dla każdego: 1 {label.trim() || "op."} = {unitsNum} szt
           </p>
           <p className="mt-0.5 text-[11px] leading-snug text-emerald-900/85">
-            Niedobór liczymy w sztukach, a „Do ZD” pokaże liczbę paczek (ceil).
+            Niedobór liczymy w sztukach, a „Do ZD” pokaże liczbę paczek (zaokrąglenie w górę).
           </p>
         </div>
       ) : canSave && unitsNum === 1 ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   COMPRESS_IMAGE_MAX_INPUT_BYTES,
   compressImageFile,
@@ -11,6 +11,7 @@ import {
 } from "@/lib/department-board/attachments";
 import { DEPARTMENT_BOARD_QUESTIONS_FORM } from "@/lib/department-board/copy";
 import type { BoardQuestionImageDraft } from "@/components/department-board/BoardQuestionImagesField";
+import { useLatest } from "@/hooks/useLatest";
 
 function newDraftKey(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -23,14 +24,13 @@ export function useBoardQuestionImages() {
   const [images, setImages] = useState<BoardQuestionImageDraft[]>([]);
   const [imagesError, setImagesError] = useState<string | null>(null);
   const [compressing, setCompressing] = useState(false);
-  const imagesRef = useRef(images);
-  imagesRef.current = images;
+  const imagesRef = useLatest(images);
 
   useEffect(() => {
     return () => {
       for (const img of imagesRef.current) URL.revokeObjectURL(img.previewUrl);
     };
-  }, []);
+  }, [imagesRef]);
 
   const clearImages = useCallback(() => {
     setImages((prev) => {

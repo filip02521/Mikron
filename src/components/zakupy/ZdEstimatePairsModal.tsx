@@ -213,7 +213,7 @@ export function ZdEstimatePairsModal({
       open={open}
       onClose={onClose}
       title="Pary montaż / demontaż"
-      titleHint="Paczka kupowana na ZD ↔ sztuki sprzedawane. Szacunek scala popyt i cover w sztukach, zamawia tylko SKU paczki."
+      titleHint="Paczka kupowana na ZD ↔ sztuki sprzedawane. Szacunek scala popyt i pokrycie w sztukach, zamawia tylko SKU paczki."
       size="xl"
       bodyClassName="space-y-4 px-5 py-4 sm:px-6 sm:py-5"
       loadingMessage={pending ? "Zapisuję…" : null}
@@ -263,7 +263,7 @@ export function ZdEstimatePairsModal({
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
               {fromSeed
                 ? "Wskaż, który towar to cała paczka (kupowana na ZD), a który pozycja na sztuki — oraz ile sztuk jest w paczce."
-                : "Sync wymaga GET /products/komplety na :5082. Do czasu wdrożenia API dodawaj pary ręcznie albo zaznacz 2 towary na liście i wybierz „Para”."}
+                : "Sync wymaga GET /products/komplety na hoście ORDERS. Do czasu wdrożenia API dodawaj pary ręcznie albo zaznacz 2 towary na liście i wybierz „Para”."}
             </p>
           </div>
         </div>
@@ -339,7 +339,7 @@ export function ZdEstimatePairsModal({
             <span className="font-medium text-slate-700">
               {seedPack.symbol || `tw ${seedPack.twId}`}
             </span>
-            ; popyt i cover liczone ze{" "}
+            ; popyt i pokrycie liczone ze{" "}
             <span className="font-medium text-slate-700">
               {seedPiece.symbol || `tw ${seedPiece.twId}`}
             </span>

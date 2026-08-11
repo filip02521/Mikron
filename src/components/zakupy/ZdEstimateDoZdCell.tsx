@@ -9,15 +9,15 @@ import { cn } from "@/lib/cn";
 
 /**
  * Komórka „Do ZD” — duża liczba decyzji + krótki kontekst.
- * Szczegóły opakowania (szt/1 j.dok.) są w kolumnie Opak. — tu tylko wynik.
+ * Rezerwa próśb: badge pod nazwą (bez duplikatu „+prośba” tutaj).
  */
 export function ZdEstimateDoZdCell({
   qty,
   excluded,
-  individualExtraPieces = 0,
 }: {
   qty: ZdPackOrderQty;
   excluded?: boolean;
+  /** @deprecated rezerwa pokazana w badge pod nazwą — prop ignorowany. */
   individualExtraPieces?: number;
 }) {
   if (excluded) {
@@ -28,8 +28,6 @@ export function ZdEstimateDoZdCell({
     );
   }
 
-  const extra =
-    individualExtraPieces > 0 ? Math.ceil(individualExtraPieces) : 0;
   const hint = formatZdPackHint(qty);
   const showPieces =
     qty.zdUnits > 0 &&
@@ -58,14 +56,9 @@ export function ZdEstimateDoZdCell({
           szt
         </span>
       ) : null}
-      {extra > 0 && qty.zdUnits > 0 ? (
-        <span className="text-[10px] font-semibold leading-tight tabular-nums text-emerald-700">
-          +{formatQty(extra)} prośba
-        </span>
-      ) : null}
       {qty.roundedUp && qty.zdUnits > 0 ? (
-        <span className="sr-only">
-          Zaokrąglono w górę — potrzeba {qty.piecesNeeded} szt
+        <span className="text-[10px] font-medium leading-tight text-amber-700/90">
+          ↑ zaokr. · {qty.piecesNeeded} szt
         </span>
       ) : null}
     </span>

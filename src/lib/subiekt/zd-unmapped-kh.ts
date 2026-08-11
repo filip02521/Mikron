@@ -1,6 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type {
-  ZdUnmappedKhReason,
   ZdUnmappedKhReport,
   ZdUnmappedKhRow,
 } from "@/lib/subiekt/zd-unmapped-kh-shared";

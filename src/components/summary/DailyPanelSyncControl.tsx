@@ -34,13 +34,13 @@ export function DailyPanelSyncControl({ embedded = false }: { embedded?: boolean
         />
         {ctx.hasUpdates ? (
           <span aria-live="polite" className="text-slate-700">
-            Są nowe zmiany w kolejce —{" "}
+            Wykryto zmiany — odświeżamy panel…{" "}
             <button
               type="button"
               onClick={ctx.refreshNow}
               className="min-h-9 rounded-sm font-semibold text-indigo-700 underline decoration-indigo-300/80 underline-offset-2 hover:text-indigo-900 sm:min-h-0"
             >
-              odśwież widok
+              odśwież teraz
             </button>
           </span>
         ) : (

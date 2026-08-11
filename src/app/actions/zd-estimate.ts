@@ -103,8 +103,10 @@ import {
   getSubiektConfigSummary,
   resolveSubiektOrdersConfig,
   shouldPersistZdEstimateOrderSnapshots,
+  SUBIEKT_ORDERS_LIVE_PORT,
   SUBIEKT_ORDERS_TEST_PORT,
-  zdEstimateSnapshotHostKind,
+  requireZdEstimateSnapshotHostKind,
+  type ZdEstimateSnapshotHostKind,
 } from "@/lib/subiekt/config";
 import {
   SubiektRequestError,
@@ -502,9 +504,16 @@ export async function actionZdEstimateBootstrap(): Promise<{
   ordersBaseUrl: string | null;
   ordersBlockedReason: string | null;
   ordersMessage: string | null;
+  /** Port hosta ORDERS (aktualnie używany: live :5080 lub test :5082). */
+  ordersPort: number | null;
+  ordersHostKind: ZdEstimateSnapshotHostKind | null;
+  /** true = aktualna baza live (MIKRAN na :5080). */
+  ordersIsLive: boolean;
+  ordersHostLabel: string | null;
+  /** @deprecated alias ordersPort — zostawione dla starszego UI. */
   testPort: number;
   todayKey: string;
-  /** Koniec okna FS: ostatnia FS na :5082 albo dziś. */
+  /** Koniec okna FS: ostatnia FS na hoście ORDERS albo dziś. */
   salesEndKey: string;
   salesEndFromFs: boolean;
   defaultWindow: { dataOd: string; dataDo: string };
@@ -614,7 +623,11 @@ export async function actionZdEstimateBootstrap(): Promise<{
     ordersBaseUrl: summary.ordersBaseUrl,
     ordersBlockedReason: summary.ordersBlockedReason,
     ordersMessage: summary.ordersMessage,
-    testPort: SUBIEKT_ORDERS_TEST_PORT,
+    ordersPort: summary.ordersPort,
+    ordersHostKind: summary.ordersHostKind,
+    ordersIsLive: summary.ordersIsLive,
+    ordersHostLabel: summary.ordersHostLabel,
+    testPort: summary.ordersPort ?? SUBIEKT_ORDERS_LIVE_PORT,
     todayKey,
     salesEndKey,
     salesEndFromFs,
@@ -645,9 +658,9 @@ export async function actionSearchZdEstimateGroups(query: string): Promise<
   const orders = resolveSubiektOrdersConfig();
   if (!orders.ok) {
     const feedback = getSubiektFeedback("not_configured", {
-      title: "Tylko testowy Subiekt",
+      title: "Brak hosta ORDERS",
       message: orders.message,
-      hint: `Ustaw SUBIEKT_API_ORDERS_BASE_URL=http://192.168.0.140:${SUBIEKT_ORDERS_TEST_PORT}/api/v1`,
+      hint: `Ustaw SUBIEKT_API_ORDERS_BASE_URL na :${SUBIEKT_ORDERS_LIVE_PORT} (live) lub :${SUBIEKT_ORDERS_TEST_PORT} (test).`,
     });
     return { ok: false, message: orders.message, feedback };
   }
@@ -688,9 +701,9 @@ export async function actionSearchZdEstimateCechy(query: string): Promise<
   const orders = resolveSubiektOrdersConfig();
   if (!orders.ok) {
     const feedback = getSubiektFeedback("not_configured", {
-      title: "Tylko testowy Subiekt",
+      title: "Brak hosta ORDERS",
       message: orders.message,
-      hint: `Ustaw SUBIEKT_API_ORDERS_BASE_URL=http://192.168.0.140:${SUBIEKT_ORDERS_TEST_PORT}/api/v1`,
+      hint: `Ustaw SUBIEKT_API_ORDERS_BASE_URL na :${SUBIEKT_ORDERS_LIVE_PORT} (live) lub :${SUBIEKT_ORDERS_TEST_PORT} (test).`,
     });
     return { ok: false, message: orders.message, feedback };
   }
@@ -729,9 +742,9 @@ export async function actionRunZdEstimateManual(
   const orders = resolveSubiektOrdersConfig();
   if (!orders.ok) {
     const feedback = getSubiektFeedback("not_configured", {
-      title: "Tylko testowy Subiekt",
+      title: "Brak hosta ORDERS",
       message: orders.message,
-      hint: `Szacunek NIGDY nie używa live :5080. Wymagane: SUBIEKT_API_ORDERS_BASE_URL na :${SUBIEKT_ORDERS_TEST_PORT}.`,
+      hint: `Ustaw SUBIEKT_API_ORDERS_BASE_URL na :${SUBIEKT_ORDERS_LIVE_PORT} (live / aktualna baza) lub :${SUBIEKT_ORDERS_TEST_PORT} (test).`,
     });
     return { ok: false, message: orders.message, feedback };
   }
@@ -805,7 +818,7 @@ export async function actionRunZdEstimateManual(
     const khResolve = await resolveSupplierKhIdsForHistory(input.supplierId);
     const supplierKhIds = khResolve.ok ? khResolve.khIds : [];
     const historyScope = historyScopeFromRun(scope);
-    const hostKind = zdEstimateSnapshotHostKind(orders.config.baseUrl);
+    const hostKind = requireZdEstimateSnapshotHostKind(orders.config.baseUrl);
     const historyFilters =
       supplierKhIds.length > 0 && historyScope
         ? {
@@ -1164,7 +1177,7 @@ export async function actionRunZdEstimateManual(
       const feedback = getSubiektFeedback("empty_query", {
         title: e.title,
         message: e.message,
-        hint: "Odśwież API ORDERS (:5082) albo wybierz inny zakres.",
+        hint: "Odśwież API ORDERS (live :5080 / test :5082) albo wybierz inny zakres.",
       });
       return { ok: false, message: feedback.message, feedback };
     }
@@ -1610,7 +1623,7 @@ export type ZdEstimateSearchZdResult =
   | { ok: true; documents: ZdEstimateLinkCandidate[] }
   | { ok: false; message: string };
 
-/** Ostatnie ZD z ORDERS :5082 — do dialogu „Powiąż ZD”. */
+/** Ostatnie ZD z hosta ORDERS — do dialogu „Powiąż ZD”. */
 export async function actionSearchZdForEstimateLink(input?: {
   search?: string | null;
   days?: number;
@@ -1673,7 +1686,7 @@ export type ZdEstimateLinkSnapshotResult =
 
 /**
  * Pobiera ZD i zapisuje snapshot linii (idempotentnie po dok_id).
- * Persist na ORDERS :5082 (host_kind=orders_test) oraz przyszłym live.
+ * Persist na hoście ORDERS z host_kind=live (:5080) lub orders_test (:5082).
  */
 export async function actionLinkZdEstimateSnapshot(input: {
   dokId?: number | null;
@@ -1836,7 +1849,7 @@ export async function actionLinkZdEstimateSnapshot(input: {
     }
 
     const eligibleForHistory = !isFulfilledZdDocumentStatus(doc);
-    const hostKind = zdEstimateSnapshotHostKind(orders.config.baseUrl);
+    const hostKind = requireZdEstimateSnapshotHostKind(orders.config.baseUrl);
 
     const { snapshot, lineCount } = await upsertZdEstimateOrderSnapshot({
       dokId,
@@ -1982,8 +1995,8 @@ export type ZdEstimateCreateZdResult =
     };
 
 /**
- * Tworzy ZD na ORDERS :5082 z pozycji szacunku.
- * Snapshot historii z host_kind=orders_test (persist włączony na :5082).
+ * Tworzy ZD na hoście ORDERS (obecnie często live :5080 — aktualna baza).
+ * Snapshot historii z host_kind zgodnym z URL (live | orders_test).
  * kontrahentId zawsze z DB po supplierId — nie z klienta.
  * Po sukcesie Subiekta: opcjonalnie odznacza prośby jako Główne.
  */
@@ -1995,6 +2008,11 @@ export async function actionCreateZdFromEstimate(input: {
   cechaId?: number | null;
   lines: Array<{ twId: number; ilosc: number }>;
   lineMeta?: ZdEstimateLinkLineMeta[] | null;
+  /**
+   * Wymagane przy ORDERS live (:5080) — serwer odrzuci create bez tego.
+   * Checkbox w UI musi być zaznaczony.
+   */
+  confirmLiveCreate?: boolean;
   /**
    * OrderIds próśb katalogowych (extras na tw z payloadu).
    * Serwer weryfikuje przynależność do dostawcy + Nowe.
@@ -2017,7 +2035,29 @@ export async function actionCreateZdFromEstimate(input: {
   const persistSnapshots = shouldPersistZdEstimateOrderSnapshots(
     orders.config.baseUrl
   );
-  const hostKind = zdEstimateSnapshotHostKind(orders.config.baseUrl);
+  const hostKind = requireZdEstimateSnapshotHostKind(orders.config.baseUrl);
+  const ordersIsLive = hostKind === "live";
+
+  if (ordersIsLive && input.confirmLiveCreate !== true) {
+    return {
+      ok: false,
+      code: "validation",
+      message:
+        "Create na LIVE (:5080, aktualna baza) wymaga jawnego potwierdzenia (confirmLiveCreate).",
+    };
+  }
+
+  console.info("[zd-estimate:create]", {
+    hostKind,
+    ordersBaseUrl: orders.config.baseUrl,
+    ordersIsLive,
+    userId: user.id,
+    supplierId: input.supplierId,
+    scopeMode: input.scopeMode ?? null,
+    grtId: input.grtId ?? null,
+    cechaId: input.cechaId ?? null,
+    lineCount: Array.isArray(input.lines) ? input.lines.length : 0,
+  });
 
   const khRes = await resolveSupplierKhForCreateFromDb(input.supplierId);
   if (!khRes.ok) {
@@ -2285,8 +2325,27 @@ export async function actionCreateZdFromEstimate(input: {
         message: "Subiekt nie zwrócił dok_Id po utworzeniu ZD.",
       };
     }
+    console.info("[zd-estimate:create:ok]", {
+      hostKind,
+      ordersBaseUrl: orders.config.baseUrl,
+      dokId,
+      dokNrPelny: created.dok_NrPelny ?? null,
+      userId: user.id,
+      supplierId: input.supplierId,
+      khId: khRes.khId,
+      lineCount: createLines.length,
+    });
   } catch (e) {
     const mapped = mapZdCreateSubiektError(e);
+    console.warn("[zd-estimate:create:fail]", {
+      hostKind,
+      ordersBaseUrl: orders.config.baseUrl,
+      userId: user.id,
+      supplierId: input.supplierId,
+      khId: khRes.khId,
+      code: mapped.code,
+      message: mapped.message,
+    });
     return {
       ok: false,
       code: mapped.code,
@@ -2790,7 +2849,7 @@ export async function actionSyncZdProductPairsFromSubiekt(): Promise<
         message:
           e instanceof Error
             ? e.message
-            : "Sync kompletów niedostępny — dodaj pary ręcznie lub wdróż GET /products/komplety na :5082.",
+            : "Sync kompletów niedostępny — dodaj pary ręcznie lub wdróż GET /products/komplety na hoście ORDERS.",
       };
     } catch {
       return {
@@ -2798,7 +2857,7 @@ export async function actionSyncZdProductPairsFromSubiekt(): Promise<
         message:
           e instanceof Error
             ? e.message
-            : "Sync kompletów niedostępny — dodaj pary ręcznie lub wdróż GET /products/komplety na :5082.",
+            : "Sync kompletów niedostępny — dodaj pary ręcznie lub wdróż GET /products/komplety na hoście ORDERS.",
       };
     }
   }

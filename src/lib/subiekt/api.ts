@@ -141,7 +141,7 @@ function ordersConfigOrThrow(): SubiektConfig {
 }
 
 /**
- * Data ostatniej FS na hoście testowym (ORDERS) — yyyy-mm-dd.
+ * Data ostatniej FS na hoście ORDERS (live/test) — yyyy-mm-dd.
  * Używane jako dataDo okna sprzedaży (kopia bywa starsza niż „dziś”).
  *
  * API nie gwarantuje sortu — bierzemy MAX(dok_DataWyst) z:
@@ -186,7 +186,7 @@ export async function fetchSubiektOrdersLatestFsDateKey(): Promise<string | null
   }
 }
 
-/** Lista grup towarowych — GET /groups (host orders / test :5082). */
+/** Lista grup towarowych — GET /groups (host ORDERS). */
 export async function searchSubiektProductGroups(
   params: SubiektListParams = {}
 ): Promise<SubiektListEnvelope<SubiektProductGroup>> {
@@ -197,7 +197,7 @@ export async function searchSubiektProductGroups(
   );
 }
 
-/** Słownik cech towarów — GET /cechy/towarow (host orders / test :5082). */
+/** Słownik cech towarów — GET /cechy/towarow (host ORDERS). */
 export async function searchSubiektProductCechy(
   params: SubiektListParams = {}
 ): Promise<SubiektListEnvelope<SubiektProductCecha>> {
@@ -231,7 +231,7 @@ export async function fetchSubiektZdEstimatePage(
   return subiektJson(`${SUBIEKT_PATHS.ordersZdEstimate}${qs}`, {}, config);
 }
 
-/** Lista ZD na hoście ORDERS (:5082) — do powiązania ze szacunkiem. */
+/** Lista ZD na hoście ORDERS — do powiązania ze szacunkiem. */
 export async function searchSubiektOrdersZd(
   params: Omit<SubiektListParams, "typ"> = {}
 ): Promise<SubiektListEnvelope<SubiektDocument>> {
@@ -242,7 +242,7 @@ export async function searchSubiektOrdersZd(
   );
 }
 
-/** Pełne ZD (z liniami) na hoście ORDERS (:5082). */
+/** Pełne ZD (z liniami) na hoście ORDERS. */
 export async function getSubiektOrdersZd(
   id: number | string
 ): Promise<SubiektDocument> {
@@ -254,8 +254,8 @@ export async function getSubiektOrdersZd(
 }
 
 /**
- * Tworzy ZD przez Sferę na ORDERS :5082 (`POST /documents/zd/create`).
- * Timeout 180s — nie używać na live :5080.
+ * Tworzy ZD przez Sferę na hoście ORDERS (`POST /documents/zd/create`).
+ * Timeout 180s — na live zapisuje dokument w aktualnej bazie.
  */
 export async function createSubiektOrdersZd(
   body: SubiektCreateZdInput
@@ -295,7 +295,7 @@ export async function createSubiektOrdersZd(
 
 /**
  * Pobiera wszystkie strony estimate dla zakresu (grupa / cecha / towar)
- * z hosta testowego (:5082).
+ * z hosta ORDERS (live :5080 lub test :5082).
  * Domyślnie tylkoBraki=false — pełna lista towarów zakresu z Subiekta (jak informator).
  *
  * `validateFirstPage` — zaraz po 1. stronie, przed paginacją (np. echo filtra:
@@ -412,7 +412,7 @@ export type SubiektProductKompletRow = {
   skladnikSymbol?: string | null;
 };
 
-/** GET /products/komplety — wymaga wdrożenia na ORDERS :5082. */
+/** GET /products/komplety — wymaga wdrożenia na hoście ORDERS. */
 export async function searchSubiektProductKomplety(
   params: {
     kompletId?: number;

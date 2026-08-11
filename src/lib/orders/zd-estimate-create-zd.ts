@@ -11,6 +11,7 @@ import {
   type PackagingLookup,
 } from "@/lib/orders/zd-estimate-packaging";
 import { zdDocumentUnitsToPieces } from "@/lib/orders/zd-estimate-units";
+import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import type { SubiektCreateZdInput } from "@/lib/subiekt/types";
 
 export const ZD_CREATE_MAX_LINES = 500;
@@ -199,7 +200,7 @@ export function validateZdCreateClientLines(
   lines: readonly ZdCreateClientLineInput[] | null | undefined
 ): ZdCreateValidateLinesResult {
   if (!lines?.length) {
-    return { ok: false, message: "Brak pozycji do zamówienia." };
+    return { ok: false, message: "Brak pozycji do ZD." };
   }
   if (lines.length > ZD_CREATE_MAX_LINES) {
     return {
@@ -313,12 +314,15 @@ export function canCreateZdFromEstimateState(
   state: CanCreateZdState
 ): { ok: true } | { ok: false; reason: string } {
   if (!state.configured) {
-    return { ok: false, reason: "Brak połączenia z testowym Subiektem (:5082)." };
+    return {
+      ok: false,
+      reason: "Brak połączenia z hostem ORDERS (live :5080 / test :5082).",
+    };
   }
   if (!state.settingsTrusted) {
     return {
       ok: false,
-      reason: "Najpierw wczytaj wykluczenia, opakowania, pary i zestawy.",
+      reason: ZD_ESTIMATE_UI.createGateNeedsSettings,
     };
   }
   if (state.estimating) {
@@ -334,7 +338,7 @@ export function canCreateZdFromEstimateState(
     };
   }
   if (!(state.orderableCount > 0)) {
-    return { ok: false, reason: "Brak pozycji do zamówienia." };
+    return { ok: false, reason: "Brak pozycji do ZD." };
   }
   if (!state.supplierId?.trim()) {
     return {

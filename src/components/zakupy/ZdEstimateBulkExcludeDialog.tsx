@@ -43,7 +43,7 @@ export function ZdEstimateBulkExcludeDialog({
       open
       onClose={onCancel}
       title={`Wyklucz ${actionCount}${overLimit ? ` z ${lines.length}` : ""} ${actionCount === 1 ? "produkt" : "produktów"}`}
-      titleHint="Zaznaczone produkty znikną z „Do zamówienia” przy kolejnych szacunkach. Lista jest wspólna dla działu zakupów."
+      titleHint="Zaznaczone produkty znikną z „Do ZD” przy kolejnych szacunkach. Lista jest wspólna dla działu zakupów."
       titleId="zd-estimate-bulk-exclude-title"
       size="md"
       tier="raised"
