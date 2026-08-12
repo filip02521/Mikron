@@ -101,6 +101,7 @@ import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirm
 import { buildProsbaSubmitStockConfirm, buildProsbaSubmitZkQuantityConfirm, formatProsbaZkQuantityFormBanner, applyProsbaLineStockMap, collectProsbaLineTwIdsMissingStock } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
+import { prosbaLinesIncludeTeethProduct } from "@/lib/orders/teeth-stock-exempt";
 import {
   classifyProsbaLinesByLane,
   procurementSubmitSuccessMessage,
@@ -1354,8 +1355,10 @@ export function OrderFormClient({
                 ? `Zgłaszasz w imieniu: ${lockedSalesPerson.name}. Po wysłaniu prośba pojawi się w jego liście „Moje zamówienia”.`
                 : zkProsbaLinkContext && !tourDemo
                   ? [
-                      ZK_PROSBA_LINK_BANNER_COPY.leadCreating,
-                      zkProsbaLinkContext.zkNumber.trim(),
+                      zkProsbaLinkContext.mode === "supplement"
+                        ? ZK_PROSBA_LINK_BANNER_COPY.titleSupplement
+                        : ZK_PROSBA_LINK_BANNER_COPY.titleFull,
+                      `· ZK ${zkProsbaLinkContext.zkNumber.trim()}`,
                       zkProsbaLinkContext.clientLabel?.trim()
                         ? `· ${zkProsbaLinkContext.clientLabel.trim()}`
                         : null,
@@ -1487,6 +1490,7 @@ export function OrderFormClient({
             <ProsbaFormProductsSection
               requestKind={requestKind}
               informacjaPath={informacjaPath}
+              showShortageLookup={prosbaLinesIncludeTeethProduct(group, teethExemptTwIds)}
               hint={
                 zkCatalogLocked
                   ? ZK_PROSBA_LINK_BANNER_COPY.productsSectionHint
@@ -1805,6 +1809,7 @@ export function OrderFormClient({
             <ProsbaFormProductsSection
               requestKind={requestKind}
               informacjaPath={informacjaPath}
+              showShortageLookup={prosbaLinesIncludeTeethProduct(group, teethExemptTwIds)}
               hint={
                 zkProsbaLinkContext?.allowedTwIds?.size
                   ? ZK_PROSBA_LINK_BANNER_COPY.productsSectionHint

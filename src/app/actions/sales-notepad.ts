@@ -68,6 +68,7 @@ import {
   openZkLinkedOrdersWithCaseNoteState,
   resolveZkCaseNoteSyncOrderIds,
 } from "@/lib/sales/zk-watch-case-note-prosba";
+import { resolveZkProsbaPrefillSalesPersonAccess } from "@/lib/sales/zk-prosba-prefill-access";
 import type { SalesNote, SalesNoteColor, SalesZkWatch } from "@/types/database";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -101,12 +102,20 @@ async function resolveSalesPersonIdForProsbaPrefill(
     return salesPersonIdForAction();
   }
   const own = await resolveSalesPersonForUser(user);
-  if (user.role === "sales" && own?.id !== salesPersonId) {
-    throw new Error("Brak uprawnień do prośby tego handlowca.");
-  }
-  const allowed = await canAccessSalesPerson(user, salesPersonId);
-  if (!allowed) {
-    throw new Error("Brak uprawnień do prośby tego handlowca.");
+  // canAccessSalesPerson = scope kierownika/admina — NIE obejmuje zwykłego sales
+  // na własnej karcie. Wcześniej sales+lockedId zawsze wpadało w false → fałszywy 403.
+  const canAccessRequested =
+    own?.id === salesPersonId
+      ? true
+      : await canAccessSalesPerson(user, salesPersonId);
+  const access = resolveZkProsbaPrefillSalesPersonAccess({
+    role: user.role,
+    ownSalesPersonId: own?.id ?? null,
+    requestedSalesPersonId: salesPersonId,
+    canAccessRequested,
+  });
+  if (!access.ok) {
+    throw new Error(access.message);
   }
   return salesPersonId;
 }
@@ -1558,8 +1567,11 @@ export async function actionGetZkProsbaPrefillByWatchId(
   if (!trimmed) return null;
 
   const user = await getSessionUser();
-  if (!user || !isSalesAccount(user.role)) {
+  if (!user) {
     throw new Error("Wymagane logowanie.");
+  }
+  if (!isSalesAccount(user.role)) {
+    throw new Error("Brak uprawnień handlowca");
   }
 
   const salesPersonId = await resolveSalesPersonIdForProsbaPrefill(user, salesPersonIdOverride);
@@ -1607,8 +1619,11 @@ export async function actionGetZkProsbaPrefill(
   if (!trimmed) return null;
 
   const user = await getSessionUser();
-  if (!user || !isSalesAccount(user.role)) {
+  if (!user) {
     throw new Error("Wymagane logowanie.");
+  }
+  if (!isSalesAccount(user.role)) {
+    throw new Error("Brak uprawnień handlowca");
   }
 
   const salesPersonId = await resolveSalesPersonIdForProsbaPrefill(user, salesPersonIdOverride);

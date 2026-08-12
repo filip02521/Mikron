@@ -2,6 +2,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchZdProductPairs } from "@/lib/data/zd-product-pairs";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 import {
+  normalizeZdBomComponentQty,
+  parseZdBomComponentQtyOrNull,
+} from "@/lib/orders/zd-estimate-bom-qty";
+import {
   normalizeDemandAllocation,
   normalizePurchaseTarget,
   resolveBomPolicyFromInput,
@@ -73,7 +77,8 @@ function mapComponent(row: CompDbRow): ZdProductBomComponentRow {
   return {
     id: row.id,
     componentTwId: Math.trunc(Number(row.component_tw_id)),
-    qtyPerParent: Math.trunc(Number(row.qty_per_parent)),
+    // Zepsute/historyczne 0 lub NaN → 1, żeby explode i edycja miały sensowną sztukę.
+    qtyPerParent: normalizeZdBomComponentQty(row.qty_per_parent),
     componentSymbol: row.component_symbol?.trim() || null,
     componentNazwa: (row.component_nazwa ?? "").trim() || "—",
   };
@@ -162,9 +167,7 @@ export type UpsertZdProductBomInput = {
 };
 
 function normalizeQty(raw: number): number | null {
-  const n = Math.trunc(Number(raw));
-  if (!Number.isFinite(n) || n < 1 || n > 100_000) return null;
-  return n;
+  return parseZdBomComponentQtyOrNull(raw);
 }
 
 export async function upsertZdProductBom(

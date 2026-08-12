@@ -10,7 +10,11 @@ import {
 import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 import { isStockExemptTwId } from "@/lib/orders/teeth-stock-exempt";
 import { TeethGroupChips } from "@/components/teeth/TeethGroupChips";
-import { allTeethDetailsComplete, resolveTeethCatalogFromDraft } from "@/lib/teeth/teeth-catalog";
+import {
+  allTeethDetailsComplete,
+  resolveTeethCatalogFromDraft,
+  TEETH_KIND_LABELS,
+} from "@/lib/teeth/teeth-catalog";
 import type { IndividualRequestKind } from "@/types/database";
 import { Button } from "@/components/ui/Button";
 import { IconCircleCheck, IconAlertCircle } from "@/components/icons/StrokeIcons";
@@ -48,13 +52,16 @@ export function ProsbaProductLineCollapsedRow({
         allTeethDetailsComplete(line.teethDetails, teethCatalog, teethQty)
       : null;
   const teethNeedsList = isTeethProduct && teethCatalog && teethComplete === false;
+  const teethKindLabel =
+    isTeethProduct && line.teethKind ? TEETH_KIND_LABELS[line.teethKind] : null;
+  const hasPartialTeethList = teethNeedsList && teethQty > 0;
 
   const statusTitle = hasFieldIssues
     ? "Uzupełnij brakujące pola"
     : teethNeedsList
-      ? "Uzupełnij listę zębów"
+      ? "Szkic listy"
       : isTeethProduct && teethComplete
-        ? "Lista zębów gotowa"
+        ? "Lista gotowa"
         : stockView
           ? stockView.title
           : summary.fromSubiekt
@@ -106,6 +113,11 @@ export function ProsbaProductLineCollapsedRow({
             {index + 1}.
           </span>
           <p className="min-w-0 font-medium text-slate-900">{summary.title}</p>
+          {teethKindLabel ? (
+            <span className="shrink-0 text-xs font-medium text-violet-800/90">
+              {teethKindLabel}
+            </span>
+          ) : null}
           {summary.quantityLabel ? (
             <span className="shrink-0 text-sm font-semibold text-slate-700">
               {summary.quantityLabel}
@@ -113,7 +125,11 @@ export function ProsbaProductLineCollapsedRow({
           ) : null}
           {teethNeedsList ? (
             <span className="shrink-0 rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200/80">
-              Lista do uzupełnienia
+              Szkic listy
+            </span>
+          ) : isTeethProduct && teethComplete ? (
+            <span className="shrink-0 rounded-full bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-800 ring-1 ring-violet-200/80">
+              Lista gotowa
             </span>
           ) : stockView ? (
             <span
@@ -139,6 +155,15 @@ export function ProsbaProductLineCollapsedRow({
             Notatka: {line.requestNote.trim()}
           </p>
         ) : null}
+        {teethNeedsList && !hasPartialTeethList ? (
+          <p className="mt-1 text-xs text-amber-800/90">Brak listy — uzupełnij pozycje z kartki.</p>
+        ) : null}
+        {hasPartialTeethList ? (
+          <>
+            <p className="mt-1 text-xs text-amber-800/90">Dokończ parametry na liście.</p>
+            <TeethGroupChips details={line.teethDetails} compact className="mt-1" />
+          </>
+        ) : null}
         {teethComplete ? (
           <TeethGroupChips details={line.teethDetails} compact className="mt-1.5" />
         ) : null}
@@ -146,7 +171,7 @@ export function ProsbaProductLineCollapsedRow({
 
       <div className="flex shrink-0 items-center gap-1">
         <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
-          Edytuj
+          {teethNeedsList ? "Uzupełnij listę" : "Edytuj"}
         </Button>
         {canRemove ? (
           <Button

@@ -64,6 +64,7 @@ import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirm
 import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
+import { prosbaLinesIncludeTeethProduct } from "@/lib/orders/teeth-stock-exempt";
 import { TeethProcurementRequestBanner } from "@/components/teeth/TeethProcurementRequestBanner";
 import { MixedProcurementRequestBanner } from "@/components/teeth/MixedProcurementRequestBanner";
 import {
@@ -656,6 +657,7 @@ export function EditIndividualRequestModal({
         <ProsbaFormProductsSection
           requestKind={requestKind}
           informacjaPath={informacjaPath}
+          showShortageLookup={prosbaLinesIncludeTeethProduct(lines, teethExemptTwIds)}
           hint={
             requestKind === "informacja"
               ? informacjaProductsFormHint(informacjaPath)

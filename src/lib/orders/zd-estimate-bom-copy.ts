@@ -32,11 +32,14 @@ export const ZD_BOM_UI = {
 
   introTitle: "Zestaw i składniki",
   introBody:
-    "Wybierz preset zakupu, zapisz — lista przelicza się od razu (potem pary montaż/demontaż). Przy „Składamy” stan zestawu domyślnie wlicza się w pokrycie składników.",
+    "Wybierz preset zakupu i podaj ile sztuk każdego składnika wchodzi w 1 zestaw (np. proszek ×1 + płyn ×2). Po zapisie lista przelicza się od razu.",
 
-  seedHeading: "Zaznaczone towary — wskaż zestaw",
+  seedHeading: "Zaznaczone towary — wskaż zestaw i ilości",
+  seedQtyHint:
+    "Na karcie składnika wpisz ile sztuk wchodzi w 1 zestaw (np. proszek = 1, płyn = 2). To nie są kilogramy.",
+  seedParentQtyHint: "Zestaw — bez osobnej ilości",
   roleZestaw: "Zestaw",
-  roleSkladnik: "Składnik ×1",
+  roleSkladnik: "Składnik",
 
   presetLegend: "Jak kupować zestaw?",
   presetAssemble: "Składamy (tylko składniki)",
@@ -68,14 +71,16 @@ export const ZD_BOM_UI = {
 
   fieldZestawId: "Id. zestawu (Subiekt)",
   fieldSkladnikId: "Id. składnika",
-  fieldQtyPerZestaw: "Ilość na 1 zestaw",
+  fieldQtyPerZestaw: "Ilość sztuk na 1 zestaw",
+  fieldQtyPerZestawHint: "np. 2 = dwa opakowania płynu w jednym zestawie",
+  fieldQtyPerZestawShort: "Szt. / zestaw",
   fieldSymbol: "Symbol",
   fieldLabel: "Etykieta",
   searchPlaceholder: "symbol, nazwa, id. towaru…",
 
   emptyTitle: "Brak składów",
   emptyDescription:
-    "Dodaj komplet / promocję (zestaw i składniki) albo zaznacz towary na liście szacunku i wybierz „Skład”.",
+    "Dodaj komplet / promocję (zestaw i składniki z ilością sztuk) albo zaznacz towary na liście i wybierz „Skład”.",
 
   needComponent: "Dodaj co najmniej jeden składnik.",
   listCoverOn: "stan zestawu w pokryciu",

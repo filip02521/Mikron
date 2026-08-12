@@ -55,6 +55,7 @@ import {
   procurementSubmitSuccessMessage,
 } from "@/lib/teeth/teeth-procurement-flow-copy";
 import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
+import { prosbaLinesIncludeTeethProduct } from "@/lib/orders/teeth-stock-exempt";
 import type { AddIndividualOrdersEntry } from "@/lib/orders/individual-request-edit";
 
 export function QuickOrderModal({
@@ -469,6 +470,7 @@ export function QuickOrderModal({
         <ProsbaFormProductsSection
           requestKind={requestKind}
           informacjaPath={informacjaPath}
+          showShortageLookup={prosbaLinesIncludeTeethProduct(lines, teethExemptTwIds)}
         >
           <div className="space-y-3">
             <RequestProductLinesEditor

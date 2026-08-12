@@ -435,6 +435,170 @@ describe("Castorit BOM + pary", () => {
     expect(plyn.bom?.parentTwIds).toEqual(expect.arrayContaining([10, 11]));
   });
 
+  it("płyn w 3 składach — sprzedaż×qty i cover×qty sumują się; doZd z rematerialize", () => {
+    // Solo płyn: 5 szt. sprzedaży, stan 1.
+    // Zestaw A: sprzedaż 4, stan 2, cover ON, płyn ×1 → sales+4, cover+(2)*1
+    // Zestaw B: sprzedaż 3, stan 1, cover ON, płyn ×2 → sales+6, cover+(1)*2
+    // Zestaw C: sprzedaż 2, cover OFF, płyn ×3 → sales+6, cover+0
+    // Σ sales wkład = 4+6+6 = 16 → sprzedazOkres = 5+16 = 21
+    // Σ cover = 2+2 = 4 → dostepne = 1+4 = 5
+    // dniZapasu=dniOkresu, track off → cel=21, doZd = max(0, 21-5) = 16
+    const lines = [
+      line({
+        tw_Id: PLYN,
+        tw_Symbol: "PLYN",
+        sprzedazOkres: 5,
+        dostepne: 1,
+      }),
+      line({
+        tw_Id: 10,
+        tw_Symbol: "ZEST-A",
+        sprzedazOkres: 4,
+        dostepne: 2,
+      }),
+      line({
+        tw_Id: 11,
+        tw_Symbol: "ZEST-B",
+        sprzedazOkres: 3,
+        dostepne: 1,
+      }),
+      line({
+        tw_Id: 12,
+        tw_Symbol: "ZEST-C",
+        sprzedazOkres: 2,
+        dostepne: 9,
+      }),
+    ];
+    const boms = [
+      {
+        parentTwId: 10,
+        stockAsCover: true,
+        demandAllocation: "explode" as const,
+        purchaseTarget: "components" as const,
+        components: [{ componentTwId: PLYN, qtyPerParent: 1 }],
+      },
+      {
+        parentTwId: 11,
+        stockAsCover: true,
+        demandAllocation: "explode" as const,
+        purchaseTarget: "components" as const,
+        components: [{ componentTwId: PLYN, qtyPerParent: 2 }],
+      },
+      {
+        parentTwId: 12,
+        stockAsCover: false,
+        demandAllocation: "explode" as const,
+        purchaseTarget: "components" as const,
+        components: [{ componentTwId: PLYN, qtyPerParent: 3 }],
+      },
+    ];
+    const after = applyZdEstimateBoms(lines, boms, {
+      dniZapasu: 30,
+      dniOkresu: 30,
+      salesTrack: false,
+    });
+    const plyn = after.find((l) => l.tw_Id === PLYN)!;
+    const a = after.find((l) => l.tw_Id === 10)!;
+    const b = after.find((l) => l.tw_Id === 11)!;
+    const c = after.find((l) => l.tw_Id === 12)!;
+
+    expect(a.bom?.role).toBe("assembled_parent");
+    expect(b.bom?.role).toBe("assembled_parent");
+    expect(c.bom?.role).toBe("assembled_parent");
+    expect(a.doZamowieniaReczne).toBe(0);
+    expect(b.doZamowieniaReczne).toBe(0);
+    expect(c.doZamowieniaReczne).toBe(0);
+
+    expect(plyn.bom?.role).toBe("component");
+    expect(plyn.bom?.contributionSales).toBe(16);
+    expect(plyn.bom?.contributionCover).toBe(4);
+    expect(plyn.sprzedazOkres).toBe(21);
+    expect(plyn.dostepne).toBe(5);
+    expect(plyn.doZamowieniaReczne).toBe(16);
+    expect(plyn.bom?.parentTwIds?.slice().sort((x, y) => x - y)).toEqual([
+      10, 11, 12,
+    ]);
+  });
+
+  it("shared składnik — 2× expand z linesBase nie duplikuje wkładów", () => {
+    const lines = [
+      line({ tw_Id: PLYN, tw_Symbol: "PLYN", sprzedazOkres: 1, dostepne: 0 }),
+      line({ tw_Id: 10, tw_Symbol: "P1", sprzedazOkres: 2, dostepne: 0 }),
+      line({ tw_Id: 11, tw_Symbol: "P2", sprzedazOkres: 3, dostepne: 0 }),
+    ];
+    const boms = [
+      {
+        parentTwId: 10,
+        stockAsCover: false,
+        components: [{ componentTwId: PLYN, qtyPerParent: 1 }],
+      },
+      {
+        parentTwId: 11,
+        stockAsCover: false,
+        components: [{ componentTwId: PLYN, qtyPerParent: 2 }],
+      },
+    ];
+    const opts = { dniZapasu: 30, dniOkresu: 30, salesTrack: false };
+    const once = refreshZdEstimateLinesWithPairs({
+      linesBase: lines,
+      pairs: [],
+      boms,
+      options: opts,
+    });
+    const twice = refreshZdEstimateLinesWithPairs({
+      linesBase: lines,
+      pairs: [],
+      boms,
+      options: opts,
+    });
+    const p1 = once.lines.find((l) => l.tw_Id === PLYN)!;
+    const p2 = twice.lines.find((l) => l.tw_Id === PLYN)!;
+    expect(p1.sprzedazOkres).toBe(9);
+    expect(p2.sprzedazOkres).toBe(9);
+    expect(p1.bom?.contributionSales).toBe(8);
+    expect(p2.bom?.contributionSales).toBe(8);
+    expect(p1.doZamowieniaReczne).toBe(p2.doZamowieniaReczne);
+  });
+
+  it("nested BOM (zestaw jako składnik) — wkład schodzi na liście składników, rola zestawu zostaje", () => {
+    // K (sprzedaż 10) = zestaw A×1; P (sprzedaż 5) = zestaw z K×1.
+    // Oczekiwane: A dostaje 10 + 5 = 15; K i P doZd=0 jako assembled_parent.
+    const lines = [
+      line({ tw_Id: 1, tw_Symbol: "A", sprzedazOkres: 0, dostepne: 0 }),
+      line({ tw_Id: 2, tw_Symbol: "K", sprzedazOkres: 10, dostepne: 0 }),
+      line({ tw_Id: 3, tw_Symbol: "P", sprzedazOkres: 5, dostepne: 0 }),
+    ];
+    const after = applyZdEstimateBoms(
+      lines,
+      [
+        {
+          parentTwId: 2,
+          stockAsCover: false,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: [{ componentTwId: 1, qtyPerParent: 1 }],
+        },
+        {
+          parentTwId: 3,
+          stockAsCover: false,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: [{ componentTwId: 2, qtyPerParent: 1 }],
+        },
+      ],
+      { dniZapasu: 30, dniOkresu: 30, salesTrack: false }
+    );
+    const a = after.find((l) => l.tw_Id === 1)!;
+    const k = after.find((l) => l.tw_Id === 2)!;
+    const p = after.find((l) => l.tw_Id === 3)!;
+    expect(p.bom?.role).toBe("assembled_parent");
+    expect(p.doZamowieniaReczne).toBe(0);
+    expect(k.bom?.role).toBe("assembled_parent");
+    expect(k.doZamowieniaReczne).toBe(0);
+    expect(a.sprzedazOkres).toBe(15);
+    expect(a.bom?.contributionSales).toBe(15);
+  });
+
   it("live refresh z pozycjeBase idempotentny (2× expand nie duplikuje)", () => {
     const { lines, bom } = castoritBase();
     const once = refreshZdEstimateLinesWithPairs({
