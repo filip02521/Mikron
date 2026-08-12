@@ -870,15 +870,24 @@ export async function actionFetchZkWatchTeethPreview(watchId: string) {
   }
 
   const teethOrders = await fetchTeethOrdersForZkWatch(watch, supabase);
+  const {
+    buildZkTeethPreviewRows,
+    buildZkTeethDraftPreviewRows,
+    mergeZkTeethPreviewWithDrafts,
+  } = await import("@/lib/sales/zk-watch-teeth-preview");
+  const draftRows = buildZkTeethDraftPreviewRows(watch);
+
   if (teethOrders.length === 0) {
     return {
       success: true as const,
-      rows: [] as import("@/lib/sales/zk-watch-teeth-preview").ZkTeethPreviewRow[],
+      rows: draftRows,
     };
   }
 
   const teethDetailsMap = await fetchTeethDetailsForOrders(teethOrders.map((o) => o.id));
-  const { buildZkTeethPreviewRows } = await import("@/lib/sales/zk-watch-teeth-preview");
-  const rows = buildZkTeethPreviewRows(teethOrders, teethDetailsMap);
-  return { success: true as const, rows };
+  const orderRows = buildZkTeethPreviewRows(teethOrders, teethDetailsMap);
+  return {
+    success: true as const,
+    rows: mergeZkTeethPreviewWithDrafts(orderRows, draftRows),
+  };
 }

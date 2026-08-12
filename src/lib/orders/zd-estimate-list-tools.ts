@@ -163,7 +163,7 @@ export function resolveZdEstimateListToolStates(input: {
       title: !onRequestTrusted
         ? "Wczytaj listę „tylko na prośbę”"
         : clearOnRequestEligibleCount > 0
-          ? "Usuń „tylko na prośbę” — wraca zwykły szacunek zapasu"
+          ? "Usuń „tylko na prośbę” — wraca zwykłe liczenie zapasu"
           : "Brak pozycji „tylko na prośbę” w zaznaczeniu",
       accent: false,
       labelSuffix:

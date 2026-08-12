@@ -61,6 +61,7 @@ import type { ActiveTeethShortageEntry } from "@/lib/data/teeth-shortages";
 import { ChangelogProvider } from "@/components/changelog/ChangelogProvider";
 import { ChangelogAutoOpen } from "@/components/changelog/ChangelogAutoOpen";
 import { MonthlySummaryNotice } from "@/components/monthly-summary/MonthlySummaryNotice";
+import { AuthSessionGuard } from "@/components/auth/AuthSessionGuard";
 
 function SalesGlobalPinnedStrip({
   attention,
@@ -140,6 +141,7 @@ export function AppShellClient({
   salesOnboardingCompletedAt = null,
   salesOnboardingActive = false,
   teethProductInfo = [],
+  teethCatalogAvailable = true,
   activeTeethShortages = [],
   assignedWorkspaces = [],
   activeDelegations = [],
@@ -161,6 +163,7 @@ export function AppShellClient({
   /** Tour onboarding — wyłącz live badge i polling zamówień. */
   salesOnboardingActive?: boolean;
   teethProductInfo?: { twId: number; manufacturer: string | null; productLine?: string | null; kind?: string | null }[];
+  teethCatalogAvailable?: boolean;
   activeTeethShortages?: ActiveTeethShortageEntry[];
   activeDelegations?: VacationDelegationRow[];
   uniformBackground?: boolean;
@@ -217,7 +220,11 @@ export function AppShellClient({
     salesLive && !salesOnboardingActive && !adminPanelPreview && metricsReady;
 
   return (
-    <TeethExemptProvider teethProductInfo={teethProductInfo}>
+    <TeethExemptProvider
+      teethProductInfo={teethProductInfo}
+      teethCatalogAvailable={teethCatalogAvailable}
+    >
+    <AuthSessionGuard />
     <TeethShortagesProvider shortages={activeTeethShortages}>
     <AdminPanelPreviewProvider
       readOnly={isAdminOperationsPreviewReadOnly(realRole, adminPanelPreview)}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
@@ -34,10 +35,12 @@ export function ZkWatchTeethPreviewSection({
   watch,
   tourPreview = false,
   readOnly = false,
+  onEditTeethDrafts,
 }: {
   watch: SalesZkWatch;
   tourPreview?: boolean;
   readOnly?: boolean;
+  onEditTeethDrafts?: () => void;
 }) {
   const [rows, setRows] = useState<ZkTeethPreviewRow[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -58,7 +61,7 @@ export function ZkWatchTeethPreviewSection({
         }
       } catch (err) {
         if (signal?.aborted) return;
-        setError(err instanceof Error ? err.message : "Nie udało się pobrać danych zębów.");
+        setError(userFacingErrorText(err, "Nie udało się pobrać danych zębów."));
         // Bez wcześniejszych wierszy nie pokazujemy pustej tabeli — zostawiamy rows=null.
       } finally {
         if (!signal?.aborted) setLoading(false);
@@ -119,7 +122,7 @@ export function ZkWatchTeethPreviewSection({
       hint={ZK_MODAL_SECTION_HINTS.teeth}
     >
       <div className="overflow-x-auto rounded-md border border-slate-200/90">
-        <table className="w-full text-sm" aria-label="Zęby powiązane z ZK — status zamówienia">
+        <table className="w-full text-sm" aria-label="Zęby powiązane z ZK — szkice i status zamówienia">
           <thead>
             <tr className="border-b border-slate-200/90 bg-slate-50/80 text-left text-xs font-medium text-slate-600">
               <th className="px-2.5 py-1.5">Kolor</th>
@@ -173,6 +176,12 @@ export function ZkWatchTeethPreviewSection({
       <div className="flex items-center justify-end gap-2 pt-1.5">
         {error ? (
           <p className="mr-auto text-xs text-red-700">{error}</p>
+        ) : null}
+        {onEditTeethDrafts &&
+        rows.some((r) => r.fromDraft || r.statusTone === "draft" || r.statusTone === "draftReady") ? (
+          <Button type="button" variant="secondary" size="sm" onClick={onEditTeethDrafts}>
+            Edytuj listy zębów
+          </Button>
         ) : null}
         {!readOnly ? (
           <Button

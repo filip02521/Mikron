@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { fetchSalesGroups } from "@/lib/data/sales-groups";
 import { fetchSalesPeopleAdmin } from "@/lib/data/sales-people-admin";
 import { SalesAdminClient } from "@/components/admin/SalesAdminClient";
@@ -20,7 +21,7 @@ export default async function HandlowcyPage() {
       fetchSalesGroups(),
     ]);
   } catch (e) {
-    loadError = e instanceof Error ? e.message : "Nie udało się wczytać listy handlowców.";
+    loadError = userFacingErrorText(e, "Nie udało się wczytać listy handlowców.");
     people = [];
     groups = [];
   }

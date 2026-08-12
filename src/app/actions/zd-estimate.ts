@@ -1,5 +1,6 @@
 "use server";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja requireZdEstimateAdmin(); service role z pełnym scope po warstwie aplikacji.
 import { requireZdEstimateAdmin } from "@/lib/auth";
 import {
@@ -89,7 +90,12 @@ import {
 } from "@/lib/orders/zd-estimate-packaging";
 import { mergeZdEstimateExcludedTwIds } from "@/lib/orders/zd-estimate-name-exclude";
 import { fetchTeethProductTwIdSet } from "@/lib/data/teeth-products";
-import { buildZdEstimateSnapshotLinesFromDocChecked } from "@/lib/orders/zd-estimate-snapshot-lines";
+import {
+  buildPairRatioByTwId,
+  buildZdEstimateSnapshotLinesFromDocChecked,
+  enrichSnapshotPackagingErrorMessage,
+  resolveConfirmedEstimateTwIdsForLink,
+} from "@/lib/orders/zd-estimate-snapshot-lines";
 import {
   fetchLatestSnapshotHistoryByTwIds,
   fetchRecentZdEstimateOrderSnapshots,
@@ -262,7 +268,7 @@ function normalizeDateKey(value: string | null | undefined): string | null {
 
 const ZD_ESTIMATE_PENDING_INDIVIDUALS_LIMIT = 500;
 
-/** Wiszące prośby (zamówienie Nowe) dostawcy do szacunku ZD. */
+/** Wiszące prośby (zamówienie Nowe) dostawcy do kreatora ZD. */
 export async function fetchZdEstimatePendingIndividualOrders(
   supplierId: string
 ): Promise<{
@@ -314,9 +320,7 @@ export async function actionFetchZdEstimatePendingIndividuals(
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się wczytać próśb indywidualnych.",
+        userFacingErrorText(e, "Nie udało się wczytać próśb indywidualnych."),
     };
   }
 }
@@ -588,9 +592,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
     exclusions = await fetchZdEstimateExclusions();
   } catch (e) {
     exclusionsError =
-      e instanceof Error
-        ? e.message
-        : "Nie udało się wczytać listy wykluczeń.";
+      userFacingErrorText(e, "Nie udało się wczytać listy wykluczeń.");
   }
 
   let onRequests: ZdEstimateOnRequestRow[] = [];
@@ -599,9 +601,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
     onRequests = await fetchZdEstimateOnRequests();
   } catch (e) {
     onRequestsError =
-      e instanceof Error
-        ? e.message
-        : "Nie udało się wczytać listy „tylko na prośbę”.";
+      userFacingErrorText(e, "Nie udało się wczytać listy „tylko na prośbę”.");
   }
 
   let packaging: ZdEstimatePackagingRow[] = [];
@@ -610,9 +610,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
     packaging = await fetchZdEstimatePackaging();
   } catch (e) {
     packagingError =
-      e instanceof Error
-        ? e.message
-        : "Nie udało się wczytać ustawień opakowań.";
+      userFacingErrorText(e, "Nie udało się wczytać ustawień opakowań.");
   }
 
   let productPairs: ZdProductPairRow[] = [];
@@ -621,7 +619,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
     productPairs = await fetchZdProductPairs();
   } catch (e) {
     productPairsError =
-      e instanceof Error ? e.message : "Nie udało się wczytać par kompletów.";
+      userFacingErrorText(e, "Nie udało się wczytać par kompletów.");
   }
 
   let productBoms: ZdProductBomRow[] = [];
@@ -639,9 +637,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
     teethTwIds = [...(await fetchTeethProductTwIdSet())].sort((a, b) => a - b);
   } catch (e) {
     teethProductsError =
-      e instanceof Error
-        ? e.message
-        : "Nie udało się wczytać katalogu produktów zębowych.";
+      userFacingErrorText(e, "Nie udało się wczytać katalogu produktów zębowych.");
   }
 
   const quickGroups = [
@@ -889,9 +885,7 @@ export async function actionRunZdEstimateManual(
       exclusions = await fetchZdEstimateExclusions();
     } catch (e) {
       const message =
-        e instanceof Error
-          ? e.message
-          : "Nie udało się wczytać listy wykluczeń.";
+        userFacingErrorText(e, "Nie udało się wczytać listy wykluczeń.");
       const feedback = getSubiektFeedback("empty_query", {
         title: "Wykluczenia niedostępne",
         message: `Lista nie została pokazana — bez wykluczeń mogłaby zawierać produkty celowo pomijane. ${message}`,
@@ -905,9 +899,7 @@ export async function actionRunZdEstimateManual(
       onRequests = await fetchZdEstimateOnRequests();
     } catch (e) {
       const message =
-        e instanceof Error
-          ? e.message
-          : "Nie udało się wczytać listy „tylko na prośbę”.";
+        userFacingErrorText(e, "Nie udało się wczytać listy „tylko na prośbę”.");
       const feedback = getSubiektFeedback("empty_query", {
         title: "Lista „tylko na prośbę” niedostępna",
         message: `Lista nie została pokazana — bez flagi mogłyby wejść produkty zamawiane wyłącznie na prośbę. ${message}`,
@@ -921,9 +913,7 @@ export async function actionRunZdEstimateManual(
       packaging = await fetchZdEstimatePackaging();
     } catch (e) {
       const message =
-        e instanceof Error
-          ? e.message
-          : "Nie udało się wczytać ustawień opakowań.";
+        userFacingErrorText(e, "Nie udało się wczytać ustawień opakowań.");
       const feedback = getSubiektFeedback("empty_query", {
         title: "Opakowania niedostępne",
         message: `Lista nie została pokazana — bez opakowań qty ZD mogłoby być w sztukach zamiast paczek. ${message}`,
@@ -937,9 +927,7 @@ export async function actionRunZdEstimateManual(
       productPairs = await fetchZdProductPairs();
     } catch (e) {
       const message =
-        e instanceof Error
-          ? e.message
-          : "Nie udało się wczytać mapy par montaż/demontaż.";
+        userFacingErrorText(e, "Nie udało się wczytać mapy par montaż/demontaż.");
       const feedback = getSubiektFeedback("empty_query", {
         title: "Pary kompletów niedostępne",
         message: `Lista nie została pokazana — bez mapy par pack i piece mogłyby dostać niezależne qty (podwójne zamówienie). ${message}`,
@@ -967,9 +955,7 @@ export async function actionRunZdEstimateManual(
       teethTwIds = [...(await fetchTeethProductTwIdSet())];
     } catch (e) {
       const message =
-        e instanceof Error
-          ? e.message
-          : "Nie udało się wczytać katalogu produktów zębowych.";
+        userFacingErrorText(e, "Nie udało się wczytać katalogu produktów zębowych.");
       const feedback = getSubiektFeedback("empty_query", {
         title: "Produkty zębowe niedostępne",
         message: `Lista nie została pokazana — bez katalogu zębów pozycje zębowe mogłyby trafić na ZD. ${message}`,
@@ -1314,7 +1300,7 @@ export async function actionListZdEstimateExclusions(): Promise<ZdEstimateExclus
   } catch (e) {
     return {
       ok: false,
-      message: e instanceof Error ? e.message : "Nie udało się pobrać wykluczeń.",
+      message: userFacingErrorText(e, "Nie udało się pobrać wykluczeń."),
     };
   }
 }
@@ -1333,9 +1319,7 @@ export async function actionListZdEstimateTeethTwIds(): Promise<
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się pobrać katalogu produktów zębowych.",
+        userFacingErrorText(e, "Nie udało się pobrać katalogu produktów zębowych."),
     };
   }
 }
@@ -1371,7 +1355,7 @@ export async function actionExcludeZdEstimateProduct(input: {
     return {
       ok: false,
       message:
-        e instanceof Error ? e.message : "Nie udało się wykluczyć produktu.",
+        userFacingErrorText(e, "Nie udało się wykluczyć produktu."),
     };
   }
 }
@@ -1388,7 +1372,7 @@ export async function actionRestoreZdEstimateProduct(
     return {
       ok: false,
       message:
-        e instanceof Error ? e.message : "Nie udało się przywrócić produktu.",
+        userFacingErrorText(e, "Nie udało się przywrócić produktu."),
     };
   }
 }
@@ -1409,7 +1393,7 @@ export async function actionUpdateZdEstimateExclusionNote(input: {
     return {
       ok: false,
       message:
-        e instanceof Error ? e.message : "Nie udało się zapisać notatki.",
+        userFacingErrorText(e, "Nie udało się zapisać notatki."),
     };
   }
 }
@@ -1474,9 +1458,7 @@ export async function actionListZdEstimateOnRequests(): Promise<ZdEstimateOnRequ
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się pobrać listy „tylko na prośbę”.",
+        userFacingErrorText(e, "Nie udało się pobrać listy „tylko na prośbę”."),
     };
   }
 }
@@ -1511,9 +1493,7 @@ export async function actionMarkZdEstimateOnRequest(input: {
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się oznaczyć „tylko na prośbę”.",
+        userFacingErrorText(e, "Nie udało się oznaczyć „tylko na prośbę”."),
     };
   }
 }
@@ -1530,9 +1510,7 @@ export async function actionClearZdEstimateOnRequest(
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się usunąć „tylko na prośbę”.",
+        userFacingErrorText(e, "Nie udało się usunąć „tylko na prośbę”."),
     };
   }
 }
@@ -1553,7 +1531,7 @@ export async function actionUpdateZdEstimateOnRequestNote(input: {
     return {
       ok: false,
       message:
-        e instanceof Error ? e.message : "Nie udało się zapisać notatki.",
+        userFacingErrorText(e, "Nie udało się zapisać notatki."),
     };
   }
 }
@@ -1635,9 +1613,7 @@ export async function actionMarkZdEstimateOnRequestProducts(input: {
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Zapisano część wpisów, ale nie udało się odświeżyć listy.",
+        userFacingErrorText(e, "Zapisano część wpisów, ale nie udało się odświeżyć listy."),
     };
   }
 }
@@ -1667,9 +1643,7 @@ export async function actionClearZdEstimateOnRequestProducts(
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się usunąć „tylko na prośbę”.",
+        userFacingErrorText(e, "Nie udało się usunąć „tylko na prośbę”."),
     };
   }
 }
@@ -1687,9 +1661,7 @@ export async function actionListZdEstimatePackaging(): Promise<ZdEstimatePackagi
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się pobrać ustawień opakowań.",
+        userFacingErrorText(e, "Nie udało się pobrać ustawień opakowań."),
     };
   }
 }
@@ -1716,9 +1688,7 @@ export async function actionUpsertZdEstimatePackaging(input: {
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się zapisać opakowania.",
+        userFacingErrorText(e, "Nie udało się zapisać opakowania."),
     };
   }
 }
@@ -1735,9 +1705,7 @@ export async function actionDeleteZdEstimatePackaging(
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się usunąć opakowania.",
+        userFacingErrorText(e, "Nie udało się usunąć opakowania."),
     };
   }
 }
@@ -1835,9 +1803,7 @@ export async function actionExcludeZdEstimateProducts(input: {
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Zapisano część wykluczeń, ale nie udało się odświeżyć listy.",
+        userFacingErrorText(e, "Zapisano część wykluczeń, ale nie udało się odświeżyć listy."),
     };
   }
 }
@@ -1868,16 +1834,14 @@ export async function actionRestoreZdEstimateProducts(
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się przywrócić produktów.",
+        userFacingErrorText(e, "Nie udało się przywrócić produktów."),
     };
   }
 }
 
 /**
  * Grupowe opakowanie — te same jednostki ZD dla wszystkich zaznaczonych.
- * unitsPerPackage === 1 usuwa ustawienie (jak przy pojedynczym zapisie).
+ * unitsPerPackage === 1 → jawne sztuki 1:1 w historii snapshotów.
  */
 export async function actionUpsertZdEstimatePackagingBulk(input: {
   products: ZdEstimateBulkProductInput[];
@@ -1945,9 +1909,7 @@ export async function actionUpsertZdEstimatePackagingBulk(input: {
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Zapisano część opakowań, ale nie udało się odświeżyć listy.",
+        userFacingErrorText(e, "Zapisano część opakowań, ale nie udało się odświeżyć listy."),
     };
   }
 }
@@ -1978,9 +1940,7 @@ export async function actionDeleteZdEstimatePackagingBulk(
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się usunąć opakowań.",
+        userFacingErrorText(e, "Nie udało się usunąć opakowań."),
     };
   }
 }
@@ -2037,7 +1997,7 @@ export async function actionSearchZdForEstimateLink(input?: {
     return {
       ok: false,
       message:
-        e instanceof Error ? e.message : "Nie udało się pobrać listy ZD.",
+        userFacingErrorText(e, "Nie udało się pobrać listy ZD."),
     };
   }
 }
@@ -2069,6 +2029,8 @@ export async function actionLinkZdEstimateSnapshot(input: {
   grtId?: number | null;
   cechaId?: number | null;
   lineMeta?: ZdEstimateLinkLineMeta[] | null;
+  /** tw_Id z orderable preview (Do ZD) — potwierdzone 1:1 przy braku opakowania. */
+  orderableTwIds?: number[] | null;
 }): Promise<ZdEstimateLinkSnapshotResult> {
   const user = await requireZdEstimateAdmin("mutate");
   const orders = resolveSubiektOrdersConfig();
@@ -2186,15 +2148,8 @@ export async function actionLinkZdEstimateSnapshot(input: {
 
     let pairRatioByTwId: Map<number, number>;
     try {
-      pairRatioByTwId = new Map();
       const pairs = await fetchZdProductPairs();
-      for (const p of pairs) {
-        pairRatioByTwId.set(p.packTwId, p.unitsPerPack);
-        // Piece na ZD zewnętrznym — już sztuki (ratio 1).
-        if (!pairRatioByTwId.has(p.pieceTwId)) {
-          pairRatioByTwId.set(p.pieceTwId, 1);
-        }
-      }
+      pairRatioByTwId = buildPairRatioByTwId(pairs);
     } catch (e) {
       return {
         ok: false,
@@ -2205,14 +2160,27 @@ export async function actionLinkZdEstimateSnapshot(input: {
       };
     }
 
+    const orderableTwIds = resolveConfirmedEstimateTwIdsForLink({
+      orderableTwIds: input.orderableTwIds,
+      lineMeta: input.lineMeta,
+    });
+
     const built = buildZdEstimateSnapshotLinesFromDocChecked(doc, {
       packagingByTwId,
       pairRatioByTwId,
       lineMeta: input.lineMeta ?? null,
+      confirmedEstimateTwIds: orderableTwIds,
       requirePackaging: true,
     });
     if (!built.ok) {
-      return { ok: false, message: built.message };
+      return {
+        ok: false,
+        message: enrichSnapshotPackagingErrorMessage(
+          built.message,
+          doc,
+          orderableTwIds
+        ),
+      };
     }
     if (!built.lines.length) {
       return {
@@ -2242,9 +2210,7 @@ export async function actionLinkZdEstimateSnapshot(input: {
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się powiązać ZD ze szacunkiem.",
+        userFacingErrorText(e, "Nie udało się powiązać ZD ze szacunkiem."),
     };
   }
 }
@@ -2342,7 +2308,7 @@ function mapZdCreateSubiektError(e: unknown): {
   const feedback = feedbackFromException(e);
   return {
     code: "network",
-    message: feedback.message || (e instanceof Error ? e.message : "Błąd Subiekta."),
+    message: feedback.message || (userFacingErrorText(e, "Błąd Subiekta.")),
   };
 }
 
@@ -2833,14 +2799,8 @@ export async function actionCreateZdFromEstimate(input: {
 
     let pairRatioByTwId: Map<number, number>;
     try {
-      pairRatioByTwId = new Map();
       const pairs = await fetchZdProductPairs();
-      for (const p of pairs) {
-        pairRatioByTwId.set(p.packTwId, p.unitsPerPack);
-        if (!pairRatioByTwId.has(p.pieceTwId)) {
-          pairRatioByTwId.set(p.pieceTwId, 1);
-        }
-      }
+      pairRatioByTwId = buildPairRatioByTwId(pairs);
     } catch (e) {
       return withMark({
         ok: true as const,
@@ -2855,10 +2815,13 @@ export async function actionCreateZdFromEstimate(input: {
       });
     }
 
+    const orderableTwIds = new Set(createLines.map((l) => l.twId));
+
     const built = buildZdEstimateSnapshotLinesFromDocChecked(doc, {
       packagingByTwId,
       pairRatioByTwId,
       lineMeta: input.lineMeta ?? null,
+      confirmedEstimateTwIds: orderableTwIds,
       requirePackaging: true,
     });
 
@@ -2869,7 +2832,11 @@ export async function actionCreateZdFromEstimate(input: {
         dokNrPelny,
         lineCount: linesCheck.lines.length,
         snapshotOk: false,
-        snapshotMessage: `ZD utworzone (${dokNrPelny}), ${built.message}`,
+        snapshotMessage: `ZD utworzone (${dokNrPelny}), ${enrichSnapshotPackagingErrorMessage(
+          built.message,
+          doc,
+          orderableTwIds
+        )}`,
       });
     }
 
@@ -2994,9 +2961,7 @@ export async function actionFindRecentZdAfterCreateAttempt(input: {
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się wyszukać świeżych ZD.",
+        userFacingErrorText(e, "Nie udało się wyszukać świeżych ZD."),
     };
   }
 }
@@ -3014,9 +2979,7 @@ export async function actionListZdEstimateSnapshots(): Promise<ZdEstimateListSna
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się wczytać snapshotów ZD.",
+        userFacingErrorText(e, "Nie udało się wczytać snapshotów ZD."),
     };
   }
 }
@@ -3033,7 +2996,7 @@ export async function actionListZdProductPairs(): Promise<ZdProductPairsActionRe
   } catch (e) {
     return {
       ok: false,
-      message: e instanceof Error ? e.message : "Nie udało się wczytać par.",
+      message: userFacingErrorText(e, "Nie udało się wczytać par."),
     };
   }
 }
@@ -3079,7 +3042,7 @@ export async function actionUpsertZdProductPair(input: {
   } catch (e) {
     return {
       ok: false,
-      message: e instanceof Error ? e.message : "Nie udało się zapisać pary.",
+      message: userFacingErrorText(e, "Nie udało się zapisać pary."),
     };
   }
 }
@@ -3095,7 +3058,7 @@ export async function actionDeleteZdProductPair(input: {
   } catch (e) {
     return {
       ok: false,
-      message: e instanceof Error ? e.message : "Nie udało się usunąć pary.",
+      message: userFacingErrorText(e, "Nie udało się usunąć pary."),
     };
   }
 }
@@ -3122,6 +3085,9 @@ export async function actionUpsertZdProductBom(input: {
   parentTwId: number;
   label?: string | null;
   stockAsCover?: boolean;
+  preset?: "assemble" | "buy_separate" | "kit_only" | string | null;
+  demandAllocation?: "explode" | "separate" | string | null;
+  purchaseTarget?: "components" | "as_sold" | "kit_only" | string | null;
   note?: string | null;
   parentSymbol?: string | null;
   parentNazwa?: string | null;
@@ -3190,7 +3156,7 @@ export async function actionLookupZdProductPairForTwId(
   } catch (e) {
     return {
       ok: false,
-      message: e instanceof Error ? e.message : "Nie udało się sprawdzić pary.",
+      message: userFacingErrorText(e, "Nie udało się sprawdzić pary."),
     };
   }
 }
@@ -3238,17 +3204,13 @@ export async function actionSyncZdProductPairsFromSubiekt(): Promise<
         ok: false,
         pairs,
         message:
-          e instanceof Error
-            ? e.message
-            : "Sync kompletów niedostępny — dodaj pary ręcznie lub wdróż GET /products/komplety na hoście ORDERS.",
+          userFacingErrorText(e, "Sync kompletów niedostępny — dodaj pary ręcznie lub wdróż GET /products/komplety na hoście ORDERS."),
       };
     } catch {
       return {
         ok: false,
         message:
-          e instanceof Error
-            ? e.message
-            : "Sync kompletów niedostępny — dodaj pary ręcznie lub wdróż GET /products/komplety na hoście ORDERS.",
+          userFacingErrorText(e, "Sync kompletów niedostępny — dodaj pary ręcznie lub wdróż GET /products/komplety na hoście ORDERS."),
       };
     }
   }
@@ -3314,7 +3276,7 @@ export async function actionResolveZdEstimateScopeForSupplier(
       supplierName: null,
       reason: "unavailable",
       message:
-        e instanceof Error ? e.message : "Nie udało się wczytać dostawcy.",
+        userFacingErrorText(e, "Nie udało się wczytać dostawcy."),
     };
   }
   if (!supplierName) {
@@ -3337,9 +3299,7 @@ export async function actionResolveZdEstimateScopeForSupplier(
       supplierName,
       reason: "unavailable",
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się odczytać mapowania zakresu.",
+        userFacingErrorText(e, "Nie udało się odczytać mapowania zakresu."),
     };
   }
 
@@ -3418,9 +3378,7 @@ export async function actionResolveZdEstimateScopeForSupplier(
       supplierName,
       reason: "unavailable",
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się wyszukać grup/cech w Subiekcie.",
+        userFacingErrorText(e, "Nie udało się wyszukać grup/cech w Subiekcie."),
     };
   }
 
@@ -3490,9 +3448,7 @@ export async function actionUpsertZdEstimateSupplierScope(input: {
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się zapisać mapowania zakresu.",
+        userFacingErrorText(e, "Nie udało się zapisać mapowania zakresu."),
     };
   }
 }

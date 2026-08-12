@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { Suspense } from "react";
 import { fetchMonthlyStats } from "@/lib/data/monthly-stats";
 import { resolveCompletedMonthlySummaryMonthKey } from "@/lib/data/monthly-stats-shared";
@@ -42,14 +43,14 @@ export default async function MonthlySummaryPage({
   try {
     stats = await fetchMonthlyStats(monthKey);
   } catch (e) {
-    error = e instanceof Error ? e.message : "Błąd ładowania statystyk";
+    error = userFacingErrorText(e, "Błąd ładowania statystyk");
   }
 
   return (
     <>
       {error ? (
         <Alert tone="warning" className={cn(panelWorkspaceShellClass, "mb-4")}>
-          {error}. Sprawdź połączenie z Supabase.
+          {error}
         </Alert>
       ) : null}
       <Suspense fallback={<PanelRouteLoading variant="admin" label="Ładowanie podsumowania" />}>

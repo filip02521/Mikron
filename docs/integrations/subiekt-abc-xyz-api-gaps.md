@@ -2,9 +2,10 @@
 
 **Dla:** Tomasz (API Subiekta)  
 **Host:** `http://192.168.0.140:5080/api/v1`  
-**Kontekst:** szacunek ZD w OnTime (`/zakupy/szacunek`) + planowana matryca ABC/XYZ i algorytmy zamówień (Wilson / ROP / Croston / Min-Max).  
+**Kontekst:** kreator ZD w OnTime (`/zakupy/szacunek`) + planowana matryca ABC/XYZ i algorytmy zamówień (Wilson / ROP / Croston / Min-Max).  
 **Stan obecny OnTime:** model pokrycia w dniach na polach `GET /orders/zd/estimate` — **nie** ABC/XYZ, **nie** EOQ, **nie** ROP.  
-**Podział OT ↔ API:** [`subiekt-abc-xyz-architecture.md`](./subiekt-abc-xyz-architecture.md)
+**Podział OT ↔ API:** [`subiekt-abc-xyz-architecture.md`](./subiekt-abc-xyz-architecture.md)  
+**Komplety (kit + solo):** [`subiekt-komplety-bom-architecture.md`](./subiekt-komplety-bom-architecture.md)
 
 Cel tego dokumentu: konkretna lista endpointów / pól, bez których nie da się wdrożyć specyfikacji ABC/XYZ + EOQ „w pełni”.
 
@@ -22,8 +23,8 @@ Cel tego dokumentu: konkretna lista endpointów / pól, bez których nie da się
 | Zamówione w drodze (przybliżenie) | `otwarteZd` | Po fixie API: ZD z **terminem realizacji w przyszłości**. Cover / „in transit”. **Jednostki = jednostki dokumentu ZD** (paczki przy opakowaniu) — OnTime mnoży × `unitsPerPackage` do sztuk |
 | Średni popyt dzienny (przybliżenie) | `sprzedazDziennie`, albo `sprzedazOkres / dniOkresu` | Gotowa **suma w oknie** z estimate (wg API: FS). **Nie** seria tygodniowa → za mało do CV/σ |
 | Pack size (częściowo) | OnTime: `zd_estimate_packaging` + `zd_product_pairs` (ręczne / sync) | Brak `GET /products/komplety` na hoście ORDERS |
-| Lead time średni (przybliżenie) | OnTime `delivery_stats` (per **dostawca**) | Używane do **ETA zamówień klientów**, **nie** do qty w szacunku ZD dziś. Brak σ_L; brak L per SKU z API |
-| Horyzont zapasu w szacunku | `suppliers.stock_raw` / `stock` → `dniZapasu` | To **„na ile dni trzymać zapas”**, nie lead time \(L\) i nie interwał zamówień (`interval_*`). Interwał dostawcy = kalendarz kolejnego zamówienia, osobna rzecz |
+| Lead time średni (przybliżenie) | OnTime `delivery_stats` (per **dostawca**) | Używane do **ETA zamówień klientów**, **nie** do qty w kreatorze ZD dziś. Brak σ_L; brak L per SKU z API |
+| Horyzont zapasu w kreatorze | `suppliers.stock_raw` / `stock` → `dniZapasu` | To **„na ile dni trzymać zapas”**, nie lead time \(L\) i nie interwał zamówień (`interval_*`). Interwał dostawcy = kalendarz kolejnego zamówienia, osobna rzecz |
 
 Wzór estimate (API — komentarz w typach OnTime):
 
@@ -235,7 +236,7 @@ Per `kh_Id` (dostawca) i opcjonalnie per `tw_Id`:
 - start: `dok_DataWyst` ZD **albo** data wysłania,
 - koniec: realne przyjęcie (PZ) **albo** `dok_TerminRealizacji` (gorzej).
 
-OnTime ma średnie w `delivery_stats` (ETA handlowe), ale **bez σ** i **bez użycia w szacunku ZD**. Ten endpoint domyka wzór Safety Stock ze speca:
+OnTime ma średnie w `delivery_stats` (ETA handlowe), ale **bez σ** i **bez użycia w kreatorze ZD**. Ten endpoint domyka wzór Safety Stock ze speca:
 
 \[
 SS = Z \times \sqrt{L \cdot \sigma_d^2 + \bar{d}^2 \cdot \sigma_L^2}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { addDays } from "date-fns";
 import { actionFetchUpcomingDeliveries } from "@/app/actions/upcoming-deliveries";
 import type { UpcomingDeliveriesPayload } from "@/app/actions/upcoming-deliveries";
@@ -113,7 +114,7 @@ export function UpcomingDeliveriesClient({
         setError(null);
       } catch (e) {
         if (generation !== loadGenerationRef.current) return;
-        setError(e instanceof Error ? e.message : "Błąd ładowania dostaw.");
+        setError(userFacingErrorText(e, "Błąd ładowania dostaw."));
       }
     });
   }, []);

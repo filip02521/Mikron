@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
@@ -220,7 +221,7 @@ export function ProcurementFlagDefinitionsManageModal({
         onSuccess?.(successMessage);
         router.refresh();
       } catch (e) {
-        onError?.(e instanceof Error ? e.message : "Nie udało się zapisać.");
+        onError?.(userFacingErrorText(e, "Nie udało się zapisać."));
       }
     });
   };

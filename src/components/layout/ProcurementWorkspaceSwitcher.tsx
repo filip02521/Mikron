@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition, useState, useCallback } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { actionSetProcurementWorkspace } from "@/app/actions/procurement-workspace";
 import { runServerActionWithRedirect } from "@/lib/client/server-action-redirect";
 import {
@@ -77,7 +78,7 @@ export function ProcurementWorkspaceSwitcher({
                   void runServerActionWithRedirect(
                     () => actionSetProcurementWorkspace(opt.value),
                     (err) => {
-                      setError(err instanceof Error ? err.message : "Nie udało się przełączyć obszaru");
+                      setError(userFacingErrorText(err, "Nie udało się przełączyć obszaru"));
                     }
                   );
                 });

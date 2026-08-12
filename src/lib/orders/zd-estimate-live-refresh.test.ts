@@ -101,7 +101,7 @@ describe("refreshZdEstimateLinesWithPairs", () => {
       options: { dniZapasu: 30, dniOkresu: 30, salesTrack: false },
     });
     expect(missingBomTwIds).toEqual([]);
-    expect(lines.find((l) => l.tw_Id === 4)?.bom?.role).toBe("parent");
+    expect(lines.find((l) => l.tw_Id === 4)?.bom?.role).toBe("assembled_parent");
     expect(lines.find((l) => l.tw_Id === 1)?.sprzedazOkres).toBe(7);
   });
 

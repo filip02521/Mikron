@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { formatPlDate } from "@/lib/display-labels";
 import { actionFetchTeethOrderHistoryAudit } from "@/app/actions/teeth-orders";
 import type { TeethOrderHistoryRow } from "@/lib/data/teeth-order-history";
@@ -31,7 +32,7 @@ export function TeethPanelAuditLog({
       setRows(data);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Błąd dziennika operacji");
+      setError(userFacingErrorText(e, "Błąd dziennika operacji"));
       setRows([]);
     }
   }, [supplierId]);

@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { fetchIndividualOrders, fetchDeliveryStats, fetchSalesAcknowledgedOrders, fetchSuppliersForRequestForms, fetchSuppliersOnVacationNow } from "@/lib/data/queries";
 import { fetchSalesBoardAttentionSnapshot, fetchDepartmentBoardAnnouncements, type SalesBoardAttentionSnapshot, type DepartmentBoardAnnouncementsSlice } from "@/lib/data/department-board";
 import { fetchSalesDayStartNotepadSlice } from "@/lib/data/sales-notepad";
@@ -257,9 +258,7 @@ export async function loadMojePageData(
         loadMojeAnnouncements
           ? fetchDepartmentBoardAnnouncements(sessionUserId!).catch((e) => {
               boardAnnouncementsError =
-                e instanceof Error
-                  ? e.message
-                  : "Nie udało się załadować ogłoszeń od zakupów.";
+                userFacingErrorText(e, "Nie udało się załadować ogłoszeń od zakupów.");
               console.error("[moje/page] fetchDepartmentBoardAnnouncements", e);
               return null;
             })
@@ -339,7 +338,7 @@ export async function loadMojePageData(
   } catch (e) {
     return {
       ...empty,
-      loadError: e instanceof Error ? e.message : "Nie udało się załadować zamówień.",
+      loadError: userFacingErrorText(e, "Nie udało się załadować zamówień."),
     };
   }
 

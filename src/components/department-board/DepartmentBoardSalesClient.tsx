@@ -1,5 +1,6 @@
 "use client";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import {
@@ -247,7 +248,7 @@ export function DepartmentBoardSalesClient({
       }
       refresh();
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Nie udało się wysłać pytania.";
+      const message = userFacingErrorText(e, "Nie udało się wysłać pytania.");
       setQuestionFormError(message);
       throw e instanceof Error ? e : new Error(message);
     } finally {

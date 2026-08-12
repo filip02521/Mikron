@@ -12,6 +12,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import { MICROCOPY } from "@/lib/ui/microcopy";
+import { redirectToLoginIfUnauthorizedStatus } from "@/lib/auth/session-login-redirect";
 import { usePatchAppShellNavBadges } from "@/components/layout/AppShellMetricsContext";
 import { usePersistedFlag } from "@/lib/client/use-persisted-flag";
 import { teethAutoRefreshStore as autoRefreshStore } from "@/lib/client/teeth-auto-refresh-store";
@@ -49,6 +50,9 @@ async function fetchTeethVersion(): Promise<{
     const res = await fetch("/api/operations/teeth-panel-version", {
       cache: "no-store",
     });
+    if (redirectToLoginIfUnauthorizedStatus(res.status)) {
+      return { version: null, queueCount: null, verificationCount: null };
+    }
     if (!res.ok) return { version: null, queueCount: null, verificationCount: null };
     const body = (await res.json()) as {
       version?: string;

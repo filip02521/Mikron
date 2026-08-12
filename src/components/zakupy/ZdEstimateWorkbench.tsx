@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
 import {
   actionDeleteZdEstimatePackaging,
   actionDeleteZdEstimatePackagingBulk,
@@ -44,7 +45,7 @@ import {
   onRequestTwIdSet,
   retargetTwIdToPackIfPiece,
 } from "@/lib/orders/zd-estimate-on-request";
-import { bomRowsToRefs } from "@/lib/orders/zd-estimate-bom";
+import { bomRowsToRefs, bomRowHidesHardExclude, bomRowHidesOnRequest, hasUnresolvedExplodeBomNodes } from "@/lib/orders/zd-estimate-bom";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 import {
   ZD_ESTIMATE_UNITS_LEGEND,
@@ -62,6 +63,7 @@ import {
   zdEstimateRecountOverlayMessage,
   zdEstimateScopeChangedHint,
   zdEstimateScopeDashedHint,
+  formatImplicitPieceSnapshotHint,
 } from "@/lib/orders/zd-estimate-ui-copy";
 import { shouldUseZdEstimateProgressShell } from "@/lib/orders/zd-estimate-progress-shell";
 import { applyGroupStockWindow } from "@/lib/orders/zd-estimate-group-stock";
@@ -117,6 +119,10 @@ import {
   resolveZdCreateKhId,
   ZD_CREATE_MAX_UWAGI_LEN,
 } from "@/lib/orders/zd-estimate-create-zd";
+import {
+  buildPairRatioByTwId,
+  collectImplicitPieceSnapshotLines,
+} from "@/lib/orders/zd-estimate-snapshot-lines";
 import { refreshZdEstimateLinesWithPairs } from "@/lib/orders/zd-estimate-live-refresh";
 import type { ZdProductPairRef } from "@/lib/orders/zd-product-pair-units";
 import {
@@ -580,7 +586,7 @@ export function ZdEstimateWorkbench({
     if (!launch?.autorun || launch.needsAssign) return null;
     if (!bootstrap.configured) return null;
     if (!launchHasRunnableScope(launch)) {
-      return "Brak zakresu Subiekta do automatycznego szacunku.";
+      return "Brak zakresu Subiekta do automatycznego uruchomienia kreatora.";
     }
     const trusted =
       bootstrap.exclusionsError == null &&
@@ -776,7 +782,7 @@ export function ZdEstimateWorkbench({
 
   const reportError = useCallback((message: string) => {
     setFeedback(null);
-    setErrorMessage(message);
+    setErrorMessage(userFacingErrorTextFromMessage(message));
   }, []);
 
   const flashSettingsLive = useCallback((message: string) => {
@@ -1275,6 +1281,31 @@ export function ZdEstimateWorkbench({
     [catalogExtrasBundle, reclassifyExcludedTwIds]
   );
 
+  const kitOnlyBlockedAlertCount = useMemo(() => {
+    if (!lines?.length && individualBundle.serviceLines.length === 0) return 0;
+    const blockedTwIds = new Set<number>();
+    for (const l of lines ?? []) {
+      if (l.bom?.purchaseBlocked !== true) continue;
+      const sales = Math.max(0, Number(l.sprzedazOkres) || 0);
+      if (sales > 0) blockedTwIds.add(l.tw_Id);
+    }
+    let serviceHits = 0;
+    for (const s of individualBundle.serviceLines) {
+      if (s.reason !== "bom_component_not_purchased") continue;
+      serviceHits += 1;
+    }
+    return blockedTwIds.size + serviceHits;
+  }, [lines, individualBundle.serviceLines]);
+
+  const explodeBomIncomplete = useMemo(
+    () =>
+      hasUnresolvedExplodeBomNodes(
+        bomRowsToRefs(productBoms),
+        missingBomTwIds
+      ),
+    [productBoms, missingBomTwIds]
+  );
+
   /** Ile próśb było na wykluczonych tw przed reclassify → usługi. */
   const excludedRoutedToServicesCount = useMemo(
     () =>
@@ -1349,6 +1380,7 @@ export function ZdEstimateWorkbench({
 
   const orderableLines = useMemo(() => {
     if (!lines || !settingsTrusted) return [];
+    if (explodeBomIncomplete) return [];
     return filterOrderableLinesWithPackaging(
       lines,
       packagingLookup,
@@ -1362,6 +1394,7 @@ export function ZdEstimateWorkbench({
     packagingLookup,
     orderExcludedTwIds,
     settingsTrusted,
+    explodeBomIncomplete,
     individualExtraByTwId,
     qtyOverrideMap,
     extraOnlyTwIds,
@@ -1397,6 +1430,48 @@ export function ZdEstimateWorkbench({
     ]
   );
 
+  const packagingByTwIdForSnapshot = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const row of packaging) {
+      map.set(row.subiektTwId, row.unitsPerPackage);
+    }
+    return map;
+  }, [packaging]);
+
+  const pairRatioByTwIdForSnapshot = useMemo(
+    () => buildPairRatioByTwId(productPairs),
+    [productPairs]
+  );
+
+  const confirmedTwIdsForSnapshot = useMemo(
+    () => createZdPreview.lines.map((l) => l.twId),
+    [createZdPreview.lines]
+  );
+
+  const implicitPieceSnapshotLines = useMemo(() => {
+    if (!settingsTrusted || !createZdPreview.lineCount) return [];
+    return collectImplicitPieceSnapshotLines(
+      createZdPreview.lines.map((l) => ({
+        twId: l.twId,
+        symbol: l.symbol,
+        nazwa: l.nazwa,
+      })),
+      packagingByTwIdForSnapshot,
+      pairRatioByTwIdForSnapshot
+    );
+  }, [
+    settingsTrusted,
+    createZdPreview.lines,
+    createZdPreview.lineCount,
+    packagingByTwIdForSnapshot,
+    pairRatioByTwIdForSnapshot,
+  ]);
+
+  const implicitPieceSnapshotHint = useMemo(
+    () => formatImplicitPieceSnapshotHint(implicitPieceSnapshotLines),
+    [implicitPieceSnapshotLines]
+  );
+
   const createZdGate = useMemo(
     () =>
       canCreateZdFromEstimateState({
@@ -1411,6 +1486,7 @@ export function ZdEstimateWorkbench({
         createDoneDokId,
         createUnlockedAfterDone,
         packagingPairConflictCount: packagingPairConflicts.length,
+        explodeBomIncomplete,
       }),
     [
       bootstrap.configured,
@@ -1424,6 +1500,7 @@ export function ZdEstimateWorkbench({
       createDoneDokId,
       createUnlockedAfterDone,
       packagingPairConflicts.length,
+      explodeBomIncomplete,
     ]
   );
 
@@ -1704,7 +1781,7 @@ export function ZdEstimateWorkbench({
       if (!res.ok) {
         setGroupHits([]);
         setFeedback(res.feedback ?? null);
-        setErrorMessage(res.message);
+        reportError(res.message);
         return;
       }
       setGroupHits(res.groups);
@@ -1726,7 +1803,7 @@ export function ZdEstimateWorkbench({
       if (!res.ok) {
         setCechaHits([]);
         setFeedback(res.feedback ?? null);
-        setErrorMessage(res.message);
+        reportError(res.message);
         return;
       }
       setCechaHits(res.cechy);
@@ -1845,7 +1922,7 @@ export function ZdEstimateWorkbench({
           setErrorMessage(ZD_ESTIMATE_LAUNCH_TIMEOUT_FEEDBACK.message);
         } else {
           setFeedback(res.feedback ?? null);
-          setErrorMessage(res.message);
+          reportError(res.message);
         }
         return;
       }
@@ -2048,7 +2125,7 @@ export function ZdEstimateWorkbench({
         // Nie trzymaj próśb poprzedniego dostawcy przy błędzie fetchu.
         setPendingIndividuals([]);
         setPendingIndividualsTruncated(false);
-        setPendingIndividualsError(res.message);
+        setPendingIndividualsError(userFacingErrorTextFromMessage(res.message));
       }
     })();
   }, [supplierId]);
@@ -2071,7 +2148,7 @@ export function ZdEstimateWorkbench({
     };
 
     if (!launchHasRunnableScope(launch)) {
-      failLaunch("Brak zakresu Subiekta do automatycznego szacunku.");
+      failLaunch("Brak zakresu Subiekta do automatycznego uruchomienia kreatora.");
       return;
     }
 
@@ -2185,7 +2262,7 @@ export function ZdEstimateWorkbench({
       } else {
         setPendingIndividuals([]);
         setPendingIndividualsTruncated(false);
-        setPendingIndividualsError(res.message);
+        setPendingIndividualsError(userFacingErrorTextFromMessage(res.message));
       }
     })();
   };
@@ -2283,7 +2360,7 @@ export function ZdEstimateWorkbench({
             }),
       });
       if (!res.ok) {
-        setErrorMessage(res.message);
+        reportError(res.message);
         return;
       }
       setAssignHint(null);
@@ -2389,7 +2466,7 @@ export function ZdEstimateWorkbench({
   const excludeEligibleLines = useMemo(
     () =>
       selectedLines.filter((l) => {
-        if (l.pair?.role === "piece" || l.bom?.role === "parent") return false;
+        if (bomRowHidesHardExclude(l)) return false;
         if (nameAutoByTwId.has(l.tw_Id)) return false;
         if (exclusionsTrusted && dbExcludedIds.has(l.tw_Id)) return false;
         return true;
@@ -2407,7 +2484,7 @@ export function ZdEstimateWorkbench({
     () =>
       selectedLines.filter((l) => {
         if (!onRequestTrusted || !exclusionsTrusted) return false;
-        if (l.pair?.role === "piece" || l.bom?.role === "parent") return false;
+        if (bomRowHidesOnRequest(l)) return false;
         if (nameAutoByTwId.has(l.tw_Id)) return false;
         if (dbExcludedIds.has(l.tw_Id)) return false;
         const canonical = retargetTwIdToPackIfPiece(l.tw_Id, productPairs).twId;
@@ -2826,7 +2903,7 @@ export function ZdEstimateWorkbench({
     startMutate(async () => {
       const res = await actionListZdEstimateExclusions();
       if (!res.ok) {
-        setExclusionsError(res.message);
+        setExclusionsError(userFacingErrorTextFromMessage(res.message));
         reportError(res.message);
         return;
       }
@@ -2839,7 +2916,7 @@ export function ZdEstimateWorkbench({
     startMutate(async () => {
       const res = await actionListZdEstimateOnRequests();
       if (!res.ok) {
-        setOnRequestsError(res.message);
+        setOnRequestsError(userFacingErrorTextFromMessage(res.message));
         reportError(res.message);
         return;
       }
@@ -2852,7 +2929,7 @@ export function ZdEstimateWorkbench({
     startMutate(async () => {
       const res = await actionListZdEstimatePackaging();
       if (!res.ok) {
-        setPackagingError(res.message);
+        setPackagingError(userFacingErrorTextFromMessage(res.message));
         reportError(res.message);
         return;
       }
@@ -2865,7 +2942,7 @@ export function ZdEstimateWorkbench({
     startMutate(async () => {
       const res = await actionListZdProductPairs();
       if (!res.ok) {
-        setProductPairsError(res.message);
+        setProductPairsError(userFacingErrorTextFromMessage(res.message));
         reportError(res.message);
         return;
       }
@@ -2883,7 +2960,7 @@ export function ZdEstimateWorkbench({
     startMutate(async () => {
       const res = await actionListZdProductBoms();
       if (!res.ok) {
-        setProductBomsError(res.message);
+        setProductBomsError(userFacingErrorTextFromMessage(res.message));
         reportError(res.message);
         return;
       }
@@ -2900,7 +2977,7 @@ export function ZdEstimateWorkbench({
     startMutate(async () => {
       const res = await actionListZdEstimateTeethTwIds();
       if (!res.ok) {
-        setTeethProductsError(res.message);
+        setTeethProductsError(userFacingErrorTextFromMessage(res.message));
         reportError(res.message);
         return;
       }
@@ -2921,15 +2998,15 @@ export function ZdEstimateWorkbench({
         actionListZdEstimateTeethTwIds(),
       ]);
       if (ex.ok) applyExclusionsLive(ex.exclusions);
-      else setExclusionsError(ex.message);
+      else setExclusionsError(userFacingErrorTextFromMessage(ex.message));
       if (onReq.ok) {
         applyOnRequestsLive(
           onReq.onRequests,
           ex.ok ? ex.exclusions.map((r) => r.subiektTwId) : undefined
         );
-      } else setOnRequestsError(onReq.message);
+      } else setOnRequestsError(userFacingErrorTextFromMessage(onReq.message));
       if (pack.ok) applyPackagingLive(pack.packaging);
-      else setPackagingError(pack.message);
+      else setPackagingError(userFacingErrorTextFromMessage(pack.message));
       let nextPairs = productPairs;
       let nextBoms = productBoms;
       if (pairs.ok) {
@@ -2937,16 +3014,16 @@ export function ZdEstimateWorkbench({
         nextPairs = pairs.pairs;
         setProductPairs(pairs.pairs);
         setProductPairsError(null);
-      } else setProductPairsError(pairs.message);
+      } else setProductPairsError(userFacingErrorTextFromMessage(pairs.message));
       if (boms.ok) {
         nextBoms = boms.boms;
         setProductBoms(boms.boms);
         setProductBomsError(null);
-      } else setProductBomsError(boms.message);
+      } else setProductBomsError(userFacingErrorTextFromMessage(boms.message));
       if (teeth.ok) {
         setTeethTwIds(teeth.teethTwIds);
         setTeethProductsError(null);
-      } else setTeethProductsError(teeth.message);
+      } else setTeethProductsError(userFacingErrorTextFromMessage(teeth.message));
       if (linesBase?.length && (pairs.ok || boms.ok)) {
         reapplyPairsToLines(nextPairs, nextBoms);
       }
@@ -3161,7 +3238,7 @@ export function ZdEstimateWorkbench({
         <>
       {/* Status LIVE/test jest w ZdEstimatePageIntro — tu tylko blokada. */}
       {!bootstrap.configured ? (
-        <Alert tone="error" title="Szacunek zablokowany">
+        <Alert tone="error" title="Kreator ZD zablokowany">
           {zdEstimateBlockedOrdersAlertBody(bootstrap.ordersMessage)}
         </Alert>
       ) : null}
@@ -3222,7 +3299,7 @@ export function ZdEstimateWorkbench({
         >
           Z tej listy utworzono już {createDoneDokNr}.{" "}
           {!createUnlockedAfterDone
-            ? "Przelicz szacunek, użyj „Powiąż ZD” albo odblokuj świadomie."
+            ? "Przelicz listę, użyj „Powiąż ZD” albo odblokuj świadomie."
             : createZdGate.ok
               ? "Możesz utworzyć kolejne ZD — uważaj na duplikaty w Subiekcie."
               : createZdGateCaption ?? createZdGate.reason}
@@ -3260,7 +3337,7 @@ export function ZdEstimateWorkbench({
               <span className="mt-1 block text-sm">
                 Wczytano {pendingIndividuals.length}{" "}
                 {pendingIndividuals.length === 1 ? "prośbę" : "próśb"} — wejdą
-                do szacunku po Policz.
+                do kreatora po Policz.
               </span>
             ) : pendingIndividualsError ? (
               <span className="mt-1 block text-sm text-amber-900">
@@ -3890,6 +3967,20 @@ export function ZdEstimateWorkbench({
           </div>
         </Alert>
       ) : null}
+      {kitOnlyBlockedAlertCount > 0 ? (
+        <Alert tone="warning" title={ZD_BOM_UI.alertKitOnlySalesTitle}>
+          <p className="text-sm leading-snug">
+            {ZD_BOM_UI.alertKitOnlySalesBody(kitOnlyBlockedAlertCount)}
+          </p>
+        </Alert>
+      ) : null}
+      {explodeBomIncomplete ? (
+        <Alert tone="warning" title={ZD_BOM_UI.alertExplodeIncompleteTitle}>
+          <p className="text-sm leading-snug">
+            {ZD_BOM_UI.alertExplodeIncompleteBody}
+          </p>
+        </Alert>
+      ) : null}
       {bomMissingCount > 0 ? (
         <Alert tone="warning" title={ZD_BOM_UI.alertMissingTitle}>
           <p className="text-sm leading-snug">
@@ -4127,6 +4218,11 @@ export function ZdEstimateWorkbench({
                       {createZdGateCaption ? (
                         <p className="max-w-sm text-right text-[11px] leading-snug text-amber-800">
                           {createZdGateCaption}
+                        </p>
+                      ) : null}
+                      {implicitPieceSnapshotHint ? (
+                        <p className="max-w-md text-right text-[11px] leading-snug text-amber-900">
+                          {implicitPieceSnapshotHint}
                         </p>
                       ) : null}
                     </div>
@@ -4643,8 +4739,8 @@ export function ZdEstimateWorkbench({
                         orderExcludedTwIds.has(onRequestCanonicalId) &&
                         !liftedExtraOnly;
                       const excluded = orderExcludedTwIds.has(l.tw_Id);
-                      const hidePairOrBomHardActions =
-                        l.pair?.role === "piece" || l.bom?.role === "parent";
+                      const hidePairOrBomHardActions = bomRowHidesHardExclude(l);
+                      const hideOnRequestAction = bomRowHidesOnRequest(l);
                       const allowsDoZdOverride =
                         !excluded && lineAllowsZdDocumentUnitOverride(l);
                       const packRow = packagingMap.get(l.tw_Id) ?? null;
@@ -4976,6 +5072,7 @@ export function ZdEstimateWorkbench({
                                 onRequest={Boolean(dbOnRequest)}
                                 sessionIncluded={sessionIncluded}
                                 hideHardExclude={hidePairOrBomHardActions}
+                                hideOnRequest={hideOnRequestAction}
                                 packagingHint={
                                   qty.hasPackaging
                                     ? `${qty.unitsPerPackage} szt / 1 ${qty.packageLabel}`
@@ -5141,6 +5238,11 @@ export function ZdEstimateWorkbench({
           {createZdGateCaption ? (
             <p className="text-[11px] leading-snug text-amber-800">
               {createZdGateCaption}
+            </p>
+          ) : null}
+          {implicitPieceSnapshotHint ? (
+            <p className="text-[11px] leading-snug text-amber-900">
+              {implicitPieceSnapshotHint}
             </p>
           ) : null}
         </div>
@@ -5343,6 +5445,8 @@ export function ZdEstimateWorkbench({
             deltaAtLink: l.salesTrackDelta,
           })) ?? null
         }
+        orderableTwIds={confirmedTwIdsForSnapshot}
+        implicitPieceSnapshotHint={implicitPieceSnapshotHint}
         onClose={() => {
           setLinkZdOpen(false);
           setLinkNrPrefill(null);
@@ -5385,6 +5489,7 @@ export function ZdEstimateWorkbench({
               deltaAtLink: l.salesTrackDelta,
             })) ?? null
           }
+          implicitPieceSnapshotHint={implicitPieceSnapshotHint}
           initialUwagi={createBaseUwagi.slice(0, Math.max(1, createUwagiBaseMaxLen))}
           uwagiBaseMaxLen={createUwagiBaseMaxLen}
           individualCatalogOrderIds={createCatalogOrderIds}

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
 import { completeSalesOnboarding } from "@/app/actions/sales-onboarding";
 import {
   SalesOnboardingPanelPreview,
@@ -232,7 +233,7 @@ export function SalesOnboardingWizard() {
     startTransition(async () => {
       const result = await completeSalesOnboarding();
       if (!result.ok) {
-        setError(result.error);
+        setError(userFacingErrorTextFromMessage(result.error, "Nie udało się zakończyć wprowadzenia."));
         return;
       }
       clearSalesOnboardingTourStarted();

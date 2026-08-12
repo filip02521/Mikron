@@ -90,7 +90,7 @@ export type SubiektZdEstimateParams = {
 };
 
 /**
- * Pozycja szacunku ZD — GET /orders/zd/estimate.
+ * Pozycja kreatora ZD — GET /orders/zd/estimate.
  * Wzór API: doZamowienia = max(0, celZapasu + otwarteZkBezRez − dostepne − otwarteZd).
  */
 export type SubiektZdEstimateLine = {

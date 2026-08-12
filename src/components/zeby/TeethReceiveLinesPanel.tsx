@@ -1,5 +1,5 @@
 "use client";
-import { TEETH_RECEIVE_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
+import { TEETH_RECEIVE_TOAST, toastFromError, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 import { isUndoExpired, undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -182,9 +182,7 @@ export function TeethReceiveLinesPanel({
         onToast(TEETH_RECEIVE_TOAST.undoSuccess);
       } catch (e) {
         setUndoError(
-          toastFromError(
-            e instanceof Error ? e.message : undefined,
-            TEETH_RECEIVE_TOAST.undoFailed.text
+          toastFromUnknown(e, TEETH_RECEIVE_TOAST.undoFailed.text
           )
         );
       } finally {
@@ -383,9 +381,7 @@ export function TeethReceiveLinesPanel({
         teethUpdates?.refreshNow();
       } catch (e) {
         onToast(
-          toastFromError(
-            e instanceof Error ? e.message : undefined,
-            TEETH_RECEIVE_TOAST.saveFailed.text
+          toastFromUnknown(e, TEETH_RECEIVE_TOAST.saveFailed.text
           )
         );
       } finally {
@@ -449,9 +445,7 @@ export function TeethReceiveLinesPanel({
         teethUpdates?.refreshNow();
       } catch (e) {
         onToast(
-          toastFromError(
-            e instanceof Error ? e.message : undefined,
-            TEETH_RECEIVE_TOAST.cancellationAckFailed.text,
+          toastFromUnknown(e, TEETH_RECEIVE_TOAST.cancellationAckFailed.text,
           ),
         );
       } finally {

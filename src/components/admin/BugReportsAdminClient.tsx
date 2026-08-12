@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
 import { actionUpdateSalesBugReport } from "@/app/actions/sales-bug-report";
 import type { SalesBugReport, SalesBugReportStatus } from "@/types/database";
 import { cn } from "@/lib/cn";
@@ -43,7 +44,7 @@ function ReportNote({
         adminNote,
       });
       if (!result.ok) {
-        setError(result.error);
+        setError(userFacingErrorTextFromMessage(result.error, "Nie udało się zapisać."));
         return;
       }
       onUpdated(result.report);

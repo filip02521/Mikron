@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { countInactiveSuppliers, fetchSuppliersWithSchedules } from "@/lib/data/queries";
 import { fetchWarehouseCarriers } from "@/lib/data/warehouse-carriers";
 import { InactiveSuppliersAdminClient } from "@/components/admin/InactiveSuppliersAdminClient";
@@ -22,7 +23,7 @@ export default async function NieaktywniZakupyPage() {
       fetchWarehouseCarriers(),
     ]);
   } catch (e) {
-    loadError = e instanceof Error ? e.message : "Nie udało się wczytać listy nieaktywnych dostawców.";
+    loadError = userFacingErrorText(e, "Nie udało się wczytać listy nieaktywnych dostawców.");
     suppliers = [];
   }
 

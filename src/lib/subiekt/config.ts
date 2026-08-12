@@ -16,7 +16,7 @@ export const SUBIEKT_ORDERS_TEST_PORT = 5082;
 
 /**
  * Port live Subiekta (aktualna baza MIKRAN).
- * Szacunek ZD / create ZD mogą iść tutaj — świadomie, z host_kind=live.
+ * Kreator ZD / create ZD mogą iść tutaj — świadomie, z host_kind=live.
  */
 export const SUBIEKT_ORDERS_LIVE_PORT = 5080;
 
@@ -198,7 +198,7 @@ export type SubiektOrdersConfigStatus =
     };
 
 /**
- * Host pod szacunek ZD (`/groups`, `/cechy/towarow`, `/orders/zd/estimate`, create ZD).
+ * Host kreatora ZD (`/groups`, `/cechy/towarow`, `/orders/zd/estimate`, create ZD).
  *
  * Wymaga jawnego `SUBIEKT_API_ORDERS_BASE_URL` na dozwolonym porcie:
  * - `:5080` — LIVE, aktualna baza MIKRAN (produkcyjne dokumenty),
@@ -216,7 +216,7 @@ export function resolveSubiektOrdersConfig(): SubiektOrdersConfigStatus {
       ok: false,
       reason: "missing_orders_url",
       message:
-        "Brak SUBIEKT_API_ORDERS_BASE_URL — ustaw host szacunku (:5080 live / :5082 test).",
+        "Brak SUBIEKT_API_ORDERS_BASE_URL — ustaw host kreatora ZD (:5080 live / :5082 test).",
       ordersBaseUrl: null,
       liveBaseUrl,
     };
@@ -238,7 +238,7 @@ export function resolveSubiektOrdersConfig(): SubiektOrdersConfigStatus {
     return {
       ok: false,
       reason: "not_allowed_port",
-      message: `Szacunek wymaga portu :${SUBIEKT_ORDERS_LIVE_PORT} (live) lub :${SUBIEKT_ORDERS_TEST_PORT} (test) — teraz: ${
+      message: `Kreator ZD wymaga portu :${SUBIEKT_ORDERS_LIVE_PORT} (live) lub :${SUBIEKT_ORDERS_TEST_PORT} (test) — teraz: ${
         port != null ? `:${port}` : baseUrl
       }.`,
       ordersBaseUrl: baseUrl,

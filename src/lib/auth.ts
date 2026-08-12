@@ -21,6 +21,9 @@ type AuthIntent = "read" | "mutate";
 
 import type { FontScale } from "./auth/profile";
 
+/** Stały komunikat — klasyfikowany jako session → redirect na /login. */
+export const SESSION_REQUIRED_ERROR = "Brak sesji — zaloguj się ponownie.";
+
 export interface SessionUser {
   id: string;
   email: string;
@@ -50,11 +53,19 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   };
 }
 
+async function requireLoggedInUser(): Promise<SessionUser> {
+  const user = await getSessionUser();
+  if (!user) {
+    throw new Error(SESSION_REQUIRED_ERROR);
+  }
+  return user;
+}
+
 export async function requireSalesTeamManagement(
   intent: AuthIntent = "read"
 ): Promise<SessionUser> {
-  const user = await getSessionUser();
-  if (!user || !canManageSalesTeam(user.role)) {
+  const user = await requireLoggedInUser();
+  if (!canManageSalesTeam(user.role)) {
     throw new Error("Brak uprawnień do zarządzania zespołem handlowców");
   }
   if (intent === "mutate") {
@@ -66,8 +77,8 @@ export async function requireSalesTeamManagement(
 export async function requireSalesAccount(
   intent: AuthIntent = "read"
 ): Promise<SessionUser> {
-  const user = await getSessionUser();
-  if (!user || !isSalesAccount(user.role)) {
+  const user = await requireLoggedInUser();
+  if (!isSalesAccount(user.role)) {
     throw new Error("Brak uprawnień handlowca");
   }
   if (intent === "mutate") {
@@ -79,8 +90,8 @@ export async function requireSalesAccount(
 export async function requireSalesAccountOrTeamManagement(
   intent: AuthIntent = "read"
 ): Promise<SessionUser> {
-  const user = await getSessionUser();
-  if (!user || (!isSalesAccount(user.role) && !canManageSalesTeam(user.role))) {
+  const user = await requireLoggedInUser();
+  if (!isSalesAccount(user.role) && !canManageSalesTeam(user.role)) {
     throw new Error("Brak uprawnień");
   }
   if (intent === "mutate") {
@@ -90,8 +101,8 @@ export async function requireSalesAccountOrTeamManagement(
 }
 
 export async function requireAdmin(): Promise<SessionUser> {
-  const user = await getSessionUser();
-  if (!user || !isAdmin(user.role)) {
+  const user = await requireLoggedInUser();
+  if (!isAdmin(user.role)) {
     throw new Error("Brak uprawnień administratora");
   }
   return user;
@@ -107,8 +118,8 @@ export async function requireAdminForMutation(): Promise<SessionUser> {
 export async function requireAdminOrSalesTeamManagement(
   intent: AuthIntent = "read"
 ): Promise<SessionUser> {
-  const user = await getSessionUser();
-  if (!user || (!isAdmin(user.role) && !canManageSalesTeam(user.role))) {
+  const user = await requireLoggedInUser();
+  if (!isAdmin(user.role) && !canManageSalesTeam(user.role)) {
     throw new Error("Brak uprawnień");
   }
   if (intent === "mutate") {
@@ -121,8 +132,8 @@ export async function requireAdminOrSalesTeamManagement(
 export async function requireOperations(
   intent: AuthIntent = "read"
 ): Promise<SessionUser> {
-  const user = await getSessionUser();
-  if (!user || !canAccessOperations(user.role, user.assignedWorkspaces)) {
+  const user = await requireLoggedInUser();
+  if (!canAccessOperations(user.role, user.assignedWorkspaces)) {
     throw new Error("Brak uprawnień do operacji zakupowych");
   }
   if (intent === "mutate") {
@@ -132,7 +143,7 @@ export async function requireOperations(
 }
 
 /**
- * Szacunek ZD / Przygotuj ZD — wyłącznie administrator.
+ * Kreator ZD / Przygotuj ZD — wyłącznie administrator.
  * Mutacje dozwolone w cookie panelu `admin` lub `zakupy` (jak pozostałe operacje).
  */
 export async function requireZdEstimateAdmin(
@@ -149,8 +160,8 @@ export async function requireZdEstimateAdmin(
 export async function requireWarehouse(
   intent: AuthIntent = "read"
 ): Promise<SessionUser> {
-  const user = await getSessionUser();
-  if (!user || !canAccessWarehouse(user.role, user.assignedWorkspaces)) {
+  const user = await requireLoggedInUser();
+  if (!canAccessWarehouse(user.role, user.assignedWorkspaces)) {
     throw new Error("Brak uprawnień magazynu");
   }
   if (intent === "mutate") {
@@ -163,8 +174,8 @@ export async function requireWarehouse(
 export async function requireTeethPanel(
   intent: AuthIntent = "read"
 ): Promise<SessionUser> {
-  const user = await getSessionUser();
-  if (!user || !canAccessTeethPanel(user.role, user.assignedWorkspaces)) {
+  const user = await requireLoggedInUser();
+  if (!canAccessTeethPanel(user.role, user.assignedWorkspaces)) {
     throw new Error("Brak uprawnień do panelu zębów");
   }
   if (intent === "mutate") {
@@ -196,7 +207,9 @@ export async function requireReceiveMutateForOrders(
   const teeth = data.filter((row) => row.is_teeth === true);
   const regular = data.filter((row) => row.is_teeth !== true);
   if (teeth.length && regular.length) {
-    throw new Error("Nie można mieszać zębów z innym towarem w jednej operacji przyjęcia");
+    throw new Error(
+      "Nie można mieszać zębów z innym towarem w jednej operacji przyjęcia"
+    );
   }
 
   if (teeth.length) {
@@ -210,10 +223,7 @@ export async function requireReceiveNotificationFlush(): Promise<{
   user: SessionUser;
   scope: "warehouse" | "teeth" | "all";
 }> {
-  const user = await getSessionUser();
-  if (!user) {
-    throw new Error("Brak sesji — zaloguj się ponownie.");
-  }
+  const user = await requireLoggedInUser();
   assertPasswordChangeCompleted(user);
 
   const warehouse = canAccessWarehouse(user.role, user.assignedWorkspaces);
@@ -236,8 +246,8 @@ export async function requireReceiveNotificationFlush(): Promise<{
 export async function requireSupplierManagement(
   intent: AuthIntent = "read"
 ): Promise<SessionUser> {
-  const user = await getSessionUser();
-  if (!user || !canManageSuppliers(user.role, user.assignedWorkspaces)) {
+  const user = await requireLoggedInUser();
+  if (!canManageSuppliers(user.role, user.assignedWorkspaces)) {
     throw new Error("Brak uprawnień do zarządzania dostawcami");
   }
   if (intent === "mutate") {
@@ -248,10 +258,7 @@ export async function requireSupplierManagement(
 
 /** Sesja wymagana do mutacji (z blokadą podglądu panelu admina). */
 export async function getSessionUserForMutation(): Promise<SessionUser> {
-  const user = await getSessionUser();
-  if (!user) {
-    throw new Error("Brak sesji — zaloguj się ponownie.");
-  }
+  const user = await requireLoggedInUser();
   assertPasswordChangeCompleted(user);
   await assertAdminPanelAllowsOperationsMutations(user);
   return user;
@@ -259,8 +266,13 @@ export async function getSessionUserForMutation(): Promise<SessionUser> {
 
 /** Podpowiedzi Subiekt przy składaniu / edycji próśb (handlowiec, zakupy, admin). */
 export async function requireSubiektLookup(): Promise<SessionUser> {
-  const user = await getSessionUser();
-  if (!user || (!isSalesAccount(user.role) && !canAccessOperations(user.role, user.assignedWorkspaces) && !canAccessTeethPanel(user.role, user.assignedWorkspaces) && !canAccessWarehouse(user.role, user.assignedWorkspaces))) {
+  const user = await requireLoggedInUser();
+  if (
+    !isSalesAccount(user.role) &&
+    !canAccessOperations(user.role, user.assignedWorkspaces) &&
+    !canAccessTeethPanel(user.role, user.assignedWorkspaces) &&
+    !canAccessWarehouse(user.role, user.assignedWorkspaces)
+  ) {
     throw new Error("Brak uprawnień do podpowiedzi Subiekt");
   }
   return user;

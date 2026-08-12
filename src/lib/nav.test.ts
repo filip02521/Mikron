@@ -107,8 +107,8 @@ describe("pageTitle", () => {
     expect(pageTitle("/zakupy/gadki")).toBe("Magazyn Gądki");
   });
 
-  it("zwraca Szacunek ZD dla /zakupy/szacunek", () => {
-    expect(pageTitle("/zakupy/szacunek")).toBe("Szacunek ZD");
+  it("zwraca Kreator ZD dla /zakupy/szacunek", () => {
+    expect(pageTitle("/zakupy/szacunek")).toBe("Kreator ZD");
   });
 
   it("zwraca ZK czekające dla /notatnik i /zk", () => {
@@ -176,7 +176,7 @@ describe("navForRole struktura zakupów", () => {
     ]);
   });
 
-  it("admin — Szacunek ZD w sekcji Dziś (nie w Dostawcach)", () => {
+  it("admin — Kreator ZD w sekcji Dziś (nie w Dostawcach)", () => {
     const today = navForRole("admin").find((g) => g.title === NAV_SECTION_TODAY);
     expect(today?.items.map((item) => item.href)).toEqual([
       "/podsumowanie",
@@ -326,7 +326,7 @@ describe("navForRole zakupy_zeby", () => {
     expect(allHrefs.some((href) => href.startsWith("/zeby"))).toBe(false);
   });
 
-  it("zakupy ma Magazyn Gądki; Szacunek ZD tylko admin w Dziś; zęby/magazyn — bez obu", () => {
+  it("zakupy ma Magazyn Gądki; Kreator ZD tylko admin w Dziś; zęby/magazyn — bez obu", () => {
     const suppliers = navForRole("zakupy").find((g) => g.title === NAV_SECTION_SUPPLIERS);
     const gadki = suppliers?.items.find((i) => i.href === "/zakupy/gadki");
     expect(gadki?.icon).toBe("magazynGadki");

@@ -1,5 +1,5 @@
 /**
- * Teksty UI szacunku ZD — polszczyzna dla zakupów, bez żargonu API/SQL.
+ * Teksty UI kreatora ZD — polszczyzna dla zakupów, bez żargonu API/SQL.
  */
 
 /** Krótki flow w intro — ten sam na loadingu i stronie (bez skoku copy). */
@@ -7,11 +7,11 @@ export const ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION =
   "Zakres Subiekta → lista do zamówienia → Utwórz ZD.";
 
 export function zdEstimateRouteLoadingAriaLabel(): string {
-  return "Wczytuję szacunek ZD";
+  return "Wczytuję kreator ZD";
 }
 
 export function zdEstimateRouteLoadingTitle(): string {
-  return "Wczytuję szacunek ZD";
+  return "Wczytuję kreator ZD";
 }
 
 export function zdEstimateRouteLoadingSubtitle(): string {
@@ -42,7 +42,7 @@ export function zdEstimateRouteLoadingSteps(): ReadonlyArray<{
     {
       id: "host",
       title: "Połączenie z Subiektem",
-      activeHint: "Sprawdzam host szacunku…",
+      activeHint: "Sprawdzam host kreatora…",
       doneHint: "Host ustalony",
     },
     {
@@ -147,7 +147,7 @@ export function zdEstimatePageHint(input: {
   configured: boolean;
 }): string {
   if (!input.configured) {
-    return "Skonfiguruj połączenie z Subiektem (host szacunku), żeby policzyć listę i utworzyć ZD.";
+    return "Skonfiguruj połączenie z Subiektem (host kreatora), żeby policzyć listę i utworzyć ZD.";
   }
   const hostNote = input.isLive
     ? "„Utwórz ZD” zapisuje prawdziwy dokument w aktualnej bazie Subiekta."
@@ -173,13 +173,13 @@ export function zdEstimateLaunchFetchHint(isLive: boolean): string {
 }
 
 export function zdEstimateBlockedDailyCtaMessage(): string {
-  return "Szacunek jest zablokowany (brak połączenia z Subiektem). CTA z panelu dziennego nie uruchomi listy — ustaw host szacunku w konfiguracji i odśwież stronę.";
+  return "Kreator ZD jest zablokowany (brak połączenia z Subiektem). CTA z panelu dziennego nie uruchomi listy — ustaw host kreatora w konfiguracji i odśwież stronę.";
 }
 
 export function zdEstimateBlockedOrdersAlertBody(message: string | null): string {
   return (
     message?.trim() ||
-    "Brak połączenia z hostem szacunku Subiekta (live lub test). Skontaktuj się z administratorem albo sprawdź konfigurację środowiska."
+    "Brak połączenia z hostem kreatora ZD Subiekta (live lub test). Skontaktuj się z administratorem albo sprawdź konfigurację środowiska."
   );
 }
 
@@ -223,6 +223,8 @@ export const ZD_ESTIMATE_UI = {
     "Wymaga wczytanych wykluczeń, „tylko na prośbę”, opakowań, par, składów i katalogu zębów",
   createGateNeedsSettings:
     "Najpierw wczytaj wykluczenia, listę „tylko na prośbę”, opakowania, pary, składy i katalog zębów.",
+  createGateExplodeBomIncomplete:
+    "Skład „Składamy” jest niekompletny (brak towarów w wyniku) — dociągnij węzły (Policz) zanim utworzysz ZD.",
   createProgressDisclaimer:
     "Postęp jest szacunkowy (bez podglądu kroków po stronie Subiekta) — lista może zostać dłużej na „Tworzenie w Subiekcie”.",
   createQtyBumpNote:
@@ -233,6 +235,8 @@ export const ZD_ESTIMATE_UI = {
   packagingConflictShort: "Konflikt opakowania",
   packagingConflictTitle:
     "Opakowanie w OnTime różni się od przelicznika pary — sprawdź ustawienia przed utworzeniem ZD.",
+  implicitPieceSnapshotTitle:
+    "Historia zapisze część pozycji jako sztuki 1:1 (brak opakowania / pary)",
   emptyOrderTitle: "Brak pozycji do ZD",
   emptyExcludedTitle: "Brak wykluczeń w tym zakresie",
   emptyExcludedDescription:
@@ -244,3 +248,20 @@ export const ZD_ESTIMATE_UI = {
   onRequestVsHardExclude:
     "„Tylko na prośbę” — poza Do ZD bez prośby; z prośbą qty = tylko prośba. Twarde wykluczenie — prośba trafia do usług/uwag.",
 } as const;
+
+/** Preflight przed Create / Powiąż ZD — pozycje bez jawnego opakowania / pary. */
+export function formatImplicitPieceSnapshotHint(
+  lines: ReadonlyArray<{ symbol: string; twId: number }>,
+  maxNames = 4
+): string | null {
+  if (!lines.length) return null;
+  const sample = lines
+    .slice(0, maxNames)
+    .map((l) => `${l.symbol} (${l.twId})`)
+    .join(", ");
+  const more =
+    lines.length > maxNames ? ` (+${lines.length - maxNames})` : "";
+  const countLabel =
+    lines.length === 1 ? "1 pozycja" : `${lines.length} pozycje`;
+  return `${countLabel} bez opakowania ani pary (${sample}${more}) — historia zapisze jednostki ZD jako sztuki 1:1. Ustaw opakowanie (≥2 szt/op.) lub parę, jeśli towar idzie w paczkach.`;
+}

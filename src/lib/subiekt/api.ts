@@ -208,7 +208,7 @@ export async function searchSubiektProductCechy(
   );
 }
 
-/** Jedna strona szacunku ZD — GET /orders/zd/estimate. */
+/** Jedna strona kreatora ZD — GET /orders/zd/estimate. */
 export async function fetchSubiektZdEstimatePage(
   params: SubiektZdEstimateParamsInput = {}
 ): Promise<{

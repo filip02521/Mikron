@@ -1,5 +1,5 @@
 "use client";
-import { ADMIN_PREVIEW_TOAST, REQUEST_EDIT_FORM, VERIFICATION_TOAST, formMessageToToast, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
+import { ADMIN_PREVIEW_TOAST, REQUEST_EDIT_FORM, VERIFICATION_TOAST, formMessageToToast, toastFromError, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 
 import { useState, useTransition, useEffect, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -531,7 +531,7 @@ export function VerificationWorkspace({
         setToast(VERIFICATION_TOAST.cancelled(result.emailError));
         router.refresh();
       } catch (e) {
-        setToast(toastFromError(e instanceof Error ? e.message : undefined, VERIFICATION_TOAST.cancelFailed.text));
+        setToast(toastFromUnknown(e, VERIFICATION_TOAST.cancelFailed.text));
       } finally {
         if (pendingSafetyRef.current) {
           window.clearTimeout(pendingSafetyRef.current);

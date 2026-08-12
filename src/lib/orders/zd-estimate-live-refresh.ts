@@ -4,6 +4,7 @@
  */
 
 import {
+  applyBomPurchaseTargetFinalize,
   applyZdEstimateBoms,
   bomRowsToRefs,
   collectMissingZdBomTwIds,
@@ -46,7 +47,7 @@ export type RefreshZdEstimateLinesOptions = ApplyZdEstimatePairsOptions & {
 };
 
 /**
- * Przelicza `pozycjeBase` → expand BOM → remat solo → pary.
+ * Przelicza `pozycjeBase` → expand BOM → remat solo → pary → finalize purchase.
  * Zwraca brakujących partnerów i węzłów BOM (wymaga pełnego Policz / fetch).
  */
 export function refreshZdEstimateLinesWithPairs(input: {
@@ -60,15 +61,16 @@ export function refreshZdEstimateLinesWithPairs(input: {
   missingBomTwIds: number[];
 } {
   const boms = input.boms ?? [];
-  const missingBomTwIds = collectMissingZdBomTwIds(input.linesBase, boms);
+  const bomRefs = bomRowsToRefs(boms);
+  const missingBomTwIds = collectMissingZdBomTwIds(input.linesBase, bomRefs);
   const missingBomSet =
     missingBomTwIds.length > 0
       ? new Set(missingBomTwIds)
       : input.options.missingBomTwIds ?? null;
 
   const afterBom =
-    boms.length > 0
-      ? applyZdEstimateBoms(input.linesBase, bomRowsToRefs(boms), {
+    bomRefs.length > 0
+      ? applyZdEstimateBoms(input.linesBase, bomRefs, {
           dniZapasu: input.options.dniZapasu,
           dniOkresu: input.options.dniOkresu,
           zapasMin: input.options.zapasMin,
@@ -90,10 +92,11 @@ export function refreshZdEstimateLinesWithPairs(input: {
       ? new Set(missingPartnerTwIds)
       : input.options.missingPartnerTwIds ?? null;
 
-  const lines = applyZdEstimatePairs(afterBom, input.pairs, {
+  const withPairs = applyZdEstimatePairs(afterBom, input.pairs, {
     ...input.options,
     missingPartnerTwIds: missingPairSet,
   });
+  const lines = applyBomPurchaseTargetFinalize(withPairs);
 
   return { lines, missingPartnerTwIds, missingBomTwIds };
 }

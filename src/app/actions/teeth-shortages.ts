@@ -1,5 +1,6 @@
 "use server";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja requireTeethPanel(); service role po warstwie aplikacji.
 
 import { revalidatePath } from "next/cache";
@@ -145,7 +146,7 @@ export async function actionUpsertTeethShortage(
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Nie udało się zapisać braku.",
+      error: userFacingErrorText(e, "Nie udało się zapisać braku."),
     };
   }
 }
@@ -168,7 +169,7 @@ export async function actionSetTeethShortageActive(input: {
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Nie udało się zaktualizować statusu.",
+      error: userFacingErrorText(e, "Nie udało się zaktualizować statusu."),
     };
   }
 }

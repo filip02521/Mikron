@@ -199,7 +199,7 @@ export function ZdEstimatePairsModal({
       open={open}
       onClose={onClose}
       title="Pary montaż / demontaż"
-      titleHint="Paczka kupowana na ZD ↔ sztuki sprzedawane. Szacunek scala popyt i pokrycie w sztukach, zamawia tylko SKU paczki."
+      titleHint="Paczka kupowana na ZD ↔ sztuki sprzedawane. Kreator scala popyt i pokrycie w sztukach, zamawia tylko SKU paczki."
       size="xl"
       bodyClassName="space-y-4 px-5 py-4 sm:px-6 sm:py-5"
       loadingMessage={pending ? "Zapisuję…" : null}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { actionRestoreOperationsNote } from "@/app/actions/operations-notepad";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
@@ -55,7 +56,7 @@ function ArchivedNoteCard({
       const { note: restored } = await actionRestoreOperationsNote(note.id);
       onRestored?.(restored);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się przywrócić notatki.");
+      setError(userFacingErrorText(e, "Nie udało się przywrócić notatki."));
     } finally {
       setRestoring(false);
     }

@@ -330,4 +330,4 @@ Czyli: **lista i decyzja w OnTime; obliczenia masowe (agregaty) w API; obliczeni
 
 ## 12. Jedno zdanie do wrzucenia na chat
 
-> Najlepiej: API daje nam tygodnie sprzedaży, ceny, stany/otwarte ZD i lead-time; OnTime trzyma matrycę ABC/XYZ, liczy ile/kiedy zamawiać (z fallbackiem do obecnego szacunku) i tworzy ZD — lista towarów zawsze startuje z zakresu w OnTime, nie z „gotowego EOQ” po stronie API.
+> Najlepiej: API daje nam tygodnie sprzedaży, ceny, stany/otwarte ZD i lead-time; OnTime trzyma matrycę ABC/XYZ, liczy ile/kiedy zamawiać (z fallbackiem do obecnego kreatora) i tworzy ZD — lista towarów zawsze startuje z zakresu w OnTime, nie z „gotowego EOQ” po stronie API.

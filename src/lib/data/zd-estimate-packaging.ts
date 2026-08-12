@@ -6,7 +6,7 @@ export type ZdEstimatePackagingRow = {
   twNazwa: string;
   grtId: number | null;
   grtNazwa: string | null;
-  /** Ile sztuk przychodzi przy wpisie „1” na ZD (≥ 2). */
+  /** Ile sztuk przychodzi przy wpisie „1” na ZD (1 = jawne sztuki 1:1). */
   unitsPerPackage: number;
   /** Etykieta jednostki, np. „op.” / „paczka”. */
   packageLabel: string;
@@ -114,8 +114,9 @@ async function updateExistingPackaging(input: {
 }
 
 /**
- * Zapisuje opakowanie (≥ 2 szt / jednostka ZD).
- * unitsPerPackage < 2 → usuwa ustawienie (zamawianie na sztuki).
+ * Zapisuje opakowanie (≥ 1 szt / jednostka ZD).
+ * unitsPerPackage === 1 → jawne potwierdzenie sztuk 1:1 (historia snapshotów).
+ * Usunięcie wpisu: deleteZdEstimatePackaging / „Usuń” w UI.
  */
 export async function upsertZdEstimatePackaging(input: {
   subiektTwId: number;
@@ -136,10 +137,6 @@ export async function upsertZdEstimatePackaging(input: {
   const units = Math.trunc(Number(input.unitsPerPackage));
   if (!Number.isFinite(units) || units < 1) {
     throw new Error("Liczba sztuk w opakowaniu musi być ≥ 1.");
-  }
-  if (units === 1) {
-    await deleteZdEstimatePackaging(subiektTwId);
-    return null;
   }
   if (units > 100_000) {
     throw new Error("Liczba sztuk w opakowaniu jest zbyt duża.");

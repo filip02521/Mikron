@@ -19,10 +19,10 @@ export type ZdEstimatePageIntroHost = {
  * (bez drugiej belki „alertowej” pod PageHeader).
  */
 export function ZdEstimatePageIntro({
-  title = "Szacunek ZD",
+  title = "Kreator ZD",
   description,
   hint,
-  hintAriaLabel = "O szacunku ZD",
+  hintAriaLabel = "O kreatorze ZD",
   host = null,
   /** Rezerwuje miejsce na badge + strip podczas route loading (bez skoku layoutu). */
   hostPlaceholder = false,

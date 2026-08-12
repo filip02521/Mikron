@@ -9,6 +9,10 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import {
+  userFacingErrorText,
+  userFacingErrorTextFromMessage,
+} from "@/lib/ui/user-facing-error";
+import {
   actionAddGadkiSiteNote,
   actionDeleteGadkiSiteNote,
   actionLinkGadkiZk,
@@ -212,7 +216,7 @@ export function MagazynGadkiClient({
           await fn();
           router.refresh();
         } catch (e) {
-          setError(e instanceof Error ? e.message : "Operacja nie powiodła się");
+          setError(userFacingErrorText(e, "Operacja nie powiodła się"));
         }
       })();
     });
@@ -225,7 +229,7 @@ export function MagazynGadkiClient({
     try {
       const result = await actionSearchGadkiZk(query);
       if (result.kind === "error") {
-        setError(result.message);
+        setError(userFacingErrorTextFromMessage(result.message, "Błąd wyszukiwania ZK"));
         setCandidates([]);
         setChooseHint(null);
         return;
@@ -239,13 +243,13 @@ export function MagazynGadkiClient({
       setChooseHint(null);
       const linked = await actionLinkGadkiZk({ subiektDokId: result.dokId });
       if (!linked.ok) {
-        setError(linked.message);
+        setError(userFacingErrorTextFromMessage(linked.message, "Błąd powiązania ZK"));
         return;
       }
       setQuery("");
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Błąd wyszukiwania ZK");
+      setError(userFacingErrorText(e, "Błąd wyszukiwania ZK"));
     } finally {
       setSearchLoading(false);
     }
@@ -257,7 +261,7 @@ export function MagazynGadkiClient({
     try {
       const linked = await actionLinkGadkiZk({ subiektDokId: c.subiektDokId });
       if (!linked.ok) {
-        setError(linked.message);
+        setError(userFacingErrorTextFromMessage(linked.message, "Błąd powiązania ZK"));
         return;
       }
       setQuery("");
@@ -265,7 +269,7 @@ export function MagazynGadkiClient({
       setChooseHint(null);
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Błąd powiązania ZK");
+      setError(userFacingErrorText(e, "Błąd powiązania ZK"));
     } finally {
       setSearchLoading(false);
     }
@@ -353,7 +357,8 @@ export function MagazynGadkiClient({
           <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm">
             {syncBanner.errors.map((e) => (
               <li key={`${e.zkNumber}-${e.message}`}>
-                <span className="font-medium">{e.zkNumber}</span>: {e.message}
+                <span className="font-medium">{e.zkNumber}</span>:{" "}
+                {userFacingErrorTextFromMessage(e.message, "Błąd synchronizacji ZK")}
               </li>
             ))}
           </ul>

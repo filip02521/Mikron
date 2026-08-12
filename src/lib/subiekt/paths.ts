@@ -24,7 +24,7 @@ export const SUBIEKT_PATHS = {
   documentsZdCreate: "/documents/zd/create",
   documentsFs: "/documents/fs",
   documentFs: (id: number | string) => `/documents/fs/${id}`,
-  /** Szacunek ilości do ZD (sprzedaż FS + stany + otwarte ZK/ZD). */
+  /** Kreator ilości do ZD (sprzedaż FS + stany + otwarte ZK/ZD). */
   ordersZdEstimate: "/orders/zd/estimate",
   /**
    * Komplety (montaż) — SELECT tw_Komplet.

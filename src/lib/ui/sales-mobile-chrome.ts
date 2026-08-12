@@ -10,6 +10,6 @@ export const floatingToastBottomClass =
 export const floatingToastStackAboveClass =
   "bottom-[calc(4.75rem+var(--mobile-bottom-chrome,0px))]";
 
-/** Undo / toast nad sticky Create/TSV/Link w szacunku ZD. */
+/** Undo / toast nad sticky Create/TSV/Link w kreatorze ZD. */
 export const floatingToastAboveZdStickyClass =
   "bottom-[calc(9.25rem+env(safe-area-inset-bottom,0px))] md:bottom-[6.75rem]";

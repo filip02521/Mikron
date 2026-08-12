@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 import type { IndividualRequestKind } from "@/types/database";
 import { actionUpdateIndividualRequest } from "@/app/actions/admin";
@@ -370,7 +371,7 @@ export function EditIndividualRequestModal({
           setFormNotice(
             formError(
               "Uzupełnij pola",
-              e instanceof Error ? e.message : REQUEST_EDIT_FORM.incompleteFields.text,
+              userFacingErrorText(e, REQUEST_EDIT_FORM.incompleteFields.text),
             ),
           );
           return;

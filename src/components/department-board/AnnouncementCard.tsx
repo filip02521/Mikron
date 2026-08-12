@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { NOTE_COLOR_CARD, NOTE_COLOR_SWATCH } from "@/components/notatnik/note-styles";
 import { Button } from "@/components/ui/Button";
 import { IconInbox, IconPin } from "@/components/icons/StrokeIcons";
@@ -87,7 +88,7 @@ export function AnnouncementCard({
       await action();
       onChanged?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Operacja nie powiodła się.");
+      setError(userFacingErrorText(e, "Operacja nie powiodła się."));
     } finally {
       setBusy(false);
     }

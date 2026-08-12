@@ -96,7 +96,7 @@ export function SupplierDrawer({
   run: DailyPanelRunFn;
   onVacation: () => void;
   onEdit: () => void;
-  /** Przygotuj ZD / szacunek — wyłącznie administrator. */
+  /** Przygotuj ZD / kreator ZD — wyłącznie administrator. */
   canPrepareZd?: boolean;
 }) {
   const hubContext = useSupplierHubContext();

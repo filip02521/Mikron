@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { getSessionUser } from "@/lib/auth";
 import { canAccessWarehouse } from "@/lib/auth-roles";
 import { fetchWarehouseCarriers } from "@/lib/data/warehouse-carriers";
@@ -47,7 +48,7 @@ export default async function DostawyPage() {
       };
       supplierSchedules = schedules;
     } catch (e) {
-      loadError = e instanceof Error ? e.message : "Nie udało się załadować dostaw.";
+      loadError = userFacingErrorText(e, "Nie udało się załadować dostaw.");
     }
   }
 

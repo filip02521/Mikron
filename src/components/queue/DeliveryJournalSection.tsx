@@ -1,5 +1,6 @@
 "use client";
-import { ToastNotice, WAREHOUSE_TOAST } from "@/lib/ui/notice-copy";
+import { ToastNotice, WAREHOUSE_TOAST, toastFromUnknown } from "@/lib/ui/notice-copy";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
@@ -179,7 +180,7 @@ function ReceiptRow({
     try {
       counts = formCountsForSubmit(form);
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Nieprawidłowe dane.");
+      onError(userFacingErrorText(err, "Nieprawidłowe dane."));
       return;
     }
     void actionUpdateDeliveryReceipt({
@@ -196,7 +197,7 @@ function ReceiptRow({
         onSaved();
       })
       .catch((err) => {
-        onError(err instanceof Error ? err.message : "Nie udało się zapisać wpisu dziennika.");
+        onError(userFacingErrorText(err, "Nie udało się zapisać wpisu dziennika."));
       });
   };
 
@@ -215,7 +216,7 @@ function ReceiptRow({
             void actionDeleteDeliveryReceipt(receipt.id)
               .then(onDeleted)
               .catch((err) => {
-                onError(err instanceof Error ? err.message : "Nie udało się usunąć wpisu.");
+                onError(userFacingErrorText(err, "Nie udało się usunąć wpisu."));
               })
               .finally(() => setDeleteOpen(false));
           }}
@@ -478,10 +479,7 @@ export function DeliveryJournalSection({
         setEntrySearch("");
         setArchiveSearchSeed("");
       } catch (e) {
-        setToast({
-          text: e instanceof Error ? e.message : "Błąd ładowania dziennika",
-          tone: "error",
-        });
+        setToast(toastFromUnknown(e, "Błąd ładowania dziennika"));
       }
     });
   }, []);
@@ -634,10 +632,7 @@ export function DeliveryJournalSection({
         refresh();
         focusForm();
       } catch (e) {
-        setToast({
-          text: e instanceof Error ? e.message : "Błąd zapisu",
-          tone: "error",
-        });
+        setToast(toastFromUnknown(e, "Błąd zapisu"));
       }
     });
   }, [carriers, blockIfReadOnly, defaultCarrier, form, pending, refresh, focusForm]);

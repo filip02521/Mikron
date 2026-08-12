@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import {
   countPickupReadyForSales,
   fetchDeliveryQueue,
@@ -57,7 +58,7 @@ export default async function KolejkaPage() {
       ]);
     }
   } catch (e) {
-    error = e instanceof Error ? e.message : "Nie udało się załadować kolejki.";
+    error = userFacingErrorText(e, "Nie udało się załadować kolejki.");
     orders = [];
     informacjaOrders = [];
     pickupReadyCount = 0;

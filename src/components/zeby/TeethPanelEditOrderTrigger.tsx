@@ -1,5 +1,6 @@
 "use client";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
 import { actionFetchTeethEditContext } from "@/app/actions/teeth-orders";
@@ -54,7 +55,7 @@ export function TeethPanelEditOrderTrigger({
       });
       setOpen(true);
     } catch (e) {
-      setBlockedMessage(e instanceof Error ? e.message : "Nie udało się wczytać prośby");
+      setBlockedMessage(userFacingErrorText(e, "Nie udało się wczytać prośby"));
     } finally {
       setLoading(false);
     }

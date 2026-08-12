@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION,
+  formatImplicitPieceSnapshotHint,
   zdEstimateCreateConfirmLabel,
   zdEstimateEmptyListDescription,
   zdEstimateHostBadgeLabel,
@@ -84,5 +85,19 @@ describe("zd-estimate-ui-copy", () => {
     ).toMatch(/Przygotowuję zamówienie/);
     expect(zdEstimateRecountOverlayHint(true)).toMatch(/aktualnej bazy/);
     expect(zdEstimateRecountOverlayHint(false)).toMatch(/testowego/);
+  });
+
+  it("formatImplicitPieceSnapshotHint — null gdy brak linii", () => {
+    expect(formatImplicitPieceSnapshotHint([])).toBeNull();
+  });
+
+  it("formatImplicitPieceSnapshotHint — sample z tw_Id", () => {
+    const hint = formatImplicitPieceSnapshotHint([
+      { symbol: "ABC", twId: 1028 },
+      { symbol: "DEF", twId: 4914 },
+    ]);
+    expect(hint).toMatch(/2 pozycje/);
+    expect(hint).toMatch(/ABC \(1028\)/);
+    expect(hint).toMatch(/sztuki 1:1/);
   });
 });

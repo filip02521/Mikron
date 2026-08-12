@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import { canAccessOperations, isAdmin } from "@/lib/auth-roles";
@@ -33,7 +34,7 @@ export default async function ProcurementBoardPage({
   try {
     board = await fetchDepartmentBoard(user.id);
   } catch (e) {
-    loadError = e instanceof Error ? e.message : "Nie udało się załadować tablicy.";
+    loadError = userFacingErrorText(e, "Nie udało się załadować tablicy.");
   }
 
   let initialTab: "announcements" | "questions" | undefined;

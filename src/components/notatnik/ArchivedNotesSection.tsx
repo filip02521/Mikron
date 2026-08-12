@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { actionRestoreSalesNote, actionDeleteArchivedSalesNote } from "@/app/actions/sales-notepad";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
@@ -101,7 +102,7 @@ function ArchivedNoteCard({
       const { note: restored } = await actionRestoreSalesNote(note.id);
       onRestored?.(restored);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się przywrócić notatki.");
+      setError(userFacingErrorText(e, "Nie udało się przywrócić notatki."));
     } finally {
       setRestoring(false);
     }
@@ -118,7 +119,7 @@ function ArchivedNoteCard({
       await actionDeleteArchivedSalesNote(note.id);
       onDeleted?.(note.id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się usunąć notatki.");
+      setError(userFacingErrorText(e, "Nie udało się usunąć notatki."));
     } finally {
       setDeleting(false);
     }

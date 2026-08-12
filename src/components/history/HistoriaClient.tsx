@@ -1,5 +1,5 @@
 "use client";
-import { HISTORY_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
+import { HISTORY_TOAST, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 
 import { useMemo, useState, useTransition, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -182,7 +182,7 @@ export function HistoriaClient({
         setMsg(HISTORY_TOAST.deletedEntry);
         router.refresh();
       } catch (e) {
-        setMsg(toastFromError(e instanceof Error ? e.message : undefined, HISTORY_TOAST.deleteFailed.text));
+        setMsg(toastFromUnknown(e, HISTORY_TOAST.deleteFailed.text));
       }
     });
   };
@@ -195,7 +195,7 @@ export function HistoriaClient({
         setMsg(HISTORY_TOAST.deletedEntry);
         router.refresh();
       } catch (e) {
-        setMsg(toastFromError(e instanceof Error ? e.message : undefined, HISTORY_TOAST.deleteFailed.text));
+        setMsg(toastFromUnknown(e, HISTORY_TOAST.deleteFailed.text));
       }
     });
   };
@@ -216,7 +216,7 @@ export function HistoriaClient({
         setMsg(HISTORY_TOAST.cancelledOrder(emailWarning(result)));
         router.refresh();
       } catch (e) {
-        setMsg(toastFromError(e instanceof Error ? e.message : undefined, HISTORY_TOAST.cancelFailed.text));
+        setMsg(toastFromUnknown(e, HISTORY_TOAST.cancelFailed.text));
       }
     });
   };
@@ -235,7 +235,7 @@ export function HistoriaClient({
         setMsg(HISTORY_TOAST.savedNote(emailWarning(result)));
         router.refresh();
       } catch (e) {
-        setMsg(toastFromError(e instanceof Error ? e.message : undefined, HISTORY_TOAST.saveNoteFailed.text));
+        setMsg(toastFromUnknown(e, HISTORY_TOAST.saveNoteFailed.text));
       }
     });
   };

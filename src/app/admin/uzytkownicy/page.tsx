@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { fetchAppUsers } from "@/lib/data/users";
 import { fetchSalesPeople } from "@/lib/data/queries";
 import { fetchSalesGroups } from "@/lib/data/sales-groups";
@@ -46,7 +47,7 @@ export default async function UzytkownicyPage({
     salesGroups = groups.map((g) => ({ id: g.id, name: g.name }));
     initialManagerGroups = Object.fromEntries(managerMap);
   } catch (e) {
-    loadError = e instanceof Error ? e.message : "Nie udało się wczytać listy kont.";
+    loadError = userFacingErrorText(e, "Nie udało się wczytać listy kont.");
   }
 
   return (

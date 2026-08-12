@@ -371,12 +371,12 @@ function operationsTodayItems(
     },
   ];
 
-  // Szacunek ZD — tylko admin (requireZdEstimateAdmin); w „Dziś” obok panelu.
+  // Kreator ZD — tylko admin (requireZdEstimateAdmin); w „Dziś” obok panelu.
   if (role === "admin") {
     items.push({
       href: "/zakupy/szacunek",
-      label: "Szacunek ZD",
-      mobileLabel: "Szacunek",
+      label: "Kreator ZD",
+      mobileLabel: "Kreator",
       description: "Lista do zamówienia z grupy",
       icon: "groupOrder",
       tone: "violet",
@@ -963,7 +963,7 @@ export function pageTitle(pathname: string): string {
     return "Urlopy dostawców";
   }
   if (pathname.startsWith("/zakupy/gadki")) return "Magazyn Gądki";
-  if (pathname.startsWith("/zakupy/szacunek")) return "Szacunek ZD";
+  if (pathname.startsWith("/zakupy/szacunek")) return "Kreator ZD";
   if (pathname === "/urlopy" || pathname.startsWith("/urlopy/")) {
     return "Urlopy działu";
   }

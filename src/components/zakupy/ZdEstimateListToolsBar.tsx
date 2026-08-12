@@ -207,7 +207,7 @@ export function ZdEstimateListToolsBar({
       aria-label={
         selectionActive
           ? "Akcje grupowe zaznaczonych produktów"
-          : "Narzędzia listy szacunku ZD"
+          : "Narzędzia listy kreatora ZD"
       }
     >
       <div className={zdEstimateListToolsRowClass}>

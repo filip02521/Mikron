@@ -1,7 +1,7 @@
 /**
- * Składy/promocje (BOM) w szacunku ZD.
- * Expand dokłada sprzedaż/cover parenta do komponentów w jednostkach karty.
- * Solo (poza parą) wymaga rematerializacji celu/track/doZd.
+ * Składy/komplety (BOM) w kreatorze ZD.
+ * Presety: assemble (explode+components), buy_separate, kit_only.
+ * Expand → rematerialize; finalize purchase gates po pairs (osobna funkcja).
  */
 
 import {
@@ -9,6 +9,14 @@ import {
   type ManualZdEstimateLine,
 } from "@/lib/orders/zd-estimate-manual";
 import { applyZdEstimateHistoryCuts } from "@/lib/orders/zd-estimate-history-track";
+import {
+  isValidBomPolicyPair,
+  normalizeDemandAllocation,
+  normalizePurchaseTarget,
+  resolveBomStockAsCover,
+  type BomDemandAllocation,
+  type BomPurchaseTarget,
+} from "@/lib/orders/zd-estimate-bom-policy";
 import {
   computeSalesTrackedCel,
   resolveSprzedazDziennie,
@@ -28,18 +36,29 @@ export type ZdProductBomComponentRef = {
 export type ZdProductBomRef = {
   parentTwId: number;
   stockAsCover: boolean;
+  demandAllocation?: BomDemandAllocation;
+  purchaseTarget?: BomPurchaseTarget;
   label?: string;
   components: readonly ZdProductBomComponentRef[];
 };
 
+export type ZdEstimateBomRole =
+  | "assembled_parent"
+  | "purchased_kit"
+  | "component";
+
 export type ZdEstimateBomMeta = {
-  role: "parent" | "component";
+  role: ZdEstimateBomRole;
   /** Parenty, z których doliczono wkład (na komponencie). */
   parentTwIds?: number[];
   contributionSales?: number;
   contributionCover?: number;
-  /** Brak komponentu w wyniku — fail-loud. */
+  /** Brak komponentu w wyniku — fail-loud (explode). */
   componentMissing?: boolean;
+  /** kit_only: składnik poza ZD. */
+  purchaseBlocked?: boolean;
+  /** Dla purchased_kit — rozróżnienie badge as_sold vs kit_only. */
+  purchaseTarget?: BomPurchaseTarget;
 };
 
 export type ManualZdEstimateLineWithBom = ManualZdEstimateLine & {
@@ -53,6 +72,58 @@ function asNum(v: unknown, fallback = 0): number {
     if (Number.isFinite(n)) return n;
   }
   return fallback;
+}
+
+export function isAssembledBomParent(
+  line: Pick<ManualZdEstimateLineWithBom, "bom"> | { bom?: ZdEstimateBomMeta | null }
+): boolean {
+  return line.bom?.role === "assembled_parent";
+}
+
+export function isPurchasedBomKit(
+  line: Pick<ManualZdEstimateLineWithBom, "bom"> | { bom?: ZdEstimateBomMeta | null }
+): boolean {
+  return line.bom?.role === "purchased_kit";
+}
+
+/** purchaseBlocked bez wkładu explode — poza ścieżką zakupu (kit_only). */
+export function isBomPurchaseBlockedWithoutExplode(
+  line: Pick<ManualZdEstimateLineWithBom, "bom"> | { bom?: ZdEstimateBomMeta | null }
+): boolean {
+  return (
+    line.bom?.purchaseBlocked === true &&
+    !(asNum(line.bom.contributionSales) > 0)
+  );
+}
+
+export function bomBlocksZdOrder(
+  line: Pick<ManualZdEstimateLineWithBom, "bom"> | { bom?: ZdEstimateBomMeta | null }
+): boolean {
+  return isAssembledBomParent(line) || isBomPurchaseBlockedWithoutExplode(line);
+}
+
+/** UI: ukryj Wyklucz / Na prośbę (piece pary + assembled). */
+export function bomRowHidesHardExclude(line: {
+  pair?: { role?: string } | null;
+  bom?: ZdEstimateBomMeta | null;
+}): boolean {
+  return line.pair?.role === "piece" || isAssembledBomParent(line);
+}
+
+/** UI: ukryj „Na prośbę” (hard + purchaseBlocked). Clear legacy nadal OK. */
+export function bomRowHidesOnRequest(line: {
+  pair?: { role?: string } | null;
+  bom?: ZdEstimateBomMeta | null;
+}): boolean {
+  return bomRowHidesHardExclude(line) || isBomPurchaseBlockedWithoutExplode(line);
+}
+
+function bomAllocation(bom: ZdProductBomRef): BomDemandAllocation {
+  return normalizeDemandAllocation(bom.demandAllocation);
+}
+
+function bomTarget(bom: ZdProductBomRef): BomPurchaseTarget {
+  return normalizePurchaseTarget(bom.purchaseTarget);
 }
 
 /** Tw_Id parentów i komponentów BOM, gdy choć jeden węzeł jest na liście. */
@@ -85,15 +156,15 @@ export function collectMissingZdBomTwIds(
 }
 
 /**
- * Dokłada sprzedaż (zawsze) i cover (gdy stockAsCover) parenta do komponentów.
- * Parent: role=parent, doZamowieniaReczne=0.
- * Nie przelicza celu — to robi rematerialize / applyPairs.
+ * Dokłada sprzedaż/cover przy explode; taguje role; przy separate zachowuje doZd K.
+ * Nie przelicza celu — to robi rematerialize / applyPairs / finalize.
  */
 export function expandZdEstimateBoms(
   lines: ManualZdEstimateLine[],
   boms: readonly ZdProductBomRef[],
   options?: {
     missingComponentTwIds?: ReadonlySet<number> | null;
+    packagingByTwId?: ReadonlyMap<number, { unitsPerPackage: number }> | null;
   }
 ): ManualZdEstimateLineWithBom[] {
   if (!boms.length) {
@@ -108,8 +179,10 @@ export function expandZdEstimateBoms(
   const contribSales = new Map<number, number>();
   const contribCover = new Map<number, number>();
   const parentIdsByComp = new Map<number, number[]>();
+  const purchaseBlockedComps = new Set<number>();
   const missingFlag = new Set<number>();
   const missingOpt = options?.missingComponentTwIds ?? null;
+  const packagingByTwId = options?.packagingByTwId ?? null;
 
   for (const bom of boms) {
     const parentId = Math.trunc(Number(bom.parentTwId)) || 0;
@@ -117,46 +190,80 @@ export function expandZdEstimateBoms(
     const parent = byTw.get(parentId);
     if (!parent) continue;
 
+    const allocation = bomAllocation(bom);
+    const target = bomTarget(bom);
+    // Nielegalna para (np. refs poza upsert/DB) — pomiń BOM.
+    if (!isValidBomPolicyPair(allocation, target)) continue;
+    const explode = allocation === "explode";
+    const kitOnly = target === "kit_only";
+
     const parentSales = Math.max(0, asNum(parent.sprzedazOkres));
     const parentDost = Math.max(0, asNum(parent.dostepne));
-    const parentZd = Math.max(0, asNum(parent.otwarteZd));
-    const coverBase = bom.stockAsCover !== false ? parentDost + parentZd : 0;
+    const parentZdRaw = Math.max(0, asNum(parent.otwarteZd));
+    const parentPack =
+      packagingByTwId?.get(parentId)?.unitsPerPackage ?? null;
+    const parentZdPieces = zdDocumentUnitsToPieces(parentZdRaw, parentPack);
+    const useCover =
+      explode && bom.stockAsCover !== false && allocation === "explode";
+    const coverBase = useCover ? parentDost + parentZdPieces : 0;
 
-    byTw.set(parentId, {
-      ...parent,
-      doZamowieniaReczne: 0,
-      bom: { role: "parent" },
-    });
+    if (explode) {
+      byTw.set(parentId, {
+        ...parent,
+        doZamowieniaReczne: 0,
+        bom: { role: "assembled_parent" },
+      });
+    } else {
+      byTw.set(parentId, {
+        ...parent,
+        bom: {
+          role: "purchased_kit",
+          purchaseTarget: target,
+        },
+      });
+    }
 
     for (const comp of bom.components) {
       const cid = Math.trunc(Number(comp.componentTwId)) || 0;
       const qty = Math.trunc(Number(comp.qtyPerParent)) || 0;
       if (!(cid > 0) || qty < 1) continue;
 
-      const salesAdd = parentSales * qty;
-      const coverAdd = coverBase * qty;
-      contribSales.set(cid, (contribSales.get(cid) ?? 0) + salesAdd);
-      contribCover.set(cid, (contribCover.get(cid) ?? 0) + coverAdd);
       const parents = parentIdsByComp.get(cid) ?? [];
       if (!parents.includes(parentId)) parents.push(parentId);
       parentIdsByComp.set(cid, parents);
 
-      if (missingOpt?.has(cid) || !byTw.has(cid)) {
-        missingFlag.add(cid);
-        // Fail-loud na obecnych rodzeństwach tego samego BOM.
-        for (const sibling of bom.components) {
-          const sid = Math.trunc(Number(sibling.componentTwId)) || 0;
-          if (sid > 0) missingFlag.add(sid);
+      if (kitOnly) {
+        purchaseBlockedComps.add(cid);
+      }
+
+      if (explode) {
+        const salesAdd = parentSales * qty;
+        const coverAdd = coverBase * qty;
+        contribSales.set(cid, (contribSales.get(cid) ?? 0) + salesAdd);
+        contribCover.set(cid, (contribCover.get(cid) ?? 0) + coverAdd);
+
+        if (missingOpt?.has(cid) || !byTw.has(cid)) {
+          missingFlag.add(cid);
+          for (const sibling of bom.components) {
+            const sid = Math.trunc(Number(sibling.componentTwId)) || 0;
+            if (sid > 0) missingFlag.add(sid);
+          }
         }
+      } else if (missingOpt?.has(cid) || !byTw.has(cid)) {
+        // Soft: oznacz tylko brakujący węzeł, bez fail-loud sibling.
+        missingFlag.add(cid);
       }
     }
   }
 
+  // Komponenty z wkładem explode.
   for (const [cid, salesAdd] of contribSales) {
     const existing = byTw.get(cid);
     if (!existing) continue;
     const coverAdd = contribCover.get(cid) ?? 0;
     const siblingMissing = missingFlag.has(cid);
+    const blocked =
+      purchaseBlockedComps.has(cid) && !(salesAdd > 0);
     byTw.set(cid, {
       ...existing,
       sprzedazOkres: Math.max(0, asNum(existing.sprzedazOkres)) + salesAdd,
@@ -167,11 +274,32 @@ export function expandZdEstimateBoms(
         contributionSales: salesAdd,
         contributionCover: coverAdd,
         componentMissing: siblingMissing || undefined,
+        purchaseBlocked: blocked || undefined,
       },
     });
   }
 
-  // Zachowaj kolejność wejścia; parent/komponenty już w mapie.
+  // Komponenty tylko z kit_only / separate (bez wkładu sales).
+  for (const cid of parentIdsByComp.keys()) {
+    if (contribSales.has(cid)) continue;
+    const existing = byTw.get(cid);
+    if (!existing) continue;
+    const softMissing = missingFlag.has(cid);
+    const blocked = purchaseBlockedComps.has(cid);
+    byTw.set(cid, {
+      ...existing,
+      bom: {
+        role: "component",
+        parentTwIds: parentIdsByComp.get(cid) ?? [],
+        contributionSales: 0,
+        contributionCover: 0,
+        componentMissing: softMissing || undefined,
+        purchaseBlocked: blocked || undefined,
+      },
+      ...(blocked ? { doZamowieniaReczne: 0 } : {}),
+    });
+  }
+
   const out: ManualZdEstimateLineWithBom[] = [];
   const seen = new Set<number>();
   for (const line of lines) {
@@ -203,8 +331,9 @@ export type RematerializeSoloAfterBomOptions = {
 };
 
 /**
- * Po expand: przelicza cel/track/doZd dla komponentów spoza pary (np. płyn).
- * Parent zostaje z doZd=0. Komponenty w parze — tylko pola sprzedaży/stanu.
+ * Po expand: przelicza cel/track/doZd dla składników i purchased_kit (P2/P3).
+ * assembled_parent → doZd=0; purchaseBlocked bez wkładu explode → doZd=0.
+ * purchased_kit rematerializuje jak zwykły SKU (live dniZapasu / track).
  */
 export function rematerializeSoloAfterBom(
   lines: ManualZdEstimateLineWithBom[],
@@ -220,19 +349,9 @@ export function rematerializeSoloAfterBom(
   const salesTrackCuts = options.salesTrackCuts !== false;
   const pairIndex = indexZdProductPairs(options.productPairs ?? []);
 
-  return lines.map((line) => {
-    if (line.bom?.role === "parent") {
-      return { ...line, doZamowieniaReczne: 0 };
-    }
-
-    // Tylko komponenty z wkładem BOM (poza parą) wymagają remat.
-    if (line.bom?.role !== "component") {
-      return line;
-    }
-    if (pairIndex.has(line.tw_Id)) {
-      return line;
-    }
-
+  function rematerializeNeed(
+    line: ManualZdEstimateLineWithBom
+  ): ManualZdEstimateLineWithBom {
     const sprzedazOkres = Math.max(0, asNum(line.sprzedazOkres));
     const dostepne = Math.max(0, asNum(line.dostepne));
     const tempo = resolveSprzedazDziennie({
@@ -307,10 +426,69 @@ export function rematerializeSoloAfterBom(
       doZamowieniaReczne,
       wkladZk: Math.max(0, asNum(line.doZamowieniaApi) - doZamowieniaReczne),
     };
+  }
+
+  return lines.map((line) => {
+    if (isAssembledBomParent(line)) {
+      return { ...line, doZamowieniaReczne: 0 };
+    }
+
+    // purchased_kit: jak zwykły SKU (nie zero z roli).
+    if (isPurchasedBomKit(line)) {
+      if (pairIndex.has(line.tw_Id)) return line;
+      return rematerializeNeed(line);
+    }
+
+    if (line.bom?.role !== "component") {
+      return line;
+    }
+    if (pairIndex.has(line.tw_Id)) {
+      if (isBomPurchaseBlockedWithoutExplode(line)) {
+        return { ...line, doZamowieniaReczne: 0 };
+      }
+      return line;
+    }
+
+    // purchaseBlocked bez wkładu explode — zero bez remat.
+    if (isBomPurchaseBlockedWithoutExplode(line)) {
+      return { ...line, doZamowieniaReczne: 0 };
+    }
+
+    let next = rematerializeNeed(line);
+
+    // Explode wygrywa nad kit_only — zostaw need gdy jest contributionSales.
+    if (isBomPurchaseBlockedWithoutExplode(next)) {
+      next = { ...next, doZamowieniaReczne: 0 };
+    }
+
+    return next;
   });
 }
 
-/** Pełny krok BOM: expand → rematerialize solo. */
+/**
+ * Po pairs: wymuś doZd=0 dla assembled_parent i purchaseBlocked
+ * (pairs może przywrócić qty na packu).
+ */
+export function applyBomPurchaseTargetFinalize(
+  lines: ManualZdEstimateLineWithBom[]
+): ManualZdEstimateLineWithBom[] {
+  return lines.map((line) => {
+    if (isAssembledBomParent(line)) {
+      if (line.doZamowieniaReczne === 0) return line;
+      return { ...line, doZamowieniaReczne: 0 };
+    }
+    if (
+      line.bom?.purchaseBlocked &&
+      isBomPurchaseBlockedWithoutExplode(line)
+    ) {
+      if (line.doZamowieniaReczne === 0) return line;
+      return { ...line, doZamowieniaReczne: 0 };
+    }
+    return line;
+  });
+}
+
+/** Pełny krok BOM: expand → rematerialize solo (finalize wołaj po pairs). */
 export function applyZdEstimateBoms(
   lines: ManualZdEstimateLine[],
   boms: readonly ZdProductBomRef[],
@@ -320,6 +498,7 @@ export function applyZdEstimateBoms(
 ): ManualZdEstimateLineWithBom[] {
   const expanded = expandZdEstimateBoms(lines, boms, {
     missingComponentTwIds: options.missingComponentTwIds,
+    packagingByTwId: options.packagingByTwId,
   });
   return rematerializeSoloAfterBom(expanded, options);
 }
@@ -328,17 +507,60 @@ export function bomRowsToRefs(
   rows: readonly {
     parentTwId: number;
     stockAsCover: boolean;
+    demandAllocation?: BomDemandAllocation | string | null;
+    purchaseTarget?: BomPurchaseTarget | string | null;
     label?: string;
     components: readonly { componentTwId: number; qtyPerParent: number }[];
   }[]
 ): ZdProductBomRef[] {
-  return rows.map((r) => ({
-    parentTwId: r.parentTwId,
-    stockAsCover: r.stockAsCover !== false,
-    label: r.label,
-    components: r.components.map((c) => ({
-      componentTwId: c.componentTwId,
-      qtyPerParent: c.qtyPerParent,
-    })),
-  }));
+  return rows.map((r) => {
+    let demandAllocation = normalizeDemandAllocation(r.demandAllocation);
+    let purchaseTarget = normalizePurchaseTarget(r.purchaseTarget);
+    if (!isValidBomPolicyPair(demandAllocation, purchaseTarget)) {
+      // Fail-safe: nielegalna para → Składamy (default Castorit).
+      demandAllocation = "explode";
+      purchaseTarget = "components";
+    }
+    const stockAsCover = resolveBomStockAsCover({
+      demandAllocation,
+      stockAsCover: r.stockAsCover,
+    });
+    return {
+      parentTwId: r.parentTwId,
+      stockAsCover,
+      demandAllocation,
+      purchaseTarget,
+      label: r.label,
+      components: r.components.map((c) => ({
+        componentTwId: c.componentTwId,
+        qtyPerParent: c.qtyPerParent,
+      })),
+    };
+  });
+}
+
+/** Czy brakujące węzły dotyczą BOM explode (twardy gate Create/TSV). */
+export function hasUnresolvedExplodeBomNodes(
+  boms: readonly ZdProductBomRef[],
+  missingBomTwIds: readonly number[] | ReadonlySet<number> | null | undefined
+): boolean {
+  const missing =
+    missingBomTwIds instanceof Set
+      ? missingBomTwIds
+      : new Set(
+          [...(missingBomTwIds ?? [])]
+            .map((id) => Math.trunc(Number(id)) || 0)
+            .filter((id) => id > 0)
+        );
+  if (!missing.size || !boms.length) return false;
+  for (const bom of boms) {
+    if (normalizeDemandAllocation(bom.demandAllocation) !== "explode") continue;
+    const parent = Math.trunc(Number(bom.parentTwId)) || 0;
+    if (parent > 0 && missing.has(parent)) return true;
+    for (const c of bom.components ?? []) {
+      const cid = Math.trunc(Number(c.componentTwId)) || 0;
+      if (cid > 0 && missing.has(cid)) return true;
+    }
+  }
+  return false;
 }

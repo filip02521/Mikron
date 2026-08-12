@@ -327,7 +327,7 @@ select:disabled,
   background-color: rgb(248 250 252 / 0.45);
 }
 
-/* Szacunek ZD — czytelne wiersze (nie queue-table) */
+/* Kreator ZD — czytelne wiersze (nie queue-table) */
 .data-table.zd-estimate-table {
   --zd-est-check-w: 2.75rem;
   --zd-est-symbol-w: 7rem;

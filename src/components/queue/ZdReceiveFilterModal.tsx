@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import {
   actionResolveZdReceiveFilterByDokId,
   actionSearchZdReceiveFilter,
@@ -218,7 +219,7 @@ export function ZdReceiveFilterModal({
         if (cancelled) return;
         setPreview({
           status: "error",
-          message: e instanceof Error ? e.message : "Nie udało się wczytać ZD.",
+          message: userFacingErrorText(e, "Nie udało się wczytać ZD."),
         });
       }
     })();
@@ -249,7 +250,7 @@ export function ZdReceiveFilterModal({
       } catch (e) {
         setPreview({
           status: "error",
-          message: e instanceof Error ? e.message : "Nie udało się wczytać ZD.",
+          message: userFacingErrorText(e, "Nie udało się wczytać ZD."),
         });
       } finally {
         setResolvingDokId(null);
@@ -293,7 +294,7 @@ export function ZdReceiveFilterModal({
         onApply(built.filter);
         handleClose();
       } catch (e) {
-        onError(e instanceof Error ? e.message : "Nie udało się wczytać ZD.");
+        onError(userFacingErrorText(e, "Nie udało się wczytać ZD."));
       }
     });
   };

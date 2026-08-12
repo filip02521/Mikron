@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
 import {
   actionSetTeethShortageActive,
   actionUpsertTeethShortage,
@@ -164,7 +165,9 @@ export function TeethShortagesClient({
         note: payload.note,
       });
       if (!result.ok) {
-        setFormErrorMsg(result.error);
+        setFormErrorMsg(
+          userFacingErrorTextFromMessage(result.error, "Nie udało się zapisać braku.")
+        );
         return;
       }
       setFormOpen(false);
@@ -180,7 +183,12 @@ export function TeethShortagesClient({
     startTransition(async () => {
       const result = await actionSetTeethShortageActive({ id: row.id, active });
       if (!result.ok) {
-        setToast(toastError("Nie udało się", result.error));
+        setToast(
+          toastError(
+            "Nie udało się",
+            userFacingErrorTextFromMessage(result.error, "Spróbuj ponownie.")
+          )
+        );
         return;
       }
       setToast(

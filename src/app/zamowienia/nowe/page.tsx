@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { fetchSupplierFormContext, fetchSuppliersOnVacationNow } from "@/lib/data/queries";
 import { fetchSalesPeopleForPicker } from "@/lib/data/sales-people-admin";
 import { OrderFormClient } from "@/components/orders/OrderFormClient";
@@ -33,7 +34,7 @@ export default async function NoweZamowieniePage() {
     suppliersOnVacationNow = onVacation;
     salesPeople = await fetchSalesPeopleForPicker();
   } catch (error) {
-    loadError = error instanceof Error ? error.message : "Nie udało się wczytać formularza.";
+    loadError = userFacingErrorText(error, "Nie udało się wczytać formularza.");
     logDevPageError("zamowienia/nowe/page", error);
   }
 

@@ -1,5 +1,5 @@
 -- Pary montaż/demontaż: SKU paczki (zakup ZD) ↔ SKU sztuk (sprzedaż).
--- Współdzielone: szacunek ZD, match ZD↔prośba, pair-aware stan.
+-- Współdzielone: kreator ZD, match ZD↔prośba, pair-aware stan.
 
 CREATE TABLE IF NOT EXISTS public.zd_product_pairs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

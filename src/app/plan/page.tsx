@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import {
   fetchDeliveryStats,
   fetchIndividualOrders,
@@ -116,7 +117,7 @@ export default async function PlanPage({
       openOrderCountBySupplier = aggregated.openOrderCountBySupplier;
     }
   } catch (e) {
-    error = e instanceof Error ? e.message : "Błąd ładowania";
+    error = userFacingErrorText(e, "Błąd ładowania");
   }
 
   const salesMode = Boolean(

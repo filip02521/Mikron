@@ -395,7 +395,7 @@ export function ZdEstimateExclusionsModal({
         </p>
         {filtered.length > 0 ? (
           <p className="text-[10px] text-slate-400">
-            Przywróć = wraca na szacunek
+            Przywróć = wraca do zwykłego liczenia
           </p>
         ) : null}
       </div>
