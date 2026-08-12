@@ -12,7 +12,7 @@ import { resolveOrderQtyForLine } from "@/lib/orders/zd-estimate-packaging";
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 
 /**
- * Harness kontraktów prośb w szacunku ZD — bez auth / Subiekta.
+ * Harness kontraktów prośb w kreatorze ZD — bez auth / Subiekta.
  * Playwright sprawdza data-testid wyników pure-logic.
  */
 export function E2ELabZdEstimateIndividualsSection() {

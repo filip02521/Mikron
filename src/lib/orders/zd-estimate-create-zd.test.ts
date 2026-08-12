@@ -140,7 +140,7 @@ describe("buildZdCreatePreviewFromOrderable", () => {
         tw_Symbol: "PROMO",
         doZamowieniaReczne: 5,
         bom: {
-          role: "parent",
+          role: "assembled_parent",
           parentTwIds: [4],
         },
       }),
@@ -152,6 +152,32 @@ describe("buildZdCreatePreviewFromOrderable", () => {
     const karton = preview.lines.find((l) => l.symbol === "KARTON");
     expect(karton?.ilosc).toBe(2); // ceil(80/40)
     expect(preview.lines.find((l) => l.symbol === "PLYN")?.ilosc).toBe(7);
+  });
+
+  it("purchased_kit wchodzi do preview Create", () => {
+    const lines = [
+      baseLine({
+        tw_Id: 10,
+        tw_Symbol: "A",
+        celZapasu: 60,
+        celZapasuTracked: 60,
+        doZamowieniaReczne: 60,
+      }),
+      baseLine({
+        tw_Id: 30,
+        tw_Symbol: "K",
+        celZapasu: 20,
+        celZapasuTracked: 20,
+        doZamowieniaReczne: 20,
+        bom: {
+          role: "purchased_kit",
+          purchaseTarget: "as_sold",
+        },
+      }),
+    ];
+    const preview = buildZdCreatePreviewFromOrderable(lines, new Map());
+    expect(preview.lines.map((l) => l.symbol).sort()).toEqual(["A", "K"]);
+    expect(preview.lines.find((l) => l.symbol === "K")?.ilosc).toBe(20);
   });
 
   it("respektuje override jednostek dokumentu", () => {
@@ -277,7 +303,7 @@ describe("buildZdCreateApiBody + uwagi", () => {
         scopeLabel: "G",
         dateKey: "2026-08-08",
       })
-    ).toBe("OnTime szacunek · A · G · 2026-08-08");
+    ).toBe("OnTime kreator · A · G · 2026-08-08");
   });
 });
 
@@ -361,6 +387,24 @@ describe("canCreateZdFromEstimateState", () => {
         packagingPairConflictCount: 2,
       }).ok
     ).toBe(false);
+
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: false,
+        mutating: false,
+        creating: false,
+        createDoneDokId: null,
+        explodeBomIncomplete: true,
+      })
+    ).toEqual({
+      ok: false,
+      reason: expect.stringMatching(/Skład|niekompletny|dociągnij/i),
+    });
   });
 });
 

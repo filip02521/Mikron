@@ -1,5 +1,5 @@
 "use client";
-import { ADMIN_PREVIEW_TOAST, DAILY_PANEL_TOAST, toastFromError, toastSuccess, type ToastNotice } from "@/lib/ui/notice-copy";
+import { ADMIN_PREVIEW_TOAST, DAILY_PANEL_TOAST, toastFromError, toastSuccess, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 
 import { useCallback, useEffect, useRef, useState, useTransition, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
@@ -153,7 +153,7 @@ export function useDailyPanelRunner() {
           clearDailyPanelUndo();
           undoPayloadRef.current = null;
           consumeDailyPanelUndoRefreshFlag();
-          setFlash(toastFromError(e instanceof Error ? e.message : undefined, DAILY_PANEL_TOAST.genericError.text));
+          setFlash(toastFromUnknown(e, DAILY_PANEL_TOAST.genericError.text));
           needsRefreshRef.current = true;
           options?.onError?.();
         } finally {
@@ -194,8 +194,7 @@ export function useDailyPanelRunner() {
         setFlash(DAILY_PANEL_TOAST.undoSuccess);
         needsRefreshRef.current = true;
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Nie udało się cofnąć";
-        setFlash(toastFromError(message, DAILY_PANEL_TOAST.undoFailed.text));
+        setFlash(toastFromUnknown(e, DAILY_PANEL_TOAST.undoFailed.text));
         if (isUndoPayloadExpired(payload)) {
           clearDailyPanelUndo();
           undoPayloadRef.current = null;

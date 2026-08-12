@@ -1,5 +1,6 @@
 "use server";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja requireOperations(); service role z pełnym scope po warstwie aplikacji.
 
 import { revalidatePath } from "next/cache";
@@ -115,7 +116,7 @@ export async function actionLinkGadkiZk(input: {
   } catch (e) {
     return {
       ok: false,
-      message: e instanceof Error ? e.message : "Nie udało się pobrać ZK",
+      message: userFacingErrorText(e, "Nie udało się pobrać ZK"),
     };
   }
 

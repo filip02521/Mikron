@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { OtpCodeInput } from "@/components/auth/OtpCodeInput";
@@ -85,7 +86,9 @@ export function PasswordResetPanel({
     setSending(false);
 
     if (!result.ok) {
-      setBannerError(result.error);
+      setBannerError(
+        userFacingErrorTextFromMessage(result.error, "Nie udało się wysłać kodu.")
+      );
       if (result.retryAfterSec) {
         setResendAvailableAt(
           new Date(Date.now() + result.retryAfterSec * 1000).toISOString()
@@ -117,7 +120,9 @@ export function PasswordResetPanel({
     setVerifying(false);
 
     if (!result.ok) {
-      setCodeError(result.error);
+      setCodeError(
+        userFacingErrorTextFromMessage(result.error, "Nie udało się zweryfikować kodu.")
+      );
       return;
     }
 

@@ -222,4 +222,137 @@ describe("zk-watch-prosba-prefill", () => {
       });
     }
   });
+
+  it("dołącza notatkę sprawy do linii gdy include_note_in_prosba", () => {
+    const prefill = zkProsbaPrefillFromWatch({
+      ...baseWatch,
+      note: "Klient prosi o ekspres",
+      include_note_in_prosba: true,
+    });
+    expect(prefill.includeCaseNote).toBe(true);
+    expect(prefill.caseNote).toBe("Klient prosi o ekspres");
+    expect(prefill.lines.every((l) => l.requestNote === "Klient prosi o ekspres")).toBe(
+      true
+    );
+  });
+
+  it("nie dołącza notatki gdy flaga wyłączona", () => {
+    const prefill = zkProsbaPrefillFromWatch({
+      ...baseWatch,
+      note: "prywatne",
+      include_note_in_prosba: false,
+    });
+    expect(prefill.includeCaseNote).toBeUndefined();
+    expect(prefill.lines.every((l) => !l.requestNote)).toBe(true);
+  });
+
+  it("przenosi teethDetails ze szkicu ZK do prefill", () => {
+    const watchWithTeeth: SalesZkWatch = {
+      ...baseWatch,
+      subiekt_snapshot: {
+        dok_Pozycja: [
+          {
+            tw_Nazwa: "Phonares przednie",
+            tw_Symbol: "PH-A",
+            ob_Ilosc: 2,
+            ob_TowId: 101,
+            ob_Id: 1,
+          },
+        ],
+      },
+      teeth_drafts: {
+        "ob:1": {
+          lineKey: "ob:1",
+          subiektTwId: 101,
+          teethManufacturer: "ivoclar",
+          teethProductLine: "ivoclar_phonares_ii",
+          teethKind: "anterior",
+          expectedQuantity: 2,
+          teethDetails: [
+            { position: 1, color: "A2", mould: "S42", kind: "anterior" },
+            { position: 2, color: "A2", mould: "S42", kind: "anterior" },
+          ],
+          updatedAt: "2026-01-01T00:00:00Z",
+        },
+      },
+    };
+    const prefill = zkProsbaPrefillFromWatch(watchWithTeeth);
+    expect(prefill.lines).toHaveLength(1);
+    expect(prefill.lines[0]?.teethKind).toBe("anterior");
+    expect(prefill.lines[0]?.teethProductLine).toBe("ivoclar_phonares_ii");
+    expect(prefill.lines[0]?.teethDetails).toHaveLength(2);
+    expect(prefill.lines[0]?.quantity).toBe("2");
+  });
+
+  it("stashZkProsbaPrefill blokuje gdy teethDraftsIncomplete", () => {
+    const teethWatch: SalesZkWatch = {
+      ...baseWatch,
+      subiekt_snapshot: {
+        dok_Pozycja: [
+          {
+            tw_Nazwa: "Phonares przednie",
+            tw_Symbol: "PH-A",
+            ob_Ilosc: 2,
+            ob_TowId: 101,
+            ob_Id: 1,
+          },
+        ],
+      },
+      line_checks: [{ key: "ob:1", needs_prosba: true }],
+    };
+    const registry = {
+      twIds: new Set([101]),
+      manufacturerByTwId: new Map([[101, "ivoclar" as const]]),
+      productLineByTwId: new Map([[101, "ivoclar_phonares_ii" as const]]),
+      kindByTwId: new Map([[101, "anterior" as const]]),
+    };
+    expect(stashZkProsbaPrefill(teethWatch, { teethRegistry: registry })).toBe(false);
+
+    const incompletePrefill = zkProsbaPrefillFromWatch(teethWatch, { teethRegistry: registry });
+    expect(incompletePrefill.teethDraftsIncomplete).toBe(true);
+    expect(incompletePrefill.lines).toHaveLength(0);
+
+    const withDraft: SalesZkWatch = {
+      ...teethWatch,
+      teeth_drafts: {
+        "ob:1": {
+          lineKey: "ob:1",
+          subiektTwId: 101,
+          teethManufacturer: "ivoclar",
+          teethProductLine: "ivoclar_phonares_ii",
+          teethKind: "anterior",
+          expectedQuantity: 2,
+          teethDetails: [
+            { position: 1, color: "A2", mould: "S42", kind: "anterior" },
+            { position: 2, color: "A2", mould: "S42", kind: "anterior" },
+          ],
+          updatedAt: "2026-01-01T00:00:00Z",
+        },
+      },
+    };
+
+    const storage = new Map<string, string>();
+    const original = globalThis.sessionStorage;
+    Object.defineProperty(globalThis, "sessionStorage", {
+      configurable: true,
+      value: {
+        getItem: (key: string) => storage.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          storage.set(key, value);
+        },
+        removeItem: (key: string) => {
+          storage.delete(key);
+        },
+      },
+    });
+    try {
+      expect(stashZkProsbaPrefill(withDraft, { teethRegistry: registry })).toBe(true);
+      expect(storage.size).toBe(1);
+    } finally {
+      Object.defineProperty(globalThis, "sessionStorage", {
+        configurable: true,
+        value: original,
+      });
+    }
+  });
 });

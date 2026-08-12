@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { actionOpenSalesPersonPreview } from "@/app/actions/admin-panel-context";
 import { runServerActionWithRedirect } from "@/lib/client/server-action-redirect";
 import { cn } from "@/lib/cn";
@@ -29,9 +30,7 @@ export function SalesPersonPreviewLink({
             void runServerActionWithRedirect(
               () => actionOpenSalesPersonPreview(salesPersonId),
               (e) =>
-                setError(
-                  e instanceof Error ? e.message : "Nie udało się otworzyć podglądu"
-                )
+                setError(userFacingErrorText(e, "Nie udało się otworzyć podglądu"))
             );
           });
         }}

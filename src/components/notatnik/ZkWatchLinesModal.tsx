@@ -62,6 +62,7 @@ export function ZkWatchLinesModal({
   scopeExcludedLineKeys,
   onClose,
   onSaved,
+  onEditTeethDrafts,
 }: {
   watch: SalesZkWatch;
   open: boolean;
@@ -80,6 +81,7 @@ export function ZkWatchLinesModal({
   scopeExcludedLineKeys?: string[];
   onClose: () => void;
   onSaved?: (watch: SalesZkWatch) => void;
+  onEditTeethDrafts?: () => void;
 }) {
   const [watchKey, setWatchKey] = useState(watch.id);
   if (open && watch.id !== watchKey) {
@@ -271,6 +273,7 @@ export function ZkWatchLinesModal({
             <ZkWatchNoteSection
               key={`${watchKey}-note`}
               watch={watch}
+              linkableOrders={linkableOrders}
               readOnly={readOnly}
               tourPreview={tourPreview}
               archived={archived}
@@ -290,6 +293,9 @@ export function ZkWatchLinesModal({
               watch={watch}
               tourPreview={tourPreview}
               readOnly={readOnly}
+              onEditTeethDrafts={
+                !archived && !tourPreview ? onEditTeethDrafts : undefined
+              }
             />
             <ZkWatchLinesPanel
               key={watchKey}

@@ -313,7 +313,7 @@ export function ZdEstimateOnRequestModal({
               Zamawianie tylko przy prośbie
             </p>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Usuń wpis, gdy produkt ma wrócić do zwykłego szacunku zapasu.{" "}
+              Usuń wpis, gdy produkt ma wrócić do zwykłego liczenia zapasu.{" "}
               {ZD_ESTIMATE_UI.onRequestVsHardExclude}
             </p>
           </div>
@@ -394,7 +394,7 @@ export function ZdEstimateOnRequestModal({
         </p>
         {filtered.length > 0 ? (
           <p className="text-[10px] text-slate-400">
-            Usuń = wraca na szacunek
+            Usuń = wraca do zwykłego liczenia
           </p>
         ) : null}
       </div>

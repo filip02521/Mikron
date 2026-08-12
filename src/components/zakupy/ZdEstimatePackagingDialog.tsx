@@ -172,7 +172,8 @@ function PackagingDialogForm({
             autoFocus
           />
           <p className={cn(panelTypography.caption, "mt-1")}>
-            1 = zamawiamy na sztuki (usuwa ustawienie)
+            1 = jawne sztuki 1:1 (zapamiętane w historii). Usuń wpis — przycisk
+            „Usuń (sztuki)”.
           </p>
         </label>
         <label htmlFor={labelId} className="block">
@@ -206,7 +207,9 @@ function PackagingDialogForm({
       ) : preview && !preview.hasPackaging ? (
         <div className="rounded-lg border border-slate-200/80 bg-slate-50/60 px-3 py-2.5">
           <p className="text-xs font-medium text-slate-700">
-            Bez opakowania — w ZD wpisujesz sztuki 1:1.
+            {unitsNum === 1
+              ? "Sztuki 1:1 — zapisane jawne potwierdzenie dla historii snapshotów."
+              : "Bez opakowania — w ZD wpisujesz sztuki 1:1."}
           </p>
         </div>
       ) : null}

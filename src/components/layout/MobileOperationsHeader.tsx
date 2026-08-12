@@ -1,13 +1,18 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { MobileBrandBlock } from "@/components/layout/SidebarBrandBlock";
 import { ChangelogTriggerIconButton } from "@/components/changelog/ChangelogTriggerIconButton";
-import { createClient } from "@/lib/supabase/client";
+import { signOutToLogin } from "@/lib/auth/sign-out-client";
 import type { UserRole } from "@/types/database";
 import { mobileSalesHeaderClass } from "@/lib/ui/ontime-theme";
 import { NavIcon } from "@/components/icons/NavIcon";
-import { labelForProcurementWorkspace, workspaceToneBg, workspaceToneRing, workspaceToneText, type ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
+import {
+  labelForProcurementWorkspace,
+  workspaceToneBg,
+  workspaceToneRing,
+  workspaceToneText,
+  type ProcurementWorkspace,
+} from "@/lib/auth/procurement-workspace";
 import { cn } from "@/lib/cn";
 
 export function MobileOperationsHeader({
@@ -21,14 +26,6 @@ export function MobileOperationsHeader({
   userAssignmentLabel?: string | null;
   procurementWorkspace?: ProcurementWorkspace | null;
 }) {
-  const router = useRouter();
-
-  async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-  }
-
   return (
     <header className={mobileSalesHeaderClass}>
       <div className="flex min-w-0 flex-1 items-center gap-2.5">
@@ -47,7 +44,13 @@ export function MobileOperationsHeader({
             )}
           >
             <NavIcon
-              navKey={procurementWorkspace === "zeby" ? "teeth" : procurementWorkspace === "magazyn" ? "warehouse" : "dailyPanel"}
+              navKey={
+                procurementWorkspace === "zeby"
+                  ? "teeth"
+                  : procurementWorkspace === "magazyn"
+                    ? "warehouse"
+                    : "dailyPanel"
+              }
               size={14}
             />
             {labelForProcurementWorkspace(procurementWorkspace)}
@@ -58,7 +61,7 @@ export function MobileOperationsHeader({
         <ChangelogTriggerIconButton />
         <button
           type="button"
-          onClick={() => void signOut()}
+          onClick={() => void signOutToLogin()}
           className="min-h-10 shrink-0 cursor-pointer rounded-md border border-slate-200/90 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50"
         >
           Wyloguj

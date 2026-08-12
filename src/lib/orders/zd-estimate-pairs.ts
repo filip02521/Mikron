@@ -1,5 +1,5 @@
 /**
- * Agregacja pary pack↔piece w szacunku ZD.
+ * Agregacja pary pack↔piece w kreatorze ZD.
  * Popyt/cover w sztukach; zamówienie tylko na pack (piecesNeeded → packaging/ratio).
  */
 

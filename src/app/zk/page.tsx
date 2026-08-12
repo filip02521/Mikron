@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { redirect } from "next/navigation";
 import { fetchSalesZkPageData } from "@/lib/data/sales-notepad";
 import { isSalesAccount } from "@/lib/auth-roles";
@@ -65,7 +66,7 @@ export default async function ZkPage({
     try {
       zkData = await fetchSalesZkPageData(access.salesPersonId);
     } catch (e) {
-      loadError = e instanceof Error ? e.message : "Nie udało się załadować listy ZK.";
+      loadError = userFacingErrorText(e, "Nie udało się załadować listy ZK.");
     }
   }
 

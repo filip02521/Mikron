@@ -193,7 +193,7 @@ export function defaultZdCreateUwagi(input: {
   dateKey: string;
 }): string {
   const parts = [
-    "OnTime szacunek",
+    "OnTime kreator",
     input.supplierName.trim() || null,
     input.scopeLabel?.trim() || null,
     input.dateKey.trim() || null,
@@ -322,6 +322,8 @@ export type CanCreateZdState = {
   createUnlockedAfterDone?: boolean;
   /** Konflikty opakowanie ↔ para (pack) — blokują Create do ujednolicenia. */
   packagingPairConflictCount?: number;
+  /** Brakujące węzły BOM explode — blokują Create (popyt niepełny). */
+  explodeBomIncomplete?: boolean;
 };
 
 export function canCreateZdFromEstimateState(
@@ -339,6 +341,12 @@ export function canCreateZdFromEstimateState(
       reason: ZD_ESTIMATE_UI.createGateNeedsSettings,
     };
   }
+  if (state.explodeBomIncomplete) {
+    return {
+      ok: false,
+      reason: ZD_ESTIMATE_UI.createGateExplodeBomIncomplete,
+    };
+  }
   if (state.estimating) {
     return { ok: false, reason: "Trwa przeliczanie szacunku." };
   }
@@ -352,7 +360,7 @@ export function canCreateZdFromEstimateState(
   if (createLocked) {
     return {
       ok: false,
-      reason: "ZD już utworzone z tej listy — powiąż inne ZD ręcznie, przelicz szacunek albo odblokuj świadomie.",
+      reason: "ZD już utworzone z tej listy — powiąż inne ZD ręcznie, przelicz listę albo odblokuj świadomie.",
     };
   }
   if (

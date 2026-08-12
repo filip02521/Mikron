@@ -1,5 +1,6 @@
 "use client";
-import { ADMIN_PREVIEW_NOTICE } from "@/lib/ui/notice-copy";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
+import { ADMIN_PREVIEW_NOTICE, REQUEST_EDIT_FORM } from "@/lib/ui/notice-copy";
 
 import { useState, useTransition, useCallback, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -40,7 +41,6 @@ import {
 import { assertProcurementEntryComplete } from "@/lib/orders/procurement-submit";
 import { assessSalesGroupSubmittable } from "@/lib/orders/sales-request-submit";
 import { prosbaLineHasTeethBlockers } from "@/lib/orders/prosba-line-field-validation";
-import { REQUEST_EDIT_FORM } from "@/lib/ui/notice-copy";
 import { buildProsbaFormReadiness, buildProsbaFormReadinessWithSupplier } from "@/lib/orders/prosba-form-readiness";
 import { PROSBA_FORM_SECTION_COPY } from "@/lib/orders/prosba-form-section-copy";
 import { PROSBA_PAGE_HEADER_HINTS } from "@/lib/orders/prosba-optional-section-copy";
@@ -263,6 +263,8 @@ export function OrderFormClient({
     supplementLineCount?: number;
     lineKeys?: string[];
     allowedTwIds: ReadonlySet<number> | null;
+    caseNoteIncluded?: boolean;
+    caseNote?: string;
   } | null>(null);
   const [validationAttempted, setValidationAttempted] = useState(false);
   const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
@@ -339,6 +341,14 @@ export function OrderFormClient({
     let cancelled = false;
 
     async function applyZkPrefill(prefill: ZkProsbaPrefill) {
+      if (prefill.teethDraftsIncomplete) {
+        setFormNotice({
+          title: "Najpierw uzupełnij listę zębów",
+          text: "Wróć do notatnika ZK i uzupełnij listę zębów (kolor, wzór, rozmiar), zanim utworzysz prośbę.",
+          tone: "warning",
+        });
+        return;
+      }
       if (!prefill.lines.length) return;
       let resolved = prefill;
       if (
@@ -352,6 +362,14 @@ export function OrderFormClient({
             resolved.lineKeys,
             resolved.requestKind
           );
+          if (fromWatch?.teethDraftsIncomplete) {
+            setFormNotice({
+              title: "Najpierw uzupełnij listę zębów",
+              text: "Wróć do notatnika ZK i uzupełnij listę zębów (kolor, wzór, rozmiar), zanim utworzysz prośbę.",
+              tone: "warning",
+            });
+            return;
+          }
           if (fromWatch && zkProsbaCatalogLocked(fromWatch)) {
             resolved = {
               ...resolved,
@@ -370,6 +388,8 @@ export function OrderFormClient({
         resolved.allowedTwIds && resolved.allowedTwIds.length > 0
           ? new Set(resolved.allowedTwIds)
           : null;
+      const { registryIndex } = teethProductInfo;
+      const hasRegistry = registryIndex.byLineAndKind.size > 0;
       setRequestKind(nextRequestKind);
       if (nextRequestKind === "informacja") {
         setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
@@ -387,25 +407,49 @@ export function OrderFormClient({
           supplementLineCount: resolved.supplementLineCount,
           lineKeys: resolved.lineKeys,
           allowedTwIds,
+          caseNoteIncluded: Boolean(resolved.includeCaseNote && resolved.caseNote?.trim()),
+          ...(resolved.caseNote?.trim()
+            ? { caseNote: resolved.caseNote.trim() }
+            : {}),
         });
       }
-      let baseLines = resolved.lines.map((line) => ({
-        id: line.id,
-        supplierId: "",
-        salesPersonId: lockedId,
-        symbol: line.symbol,
-        mikranCode: line.mikranCode,
-        product: line.product,
-        quantity: nextRequestKind === "informacja" ? "" : line.quantity,
-        clientName: clientName || line.clientName,
-        clientKhId: clientKhId ?? line.clientKhId ?? null,
-        subiektTwId: line.subiektTwId ?? null,
-        onHand: line.onHand,
-        reserved: line.reserved,
-        available: line.available,
-        stockSource: line.stockSource,
-        zkQuantity: line.zkQuantity ?? null,
-      }));
+      let baseLines = resolved.lines.map((line) => {
+        const catalogResolved =
+          hasRegistry && line.teethProductLine && line.teethKind
+            ? resolveTeethCatalogProduct(
+                registryIndex,
+                line.teethProductLine,
+                line.teethKind
+              )
+            : null;
+        return {
+          id: line.id,
+          supplierId: "",
+          salesPersonId: lockedId,
+          symbol: catalogResolved?.symbol?.trim() || line.symbol,
+          mikranCode: catalogResolved?.plu?.trim() || line.mikranCode,
+          product: catalogResolved?.name || line.product,
+          quantity: nextRequestKind === "informacja" ? "" : line.quantity,
+          clientName: clientName || line.clientName,
+          clientKhId: clientKhId ?? line.clientKhId ?? null,
+          subiektTwId: catalogResolved?.twId ?? line.subiektTwId ?? null,
+          source: catalogResolved ? ("catalog" as const) : line.source,
+          onHand: line.onHand,
+          reserved: line.reserved,
+          available: line.available,
+          stockSource: line.stockSource,
+          zkQuantity: line.zkQuantity ?? null,
+          requestNote: line.requestNote?.trim() || undefined,
+          teethManufacturer:
+            catalogResolved?.manufacturer ?? line.teethManufacturer ?? null,
+          teethProductLine:
+            catalogResolved?.productLine ?? line.teethProductLine ?? null,
+          teethKind: line.teethKind ?? null,
+          teethDetails: line.teethDetails?.length
+            ? line.teethDetails.map((d) => ({ ...d }))
+            : undefined,
+        };
+      });
 
       const twIds = collectProsbaLineTwIdsMissingStock(baseLines, nextRequestKind, teethExemptTwIds);
       if (twIds.length > 0) {
@@ -430,8 +474,26 @@ export function OrderFormClient({
       if (!delegateId) return;
 
       const fromStorage = readZkProsbaPrefill();
-      if (fromStorage?.lines.length) {
+      if (fromStorage && (fromStorage.lines.length || fromStorage.teethDraftsIncomplete)) {
         if (!cancelled) {
+          const watchId = fromStorage.zkWatchId?.trim();
+          if (watchId) {
+            try {
+              const fromWatch = await actionGetZkProsbaPrefillByWatchId(
+                watchId,
+                delegateId || undefined,
+                fromStorage.lineKeys,
+                fromStorage.requestKind
+              );
+              if (fromWatch) {
+                await applyZkPrefill(fromWatch);
+                clearZkProsbaPrefill();
+                return;
+              }
+            } catch {
+              /* fallback do stash poniżej */
+            }
+          }
           await applyZkPrefill(fromStorage);
           clearZkProsbaPrefill();
         }
@@ -453,7 +515,7 @@ export function OrderFormClient({
             zkLineKeys,
             requestKindFromUrl
           );
-          if (!cancelled && fromWatch?.lines.length) {
+          if (!cancelled && fromWatch && (fromWatch.lines.length || fromWatch.teethDraftsIncomplete)) {
             await applyZkPrefill(fromWatch);
             return;
           }
@@ -468,7 +530,7 @@ export function OrderFormClient({
         }
         if (zk) {
           const fromServer = await actionGetZkProsbaPrefill(zk, delegateId || undefined);
-          if (!cancelled && fromServer?.lines.length) {
+          if (!cancelled && fromServer && (fromServer.lines.length || fromServer.teethDraftsIncomplete)) {
             await applyZkPrefill(fromServer);
             return;
           }
@@ -477,10 +539,7 @@ export function OrderFormClient({
         if (!cancelled) {
           setFormNotice({
             title: "Nie udało się wczytać ZK",
-            text:
-              err instanceof Error
-                ? err.message
-                : "Uzupełnij prośbę ręcznie.",
+            text: userFacingErrorText(err, "Uzupełnij prośbę ręcznie."),
             tone: "warning",
           });
         }
@@ -501,7 +560,7 @@ export function OrderFormClient({
     return () => {
       cancelled = true;
     };
-  }, [lockedId, searchParams, tourDemo, teethExemptTwIds]);
+  }, [lockedId, searchParams, tourDemo, teethExemptTwIds, teethProductInfo]);
 
   const teethOcrPrefillAppliedRef = useRef(false);
   useEffect(() => {
@@ -685,6 +744,7 @@ export function OrderFormClient({
             requestNote: e.requestNote || undefined,
             sourceZkWatchId: zkCtx?.zkWatchId ?? undefined,
             sourceZkNumber: zkCtx?.zkNumber ?? undefined,
+            sourceZkLineKeys: zkCtx?.lineKeys?.length ? zkCtx.lineKeys : undefined,
             informacjaQueueViaDailyPanel: informacjaFlags.informacjaQueueViaDailyPanel,
             informacjaStockOutReorder: informacjaFlags.informacjaStockOutReorder,
             teethDetails: e.teethDetails ?? undefined,
@@ -970,10 +1030,7 @@ export function OrderFormClient({
           );
         }
       } catch (err) {
-        setFormNotice({
-          text: err instanceof Error ? err.message : "Uzupełnij wymagane pola.",
-          tone: "error",
-        });
+        setFormNotice({ text: userFacingErrorText(err, "Uzupełnij wymagane pola."), tone: "error" });
         return;
       }
     }
@@ -1095,9 +1152,18 @@ export function OrderFormClient({
 
   const zkQuantityFormBanner = useMemo(() => {
     if (!zkProsbaLinkContext || tourDemo || requestKind !== "zamowienie") return null;
+
     const lines = groups[0] ?? [];
     return formatProsbaZkQuantityFormBanner(lines, requestKind);
   }, [zkProsbaLinkContext, tourDemo, requestKind, groups]);
+
+  const zkCaseNoteStillOnLines = useMemo(() => {
+    const note = zkProsbaLinkContext?.caseNote?.trim();
+    if (!note || !zkProsbaLinkContext?.caseNoteIncluded) return false;
+    return groups.some((group) =>
+      group.some((line) => line.requestNote?.trim() === note)
+    );
+  }, [zkProsbaLinkContext?.caseNote, zkProsbaLinkContext?.caseNoteIncluded, groups]);
 
   useEffect(() => {
     if (!singleGroup || !lockedSalesPerson) return;
@@ -1316,6 +1382,7 @@ export function OrderFormClient({
               mode={zkProsbaLinkContext.mode}
               supplementLineCount={zkProsbaLinkContext.supplementLineCount}
               catalogLocked={zkCatalogLocked}
+              caseNoteIncluded={zkCaseNoteStillOnLines}
             />
           ) : null}
 

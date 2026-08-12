@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
 import { actionSubmitSalesBugReport } from "@/app/actions/sales-bug-report";
 import { useSalesNavLocked } from "@/components/sales/SalesOnboardingContext";
 import { Button } from "@/components/ui/Button";
@@ -34,7 +35,7 @@ export function SalesBugReportTrigger({ className }: { className?: string }) {
     });
     setPending(false);
     if (!result.ok) {
-      setError(result.error);
+      setError(userFacingErrorTextFromMessage(result.error, "Nie udało się wysłać zgłoszenia."));
       return;
     }
     setSent(true);

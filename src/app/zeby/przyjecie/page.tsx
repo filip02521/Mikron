@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { requireTeethPanel } from "@/lib/auth";
 import { attachTeethDetailsToIndividualOrders } from "@/lib/data/teeth-queue";
 import { fetchDeliveryQueue } from "@/lib/data/queries";
@@ -29,7 +30,7 @@ export default async function ZebyPrzyjeciePage() {
     const deliveryOrders = await fetchDeliveryQueue({ lane: "teeth" });
     orders = await attachTeethDetailsToIndividualOrders(deliveryOrders);
   } catch (e) {
-    error = e instanceof Error ? e.message : "Nie udało się załadować kolejki przyjęcia.";
+    error = userFacingErrorText(e, "Nie udało się załadować kolejki przyjęcia.");
     orders = [];
   }
 

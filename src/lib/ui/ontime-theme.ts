@@ -260,7 +260,7 @@ export const adminPageShellClass = salesTeamPageShellClass;
 export const procurementArchivePageShellClass = adminPageShellClass;
 
 /**
- * Szacunek ZD — prawie pełna szerokość obszaru main (tabela z wieloma kolumnami).
+ * Kreator ZD — prawie pełna szerokość obszaru main (tabela z wieloma kolumnami).
  */
 export const zdEstimatePageShellClass =
   "relative mx-auto w-full max-w-[min(100%,100rem)] space-y-5";
@@ -813,7 +813,7 @@ export const panelToolbarIconButtonClass =
   "inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md border border-indigo-100/80 bg-white text-indigo-800/85 shadow-sm transition hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950 disabled:cursor-not-allowed disabled:opacity-50";
 
 /**
- * Pasek narzędzi listy szacunku ZD — wariant spokojny (0 zaznaczonych)
+ * Pasek narzędzi listy kreatora ZD — wariant spokojny (0 zaznaczonych)
  * i aktywny bulk (selection). Sticky poza TableScroll.
  */
 export const zdEstimateListToolsShellClass =

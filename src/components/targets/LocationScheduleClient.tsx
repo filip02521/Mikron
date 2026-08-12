@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
-import { LOCATION_SCHEDULE_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
+import { LOCATION_SCHEDULE_TOAST, toastFromError, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ColorLegend } from "@/components/summary/ColorLegend";
 import {
@@ -207,7 +207,7 @@ export function LocationScheduleClient({
         setTimeout(() => setSavedId((id) => (id === row.id ? null : id)), 2000);
         setToast(LOCATION_SCHEDULE_TOAST.saved(row.name));
       } catch (e) {
-        setToast(toastFromError(e instanceof Error ? e.message : undefined));
+        setToast(toastFromUnknown(e));
       } finally {
         setPendingMessage(null);
       }

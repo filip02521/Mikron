@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { ACTION_PENDING_SAFETY_LONG_MS } from "@/lib/timing";
+import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
 
 export function SyncButton({
   action,
@@ -51,8 +52,12 @@ export function SyncButton({
             try {
               const r = await action();
               if (onMessage) {
-                if (r.error) onMessage(r.error, "error");
-                else
+                if (r.error) {
+                  onMessage(
+                    userFacingErrorTextFromMessage(r.error, "Operacja nie powiodła się"),
+                    "error"
+                  );
+                } else
                   onMessage(
                     r.processed != null
                       ? `Przeliczono terminy: ${r.processed} dostawców`

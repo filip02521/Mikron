@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyBomPurchaseTargetFinalize,
   applyZdEstimateBoms,
+  bomRowHidesHardExclude,
+  bomRowHidesOnRequest,
   collectMissingZdBomTwIds,
   expandZdEstimateBoms,
+  hasUnresolvedExplodeBomNodes,
   rematerializeSoloAfterBom,
 } from "@/lib/orders/zd-estimate-bom";
 import { refreshZdEstimateLinesWithPairs } from "@/lib/orders/zd-estimate-live-refresh";
@@ -34,6 +38,8 @@ const castoritPair = {
 const castoritBom = {
   parentTwId: PROMO,
   stockAsCover: true,
+  demandAllocation: "explode" as const,
+  purchaseTarget: "components" as const,
   components: [
     { componentTwId: KARTON, qtyPerParent: 1 },
     { componentTwId: PLYN, qtyPerParent: 1 },
@@ -182,7 +188,7 @@ describe("Castorit BOM + pary", () => {
     const plyn = out.find((l) => l.tw_Id === PLYN)!;
     const karton = out.find((l) => l.tw_Id === KARTON)!;
 
-    expect(promo.bom?.role).toBe("parent");
+    expect(promo.bom?.role).toBe("assembled_parent");
     expect(resolveOrderQtyForLine(promo).zdUnits).toBe(0);
     expect(masa.pair?.role).toBe("piece");
     expect(resolveOrderQtyForLine(masa).zdUnits).toBe(0);
@@ -321,7 +327,7 @@ describe("Castorit BOM + pary", () => {
     expect(result.pozycjeBase.every((l) => !l.bom && !l.pair)).toBe(true);
 
     const byId = new Map(result.pozycje.map((l) => [l.tw_Id, l]));
-    expect(byId.get(PROMO)?.bom?.role).toBe("parent");
+    expect(byId.get(PROMO)?.bom?.role).toBe("assembled_parent");
     expect(byId.get(PLYN)?.sprzedazOkres).toBe(7);
     expect(byId.get(KARTON)?.pair?.sprzedazSzt).toBe(130);
 
@@ -454,5 +460,443 @@ describe("Castorit BOM + pary", () => {
     expect(
       doubleExpand.find((l) => l.tw_Id === PLYN)!.sprzedazOkres
     ).toBeGreaterThan(7);
+  });
+
+  it("P2 buy_separate: K zachowuje doZd, bez rollupu na A/B", () => {
+    const lines = [
+      line({
+        tw_Id: 10,
+        tw_Symbol: "A",
+        sprzedazOkres: 100,
+        dostepne: 40,
+        doZamowieniaReczne: 60,
+        celZapasu: 100,
+        celZapasuTracked: 100,
+      }),
+      line({
+        tw_Id: 20,
+        tw_Symbol: "B",
+        sprzedazOkres: 80,
+        dostepne: 50,
+        doZamowieniaReczne: 30,
+        celZapasu: 80,
+        celZapasuTracked: 80,
+      }),
+      line({
+        tw_Id: 30,
+        tw_Symbol: "K",
+        sprzedazOkres: 30,
+        dostepne: 10,
+        doZamowieniaReczne: 20,
+        celZapasu: 30,
+        celZapasuTracked: 30,
+      }),
+    ];
+    const bom = {
+      parentTwId: 30,
+      stockAsCover: true, // stale — silnik ignoruje przy separate
+      demandAllocation: "separate" as const,
+      purchaseTarget: "as_sold" as const,
+      components: [
+        { componentTwId: 10, qtyPerParent: 1 },
+        { componentTwId: 20, qtyPerParent: 1 },
+      ],
+    };
+    const after = applyBomPurchaseTargetFinalize(
+      applyZdEstimateBoms(lines, [bom], {
+        dniZapasu: 30,
+        dniOkresu: 30,
+        salesTrack: false,
+      })
+    );
+    expect(after.find((l) => l.tw_Id === 30)?.bom?.role).toBe("purchased_kit");
+    expect(after.find((l) => l.tw_Id === 30)?.doZamowieniaReczne).toBe(20);
+    expect(after.find((l) => l.tw_Id === 10)?.sprzedazOkres).toBe(100);
+    expect(after.find((l) => l.tw_Id === 10)?.dostepne).toBe(40);
+    expect(after.find((l) => l.tw_Id === 10)?.doZamowieniaReczne).toBe(60);
+    const orderable = filterOrderableLinesWithPackaging(after, new Map());
+    expect(orderable.map((r) => r.tw_Id).sort()).toEqual([10, 20, 30]);
+  });
+
+  it("P3 kit_only: A/B doZd=0 nawet gdy składnik jest packiem pary", () => {
+    const lines = [
+      line({
+        tw_Id: KARTON,
+        tw_Symbol: "KARTON",
+        sprzedazOkres: 5,
+        dostepne: 0,
+        doZamowieniaReczne: 5,
+      }),
+      line({
+        tw_Id: MASA,
+        tw_Symbol: "MASA",
+        sprzedazOkres: 10,
+        dostepne: 0,
+      }),
+      line({
+        tw_Id: PROMO,
+        tw_Symbol: "PROMO",
+        sprzedazOkres: 4,
+        dostepne: 0,
+        doZamowieniaReczne: 4,
+      }),
+    ];
+    const bom = {
+      parentTwId: PROMO,
+      stockAsCover: false,
+      demandAllocation: "separate" as const,
+      purchaseTarget: "kit_only" as const,
+      components: [
+        { componentTwId: KARTON, qtyPerParent: 1 },
+        { componentTwId: MASA, qtyPerParent: 1 },
+      ],
+    };
+    const refreshed = refreshZdEstimateLinesWithPairs({
+      linesBase: lines,
+      pairs: [castoritPair],
+      boms: [bom],
+      options: { dniZapasu: 30, dniOkresu: 30, salesTrack: false },
+    });
+    const karton = refreshed.lines.find((l) => l.tw_Id === KARTON)!;
+    const promo = refreshed.lines.find((l) => l.tw_Id === PROMO)!;
+    expect(promo.bom?.role).toBe("purchased_kit");
+    expect(promo.bom?.purchaseTarget).toBe("kit_only");
+    expect(promo.doZamowieniaReczne).toBe(4);
+    expect(karton.bom?.purchaseBlocked).toBe(true);
+    expect(karton.doZamowieniaReczne).toBe(0);
+    expect(resolveOrderQtyForLine(karton).zdUnits).toBe(0);
+  });
+
+  it("multi-BOM: explode wygrywa nad kit_only na tym samym składniku", () => {
+    const lines = [
+      line({
+        tw_Id: PLYN,
+        tw_Symbol: "PLYN",
+        sprzedazOkres: 1,
+        dostepne: 0,
+        doZamowieniaReczne: 1,
+      }),
+      line({
+        tw_Id: 10,
+        tw_Symbol: "PROMO",
+        sprzedazOkres: 4,
+        dostepne: 0,
+      }),
+      line({
+        tw_Id: 11,
+        tw_Symbol: "KIT",
+        sprzedazOkres: 2,
+        dostepne: 0,
+        doZamowieniaReczne: 2,
+      }),
+    ];
+    const after = applyBomPurchaseTargetFinalize(
+      applyZdEstimateBoms(
+        lines,
+        [
+          {
+            parentTwId: 11,
+            stockAsCover: false,
+            demandAllocation: "separate",
+            purchaseTarget: "kit_only",
+            components: [{ componentTwId: PLYN, qtyPerParent: 1 }],
+          },
+          {
+            parentTwId: 10,
+            stockAsCover: false,
+            demandAllocation: "explode",
+            purchaseTarget: "components",
+            components: [{ componentTwId: PLYN, qtyPerParent: 1 }],
+          },
+        ],
+        { dniZapasu: 30, dniOkresu: 30, salesTrack: false }
+      )
+    );
+    const plyn = after.find((l) => l.tw_Id === PLYN)!;
+    expect(plyn.bom?.contributionSales).toBe(4);
+    expect(plyn.bom?.purchaseBlocked).toBeFalsy();
+    expect(plyn.doZamowieniaReczne).toBe(5); // 1 solo + 4 z promo
+  });
+
+  it("cover parent otwarteZd przez packaging (jednostki ZD → sztuki)", () => {
+    const lines = [
+      line({ tw_Id: PLYN, tw_Symbol: "PLYN", sprzedazOkres: 0, dostepne: 0 }),
+      line({
+        tw_Id: PROMO,
+        tw_Symbol: "PROMO",
+        sprzedazOkres: 0,
+        dostepne: 0,
+        otwarteZd: 2,
+      }),
+    ];
+    const after = applyZdEstimateBoms(
+      lines,
+      [
+        {
+          parentTwId: PROMO,
+          stockAsCover: true,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: [{ componentTwId: PLYN, qtyPerParent: 1 }],
+        },
+      ],
+      {
+        dniZapasu: 30,
+        dniOkresu: 30,
+        salesTrack: false,
+        packagingByTwId: new Map([[PROMO, { unitsPerPackage: 10 }]]),
+      }
+    );
+    const plyn = after.find((l) => l.tw_Id === PLYN)!;
+    // 2 paczki × 10 = 20 szt cover
+    expect(plyn.dostepne).toBe(20);
+    expect(plyn.bom?.contributionCover).toBe(20);
+  });
+
+  it("P2: asercja ZD_B=30 (pełne §6)", () => {
+    const lines = [
+      line({
+        tw_Id: 10,
+        tw_Symbol: "A",
+        sprzedazOkres: 100,
+        dostepne: 40,
+        doZamowieniaReczne: 60,
+        celZapasu: 100,
+        celZapasuTracked: 100,
+      }),
+      line({
+        tw_Id: 20,
+        tw_Symbol: "B",
+        sprzedazOkres: 80,
+        dostepne: 50,
+        doZamowieniaReczne: 30,
+        celZapasu: 80,
+        celZapasuTracked: 80,
+      }),
+      line({
+        tw_Id: 30,
+        tw_Symbol: "K",
+        sprzedazOkres: 30,
+        dostepne: 10,
+        doZamowieniaReczne: 20,
+        celZapasu: 30,
+        celZapasuTracked: 30,
+      }),
+    ];
+    const after = applyBomPurchaseTargetFinalize(
+      applyZdEstimateBoms(
+        lines,
+        [
+          {
+            parentTwId: 30,
+            stockAsCover: true,
+            demandAllocation: "separate",
+            purchaseTarget: "as_sold",
+            components: [
+              { componentTwId: 10, qtyPerParent: 1 },
+              { componentTwId: 20, qtyPerParent: 1 },
+            ],
+          },
+        ],
+        { dniZapasu: 30, dniOkresu: 30, salesTrack: false }
+      )
+    );
+    expect(after.find((l) => l.tw_Id === 30)?.doZamowieniaReczne).toBe(20);
+    expect(after.find((l) => l.tw_Id === 10)?.doZamowieniaReczne).toBe(60);
+    expect(after.find((l) => l.tw_Id === 20)?.doZamowieniaReczne).toBe(30);
+  });
+
+  it("purchased_kit rematerializuje przy zmianie dniZapasu", () => {
+    const base = [
+      line({
+        tw_Id: 30,
+        tw_Symbol: "K",
+        sprzedazOkres: 30,
+        dostepne: 10,
+        doZamowieniaReczne: 20,
+        celZapasu: 30,
+        celZapasuTracked: 30,
+        otwarteZd: 0,
+      }),
+      line({
+        tw_Id: 10,
+        tw_Symbol: "A",
+        sprzedazOkres: 0,
+        dostepne: 0,
+        doZamowieniaReczne: 0,
+      }),
+    ];
+    const bom = {
+      parentTwId: 30,
+      stockAsCover: false,
+      demandAllocation: "separate" as const,
+      purchaseTarget: "as_sold" as const,
+      components: [{ componentTwId: 10, qtyPerParent: 1 }],
+    };
+    const at30 = applyZdEstimateBoms(base, [bom], {
+      dniZapasu: 30,
+      dniOkresu: 30,
+      salesTrack: false,
+    });
+    expect(at30.find((l) => l.tw_Id === 30)?.doZamowieniaReczne).toBe(20);
+
+    const at60 = applyZdEstimateBoms(base, [bom], {
+      dniZapasu: 60,
+      dniOkresu: 30,
+      salesTrack: false,
+    });
+    // tempo 1/dzień × 60 − 10 = 50
+    expect(at60.find((l) => l.tw_Id === 30)?.doZamowieniaReczne).toBe(50);
+  });
+
+  it("S-LivePresetSwitch: pozycjeBase assemble → buy_separate → kit_only bez double-expand", () => {
+    const baseLines = [
+      line({
+        tw_Id: 10,
+        tw_Symbol: "A",
+        sprzedazOkres: 100,
+        dostepne: 40,
+        doZamowieniaReczne: 60,
+        celZapasu: 100,
+        celZapasuTracked: 100,
+      }),
+      line({
+        tw_Id: 20,
+        tw_Symbol: "B",
+        sprzedazOkres: 80,
+        dostepne: 50,
+        doZamowieniaReczne: 30,
+        celZapasu: 80,
+        celZapasuTracked: 80,
+      }),
+      line({
+        tw_Id: 30,
+        tw_Symbol: "K",
+        sprzedazOkres: 30,
+        dostepne: 10,
+        doZamowieniaReczne: 20,
+        celZapasu: 30,
+        celZapasuTracked: 30,
+      }),
+    ];
+    const comps = [
+      { componentTwId: 10, qtyPerParent: 1 },
+      { componentTwId: 20, qtyPerParent: 1 },
+    ];
+    const assemble = refreshZdEstimateLinesWithPairs({
+      linesBase: baseLines,
+      pairs: [],
+      boms: [
+        {
+          parentTwId: 30,
+          stockAsCover: true,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: comps,
+        },
+      ],
+      options: { dniZapasu: 30, dniOkresu: 30, salesTrack: false },
+    }).lines;
+    expect(assemble.find((l) => l.tw_Id === 30)?.doZamowieniaReczne).toBe(0);
+    expect(assemble.find((l) => l.tw_Id === 10)?.sprzedazOkres).toBe(130);
+
+    const buy = refreshZdEstimateLinesWithPairs({
+      linesBase: baseLines,
+      pairs: [],
+      boms: [
+        {
+          parentTwId: 30,
+          stockAsCover: true,
+          demandAllocation: "separate",
+          purchaseTarget: "as_sold",
+          components: comps,
+        },
+      ],
+      options: { dniZapasu: 30, dniOkresu: 30, salesTrack: false },
+    }).lines;
+    expect(buy.find((l) => l.tw_Id === 30)?.doZamowieniaReczne).toBe(20);
+    expect(buy.find((l) => l.tw_Id === 10)?.sprzedazOkres).toBe(100);
+    expect(buy.find((l) => l.tw_Id === 20)?.doZamowieniaReczne).toBe(30);
+
+    const kitOnly = refreshZdEstimateLinesWithPairs({
+      linesBase: baseLines,
+      pairs: [],
+      boms: [
+        {
+          parentTwId: 30,
+          stockAsCover: false,
+          demandAllocation: "separate",
+          purchaseTarget: "kit_only",
+          components: comps,
+        },
+      ],
+      options: { dniZapasu: 30, dniOkresu: 30, salesTrack: false },
+    }).lines;
+    expect(kitOnly.find((l) => l.tw_Id === 30)?.doZamowieniaReczne).toBe(20);
+    expect(kitOnly.find((l) => l.tw_Id === 10)?.doZamowieniaReczne).toBe(0);
+    expect(kitOnly.find((l) => l.tw_Id === 20)?.doZamowieniaReczne).toBe(0);
+  });
+
+  it("nielegalna para policy jest pomijana w expand", () => {
+    const lines = [
+      line({ tw_Id: 30, tw_Symbol: "K", sprzedazOkres: 10, doZamowieniaReczne: 5 }),
+      line({ tw_Id: 10, tw_Symbol: "A", sprzedazOkres: 0, doZamowieniaReczne: 0 }),
+    ];
+    const after = expandZdEstimateBoms(lines, [
+      {
+        parentTwId: 30,
+        stockAsCover: true,
+        demandAllocation: "explode",
+        purchaseTarget: "kit_only",
+        components: [{ componentTwId: 10, qtyPerParent: 1 }],
+      },
+    ]);
+    expect(after.find((l) => l.tw_Id === 30)?.bom).toBeNull();
+    expect(after.find((l) => l.tw_Id === 10)?.sprzedazOkres).toBe(0);
+  });
+
+  it("hasUnresolvedExplodeBomNodes / bomRowHidesOnRequest", () => {
+    expect(
+      hasUnresolvedExplodeBomNodes(
+        [
+          {
+            parentTwId: 1,
+            stockAsCover: true,
+            demandAllocation: "explode",
+            purchaseTarget: "components",
+            components: [{ componentTwId: 2, qtyPerParent: 1 }],
+          },
+        ],
+        [2]
+      )
+    ).toBe(true);
+    expect(
+      hasUnresolvedExplodeBomNodes(
+        [
+          {
+            parentTwId: 1,
+            stockAsCover: false,
+            demandAllocation: "separate",
+            purchaseTarget: "kit_only",
+            components: [{ componentTwId: 2, qtyPerParent: 1 }],
+          },
+        ],
+        [2]
+      )
+    ).toBe(false);
+
+    expect(
+      bomRowHidesOnRequest({
+        bom: { role: "component", purchaseBlocked: true },
+      })
+    ).toBe(true);
+    expect(
+      bomRowHidesHardExclude({
+        bom: { role: "component", purchaseBlocked: true },
+      })
+    ).toBe(false);
+    expect(
+      bomRowHidesHardExclude({ bom: { role: "assembled_parent" } })
+    ).toBe(true);
   });
 });

@@ -1,5 +1,6 @@
 "use client";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -78,7 +79,7 @@ function ZkWatchClosePendingHostActive({
       onDismiss();
       router.refresh();
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Nie udało się zamknąć sprawy.";
+      const message = userFacingErrorText(e, "Nie udało się zamknąć sprawy.");
       setError(message);
       onFlowError?.(watch.id, message);
     }
@@ -107,8 +108,7 @@ function ZkWatchClosePendingHostActive({
       onDismiss();
       router.refresh();
     } catch (e) {
-      const message =
-        e instanceof Error ? e.message : "Nie udało się potwierdzić pozycji przed zamknięciem.";
+      const message = userFacingErrorText(e, "Nie udało się potwierdzić pozycji przed zamknięciem.");
       setError(message);
       onFlowError?.(watch.id, message);
       try {
@@ -178,8 +178,7 @@ function ZkWatchClosePendingHostActive({
         router.refresh();
       } catch (e) {
         if (cancelled || epochRef.current !== epoch) return;
-        const message =
-          e instanceof Error ? e.message : "Nie udało się sprawdzić pozycji przed zamknięciem.";
+        const message = userFacingErrorText(e, "Nie udało się sprawdzić pozycji przed zamknięciem.");
         setError(message);
         onFlowError?.(watch.id, message);
         setOpen(true);

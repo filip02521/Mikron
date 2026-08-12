@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import {
   actionUploadTeethOrderFile,
   actionRemoveTeethOrderFile,
@@ -54,7 +55,7 @@ export function TeethOrderFileUpload({
         setError(result.error ?? "Nie udało się wgrać pliku.");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nie udało się wgrać pliku.");
+      setError(userFacingErrorText(err, "Nie udało się wgrać pliku."));
     } finally {
       setPending(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -73,7 +74,7 @@ export function TeethOrderFileUpload({
         setError(result.error ?? "Nie udało się usunąć pliku.");
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Nie udało się usunąć pliku.");
+      setError(userFacingErrorText(err, "Nie udało się usunąć pliku."));
     } finally {
       setPending(false);
     }

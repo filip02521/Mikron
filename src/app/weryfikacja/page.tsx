@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { fetchSuppliersForRequestForms, fetchVerificationOrders } from "@/lib/data/queries";
 import { runOrderMaintenanceBeforePageLoad } from "@/lib/services/deferred-order-maintenance";
 import { fetchSalesPeopleForPicker } from "@/lib/data/sales-people-admin";
@@ -32,7 +33,7 @@ export default async function WeryfikacjaPage() {
     suppliers = s;
     salesPeople = await fetchSalesPeopleForPicker();
   } catch (error) {
-    loadError = error instanceof Error ? error.message : "Nie udało się załadować weryfikacji.";
+    loadError = userFacingErrorText(error, "Nie udało się załadować weryfikacji.");
     logDevPageError("weryfikacja/page", error);
   }
 
@@ -40,7 +41,7 @@ export default async function WeryfikacjaPage() {
     <>
       {loadError ? (
         <Alert tone="warning" className={cn(panelWorkspaceShellClass, "mb-4")}>
-          {loadError}. Sprawdź połączenie z Supabase.
+          {loadError}
         </Alert>
       ) : null}
       <VerificationClient

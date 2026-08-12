@@ -16,6 +16,7 @@ import {
 } from "@/lib/sales/sales-day-start";
 import { useSalesUpdates } from "@/components/sales/SalesUpdatesContext";
 import { SalesInboxPanel } from "@/components/sales/SalesInboxPanel";
+import { redirectToLoginIfUnauthorizedStatus } from "@/lib/auth/session-login-redirect";
 
 const POLL_MS = 45_000;
 const INITIAL_POLL_DELAY_MS = 4_000;
@@ -41,6 +42,7 @@ export function useSalesInbox() {
 async function fetchInboxSnapshot(): Promise<SalesDayStartSnapshot | null> {
   try {
     const res = await fetch("/api/sales/inbox", { cache: "no-store" });
+    if (redirectToLoginIfUnauthorizedStatus(res.status)) return null;
     if (!res.ok) return null;
     return (await res.json()) as SalesDayStartSnapshot;
   } catch {

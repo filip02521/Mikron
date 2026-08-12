@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
@@ -19,7 +20,7 @@ export async function GET() {
     const snapshot = await fetchSalesInboxSnapshot(salesPerson.id, user.id);
     return NextResponse.json(snapshot);
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Nie udało się załadować inboxu.";
+    const message = userFacingErrorText(e, "Nie udało się załadować inboxu.");
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

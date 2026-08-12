@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import {
   actionSearchDeliveryJournal,
   actionSummarizeDeliveryJournal,
@@ -152,7 +153,7 @@ export function DeliveryJournalInsightsPanel({
         setSummary(summaryResult);
         setSearched(true);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Błąd wyszukiwania");
+        setError(userFacingErrorText(e, "Błąd wyszukiwania"));
         setReceipts([]);
         setSummary(null);
         setSearched(true);
@@ -181,7 +182,7 @@ export function DeliveryJournalInsightsPanel({
         setSummary(summaryResult);
         setSearched(true);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Błąd wyszukiwania");
+        setError(userFacingErrorText(e, "Błąd wyszukiwania"));
         setReceipts([]);
         setSummary(null);
         setSearched(true);

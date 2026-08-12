@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/OverflowMenu";
 
 /**
- * Akcje wiersza listy szacunku — menu zamiast dwóch przycisków,
+ * Akcje wiersza listy kreatora — menu zamiast dwóch przycisków,
  * żeby kolumna nie rozpychała tabeli. „Wyklucz” jest danger.
  */
 export function ZdEstimateRowActions({
@@ -22,10 +22,12 @@ export function ZdEstimateRowActions({
   /** Trwałe „tylko na prośbę”. */
   onRequest = false,
   /**
-   * Piece pary / BOM parent — bez Wyklucz / Na prośbę (nie idą na ZD;
+   * Piece pary / BOM assembled — bez Wyklucz / Na prośbę (nie idą na ZD;
    * flaga żyje na packu).
    */
   hideHardExclude = false,
+  /** kit_only composition — bez „Na prośbę” (nie obchodzić purchaseBlocked). */
+  hideOnRequest = false,
   packagingHint,
   disabled,
   pending,
@@ -43,6 +45,7 @@ export function ZdEstimateRowActions({
   sessionIncluded?: boolean;
   onRequest?: boolean;
   hideHardExclude?: boolean;
+  hideOnRequest?: boolean;
   /** np. „10 szt / 1 op.” albo null gdy 1:1 */
   packagingHint: string | null;
   disabled?: boolean;
@@ -73,7 +76,10 @@ export function ZdEstimateRowActions({
     !onRequest &&
     !nameAutoExcluded &&
     !hideHardExclude &&
+    !hideOnRequest &&
     Boolean(onMarkOnRequest);
+  // Clear dozwolony także przy purchaseBlocked — qty i tak blokuje bomBlocksZdOrder;
+  // pozwala posprzątać legacy „na prośbę” po zmianie presetu na kit_only.
   const showClearOnRequest = onRequest && Boolean(onClearOnRequest);
 
   return (
@@ -160,7 +166,7 @@ export function ZdEstimateRowActions({
             Usuń „tylko na prośbę”
           </span>
           <span className="mt-0.5 block text-[11px] font-normal leading-snug text-slate-400">
-            Wraca zwykły szacunek zapasu
+            Wraca zwykłe liczenie zapasu
           </span>
         </OverflowMenuItem>
       ) : null}

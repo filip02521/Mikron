@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { ACTION_PENDING_SAFETY_LONG_MS } from "@/lib/timing";
+import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
 
 type ActionResult = {
   error?: string;
@@ -20,7 +21,9 @@ type ActionResult = {
 };
 
 function formatResult(label: string, r: ActionResult): string {
-  if (r.error) return r.error;
+  if (r.error) {
+    return userFacingErrorTextFromMessage(r.error, `${label}: nie udało się.`);
+  }
   if (r.emailFailures?.length) {
     return `${label}: przetworzono ${r.processed ?? 0}, błędy maili: ${r.emailFailures.join("; ")}`;
   }

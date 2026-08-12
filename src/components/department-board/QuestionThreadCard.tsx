@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { Button } from "@/components/ui/Button";
 import { IconChevronDown } from "@/components/icons/StrokeIcons";
 import {
@@ -171,7 +172,7 @@ export function QuestionThreadCard({
       setInlineReply(false);
       onChanged?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się wysłać odpowiedzi.");
+      setError(userFacingErrorText(e, "Nie udało się wysłać odpowiedzi."));
     } finally {
       setBusy(false);
     }
@@ -184,7 +185,7 @@ export function QuestionThreadCard({
       await actionArchiveQuestion(question.id);
       onChanged?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się zarchiwizować.");
+      setError(userFacingErrorText(e, "Nie udało się zarchiwizować."));
     } finally {
       setBusy(false);
     }
@@ -197,7 +198,7 @@ export function QuestionThreadCard({
       await actionCloseQuestion(question.id);
       onChanged?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się zamknąć wątku.");
+      setError(userFacingErrorText(e, "Nie udało się zamknąć wątku."));
     } finally {
       setBusy(false);
     }
@@ -210,7 +211,7 @@ export function QuestionThreadCard({
       await actionReopenQuestion(question.id);
       onChanged?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się otworzyć wątku.");
+      setError(userFacingErrorText(e, "Nie udało się otworzyć wątku."));
     } finally {
       setBusy(false);
     }
@@ -231,7 +232,7 @@ export function QuestionThreadCard({
       await actionDeleteClosedQuestion(question.id);
       onChanged?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się usunąć wątku.");
+      setError(userFacingErrorText(e, "Nie udało się usunąć wątku."));
     } finally {
       setBusy(false);
     }

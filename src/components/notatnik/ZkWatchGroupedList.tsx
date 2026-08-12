@@ -145,6 +145,8 @@ export function ZkWatchGroupedList({
   onNewZkLinesSeen,
   onNewlyAddedZkWatchSeen,
   onProsbaScopeRequested,
+  onTeethDraftRequested,
+  teethRegistry,
   focusWatchId,
   onFocusWatchHandled,
   onLiveAnnounce,
@@ -159,6 +161,8 @@ export function ZkWatchGroupedList({
   onNewZkLinesSeen?: (watchId: string) => void;
   onNewlyAddedZkWatchSeen?: (watchId: string) => void;
   onProsbaScopeRequested?: (watchId: string) => void;
+  onTeethDraftRequested?: (watchId: string) => void;
+  teethRegistry?: import("@/lib/sales/zk-watch-teeth-draft").TeethDraftRegistryLookup;
   /** Po wejściu z linku (#watch-…) — rozwiń miesiąc i podświetl kartę. */
   focusWatchId?: string | null;
   onFocusWatchHandled?: (watchId: string) => void;
@@ -382,6 +386,7 @@ export function ZkWatchGroupedList({
               watch={watch}
               anchorId={`watch-${watch.id}`}
               orderHints={zkHintsByWatchId?.get(watch.id)}
+              linkableOrders={linkableOrders}
               readOnly={readOnly}
               delegatePreview={delegatePreview}
               tourPreview={tourPreview}
@@ -403,6 +408,8 @@ export function ZkWatchGroupedList({
               isNewlyAdded={newlyAddedWatchIds?.has(watch.id) ?? false}
               newLineKeys={newLineKeysByWatchId?.[watch.id]}
               onProsbaScopeRequested={onProsbaScopeRequested}
+              onTeethDraftRequested={onTeethDraftRequested}
+              teethRegistry={teethRegistry}
             />
           );
         }}
@@ -429,6 +436,14 @@ export function ZkWatchGroupedList({
           onClose={() => dismissLinesModal(modalWatch.id)}
           onSaved={(updated) =>
             onRefreshed?.(updated, undefined, { skipRouterRefresh: true })
+          }
+          onEditTeethDrafts={
+            onTeethDraftRequested && !readOnly && !tourPreview
+              ? () => {
+                  dismissLinesModal(modalWatch.id);
+                  onTeethDraftRequested(modalWatch.id);
+                }
+              : undefined
           }
         />
       ) : null}

@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
 import {
@@ -55,7 +56,7 @@ export default async function OperationsNotatkiPage({
   try {
     initial = await fetchOperationsNotepad(department, user.id);
   } catch (e) {
-    loadError = e instanceof Error ? e.message : "Nie udało się załadować notatek.";
+    loadError = userFacingErrorText(e, "Nie udało się załadować notatek.");
   }
 
   try {

@@ -18,6 +18,8 @@ const REASON_CHIP: Record<
   no_subiekt: "bg-slate-200/80 text-slate-800",
   fetch_failed: "bg-amber-100 text-amber-950",
   bom_parent: "bg-indigo-100 text-indigo-950",
+  bom_component_not_purchased: "bg-rose-100 text-rose-950",
+  bom_explode_incomplete: "bg-amber-100 text-amber-950",
   teeth: "bg-sky-100 text-sky-950",
   excluded: "bg-amber-200/80 text-amber-950",
 };

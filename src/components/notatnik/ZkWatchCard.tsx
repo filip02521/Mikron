@@ -1,5 +1,6 @@
 "use client";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { useMemo, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { actionRefreshZkWatchFromSubiekt, actionRestoreZkWatch, actionDeleteArchivedZkWatch } from "@/app/actions/sales-notepad";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
@@ -11,9 +12,16 @@ import {
   stashZkProsbaPrefill,
   type ZkProsbaPrefillOptions,
 } from "@/lib/orders/zk-watch-prosba-prefill";
+import { zkWatchTeethDraftsReady } from "@/lib/sales/zk-watch-teeth-draft";
 import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
-import type { ZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
+import type { ZkLinkableOrder, ZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
 import { collectPartialLineKeysFromCoverage } from "@/lib/sales/zk-watch-order-link";
+import {
+  deriveZkCaseNotePendingAttachKind,
+  deriveZkCaseNoteProsbaStatus,
+  openZkLinkedOrdersWithCaseNoteState,
+  zkCaseNoteProsbaStatusCopy,
+} from "@/lib/sales/zk-watch-case-note-prosba";
 import {
   allZkWatchLinesCheckboxChecked,
   applyZkProsbaStockFilterToCardAction,
@@ -52,6 +60,7 @@ export function ZkWatchCard({
   watch,
   anchorId,
   orderHints,
+  linkableOrders = [],
   readOnly,
   delegatePreview = false,
   tourPreview = false,
@@ -67,6 +76,8 @@ export function ZkWatchCard({
   isNewlyAdded = false,
   newLineKeys,
   onProsbaScopeRequested,
+  onTeethDraftRequested,
+  teethRegistry,
   onRequestCloseWatch,
   closePreviewLoading = false,
   closeFlowError,
@@ -75,6 +86,7 @@ export function ZkWatchCard({
   /** Kotwica #watch-… — na karcie, nie na liście (unika obcinania obwódki). */
   anchorId?: string;
   orderHints?: ZkWatchOrderHints;
+  linkableOrders?: ZkLinkableOrder[];
   readOnly?: boolean;
   delegatePreview?: boolean;
   tourPreview?: boolean;
@@ -95,6 +107,8 @@ export function ZkWatchCard({
   newLineKeys?: string[];
   /** Ponowne otwarcie modala zakresu prośby (gdy jeszcze nie skonfigurowano). */
   onProsbaScopeRequested?: (watchId: string) => void;
+  onTeethDraftRequested?: (watchId: string) => void;
+  teethRegistry?: import("@/lib/sales/zk-watch-teeth-draft").TeethDraftRegistryLookup;
   onRequestCloseWatch?: (watch: SalesZkWatch) => void;
   closePreviewLoading?: boolean;
   closeFlowError?: string;
@@ -141,6 +155,23 @@ export function ZkWatchCard({
 
   const followUpDue = !archived && isFollowUpDue(watch.follow_up_at);
   const notePreview = formatZkWatchNotePreview(watch.note);
+  const noteProsbaState = useMemo(
+    () => openZkLinkedOrdersWithCaseNoteState(watch, linkableOrders),
+    [watch, linkableOrders]
+  );
+  const noteProsbaStatus = deriveZkCaseNoteProsbaStatus({
+    note: watch.note,
+    includeNoteInProsba: Boolean(watch.include_note_in_prosba),
+    openOrderCount: noteProsbaState.openOrders.length,
+    openOrdersWithMatchingNoteCount: noteProsbaState.withNote.length,
+  });
+  const noteProsbaPendingKind = deriveZkCaseNotePendingAttachKind(
+    noteProsbaState.withoutNote
+  );
+  const noteProsbaCopy = zkCaseNoteProsbaStatusCopy(
+    noteProsbaStatus,
+    noteProsbaPendingKind
+  );
   const mojeClientHref = buildMojeClientLink(watch.sales_person_id, watch.client_label, {
     preview: readOnly || tourPreview,
     clientKhId: watch.client_kh_id,
@@ -306,6 +337,27 @@ export function ZkWatchCard({
 
   const prosbaHref = prosbaHrefFromZkWatch(watch, prosbaPrefillOptions);
 
+  const teethDraftsIncomplete = useMemo(() => {
+    if (!teethRegistry) return false;
+    if (prosbaCardAction.kind !== "new_prosba" && prosbaCardAction.kind !== "supplement") {
+      return false;
+    }
+    // Przed ustaleniem zakresu nie wymagaj list — modal early draft odpala się po zapisie scope.
+    if (!prosbaScopeConfigured && teethRegistry.catalogAvailable !== false) {
+      return false;
+    }
+    return !zkWatchTeethDraftsReady(watch, teethRegistry, {
+      lineKeys: prosbaPrefillOptions?.lineKeys,
+      requestKind: "zamowienie",
+    });
+  }, [
+    teethRegistry,
+    watch,
+    prosbaCardAction.kind,
+    prosbaPrefillOptions?.lineKeys,
+    prosbaScopeConfigured,
+  ]);
+
   const prosbaScopeSummary = prosbaScopeConfigured
     ? formatZkWatchProsbaScopeSummary(watch, lineViews)
     : null;
@@ -326,16 +378,24 @@ export function ZkWatchCard({
   const prosbaActionCount = uncoveredLineKeys.length;
 
   function handleProsbaClick(event: MouseEvent<HTMLAnchorElement>) {
+    if (teethDraftsIncomplete) {
+      event.preventDefault();
+      onTeethDraftRequested?.(watch.id);
+      return;
+    }
     setProsbaStockArmed(true);
     const ok = stashZkProsbaPrefill(watch, {
       ...prosbaPrefillOptions,
       stockByTwId: prosbaRawStockByTwId,
+      ...(teethRegistry ? { teethRegistry } : {}),
     });
     if (!ok) {
       event.preventDefault();
       setError({
         watchId: watch.id,
-        message: "Brak pozycji do dodania do prośby — odśwież ZK z Subiekta.",
+        message: teethDraftsIncomplete
+          ? "Najpierw uzupełnij listę zębów dla pozycji ZK."
+          : "Brak pozycji do dodania do prośby — odśwież ZK z Subiekta.",
       });
     }
   }
@@ -404,7 +464,7 @@ export function ZkWatchCard({
     } catch (e) {
       setError({
         watchId: watch.id,
-        message: e instanceof Error ? e.message : "Nie udało się przywrócić ZK.",
+        message: userFacingErrorText(e, "Nie udało się przywrócić ZK."),
       });
     } finally {
       setRestoring(false);
@@ -421,7 +481,7 @@ export function ZkWatchCard({
     } catch (e) {
       setError({
         watchId: watch.id,
-        message: e instanceof Error ? e.message : "Nie udało się odświeżyć danych z Subiekta.",
+        message: userFacingErrorText(e, "Nie udało się odświeżyć danych z Subiekta."),
       });
     } finally {
       setRefreshing(false);
@@ -441,7 +501,7 @@ export function ZkWatchCard({
     } catch (e) {
       setError({
         watchId: watch.id,
-        message: e instanceof Error ? e.message : "Nie udało się usunąć wpisu.",
+        message: userFacingErrorText(e, "Nie udało się usunąć wpisu."),
       });
     } finally {
       setDeleting(false);
@@ -566,19 +626,36 @@ export function ZkWatchCard({
             ) : null}
 
             {notePreview ? (
-              <button
-                type="button"
-                data-zk-row-action=""
-                onClick={handleNoteClick}
-                className={cn(
-                  "mt-0.5 block max-w-full truncate text-left font-medium",
-                  salesTypography.rowMeta,
-                  "rounded-sm text-indigo-900/90 transition hover:bg-indigo-50/80"
-                )}
-                title={notePreview}
-              >
-                {notePreview}
-              </button>
+              <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1.5">
+                {noteProsbaStatus !== "none" ? (
+                  <span
+                    className={cn(
+                      "inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset",
+                      noteProsbaStatus === "in_prosba"
+                        ? "bg-emerald-50 text-emerald-800 ring-emerald-200/80"
+                        : noteProsbaStatus === "private"
+                          ? "bg-indigo-50 text-indigo-800 ring-indigo-200/80"
+                          : "bg-amber-50 text-amber-900 ring-amber-200/80"
+                    )}
+                    title={noteProsbaCopy.description}
+                  >
+                    {noteProsbaCopy.label}
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  data-zk-row-action=""
+                  onClick={handleNoteClick}
+                  className={cn(
+                    "min-w-0 max-w-full truncate text-left font-medium",
+                    salesTypography.rowMeta,
+                    "rounded-sm text-indigo-900/90 transition hover:bg-indigo-50/80"
+                  )}
+                  title={notePreview}
+                >
+                  {notePreview}
+                </button>
+              </div>
             ) : canEditZkActions ? (
               <button
                 type="button"
@@ -612,6 +689,10 @@ export function ZkWatchCard({
               onProsbaClick={handleProsbaClick}
               uncoveredCount={prosbaActionCount}
               buttonLabel={prosbaButtonLabel}
+              teethDraftsIncomplete={teethDraftsIncomplete}
+              teethCatalogUnavailable={teethRegistry?.catalogAvailable === false}
+              canEditTeethDrafts={canEdit}
+              onTeethDraftRequested={() => onTeethDraftRequested?.(watch.id)}
             />
 
             {!archived ? (

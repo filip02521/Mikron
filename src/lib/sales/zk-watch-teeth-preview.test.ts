@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildZkTeethPreviewRows } from "./zk-watch-teeth-preview";
+import { buildZkTeethDraftPreviewRows, buildZkTeethPreviewRows } from "./zk-watch-teeth-preview";
 import type { ZkTeethOrder } from "./zk-watch-order-link";
 
 const baseOrder: ZkTeethOrder = {
@@ -111,5 +111,73 @@ describe("buildZkTeethPreviewRows", () => {
     );
     expect(rows[0]?.statusLabel).toBe("Anulowane");
     expect(rows[0]?.statusTone).toBe("pending");
+  });
+});
+
+describe("buildZkTeethDraftPreviewRows", () => {
+  it("oznacza szkic incomplete i complete bez kolizji z 'Do prośby'", () => {
+    const incomplete = buildZkTeethDraftPreviewRows({
+      teeth_drafts: {
+        "ob:1": {
+          lineKey: "ob:1",
+          subiektTwId: 101,
+          teethManufacturer: "ivoclar",
+          teethProductLine: "ivoclar_phonares_ii",
+          teethKind: "anterior",
+          expectedQuantity: 2,
+          teethDetails: [
+            { position: 1, color: "A2", mould: "S42", kind: "anterior" },
+          ],
+          updatedAt: "2026-01-01T00:00:00Z",
+        },
+      },
+      subiekt_snapshot: {
+        dok_Pozycja: [
+          {
+            tw_Nazwa: "Phonares przednie",
+            tw_Symbol: "PH-A",
+            ob_Ilosc: 2,
+            ob_TowId: 101,
+            ob_Id: 1,
+          },
+        ],
+      },
+      line_summary: null,
+    });
+    expect(incomplete[0]?.statusLabel).toBe("Szkic listy");
+    expect(incomplete[0]?.statusTone).toBe("draft");
+    expect(incomplete[0]?.fromDraft).toBe(true);
+
+    const complete = buildZkTeethDraftPreviewRows({
+      teeth_drafts: {
+        "ob:1": {
+          lineKey: "ob:1",
+          subiektTwId: 101,
+          teethManufacturer: "ivoclar",
+          teethProductLine: "ivoclar_phonares_ii",
+          teethKind: "anterior",
+          expectedQuantity: 2,
+          teethDetails: [
+            { position: 1, color: "A2", mould: "S42", kind: "anterior" },
+            { position: 2, color: "A2", mould: "S42", kind: "anterior" },
+          ],
+          updatedAt: "2026-01-01T00:00:00Z",
+        },
+      },
+      subiekt_snapshot: {
+        dok_Pozycja: [
+          {
+            tw_Nazwa: "Phonares przednie",
+            tw_Symbol: "PH-A",
+            ob_Ilosc: 2,
+            ob_TowId: 101,
+            ob_Id: 1,
+          },
+        ],
+      },
+      line_summary: null,
+    });
+    expect(complete[0]?.statusLabel).toBe("Lista gotowa");
+    expect(complete[0]?.statusTone).toBe("draftReady");
   });
 });

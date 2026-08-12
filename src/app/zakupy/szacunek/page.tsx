@@ -111,7 +111,7 @@ export default async function ZdEstimatePage({
         ...launch,
         needsAssign: true,
         autorun: false,
-        resolveMessage: "Brak dostawcy lub zakresu do automatycznego szacunku.",
+        resolveMessage: "Brak dostawcy lub zakresu do automatycznego uruchomienia kreatora.",
         launchKey: null,
       };
     }

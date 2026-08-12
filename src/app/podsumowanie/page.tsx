@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { Suspense } from "react";
 import { cn } from "@/lib/cn";
 import { getSessionUser } from "@/lib/auth";
@@ -55,14 +56,14 @@ export default async function PodsumowaniePage() {
     supplierStatsMode = data.supplierStatsMode;
     teethLaneBySupplierId = data.teethLaneBySupplierId;
   } catch (e) {
-    error = e instanceof Error ? e.message : "Błąd ładowania";
+    error = userFacingErrorText(e, "Błąd ładowania");
   }
 
   return (
     <>
       {error ? (
         <Alert tone="warning" className={cn(panelWorkspaceShellClass, "mb-4")}>
-          {error}. Sprawdź połączenie z Supabase.
+          {error}
         </Alert>
       ) : null}
 

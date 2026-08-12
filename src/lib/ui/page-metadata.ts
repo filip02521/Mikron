@@ -41,7 +41,7 @@ export const PAGE_TITLES = {
   procurementSuppliers: "Dostawcy",
   procurementVacations: "Urlopy",
   magazynGadki: "Magazyn Gądki",
-  zdEstimate: "Szacunek ZD",
+  zdEstimate: "Kreator ZD",
   inactiveSuppliers: "Nieaktywni dostawcy",
   team: "Zespół",
   teamSales: "Handlowcy zespołu",

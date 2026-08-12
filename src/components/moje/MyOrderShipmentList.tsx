@@ -1,5 +1,5 @@
 "use client";
-import { MY_ORDERS_TOAST, toastSuccess, type ToastNotice } from "@/lib/ui/notice-copy";
+import { MY_ORDERS_TOAST, toastSuccess, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -245,7 +245,7 @@ export function MyOrderShipmentList({
           });
           router.refresh();
         } catch (e) {
-          setErrorToast(MY_ORDERS_TOAST.actionFailed(e instanceof Error ? e.message : undefined));
+          setErrorToast(toastFromUnknown(e, "Operacja nie powiodła się. Spróbuj ponownie."));
         } finally {
           setPendingMessage(null);
         }
@@ -288,7 +288,7 @@ export function MyOrderShipmentList({
           });
           router.refresh();
         } catch (e) {
-          setErrorToast(MY_ORDERS_TOAST.actionFailed(e instanceof Error ? e.message : undefined));
+          setErrorToast(toastFromUnknown(e, "Operacja nie powiodła się. Spróbuj ponownie."));
         } finally {
           setPendingMessage(null);
         }
@@ -319,7 +319,7 @@ export function MyOrderShipmentList({
           });
           router.refresh();
         } catch (e) {
-          setErrorToast(MY_ORDERS_TOAST.actionFailed(e instanceof Error ? e.message : undefined));
+          setErrorToast(toastFromUnknown(e, "Operacja nie powiodła się. Spróbuj ponownie."));
         } finally {
           setPendingMessage(null);
         }
@@ -345,7 +345,7 @@ export function MyOrderShipmentList({
           );
           router.refresh();
         } catch (e) {
-          setErrorToast(MY_ORDERS_TOAST.actionFailed(e instanceof Error ? e.message : undefined));
+          setErrorToast(toastFromUnknown(e, "Operacja nie powiodła się. Spróbuj ponownie."));
         } finally {
           setPendingMessage(null);
         }
@@ -363,7 +363,7 @@ export function MyOrderShipmentList({
           await actionUpdateSalesClientName(orderId, patch.clientName, patch.clientKhId);
           router.refresh();
         } catch (e) {
-          setErrorToast(MY_ORDERS_TOAST.actionFailed(e instanceof Error ? e.message : undefined));
+          setErrorToast(toastFromUnknown(e, "Operacja nie powiodła się. Spróbuj ponownie."));
         } finally {
           setPendingMessage(null);
         }
@@ -396,7 +396,7 @@ export function MyOrderShipmentList({
           });
           router.refresh();
         } catch (e) {
-          setErrorToast(MY_ORDERS_TOAST.actionFailed(e instanceof Error ? e.message : undefined));
+          setErrorToast(toastFromUnknown(e, "Operacja nie powiodła się. Spróbuj ponownie."));
         } finally {
           setPendingMessage(null);
         }
@@ -616,7 +616,7 @@ export function MyOrderShipmentList({
                   });
                   router.refresh();
                 } catch (e) {
-                  setErrorToast(MY_ORDERS_TOAST.actionFailed(e instanceof Error ? e.message : undefined));
+                  setErrorToast(toastFromUnknown(e, "Operacja nie powiodła się. Spróbuj ponownie."));
                 } finally {
                   setPendingMessage(null);
                 }

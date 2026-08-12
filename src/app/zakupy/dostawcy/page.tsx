@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { countInactiveSuppliers, fetchSuppliersWithSchedules } from "@/lib/data/queries";
 import { fetchTeethSchedules, fetchTeethSupplierIds } from "@/lib/data/teeth-schedule";
 import { fetchWarehouseCarriers } from "@/lib/data/warehouse-carriers";
@@ -50,7 +51,7 @@ export default async function ZakupyDostawcyPage({
       suppliers = suppliers.filter((s) => teethSupplierIds.has(s.id));
     }
   } catch (e) {
-    loadError = e instanceof Error ? e.message : "Nie udało się wczytać listy dostawców.";
+    loadError = userFacingErrorText(e, "Nie udało się wczytać listy dostawców.");
     suppliers = [];
   }
 

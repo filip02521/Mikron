@@ -16,6 +16,10 @@ export function ZkWatchProsbaActions({
   onProsbaClick,
   uncoveredCount,
   buttonLabel,
+  teethDraftsIncomplete = false,
+  teethCatalogUnavailable = false,
+  canEditTeethDrafts = true,
+  onTeethDraftRequested,
 }: {
   archived?: boolean;
   pending?: boolean;
@@ -26,6 +30,13 @@ export function ZkWatchProsbaActions({
   uncoveredCount: number;
   /** Etykieta po filtrze stanu magazynowego (domyślnie z action.label). */
   buttonLabel?: string;
+  /** Brak kompletnych list zębów — zablokuj create, pokaż uzupełnienie. */
+  teethDraftsIncomplete?: boolean;
+  /** Katalog zębów niedostępny — zablokuj create bez otwierania pustego modala. */
+  teethCatalogUnavailable?: boolean;
+  /** false w tour/readOnly — nie pokazuj martwego CTA uzupełniania. */
+  canEditTeethDrafts?: boolean;
+  onTeethDraftRequested?: () => void;
 }) {
   if (archived) return null;
 
@@ -53,6 +64,51 @@ export function ZkWatchProsbaActions({
           </span>
         </Button>
       </Link>
+    );
+  }
+
+  if (teethCatalogUnavailable) {
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        className="h-8 px-2.5 text-[0.68rem] sm:h-7"
+        disabled
+        title="Katalog zębów jest chwilowo niedostępny — odśwież stronę i spróbuj ponownie"
+      >
+        Katalog zębów niedostępny
+      </Button>
+    );
+  }
+
+  if (teethDraftsIncomplete) {
+    if (!canEditTeethDrafts) {
+      return (
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="h-8 px-2.5 text-[0.68rem] sm:h-7"
+          disabled
+          title="Najpierw uzupełnij listę zębów dla pozycji ZK"
+        >
+          Uzupełnij listę zębów
+        </Button>
+      );
+    }
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        className="h-8 px-2.5 text-[0.68rem] sm:h-7"
+        disabled={pending}
+        title="Najpierw uzupełnij listę zębów dla pozycji ZK"
+        onClick={() => onTeethDraftRequested?.()}
+      >
+        Uzupełnij listę zębów
+      </Button>
     );
   }
 

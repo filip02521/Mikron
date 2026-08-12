@@ -1,7 +1,11 @@
 "use client";
 
+import {
+  extractRawErrorMessage,
+  userFacingErrorText,
+} from "@/lib/ui/user-facing-error";
 import dynamic from "next/dynamic";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   actionAddZkWatchByNumber,
   actionAddZkWatchBySubiektDokId,
@@ -43,6 +47,15 @@ const ZkWatchProsbaScopeModal = dynamic(
     })),
   { ssr: false }
 );
+const ZkWatchTeethDraftModal = dynamic(
+  () =>
+    import("./ZkWatchTeethDraftModal").then((mod) => ({
+      default: mod.ZkWatchTeethDraftModal,
+    })),
+  { ssr: false }
+);
+import { collectZkTeethLineCandidates, zkWatchTeethDraftsReady } from "@/lib/sales/zk-watch-teeth-draft";
+import { useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 import { NotatnikListFilterBar } from "./NotatnikListFilterBar";
 import { ZkListMetaStrip } from "./ZkListMetaStrip";
 import { ZkWatchStatusGuideStrip } from "./ZkWatchStatusGuideStrip";
@@ -76,6 +89,8 @@ export function ZkWatchSection({
   prosbaScopeOpenNonce = 0,
   onProsbaScopeConfigured,
   onProsbaScopeRequested,
+  teethDraftRequestWatchId = null,
+  teethDraftOpenNonce = 0,
   focusWatchId,
   onFocusWatchHandled,
   onLiveAnnounce,
@@ -93,6 +108,9 @@ export function ZkWatchSection({
   prosbaScopeOpenNonce?: number;
   onProsbaScopeConfigured?: (watchId: string) => void;
   onProsbaScopeRequested?: (watchId: string) => void;
+  /** Otwórz modal list zębów z zewnątrz (np. RefreshPrompt). */
+  teethDraftRequestWatchId?: string | null;
+  teethDraftOpenNonce?: number;
   focusWatchId?: string | null;
   onFocusWatchHandled?: (watchId: string) => void;
   onLiveAnnounce?: (message: string) => void;
@@ -129,6 +147,33 @@ export function ZkWatchSection({
   const [candidates, setCandidates] = useState<ZkSearchCandidate[]>([]);
   const [addSectionNonce, setAddSectionNonce] = useState(0);
   const [addPanelExpanded, setAddPanelExpanded] = useState(false);
+  const [teethDraftWatchId, setTeethDraftWatchId] = useState<string | null>(null);
+  const teethProductInfo = useTeethProductInfo();
+  const canRequestTeethDrafts = !readOnly && !tourPreview;
+  const lastOpenedTeethDraftNonceRef = useRef(0);
+
+  useEffect(() => {
+    if (!teethDraftRequestWatchId || !canRequestTeethDrafts) return;
+    if (teethDraftOpenNonce === lastOpenedTeethDraftNonceRef.current) return;
+    if (!watches.some((watch) => watch.id === teethDraftRequestWatchId)) return;
+    lastOpenedTeethDraftNonceRef.current = teethDraftOpenNonce;
+    setTeethDraftWatchId(teethDraftRequestWatchId);
+  }, [teethDraftRequestWatchId, teethDraftOpenNonce, canRequestTeethDrafts, watches]);
+
+  function openTeethDraftModal(watchId: string) {
+    if (!canRequestTeethDrafts) return;
+    setTeethDraftWatchId(watchId);
+  }
+  const teethRegistry = useMemo(
+    () => ({
+      twIds: teethProductInfo.twIds,
+      manufacturerByTwId: teethProductInfo.manufacturerByTwId,
+      productLineByTwId: teethProductInfo.productLineByTwId,
+      kindByTwId: teethProductInfo.kindByTwId,
+      catalogAvailable: teethProductInfo.catalogAvailable,
+    }),
+    [teethProductInfo]
+  );
   const addPanelOpen = watches.length === 0 || addPanelExpanded;
   const canAddZk = subiektReachable;
   const searchActive = listFilter.trim().length > 0;
@@ -172,9 +217,9 @@ export function ZkWatchSection({
   }
 
   async function handleAddFailure(error: unknown, zkQueryForRecovery: string) {
-    const message = error instanceof Error ? error.message : "";
+    const rawMessage = extractRawErrorMessage(error);
 
-    if (isDuplicateZkOnListMessage(message)) {
+    if (isDuplicateZkOnListMessage(rawMessage)) {
       const onList = watches.find((watch) =>
         zkNumbersEquivalent(watch.zk_number, zkQueryForRecovery)
       );
@@ -187,7 +232,9 @@ export function ZkWatchSection({
         focusExistingWatch(recovered);
         return;
       }
-      setError(message);
+      setError(
+        userFacingErrorText(rawMessage, "Zamówienie jest już na liście.")
+      );
       return;
     }
 
@@ -199,7 +246,9 @@ export function ZkWatchSection({
       }
     }
 
-    setError(message || "Nie udało się dodać zamówienia.");
+    setError(
+      userFacingErrorText(error, "Nie udało się dodać zamówienia.")
+    );
   }
 
   const filteredWatches = useMemo(
@@ -227,6 +276,13 @@ export function ZkWatchSection({
         ? watches.find((watch) => watch.id === prosbaScopeWatchId)
         : undefined,
     [prosbaScopeWatchId, watches]
+  );
+  const teethDraftWatch = useMemo(
+    () =>
+      teethDraftWatchId
+        ? watches.find((watch) => watch.id === teethDraftWatchId)
+        : undefined,
+    [teethDraftWatchId, watches]
   );
 
   const prosbaScopeConfigured =
@@ -375,6 +431,8 @@ export function ZkWatchSection({
         onClosed={onWatchClosed}
         onRefreshed={onWatchRefreshed}
         onProsbaScopeRequested={onProsbaScopeRequested}
+        onTeethDraftRequested={openTeethDraftModal}
+        teethRegistry={teethRegistry}
       />
     );
 
@@ -543,6 +601,27 @@ export function ZkWatchSection({
           onSaved={(updated) => {
             setScopeDismissed(null);
             onProsbaScopeConfigured?.(prosbaScopeWatch.id);
+            onWatchRefreshed?.(updated, undefined, { skipRouterRefresh: true });
+            const candidates = collectZkTeethLineCandidates(updated, teethRegistry);
+            if (
+              candidates.length > 0 &&
+              !zkWatchTeethDraftsReady(updated, teethRegistry)
+            ) {
+              openTeethDraftModal(updated.id);
+            }
+          }}
+        />
+      ) : null}
+
+      {teethDraftWatch ? (
+        <ZkWatchTeethDraftModal
+          key={teethDraftWatch.id}
+          open
+          watch={teethDraftWatch}
+          onClose={() => setTeethDraftWatchId(null)}
+          onSkipLater={() => setTeethDraftWatchId(null)}
+          onSaved={(updated) => {
+            setTeethDraftWatchId(null);
             onWatchRefreshed?.(updated, undefined, { skipRouterRefresh: true });
           }}
         />

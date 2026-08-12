@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { useEffect, useState } from "react";
 import {
   actionListActiveVacationsForSupplier,
@@ -89,11 +90,7 @@ export function SupplierVacationModal({
       })
       .catch((error) => {
         if (cancelled) return;
-        onError?.(
-          error instanceof Error
-            ? error.message
-            : "Nie udało się wczytać urlopów dostawcy."
-        );
+        onError?.(userFacingErrorText(error, "Nie udało się wczytać urlopów dostawcy."));
         setExistingVacations([]);
         setSelection(NEW_VACATION);
         setForm(emptyForm());
@@ -151,9 +148,7 @@ export function SupplierVacationModal({
       `Zapis urlopu i przeliczanie harmonogramów…`,
       {
         onError: (error) => {
-          onError?.(
-            error instanceof Error ? error.message : "Nie udało się zapisać urlopu."
-          );
+          onError?.(userFacingErrorText(error, "Nie udało się zapisać urlopu."));
         },
       }
     );

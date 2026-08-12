@@ -14,6 +14,11 @@ import {
   type ManualZdEstimateLine,
 } from "@/lib/orders/zd-estimate-manual";
 import {
+  bomBlocksZdOrder,
+  isAssembledBomParent,
+  isBomPurchaseBlockedWithoutExplode,
+} from "@/lib/orders/zd-estimate-bom";
+import {
   normalizeUnitsPerPackage,
   zdDocumentUnitsToPieces,
 } from "@/lib/orders/zd-estimate-units";
@@ -110,14 +115,28 @@ export function resolveOrderQtyForLine(
   extraOnly = false
 ): ZdPackOrderQty {
   const extra = Math.max(0, Math.ceil(Number(individualExtraPieces) || 0));
+  const label = packaging?.packageLabel?.trim() || "op.";
 
-  // BOM parent: nigdy na ZD (extras routowane wcześniej na service).
-  if (line.bom?.role === "parent") {
-    return computeZdPackOrderQty(0, 1, packaging?.packageLabel?.trim() || "op.");
+  // Assembled parent: nigdy na ZD (także bez extras — explode idzie na składniki).
+  if (isAssembledBomParent(line)) {
+    return computeZdPackOrderQty(0, 1, label);
   }
+
+  // kit_only composition: baza = 0, ale extras z explode próśb / multi-BOM mogą wejść.
+  if (isBomPurchaseBlockedWithoutExplode(line)) {
+    if (line.pair?.role === "piece") {
+      return computeZdPackOrderQty(0, 1, label);
+    }
+    if (line.pair?.role === "pack") {
+      return computeZdPackOrderQty(extra, line.pair.unitsPerPack, label);
+    }
+    const pack = normalizeUnitsPerPackage(packaging?.unitsPerPackage);
+    return computeZdPackOrderQty(extra, pack, label);
+  }
+
   // Para: qty już policzone w sztukach (cover/sales złączone) — nie przeliczaj z karty pack.
   if (line.pair?.role === "piece") {
-    return computeZdPackOrderQty(0, 1, packaging?.packageLabel?.trim() || "op.");
+    return computeZdPackOrderQty(0, 1, label);
   }
   if (line.pair?.role === "pack") {
     const base = extraOnly
@@ -125,12 +144,10 @@ export function resolveOrderQtyForLine(
       : line.pair.partnerMissing
         ? 0
         : Math.max(0, Math.ceil(Number(line.doZamowieniaReczne) || 0));
-    const label = packaging?.packageLabel?.trim() || "op.";
     return computeZdPackOrderQty(base + extra, line.pair.unitsPerPack, label);
   }
 
   const pack = normalizeUnitsPerPackage(packaging?.unitsPerPackage);
-  const label = packaging?.packageLabel?.trim() || "op.";
   if (extraOnly) {
     return computeZdPackOrderQty(extra, pack, label);
   }
@@ -182,7 +199,7 @@ export type PackagingLookup = {
 export function lineAllowsZdDocumentUnitOverride(
   line: Pick<ManualZdEstimateLine, "pair" | "bom">
 ): boolean {
-  if (line.bom?.role === "parent") return false;
+  if (bomBlocksZdOrder(line)) return false;
   if (line.pair?.role === "piece") return false;
   return true;
 }

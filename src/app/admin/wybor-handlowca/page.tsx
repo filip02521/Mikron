@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
 import { fetchSalesPeopleForPicker } from "@/lib/data/sales-people-admin";
@@ -21,7 +22,7 @@ export default async function WyborHandlowcaPage() {
   try {
     people = await fetchSalesPeopleForPicker();
   } catch (e) {
-    loadError = e instanceof Error ? e.message : "Nie udało się wczytać listy handlowców.";
+    loadError = userFacingErrorText(e, "Nie udało się wczytać listy handlowców.");
   }
 
   return (

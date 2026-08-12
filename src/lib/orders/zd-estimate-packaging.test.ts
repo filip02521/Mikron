@@ -167,10 +167,40 @@ describe("resolveOrderQtyForLine + para", () => {
       ...piece,
       tw_Id: 30,
       pair: null,
-      bom: { role: "parent" as const, parentTwIds: [30] },
+      bom: { role: "assembled_parent" as const, parentTwIds: [30] },
     } as ManualZdEstimateLine;
     expect(lineAllowsZdDocumentUnitOverride(parent)).toBe(false);
     expect(effectiveZdDocumentUnits(parent, null, 0, 5)).toBe(0);
+
+    const blocked = {
+      ...piece,
+      tw_Id: 40,
+      pair: null,
+      bom: {
+        role: "component" as const,
+        purchaseBlocked: true,
+        parentTwIds: [30],
+      },
+    } as ManualZdEstimateLine;
+    expect(lineAllowsZdDocumentUnitOverride(blocked)).toBe(false);
+    expect(resolveOrderQtyForLine(blocked).zdUnits).toBe(0);
+    // Extras z explode próśb mogą wejść mimo purchaseBlocked.
+    expect(resolveOrderQtyForLine(blocked, null, 8).zdUnits).toBe(8);
+
+    const purchased = {
+      ...piece,
+      tw_Id: 50,
+      pair: null,
+      doZamowieniaReczne: 8,
+      celZapasu: 8,
+      celZapasuTracked: 8,
+      bom: {
+        role: "purchased_kit" as const,
+        purchaseTarget: "as_sold" as const,
+      },
+    } as ManualZdEstimateLine;
+    expect(lineAllowsZdDocumentUnitOverride(purchased)).toBe(true);
+    expect(resolveOrderQtyForLine(purchased).zdUnits).toBeGreaterThan(0);
 
     const pruned = pruneZdDocumentUnitOverrides(
       { 20: 99, 30: 5 },
@@ -382,7 +412,7 @@ describe("resolveOrderQtyForLine + BOM parent", () => {
       doZamowieniaApi: 5,
       doZamowieniaReczne: 0,
       wkladZk: 0,
-      bom: { role: "parent" },
+      bom: { role: "assembled_parent" },
     });
     expect(q.zdUnits).toBe(0);
   });

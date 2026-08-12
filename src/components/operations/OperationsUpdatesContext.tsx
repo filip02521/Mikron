@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import { systemNoticePanelStripClass } from "@/lib/ui/ontime-theme";
 import { MICROCOPY } from "@/lib/ui/microcopy";
+import { redirectToLoginIfUnauthorizedStatus } from "@/lib/auth/session-login-redirect";
 import { usePatchAppShellNavBadges } from "@/components/layout/AppShellMetricsContext";
 import {
   boardQuestionsSoundMutedStore,
@@ -69,6 +70,16 @@ async function fetchVersion(): Promise<{
     const res = await fetch("/api/operations/daily-panel-version", {
       cache: "no-store",
     });
+    if (redirectToLoginIfUnauthorizedStatus(res.status)) {
+      return {
+        version: null,
+        openBoardQuestions: null,
+        navBadge: null,
+        verificationCount: null,
+        realizacjaCount: null,
+        operationsNotatki: null,
+      };
+    }
     if (!res.ok) {
       return {
         version: null,

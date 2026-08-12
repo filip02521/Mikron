@@ -1,5 +1,5 @@
 "use client";
-import { ToastNotice, WAREHOUSE_TOAST } from "@/lib/ui/notice-copy";
+import { ToastNotice, WAREHOUSE_TOAST, toastFromUnknown } from "@/lib/ui/notice-copy";
 
 import { Fragment, useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -275,10 +275,7 @@ export function WarehouseInventorySection({
           setToast(WAREHOUSE_TOAST.savedShelfLocation);
           router.refresh();
         } catch (e) {
-          setToast({
-            text: e instanceof Error ? e.message : "Nie udało się zapisać regału",
-            tone: "error",
-          });
+          setToast(toastFromUnknown(e, "Nie udało się zapisać regału"));
         }
       });
     },
@@ -295,10 +292,7 @@ export function WarehouseInventorySection({
           setClearConfirmId(null);
           router.refresh();
         } catch (e) {
-          setToast({
-            text: e instanceof Error ? e.message : "Nie udało się zdjąć z regału",
-            tone: "error",
-          });
+          setToast(toastFromUnknown(e, "Nie udało się zdjąć z regału"));
         }
       });
     },

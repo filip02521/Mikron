@@ -9,6 +9,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { actionUpdateZkWatchFollowUp } from "@/app/actions/sales-notepad";
 import { IconCalendar } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
@@ -114,7 +115,7 @@ export function ZkWatchFollowUpButton({
       onSaved?.(updated);
       setOpen(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się zapisać przypomnienia.");
+      setError(userFacingErrorText(e, "Nie udało się zapisać przypomnienia."));
     } finally {
       setSaving(false);
     }

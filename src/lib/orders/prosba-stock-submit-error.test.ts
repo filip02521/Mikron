@@ -10,7 +10,10 @@ describe("handleProsbaStockSubmitError", () => {
 
     handleProsbaStockSubmitError(new Error(message), onAck, onOther);
 
-    expect(onAck).toHaveBeenCalledWith(message);
+    // userFacingErrorText zwija białe znaki / nowe linie
+    expect(onAck).toHaveBeenCalledWith(
+      "Stan OK. Potwierdź wysyłkę w formularzu lub odśwież."
+    );
     expect(onOther).not.toHaveBeenCalled();
   });
 

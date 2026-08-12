@@ -1,5 +1,6 @@
 "use client";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { actionAddIndividualOrders } from "@/app/actions/admin";
@@ -142,10 +143,7 @@ export function TeethQuickOrderModal({
         }, 600);
       } catch (e) {
         setFormNotice(
-          formError(
-            "Nie udało się wysłać",
-            e instanceof Error ? e.message : "Spróbuj ponownie za chwilę."
-          )
+          formError("Nie udało się wysłać", userFacingErrorText(e, "Spróbuj ponownie za chwilę."))
         );
       } finally {
         if (pendingSafetyRef.current) {
@@ -235,7 +233,10 @@ export function TeethQuickOrderModal({
       setValidationAttempted(true);
       setFormNotice(
         err instanceof Error
-          ? { ...QUICK_ORDER_FORM.incompleteFields, text: err.message }
+          ? {
+              ...QUICK_ORDER_FORM.incompleteFields,
+              text: userFacingErrorText(err, QUICK_ORDER_FORM.incompleteFields.text),
+            }
           : QUICK_ORDER_FORM.incompleteFields
       );
       return;

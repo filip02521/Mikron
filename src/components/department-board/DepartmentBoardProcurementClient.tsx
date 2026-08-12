@@ -1,5 +1,6 @@
 "use client";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/Alert";
@@ -184,9 +185,7 @@ export function DepartmentBoardProcurementClient({
       setSuccessToast(true);
       refresh();
     } catch (e) {
-      setAnnouncementFormError(
-        e instanceof Error ? e.message : "Nie udało się opublikować ogłoszenia."
-      );
+      setAnnouncementFormError(userFacingErrorText(e, "Nie udało się opublikować ogłoszenia."));
     } finally {
       setSaving(false);
     }

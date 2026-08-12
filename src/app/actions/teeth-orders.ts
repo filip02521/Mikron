@@ -1,5 +1,6 @@
 "use server";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
 
 import { revalidatePath } from "next/cache";
@@ -411,7 +412,7 @@ export async function actionUpdateTeethSpecGroup(
   try {
     await updateTeethSpecGroup(supabase, orderId, spec, inferredNewSpec, newCount);
   } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : "Nie udało się zapisać" };
+    return { success: false, error: userFacingErrorText(e, "Nie udało się zapisać") };
   }
 
   revalidatePath("/zeby/weryfikacja");
@@ -538,7 +539,7 @@ export async function actionAddTeethSpecGroup(
       count,
     );
   } catch (e) {
-    return { success: false, error: e instanceof Error ? e.message : "Nie udało się dodać pozycji" };
+    return { success: false, error: userFacingErrorText(e, "Nie udało się dodać pozycji") };
   }
 
   revalidatePath("/zeby/weryfikacja");

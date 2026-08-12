@@ -1,5 +1,6 @@
 "use client";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { useState, useTransition } from "react";
 import {
   actionGetSubiektStatus,
@@ -128,7 +129,7 @@ export function SubiektIntegrationPanel({
         setTestOk(false);
         setTestFeedback(
           getSubiektFeedback("unknown", {
-            message: e instanceof Error ? e.message : "Błąd testu połączenia",
+            message: userFacingErrorText(e, "Błąd testu połączenia"),
           })
         );
       }

@@ -1,5 +1,6 @@
 "use client";
 import { toastFromError, ToastNotice, TEETH_CATALOG_TOAST } from "@/lib/ui/notice-copy";
+import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -99,7 +100,12 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
         setResolvedSearchQuery(debouncedSearchQuery);
         if (!result.ok) {
           setSearchHits([]);
-          setSearchError(result.error);
+          setSearchError(
+            userFacingErrorTextFromMessage(
+              result.error,
+              "Nie udało się wyszukać w Subiekcie."
+            )
+          );
         } else {
           setSearchHits(result.items);
           setSearchError(null);

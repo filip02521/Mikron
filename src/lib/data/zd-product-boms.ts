@@ -1,6 +1,15 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchZdProductPairs } from "@/lib/data/zd-product-pairs";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
+import {
+  normalizeDemandAllocation,
+  normalizePurchaseTarget,
+  resolveBomPolicyFromInput,
+  resolveBomStockAsCover,
+  type BomDemandAllocation,
+  type BomPresetId,
+  type BomPurchaseTarget,
+} from "@/lib/orders/zd-estimate-bom-policy";
 
 export type ZdProductBomSource = "manual";
 
@@ -17,6 +26,8 @@ export type ZdProductBomRow = {
   parentTwId: number;
   label: string;
   stockAsCover: boolean;
+  demandAllocation: BomDemandAllocation;
+  purchaseTarget: BomPurchaseTarget;
   source: ZdProductBomSource;
   note: string;
   parentSymbol: string | null;
@@ -32,6 +43,8 @@ type BomDbRow = {
   parent_tw_id: number;
   label: string | null;
   stock_as_cover: boolean;
+  demand_allocation?: string | null;
+  purchase_target?: string | null;
   source: string;
   note: string | null;
   parent_symbol: string | null;
@@ -51,7 +64,7 @@ type CompDbRow = {
 };
 
 const BOM_COLS =
-  "id, parent_tw_id, label, stock_as_cover, source, note, parent_symbol, parent_nazwa, created_at, updated_at, created_by";
+  "id, parent_tw_id, label, stock_as_cover, demand_allocation, purchase_target, source, note, parent_symbol, parent_nazwa, created_at, updated_at, created_by";
 
 const COMP_COLS =
   "id, bom_id, component_tw_id, qty_per_parent, component_symbol, component_nazwa";
@@ -70,11 +83,18 @@ function mapBom(
   row: BomDbRow,
   components: ZdProductBomComponentRow[]
 ): ZdProductBomRow {
+  const demandAllocation = normalizeDemandAllocation(row.demand_allocation);
+  const purchaseTarget = normalizePurchaseTarget(row.purchase_target);
   return {
     id: row.id,
     parentTwId: Math.trunc(Number(row.parent_tw_id)),
     label: (row.label ?? "").trim(),
-    stockAsCover: row.stock_as_cover !== false,
+    stockAsCover: resolveBomStockAsCover({
+      demandAllocation,
+      stockAsCover: row.stock_as_cover,
+    }),
+    demandAllocation,
+    purchaseTarget,
     source: "manual",
     note: (row.note ?? "").trim(),
     parentSymbol: row.parent_symbol?.trim() || null,
@@ -131,6 +151,9 @@ export type UpsertZdProductBomInput = {
   parentTwId: number;
   label?: string | null;
   stockAsCover?: boolean;
+  preset?: BomPresetId | string | null;
+  demandAllocation?: BomDemandAllocation | string | null;
+  purchaseTarget?: BomPurchaseTarget | string | null;
   note?: string | null;
   parentSymbol?: string | null;
   parentNazwa?: string | null;
@@ -154,6 +177,17 @@ export async function upsertZdProductBom(
   if (!input.components?.length) {
     throw new Error(ZD_BOM_UI.errNeedComponent);
   }
+
+  let policy;
+  try {
+    policy = resolveBomPolicyFromInput(input);
+  } catch {
+    throw new Error(ZD_BOM_UI.errBadPolicy);
+  }
+  const stockAsCover = resolveBomStockAsCover({
+    demandAllocation: policy.demandAllocation,
+    stockAsCover: input.stockAsCover,
+  });
 
   const comps: UpsertZdProductBomComponentInput[] = [];
   const seenComp = new Set<number>();
@@ -206,7 +240,9 @@ export async function upsertZdProductBom(
       .from("zd_product_boms")
       .update({
         label: (input.label ?? "").trim().slice(0, 200),
-        stock_as_cover: input.stockAsCover !== false,
+        stock_as_cover: stockAsCover,
+        demand_allocation: policy.demandAllocation,
+        purchase_target: policy.purchaseTarget,
         note:
           input.note !== undefined
             ? (input.note ?? "").trim().slice(0, 500)
@@ -237,7 +273,9 @@ export async function upsertZdProductBom(
       .insert({
         parent_tw_id: parentTwId,
         label: (input.label ?? "").trim().slice(0, 200),
-        stock_as_cover: input.stockAsCover !== false,
+        stock_as_cover: stockAsCover,
+        demand_allocation: policy.demandAllocation,
+        purchase_target: policy.purchaseTarget,
         source: "manual",
         note: (input.note ?? "").trim().slice(0, 500),
         parent_symbol: input.parentSymbol?.trim() || null,

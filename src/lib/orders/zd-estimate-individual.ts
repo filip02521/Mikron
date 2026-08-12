@@ -1,11 +1,15 @@
 /**
- * Prośby indywidualne (zamówienia) w szacunku ZD — merge, routing, uwagi.
+ * Prośby indywidualne (zamówienia) w kreatorze ZD — merge, routing, uwagi.
  */
 
 import { isIndividualOrderProcurementReady } from "@/lib/orders/procurement-readiness";
 import { activeOrderQuantity } from "@/lib/orders/sales-cancel";
 import { ZD_CREATE_MAX_UWAGI_LEN } from "@/lib/orders/zd-estimate-create-zd";
 import type { ZdProductBomRef } from "@/lib/orders/zd-estimate-bom";
+import {
+  normalizeDemandAllocation,
+  normalizePurchaseTarget,
+} from "@/lib/orders/zd-estimate-bom-policy";
 import {
   indexZdProductPairs,
   type ZdProductPairRef,
@@ -33,6 +37,8 @@ export type ZdEstimateIndividualServiceReason =
   | "no_subiekt"
   | "fetch_failed"
   | "bom_parent"
+  | "bom_component_not_purchased"
+  | "bom_explode_incomplete"
   | "teeth"
   | "excluded";
 
@@ -150,7 +156,7 @@ function mikranCodeForTw(
 }
 
 /**
- * Ścisłe dopasowanie prośby → tw_Id w szacunku ZD.
+ * Ścisłe dopasowanie prośby → tw_Id w kreatorze ZD.
  *
  * NIE używa fuzzy firstToken / marki z nazwy (to doklejało prośby do złych SKU).
  * Kolejność: jawny symbol → PLU/mikran → kod alfanum. z nazwy → subiektTwId
@@ -216,13 +222,45 @@ export function matchZdEstimateTwFromOrder(
   return storedTw;
 }
 
-function bomParentTwIds(boms: readonly ZdProductBomRef[]): Set<number> {
-  const set = new Set<number>();
+type BomTwKind =
+  | { kind: "assembled_parent"; bom: ZdProductBomRef }
+  | { kind: "purchased_kit"; bom: ZdProductBomRef }
+  | { kind: "kit_only_component"; bom: ZdProductBomRef };
+
+function indexBomTwKinds(boms: readonly ZdProductBomRef[]): Map<number, BomTwKind> {
+  const map = new Map<number, BomTwKind>();
+  const explodeComponentIds = new Set<number>();
+
+  // 1) Parenty + zbierz składniki z explode (wygrywają nad kit_only).
   for (const bom of boms) {
-    const p = Math.trunc(Number(bom.parentTwId)) || 0;
-    if (p > 0) set.add(p);
+    const parent = Math.trunc(Number(bom.parentTwId)) || 0;
+    if (!(parent > 0)) continue;
+    const allocation = normalizeDemandAllocation(bom.demandAllocation);
+    const target = normalizePurchaseTarget(bom.purchaseTarget);
+    if (allocation === "explode" && target === "components") {
+      map.set(parent, { kind: "assembled_parent", bom });
+      for (const c of bom.components ?? []) {
+        const cid = Math.trunc(Number(c.componentTwId)) || 0;
+        if (cid > 0) explodeComponentIds.add(cid);
+      }
+    } else if (bom.components?.length) {
+      map.set(parent, { kind: "purchased_kit", bom });
+    }
   }
-  return set;
+
+  // 2) kit_only components — pomiń parentów oraz składniki objęte explode.
+  for (const bom of boms) {
+    const target = normalizePurchaseTarget(bom.purchaseTarget);
+    if (target !== "kit_only") continue;
+    for (const c of bom.components ?? []) {
+      const cid = Math.trunc(Number(c.componentTwId)) || 0;
+      if (!(cid > 0)) continue;
+      if (map.has(cid)) continue;
+      if (explodeComponentIds.has(cid)) continue;
+      map.set(cid, { kind: "kit_only_component", bom });
+    }
+  }
+  return map;
 }
 
 function serviceLabel(
@@ -238,7 +276,11 @@ function serviceLabel(
     case "teeth":
       return `Usługa jednorazowa (zęby): ${base}`;
     case "bom_parent":
-      return `Usługa jednorazowa (zestaw): ${base}`;
+      return `Usługa jednorazowa (zestaw składamy): ${base}`;
+    case "bom_component_not_purchased":
+      return `Usługa jednorazowa (składnik poza zakupem kompletu): ${base}`;
+    case "bom_explode_incomplete":
+      return `Usługa jednorazowa (brak składnika zestawu): ${base}`;
     case "fetch_failed":
       return `Usługa jednorazowa (brak kartoteki Subiekt): ${base}`;
     case "excluded":
@@ -275,7 +317,9 @@ export type BuildIndividualEstimateExtrasInput = {
 };
 
 /**
- * Buduje rezerwę po tw_Id + linie usług. Piece → pack; parent/zęby → service.
+ * Buduje rezerwę po tw_Id + linie usług.
+ * Assembled K → explode na składniki; purchased kit → rezerwa na K;
+ * kit_only component → service.
  */
 export function buildIndividualEstimateExtras(
   input: BuildIndividualEstimateExtrasInput
@@ -296,7 +340,7 @@ export function buildIndividualEstimateExtras(
   }
 
   const pairIndex = indexZdProductPairs(input.pairs ?? []);
-  const parents = bomParentTwIds(input.boms ?? []);
+  const bomKinds = indexBomTwKinds(input.boms ?? []);
   const teeth =
     input.teethTwIds instanceof Set
       ? input.teethTwIds
@@ -314,13 +358,40 @@ export function buildIndividualEstimateExtras(
             .filter((id) => id > 0)
         );
 
+  function addExtra(targetTw: number, order: ZdEstimatePendingIndividualOrder, qty: number) {
+    let tw = targetTw;
+    const pairHit = pairIndex.get(tw);
+    if (pairHit?.role === "piece") {
+      tw = pairHit.pair.packTwId;
+    }
+    if (fetchFailed.has(tw)) {
+      pushService(serviceLines, "fetch_failed", order);
+      return;
+    }
+    if (!byTw.has(tw)) {
+      if (!fetchSeen.has(tw)) {
+        fetchSeen.add(tw);
+        twIdsToFetch.push(tw);
+      }
+    }
+    const prev = byTwId.get(tw);
+    if (prev) {
+      prev.extraPieces += qty;
+      prev.requests.push(toRequestRef(order));
+    } else {
+      byTwId.set(tw, {
+        extraPieces: qty,
+        requests: [toRequestRef(order)],
+      });
+    }
+  }
+
   for (const order of input.orders) {
     if (!(order.qty > 0)) {
       skippedNoQty += 1;
       continue;
     }
-    const ref = toRequestRef(order);
-    let targetTw = matchZdEstimateTwFromOrder(
+    const targetTw = matchZdEstimateTwFromOrder(
       order,
       bySymbol,
       byMikran,
@@ -337,39 +408,41 @@ export function buildIndividualEstimateExtras(
       continue;
     }
 
-    if (parents.has(targetTw)) {
-      pushService(serviceLines, "bom_parent", order);
-      continue;
-    }
-
-    const pairHit = pairIndex.get(targetTw);
-    if (pairHit?.role === "piece") {
-      targetTw = pairHit.pair.packTwId;
-    }
-
-    if (fetchFailed.has(targetTw)) {
-      pushService(serviceLines, "fetch_failed", order);
-      continue;
-    }
-
-    if (!byTw.has(targetTw)) {
-      if (!fetchSeen.has(targetTw)) {
-        fetchSeen.add(targetTw);
-        twIdsToFetch.push(targetTw);
+    const bomHit = bomKinds.get(targetTw);
+    if (bomHit?.kind === "assembled_parent") {
+      const comps = bomHit.bom.components ?? [];
+      if (!comps.length) {
+        pushService(serviceLines, "bom_explode_incomplete", order);
+        continue;
       }
-      // Still accumulate extras — after fetch the line will appear.
+      let incomplete = false;
+      for (const c of comps) {
+        const cid = Math.trunc(Number(c.componentTwId)) || 0;
+        const q = Math.trunc(Number(c.qtyPerParent)) || 0;
+        if (!(cid > 0) || q < 1) {
+          incomplete = true;
+          break;
+        }
+      }
+      if (incomplete) {
+        pushService(serviceLines, "bom_explode_incomplete", order);
+        continue;
+      }
+      for (const c of comps) {
+        const cid = Math.trunc(Number(c.componentTwId)) || 0;
+        const q = Math.trunc(Number(c.qtyPerParent)) || 0;
+        addExtra(cid, order, order.qty * q);
+      }
+      continue;
     }
 
-    const prev = byTwId.get(targetTw);
-    if (prev) {
-      prev.extraPieces += order.qty;
-      prev.requests.push(ref);
-    } else {
-      byTwId.set(targetTw, {
-        extraPieces: order.qty,
-        requests: [ref],
-      });
+    if (bomHit?.kind === "kit_only_component") {
+      pushService(serviceLines, "bom_component_not_purchased", order);
+      continue;
     }
+
+    // purchased_kit parent i zwykłe SKU — rezerwa katalogowa (z pair retarget w addExtra).
+    addExtra(targetTw, order, order.qty);
   }
 
   let extraPiecesSum = 0;
@@ -380,7 +453,7 @@ export function buildIndividualEstimateExtras(
     serviceLines,
     twIdsToFetch,
     meta: {
-      orderCount: input.orders.length - skippedNoQty,
+      orderCount: input.orders.length,
       extraPiecesSum,
       serviceCount: serviceLines.length,
       skippedNoQty,
@@ -402,6 +475,8 @@ export function individualExtraPiecesMap(
 
 /**
  * OrderIds, które realnie weszły na ZD (katalog) i/lub do uwag (usługi).
+ * Katalog: orderId tylko gdy WSZYSTKIE tw z byTwId dla tej prośby są w createdTwIds
+ * (explode A+B — nie markuj przy samym A).
  * `serviceOrderIds` — tylko te, które faktycznie zmieściły się w uwagach.
  */
 export function collectIndividualOrderIdsForZdCreate(input: {
@@ -422,9 +497,26 @@ export function collectIndividualOrderIdsForZdCreate(input: {
             .filter((id) => id > 0)
         );
 
+  const requiredTwByOrder = new Map<string, Set<number>>();
   for (const [tw, extra] of input.byTwId) {
-    if (!created.has(tw)) continue;
-    for (const r of extra.requests) ids.add(r.orderId);
+    if (!(extra.extraPieces > 0)) continue;
+    for (const r of extra.requests) {
+      const orderId = String(r.orderId ?? "").trim();
+      if (!orderId) continue;
+      const set = requiredTwByOrder.get(orderId) ?? new Set<number>();
+      set.add(tw);
+      requiredTwByOrder.set(orderId, set);
+    }
+  }
+  for (const [orderId, tws] of requiredTwByOrder) {
+    let allCreated = true;
+    for (const tw of tws) {
+      if (!created.has(tw)) {
+        allCreated = false;
+        break;
+      }
+    }
+    if (allCreated) ids.add(orderId);
   }
 
   if (input.serviceOrderIds?.length) {
@@ -710,19 +802,48 @@ export function reclassifyMissingTwExtrasToServices(
   const byTwId = new Map(bundle.byTwId);
   const serviceLines = [...bundle.serviceLines];
 
-  for (const [tw, extra] of [...byTwId.entries()]) {
+  // Atomowo: jeśli którakolwiek składowa prośby (np. explode A+B) jest poza listą,
+  // cała prośba idzie do usług — bez częściowego marku katalogu.
+  const ordersWithMissing = new Set<string>();
+  for (const [tw, extra] of byTwId) {
     if (present.has(tw)) continue;
-    byTwId.delete(tw);
     for (const req of extra.requests) {
-      serviceLines.push({
-        key: `fetch_failed:${req.orderId}`,
-        label: `Usługa jednorazowa (brak kartoteki Subiekt): ${
-          req.symbol ?? req.products.slice(0, 48)
-        }`,
-        qty: req.qty,
-        reason: "fetch_failed",
-        requests: [req],
-      });
+      const id = String(req.orderId ?? "").trim();
+      if (id) ordersWithMissing.add(id);
+    }
+  }
+
+  if (ordersWithMissing.size) {
+    for (const [tw, extra] of [...byTwId.entries()]) {
+      const keep: ZdEstimateIndividualRequestRef[] = [];
+      let removedPieces = 0;
+      for (const req of extra.requests) {
+        const id = String(req.orderId ?? "").trim();
+        if (id && ordersWithMissing.has(id)) {
+          removedPieces += Math.max(0, req.qty);
+          serviceLines.push({
+            key: `fetch_failed:${req.orderId}`,
+            label: `Usługa jednorazowa (brak kartoteki Subiekt): ${
+              req.symbol ?? req.products.slice(0, 48)
+            }`,
+            qty: req.qty,
+            reason: "fetch_failed",
+            requests: [req],
+          });
+        } else {
+          keep.push(req);
+        }
+      }
+      if (!keep.length) {
+        byTwId.delete(tw);
+      } else if (removedPieces > 0) {
+        const nextPieces = Math.max(0, extra.extraPieces - removedPieces);
+        if (!(nextPieces > 0)) {
+          byTwId.delete(tw);
+        } else {
+          byTwId.set(tw, { extraPieces: nextPieces, requests: keep });
+        }
+      }
     }
   }
 
@@ -763,7 +884,11 @@ export function individualServiceReasonLabel(
     case "teeth":
       return "Produkt zębowy";
     case "bom_parent":
-      return "Zestaw (parent)";
+      return "Zestaw (składamy)";
+    case "bom_component_not_purchased":
+      return "Składnik poza zakupem kompletu";
+    case "bom_explode_incomplete":
+      return "Brak składnika zestawu";
     case "fetch_failed":
       return "Brak w Subiekcie";
     case "excluded":

@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import type { Metadata } from "next";
 import { requireOperations } from "@/lib/auth";
 import {
@@ -120,7 +121,7 @@ export default async function MagazynGadkiPage() {
       };
     }
   } catch (e) {
-    loadError = e instanceof Error ? e.message : "Nie udało się wczytać magazynu Gądki.";
+    loadError = userFacingErrorText(e, "Nie udało się wczytać magazynu Gądki.");
   }
 
   const uiLinks = pageData?.links ?? [];

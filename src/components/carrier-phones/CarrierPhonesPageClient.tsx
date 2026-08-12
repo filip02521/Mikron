@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import type { WarehouseCarrierRow } from "@/lib/data/warehouse-carriers";
 import type { CarrierPhoneRow } from "@/lib/data/carrier-phones";
-import { actionFetchCarrierPhonesForOperations } from "@/app/actions/carrier-phones";
+import { actionFetchCarrierPhones } from "@/app/actions/carrier-phones";
 import { Alert } from "@/components/ui/Alert";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Input } from "@/components/ui/Field";
@@ -14,6 +14,8 @@ import {
   IconTruck,
 } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
+import { userFacingErrorFromUnknown } from "@/lib/ui/user-facing-error";
+import { redirectToLoginIfSessionError } from "@/lib/auth/session-login-redirect";
 
 export function CarrierPhonesPageClient({
   carriers,
@@ -24,17 +26,33 @@ export function CarrierPhonesPageClient({
   const [phones, setPhones] = useState<CarrierPhoneRow[]>([]);
   const [expandedSlugs, setExpandedSlugs] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
 
   const loadPhones = useCallback(() => {
     start(async () => {
       try {
-        const data = await actionFetchCarrierPhonesForOperations();
-        setPhones(data);
-        setExpandedSlugs(new Set(data.map((p) => p.carrierSlug)));
+        const result = await actionFetchCarrierPhones();
+        if (!result.ok) {
+          setPhones([]);
+          setLoadError({ title: result.title, message: result.message });
+          redirectToLoginIfSessionError(result.message);
+          return;
+        }
+        setPhones(result.phones);
+        setExpandedSlugs(new Set(result.phones.map((p) => p.carrierSlug)));
         setLoadError(null);
       } catch (e) {
-        setLoadError(e instanceof Error ? e.message : "Błąd ładowania numerów");
+        const copy = userFacingErrorFromUnknown(
+          e,
+          "Nie udało się wczytać numerów telefonów kurierów."
+        );
+        setLoadError({ title: copy.title, message: copy.description });
+        if (copy.kind === "session") {
+          redirectToLoginIfSessionError(e);
+        }
       }
     });
   }, []);
@@ -127,7 +145,9 @@ export function CarrierPhonesPageClient({
       </div>
 
       {loadError ? (
-        <Alert tone="warning">{loadError}. Spróbuj odświeżyć stronę.</Alert>
+        <Alert tone="warning" title={loadError.title}>
+          {loadError.message}
+        </Alert>
       ) : null}
 
       {/* Loading */}
@@ -214,7 +234,7 @@ export function CarrierPhonesPageClient({
                                 ) : null}
                               </div>
                               <a
-                                href={`tel:${phone.phone.replace(/\s+/g, "")}`}
+                                href={`tel:${phone.phone.replace(/[\s()-]/g, "")}`}
                                 className="flex shrink-0 items-center gap-1.5 rounded-lg bg-indigo-50 px-3.5 py-2 text-[12px] font-bold text-indigo-600 transition-all hover:bg-indigo-100 hover:text-indigo-700 active:scale-[0.97]"
                               >
                                 <IconPhone size={13} aria-hidden />

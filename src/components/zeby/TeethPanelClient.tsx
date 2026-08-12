@@ -8,13 +8,7 @@ import { plPozycja, plZaznaczonaPozycja } from "@/lib/ui/polish-plurals";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { NoticeToast } from "@/components/ui/NoticeToast";
-import {
-  TEETH_PANEL_TOAST,
-  teethMarkOrderedToast,
-  toastFromError,
-  toastSuccess,
-  type ToastNotice,
-} from "@/lib/ui/notice-copy";
+import { TEETH_PANEL_TOAST, teethMarkOrderedToast, toastFromError, toastSuccess, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 import { Input } from "@/components/ui/Field";
 import { IconTooth, IconArchive, IconPlusCircle } from "@/components/icons/StrokeIcons";
 import type { TeethQueueGroup, TeethQueueItem, TeethPositionSelection } from "@/lib/data/teeth-queue-shared";
@@ -308,7 +302,7 @@ export function TeethPanelClient({
       }
       router.refresh();
     } catch (e) {
-      setToast(toastFromError(e instanceof Error ? e.message : undefined, TEETH_PANEL_TOAST.markError.text));
+      setToast(toastFromUnknown(e, TEETH_PANEL_TOAST.markError.text));
     } finally {
       setPending(false);
       setMarkAnalysis(null);
@@ -329,7 +323,7 @@ export function TeethPanelClient({
       setDeliveryDateValue("");
       router.refresh();
     } catch (e) {
-      setToast(toastFromError(e instanceof Error ? e.message : undefined, TEETH_PANEL_TOAST.deliveryDateSetFailed.text));
+      setToast(toastFromUnknown(e, TEETH_PANEL_TOAST.deliveryDateSetFailed.text));
     } finally {
       setPending(false);
     }
@@ -348,7 +342,7 @@ export function TeethPanelClient({
       setToast(TEETH_PANEL_TOAST.scheduleMarked(supplierName));
       router.refresh();
     } catch (e) {
-      setToast(toastFromError(e instanceof Error ? e.message : undefined, TEETH_PANEL_TOAST.scheduleMarkFailed.text));
+      setToast(toastFromUnknown(e, TEETH_PANEL_TOAST.scheduleMarkFailed.text));
     } finally {
       setPending(false);
     }

@@ -15,6 +15,8 @@ export type TeethProductInfo = {
   productLineByTwId: Map<number, TeethProductLine | null>;
   kindByTwId: Map<number, TeethKind | null>;
   registryIndex: TeethRegistryIndex;
+  /** false gdy fetch katalogu się nie udał — bramki ZK powinny fail-closed. */
+  catalogAvailable: boolean;
 };
 
 const EMPTY_REGISTRY = buildTeethRegistryIndex([]);
@@ -25,10 +27,12 @@ const TeethExemptContext = createContext<TeethProductInfo>({
   productLineByTwId: new Map(),
   kindByTwId: new Map(),
   registryIndex: EMPTY_REGISTRY,
+  catalogAvailable: true,
 });
 
 export function TeethExemptProvider({
   teethProductInfo,
+  teethCatalogAvailable = true,
   children,
 }: {
   teethProductInfo: {
@@ -40,6 +44,8 @@ export function TeethExemptProvider({
     name?: string | null;
     plu?: string | null;
   }[];
+  /** false = AppShell nie załadował katalogu (błąd sieci/DB). */
+  teethCatalogAvailable?: boolean;
   children: React.ReactNode;
 }) {
   const info = useMemo<TeethProductInfo>(() => {
@@ -73,8 +79,9 @@ export function TeethExemptProvider({
       productLineByTwId,
       kindByTwId,
       registryIndex: buildTeethRegistryIndex(registryEntries),
+      catalogAvailable: teethCatalogAvailable,
     };
-  }, [teethProductInfo]);
+  }, [teethProductInfo, teethCatalogAvailable]);
 
   return <TeethExemptContext.Provider value={info}>{children}</TeethExemptContext.Provider>;
 }

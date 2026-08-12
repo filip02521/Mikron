@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   isNavItemActive,
   navForAppContext,
@@ -40,7 +40,7 @@ import {
 import { ONTIME_AUTH_FOOTER } from "@/lib/ui/ontime-brand";
 import type { UserRole, Workspace } from "@/types/database";
 import { cn } from "@/lib/cn";
-import { createClient } from "@/lib/supabase/client";
+import { signOutToLogin } from "@/lib/auth/sign-out-client";
 import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from "@/components/icons/NavIcon";
 import { IconSettings, IconChevronRight } from "@/components/icons/StrokeIcons";
 import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
@@ -515,7 +515,6 @@ export function Sidebar({
   };
   activeDelegations?: VacationDelegationRow[];
 }) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const previewDla = searchParams.get("dla");
   const adminSalesPreview = shouldPreserveSalesPreviewInNav(
@@ -545,10 +544,7 @@ export function Sidebar({
     if (realRole && isAdmin(realRole)) {
       await actionClearAdminPanelContext();
     }
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    await signOutToLogin();
   }
 
   return (

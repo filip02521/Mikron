@@ -16,8 +16,13 @@ import { cn } from "@/lib/cn";
 import {
   formatZdBomCountLabel,
   formatZdBomVisibleCountLabel,
+  zdBomPresetListLabel,
   ZD_BOM_UI,
 } from "@/lib/orders/zd-estimate-bom-copy";
+import {
+  presetFromBomPolicy,
+  type BomPresetId,
+} from "@/lib/orders/zd-estimate-bom-policy";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 
 export type ZdBomSeedProduct = {
@@ -60,6 +65,7 @@ export function ZdEstimateBomsModal({
   const [parentSym, setParentSym] = useState("");
   const [parentNazwa, setParentNazwa] = useState("");
   const [label, setLabel] = useState("");
+  const [preset, setPreset] = useState<BomPresetId>("assemble");
   const [stockAsCover, setStockAsCover] = useState(true);
   const [comps, setComps] = useState<DraftComp[]>([
     { twId: "", qty: "1", symbol: "", nazwa: "" },
@@ -67,6 +73,7 @@ export function ZdEstimateBomsModal({
   const [seedParentIndex, setSeedParentIndex] = useState(0);
 
   const fromSeed = seed != null && seed.length >= 2;
+  const showStockAsCover = preset === "assemble";
   const pieceTwIds = useMemo(() => {
     const s = new Set<number>();
     for (const p of pairs) s.add(p.pieceTwId);
@@ -80,6 +87,7 @@ export function ZdEstimateBomsModal({
       if (cancelled) return;
       if (seed && seed.length >= 2) {
         setSeedParentIndex(0);
+        setPreset("assemble");
         setStockAsCover(true);
         setLabel("");
         return;
@@ -88,6 +96,7 @@ export function ZdEstimateBomsModal({
       setParentSym("");
       setParentNazwa("");
       setLabel("");
+      setPreset("assemble");
       setStockAsCover(true);
       setComps([{ twId: "", qty: "1", symbol: "", nazwa: "" }]);
     });
@@ -95,6 +104,37 @@ export function ZdEstimateBomsModal({
       cancelled = true;
     };
   }, [open, seed]);
+
+  const setPresetAndCover = (next: BomPresetId) => {
+    setPreset(next);
+    if (next !== "assemble") setStockAsCover(false);
+    else setStockAsCover(true);
+  };
+
+  const loadBomIntoForm = (bom: ZdProductBomRow) => {
+    const nextPreset = presetFromBomPolicy(
+      bom.demandAllocation,
+      bom.purchaseTarget
+    );
+    setPreset(nextPreset);
+    setStockAsCover(nextPreset === "assemble" ? bom.stockAsCover !== false : false);
+    setParentTw(String(bom.parentTwId));
+    setParentSym(bom.parentSymbol ?? "");
+    setParentNazwa(bom.parentNazwa === "—" ? "" : bom.parentNazwa);
+    setLabel(bom.label ?? "");
+    setComps(
+      bom.components.length
+        ? bom.components.map((c) => ({
+            twId: String(c.componentTwId),
+            qty: String(c.qtyPerParent),
+            symbol: c.componentSymbol ?? "",
+            nazwa: c.componentNazwa === "—" ? "" : c.componentNazwa,
+          }))
+        : [{ twId: "", qty: "1", symbol: "", nazwa: "" }]
+    );
+    setQuery("");
+    onSeedConsumed?.();
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -173,7 +213,8 @@ export function ZdEstimateBomsModal({
       const res = await actionUpsertZdProductBom({
         parentTwId,
         label: label.trim() || null,
-        stockAsCover,
+        preset,
+        stockAsCover: showStockAsCover ? stockAsCover : false,
         parentSymbol: fromSeed
           ? seedParent!.symbol || null
           : parentSym.trim() || null,
@@ -195,6 +236,8 @@ export function ZdEstimateBomsModal({
         setParentSym("");
         setParentNazwa("");
         setLabel("");
+        setPreset("assemble");
+        setStockAsCover(true);
         setComps([{ twId: "", qty: "1", symbol: "", nazwa: "" }]);
       }
     });
@@ -288,6 +331,41 @@ export function ZdEstimateBomsModal({
               );
             })}
           </div>
+          <fieldset className="space-y-2">
+            <legend className="text-xs font-medium text-violet-950">
+              {ZD_BOM_UI.presetLegend}
+            </legend>
+            {(
+              [
+                ["assemble", ZD_BOM_UI.presetAssemble, ZD_BOM_UI.presetAssembleHint],
+                [
+                  "buy_separate",
+                  ZD_BOM_UI.presetBuySeparate,
+                  ZD_BOM_UI.presetBuySeparateHint,
+                ],
+                ["kit_only", ZD_BOM_UI.presetKitOnly, ZD_BOM_UI.presetKitOnlyHint],
+              ] as const
+            ).map(([id, title, hint]) => (
+              <label
+                key={id}
+                className="flex cursor-pointer items-start gap-2 rounded-lg border border-violet-100/80 bg-white/80 px-2.5 py-2 text-xs text-slate-700"
+              >
+                <input
+                  type="radio"
+                  className="mt-0.5"
+                  name="zd-bom-preset-seed"
+                  checked={preset === id}
+                  onChange={() => setPresetAndCover(id)}
+                  disabled={pending}
+                />
+                <span>
+                  <span className="font-medium text-slate-900">{title}</span>
+                  <span className="mt-0.5 block text-slate-500">{hint}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          {showStockAsCover ? (
           <label className="flex items-start gap-2 text-xs text-slate-700">
             <input
               type="checkbox"
@@ -303,7 +381,7 @@ export function ZdEstimateBomsModal({
               </span>
             </span>
           </label>
-          {pieceWarning.length > 0 ? (
+          ) : null}          {pieceWarning.length > 0 ? (
             <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-950 ring-1 ring-amber-100">
               {ZD_BOM_UI.pieceWarningSeed(pieceWarning)}
             </p>
@@ -357,6 +435,41 @@ export function ZdEstimateBomsModal({
               />
             </label>
           </div>
+          <fieldset className="space-y-2">
+            <legend className="text-xs font-medium text-slate-700">
+              {ZD_BOM_UI.presetLegend}
+            </legend>
+            {(
+              [
+                ["assemble", ZD_BOM_UI.presetAssemble, ZD_BOM_UI.presetAssembleHint],
+                [
+                  "buy_separate",
+                  ZD_BOM_UI.presetBuySeparate,
+                  ZD_BOM_UI.presetBuySeparateHint,
+                ],
+                ["kit_only", ZD_BOM_UI.presetKitOnly, ZD_BOM_UI.presetKitOnlyHint],
+              ] as const
+            ).map(([id, title, hint]) => (
+              <label
+                key={id}
+                className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-100 bg-slate-50/60 px-2.5 py-2 text-xs text-slate-700"
+              >
+                <input
+                  type="radio"
+                  className="mt-0.5"
+                  name="zd-bom-preset-manual"
+                  checked={preset === id}
+                  onChange={() => setPresetAndCover(id)}
+                  disabled={pending}
+                />
+                <span>
+                  <span className="font-medium text-slate-900">{title}</span>
+                  <span className="mt-0.5 block text-slate-500">{hint}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          {showStockAsCover ? (
           <label className="flex items-start gap-2 text-xs text-slate-700">
             <input
               type="checkbox"
@@ -372,7 +485,7 @@ export function ZdEstimateBomsModal({
               </span>
             </span>
           </label>
-          {comps.map((c, idx) => (
+          ) : null}          {comps.map((c, idx) => (
             <div
               key={idx}
               className="grid gap-2 rounded-lg border border-slate-100 bg-slate-50/50 p-2 sm:grid-cols-4"
@@ -499,9 +612,19 @@ export function ZdEstimateBomsModal({
                   {bom.parentNazwa}
                 </p>
                 <p className="mt-1 text-[11px] text-slate-600">
-                  {bom.stockAsCover
-                    ? ZD_BOM_UI.listCoverOn
-                    : ZD_BOM_UI.listCoverOff}{" "}
+                  {zdBomPresetListLabel(
+                    presetFromBomPolicy(
+                      bom.demandAllocation,
+                      bom.purchaseTarget
+                    )
+                  )}
+                  {bom.demandAllocation === "explode"
+                    ? ` · ${
+                        bom.stockAsCover
+                          ? ZD_BOM_UI.listCoverOn
+                          : ZD_BOM_UI.listCoverOff
+                      }`
+                    : ""}{" "}
                   ·{" "}
                   {bom.components
                     .map(
@@ -511,16 +634,27 @@ export function ZdEstimateBomsModal({
                     .join(", ")}
                 </p>
               </div>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => remove(bom.id)}
-                className="inline-flex items-center gap-1 self-start rounded-lg px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
-                title={ZD_BOM_UI.removeBomTitle}
-              >
-                <IconX size={14} strokeWidth={1.75} aria-hidden />
-                Usuń
-              </button>
+              <div className="flex shrink-0 flex-wrap gap-1 self-start">
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => loadBomIntoForm(bom)}
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-violet-800 hover:bg-violet-50"
+                  title="Wczytaj do formularza (edycja)"
+                >
+                  Edytuj
+                </button>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => remove(bom.id)}
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                  title={ZD_BOM_UI.removeBomTitle}
+                >
+                  <IconX size={14} strokeWidth={1.75} aria-hidden />
+                  Usuń
+                </button>
+              </div>
             </li>
           ))}
         </ul>

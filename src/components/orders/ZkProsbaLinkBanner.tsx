@@ -17,6 +17,7 @@ export function ZkProsbaLinkBanner({
   mode = "full",
   supplementLineCount,
   catalogLocked = false,
+  caseNoteIncluded = false,
 }: {
   zkNumber: string;
   zkWatchId?: string | null;
@@ -27,6 +28,8 @@ export function ZkProsbaLinkBanner({
   supplementLineCount?: number;
   /** True gdy typeahead jest ograniczony do produktów ZK. */
   catalogLocked?: boolean;
+  /** Notatka ze sprawy ZK trafiła do uwag pozycji. */
+  caseNoteIncluded?: boolean;
 }) {
   const nr = zkNumber.trim();
   if (!nr) return null;
@@ -107,6 +110,15 @@ export function ZkProsbaLinkBanner({
             ) : (
               ZK_PROSBA_LINK_BANNER_COPY.fullUnlockedDetail
             )}
+            {caseNoteIncluded ? (
+              <>
+                {" "}
+                <span className="font-semibold text-emerald-800">
+                  Notatka ze sprawy ZK jest w uwagach pozycji
+                </span>
+                {" — zakupy ją zobaczą."}
+              </>
+            ) : null}
           </p>
         </div>
       </div>

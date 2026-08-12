@@ -1,5 +1,5 @@
 /**
- * Walidacja zakresu szacunku ZD: grupa XOR cecha — nigdy bez filtra.
+ * Walidacja zakresu kreatora ZD: grupa XOR cecha — nigdy bez filtra.
  */
 
 export type ZdEstimateRunMode = "grupa" | "cecha";

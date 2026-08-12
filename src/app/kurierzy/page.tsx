@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { fetchWarehouseCarriers } from "@/lib/data/warehouse-carriers";
 import { CarrierPhonesPageClient } from "@/components/carrier-phones/CarrierPhonesPageClient";
 import { logDevPageError } from "@/lib/dev/log-page-error";
@@ -17,7 +18,7 @@ export default async function KurierzyPage() {
   try {
     carriers = await fetchWarehouseCarriers();
   } catch (error) {
-    loadError = error instanceof Error ? error.message : "Nie udało się załadować listy kurierów.";
+    loadError = userFacingErrorText(error, "Nie udało się załadować listy kurierów.");
     logDevPageError("kurierzy/page", error);
   }
 
@@ -25,7 +26,7 @@ export default async function KurierzyPage() {
     <div className={procurementArchivePageShellClass}>
       {loadError ? (
         <Alert tone="warning" className="mb-4">
-          {loadError}. Sprawdź połączenie z Supabase.
+          {loadError}
         </Alert>
       ) : null}
       <CarrierPhonesPageClient carriers={carriers} />

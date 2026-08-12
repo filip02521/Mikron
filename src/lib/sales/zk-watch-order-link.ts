@@ -49,6 +49,8 @@ export type ZkLinkableOrder = {
   informacja_stock_out_reorder?: boolean | null;
   sales_acknowledged_at: string | null;
   sales_cancelled_at: string | null;
+  /** Notatka handlowca / zakupów na prośbie — do statusu „notatka ZK w prośbie”. */
+  sales_request_note?: string | null;
 };
 
 export type ZkTeethOrder = ZkLinkableOrder & {
