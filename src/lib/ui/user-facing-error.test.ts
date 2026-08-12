@@ -87,6 +87,20 @@ describe("classifyUserFacingError", () => {
     expect(c.title).toBe("Sesja wygasła");
   });
 
+  it("mapuje konkretny brak dostępu do prośby innego handlowca", () => {
+    const c = classifyUserFacingError(
+      "Brak uprawnień do prośby tego handlowca."
+    );
+    expect(c.kind).toBe("unauthorized");
+    expect(c.description).toMatch(/w imieniu tej osoby/i);
+    expect(c.description).not.toMatch(/^Ta operacja wymaga konta handlowca/);
+  });
+
+  it("mapuje Brak uprawnień handlowca na wymaga konta handlowca", () => {
+    const c = classifyUserFacingError("Brak uprawnień handlowca");
+    expect(c.description).toBe("Ta operacja wymaga konta handlowca.");
+  });
+
   it("mapuje sieć", () => {
     const c = classifyUserFacingError("Failed to fetch");
     expect(c.kind).toBe("network");

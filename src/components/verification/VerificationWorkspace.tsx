@@ -66,6 +66,7 @@ import { prosbaLineHasTeethBlockers } from "@/lib/orders/prosba-line-field-valid
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 import { useProsbaLinesStockSync } from "@/hooks/useProsbaLinesStockSync";
 import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
+import { lineLooksLikeTeethProduct } from "@/lib/orders/teeth-stock-exempt";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { toAppSupplierRefs } from "@/lib/subiekt/match-supplier";
 import {
@@ -697,6 +698,7 @@ export function VerificationWorkspace({
               <ProsbaFormProductsSection
                 requestKind={form.requestKind}
                 informacjaPath={form.informacjaPath ?? "direct"}
+                showShortageLookup={lineLooksLikeTeethProduct(form, teethExemptTwIds)}
                 hint={
                   form.subiektTwId
                     ? "Towar z Subiekta — wyszukaj inną pozycję: nazwa lub symbol w dużym polu, kod Mikran obok."

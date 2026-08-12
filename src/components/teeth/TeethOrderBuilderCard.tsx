@@ -97,12 +97,9 @@ export function TeethOrderBuilderCard({
   const lineLabel = productLine ? teethProductLineLabel(productLine) : null;
   const hasList = total > 0;
 
-  const title =
-    complete
-      ? `Lista zębów${lineLabel ? ` · ${lineLabel}` : ""}`
-      : hasList
-        ? `Dokończ listę zębów${lineLabel ? ` · ${lineLabel}` : ""}`
-        : `Lista zębów${lineLabel ? ` · ${lineLabel}` : ""}`;
+  const title = complete
+    ? `Lista gotowa${lineLabel ? ` · ${lineLabel}` : ""}`
+    : `Szkic listy${lineLabel ? ` · ${lineLabel}` : ""}`;
 
   const detail = complete ? (
     dualKindMode && (counts.anterior > 0 || counts.posterior > 0) ? (
@@ -139,6 +136,8 @@ export function TeethOrderBuilderCard({
       ) : null}
     </>
   );
+
+  const ctaLabel = complete ? "Edytuj listę" : "Uzupełnij listę";
 
   return (
     <div className="space-y-2">
@@ -189,7 +188,7 @@ export function TeethOrderBuilderCard({
             onClick={onOpenModal}
           >
             {hasList ? <IconClipboardList size={14} /> : <IconPlusCircle size={14} />}
-            {hasList ? "Edytuj listę" : "Otwórz listę"}
+            {ctaLabel}
           </Button>
         </div>
 

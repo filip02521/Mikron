@@ -386,6 +386,43 @@ export function buildIndividualEstimateExtras(
     }
   }
 
+  /** Explode prośby przez nested zestawy „Składamy” aż do liścia (z qty). */
+  function addExtraExplodingBom(
+    targetTw: number,
+    order: ZdEstimatePendingIndividualOrder,
+    factor: number,
+    depth = 0
+  ) {
+    if (!(factor > 0) || depth > 32) return;
+    const bomHit = bomKinds.get(targetTw);
+    if (bomHit?.kind === "assembled_parent") {
+      const comps = bomHit.bom.components ?? [];
+      if (!comps.length) {
+        pushService(serviceLines, "bom_explode_incomplete", order);
+        return;
+      }
+      for (const c of comps) {
+        const cid = Math.trunc(Number(c.componentTwId)) || 0;
+        const q = Math.trunc(Number(c.qtyPerParent)) || 0;
+        if (!(cid > 0) || q < 1) {
+          pushService(serviceLines, "bom_explode_incomplete", order);
+          return;
+        }
+      }
+      for (const c of comps) {
+        const cid = Math.trunc(Number(c.componentTwId)) || 0;
+        const q = Math.trunc(Number(c.qtyPerParent)) || 0;
+        addExtraExplodingBom(cid, order, factor * q, depth + 1);
+      }
+      return;
+    }
+    if (bomHit?.kind === "kit_only_component") {
+      pushService(serviceLines, "bom_component_not_purchased", order);
+      return;
+    }
+    addExtra(targetTw, order, order.qty * factor);
+  }
+
   for (const order of input.orders) {
     if (!(order.qty > 0)) {
       skippedNoQty += 1;
@@ -410,29 +447,7 @@ export function buildIndividualEstimateExtras(
 
     const bomHit = bomKinds.get(targetTw);
     if (bomHit?.kind === "assembled_parent") {
-      const comps = bomHit.bom.components ?? [];
-      if (!comps.length) {
-        pushService(serviceLines, "bom_explode_incomplete", order);
-        continue;
-      }
-      let incomplete = false;
-      for (const c of comps) {
-        const cid = Math.trunc(Number(c.componentTwId)) || 0;
-        const q = Math.trunc(Number(c.qtyPerParent)) || 0;
-        if (!(cid > 0) || q < 1) {
-          incomplete = true;
-          break;
-        }
-      }
-      if (incomplete) {
-        pushService(serviceLines, "bom_explode_incomplete", order);
-        continue;
-      }
-      for (const c of comps) {
-        const cid = Math.trunc(Number(c.componentTwId)) || 0;
-        const q = Math.trunc(Number(c.qtyPerParent)) || 0;
-        addExtra(cid, order, order.qty * q);
-      }
+      addExtraExplodingBom(targetTw, order, 1);
       continue;
     }
 

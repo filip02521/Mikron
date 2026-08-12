@@ -168,6 +168,74 @@ describe("buildIndividualEstimateExtras", () => {
     expect(bundle.byTwId.has(99)).toBe(false);
   });
 
+  it("płyn wspólny w 2 zestawach — prośby sumują qty×sztuki", () => {
+    // Prośba 3× zestaw A (płyn×1) + prośba 2× zestaw B (płyn×2) → płyn 3+4 = 7
+    const bundle = buildIndividualEstimateExtras({
+      orders: [
+        pending({ id: "a", subiektTwId: 10, qty: 3 }),
+        pending({ id: "b", subiektTwId: 11, qty: 2 }),
+      ],
+      lines: [
+        { tw_Id: 10, tw_Symbol: "ZEST-A" },
+        { tw_Id: 11, tw_Symbol: "ZEST-B" },
+        { tw_Id: 1, tw_Symbol: "PLYN" },
+      ],
+      boms: [
+        {
+          parentTwId: 10,
+          stockAsCover: true,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: [{ componentTwId: 1, qtyPerParent: 1 }],
+        },
+        {
+          parentTwId: 11,
+          stockAsCover: true,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: [{ componentTwId: 1, qtyPerParent: 2 }],
+        },
+      ],
+    });
+    expect(bundle.serviceLines).toHaveLength(0);
+    expect(bundle.byTwId.has(10)).toBe(false);
+    expect(bundle.byTwId.has(11)).toBe(false);
+    expect(bundle.byTwId.get(1)?.extraPieces).toBe(7);
+    expect(bundle.byTwId.get(1)?.requests).toHaveLength(2);
+  });
+
+  it("nested BOM — prośba na zewnętrzny zestaw schodzi na liście ×qty", () => {
+    // P×2 → K×1 → A×2  ⇒ A = 2*1*2 = 4
+    const bundle = buildIndividualEstimateExtras({
+      orders: [pending({ id: "p", subiektTwId: 3, qty: 2 })],
+      lines: [
+        { tw_Id: 1, tw_Symbol: "A" },
+        { tw_Id: 2, tw_Symbol: "K" },
+        { tw_Id: 3, tw_Symbol: "P" },
+      ],
+      boms: [
+        {
+          parentTwId: 2,
+          stockAsCover: false,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: [{ componentTwId: 1, qtyPerParent: 2 }],
+        },
+        {
+          parentTwId: 3,
+          stockAsCover: false,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: [{ componentTwId: 2, qtyPerParent: 1 }],
+        },
+      ],
+    });
+    expect(bundle.serviceLines).toHaveLength(0);
+    expect(bundle.byTwId.has(3)).toBe(false);
+    expect(bundle.byTwId.has(2)).toBe(false);
+    expect(bundle.byTwId.get(1)?.extraPieces).toBe(4);
+  });
+
   it("purchased kit → rezerwa na K", () => {
     const bundle = buildIndividualEstimateExtras({
       orders: [pending({ id: "p", subiektTwId: 99, qty: 3 })],

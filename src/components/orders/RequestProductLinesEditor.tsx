@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { IndividualRequestKind, DeliveryStats } from "@/types/database";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
@@ -20,19 +20,18 @@ import {
   type ProductLineDraft,
 } from "@/components/orders/request-product-lines";
 import {
+  canCollapseProsbaLine,
   focusLineIdAfterTeethSave,
   shouldCollapseProsbaLine,
-  isProsbaLineReady,
 } from "@/lib/orders/prosba-product-line-ui";
 import type { TeethDualKindCommitSummary } from "@/lib/teeth/teeth-dual-kind";
 import { ProsbaProductStockSummary } from "@/components/orders/ProsbaProductStockStatus";
 import { ProsbaZkQuantityHint } from "@/components/orders/ProsbaProductStockStatus";
 import { filterProsbaLinesWithSufficientStock } from "@/lib/orders/prosba-stock-check";
 import { useProsbaLinesStockSync } from "@/hooks/useProsbaLinesStockSync";
-import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
+import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 import {
   assessProsbaLineFields,
-  prosbaLineHasFieldIssues,
   prosbaLineHasSubmitBlockers,
   shouldShowProsbaLineFieldValidation,
 } from "@/lib/orders/prosba-line-field-validation";
@@ -160,8 +159,18 @@ export function RequestProductLinesEditor({
   const lineNotes = showLineNotes ?? prosba;
   const copyNoteLines = prosba ? copyProsbaLineNoteToAllLines(lines) : null;
   const showLineLabel = !prosba || lines.length > 1;
-  const wrapLine = prosba ? lines.length > 1 : true;
+  // Zawsze karta wokół pozycji — spójne zwinięcie/rozwinięcie także przy 1 linii.
+  const wrapLine = true;
 
+  const teethExemptTwIds = useTeethExemptTwIds();
+  const { catalogAvailable: teethCatalogAvailable } = useTeethProductInfo();
+  const collapseOptions = useMemo(
+    () => ({
+      exemptTwIds: teethExemptTwIds,
+      catalogAvailable: teethCatalogAvailable,
+    }),
+    [teethExemptTwIds, teethCatalogAvailable],
+  );
   const [focusedLineId, setFocusedLineId] = useState<string | null>(
     () => lines[lines.length - 1]?.id ?? null,
   );
@@ -171,24 +180,29 @@ export function RequestProductLinesEditor({
       : focusedLineId === null
         ? ""
         : (lines[lines.length - 1]?.id ?? "");
-  const prevLineIdsRef = useRef<string | null>(null);
+  const prevLineIdsRef = useRef<ReadonlySet<string> | null>(null);
   useEffect(() => {
-    if (!prosba || lines.length <= 1) return;
-    const currentIds = lines.map((l) => l.id).join("|");
-    if (prevLineIdsRef.current === currentIds) return;
+    if (!prosba) return;
+    const currentIds = new Set(lines.map((l) => l.id));
     const prevIds = prevLineIdsRef.current;
+    const sameIds =
+      prevIds != null &&
+      prevIds.size === currentIds.size &&
+      [...currentIds].every((id) => prevIds.has(id));
+    if (sameIds) return;
     prevLineIdsRef.current = currentIds;
     if (prevIds === null) return;
-    const allReady = lines.every((l) => isProsbaLineReady(l, requestKind));
-    const allNew = !lines.some((l) => prevIds.includes(l.id));
-    if (allNew && allReady) {
+    const allCollapsible = lines.every((l) =>
+      canCollapseProsbaLine(l, requestKind, collapseOptions),
+    );
+    const allNew = lines.every((l) => !prevIds.has(l.id));
+    if (allNew && allCollapsible) {
       setFocusedLineId(null);
     }
-  }, [lines, prosba, requestKind]);
+  }, [lines, prosba, requestKind, collapseOptions]);
   const [subiektOfflineFeedback, setSubiektOfflineFeedback] =
     useState<SubiektFeedback | null>(null);
   const visibleSubiektOfflineFeedback = prosba ? subiektOfflineFeedback : null;
-  const teethExemptTwIds = useTeethExemptTwIds();
   const stockChecksEnabled = requestKind === "zamowienie";
   const sufficientStockCount = stockChecksEnabled
     ? filterProsbaLinesWithSufficientStock(lines, requestKind, teethExemptTwIds).length
@@ -211,10 +225,11 @@ export function RequestProductLinesEditor({
       : "";
   const [appliedValidationFocusKey, setAppliedValidationFocusKey] = useState("");
   if (validationFocusKey && validationFocusKey !== appliedValidationFocusKey) {
-    const idx = lines.findIndex((line) => {
-      const fields = assessProsbaLineFields(line, requestKind, "strict");
-      return prosbaLineHasFieldIssues(fields);
-    });
+    const idx = lines.findIndex((line) =>
+      prosbaLineHasSubmitBlockers(line, requestKind, {
+        exemptTwIds: teethExemptTwIds,
+      }),
+    );
     if (idx >= 0) {
       setAppliedValidationFocusKey(validationFocusKey);
       setFocusedLineId(lines[idx]!.id);
@@ -238,7 +253,12 @@ export function RequestProductLinesEditor({
     const next = removeProductLineAt(lines, index, minLines);
     onChange(next);
     if (removedId === activeLineId || removedId === focusedLineId) {
-      setFocusedLineId(next[next.length - 1]?.id ?? null);
+      const remainingAllCollapsible =
+        next.length > 0 &&
+        next.every((l) => canCollapseProsbaLine(l, requestKind, collapseOptions));
+      setFocusedLineId(
+        remainingAllCollapsible ? null : (next[next.length - 1]?.id ?? null),
+      );
     }
   };
 
@@ -251,7 +271,7 @@ export function RequestProductLinesEditor({
     const line = lines[index]!;
     const collapsed =
       prosba &&
-      shouldCollapseProsbaLine(line, requestKind, lines.length, activeLineId);
+      shouldCollapseProsbaLine(line, requestKind, lines.length, activeLineId, collapseOptions);
     if (collapsed) {
       const last = segments[segments.length - 1];
       if (last?.kind === "collapsed") {
@@ -372,25 +392,22 @@ export function RequestProductLinesEditor({
                 : "space-y-3"
             )}
           >
-            {showLineLabel ? (
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {prosba ? `Produkt ${index + 1}` : `Pozycja ${index + 1}`}
-                </span>
-                {canRemove ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="min-h-9 text-red-700 hover:bg-red-50"
-                    onClick={() => removeLine(index)}
-                  >
-                    Usuń
-                  </Button>
-                ) : null}
-              </div>
-            ) : canRemove ? (
-              <div className="mb-2 flex justify-end">
+            {(() => {
+              const canCollapseActive =
+                prosba &&
+                canCollapseProsbaLine(line, requestKind, collapseOptions);
+              const collapseButton = canCollapseActive ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="min-h-9 text-slate-600 hover:bg-slate-50"
+                  onClick={() => setFocusedLineId(null)}
+                >
+                  Zwiń
+                </Button>
+              ) : null;
+              const removeButton = canRemove ? (
                 <Button
                   type="button"
                   variant="ghost"
@@ -400,8 +417,30 @@ export function RequestProductLinesEditor({
                 >
                   Usuń
                 </Button>
-              </div>
-            ) : null}
+              ) : null;
+              if (showLineLabel) {
+                return (
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      {prosba ? `Produkt ${index + 1}` : `Pozycja ${index + 1}`}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {collapseButton}
+                      {removeButton}
+                    </div>
+                  </div>
+                );
+              }
+              if (collapseButton || removeButton) {
+                return (
+                  <div className="mb-2 flex justify-end gap-1">
+                    {collapseButton}
+                    {removeButton}
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             <SubiektProductLineFields
               appearance={appearance}
@@ -473,6 +512,7 @@ export function RequestProductLinesEditor({
                       payload.lineIndex,
                     ),
                     requestKind,
+                    collapseOptions,
                   ),
                 );
                 onTeethDualKindCommit?.(payload);
@@ -488,7 +528,12 @@ export function RequestProductLinesEditor({
                     teethOcrImagePath: saveResult?.ocrImagePath ?? null,
                   });
                   setFocusedLineId(
-                    focusLineIdAfterTeethSave(nextLines, [lineId], requestKind),
+                    focusLineIdAfterTeethSave(
+                      nextLines,
+                      [lineId],
+                      requestKind,
+                      collapseOptions,
+                    ),
                   );
                 }
                 onAfterTeethListSave?.(index, teethDetails, totalQuantity, saveResult);

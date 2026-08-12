@@ -157,6 +157,8 @@ export function collectMissingZdBomTwIds(
 
 /**
  * Dokłada sprzedaż/cover przy explode; taguje role; przy separate zachowuje doZd K.
+ * Wspólny składnik w wielu BOM: wkłady SUMUJĄ się (sprzedaż×qty, cover×qty).
+ * Nested (zestaw jako składnik innego zestawu): wkład schodzi rekurencyjnie na liście.
  * Nie przelicza celu — to robi rematerialize / applyPairs / finalize.
  */
 export function expandZdEstimateBoms(
@@ -183,6 +185,7 @@ export function expandZdEstimateBoms(
   const missingFlag = new Set<number>();
   const missingOpt = options?.missingComponentTwIds ?? null;
   const packagingByTwId = options?.packagingByTwId ?? null;
+  const explodeBomByParent = new Map<number, ZdProductBomRef>();
 
   for (const bom of boms) {
     const parentId = Math.trunc(Number(bom.parentTwId)) || 0;
@@ -208,6 +211,7 @@ export function expandZdEstimateBoms(
     const coverBase = useCover ? parentDost + parentZdPieces : 0;
 
     if (explode) {
+      explodeBomByParent.set(parentId, bom);
       byTw.set(parentId, {
         ...parent,
         doZamowieniaReczne: 0,
@@ -237,6 +241,7 @@ export function expandZdEstimateBoms(
       }
 
       if (explode) {
+        // Wspólny składnik w wielu BOM: wkład się SUMUJE (sprzedaż×qty, cover×qty).
         const salesAdd = parentSales * qty;
         const coverAdd = coverBase * qty;
         contribSales.set(cid, (contribSales.get(cid) ?? 0) + salesAdd);
@@ -256,10 +261,53 @@ export function expandZdEstimateBoms(
     }
   }
 
+  // Nested: wkład wylądował na assembled_parent → zepchnij na jego składniki (×qty).
+  for (let guard = 0; guard < 32; guard++) {
+    let moved = false;
+    for (const cid of [...contribSales.keys()]) {
+      const host = byTw.get(cid);
+      if (host?.bom?.role !== "assembled_parent") continue;
+      const nested = explodeBomByParent.get(cid);
+      const salesAdd = contribSales.get(cid) ?? 0;
+      const coverAdd = contribCover.get(cid) ?? 0;
+      const outerParents = parentIdsByComp.get(cid) ?? [];
+      contribSales.delete(cid);
+      contribCover.delete(cid);
+      parentIdsByComp.delete(cid);
+      purchaseBlockedComps.delete(cid);
+      moved = true;
+      if (!nested?.components?.length) continue;
+
+      for (const comp of nested.components) {
+        const nid = Math.trunc(Number(comp.componentTwId)) || 0;
+        const qty = Math.trunc(Number(comp.qtyPerParent)) || 0;
+        if (!(nid > 0) || qty < 1) continue;
+        contribSales.set(nid, (contribSales.get(nid) ?? 0) + salesAdd * qty);
+        contribCover.set(nid, (contribCover.get(nid) ?? 0) + coverAdd * qty);
+        const parents = parentIdsByComp.get(nid) ?? [];
+        if (!parents.includes(cid)) parents.push(cid);
+        for (const op of outerParents) {
+          if (!parents.includes(op)) parents.push(op);
+        }
+        parentIdsByComp.set(nid, parents);
+        if (missingOpt?.has(nid) || !byTw.has(nid)) {
+          missingFlag.add(nid);
+          for (const sibling of nested.components) {
+            const sid = Math.trunc(Number(sibling.componentTwId)) || 0;
+            if (sid > 0) missingFlag.add(sid);
+          }
+        }
+      }
+    }
+    if (!moved) break;
+  }
+
   // Komponenty z wkładem explode.
   for (const [cid, salesAdd] of contribSales) {
     const existing = byTw.get(cid);
     if (!existing) continue;
+    // Nie degraduj zestawu „Składamy” do roli składnika (nested powinien już zepchnąć wkład).
+    if (existing.bom?.role === "assembled_parent") continue;
     const coverAdd = contribCover.get(cid) ?? 0;
     const siblingMissing = missingFlag.has(cid);
     const blocked =
@@ -284,6 +332,8 @@ export function expandZdEstimateBoms(
     if (contribSales.has(cid)) continue;
     const existing = byTw.get(cid);
     if (!existing) continue;
+    if (existing.bom?.role === "assembled_parent") continue;
+    if (existing.bom?.role === "purchased_kit") continue;
     const softMissing = missingFlag.has(cid);
     const blocked = purchaseBlockedComps.has(cid);
     byTw.set(cid, {

@@ -19,3 +19,21 @@ export function isStockExemptTwId(
   if (!exemptTwIds?.size || subiektTwId == null || subiektTwId <= 0) return false;
   return exemptTwIds.has(Math.trunc(subiektTwId));
 }
+
+/** Czy linia wygląda na produkt zębowy (rejestr lub producent na drafcie). */
+export function lineLooksLikeTeethProduct(
+  line: { subiektTwId?: number | null; teethManufacturer?: string | null },
+  exemptTwIds?: ReadonlySet<number>,
+): boolean {
+  return (
+    Boolean(line.teethManufacturer) ||
+    isStockExemptTwId(line.subiektTwId, exemptTwIds)
+  );
+}
+
+export function prosbaLinesIncludeTeethProduct(
+  lines: readonly { subiektTwId?: number | null; teethManufacturer?: string | null }[],
+  exemptTwIds?: ReadonlySet<number>,
+): boolean {
+  return lines.some((line) => lineLooksLikeTeethProduct(line, exemptTwIds));
+}

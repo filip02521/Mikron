@@ -72,7 +72,17 @@ const KNOWN_AUTH_MESSAGES: Array<{ match: RegExp; description: string }> = [
     description: "Ta operacja wymaga konta administratora.",
   },
   {
-    match: /handlowca/i,
+    match: /prośby tego handlowca|składania prośby dla tego handlowca/i,
+    description:
+      "Nie możesz otworzyć ZK ani złożyć prośby w imieniu tej osoby. Użyj własnego konta albo konta kierownika z dostępem do jej grupy.",
+  },
+  {
+    match: /powiązane z kartą handlowca/i,
+    description:
+      "To konto nie jest powiązane z kartą handlowca. Poproś administratora o przypisanie.",
+  },
+  {
+    match: /brak uprawnie[nń] handlowca\b/i,
     description: "Ta operacja wymaga konta handlowca.",
   },
 ];
