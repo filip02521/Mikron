@@ -5,7 +5,7 @@ import {
   userFacingErrorText,
 } from "@/lib/ui/user-facing-error";
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   actionAddZkWatchByNumber,
   actionAddZkWatchBySubiektDokId,
@@ -150,15 +150,18 @@ export function ZkWatchSection({
   const [teethDraftWatchId, setTeethDraftWatchId] = useState<string | null>(null);
   const teethProductInfo = useTeethProductInfo();
   const canRequestTeethDrafts = !readOnly && !tourPreview;
-  const lastOpenedTeethDraftNonceRef = useRef(0);
+  const [appliedTeethDraftOpenNonce, setAppliedTeethDraftOpenNonce] = useState(0);
 
-  useEffect(() => {
-    if (!teethDraftRequestWatchId || !canRequestTeethDrafts) return;
-    if (teethDraftOpenNonce === lastOpenedTeethDraftNonceRef.current) return;
-    if (!watches.some((watch) => watch.id === teethDraftRequestWatchId)) return;
-    lastOpenedTeethDraftNonceRef.current = teethDraftOpenNonce;
+  // Sync z zewnętrznym żądaniem (np. RefreshPrompt) — bez useEffect (eslint set-state-in-effect).
+  if (
+    teethDraftOpenNonce !== appliedTeethDraftOpenNonce &&
+    teethDraftRequestWatchId &&
+    canRequestTeethDrafts &&
+    watches.some((watch) => watch.id === teethDraftRequestWatchId)
+  ) {
+    setAppliedTeethDraftOpenNonce(teethDraftOpenNonce);
     setTeethDraftWatchId(teethDraftRequestWatchId);
-  }, [teethDraftRequestWatchId, teethDraftOpenNonce, canRequestTeethDrafts, watches]);
+  }
 
   function openTeethDraftModal(watchId: string) {
     if (!canRequestTeethDrafts) return;
