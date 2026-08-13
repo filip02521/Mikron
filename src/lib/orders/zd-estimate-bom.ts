@@ -168,7 +168,13 @@ export function expandZdEstimateBoms(
   boms: readonly ZdProductBomRef[],
   options?: {
     missingComponentTwIds?: ReadonlySet<number> | null;
-    packagingByTwId?: ReadonlyMap<number, { unitsPerPackage: number }> | null;
+    packagingByTwId?: ReadonlyMap<
+      number,
+      {
+        unitsPerPackage: number;
+        documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode | null;
+      }
+    > | null;
   }
 ): ManualZdEstimateLineWithBom[] {
   if (!boms.length) {
@@ -205,9 +211,13 @@ export function expandZdEstimateBoms(
     const parentSales = Math.max(0, asNum(parent.sprzedazOkres));
     const parentDost = Math.max(0, asNum(parent.dostepne));
     const parentZdRaw = Math.max(0, asNum(parent.otwarteZd));
-    const parentPack =
-      packagingByTwId?.get(parentId)?.unitsPerPackage ?? null;
-    const parentZdPieces = zdDocumentUnitsToPieces(parentZdRaw, parentPack);
+    const parentPackRow = packagingByTwId?.get(parentId);
+    const parentPack = parentPackRow?.unitsPerPackage ?? null;
+    const parentZdPieces = zdDocumentUnitsToPieces(
+      parentZdRaw,
+      parentPack,
+      parentPackRow?.documentUnitMode
+    );
     const useCover =
       explode && bom.stockAsCover !== false && allocation === "explode";
     const coverBase = useCover ? parentDost + parentZdPieces : 0;
@@ -373,11 +383,20 @@ export type RematerializeSoloAfterBomOptions = {
   zapasMin?: number;
   salesTrack?: boolean;
   salesTrackCuts?: boolean;
+  salesTrackPolicy?: Partial<
+    typeof import("@/lib/orders/zd-estimate-sales-track").ZD_SALES_TRACK
+  > | null;
   historyByTwId?: ReadonlyMap<
     number,
     { lastOrderedQty: number; linkedAt: string }
   > | null;
-  packagingByTwId?: ReadonlyMap<number, { unitsPerPackage: number }> | null;
+  packagingByTwId?: ReadonlyMap<
+    number,
+    {
+      unitsPerPackage: number;
+      documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode | null;
+    }
+  > | null;
   /** SKU w parze — skip rematerialize (applyPairs nadpisze). */
   productPairs?: readonly ZdProductPairRef[] | null;
 };
@@ -422,11 +441,12 @@ export function rematerializeSoloAfterBom(
     let salesTrackHeldExtraQty = 0;
     let salesTrackAllowedExtraQty = 0;
 
-    const packUnits =
-      options.packagingByTwId?.get(line.tw_Id)?.unitsPerPackage ?? null;
+    const packRow = options.packagingByTwId?.get(line.tw_Id);
+    const packUnits = packRow?.unitsPerPackage ?? null;
     const otwarteZdPieces = zdDocumentUnitsToPieces(
       Math.max(0, asNum(line.otwarteZd)),
-      packUnits
+      packUnits,
+      packRow?.documentUnitMode
     );
     const coverForQty = dostepne + otwarteZdPieces;
 
@@ -441,6 +461,7 @@ export function rematerializeSoloAfterBom(
         dniOkresu,
         enabled: true,
         cutsEnabled: salesTrackCuts,
+        policy: options.salesTrackPolicy ?? undefined,
       });
       celTracked = track.celTracked;
       salesTrackDelta = track.deltaPieces;
@@ -473,6 +494,7 @@ export function rematerializeSoloAfterBom(
             coverStock: coverForQty,
             confidence: salesTrackConfidence,
             reasons: salesTrackReasons,
+            policy: options.salesTrackPolicy ?? undefined,
           });
           salesTrackReasons = reconciled.salesTrackReasons;
           salesTrackQtyReview = reconciled.salesTrackQtyReview;

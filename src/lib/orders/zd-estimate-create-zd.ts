@@ -7,11 +7,16 @@ import { computeManualOrderQty } from "@/lib/orders/zd-estimate-manual";
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import {
   computeZdPackOrderQty,
+  isPackagingPackagesMode,
+  packagingDocumentMode,
   resolveOrderQtyForLine,
   type PackagingLookup,
 } from "@/lib/orders/zd-estimate-packaging";
 import { clearSalesTrackQtyReviewMeta } from "@/lib/orders/zd-estimate-post-create";
-import { zdDocumentUnitsToPieces } from "@/lib/orders/zd-estimate-units";
+import {
+  zdDocumentUnitsToPieces,
+  type ZdPackagingDocumentUnitMode,
+} from "@/lib/orders/zd-estimate-units";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import type { SubiektCreateZdInput } from "@/lib/subiekt/types";
 
@@ -152,7 +157,9 @@ export function buildZdCreatePreviewFromOrderable(
       plu: line.tw_PLU ?? null,
       ilosc: zdUnits,
       packagingHint: qty.hasPackaging
-        ? `${qty.unitsPerPackage} szt / 1 ${qty.packageLabel}`
+        ? isPackagingPackagesMode(qty.documentUnitMode)
+          ? `${qty.unitsPerPackage} szt / 1 ${qty.packageLabel}`
+          : `dobij do ${qty.unitsPerPackage} szt`
         : null,
       individualExtraPieces: extraPieces > 0 ? extraPieces : undefined,
     });
@@ -261,11 +268,16 @@ export function validateZdCreateClientLines(
 /**
  * Gwarantuje, że ilosc na ZD pokrywa co najmniej rezerwę próśb (ceil opakowania).
  * Nie zaniża qty względem klienta — tylko podbija, gdy extras > wysłane.
+ * Mode B: minZd = ceil(extra/N)*N (sztuki), nie liczba paczek.
  */
 export function ensureZdCreateLinesCoverIndividualExtras(input: {
   lines: readonly ZdCreateClientLineInput[];
   extraPiecesByTwId: ReadonlyMap<number, number> | null | undefined;
   unitsPerPackageByTwId?: ReadonlyMap<number, number> | null;
+  packagingModeByTwId?: ReadonlyMap<
+    number,
+    ZdPackagingDocumentUnitMode
+  > | null;
 }): {
   lines: ZdCreateClientLineInput[];
   bumped: Array<{
@@ -296,7 +308,14 @@ export function ensureZdCreateLinesCoverIndividualExtras(input: {
       1,
       Math.trunc(Number(input.unitsPerPackageByTwId?.get(line.twId)) || 1)
     );
-    const minZd = computeZdPackOrderQty(extraPieces, units).zdUnits;
+    const mode =
+      input.packagingModeByTwId?.get(line.twId) ?? "packages";
+    const minZd = computeZdPackOrderQty(
+      extraPieces,
+      units,
+      "op.",
+      mode
+    ).zdUnits;
     if (!(minZd > line.ilosc)) return { ...line };
     bumped.push({
       twId: line.twId,
@@ -330,6 +349,8 @@ export type CanCreateZdState = {
   packagingPairConflictCount?: number;
   /** Brakujące węzły BOM explode — blokują Create (popyt niepełny). */
   explodeBomIncomplete?: boolean;
+  /** Moc boosta zmieniona po Policz — wymagany re-Policz. */
+  boostNeedsRecount?: boolean;
 };
 
 export function canCreateZdFromEstimateState(
@@ -345,6 +366,12 @@ export function canCreateZdFromEstimateState(
     return {
       ok: false,
       reason: ZD_ESTIMATE_UI.createGateNeedsSettings,
+    };
+  }
+  if (state.boostNeedsRecount) {
+    return {
+      ok: false,
+      reason: ZD_ESTIMATE_UI.createGateBoostNeedsRecount,
     };
   }
   if (state.explodeBomIncomplete) {
@@ -411,8 +438,13 @@ export function applyCreatedZdUnitsToOtwarteZd(
     const add = created.get(line.tw_Id);
     if (add == null || !(add > 0)) return line;
     const otwarteZd = Math.max(0, Number(line.otwarteZd) || 0) + add;
-    const pack = packagingById?.get(line.tw_Id)?.unitsPerPackage;
-    const otwarteZdPieces = zdDocumentUnitsToPieces(otwarteZd, pack);
+    const packLookup = packagingById?.get(line.tw_Id);
+    const pack = packLookup?.unitsPerPackage;
+    const otwarteZdPieces = zdDocumentUnitsToPieces(
+      otwarteZd,
+      pack,
+      packagingDocumentMode(packLookup)
+    );
     const doZamowieniaReczne = computeManualOrderQty({
       celZapasu: line.celZapasuTracked ?? line.celZapasu,
       dostepne: line.dostepne,

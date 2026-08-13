@@ -14,6 +14,7 @@ import {
   assertPackagingUnits,
   ZD_PACKAGING_UNITS_MAX,
   ZD_PACKAGING_UNITS_MIN,
+  type ZdPackagingDocumentUnitMode,
 } from "@/lib/orders/zd-estimate-packaging";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import type { ZdEstimateBulkLinePreview } from "@/components/zakupy/ZdEstimateBulkExcludeDialog";
@@ -23,6 +24,7 @@ export function ZdEstimateBulkPackagingDialog({
   lines,
   pending,
   mode = "set",
+  packPairTwIds,
   onCancel,
   onSave,
   onClear,
@@ -32,10 +34,13 @@ export function ZdEstimateBulkPackagingDialog({
   pending?: boolean;
   /** set = ustaw opakowanie; clear = potwierdź usunięcie */
   mode?: "set" | "clear";
+  /** tw_Id paczek z pary — Mode B zablokowany gdy zaznaczenie je zawiera. */
+  packPairTwIds?: ReadonlySet<number> | null;
   onCancel: () => void;
   onSave: (input: {
     unitsPerPackage: number;
     packageLabel: string;
+    documentUnitMode: ZdPackagingDocumentUnitMode;
     note: string;
   }) => void;
   onClear: () => void;
@@ -43,11 +48,23 @@ export function ZdEstimateBulkPackagingDialog({
   const unitsId = useId();
   const labelId = useId();
   const noteId = useId();
+  const modePackagesId = useId();
+  const modePiecesId = useId();
   const [units, setUnits] = useState("10");
   const [label, setLabel] = useState("op.");
   const [note, setNote] = useState("");
+  const [documentUnitMode, setDocumentUnitMode] =
+    useState<ZdPackagingDocumentUnitMode>("packages");
 
   if (!open || lines.length === 0) return null;
+
+  const pairPackBlocksPiecesMode = lines.some((l) =>
+    packPairTwIds?.has(l.tw_Id)
+  );
+  const effectiveMode: ZdPackagingDocumentUnitMode = pairPackBlocksPiecesMode
+    ? "packages"
+    : documentUnitMode;
+  const packagesMode = effectiveMode === "packages";
 
   const unitsCheck = assertPackagingUnits(units);
   const canSave = unitsCheck.ok;
@@ -149,6 +166,7 @@ export function ZdEstimateBulkPackagingDialog({
               onSave({
                 unitsPerPackage: unitsCheck.units,
                 packageLabel: label.trim() || "op.",
+                documentUnitMode: effectiveMode,
                 note: note.trim(),
               });
             }}
@@ -172,6 +190,68 @@ export function ZdEstimateBulkPackagingDialog({
           {ZD_ESTIMATE_BULK_MAX} z {lines.length}. Reszta zostanie zaznaczona.
         </p>
       ) : null}
+
+      <fieldset className="space-y-2">
+        <legend className="text-xs font-medium text-slate-600">
+          Tryb dokumentu
+        </legend>
+        <label
+          htmlFor={modePackagesId}
+          className={cn(
+            "flex cursor-pointer gap-2 rounded-lg border px-3 py-2.5",
+            effectiveMode === "packages"
+              ? "border-indigo-200 bg-indigo-50/60"
+              : "border-slate-200 bg-white"
+          )}
+        >
+          <input
+            id={modePackagesId}
+            type="radio"
+            name="zd-bulk-pack-mode"
+            className="mt-0.5"
+            checked={effectiveMode === "packages"}
+            disabled={pending}
+            onChange={() => setDocumentUnitMode("packages")}
+          />
+          <span className="text-xs font-semibold text-slate-900">
+            {ZD_ESTIMATE_UI.packagingModePackagesLabel}
+          </span>
+        </label>
+        <label
+          htmlFor={modePiecesId}
+          className={cn(
+            "flex gap-2 rounded-lg border px-3 py-2.5",
+            pairPackBlocksPiecesMode
+              ? "cursor-not-allowed border-slate-200 bg-slate-50 opacity-70"
+              : "cursor-pointer",
+            !pairPackBlocksPiecesMode && effectiveMode === "pieces_multiple"
+              ? "border-indigo-200 bg-indigo-50/60"
+              : !pairPackBlocksPiecesMode
+                ? "border-slate-200 bg-white"
+                : null
+          )}
+        >
+          <input
+            id={modePiecesId}
+            type="radio"
+            name="zd-bulk-pack-mode"
+            className="mt-0.5"
+            checked={effectiveMode === "pieces_multiple"}
+            disabled={pending || pairPackBlocksPiecesMode}
+            onChange={() => setDocumentUnitMode("pieces_multiple")}
+          />
+          <span className="min-w-0">
+            <span className="block text-xs font-semibold text-slate-900">
+              {ZD_ESTIMATE_UI.packagingModePiecesLabel}
+            </span>
+            {pairPackBlocksPiecesMode ? (
+              <span className="mt-0.5 block text-[11px] leading-snug text-slate-500">
+                {ZD_ESTIMATE_UI.packagingModeBulkPairBlockedHint}
+              </span>
+            ) : null}
+          </span>
+        </label>
+      </fieldset>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label htmlFor={unitsId} className="block">
@@ -221,11 +301,14 @@ export function ZdEstimateBulkPackagingDialog({
       {canSave ? (
         <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/50 px-3 py-2.5">
           <p className="text-xs font-semibold text-emerald-950">
-            Dla każdego: 1 {label.trim() || "op."} = {unitsNum} szt
+            {packagesMode
+              ? `Dla każdego: 1 ${label.trim() || "op."} = ${unitsNum} szt`
+              : `Dla każdego: Do ZD w sztukach, dobij do wielokrotności ${unitsNum}`}
           </p>
           <p className="mt-0.5 text-[11px] leading-snug text-emerald-900/85">
-            Niedobór liczymy w sztukach, a „Do ZD” pokaże liczbę opakowań
-            (zaokrąglenie w górę).
+            {packagesMode
+              ? ZD_ESTIMATE_UI.packagingBulkPreviewPackages
+              : ZD_ESTIMATE_UI.packagingBulkPreviewPieces}
           </p>
         </div>
       ) : showUnitsError ? (

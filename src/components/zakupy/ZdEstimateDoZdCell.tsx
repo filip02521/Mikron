@@ -6,6 +6,8 @@ import {
   formatZdPackDocumentLabel,
   formatZdPackHint,
   formatZdPackRoundupLine,
+  getZdPackRoundupInfo,
+  isPackagingPackagesMode,
   piecesArrivingForZdUnits,
   type ZdPackOrderQty,
 } from "@/lib/orders/zd-estimate-packaging";
@@ -15,7 +17,8 @@ import { controlFocusClass } from "@/lib/ui/ontime-theme";
 
 /**
  * Komórka „Do ZD” — duża liczba decyzji + opcjonalne nadpisanie przed Create.
- * Przy opakowaniu: etykieta pod liczbą, sztuki przychodzące, jasne dobicie.
+ * Mode A: paczki + → szt + dobicie. Mode B: sztuki + dobicie (bez etykiety opakowania jako jednostek).
+ * Wąski sticky — sublinie zawijane / kompaktowe, bez wylewania na nazwę.
  */
 export function ZdEstimateDoZdCell({
   qty,
@@ -44,6 +47,7 @@ export function ZdEstimateDoZdCell({
     );
   }
 
+  const packagesMode = isPackagingPackagesMode(qty.documentUnitMode);
   const displayUnits =
     overrideZdUnits != null && Number.isFinite(overrideZdUnits)
       ? Math.trunc(overrideZdUnits)
@@ -53,25 +57,39 @@ export function ZdEstimateDoZdCell({
     Number.isFinite(overrideZdUnits) &&
     Math.trunc(overrideZdUnits) !== qty.zdUnits;
 
-  /** Puste pole w trakcie edycji — nie pokazuj mylących subline z wyliczeniem. */
   const editingBlank = focused && draft.trim() === "";
   const packLabel =
-    !editingBlank && qty.hasPackaging && displayUnits > 0
+    !editingBlank &&
+    packagesMode &&
+    qty.hasPackaging &&
+    displayUnits > 0
       ? qty.packageLabel.trim() || "op."
       : null;
   const piecesShown =
     !editingBlank && qty.hasPackaging && displayUnits > 0
-      ? piecesArrivingForZdUnits(displayUnits, qty.unitsPerPackage)
+      ? piecesArrivingForZdUnits(
+          displayUnits,
+          qty.unitsPerPackage,
+          qty.documentUnitMode
+        )
       : null;
   const showPieces =
-    piecesShown != null && piecesShown !== displayUnits;
-  const roundupLine =
+    packagesMode &&
+    piecesShown != null &&
+    piecesShown !== displayUnits;
+  const showPiecesMultipleHint =
+    !editingBlank &&
+    !packagesMode &&
+    qty.hasPackaging &&
+    displayUnits > 0;
+  const roundupInfo =
     !editingBlank &&
     !overridden &&
     qty.hasPackaging &&
     qty.zdUnits > 0
-      ? formatZdPackRoundupLine(qty)
+      ? getZdPackRoundupInfo(qty)
       : null;
+  const roundupFull = roundupInfo ? formatZdPackRoundupLine(qty) : null;
 
   const docLabel = formatZdPackDocumentLabel({
     ...qty,
@@ -79,22 +97,32 @@ export function ZdEstimateDoZdCell({
   });
   const overridePieces =
     qty.hasPackaging && displayUnits > 0
-      ? piecesArrivingForZdUnits(displayUnits, qty.unitsPerPackage)
+      ? piecesArrivingForZdUnits(
+          displayUnits,
+          qty.unitsPerPackage,
+          qty.documentUnitMode
+        )
       : null;
+  const overrideHint = packagesMode
+    ? ZD_ESTIMATE_UI.packagingOverrideHint
+    : ZD_ESTIMATE_UI.packagingOverrideHintPieces;
   const baseHint = formatZdPackHint(qty);
   const fullTitle = [
     overridden
       ? [
           `Nadpisane (wyliczone: ${qty.zdUnits})`,
-          overridePieces != null && docLabel
+          packagesMode && overridePieces != null && docLabel
             ? `${docLabel} → ${formatQty(overridePieces)} szt`
-            : null,
+            : !packagesMode && overridePieces != null
+              ? `${formatQty(overridePieces)} szt`
+              : null,
           "Puste/Enter przywraca.",
         ]
           .filter(Boolean)
           .join(". ")
       : baseHint || "Nadpisz ilość Do ZD przed Create",
-    qty.hasPackaging ? ZD_ESTIMATE_UI.packagingOverrideHint : null,
+    roundupFull ? `↑ ${roundupFull}` : null,
+    qty.hasPackaging ? overrideHint : null,
   ]
     .filter(Boolean)
     .join(" ");
@@ -116,28 +144,42 @@ export function ZdEstimateDoZdCell({
   };
 
   const packageSublines = (
-    <>
+    <span className="flex w-full min-w-0 max-w-full flex-col items-start gap-0.5 overflow-hidden">
       {packLabel ? (
-        <span className="text-[10px] font-medium leading-tight text-slate-500">
+        <span className="max-w-full truncate text-[10px] font-medium leading-tight text-slate-500">
           {packLabel}
         </span>
       ) : null}
       {showPieces ? (
-        <span className="text-[10px] font-medium leading-tight tabular-nums text-slate-500">
+        <span className="max-w-full truncate text-[10px] font-medium leading-tight tabular-nums text-slate-500">
           → {formatQty(piecesShown!)} szt
         </span>
       ) : null}
-      {roundupLine ? (
-        <span className="text-[10px] font-medium leading-tight text-amber-700/90">
-          ↑ {roundupLine}
+      {showPiecesMultipleHint ? (
+        <span className="max-w-full truncate text-[10px] font-medium leading-tight text-slate-500">
+          ×{qty.unitsPerPackage}
         </span>
       ) : null}
-    </>
+      {roundupInfo ? (
+        <span
+          className="flex w-full min-w-0 max-w-full flex-col items-start gap-px text-[9px] font-medium leading-tight text-amber-700/90"
+          title={roundupFull ?? undefined}
+        >
+          <span className="max-w-full truncate">↑ +{roundupInfo.extra} szt</span>
+          <span className="max-w-full truncate tabular-nums">
+            ({roundupInfo.need}→{roundupInfo.arrive})
+          </span>
+        </span>
+      ) : null}
+    </span>
   );
 
   if (onOverrideChange) {
     return (
-      <span className="inline-flex flex-col items-start gap-0.5">
+      <span
+        className="flex w-full min-w-0 max-w-full flex-col items-start gap-0.5 overflow-hidden"
+        title={fullTitle}
+      >
         <input
           type="number"
           min={0}
@@ -147,10 +189,10 @@ export function ZdEstimateDoZdCell({
           disabled={overrideDisabled}
           title={fullTitle}
           aria-label={`Do ZD — nadpisanie. ${
-            qty.hasPackaging ? ZD_ESTIMATE_UI.packagingOverrideHint : ""
+            qty.hasPackaging ? overrideHint : ""
           }`}
           className={cn(
-            "h-8 w-[4.5rem] rounded-md border px-1.5 text-[1.05rem] font-semibold tabular-nums tracking-tight",
+            "h-8 w-full min-w-0 max-w-[4.5rem] rounded-md border px-1.5 text-[1.05rem] font-semibold tabular-nums tracking-tight",
             controlFocusClass,
             overridden
               ? "border-amber-300 bg-amber-50/80 text-amber-950"
@@ -185,11 +227,12 @@ export function ZdEstimateDoZdCell({
         {overridden ? (
           <button
             type="button"
-            className="text-[10px] font-medium text-amber-800 underline-offset-2 hover:underline"
+            className="max-w-full truncate text-[10px] font-medium text-amber-800 underline-offset-2 hover:underline"
             onClick={() => onOverrideChange(null)}
             disabled={overrideDisabled}
+            title={`Przywróć wyliczone: ${qty.zdUnits}`}
           >
-            wyliczone: {qty.zdUnits}
+            wylicz. {qty.zdUnits}
           </button>
         ) : !qty.hasPackaging && displayUnits > 0 && !editingBlank ? (
           <span className="text-[10px] font-medium leading-tight text-slate-400">
@@ -202,12 +245,9 @@ export function ZdEstimateDoZdCell({
 
   return (
     <span
-      className="inline-flex flex-col items-start gap-0.5"
+      className="flex w-full min-w-0 max-w-full flex-col items-start gap-0.5 overflow-hidden"
       title={
-        [
-          baseHint || undefined,
-          qty.hasPackaging ? ZD_ESTIMATE_UI.packagingOverrideHint : null,
-        ]
+        [baseHint || undefined, roundupFull ? `↑ ${roundupFull}` : null, qty.hasPackaging ? overrideHint : null]
           .filter(Boolean)
           .join(" ") || undefined
       }

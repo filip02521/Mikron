@@ -18,6 +18,7 @@ import {
   assertPackagingUnits,
   ZD_PACKAGING_UNITS_MAX,
   ZD_PACKAGING_UNITS_MIN,
+  type ZdPackagingDocumentUnitMode,
 } from "@/lib/orders/zd-estimate-packaging";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
@@ -29,12 +30,15 @@ export function ZdEstimatePackagingModal({
   packaging,
   onPackagingChange,
   onError,
+  packPairTwIds,
 }: {
   open: boolean;
   onClose: () => void;
   packaging: ZdEstimatePackagingRow[];
   onPackagingChange: (rows: ZdEstimatePackagingRow[]) => void;
   onError: (message: string) => void;
+  /** tw_Id paczek z pary — Mode B niedostępny. */
+  packPairTwIds?: ReadonlySet<number> | null;
 }) {
   const searchId = useId();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -44,6 +48,8 @@ export function ZdEstimatePackagingModal({
   const [draftUnits, setDraftUnits] = useState("");
   const [draftLabel, setDraftLabel] = useState("op.");
   const [draftNote, setDraftNote] = useState("");
+  const [draftMode, setDraftMode] =
+    useState<ZdPackagingDocumentUnitMode>("packages");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -72,6 +78,11 @@ export function ZdEstimatePackagingModal({
     setDraftUnits(String(row.unitsPerPackage));
     setDraftLabel(row.packageLabel);
     setDraftNote(row.note);
+    setDraftMode(
+      packPairTwIds?.has(row.subiektTwId)
+        ? "packages"
+        : row.documentUnitMode
+    );
   };
 
   const save = (row: ZdEstimatePackagingRow) => {
@@ -80,6 +91,11 @@ export function ZdEstimatePackagingModal({
       onError(unitsCheck.message);
       return;
     }
+    const mode: ZdPackagingDocumentUnitMode = packPairTwIds?.has(
+      row.subiektTwId
+    )
+      ? "packages"
+      : draftMode;
     start(async () => {
       const res = await actionUpsertZdEstimatePackaging({
         subiektTwId: row.subiektTwId,
@@ -89,6 +105,7 @@ export function ZdEstimatePackagingModal({
         grtNazwa: row.grtNazwa,
         unitsPerPackage: unitsCheck.units,
         packageLabel: draftLabel,
+        documentUnitMode: mode,
         note: draftNote,
       });
       if (!res.ok) {
@@ -212,6 +229,10 @@ export function ZdEstimatePackagingModal({
         <ul className="max-h-[min(58vh,32rem)] space-y-2.5 overflow-y-auto overscroll-contain pr-0.5">
           {filtered.map((row) => {
             const editing = editingId === row.subiektTwId;
+            const pairPackBlocksPiecesMode =
+              packPairTwIds?.has(row.subiektTwId) === true;
+            const editMode: ZdPackagingDocumentUnitMode =
+              pairPackBlocksPiecesMode ? "packages" : draftMode;
             return (
               <li
                 key={row.subiektTwId}
@@ -227,7 +248,9 @@ export function ZdEstimatePackagingModal({
                         {row.twSymbol ?? `tw_Id ${row.subiektTwId}`}
                       </p>
                       <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-indigo-900 ring-1 ring-indigo-100">
-                        1 {row.packageLabel} = {row.unitsPerPackage} szt
+                        {row.documentUnitMode === "pieces_multiple"
+                          ? `dobij ×${row.unitsPerPackage}`
+                          : `1 ${row.packageLabel} = ${row.unitsPerPackage} szt`}
                       </span>
                     </div>
                     <p className="text-sm text-slate-600">{row.twNazwa}</p>
@@ -265,6 +288,38 @@ export function ZdEstimatePackagingModal({
                 </div>
                 {editing ? (
                   <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                    <div className="flex flex-wrap gap-3 text-xs">
+                      <label className="inline-flex items-center gap-1.5">
+                        <input
+                          type="radio"
+                          name={`zd-modal-mode-${row.subiektTwId}`}
+                          checked={editMode === "packages"}
+                          disabled={pending}
+                          onChange={() => setDraftMode("packages")}
+                        />
+                        {ZD_ESTIMATE_UI.packagingModePackagesLabel}
+                      </label>
+                      <label
+                        className={cn(
+                          "inline-flex items-center gap-1.5",
+                          pairPackBlocksPiecesMode && "opacity-60"
+                        )}
+                      >
+                        <input
+                          type="radio"
+                          name={`zd-modal-mode-${row.subiektTwId}`}
+                          checked={editMode === "pieces_multiple"}
+                          disabled={pending || pairPackBlocksPiecesMode}
+                          onChange={() => setDraftMode("pieces_multiple")}
+                        />
+                        {ZD_ESTIMATE_UI.packagingModePiecesLabel}
+                      </label>
+                    </div>
+                    {pairPackBlocksPiecesMode ? (
+                      <p className="text-[11px] leading-snug text-amber-800">
+                        {ZD_ESTIMATE_UI.packagingModePairBlockedHint}
+                      </p>
+                    ) : null}
                     <div className="grid gap-2 sm:grid-cols-2">
                       <label className="block text-xs font-medium text-slate-600">
                         {ZD_ESTIMATE_UI.packagingUnitsLabel}

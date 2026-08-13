@@ -91,6 +91,9 @@ export type ApplyZdEstimatePairsOptions = {
   zapasMin?: number;
   salesTrack?: boolean;
   salesTrackCuts?: boolean;
+  salesTrackPolicy?: Partial<
+    typeof import("@/lib/orders/zd-estimate-sales-track").ZD_SALES_TRACK
+  > | null;
   /** tw_Id wykluczone z zamówienia (pack wykluczony → qty 0). */
   excludedTwIds?: ReadonlySet<number> | null;
   historyByTwId?: ReadonlyMap<number, ZdEstimateHistoryQtyEntry> | null;
@@ -202,6 +205,7 @@ export function applyZdEstimatePairs(
         dniOkresu: options.dniOkresu,
         enabled: true,
         cutsEnabled: salesTrackCuts,
+        policy: options.salesTrackPolicy ?? undefined,
       });
       celTracked = track.celTracked;
       salesTrackDelta = track.deltaPieces;
@@ -237,6 +241,7 @@ export function applyZdEstimatePairs(
             coverStock: coverSzt,
             confidence: salesTrackConfidence,
             reasons: salesTrackReasons,
+            policy: options.salesTrackPolicy ?? undefined,
           });
           salesTrackReasons = reconciled.salesTrackReasons;
           salesTrackQtyReview = reconciled.salesTrackQtyReview;

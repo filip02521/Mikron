@@ -51,6 +51,44 @@ describe("collectZdPackagingPairConflicts", () => {
         nazwa: "Nazwa",
         packagingUnits: 10,
         pairUnitsPerPack: 100,
+        reason: "units_mismatch",
+      },
+    ]);
+  });
+
+  it("Mode B na pack SKU jest konfliktem nawet gdy N == pair.N", () => {
+    const lines = [
+      line({
+        tw_Id: 1,
+        tw_Symbol: "PACK",
+        pair: {
+          role: "pack",
+          twinTwId: 2,
+          unitsPerPack: 10,
+          sprzedazSzt: 0,
+          coverSzt: 0,
+          pieceSprzedaz: 0,
+          packSprzedaz: 0,
+          pieceDostepne: 0,
+          packDostepne: 0,
+        },
+      }),
+    ];
+    expect(
+      collectZdPackagingPairConflicts(
+        lines,
+        new Map([
+          [1, { unitsPerPackage: 10, documentUnitMode: "pieces_multiple" }],
+        ])
+      )
+    ).toEqual([
+      {
+        twId: 1,
+        symbol: "PACK",
+        nazwa: "Nazwa",
+        packagingUnits: 10,
+        pairUnitsPerPack: 10,
+        reason: "pieces_multiple_mode",
       },
     ]);
   });
@@ -161,7 +199,21 @@ describe("formatZdPackagingPairConflictHint", () => {
         nazwa: "n",
         packagingUnits: 10,
         pairUnitsPerPack: 100,
+        reason: "units_mismatch",
       })
     ).toBe("A: opakowanie 10 ≠ para 100");
+  });
+
+  it("formatuje Mode B", () => {
+    expect(
+      formatZdPackagingPairConflictHint({
+        twId: 1,
+        symbol: "A",
+        nazwa: "n",
+        packagingUnits: 10,
+        pairUnitsPerPack: 10,
+        reason: "pieces_multiple_mode",
+      })
+    ).toContain("dobicie w sztukach");
   });
 });

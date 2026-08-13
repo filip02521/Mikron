@@ -245,6 +245,29 @@ export const ZD_ESTIMATE_UI = {
     "Hard + auto + tylko na prośbę bez aktywnej prośby. Z prośbą — w Do ZD (qty = prośba).",
   advancedZapasMinLabel: "Bufor minimum (szt.)",
   advancedZapasMinHint: "Dodatkowy zapas minimum doliczany do celu.",
+  boostPowerLabel: "Moc boosta sprzedaży",
+  boostPowerDefaultHint:
+    "Domyślnie Delikatny — bezpieczniejsze niż dotychczasowy Standard; możesz przełączyć.",
+  boostPowerOffHint:
+    "Wyłączony = bez podbijania; cięcia przy grubym cover nadal działają.",
+  boostNeedsRecountTitle: "Moc boosta zmieniona",
+  boostNeedsRecountBody:
+    "Lista Do ZD pochodzi z poprzedniej mocy. Przelicz, zanim utworzysz ZD.",
+  boostNeedsRecountCta: "Przelicz z nową mocą",
+  createGateBoostNeedsRecount:
+    "Moc boosta zmieniona — przelicz listę przed Create.",
+  supplierScopesPanelTitle: "Zakresy dostawców",
+  supplierScopesPanelHint:
+    "Globalne mapowanie dostawca ↔ grupa/cecha Subiekta (wspólne dla wszystkich).",
+  supplierScopesAddCta: "Dodaj mapowanie",
+  supplierScopesAddHint:
+    "Wybierz dostawcę bez mapowania, potem grupę lub cechę Subiekta.",
+  changeSupplierScopeCta: "Zmień przypisanie",
+  changeSupplierScopeTitle: "Zmień zakres Subiekta",
+  changeSupplierScopeHint:
+    "Wybierz inną grupę lub cechę poniżej, potem „Zapisz zakres i policz”.",
+  changeSupplierScopeCancelCta: "Anuluj zmianę",
+  assignSupplierScopeTitle: "Przypisz zakres Subiekta",
   onRequestVsHardExclude:
     "„Tylko na prośbę” — poza Do ZD bez prośby; z prośbą qty = tylko prośba. Twarde wykluczenie — prośba trafia do usług/uwag.",
   postCreateTitleCreated: "ZD utworzone",
@@ -285,11 +308,21 @@ export const ZD_ESTIMATE_UI = {
   postCreateMailComposeBody: "Treść",
   packagingDialogTitle: "Karton / opakowanie",
   packagingDialogHint:
-    "Ile sztuk przychodzi, gdy w ZD wpiszesz „1”. System dobija zamówienie do pełnych opakowań.",
+    "Wybierz tryb: jednostki na ZD = paczki, albo Do ZD w sztukach z dobiciem do wielokrotności N.",
+  packagingModePackagesLabel: "1 na ZD = N szt (paczki na dokumencie)",
+  packagingModePiecesLabel: "Do ZD w sztukach — dobij do wielokrotności N",
+  packagingModePackagesHint:
+    "Na dokumencie wpisujesz liczbę opakowań (np. 2 przy potrzebie 8 i N=5).",
+  packagingModePiecesHint:
+    "Na dokumencie wpisujesz sztuki — system dobija do pełnych paczek (np. 10 przy potrzebie 8 i N=5).",
+  packagingModePairBlockedHint:
+    "Na paczce z pary montaż/demontaż dostępny jest tylko tryb opakowań (1 na ZD = N szt).",
+  packagingModeBulkPairBlockedHint:
+    "Zaznaczenie zawiera paczkę z pary — tryb „dobicie w sztukach” jest niedostępny (tylko opakowania).",
   packagingModalTitle: "Opakowania ZD",
   packagingModalHint:
-    "Ile sztuk = 1 jednostka na dokumencie ZD (min. 2). System dobija Do ZD do pełnych opakowań. Sztuki 1:1 — „Usuń”.",
-  packagingUnitsLabel: "Sztuk w 1 na ZD",
+    "Tryb A: 1 na ZD = opakowanie. Tryb B: Do ZD w sztukach, dobij do N. Sztuki 1:1 — „Usuń”.",
+  packagingUnitsLabel: "Sztuk w 1 na ZD / wielokrotność",
   packagingUnitsHint:
     "Minimum 2 (max 100 000). Sztuki 1:1 — przycisk „Usuń (sztuki 1:1)”, nie zapisuj „1”.",
   packagingLabelField: "Etykieta",
@@ -298,12 +331,25 @@ export const ZD_ESTIMATE_UI = {
   packagingOrderLabel: "Na ZD",
   packagingOverrideHint:
     "Wpisujesz jednostki na dokumencie ZD (opakowania), nie sztuki.",
+  packagingOverrideHintPieces:
+    "Wpisujesz sztuki na dokumencie ZD (dobite do paczki).",
   packagingUnitsMinError:
     "Opakowanie wymaga co najmniej 2 sztuk na 1 jednostkę ZD. Sztuki 1:1 — usuń ustawienie.",
   packagingUnitsMaxError:
     "Liczba sztuk w opakowaniu jest zbyt duża (max 100 000).",
   packagingBulkUnitsHint:
     "Minimum 2 (max 100 000) dla wszystkich zaznaczonych. Sztuki 1:1 — osobna akcja „Usuń opakowanie”, nie zapisuj „1”.",
+  packagingBulkPreviewPackages:
+    "Niedobór liczymy w sztukach, a „Do ZD” pokaże liczbę opakowań (zaokrąglenie w górę).",
+  packagingBulkPreviewPieces:
+    "Niedobór liczymy w sztukach, a „Do ZD” pokaże sztuki dobite do wielokrotności N (nie liczbę paczek).",
+  packagingPairConflictTitle: "Konflikt opakowanie ↔ para",
+  packagingPairConflictUnitsBody:
+    "opakowanie inne niż para — Create zablokowany do ujednolicenia.",
+  packagingPairConflictModeBody:
+    "tryb „dobicie w sztukach” na paczce z pary — Create zablokowany do ujednolicenia.",
+  packagingPairConflictMixedBody:
+    "rozjazd opakowania / trybu względem pary — Create zablokowany do ujednolicenia.",
   packagingLabelPresetsAria: "Szybki wybór etykiety opakowania",
 } as const;
 

@@ -1,5 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { assertPackagingUnits } from "@/lib/orders/zd-estimate-packaging";
+import {
+  assertPackagingUnits,
+  normalizePackagingDocumentUnitMode,
+  type ZdPackagingDocumentUnitMode,
+} from "@/lib/orders/zd-estimate-packaging";
 
 export type ZdEstimatePackagingRow = {
   subiektTwId: number;
@@ -7,10 +11,15 @@ export type ZdEstimatePackagingRow = {
   twNazwa: string;
   grtId: number | null;
   grtNazwa: string | null;
-  /** Ile sztuk przychodzi przy wpisie „1” na ZD (≥ 2; brak wiersza = sztuki 1:1). */
+  /** Ile sztuk = 1 op. (A) lub wielokrotność dobicia (B); ≥ 2; brak wiersza = 1:1. */
   unitsPerPackage: number;
   /** Etykieta jednostki, np. „op.” / „paczka”. */
   packageLabel: string;
+  /**
+   * packages = 1 na ZD to opakowanie;
+   * pieces_multiple = Do ZD w sztukach, dobij do wielokrotności N.
+   */
+  documentUnitMode: ZdPackagingDocumentUnitMode;
   note: string;
   createdAt: string;
   updatedAt: string;
@@ -25,6 +34,7 @@ type DbRow = {
   grt_nazwa: string | null;
   units_per_package: number;
   package_label: string | null;
+  document_unit_mode?: string | null;
   note: string | null;
   created_at: string;
   updated_at: string;
@@ -32,7 +42,7 @@ type DbRow = {
 };
 
 const SELECT_COLS =
-  "subiekt_tw_id, tw_symbol, tw_nazwa, grt_id, grt_nazwa, units_per_package, package_label, note, created_at, updated_at, created_by";
+  "subiekt_tw_id, tw_symbol, tw_nazwa, grt_id, grt_nazwa, units_per_package, package_label, document_unit_mode, note, created_at, updated_at, created_by";
 
 const PG_UNIQUE_VIOLATION = "23505";
 
@@ -45,6 +55,7 @@ export function mapZdEstimatePackagingRow(row: DbRow): ZdEstimatePackagingRow {
     grtNazwa: row.grt_nazwa?.trim() || null,
     unitsPerPackage: Math.trunc(Number(row.units_per_package)),
     packageLabel: (row.package_label ?? "op.").trim() || "op.",
+    documentUnitMode: normalizePackagingDocumentUnitMode(row.document_unit_mode),
     note: (row.note ?? "").trim(),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -84,6 +95,7 @@ async function updateExistingPackaging(input: {
   grtNazwa: string | null;
   unitsPerPackage: number;
   packageLabel: string;
+  documentUnitMode: ZdPackagingDocumentUnitMode;
   note?: string;
 }): Promise<ZdEstimatePackagingRow> {
   const existing = await fetchZdEstimatePackagingOne(input.subiektTwId);
@@ -104,6 +116,7 @@ async function updateExistingPackaging(input: {
       grt_nazwa: input.grtNazwa ?? existing.grtNazwa,
       units_per_package: input.unitsPerPackage,
       package_label: input.packageLabel,
+      document_unit_mode: input.documentUnitMode,
       note,
       updated_at: new Date().toISOString(),
     })
@@ -126,6 +139,7 @@ export async function upsertZdEstimatePackaging(input: {
   grtNazwa?: string | null;
   unitsPerPackage: number;
   packageLabel?: string;
+  documentUnitMode?: ZdPackagingDocumentUnitMode | null;
   note?: string;
   createdBy?: string | null;
 }): Promise<ZdEstimatePackagingRow | null> {
@@ -139,6 +153,9 @@ export async function upsertZdEstimatePackaging(input: {
     throw new Error(unitsCheck.message);
   }
   const units = unitsCheck.units;
+  const documentUnitMode = normalizePackagingDocumentUnitMode(
+    input.documentUnitMode
+  );
 
   const twNazwa = input.twNazwa.trim() || `Towar ${subiektTwId}`;
   const twSymbol = input.twSymbol?.trim() || null;
@@ -157,6 +174,7 @@ export async function upsertZdEstimatePackaging(input: {
       grtNazwa,
       unitsPerPackage: units,
       packageLabel,
+      documentUnitMode,
       note: input.note,
     });
   }
@@ -172,6 +190,7 @@ export async function upsertZdEstimatePackaging(input: {
       grt_nazwa: grtNazwa,
       units_per_package: units,
       package_label: packageLabel,
+      document_unit_mode: documentUnitMode,
       note: (input.note ?? "").trim().slice(0, 500),
       created_at: now,
       updated_at: now,
@@ -192,6 +211,7 @@ export async function upsertZdEstimatePackaging(input: {
       grtNazwa,
       unitsPerPackage: units,
       packageLabel,
+      documentUnitMode,
       note: input.note,
     });
   }

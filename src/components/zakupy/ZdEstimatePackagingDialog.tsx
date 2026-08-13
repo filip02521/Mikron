@@ -6,10 +6,13 @@ import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import {
   assertPackagingUnits,
   formatZdPackHint,
+  formatZdPackOrderPreviewLine,
   formatZdPackRoundupLine,
+  isPackagingPackagesMode,
   resolveOrderQtyForLine,
   ZD_PACKAGING_UNITS_MAX,
   ZD_PACKAGING_UNITS_MIN,
+  type ZdPackagingDocumentUnitMode,
 } from "@/lib/orders/zd-estimate-packaging";
 import type { ZdEstimatePackagingRow } from "@/lib/data/zd-estimate-packaging";
 import { IconPackage } from "@/components/icons/StrokeIcons";
@@ -42,6 +45,7 @@ function PackagingDialogForm({
   onSave: (input: {
     unitsPerPackage: number;
     packageLabel: string;
+    documentUnitMode: ZdPackagingDocumentUnitMode;
     note: string;
   }) => void;
   onClear: () => void;
@@ -49,11 +53,23 @@ function PackagingDialogForm({
   const unitsId = useId();
   const labelId = useId();
   const noteId = useId();
+  const modePackagesId = useId();
+  const modePiecesId = useId();
+  const pairPackBlocksPiecesMode = line.pair?.role === "pack";
   const [units, setUnits] = useState(
     String(existing?.unitsPerPackage ?? 10)
   );
   const [label, setLabel] = useState(existing?.packageLabel ?? "op.");
   const [note, setNote] = useState(existing?.note ?? "");
+  const [documentUnitMode, setDocumentUnitMode] =
+    useState<ZdPackagingDocumentUnitMode>(() => {
+      if (pairPackBlocksPiecesMode) return "packages";
+      return existing?.documentUnitMode ?? "packages";
+    });
+
+  const effectiveMode: ZdPackagingDocumentUnitMode = pairPackBlocksPiecesMode
+    ? "packages"
+    : documentUnitMode;
 
   const unitsCheck = assertPackagingUnits(units);
   const unitsOk = unitsCheck.ok;
@@ -65,12 +81,14 @@ function PackagingDialogForm({
         {
           unitsPerPackage: unitsCheck.units,
           packageLabel: label.trim() || "op.",
+          documentUnitMode: effectiveMode,
         },
         individualExtraPieces,
         extraOnly
       )
     : null;
   const roundup = preview ? formatZdPackRoundupLine(preview) : null;
+  const packagesMode = isPackagingPackagesMode(effectiveMode);
 
   return (
     <ModalShell
@@ -118,6 +136,7 @@ function PackagingDialogForm({
                 onSave({
                   unitsPerPackage: unitsCheck.units,
                   packageLabel: label.trim() || "op.",
+                  documentUnitMode: effectiveMode,
                   note: note.trim(),
                 });
               }}
@@ -156,6 +175,73 @@ function PackagingDialogForm({
           </div>
         </div>
       </div>
+
+      <fieldset className="space-y-2">
+        <legend className="text-xs font-medium text-slate-600">
+          Tryb dokumentu
+        </legend>
+        <label
+          htmlFor={modePackagesId}
+          className={cn(
+            "flex cursor-pointer gap-2 rounded-lg border px-3 py-2.5",
+            effectiveMode === "packages"
+              ? "border-indigo-200 bg-indigo-50/60"
+              : "border-slate-200 bg-white"
+          )}
+        >
+          <input
+            id={modePackagesId}
+            type="radio"
+            name="zd-pack-mode"
+            className="mt-0.5"
+            checked={effectiveMode === "packages"}
+            disabled={pending}
+            onChange={() => setDocumentUnitMode("packages")}
+          />
+          <span className="min-w-0">
+            <span className="block text-xs font-semibold text-slate-900">
+              {ZD_ESTIMATE_UI.packagingModePackagesLabel}
+            </span>
+            <span className="mt-0.5 block text-[11px] leading-snug text-slate-500">
+              {ZD_ESTIMATE_UI.packagingModePackagesHint}
+            </span>
+          </span>
+        </label>
+        <label
+          htmlFor={modePiecesId}
+          className={cn(
+            "flex gap-2 rounded-lg border px-3 py-2.5",
+            pairPackBlocksPiecesMode
+              ? "cursor-not-allowed border-slate-200 bg-slate-50 opacity-70"
+              : "cursor-pointer",
+            !pairPackBlocksPiecesMode && effectiveMode === "pieces_multiple"
+              ? "border-indigo-200 bg-indigo-50/60"
+              : !pairPackBlocksPiecesMode
+                ? "border-slate-200 bg-white"
+                : null
+          )}
+        >
+          <input
+            id={modePiecesId}
+            type="radio"
+            name="zd-pack-mode"
+            className="mt-0.5"
+            checked={effectiveMode === "pieces_multiple"}
+            disabled={pending || pairPackBlocksPiecesMode}
+            onChange={() => setDocumentUnitMode("pieces_multiple")}
+          />
+          <span className="min-w-0">
+            <span className="block text-xs font-semibold text-slate-900">
+              {ZD_ESTIMATE_UI.packagingModePiecesLabel}
+            </span>
+            <span className="mt-0.5 block text-[11px] leading-snug text-slate-500">
+              {pairPackBlocksPiecesMode
+                ? ZD_ESTIMATE_UI.packagingModePairBlockedHint
+                : ZD_ESTIMATE_UI.packagingModePiecesHint}
+            </span>
+          </span>
+        </label>
+      </fieldset>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <label htmlFor={unitsId} className="block">
@@ -217,8 +303,7 @@ function PackagingDialogForm({
               {ZD_ESTIMATE_UI.packagingOrderLabel}:{" "}
             </span>
             <span className="font-semibold tabular-nums">
-              {preview.zdUnits} × {preview.unitsPerPackage} ={" "}
-              {formatQty(preview.piecesArriving)} szt
+              {formatZdPackOrderPreviewLine(preview)}
             </span>
           </p>
           <p className="text-[11px] leading-snug text-emerald-900/85">
@@ -231,8 +316,9 @@ function PackagingDialogForm({
       ) : unitsOk ? (
         <div className="rounded-lg border border-slate-200/80 bg-slate-50/60 px-3 py-2.5">
           <p className="text-xs font-medium text-slate-700">
-            1 {label.trim() || "op."} = {unitsNum} szt — przy braku niedoboru Do
-            ZD będzie 0.
+            {packagesMode
+              ? `1 ${label.trim() || "op."} = ${unitsNum} szt — przy braku niedoboru Do ZD będzie 0.`
+              : `Wielokrotność ${unitsNum} szt — przy braku niedoboru Do ZD będzie 0.`}
           </p>
         </div>
       ) : showUnitsError ? (
@@ -287,6 +373,7 @@ export function ZdEstimatePackagingDialog({
   onSave: (input: {
     unitsPerPackage: number;
     packageLabel: string;
+    documentUnitMode: ZdPackagingDocumentUnitMode;
     note: string;
   }) => void;
   onClear: () => void;
@@ -294,7 +381,7 @@ export function ZdEstimatePackagingDialog({
   if (!open || !line) return null;
   return (
     <PackagingDialogForm
-      key={`${line.tw_Id}-${existing?.unitsPerPackage ?? 0}-${existing?.updatedAt ?? ""}-${extraOnly ? "eo" : "st"}`}
+      key={`${line.tw_Id}-${existing?.unitsPerPackage ?? 0}-${existing?.documentUnitMode ?? "packages"}-${existing?.updatedAt ?? ""}-${extraOnly ? "eo" : "st"}`}
       line={line}
       existing={existing}
       pending={pending}

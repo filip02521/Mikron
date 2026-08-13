@@ -252,12 +252,14 @@ export function reconcileSalesTrackQtyMetaAfterHistory(input: {
   coverStock: number;
   confidence: number;
   reasons: SalesTrackReason[];
+  policy?: Partial<typeof ZD_SALES_TRACK>;
 }): {
   salesTrackQtyReview: boolean;
   salesTrackHeldExtraQty: number;
   salesTrackAllowedExtraQty: number;
   salesTrackReasons: SalesTrackReason[];
 } {
+  const policy = { ...ZD_SALES_TRACK, ...input.policy };
   const qtyBase = orderQtyFromCel(input.celBase, input.coverStock);
   const qtyNow = orderQtyFromCel(input.celTracked, input.coverStock);
   const allowed = Math.max(0, qtyNow - qtyBase);
@@ -266,7 +268,7 @@ export function reconcileSalesTrackQtyMetaAfterHistory(input: {
   );
   if (allowed > 0) {
     const review =
-      input.confidence < ZD_SALES_TRACK.boostQtyReviewConfidenceMax;
+      input.confidence < policy.boostQtyReviewConfidenceMax;
     return {
       salesTrackQtyReview: review,
       salesTrackHeldExtraQty: 0,
