@@ -4,6 +4,7 @@ import {
   isZkWatchShippingCostLine,
   zkLineKey,
 } from "@/lib/sales/zk-watch-lines";
+import { comparePalletLabels } from "@/lib/external-warehouse/pallet-label-sort";
 
 /** Przycięta pozycja ZK — bez cen i zbędnych pól Subiekta. */
 export type ExternalWarehousePrunedLine = {
@@ -115,7 +116,7 @@ export function expandLineDtos(input: {
   });
   const lineNote = input.meta?.note ?? null;
   const shares = [...(input.shares ?? [])].sort((a, b) =>
-    a.pallet_label.localeCompare(b.pallet_label, "pl", { sensitivity: "base" })
+    comparePalletLabels(a.pallet_label, b.pallet_label)
   );
   const lineQty = input.quantity;
 

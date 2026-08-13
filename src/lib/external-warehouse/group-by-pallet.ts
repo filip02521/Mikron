@@ -1,4 +1,5 @@
 import type { ExternalWarehouseLineDto } from "@/lib/external-warehouse/lines";
+import { comparePalletLabels } from "@/lib/external-warehouse/pallet-label-sort";
 
 export type PalletGroup = {
   palletLabel: string | null;
@@ -9,9 +10,11 @@ export type PalletGroup = {
 
 const NO_PALLET_TITLE = "Bez palety";
 
+export { comparePalletLabels };
+
 /**
  * Grupuje linie wg etykiety palety.
- * Palety A–Z (locale pl), na końcu „Bez palety”.
+ * Palety numerycznie / A–Z (locale pl), na końcu „Bez palety”.
  */
 export function groupByPallet(lines: ExternalWarehouseLineDto[]): PalletGroup[] {
   const map = new Map<string | null, ExternalWarehouseLineDto[]>();
@@ -25,9 +28,7 @@ export function groupByPallet(lines: ExternalWarehouseLineDto[]): PalletGroup[] 
 
   const labeled = [...map.entries()]
     .filter(([k]) => k != null)
-    .sort(([a], [b]) =>
-      (a as string).localeCompare(b as string, "pl", { sensitivity: "base" })
-    )
+    .sort(([a], [b]) => comparePalletLabels(a as string, b as string))
     .map(([palletLabel, groupLines]) => ({
       palletLabel,
       title: palletLabel as string,
@@ -55,7 +56,5 @@ export function collectPalletLabels(
     const label = line.palletLabel?.trim();
     if (label) set.add(label);
   }
-  return [...set].sort((a, b) =>
-    a.localeCompare(b, "pl", { sensitivity: "base" })
-  );
+  return [...set].sort(comparePalletLabels);
 }
