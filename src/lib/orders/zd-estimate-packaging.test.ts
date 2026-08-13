@@ -4,11 +4,15 @@ import {
   type ManualZdEstimateLine,
 } from "./zd-estimate-manual";
 import {
+  assertPackagingUnits,
   computeZdPackOrderQty,
   effectiveZdDocumentUnits,
   filterOrderableLinesWithPackaging,
+  formatZdPackDocumentLabel,
   formatZdPackHint,
+  formatZdPackRoundupLine,
   lineAllowsZdDocumentUnitOverride,
+  piecesArrivingForZdUnits,
   pruneZdDocumentUnitOverrides,
   resolveOrderQtyForLine,
   summarizePackOrderQty,
@@ -27,6 +31,21 @@ describe("computeZdPackOrderQty", () => {
     });
   });
 
+  it("9 szt / N=10 → 1 na ZD, dobicie do 10", () => {
+    const q = computeZdPackOrderQty(9, 10, "karton");
+    expect(q).toMatchObject({
+      piecesNeeded: 9,
+      unitsPerPackage: 10,
+      zdUnits: 1,
+      piecesArriving: 10,
+      hasPackaging: true,
+      roundedUp: true,
+      packageLabel: "karton",
+    });
+    expect(formatZdPackDocumentLabel(q)).toBe("1 karton");
+    expect(formatZdPackRoundupLine(q)).toBe("dobicie +1 szt (9→10)");
+  });
+
   it("EVE: 250 szt przy 100 → 3 na ZD, przyjdzie 300", () => {
     const q = computeZdPackOrderQty(250, 100, "paczka");
     expect(q.zdUnits).toBe(3);
@@ -42,6 +61,42 @@ describe("computeZdPackOrderQty", () => {
       hasPackaging: false,
       roundedUp: false,
     });
+  });
+});
+
+describe("assertPackagingUnits + format helpers", () => {
+  it("odrzuca 1, 0 i powyżej limitu; akceptuje 2", () => {
+    expect(assertPackagingUnits(1).ok).toBe(false);
+    expect(assertPackagingUnits(0).ok).toBe(false);
+    expect(assertPackagingUnits(100_001).ok).toBe(false);
+    expect(assertPackagingUnits(100_001)).toMatchObject({
+      ok: false,
+      message: expect.stringContaining("100 000"),
+    });
+    expect(assertPackagingUnits(2)).toEqual({ ok: true, units: 2 });
+    expect(assertPackagingUnits(100_000)).toEqual({
+      ok: true,
+      units: 100_000,
+    });
+  });
+
+  it("piecesArrivingForZdUnits liczy override × N", () => {
+    expect(piecesArrivingForZdUnits(2, 10)).toBe(20);
+    expect(piecesArrivingForZdUnits(0, 10)).toBe(0);
+    expect(piecesArrivingForZdUnits(5, 1)).toBe(5);
+  });
+
+  it("formatZdPackDocumentLabel / roundup / hint ze trim label", () => {
+    const plain = computeZdPackOrderQty(5, 1);
+    expect(formatZdPackDocumentLabel(plain)).toBeNull();
+    expect(formatZdPackRoundupLine(plain)).toBeNull();
+    const exact = computeZdPackOrderQty(20, 10, "  op.  ");
+    expect(formatZdPackRoundupLine(exact)).toBeNull();
+    expect(formatZdPackDocumentLabel(exact)).toBe("2 op.");
+    expect(formatZdPackHint(exact)).toBe("2 op. × 10 = 20 szt");
+    const round = computeZdPackOrderQty(9, 10, "karton");
+    expect(formatZdPackHint(round)).toContain("1 karton × 10 = 10 szt");
+    expect(formatZdPackHint(round)).toContain("potrzeba 9 szt");
   });
 });
 

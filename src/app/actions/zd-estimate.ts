@@ -85,6 +85,7 @@ import {
   type ManualZdEstimateResult,
 } from "@/lib/orders/zd-estimate-manual";
 import {
+  assertPackagingUnits,
   summarizePackOrderQty,
   type PackagingLookup,
 } from "@/lib/orders/zd-estimate-packaging";
@@ -1677,9 +1678,14 @@ export async function actionUpsertZdEstimatePackaging(input: {
   note?: string;
 }): Promise<ZdEstimatePackagingActionResult> {
   const user = await requireZdEstimateAdmin("mutate");
+  const unitsCheck = assertPackagingUnits(input.unitsPerPackage);
+  if (!unitsCheck.ok) {
+    return { ok: false, message: unitsCheck.message };
+  }
   try {
     await upsertZdEstimatePackaging({
       ...input,
+      unitsPerPackage: unitsCheck.units,
       createdBy: user.id,
     });
     const packaging = await fetchZdEstimatePackaging();
@@ -1841,7 +1847,7 @@ export async function actionRestoreZdEstimateProducts(
 
 /**
  * Grupowe opakowanie — te same jednostki ZD dla wszystkich zaznaczonych.
- * unitsPerPackage === 1 → jawne sztuki 1:1 w historii snapshotów.
+ * unitsPerPackage ≥ 2 (sztuki 1:1 = delete / clear, nie upsert 1).
  */
 export async function actionUpsertZdEstimatePackagingBulk(input: {
   products: ZdEstimateBulkProductInput[];
@@ -1856,13 +1862,11 @@ export async function actionUpsertZdEstimatePackagingBulk(input: {
     return { ok: false, message: "Zaznacz co najmniej jeden produkt." };
   }
   const truncated = normalized.truncated;
-  const units = Math.trunc(Number(input.unitsPerPackage));
-  if (!Number.isFinite(units) || units < 1 || units > 100_000) {
-    return {
-      ok: false,
-      message: "Liczba sztuk w opakowaniu musi być od 1 do 100 000.",
-    };
+  const unitsCheck = assertPackagingUnits(input.unitsPerPackage);
+  if (!unitsCheck.ok) {
+    return { ok: false, message: unitsCheck.message };
   }
+  const units = unitsCheck.units;
 
   const succeededTwIds: number[] = [];
   const failed: ZdEstimateBulkFailure[] = [];

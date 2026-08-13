@@ -22,6 +22,7 @@ import {
   normalizeUnitsPerPackage,
   zdDocumentUnitsToPieces,
 } from "@/lib/orders/zd-estimate-units";
+import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 
 export { normalizeUnitsPerPackage, zdDocumentUnitsToPieces };
 
@@ -166,16 +167,86 @@ export function resolveOrderQtyForLine(
   return computeZdPackOrderQty(piecesNeeded, pack, label);
 }
 
+/** Etykiety presetów w dialogach opakowania (tylko prezentacja). */
+export const ZD_PACKAGING_LABEL_PRESETS = [
+  "op.",
+  "karton",
+  "paczka",
+  "zbiorcze",
+] as const;
+
+export const ZD_PACKAGING_UNITS_MIN = 2;
+export const ZD_PACKAGING_UNITS_MAX = 100_000;
+
+/** Walidacja zapisu opakowania — zgodna z DB CHECK (≥ 2). */
+export function assertPackagingUnits(
+  value: unknown
+): { ok: true; units: number } | { ok: false; message: string } {
+  const units = Math.trunc(Number(value));
+  if (!Number.isFinite(units) || units < ZD_PACKAGING_UNITS_MIN) {
+    return {
+      ok: false,
+      message: ZD_ESTIMATE_UI.packagingUnitsMinError,
+    };
+  }
+  if (units > ZD_PACKAGING_UNITS_MAX) {
+    return {
+      ok: false,
+      message: ZD_ESTIMATE_UI.packagingUnitsMaxError,
+    };
+  }
+  return { ok: true, units };
+}
+
+/**
+ * Krótka etykieta jednostek dokumentu: „1 karton” / „3 op.”
+ * Bez odmiany polskiej — zawsze `{n} {label}`.
+ */
+export function formatZdPackDocumentLabel(
+  qty: Pick<ZdPackOrderQty, "zdUnits" | "hasPackaging" | "packageLabel">
+): string | null {
+  if (!qty.hasPackaging || !(qty.zdUnits > 0)) return null;
+  const label = qty.packageLabel.trim() || "op.";
+  return `${qty.zdUnits} ${label}`;
+}
+
 export function formatZdPackHint(qty: ZdPackOrderQty): string {
   if (!qty.hasPackaging) {
     return qty.zdUnits > 0 ? `${qty.zdUnits} szt` : "—";
   }
-  if (qty.zdUnits <= 0) return "—";
+  const doc = formatZdPackDocumentLabel(qty);
+  if (!doc) return "—";
   const over =
     qty.roundedUp && qty.piecesNeeded > 0
       ? ` · potrzeba ${qty.piecesNeeded} szt`
       : "";
-  return `${qty.zdUnits} ${qty.packageLabel} × ${qty.unitsPerPackage} = ${qty.piecesArriving} szt${over}`;
+  return `${doc} × ${qty.unitsPerPackage} = ${qty.piecesArriving} szt${over}`;
+}
+
+/** Linia dobicia: „dobicie +1 szt (9→10)” albo null. */
+export function formatZdPackRoundupLine(
+  qty: Pick<
+    ZdPackOrderQty,
+    "roundedUp" | "piecesNeeded" | "piecesArriving" | "hasPackaging"
+  >
+): string | null {
+  if (!qty.hasPackaging || !qty.roundedUp) return null;
+  const need = Math.max(0, Math.round(Number(qty.piecesNeeded) || 0));
+  const arrive = Math.max(0, Math.round(Number(qty.piecesArriving) || 0));
+  if (!(arrive > need) || need <= 0) return null;
+  const extra = arrive - need;
+  return `dobicie +${extra} szt (${need}→${arrive})`;
+}
+
+/** Sztuki przy ręcznym nadpisaniu jednostek ZD. */
+export function piecesArrivingForZdUnits(
+  zdUnits: number,
+  unitsPerPackage: number | null | undefined
+): number {
+  const units = Math.max(0, Math.trunc(Number(zdUnits) || 0));
+  const pack = normalizeUnitsPerPackage(unitsPerPackage);
+  if (pack <= 1) return units;
+  return units * pack;
 }
 
 export function packagingByTwId<T extends { subiektTwId: number }>(

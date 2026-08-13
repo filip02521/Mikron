@@ -283,6 +283,28 @@ export const ZD_ESTIMATE_UI = {
   postCreateMailComposeTo: "Do",
   postCreateMailComposeSubject: "Temat",
   postCreateMailComposeBody: "Treść",
+  packagingDialogTitle: "Karton / opakowanie",
+  packagingDialogHint:
+    "Ile sztuk przychodzi, gdy w ZD wpiszesz „1”. System dobija zamówienie do pełnych opakowań.",
+  packagingModalTitle: "Opakowania ZD",
+  packagingModalHint:
+    "Ile sztuk = 1 jednostka na dokumencie ZD (min. 2). System dobija Do ZD do pełnych opakowań. Sztuki 1:1 — „Usuń”.",
+  packagingUnitsLabel: "Sztuk w 1 na ZD",
+  packagingUnitsHint:
+    "Minimum 2 (max 100 000). Sztuki 1:1 — przycisk „Usuń (sztuki 1:1)”, nie zapisuj „1”.",
+  packagingLabelField: "Etykieta",
+  packagingClearCta: "Usuń (sztuki 1:1)",
+  packagingNeedLabel: "Potrzeba",
+  packagingOrderLabel: "Na ZD",
+  packagingOverrideHint:
+    "Wpisujesz jednostki na dokumencie ZD (opakowania), nie sztuki.",
+  packagingUnitsMinError:
+    "Opakowanie wymaga co najmniej 2 sztuk na 1 jednostkę ZD. Sztuki 1:1 — usuń ustawienie.",
+  packagingUnitsMaxError:
+    "Liczba sztuk w opakowaniu jest zbyt duża (max 100 000).",
+  packagingBulkUnitsHint:
+    "Minimum 2 (max 100 000) dla wszystkich zaznaczonych. Sztuki 1:1 — osobna akcja „Usuń opakowanie”, nie zapisuj „1”.",
+  packagingLabelPresetsAria: "Szybki wybór etykiety opakowania",
 } as const;
 
 /** Hint po timeout create, gdy async znalazł świeże ZD. */

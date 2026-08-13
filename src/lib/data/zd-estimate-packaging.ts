@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { assertPackagingUnits } from "@/lib/orders/zd-estimate-packaging";
 
 export type ZdEstimatePackagingRow = {
   subiektTwId: number;
@@ -6,7 +7,7 @@ export type ZdEstimatePackagingRow = {
   twNazwa: string;
   grtId: number | null;
   grtNazwa: string | null;
-  /** Ile sztuk przychodzi przy wpisie „1” na ZD (1 = jawne sztuki 1:1). */
+  /** Ile sztuk przychodzi przy wpisie „1” na ZD (≥ 2; brak wiersza = sztuki 1:1). */
   unitsPerPackage: number;
   /** Etykieta jednostki, np. „op.” / „paczka”. */
   packageLabel: string;
@@ -114,9 +115,8 @@ async function updateExistingPackaging(input: {
 }
 
 /**
- * Zapisuje opakowanie (≥ 1 szt / jednostka ZD).
- * unitsPerPackage === 1 → jawne potwierdzenie sztuk 1:1 (historia snapshotów).
- * Usunięcie wpisu: deleteZdEstimatePackaging / „Usuń” w UI.
+ * Zapisuje opakowanie (units_per_package ≥ 2, zgodnie z DB).
+ * Sztuki 1:1: deleteZdEstimatePackaging / „Usuń” w UI — nie upsert(1).
  */
 export async function upsertZdEstimatePackaging(input: {
   subiektTwId: number;
@@ -134,13 +134,11 @@ export async function upsertZdEstimatePackaging(input: {
     throw new Error("Niepoprawne tw_Id produktu.");
   }
 
-  const units = Math.trunc(Number(input.unitsPerPackage));
-  if (!Number.isFinite(units) || units < 1) {
-    throw new Error("Liczba sztuk w opakowaniu musi być ≥ 1.");
+  const unitsCheck = assertPackagingUnits(input.unitsPerPackage);
+  if (!unitsCheck.ok) {
+    throw new Error(unitsCheck.message);
   }
-  if (units > 100_000) {
-    throw new Error("Liczba sztuk w opakowaniu jest zbyt duża.");
-  }
+  const units = unitsCheck.units;
 
   const twNazwa = input.twNazwa.trim() || `Towar ${subiektTwId}`;
   const twSymbol = input.twSymbol?.trim() || null;

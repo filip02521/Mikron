@@ -6,9 +6,16 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
+import { ZdPackagingLabelPresets } from "@/components/zakupy/ZdPackagingLabelPresets";
 import { cn } from "@/lib/cn";
 import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
 import { ZD_ESTIMATE_BULK_MAX } from "@/lib/orders/zd-estimate-bulk";
+import {
+  assertPackagingUnits,
+  ZD_PACKAGING_UNITS_MAX,
+  ZD_PACKAGING_UNITS_MIN,
+} from "@/lib/orders/zd-estimate-packaging";
+import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import type { ZdEstimateBulkLinePreview } from "@/components/zakupy/ZdEstimateBulkExcludeDialog";
 
 export function ZdEstimateBulkPackagingDialog({
@@ -42,9 +49,10 @@ export function ZdEstimateBulkPackagingDialog({
 
   if (!open || lines.length === 0) return null;
 
-  const unitsNum = Math.trunc(Number(units));
-  const canSave =
-    Number.isFinite(unitsNum) && unitsNum >= 1 && unitsNum <= 100_000;
+  const unitsCheck = assertPackagingUnits(units);
+  const canSave = unitsCheck.ok;
+  const unitsNum = canSave ? unitsCheck.units : Math.trunc(Number(units));
+  const showUnitsError = units.trim() !== "" && !canSave;
   const preview = lines.slice(0, 8);
   const rest = lines.length - preview.length;
   const overLimit = lines.length > ZD_ESTIMATE_BULK_MAX;
@@ -114,7 +122,7 @@ export function ZdEstimateBulkPackagingDialog({
       open
       onClose={onCancel}
       title={`Opakowanie dla ${actionCount}${overLimit ? ` z ${lines.length}` : ""}`}
-      titleHint="Jedna wartość dla wszystkich zaznaczonych — ile sztuk = 1 na dokumencie ZD."
+      titleHint={ZD_ESTIMATE_UI.packagingDialogHint}
       titleId="zd-estimate-bulk-packaging-title"
       size="md"
       tier="raised"
@@ -136,13 +144,14 @@ export function ZdEstimateBulkPackagingDialog({
             type="button"
             className="min-h-11 w-full sm:w-auto"
             disabled={pending || !canSave}
-            onClick={() =>
+            onClick={() => {
+              if (!unitsCheck.ok) return;
               onSave({
-                unitsPerPackage: unitsNum,
+                unitsPerPackage: unitsCheck.units,
                 packageLabel: label.trim() || "op.",
                 note: note.trim(),
-              })
-            }
+              });
+            }}
           >
             {pending ? (
               <span className="inline-flex items-center gap-2">
@@ -167,50 +176,62 @@ export function ZdEstimateBulkPackagingDialog({
       <div className="grid gap-3 sm:grid-cols-2">
         <label htmlFor={unitsId} className="block">
           <span className="text-xs font-medium text-slate-600">
-            Sztuk w 1 na ZD
+            {ZD_ESTIMATE_UI.packagingUnitsLabel}
           </span>
           <Input
             id={unitsId}
             type="number"
-            min={1}
-            max={100000}
+            min={ZD_PACKAGING_UNITS_MIN}
+            max={ZD_PACKAGING_UNITS_MAX}
             value={units}
             onChange={(e) => setUnits(e.target.value)}
             disabled={pending}
             className="mt-1.5"
             autoFocus
+            aria-invalid={showUnitsError || undefined}
           />
           <p className={cn(panelTypography.caption, "mt-1")}>
-            1 = zamawiamy na sztuki (usuwa ustawienie)
+            {ZD_ESTIMATE_UI.packagingBulkUnitsHint}
           </p>
         </label>
-        <label htmlFor={labelId} className="block">
-          <span className="text-xs font-medium text-slate-600">Etykieta</span>
-          <Input
-            id={labelId}
+        <div>
+          <label htmlFor={labelId} className="block">
+            <span className="text-xs font-medium text-slate-600">
+              {ZD_ESTIMATE_UI.packagingLabelField}
+            </span>
+            <Input
+              id={labelId}
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              maxLength={24}
+              disabled={pending}
+              placeholder="op. / karton"
+              className="mt-1.5"
+            />
+          </label>
+          <ZdPackagingLabelPresets
             value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            maxLength={24}
             disabled={pending}
-            placeholder="op. / paczka"
-            className="mt-1.5"
+            onSelect={setLabel}
+            className="mt-2"
           />
-        </label>
+        </div>
       </div>
 
-      {canSave && unitsNum >= 2 ? (
+      {canSave ? (
         <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/50 px-3 py-2.5">
           <p className="text-xs font-semibold text-emerald-950">
             Dla każdego: 1 {label.trim() || "op."} = {unitsNum} szt
           </p>
           <p className="mt-0.5 text-[11px] leading-snug text-emerald-900/85">
-            Niedobór liczymy w sztukach, a „Do ZD” pokaże liczbę paczek (zaokrąglenie w górę).
+            Niedobór liczymy w sztukach, a „Do ZD” pokaże liczbę opakowań
+            (zaokrąglenie w górę).
           </p>
         </div>
-      ) : canSave && unitsNum === 1 ? (
-        <div className="rounded-lg border border-slate-200/80 bg-slate-50/60 px-3 py-2.5">
-          <p className="text-xs font-medium text-slate-700">
-            Wartość 1 usunie opakowanie — zaznaczone wrócą do sztuk 1:1.
+      ) : showUnitsError ? (
+        <div className="rounded-lg border border-amber-200/80 bg-amber-50/60 px-3 py-2.5">
+          <p className="text-xs font-medium text-amber-900">
+            {unitsCheck.message}
           </p>
         </div>
       ) : null}
