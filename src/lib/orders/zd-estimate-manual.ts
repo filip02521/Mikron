@@ -20,6 +20,7 @@ import type { OrderInterval } from "@/lib/orders/dates";
 import { resolveSupplierInterval } from "@/lib/orders/dates";
 import {
   computeSalesTrackedCel,
+  reconcileSalesTrackQtyMetaAfterHistory,
   resolveSprzedazDziennie,
   type SalesTrackReason,
 } from "@/lib/orders/zd-estimate-sales-track";
@@ -72,6 +73,14 @@ export type ManualZdEstimateLine = {
   /** Signed delta celu ze śledzenia sprzedaży (+/−). */
   salesTrackDelta: number;
   salesTrackReasons: SalesTrackReason[];
+  /** 0..1 — pewność dokupu sztuk z boostu. */
+  salesTrackConfidence: number;
+  /** Wątpliwa ilość — filtr „Do weryfikacji”. */
+  salesTrackQtyReview: boolean;
+  /** Sztuki wstrzymane względem pełnego boostu. */
+  salesTrackHeldExtraQty: number;
+  /** Sztuki Do ZD dozwolone ponad bazę z boostu. */
+  salesTrackAllowedExtraQty: number;
   otwarteZkBezRez: number;
   otwarteZkZarezerwowane: number;
   otwarteZd: number;
@@ -230,9 +239,14 @@ export function mapZdEstimateLineToManual(
 
   let celTracked = track.celTracked;
   let salesTrackDelta = track.deltaPieces;
-  const salesTrackReasons: SalesTrackReason[] = [...track.reasons];
+  let salesTrackReasons: SalesTrackReason[] = [...track.reasons];
+  let salesTrackConfidence = track.confidence;
+  let salesTrackQtyReview = track.qtyReview;
+  let salesTrackHeldExtraQty = track.heldExtraQty;
+  let salesTrackAllowedExtraQty = track.allowedExtraQty;
 
   const hist = options?.history;
+  const coverForQty = Math.max(0, dostepne) + otwarteZdPieces;
   if (
     hist &&
     options?.salesTrack !== false &&
@@ -249,7 +263,7 @@ export function mapZdEstimateLineToManual(
       celBase: celZapasu,
       sprzedazOkres,
       sprzedazDziennie: tempo,
-      coverStock: Math.max(0, dostepne) + otwarteZdPieces,
+      coverStock: coverForQty,
       dniZapasu,
       dniOkresu,
       lastOrderedQty: hist.lastOrderedQty,
@@ -259,6 +273,17 @@ export function mapZdEstimateLineToManual(
       celTracked = histAdj.celTracked;
       salesTrackDelta = celTracked - celZapasu;
       salesTrackReasons.push(...histAdj.reasons);
+      const reconciled = reconcileSalesTrackQtyMetaAfterHistory({
+        celBase: celZapasu,
+        celTracked,
+        coverStock: coverForQty,
+        confidence: salesTrackConfidence,
+        reasons: salesTrackReasons,
+      });
+      salesTrackReasons = reconciled.salesTrackReasons;
+      salesTrackQtyReview = reconciled.salesTrackQtyReview;
+      salesTrackHeldExtraQty = reconciled.salesTrackHeldExtraQty;
+      salesTrackAllowedExtraQty = reconciled.salesTrackAllowedExtraQty;
     }
   }
 
@@ -288,6 +313,10 @@ export function mapZdEstimateLineToManual(
     celZapasuTracked: celTracked,
     salesTrackDelta,
     salesTrackReasons,
+    salesTrackConfidence,
+    salesTrackQtyReview,
+    salesTrackHeldExtraQty,
+    salesTrackAllowedExtraQty,
     otwarteZkBezRez,
     otwarteZkZarezerwowane: asFiniteNumber(line.otwarteZkZarezerwowane),
     otwarteZd,

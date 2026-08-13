@@ -3216,6 +3216,52 @@ export async function actionSyncZdProductPairsFromSubiekt(): Promise<
   }
 }
 
+export type ZdEstimateSupplierContactResult =
+  | {
+      ok: true;
+      id: string;
+      name: string;
+      notes: string;
+      mails: string;
+      extra_info: string;
+    }
+  | { ok: false; message: string };
+
+/** Kontakt karty dostawcy — mailto / kopiuj w panelu po create ZD. */
+export async function actionGetSupplierContact(
+  supplierId: string
+): Promise<ZdEstimateSupplierContactResult> {
+  await requireZdEstimateAdmin("read");
+  const id = String(supplierId ?? "").trim();
+  if (!id) {
+    return { ok: false, message: "Brak identyfikatora dostawcy." };
+  }
+  try {
+    const rows = await fetchSuppliersWithSchedules(undefined, {
+      supplierIds: [id],
+      // Kontakt po create — także dla kart nieaktywnych (szacunek mógł iść z aliasu).
+      activeOnly: false,
+    });
+    const row = rows[0];
+    if (!row) {
+      return { ok: false, message: "Nie znaleziono dostawcy." };
+    }
+    return {
+      ok: true,
+      id: String(row.id),
+      name: String(row.name ?? "").trim() || "Dostawca",
+      notes: String(row.notes ?? ""),
+      mails: String(row.mails ?? ""),
+      extra_info: String(row.extra_info ?? ""),
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      message: userFacingErrorText(e, "Nie udało się wczytać kontaktu dostawcy."),
+    };
+  }
+}
+
 export type ZdEstimateSupplierScopeResolveResult =
   | {
       ok: true;

@@ -12,6 +12,7 @@ import {
 } from "@/lib/orders/zd-estimate-history-track";
 import {
   computeSalesTrackedCel,
+  reconcileSalesTrackQtyMetaAfterHistory,
   resolveSprzedazDziennie,
   type SalesTrackReason,
 } from "@/lib/orders/zd-estimate-sales-track";
@@ -184,7 +185,11 @@ export function applyZdEstimatePairs(
 
     let celTracked = celBase;
     let salesTrackDelta = 0;
-    const salesTrackReasons: SalesTrackReason[] = [];
+    let salesTrackReasons: SalesTrackReason[] = [];
+    let salesTrackConfidence = 0;
+    let salesTrackQtyReview = false;
+    let salesTrackHeldExtraQty = 0;
+    let salesTrackAllowedExtraQty = 0;
 
     if (!partnerMissing && salesTrack && celBase > 0) {
       const track = computeSalesTrackedCel({
@@ -200,7 +205,11 @@ export function applyZdEstimatePairs(
       });
       celTracked = track.celTracked;
       salesTrackDelta = track.deltaPieces;
-      salesTrackReasons.push(...track.reasons);
+      salesTrackReasons = [...track.reasons];
+      salesTrackConfidence = track.confidence;
+      salesTrackQtyReview = track.qtyReview;
+      salesTrackHeldExtraQty = track.heldExtraQty;
+      salesTrackAllowedExtraQty = track.allowedExtraQty;
 
       const hist = mergePairHistoryForCut(
         options.historyByTwId?.get(pair.packTwId),
@@ -222,6 +231,17 @@ export function applyZdEstimatePairs(
           celTracked = histAdj.celTracked;
           salesTrackDelta = celTracked - celBase;
           salesTrackReasons.push(...histAdj.reasons);
+          const reconciled = reconcileSalesTrackQtyMetaAfterHistory({
+            celBase,
+            celTracked,
+            coverStock: coverSzt,
+            confidence: salesTrackConfidence,
+            reasons: salesTrackReasons,
+          });
+          salesTrackReasons = reconciled.salesTrackReasons;
+          salesTrackQtyReview = reconciled.salesTrackQtyReview;
+          salesTrackHeldExtraQty = reconciled.salesTrackHeldExtraQty;
+          salesTrackAllowedExtraQty = reconciled.salesTrackAllowedExtraQty;
         }
       }
     }
@@ -259,6 +279,10 @@ export function applyZdEstimatePairs(
         celZapasuTracked: celTracked,
         salesTrackDelta,
         salesTrackReasons,
+        salesTrackConfidence,
+        salesTrackQtyReview,
+        salesTrackHeldExtraQty,
+        salesTrackAllowedExtraQty,
         sprzedazOkres: sprzedazSzt,
         sprzedazDziennie: tempo,
         doZamowieniaReczne: piecesNeeded,
@@ -274,6 +298,10 @@ export function applyZdEstimatePairs(
         celZapasuTracked: celTracked,
         salesTrackDelta: 0,
         salesTrackReasons: [],
+        salesTrackConfidence: 0,
+        salesTrackQtyReview: false,
+        salesTrackHeldExtraQty: 0,
+        salesTrackAllowedExtraQty: 0,
         doZamowieniaReczne: 0,
         wkladZk: 0,
         pair: baseMeta("piece", pair.packTwId),

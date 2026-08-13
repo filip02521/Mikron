@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
 import type { SummaryWorkspaceData } from "@/lib/orders/summary-workspace";
 import type { DeliveryStats, IndividualOrder, StatsMode } from "@/types/database";
@@ -56,6 +57,7 @@ import {
   DAILY_PANEL_MARK_ORDERED_PENDING_OVERLAY,
   dailyPanelMarkOrderedToastTitle,
 } from "@/lib/orders/daily-panel-mark-ordered-copy";
+import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 
 export function SummaryWorkspace({
   workspace,
@@ -97,6 +99,9 @@ export function SummaryWorkspace({
   const highlightFresh = useDailyPanelFreshHighlight();
   const hydrated = useClientHydrated();
   const undoShortcut = useUndoShortcutLabel();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const supplierDeeplinkHandledRef = useRef<string | null>(null);
 
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [drawerId, setDrawerId] = useState<string | null>(null);
@@ -167,6 +172,37 @@ export function SummaryWorkspace({
   }, [urgentOverdue.length, hasStockOut, hasForSomeone, urgentToday.length]);
 
   const openSupplier = useCallback((id: string) => setDrawerId(id), []);
+
+  // Deep-link z kreatora ZD: /podsumowanie?view=dzis&supplierId=…
+  useEffect(() => {
+    const raw = searchParams.get("supplierId")?.trim() ?? "";
+    if (!raw) {
+      supplierDeeplinkHandledRef.current = null;
+      return;
+    }
+    if (supplierDeeplinkHandledRef.current === raw) return;
+    supplierDeeplinkHandledRef.current = raw;
+
+    const stripSupplierParam = () => {
+      const next = new URLSearchParams(searchParams.toString());
+      next.delete("supplierId");
+      const qs = next.toString();
+      router.replace(qs ? `/podsumowanie?${qs}` : "/podsumowanie", {
+        scroll: false,
+      });
+    };
+
+    if (workspace.supplierMeta[raw]) {
+      // setState w microtask (eslint); strip sync — URL bez supplierId zanim efekt wpadnie ponownie.
+      queueMicrotask(() => openSupplier(raw));
+      stripSupplierParam();
+      return;
+    }
+    queueMicrotask(() => {
+      notify(ZD_ESTIMATE_UI.postCreateDzisMissingSupplier, "error");
+    });
+    stripSupplierParam();
+  }, [searchParams, workspace.supplierMeta, openSupplier, router, notify]);
 
   const openVacationFor = useCallback((id: string) => {
     setDrawerId(id);

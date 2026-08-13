@@ -10,6 +10,7 @@ import {
   resolveOrderQtyForLine,
   type PackagingLookup,
 } from "@/lib/orders/zd-estimate-packaging";
+import { clearSalesTrackQtyReviewMeta } from "@/lib/orders/zd-estimate-post-create";
 import { zdDocumentUnitsToPieces } from "@/lib/orders/zd-estimate-units";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import type { SubiektCreateZdInput } from "@/lib/subiekt/types";
@@ -318,6 +319,11 @@ export type CanCreateZdState = {
   mutating: boolean;
   creating: boolean;
   createDoneDokId: number | null;
+  /**
+   * Timeout create: dokument mógł powstać w Subiekcie, ale brak dokId.
+   * Blokuje Create jak po sukcesie (do unlock / Policz / potwierdzenia linkiem).
+   */
+  createUnconfirmedAttempt?: boolean;
   /** Świadome odblokowanie po create — pozwala otworzyć Create ponownie. */
   createUnlockedAfterDone?: boolean;
   /** Konflikty opakowanie ↔ para (pack) — blokują Create do ujednolicenia. */
@@ -354,13 +360,15 @@ export function canCreateZdFromEstimateState(
     return { ok: false, reason: "Trwa inna operacja." };
   }
   const createLocked =
-    state.createDoneDokId != null &&
-    state.createDoneDokId > 0 &&
-    !state.createUnlockedAfterDone;
+    !state.createUnlockedAfterDone &&
+    ((state.createDoneDokId != null && state.createDoneDokId > 0) ||
+      state.createUnconfirmedAttempt === true);
   if (createLocked) {
     return {
       ok: false,
-      reason: "ZD już utworzone z tej listy — powiąż inne ZD ręcznie, przelicz listę albo odblokuj świadomie.",
+      reason: state.createUnconfirmedAttempt
+        ? "Ostatnie tworzenie ZD zakończyło się timeoutem — sprawdź Subiekt / powiąż dokument, przelicz listę albo odblokuj świadomie."
+        : "ZD już utworzone z tej listy — powiąż inne ZD ręcznie, przelicz listę albo odblokuj świadomie.",
     };
   }
   if (
@@ -410,6 +418,8 @@ export function applyCreatedZdUnitsToOtwarteZd(
       dostepne: line.dostepne,
       otwarteZd: otwarteZdPieces,
     });
-    return { ...line, otwarteZd, doZamowieniaReczne };
+    // Cover się zmienił — stary review qty z tracka jest nieaktualny.
+    const cleared = clearSalesTrackQtyReviewMeta(line);
+    return { ...cleared, otwarteZd, doZamowieniaReczne };
   });
 }

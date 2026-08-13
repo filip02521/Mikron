@@ -120,6 +120,15 @@ import {
   ZD_CREATE_MAX_UWAGI_LEN,
 } from "@/lib/orders/zd-estimate-create-zd";
 import {
+  buildZdPostCreateSessionFromCreate,
+  buildZdPostCreateSessionFromLink,
+  buildZdPostCreateSessionFromTimeout,
+  patchZdPostCreateTimeoutCandidates,
+  postCreateLinkLineMeta,
+  postCreateOrderableTwIds,
+  type ZdPostCreateSession,
+} from "@/lib/orders/zd-estimate-post-create";
+import {
   buildPairRatioByTwId,
   collectImplicitPieceSnapshotLines,
 } from "@/lib/orders/zd-estimate-snapshot-lines";
@@ -172,6 +181,7 @@ import { ZdEstimateExclusionsModal } from "@/components/zakupy/ZdEstimateExclusi
 import { ZdEstimateOnRequestModal } from "@/components/zakupy/ZdEstimateOnRequestModal";
 import { ZdEstimateLinkZdDialog } from "@/components/zakupy/ZdEstimateLinkZdDialog";
 import { ZdEstimateCreateZdDialog } from "@/components/zakupy/ZdEstimateCreateZdDialog";
+import { ZdEstimatePostCreatePanel } from "@/components/zakupy/ZdEstimatePostCreatePanel";
 import { ZdEstimatePackagingDialog } from "@/components/zakupy/ZdEstimatePackagingDialog";
 import { ZdEstimatePackagingModal } from "@/components/zakupy/ZdEstimatePackagingModal";
 import {
@@ -326,7 +336,7 @@ type RunMeta = {
   totalFromSubiekt: number;
 };
 
-type ListFilter = "order" | "all" | "excluded";
+type ListFilter = "order" | "all" | "excluded" | "review";
 
 function resolveWindowForGroup(
   group: ZdEstimateGroupOption,
@@ -620,14 +630,26 @@ export function ZdEstimateWorkbench({
   const [paramInfo, setParamInfo] = useState<Record<string, unknown> | null>(null);
   const [meta, setMeta] = useState<RunMeta | null>(null);
   const [copyOk, setCopyOk] = useState(false);
-  const [linkOkMessage, setLinkOkMessage] = useState<string | null>(null);
-  const [createZdOpen, setCreateZdOpen] = useState(false);
-  const [createZdOkMessage, setCreateZdOkMessage] = useState<string | null>(
+  const [postCreate, setPostCreate] = useState<ZdPostCreateSession | null>(
     null
   );
+  const [createZdOpen, setCreateZdOpen] = useState(false);
   const [createDoneDokId, setCreateDoneDokId] = useState<number | null>(null);
   const [createDoneDokNr, setCreateDoneDokNr] = useState<string | null>(null);
+  /** Timeout create — lock bez dokId (dokument mógł powstać). */
+  const [createUnconfirmedAttempt, setCreateUnconfirmedAttempt] =
+    useState(false);
   const [creatingZd, setCreatingZd] = useState(false);
+  /** Preview zamrożony przy starcie create — timeout / sesja / UI dialogu. */
+  const createPreviewCaptureRef = useRef<ReturnType<
+    typeof buildZdCreatePreviewFromOrderable
+  > | null>(null);
+  const [createPreviewFrozen, setCreatePreviewFrozen] = useState<ReturnType<
+    typeof buildZdCreatePreviewFromOrderable
+  > | null>(null);
+  const createLineMetaCaptureRef = useRef<
+    { twId: number; celAtLink: number; deltaAtLink: number }[] | null
+  >(null);
   const [pendingIndividuals, setPendingIndividuals] = useState<
     ZdEstimatePendingIndividualOrder[]
   >([]);
@@ -1484,6 +1506,7 @@ export function ZdEstimateWorkbench({
         mutating,
         creating: creatingZd,
         createDoneDokId,
+        createUnconfirmedAttempt,
         createUnlockedAfterDone,
         packagingPairConflictCount: packagingPairConflicts.length,
         explodeBomIncomplete,
@@ -1498,6 +1521,7 @@ export function ZdEstimateWorkbench({
       mutating,
       creatingZd,
       createDoneDokId,
+      createUnconfirmedAttempt,
       createUnlockedAfterDone,
       packagingPairConflicts.length,
       explodeBomIncomplete,
@@ -1621,13 +1645,17 @@ export function ZdEstimateWorkbench({
     setCreateUndoVisible(false);
     selectAnchorTwIdRef.current = null;
     setCopyOk(false);
-    setLinkOkMessage(null);
+    setPostCreate(null);
     setCreateDoneDokId(null);
     setCreateDoneDokNr(null);
-    setCreateZdOkMessage(null);
+    setCreateUnconfirmedAttempt(false);
     setCreateZdOpen(false);
     setCreatingZd(false);
+    setLinkZdOpen(false);
     setLinkNrPrefill(null);
+    createPreviewCaptureRef.current = null;
+    setCreatePreviewFrozen(null);
+    createLineMetaCaptureRef.current = null;
     setLaunchReadyMessage(null);
     setRecountStatusMessage(null);
     if (opts?.fromScopeChange) {
@@ -1903,6 +1931,20 @@ export function ZdEstimateWorkbench({
         setLastEstimateFailed(true);
         setScopeNeedsRecount(false);
         setRecountStatusMessage(null);
+        // Lista nieważna — zdejmij handoff/lock z poprzedniej sesji (jak przy clearEstimateResult).
+        setPostCreate(null);
+        setCreateDoneDokId(null);
+        setCreateDoneDokNr(null);
+        setCreateUnconfirmedAttempt(false);
+        setCreateUnlockedAfterDone(false);
+        setCreateUndoVisible(false);
+        setCreateZdOpen(false);
+        setCreatingZd(false);
+        setLinkZdOpen(false);
+        setLinkNrPrefill(null);
+        createPreviewCaptureRef.current = null;
+        setCreatePreviewFrozen(null);
+        createLineMetaCaptureRef.current = null;
         clearProgressBlocking();
         if (
           useProgressShell &&
@@ -1962,7 +2004,17 @@ export function ZdEstimateWorkbench({
         }
         setCreateDoneDokId(null);
         setCreateDoneDokNr(null);
-        setCreateZdOkMessage(null);
+        setCreateUnconfirmedAttempt(false);
+        setCreateUnlockedAfterDone(false);
+        setCreateUndoVisible(false);
+        setPostCreate(null);
+        setCreateZdOpen(false);
+        setCreatingZd(false);
+        setLinkZdOpen(false);
+        setLinkNrPrefill(null);
+        createPreviewCaptureRef.current = null;
+        setCreatePreviewFrozen(null);
+        createLineMetaCaptureRef.current = null;
         setSelected({});
         setListSearch("");
         setParamInfo(res.result.parametry as Record<string, unknown>);
@@ -1989,7 +2041,6 @@ export function ZdEstimateWorkbench({
         setCreateUndoVisible(false);
         setFeedback(null);
         setErrorMessage(null);
-        setLinkOkMessage(null);
         setLastEstimateFailed(false);
         setScopeNeedsRecount(false);
         if (useProgressShell) {
@@ -2091,6 +2142,20 @@ export function ZdEstimateWorkbench({
   useEffect(() => {
     runEstimateRef.current = runEstimate;
   });
+
+  const openCreateZdModal = useCallback(() => {
+    setLinkZdOpen(false);
+    setLinkNrPrefill(null);
+    setCreateZdOpen(true);
+  }, []);
+  const openLinkZdModal = useCallback(() => {
+    setCreateZdOpen(false);
+    setCreatingZd(false);
+    createPreviewCaptureRef.current = null;
+    setCreatePreviewFrozen(null);
+    createLineMetaCaptureRef.current = null;
+    setLinkZdOpen(true);
+  }, []);
 
   // Prośby przy supplierId (także needsAssign — bez czekania na Policz).
   useEffect(() => {
@@ -2368,6 +2433,11 @@ export function ZdEstimateWorkbench({
     });
   };
 
+  const reviewInGroupCount = useMemo(() => {
+    if (!lines) return 0;
+    return lines.filter((l) => l.salesTrackQtyReview).length;
+  }, [lines]);
+
   const segmentFilteredLines = useMemo(() => {
     if (!lines) return [];
     if (!settingsTrusted) {
@@ -2376,10 +2446,16 @@ export function ZdEstimateWorkbench({
       if (listFilter === "excluded") {
         return lines.filter((l) => nameAutoByTwId.has(l.tw_Id));
       }
+      if (listFilter === "review") {
+        return lines.filter((l) => l.salesTrackQtyReview);
+      }
       return lines;
     }
     if (listFilter === "excluded") {
       return lines.filter((l) => orderExcludedTwIds.has(l.tw_Id));
+    }
+    if (listFilter === "review") {
+      return lines.filter((l) => l.salesTrackQtyReview);
     }
     if (listFilter === "all") {
       return lines;
@@ -3252,10 +3328,32 @@ export function ZdEstimateWorkbench({
         </div>
       ) : null}
 
-      {createZdOkMessage ? (
-        <Alert tone="success" title="ZD utworzone">
-          {createZdOkMessage}
-        </Alert>
+      {postCreate ? (
+        <ZdEstimatePostCreatePanel
+          session={postCreate}
+          dateKey={bootstrap.todayKey}
+          createLocked={
+            !createUnlockedAfterDone &&
+            (createUnconfirmedAttempt ||
+              (createDoneDokId != null && createDoneDokId > 0) ||
+              Boolean(createDoneDokNr))
+          }
+          onDismiss={() => {
+            setPostCreate(null);
+            setLinkNrPrefill(null);
+          }}
+          onOpenLink={() => {
+            setLinkNrPrefill(
+              postCreate.linkNrPrefill ?? postCreate.dokNrPelny ?? null
+            );
+            openLinkZdModal();
+          }}
+          onUnlockCreate={() => {
+            setCreateUnlockedAfterDone(true);
+            setCreateUndoVisible(false);
+          }}
+          onCopyError={reportError}
+        />
       ) : null}
 
       {pendingIndividualsError ? (
@@ -3282,7 +3380,7 @@ export function ZdEstimateWorkbench({
         </Alert>
       ) : null}
 
-      {createDoneDokNr && lines && lines.length > 0 ? (
+      {createDoneDokNr && lines && lines.length > 0 && !postCreate ? (
         <Alert
           tone={
             createUnlockedAfterDone && createZdGate.ok
@@ -3291,18 +3389,24 @@ export function ZdEstimateWorkbench({
           }
           title={
             !createUnlockedAfterDone
-              ? "Create zablokowany"
+              ? createUnconfirmedAttempt
+                ? "Create zablokowany (timeout)"
+                : "Create zablokowany"
               : createZdGate.ok
                 ? "Create odblokowany świadomie"
                 : "Create odblokowany — inne blokady"
           }
         >
-          Z tej listy utworzono już {createDoneDokNr}.{" "}
-          {!createUnlockedAfterDone
-            ? "Przelicz listę, użyj „Powiąż ZD” albo odblokuj świadomie."
-            : createZdGate.ok
-              ? "Możesz utworzyć kolejne ZD — uważaj na duplikaty w Subiekcie."
-              : createZdGateCaption ?? createZdGate.reason}
+          {createUnconfirmedAttempt && !createUnlockedAfterDone
+            ? ZD_ESTIMATE_UI.postCreateTimeoutLockBody
+            : <>
+                Z tej listy utworzono już {createDoneDokNr}.{" "}
+                {!createUnlockedAfterDone
+                  ? "Przelicz listę, użyj „Powiąż ZD” albo odblokuj świadomie."
+                  : createZdGate.ok
+                    ? "Możesz utworzyć kolejne ZD — uważaj na duplikaty w Subiekcie."
+                    : createZdGateCaption ?? createZdGate.reason}
+              </>}
           {!createUnlockedAfterDone ? (
             <Button
               type="button"
@@ -4025,11 +4129,6 @@ export function ZdEstimateWorkbench({
           </Alert>
         </div>
       ) : null}
-      {linkOkMessage ? (
-        <Alert tone="success" title="ZD powiązane">
-          {linkOkMessage}
-        </Alert>
-      ) : null}
       {settingsLiveMessage ? (
         <Alert tone="success" title="Lista na bieżąco">
           {settingsLiveMessage}
@@ -4115,6 +4214,14 @@ export function ZdEstimateWorkbench({
                     title: "Pełny zakres — wykluczone oznaczone",
                   },
                   {
+                    value: "review",
+                    label: `Do weryfikacji${
+                      reviewInGroupCount > 0 ? ` (${reviewInGroupCount})` : ""
+                    }`,
+                    title:
+                      "Wątpliwe podbicie Do ZD (niska / średnia pewność sprzedaży)",
+                  },
+                  {
                     value: "excluded",
                     label: `Wykluczone${
                       excludedInGroupCount > 0
@@ -4167,7 +4274,7 @@ export function ZdEstimateWorkbench({
                             );
                             return;
                           }
-                          setCreateZdOpen(true);
+                          openCreateZdModal();
                         }}
                         disabled={!createZdGate.ok}
                         title={
@@ -4200,7 +4307,7 @@ export function ZdEstimateWorkbench({
                         type="button"
                         size="sm"
                         variant="secondary"
-                        onClick={() => setLinkZdOpen(true)}
+                        onClick={() => openLinkZdModal()}
                         disabled={
                           !lines?.length ||
                           !bootstrap.configured ||
@@ -4466,7 +4573,9 @@ export function ZdEstimateWorkbench({
                         ? ZD_ESTIMATE_UI.emptyOrderTitle
                         : listFilter === "excluded"
                           ? ZD_ESTIMATE_UI.emptyExcludedTitle
-                          : "Brak pozycji"
+                          : listFilter === "review"
+                            ? "Brak pozycji do weryfikacji"
+                            : "Brak pozycji"
                 }
                 description={
                   listSearchNoHits
@@ -4480,9 +4589,11 @@ export function ZdEstimateWorkbench({
                           ? "Powyżej są usługi z próśb (uwagi ZD). Do utworzenia ZD potrzebna jest ≥1 pozycja katalogowa — albo obsłuż prośby w panelu Dziś."
                           : listFilter === "order"
                             ? "Przy tych parametrach ilość = 0 albo wszystkie braki są na liście wykluczeń. Przełącz filtr, żeby zobaczyć pełny zakres."
-                            : listFilter === "excluded"
-                              ? ZD_ESTIMATE_UI.emptyExcludedDescription
-                              : "Subiekt nie zwrócił pozycji dla tego zakresu."
+                            : listFilter === "review"
+                              ? "Żadna pozycja nie ma wstrzymanego ani częściowego podbicia Do ZD — pewność sprzedaży jest wystarczająca albo brak boostu."
+                              : listFilter === "excluded"
+                                ? ZD_ESTIMATE_UI.emptyExcludedDescription
+                                : "Subiekt nie zwrócił pozycji dla tego zakresu."
                 }
                 action={
                   listSearchNoHits ? (
@@ -4982,6 +5093,10 @@ export function ZdEstimateWorkbench({
                                   applied: Math.abs(l.salesTrackDelta) > 1e-9,
                                   deltaPieces: l.salesTrackDelta,
                                   reasons: l.salesTrackReasons,
+                                  confidence: l.salesTrackConfidence,
+                                  qtyReview: l.salesTrackQtyReview,
+                                  heldExtraQty: l.salesTrackHeldExtraQty,
+                                  allowedExtraQty: l.salesTrackAllowedExtraQty,
                                 }) ?? undefined
                               }
                             >
@@ -5004,6 +5119,10 @@ export function ZdEstimateWorkbench({
                                         −
                                         {formatQty(Math.abs(l.salesTrackDelta))}
                                       </span>
+                                    ) : l.salesTrackQtyReview ? (
+                                      <span className="text-[10px] font-medium text-amber-700/90">
+                                        sprawdź
+                                      </span>
                                     ) : null
                                   }
                                 />
@@ -5022,6 +5141,10 @@ export function ZdEstimateWorkbench({
                                     <span className="text-[10px] font-medium text-amber-700/90">
                                       −
                                       {formatQty(Math.abs(l.salesTrackDelta))}
+                                    </span>
+                                  ) : l.salesTrackQtyReview ? (
+                                    <span className="text-[10px] font-medium text-amber-700/90">
+                                      sprawdź
                                     </span>
                                   ) : null}
                                 </>
@@ -5177,7 +5300,7 @@ export function ZdEstimateWorkbench({
                 reportError(createZdGateCaption ?? createZdGate.reason);
                 return;
               }
-              setCreateZdOpen(true);
+              openCreateZdModal();
             }}
             disabled={!createZdGate.ok}
             title={
@@ -5208,7 +5331,7 @@ export function ZdEstimateWorkbench({
             type="button"
             size="sm"
             variant="secondary"
-            onClick={() => setLinkZdOpen(true)}
+            onClick={() => openLinkZdModal()}
             disabled={
               !lines?.length || !bootstrap.configured || !supplierId
             }
@@ -5249,16 +5372,23 @@ export function ZdEstimateWorkbench({
       ) : null}
 
 
-      {createUndoVisible && createDoneDokNr ? (
+      {createUndoVisible && createDoneDokNr && !postCreate ? (
         <UndoToast
           placement="floating"
           paused={linkZdOpen}
-          className={cn(
-            showLaunchStickyActions ? floatingToastAboveZdStickyClass : undefined,
-            linkZdOpen && "invisible pointer-events-none"
-          )}
-          title={`Utworzono ${createDoneDokNr}`}
-          description="Odblokuj Create świadomie — dokument w Subiekcie zostaje (to nie anuluje ZD)."
+          className={
+            showLaunchStickyActions ? floatingToastAboveZdStickyClass : undefined
+          }
+          title={
+            createUnconfirmedAttempt
+              ? "Timeout create — sprawdź Subiekt"
+              : `Utworzono ${createDoneDokNr}`
+          }
+          description={
+            createUnconfirmedAttempt
+              ? "Create zablokowany na wypadek, że dokument już powstał. Odblokuj świadomie albo powiąż ZD."
+              : "Odblokuj Create świadomie — dokument w Subiekcie zostaje (to nie anuluje ZD)."
+          }
           undoLabel="Odblokuj Create"
           onUndo={() => {
             setCreateUnlockedAfterDone(true);
@@ -5437,35 +5567,75 @@ export function ZdEstimateWorkbench({
         scopeMode={scopeMode}
         grtId={selectedGroup?.grt_Id ?? null}
         cechaId={selectedCecha?.ctw_Id ?? null}
-        initialNr={linkNrPrefill}
+        initialNr={
+          linkNrPrefill ??
+          (postCreate && !postCreate.snapshotOk
+            ? postCreate.linkNrPrefill ?? postCreate.dokNrPelny
+            : null)
+        }
+        titleHint={
+          postCreate &&
+          (postCreate.kind === "timeout_recovery" || !postCreate.snapshotOk)
+            ? ZD_ESTIMATE_UI.postCreateLinkRecoveryHint
+            : undefined
+        }
         lineMeta={
-          lines?.map((l) => ({
+          postCreateLinkLineMeta(postCreate) ??
+          (lines?.map((l) => ({
             twId: l.tw_Id,
             celAtLink: l.celZapasuTracked,
             deltaAtLink: l.salesTrackDelta,
-          })) ?? null
+          })) ?? null)
         }
-        orderableTwIds={confirmedTwIdsForSnapshot}
+        orderableTwIds={
+          postCreateOrderableTwIds(postCreate) ?? confirmedTwIdsForSnapshot
+        }
         implicitPieceSnapshotHint={implicitPieceSnapshotHint}
         onClose={() => {
           setLinkZdOpen(false);
           setLinkNrPrefill(null);
         }}
-        onLinked={({ dokNrPelny, lineCount }) => {
+        onLinked={({ dokId, dokNrPelny, lineCount }) => {
           setFeedback(null);
           setErrorMessage(null);
           setLinkNrPrefill(null);
-          setLinkOkMessage(
-            `Zapisano snapshot ${dokNrPelny} (${lineCount} poz.) — kolejne szacunki tego dostawcy i zakresu uwzględnią historię.`
+          setLinkZdOpen(false);
+          if (dokId > 0) {
+            setCreateDoneDokId(dokId);
+            setCreateDoneDokNr(dokNrPelny);
+            setCreateUnconfirmedAttempt(false);
+            setCreateUnlockedAfterDone(false);
+            setCreateUndoVisible(true);
+          }
+          setPostCreate(
+            buildZdPostCreateSessionFromLink({
+              supplierId: supplierId ?? "",
+              supplierName:
+                selectedSupplier?.name ||
+                (createKhResolution?.ok
+                  ? createKhResolution.supplierName
+                  : null) ||
+                supplierLabel ||
+                "Dostawca",
+              fromDaily: launch?.fromDaily === true,
+              dokId,
+              dokNrPelny,
+              lineCount,
+              previous: postCreate,
+              previewLines: createZdPreview.lines,
+              lineMeta:
+                lines?.map((l) => ({
+                  twId: l.tw_Id,
+                  celAtLink: l.celZapasuTracked,
+                  deltaAtLink: l.salesTrackDelta,
+                })) ?? null,
+            })
           );
-          window.setTimeout(() => setLinkOkMessage(null), 5000);
         }}
         onError={reportError}
       />
 
-      {supplierId &&
-      createKhResolution?.ok &&
-      createZdPreview.lineCount > 0 ? (
+      {supplierId && createKhResolution?.ok && (createZdOpen || createZdPreview.lineCount > 0) ? (
         <ZdEstimateCreateZdDialog
           open={createZdOpen}
           supplierId={supplierId}
@@ -5478,7 +5648,7 @@ export function ZdEstimateWorkbench({
           usedAlias={createKhResolution.usedAlias}
           scopeLabel={scopeLabel}
           dateKey={bootstrap.todayKey}
-          preview={createZdPreview}
+          preview={createPreviewFrozen ?? createZdPreview}
           scopeMode={scopeMode}
           grtId={selectedGroup?.grt_Id ?? null}
           cechaId={selectedCecha?.ctw_Id ?? null}
@@ -5511,8 +5681,21 @@ export function ZdEstimateWorkbench({
           onClose={() => {
             setCreateZdOpen(false);
             setCreatingZd(false);
+            createPreviewCaptureRef.current = null;
+            setCreatePreviewFrozen(null);
+            createLineMetaCaptureRef.current = null;
           }}
-          onSubmitStart={() => setCreatingZd(true)}
+          onSubmitStart={() => {
+            createPreviewCaptureRef.current = createZdPreview;
+            setCreatePreviewFrozen(createZdPreview);
+            createLineMetaCaptureRef.current =
+              lines?.map((l) => ({
+                twId: l.tw_Id,
+                celAtLink: l.celZapasuTracked,
+                deltaAtLink: l.salesTrackDelta,
+              })) ?? [];
+            setCreatingZd(true);
+          }}
           onCreated={({
             dokId,
             dokNrPelny,
@@ -5523,36 +5706,44 @@ export function ZdEstimateWorkbench({
             markedIndividualOrderIds,
             markIndividualsMessage,
           }) => {
+            const previewSnap =
+              createPreviewCaptureRef.current ?? createZdPreview;
             setCreatingZd(false);
             setCreateZdOpen(false);
+            setLinkZdOpen(false);
             setFeedback(null);
             setErrorMessage(null);
             setCreateDoneDokId(dokId);
             setCreateDoneDokNr(dokNrPelny);
+            setCreateUnconfirmedAttempt(false);
             setCreateUnlockedAfterDone(false);
             setCreateUndoVisible(true);
+            setPostCreate(
+              buildZdPostCreateSessionFromCreate({
+                supplierId,
+                supplierName:
+                  createKhResolution.supplierName ||
+                  selectedSupplier?.name ||
+                  "Dostawca",
+                fromDaily: launch?.fromDaily === true,
+                dokId,
+                dokNrPelny,
+                lineCount,
+                snapshotOk,
+                snapshotMessage,
+                markIndividualsMessage,
+                previewLines: previewSnap.lines,
+                lineMeta: createLineMetaCaptureRef.current,
+              })
+            );
+            createPreviewCaptureRef.current = null;
+            setCreatePreviewFrozen(null);
+            createLineMetaCaptureRef.current = null;
             if (markedIndividualOrderIds?.length) {
               const marked = new Set(markedIndividualOrderIds);
               setPendingIndividuals((prev) =>
                 prev.filter((o) => !marked.has(o.id))
               );
-            }
-            const snapNote = snapshotOk
-              ? "zapisano historię"
-              : snapshotMessage ?? "historia nie zapisana — użyj „Powiąż ZD”";
-            const markNote = markIndividualsMessage
-              ? ` · ${markIndividualsMessage}`
-              : markedIndividualOrderIds?.length
-                ? ` · odznaczono ${markedIndividualOrderIds.length} próśb (Główne)`
-                : "";
-            setCreateZdOkMessage(
-              `Utworzono ${dokNrPelny} · ${lineCount} poz. · ${snapNote}${markNote}`
-            );
-            window.setTimeout(() => setCreateZdOkMessage(null), 10000);
-
-            if (!snapshotOk) {
-              setLinkNrPrefill(dokNrPelny);
-              setLinkZdOpen(true);
             }
 
             if (linesBase?.length) {
@@ -5596,19 +5787,46 @@ export function ZdEstimateWorkbench({
             reportError(message);
             const timeoutKh = opts?.timeoutKhId;
             if (timeoutKh != null && timeoutKh > 0) {
+              setCreateZdOpen(false);
+              setLinkZdOpen(false);
+              setLinkNrPrefill(null);
+              const previewSnap =
+                createPreviewCaptureRef.current ?? createZdPreview;
+              const lineMetaSnap = createLineMetaCaptureRef.current;
+              setCreateDoneDokId(null);
+              setCreateDoneDokNr(ZD_ESTIMATE_UI.postCreateTimeoutLockLabel);
+              setCreateUnconfirmedAttempt(true);
+              setCreateUnlockedAfterDone(false);
+              setCreateUndoVisible(true);
+              setPostCreate(
+                buildZdPostCreateSessionFromTimeout({
+                  supplierId: supplierId ?? "",
+                  supplierName:
+                    createKhResolution.supplierName ||
+                    selectedSupplier?.name ||
+                    "Dostawca",
+                  fromDaily: launch?.fromDaily === true,
+                  previewLines: previewSnap.lines,
+                  lineMeta: lineMetaSnap,
+                })
+              );
+              createPreviewCaptureRef.current = null;
+              setCreatePreviewFrozen(null);
+              createLineMetaCaptureRef.current = null;
               void (async () => {
                 const found = await actionFindRecentZdAfterCreateAttempt({
                   supplierKhId: timeoutKh,
                 });
-                if (!found.ok || found.documents.length === 0) return;
+                if (!found.ok) return;
                 const first = found.documents[0];
-                if (!first) return;
-                setLinkNrPrefill(first.dokNrPelny);
-                setLinkZdOpen(true);
-                setLinkOkMessage(
-                  `Timeout create — znaleziono świeże ZD (${first.dokNrPelny}). Sprawdź i zapisz snapshot, jeśli to ten dokument.`
-                );
-                window.setTimeout(() => setLinkOkMessage(null), 8000);
+                setPostCreate((prev) => {
+                  if (!prev || prev.kind !== "timeout_recovery") return prev;
+                  return patchZdPostCreateTimeoutCandidates(prev, {
+                    linkNrPrefill: first?.dokNrPelny ?? null,
+                    recentCandidateCount: found.documents.length,
+                  });
+                });
+                // Prefill tylko gdy recovery panel nadal aktywny — bez stale po dismiss.
               })();
             }
           }}

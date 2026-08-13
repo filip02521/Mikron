@@ -32,6 +32,10 @@ function baseLine(
     celZapasuTracked: 10,
     salesTrackDelta: 0,
     salesTrackReasons: [],
+    salesTrackConfidence: 0,
+    salesTrackQtyReview: false,
+    salesTrackHeldExtraQty: 0,
+    salesTrackAllowedExtraQty: 0,
     otwarteZkBezRez: 0,
     otwarteZkZarezerwowane: 0,
     otwarteZd: 0,
@@ -384,6 +388,37 @@ describe("canCreateZdFromEstimateState", () => {
         mutating: false,
         creating: false,
         createDoneDokId: null,
+        createUnconfirmedAttempt: true,
+      }).ok
+    ).toBe(false);
+
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: false,
+        mutating: false,
+        creating: false,
+        createDoneDokId: null,
+        createUnconfirmedAttempt: true,
+        createUnlockedAfterDone: true,
+      }).ok
+    ).toBe(true);
+
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: false,
+        mutating: false,
+        creating: false,
+        createDoneDokId: null,
         packagingPairConflictCount: 2,
       }).ok
     ).toBe(false);
@@ -437,6 +472,25 @@ describe("applyCreatedZdUnitsToOtwarteZd", () => {
     const lines = [baseLine({ tw_Id: 1, otwarteZd: 2 })];
     const next = applyCreatedZdUnitsToOtwarteZd(lines, new Map([[1, 5]]));
     expect(next[0]?.otwarteZd).toBe(7);
+  });
+
+  it("czyści salesTrackQtyReview na bumped", () => {
+    const lines = [
+      baseLine({
+        tw_Id: 1,
+        otwarteZd: 0,
+        celZapasuTracked: 10,
+        doZamowieniaReczne: 10,
+        salesTrackQtyReview: true,
+        salesTrackHeldExtraQty: 1,
+        salesTrackAllowedExtraQty: 0,
+        salesTrackReasons: ["thin_cover", "boost_held"],
+      }),
+    ];
+    const next = applyCreatedZdUnitsToOtwarteZd(lines, new Map([[1, 10]]));
+    expect(next[0]?.salesTrackQtyReview).toBe(false);
+    expect(next[0]?.salesTrackHeldExtraQty).toBe(0);
+    expect(next[0]?.salesTrackReasons).toEqual(["thin_cover"]);
   });
 });
 
