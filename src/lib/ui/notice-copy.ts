@@ -6,6 +6,8 @@
 import type { FormMessage, NoticeToastPayload } from "@/lib/ui/notice-content";
 import { undoWindowLongLabel } from "@/lib/orders/daily-panel-undo";
 import { TEETH_LIST_INCOMPLETE_MESSAGE } from "@/lib/teeth/teeth-validation";
+import { userFacingErrorFromUnknown } from "@/lib/ui/user-facing-error";
+import { redirectToLoginIfSessionError } from "@/lib/auth/session-login-redirect";
 
 export type { FormMessage };
 
@@ -25,12 +27,36 @@ export function toastWarning(title: string, text?: string): ToastNotice {
   return { title, text: text ?? "", tone: "warning" };
 }
 
-/** Błąd z serwera lub wyjątku — szczegóły w treści. */
+/**
+ * Błąd z serwera lub wyjątku — bez stacków i surowych dumpów.
+ * Uprawnienia → tytuł „Brak uprawnień” + krótki opis.
+ * Brak sesji → natychmiastowe przekierowanie na /login.
+ */
 export function toastFromError(
   detail: string | undefined,
   fallback = "Spróbuj ponownie za chwilę.",
 ): ToastNotice {
-  return toastError("Operacja nie powiodła się", detail?.trim() || fallback);
+  redirectToLoginIfSessionError(detail);
+  const classified = userFacingErrorFromUnknown(detail, fallback);
+  return toastError(classified.title, classified.description);
+}
+
+/** Catch (e) → toast; preferowane zamiast toastFromError(e.message). */
+export function toastFromUnknown(
+  error: unknown,
+  fallback = "Spróbuj ponownie za chwilę.",
+): ToastNotice {
+  redirectToLoginIfSessionError(error);
+  const classified = userFacingErrorFromUnknown(error, fallback);
+  return toastError(classified.title, classified.description);
+}
+
+/** Action `{ error: string }` → toast (też humanizuje uprawnienia / stack). */
+export function toastFromActionError(
+  error: string | undefined | null,
+  fallback = "Spróbuj ponownie za chwilę.",
+): ToastNotice {
+  return toastFromError(error ?? undefined, fallback);
 }
 
 export function formError(title: string, text: string): FormMessage {
@@ -81,7 +107,7 @@ export function adminPanelNotice(
 }
 
 export function catalogAdminError(error: unknown, fallback: string): ToastNotice {
-  return toastFromError(error instanceof Error ? error.message : undefined, fallback);
+  return toastFromUnknown(error, fallback);
 }
 
 export function catalogAdminNotice(

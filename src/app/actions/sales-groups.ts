@@ -1,5 +1,6 @@
 "use server";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
 
 import { revalidatePath } from "next/cache";
@@ -33,7 +34,7 @@ export async function actionUpsertSalesGroup(form: {
     try {
       await assertManagerCanUseGroupId(actor, form.id);
     } catch (e) {
-      return { error: e instanceof Error ? e.message : "Brak uprawnień." };
+      return { error: userFacingErrorText(e, "Brak uprawnień.") };
     }
   }
   if (name.length > 80) return { error: "Nazwa grupy jest zbyt długa (max 80 znaków)." };

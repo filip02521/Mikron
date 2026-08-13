@@ -104,6 +104,12 @@ export async function hasSalesRequestNoteColumn(
   return columnExists(supabase, "sales_request_note");
 }
 
+export async function hasZkWatchIncludeNoteInProsbaColumn(
+  supabase: SupabaseClient
+): Promise<boolean> {
+  return columnExistsOnTable(supabase, "sales_zk_watches", "include_note_in_prosba");
+}
+
 export async function hasProcurementCancelNoteColumn(
   supabase: SupabaseClient
 ): Promise<boolean> {
@@ -241,6 +247,11 @@ export async function runSchemaChecks(
   if (!(await hasSalesRequestNoteColumn(supabase))) {
     issues.push(
       "Brak kolumny individual_orders.sales_request_note — uruchom supabase/migrations/058_individual_orders_sales_request_note.sql"
+    );
+  }
+  if (!(await hasZkWatchIncludeNoteInProsbaColumn(supabase))) {
+    issues.push(
+      "Brak kolumny sales_zk_watches.include_note_in_prosba — uruchom supabase/migrations/137_zk_watch_include_note_in_prosba.sql"
     );
   }
   if (!(await hasProcurementCancelNoteColumn(supabase))) {

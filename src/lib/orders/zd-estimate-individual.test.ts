@@ -10,6 +10,7 @@ import {
   mapIndividualOrderToPendingDto,
   matchZdEstimateTwFromOrder,
   reclassifyExcludedTwExtrasToServices,
+  reclassifyMissingTwExtrasToServices,
   stripZdCreateUwagiServiceBlock,
   type ZdEstimatePendingIndividualOrder,
 } from "./zd-estimate-individual";
@@ -140,21 +141,195 @@ describe("buildIndividualEstimateExtras", () => {
     expect(individualExtraPiecesMap(bundle).get(10)).toBe(10);
   });
 
-  it("BOM parent → service", () => {
+  it("BOM assembled parent → explode prośby na składniki", () => {
     const bundle = buildIndividualEstimateExtras({
       orders: [pending({ id: "p", subiektTwId: 99, qty: 2 })],
-      lines: [{ tw_Id: 99, tw_Symbol: "PROMO" }],
+      lines: [
+        { tw_Id: 99, tw_Symbol: "PROMO" },
+        { tw_Id: 1, tw_Symbol: "A" },
+        { tw_Id: 2, tw_Symbol: "B" },
+      ],
       boms: [
         {
           parentTwId: 99,
           stockAsCover: true,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: [
+            { componentTwId: 1, qtyPerParent: 2 },
+            { componentTwId: 2, qtyPerParent: 1 },
+          ],
+        },
+      ],
+    });
+    expect(bundle.serviceLines).toHaveLength(0);
+    expect(bundle.byTwId.get(1)?.extraPieces).toBe(4);
+    expect(bundle.byTwId.get(2)?.extraPieces).toBe(2);
+    expect(bundle.byTwId.has(99)).toBe(false);
+  });
+
+  it("płyn wspólny w 2 zestawach — prośby sumują qty×sztuki", () => {
+    // Prośba 3× zestaw A (płyn×1) + prośba 2× zestaw B (płyn×2) → płyn 3+4 = 7
+    const bundle = buildIndividualEstimateExtras({
+      orders: [
+        pending({ id: "a", subiektTwId: 10, qty: 3 }),
+        pending({ id: "b", subiektTwId: 11, qty: 2 }),
+      ],
+      lines: [
+        { tw_Id: 10, tw_Symbol: "ZEST-A" },
+        { tw_Id: 11, tw_Symbol: "ZEST-B" },
+        { tw_Id: 1, tw_Symbol: "PLYN" },
+      ],
+      boms: [
+        {
+          parentTwId: 10,
+          stockAsCover: true,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: [{ componentTwId: 1, qtyPerParent: 1 }],
+        },
+        {
+          parentTwId: 11,
+          stockAsCover: true,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: [{ componentTwId: 1, qtyPerParent: 2 }],
+        },
+      ],
+    });
+    expect(bundle.serviceLines).toHaveLength(0);
+    expect(bundle.byTwId.has(10)).toBe(false);
+    expect(bundle.byTwId.has(11)).toBe(false);
+    expect(bundle.byTwId.get(1)?.extraPieces).toBe(7);
+    expect(bundle.byTwId.get(1)?.requests).toHaveLength(2);
+  });
+
+  it("nested BOM — prośba na zewnętrzny zestaw schodzi na liście ×qty", () => {
+    // P×2 → K×1 → A×2  ⇒ A = 2*1*2 = 4
+    const bundle = buildIndividualEstimateExtras({
+      orders: [pending({ id: "p", subiektTwId: 3, qty: 2 })],
+      lines: [
+        { tw_Id: 1, tw_Symbol: "A" },
+        { tw_Id: 2, tw_Symbol: "K" },
+        { tw_Id: 3, tw_Symbol: "P" },
+      ],
+      boms: [
+        {
+          parentTwId: 2,
+          stockAsCover: false,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: [{ componentTwId: 1, qtyPerParent: 2 }],
+        },
+        {
+          parentTwId: 3,
+          stockAsCover: false,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: [{ componentTwId: 2, qtyPerParent: 1 }],
+        },
+      ],
+    });
+    expect(bundle.serviceLines).toHaveLength(0);
+    expect(bundle.byTwId.has(3)).toBe(false);
+    expect(bundle.byTwId.has(2)).toBe(false);
+    expect(bundle.byTwId.get(1)?.extraPieces).toBe(4);
+  });
+
+  it("purchased kit → rezerwa na K", () => {
+    const bundle = buildIndividualEstimateExtras({
+      orders: [pending({ id: "p", subiektTwId: 99, qty: 3 })],
+      lines: [
+        { tw_Id: 99, tw_Symbol: "KIT" },
+        { tw_Id: 1, tw_Symbol: "A" },
+      ],
+      boms: [
+        {
+          parentTwId: 99,
+          stockAsCover: false,
+          demandAllocation: "separate",
+          purchaseTarget: "as_sold",
+          components: [{ componentTwId: 1, qtyPerParent: 1 }],
+        },
+      ],
+    });
+    expect(bundle.byTwId.get(99)?.extraPieces).toBe(3);
+    expect(bundle.serviceLines).toHaveLength(0);
+  });
+
+  it("kit_only component → service bom_component_not_purchased", () => {
+    const bundle = buildIndividualEstimateExtras({
+      orders: [pending({ id: "p", subiektTwId: 1, qty: 2 })],
+      lines: [
+        { tw_Id: 99, tw_Symbol: "KIT" },
+        { tw_Id: 1, tw_Symbol: "A" },
+      ],
+      boms: [
+        {
+          parentTwId: 99,
+          stockAsCover: false,
+          demandAllocation: "separate",
+          purchaseTarget: "kit_only",
           components: [{ componentTwId: 1, qtyPerParent: 1 }],
         },
       ],
     });
     expect(bundle.byTwId.size).toBe(0);
-    expect(bundle.serviceLines).toHaveLength(1);
-    expect(bundle.serviceLines[0]?.reason).toBe("bom_parent");
+    expect(bundle.serviceLines[0]?.reason).toBe("bom_component_not_purchased");
+  });
+
+  it("składnik w kit_only i explode → explode wygrywa (rezerwa katalogowa)", () => {
+    const bundle = buildIndividualEstimateExtras({
+      orders: [pending({ id: "p", subiektTwId: 1, qty: 2 })],
+      lines: [
+        { tw_Id: 50, tw_Symbol: "PROMO" },
+        { tw_Id: 99, tw_Symbol: "KIT" },
+        { tw_Id: 1, tw_Symbol: "A" },
+      ],
+      boms: [
+        {
+          parentTwId: 99,
+          stockAsCover: false,
+          demandAllocation: "separate",
+          purchaseTarget: "kit_only",
+          components: [{ componentTwId: 1, qtyPerParent: 1 }],
+        },
+        {
+          parentTwId: 50,
+          stockAsCover: true,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: [{ componentTwId: 1, qtyPerParent: 1 }],
+        },
+      ],
+    });
+    expect(bundle.serviceLines).toHaveLength(0);
+    expect(bundle.byTwId.get(1)?.extraPieces).toBe(2);
+  });
+
+  it("explode na piece → retarget na pack pary", () => {
+    const bundle = buildIndividualEstimateExtras({
+      orders: [pending({ id: "p", subiektTwId: 99, qty: 1 })],
+      lines: [
+        { tw_Id: 99, tw_Symbol: "PROMO" },
+        { tw_Id: 10, tw_Symbol: "PACK" },
+        { tw_Id: 20, tw_Symbol: "PIECE" },
+      ],
+      pairs: [
+        { packTwId: 10, pieceTwId: 20, unitsPerPack: 10 },
+      ],
+      boms: [
+        {
+          parentTwId: 99,
+          stockAsCover: true,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: [{ componentTwId: 20, qtyPerParent: 2 }],
+        },
+      ],
+    });
+    expect(bundle.byTwId.has(20)).toBe(false);
+    expect(bundle.byTwId.get(10)?.extraPieces).toBe(2);
   });
 
   it("zęby → service", () => {
@@ -395,6 +570,86 @@ describe("collectIndividualOrderIdsForZdCreate", () => {
       }).sort()
     ).toEqual(["o1", "o3"]);
   });
+
+  it("nie markuje prośby explode gdy tylko część składowych na ZD", () => {
+    const req = {
+      orderId: "explode-1",
+      salesPersonId: "s",
+      salesPersonName: "A",
+      qty: 2,
+      products: "promo",
+      symbol: null,
+      mikranCode: null,
+      requestNote: null,
+    };
+    const byTwId = new Map([
+      [1, { extraPieces: 4, requests: [req] }],
+      [2, { extraPieces: 2, requests: [req] }],
+    ]);
+    expect(
+      collectIndividualOrderIdsForZdCreate({
+        byTwId,
+        createdTwIds: [1],
+      })
+    ).toEqual([]);
+    expect(
+      collectIndividualOrderIdsForZdCreate({
+        byTwId,
+        createdTwIds: [1, 2],
+      })
+    ).toEqual(["explode-1"]);
+  });
+
+  it("bom_explode_incomplete przy pustych składnikach", () => {
+    const bundle = buildIndividualEstimateExtras({
+      orders: [pending({ id: "p", subiektTwId: 99, qty: 1 })],
+      lines: [{ tw_Id: 99, tw_Symbol: "PROMO" }],
+      boms: [
+        {
+          parentTwId: 99,
+          stockAsCover: true,
+          demandAllocation: "explode",
+          purchaseTarget: "components",
+          components: [],
+        },
+      ],
+    });
+    expect(bundle.byTwId.size).toBe(0);
+    expect(bundle.serviceLines[0]?.reason).toBe("bom_explode_incomplete");
+  });
+
+  it("reclassifyMissing: atomowo cała prośba explode → service", () => {
+    const req = {
+      orderId: "o-exp",
+      salesPersonId: "s",
+      salesPersonName: "A",
+      qty: 2,
+      products: "p",
+      symbol: "P",
+      mikranCode: null,
+      requestNote: null,
+    };
+    const bundle = {
+      byTwId: new Map([
+        [1, { extraPieces: 4, requests: [req] }],
+        [2, { extraPieces: 2, requests: [req] }],
+      ]),
+      serviceLines: [] as import("./zd-estimate-individual").ZdEstimateIndividualServiceLine[],
+      twIdsToFetch: [2],
+      meta: {
+        orderCount: 1,
+        extraPiecesSum: 6,
+        serviceCount: 0,
+        skippedNoQty: 0,
+      },
+    };
+    const next = reclassifyMissingTwExtrasToServices(bundle, [1]);
+    expect(next.byTwId.size).toBe(0);
+    expect(next.serviceLines.length).toBe(2);
+    expect(next.serviceLines.every((s) => s.reason === "fetch_failed")).toBe(
+      true
+    );
+  });
 });
 
 describe("uwagi usług", () => {
@@ -422,7 +677,7 @@ describe("uwagi usług", () => {
     expect(block.omittedCount).toBeGreaterThan(0);
 
     const composed = composeZdCreateUwagiWithServices({
-      baseUwagi: "OnTime szacunek · Test",
+      baseUwagi: "OnTime kreator · Test",
       serviceLines: lines,
       maxLen: 100,
     });

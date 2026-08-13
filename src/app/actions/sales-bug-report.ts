@@ -1,5 +1,6 @@
 "use server";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
 
 import { revalidatePath } from "next/cache";
@@ -62,7 +63,7 @@ export async function actionSubmitSalesBugReport(input: {
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Nie udało się wysłać zgłoszenia.",
+      error: userFacingErrorText(e, "Nie udało się wysłać zgłoszenia."),
     };
   }
 }
@@ -77,7 +78,7 @@ export async function actionUpdateSalesBugReport(input: {
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Brak uprawnień.",
+      error: userFacingErrorText(e, "Brak uprawnień."),
     };
   }
 
@@ -100,7 +101,7 @@ export async function actionUpdateSalesBugReport(input: {
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Nie udało się zapisać.",
+      error: userFacingErrorText(e, "Nie udało się zapisać."),
     };
   }
 }

@@ -373,7 +373,11 @@ export function SummaryWorkspace({
         />
 
         <DailyPanelBoardQuestionsBanner
-          className={cn(panelChromeInsetClass, "border-b border-slate-100 px-3 py-2 sm:px-4")}
+          className={cn(
+            "rounded-none border-x-0 border-t-0 border-b border-amber-200/65 bg-amber-50/75",
+            panelChromeInsetClass,
+            "px-3 py-2.5 sm:px-4"
+          )}
         />
 
         <DailyPanelToolbar

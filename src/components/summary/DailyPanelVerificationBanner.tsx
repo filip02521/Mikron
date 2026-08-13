@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/Button";
 import { IconClipboardPen } from "@/components/icons/StrokeIcons";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
-import { surfaceCardClass } from "@/lib/ui/ontime-theme";
 
 export function DailyPanelVerificationBanner({
   count,
@@ -24,8 +23,7 @@ export function DailyPanelVerificationBanner({
   return (
     <div
       className={cn(
-        surfaceCardClass,
-        "flex flex-wrap items-center justify-between gap-3 border-amber-200/85 bg-amber-50/40 px-3 py-2.5 sm:px-4"
+        "flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200/70 bg-amber-50/80 px-3 py-2.5 sm:px-4"
       )}
       role="status"
     >

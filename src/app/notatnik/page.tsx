@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { fetchSalesNotesPageData } from "@/lib/data/sales-notepad";
@@ -74,7 +75,7 @@ export default async function NotatnikPage({
     try {
       notesData = await fetchSalesNotesPageData(access.salesPersonId);
     } catch (e) {
-      loadError = e instanceof Error ? e.message : "Nie udało się załadować notatnika.";
+      loadError = userFacingErrorText(e, "Nie udało się załadować notatnika.");
     }
   }
 

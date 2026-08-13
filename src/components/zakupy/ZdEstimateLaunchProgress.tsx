@@ -6,14 +6,24 @@ import { cn } from "@/lib/cn";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import { launchProgressStepFromElapsed } from "@/lib/orders/zd-estimate-launch-progress";
 import { ZD_ESTIMATE_LAUNCH_FOCUS_ID } from "@/lib/orders/zd-estimate-launch-scroll";
-import { zdEstimateLaunchFetchHint } from "@/lib/orders/zd-estimate-ui-copy";
+import {
+  zdEstimateLaunchFetchHint,
+  zdEstimateLaunchProgressTitle,
+  zdEstimateLaunchScopePendingHint,
+  zdEstimateLaunchScopeResolvedHint,
+} from "@/lib/orders/zd-estimate-ui-copy";
 
-function buildLaunchProgressSteps(isLive: boolean) {
+function buildLaunchProgressSteps(
+  isLive: boolean,
+  scopeAlreadyResolved: boolean
+) {
   return [
     {
       id: "scope",
       title: "Zakres Subiekta",
-      activeHint: "Potwierdzam grupę lub cechę dostawcy…",
+      activeHint: scopeAlreadyResolved
+        ? zdEstimateLaunchScopeResolvedHint()
+        : zdEstimateLaunchScopePendingHint(),
       doneHint: "Zakres ustawiony",
     },
     {
@@ -38,7 +48,10 @@ function buildLaunchProgressSteps(isLive: boolean) {
 }
 
 /** @deprecated użyj buildLaunchProgressSteps — zostawione dla importów testowych. */
-export const ZD_ESTIMATE_LAUNCH_PROGRESS_STEPS = buildLaunchProgressSteps(false);
+export const ZD_ESTIMATE_LAUNCH_PROGRESS_STEPS = buildLaunchProgressSteps(
+  false,
+  false
+);
 
 export function ZdEstimateLaunchProgressPanel({
   supplierName,
@@ -58,10 +71,11 @@ export function ZdEstimateLaunchProgressPanel({
   ordersIsLive?: boolean;
 }) {
   const steps = useMemo(
-    () => buildLaunchProgressSteps(ordersIsLive),
-    [ordersIsLive]
+    () => buildLaunchProgressSteps(ordersIsLive, scopeAlreadyResolved),
+    [ordersIsLive, scopeAlreadyResolved]
   );
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const manualWithScope = Boolean(scopeAlreadyResolved && scopeLabel);
 
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), 250);
@@ -78,6 +92,7 @@ export function ZdEstimateLaunchProgressPanel({
 
   const clamped = Math.max(0, Math.min(activeStepIndex, steps.length - 1));
   const elapsedSec = Math.floor(elapsedMs / 1000);
+  const title = zdEstimateLaunchProgressTitle({ manualWithScope });
 
   return (
     <section
@@ -86,7 +101,7 @@ export function ZdEstimateLaunchProgressPanel({
       role="status"
       aria-live="polite"
       aria-busy={!forceComplete}
-      aria-label="Przygotowywanie zamówienia ZD"
+      aria-label={title}
       className="scroll-mt-6 overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[var(--shadow-card-elevated)] outline-none"
     >
       <div className="border-b border-slate-100 bg-gradient-to-b from-slate-50/90 to-white px-5 py-5 sm:px-6 sm:py-6">
@@ -94,7 +109,7 @@ export function ZdEstimateLaunchProgressPanel({
           <Spinner size="md" className="mt-0.5 shrink-0" />
           <div className="min-w-0 flex-1">
             <p className="text-base font-semibold tracking-tight text-slate-900 sm:text-lg">
-              Przygotowuję zamówienie ZD
+              {title}
             </p>
             <p className="mt-1 text-sm leading-relaxed text-slate-600">
               {forceComplete

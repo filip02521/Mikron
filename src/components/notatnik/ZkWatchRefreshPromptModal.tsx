@@ -1,5 +1,6 @@
 "use client";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import Link from "next/link";
 import { useMemo, useState, type MouseEvent } from "react";
 import { actionPatchZkWatchProsbaScopeLines } from "@/app/actions/sales-notepad";
@@ -17,13 +18,14 @@ import {
   formatZkProsbaScopeLineStockDetail,
   type ZkProsbaScopeLineInput,
 } from "@/lib/orders/prosba-stock-check";
-import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
+import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 import { shouldRedirectZkRefreshToOpenProsba } from "@/lib/sales/zk-watch-refresh-diff";
 import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
 import {
   prosbaHrefFromZkWatch,
   stashZkProsbaPrefill,
 } from "@/lib/orders/zk-watch-prosba-prefill";
+import { zkWatchTeethDraftsReady } from "@/lib/sales/zk-watch-teeth-draft";
 import { buildMojeClientLink } from "@/lib/sales/notepad-follow-up";
 import { formatZkWatchDisplayNumber } from "@/lib/sales/notepad-format";
 import { formatZkProsbaCoverageSummary } from "@/lib/sales/zk-watch-coverage-summary";
@@ -73,6 +75,7 @@ export function ZkWatchRefreshPromptModal({
   onConfirm,
   onLater,
   onScopePatched,
+  onRequireTeethDrafts,
 }: {
   watch: SalesZkWatch;
   diff: ZkWatchRefreshDiff;
@@ -84,8 +87,21 @@ export function ZkWatchRefreshPromptModal({
   onConfirm: () => void;
   onLater: () => void;
   onScopePatched?: (watch: SalesZkWatch) => void;
+  /** Gdy brak list zębów — zamknij prompt i otwórz modal szkiców. */
+  onRequireTeethDrafts?: (watch: SalesZkWatch) => void;
 }) {
   const teethExemptTwIds = useTeethExemptTwIds();
+  const teethProductInfo = useTeethProductInfo();
+  const teethRegistry = useMemo(
+    () => ({
+      twIds: teethProductInfo.twIds,
+      manufacturerByTwId: teethProductInfo.manufacturerByTwId,
+      productLineByTwId: teethProductInfo.productLineByTwId,
+      kindByTwId: teethProductInfo.kindByTwId,
+      catalogAvailable: teethProductInfo.catalogAvailable,
+    }),
+    [teethProductInfo]
+  );
   const lineViews = useMemo(() => buildZkWatchLineViews(watch), [watch]);
   const displayNumber = formatZkWatchDisplayNumber(watch.zk_number);
   const addedCount = uncoveredAddedKeys.length;
@@ -198,7 +214,7 @@ export function ZkWatchRefreshPromptModal({
       onScopePatched?.(updated);
       onConfirm();
     } catch (e) {
-      setPrefillError(e instanceof Error ? e.message : "Nie udało się zapisać zakresu pozycji.");
+      setPrefillError(userFacingErrorText(e, "Nie udało się zapisać zakresu pozycji."));
     } finally {
       setPatching(false);
     }
@@ -220,17 +236,34 @@ export function ZkWatchRefreshPromptModal({
           uncoveredAddedKeys
         );
         onScopePatched?.(updated);
+        if (!zkWatchTeethDraftsReady(updated, teethRegistry, {
+          lineKeys: supplementOptions?.lineKeys,
+          requestKind: "zamowienie",
+        })) {
+          if (onRequireTeethDrafts) {
+            onRequireTeethDrafts(updated);
+            onConfirm();
+            return;
+          }
+          setPrefillError(
+            "Najpierw uzupełnij listę zębów na karcie ZK, potem dodaj pozycje do prośby."
+          );
+          return;
+        }
         const ok = stashZkProsbaPrefill(updated, {
           ...supplementOptions,
           stockByTwId: rawStockByTwId,
+          teethRegistry,
         });
         if (!ok) {
-          setPrefillError("Nie udało się przygotować pozycji — odśwież ZK z Subiekta.");
+          setPrefillError(
+            "Nie udało się przygotować pozycji — uzupełnij listę zębów lub odśwież ZK z Subiekta."
+          );
           return;
         }
         onConfirm();
       } catch (e) {
-        setPrefillError(e instanceof Error ? e.message : "Nie udało się zapisać zakresu pozycji.");
+        setPrefillError(userFacingErrorText(e, "Nie udało się zapisać zakresu pozycji."));
       } finally {
         setPatching(false);
       }

@@ -1,5 +1,5 @@
 "use client";
-import { WAREHOUSE_TOAST, receiveQueueDeliverySavedToast, receiveQueueSingleLineSavedToast, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
+import { WAREHOUSE_TOAST, receiveQueueDeliverySavedToast, receiveQueueSingleLineSavedToast, toastFromError, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 import { isUndoExpired, undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
 
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -186,9 +186,7 @@ export function ReceiveQueueTable({
         onToast(WAREHOUSE_TOAST.undoReceiveSuccess);
       } catch (e) {
         setUndoError(
-          toastFromError(
-            e instanceof Error ? e.message : undefined,
-            WAREHOUSE_TOAST.undoReceiveFailed.text
+          toastFromUnknown(e, WAREHOUSE_TOAST.undoReceiveFailed.text
           )
         );
       } finally {
@@ -482,10 +480,7 @@ export function ReceiveQueueTable({
         });
         router.refresh();
       } catch (e) {
-        onToast({
-          text: e instanceof Error ? e.message : "Nie udało się zapisać",
-          tone: "error",
-        });
+        onToast(toastFromUnknown(e, "Nie udało się zapisać"));
       } finally {
         onPendingChange(null);
       }
@@ -515,9 +510,7 @@ export function ReceiveQueueTable({
         router.refresh();
       } catch (e) {
         onToast(
-          toastFromError(
-            e instanceof Error ? e.message : undefined,
-            WAREHOUSE_TOAST.cancelDispositionFailed.text
+          toastFromUnknown(e, WAREHOUSE_TOAST.cancelDispositionFailed.text
           )
         );
       } finally {
@@ -612,9 +605,7 @@ export function ReceiveQueueTable({
         router.refresh();
       } catch (e) {
         onToast(
-          toastFromError(
-            e instanceof Error ? e.message : undefined,
-            WAREHOUSE_TOAST.deliverySaveFailed.text
+          toastFromUnknown(e, WAREHOUSE_TOAST.deliverySaveFailed.text
           )
         );
       } finally {
@@ -652,9 +643,7 @@ export function ReceiveQueueTable({
         router.refresh();
       } catch (e) {
         onToast(
-          toastFromError(
-            e instanceof Error ? e.message : undefined,
-            WAREHOUSE_TOAST.deliverySaveFailed.text
+          toastFromUnknown(e, WAREHOUSE_TOAST.deliverySaveFailed.text
           )
         );
       } finally {

@@ -79,7 +79,7 @@ import { DelegateModeBackground } from "@/components/moje/DelegatePreviewContext
 import { ZkWatchSection } from "./ZkWatchSection";
 import { mergeSalesPreviewSearchParams } from "@/lib/nav/sales-preview-href";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
-import { NOTEPAD_UNDO_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
+import { NOTEPAD_UNDO_TOAST, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 import { SalesPageAlerts } from "@/components/sales/SalesPageAlerts";
 import { DelegateSwitcher } from "@/components/moje/DelegateSwitcher";
 import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
@@ -250,6 +250,10 @@ export function NotatnikClient({
   const appliedArchiveGuardKeyRef = useRef("");
   const [prosbaScopeWatchId, setProsbaScopeWatchId] = useState<string | null>(null);
   const [prosbaScopeOpenNonce, setProsbaScopeOpenNonce] = useState(0);
+  const [teethDraftRequestWatchId, setTeethDraftRequestWatchId] = useState<string | null>(
+    null
+  );
+  const [teethDraftOpenNonce, setTeethDraftOpenNonce] = useState(0);
   const [appliedDataSyncKey, setAppliedDataSyncKey] = useState("");
   const [warehouseSnapshotReady, setWarehouseSnapshotReady] = useState(false);
   const [appliedWarehouseUnseenKey, setAppliedWarehouseUnseenKey] = useState("");
@@ -388,7 +392,7 @@ export function NotatnikClient({
     } catch (e) {
       if (!isUndoExpired(snapshot.expiresAt)) setUndo(snapshot);
       setUndoFeedback(
-        toastFromError(e instanceof Error ? e.message : undefined, NOTEPAD_UNDO_TOAST.failed.text)
+        toastFromUnknown(e, NOTEPAD_UNDO_TOAST.failed.text)
       );
     }
   }, [undo, navigateToTab, refresh, effectiveDelegatePreview, teamPreview]);
@@ -1051,6 +1055,12 @@ export function NotatnikClient({
     setZkWatches((prev) => uniqueById(sortZkWatches(prev.map((w) => (w.id === watch.id ? watch : w)))));
   }
 
+  function handleRequireTeethDrafts(watch: SalesZkWatch) {
+    handleRefreshScopePatched(watch);
+    setTeethDraftRequestWatchId(watch.id);
+    setTeethDraftOpenNonce((nonce) => nonce + 1);
+  }
+
   function handleNoteCreated(note: SalesNote) {
     setNotes((prev) => uniqueById([note, ...prev]));
     refresh();
@@ -1296,6 +1306,8 @@ export function NotatnikClient({
                 prosbaScopeOpenNonce={prosbaScopeOpenNonce}
                 onProsbaScopeConfigured={handleProsbaScopeConfigured}
                 onProsbaScopeRequested={handleProsbaScopeRequested}
+                teethDraftRequestWatchId={teethDraftRequestWatchId}
+                teethDraftOpenNonce={teethDraftOpenNonce}
                 focusWatchId={focusWatchId}
                 onFocusWatchHandled={handleFocusWatchHandled}
                 onLiveAnnounce={announceLive}
@@ -1367,6 +1379,7 @@ export function NotatnikClient({
           onConfirm={handleRefreshPromptConfirm}
           onLater={handleRefreshPromptLater}
           onScopePatched={handleRefreshScopePatched}
+          onRequireTeethDrafts={handleRequireTeethDrafts}
         />
       ) : null}
     </DelegateModeBackground>

@@ -1,5 +1,5 @@
 "use client";
-import { VACATION_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
+import { VACATION_TOAST, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -400,13 +400,7 @@ export function VacationsAdminClient({
         : `Zapis urlopu (${supplierName})…`,
       {
         onError: (error) => {
-          setToast({
-            text:
-              error instanceof Error
-                ? error.message
-                : "Nie udało się zapisać urlopu.",
-            tone: "error",
-          });
+          setToast(toastFromUnknown(error, "Nie udało się zapisać urlopu."));
         },
       }
     );
@@ -428,10 +422,7 @@ export function VacationsAdminClient({
       {
         onError: (error) => {
           setToast(
-            toastFromError(
-              error instanceof Error ? error.message : undefined,
-              "Nie udało się usunąć urlopu.",
-            ),
+            toastFromUnknown(error, "Nie udało się usunąć urlopu."),
           );
         },
       }

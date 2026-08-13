@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { requireTeethPanel } from "@/lib/auth";
 import { fetchSuppliersForForm } from "@/lib/data/queries";
 import { fetchTeethShortages } from "@/lib/data/teeth-shortages";
@@ -31,7 +32,7 @@ export default async function ZebyBrakiPage() {
     shortages = shortageRows;
     suppliers = supplierRows.map((s) => ({ id: s.id, name: s.name }));
   } catch (e) {
-    loadError = e instanceof Error ? e.message : "Nie udało się załadować listy braków.";
+    loadError = userFacingErrorText(e, "Nie udało się załadować listy braków.");
   }
 
   return (

@@ -27,11 +27,7 @@ import {
 import type { SalesCancelUndoRestore } from "@/lib/orders/sales-cancel-db";
 import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
-import {
-  MY_ORDERS_TOAST,
-  toastFromError,
-  type ToastNotice,
-} from "@/lib/ui/notice-copy";
+import { MY_ORDERS_TOAST, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 
 export type ShipmentUndoReport = {
   orderIds: string[];
@@ -141,7 +137,7 @@ export function MyOrderShipmentUndoProvider({
         if (!isUndoExpired(snapshot.expiresAt)) setUndo(snapshot);
         const fallback = undoFailureFallback(snapshot.kind);
         setFeedback(
-          toastFromError(e instanceof Error ? e.message : undefined, fallback.text)
+          toastFromUnknown(e, fallback.text)
         );
         router.refresh();
       } finally {

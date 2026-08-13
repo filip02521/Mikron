@@ -1,9 +1,12 @@
 import type { ProductLineDraft } from "@/components/orders/request-product-lines";
 import { hasAnyProductHint } from "@/lib/orders/request-completeness";
 import { planSalesRequestSubmit } from "@/lib/orders/sales-request-submit";
+import { prosbaLineHasTeethBlockers } from "@/lib/orders/prosba-line-field-validation";
+import { lineLooksLikeTeethProduct } from "@/lib/orders/teeth-stock-exempt";
+import { teethLineDetailsComplete } from "@/lib/teeth/teeth-validation";
 import type { IndividualRequestKind } from "@/types/database";
 
-/** Pozycja gotowa do wysłania (Subiekt lub komplet ręczny). */
+/** Pozycja gotowa pod względem produktu/ilości (Subiekt lub komplet ręczny) — bez listy zębów. */
 export function isProsbaLineReady(
   line: ProductLineDraft,
   requestKind: IndividualRequestKind
@@ -17,6 +20,56 @@ export function isProsbaLineReady(
     requestKind,
     subiektTwId: line.subiektTwId,
   }).submittable;
+}
+
+export type ProsbaCollapseOptions = {
+  exemptTwIds?: ReadonlySet<number>;
+  /** false = katalog zębów niedostępny — nie zwijaj linii wyglądających na zębowe. */
+  catalogAvailable?: boolean;
+};
+
+/**
+ * Czy pozycję można zwinąć w trybie podsumowania:
+ * gotowa do wysłania (produkt+qty) oraz bez blockerów listy zębów.
+ */
+export function canCollapseProsbaLine(
+  line: ProductLineDraft,
+  requestKind: IndividualRequestKind,
+  options?: ProsbaCollapseOptions,
+): boolean {
+  if (!isProsbaLineReady(line, requestKind)) return false;
+
+  if (
+    options?.catalogAvailable === false &&
+    lineLooksLikeTeethProduct(line, options.exemptTwIds)
+  ) {
+    return false;
+  }
+
+  if (
+    prosbaLineHasTeethBlockers(line, requestKind, {
+      exemptTwIds: options?.exemptTwIds,
+    })
+  ) {
+    return false;
+  }
+
+  // Prefill/pick mógł ustawić producenta zanim rejestr (exempt) się załaduje —
+  // nie zwijaj szkicu wyłącznie dlatego, że twId nie jest jeszcze w exempt.
+  if (requestKind === "zamowienie" && line.teethManufacturer) {
+    const listComplete = teethLineDetailsComplete({
+      teethDetails: line.teethDetails,
+      quantity: line.quantity,
+      product: line.product,
+      subiektTwId: line.subiektTwId,
+      adminProductLine: line.teethProductLine,
+      adminManufacturer: line.teethManufacturer,
+      isTeethProduct: true,
+    });
+    if (!listComplete) return false;
+  }
+
+  return true;
 }
 
 export function isProsbaLineFromSubiekt(line: ProductLineDraft): boolean {
@@ -72,23 +125,31 @@ export function shouldCollapseProsbaLine(
   requestKind: IndividualRequestKind,
   lineCount: number,
   activeLineId: string,
+  options?: ProsbaCollapseOptions,
 ): boolean {
-  if (lineCount <= 1) return false;
-  if (!activeLineId) return isProsbaLineReady(line, requestKind);
   if (line.id === activeLineId) return false;
-  return isProsbaLineReady(line, requestKind);
+  if (!canCollapseProsbaLine(line, requestKind, options)) return false;
+  // Jedyna pozycja: zwijaj tylko w trybie przeglądu (brak aktywnej linii).
+  if (lineCount <= 1) return !activeLineId;
+  return true;
 }
 
-/** Po zapisie listy zębów — zwijamy uzupełnione pozycje; zostawiamy rozwiniętą pierwszą niegotową. */
+/**
+ * Po zapisie listy zębów — zwijamy uzupełnione pozycje; zostawiamy rozwiniętą pierwszą niekompletną.
+ * Gdy wszystkie (poza zapisanymi) są collapsible → `null` (tryb podsumowania), także przy 1 linii.
+ */
 export function focusLineIdAfterTeethSave(
   lines: ProductLineDraft[],
   savedLineIds: Iterable<string>,
   requestKind: IndividualRequestKind,
+  options?: ProsbaCollapseOptions,
 ): string | null {
   const saved = new Set(savedLineIds);
   const nextIncomplete = lines.find(
-    (line) => !saved.has(line.id) && !isProsbaLineReady(line, requestKind),
+    (line) =>
+      !saved.has(line.id) &&
+      !canCollapseProsbaLine(line, requestKind, options),
   );
   if (nextIncomplete) return nextIncomplete.id;
-  return lines.length > 1 ? null : lines[0]?.id ?? null;
+  return null;
 }

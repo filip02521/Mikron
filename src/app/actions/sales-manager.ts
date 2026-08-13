@@ -1,5 +1,6 @@
 "use server";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
 
 import { revalidatePath } from "next/cache";
@@ -90,7 +91,7 @@ export async function actionCreateSalesTeamUser(form: {
     try {
       await assertManagerRequiresGroupInScope(actor, groupId);
     } catch (e) {
-      return { error: e instanceof Error ? e.message : "Brak uprawnień do grupy." };
+      return { error: userFacingErrorText(e, "Brak uprawnień do grupy.") };
     }
   }
 

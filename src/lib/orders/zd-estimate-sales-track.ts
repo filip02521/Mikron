@@ -1,5 +1,5 @@
 /**
- * Podążanie za sprzedażą w szacunku ZD (dwukierunkowe).
+ * Podążanie za sprzedażą w kreatorze ZD (dwukierunkowe).
  *
  * Cel z Subiekta (`celZapasu`) już ≈ tempo sprzedaży × dniZapasu.
  * Ta warstwa **koryguje cel**:

@@ -14,6 +14,7 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
+import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 
 type GroupFilter = "all" | string;
 
@@ -313,7 +314,8 @@ export function ZdEstimateExclusionsModal({
             </p>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
               Przywróć produkt, gdy znów ma wrócić na listę szacunku. Notatka
-              pomaga innym w dziale zrozumieć powód.
+              pomaga innym w dziale zrozumieć powód.{" "}
+              {ZD_ESTIMATE_UI.onRequestVsHardExclude}
             </p>
           </div>
         </div>
@@ -393,7 +395,7 @@ export function ZdEstimateExclusionsModal({
         </p>
         {filtered.length > 0 ? (
           <p className="text-[10px] text-slate-400">
-            Przywróć = wraca na szacunek
+            Przywróć = wraca do zwykłego liczenia
           </p>
         ) : null}
       </div>

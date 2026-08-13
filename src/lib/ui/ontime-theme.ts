@@ -260,10 +260,10 @@ export const adminPageShellClass = salesTeamPageShellClass;
 export const procurementArchivePageShellClass = adminPageShellClass;
 
 /**
- * Szacunek ZD — prawie pełna szerokość obszaru main (tabela z wieloma kolumnami).
+ * Kreator ZD — prawie pełna szerokość obszaru main (tabela z wieloma kolumnami).
  */
 export const zdEstimatePageShellClass =
-  "relative mx-auto w-full max-w-[min(100%,100rem)] space-y-6";
+  "relative mx-auto w-full max-w-[min(100%,100rem)] space-y-5";
 
 /** Treść wewnątrz karty huba administracji / dostawców. */
 export const adminHubBodyClass = "min-w-0 space-y-4 p-3 sm:p-4 lg:p-5";
@@ -467,7 +467,7 @@ export const controlFocusRingClass =
   "focus:border-indigo-500 focus:ring-2 focus:ring-sky-500/15";
 
 export const checkboxBrandClass =
-  "rounded border-slate-300 text-indigo-600 focus:ring-2 focus:ring-sky-500/15 focus-visible:ring-2 focus-visible:ring-sky-500/30";
+  "size-4 shrink-0 rounded border-slate-300 text-indigo-600 accent-indigo-600 focus:ring-2 focus:ring-indigo-500/25 focus-visible:ring-2 focus-visible:ring-indigo-500/40";
 
 /** Kafelki ikon sekcji */
 export const sectionIconTileBrandClass = "bg-indigo-100 text-indigo-800";
@@ -811,6 +811,34 @@ export const panelToolbarTextButtonClass =
 
 export const panelToolbarIconButtonClass =
   "inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md border border-indigo-100/80 bg-white text-indigo-800/85 shadow-sm transition hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950 disabled:cursor-not-allowed disabled:opacity-50";
+
+/**
+ * Pasek narzędzi listy kreatora ZD — wariant spokojny (0 zaznaczonych)
+ * i aktywny bulk (selection). Sticky poza TableScroll.
+ */
+export const zdEstimateListToolsShellClass =
+  "sticky top-0 z-20 w-full min-w-0 rounded-xl border p-2.5 shadow-sm backdrop-blur-md sm:p-3";
+
+export const zdEstimateListToolsShellQuietClass =
+  "border-slate-200/85 bg-gradient-to-b from-slate-50/95 via-white to-white shadow-slate-900/[0.04]";
+
+export const zdEstimateListToolsShellActiveClass =
+  "border-indigo-200/80 bg-gradient-to-b from-indigo-50/95 via-indigo-50/40 to-white shadow-indigo-900/5";
+
+export const zdEstimateListToolsRowClass =
+  "flex w-full min-w-0 flex-col gap-2.5 lg:flex-row lg:items-center lg:gap-3";
+
+export const zdEstimateListToolsMetaClass =
+  "min-w-0 space-y-1 lg:max-w-[16rem] xl:max-w-[18rem]";
+
+export const zdEstimateListToolsActionsClass =
+  "flex min-w-0 flex-1 flex-wrap items-center gap-1.5 lg:justify-center";
+
+export const zdEstimateListToolsSearchWrapClass =
+  "relative w-full min-w-0 sm:max-w-[16rem] lg:w-[15rem] lg:shrink-0";
+
+export const zdEstimateListToolsLinkClass =
+  "font-medium underline-offset-2 transition hover:underline disabled:cursor-not-allowed disabled:opacity-50";
 
 /** Stopka treści panelu dziennego — pod listami Dziś / Tydzień / Wyjątki. */
 export const panelContentFooterClass = cn(

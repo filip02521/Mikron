@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import {
   countInactiveSuppliers,
   fetchVacations,
@@ -31,7 +32,7 @@ export default async function UrlopyPage() {
     suppliers = s.map((x) => ({ id: x.id, name: x.name }));
     inactiveCount = inactive;
   } catch (e) {
-    loadError = e instanceof Error ? e.message : "Nie udało się wczytać urlopów dostawców.";
+    loadError = userFacingErrorText(e, "Nie udało się wczytać urlopów dostawców.");
   }
 
   return (

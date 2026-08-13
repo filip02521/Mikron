@@ -1,5 +1,5 @@
 "use client";
-import { toastFromError, toastSuccess, SUPPLIER_TOAST, type ToastNotice } from "@/lib/ui/notice-copy";
+import { toastFromError, toastSuccess, SUPPLIER_TOAST, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 
 import Link from "next/link";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
@@ -173,7 +173,7 @@ export function SuppliersAdminClient({
         setToast({ text: "Dodano dostawcę do toru zębów", tone: "success" });
         router.refresh();
       } catch (e) {
-        setToast(toastFromError(e instanceof Error ? e.message : undefined));
+        setToast(toastFromUnknown(e));
       }
     });
   };
@@ -186,7 +186,7 @@ export function SuppliersAdminClient({
         setToast({ text: "Usunięto dostawcę z toru zębów", tone: "success" });
         router.refresh();
       } catch (e) {
-        setToast(toastFromError(e instanceof Error ? e.message : undefined));
+        setToast(toastFromUnknown(e));
       }
     });
   };
@@ -299,7 +299,7 @@ export function SuppliersAdminClient({
           ),
         );
       } catch (e) {
-        setToast(toastFromError(e instanceof Error ? e.message : undefined));
+        setToast(toastFromUnknown(e));
       }
     });
   };
@@ -345,7 +345,7 @@ export function SuppliersAdminClient({
         resetForm();
         router.refresh();
       } catch (e) {
-        setToast(toastFromError(e instanceof Error ? e.message : undefined, SUPPLIER_TOAST.saveFailed.text));
+        setToast(toastFromUnknown(e, SUPPLIER_TOAST.saveFailed.text));
       }
     });
   };

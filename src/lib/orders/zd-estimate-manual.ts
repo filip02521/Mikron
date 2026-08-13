@@ -1,5 +1,5 @@
 /**
- * Szacunek listy do zamówienia ZD — tryb „jak ręcznie”.
+ * Kreator listy do zamówienia ZD — tryb „jak ręcznie”.
  *
  * Proces ręczny (zakupy):
  * 1. Wybór zakresu w Subiekcie — grupa towarowa (np. Falcon) albo cecha (np. Ivoclar).
@@ -26,6 +26,7 @@ import {
 import { applyZdEstimateHistoryCuts } from "@/lib/orders/zd-estimate-history-track";
 import { zdDocumentUnitsToPieces } from "@/lib/orders/zd-estimate-units";
 import {
+  applyBomPurchaseTargetFinalize,
   applyZdEstimateBoms,
   type ZdProductBomRef,
 } from "@/lib/orders/zd-estimate-bom";
@@ -398,11 +399,13 @@ export function buildManualZdEstimateResult(
         })
       : afterBom.map((l) => ({ ...l, pair: null }));
 
-  const orderSummary = summarizeManualOrderQty(withPairs);
+  const finalized = applyBomPurchaseTargetFinalize(withPairs);
+
+  const orderSummary = summarizeManualOrderQty(finalized);
 
   const pozycje = onlyManualBraki
-    ? withPairs.filter((p) => p.doZamowieniaReczne > 0)
-    : withPairs;
+    ? finalized.filter((p) => p.doZamowieniaReczne > 0)
+    : finalized;
 
   pozycje.sort((a, b) => {
     if (b.doZamowieniaReczne !== a.doZamowieniaReczne) {
@@ -415,7 +418,7 @@ export function buildManualZdEstimateResult(
     parametry,
     pozycje,
     pozycjeBase,
-    totalFromSubiekt: withPairs.length,
+    totalFromSubiekt: finalized.length,
     doZamowieniaCount: orderSummary.doZamowieniaCount,
     doZamowieniaSuma: orderSummary.doZamowieniaSuma,
   };

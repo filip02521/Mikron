@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { redirect } from "next/navigation";
 import { MOJE_ANNOUNCEMENT_FOCUS_PARAM, MOJE_ANNOUNCEMENTS_SECTION_ID } from "@/lib/department-board/moje-announcements-ui";
 import { getSessionUser } from "@/lib/auth";
@@ -161,7 +162,7 @@ export default async function SalesBoardPage({
       }
     }
   } catch (e) {
-    loadError = e instanceof Error ? e.message : "Nie udało się załadować tablicy.";
+    loadError = userFacingErrorText(e, "Nie udało się załadować tablicy.");
   }
 
   const pageTitle =

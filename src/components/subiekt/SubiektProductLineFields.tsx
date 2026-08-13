@@ -339,7 +339,11 @@ export function SubiektProductLineFields({
     return [...anterior, ...posterior];
   }, [dualKindMode, dualKindInitialDetails, value.teethDetails]);
   const shouldAutoOpenTeethModal =
-    autoOpenTeethList && isTeethOrderLine && Boolean(resolvedTeethProductLine) && !disabled;
+    autoOpenTeethList &&
+    isTeethOrderLine &&
+    Boolean(resolvedTeethProductLine) &&
+    !disabled &&
+    !(value.teethDetails?.length);
   const [teethModalOpen, setTeethModalOpen] = useState(shouldAutoOpenTeethModal);
   const [teethModalKey, setTeethModalKey] = useState(() => (shouldAutoOpenTeethModal ? 1 : 0));
   const autoOpenTeethListRequestedRef = useRef(false);
@@ -578,6 +582,7 @@ export function SubiektProductLineFields({
       return;
     }
     if (!isTeethOrderLine || !resolvedTeethProductLine || disabled) return;
+    if ((value.teethDetails?.length ?? 0) > 0) return;
     if (autoOpenTeethListRequestedRef.current || teethModalOpen) return;
     autoOpenTeethListRequestedRef.current = true;
     openTeethModal();
@@ -588,6 +593,7 @@ export function SubiektProductLineFields({
     disabled,
     teethModalOpen,
     openTeethModal,
+    value.teethDetails,
   ]);
 
   useEffect(() => {
@@ -685,7 +691,10 @@ export function SubiektProductLineFields({
       };
       onChange(finalPatch);
       if (isTeethProduct && finalManufacturer && requestKind === "zamowienie") {
-        pendingTeethModalRef.current = true;
+        const nextDetails = specChanged ? undefined : value.teethDetails;
+        if (!nextDetails?.length) {
+          pendingTeethModalRef.current = true;
+        }
       }
       setFeedback(null);
       setOpen(false);
@@ -1119,8 +1128,8 @@ export function SubiektProductLineFields({
           hint={
             isTeethOrderLine
               ? teethQuantityFromList > 0
-                ? "Z listy"
-                : "Uzupełnij listę"
+                ? "Ilość = liczba pozycji na liście"
+                : "Uzupełnij listę — ilość ustawi się sama"
               : prosba && !quantityField.error && !quantityField.state
                 ? "Sztuk"
                 : undefined
@@ -1161,11 +1170,54 @@ export function SubiektProductLineFields({
     </div>
   );
 
+  const showTeethCompactProduct =
+    prosba && isTeethOrderLine && linkedFromSubiekt;
+
+  const teethCompactProductHeader = showTeethCompactProduct ? (
+    <div className="rounded-md border border-slate-200 bg-slate-50/70 px-3 py-2.5">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-slate-900">
+            {value.product.trim() || symbolPreview || "Produkt"}
+          </p>
+          {(symbolPreview || value.mikranCode.trim()) ? (
+            <p className="mt-0.5 truncate text-xs text-slate-500">
+              {[
+                symbolPreview || null,
+                value.mikranCode.trim() ? `Kod ${value.mikranCode.trim()}` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          ) : null}
+          {linkedLeadTime}
+          <p className="mt-1.5 text-xs text-slate-600">
+            {teethQuantityFromList > 0
+              ? `Ilość = liczba pozycji na liście · ${teethQuantityFromList} szt.`
+              : "Ilość = liczba pozycji na liście — uzupełnij listę zębów."}
+          </p>
+        </div>
+        {!lockSubiektLink ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={disabled}
+            className="shrink-0 text-emerald-800 hover:bg-emerald-50"
+            onClick={unlinkSubiektForEdit}
+          >
+            Zmień towar
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div ref={ref} className="relative space-y-3">
-      {productSearchRow}
+      {showTeethCompactProduct ? teethCompactProductHeader : productSearchRow}
 
-      {linkedFromSubiekt && !lockSubiektLink ? (
+      {!showTeethCompactProduct && linkedFromSubiekt && !lockSubiektLink ? (
         <div className="flex justify-end">
           <Button
             type="button"

@@ -1,5 +1,6 @@
 "use server";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja sprawdzana w warstwie aplikacji; service role dla operacji DB.
 
 import { revalidatePath } from "next/cache";
@@ -89,7 +90,7 @@ export async function actionSetVacationPeriod(input: {
     revalidateVacationPaths();
     return { success: true };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Nie udało się zapisać urlopu." };
+    return { error: userFacingErrorText(e, "Nie udało się zapisać urlopu.") };
   }
 }
 
@@ -122,7 +123,7 @@ export async function actionRemoveVacationPeriod(
     revalidateVacationPaths();
     return { success: true };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Nie udało się usunąć urlopu." };
+    return { error: userFacingErrorText(e, "Nie udało się usunąć urlopu.") };
   }
 }
 
@@ -192,6 +193,6 @@ export async function actionUpdateVacationPeriod(input: {
     revalidateVacationPaths();
     return { success: true };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Nie udało się zaktualizować urlopu." };
+    return { error: userFacingErrorText(e, "Nie udało się zaktualizować urlopu.") };
   }
 }

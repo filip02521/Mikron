@@ -1,5 +1,6 @@
 "use client";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { useMemo, useState } from "react";
 import { actionSetProcurementCancelDisposition } from "@/app/actions/admin";
 import type { SalesCancelledNoticeLine } from "@/lib/orders/sales-cancelled-notices";
@@ -172,7 +173,7 @@ export function SalesCancelDispositionForm({
       });
       onDone(procurementDispositionSaveSummary(entries, personName), false);
     } catch (e) {
-      onDone(e instanceof Error ? e.message : "Nie udało się zapisać", true);
+      onDone(userFacingErrorText(e, "Nie udało się zapisać"), true);
     } finally {
       setSaving(false);
     }

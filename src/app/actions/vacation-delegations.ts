@@ -1,5 +1,6 @@
 "use server";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja sprawdzana w warstwie aplikacji; service role dla operacji DB.
 
 import { revalidatePath } from "next/cache";
@@ -129,7 +130,7 @@ export async function actionSetVacationDelegation(input: {
     revalidateDelegationPaths();
     return { success: true };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Nie udało się zapisać zastępstwa." };
+    return { error: userFacingErrorText(e, "Nie udało się zapisać zastępstwa.") };
   }
 }
 
@@ -163,7 +164,7 @@ export async function actionRemoveVacationDelegation(
     revalidateDelegationPaths();
     return { success: true };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Nie udało się usunąć zastępstwa." };
+    return { error: userFacingErrorText(e, "Nie udało się usunąć zastępstwa.") };
   }
 }
 

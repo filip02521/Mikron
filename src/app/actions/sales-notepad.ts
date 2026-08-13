@@ -30,12 +30,47 @@ import {
 import { mergeZkWatchLineChecksPreservingProsbaScope } from "@/lib/sales/zk-watch-prosba-scope";
 import { computeZkWatchRefreshDiff } from "@/lib/sales/zk-watch-refresh-diff";
 import {
+  clearZkTeethDraftsForKeys,
+  isZkTeethDraftComplete,
+  mergeZkTeethDraftsAfterRefresh,
+  parseZkTeethDrafts,
+  teethDraftKeysExcludedFromScope,
+  upsertZkTeethDraft,
+  type ZkTeethLineDraft,
+} from "@/lib/sales/zk-watch-teeth-draft";
+import { buildTeethDraftRegistryFromProductInfo } from "@/lib/sales/zk-watch-teeth-draft-registry";
+import { fetchTeethProductInfo } from "@/lib/data/teeth-products";
+import {
   type ZkProsbaPrefill,
   zkProsbaPrefillFromWatch,
 } from "@/lib/orders/zk-watch-prosba-prefill";
+import { teethLineDetailsComplete } from "@/lib/teeth/teeth-validation";
+import {
+  isTeethManufacturer,
+  isTeethProductLine,
+  manufacturerForProductLine,
+  parseTeethKind,
+  type TeethKind,
+  type TeethLineDetail,
+  type TeethManufacturer,
+  type TeethProductLine,
+} from "@/lib/teeth/teeth-catalog";
+import {
+  buildTeethRegistryIndex,
+  resolveTeethCatalogProduct,
+} from "@/lib/teeth/teeth-dual-kind";
 import { fetchZkWatchForProsbaPrefill } from "@/lib/sales/fetch-zk-watch-for-prefill";
 import { enrichZkProsbaPrefillWithLiveStock } from "@/lib/orders/fetch-prosba-line-stock";
+import { fetchAllZkLinkableOrdersForSalesPerson } from "@/lib/sales/zk-watch-close-pending-fetch";
+import { polishPozycjeLabel } from "@/lib/email/polish-plural";
+import {
+  normalizeZkCaseNote,
+  openZkLinkedOrdersWithCaseNoteState,
+  resolveZkCaseNoteSyncOrderIds,
+} from "@/lib/sales/zk-watch-case-note-prosba";
+import { resolveZkProsbaPrefillSalesPersonAccess } from "@/lib/sales/zk-prosba-prefill-access";
 import type { SalesNote, SalesNoteColor, SalesZkWatch } from "@/types/database";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 async function salesPersonIdForAction(delegateFor?: string): Promise<string> {
   const user = await getSessionUser();
@@ -67,12 +102,20 @@ async function resolveSalesPersonIdForProsbaPrefill(
     return salesPersonIdForAction();
   }
   const own = await resolveSalesPersonForUser(user);
-  if (user.role === "sales" && own?.id !== salesPersonId) {
-    throw new Error("Brak uprawnień do prośby tego handlowca.");
-  }
-  const allowed = await canAccessSalesPerson(user, salesPersonId);
-  if (!allowed) {
-    throw new Error("Brak uprawnień do prośby tego handlowca.");
+  // canAccessSalesPerson = scope kierownika/admina — NIE obejmuje zwykłego sales
+  // na własnej karcie. Wcześniej sales+lockedId zawsze wpadało w false → fałszywy 403.
+  const canAccessRequested =
+    own?.id === salesPersonId
+      ? true
+      : await canAccessSalesPerson(user, salesPersonId);
+  const access = resolveZkProsbaPrefillSalesPersonAccess({
+    role: user.role,
+    ownSalesPersonId: own?.id ?? null,
+    requestedSalesPersonId: salesPersonId,
+    canAccessRequested,
+  });
+  if (!access.ok) {
+    throw new Error(access.message);
   }
   return salesPersonId;
 }
@@ -410,15 +453,27 @@ export async function actionRefreshZkWatchFromSubiekt(watchId: string) {
   const doc = await getSubiektZk(row.subiekt_dok_id);
   const resolved = mapZkDocument(doc);
 
+  const nextViews = buildZkWatchLineViews({
+    ...(row as SalesZkWatch),
+    subiekt_snapshot: resolved.snapshot as unknown as Record<string, unknown>,
+    line_summary: resolved.lineSummary,
+  });
   const mergedChecks = mergeLineChecksAfterRefresh(
     parseZkWatchLineChecks((row as SalesZkWatch).line_checks),
-    buildZkWatchLineViews({
-      ...(row as SalesZkWatch),
-      subiekt_snapshot: resolved.snapshot as unknown as Record<string, unknown>,
-      line_summary: resolved.lineSummary,
-    })
+    nextViews
+  );
+  const refreshDiffPreview = computeZkWatchRefreshDiff(row as SalesZkWatch, {
+    ...(row as SalesZkWatch),
+    subiekt_snapshot: resolved.snapshot as unknown as Record<string, unknown>,
+    line_summary: resolved.lineSummary,
+  });
+  const mergedTeethDrafts = mergeZkTeethDraftsAfterRefresh(
+    (row as SalesZkWatch).teeth_drafts,
+    nextViews,
+    refreshDiffPreview
   );
 
+  const expectedUpdatedAt = (row as SalesZkWatch).updated_at;
   const { data, error } = await supabase
     .from("sales_zk_watches")
     .update({
@@ -431,27 +486,70 @@ export async function actionRefreshZkWatchFromSubiekt(watchId: string) {
       line_summary: resolved.lineSummary,
       subiekt_snapshot: resolved.snapshot as unknown as Record<string, unknown>,
       line_checks: mergedChecks,
+      teeth_drafts: mergedTeethDrafts,
       updated_at: now,
     })
     .eq("id", watchId)
+    .eq("updated_at", expectedUpdatedAt)
     .select("*")
-    .single();
+    .maybeSingle();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.message?.includes("teeth_drafts")) {
+      throw new Error(
+        "Brak kolumny teeth_drafts — uruchom migrację supabase/migrations/138_zk_watch_teeth_drafts.sql"
+      );
+    }
+    throw new Error(error.message);
+  }
+  if (!data) {
+    throw new Error(
+      "ZK został zaktualizowany w tle — odśwież listę i spróbuj ponownie."
+    );
+  }
   scheduleNotepadRevalidation();
   const refreshedWatch = data as SalesZkWatch;
   const refreshDiff = computeZkWatchRefreshDiff(row as SalesZkWatch, refreshedWatch);
   return { watch: refreshedWatch, refreshDiff };
 }
 
+function revalidateZkCaseNoteProsbaPaths() {
+  scheduleNotepadRevalidation();
+  revalidatePath("/moje");
+  revalidatePath("/podsumowanie");
+  revalidatePath("/zk");
+  revalidatePath("/notatnik");
+}
+
+async function applyCaseNoteToOpenProsbaOrders(
+  supabase: SupabaseClient,
+  salesPersonId: string,
+  orderIds: string[],
+  caseNote: string | null
+) {
+  if (!orderIds.length) return;
+  const { error } = await supabase
+    .from("individual_orders")
+    .update({
+      sales_request_note: caseNote,
+      // Notatka od handlowca — bez sygnału „uwagi od zakupów”.
+      sales_request_note_updated_at: null,
+      sales_request_note_seen_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .in("id", orderIds)
+    .eq("sales_person_id", salesPersonId);
+  if (error) throw new Error(error.message);
+}
+
 export async function actionUpdateZkWatchNote(watchId: string, note: string) {
   const salesPersonId = await salesPersonIdForAction();
   const supabase = createAdminClient();
-  const trimmed = note.trim() || null;
+  const nextNote = normalizeZkCaseNote(note);
 
   const { data: row, error: fetchError } = await supabase
     .from("sales_zk_watches")
-    .select("id, sales_person_id, closed_at, archived_at")
+    .select("id, sales_person_id, closed_at, archived_at, note, include_note_in_prosba")
     .eq("id", watchId)
     .maybeSingle();
 
@@ -464,14 +562,272 @@ export async function actionUpdateZkWatchNote(watchId: string, note: string) {
     throw new Error("Nie można edytować notatki zamkniętego ZK.");
   }
 
-  const { error } = await supabase
-    .from("sales_zk_watches")
-    .update({ note: trimmed, updated_at: new Date().toISOString() })
-    .eq("id", watchId);
+  const previousNote = normalizeZkCaseNote(row.note as string | null);
+  const includeNoteInProsba = Boolean(row.include_note_in_prosba) && Boolean(nextNote);
 
-  if (error) throw new Error(error.message);
-  scheduleNotepadRevalidation();
-  return { success: true };
+  const { data, error } = await supabase
+    .from("sales_zk_watches")
+    .update({
+      note: nextNote,
+      ...(nextNote ? {} : { include_note_in_prosba: false }),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", watchId)
+    .select("*")
+    .single();
+
+  if (error) {
+    if (error.message?.includes("include_note_in_prosba")) {
+      throw new Error(
+        "Brak kolumny include_note_in_prosba — uruchom migrację supabase/migrations/137_zk_watch_include_note_in_prosba.sql"
+      );
+    }
+    throw new Error(error.message);
+  }
+
+  let syncedOpenProsbaCount = 0;
+  let pendingOpenProsbaCount = 0;
+  let syncedOrderIds: string[] = [];
+  let syncMessage: string | null = null;
+
+  // Sync do otwartych próśb:
+  // - flaga włączona → bezpieczna aktualizacja przy każdej zmianie treści
+  // - kasowanie notatki → wyczyść w prośbach tylko treść ze sprawy ZK (nawet po wyłączeniu flagi)
+  const shouldAttemptOpenProsbaSync =
+    previousNote !== nextNote &&
+    (Boolean(row.include_note_in_prosba) || (!nextNote && Boolean(previousNote)));
+
+  if (shouldAttemptOpenProsbaSync) {
+    const linked = await fetchAllZkLinkableOrdersForSalesPerson(supabase, salesPersonId);
+    const watchForMatch = {
+      ...(data as SalesZkWatch),
+      note: nextNote,
+      include_note_in_prosba: includeNoteInProsba,
+    };
+    const { openOrders, withoutNote } = openZkLinkedOrdersWithCaseNoteState(
+      watchForMatch,
+      linked
+    );
+    const syncIds = resolveZkCaseNoteSyncOrderIds({
+      openOrders,
+      previousCaseNote: previousNote,
+      nextCaseNote: nextNote,
+      mode: "safe_from_previous",
+    });
+    if (syncIds.length) {
+      await applyCaseNoteToOpenProsbaOrders(supabase, salesPersonId, syncIds, nextNote);
+      syncedOpenProsbaCount = syncIds.length;
+      syncedOrderIds = syncIds;
+    }
+    const remaining = withoutNote.filter((o) => !syncIds.includes(o.id));
+    pendingOpenProsbaCount = nextNote
+      ? remaining.length
+      : remaining.filter((o) => Boolean(normalizeZkCaseNote(o.sales_request_note))).length;
+    if (syncedOpenProsbaCount > 0 && pendingOpenProsbaCount === 0) {
+      syncMessage = nextNote
+        ? `Zapisano. Zaktualizowano uwagi w prośbie (${polishPozycjeLabel(syncedOpenProsbaCount)}) — zakupy widzą nową treść.`
+        : `Zapisano. Usunięto notatkę ze sprawy ZK z prośby (${polishPozycjeLabel(syncedOpenProsbaCount)}).`;
+    } else if (syncedOpenProsbaCount > 0) {
+      syncMessage = `Zapisano. Zaktualizowano ${polishPozycjeLabel(syncedOpenProsbaCount)}. Pozostały pozycje z inną notatką — możesz je nadpisać.`;
+    } else if (pendingOpenProsbaCount > 0 && nextNote && Boolean(row.include_note_in_prosba)) {
+      syncMessage =
+        "Zapisano. W otwartej prośbie jest inna treść — użyj „Zaktualizuj w otwartej prośbie”, żeby zakupy widziały nową notatkę.";
+    }
+  }
+
+  if (syncedOpenProsbaCount > 0) {
+    revalidateZkCaseNoteProsbaPaths();
+  } else {
+    scheduleNotepadRevalidation();
+  }
+
+  return {
+    success: true as const,
+    watch: data as SalesZkWatch,
+    syncedOpenProsbaCount,
+    pendingOpenProsbaCount,
+    syncedOrderIds,
+    message: syncMessage,
+  };
+}
+
+/** Włącz / wyłącz dołączanie notatki sprawy do prośby. */
+export async function actionUpdateZkWatchIncludeNoteInProsba(
+  watchId: string,
+  include: boolean
+) {
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = createAdminClient();
+
+  const { data: row, error: fetchError } = await supabase
+    .from("sales_zk_watches")
+    .select("id, sales_person_id, closed_at, archived_at, note")
+    .eq("id", watchId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!row) throw new Error("Nie znaleziono wpisu.");
+  if (row.sales_person_id !== salesPersonId) {
+    throw new Error("Brak uprawnień do tego wpisu.");
+  }
+  if (row.closed_at || row.archived_at) {
+    throw new Error("Nie można zmieniać ustawień zamkniętego ZK.");
+  }
+  const caseNote = normalizeZkCaseNote(row.note as string | null);
+  if (include && !caseNote) {
+    throw new Error("Najpierw zapisz notatkę do sprawy.");
+  }
+
+  const { data, error } = await supabase
+    .from("sales_zk_watches")
+    .update({
+      include_note_in_prosba: include,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", watchId)
+    .select("*")
+    .single();
+
+  if (error) {
+    if (error.message?.includes("include_note_in_prosba")) {
+      throw new Error(
+        "Brak kolumny include_note_in_prosba — uruchom migrację supabase/migrations/137_zk_watch_include_note_in_prosba.sql"
+      );
+    }
+    throw new Error(error.message);
+  }
+
+  let syncedOpenProsbaCount = 0;
+  let syncedOrderIds: string[] = [];
+  let pendingOpenProsbaCount = 0;
+
+  // Włączenie flagi: bezpiecznie uzupełnij puste uwagi w otwartych prośbach.
+  if (include && caseNote) {
+    const linked = await fetchAllZkLinkableOrdersForSalesPerson(supabase, salesPersonId);
+    const { openOrders, withoutNote } = openZkLinkedOrdersWithCaseNoteState(
+      data as SalesZkWatch,
+      linked
+    );
+    const syncIds = resolveZkCaseNoteSyncOrderIds({
+      openOrders,
+      previousCaseNote: null,
+      nextCaseNote: caseNote,
+      mode: "safe_from_previous",
+    });
+    if (syncIds.length) {
+      await applyCaseNoteToOpenProsbaOrders(supabase, salesPersonId, syncIds, caseNote);
+      syncedOpenProsbaCount = syncIds.length;
+      syncedOrderIds = syncIds;
+      revalidateZkCaseNoteProsbaPaths();
+    } else {
+      scheduleNotepadRevalidation();
+    }
+    pendingOpenProsbaCount = withoutNote.filter((o) => !syncIds.includes(o.id)).length;
+  } else {
+    scheduleNotepadRevalidation();
+  }
+
+  return {
+    success: true as const,
+    watch: data as SalesZkWatch,
+    syncedOpenProsbaCount,
+    pendingOpenProsbaCount,
+    syncedOrderIds,
+  };
+}
+
+/**
+ * Kopiuje / aktualizuje notatkę sprawy na otwarte powiązane prośby (sales_request_note).
+ * Równolegle włącza include_note_in_prosba (przyszłe uzupełnienia też dostaną notatkę).
+ */
+export async function actionAttachZkWatchNoteToOpenProsba(watchId: string) {
+  const salesPersonId = await salesPersonIdForAction();
+  const supabase = createAdminClient();
+
+  const { data: row, error: fetchError } = await supabase
+    .from("sales_zk_watches")
+    .select("*")
+    .eq("id", watchId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!row) throw new Error("Nie znaleziono wpisu.");
+  if (row.sales_person_id !== salesPersonId) {
+    throw new Error("Brak uprawnień do tego wpisu.");
+  }
+  if (row.closed_at || row.archived_at) {
+    throw new Error("Nie można dołączać notatki z zamkniętego ZK.");
+  }
+
+  const watch = row as SalesZkWatch;
+  const caseNote = normalizeZkCaseNote(watch.note);
+  if (!caseNote) {
+    throw new Error("Brak notatki do sprawy — najpierw ją zapisz.");
+  }
+
+  const linked = await fetchAllZkLinkableOrdersForSalesPerson(supabase, salesPersonId);
+  const { openOrders, withoutNote } = openZkLinkedOrdersWithCaseNoteState(watch, linked);
+  if (!openOrders.length) {
+    throw new Error(
+      "Brak otwartej prośby powiązanej z tym ZK. Włącz „Dołącz do prośby” i utwórz prośbę."
+    );
+  }
+  if (!withoutNote.length) {
+    const { data: already, error: flagError } = await supabase
+      .from("sales_zk_watches")
+      .update({
+        include_note_in_prosba: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", watchId)
+      .select("*")
+      .single();
+    if (flagError) throw new Error(flagError.message);
+    scheduleNotepadRevalidation();
+    return {
+      success: true as const,
+      updatedCount: 0,
+      watch: already as SalesZkWatch,
+      message: "Notatka jest już we wszystkich otwartych prośbach.",
+    };
+  }
+
+  const ids = resolveZkCaseNoteSyncOrderIds({
+    openOrders,
+    previousCaseNote: null,
+    nextCaseNote: caseNote,
+    mode: "force_mismatched",
+  });
+  await applyCaseNoteToOpenProsbaOrders(supabase, salesPersonId, ids, caseNote);
+
+  const { data: updatedWatch, error: flagError } = await supabase
+    .from("sales_zk_watches")
+    .update({
+      include_note_in_prosba: true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", watchId)
+    .select("*")
+    .single();
+
+  if (flagError) throw new Error(flagError.message);
+
+  revalidateZkCaseNoteProsbaPaths();
+
+  const hadStale = withoutNote.some((o) => normalizeZkCaseNote(o.sales_request_note));
+  return {
+    success: true as const,
+    updatedCount: ids.length,
+    watch: updatedWatch as SalesZkWatch,
+    message:
+      ids.length === 1
+        ? hadStale
+          ? "Zaktualizowano notatkę w otwartej prośbie — zakupy widzą nową treść."
+          : "Dodano notatkę do otwartej prośby — zakupy ją zobaczą."
+        : hadStale
+          ? `Zaktualizowano notatkę w ${polishPozycjeLabel(ids.length)} — zakupy widzą nową treść.`
+          : `Dodano notatkę do ${polishPozycjeLabel(ids.length)} — zakupy ją zobaczą.`,
+  };
 }
 
 export async function actionUpdateZkWatchLineChecks(
@@ -581,10 +937,21 @@ export async function actionUpdateZkWatchProsbaScope(
     needsProsbaByKey,
   });
 
+  const watchForDrafts = {
+    ...(row as SalesZkWatch),
+    line_checks: sanitized,
+  };
+  const excludedDraftKeys = teethDraftKeysExcludedFromScope(watchForDrafts);
+  const nextTeethDrafts = clearZkTeethDraftsForKeys(
+    (row as SalesZkWatch).teeth_drafts,
+    excludedDraftKeys
+  );
+
   const { data, error } = await supabase
     .from("sales_zk_watches")
     .update({
       line_checks: sanitized,
+      teeth_drafts: nextTeethDrafts,
       updated_at: new Date().toISOString(),
     })
     .eq("id", watchId)
@@ -638,10 +1005,21 @@ export async function actionPatchZkWatchProsbaScopeLines(
     needsProsbaByKey,
   });
 
+  const watchForDrafts = {
+    ...(row as SalesZkWatch),
+    line_checks: sanitized,
+  };
+  const excludedDraftKeys = teethDraftKeysExcludedFromScope(watchForDrafts);
+  const nextTeethDrafts = clearZkTeethDraftsForKeys(
+    (row as SalesZkWatch).teeth_drafts,
+    excludedDraftKeys
+  );
+
   const { data, error } = await supabase
     .from("sales_zk_watches")
     .update({
       line_checks: sanitized,
+      teeth_drafts: nextTeethDrafts,
       updated_at: new Date().toISOString(),
     })
     .eq("id", watchId)
@@ -959,6 +1337,225 @@ export async function actionDeleteArchivedSalesNote(noteId: string) {
   return { success: true };
 }
 
+/** Zapis szkiców list zębów na ZK (przed prośbą). */
+export async function actionSaveZkWatchTeethDrafts(
+  watchId: string,
+  drafts: Array<{
+    lineKey: string;
+    subiektTwId: number;
+    teethManufacturer: TeethManufacturer | null;
+    teethProductLine: TeethProductLine;
+    teethKind: TeethKind;
+    expectedQuantity: number;
+    teethDetails: TeethLineDetail[];
+  }>
+) {
+  const user = await getSessionUser();
+  if (!user || !isSalesAccount(user.role)) {
+    throw new Error("Wymagane logowanie");
+  }
+
+  const supabase = createAdminClient();
+
+  const { data: row, error: fetchError } = await supabase
+    .from("sales_zk_watches")
+    .select("*")
+    .eq("id", watchId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!row) throw new Error("Nie znaleziono wpisu.");
+
+  const watch = row as SalesZkWatch;
+  const own = await resolveSalesPersonForUser(user);
+  const isDelegate = await isProfileActiveDelegateForSalesPerson(
+    user.id,
+    watch.sales_person_id
+  );
+  if (own?.id !== watch.sales_person_id && !isDelegate) {
+    throw new Error("Brak uprawnień do tego wpisu.");
+  }
+  if (watch.closed_at || watch.archived_at) {
+    throw new Error("Nie można zapisywać list zębów dla zamkniętego ZK.");
+  }
+  const views = buildZkWatchLineViews(watch);
+  const viewByKey = new Map(views.map((v) => [v.key, v]));
+  let next = parseZkTeethDrafts(watch.teeth_drafts);
+  const now = new Date().toISOString();
+
+  const teethInfo = await fetchTeethProductInfo().catch(() => null);
+  if (!teethInfo) {
+    throw new Error("Katalog zębów jest chwilowo niedostępny — spróbuj ponownie.");
+  }
+  const registryIndex = buildTeethRegistryIndex(
+    teethInfo.map((row) => ({
+      twId: row.twId,
+      manufacturer: row.manufacturer,
+      productLine: row.productLine,
+      kind: row.kind,
+      symbol: row.symbol,
+      name: row.name,
+      plu: row.plu,
+    }))
+  );
+
+  for (const raw of drafts) {
+    const lineKey = raw.lineKey?.trim();
+    if (!lineKey || !viewByKey.has(lineKey)) {
+      throw new Error("Nieprawidłowa pozycja ZK dla listy zębów.");
+    }
+    if (!isTeethProductLine(raw.teethProductLine)) {
+      throw new Error("Nieprawidłowa linia produktowa zębów.");
+    }
+    const kind = parseTeethKind(raw.teethKind);
+    if (!kind) throw new Error("Wybierz typ zębów (przednie / boczne).");
+    if (!Number.isFinite(Math.trunc(Number(raw.subiektTwId))) || Math.trunc(Number(raw.subiektTwId)) <= 0) {
+      throw new Error("Brak powiązania z towarem zębów.");
+    }
+    const resolved = resolveTeethCatalogProduct(
+      registryIndex,
+      raw.teethProductLine,
+      kind
+    );
+    if (!resolved) {
+      throw new Error(
+        "Brak towaru w katalogu zębów dla wybranej linii i typu (przednie/boczne) — uzupełnij wpis w adminie."
+      );
+    }
+    const twId = resolved.twId;
+    const expectedQuantity = Math.trunc(Number(raw.expectedQuantity));
+    if (!Number.isFinite(expectedQuantity) || expectedQuantity < 1) {
+      throw new Error("Ilość listy zębów musi być dodatnia.");
+    }
+    const manufacturer =
+      (raw.teethManufacturer && isTeethManufacturer(raw.teethManufacturer)
+        ? raw.teethManufacturer
+        : null) ??
+      resolved.manufacturer ??
+      manufacturerForProductLine(raw.teethProductLine);
+    const teethDetails = (raw.teethDetails ?? []).map((d, i) => ({
+      ...d,
+      position: i + 1,
+      kind,
+    }));
+
+    const draft: ZkTeethLineDraft = {
+      lineKey,
+      subiektTwId: twId,
+      teethManufacturer: manufacturer,
+      teethProductLine: resolved.productLine,
+      teethKind: kind,
+      expectedQuantity,
+      teethDetails,
+      updatedAt: now,
+    };
+
+    if (!teethLineDetailsComplete({
+      teethDetails: draft.teethDetails,
+      quantity: String(expectedQuantity),
+      product: viewByKey.get(lineKey)?.product ?? "",
+      subiektTwId: twId,
+      adminProductLine: draft.teethProductLine,
+      adminManufacturer: draft.teethManufacturer,
+      isTeethProduct: true,
+    })) {
+      throw new Error("Uzupełnij kompletną listę zębów przed zapisem.");
+    }
+    if (!isZkTeethDraftComplete(draft, viewByKey.get(lineKey)?.quantity ?? expectedQuantity)) {
+      throw new Error(
+        "Liczba pozycji na liście zębów musi zgadzać się z ilością w ZK."
+      );
+    }
+    next = upsertZkTeethDraft(next, draft);
+  }
+
+  const expectedUpdatedAt = watch.updated_at;
+  const { data, error } = await supabase
+    .from("sales_zk_watches")
+    .update({
+      teeth_drafts: next,
+      updated_at: now,
+    })
+    .eq("id", watchId)
+    .eq("updated_at", expectedUpdatedAt)
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    if (error.message?.includes("teeth_drafts")) {
+      throw new Error(
+        "Brak kolumny teeth_drafts — uruchom migrację supabase/migrations/138_zk_watch_teeth_drafts.sql"
+      );
+    }
+    throw new Error(error.message);
+  }
+  if (!data) {
+    throw new Error(
+      "ZK został zaktualizowany w tle — odśwież kartę i zapisz listy zębów ponownie."
+    );
+  }
+
+  scheduleNotepadRevalidation();
+  return { watch: data as SalesZkWatch };
+}
+
+/** Usuwa szkice list zębów dla wskazanych lineKey (np. po złożeniu prośby). */
+export async function actionClearZkWatchTeethDrafts(
+  watchId: string,
+  lineKeys: string[]
+) {
+  const user = await getSessionUser();
+  if (!user || !isSalesAccount(user.role)) {
+    throw new Error("Wymagane logowanie");
+  }
+  const supabase = createAdminClient();
+  const keys = lineKeys.map((k) => k.trim()).filter(Boolean);
+  if (!keys.length) return { watch: null as SalesZkWatch | null };
+
+  const { data: row, error: fetchError } = await supabase
+    .from("sales_zk_watches")
+    .select("*")
+    .eq("id", watchId)
+    .maybeSingle();
+
+  if (fetchError) throw new Error(fetchError.message);
+  if (!row) throw new Error("Nie znaleziono wpisu.");
+
+  const watch = row as SalesZkWatch;
+  const own = await resolveSalesPersonForUser(user);
+  const isDelegate = await isProfileActiveDelegateForSalesPerson(
+    user.id,
+    watch.sales_person_id
+  );
+  if (own?.id !== watch.sales_person_id && !isDelegate) {
+    throw new Error("Brak uprawnień do tego wpisu.");
+  }
+  if (watch.closed_at || watch.archived_at) {
+    throw new Error("Nie można czyścić list zębów dla zamkniętego ZK.");
+  }
+
+  const next = clearZkTeethDraftsForKeys(watch.teeth_drafts, keys);
+  const { data, error } = await supabase
+    .from("sales_zk_watches")
+    .update({
+      teeth_drafts: next,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", watchId)
+    .eq("updated_at", watch.updated_at)
+    .select("*")
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) {
+    throw new Error(
+      "ZK został zaktualizowany w tle — odśwież kartę i spróbuj ponownie."
+    );
+  }
+  scheduleNotepadRevalidation();
+  return { watch: data as SalesZkWatch };
+}
+
 /** Prefill prośby z karty ZK (np. link z ?zkWatch=). */
 export async function actionGetZkProsbaPrefillByWatchId(
   watchId: string,
@@ -970,8 +1567,11 @@ export async function actionGetZkProsbaPrefillByWatchId(
   if (!trimmed) return null;
 
   const user = await getSessionUser();
-  if (!user || !isSalesAccount(user.role)) {
+  if (!user) {
     throw new Error("Wymagane logowanie.");
+  }
+  if (!isSalesAccount(user.role)) {
+    throw new Error("Brak uprawnień handlowca");
   }
 
   const salesPersonId = await resolveSalesPersonIdForProsbaPrefill(user, salesPersonIdOverride);
@@ -988,13 +1588,25 @@ export async function actionGetZkProsbaPrefillByWatchId(
   if (!data) return null;
 
   const watch = data as SalesZkWatch;
+  let teethCatalogAvailable = true;
+  const teethInfo = await fetchTeethProductInfo().catch(() => {
+    teethCatalogAvailable = false;
+    return [];
+  });
+  const teethRegistry = {
+    ...buildTeethDraftRegistryFromProductInfo(teethInfo),
+    catalogAvailable: teethCatalogAvailable,
+  };
   const options = {
     ...(lineKeys?.length ? { lineKeys, mode: "supplement" as const } : {}),
     ...(requestKind ? { requestKind } : {}),
+    teethRegistry,
   };
-  const hasOptions = Object.keys(options).length > 0;
 
-  const prefill = zkProsbaPrefillFromWatch(watch, hasOptions ? options : undefined);
+  const prefill = zkProsbaPrefillFromWatch(watch, options);
+  if (prefill.teethDraftsIncomplete) {
+    return prefill;
+  }
   return enrichZkProsbaPrefillWithLiveStock(prefill);
 }
 
@@ -1007,8 +1619,11 @@ export async function actionGetZkProsbaPrefill(
   if (!trimmed) return null;
 
   const user = await getSessionUser();
-  if (!user || !isSalesAccount(user.role)) {
+  if (!user) {
     throw new Error("Wymagane logowanie.");
+  }
+  if (!isSalesAccount(user.role)) {
+    throw new Error("Brak uprawnień handlowca");
   }
 
   const salesPersonId = await resolveSalesPersonIdForProsbaPrefill(user, salesPersonIdOverride);
@@ -1016,6 +1631,18 @@ export async function actionGetZkProsbaPrefill(
   const supabase = createAdminClient();
   const watch = await fetchZkWatchForProsbaPrefill(supabase, salesPersonId, trimmed);
   if (!watch) return null;
-  const prefill = zkProsbaPrefillFromWatch(watch);
+  let teethCatalogAvailable = true;
+  const teethInfo = await fetchTeethProductInfo().catch(() => {
+    teethCatalogAvailable = false;
+    return [];
+  });
+  const teethRegistry = {
+    ...buildTeethDraftRegistryFromProductInfo(teethInfo),
+    catalogAvailable: teethCatalogAvailable,
+  };
+  const prefill = zkProsbaPrefillFromWatch(watch, { teethRegistry });
+  if (prefill.teethDraftsIncomplete) {
+    return prefill;
+  }
   return enrichZkProsbaPrefillWithLiveStock(prefill);
 }

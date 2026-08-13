@@ -7,7 +7,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Alert } from "@/components/ui/Alert";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { NoticeToast } from "@/components/ui/NoticeToast";
-import { NOTEPAD_UNDO_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
+import { NOTEPAD_UNDO_TOAST, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 import { IconNotepad, IconArchive, IconClipboardPen, IconUsers } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import {
@@ -176,7 +176,7 @@ export function OperationsNotepadClient({
     } catch (e) {
       if (!isUndoExpired(snapshot.expiresAt)) setUndo(snapshot);
       setUndoFeedback(
-        toastFromError(e instanceof Error ? e.message : undefined, NOTEPAD_UNDO_TOAST.failed.text)
+        toastFromUnknown(e, NOTEPAD_UNDO_TOAST.failed.text)
       );
     }
   }, [undo, department, refresh]);

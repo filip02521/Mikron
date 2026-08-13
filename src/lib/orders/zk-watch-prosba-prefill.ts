@@ -11,6 +11,24 @@ import {
   readProsbaStockCache,
 } from "@/lib/orders/prosba-stock-fetch-cache";
 import type { IndividualRequestKind, SalesZkWatch } from "@/types/database";
+import {
+  applyZkCaseNoteToProsbaLines,
+  normalizeZkCaseNote,
+  shouldIncludeZkCaseNoteInPrefill,
+} from "@/lib/sales/zk-watch-case-note-prosba";
+import {
+  applyZkTeethDraftToProductLine,
+  parseZkTeethDrafts,
+  zkWatchIncompleteTeethLineKeys,
+  zkWatchTeethDraftsReady,
+  type TeethDraftRegistryLookup,
+} from "@/lib/sales/zk-watch-teeth-draft";
+import {
+  isTeethManufacturer,
+  isTeethProductLine,
+  parseTeethKind,
+  type TeethLineDetail,
+} from "@/lib/teeth/teeth-catalog";
 import { prosbaHref } from "./prosba-url";
 
 export const ZK_PROSBA_PREFILL_STORAGE_KEY = "ontime-prosba-zk-prefill";
@@ -29,6 +47,12 @@ export type ZkProsbaPrefill = {
   requestKind?: IndividualRequestKind;
   /** Wszystkie tw_Id towarów z ZK (pełny snapshot — także przy supplement). */
   allowedTwIds?: number[];
+  /** Notatka sprawy ZK dołączona do linii (sales_request_note). */
+  includeCaseNote?: boolean;
+  caseNote?: string | null;
+  /** true gdy brakuje kompletnych list zębów — nie otwieraj / nie submit. */
+  teethDraftsIncomplete?: boolean;
+  incompleteTeethLineKeys?: string[];
 };
 
 export type ZkProsbaPrefillOptions = {
@@ -37,6 +61,8 @@ export type ZkProsbaPrefillOptions = {
   requestKind?: IndividualRequestKind;
   /** Opcjonalny stan z Subiekta (np. z karty ZK) — dołączany do linii prefill. */
   stockByTwId?: Record<number, ProsbaLineStockSnapshot>;
+  /** Rejestr zębów — do bramki kompletności i merge draftów. */
+  teethRegistry?: TeethDraftRegistryLookup;
 };
 
 function resolvePrefillStockMap(
@@ -94,12 +120,22 @@ export function zkProsbaCatalogLocked(prefill: Pick<ZkProsbaPrefill, "allowedTwI
   return Boolean(prefill.allowedTwIds && prefill.allowedTwIds.length > 0);
 }
 
-/** Bezpieczny payload Server Action → klient (tylko JSON-serializowalne pola). */
-export function zkProsbaPrefillFromWatch(
-  watch: SalesZkWatch,
-  options?: ZkProsbaPrefillOptions
-): ZkProsbaPrefill {
-  const lines = extractProsbaLinesFromZkWatch(watch, options).map((line) => ({
+function serializeTeethDetails(
+  details: TeethLineDetail[] | undefined
+): TeethLineDetail[] | undefined {
+  if (!details?.length) return undefined;
+  return details.map((d, i) => ({
+    position: Math.trunc(Number(d.position)) || i + 1,
+    color: String(d.color ?? ""),
+    ...(d.mould != null ? { mould: d.mould } : {}),
+    ...(d.size != null ? { size: d.size } : {}),
+    ...(d.jaw === "upper" || d.jaw === "lower" ? { jaw: d.jaw } : {}),
+    ...(d.kind === "anterior" || d.kind === "posterior" ? { kind: d.kind } : {}),
+  }));
+}
+
+function serializePrefillLine(line: ProductLineDraft): ProductLineDraft {
+  return {
     id: String(line.id),
     symbol: String(line.symbol ?? ""),
     mikranCode: String(line.mikranCode ?? ""),
@@ -109,7 +145,28 @@ export function zkProsbaPrefillFromWatch(
     ...(line.clientName != null ? { clientName: String(line.clientName) } : {}),
     clientKhId: normalizePrefillKhId(line.clientKhId),
     subiektTwId: normalizeSubiektTwId(line.subiektTwId),
-  }));
+    ...(line.requestNote?.trim() ? { requestNote: line.requestNote.trim() } : {}),
+    ...(line.teethManufacturer && isTeethManufacturer(line.teethManufacturer)
+      ? { teethManufacturer: line.teethManufacturer }
+      : {}),
+    ...(line.teethProductLine && isTeethProductLine(line.teethProductLine)
+      ? { teethProductLine: line.teethProductLine }
+      : {}),
+    ...(line.teethKind === "anterior" || line.teethKind === "posterior"
+      ? { teethKind: line.teethKind }
+      : {}),
+    ...(serializeTeethDetails(line.teethDetails)
+      ? { teethDetails: serializeTeethDetails(line.teethDetails) }
+      : {}),
+  };
+}
+
+/** Bezpieczny payload Server Action → klient (tylko JSON-serializowalne pola). */
+export function zkProsbaPrefillFromWatch(
+  watch: SalesZkWatch,
+  options?: ZkProsbaPrefillOptions
+): ZkProsbaPrefill {
+  const lines = extractProsbaLinesFromZkWatch(watch, options).map(serializePrefillLine);
 
   const mode =
     options?.mode ??
@@ -120,6 +177,22 @@ export function zkProsbaPrefillFromWatch(
         : "full");
 
   const allowedTwIds = collectZkWatchAllowedTwIds(watch);
+  const includeCaseNote = shouldIncludeZkCaseNoteInPrefill(watch);
+  const caseNote = includeCaseNote ? normalizeZkCaseNote(watch.note) : null;
+  const linesWithNote: ProductLineDraft[] = includeCaseNote
+    ? applyZkCaseNoteToProsbaLines(lines, caseNote)
+    : lines;
+
+  const requestKind = options?.requestKind ?? "zamowienie";
+  let teethDraftsIncomplete = false;
+  let incompleteTeethLineKeys: string[] | undefined;
+  if (options?.teethRegistry && requestKind !== "informacja") {
+    incompleteTeethLineKeys = zkWatchIncompleteTeethLineKeys(watch, options.teethRegistry, {
+      lineKeys: options.lineKeys,
+      requestKind,
+    });
+    teethDraftsIncomplete = incompleteTeethLineKeys.length > 0;
+  }
 
   return enrichZkProsbaPrefillWithStock(
     {
@@ -127,14 +200,23 @@ export function zkProsbaPrefillFromWatch(
       clientName: String(watch.client_label ?? "").trim(),
       clientKhId: normalizePrefillKhId(watch.client_kh_id),
       zkNumber: String(watch.zk_number ?? "").trim(),
-      lines,
+      // Incomplete: nie wysyłaj linii do formularza — tylko flaga + notice.
+      lines: teethDraftsIncomplete ? [] : linesWithNote,
       mode,
-      ...(mode === "supplement" ? { supplementLineCount: lines.length } : {}),
+      ...(mode === "supplement" && !teethDraftsIncomplete
+        ? { supplementLineCount: linesWithNote.length }
+        : {}),
       ...(options?.lineKeys?.length ? { lineKeys: [...options.lineKeys] } : {}),
       ...(options?.requestKind ? { requestKind: options.requestKind } : {}),
       ...(allowedTwIds.length ? { allowedTwIds } : {}),
+      ...(includeCaseNote && caseNote && !teethDraftsIncomplete
+        ? { includeCaseNote: true, caseNote }
+        : {}),
+      ...(teethDraftsIncomplete
+        ? { teethDraftsIncomplete: true, incompleteTeethLineKeys }
+        : {}),
     },
-    options?.stockByTwId
+    teethDraftsIncomplete ? undefined : options?.stockByTwId
   );
 }
 
@@ -146,11 +228,12 @@ export function extractProsbaLinesFromZkWatch(
     options?.lineKeys?.length ? new Set(options.lineKeys) : null;
   const lineViews = buildZkWatchLineViews(watch);
   const productViews = lineViews.filter((line) => line.key !== "summary");
+  const drafts = parseZkTeethDrafts(watch.teeth_drafts);
 
   const fromSnapshot: ProductLineDraft[] = [];
   for (const view of productViews) {
     if (lineKeyFilter && !lineKeyFilter.has(view.key)) continue;
-    fromSnapshot.push({
+    const base: ProductLineDraft = {
       id: randomId(),
       symbol: view.symbol ?? "",
       mikranCode: "",
@@ -160,7 +243,8 @@ export function extractProsbaLinesFromZkWatch(
       clientName: watch.client_label,
       clientKhId: watch.client_kh_id,
       subiektTwId: normalizeSubiektTwId(view.subiektTwId),
-    });
+    };
+    fromSnapshot.push(applyZkTeethDraftToProductLine(base, drafts[view.key]));
   }
 
   if (fromSnapshot.length > 0) return fromSnapshot;
@@ -194,12 +278,35 @@ export function extractProsbaLinesFromZkWatch(
   ];
 }
 
+/** Czy tworzenie prośby z ZK jest zablokowane przez brak list zębów. */
+export function zkProsbaBlockedByIncompleteTeethDrafts(
+  watch: SalesZkWatch,
+  registry: TeethDraftRegistryLookup,
+  options?: { lineKeys?: string[]; requestKind?: IndividualRequestKind }
+): boolean {
+  if (options?.requestKind === "informacja") return false;
+  return !zkWatchTeethDraftsReady(watch, registry, {
+    lineKeys: options?.lineKeys,
+    requestKind: "zamowienie",
+  });
+}
+
 export function stashZkProsbaPrefill(
   watch: SalesZkWatch,
   options?: ZkProsbaPrefillOptions
 ): boolean {
+  if (
+    options?.teethRegistry &&
+    zkProsbaBlockedByIncompleteTeethDrafts(watch, options.teethRegistry, {
+      lineKeys: options.lineKeys,
+      requestKind: options.requestKind,
+    })
+  ) {
+    return false;
+  }
   const payload = zkProsbaPrefillFromWatch(watch, options);
   if (!payload.lines.length) return false;
+  if (payload.teethDraftsIncomplete) return false;
   if (typeof sessionStorage === "undefined") return false;
   sessionStorage.setItem(ZK_PROSBA_PREFILL_STORAGE_KEY, JSON.stringify(payload));
   return true;
@@ -235,6 +342,24 @@ export function readZkProsbaPrefill(): ZkProsbaPrefill | null {
           typeof line.zkQuantity === "number" && Number.isFinite(line.zkQuantity)
             ? line.zkQuantity
             : undefined,
+        requestNote:
+          typeof line.requestNote === "string" && line.requestNote.trim()
+            ? line.requestNote.trim()
+            : undefined,
+        teethManufacturer:
+          typeof line.teethManufacturer === "string" &&
+          isTeethManufacturer(line.teethManufacturer)
+            ? line.teethManufacturer
+            : undefined,
+        teethProductLine:
+          typeof line.teethProductLine === "string" &&
+          isTeethProductLine(line.teethProductLine)
+            ? line.teethProductLine
+            : undefined,
+        teethKind: parseTeethKind(line.teethKind) ?? undefined,
+        teethDetails: Array.isArray(line.teethDetails)
+          ? serializeTeethDetails(line.teethDetails as TeethLineDetail[])
+          : undefined,
       })),
       mode: parsed.mode,
       supplementLineCount: parsed.supplementLineCount,
@@ -244,6 +369,20 @@ export function readZkProsbaPrefill(): ZkProsbaPrefill | null {
           ? parsed.requestKind
           : undefined,
       ...(allowedTwIds ? { allowedTwIds } : {}),
+      ...(parsed.includeCaseNote && parsed.caseNote
+        ? {
+            includeCaseNote: true,
+            caseNote: String(parsed.caseNote),
+          }
+        : {}),
+      ...(parsed.teethDraftsIncomplete
+        ? {
+            teethDraftsIncomplete: true,
+            incompleteTeethLineKeys: Array.isArray(parsed.incompleteTeethLineKeys)
+              ? parsed.incompleteTeethLineKeys.map(String)
+              : undefined,
+          }
+        : {}),
     };
   } catch {
     return null;

@@ -160,6 +160,8 @@ export type AddIndividualOrdersEntry = {
   source?: "subiekt" | "catalog" | null;
   sourceZkWatchId?: string | null;
   sourceZkNumber?: string | null;
+  /** Klucze linii ZK objęte tą prośbą (do clear teeth_drafts). */
+  sourceZkLineKeys?: string[] | null;
   informacjaQueueViaDailyPanel?: boolean;
   informacjaStockOutReorder?: boolean;
   onHand?: number | null;

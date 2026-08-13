@@ -2,9 +2,14 @@
 
 import { useState } from "react";
 import { buildSupplierContactUi } from "@/lib/orders/supplier-contact";
+import { copyTextToClipboard } from "@/lib/ui/copy-text-to-clipboard";
 import { OrderMethodBadge } from "@/components/targets/OrderMethodBadge";
 import { cn } from "@/lib/cn";
 import { panelContactLinkClass } from "@/lib/ui/ontime-theme";
+
+function normalizeEmailForCopy(raw: string): string {
+  return raw.replace(/^mailto:/i, "").trim();
+}
 
 export function SupplierContactActions({
   notes,
@@ -23,25 +28,24 @@ export function SupplierContactActions({
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
   const ui = buildSupplierContactUi(notes, mails, extraInfo);
-  const emailToCopy =
+  const rawEmail =
     ui.email ??
-    (ui.contactLink?.kind === "mailto"
-      ? ui.contactLink.label
-      : null);
+    (ui.contactLink?.kind === "mailto" ? ui.contactLink.label : null);
+  const emailToCopy = rawEmail ? normalizeEmailForCopy(rawEmail) : "";
   const canCopyEmail = Boolean(emailToCopy);
   const copyMailFromBadge = ui.methodKind === "mail" && canCopyEmail;
 
   const copyText = async (text: string) => {
     if (!text) return;
     setCopyFailed(false);
-    try {
-      await navigator.clipboard.writeText(text);
+    const ok = await copyTextToClipboard(text);
+    if (ok) {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopyFailed(true);
-      window.setTimeout(() => setCopyFailed(false), 3000);
+      return;
     }
+    setCopyFailed(true);
+    window.setTimeout(() => setCopyFailed(false), 3000);
   };
 
   const copyContact = () => void copyText(ui.copyText ?? "");

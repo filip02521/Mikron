@@ -1,5 +1,6 @@
 "use client";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { actionAcknowledgeZdFulfillmentDeadlineChange } from "@/app/actions/my-orders";
@@ -107,8 +108,7 @@ export function ZdFulfillmentDeadlineChangeAutoAck({
         failedAttemptsRef.current[key] = nextAttempts;
         processedKeyRef.current = "";
         setToast({
-          message:
-            e instanceof Error ? e.message : "Nie udało się zapisać zmiany terminu",
+          message: userFacingErrorText(e, "Nie udało się zapisać zmiany terminu"),
           tone: "warning",
         });
         if (nextAttempts < ZD_DEADLINE_ACK_MAX_RETRIES) {

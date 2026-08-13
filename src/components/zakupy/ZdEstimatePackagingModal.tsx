@@ -139,8 +139,8 @@ export function ZdEstimatePackagingModal({
               1 na ZD → N sztuk na magazynie / sprzedaż
             </p>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Szacunek liczy niedobór w sztukach, a kolumna „Do ZD” pokazuje, ile
-              paczek wpisać. Edytuj też z wiersza listy szacunku.
+              Kreator liczy niedobór w sztukach, a kolumna „Do ZD” pokazuje, ile
+              paczek wpisać. Edytuj też z wiersza listy kreatora.
             </p>
           </div>
         </div>

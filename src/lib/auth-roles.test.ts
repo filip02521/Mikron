@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canAccessCarrierPhones,
   canAccessPath,
   canAccessTeethPanel,
   canManageSalesTeam,
@@ -110,7 +111,7 @@ describe("auth-roles zakupy_zeby", () => {
     expect(canAccessPath("admin", "/zeby/kolejka")).toBe(true);
   });
 
-  it("canAccessPath: Magazyn Gądki dla operacji dostaw; Szacunek ZD tylko admin", () => {
+  it("canAccessPath: Magazyn Gądki dla operacji dostaw; Kreator ZD tylko admin", () => {
     expect(canAccessPath("zakupy", "/zakupy/gadki")).toBe(true);
     expect(canAccessPath("admin", "/zakupy/gadki")).toBe(true);
     expect(canAccessPath("magazyn", "/zakupy/gadki")).toBe(false);
@@ -261,5 +262,28 @@ describe("redirectPathAfterLogin admin panel context", () => {
     expect(
       redirectPathAfterLogin("admin", null, { adminPanelContext: "sales" })
     ).toBe("/admin/wybor-handlowca");
+  });
+});
+
+describe("canAccessCarrierPhones", () => {
+  it("zezwala magazynowi (przyjęcie /kurierzy)", () => {
+    expect(canAccessCarrierPhones("magazyn")).toBe(true);
+    expect(canAccessCarrierPhones("magazyn", ["magazyn"])).toBe(true);
+  });
+
+  it("zezwala zakupom i adminowi", () => {
+    expect(canAccessCarrierPhones("zakupy")).toBe(true);
+    expect(canAccessCarrierPhones("admin")).toBe(true);
+    expect(canAccessCarrierPhones("zakupy", ["dostawy"])).toBe(true);
+  });
+
+  it("zezwala panelowi zębów (wspólna ścieżka /kurierzy)", () => {
+    expect(canAccessCarrierPhones("zakupy_zeby")).toBe(true);
+    expect(canAccessCarrierPhones("zakupy_zeby", ["zeby"])).toBe(true);
+  });
+
+  it("odmawia handlowcom", () => {
+    expect(canAccessCarrierPhones("sales")).toBe(false);
+    expect(canAccessCarrierPhones("sales_manager")).toBe(false);
   });
 });

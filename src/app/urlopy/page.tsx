@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { getSessionUser } from "@/lib/auth";
 import { isAdmin, isSalesAccount } from "@/lib/auth-roles";
 import { fetchAllNonSalesStaff, fetchStaffVacationPeriods } from "@/lib/data/staff-vacation-periods";
@@ -30,7 +31,7 @@ export default async function StaffUrlopyPage() {
     const ids = staff.map((s) => s.id);
     periodsByUser = await fetchStaffVacationPeriods(ids);
   } catch (e) {
-    loadError = e instanceof Error ? e.message : "Nie udało się wczytać urlopów.";
+    loadError = userFacingErrorText(e, "Nie udało się wczytać urlopów.");
   }
 
   return (

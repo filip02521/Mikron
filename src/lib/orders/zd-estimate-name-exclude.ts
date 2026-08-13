@@ -1,5 +1,5 @@
 /**
- * Automatyczne wykluczenie ze szacunku ZD:
+ * Automatyczne wykluczenie z kreatora ZD:
  * 1) po nazwie towaru (Subiekt `tw_Nazwa`) — outlet / wycofane,
  * 2) po katalogu zębów (`prosba_teeth_products`) — wszystkie SKU zębowe.
  *

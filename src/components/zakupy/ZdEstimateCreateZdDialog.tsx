@@ -45,6 +45,7 @@ export function ZdEstimateCreateZdDialog({
   excludedWithIndividualCount = 0,
   omittedServiceCount = 0,
   serviceMarkPreviewCount,
+  implicitPieceSnapshotHint = null,
   onClose,
   onCreated,
   onError,
@@ -78,6 +79,7 @@ export function ZdEstimateCreateZdDialog({
   omittedServiceCount?: number;
   /** Ile usług zmieści się w uwagach (podgląd mark) — domyślnie = service IDs. */
   serviceMarkPreviewCount?: number;
+  implicitPieceSnapshotHint?: string | null;
   onClose: () => void;
   onCreated: (info: {
     dokId: number;
@@ -316,6 +318,11 @@ export function ZdEstimateCreateZdDialog({
               <p className="mt-2 text-amber-900">
                 Dużo pozycji (&gt;{ZD_CREATE_SOFT_WARN_LINES}) — Subiekt może
                 długo pracować; limit czasu to ok. 3 minuty.
+              </p>
+            ) : null}
+            {implicitPieceSnapshotHint ? (
+              <p className="mt-2 rounded-md border border-amber-200/80 bg-amber-50/80 px-2.5 py-2 text-xs leading-snug text-amber-950">
+                {implicitPieceSnapshotHint}
               </p>
             ) : null}
             <p className="mt-2 text-xs leading-snug text-slate-600">

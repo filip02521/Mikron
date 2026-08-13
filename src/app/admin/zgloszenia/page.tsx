@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { fetchSalesBugReports } from "@/lib/data/sales-bug-reports";
 import { getSessionUser } from "@/lib/auth";
 import { BugReportsAdminClient } from "@/components/admin/BugReportsAdminClient";
@@ -22,7 +23,7 @@ export default async function AdminZgloszeniaPage() {
   try {
     reports = await fetchSalesBugReports("all");
   } catch (error) {
-    loadError = error instanceof Error ? error.message : "Nie udało się wczytać zgłoszeń.";
+    loadError = userFacingErrorText(error, "Nie udało się wczytać zgłoszeń.");
     logDevPageError("admin/zgloszenia/page", error);
   }
 

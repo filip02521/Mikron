@@ -117,7 +117,10 @@ export function resolveZdCreateKhId(input: {
 export function buildZdCreatePreviewFromOrderable(
   lines: readonly ManualZdEstimateLine[],
   packagingById: ReadonlyMap<number, PackagingLookup>,
-  individualExtraByTwId?: ReadonlyMap<number, number> | null
+  individualExtraByTwId?: ReadonlyMap<number, number> | null,
+  /** Nadpisanie jednostek ZD (dokument) per tw_Id — przed Create. */
+  qtyOverrideByTwId?: ReadonlyMap<number, number> | null,
+  extraOnlyTwIds?: ReadonlySet<number> | null
 ): ZdCreatePreview {
   const previewLines: ZdCreatePreviewLine[] = [];
   let zdUnitsSuma = 0;
@@ -127,19 +130,26 @@ export function buildZdCreatePreviewFromOrderable(
       extra != null && Number.isFinite(extra) && extra > 0
         ? Math.ceil(extra)
         : 0;
+    const extraOnly = extraOnlyTwIds?.has(line.tw_Id) === true;
     const qty = resolveOrderQtyForLine(
       line,
       packagingById.get(line.tw_Id),
-      extraPieces
+      extraPieces,
+      extraOnly
     );
-    if (qty.zdUnits <= 0) continue;
-    zdUnitsSuma += qty.zdUnits;
+    const override = qtyOverrideByTwId?.get(line.tw_Id);
+    const zdUnits =
+      override != null && Number.isFinite(override) && override >= 0
+        ? Math.trunc(override)
+        : qty.zdUnits;
+    if (zdUnits <= 0) continue;
+    zdUnitsSuma += zdUnits;
     previewLines.push({
       twId: line.tw_Id,
       symbol: line.tw_Symbol,
       nazwa: line.tw_Nazwa,
       plu: line.tw_PLU ?? null,
-      ilosc: qty.zdUnits,
+      ilosc: zdUnits,
       packagingHint: qty.hasPackaging
         ? `${qty.unitsPerPackage} szt / 1 ${qty.packageLabel}`
         : null,
@@ -183,7 +193,7 @@ export function defaultZdCreateUwagi(input: {
   dateKey: string;
 }): string {
   const parts = [
-    "OnTime szacunek",
+    "OnTime kreator",
     input.supplierName.trim() || null,
     input.scopeLabel?.trim() || null,
     input.dateKey.trim() || null,
@@ -308,6 +318,12 @@ export type CanCreateZdState = {
   mutating: boolean;
   creating: boolean;
   createDoneDokId: number | null;
+  /** Świadome odblokowanie po create — pozwala otworzyć Create ponownie. */
+  createUnlockedAfterDone?: boolean;
+  /** Konflikty opakowanie ↔ para (pack) — blokują Create do ujednolicenia. */
+  packagingPairConflictCount?: number;
+  /** Brakujące węzły BOM explode — blokują Create (popyt niepełny). */
+  explodeBomIncomplete?: boolean;
 };
 
 export function canCreateZdFromEstimateState(
@@ -325,16 +341,35 @@ export function canCreateZdFromEstimateState(
       reason: ZD_ESTIMATE_UI.createGateNeedsSettings,
     };
   }
+  if (state.explodeBomIncomplete) {
+    return {
+      ok: false,
+      reason: ZD_ESTIMATE_UI.createGateExplodeBomIncomplete,
+    };
+  }
   if (state.estimating) {
     return { ok: false, reason: "Trwa przeliczanie szacunku." };
   }
   if (state.mutating || state.creating) {
     return { ok: false, reason: "Trwa inna operacja." };
   }
-  if (state.createDoneDokId != null && state.createDoneDokId > 0) {
+  const createLocked =
+    state.createDoneDokId != null &&
+    state.createDoneDokId > 0 &&
+    !state.createUnlockedAfterDone;
+  if (createLocked) {
     return {
       ok: false,
-      reason: "ZD już utworzone z tej listy — powiąż inne ZD ręcznie albo przelicz szacunek.",
+      reason: "ZD już utworzone z tej listy — powiąż inne ZD ręcznie, przelicz listę albo odblokuj świadomie.",
+    };
+  }
+  if (
+    state.packagingPairConflictCount != null &&
+    state.packagingPairConflictCount > 0
+  ) {
+    return {
+      ok: false,
+      reason: `Konflikt opakowanie ↔ para (${state.packagingPairConflictCount}) — ujednolić przed Create.`,
     };
   }
   if (!(state.orderableCount > 0)) {

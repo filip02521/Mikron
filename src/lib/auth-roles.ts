@@ -40,6 +40,21 @@ export function canAccessWarehouse(role: UserRole, workspaces?: Workspace[]): bo
   return role === "admin" || role === "zakupy" || role === "magazyn";
 }
 
+/**
+ * Odczyt numerów kurierów (/kurierzy + modal w dzienniku).
+ * Dostęp jak ścieżka /kurierzy: magazyn, dostawy, albo panel zębów (wspólna nawigacja).
+ */
+export function canAccessCarrierPhones(
+  role: UserRole,
+  workspaces?: Workspace[]
+): boolean {
+  return (
+    canAccessWarehouse(role, workspaces) ||
+    canAccessOperations(role, workspaces) ||
+    canAccessTeethPanel(role, workspaces)
+  );
+}
+
 export function isSales(role: UserRole): boolean {
   return role === "sales";
 }

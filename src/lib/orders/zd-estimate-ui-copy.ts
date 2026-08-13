@@ -1,6 +1,117 @@
 /**
- * Teksty UI szacunku ZD — polszczyzna dla zakupów, bez żargonu API/SQL.
+ * Teksty UI kreatora ZD — polszczyzna dla zakupów, bez żargonu API/SQL.
  */
+
+/** Krótki flow w intro — ten sam na loadingu i stronie (bez skoku copy). */
+export const ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION =
+  "Zakres Subiekta → lista do zamówienia → Utwórz ZD.";
+
+export function zdEstimateRouteLoadingAriaLabel(): string {
+  return "Wczytuję kreator ZD";
+}
+
+export function zdEstimateRouteLoadingTitle(): string {
+  return "Wczytuję kreator ZD";
+}
+
+export function zdEstimateRouteLoadingSubtitle(): string {
+  return "Ładuję ustawienia działu i połączenie z Subiektem…";
+}
+
+export function zdEstimateRouteLoadingFooter(): string {
+  return "To nie jest jeszcze liczenie listy — zaraz wybierzesz zakres i klikniesz „Policz listę”.";
+}
+
+/**
+ * Kroki bootstrapu trasy (SSR) — tylko to, co dzieje się przy wejściu,
+ * nie kroki „Policz listę” (te są w LaunchProgress po kliknięciu).
+ */
+export function zdEstimateRouteLoadingSteps(): ReadonlyArray<{
+  id: string;
+  title: string;
+  activeHint: string;
+  doneHint: string;
+}> {
+  return [
+    {
+      id: "settings",
+      title: "Ustawienia działu",
+      activeHint: "Wczytuję wykluczenia, opakowania, pary…",
+      doneHint: "Ustawienia gotowe",
+    },
+    {
+      id: "host",
+      title: "Połączenie z Subiektem",
+      activeHint: "Sprawdzam host kreatora…",
+      doneHint: "Host ustalony",
+    },
+    {
+      id: "ui",
+      title: "Ekran przygotowania",
+      activeHint: "Składam formularz zakresu…",
+      doneHint: "Możesz wybrać grupę lub cechę",
+    },
+  ];
+}
+
+export function zdEstimateScopeDashedHint(mode: "grupa" | "cecha"): string {
+  return mode === "grupa"
+    ? "Wybierz szybki chip (Falcon, Ivoclar…) albo wyszukaj grupę — zapas i daty ustawią się same. Potem „Policz listę”."
+    : "Wyszukaj i wybierz cechę — zapas i daty ustawią się z nazwy, jeśli jest karta dostawcy. Potem „Policz listę”.";
+}
+
+export function zdEstimateReadyToCountHint(): string {
+  return "Gotowe do policzenia — kliknij „Policz listę”.";
+}
+
+export function zdEstimateScopeChangedHint(): string {
+  return "Zakres zmieniony — policz ponownie, żeby odświeżyć listę.";
+}
+
+export function zdEstimateNeedsSettingsHint(): string {
+  return "Najpierw wczytaj ustawienia działu (baner powyżej), potem „Policz listę”.";
+}
+
+export function zdEstimateLaunchProgressTitle(input: {
+  manualWithScope: boolean;
+}): string {
+  return input.manualWithScope
+    ? "Liczy listę do ZD…"
+    : "Przygotowuję zamówienie ZD";
+}
+
+export function zdEstimateLaunchScopeResolvedHint(): string {
+  return "Zakres potwierdzony";
+}
+
+export function zdEstimateLaunchScopePendingHint(): string {
+  return "Potwierdzam grupę lub cechę…";
+}
+
+export function zdEstimateRecountOverlayMessage(): string {
+  return "Przeliczam listę…";
+}
+
+export function zdEstimateRecountOverlayHint(isLive: boolean): string {
+  return isLive
+    ? "Pobieram dane z aktualnej bazy Subiekta — lista zostaje na ekranie."
+    : "Pobieram dane z testowego Subiekta — lista zostaje na ekranie.";
+}
+
+export function zdEstimateRecountListStatus(input: {
+  doZamowieniaCount: number;
+  durationMs?: number | null;
+}): string {
+  const secs =
+    input.durationMs != null && input.durationMs >= 0
+      ? ` · ${(input.durationMs / 1000).toFixed(1)} s`
+      : "";
+  return `Przeliczono — ${input.doZamowieniaCount} pozycji do ZD${secs}`;
+}
+
+export function zdEstimateCountingButtonLabel(): string {
+  return "Liczę…";
+}
 
 export function zdEstimateHostBadgeLabel(input: {
   isLive: boolean;
@@ -21,7 +132,7 @@ export function zdEstimateHostStripDetail(input: {
 }): string {
   const parts: string[] = [];
   if (input.isLive) {
-    parts.push("aktualna baza Subiekta — „Utwórz ZD” zapisuje prawdziwy dokument");
+    parts.push("aktualna baza Subiekta");
   } else {
     parts.push("środowisko testowe Subiekta");
   }
@@ -36,14 +147,16 @@ export function zdEstimatePageHint(input: {
   configured: boolean;
 }): string {
   if (!input.configured) {
-    return "Skonfiguruj połączenie z Subiektem (host szacunku), żeby policzyć listę i utworzyć ZD.";
+    return "Skonfiguruj połączenie z Subiektem (host kreatora), żeby policzyć listę i utworzyć ZD.";
   }
-  // LIVE/test jest na belce statusu — tu tylko kontekst pracy, bez powtórzeń.
-  return "Zakres Subiekta → lista do ZD → Utwórz ZD. Opakowania i wykluczenia są trwałe i wspólne dla działu zakupów.";
+  const hostNote = input.isLive
+    ? "„Utwórz ZD” zapisuje prawdziwy dokument w aktualnej bazie Subiekta."
+    : "„Utwórz ZD” idzie na środowisko testowe Subiekta.";
+  return `„Do ZD” = jednostki dokumentu (opakowania i prośby). Opakowania, wykluczenia, „tylko na prośbę”, pary i składy są wspólne dla działu. ${hostNote}`;
 }
 
 export function zdEstimatePrepCardHint(): string {
-  return "Wykluczenia, opakowania, pary i składy są trwałe i wspólne dla działu zakupów.";
+  return "Wykluczenia, „tylko na prośbę”, opakowania, pary i składy są trwałe i wspólne dla działu zakupów.";
 }
 
 export function zdEstimateEmptyListDescription(isLive: boolean): string {
@@ -60,13 +173,13 @@ export function zdEstimateLaunchFetchHint(isLive: boolean): string {
 }
 
 export function zdEstimateBlockedDailyCtaMessage(): string {
-  return "Szacunek jest zablokowany (brak połączenia z Subiektem). CTA z panelu dziennego nie uruchomi listy — ustaw host szacunku w konfiguracji i odśwież stronę.";
+  return "Kreator ZD jest zablokowany (brak połączenia z Subiektem). CTA z panelu dziennego nie uruchomi listy — ustaw host kreatora w konfiguracji i odśwież stronę.";
 }
 
 export function zdEstimateBlockedOrdersAlertBody(message: string | null): string {
   return (
     message?.trim() ||
-    "Brak połączenia z hostem szacunku Subiekta (live lub test). Skontaktuj się z administratorem albo sprawdź konfigurację środowiska."
+    "Brak połączenia z hostem kreatora ZD Subiekta (live lub test). Skontaktuj się z administratorem albo sprawdź konfigurację środowiska."
   );
 }
 
@@ -107,9 +220,11 @@ export const ZD_ESTIMATE_UNITS_LEGEND =
 
 export const ZD_ESTIMATE_UI = {
   policzNeedsSettingsTitle:
-    "Wymaga wczytanych wykluczeń, opakowań, par, składów i katalogu zębów",
+    "Wymaga wczytanych wykluczeń, „tylko na prośbę”, opakowań, par, składów i katalogu zębów",
   createGateNeedsSettings:
-    "Najpierw wczytaj wykluczenia, opakowania, pary, składy i katalog zębów.",
+    "Najpierw wczytaj wykluczenia, listę „tylko na prośbę”, opakowania, pary, składy i katalog zębów.",
+  createGateExplodeBomIncomplete:
+    "Skład „Składamy” jest niekompletny (brak towarów w wyniku) — dociągnij węzły (Policz) zanim utworzysz ZD.",
   createProgressDisclaimer:
     "Postęp jest szacunkowy (bez podglądu kroków po stronie Subiekta) — lista może zostać dłużej na „Tworzenie w Subiekcie”.",
   createQtyBumpNote:
@@ -120,14 +235,33 @@ export const ZD_ESTIMATE_UI = {
   packagingConflictShort: "Konflikt opakowania",
   packagingConflictTitle:
     "Opakowanie w OnTime różni się od przelicznika pary — sprawdź ustawienia przed utworzeniem ZD.",
+  implicitPieceSnapshotTitle:
+    "Historia zapisze część pozycji jako sztuki 1:1 (brak opakowania / pary)",
   emptyOrderTitle: "Brak pozycji do ZD",
-  footerWindow: (
-    dataOd: string,
-    dataDo: string,
-    dniOkresu: string,
-    dniZapasu: string
-  ) =>
-    ` · okno sprzedaży ${dataOd}–${dataDo} · ${dniOkresu} dni w oknie · zapas ${dniZapasu} dni`,
+  emptyExcludedTitle: "Brak wykluczeń w tym zakresie",
+  emptyExcludedDescription:
+    "Żaden produkt nie jest wykluczony ręcznie, automatycznie (outlet / wycofane / zęby) ani „tylko na prośbę” bez aktywnej prośby.",
+  excludedFilterTitle:
+    "Hard + auto + tylko na prośbę bez aktywnej prośby. Z prośbą — w Do ZD (qty = prośba).",
   advancedZapasMinLabel: "Bufor minimum (szt.)",
   advancedZapasMinHint: "Dodatkowy zapas minimum doliczany do celu.",
+  onRequestVsHardExclude:
+    "„Tylko na prośbę” — poza Do ZD bez prośby; z prośbą qty = tylko prośba. Twarde wykluczenie — prośba trafia do usług/uwag.",
 } as const;
+
+/** Preflight przed Create / Powiąż ZD — pozycje bez jawnego opakowania / pary. */
+export function formatImplicitPieceSnapshotHint(
+  lines: ReadonlyArray<{ symbol: string; twId: number }>,
+  maxNames = 4
+): string | null {
+  if (!lines.length) return null;
+  const sample = lines
+    .slice(0, maxNames)
+    .map((l) => `${l.symbol} (${l.twId})`)
+    .join(", ");
+  const more =
+    lines.length > maxNames ? ` (+${lines.length - maxNames})` : "";
+  const countLabel =
+    lines.length === 1 ? "1 pozycja" : `${lines.length} pozycje`;
+  return `${countLabel} bez opakowania ani pary (${sample}${more}) — historia zapisze jednostki ZD jako sztuki 1:1. Ustaw opakowanie (≥2 szt/op.) lub parę, jeśli towar idzie w paczkach.`;
+}

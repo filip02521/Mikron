@@ -1,5 +1,5 @@
 /**
- * Okno sprzedaży szacunku ZD (Data od / Data do).
+ * Okno sprzedaży kreatora ZD (Data od / Data do).
  * „manual” = użytkownik ustawił daty ręcznie → nie nadpisuj z zapasu dostawcy.
  */
 

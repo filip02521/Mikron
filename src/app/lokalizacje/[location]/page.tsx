@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { countInactiveSuppliers, fetchSuppliersWithSchedules } from "@/lib/data/queries";
 import { getSessionUser } from "@/lib/auth";
 import type { SupplierLocation } from "@/types/database";
@@ -56,7 +57,7 @@ export default async function LocationPage({
       countInactiveSuppliers(),
     ]);
   } catch (error) {
-    loadError = error instanceof Error ? error.message : "Nie udało się wczytać harmonogramów.";
+    loadError = userFacingErrorText(error, "Nie udało się wczytać harmonogramów.");
     logDevPageError("lokalizacje/page", error);
     rows = [];
   }

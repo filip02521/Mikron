@@ -46,13 +46,17 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     !session?.mustChangePassword &&
     !session?.salesOnboardingCompletedAt;
 
-  const teethProductInfo =
+  const teethProductInfoResult =
     session && !lightShell
-      ? await fetchTeethProductInfo().catch((e) => {
-          console.error("[AppShell] fetchTeethProductInfo failed:", e?.message ?? e);
-          return [];
-        })
-      : [];
+      ? await fetchTeethProductInfo()
+          .then((rows) => ({ rows, available: true as const }))
+          .catch((e) => {
+            console.error("[AppShell] fetchTeethProductInfo failed:", e?.message ?? e);
+            return { rows: [] as Awaited<ReturnType<typeof fetchTeethProductInfo>>, available: false as const };
+          })
+      : { rows: [] as Awaited<ReturnType<typeof fetchTeethProductInfo>>, available: true as const };
+  const teethProductInfo = teethProductInfoResult.rows;
+  const teethCatalogAvailable = teethProductInfoResult.available;
 
   const loadTeethShortages =
     !!session &&
@@ -92,6 +96,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       salesOnboardingCompletedAt={session?.salesOnboardingCompletedAt ?? null}
       salesOnboardingActive={showSalesOnboarding}
       teethProductInfo={teethProductInfo}
+      teethCatalogAvailable={teethCatalogAvailable}
       activeTeethShortages={activeTeethShortages}
       assignedWorkspaces={session?.assignedWorkspaces ?? []}
       activeDelegations={activeDelegations}

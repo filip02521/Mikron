@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { Suspense } from "react";
 import {
   fetchTeethQueue,
@@ -34,13 +35,13 @@ export async function TeethPanelRoute({ tab }: { tab: Tab }) {
     try {
       groups = await fetchTeethQueue();
     } catch (e) {
-      error = e instanceof Error ? e.message : "Błąd ładowania";
+      error = userFacingErrorText(e, "Błąd ładowania");
     }
   } else if (tab === "weryfikacja") {
     try {
       groups = await fetchTeethVerificationQueue();
     } catch (e) {
-      error = e instanceof Error ? e.message : "Błąd ładowania";
+      error = userFacingErrorText(e, "Błąd ładowania");
     }
   }
 

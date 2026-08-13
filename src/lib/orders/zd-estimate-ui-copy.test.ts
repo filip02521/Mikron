@@ -1,10 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION,
+  formatImplicitPieceSnapshotHint,
   zdEstimateCreateConfirmLabel,
   zdEstimateEmptyListDescription,
   zdEstimateHostBadgeLabel,
   zdEstimateLaunchFetchHint,
+  zdEstimateLaunchProgressTitle,
   zdEstimatePageHint,
+  zdEstimateReadyToCountHint,
+  zdEstimateRecountOverlayHint,
+  zdEstimateRouteLoadingSteps,
+  zdEstimateRouteLoadingSubtitle,
+  zdEstimateScopeChangedHint,
+  zdEstimateScopeDashedHint,
 } from "./zd-estimate-ui-copy";
 
 describe("zd-estimate-ui-copy", () => {
@@ -17,15 +26,21 @@ describe("zd-estimate-ui-copy", () => {
     );
   });
 
-  it("page hint bez host_kind i bez powtórzenia LIVE", () => {
+  it("page hint bez host_kind i bez etykiety LIVE (status jest w intro)", () => {
     expect(zdEstimatePageHint({ isLive: true, configured: true })).not.toMatch(
       /host_kind/
     );
     expect(zdEstimatePageHint({ isLive: true, configured: true })).not.toMatch(
-      /LIVE|prawdziwy dokument/i
+      /\bLIVE\b/
     );
     expect(zdEstimatePageHint({ isLive: true, configured: true })).toMatch(
-      /do ZD/i
+      /Do ZD/i
+    );
+    expect(zdEstimatePageHint({ isLive: true, configured: true })).toMatch(
+      /prawdziwy dokument/i
+    );
+    expect(zdEstimatePageHint({ isLive: true, configured: true })).toMatch(
+      /tylko na prośbę/i
     );
   });
 
@@ -43,5 +58,46 @@ describe("zd-estimate-ui-copy", () => {
     });
     expect(text).toMatch(/aktualnej bazie/);
     expect(text).toMatch(/katalogowe/);
+  });
+
+  it("route loading bez „dla dostawcy” i ze stałym flow description", () => {
+    expect(ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION).toMatch(/Zakres Subiekta/);
+    expect(zdEstimateRouteLoadingSubtitle()).not.toMatch(/dla dostawcy/i);
+    expect(zdEstimateRouteLoadingSteps().length).toBeGreaterThanOrEqual(2);
+    for (const step of zdEstimateRouteLoadingSteps()) {
+      expect(`${step.title} ${step.activeHint} ${step.doneHint}`).not.toMatch(
+        /dla dostawcy/i
+      );
+      expect(step.title).not.toMatch(/Lista do ZD/i);
+    }
+  });
+
+  it("prep / launch / recount copy", () => {
+    expect(zdEstimateScopeDashedHint("grupa")).toMatch(/Policz listę/);
+    expect(zdEstimateScopeDashedHint("cecha")).toMatch(/Policz listę/);
+    expect(zdEstimateReadyToCountHint()).toMatch(/Gotowe do policzenia/);
+    expect(zdEstimateScopeChangedHint()).toMatch(/Zakres zmieniony/);
+    expect(
+      zdEstimateLaunchProgressTitle({ manualWithScope: true })
+    ).toMatch(/Liczy listę/);
+    expect(
+      zdEstimateLaunchProgressTitle({ manualWithScope: false })
+    ).toMatch(/Przygotowuję zamówienie/);
+    expect(zdEstimateRecountOverlayHint(true)).toMatch(/aktualnej bazy/);
+    expect(zdEstimateRecountOverlayHint(false)).toMatch(/testowego/);
+  });
+
+  it("formatImplicitPieceSnapshotHint — null gdy brak linii", () => {
+    expect(formatImplicitPieceSnapshotHint([])).toBeNull();
+  });
+
+  it("formatImplicitPieceSnapshotHint — sample z tw_Id", () => {
+    const hint = formatImplicitPieceSnapshotHint([
+      { symbol: "ABC", twId: 1028 },
+      { symbol: "DEF", twId: 4914 },
+    ]);
+    expect(hint).toMatch(/2 pozycje/);
+    expect(hint).toMatch(/ABC \(1028\)/);
+    expect(hint).toMatch(/sztuki 1:1/);
   });
 });

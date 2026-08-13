@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { SystemNotice } from "@/components/ui/SystemNotice";
 import { cn } from "@/lib/cn";
 import { salesPageShellClass } from "@/lib/ui/ontime-theme";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 
 export function RouteErrorScreen({
   title,
@@ -34,10 +35,10 @@ export function RouteErrorScreen({
         variant="pinned"
         role="alert"
         title={title}
-        description={
-          error.message.trim() ||
+        description={userFacingErrorText(
+          error,
           "Wystąpił nieoczekiwany błąd. Spróbuj ponownie lub wróć później."
-        }
+        )}
         action={
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={() => reset()}>

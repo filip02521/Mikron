@@ -23,7 +23,8 @@ import {
   IconChevronRight,
   IconPlusCircle,
 } from "@/components/icons/StrokeIcons";
-import { toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
+import { toastError, toastFromError, toastFromUnknown, type ToastNotice } from "@/lib/ui/notice-copy";
+import { redirectToLoginIfSessionError } from "@/lib/auth/session-login-redirect";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
 
@@ -45,6 +46,7 @@ export function CarrierPhonesModal({
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const [loadingList, setLoadingList] = useState(false);
   const [toast, setToast] = useState<ToastNotice | null>(null);
   const dismiss = useCallback(() => setToast(null), []);
   const [phones, setPhones] = useState<CarrierPhoneRow[]>([]);
@@ -56,24 +58,42 @@ export function CarrierPhonesModal({
   const [search, setSearch] = useState("");
 
   const loadPhones = useCallback(() => {
+    setLoadingList(true);
     start(async () => {
       try {
-        const data = await actionFetchCarrierPhones();
-        setPhones(data);
-        const slugs = new Set(data.map((p) => p.carrierSlug));
+        const result = await actionFetchCarrierPhones();
+        if (!result.ok) {
+          setPhones([]);
+          setToast(toastError(result.title, result.message));
+          redirectToLoginIfSessionError(result.message);
+          return;
+        }
+        setPhones(result.phones);
+        const slugs = new Set(result.phones.map((p) => p.carrierSlug));
         setExpandedSlugs((prev) => {
           const next = new Set(prev);
           for (const slug of slugs) next.add(slug);
           return next;
         });
       } catch (e) {
-        setToast(toastFromError(e instanceof Error ? e.message : "Błąd ładowania numerów"));
+        setToast(
+          toastFromUnknown(e, "Nie udało się wczytać numerów telefonów kurierów.")
+        );
+      } finally {
+        setLoadingList(false);
       }
     });
   }, []);
 
   useEffect(() => {
-    if (open) loadPhones();
+    if (!open) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) loadPhones();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [open, loadPhones]);
 
   const phonesBySlug = useMemo(() => {
@@ -124,7 +144,13 @@ export function CarrierPhonesModal({
         phone: form.phone,
       });
       if ("error" in result) {
-        setToast(toastFromError(result.error));
+        setToast(
+          result.title
+            ? toastError(result.title, result.error)
+            : toastFromError(result.error)
+        );
+        // title z sesji też musi odpalić redirect (toastError omija toastFromError)
+        redirectToLoginIfSessionError(result.error);
         return;
       }
       setFormForSlug(slug, { label: "", phone: "" });
@@ -148,7 +174,13 @@ export function CarrierPhonesModal({
         phone: editForm.phone,
       });
       if ("error" in result) {
-        setToast(toastFromError(result.error));
+        setToast(
+          result.title
+            ? toastError(result.title, result.error)
+            : toastFromError(result.error)
+        );
+        // title z sesji też musi odpalić redirect (toastError omija toastFromError)
+        redirectToLoginIfSessionError(result.error);
         return;
       }
       setEditingId(null);
@@ -164,7 +196,12 @@ export function CarrierPhonesModal({
     start(async () => {
       const result = await actionDeleteCarrierPhone(deleteTarget.id);
       if ("error" in result) {
-        setToast(toastFromError(result.error));
+        setToast(
+          result.title
+            ? toastError(result.title, result.error)
+            : toastFromError(result.error)
+        );
+        redirectToLoginIfSessionError(result.error);
         setDeleteTarget(null);
         return;
       }
@@ -197,7 +234,7 @@ export function CarrierPhonesModal({
         title="Telefony kurierów"
         description="Numery telefonów przypisane do kurierów — szybki dostęp z dziennika dostaw."
         size="lg"
-        loadingMessage={pending ? "Zapisywanie…" : null}
+        loadingMessage={pending && !loadingList ? "Zapisywanie…" : loadingList ? "Wczytywanie numerów…" : null}
         footer={
           <Button type="button" variant="secondary" onClick={onClose}>
             Zamknij
@@ -327,7 +364,7 @@ export function CarrierPhonesModal({
                                         ) : null}
                                       </div>
                                       <a
-                                        href={`tel:${phone.phone.replace(/\s+/g, "")}`}
+                                        href={`tel:${phone.phone.replace(/[\s()-]/g, "")}`}
                                         className="shrink-0 rounded-md px-2 py-1 text-[11px] font-medium text-indigo-600 hover:bg-indigo-50"
                                       >
                                         Zadzwoń

@@ -1,5 +1,5 @@
 "use client";
-import { SUPPLIER_TOAST, type ToastNotice } from "@/lib/ui/notice-copy";
+import { SUPPLIER_TOAST, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 
 import Link from "next/link";
 import { LinkChevron } from "@/components/ui/UiGlyphs";
@@ -223,10 +223,7 @@ export function InactiveSuppliersAdminClient({
         resetForm();
         router.refresh();
       } catch (e) {
-        setToast({
-          text: e instanceof Error ? e.message : "Nie udało się zapisać",
-          tone: "error",
-        });
+        setToast(toastFromUnknown(e, "Nie udało się zapisać"));
       }
     });
   };
@@ -243,10 +240,7 @@ export function InactiveSuppliersAdminClient({
           tone: "success",
         });
       } catch (e) {
-        setToast({
-          text: e instanceof Error ? e.message : "Nie udało się przywrócić",
-          tone: "error",
-        });
+        setToast(toastFromUnknown(e, "Nie udało się przywrócić"));
       }
     });
   };

@@ -3,7 +3,6 @@
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import {
   actionDeleteZdProductPair,
-  actionSyncZdProductPairsFromSubiekt,
   actionUpsertZdProductPair,
 } from "@/app/actions/zd-estimate";
 import type { ZdProductPairRow } from "@/lib/data/zd-product-pairs";
@@ -195,25 +194,12 @@ export function ZdEstimatePairsModal({
     });
   };
 
-  const sync = () => {
-    start(async () => {
-      const res = await actionSyncZdProductPairsFromSubiekt();
-      if (!res.ok) {
-        onError(res.message);
-        // Tylko gdy udało się odczytać DB — nie nadpisuj mapy pustą tablicą z catch.
-        if (res.pairs != null) onPairsChange(res.pairs);
-        return;
-      }
-      onPairsChange(res.pairs);
-    });
-  };
-
   return (
     <ModalShell
       open={open}
       onClose={onClose}
       title="Pary montaż / demontaż"
-      titleHint="Paczka kupowana na ZD ↔ sztuki sprzedawane. Szacunek scala popyt i pokrycie w sztukach, zamawia tylko SKU paczki."
+      titleHint="Paczka kupowana na ZD ↔ sztuki sprzedawane. Kreator scala popyt i pokrycie w sztukach, zamawia tylko SKU paczki."
       size="xl"
       bodyClassName="space-y-4 px-5 py-4 sm:px-6 sm:py-5"
       loadingMessage={pending ? "Zapisuję…" : null}
@@ -231,10 +217,10 @@ export function ZdEstimatePairsModal({
             <Button
               type="button"
               variant="secondary"
-              onClick={sync}
-              disabled={pending}
+              disabled
+              title="Wymaga GET /products/komplety na hoście ORDERS — endpoint niedostępny. Dodaj pary ręcznie albo zaznacz 2 towary na liście i wybierz „Para”."
             >
-              Sync z Subiekta
+              Sync (niedostępny)
             </Button>
             <Button
               type="button"
@@ -446,7 +432,7 @@ export function ZdEstimatePairsModal({
           title={pairs.length === 0 ? "Brak par" : "Brak wyników"}
           description={
             pairs.length === 0
-              ? "Zaznacz 2 towary na liście → Para, albo dodaj ręcznie / sync z Subiekta."
+              ? "Zaznacz 2 towary na liście → Para, albo dodaj ręcznie (Sync z Subiekta niedostępny)."
               : "Zmień filtr wyszukiwania."
           }
         />

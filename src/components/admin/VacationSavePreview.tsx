@@ -1,5 +1,6 @@
 "use client";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { useEffect, useState } from "react";
 import { actionPreviewVacationImpact } from "@/app/actions/admin";
 import { formatPlDate, vacationNoteLabel } from "@/lib/display-labels";
@@ -54,8 +55,7 @@ export function VacationSavePreview({
           if (cancelled) return;
           setResponse({
             preview: null,
-            validationError:
-              error instanceof Error ? error.message : "Nie udało się policzyć podglądu.",
+            validationError: userFacingErrorText(error, "Nie udało się policzyć podglądu."),
           });
           setResolvedKey(formKey);
         });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 import type { IndividualRequestKind } from "@/types/database";
 import { actionUpdateIndividualRequest } from "@/app/actions/admin";
@@ -63,6 +64,7 @@ import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirm
 import { buildProsbaSubmitStockConfirm } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
+import { prosbaLinesIncludeTeethProduct } from "@/lib/orders/teeth-stock-exempt";
 import { TeethProcurementRequestBanner } from "@/components/teeth/TeethProcurementRequestBanner";
 import { MixedProcurementRequestBanner } from "@/components/teeth/MixedProcurementRequestBanner";
 import {
@@ -370,7 +372,7 @@ export function EditIndividualRequestModal({
           setFormNotice(
             formError(
               "Uzupełnij pola",
-              e instanceof Error ? e.message : REQUEST_EDIT_FORM.incompleteFields.text,
+              userFacingErrorText(e, REQUEST_EDIT_FORM.incompleteFields.text),
             ),
           );
           return;
@@ -655,6 +657,7 @@ export function EditIndividualRequestModal({
         <ProsbaFormProductsSection
           requestKind={requestKind}
           informacjaPath={informacjaPath}
+          showShortageLookup={prosbaLinesIncludeTeethProduct(lines, teethExemptTwIds)}
           hint={
             requestKind === "informacja"
               ? informacjaProductsFormHint(informacjaPath)

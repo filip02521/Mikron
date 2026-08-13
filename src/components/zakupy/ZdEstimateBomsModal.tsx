@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState, useTransition } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import {
   actionDeleteZdProductBom,
   actionUpsertZdProductBom,
@@ -16,8 +16,18 @@ import { cn } from "@/lib/cn";
 import {
   formatZdBomCountLabel,
   formatZdBomVisibleCountLabel,
+  zdBomPresetListLabel,
   ZD_BOM_UI,
 } from "@/lib/orders/zd-estimate-bom-copy";
+import {
+  buildZdBomSeedQtyMap,
+  formatZdBomComponentQtyLabel,
+  normalizeZdBomComponentQty,
+} from "@/lib/orders/zd-estimate-bom-qty";
+import {
+  presetFromBomPolicy,
+  type BomPresetId,
+} from "@/lib/orders/zd-estimate-bom-policy";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 
 export type ZdBomSeedProduct = {
@@ -32,6 +42,10 @@ type DraftComp = {
   symbol: string;
   nazwa: string;
 };
+
+function emptyDraftComp(): DraftComp {
+  return { twId: "", qty: "1", symbol: "", nazwa: "" };
+}
 
 export function ZdEstimateBomsModal({
   open,
@@ -49,7 +63,7 @@ export function ZdEstimateBomsModal({
   pairs: ZdProductPairRow[];
   onBomsChange: (rows: ZdProductBomRow[]) => void;
   onError: (message: string) => void;
-  /** Zaznaczenie z listy: wybierz zestaw, reszta = składniki ×1. */
+  /** Zaznaczenie z listy: wybierz zestaw, reszta = składniki (z ilością sztuk). */
   seed?: readonly ZdBomSeedProduct[] | null;
   onSeedConsumed?: () => void;
 }) {
@@ -60,13 +74,17 @@ export function ZdEstimateBomsModal({
   const [parentSym, setParentSym] = useState("");
   const [parentNazwa, setParentNazwa] = useState("");
   const [label, setLabel] = useState("");
+  const [preset, setPreset] = useState<BomPresetId>("assemble");
   const [stockAsCover, setStockAsCover] = useState(true);
-  const [comps, setComps] = useState<DraftComp[]>([
-    { twId: "", qty: "1", symbol: "", nazwa: "" },
-  ]);
+  const [comps, setComps] = useState<DraftComp[]>([emptyDraftComp()]);
   const [seedParentIndex, setSeedParentIndex] = useState(0);
+  const [seedQtyByTwId, setSeedQtyByTwId] = useState<Record<number, string>>({});
+  const wasOpenRef = useRef(false);
+  const hadSeedRef = useRef(false);
+  const seedKeyRef = useRef("");
 
   const fromSeed = seed != null && seed.length >= 2;
+  const showStockAsCover = preset === "assemble";
   const pieceTwIds = useMemo(() => {
     const s = new Set<number>();
     for (const p of pairs) s.add(p.pieceTwId);
@@ -74,27 +92,85 @@ export function ZdEstimateBomsModal({
   }, [pairs]);
 
   useEffect(() => {
+    const justOpened = open && !wasOpenRef.current;
+    const seedActive = Boolean(seed && seed.length >= 2);
+    const seedKey = seedActive && seed ? seed.map((p) => p.twId).join(",") : "";
+    const seedJustAppeared = seedActive && !hadSeedRef.current;
+    const seedProductsChanged =
+      seedActive && seedKey !== "" && seedKey !== seedKeyRef.current;
+
+    wasOpenRef.current = open;
+    hadSeedRef.current = open ? seedActive : false;
+    seedKeyRef.current = open ? seedKey : "";
+
     if (!open) return;
+
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
-      if (seed && seed.length >= 2) {
-        setSeedParentIndex(0);
-        setStockAsCover(true);
-        setLabel("");
+      // Seed: init przy otwarciu / nowym seedzie / zmianie produktów.
+      // Clear seeda po „Edytuj” NIE wolno czyścić wczytanego formularza.
+      if (seedActive && seed) {
+        if (justOpened || seedJustAppeared || seedProductsChanged) {
+          setSeedParentIndex(0);
+          setPreset("assemble");
+          setStockAsCover(true);
+          setLabel("");
+          setSeedQtyByTwId((prev) =>
+            buildZdBomSeedQtyMap(
+              seed.map((p) => p.twId),
+              justOpened || seedJustAppeared ? undefined : prev
+            )
+          );
+        }
         return;
       }
-      setParentTw("");
-      setParentSym("");
-      setParentNazwa("");
-      setLabel("");
-      setStockAsCover(true);
-      setComps([{ twId: "", qty: "1", symbol: "", nazwa: "" }]);
+      if (justOpened) {
+        setParentTw("");
+        setParentSym("");
+        setParentNazwa("");
+        setLabel("");
+        setPreset("assemble");
+        setStockAsCover(true);
+        setComps([emptyDraftComp()]);
+        setSeedQtyByTwId({});
+      }
     });
     return () => {
       cancelled = true;
     };
   }, [open, seed]);
+
+  const setPresetAndCover = (next: BomPresetId) => {
+    setPreset(next);
+    if (next !== "assemble") setStockAsCover(false);
+    else setStockAsCover(true);
+  };
+
+  const loadBomIntoForm = (bom: ZdProductBomRow) => {
+    const nextPreset = presetFromBomPolicy(
+      bom.demandAllocation,
+      bom.purchaseTarget
+    );
+    setPreset(nextPreset);
+    setStockAsCover(nextPreset === "assemble" ? bom.stockAsCover !== false : false);
+    setParentTw(String(bom.parentTwId));
+    setParentSym(bom.parentSymbol ?? "");
+    setParentNazwa(bom.parentNazwa === "—" ? "" : bom.parentNazwa);
+    setLabel(bom.label ?? "");
+    setComps(
+      bom.components.length
+        ? bom.components.map((c) => ({
+            twId: String(c.componentTwId),
+            qty: String(normalizeZdBomComponentQty(c.qtyPerParent)),
+            symbol: c.componentSymbol ?? "",
+            nazwa: c.componentNazwa === "—" ? "" : c.componentNazwa,
+          }))
+        : [emptyDraftComp()]
+    );
+    setQuery("");
+    onSeedConsumed?.();
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -118,9 +194,10 @@ export function ZdEstimateBomsModal({
   }, [boms, query]);
 
   const seedParent = fromSeed ? seed![seedParentIndex] : null;
-  const seedComponents = fromSeed
-    ? seed!.filter((_, i) => i !== seedParentIndex)
-    : [];
+  const seedComponents = useMemo(
+    () => (fromSeed ? seed!.filter((_, i) => i !== seedParentIndex) : []),
+    [fromSeed, seed, seedParentIndex]
+  );
 
   const pieceWarning = useMemo(() => {
     const ids = fromSeed
@@ -149,14 +226,14 @@ export function ZdEstimateBomsModal({
     const components = fromSeed
       ? seedComponents.map((c) => ({
           componentTwId: c.twId,
-          qtyPerParent: 1,
+          qtyPerParent: normalizeZdBomComponentQty(seedQtyByTwId[c.twId]),
           componentSymbol: c.symbol || null,
           componentNazwa: c.nazwa || null,
         }))
       : comps
           .map((c) => ({
             componentTwId: Math.trunc(Number(c.twId)),
-            qtyPerParent: Math.max(1, Math.trunc(Number(c.qty)) || 1),
+            qtyPerParent: normalizeZdBomComponentQty(c.qty),
             componentSymbol: c.symbol.trim() || null,
             componentNazwa: c.nazwa.trim() || null,
           }))
@@ -172,7 +249,8 @@ export function ZdEstimateBomsModal({
       const res = await actionUpsertZdProductBom({
         parentTwId,
         label: label.trim() || null,
-        stockAsCover,
+        preset,
+        stockAsCover: showStockAsCover ? stockAsCover : false,
         parentSymbol: fromSeed
           ? seedParent!.symbol || null
           : parentSym.trim() || null,
@@ -194,7 +272,10 @@ export function ZdEstimateBomsModal({
         setParentSym("");
         setParentNazwa("");
         setLabel("");
-        setComps([{ twId: "", qty: "1", symbol: "", nazwa: "" }]);
+        setPreset("assemble");
+        setStockAsCover(true);
+        setComps([emptyDraftComp()]);
+        setSeedQtyByTwId({});
       }
     });
   };
@@ -255,53 +336,135 @@ export function ZdEstimateBomsModal({
 
       {fromSeed && seed && seedParent ? (
         <div className="space-y-3 rounded-xl border border-violet-200/80 bg-violet-50/40 p-3">
-          <p className="text-xs font-medium text-violet-950">
-            {ZD_BOM_UI.seedHeading}
-          </p>
+          <div>
+            <p className="text-xs font-medium text-violet-950">
+              {ZD_BOM_UI.seedHeading}
+            </p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
+              {ZD_BOM_UI.seedQtyHint}
+            </p>
+          </div>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {seed.map((p, idx) => {
               const isParent = seedParentIndex === idx;
+              const qtyValue = seedQtyByTwId[p.twId] ?? "1";
               return (
-                <button
+                <div
                   key={p.twId}
-                  type="button"
-                  disabled={pending}
-                  onClick={() => setSeedParentIndex(idx)}
                   className={cn(
-                    "rounded-xl border px-3 py-3 text-left transition",
+                    "flex flex-col overflow-hidden rounded-xl border bg-white transition",
                     isParent
-                      ? "border-violet-400 bg-white shadow-sm ring-2 ring-violet-200"
-                      : "border-slate-200/80 bg-white/70 hover:border-slate-300"
+                      ? "border-violet-400 shadow-sm ring-2 ring-violet-200"
+                      : "border-slate-200/80"
                   )}
                 >
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                    {isParent ? ZD_BOM_UI.roleZestaw : ZD_BOM_UI.roleSkladnik}
-                  </p>
-                  <p className="mt-1 truncate text-sm font-semibold text-slate-900">
-                    {p.symbol || `id. ${p.twId}`}
-                  </p>
-                  <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
-                    {p.nazwa || `Towar ${p.twId}`}
-                  </p>
-                </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => setSeedParentIndex(idx)}
+                    className={cn(
+                      "flex-1 px-3 py-3 text-left transition",
+                      !isParent && "hover:bg-slate-50/80"
+                    )}
+                  >
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      {isParent ? ZD_BOM_UI.roleZestaw : ZD_BOM_UI.roleSkladnik}
+                    </p>
+                    <p className="mt-1 truncate text-sm font-semibold text-slate-900">
+                      {p.symbol || `id. ${p.twId}`}
+                    </p>
+                    <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
+                      {p.nazwa || `Towar ${p.twId}`}
+                    </p>
+                  </button>
+                  {isParent ? (
+                    <p className="border-t border-violet-100 bg-violet-50/50 px-3 py-2 text-[11px] text-violet-900/80">
+                      {ZD_BOM_UI.seedParentQtyHint}
+                    </p>
+                  ) : (
+                    <label className="block border-t border-slate-100 bg-slate-50/80 px-3 py-2 text-xs font-medium text-slate-700">
+                      {ZD_BOM_UI.fieldQtyPerZestawShort}
+                      <Input
+                        value={qtyValue}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/[^\d]/g, "");
+                          setSeedQtyByTwId((prev) => ({
+                            ...prev,
+                            [p.twId]: raw,
+                          }));
+                        }}
+                        onBlur={() => {
+                          setSeedQtyByTwId((prev) => ({
+                            ...prev,
+                            [p.twId]: String(
+                              normalizeZdBomComponentQty(prev[p.twId])
+                            ),
+                          }));
+                        }}
+                        className={cn("mt-1", controlFocusClass)}
+                        inputMode="numeric"
+                        min={1}
+                        disabled={pending}
+                        aria-label={`${ZD_BOM_UI.fieldQtyPerZestaw}: ${p.symbol || p.twId}`}
+                      />
+                    </label>
+                  )}
+                </div>
               );
             })}
           </div>
-          <label className="flex items-start gap-2 text-xs text-slate-700">
-            <input
-              type="checkbox"
-              className="mt-0.5 size-4"
-              checked={stockAsCover}
-              onChange={(e) => setStockAsCover(e.target.checked)}
-              disabled={pending}
-            />
-            <span>
-              <span className="font-medium">{ZD_BOM_UI.stockAsCoverLabel}</span>
-              <span className="mt-0.5 block text-slate-500">
-                {ZD_BOM_UI.stockAsCoverHintSeed}
+
+          <fieldset className="space-y-2">
+            <legend className="text-xs font-medium text-violet-950">
+              {ZD_BOM_UI.presetLegend}
+            </legend>
+            {(
+              [
+                ["assemble", ZD_BOM_UI.presetAssemble, ZD_BOM_UI.presetAssembleHint],
+                [
+                  "buy_separate",
+                  ZD_BOM_UI.presetBuySeparate,
+                  ZD_BOM_UI.presetBuySeparateHint,
+                ],
+                ["kit_only", ZD_BOM_UI.presetKitOnly, ZD_BOM_UI.presetKitOnlyHint],
+              ] as const
+            ).map(([id, title, hint]) => (
+              <label
+                key={id}
+                className="flex cursor-pointer items-start gap-2 rounded-lg border border-violet-100/80 bg-white/80 px-2.5 py-2 text-xs text-slate-700"
+              >
+                <input
+                  type="radio"
+                  className="mt-0.5"
+                  name="zd-bom-preset-seed"
+                  checked={preset === id}
+                  onChange={() => setPresetAndCover(id)}
+                  disabled={pending}
+                />
+                <span>
+                  <span className="font-medium text-slate-900">{title}</span>
+                  <span className="mt-0.5 block text-slate-500">{hint}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          {showStockAsCover ? (
+            <label className="flex items-start gap-2 text-xs text-slate-700">
+              <input
+                type="checkbox"
+                className="mt-0.5 size-4"
+                checked={stockAsCover}
+                onChange={(e) => setStockAsCover(e.target.checked)}
+                disabled={pending}
+              />
+              <span>
+                <span className="font-medium">{ZD_BOM_UI.stockAsCoverLabel}</span>
+                <span className="mt-0.5 block text-slate-500">
+                  {ZD_BOM_UI.stockAsCoverHintSeed}
+                </span>
               </span>
-            </span>
-          </label>
+            </label>
+          ) : null}
           {pieceWarning.length > 0 ? (
             <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-950 ring-1 ring-amber-100">
               {ZD_BOM_UI.pieceWarningSeed(pieceWarning)}
@@ -356,6 +519,41 @@ export function ZdEstimateBomsModal({
               />
             </label>
           </div>
+          <fieldset className="space-y-2">
+            <legend className="text-xs font-medium text-slate-700">
+              {ZD_BOM_UI.presetLegend}
+            </legend>
+            {(
+              [
+                ["assemble", ZD_BOM_UI.presetAssemble, ZD_BOM_UI.presetAssembleHint],
+                [
+                  "buy_separate",
+                  ZD_BOM_UI.presetBuySeparate,
+                  ZD_BOM_UI.presetBuySeparateHint,
+                ],
+                ["kit_only", ZD_BOM_UI.presetKitOnly, ZD_BOM_UI.presetKitOnlyHint],
+              ] as const
+            ).map(([id, title, hint]) => (
+              <label
+                key={id}
+                className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-100 bg-slate-50/60 px-2.5 py-2 text-xs text-slate-700"
+              >
+                <input
+                  type="radio"
+                  className="mt-0.5"
+                  name="zd-bom-preset-manual"
+                  checked={preset === id}
+                  onChange={() => setPresetAndCover(id)}
+                  disabled={pending}
+                />
+                <span>
+                  <span className="font-medium text-slate-900">{title}</span>
+                  <span className="mt-0.5 block text-slate-500">{hint}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          {showStockAsCover ? (
           <label className="flex items-start gap-2 text-xs text-slate-700">
             <input
               type="checkbox"
@@ -371,6 +569,7 @@ export function ZdEstimateBomsModal({
               </span>
             </span>
           </label>
+          ) : null}
           {comps.map((c, idx) => (
             <div
               key={idx}
@@ -394,13 +593,35 @@ export function ZdEstimateBomsModal({
                 <Input
                   value={c.qty}
                   onChange={(e) => {
-                    const next = [...comps];
-                    next[idx] = { ...c, qty: e.target.value };
-                    setComps(next);
+                    const raw = e.target.value.replace(/[^\d]/g, "");
+                    setComps((prev) => {
+                      const next = [...prev];
+                      const cur = next[idx];
+                      if (!cur) return prev;
+                      next[idx] = { ...cur, qty: raw };
+                      return next;
+                    });
+                  }}
+                  onBlur={() => {
+                    setComps((prev) => {
+                      const next = [...prev];
+                      const cur = next[idx];
+                      if (!cur) return prev;
+                      next[idx] = {
+                        ...cur,
+                        qty: String(normalizeZdBomComponentQty(cur.qty)),
+                      };
+                      return next;
+                    });
                   }}
                   className={cn("mt-1", controlFocusClass)}
                   inputMode="numeric"
+                  min={1}
+                  placeholder="1"
                 />
+                <span className="mt-0.5 block text-[11px] font-normal text-slate-500">
+                  {ZD_BOM_UI.fieldQtyPerZestawHint}
+                </span>
               </label>
               <label className="text-xs font-medium text-slate-600">
                 {ZD_BOM_UI.fieldSymbol}
@@ -437,12 +658,7 @@ export function ZdEstimateBomsModal({
               type="button"
               variant="secondary"
               disabled={pending}
-              onClick={() =>
-                setComps([
-                  ...comps,
-                  { twId: "", qty: "1", symbol: "", nazwa: "" },
-                ])
-              }
+              onClick={() => setComps([...comps, emptyDraftComp()])}
             >
               {ZD_BOM_UI.addComponent}
             </Button>
@@ -498,28 +714,50 @@ export function ZdEstimateBomsModal({
                   {bom.parentNazwa}
                 </p>
                 <p className="mt-1 text-[11px] text-slate-600">
-                  {bom.stockAsCover
-                    ? ZD_BOM_UI.listCoverOn
-                    : ZD_BOM_UI.listCoverOff}{" "}
+                  {zdBomPresetListLabel(
+                    presetFromBomPolicy(
+                      bom.demandAllocation,
+                      bom.purchaseTarget
+                    )
+                  )}
+                  {bom.demandAllocation === "explode"
+                    ? ` · ${
+                        bom.stockAsCover
+                          ? ZD_BOM_UI.listCoverOn
+                          : ZD_BOM_UI.listCoverOff
+                      }`
+                    : ""}{" "}
                   ·{" "}
                   {bom.components
-                    .map(
-                      (c) =>
-                        `${c.componentSymbol ?? `id. ${c.componentTwId}`} ×${c.qtyPerParent}`
-                    )
+                    .map((c) => {
+                      const name =
+                        c.componentSymbol ?? `id. ${c.componentTwId}`;
+                      return `${name} ×${formatZdBomComponentQtyLabel(c.qtyPerParent)}`;
+                    })
                     .join(", ")}
                 </p>
               </div>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => remove(bom.id)}
-                className="inline-flex items-center gap-1 self-start rounded-lg px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
-                title={ZD_BOM_UI.removeBomTitle}
-              >
-                <IconX size={14} strokeWidth={1.75} aria-hidden />
-                Usuń
-              </button>
+              <div className="flex shrink-0 flex-wrap gap-1 self-start">
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => loadBomIntoForm(bom)}
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-violet-800 hover:bg-violet-50"
+                  title="Wczytaj do formularza (edycja)"
+                >
+                  Edytuj
+                </button>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => remove(bom.id)}
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+                  title={ZD_BOM_UI.removeBomTitle}
+                >
+                  <IconX size={14} strokeWidth={1.75} aria-hidden />
+                  Usuń
+                </button>
+              </div>
             </li>
           ))}
         </ul>

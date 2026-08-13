@@ -1,5 +1,6 @@
 "use client";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useTransition, type KeyboardEvent, type ReactNode } from "react";
 import { SupplierPickerField } from "@/components/orders/SupplierPickerField";
 import { actionSubiektSuggestProductsForZdLookup } from "@/app/actions/subiekt";
@@ -363,9 +364,7 @@ export function ProductZdLookupModal({
           );
         }
       } catch (error) {
-        setLookupError(
-          error instanceof Error ? error.message : "Nie udało się sprawdzić terminu dostawy."
-        );
+        setLookupError(userFacingErrorText(error, "Nie udało się sprawdzić terminu dostawy."));
         setPhase("result");
       }
     });

@@ -1,5 +1,6 @@
 "use server";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
 
 import { revalidatePath } from "next/cache";
@@ -200,7 +201,7 @@ export async function actionSyncData() {
     return { success: true, ...result };
   } catch (e) {
     return {
-      error: e instanceof Error ? e.message : "Błąd synchronizacji",
+      error: userFacingErrorText(e, "Błąd synchronizacji"),
     };
   } finally {
     await releaseLock("SCRIPT_BUSY");
@@ -369,7 +370,7 @@ export async function actionMarkInformacjaArrived(
     revalidateAll();
     return { success: true, ...result };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Nie udało się powiadomić." };
+    return { error: userFacingErrorText(e, "Nie udało się powiadomić.") };
   }
 }
 
@@ -461,7 +462,19 @@ export async function actionAddIndividualOrders(
   const createdBy = user.id === "dev" ? undefined : user.id;
   const submitMode =
     isSales(user.role) || isSalesManager(user.role) ? "sales" : "procurement";
-  const result = await batchAddIndividualOrders(normalized, createdBy, { submitMode });
+  const sourceZkLineKeys = [
+    ...new Set(
+      normalized.flatMap((e) =>
+        Array.isArray(e.sourceZkLineKeys)
+          ? e.sourceZkLineKeys.map((k) => String(k).trim()).filter(Boolean)
+          : []
+      )
+    ),
+  ];
+  const result = await batchAddIndividualOrders(normalized, createdBy, {
+    submitMode,
+    ...(sourceZkLineKeys.length ? { sourceZkLineKeys } : {}),
+  });
   // Dla handlowców unikamy ciężkiego "revalidateAll" (potrafi trwać długo),
   // bo ich submit dotyczy głównie kilku widoków.
   if (isSales(user.role) || isSalesManager(user.role)) {
@@ -1165,7 +1178,7 @@ export async function actionBatchUpdateDelivered(
         : undefined,
     };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "Nie udało się zapisać." };
+    return { error: userFacingErrorText(e, "Nie udało się zapisać.") };
   }
 }
 
@@ -1485,7 +1498,7 @@ export async function actionUpsertVacation(form: {
       await recalcTeethSchedule(sid);
     } catch (e) {
       recalcErrors.push(
-        e instanceof Error ? e.message : "Błąd przeliczenia harmonogramu"
+        userFacingErrorText(e, "Błąd przeliczenia harmonogramu")
       );
     }
   }
@@ -1614,7 +1627,7 @@ export async function actionDeleteVacation(id: string) {
     await recalcTeethSchedule(row.supplier_id);
   } catch (e) {
     throw new Error(
-      e instanceof Error ? e.message : "Urlop usunięty, ale przeliczenie harmonogramu nie powiodło się."
+      userFacingErrorText(e, "Urlop usunięty, ale przeliczenie harmonogramu nie powiodło się.")
     );
   }
 
@@ -1681,7 +1694,7 @@ export async function actionUpsertSalesPerson(form: {
     try {
       await assertManagerRequiresGroupInScope(actor, groupId);
     } catch (e) {
-      return { error: e instanceof Error ? e.message : "Brak uprawnień do grupy." };
+      return { error: userFacingErrorText(e, "Brak uprawnień do grupy.") };
     }
 
     const { error } = await supabase
@@ -1705,7 +1718,7 @@ export async function actionUpsertSalesPerson(form: {
     try {
       await assertManagerRequiresGroupInScope(actor, groupId);
     } catch (e) {
-      return { error: e instanceof Error ? e.message : "Brak uprawnień do grupy." };
+      return { error: userFacingErrorText(e, "Brak uprawnień do grupy.") };
     }
 
     const { data: inserted, error } = await supabase

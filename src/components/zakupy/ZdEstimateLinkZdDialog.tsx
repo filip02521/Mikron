@@ -20,6 +20,8 @@ export function ZdEstimateLinkZdDialog({
   grtId,
   cechaId,
   lineMeta,
+  orderableTwIds,
+  implicitPieceSnapshotHint,
   initialNr,
   pending: pendingExternal,
   onClose,
@@ -32,6 +34,10 @@ export function ZdEstimateLinkZdDialog({
   grtId?: number | null;
   cechaId?: number | null;
   lineMeta?: ZdEstimateLinkLineMeta[] | null;
+  /** tw_Id z orderable preview — potwierdzone 1:1 przy braku opakowania. */
+  orderableTwIds?: number[] | null;
+  /** Preflight: pozycje bez opakowania/pary zapisane jako sztuki. */
+  implicitPieceSnapshotHint?: string | null;
   /** Prefill numeru (np. po create bez snapshotu / timeout). */
   initialNr?: string | null;
   pending?: boolean;
@@ -81,6 +87,7 @@ export function ZdEstimateLinkZdDialog({
         grtId: scopeMode === "grupa" ? (grtId ?? null) : null,
         cechaId: scopeMode === "cecha" ? (cechaId ?? null) : null,
         lineMeta: lineMeta ?? null,
+        orderableTwIds: orderableTwIds ?? null,
       });
       if (!res.ok) {
         onError(res.message);
@@ -136,6 +143,11 @@ export function ZdEstimateLinkZdDialog({
         </div>
       }
     >
+      {implicitPieceSnapshotHint ? (
+        <p className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2.5 text-xs leading-snug text-amber-950">
+          {implicitPieceSnapshotHint}
+        </p>
+      ) : null}
       <div className="space-y-2">
         <label
           htmlFor={nrId}

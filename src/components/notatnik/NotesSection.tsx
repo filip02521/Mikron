@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import {
   actionArchiveSalesNote,
   actionCreateSalesNote,
@@ -125,7 +126,7 @@ const NoteCard = memo(function NoteCard({
         color,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się zapisać notatki.");
+      setError(userFacingErrorText(e, "Nie udało się zapisać notatki."));
     } finally {
       setSaving(false);
     }
@@ -154,7 +155,7 @@ const NoteCard = memo(function NoteCard({
       onUpdated?.({ ...note, follow_up_at: next });
     } catch (e) {
       setFollowUpAt(prev);
-      setError(e instanceof Error ? e.message : "Nie udało się ustawić przypomnienia.");
+      setError(userFacingErrorText(e, "Nie udało się ustawić przypomnienia."));
       throw e;
     } finally {
       setSavingFollowUp(false);
@@ -178,7 +179,7 @@ const NoteCard = memo(function NoteCard({
       await actionArchiveSalesNote(note.id);
       onArchived?.(note);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się zarchiwizować notatki.");
+      setError(userFacingErrorText(e, "Nie udało się zarchiwizować notatki."));
     }
   }
 
@@ -416,7 +417,7 @@ export function NotesSection({
         onNotesReordered?.(optimistic, prev);
       } catch (e) {
         onNotesReordered?.(prev);
-        setError(e instanceof Error ? e.message : "Nie udało się zmienić kolejności.");
+        setError(userFacingErrorText(e, "Nie udało się zmienić kolejności."));
       }
     },
     [notes, onNotesReordered]
@@ -562,7 +563,7 @@ export function NotesSection({
       closeCompose();
       onNoteCreated?.(note);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się dodać notatki.");
+      setError(userFacingErrorText(e, "Nie udało się dodać notatki."));
     } finally {
       setSaving(false);
     }

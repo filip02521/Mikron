@@ -20,7 +20,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { IconCalendar } from "@/components/icons/StrokeIcons";
 import { plCoTydzien } from "@/lib/ui/polish-plurals";
 import { panelTypography } from "@/lib/ui/ontime-theme";
-import { TEETH_SCHEDULE_TOAST, toastFromError, type ToastNotice } from "@/lib/ui/notice-copy";
+import { TEETH_SCHEDULE_TOAST, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 
 const WEEKDAYS: DayOfWeek[] = [1, 2, 3, 4, 5];
 
@@ -56,7 +56,7 @@ export function TeethSupplierScheduleFields({
         setShiftDate(row.shift_date ?? "");
       }
     } catch (e) {
-      onToastRef.current(toastFromError(e instanceof Error ? e.message : undefined, TEETH_SCHEDULE_TOAST.loadFailed.text));
+      onToastRef.current(toastFromUnknown(e, TEETH_SCHEDULE_TOAST.loadFailed.text));
       setSchedule(null);
     }
   }, [supplierId]);
@@ -79,7 +79,7 @@ export function TeethSupplierScheduleFields({
       onToastRef.current(TEETH_SCHEDULE_TOAST.saved);
       await reload();
     } catch (e) {
-      onToastRef.current(toastFromError(e instanceof Error ? e.message : undefined, TEETH_SCHEDULE_TOAST.saveFailed.text));
+      onToastRef.current(toastFromUnknown(e, TEETH_SCHEDULE_TOAST.saveFailed.text));
     } finally {
       setPending(false);
     }
@@ -93,7 +93,7 @@ export function TeethSupplierScheduleFields({
       onToastRef.current(TEETH_SCHEDULE_TOAST.disabled);
       await reload();
     } catch (e) {
-      onToastRef.current(toastFromError(e instanceof Error ? e.message : undefined, TEETH_SCHEDULE_TOAST.removeFailed.text));
+      onToastRef.current(toastFromUnknown(e, TEETH_SCHEDULE_TOAST.removeFailed.text));
     } finally {
       setPending(false);
     }
@@ -114,7 +114,7 @@ export function TeethSupplierScheduleFields({
         );
         await reload();
       } catch (e) {
-        onToastRef.current(toastFromError(e instanceof Error ? e.message : undefined, TEETH_SCHEDULE_TOAST.shiftFailed.text));
+        onToastRef.current(toastFromUnknown(e, TEETH_SCHEDULE_TOAST.shiftFailed.text));
       } finally {
         setPending(false);
       }

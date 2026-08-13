@@ -1,5 +1,6 @@
 "use server";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja requireZdEstimateAdmin(); service role z pełnym scope po warstwie aplikacji.
 import { requireZdEstimateAdmin } from "@/lib/auth";
 import {
@@ -10,6 +11,24 @@ import {
   upsertZdEstimateExclusion,
   type ZdEstimateExclusionRow,
 } from "@/lib/data/zd-estimate-exclusions";
+import {
+  deleteZdEstimateOnRequest,
+  deleteZdEstimateOnRequestsMany,
+  fetchZdEstimateOnRequest,
+  fetchZdEstimateOnRequests,
+  updateZdEstimateOnRequestNote,
+  upsertZdEstimateOnRequest,
+  type ZdEstimateOnRequestRow,
+} from "@/lib/data/zd-estimate-on-request";
+import {
+  buildBakeExcludedTwIds,
+  buildExtraOnlyTwIds,
+  buildOrderExcludedTwIds,
+  onRequestIdsToClearForExcludedTw,
+  onRequestIdsToClearForTw,
+  onRequestTwIdSet,
+  retargetTwIdToPackIfPiece,
+} from "@/lib/orders/zd-estimate-on-request";
 import {
   deleteZdEstimatePackaging,
   deleteZdEstimatePackagingMany,
@@ -71,7 +90,12 @@ import {
 } from "@/lib/orders/zd-estimate-packaging";
 import { mergeZdEstimateExcludedTwIds } from "@/lib/orders/zd-estimate-name-exclude";
 import { fetchTeethProductTwIdSet } from "@/lib/data/teeth-products";
-import { buildZdEstimateSnapshotLinesFromDocChecked } from "@/lib/orders/zd-estimate-snapshot-lines";
+import {
+  buildPairRatioByTwId,
+  buildZdEstimateSnapshotLinesFromDocChecked,
+  enrichSnapshotPackagingErrorMessage,
+  resolveConfirmedEstimateTwIdsForLink,
+} from "@/lib/orders/zd-estimate-snapshot-lines";
 import {
   fetchLatestSnapshotHistoryByTwIds,
   fetchRecentZdEstimateOrderSnapshots,
@@ -213,13 +237,16 @@ export type ZdEstimateRunResult =
         excludedInGroupCount: number;
         /** Pary z brakującym partnerem po dociągnięciu. */
         pairPartnerMissingCount: number;
+        pairMissingTwIds?: number[];
         /** BOM z brakującym parentem/komponentem po dociągnięciu. */
         bomMissingCount: number;
+        bomMissingTwIds?: number[];
         /** Suma jednostek ZD (paczki) — spójne z UI / TSV. */
         doZamowieniaZdUnitsSuma: number;
         doZamowieniaZdUnitsSumaRaw: number;
       };
       exclusions: ZdEstimateExclusionRow[];
+      onRequests: ZdEstimateOnRequestRow[];
       packaging: ZdEstimatePackagingRow[];
       productPairs: ZdProductPairRow[];
       productBoms: ZdProductBomRow[];
@@ -241,7 +268,7 @@ function normalizeDateKey(value: string | null | undefined): string | null {
 
 const ZD_ESTIMATE_PENDING_INDIVIDUALS_LIMIT = 500;
 
-/** Wiszące prośby (zamówienie Nowe) dostawcy do szacunku ZD. */
+/** Wiszące prośby (zamówienie Nowe) dostawcy do kreatora ZD. */
 export async function fetchZdEstimatePendingIndividualOrders(
   supplierId: string
 ): Promise<{
@@ -293,9 +320,7 @@ export async function actionFetchZdEstimatePendingIndividuals(
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się wczytać próśb indywidualnych.",
+        userFacingErrorText(e, "Nie udało się wczytać próśb indywidualnych."),
     };
   }
 }
@@ -522,6 +547,8 @@ export async function actionZdEstimateBootstrap(): Promise<{
   exclusions: ZdEstimateExclusionRow[];
   /** Gdy ustawione — nie ufaj pustej liście wykluczeń (błąd odczytu). */
   exclusionsError: string | null;
+  onRequests: ZdEstimateOnRequestRow[];
+  onRequestsError: string | null;
   packaging: ZdEstimatePackagingRow[];
   packagingError: string | null;
   productPairs: ZdProductPairRow[];
@@ -565,9 +592,16 @@ export async function actionZdEstimateBootstrap(): Promise<{
     exclusions = await fetchZdEstimateExclusions();
   } catch (e) {
     exclusionsError =
-      e instanceof Error
-        ? e.message
-        : "Nie udało się wczytać listy wykluczeń.";
+      userFacingErrorText(e, "Nie udało się wczytać listy wykluczeń.");
+  }
+
+  let onRequests: ZdEstimateOnRequestRow[] = [];
+  let onRequestsError: string | null = null;
+  try {
+    onRequests = await fetchZdEstimateOnRequests();
+  } catch (e) {
+    onRequestsError =
+      userFacingErrorText(e, "Nie udało się wczytać listy „tylko na prośbę”.");
   }
 
   let packaging: ZdEstimatePackagingRow[] = [];
@@ -576,9 +610,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
     packaging = await fetchZdEstimatePackaging();
   } catch (e) {
     packagingError =
-      e instanceof Error
-        ? e.message
-        : "Nie udało się wczytać ustawień opakowań.";
+      userFacingErrorText(e, "Nie udało się wczytać ustawień opakowań.");
   }
 
   let productPairs: ZdProductPairRow[] = [];
@@ -587,7 +619,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
     productPairs = await fetchZdProductPairs();
   } catch (e) {
     productPairsError =
-      e instanceof Error ? e.message : "Nie udało się wczytać par kompletów.";
+      userFacingErrorText(e, "Nie udało się wczytać par kompletów.");
   }
 
   let productBoms: ZdProductBomRow[] = [];
@@ -605,9 +637,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
     teethTwIds = [...(await fetchTeethProductTwIdSet())].sort((a, b) => a - b);
   } catch (e) {
     teethProductsError =
-      e instanceof Error
-        ? e.message
-        : "Nie udało się wczytać katalogu produktów zębowych.";
+      userFacingErrorText(e, "Nie udało się wczytać katalogu produktów zębowych.");
   }
 
   const quickGroups = [
@@ -636,6 +666,8 @@ export async function actionZdEstimateBootstrap(): Promise<{
     quickGroups,
     exclusions,
     exclusionsError,
+    onRequests,
+    onRequestsError,
     packaging,
     packagingError,
     productPairs,
@@ -853,12 +885,24 @@ export async function actionRunZdEstimateManual(
       exclusions = await fetchZdEstimateExclusions();
     } catch (e) {
       const message =
-        e instanceof Error
-          ? e.message
-          : "Nie udało się wczytać listy wykluczeń.";
+        userFacingErrorText(e, "Nie udało się wczytać listy wykluczeń.");
       const feedback = getSubiektFeedback("empty_query", {
         title: "Wykluczenia niedostępne",
         message: `Lista nie została pokazana — bez wykluczeń mogłaby zawierać produkty celowo pomijane. ${message}`,
+        hint: "Odśwież stronę lub spróbuj ponownie za chwilę.",
+      });
+      return { ok: false, message: feedback.message, feedback };
+    }
+
+    let onRequests: ZdEstimateOnRequestRow[];
+    try {
+      onRequests = await fetchZdEstimateOnRequests();
+    } catch (e) {
+      const message =
+        userFacingErrorText(e, "Nie udało się wczytać listy „tylko na prośbę”.");
+      const feedback = getSubiektFeedback("empty_query", {
+        title: "Lista „tylko na prośbę” niedostępna",
+        message: `Lista nie została pokazana — bez flagi mogłyby wejść produkty zamawiane wyłącznie na prośbę. ${message}`,
         hint: "Odśwież stronę lub spróbuj ponownie za chwilę.",
       });
       return { ok: false, message: feedback.message, feedback };
@@ -869,9 +913,7 @@ export async function actionRunZdEstimateManual(
       packaging = await fetchZdEstimatePackaging();
     } catch (e) {
       const message =
-        e instanceof Error
-          ? e.message
-          : "Nie udało się wczytać ustawień opakowań.";
+        userFacingErrorText(e, "Nie udało się wczytać ustawień opakowań.");
       const feedback = getSubiektFeedback("empty_query", {
         title: "Opakowania niedostępne",
         message: `Lista nie została pokazana — bez opakowań qty ZD mogłoby być w sztukach zamiast paczek. ${message}`,
@@ -885,9 +927,7 @@ export async function actionRunZdEstimateManual(
       productPairs = await fetchZdProductPairs();
     } catch (e) {
       const message =
-        e instanceof Error
-          ? e.message
-          : "Nie udało się wczytać mapy par montaż/demontaż.";
+        userFacingErrorText(e, "Nie udało się wczytać mapy par montaż/demontaż.");
       const feedback = getSubiektFeedback("empty_query", {
         title: "Pary kompletów niedostępne",
         message: `Lista nie została pokazana — bez mapy par pack i piece mogłyby dostać niezależne qty (podwójne zamówienie). ${message}`,
@@ -915,9 +955,7 @@ export async function actionRunZdEstimateManual(
       teethTwIds = [...(await fetchTeethProductTwIdSet())];
     } catch (e) {
       const message =
-        e instanceof Error
-          ? e.message
-          : "Nie udało się wczytać katalogu produktów zębowych.";
+        userFacingErrorText(e, "Nie udało się wczytać katalogu produktów zębowych.");
       const feedback = getSubiektFeedback("empty_query", {
         title: "Produkty zębowe niedostępne",
         message: `Lista nie została pokazana — bez katalogu zębów pozycje zębowe mogłyby trafić na ZD. ${message}`,
@@ -1059,7 +1097,8 @@ export async function actionRunZdEstimateManual(
       });
     }
 
-    const excludedIdsPreview = mergeZdEstimateExcludedTwIds(
+    const onRequestIds = onRequestTwIdSet(onRequests, productPairs);
+    const hardBasePreview = mergeZdEstimateExcludedTwIds(
       mergedPozycje.map((p) => ({
         tw_Id: Number(p.tw_Id) || 0,
         tw_Nazwa: String(p.tw_Nazwa ?? ""),
@@ -1067,6 +1106,10 @@ export async function actionRunZdEstimateManual(
       })),
       exclusions.map((e) => e.subiektTwId),
       { teethTwIds }
+    );
+    const bakeExcludedPreview = buildBakeExcludedTwIds(
+      hardBasePreview,
+      onRequestIds
     );
 
     const result = buildManualZdEstimateResult(
@@ -1080,12 +1123,12 @@ export async function actionRunZdEstimateManual(
         productBoms: bomRefs,
         missingPartnerTwIds,
         missingBomTwIds,
-        excludedTwIds: excludedIdsPreview,
+        excludedTwIds: bakeExcludedPreview,
         zapasMin,
       }
     );
 
-    const excludedIds = mergeZdEstimateExcludedTwIds(
+    const hardBase = mergeZdEstimateExcludedTwIds(
       result.pozycje,
       exclusions.map((e) => e.subiektTwId),
       { teethTwIds }
@@ -1125,21 +1168,36 @@ export async function actionRunZdEstimateManual(
       }
       return map.size ? map : null;
     })();
+    const extraOnlyTwIds = buildExtraOnlyTwIds(
+      onRequestIds,
+      individualExtraLookup
+    );
+    const orderExcluded = buildOrderExcludedTwIds(
+      hardBase,
+      onRequestIds,
+      extraOnlyTwIds
+    );
 
     const packAfter = summarizePackOrderQty(
       result.pozycje,
       packagingLookup,
-      excludedIds,
-      individualExtraLookup
+      orderExcluded,
+      individualExtraLookup,
+      null,
+      extraOnlyTwIds
     );
+    // Surowy KPI: bez wykluczeń i bez trybu extra_only (pełny stock+extra).
     const packRaw = summarizePackOrderQty(
       result.pozycje,
       packagingLookup,
       null,
-      individualExtraLookup
+      individualExtraLookup,
+      null,
+      null
     );
+    // Jak filtr „Wykluczone” w UI — orderExcluded (soft bez prośby + hard), nie bake.
     const excludedInGroupCount = result.pozycje.filter((p) =>
-      excludedIds.has(p.tw_Id)
+      orderExcluded.has(p.tw_Id)
     ).length;
 
     return {
@@ -1150,6 +1208,7 @@ export async function actionRunZdEstimateManual(
       pendingIndividualsTruncated,
       pendingIndividualsError,
       exclusions,
+      onRequests,
       packaging,
       productPairs,
       productBoms,
@@ -1169,7 +1228,9 @@ export async function actionRunZdEstimateManual(
         doZamowieniaZdUnitsSumaRaw: packRaw.zdUnitsSuma,
         excludedInGroupCount,
         pairPartnerMissingCount: missingPartnerTwIds.size,
+        pairMissingTwIds: [...missingPartnerTwIds],
         bomMissingCount: missingBomTwIds.size,
+        bomMissingTwIds: [...missingBomTwIds],
       },
     };
   } catch (e) {
@@ -1203,6 +1264,30 @@ export async function actionRunZdEstimateManual(
   }
 }
 
+
+async function clearOnRequestRowsForTwIds(twIds: number[]): Promise<void> {
+  const pairs = await fetchZdProductPairs();
+  const ids = new Set<number>();
+  for (const twId of twIds) {
+    for (const id of onRequestIdsToClearForTw(twId, pairs)) ids.add(id);
+  }
+  if (ids.size) await deleteZdEstimateOnRequestsMany([...ids]);
+}
+
+/** Hard exclude — nie zdejmuj flagi packa przy wykluczeniu piece. */
+async function clearOnRequestRowsForExcludedTwIds(
+  twIds: number[]
+): Promise<void> {
+  const pairs = await fetchZdProductPairs();
+  const ids = new Set<number>();
+  for (const twId of twIds) {
+    for (const id of onRequestIdsToClearForExcludedTw(twId, pairs)) {
+      ids.add(id);
+    }
+  }
+  if (ids.size) await deleteZdEstimateOnRequestsMany([...ids]);
+}
+
 export type ZdEstimateExclusionActionResult =
   | { ok: true; exclusions: ZdEstimateExclusionRow[] }
   | { ok: false; message: string };
@@ -1215,7 +1300,7 @@ export async function actionListZdEstimateExclusions(): Promise<ZdEstimateExclus
   } catch (e) {
     return {
       ok: false,
-      message: e instanceof Error ? e.message : "Nie udało się pobrać wykluczeń.",
+      message: userFacingErrorText(e, "Nie udało się pobrać wykluczeń."),
     };
   }
 }
@@ -1234,9 +1319,7 @@ export async function actionListZdEstimateTeethTwIds(): Promise<
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się pobrać katalogu produktów zębowych.",
+        userFacingErrorText(e, "Nie udało się pobrać katalogu produktów zębowych."),
     };
   }
 }
@@ -1260,13 +1343,19 @@ export async function actionExcludeZdEstimateProduct(input: {
       note: input.note,
       createdBy: user.id,
     });
+    // Mutual exclusivity — hard exclude wygrywa; nie kasuj flagi packa przy piece.
+    try {
+      await clearOnRequestRowsForExcludedTwIds([input.subiektTwId]);
+    } catch {
+      /* ignore — brak wpisu / race */
+    }
     const exclusions = await fetchZdEstimateExclusions();
     return { ok: true, exclusions };
   } catch (e) {
     return {
       ok: false,
       message:
-        e instanceof Error ? e.message : "Nie udało się wykluczyć produktu.",
+        userFacingErrorText(e, "Nie udało się wykluczyć produktu."),
     };
   }
 }
@@ -1283,7 +1372,7 @@ export async function actionRestoreZdEstimateProduct(
     return {
       ok: false,
       message:
-        e instanceof Error ? e.message : "Nie udało się przywrócić produktu.",
+        userFacingErrorText(e, "Nie udało się przywrócić produktu."),
     };
   }
 }
@@ -1304,7 +1393,257 @@ export async function actionUpdateZdEstimateExclusionNote(input: {
     return {
       ok: false,
       message:
-        e instanceof Error ? e.message : "Nie udało się zapisać notatki.",
+        userFacingErrorText(e, "Nie udało się zapisać notatki."),
+    };
+  }
+}
+
+export type ZdEstimateOnRequestActionResult =
+  | { ok: true; onRequests: ZdEstimateOnRequestRow[] }
+  | { ok: false; message: string };
+
+export type ZdEstimateBulkOnRequestActionResult =
+  | {
+      ok: true;
+      onRequests: ZdEstimateOnRequestRow[];
+      succeededTwIds: number[];
+      failed: ZdEstimateBulkFailure[];
+      truncated: boolean;
+    }
+  | { ok: false; message: string };
+
+async function resolveOnRequestUpsertTarget(input: {
+  subiektTwId: number;
+  twSymbol?: string | null;
+  twNazwa: string;
+  grtId?: number | null;
+  grtNazwa?: string | null;
+}): Promise<{
+  subiektTwId: number;
+  twSymbol: string | null;
+  twNazwa: string;
+  grtId: number | null;
+  grtNazwa: string | null;
+}> {
+  const pairs = await fetchZdProductPairs();
+  const hit = retargetTwIdToPackIfPiece(input.subiektTwId, pairs);
+  if (!hit.retargeted || !hit.pair) {
+    return {
+      subiektTwId: Math.trunc(input.subiektTwId),
+      twSymbol: input.twSymbol?.trim() || null,
+      twNazwa: input.twNazwa,
+      grtId: input.grtId ?? null,
+      grtNazwa: input.grtNazwa ?? null,
+    };
+  }
+  const pair = pairs.find(
+    (p) =>
+      p.packTwId === hit.pair!.packTwId && p.pieceTwId === hit.pair!.pieceTwId
+  );
+  return {
+    subiektTwId: hit.twId,
+    twSymbol: (pair?.packSymbol ?? input.twSymbol?.trim()) || null,
+    twNazwa: pair?.packNazwa?.trim() || input.twNazwa,
+    grtId: input.grtId ?? null,
+    grtNazwa: input.grtNazwa ?? null,
+  };
+}
+
+export async function actionListZdEstimateOnRequests(): Promise<ZdEstimateOnRequestActionResult> {
+  await requireZdEstimateAdmin("read");
+  try {
+    const onRequests = await fetchZdEstimateOnRequests();
+    return { ok: true, onRequests };
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        userFacingErrorText(e, "Nie udało się pobrać listy „tylko na prośbę”."),
+    };
+  }
+}
+
+export async function actionMarkZdEstimateOnRequest(input: {
+  subiektTwId: number;
+  twSymbol?: string | null;
+  twNazwa: string;
+  grtId?: number | null;
+  grtNazwa?: string | null;
+  note?: string;
+}): Promise<ZdEstimateOnRequestActionResult> {
+  const user = await requireZdEstimateAdmin("mutate");
+  try {
+    const target = await resolveOnRequestUpsertTarget(input);
+    await upsertZdEstimateOnRequest({
+      ...target,
+      note: input.note,
+      createdBy: user.id,
+    });
+    try {
+      await deleteZdEstimateExclusion(target.subiektTwId);
+      if (target.subiektTwId !== Math.trunc(input.subiektTwId)) {
+        await deleteZdEstimateExclusion(input.subiektTwId);
+      }
+    } catch {
+      /* ignore */
+    }
+    const onRequests = await fetchZdEstimateOnRequests();
+    return { ok: true, onRequests };
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        userFacingErrorText(e, "Nie udało się oznaczyć „tylko na prośbę”."),
+    };
+  }
+}
+
+export async function actionClearZdEstimateOnRequest(
+  subiektTwId: number
+): Promise<ZdEstimateOnRequestActionResult> {
+  await requireZdEstimateAdmin("mutate");
+  try {
+    await clearOnRequestRowsForTwIds([subiektTwId]);
+    const onRequests = await fetchZdEstimateOnRequests();
+    return { ok: true, onRequests };
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        userFacingErrorText(e, "Nie udało się usunąć „tylko na prośbę”."),
+    };
+  }
+}
+
+export async function actionUpdateZdEstimateOnRequestNote(input: {
+  subiektTwId: number;
+  note: string;
+}): Promise<ZdEstimateOnRequestActionResult> {
+  await requireZdEstimateAdmin("mutate");
+  try {
+    await updateZdEstimateOnRequestNote({
+      subiektTwId: input.subiektTwId,
+      note: input.note,
+    });
+    const onRequests = await fetchZdEstimateOnRequests();
+    return { ok: true, onRequests };
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        userFacingErrorText(e, "Nie udało się zapisać notatki."),
+    };
+  }
+}
+
+export async function actionMarkZdEstimateOnRequestProducts(input: {
+  products: ZdEstimateBulkProductInput[];
+  note?: string;
+}): Promise<ZdEstimateBulkOnRequestActionResult> {
+  const user = await requireZdEstimateAdmin("mutate");
+  const normalized = normalizeZdEstimateBulkProducts(input.products);
+  const products = normalized.products;
+  if (!products.length) {
+    return { ok: false, message: "Zaznacz co najmniej jeden produkt." };
+  }
+  const truncated = normalized.truncated;
+  const note = input.note?.trim().slice(0, 500) || undefined;
+
+  const succeededTwIds: number[] = [];
+  const failed: ZdEstimateBulkFailure[] = [];
+  const pairs = await fetchZdProductPairs();
+
+  for (const p of products) {
+    try {
+      const hit = retargetTwIdToPackIfPiece(p.subiektTwId, pairs);
+      const pair = hit.pair
+        ? pairs.find(
+            (x) =>
+              x.packTwId === hit.pair!.packTwId &&
+              x.pieceTwId === hit.pair!.pieceTwId
+          )
+        : null;
+      const targetTwId = hit.twId;
+      await upsertZdEstimateOnRequest({
+        subiektTwId: targetTwId,
+        twSymbol: hit.retargeted
+          ? pair?.packSymbol ?? p.twSymbol
+          : p.twSymbol,
+        twNazwa: hit.retargeted
+          ? pair?.packNazwa?.trim() || p.twNazwa
+          : p.twNazwa,
+        grtId: p.grtId,
+        grtNazwa: p.grtNazwa,
+        note,
+        createdBy: user.id,
+      });
+      try {
+        await deleteZdEstimateExclusion(targetTwId);
+        if (targetTwId !== p.subiektTwId) {
+          await deleteZdEstimateExclusion(p.subiektTwId);
+        }
+      } catch {
+        /* ignore */
+      }
+      succeededTwIds.push(targetTwId);
+    } catch (e) {
+      failed.push({
+        subiektTwId: p.subiektTwId,
+        twSymbol: p.twSymbol,
+        error:
+          e instanceof Error
+            ? e.message
+            : `Nie udało się oznaczyć ${bulkProductLabel(p)}.`,
+      });
+    }
+  }
+
+  if (!succeededTwIds.length) {
+    return {
+      ok: false,
+      message:
+        failed[0]?.error ?? "Nie udało się oznaczyć produktów „tylko na prośbę”.",
+    };
+  }
+
+  try {
+    const onRequests = await fetchZdEstimateOnRequests();
+    return { ok: true, onRequests, succeededTwIds, failed, truncated };
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        userFacingErrorText(e, "Zapisano część wpisów, ale nie udało się odświeżyć listy."),
+    };
+  }
+}
+
+export async function actionClearZdEstimateOnRequestProducts(
+  subiektTwIds: number[]
+): Promise<ZdEstimateBulkOnRequestActionResult> {
+  await requireZdEstimateAdmin("mutate");
+  const normalized = normalizeZdEstimateBulkTwIds(subiektTwIds);
+  const ids = normalized.ids;
+  if (!ids.length) {
+    return { ok: false, message: "Zaznacz co najmniej jeden produkt." };
+  }
+  const truncated = normalized.truncated;
+
+  try {
+    await clearOnRequestRowsForTwIds(ids);
+    const onRequests = await fetchZdEstimateOnRequests();
+    return {
+      ok: true,
+      onRequests,
+      succeededTwIds: ids,
+      failed: [],
+      truncated,
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        userFacingErrorText(e, "Nie udało się usunąć „tylko na prośbę”."),
     };
   }
 }
@@ -1322,9 +1661,7 @@ export async function actionListZdEstimatePackaging(): Promise<ZdEstimatePackagi
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się pobrać ustawień opakowań.",
+        userFacingErrorText(e, "Nie udało się pobrać ustawień opakowań."),
     };
   }
 }
@@ -1351,9 +1688,7 @@ export async function actionUpsertZdEstimatePackaging(input: {
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się zapisać opakowania.",
+        userFacingErrorText(e, "Nie udało się zapisać opakowania."),
     };
   }
 }
@@ -1370,9 +1705,7 @@ export async function actionDeleteZdEstimatePackaging(
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się usunąć opakowania.",
+        userFacingErrorText(e, "Nie udało się usunąć opakowania."),
     };
   }
 }
@@ -1448,6 +1781,14 @@ export async function actionExcludeZdEstimateProducts(input: {
     }
   }
 
+  if (succeededTwIds.length) {
+    try {
+      await clearOnRequestRowsForExcludedTwIds(succeededTwIds);
+    } catch {
+      /* ignore */
+    }
+  }
+
   if (!succeededTwIds.length) {
     return {
       ok: false,
@@ -1462,9 +1803,7 @@ export async function actionExcludeZdEstimateProducts(input: {
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Zapisano część wykluczeń, ale nie udało się odświeżyć listy.",
+        userFacingErrorText(e, "Zapisano część wykluczeń, ale nie udało się odświeżyć listy."),
     };
   }
 }
@@ -1495,16 +1834,14 @@ export async function actionRestoreZdEstimateProducts(
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się przywrócić produktów.",
+        userFacingErrorText(e, "Nie udało się przywrócić produktów."),
     };
   }
 }
 
 /**
  * Grupowe opakowanie — te same jednostki ZD dla wszystkich zaznaczonych.
- * unitsPerPackage === 1 usuwa ustawienie (jak przy pojedynczym zapisie).
+ * unitsPerPackage === 1 → jawne sztuki 1:1 w historii snapshotów.
  */
 export async function actionUpsertZdEstimatePackagingBulk(input: {
   products: ZdEstimateBulkProductInput[];
@@ -1572,9 +1909,7 @@ export async function actionUpsertZdEstimatePackagingBulk(input: {
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Zapisano część opakowań, ale nie udało się odświeżyć listy.",
+        userFacingErrorText(e, "Zapisano część opakowań, ale nie udało się odświeżyć listy."),
     };
   }
 }
@@ -1605,9 +1940,7 @@ export async function actionDeleteZdEstimatePackagingBulk(
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się usunąć opakowań.",
+        userFacingErrorText(e, "Nie udało się usunąć opakowań."),
     };
   }
 }
@@ -1664,7 +1997,7 @@ export async function actionSearchZdForEstimateLink(input?: {
     return {
       ok: false,
       message:
-        e instanceof Error ? e.message : "Nie udało się pobrać listy ZD.",
+        userFacingErrorText(e, "Nie udało się pobrać listy ZD."),
     };
   }
 }
@@ -1696,6 +2029,8 @@ export async function actionLinkZdEstimateSnapshot(input: {
   grtId?: number | null;
   cechaId?: number | null;
   lineMeta?: ZdEstimateLinkLineMeta[] | null;
+  /** tw_Id z orderable preview (Do ZD) — potwierdzone 1:1 przy braku opakowania. */
+  orderableTwIds?: number[] | null;
 }): Promise<ZdEstimateLinkSnapshotResult> {
   const user = await requireZdEstimateAdmin("mutate");
   const orders = resolveSubiektOrdersConfig();
@@ -1813,15 +2148,8 @@ export async function actionLinkZdEstimateSnapshot(input: {
 
     let pairRatioByTwId: Map<number, number>;
     try {
-      pairRatioByTwId = new Map();
       const pairs = await fetchZdProductPairs();
-      for (const p of pairs) {
-        pairRatioByTwId.set(p.packTwId, p.unitsPerPack);
-        // Piece na ZD zewnętrznym — już sztuki (ratio 1).
-        if (!pairRatioByTwId.has(p.pieceTwId)) {
-          pairRatioByTwId.set(p.pieceTwId, 1);
-        }
-      }
+      pairRatioByTwId = buildPairRatioByTwId(pairs);
     } catch (e) {
       return {
         ok: false,
@@ -1832,14 +2160,27 @@ export async function actionLinkZdEstimateSnapshot(input: {
       };
     }
 
+    const orderableTwIds = resolveConfirmedEstimateTwIdsForLink({
+      orderableTwIds: input.orderableTwIds,
+      lineMeta: input.lineMeta,
+    });
+
     const built = buildZdEstimateSnapshotLinesFromDocChecked(doc, {
       packagingByTwId,
       pairRatioByTwId,
       lineMeta: input.lineMeta ?? null,
+      confirmedEstimateTwIds: orderableTwIds,
       requirePackaging: true,
     });
     if (!built.ok) {
-      return { ok: false, message: built.message };
+      return {
+        ok: false,
+        message: enrichSnapshotPackagingErrorMessage(
+          built.message,
+          doc,
+          orderableTwIds
+        ),
+      };
     }
     if (!built.lines.length) {
       return {
@@ -1869,9 +2210,7 @@ export async function actionLinkZdEstimateSnapshot(input: {
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się powiązać ZD ze szacunkiem.",
+        userFacingErrorText(e, "Nie udało się powiązać ZD ze szacunkiem."),
     };
   }
 }
@@ -1969,7 +2308,7 @@ function mapZdCreateSubiektError(e: unknown): {
   const feedback = feedbackFromException(e);
   return {
     code: "network",
-    message: feedback.message || (e instanceof Error ? e.message : "Błąd Subiekta."),
+    message: feedback.message || (userFacingErrorText(e, "Błąd Subiekta.")),
   };
 }
 
@@ -2460,14 +2799,8 @@ export async function actionCreateZdFromEstimate(input: {
 
     let pairRatioByTwId: Map<number, number>;
     try {
-      pairRatioByTwId = new Map();
       const pairs = await fetchZdProductPairs();
-      for (const p of pairs) {
-        pairRatioByTwId.set(p.packTwId, p.unitsPerPack);
-        if (!pairRatioByTwId.has(p.pieceTwId)) {
-          pairRatioByTwId.set(p.pieceTwId, 1);
-        }
-      }
+      pairRatioByTwId = buildPairRatioByTwId(pairs);
     } catch (e) {
       return withMark({
         ok: true as const,
@@ -2482,10 +2815,13 @@ export async function actionCreateZdFromEstimate(input: {
       });
     }
 
+    const orderableTwIds = new Set(createLines.map((l) => l.twId));
+
     const built = buildZdEstimateSnapshotLinesFromDocChecked(doc, {
       packagingByTwId,
       pairRatioByTwId,
       lineMeta: input.lineMeta ?? null,
+      confirmedEstimateTwIds: orderableTwIds,
       requirePackaging: true,
     });
 
@@ -2496,7 +2832,11 @@ export async function actionCreateZdFromEstimate(input: {
         dokNrPelny,
         lineCount: linesCheck.lines.length,
         snapshotOk: false,
-        snapshotMessage: `ZD utworzone (${dokNrPelny}), ${built.message}`,
+        snapshotMessage: `ZD utworzone (${dokNrPelny}), ${enrichSnapshotPackagingErrorMessage(
+          built.message,
+          doc,
+          orderableTwIds
+        )}`,
       });
     }
 
@@ -2621,9 +2961,7 @@ export async function actionFindRecentZdAfterCreateAttempt(input: {
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się wyszukać świeżych ZD.",
+        userFacingErrorText(e, "Nie udało się wyszukać świeżych ZD."),
     };
   }
 }
@@ -2641,9 +2979,7 @@ export async function actionListZdEstimateSnapshots(): Promise<ZdEstimateListSna
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się wczytać snapshotów ZD.",
+        userFacingErrorText(e, "Nie udało się wczytać snapshotów ZD."),
     };
   }
 }
@@ -2660,7 +2996,7 @@ export async function actionListZdProductPairs(): Promise<ZdProductPairsActionRe
   } catch (e) {
     return {
       ok: false,
-      message: e instanceof Error ? e.message : "Nie udało się wczytać par.",
+      message: userFacingErrorText(e, "Nie udało się wczytać par."),
     };
   }
 }
@@ -2683,12 +3019,30 @@ export async function actionUpsertZdProductPair(input: {
       forceManual: true,
       createdBy: user.id,
     });
+    // „Tylko na prośbę” kanonicznie na pack — przepnij istniejący wpis z piece.
+    try {
+      const pieceRow = await fetchZdEstimateOnRequest(input.pieceTwId);
+      if (pieceRow && input.pieceTwId !== input.packTwId) {
+        await upsertZdEstimateOnRequest({
+          subiektTwId: input.packTwId,
+          twSymbol: input.packSymbol ?? pieceRow.twSymbol,
+          twNazwa: (input.packNazwa ?? pieceRow.twNazwa).trim() || pieceRow.twNazwa,
+          grtId: pieceRow.grtId,
+          grtNazwa: pieceRow.grtNazwa,
+          note: pieceRow.note,
+          createdBy: user.id,
+        });
+        await deleteZdEstimateOnRequest(input.pieceTwId);
+      }
+    } catch {
+      /* ignore — lista on-request opcjonalna względem par */
+    }
     const pairs = await fetchZdProductPairs();
     return { ok: true, pairs };
   } catch (e) {
     return {
       ok: false,
-      message: e instanceof Error ? e.message : "Nie udało się zapisać pary.",
+      message: userFacingErrorText(e, "Nie udało się zapisać pary."),
     };
   }
 }
@@ -2704,7 +3058,7 @@ export async function actionDeleteZdProductPair(input: {
   } catch (e) {
     return {
       ok: false,
-      message: e instanceof Error ? e.message : "Nie udało się usunąć pary.",
+      message: userFacingErrorText(e, "Nie udało się usunąć pary."),
     };
   }
 }
@@ -2731,6 +3085,9 @@ export async function actionUpsertZdProductBom(input: {
   parentTwId: number;
   label?: string | null;
   stockAsCover?: boolean;
+  preset?: "assemble" | "buy_separate" | "kit_only" | string | null;
+  demandAllocation?: "explode" | "separate" | string | null;
+  purchaseTarget?: "components" | "as_sold" | "kit_only" | string | null;
   note?: string | null;
   parentSymbol?: string | null;
   parentNazwa?: string | null;
@@ -2799,7 +3156,7 @@ export async function actionLookupZdProductPairForTwId(
   } catch (e) {
     return {
       ok: false,
-      message: e instanceof Error ? e.message : "Nie udało się sprawdzić pary.",
+      message: userFacingErrorText(e, "Nie udało się sprawdzić pary."),
     };
   }
 }
@@ -2847,17 +3204,13 @@ export async function actionSyncZdProductPairsFromSubiekt(): Promise<
         ok: false,
         pairs,
         message:
-          e instanceof Error
-            ? e.message
-            : "Sync kompletów niedostępny — dodaj pary ręcznie lub wdróż GET /products/komplety na hoście ORDERS.",
+          userFacingErrorText(e, "Sync kompletów niedostępny — dodaj pary ręcznie lub wdróż GET /products/komplety na hoście ORDERS."),
       };
     } catch {
       return {
         ok: false,
         message:
-          e instanceof Error
-            ? e.message
-            : "Sync kompletów niedostępny — dodaj pary ręcznie lub wdróż GET /products/komplety na hoście ORDERS.",
+          userFacingErrorText(e, "Sync kompletów niedostępny — dodaj pary ręcznie lub wdróż GET /products/komplety na hoście ORDERS."),
       };
     }
   }
@@ -2923,7 +3276,7 @@ export async function actionResolveZdEstimateScopeForSupplier(
       supplierName: null,
       reason: "unavailable",
       message:
-        e instanceof Error ? e.message : "Nie udało się wczytać dostawcy.",
+        userFacingErrorText(e, "Nie udało się wczytać dostawcy."),
     };
   }
   if (!supplierName) {
@@ -2946,9 +3299,7 @@ export async function actionResolveZdEstimateScopeForSupplier(
       supplierName,
       reason: "unavailable",
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się odczytać mapowania zakresu.",
+        userFacingErrorText(e, "Nie udało się odczytać mapowania zakresu."),
     };
   }
 
@@ -3027,9 +3378,7 @@ export async function actionResolveZdEstimateScopeForSupplier(
       supplierName,
       reason: "unavailable",
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się wyszukać grup/cech w Subiekcie.",
+        userFacingErrorText(e, "Nie udało się wyszukać grup/cech w Subiekcie."),
     };
   }
 
@@ -3099,9 +3448,7 @@ export async function actionUpsertZdEstimateSupplierScope(input: {
     return {
       ok: false,
       message:
-        e instanceof Error
-          ? e.message
-          : "Nie udało się zapisać mapowania zakresu.",
+        userFacingErrorText(e, "Nie udało się zapisać mapowania zakresu."),
     };
   }
 }

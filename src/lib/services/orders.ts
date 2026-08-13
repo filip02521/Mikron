@@ -52,7 +52,7 @@ import { normalizeSalesClientName } from "@/lib/orders/sales-client-label";
 import { assertNoDuplicateInformacjaEntries } from "@/lib/orders/informacja-duplicate-server";
 import { resolveOrderLineSubiektTwIdFromCatalog } from "@/lib/orders/resolve-order-line-subiekt-tw-id";
 import { normalizeSalesRequestNote } from "@/lib/orders/sales-request-note";
-import { fetchTeethProductTwIdSet, fetchTeethProductInfo } from "@/lib/data/teeth-products";
+import { loadTeethCatalogForValidation } from "@/lib/data/teeth-catalog-load";
 import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 import { assertTeethOrderLineIfApplicable, normalizeTeethDetailsForSave } from "@/lib/teeth/teeth-validation";
 import { saveTeethDetailsForOrders } from "@/lib/data/teeth-order-details";
@@ -250,6 +250,7 @@ export async function batchAddIndividualOrders(
     source?: "subiekt" | "catalog" | null;
     sourceZkWatchId?: string | null;
     sourceZkNumber?: string | null;
+    sourceZkLineKeys?: string[] | null;
     informacjaQueueViaDailyPanel?: boolean;
     informacjaStockOutReorder?: boolean;
     teethDetails?: TeethLineDetail[] | null;
@@ -257,7 +258,11 @@ export async function batchAddIndividualOrders(
     teethOcrImagePath?: string | null;
   }>,
   createdBy?: string,
-  options?: { submitMode?: "sales" | "procurement" }
+  options?: {
+    submitMode?: "sales" | "procurement";
+    /** Line keys ZK objęte tą prośbą — do czyszczenia teeth_drafts. */
+    sourceZkLineKeys?: string[];
+  }
 ): Promise<{
   count: number;
   complete: number;
@@ -273,9 +278,8 @@ export async function batchAddIndividualOrders(
   const submissionGroupId = crypto.randomUUID();
   const procurementMode = options?.submitMode === "procurement";
   const catalogSource = procurementMode ? "procurement_verification" : "order_history";
-  const teethTwIdSet = await fetchTeethProductTwIdSet().catch(() => new Set<number>());
-  const teethProductInfo = await fetchTeethProductInfo().catch(() => []);
-  const teethInfoByTwId = new Map(teethProductInfo.map((row) => [row.twId, row]));
+  const { twIdSet: teethTwIdSet, infoByTwId: teethInfoByTwId } =
+    await loadTeethCatalogForValidation();
   const suppliersForTeeth = await fetchSuppliersForForm().catch(() => [] as Array<{ id: string; name: string }>);
   try {
     let complete = 0;
@@ -467,6 +471,44 @@ export async function batchAddIndividualOrders(
       throw teethError;
     }
 
+    const sourceZkWatchId = rows
+      .map((row) =>
+        typeof row.source_zk_watch_id === "string" ? row.source_zk_watch_id.trim() : ""
+      )
+      .find(Boolean);
+    if (sourceZkWatchId) {
+      const teethTwIds = rows
+        .filter((row) => row.is_teeth && row.subiekt_tw_id != null)
+        .map((row) => Math.trunc(Number(row.subiekt_tw_id)));
+      const lineKeys = [
+        ...(options?.sourceZkLineKeys ?? []),
+        ...entries.flatMap((e) =>
+          Array.isArray(e.sourceZkLineKeys)
+            ? e.sourceZkLineKeys.map((k) => String(k).trim()).filter(Boolean)
+            : []
+        ),
+      ];
+      if (teethTwIds.length || lineKeys.length) {
+        try {
+          const { clearZkTeethDraftsAfterOrdersCreated } = await import(
+            "@/lib/sales/clear-zk-teeth-drafts-after-orders"
+          );
+          await clearZkTeethDraftsAfterOrdersCreated({
+            sourceZkWatchId,
+            teethTwIds,
+            lineKeys: lineKeys.length ? lineKeys : undefined,
+          });
+        } catch (e) {
+          console.error("[clearZkTeethDraftsAfterOrdersCreated]", e);
+          throw new Error(
+            e instanceof Error
+              ? e.message
+              : "Nie udało się zaktualizować szkiców list zębów na ZK."
+          );
+        }
+      }
+    }
+
     const { after } = await import("next/server");
     after(async () => {
       for (const row of rows) {
@@ -520,9 +562,8 @@ export async function completeVerificationOrder(
 ) {
   const kind = (data.requestKind ?? "zamowienie") as IndividualRequestKind;
   const supabase = createAdminClient();
-  const teethTwIdSet = await fetchTeethProductTwIdSet().catch(() => new Set<number>());
-  const teethProductInfo = await fetchTeethProductInfo().catch(() => []);
-  const teethInfoByTwId = new Map(teethProductInfo.map((row) => [row.twId, row]));
+  const { twIdSet: teethTwIdSet, infoByTwId: teethInfoByTwId } =
+    await loadTeethCatalogForValidation();
   const { data: priorRow, error: priorErr } = await supabase
     .from("individual_orders")
     .select(
@@ -727,9 +768,8 @@ export async function updateIndividualRequestGroup(
   });
 
   const supabase = options.supabase ?? createAdminClient();
-  const teethTwIdSet = await fetchTeethProductTwIdSet().catch(() => new Set<number>());
-  const teethProductInfo = await fetchTeethProductInfo().catch(() => []);
-  const teethInfoByTwId = new Map(teethProductInfo.map((row) => [row.twId, row]));
+  const { twIdSet: teethTwIdSet, infoByTwId: teethInfoByTwId } =
+    await loadTeethCatalogForValidation();
   const suppliersForTeeth = await fetchSuppliersForForm().catch(() => [] as Array<{ id: string; name: string }>);
   const { data: rawRows, error: fetchError } = await supabase
     .from("individual_orders")

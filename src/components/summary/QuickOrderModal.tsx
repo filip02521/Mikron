@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition, useEffect, useRef } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { useRouter } from "next/navigation";
 import { actionAddIndividualOrders } from "@/app/actions/admin";
 import { ACTION_PENDING_SAFETY_FORM_MS } from "@/lib/timing";
@@ -54,6 +55,7 @@ import {
   procurementSubmitSuccessMessage,
 } from "@/lib/teeth/teeth-procurement-flow-copy";
 import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
+import { prosbaLinesIncludeTeethProduct } from "@/lib/orders/teeth-stock-exempt";
 import type { AddIndividualOrdersEntry } from "@/lib/orders/individual-request-edit";
 
 export function QuickOrderModal({
@@ -246,7 +248,10 @@ export function QuickOrderModal({
       setValidationAttempted(true);
       setFormNotice(
         err instanceof Error
-          ? { ...QUICK_ORDER_FORM.incompleteFields, text: err.message }
+          ? {
+              ...QUICK_ORDER_FORM.incompleteFields,
+              text: userFacingErrorText(err, QUICK_ORDER_FORM.incompleteFields.text),
+            }
           : QUICK_ORDER_FORM.incompleteFields
       );
       return;
@@ -465,6 +470,7 @@ export function QuickOrderModal({
         <ProsbaFormProductsSection
           requestKind={requestKind}
           informacjaPath={informacjaPath}
+          showShortageLookup={prosbaLinesIncludeTeethProduct(lines, teethExemptTwIds)}
         >
           <div className="space-y-3">
             <RequestProductLinesEditor

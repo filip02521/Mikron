@@ -1,5 +1,6 @@
 "use client";
 
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { useState } from "react";
 import type { SupplierLocation, StatsMode } from "@/types/database";
 import type { SupplierSummaryMeta } from "@/lib/orders/summary-workspace";
@@ -142,9 +143,7 @@ function SupplierEditModalInner({
       isNew ? "Dodawanie dostawcy…" : "Zapisywanie karty dostawcy…",
       {
         onError: (error) => {
-          setSaveError(
-            error instanceof Error ? error.message : "Nie udało się zapisać dostawcy."
-          );
+          setSaveError(userFacingErrorText(error, "Nie udało się zapisać dostawcy."));
         },
       }
     );

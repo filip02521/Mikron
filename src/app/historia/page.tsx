@@ -1,3 +1,4 @@
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { Suspense } from "react";
 import { fetchIndividualHistory, fetchNormalHistory } from "@/lib/data/queries";
 import { HistoriaClient } from "@/components/history/HistoriaClient";
@@ -29,7 +30,7 @@ export default async function HistoriaPage() {
       fetchNormalHistory(),
     ]);
   } catch (error) {
-    loadError = error instanceof Error ? error.message : "Nie udało się załadować historii.";
+    loadError = userFacingErrorText(error, "Nie udało się załadować historii.");
     logDevPageError("historia/page", error);
   }
 
@@ -37,7 +38,7 @@ export default async function HistoriaPage() {
     <div className={procurementArchivePageShellClass}>
       {loadError ? (
         <Alert tone="warning" className="mb-4">
-          {loadError}. Sprawdź połączenie z Supabase.
+          {loadError}
         </Alert>
       ) : null}
       <Suspense fallback={null}>

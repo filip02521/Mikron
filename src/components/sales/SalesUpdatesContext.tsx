@@ -36,6 +36,7 @@ import {
   LIVE_PANEL_AUTO_REFRESH_COOLDOWN_MS,
   shouldFireLivePanelAutoRefresh,
 } from "@/lib/client/live-panel-auto-refresh";
+import { redirectToLoginIfUnauthorizedStatus } from "@/lib/auth/session-login-redirect";
 
 type SalesUpdatesContextValue = {
   hasUpdates: boolean;
@@ -63,6 +64,9 @@ async function fetchVersion(): Promise<{
     const res = await fetch("/api/sales/activity-version", {
       cache: "no-store",
     });
+    if (redirectToLoginIfUnauthorizedStatus(res.status)) {
+      return { version: null, unseenOwnAnswers: null, latestOwnAnswerActivityAt: null };
+    }
     if (!res.ok) {
       return { version: null, unseenOwnAnswers: null, latestOwnAnswerActivityAt: null };
     }

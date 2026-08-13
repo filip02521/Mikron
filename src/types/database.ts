@@ -452,10 +452,20 @@ export interface SalesZkWatch {
   amount_gross: number | null;
   zk_issued_at: string | null;
   note: string | null;
+  /**
+   * Gdy true — przy tworzeniu/uzupełnianiu prośby z ZK dołącz `note` do
+   * `sales_request_note` pozycji (zakupy zobaczą). Domyślnie false / brak = prywatna.
+   */
+  include_note_in_prosba?: boolean;
   line_summary: string | null;
   subiekt_snapshot: Record<string, unknown> | null;
   /** Stan odbioru pozycji — patrz ZkWatchLineCheckStored. */
   line_checks: unknown;
+  /**
+   * Szkice list zębów przed prośbą — mapa lineKey → ZkTeethLineDraft
+   * (TeethLineDetail + meta). Patrz `src/lib/sales/zk-watch-teeth-draft.ts`.
+   */
+  teeth_drafts?: unknown;
   follow_up_at: string | null;
   closed_at: string | null;
   archived_at: string | null;
@@ -503,6 +513,35 @@ export type VacationDelegation = {
   endDate: string;
   createdBy: string | null;
   createdAt: string;
+};
+
+/** Skład/komplet ZD (zd_product_boms) — policy v1. */
+export type ZdProductBomDemandAllocation = "explode" | "separate";
+export type ZdProductBomPurchaseTarget = "components" | "as_sold" | "kit_only";
+
+export type ZdProductBom = {
+  id: string;
+  parent_tw_id: number;
+  label: string | null;
+  stock_as_cover: boolean;
+  demand_allocation: ZdProductBomDemandAllocation;
+  purchase_target: ZdProductBomPurchaseTarget;
+  source: string | null;
+  note: string | null;
+  parent_symbol: string | null;
+  parent_nazwa: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+};
+
+export type ZdProductBomComponent = {
+  id: string;
+  bom_id: string;
+  component_tw_id: number;
+  qty_per_parent: number;
+  component_symbol: string | null;
+  component_nazwa: string | null;
 };
 
 export const LOCATION_FLAGS: Record<SupplierLocation, string> = {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { actionUpdateZkWatchProsbaScope } from "@/app/actions/sales-notepad";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
@@ -182,7 +183,7 @@ export function ZkWatchProsbaScopeModal({
       onSaved(updated);
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się zapisać zakresu.");
+      setError(userFacingErrorText(e, "Nie udało się zapisać zakresu."));
     } finally {
       setSaving(false);
     }
@@ -362,6 +363,11 @@ export function ZkWatchProsbaScopeModal({
                   <span className="min-w-0 flex-1">
                     <span className={cn(salesTypography.rowTitle, "block text-slate-900")}>
                       {line.product}
+                      {twId != null && teethExemptTwIds.has(twId) ? (
+                        <span className="ml-1.5 inline-flex rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-800 ring-1 ring-inset ring-violet-200/70">
+                          Zęby
+                        </span>
+                      ) : null}
                     </span>
                     {(line.symbol || line.quantityLabel) && (
                       <span className={cn(salesTypography.rowMeta, "mt-0.5 block text-slate-500")}>

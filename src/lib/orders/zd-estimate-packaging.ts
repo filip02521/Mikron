@@ -14,6 +14,11 @@ import {
   type ManualZdEstimateLine,
 } from "@/lib/orders/zd-estimate-manual";
 import {
+  bomBlocksZdOrder,
+  isAssembledBomParent,
+  isBomPurchaseBlockedWithoutExplode,
+} from "@/lib/orders/zd-estimate-bom";
+import {
   normalizeUnitsPerPackage,
   zdDocumentUnitsToPieces,
 } from "@/lib/orders/zd-estimate-units";
@@ -98,6 +103,7 @@ export function individualExtraPiecesForTw(
  * Pełne qty zamówienia dla pozycji: uwzględnia opakowanie przy otwartych ZD
  * i przelicza wynik na jednostki do wpisania w dokumencie.
  * `individualExtraPieces` — rezerwa próśb (sztuki) dodana przed ceil opakowania.
+ * `extraOnly` — „tylko na prośbę”: baza stock / bakowany pair qty = 0, tylko extra.
  */
 export function resolveOrderQtyForLine(
   line: ManualZdEstimateLine,
@@ -105,28 +111,46 @@ export function resolveOrderQtyForLine(
     unitsPerPackage: number;
     packageLabel?: string;
   } | null,
-  individualExtraPieces?: number
+  individualExtraPieces?: number,
+  extraOnly = false
 ): ZdPackOrderQty {
   const extra = Math.max(0, Math.ceil(Number(individualExtraPieces) || 0));
+  const label = packaging?.packageLabel?.trim() || "op.";
 
-  // BOM parent: nigdy na ZD (extras routowane wcześniej na service).
-  if (line.bom?.role === "parent") {
-    return computeZdPackOrderQty(0, 1, packaging?.packageLabel?.trim() || "op.");
+  // Assembled parent: nigdy na ZD (także bez extras — explode idzie na składniki).
+  if (isAssembledBomParent(line)) {
+    return computeZdPackOrderQty(0, 1, label);
   }
+
+  // kit_only composition: baza = 0, ale extras z explode próśb / multi-BOM mogą wejść.
+  if (isBomPurchaseBlockedWithoutExplode(line)) {
+    if (line.pair?.role === "piece") {
+      return computeZdPackOrderQty(0, 1, label);
+    }
+    if (line.pair?.role === "pack") {
+      return computeZdPackOrderQty(extra, line.pair.unitsPerPack, label);
+    }
+    const pack = normalizeUnitsPerPackage(packaging?.unitsPerPackage);
+    return computeZdPackOrderQty(extra, pack, label);
+  }
+
   // Para: qty już policzone w sztukach (cover/sales złączone) — nie przeliczaj z karty pack.
   if (line.pair?.role === "piece") {
-    return computeZdPackOrderQty(0, 1, packaging?.packageLabel?.trim() || "op.");
+    return computeZdPackOrderQty(0, 1, label);
   }
   if (line.pair?.role === "pack") {
-    const base = line.pair.partnerMissing
+    const base = extraOnly
       ? 0
-      : Math.max(0, Math.ceil(Number(line.doZamowieniaReczne) || 0));
-    const label = packaging?.packageLabel?.trim() || "op.";
+      : line.pair.partnerMissing
+        ? 0
+        : Math.max(0, Math.ceil(Number(line.doZamowieniaReczne) || 0));
     return computeZdPackOrderQty(base + extra, line.pair.unitsPerPack, label);
   }
 
   const pack = normalizeUnitsPerPackage(packaging?.unitsPerPackage);
-  const label = packaging?.packageLabel?.trim() || "op.";
+  if (extraOnly) {
+    return computeZdPackOrderQty(extra, pack, label);
+  }
   const otwarteZdRaw = Math.max(0, Number(line.otwarteZd) || 0);
   // Przy opakowaniu Subiekt trzyma qty ZD w paczkach → na sztuki × pack.
   const otwarteZdPieces = zdDocumentUnitsToPieces(
@@ -167,11 +191,91 @@ export type PackagingLookup = {
   packageLabel?: string;
 };
 
+/**
+ * Jednostki ZD (dokument) z opcjonalnym nadpisaniem sesji.
+ * Brak override → wyliczone z `resolveOrderQtyForLine`.
+ * Piece pary / BOM parent — override ignorowany (nigdy na ZD).
+ */
+export function lineAllowsZdDocumentUnitOverride(
+  line: Pick<ManualZdEstimateLine, "pair" | "bom">
+): boolean {
+  if (bomBlocksZdOrder(line)) return false;
+  if (line.pair?.role === "piece") return false;
+  return true;
+}
+
+export function effectiveZdDocumentUnits(
+  line: ManualZdEstimateLine,
+  packaging: PackagingLookup | null | undefined,
+  individualExtraPieces?: number | null,
+  overrideZdUnits?: number | null,
+  extraOnly = false
+): number {
+  const computed = resolveOrderQtyForLine(
+    line,
+    packaging,
+    individualExtraPieces ?? undefined,
+    extraOnly
+  ).zdUnits;
+  if (!lineAllowsZdDocumentUnitOverride(line)) {
+    return computed;
+  }
+  if (
+    overrideZdUnits != null &&
+    Number.isFinite(overrideZdUnits) &&
+    overrideZdUnits >= 0
+  ) {
+    return Math.trunc(overrideZdUnits);
+  }
+  return computed;
+}
+
+/**
+ * Usuwa nadpisania równe wyliczeniu lub bez linii.
+ * Zwraca ten sam obiekt `overrides`, gdy nic nie spadło (stabilna referencja).
+ */
+export function pruneZdDocumentUnitOverrides(
+  overrides: Readonly<Record<number, number>>,
+  lines: readonly ManualZdEstimateLine[],
+  packagingById: ReadonlyMap<number, PackagingLookup>,
+  individualExtraByTwId?: ReadonlyMap<number, number> | null,
+  extraOnlyTwIds?: ReadonlySet<number> | null
+): Record<number, number> {
+  let changed = false;
+  const next: Record<number, number> = {};
+  for (const [key, override] of Object.entries(overrides)) {
+    const twId = Number(key);
+    const line = lines.find((l) => l.tw_Id === twId);
+    if (!line) {
+      changed = true;
+      continue;
+    }
+    if (!lineAllowsZdDocumentUnitOverride(line)) {
+      changed = true;
+      continue;
+    }
+    const computed = resolveOrderQtyForLine(
+      line,
+      packagingById.get(twId) ?? null,
+      individualExtraPiecesForTw(twId, individualExtraByTwId),
+      extraOnlyTwIds?.has(twId) === true
+    ).zdUnits;
+    if (Math.trunc(override) === computed) {
+      changed = true;
+      continue;
+    }
+    next[twId] = Math.trunc(override);
+  }
+  return changed ? next : (overrides as Record<number, number>);
+}
+
 export function summarizePackOrderQty(
   lines: ManualZdEstimateLine[],
   packagingById: ReadonlyMap<number, PackagingLookup>,
   excludedTwIds?: ReadonlySet<number> | readonly number[] | null,
-  individualExtraByTwId?: ReadonlyMap<number, number> | null
+  individualExtraByTwId?: ReadonlyMap<number, number> | null,
+  qtyOverrideByTwId?: ReadonlyMap<number, number> | null,
+  extraOnlyTwIds?: ReadonlySet<number> | null
 ): {
   doZamowieniaCount: number;
   piecesNeededSuma: number;
@@ -188,16 +292,28 @@ export function summarizePackOrderQty(
   let piecesArrivingSuma = 0;
   for (const line of lines) {
     if (excluded.has(line.tw_Id)) continue;
-    const qty = resolveOrderQtyForLine(
-      line,
-      packagingById.get(line.tw_Id),
-      individualExtraPiecesForTw(line.tw_Id, individualExtraByTwId)
+    const pack = packagingById.get(line.tw_Id);
+    const extra = individualExtraPiecesForTw(
+      line.tw_Id,
+      individualExtraByTwId
     );
-    if (qty.zdUnits <= 0) continue;
+    const extraOnly = extraOnlyTwIds?.has(line.tw_Id) === true;
+    const qty = resolveOrderQtyForLine(line, pack, extra, extraOnly);
+    const zdUnits = effectiveZdDocumentUnits(
+      line,
+      pack,
+      extra,
+      qtyOverrideByTwId?.get(line.tw_Id),
+      extraOnly
+    );
+    if (zdUnits <= 0) continue;
     doZamowieniaCount += 1;
     piecesNeededSuma += qty.piecesNeeded;
-    zdUnitsSuma += qty.zdUnits;
-    piecesArrivingSuma += qty.piecesArriving;
+    zdUnitsSuma += zdUnits;
+    piecesArrivingSuma +=
+      qty.hasPackaging && qty.zdUnits > 0
+        ? Math.round((qty.piecesArriving / qty.zdUnits) * zdUnits)
+        : zdUnits;
   }
   return {
     doZamowieniaCount,
@@ -211,7 +327,9 @@ export function filterOrderableLinesWithPackaging(
   lines: ManualZdEstimateLine[],
   packagingById: ReadonlyMap<number, PackagingLookup>,
   excludedTwIds?: ReadonlySet<number> | readonly number[] | null,
-  individualExtraByTwId?: ReadonlyMap<number, number> | null
+  individualExtraByTwId?: ReadonlyMap<number, number> | null,
+  qtyOverrideByTwId?: ReadonlyMap<number, number> | null,
+  extraOnlyTwIds?: ReadonlySet<number> | null
 ): ManualZdEstimateLine[] {
   const excluded =
     excludedTwIds instanceof Set
@@ -220,20 +338,24 @@ export function filterOrderableLinesWithPackaging(
   return lines.filter((line) => {
     if (excluded.has(line.tw_Id)) return false;
     return (
-      resolveOrderQtyForLine(
+      effectiveZdDocumentUnits(
         line,
         packagingById.get(line.tw_Id),
-        individualExtraPiecesForTw(line.tw_Id, individualExtraByTwId)
-      ).zdUnits > 0
+        individualExtraPiecesForTw(line.tw_Id, individualExtraByTwId),
+        qtyOverrideByTwId?.get(line.tw_Id),
+        extraOnlyTwIds?.has(line.tw_Id) === true
+      ) > 0
     );
   });
 }
 
-/** TSV z qty uwzględniającym opakowania i otwarte ZD w paczkach. */
+/** TSV z qty uwzględniającym opakowania, otwarte ZD i nadpisania sesji. */
 export function orderableLinesToTsv(
   lines: ManualZdEstimateLine[],
   packagingById: ReadonlyMap<number, PackagingLookup>,
-  individualExtraByTwId?: ReadonlyMap<number, number> | null
+  individualExtraByTwId?: ReadonlyMap<number, number> | null,
+  qtyOverrideByTwId?: ReadonlyMap<number, number> | null,
+  extraOnlyTwIds?: ReadonlySet<number> | null
 ): string {
   const header = [
     "symbol",
@@ -255,18 +377,31 @@ export function orderableLinesToTsv(
     "tw_Id",
   ].join("\t");
   const rows = lines.map((line) => {
-    const qty = resolveOrderQtyForLine(
-      line,
-      packagingById.get(line.tw_Id),
-      individualExtraPiecesForTw(line.tw_Id, individualExtraByTwId)
+    const pack = packagingById.get(line.tw_Id);
+    const extra = individualExtraPiecesForTw(
+      line.tw_Id,
+      individualExtraByTwId
     );
+    const extraOnly = extraOnlyTwIds?.has(line.tw_Id) === true;
+    const qty = resolveOrderQtyForLine(line, pack, extra, extraOnly);
+    const zdUnits = effectiveZdDocumentUnits(
+      line,
+      pack,
+      extra,
+      qtyOverrideByTwId?.get(line.tw_Id),
+      extraOnly
+    );
+    const piecesArriving =
+      qty.hasPackaging && qty.zdUnits > 0
+        ? Math.round((qty.piecesArriving / qty.zdUnits) * zdUnits)
+        : zdUnits;
     return [
       line.tw_Symbol,
       line.tw_Nazwa,
-      qty.zdUnits,
+      zdUnits,
       qty.hasPackaging ? qty.unitsPerPackage : "",
       qty.hasPackaging ? qty.packageLabel : "",
-      qty.piecesArriving,
+      piecesArriving,
       qty.piecesNeeded,
       formatQty(line.tw_Stan),
       formatQty(line.tw_StanRez),

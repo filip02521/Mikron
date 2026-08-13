@@ -1,4 +1,4 @@
-/** Limit produktów w jednej akcji grupowej szacunku ZD. */
+/** Limit produktów w jednej akcji grupowej kreatora ZD. */
 export const ZD_ESTIMATE_BULK_MAX = 200;
 
 /**

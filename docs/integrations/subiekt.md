@@ -53,7 +53,7 @@ Oczekiwana odpowiedź:
 
 Host **live** (`SUBIEKT_API_BASE_URL`, zwykle `:5080`) — codzienna praca (stany, katalog, ETA) oraz — gdy ORDERS też wskazuje `:5080` — szacunek/create na **aktualnej bazie MIKRAN**.
 
-Host **ORDERS** (`SUBIEKT_API_ORDERS_BASE_URL`) — szacunek ZD oraz **tworzenie ZD przez Sferę**. Dozwolone porty: `:5080` (live) lub `:5082` (test).
+Host **ORDERS** (`SUBIEKT_API_ORDERS_BASE_URL`) — kreator ZD oraz **tworzenie ZD przez Sferę**. Dozwolone porty: `:5080` (live) lub `:5082` (test).
 
 Wszystkie listy zwracają envelope:
 
@@ -79,7 +79,7 @@ Wszystkie listy zwracają envelope:
 | POST | `/documents/zd/create` | Host ORDERS (`:5080` live / `:5082` test) — tworzy ZD (Sfera `DodajZD`) |
 | GET | `/groups` | Grupy towarowe (`sl_GrupaTw`) — zwykle na hoście ORDERS |
 | GET | `/cechy/towarow` | Słownik cech towarów (`sl_CechaTw`) — host ORDERS |
-| GET | `/orders/zd/estimate` | Szacunek ilości do ZD — `/zakupy/szacunek` (host ORDERS) |
+| GET | `/orders/zd/estimate` | Kreator ilości do ZD — `/zakupy/szacunek` (host ORDERS) |
 | GET | `/products/komplety` | **Do wdrożenia:** komplety `tw_Komplet` (pack↔piece, `liczba`) — sync par w OnTime |
 | GET | `/examples` | Przykłady zapytań |
 | GET | `/docs` | Dokumentacja OpenAPI (HTML) |
@@ -119,7 +119,7 @@ Odpowiedź wiersza:
 
 OnTime sync (`actionSyncZdProductPairsFromSubiekt`) pomija komplety z ≠1 składnikiem lub niecałkowitą `liczba`. Do czasu wdrożenia endpointu pary dodaje się ręcznie w `/zakupy/szacunek`.
 
-### Host szacunku ZD (`SUBIEKT_API_ORDERS_BASE_URL`) — live `:5080` lub test `:5082`
+### Host kreatora ZD (`SUBIEKT_API_ORDERS_BASE_URL`) — live `:5080` lub test `:5082`
 
 `/zakupy/szacunek` **nie** spada cicho na `SUBIEKT_API_BASE_URL` — wymaga jawnego `SUBIEKT_API_ORDERS_BASE_URL`.
 

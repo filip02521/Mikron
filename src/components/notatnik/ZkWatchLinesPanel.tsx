@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { actionUpdateZkWatchLineChecks } from "@/app/actions/sales-notepad";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
@@ -415,7 +416,7 @@ export function ZkWatchLinesPanel({
       onSaved?.(updated);
     } catch (e) {
       setViews(previousViews);
-      setError(e instanceof Error ? e.message : "Nie udało się zapisać.");
+      setError(userFacingErrorText(e, "Nie udało się zapisać."));
     } finally {
       setSaving(false);
     }
