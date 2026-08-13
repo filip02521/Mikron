@@ -11,6 +11,7 @@ import {
   snapshotLineKeys,
   snapshotLineQty,
 } from "@/lib/external-warehouse/lines";
+import { comparePalletLabels } from "@/lib/external-warehouse/pallet-label-sort";
 
 export function isExternalWarehouseUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -123,9 +124,7 @@ export function normalizePalletSharesInput(
       qty: v.qty,
       note: v.note,
     }))
-    .sort((a, b) =>
-      a.palletLabel.localeCompare(b.palletLabel, "pl", { sensitivity: "base" })
-    );
+    .sort((a, b) => comparePalletLabels(a.palletLabel, b.palletLabel));
 
   if (shares.length > MAX_EXTERNAL_WAREHOUSE_PALLET_SHARES_PER_LINE) {
     return {
