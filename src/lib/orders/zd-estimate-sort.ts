@@ -10,6 +10,7 @@ export type ZdEstimateListSortDir = "asc" | "desc";
 export type ZdEstimateSortPackaging = {
   unitsPerPackage: number;
   packageLabel?: string;
+  documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode | null;
 };
 
 function compareText(a: string, b: string): number {

@@ -20,11 +20,17 @@ import type { OrderInterval } from "@/lib/orders/dates";
 import { resolveSupplierInterval } from "@/lib/orders/dates";
 import {
   computeSalesTrackedCel,
+  reconcileSalesTrackQtyMetaAfterHistory,
   resolveSprzedazDziennie,
   type SalesTrackReason,
 } from "@/lib/orders/zd-estimate-sales-track";
 import { applyZdEstimateHistoryCuts } from "@/lib/orders/zd-estimate-history-track";
-import { zdDocumentUnitsToPieces } from "@/lib/orders/zd-estimate-units";
+import {
+  isPackagingPackagesMode,
+  normalizePackagingDocumentUnitMode,
+  normalizeUnitsPerPackage,
+  zdDocumentUnitsToPieces,
+} from "@/lib/orders/zd-estimate-units";
 import {
   applyBomPurchaseTargetFinalize,
   applyZdEstimateBoms,
@@ -72,6 +78,14 @@ export type ManualZdEstimateLine = {
   /** Signed delta celu ze śledzenia sprzedaży (+/−). */
   salesTrackDelta: number;
   salesTrackReasons: SalesTrackReason[];
+  /** 0..1 — pewność dokupu sztuk z boostu. */
+  salesTrackConfidence: number;
+  /** Wątpliwa ilość — filtr „Do weryfikacji”. */
+  salesTrackQtyReview: boolean;
+  /** Sztuki wstrzymane względem pełnego boostu. */
+  salesTrackHeldExtraQty: number;
+  /** Sztuki Do ZD dozwolone ponad bazę z boostu. */
+  salesTrackAllowedExtraQty: number;
   otwarteZkBezRez: number;
   otwarteZkZarezerwowane: number;
   otwarteZd: number;
@@ -178,10 +192,16 @@ export type MapZdEstimateLineOptions = {
   /** Ostatnie zamówienie z snapshotu ZD (Faza 3) — qty w sztukach. */
   history?: { lastOrderedQty: number; linkedAt: string } | null;
   /**
-   * Sztuk na 1 jednostkę ZD — do cover/qty (otwarte ZD z API = paczki).
+   * Sztuk na 1 jednostkę ZD — do cover/qty (otwarte ZD z API = paczki w Mode A).
    * 1 / brak = traktuj otwarte ZD jako sztuki.
    */
   unitsPerPackage?: number | null;
+  /** Mode B: otwarte ZD już w sztukach — bez × N. */
+  documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode | null;
+  /** Wspólna polityka mocy boosta (presety). */
+  salesTrackPolicy?: Partial<
+    typeof import("@/lib/orders/zd-estimate-sales-track").ZD_SALES_TRACK
+  > | null;
 };
 
 export function mapZdEstimateLineToManual(
@@ -201,7 +221,8 @@ export function mapZdEstimateLineToManual(
   const otwarteZd = asFiniteNumber(line.otwarteZd);
   const otwarteZdPieces = zdDocumentUnitsToPieces(
     otwarteZd,
-    options?.unitsPerPackage
+    options?.unitsPerPackage,
+    options?.documentUnitMode
   );
   const otwarteZkBezRez = asFiniteNumber(line.otwarteZkBezRez);
   const doZamowieniaApi = asFiniteNumber(line.doZamowienia);
@@ -226,13 +247,19 @@ export function mapZdEstimateLineToManual(
     dniOkresu,
     enabled: options?.salesTrack !== false,
     cutsEnabled: options?.salesTrackCuts !== false,
+    policy: options?.salesTrackPolicy ?? undefined,
   });
 
   let celTracked = track.celTracked;
   let salesTrackDelta = track.deltaPieces;
-  const salesTrackReasons: SalesTrackReason[] = [...track.reasons];
+  let salesTrackReasons: SalesTrackReason[] = [...track.reasons];
+  const salesTrackConfidence = track.confidence;
+  let salesTrackQtyReview = track.qtyReview;
+  let salesTrackHeldExtraQty = track.heldExtraQty;
+  let salesTrackAllowedExtraQty = track.allowedExtraQty;
 
   const hist = options?.history;
+  const coverForQty = Math.max(0, dostepne) + otwarteZdPieces;
   if (
     hist &&
     options?.salesTrack !== false &&
@@ -249,7 +276,7 @@ export function mapZdEstimateLineToManual(
       celBase: celZapasu,
       sprzedazOkres,
       sprzedazDziennie: tempo,
-      coverStock: Math.max(0, dostepne) + otwarteZdPieces,
+      coverStock: coverForQty,
       dniZapasu,
       dniOkresu,
       lastOrderedQty: hist.lastOrderedQty,
@@ -259,6 +286,18 @@ export function mapZdEstimateLineToManual(
       celTracked = histAdj.celTracked;
       salesTrackDelta = celTracked - celZapasu;
       salesTrackReasons.push(...histAdj.reasons);
+      const reconciled = reconcileSalesTrackQtyMetaAfterHistory({
+        celBase: celZapasu,
+        celTracked,
+        coverStock: coverForQty,
+        confidence: salesTrackConfidence,
+        reasons: salesTrackReasons,
+        policy: options?.salesTrackPolicy ?? undefined,
+      });
+      salesTrackReasons = reconciled.salesTrackReasons;
+      salesTrackQtyReview = reconciled.salesTrackQtyReview;
+      salesTrackHeldExtraQty = reconciled.salesTrackHeldExtraQty;
+      salesTrackAllowedExtraQty = reconciled.salesTrackAllowedExtraQty;
     }
   }
 
@@ -288,6 +327,10 @@ export function mapZdEstimateLineToManual(
     celZapasuTracked: celTracked,
     salesTrackDelta,
     salesTrackReasons,
+    salesTrackConfidence,
+    salesTrackQtyReview,
+    salesTrackHeldExtraQty,
+    salesTrackAllowedExtraQty,
     otwarteZkBezRez,
     otwarteZkZarezerwowane: asFiniteNumber(line.otwarteZkZarezerwowane),
     otwarteZd,
@@ -306,13 +349,23 @@ export function buildManualZdEstimateResult(
     salesTrack?: boolean;
     /** Domyślnie true. */
     salesTrackCuts?: boolean;
+    /** Wspólna polityka mocy boosta (presety). */
+    salesTrackPolicy?: Partial<
+      typeof import("@/lib/orders/zd-estimate-sales-track").ZD_SALES_TRACK
+    > | null;
     /** tw_Id → ostatnie zamówienie ze snapshotu (qty w sztukach). */
     historyByTwId?: ReadonlyMap<
       number,
       { lastOrderedQty: number; linkedAt: string }
     > | null;
     /** tw_Id → sztuk / 1 jednostka ZD. */
-    packagingByTwId?: ReadonlyMap<number, { unitsPerPackage: number }> | null;
+    packagingByTwId?: ReadonlyMap<
+      number,
+      {
+        unitsPerPackage: number;
+        documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode | null;
+      }
+    > | null;
     /** Pary pack↔piece. */
     productPairs?: readonly ZdProductPairRef[] | null;
     /** Składy/promocje (BOM) — przed parami. */
@@ -348,10 +401,11 @@ export function buildManualZdEstimateResult(
     const twId = asFiniteNumber(line.tw_Id);
     const inPair = pairIndex.has(twId);
     const hist = inPair ? null : historyByTwId?.get(twId) ?? null;
+    const packRow = packagingByTwId?.get(twId);
     const packUnits = effectiveUnitsPerPackageForTwId(
       twId,
       pairIndex,
-      packagingByTwId?.get(twId)?.unitsPerPackage
+      packRow?.unitsPerPackage
     );
     return mapZdEstimateLineToManual(line, {
       dniZapasu,
@@ -359,8 +413,11 @@ export function buildManualZdEstimateResult(
       // Pary: track/history po merge.
       salesTrack: inPair ? false : options?.salesTrack,
       salesTrackCuts: inPair ? false : options?.salesTrackCuts,
+      salesTrackPolicy: options?.salesTrackPolicy,
       history: hist,
       unitsPerPackage: packUnits,
+      // Para nadpisuje N Mode A — mode DB tylko gdy nie para.
+      documentUnitMode: inPair ? "packages" : packRow?.documentUnitMode,
     });
   });
 
@@ -378,6 +435,7 @@ export function buildManualZdEstimateResult(
           zapasMin,
           salesTrack: options?.salesTrack,
           salesTrackCuts: options?.salesTrackCuts,
+          salesTrackPolicy: options?.salesTrackPolicy,
           historyByTwId,
           packagingByTwId,
           productPairs: pairs,
@@ -393,6 +451,7 @@ export function buildManualZdEstimateResult(
           zapasMin,
           salesTrack: options?.salesTrack,
           salesTrackCuts: options?.salesTrackCuts,
+          salesTrackPolicy: options?.salesTrackPolicy,
           excludedTwIds: options?.excludedTwIds,
           historyByTwId,
           missingPartnerTwIds: options?.missingPartnerTwIds,
@@ -464,6 +523,7 @@ export function filterOrderableManualLines(
 export type ManualLinePackagingLookup = {
   unitsPerPackage: number;
   packageLabel?: string;
+  documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode | null;
 } | null;
 
 /**
@@ -493,17 +553,24 @@ export function manualLinesToTsv(
     "tw_Id",
   ].join("\t");
 
-  // Lazy import avoided — resolve in caller or duplicate thin logic here.
-  // Callers should prefer packaging-aware export from zd-estimate-packaging.
+  // Thin Mode A/B math (bez importu packaging — cykl). Preferuj orderableLinesToTsv.
   const rows = lines.map((l) => {
     const pack = packagingByTwId?.get(l.tw_Id) ?? null;
-    const units = pack?.unitsPerPackage && pack.unitsPerPackage > 1
-      ? Math.trunc(pack.unitsPerPackage)
-      : 1;
-    const pieces = l.doZamowieniaReczne;
-    const zd =
-      units > 1 && pieces > 0 ? Math.ceil(pieces / units) : pieces;
-    const arriving = units > 1 ? zd * units : pieces;
+    const units = normalizeUnitsPerPackage(pack?.unitsPerPackage);
+    const mode = normalizePackagingDocumentUnitMode(pack?.documentUnitMode);
+    const pieces = Math.max(0, Math.ceil(Number(l.doZamowieniaReczne) || 0));
+    let zd: number;
+    let arriving: number;
+    if (units <= 1 || pieces <= 0) {
+      zd = pieces;
+      arriving = pieces;
+    } else if (!isPackagingPackagesMode(mode)) {
+      arriving = Math.ceil(pieces / units) * units;
+      zd = arriving;
+    } else {
+      zd = Math.ceil(pieces / units);
+      arriving = zd * units;
+    }
     return [
       l.tw_Symbol,
       l.tw_Nazwa,

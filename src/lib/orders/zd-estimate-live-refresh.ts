@@ -42,7 +42,13 @@ export function collectMissingZdPairPartnerTwIds(
 }
 
 export type RefreshZdEstimateLinesOptions = ApplyZdEstimatePairsOptions & {
-  packagingByTwId?: ReadonlyMap<number, { unitsPerPackage: number }> | null;
+  packagingByTwId?: ReadonlyMap<
+    number,
+    {
+      unitsPerPackage: number;
+      documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode | null;
+    }
+  > | null;
   missingBomTwIds?: ReadonlySet<number> | null;
 };
 
@@ -76,6 +82,7 @@ export function refreshZdEstimateLinesWithPairs(input: {
           zapasMin: input.options.zapasMin,
           salesTrack: input.options.salesTrack,
           salesTrackCuts: input.options.salesTrackCuts,
+          salesTrackPolicy: input.options.salesTrackPolicy,
           historyByTwId: input.options.historyByTwId,
           packagingByTwId: input.options.packagingByTwId,
           productPairs: input.pairs,

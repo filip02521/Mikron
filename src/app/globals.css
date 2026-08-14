@@ -331,7 +331,7 @@ select:disabled,
 .data-table.zd-estimate-table {
   --zd-est-check-w: 2.75rem;
   --zd-est-symbol-w: 7rem;
-  --zd-est-dozd-w: 5.75rem;
+  --zd-est-dozd-w: 6.25rem;
   --zd-est-sticky-dozd-left: calc(var(--zd-est-check-w) + var(--zd-est-symbol-w));
   min-width: 52rem;
   font-size: 0.8125rem;
@@ -423,6 +423,8 @@ select:disabled,
   text-align: left;
   background-color: rgb(236 253 245 / 0.92);
   box-shadow: inset 3px 0 0 0 #34d399, 1px 0 0 #a7f3d0;
+  overflow: hidden;
+  vertical-align: top;
 }
 
 .data-table.zd-estimate-table thead th.zd-estimate-dozd-col {

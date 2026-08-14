@@ -14,7 +14,15 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
-import { controlFocusClass } from "@/lib/ui/ontime-theme";
+import {
+  assertPackagingUnits,
+  ZD_PACKAGING_UNITS_MAX,
+  ZD_PACKAGING_UNITS_MIN,
+  type ZdPackagingDocumentUnitMode,
+} from "@/lib/orders/zd-estimate-packaging";
+import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
+import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
+import { ZdPackagingLabelPresets } from "@/components/zakupy/ZdPackagingLabelPresets";
 
 export function ZdEstimatePackagingModal({
   open,
@@ -22,12 +30,15 @@ export function ZdEstimatePackagingModal({
   packaging,
   onPackagingChange,
   onError,
+  packPairTwIds,
 }: {
   open: boolean;
   onClose: () => void;
   packaging: ZdEstimatePackagingRow[];
   onPackagingChange: (rows: ZdEstimatePackagingRow[]) => void;
   onError: (message: string) => void;
+  /** tw_Id paczek z pary — Mode B niedostępny. */
+  packPairTwIds?: ReadonlySet<number> | null;
 }) {
   const searchId = useId();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -37,6 +48,8 @@ export function ZdEstimatePackagingModal({
   const [draftUnits, setDraftUnits] = useState("");
   const [draftLabel, setDraftLabel] = useState("op.");
   const [draftNote, setDraftNote] = useState("");
+  const [draftMode, setDraftMode] =
+    useState<ZdPackagingDocumentUnitMode>("packages");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -56,15 +69,33 @@ export function ZdEstimatePackagingModal({
     });
   }, [packaging, query]);
 
+  const draftUnitsCheck = assertPackagingUnits(draftUnits);
+  const draftUnitsOk = draftUnitsCheck.ok;
+  const showDraftUnitsError = draftUnits.trim() !== "" && !draftUnitsOk;
+
   const beginEdit = (row: ZdEstimatePackagingRow) => {
     setEditingId(row.subiektTwId);
     setDraftUnits(String(row.unitsPerPackage));
     setDraftLabel(row.packageLabel);
     setDraftNote(row.note);
+    setDraftMode(
+      packPairTwIds?.has(row.subiektTwId)
+        ? "packages"
+        : row.documentUnitMode
+    );
   };
 
   const save = (row: ZdEstimatePackagingRow) => {
-    const units = Math.trunc(Number(draftUnits));
+    const unitsCheck = assertPackagingUnits(draftUnits);
+    if (!unitsCheck.ok) {
+      onError(unitsCheck.message);
+      return;
+    }
+    const mode: ZdPackagingDocumentUnitMode = packPairTwIds?.has(
+      row.subiektTwId
+    )
+      ? "packages"
+      : draftMode;
     start(async () => {
       const res = await actionUpsertZdEstimatePackaging({
         subiektTwId: row.subiektTwId,
@@ -72,8 +103,9 @@ export function ZdEstimatePackagingModal({
         twNazwa: row.twNazwa,
         grtId: row.grtId,
         grtNazwa: row.grtNazwa,
-        unitsPerPackage: units,
+        unitsPerPackage: unitsCheck.units,
         packageLabel: draftLabel,
+        documentUnitMode: mode,
         note: draftNote,
       });
       if (!res.ok) {
@@ -101,8 +133,8 @@ export function ZdEstimatePackagingModal({
     <ModalShell
       open={open}
       onClose={onClose}
-      title="Opakowania ZD"
-      titleHint="Ile sztuk = 1 jednostka na dokumencie ZD. Np. Falcon op. 10 szt, EVE paczka 100 szt. Ustawienia są trwałe i wspólne dla działu."
+      title={ZD_ESTIMATE_UI.packagingModalTitle}
+      titleHint={ZD_ESTIMATE_UI.packagingModalHint}
       size="xl"
       bodyClassName="space-y-4 px-5 py-4 sm:px-6 sm:py-5"
       loadingMessage={pending ? "Zapisuję…" : null}
@@ -140,7 +172,8 @@ export function ZdEstimatePackagingModal({
             </p>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
               Kreator liczy niedobór w sztukach, a kolumna „Do ZD” pokazuje, ile
-              paczek wpisać. Edytuj też z wiersza listy kreatora.
+              opakowań wpisać (dobicie do pełnego N). Edytuj też z wiersza listy
+              kreatora.
             </p>
           </div>
         </div>
@@ -196,6 +229,10 @@ export function ZdEstimatePackagingModal({
         <ul className="max-h-[min(58vh,32rem)] space-y-2.5 overflow-y-auto overscroll-contain pr-0.5">
           {filtered.map((row) => {
             const editing = editingId === row.subiektTwId;
+            const pairPackBlocksPiecesMode =
+              packPairTwIds?.has(row.subiektTwId) === true;
+            const editMode: ZdPackagingDocumentUnitMode =
+              pairPackBlocksPiecesMode ? "packages" : draftMode;
             return (
               <li
                 key={row.subiektTwId}
@@ -211,7 +248,9 @@ export function ZdEstimatePackagingModal({
                         {row.twSymbol ?? `tw_Id ${row.subiektTwId}`}
                       </p>
                       <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-indigo-900 ring-1 ring-indigo-100">
-                        1 {row.packageLabel} = {row.unitsPerPackage} szt
+                        {row.documentUnitMode === "pieces_multiple"
+                          ? `dobij ×${row.unitsPerPackage}`
+                          : `1 ${row.packageLabel} = ${row.unitsPerPackage} szt`}
                       </span>
                     </div>
                     <p className="text-sm text-slate-600">{row.twNazwa}</p>
@@ -241,6 +280,7 @@ export function ZdEstimatePackagingModal({
                       variant="secondary"
                       disabled={pending}
                       onClick={() => remove(row.subiektTwId)}
+                      title={ZD_ESTIMATE_UI.packagingClearCta}
                     >
                       Usuń
                     </Button>
@@ -248,27 +288,78 @@ export function ZdEstimatePackagingModal({
                 </div>
                 {editing ? (
                   <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                    <div className="flex flex-wrap gap-3 text-xs">
+                      <label className="inline-flex items-center gap-1.5">
+                        <input
+                          type="radio"
+                          name={`zd-modal-mode-${row.subiektTwId}`}
+                          checked={editMode === "packages"}
+                          disabled={pending}
+                          onChange={() => setDraftMode("packages")}
+                        />
+                        {ZD_ESTIMATE_UI.packagingModePackagesLabel}
+                      </label>
+                      <label
+                        className={cn(
+                          "inline-flex items-center gap-1.5",
+                          pairPackBlocksPiecesMode && "opacity-60"
+                        )}
+                      >
+                        <input
+                          type="radio"
+                          name={`zd-modal-mode-${row.subiektTwId}`}
+                          checked={editMode === "pieces_multiple"}
+                          disabled={pending || pairPackBlocksPiecesMode}
+                          onChange={() => setDraftMode("pieces_multiple")}
+                        />
+                        {ZD_ESTIMATE_UI.packagingModePiecesLabel}
+                      </label>
+                    </div>
+                    {pairPackBlocksPiecesMode ? (
+                      <p className="text-[11px] leading-snug text-amber-800">
+                        {ZD_ESTIMATE_UI.packagingModePairBlockedHint}
+                      </p>
+                    ) : null}
                     <div className="grid gap-2 sm:grid-cols-2">
                       <label className="block text-xs font-medium text-slate-600">
-                        Sztuk / 1 ZD
+                        {ZD_ESTIMATE_UI.packagingUnitsLabel}
                         <Input
                           type="number"
-                          min={1}
+                          min={ZD_PACKAGING_UNITS_MIN}
+                          max={ZD_PACKAGING_UNITS_MAX}
                           className="mt-1"
                           value={draftUnits}
                           onChange={(e) => setDraftUnits(e.target.value)}
+                          aria-invalid={showDraftUnitsError || undefined}
                         />
                       </label>
-                      <label className="block text-xs font-medium text-slate-600">
-                        Etykieta
-                        <Input
-                          className="mt-1"
+                      <div>
+                        <label className="block text-xs font-medium text-slate-600">
+                          {ZD_ESTIMATE_UI.packagingLabelField}
+                          <Input
+                            className="mt-1"
+                            value={draftLabel}
+                            maxLength={24}
+                            onChange={(e) => setDraftLabel(e.target.value)}
+                          />
+                        </label>
+                        <ZdPackagingLabelPresets
                           value={draftLabel}
-                          maxLength={24}
-                          onChange={(e) => setDraftLabel(e.target.value)}
+                          disabled={pending}
+                          onSelect={setDraftLabel}
+                          className="mt-2"
                         />
-                      </label>
+                      </div>
                     </div>
+                    {showDraftUnitsError ? (
+                      <p className={cn(panelTypography.caption, "text-amber-800")}>
+                        {draftUnitsCheck.message}
+                      </p>
+                    ) : (
+                      <p className={panelTypography.caption}>
+                        {ZD_ESTIMATE_UI.packagingUnitsHint}
+                      </p>
+                    )}
                     <label className="block text-xs font-medium text-slate-600">
                       Notatka
                       <textarea
@@ -286,7 +377,7 @@ export function ZdEstimatePackagingModal({
                       <Button
                         type="button"
                         size="sm"
-                        disabled={pending}
+                        disabled={pending || !draftUnitsOk}
                         onClick={() => save(row)}
                       >
                         {pending ? <Spinner className="size-4" /> : "Zapisz"}

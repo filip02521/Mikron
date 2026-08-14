@@ -59,6 +59,33 @@ export async function fetchZdEstimateSupplierScope(
   return mapZdEstimateSupplierScopeRow(data as DbRow);
 }
 
+export async function listZdEstimateSupplierScopes(): Promise<
+  ZdEstimateSupplierScopeRow[]
+> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("zd_estimate_supplier_scopes")
+    .select(SELECT_COLS)
+    .order("updated_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) =>
+    mapZdEstimateSupplierScopeRow(row as DbRow)
+  );
+}
+
+export async function deleteZdEstimateSupplierScope(
+  supplierId: string
+): Promise<void> {
+  const id = supplierId.trim();
+  if (!id) throw new Error("Brak supplierId.");
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("zd_estimate_supplier_scopes")
+    .delete()
+    .eq("supplier_id", id);
+  if (error) throw new Error(error.message);
+}
+
 export async function upsertZdEstimateSupplierScope(input: {
   supplierId: string;
   mode: ZdEstimateRunMode;

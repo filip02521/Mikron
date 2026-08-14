@@ -1,11 +1,8 @@
 /**
  * Przeliczenie sztuk ↔ jednostki na ZD (opakowania).
  *
- * Przykład Falcon DO.6312.03: 1 na ZD = 10 szt.
- * Potrzeba 8 szt → wpisz 1 na ZD → przyjdzie 10 szt.
- *
- * Gdy produkt ma opakowanie, otwarte ZD z API traktujemy jako jednostki ZD
- * (paczki), nie sztuki — bo tak wpisuje się dokumenty.
+ * Tryb A (packages): 1 na ZD = N szt → Do ZD = ceil(need/N) paczek.
+ * Tryb B (pieces_multiple): Do ZD w sztukach, dobij do wielokrotności N.
  */
 
 import {
@@ -19,26 +16,49 @@ import {
   isBomPurchaseBlockedWithoutExplode,
 } from "@/lib/orders/zd-estimate-bom";
 import {
+  isPackagingPackagesMode,
+  normalizePackagingDocumentUnitMode,
   normalizeUnitsPerPackage,
   zdDocumentUnitsToPieces,
+  type ZdPackagingDocumentUnitMode,
 } from "@/lib/orders/zd-estimate-units";
+import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 
-export { normalizeUnitsPerPackage, zdDocumentUnitsToPieces };
+export {
+  normalizeUnitsPerPackage,
+  zdDocumentUnitsToPieces,
+  normalizePackagingDocumentUnitMode,
+  isPackagingPackagesMode,
+};
+export type { ZdPackagingDocumentUnitMode };
 
 export type ZdPackOrderQty = {
   /** Niedobór w sztukach (sprzedaż / stan). */
   piecesNeeded: number;
-  /** Sztuk w 1 jednostce ZD (1 = bez opakowania). */
+  /** Sztuk w 1 jednostce ZD / wielokrotność dobicia (1 = bez opakowania). */
   unitsPerPackage: number;
-  /** Co wpisać w ZD. */
+  /** Co wpisać w ZD (paczki w A, sztuki w B). */
   zdUnits: number;
-  /** Ile sztuk fizycznie przyjdzie (zdUnits × opakowanie). */
+  /** Ile sztuk fizycznie przyjdzie. */
   piecesArriving: number;
   hasPackaging: boolean;
   /** Ceil opakowania zawyżył dostawę względem potrzeby. */
   roundedUp: boolean;
   packageLabel: string;
+  documentUnitMode: ZdPackagingDocumentUnitMode;
 };
+
+export type PackagingLookup = {
+  unitsPerPackage: number;
+  packageLabel?: string;
+  documentUnitMode?: ZdPackagingDocumentUnitMode | null;
+};
+
+export function packagingDocumentMode(
+  packaging?: Pick<PackagingLookup, "documentUnitMode"> | null
+): ZdPackagingDocumentUnitMode {
+  return normalizePackagingDocumentUnitMode(packaging?.documentUnitMode);
+}
 
 /**
  * piecesNeeded (szt) → jednostki ZD + ile sztuk przyjdzie.
@@ -46,11 +66,13 @@ export type ZdPackOrderQty = {
 export function computeZdPackOrderQty(
   piecesNeeded: number,
   unitsPerPackage: number | null | undefined,
-  packageLabel = "op."
+  packageLabel = "op.",
+  documentUnitMode: ZdPackagingDocumentUnitMode | null | undefined = "packages"
 ): ZdPackOrderQty {
   const pieces = Math.max(0, Math.ceil(Number(piecesNeeded) || 0));
   const pack = normalizeUnitsPerPackage(unitsPerPackage);
   const label = packageLabel.trim() || "op.";
+  const mode = normalizePackagingDocumentUnitMode(documentUnitMode);
 
   if (pieces <= 0) {
     return {
@@ -61,6 +83,7 @@ export function computeZdPackOrderQty(
       hasPackaging: pack > 1,
       roundedUp: false,
       packageLabel: label,
+      documentUnitMode: mode,
     };
   }
 
@@ -73,6 +96,21 @@ export function computeZdPackOrderQty(
       hasPackaging: false,
       roundedUp: false,
       packageLabel: label,
+      documentUnitMode: "packages",
+    };
+  }
+
+  if (!isPackagingPackagesMode(mode)) {
+    const piecesArriving = Math.ceil(pieces / pack) * pack;
+    return {
+      piecesNeeded: pieces,
+      unitsPerPackage: pack,
+      zdUnits: piecesArriving,
+      piecesArriving,
+      hasPackaging: true,
+      roundedUp: piecesArriving > pieces,
+      packageLabel: label,
+      documentUnitMode: "pieces_multiple",
     };
   }
 
@@ -86,6 +124,7 @@ export function computeZdPackOrderQty(
     hasPackaging: true,
     roundedUp: piecesArriving > pieces,
     packageLabel: label,
+    documentUnitMode: "packages",
   };
 }
 
@@ -104,39 +143,43 @@ export function individualExtraPiecesForTw(
  * i przelicza wynik na jednostki do wpisania w dokumencie.
  * `individualExtraPieces` — rezerwa próśb (sztuki) dodana przed ceil opakowania.
  * `extraOnly` — „tylko na prośbę”: baza stock / bakowany pair qty = 0, tylko extra.
+ * Para pack zawsze Mode A (packages).
  */
 export function resolveOrderQtyForLine(
   line: ManualZdEstimateLine,
-  packaging?: {
-    unitsPerPackage: number;
-    packageLabel?: string;
-  } | null,
+  packaging?: PackagingLookup | null,
   individualExtraPieces?: number,
   extraOnly = false
 ): ZdPackOrderQty {
   const extra = Math.max(0, Math.ceil(Number(individualExtraPieces) || 0));
   const label = packaging?.packageLabel?.trim() || "op.";
+  const mode = packagingDocumentMode(packaging);
 
   // Assembled parent: nigdy na ZD (także bez extras — explode idzie na składniki).
   if (isAssembledBomParent(line)) {
-    return computeZdPackOrderQty(0, 1, label);
+    return computeZdPackOrderQty(0, 1, label, "packages");
   }
 
   // kit_only composition: baza = 0, ale extras z explode próśb / multi-BOM mogą wejść.
   if (isBomPurchaseBlockedWithoutExplode(line)) {
     if (line.pair?.role === "piece") {
-      return computeZdPackOrderQty(0, 1, label);
+      return computeZdPackOrderQty(0, 1, label, "packages");
     }
     if (line.pair?.role === "pack") {
-      return computeZdPackOrderQty(extra, line.pair.unitsPerPack, label);
+      return computeZdPackOrderQty(
+        extra,
+        line.pair.unitsPerPack,
+        label,
+        "packages"
+      );
     }
     const pack = normalizeUnitsPerPackage(packaging?.unitsPerPackage);
-    return computeZdPackOrderQty(extra, pack, label);
+    return computeZdPackOrderQty(extra, pack, label, mode);
   }
 
-  // Para: qty już policzone w sztukach (cover/sales złączone) — nie przeliczaj z karty pack.
+  // Para: qty już policzone w sztukach (cover/sales złączone) — Mode A.
   if (line.pair?.role === "piece") {
-    return computeZdPackOrderQty(0, 1, label);
+    return computeZdPackOrderQty(0, 1, label, "packages");
   }
   if (line.pair?.role === "pack") {
     const base = extraOnly
@@ -144,18 +187,23 @@ export function resolveOrderQtyForLine(
       : line.pair.partnerMissing
         ? 0
         : Math.max(0, Math.ceil(Number(line.doZamowieniaReczne) || 0));
-    return computeZdPackOrderQty(base + extra, line.pair.unitsPerPack, label);
+    return computeZdPackOrderQty(
+      base + extra,
+      line.pair.unitsPerPack,
+      label,
+      "packages"
+    );
   }
 
   const pack = normalizeUnitsPerPackage(packaging?.unitsPerPackage);
   if (extraOnly) {
-    return computeZdPackOrderQty(extra, pack, label);
+    return computeZdPackOrderQty(extra, pack, label, mode);
   }
   const otwarteZdRaw = Math.max(0, Number(line.otwarteZd) || 0);
-  // Przy opakowaniu Subiekt trzyma qty ZD w paczkach → na sztuki × pack.
   const otwarteZdPieces = zdDocumentUnitsToPieces(
     otwarteZdRaw,
-    packaging?.unitsPerPackage
+    packaging?.unitsPerPackage,
+    mode
   );
   const piecesNeeded =
     computeManualOrderQty({
@@ -163,19 +211,134 @@ export function resolveOrderQtyForLine(
       dostepne: line.dostepne,
       otwarteZd: otwarteZdPieces,
     }) + extra;
-  return computeZdPackOrderQty(piecesNeeded, pack, label);
+  return computeZdPackOrderQty(piecesNeeded, pack, label, mode);
+}
+
+/** Etykiety presetów w dialogach opakowania (tylko prezentacja). */
+export const ZD_PACKAGING_LABEL_PRESETS = [
+  "op.",
+  "karton",
+  "paczka",
+  "zbiorcze",
+] as const;
+
+export const ZD_PACKAGING_UNITS_MIN = 2;
+export const ZD_PACKAGING_UNITS_MAX = 100_000;
+
+/** Walidacja zapisu opakowania — zgodna z DB CHECK (≥ 2). */
+export function assertPackagingUnits(
+  value: unknown
+): { ok: true; units: number } | { ok: false; message: string } {
+  const units = Math.trunc(Number(value));
+  if (!Number.isFinite(units) || units < ZD_PACKAGING_UNITS_MIN) {
+    return {
+      ok: false,
+      message: ZD_ESTIMATE_UI.packagingUnitsMinError,
+    };
+  }
+  if (units > ZD_PACKAGING_UNITS_MAX) {
+    return {
+      ok: false,
+      message: ZD_ESTIMATE_UI.packagingUnitsMaxError,
+    };
+  }
+  return { ok: true, units };
+}
+
+/**
+ * Krótka etykieta jednostek dokumentu.
+ * A: „1 karton” / „3 op.” — B: null (dokument w sztukach).
+ */
+export function formatZdPackDocumentLabel(
+  qty: Pick<
+    ZdPackOrderQty,
+    "zdUnits" | "hasPackaging" | "packageLabel" | "documentUnitMode"
+  >
+): string | null {
+  if (!qty.hasPackaging || !(qty.zdUnits > 0)) return null;
+  if (!isPackagingPackagesMode(qty.documentUnitMode)) return null;
+  const label = qty.packageLabel.trim() || "op.";
+  return `${qty.zdUnits} ${label}`;
 }
 
 export function formatZdPackHint(qty: ZdPackOrderQty): string {
   if (!qty.hasPackaging) {
     return qty.zdUnits > 0 ? `${qty.zdUnits} szt` : "—";
   }
-  if (qty.zdUnits <= 0) return "—";
   const over =
     qty.roundedUp && qty.piecesNeeded > 0
       ? ` · potrzeba ${qty.piecesNeeded} szt`
       : "";
-  return `${qty.zdUnits} ${qty.packageLabel} × ${qty.unitsPerPackage} = ${qty.piecesArriving} szt${over}`;
+  if (!isPackagingPackagesMode(qty.documentUnitMode)) {
+    return `${qty.zdUnits} szt (paczka ${qty.unitsPerPackage})${over}`;
+  }
+  const doc = formatZdPackDocumentLabel(qty);
+  if (!doc) return "—";
+  return `${doc} × ${qty.unitsPerPackage} = ${qty.piecesArriving} szt${over}`;
+}
+
+/**
+ * Linia „Na ZD” w dialogu Opak. — A: paczki × N; B: sztuki (bez fałszywego × N).
+ */
+export function formatZdPackOrderPreviewLine(qty: ZdPackOrderQty): string {
+  if (!(qty.zdUnits > 0)) return "—";
+  if (!qty.hasPackaging) {
+    return `${formatQty(qty.zdUnits)} szt`;
+  }
+  if (!isPackagingPackagesMode(qty.documentUnitMode)) {
+    return `${formatQty(qty.zdUnits)} szt (wielokrotność ${qty.unitsPerPackage})`;
+  }
+  return `${qty.zdUnits} × ${qty.unitsPerPackage} = ${formatQty(qty.piecesArriving)} szt`;
+}
+
+/** Dane dobicia — do kompaktowego UI w wąskiej kolumnie Do ZD. */
+export type ZdPackRoundupInfo = {
+  extra: number;
+  need: number;
+  arrive: number;
+};
+
+export function getZdPackRoundupInfo(
+  qty: Pick<
+    ZdPackOrderQty,
+    "roundedUp" | "piecesNeeded" | "piecesArriving" | "hasPackaging"
+  >
+): ZdPackRoundupInfo | null {
+  if (!qty.hasPackaging || !qty.roundedUp) return null;
+  const need = Math.max(0, Math.round(Number(qty.piecesNeeded) || 0));
+  const arrive = Math.max(0, Math.round(Number(qty.piecesArriving) || 0));
+  if (!(arrive > need) || need <= 0) return null;
+  return { extra: arrive - need, need, arrive };
+}
+
+/** Linia dobicia: „dobicie +1 szt (9→10)” albo null. */
+export function formatZdPackRoundupLine(
+  qty: Pick<
+    ZdPackOrderQty,
+    "roundedUp" | "piecesNeeded" | "piecesArriving" | "hasPackaging"
+  >
+): string | null {
+  const info = getZdPackRoundupInfo(qty);
+  if (!info) return null;
+  return `dobicie +${info.extra} szt (${info.need}→${info.arrive})`;
+}
+
+/**
+ * Sztuki przy ręcznym nadpisaniu jednostek ZD.
+ * Mode B: zdUnits już w sztukach → identity.
+ */
+export function piecesArrivingForZdUnits(
+  zdUnits: number,
+  unitsPerPackage: number | null | undefined,
+  documentUnitMode: ZdPackagingDocumentUnitMode | null | undefined = "packages"
+): number {
+  const units = Math.max(0, Math.trunc(Number(zdUnits) || 0));
+  if (!isPackagingPackagesMode(documentUnitMode)) {
+    return units;
+  }
+  const pack = normalizeUnitsPerPackage(unitsPerPackage);
+  if (pack <= 1) return units;
+  return units * pack;
 }
 
 export function packagingByTwId<T extends { subiektTwId: number }>(
@@ -185,11 +348,6 @@ export function packagingByTwId<T extends { subiektTwId: number }>(
   for (const row of rows) map.set(row.subiektTwId, row);
   return map;
 }
-
-export type PackagingLookup = {
-  unitsPerPackage: number;
-  packageLabel?: string;
-};
 
 /**
  * Jednostki ZD (dokument) z opcjonalnym nadpisaniem sesji.

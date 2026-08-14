@@ -22,6 +22,8 @@ import {
   actionRestoreZdEstimateProducts,
   actionRunZdEstimateManual,
   actionFetchZdEstimatePendingIndividuals,
+  actionGetZdBoostPowerPreset,
+  actionSetZdBoostPowerPreset,
   actionSearchZdEstimateCechy,
   actionSearchZdEstimateGroups,
   actionUpsertZdEstimatePackaging,
@@ -31,6 +33,12 @@ import {
   type ZdEstimateGroupOption,
   type ZdEstimateSupplierOption,
 } from "@/app/actions/zd-estimate";
+import {
+  policyForBoostPreset,
+  ZD_BOOST_POWER_DEFAULT,
+  ZD_BOOST_PRESET_DEFS,
+  type ZdBoostPowerPreset,
+} from "@/lib/orders/zd-estimate-boost-presets";
 import type { ZdEstimateRunMode } from "@/lib/orders/zd-estimate-scope";
 import type { ZdEstimateExclusionRow } from "@/lib/data/zd-estimate-exclusions";
 import type { ZdEstimateOnRequestRow } from "@/lib/data/zd-estimate-on-request";
@@ -91,9 +99,11 @@ import {
 import {
   filterOrderableLinesWithPackaging,
   individualExtraPiecesForTw,
+  isPackagingPackagesMode,
   lineAllowsZdDocumentUnitOverride,
   orderableLinesToTsv,
   packagingByTwId,
+  packagingDocumentMode,
   pruneZdDocumentUnitOverrides,
   resolveOrderQtyForLine,
   summarizePackOrderQty,
@@ -119,6 +129,15 @@ import {
   resolveZdCreateKhId,
   ZD_CREATE_MAX_UWAGI_LEN,
 } from "@/lib/orders/zd-estimate-create-zd";
+import {
+  buildZdPostCreateSessionFromCreate,
+  buildZdPostCreateSessionFromLink,
+  buildZdPostCreateSessionFromTimeout,
+  patchZdPostCreateTimeoutCandidates,
+  postCreateLinkLineMeta,
+  postCreateOrderableTwIds,
+  type ZdPostCreateSession,
+} from "@/lib/orders/zd-estimate-post-create";
 import {
   buildPairRatioByTwId,
   collectImplicitPieceSnapshotLines,
@@ -170,8 +189,10 @@ import { ZdEstimateBulkPackagingDialog } from "@/components/zakupy/ZdEstimateBul
 import { ZdEstimateExcludeDialog } from "@/components/zakupy/ZdEstimateExcludeDialog";
 import { ZdEstimateExclusionsModal } from "@/components/zakupy/ZdEstimateExclusionsModal";
 import { ZdEstimateOnRequestModal } from "@/components/zakupy/ZdEstimateOnRequestModal";
+import { ZdEstimateSupplierScopesModal } from "@/components/zakupy/ZdEstimateSupplierScopesModal";
 import { ZdEstimateLinkZdDialog } from "@/components/zakupy/ZdEstimateLinkZdDialog";
 import { ZdEstimateCreateZdDialog } from "@/components/zakupy/ZdEstimateCreateZdDialog";
+import { ZdEstimatePostCreatePanel } from "@/components/zakupy/ZdEstimatePostCreatePanel";
 import { ZdEstimatePackagingDialog } from "@/components/zakupy/ZdEstimatePackagingDialog";
 import { ZdEstimatePackagingModal } from "@/components/zakupy/ZdEstimatePackagingModal";
 import {
@@ -326,7 +347,7 @@ type RunMeta = {
   totalFromSubiekt: number;
 };
 
-type ListFilter = "order" | "all" | "excluded";
+type ListFilter = "order" | "all" | "excluded" | "review";
 
 function resolveWindowForGroup(
   group: ZdEstimateGroupOption,
@@ -531,6 +552,25 @@ export function ZdEstimateWorkbench({
   const [lastEstimateFailed, setLastEstimateFailed] = useState(false);
   /** Po clear wyniku przez zmianę zakresu — hint w prep zamiast EmptyState. */
   const [scopeNeedsRecount, setScopeNeedsRecount] = useState(false);
+  /** Moc boosta zmieniona po Policz — lista Do ZD nieaktualna. */
+  const [boostNeedsRecount, setBoostNeedsRecount] = useState(false);
+  /** Zapisany w app_settings (radio). */
+  const [boostPreset, setBoostPreset] = useState<ZdBoostPowerPreset>(
+    ZD_BOOST_POWER_DEFAULT
+  );
+  /** Preset użyty przy ostatnim Policz / live remat (do dirty A→B→A). */
+  const [appliedBoostPreset, setAppliedBoostPreset] =
+    useState<ZdBoostPowerPreset>(ZD_BOOST_POWER_DEFAULT);
+  /**
+   * Policy użyty przy ostatnim Policz / live remat.
+   * Po zmianie presetu zostaje stary do re-Policz (nie resetuje Do ZD do nowego).
+   */
+  const [appliedBoostPolicy, setAppliedBoostPolicy] = useState(() =>
+    policyForBoostPreset(ZD_BOOST_POWER_DEFAULT)
+  );
+  const [scopesPanelOpen, setScopesPanelOpen] = useState(false);
+  /** Remap zakresu gdy mapping już istnieje (oddzielny od pierwszego assign). */
+  const [scopeRemapActive, setScopeRemapActive] = useState(false);
   /** Krótki status po re-Policz (nie mylić z settingsLiveMessage). */
   const [recountStatusMessage, setRecountStatusMessage] = useState<string | null>(
     null
@@ -620,14 +660,26 @@ export function ZdEstimateWorkbench({
   const [paramInfo, setParamInfo] = useState<Record<string, unknown> | null>(null);
   const [meta, setMeta] = useState<RunMeta | null>(null);
   const [copyOk, setCopyOk] = useState(false);
-  const [linkOkMessage, setLinkOkMessage] = useState<string | null>(null);
-  const [createZdOpen, setCreateZdOpen] = useState(false);
-  const [createZdOkMessage, setCreateZdOkMessage] = useState<string | null>(
+  const [postCreate, setPostCreate] = useState<ZdPostCreateSession | null>(
     null
   );
+  const [createZdOpen, setCreateZdOpen] = useState(false);
   const [createDoneDokId, setCreateDoneDokId] = useState<number | null>(null);
   const [createDoneDokNr, setCreateDoneDokNr] = useState<string | null>(null);
+  /** Timeout create — lock bez dokId (dokument mógł powstać). */
+  const [createUnconfirmedAttempt, setCreateUnconfirmedAttempt] =
+    useState(false);
   const [creatingZd, setCreatingZd] = useState(false);
+  /** Preview zamrożony przy starcie create — timeout / sesja / UI dialogu. */
+  const createPreviewCaptureRef = useRef<ReturnType<
+    typeof buildZdCreatePreviewFromOrderable
+  > | null>(null);
+  const [createPreviewFrozen, setCreatePreviewFrozen] = useState<ReturnType<
+    typeof buildZdCreatePreviewFromOrderable
+  > | null>(null);
+  const createLineMetaCaptureRef = useRef<
+    { twId: number; celAtLink: number; deltaAtLink: number }[] | null
+  >(null);
   const [pendingIndividuals, setPendingIndividuals] = useState<
     ZdEstimatePendingIndividualOrder[]
   >([]);
@@ -893,12 +945,41 @@ export function ZdEstimateWorkbench({
   const excludedIdsForRefresh = bakeExcludedTwIds;
 
   const packagingByTwIdForRefresh = useMemo(() => {
-    const map = new Map<number, { unitsPerPackage: number }>();
+    const map = new Map<
+      number,
+      {
+        unitsPerPackage: number;
+        documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode;
+      }
+    >();
     for (const row of packaging) {
-      map.set(row.subiektTwId, { unitsPerPackage: row.unitsPerPackage });
+      map.set(row.subiektTwId, {
+        unitsPerPackage: row.unitsPerPackage,
+        documentUnitMode: row.documentUnitMode,
+      });
     }
     return map;
   }, [packaging]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void actionGetZdBoostPowerPreset().then((res) => {
+      if (cancelled) return;
+      if (!res.ok) {
+        setFeedback(null);
+        setErrorMessage(userFacingErrorTextFromMessage(res.message));
+        return;
+      }
+      setBoostPreset(res.preset);
+      setAppliedBoostPreset(res.preset);
+      // Przed pierwszym Policz trzymaj applied = zapisany (gentle default).
+      setAppliedBoostPolicy(policyForBoostPreset(res.preset));
+      setBoostNeedsRecount(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const reapplyPairsToLines = useCallback(
     (
@@ -936,6 +1017,7 @@ export function ZdEstimateWorkbench({
             packagingByTwId: packagingByTwIdForRefresh,
             historyByTwId:
               historyByTwId.size > 0 ? historyByTwId : null,
+            salesTrackPolicy: appliedBoostPolicy,
           },
         });
       setLines(nextLines);
@@ -952,6 +1034,7 @@ export function ZdEstimateWorkbench({
       productBoms,
       packagingByTwIdForRefresh,
       historyByTwId,
+      appliedBoostPolicy,
     ]
   );
 
@@ -982,6 +1065,7 @@ export function ZdEstimateWorkbench({
             excludedTwIds,
             packagingByTwId: packagingByTwIdForRefresh,
             historyByTwId: historyByTwId.size > 0 ? historyByTwId : null,
+            salesTrackPolicy: appliedBoostPolicy,
           },
         });
       setLines(nextLines);
@@ -997,6 +1081,7 @@ export function ZdEstimateWorkbench({
       zapasMin,
       packagingByTwIdForRefresh,
       historyByTwId,
+      appliedBoostPolicy,
     ]
   );
 
@@ -1214,12 +1299,18 @@ export function ZdEstimateWorkbench({
     [packaging]
   );
 
+  const packPairTwIds = useMemo(
+    () => new Set(productPairs.map((p) => p.packTwId)),
+    [productPairs]
+  );
+
   const packagingLookup = useMemo(() => {
     const map = new Map<number, PackagingLookup>();
     for (const row of packaging) {
       map.set(row.subiektTwId, {
         unitsPerPackage: row.unitsPerPackage,
         packageLabel: row.packageLabel,
+        documentUnitMode: row.documentUnitMode,
       });
     }
     for (const pair of productPairs) {
@@ -1227,6 +1318,7 @@ export function ZdEstimateWorkbench({
       map.set(pair.packTwId, {
         unitsPerPackage: pair.unitsPerPack,
         packageLabel: existing?.packageLabel ?? "op.",
+        documentUnitMode: "packages",
       });
     }
     return map;
@@ -1484,9 +1576,11 @@ export function ZdEstimateWorkbench({
         mutating,
         creating: creatingZd,
         createDoneDokId,
+        createUnconfirmedAttempt,
         createUnlockedAfterDone,
         packagingPairConflictCount: packagingPairConflicts.length,
         explodeBomIncomplete,
+        boostNeedsRecount,
       }),
     [
       bootstrap.configured,
@@ -1498,9 +1592,11 @@ export function ZdEstimateWorkbench({
       mutating,
       creatingZd,
       createDoneDokId,
+      createUnconfirmedAttempt,
       createUnlockedAfterDone,
       packagingPairConflicts.length,
       explodeBomIncomplete,
+      boostNeedsRecount,
     ]
   );
 
@@ -1621,15 +1717,23 @@ export function ZdEstimateWorkbench({
     setCreateUndoVisible(false);
     selectAnchorTwIdRef.current = null;
     setCopyOk(false);
-    setLinkOkMessage(null);
+    setPostCreate(null);
     setCreateDoneDokId(null);
     setCreateDoneDokNr(null);
-    setCreateZdOkMessage(null);
+    setCreateUnconfirmedAttempt(false);
     setCreateZdOpen(false);
     setCreatingZd(false);
+    setLinkZdOpen(false);
     setLinkNrPrefill(null);
+    createPreviewCaptureRef.current = null;
+    setCreatePreviewFrozen(null);
+    createLineMetaCaptureRef.current = null;
     setLaunchReadyMessage(null);
     setRecountStatusMessage(null);
+    // Brak listy → dirty boosta nieaktualne; applied = aktualne radio.
+    setBoostNeedsRecount(false);
+    setAppliedBoostPreset(boostPreset);
+    setAppliedBoostPolicy(policyForBoostPreset(boostPreset));
     if (opts?.fromScopeChange) {
       setLastEstimateFailed(false);
       setScopeNeedsRecount(true);
@@ -1902,7 +2006,24 @@ export function ZdEstimateWorkbench({
         setLaunchForceComplete(false);
         setLastEstimateFailed(true);
         setScopeNeedsRecount(false);
+        setBoostNeedsRecount(false);
+        setAppliedBoostPreset(boostPreset);
+        setAppliedBoostPolicy(policyForBoostPreset(boostPreset));
         setRecountStatusMessage(null);
+        // Lista nieważna — zdejmij handoff/lock z poprzedniej sesji (jak przy clearEstimateResult).
+        setPostCreate(null);
+        setCreateDoneDokId(null);
+        setCreateDoneDokNr(null);
+        setCreateUnconfirmedAttempt(false);
+        setCreateUnlockedAfterDone(false);
+        setCreateUndoVisible(false);
+        setCreateZdOpen(false);
+        setCreatingZd(false);
+        setLinkZdOpen(false);
+        setLinkNrPrefill(null);
+        createPreviewCaptureRef.current = null;
+        setCreatePreviewFrozen(null);
+        createLineMetaCaptureRef.current = null;
         clearProgressBlocking();
         if (
           useProgressShell &&
@@ -1962,7 +2083,17 @@ export function ZdEstimateWorkbench({
         }
         setCreateDoneDokId(null);
         setCreateDoneDokNr(null);
-        setCreateZdOkMessage(null);
+        setCreateUnconfirmedAttempt(false);
+        setCreateUnlockedAfterDone(false);
+        setCreateUndoVisible(false);
+        setPostCreate(null);
+        setCreateZdOpen(false);
+        setCreatingZd(false);
+        setLinkZdOpen(false);
+        setLinkNrPrefill(null);
+        createPreviewCaptureRef.current = null;
+        setCreatePreviewFrozen(null);
+        createLineMetaCaptureRef.current = null;
         setSelected({});
         setListSearch("");
         setParamInfo(res.result.parametry as Record<string, unknown>);
@@ -1989,9 +2120,15 @@ export function ZdEstimateWorkbench({
         setCreateUndoVisible(false);
         setFeedback(null);
         setErrorMessage(null);
-        setLinkOkMessage(null);
         setLastEstimateFailed(false);
         setScopeNeedsRecount(false);
+        if (res.boostPreset) {
+          setBoostPreset(res.boostPreset);
+          setAppliedBoostPreset(res.boostPreset);
+          setAppliedBoostPolicy(policyForBoostPreset(res.boostPreset));
+        }
+        setBoostNeedsRecount(false);
+        setScopeRemapActive(false);
         if (useProgressShell) {
           setPrepCollapsed(true);
           const readyBits = [
@@ -2091,6 +2228,20 @@ export function ZdEstimateWorkbench({
   useEffect(() => {
     runEstimateRef.current = runEstimate;
   });
+
+  const openCreateZdModal = useCallback(() => {
+    setLinkZdOpen(false);
+    setLinkNrPrefill(null);
+    setCreateZdOpen(true);
+  }, []);
+  const openLinkZdModal = useCallback(() => {
+    setCreateZdOpen(false);
+    setCreatingZd(false);
+    createPreviewCaptureRef.current = null;
+    setCreatePreviewFrozen(null);
+    createLineMetaCaptureRef.current = null;
+    setLinkZdOpen(true);
+  }, []);
 
   // Prośby przy supplierId (także needsAssign — bez czekania na Policz).
   useEffect(() => {
@@ -2364,9 +2515,49 @@ export function ZdEstimateWorkbench({
         return;
       }
       setAssignHint(null);
+      setScopeRemapActive(false);
       runEstimate({ fromLaunch: true });
     });
   };
+
+  const beginChangeSupplierScope = () => {
+    setPrepCollapsed(false);
+    setScopeRemapActive(true);
+  };
+
+  const cancelChangeSupplierScope = () => {
+    setScopeRemapActive(false);
+  };
+
+  const onBoostPresetChange = (next: ZdBoostPowerPreset) => {
+    if (next === boostPreset) return;
+    startMutate(async () => {
+      const res = await actionSetZdBoostPowerPreset({ preset: next });
+      if (!res.ok) {
+        reportError(res.message);
+        return;
+      }
+      setBoostPreset(res.preset);
+      const hasList = Boolean(linesBase && linesBase.length > 0);
+      if (hasList) {
+        // Dirty tylko gdy różni się od mocy użytej przy ostatnim Policz.
+        setBoostNeedsRecount(res.preset !== appliedBoostPreset);
+      } else {
+        setAppliedBoostPreset(res.preset);
+        setAppliedBoostPolicy(policyForBoostPreset(res.preset));
+        setBoostNeedsRecount(false);
+      }
+    });
+  };
+
+  const openScopesPanel = () => {
+    setScopesPanelOpen(true);
+  };
+
+  const reviewInGroupCount = useMemo(() => {
+    if (!lines) return 0;
+    return lines.filter((l) => l.salesTrackQtyReview).length;
+  }, [lines]);
 
   const segmentFilteredLines = useMemo(() => {
     if (!lines) return [];
@@ -2376,10 +2567,16 @@ export function ZdEstimateWorkbench({
       if (listFilter === "excluded") {
         return lines.filter((l) => nameAutoByTwId.has(l.tw_Id));
       }
+      if (listFilter === "review") {
+        return lines.filter((l) => l.salesTrackQtyReview);
+      }
       return lines;
     }
     if (listFilter === "excluded") {
       return lines.filter((l) => orderExcludedTwIds.has(l.tw_Id));
+    }
+    if (listFilter === "review") {
+      return lines.filter((l) => l.salesTrackQtyReview);
     }
     if (listFilter === "all") {
       return lines;
@@ -2663,6 +2860,7 @@ export function ZdEstimateWorkbench({
   const confirmBulkPackaging = (input: {
     unitsPerPackage: number;
     packageLabel: string;
+    documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode;
     note: string;
   }) => {
     const products = toBulkProducts(selectedLines);
@@ -2673,6 +2871,7 @@ export function ZdEstimateWorkbench({
         products,
         unitsPerPackage: input.unitsPerPackage,
         packageLabel: input.packageLabel,
+        documentUnitMode: input.documentUnitMode,
         note: input.note.trim() || undefined,
       });
       if (!res.ok) {
@@ -3052,6 +3251,7 @@ export function ZdEstimateWorkbench({
           twNazwa: line?.tw_Nazwa ?? c.nazwa,
           unitsPerPackage: c.pairUnitsPerPack,
           packageLabel: "op.",
+          documentUnitMode: "packages",
           note: "Ujednolicone z parą montaż/demontaż",
         });
         if (!res.ok) {
@@ -3143,6 +3343,7 @@ export function ZdEstimateWorkbench({
   const savePackaging = (input: {
     unitsPerPackage: number;
     packageLabel: string;
+    documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode;
     note: string;
   }) => {
     const line = packagingCandidate;
@@ -3158,6 +3359,7 @@ export function ZdEstimateWorkbench({
           grtNazwa: selectedGroup?.grt_Nazwa ?? line.grt_Nazwa,
           unitsPerPackage: input.unitsPerPackage,
           packageLabel: input.packageLabel,
+          documentUnitMode: input.documentUnitMode,
           note: input.note,
         });
         if (!res.ok) {
@@ -3252,10 +3454,32 @@ export function ZdEstimateWorkbench({
         </div>
       ) : null}
 
-      {createZdOkMessage ? (
-        <Alert tone="success" title="ZD utworzone">
-          {createZdOkMessage}
-        </Alert>
+      {postCreate ? (
+        <ZdEstimatePostCreatePanel
+          session={postCreate}
+          dateKey={bootstrap.todayKey}
+          createLocked={
+            !createUnlockedAfterDone &&
+            (createUnconfirmedAttempt ||
+              (createDoneDokId != null && createDoneDokId > 0) ||
+              Boolean(createDoneDokNr))
+          }
+          onDismiss={() => {
+            setPostCreate(null);
+            setLinkNrPrefill(null);
+          }}
+          onOpenLink={() => {
+            setLinkNrPrefill(
+              postCreate.linkNrPrefill ?? postCreate.dokNrPelny ?? null
+            );
+            openLinkZdModal();
+          }}
+          onUnlockCreate={() => {
+            setCreateUnlockedAfterDone(true);
+            setCreateUndoVisible(false);
+          }}
+          onCopyError={reportError}
+        />
       ) : null}
 
       {pendingIndividualsError ? (
@@ -3282,7 +3506,7 @@ export function ZdEstimateWorkbench({
         </Alert>
       ) : null}
 
-      {createDoneDokNr && lines && lines.length > 0 ? (
+      {createDoneDokNr && lines && lines.length > 0 && !postCreate ? (
         <Alert
           tone={
             createUnlockedAfterDone && createZdGate.ok
@@ -3291,18 +3515,24 @@ export function ZdEstimateWorkbench({
           }
           title={
             !createUnlockedAfterDone
-              ? "Create zablokowany"
+              ? createUnconfirmedAttempt
+                ? "Create zablokowany (timeout)"
+                : "Create zablokowany"
               : createZdGate.ok
                 ? "Create odblokowany świadomie"
                 : "Create odblokowany — inne blokady"
           }
         >
-          Z tej listy utworzono już {createDoneDokNr}.{" "}
-          {!createUnlockedAfterDone
-            ? "Przelicz listę, użyj „Powiąż ZD” albo odblokuj świadomie."
-            : createZdGate.ok
-              ? "Możesz utworzyć kolejne ZD — uważaj na duplikaty w Subiekcie."
-              : createZdGateCaption ?? createZdGate.reason}
+          {createUnconfirmedAttempt && !createUnlockedAfterDone
+            ? ZD_ESTIMATE_UI.postCreateTimeoutLockBody
+            : <>
+                Z tej listy utworzono już {createDoneDokNr}.{" "}
+                {!createUnlockedAfterDone
+                  ? "Przelicz listę, użyj „Powiąż ZD” albo odblokuj świadomie."
+                  : createZdGate.ok
+                    ? "Możesz utworzyć kolejne ZD — uważaj na duplikaty w Subiekcie."
+                    : createZdGateCaption ?? createZdGate.reason}
+              </>}
           {!createUnlockedAfterDone ? (
             <Button
               type="button"
@@ -3322,7 +3552,7 @@ export function ZdEstimateWorkbench({
 
       {assignHint ? (
         <div id={ZD_ESTIMATE_ASSIGN_FOCUS_ID} className="scroll-mt-4">
-          <Alert tone="warning" title="Przypisz zakres Subiekta">
+          <Alert tone="warning" title={ZD_ESTIMATE_UI.assignSupplierScopeTitle}>
             {assignHint}
             {launch?.supplierName ? (
               <span className="mt-1 block text-sm">
@@ -3347,6 +3577,30 @@ export function ZdEstimateWorkbench({
             <span className="mt-2 block text-sm">
               Wybierz grupę lub cechę poniżej, potem „Zapisz zakres i policz”.
             </span>
+          </Alert>
+        </div>
+      ) : null}
+
+      {scopeRemapActive && !assignHint ? (
+        <div id={ZD_ESTIMATE_ASSIGN_FOCUS_ID} className="scroll-mt-4">
+          <Alert tone="warning" title={ZD_ESTIMATE_UI.changeSupplierScopeTitle}>
+            {ZD_ESTIMATE_UI.changeSupplierScopeHint}
+            {launch?.supplierName ? (
+              <span className="mt-1 block text-sm">
+                Dostawca: <strong>{launch.supplierName}</strong>
+              </span>
+            ) : null}
+            <div className="mt-3">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={cancelChangeSupplierScope}
+                disabled={mutating || estimating}
+              >
+                {ZD_ESTIMATE_UI.changeSupplierScopeCancelCta}
+              </Button>
+            </div>
           </Alert>
         </div>
       ) : null}
@@ -3382,14 +3636,27 @@ export function ZdEstimateWorkbench({
           action={
             <div className="flex flex-wrap items-center gap-2">
               {prepCollapsed ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => setPrepCollapsed(false)}
-                >
-                  Zmień zakres
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setPrepCollapsed(false)}
+                  >
+                    Zmień zakres
+                  </Button>
+                  {launch?.supplierId && !scopeRemapActive && !assignHint ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={beginChangeSupplierScope}
+                      disabled={mutating || estimating}
+                    >
+                      {ZD_ESTIMATE_UI.changeSupplierScopeCta}
+                    </Button>
+                  ) : null}
+                </div>
               ) : (
                 <OverflowMenu
                   label="Ustawienia działu"
@@ -3417,6 +3684,9 @@ export function ZdEstimateWorkbench({
                   <OverflowMenuItem onClick={openBomsPanel}>
                     {ZD_BOM_UI.panelTitle}
                     {productBoms.length > 0 ? ` (${productBoms.length})` : ""}
+                  </OverflowMenuItem>
+                  <OverflowMenuItem onClick={openScopesPanel}>
+                    {ZD_ESTIMATE_UI.supplierScopesPanelTitle}
                   </OverflowMenuItem>
                 </OverflowMenu>
               )}
@@ -3683,6 +3953,53 @@ export function ZdEstimateWorkbench({
             </div>
           )}
 
+          <section className="space-y-2.5 border-t border-slate-100 pt-5">
+            <p className={panelTypography.sectionLabel}>
+              {ZD_ESTIMATE_UI.boostPowerLabel}
+            </p>
+            <p className="text-xs leading-snug text-slate-600">
+              {ZD_ESTIMATE_UI.boostPowerDefaultHint}
+            </p>
+            <p className="text-xs leading-snug text-slate-500">
+              {ZD_ESTIMATE_UI.boostPowerOffHint}
+            </p>
+            <fieldset className="space-y-2" disabled={mutating || estimating}>
+              <legend className="sr-only">
+                {ZD_ESTIMATE_UI.boostPowerLabel}
+              </legend>
+              {ZD_BOOST_PRESET_DEFS.map((def) => {
+                const active = boostPreset === def.id;
+                return (
+                  <label
+                    key={def.id}
+                    className={cn(
+                      "flex cursor-pointer gap-3 rounded-lg border px-3 py-2.5 transition",
+                      active
+                        ? "border-indigo-300 bg-indigo-50/80"
+                        : "border-slate-200/90 bg-white hover:border-slate-300"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="zd-boost-power"
+                      className="mt-1"
+                      checked={active}
+                      onChange={() => onBoostPresetChange(def.id)}
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-slate-900">
+                        {def.label}
+                      </span>
+                      <span className="mt-0.5 block text-xs leading-snug text-slate-600">
+                        {def.hint}
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </fieldset>
+          </section>
+
           <div
             id={ZD_ESTIMATE_POLICZ_CTA_ID}
             className="scroll-mt-24 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between"
@@ -3709,7 +4026,12 @@ export function ZdEstimateWorkbench({
                   {zdEstimateScopeChangedHint()}
                 </p>
               ) : null}
-              {scopeSelected && !scopeNeedsRecount && canPolicz ? (
+              {boostNeedsRecount && lines ? (
+                <p className="text-xs leading-snug text-amber-800">
+                  {ZD_ESTIMATE_UI.boostNeedsRecountBody}
+                </p>
+              ) : null}
+              {scopeSelected && !scopeNeedsRecount && !(boostNeedsRecount && lines) && canPolicz ? (
                 <p className="text-xs leading-snug text-emerald-800">
                   {zdEstimateReadyToCountHint()}
                 </p>
@@ -3770,6 +4092,34 @@ export function ZdEstimateWorkbench({
                 className="h-11 w-full sm:w-auto"
               >
                 {mutating ? "Zapisuję…" : "Zapisz zakres i policz"}
+              </Button>
+            ) : null}
+            {scopeRemapActive && !assignHint && launch?.supplierId ? (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={confirmAssignAndRun}
+                disabled={
+                  mutating ||
+                  estimating ||
+                  !bootstrap.configured ||
+                  !scopeSelected ||
+                  !settingsTrusted
+                }
+                className="h-11 w-full sm:w-auto"
+              >
+                {mutating ? "Zapisuję…" : "Zapisz zakres i policz"}
+              </Button>
+            ) : null}
+            {launch?.supplierId && !assignHint && !scopeRemapActive ? (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={beginChangeSupplierScope}
+                disabled={mutating || estimating}
+                className="h-11 w-full sm:w-auto"
+              >
+                {ZD_ESTIMATE_UI.changeSupplierScopeCta}
               </Button>
             ) : null}
               </div>
@@ -3900,13 +4250,49 @@ export function ZdEstimateWorkbench({
           else retryLoadTeeth();
         }}
       />
-      {packagingPairConflicts.length > 0 ? (
-        <Alert tone="warning" title="Konflikt opakowanie ↔ para">
+      {boostNeedsRecount && lines ? (
+        <Alert tone="warning" title={ZD_ESTIMATE_UI.boostNeedsRecountTitle}>
           <p className="text-sm leading-snug">
-            {packagingPairConflicts.length === 1
-              ? "1 paczka ma inne opakowanie niż para"
-              : `${packagingPairConflicts.length} paczek ma inne opakowanie niż para`}
-            — Create zablokowany do ujednolicenia.
+            {ZD_ESTIMATE_UI.boostNeedsRecountBody}
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            className="mt-3"
+            disabled={
+              estimating ||
+              mutating ||
+              !bootstrap.configured ||
+              !scopeSelected ||
+              !settingsTrusted
+            }
+            onClick={() => runEstimate()}
+          >
+            {ZD_ESTIMATE_UI.boostNeedsRecountCta}
+          </Button>
+        </Alert>
+      ) : null}
+      {packagingPairConflicts.length > 0 ? (
+        <Alert tone="warning" title={ZD_ESTIMATE_UI.packagingPairConflictTitle}>
+          <p className="text-sm leading-snug">
+            {(() => {
+              const hasMode = packagingPairConflicts.some(
+                (c) => c.reason === "pieces_multiple_mode"
+              );
+              const hasUnits = packagingPairConflicts.some(
+                (c) => c.reason === "units_mismatch"
+              );
+              const n = packagingPairConflicts.length;
+              const countLabel =
+                n === 1 ? "1 paczka ma" : `${n} paczek ma`;
+              const body =
+                hasMode && hasUnits
+                  ? ZD_ESTIMATE_UI.packagingPairConflictMixedBody
+                  : hasMode
+                    ? ZD_ESTIMATE_UI.packagingPairConflictModeBody
+                    : ZD_ESTIMATE_UI.packagingPairConflictUnitsBody;
+              return `${countLabel} ${body}`;
+            })()}
           </p>
           <ul className="mt-2 space-y-0.5 text-[12px] text-slate-700">
             {packagingPairConflicts.slice(0, 8).map((c) => (
@@ -4025,11 +4411,6 @@ export function ZdEstimateWorkbench({
           </Alert>
         </div>
       ) : null}
-      {linkOkMessage ? (
-        <Alert tone="success" title="ZD powiązane">
-          {linkOkMessage}
-        </Alert>
-      ) : null}
       {settingsLiveMessage ? (
         <Alert tone="success" title="Lista na bieżąco">
           {settingsLiveMessage}
@@ -4115,6 +4496,14 @@ export function ZdEstimateWorkbench({
                     title: "Pełny zakres — wykluczone oznaczone",
                   },
                   {
+                    value: "review",
+                    label: `Do weryfikacji${
+                      reviewInGroupCount > 0 ? ` (${reviewInGroupCount})` : ""
+                    }`,
+                    title:
+                      "Wątpliwe podbicie Do ZD (niska / średnia pewność sprzedaży)",
+                  },
+                  {
                     value: "excluded",
                     label: `Wykluczone${
                       excludedInGroupCount > 0
@@ -4167,7 +4556,7 @@ export function ZdEstimateWorkbench({
                             );
                             return;
                           }
-                          setCreateZdOpen(true);
+                          openCreateZdModal();
                         }}
                         disabled={!createZdGate.ok}
                         title={
@@ -4200,7 +4589,7 @@ export function ZdEstimateWorkbench({
                         type="button"
                         size="sm"
                         variant="secondary"
-                        onClick={() => setLinkZdOpen(true)}
+                        onClick={() => openLinkZdModal()}
                         disabled={
                           !lines?.length ||
                           !bootstrap.configured ||
@@ -4466,7 +4855,9 @@ export function ZdEstimateWorkbench({
                         ? ZD_ESTIMATE_UI.emptyOrderTitle
                         : listFilter === "excluded"
                           ? ZD_ESTIMATE_UI.emptyExcludedTitle
-                          : "Brak pozycji"
+                          : listFilter === "review"
+                            ? "Brak pozycji do weryfikacji"
+                            : "Brak pozycji"
                 }
                 description={
                   listSearchNoHits
@@ -4480,9 +4871,11 @@ export function ZdEstimateWorkbench({
                           ? "Powyżej są usługi z próśb (uwagi ZD). Do utworzenia ZD potrzebna jest ≥1 pozycja katalogowa — albo obsłuż prośby w panelu Dziś."
                           : listFilter === "order"
                             ? "Przy tych parametrach ilość = 0 albo wszystkie braki są na liście wykluczeń. Przełącz filtr, żeby zobaczyć pełny zakres."
-                            : listFilter === "excluded"
-                              ? ZD_ESTIMATE_UI.emptyExcludedDescription
-                              : "Subiekt nie zwrócił pozycji dla tego zakresu."
+                            : listFilter === "review"
+                              ? "Żadna pozycja nie ma wstrzymanego ani częściowego podbicia Do ZD — pewność sprzedaży jest wystarczająca albo brak boostu."
+                              : listFilter === "excluded"
+                                ? ZD_ESTIMATE_UI.emptyExcludedDescription
+                                : "Subiekt nie zwrócił pozycji dla tego zakresu."
                 }
                 action={
                   listSearchNoHits ? (
@@ -4754,6 +5147,7 @@ export function ZdEstimateWorkbench({
                             ? {
                                 unitsPerPackage: packRow.unitsPerPackage,
                                 packageLabel: packRow.packageLabel,
+                                documentUnitMode: packRow.documentUnitMode,
                               }
                             : null),
                         individualExtraPiecesForTw(
@@ -4767,8 +5161,9 @@ export function ZdEstimateWorkbench({
                       const packagingConflict =
                         pairMeta?.role === "pack" &&
                         packRow != null &&
-                        packRow.unitsPerPackage > 1 &&
-                        packRow.unitsPerPackage !== pairMeta.unitsPerPack;
+                        (packagingDocumentMode(packRow) === "pieces_multiple" ||
+                          (packRow.unitsPerPackage > 1 &&
+                            packRow.unitsPerPackage !== pairMeta.unitsPerPack));
                       const note =
                         exclusionById.get(l.tw_Id)?.note ||
                         onRequestById.get(l.tw_Id)?.note;
@@ -4831,7 +5226,7 @@ export function ZdEstimateWorkbench({
                           >
                             {l.tw_Symbol}
                           </td>
-                          <td className="zd-estimate-dozd-col whitespace-nowrap text-left">
+                          <td className="zd-estimate-dozd-col text-left">
                             <ZdEstimateDoZdCell
                               qty={qty}
                               excluded={excluded}
@@ -4921,7 +5316,9 @@ export function ZdEstimateWorkbench({
                                   {qty.unitsPerPackage}
                                 </span>
                                 <span className="text-[10px] leading-tight text-slate-400">
-                                  szt / {qty.packageLabel}
+                                  {isPackagingPackagesMode(qty.documentUnitMode)
+                                    ? `szt / ${qty.packageLabel}`
+                                    : "dobij ×N"}
                                 </span>
                               </span>
                             ) : (
@@ -4982,6 +5379,10 @@ export function ZdEstimateWorkbench({
                                   applied: Math.abs(l.salesTrackDelta) > 1e-9,
                                   deltaPieces: l.salesTrackDelta,
                                   reasons: l.salesTrackReasons,
+                                  confidence: l.salesTrackConfidence,
+                                  qtyReview: l.salesTrackQtyReview,
+                                  heldExtraQty: l.salesTrackHeldExtraQty,
+                                  allowedExtraQty: l.salesTrackAllowedExtraQty,
                                 }) ?? undefined
                               }
                             >
@@ -5004,6 +5405,10 @@ export function ZdEstimateWorkbench({
                                         −
                                         {formatQty(Math.abs(l.salesTrackDelta))}
                                       </span>
+                                    ) : l.salesTrackQtyReview ? (
+                                      <span className="text-[10px] font-medium text-amber-700/90">
+                                        sprawdź
+                                      </span>
                                     ) : null
                                   }
                                 />
@@ -5023,6 +5428,10 @@ export function ZdEstimateWorkbench({
                                       −
                                       {formatQty(Math.abs(l.salesTrackDelta))}
                                     </span>
+                                  ) : l.salesTrackQtyReview ? (
+                                    <span className="text-[10px] font-medium text-amber-700/90">
+                                      sprawdź
+                                    </span>
                                   ) : null}
                                 </>
                               )}
@@ -5032,18 +5441,31 @@ export function ZdEstimateWorkbench({
                             <span
                               className="inline-flex flex-col items-end gap-0.5"
                               title={
-                                qty.hasPackaging && l.otwarteZd > 0
+                                qty.hasPackaging &&
+                                l.otwarteZd > 0 &&
+                                isPackagingPackagesMode(qty.documentUnitMode)
                                   ? `${formatQty(l.otwarteZd)} j.dok. = ${formatQty(l.otwarteZd * qty.unitsPerPackage)} szt`
-                                  : `${formatQty(l.otwarteZd)} j.dok. (otwarte ZD)`
+                                  : qty.hasPackaging &&
+                                      l.otwarteZd > 0 &&
+                                      !isPackagingPackagesMode(
+                                        qty.documentUnitMode
+                                      )
+                                    ? `${formatQty(l.otwarteZd)} szt (otwarte ZD)`
+                                    : `${formatQty(l.otwarteZd)} j.dok. (otwarte ZD)`
                               }
                             >
                               <span>
                                 {formatQty(l.otwarteZd)}
                                 <span className="ml-0.5 text-[10px] font-medium text-slate-400">
-                                  j.dok.
+                                  {qty.hasPackaging &&
+                                  !isPackagingPackagesMode(qty.documentUnitMode)
+                                    ? "szt"
+                                    : "j.dok."}
                                 </span>
                               </span>
-                              {qty.hasPackaging && l.otwarteZd > 0 ? (
+                              {qty.hasPackaging &&
+                              l.otwarteZd > 0 &&
+                              isPackagingPackagesMode(qty.documentUnitMode) ? (
                                 <span className="text-[10px] text-slate-400">
                                   {formatQty(
                                     l.otwarteZd * qty.unitsPerPackage
@@ -5075,7 +5497,11 @@ export function ZdEstimateWorkbench({
                                 hideOnRequest={hideOnRequestAction}
                                 packagingHint={
                                   qty.hasPackaging
-                                    ? `${qty.unitsPerPackage} szt / 1 ${qty.packageLabel}`
+                                    ? isPackagingPackagesMode(
+                                        qty.documentUnitMode
+                                      )
+                                      ? `${qty.unitsPerPackage} szt / 1 ${qty.packageLabel}`
+                                      : `dobij do ${qty.unitsPerPackage} szt`
                                     : null
                                 }
                                 disabled={mutating || estimating}
@@ -5177,7 +5603,7 @@ export function ZdEstimateWorkbench({
                 reportError(createZdGateCaption ?? createZdGate.reason);
                 return;
               }
-              setCreateZdOpen(true);
+              openCreateZdModal();
             }}
             disabled={!createZdGate.ok}
             title={
@@ -5208,7 +5634,7 @@ export function ZdEstimateWorkbench({
             type="button"
             size="sm"
             variant="secondary"
-            onClick={() => setLinkZdOpen(true)}
+            onClick={() => openLinkZdModal()}
             disabled={
               !lines?.length || !bootstrap.configured || !supplierId
             }
@@ -5249,16 +5675,23 @@ export function ZdEstimateWorkbench({
       ) : null}
 
 
-      {createUndoVisible && createDoneDokNr ? (
+      {createUndoVisible && createDoneDokNr && !postCreate ? (
         <UndoToast
           placement="floating"
           paused={linkZdOpen}
-          className={cn(
-            showLaunchStickyActions ? floatingToastAboveZdStickyClass : undefined,
-            linkZdOpen && "invisible pointer-events-none"
-          )}
-          title={`Utworzono ${createDoneDokNr}`}
-          description="Odblokuj Create świadomie — dokument w Subiekcie zostaje (to nie anuluje ZD)."
+          className={
+            showLaunchStickyActions ? floatingToastAboveZdStickyClass : undefined
+          }
+          title={
+            createUnconfirmedAttempt
+              ? "Timeout create — sprawdź Subiekt"
+              : `Utworzono ${createDoneDokNr}`
+          }
+          description={
+            createUnconfirmedAttempt
+              ? "Create zablokowany na wypadek, że dokument już powstał. Odblokuj świadomie albo powiąż ZD."
+              : "Odblokuj Create świadomie — dokument w Subiekcie zostaje (to nie anuluje ZD)."
+          }
           undoLabel="Odblokuj Create"
           onUndo={() => {
             setCreateUnlockedAfterDone(true);
@@ -5327,6 +5760,7 @@ export function ZdEstimateWorkbench({
             : selectedLines
         }
         mode={bulkPackagingMode}
+        packPairTwIds={packPairTwIds}
         pending={mutating && bulkPackagingOpen}
         onCancel={() => {
           if (!mutating) setBulkPackagingOpen(false);
@@ -5368,6 +5802,7 @@ export function ZdEstimateWorkbench({
         open={packagingOpen}
         onClose={() => setPackagingOpen(false)}
         packaging={packaging}
+        packPairTwIds={packPairTwIds}
         onPackagingChange={applyPackagingLive}
         onError={reportError}
       />
@@ -5431,41 +5866,89 @@ export function ZdEstimateWorkbench({
         onError={reportError}
       />
 
+      <ZdEstimateSupplierScopesModal
+        open={scopesPanelOpen}
+        onClose={() => setScopesPanelOpen(false)}
+        suppliers={bootstrap.suppliers}
+        configured={bootstrap.configured}
+        onError={reportError}
+      />
+
       <ZdEstimateLinkZdDialog
         open={linkZdOpen}
         supplierId={supplierId}
         scopeMode={scopeMode}
         grtId={selectedGroup?.grt_Id ?? null}
         cechaId={selectedCecha?.ctw_Id ?? null}
-        initialNr={linkNrPrefill}
+        initialNr={
+          linkNrPrefill ??
+          (postCreate && !postCreate.snapshotOk
+            ? postCreate.linkNrPrefill ?? postCreate.dokNrPelny
+            : null)
+        }
+        titleHint={
+          postCreate &&
+          (postCreate.kind === "timeout_recovery" || !postCreate.snapshotOk)
+            ? ZD_ESTIMATE_UI.postCreateLinkRecoveryHint
+            : undefined
+        }
         lineMeta={
-          lines?.map((l) => ({
+          postCreateLinkLineMeta(postCreate) ??
+          (lines?.map((l) => ({
             twId: l.tw_Id,
             celAtLink: l.celZapasuTracked,
             deltaAtLink: l.salesTrackDelta,
-          })) ?? null
+          })) ?? null)
         }
-        orderableTwIds={confirmedTwIdsForSnapshot}
+        orderableTwIds={
+          postCreateOrderableTwIds(postCreate) ?? confirmedTwIdsForSnapshot
+        }
         implicitPieceSnapshotHint={implicitPieceSnapshotHint}
         onClose={() => {
           setLinkZdOpen(false);
           setLinkNrPrefill(null);
         }}
-        onLinked={({ dokNrPelny, lineCount }) => {
+        onLinked={({ dokId, dokNrPelny, lineCount }) => {
           setFeedback(null);
           setErrorMessage(null);
           setLinkNrPrefill(null);
-          setLinkOkMessage(
-            `Zapisano snapshot ${dokNrPelny} (${lineCount} poz.) — kolejne szacunki tego dostawcy i zakresu uwzględnią historię.`
+          setLinkZdOpen(false);
+          if (dokId > 0) {
+            setCreateDoneDokId(dokId);
+            setCreateDoneDokNr(dokNrPelny);
+            setCreateUnconfirmedAttempt(false);
+            setCreateUnlockedAfterDone(false);
+            setCreateUndoVisible(true);
+          }
+          setPostCreate(
+            buildZdPostCreateSessionFromLink({
+              supplierId: supplierId ?? "",
+              supplierName:
+                selectedSupplier?.name ||
+                (createKhResolution?.ok
+                  ? createKhResolution.supplierName
+                  : null) ||
+                supplierLabel ||
+                "Dostawca",
+              fromDaily: launch?.fromDaily === true,
+              dokId,
+              dokNrPelny,
+              lineCount,
+              previous: postCreate,
+              previewLines: createZdPreview.lines,
+              lineMeta:
+                lines?.map((l) => ({
+                  twId: l.tw_Id,
+                  celAtLink: l.celZapasuTracked,
+                  deltaAtLink: l.salesTrackDelta,
+                })) ?? null,
+            })
           );
-          window.setTimeout(() => setLinkOkMessage(null), 5000);
         }}
         onError={reportError}
       />
 
-      {supplierId &&
-      createKhResolution?.ok &&
-      createZdPreview.lineCount > 0 ? (
+      {supplierId && createKhResolution?.ok && (createZdOpen || createZdPreview.lineCount > 0) ? (
         <ZdEstimateCreateZdDialog
           open={createZdOpen}
           supplierId={supplierId}
@@ -5478,7 +5961,7 @@ export function ZdEstimateWorkbench({
           usedAlias={createKhResolution.usedAlias}
           scopeLabel={scopeLabel}
           dateKey={bootstrap.todayKey}
-          preview={createZdPreview}
+          preview={createPreviewFrozen ?? createZdPreview}
           scopeMode={scopeMode}
           grtId={selectedGroup?.grt_Id ?? null}
           cechaId={selectedCecha?.ctw_Id ?? null}
@@ -5511,8 +5994,21 @@ export function ZdEstimateWorkbench({
           onClose={() => {
             setCreateZdOpen(false);
             setCreatingZd(false);
+            createPreviewCaptureRef.current = null;
+            setCreatePreviewFrozen(null);
+            createLineMetaCaptureRef.current = null;
           }}
-          onSubmitStart={() => setCreatingZd(true)}
+          onSubmitStart={() => {
+            createPreviewCaptureRef.current = createZdPreview;
+            setCreatePreviewFrozen(createZdPreview);
+            createLineMetaCaptureRef.current =
+              lines?.map((l) => ({
+                twId: l.tw_Id,
+                celAtLink: l.celZapasuTracked,
+                deltaAtLink: l.salesTrackDelta,
+              })) ?? [];
+            setCreatingZd(true);
+          }}
           onCreated={({
             dokId,
             dokNrPelny,
@@ -5523,36 +6019,44 @@ export function ZdEstimateWorkbench({
             markedIndividualOrderIds,
             markIndividualsMessage,
           }) => {
+            const previewSnap =
+              createPreviewCaptureRef.current ?? createZdPreview;
             setCreatingZd(false);
             setCreateZdOpen(false);
+            setLinkZdOpen(false);
             setFeedback(null);
             setErrorMessage(null);
             setCreateDoneDokId(dokId);
             setCreateDoneDokNr(dokNrPelny);
+            setCreateUnconfirmedAttempt(false);
             setCreateUnlockedAfterDone(false);
             setCreateUndoVisible(true);
+            setPostCreate(
+              buildZdPostCreateSessionFromCreate({
+                supplierId,
+                supplierName:
+                  createKhResolution.supplierName ||
+                  selectedSupplier?.name ||
+                  "Dostawca",
+                fromDaily: launch?.fromDaily === true,
+                dokId,
+                dokNrPelny,
+                lineCount,
+                snapshotOk,
+                snapshotMessage,
+                markIndividualsMessage,
+                previewLines: previewSnap.lines,
+                lineMeta: createLineMetaCaptureRef.current,
+              })
+            );
+            createPreviewCaptureRef.current = null;
+            setCreatePreviewFrozen(null);
+            createLineMetaCaptureRef.current = null;
             if (markedIndividualOrderIds?.length) {
               const marked = new Set(markedIndividualOrderIds);
               setPendingIndividuals((prev) =>
                 prev.filter((o) => !marked.has(o.id))
               );
-            }
-            const snapNote = snapshotOk
-              ? "zapisano historię"
-              : snapshotMessage ?? "historia nie zapisana — użyj „Powiąż ZD”";
-            const markNote = markIndividualsMessage
-              ? ` · ${markIndividualsMessage}`
-              : markedIndividualOrderIds?.length
-                ? ` · odznaczono ${markedIndividualOrderIds.length} próśb (Główne)`
-                : "";
-            setCreateZdOkMessage(
-              `Utworzono ${dokNrPelny} · ${lineCount} poz. · ${snapNote}${markNote}`
-            );
-            window.setTimeout(() => setCreateZdOkMessage(null), 10000);
-
-            if (!snapshotOk) {
-              setLinkNrPrefill(dokNrPelny);
-              setLinkZdOpen(true);
             }
 
             if (linesBase?.length) {
@@ -5584,6 +6088,7 @@ export function ZdEstimateWorkbench({
                     packagingByTwId: packagingByTwIdForRefresh,
                     historyByTwId:
                       historyByTwId.size > 0 ? historyByTwId : null,
+                    salesTrackPolicy: appliedBoostPolicy,
                   },
                 });
               setLines(nextLines);
@@ -5596,19 +6101,46 @@ export function ZdEstimateWorkbench({
             reportError(message);
             const timeoutKh = opts?.timeoutKhId;
             if (timeoutKh != null && timeoutKh > 0) {
+              setCreateZdOpen(false);
+              setLinkZdOpen(false);
+              setLinkNrPrefill(null);
+              const previewSnap =
+                createPreviewCaptureRef.current ?? createZdPreview;
+              const lineMetaSnap = createLineMetaCaptureRef.current;
+              setCreateDoneDokId(null);
+              setCreateDoneDokNr(ZD_ESTIMATE_UI.postCreateTimeoutLockLabel);
+              setCreateUnconfirmedAttempt(true);
+              setCreateUnlockedAfterDone(false);
+              setCreateUndoVisible(true);
+              setPostCreate(
+                buildZdPostCreateSessionFromTimeout({
+                  supplierId: supplierId ?? "",
+                  supplierName:
+                    createKhResolution.supplierName ||
+                    selectedSupplier?.name ||
+                    "Dostawca",
+                  fromDaily: launch?.fromDaily === true,
+                  previewLines: previewSnap.lines,
+                  lineMeta: lineMetaSnap,
+                })
+              );
+              createPreviewCaptureRef.current = null;
+              setCreatePreviewFrozen(null);
+              createLineMetaCaptureRef.current = null;
               void (async () => {
                 const found = await actionFindRecentZdAfterCreateAttempt({
                   supplierKhId: timeoutKh,
                 });
-                if (!found.ok || found.documents.length === 0) return;
+                if (!found.ok) return;
                 const first = found.documents[0];
-                if (!first) return;
-                setLinkNrPrefill(first.dokNrPelny);
-                setLinkZdOpen(true);
-                setLinkOkMessage(
-                  `Timeout create — znaleziono świeże ZD (${first.dokNrPelny}). Sprawdź i zapisz snapshot, jeśli to ten dokument.`
-                );
-                window.setTimeout(() => setLinkOkMessage(null), 8000);
+                setPostCreate((prev) => {
+                  if (!prev || prev.kind !== "timeout_recovery") return prev;
+                  return patchZdPostCreateTimeoutCandidates(prev, {
+                    linkNrPrefill: first?.dokNrPelny ?? null,
+                    recentCandidateCount: found.documents.length,
+                  });
+                });
+                // Prefill tylko gdy recovery panel nadal aktywny — bez stale po dismiss.
               })();
             }
           }}

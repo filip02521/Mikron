@@ -23,6 +23,7 @@ export function ZdEstimateLinkZdDialog({
   orderableTwIds,
   implicitPieceSnapshotHint,
   initialNr,
+  titleHint,
   pending: pendingExternal,
   onClose,
   onLinked,
@@ -40,9 +41,15 @@ export function ZdEstimateLinkZdDialog({
   implicitPieceSnapshotHint?: string | null;
   /** Prefill numeru (np. po create bez snapshotu / timeout). */
   initialNr?: string | null;
+  /** Nadpisuje domyślny titleHint (recovery po create). */
+  titleHint?: string | null;
   pending?: boolean;
   onClose: () => void;
-  onLinked: (info: { dokNrPelny: string; lineCount: number }) => void;
+  onLinked: (info: {
+    dokId: number;
+    dokNrPelny: string;
+    lineCount: number;
+  }) => void;
   onError: (message: string) => void;
 }) {
   const nrId = useId();
@@ -53,6 +60,7 @@ export function ZdEstimateLinkZdDialog({
   const [pending, startPending] = useTransition();
   const busy = pending || pendingExternal;
 
+  // Reset + lista kandydatów tylko przy otwarciu — nie przy późniejszym patchu prefillu.
   useEffect(() => {
     if (!open) return;
     queueMicrotask(() => {
@@ -68,6 +76,17 @@ export function ZdEstimateLinkZdDialog({
         return;
       }
       setDocs(res.documents);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open-only; initialNr patch poniżej
+  }, [open]);
+
+  // Timeout recovery: uzupełnij nr gdy async candidates dojdą, bez kasowania wyboru użytkownika.
+  useEffect(() => {
+    if (!open) return;
+    const next = initialNr?.trim() ?? "";
+    if (!next) return;
+    queueMicrotask(() => {
+      setNr((prev) => (prev.trim() ? prev : next));
     });
   }, [open, initialNr]);
 
@@ -93,7 +112,11 @@ export function ZdEstimateLinkZdDialog({
         onError(res.message);
         return;
       }
-      onLinked({ dokNrPelny: res.dokNrPelny, lineCount: res.lineCount });
+      onLinked({
+        dokId: res.snapshot.dokId,
+        dokNrPelny: res.dokNrPelny,
+        lineCount: res.lineCount,
+      });
       onClose();
     });
   };
@@ -103,7 +126,10 @@ export function ZdEstimateLinkZdDialog({
       open
       onClose={onClose}
       title="Powiąż ZD"
-      titleHint="Gdy ZD powstało poza OnTime (lub po timeout create) — zapisz snapshot. „Utwórz ZD” robi to automatycznie."
+      titleHint={
+        titleHint?.trim() ||
+        "Gdy ZD powstało poza OnTime (lub po timeout create) — zapisz snapshot. „Utwórz ZD” robi to automatycznie."
+      }
       titleId="zd-estimate-link-zd-title"
       size="md"
       tier="raised"
