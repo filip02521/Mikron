@@ -1,6 +1,6 @@
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 
-export type ZdEstimateListToolsMode = "panels" | "selection";
+export type ZdEstimateListToolsMode = "idle" | "selection";
 
 export type ZdEstimateListToolKey =
   | "pair"
@@ -28,7 +28,7 @@ export type ZdEstimateListToolStates = Record<
 export function resolveZdEstimateListToolsMode(
   selectedCount: number
 ): ZdEstimateListToolsMode {
-  return selectedCount > 0 ? "selection" : "panels";
+  return selectedCount > 0 ? "selection" : "idle";
 }
 
 export function resolveZdEstimateListToolStates(input: {

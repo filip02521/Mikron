@@ -22,6 +22,7 @@ import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts
 import { buildWarehouseInventoryRows } from "@/lib/orders/warehouse-inventory";
 import { summarizeQueueInbox } from "@/lib/orders/queue-inbox";
 import { mergeReceiveQueueOrders } from "@/lib/orders/receive-queue";
+import { supplierKey } from "@/lib/orders/queue-supplier-groups";
 
 const RECEIVE_SCROLL_HASHES = new Set([
   "#kolejka-przyjecie",
@@ -74,6 +75,11 @@ export function QueueClient({
   const [view, setView] = useState<QueueView>("receive");
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [toast, setToast] = useState<ReceiveQueueToast | null>(null);
+  /** Fokus z badge „N oczekuje” — nonce wymusza re-aplikację przy tym samym dostawcy. */
+  const [receiveFocus, setReceiveFocus] = useState<{
+    supplierName: string | null;
+    nonce: number;
+  } | null>(null);
 
   const dismissToast = useCallback(() => setToast(null), []);
 
@@ -146,6 +152,39 @@ export function QueueClient({
     }
   }, []);
 
+  const goToReceiveForSupplier = useCallback(
+    (supplierName: string | null) => {
+      let name =
+        supplierName?.trim() && supplierName.trim() !== "—"
+          ? supplierName.trim()
+          : null;
+      // Dopasuj klucz filtra 1:1 do chipów w kolejce (nazwa z relacji supplier).
+      if (name) {
+        const needle = name.toLowerCase();
+        const match = receiveQueue.find(
+          (o) => supplierKey(o).toLowerCase() === needle
+        );
+        if (match) name = supplierKey(match);
+      }
+      setReceiveFocus({ supplierName: name, nonce: Date.now() });
+      setView("receive");
+      const target = `${window.location.pathname}#kolejka-przyjecie`;
+      if (
+        `${window.location.pathname}${window.location.search}${window.location.hash}` !==
+        target
+      ) {
+        window.history.replaceState(null, "", target);
+      }
+      requestAnimationFrame(() => {
+        document.getElementById("kolejka-przyjecie")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    },
+    [receiveQueue]
+  );
+
   const partialCount = inboxSummary.partialCount;
   const cancelLabelled = inboxSummary.cancelLabelledCount;
 
@@ -212,6 +251,7 @@ export function QueueClient({
               informacjaOrders={informacjaOrders}
               warehouseInventory={warehouseInventory}
               supplierSchedules={supplierSchedules}
+              receiveFocus={receiveFocus}
               onToast={setToast}
               onPendingChange={setPendingMessage}
             />
@@ -231,6 +271,7 @@ export function QueueClient({
             todayDateKey={deliveryJournal.date}
             canEditJournal={canEditJournal}
             canManageCarriers={canManageCarriers}
+            onGoToReceive={goToReceiveForSupplier}
           />
         </div>
 

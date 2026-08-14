@@ -44,7 +44,11 @@ import {
   flagsFromInformacjaFlowPath,
   isInformacjaStockOutReorder,
 } from "@/lib/orders/informacja-stock-out-reorder";
-import { glowneScheduleSupplierIds, glowneSchedulableSupplierIds } from "@/lib/orders/glowne-supplier-placement";
+import {
+  glowneScheduleSupplierIds,
+  glowneSchedulableSupplierIds,
+  glowneShouldTouchSupplierSchedule,
+} from "@/lib/orders/glowne-supplier-placement";
 import { resolveVerificationInformacjaFlags } from "@/lib/orders/verification-informacja-ui";
 import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
 import { isProcurementDraftReady } from "@/lib/orders/procurement-readiness";
@@ -1151,7 +1155,8 @@ async function assertGlowneSuppliersHaveInterval(supplierIds: Set<string>): Prom
  * (kompletność, zęby, interwał dla dostawców cyklicznych).
  */
 export async function preflightProcessIndividualGlowne(
-  orderIds: string[]
+  orderIds: string[],
+  opts?: { skipSupplierSchedule?: boolean }
 ): Promise<{ ok: true; processableIds: string[] } | { ok: false; message: string }> {
   try {
     const requestedIds = [
@@ -1220,25 +1225,27 @@ export async function preflightProcessIndividualGlowne(
       };
     }
 
-    const glowneCandidateIds = glowneScheduleSupplierIds(
-      processableNowe.map((r) => ({
-        supplier_id: r.supplier_id,
-        request_kind: (r.request_kind ?? "zamowienie") as IndividualOrder["request_kind"],
-        informacja_queue_via_daily_panel: r.informacja_queue_via_daily_panel,
-      })),
-      "GLOWNE"
-    );
-    if (glowneCandidateIds.size) {
-      const { data: supplierRows, error: supplierError } = await supabase
-        .from("suppliers")
-        .select("id, order_on_demand, stock_raw, interval_raw, extra_info")
-        .in("id", [...glowneCandidateIds]);
-      if (supplierError) throw new Error(supplierError.message);
-      const schedulable = glowneSchedulableSupplierIds(
-        glowneCandidateIds,
-        supplierRows ?? []
+    if (glowneShouldTouchSupplierSchedule("GLOWNE", opts)) {
+      const glowneCandidateIds = glowneScheduleSupplierIds(
+        processableNowe.map((r) => ({
+          supplier_id: r.supplier_id,
+          request_kind: (r.request_kind ?? "zamowienie") as IndividualOrder["request_kind"],
+          informacja_queue_via_daily_panel: r.informacja_queue_via_daily_panel,
+        })),
+        "GLOWNE"
       );
-      await assertGlowneSuppliersHaveInterval(schedulable);
+      if (glowneCandidateIds.size) {
+        const { data: supplierRows, error: supplierError } = await supabase
+          .from("suppliers")
+          .select("id, order_on_demand, stock_raw, interval_raw, extra_info")
+          .in("id", [...glowneCandidateIds]);
+        if (supplierError) throw new Error(supplierError.message);
+        const schedulable = glowneSchedulableSupplierIds(
+          glowneCandidateIds,
+          supplierRows ?? []
+        );
+        await assertGlowneSuppliersHaveInterval(schedulable);
+      }
     }
 
     return { ok: true, processableIds };
@@ -1258,6 +1265,7 @@ export async function processIndividualFromSummary(
   action: "GLOWNE" | "POBOCZNE" | "ANULOWANO",
   userEmail: string,
   procurementCancelNote?: string | null,
+  opts?: { skipSupplierSchedule?: boolean },
 ): Promise<{
   processedCount: number;
   processedIds: string[];
@@ -1342,9 +1350,12 @@ export async function processIndividualFromSummary(
     if (order) ordersToProcess.push(order);
   }
 
-  const glowneCandidateIds = glowneScheduleSupplierIds(ordersToProcess, action);
+  const touchSchedule = glowneShouldTouchSupplierSchedule(action, opts);
+  const glowneCandidateIds = touchSchedule
+    ? glowneScheduleSupplierIds(ordersToProcess, action)
+    : new Set<string>();
   let glowneSupplierIds = glowneCandidateIds;
-  if (action === "GLOWNE" && glowneCandidateIds.size) {
+  if (touchSchedule && glowneCandidateIds.size) {
     const { data: supplierRows, error: supplierError } = await supabase
       .from("suppliers")
       .select("id, order_on_demand, stock_raw, interval_raw, extra_info")
@@ -1354,8 +1365,6 @@ export async function processIndividualFromSummary(
       glowneCandidateIds,
       supplierRows ?? []
     );
-  }
-  if (action === "GLOWNE") {
     await assertGlowneSuppliersHaveInterval(glowneSupplierIds);
   }
 

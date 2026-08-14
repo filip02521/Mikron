@@ -15,8 +15,8 @@ const trusted = {
 };
 
 describe("resolveZdEstimateListToolsMode", () => {
-  it("panels przy 0, selection przy ≥1", () => {
-    expect(resolveZdEstimateListToolsMode(0)).toBe("panels");
+  it("idle przy 0, selection przy ≥1", () => {
+    expect(resolveZdEstimateListToolsMode(0)).toBe("idle");
     expect(resolveZdEstimateListToolsMode(1)).toBe("selection");
     expect(resolveZdEstimateListToolsMode(5)).toBe("selection");
   });

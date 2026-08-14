@@ -12,10 +12,10 @@ export function ZdEstimateBomMetaBadge({ bom }: { bom: ZdEstimateBomMeta }) {
   if (bom.role === "assembled_parent") {
     return (
       <span
-        className="inline-flex max-w-[min(100%,22rem)] flex-wrap items-center gap-x-1 gap-y-0.5 rounded-md bg-violet-50 px-1.5 py-1 text-left text-[10px] font-semibold uppercase tracking-wide text-violet-950 ring-1 ring-violet-100"
+        className="inline-flex max-w-[min(100%,22rem)] flex-wrap items-center gap-x-1 gap-y-0.5 rounded-md bg-indigo-50 px-1.5 py-1 text-left text-[10px] font-semibold uppercase tracking-wide text-indigo-950 ring-1 ring-indigo-100"
         title={ZD_BOM_UI.badgeZestawTitle}
       >
-        <span className="rounded bg-violet-200/80 px-1 py-px">Skład</span>
+        <span className="rounded bg-indigo-200/80 px-1 py-px">Skład</span>
         <span className="rounded bg-slate-200/80 px-1 py-px font-medium normal-case tracking-normal text-slate-700">
           {ZD_BOM_UI.badgeNieZamawiasz}
         </span>
@@ -72,7 +72,7 @@ export function ZdEstimateBomMetaBadge({ bom }: { bom: ZdEstimateBomMeta }) {
           ? "bg-amber-50 text-amber-950 ring-amber-100"
           : blocked
             ? "bg-rose-50 text-rose-950 ring-rose-100"
-            : "bg-violet-50/90 text-violet-950 ring-violet-100"
+            : "bg-indigo-50/90 text-indigo-950 ring-indigo-100"
       )}
       title={
         bom.componentMissing
@@ -86,7 +86,7 @@ export function ZdEstimateBomMetaBadge({ bom }: { bom: ZdEstimateBomMeta }) {
         <span
           className={cn(
             "rounded px-1 py-px",
-            blocked ? "bg-rose-200/80" : "bg-violet-200/70"
+            blocked ? "bg-rose-200/80" : "bg-indigo-200/70"
           )}
         >
           Skład

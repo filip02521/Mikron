@@ -44,8 +44,8 @@ export function ZdEstimateSettingsTrustBanner({
   return (
     <Alert tone="error" title="Ustawienia działu niedostępne">
       <p className="text-sm leading-snug">
-        Bez pełnych ustawień nie pokażemy bezpiecznej listy „Do ZD” ani Create /
-        TSV. Wczytaj brakujące części:
+        Bez pełnych ustawień nie pokażemy bezpiecznej listy „Do ZD” ani nie
+        pozwolimy utworzyć ZD / skopiować TSV. Wczytaj brakujące części:
       </p>
       <ul className="mt-2 space-y-1.5 text-sm">
         {failed.map(([key, msg]) => (

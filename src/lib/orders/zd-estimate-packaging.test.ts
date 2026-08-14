@@ -15,6 +15,7 @@ import {
   getZdPackRoundupInfo,
   lineAllowsZdDocumentUnitOverride,
   piecesArrivingForZdUnits,
+  packagingRowsToRefreshLookup,
   pruneZdDocumentUnitOverrides,
   resolveOrderQtyForLine,
   summarizePackOrderQty,
@@ -119,6 +120,20 @@ describe("assertPackagingUnits + format helpers", () => {
     );
     expect(zdDocumentUnitsToPieces(10, 5, "packages")).toBe(50);
     expect(zdDocumentUnitsToPieces(10, 5, "pieces_multiple")).toBe(10);
+  });
+
+  it("packagingRowsToRefreshLookup: N + tryb", () => {
+    const map = packagingRowsToRefreshLookup([
+      {
+        subiektTwId: 7,
+        unitsPerPackage: 10,
+        documentUnitMode: "pieces_multiple",
+      },
+    ]);
+    expect(map.get(7)).toEqual({
+      unitsPerPackage: 10,
+      documentUnitMode: "pieces_multiple",
+    });
   });
 
   it("formatZdPackDocumentLabel / roundup / hint ze trim label", () => {
@@ -423,6 +438,28 @@ describe("resolveOrderQtyForLine + individualExtra", () => {
     );
     expect(q.piecesNeeded).toBe(8);
     expect(q.zdUnits).toBe(1);
+  });
+
+  it("extrasPolicy max: nie dubluje gdy extra < need", () => {
+    const line = mapZdEstimateLineToManual(
+      {
+        tw_Id: 1,
+        tw_Symbol: "X",
+        tw_Nazwa: "x",
+        celZapasu: 40,
+        dostepne: 10,
+        otwarteZd: 0,
+        doZamowienia: 30,
+        sprzedazOkres: 0,
+        sprzedazDziennie: 0,
+      },
+      { salesTrack: false }
+    );
+    const pack = { unitsPerPackage: 1, packageLabel: "szt" };
+    const sum = resolveOrderQtyForLine(line, pack, 8, false, "sum");
+    const max = resolveOrderQtyForLine(line, pack, 8, false, "max");
+    expect(sum.piecesNeeded).toBe(38);
+    expect(max.piecesNeeded).toBe(30);
   });
 
   it("pack + partnerMissing + extra → zdUnits > 0", () => {

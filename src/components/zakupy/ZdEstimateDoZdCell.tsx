@@ -120,7 +120,7 @@ export function ZdEstimateDoZdCell({
         ]
           .filter(Boolean)
           .join(". ")
-      : baseHint || "Nadpisz ilość Do ZD przed Create",
+      : baseHint || "Nadpisz ilość Do ZD przed utworzeniem dokumentu",
     roundupFull ? `↑ ${roundupFull}` : null,
     qty.hasPackaging ? overrideHint : null,
   ]

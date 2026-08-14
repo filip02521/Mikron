@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { Spinner } from "@/components/ui/Spinner";
+import {
+  IconAlertCircle,
+  IconCircleCheck,
+} from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import {
@@ -11,7 +15,14 @@ import {
   formatZdCreateElapsedLabel,
   ZD_CREATE_PROGRESS_STEPS,
 } from "@/lib/orders/zd-estimate-create-progress";
-import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
+import {
+  ZD_ESTIMATE_UI,
+  zdEstimateCreateProgressAriaLabel,
+  zdEstimateCreateProgressCompleteHint,
+  zdEstimateCreateProgressCompleteTitle,
+  zdEstimateCreateProgressSnapshotFailedHint,
+  zdEstimateCreateProgressTitle,
+} from "@/lib/orders/zd-estimate-ui-copy";
 
 export function ZdEstimateCreateZdProgressPanel({
   startedAtMs,
@@ -30,9 +41,10 @@ export function ZdEstimateCreateZdProgressPanel({
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
+    if (forceComplete) return;
     const id = window.setInterval(() => setNowMs(Date.now()), 200);
     return () => window.clearInterval(id);
-  }, [startedAtMs]);
+  }, [startedAtMs, forceComplete]);
 
   const elapsedMs = Math.max(0, nowMs - startedAtMs);
   const stepIndex = createZdProgressStepFromElapsed(elapsedMs, {
@@ -45,28 +57,53 @@ export function ZdEstimateCreateZdProgressPanel({
   );
   const percent = createZdProgressPercent(elapsedMs, { forceComplete });
   const active = ZD_CREATE_PROGRESS_STEPS[clamped]!;
+  const statusTitle = forceComplete
+    ? zdEstimateCreateProgressCompleteTitle()
+    : zdEstimateCreateProgressTitle();
+  const statusHint = forceComplete
+    ? zdEstimateCreateProgressCompleteHint({ snapshotOk })
+    : active.activeHint;
+  const completeFailed = forceComplete && snapshotOk === false;
 
   return (
     <section
       role="status"
       aria-live="polite"
       aria-busy={!forceComplete}
-      aria-label="Tworzenie dokumentu ZD"
+      aria-label={zdEstimateCreateProgressAriaLabel()}
       className="overflow-hidden rounded-xl border border-indigo-200/70 bg-white shadow-sm"
     >
       <div className="border-b border-indigo-100/80 bg-gradient-to-b from-indigo-50/70 to-white px-4 py-4 sm:px-5">
         <div className="flex items-start gap-3">
-          <Spinner size="md" className="mt-0.5 shrink-0 text-indigo-700" />
+          <span
+            className={cn(
+              "mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full ring-1",
+              forceComplete
+                ? completeFailed
+                  ? "bg-amber-50 text-amber-800 ring-amber-100"
+                  : "bg-emerald-50 text-emerald-700 ring-emerald-100/90"
+                : "bg-indigo-50 ring-indigo-100/90"
+            )}
+          >
+            {forceComplete ? (
+              completeFailed ? (
+                <IconAlertCircle size={18} strokeWidth={2.25} />
+              ) : (
+                <IconCircleCheck size={18} strokeWidth={2.25} />
+              )
+            ) : (
+              <Spinner
+                size="sm"
+                className="border-indigo-200 border-t-indigo-600"
+              />
+            )}
+          </span>
           <div className="min-w-0 flex-1">
             <p className="text-base font-semibold tracking-tight text-slate-900">
-              {forceComplete ? "ZD gotowe" : "Tworzę ZD w Subiekcie"}
+              {statusTitle}
             </p>
             <p className="mt-1 text-sm leading-relaxed text-slate-600">
-              {forceComplete
-                ? snapshotOk === false
-                  ? "Dokument utworzony — historia nie zapisana (użyj „Powiąż ZD”)."
-                  : "Zapisuję wynik i zamykam okno…"
-                : active.activeHint}
+              {statusHint}
             </p>
             {!forceComplete ? (
               <p className="mt-2 text-xs leading-snug text-slate-500">
@@ -93,13 +130,15 @@ export function ZdEstimateCreateZdProgressPanel({
           const isSnapshot = step.id === "snapshot";
           const done = forceComplete || index < clamped;
           const isActive = !forceComplete && index === clamped;
-          const snapshotFailed = forceComplete && isSnapshot && snapshotOk === false;
+          const snapshotFailed =
+            forceComplete && isSnapshot && snapshotOk === false;
           const doneHint = snapshotFailed
-            ? "Historia nie zapisana — użyj „Powiąż ZD”"
+            ? zdEstimateCreateProgressSnapshotFailedHint()
             : step.doneHint;
           return (
             <li
               key={step.id}
+              aria-current={isActive ? "step" : undefined}
               className={cn(
                 "relative flex gap-3 py-2.5",
                 index < ZD_CREATE_PROGRESS_STEPS.length - 1 &&
@@ -117,7 +156,13 @@ export function ZdEstimateCreateZdProgressPanel({
                 )}
                 aria-hidden
               >
-                {snapshotFailed ? "!" : done ? "✓" : index + 1}
+                {snapshotFailed ? (
+                  <IconAlertCircle size={14} strokeWidth={2.25} />
+                ) : done ? (
+                  <IconCircleCheck size={14} strokeWidth={2.25} />
+                ) : (
+                  index + 1
+                )}
               </span>
               <div className="min-w-0 pt-0.5">
                 <p
@@ -134,13 +179,11 @@ export function ZdEstimateCreateZdProgressPanel({
                 >
                   {step.title}
                 </p>
-                <p className={cn(panelTypography.caption, "mt-0.5")}>
-                  {done
-                    ? doneHint
-                    : isActive
-                      ? step.activeHint
-                      : "Oczekuje…"}
-                </p>
+                {done || snapshotFailed ? (
+                  <p className={cn(panelTypography.caption, "mt-0.5")}>
+                    {doneHint}
+                  </p>
+                ) : null}
               </div>
             </li>
           );
@@ -169,7 +212,7 @@ export function ZdEstimateCreateZdProgressPanel({
           }
         >
           <div
-            className="h-full rounded-full bg-indigo-600 transition-[width] duration-300 ease-out"
+            className="h-full rounded-full bg-indigo-600 transition-[width] duration-300 ease-out motion-reduce:transition-none"
             style={{ width: `${percent}%` }}
           />
         </div>

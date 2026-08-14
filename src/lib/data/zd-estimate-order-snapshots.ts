@@ -548,3 +548,60 @@ export async function fetchLatestSnapshotHistoryByTwIds(
 
   return map;
 }
+
+export async function fetchZdEstimateOrderSnapshotLines(
+  snapshotId: string
+): Promise<ZdEstimateOrderSnapshotLineRow[]> {
+  const id = snapshotId.trim();
+  if (!id) return [];
+  const supabase = createAdminClient();
+  const { data: header, error: headerError } = await supabase
+    .from("zd_estimate_order_snapshots")
+    .select(SNAPSHOT_SELECT)
+    .eq("id", id)
+    .maybeSingle();
+  if (headerError) throw new Error(headerError.message);
+  if (!header) return [];
+  const snap = mapZdEstimateOrderSnapshot(header as SnapshotDb);
+
+  const { data, error } = await supabase
+    .from("zd_estimate_order_snapshot_lines")
+    .select(
+      "id, snapshot_id, tw_id, tw_symbol, tw_nazwa, qty, cel_at_link, delta_at_link"
+    )
+    .eq("snapshot_id", id)
+    .order("tw_symbol", { ascending: true });
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((row) => {
+    const r = row as LineDb;
+    return {
+      id: r.id,
+      snapshotId: r.snapshot_id,
+      twId: Number(r.tw_id),
+      twSymbol: r.tw_symbol?.trim() || null,
+      twNazwa: (r.tw_nazwa ?? "").trim() || "—",
+      qty: asNum(r.qty),
+      celAtLink: finiteOrNull(r.cel_at_link),
+      deltaAtLink: finiteOrNull(r.delta_at_link),
+      linkedAt: snap.linkedAt,
+      dokId: snap.dokId,
+      dokNrPelny: snap.dokNrPelny,
+    };
+  });
+}
+
+export async function updateZdEstimateSnapshotEligibleForHistory(
+  snapshotId: string,
+  eligible: boolean
+): Promise<void> {
+  const id = snapshotId.trim();
+  if (!id) throw new Error("Brak snapshotId.");
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("zd_estimate_order_snapshots")
+    .update({ eligible_for_history: eligible === true })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+}
+

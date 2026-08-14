@@ -8,15 +8,9 @@ import {
   ZdEstimateWorkbench,
   type ZdEstimateLaunchProps,
 } from "@/components/zakupy/ZdEstimateWorkbench";
-import { ZdEstimatePageIntro } from "@/components/zakupy/ZdEstimatePageIntro";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
 import { zdEstimatePageShellClass } from "@/lib/ui/ontime-theme";
 import { parseZdEstimateLaunchQuery } from "@/lib/orders/zd-estimate-supplier-scope";
-import {
-  ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION,
-  zdEstimatePageHint,
-} from "@/lib/orders/zd-estimate-ui-copy";
-import { formatPlDate } from "@/lib/display-labels";
 
 export const metadata: Metadata = pageMetadataFor("zdEstimate");
 export const dynamic = "force-dynamic";
@@ -119,22 +113,6 @@ export default async function ZdEstimatePage({
 
   return (
     <div className={zdEstimatePageShellClass}>
-      <ZdEstimatePageIntro
-        description={ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION}
-        hint={zdEstimatePageHint({
-          isLive: bootstrap.ordersIsLive,
-          configured: bootstrap.configured,
-        })}
-        host={{
-          configured: bootstrap.configured,
-          isLive: bootstrap.ordersIsLive,
-          port: bootstrap.ordersPort ?? bootstrap.testPort,
-          salesEndFromFs: bootstrap.salesEndFromFs,
-          salesEndKeyFormatted: bootstrap.salesEndFromFs
-            ? formatPlDate(bootstrap.salesEndKey)
-            : null,
-        }}
-      />
       <ZdEstimateWorkbench bootstrap={bootstrap} launch={launch} />
     </div>
   );

@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   buildMailtoHref,
+  buildZdPostCreateMarkFreeze,
   buildZdPostCreateSessionFromCreate,
   buildZdPostCreateSessionFromLink,
   buildZdPostCreateSessionFromTimeout,
   buildZdSupplierMailto,
   clearSalesTrackQtyReviewMeta,
+  excludeConsumedPendingOrders,
   patchZdPostCreateTimeoutCandidates,
+  pendingGlowneOrderIds,
   postCreateLinesSnapshotToTsv,
   postCreateNeedsHistoryLink,
   postCreateOrderableTwIds,
@@ -30,8 +33,18 @@ describe("zd-estimate-post-create", () => {
       {
         twId: 1,
         symbol: "A",
+        nazwa: "Aa",
         plu: "p",
         ilosc: 3,
+        packagingHint: null,
+        individualExtraPieces: 0,
+        extraOnly: false,
+        piecesArriving: null,
+        unitsPerPackage: null,
+        documentUnitMode: null,
+        roundupNeed: null,
+        roundupArrive: null,
+        bomOrPairLabel: null,
         celAtLink: 0,
         deltaAtLink: 0,
       },
@@ -158,8 +171,18 @@ describe("zd-estimate-post-create", () => {
       {
         twId: 11,
         symbol: "L",
+        nazwa: "Live",
         plu: null,
         ilosc: 4,
+        packagingHint: null,
+        individualExtraPieces: 0,
+        extraOnly: false,
+        piecesArriving: null,
+        unitsPerPackage: null,
+        documentUnitMode: null,
+        roundupNeed: null,
+        roundupArrive: null,
+        bomOrPairLabel: null,
         celAtLink: 8,
         deltaAtLink: 1,
       },
@@ -199,10 +222,29 @@ describe("zd-estimate-post-create", () => {
 
   it("TSV ze snapshota", () => {
     const tsv = postCreateLinesSnapshotToTsv([
-      { twId: 1, symbol: "A", plu: null, ilosc: 4, celAtLink: 0, deltaAtLink: 0 },
+      {
+        twId: 1,
+        symbol: "A",
+        nazwa: "Nazwa A",
+        plu: null,
+        ilosc: 4,
+        packagingHint: "10 szt / 1 op.",
+        individualExtraPieces: 2,
+        extraOnly: false,
+        piecesArriving: 40,
+        unitsPerPackage: 10,
+        documentUnitMode: "packages",
+        roundupNeed: null,
+        roundupArrive: null,
+        bomOrPairLabel: null,
+        celAtLink: 0,
+        deltaAtLink: 0,
+      },
     ]);
-    expect(tsv.split("\n")[0]).toBe("symbol\tplu\tdo_zd\ttw_Id");
-    expect(tsv).toContain("A\t\t4\t1");
+    expect(tsv.split("\n")[0]).toBe(
+      "symbol\tplu\tnazwa\tdo_zd\tsztuki\topakowanie\tprosba_szt\ttw_Id"
+    );
+    expect(tsv).toContain("A\t\tNazwa A\t4\t40\t10 szt / 1 op.\t2\t1");
   });
 
   it("clearSalesTrackQtyReviewMeta", () => {
@@ -216,5 +258,172 @@ describe("zd-estimate-post-create", () => {
     expect(cleared.salesTrackHeldExtraQty).toBe(0);
     expect(cleared.salesTrackAllowedExtraQty).toBe(0);
     expect(cleared.salesTrackReasons).toEqual(["thin_cover"]);
+  });
+
+  it("snap zachowuje nazwę / opakowanie / extras / qty po bumpie", () => {
+    const s = buildZdPostCreateSessionFromCreate({
+      supplierId: "s1",
+      supplierName: "D",
+      fromDaily: false,
+      dokId: 3,
+      dokNrPelny: "ZD/3",
+      lineCount: 1,
+      snapshotOk: true,
+      previewLines: [
+        {
+          twId: 9,
+          symbol: "K",
+          nazwa: "Karton",
+          ilosc: 1,
+          packagingHint: "40 szt / 1 op.",
+          individualExtraPieces: 25,
+          extraOnly: true,
+          piecesArriving: 40,
+          unitsPerPackage: 40,
+          documentUnitMode: "packages",
+          celZapasuTracked: 12,
+          salesTrackDelta: -2,
+          bomOrPairLabel: "para 40 szt/op.",
+        },
+      ],
+      createdLines: [{ twId: 9, ilosc: 2 }],
+      createdAtMs: 1,
+    });
+    expect(s.linesSnapshot[0]).toMatchObject({
+      nazwa: "Karton",
+      packagingHint: "40 szt / 1 op.",
+      individualExtraPieces: 25,
+      extraOnly: true,
+      ilosc: 2,
+      piecesArriving: 80,
+      bomOrPairLabel: "para 40 szt/op.",
+      celAtLink: 12,
+      deltaAtLink: -2,
+    });
+  });
+
+  it("freeze Główne+plan przechodzi timeout → link", () => {
+    const freeze = buildZdPostCreateMarkFreeze({
+      catalogOrderIds: ["c1"],
+      includedServiceOrderIds: ["svc1", "teeth1"],
+      omittedServiceCount: 1,
+      catalogByTwId: new Map([
+        [
+          1,
+          {
+            extraPieces: 3,
+            requests: [
+              {
+                orderId: "c1",
+                salesPersonId: "sp",
+                salesPersonName: "Anna",
+                qty: 3,
+                products: "X",
+                symbol: "X",
+                mikranCode: null,
+                requestNote: null,
+              },
+            ],
+          },
+        ],
+      ]),
+      serviceLines: [
+        {
+          key: "teeth:teeth1",
+          label: "Usługa zęby",
+          qty: 1,
+          reason: "teeth",
+          requests: [
+            {
+              orderId: "teeth1",
+              salesPersonId: "sp",
+              salesPersonName: "Anna",
+              qty: 1,
+              products: "Ząb",
+              symbol: "Z",
+              mikranCode: null,
+              requestNote: null,
+            },
+          ],
+        },
+        {
+          key: "svc:svc1",
+          label: "Usługa",
+          qty: 2,
+          reason: "excluded",
+          requests: [
+            {
+              orderId: "svc1",
+              salesPersonId: "sp",
+              salesPersonName: "Bartek",
+              qty: 2,
+              products: "Y",
+              symbol: "Y",
+              mikranCode: null,
+              requestNote: null,
+            },
+          ],
+        },
+      ],
+    });
+    expect(freeze.pendingGlowneServiceIds).toEqual(["svc1"]);
+    expect(freeze.teethServiceCount).toBe(1);
+    expect(pendingGlowneOrderIds(freeze).sort()).toEqual(["c1", "svc1"]);
+
+    const timeout = buildZdPostCreateSessionFromTimeout({
+      supplierId: "s1",
+      supplierName: "D",
+      fromDaily: true,
+      previewLines: [
+        { twId: 1, symbol: "X", nazwa: "X", ilosc: 3, packagingHint: null },
+      ],
+      markFreeze: freeze,
+      createdAtMs: 1,
+    });
+    const linked = buildZdPostCreateSessionFromLink({
+      supplierId: "s1",
+      supplierName: "D",
+      fromDaily: true,
+      dokId: 11,
+      dokNrPelny: "ZD/11",
+      lineCount: 1,
+      previous: timeout,
+      createdAtMs: 2,
+    });
+    expect(linked.kind).toBe("linked");
+    expect(linked.markFreeze.pendingGlowneCatalogIds).toEqual(["c1"]);
+    expect(linked.markFreeze.pendingGlowneServiceIds).toEqual(["svc1"]);
+    expect(linked.linesSnapshot[0]?.symbol).toBe("X");
+  });
+
+  it("excludeConsumedPendingOrders pomija extras z tego ZD", () => {
+    const kept = excludeConsumedPendingOrders(
+      [
+        {
+          id: "a",
+          salesPersonId: "sp",
+          salesPersonName: "A",
+          products: "P",
+          symbol: "P",
+          mikranCode: null,
+          subiektTwId: 1,
+          qty: 1,
+          requestNote: null,
+        },
+        {
+          id: "b",
+          salesPersonId: "sp",
+          salesPersonName: "B",
+          products: "Q",
+          symbol: "Q",
+          mikranCode: null,
+          subiektTwId: 2,
+          qty: 2,
+          requestNote: null,
+        },
+      ],
+      ["a"]
+    );
+    expect(kept.map((o) => o.id)).toEqual(["b"]);
   });
 });

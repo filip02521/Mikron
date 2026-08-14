@@ -40,7 +40,7 @@ export const ZD_BOOST_PRESET_DEFS: readonly PresetDef[] = [
   {
     id: "off",
     label: "Wyłączony",
-    hint: "Bez podbijania sztuk; cięcia przy grubym cover nadal działają.",
+    hint: "Bez podbijania sztuk; cięcia przy grubym pokryciu magazynowym nadal działają.",
     partial: {
       maxTotalBoostRatio: 0,
       sellThroughMaxBoost: 0,
@@ -62,8 +62,8 @@ export const ZD_BOOST_PRESET_DEFS: readonly PresetDef[] = [
   },
   {
     id: "standard",
-    label: "Standard (dotychczasowe)",
-    hint: "Dotychczasowa moc podbijania (cap 35%).",
+    label: "Standard (jak wcześniej)",
+    hint: "Dotychczasowa siła podbijania (do +35% celu).",
     partial: {},
   },
   {

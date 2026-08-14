@@ -39,6 +39,13 @@ export type GlowneSchedulableSupplierRow = { id: string } & OrderOnDemandFields;
  * Dostawcy, u których Główne wywołuje assertGlowneSuppliersHaveInterval / markStandardOrdered.
  * Dostawcy na żądanie pomijamy — prośba może być Główne bez cyklicznego harmonogramu.
  */
+export function glowneShouldTouchSupplierSchedule(
+  action: "GLOWNE" | "POBOCZNE" | "ANULOWANO",
+  opts?: { skipSupplierSchedule?: boolean }
+): boolean {
+  return action === "GLOWNE" && opts?.skipSupplierSchedule !== true;
+}
+
 export function glowneSchedulableSupplierIds(
   candidateIds: Set<string>,
   suppliers: GlowneSchedulableSupplierRow[]

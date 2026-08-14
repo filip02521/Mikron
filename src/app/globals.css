@@ -333,7 +333,7 @@ select:disabled,
   --zd-est-symbol-w: 7rem;
   --zd-est-dozd-w: 6.25rem;
   --zd-est-sticky-dozd-left: calc(var(--zd-est-check-w) + var(--zd-est-symbol-w));
-  min-width: 52rem;
+  min-width: 60rem;
   font-size: 0.8125rem;
   line-height: 1.35;
   border-collapse: separate;
@@ -341,20 +341,20 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table.zd-estimate-table--detail {
-  min-width: 62rem;
+  min-width: 66rem;
 }
 
 .data-table.zd-estimate-table.zd-estimate-table--zk {
-  min-width: 70rem;
+  min-width: 74rem;
 }
 
 .data-table.zd-estimate-table.zd-estimate-table--detail.zd-estimate-table--zk {
-  min-width: 78rem;
+  min-width: 82rem;
 }
 
 .data-table.zd-estimate-table th,
 .data-table.zd-estimate-table td {
-  padding: 0.55rem 0.65rem;
+  padding: 0.6rem 0.7rem;
   vertical-align: top;
 }
 
@@ -365,12 +365,33 @@ select:disabled,
   padding-left: 0.4rem;
   padding-right: 0.65rem;
   font-variant-numeric: tabular-nums;
+  /* .data-table th/td { text-align:left } bije utility text-right — wymuś tu. */
+  text-align: right;
+}
+
+/* Sprzed. / Cel — szersze: szt + ≈ op. + kanały pary pod spodem */
+.data-table.zd-estimate-table td.zd-estimate-metric-col,
+.data-table.zd-estimate-table th.zd-estimate-metric-col {
+  width: 7.5rem;
+  min-width: 7.25rem;
+  max-width: 8.75rem;
+  padding-left: 0.45rem;
+  padding-right: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  vertical-align: top;
+  white-space: normal;
+  text-align: right;
+}
+
+.data-table.zd-estimate-table td.zd-estimate-metric-col .zd-estimate-metric-stack {
+  width: 100%;
 }
 
 .data-table.zd-estimate-table td.zd-estimate-pack-col,
 .data-table.zd-estimate-table th.zd-estimate-pack-col {
   width: 5.25rem;
   min-width: 5.25rem;
+  text-align: right;
 }
 
 /* Checkbox — sticky left */
@@ -382,8 +403,8 @@ select:disabled,
   width: var(--zd-est-check-w);
   min-width: var(--zd-est-check-w);
   max-width: var(--zd-est-check-w);
-  padding-left: 0.75rem;
-  padding-right: 0.3rem;
+  padding-left: 0.7rem;
+  padding-right: 0.35rem;
   vertical-align: middle;
   background: #fff;
   box-shadow: none;
@@ -443,6 +464,7 @@ select:disabled,
   box-shadow: -1px 0 0 #e2e8f0;
   width: 3.1rem;
   min-width: 3.1rem;
+  text-align: right;
 }
 
 .data-table.zd-estimate-table thead th {
@@ -548,8 +570,9 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table tbody tr[data-selected="true"] td.zd-estimate-dozd-col {
-  background-color: #a7f3d0 !important;
-  box-shadow: inset 3px 0 0 0 #34d399, 1px 0 0 #a7f3d0;
+  /* Zaznaczenie = indigo; Do ZD zostaje w tej samej palecie (bez konkurencyjnego emerald inset). */
+  background-color: #c7d2fe !important;
+  box-shadow: inset 3px 0 0 0 #4f46e5, 1px 0 0 #c7d2fe;
 }
 
 .data-table.zd-estimate-table tbody tr[data-selected="true"]:hover td {
@@ -557,7 +580,7 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table tbody tr[data-selected="true"]:hover td.zd-estimate-dozd-col {
-  background-color: #6ee7b7 !important;
+  background-color: #a5b4fc !important;
 }
 
 .data-table.zd-estimate-table th.zd-estimate-name-col,

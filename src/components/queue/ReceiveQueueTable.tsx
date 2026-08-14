@@ -127,6 +127,7 @@ export function ReceiveQueueTable({
   informacjaOrders,
   warehouseInventory,
   supplierSchedules = [],
+  receiveFocus = null,
   onToast,
   onPendingChange,
 }: {
@@ -134,6 +135,8 @@ export function ReceiveQueueTable({
   informacjaOrders: IndividualOrder[];
   warehouseInventory: IndividualOrder[];
   supplierSchedules?: SupplierWithSchedule[];
+  /** Fokus z dziennika (badge „oczekuje”) — nonce wymusza ponowne ustawienie filtra. */
+  receiveFocus?: { supplierName: string | null; nonce: number } | null;
   onToast: (toast: ReceiveQueueToast) => void;
   onPendingChange: (message: string | null) => void;
 }) {
@@ -304,21 +307,57 @@ export function ReceiveQueueTable({
   }, [productSearchActive, supplierGroupsSignature]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- expand panel when filters become active
-    if (hasActiveFilters) setSearchCollapsed(false);
+    if (!hasActiveFilters) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      setSearchCollapsed(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [hasActiveFilters]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    const supplierParam = params.get("supplier");
-    if (supplierParam) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync from URL param on mount
+    const supplierParam = params.get("supplier")?.trim();
+    if (!supplierParam) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
       setSupplierFilter(supplierParam);
       setSearchCollapsed(false);
-      router.replace("/kolejka", { scroll: false });
-    }
-  }, [router]);
+      // Zdejmij tylko ?supplier= — zostaw #kolejka-przyjecie (router.replace("/kolejka") kasował hash).
+      const url = new URL(window.location.href);
+      url.searchParams.delete("supplier");
+      const cleaned = `${url.pathname}${url.search}${url.hash || "#kolejka-przyjecie"}`;
+      window.history.replaceState(null, "", cleaned);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!receiveFocus) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      const name = receiveFocus.supplierName?.trim();
+      if (name && name !== "—") {
+        setSupplierFilter(name);
+        setSearchCollapsed(false);
+        setZdFilter(null);
+      } else {
+        setSupplierFilter("");
+        setSearchCollapsed(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [receiveFocus]);
 
   const selectedIds = useMemo(
     () => filtered.filter((o) => selected[o.id]).map((o) => o.id),

@@ -108,6 +108,8 @@ export function formatPairSalesChannelsBreakdown(
 ): {
   totalLabel: string;
   channelsLabel: string;
+  /** Osobne linie do UI tabeli (czytelniejszy stack niż jedna ściana tekstu). */
+  channelLines: string[];
   title: string;
 } {
   const ratio = normalizeUnitsPerPack(input.unitsPerPack) ?? 1;
@@ -116,10 +118,18 @@ export function formatPairSalesChannelsBreakdown(
   const fromPackSzt = packOp * ratio;
   const total = Math.max(0, Number(input.sprzedazSzt) || 0);
   const totalHint = formatPairPiecesUiHint(total, ratio, formatQty);
+  const channelLines: string[] = [];
+  if (piece > 0) channelLines.push(`${formatQty(piece)} szt luz`);
+  if (packOp > 0) {
+    channelLines.push(
+      `${formatQty(packOp)} op. → ${formatQty(fromPackSzt)} szt`
+    );
+  }
   const channelsLabel = `${formatQty(piece)} szt + ${formatQty(packOp)} op. (=${formatQty(fromPackSzt)} szt)`;
   return {
     totalLabel: totalHint.piecesLabel,
     channelsLabel,
+    channelLines,
     title: [
       `Sprzedaż pary łącznie ${totalHint.piecesLabel}${totalHint.packsApproxLabel ? ` (${totalHint.packsApproxLabel})` : ""}.`,
       `Kanał sztuk: ${formatQty(piece)} szt.`,

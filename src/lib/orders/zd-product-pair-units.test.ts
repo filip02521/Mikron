@@ -60,5 +60,6 @@ describe("piecesAsPackUnitsExact / formatPairPiecesUiHint", () => {
     expect(b.channelsLabel).toContain("50 szt");
     expect(b.channelsLabel).toContain("2 op.");
     expect(b.channelsLabel).toContain("90 szt");
+    expect(b.channelLines).toEqual(["50 szt luz", "2 op. → 90 szt"]);
   });
 });

@@ -225,7 +225,11 @@ export function mapZdEstimateLineToManual(
     options?.documentUnitMode
   );
   const otwarteZkBezRez = asFiniteNumber(line.otwarteZkBezRez);
-  const doZamowieniaApi = asFiniteNumber(line.doZamowienia);
+  // Live remat dostaje ManualZdEstimateLine (doZamowieniaApi), nie surowy wiersz API.
+  const doZamowieniaApi = asFiniteNumber(
+    line.doZamowienia ??
+      (line as { doZamowieniaApi?: unknown }).doZamowieniaApi
+  );
 
   const dniZapasu =
     options?.dniZapasu != null && Number.isFinite(options.dniZapasu)
@@ -340,6 +344,66 @@ export function mapZdEstimateLineToManual(
   };
 }
 
+export type ZdEstimateSoloMapOptions = {
+  dniZapasu: number;
+  dniOkresu?: number | null;
+  salesTrack?: boolean;
+  salesTrackCuts?: boolean;
+  salesTrackPolicy?: Partial<
+    typeof import("@/lib/orders/zd-estimate-sales-track").ZD_SALES_TRACK
+  > | null;
+  historyByTwId?: ReadonlyMap<
+    number,
+    { lastOrderedQty: number; linkedAt: string }
+  > | null;
+  packagingByTwId?: ReadonlyMap<
+    number,
+    {
+      unitsPerPackage: number;
+      documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode | null;
+    }
+  > | null;
+  productPairs?: readonly ZdProductPairRef[] | null;
+};
+
+/**
+ * Solo map 1:1 (track + history + opakowanie → cover w sztukach).
+ * Pary: track/history wyłączone — merge w applyZdEstimatePairs.
+ * Live refresh woła to przy zmianie opakowania, żeby celTracked nie został
+ * ze starego N / trybu A↔B.
+ */
+export function mapZdEstimateLinesSolo(
+  lines: readonly SubiektZdEstimateLine[],
+  options: ZdEstimateSoloMapOptions
+): ManualZdEstimateLine[] {
+  const dniZapasu = Math.max(1, Math.round(options.dniZapasu));
+  const historyByTwId = options.historyByTwId ?? null;
+  const packagingByTwId = options.packagingByTwId ?? null;
+  const pairIndex = indexZdProductPairs(options.productPairs ?? []);
+
+  return lines.map((line) => {
+    const twId = asFiniteNumber(line.tw_Id);
+    const inPair = pairIndex.has(twId);
+    const hist = inPair ? null : historyByTwId?.get(twId) ?? null;
+    const packRow = packagingByTwId?.get(twId);
+    const packUnits = effectiveUnitsPerPackageForTwId(
+      twId,
+      pairIndex,
+      packRow?.unitsPerPackage
+    );
+    return mapZdEstimateLineToManual(line, {
+      dniZapasu,
+      dniOkresu: options.dniOkresu,
+      salesTrack: inPair ? false : options.salesTrack,
+      salesTrackCuts: inPair ? false : options.salesTrackCuts,
+      salesTrackPolicy: options.salesTrackPolicy,
+      history: hist,
+      unitsPerPackage: packUnits,
+      documentUnitMode: inPair ? "packages" : packRow?.documentUnitMode,
+    });
+  });
+}
+
 export function buildManualZdEstimateResult(
   parametry: SubiektZdEstimateParams,
   lines: SubiektZdEstimateLine[],
@@ -392,33 +456,19 @@ export function buildManualZdEstimateResult(
   const packagingByTwId = options?.packagingByTwId ?? null;
   const pairs = options?.productPairs ?? [];
   const boms = options?.productBoms ?? [];
-  const pairIndex = indexZdProductPairs(pairs);
   const zapasMin =
     options?.zapasMin ??
     (parametry.zapasMin != null ? Number(parametry.zapasMin) : 0);
 
-  const mapped = lines.map((line) => {
-    const twId = asFiniteNumber(line.tw_Id);
-    const inPair = pairIndex.has(twId);
-    const hist = inPair ? null : historyByTwId?.get(twId) ?? null;
-    const packRow = packagingByTwId?.get(twId);
-    const packUnits = effectiveUnitsPerPackageForTwId(
-      twId,
-      pairIndex,
-      packRow?.unitsPerPackage
-    );
-    return mapZdEstimateLineToManual(line, {
-      dniZapasu,
-      dniOkresu,
-      // Pary: track/history po merge.
-      salesTrack: inPair ? false : options?.salesTrack,
-      salesTrackCuts: inPair ? false : options?.salesTrackCuts,
-      salesTrackPolicy: options?.salesTrackPolicy,
-      history: hist,
-      unitsPerPackage: packUnits,
-      // Para nadpisuje N Mode A — mode DB tylko gdy nie para.
-      documentUnitMode: inPair ? "packages" : packRow?.documentUnitMode,
-    });
+  const mapped = mapZdEstimateLinesSolo(lines, {
+    dniZapasu,
+    dniOkresu,
+    salesTrack: options?.salesTrack,
+    salesTrackCuts: options?.salesTrackCuts,
+    salesTrackPolicy: options?.salesTrackPolicy,
+    historyByTwId,
+    packagingByTwId,
+    productPairs: pairs,
   });
 
   const pozycjeBase = mapped.map((l) => ({

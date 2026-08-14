@@ -7,8 +7,10 @@ import { computeManualOrderQty } from "@/lib/orders/zd-estimate-manual";
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import {
   computeZdPackOrderQty,
+  getZdPackRoundupInfo,
   isPackagingPackagesMode,
   packagingDocumentMode,
+  piecesArrivingForZdUnits,
   resolveOrderQtyForLine,
   type PackagingLookup,
 } from "@/lib/orders/zd-estimate-packaging";
@@ -39,18 +41,53 @@ export type ZdCreatePreviewLine = {
   symbol: string;
   nazwa: string;
   plu?: string | null;
+  /** Jednostki dokumentu ZD (paczki w trybie A, sztuki w B). */
   ilosc: number;
   packagingHint: string | null;
   /** Rezerwa próśb (sztuki) wliczona w ilosc po opakowaniu. */
   individualExtraPieces?: number;
+  extraOnly?: boolean;
+  piecesArriving?: number | null;
+  unitsPerPackage?: number | null;
+  documentUnitMode?: ZdPackagingDocumentUnitMode | null;
+  roundupNeed?: number | null;
+  roundupArrive?: number | null;
+  celZapasuTracked?: number;
+  salesTrackDelta?: number;
+  bomOrPairLabel?: string | null;
 };
 
 export type ZdCreatePreview = {
   lines: ZdCreatePreviewLine[];
   lineCount: number;
   zdUnitsSuma: number;
+  piecesArrivingSuma: number;
+  extraRequestLineCount: number;
   softWarnOverLimit: boolean;
 };
+
+export function previewBomOrPairLabel(
+  line: Pick<ManualZdEstimateLine, "bom" | "pair">
+): string | null {
+  const bomRole = line.bom?.role;
+  if (bomRole === "assembled_parent") {
+    return "zestaw (składamy)";
+  }
+  if (bomRole === "purchased_kit") {
+    return line.bom?.purchaseTarget === "kit_only"
+      ? "komplet (tylko K)"
+      : "komplet (kupujemy)";
+  }
+  if (bomRole === "component") {
+    return line.bom?.purchaseBlocked ? "składnik (poza zakupem)" : "składnik BOM";
+  }
+  if (line.pair?.role === "pack") {
+    const n = Math.trunc(Number(line.pair.unitsPerPack) || 0);
+    return n > 0 ? `para ${n} szt/op.` : "para (op.)";
+  }
+  if (line.pair?.role === "piece") return "para (luz)";
+  return null;
+}
 
 export type ZdCreateClientLineInput = {
   twId: number;
@@ -110,13 +147,13 @@ export function resolveZdCreateKhId(input: {
     return {
       ok: false,
       message:
-        "Dostawca nie ma powiązania z Subiektem (kh_Id). Uzupełnij w Administracji → Dostawcy.",
+        "Dostawca nie ma powiązania z Subiektem (kontrahent). Uzupełnij w Administracji → Dostawcy.",
     };
   }
   return {
     ok: false,
     message:
-      "Dostawca ma kilka dodatkowych kh_Id bez głównego — ustaw główny kh_Id w Administracji.",
+      "Dostawca ma kilka dodatkowych identyfikatorów kontrahenta bez głównego — ustaw główny w Administracji.",
   };
 }
 
@@ -126,10 +163,13 @@ export function buildZdCreatePreviewFromOrderable(
   individualExtraByTwId?: ReadonlyMap<number, number> | null,
   /** Nadpisanie jednostek ZD (dokument) per tw_Id — przed Create. */
   qtyOverrideByTwId?: ReadonlyMap<number, number> | null,
-  extraOnlyTwIds?: ReadonlySet<number> | null
+    extraOnlyTwIds?: ReadonlySet<number> | null,
+  extrasPolicy?: import("@/lib/orders/zd-estimate-extras-policy").ZdEstimateExtrasPolicy
 ): ZdCreatePreview {
   const previewLines: ZdCreatePreviewLine[] = [];
   let zdUnitsSuma = 0;
+  let piecesArrivingSuma = 0;
+  let extraRequestLineCount = 0;
   for (const line of lines) {
     const extra = individualExtraByTwId?.get(line.tw_Id);
     const extraPieces =
@@ -141,15 +181,25 @@ export function buildZdCreatePreviewFromOrderable(
       line,
       packagingById.get(line.tw_Id),
       extraPieces,
-      extraOnly
+      extraOnly,
+      extrasPolicy
     );
     const override = qtyOverrideByTwId?.get(line.tw_Id);
-    const zdUnits =
-      override != null && Number.isFinite(override) && override >= 0
-        ? Math.trunc(override)
-        : qty.zdUnits;
+    const usedOverride =
+      override != null && Number.isFinite(override) && override >= 0;
+    const zdUnits = usedOverride ? Math.trunc(override) : qty.zdUnits;
     if (zdUnits <= 0) continue;
+    const piecesArriving = usedOverride
+      ? piecesArrivingForZdUnits(
+          zdUnits,
+          qty.unitsPerPackage,
+          qty.documentUnitMode
+        )
+      : qty.piecesArriving;
+    const roundup = usedOverride ? null : getZdPackRoundupInfo(qty);
     zdUnitsSuma += zdUnits;
+    piecesArrivingSuma += piecesArriving;
+    if (extraPieces > 0) extraRequestLineCount += 1;
     previewLines.push({
       twId: line.tw_Id,
       symbol: line.tw_Symbol,
@@ -162,14 +212,51 @@ export function buildZdCreatePreviewFromOrderable(
           : `dobij do ${qty.unitsPerPackage} szt`
         : null,
       individualExtraPieces: extraPieces > 0 ? extraPieces : undefined,
+      extraOnly: extraOnly || undefined,
+      piecesArriving,
+      unitsPerPackage: qty.hasPackaging ? qty.unitsPerPackage : null,
+      documentUnitMode: qty.hasPackaging ? qty.documentUnitMode : null,
+      roundupNeed: roundup?.need ?? null,
+      roundupArrive: roundup?.arrive ?? null,
+      celZapasuTracked: line.celZapasuTracked,
+      salesTrackDelta: line.salesTrackDelta,
+      bomOrPairLabel: previewBomOrPairLabel(line),
     });
   }
   return {
     lines: previewLines,
     lineCount: previewLines.length,
     zdUnitsSuma,
+    piecesArrivingSuma,
+    extraRequestLineCount,
     softWarnOverLimit: previewLines.length > ZD_CREATE_SOFT_WARN_LINES,
   };
+}
+
+export function applyCreatedQtyToPreviewLines(
+  lines: readonly ZdCreatePreviewLine[],
+  createdLines: readonly { twId: number; ilosc: number }[] | null | undefined
+): ZdCreatePreviewLine[] {
+  if (!createdLines?.length) return lines.map((l) => ({ ...l }));
+  const byTw = new Map<number, number>();
+  for (const row of createdLines) {
+    const tw = Math.trunc(Number(row.twId) || 0);
+    const qty = Math.max(0, Math.round(Number(row.ilosc) || 0));
+    if (tw > 0) byTw.set(tw, qty);
+  }
+  return lines.map((line) => {
+    const next = byTw.get(line.twId);
+    if (next == null || next === line.ilosc) return { ...line };
+    const piecesArriving =
+      line.unitsPerPackage != null && line.unitsPerPackage > 1
+        ? piecesArrivingForZdUnits(
+            next,
+            line.unitsPerPackage,
+            line.documentUnitMode ?? "packages"
+          )
+        : next;
+    return { ...line, ilosc: next, piecesArriving };
+  });
 }
 
 export function buildZdCreateApiBody(input: {
@@ -351,6 +438,8 @@ export type CanCreateZdState = {
   explodeBomIncomplete?: boolean;
   /** Moc boosta zmieniona po Policz — wymagany re-Policz. */
   boostNeedsRecount?: boolean;
+  /** Kwalifikacja snapshotów do history cut zmieniona — wymagany re-Policz. */
+  historyNeedsRecount?: boolean;
 };
 
 export function canCreateZdFromEstimateState(
@@ -372,6 +461,12 @@ export function canCreateZdFromEstimateState(
     return {
       ok: false,
       reason: ZD_ESTIMATE_UI.createGateBoostNeedsRecount,
+    };
+  }
+  if (state.historyNeedsRecount) {
+    return {
+      ok: false,
+      reason: ZD_ESTIMATE_UI.createGateHistoryNeedsRecount,
     };
   }
   if (state.explodeBomIncomplete) {
@@ -404,7 +499,7 @@ export function canCreateZdFromEstimateState(
   ) {
     return {
       ok: false,
-      reason: `Konflikt opakowanie ↔ para (${state.packagingPairConflictCount}) — ujednolić przed Create.`,
+      reason: `Konflikt opakowanie ↔ para (${state.packagingPairConflictCount}) — ujednolić przed utworzeniem ZD.`,
     };
   }
   if (!(state.orderableCount > 0)) {
@@ -414,14 +509,14 @@ export function canCreateZdFromEstimateState(
     return {
       ok: false,
       reason:
-        "Wybierz dostawcę (override) albo uzupełnij dopasowanie grupy/cechy do kartoteki.",
+        "Wybierz dostawcę (pole zaawansowane) albo uzupełnij dopasowanie grupy/cechy do kartoteki.",
     };
   }
   const kh = state.khResolution;
   if (!kh || !kh.ok) {
     return {
       ok: false,
-      reason: kh && !kh.ok ? kh.message : "Brak kh_Id dostawcy w Subiekcie.",
+      reason: kh && !kh.ok ? kh.message : "Brak identyfikatora kontrahenta (kh) dostawcy w Subiekcie.",
     };
   }
   return { ok: true };

@@ -4,17 +4,68 @@
  */
 
 import type { ZdCreatePreviewLine } from "@/lib/orders/zd-estimate-create-zd";
+import type {
+  ZdEstimateIndividualServiceLine,
+  ZdEstimateIndividualServiceReason,
+  ZdEstimateIndividualTwExtra,
+  ZdEstimatePendingIndividualOrder,
+} from "@/lib/orders/zd-estimate-individual";
+import { piecesArrivingForZdUnits } from "@/lib/orders/zd-estimate-packaging";
 
 export type ZdPostCreateKind = "created" | "linked" | "timeout_recovery";
 
 export type ZdPostCreateLineSnap = {
   twId: number;
   symbol: string;
+  nazwa: string;
   plu: string | null;
   ilosc: number;
+  packagingHint: string | null;
+  individualExtraPieces: number;
+  extraOnly: boolean;
+  piecesArriving: number | null;
+  unitsPerPackage: number | null;
+  documentUnitMode: "packages" | "pieces_multiple" | null;
+  roundupNeed: number | null;
+  roundupArrive: number | null;
+  bomOrPairLabel: string | null;
   /** Zamrożone przy create — Link history bez zależności od live lines. */
   celAtLink: number;
   deltaAtLink: number;
+};
+
+export type ZdPostCreateRequestSnap = {
+  orderId: string;
+  salesPersonName: string;
+  qty: number;
+  symbol: string | null;
+  products: string;
+  requestNote: string | null;
+};
+
+export type ZdPostCreateServiceSnap = {
+  key: string;
+  label: string;
+  qty: number;
+  reason: ZdEstimateIndividualServiceReason;
+  requests: ZdPostCreateRequestSnap[];
+};
+
+export type ZdPostCreateBumpedLine = {
+  twId: number;
+  from: number;
+  to: number;
+  extraPieces: number;
+};
+
+export type ZdPostCreateMarkFreeze = {
+  pendingGlowneCatalogIds: string[];
+  pendingGlowneServiceIds: string[];
+  consumedOrderIds: string[];
+  catalogRequests: ZdPostCreateRequestSnap[];
+  serviceLines: ZdPostCreateServiceSnap[];
+  teethServiceCount: number;
+  omittedServiceCount: number;
 };
 
 export type ZdPostCreateSession = {
@@ -27,22 +78,138 @@ export type ZdPostCreateSession = {
   lineCount: number;
   snapshotOk: boolean;
   snapshotMessage?: string;
-  markIndividualsMessage?: string;
-  /** Zamrożone przed bumpem — TSV, mini-lista, Link orderableTwIds. */
+  /** Zamrożone przed bumpem otwarteZd — TSV, lista, Link orderableTwIds. */
   linesSnapshot: ZdPostCreateLineSnap[];
+  markFreeze: ZdPostCreateMarkFreeze;
+  bumped: ZdPostCreateBumpedLine[];
+  composedUwagi: string | null;
+  glowneDone: boolean;
+  glowneMarkedIds: string[];
+  scheduleDone: boolean;
   /** Prefill Link / recover. */
   linkNrPrefill: string | null;
   recentCandidateCount?: number;
   createdAtMs: number;
 };
 
-export const ZD_POST_CREATE_PREVIEW_VISIBLE = 8;
-
 export type ZdPostCreateLineMetaInput = {
   twId: number;
   celAtLink?: number | null;
   deltaAtLink?: number | null;
 };
+
+export function emptyZdPostCreateMarkFreeze(): ZdPostCreateMarkFreeze {
+  return {
+    pendingGlowneCatalogIds: [],
+    pendingGlowneServiceIds: [],
+    consumedOrderIds: [],
+    catalogRequests: [],
+    serviceLines: [],
+    teethServiceCount: 0,
+    omittedServiceCount: 0,
+  };
+}
+
+function requestSnapFromRef(input: {
+  orderId: string;
+  salesPersonName: string;
+  qty: number;
+  symbol: string | null;
+  products: string;
+  requestNote: string | null;
+}): ZdPostCreateRequestSnap {
+  return {
+    orderId: String(input.orderId ?? "").trim(),
+    salesPersonName: String(input.salesPersonName ?? "").trim() || "Handlowiec",
+    qty: Math.max(0, Number(input.qty) || 0),
+    symbol: input.symbol?.trim() ? input.symbol.trim() : null,
+    products: String(input.products ?? "").trim(),
+    requestNote: input.requestNote?.trim() ? input.requestNote.trim() : null,
+  };
+}
+
+export function buildZdPostCreateMarkFreeze(input: {
+  catalogOrderIds: readonly string[];
+  includedServiceOrderIds: readonly string[];
+  omittedServiceCount?: number;
+  serviceLines: readonly ZdEstimateIndividualServiceLine[];
+  catalogByTwId: ReadonlyMap<number, ZdEstimateIndividualTwExtra>;
+}): ZdPostCreateMarkFreeze {
+  const catalogIds = [
+    ...new Set(
+      input.catalogOrderIds.map((id) => String(id ?? "").trim()).filter(Boolean)
+    ),
+  ];
+  const catalogSet = new Set(catalogIds);
+  const teethIds = new Set<string>();
+  const serviceSnaps: ZdPostCreateServiceSnap[] = input.serviceLines.map(
+    (line) => {
+      const requests = line.requests.map((r) => requestSnapFromRef(r));
+      if (line.reason === "teeth") {
+        for (const r of requests) teethIds.add(r.orderId);
+      }
+      return {
+        key: line.key,
+        label: line.label,
+        qty: line.qty,
+        reason: line.reason,
+        requests,
+      };
+    }
+  );
+  const includedServiceIds = [
+    ...new Set(
+      input.includedServiceOrderIds
+        .map((id) => String(id ?? "").trim())
+        .filter((id) => id && !teethIds.has(id))
+    ),
+  ];
+  const catalogRequests: ZdPostCreateRequestSnap[] = [];
+  const seenCatalog = new Set<string>();
+  for (const extra of input.catalogByTwId.values()) {
+    for (const r of extra.requests) {
+      if (!catalogSet.has(r.orderId) || seenCatalog.has(r.orderId)) continue;
+      seenCatalog.add(r.orderId);
+      catalogRequests.push(requestSnapFromRef(r));
+    }
+  }
+  const consumed = [...new Set([...catalogIds, ...includedServiceIds, ...teethIds])];
+  return {
+    pendingGlowneCatalogIds: catalogIds,
+    pendingGlowneServiceIds: includedServiceIds,
+    consumedOrderIds: consumed,
+    catalogRequests,
+    serviceLines: serviceSnaps,
+    teethServiceCount: teethIds.size,
+    omittedServiceCount: Math.max(0, Math.trunc(input.omittedServiceCount ?? 0)),
+  };
+}
+
+export function pendingGlowneOrderIds(
+  freeze: ZdPostCreateMarkFreeze | null | undefined
+): string[] {
+  if (!freeze) return [];
+  return [
+    ...new Set([
+      ...freeze.pendingGlowneCatalogIds,
+      ...freeze.pendingGlowneServiceIds,
+    ]),
+  ];
+}
+
+export function excludeConsumedPendingOrders(
+  orders: readonly ZdEstimatePendingIndividualOrder[],
+  consumedIds: ReadonlySet<string> | readonly string[] | null | undefined
+): ZdEstimatePendingIndividualOrder[] {
+  const skip =
+    consumedIds instanceof Set
+      ? consumedIds
+      : new Set(
+          [...(consumedIds ?? [])].map((id) => String(id).trim()).filter(Boolean)
+        );
+  if (!skip.size) return [...orders];
+  return orders.filter((o) => !skip.has(o.id));
+}
 
 export function snapLinesFromCreatePreview(
   lines: readonly ZdCreatePreviewLine[],
@@ -58,11 +225,62 @@ export function snapLinesFromCreatePreview(
     return {
       twId: l.twId,
       symbol: String(l.symbol ?? "").trim() || `tw_${l.twId}`,
+      nazwa: String(l.nazwa ?? "").trim(),
       plu: l.plu?.trim() ? l.plu.trim() : null,
       ilosc: Math.max(0, Math.round(Number(l.ilosc) || 0)),
-      celAtLink: Math.max(0, Number(meta?.celAtLink) || 0),
-      deltaAtLink: Number(meta?.deltaAtLink) || 0,
+      packagingHint: l.packagingHint?.trim() ? l.packagingHint.trim() : null,
+      individualExtraPieces: Math.max(
+        0,
+        Math.round(Number(l.individualExtraPieces) || 0)
+      ),
+      extraOnly: l.extraOnly === true,
+      piecesArriving:
+        l.piecesArriving != null && Number.isFinite(Number(l.piecesArriving))
+          ? Math.max(0, Math.round(Number(l.piecesArriving)))
+          : null,
+      unitsPerPackage:
+        l.unitsPerPackage != null && Number.isFinite(Number(l.unitsPerPackage))
+          ? Math.max(0, Math.trunc(Number(l.unitsPerPackage)))
+          : null,
+      documentUnitMode: l.documentUnitMode ?? null,
+      roundupNeed:
+        l.roundupNeed != null && Number.isFinite(Number(l.roundupNeed))
+          ? Math.max(0, Math.round(Number(l.roundupNeed)))
+          : null,
+      roundupArrive:
+        l.roundupArrive != null && Number.isFinite(Number(l.roundupArrive))
+          ? Math.max(0, Math.round(Number(l.roundupArrive)))
+          : null,
+      bomOrPairLabel: l.bomOrPairLabel?.trim() ? l.bomOrPairLabel.trim() : null,
+      celAtLink: Math.max(
+        0,
+        Number(meta?.celAtLink ?? l.celZapasuTracked) || 0
+      ),
+      deltaAtLink: Number(meta?.deltaAtLink ?? l.salesTrackDelta) || 0,
     };
+  });
+}
+
+export function applyCreatedQtyToLineSnapshot(
+  lines: readonly ZdPostCreateLineSnap[],
+  createdLines: readonly { twId: number; ilosc: number }[] | null | undefined
+): ZdPostCreateLineSnap[] {
+  if (!createdLines?.length) return lines.map((l) => ({ ...l }));
+  const byTw = new Map<number, number>();
+  for (const row of createdLines) {
+    const tw = Math.trunc(Number(row.twId) || 0);
+    const qty = Math.max(0, Math.round(Number(row.ilosc) || 0));
+    if (tw > 0) byTw.set(tw, qty);
+  }
+  return lines.map((line) => {
+    const next = byTw.get(line.twId);
+    if (next == null || next === line.ilosc) return { ...line };
+    const piecesArriving = piecesArrivingForZdUnits(
+      next,
+      line.unitsPerPackage,
+      line.documentUnitMode ?? "packages"
+    );
+    return { ...line, ilosc: next, piecesArriving };
   });
 }
 
@@ -75,14 +293,21 @@ export function buildZdPostCreateSessionFromCreate(input: {
   lineCount: number;
   snapshotOk: boolean;
   snapshotMessage?: string;
-  markIndividualsMessage?: string;
   previewLines: readonly ZdCreatePreviewLine[];
   lineMeta?: readonly ZdPostCreateLineMetaInput[] | null;
+  createdLines?: readonly { twId: number; ilosc: number }[] | null;
+  markFreeze?: ZdPostCreateMarkFreeze | null;
+  bumped?: readonly ZdPostCreateBumpedLine[] | null;
+  composedUwagi?: string | null;
   createdAtMs?: number;
 }): ZdPostCreateSession {
-  const linesSnapshot = snapLinesFromCreatePreview(
+  const snapped = snapLinesFromCreatePreview(
     input.previewLines,
     input.lineMeta
+  );
+  const linesSnapshot = applyCreatedQtyToLineSnapshot(
+    snapped,
+    input.createdLines
   );
   const dokNr = String(input.dokNrPelny ?? "").trim() || null;
   return {
@@ -95,8 +320,13 @@ export function buildZdPostCreateSessionFromCreate(input: {
     lineCount: Math.max(0, Math.round(Number(input.lineCount) || linesSnapshot.length)),
     snapshotOk: input.snapshotOk === true,
     snapshotMessage: input.snapshotMessage,
-    markIndividualsMessage: input.markIndividualsMessage,
     linesSnapshot,
+    markFreeze: input.markFreeze ?? emptyZdPostCreateMarkFreeze(),
+    bumped: [...(input.bumped ?? [])],
+    composedUwagi: input.composedUwagi?.trim() || null,
+    glowneDone: false,
+    glowneMarkedIds: [],
+    scheduleDone: false,
     linkNrPrefill: input.snapshotOk ? null : dokNr,
     createdAtMs: input.createdAtMs ?? Date.now(),
   };
@@ -108,6 +338,7 @@ export function buildZdPostCreateSessionFromTimeout(input: {
   fromDaily: boolean;
   previewLines?: readonly ZdCreatePreviewLine[] | null;
   lineMeta?: readonly ZdPostCreateLineMetaInput[] | null;
+  markFreeze?: ZdPostCreateMarkFreeze | null;
   createdAtMs?: number;
 }): ZdPostCreateSession {
   const linesSnapshot = snapLinesFromCreatePreview(
@@ -124,6 +355,12 @@ export function buildZdPostCreateSessionFromTimeout(input: {
     lineCount: linesSnapshot.length,
     snapshotOk: false,
     linesSnapshot,
+    markFreeze: input.markFreeze ?? emptyZdPostCreateMarkFreeze(),
+    bumped: [],
+    composedUwagi: null,
+    glowneDone: false,
+    glowneMarkedIds: [],
+    scheduleDone: false,
     linkNrPrefill: null,
     createdAtMs: input.createdAtMs ?? Date.now(),
   };
@@ -141,6 +378,7 @@ export function buildZdPostCreateSessionFromLink(input: {
   /** Gdy brak previous snap (ręczne Powiąż) — zamroź live preview. */
   previewLines?: readonly ZdCreatePreviewLine[] | null;
   lineMeta?: readonly ZdPostCreateLineMetaInput[] | null;
+  markFreeze?: ZdPostCreateMarkFreeze | null;
   createdAtMs?: number;
 }): ZdPostCreateSession {
   const prev = input.previous;
@@ -170,8 +408,14 @@ export function buildZdPostCreateSessionFromLink(input: {
       )
     ),
     snapshotOk: true,
-    markIndividualsMessage: prev?.markIndividualsMessage,
     linesSnapshot,
+    markFreeze:
+      prev?.markFreeze ?? input.markFreeze ?? emptyZdPostCreateMarkFreeze(),
+    bumped: prev?.bumped ?? [],
+    composedUwagi: prev?.composedUwagi ?? null,
+    glowneDone: prev?.glowneDone === true,
+    glowneMarkedIds: prev?.glowneMarkedIds ?? [],
+    scheduleDone: prev?.scheduleDone === true,
     linkNrPrefill: null,
     recentCandidateCount: prev?.recentCandidateCount,
     createdAtMs: input.createdAtMs ?? Date.now(),
@@ -213,15 +457,43 @@ export function postCreateLinkLineMeta(
   }));
 }
 
-/** Prosty TSV ze snapshota create (nie wymaga pełnych ManualZdEstimateLine). */
+/** TSV ze snapshota create (nie wymaga pełnych ManualZdEstimateLine). */
 export function postCreateLinesSnapshotToTsv(
   lines: readonly ZdPostCreateLineSnap[]
 ): string {
-  const header = ["symbol", "plu", "do_zd", "tw_Id"].join("\t");
+  const header = [
+    "symbol",
+    "plu",
+    "nazwa",
+    "do_zd",
+    "sztuki",
+    "opakowanie",
+    "prosba_szt",
+    "tw_Id",
+  ].join("\t");
   const rows = lines.map((l) =>
-    [l.symbol, l.plu ?? "", l.ilosc, l.twId].join("\t")
+    [
+      l.symbol,
+      l.plu ?? "",
+      l.nazwa,
+      l.ilosc,
+      l.piecesArriving ?? "",
+      l.packagingHint ?? "",
+      l.individualExtraPieces || "",
+      l.twId,
+    ].join("\t")
   );
   return [header, ...rows].join("\n");
+}
+
+export function postCreateCreatedUnitsByTwId(
+  lines: readonly ZdPostCreateLineSnap[]
+): Map<number, number> {
+  const map = new Map<number, number>();
+  for (const l of lines) {
+    if (l.twId > 0 && l.ilosc > 0) map.set(l.twId, l.ilosc);
+  }
+  return map;
 }
 
 export function buildZdSupplierMailto(input: {

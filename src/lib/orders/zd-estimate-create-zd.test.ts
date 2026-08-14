@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyCreatedQtyToPreviewLines,
   applyCreatedZdUnitsToOtwarteZd,
   buildZdCreateApiBody,
   buildZdCreatePreviewFromOrderable,
@@ -7,6 +8,7 @@ import {
   defaultZdCreateUwagi,
   ensureZdCreateLinesCoverIndividualExtras,
   normalizeZdCreateUwagi,
+  previewBomOrPairLabel,
   resolveZdCreateKhId,
   validateZdCreateClientLines,
   ZD_CREATE_MAX_LINES,
@@ -182,6 +184,9 @@ describe("buildZdCreatePreviewFromOrderable", () => {
     const preview = buildZdCreatePreviewFromOrderable(lines, new Map());
     expect(preview.lines.map((l) => l.symbol).sort()).toEqual(["A", "K"]);
     expect(preview.lines.find((l) => l.symbol === "K")?.ilosc).toBe(20);
+    expect(preview.lines.find((l) => l.symbol === "K")?.bomOrPairLabel).toBe(
+      "komplet (kupujemy)"
+    );
   });
 
   it("respektuje override jednostek dokumentu", () => {
@@ -259,6 +264,112 @@ describe("buildZdCreatePreviewFromOrderable", () => {
     expect(preview.lines).toHaveLength(1);
     expect(preview.lines[0]?.ilosc).toBe(1); // ceil(25/40)
     expect(preview.lines[0]?.individualExtraPieces).toBe(25);
+    expect(preview.lines[0]?.extraOnly).toBe(true);
+    expect(preview.lines[0]?.celZapasuTracked).toBe(10);
+  });
+
+  it("extrasPolicy max: preview ilosc = max(need, extra), nie suma", () => {
+    const lines = [
+      baseLine({
+        tw_Id: 1,
+        tw_Symbol: "X",
+        celZapasu: 40,
+        celZapasuTracked: 40,
+        dostepne: 10,
+        doZamowieniaReczne: 30,
+      }),
+    ];
+    const pack = new Map([[1, { unitsPerPackage: 1, packageLabel: "szt" }]]);
+    const extras = new Map([[1, 8]]);
+    const sum = buildZdCreatePreviewFromOrderable(
+      lines,
+      pack,
+      extras,
+      null,
+      null,
+      "sum"
+    );
+    const max = buildZdCreatePreviewFromOrderable(
+      lines,
+      pack,
+      extras,
+      null,
+      null,
+      "max"
+    );
+    expect(sum.lines[0]?.ilosc).toBe(38);
+    expect(max.lines[0]?.ilosc).toBe(30);
+  });
+
+  it("applyCreatedQtyToPreviewLines nadpisuje ilosc po bumpie serwera", () => {
+    const preview = buildZdCreatePreviewFromOrderable(
+      [
+        baseLine({
+          tw_Id: 3,
+          tw_Symbol: "KARTON",
+          doZamowieniaReczne: 0,
+          pair: {
+            role: "pack",
+            twinTwId: 2,
+            unitsPerPack: 40,
+            sprzedazSzt: 0,
+            coverSzt: 0,
+            pieceSprzedaz: 0,
+            packSprzedaz: 0,
+            pieceDostepne: 0,
+            packDostepne: 0,
+            partnerMissing: false,
+          },
+        }),
+      ],
+      new Map([[3, { unitsPerPackage: 40, packageLabel: "op." }]]),
+      new Map([[3, 25]]),
+      null,
+      new Set([3])
+    );
+    const next = applyCreatedQtyToPreviewLines(preview.lines, [
+      { twId: 3, ilosc: 2 },
+    ]);
+    expect(next[0]?.ilosc).toBe(2);
+    expect(next[0]?.piecesArriving).toBe(80);
+  });
+
+  it("previewBomOrPairLabel: explode / kit / para", () => {
+    expect(
+      previewBomOrPairLabel({
+        bom: { role: "assembled_parent" },
+        pair: null,
+      })
+    ).toBe("zestaw (składamy)");
+    expect(
+      previewBomOrPairLabel({
+        bom: { role: "purchased_kit", purchaseTarget: "kit_only" },
+        pair: null,
+      })
+    ).toBe("komplet (tylko K)");
+    expect(
+      previewBomOrPairLabel({
+        bom: { role: "component" },
+        pair: null,
+      })
+    ).toBe("składnik BOM");
+    expect(
+      previewBomOrPairLabel({
+        bom: null,
+        pair: {
+          role: "pack",
+          twinTwId: 2,
+          unitsPerPack: 40,
+          sprzedazSzt: 0,
+          coverSzt: 0,
+          pieceSprzedaz: 0,
+          packSprzedaz: 0,
+          pieceDostepne: 0,
+          packDostepne: 0,
+          partnerMissing: false,
+        },
+      })
+    ).toBe("para 40 szt/op.");
   });
 });
 
@@ -346,6 +457,21 @@ describe("canCreateZdFromEstimateState", () => {
         creating: false,
         createDoneDokId: null,
         boostNeedsRecount: true,
+      }).ok
+    ).toBe(false);
+
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: false,
+        mutating: false,
+        creating: false,
+        createDoneDokId: null,
+        historyNeedsRecount: true,
       }).ok
     ).toBe(false);
 

@@ -10,6 +10,7 @@ import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { ZD_ESTIMATE_SERVICES_FOCUS_ID } from "@/lib/orders/zd-estimate-launch-scroll";
+import { zdEstimateProsbaWord } from "@/lib/orders/zd-estimate-ui-copy";
 
 const REASON_CHIP: Record<
   ZdEstimateIndividualServiceReason,
@@ -61,7 +62,7 @@ export function ZdEstimateIndividualServicesSection({
     <section
       id={ZD_ESTIMATE_SERVICES_FOCUS_ID}
       className={cn(
-        "scroll-mt-4 rounded-xl border border-amber-200/80 bg-amber-50/40 p-4",
+        "scroll-mt-4 rounded-xl bg-amber-50/45 p-4 ring-1 ring-amber-200/70",
         className
       )}
     >
@@ -71,16 +72,17 @@ export function ZdEstimateIndividualServicesSection({
             Usługi jednorazowe (prośby)
           </h3>
           <p className="mt-0.5 text-xs leading-snug text-slate-600">
-            Trafią do uwag ZD (nie jako towar). Po udanym create — Główne
-            (oprócz pozycji zębowych).
+            Trafią do uwag ZD (nie jako towar). Po utworzeniu ZD w podsumowaniu
+            zdecydujesz, czy odznaczyć je jako Główne (oprócz pozycji zębowych).
           </p>
           {excludedRoutedCount > 0 ? (
             <p className="mt-2 rounded-md bg-amber-100/90 px-2.5 py-1.5 text-xs text-amber-950">
               {excludedRoutedCount}{" "}
+              {zdEstimateProsbaWord(excludedRoutedCount)}{" "}
               {excludedRoutedCount === 1
-                ? "prośba z wykluczonej pozycji"
-                : "próśb z wykluczonych pozycji"}{" "}
-              — bez qty towaru, tylko w uwagach.
+                ? "z wykluczonej pozycji"
+                : "z wykluczonych pozycji"}{" "}
+              — bez ilości towaru, tylko w uwagach.
             </p>
           ) : null}
         </div>

@@ -4,6 +4,7 @@ import {
   computeBoostConfidence,
   computeSalesTrackedCel,
   formatSalesTrackHint,
+  formatSalesTrackReviewBadge,
   orderQtyFromCel,
   reconcileSalesTrackQtyMetaAfterHistory,
   soldNormalizedToZapas,
@@ -501,7 +502,7 @@ describe("formatSalesTrackHint", () => {
       allowedExtraQty: 0,
     });
     expect(hint).toMatch(/bez \+1 szt/);
-    expect(hint).toMatch(/pewność 0%/);
+    expect(hint).toMatch(/niska pewność 0%/);
   });
 
   it("boost_held + cut (delta<0) — pokazuje cut i wstrzymany boost", () => {
@@ -530,6 +531,32 @@ describe("formatSalesTrackHint", () => {
       allowedExtraQty: 1,
     });
     expect(hint).toMatch(/\+1 szt z \+2/);
+  });
+});
+
+describe("formatSalesTrackReviewBadge", () => {
+  it("null gdy nie ma qtyReview", () => {
+    expect(
+      formatSalesTrackReviewBadge({
+        qtyReview: false,
+        confidence: 0.4,
+        reasons: ["thin_cover"],
+      })
+    ).toBeNull();
+  });
+
+  it("pewność + główny powód, bez boost_held", () => {
+    expect(
+      formatSalesTrackReviewBadge({
+        qtyReview: true,
+        confidence: 0.42,
+        reasons: ["boost_held", "thin_cover"],
+      })
+    ).toEqual({
+      confidencePct: 42,
+      reason: "cienkie pokrycie",
+      label: "42% · cienkie pokrycie",
+    });
   });
 });
 

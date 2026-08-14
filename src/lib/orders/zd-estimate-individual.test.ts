@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { excludeConsumedPendingOrders } from "./zd-estimate-post-create";
 import {
   buildIndividualEstimateExtras,
   buildIndividualServiceUwagiBlock,
@@ -598,6 +599,29 @@ describe("collectIndividualOrderIdsForZdCreate", () => {
         createdTwIds: [1, 2],
       })
     ).toEqual(["explode-1"]);
+  });
+
+  it("po create, bez Główne, extras zużytych IDs nie doliczają się drugi raz", () => {
+    const orders = [
+      pending({ id: "a", subiektTwId: 1, qty: 5, symbol: "A" }),
+      pending({ id: "b", subiektTwId: 2, qty: 3, symbol: "B" }),
+    ];
+    const kept = excludeConsumedPendingOrders(orders, ["a"]);
+    const bundle = buildIndividualEstimateExtras({
+      orders: kept,
+      lines: [
+        { tw_Id: 1, tw_Symbol: "A" },
+        { tw_Id: 2, tw_Symbol: "B" },
+      ],
+    });
+    expect(bundle.byTwId.has(1)).toBe(false);
+    expect(bundle.byTwId.get(2)?.extraPieces).toBe(3);
+    expect(
+      collectIndividualOrderIdsForZdCreate({
+        byTwId: bundle.byTwId,
+        createdTwIds: [1, 2],
+      })
+    ).toEqual(["b"]);
   });
 
   it("bom_explode_incomplete przy pustych składnikach", () => {

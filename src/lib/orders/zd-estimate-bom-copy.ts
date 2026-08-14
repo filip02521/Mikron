@@ -119,12 +119,20 @@ export const ZD_BOM_UI = {
 
   alertKitOnlySalesTitle: "Składniki bez ścieżki zakupu",
   alertKitOnlySalesBody: (count: number) => {
-    const noun = count === 1 ? "składnik ma" : "składniki mają";
-    return `${count} ${noun} sprzedaż lub prośbę przy presecie „Tylko komplet” — na ZD nie wejdą jako pozycje katalogowe. Zmień preset albo zamów komplet.`;
+    const n = Math.max(0, Math.trunc(count));
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    const noun =
+      n === 1
+        ? "składnik ma"
+        : mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)
+          ? "składniki mają"
+          : "składników ma";
+    return `${n} ${noun} sprzedaż lub prośbę przy presecie „Tylko komplet” — na ZD nie wejdą jako pozycje katalogowe. Zmień preset albo zamów komplet.`;
   },
-  alertExplodeIncompleteTitle: "Skład explode niekompletny",
+  alertExplodeIncompleteTitle: "Skład „Składamy” niekompletny",
   alertExplodeIncompleteBody:
-    "Brakuje węzłów składu „Składamy” w wyniku — Do ZD / Create zablokowane, aż dociągniesz towary (Policz ponownie).",
+    "Brakuje towarów ze składu „Składamy” w wyniku — Do ZD i tworzenie ZD są zablokowane, aż dociągniesz pozycje („Policz listę” ponownie).",
 
   bulkButton: "Skład",
   bulkTitleReady: "Utwórz skład / komplet — wskaż zestaw",
