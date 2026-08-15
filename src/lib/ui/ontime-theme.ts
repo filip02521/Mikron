@@ -265,12 +265,10 @@ export const procurementArchivePageShellClass = adminPageShellClass;
 export const zdEstimatePageShellClass =
   "relative mx-auto w-full max-w-[min(100%,100rem)] space-y-5 sm:space-y-6";
 
-/**
- * Scena loadingu Kreatora ZD — wyśrodkowanie w obszarze main
- * (uwzględnia inset + mobile bottom chrome).
- */
+/** Scena loadingu Kreatora ZD — wyśrodkowanie bez prawie-pełnego 100dvh
+ * (to zostawiało pustkę w scrollu po reveal listy). */
 export const zdEstimateLoadingStageClass =
-  "flex min-h-[calc(100dvh-7.25rem)] w-full items-center justify-center px-2 py-8 sm:min-h-[calc(100dvh-5.5rem)] sm:px-3 sm:py-10 md:min-h-[calc(100dvh-4.25rem)]";
+  "flex w-full items-center justify-center px-2 py-8 sm:px-3 sm:py-10 md:py-12 min-h-[min(28rem,55dvh)]";
 
 /** Estetyczne okno loadingu (tytuł + checklista). */
 export const zdEstimateLoadingWindowClass =
@@ -287,15 +285,22 @@ export const zdEstimateWorkbenchStackClass =
 export const zdEstimateSectionInsetClass =
   "px-4 py-5 sm:px-6 sm:py-6 lg:px-7 lg:py-6";
 
+/** Ciaśniejszy inset karty przygotowania listy (formularz, nie tabela). */
+export const zdEstimatePrepInsetClass =
+  "px-4 py-3.5 sm:px-5 sm:py-4 lg:px-6";
+
 /** Wewnętrzny stack sekcji w kartach prep / lista. */
 export const zdEstimateSectionStackClass = "space-y-5";
 
-/** Pills parametrów zakresu (grupa / zapas / dostawca / okno). */
-export const zdEstimateMetaPillClass =
-  "min-w-0 rounded-xl border border-slate-200/80 bg-gradient-to-b from-white to-slate-50/80 px-3.5 py-3 shadow-sm shadow-slate-900/[0.02]";
+/** Stack sekcji w karcie przygotowania — gęstszy niż lista. */
+export const zdEstimatePrepStackClass = "space-y-3.5 sm:space-y-4";
 
-export const zdEstimateMetaPillReadyClass =
-  "border-indigo-200/85 from-indigo-50/50 to-white";
+/** Chipy faktów zakresu (grupa / zapas / dostawca / okno). */
+export const zdEstimateScopeFactChipClass =
+  "rounded-lg border border-slate-200/80 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700";
+
+export const zdEstimateScopeFactChipAccentClass =
+  "rounded-lg border border-indigo-200/80 bg-indigo-50/60 px-3 py-1.5 text-xs font-semibold text-indigo-950";
 
 /**
  * Powierzchnia narzędzi w karcie listy — bez ciężkiej ramki
@@ -312,13 +317,28 @@ export const zdEstimateChromeSurfaceClass =
 export const zdEstimateListBandClass =
   "sticky top-0 z-10 w-full min-w-0 space-y-2.5 border-b border-slate-100 bg-slate-50/90 px-3 py-3 backdrop-blur-md sm:px-4 sm:py-3.5 lg:px-5";
 
-/** Sticky Create / Policz — nad list tools (z-10). */
+/**
+ * Dock Create/Policz — `h-0` + sticky, żeby pasek NIE dokładał wysokości
+ * do scrollHeight (in-flow sticky + bottom + pb main = „kilometr” pustki).
+ */
+export const zdEstimateStickyDockClass =
+  "pointer-events-none sticky z-30 h-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:bottom-3";
+
+/** Pasek Create / Policz — absolute w docku (rysuje się w górę od h-0). */
 export const zdEstimateStickyBarClass =
-  "sticky z-30 flex border border-slate-200/90 bg-white/95 px-3 py-3 shadow-[0_-4px_16px_-8px_rgba(15,23,42,0.12)] backdrop-blur-sm sm:px-4 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] rounded-xl md:bottom-2";
+  "pointer-events-auto absolute bottom-0 left-0 right-0 flex border border-slate-200/90 bg-white/95 px-3 py-3 shadow-[0_-4px_16px_-8px_rgba(15,23,42,0.12)] backdrop-blur-sm sm:px-4 rounded-xl";
 
 /**
- * Selection / bulk — w flow nad tabelą (nie page-sticky top), żeby nie
- * konkurować z belką filtrów.
+ * Clearance w flow pod zadokowanym paskiem (żeby ostatnia treść nie była
+ * zasłonięta). Wysokość ≈ pasek; wariant tall = caption gate.
+ */
+export const zdEstimateStickyClearanceClass = "shrink-0 w-full h-14 sm:h-[3.75rem]";
+export const zdEstimateStickyClearanceTallClass =
+  "shrink-0 w-full h-[5.25rem] sm:h-24";
+
+/**
+ * Selection / bulk — w flow na dole (nad sticky Create), żeby akcje
+ * grupowe były w polu widzenia przy scrollu na dół strony.
  */
 export const zdEstimateSelectionBarClass =
   "w-full min-w-0 rounded-xl border border-indigo-200/75 bg-indigo-50/60 p-3 shadow-sm shadow-indigo-900/5 sm:p-3.5";
@@ -884,13 +904,26 @@ export const zdEstimateListToolsShellActiveClass =
   "border-indigo-200/75 bg-indigo-50/60 shadow-indigo-900/5";
 
 export const zdEstimateListToolsRowClass =
-  "flex w-full min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:gap-3.5";
+  "flex w-full min-w-0 flex-col gap-2.5 sm:gap-3";
 
 export const zdEstimateListToolsMetaClass =
-  "min-w-0 space-y-1 lg:max-w-[20rem] xl:max-w-[22rem] lg:shrink-0";
+  "min-w-0";
 
 export const zdEstimateListToolsActionsClass =
-  "flex min-w-0 flex-1 flex-wrap items-center gap-2 lg:justify-center";
+  "flex min-w-0 flex-1 flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-stretch sm:gap-x-0 sm:gap-y-2";
+
+/** Grupa akcji w pasku zaznaczenia (etykieta + przyciski). */
+export const zdEstimateSelectionGroupClass =
+  "flex min-w-0 flex-col gap-1 sm:px-2.5 first:sm:pl-0 last:sm:pr-0";
+
+export const zdEstimateSelectionGroupLabelClass =
+  "text-[10px] font-semibold uppercase tracking-[0.06em] text-indigo-800/55";
+
+export const zdEstimateSelectionGroupButtonsClass =
+  "flex flex-wrap items-center gap-1.5";
+
+export const zdEstimateSelectionGroupDividerClass =
+  "hidden sm:block w-px shrink-0 self-stretch bg-indigo-200/70";
 
 export const zdEstimateListToolsSearchWrapClass =
   "relative w-full min-w-0 sm:max-w-[17rem] lg:w-[16rem] lg:shrink-0";

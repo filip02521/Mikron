@@ -6,6 +6,45 @@
 export const ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION =
   "Zakres Subiekta → lista do zamówienia → Utwórz ZD.";
 
+/** Lead pod tytułem na stronie kreatora (pełniejsze zdanie niż strzałki w loadingu). */
+export function zdEstimatePageLead(): string {
+  return "Wybierz zakres w Subiekcie, policz listę Do ZD i utwórz dokument — w jednym miejscu.";
+}
+
+/** Kroki w nagłówku strony (wizualna mapa flow). */
+export function zdEstimatePageFlowSteps(): readonly {
+  id: string;
+  label: string;
+  hint: string;
+}[] {
+  return [
+    {
+      id: "scope",
+      label: "Zakres",
+      hint: "Grupa lub cecha Subiekta",
+    },
+    {
+      id: "list",
+      label: "Lista Do ZD",
+      hint: "Policz ilości na dokumencie",
+    },
+    {
+      id: "create",
+      label: "Utwórz ZD",
+      hint: "Zapis dokumentu w Subiekcie",
+    },
+  ];
+}
+
+/** Kontekst wejścia z panelu / podsumowania. */
+export function zdEstimatePageContextFromSupplier(
+  supplierName: string | null | undefined
+): string | null {
+  const name = supplierName?.trim();
+  if (!name) return null;
+  return `Dostawca: ${name}`;
+}
+
 /**
  * Polska odmiana liczebnikowa (1 / 2–4 / 5+ z wyjątkami 12–14).
  * `one` = mianownik lub biernik liczby pojedynczej zależnie od kontekstu.
@@ -182,20 +221,30 @@ export function zdEstimateRouteLoadingSteps(): ReadonlyArray<{
 
 export function zdEstimateScopeDashedHint(mode: "grupa" | "cecha"): string {
   return mode === "grupa"
-    ? "Wybierz szybki skrót (Falcon, Ivoclar…) albo wyszukaj grupę — zapas i daty ustawią się same. Potem „Policz listę”."
-    : "Wyszukaj i wybierz cechę — zapas i daty ustawią się z nazwy, jeśli jest karta dostawcy. Potem „Policz listę”.";
+    ? "Wybierz skrót albo wyszukaj grupę — zapas i daty ustawią się same."
+    : "Wyszukaj cechę — zapas i daty ustawią się z nazwy, jeśli jest karta dostawcy.";
 }
 
 export function zdEstimateReadyToCountHint(): string {
-  return "Gotowe — kliknij „Policz listę”.";
+  return "Gotowe — możesz policzyć listę.";
 }
 
 export function zdEstimateScopeChangedHint(): string {
-  return "Zakres zmieniony — policz ponownie, żeby odświeżyć listę.";
+  return "Zmieniono zakres — policz listę ponownie, żeby odświeżyć wynik.";
 }
 
 export function zdEstimateNeedsSettingsHint(): string {
-  return "Najpierw wczytaj ustawienia działu (baner powyżej), potem „Policz listę”.";
+  return "Najpierw wczytaj ustawienia działu (komunikat pod tą kartą albo „Spróbuj ponownie” w banerze), potem „Policz listę”.";
+}
+
+/** Jedna linia pod trybem Cecha. */
+export function zdEstimateCechaScopeCaption(): string {
+  return "Cecha może łączyć towary z wielu grup. Zapas bierzemy z nazwy cechy albo z dostawcy w „Zaawansowane”.";
+}
+
+/** HelpHint przy sekcji polityk liczenia. */
+export function zdEstimatePoliciesSectionHint(): string {
+  return "Ustalają, jak z tempa sprzedaży i z próśb handlowców wyliczamy ilość Do ZD. Zmiana podbicia przy gotowej liście wymaga ponownego „Policz listę”. Zmiana reguły próśb odświeża Do ZD od razu.";
 }
 
 export function zdEstimateLaunchProgressTitle(input: {
@@ -215,13 +264,14 @@ export function zdEstimateLaunchScopePendingHint(): string {
 }
 
 export function zdEstimateRecountOverlayMessage(): string {
-  return "Przeliczam listę…";
+  return "Przeliczam listę Do ZD";
 }
 
 export function zdEstimateRecountOverlayHint(isLive: boolean): string {
-  return isLive
-    ? "Pobieram dane z aktualnej bazy Subiekta — lista zostaje na ekranie."
-    : "Pobieram dane z testowego Subiekta — lista zostaje na ekranie.";
+  const host = isLive
+    ? "Pobieram świeże dane z aktualnej bazy Subiekta"
+    : "Pobieram świeże dane z testowego Subiekta";
+  return `${host}. Edycja i „Utwórz ZD” są wstrzymane — ilości mogą się zmienić.`;
 }
 
 export function zdEstimateRecountListStatus(input: {
@@ -236,7 +286,7 @@ export function zdEstimateRecountListStatus(input: {
 }
 
 export function zdEstimateCountingButtonLabel(): string {
-  return "Liczę…";
+  return "Przeliczam…";
 }
 
 export function zdEstimateHostBadgeLabel(input: {
@@ -282,7 +332,7 @@ export function zdEstimatePageHint(input: {
 }
 
 export function zdEstimatePrepCardHint(): string {
-  return "Wykluczenia, „tylko na prośbę”, opakowania, pary i składy są trwałe i wspólne dla działu zakupów.";
+  return "Wykluczenia, „tylko na prośbę”, opakowania, pary i składy są wspólne dla całego działu zakupów i obowiązują przy każdym „Policz listę”.";
 }
 
 export function zdEstimateEmptyListDescription(isLive: boolean): string {
@@ -309,10 +359,36 @@ export function zdEstimateBlockedOrdersAlertBody(message: string | null): string
   );
 }
 
-export function zdEstimateReadyFollowUp(isLive: boolean): string {
-  return isLive
-    ? "Użyj „Utwórz ZD” (aktualna baza — prawdziwy dokument) albo skopiuj TSV. „Powiąż ZD” tylko gdy dokument powstał poza OnTime."
-    : "Użyj „Utwórz ZD” (test) albo skopiuj TSV. „Powiąż ZD” tylko gdy dokument powstał poza OnTime.";
+/** Tytuł toastu po pierwszym Policz z Dziś / podsumowania. */
+export function zdEstimateLaunchReadyToastTitle(): string {
+  return "Lista gotowa";
+}
+
+/**
+ * Treść toastu — wynik + jedna linia co dalej (bez wykładu o Powiąż ZD).
+ * Odmiana: 1 pozycja / 2–4 pozycje / 5+ pozycji.
+ */
+export function zdEstimateLaunchReadyToastDescription(input: {
+  doZamowieniaCount: number;
+  pendingIndividualsCount?: number;
+  isLive: boolean;
+}): string {
+  const n = Math.max(0, Math.trunc(Number(input.doZamowieniaCount) || 0));
+  const posWord = zdEstimatePlCountWord(n, "pozycja", "pozycje", "pozycji");
+  const bits = [`${n} ${posWord} do ZD`];
+  const pending = Math.max(
+    0,
+    Math.trunc(Number(input.pendingIndividualsCount) || 0)
+  );
+  if (pending > 0) {
+    bits.push(
+      `${pending} ${zdEstimateProsbaWordAccusative(pending)}`
+    );
+  }
+  const next = input.isLive
+    ? "Utwórz ZD w aktualnej bazie albo skopiuj TSV."
+    : "Utwórz ZD (test) albo skopiuj TSV.";
+  return `${bits.join(" · ")}. ${next}`;
 }
 
 export function zdEstimateCreateTitleHint(input: {
@@ -349,6 +425,9 @@ export const ZD_ESTIMATE_UI = {
     "Wymaga wczytanych wykluczeń, „tylko na prośbę”, opakowań, par, składów i katalogu zębów",
   createGateNeedsSettings:
     "Najpierw wczytaj wykluczenia, listę „tylko na prośbę”, opakowania, pary, składy i katalog zębów.",
+  createGateEstimating:
+    "Trwa przeliczanie listy Do ZD — poczekaj, zanim utworzysz dokument (ilości mogą się zmienić).",
+  createGateMutating: "Trwa inna operacja — poczekaj na zakończenie.",
   createGateExplodeBomIncomplete:
     "Skład w trybie „Składamy” jest niekompletny (brak towarów w wyniku) — dociągnij brakujące pozycje („Policz listę”), zanim utworzysz ZD.",
   createProgressDisclaimer:
@@ -364,7 +443,13 @@ export const ZD_ESTIMATE_UI = {
   packagingConflictTitle:
     "Opakowanie w OnTime różni się od przelicznika pary — sprawdź ustawienia przed utworzeniem ZD.",
   implicitPieceSnapshotTitle:
-    "Historia zapisze część pozycji jako sztuki 1:1 (brak opakowania / pary)",
+    "Historia zapisze jednostki ZD jako sztuki 1:1",
+  implicitPieceSnapshotBody:
+    "Jeśli towar idzie w paczkach, ustaw opakowanie (≥2 szt/op.) albo parę zanim zapiszesz ZD. Inaczej kolejne szacunki potraktują zapisane ilości jako sztuki.",
+  implicitPieceSnapshotContinueHint:
+    "Jeśli te towary idą na sztuki, możesz kontynuować bez zmian.",
+  implicitPieceSnapshotOpenPackagingCta: "Ustaw opakowania",
+  implicitPieceSnapshotOpenPairsCta: "Ustaw pary",
   emptyOrderTitle: "Brak pozycji do ZD",
   emptyExcludedTitle: "Brak wykluczeń w tym zakresie",
   emptyExcludedDescription:
@@ -372,18 +457,19 @@ export const ZD_ESTIMATE_UI = {
   excludedFilterTitle:
     "Wykluczenia ręczne, automatyczne oraz „tylko na prośbę” bez aktywnej prośby. Z prośbą — w Do ZD (ilość = prośba).",
   advancedZapasMinLabel: "Bufor minimum (szt.)",
-  advancedZapasMinHint: "Dodatkowy zapas minimum doliczany do celu.",
-  boostPowerLabel: "Podbicie sprzedaży",
-  boostPowerDefaultHint:
-    "Domyślnie Delikatny — ostrożniejsze podbicie Do ZD; możesz przełączyć na mocniejsze albo wyłączyć.",
-  boostPowerOffHint:
-    "Wyłączony = bez podbijania z tempa sprzedaży. Cięcia przy grubym pokryciu magazynowym nadal działają.",
+  advancedZapasMinHint:
+    "Dodatkowe sztuki doliczane do celu zapasu przed wyliczeniem Do ZD.",
+  advancedSalesWindowManualNote:
+    "Okno sprzedaży ustawione ręcznie — nie nadpisujemy dat z zapasu dostawcy ani grupy.",
+  boostPowerLabel: "Podbicie Do ZD",
+  boostPowerAriaLabel: "Siła podbicia ilości Do ZD względem tempa sprzedaży",
   boostNeedsRecountTitle: "Zmieniono podbicie sprzedaży",
   boostNeedsRecountBody:
     "Lista Do ZD pochodzi z poprzedniego ustawienia. Przelicz, zanim utworzysz ZD.",
   boostNeedsRecountCta: "Przelicz z nowym podbiciem",
   createGateBoostNeedsRecount:
     "Zmieniono podbicie sprzedaży — przelicz listę przed utworzeniem ZD.",
+  policiesSectionLabel: "Polityki liczenia",
   historyNeedsRecountTitle: "Zmieniono historię powiązań ZD",
   historyNeedsRecountBody:
     "Włączono lub wyłączono snapshot w historii zamówień. Przelicz listę przed utworzeniem ZD — korekta z historii mogła się zmienić.",
@@ -459,21 +545,32 @@ export const ZD_ESTIMATE_UI = {
   snapshotsLoadingList: "Wczytuję powiązania…",
   snapshotsLoadingLines: "Wczytuję linie…",
   snapshotsCloseCta: "Zamknij",
-  extrasPolicyLabel: "Prośby a niedobór magazynowy",
+  extrasPolicyLabel: "Prośby i niedobór",
+  extrasPolicyAriaLabel:
+    "Jak łączyć prośby handlowców z niedoborem magazynowym w ilości Do ZD",
   extrasPolicySumLabel: "Suma (niedobór + prośba)",
   extrasPolicyMaxLabel: "Maksimum (większa z niedoboru i prośby)",
+  extrasPolicySumShort: "Suma",
+  extrasPolicyMaxShort: "Maksimum",
   extrasPolicySumHint:
-    "Rezerwa próśb dokłada się do niedoboru — typowe przy Ivoclar/Falcon.",
+    "Do ZD = niedobór magazynowy + rezerwa z próśb. Typowe przy Ivoclar i Falcon.",
   extrasPolicyMaxHint:
-    "Gdy prośba już pokrywa niedobór, nie dubluj sztuk.",
+    "Do ZD = większa z dwóch wartości: niedobór albo prośba. Gdy prośba już pokrywa niedobór, nie dublujemy sztuk.",
   reviewAcceptCta: "Zaakceptuj",
   reviewZeroCta: "Zeruj Do ZD",
   reviewAcceptHint: "Zdejmuje flagę „Do weryfikacji” w tej sesji.",
   reviewZeroHint: "Ustawia Do ZD = 0 na zaznaczonych pozycjach.",
+  selectionGroupRelations: "Powiązania",
+  selectionGroupUnits: "Jednostki",
+  selectionGroupReview: "Pewność",
+  selectionGroupRules: "Reguły",
+  selectionGroupList: "Zakres listy",
+  selectionClearLabel: "Odznacz",
+  selectionMoreMenuLabel: "Więcej akcji",
   changeSupplierScopeCta: "Zmień przypisanie",
   changeSupplierScopeTitle: "Zmień zakres Subiekta",
   changeSupplierScopeHint:
-    "Wybierz inną grupę lub cechę poniżej, potem „Zapisz zakres i policz”.",
+    "Wskaż inną grupę lub cechę w formularzu, potem „Zapisz zakres i policz”.",
   changeSupplierScopeCancelCta: "Anuluj zmianę",
   assignSupplierScopeTitle: "Przypisz zakres Subiekta",
   onRequestVsHardExclude:
@@ -592,25 +689,48 @@ export function formatPostCreateCandidatesHint(n: number): string | null {
 }
 
 /** Preflight przed Create / Powiąż ZD — pozycje bez jawnego opakowania / pary. */
+export type ImplicitPieceSnapshotNotice = {
+  count: number;
+  countLabel: string;
+  title: string;
+  body: string;
+  samples: ReadonlyArray<{ symbol: string; twId: number; label: string }>;
+  moreCount: number;
+  /** Jedna linia — dialogi / aria / legacy. */
+  summaryLine: string;
+};
+
+export function buildImplicitPieceSnapshotNotice(
+  lines: ReadonlyArray<{ symbol: string; twId: number }>,
+  maxNames = 6
+): ImplicitPieceSnapshotNotice | null {
+  if (!lines.length) return null;
+  const n = lines.length;
+  const countLabel = `${n} ${zdEstimatePlCountWord(n, "pozycja", "pozycje", "pozycji")}`;
+  const samples = lines.slice(0, maxNames).map((l) => ({
+    symbol: l.symbol,
+    twId: l.twId,
+    label: `${l.symbol} (${l.twId})`,
+  }));
+  const moreCount = Math.max(0, n - samples.length);
+  const sampleText = samples.map((s) => s.label).join(", ");
+  const more = moreCount > 0 ? ` (+${moreCount})` : "";
+  const summaryLine = `${countLabel} bez opakowania ani pary (${sampleText}${more}) — historia zapisze jednostki ZD jako sztuki 1:1. Ustaw opakowanie (≥2 szt/op.) lub parę, jeśli towar idzie w paczkach.`;
+  return {
+    count: n,
+    countLabel,
+    title: ZD_ESTIMATE_UI.implicitPieceSnapshotTitle,
+    body: ZD_ESTIMATE_UI.implicitPieceSnapshotBody,
+    samples,
+    moreCount,
+    summaryLine,
+  };
+}
+
+/** @deprecated Preferuj `buildImplicitPieceSnapshotNotice` + komponent UI. */
 export function formatImplicitPieceSnapshotHint(
   lines: ReadonlyArray<{ symbol: string; twId: number }>,
   maxNames = 4
 ): string | null {
-  if (!lines.length) return null;
-  const sample = lines
-    .slice(0, maxNames)
-    .map((l) => `${l.symbol} (${l.twId})`)
-    .join(", ");
-  const more =
-    lines.length > maxNames ? ` (+${lines.length - maxNames})` : "";
-  const n = lines.length;
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  const countLabel =
-    n === 1
-      ? "1 pozycja"
-      : mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)
-        ? `${n} pozycje`
-        : `${n} pozycji`;
-  return `${countLabel} bez opakowania ani pary (${sample}${more}) — historia zapisze jednostki ZD jako sztuki 1:1. Ustaw opakowanie (≥2 szt/op.) lub parę, jeśli towar idzie w paczkach.`;
+  return buildImplicitPieceSnapshotNotice(lines, maxNames)?.summaryLine ?? null;
 }

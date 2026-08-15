@@ -330,14 +330,105 @@ select:disabled,
 /* Kreator ZD — czytelne wiersze (nie queue-table) */
 .data-table.zd-estimate-table {
   --zd-est-check-w: 2.75rem;
-  --zd-est-symbol-w: 7rem;
-  --zd-est-dozd-w: 6.25rem;
+  /* Towar: symbol + skrót nazwy (sticky) */
+  --zd-est-symbol-w: 12.5rem;
+  --zd-est-dozd-w: 5.5rem;
   --zd-est-sticky-dozd-left: calc(var(--zd-est-check-w) + var(--zd-est-symbol-w));
+  /* Status: kompaktowe badge’e w jednej linii */
+  --zd-est-status-w: 10.75rem;
+  --zd-est-confidence-w: 4.25rem;
+  /*
+   * Liczby: jedna baza + jeden akcent decyzji (Do ZD).
+   * Różnice B/C/D = waga/opacity, NIE rozmiar (spójność skanu).
+   */
+  --zd-num: 0.875rem;
+  --zd-num-decision: 1.0625rem;
+  --zd-num-unit: 0.625rem;
+  --zd-num-color: #334155;
+  --zd-num-color-emph: #1e293b;
+  --zd-num-color-quiet: #64748b;
+  --zd-num-color-dash: #cbd5e1;
+  --zd-num-color-unit: #94a3b8;
+  --zd-num-color-decision: #065f46;
+  --zd-num-color-warn: #92400e;
   min-width: 60rem;
   font-size: 0.8125rem;
   line-height: 1.35;
   border-collapse: separate;
   border-spacing: 0;
+}
+
+/* Decyzja — jedyny większy akcent */
+.data-table.zd-estimate-table .zd-est-qty--a {
+  font-size: var(--zd-num-decision);
+  font-weight: 600;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.015em;
+  color: var(--zd-num-color);
+}
+
+/* Niedobór (Dost./Cel) — ta sama wielkość, mocniejsza waga */
+.data-table.zd-estimate-table .zd-est-qty--b {
+  font-size: var(--zd-num);
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--zd-num-color-emph);
+}
+
+/* Przepływ (Sprzed./Otwarte/Opak.) — baza */
+.data-table.zd-estimate-table .zd-est-qty--c {
+  font-size: var(--zd-num);
+  font-weight: 500;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--zd-num-color);
+}
+
+/* Tło (Stan/Rez/ZK/API) — ta sama wielkość, cichszy kolor */
+.data-table.zd-estimate-table .zd-est-qty--d {
+  font-size: var(--zd-num);
+  font-weight: 500;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--zd-num-color-quiet);
+}
+
+.data-table.zd-estimate-table .zd-est-qty--dash {
+  color: var(--zd-num-color-dash);
+  font-weight: 500;
+}
+
+.data-table.zd-estimate-table .zd-est-qty--warn {
+  color: var(--zd-num-color-warn);
+}
+
+.data-table.zd-estimate-table .zd-est-qty--muted {
+  color: var(--zd-num-color-dash);
+}
+
+.data-table.zd-estimate-table .zd-est-qty--decision {
+  color: var(--zd-num-color-decision);
+}
+
+.data-table.zd-estimate-table .zd-est-qty--override {
+  color: var(--zd-num-color-warn);
+}
+
+/* Jednostki — jeden styl dla szt / op. / j.dok. / ≈ */
+.data-table.zd-estimate-table .zd-est-unit,
+.data-table.zd-estimate-table .zd-est-unit--pieces,
+.data-table.zd-estimate-table .zd-est-unit--pack,
+.data-table.zd-estimate-table .zd-est-unit--approx {
+  font-size: var(--zd-num-unit);
+  font-weight: 500;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  color: var(--zd-num-color-unit);
 }
 
 .data-table.zd-estimate-table.zd-estimate-table--detail {
@@ -355,7 +446,8 @@ select:disabled,
 .data-table.zd-estimate-table th,
 .data-table.zd-estimate-table td {
   padding: 0.6rem 0.7rem;
-  vertical-align: top;
+  vertical-align: middle;
+  text-align: left;
 }
 
 .data-table.zd-estimate-table td.zd-estimate-num-col,
@@ -365,22 +457,21 @@ select:disabled,
   padding-left: 0.4rem;
   padding-right: 0.65rem;
   font-variant-numeric: tabular-nums;
-  /* .data-table th/td { text-align:left } bije utility text-right — wymuś tu. */
-  text-align: right;
+  text-align: left;
 }
 
-/* Sprzed. / Cel — szersze: szt + ≈ op. + kanały pary pod spodem */
+/* Sprzed. / Cel */
 .data-table.zd-estimate-table td.zd-estimate-metric-col,
 .data-table.zd-estimate-table th.zd-estimate-metric-col {
-  width: 7.5rem;
-  min-width: 7.25rem;
-  max-width: 8.75rem;
+  width: 5.75rem;
+  min-width: 5.5rem;
+  max-width: 7rem;
   padding-left: 0.45rem;
   padding-right: 0.7rem;
   font-variant-numeric: tabular-nums;
-  vertical-align: top;
+  vertical-align: middle;
   white-space: normal;
-  text-align: right;
+  text-align: left;
 }
 
 .data-table.zd-estimate-table td.zd-estimate-metric-col .zd-estimate-metric-stack {
@@ -389,9 +480,9 @@ select:disabled,
 
 .data-table.zd-estimate-table td.zd-estimate-pack-col,
 .data-table.zd-estimate-table th.zd-estimate-pack-col {
-  width: 5.25rem;
-  min-width: 5.25rem;
-  text-align: right;
+  width: 4.25rem;
+  min-width: 4.25rem;
+  text-align: left;
 }
 
 /* Checkbox — sticky left */
@@ -410,7 +501,7 @@ select:disabled,
   box-shadow: none;
 }
 
-/* Symbol — sticky za checkboxem */
+/* Symbol — sticky za checkboxem (symbol + skrót nazwy) */
 .data-table.zd-estimate-table th.zd-estimate-symbol-col,
 .data-table.zd-estimate-table td.zd-estimate-symbol-col,
 .data-table.zd-estimate-table tbody td.zd-estimate-symbol-col {
@@ -423,14 +514,15 @@ select:disabled,
   background: #fff;
   box-shadow: none;
   overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  vertical-align: middle;
 }
 
 .data-table.zd-estimate-table thead th.zd-estimate-symbol-col {
   left: var(--zd-est-check-w);
 }
 
-/* Do ZD — sticky decyzja (za symbolem), wyróżniona; qty zawsze od lewej */
+/* Do ZD — sticky decyzja; spokojny akcent */
 .data-table.zd-estimate-table th.zd-estimate-dozd-col,
 .data-table.zd-estimate-table td.zd-estimate-dozd-col {
   position: sticky;
@@ -439,18 +531,183 @@ select:disabled,
   width: var(--zd-est-dozd-w);
   min-width: var(--zd-est-dozd-w);
   max-width: var(--zd-est-dozd-w);
-  padding-left: 0.5rem;
-  padding-right: 0.5rem;
+  padding-left: 0.45rem;
+  padding-right: 0.45rem;
   text-align: left;
-  background-color: rgb(236 253 245 / 0.92);
-  box-shadow: inset 3px 0 0 0 #34d399, 1px 0 0 #a7f3d0;
+  background-color: rgb(236 253 245 / 0.55);
+  box-shadow: inset 2px 0 0 0 #6ee7b7, 1px 0 0 #d1fae5;
   overflow: hidden;
-  vertical-align: top;
+  vertical-align: middle;
+}
+
+.data-table.zd-estimate-table td.zd-estimate-dozd-col.zd-estimate-dozd-col--idle {
+  background-color: rgb(248 250 252 / 0.9);
+  box-shadow: inset 2px 0 0 0 #cbd5e1, 1px 0 0 #e2e8f0;
 }
 
 .data-table.zd-estimate-table thead th.zd-estimate-dozd-col {
-  background-color: #ecfdf5;
+  background-color: #f0fdf4;
   color: #047857;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd-input {
+  box-sizing: border-box;
+  height: 1.75rem;
+  width: 100%;
+  max-width: 4.25rem;
+  min-width: 0;
+  border-radius: 0.375rem;
+  border: 1px solid #bbf7d0;
+  background: #fff;
+  padding: 0 0.4rem;
+  font-size: var(--zd-num-decision);
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.015em;
+  color: var(--zd-num-color-decision);
+}
+
+.data-table.zd-estimate-table .zd-est-dozd-input--idle {
+  border-color: #e2e8f0;
+  color: var(--zd-num-color-dash);
+}
+
+.data-table.zd-estimate-table .zd-est-dozd-input--override {
+  border-color: #fcd34d;
+  background: #fffbeb;
+  color: var(--zd-num-color-warn);
+}
+
+.data-table.zd-estimate-table .zd-est-dozd-value {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd-hint {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--zd-num-unit);
+  font-weight: 500;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  color: var(--zd-num-color-warn);
+  opacity: 0.9;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd-reset {
+  display: block;
+  max-width: 100%;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-size: var(--zd-num-unit);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--zd-num-color-warn);
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd-reset:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd-reset:hover:not(:disabled) {
+  color: #78350f;
+}
+
+/* Pewność — wąska kolumna, pill jak Status */
+.data-table.zd-estimate-table th.zd-estimate-confidence-col,
+.data-table.zd-estimate-table td.zd-estimate-confidence-col {
+  width: var(--zd-est-confidence-w);
+  min-width: var(--zd-est-confidence-w);
+  max-width: var(--zd-est-confidence-w);
+  padding-left: 0.4rem;
+  padding-right: 0.4rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.data-table.zd-estimate-table th.zd-estimate-confidence-col > button {
+  display: inline-flex;
+  width: auto;
+  justify-content: center;
+}
+
+.data-table.zd-estimate-table .zd-est-confidence {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.3rem;
+  height: 1.375rem;
+  padding: 0 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  box-shadow: inset 0 0 0 1px rgb(15 23 42 / 0.08);
+}
+
+.data-table.zd-estimate-table .zd-est-confidence--idle {
+  background: transparent;
+  box-shadow: none;
+  color: var(--zd-num-color-dash);
+  font-weight: 500;
+  padding-left: 0;
+}
+
+.data-table.zd-estimate-table .zd-est-confidence--ok {
+  background: #f8fafc;
+  color: var(--zd-num-color-quiet);
+}
+
+.data-table.zd-estimate-table .zd-est-confidence--review {
+  background: #fffbeb;
+  color: var(--zd-num-color-warn);
+}
+
+.data-table.zd-estimate-table .zd-est-confidence--accepted {
+  background: #ecfdf5;
+  color: var(--zd-num-color-decision);
+}
+
+.data-table.zd-estimate-table .zd-est-confidence__dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: #f59e0b;
+}
+
+.data-table.zd-estimate-table button.zd-est-confidence--review {
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.data-table.zd-estimate-table button.zd-est-confidence--review:hover {
+  background: #fef3c7;
+}
+
+.data-table.zd-estimate-table button.zd-est-confidence--review:focus-visible {
+  outline: 2px solid rgb(245 158 11 / 0.55);
+  outline-offset: 1px;
 }
 
 .data-table.zd-estimate-table th:last-child,
@@ -464,7 +721,8 @@ select:disabled,
   box-shadow: -1px 0 0 #e2e8f0;
   width: 3.1rem;
   min-width: 3.1rem;
-  text-align: right;
+  text-align: center;
+  vertical-align: middle;
 }
 
 .data-table.zd-estimate-table thead th {
@@ -500,7 +758,7 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table thead th.zd-estimate-dozd-col {
-  box-shadow: inset 3px 0 0 0 #34d399, 1px 0 0 #a7f3d0, 0 1px 0 #e2e8f0;
+  box-shadow: inset 2px 0 0 0 #6ee7b7, 1px 0 0 #d1fae5, 0 1px 0 #e2e8f0;
 }
 
 .data-table.zd-estimate-table thead th:last-child {
@@ -514,7 +772,11 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table tbody tr:nth-child(even):not([class*="bg-"]) td.zd-estimate-dozd-col {
-  background-color: rgb(209 250 229 / 0.85);
+  background-color: rgb(220 252 231 / 0.55);
+}
+
+.data-table.zd-estimate-table tbody tr:nth-child(even):not([class*="bg-"]) td.zd-estimate-dozd-col.zd-estimate-dozd-col--idle {
+  background-color: rgb(241 245 249 / 0.95);
 }
 
 .data-table.zd-estimate-table tbody tr:nth-child(even):not([class*="bg-"]) td.zd-estimate-check-col,
@@ -528,7 +790,11 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table tbody tr:hover td.zd-estimate-dozd-col {
-  background-color: #a7f3d0;
+  background-color: #d1fae5;
+}
+
+.data-table.zd-estimate-table tbody tr:hover td.zd-estimate-dozd-col.zd-estimate-dozd-col--idle {
+  background-color: #e2e8f0;
 }
 
 .data-table.zd-estimate-table tbody tr:hover td.zd-estimate-check-col,
@@ -547,6 +813,10 @@ select:disabled,
   background-color: rgb(226 232 240 / 0.95);
 }
 
+.data-table.zd-estimate-table tbody tr[class*="bg-slate"] td.zd-estimate-dozd-col.zd-estimate-dozd-col--idle {
+  background-color: rgb(226 232 240 / 0.95);
+}
+
 .data-table.zd-estimate-table tbody tr[class*="bg-indigo"] td.zd-estimate-check-col,
 .data-table.zd-estimate-table tbody tr[class*="bg-indigo"] td.zd-estimate-symbol-col,
 .data-table.zd-estimate-table tbody tr[class*="bg-indigo"] td:last-child {
@@ -554,7 +824,7 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table tbody tr[class*="bg-indigo"] td.zd-estimate-dozd-col {
-  background-color: #a7f3d0;
+  background-color: #d1fae5;
 }
 
 /* Zaznaczenie wiersza — data-attr (nie zależymy od Tailwind bg-* / opacity). */
@@ -585,15 +855,89 @@ select:disabled,
 
 .data-table.zd-estimate-table th.zd-estimate-name-col,
 .data-table.zd-estimate-table td.zd-estimate-name-col {
-  min-width: 13rem;
-  max-width: 20rem;
+  width: var(--zd-est-status-w);
+  min-width: var(--zd-est-status-w);
+  max-width: var(--zd-est-status-w);
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
 }
 
-@media (min-width: 1280px) {
-  .data-table.zd-estimate-table th.zd-estimate-name-col,
-  .data-table.zd-estimate-table td.zd-estimate-name-col {
-    max-width: 24rem;
-  }
+/* Status — wspólny shell badge’y (jedna linia, stała wysokość) */
+.data-table.zd-estimate-table .zd-est-status-badge {
+  display: inline-flex;
+  max-width: 100%;
+  min-width: 0;
+  align-items: center;
+  gap: 0.3rem;
+  height: 1.375rem;
+  padding: 0 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.625rem;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  box-shadow: inset 0 0 0 1px rgb(15 23 42 / 0.08);
+}
+
+.data-table.zd-estimate-table .zd-est-status-badge__kind {
+  flex-shrink: 0;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.data-table.zd-estimate-table .zd-est-status-badge__meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  opacity: 0.85;
+}
+
+.data-table.zd-estimate-table .zd-est-status-badge--indigo {
+  background: #eef2ff;
+  color: #312e81;
+}
+
+.data-table.zd-estimate-table .zd-est-status-badge--sky {
+  background: #f0f9ff;
+  color: #0c4a6e;
+}
+
+.data-table.zd-estimate-table .zd-est-status-badge--emerald {
+  background: #ecfdf5;
+  color: #064e3b;
+}
+
+.data-table.zd-estimate-table .zd-est-status-badge--amber {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.data-table.zd-estimate-table .zd-est-status-badge--rose {
+  background: #fff1f2;
+  color: #9f1239;
+}
+
+.data-table.zd-estimate-table .zd-est-status-badge--slate {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.data-table.zd-estimate-table .zd-est-status-more {
+  display: inline-flex;
+  height: 1.375rem;
+  flex-shrink: 0;
+  align-items: center;
+  padding: 0 0.4rem;
+  border-radius: 0.25rem;
+  background: #f1f5f9;
+  font-size: 0.625rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: #475569;
+  box-shadow: inset 0 0 0 1px rgb(15 23 42 / 0.08);
 }
 
 /* Kolejka przyjęcia — czytelniejsze wiersze */
@@ -662,6 +1006,45 @@ button:focus-visible {
 
 .table-scroll {
   -webkit-overflow-scrolling: touch;
+}
+
+/**
+ * Kreator ZD — izolowany scrollport tabeli.
+ * Sticky th/td (kolumny + thead) potrafiły rozszerzać scrollable overflow
+ * przodka (`<main>`), więc strona rosła jak pełna lista mimo max-h panelu.
+ *
+ * Wysokość: pod belką filtrów + sticky Create / mobile nav.
+ * `[data-zd-selection-open]` — krótsza lista, gdy widać pasek akcji zaznaczenia.
+ */
+#zd-estimate-table-scroll {
+  display: block;
+  max-height: min(70dvh, calc(100dvh - 12.5rem));
+  overflow: auto;
+  overscroll-behavior: contain;
+  isolation: isolate;
+  contain: layout paint;
+  -webkit-overflow-scrolling: touch;
+  transition: max-height 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#zd-estimate-table-scroll[data-zd-selection-open="true"] {
+  max-height: min(56dvh, calc(100dvh - 19.5rem));
+}
+
+@media (min-width: 768px) {
+  #zd-estimate-table-scroll {
+    max-height: min(74dvh, calc(100dvh - 10.5rem));
+  }
+
+  #zd-estimate-table-scroll[data-zd-selection-open="true"] {
+    max-height: min(62dvh, calc(100dvh - 16.75rem));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #zd-estimate-table-scroll {
+    transition: none;
+  }
 }
 
 @keyframes action-loading-shimmer {
@@ -1071,6 +1454,75 @@ html.ontime-scroll-locked main {
     > .procurement-lane-expand-grid-inner
     > .procurement-lane-expand-content {
     opacity: 0;
+  }
+}
+
+/* ——— Kreator ZD — pasek akcji zaznaczenia (enter/exit bez skoku layoutu) ——— */
+.zd-estimate-selection-expand-grid {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.2s ease-out;
+}
+
+.zd-estimate-selection-expand-grid.zd-estimate-selection-expand-grid--open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.zd-estimate-selection-expand-grid > .zd-estimate-selection-expand-grid-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.zd-estimate-selection-expand-grid:not(.zd-estimate-selection-expand-grid--open) {
+  pointer-events: none;
+}
+
+.zd-estimate-selection-expand-grid
+  > .zd-estimate-selection-expand-grid-inner
+  > .zd-estimate-selection-expand-content {
+  opacity: 0;
+  transform: translateY(0.4rem);
+  transition:
+    opacity 0.2s ease-out,
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.zd-estimate-selection-expand-grid--open
+  > .zd-estimate-selection-expand-grid-inner
+  > .zd-estimate-selection-expand-content {
+  padding-bottom: 0.5rem;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zd-estimate-selection-expand-grid {
+    transition: none;
+  }
+
+  .zd-estimate-selection-expand-grid
+    > .zd-estimate-selection-expand-grid-inner
+    > .zd-estimate-selection-expand-content {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .zd-estimate-selection-expand-grid:not(.zd-estimate-selection-expand-grid--open)
+    > .zd-estimate-selection-expand-grid-inner
+    > .zd-estimate-selection-expand-content {
+    opacity: 0;
+    padding-bottom: 0;
+  }
+
+  .zd-estimate-selection-expand-grid--open
+    > .zd-estimate-selection-expand-grid-inner
+    > .zd-estimate-selection-expand-content {
+    padding-bottom: 0.5rem;
   }
 }
 

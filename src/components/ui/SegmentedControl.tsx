@@ -15,6 +15,7 @@ export function SegmentedControl<T extends string>({
   ariaLabel,
   className,
   touchFriendly = false,
+  disabled = false,
 }: {
   value: T;
   onChange: (value: T) => void;
@@ -22,13 +23,16 @@ export function SegmentedControl<T extends string>({
   ariaLabel: string;
   className?: string;
   touchFriendly?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <div
       role="group"
       aria-label={ariaLabel}
+      aria-disabled={disabled || undefined}
       className={cn(
         "inline-flex max-w-full rounded-md border border-slate-200 bg-slate-50/80 p-0.5",
+        disabled && "opacity-60",
         className
       )}
     >
@@ -40,13 +44,16 @@ export function SegmentedControl<T extends string>({
             type="button"
             title={opt.title}
             aria-pressed={active}
+            disabled={disabled}
             onClick={() => onChange(opt.value)}
             className={cn(
               "min-w-0 truncate rounded-md px-2.5 py-1.5 text-xs font-medium transition sm:px-3 sm:text-sm",
-              touchFriendly && "min-h-10 flex-1 py-2.5 text-sm sm:flex-none sm:min-h-0 sm:py-1.5 sm:text-sm",
+              touchFriendly &&
+                "min-h-10 flex-1 py-2.5 text-sm sm:flex-none sm:min-h-0 sm:py-1.5 sm:text-sm",
               active
                 ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-600 hover:bg-white/60 hover:text-slate-900"
+                : "text-slate-600 hover:bg-white/60 hover:text-slate-900",
+              disabled && "cursor-not-allowed hover:bg-transparent hover:text-slate-600"
             )}
           >
             {opt.label}

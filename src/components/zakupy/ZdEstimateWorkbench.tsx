@@ -71,24 +71,27 @@ import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 import {
   ZD_ESTIMATE_UNITS_LEGEND,
   ZD_ESTIMATE_UI,
-  ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION,
   zdEstimateBlockedDailyCtaMessage,
   zdEstimateBlockedOrdersAlertBody,
   zdEstimateCountingButtonLabel,
   zdEstimateEmptyListDescription,
   zdEstimateNeedsSettingsHint,
+  zdEstimatePageContextFromSupplier,
   zdEstimatePageHint,
   zdEstimatePrepCardHint,
+  zdEstimatePoliciesSectionHint,
+  zdEstimateCechaScopeCaption,
   zdEstimateProsbaWord,
   zdEstimateProsbaWordAccusative,
-  zdEstimateReadyFollowUp,
+  zdEstimateLaunchReadyToastDescription,
+  zdEstimateLaunchReadyToastTitle,
   zdEstimateReadyToCountHint,
   zdEstimateRecountListStatus,
   zdEstimateRecountOverlayHint,
   zdEstimateRecountOverlayMessage,
   zdEstimateScopeChangedHint,
   zdEstimateScopeDashedHint,
-  formatImplicitPieceSnapshotHint,
+  buildImplicitPieceSnapshotNotice,
 } from "@/lib/orders/zd-estimate-ui-copy";
 import { shouldUseZdEstimateProgressShell } from "@/lib/orders/zd-estimate-progress-shell";
 import { applyGroupStockWindow } from "@/lib/orders/zd-estimate-group-stock";
@@ -106,7 +109,6 @@ import {
 } from "@/lib/orders/zd-estimate-sales-window";
 import { formatSalesTrackHint } from "@/lib/orders/zd-estimate-sales-track";
 import {
-  formatZdNameAutoExcludeBadge,
   mapZdNameAutoExcludedByTwId,
   mergeZdEstimateExcludedTwIds,
 } from "@/lib/orders/zd-estimate-name-exclude";
@@ -182,6 +184,7 @@ import {
   ZD_ESTIMATE_LAUNCH_TIMEOUT_FEEDBACK,
 } from "@/lib/orders/zd-estimate-launch-session";
 import { ZdEstimateListToolsBar } from "@/components/zakupy/ZdEstimateListToolsBar";
+import { ZdEstimateSelectionToolsReveal } from "@/components/zakupy/ZdEstimateSelectionToolsReveal";
 import { ZdEstimateListBand } from "@/components/zakupy/ZdEstimateListBand";
 import { ZdEstimateListSummaryLine } from "@/components/zakupy/ZdEstimateListSummaryLine";
 import { ZdEstimateAlertBucket } from "@/components/zakupy/ZdEstimateAlertBucket";
@@ -191,6 +194,7 @@ import { ZdEstimateConfidenceCell } from "@/components/zakupy/ZdEstimateConfiden
 import { ZdEstimateSnapshotsModal } from "@/components/zakupy/ZdEstimateSnapshotsModal";
 import { ZdEstimateSettingsTrustBanner } from "@/components/zakupy/ZdEstimateSettingsTrustBanner";
 import { UndoToast } from "@/components/ui/UndoToast";
+import { Toast } from "@/components/ui/Toast";
 import {
   filterZdEstimateLinesBySearch,
 } from "@/lib/orders/zd-estimate-list-tools";
@@ -199,15 +203,14 @@ import {
   formatZdPackagingPairConflictHint,
 } from "@/lib/orders/zd-estimate-packaging-pair-conflict";
 import {
-  ZdEstimatePairMetaBadge,
   ZdEstimatePairPackStockCell,
   ZdEstimatePairPiecesCell,
   ZdEstimatePairSalesCell,
   ZdEstimatePiecesMetricCell,
 } from "@/components/zakupy/ZdEstimatePairMetaBadge";
-import { ZdEstimateBomMetaBadge } from "@/components/zakupy/ZdEstimateBomMetaBadge";
 import { ZdEstimateDoZdCell } from "@/components/zakupy/ZdEstimateDoZdCell";
-import { ZdEstimateIndividualMetaBadge } from "@/components/zakupy/ZdEstimateIndividualMetaBadge";
+import { ZdEstimateNameMetaStack } from "@/components/zakupy/ZdEstimateNameMetaStack";
+import { ZdEstimateQtyValue } from "@/components/zakupy/ZdEstimateQtyValue";
 import { ZdEstimateIndividualServicesSection } from "@/components/zakupy/ZdEstimateIndividualServicesSection";
 import { ZdEstimateBulkExcludeDialog } from "@/components/zakupy/ZdEstimateBulkExcludeDialog";
 import { ZdEstimateBulkPackagingDialog } from "@/components/zakupy/ZdEstimateBulkPackagingDialog";
@@ -233,6 +236,7 @@ import {
   ZdEstimateLaunchProgressPanel,
 } from "@/components/zakupy/ZdEstimateLaunchProgress";
 import { ZdEstimatePageIntro } from "@/components/zakupy/ZdEstimatePageIntro";
+import { ZdEstimatePrepScopeFacts } from "@/components/zakupy/ZdEstimatePrepScopeFacts";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
@@ -241,16 +245,23 @@ import {
   launchProgressMinRevealWaitMs,
 } from "@/lib/orders/zd-estimate-launch-progress";
 import {
+  scrollZdEstimateAfterSelectionChange,
   scrollZdEstimateIntoView,
   scrollZdEstimateWhenReady,
   scrollZdEstimateRevealListWhenReady,
+  scrollZdEstimateToContentEnd,
+  clampZdEstimateScrollSurfaces,
+  clampZdEstimateTableScroll,
   ZD_ESTIMATE_ASSIGN_FOCUS_ID,
   ZD_ESTIMATE_ERROR_FOCUS_ID,
   ZD_ESTIMATE_LAUNCH_FOCUS_ID,
   ZD_ESTIMATE_LIST_FOCUS_ID,
   ZD_ESTIMATE_POLICZ_CTA_ID,
-  ZD_ESTIMATE_READY_FOCUS_ID,
+  ZD_ESTIMATE_SELECTION_TOOLS_ID,
   ZD_ESTIMATE_SERVICES_FOCUS_ID,
+  ZD_ESTIMATE_STICKY_ACTIONS_ID,
+  ZD_ESTIMATE_SCROLL_END_ID,
+  ZD_ESTIMATE_TABLE_SCROLL_ID,
 } from "@/lib/orders/zd-estimate-launch-scroll";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -259,6 +270,7 @@ import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import { Spinner } from "@/components/ui/Spinner";
 import {
   IconChevronDown,
@@ -277,11 +289,12 @@ import {
   checkboxBrandClass,
   panelTypography,
   sectionIconTileBrandClass,
-  zdEstimateMetaPillClass,
-  zdEstimateMetaPillReadyClass,
-  zdEstimateSectionInsetClass,
-  zdEstimateSectionStackClass,
+  zdEstimatePrepInsetClass,
+  zdEstimatePrepStackClass,
   zdEstimateStickyBarClass,
+  zdEstimateStickyClearanceClass,
+  zdEstimateStickyClearanceTallClass,
+  zdEstimateStickyDockClass,
   zdEstimateWorkbenchStackClass,
 } from "@/lib/ui/ontime-theme";
 
@@ -430,34 +443,6 @@ function resolveWindowForCecha(
   });
 }
 
-function MetaPill({
-  label,
-  value,
-  ready = false,
-}: {
-  label: string;
-  value: string;
-  /** Zakres gotowy do Policz — delikatny indigo, bez osobnego ringa na gridzie. */
-  ready?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        zdEstimateMetaPillClass,
-        ready && zdEstimateMetaPillReadyClass
-      )}
-    >
-      <p className={panelTypography.caption}>{label}</p>
-      <p
-        className="mt-1.5 line-clamp-2 text-sm font-semibold leading-snug text-slate-900 sm:text-[0.9375rem]"
-        title={value}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
-
 export function ZdEstimateWorkbench({
   bootstrap,
   launch = null,
@@ -469,10 +454,6 @@ export function ZdEstimateWorkbench({
   const [estimating, startEstimate] = useTransition();
   const [searching, startSearch] = useTransition();
   const [mutating, startMutate] = useTransition();
-  /** shell = panel postępu (pierwsze Policz); recount = overlay na liście. */
-  const [estimateUiMode, setEstimateUiMode] = useState<
-    "shell" | "recount" | null
-  >(null);
   const exclusionsGenRef = useRef(0);
   const packagingGenRef = useRef(0);
   const pairsGenRef = useRef(0);
@@ -588,6 +569,8 @@ export function ZdEstimateWorkbench({
   const [launchReadyMessage, setLaunchReadyMessage] = useState<string | null>(
     null
   );
+  /** Reveal scroll tylko raz na toast „Lista gotowa” (nie przy każdym setLines). */
+  const launchRevealDoneRef = useRef(false);
   /** EmptyState „Brak listy” tylko po nieudanym Policz. */
   const [lastEstimateFailed, setLastEstimateFailed] = useState(false);
   /** Po clear wyniku przez zmianę zakresu — hint w prep zamiast EmptyState. */
@@ -665,6 +648,7 @@ export function ZdEstimateWorkbench({
     setLaunchForceComplete(false);
     setLaunchStartedAtMs(started);
     setLaunchReadyMessage(null);
+    launchRevealDoneRef.current = false;
     return started;
   }, []);
   const [showZkColumn, setShowZkColumn] = useState(uiPrefs.showZkColumn);
@@ -837,6 +821,19 @@ export function ZdEstimateWorkbench({
   );
   const [bulkRestoreOpen, setBulkRestoreOpen] = useState(false);
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
+  const prevSelectedCountRef = useRef(0);
+  const selectionScrollTwIdRef = useRef<number | null>(null);
+  /** Pomija scroll przy programmatic clear (Policz / zmiana zakresu). */
+  const skipSelectionScrollRef = useRef(false);
+
+  const resetSelectionQuiet = useCallback(() => {
+    selectionScrollTwIdRef.current = null;
+    setSelected((prev) => {
+      if (Object.keys(prev).length === 0) return prev;
+      skipSelectionScrollRef.current = true;
+      return {};
+    });
+  }, []);
 
   const busy = estimating || searching || mutating;
   const exclusionsTrusted = exclusionsError == null;
@@ -853,8 +850,8 @@ export function ZdEstimateWorkbench({
     bomsTrusted &&
     teethTrusted;
 
-  const clearSelection = useCallback(() => setSelected({}), []);
-
+  /** „Odznacz” z UI — bez skoku viewportu (jak programmatic clear). */
+  const clearSelection = resetSelectionQuiet;
   const clearSucceededFromSelection = useCallback((ids: number[]) => {
     if (!ids.length) return;
     setSelected((prev) => {
@@ -1673,15 +1670,17 @@ export function ZdEstimateWorkbench({
     [productPairs]
   );
 
+  const createDialogPreview = createPreviewFrozen ?? createZdPreview;
+
   const confirmedTwIdsForSnapshot = useMemo(
-    () => createZdPreview.lines.map((l) => l.twId),
-    [createZdPreview.lines]
+    () => createDialogPreview.lines.map((l) => l.twId),
+    [createDialogPreview.lines]
   );
 
   const implicitPieceSnapshotLines = useMemo(() => {
-    if (!settingsTrusted || !createZdPreview.lineCount) return [];
+    if (!settingsTrusted || !createDialogPreview.lineCount) return [];
     return collectImplicitPieceSnapshotLines(
-      createZdPreview.lines.map((l) => ({
+      createDialogPreview.lines.map((l) => ({
         twId: l.twId,
         symbol: l.symbol,
         nazwa: l.nazwa,
@@ -1691,14 +1690,14 @@ export function ZdEstimateWorkbench({
     );
   }, [
     settingsTrusted,
-    createZdPreview.lines,
-    createZdPreview.lineCount,
+    createDialogPreview.lines,
+    createDialogPreview.lineCount,
     packagingByTwIdForSnapshot,
     pairRatioByTwIdForSnapshot,
   ]);
 
-  const implicitPieceSnapshotHint = useMemo(
-    () => formatImplicitPieceSnapshotHint(implicitPieceSnapshotLines),
+  const implicitPieceSnapshotNotice = useMemo(
+    () => buildImplicitPieceSnapshotNotice(implicitPieceSnapshotLines),
     [implicitPieceSnapshotLines]
   );
 
@@ -1865,7 +1864,7 @@ export function ZdEstimateWorkbench({
     setHistoryByTwId(new Map());
     setParamInfo(null);
     setMeta(null);
-    setSelected({});
+    resetSelectionQuiet();
     setListSearch("");
     setMissingPartnerTwIds([]);
     setMissingBomTwIds([]);
@@ -2108,7 +2107,6 @@ export function ZdEstimateWorkbench({
     const useProgressShell = shouldUseZdEstimateProgressShell({
       hasLines: lines != null,
     });
-    setEstimateUiMode(useProgressShell ? "shell" : "recount");
     const clearProgressBlocking = () => {
       if (useProgressShell) setLaunchBlocking(false);
     };
@@ -2166,7 +2164,7 @@ export function ZdEstimateWorkbench({
         setHistoryByTwId(new Map());
         setParamInfo(null);
         setMeta(null);
-        setSelected({});
+        resetSelectionQuiet();
         setAcceptedReviewTwIds({});
         setMissingPartnerTwIds([]);
         setPrepCollapsed(false);
@@ -2267,7 +2265,7 @@ export function ZdEstimateWorkbench({
         createLineMetaCaptureRef.current = null;
         createMarkFreezeCaptureRef.current = null;
         setCreateMarkFreezeFrozen(null);
-        setSelected({});
+        resetSelectionQuiet();
         setListSearch("");
         setParamInfo(res.result.parametry as Record<string, unknown>);
         setMeta({
@@ -2306,13 +2304,13 @@ export function ZdEstimateWorkbench({
         setScopeRemapActive(false);
         if (useProgressShell) {
           setPrepCollapsed(true);
-          const readyBits = [
-            `${res.meta.doZamowieniaCount} pozycji do ZD`,
-            res.pendingIndividuals != null && res.pendingIndividuals.length > 0
-              ? `${res.pendingIndividuals.length} ${zdEstimateProsbaWordAccusative(res.pendingIndividuals.length)}`
-              : null,
-          ].filter(Boolean);
-          setLaunchReadyMessage(`Gotowe — ${readyBits.join(" · ")}`);
+          setLaunchReadyMessage(
+            zdEstimateLaunchReadyToastDescription({
+              doZamowieniaCount: res.meta.doZamowieniaCount,
+              pendingIndividualsCount: res.pendingIndividuals?.length ?? 0,
+              isLive: bootstrap.ordersIsLive,
+            })
+          );
           setLaunchForceComplete(false);
           setLaunchBlocking(false);
           setRecountStatusMessage(null);
@@ -2409,16 +2407,22 @@ export function ZdEstimateWorkbench({
     setLinkNrPrefill(null);
     setCreateZdOpen(true);
   }, []);
-  const openLinkZdModal = useCallback(() => {
-    setCreateZdOpen(false);
+  const clearCreateZdCapture = useCallback(() => {
     setCreatingZd(false);
     createPreviewCaptureRef.current = null;
     setCreatePreviewFrozen(null);
     createLineMetaCaptureRef.current = null;
     createMarkFreezeCaptureRef.current = null;
     setCreateMarkFreezeFrozen(null);
-    setLinkZdOpen(true);
   }, []);
+  const closeCreateZdModal = useCallback(() => {
+    setCreateZdOpen(false);
+    clearCreateZdCapture();
+  }, [clearCreateZdCapture]);
+  const openLinkZdModal = useCallback(() => {
+    closeCreateZdModal();
+    setLinkZdOpen(true);
+  }, [closeCreateZdModal]);
 
   // Prośby przy supplierId (także needsAssign — bez czekania na Policz).
   useEffect(() => {
@@ -2562,6 +2566,9 @@ export function ZdEstimateWorkbench({
   /** Sticky Create/TSV/Link gdy jest wynik Policz (także przy 0 Do ZD). */
   const showResultStickyActions = Boolean(lines);
 
+  /** Blur na liście przy każdym Policz, gdy wynik już jest na ekranie. */
+  const showListRecountOverlay = Boolean(estimating && lines);
+
   /** Blokery z pełnym Alertem nad listą — nie powtarzaj reason w sticky. */
   const createGateShownAsFullAlert =
     Boolean(boostNeedsRecount && lines) ||
@@ -2580,11 +2587,12 @@ export function ZdEstimateWorkbench({
   const servicesOnlyBlockerVisible =
     individualBundle.serviceLines.length > 0 && orderableLines.length === 0;
 
-  /** Caption sticky tylko gdy nie ma już dedykowanego alertu / sekcji usług. */
+  /** Caption sticky — bez `estimating` (info jest na blurze listy). */
   const stickyCreateGateCaption =
     !createZdGate.ok &&
     !createGateShownAsFullAlert &&
-    !servicesOnlyBlockerVisible
+    !servicesOnlyBlockerVisible &&
+    !estimating
       ? createZdGate.reason
       : null;
 
@@ -2649,22 +2657,22 @@ export function ZdEstimateWorkbench({
     return;
   }, [showLaunchProgress, assignHint, launch?.fromDaily]);
 
-  /** Overlay „Przeliczam” tylko przy re-Policz — nie po reveal pierwszego Policz. */
-  const showListRecountOverlay =
-    estimating && estimateUiMode === "recount";
-
-  // Scroll na dół od razu po reveal listy (nawet jeśli settings refresh jeszcze trwa).
-  // Nie czekamy na !estimating — unikamy „pustego czekania” przed zjazdem.
+  // Scroll na dół po reveal listy — raz na toast „Lista gotowa”.
+  // Nie w deps `lines`: refresh par/BOM podczas toastu nie może gonić sticky.
   useEffect(() => {
-    if (!launchReadyMessage || !lines || showLaunchProgress) {
+    if (!launchReadyMessage) {
+      launchRevealDoneRef.current = false;
       return;
     }
+    if (!lines || showLaunchProgress || estimating) return;
+    if (launchRevealDoneRef.current) return;
+    launchRevealDoneRef.current = true;
     return scrollZdEstimateRevealListWhenReady({
       initialDelayMs: 80,
-      settlePassesMs: [200, 420, 700],
+      settlePassesMs: [200, 450],
       maxAttempts: 28,
     });
-  }, [launchReadyMessage, lines, showLaunchProgress]);
+  }, [launchReadyMessage, lines, showLaunchProgress, estimating]);
 
   // Scroll: błąd po progress (menu i daily) — nie podczas postępu
   useEffect(() => {
@@ -2875,6 +2883,43 @@ export function ZdEstimateWorkbench({
     visibleLines.length === 0 &&
     segmentFilteredLines.length > 0;
 
+  // Po filtrze / szukaniu: przytnij overscroll (timeouty = main+tabela;
+  // ResizeObserver tylko tabela — clamp main w RO skakał przy sticky/gestach).
+  useEffect(() => {
+    if (!lines) return;
+    let raf = 0;
+    let ro: ResizeObserver | null = null;
+    const runAll = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        clampZdEstimateScrollSurfaces();
+      });
+    };
+    const runTableOnly = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        clampZdEstimateTableScroll();
+      });
+    };
+    const t0 = window.setTimeout(runAll, 0);
+    const t1 = window.setTimeout(runAll, 120);
+    const t2 = window.setTimeout(runAll, 320);
+    const tableEl = document.getElementById(ZD_ESTIMATE_TABLE_SCROLL_ID);
+    if (tableEl && typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => runTableOnly());
+      ro.observe(tableEl);
+    }
+    return () => {
+      window.clearTimeout(t0);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      if (raf) cancelAnimationFrame(raf);
+      ro?.disconnect();
+    };
+  }, [listFilter, listSearch, lines, visibleLines.length]);
+
   const handleSort = useCallback(
     (field: ZdEstimateListSortKey) => {
       if (field === sortKey) {
@@ -2885,6 +2930,20 @@ export function ZdEstimateWorkbench({
       }
     },
     [sortKey]
+  );
+
+  /** Filtr listy — przy „Wszystkie” zjedź na dół (Create) i zresetuj scroll tabeli. */
+  const handleListFilterChange = useCallback(
+    (next: ListFilter) => {
+      setListFilter(next);
+      if (next !== "all") return;
+      window.setTimeout(() => {
+        const table = document.getElementById(ZD_ESTIMATE_TABLE_SCROLL_ID);
+        table?.scrollTo({ top: 0, behavior: "auto" });
+        scrollZdEstimateToContentEnd({ behavior: "smooth" });
+      }, 80);
+    },
+    []
   );
 
   const selectedLines = useMemo(() => {
@@ -2898,6 +2957,29 @@ export function ZdEstimateWorkbench({
     () => visibleLines.filter((l) => selected[l.tw_Id]).length,
     [visibleLines, selected]
   );
+  /** Ostatnie liczniki — treść paska zostaje w DOM podczas animacji exit. */
+  const [selectionExitCounts, setSelectionExitCounts] = useState({
+    selected: 0,
+    visible: 0,
+  });
+  // Sync bez useEffect — unikamy react-hooks/set-state-in-effect.
+  if (
+    selectedCount > 0 &&
+    (selectionExitCounts.selected !== selectedCount ||
+      selectionExitCounts.visible !== visibleSelectedCount)
+  ) {
+    setSelectionExitCounts({
+      selected: selectedCount,
+      visible: visibleSelectedCount,
+    });
+  }
+  const selectionToolsOpen = selectedCount > 0;
+  const selectionBarSelectedCount = selectionToolsOpen
+    ? selectedCount
+    : selectionExitCounts.selected;
+  const selectionBarVisibleSelectedCount = selectionToolsOpen
+    ? visibleSelectedCount
+    : selectionExitCounts.visible;
   const allVisibleSelected =
     visibleLines.length > 0 && visibleSelectedCount === visibleLines.length;
   const someVisibleSelected =
@@ -2964,7 +3046,41 @@ export function ZdEstimateWorkbench({
     if (el) el.indeterminate = someVisibleSelected;
   }, [someVisibleSelected]);
 
+  useEffect(() => {
+    const prev = prevSelectedCountRef.current;
+    const next = selectedCount;
+    if (prev === next) return;
+
+    if (skipSelectionScrollRef.current) {
+      skipSelectionScrollRef.current = false;
+      prevSelectedCountRef.current = next;
+      return;
+    }
+
+    const twId = selectionScrollTwIdRef.current;
+    let cancelled = false;
+    const followUpCancel = { current: null as (() => void) | null };
+    // prev aktualizujemy dopiero po scrollu — przeżywa React Strict Mode
+    // (cleanup kasuje timeout, drugi effect widzi nadal prev !== next).
+    const t = window.setTimeout(() => {
+      if (cancelled) return;
+      prevSelectedCountRef.current = next;
+      followUpCancel.current = scrollZdEstimateAfterSelectionChange({
+        prevCount: prev,
+        nextCount: next,
+        twId,
+      });
+    }, next > prev ? 50 : 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+      followUpCancel.current?.();
+      followUpCancel.current = null;
+    };
+  }, [selectedCount]);
+
   const toggleRowSelected = (twId: number, shiftKey = false) => {
+    selectionScrollTwIdRef.current = twId;
     if (shiftKey && selectAnchorTwIdRef.current != null) {
       const anchor = selectAnchorTwIdRef.current;
       const ids = visibleLines.map((l) => l.tw_Id);
@@ -2991,6 +3107,8 @@ export function ZdEstimateWorkbench({
   };
 
   const selectAllVisible = () => {
+    selectionScrollTwIdRef.current =
+      visibleLines[visibleLines.length - 1]?.tw_Id ?? null;
     setSelected((prev) => {
       const next = { ...prev };
       for (const row of visibleLines) next[row.tw_Id] = true;
@@ -3000,6 +3118,8 @@ export function ZdEstimateWorkbench({
 
   const toggleSelectAllVisible = () => {
     if (allVisibleSelected) {
+      selectionScrollTwIdRef.current =
+        visibleLines[0]?.tw_Id ?? selectionScrollTwIdRef.current;
       setSelected((prev) => {
         const next = { ...prev };
         for (const row of visibleLines) delete next[row.tw_Id];
@@ -3663,7 +3783,15 @@ export function ZdEstimateWorkbench({
   };
 
   return (
-    <div className={zdEstimateWorkbenchStackClass}>
+    <div
+      className={cn(
+        zdEstimateWorkbenchStackClass,
+        // Zjedz dolny py insetu — clearance docka jest jedynym „końcem” treści.
+        showResultStickyActions &&
+          !showLaunchProgress &&
+          "-mb-5 sm:-mb-6"
+      )}
+    >
       {showLaunchProgress && launchStartedAtMs != null ? (
         <ZdEstimateLaunchProgressPanel
           key={launchStartedAtMs}
@@ -3692,11 +3820,13 @@ export function ZdEstimateWorkbench({
       {!showLaunchProgress ? (
         <>
       <ZdEstimatePageIntro
-        description={ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION}
         hint={zdEstimatePageHint({
           isLive: bootstrap.ordersIsLive,
           configured: bootstrap.configured,
         })}
+        contextLabel={zdEstimatePageContextFromSupplier(
+          launch?.supplierName ?? null
+        )}
         host={{
           configured: bootstrap.configured,
           isLive: bootstrap.ordersIsLive,
@@ -3707,20 +3837,27 @@ export function ZdEstimateWorkbench({
             : null,
         }}
       />
+      {launchReadyMessage ? (
+        <Toast
+          tone="success"
+          title={zdEstimateLaunchReadyToastTitle()}
+          description={launchReadyMessage}
+          durationMs={6500}
+          onDismiss={() => setLaunchReadyMessage(null)}
+          className={cn(
+            floatingToastAboveZdStickyClass,
+            stickyCreateGateCaption || selectedCount > 0
+              ? floatingToastAboveZdStickyTallClass
+              : undefined
+          )}
+        />
+      ) : null}
+
       {/* Status LIVE/test jest w ZdEstimatePageIntro — tu tylko blokada. */}
       {!bootstrap.configured ? (
         <Alert tone="error" title="Kreator ZD zablokowany">
           {zdEstimateBlockedOrdersAlertBody(bootstrap.ordersMessage)}
         </Alert>
-      ) : null}
-
-      {launchReadyMessage ? (
-        <div id={ZD_ESTIMATE_READY_FOCUS_ID} className="scroll-mt-4">
-          <Alert tone="success" title="Zamówienie gotowe">
-            {launchReadyMessage}.{" "}
-            {zdEstimateReadyFollowUp(bootstrap.ordersIsLive)}
-          </Alert>
-        </div>
       ) : null}
 
       {postCreate ? (
@@ -3884,9 +4021,6 @@ export function ZdEstimateWorkbench({
                 Prośby nie wczytane — użyj „Wczytaj ponownie” powyżej.
               </span>
             ) : null}
-            <span className="mt-2 block text-sm">
-              Wybierz grupę lub cechę poniżej, potem „Zapisz zakres i policz”.
-            </span>
           </Alert>
         </div>
       ) : null}
@@ -3930,13 +4064,8 @@ export function ZdEstimateWorkbench({
       <Card padding={false} className="relative overflow-visible">
         <CardHeader
           inset
-          density="default"
+          density="compact"
           title="Przygotowanie listy"
-          description={
-            prepCollapsed
-              ? undefined
-              : "Wybierz grupę lub cechę Subiekta. Zapas i okno sprzedaży ustawią się same. Potem „Policz listę”."
-          }
           hint={prepCollapsed ? undefined : zdEstimatePrepCardHint()}
           leading={
             <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
@@ -3997,40 +4126,28 @@ export function ZdEstimateWorkbench({
           }
         />
 
-        {prepCollapsed && scopeSelected ? (
-          <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-4 py-3 sm:px-6 lg:px-7">
-            <span className="rounded-lg border border-indigo-200/80 bg-indigo-50/60 px-3 py-1.5 text-xs font-semibold text-indigo-950">
-              {scopeMode === "grupa"
-                ? selectedGroup?.grt_Nazwa
-                : selectedCecha?.ctw_Nazwa}
-            </span>
-            <span className="rounded-lg border border-slate-200/80 bg-slate-50 px-3 py-1.5 text-xs font-medium tabular-nums text-slate-700">
-              {stockLabel
-                ? `${stockLabel} · ${dniZapasu} d`
-                : `${dniZapasu} d zapasu`}
-            </span>
-            {supplierLabel ? (
-              <span className="rounded-lg border border-slate-200/80 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700">
-                {supplierLabel}
-              </span>
-            ) : null}
-            <span className="text-[11px] text-slate-500">
-              {formatPlDate(dataOd)} – {formatPlDate(dataDo)}
-            </span>
-          </div>
+        {prepCollapsed && scopeSelected && scopeLabel ? (
+          <ZdEstimatePrepScopeFacts
+            variant="collapsed"
+            scopeName={scopeLabel}
+            stockLabel={stockLabel}
+            dniZapasu={dniZapasu}
+            supplierLabel={supplierLabel}
+            dataOd={dataOd}
+            dataDo={dataDo}
+          />
         ) : null}
 
         <div
           className={cn(
-            zdEstimateSectionInsetClass,
-            zdEstimateSectionStackClass,
-            "sm:space-y-6",
+            zdEstimatePrepInsetClass,
+            zdEstimatePrepStackClass,
             prepCollapsed && "hidden"
           )}
         >
-          <section className="space-y-3">
+          <section className="space-y-2.5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className={panelTypography.sectionLabel}>Zakres szacunku</p>
+              <p className={panelTypography.sectionLabel}>Zakres</p>
               <SegmentedControl
                 ariaLabel="Tryb zakresu szacunku"
                 value={scopeMode}
@@ -4044,7 +4161,7 @@ export function ZdEstimateWorkbench({
 
             {scopeMode === "grupa" ? (
               <>
-                <div className="flex flex-wrap gap-2.5">
+                <div className="flex flex-wrap gap-2">
                   {bootstrap.quickGroups.map((g) => {
                     const active = selectedGroup?.grt_Id === g.grt_Id;
                     return (
@@ -4059,7 +4176,7 @@ export function ZdEstimateWorkbench({
                             : "Brak zapasu na karcie — 30 dni"
                         }
                         className={cn(
-                          "inline-flex min-h-11 items-center gap-2.5 rounded-lg border px-4 py-2.5 text-left text-sm transition",
+                          "inline-flex min-h-9 items-center gap-2 rounded-lg border px-3 py-1.5 text-left text-sm transition",
                           "disabled:cursor-not-allowed disabled:opacity-50",
                           active
                             ? "border-indigo-300 bg-indigo-50 text-indigo-950 shadow-sm shadow-indigo-900/5"
@@ -4077,12 +4194,12 @@ export function ZdEstimateWorkbench({
                   })}
                 </div>
 
-                <div className="flex flex-col gap-2.5 sm:flex-row sm:items-stretch">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
                   <div className="relative min-w-0 flex-1">
                     <IconSearch
                       size={16}
                       strokeWidth={1.75}
-                      className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                     />
                     <Input
                       value={groupQuery}
@@ -4095,7 +4212,7 @@ export function ZdEstimateWorkbench({
                       }}
                       placeholder="Szukaj innej grupy…"
                       disabled={!bootstrap.configured}
-                      className="h-11 pl-10"
+                      className="h-10 pl-9"
                     />
                   </div>
                   <Button
@@ -4103,20 +4220,20 @@ export function ZdEstimateWorkbench({
                     variant="secondary"
                     onClick={searchGroups}
                     disabled={busy || !bootstrap.configured || !groupQuery.trim()}
-                    className="h-11 shrink-0 sm:min-w-[7.5rem]"
+                    className="h-10 shrink-0 sm:min-w-[7rem]"
                   >
                     {searching ? "Szukam…" : "Szukaj"}
                   </Button>
                 </div>
 
                 {groupHits.length > 1 ? (
-                  <ul className="max-h-52 overflow-y-auto rounded-lg border border-slate-200/90 bg-white divide-y divide-slate-100 shadow-sm shadow-slate-900/[0.02]">
+                  <ul className="max-h-44 overflow-y-auto rounded-lg border border-slate-200/90 bg-white divide-y divide-slate-100 shadow-sm shadow-slate-900/[0.02]">
                     {groupHits.map((g) => (
                       <li key={g.grt_Id}>
                         <button
                           type="button"
                           className={cn(
-                            "flex w-full items-center justify-between gap-4 px-4 py-3 text-left text-sm transition hover:bg-slate-50",
+                            "flex w-full items-center justify-between gap-4 px-3.5 py-2.5 text-left text-sm transition hover:bg-slate-50",
                             selectedGroup?.grt_Id === g.grt_Id && "bg-indigo-50/70"
                           )}
                           onClick={() => selectGroup(g)}
@@ -4143,17 +4260,15 @@ export function ZdEstimateWorkbench({
               </>
             ) : (
               <>
-                <p className="text-sm leading-relaxed text-slate-600">
-                  Cecha może obejmować towary z wielu grup Subiekta. Zapas
-                  dopasujemy z nazwy cechy (np. Ivoclar); inaczej wybierz dostawcę
-                  w zaawansowanych.
+                <p className="text-xs leading-snug text-slate-500">
+                  {zdEstimateCechaScopeCaption()}
                 </p>
-                <div className="flex flex-col gap-2.5 sm:flex-row sm:items-stretch">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
                   <div className="relative min-w-0 flex-1">
                     <IconSearch
                       size={16}
                       strokeWidth={1.75}
-                      className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                     />
                     <Input
                       value={cechaQuery}
@@ -4166,7 +4281,7 @@ export function ZdEstimateWorkbench({
                       }}
                       placeholder="Szukaj cechy (np. Ivoclar)…"
                       disabled={!bootstrap.configured}
-                      className="h-11 pl-10"
+                      className="h-10 pl-9"
                     />
                   </div>
                   <Button
@@ -4174,20 +4289,20 @@ export function ZdEstimateWorkbench({
                     variant="secondary"
                     onClick={searchCechy}
                     disabled={busy || !bootstrap.configured || !cechaQuery.trim()}
-                    className="h-11 shrink-0 sm:min-w-[7.5rem]"
+                    className="h-10 shrink-0 sm:min-w-[7rem]"
                   >
                     {searching ? "Szukam…" : "Szukaj"}
                   </Button>
                 </div>
 
                 {cechaHits.length > 1 ? (
-                  <ul className="max-h-52 overflow-y-auto rounded-lg border border-slate-200/90 bg-white divide-y divide-slate-100 shadow-sm shadow-slate-900/[0.02]">
+                  <ul className="max-h-44 overflow-y-auto rounded-lg border border-slate-200/90 bg-white divide-y divide-slate-100 shadow-sm shadow-slate-900/[0.02]">
                     {cechaHits.map((c) => (
                       <li key={c.ctw_Id}>
                         <button
                           type="button"
                           className={cn(
-                            "flex w-full items-center justify-between gap-4 px-4 py-3 text-left text-sm transition hover:bg-slate-50",
+                            "flex w-full items-center justify-between gap-4 px-3.5 py-2.5 text-left text-sm transition hover:bg-slate-50",
                             selectedCecha?.ctw_Id === c.ctw_Id && "bg-indigo-50/70"
                           )}
                           onClick={() => selectCecha(c)}
@@ -4215,182 +4330,84 @@ export function ZdEstimateWorkbench({
             )}
           </section>
 
-          {scopeMode === "grupa" && selectedGroup ? (
-            <section className="space-y-3">
-              <p className={panelTypography.sectionLabel}>Parametry z wyboru</p>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <MetaPill
-                  label="Grupa"
-                  value={selectedGroup.grt_Nazwa}
-                  ready={canPolicz}
-                />
-                <MetaPill
-                  label="Zapas"
-                  value={
-                    stockLabel
-                      ? `${stockLabel} · ${dniZapasu} dni`
-                      : `${dniZapasu} dni`
-                  }
-                  ready={canPolicz}
-                />
-                <MetaPill
-                  label="Dostawca"
-                  value={supplierLabel ?? "Brak karty OnTime"}
-                  ready={canPolicz}
-                />
-                <MetaPill
-                  label="Okno sprzedaży"
-                  value={`${formatPlDate(dataOd)} – ${formatPlDate(dataDo)}${
-                    salesWindowSource === "manual" ? " · ręczne" : ""
-                  }`}
-                  ready={canPolicz}
-                />
-              </div>
-            </section>
-          ) : scopeMode === "cecha" && selectedCecha ? (
-            <section className="space-y-3">
-              <p className={panelTypography.sectionLabel}>Parametry z wyboru</p>
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <MetaPill
-                  label="Cecha"
-                  value={selectedCecha.ctw_Nazwa}
-                  ready={canPolicz}
-                />
-                <MetaPill
-                  label="Zapas"
-                  value={
-                    stockLabel
-                      ? `${stockLabel} · ${dniZapasu} dni`
-                      : `${dniZapasu} dni`
-                  }
-                  ready={canPolicz}
-                />
-                <MetaPill
-                  label="Dostawca"
-                  value={supplierLabel ?? "Brak karty OnTime"}
-                  ready={canPolicz}
-                />
-                <MetaPill
-                  label="Okno sprzedaży"
-                  value={`${formatPlDate(dataOd)} – ${formatPlDate(dataDo)}${
-                    salesWindowSource === "manual" ? " · ręczne" : ""
-                  }`}
-                  ready={canPolicz}
-                />
-              </div>
-            </section>
+          {scopeSelected && scopeLabel ? (
+            <ZdEstimatePrepScopeFacts
+              variant="inline"
+              scopeName={scopeLabel}
+              stockLabel={stockLabel}
+              dniZapasu={dniZapasu}
+              supplierLabel={supplierLabel}
+              dataOd={dataOd}
+              dataDo={dataDo}
+            />
           ) : (
-            <div className="rounded-lg border border-dashed border-slate-200/90 bg-slate-50/60 px-4 py-4 text-sm leading-relaxed text-slate-600 sm:px-5 sm:py-5">
+            <div className="rounded-lg border border-dashed border-slate-200/90 bg-slate-50/60 px-3.5 py-3 text-xs leading-snug text-slate-600 sm:px-4">
               {zdEstimateScopeDashedHint(scopeMode)}
             </div>
           )}
 
-          <section className="space-y-3 border-t border-slate-100 pt-5">
-            <div className="space-y-1">
+          <section className="space-y-2.5 border-t border-slate-100 pt-3.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <p className={panelTypography.sectionLabel}>
-                {ZD_ESTIMATE_UI.boostPowerLabel}
+                {ZD_ESTIMATE_UI.policiesSectionLabel}
               </p>
-              <p className="text-xs leading-relaxed text-slate-600">
-                {ZD_ESTIMATE_UI.boostPowerDefaultHint}{" "}
-                <span className="text-slate-500">
-                  {ZD_ESTIMATE_UI.boostPowerOffHint}
-                </span>
-              </p>
+              <HelpHintBubble
+                message={zdEstimatePoliciesSectionHint()}
+                tone="slate"
+                size="md"
+                ariaLabel="Co robią polityki liczenia"
+              />
             </div>
-            <fieldset className="space-y-2" disabled={mutating || estimating}>
-              <legend className="sr-only">
-                {ZD_ESTIMATE_UI.boostPowerLabel}
-              </legend>
-              {ZD_BOOST_PRESET_DEFS.map((def) => {
-                const active = boostPreset === def.id;
-                return (
-                  <label
-                    key={def.id}
-                    className={cn(
-                      "flex cursor-pointer gap-3 rounded-lg border px-3.5 py-2.5 transition",
-                      active
-                        ? "border-indigo-300 bg-indigo-50/80 shadow-sm shadow-indigo-900/5"
-                        : "border-slate-200/90 bg-white hover:border-slate-300"
-                    )}
-                  >
-                    <input
-                      type="radio"
-                      name="zd-boost-power"
-                      className="mt-1"
-                      checked={active}
-                      onChange={() => onBoostPresetChange(def.id)}
-                    />
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium text-slate-900">
-                        {def.label}
-                      </span>
-                      <span className="mt-0.5 block text-xs leading-snug text-slate-600">
-                        {def.hint}
-                      </span>
-                    </span>
-                  </label>
-                );
-              })}
-            </fieldset>
-          </section>
-
-          <section className="space-y-3 border-t border-slate-100 pt-5">
-            <p className={panelTypography.sectionLabel}>
-              {ZD_ESTIMATE_UI.extrasPolicyLabel}
-            </p>
-            <fieldset className="space-y-2" disabled={mutating || estimating}>
-              <legend className="sr-only">
-                {ZD_ESTIMATE_UI.extrasPolicyLabel}
-              </legend>
-              {(
-                [
-                  {
-                    id: "sum" as const,
-                    label: ZD_ESTIMATE_UI.extrasPolicySumLabel,
-                    hint: ZD_ESTIMATE_UI.extrasPolicySumHint,
-                  },
-                  {
-                    id: "max" as const,
-                    label: ZD_ESTIMATE_UI.extrasPolicyMaxLabel,
-                    hint: ZD_ESTIMATE_UI.extrasPolicyMaxHint,
-                  },
-                ] as const
-              ).map((def) => {
-                const active = extrasPolicy === def.id;
-                return (
-                  <label
-                    key={def.id}
-                    className={cn(
-                      "flex cursor-pointer gap-3 rounded-lg border px-3.5 py-2.5 transition",
-                      active
-                        ? "border-indigo-300 bg-indigo-50/80 shadow-sm shadow-indigo-900/5"
-                        : "border-slate-200/90 bg-white hover:border-slate-300"
-                    )}
-                  >
-                    <input
-                      type="radio"
-                      name="zd-extras-policy"
-                      className="mt-1"
-                      checked={active}
-                      onChange={() => onExtrasPolicyChange(def.id)}
-                    />
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium text-slate-900">
-                        {def.label}
-                      </span>
-                      <span className="mt-0.5 block text-xs leading-snug text-slate-600">
-                        {def.hint}
-                      </span>
-                    </span>
-                  </label>
-                );
-              })}
-            </fieldset>
+            <div className="flex flex-col gap-2.5 sm:gap-3">
+              <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <span className="shrink-0 text-xs font-medium text-slate-600 sm:w-[7.5rem]">
+                  {ZD_ESTIMATE_UI.boostPowerLabel}
+                </span>
+                <SegmentedControl
+                  ariaLabel={ZD_ESTIMATE_UI.boostPowerAriaLabel}
+                  value={boostPreset}
+                  onChange={onBoostPresetChange}
+                  disabled={mutating || estimating}
+                  touchFriendly
+                  className="w-full sm:w-auto sm:max-w-none"
+                  options={ZD_BOOST_PRESET_DEFS.map((def) => ({
+                    value: def.id,
+                    label: def.shortLabel,
+                    title: def.hint,
+                  }))}
+                />
+              </div>
+              <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+                <span className="shrink-0 text-xs font-medium text-slate-600 sm:w-[7.5rem]">
+                  {ZD_ESTIMATE_UI.extrasPolicyLabel}
+                </span>
+                <SegmentedControl
+                  ariaLabel={ZD_ESTIMATE_UI.extrasPolicyAriaLabel}
+                  value={extrasPolicy}
+                  onChange={onExtrasPolicyChange}
+                  disabled={mutating || estimating}
+                  touchFriendly
+                  className="w-full sm:w-auto"
+                  options={[
+                    {
+                      value: "sum" as const,
+                      label: ZD_ESTIMATE_UI.extrasPolicySumShort,
+                      title: ZD_ESTIMATE_UI.extrasPolicySumHint,
+                    },
+                    {
+                      value: "max" as const,
+                      label: ZD_ESTIMATE_UI.extrasPolicyMaxShort,
+                      title: ZD_ESTIMATE_UI.extrasPolicyMaxHint,
+                    },
+                  ]}
+                />
+              </div>
+            </div>
           </section>
 
           <div
             id={ZD_ESTIMATE_POLICZ_CTA_ID}
-            className="scroll-mt-24 flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between"
+            className="scroll-mt-24 flex flex-col gap-2.5 border-t border-slate-100 pt-3.5 sm:flex-row sm:items-center sm:justify-between"
           >
             <button
               type="button"
@@ -4446,11 +4463,11 @@ export function ZdEstimateWorkbench({
                     : !scopeSelected
                       ? "Wybierz grupę lub cechę"
                       : estimating
-                        ? "Trwa przeliczanie"
+                        ? zdEstimateCountingButtonLabel()
                         : "Policz listę do ZD z Subiekta"
               }
               className={cn(
-                "h-11 w-full sm:w-auto sm:min-w-[12.5rem]",
+                "h-10 w-full sm:w-auto sm:min-w-[11.5rem]",
                 canPolicz &&
                   !estimating &&
                   "shadow-md shadow-indigo-500/20 ring-2 ring-indigo-500/25"
@@ -4476,7 +4493,7 @@ export function ZdEstimateWorkbench({
                   !scopeSelected ||
                   !settingsTrusted
                 }
-                className="h-11 w-full sm:w-auto"
+                className="h-10 w-full sm:w-auto"
               >
                 {mutating ? "Zapisuję…" : "Zapisz zakres i policz"}
               </Button>
@@ -4493,7 +4510,7 @@ export function ZdEstimateWorkbench({
                   !scopeSelected ||
                   !settingsTrusted
                 }
-                className="h-11 w-full sm:w-auto"
+                className="h-10 w-full sm:w-auto"
               >
                 {mutating ? "Zapisuję…" : "Zapisz zakres i policz"}
               </Button>
@@ -4504,7 +4521,7 @@ export function ZdEstimateWorkbench({
                 variant="secondary"
                 onClick={beginChangeSupplierScope}
                 disabled={mutating || estimating}
-                className="h-11 w-full sm:w-auto"
+                className="h-10 w-full sm:w-auto"
               >
                 {ZD_ESTIMATE_UI.changeSupplierScopeCta}
               </Button>
@@ -4514,7 +4531,7 @@ export function ZdEstimateWorkbench({
           </div>
 
           {showAdvanced ? (
-            <div className="space-y-4 rounded-xl border border-slate-200/80 bg-slate-50/55 p-4 sm:p-5">
+            <div className="space-y-3 rounded-xl border border-slate-200/80 bg-slate-50/55 p-3.5 sm:p-4">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <Field label="Dostawca (nadpisanie)">
                   <Select
@@ -4578,8 +4595,7 @@ export function ZdEstimateWorkbench({
               {salesWindowSource === "manual" ? (
                 <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-[12px] text-amber-950">
                   <span className="font-medium">
-                    Okno sprzedaży ręczne — nie nadpisujemy dat z zapasu
-                    dostawcy/grupy.
+                    {ZD_ESTIMATE_UI.advancedSalesWindowManualNote}
                   </span>
                   <Button
                     type="button"
@@ -4892,7 +4908,7 @@ export function ZdEstimateWorkbench({
         >
         <Card
           padding={false}
-          className="relative overflow-visible"
+          className="relative overflow-hidden"
         >
           {showListRecountOverlay ? (
             <ActionLoadingOverlay
@@ -4961,7 +4977,7 @@ export function ZdEstimateWorkbench({
 
           <ZdEstimateListBand
             listFilter={listFilter}
-            onListFilterChange={setListFilter}
+            onListFilterChange={handleListFilterChange}
             reviewInGroupCount={reviewInGroupCount}
             excludedInGroupCount={excludedInGroupCount}
             listSearch={listSearch}
@@ -5023,118 +5039,6 @@ export function ZdEstimateWorkbench({
                 catalogOrderableCount={orderableLines.length}
                 excludedRoutedCount={excludedRoutedToServicesCount}
               />
-            ) : null}
-
-            {selectedCount > 0 ? (
-            <ZdEstimateListToolsBar
-              selectedCount={selectedCount}
-              visibleSelectedCount={visibleSelectedCount}
-              excludeEligibleCount={excludeEligibleLines.length}
-              restoreEligibleCount={restoreEligibleLines.length}
-              packagingClearEligibleCount={
-                packagingClearEligibleLines.length
-              }
-              onRequestEligibleCount={onRequestEligibleLines.length}
-              clearOnRequestEligibleCount={
-                clearOnRequestEligibleLines.length
-              }
-              pairsTrusted={pairsTrusted}
-              bomsTrusted={bomsTrusted}
-              packagingTrusted={packagingTrusted}
-              exclusionsTrusted={exclusionsTrusted}
-              onRequestTrusted={onRequestTrusted}
-              truncatedHint={selectedCount > ZD_ESTIMATE_BULK_MAX}
-              disabled={mutating || estimating}
-              onClearSelection={clearSelection}
-              onBulkExclude={() => {
-                const withProsba = excludeEligibleLines.filter((l) =>
-                  individualBundle.byTwId.has(l.tw_Id)
-                );
-                if (withProsba.length) {
-                  const ok = window.confirm(
-                    `${withProsba.length} z zaznaczonych pozycji ma prośbę handlowca.\n\nPo wykluczeniu prośba trafi do sekcji „Usługi” i do uwag ZD (bez ilości towaru) — nie zniknie z panelu Dziś do momentu utworzenia ZD.\n\nKontynuować?`
-                  );
-                  if (!ok) return;
-                }
-                setBulkExcludeOpen(true);
-              }}
-              onBulkRestore={() => {
-                if (restoreEligibleLines.length === 1) {
-                  confirmBulkRestore();
-                  return;
-                }
-                setBulkRestoreOpen(true);
-              }}
-              reviewEligibleCount={
-                visibleLines.filter(
-                  (l) =>
-                    selected[l.tw_Id] &&
-                    l.salesTrackQtyReview &&
-                    !acceptedReviewTwIds[l.tw_Id] &&
-                    !(
-                      settingsTrusted
-                        ? orderExcludedTwIds.has(l.tw_Id)
-                        : nameAutoByTwId.has(l.tw_Id)
-                    )
-                ).length
-              }
-              onBulkReviewAccept={() => {
-                setAcceptedReviewTwIds((prev) => {
-                  const next = { ...prev };
-                  for (const l of visibleLines) {
-                    if (
-                      selected[l.tw_Id] &&
-                      l.salesTrackQtyReview &&
-                      !(
-                        settingsTrusted
-                          ? orderExcludedTwIds.has(l.tw_Id)
-                          : nameAutoByTwId.has(l.tw_Id)
-                      )
-                    ) {
-                      next[l.tw_Id] = true;
-                    }
-                  }
-                  return next;
-                });
-              }}
-              onBulkReviewZero={() => {
-                const ids = visibleLines
-                  .filter(
-                    (l) =>
-                      selected[l.tw_Id] &&
-                      l.salesTrackQtyReview &&
-                      !acceptedReviewTwIds[l.tw_Id] &&
-                      !(
-                        settingsTrusted
-                          ? orderExcludedTwIds.has(l.tw_Id)
-                          : nameAutoByTwId.has(l.tw_Id)
-                      )
-                  )
-                  .map((l) => l.tw_Id);
-                setQtyOverrideByTwId((prev) => {
-                  const next = { ...prev };
-                  for (const id of ids) next[id] = 0;
-                  return next;
-                });
-                setAcceptedReviewTwIds((prev) => {
-                  const next = { ...prev };
-                  for (const id of ids) next[id] = true;
-                  return next;
-                });
-              }}
-              onBulkOnRequest={confirmBulkOnRequest}
-              onBulkClearOnRequest={confirmBulkClearOnRequest}
-              onBulkPackaging={() => {
-                setBulkPackagingMode("set");
-                setBulkPackagingOpen(true);
-              }}
-              onBulkClearPackaging={() => {
-                setBulkPackagingMode("clear");
-                setBulkPackagingOpen(true);
-              }}
-              onCreatePair={openPairFromSelection}
-              onCreateBom={openBomFromSelection}
-            />
             ) : null}
 
             {visibleLines.length === 0 ? (
@@ -5258,7 +5162,7 @@ export function ZdEstimateWorkbench({
                       type="button"
                       variant="secondary"
                       size="sm"
-                      onClick={() => setListFilter("all")}
+                      onClick={() => handleListFilterChange("all")}
                     >
                       Pokaż wszystkie
                     </Button>
@@ -5291,7 +5195,12 @@ export function ZdEstimateWorkbench({
                 }
               />
             ) : (
-                <TableScroll className="max-h-[min(72vh,48rem)] overflow-auto rounded-xl bg-white ring-1 ring-slate-200/70 shadow-sm shadow-slate-900/[0.02]">
+            <div className="relative isolate min-h-0 overflow-hidden">
+            <TableScroll
+              id={ZD_ESTIMATE_TABLE_SCROLL_ID}
+              data-zd-selection-open={selectionToolsOpen ? "true" : undefined}
+              className="zd-estimate-table-scroll rounded-xl bg-white px-0 pb-0 sm:px-0 sm:pb-0 ring-1 ring-slate-200/70 shadow-sm shadow-slate-900/[0.02]"
+            >
                 <DataTable
                   className={cn(
                     "zd-estimate-table",
@@ -5320,12 +5229,13 @@ export function ZdEstimateWorkbench({
                         />
                       </th>
                       <ZdEstimateSortableTh
-                        label="Symbol"
+                        label="Towar"
                         field="symbol"
                         sortKey={sortKey}
                         sortDir={sortDir}
                         onSort={handleSort}
                         className="zd-estimate-symbol-col"
+                        hint="Symbol i skrót nazwy (sticky przy przewijaniu w prawo). Sortowanie po symbolu."
                       />
                       <ZdEstimateSortableTh
                         label="Do ZD"
@@ -5335,7 +5245,7 @@ export function ZdEstimateWorkbench({
                         onSort={handleSort}
                         className="zd-estimate-dozd-col text-left"
                         align="left"
-                        hint="Ilość na dokumencie ZD (jednostki dokumentu)."
+                        hint="Ilość na dokumencie ZD (jednostki dokumentu). Opakowanie — kolumna Opak.; dobicie w górę tylko gdy krytyczne."
                       />
                       <ZdEstimateSortableTh
                         label="Pewność"
@@ -5343,29 +5253,30 @@ export function ZdEstimateWorkbench({
                         sortKey={sortKey}
                         sortDir={sortDir}
                         onSort={handleSort}
-                        className="zd-estimate-num-col text-right"
-                        align="right"
-                        hint="Pewność boostu (0–100%). Amber + kropka = do weryfikacji — kliknij %, żeby zaakceptować w tej sesji. Powód w podpowiedzi."
+                        className="zd-estimate-confidence-col text-center"
+                        align="center"
+                        hint="Pewność boostu (0–100%). Amber + kropka = do weryfikacji — kliknij, żeby zaakceptować w tej sesji."
                       />
                       <ZdEstimateSortableTh
-                        label="Nazwa"
+                        label="Status"
                         field="name"
                         sortKey={sortKey}
                         sortDir={sortDir}
                         onSort={handleSort}
                         className="zd-estimate-name-col"
+                        hint="Jeden główny chip (para / prośba / skład / wykluczenie) — reszta pod +N. Sortowanie po nazwie towaru."
                       />
                       <th
-                        className="zd-estimate-pack-col text-right"
-                        title="Ile sztuk w 1 jednostce na dokumencie ZD"
+                        className="zd-estimate-pack-col text-left"
+                        title="Ile sztuk w 1 jednostce na dokumencie ZD (źródło prawdy o opakowaniu)"
                       >
                         Opak.
                       </th>
                       {showStockDetail ? (
                         <>
-                          <th className="zd-estimate-num-col text-right">Stan</th>
+                          <th className="zd-estimate-num-col text-left">Stan</th>
                           <th
-                            className="zd-estimate-num-col text-right"
+                            className="zd-estimate-num-col text-left"
                             title="Rezerwacje"
                           >
                             Rez.
@@ -5373,25 +5284,25 @@ export function ZdEstimateWorkbench({
                         </>
                       ) : null}
                       <th
-                        className="zd-estimate-num-col text-right"
+                        className="zd-estimate-num-col text-left"
                         title="Dostępne (stan − rezerwacje)"
                       >
                         Dost.
                       </th>
                       <th
-                        className="zd-estimate-metric-col text-right"
+                        className="zd-estimate-metric-col text-left"
                         title="Sprzedaż w oknie (sztuki; przy paczce/opakowaniu także ≈ op.)"
                       >
                         Sprzed.
                       </th>
                       <th
-                        className="zd-estimate-metric-col text-right"
+                        className="zd-estimate-metric-col text-left"
                         title="Cel zapasu w sztukach (po śledzeniu sprzedaży; przy paczce/opakowaniu także ≈ op.)"
                       >
                         Cel
                       </th>
                       <th
-                        className="zd-estimate-num-col text-right"
+                        className="zd-estimate-num-col text-left"
                         title="Otwarte ZD — jednostki dokumentu (przy opakowaniu także sztuki)"
                       >
                         Otwarte
@@ -5399,20 +5310,20 @@ export function ZdEstimateWorkbench({
                       {showZkColumn ? (
                         <>
                           <th
-                            className="zd-estimate-num-col text-right"
+                            className="zd-estimate-num-col text-left"
                             title="Otwarte ZK bez rezerwacji"
                           >
                             ZK
                           </th>
                           <th
-                            className="zd-estimate-num-col text-right"
+                            className="zd-estimate-num-col text-left"
                             title="Surowe do zamówienia z API"
                           >
                             API
                           </th>
                         </>
                       ) : null}
-                      <th className="text-right">Akcje</th>
+                      <th className="text-center">Akcje</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -5476,11 +5387,11 @@ export function ZdEstimateWorkbench({
                         }) ?? undefined;
                       const salesTrackSubline =
                         l.salesTrackDelta > 1e-9 ? (
-                          <span className="text-[10px] font-medium text-emerald-700/90 tabular-nums">
+                          <span className="zd-est-unit tabular-nums text-slate-500">
                             +{formatQty(l.salesTrackDelta)} szt
                           </span>
                         ) : l.salesTrackDelta < -1e-9 ? (
-                          <span className="text-[10px] font-medium text-amber-700/90 tabular-nums">
+                          <span className="zd-est-unit tabular-nums text-amber-800/80">
                             −{formatQty(Math.abs(l.salesTrackDelta))} szt
                           </span>
                         ) : null;
@@ -5515,6 +5426,11 @@ export function ZdEstimateWorkbench({
                         (overrideZd != null &&
                           Number.isFinite(overrideZd) &&
                           Math.trunc(overrideZd) < qty.zdUnits);
+                      const displayZdUnits =
+                        overrideZd != null && Number.isFinite(overrideZd)
+                          ? Math.trunc(overrideZd)
+                          : qty.zdUnits;
+                      const doZdIdle = excluded || displayZdUnits <= 0;
                       const excludeTitle = sessionIncluded && nameHit
                         ? `${l.tw_Nazwa} — dołączone w sesji mimo auto: ${nameHit.reason}`
                         : nameHit
@@ -5529,6 +5445,7 @@ export function ZdEstimateWorkbench({
                       return (
                         <tr
                           key={l.tw_Id}
+                          data-zd-estimate-tw-id={l.tw_Id}
                           data-selected={isSelected ? "true" : undefined}
                           className={cn(
                             excluded && "bg-slate-50/80",
@@ -5561,16 +5478,36 @@ export function ZdEstimateWorkbench({
                           </td>
                           <td
                             className={cn(
-                              "zd-estimate-symbol-col whitespace-nowrap font-semibold tabular-nums",
-                              excluded
-                                ? "text-slate-400 line-through"
-                                : "text-slate-900"
+                              "zd-estimate-symbol-col",
+                              excluded ? "text-slate-400" : "text-slate-900"
                             )}
-                            title={l.tw_Symbol}
+                            title={`${l.tw_Symbol} — ${l.tw_Nazwa}`}
                           >
-                            {l.tw_Symbol}
+                            <div className="flex min-w-0 flex-col justify-center gap-0.5">
+                              <span
+                                className={cn(
+                                  "truncate text-[13px] font-semibold tabular-nums leading-tight tracking-tight",
+                                  excluded && "line-through"
+                                )}
+                              >
+                                {l.tw_Symbol}
+                              </span>
+                              <span
+                                className={cn(
+                                  "truncate text-[11px] font-normal leading-snug",
+                                  excluded ? "text-slate-400" : "text-slate-500"
+                                )}
+                              >
+                                {l.tw_Nazwa}
+                              </span>
+                            </div>
                           </td>
-                          <td className="zd-estimate-dozd-col text-left">
+                          <td
+                            className={cn(
+                              "zd-estimate-dozd-col text-left",
+                              doZdIdle && "zd-estimate-dozd-col--idle"
+                            )}
+                          >
                             <ZdEstimateDoZdCell
                               qty={qty}
                               excluded={excluded}
@@ -5603,7 +5540,7 @@ export function ZdEstimateWorkbench({
                               }
                             />
                           </td>
-                          <td className="zd-estimate-num-col whitespace-nowrap text-right">
+                          <td className="zd-estimate-confidence-col whitespace-nowrap text-center">
                             <ZdEstimateConfidenceCell
                               confidence={l.salesTrackConfidence}
                               qtyReview={l.salesTrackQtyReview}
@@ -5630,107 +5567,100 @@ export function ZdEstimateWorkbench({
                             )}
                             title={excludeTitle}
                           >
-                            <div className="flex flex-col gap-1">
-                              <span className="line-clamp-2 text-[13px] leading-snug">
-                                {l.tw_Nazwa}
-                              </span>
-                              {pairMeta ? (
-                                <ZdEstimatePairMetaBadge
-                                  pair={pairMeta}
-                                  packagingConflict={packagingConflict}
-                                />
-                              ) : null}
-                              {bomMeta ? (
-                                <ZdEstimateBomMetaBadge bom={bomMeta} />
-                              ) : null}
-                              {individualExtra ? (
-                                <ZdEstimateIndividualMetaBadge
-                                  extra={individualExtra}
-                                  extrasPolicy={extrasPolicy}
-                                  doZdSuppressed={doZdSuppressed}
-                                />
-                              ) : null}
-                              {sessionIncluded && nameHit ? (
-                                <span className="inline-block w-fit rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-900 ring-1 ring-sky-100">
-                                  dołączone (sesja)
-                                </span>
-                              ) : nameHit ? (
-                                <span className="inline-block w-fit rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-700 ring-1 ring-slate-200">
-                                  {formatZdNameAutoExcludeBadge(nameHit.reason)}
-                                </span>
-                              ) : softOnRequest ? (
-                                <span className="inline-block w-fit rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-900 ring-1 ring-indigo-100">
-                                  tylko na prośbę
-                                </span>
-                              ) : liftedExtraOnly ? (
-                                <span className="inline-flex w-fit flex-wrap items-center gap-1">
-                                  <span className="inline-block rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-900 ring-1 ring-indigo-100">
-                                    na prośbę · w Do ZD
-                                  </span>
-                                </span>
-                              ) : excluded ? (
-                                <span className="inline-block w-fit rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 ring-1 ring-amber-100">
-                                  wykluczone
-                                </span>
-                              ) : null}
-                            </div>
+                            <span className="sr-only">{l.tw_Nazwa}</span>
+                            <ZdEstimateNameMetaStack
+                              pairMeta={pairMeta}
+                              packagingConflict={packagingConflict}
+                              bomMeta={bomMeta}
+                              individualExtra={individualExtra}
+                              extrasPolicy={extrasPolicy}
+                              doZdSuppressed={doZdSuppressed}
+                              excluded={excluded}
+                              sessionIncluded={sessionIncluded}
+                              nameHit={nameHit}
+                              softOnRequest={softOnRequest}
+                              liftedExtraOnly={liftedExtraOnly}
+                            />
                           </td>
-                          <td className="zd-estimate-pack-col whitespace-nowrap text-right tabular-nums text-slate-600">
+                          <td
+                            className="zd-estimate-pack-col whitespace-nowrap text-left"
+                            title={
+                              qty.hasPackaging
+                                ? isPackagingPackagesMode(qty.documentUnitMode)
+                                  ? `${qty.unitsPerPackage} szt / 1 ${qty.packageLabel.trim() || "op."} — jednostki dokumentu = opakowania`
+                                  : `Dobijanie do wielokrotności ${qty.unitsPerPackage} szt (dokument w sztukach)`
+                                : "Bez opakowania — 1:1 sztuki"
+                            }
+                          >
                             {qty.hasPackaging ? (
-                              <span className="inline-flex flex-col items-end gap-0.5">
-                                <span className="font-semibold tabular-nums text-indigo-900">
-                                  {qty.unitsPerPackage}
-                                </span>
-                                <span className="text-[10px] leading-tight text-slate-400">
-                                  {isPackagingPackagesMode(qty.documentUnitMode)
-                                    ? `szt / ${qty.packageLabel}`
-                                    : "dobij ×N"}
-                                </span>
-                              </span>
+                              <ZdEstimateQtyValue
+                                value={qty.unitsPerPackage}
+                                tier="c"
+                                unit={
+                                  isPackagingPackagesMode(qty.documentUnitMode)
+                                    ? "packRatio"
+                                    : "xn"
+                                }
+                              />
                             ) : (
-                              <span className="text-[11px] text-slate-300">
+                              <span className="zd-est-qty--c zd-est-qty--dash">
                                 1:1
                               </span>
                             )}
                           </td>
                           {showStockDetail ? (
                             <>
-                              <td className="zd-estimate-num-col whitespace-nowrap text-right tabular-nums text-slate-700">
+                              <td className="zd-estimate-num-col whitespace-nowrap text-left">
                                 {pairMeta?.role === "pack" ? (
                                   <ZdEstimatePairPackStockCell
                                     value={l.tw_Stan}
+                                    tier="d"
                                   />
                                 ) : (
-                                  formatQty(l.tw_Stan)
+                                  <ZdEstimateQtyValue
+                                    value={l.tw_Stan}
+                                    tier="d"
+                                    unit="szt"
+                                  />
                                 )}
                               </td>
-                              <td
-                                className={cn(
-                                  "zd-estimate-num-col whitespace-nowrap text-right tabular-nums",
-                                  l.tw_StanRez > 0
-                                    ? "font-medium text-amber-800"
-                                    : "text-slate-400"
-                                )}
-                              >
+                              <td className="zd-estimate-num-col whitespace-nowrap text-left">
                                 {pairMeta?.role === "pack" ? (
                                   <ZdEstimatePairPackStockCell
                                     value={l.tw_StanRez}
+                                    tier="d"
                                     tone={l.tw_StanRez > 0 ? "warn" : "muted"}
+                                    zeroAsDash
                                   />
                                 ) : (
-                                  formatQty(l.tw_StanRez)
+                                  <ZdEstimateQtyValue
+                                    value={l.tw_StanRez}
+                                    tier="d"
+                                    unit="szt"
+                                    zeroAsDash
+                                    tone={l.tw_StanRez > 0 ? "warn" : "muted"}
+                                  />
                                 )}
                               </td>
                             </>
                           ) : null}
-                          <td className="zd-estimate-num-col whitespace-nowrap text-right tabular-nums text-slate-700">
+                          <td className="zd-estimate-num-col whitespace-nowrap text-left">
                             {pairMeta?.role === "pack" ? (
-                              <ZdEstimatePairPackStockCell value={l.dostepne} />
+                              <ZdEstimatePairPackStockCell
+                                value={l.dostepne}
+                                tier="b"
+                                tone={l.dostepne <= 0 ? "warn" : "default"}
+                              />
                             ) : (
-                              formatQty(l.dostepne)
+                              <ZdEstimateQtyValue
+                                value={l.dostepne}
+                                tier="b"
+                                unit="szt"
+                                tone={l.dostepne <= 0 ? "warn" : "default"}
+                              />
                             )}
                           </td>
-                          <td className="zd-estimate-metric-col text-right tabular-nums text-slate-700">
+                          <td className="zd-estimate-metric-col text-left">
                             {pairMeta && !pairMeta.partnerMissing ? (
                               <ZdEstimatePairSalesCell pair={pairMeta} />
                             ) : (
@@ -5739,30 +5669,39 @@ export function ZdEstimateWorkbench({
                                 unitsPerPack={
                                   qty.hasPackaging ? qty.unitsPerPackage : null
                                 }
+                                tier="c"
+                                zeroAsDash
                               />
                             )}
                           </td>
-                          <td className="zd-estimate-metric-col text-right tabular-nums text-slate-600">
+                          <td className="zd-estimate-metric-col text-left">
                             {pairMeta && !pairMeta.partnerMissing ? (
                               <ZdEstimatePairPiecesCell
                                 pieces={celPieces}
                                 unitsPerPack={pairMeta.unitsPerPack}
-                                emphasize
                                 subline={salesTrackSubline}
                               />
                             ) : (
                               <ZdEstimatePiecesMetricCell
                                 pieces={celPieces}
                                 unitsPerPack={metricPackUnits}
-                                emphasize
+                                tier="b"
                                 title={salesTrackTitle}
                                 subline={salesTrackSubline}
                               />
                             )}
                           </td>
-                          <td className="zd-estimate-num-col whitespace-nowrap text-right tabular-nums text-slate-700">
-                            <span
-                              className="inline-flex flex-col items-end gap-0.5"
+                          <td className="zd-estimate-num-col whitespace-nowrap text-left">
+                            <ZdEstimateQtyValue
+                              value={l.otwarteZd}
+                              tier="c"
+                              unit={
+                                qty.hasPackaging &&
+                                !isPackagingPackagesMode(qty.documentUnitMode)
+                                  ? "szt"
+                                  : "jdok"
+                              }
+                              zeroAsDash
                               title={
                                 qty.hasPackaging &&
                                 l.otwarteZd > 0 &&
@@ -5776,40 +5715,40 @@ export function ZdEstimateWorkbench({
                                     ? `${formatQty(l.otwarteZd)} szt (otwarte ZD)`
                                     : `${formatQty(l.otwarteZd)} j.dok. (otwarte ZD)`
                               }
-                            >
-                              <span>
-                                {formatQty(l.otwarteZd)}
-                                <span className="ml-0.5 text-[10px] font-medium text-slate-400">
-                                  {qty.hasPackaging &&
-                                  !isPackagingPackagesMode(qty.documentUnitMode)
-                                    ? "szt"
-                                    : "j.dok."}
-                                </span>
-                              </span>
-                              {qty.hasPackaging &&
-                              l.otwarteZd > 0 &&
-                              isPackagingPackagesMode(qty.documentUnitMode) ? (
-                                <span className="text-[10px] text-slate-400">
-                                  {formatQty(
-                                    l.otwarteZd * qty.unitsPerPackage
-                                  )}{" "}
-                                  szt
-                                </span>
-                              ) : null}
-                            </span>
+                              subline={
+                                qty.hasPackaging &&
+                                l.otwarteZd > 0 &&
+                                isPackagingPackagesMode(qty.documentUnitMode) ? (
+                                  <span className="zd-est-unit tabular-nums">
+                                    {formatQty(
+                                      l.otwarteZd * qty.unitsPerPackage
+                                    )}{" "}
+                                    szt
+                                  </span>
+                                ) : null
+                              }
+                            />
                           </td>
                           {showZkColumn ? (
                             <>
-                              <td className="zd-estimate-num-col whitespace-nowrap text-right tabular-nums text-slate-400">
-                                {formatQty(l.otwarteZkBezRez)}
+                              <td className="zd-estimate-num-col whitespace-nowrap text-left">
+                                <ZdEstimateQtyValue
+                                  value={l.otwarteZkBezRez}
+                                  tier="d"
+                                  zeroAsDash
+                                />
                               </td>
-                              <td className="zd-estimate-num-col whitespace-nowrap text-right tabular-nums text-slate-400">
-                                {formatQty(l.doZamowieniaApi)}
+                              <td className="zd-estimate-num-col whitespace-nowrap text-left">
+                                <ZdEstimateQtyValue
+                                  value={l.doZamowieniaApi}
+                                  tier="d"
+                                  zeroAsDash
+                                />
                               </td>
                             </>
                           ) : null}
-                          <td className="text-right">
-                            <div className="inline-flex justify-end py-0.5 pl-1">
+                          <td className="text-center">
+                            <div className="inline-flex justify-center py-0.5">
                               <ZdEstimateRowActions
                                 symbol={l.tw_Symbol}
                                 nameAutoExcluded={Boolean(nameHit)}
@@ -5863,6 +5802,7 @@ export function ZdEstimateWorkbench({
                   </tbody>
                 </DataTable>
               </TableScroll>
+            </div>
             )}
           </div>
           </div>
@@ -5874,104 +5814,232 @@ export function ZdEstimateWorkbench({
       ) : null}
 
       {!showLaunchProgress && !lines && canPolicz && !prepCollapsed ? (
-        <div
-          className={cn(
-            zdEstimateStickyBarClass,
-            "items-center gap-3 border-indigo-200/80 md:hidden"
-          )}
-        >
-          <p className="min-w-0 flex-1 truncate text-xs font-medium text-slate-700">
-            {scopeLabel ?? "Zakres gotowy"}
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => runEstimate()}
-            disabled={estimating || !canPolicz}
-            className="shrink-0"
+        <div className={cn(zdEstimateStickyDockClass, "md:hidden")}>
+          <div
+            className={cn(
+              zdEstimateStickyBarClass,
+              "items-center gap-3 border-indigo-200/80"
+            )}
           >
-            {estimating ? zdEstimateCountingButtonLabel() : "Policz listę"}
-          </Button>
+            <p className="min-w-0 flex-1 truncate text-xs font-medium text-slate-700">
+              {scopeLabel ?? "Zakres gotowy"}
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => runEstimate()}
+              disabled={estimating || !canPolicz}
+              className="shrink-0"
+            >
+              {estimating ? zdEstimateCountingButtonLabel() : "Policz listę"}
+            </Button>
+          </div>
         </div>
       ) : null}
 
       {showResultStickyActions && !showLaunchProgress ? (
-        <div className={cn(zdEstimateStickyBarClass, "flex-col gap-2")}>
-          <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="primary"
-            onClick={() => {
-              if (!createZdGate.ok) return;
-              openCreateZdModal();
-            }}
-            disabled={!createZdGate.ok}
-            aria-describedby={
-              stickyCreateGateCaption || implicitPieceSnapshotHint
-                ? "zd-estimate-sticky-create-hints"
-                : undefined
-            }
-            title={
-              createZdGate.ok
-                ? bootstrap.ordersIsLive
-                  ? "Tworzy ZD w aktualnej bazie Subiekta z pozycji „Do ZD”"
-                  : "Tworzy ZD w testowym Subiekcie z pozycji „Do ZD”"
-                : createZdGate.reason
-            }
+        <div className="flex flex-col">
+          <ZdEstimateSelectionToolsReveal
+            open={selectionToolsOpen}
+            id={ZD_ESTIMATE_SELECTION_TOOLS_ID}
           >
-            Utwórz ZD
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={copyTsv}
-            disabled={!orderableLines.length || !settingsTrusted}
-            title={
-              settingsTrusted
-                ? "Kopiuje kolumnę Do ZD (jednostki dokumentu) z uwzględnieniem opakowań"
-                : ZD_BOM_UI.copyNeedsSettings
+            {selectionBarSelectedCount > 0 ? (
+            <ZdEstimateListToolsBar
+              selectedCount={selectionBarSelectedCount}
+              visibleSelectedCount={selectionBarVisibleSelectedCount}
+              excludeEligibleCount={excludeEligibleLines.length}
+              restoreEligibleCount={restoreEligibleLines.length}
+              packagingClearEligibleCount={packagingClearEligibleLines.length}
+              onRequestEligibleCount={onRequestEligibleLines.length}
+              clearOnRequestEligibleCount={clearOnRequestEligibleLines.length}
+              pairsTrusted={pairsTrusted}
+              bomsTrusted={bomsTrusted}
+              packagingTrusted={packagingTrusted}
+              exclusionsTrusted={exclusionsTrusted}
+              onRequestTrusted={onRequestTrusted}
+              truncatedHint={selectionBarSelectedCount > ZD_ESTIMATE_BULK_MAX}
+              disabled={mutating || estimating || !selectionToolsOpen}
+              onClearSelection={clearSelection}
+              onBulkExclude={() => {
+                const withProsba = excludeEligibleLines.filter((l) =>
+                  individualBundle.byTwId.has(l.tw_Id)
+                );
+                if (withProsba.length) {
+                  const ok = window.confirm(
+                    `${withProsba.length} z zaznaczonych pozycji ma prośbę handlowca.\n\nPo wykluczeniu prośba trafi do sekcji „Usługi” i do uwag ZD (bez ilości towaru) — nie zniknie z panelu Dziś do momentu utworzenia ZD.\n\nKontynuować?`
+                  );
+                  if (!ok) return;
+                }
+                setBulkExcludeOpen(true);
+              }}
+              onBulkRestore={() => {
+                if (restoreEligibleLines.length === 1) {
+                  confirmBulkRestore();
+                  return;
+                }
+                setBulkRestoreOpen(true);
+              }}
+              reviewEligibleCount={
+                visibleLines.filter(
+                  (l) =>
+                    selected[l.tw_Id] &&
+                    l.salesTrackQtyReview &&
+                    !acceptedReviewTwIds[l.tw_Id] &&
+                    !(
+                      settingsTrusted
+                        ? orderExcludedTwIds.has(l.tw_Id)
+                        : nameAutoByTwId.has(l.tw_Id)
+                    )
+                ).length
+              }
+              onBulkReviewAccept={() => {
+                setAcceptedReviewTwIds((prev) => {
+                  const next = { ...prev };
+                  for (const l of visibleLines) {
+                    if (
+                      selected[l.tw_Id] &&
+                      l.salesTrackQtyReview &&
+                      !(
+                        settingsTrusted
+                          ? orderExcludedTwIds.has(l.tw_Id)
+                          : nameAutoByTwId.has(l.tw_Id)
+                      )
+                    ) {
+                      next[l.tw_Id] = true;
+                    }
+                  }
+                  return next;
+                });
+              }}
+              onBulkReviewZero={() => {
+                const ids = visibleLines
+                  .filter(
+                    (l) =>
+                      selected[l.tw_Id] &&
+                      l.salesTrackQtyReview &&
+                      !acceptedReviewTwIds[l.tw_Id] &&
+                      !(
+                        settingsTrusted
+                          ? orderExcludedTwIds.has(l.tw_Id)
+                          : nameAutoByTwId.has(l.tw_Id)
+                      )
+                  )
+                  .map((l) => l.tw_Id);
+                setQtyOverrideByTwId((prev) => {
+                  const next = { ...prev };
+                  for (const id of ids) next[id] = 0;
+                  return next;
+                });
+                setAcceptedReviewTwIds((prev) => {
+                  const next = { ...prev };
+                  for (const id of ids) next[id] = true;
+                  return next;
+                });
+              }}
+              onBulkOnRequest={confirmBulkOnRequest}
+              onBulkClearOnRequest={confirmBulkClearOnRequest}
+              onBulkPackaging={() => {
+                setBulkPackagingMode("set");
+                setBulkPackagingOpen(true);
+              }}
+              onBulkClearPackaging={() => {
+                setBulkPackagingMode("clear");
+                setBulkPackagingOpen(true);
+              }}
+              onCreatePair={openPairFromSelection}
+              onCreateBom={openBomFromSelection}
+            />
+            ) : null}
+          </ZdEstimateSelectionToolsReveal>
+
+          {/* Clearance w flow — pasek Create jest poza flow (h-0 dock). */}
+          <div
+            aria-hidden
+            className={
+              stickyCreateGateCaption
+                ? zdEstimateStickyClearanceTallClass
+                : zdEstimateStickyClearanceClass
             }
-          >
-            {copyOk ? "Skopiowano" : "Kopiuj TSV"}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={() => openLinkZdModal()}
-            disabled={
-              !lines?.length || !bootstrap.configured || !supplierId
-            }
-            title={
-              !bootstrap.configured
-                ? "Wymaga połączenia z Subiektem"
-                : !supplierId
-                  ? "Wybierz dostawcę — historia jest per kontrahent"
-                  : "Gdy ZD powstało poza OnTime — zapisz powiązanie w historii"
-            }
-          >
-            Powiąż ZD
-          </Button>
-          </div>
-          {stickyCreateGateCaption || implicitPieceSnapshotHint ? (
+          />
+
+          <div className={zdEstimateStickyDockClass}>
             <div
-              id="zd-estimate-sticky-create-hints"
-              className="space-y-1"
+              id={ZD_ESTIMATE_STICKY_ACTIONS_ID}
+              className={cn(zdEstimateStickyBarClass, "flex-col gap-2")}
             >
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="primary"
+                  onClick={() => {
+                    if (!createZdGate.ok) return;
+                    openCreateZdModal();
+                  }}
+                  disabled={!createZdGate.ok}
+                  aria-describedby={
+                    stickyCreateGateCaption
+                      ? "zd-estimate-sticky-create-gate"
+                      : undefined
+                  }
+                  title={
+                    createZdGate.ok
+                      ? bootstrap.ordersIsLive
+                        ? "Tworzy ZD w aktualnej bazie Subiekta z pozycji „Do ZD”"
+                        : "Tworzy ZD w testowym Subiekcie z pozycji „Do ZD”"
+                      : createZdGate.reason
+                  }
+                >
+                  Utwórz ZD
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={copyTsv}
+                  disabled={!orderableLines.length || !settingsTrusted}
+                  title={
+                    settingsTrusted
+                      ? "Kopiuje kolumnę Do ZD (jednostki dokumentu) z uwzględnieniem opakowań"
+                      : ZD_BOM_UI.copyNeedsSettings
+                  }
+                >
+                  {copyOk ? "Skopiowano" : "Kopiuj TSV"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => openLinkZdModal()}
+                  disabled={
+                    !lines?.length || !bootstrap.configured || !supplierId
+                  }
+                  title={
+                    !bootstrap.configured
+                      ? "Wymaga połączenia z Subiektem"
+                      : !supplierId
+                        ? "Wybierz dostawcę — historia jest per kontrahent"
+                        : "Gdy ZD powstało poza OnTime — zapisz powiązanie w historii"
+                  }
+                >
+                  Powiąż ZD
+                </Button>
+              </div>
               {stickyCreateGateCaption ? (
-                <p className="text-[11px] leading-snug text-amber-800">
+                <p
+                  id="zd-estimate-sticky-create-gate"
+                  className="text-[11px] leading-snug text-amber-800"
+                >
                   {stickyCreateGateCaption}
                 </p>
               ) : null}
-              {implicitPieceSnapshotHint ? (
-                <p className="text-[11px] leading-snug text-amber-900">
-                  {implicitPieceSnapshotHint}
-                </p>
-              ) : null}
             </div>
-          ) : null}
+          </div>
+          <div
+            id={ZD_ESTIMATE_SCROLL_END_ID}
+            aria-hidden
+            className="pointer-events-none h-0 w-full shrink-0 overflow-hidden"
+          />
         </div>
       ) : null}
 
@@ -5984,8 +6052,9 @@ export function ZdEstimateWorkbench({
             showResultStickyActions && !showLaunchProgress
               ? cn(
                   floatingToastAboveZdStickyClass,
-                  (stickyCreateGateCaption || implicitPieceSnapshotHint) &&
-                    floatingToastAboveZdStickyTallClass
+                  stickyCreateGateCaption || selectedCount > 0
+                    ? floatingToastAboveZdStickyTallClass
+                    : undefined
                 )
               : undefined
           }
@@ -6247,7 +6316,15 @@ export function ZdEstimateWorkbench({
         orderableTwIds={
           postCreateOrderableTwIds(postCreate) ?? confirmedTwIdsForSnapshot
         }
-        implicitPieceSnapshotHint={implicitPieceSnapshotHint}
+        implicitPieceSnapshotNotice={implicitPieceSnapshotNotice}
+        onOpenPackaging={() => {
+          setLinkZdOpen(false);
+          openPackagingPanel();
+        }}
+        onOpenPairs={() => {
+          setLinkZdOpen(false);
+          openPairsPanel();
+        }}
         onClose={() => {
           setLinkZdOpen(false);
           setLinkNrPrefill(null);
@@ -6354,7 +6431,7 @@ export function ZdEstimateWorkbench({
           usedAlias={createKhResolution.usedAlias}
           scopeLabel={scopeLabel}
           dateKey={bootstrap.todayKey}
-          preview={createPreviewFrozen ?? createZdPreview}
+          preview={createDialogPreview}
           scopeMode={scopeMode}
           grtId={selectedGroup?.grt_Id ?? null}
           cechaId={selectedCecha?.ctw_Id ?? null}
@@ -6365,7 +6442,15 @@ export function ZdEstimateWorkbench({
               deltaAtLink: l.salesTrackDelta,
             })) ?? null
           }
-          implicitPieceSnapshotHint={implicitPieceSnapshotHint}
+          implicitPieceSnapshotNotice={implicitPieceSnapshotNotice}
+          onOpenPackaging={() => {
+            closeCreateZdModal();
+            openPackagingPanel();
+          }}
+          onOpenPairs={() => {
+            closeCreateZdModal();
+            openPairsPanel();
+          }}
           initialUwagi={createBaseUwagi.slice(0, Math.max(1, createUwagiBaseMaxLen))}
           uwagiBaseMaxLen={createUwagiBaseMaxLen}
           individualCatalogOrderIds={createCatalogOrderIds}
@@ -6386,15 +6471,7 @@ export function ZdEstimateWorkbench({
           ordersPort={bootstrap.ordersPort ?? bootstrap.testPort}
           ordersHostLabel={bootstrap.ordersHostLabel}
           extrasPolicy={extrasPolicy}
-          onClose={() => {
-            setCreateZdOpen(false);
-            setCreatingZd(false);
-            createPreviewCaptureRef.current = null;
-            setCreatePreviewFrozen(null);
-            createLineMetaCaptureRef.current = null;
-            createMarkFreezeCaptureRef.current = null;
-            setCreateMarkFreezeFrozen(null);
-          }}
+          onClose={closeCreateZdModal}
           onSubmitStart={() => {
             createPreviewCaptureRef.current = createZdPreview;
             setCreatePreviewFrozen(createZdPreview);
@@ -6581,7 +6658,7 @@ function ZdEstimateSortableTh({
   sortDir: ZdEstimateListSortDir;
   onSort: (field: ZdEstimateListSortKey) => void;
   className?: string;
-  align?: "left" | "right";
+  align?: "left" | "right" | "center";
   /** Opis kolumny (tooltip), niezależny od sortowania */
   hint?: string;
 }) {
@@ -6595,7 +6672,9 @@ function ZdEstimateSortableTh({
         onClick={() => onSort(field)}
         className={cn(
           "inline-flex items-center gap-1 font-semibold transition-colors hover:text-slate-900",
-          align === "right" ? "w-full justify-end text-right" : "text-left",
+          align === "right" && "w-full justify-end text-right",
+          align === "center" && "justify-center text-center",
+          align === "left" && "text-left",
           isActive ? "text-slate-900" : "text-slate-600"
         )}
         title={

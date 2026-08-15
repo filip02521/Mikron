@@ -11,8 +11,8 @@ function confidencePct(confidence: number): number {
 }
 
 /**
- * Jedyna widoczna powierzchnia pewności / weryfikacji w wierszu.
- * Powód i szczegóły w tooltipie; klik = akceptacja sesyjna (bez badge pod nazwą).
+ * Pewność w wierszu — kompaktowy pill (jak Status).
+ * Klik przy review = akceptacja sesyjna.
  */
 export function ZdEstimateConfidenceCell({
   confidence,
@@ -26,13 +26,16 @@ export function ZdEstimateConfidenceCell({
   qtyReview: boolean;
   reasons: readonly SalesTrackReason[];
   accepted?: boolean;
-  /** Pełny hint z formatSalesTrackHint (delta, hold, itd.). */
   detailHint?: string;
   onAccept?: () => void;
 }) {
   const hasSignal = confidence > 1e-9 || qtyReview || accepted;
   if (!hasSignal) {
-    return <span className="text-slate-300">—</span>;
+    return (
+      <span className="zd-est-confidence zd-est-confidence--idle" title="Brak sygnału pewności">
+        —
+      </span>
+    );
   }
 
   const pct = confidencePct(confidence);
@@ -44,12 +47,15 @@ export function ZdEstimateConfidenceCell({
   });
 
   const titleBits = [
-    needsReview ? "Do weryfikacji" : accepted ? "Zaakceptowano w tej sesji" : null,
+    needsReview
+      ? "Do weryfikacji"
+      : accepted
+        ? "Zaakceptowano w tej sesji"
+        : null,
     badge?.reason,
     needsReview && onAccept ? "Kliknij, żeby zaakceptować" : null,
   ].filter(Boolean) as string[];
 
-  // detailHint tylko gdy wnosi coś poza pewnością / „sprawdź”
   if (detailHint) {
     const compact = detailHint
       .replace(/\s*·?\s*pewność\s+\d+%\s*—\s*sprawdź/gi, "")
@@ -71,31 +77,19 @@ export function ZdEstimateConfidenceCell({
   }
 
   const title = titleBits.join(" · ");
+  const toneClass = needsReview
+    ? "zd-est-confidence--review"
+    : accepted
+      ? "zd-est-confidence--accepted"
+      : "zd-est-confidence--ok";
 
   const body = (
-    <span
-      className={cn(
-        "inline-flex items-center justify-end gap-1 tabular-nums tracking-tight",
-        needsReview && "font-semibold text-amber-800",
-        accepted && "font-medium text-emerald-700",
-        !needsReview && !accepted && "font-medium text-slate-500"
-      )}
-    >
+    <>
       <span>{pct}%</span>
       {needsReview ? (
-        <span
-          className="size-1.5 shrink-0 rounded-full bg-amber-500"
-          aria-hidden
-        />
-      ) : accepted ? (
-        <span
-          className="text-[9px] font-semibold uppercase tracking-wide text-emerald-600/90"
-          aria-hidden
-        >
-          ok
-        </span>
+        <span className="zd-est-confidence__dot" aria-hidden />
       ) : null}
-    </span>
+    </>
   );
 
   if (needsReview && onAccept) {
@@ -109,11 +103,7 @@ export function ZdEstimateConfidenceCell({
             ? `Zaakceptuj weryfikację: ${pct}%, ${badge.reason}`
             : `Zaakceptuj weryfikację: ${pct}%`
         }
-        className={cn(
-          "inline-flex max-w-full rounded-md px-1 py-0.5 -mx-1",
-          "transition hover:bg-amber-50 focus-visible:outline focus-visible:outline-2",
-          "focus-visible:outline-offset-1 focus-visible:outline-amber-500/60"
-        )}
+        className={cn("zd-est-confidence", toneClass)}
       >
         {body}
       </button>
@@ -121,7 +111,7 @@ export function ZdEstimateConfidenceCell({
   }
 
   return (
-    <span className="inline-flex max-w-full" title={title || undefined}>
+    <span className={cn("zd-est-confidence", toneClass)} title={title || undefined}>
       {body}
     </span>
   );

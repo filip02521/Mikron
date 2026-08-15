@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/Button";
 import {
   OverflowMenu,
@@ -23,6 +24,10 @@ import {
   zdEstimateListToolsMetaClass,
   zdEstimateListToolsRowClass,
   zdEstimateSelectionBarClass,
+  zdEstimateSelectionGroupButtonsClass,
+  zdEstimateSelectionGroupClass,
+  zdEstimateSelectionGroupDividerClass,
+  zdEstimateSelectionGroupLabelClass,
 } from "@/lib/ui/ontime-theme";
 
 export type ZdEstimateListToolsBarProps = {
@@ -55,9 +60,48 @@ export type ZdEstimateListToolsBarProps = {
   onBulkReviewZero?: () => void;
 };
 
+function SelectionActionGroup({
+  label,
+  children,
+  tone = "default",
+  className,
+}: {
+  label: string;
+  children: ReactNode;
+  tone?: "default" | "danger";
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        zdEstimateSelectionGroupClass,
+        tone === "danger" &&
+          "rounded-lg bg-red-50/50 px-2 py-1.5 ring-1 ring-red-100/80 sm:px-2.5",
+        className
+      )}
+      role="group"
+      aria-label={label}
+    >
+      <span
+        className={cn(
+          zdEstimateSelectionGroupLabelClass,
+          tone === "danger" && "text-red-800/55"
+        )}
+      >
+        {label}
+      </span>
+      <div className={zdEstimateSelectionGroupButtonsClass}>{children}</div>
+    </div>
+  );
+}
+
+function SelectionGroupDivider() {
+  return <div className={zdEstimateSelectionGroupDividerClass} aria-hidden />;
+}
+
 /**
- * Pasek akcji grupowych — tylko przy zaznaczeniu (w flow nad tabelą).
- * Filtr / szukaj / „Zaznacz widoczne” są w belce listy.
+ * Pasek akcji grupowych — grupy wg typu: powiązania → jednostki → pewność →
+ * reguły → zakres listy. Nad sticky Create.
  */
 export function ZdEstimateListToolsBar({
   selectedCount,
@@ -109,6 +153,9 @@ export function ZdEstimateListToolsBar({
     visibleSelectedCount
   );
 
+  const showReviewGroup = Boolean(onBulkReviewAccept || onBulkReviewZero);
+  const showRulesGroup = Boolean(onBulkOnRequest || onBulkClearOnRequest);
+
   return (
     <div
       className={zdEstimateSelectionBarClass}
@@ -152,168 +199,246 @@ export function ZdEstimateListToolsBar({
               onClick={onClearSelection}
               disabled={disabled}
             >
-              Odznacz
+              {ZD_ESTIMATE_UI.selectionClearLabel}
             </button>
           </p>
         </div>
 
-        <div className={cn(zdEstimateListToolsActionsClass, "lg:justify-end")}>
-          <Button
-            type="button"
-            size="sm"
-            variant={tools.pair.accent ? "primary" : "secondary"}
-            disabled={disabled || !tools.pair.enabled}
-            onClick={onCreatePair}
-            title={tools.pair.title}
-          >
-            Para
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={tools.bom.accent ? "primary" : "secondary"}
-            disabled={disabled || !tools.bom.enabled}
-            onClick={onCreateBom}
-            title={tools.bom.title}
-            className={cn(selectedCount < 2 && "hidden sm:inline-flex")}
-          >
-            {ZD_BOM_UI.bulkButton}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={tools.packagingSet.accent ? "primary" : "secondary"}
-            disabled={disabled || !tools.packagingSet.enabled}
-            onClick={onBulkPackaging}
-            title={tools.packagingSet.title}
-          >
-            Opakowanie
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            disabled={disabled || !tools.packagingClear.enabled}
-            onClick={onBulkClearPackaging}
-            title={tools.packagingClear.title}
-            className="hidden sm:inline-flex"
-          >
-            Usuń opak.{tools.packagingClear.labelSuffix}
-          </Button>
-          {onBulkReviewAccept ? (
+        <div className={zdEstimateListToolsActionsClass}>
+          <SelectionActionGroup label={ZD_ESTIMATE_UI.selectionGroupRelations}>
+            <Button
+              type="button"
+              size="sm"
+              variant={tools.pair.accent ? "primary" : "secondary"}
+              disabled={disabled || !tools.pair.enabled}
+              onClick={onCreatePair}
+              title={tools.pair.title}
+            >
+              Para
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={tools.bom.accent ? "primary" : "secondary"}
+              disabled={disabled || !tools.bom.enabled}
+              onClick={onCreateBom}
+              title={tools.bom.title}
+              className={cn(selectedCount < 2 && "hidden sm:inline-flex")}
+            >
+              {ZD_BOM_UI.bulkButton}
+            </Button>
+          </SelectionActionGroup>
+
+          <SelectionGroupDivider />
+
+          <SelectionActionGroup label={ZD_ESTIMATE_UI.selectionGroupUnits}>
+            <Button
+              type="button"
+              size="sm"
+              variant={tools.packagingSet.accent ? "primary" : "secondary"}
+              disabled={disabled || !tools.packagingSet.enabled}
+              onClick={onBulkPackaging}
+              title={tools.packagingSet.title}
+            >
+              Opakowanie
+            </Button>
             <Button
               type="button"
               size="sm"
               variant="secondary"
-              disabled={disabled || reviewEligibleCount <= 0}
-              onClick={onBulkReviewAccept}
-              title={ZD_ESTIMATE_UI.reviewAcceptHint}
-            >
-              {ZD_ESTIMATE_UI.reviewAcceptCta}
-              {reviewEligibleCount > 0 ? ` (${reviewEligibleCount})` : ""}
-            </Button>
-          ) : null}
-          {onBulkReviewZero ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={disabled || reviewEligibleCount <= 0}
-              onClick={onBulkReviewZero}
-              title={ZD_ESTIMATE_UI.reviewZeroHint}
-            >
-              {ZD_ESTIMATE_UI.reviewZeroCta}
-            </Button>
-          ) : null}
-          {onBulkOnRequest ? (
-            <Button
-              type="button"
-              size="sm"
-              variant={tools.onRequest.accent ? "primary" : "secondary"}
-              disabled={disabled || !tools.onRequest.enabled}
-              onClick={onBulkOnRequest}
-              title={tools.onRequest.title}
-              className="hidden lg:inline-flex"
-            >
-              Na prośbę{tools.onRequest.labelSuffix}
-            </Button>
-          ) : null}
-          {onBulkClearOnRequest ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              disabled={disabled || !tools.clearOnRequest.enabled}
-              onClick={onBulkClearOnRequest}
-              title={tools.clearOnRequest.title}
-              className="hidden lg:inline-flex"
-            >
-              Usuń „tylko na prośbę”{tools.clearOnRequest.labelSuffix}
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            size="sm"
-            variant={tools.restore.accent ? "primary" : "secondary"}
-            disabled={disabled || !tools.restore.enabled}
-            onClick={onBulkRestore}
-            title={tools.restore.title}
-            className="hidden sm:inline-flex"
-          >
-            Przywróć{tools.restore.labelSuffix}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="danger"
-            disabled={disabled || !tools.exclude.enabled}
-            onClick={onBulkExclude}
-            title={tools.exclude.title}
-          >
-            Wyklucz{tools.exclude.labelSuffix}
-          </Button>
-          <OverflowMenu
-            label="Więcej narzędzi listy"
-            disabled={disabled}
-            align="end"
-            iconOnly
-            className="sm:hidden"
-            triggerClassName={panelToolbarIconButtonClass}
-          >
-            <OverflowMenuLabel>Akcje</OverflowMenuLabel>
-            <OverflowMenuItem
               disabled={disabled || !tools.packagingClear.enabled}
               onClick={onBulkClearPackaging}
+              title={tools.packagingClear.title}
+              className="hidden sm:inline-flex"
             >
               Usuń opak.{tools.packagingClear.labelSuffix}
-            </OverflowMenuItem>
-            {onBulkOnRequest ? (
-              <OverflowMenuItem
-                disabled={disabled || !tools.onRequest.enabled}
-                onClick={onBulkOnRequest}
-              >
-                Tylko na prośbę{tools.onRequest.labelSuffix}
-              </OverflowMenuItem>
-            ) : null}
-            {onBulkClearOnRequest ? (
-              <OverflowMenuItem
-                disabled={disabled || !tools.clearOnRequest.enabled}
-                onClick={onBulkClearOnRequest}
-              >
-                Usuń „tylko na prośbę”{tools.clearOnRequest.labelSuffix}
-              </OverflowMenuItem>
-            ) : null}
-            <OverflowMenuItem
+            </Button>
+          </SelectionActionGroup>
+
+          {showReviewGroup ? (
+            <>
+              <SelectionGroupDivider />
+              <SelectionActionGroup label={ZD_ESTIMATE_UI.selectionGroupReview}>
+                {onBulkReviewAccept ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={disabled || reviewEligibleCount <= 0}
+                    onClick={onBulkReviewAccept}
+                    title={ZD_ESTIMATE_UI.reviewAcceptHint}
+                  >
+                    {ZD_ESTIMATE_UI.reviewAcceptCta}
+                    {reviewEligibleCount > 0
+                      ? ` (${reviewEligibleCount})`
+                      : ""}
+                  </Button>
+                ) : null}
+                {onBulkReviewZero ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={disabled || reviewEligibleCount <= 0}
+                    onClick={onBulkReviewZero}
+                    title={ZD_ESTIMATE_UI.reviewZeroHint}
+                    className="hidden sm:inline-flex"
+                  >
+                    {ZD_ESTIMATE_UI.reviewZeroCta}
+                  </Button>
+                ) : null}
+              </SelectionActionGroup>
+            </>
+          ) : null}
+
+          {showRulesGroup ? (
+            <div className="hidden lg:contents">
+              <SelectionGroupDivider />
+              <SelectionActionGroup label={ZD_ESTIMATE_UI.selectionGroupRules}>
+                {onBulkOnRequest ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={tools.onRequest.accent ? "primary" : "secondary"}
+                    disabled={disabled || !tools.onRequest.enabled}
+                    onClick={onBulkOnRequest}
+                    title={tools.onRequest.title}
+                  >
+                    Na prośbę{tools.onRequest.labelSuffix}
+                  </Button>
+                ) : null}
+                {onBulkClearOnRequest ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={disabled || !tools.clearOnRequest.enabled}
+                    onClick={onBulkClearOnRequest}
+                    title={tools.clearOnRequest.title}
+                  >
+                    Usuń „tylko na prośbę”
+                    {tools.clearOnRequest.labelSuffix}
+                  </Button>
+                ) : null}
+              </SelectionActionGroup>
+            </div>
+          ) : null}
+
+          <SelectionGroupDivider />
+
+          <SelectionActionGroup
+            label={ZD_ESTIMATE_UI.selectionGroupList}
+            tone="danger"
+          >
+            <Button
+              type="button"
+              size="sm"
+              variant={tools.restore.accent ? "primary" : "secondary"}
               disabled={disabled || !tools.restore.enabled}
               onClick={onBulkRestore}
+              title={tools.restore.title}
+              className="hidden sm:inline-flex"
             >
               Przywróć{tools.restore.labelSuffix}
-            </OverflowMenuItem>
-            <OverflowMenuSeparator />
-            <OverflowMenuItem disabled={disabled || selectedCount < 2} onClick={onCreateBom}>
-              {ZD_BOM_UI.bulkButton}
-            </OverflowMenuItem>
-          </OverflowMenu>
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="danger"
+              disabled={disabled || !tools.exclude.enabled}
+              onClick={onBulkExclude}
+              title={tools.exclude.title}
+            >
+              Wyklucz{tools.exclude.labelSuffix}
+            </Button>
+          </SelectionActionGroup>
+
+          <div className="flex items-end sm:pl-1">
+            <OverflowMenu
+              label={ZD_ESTIMATE_UI.selectionMoreMenuLabel}
+              disabled={disabled}
+              align="end"
+              iconOnly
+              className={showRulesGroup ? "lg:hidden" : "sm:hidden"}
+              triggerClassName={panelToolbarIconButtonClass}
+            >
+              <div className="sm:hidden">
+                <OverflowMenuLabel>
+                  {ZD_ESTIMATE_UI.selectionGroupRelations}
+                </OverflowMenuLabel>
+                {selectedCount < 2 ? (
+                  <OverflowMenuItem
+                    disabled={disabled || !tools.bom.enabled}
+                    onClick={onCreateBom}
+                  >
+                    {ZD_BOM_UI.bulkButton}
+                  </OverflowMenuItem>
+                ) : null}
+                <OverflowMenuSeparator />
+                <OverflowMenuLabel>
+                  {ZD_ESTIMATE_UI.selectionGroupUnits}
+                </OverflowMenuLabel>
+                <OverflowMenuItem
+                  disabled={disabled || !tools.packagingClear.enabled}
+                  onClick={onBulkClearPackaging}
+                >
+                  Usuń opak.{tools.packagingClear.labelSuffix}
+                </OverflowMenuItem>
+                {showReviewGroup && onBulkReviewZero ? (
+                  <>
+                    <OverflowMenuSeparator />
+                    <OverflowMenuLabel>
+                      {ZD_ESTIMATE_UI.selectionGroupReview}
+                    </OverflowMenuLabel>
+                    <OverflowMenuItem
+                      disabled={disabled || reviewEligibleCount <= 0}
+                      onClick={onBulkReviewZero}
+                    >
+                      {ZD_ESTIMATE_UI.reviewZeroCta}
+                    </OverflowMenuItem>
+                  </>
+                ) : null}
+                <OverflowMenuSeparator />
+                <OverflowMenuLabel>
+                  {ZD_ESTIMATE_UI.selectionGroupList}
+                </OverflowMenuLabel>
+                <OverflowMenuItem
+                  disabled={disabled || !tools.restore.enabled}
+                  onClick={onBulkRestore}
+                >
+                  Przywróć{tools.restore.labelSuffix}
+                </OverflowMenuItem>
+              </div>
+
+              {showRulesGroup ? (
+                <>
+                  <div className="sm:hidden">
+                    <OverflowMenuSeparator />
+                  </div>
+                  <OverflowMenuLabel>
+                    {ZD_ESTIMATE_UI.selectionGroupRules}
+                  </OverflowMenuLabel>
+                  {onBulkOnRequest ? (
+                    <OverflowMenuItem
+                      disabled={disabled || !tools.onRequest.enabled}
+                      onClick={onBulkOnRequest}
+                    >
+                      Na prośbę{tools.onRequest.labelSuffix}
+                    </OverflowMenuItem>
+                  ) : null}
+                  {onBulkClearOnRequest ? (
+                    <OverflowMenuItem
+                      disabled={disabled || !tools.clearOnRequest.enabled}
+                      onClick={onBulkClearOnRequest}
+                    >
+                      Usuń „tylko na prośbę”
+                      {tools.clearOnRequest.labelSuffix}
+                    </OverflowMenuItem>
+                  ) : null}
+                </>
+              ) : null}
+            </OverflowMenu>
+          </div>
         </div>
       </div>
     </div>

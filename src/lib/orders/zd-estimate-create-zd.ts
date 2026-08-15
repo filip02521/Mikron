@@ -476,10 +476,10 @@ export function canCreateZdFromEstimateState(
     };
   }
   if (state.estimating) {
-    return { ok: false, reason: "Trwa przeliczanie szacunku." };
+    return { ok: false, reason: ZD_ESTIMATE_UI.createGateEstimating };
   }
   if (state.mutating || state.creating) {
-    return { ok: false, reason: "Trwa inna operacja." };
+    return { ok: false, reason: ZD_ESTIMATE_UI.createGateMutating };
   }
   const createLocked =
     !state.createUnlockedAfterDone &&

@@ -24,7 +24,11 @@ export const ZD_BOOST_POWER_PRESET_IDS: readonly ZdBoostPowerPreset[] = [
 
 type PresetDef = {
   id: ZdBoostPowerPreset;
+  /** Krótka etykieta SegmentedControl. */
+  shortLabel: string;
+  /** Pełna etykieta (a11y / listy). */
   label: string;
+  /** Tooltip / title — co robi preset. */
   hint: string;
   /** Partial nadpisujący ZD_SALES_TRACK; standard = {}. */
   partial: {
@@ -39,8 +43,9 @@ type PresetDef = {
 export const ZD_BOOST_PRESET_DEFS: readonly PresetDef[] = [
   {
     id: "off",
+    shortLabel: "Wył.",
     label: "Wyłączony",
-    hint: "Bez podbijania sztuk; cięcia przy grubym pokryciu magazynowym nadal działają.",
+    hint: "Bez dokładania sztuk z tempa sprzedaży. Cięcia przy wysokim stanie magazynowym nadal działają.",
     partial: {
       maxTotalBoostRatio: 0,
       sellThroughMaxBoost: 0,
@@ -50,8 +55,9 @@ export const ZD_BOOST_PRESET_DEFS: readonly PresetDef[] = [
   },
   {
     id: "gentle",
+    shortLabel: "Delikatny",
     label: "Delikatny (zalecany)",
-    hint: "Przy silnej sprzedaży podąża (+~20% celu); przy słabej pewności nie dokłada.",
+    hint: "Przy mocnej sprzedaży lekko podnosi Do ZD (ok. +20% celu). Przy słabej pewności nie dokłada.",
     partial: {
       maxTotalBoostRatio: 0.2,
       sellThroughMaxBoost: 0.08,
@@ -62,14 +68,16 @@ export const ZD_BOOST_PRESET_DEFS: readonly PresetDef[] = [
   },
   {
     id: "standard",
-    label: "Standard (jak wcześniej)",
-    hint: "Dotychczasowa siła podbijania (do +35% celu).",
+    shortLabel: "Standard",
+    label: "Standard",
+    hint: "Dotychczasowa siła podbicia — do ok. +35% celu.",
     partial: {},
   },
   {
     id: "aggressive",
+    shortLabel: "Agresywny",
     label: "Agresywny",
-    hint: "Mocniejsze podbicie (do +50% celu przy wysokiej pewności).",
+    hint: "Silniejsze podbicie — do ok. +50% celu przy wysokiej pewności.",
     partial: {
       maxTotalBoostRatio: 0.5,
       sellThroughMaxBoost: 0.22,

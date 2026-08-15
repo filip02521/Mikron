@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION,
   ZD_ESTIMATE_UI,
+  buildImplicitPieceSnapshotNotice,
   formatImplicitPieceSnapshotHint,
   zdEstimateCreateConfirmLabel,
+  zdEstimateCechaScopeCaption,
   zdEstimateEmptyListDescription,
   zdEstimateHostBadgeLabel,
   zdEstimateLaunchFetchHint,
@@ -12,11 +14,20 @@ import {
   zdEstimateLaunchProgressCompleteHint,
   zdEstimateCreateProgressCompleteTitle,
   zdEstimateCreateProgressCompleteHint,
+  zdEstimateNeedsSettingsHint,
+  zdEstimatePageContextFromSupplier,
+  zdEstimatePageFlowSteps,
   zdEstimatePageHint,
+  zdEstimatePageLead,
+  zdEstimatePoliciesSectionHint,
+  zdEstimatePrepCardHint,
   zdEstimateProsbaWord,
   zdEstimateProsbaWordAccusative,
+  zdEstimateLaunchReadyToastDescription,
+  zdEstimateLaunchReadyToastTitle,
   zdEstimateReadyToCountHint,
   zdEstimateRecountOverlayHint,
+  zdEstimateRecountOverlayMessage,
   zdEstimateRouteLoadingSteps,
   zdEstimateRouteLoadingSubtitle,
   zdEstimateRouteLoadingHint,
@@ -77,6 +88,18 @@ describe("zd-estimate-ui-copy", () => {
 
   it("route loading bez „dla dostawcy” i ze stałym flow description", () => {
     expect(ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION).toMatch(/Zakres Subiekta/);
+    expect(zdEstimatePageLead()).toMatch(/zakres/i);
+    expect(zdEstimatePageLead()).toMatch(/utwórz/i);
+    expect(zdEstimatePageFlowSteps()).toHaveLength(3);
+    expect(zdEstimatePageFlowSteps().map((s) => s.id)).toEqual([
+      "scope",
+      "list",
+      "create",
+    ]);
+    expect(zdEstimatePageContextFromSupplier("Ivoclar")).toBe(
+      "Dostawca: Ivoclar"
+    );
+    expect(zdEstimatePageContextFromSupplier("  ")).toBeNull();
     expect(zdEstimateRouteLoadingSubtitle()).not.toMatch(/dla dostawcy/i);
     expect(zdEstimateRouteLoadingHint()).toBe(zdEstimateRouteLoadingSubtitle());
     expect(zdEstimateRouteLoadingHint()).not.toMatch(/testowe/i);
@@ -90,11 +113,58 @@ describe("zd-estimate-ui-copy", () => {
     }
   });
 
+  it("launch ready toast — odmiana pozycji i krótki follow-up", () => {
+    expect(zdEstimateLaunchReadyToastTitle()).toBe("Lista gotowa");
+    expect(
+      zdEstimateLaunchReadyToastDescription({
+        doZamowieniaCount: 1,
+        isLive: true,
+      })
+    ).toMatch(/^1 pozycja do ZD\./);
+    expect(
+      zdEstimateLaunchReadyToastDescription({
+        doZamowieniaCount: 3,
+        pendingIndividualsCount: 2,
+        isLive: true,
+      })
+    ).toMatch(/3 pozycje do ZD · 2 prośby/);
+    expect(
+      zdEstimateLaunchReadyToastDescription({
+        doZamowieniaCount: 5,
+        isLive: false,
+      })
+    ).toMatch(/5 pozycji do ZD/);
+    expect(
+      zdEstimateLaunchReadyToastDescription({
+        doZamowieniaCount: 3,
+        isLive: true,
+      })
+    ).toMatch(/aktualnej bazie/);
+    expect(
+      zdEstimateLaunchReadyToastDescription({
+        doZamowieniaCount: 3,
+        isLive: true,
+      })
+    ).not.toMatch(/Powiąż ZD/);
+  });
+
   it("prep / launch / recount copy", () => {
-    expect(zdEstimateScopeDashedHint("grupa")).toMatch(/Policz listę/);
-    expect(zdEstimateScopeDashedHint("cecha")).toMatch(/Policz listę/);
+    expect(zdEstimateScopeDashedHint("grupa")).toMatch(/skrót|wyszukaj grupę/);
+    expect(zdEstimateScopeDashedHint("cecha")).toMatch(/Wyszukaj cechę/);
+    expect(zdEstimateScopeDashedHint("grupa")).not.toMatch(/Policz listę/);
     expect(zdEstimateReadyToCountHint()).toMatch(/Gotowe/);
-    expect(zdEstimateScopeChangedHint()).toMatch(/Zakres zmieniony/);
+    expect(zdEstimateScopeChangedHint()).toMatch(/Zmieniono zakres/);
+    expect(zdEstimateNeedsSettingsHint()).toMatch(/pod tą kartą/);
+    expect(zdEstimateNeedsSettingsHint()).not.toMatch(/powyżej/);
+    expect(zdEstimatePrepCardHint()).toMatch(/całego działu zakupów/);
+    expect(zdEstimatePoliciesSectionHint()).toMatch(/Do ZD/);
+    expect(zdEstimateCechaScopeCaption()).toMatch(/Zaawansowane/);
+    expect(ZD_ESTIMATE_UI.boostPowerLabel).toBe("Podbicie Do ZD");
+    expect(ZD_ESTIMATE_UI.extrasPolicyLabel).toBe("Prośby i niedobór");
+    expect(ZD_ESTIMATE_UI.extrasPolicySumShort).toBe("Suma");
+    expect(ZD_ESTIMATE_UI.extrasPolicyMaxShort).toBe("Maksimum");
+    expect(ZD_ESTIMATE_UI.changeSupplierScopeHint).toMatch(/formularzu/);
+    expect(ZD_ESTIMATE_UI.changeSupplierScopeHint).not.toMatch(/poniżej/);
     expect(
       zdEstimateLaunchProgressTitle({ manualWithScope: true })
     ).toMatch(/Liczę listę/);
@@ -111,7 +181,11 @@ describe("zd-estimate-ui-copy", () => {
       zdEstimateCreateProgressCompleteHint({ snapshotOk: true })
     ).toMatch(/zamykam/);
     expect(zdEstimateRecountOverlayHint(true)).toMatch(/aktualnej bazy/);
+    expect(zdEstimateRecountOverlayHint(true)).toMatch(/Utwórz ZD/);
     expect(zdEstimateRecountOverlayHint(false)).toMatch(/testowego/);
+    expect(zdEstimateRecountOverlayMessage()).toMatch(/listę Do ZD/);
+    expect(ZD_ESTIMATE_UI.createGateEstimating).toMatch(/listy Do ZD/i);
+    expect(ZD_ESTIMATE_UI.createGateEstimating).not.toMatch(/szacunku/);
   });
 
   it("packagingLiveFlash mówi o pokryciu i Do ZD", () => {
@@ -131,6 +205,29 @@ describe("zd-estimate-ui-copy", () => {
     expect(hint).toMatch(/2 pozycje/);
     expect(hint).toMatch(/ABC \(1028\)/);
     expect(hint).toMatch(/sztuki 1:1/);
+  });
+
+  it("buildImplicitPieceSnapshotNotice — struktura pod alert UI", () => {
+    const notice = buildImplicitPieceSnapshotNotice(
+      [
+        { symbol: "G2B25", twId: 2382 },
+        { symbol: "V130L07", twId: 6484 },
+        { symbol: "TP001", twId: 2470 },
+      ],
+      2
+    );
+    expect(notice).not.toBeNull();
+    expect(notice!.count).toBe(3);
+    expect(notice!.countLabel).toBe("3 pozycje");
+    expect(notice!.title).toBe(ZD_ESTIMATE_UI.implicitPieceSnapshotTitle);
+    expect(notice!.samples).toHaveLength(2);
+    expect(notice!.samples[0]).toEqual({
+      symbol: "G2B25",
+      twId: 2382,
+      label: "G2B25 (2382)",
+    });
+    expect(notice!.moreCount).toBe(1);
+    expect(notice!.summaryLine).toMatch(/G2B25 \(2382\)/);
   });
 
   it("odmiana prośba / prośby / próśb", () => {

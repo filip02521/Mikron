@@ -23,9 +23,11 @@ import {
   zdEstimateCreateTitleHint,
   zdEstimateProsbaWord,
   ZD_ESTIMATE_UI,
+  type ImplicitPieceSnapshotNotice,
 } from "@/lib/orders/zd-estimate-ui-copy";
 import type { ZdEstimateRunMode } from "@/lib/orders/zd-estimate-scope";
 import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
+import { ZdEstimateImplicitPieceNotice } from "@/components/zakupy/ZdEstimateImplicitPieceNotice";
 
 export function ZdEstimateCreateZdDialog({
   open,
@@ -49,7 +51,9 @@ export function ZdEstimateCreateZdDialog({
   serviceUwagiPreview = null,
   excludedWithIndividualCount = 0,
   omittedServiceCount = 0,
-  implicitPieceSnapshotHint = null,
+  implicitPieceSnapshotNotice = null,
+  onOpenPackaging,
+  onOpenPairs,
   onClose,
   onCreated,
   onError,
@@ -85,7 +89,10 @@ export function ZdEstimateCreateZdDialog({
   serviceUwagiPreview?: string | null;
   excludedWithIndividualCount?: number;
   omittedServiceCount?: number;
-  implicitPieceSnapshotHint?: string | null;
+  implicitPieceSnapshotNotice?: ImplicitPieceSnapshotNotice | null;
+  /** Zamknij dialog i otwórz panel opakowań / par. */
+  onOpenPackaging?: () => void;
+  onOpenPairs?: () => void;
   onClose: () => void;
   onCreated: (info: {
     dokId: number;
@@ -361,11 +368,6 @@ export function ZdEstimateCreateZdDialog({
                 długo pracować; limit czasu to ok. 3 minuty.
               </p>
             ) : null}
-            {implicitPieceSnapshotHint ? (
-              <p className="mt-2 rounded-md border border-amber-200/80 bg-amber-50/80 px-2.5 py-2 text-xs leading-snug text-amber-950">
-                {implicitPieceSnapshotHint}
-              </p>
-            ) : null}
             <p className="mt-2 text-xs leading-snug text-slate-600">
               {ZD_ESTIMATE_UI.createQtyBumpNote}
             </p>
@@ -428,6 +430,14 @@ export function ZdEstimateCreateZdDialog({
             glowneServiceCount={markFreeze?.pendingGlowneServiceIds.length}
             constrainHeight={false}
           />
+
+          {implicitPieceSnapshotNotice ? (
+            <ZdEstimateImplicitPieceNotice
+              notice={implicitPieceSnapshotNotice}
+              onOpenPackaging={onOpenPackaging}
+              onOpenPairs={onOpenPairs}
+            />
+          ) : null}
 
           <label className="flex items-start gap-2 text-sm text-slate-700">
             <input

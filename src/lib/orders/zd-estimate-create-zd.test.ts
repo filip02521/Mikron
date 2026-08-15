@@ -14,6 +14,7 @@ import {
   ZD_CREATE_MAX_LINES,
   ZD_CREATE_MAX_QTY,
 } from "@/lib/orders/zd-estimate-create-zd";
+import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import { buildZdEstimateSnapshotLinesFromDoc } from "@/lib/orders/zd-estimate-snapshot-lines";
 
@@ -548,6 +549,23 @@ describe("canCreateZdFromEstimateState", () => {
         createUnlockedAfterDone: true,
       }).ok
     ).toBe(true);
+
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: true,
+        mutating: false,
+        creating: false,
+        createDoneDokId: null,
+      })
+    ).toEqual({
+      ok: false,
+      reason: ZD_ESTIMATE_UI.createGateEstimating,
+    });
 
     expect(
       canCreateZdFromEstimateState({
