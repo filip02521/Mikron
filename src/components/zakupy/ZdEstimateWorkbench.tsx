@@ -327,6 +327,7 @@ import {
   zdEstimateDockButtonClass,
   zdEstimateListBodyInsetClass,
   zdEstimateListBodyPadClass,
+  zdEstimateListLoadingPanelClass,
   zdEstimateNestedWellClass,
   zdEstimatePrepFooterClass,
   zdEstimatePrepInsetClass,
@@ -4017,28 +4018,75 @@ export function ZdEstimateWorkbench({
       )}
     >
       {showLaunchProgress && launchStartedAtMs != null ? (
-        <div className="flex min-h-0 flex-1 flex-col">
-        <ZdEstimateLaunchProgressPanel
-          key={launchStartedAtMs}
-          supplierName={activeSupplierName}
-          scopeLabel={launchScopeLabel}
-          scopeMode={launchScopeMode}
-          startedAtMs={launchStartedAtMs}
-          scopeAlreadyResolved={
-            Boolean(launchScopeLabel) || launchHasRunnableScope(launch)
-          }
-          forceComplete={launchForceComplete}
-          ordersIsLive={bootstrap.ordersIsLive}
-          host={{
-            configured: bootstrap.configured,
-            isLive: bootstrap.ordersIsLive,
-            port: bootstrap.ordersPort ?? bootstrap.testPort,
-            salesEndFromFs: bootstrap.salesEndFromFs,
-            salesEndKeyFormatted: bootstrap.salesEndFromFs
-              ? formatPlDate(bootstrap.salesEndKey)
-              : null,
-          }}
-        />
+        <div className="flex min-h-0 flex-1 flex-col gap-1.5">
+          <ZdEstimatePageIntro
+            hint={zdEstimatePageHint({
+              isLive: bootstrap.ordersIsLive,
+              configured: bootstrap.configured,
+            })}
+            facts={
+              (launchScopeLabel || scopeLabel) &&
+              (scopeSelected || Boolean(launchScopeLabel)) ? (
+                <ZdEstimatePrepScopeFacts
+                  variant="toolbar"
+                  scopeName={launchScopeLabel || scopeLabel || ""}
+                  stockLabel={stockLabel}
+                  dniZapasu={dniZapasu}
+                  supplierLabel={
+                    activeSupplierName || supplierLabel
+                  }
+                  dataOd={dataOd}
+                  dataDo={dataDo}
+                />
+              ) : null
+            }
+            host={{
+              configured: bootstrap.configured,
+              isLive: bootstrap.ordersIsLive,
+              port: bootstrap.ordersPort ?? bootstrap.testPort,
+              salesEndFromFs: bootstrap.salesEndFromFs,
+              salesEndKeyFormatted: bootstrap.salesEndFromFs
+                ? formatPlDate(bootstrap.salesEndKey)
+                : null,
+            }}
+          />
+          <div className="flex min-h-0 flex-1 flex-col">
+            <Card
+              padding={false}
+              className={cn(
+                "relative flex min-h-0 flex-1 flex-col overflow-hidden",
+                zdEstimateCardSurfaceClass
+              )}
+            >
+              <div className={zdEstimateListLoadingPanelClass}>
+                <div className="zd-est-loading-stage__glow" aria-hidden />
+                <ZdEstimateLaunchProgressPanel
+                  key={launchStartedAtMs}
+                  supplierName={activeSupplierName}
+                  scopeLabel={launchScopeLabel}
+                  scopeMode={launchScopeMode}
+                  startedAtMs={launchStartedAtMs}
+                  scopeAlreadyResolved={
+                    Boolean(launchScopeLabel) ||
+                    launchHasRunnableScope(launch)
+                  }
+                  forceComplete={launchForceComplete}
+                  ordersIsLive={bootstrap.ordersIsLive}
+                  host={{
+                    configured: bootstrap.configured,
+                    isLive: bootstrap.ordersIsLive,
+                    port: bootstrap.ordersPort ?? bootstrap.testPort,
+                    salesEndFromFs: bootstrap.salesEndFromFs,
+                    salesEndKeyFormatted: bootstrap.salesEndFromFs
+                      ? formatPlDate(bootstrap.salesEndKey)
+                      : null,
+                  }}
+                  variant="embedded"
+                  showBrandHeader={false}
+                />
+              </div>
+            </Card>
+          </div>
         </div>
       ) : null}
 

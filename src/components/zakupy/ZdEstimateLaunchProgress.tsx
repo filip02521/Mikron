@@ -27,6 +27,9 @@ export function ZdEstimateLaunchProgressPanel({
   forceComplete = false,
   ordersIsLive = false,
   host = null,
+  /** W slocie listy: bez pełnej sceny — PageIntro trzyma brand. */
+  variant = "stage",
+  showBrandHeader = true,
 }: {
   supplierName?: string | null;
   scopeLabel?: string | null;
@@ -36,6 +39,8 @@ export function ZdEstimateLaunchProgressPanel({
   forceComplete?: boolean;
   ordersIsLive?: boolean;
   host?: ZdEstimateHostStrip | null;
+  variant?: "stage" | "embedded";
+  showBrandHeader?: boolean;
 }) {
   const steps = useMemo(
     () =>
@@ -93,7 +98,13 @@ export function ZdEstimateLaunchProgressPanel({
         isLive: ordersIsLive,
         configured: host?.configured ?? true,
       })}
-      host={host}
+      host={showBrandHeader ? host : null}
+      variant={variant}
+      showBrandHeader={showBrandHeader}
+      className={variant === "embedded" ? "w-auto max-w-full" : undefined}
+      windowClassName={
+        variant === "embedded" ? "max-w-[24.5rem] sm:max-w-[26rem]" : undefined
+      }
     >
       <ZdEstimateLoadingBody
         statusTitle={title}
