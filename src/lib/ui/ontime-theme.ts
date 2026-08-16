@@ -270,13 +270,6 @@ export const zdEstimatePageShellClass =
 export const zdEstimateLoadingStageClass =
   "zd-est-loading-stage relative flex w-full min-h-0 flex-1 items-center justify-center px-2 py-4 sm:px-3 sm:py-6";
 
-/**
- * Panel listy podczas Przygotuj / Przelicz — to samo wyśrodkowanie karty
- * w slocie tabeli (intro zostaje nad kartą).
- */
-export const zdEstimateListLoadingPanelClass =
-  "zd-est-list-loading-panel relative flex min-h-0 flex-1 items-center justify-center px-2 py-4 sm:px-3 sm:py-6";
-
 /** Overlay „Przelicz ZD” — tylko karta listy, wyśrodkowany blur tabeli. */
 export const zdEstimateRecountOverlayPlaceClass =
   "zd-est-recount-overlay absolute inset-0 z-30 flex items-center justify-center rounded-md";
