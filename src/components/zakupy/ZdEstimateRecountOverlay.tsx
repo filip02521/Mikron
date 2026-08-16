@@ -2,14 +2,11 @@
 
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
-import {
-  zdEstimateLoadingWindowClass,
-  zdEstimateRecountOverlayPlaceClass,
-} from "@/lib/ui/ontime-theme";
+import { zdEstimateRecountOverlayPlaceClass } from "@/lib/ui/ontime-theme";
 
 /**
- * Overlay przeliczania listy — ta sama kotwica pionowa co LaunchProgress
- * (pełny workbench, od góry), ten sam język karty co LoadingWindow.
+ * Overlay przeliczania listy — blur tylko karty tabeli (nie całego workbencha),
+ * karta komunikatu wyśrodkowana w obszarze listy.
  */
 export function ZdEstimateRecountOverlay({
   message,
@@ -29,22 +26,17 @@ export function ZdEstimateRecountOverlay({
       className={cn(zdEstimateRecountOverlayPlaceClass, className)}
     >
       <div
-        className="zd-est-recount-overlay__veil pointer-events-none absolute inset-0"
+        className="zd-est-recount-overlay__veil pointer-events-none absolute inset-0 rounded-md"
         aria-hidden
       />
       <div
-        className="zd-est-loading-bar zd-est-loading-bar--indeterminate pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden"
+        className="zd-est-loading-bar zd-est-loading-bar--indeterminate pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden rounded-t-md"
         aria-hidden
       >
         <div className="zd-est-loading-bar__fill zd-est-loading-bar__fill--sweep h-full w-1/3 rounded-full bg-indigo-500" />
       </div>
 
-      <div
-        className={cn(
-          zdEstimateLoadingWindowClass,
-          "zd-est-recount-overlay__card relative mx-4 bg-white/95 px-5 py-4 backdrop-blur-sm sm:max-w-[24.5rem]"
-        )}
-      >
+      <div className="zd-est-recount-overlay__card relative mx-4 w-full max-w-[22rem] overflow-hidden rounded-lg border border-slate-200/90 bg-white/95 px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_18px_40px_-16px_rgba(15,23,42,0.28)] ring-1 ring-slate-900/[0.04] backdrop-blur-sm">
         <div className="flex items-start gap-3.5">
           <span className="zd-est-loading-status-icon mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full bg-indigo-50 ring-1 ring-indigo-100/90">
             <Spinner
