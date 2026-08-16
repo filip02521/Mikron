@@ -5324,22 +5324,12 @@ export function ZdEstimateWorkbench({
           padding={false}
           className={cn(
             "relative flex min-h-0 flex-1 flex-col overflow-hidden",
-            zdEstimateCardSurfaceClass
+            zdEstimateCardSurfaceClass,
+            showListRecountOverlay &&
+              "pointer-events-none opacity-60 transition-opacity duration-300 motion-reduce:transition-none"
           )}
         >
-          {showListRecountOverlay ? (
-            <ZdEstimateRecountOverlay
-              message={zdEstimateRecountOverlayMessage()}
-              hint={zdEstimateRecountOverlayHint(bootstrap.ordersIsLive)}
-            />
-          ) : null}
-          <div
-            className={cn(
-              "flex min-h-0 flex-1 flex-col",
-              showListRecountOverlay &&
-                "pointer-events-none opacity-60 transition-opacity duration-300 motion-reduce:transition-none"
-            )}
-          >
+          <div className="flex min-h-0 flex-1 flex-col">
           <ZdEstimateListBand
             listFilter={listFilter}
             onListFilterChange={handleListFilterChange}
@@ -7139,6 +7129,13 @@ export function ZdEstimateWorkbench({
             createMarkFreezeCaptureRef.current = null;
             setCreateMarkFreezeFrozen(null);
           }}
+        />
+      ) : null}
+
+      {showListRecountOverlay ? (
+        <ZdEstimateRecountOverlay
+          message={zdEstimateRecountOverlayMessage()}
+          hint={zdEstimateRecountOverlayHint(bootstrap.ordersIsLive)}
         />
       ) : null}
     </div>

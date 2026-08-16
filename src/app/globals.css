@@ -1676,7 +1676,8 @@ main:has([data-zd-estimate-viewport]) [data-zd-estimate-viewport] {
   pointer-events: none;
   position: absolute;
   left: 50%;
-  top: 42%;
+  /* Kotwica od góry (jak karty loadingu) — nie środek sceny. */
+  top: 7.5rem;
   z-index: 0;
   width: min(28rem, 88vw);
   height: 14rem;

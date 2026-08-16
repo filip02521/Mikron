@@ -266,9 +266,25 @@ export const procurementArchivePageShellClass = adminPageShellClass;
 export const zdEstimatePageShellClass =
   "relative mx-auto flex w-full max-w-[min(100%,100rem)] min-h-0 flex-1 flex-col";
 
-/** Scena loadingu / launch — wyśrodkowanie w flex-1 workspace. */
-export const zdEstimateLoadingStageClass =
-  "zd-est-loading-stage relative flex w-full min-h-0 flex-1 items-center justify-center px-2 py-4 sm:px-3 sm:py-6";
+/**
+ * Wspólne kotwiczenie kart loadingu (Przygotuj / Przelicz / route):
+ * od góry workbencha, nie na środku kontenera — krótka karta „Przelicz”
+ * i wysoka checklista „Przygotuj” zaczynają się na tej samej wysokości.
+ */
+export const zdEstimateLoadingAnchorClass =
+  "items-start justify-center px-2 pb-4 pt-5 sm:px-3 sm:pb-6 sm:pt-8";
+
+/** Scena loadingu / launch — kotwica w flex-1 workspace. */
+export const zdEstimateLoadingStageClass = cn(
+  "zd-est-loading-stage relative flex w-full min-h-0 flex-1",
+  zdEstimateLoadingAnchorClass
+);
+
+/** Overlay „Przelicz ZD” — ta sama kotwica co scena launch (pełny workbench). */
+export const zdEstimateRecountOverlayPlaceClass = cn(
+  "zd-est-recount-overlay absolute inset-0 z-40 flex",
+  zdEstimateLoadingAnchorClass
+);
 
 /** Estetyczne okno loadingu (tytuł + checklista). */
 export const zdEstimateLoadingWindowClass =
