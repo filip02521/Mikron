@@ -83,7 +83,7 @@ export function ZdEstimateBulkPackagingDialog({
         open
         onClose={onCancel}
         title={`Usuń opakowanie (${clearCount}${clearOverLimit ? ` z ${lines.length}` : ""})`}
-        titleHint="Zaznaczone wrócą do zamawiania na sztuki 1:1 w kolumnie Do ZD."
+        titleHint={ZD_ESTIMATE_UI.packagingBulkClearHint}
         titleId="zd-estimate-bulk-packaging-clear-title"
         size="md"
         tier="raised"
@@ -352,7 +352,7 @@ function BulkProductPreview({
   rest: number;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 px-3.5 py-3">
+    <div className="rounded-lg border border-slate-200/90 bg-slate-50/70 px-3.5 py-3">
       <div className="flex gap-3">
         <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-md bg-white text-slate-500 ring-1 ring-slate-200/80">
           <IconPackage size={18} strokeWidth={1.75} aria-hidden />

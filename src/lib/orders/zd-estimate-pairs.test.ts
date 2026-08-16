@@ -72,6 +72,17 @@ describe("zd-product-pair-units", () => {
     ).toBe(140);
   });
 
+  it("pairCover: ujemne dostepne (dług rez.) zmniejsza cover", () => {
+    expect(
+      pairCoverPieces({
+        pieceDostepne: -28,
+        packDostepne: 0,
+        unitsPerPack: 10,
+        packOtwarteZd: 0,
+      })
+    ).toBe(-28);
+  });
+
   it("indexuje pack i piece", () => {
     const idx = indexZdProductPairs([
       { packTwId: 10, pieceTwId: 20, unitsPerPack: 100 },

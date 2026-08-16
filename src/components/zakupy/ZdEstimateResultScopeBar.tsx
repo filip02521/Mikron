@@ -32,6 +32,7 @@ function ScopeFact({
 /**
  * Zakres wyniku szacunku — okno sprzedaży i zapas są kluczowe dla qty,
  * więc dostają czytelną hierarchię (nie jedna szara linia z ISO).
+ * Domyślnie bez ciężkiej ramki (karta listy już ją ma).
  */
 export function ZdEstimateResultScopeBar({
   visibleCount,
@@ -78,15 +79,12 @@ export function ZdEstimateResultScopeBar({
 
   return (
     <div
-      className={cn(
-        "rounded-xl border border-slate-200/90 bg-slate-50/70 px-3.5 py-3 sm:px-4",
-        className
-      )}
+      className={cn("min-w-0", className)}
       role="status"
       aria-label="Zakres szacunku"
     >
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-        <div className="grid min-w-0 flex-1 grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-4">
+        <div className="grid min-w-0 flex-1 grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-4">
           <ScopeFact
             label="Widoczne"
             value={visibleLabel}

@@ -23,6 +23,10 @@ import {
   type ZdPackagingDocumentUnitMode,
 } from "@/lib/orders/zd-estimate-units";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
+import {
+  combineStockNeedWithExtra,
+  type ZdEstimateExtrasPolicy,
+} from "@/lib/orders/zd-estimate-extras-policy";
 
 export {
   normalizeUnitsPerPackage,
@@ -143,13 +147,15 @@ export function individualExtraPiecesForTw(
  * i przelicza wynik na jednostki do wpisania w dokumencie.
  * `individualExtraPieces` — rezerwa próśb (sztuki) dodana przed ceil opakowania.
  * `extraOnly` — „tylko na prośbę”: baza stock / bakowany pair qty = 0, tylko extra.
+ * `extrasPolicy` — `sum` (need+extra) albo `max(need, extra)`.
  * Para pack zawsze Mode A (packages).
  */
 export function resolveOrderQtyForLine(
   line: ManualZdEstimateLine,
   packaging?: PackagingLookup | null,
   individualExtraPieces?: number,
-  extraOnly = false
+  extraOnly = false,
+  extrasPolicy: ZdEstimateExtrasPolicy = "sum"
 ): ZdPackOrderQty {
   const extra = Math.max(0, Math.ceil(Number(individualExtraPieces) || 0));
   const label = packaging?.packageLabel?.trim() || "op.";
@@ -188,7 +194,7 @@ export function resolveOrderQtyForLine(
         ? 0
         : Math.max(0, Math.ceil(Number(line.doZamowieniaReczne) || 0));
     return computeZdPackOrderQty(
-      base + extra,
+      combineStockNeedWithExtra(base, extra, extrasPolicy),
       line.pair.unitsPerPack,
       label,
       "packages"
@@ -205,12 +211,15 @@ export function resolveOrderQtyForLine(
     packaging?.unitsPerPackage,
     mode
   );
-  const piecesNeeded =
+  const piecesNeeded = combineStockNeedWithExtra(
     computeManualOrderQty({
       celZapasu: line.celZapasuTracked ?? line.celZapasu,
       dostepne: line.dostepne,
       otwarteZd: otwarteZdPieces,
-    }) + extra;
+    }),
+    extra,
+    extrasPolicy
+  );
   return computeZdPackOrderQty(piecesNeeded, pack, label, mode);
 }
 
@@ -349,6 +358,29 @@ export function packagingByTwId<T extends { subiektTwId: number }>(
   return map;
 }
 
+export type ZdEstimatePackagingRefreshEntry = {
+  unitsPerPackage: number;
+  documentUnitMode?: ZdPackagingDocumentUnitMode | null;
+};
+
+/** Mapa na live remat / Policz (N + tryb dokumentu). */
+export function packagingRowsToRefreshLookup(
+  rows: readonly {
+    subiektTwId: number;
+    unitsPerPackage: number;
+    documentUnitMode?: ZdPackagingDocumentUnitMode | null;
+  }[]
+): Map<number, ZdEstimatePackagingRefreshEntry> {
+  const map = new Map<number, ZdEstimatePackagingRefreshEntry>();
+  for (const row of rows) {
+    map.set(row.subiektTwId, {
+      unitsPerPackage: row.unitsPerPackage,
+      documentUnitMode: row.documentUnitMode,
+    });
+  }
+  return map;
+}
+
 /**
  * Jednostki ZD (dokument) z opcjonalnym nadpisaniem sesji.
  * Brak override → wyliczone z `resolveOrderQtyForLine`.
@@ -367,13 +399,15 @@ export function effectiveZdDocumentUnits(
   packaging: PackagingLookup | null | undefined,
   individualExtraPieces?: number | null,
   overrideZdUnits?: number | null,
-  extraOnly = false
+  extraOnly = false,
+  extrasPolicy: ZdEstimateExtrasPolicy = "sum"
 ): number {
   const computed = resolveOrderQtyForLine(
     line,
     packaging,
     individualExtraPieces ?? undefined,
-    extraOnly
+    extraOnly,
+    extrasPolicy
   ).zdUnits;
   if (!lineAllowsZdDocumentUnitOverride(line)) {
     return computed;
@@ -397,7 +431,8 @@ export function pruneZdDocumentUnitOverrides(
   lines: readonly ManualZdEstimateLine[],
   packagingById: ReadonlyMap<number, PackagingLookup>,
   individualExtraByTwId?: ReadonlyMap<number, number> | null,
-  extraOnlyTwIds?: ReadonlySet<number> | null
+  extraOnlyTwIds?: ReadonlySet<number> | null,
+  extrasPolicy: ZdEstimateExtrasPolicy = "sum"
 ): Record<number, number> {
   let changed = false;
   const next: Record<number, number> = {};
@@ -416,7 +451,8 @@ export function pruneZdDocumentUnitOverrides(
       line,
       packagingById.get(twId) ?? null,
       individualExtraPiecesForTw(twId, individualExtraByTwId),
-      extraOnlyTwIds?.has(twId) === true
+      extraOnlyTwIds?.has(twId) === true,
+      extrasPolicy
     ).zdUnits;
     if (Math.trunc(override) === computed) {
       changed = true;
@@ -433,7 +469,8 @@ export function summarizePackOrderQty(
   excludedTwIds?: ReadonlySet<number> | readonly number[] | null,
   individualExtraByTwId?: ReadonlyMap<number, number> | null,
   qtyOverrideByTwId?: ReadonlyMap<number, number> | null,
-  extraOnlyTwIds?: ReadonlySet<number> | null
+  extraOnlyTwIds?: ReadonlySet<number> | null,
+  extrasPolicy: ZdEstimateExtrasPolicy = "sum"
 ): {
   doZamowieniaCount: number;
   piecesNeededSuma: number;
@@ -456,13 +493,20 @@ export function summarizePackOrderQty(
       individualExtraByTwId
     );
     const extraOnly = extraOnlyTwIds?.has(line.tw_Id) === true;
-    const qty = resolveOrderQtyForLine(line, pack, extra, extraOnly);
+    const qty = resolveOrderQtyForLine(
+      line,
+      pack,
+      extra,
+      extraOnly,
+      extrasPolicy
+    );
     const zdUnits = effectiveZdDocumentUnits(
       line,
       pack,
       extra,
       qtyOverrideByTwId?.get(line.tw_Id),
-      extraOnly
+      extraOnly,
+      extrasPolicy
     );
     if (zdUnits <= 0) continue;
     doZamowieniaCount += 1;
@@ -487,7 +531,8 @@ export function filterOrderableLinesWithPackaging(
   excludedTwIds?: ReadonlySet<number> | readonly number[] | null,
   individualExtraByTwId?: ReadonlyMap<number, number> | null,
   qtyOverrideByTwId?: ReadonlyMap<number, number> | null,
-  extraOnlyTwIds?: ReadonlySet<number> | null
+  extraOnlyTwIds?: ReadonlySet<number> | null,
+  extrasPolicy: ZdEstimateExtrasPolicy = "sum"
 ): ManualZdEstimateLine[] {
   const excluded =
     excludedTwIds instanceof Set
@@ -501,7 +546,8 @@ export function filterOrderableLinesWithPackaging(
         packagingById.get(line.tw_Id),
         individualExtraPiecesForTw(line.tw_Id, individualExtraByTwId),
         qtyOverrideByTwId?.get(line.tw_Id),
-        extraOnlyTwIds?.has(line.tw_Id) === true
+        extraOnlyTwIds?.has(line.tw_Id) === true,
+        extrasPolicy
       ) > 0
     );
   });
@@ -513,7 +559,8 @@ export function orderableLinesToTsv(
   packagingById: ReadonlyMap<number, PackagingLookup>,
   individualExtraByTwId?: ReadonlyMap<number, number> | null,
   qtyOverrideByTwId?: ReadonlyMap<number, number> | null,
-  extraOnlyTwIds?: ReadonlySet<number> | null
+  extraOnlyTwIds?: ReadonlySet<number> | null,
+  extrasPolicy: ZdEstimateExtrasPolicy = "sum"
 ): string {
   const header = [
     "symbol",
@@ -541,13 +588,20 @@ export function orderableLinesToTsv(
       individualExtraByTwId
     );
     const extraOnly = extraOnlyTwIds?.has(line.tw_Id) === true;
-    const qty = resolveOrderQtyForLine(line, pack, extra, extraOnly);
+    const qty = resolveOrderQtyForLine(
+      line,
+      pack,
+      extra,
+      extraOnly,
+      extrasPolicy
+    );
     const zdUnits = effectiveZdDocumentUnits(
       line,
       pack,
       extra,
       qtyOverrideByTwId?.get(line.tw_Id),
-      extraOnly
+      extraOnly,
+      extrasPolicy
     );
     const piecesArriving =
       qty.hasPackaging && qty.zdUnits > 0

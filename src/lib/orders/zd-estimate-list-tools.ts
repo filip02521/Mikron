@@ -1,6 +1,6 @@
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 
-export type ZdEstimateListToolsMode = "panels" | "selection";
+export type ZdEstimateListToolsMode = "idle" | "selection";
 
 export type ZdEstimateListToolKey =
   | "pair"
@@ -10,7 +10,9 @@ export type ZdEstimateListToolKey =
   | "exclude"
   | "restore"
   | "onRequest"
-  | "clearOnRequest";
+  | "clearOnRequest"
+  | "reviewAccept"
+  | "reviewZero";
 
 export type ZdEstimateListToolState = {
   enabled: boolean;
@@ -28,7 +30,7 @@ export type ZdEstimateListToolStates = Record<
 export function resolveZdEstimateListToolsMode(
   selectedCount: number
 ): ZdEstimateListToolsMode {
-  return selectedCount > 0 ? "selection" : "panels";
+  return selectedCount > 0 ? "selection" : "idle";
 }
 
 export function resolveZdEstimateListToolStates(input: {
@@ -38,6 +40,7 @@ export function resolveZdEstimateListToolStates(input: {
   packagingClearEligibleCount: number;
   onRequestEligibleCount: number;
   clearOnRequestEligibleCount: number;
+  reviewEligibleCount?: number;
   pairsTrusted: boolean;
   bomsTrusted: boolean;
   packagingTrusted: boolean;
@@ -51,6 +54,7 @@ export function resolveZdEstimateListToolStates(input: {
     packagingClearEligibleCount,
     onRequestEligibleCount,
     clearOnRequestEligibleCount,
+    reviewEligibleCount = 0,
     pairsTrusted,
     bomsTrusted,
     packagingTrusted,
@@ -72,22 +76,23 @@ export function resolveZdEstimateListToolStates(input: {
     onRequestEligibleCount > 0;
   const clearOnRequestOk =
     onRequestTrusted && clearOnRequestEligibleCount > 0;
+  const reviewOk = reviewEligibleCount > 0;
 
   return {
     pair: {
       enabled: pairOk,
       title: !pairsTrusted
-        ? "Wczytaj pary, żeby utworzyć parę z zaznaczenia"
+        ? "Wczytaj pary działu, żeby utworzyć parę z zaznaczenia"
         : selectedCount === 2
-          ? "Utwórz parę montaż/demontaż z zaznaczonych"
-          : "Zaznacz dokładnie 2 towary, żeby utworzyć parę",
+          ? "Utwórz parę montaż/demontaż: paczka kupowana na ZD ↔ sztuki sprzedawane"
+          : "Zaznacz dokładnie 2 towary, żeby połączyć paczkę ze sztukami",
       accent: pairOk,
       labelSuffix: "",
     },
     bom: {
       enabled: bomOk,
       title: !bomsTrusted
-        ? "Wczytaj składy, żeby utworzyć skład z zaznaczenia"
+        ? "Wczytaj składy działu, żeby utworzyć skład z zaznaczenia"
         : selectedCount >= 2
           ? ZD_BOM_UI.bulkTitleReady
           : ZD_BOM_UI.bulkTitleNeed,
@@ -97,17 +102,17 @@ export function resolveZdEstimateListToolStates(input: {
     packagingSet: {
       enabled: packagingSetOk,
       title: !packagingTrusted
-        ? "Wczytaj opakowania"
-        : "Ustaw to samo opakowanie dla zaznaczonych (np. 10 szt / op.)",
+        ? "Wczytaj opakowania działu"
+        : "Ustaw to samo opakowanie dla zaznaczonych (ile sztuk = 1 jednostka na ZD)",
       accent: packagingSetOk && selectedCount === 1,
       labelSuffix: "",
     },
     packagingClear: {
       enabled: packagingClearOk,
       title: !packagingTrusted
-        ? "Wczytaj opakowania"
+        ? "Wczytaj opakowania działu"
         : packagingClearEligibleCount > 0
-          ? "Usuń opakowanie — zamawianie na sztuki 1:1"
+          ? "Usuń opakowanie — zaznaczone wrócą do sztuk 1:1 w kolumnie Do ZD"
           : "Brak pozycji z opakowaniem w zaznaczeniu",
       accent: false,
       labelSuffix:
@@ -118,9 +123,9 @@ export function resolveZdEstimateListToolStates(input: {
     exclude: {
       enabled: excludeOk,
       title: !exclusionsTrusted
-        ? "Wczytaj wykluczenia, żeby wykluczać z zaznaczenia"
+        ? "Wczytaj wykluczenia działu, żeby wykluczać z zaznaczenia"
         : excludeEligibleCount > 0
-          ? "Wyklucz zaznaczone z kolejnych szacunków"
+          ? "Wyklucz zaznaczone — nie trafią do Do ZD przy kolejnych „Policz listę”"
           : "Brak pozycji kwalifikujących się do wykluczenia",
       accent: excludeOk && selectedCount === 1,
       labelSuffix:
@@ -131,9 +136,9 @@ export function resolveZdEstimateListToolStates(input: {
     restore: {
       enabled: restoreOk,
       title: !exclusionsTrusted
-        ? "Wczytaj wykluczenia, żeby przywracać z zaznaczenia"
+        ? "Wczytaj wykluczenia działu, żeby przywracać z zaznaczenia"
         : restoreEligibleCount > 0
-          ? "Przywróć zaznaczone wykluczone na listę do zamówienia"
+          ? "Przywróć zaznaczone wykluczone — wrócą na listę do zamówienia"
           : "Brak pozycji kwalifikujących się do przywrócenia",
       accent: restoreOk && selectedCount === 1,
       labelSuffix:
@@ -148,7 +153,7 @@ export function resolveZdEstimateListToolStates(input: {
         : !exclusionsTrusted
           ? "Wczytaj wykluczenia — „tylko na prośbę” nie może kasować niewczytanych wykluczeń"
           : onRequestEligibleCount > 0
-            ? "Oznacz jako tylko na prośbę — poza Do ZD bez aktywnej prośby"
+            ? "Oznacz jako tylko na prośbę — poza Do ZD bez aktywnej prośby; z prośbą tylko ilość z prośby"
             : "Brak pozycji kwalifikujących się (już na liście / wykluczone)",
       accent: onRequestOk && selectedCount === 1,
       labelSuffix:
@@ -163,13 +168,29 @@ export function resolveZdEstimateListToolStates(input: {
       title: !onRequestTrusted
         ? "Wczytaj listę „tylko na prośbę”"
         : clearOnRequestEligibleCount > 0
-          ? "Usuń „tylko na prośbę” — wraca zwykłe liczenie zapasu"
+          ? "Usuń „tylko na prośbę” — wraca zwykłe liczenie zapasu i tempa sprzedaży"
           : "Brak pozycji „tylko na prośbę” w zaznaczeniu",
       accent: false,
       labelSuffix:
         onRequestTrusted && clearOnRequestEligibleCount > 0
           ? ` (${clearOnRequestEligibleCount})`
           : "",
+    },
+    reviewAccept: {
+      enabled: reviewOk,
+      title: reviewOk
+        ? "Zdejmuje oznaczenie „Do weryfikacji” tylko w tej sesji — nie zmienia ilości Do ZD"
+        : "Brak pozycji „Do weryfikacji” w zaznaczeniu",
+      accent: false,
+      labelSuffix: reviewOk ? ` (${reviewEligibleCount})` : "",
+    },
+    reviewZero: {
+      enabled: reviewOk,
+      title: reviewOk
+        ? "Ustawia Do ZD = 0 i zdejmuje „Do weryfikacji” w tej sesji"
+        : "Brak pozycji „Do weryfikacji” w zaznaczeniu",
+      accent: false,
+      labelSuffix: "",
     },
   };
 }
@@ -184,6 +205,18 @@ export function zdEstimateSelectionOutsideVisibleHint(
   return outside === 1
     ? "1 poza filtrem/szukaniem"
     : `${outside} poza filtrem/szukaniem`;
+}
+
+/** Widoczna etykieta licznika zaznaczenia (1 / 2–4 / 5+). */
+export function zdEstimateSelectionCountLabel(count: number): string {
+  const n = Math.max(0, Math.trunc(Number(count) || 0));
+  if (n === 1) return "1 zaznaczony produkt";
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
+    return `${n} zaznaczone produkty`;
+  }
+  return `${n} zaznaczonych produktów`;
 }
 
 export function filterZdEstimateLinesBySearch<

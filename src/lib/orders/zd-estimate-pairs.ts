@@ -154,8 +154,8 @@ export function applyZdEstimatePairs(
     const ratio = pair.unitsPerPack;
     const pieceSprzedaz = pieceLine ? asNum(pieceLine.sprzedazOkres) : 0;
     const packSprzedaz = packLine ? asNum(packLine.sprzedazOkres) : 0;
-    const pieceDost = pieceLine ? Math.max(0, asNum(pieceLine.dostepne)) : 0;
-    const packDost = packLine ? Math.max(0, asNum(packLine.dostepne)) : 0;
+    const pieceDost = pieceLine ? asNum(pieceLine.dostepne) : 0;
+    const packDost = packLine ? asNum(packLine.dostepne) : 0;
     const packZd = packLine ? Math.max(0, asNum(packLine.otwarteZd)) : 0;
     const pieceZd = pieceLine ? Math.max(0, asNum(pieceLine.otwarteZd)) : 0;
 

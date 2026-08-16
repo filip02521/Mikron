@@ -50,6 +50,10 @@ export function OverflowMenu({
   menuClassName,
   iconOnly = false,
   triggerLabel,
+  /** Ikona wiodąca — gdy podana, zastępuje „⋮”. */
+  triggerLeading,
+  /** Ikona / treść po prawej (np. chevron). */
+  triggerTrailing,
 }: {
   label: string;
   align?: "start" | "end";
@@ -62,7 +66,9 @@ export function OverflowMenu({
   menuClassName?: string;
   iconOnly?: boolean;
   /** Etykieta na przycisku (domyślnie „Więcej”). */
-  triggerLabel?: string;
+  triggerLabel?: ReactNode;
+  triggerLeading?: ReactNode;
+  triggerTrailing?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [menuPos, setMenuPos] = useState<MenuPosition | null>(null);
@@ -71,6 +77,14 @@ export function OverflowMenu({
   const menuRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
   const close = () => setOpen(false);
+
+  const leading =
+    triggerLeading !== undefined ? (
+      triggerLeading
+    ) : (
+      <MoreIcon />
+    );
+  const labelNode = triggerLabel ?? "Więcej";
 
   const updatePosition = useCallback(() => {
     const el = triggerRef.current;
@@ -155,12 +169,17 @@ export function OverflowMenu({
         className={segmentTriggerClass}
       >
         <span className="inline-flex items-center justify-center leading-none">
-          <MoreIcon />
+          {leading}
         </span>
         {iconOnly ? (
-          <span className="sr-only">{triggerLabel ?? "Więcej"}</span>
+          <span className="sr-only">
+            {typeof labelNode === "string" ? labelNode : label}
+          </span>
         ) : (
-          <span>{triggerLabel ?? "Więcej"}</span>
+          <>
+            <span>{labelNode}</span>
+            {triggerTrailing}
+          </>
         )}
       </button>
     ) : iconOnly ? (
@@ -181,7 +200,7 @@ export function OverflowMenu({
           triggerClassName
         )}
       >
-        <MoreIcon />
+        {leading}
       </button>
     ) : (
       <Button
@@ -201,8 +220,11 @@ export function OverflowMenu({
           triggerClassName
         )}
       >
-        <MoreIcon />
-        <span>{triggerLabel ?? "Więcej"}</span>
+        {leading}
+        <span className="inline-flex min-w-0 items-center gap-1.5">
+          {labelNode}
+        </span>
+        {triggerTrailing}
       </Button>
     );
 
@@ -256,12 +278,17 @@ export function OverflowMenuItem({
   danger,
   disabled,
   className,
+  title,
+  /** Nie zamykaj menu po kliku (np. przełączniki kolumn). */
+  keepOpen,
 }: {
   children: ReactNode;
   onClick: () => void;
   danger?: boolean;
   disabled?: boolean;
   className?: string;
+  title?: string;
+  keepOpen?: boolean;
 }) {
   const close = useContext(CloseMenuContext);
   return (
@@ -269,6 +296,7 @@ export function OverflowMenuItem({
       type="button"
       role="menuitem"
       disabled={disabled}
+      title={title}
       className={cn(
         "block w-full cursor-pointer px-3 py-2.5 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50",
         danger
@@ -279,7 +307,7 @@ export function OverflowMenuItem({
       onClick={(event) => {
         event.stopPropagation();
         onClick();
-        close();
+        if (!keepOpen) close();
       }}
     >
       {children}

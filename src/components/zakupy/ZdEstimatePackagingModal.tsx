@@ -158,7 +158,7 @@ export function ZdEstimatePackagingModal({
         </div>
       }
     >
-      <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 px-4 py-3">
+      <div className="rounded-lg border border-slate-200/80 bg-slate-50/60 px-4 py-3">
         <div className="flex gap-3">
           <IconPackage
             size={18}
@@ -168,12 +168,10 @@ export function ZdEstimatePackagingModal({
           />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-900">
-              1 na ZD → N sztuk na magazynie / sprzedaż
+              {ZD_ESTIMATE_UI.packagingIntroTitle}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Kreator liczy niedobór w sztukach, a kolumna „Do ZD” pokazuje, ile
-              opakowań wpisać (dobicie do pełnego N). Edytuj też z wiersza listy
-              kreatora.
+              {ZD_ESTIMATE_UI.packagingIntroBody}
             </p>
           </div>
         </div>
@@ -237,7 +235,7 @@ export function ZdEstimatePackagingModal({
               <li
                 key={row.subiektTwId}
                 className={cn(
-                  "rounded-xl border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm shadow-slate-900/[0.02]",
+                  "rounded-lg border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm shadow-slate-900/[0.02]",
                   editing && "border-indigo-200/80 ring-1 ring-indigo-100"
                 )}
               >

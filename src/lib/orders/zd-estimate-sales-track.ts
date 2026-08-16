@@ -94,6 +94,43 @@ export type SalesTrackAdjustment = {
 
 const DELTA_EPS = 1e-9;
 
+export const SALES_TRACK_REASON_SHORT: Record<SalesTrackReason, string> = {
+  thin_cover: "cienkie pokrycie",
+  sell_through: "wysoka sprzedaż",
+  fat_cover: "grube pokrycie",
+  low_sell_through: "niska sprzedaż",
+  dead_stock: "brak sprzedaży",
+  history_slow: "wolne po ZD",
+  sales_spike: "skok sprzedaży",
+  boost_held: "boost wstrzymany",
+  boost_scaled: "boost skalowany",
+};
+
+export type SalesTrackReviewBadge = {
+  confidencePct: number;
+  reason: string | null;
+  label: string;
+};
+
+/** Kompaktowy badge „Do weryfikacji”: pewność + główny powód. */
+export function formatSalesTrackReviewBadge(input: {
+  qtyReview: boolean;
+  confidence: number;
+  reasons: readonly SalesTrackReason[];
+}): SalesTrackReviewBadge | null {
+  if (!input.qtyReview) return null;
+  const confidencePct = roundHintPct(input.confidence);
+  const primary =
+    input.reasons.find(
+      (r) => r !== "boost_held" && r !== "boost_scaled"
+    ) ?? input.reasons[0] ?? null;
+  const reason = primary ? SALES_TRACK_REASON_SHORT[primary] : null;
+  const label = reason
+    ? `${confidencePct}% · ${reason}`
+    : `${confidencePct}%`;
+  return { confidencePct, reason, label };
+}
+
 function asFinite(value: unknown, fallback = 0): number {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string" && value.trim() !== "") {
@@ -210,7 +247,10 @@ export function computeBoostConfidence(input: {
   sprzedazOkres: number;
   dniOkresuEffective: number;
   dniZapasu: number;
-  /** Cover w sztukach (dostepne + otwarteZd). */
+  /** Cover w sztukach (dostepne + otwarteZd).
+   * Do sygnałów track clampujemy dostepne ≥ 0 (unikamy podwójnego boostu
+   * przy długu rezerwacji — qty i tak pokrywa ujemne w computeManualOrderQty).
+   */
   coverStock: number;
   policy?: Partial<typeof ZD_SALES_TRACK>;
 }): number {
@@ -334,6 +374,8 @@ export function computeSalesTrackedCel(input: {
     dniOkresu: input.dniOkresu,
     fallbackDniOkresu: dniZapasu,
   });
+  // Cover do sygnałów track (boost/cut): nie ujemne — dług rezerwacji
+  // pokrywa już computeManualOrderQty; tu clamp unika podwójnego thin_cover.
   const dostepne = Math.max(0, asFinite(input.dostepne));
   const otwarteZd = Math.max(0, asFinite(input.otwarteZd));
   const coverStock = dostepne + otwarteZd;
@@ -580,7 +622,7 @@ export function formatSalesTrackHint(
     held > 0 &&
     !(Math.abs(adj.deltaPieces) > DELTA_EPS)
   ) {
-    return `bez +${held} szt (pewność ${confPct}% — sprawdź)`;
+    return `bez +${held} szt (niska pewność ${confPct}%)`;
   }
   if (
     adj.reasons.includes("boost_scaled") &&
@@ -588,13 +630,11 @@ export function formatSalesTrackHint(
     adj.deltaPieces > DELTA_EPS
   ) {
     const wanted = allowed + held;
-    return `+${allowed} szt z +${wanted} (pewność ${confPct}% — sprawdź)`;
+    return `+${allowed} szt z +${wanted} (pewność ${confPct}%)`;
   }
 
   if (!(Math.abs(adj.deltaPieces) > DELTA_EPS)) {
-    if (adj.qtyReview) {
-      return `pewność ${confPct}% — sprawdź`;
-    }
+    // Czysta flaga weryfikacji — UI pokazuje to w Do ZD (whisper pewności, bez drugiego copy).
     return null;
   }
 

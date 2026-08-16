@@ -1,37 +1,55 @@
+import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import { cn } from "@/lib/cn";
+import type { ZdEstimateHostStrip } from "@/lib/orders/zd-estimate-host";
 import {
   zdEstimateHostBadgeLabel,
   zdEstimateHostStripDetail,
+  zdEstimatePageFlowSteps,
+  zdEstimatePageLead,
 } from "@/lib/orders/zd-estimate-ui-copy";
+import {
+  zdEstimateChromeControlHeightClass,
+  zdEstimateHostBadgeClass,
+  zdEstimatePageIntroClass,
+  zdEstimatePageIntroRowClass,
+  zdEstimateToolbarActionsClusterClass,
+} from "@/lib/ui/ontime-theme";
 
-export type ZdEstimatePageIntroHost = {
-  configured: boolean;
-  isLive: boolean;
-  port: number | null;
-  salesEndFromFs: boolean;
-  salesEndKeyFormatted: string | null;
-};
+/** @deprecated Alias — użyj ZdEstimateHostStrip. */
+export type ZdEstimatePageIntroHost = ZdEstimateHostStrip;
 
 /**
- * Nagłówek strony szacunku — tytuł, krótki flow i status hosta w jednej kompozycji
- * (bez drugiej belki „alertowej” pod PageHeader).
+ * Top bar Kreatora ZD — tożsamość · fakty zakresu · akcje.
+ * Lead / kroki tylko w HelpHint. Wszystkie elementy na wspólnej osi h-8.
  */
 export function ZdEstimatePageIntro({
   title = "Kreator ZD",
-  description,
+  /** Ignorowane w UI — zostaje w API dla kompatybilności. */
+  lead,
+  /** Kontekst wejścia — tylko gdy brak `facts`. */
+  contextLabel,
+  /** Aktywny zakres — tylko gdy brak `facts`. */
+  scopeLabel,
+  /** Slot faktów (np. PrepScopeFacts toolbar) — wyłącza chipy context/scope. */
+  facts,
+  /** Slot akcji (Zmień zakres, menu Dostawcy/Reguły). */
+  actions,
   hint,
   hintAriaLabel = "O kreatorze ZD",
   host = null,
-  /** Rezerwuje miejsce na badge + strip podczas route loading (bez skoku layoutu). */
   hostPlaceholder = false,
 }: {
   title?: string;
-  description: string;
+  lead?: string;
+  contextLabel?: string | null;
+  scopeLabel?: string | null;
+  facts?: ReactNode;
+  actions?: ReactNode;
   hint?: string;
   hintAriaLabel?: string;
-  host?: ZdEstimatePageIntroHost | null;
+  host?: ZdEstimateHostStrip | null;
   hostPlaceholder?: boolean;
 }) {
   const hostConfigured = host?.configured === true;
@@ -39,76 +57,155 @@ export function ZdEstimatePageIntro({
     hostConfigured && host
       ? zdEstimateHostStripDetail({
           isLive: host.isLive,
-          salesEndFromFs: host.salesEndFromFs,
-          salesEndKeyFormatted: host.salesEndKeyFormatted,
+          salesEndFromFs: host.salesEndFromFs === true,
+          salesEndKeyFormatted: host.salesEndKeyFormatted ?? null,
         })
       : null;
 
+  const leadText = lead ?? zdEstimatePageLead();
+  const flowSteps = zdEstimatePageFlowSteps();
+  const flowHint = [
+    "Kroki:",
+    ...flowSteps.map(
+      (step, index) => `${index + 1}. ${step.label} — ${step.hint}`
+    ),
+  ].join("\n");
+
+  const combinedHint =
+    [hint, leadText, flowHint, hostDetail].filter(Boolean).join("\n\n") ||
+    undefined;
+
+  const showHintSlot = Boolean(combinedHint) || hostPlaceholder;
+  const scopeTrimmed = scopeLabel?.trim() || null;
+  const useLegacyChips = facts == null;
+
   return (
-    <header className="space-y-3">
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-        <div className="min-w-0 space-y-1.5">
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-[1.75rem] sm:leading-tight">
-              {title}
-            </h1>
-            {hint ? (
-              <HelpHintBubble
-                message={hint}
-                tone="slate"
-                size="md"
-                ariaLabel={hintAriaLabel}
-              />
-            ) : null}
-          </div>
-          <p className="max-w-2xl text-sm leading-relaxed text-slate-600">
-            {description}
-          </p>
-        </div>
-
-        {hostConfigured && host ? (
-          <Badge
-            variant={host.isLive ? "warning" : "success"}
-            className="mt-1 shrink-0 self-start tabular-nums tracking-wide"
-          >
-            {zdEstimateHostBadgeLabel({
-              isLive: host.isLive,
-              port: host.port,
-            })}
-          </Badge>
-        ) : hostPlaceholder ? (
-          <span
-            aria-hidden
-            className="mt-1 inline-block h-6 w-[5.5rem] shrink-0 self-start rounded-md bg-slate-100 motion-safe:animate-pulse"
-          />
-        ) : null}
-      </div>
-
-      {hostDetail ? (
+    <header className={zdEstimatePageIntroClass}>
+      <div className={zdEstimatePageIntroRowClass}>
+        {/* Tożsamość */}
         <div
           className={cn(
-            "flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border px-3 py-2 text-xs leading-snug",
-            host?.isLive
-              ? "border-slate-200/90 bg-slate-50/80 text-slate-600"
-              : "border-emerald-200/70 bg-emerald-50/40 text-emerald-900/80"
+            "flex shrink-0 items-center gap-1.5",
+            zdEstimateChromeControlHeightClass
           )}
-          role="status"
         >
-          <span
+          <h1
             className={cn(
-              "size-1.5 shrink-0 rounded-full",
-              host?.isLive ? "bg-amber-500" : "bg-emerald-500"
+              "inline-flex items-center text-sm font-semibold leading-none tracking-tight text-slate-900",
+              zdEstimateChromeControlHeightClass
             )}
-            aria-hidden
-          />
-          <span className="min-w-0">{hostDetail}</span>
+          >
+            {title}
+          </h1>
+          {showHintSlot ? (
+            combinedHint ? (
+              <span
+                className={cn(
+                  "inline-flex items-center justify-center",
+                  zdEstimateChromeControlHeightClass
+                )}
+              >
+                <HelpHintBubble
+                  message={combinedHint}
+                  tone="slate"
+                  size="sm"
+                  ariaLabel={hintAriaLabel}
+                />
+              </span>
+            ) : (
+              <span
+                aria-hidden
+                className={cn(
+                  "inline-flex items-center justify-center",
+                  zdEstimateChromeControlHeightClass
+                )}
+              >
+                <span className="inline-block size-4 rounded-full bg-slate-100 motion-safe:animate-pulse" />
+              </span>
+            )
+          ) : null}
+          {hostConfigured && host ? (
+            <span
+              title={hostDetail ?? undefined}
+              className={cn(
+                "inline-flex items-center",
+                zdEstimateChromeControlHeightClass
+              )}
+            >
+              <Badge
+                variant={host.isLive ? "warning" : "success"}
+                className={cn(
+                  zdEstimateHostBadgeClass,
+                  host.isLive
+                    ? "ring-1 ring-amber-300/60"
+                    : "ring-1 ring-emerald-300/50"
+                )}
+              >
+                {zdEstimateHostBadgeLabel({
+                  isLive: host.isLive,
+                  port: host.port,
+                })}
+              </Badge>
+            </span>
+          ) : hostPlaceholder ? (
+            <span
+              aria-hidden
+              className={cn(
+                "inline-block w-[4.5rem] shrink-0 rounded-md bg-slate-100 motion-safe:animate-pulse",
+                zdEstimateChromeControlHeightClass
+              )}
+            />
+          ) : null}
         </div>
-      ) : hostPlaceholder ? (
-        <div
-          aria-hidden
-          className="h-9 rounded-lg border border-slate-100 bg-slate-50/80 motion-safe:animate-pulse"
-        />
-      ) : null}
+
+        {/* Fakty — ta sama oś pionowa */}
+        {facts ? (
+          <div
+            className={cn(
+              "flex min-w-0 flex-1 items-center",
+              zdEstimateChromeControlHeightClass
+            )}
+          >
+            {facts}
+          </div>
+        ) : useLegacyChips && (contextLabel || scopeTrimmed) ? (
+          <div
+            className={cn(
+              "flex min-w-0 flex-1 items-center gap-1.5",
+              zdEstimateChromeControlHeightClass
+            )}
+          >
+            {contextLabel ? (
+              <span
+                title={contextLabel}
+                className={cn(
+                  "inline-flex max-w-[12rem] items-center truncate rounded-md bg-indigo-50/90 px-2 text-[11px] font-medium leading-none text-indigo-900/90 ring-1 ring-inset ring-indigo-100/90 sm:max-w-[16rem]",
+                  zdEstimateChromeControlHeightClass
+                )}
+              >
+                {contextLabel}
+              </span>
+            ) : null}
+            {scopeTrimmed ? (
+              <span
+                title={scopeTrimmed}
+                className={cn(
+                  "inline-flex max-w-[10rem] items-center truncate rounded-md bg-emerald-50/90 px-2 text-[11px] font-medium leading-none text-emerald-900/90 ring-1 ring-inset ring-emerald-100/90 sm:max-w-[14rem]",
+                  zdEstimateChromeControlHeightClass
+                )}
+              >
+                {scopeTrimmed}
+              </span>
+            ) : null}
+          </div>
+        ) : (
+          <div className="min-w-0 flex-1" aria-hidden />
+        )}
+
+        {actions ? (
+          <div className={zdEstimateToolbarActionsClusterClass}>{actions}</div>
+        ) : null}
+      </div>
     </header>
   );
 }

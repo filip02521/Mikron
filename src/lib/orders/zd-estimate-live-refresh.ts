@@ -10,12 +10,16 @@ import {
   collectMissingZdBomTwIds,
   type ZdProductBomRef,
 } from "@/lib/orders/zd-estimate-bom";
-import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
+import {
+  mapZdEstimateLinesSolo,
+  type ManualZdEstimateLine,
+} from "@/lib/orders/zd-estimate-manual";
 import {
   applyZdEstimatePairs,
   type ApplyZdEstimatePairsOptions,
 } from "@/lib/orders/zd-estimate-pairs";
 import type { ZdProductPairRef } from "@/lib/orders/zd-product-pair-units";
+import type { ZdEstimatePackagingRefreshEntry } from "@/lib/orders/zd-estimate-packaging";
 
 export function collectMissingZdPairPartnerTwIds(
   lines: readonly { tw_Id: number }[],
@@ -42,18 +46,15 @@ export function collectMissingZdPairPartnerTwIds(
 }
 
 export type RefreshZdEstimateLinesOptions = ApplyZdEstimatePairsOptions & {
-  packagingByTwId?: ReadonlyMap<
-    number,
-    {
-      unitsPerPackage: number;
-      documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode | null;
-    }
-  > | null;
+  packagingByTwId?: ReadonlyMap<number, ZdEstimatePackagingRefreshEntry> | null;
   missingBomTwIds?: ReadonlySet<number> | null;
 };
 
 /**
- * Przelicza `pozycjeBase` → expand BOM → remat solo → pary → finalize purchase.
+ * Przelicza `pozycjeBase` → solo remap (opakowanie/track) → expand BOM → remat
+ * BOM → pary → finalize purchase.
+ * Solo remap jest obowiązkowy: zmiana N / trybu A↔B zmienia cover w sztukach
+ * i musi wejść w computeSalesTrackedCel (inaczej Create liczy ze starym celem).
  * Zwraca brakujących partnerów i węzłów BOM (wymaga pełnego Policz / fetch).
  */
 export function refreshZdEstimateLinesWithPairs(input: {
@@ -66,9 +67,20 @@ export function refreshZdEstimateLinesWithPairs(input: {
   missingPartnerTwIds: number[];
   missingBomTwIds: number[];
 } {
+  const remappedBase = mapZdEstimateLinesSolo(input.linesBase, {
+    dniZapasu: input.options.dniZapasu,
+    dniOkresu: input.options.dniOkresu,
+    salesTrack: input.options.salesTrack,
+    salesTrackCuts: input.options.salesTrackCuts,
+    salesTrackPolicy: input.options.salesTrackPolicy,
+    historyByTwId: input.options.historyByTwId,
+    packagingByTwId: input.options.packagingByTwId,
+    productPairs: input.pairs,
+  });
+
   const boms = input.boms ?? [];
   const bomRefs = bomRowsToRefs(boms);
-  const missingBomTwIds = collectMissingZdBomTwIds(input.linesBase, bomRefs);
+  const missingBomTwIds = collectMissingZdBomTwIds(remappedBase, bomRefs);
   const missingBomSet =
     missingBomTwIds.length > 0
       ? new Set(missingBomTwIds)
@@ -76,7 +88,7 @@ export function refreshZdEstimateLinesWithPairs(input: {
 
   const afterBom =
     bomRefs.length > 0
-      ? applyZdEstimateBoms(input.linesBase, bomRefs, {
+      ? applyZdEstimateBoms(remappedBase, bomRefs, {
           dniZapasu: input.options.dniZapasu,
           dniOkresu: input.options.dniOkresu,
           zapasMin: input.options.zapasMin,
@@ -88,7 +100,7 @@ export function refreshZdEstimateLinesWithPairs(input: {
           productPairs: input.pairs,
           missingComponentTwIds: missingBomSet,
         })
-      : input.linesBase.map((l) => ({ ...l, bom: null as null, pair: null }));
+      : remappedBase.map((l) => ({ ...l, bom: null as null, pair: null }));
 
   const missingPartnerTwIds = collectMissingZdPairPartnerTwIds(
     afterBom,

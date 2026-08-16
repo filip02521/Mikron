@@ -4,6 +4,8 @@ import { useEffect, useId, useMemo, useState, useTransition } from "react";
 import { actionCreateZdFromEstimate } from "@/app/actions/zd-estimate";
 import type { ZdEstimateLinkLineMeta } from "@/app/actions/zd-estimate";
 import { ZdEstimateCreateZdProgressPanel } from "@/components/zakupy/ZdEstimateCreateZdProgress";
+import { ZdEstimateCreateRequestsPreview } from "@/components/zakupy/ZdEstimateCreateRequestsPreview";
+import { ZdEstimateOrderPreviewTable } from "@/components/zakupy/ZdEstimateOrderPreviewTable";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
@@ -15,14 +17,31 @@ import {
   type ZdCreatePreview,
 } from "@/lib/orders/zd-estimate-create-zd";
 import {
+  composeZdCreateUwagiWithServices,
+  type ZdEstimateIndividualServiceLine,
+} from "@/lib/orders/zd-estimate-individual";
+import { formatQty } from "@/lib/orders/zd-estimate-manual";
+import type { ZdPostCreateMarkFreeze } from "@/lib/orders/zd-estimate-post-create";
+import {
   zdEstimateCreateConfirmLabel,
+  zdEstimateCreateProgressCompleteTitle,
+  zdEstimateCreateProgressTitle,
   zdEstimateCreateTitleHint,
+  zdEstimateProsbaWord,
   ZD_ESTIMATE_UI,
+  type ImplicitPieceSnapshotNotice,
 } from "@/lib/orders/zd-estimate-ui-copy";
 import type { ZdEstimateRunMode } from "@/lib/orders/zd-estimate-scope";
 import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
+import { ZdEstimateImplicitPieceNotice } from "@/components/zakupy/ZdEstimateImplicitPieceNotice";
 
-const PREVIEW_VISIBLE = 12;
+export type ZdCreateSubmitFreezeSnap = {
+  includedServiceOrderIds: string[];
+  omittedServiceCount: number;
+  individualCatalogOrderIds: string[];
+  individualServiceOrderIds: string[];
+  consumedOrderIds: string[];
+};
 
 export function ZdEstimateCreateZdDialog({
   open,
@@ -40,18 +59,22 @@ export function ZdEstimateCreateZdDialog({
   initialUwagi,
   uwagiBaseMaxLen = ZD_CREATE_MAX_UWAGI_LEN,
   individualCatalogOrderIds,
-  individualServiceOrderIds,
-  serviceUwagiPreview = null,
+  serviceLinesForCompose = [],
+  consumedOrderIds,
+  markFreeze = null,
   excludedWithIndividualCount = 0,
-  omittedServiceCount = 0,
-  serviceMarkPreviewCount,
-  implicitPieceSnapshotHint = null,
+  pendingReviewCount = 0,
+  implicitPieceSnapshotNotice = null,
+  onOpenPackaging,
+  onOpenPairs,
   onClose,
   onCreated,
   onError,
   onSubmitStart,
   ordersIsLive,
   ordersPort,
+  ordersHostLabel = null,
+  extrasPolicy = "sum",
 }: {
   open: boolean;
   supplierId: string;
@@ -71,15 +94,17 @@ export function ZdEstimateCreateZdDialog({
   uwagiBaseMaxLen?: number;
   /** Prośby katalogowe (extras na pozycjach create). */
   individualCatalogOrderIds?: string[] | null;
-  /** Prośby-usługi do uwag + Główne. */
-  individualServiceOrderIds?: string[] | null;
-  /** Podgląd bloku usług, który serwer dołoży do uwag. */
-  serviceUwagiPreview?: string | null;
+  /** Linie usług do live compose z aktualną bazą uwag. */
+  serviceLinesForCompose?: readonly ZdEstimateIndividualServiceLine[];
+  /** Prośby już pokryte tym ZD (Nowe, ale extras nie doliczać drugi raz). */
+  consumedOrderIds?: string[] | null;
+  markFreeze?: ZdPostCreateMarkFreeze | null;
   excludedWithIndividualCount?: number;
-  omittedServiceCount?: number;
-  /** Ile usług zmieści się w uwagach (podgląd mark) — domyślnie = service IDs. */
-  serviceMarkPreviewCount?: number;
-  implicitPieceSnapshotHint?: string | null;
+  /** Ile pozycji nadal „Do weryfikacji” (sesja) — soft warn, nie blokuje create. */
+  pendingReviewCount?: number;
+  implicitPieceSnapshotNotice?: ImplicitPieceSnapshotNotice | null;
+  onOpenPackaging?: () => void;
+  onOpenPairs?: () => void;
   onClose: () => void;
   onCreated: (info: {
     dokId: number;
@@ -88,15 +113,25 @@ export function ZdEstimateCreateZdDialog({
     snapshotOk: boolean;
     snapshotMessage?: string;
     createdUnitsByTwId: Map<number, number>;
-    markedIndividualOrderIds?: string[];
-    markIndividualsMessage?: string;
+    createdLines: Array<{ twId: number; ilosc: number }>;
+    bumped: Array<{
+      twId: number;
+      from: number;
+      to: number;
+      extraPieces: number;
+    }>;
+    composedUwagi?: string | null;
+    omittedServiceCount?: number;
+    teethServiceCount?: number;
+    includedServiceOrderIds?: string[];
+    acceptedCatalogOrderIds?: string[];
   }) => void;
   onError: (message: string, opts?: { timeoutKhId?: number }) => void;
-  onSubmitStart?: () => void;
-  /** true = LIVE :5080 (aktualna baza) — silniejsze ostrzeżenie + confirmLiveCreate. */
+  onSubmitStart?: (snap: ZdCreateSubmitFreezeSnap) => void;
   ordersIsLive: boolean;
   ordersPort: number;
   ordersHostLabel?: string | null;
+  extrasPolicy?: "sum" | "max";
 }) {
   const uwagiId = useId();
   const confirmId = useId();
@@ -126,37 +161,95 @@ export function ZdEstimateCreateZdDialog({
       setUwagi(
         (initialUwagi?.trim() ||
           defaultZdCreateUwagi({
-            supplierName,
+            scopeMode,
             scopeLabel,
             dateKey,
           })).slice(0, baseMax)
       );
     });
-  }, [open, supplierName, scopeLabel, dateKey, initialUwagi, baseMax]);
+  }, [open, scopeMode, scopeLabel, dateKey, initialUwagi, baseMax]);
 
-  const visibleLines = useMemo(
-    () => preview.lines.slice(0, PREVIEW_VISIBLE),
-    [preview.lines]
+  const liveCompose = useMemo(
+    () =>
+      composeZdCreateUwagiWithServices({
+        baseUwagi: uwagi,
+        serviceLines: serviceLinesForCompose,
+        maxLen: ZD_CREATE_MAX_UWAGI_LEN,
+        prioritizeServices: true,
+      }),
+    [uwagi, serviceLinesForCompose]
   );
-  const hiddenCount = Math.max(0, preview.lineCount - PREVIEW_VISIBLE);
+
+  const teethOrderIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const line of serviceLinesForCompose) {
+      if (line.reason !== "teeth") continue;
+      for (const r of line.requests) {
+        const id = String(r.orderId ?? "").trim();
+        if (id) ids.add(id);
+      }
+    }
+    return ids;
+  }, [serviceLinesForCompose]);
+
+  const liveIncludedServiceIds = liveCompose.includedServiceOrderIds;
+  const liveOmittedServiceCount = liveCompose.omittedServiceCount;
+  const liveGlowneServiceCount = liveIncludedServiceIds.filter(
+    (id) => !teethOrderIds.has(id)
+  ).length;
+  const catalogGlowneCount = markFreeze?.pendingGlowneCatalogIds.length ?? 0;
+  const glowneCount = catalogGlowneCount + liveGlowneServiceCount;
+
   const uwagiRemaining = baseMax - uwagi.length;
-  const catalogCount = individualCatalogOrderIds?.length ?? 0;
-  const serviceCount = individualServiceOrderIds?.length ?? 0;
-  const serviceMarkCount =
-    serviceMarkPreviewCount != null
-      ? Math.max(0, serviceMarkPreviewCount)
-      : Math.max(0, serviceCount - omittedServiceCount);
-  const markCount = catalogCount + serviceMarkCount;
+
+  const catalogRequests = useMemo(
+    () => markFreeze?.catalogRequests ?? [],
+    [markFreeze]
+  );
+  const serviceLinesPreview = useMemo(() => {
+    const lines = markFreeze?.serviceLines ?? [];
+    const included = new Set(liveIncludedServiceIds);
+    return lines
+      .map((line) => ({
+        ...line,
+        requests: line.requests.filter((r) => included.has(r.orderId)),
+      }))
+      .filter((line) => line.requests.length > 0);
+  }, [markFreeze, liveIncludedServiceIds]);
+
+  const serviceUwagiPreview = useMemo(() => {
+    const idx = liveCompose.uwagi.search(/Usługi:\s*/i);
+    return idx >= 0 ? liveCompose.uwagi.slice(idx) : null;
+  }, [liveCompose.uwagi]);
+
+  const titleHint = useMemo(() => {
+    const base = zdEstimateCreateTitleHint({
+      isLive: ordersIsLive,
+      port: ordersPort,
+    });
+    const host = ordersHostLabel?.trim();
+    return host ? `${base} Host: ${host}.` : base;
+  }, [ordersIsLive, ordersPort, ordersHostLabel]);
 
   if (!open) return null;
 
   const submit = () => {
     if (!confirmed || pending) return;
+    const catalogIds = [...(individualCatalogOrderIds ?? [])];
+    const serviceIdsForSubmit = [...liveIncludedServiceIds];
+    const consumed = [...(consumedOrderIds ?? [])];
+    const lineMetaSnap = lineMeta ?? null;
     const startedAt = Date.now();
     setProgressComplete(false);
     setProgressSnapshotOk(null);
     setProgressStartedAtMs(startedAt);
-    onSubmitStart?.();
+    onSubmitStart?.({
+      includedServiceOrderIds: serviceIdsForSubmit,
+      omittedServiceCount: liveOmittedServiceCount,
+      individualCatalogOrderIds: catalogIds,
+      individualServiceOrderIds: serviceIdsForSubmit,
+      consumedOrderIds: consumed,
+    });
     startPending(async () => {
       const res = await actionCreateZdFromEstimate({
         supplierId,
@@ -170,10 +263,11 @@ export function ZdEstimateCreateZdDialog({
           symbol: l.symbol || null,
           plu: l.plu ?? null,
         })),
-        lineMeta: lineMeta ?? null,
+        lineMeta: lineMetaSnap,
         confirmLiveCreate: ordersIsLive ? true : undefined,
-        individualCatalogOrderIds: individualCatalogOrderIds ?? null,
-        individualServiceOrderIds: individualServiceOrderIds ?? null,
+        individualCatalogOrderIds: catalogIds,
+        individualServiceOrderIds: serviceIdsForSubmit,
+        consumedOrderIds: consumed,
       });
       if (!res.ok) {
         setProgressStartedAtMs(null);
@@ -186,8 +280,12 @@ export function ZdEstimateCreateZdDialog({
       }
       setProgressSnapshotOk(res.snapshotOk);
       setProgressComplete(true);
+      const createdLines =
+        res.createdLines?.length
+          ? res.createdLines
+          : preview.lines.map((l) => ({ twId: l.twId, ilosc: l.ilosc }));
       const createdUnitsByTwId = new Map<number, number>();
-      for (const l of preview.lines) {
+      for (const l of createdLines) {
         createdUnitsByTwId.set(l.twId, l.ilosc);
       }
       await new Promise<void>((resolve) => {
@@ -200,8 +298,13 @@ export function ZdEstimateCreateZdDialog({
         snapshotOk: res.snapshotOk,
         snapshotMessage: res.snapshotMessage,
         createdUnitsByTwId,
-        markedIndividualOrderIds: res.markedIndividualOrderIds,
-        markIndividualsMessage: res.markIndividualsMessage,
+        createdLines,
+        bumped: res.bumped ?? [],
+        composedUwagi: res.composedUwagi ?? null,
+        omittedServiceCount: res.omittedServiceCount,
+        teethServiceCount: res.teethServiceCount,
+        includedServiceOrderIds: res.includedServiceOrderIds,
+        acceptedCatalogOrderIds: res.acceptedCatalogOrderIds,
       });
     });
   };
@@ -212,42 +315,53 @@ export function ZdEstimateCreateZdDialog({
     <ModalShell
       open
       onClose={onClose}
-      title="Utwórz ZD w Subiekcie"
-      titleHint={zdEstimateCreateTitleHint({
-        isLive: ordersIsLive,
-        port: ordersPort,
-      })}
+      title={
+        showProgress
+          ? progressComplete
+            ? zdEstimateCreateProgressCompleteTitle({
+                snapshotOk: progressSnapshotOk,
+              })
+            : zdEstimateCreateProgressTitle()
+          : "Utwórz ZD w Subiekcie"
+      }
+      titleHint={titleHint}
       titleId="zd-estimate-create-zd-title"
-      size="lg"
+      size="xl"
       tier="raised"
       disableBackdropClose={pending}
-      bodyClassName="space-y-4 px-5 py-5 sm:px-6"
+      bodyClassName={
+        showProgress
+          ? "px-4 py-3 sm:px-5 sm:py-4"
+          : "space-y-4 px-5 py-4 sm:px-6 sm:py-5"
+      }
       footer={
-        <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button
-            type="button"
-            variant="ghost"
-            className="min-h-11 w-full sm:w-auto"
-            onClick={onClose}
-            disabled={pending}
-          >
-            Anuluj
-          </Button>
-          <Button
-            type="button"
-            className="min-h-11 w-full sm:w-auto"
-            onClick={submit}
-            disabled={pending || !confirmed || preview.lineCount === 0}
-          >
-            {pending ? (
-              <span className="inline-flex items-center gap-2">
-                <Spinner className="size-4" /> Tworzę ZD…
-              </span>
-            ) : (
-              "Utwórz ZD"
-            )}
-          </Button>
-        </div>
+        showProgress ? null : (
+          <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              className="min-h-11 w-full sm:w-auto"
+              onClick={onClose}
+              disabled={pending}
+            >
+              Anuluj
+            </Button>
+            <Button
+              type="button"
+              className="min-h-11 w-full sm:w-auto"
+              onClick={submit}
+              disabled={pending || !confirmed || preview.lineCount === 0}
+            >
+              {pending ? (
+                <span className="inline-flex items-center gap-2">
+                  <Spinner className="size-4" /> Tworzę ZD…
+                </span>
+              ) : (
+                "Utwórz ZD"
+              )}
+            </Button>
+          </div>
+        )
       }
     >
       {showProgress ? (
@@ -273,8 +387,15 @@ export function ZdEstimateCreateZdDialog({
             <p className="mt-1 text-slate-600">
               {preview.lineCount} poz. · suma do ZD{" "}
               <span className="font-medium tabular-nums text-slate-900">
-                {preview.zdUnitsSuma}
+                {formatQty(preview.zdUnitsSuma)}
               </span>
+              {preview.piecesArrivingSuma > 0 &&
+              preview.piecesArrivingSuma !== preview.zdUnitsSuma ? (
+                <>
+                  {" "}
+                  · {formatQty(preview.piecesArrivingSuma)} szt
+                </>
+              ) : null}
               {scopeLabel ? (
                 <>
                   {" "}
@@ -282,47 +403,58 @@ export function ZdEstimateCreateZdDialog({
                 </>
               ) : null}
             </p>
-            {markCount > 0 ? (
+            {glowneCount > 0 ? (
               <p className="mt-2 text-emerald-900">
-                Po utworzeniu ZD odznaczymy {markCount}{" "}
-                {markCount === 1 ? "prośbę" : "próśb"} jako Główne
-                {catalogCount > 0 && serviceMarkCount > 0
-                  ? ` (${catalogCount} na pozycjach, ${serviceMarkCount} w uwagach)`
-                  : serviceMarkCount > 0
+                {ZD_ESTIMATE_UI.createAfterSuccessDecide}{" "}
+                {glowneCount}{" "}
+                {zdEstimateProsbaWord(glowneCount)}{" "}
+                {glowneCount === 1
+                  ? "kwalifikuje się"
+                  : "kwalifikują się"}{" "}
+                do osobnego Główne
+                {catalogGlowneCount > 0 && liveGlowneServiceCount > 0
+                  ? ` (${catalogGlowneCount} na pozycjach, ${liveGlowneServiceCount} w uwagach)`
+                  : liveGlowneServiceCount > 0
                     ? " (usługi w uwagach)"
                     : ""}
                 .
               </p>
-            ) : null}
+            ) : (
+              <p className="mt-2 text-slate-600">
+                {ZD_ESTIMATE_UI.createAfterSuccessDecideNoGlowne}
+              </p>
+            )}
             {excludedWithIndividualCount > 0 ? (
               <p className="mt-2 text-amber-900">
                 {excludedWithIndividualCount}{" "}
+                {zdEstimateProsbaWord(excludedWithIndividualCount)}{" "}
                 {excludedWithIndividualCount === 1
-                  ? "prośba z wykluczonej pozycji"
-                  : "próśb z wykluczonych pozycji"}{" "}
-                trafi do uwag jako usługa (bez qty towaru).
+                  ? "z wykluczonej pozycji"
+                  : "z wykluczonych pozycji"}{" "}
+                {excludedWithIndividualCount === 1 ? "trafi" : "trafią"} do uwag
+                jako usługa (bez ilości towaru).
               </p>
             ) : null}
-            {omittedServiceCount > 0 ? (
+            {liveOmittedServiceCount > 0 ? (
               <p className="mt-2 rounded-md border border-amber-200/80 bg-amber-50/80 px-2.5 py-2 text-xs text-amber-950">
-                {omittedServiceCount}{" "}
-                {omittedServiceCount === 1
+                {liveOmittedServiceCount}{" "}
+                {liveOmittedServiceCount === 1
                   ? "usługa nie zmieści się"
                   : "usług nie zmieści się"}{" "}
                 w limicie uwag — te prośby{" "}
-                <span className="font-semibold">nie zostaną odznaczone</span>{" "}
-                jako Główne. Skróć bazę uwag albo obsłuż je w panelu Dziś.
+                <span className="font-semibold">nie wejdą na listę Główne</span>
+                . {ZD_ESTIMATE_UI.createOmittedServicesHint}
+              </p>
+            ) : null}
+            {pendingReviewCount > 0 ? (
+              <p className="mt-2 rounded-md border border-amber-200/80 bg-amber-50/80 px-2.5 py-2 text-xs text-amber-950">
+                {ZD_ESTIMATE_UI.createPendingReviewWarn(pendingReviewCount)}
               </p>
             ) : null}
             {preview.softWarnOverLimit ? (
               <p className="mt-2 text-amber-900">
                 Dużo pozycji (&gt;{ZD_CREATE_SOFT_WARN_LINES}) — Subiekt może
                 długo pracować; limit czasu to ok. 3 minuty.
-              </p>
-            ) : null}
-            {implicitPieceSnapshotHint ? (
-              <p className="mt-2 rounded-md border border-amber-200/80 bg-amber-50/80 px-2.5 py-2 text-xs leading-snug text-amber-950">
-                {implicitPieceSnapshotHint}
               </p>
             ) : null}
             <p className="mt-2 text-xs leading-snug text-slate-600">
@@ -351,8 +483,8 @@ export function ZdEstimateCreateZdDialog({
                 {baseMax < ZD_CREATE_MAX_UWAGI_LEN
                   ? ` (rezerwa usług ${ZD_CREATE_MAX_UWAGI_LEN - baseMax})`
                   : ""}
-                {omittedServiceCount > 0
-                  ? ` · +${omittedServiceCount} usług skrócone`
+                {liveOmittedServiceCount > 0
+                  ? ` · +${liveOmittedServiceCount} usług skrócone`
                   : ""}
               </span>
             </div>
@@ -364,7 +496,7 @@ export function ZdEstimateCreateZdDialog({
               maxLength={baseMax}
               className={cn(
                 controlFocusClass,
-                "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                "w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
               )}
             />
             {serviceUwagiPreview ? (
@@ -375,48 +507,26 @@ export function ZdEstimateCreateZdDialog({
             ) : null}
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-slate-200">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Symbol</th>
-                  <th className="px-3 py-2 font-medium">Nazwa</th>
-                  <th className="px-3 py-2 text-right font-medium">Ilość</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visibleLines.map((l) => (
-                  <tr key={l.twId} className="border-t border-slate-100">
-                    <td className="px-3 py-1.5 font-mono text-xs text-slate-700">
-                      {l.symbol || "—"}
-                    </td>
-                    <td className="max-w-[14rem] truncate px-3 py-1.5 text-slate-800">
-                      {l.nazwa}
-                      {l.individualExtraPieces != null &&
-                      l.individualExtraPieces > 0 ? (
-                        <span className="ml-1 text-[10px] font-semibold uppercase text-emerald-700">
-                          +prośba
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">
-                      {l.ilosc}
-                      {l.packagingHint ? (
-                        <span className="ml-1 text-xs text-slate-400">
-                          ({l.packagingHint})
-                        </span>
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {hiddenCount > 0 ? (
-              <p className="border-t border-slate-100 bg-slate-50/80 px-3 py-2 text-xs text-slate-500">
-                …i {hiddenCount} kolejnych pozycji
-              </p>
-            ) : null}
-          </div>
+          <ZdEstimateOrderPreviewTable
+            lines={preview.lines}
+            extrasPolicy={extrasPolicy}
+          />
+
+          <ZdEstimateCreateRequestsPreview
+            catalogRequests={catalogRequests}
+            serviceLines={serviceLinesPreview}
+            glowneCatalogCount={catalogGlowneCount}
+            glowneServiceCount={liveGlowneServiceCount}
+            constrainHeight={false}
+          />
+
+          {implicitPieceSnapshotNotice ? (
+            <ZdEstimateImplicitPieceNotice
+              notice={implicitPieceSnapshotNotice}
+              onOpenPackaging={onOpenPackaging}
+              onOpenPairs={onOpenPairs}
+            />
+          ) : null}
 
           <label className="flex items-start gap-2 text-sm text-slate-700">
             <input
@@ -430,7 +540,7 @@ export function ZdEstimateCreateZdDialog({
               {zdEstimateCreateConfirmLabel({
                 isLive: ordersIsLive,
                 port: ordersPort,
-                markCount,
+                markCount: glowneCount,
               })}
             </span>
           </label>

@@ -14,6 +14,7 @@ import {
   ZD_PACKAGING_UNITS_MIN,
   type ZdPackagingDocumentUnitMode,
 } from "@/lib/orders/zd-estimate-packaging";
+import type { ZdEstimateExtrasPolicy } from "@/lib/orders/zd-estimate-extras-policy";
 import type { ZdEstimatePackagingRow } from "@/lib/data/zd-estimate-packaging";
 import { IconPackage } from "@/components/icons/StrokeIcons";
 import { Button } from "@/components/ui/Button";
@@ -31,6 +32,7 @@ function PackagingDialogForm({
   pending,
   individualExtraPieces = 0,
   extraOnly = false,
+  extrasPolicy = "sum",
   onCancel,
   onSave,
   onClear,
@@ -41,6 +43,7 @@ function PackagingDialogForm({
   individualExtraPieces?: number;
   /** „Tylko na prośbę” z aktywną prośbą — podgląd qty bez celu zapasu. */
   extraOnly?: boolean;
+  extrasPolicy?: ZdEstimateExtrasPolicy;
   onCancel: () => void;
   onSave: (input: {
     unitsPerPackage: number;
@@ -84,7 +87,8 @@ function PackagingDialogForm({
           documentUnitMode: effectiveMode,
         },
         individualExtraPieces,
-        extraOnly
+        extraOnly,
+        extrasPolicy
       )
     : null;
   const roundup = preview ? formatZdPackRoundupLine(preview) : null;
@@ -169,7 +173,9 @@ function PackagingDialogForm({
               </p>
             ) : individualExtraPieces > 0 ? (
               <p className="text-[11px] font-semibold text-emerald-700">
-                W tym +{formatQty(individualExtraPieces)} szt z próśb
+                {extrasPolicy === "max"
+                  ? `Prośba ${formatQty(individualExtraPieces)} szt · maks. vs niedobór`
+                  : `W tym +${formatQty(individualExtraPieces)} szt z próśb`}
               </p>
             ) : null}
           </div>
@@ -359,6 +365,7 @@ export function ZdEstimatePackagingDialog({
   pending,
   individualExtraPieces = 0,
   extraOnly = false,
+  extrasPolicy = "sum",
   onCancel,
   onSave,
   onClear,
@@ -369,6 +376,7 @@ export function ZdEstimatePackagingDialog({
   pending?: boolean;
   individualExtraPieces?: number;
   extraOnly?: boolean;
+  extrasPolicy?: ZdEstimateExtrasPolicy;
   onCancel: () => void;
   onSave: (input: {
     unitsPerPackage: number;
@@ -381,12 +389,13 @@ export function ZdEstimatePackagingDialog({
   if (!open || !line) return null;
   return (
     <PackagingDialogForm
-      key={`${line.tw_Id}-${existing?.unitsPerPackage ?? 0}-${existing?.documentUnitMode ?? "packages"}-${existing?.updatedAt ?? ""}-${extraOnly ? "eo" : "st"}`}
+      key={`${line.tw_Id}-${existing?.unitsPerPackage ?? 0}-${existing?.documentUnitMode ?? "packages"}-${existing?.updatedAt ?? ""}-${extraOnly ? "eo" : "st"}-${extrasPolicy}`}
       line={line}
       existing={existing}
       pending={pending}
       individualExtraPieces={individualExtraPieces}
       extraOnly={extraOnly}
+      extrasPolicy={extrasPolicy}
       onCancel={onCancel}
       onSave={onSave}
       onClear={onClear}

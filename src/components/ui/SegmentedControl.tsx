@@ -15,6 +15,8 @@ export function SegmentedControl<T extends string>({
   ariaLabel,
   className,
   touchFriendly = false,
+  density = "default",
+  disabled = false,
 }: {
   value: T;
   onChange: (value: T) => void;
@@ -22,13 +24,21 @@ export function SegmentedControl<T extends string>({
   ariaLabel: string;
   className?: string;
   touchFriendly?: boolean;
+  /** Compact = belka listy / chrome (zewnętrzne h-8). */
+  density?: "default" | "compact";
+  disabled?: boolean;
 }) {
+  const compact = density === "compact";
+
   return (
     <div
       role="group"
       aria-label={ariaLabel}
+      aria-disabled={disabled || undefined}
       className={cn(
-        "inline-flex max-w-full rounded-md border border-slate-200 bg-slate-50/80 p-0.5",
+        "inline-flex max-w-full rounded-md border border-slate-200/90 bg-slate-50/90 p-0.5",
+        compact && "h-8 items-stretch rounded-md border-slate-200/80 bg-white/70",
+        disabled && "opacity-60",
         className
       )}
     >
@@ -40,13 +50,23 @@ export function SegmentedControl<T extends string>({
             type="button"
             title={opt.title}
             aria-pressed={active}
+            disabled={disabled}
             onClick={() => onChange(opt.value)}
             className={cn(
-              "min-w-0 truncate rounded-md px-2.5 py-1.5 text-xs font-medium transition sm:px-3 sm:text-sm",
-              touchFriendly && "min-h-10 flex-1 py-2.5 text-sm sm:flex-none sm:min-h-0 sm:py-1.5 sm:text-sm",
+              "min-w-0 truncate rounded-[5px] font-medium transition",
+              compact
+                ? "px-2 text-[11px] leading-none sm:px-2.5"
+                : "px-2.5 py-1.5 text-xs sm:px-3 sm:text-sm",
+              touchFriendly &&
+                !compact &&
+                "min-h-10 flex-1 py-2.5 text-sm sm:flex-none sm:min-h-0 sm:py-1.5 sm:text-sm",
               active
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-600 hover:bg-white/60 hover:text-slate-900"
+                ? compact
+                  ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/70"
+                  : "bg-white text-slate-900 shadow-sm"
+                : "text-slate-600 hover:bg-white/70 hover:text-slate-900",
+              disabled &&
+                "cursor-not-allowed hover:bg-transparent hover:text-slate-600"
             )}
           >
             {opt.label}

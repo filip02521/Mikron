@@ -9,6 +9,7 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
+import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 
 function ExcludeDialogForm({
   line,
@@ -30,7 +31,7 @@ function ExcludeDialogForm({
       open
       onClose={onCancel}
       title="Wyklucz z listy"
-      titleHint="Produkt zniknie z „Do ZD” przy kolejnych szacunkach, aż go przywrócisz. Lista jest wspólna dla działu zakupów."
+      titleHint={ZD_ESTIMATE_UI.excludeDialogHint}
       titleId="zd-estimate-exclude-title"
       size="md"
       tier="raised"

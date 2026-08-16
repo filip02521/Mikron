@@ -74,4 +74,22 @@ describe("page-scroll-lock", () => {
 
     vi.useRealTimers();
   });
+
+  it("unlock czyści inline overflow — CSS fill-viewport (:has) znów steruje main", () => {
+    const main = document.createElement("main");
+    main.style.overflow = "";
+    const viewport = document.createElement("div");
+    viewport.setAttribute("data-zd-estimate-viewport", "");
+    main.appendChild(viewport);
+    document.body.appendChild(main);
+
+    lockPageScroll();
+    expect(main.style.overflow).toBe("hidden");
+
+    unlockPageScroll();
+    // Inline pusty — reguła `main:has([data-zd-estimate-viewport]) { overflow: hidden }`
+    // z globals.css wraca jako źródło prawdy (bez przywracania overflow-y-auto).
+    expect(main.style.overflow).toBe("");
+    expect(main.querySelector("[data-zd-estimate-viewport]")).toBeTruthy();
+  });
 });

@@ -74,8 +74,8 @@ describe("hints / labels", () => {
     expect(createZdProgressDurationHint(10)).toMatch(/poniżej minuty/);
   });
 
-  it("formats elapsed", () => {
-    expect(formatZdCreateElapsedLabel(12_000)).toBe("Minęło 12 s");
-    expect(formatZdCreateElapsedLabel(65_000)).toBe("Minęło 1:05");
+  it("formats elapsed (kompaktowy format loadingów)", () => {
+    expect(formatZdCreateElapsedLabel(12_000)).toBe("12s");
+    expect(formatZdCreateElapsedLabel(65_000)).toBe("1:05");
   });
 });

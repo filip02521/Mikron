@@ -24,7 +24,11 @@ export const ZD_BOOST_POWER_PRESET_IDS: readonly ZdBoostPowerPreset[] = [
 
 type PresetDef = {
   id: ZdBoostPowerPreset;
+  /** Krótka etykieta SegmentedControl. */
+  shortLabel: string;
+  /** Pełna etykieta (a11y / listy). */
   label: string;
+  /** Tooltip / title — co robi preset. */
   hint: string;
   /** Partial nadpisujący ZD_SALES_TRACK; standard = {}. */
   partial: {
@@ -39,8 +43,9 @@ type PresetDef = {
 export const ZD_BOOST_PRESET_DEFS: readonly PresetDef[] = [
   {
     id: "off",
+    shortLabel: "Wył.",
     label: "Wyłączony",
-    hint: "Bez podbijania sztuk; cięcia przy grubym cover nadal działają.",
+    hint: "Nie dokłada sztuk z tempa sprzedaży do Do ZD — tylko niedobór względem celu zapasu i prośby. Cięcia przy wysokim stanie magazynowym nadal działają.",
     partial: {
       maxTotalBoostRatio: 0,
       sellThroughMaxBoost: 0,
@@ -50,8 +55,9 @@ export const ZD_BOOST_PRESET_DEFS: readonly PresetDef[] = [
   },
   {
     id: "gentle",
+    shortLabel: "Delikatny",
     label: "Delikatny (zalecany)",
-    hint: "Przy silnej sprzedaży podąża (+~20% celu); przy słabej pewności nie dokłada.",
+    hint: "Przy mocnej sprzedaży lekko podnosi Do ZD (do ok. +20% celu). Przy niskiej pewności sprzedaży nie dokłada — bezpieczny wybór na co dzień.",
     partial: {
       maxTotalBoostRatio: 0.2,
       sellThroughMaxBoost: 0.08,
@@ -62,14 +68,16 @@ export const ZD_BOOST_PRESET_DEFS: readonly PresetDef[] = [
   },
   {
     id: "standard",
-    label: "Standard (dotychczasowe)",
-    hint: "Dotychczasowa moc podbijania (cap 35%).",
+    shortLabel: "Standard",
+    label: "Standard",
+    hint: "Dotychczasowa siła podbicia — do ok. +35% celu przy dobrym tempie sprzedaży. Więcej zapasu niż „Delikatny”, nadal z progiem pewności.",
     partial: {},
   },
   {
     id: "aggressive",
+    shortLabel: "Agresywny",
     label: "Agresywny",
-    hint: "Mocniejsze podbicie (do +50% celu przy wysokiej pewności).",
+    hint: "Silniejsze podbicie — do ok. +50% celu przy wysokiej pewności. Używaj świadomie przy sezonie lub gdy wolisz raczej nadmiar niż braki.",
     partial: {
       maxTotalBoostRatio: 0.5,
       sellThroughMaxBoost: 0.22,

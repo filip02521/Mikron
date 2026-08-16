@@ -315,7 +315,7 @@ export function ZdEstimateBomsModal({
         </div>
       }
     >
-      <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 px-4 py-3">
+      <div className="rounded-lg border border-slate-200/80 bg-slate-50/60 px-4 py-3">
         <div className="flex gap-3">
           <IconLayers
             size={18}
@@ -335,7 +335,7 @@ export function ZdEstimateBomsModal({
       </div>
 
       {fromSeed && seed && seedParent ? (
-        <div className="space-y-3 rounded-xl border border-violet-200/80 bg-violet-50/40 p-3">
+        <div className="space-y-3 rounded-lg border border-violet-200/80 bg-violet-50/40 p-3">
           <div>
             <p className="text-xs font-medium text-violet-950">
               {ZD_BOM_UI.seedHeading}
@@ -352,7 +352,7 @@ export function ZdEstimateBomsModal({
                 <div
                   key={p.twId}
                   className={cn(
-                    "flex flex-col overflow-hidden rounded-xl border bg-white transition",
+                    "flex flex-col overflow-hidden rounded-lg border bg-white transition",
                     isParent
                       ? "border-violet-400 shadow-sm ring-2 ring-violet-200"
                       : "border-slate-200/80"
@@ -490,7 +490,7 @@ export function ZdEstimateBomsModal({
           </div>
         </div>
       ) : (
-        <div className="space-y-3 rounded-xl border border-slate-200/80 bg-white p-3">
+        <div className="space-y-3 rounded-lg border border-slate-200/80 bg-white p-3">
           <div className="grid gap-2 sm:grid-cols-3">
             <label className="text-xs font-medium text-slate-600">
               {ZD_BOM_UI.fieldZestawId}
@@ -695,7 +695,7 @@ export function ZdEstimateBomsModal({
           description={ZD_BOM_UI.emptyDescription}
         />
       ) : (
-        <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200/80">
+        <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200/80">
           {filtered.map((bom) => (
             <li
               key={bom.id}

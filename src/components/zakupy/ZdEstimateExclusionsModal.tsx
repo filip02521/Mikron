@@ -77,7 +77,7 @@ function ExclusionRow({
   return (
     <li
       className={cn(
-        "rounded-xl border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm shadow-slate-900/[0.02]",
+        "rounded-lg border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm shadow-slate-900/[0.02]",
         editing && "border-indigo-200/80 ring-1 ring-indigo-100"
       )}
     >
@@ -273,8 +273,8 @@ export function ZdEstimateExclusionsModal({
     <ModalShell
       open={open}
       onClose={onClose}
-      title="Wykluczenia ZD"
-      titleHint="Produkty na tej liście są pomijane przy każdym kolejnym szacunku zamówienia. Lista jest wspólna dla całego działu zakupów."
+      title={ZD_ESTIMATE_UI.exclusionsModalTitle}
+      titleHint={ZD_ESTIMATE_UI.exclusionsModalHint}
       size="xl"
       bodyClassName="space-y-4 px-5 py-4 sm:px-6 sm:py-5"
       loadingMessage={pending ? "Zapisuję…" : null}
@@ -300,7 +300,7 @@ export function ZdEstimateExclusionsModal({
         </div>
       }
     >
-      <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 px-4 py-3">
+      <div className="rounded-lg border border-slate-200/80 bg-slate-50/60 px-4 py-3">
         <div className="flex gap-3">
           <IconClipboardList
             size={18}
@@ -310,11 +310,10 @@ export function ZdEstimateExclusionsModal({
           />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-900">
-              Trwałe pomijanie przy „Do ZD”
+              {ZD_ESTIMATE_UI.exclusionsIntroTitle}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Przywróć produkt, gdy znów ma wrócić na listę szacunku. Notatka
-              pomaga innym w dziale zrozumieć powód.{" "}
+              {ZD_ESTIMATE_UI.exclusionsIntroBody}{" "}
               {ZD_ESTIMATE_UI.onRequestVsHardExclude}
             </p>
           </div>

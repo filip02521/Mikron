@@ -36,10 +36,21 @@ import {
   upsertZdEstimatePackaging,
   type ZdEstimatePackagingRow,
 } from "@/lib/data/zd-estimate-packaging";
+import { fetchZdBoostPowerPreset, upsertZdBoostPowerPreset } from "@/lib/data/zd-estimate-boost-preset";
 import {
-  fetchZdBoostPowerPreset,
-  upsertZdBoostPowerPreset,
-} from "@/lib/data/zd-estimate-boost-preset";
+  fetchZdEstimateExtrasPolicy,
+  upsertZdEstimateExtrasPolicy,
+} from "@/lib/data/zd-estimate-extras-policy";
+import { fetchOwnZdEstimateUiPrefs, upsertOwnZdEstimateUiPrefs } from "@/lib/data/zd-estimate-ui-prefs";
+import { ZD_ESTIMATE_UI_PREFS_DEFAULTS } from "@/lib/orders/zd-estimate-prefs";
+import {
+  parseZdEstimateExtrasPolicy,
+  ZD_ESTIMATE_EXTRAS_POLICY_DEFAULT,
+} from "@/lib/orders/zd-estimate-extras-policy";
+import {
+  collectTodayScheduleSuppliers,
+  zdEstimateScopeCoverage,
+} from "@/lib/orders/zd-estimate-scope-coverage";
 import {
   normalizeZdBoostPowerPreset,
   policyForBoostPreset,
@@ -62,7 +73,7 @@ import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 import { collectMissingZdBomTwIds } from "@/lib/orders/zd-estimate-live-refresh";
 import { fetchSuppliersWithSchedules } from "@/lib/data/queries";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
-import { processIndividualFromSummary, preflightProcessIndividualGlowne } from "@/lib/services/orders";
+import { processIndividualFromSummary, markStandardOrdered } from "@/lib/services/orders";
 import {
   defaultZdCreateUwagi,
   buildZdCreateApiBody,
@@ -85,6 +96,21 @@ import {
   type ZdEstimateBulkProductInput,
 } from "@/lib/orders/zd-estimate-bulk";
 import { revalidatePath } from "next/cache";
+import { isProcurementDraftReady } from "@/lib/orders/procurement-readiness";
+import { assessRequestCompleteness } from "@/lib/orders/request-completeness";
+import { excludeConsumedPendingOrders } from "@/lib/orders/zd-estimate-post-create";
+import { isSupplierOrderOnDemand } from "@/lib/orders/supplier-on-demand";
+import { dateToIso, resolveSupplierInterval } from "@/lib/orders/dates";
+import { todayInWarsaw } from "@/lib/time/warsaw";
+import {
+  buildDailyPanelUndoPayload,
+  type DailyPanelUndoPayload,
+} from "@/lib/orders/daily-panel-undo";
+import {
+  captureIndividualOrdersSnapshot,
+  captureScheduleSnapshot,
+  buildMarkOrderedFeedback,
+} from "@/lib/services/daily-panel-undo";
 import { matchSupplierForGroupName } from "@/lib/orders/zd-estimate-group-stock";
 import {
   buildManualZdEstimateResult,
@@ -111,6 +137,8 @@ import {
 import {
   fetchLatestSnapshotHistoryByTwIds,
   fetchRecentZdEstimateOrderSnapshots,
+  fetchZdEstimateOrderSnapshotLines,
+  updateZdEstimateSnapshotEligibleForHistory,
   upsertZdEstimateOrderSnapshot,
   type ZdEstimateHistoryScope,
   type ZdEstimateOrderSnapshotRow,
@@ -182,6 +210,10 @@ export type ZdEstimateSupplierOption = {
   subiektKhId: number | null;
   /** Aliasy kh (gdy brak primary — create tylko przy dokładnie 1). */
   additionalSubiektKhIds: number[];
+  /** Plan OnTime — do coverage Dziś bez mapowania. */
+  computedNextDate: string | null;
+  /** Jak panel Dziś — nie wchodzi do kolejki planowej. */
+  orderOnDemand: boolean;
 };
 
 export type ZdEstimateGroupOption = {
@@ -535,6 +567,8 @@ async function loadZdEstimateSupplierOptions(): Promise<
       ),
       subiektKhId: primary != null && primary > 0 ? primary : null,
       additionalSubiektKhIds: aliasesBySupplier.get(s.id) ?? [],
+      computedNextDate: s.schedule?.computed_next_date?.trim() || null,
+      orderOnDemand: isSupplierOrderOnDemand(s),
     };
   });
 }
@@ -575,6 +609,9 @@ export async function actionZdEstimateBootstrap(): Promise<{
   teethTwIds: number[];
   /** Gdy ustawione — nie ufaj pustej liście zębów (błąd odczytu). */
   teethProductsError: string | null;
+  uiPrefs: import("@/lib/orders/zd-estimate-prefs").ZdEstimateUiPrefs;
+  extrasPolicy: import("@/lib/orders/zd-estimate-extras-policy").ZdEstimateExtrasPolicy;
+  todayScopeCoverage: import("@/lib/orders/zd-estimate-scope-coverage").ZdEstimateScopeCoverage;
 }> {
   await requireZdEstimateAdmin("read");
 
@@ -663,6 +700,40 @@ export async function actionZdEstimateBootstrap(): Promise<{
     { grt_Id: 264, grt_Nazwa: "Ivoclar DIGITAL" },
   ].map((g) => enrichGroup(g, suppliers));
 
+  let uiPrefs = ZD_ESTIMATE_UI_PREFS_DEFAULTS;
+  try {
+    uiPrefs = await fetchOwnZdEstimateUiPrefs();
+  } catch {
+    uiPrefs = ZD_ESTIMATE_UI_PREFS_DEFAULTS;
+  }
+
+  let extrasPolicy = ZD_ESTIMATE_EXTRAS_POLICY_DEFAULT;
+  try {
+    extrasPolicy = await fetchZdEstimateExtrasPolicy();
+  } catch {
+    extrasPolicy = ZD_ESTIMATE_EXTRAS_POLICY_DEFAULT;
+  }
+
+  let todayScopeCoverage = zdEstimateScopeCoverage([], []);
+  try {
+    const scopes = await listZdEstimateSupplierScopes();
+    const todaySuppliers = collectTodayScheduleSuppliers({
+      todayKey,
+      suppliers: suppliers.map((s) => ({
+        id: s.id,
+        name: s.name,
+        computedNextDate: s.computedNextDate,
+        orderOnDemand: s.orderOnDemand,
+      })),
+    });
+    todayScopeCoverage = zdEstimateScopeCoverage(
+      todaySuppliers,
+      scopes.map((s) => s.supplierId)
+    );
+  } catch {
+    todayScopeCoverage = zdEstimateScopeCoverage([], []);
+  }
+
   return {
     configured: summary.ordersConfigured,
     liveBaseUrl: summary.baseUrl,
@@ -692,6 +763,9 @@ export async function actionZdEstimateBootstrap(): Promise<{
     productBomsError,
     teethTwIds,
     teethProductsError,
+    uiPrefs,
+    extrasPolicy,
+    todayScopeCoverage,
   };
 }
 
@@ -842,11 +916,11 @@ export async function actionRunZdEstimateManual(
         ...(scope.mode === "grupa"
           ? { grupaId: scope.grupaId }
           : { cechaId: scope.cechaId }),
-        dniZapasu,
-        dataOd,
-        dataDo,
-        zapasMin: zapasMin > 0 ? zapasMin : undefined,
-        tylkoBraki: false,
+      dniZapasu,
+      dataOd,
+      dataDo,
+      zapasMin: zapasMin > 0 ? zapasMin : undefined,
+      tylkoBraki: false,
       },
       {
         validateFirstPage: ({ parametry }) =>
@@ -1935,13 +2009,13 @@ export async function actionUpsertZdEstimatePackagingBulk(input: {
       const pairs = await fetchZdProductPairs();
       packTwIds = new Set(pairs.map((p) => p.packTwId));
     } catch (e) {
-      return {
-        ok: false,
+    return {
+      ok: false,
         message: userFacingErrorText(
           e,
           "Nie udało się sprawdzić par przed zapisem opakowań."
         ),
-      };
+    };
     }
   }
 
@@ -2108,6 +2182,8 @@ export type ZdEstimateLinkSnapshotResult =
       snapshot: ZdEstimateOrderSnapshotRow;
       lineCount: number;
       dokNrPelny: string;
+      /** Jednostki dokumentu Subiekta (ob_Ilosc) — do bump otwarteZd / snap qty. */
+      createdLines: Array<{ twId: number; ilosc: number }>;
     }
   | { ok: false; message: string };
 
@@ -2306,7 +2382,19 @@ export async function actionLinkZdEstimateSnapshot(input: {
       lines: built.lines,
     });
 
-    return { ok: true, snapshot, lineCount, dokNrPelny };
+    const createdByTw = new Map<number, number>();
+    for (const l of doc.dok_Pozycja ?? []) {
+      const twId = Math.trunc(Number(l.ob_TowId ?? 0));
+      const ilosc = Math.max(0, Math.round(Number(l.ob_Ilosc) || 0));
+      if (!(twId > 0) || !(ilosc > 0)) continue;
+      createdByTw.set(twId, (createdByTw.get(twId) ?? 0) + ilosc);
+    }
+    const createdLines = [...createdByTw.entries()].map(([twId, ilosc]) => ({
+      twId,
+      ilosc,
+    }));
+
+    return { ok: true, snapshot, lineCount, dokNrPelny, createdLines };
   } catch (e) {
     return {
       ok: false,
@@ -2421,10 +2509,19 @@ export type ZdEstimateCreateZdResult =
       lineCount: number;
       snapshotOk: boolean;
       snapshotMessage?: string;
-      /** Prośby odznaczone jako Główne po create. */
-      markedIndividualOrderIds?: string[];
-      /** Gdy ZD OK, ale odznaczanie częściowo/całkowicie padło. */
-      markIndividualsMessage?: string;
+      createdLines: Array<{ twId: number; ilosc: number }>;
+      bumped: Array<{
+        twId: number;
+        from: number;
+        to: number;
+        extraPieces: number;
+      }>;
+      composedUwagi?: string | null;
+      omittedServiceCount?: number;
+      teethServiceCount?: number;
+      includedServiceOrderIds?: string[];
+      /** Catalog IDs zaakceptowane przez serwer (Nowe + extras). */
+      acceptedCatalogOrderIds?: string[];
     }
   | {
       ok: false;
@@ -2438,7 +2535,7 @@ export type ZdEstimateCreateZdResult =
  * Tworzy ZD na hoście ORDERS (obecnie często live :5080 — aktualna baza).
  * Snapshot historii z host_kind zgodnym z URL (live | orders_test).
  * kontrahentId zawsze z DB po supplierId — nie z klienta.
- * Po sukcesie Subiekta: opcjonalnie odznacza prośby jako Główne.
+ * Nie oznacza próśb ani planu — to decyzja w panelu po create.
  */
 export async function actionCreateZdFromEstimate(input: {
   supplierId: string;
@@ -2446,7 +2543,12 @@ export async function actionCreateZdFromEstimate(input: {
   scopeMode?: ZdEstimateSnapshotScopeMode | null;
   grtId?: number | null;
   cechaId?: number | null;
-  lines: Array<{ twId: number; ilosc: number }>;
+  lines: Array<{
+    twId: number;
+    ilosc: number;
+    symbol?: string | null;
+    plu?: string | null;
+  }>;
   lineMeta?: ZdEstimateLinkLineMeta[] | null;
   /**
    * Wymagane przy ORDERS live (:5080) — serwer odrzuci create bez tego.
@@ -2459,10 +2561,15 @@ export async function actionCreateZdFromEstimate(input: {
    */
   individualCatalogOrderIds?: string[] | null;
   /**
-   * OrderIds usług do uwag + Główne.
+   * OrderIds usług do uwag (Główne jest decyzją w panelu po create).
    * Serwer dokłada blok usług do uwag (nie zależy od edycji tekstu).
    */
   individualServiceOrderIds?: string[] | null;
+  /**
+   * Prośby już pokryte wcześniejszym Create w tej sesji (status Nowe).
+   * Serwer pomija je przy extras / bump qty — bez tego drugi Create doliczy je drugi raz.
+   */
+  consumedOrderIds?: string[] | null;
   /** @deprecated użyj catalog + service; łączona lista nadal akceptowana. */
   individualOrderIds?: string[] | null;
 }): Promise<ZdEstimateCreateZdResult> {
@@ -2548,17 +2655,21 @@ export async function actionCreateZdFromEstimate(input: {
           : "Nie udało się zweryfikować próśb przed create.",
     };
   }
-  const pendingById = new Map(pendingForSupplier.map((o) => [o.id, o]));
+  const pendingForExtras = excludeConsumedPendingOrders(
+    pendingForSupplier,
+    input.consumedOrderIds
+  );
+  const pendingById = new Map(pendingForExtras.map((o) => [o.id, o]));
 
-  let pairsForMark: Awaited<ReturnType<typeof fetchZdProductPairs>> = [];
-  let bomsForMark: Awaited<ReturnType<typeof fetchZdProductBoms>> = [];
-  let teethForMark: Set<number>;
+  let pairsForExtras: Awaited<ReturnType<typeof fetchZdProductPairs>> = [];
+  let bomsForExtras: Awaited<ReturnType<typeof fetchZdProductBoms>> = [];
+  let teethForExtras: Set<number>;
   try {
-    ;[pairsForMark, bomsForMark] = await Promise.all([
+    ;[pairsForExtras, bomsForExtras] = await Promise.all([
       fetchZdProductPairs(),
       fetchZdProductBoms(),
     ]);
-    teethForMark = await fetchTeethProductTwIdSet();
+    teethForExtras = await fetchTeethProductTwIdSet();
   } catch (e) {
     return {
       ok: false,
@@ -2595,17 +2706,17 @@ export async function actionCreateZdFromEstimate(input: {
     const plu = String(l.plu ?? "").trim();
     if (l.twId > 0 && plu) mikranByTw.set(l.twId, plu);
   }
-  const markBundle = buildIndividualEstimateExtras({
-    orders: pendingForSupplier,
+  const extrasBundle = buildIndividualEstimateExtras({
+    orders: pendingForExtras,
     lines: stubLines,
-    pairs: pairsForMark,
-    boms: bomRowsToRefs(bomsForMark),
-    teethTwIds: teethForMark,
+    pairs: pairsForExtras,
+    boms: bomRowsToRefs(bomsForExtras),
+    teethTwIds: teethForExtras,
     mikranByTw,
   });
   const validCatalogIds = new Set(
     collectIndividualOrderIdsForZdCreate({
-      byTwId: markBundle.byTwId,
+      byTwId: extrasBundle.byTwId,
       createdTwIds,
       serviceOrderIds: [],
     })
@@ -2617,12 +2728,12 @@ export async function actionCreateZdFromEstimate(input: {
     unitsPerPackageByTwId.set(row.subiektTwId, row.unitsPerPackage);
     packagingModeByTwId.set(row.subiektTwId, row.documentUnitMode);
   }
-  for (const pair of pairsForMark) {
+  for (const pair of pairsForExtras) {
     unitsPerPackageByTwId.set(pair.packTwId, pair.unitsPerPack);
     packagingModeByTwId.set(pair.packTwId, "packages");
   }
   const extraPiecesByTwId = new Map<number, number>();
-  for (const [tw, extra] of markBundle.byTwId) {
+  for (const [tw, extra] of extrasBundle.byTwId) {
     if (extra.extraPieces > 0 && createdTwIds.has(tw)) {
       extraPiecesByTwId.set(tw, extra.extraPieces);
     }
@@ -2648,22 +2759,9 @@ export async function actionCreateZdFromEstimate(input: {
   let catalogIds: string[];
   let serviceIds: string[];
   if (hasSplitHints) {
-    // Katalog z klienta: preferuj serwerowy rebuild; fallback gdy klient
-    // zmapował po symbolu/PLU, a serwer i tak widzi pending (qty już na ZD).
-    catalogIds = normalizeIds(catalogFromClient).filter((id) => {
-      if (validCatalogIds.has(id)) return true;
-      const o = pendingById.get(id);
-      if (!o) return false;
-      // Zęby / BOM parent weszłyby jako service — nie akceptuj jako katalog.
-      if (
-        markBundle.serviceLines.some((line) =>
-          line.requests.some((r) => r.orderId === id)
-        )
-      ) {
-        return false;
-      }
-      return true;
-    });
+    catalogIds = normalizeIds(catalogFromClient).filter((id) =>
+      validCatalogIds.has(id)
+    );
     serviceIds = normalizeIds(serviceFromClient).filter(
       (id) => !catalogIds.includes(id)
     );
@@ -2673,28 +2771,10 @@ export async function actionCreateZdFromEstimate(input: {
     serviceIds = legacy.filter((id) => !catalogIds.includes(id));
   }
 
-  // Uwagi zawsze z pełnej listy usług wskazanej przez klienta; mark może być węższy.
+  // Uwagi z pełnej listy usług wskazanej przez klienta (Główne jest decyzją po create).
   const serviceIdsForUwagi = [...serviceIds];
-  const markCandidateIds = [...new Set([...catalogIds, ...serviceIds])];
 
-  // Preflight nie blokuje create ZD — przy fail pomijamy Główne.
-  let preflightMarkSkipMessage: string | undefined;
-  let catalogIdsToMark = catalogIds;
-  let serviceIdsToMark = serviceIds;
-  if (markCandidateIds.length) {
-    const pre = await preflightProcessIndividualGlowne(markCandidateIds);
-    if (!pre.ok) {
-      preflightMarkSkipMessage = pre.message;
-      catalogIdsToMark = [];
-      serviceIdsToMark = [];
-    } else {
-      const processable = new Set(pre.processableIds);
-      catalogIdsToMark = catalogIds.filter((id) => processable.has(id));
-      serviceIdsToMark = serviceIds.filter((id) => processable.has(id));
-    }
-  }
-
-  const serviceLinesForUwagi = markBundle.serviceLines
+  const serviceLinesForUwagi = extrasBundle.serviceLines
     .map((line) => ({
       ...line,
       requests: line.requests.filter((r) =>
@@ -2703,7 +2783,7 @@ export async function actionCreateZdFromEstimate(input: {
     }))
     .filter((line) => line.requests.length > 0);
 
-  // Dołóż serviceIds spoza markBundle.serviceLines (np. prośba na wykluczonej
+  // Dołóż serviceIds spoza extrasBundle.serviceLines (np. prośba na wykluczonej
   // pozycji, którą klient świadomie wrzuca do uwag).
   const coveredService = new Set(
     serviceLinesForUwagi.flatMap((l) => l.requests.map((r) => r.orderId))
@@ -2735,16 +2815,16 @@ export async function actionCreateZdFromEstimate(input: {
   const baseUwagi =
     (input.uwagi ?? "").trim() ||
     defaultZdCreateUwagi({
-      supplierName: khRes.supplierName,
+      scopeMode: scopeRes.scopeMode,
       scopeLabel:
         scopeRes.scopeMode === "grupa"
           ? scopeRes.grtId != null
-            ? `grupa ${scopeRes.grtId}`
+            ? String(scopeRes.grtId)
             : null
           : scopeRes.cechaId != null
-            ? `cecha ${scopeRes.cechaId}`
+            ? String(scopeRes.cechaId)
             : null,
-      dateKey: new Date().toISOString().slice(0, 10),
+      dateKey: warsawNowParts().dateKey,
     });
   const composedUwagi = composeZdCreateUwagiWithServices({
     baseUwagi,
@@ -2798,71 +2878,21 @@ export async function actionCreateZdFromEstimate(input: {
     };
   }
 
-  // Produkty zębowe (SKU) w uwagach — bez Główne (panel /zeby).
   const teethServiceOrderIds = new Set(
     serviceLinesForUwagi
       .filter((l) => l.reason === "teeth")
       .flatMap((l) => l.requests.map((r) => r.orderId))
   );
 
-  const markIds = [
-    ...new Set([
-      ...catalogIdsToMark,
-      ...composedUwagi.includedServiceOrderIds.filter(
-        (id) =>
-          serviceIdsToMark.includes(id) && !teethServiceOrderIds.has(id)
-      ),
-    ]),
-  ];
-
-  let markedIndividualOrderIds: string[] = [];
-  let markIndividualsMessage: string | undefined;
-  const bumpedNote =
-    coveredLines.bumped.length > 0
-      ? ` Podbito qty na ${coveredLines.bumped.length} poz. do pokrycia próśb.`
-      : "";
-  const teethSkipNote =
-    teethServiceOrderIds.size > 0
-      ? ` ${teethServiceOrderIds.size} próśb zębowych w uwagach — bez Główne (panel /zeby).`
-      : "";
-  if (preflightMarkSkipMessage) {
-    markIndividualsMessage = `ZD utworzone, ale prośby nie odznaczono (Główne): ${preflightMarkSkipMessage}.${bumpedNote}${teethSkipNote}`;
-  } else if (markIds.length) {
-    try {
-      const markRes = await processIndividualFromSummary(
-        markIds,
-        "GLOWNE",
-        user.email
-      );
-      markedIndividualOrderIds = markRes.processedIds;
-      if (markRes.skippedIds.length) {
-        markIndividualsMessage = `ZD utworzone. Odznaczono ${markRes.processedIds.length} próśb (Główne); pominięto ${markRes.skippedIds.length} (status/zęby).${bumpedNote}${teethSkipNote}`;
-      } else if (composedUwagi.omittedServiceCount > 0) {
-        markIndividualsMessage = `ZD utworzone. Odznaczono ${markRes.processedIds.length} próśb; ${composedUwagi.omittedServiceCount} usług nie zmieściło się w uwagach — nie odznaczono.${bumpedNote}${teethSkipNote}`;
-      } else if (bumpedNote || teethSkipNote) {
-        markIndividualsMessage = `ZD utworzone. Odznaczono ${markRes.processedIds.length} próśb (Główne).${bumpedNote}${teethSkipNote}`;
-      }
-      revalidatePath("/", "layout");
-      revalidatePath("/podsumowanie");
-      revalidatePath("/zakupy/szacunek");
-    } catch (e) {
-      markIndividualsMessage =
-        e instanceof Error
-          ? `ZD utworzone, ale nie odznaczono próśb (Główne): ${e.message}${bumpedNote}${teethSkipNote}`
-          : `ZD utworzone, ale nie odznaczono próśb (Główne) — zrób to w panelu Dziś.${bumpedNote}${teethSkipNote}`;
-    }
-  } else if (composedUwagi.omittedServiceCount > 0) {
-    markIndividualsMessage = `ZD utworzone. ${composedUwagi.omittedServiceCount} usług nie zmieściło się w uwagach — prośby nie odznaczono.${bumpedNote}${teethSkipNote}`;
-  } else if (bumpedNote || teethSkipNote) {
-    markIndividualsMessage = `ZD utworzone.${bumpedNote}${teethSkipNote}`;
-  }
-
-  const withMark = <T extends Record<string, unknown>>(base: T) => ({
+  const withCreate = <T extends Record<string, unknown>>(base: T) => ({
     ...base,
-    ...(markedIndividualOrderIds.length
-      ? { markedIndividualOrderIds }
-      : {}),
-    ...(markIndividualsMessage ? { markIndividualsMessage } : {}),
+    createdLines: createLines.map((l) => ({ twId: l.twId, ilosc: l.ilosc })),
+    bumped: coveredLines.bumped,
+    composedUwagi: composedUwagi.uwagi,
+    omittedServiceCount: composedUwagi.omittedServiceCount,
+    teethServiceCount: teethServiceOrderIds.size,
+    includedServiceOrderIds: composedUwagi.includedServiceOrderIds,
+    acceptedCatalogOrderIds: catalogIds,
   });
 
   let dokNrPelny = `ZD/${dokId}`;
@@ -2871,11 +2901,11 @@ export async function actionCreateZdFromEstimate(input: {
     dokNrPelny = String(doc.dok_NrPelny ?? "").trim() || dokNrPelny;
 
     if (!persistSnapshots) {
-      return withMark({
+      return withCreate({
         ok: true as const,
         dokId,
         dokNrPelny,
-        lineCount: linesCheck.lines.length,
+        lineCount: createLines.length,
         snapshotOk: false,
         snapshotMessage: "Brak konfiguracji hosta — historia nie zapisana.",
       });
@@ -2895,11 +2925,11 @@ export async function actionCreateZdFromEstimate(input: {
         packagingModeByTwId.set(row.subiektTwId, row.documentUnitMode);
       }
     } catch (e) {
-      return withMark({
+      return withCreate({
         ok: true as const,
         dokId,
         dokNrPelny,
-        lineCount: linesCheck.lines.length,
+        lineCount: createLines.length,
         snapshotOk: false,
         snapshotMessage:
           e instanceof Error
@@ -2913,11 +2943,11 @@ export async function actionCreateZdFromEstimate(input: {
       const pairs = await fetchZdProductPairs();
       pairRatioByTwId = buildPairRatioByTwId(pairs);
     } catch (e) {
-      return withMark({
+      return withCreate({
         ok: true as const,
         dokId,
         dokNrPelny,
-        lineCount: linesCheck.lines.length,
+        lineCount: createLines.length,
         snapshotOk: false,
         snapshotMessage:
           e instanceof Error
@@ -2938,11 +2968,11 @@ export async function actionCreateZdFromEstimate(input: {
     });
 
     if (!built.ok) {
-      return withMark({
+      return withCreate({
         ok: true as const,
         dokId,
         dokNrPelny,
-        lineCount: linesCheck.lines.length,
+        lineCount: createLines.length,
         snapshotOk: false,
         snapshotMessage: `ZD utworzone (${dokNrPelny}), ${enrichSnapshotPackagingErrorMessage(
           built.message,
@@ -2953,11 +2983,11 @@ export async function actionCreateZdFromEstimate(input: {
     }
 
     if (!built.lines.length) {
-      return withMark({
+      return withCreate({
         ok: true as const,
         dokId,
         dokNrPelny,
-        lineCount: linesCheck.lines.length,
+        lineCount: createLines.length,
         snapshotOk: false,
         snapshotMessage:
           "ZD utworzone, ale nie udało się odczytać pozycji do historii — użyj „Powiąż ZD”.",
@@ -2979,7 +3009,7 @@ export async function actionCreateZdFromEstimate(input: {
         eligibleForHistory,
         lines: built.lines,
       });
-      return withMark({
+      return withCreate({
         ok: true as const,
         dokId,
         dokNrPelny,
@@ -2987,7 +3017,7 @@ export async function actionCreateZdFromEstimate(input: {
         snapshotOk: true,
       });
     } catch (snapErr) {
-      return withMark({
+      return withCreate({
         ok: true as const,
         dokId,
         dokNrPelny,
@@ -3000,17 +3030,348 @@ export async function actionCreateZdFromEstimate(input: {
       });
     }
   } catch (e) {
-    return withMark({
+    return withCreate({
       ok: true as const,
       dokId,
       dokNrPelny,
-      lineCount: linesCheck.lines.length,
+      lineCount: createLines.length,
       snapshotOk: false,
       snapshotMessage:
         e instanceof Error
           ? `ZD utworzone (dok_Id ${dokId}), odczyt/snapshot: ${e.message}`
           : `ZD utworzone (dok_Id ${dokId}) — użyj „Powiąż ZD”.`,
     });
+  }
+}
+
+function revalidateAfterZdEstimateMark() {
+  revalidatePath("/", "layout");
+  revalidatePath("/");
+  revalidatePath("/podsumowanie");
+  revalidatePath("/zakupy/szacunek");
+  revalidatePath("/moje");
+  revalidatePath("/plan");
+  revalidatePath("/historia");
+  revalidatePath("/kolejka");
+}
+
+export type ZdEstimateScheduleMarkContext =
+  | {
+      ok: true;
+      canMark: boolean;
+      reason?: "on_demand" | "no_interval" | "already_today";
+      orderDate: string | null;
+      message: string;
+    }
+  | { ok: false; message: string };
+
+export async function actionGetZdEstimateScheduleMarkContext(
+  supplierId: string
+): Promise<ZdEstimateScheduleMarkContext> {
+  await requireZdEstimateAdmin("read");
+  const id = String(supplierId ?? "").trim();
+  if (!id) return { ok: false, message: "Brak dostawcy." };
+  const supabase = createAdminClient();
+  const { data: supplier, error } = await supabase
+    .from("suppliers")
+    .select(
+      "id, name, order_on_demand, stock_raw, interval_raw, interval_weeks, extra_info"
+    )
+    .eq("id", id)
+    .maybeSingle();
+  if (error) return { ok: false, message: error.message };
+  if (!supplier) return { ok: false, message: "Nie znaleziono dostawcy." };
+  if (
+    isSupplierOrderOnDemand({
+      order_on_demand: supplier.order_on_demand,
+      stock_raw: supplier.stock_raw,
+      interval_raw: supplier.interval_raw,
+      extra_info: supplier.extra_info,
+    })
+  ) {
+    return {
+      ok: true,
+      canMark: false,
+      reason: "on_demand",
+      orderDate: null,
+      message: "Dostawca na żądanie — bez cyklicznego planu do oznaczenia.",
+    };
+  }
+  const interval = resolveSupplierInterval(
+    supplier.interval_raw as string | null,
+    supplier.interval_weeks != null ? Number(supplier.interval_weeks) : null
+  );
+  if (!interval) {
+    return {
+      ok: true,
+      canMark: false,
+      reason: "no_interval",
+      orderDate: null,
+      message: "Brak interwału u dostawcy — nie da się oznaczyć planu.",
+    };
+  }
+  const { data: schedule } = await supabase
+    .from("supplier_schedules")
+    .select("order_date")
+    .eq("supplier_id", id)
+    .maybeSingle();
+  const orderDate = schedule?.order_date ?? null;
+  const today = dateToIso(todayInWarsaw());
+  if (orderDate && today && orderDate === today) {
+    return {
+      ok: true,
+      canMark: false,
+      reason: "already_today",
+      orderDate,
+      message: "Plan na dziś jest już oznaczony jako złożony.",
+    };
+  }
+  return {
+    ok: true,
+    canMark: true,
+    orderDate,
+    message: "Można oznaczyć planowane zamówienie jako złożone.",
+  };
+}
+
+export type ZdEstimateMarkGlowneResult =
+  | {
+      ok: true;
+      processedIds: string[];
+      /** Durable skips (status / zęby / dostawca) — wyjdź z pending. */
+      skippedIds: string[];
+      /** Niekompletne — zostają w pending do retry. */
+      incompleteIds: string[];
+      skippedIncompleteCount: number;
+      message: string;
+      undo?: DailyPanelUndoPayload;
+    }
+  | { ok: false; message: string; skippedIds?: string[]; incompleteIds?: string[] };
+
+export async function actionMarkZdEstimateIndividualsGlowne(input: {
+  supplierId: string;
+  orderIds: string[];
+}): Promise<ZdEstimateMarkGlowneResult> {
+  const user = await requireZdEstimateAdmin("mutate");
+  const supplierId = String(input.supplierId ?? "").trim();
+  const requested = [
+    ...new Set(
+      (input.orderIds ?? []).map((id) => String(id ?? "").trim()).filter(Boolean)
+    ),
+  ];
+  if (!supplierId) return { ok: false, message: "Brak dostawcy." };
+  if (!requested.length) {
+    return { ok: false, message: "Brak próśb do odznaczenia." };
+  }
+
+  const supabase = createAdminClient();
+  const { data: rows, error } = await supabase
+    .from("individual_orders")
+    .select(
+      "id, status, supplier_id, is_teeth, request_kind, symbol, products, quantity, subiekt_tw_id, informacja_queue_via_daily_panel, informacja_stock_out_reorder"
+    )
+    .in("id", requested);
+  if (error) return { ok: false, message: error.message };
+
+  let teethTwIds = new Set<number>();
+  try {
+    teethTwIds = await fetchTeethProductTwIdSet();
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        e instanceof Error
+          ? `Nie udało się wczytać katalogu zębów przed Główne: ${e.message}`
+          : "Nie udało się wczytać katalogu zębów przed Główne.",
+    };
+  }
+
+  const skippedIds: string[] = [];
+  const incompleteIds: string[] = [];
+  const processable: string[] = [];
+  for (const id of requested) {
+    const row = (rows ?? []).find((r) => r.id === id);
+    if (!row || row.supplier_id !== supplierId) {
+      skippedIds.push(id);
+      continue;
+    }
+    if (row.status !== "Nowe" || row.is_teeth === true) {
+      skippedIds.push(id);
+      continue;
+    }
+    const twId = Math.trunc(Number(row.subiekt_tw_id) || 0);
+    if (twId > 0 && teethTwIds.has(twId)) {
+      skippedIds.push(id);
+      continue;
+    }
+    const kind = (row.request_kind ?? "zamowienie") as
+      | "zamowienie"
+      | "informacja";
+    const draft = {
+      supplierId: row.supplier_id ?? undefined,
+      symbol: row.symbol ?? undefined,
+      product: row.products ?? undefined,
+      quantity: row.quantity ?? undefined,
+      requestKind: kind,
+    };
+    if (kind === "informacja") {
+      const queued =
+        row.informacja_queue_via_daily_panel === true ||
+        row.informacja_stock_out_reorder === true;
+      if (!queued) {
+        skippedIds.push(id);
+        continue;
+      }
+      if (assessRequestCompleteness(draft) !== "complete") {
+        incompleteIds.push(id);
+        continue;
+      }
+    } else if (!isProcurementDraftReady(draft)) {
+      incompleteIds.push(id);
+      continue;
+    }
+    processable.push(id);
+  }
+
+  if (!processable.length) {
+    if (incompleteIds.length && !skippedIds.length) {
+      return {
+        ok: false,
+        message:
+          incompleteIds.length === 1
+            ? "Prośba nie ma kompletnych danych — uzupełnij przed Główne."
+            : `${incompleteIds.length} próśb nie ma kompletnych danych — uzupełnij przed Główne.`,
+        incompleteIds,
+        skippedIds: [],
+      };
+    }
+    if (skippedIds.length) {
+      const parts = [
+        "Żadna z wybranych próśb nie kwalifikuje się już do Główne (status / dostawca / zęby).",
+      ];
+      if (incompleteIds.length) {
+        parts.push(
+          `${incompleteIds.length} niekompletnych nadal czeka na uzupełnienie.`
+        );
+      }
+      return {
+        ok: true,
+        processedIds: [],
+        skippedIds,
+        incompleteIds,
+        skippedIncompleteCount: incompleteIds.length,
+        message: parts.join(" "),
+      };
+    }
+    return {
+      ok: false,
+      message:
+        "Żadna z wybranych próśb nie kwalifikuje się już do Główne (status / dostawca / zęby).",
+    };
+  }
+
+  try {
+    const individualsBefore = await captureIndividualOrdersSnapshot(processable);
+    const markRes = await processIndividualFromSummary(
+      processable,
+      "GLOWNE",
+      user.email,
+      null,
+      { skipSupplierSchedule: true }
+    );
+    revalidateAfterZdEstimateMark();
+    const durableSkip = [
+      ...new Set([...skippedIds, ...markRes.skippedIds]),
+    ];
+    const parts = [
+      `Odznaczono ${markRes.processedIds.length} ${
+        markRes.processedIds.length === 1 ? "prośbę" : "próśb"
+      } jako Główne (bez przesunięcia planu).`,
+    ];
+    if (durableSkip.length || incompleteIds.length) {
+      const skipN = durableSkip.length + incompleteIds.length;
+      parts.push(
+        `Pominięto ${skipN} (status / zęby / niekompletne).`
+      );
+    }
+    return {
+      ok: true,
+      processedIds: markRes.processedIds,
+      skippedIds: durableSkip,
+      incompleteIds,
+      skippedIncompleteCount: incompleteIds.length,
+      message: parts.join(" "),
+      undo: buildDailyPanelUndoPayload({
+        kind: "individual",
+        snapshots: individualsBefore,
+      }),
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        e instanceof Error
+          ? e.message
+          : "Nie udało się odznaczyć próśb jako Główne.",
+    };
+  }
+}
+
+export type ZdEstimateMarkScheduleResult =
+  | {
+      ok: true;
+      message: string;
+      undo?: DailyPanelUndoPayload;
+    }
+  | { ok: false; message: string };
+
+export async function actionMarkZdEstimateSupplierOrdered(input: {
+  supplierId: string;
+}): Promise<ZdEstimateMarkScheduleResult> {
+  const user = await requireZdEstimateAdmin("mutate");
+  const ctx = await actionGetZdEstimateScheduleMarkContext(input.supplierId);
+  if (!ctx.ok) return { ok: false, message: ctx.message };
+  if (!ctx.canMark) return { ok: false, message: ctx.message };
+  const supplierId = String(input.supplierId ?? "").trim();
+  try {
+    const scheduleBefore = await captureScheduleSnapshot(supplierId);
+    await markStandardOrdered(supplierId, user.email);
+    const feedbackLines = await buildMarkOrderedFeedback([supplierId]);
+    revalidateAfterZdEstimateMark();
+    return {
+      ok: true,
+      message:
+        feedbackLines[0] ?? "Planowane zamówienie oznaczone jako złożone.",
+      undo: buildDailyPanelUndoPayload({
+        kind: "schedules",
+        snapshots: [scheduleBefore],
+      }),
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        e instanceof Error
+          ? e.message
+          : "Nie udało się oznaczyć planu jako złożonego.",
+    };
+  }
+}
+
+export async function actionUndoZdEstimateDailyPanelChange(
+  payload: DailyPanelUndoPayload
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  await requireZdEstimateAdmin("mutate");
+  try {
+    const { actionUndoDailyPanelChange } = await import("@/app/actions/admin");
+    await actionUndoDailyPanelChange(payload);
+    return { ok: true };
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        e instanceof Error ? e.message : "Nie udało się cofnąć oznaczenia.",
+    };
   }
 }
 
@@ -3686,3 +4047,106 @@ export async function actionDeleteZdEstimateSupplierScope(input: {
     };
   }
 }
+
+export async function actionSaveZdEstimateUiPrefs(input: {
+  patch: Partial<import("@/lib/orders/zd-estimate-prefs").ZdEstimateUiPrefs>;
+}): Promise<
+  | { ok: true; prefs: import("@/lib/orders/zd-estimate-prefs").ZdEstimateUiPrefs }
+  | { ok: false; message: string }
+> {
+  await requireZdEstimateAdmin("mutate");
+  try {
+    const prefs = await upsertOwnZdEstimateUiPrefs(input.patch);
+    return { ok: true, prefs };
+  } catch (e) {
+    return {
+      ok: false,
+      message: userFacingErrorText(e, "Nie udało się zapisać preferencji."),
+    };
+  }
+}
+
+export async function actionGetZdEstimateExtrasPolicy(): Promise<
+  | {
+      ok: true;
+      policy: import("@/lib/orders/zd-estimate-extras-policy").ZdEstimateExtrasPolicy;
+    }
+  | { ok: false; message: string }
+> {
+  await requireZdEstimateAdmin("read");
+  try {
+    return { ok: true, policy: await fetchZdEstimateExtrasPolicy() };
+  } catch (e) {
+    return {
+      ok: false,
+      message: userFacingErrorText(e, "Nie udało się wczytać polityki próśb."),
+    };
+  }
+}
+
+export async function actionSetZdEstimateExtrasPolicy(input: {
+  policy: string;
+}): Promise<
+  | {
+      ok: true;
+      policy: import("@/lib/orders/zd-estimate-extras-policy").ZdEstimateExtrasPolicy;
+    }
+  | { ok: false; message: string }
+> {
+  await requireZdEstimateAdmin("mutate");
+  try {
+    const policy = await upsertZdEstimateExtrasPolicy(
+      parseZdEstimateExtrasPolicy(input.policy)
+    );
+    return { ok: true, policy };
+  } catch (e) {
+    return {
+      ok: false,
+      message: userFacingErrorText(e, "Nie udało się zapisać polityki próśb."),
+    };
+  }
+}
+
+export async function actionGetZdEstimateSnapshotLines(input: {
+  snapshotId: string;
+}): Promise<
+  | {
+      ok: true;
+      lines: import("@/lib/data/zd-estimate-order-snapshots").ZdEstimateOrderSnapshotLineRow[];
+    }
+  | { ok: false; message: string }
+> {
+  await requireZdEstimateAdmin("read");
+  try {
+    const lines = await fetchZdEstimateOrderSnapshotLines(input.snapshotId);
+    return { ok: true, lines };
+  } catch (e) {
+    return {
+      ok: false,
+      message: userFacingErrorText(e, "Nie udało się wczytać linii snapshotu."),
+    };
+  }
+}
+
+export async function actionSetZdEstimateSnapshotHistoryEligible(input: {
+  snapshotId: string;
+  eligible: boolean;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  await requireZdEstimateAdmin("mutate");
+  try {
+    await updateZdEstimateSnapshotEligibleForHistory(
+      input.snapshotId,
+      input.eligible
+    );
+    return { ok: true };
+  } catch (e) {
+    return {
+      ok: false,
+      message: userFacingErrorText(
+        e,
+        "Nie udało się zmienić kwalifikacji historii."
+      ),
+    };
+  }
+}
+

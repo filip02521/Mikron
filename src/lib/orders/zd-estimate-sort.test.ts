@@ -41,9 +41,13 @@ describe("sortZdEstimateLines", () => {
     expect(sorted.map((r) => r.tw_Symbol)).toEqual(["A-2", "A-10", "B-2"]);
   });
 
-  it("sortuje po nazwie", () => {
-    const sorted = sortZdEstimateLines(rows, "name", "asc");
-    expect(sorted.map((r) => r.tw_Nazwa)).toEqual(["Alpha", "Beta", "Zebra"]);
+  it("sortuje po pewności malejąco", () => {
+    const rows = [
+      { ...line({ tw_Id: 1, tw_Symbol: "A", tw_Nazwa: "a", celZapasu: 1 }), salesTrackConfidence: 0.2 },
+      { ...line({ tw_Id: 2, tw_Symbol: "B", tw_Nazwa: "b", celZapasu: 1 }), salesTrackConfidence: 0.9 },
+    ];
+    const sorted = sortZdEstimateLines(rows, "confidence", "desc");
+    expect(sorted.map((r) => r.tw_Id)).toEqual([2, 1]);
   });
 
   it("sortuje Do ZD malejąco (jednostki dokumentu)", () => {
@@ -89,6 +93,16 @@ describe("sortZdEstimateLines", () => {
     expect(sorted.map((r) => r.tw_Id)).toEqual([1, 2]);
   });
 
+  it("sortuje po nazwie A→Z (pl)", () => {
+    const sorted = sortZdEstimateLines(rows, "name", "asc");
+    expect(sorted.map((r) => r.tw_Nazwa)).toEqual(["Alpha", "Beta", "Zebra"]);
+  });
+
+  it("sortuje po nazwie Z→A", () => {
+    const sorted = sortZdEstimateLines(rows, "name", "desc");
+    expect(sorted.map((r) => r.tw_Nazwa)).toEqual(["Zebra", "Beta", "Alpha"]);
+  });
+
   it("nie mutuje wejścia", () => {
     const copy = [...rows];
     sortZdEstimateLines(rows, "name", "asc");
@@ -99,6 +113,7 @@ describe("sortZdEstimateLines", () => {
 describe("defaultDirForZdEstimateSortKey", () => {
   it("Do ZD domyślnie desc, tekst asc", () => {
     expect(defaultDirForZdEstimateSortKey("doZd")).toBe("desc");
+    expect(defaultDirForZdEstimateSortKey("confidence")).toBe("desc");
     expect(defaultDirForZdEstimateSortKey("symbol")).toBe("asc");
     expect(defaultDirForZdEstimateSortKey("name")).toBe("asc");
   });

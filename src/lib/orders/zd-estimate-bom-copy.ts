@@ -28,15 +28,15 @@ export const ZD_BOM_UI = {
   panelTitle: "Składy",
   modalTitle: "Składy i komplety",
   modalHint:
-    "Trzy tryby: (1) Składamy — zestaw nie idzie na ZD, sprzedaż obciąża składniki; (2) Kupujemy K i części — komplet i składniki osobno; (3) Tylko komplet — na ZD wyłącznie zestaw. Pary karton↔sztuki to osobny mechanizm.",
+    "Trzy sposoby kupowania zestawu: (1) Składamy — zestaw nie idzie na ZD, sprzedaż obciąża składniki; (2) Kupujemy K i części — komplet i składniki osobno; (3) Tylko komplet — na ZD wyłącznie zestaw. Pary karton↔sztuki to osobny mechanizm w „Pary”.",
 
   introTitle: "Zestaw i składniki",
   introBody:
-    "Wybierz preset zakupu i podaj ile sztuk każdego składnika wchodzi w 1 zestaw (np. proszek ×1 + płyn ×2). Po zapisie lista przelicza się od razu.",
+    "Wybierz, jak kupować zestaw, i podaj ile sztuk każdego składnika wchodzi w 1 zestaw (np. proszek ×1 + płyn ×2). Po zapisie lista Do ZD przelicza się od razu.",
 
   seedHeading: "Zaznaczone towary — wskaż zestaw i ilości",
   seedQtyHint:
-    "Na karcie składnika wpisz ile sztuk wchodzi w 1 zestaw (np. proszek = 1, płyn = 2). To nie są kilogramy.",
+    "Na karcie składnika wpisz ile sztuk wchodzi w 1 zestaw (np. proszek = 1, płyn = 2). To nie są kilogramy ani jednostki dokumentu ZD.",
   seedParentQtyHint: "Zestaw — bez osobnej ilości",
   roleZestaw: "Zestaw",
   roleSkladnik: "Składnik",
@@ -44,19 +44,19 @@ export const ZD_BOM_UI = {
   presetLegend: "Jak kupować zestaw?",
   presetAssemble: "Składamy (tylko składniki)",
   presetAssembleHint:
-    "Zestaw nie trafia na ZD. Sprzedaż zestawu doliczana jest do składników.",
+    "Zestaw nie trafia na ZD. Sprzedaż zestawu doliczana jest do niedoboru składników — zamawiasz części, nie komplet.",
   presetBuySeparate: "Kupujemy K i części",
   presetBuySeparateHint:
-    "Komplet i składniki zamawiane osobno — każdy wg własnej sprzedaży.",
+    "Komplet i składniki zamawiane osobno — każdy według własnej sprzedaży i stanu. Używaj, gdy komplet też bywa sprzedawany jako całość.",
   presetKitOnly: "Tylko komplet",
   presetKitOnlyHint:
-    "Na ZD tylko zestaw. Składniki zablokowane (alert przy ich sprzedaży lub prośbie).",
+    "Na ZD tylko zestaw. Składniki są zablokowane — przy ich sprzedaży lub prośbie zobaczysz alert (zamów zestaw albo zmień preset).",
 
   stockAsCoverLabel: "Wliczaj stan zestawu do pokrycia składników",
   stockAsCoverHintSeed:
     "Jeśli na magazynie leży osobno zestaw i osobno składniki, pokrycie może się zdublować — wtedy wyłącz tę opcję świadomie.",
   stockAsCoverHintManual:
-    "Domyślnie włączone przy „Składamy”. Wyłącz, gdy zestaw i składniki są trzymane osobno na magazynie.",
+    "Domyślnie włączone przy „Składamy”. Wyłącz, gdy zestaw i składniki są trzymane osobno na magazynie i nie powinny się wzajemnie pokrywać.",
 
   pieceWarningSeed: (twIds: number[]) =>
     `Jeden ze składników jest towarem „na sztuki” w parze (id. ${twIds.join(", ")}). Zamówienie i tak przejdzie na paczkę przez parę — lepiej wskazać karton (paczkę) jako składnik.`,
@@ -92,24 +92,29 @@ export const ZD_BOM_UI = {
   badgeZestawTitle:
     "Składamy: ten towar nie idzie na ZD — popyt i pokrycie są na składnikach.",
   badgeZestawRole: "zestaw",
-  badgeNieZamawiasz: "nie zamawiasz",
+  /** Chip meta — krótkie; pełny sens w title. */
+  badgeNieZamawiasz: "nie ZD",
   badgePurchasedKitTitle:
     "Komplet kupowany osobno: ten towar może iść na ZD wg własnej sprzedaży.",
-  badgePurchasedKitRole: "komplet · kupowany",
+  badgePurchasedKitRole: "kupowany",
   badgeKitOnlyTitle:
     "Tylko komplet: na ZD idzie zestaw; składniki są zablokowane.",
-  badgeKitOnlyRole: "komplet · tylko zestaw",
+  badgeKitOnlyRole: "tylko kit",
   badgeSkladnikRole: "składnik",
-  badgePurchaseBlockedRole: "składnik · nie kupujesz",
+  badgePurchaseBlockedRole: "blokada",
   badgePurchaseBlockedTitle:
     "Preset „Tylko komplet”: ten składnik nie idzie na ZD. Zamawiaj zestaw albo zmień preset.",
+  /** @deprecated Używaj `badgeMissingChip` w chipie; to zdanie zostaje dla legacy. */
   badgeMissingShort: "Brak towaru w wyniku — ilość może być niepełna",
+  badgeMissingChip: "brak",
   badgeMissingTitle:
     "Brakuje towaru ze składu w wyniku szacunku — kliknij „Policz listę”, aby dociągnąć dane z Subiekta.",
   badgeContributionTitle: (parentIds: number[]) =>
     parentIds.length
       ? `Wkład ze składu (id. zestawu: ${parentIds.join(", ")}).`
       : "Wkład ze składu.",
+  /** Chip: tylko +qty; id zestawu w title. */
+  badgeSalesFromZestawChip: (qtyLabel: string) => `+${qtyLabel}`,
   badgeSalesFromZestaw: (qtyLabel: string, parentId?: number) =>
     parentId != null
       ? `+${qtyLabel} z zestawu (id. ${parentId})`
@@ -119,16 +124,26 @@ export const ZD_BOM_UI = {
 
   alertKitOnlySalesTitle: "Składniki bez ścieżki zakupu",
   alertKitOnlySalesBody: (count: number) => {
-    const noun = count === 1 ? "składnik ma" : "składniki mają";
-    return `${count} ${noun} sprzedaż lub prośbę przy presecie „Tylko komplet” — na ZD nie wejdą jako pozycje katalogowe. Zmień preset albo zamów komplet.`;
+    const n = Math.max(0, Math.trunc(count));
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    const noun =
+      n === 1
+        ? "składnik ma"
+        : mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)
+          ? "składniki mają"
+          : "składników ma";
+    return `${n} ${noun} sprzedaż lub prośbę przy presecie „Tylko komplet” — na ZD nie wejdą jako pozycje katalogowe. Zmień preset albo zamów komplet.`;
   },
-  alertExplodeIncompleteTitle: "Skład explode niekompletny",
+  alertExplodeIncompleteTitle: "Skład „Składamy” niekompletny",
   alertExplodeIncompleteBody:
-    "Brakuje węzłów składu „Składamy” w wyniku — Do ZD / Create zablokowane, aż dociągniesz towary (Policz ponownie).",
+    "Brakuje towarów ze składu „Składamy” w wyniku — Do ZD i tworzenie ZD są zablokowane, aż dociągniesz pozycje („Policz listę” ponownie).",
 
   bulkButton: "Skład",
-  bulkTitleReady: "Utwórz skład / komplet — wskaż zestaw",
-  bulkTitleNeed: "Zaznacz co najmniej 2 towary (zestaw i składniki)",
+  bulkTitleReady:
+    "Utwórz skład / komplet z zaznaczenia — wskaż, który towar jest zestawem",
+  bulkTitleNeed:
+    "Zaznacz co najmniej 2 towary (zestaw i składniki), żeby utworzyć skład",
   selectNeedTwo:
     "Zaznacz co najmniej 2 towary (zestaw oraz składniki promocji).",
 

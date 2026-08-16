@@ -153,7 +153,7 @@ export function ZdEstimateRowActions({
         >
           <span className="block font-medium leading-snug">Tylko na prośbę</span>
           <span className="mt-0.5 block text-[11px] font-normal leading-snug text-slate-400">
-            Poza Do ZD, aż handlowiec złoży prośbę (qty = prośba)
+            Poza Do ZD, aż handlowiec złoży prośbę (ilość = prośba)
           </span>
         </OverflowMenuItem>
       ) : null}

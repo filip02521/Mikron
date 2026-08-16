@@ -3,15 +3,76 @@
 import type { ReactNode } from "react";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import type { ZdEstimatePairMeta } from "@/lib/orders/zd-estimate-pairs";
+import { formatZdEstimateTableQty } from "@/lib/orders/zd-estimate-table-qty";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import {
   formatPairPiecesUiHint,
   formatPairSalesChannelsBreakdown,
+  normalizeUnitsPerPack,
 } from "@/lib/orders/zd-product-pair-units";
 import { cn } from "@/lib/cn";
+import type { ZdEstimateQtyTier } from "@/components/zakupy/ZdEstimateQtyValue";
+import { ZdEstimateStatusBadge } from "@/components/zakupy/ZdEstimateStatusBadge";
 
 /**
- * Badge pod nazwą: sprzedaż/pokrycie pary w sztukach + rozbicie kanałów.
+ * Metryka w sztukach (Sprzed. / Cel / …).
+ * Przybliżenie w opakowaniach zostaje tylko w tooltipie — nie w komórce,
+ * żeby nie mieszać się z kolumną „Opak.” i ilościami magazynowymi.
+ */
+export function ZdEstimatePiecesMetricCell({
+  pieces,
+  unitsPerPack,
+  tier = "c",
+  title,
+  subline,
+  footer,
+  zeroAsDash = false,
+}: {
+  pieces: number;
+  /** ≥2 → dopisek ≈ op. w title (tooltip). */
+  unitsPerPack?: number | null;
+  /** b = Cel, c = Sprzed. */
+  tier?: ZdEstimateQtyTier;
+  title?: string;
+  subline?: ReactNode;
+  footer?: ReactNode;
+  /** Sprzed.: 0 → „—”. Cel/Dost. zawsze cyfra. */
+  zeroAsDash?: boolean;
+}) {
+  const raw = Math.max(0, Number(pieces) || 0);
+  const ratio = normalizeUnitsPerPack(unitsPerPack ?? null);
+  const hint = formatPairPiecesUiHint(raw, ratio ?? 1, formatQty);
+  const fullTitle = title ?? hint.title;
+  const showDash = zeroAsDash && raw < 1e-9;
+  const qtyClass = tier === "b" ? "zd-est-qty--b" : "zd-est-qty--c";
+
+  return (
+    <span
+      className="zd-estimate-metric-stack inline-flex w-full min-w-0 max-w-full flex-col items-center gap-0.5 text-center"
+      title={fullTitle}
+    >
+      <span className="max-w-full truncate leading-none">
+        {showDash ? (
+          <span className={cn(qtyClass, "zd-est-qty--dash")}>—</span>
+        ) : (
+          <>
+            <span className={qtyClass}>{formatZdEstimateTableQty(raw)}</span>
+            <span className="zd-est-unit ml-0.5">szt</span>
+          </>
+        )}
+      </span>
+      {!showDash && subline ? (
+        <span className="flex w-full min-w-0 flex-col items-center gap-px">
+          {subline}
+        </span>
+      ) : null}
+      {footer}
+    </span>
+  );
+}
+
+/**
+ * Badge pary w kolumnie Status — kompaktowa 1 linia; szczegóły w title.
  */
 export function ZdEstimatePairMetaBadge({
   pair,
@@ -48,118 +109,59 @@ export function ZdEstimatePairMetaBadge({
           ? "SKU paczki: na ZD zamawiasz ten towar (op./kartony)."
           : "SKU sztuk: sprzedaż jednostkowa — nie zamawiasz tego wiersza na ZD.",
         `1 op. = ${pair.unitsPerPack} szt.`,
+        `Sprzedaż pary: ${sales.piecesLabel}${sales.packsApproxLabel ? ` (${sales.packsApproxLabel})` : ""}.`,
         channels.title,
         `Pokrycie pary: ${cover.piecesLabel}${cover.packsApproxLabel ? ` (${cover.packsApproxLabel})` : ""}.`,
         `Stany: sztuki ${formatQty(pair.pieceDostepne)} dost. · paczki ${formatQty(pair.packDostepne)} op. ×${pair.unitsPerPack}.`,
-      ].join(" ");
+        packagingConflict ? ZD_ESTIMATE_UI.packagingConflictTitle : null,
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+  const meta = pair.partnerMissing
+    ? "brak"
+    : packagingConflict
+      ? "konflikt"
+      : `×${pair.unitsPerPack}`;
 
   return (
-    <span
-      className={cn(
-        "flex max-w-[min(100%,22rem)] flex-col gap-0.5 rounded-md px-1.5 py-1 text-left ring-1",
-        pair.partnerMissing
-          ? "bg-amber-50 text-amber-950 ring-amber-100"
+    <ZdEstimateStatusBadge
+      kind={isPack ? "Paczka" : "Sztuki"}
+      meta={meta}
+      tone={
+        pair.partnerMissing || packagingConflict
+          ? "amber"
           : isPack
-            ? "bg-indigo-50/90 text-indigo-950 ring-indigo-100"
-            : "bg-sky-50 text-sky-950 ring-sky-100"
-      )}
+            ? "indigo"
+            : "sky"
+      }
       title={title}
-    >
-      <span className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[10px] font-semibold uppercase tracking-wide">
-        <span
-          className={cn(
-            "rounded px-1 py-px",
-            isPack
-              ? "bg-indigo-200/70 text-indigo-950"
-              : "bg-sky-200/70 text-sky-950"
-          )}
-        >
-          {isPack ? "Paczka" : "Sztuki"}
-        </span>
-        <span className="font-medium normal-case tracking-normal text-slate-600">
-          {pair.unitsPerPack} szt/op.
-        </span>
-        {isPack ? (
-          <span className="rounded bg-emerald-100/80 px-1 py-px font-semibold normal-case tracking-normal text-emerald-900">
-            na ZD
-          </span>
-        ) : (
-          <span className="rounded bg-slate-200/80 px-1 py-px font-medium normal-case tracking-normal text-slate-700">
-            nie na ZD
-          </span>
-        )}
-        {packagingConflict ? (
-          <span
-            className="rounded bg-amber-100 px-1 py-px font-semibold normal-case tracking-normal text-amber-950"
-            title={ZD_ESTIMATE_UI.packagingConflictTitle}
-          >
-            {ZD_ESTIMATE_UI.packagingConflictShort}
-          </span>
-        ) : null}
-      </span>
-
-      {pair.partnerMissing ? (
-        <span className="text-[10px] font-medium normal-case tracking-normal text-amber-900">
-          Brak partnera — ilość 0
-        </span>
-      ) : (
-        <span className="truncate text-[10px] font-medium normal-case tracking-normal text-slate-600">
-          <span className="tabular-nums text-slate-800">
-            {sales.piecesLabel}
-          </span>
-          <span className="text-slate-400"> sprz. · </span>
-          <span className="tabular-nums text-slate-800">
-            {cover.piecesLabel}
-          </span>
-          <span className="text-slate-400">
-            {" "}
-            {ZD_ESTIMATE_UI.pairCoverLabel}
-          </span>
-        </span>
-      )}
-    </span>
+    />
   );
 }
 
-/** Komórka Cel: wartości popytu w sztukach + przybliżenie op. */
+/** Komórka Cel (i inne metryki sztuk): szt (+ delta); ≈ op. tylko w tooltip. */
 export function ZdEstimatePairPiecesCell({
   pieces,
   unitsPerPack,
-  emphasize,
   subline,
 }: {
   pieces: number;
   unitsPerPack: number;
-  emphasize?: boolean;
   subline?: ReactNode;
 }) {
-  const hint = formatPairPiecesUiHint(pieces, unitsPerPack, formatQty);
   return (
-    <span
-      className="inline-flex flex-col items-end gap-0.5"
-      title={hint.title}
-    >
-      <span
-        className={cn(
-          "tabular-nums leading-none",
-          emphasize ? "font-semibold text-slate-900" : "text-slate-700"
-        )}
-      >
-        {hint.piecesLabel}
-      </span>
-      {hint.packsApproxLabel ? (
-        <span className="text-[10px] font-medium leading-snug text-indigo-800/85">
-          {hint.packsApproxLabel}
-        </span>
-      ) : null}
-      {subline}
-    </span>
+    <ZdEstimatePiecesMetricCell
+      pieces={pieces}
+      unitsPerPack={unitsPerPack}
+      tier="b"
+      subline={subline}
+    />
   );
 }
 
 /**
- * Kolumna Sprzedaż dla pary: łącznie w sztukach + rozbicie obu kanałów
- * (żeby nie wyglądało jak „ta sama sprzedaż na sztukach i kartonach”).
+ * Kolumna Sprzedaż dla pary: sztuki; kanały i ≈ op. tylko w tooltip.
  */
 export function ZdEstimatePairSalesCell({
   pair,
@@ -175,60 +177,62 @@ export function ZdEstimatePairSalesCell({
     },
     formatQty
   );
-  const totalHint = formatPairPiecesUiHint(
+  const packHint = formatPairPiecesUiHint(
     pair.sprzedazSzt,
     pair.unitsPerPack,
     formatQty
   );
 
   return (
-    <span
-      className="inline-flex max-w-[10rem] flex-col items-end gap-0.5"
-      title={channels.title}
-    >
-      <span className="tabular-nums leading-none text-slate-800">
-        <span className="font-semibold">{totalHint.piecesLabel}</span>
-      </span>
-      {totalHint.packsApproxLabel ? (
-        <span className="text-[10px] font-medium leading-snug text-indigo-800/85">
-          {totalHint.packsApproxLabel}
-        </span>
-      ) : null}
-      <span className="max-w-full truncate text-right text-[10px] font-medium leading-snug text-slate-500">
-        {channels.channelsLabel}
-      </span>
-    </span>
+    <ZdEstimatePiecesMetricCell
+      pieces={pair.sprzedazSzt}
+      unitsPerPack={pair.unitsPerPack}
+      tier="c"
+      title={[channels.title, packHint.packsApproxLabel]
+        .filter(Boolean)
+        .join(" · ")}
+      zeroAsDash
+    />
   );
 }
 
 /** Stan / rez. / dostępne na SKU paczki — jednostki karty = op. */
 export function ZdEstimatePairPackStockCell({
   value,
+  tier = "d",
   tone,
+  zeroAsDash = false,
 }: {
   value: number;
+  tier?: ZdEstimateQtyTier;
   tone?: "default" | "muted" | "warn";
+  zeroAsDash?: boolean;
 }) {
+  const qtyClass =
+    tier === "b" ? "zd-est-qty--b" : tier === "c" ? "zd-est-qty--c" : "zd-est-qty--d";
+  const showDash = zeroAsDash && Number.isFinite(value) && Math.abs(value) < 1e-9;
+
   return (
     <span
-      className="inline-flex flex-col items-end gap-0.5"
+      className="inline-flex w-full min-w-0 items-baseline justify-center gap-0.5 text-center leading-none"
       title={`${formatQty(value)} op. na karcie paczki (nie sztuki demontażu)`}
     >
-      <span
-        className={cn(
-          "tabular-nums leading-none",
-          tone === "warn"
-            ? "font-medium text-amber-800"
-            : tone === "muted"
-              ? "text-slate-400"
-              : "text-slate-700"
-        )}
-      >
-        {formatQty(value)}
-      </span>
-      <span className="text-[10px] font-medium leading-none text-slate-400">
-        op.
-      </span>
+      {showDash ? (
+        <span className={cn(qtyClass, "zd-est-qty--dash")}>—</span>
+      ) : (
+        <>
+          <span
+            className={cn(
+              qtyClass,
+              tone === "warn" && "zd-est-qty--warn",
+              tone === "muted" && "zd-est-qty--muted"
+            )}
+          >
+            {formatZdEstimateTableQty(value)}
+          </span>
+          <span className="zd-est-unit">op.</span>
+        </>
+      )}
     </span>
   );
 }

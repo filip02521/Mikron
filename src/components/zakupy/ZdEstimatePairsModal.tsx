@@ -15,6 +15,7 @@ import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
 import { normalizeUnitsPerPack } from "@/lib/orders/zd-product-pair-units";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
+import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 
 export type ZdPairSeedProduct = {
   twId: number;
@@ -198,8 +199,8 @@ export function ZdEstimatePairsModal({
     <ModalShell
       open={open}
       onClose={onClose}
-      title="Pary montaż / demontaż"
-      titleHint="Paczka kupowana na ZD ↔ sztuki sprzedawane. Kreator scala popyt i pokrycie w sztukach, zamawia tylko SKU paczki."
+      title={ZD_ESTIMATE_UI.pairsModalTitle}
+      titleHint={ZD_ESTIMATE_UI.pairsModalHint}
       size="xl"
       bodyClassName="space-y-4 px-5 py-4 sm:px-6 sm:py-5"
       loadingMessage={pending ? "Zapisuję…" : null}
@@ -234,7 +235,7 @@ export function ZdEstimatePairsModal({
         </div>
       }
     >
-      <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 px-4 py-3">
+      <div className="rounded-lg border border-slate-200/80 bg-slate-50/60 px-4 py-3">
         <div className="flex gap-3">
           <IconLayers
             size={18}
@@ -244,19 +245,19 @@ export function ZdEstimatePairsModal({
           />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-900">
-              1 paczka = N sztuk (demontaż)
+              {ZD_ESTIMATE_UI.pairsIntroTitle}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
               {fromSeed
-                ? "Wskaż, który towar to cała paczka (kupowana na ZD), a który pozycja na sztuki — oraz ile sztuk jest w paczce."
-                : "Sync wymaga GET /products/komplety na hoście ORDERS. Do czasu wdrożenia API dodawaj pary ręcznie albo zaznacz 2 towary na liście i wybierz „Para”."}
+                ? ZD_ESTIMATE_UI.pairsIntroBodySeed
+                : ZD_ESTIMATE_UI.pairsIntroBodyManual}
             </p>
           </div>
         </div>
       </div>
 
       {fromSeed && seed && seedPack && seedPiece ? (
-        <div className="space-y-3 rounded-xl border border-indigo-200/80 bg-indigo-50/40 p-3">
+        <div className="space-y-3 rounded-lg border border-indigo-200/80 bg-indigo-50/40 p-3">
           <p className="text-xs font-medium text-indigo-950">
             Zaznaczone towary — wybierz role
           </p>
@@ -271,7 +272,7 @@ export function ZdEstimatePairsModal({
                   disabled={pending}
                   onClick={() => setSeedPackIndex(idx)}
                   className={cn(
-                    "rounded-xl border px-3 py-3 text-left transition",
+                    "rounded-lg border px-3 py-3 text-left transition",
                     isPack
                       ? "border-indigo-400 bg-white shadow-sm ring-2 ring-indigo-200"
                       : "border-slate-200/80 bg-white/70 hover:border-slate-300"
@@ -334,7 +335,7 @@ export function ZdEstimatePairsModal({
           </p>
         </div>
       ) : (
-        <div className="grid gap-2 rounded-xl border border-slate-200/80 bg-white p-3 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="grid gap-2 rounded-lg border border-slate-200/80 bg-white p-3 sm:grid-cols-2 lg:grid-cols-6">
           <label className="text-xs font-medium text-slate-600 lg:col-span-1">
             Pack tw_Id
             <Input
@@ -437,7 +438,7 @@ export function ZdEstimatePairsModal({
           }
         />
       ) : (
-        <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200/80">
+        <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200/80">
           {filtered.map((row) => (
             <li
               key={row.id}
