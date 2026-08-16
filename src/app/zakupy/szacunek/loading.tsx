@@ -1,9 +1,14 @@
 import { ZdEstimateRouteLoading } from "@/components/zakupy/ZdEstimateRouteLoading";
+import { zdEstimatePageShellClass } from "@/lib/ui/ontime-theme";
 
 /**
  * Loading RSC — animowana checklista bootstrapu (nie kroki Policz).
- * Bez copy „dla dostawcy”; bez udawania wyliczania listy przed wyborem zakresu.
+ * Ten sam fill-viewport shell co page.tsx, żeby karta nie siedziała u góry.
  */
 export default function ZdEstimateLoading() {
-  return <ZdEstimateRouteLoading />;
+  return (
+    <div data-zd-estimate-viewport className={zdEstimatePageShellClass}>
+      <ZdEstimateRouteLoading />
+    </div>
+  );
 }

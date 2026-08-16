@@ -94,8 +94,6 @@ export function ZdEstimateLaunchProgressPanel({
         configured: host?.configured ?? true,
       })}
       host={host}
-      /* Niżej — bliżej środka obszaru listy (jak karta „Przelicz ZD”). */
-      className="items-start pt-[clamp(10rem,32vh,18rem)] pb-8 sm:pt-[clamp(11rem,34vh,20rem)] sm:pb-10"
     >
       <ZdEstimateLoadingBody
         statusTitle={title}
