@@ -262,7 +262,7 @@ export function ZdEstimateSnapshotsModal({
         <div className="grid gap-4 lg:grid-cols-[minmax(15rem,19rem)_minmax(0,1fr)] lg:gap-5">
           <section
             aria-label={ZD_ESTIMATE_UI.snapshotsModalListHeading}
-            className="flex min-h-0 flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white"
+            className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200/90 bg-white"
           >
             <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2.5">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -316,7 +316,7 @@ export function ZdEstimateSnapshotsModal({
                 ? snapshotDokLabel(selected)
                 : ZD_ESTIMATE_UI.snapshotsModalSelectHint
             }
-            className="flex min-h-[16rem] min-w-0 flex-col overflow-hidden rounded-xl border border-slate-200/90 bg-white"
+            className="flex min-h-[16rem] min-w-0 flex-col overflow-hidden rounded-lg border border-slate-200/90 bg-white"
           >
             {!selected ? (
               <div className="flex flex-1 flex-col items-center justify-center px-6 py-10 text-center">

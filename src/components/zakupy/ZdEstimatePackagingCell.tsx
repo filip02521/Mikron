@@ -65,7 +65,7 @@ export function ZdEstimatePackagingCell({
       }
       className={cn(
         controlFocusClass,
-        "zd-estimate-pack-cell inline-flex max-w-full flex-col items-start gap-0.5 rounded-md px-1.5 py-1 text-left transition",
+        "zd-estimate-pack-cell inline-flex max-w-full flex-col items-center gap-0.5 rounded-md px-1.5 py-1 text-center transition",
         "hover:bg-indigo-50/80 disabled:cursor-not-allowed disabled:opacity-50",
         conflict && "ring-1 ring-amber-400/80 bg-amber-50/70"
       )}

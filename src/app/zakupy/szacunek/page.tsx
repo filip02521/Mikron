@@ -112,7 +112,10 @@ export default async function ZdEstimatePage({
   }
 
   return (
-    <div className={zdEstimatePageShellClass}>
+    <div
+      data-zd-estimate-viewport
+      className={zdEstimatePageShellClass}
+    >
       <ZdEstimateWorkbench bootstrap={bootstrap} launch={launch} />
     </div>
   );

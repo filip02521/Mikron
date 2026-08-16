@@ -10,7 +10,9 @@ export type ZdEstimateListToolKey =
   | "exclude"
   | "restore"
   | "onRequest"
-  | "clearOnRequest";
+  | "clearOnRequest"
+  | "reviewAccept"
+  | "reviewZero";
 
 export type ZdEstimateListToolState = {
   enabled: boolean;
@@ -38,6 +40,7 @@ export function resolveZdEstimateListToolStates(input: {
   packagingClearEligibleCount: number;
   onRequestEligibleCount: number;
   clearOnRequestEligibleCount: number;
+  reviewEligibleCount?: number;
   pairsTrusted: boolean;
   bomsTrusted: boolean;
   packagingTrusted: boolean;
@@ -51,6 +54,7 @@ export function resolveZdEstimateListToolStates(input: {
     packagingClearEligibleCount,
     onRequestEligibleCount,
     clearOnRequestEligibleCount,
+    reviewEligibleCount = 0,
     pairsTrusted,
     bomsTrusted,
     packagingTrusted,
@@ -72,6 +76,7 @@ export function resolveZdEstimateListToolStates(input: {
     onRequestEligibleCount > 0;
   const clearOnRequestOk =
     onRequestTrusted && clearOnRequestEligibleCount > 0;
+  const reviewOk = reviewEligibleCount > 0;
 
   return {
     pair: {
@@ -171,6 +176,22 @@ export function resolveZdEstimateListToolStates(input: {
           ? ` (${clearOnRequestEligibleCount})`
           : "",
     },
+    reviewAccept: {
+      enabled: reviewOk,
+      title: reviewOk
+        ? "Zdejmuje oznaczenie „Do weryfikacji” tylko w tej sesji — nie zmienia ilości Do ZD"
+        : "Brak pozycji „Do weryfikacji” w zaznaczeniu",
+      accent: false,
+      labelSuffix: reviewOk ? ` (${reviewEligibleCount})` : "",
+    },
+    reviewZero: {
+      enabled: reviewOk,
+      title: reviewOk
+        ? "Ustawia Do ZD = 0 i zdejmuje „Do weryfikacji” w tej sesji"
+        : "Brak pozycji „Do weryfikacji” w zaznaczeniu",
+      accent: false,
+      labelSuffix: "",
+    },
   };
 }
 
@@ -184,6 +205,18 @@ export function zdEstimateSelectionOutsideVisibleHint(
   return outside === 1
     ? "1 poza filtrem/szukaniem"
     : `${outside} poza filtrem/szukaniem`;
+}
+
+/** Widoczna etykieta licznika zaznaczenia (1 / 2–4 / 5+). */
+export function zdEstimateSelectionCountLabel(count: number): string {
+  const n = Math.max(0, Math.trunc(Number(count) || 0));
+  if (n === 1) return "1 zaznaczony produkt";
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
+    return `${n} zaznaczone produkty`;
+  }
+  return `${n} zaznaczonych produktów`;
 }
 
 export function filterZdEstimateLinesBySearch<

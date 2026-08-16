@@ -5,30 +5,146 @@ import {
   OverflowMenu,
   OverflowMenuItem,
   OverflowMenuLabel,
+  OverflowMenuSeparator,
 } from "@/components/ui/OverflowMenu";
-import { IconSearch, IconX } from "@/components/icons/StrokeIcons";
-import { cn } from "@/lib/cn";
-import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
+import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import {
-  panelToolbarIconButtonClass,
-  panelToolbarSearchInputClass,
+  IconChevronDown,
+  IconSearch,
+  IconSettings,
+  IconX,
+} from "@/components/icons/StrokeIcons";
+import { cn } from "@/lib/cn";
+import {
+  zdEstimateChromeGapClass,
   zdEstimateListBandClass,
-  zdEstimateListToolsLinkClass,
+  zdEstimateStatusNoteClass,
+  zdEstimateToolbarIconClass,
+  zdEstimateToolbarSearchClass,
 } from "@/lib/ui/ontime-theme";
-import type { ZdEstimateListFilter } from "@/lib/orders/zd-estimate-prefs";
-import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
+import {
+  type ZdEstimateColumnVisibility,
+  type ZdEstimateListFilter,
+  type ZdEstimateOptionalColumn,
+} from "@/lib/orders/zd-estimate-prefs";
+import {
+  ZD_ESTIMATE_UI,
+  ZD_ESTIMATE_UNITS_LEGEND,
+} from "@/lib/orders/zd-estimate-ui-copy";
+
+function filterCountSuffix(count: number): string {
+  return count > 0 ? ` (${count})` : "";
+}
+
+function ColumnToggleRow({
+  columnKey,
+  visible,
+  index,
+  total,
+  onToggle,
+  onMove,
+}: {
+  columnKey: ZdEstimateOptionalColumn;
+  visible: boolean;
+  index: number;
+  total: number;
+  onToggle: (key: ZdEstimateOptionalColumn) => void;
+  onMove: (key: ZdEstimateOptionalColumn, direction: "up" | "down") => void;
+}) {
+  const canUp = index > 0;
+  const canDown = index < total - 1;
+
+  return (
+    <div
+      className="flex items-stretch gap-0.5 pr-1.5"
+      role="none"
+    >
+      <OverflowMenuItem
+        keepOpen
+        onClick={() => onToggle(columnKey)}
+        title={ZD_ESTIMATE_UI.listColumnToggleHint}
+        className="flex min-w-0 flex-1 items-center gap-2 py-2"
+      >
+        <span
+          className={cn(
+            "inline-flex size-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold leading-none",
+            visible
+              ? "border-indigo-400 bg-indigo-50 text-indigo-800"
+              : "border-slate-200 bg-white text-transparent"
+          )}
+          aria-hidden
+        >
+          ✓
+        </span>
+        <span className="min-w-0 flex-1 truncate">
+          {ZD_ESTIMATE_UI.listColumnLabels[columnKey]}
+        </span>
+      </OverflowMenuItem>
+      <div className="flex shrink-0 flex-col justify-center gap-px py-1">
+        <button
+          type="button"
+          className={cn(
+            "inline-flex size-5 items-center justify-center rounded text-slate-400 transition",
+            canUp
+              ? "hover:bg-indigo-50 hover:text-indigo-800"
+              : "cursor-not-allowed opacity-30"
+          )}
+          disabled={!canUp}
+          title={ZD_ESTIMATE_UI.listColumnMoveUp}
+          aria-label={ZD_ESTIMATE_UI.listColumnMoveUp}
+          onClick={(event) => {
+            event.stopPropagation();
+            onMove(columnKey, "up");
+          }}
+        >
+          <IconChevronDown
+            size={12}
+            strokeWidth={2.5}
+            open
+            className="block"
+            aria-hidden
+          />
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "inline-flex size-5 items-center justify-center rounded text-slate-400 transition",
+            canDown
+              ? "hover:bg-indigo-50 hover:text-indigo-800"
+              : "cursor-not-allowed opacity-30"
+          )}
+          disabled={!canDown}
+          title={ZD_ESTIMATE_UI.listColumnMoveDown}
+          aria-label={ZD_ESTIMATE_UI.listColumnMoveDown}
+          onClick={(event) => {
+            event.stopPropagation();
+            onMove(columnKey, "down");
+          }}
+        >
+          <IconChevronDown size={12} strokeWidth={2.5} className="block" aria-hidden />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function ZdEstimateListBand({
   listFilter,
   onListFilterChange,
   reviewInGroupCount,
   excludedInGroupCount,
+  inScopeCount,
   listSearch,
   onListSearchChange,
-  showStockDetail,
-  onShowStockDetailChange,
-  showZkColumn,
-  onShowZkColumnChange,
+  searchVisibleCount,
+  searchTotalCount,
+  statusNote,
+  columns,
+  columnOrder,
+  onToggleColumn,
+  onMoveColumn,
+  onResetColumns,
+  columnsAreDefault,
   onSortByConfidence,
   sortKeyIsConfidence,
   visibleCount,
@@ -41,12 +157,24 @@ export function ZdEstimateListBand({
   onListFilterChange: (v: ZdEstimateListFilter) => void;
   reviewInGroupCount: number;
   excludedInGroupCount: number;
+  /** Liczba pozycji w zakresie Subiekta — title filtra „Wszystkie”. */
+  inScopeCount: number;
   listSearch: string;
   onListSearchChange: (v: string) => void;
-  showStockDetail: boolean;
-  onShowStockDetailChange: (v: boolean) => void;
-  showZkColumn: boolean;
-  onShowZkColumnChange: (v: boolean) => void;
+  /** Gdy szukanie: widoczne / w filtrze. */
+  searchVisibleCount?: number;
+  searchTotalCount?: number;
+  /** Truncated / recount — pod belką, nie obok szukania. */
+  statusNote?: string | null;
+  columns: ZdEstimateColumnVisibility;
+  columnOrder: readonly ZdEstimateOptionalColumn[];
+  onToggleColumn: (key: ZdEstimateOptionalColumn) => void;
+  onMoveColumn: (
+    key: ZdEstimateOptionalColumn,
+    direction: "up" | "down"
+  ) => void;
+  onResetColumns: () => void;
+  columnsAreDefault: boolean;
   onSortByConfidence: () => void;
   sortKeyIsConfidence?: boolean;
   visibleCount: number;
@@ -56,168 +184,176 @@ export function ZdEstimateListBand({
   disabled?: boolean;
 }) {
   const searchTrimmed = listSearch.trim().length > 0;
+  const showSearchCounts =
+    searchTrimmed &&
+    searchVisibleCount != null &&
+    searchTotalCount != null;
+  const canSelectVisible =
+    selectedCount === 0 && visibleCount > 0 && !allVisibleSelected;
 
   return (
-    <div className={zdEstimateListBandClass} role="region" aria-label="Filtr i szukanie listy">
-      <div className="flex w-full min-w-0 flex-col gap-2.5 lg:flex-row lg:items-center lg:gap-3">
-        <SegmentedControl
-          ariaLabel="Filtr listy"
-          value={listFilter}
-          onChange={onListFilterChange}
-          className="w-full justify-stretch sm:w-auto lg:shrink-0"
-          touchFriendly
-          options={[
-            {
-              value: "order",
-              label: "Do ZD",
-              title: ZD_ESTIMATE_UI.listFilterOrderTitle,
-            },
-            {
-              value: "all",
-              label: "Wszystkie",
-              title: ZD_ESTIMATE_UI.listFilterAllTitle,
-            },
-            {
-              value: "review",
-              label: `Do weryfikacji${
-                reviewInGroupCount > 0 ? ` (${reviewInGroupCount})` : ""
-              }`,
-              title: ZD_ESTIMATE_UI.listFilterReviewTitle,
-            },
-            {
-              value: "excluded",
-              label: `Wykluczone${
-                excludedInGroupCount > 0 ? ` (${excludedInGroupCount})` : ""
-              }`,
-              title: ZD_ESTIMATE_UI.excludedFilterTitle,
-            },
-          ]}
-        />
-
-        <div className="relative min-w-0 flex-1 sm:max-w-[18rem] lg:max-w-[16rem]">
-          <IconSearch
-            size={15}
-            strokeWidth={2}
-            className="pointer-events-none absolute left-2.5 top-1/2 z-[1] -translate-y-1/2 text-slate-400"
-            aria-hidden
+    <div
+      className={zdEstimateListBandClass}
+      role="region"
+      aria-label="Filtr i szukanie listy"
+    >
+      <div
+        className={cn(
+          "flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
+        )}
+      >
+        <div className={cn("flex min-w-0 items-center", zdEstimateChromeGapClass)}>
+          <SegmentedControl
+            ariaLabel="Filtr listy"
+            value={listFilter}
+            onChange={onListFilterChange}
+            density="compact"
+            className="w-full justify-stretch sm:w-auto sm:shrink-0"
+            options={[
+              {
+                value: "order",
+                label: "Do ZD",
+                title: ZD_ESTIMATE_UI.listFilterOrderTitle,
+              },
+              {
+                value: "all",
+                label: "Wszystkie",
+                title: ZD_ESTIMATE_UI.listFilterAllTitleWithCount(inScopeCount),
+              },
+              {
+                value: "review",
+                label: `${ZD_ESTIMATE_UI.listFilterReviewShort}${filterCountSuffix(reviewInGroupCount)}`,
+                title: ZD_ESTIMATE_UI.listFilterReviewTitle,
+              },
+              {
+                value: "excluded",
+                label: `${ZD_ESTIMATE_UI.listFilterExcludedShort}${filterCountSuffix(excludedInGroupCount)}`,
+                title: ZD_ESTIMATE_UI.excludedFilterTitle,
+              },
+            ]}
           />
-          <label className="block w-full">
-            <span className="sr-only">Szukaj symbol, nazwa, PLU, tw_Id</span>
-            <input
-              type="search"
-              value={listSearch}
-              onChange={(e) => onListSearchChange(e.target.value)}
-              placeholder="Symbol, nazwa, PLU, ID…"
-              className={cn(
-                panelToolbarSearchInputClass,
-                "pl-8",
-                searchTrimmed ? "pr-9" : "pr-3",
-                "[&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
-              )}
-            />
-          </label>
-          {searchTrimmed ? (
-            <button
-              type="button"
-              className="absolute right-1.5 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 transition hover:bg-indigo-50/80 hover:text-indigo-900"
-              onClick={() => onListSearchChange("")}
-              aria-label="Wyczyść szukanie"
-              title="Wyczyść szukanie"
-            >
-              <IconX size={14} strokeWidth={2.25} aria-hidden />
-            </button>
-          ) : null}
+          <HelpHintBubble
+            message={ZD_ESTIMATE_UNITS_LEGEND}
+            tone="slate"
+            size="sm"
+            ariaLabel="Legenda jednostek listy"
+          />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
-          <div className="hidden items-center gap-3 sm:flex">
-            <label
-              className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600"
-              title={ZD_ESTIMATE_UI.listShowStockDetailTitle}
-            >
+        <div
+          className={cn(
+            "flex w-full min-w-0 items-center sm:ml-auto sm:w-auto",
+            zdEstimateChromeGapClass
+          )}
+        >
+          <div className="relative min-w-0 flex-1 sm:w-[15rem] sm:flex-none lg:w-[16rem]">
+            <IconSearch
+              size={14}
+              strokeWidth={2}
+              className="pointer-events-none absolute left-2.5 top-1/2 z-[1] -translate-y-1/2 text-slate-400"
+              aria-hidden
+            />
+            <label className="block w-full">
+              <span className="sr-only">Szukaj symbol, nazwa, PLU, tw_Id</span>
               <input
-                type="checkbox"
-                className={cn(checkboxBrandClass, "!size-3.5")}
-                checked={showStockDetail}
-                onChange={(e) => onShowStockDetailChange(e.target.checked)}
+                type="search"
+                value={listSearch}
+                onChange={(e) => onListSearchChange(e.target.value)}
+                placeholder="Symbol, nazwa, PLU…"
+                className={cn(
+                  zdEstimateToolbarSearchClass,
+                  "pl-8",
+                  searchTrimmed || showSearchCounts ? "pr-14" : "pr-3"
+                )}
               />
-              Stan / rez.
             </label>
-            <label
-              className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600"
-              title={ZD_ESTIMATE_UI.listShowZkColumnTitle}
-            >
-              <input
-                type="checkbox"
-                className={cn(checkboxBrandClass, "!size-3.5")}
-                checked={showZkColumn}
-                onChange={(e) => onShowZkColumnChange(e.target.checked)}
-              />
-              ZK / API
-            </label>
-            <OverflowMenu
-              label="Więcej listy"
-              align="end"
-              iconOnly
-              triggerClassName={panelToolbarIconButtonClass}
-            >
-              <OverflowMenuLabel>Sortowanie</OverflowMenuLabel>
-              <OverflowMenuItem
-                onClick={onSortByConfidence}
-                disabled={disabled}
+            {showSearchCounts ? (
+              <span
+                className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 text-[10px] tabular-nums leading-none text-slate-400"
+                title="Trafienia szukania / pozycje w aktywnym filtrze"
               >
-                {sortKeyIsConfidence
-                  ? `✓ ${ZD_ESTIMATE_UI.listSortByConfidence}`
-                  : ZD_ESTIMATE_UI.listSortByConfidence}
-              </OverflowMenuItem>
-            </OverflowMenu>
+                {searchVisibleCount}
+                <span className="text-slate-300">/</span>
+                {searchTotalCount}
+              </span>
+            ) : null}
+            {searchTrimmed ? (
+              <button
+                type="button"
+                className="absolute right-1 top-1/2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 transition hover:bg-indigo-50/80 hover:text-indigo-900"
+                onClick={() => onListSearchChange("")}
+                aria-label="Wyczyść szukanie"
+                title="Wyczyść szukanie"
+              >
+                <IconX size={13} strokeWidth={2.25} aria-hidden />
+              </button>
+            ) : null}
           </div>
 
-          <div className="sm:hidden">
-            <OverflowMenu
-              label="Kolumny listy"
-              align="end"
-              iconOnly
-              triggerClassName={panelToolbarIconButtonClass}
-            >
-              <OverflowMenuLabel>Kolumny</OverflowMenuLabel>
-              <OverflowMenuItem
-                onClick={() => onShowStockDetailChange(!showStockDetail)}
-              >
-                {showStockDetail ? "Ukryj" : "Pokaż"} Stan / rez.
+          <OverflowMenu
+            label={ZD_ESTIMATE_UI.listMoreMenuLabel}
+            align="end"
+            iconOnly
+            triggerClassName={zdEstimateToolbarIconClass}
+            menuClassName="min-w-[17rem]"
+            triggerLeading={
+              <IconSettings
+                size={15}
+                strokeWidth={2.25}
+                className="block shrink-0"
+                aria-hidden
+              />
+            }
+          >
+            <OverflowMenuLabel>{ZD_ESTIMATE_UI.listColumnMenuLabel}</OverflowMenuLabel>
+            <p className="px-3 pb-1 text-[10px] leading-snug text-slate-400">
+              {ZD_ESTIMATE_UI.listColumnAlwaysVisibleHint}.{" "}
+              {ZD_ESTIMATE_UI.listColumnOrderHint}.
+            </p>
+            {columnOrder.map((key, index) => (
+              <ColumnToggleRow
+                key={key}
+                columnKey={key}
+                visible={columns[key]}
+                index={index}
+                total={columnOrder.length}
+                onToggle={onToggleColumn}
+                onMove={onMoveColumn}
+              />
+            ))}
+            {!columnsAreDefault ? (
+              <OverflowMenuItem keepOpen onClick={onResetColumns}>
+                {ZD_ESTIMATE_UI.listColumnReset}
               </OverflowMenuItem>
-              <OverflowMenuItem
-                onClick={() => onShowZkColumnChange(!showZkColumn)}
-              >
-                {showZkColumn ? "Ukryj" : "Pokaż"} ZK / API
-              </OverflowMenuItem>
-              <OverflowMenuLabel>Sortowanie</OverflowMenuLabel>
-              <OverflowMenuItem
-                onClick={onSortByConfidence}
-                disabled={disabled}
-              >
-                {sortKeyIsConfidence
-                  ? `✓ ${ZD_ESTIMATE_UI.listSortByConfidence}`
-                  : ZD_ESTIMATE_UI.listSortByConfidence}
-              </OverflowMenuItem>
-            </OverflowMenu>
-          </div>
-
-          {selectedCount > 0 ? null : visibleCount > 0 && !allVisibleSelected ? (
-            <button
-              type="button"
-              className={cn(
-                zdEstimateListToolsLinkClass,
-                "text-xs text-slate-700 hover:text-slate-950"
-              )}
-              onClick={onSelectAllVisible}
+            ) : null}
+            <OverflowMenuSeparator />
+            <OverflowMenuLabel>Sortowanie</OverflowMenuLabel>
+            <OverflowMenuItem
+              onClick={onSortByConfidence}
               disabled={disabled}
             >
-              Zaznacz widoczne ({visibleCount})
-            </button>
-          ) : null}
+              {sortKeyIsConfidence
+                ? `✓ ${ZD_ESTIMATE_UI.listSortByConfidence}`
+                : ZD_ESTIMATE_UI.listSortByConfidence}
+            </OverflowMenuItem>
+            {canSelectVisible ? (
+              <>
+                <OverflowMenuLabel>Zaznaczenie</OverflowMenuLabel>
+                <OverflowMenuItem
+                  onClick={onSelectAllVisible}
+                  disabled={disabled}
+                >
+                  {ZD_ESTIMATE_UI.listSelectVisible(visibleCount)}
+                </OverflowMenuItem>
+              </>
+            ) : null}
+          </OverflowMenu>
         </div>
       </div>
+
+      {statusNote ? (
+        <p className={cn(zdEstimateStatusNoteClass, "mt-1.5")}>{statusNote}</p>
+      ) : null}
     </div>
   );
 }

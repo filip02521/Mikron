@@ -278,12 +278,17 @@ export function OverflowMenuItem({
   danger,
   disabled,
   className,
+  title,
+  /** Nie zamykaj menu po kliku (np. przełączniki kolumn). */
+  keepOpen,
 }: {
   children: ReactNode;
   onClick: () => void;
   danger?: boolean;
   disabled?: boolean;
   className?: string;
+  title?: string;
+  keepOpen?: boolean;
 }) {
   const close = useContext(CloseMenuContext);
   return (
@@ -291,6 +296,7 @@ export function OverflowMenuItem({
       type="button"
       role="menuitem"
       disabled={disabled}
+      title={title}
       className={cn(
         "block w-full cursor-pointer px-3 py-2.5 text-left text-sm disabled:cursor-not-allowed disabled:opacity-50",
         danger
@@ -301,7 +307,7 @@ export function OverflowMenuItem({
       onClick={(event) => {
         event.stopPropagation();
         onClick();
-        close();
+        if (!keepOpen) close();
       }}
     >
       {children}

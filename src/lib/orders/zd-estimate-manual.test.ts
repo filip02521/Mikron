@@ -58,10 +58,26 @@ describe("computeManualOrderQty", () => {
     ).toBe(0);
   });
 
-  it("ujemne dostępne nie zawyża qty (clamp do 0)", () => {
+  it("ujemne dostępne (dług rezerwacji) zwiększa qty", () => {
     expect(
       computeManualOrderQty({ celZapasu: 4, dostepne: -1, otwarteZd: 0 })
-    ).toBe(4);
+    ).toBe(5);
+  });
+
+  it("screenshot: stan12 rez40 cel83 → potrzeba 111 szt", () => {
+    expect(
+      computeManualOrderQty({ celZapasu: 83, dostepne: -28, otwarteZd: 0 })
+    ).toBe(111);
+  });
+
+  it("screenshot pack 10: 111 szt → 12 op. (arrive 120)", () => {
+    const pieces = computeManualOrderQty({
+      celZapasu: 83,
+      dostepne: -28,
+      otwarteZd: 0,
+    });
+    expect(Math.ceil(pieces / 10)).toBe(12);
+    expect(12 * 10).toBe(120);
   });
 
   it("nie uwzględnia ZK (osobne pole w mapowaniu)", () => {

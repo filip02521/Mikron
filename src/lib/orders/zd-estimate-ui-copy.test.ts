@@ -15,6 +15,11 @@ import {
   zdEstimateLaunchProgressCompleteHint,
   zdEstimateCreateProgressCompleteTitle,
   zdEstimateCreateProgressCompleteHint,
+  zdEstimateCreateProgressFooterBusy,
+  zdEstimateCreateProgressFooterLong,
+  zdEstimateLaunchProgressSteps,
+  zdEstimateLoadingBusyDetailProgress,
+  zdEstimateLoadingBusyDetailRoute,
   zdEstimateNeedsSettingsHint,
   zdEstimatePageContextFromSupplier,
   zdEstimatePageFlowSteps,
@@ -109,6 +114,21 @@ describe("zd-estimate-ui-copy", () => {
     expect(ZD_ESTIMATE_UI.listShowZkColumnTitle).not.toMatch(/\bAPI\b/);
   });
 
+  it("sort Symbol / Nazwa — osobne hinty, Status bez sortu po nazwie", () => {
+    expect(ZD_ESTIMATE_UI.listSortSymbolHint).toMatch(/symbol/i);
+    expect(ZD_ESTIMATE_UI.listSortNameHint).toMatch(/nazw/i);
+    expect(ZD_ESTIMATE_UI.listStatusColumnHint).toMatch(/chip/i);
+    expect(ZD_ESTIMATE_UI.listStatusColumnHint).toMatch(/do 4|\+N/i);
+    expect(ZD_ESTIMATE_UI.listStatusColumnHint).not.toMatch(/Nazwa/);
+  });
+
+  it("belka listy — skrócone filtry i zaznaczenie w menu", () => {
+    expect(ZD_ESTIMATE_UI.listFilterReviewShort).toBe("Weryfikacja");
+    expect(ZD_ESTIMATE_UI.listFilterExcludedShort).toBe("Wykluczone");
+    expect(ZD_ESTIMATE_UI.listSelectVisible(27)).toMatch(/widoczne \(27\)/);
+    expect(ZD_ESTIMATE_UI.listMoreMenuLabel).toMatch(/Ustawienia listy/i);
+  });
+
   it("route loading bez „dla dostawcy” i ze stałym flow description", () => {
     expect(ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION).toMatch(/Zakres Subiekta/);
     expect(zdEstimatePageLead()).toMatch(/zakres/i);
@@ -201,6 +221,9 @@ describe("zd-estimate-ui-copy", () => {
     expect(ZD_ESTIMATE_UI.extrasPolicyMaxHint).toMatch(/większa/);
     expect(ZD_ESTIMATE_UI.changeSupplierScopeHint).toMatch(/formularzu/);
     expect(ZD_ESTIMATE_UI.changeSupplierScopeHint).not.toMatch(/poniżej/);
+    expect(ZD_ESTIMATE_UI.changeSupplierScopeCta).toBe("Zmień dostawcę");
+    expect(ZD_ESTIMATE_UI.listFilterAllTitleWithCount(42)).toMatch(/42/);
+    expect(ZD_ESTIMATE_UI.listFilterAllTitleWithCount(42)).toMatch(/zakres/);
     expect(
       zdEstimateLaunchProgressTitle({ manualWithScope: true })
     ).toMatch(/Liczę listę/);
@@ -211,11 +234,24 @@ describe("zd-estimate-ui-copy", () => {
     expect(zdEstimateLaunchProgressCompleteHint()).toMatch(/Pokazuję wynik/);
     expect(zdEstimateCreateProgressCompleteTitle()).toBe("ZD gotowe");
     expect(
+      zdEstimateCreateProgressCompleteTitle({ snapshotOk: false })
+    ).toBe("ZD utworzone");
+    expect(
       zdEstimateCreateProgressCompleteHint({ snapshotOk: false })
     ).toMatch(/Powiąż ZD/);
     expect(
       zdEstimateCreateProgressCompleteHint({ snapshotOk: true })
     ).toMatch(/zamykam/);
+    expect(zdEstimateCreateProgressFooterBusy()).toMatch(/nie zamykać/i);
+    expect(zdEstimateCreateProgressFooterLong()).toMatch(/Sfera/i);
+    expect(zdEstimateLoadingBusyDetailProgress()).toMatch(/szacunkowy/);
+    expect(zdEstimateLoadingBusyDetailRoute()).toMatch(/ustawień/);
+    expect(
+      zdEstimateLaunchProgressSteps({
+        isLive: true,
+        scopeAlreadyResolved: true,
+      }).map((s) => s.id)
+    ).toEqual(["scope", "fetch", "calc", "list"]);
     expect(zdEstimateRecountOverlayHint(true)).toMatch(/aktualnej bazy/);
     expect(zdEstimateRecountOverlayHint(true)).toMatch(/Utwórz ZD/);
     expect(zdEstimateRecountOverlayHint(false)).toMatch(/testowego/);
@@ -332,5 +368,16 @@ describe("zd-estimate-ui-copy", () => {
     expect(ZD_ESTIMATE_UI.listSortByConfidence).toMatch(/pewności/i);
     expect(ZD_ESTIMATE_UI.doZdColumnHint).toMatch(/pewności/i);
     expect(ZD_ESTIMATE_UI.doZdColumnHint).toMatch(/weryfikacji/i);
+    expect(ZD_ESTIMATE_UI.doZdColumnHint).toMatch(/nadpisaniu|zaokrągleniu/i);
+    expect(ZD_ESTIMATE_UI.selectionGroupReview).toBe("Weryfikacja");
+    expect(ZD_ESTIMATE_UI.createPendingReviewWarn(1)).toMatch(
+      /1 pozycja nadal ma /
+    );
+    expect(ZD_ESTIMATE_UI.createPendingReviewWarn(2)).toMatch(
+      /2 pozycje nadal mają /
+    );
+    expect(ZD_ESTIMATE_UI.createPendingReviewWarn(5)).toMatch(
+      /5 pozycji nadal mają /
+    );
   });
 });

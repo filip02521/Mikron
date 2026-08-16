@@ -27,6 +27,7 @@ export type ZdEstimateDepartmentSettingsMenuProps = {
   disabled?: boolean;
   /** Krótki trigger na wąskich nagłówkach. */
   compact?: boolean;
+  triggerClassName?: string;
 };
 
 function MenuOption({
@@ -69,6 +70,7 @@ export function ZdEstimateDepartmentSettingsMenu({
   onOpenBoms,
   disabled,
   compact = false,
+  triggerClassName,
 }: ZdEstimateDepartmentSettingsMenuProps) {
   return (
     <OverflowMenu
@@ -80,21 +82,21 @@ export function ZdEstimateDepartmentSettingsMenu({
       }
       triggerLeading={
         <IconSettings
-          size={15}
+          size={14}
           strokeWidth={2}
           className="shrink-0 opacity-90"
         />
       }
       triggerTrailing={
         <IconChevronDown
-          size={14}
+          size={13}
           strokeWidth={2.25}
           className="shrink-0 opacity-70"
         />
       }
       align="end"
       disabled={disabled}
-      triggerClassName={panelToolbarTextButtonClass}
+      triggerClassName={triggerClassName ?? panelToolbarTextButtonClass}
       menuClassName="min-w-[18rem] max-w-[22rem]"
     >
       <OverflowMenuLabel>{ZD_ESTIMATE_UI.menuRulesGroupLabel}</OverflowMenuLabel>

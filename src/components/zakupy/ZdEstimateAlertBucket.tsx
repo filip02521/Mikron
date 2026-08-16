@@ -3,10 +3,11 @@
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { IconChevronDown } from "@/components/icons/StrokeIcons";
+import { zdEstimateRadiusSurfaceClass } from "@/lib/ui/ontime-theme";
 
 /**
- * Zbiera miękkie ostrzeżenia w jeden collapsible.
- * Blokery Create NIGDY tu nie wrzucamy — zostają pełnymi Alertami.
+ * Zbiera ostrzeżenia w collapsible (soft „Inne uwagi” albo overflow blockerów
+ * „Więcej problemów” z `ZdEstimatePinnedAlertStack`).
  */
 export function ZdEstimateAlertBucket({
   items,
@@ -32,7 +33,8 @@ export function ZdEstimateAlertBucket({
   return (
     <div
       className={cn(
-        "rounded-xl border border-slate-200/90 bg-slate-50/80",
+        zdEstimateRadiusSurfaceClass,
+        "border border-slate-200/90 bg-slate-50/80",
         className
       )}
     >

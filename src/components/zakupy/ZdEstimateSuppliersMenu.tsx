@@ -23,6 +23,7 @@ export type ZdEstimateSuppliersMenuProps = {
   onOpenSnapshots: () => void;
   disabled?: boolean;
   compact?: boolean;
+  triggerClassName?: string;
 };
 
 /**
@@ -34,6 +35,7 @@ export function ZdEstimateSuppliersMenu({
   onOpenSnapshots,
   disabled,
   compact = false,
+  triggerClassName,
 }: ZdEstimateSuppliersMenuProps) {
   const hasUnmapped = todayUnmappedCount > 0;
   const ariaLabel = zdEstimateSuppliersMenuAriaLabel(todayUnmappedCount);
@@ -57,18 +59,18 @@ export function ZdEstimateSuppliersMenu({
         </>
       }
       triggerLeading={
-        <IconTruck size={15} strokeWidth={2} className="shrink-0 opacity-90" />
+        <IconTruck size={14} strokeWidth={2} className="shrink-0 opacity-90" />
       }
       triggerTrailing={
         <IconChevronDown
-          size={14}
+          size={13}
           strokeWidth={2.25}
           className="shrink-0 opacity-70"
         />
       }
       align="end"
       disabled={disabled}
-      triggerClassName={panelToolbarTextButtonClass}
+      triggerClassName={triggerClassName ?? panelToolbarTextButtonClass}
       menuClassName="min-w-[18rem] max-w-[22rem]"
     >
       <OverflowMenuLabel>{ZD_ESTIMATE_UI.menuSuppliersGroupLabel}</OverflowMenuLabel>

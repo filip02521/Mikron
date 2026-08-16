@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import type { ZdCreatePreviewLine } from "@/lib/orders/zd-estimate-create-zd";
 import type { ZdPostCreateLineSnap } from "@/lib/orders/zd-estimate-post-create";
-import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
+import { controlFocusClass, panelTypography, zdEstimateRadiusNestedClass } from "@/lib/ui/ontime-theme";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 
 export type ZdEstimateOrderPreviewRow = ZdCreatePreviewLine;
@@ -99,7 +99,8 @@ export function ZdEstimateOrderPreviewTable({
       ) : null}
       <div
         className={cn(
-          "overflow-x-auto rounded-xl border border-slate-200/90",
+          "overflow-x-auto border border-slate-200/90",
+          zdEstimateRadiusNestedClass,
           compact
             ? "max-h-[min(40vh,22rem)] overflow-y-auto"
             : "max-h-[min(50vh,28rem)] overflow-y-auto"

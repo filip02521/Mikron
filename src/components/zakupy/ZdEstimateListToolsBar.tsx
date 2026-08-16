@@ -15,6 +15,7 @@ import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 import {
   resolveZdEstimateListToolsMode,
   resolveZdEstimateListToolStates,
+  zdEstimateSelectionCountLabel,
   zdEstimateSelectionOutsideVisibleHint,
 } from "@/lib/orders/zd-estimate-list-tools";
 import {
@@ -100,7 +101,7 @@ function SelectionGroupDivider() {
 }
 
 /**
- * Pasek akcji grupowych — grupy wg typu: powiązania → jednostki → pewność →
+ * Pasek akcji grupowych — grupy wg typu: powiązania → jednostki → weryfikacja →
  * reguły → zakres listy. Nad sticky Create.
  */
 export function ZdEstimateListToolsBar({
@@ -142,6 +143,7 @@ export function ZdEstimateListToolsBar({
     packagingClearEligibleCount,
     onRequestEligibleCount,
     clearOnRequestEligibleCount,
+    reviewEligibleCount,
     pairsTrusted,
     bomsTrusted,
     packagingTrusted,
@@ -152,6 +154,7 @@ export function ZdEstimateListToolsBar({
     selectedCount,
     visibleSelectedCount
   );
+  const selectionLabel = zdEstimateSelectionCountLabel(selectedCount);
 
   const showReviewGroup = Boolean(onBulkReviewAccept || onBulkReviewZero);
   const showRulesGroup = Boolean(onBulkOnRequest || onBulkClearOnRequest);
@@ -160,20 +163,19 @@ export function ZdEstimateListToolsBar({
     <div
       className={zdEstimateSelectionBarClass}
       role="region"
-      aria-label="Akcje grupowe zaznaczonych produktów"
+      aria-label={`Akcje grupowe — ${selectionLabel}`}
     >
       <div className={zdEstimateListToolsRowClass}>
         <div className={zdEstimateListToolsMetaClass}>
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-indigo-950">
+            <span className="sr-only">{selectionLabel}</span>
             <span
               className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-xs font-bold tabular-nums text-white"
               aria-hidden
             >
               {selectedCount}
             </span>
-            <span>
-              {selectedCount === 1 ? "zaznaczony" : "zaznaczonych"}
-            </span>
+            <span aria-hidden>{selectionLabel.replace(/^\d+\s+/, "")}</span>
             {visibleSelectedCount > 0 &&
             visibleSelectedCount !== selectedCount ? (
               <span className="text-[11px] font-medium text-indigo-800/80">
@@ -264,14 +266,12 @@ export function ZdEstimateListToolsBar({
                     type="button"
                     size="sm"
                     variant="secondary"
-                    disabled={disabled || reviewEligibleCount <= 0}
+                    disabled={disabled || !tools.reviewAccept.enabled}
                     onClick={onBulkReviewAccept}
-                    title={ZD_ESTIMATE_UI.reviewAcceptHint}
+                    title={tools.reviewAccept.title}
                   >
                     {ZD_ESTIMATE_UI.reviewAcceptCta}
-                    {reviewEligibleCount > 0
-                      ? ` (${reviewEligibleCount})`
-                      : ""}
+                    {tools.reviewAccept.labelSuffix}
                   </Button>
                 ) : null}
                 {onBulkReviewZero ? (
@@ -279,9 +279,9 @@ export function ZdEstimateListToolsBar({
                     type="button"
                     size="sm"
                     variant="secondary"
-                    disabled={disabled || reviewEligibleCount <= 0}
+                    disabled={disabled || !tools.reviewZero.enabled}
                     onClick={onBulkReviewZero}
-                    title={ZD_ESTIMATE_UI.reviewZeroHint}
+                    title={tools.reviewZero.title}
                     className="hidden sm:inline-flex"
                   >
                     {ZD_ESTIMATE_UI.reviewZeroCta}
@@ -366,7 +366,7 @@ export function ZdEstimateListToolsBar({
                 <OverflowMenuLabel>
                   {ZD_ESTIMATE_UI.selectionGroupRelations}
                 </OverflowMenuLabel>
-                {selectedCount < 2 ? (
+                {selectedCount >= 2 ? (
                   <OverflowMenuItem
                     disabled={disabled || !tools.bom.enabled}
                     onClick={onCreateBom}
@@ -391,7 +391,7 @@ export function ZdEstimateListToolsBar({
                       {ZD_ESTIMATE_UI.selectionGroupReview}
                     </OverflowMenuLabel>
                     <OverflowMenuItem
-                      disabled={disabled || reviewEligibleCount <= 0}
+                      disabled={disabled || !tools.reviewZero.enabled}
                       onClick={onBulkReviewZero}
                     >
                       {ZD_ESTIMATE_UI.reviewZeroCta}

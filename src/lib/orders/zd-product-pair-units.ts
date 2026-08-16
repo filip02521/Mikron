@@ -159,7 +159,10 @@ export function twinTwId(
   return null;
 }
 
-/** Cover pary w sztukach (stany już w jednostkach karty: pack=paczki, piece=sztuki). */
+/** Cover pary w sztukach (stany już w jednostkach karty: pack=paczki, piece=sztuki).
+ * `dostepne` bez dolnego clampu — ujemne (dług rezerwacji) zmniejsza cover.
+ * Otwarte ZD nadal ≥ 0.
+ */
 export function pairCoverPieces(input: {
   pieceDostepne: number;
   packDostepne: number;
@@ -168,8 +171,8 @@ export function pairCoverPieces(input: {
   pieceOtwarteZd?: number;
 }): number {
   const ratio = normalizeUnitsPerPack(input.unitsPerPack) ?? 1;
-  const piece = Math.max(0, Number(input.pieceDostepne) || 0);
-  const pack = Math.max(0, Number(input.packDostepne) || 0);
+  const piece = Number(input.pieceDostepne) || 0;
+  const pack = Number(input.packDostepne) || 0;
   const packZd = Math.max(0, Number(input.packOtwarteZd) || 0);
   const pieceZd = Math.max(0, Number(input.pieceOtwarteZd) || 0);
   return piece + pack * ratio + packZd * ratio + pieceZd;

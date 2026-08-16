@@ -1,7 +1,7 @@
 /**
- * Hierarchia chipów pod nazwą w liście szacunku ZD:
+ * Hierarchia chipów kolumny Status w liście szacunku ZD:
  * wykluczenie (manual / auto / soft) > prośba > para > BOM > statusy sesji / lifted.
- * UI pokazuje max 1 primary + „+N” overflow.
+ * UI pokazuje chipy w kolejności priorytetu (kilka naraz; +N tylko przy rzadkim overflow).
  */
 
 export type ZdEstimateNameMetaKind =

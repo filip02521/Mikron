@@ -87,11 +87,11 @@ describe("zd-estimate-name-meta-priority", () => {
 
   it("builds overflow tooltip", () => {
     const title = buildZdEstimateNameMetaOverflowTitle([
-      { kind: "pair", summary: "Paczka · na ZD" },
+      { kind: "pair", summary: "Paczka · ×12" },
       { kind: "bom", summary: "Skład · składnik" },
     ]);
     expect(title).toContain("Jeszcze 2");
-    expect(title).toContain("Paczka · na ZD");
+    expect(title).toContain("Paczka · ×12");
     expect(title).toContain("Skład · składnik");
   });
 });

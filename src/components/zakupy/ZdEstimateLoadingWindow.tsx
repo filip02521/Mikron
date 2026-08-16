@@ -18,7 +18,8 @@ import {
 export type ZdEstimateLoadingWindowHost = ZdEstimateHostStrip;
 
 /**
- * Wyśrodkowane okno loadingu Kreatora ZD — kompaktowy brand + treść checklisty.
+ * Okno loadingu Kreatora ZD — brand + treść checklisty.
+ * `stage` = pełna scena w workbenchu; `embedded` = karta w modalu (bez tła sceny).
  */
 export function ZdEstimateLoadingWindow({
   title = "Kreator ZD",
@@ -31,6 +32,8 @@ export function ZdEstimateLoadingWindow({
   className,
   windowClassName,
   focusId,
+  variant = "stage",
+  showBrandHeader = true,
 }: {
   title?: string;
   description?: string;
@@ -43,6 +46,8 @@ export function ZdEstimateLoadingWindow({
   windowClassName?: string;
   /** Id pod scroll/focus (np. launch progress). */
   focusId?: string;
+  variant?: "stage" | "embedded";
+  showBrandHeader?: boolean;
 }) {
   const hostConfigured = host?.configured === true;
   const hostDetail =
@@ -57,21 +62,30 @@ export function ZdEstimateLoadingWindow({
     [hint, hostDetail].filter(Boolean).join("\n\n") || undefined;
   const showHintSlot = Boolean(combinedHint) || hostPlaceholder;
 
-  return (
-    <div className={cn(zdEstimateLoadingStageClass, className)}>
-      <div
-        id={focusId}
-        tabIndex={focusId ? -1 : undefined}
-        className={cn(
-          zdEstimateLoadingWindowClass,
-          focusId && "scroll-mt-6 outline-none",
-          windowClassName
-        )}
-      >
-        <header className={zdEstimateLoadingWindowHeaderClass}>
+  const windowEl = (
+    <div
+      id={focusId}
+      tabIndex={focusId ? -1 : undefined}
+      className={cn(
+        zdEstimateLoadingWindowClass,
+        focusId && "scroll-mt-6 outline-none",
+        variant === "embedded" && "zd-est-loading-window--embedded max-w-none",
+        windowClassName
+      )}
+    >
+      {showBrandHeader ? (
+        <header className={cn(zdEstimateLoadingWindowHeaderClass, "relative")}>
+          <div
+            className="zd-est-loading-window__accent pointer-events-none absolute inset-x-0 top-0 h-0.5"
+            aria-hidden
+          />
           <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0 flex items-center gap-2">
-              <h1 className="truncate text-[1.0625rem] font-semibold tracking-tight text-slate-900 sm:text-lg">
+            <div className="flex min-w-0 items-center gap-2">
+              <span
+                className="zd-est-loading-window__mark hidden size-1.5 shrink-0 rounded-full bg-indigo-500 sm:inline-block"
+                aria-hidden
+              />
+              <h1 className="truncate text-sm font-medium tracking-tight text-slate-800 sm:text-[13px]">
                 {title}
               </h1>
               {showHintSlot ? (
@@ -113,8 +127,21 @@ export function ZdEstimateLoadingWindow({
             {description}
           </p>
         </header>
-        {children}
-      </div>
+      ) : null}
+      {children}
+    </div>
+  );
+
+  if (variant === "embedded") {
+    return <div className={cn("w-full", className)}>{windowEl}</div>;
+  }
+
+  return (
+    <div
+      className={cn(zdEstimateLoadingStageClass, className)}
+    >
+      <div className="zd-est-loading-stage__glow" aria-hidden />
+      {windowEl}
     </div>
   );
 }

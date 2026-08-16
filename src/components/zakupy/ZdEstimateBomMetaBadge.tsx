@@ -44,14 +44,11 @@ export function ZdEstimateBomMetaBadge({ bom }: { bom: ZdEstimateBomMeta }) {
   const blocked = bom.purchaseBlocked === true;
 
   const meta = bom.componentMissing
-    ? ZD_BOM_UI.badgeMissingShort
+    ? ZD_BOM_UI.badgeMissingChip
     : blocked
       ? ZD_BOM_UI.badgePurchaseBlockedRole
       : sales > 0
-        ? ZD_BOM_UI.badgeSalesFromZestaw(
-            formatQty(sales),
-            parents.length === 1 ? parents[0] : undefined
-          )
+        ? ZD_BOM_UI.badgeSalesFromZestawChip(formatQty(sales))
         : ZD_BOM_UI.badgeSkladnikRole;
 
   const title = bom.componentMissing
@@ -60,6 +57,12 @@ export function ZdEstimateBomMetaBadge({ bom }: { bom: ZdEstimateBomMeta }) {
       ? ZD_BOM_UI.badgePurchaseBlockedTitle
       : [
           ZD_BOM_UI.badgeContributionTitle(parents),
+          sales > 0
+            ? ZD_BOM_UI.badgeSalesFromZestaw(
+                formatQty(sales),
+                parents.length === 1 ? parents[0] : undefined
+              )
+            : null,
           cover > 0 ? ZD_BOM_UI.badgeCoverExtra(formatQty(cover)) : null,
         ]
           .filter(Boolean)
@@ -69,9 +72,7 @@ export function ZdEstimateBomMetaBadge({ bom }: { bom: ZdEstimateBomMeta }) {
     <ZdEstimateStatusBadge
       kind="Skład"
       meta={meta}
-      tone={
-        bom.componentMissing ? "amber" : blocked ? "rose" : "indigo"
-      }
+      tone={bom.componentMissing ? "amber" : blocked ? "rose" : "indigo"}
       title={title}
     />
   );

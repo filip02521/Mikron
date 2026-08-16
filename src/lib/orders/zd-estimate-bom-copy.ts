@@ -92,24 +92,29 @@ export const ZD_BOM_UI = {
   badgeZestawTitle:
     "Składamy: ten towar nie idzie na ZD — popyt i pokrycie są na składnikach.",
   badgeZestawRole: "zestaw",
-  badgeNieZamawiasz: "nie zamawiasz",
+  /** Chip meta — krótkie; pełny sens w title. */
+  badgeNieZamawiasz: "nie ZD",
   badgePurchasedKitTitle:
     "Komplet kupowany osobno: ten towar może iść na ZD wg własnej sprzedaży.",
-  badgePurchasedKitRole: "komplet · kupowany",
+  badgePurchasedKitRole: "kupowany",
   badgeKitOnlyTitle:
     "Tylko komplet: na ZD idzie zestaw; składniki są zablokowane.",
-  badgeKitOnlyRole: "komplet · tylko zestaw",
+  badgeKitOnlyRole: "tylko kit",
   badgeSkladnikRole: "składnik",
-  badgePurchaseBlockedRole: "składnik · nie kupujesz",
+  badgePurchaseBlockedRole: "blokada",
   badgePurchaseBlockedTitle:
     "Preset „Tylko komplet”: ten składnik nie idzie na ZD. Zamawiaj zestaw albo zmień preset.",
+  /** @deprecated Używaj `badgeMissingChip` w chipie; to zdanie zostaje dla legacy. */
   badgeMissingShort: "Brak towaru w wyniku — ilość może być niepełna",
+  badgeMissingChip: "brak",
   badgeMissingTitle:
     "Brakuje towaru ze składu w wyniku szacunku — kliknij „Policz listę”, aby dociągnąć dane z Subiekta.",
   badgeContributionTitle: (parentIds: number[]) =>
     parentIds.length
       ? `Wkład ze składu (id. zestawu: ${parentIds.join(", ")}).`
       : "Wkład ze składu.",
+  /** Chip: tylko +qty; id zestawu w title. */
+  badgeSalesFromZestawChip: (qtyLabel: string) => `+${qtyLabel}`,
   badgeSalesFromZestaw: (qtyLabel: string, parentId?: number) =>
     parentId != null
       ? `+${qtyLabel} z zestawu (id. ${parentId})`

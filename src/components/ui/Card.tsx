@@ -35,6 +35,7 @@ export function CardHeader({
   actionAlign = "stacked",
   titleClassName,
   descriptionClassName,
+  className,
 }: {
   title: string;
   description?: string;
@@ -44,30 +45,35 @@ export function CardHeader({
   action?: React.ReactNode;
   leading?: React.ReactNode;
   inset?: boolean;
-  /** Ciaśniejszy nagłówek — panel handlowca / listy. */
-  density?: "default" | "compact";
+  /** Ciaśniejszy nagłówek — panel handlowca / listy. `micro` = chrome Kreatora. */
+  density?: "default" | "compact" | "micro";
   /** Przy `compact` + opis: `stacked` = akcja pod opisem, `inline` = po prawej od tytułu. */
   actionAlign?: "inline" | "stacked";
   titleClassName?: string;
   descriptionClassName?: string;
+  className?: string;
 }) {
   const stackAction =
-    density === "compact" &&
+    (density === "compact" || density === "micro") &&
     Boolean(description) &&
     Boolean(action) &&
     actionAlign !== "inline";
 
   const titleClass = cn(
-    density === "compact"
-      ? "text-base font-semibold tracking-tight text-slate-900"
-      : "text-lg font-semibold tracking-tight text-slate-900 lg:text-xl",
+    density === "micro"
+      ? "text-[13px] font-semibold tracking-tight text-slate-900"
+      : density === "compact"
+        ? "text-base font-semibold tracking-tight text-slate-900"
+        : "text-lg font-semibold tracking-tight text-slate-900 lg:text-xl",
     titleClassName
   );
 
   const descriptionClass = cn(
-    density === "compact"
-      ? "mt-1 text-xs leading-relaxed text-slate-500"
-      : "mt-1.5 text-sm leading-snug text-slate-500 sm:leading-relaxed lg:text-base lg:leading-relaxed",
+    density === "micro"
+      ? "mt-0.5 text-[11px] leading-snug text-slate-500"
+      : density === "compact"
+        ? "mt-1 text-xs leading-relaxed text-slate-500"
+        : "mt-1.5 text-sm leading-snug text-slate-500 sm:leading-relaxed lg:text-base lg:leading-relaxed",
     descriptionClassName
   );
 
@@ -75,23 +81,30 @@ export function CardHeader({
     "flex flex-wrap items-center gap-2 [&_a]:inline-flex [&_a]:items-center";
 
   const paddingClass = inset
-    ? density === "compact"
-      ? "px-3 pb-3 pt-4 sm:px-4 sm:pb-4 sm:pt-4"
-      : "px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6 lg:px-8 lg:pb-6 lg:pt-7"
+    ? density === "micro"
+      ? "px-3 py-1.5 sm:px-4 lg:px-5"
+      : density === "compact"
+        ? "px-3 pb-3 pt-4 sm:px-4 sm:pb-4 sm:pt-4"
+        : "px-4 pb-4 pt-5 sm:px-6 sm:pb-5 sm:pt-6 lg:px-8 lg:pb-6 lg:pt-7"
     : "mb-6 pb-5";
 
   const titleNode = (
     <div className="flex min-w-0 flex-wrap items-center gap-1.5">
       <h2 className={titleClass}>{title}</h2>
       {hint ? (
-        <HelpHintBubble message={hint} tone="slate" size="md" ariaLabel={hintAriaLabel} />
+        <HelpHintBubble
+          message={hint}
+          tone="slate"
+          size={density === "micro" ? "sm" : "md"}
+          ariaLabel={hintAriaLabel}
+        />
       ) : null}
     </div>
   );
 
   if (stackAction) {
     return (
-      <div className={cn("border-b border-slate-100", paddingClass)}>
+      <div className={cn("border-b border-slate-100", paddingClass, className)}>
         <div className="flex w-full min-w-0 items-start gap-3">
           {leading ? <div className="shrink-0 pt-0.5">{leading}</div> : null}
           <div className="min-w-0 flex-1">
@@ -105,7 +118,7 @@ export function CardHeader({
   }
 
   return (
-    <div className={cn("border-b border-slate-100", paddingClass)}>
+    <div className={cn("border-b border-slate-100", paddingClass, className)}>
       <div className="flex w-full min-w-0 items-start gap-3">
         {leading ? <div className="shrink-0 pt-0.5">{leading}</div> : null}
         <div className="min-w-0 flex-1">

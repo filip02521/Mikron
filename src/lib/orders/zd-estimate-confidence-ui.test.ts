@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildZdEstimateConfidenceUi,
+  isZdEstimatePendingReview,
   resolveZdEstimateDoZdHintKind,
   zdEstimateConfidencePct,
 } from "@/lib/orders/zd-estimate-confidence-ui";
@@ -13,6 +14,25 @@ describe("zd-estimate-confidence-ui", () => {
     expect(zdEstimateConfidencePct(0.624)).toBe(62);
     expect(zdEstimateConfidencePct(-1)).toBe(0);
     expect(zdEstimateConfidencePct(2)).toBe(100);
+  });
+
+  it("pending review — qtyReview bez accepted/excluded", () => {
+    expect(
+      isZdEstimatePendingReview({ qtyReview: true, accepted: false })
+    ).toBe(true);
+    expect(
+      isZdEstimatePendingReview({
+        qtyReview: true,
+        accepted: true,
+      })
+    ).toBe(false);
+    expect(
+      isZdEstimatePendingReview({
+        qtyReview: true,
+        excluded: true,
+      })
+    ).toBe(false);
+    expect(isZdEstimatePendingReview({ qtyReview: false })).toBe(false);
   });
 
   it("idle bez sygnału", () => {
@@ -52,7 +72,7 @@ describe("zd-estimate-confidence-ui", () => {
     expect(ui.acceptAriaLabel).toMatch(/42%/);
   });
 
-  it("accepted — emerald tone", () => {
+  it("accepted — emerald tone + zachowany powód", () => {
     const ui = buildZdEstimateConfidenceUi({
       confidence: 0.42,
       qtyReview: true,
@@ -62,6 +82,7 @@ describe("zd-estimate-confidence-ui", () => {
     expect(ui.tone).toBe("accepted");
     expect(ui.needsReview).toBe(false);
     expect(ui.title).toContain("Zaakceptowano");
+    expect(ui.title).toContain("cienkie pokrycie");
   });
 
   it("hintKind — override > roundup > confidence > pieces", () => {
@@ -97,5 +118,36 @@ describe("zd-estimate-confidence-ui", () => {
         hasPiecesSubline: true,
       })
     ).toBe("pieces");
+  });
+
+  it("excluded — bez sygnału / review", () => {
+    const ui = buildZdEstimateConfidenceUi({
+      confidence: 0.4,
+      qtyReview: true,
+      reasons: ["boost_held"],
+      excluded: true,
+      canAccept: true,
+    });
+    expect(ui.hasSignal).toBe(false);
+    expect(ui.needsReview).toBe(false);
+    expect(ui.tone).toBe("idle");
+  });
+
+  it("override/roundup — review nadal needsReview (OK aside w komórce)", () => {
+    const ui = buildZdEstimateConfidenceUi({
+      confidence: 0.4,
+      qtyReview: true,
+      reasons: ["boost_held"],
+      canAccept: true,
+    });
+    expect(ui.needsReview).toBe(true);
+    expect(
+      resolveZdEstimateDoZdHintKind({
+        overridden: true,
+        hasRoundup: false,
+        showConfidenceWhisper: ui.hasSignal,
+        hasPiecesSubline: false,
+      })
+    ).toBe("override");
   });
 });

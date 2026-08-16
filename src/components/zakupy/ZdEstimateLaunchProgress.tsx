@@ -5,52 +5,18 @@ import { ZdEstimateLoadingBody } from "@/components/zakupy/ZdEstimateLoadingBody
 import { ZdEstimateLoadingWindow } from "@/components/zakupy/ZdEstimateLoadingWindow";
 import type { ZdEstimateHostStrip } from "@/lib/orders/zd-estimate-host";
 import { launchProgressStepFromElapsed } from "@/lib/orders/zd-estimate-launch-progress";
+import { zdEstimateLoadingElapsedLabel } from "@/lib/orders/zd-estimate-loading-ui";
 import { ZD_ESTIMATE_LAUNCH_FOCUS_ID } from "@/lib/orders/zd-estimate-launch-scroll";
 import {
   ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION,
-  zdEstimateLaunchFetchHint,
   zdEstimateLaunchProgressCompleteHint,
   zdEstimateLaunchProgressCompleteTitle,
   zdEstimateLaunchProgressFooter,
+  zdEstimateLaunchProgressSteps,
   zdEstimateLaunchProgressTitle,
-  zdEstimateLaunchScopePendingHint,
-  zdEstimateLaunchScopeResolvedHint,
+  zdEstimateLoadingBusyDetailProgress,
   zdEstimatePageHint,
 } from "@/lib/orders/zd-estimate-ui-copy";
-
-function buildLaunchProgressSteps(
-  isLive: boolean,
-  scopeAlreadyResolved: boolean
-) {
-  return [
-    {
-      id: "scope",
-      title: "Zakres Subiekta",
-      activeHint: scopeAlreadyResolved
-        ? zdEstimateLaunchScopeResolvedHint()
-        : zdEstimateLaunchScopePendingHint(),
-      doneHint: "Zakres ustawiony",
-    },
-    {
-      id: "fetch",
-      title: "Towary i stany",
-      activeHint: zdEstimateLaunchFetchHint(isLive),
-      doneHint: "Dane z Subiekta wczytane",
-    },
-    {
-      id: "calc",
-      title: "Sprzedaż, zapas i prośby",
-      activeHint: "Analizuję sprzedaż, stany i dołączam prośby handlowców…",
-      doneHint: "Wyliczenia i prośby gotowe",
-    },
-    {
-      id: "list",
-      title: "Lista do ZD",
-      activeHint: "Składam pozycje „Do ZD”…",
-      doneHint: "Lista gotowa",
-    },
-  ] as const;
-}
 
 export function ZdEstimateLaunchProgressPanel({
   supplierName,
@@ -72,7 +38,11 @@ export function ZdEstimateLaunchProgressPanel({
   host?: ZdEstimateHostStrip | null;
 }) {
   const steps = useMemo(
-    () => buildLaunchProgressSteps(ordersIsLive, scopeAlreadyResolved),
+    () =>
+      zdEstimateLaunchProgressSteps({
+        isLive: ordersIsLive,
+        scopeAlreadyResolved,
+      }),
     [ordersIsLive, scopeAlreadyResolved]
   );
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -93,7 +63,6 @@ export function ZdEstimateLaunchProgressPanel({
       });
 
   const clamped = Math.max(0, Math.min(activeStepIndex, steps.length - 1));
-  const elapsedSec = Math.floor(elapsedMs / 1000);
   const title = forceComplete
     ? zdEstimateLaunchProgressCompleteTitle()
     : zdEstimateLaunchProgressTitle({ manualWithScope });
@@ -130,16 +99,17 @@ export function ZdEstimateLaunchProgressPanel({
         statusTitle={title}
         statusHint={statusHint}
         chips={chips.length > 0 ? chips : null}
-        elapsedLabel={
-          forceComplete
-            ? `${elapsedSec}s · gotowe`
-            : `${elapsedSec}s · postęp szacunkowy`
-        }
+        elapsedLabel={zdEstimateLoadingElapsedLabel({
+          elapsedMs,
+          forceComplete,
+          busyDetail: zdEstimateLoadingBusyDetailProgress(),
+        })}
         steps={steps}
         activeStepIndex={clamped}
         forceComplete={forceComplete}
         busy={!forceComplete}
         ariaLabel={title}
+        progressAriaLabel="Postęp liczenia listy"
         footerNote={
           forceComplete ? null : zdEstimateLaunchProgressFooter()
         }

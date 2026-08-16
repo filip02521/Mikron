@@ -44,7 +44,7 @@ export function ZdEstimateQtyValue({
   tone = "default",
   title,
   subline,
-  align = "start",
+  align = "center",
   className,
   valueClassName,
 }: {
@@ -56,7 +56,7 @@ export function ZdEstimateQtyValue({
   tone?: ZdEstimateQtyTone;
   title?: string;
   subline?: ReactNode;
-  align?: "start" | "end";
+  align?: "start" | "end" | "center";
   className?: string;
   valueClassName?: string;
 }) {
@@ -68,7 +68,11 @@ export function ZdEstimateQtyValue({
     <span
       className={cn(
         "inline-flex min-w-0 max-w-full flex-col gap-0.5",
-        align === "end" ? "items-end text-right" : "items-start text-left",
+        align === "end"
+          ? "items-end text-right"
+          : align === "start"
+            ? "items-start text-left"
+            : "items-center text-center",
         className
       )}
       title={title}
@@ -116,7 +120,7 @@ export function ZdEstimateQtyValue({
         )}
       </span>
       {subline && !showDash ? (
-        <span className="flex w-full min-w-0 flex-col items-start gap-px">
+        <span className="flex w-full min-w-0 flex-col items-center gap-px">
           {subline}
         </span>
       ) : null}

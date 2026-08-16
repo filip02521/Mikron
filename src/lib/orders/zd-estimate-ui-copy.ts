@@ -151,7 +151,7 @@ export function zdEstimateRouteLoadingFooter(): string {
 }
 
 export function zdEstimateLaunchProgressFooter(): string {
-  return "Zostajesz na tym ekranie do końca liczenia.";
+  return "Zostajesz na tym ekranie do końca liczenia — lista pojawi się automatycznie.";
 }
 
 export function zdEstimateLaunchProgressCompleteTitle(): string {
@@ -162,7 +162,10 @@ export function zdEstimateLaunchProgressCompleteHint(): string {
   return "Pokazuję wynik…";
 }
 
-export function zdEstimateCreateProgressCompleteTitle(): string {
+export function zdEstimateCreateProgressCompleteTitle(input?: {
+  snapshotOk?: boolean | null;
+}): string {
+  if (input?.snapshotOk === false) return "ZD utworzone";
   return "ZD gotowe";
 }
 
@@ -185,6 +188,22 @@ export function zdEstimateCreateProgressAriaLabel(): string {
 
 export function zdEstimateCreateProgressSnapshotFailedHint(): string {
   return "Historia nie zapisana — użyj „Powiąż ZD”";
+}
+
+export function zdEstimateCreateProgressFooterBusy(): string {
+  return "Proszę nie zamykać tej karty ani okna przeglądarki.";
+}
+
+export function zdEstimateCreateProgressFooterLong(): string {
+  return "Sfera nadal pracuje — to normalne przy większych listach. Nie zamykaj karty ani okna.";
+}
+
+export function zdEstimateLoadingBusyDetailProgress(): string {
+  return "postęp szacunkowy";
+}
+
+export function zdEstimateLoadingBusyDetailRoute(): string {
+  return "wczytywanie ustawień";
 }
 
 /**
@@ -215,6 +234,46 @@ export function zdEstimateRouteLoadingSteps(): ReadonlyArray<{
       title: "Ekran przygotowania",
       activeHint: "Składam formularz zakresu…",
       doneHint: "Możesz wybrać grupę lub cechę",
+    },
+  ];
+}
+
+/** Kroki checklisty „Policz listę” (launch progress). */
+export function zdEstimateLaunchProgressSteps(input: {
+  isLive: boolean;
+  scopeAlreadyResolved: boolean;
+}): ReadonlyArray<{
+  id: string;
+  title: string;
+  activeHint: string;
+  doneHint: string;
+}> {
+  return [
+    {
+      id: "scope",
+      title: "Zakres Subiekta",
+      activeHint: input.scopeAlreadyResolved
+        ? zdEstimateLaunchScopeResolvedHint()
+        : zdEstimateLaunchScopePendingHint(),
+      doneHint: "Zakres ustawiony",
+    },
+    {
+      id: "fetch",
+      title: "Towary i stany",
+      activeHint: zdEstimateLaunchFetchHint(input.isLive),
+      doneHint: "Dane z Subiekta wczytane",
+    },
+    {
+      id: "calc",
+      title: "Sprzedaż, zapas i prośby",
+      activeHint: "Analizuję sprzedaż, stany i dołączam prośby handlowców…",
+      doneHint: "Wyliczenia i prośby gotowe",
+    },
+    {
+      id: "list",
+      title: "Lista do ZD",
+      activeHint: "Składam pozycje „Do ZD”…",
+      doneHint: "Lista gotowa",
     },
   ];
 }
@@ -470,6 +529,9 @@ export const ZD_ESTIMATE_UI = {
     "Pozycje z ilością Do ZD większą od zera — bez wykluczonych z listy zamówienia",
   listFilterAllTitle:
     "Cały zakres z Subiekta, także zerowe Do ZD; wykluczone widać z oznaczeniem",
+  /** Title filtra „Wszystkie” z liczbą pozycji w zakresie Subiekta. */
+  listFilterAllTitleWithCount: (inScopeCount: number) =>
+    `Cały zakres z Subiekta (${inScopeCount} pozycji), także zerowe Do ZD; wykluczone widać z oznaczeniem`,
   listFilterReviewTitle:
     "Pozycje z wątpliwym podbiciem Do ZD (niska lub średnia pewność sprzedaży) — warto sprawdzić przed utworzeniem dokumentu",
   listShowStockDetailTitle:
@@ -477,8 +539,41 @@ export const ZD_ESTIMATE_UI = {
   listShowZkColumnTitle:
     "Kolumny diagnostyczne: otwarte ZK oraz surowe ilości z Subiekta — zwykle zbędne przy codziennym zamawianiu",
   listSortByConfidence: "Sortuj po pewności",
+  listColumnMenuLabel: "Kolumny listy",
+  listColumnToggleHint: "Włącz / wyłącz kolumnę — zapisuje się w profilu",
+  listColumnOrderHint: "Zmień kolejność kolumn na liście",
+  listColumnMoveUp: "Przesuń w górę (wcześniej na liście)",
+  listColumnMoveDown: "Przesuń w dół (później na liście)",
+  listColumnReset: "Przywróć domyślne kolumny",
+  listColumnAlwaysVisibleHint:
+    "Symbol, Nazwa, Do ZD i Akcje są zawsze widoczne; Opak. jest przed Do ZD",
+  listColumnLabels: {
+    packaging: "Opakowanie",
+    status: "Status",
+    stock: "Stan / rezerwacje",
+    available: "Dostępne",
+    sales: "Sprzedaż",
+    target: "Cel zapasu",
+    openZd: "Otwarte ZD",
+    zk: "ZK / Subiekt",
+  } satisfies Record<
+    import("@/lib/orders/zd-estimate-prefs").ZdEstimateOptionalColumn,
+    string
+  >,
+  listSelectVisible: (count: number) => `Zaznacz widoczne (${count})`,
+  listSelectVisibleTitle:
+    "Zaznacza wszystkie pozycje aktualnie widoczne na liście (filtr + szukanie)",
+  listMoreMenuLabel: "Ustawienia listy (kolumny, sortowanie, zaznaczenie)",
+  listFilterReviewShort: "Weryfikacja",
+  listFilterExcludedShort: "Wykluczone",
+  listSortSymbolHint:
+    "Sortowanie po symbolu Subiekta (A→Z). Osobna kolumna — sticky przy przewijaniu.",
+  listSortNameHint:
+    "Sortowanie po nazwie towaru (A→Z). Osobna kolumna — sticky przy przewijaniu.",
+  listStatusColumnHint:
+    "Chipy statusu (para / prośba / skład / wykluczenie) — do 4 w rzędzie, potem +N. Szczegóły w podpowiedzi (hover).",
   doZdColumnHint:
-    "Ilość na dokumencie ZD. Przy paczkach: liczba opakowań (+ ile sztuk przyjdzie pod spodem). Pod ilością: % pewności podbicia — amber + OK = do weryfikacji (klik zaakceptuj w sesji). Definicja opakowania — kolumna Opak. obok.",
+    "Ilość na dokumencie ZD. Przy paczkach: liczba opakowań (+ ile sztuk przyjdzie pod spodem). Pod ilością: % pewności podbicia — amber + OK = do weryfikacji (klik zaakceptuj w tej sesji; OK zostaje też przy nadpisaniu / zaokrągleniu opakowań). Definicja opakowania — kolumna Opak. obok.",
   advancedZapasMinLabel: "Bufor minimum (szt.)",
   advancedZapasMinHint:
     "Dodatkowe sztuki doliczane do celu zapasu przed wyliczeniem Do ZD. Podnoszą „bezpieczny” poziom magazynu niezależnie od okna sprzedaży.",
@@ -636,15 +731,26 @@ export const ZD_ESTIMATE_UI = {
   reviewAcceptHint:
     "Zdejmuje oznaczenie „Do weryfikacji” tylko w tej sesji — nie zmienia zapisanej ilości Do ZD.",
   reviewZeroHint:
-    "Ustawia Do ZD = 0 na zaznaczonych pozycjach w tej sesji (np. gdy podbicie było zbędne).",
+    "Ustawia Do ZD = 0 na zaznaczonych pozycjach w tej sesji (np. gdy podbicie było zbędne) i zdejmuje „Do weryfikacji”.",
   selectionGroupRelations: "Powiązania",
   selectionGroupUnits: "Jednostki",
-  selectionGroupReview: "Pewność",
+  selectionGroupReview: "Weryfikacja",
+  createPendingReviewWarn: (count: number) => {
+    const n = Math.max(0, Math.trunc(Number(count) || 0));
+    const word = zdEstimatePlCountWord(n, "pozycja", "pozycje", "pozycji");
+    const verb = n === 1 ? "ma" : "mają";
+    const qtyWord = n === 1 ? "ilość" : "ilości";
+    return `${n} ${word} nadal ${verb} oznaczenie „Do weryfikacji” (wątpliwe podbicie). Możesz utworzyć ZD — albo wróć do filtra Weryfikacja i zaakceptuj / skoryguj ${qtyWord}.`;
+  },
   selectionGroupRules: "Reguły",
   selectionGroupList: "Zakres listy",
   selectionClearLabel: "Odznacz",
   selectionMoreMenuLabel: "Więcej akcji",
-  changeSupplierScopeCta: "Zmień przypisanie",
+  changeSupplierScopeCta: "Zmień dostawcę",
+  scopeMenuTrigger: "Zakres",
+  scopeMenuAriaLabel: "Zmiana zakresu i dostawcy",
+  scopeMenuCollapseItem: "Zwiń przygotowanie",
+  scopeMenuExpandItem: "Zmień zakres",
   changeSupplierScopeTitle: "Zmień zakres Subiekta",
   changeSupplierScopeHint:
     "Wskaż inną grupę lub cechę w formularzu, potem „Zapisz zakres i policz”.",

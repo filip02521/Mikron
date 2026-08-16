@@ -3,6 +3,7 @@ import {
   filterZdEstimateLinesBySearch,
   resolveZdEstimateListToolStates,
   resolveZdEstimateListToolsMode,
+  zdEstimateSelectionCountLabel,
   zdEstimateSelectionOutsideVisibleHint,
 } from "./zd-estimate-list-tools";
 
@@ -253,6 +254,48 @@ describe("resolveZdEstimateListToolStates", () => {
     });
     expect(s.clearOnRequest.enabled).toBe(true);
     expect(s.clearOnRequest.labelSuffix).toBe(" (2)");
+  });
+
+  it("reviewEligible → Zaakceptuj/Zeruj enabled z title", () => {
+    const s = resolveZdEstimateListToolStates({
+      selectedCount: 3,
+      excludeEligibleCount: 0,
+      restoreEligibleCount: 0,
+      onRequestEligibleCount: 0,
+      clearOnRequestEligibleCount: 0,
+      packagingClearEligibleCount: 0,
+      reviewEligibleCount: 2,
+      ...trusted,
+    });
+    expect(s.reviewAccept.enabled).toBe(true);
+    expect(s.reviewAccept.labelSuffix).toBe(" (2)");
+    expect(s.reviewAccept.title).toMatch(/sesji/i);
+    expect(s.reviewZero.enabled).toBe(true);
+    expect(s.reviewZero.title).toMatch(/Do ZD = 0/i);
+  });
+
+  it("reviewEligible 0 → review disabled", () => {
+    const s = resolveZdEstimateListToolStates({
+      selectedCount: 2,
+      excludeEligibleCount: 0,
+      restoreEligibleCount: 0,
+      onRequestEligibleCount: 0,
+      clearOnRequestEligibleCount: 0,
+      packagingClearEligibleCount: 0,
+      reviewEligibleCount: 0,
+      ...trusted,
+    });
+    expect(s.reviewAccept.enabled).toBe(false);
+    expect(s.reviewZero.enabled).toBe(false);
+  });
+});
+
+describe("zdEstimateSelectionCountLabel", () => {
+  it("odmiana 1 / 2–4 / 5+", () => {
+    expect(zdEstimateSelectionCountLabel(1)).toBe("1 zaznaczony produkt");
+    expect(zdEstimateSelectionCountLabel(2)).toBe("2 zaznaczone produkty");
+    expect(zdEstimateSelectionCountLabel(5)).toBe("5 zaznaczonych produktów");
+    expect(zdEstimateSelectionCountLabel(22)).toBe("22 zaznaczone produkty");
   });
 });
 

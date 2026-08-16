@@ -20,6 +20,22 @@ export function zdEstimateConfidencePct(confidence: number): number {
 }
 
 /**
+ * Czy pozycja nadal wymaga sesyjnej akceptacji weryfikacji
+ * (filtr „Weryfikacja”, bulk, tint Do ZD).
+ */
+export function isZdEstimatePendingReview(input: {
+  qtyReview: boolean;
+  accepted?: boolean;
+  excluded?: boolean;
+}): boolean {
+  return (
+    Boolean(input.qtyReview) &&
+    !Boolean(input.accepted) &&
+    !Boolean(input.excluded)
+  );
+}
+
+/**
  * Prezentacja pewności pod Do ZD (whisper) — title / tone / pct.
  * Bez JSX — testowalne.
  */
@@ -28,16 +44,23 @@ export function buildZdEstimateConfidenceUi(input: {
   qtyReview: boolean;
   reasons: readonly SalesTrackReason[];
   accepted?: boolean;
+  excluded?: boolean;
   detailHint?: string;
   canAccept?: boolean;
 }): ZdEstimateConfidenceUi {
   const accepted = Boolean(input.accepted);
+  const excluded = Boolean(input.excluded);
   const hasSignal =
-    input.confidence > 1e-9 || input.qtyReview || accepted;
-  const needsReview = input.qtyReview && !accepted;
+    !excluded && (input.confidence > 1e-9 || input.qtyReview || accepted);
+  const needsReview = isZdEstimatePendingReview({
+    qtyReview: input.qtyReview,
+    accepted,
+    excluded,
+  });
   const pct = zdEstimateConfidencePct(input.confidence);
   const badge = formatSalesTrackReviewBadge({
-    qtyReview: needsReview,
+    // Powód z reasons także po akceptacji sesyjnej (title „Zaakceptowano · …”).
+    qtyReview: input.qtyReview || needsReview,
     confidence: input.confidence,
     reasons: input.reasons,
   });
@@ -45,10 +68,10 @@ export function buildZdEstimateConfidenceUi(input: {
   const titleBits = [
     needsReview
       ? "Do weryfikacji"
-      : accepted
+      : accepted && !excluded
         ? "Zaakceptowano w tej sesji"
         : null,
-    badge?.reason,
+    !excluded ? badge?.reason : null,
     needsReview && input.canAccept ? "Kliknij, żeby zaakceptować" : null,
   ].filter(Boolean) as string[];
 
@@ -95,7 +118,8 @@ export function buildZdEstimateConfidenceUi(input: {
 
 /**
  * Druga linia Do ZD: override > roundup > confidence whisper > pieces.
- * Gdy override/roundup — whisper tylko w title (nie zajmuje linii).
+ * Gdy override/roundup — whisper % tylko w title, ale przycisk OK
+ * (akceptacja weryfikacji) musi zostać dostępny obok primary hint.
  */
 export type ZdEstimateDoZdHintKind =
   | "override"

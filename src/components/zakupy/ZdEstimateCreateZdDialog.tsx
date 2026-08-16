@@ -24,6 +24,8 @@ import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import type { ZdPostCreateMarkFreeze } from "@/lib/orders/zd-estimate-post-create";
 import {
   zdEstimateCreateConfirmLabel,
+  zdEstimateCreateProgressCompleteTitle,
+  zdEstimateCreateProgressTitle,
   zdEstimateCreateTitleHint,
   zdEstimateProsbaWord,
   ZD_ESTIMATE_UI,
@@ -61,6 +63,7 @@ export function ZdEstimateCreateZdDialog({
   consumedOrderIds,
   markFreeze = null,
   excludedWithIndividualCount = 0,
+  pendingReviewCount = 0,
   implicitPieceSnapshotNotice = null,
   onOpenPackaging,
   onOpenPairs,
@@ -97,6 +100,8 @@ export function ZdEstimateCreateZdDialog({
   consumedOrderIds?: string[] | null;
   markFreeze?: ZdPostCreateMarkFreeze | null;
   excludedWithIndividualCount?: number;
+  /** Ile pozycji nadal „Do weryfikacji” (sesja) — soft warn, nie blokuje create. */
+  pendingReviewCount?: number;
   implicitPieceSnapshotNotice?: ImplicitPieceSnapshotNotice | null;
   onOpenPackaging?: () => void;
   onOpenPairs?: () => void;
@@ -310,39 +315,53 @@ export function ZdEstimateCreateZdDialog({
     <ModalShell
       open
       onClose={onClose}
-      title="Utwórz ZD w Subiekcie"
+      title={
+        showProgress
+          ? progressComplete
+            ? zdEstimateCreateProgressCompleteTitle({
+                snapshotOk: progressSnapshotOk,
+              })
+            : zdEstimateCreateProgressTitle()
+          : "Utwórz ZD w Subiekcie"
+      }
       titleHint={titleHint}
       titleId="zd-estimate-create-zd-title"
       size="xl"
       tier="raised"
       disableBackdropClose={pending}
-      bodyClassName="space-y-4 px-5 py-4 sm:px-6 sm:py-5"
+      bodyClassName={
+        showProgress
+          ? "px-4 py-3 sm:px-5 sm:py-4"
+          : "space-y-4 px-5 py-4 sm:px-6 sm:py-5"
+      }
       footer={
-        <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button
-            type="button"
-            variant="ghost"
-            className="min-h-11 w-full sm:w-auto"
-            onClick={onClose}
-            disabled={pending}
-          >
-            Anuluj
-          </Button>
-          <Button
-            type="button"
-            className="min-h-11 w-full sm:w-auto"
-            onClick={submit}
-            disabled={pending || !confirmed || preview.lineCount === 0}
-          >
-            {pending ? (
-              <span className="inline-flex items-center gap-2">
-                <Spinner className="size-4" /> Tworzę ZD…
-              </span>
-            ) : (
-              "Utwórz ZD"
-            )}
-          </Button>
-        </div>
+        showProgress ? null : (
+          <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              className="min-h-11 w-full sm:w-auto"
+              onClick={onClose}
+              disabled={pending}
+            >
+              Anuluj
+            </Button>
+            <Button
+              type="button"
+              className="min-h-11 w-full sm:w-auto"
+              onClick={submit}
+              disabled={pending || !confirmed || preview.lineCount === 0}
+            >
+              {pending ? (
+                <span className="inline-flex items-center gap-2">
+                  <Spinner className="size-4" /> Tworzę ZD…
+                </span>
+              ) : (
+                "Utwórz ZD"
+              )}
+            </Button>
+          </div>
+        )
       }
     >
       {showProgress ? (
@@ -427,6 +446,11 @@ export function ZdEstimateCreateZdDialog({
                 . {ZD_ESTIMATE_UI.createOmittedServicesHint}
               </p>
             ) : null}
+            {pendingReviewCount > 0 ? (
+              <p className="mt-2 rounded-md border border-amber-200/80 bg-amber-50/80 px-2.5 py-2 text-xs text-amber-950">
+                {ZD_ESTIMATE_UI.createPendingReviewWarn(pendingReviewCount)}
+              </p>
+            ) : null}
             {preview.softWarnOverLimit ? (
               <p className="mt-2 text-amber-900">
                 Dużo pozycji (&gt;{ZD_CREATE_SOFT_WARN_LINES}) — Subiekt może
@@ -472,7 +496,7 @@ export function ZdEstimateCreateZdDialog({
               maxLength={baseMax}
               className={cn(
                 controlFocusClass,
-                "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
+                "w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"
               )}
             />
             {serviceUwagiPreview ? (

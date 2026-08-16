@@ -77,7 +77,7 @@ function OnRequestRow({
   return (
     <li
       className={cn(
-        "rounded-xl border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm shadow-slate-900/[0.02]",
+        "rounded-lg border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm shadow-slate-900/[0.02]",
         editing && "border-indigo-200/80 ring-1 ring-indigo-100"
       )}
     >
@@ -300,7 +300,7 @@ export function ZdEstimateOnRequestModal({
         </div>
       }
     >
-      <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 px-4 py-3">
+      <div className="rounded-lg border border-slate-200/80 bg-slate-50/60 px-4 py-3">
         <div className="flex gap-3">
           <IconClipboardList
             size={18}

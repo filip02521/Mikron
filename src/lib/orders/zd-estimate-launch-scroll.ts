@@ -1,6 +1,7 @@
 /**
  * Scroll focus dla flow „Przygotuj ZD” na /zakupy/szacunek.
- * appMain jest overflow-y-auto — natywny scrollIntoView często NIE rusza tego maina.
+ * Historycznie appMain był overflow-y-auto; w fill-viewport main jest overflow:hidden
+ * i scrollerem listy jest `#zd-estimate-table-scroll`.
  */
 
 export const ZD_ESTIMATE_LAUNCH_FOCUS_ID = "zd-estimate-launch-focus";
@@ -37,7 +38,7 @@ function findScrollParent(el: HTMLElement): HTMLElement | null {
   return null;
 }
 
-/** AppShell `<main>` — właściwy scroll strony (nie TableScroll z max-h). */
+/** AppShell `<main>` — tylko gdy faktycznie scrolluje (nie fill-viewport). */
 function findAppMainScroll(
   fromElementId?: string
 ): HTMLElement | null {
@@ -59,6 +60,11 @@ function findAppMainScroll(
     if (el) return findScrollParent(el);
   }
   return null;
+}
+
+function isZdEstimateViewportFill(): boolean {
+  if (typeof document === "undefined") return false;
+  return Boolean(document.querySelector("[data-zd-estimate-viewport]"));
 }
 
 export function scrollZdEstimateIntoView(
@@ -91,9 +97,24 @@ export function scrollZdEstimateIntoView(
         elRect.height / 2;
     } else if (block === "end") {
       delta = elRect.bottom - parentRect.bottom + offsetPx;
+    } else if (block === "nearest") {
+      if (elRect.top >= parentRect.top - 1 && elRect.bottom <= parentRect.bottom + 1) {
+        return true;
+      }
+      if (elRect.top < parentRect.top) {
+        delta = elRect.top - parentRect.top - offsetPx;
+      } else {
+        delta = elRect.bottom - parentRect.bottom + offsetPx;
+      }
     }
+    if (Math.abs(delta) < 1) return true;
     const top = Math.max(0, parent.scrollTop + delta);
     parent.scrollTo({ top, behavior });
+    return true;
+  }
+
+  // Fill-viewport: main nie scrolluje — nie wołaj window.scrollIntoView (skok strony).
+  if (isZdEstimateViewportFill()) {
     return true;
   }
 
@@ -242,6 +263,7 @@ export function getZdEstimateUsefulScrollMax(main: HTMLElement): number {
 
 /**
  * Przytnij scroll `<main>` do realnego zakresu treści (nie hard scrollHeight).
+ * W trybie fill-viewport — no-op (brak page scroll).
  */
 export function clampZdEstimateMainScroll(
   fromElementId: string = ZD_ESTIMATE_LIST_FOCUS_ID
@@ -251,6 +273,7 @@ export function clampZdEstimateMainScroll(
   if (parent) {
     return clampScrollElement(parent, getZdEstimateUsefulScrollMax(parent));
   }
+  if (isZdEstimateViewportFill()) return false;
   const scrolling =
     (document.scrollingElement as HTMLElement | null) ?? document.documentElement;
   return clampScrollElement(scrolling);
@@ -264,7 +287,52 @@ export function clampZdEstimateTableScroll(): boolean {
   if (typeof document === "undefined") return false;
   const table = document.getElementById(ZD_ESTIMATE_TABLE_SCROLL_ID);
   if (!table) return false;
+  syncZdEstimateFlexibleColumnStickyWidths();
   return clampScrollElement(table);
+}
+
+/**
+ * Nazwa może rosnąć z wolną szerokością — zsynchronizuj sticky left
+ * (Opak. / Do ZD) z faktyczną szerokością kolumny Nazwa.
+ */
+export function syncZdEstimateFlexibleColumnStickyWidths(): void {
+  if (typeof document === "undefined") return;
+  const table = document.querySelector(
+    "table.data-table.zd-estimate-table"
+  ) as HTMLTableElement | null;
+  if (!table) return;
+  const nameTh = table.querySelector(
+    "thead th.zd-estimate-product-name-col"
+  ) as HTMLTableCellElement | null;
+  if (!nameTh) return;
+  const w = nameTh.getBoundingClientRect().width;
+  if (!(w > 0) || !Number.isFinite(w)) return;
+  const px = `${Math.round(w * 100) / 100}px`;
+  if (table.style.getPropertyValue("--zd-est-name-used-w") === px) return;
+  table.style.setProperty("--zd-est-name-used-w", px);
+}
+
+/** Reset scrollu tabeli na początek (filtr / nowa lista w fill-viewport). */
+export function resetZdEstimateTableScroll(opts?: {
+  behavior?: ScrollBehavior;
+}): boolean {
+  if (typeof document === "undefined") return false;
+  const table = document.getElementById(ZD_ESTIMATE_TABLE_SCROLL_ID);
+  if (!table) return false;
+  const behavior = opts?.behavior ?? "auto";
+  if (table.scrollTop <= 0) {
+    clampZdEstimateTableScroll();
+    return true;
+  }
+  table.scrollTo({ top: 0, behavior });
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => {
+      clampZdEstimateTableScroll();
+    });
+  } else {
+    clampZdEstimateTableScroll();
+  }
+  return true;
 }
 
 /** Main + tabela — typowe po zmianie filtra / reveal / zaznaczeniu. */
@@ -276,7 +344,10 @@ export function clampZdEstimateScrollSurfaces(
   return mainClamped || tableClamped;
 }
 
-/** Scroll `<main>` do useful max (koniec treści, bez pustki). */
+/**
+ * Scroll do końca treści — tylko gdy `<main>` faktycznie scrolluje.
+ * W fill-viewport Create jest zawsze widoczny: nie scrolluj tabeli na dół.
+ */
 export function scrollZdEstimateToContentEnd(opts?: {
   behavior?: ScrollBehavior;
   fromElementId?: string;
@@ -284,20 +355,32 @@ export function scrollZdEstimateToContentEnd(opts?: {
   if (typeof document === "undefined") return false;
   const behavior = opts?.behavior ?? "smooth";
   const main = findAppMainScroll(opts?.fromElementId);
-  if (!main) return false;
-  const top = getZdEstimateUsefulScrollMax(main);
-  main.scrollTo({ top, behavior });
-  if (typeof requestAnimationFrame === "function") {
-    requestAnimationFrame(() => {
+  if (main) {
+    const top = getZdEstimateUsefulScrollMax(main);
+    main.scrollTo({ top, behavior });
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => {
+        clampZdEstimateScrollSurfaces(opts?.fromElementId);
+        requestAnimationFrame(() =>
+          clampZdEstimateScrollSurfaces(opts?.fromElementId)
+        );
+      });
+    } else {
       clampZdEstimateScrollSurfaces(opts?.fromElementId);
-      requestAnimationFrame(() =>
-        clampZdEstimateScrollSurfaces(opts?.fromElementId)
-      );
-    });
-  } else {
-    clampZdEstimateScrollSurfaces(opts?.fromElementId);
+    }
+    return true;
   }
-  return true;
+
+  // Fill-viewport / brak page scroll: dock Create już w viewport — no-op na „dół”.
+  if (isZdEstimateViewportFill()) {
+    clampZdEstimateTableScroll();
+    return true;
+  }
+
+  return scrollZdEstimateIntoView(
+    opts?.fromElementId ?? ZD_ESTIMATE_LIST_FOCUS_ID,
+    { behavior, block: "nearest", offsetPx: 16 }
+  );
 }
 
 /**
@@ -379,7 +462,8 @@ export function scrollZdEstimateTableRowIntoView(
 
 /**
  * Po zmianie zaznaczenia:
- * - zaznaczenie → dół strony (pasek akcji + Create),
+ * - zaznaczenie → dół strony (pasek akcji + Create) — tylko gdy main scrolluje;
+ *   w fill-viewport dock jest zawsze widoczny → wiersz nearest w tabeli,
  * - odznaczenie ostatniego → wiersz w centrum uwagi,
  * - odznaczenie przy pozostałym zaznaczeniu → trzymaj pasek akcji w polu widzenia.
  *
@@ -395,8 +479,19 @@ export function scrollZdEstimateAfterSelectionChange(opts: {
   const behavior = opts.behavior ?? "smooth";
   const twId = opts.twId ?? null;
   let followUpTimer: ReturnType<typeof setTimeout> | null = null;
+  const fill = isZdEstimateViewportFill();
 
   if (opts.nextCount > opts.prevCount) {
+    if (fill) {
+      if (twId != null) {
+        scrollZdEstimateTableRowIntoView(twId, {
+          behavior,
+          block: "nearest",
+        });
+      }
+      clampZdEstimateTableScroll();
+      return () => {};
+    }
     scrollZdEstimatePageToBottom({ behavior });
     // Po enter animacji paska (~240ms) dociągnij sticky + przytnij scroll.
     followUpTimer = setTimeout(() => {
@@ -432,11 +527,13 @@ export function scrollZdEstimateAfterSelectionChange(opts: {
       return () => {};
     }
 
-    scrollZdEstimateIntoView(ZD_ESTIMATE_SELECTION_TOOLS_ID, {
-      behavior,
-      block: "end",
-      offsetPx: 88,
-    });
+    if (!fill) {
+      scrollZdEstimateIntoView(ZD_ESTIMATE_SELECTION_TOOLS_ID, {
+        behavior,
+        block: "end",
+        offsetPx: 88,
+      });
+    }
     if (twId != null) {
       scrollZdEstimateTableRowIntoView(twId, {
         behavior,
@@ -450,7 +547,7 @@ export function scrollZdEstimateAfterSelectionChange(opts: {
 
 /**
  * Po pierwszym Policz — sticky Create (lub nagłówek listy) w polu widzenia.
- * Jedna kotwica na pass — bez list-start + sticky-end (to dawało flicker).
+ * Fill-viewport: Create już widoczny → fokus listy + tabela od góry (bez scrolla na dół).
  */
 export function scrollZdEstimateRevealListWhenReady(opts?: {
   behavior?: ScrollBehavior;
@@ -467,8 +564,29 @@ export function scrollZdEstimateRevealListWhenReady(opts?: {
   const timers: ReturnType<typeof setTimeout>[] = [];
   let cancelled = false;
   let attempt = 0;
+  const fill = isZdEstimateViewportFill();
 
-  const pass = (passBehavior: ScrollBehavior) => {
+  const focusList = () => {
+    const el = document.getElementById(ZD_ESTIMATE_LIST_FOCUS_ID);
+    if (el && typeof el.focus === "function") {
+      try {
+        el.focus({ preventScroll: true });
+      } catch {
+        el.focus();
+      }
+    }
+  };
+
+  const passFill = () => {
+    if (cancelled) return false;
+    if (!document.getElementById(ZD_ESTIMATE_LIST_FOCUS_ID)) return false;
+    resetZdEstimateTableScroll({ behavior: "auto" });
+    focusList();
+    clampZdEstimateScrollSurfaces();
+    return true;
+  };
+
+  const passLegacy = (passBehavior: ScrollBehavior) => {
     if (cancelled) return false;
     // Koniec treści (useful max) — nie sticky block:end (zostawiał pustkę).
     if (
@@ -490,27 +608,27 @@ export function scrollZdEstimateRevealListWhenReady(opts?: {
   const run = () => {
     if (cancelled) return;
     attempt += 1;
-    if (pass(attempt === 1 ? behavior : "auto")) {
+    const ok = fill
+      ? passFill()
+      : passLegacy(attempt === 1 ? behavior : "auto");
+    if (ok) {
       for (const ms of settlePassesMs) {
         timers.push(
           setTimeout(() => {
             if (cancelled) return;
-            pass("auto");
-            clampZdEstimateScrollSurfaces();
+            if (fill) {
+              passFill();
+            } else {
+              passLegacy("auto");
+              clampZdEstimateScrollSurfaces();
+            }
           }, ms)
         );
       }
       timers.push(
         setTimeout(() => {
           if (cancelled) return;
-          const el = document.getElementById(ZD_ESTIMATE_LIST_FOCUS_ID);
-          if (el && typeof el.focus === "function") {
-            try {
-              el.focus({ preventScroll: true });
-            } catch {
-              el.focus();
-            }
-          }
+          focusList();
           clampZdEstimateScrollSurfaces();
         }, 80)
       );

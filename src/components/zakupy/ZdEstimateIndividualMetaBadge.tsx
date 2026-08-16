@@ -41,9 +41,9 @@ export function ZdEstimateIndividualMetaBadge({
   ].join("\n");
 
   const meta = doZdSuppressed
-    ? "nie w Do ZD"
+    ? "poza Do ZD"
     : extrasPolicy === "max"
-      ? "maks. vs niedobór"
+      ? "max"
       : `${formatQty(extra.extraPieces)} szt`;
 
   const peopleHint =

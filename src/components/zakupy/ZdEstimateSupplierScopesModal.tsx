@@ -507,7 +507,7 @@ export function ZdEstimateSupplierScopesModal({
         </div>
       }
     >
-      <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 px-4 py-3">
+      <div className="rounded-lg border border-slate-200/80 bg-slate-50/60 px-4 py-3">
         <div className="flex gap-3">
           <IconTruck
             size={18}
@@ -578,7 +578,7 @@ export function ZdEstimateSupplierScopesModal({
       </div>
 
       {!loading && todayCoverage && liveUnmapped.length > 0 ? (
-        <div className="overflow-hidden rounded-xl border border-amber-200/80 bg-amber-50/50">
+        <div className="overflow-hidden rounded-lg border border-amber-200/80 bg-amber-50/50">
           <div className="flex flex-wrap items-start justify-between gap-2 border-b border-amber-200/60 px-4 py-3">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-amber-950">
@@ -634,7 +634,7 @@ export function ZdEstimateSupplierScopesModal({
       ) : null}
 
       {adding ? (
-        <div className="space-y-3 rounded-xl border border-indigo-200/80 bg-indigo-50/35 px-4 py-4 sm:px-5">
+        <div className="space-y-3 rounded-lg border border-indigo-200/80 bg-indigo-50/35 px-4 py-4 sm:px-5">
           <div>
             <p className="text-sm font-semibold text-slate-900">
               {ZD_ESTIMATE_UI.supplierScopesAddCta}
@@ -767,7 +767,7 @@ export function ZdEstimateSupplierScopesModal({
               <li
                 key={row.supplierId}
                 className={cn(
-                  "overflow-hidden rounded-xl border bg-white transition",
+                  "overflow-hidden rounded-lg border bg-white transition",
                   editing
                     ? "border-indigo-200/90 shadow-sm shadow-indigo-900/[0.04]"
                     : "border-slate-200/90"

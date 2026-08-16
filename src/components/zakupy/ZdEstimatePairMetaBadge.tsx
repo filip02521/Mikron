@@ -48,7 +48,7 @@ export function ZdEstimatePiecesMetricCell({
 
   return (
     <span
-      className="zd-estimate-metric-stack inline-flex w-full min-w-0 max-w-full flex-col items-start gap-0.5 text-left"
+      className="zd-estimate-metric-stack inline-flex w-full min-w-0 max-w-full flex-col items-center gap-0.5 text-center"
       title={fullTitle}
     >
       <span className="max-w-full truncate leading-none">
@@ -62,7 +62,7 @@ export function ZdEstimatePiecesMetricCell({
         )}
       </span>
       {!showDash && subline ? (
-        <span className="flex w-full min-w-0 flex-col items-start gap-px">
+        <span className="flex w-full min-w-0 flex-col items-center gap-px">
           {subline}
         </span>
       ) : null}
@@ -119,12 +119,10 @@ export function ZdEstimatePairMetaBadge({
         .join(" ");
 
   const meta = pair.partnerMissing
-    ? "brak partnera"
+    ? "brak"
     : packagingConflict
-      ? `${pair.unitsPerPack} szt/op · konflikt`
-      : isPack
-        ? `${pair.unitsPerPack} szt/op · na ZD`
-        : `${pair.unitsPerPack} szt/op · nie na ZD`;
+      ? "konflikt"
+      : `×${pair.unitsPerPack}`;
 
   return (
     <ZdEstimateStatusBadge
@@ -216,7 +214,7 @@ export function ZdEstimatePairPackStockCell({
 
   return (
     <span
-      className="inline-flex w-full min-w-0 items-baseline justify-start gap-0.5 text-left leading-none"
+      className="inline-flex w-full min-w-0 items-baseline justify-center gap-0.5 text-center leading-none"
       title={`${formatQty(value)} op. na karcie paczki (nie sztuki demontażu)`}
     >
       {showDash ? (

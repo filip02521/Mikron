@@ -260,62 +260,226 @@ export const adminPageShellClass = salesTeamPageShellClass;
 export const procurementArchivePageShellClass = adminPageShellClass;
 
 /**
- * Kreator ZD — prawie pełna szerokość obszaru main (tabela z wieloma kolumnami).
+ * Kreator ZD — fill viewport (bez scrolla `main`), prawie pełna szerokość.
+ * `data-zd-estimate-viewport` w page.tsx + CSS `:has` w globals.css.
  */
 export const zdEstimatePageShellClass =
-  "relative mx-auto w-full max-w-[min(100%,100rem)] space-y-5 sm:space-y-6";
+  "relative mx-auto flex w-full max-w-[min(100%,100rem)] min-h-0 flex-1 flex-col";
 
-/** Scena loadingu Kreatora ZD — wyśrodkowanie bez prawie-pełnego 100dvh
- * (to zostawiało pustkę w scrollu po reveal listy). */
+/** Scena loadingu / launch — wyśrodkowanie w flex-1 workspace. */
 export const zdEstimateLoadingStageClass =
-  "flex w-full items-center justify-center px-2 py-8 sm:px-3 sm:py-10 md:py-12 min-h-[min(28rem,55dvh)]";
+  "zd-est-loading-stage relative flex w-full min-h-0 flex-1 items-center justify-center px-2 py-4 sm:px-3 sm:py-6";
 
 /** Estetyczne okno loadingu (tytuł + checklista). */
 export const zdEstimateLoadingWindowClass =
-  "w-full max-w-[24.5rem] overflow-hidden rounded-2xl border border-slate-200/85 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_22px_48px_-18px_rgba(15,23,42,0.2)] ring-1 ring-slate-900/[0.035] sm:max-w-[26rem]";
+  "zd-est-loading-window relative w-full max-w-[24.5rem] overflow-hidden rounded-lg border border-slate-200/85 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_22px_48px_-18px_rgba(15,23,42,0.2)] ring-1 ring-slate-900/[0.035] sm:max-w-[26rem]";
 
 export const zdEstimateLoadingWindowHeaderClass =
-  "border-b border-slate-100/90 bg-gradient-to-b from-slate-50/95 to-white px-5 py-3.5 sm:px-6 sm:py-4";
+  "border-b border-slate-100/90 bg-gradient-to-b from-slate-50/95 via-white to-white px-5 py-3.5 sm:px-6 sm:py-4";
 
-/** Pionowy rytm workbencha (alerty → prep → lista → sticky). */
+/** Pionowy rytm workbencha fill (micro → prep → lista → sticky). */
 export const zdEstimateWorkbenchStackClass =
-  "relative space-y-5 sm:space-y-6";
+  "relative flex min-h-0 flex-1 flex-col gap-1.5";
+
+/**
+ * Skala gęstości chrome Kreatora ZD (top bar + belka listy):
+ * - kontrolki: h-8 (32px)
+ * - odstępy w rzędzie: gap-1.5 (6px)
+ * - inset X: px-3 → sm:px-4 → lg:px-5
+ * Dock sticky: h-9 (36px) — nieco większy pod kciuk.
+ */
+export const zdEstimateChromeInsetXClass = "px-3 sm:px-4 lg:px-5";
+export const zdEstimateChromeInsetYClass = "py-1.5";
+export const zdEstimateChromeGapClass = "gap-1.5";
+export const zdEstimateChromeControlHeightClass = "h-8";
+export const zdEstimateDockControlHeightClass = "h-9";
+
+/**
+ * Radius / cień Kreatora ZD (CSS: --radius 0.375rem, --radius-panel 0.5rem).
+ * - surface: karty, dock, belki paneli → rounded-lg
+ * - control: przyciski, inputy, chipy → rounded-md
+ * - nested: bloki wewnątrz karty → rounded-md (nie większe niż karta)
+ */
+export const zdEstimateRadiusSurfaceClass = "rounded-lg";
+export const zdEstimateRadiusControlClass = "rounded-md";
+export const zdEstimateRadiusNestedClass = "rounded-md";
+export const zdEstimateShadowSurfaceClass =
+  "shadow-[var(--shadow-card-elevated)]";
+export const zdEstimateShadowControlClass = "shadow-sm";
+export const zdEstimateShadowDockClass =
+  "shadow-[0_-6px_18px_-10px_rgba(15,23,42,0.16)]";
+export const zdEstimateBorderSurfaceClass = "border border-slate-200/80";
+/** Karta / panel powierzchniowy (prep, lista, nested well). */
+export const zdEstimateCardSurfaceClass = cn(
+  zdEstimateRadiusSurfaceClass,
+  zdEstimateBorderSurfaceClass,
+  "bg-[var(--card)]",
+  zdEstimateShadowSurfaceClass
+);
+/** Wcięty panel wewnątrz karty (advanced, dashed hint, hit list). */
+export const zdEstimateNestedWellClass = cn(
+  zdEstimateRadiusNestedClass,
+  "border border-slate-200/80 bg-slate-50/60"
+);
+
+/** Soft status strip — wewnętrzny scroll, nie rozpycha viewportu. */
+export const zdEstimateSoftStatusStripClass =
+  "shrink-0 max-h-[4.5rem] space-y-2 overflow-y-auto overscroll-contain sm:max-h-[7rem]";
+
+/** Scroll zakresu w karcie prep (Policz / polityki pinned poniżej). */
+export const zdEstimatePrepScopeScrollClass =
+  "min-h-0 max-h-[min(30vh,12rem)] overflow-y-auto overscroll-contain md:max-h-[min(32vh,16rem)]";
 
 /** Luźniejszy inset niż panel dzienny — tabela potrzebuje powietrza. */
 export const zdEstimateSectionInsetClass =
   "px-4 py-5 sm:px-6 sm:py-6 lg:px-7 lg:py-6";
 
-/** Ciaśniejszy inset karty przygotowania listy (formularz, nie tabela). */
-export const zdEstimatePrepInsetClass =
-  "px-4 py-3.5 sm:px-5 sm:py-4 lg:px-6";
+/** Inset formularza prep — ten sam X co chrome, ciaśniejszy Y. */
+export const zdEstimatePrepInsetClass = cn(
+  zdEstimateChromeInsetXClass,
+  "py-2.5 sm:py-3"
+);
 
 /** Wewnętrzny stack sekcji w kartach prep / lista. */
 export const zdEstimateSectionStackClass = "space-y-5";
 
 /** Stack sekcji w karcie przygotowania — gęstszy niż lista. */
-export const zdEstimatePrepStackClass = "space-y-3.5 sm:space-y-4";
+export const zdEstimatePrepStackClass = "space-y-3";
 
 /** Chipy faktów zakresu (grupa / zapas / dostawca / okno). */
 export const zdEstimateScopeFactChipClass =
-  "rounded-lg border border-slate-200/80 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-700";
+  "inline-flex h-7 items-center rounded-md bg-slate-50/90 px-2.5 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-200/70";
 
 export const zdEstimateScopeFactChipAccentClass =
-  "rounded-lg border border-indigo-200/80 bg-indigo-50/60 px-3 py-1.5 text-xs font-semibold text-indigo-950";
+  "inline-flex h-7 items-center rounded-md bg-indigo-50/80 px-2.5 text-xs font-semibold text-indigo-950 ring-1 ring-inset ring-indigo-200/70";
+
+/** Densy chipy w top barze — wysokość zbliżona do kontrolek h-8. */
+export const zdEstimateScopeFactChipToolbarClass =
+  "inline-flex h-6 max-w-full items-center truncate rounded-md bg-white/90 px-2 text-[11px] font-medium tabular-nums text-slate-700 ring-1 ring-inset ring-slate-200/65";
+
+export const zdEstimateScopeFactChipToolbarAccentClass =
+  "inline-flex h-6 max-w-full items-center truncate rounded-md bg-indigo-50/90 px-2 text-[11px] font-semibold text-indigo-950 ring-1 ring-inset ring-indigo-200/65";
+
+/** Primary zakresu w top barze — h-8 jak kontrolki chrome. */
+export const zdEstimateScopeFactPrimaryClass = cn(
+  "inline-flex max-w-[14rem] shrink-0 items-center truncate rounded-md bg-indigo-50/95 px-2.5 text-[12px] font-semibold leading-none tracking-tight text-indigo-950 ring-1 ring-inset ring-indigo-200/70 sm:max-w-[18rem]",
+  zdEstimateChromeControlHeightClass
+);
+
+/** Cicha linia meta — ta sama wysokość, wyśrodkowana w pionie. */
+export const zdEstimateScopeFactMetaClass = cn(
+  "inline-flex min-w-0 flex-1 items-center truncate text-[11px] font-medium leading-none tabular-nums tracking-tight text-slate-500",
+  zdEstimateChromeControlHeightClass
+);
 
 /**
  * Powierzchnia narzędzi w karcie listy — bez ciężkiej ramki
  * (karta już ma border; tu tylko delikatne tło).
  * @deprecated Preferuj `zdEstimateListBandClass` (jedna belka nad tabelą).
  */
-export const zdEstimateChromeSurfaceClass =
-  "rounded-xl bg-slate-50/55 px-3.5 py-3 ring-1 ring-slate-200/55 sm:px-4 sm:py-3.5";
+export const zdEstimateChromeSurfaceClass = cn(
+  zdEstimateRadiusSurfaceClass,
+  "bg-slate-50/55 px-3.5 py-3 ring-1 ring-slate-200/55 sm:px-4 sm:py-3.5"
+);
 
 /**
- * Jedna belka filtrów/szukania nad TableScroll (wzorzec hub / receive queue).
- * Sticky względem strony — selection bar poniżej jest w flow (nie top-0).
+ * Top bar Kreatora — flush z kartą listy (bez osobnej „wyspy”).
  */
-export const zdEstimateListBandClass =
-  "sticky top-0 z-10 w-full min-w-0 space-y-2.5 border-b border-slate-100 bg-slate-50/90 px-3 py-3 backdrop-blur-md sm:px-4 sm:py-3.5 lg:px-5";
+export const zdEstimatePageIntroClass = cn(
+  "shrink-0 border-b border-slate-200/70 bg-gradient-to-b from-white to-slate-50/80",
+  zdEstimateChromeInsetXClass,
+  "py-1.5"
+);
+
+/** Wiersz top bara — jedna oś pionowa h-8. */
+export const zdEstimatePageIntroRowClass = cn(
+  "flex min-w-0 items-center gap-2 sm:gap-3",
+  zdEstimateChromeControlHeightClass
+);
+
+/**
+ * CTA tekstowe w chrome (top bar / belka) — zawsze h-8.
+ * Nakładać na Button jako className (nadpisuje size="sm").
+ */
+export const zdEstimateToolbarActionClass = cn(
+  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 border border-slate-200/80 bg-white px-2.5 text-xs font-medium leading-none text-slate-700 transition",
+  zdEstimateRadiusControlClass,
+  zdEstimateShadowControlClass,
+  "hover:border-indigo-200/80 hover:bg-indigo-50/50 hover:text-indigo-950",
+  "disabled:cursor-not-allowed disabled:opacity-50",
+  zdEstimateChromeControlHeightClass,
+  "py-0"
+);
+
+/** Menu Dostawcy / Reguły — ten sam box co CTA, akcent indigo. */
+export const zdEstimateToolbarMenuClass = cn(
+  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 border border-indigo-100/80 bg-white px-2.5 text-xs font-medium leading-none text-indigo-800/90 transition",
+  zdEstimateRadiusControlClass,
+  zdEstimateShadowControlClass,
+  "hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950",
+  "disabled:cursor-not-allowed disabled:opacity-50",
+  zdEstimateChromeControlHeightClass,
+  "py-0"
+);
+
+/** Grupa akcji po prawej w top barze. */
+export const zdEstimateToolbarActionsClusterClass = cn(
+  "flex shrink-0 items-center gap-1 sm:gap-1.5",
+  zdEstimateChromeControlHeightClass
+);
+
+/** LIVE / host badge w top barze — h-8, wyśrodkowany. */
+export const zdEstimateHostBadgeClass = cn(
+  "inline-flex items-center rounded-md px-1.5 py-0 text-[10px] font-semibold uppercase leading-none tracking-wider tabular-nums",
+  zdEstimateChromeControlHeightClass
+);
+
+/** Ikona-only w belce (Więcej). */
+export const zdEstimateToolbarIconClass = cn(
+  "inline-flex shrink-0 cursor-pointer items-center justify-center border border-slate-200/80 bg-white text-indigo-800/85 transition",
+  zdEstimateRadiusControlClass,
+  zdEstimateShadowControlClass,
+  "hover:border-indigo-200/80 hover:bg-indigo-50/50 hover:text-indigo-950",
+  "disabled:cursor-not-allowed disabled:opacity-50",
+  "h-8 w-8 p-0"
+);
+
+/** Search w belce listy. */
+export const zdEstimateToolbarSearchClass = cn(
+  "w-full border border-slate-200/80 bg-white text-xs text-slate-900 placeholder:text-slate-400",
+  zdEstimateRadiusControlClass,
+  zdEstimateShadowControlClass,
+  "transition focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100/90",
+  "[&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden",
+  zdEstimateChromeControlHeightClass
+);
+
+/**
+ * Jedna belka filtrów/szukania nad TableScroll.
+ */
+export const zdEstimateListBandClass = cn(
+  "z-10 w-full min-w-0 shrink-0 border-b border-slate-200/70 bg-gradient-to-b from-slate-50/95 to-slate-50/70 backdrop-blur-md",
+  zdEstimateChromeInsetXClass,
+  zdEstimateChromeInsetYClass
+);
+
+/** Body listy pod belką — bez inset X (tabela full-bleed); padding tylko usługom. */
+export const zdEstimateListBodyInsetClass =
+  "flex min-h-0 flex-1 flex-col gap-2 pt-0 pb-0";
+
+/** Inset usług / empty state nad tabelą (wyrównany do belki). */
+export const zdEstimateListBodyPadClass = cn(
+  zdEstimateChromeInsetXClass,
+  "pt-2"
+);
+
+/** Cichy separator stref w belce / top barze (wysokość ≈ kontrolka). */
+export const zdEstimateChromeDividerClass =
+  "hidden h-6 w-px shrink-0 self-center bg-slate-200/80 sm:block";
+
+/** Truncated / recount pod belką listy. */
+export const zdEstimateStatusNoteClass =
+  "inline-flex h-6 max-w-[12rem] items-center truncate rounded-md bg-amber-50/90 px-1.5 text-[10px] font-medium leading-none text-amber-900/90 ring-1 ring-inset ring-amber-200/70 sm:max-w-[16rem]";
 
 /**
  * Dock Create/Policz — `h-0` + sticky, żeby pasek NIE dokładał wysokości
@@ -324,9 +488,22 @@ export const zdEstimateListBandClass =
 export const zdEstimateStickyDockClass =
   "pointer-events-none sticky z-30 h-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:bottom-3";
 
-/** Pasek Create / Policz — absolute w docku (rysuje się w górę od h-0). */
-export const zdEstimateStickyBarClass =
-  "pointer-events-auto absolute bottom-0 left-0 right-0 flex border border-slate-200/90 bg-white/95 px-3 py-3 shadow-[0_-4px_16px_-8px_rgba(15,23,42,0.12)] backdrop-blur-sm sm:px-4 rounded-xl";
+/** Pasek Create / Policz — absolute w docku; py dopasowane do h-9. */
+export const zdEstimateStickyBarClass = cn(
+  "pointer-events-auto absolute bottom-0 left-0 right-0 flex border border-slate-200/85 bg-white/95 backdrop-blur-md",
+  zdEstimateRadiusSurfaceClass,
+  zdEstimateShadowDockClass,
+  zdEstimateChromeInsetXClass,
+  "py-1.5"
+);
+
+/** Przyciski w sticky dock / mobile Policz — h-9. */
+export const zdEstimateDockButtonClass = cn(
+  "inline-flex shrink-0 items-center justify-center gap-1.5 px-3 text-xs font-medium leading-none",
+  zdEstimateRadiusControlClass,
+  zdEstimateDockControlHeightClass,
+  "py-0"
+);
 
 /**
  * Clearance w flow pod zadokowanym paskiem (żeby ostatnia treść nie była
@@ -336,12 +513,29 @@ export const zdEstimateStickyClearanceClass = "shrink-0 w-full h-14 sm:h-[3.75re
 export const zdEstimateStickyClearanceTallClass =
   "shrink-0 w-full h-[5.25rem] sm:h-24";
 
+/** Primarny Policz w stopce prep — ten sam box co dock (h-9). */
+export const zdEstimatePrepPrimaryButtonClass = cn(
+  "inline-flex w-full items-center justify-center gap-1.5 px-3 text-xs font-medium leading-none sm:w-auto sm:min-w-[10.5rem]",
+  zdEstimateRadiusControlClass,
+  zdEstimateDockControlHeightClass,
+  "py-0"
+);
+
+/** Stopka Policz w karcie prep — inset X jak chrome. */
+export const zdEstimatePrepFooterClass = cn(
+  "scroll-mt-24 flex flex-col border-t border-slate-100/90 bg-gradient-to-b from-slate-50/50 to-transparent sm:flex-row sm:items-center sm:justify-between",
+  zdEstimateChromeInsetXClass,
+  "gap-1.5 py-2.5"
+);
 /**
  * Selection / bulk — w flow na dole (nad sticky Create), żeby akcje
  * grupowe były w polu widzenia przy scrollu na dół strony.
  */
-export const zdEstimateSelectionBarClass =
-  "w-full min-w-0 rounded-xl border border-indigo-200/75 bg-indigo-50/60 p-3 shadow-sm shadow-indigo-900/5 sm:p-3.5";
+export const zdEstimateSelectionBarClass = cn(
+  zdEstimateRadiusSurfaceClass,
+  zdEstimateShadowControlClass,
+  "w-full min-w-0 border border-indigo-200/75 bg-indigo-50/60 p-3 sm:p-3.5 shadow-indigo-900/5"
+);
 
 /** Treść wewnątrz karty huba administracji / dostawców. */
 export const adminHubBodyClass = "min-w-0 space-y-4 p-3 sm:p-4 lg:p-5";
@@ -894,8 +1088,11 @@ export const panelToolbarIconButtonClass =
  * Pasek narzędzi listy kreatora ZD — wariant spokojny (0 zaznaczonych)
  * i aktywny bulk (selection). Sticky poza TableScroll (z-10 < sticky CTA z-30).
  */
-export const zdEstimateListToolsShellClass =
-  "sticky top-0 z-10 w-full min-w-0 rounded-xl border p-3 shadow-sm backdrop-blur-md sm:p-3.5";
+export const zdEstimateListToolsShellClass = cn(
+  "sticky top-0 z-10 w-full min-w-0 border p-3 backdrop-blur-md sm:p-3.5",
+  zdEstimateRadiusSurfaceClass,
+  zdEstimateShadowControlClass
+);
 
 export const zdEstimateListToolsShellQuietClass =
   "border-slate-200/70 bg-white/95 shadow-slate-900/[0.03]";

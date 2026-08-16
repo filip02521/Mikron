@@ -384,4 +384,78 @@ describe("zd-estimate-launch-scroll", () => {
     expect(scrollTo).toHaveBeenCalled();
     vi.useRealTimers();
   });
+
+  it("fill-viewport: pageToBottom nie scrolluje tabeli na dół", () => {
+    const main = document.createElement("main");
+    main.style.overflowY = "hidden";
+    Object.defineProperty(main, "clientHeight", {
+      value: 800,
+      configurable: true,
+    });
+    Object.defineProperty(main, "scrollHeight", {
+      value: 800,
+      configurable: true,
+    });
+    const mainScrollTo = vi.fn();
+    main.scrollTo = mainScrollTo as unknown as typeof main.scrollTo;
+    document.body.appendChild(main);
+
+    const viewport = document.createElement("div");
+    viewport.setAttribute("data-zd-estimate-viewport", "");
+    main.appendChild(viewport);
+
+    const list = document.createElement("div");
+    list.id = ZD_ESTIMATE_LIST_FOCUS_ID;
+    viewport.appendChild(list);
+
+    const { scrollTo: tableScrollTo } = mockTableScroll({
+      clientHeight: 300,
+      scrollHeight: 1200,
+      scrollTop: 120,
+    });
+
+    expect(scrollZdEstimatePageToBottom({ behavior: "auto" })).toBe(true);
+    expect(mainScrollTo).not.toHaveBeenCalled();
+    expect(tableScrollTo).not.toHaveBeenCalledWith(
+      expect.objectContaining({ top: 900 })
+    );
+    expect(clampZdEstimateMainScroll()).toBe(false);
+  });
+
+  it("fill-viewport: revealList resetuje tabelę na top + fokus", async () => {
+    vi.useFakeTimers();
+    const main = document.createElement("main");
+    main.style.overflowY = "hidden";
+    document.body.appendChild(main);
+
+    const viewport = document.createElement("div");
+    viewport.setAttribute("data-zd-estimate-viewport", "");
+    main.appendChild(viewport);
+
+    const list = document.createElement("div");
+    list.id = ZD_ESTIMATE_LIST_FOCUS_ID;
+    list.tabIndex = -1;
+    list.focus = vi.fn();
+    viewport.appendChild(list);
+
+    const { scrollTo: tableScrollTo } = mockTableScroll({
+      clientHeight: 300,
+      scrollHeight: 1200,
+      scrollTop: 400,
+    });
+
+    const cancel = scrollZdEstimateRevealListWhenReady({
+      behavior: "auto",
+      initialDelayMs: 100,
+      settlePassesMs: [50],
+      maxAttempts: 6,
+    });
+
+    await vi.advanceTimersByTimeAsync(100);
+    expect(tableScrollTo).toHaveBeenCalledWith({ top: 0, behavior: "auto" });
+    expect(list.focus).toHaveBeenCalled();
+
+    cancel();
+    vi.useRealTimers();
+  });
 });

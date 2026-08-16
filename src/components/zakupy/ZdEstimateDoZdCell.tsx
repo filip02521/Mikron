@@ -19,10 +19,9 @@ import {
 import type { SalesTrackReason } from "@/lib/orders/zd-estimate-sales-track";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import { cn } from "@/lib/cn";
-import { controlFocusClass } from "@/lib/ui/ontime-theme";
 
 /**
- * Komórka „Do ZD” — decyzja + opcjonalny whisper pewności pod ilością.
+ * Komórka „Do ZD” — decyzja + kompaktowa meta (pewność / roundup / przywróć).
  * Roundup / przywróć mają priorytet nad whisperem (pewność wtedy tylko w title).
  */
 export function ZdEstimateDoZdCell({
@@ -57,7 +56,9 @@ export function ZdEstimateDoZdCell({
 
   if (excluded) {
     return (
-      <span className="zd-est-qty--a zd-est-qty--dash tabular-nums">—</span>
+      <span className="zd-est-dozd" aria-hidden>
+        <span className="zd-est-dozd-readonly zd-est-dozd-readonly--idle">—</span>
+      </span>
     );
   }
 
@@ -103,6 +104,7 @@ export function ZdEstimateDoZdCell({
     qtyReview,
     reasons,
     accepted,
+    excluded,
     detailHint,
     canAccept: Boolean(onAccept),
   });
@@ -171,8 +173,14 @@ export function ZdEstimateDoZdCell({
     displayUnits > 0 &&
     !editingBlank;
 
+  const unitLabel = showPackUnit
+    ? qty.packageLabel.trim() || "op."
+    : showSztUnit || showPiecesUnit
+      ? "szt"
+      : null;
+
   const piecesSubline = hasPiecesSubline ? (
-    <span className="zd-est-unit tabular-nums">
+    <span className="zd-est-dozd-pieces tabular-nums">
       → {formatQty(overridePieces!)} szt
     </span>
   ) : null;
@@ -208,7 +216,29 @@ export function ZdEstimateDoZdCell({
       </span>
     ) : null;
 
-  const hintLine =
+  /** Gdy override/roundup zajmuje linię — kompakt % + OK (pełny whisper w title). */
+  const reviewAcceptAside =
+    confidenceUi.needsReview && onAccept && hintKind !== "confidence" ? (
+      <span
+        className="zd-est-dozd-confidence zd-est-dozd-confidence--review"
+        title={confidenceUi.title || undefined}
+      >
+        <span className="zd-est-dozd-confidence__pct tabular-nums">
+          {confidenceUi.pct}%
+        </span>
+        <button
+          type="button"
+          className="zd-est-dozd-confidence__accept"
+          onClick={onAccept}
+          title={confidenceUi.title || undefined}
+          aria-label={confidenceUi.acceptAriaLabel}
+        >
+          OK
+        </button>
+      </span>
+    ) : null;
+
+  const primaryHint =
     hintKind === "override" && onOverrideChange ? (
       <button
         type="button"
@@ -217,102 +247,86 @@ export function ZdEstimateDoZdCell({
         disabled={overrideDisabled}
         title={`Przywróć wyliczone: ${qty.zdUnits}`}
       >
-        wylicz. {qty.zdUnits}
+        <span aria-hidden>↩</span>
+        <span className="tabular-nums">{qty.zdUnits}</span>
       </button>
     ) : hintKind === "roundup" && roundupInfo != null ? (
       <span className="zd-est-dozd-hint" title={roundupFull ?? undefined}>
-        ↑ +{roundupInfo.extra} ({roundupInfo.need}→{roundupInfo.arrive})
+        ↑ +{roundupInfo.extra}
       </span>
     ) : hintKind === "confidence" ? (
       confidenceWhisper
-    ) : (
+    ) : hintKind === "pieces" ? (
       piecesSubline
-    );
+    ) : null;
 
-  if (onOverrideChange) {
-    return (
-      <span
-        className="flex w-full min-w-0 max-w-full flex-col items-start gap-0.5 overflow-hidden"
-        title={fullTitle}
-      >
-        <span className="zd-est-dozd-value">
-          <input
-            type="number"
-            min={0}
-            step={1}
-            inputMode="numeric"
-            value={focused ? draft : String(displayUnits)}
-            disabled={overrideDisabled}
-            title={fullTitle}
-            aria-label={`Do ZD — nadpisanie. ${
-              qty.hasPackaging ? overrideHint : ""
-            }`}
-            className={cn(
-              "zd-est-dozd-input",
-              controlFocusClass,
-              overridden && "zd-est-dozd-input--override",
-              !overridden && displayUnits <= 0 && "zd-est-dozd-input--idle",
-              "disabled:cursor-not-allowed disabled:opacity-50"
-            )}
-            onFocus={() => {
-              setFocused(true);
-              setDraft(String(displayUnits));
-            }}
-            onChange={(e) => {
-              const raw = e.target.value;
-              setDraft(raw);
-              const trimmed = raw.trim();
-              if (trimmed === "") {
-                onOverrideChange(null);
-                return;
-              }
-              const n = Number(trimmed);
-              if (!Number.isFinite(n) || n < 0) return;
-              const units = Math.trunc(n);
-              onOverrideChange(units === qty.zdUnits ? null : units);
-            }}
-            onBlur={() => {
-              commitDraft(draft);
-              setFocused(false);
-            }}
-          />
-          {showSztUnit || showPiecesUnit ? (
-            <span className="zd-est-unit">szt</span>
-          ) : null}
-          {showPackUnit ? (
-            <span className="zd-est-unit">
-              {qty.packageLabel.trim() || "op."}
-            </span>
-          ) : null}
-        </span>
-        {hintLine}
+  const hintLine =
+    primaryHint || reviewAcceptAside ? (
+      <span className="zd-est-dozd-hint-row">
+        {primaryHint}
+        {reviewAcceptAside}
       </span>
-    );
-  }
+    ) : null;
+
+  const valueRow = onOverrideChange ? (
+    <span className="zd-est-dozd-value">
+      <input
+        type="number"
+        min={0}
+        step={1}
+        inputMode="numeric"
+        value={focused ? draft : String(displayUnits)}
+        disabled={overrideDisabled}
+        title={fullTitle}
+        aria-label={`Do ZD — nadpisanie. ${
+          qty.hasPackaging ? overrideHint : ""
+        }`}
+        className={cn(
+          "zd-est-dozd-input",
+          overridden && "zd-est-dozd-input--override",
+          !overridden && displayUnits <= 0 && "zd-est-dozd-input--idle"
+        )}
+        onFocus={() => {
+          setFocused(true);
+          setDraft(String(displayUnits));
+        }}
+        onChange={(e) => {
+          const raw = e.target.value;
+          setDraft(raw);
+          const trimmed = raw.trim();
+          if (trimmed === "") {
+            onOverrideChange(null);
+            return;
+          }
+          const n = Number(trimmed);
+          if (!Number.isFinite(n) || n < 0) return;
+          const units = Math.trunc(n);
+          onOverrideChange(units === qty.zdUnits ? null : units);
+        }}
+        onBlur={() => {
+          commitDraft(draft);
+          setFocused(false);
+        }}
+      />
+      {unitLabel ? <span className="zd-est-dozd-unit">{unitLabel}</span> : null}
+    </span>
+  ) : (
+    <span className="zd-est-dozd-value">
+      <span
+        className={cn(
+          "zd-est-dozd-readonly",
+          displayUnits <= 0 && "zd-est-dozd-readonly--idle"
+        )}
+      >
+        {formatZdEstimateTableQty(displayUnits)}
+      </span>
+      {unitLabel ? <span className="zd-est-dozd-unit">{unitLabel}</span> : null}
+    </span>
+  );
 
   return (
-    <span
-      className="flex w-full min-w-0 max-w-full flex-col items-start gap-0.5 overflow-hidden"
-      title={fullTitle || undefined}
-    >
-      <span className="zd-est-dozd-value">
-        <span
-          className={cn(
-            "zd-est-qty--a",
-            displayUnits > 0 ? "zd-est-qty--decision" : "zd-est-qty--dash"
-          )}
-        >
-          {formatZdEstimateTableQty(displayUnits)}
-        </span>
-        {showSztUnit || showPiecesUnit ? (
-          <span className="zd-est-unit">szt</span>
-        ) : null}
-        {showPackUnit ? (
-          <span className="zd-est-unit">
-            {qty.packageLabel.trim() || "op."}
-          </span>
-        ) : null}
-      </span>
+    <span className="zd-est-dozd" title={fullTitle || undefined}>
+      {valueRow}
       {hintLine}
     </span>
   );

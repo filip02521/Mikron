@@ -42,6 +42,8 @@ import {
   buttonPrimaryClass,
   controlFocusClass,
   panelTypography,
+  zdEstimateRadiusSurfaceClass,
+  zdEstimateShadowControlClass,
 } from "@/lib/ui/ontime-theme";
 
 export function ZdEstimatePostCreatePanel({
@@ -504,12 +506,12 @@ export function ZdEstimatePostCreatePanel({
         {(candidatesHint || createLocked) && (
           <div className="space-y-2">
             {candidatesHint ? (
-              <p className="rounded-lg border border-amber-200/90 bg-amber-50/90 px-3 py-2 text-sm text-amber-950">
+              <p className="rounded-md border border-amber-200/90 bg-amber-50/90 px-3 py-2 text-sm text-amber-950">
                 {candidatesHint}
               </p>
             ) : null}
             {createLocked ? (
-              <p className="rounded-lg border border-amber-200/90 bg-amber-50/90 px-3 py-2 text-sm text-amber-950">
+              <p className="rounded-md border border-amber-200/90 bg-amber-50/90 px-3 py-2 text-sm text-amber-950">
                 {session.kind === "timeout_recovery"
                   ? ZD_ESTIMATE_UI.postCreateTimeoutLockBody
                   : "Tworzenie ZD zablokowane dla tej listy — odblokuj świadomie, powiąż ZD albo przelicz listę."}
@@ -522,7 +524,7 @@ export function ZdEstimatePostCreatePanel({
           {statusItems.map((item) => (
             <div
               key={item.key}
-              className="flex items-start gap-2.5 rounded-lg border border-slate-200/80 bg-slate-50/70 px-3 py-2.5"
+              className="flex items-start gap-2.5 rounded-md border border-slate-200/80 bg-slate-50/70 px-3 py-2.5"
             >
               <StatusDot
                 ok={item.ok}
@@ -537,7 +539,7 @@ export function ZdEstimatePostCreatePanel({
         </div>
 
         {session.bumped.length > 0 ? (
-          <p className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs leading-relaxed text-amber-950">
+          <p className="rounded-md border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs leading-relaxed text-amber-950">
             Serwer podbił ilość na {session.bumped.length}{" "}
             {session.bumped.length === 1 ? "pozycji" : "pozycjach"} do pokrycia
             próśb
@@ -557,7 +559,7 @@ export function ZdEstimatePostCreatePanel({
         ) : null}
 
         {session.markFreeze.omittedServiceCount > 0 ? (
-          <p className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs text-amber-950">
+          <p className="rounded-md border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs text-amber-950">
             {session.markFreeze.omittedServiceCount} usług nie zmieściło się w
             uwagach — nie wejdą na listę Główne.
           </p>
@@ -575,7 +577,13 @@ export function ZdEstimatePostCreatePanel({
               hasRequestsPreview ? "lg:col-span-3" : null
             )}
           >
-            <section className="rounded-xl border border-slate-200/80 bg-white p-3.5 sm:p-4">
+            <section
+              className={cn(
+                "border border-slate-200/80 bg-white p-3.5 sm:p-4",
+                zdEstimateRadiusSurfaceClass,
+                zdEstimateShadowControlClass
+              )}
+            >
               <p className={cn(panelTypography.sectionLabel, "text-slate-500")}>
                 {ZD_ESTIMATE_UI.postCreateMarksTitle}
               </p>
@@ -661,7 +669,13 @@ export function ZdEstimatePostCreatePanel({
               )}
             </section>
 
-            <section className="rounded-xl border border-slate-200/80 bg-white p-3.5 sm:p-4">
+            <section
+              className={cn(
+                "border border-slate-200/80 bg-white p-3.5 sm:p-4",
+                zdEstimateRadiusSurfaceClass,
+                zdEstimateShadowControlClass
+              )}
+            >
               <p className={cn(panelTypography.sectionLabel, "text-slate-500")}>
                 Kontakt dostawcy
               </p>
@@ -697,7 +711,12 @@ export function ZdEstimatePostCreatePanel({
           {hasRequestsPreview && (
             <div className="space-y-4 lg:col-span-2">
               {session.composedUwagi ? (
-                <section className="rounded-xl border border-slate-200/80 bg-slate-50/60 p-3.5 sm:p-4">
+                <section
+                  className={cn(
+                    "border border-slate-200/80 bg-slate-50/60 p-3.5 sm:p-4",
+                    zdEstimateRadiusSurfaceClass
+                  )}
+                >
                   <p
                     className={cn(
                       panelTypography.sectionLabel,
@@ -806,7 +825,7 @@ export function ZdEstimatePostCreatePanel({
               onChange={(e) => setMailSubject(e.target.value)}
               className={cn(
                 controlFocusClass,
-                "mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                "mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
               )}
             />
           </div>
@@ -824,7 +843,7 @@ export function ZdEstimatePostCreatePanel({
               rows={8}
               className={cn(
                 controlFocusClass,
-                "mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                "mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
               )}
             />
           </div>

@@ -8,8 +8,10 @@ import {
   ZD_ESTIMATE_ROUTE_LOADING_STEP_COUNT,
   ZD_ESTIMATE_ROUTE_LOADING_STEP_MS,
 } from "@/lib/orders/zd-estimate-launch-progress";
+import { zdEstimateLoadingElapsedLabel } from "@/lib/orders/zd-estimate-loading-ui";
 import {
   ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION,
+  zdEstimateLoadingBusyDetailRoute,
   zdEstimateRouteLoadingAriaLabel,
   zdEstimateRouteLoadingFooter,
   zdEstimateRouteLoadingHint,
@@ -52,7 +54,6 @@ export function ZdEstimateRouteLoading() {
       steps.length) *
       100
   );
-  const elapsedSec = Math.floor(elapsedMs / 1000);
   const title = zdEstimateRouteLoadingTitle();
   const activeHint = steps[clamped]!.activeHint;
 
@@ -65,12 +66,16 @@ export function ZdEstimateRouteLoading() {
       <ZdEstimateLoadingBody
         statusTitle={title}
         statusHint={activeHint}
-        elapsedLabel={`${elapsedSec}s · wczytywanie ustawień`}
+        elapsedLabel={zdEstimateLoadingElapsedLabel({
+          elapsedMs,
+          busyDetail: zdEstimateLoadingBusyDetailRoute(),
+        })}
         steps={steps}
         activeStepIndex={clamped}
         progressPct={progressPct}
         footerNote={zdEstimateRouteLoadingFooter()}
         ariaLabel={zdEstimateRouteLoadingAriaLabel()}
+        progressAriaLabel="Postęp wczytywania kreatora"
       />
     </ZdEstimateLoadingWindow>
   );

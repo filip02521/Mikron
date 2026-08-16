@@ -9,6 +9,9 @@
  *
  * Formuła qty (bez otwartych ZK — ZK tylko informacyjnie):
  *   doZamowieniaReczne = max(0, ceil(celŚledzony − dostepne − otwarteZd))
+ *   `dostepne` może być ujemne (stan − rezerwacje) — dług rezerwacji
+ *   powiększa zamówienie (cel − (−28) = cel + 28).
+ *   `otwarteZd` nadal clamp ≥ 0.
  *
  * celZapasu liczy API: (sprzedazOkres / dniOkresu) × dniZapasu + zapasMin
  * celŚledzony = celZapasu ± korekta „podążania za sprzedażą”
@@ -93,7 +96,7 @@ export type ManualZdEstimateLine = {
   doZamowieniaApi: number;
   /**
    * Ilość do wrzucenia na listę — jak ręcznie:
-   * max(0, ceil(celZapasu − dostepne − otwarteZd)).
+   * max(0, ceil(celTracked − dostepne − otwarteZd)); dostepne może być ujemne.
    */
   doZamowieniaReczne: number;
   /** Różnica API − ręcznie (= wkład otwartych ZK bez rez. przy typowych danych). */
@@ -164,7 +167,9 @@ export function stockPeriodToDniZapasu(
 /**
  * Ilość do zamówienia jak w procesie ręcznym (bez ZK).
  * Zaokrąglenie w górę — nie zamawiamy ułamków z API.
- * `dostepne` / `otwarteZd` clamp ≥ 0 (ujemny stan z API nie zawyża qty).
+ * `otwarteZd` clamp ≥ 0.
+ * `dostepne` bez dolnego clampu: ujemne (rezerwacje > stan) zwiększa
+ * potrzebę, żeby Do ZD pokryło dług rezerwacji względem celu.
  * `celZapasu` tu = cel już po ewentualnym śledzeniu sprzedaży.
  */
 export function computeManualOrderQty(input: {
@@ -173,7 +178,7 @@ export function computeManualOrderQty(input: {
   otwarteZd: number;
 }): number {
   const cel = asFiniteNumber(input.celZapasu);
-  const dostepne = Math.max(0, asFiniteNumber(input.dostepne));
+  const dostepne = asFiniteNumber(input.dostepne);
   const otwarteZd = Math.max(0, asFiniteNumber(input.otwarteZd));
   const raw = cel - dostepne - otwarteZd;
   if (!(raw > 0)) return 0;
@@ -263,7 +268,8 @@ export function mapZdEstimateLineToManual(
   let salesTrackAllowedExtraQty = track.allowedExtraQty;
 
   const hist = options?.history;
-  const coverForQty = Math.max(0, dostepne) + otwarteZdPieces;
+  // History cut: prawdziwe dostępne (może być ujemne). Qty liczy się osobno.
+  const coverForQty = dostepne + otwarteZdPieces;
   if (
     hist &&
     options?.salesTrack !== false &&

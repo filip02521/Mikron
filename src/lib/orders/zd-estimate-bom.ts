@@ -327,7 +327,8 @@ export function expandZdEstimateBoms(
     byTw.set(cid, {
       ...existing,
       sprzedazOkres: Math.max(0, asNum(existing.sprzedazOkres)) + salesAdd,
-      dostepne: Math.max(0, asNum(existing.dostepne)) + coverAdd,
+      // Zachowaj ujemne dostępne składnika; cover z rodzica się dokłada.
+      dostepne: asNum(existing.dostepne) + coverAdd,
       bom: {
         role: "component",
         parentTwIds: parentIdsByComp.get(cid) ?? [],
@@ -424,7 +425,7 @@ export function rematerializeSoloAfterBom(
     line: ManualZdEstimateLineWithBom
   ): ManualZdEstimateLineWithBom {
     const sprzedazOkres = Math.max(0, asNum(line.sprzedazOkres));
-    const dostepne = Math.max(0, asNum(line.dostepne));
+    const dostepne = asNum(line.dostepne);
     const tempo = resolveSprzedazDziennie({
       sprzedazOkres,
       sprzedazDziennie: 0,

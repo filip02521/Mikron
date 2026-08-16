@@ -12,6 +12,7 @@ import {
 } from "@/lib/orders/zd-estimate-name-meta-priority";
 import {
   formatZdNameAutoExcludeBadge,
+  formatZdNameAutoExcludeLabel,
   type ZdNameAutoExcludeMatch,
 } from "@/lib/orders/zd-estimate-name-exclude";
 import type { ZdEstimatePairMeta } from "@/lib/orders/zd-estimate-pairs";
@@ -32,28 +33,36 @@ function pairSummary(
   pair: ZdEstimatePairMeta,
   packagingConflict?: boolean
 ): string {
-  const role = pair.role === "pack" ? "Paczka · na ZD" : "Sztuki · nie na ZD";
-  if (pair.partnerMissing) return `${role} · brak partnera`;
-  if (packagingConflict) return `${role} · konflikt opak.`;
-  return role;
+  const role = pair.role === "pack" ? "Paczka" : "Sztuki";
+  if (pair.partnerMissing) return `${role} · brak`;
+  if (packagingConflict) return `${role} · konflikt`;
+  return `${role} · ×${pair.unitsPerPack}`;
 }
 
 function bomSummary(bom: ZdEstimateBomMeta): string {
-  if (bom.role === "assembled_parent") return "Skład · zestaw";
+  if (bom.role === "assembled_parent") return "Skład · nie ZD";
   if (bom.role === "purchased_kit") {
     return bom.purchaseTarget === "kit_only"
       ? "Komplet · tylko kit"
-      : "Komplet";
+      : "Komplet · kupowany";
   }
-  if (bom.componentMissing) return "Skład · brak składnika";
-  if (bom.purchaseBlocked) return "Skład · blokada zakupu";
+  if (bom.componentMissing) return "Skład · brak";
+  if (bom.purchaseBlocked) return "Skład · blokada";
+  const sales = bom.contributionSales ?? 0;
+  if (sales > 0) return `Skład · +${formatQty(sales)}`;
   return "Skład · składnik";
 }
 
 function statusTone(
   kind: Exclude<ZdEstimateNameMetaKind, "individual" | "pair" | "bom">
 ): ZdEstimateStatusBadgeTone {
-  if (kind === "excluded" || kind === "name_auto_exclude") return "amber";
+  if (
+    kind === "excluded" ||
+    kind === "name_auto_exclude" ||
+    kind === "soft_on_request"
+  ) {
+    return "amber";
+  }
   if (kind === "session_include") return "sky";
   if (kind === "lifted_extra_only") return "emerald";
   return "indigo";
@@ -62,31 +71,53 @@ function statusTone(
 function statusKindLabel(
   kind: Exclude<ZdEstimateNameMetaKind, "individual" | "pair" | "bom">
 ): string {
-  if (kind === "excluded") return "Wyklucz.";
+  if (kind === "excluded") return "Wykl.";
   if (kind === "name_auto_exclude") return "Auto";
   if (kind === "session_include") return "Sesja";
   if (kind === "soft_on_request") return "Na prośbę";
-  if (kind === "lifted_extra_only") return "Prośba";
+  if (kind === "lifted_extra_only") return "Z prośby";
   return "Status";
 }
 
 function statusMeta(
   kind: Exclude<ZdEstimateNameMetaKind, "individual" | "pair" | "bom">,
-  label: string
+  nameHit?: ZdNameAutoExcludeMatch | null
 ): string | undefined {
   if (kind === "excluded") return undefined;
-  if (kind === "name_auto_exclude") {
-    return label.replace(/^auto\s*·\s*/i, "");
+  if (kind === "name_auto_exclude" && nameHit) {
+    return formatZdNameAutoExcludeLabel(nameHit.reason);
   }
-  if (kind === "session_include") return "dołączone";
-  if (kind === "soft_on_request") return "poza Do ZD";
+  if (kind === "session_include") return "włącz";
+  if (kind === "soft_on_request") return undefined;
   if (kind === "lifted_extra_only") return "w Do ZD";
-  return label;
+  return undefined;
+}
+
+function statusSummary(
+  kind: Exclude<ZdEstimateNameMetaKind, "individual" | "pair" | "bom">,
+  nameHit?: ZdNameAutoExcludeMatch | null
+): string {
+  const label = statusKindLabel(kind);
+  const meta = statusMeta(kind, nameHit);
+  return meta ? `${label} · ${meta}` : label;
+}
+
+function individualSummary(
+  extra: ZdEstimateIndividualTwExtra,
+  extrasPolicy: "sum" | "max",
+  doZdSuppressed: boolean
+): string {
+  if (doZdSuppressed) return "Prośba · poza Do ZD";
+  if (extrasPolicy === "max") return "Prośba · max";
+  return `Prośba · ${formatQty(extra.extraPieces)} szt`;
 }
 
 /**
- * Kolumna Status: max 1 primary badge + „+N” overflow.
+ * Kolumna Status: do {@link ZD_ESTIMATE_STATUS_VISIBLE_MAX} chipów wg priorytetu;
+ * nadmiar jako +N (tooltip z listą).
  */
+export const ZD_ESTIMATE_STATUS_VISIBLE_MAX = 4;
+
 export function ZdEstimateNameMetaStack({
   pairMeta,
   packagingConflict,
@@ -117,9 +148,11 @@ export function ZdEstimateNameMetaStack({
   if (individualExtra) {
     items.push({
       kind: "individual",
-      summary: doZdSuppressed
-        ? "Prośba · nie w Do ZD"
-        : `Prośba · ${formatQty(individualExtra.extraPieces)} szt`,
+      summary: individualSummary(
+        individualExtra,
+        extrasPolicy,
+        doZdSuppressed
+      ),
       node: (
         <ZdEstimateIndividualMetaBadge
           extra={individualExtra}
@@ -160,37 +193,50 @@ export function ZdEstimateNameMetaStack({
   });
 
   if (status) {
-    const label =
-      status.kind === "name_auto_exclude" && nameHit
-        ? formatZdNameAutoExcludeBadge(nameHit.reason)
-        : status.summary;
     const kind = status.kind as Exclude<
       ZdEstimateNameMetaKind,
       "individual" | "pair" | "bom"
     >;
+    const title =
+      status.kind === "name_auto_exclude" && nameHit
+        ? formatZdNameAutoExcludeBadge(nameHit.reason)
+        : status.summary;
     items.push({
       kind: status.kind,
-      summary: label,
+      summary: statusSummary(kind, nameHit),
       node: (
         <ZdEstimateStatusBadge
           kind={statusKindLabel(kind)}
-          meta={statusMeta(kind, label)}
+          meta={statusMeta(kind, nameHit)}
           tone={statusTone(kind)}
-          title={label}
+          title={title}
         />
       ),
     });
   }
 
-  if (items.length === 0) return null;
+  if (items.length === 0) {
+    return (
+      <div className="zd-est-status" title="Brak oznaczeń statusu">
+        <span className="zd-est-status-empty" aria-hidden>
+          —
+        </span>
+      </div>
+    );
+  }
 
   const ordered = sortZdEstimateNameMetaCandidates(items);
-  const [primary, ...overflow] = ordered;
+  const visible = ordered.slice(0, ZD_ESTIMATE_STATUS_VISIBLE_MAX);
+  const overflow = ordered.slice(ZD_ESTIMATE_STATUS_VISIBLE_MAX);
   const overflowTitle = buildZdEstimateNameMetaOverflowTitle(overflow);
 
   return (
-    <div className="flex min-w-0 items-center gap-1">
-      <div className="min-w-0 max-w-full overflow-hidden">{primary.node}</div>
+    <div className="zd-est-status">
+      {visible.map((item) => (
+        <div key={item.kind} className="zd-est-status__chip">
+          {item.node}
+        </div>
+      ))}
       {overflow.length > 0 ? (
         <span
           className="zd-est-status-more"

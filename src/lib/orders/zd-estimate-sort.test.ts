@@ -93,6 +93,16 @@ describe("sortZdEstimateLines", () => {
     expect(sorted.map((r) => r.tw_Id)).toEqual([1, 2]);
   });
 
+  it("sortuje po nazwie A→Z (pl)", () => {
+    const sorted = sortZdEstimateLines(rows, "name", "asc");
+    expect(sorted.map((r) => r.tw_Nazwa)).toEqual(["Alpha", "Beta", "Zebra"]);
+  });
+
+  it("sortuje po nazwie Z→A", () => {
+    const sorted = sortZdEstimateLines(rows, "name", "desc");
+    expect(sorted.map((r) => r.tw_Nazwa)).toEqual(["Zebra", "Beta", "Alpha"]);
+  });
+
   it("nie mutuje wejścia", () => {
     const copy = [...rows];
     sortZdEstimateLines(rows, "name", "asc");

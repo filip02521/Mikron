@@ -247,7 +247,10 @@ export function computeBoostConfidence(input: {
   sprzedazOkres: number;
   dniOkresuEffective: number;
   dniZapasu: number;
-  /** Cover w sztukach (dostepne + otwarteZd). */
+  /** Cover w sztukach (dostepne + otwarteZd).
+   * Do sygnałów track clampujemy dostepne ≥ 0 (unikamy podwójnego boostu
+   * przy długu rezerwacji — qty i tak pokrywa ujemne w computeManualOrderQty).
+   */
   coverStock: number;
   policy?: Partial<typeof ZD_SALES_TRACK>;
 }): number {
@@ -371,6 +374,8 @@ export function computeSalesTrackedCel(input: {
     dniOkresu: input.dniOkresu,
     fallbackDniOkresu: dniZapasu,
   });
+  // Cover do sygnałów track (boost/cut): nie ujemne — dług rezerwacji
+  // pokrywa już computeManualOrderQty; tu clamp unika podwójnego thin_cover.
   const dostepne = Math.max(0, asFinite(input.dostepne));
   const otwarteZd = Math.max(0, asFinite(input.otwarteZd));
   const coverStock = dostepne + otwarteZd;
