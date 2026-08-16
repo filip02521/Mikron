@@ -29,6 +29,29 @@ export type ZdEstimateDepartmentSettingsMenuProps = {
   compact?: boolean;
 };
 
+function MenuOption({
+  title,
+  description,
+  count,
+}: {
+  title: string;
+  description: string;
+  count: number;
+}) {
+  const suffix = count > 0 ? ` (${count})` : "";
+  return (
+    <span className="flex flex-col gap-0.5">
+      <span className="font-medium text-slate-900">
+        {title}
+        {suffix}
+      </span>
+      <span className="text-[11px] font-normal leading-snug text-slate-500">
+        {description}
+      </span>
+    </span>
+  );
+}
+
 /**
  * Reguły listy Do ZD (katalog) — bez zakresów dostawców i historii ZD
  * (te są w {@link ZdEstimateSuppliersMenu}).
@@ -47,7 +70,6 @@ export function ZdEstimateDepartmentSettingsMenu({
   disabled,
   compact = false,
 }: ZdEstimateDepartmentSettingsMenuProps) {
-  const suffix = (n: number) => (n > 0 ? ` (${n})` : "");
   return (
     <OverflowMenu
       label={ZD_ESTIMATE_UI.departmentSettingsMenuAriaLabel}
@@ -73,24 +95,43 @@ export function ZdEstimateDepartmentSettingsMenu({
       align="end"
       disabled={disabled}
       triggerClassName={panelToolbarTextButtonClass}
-      menuClassName="min-w-[14rem]"
+      menuClassName="min-w-[18rem] max-w-[22rem]"
     >
-      <OverflowMenuLabel>Jak liczyć Do ZD</OverflowMenuLabel>
+      <OverflowMenuLabel>{ZD_ESTIMATE_UI.menuRulesGroupLabel}</OverflowMenuLabel>
       <OverflowMenuItem disabled={disabled} onClick={onOpenExclusions}>
-        Wykluczenia{suffix(exclusionsCount)}
+        <MenuOption
+          title={ZD_ESTIMATE_UI.menuExclusionsTitle}
+          description={ZD_ESTIMATE_UI.menuExclusionsDescription}
+          count={exclusionsCount}
+        />
       </OverflowMenuItem>
       <OverflowMenuItem disabled={disabled} onClick={onOpenOnRequest}>
-        Tylko na prośbę{suffix(onRequestsCount)}
+        <MenuOption
+          title={ZD_ESTIMATE_UI.menuOnRequestTitle}
+          description={ZD_ESTIMATE_UI.menuOnRequestDescription}
+          count={onRequestsCount}
+        />
       </OverflowMenuItem>
       <OverflowMenuItem disabled={disabled} onClick={onOpenPackaging}>
-        Opakowania{suffix(packagingCount)}
+        <MenuOption
+          title={ZD_ESTIMATE_UI.menuPackagingTitle}
+          description={ZD_ESTIMATE_UI.menuPackagingDescription}
+          count={packagingCount}
+        />
       </OverflowMenuItem>
       <OverflowMenuItem disabled={disabled} onClick={onOpenPairs}>
-        Pary{suffix(pairsCount)}
+        <MenuOption
+          title={ZD_ESTIMATE_UI.menuPairsTitle}
+          description={ZD_ESTIMATE_UI.menuPairsDescription}
+          count={pairsCount}
+        />
       </OverflowMenuItem>
       <OverflowMenuItem disabled={disabled} onClick={onOpenBoms}>
-        {ZD_BOM_UI.panelTitle}
-        {suffix(bomsCount)}
+        <MenuOption
+          title={ZD_BOM_UI.panelTitle}
+          description={ZD_ESTIMATE_UI.menuBomsDescription}
+          count={bomsCount}
+        />
       </OverflowMenuItem>
     </OverflowMenu>
   );

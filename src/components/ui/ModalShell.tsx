@@ -88,12 +88,16 @@ export function ModalShell({
 
   const shell = (
     <>
-      <button
-        type="button"
-        className={cn(modalBackdropClass, z.backdrop)}
-        aria-label="Zamknij"
-        onClick={disableBackdropClose ? undefined : onClose}
-      />
+      {disableBackdropClose ? (
+        <div className={cn(modalBackdropClass, z.backdrop)} aria-hidden />
+      ) : (
+        <button
+          type="button"
+          className={cn(modalBackdropClass, z.backdrop)}
+          aria-label="Zamknij"
+          onClick={onClose}
+        />
+      )}
       <div
         role={role}
         aria-modal="true"

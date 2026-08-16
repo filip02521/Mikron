@@ -28,15 +28,15 @@ export const ZD_BOM_UI = {
   panelTitle: "Składy",
   modalTitle: "Składy i komplety",
   modalHint:
-    "Trzy tryby: (1) Składamy — zestaw nie idzie na ZD, sprzedaż obciąża składniki; (2) Kupujemy K i części — komplet i składniki osobno; (3) Tylko komplet — na ZD wyłącznie zestaw. Pary karton↔sztuki to osobny mechanizm.",
+    "Trzy sposoby kupowania zestawu: (1) Składamy — zestaw nie idzie na ZD, sprzedaż obciąża składniki; (2) Kupujemy K i części — komplet i składniki osobno; (3) Tylko komplet — na ZD wyłącznie zestaw. Pary karton↔sztuki to osobny mechanizm w „Pary”.",
 
   introTitle: "Zestaw i składniki",
   introBody:
-    "Wybierz preset zakupu i podaj ile sztuk każdego składnika wchodzi w 1 zestaw (np. proszek ×1 + płyn ×2). Po zapisie lista przelicza się od razu.",
+    "Wybierz, jak kupować zestaw, i podaj ile sztuk każdego składnika wchodzi w 1 zestaw (np. proszek ×1 + płyn ×2). Po zapisie lista Do ZD przelicza się od razu.",
 
   seedHeading: "Zaznaczone towary — wskaż zestaw i ilości",
   seedQtyHint:
-    "Na karcie składnika wpisz ile sztuk wchodzi w 1 zestaw (np. proszek = 1, płyn = 2). To nie są kilogramy.",
+    "Na karcie składnika wpisz ile sztuk wchodzi w 1 zestaw (np. proszek = 1, płyn = 2). To nie są kilogramy ani jednostki dokumentu ZD.",
   seedParentQtyHint: "Zestaw — bez osobnej ilości",
   roleZestaw: "Zestaw",
   roleSkladnik: "Składnik",
@@ -44,19 +44,19 @@ export const ZD_BOM_UI = {
   presetLegend: "Jak kupować zestaw?",
   presetAssemble: "Składamy (tylko składniki)",
   presetAssembleHint:
-    "Zestaw nie trafia na ZD. Sprzedaż zestawu doliczana jest do składników.",
+    "Zestaw nie trafia na ZD. Sprzedaż zestawu doliczana jest do niedoboru składników — zamawiasz części, nie komplet.",
   presetBuySeparate: "Kupujemy K i części",
   presetBuySeparateHint:
-    "Komplet i składniki zamawiane osobno — każdy wg własnej sprzedaży.",
+    "Komplet i składniki zamawiane osobno — każdy według własnej sprzedaży i stanu. Używaj, gdy komplet też bywa sprzedawany jako całość.",
   presetKitOnly: "Tylko komplet",
   presetKitOnlyHint:
-    "Na ZD tylko zestaw. Składniki zablokowane (alert przy ich sprzedaży lub prośbie).",
+    "Na ZD tylko zestaw. Składniki są zablokowane — przy ich sprzedaży lub prośbie zobaczysz alert (zamów zestaw albo zmień preset).",
 
   stockAsCoverLabel: "Wliczaj stan zestawu do pokrycia składników",
   stockAsCoverHintSeed:
     "Jeśli na magazynie leży osobno zestaw i osobno składniki, pokrycie może się zdublować — wtedy wyłącz tę opcję świadomie.",
   stockAsCoverHintManual:
-    "Domyślnie włączone przy „Składamy”. Wyłącz, gdy zestaw i składniki są trzymane osobno na magazynie.",
+    "Domyślnie włączone przy „Składamy”. Wyłącz, gdy zestaw i składniki są trzymane osobno na magazynie i nie powinny się wzajemnie pokrywać.",
 
   pieceWarningSeed: (twIds: number[]) =>
     `Jeden ze składników jest towarem „na sztuki” w parze (id. ${twIds.join(", ")}). Zamówienie i tak przejdzie na paczkę przez parę — lepiej wskazać karton (paczkę) jako składnik.`,
@@ -135,8 +135,10 @@ export const ZD_BOM_UI = {
     "Brakuje towarów ze składu „Składamy” w wyniku — Do ZD i tworzenie ZD są zablokowane, aż dociągniesz pozycje („Policz listę” ponownie).",
 
   bulkButton: "Skład",
-  bulkTitleReady: "Utwórz skład / komplet — wskaż zestaw",
-  bulkTitleNeed: "Zaznacz co najmniej 2 towary (zestaw i składniki)",
+  bulkTitleReady:
+    "Utwórz skład / komplet z zaznaczenia — wskaż, który towar jest zestawem",
+  bulkTitleNeed:
+    "Zaznacz co najmniej 2 towary (zestaw i składniki), żeby utworzyć skład",
   selectNeedTwo:
     "Zaznacz co najmniej 2 towary (zestaw oraz składniki promocji).",
 

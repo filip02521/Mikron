@@ -20,6 +20,8 @@ export const ZD_ESTIMATE_STICKY_ACTIONS_ID = "zd-estimate-sticky-actions";
  */
 export const ZD_ESTIMATE_SCROLL_END_ID = "zd-estimate-scroll-end";
 export const ZD_ESTIMATE_TABLE_SCROLL_ID = "zd-estimate-table-scroll";
+/** Panel po create/link — scroll w appMain. */
+export const ZD_ESTIMATE_POST_CREATE_FOCUS_ID = "zd-estimate-post-create-focus";
 
 function findScrollParent(el: HTMLElement): HTMLElement | null {
   let node: HTMLElement | null = el.parentElement;

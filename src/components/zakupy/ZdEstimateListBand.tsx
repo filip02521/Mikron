@@ -29,6 +29,8 @@ export function ZdEstimateListBand({
   onShowStockDetailChange,
   showZkColumn,
   onShowZkColumnChange,
+  onSortByConfidence,
+  sortKeyIsConfidence,
   visibleCount,
   allVisibleSelected,
   selectedCount,
@@ -45,6 +47,8 @@ export function ZdEstimateListBand({
   onShowStockDetailChange: (v: boolean) => void;
   showZkColumn: boolean;
   onShowZkColumnChange: (v: boolean) => void;
+  onSortByConfidence: () => void;
+  sortKeyIsConfidence?: boolean;
   visibleCount: number;
   allVisibleSelected: boolean;
   selectedCount: number;
@@ -66,20 +70,19 @@ export function ZdEstimateListBand({
             {
               value: "order",
               label: "Do ZD",
-              title: "Ilość Do ZD > 0, bez wykluczonych",
+              title: ZD_ESTIMATE_UI.listFilterOrderTitle,
             },
             {
               value: "all",
               label: "Wszystkie",
-              title: "Pełny zakres — wykluczone oznaczone",
+              title: ZD_ESTIMATE_UI.listFilterAllTitle,
             },
             {
               value: "review",
               label: `Do weryfikacji${
                 reviewInGroupCount > 0 ? ` (${reviewInGroupCount})` : ""
               }`,
-              title:
-                "Wątpliwe podbicie Do ZD (niska / średnia pewność sprzedaży)",
+              title: ZD_ESTIMATE_UI.listFilterReviewTitle,
             },
             {
               value: "excluded",
@@ -130,7 +133,7 @@ export function ZdEstimateListBand({
           <div className="hidden items-center gap-3 sm:flex">
             <label
               className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600"
-              title="Pokazuje kolumny Stan i Rezerwacje (obok Dostępne)"
+              title={ZD_ESTIMATE_UI.listShowStockDetailTitle}
             >
               <input
                 type="checkbox"
@@ -142,7 +145,7 @@ export function ZdEstimateListBand({
             </label>
             <label
               className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600"
-              title="Kolumny diagnostyczne ZK i ilości z API Subiekta"
+              title={ZD_ESTIMATE_UI.listShowZkColumnTitle}
             >
               <input
                 type="checkbox"
@@ -152,6 +155,22 @@ export function ZdEstimateListBand({
               />
               ZK / API
             </label>
+            <OverflowMenu
+              label="Więcej listy"
+              align="end"
+              iconOnly
+              triggerClassName={panelToolbarIconButtonClass}
+            >
+              <OverflowMenuLabel>Sortowanie</OverflowMenuLabel>
+              <OverflowMenuItem
+                onClick={onSortByConfidence}
+                disabled={disabled}
+              >
+                {sortKeyIsConfidence
+                  ? `✓ ${ZD_ESTIMATE_UI.listSortByConfidence}`
+                  : ZD_ESTIMATE_UI.listSortByConfidence}
+              </OverflowMenuItem>
+            </OverflowMenu>
           </div>
 
           <div className="sm:hidden">
@@ -171,6 +190,15 @@ export function ZdEstimateListBand({
                 onClick={() => onShowZkColumnChange(!showZkColumn)}
               >
                 {showZkColumn ? "Ukryj" : "Pokaż"} ZK / API
+              </OverflowMenuItem>
+              <OverflowMenuLabel>Sortowanie</OverflowMenuLabel>
+              <OverflowMenuItem
+                onClick={onSortByConfidence}
+                disabled={disabled}
+              >
+                {sortKeyIsConfidence
+                  ? `✓ ${ZD_ESTIMATE_UI.listSortByConfidence}`
+                  : ZD_ESTIMATE_UI.listSortByConfidence}
               </OverflowMenuItem>
             </OverflowMenu>
           </div>

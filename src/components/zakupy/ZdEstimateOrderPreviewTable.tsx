@@ -99,22 +99,33 @@ export function ZdEstimateOrderPreviewTable({
       ) : null}
       <div
         className={cn(
-          "rounded-lg border border-slate-200",
+          "overflow-x-auto rounded-xl border border-slate-200/90",
           compact
-            ? "max-h-[min(55vh,28rem)] overflow-auto"
-            : "overflow-x-auto"
+            ? "max-h-[min(40vh,22rem)] overflow-y-auto"
+            : "max-h-[min(50vh,28rem)] overflow-y-auto"
         )}
       >
-        <table className="w-full min-w-[52rem] text-left text-sm">
+        <table
+          className={cn(
+            "w-full text-left text-sm",
+            compact ? "min-w-[28rem]" : "min-w-[48rem]"
+          )}
+        >
           <thead className="sticky top-0 z-[1] bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-2.5 py-2 font-medium">Lp</th>
               <th className="px-2.5 py-2 font-medium">Symbol</th>
-              <th className="px-2.5 py-2 font-medium">PLU</th>
+              {!compact ? (
+                <th className="px-2.5 py-2 font-medium">PLU</th>
+              ) : null}
               <th className="px-2.5 py-2 font-medium">Nazwa</th>
               <th className="px-2.5 py-2 text-right font-medium">Na ZD</th>
-              <th className="px-2.5 py-2 text-right font-medium">Cel</th>
-              <th className="px-2.5 py-2 text-right font-medium">Delta</th>
+              {!compact ? (
+                <>
+                  <th className="px-2.5 py-2 text-right font-medium">Cel</th>
+                  <th className="px-2.5 py-2 text-right font-medium">Delta</th>
+                </>
+              ) : null}
             </tr>
           </thead>
           <tbody>
@@ -126,9 +137,11 @@ export function ZdEstimateOrderPreviewTable({
                 <td className="px-2.5 py-1.5 font-mono text-xs text-slate-700">
                   {l.symbol || "—"}
                 </td>
-                <td className="px-2.5 py-1.5 font-mono text-xs text-slate-500">
-                  {l.plu?.trim() || "—"}
-                </td>
+                {!compact ? (
+                  <td className="px-2.5 py-1.5 font-mono text-xs text-slate-500">
+                    {l.plu?.trim() || "—"}
+                  </td>
+                ) : null}
                 <td className="px-2.5 py-1.5 text-slate-800">
                   <span className="whitespace-normal break-words">{l.nazwa}</span>
                   <span className="mt-0.5 flex flex-wrap gap-1">
@@ -147,6 +160,11 @@ export function ZdEstimateOrderPreviewTable({
                     {l.extraOnly ? (
                       <span className="text-[10px] font-medium uppercase text-amber-800">
                         tylko prośba
+                      </span>
+                    ) : null}
+                    {compact && l.plu?.trim() ? (
+                      <span className="font-mono text-[10px] text-slate-400">
+                        PLU {l.plu.trim()}
                       </span>
                     ) : null}
                   </span>
@@ -173,12 +191,16 @@ export function ZdEstimateOrderPreviewTable({
                     </div>
                   ) : null}
                 </td>
-                <td className="px-2.5 py-1.5 text-right tabular-nums text-slate-700">
-                  {formatQty(l.celZapasuTracked ?? 0)}
-                </td>
-                <td className="px-2.5 py-1.5 text-right tabular-nums text-slate-700">
-                  {formatDelta(l.salesTrackDelta)}
-                </td>
+                {!compact ? (
+                  <>
+                    <td className="px-2.5 py-1.5 text-right tabular-nums text-slate-700">
+                      {formatQty(l.celZapasuTracked ?? 0)}
+                    </td>
+                    <td className="px-2.5 py-1.5 text-right tabular-nums text-slate-700">
+                      {formatDelta(l.salesTrackDelta)}
+                    </td>
+                  </>
+                ) : null}
               </tr>
             ))}
           </tbody>

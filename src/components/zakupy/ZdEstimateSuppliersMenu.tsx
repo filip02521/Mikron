@@ -69,9 +69,9 @@ export function ZdEstimateSuppliersMenu({
       align="end"
       disabled={disabled}
       triggerClassName={panelToolbarTextButtonClass}
-      menuClassName="min-w-[16rem]"
+      menuClassName="min-w-[18rem] max-w-[22rem]"
     >
-      <OverflowMenuLabel>Mapowania i historia</OverflowMenuLabel>
+      <OverflowMenuLabel>{ZD_ESTIMATE_UI.menuSuppliersGroupLabel}</OverflowMenuLabel>
       <OverflowMenuItem disabled={disabled} onClick={onOpenScopes}>
         <span className="flex flex-col gap-0.5">
           <span className="font-medium text-slate-900">
@@ -79,7 +79,7 @@ export function ZdEstimateSuppliersMenu({
             {zdEstimateSuppliersScopesItemSuffix(todayUnmappedCount)}
           </span>
           <span className="text-[11px] font-normal leading-snug text-slate-500">
-            Dostawca ↔ grupa lub cecha Subiekta
+            {ZD_ESTIMATE_UI.menuScopesDescription}
           </span>
         </span>
       </OverflowMenuItem>
@@ -89,7 +89,7 @@ export function ZdEstimateSuppliersMenu({
             {ZD_ESTIMATE_UI.snapshotsModalTitle}
           </span>
           <span className="text-[11px] font-normal leading-snug text-slate-500">
-            Korekta kolejnych list z zapisanych ZD
+            {ZD_ESTIMATE_UI.menuSnapshotsDescription}
           </span>
         </span>
       </OverflowMenuItem>

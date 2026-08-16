@@ -15,6 +15,7 @@ import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
 import { normalizeUnitsPerPack } from "@/lib/orders/zd-product-pair-units";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
+import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 
 export type ZdPairSeedProduct = {
   twId: number;
@@ -198,8 +199,8 @@ export function ZdEstimatePairsModal({
     <ModalShell
       open={open}
       onClose={onClose}
-      title="Pary montaż / demontaż"
-      titleHint="Paczka kupowana na ZD ↔ sztuki sprzedawane. Kreator scala popyt i pokrycie w sztukach, zamawia tylko SKU paczki."
+      title={ZD_ESTIMATE_UI.pairsModalTitle}
+      titleHint={ZD_ESTIMATE_UI.pairsModalHint}
       size="xl"
       bodyClassName="space-y-4 px-5 py-4 sm:px-6 sm:py-5"
       loadingMessage={pending ? "Zapisuję…" : null}
@@ -244,12 +245,12 @@ export function ZdEstimatePairsModal({
           />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-900">
-              1 paczka = N sztuk (demontaż)
+              {ZD_ESTIMATE_UI.pairsIntroTitle}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
               {fromSeed
-                ? "Wskaż, który towar to cała paczka (kupowana na ZD), a który pozycja na sztuki — oraz ile sztuk jest w paczce."
-                : "Sync wymaga GET /products/komplety na hoście ORDERS. Do czasu wdrożenia API dodawaj pary ręcznie albo zaznacz 2 towary na liście i wybierz „Para”."}
+                ? ZD_ESTIMATE_UI.pairsIntroBodySeed
+                : ZD_ESTIMATE_UI.pairsIntroBodyManual}
             </p>
           </div>
         </div>

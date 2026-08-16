@@ -12,13 +12,18 @@ import {
   type ZdPackOrderQty,
 } from "@/lib/orders/zd-estimate-packaging";
 import { formatZdEstimateTableQty } from "@/lib/orders/zd-estimate-table-qty";
+import {
+  buildZdEstimateConfidenceUi,
+  resolveZdEstimateDoZdHintKind,
+} from "@/lib/orders/zd-estimate-confidence-ui";
+import type { SalesTrackReason } from "@/lib/orders/zd-estimate-sales-track";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import { cn } from "@/lib/cn";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 
 /**
- * Komórka „Do ZD” — decyzja: wartość (+ unit) w jednej linii;
- * roundup / przywróć tylko gdy potrzeba.
+ * Komórka „Do ZD” — decyzja + opcjonalny whisper pewności pod ilością.
+ * Roundup / przywróć mają priorytet nad whisperem (pewność wtedy tylko w title).
  */
 export function ZdEstimateDoZdCell({
   qty,
@@ -26,6 +31,12 @@ export function ZdEstimateDoZdCell({
   overrideZdUnits,
   onOverrideChange,
   overrideDisabled,
+  confidence = 0,
+  qtyReview = false,
+  reasons = [],
+  accepted = false,
+  detailHint,
+  onAccept,
 }: {
   qty: ZdPackOrderQty;
   excluded?: boolean;
@@ -34,6 +45,12 @@ export function ZdEstimateDoZdCell({
   overrideZdUnits?: number | null;
   onOverrideChange?: (next: number | null) => void;
   overrideDisabled?: boolean;
+  confidence?: number;
+  qtyReview?: boolean;
+  reasons?: readonly SalesTrackReason[];
+  accepted?: boolean;
+  detailHint?: string;
+  onAccept?: () => void;
 }) {
   const [focused, setFocused] = useState(false);
   const [draft, setDraft] = useState("");
@@ -81,6 +98,29 @@ export function ZdEstimateDoZdCell({
     : ZD_ESTIMATE_UI.packagingOverrideHintPieces;
   const baseHint = formatZdPackHint(qty);
 
+  const confidenceUi = buildZdEstimateConfidenceUi({
+    confidence,
+    qtyReview,
+    reasons,
+    accepted,
+    detailHint,
+    canAccept: Boolean(onAccept),
+  });
+
+  const hasPiecesSubline =
+    packagesMode &&
+    !editingBlank &&
+    displayUnits > 0 &&
+    overridePieces != null &&
+    overridePieces !== displayUnits;
+
+  const hintKind = resolveZdEstimateDoZdHintKind({
+    overridden: overridden && Boolean(onOverrideChange),
+    hasRoundup: roundupInfo != null,
+    showConfidenceWhisper: confidenceUi.hasSignal,
+    hasPiecesSubline,
+  });
+
   const fullTitle = [
     overridden
       ? [
@@ -97,9 +137,10 @@ export function ZdEstimateDoZdCell({
       : baseHint || "Nadpisz ilość Do ZD przed utworzeniem dokumentu",
     roundupFull ? `↑ ${roundupFull}` : null,
     qty.hasPackaging ? overrideHint : null,
+    confidenceUi.hasSignal ? confidenceUi.title || null : null,
   ]
     .filter(Boolean)
-    .join(" ");
+    .join(" · ");
 
   const commitDraft = (raw: string) => {
     if (!onOverrideChange) return;
@@ -119,9 +160,56 @@ export function ZdEstimateDoZdCell({
 
   const showSztUnit =
     !qty.hasPackaging && displayUnits > 0 && !editingBlank;
+  const showPackUnit =
+    qty.hasPackaging &&
+    packagesMode &&
+    displayUnits > 0 &&
+    !editingBlank;
+  const showPiecesUnit =
+    qty.hasPackaging &&
+    !packagesMode &&
+    displayUnits > 0 &&
+    !editingBlank;
+
+  const piecesSubline = hasPiecesSubline ? (
+    <span className="zd-est-unit tabular-nums">
+      → {formatQty(overridePieces!)} szt
+    </span>
+  ) : null;
+
+  const confidenceWhisper =
+    confidenceUi.hasSignal && hintKind === "confidence" ? (
+      <span
+        className={cn(
+          "zd-est-dozd-confidence",
+          confidenceUi.tone === "review" && "zd-est-dozd-confidence--review",
+          confidenceUi.tone === "accepted" &&
+            "zd-est-dozd-confidence--accepted",
+          confidenceUi.tone === "ok" && "zd-est-dozd-confidence--ok"
+        )}
+        title={confidenceUi.title || undefined}
+      >
+        <span className="zd-est-dozd-confidence__pct tabular-nums">
+          {confidenceUi.pct}%
+        </span>
+        {confidenceUi.needsReview && onAccept ? (
+          <button
+            type="button"
+            className="zd-est-dozd-confidence__accept"
+            onClick={onAccept}
+            title={confidenceUi.title || undefined}
+            aria-label={confidenceUi.acceptAriaLabel}
+          >
+            OK
+          </button>
+        ) : confidenceUi.needsReview ? (
+          <span className="zd-est-dozd-confidence__dot" aria-hidden />
+        ) : null}
+      </span>
+    ) : null;
 
   const hintLine =
-    overridden && onOverrideChange ? (
+    hintKind === "override" && onOverrideChange ? (
       <button
         type="button"
         className="zd-est-dozd-reset"
@@ -131,11 +219,15 @@ export function ZdEstimateDoZdCell({
       >
         wylicz. {qty.zdUnits}
       </button>
-    ) : roundupInfo != null ? (
+    ) : hintKind === "roundup" && roundupInfo != null ? (
       <span className="zd-est-dozd-hint" title={roundupFull ?? undefined}>
         ↑ +{roundupInfo.extra} ({roundupInfo.need}→{roundupInfo.arrive})
       </span>
-    ) : null;
+    ) : hintKind === "confidence" ? (
+      confidenceWhisper
+    ) : (
+      piecesSubline
+    );
 
   if (onOverrideChange) {
     return (
@@ -184,7 +276,14 @@ export function ZdEstimateDoZdCell({
               setFocused(false);
             }}
           />
-          {showSztUnit ? <span className="zd-est-unit">szt</span> : null}
+          {showSztUnit || showPiecesUnit ? (
+            <span className="zd-est-unit">szt</span>
+          ) : null}
+          {showPackUnit ? (
+            <span className="zd-est-unit">
+              {qty.packageLabel.trim() || "op."}
+            </span>
+          ) : null}
         </span>
         {hintLine}
       </span>
@@ -194,15 +293,7 @@ export function ZdEstimateDoZdCell({
   return (
     <span
       className="flex w-full min-w-0 max-w-full flex-col items-start gap-0.5 overflow-hidden"
-      title={
-        [
-          baseHint || undefined,
-          roundupFull ? `↑ ${roundupFull}` : null,
-          qty.hasPackaging ? overrideHint : null,
-        ]
-          .filter(Boolean)
-          .join(" ") || undefined
-      }
+      title={fullTitle || undefined}
     >
       <span className="zd-est-dozd-value">
         <span
@@ -213,8 +304,13 @@ export function ZdEstimateDoZdCell({
         >
           {formatZdEstimateTableQty(displayUnits)}
         </span>
-        {!qty.hasPackaging && displayUnits > 0 ? (
+        {showSztUnit || showPiecesUnit ? (
           <span className="zd-est-unit">szt</span>
+        ) : null}
+        {showPackUnit ? (
+          <span className="zd-est-unit">
+            {qty.packageLabel.trim() || "op."}
+          </span>
         ) : null}
       </span>
       {hintLine}

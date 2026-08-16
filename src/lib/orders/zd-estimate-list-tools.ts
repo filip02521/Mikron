@@ -77,17 +77,17 @@ export function resolveZdEstimateListToolStates(input: {
     pair: {
       enabled: pairOk,
       title: !pairsTrusted
-        ? "Wczytaj pary, żeby utworzyć parę z zaznaczenia"
+        ? "Wczytaj pary działu, żeby utworzyć parę z zaznaczenia"
         : selectedCount === 2
-          ? "Utwórz parę montaż/demontaż z zaznaczonych"
-          : "Zaznacz dokładnie 2 towary, żeby utworzyć parę",
+          ? "Utwórz parę montaż/demontaż: paczka kupowana na ZD ↔ sztuki sprzedawane"
+          : "Zaznacz dokładnie 2 towary, żeby połączyć paczkę ze sztukami",
       accent: pairOk,
       labelSuffix: "",
     },
     bom: {
       enabled: bomOk,
       title: !bomsTrusted
-        ? "Wczytaj składy, żeby utworzyć skład z zaznaczenia"
+        ? "Wczytaj składy działu, żeby utworzyć skład z zaznaczenia"
         : selectedCount >= 2
           ? ZD_BOM_UI.bulkTitleReady
           : ZD_BOM_UI.bulkTitleNeed,
@@ -97,17 +97,17 @@ export function resolveZdEstimateListToolStates(input: {
     packagingSet: {
       enabled: packagingSetOk,
       title: !packagingTrusted
-        ? "Wczytaj opakowania"
-        : "Ustaw to samo opakowanie dla zaznaczonych (np. 10 szt / op.)",
+        ? "Wczytaj opakowania działu"
+        : "Ustaw to samo opakowanie dla zaznaczonych (ile sztuk = 1 jednostka na ZD)",
       accent: packagingSetOk && selectedCount === 1,
       labelSuffix: "",
     },
     packagingClear: {
       enabled: packagingClearOk,
       title: !packagingTrusted
-        ? "Wczytaj opakowania"
+        ? "Wczytaj opakowania działu"
         : packagingClearEligibleCount > 0
-          ? "Usuń opakowanie — zamawianie na sztuki 1:1"
+          ? "Usuń opakowanie — zaznaczone wrócą do sztuk 1:1 w kolumnie Do ZD"
           : "Brak pozycji z opakowaniem w zaznaczeniu",
       accent: false,
       labelSuffix:
@@ -118,9 +118,9 @@ export function resolveZdEstimateListToolStates(input: {
     exclude: {
       enabled: excludeOk,
       title: !exclusionsTrusted
-        ? "Wczytaj wykluczenia, żeby wykluczać z zaznaczenia"
+        ? "Wczytaj wykluczenia działu, żeby wykluczać z zaznaczenia"
         : excludeEligibleCount > 0
-          ? "Wyklucz zaznaczone z kolejnych szacunków"
+          ? "Wyklucz zaznaczone — nie trafią do Do ZD przy kolejnych „Policz listę”"
           : "Brak pozycji kwalifikujących się do wykluczenia",
       accent: excludeOk && selectedCount === 1,
       labelSuffix:
@@ -131,9 +131,9 @@ export function resolveZdEstimateListToolStates(input: {
     restore: {
       enabled: restoreOk,
       title: !exclusionsTrusted
-        ? "Wczytaj wykluczenia, żeby przywracać z zaznaczenia"
+        ? "Wczytaj wykluczenia działu, żeby przywracać z zaznaczenia"
         : restoreEligibleCount > 0
-          ? "Przywróć zaznaczone wykluczone na listę do zamówienia"
+          ? "Przywróć zaznaczone wykluczone — wrócą na listę do zamówienia"
           : "Brak pozycji kwalifikujących się do przywrócenia",
       accent: restoreOk && selectedCount === 1,
       labelSuffix:
@@ -148,7 +148,7 @@ export function resolveZdEstimateListToolStates(input: {
         : !exclusionsTrusted
           ? "Wczytaj wykluczenia — „tylko na prośbę” nie może kasować niewczytanych wykluczeń"
           : onRequestEligibleCount > 0
-            ? "Oznacz jako tylko na prośbę — poza Do ZD bez aktywnej prośby"
+            ? "Oznacz jako tylko na prośbę — poza Do ZD bez aktywnej prośby; z prośbą tylko ilość z prośby"
             : "Brak pozycji kwalifikujących się (już na liście / wykluczone)",
       accent: onRequestOk && selectedCount === 1,
       labelSuffix:
@@ -163,7 +163,7 @@ export function resolveZdEstimateListToolStates(input: {
       title: !onRequestTrusted
         ? "Wczytaj listę „tylko na prośbę”"
         : clearOnRequestEligibleCount > 0
-          ? "Usuń „tylko na prośbę” — wraca zwykłe liczenie zapasu"
+          ? "Usuń „tylko na prośbę” — wraca zwykłe liczenie zapasu i tempa sprzedaży"
           : "Brak pozycji „tylko na prośbę” w zaznaczeniu",
       accent: false,
       labelSuffix:

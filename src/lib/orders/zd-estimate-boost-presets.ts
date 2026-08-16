@@ -45,7 +45,7 @@ export const ZD_BOOST_PRESET_DEFS: readonly PresetDef[] = [
     id: "off",
     shortLabel: "Wył.",
     label: "Wyłączony",
-    hint: "Bez dokładania sztuk z tempa sprzedaży. Cięcia przy wysokim stanie magazynowym nadal działają.",
+    hint: "Nie dokłada sztuk z tempa sprzedaży do Do ZD — tylko niedobór względem celu zapasu i prośby. Cięcia przy wysokim stanie magazynowym nadal działają.",
     partial: {
       maxTotalBoostRatio: 0,
       sellThroughMaxBoost: 0,
@@ -57,7 +57,7 @@ export const ZD_BOOST_PRESET_DEFS: readonly PresetDef[] = [
     id: "gentle",
     shortLabel: "Delikatny",
     label: "Delikatny (zalecany)",
-    hint: "Przy mocnej sprzedaży lekko podnosi Do ZD (ok. +20% celu). Przy słabej pewności nie dokłada.",
+    hint: "Przy mocnej sprzedaży lekko podnosi Do ZD (do ok. +20% celu). Przy niskiej pewności sprzedaży nie dokłada — bezpieczny wybór na co dzień.",
     partial: {
       maxTotalBoostRatio: 0.2,
       sellThroughMaxBoost: 0.08,
@@ -70,14 +70,14 @@ export const ZD_BOOST_PRESET_DEFS: readonly PresetDef[] = [
     id: "standard",
     shortLabel: "Standard",
     label: "Standard",
-    hint: "Dotychczasowa siła podbicia — do ok. +35% celu.",
+    hint: "Dotychczasowa siła podbicia — do ok. +35% celu przy dobrym tempie sprzedaży. Więcej zapasu niż „Delikatny”, nadal z progiem pewności.",
     partial: {},
   },
   {
     id: "aggressive",
     shortLabel: "Agresywny",
     label: "Agresywny",
-    hint: "Silniejsze podbicie — do ok. +50% celu przy wysokiej pewności.",
+    hint: "Silniejsze podbicie — do ok. +50% celu przy wysokiej pewności. Używaj świadomie przy sezonie lub gdy wolisz raczej nadmiar niż braki.",
     partial: {
       maxTotalBoostRatio: 0.5,
       sellThroughMaxBoost: 0.22,

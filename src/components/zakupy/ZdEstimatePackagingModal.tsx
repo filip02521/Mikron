@@ -168,12 +168,10 @@ export function ZdEstimatePackagingModal({
           />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-900">
-              1 na ZD → N sztuk na magazynie / sprzedaż
+              {ZD_ESTIMATE_UI.packagingIntroTitle}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Kreator liczy niedobór w sztukach, a kolumna „Do ZD” pokazuje, ile
-              opakowań wpisać (dobicie do pełnego N). Edytuj też z wiersza listy
-              kreatora.
+              {ZD_ESTIMATE_UI.packagingIntroBody}
             </p>
           </div>
         </div>

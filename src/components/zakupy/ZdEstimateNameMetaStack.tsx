@@ -15,6 +15,7 @@ import {
   type ZdNameAutoExcludeMatch,
 } from "@/lib/orders/zd-estimate-name-exclude";
 import type { ZdEstimatePairMeta } from "@/lib/orders/zd-estimate-pairs";
+import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import { ZdEstimateBomMetaBadge } from "@/components/zakupy/ZdEstimateBomMetaBadge";
 import { ZdEstimateIndividualMetaBadge } from "@/components/zakupy/ZdEstimateIndividualMetaBadge";
 import { ZdEstimatePairMetaBadge } from "@/components/zakupy/ZdEstimatePairMetaBadge";
@@ -118,7 +119,7 @@ export function ZdEstimateNameMetaStack({
       kind: "individual",
       summary: doZdSuppressed
         ? "Prośba · nie w Do ZD"
-        : `Prośba · ${individualExtra.extraPieces} szt`,
+        : `Prośba · ${formatQty(individualExtra.extraPieces)} szt`,
       node: (
         <ZdEstimateIndividualMetaBadge
           extra={individualExtra}

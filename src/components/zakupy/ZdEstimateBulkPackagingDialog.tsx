@@ -83,7 +83,7 @@ export function ZdEstimateBulkPackagingDialog({
         open
         onClose={onCancel}
         title={`Usuń opakowanie (${clearCount}${clearOverLimit ? ` z ${lines.length}` : ""})`}
-        titleHint="Zaznaczone wrócą do zamawiania na sztuki 1:1 w kolumnie Do ZD."
+        titleHint={ZD_ESTIMATE_UI.packagingBulkClearHint}
         titleId="zd-estimate-bulk-packaging-clear-title"
         size="md"
         tier="raised"

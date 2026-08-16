@@ -415,11 +415,25 @@ describe("buildZdCreateApiBody + uwagi", () => {
     expect(normalizeZdCreateUwagi("  ")).toBeNull();
     expect(
       defaultZdCreateUwagi({
-        supplierName: "A",
-        scopeLabel: "G",
+        scopeMode: "grupa",
+        scopeLabel: "Polkard",
         dateKey: "2026-08-08",
       })
-    ).toBe("OnTime kreator · A · G · 2026-08-08");
+    ).toBe("OnTime kreator · Grupa Polkard · 2026-08-08");
+    expect(
+      defaultZdCreateUwagi({
+        scopeMode: "cecha",
+        scopeLabel: "Ivoclar",
+        dateKey: "2026-08-08",
+      })
+    ).toBe("OnTime kreator · Cecha Ivoclar · 2026-08-08");
+    expect(
+      defaultZdCreateUwagi({
+        scopeMode: "grupa",
+        scopeLabel: null,
+        dateKey: "2026-08-08",
+      })
+    ).toBe("OnTime kreator · 2026-08-08");
   });
 });
 

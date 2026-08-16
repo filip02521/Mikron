@@ -629,7 +629,7 @@ export function formatSalesTrackHint(
   }
 
   if (!(Math.abs(adj.deltaPieces) > DELTA_EPS)) {
-    // Czysta flaga weryfikacji — UI pokazuje to w kolumnie Pewność (bez drugiego copy).
+    // Czysta flaga weryfikacji — UI pokazuje to w Do ZD (whisper pewności, bez drugiego copy).
     return null;
   }
 

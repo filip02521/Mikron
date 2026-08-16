@@ -16,8 +16,12 @@ import {
   ZD_CREATE_SOFT_WARN_LINES,
   type ZdCreatePreview,
 } from "@/lib/orders/zd-estimate-create-zd";
+import {
+  composeZdCreateUwagiWithServices,
+  type ZdEstimateIndividualServiceLine,
+} from "@/lib/orders/zd-estimate-individual";
+import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import type { ZdPostCreateMarkFreeze } from "@/lib/orders/zd-estimate-post-create";
-import { pendingGlowneOrderIds } from "@/lib/orders/zd-estimate-post-create";
 import {
   zdEstimateCreateConfirmLabel,
   zdEstimateCreateTitleHint,
@@ -28,6 +32,14 @@ import {
 import type { ZdEstimateRunMode } from "@/lib/orders/zd-estimate-scope";
 import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
 import { ZdEstimateImplicitPieceNotice } from "@/components/zakupy/ZdEstimateImplicitPieceNotice";
+
+export type ZdCreateSubmitFreezeSnap = {
+  includedServiceOrderIds: string[];
+  omittedServiceCount: number;
+  individualCatalogOrderIds: string[];
+  individualServiceOrderIds: string[];
+  consumedOrderIds: string[];
+};
 
 export function ZdEstimateCreateZdDialog({
   open,
@@ -45,12 +57,10 @@ export function ZdEstimateCreateZdDialog({
   initialUwagi,
   uwagiBaseMaxLen = ZD_CREATE_MAX_UWAGI_LEN,
   individualCatalogOrderIds,
-  individualServiceOrderIds,
+  serviceLinesForCompose = [],
   consumedOrderIds,
   markFreeze = null,
-  serviceUwagiPreview = null,
   excludedWithIndividualCount = 0,
-  omittedServiceCount = 0,
   implicitPieceSnapshotNotice = null,
   onOpenPackaging,
   onOpenPairs,
@@ -60,6 +70,7 @@ export function ZdEstimateCreateZdDialog({
   onSubmitStart,
   ordersIsLive,
   ordersPort,
+  ordersHostLabel = null,
   extrasPolicy = "sum",
 }: {
   open: boolean;
@@ -80,17 +91,13 @@ export function ZdEstimateCreateZdDialog({
   uwagiBaseMaxLen?: number;
   /** Prośby katalogowe (extras na pozycjach create). */
   individualCatalogOrderIds?: string[] | null;
-  /** Prośby-usługi do uwag. */
-  individualServiceOrderIds?: string[] | null;
+  /** Linie usług do live compose z aktualną bazą uwag. */
+  serviceLinesForCompose?: readonly ZdEstimateIndividualServiceLine[];
   /** Prośby już pokryte tym ZD (Nowe, ale extras nie doliczać drugi raz). */
   consumedOrderIds?: string[] | null;
   markFreeze?: ZdPostCreateMarkFreeze | null;
-  /** Podgląd bloku usług, który serwer dołoży do uwag. */
-  serviceUwagiPreview?: string | null;
   excludedWithIndividualCount?: number;
-  omittedServiceCount?: number;
   implicitPieceSnapshotNotice?: ImplicitPieceSnapshotNotice | null;
-  /** Zamknij dialog i otwórz panel opakowań / par. */
   onOpenPackaging?: () => void;
   onOpenPairs?: () => void;
   onClose: () => void;
@@ -111,10 +118,11 @@ export function ZdEstimateCreateZdDialog({
     composedUwagi?: string | null;
     omittedServiceCount?: number;
     teethServiceCount?: number;
+    includedServiceOrderIds?: string[];
+    acceptedCatalogOrderIds?: string[];
   }) => void;
   onError: (message: string, opts?: { timeoutKhId?: number }) => void;
-  onSubmitStart?: () => void;
-  /** true = LIVE :5080 (aktualna baza) — silniejsze ostrzeżenie + confirmLiveCreate. */
+  onSubmitStart?: (snap: ZdCreateSubmitFreezeSnap) => void;
   ordersIsLive: boolean;
   ordersPort: number;
   ordersHostLabel?: string | null;
@@ -148,35 +156,95 @@ export function ZdEstimateCreateZdDialog({
       setUwagi(
         (initialUwagi?.trim() ||
           defaultZdCreateUwagi({
-            supplierName,
+            scopeMode,
             scopeLabel,
             dateKey,
           })).slice(0, baseMax)
       );
     });
-  }, [open, supplierName, scopeLabel, dateKey, initialUwagi, baseMax]);
+  }, [open, scopeMode, scopeLabel, dateKey, initialUwagi, baseMax]);
+
+  const liveCompose = useMemo(
+    () =>
+      composeZdCreateUwagiWithServices({
+        baseUwagi: uwagi,
+        serviceLines: serviceLinesForCompose,
+        maxLen: ZD_CREATE_MAX_UWAGI_LEN,
+        prioritizeServices: true,
+      }),
+    [uwagi, serviceLinesForCompose]
+  );
+
+  const teethOrderIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const line of serviceLinesForCompose) {
+      if (line.reason !== "teeth") continue;
+      for (const r of line.requests) {
+        const id = String(r.orderId ?? "").trim();
+        if (id) ids.add(id);
+      }
+    }
+    return ids;
+  }, [serviceLinesForCompose]);
+
+  const liveIncludedServiceIds = liveCompose.includedServiceOrderIds;
+  const liveOmittedServiceCount = liveCompose.omittedServiceCount;
+  const liveGlowneServiceCount = liveIncludedServiceIds.filter(
+    (id) => !teethOrderIds.has(id)
+  ).length;
+  const catalogGlowneCount = markFreeze?.pendingGlowneCatalogIds.length ?? 0;
+  const glowneCount = catalogGlowneCount + liveGlowneServiceCount;
 
   const uwagiRemaining = baseMax - uwagi.length;
-  const glowneCount = pendingGlowneOrderIds(markFreeze).length;
 
   const catalogRequests = useMemo(
     () => markFreeze?.catalogRequests ?? [],
     [markFreeze]
   );
-  const serviceLines = useMemo(
-    () => markFreeze?.serviceLines ?? [],
-    [markFreeze]
-  );
+  const serviceLinesPreview = useMemo(() => {
+    const lines = markFreeze?.serviceLines ?? [];
+    const included = new Set(liveIncludedServiceIds);
+    return lines
+      .map((line) => ({
+        ...line,
+        requests: line.requests.filter((r) => included.has(r.orderId)),
+      }))
+      .filter((line) => line.requests.length > 0);
+  }, [markFreeze, liveIncludedServiceIds]);
+
+  const serviceUwagiPreview = useMemo(() => {
+    const idx = liveCompose.uwagi.search(/Usługi:\s*/i);
+    return idx >= 0 ? liveCompose.uwagi.slice(idx) : null;
+  }, [liveCompose.uwagi]);
+
+  const titleHint = useMemo(() => {
+    const base = zdEstimateCreateTitleHint({
+      isLive: ordersIsLive,
+      port: ordersPort,
+    });
+    const host = ordersHostLabel?.trim();
+    return host ? `${base} Host: ${host}.` : base;
+  }, [ordersIsLive, ordersPort, ordersHostLabel]);
 
   if (!open) return null;
 
   const submit = () => {
     if (!confirmed || pending) return;
+    const catalogIds = [...(individualCatalogOrderIds ?? [])];
+    const serviceIdsForSubmit = [...liveIncludedServiceIds];
+    const consumed = [...(consumedOrderIds ?? [])];
+    const lineMetaSnap = lineMeta ?? null;
     const startedAt = Date.now();
     setProgressComplete(false);
     setProgressSnapshotOk(null);
     setProgressStartedAtMs(startedAt);
-    onSubmitStart?.();
+    onSubmitStart?.({
+      includedServiceOrderIds: serviceIdsForSubmit,
+      omittedServiceCount: liveOmittedServiceCount,
+      individualCatalogOrderIds: catalogIds,
+      individualServiceOrderIds: serviceIdsForSubmit,
+      consumedOrderIds: consumed,
+    });
     startPending(async () => {
       const res = await actionCreateZdFromEstimate({
         supplierId,
@@ -190,11 +258,11 @@ export function ZdEstimateCreateZdDialog({
           symbol: l.symbol || null,
           plu: l.plu ?? null,
         })),
-        lineMeta: lineMeta ?? null,
+        lineMeta: lineMetaSnap,
         confirmLiveCreate: ordersIsLive ? true : undefined,
-        individualCatalogOrderIds: individualCatalogOrderIds ?? null,
-        individualServiceOrderIds: individualServiceOrderIds ?? null,
-        consumedOrderIds: consumedOrderIds ?? null,
+        individualCatalogOrderIds: catalogIds,
+        individualServiceOrderIds: serviceIdsForSubmit,
+        consumedOrderIds: consumed,
       });
       if (!res.ok) {
         setProgressStartedAtMs(null);
@@ -230,6 +298,8 @@ export function ZdEstimateCreateZdDialog({
         composedUwagi: res.composedUwagi ?? null,
         omittedServiceCount: res.omittedServiceCount,
         teethServiceCount: res.teethServiceCount,
+        includedServiceOrderIds: res.includedServiceOrderIds,
+        acceptedCatalogOrderIds: res.acceptedCatalogOrderIds,
       });
     });
   };
@@ -241,15 +311,12 @@ export function ZdEstimateCreateZdDialog({
       open
       onClose={onClose}
       title="Utwórz ZD w Subiekcie"
-      titleHint={zdEstimateCreateTitleHint({
-        isLive: ordersIsLive,
-        port: ordersPort,
-      })}
+      titleHint={titleHint}
       titleId="zd-estimate-create-zd-title"
-      size="full"
+      size="xl"
       tier="raised"
       disableBackdropClose={pending}
-      bodyClassName="space-y-4 px-5 py-5 sm:px-6"
+      bodyClassName="space-y-4 px-5 py-4 sm:px-6 sm:py-5"
       footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button
@@ -301,13 +368,13 @@ export function ZdEstimateCreateZdDialog({
             <p className="mt-1 text-slate-600">
               {preview.lineCount} poz. · suma do ZD{" "}
               <span className="font-medium tabular-nums text-slate-900">
-                {preview.zdUnitsSuma}
+                {formatQty(preview.zdUnitsSuma)}
               </span>
               {preview.piecesArrivingSuma > 0 &&
               preview.piecesArrivingSuma !== preview.zdUnitsSuma ? (
                 <>
                   {" "}
-                  · {preview.piecesArrivingSuma} szt
+                  · {formatQty(preview.piecesArrivingSuma)} szt
                 </>
               ) : null}
               {scopeLabel ? (
@@ -325,19 +392,17 @@ export function ZdEstimateCreateZdDialog({
                 {glowneCount === 1
                   ? "kwalifikuje się"
                   : "kwalifikują się"}{" "}
-                do Główne
-                {markFreeze &&
-                markFreeze.pendingGlowneCatalogIds.length > 0 &&
-                markFreeze.pendingGlowneServiceIds.length > 0
-                  ? ` (${markFreeze.pendingGlowneCatalogIds.length} na pozycjach, ${markFreeze.pendingGlowneServiceIds.length} w uwagach)`
-                  : markFreeze && markFreeze.pendingGlowneServiceIds.length > 0
+                do osobnego Główne
+                {catalogGlowneCount > 0 && liveGlowneServiceCount > 0
+                  ? ` (${catalogGlowneCount} na pozycjach, ${liveGlowneServiceCount} w uwagach)`
+                  : liveGlowneServiceCount > 0
                     ? " (usługi w uwagach)"
                     : ""}
                 .
               </p>
             ) : (
               <p className="mt-2 text-slate-600">
-                {ZD_ESTIMATE_UI.createAfterSuccessDecide}
+                {ZD_ESTIMATE_UI.createAfterSuccessDecideNoGlowne}
               </p>
             )}
             {excludedWithIndividualCount > 0 ? (
@@ -351,15 +416,15 @@ export function ZdEstimateCreateZdDialog({
                 jako usługa (bez ilości towaru).
               </p>
             ) : null}
-            {omittedServiceCount > 0 ? (
+            {liveOmittedServiceCount > 0 ? (
               <p className="mt-2 rounded-md border border-amber-200/80 bg-amber-50/80 px-2.5 py-2 text-xs text-amber-950">
-                {omittedServiceCount}{" "}
-                {omittedServiceCount === 1
+                {liveOmittedServiceCount}{" "}
+                {liveOmittedServiceCount === 1
                   ? "usługa nie zmieści się"
                   : "usług nie zmieści się"}{" "}
                 w limicie uwag — te prośby{" "}
                 <span className="font-semibold">nie wejdą na listę Główne</span>
-                . Skróć bazę uwag albo obsłuż je w panelu Dziś.
+                . {ZD_ESTIMATE_UI.createOmittedServicesHint}
               </p>
             ) : null}
             {preview.softWarnOverLimit ? (
@@ -394,8 +459,8 @@ export function ZdEstimateCreateZdDialog({
                 {baseMax < ZD_CREATE_MAX_UWAGI_LEN
                   ? ` (rezerwa usług ${ZD_CREATE_MAX_UWAGI_LEN - baseMax})`
                   : ""}
-                {omittedServiceCount > 0
-                  ? ` · +${omittedServiceCount} usług skrócone`
+                {liveOmittedServiceCount > 0
+                  ? ` · +${liveOmittedServiceCount} usług skrócone`
                   : ""}
               </span>
             </div>
@@ -425,9 +490,9 @@ export function ZdEstimateCreateZdDialog({
 
           <ZdEstimateCreateRequestsPreview
             catalogRequests={catalogRequests}
-            serviceLines={serviceLines}
-            glowneCatalogCount={markFreeze?.pendingGlowneCatalogIds.length}
-            glowneServiceCount={markFreeze?.pendingGlowneServiceIds.length}
+            serviceLines={serviceLinesPreview}
+            glowneCatalogCount={catalogGlowneCount}
+            glowneServiceCount={liveGlowneServiceCount}
             constrainHeight={false}
           />
 

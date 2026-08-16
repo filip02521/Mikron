@@ -21,17 +21,17 @@ export function zdEstimatePageFlowSteps(): readonly {
     {
       id: "scope",
       label: "Zakres",
-      hint: "Grupa lub cecha Subiekta",
+      hint: "Wybierz grupę albo cechę towarów w Subiekcie",
     },
     {
       id: "list",
       label: "Lista Do ZD",
-      hint: "Policz ilości na dokumencie",
+      hint: "Policz ilości, które trafią na dokument",
     },
     {
       id: "create",
       label: "Utwórz ZD",
-      hint: "Zapis dokumentu w Subiekcie",
+      hint: "Zapisz dokument zamówienia w Subiekcie",
     },
   ];
 }
@@ -221,30 +221,38 @@ export function zdEstimateRouteLoadingSteps(): ReadonlyArray<{
 
 export function zdEstimateScopeDashedHint(mode: "grupa" | "cecha"): string {
   return mode === "grupa"
-    ? "Wybierz skrót albo wyszukaj grupę — zapas i daty ustawią się same."
-    : "Wyszukaj cechę — zapas i daty ustawią się z nazwy, jeśli jest karta dostawcy.";
+    ? "Wybierz skrót albo wyszukaj grupę Subiekta — dni zapasu i okno sprzedaży ustawią się automatycznie (z karty dostawcy lub z nazwy)."
+    : "Wyszukaj cechę Subiekta — zapas i daty sprzedaży ustawią się z nazwy cechy albo z karty dostawcy w „Zaawansowane”.";
+}
+
+export function zdEstimateScopeModeGrupaHint(): string {
+  return "Zakres = grupa towarów z katalogu Subiekta (najczęstszy wybór przy dostawcy).";
+}
+
+export function zdEstimateScopeModeCechaHint(): string {
+  return "Zakres = cecha towarów — może łączyć towary z wielu grup (np. marka lub linia).";
 }
 
 export function zdEstimateReadyToCountHint(): string {
-  return "Gotowe — możesz policzyć listę.";
+  return "Zakres gotowy — kliknij „Policz listę”, żeby wyliczyć ilości Do ZD.";
 }
 
 export function zdEstimateScopeChangedHint(): string {
-  return "Zmieniono zakres — policz listę ponownie, żeby odświeżyć wynik.";
+  return "Zmieniono zakres — policz listę ponownie, żeby odświeżyć ilości Do ZD.";
 }
 
 export function zdEstimateNeedsSettingsHint(): string {
-  return "Najpierw wczytaj ustawienia działu (komunikat pod tą kartą albo „Spróbuj ponownie” w banerze), potem „Policz listę”.";
+  return "Najpierw wczytaj ustawienia działu (komunikat pod tą kartą albo „Spróbuj ponownie” w banerze), potem kliknij „Policz listę”.";
 }
 
 /** Jedna linia pod trybem Cecha. */
 export function zdEstimateCechaScopeCaption(): string {
-  return "Cecha może łączyć towary z wielu grup. Zapas bierzemy z nazwy cechy albo z dostawcy w „Zaawansowane”.";
+  return "Cecha może łączyć towary z wielu grup katalogowych. Dni zapasu bierzemy z nazwy cechy albo z dostawcy wskazanego w „Zaawansowane”.";
 }
 
 /** HelpHint przy sekcji polityk liczenia. */
 export function zdEstimatePoliciesSectionHint(): string {
-  return "Ustalają, jak z tempa sprzedaży i z próśb handlowców wyliczamy ilość Do ZD. Zmiana podbicia przy gotowej liście wymaga ponownego „Policz listę”. Zmiana reguły próśb odświeża Do ZD od razu.";
+  return "Te ustawienia decydują, ile sztuk trafi do kolumny „Do ZD”. Podbicie reaguje na tempo sprzedaży — po zmianie trzeba ponownie „Policz listę”. Reguła próśb odświeża ilości od razu, bez ponownego liczenia całego zakresu.";
 }
 
 export function zdEstimateLaunchProgressTitle(input: {
@@ -323,16 +331,16 @@ export function zdEstimatePageHint(input: {
   configured: boolean;
 }): string {
   if (!input.configured) {
-    return "Skonfiguruj połączenie z Subiektem (host kreatora), żeby policzyć listę i utworzyć ZD.";
+    return "Aby policzyć listę i utworzyć dokument ZD, potrzebne jest połączenie z Subiektem (host kreatora). Poproś administratora o konfigurację albo sprawdź ustawienia środowiska.";
   }
   const hostNote = input.isLive
-    ? "„Utwórz ZD” zapisuje prawdziwy dokument w aktualnej bazie Subiekta."
-    : "„Utwórz ZD” idzie na środowisko testowe Subiekta.";
-  return `„Do ZD” = jednostki dokumentu (opakowania i prośby). Opakowania, wykluczenia, „tylko na prośbę”, pary i składy są wspólne dla działu. ${hostNote}`;
+    ? "„Utwórz ZD” zapisuje prawdziwy dokument w aktualnej bazie Subiekta — operacji nie cofniesz z OnTime."
+    : "„Utwórz ZD” zapisuje dokument w środowisku testowym Subiekta — bez wpływu na produkcyjną bazę.";
+  return `Kolumna „Do ZD” to jednostki na dokumencie (przy paczce — liczba opakowań lub sztuk według trybu). Wykluczenia, „tylko na prośbę”, opakowania, pary i składy są wspólne dla całego działu zakupów. ${hostNote}`;
 }
 
 export function zdEstimatePrepCardHint(): string {
-  return "Wykluczenia, „tylko na prośbę”, opakowania, pary i składy są wspólne dla całego działu zakupów i obowiązują przy każdym „Policz listę”.";
+  return "Tu wybierasz zakres z Subiekta (grupę albo cechę) i zasady liczenia. Reguły listy oraz mapowania dostawców są wspólne dla działu — zmiana dotyczy wszystkich użytkowników zakupów i obowiązuje przy każdym „Policz listę”.";
 }
 
 export function zdEstimateEmptyListDescription(isLive: boolean): string {
@@ -396,9 +404,9 @@ export function zdEstimateCreateTitleHint(input: {
   port: number;
 }): string {
   if (input.isLive) {
-    return `Dokument powstanie w aktualnej bazie Subiekta (:${input.port}). Nie da się cofnąć z OnTime. Po sukcesie w podsumowaniu zdecydujesz, czy odznaczyć prośby jako Główne i czy oznaczyć plan jako złożony.`;
+    return `Dokument powstanie w aktualnej bazie Subiekta (:${input.port}). Nie da się cofnąć z OnTime. Po sukcesie w panelu po utworzeniu na tej stronie zdecydujesz, czy odznaczyć prośby jako Główne i czy oznaczyć plan jako złożony.`;
   }
-  return `Dokument powstanie w testowym Subiekcie (:${input.port}). Nie da się cofnąć z OnTime. Termin realizacji ustawisz w Subiekcie. Po sukcesie w podsumowaniu zdecydujesz, czy odznaczyć prośby i plan.`;
+  return `Dokument powstanie w testowym Subiekcie (:${input.port}). Nie da się cofnąć z OnTime. Termin realizacji ustawisz w Subiekcie. Po sukcesie w panelu po utworzeniu na tej stronie zdecydujesz, czy odznaczyć prośby i plan.`;
 }
 
 export function zdEstimateCreateConfirmLabel(input: {
@@ -411,14 +419,14 @@ export function zdEstimateCreateConfirmLabel(input: {
     : `Potwierdzam utworzenie ZD w testowym Subiekcie (:${input.port}). Operacji nie da się cofnąć z OnTime`;
   const follow =
     (input.markCount ?? 0) > 0
-      ? " — po utworzeniu w podsumowaniu zdecydujesz, czy odznaczyć prośby i plan"
+      ? " — po utworzeniu w panelu na tej stronie zdecydujesz, czy odznaczyć prośby i plan"
       : "";
   return `${base}${follow}.`;
 }
 
 /** Legenda jednostek nad tabelą wyniku. */
 export const ZD_ESTIMATE_UNITS_LEGEND =
-  "Jednostki: Sprzed. / Cel / Dost. = sztuki (przy paczce lub opakowaniu pod spodem ≈ op.). Do ZD = jednostki dokumentu (op. przy opakowaniu). Otwarte ZD = jednostki dokumentu (przy opakowaniu poniżej także w sztukach).";
+  "Jednostki: Dost. / Sprzed. / Cel = zawsze sztuki (przybliżenie w op. tylko w podpowiedzi po najechaniu). Kolumna Opak. = ile sztuk w 1 na ZD (kliknij, żeby edytować). Do ZD = jednostki dokumentu (paczki albo sztuki według trybu; przy paczkach pod spodem → ile sztuk przyjdzie). Otwarte = jednostki dokumentu.";
 
 export const ZD_ESTIMATE_UI = {
   policzNeedsSettingsTitle:
@@ -437,11 +445,13 @@ export const ZD_ESTIMATE_UI = {
   createTeethNote:
     "Prośby zębów trafiają do uwag dokumentu i nie są odznaczane jako Główne z tego ekranu.",
   createAfterSuccessDecide:
-    "Po utworzeniu ZD w podsumowaniu zdecydujesz, czy odznaczyć prośby jako Główne i czy oznaczyć planowane zamówienie jako złożone.",
-  pairCoverLabel: "pokrycie",
-  packagingConflictShort: "Konflikt opakowania",
+    "Po utworzeniu ZD w panelu na tej stronie zdecydujesz, czy odznaczyć prośby jako Główne i czy oznaczyć planowane zamówienie jako złożone.",
+  createAfterSuccessDecideNoGlowne:
+    "Po utworzeniu ZD w panelu na tej stronie możesz oznaczyć planowane zamówienie jako złożone (osobno od Główne).",
   packagingConflictTitle:
     "Opakowanie w OnTime różni się od przelicznika pary — sprawdź ustawienia przed utworzeniem ZD.",
+  createOmittedServicesHint:
+    "Usuń część usług z limitu uwag albo obsłuż je w panelu Dziś (skrócenie samej bazy uwag nie wpuszcza pominiętych usług).",
   implicitPieceSnapshotTitle:
     "Historia zapisze jednostki ZD jako sztuki 1:1",
   implicitPieceSnapshotBody:
@@ -455,33 +465,100 @@ export const ZD_ESTIMATE_UI = {
   emptyExcludedDescription:
     "Żaden produkt nie jest wykluczony ręcznie, automatycznie (outlet / wycofane / zęby) ani „tylko na prośbę” bez aktywnej prośby.",
   excludedFilterTitle:
-    "Wykluczenia ręczne, automatyczne oraz „tylko na prośbę” bez aktywnej prośby. Z prośbą — w Do ZD (ilość = prośba).",
+    "Wykluczenia ręczne i automatyczne oraz „tylko na prośbę” bez aktywnej prośby. Z aktywną prośbą pozycja wraca do Do ZD w ilości z prośby.",
+  listFilterOrderTitle:
+    "Pozycje z ilością Do ZD większą od zera — bez wykluczonych z listy zamówienia",
+  listFilterAllTitle:
+    "Cały zakres z Subiekta, także zerowe Do ZD; wykluczone widać z oznaczeniem",
+  listFilterReviewTitle:
+    "Pozycje z wątpliwym podbiciem Do ZD (niska lub średnia pewność sprzedaży) — warto sprawdzić przed utworzeniem dokumentu",
+  listShowStockDetailTitle:
+    "Dodatkowe kolumny: stan magazynowy i rezerwacje (obok kolumny Dostępne)",
+  listShowZkColumnTitle:
+    "Kolumny diagnostyczne: otwarte ZK oraz surowe ilości z Subiekta — zwykle zbędne przy codziennym zamawianiu",
+  listSortByConfidence: "Sortuj po pewności",
+  doZdColumnHint:
+    "Ilość na dokumencie ZD. Przy paczkach: liczba opakowań (+ ile sztuk przyjdzie pod spodem). Pod ilością: % pewności podbicia — amber + OK = do weryfikacji (klik zaakceptuj w sesji). Definicja opakowania — kolumna Opak. obok.",
   advancedZapasMinLabel: "Bufor minimum (szt.)",
   advancedZapasMinHint:
-    "Dodatkowe sztuki doliczane do celu zapasu przed wyliczeniem Do ZD.",
+    "Dodatkowe sztuki doliczane do celu zapasu przed wyliczeniem Do ZD. Podnoszą „bezpieczny” poziom magazynu niezależnie od okna sprzedaży.",
+  advancedSupplierOverrideHint:
+    "Wymusza kartę dostawcy (dni zapasu, skróty, mapa zakresu) zamiast domyślnego z grupy lub cechy. Przydatne, gdy cecha łączy kilka marek.",
+  advancedDniZapasuHint:
+    "Na ile dni sprzedaży budujemy cel zapasu. Po zmianie okno „Data od / do” przelicza się automatycznie (chyba że ustawisz daty ręcznie).",
+  advancedDataOdHint:
+    "Początek okna sprzedaży z Subiekta. Ręczna zmiana blokuje automatyczne daty z dni zapasu.",
+  advancedDataDoHint:
+    "Koniec okna sprzedaży (zwykle ostatni dzień z faktur). Ręczna zmiana blokuje automatyczne daty z dni zapasu.",
   advancedSalesWindowManualNote:
-    "Okno sprzedaży ustawione ręcznie — nie nadpisujemy dat z zapasu dostawcy ani grupy.",
+    "Okno sprzedaży ustawione ręcznie — daty nie nadpiszą się automatycznie z zapasu dostawcy ani z nazwy grupy.",
   boostPowerLabel: "Podbicie Do ZD",
-  boostPowerAriaLabel: "Siła podbicia ilości Do ZD względem tempa sprzedaży",
+  boostPowerAriaLabel:
+    "Jak mocno tempo sprzedaży podnosi ilość w kolumnie Do ZD",
   boostNeedsRecountTitle: "Zmieniono podbicie sprzedaży",
   boostNeedsRecountBody:
-    "Lista Do ZD pochodzi z poprzedniego ustawienia. Przelicz, zanim utworzysz ZD.",
+    "Lista Do ZD powstała przy poprzedniej sile podbicia. Przelicz listę, zanim utworzysz dokument — ilości mogą się zmienić.",
   boostNeedsRecountCta: "Przelicz z nowym podbiciem",
   createGateBoostNeedsRecount:
     "Zmieniono podbicie sprzedaży — przelicz listę przed utworzeniem ZD.",
   policiesSectionLabel: "Polityki liczenia",
   historyNeedsRecountTitle: "Zmieniono historię powiązań ZD",
   historyNeedsRecountBody:
-    "Włączono lub wyłączono snapshot w historii zamówień. Przelicz listę przed utworzeniem ZD — korekta z historii mogła się zmienić.",
+    "Włączono lub wyłączono zapisane ZD w historii zamówień. Przelicz listę przed utworzeniem dokumentu — korekta z historii mogła się zmienić.",
   historyNeedsRecountCta: "Przelicz z historią",
   createGateHistoryNeedsRecount:
     "Zmieniono historię powiązań ZD — przelicz listę przed utworzeniem ZD.",
+  /** Opisy pozycji menu „Reguły listy”. */
+  menuExclusionsTitle: "Wykluczenia",
+  menuExclusionsDescription:
+    "Towary trwale pomijane przy „Policz listę” — nie trafiają do Do ZD, dopóki ich nie przywrócisz.",
+  menuOnRequestTitle: "Tylko na prośbę",
+  menuOnRequestDescription:
+    "Bez prośby handlowca poza listą; z prośbą — Do ZD tylko w ilości z prośby, bez celu zapasu.",
+  menuPackagingTitle: "Opakowania",
+  menuPackagingDescription:
+    "Ile sztuk wchodzi w jedną jednostkę na dokumencie ZD (paczka albo dobicie w sztukach).",
+  menuPairsTitle: "Pary",
+  menuPairsDescription:
+    "Karton kupowany ↔ sztuki sprzedawane: popyt i stan w sztukach, na ZD zamawiasz paczkę.",
+  menuBomsDescription:
+    "Zestawy i komplety — jak sprzedaż zestawu obciąża składniki i co idzie na dokument ZD.",
+  menuRulesGroupLabel: "Jak liczyć Do ZD",
+  menuSuppliersGroupLabel: "Mapowania i historia",
+  menuScopesDescription:
+    "Przypisanie dostawcy do grupy lub cechy Subiekta. Wejście z kolejki Dziś od razu otwiera właściwy zakres.",
+  menuSnapshotsDescription:
+    "Zapisane dokumenty ZD korygują kolejne szacunki. Wyłącz błędne powiązanie, żeby nie zaniżało list.",
+  exclusionsModalTitle: "Wykluczenia ZD",
+  exclusionsModalHint:
+    "Produkty z tej listy są pomijane przy każdym „Policz listę” — nie pojawiają się w Do ZD. Lista jest wspólna dla całego działu zakupów. To nie to samo co „tylko na prośbę”: twarde wykluczenie blokuje także ścieżkę katalogową z prośbą (prośba może trafić do usług lub uwag).",
+  exclusionsIntroTitle: "Trwałe pomijanie przy „Do ZD”",
+  exclusionsIntroBody:
+    "Dodaj produkt, gdy nie chcesz go zamawiać w kreatorze (np. outlet, wycofanie, błąd katalogu). Przywróć go, gdy znów ma wrócić na listę. Notatka pomaga innym w dziale zrozumieć powód.",
+  excludeDialogHint:
+    "Produkt zniknie z „Do ZD” przy kolejnych „Policz listę”, aż go przywrócisz. Lista jest wspólna dla działu zakupów.",
+  bulkExcludeDialogHint:
+    "Zaznaczone produkty znikną z „Do ZD” przy kolejnych „Policz listę”. Lista jest wspólna dla działu zakupów.",
+  onRequestModalTitle: "Tylko na prośbę",
+  onRequestModalHint:
+    "Bez aktywnej prośby handlowca produkt zostaje poza Do ZD. Gdy prośba jest, trafia na listę tylko w ilości z prośby — bez doliczania celu zapasu. Lista wspólna dla działu. Nie mylić z „w razie potrzeby” na karcie dostawcy ani z twardym wykluczeniem.",
+  onRequestIntroTitle: "Zamawianie tylko przy prośbie",
+  onRequestIntroBody:
+    "Usuń wpis, gdy produkt ma wrócić do zwykłego liczenia zapasu (tempo sprzedaży + cel magazynowy).",
+  pairsModalTitle: "Pary montaż / demontaż",
+  pairsModalHint:
+    "Łączysz SKU paczki (kupowane na ZD) ze SKU sztuk (sprzedawane). Kreator scala sprzedaż i stany w sztukach, a na dokument zamawia wyłącznie paczkę. Przydatne, gdy w Subiekcie masz osobny towar „karton” i „sztuka”.",
+  pairsIntroTitle: "1 paczka = N sztuk (demontaż)",
+  pairsIntroBodySeed:
+    "Wskaż, który towar to cała paczka (kupowana na ZD), a który pozycja na sztuki — oraz ile sztuk jest w paczce.",
+  pairsIntroBodyManual:
+    "Dodaj pary ręcznie albo zaznacz 2 towary na liście wyniku i wybierz „Para”. Automatyczny sync kompletów z Subiekta jest niedostępny, dopóki host ORDERS nie udostępni endpointu kompletów.",
   supplierScopesPanelTitle: "Zakresy dostawców",
   supplierScopesPanelHint:
-    "Globalne mapowanie dostawca ↔ grupa lub cecha Subiekta — wspólne dla całego działu zakupów. Używane przy wejściu z kolejki Dziś i przy skrótach w kreatorze.",
+    "Każdy dostawca może mieć jedną przypisaną grupę albo cechę Subiekta. Mapowanie jest wspólne dla działu: z kolejki Dziś kreator otwiera od razu ten zakres, a skróty w formularzu działają spójnie dla wszystkich.",
   supplierScopesIntroTitle: "Jedno mapowanie na dostawcę",
   supplierScopesIntroBody:
-    "Dostawca z kolejki Dziś otwiera kreator z przypisaną grupą lub cechą. Zmiana tutaj obowiązuje wszystkich w dziale.",
+    "Gdy handlowiec lub zakupy wchodzą z Dziś przy dostawcy, OnTime wie, którą grupę lub cechę policzyć. Zmiana tutaj obowiązuje cały dział — nie ustawiaj „na próbę” bez uzgodnienia.",
   supplierScopesAddCta: "Dodaj mapowanie",
   supplierScopesAddHint:
     "Wybierz dostawcę bez mapowania, potem wyszukaj i wskaż grupę lub cechę Subiekta.",
@@ -492,7 +569,7 @@ export const ZD_ESTIMATE_UI = {
   supplierScopesSearchPlaceholder: "Szukaj dostawcy, etykiety, id…",
   supplierScopesEmptyTitle: "Brak mapowań",
   supplierScopesEmptyDescription:
-    "Dodaj mapowanie albo zapisz zakres przy pierwszym wejściu z Dziś.",
+    "Dodaj mapowanie albo zapisz zakres przy pierwszym wejściu z Dziś — wtedy kolejne wejścia otworzą właściwą grupę lub cechę automatycznie.",
   supplierScopesFilterEmptyTitle: "Brak wyników",
   supplierScopesFilterEmptyDescription:
     "Żadne mapowanie nie pasuje do filtra — wyczyść wyszukiwanie.",
@@ -509,26 +586,26 @@ export const ZD_ESTIMATE_UI = {
   supplierScopesCloseCta: "Zamknij",
   suppliersMenuTrigger: "Dostawcy",
   suppliersMenuAriaLabel:
-    "Dostawcy: mapowania zakresów Subiekta i historia powiązań ZD",
+    "Dostawcy: przypisanie zakresu Subiekta oraz historia powiązań dokumentów ZD",
   departmentSettingsMenuTrigger: "Reguły listy",
   departmentSettingsMenuTriggerCompact: "Reguły",
   departmentSettingsMenuAriaLabel:
-    "Reguły listy Do ZD: wykluczenia, prośby, opakowania, pary, składy",
+    "Reguły listy Do ZD: wykluczenia, tylko na prośbę, opakowania, pary i składy",
   todayScopeCoverageTitle: "Dziś bez mapowania",
-  todayScopeCoverageEmpty: "Wszyscy dostawcy z kolejki Dziś mają zakres.",
+  todayScopeCoverageEmpty: "Wszyscy dostawcy z kolejki Dziś mają przypisany zakres.",
   todayScopeCoverageHint:
-    "Przypisz zakres, żeby wejście z Dziś od razu otwierało właściwą grupę lub cechę.",
+    "Przypisz grupę lub cechę, żeby wejście z Dziś od razu otwierało właściwy zakres w kreatorze — bez ręcznego wyszukiwania.",
   snapshotsModalTitle: "Historia powiązań ZD",
   snapshotsModalHint:
-    "Zapisane powiązania ZD korygują kolejne szacunki. Ilości są w sztukach. Wyłącz błędne powiązanie, żeby nie zaniżało następnych list.",
+    "Po utworzeniu lub powiązaniu ZD zapisujemy linie dokumentu. Przy kolejnym „Policz listę” kreator może skorygować ilości względem tej historii. Ilości są w sztukach. Wyłącz powiązanie, jeśli dokument był błędny albo nie powinien wpływać na szacunki.",
   snapshotsModalSelectHint:
-    "Wybierz powiązanie z listy, żeby zobaczyć linie i zarządzać udziałem w historii.",
+    "Wybierz powiązanie z listy po lewej, aby zobaczyć linie dokumentu i włączyć albo wyłączyć udział w historii.",
   snapshotsModalEmptyTitle: "Brak powiązań",
   snapshotsModalEmptyDescription:
-    "Po utworzeniu lub powiązaniu ZD historia pojawi się tutaj.",
+    "Gdy utworzysz ZD w kreatorze albo powiążesz istniejący dokument, pojawi się tu wpis do historii.",
   snapshotsModalLinesEmpty: "Brak linii w tym powiązaniu.",
   snapshotsModalLinesCaption:
-    "Ilości w sztukach — tak uczy się korekta z historii przy kolejnym „Policz listę”.",
+    "Ilości w sztukach — na tej podstawie kreator uczy korektę przy następnym „Policz listę”.",
   snapshotsModalLoadErrorTitle: "Nie wczytano historii",
   snapshotsModalListHeading: "Powiązania",
   snapshotsDisableHistoryCta: "Wyłącz z historii",
@@ -548,18 +625,18 @@ export const ZD_ESTIMATE_UI = {
   extrasPolicyLabel: "Prośby i niedobór",
   extrasPolicyAriaLabel:
     "Jak łączyć prośby handlowców z niedoborem magazynowym w ilości Do ZD",
-  extrasPolicySumLabel: "Suma (niedobór + prośba)",
-  extrasPolicyMaxLabel: "Maksimum (większa z niedoboru i prośby)",
   extrasPolicySumShort: "Suma",
   extrasPolicyMaxShort: "Maksimum",
   extrasPolicySumHint:
-    "Do ZD = niedobór magazynowy + rezerwa z próśb. Typowe przy Ivoclar i Falcon.",
+    "Do ZD = niedobór magazynowy powiększony o rezerwę z próśb. Używaj, gdy prośba ma dojść „na wierzch” niedoboru (często Ivoclar, Falcon).",
   extrasPolicyMaxHint:
-    "Do ZD = większa z dwóch wartości: niedobór albo prośba. Gdy prośba już pokrywa niedobór, nie dublujemy sztuk.",
+    "Do ZD = większa z dwóch wartości: niedobór albo suma próśb. Gdy prośba już pokrywa niedobór, nie dublujemy sztuk.",
   reviewAcceptCta: "Zaakceptuj",
   reviewZeroCta: "Zeruj Do ZD",
-  reviewAcceptHint: "Zdejmuje flagę „Do weryfikacji” w tej sesji.",
-  reviewZeroHint: "Ustawia Do ZD = 0 na zaznaczonych pozycjach.",
+  reviewAcceptHint:
+    "Zdejmuje oznaczenie „Do weryfikacji” tylko w tej sesji — nie zmienia zapisanej ilości Do ZD.",
+  reviewZeroHint:
+    "Ustawia Do ZD = 0 na zaznaczonych pozycjach w tej sesji (np. gdy podbicie było zbędne).",
   selectionGroupRelations: "Powiązania",
   selectionGroupUnits: "Jednostki",
   selectionGroupReview: "Pewność",
@@ -574,10 +651,12 @@ export const ZD_ESTIMATE_UI = {
   changeSupplierScopeCancelCta: "Anuluj zmianę",
   assignSupplierScopeTitle: "Przypisz zakres Subiekta",
   onRequestVsHardExclude:
-    "„Tylko na prośbę” — poza Do ZD bez prośby; z prośbą ilość = tylko prośba. Twarde wykluczenie — prośba trafia do usług/uwag.",
+    "„Tylko na prośbę”: bez prośby — poza Do ZD; z prośbą — ilość = tylko prośba. Twarde wykluczenie: produkt nie idzie katalogowo na ZD; prośba może trafić do usług lub uwag dokumentu.",
   postCreateTitleCreated: "ZD utworzone",
   postCreateTitleLinked: "ZD powiązane",
   postCreateTitleTimeout: "Sprawdź wynik tworzenia",
+  postCreateModalHint:
+    "Podsumowanie po utworzeniu lub powiązaniu ZD: status w Subiekcie, historia, oznaczenia Główne/plan, kontakt i pozycje dokumentu. Zamknięcie okna nie odblokowuje ponownego tworzenia — do tego służą osobne akcje albo „Policz listę”.",
   postCreateDokUnconfirmed: "niepotwierdzony",
   postCreateStatusSubiektOk: "Dokument w Subiekcie",
   postCreateStatusSubiektUnsure: "Dokument w Subiekcie — niepewny (timeout)",
@@ -586,6 +665,8 @@ export const ZD_ESTIMATE_UI = {
   postCreateStatusGlowneNone: "Prośby Główne — jeszcze nie odznaczono",
   postCreateStatusGlownePending: "Prośby Główne — czekają na Twoją decyzję",
   postCreateStatusGlowneDone: "Prośby odznaczone jako Główne",
+  postCreateStatusGlowneClearedSkipped:
+    "Brak próśb do Główne — pominięto (status / zęby / dostawca)",
   postCreateStatusScheduleNone: "Plan tygodnia — bez zmian",
   postCreateStatusSchedulePending: "Plan tygodnia — czekają na Twoją decyzję",
   postCreateStatusScheduleDone: "Plan oznaczony jako złożony",
@@ -600,7 +681,7 @@ export const ZD_ESTIMATE_UI = {
     "Odznacza prośby na tym ZD jako Główne. Nie przesuwa harmonogramu dostawcy — plan oznaczysz osobno.",
   postCreateMarkDzisWarning:
     "Główne w Dziś nadal przesuwa plan. Jeśli oznaczysz plan tutaj, nie klikaj Główne w Dziś na pozostałych prośbach kolejnego dnia — to skoczy interwał.",
-  postCreatePreviewScrollHint: "pozycji — przewiń, żeby zobaczyć wszystkie",
+  postCreatePreviewScrollHint: "pozycji na dokumencie",
   postCreateSearchPlaceholder: "Filtruj symbol, PLU, nazwę…",
   postCreateMailCta: "Napisz do dostawcy",
   postCreateMailDisabled: "Brak adresu e-mail na karcie dostawcy",
@@ -608,9 +689,9 @@ export const ZD_ESTIMATE_UI = {
   postCreateLinkHistoryCta: "Powiąż historię",
   postCreateLinkTimeoutCta: "Sprawdź świeże ZD",
   postCreateCopyTsvCta: "Skopiuj TSV",
-  postCreateDismissCta: "Zamknij podsumowanie",
+  postCreateDismissCta: "Zamknij panel po utworzeniu",
   postCreateDismissHint:
-    "Zamyka tylko to podsumowanie — tworzenie ZD pozostaje zablokowane do odblokowania albo do „Policz listę”.",
+    "Zamyka tylko ten panel — tworzenie ZD pozostaje zablokowane do odblokowania albo do „Policz listę”.",
   postCreateNoContact: "Brak kontaktu na karcie dostawcy",
   postCreateCardsLink: "Uzupełnij kontakt",
   postCreateDzisMissingSupplier:
@@ -631,13 +712,13 @@ export const ZD_ESTIMATE_UI = {
   postCreateMailComposeBody: "Treść",
   packagingDialogTitle: "Karton / opakowanie",
   packagingDialogHint:
-    "Wybierz tryb: jednostki na ZD = paczki, albo Do ZD w sztukach z dobiciem do wielokrotności N.",
+    "Wybierz, jak przeliczać niedobór w sztukach na jednostki dokumentu: paczki na ZD albo sztuki z dobiciem do wielokrotności N.",
   packagingModePackagesLabel: "1 na ZD = N szt (paczki na dokumencie)",
   packagingModePiecesLabel: "Do ZD w sztukach — dobij do wielokrotności N",
   packagingModePackagesHint:
-    "Na dokumencie wpisujesz liczbę opakowań (np. 2 przy potrzebie 8 i N=5).",
+    "Na dokumencie wpisujesz liczbę opakowań (np. 2 przy potrzebie 8 szt. i N = 5).",
   packagingModePiecesHint:
-    "Na dokumencie wpisujesz sztuki — system dobija do pełnych paczek (np. 10 przy potrzebie 8 i N=5).",
+    "Na dokumencie wpisujesz sztuki — system dobija do pełnych paczek (np. 10 przy potrzebie 8 szt. i N = 5).",
   packagingModePairBlockedHint:
     "Na paczce z pary montaż/demontaż dostępny jest tylko tryb opakowań (1 na ZD = N szt).",
   packagingModeBulkPairBlockedHint:
@@ -646,7 +727,10 @@ export const ZD_ESTIMATE_UI = {
     "Opakowania zaktualizowane — pokrycie i Do ZD przeliczone.",
   packagingModalTitle: "Opakowania ZD",
   packagingModalHint:
-    "Tryb A: 1 na ZD = opakowanie. Tryb B: Do ZD w sztukach, dobij do N. Sztuki 1:1 — „Usuń”.",
+    "Ustaw, jak przeliczać niedobór w sztukach na jednostki dokumentu ZD. Tryb A: 1 na ZD = opakowanie (wpisujesz liczbę paczek). Tryb B: Do ZD w sztukach z dobiciem do wielokrotności N. Sztuki 1:1 — usuń opakowanie, nie zapisuj „1”.",
+  packagingIntroTitle: "1 na ZD → N sztuk na magazynie i w sprzedaży",
+  packagingIntroBody:
+    "Kreator liczy niedobór w sztukach. Kolumna „Do ZD” pokazuje jednostki dokumentu: albo liczbę paczek (tryb A), albo sztuki dobite do pełnego N (tryb B). Możesz też edytować opakowanie z wiersza listy wyniku.",
   packagingUnitsLabel: "Sztuk w 1 na ZD / wielokrotność",
   packagingUnitsHint:
     "Minimum 2 (max 100 000). Sztuki 1:1 — przycisk „Usuń (sztuki 1:1)”, nie zapisuj „1”.",
@@ -668,6 +752,8 @@ export const ZD_ESTIMATE_UI = {
     "Niedobór liczymy w sztukach, a „Do ZD” pokaże liczbę opakowań (zaokrąglenie w górę).",
   packagingBulkPreviewPieces:
     "Niedobór liczymy w sztukach, a „Do ZD” pokaże sztuki dobite do wielokrotności N (nie liczbę paczek).",
+  packagingBulkClearHint:
+    "Zaznaczone wrócą do zamawiania na sztuki 1:1 w kolumnie Do ZD (bez paczki i bez dobicia).",
   packagingPairConflictTitle: "Konflikt opakowanie ↔ para",
   packagingPairConflictUnitsBody:
     "opakowanie inne niż para — tworzenie ZD zablokowane do ujednolicenia.",

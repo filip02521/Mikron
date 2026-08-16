@@ -15,6 +15,7 @@ import {
   scrollZdEstimateTableRowIntoView,
   scrollZdEstimateWhenReady,
   ZD_ESTIMATE_LIST_FOCUS_ID,
+  ZD_ESTIMATE_POST_CREATE_FOCUS_ID,
   ZD_ESTIMATE_SCROLL_END_ID,
   ZD_ESTIMATE_STICKY_ACTIONS_ID,
   ZD_ESTIMATE_TABLE_SCROLL_ID,
@@ -135,6 +136,12 @@ describe("zd-estimate-launch-scroll", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     document.body.innerHTML = "";
+  });
+
+  it("eksportuje kotwicę panelu po create/link", () => {
+    expect(ZD_ESTIMATE_POST_CREATE_FOCUS_ID).toBe(
+      "zd-estimate-post-create-focus"
+    );
   });
 
   it("scrolls scrollable parent instead of only window", () => {

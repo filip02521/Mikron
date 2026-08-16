@@ -157,13 +157,16 @@ export function buildZdPostCreateMarkFreeze(input: {
       };
     }
   );
-  const includedServiceIds = [
+  const includedRaw = [
     ...new Set(
       input.includedServiceOrderIds
         .map((id) => String(id ?? "").trim())
-        .filter((id) => id && !teethIds.has(id))
+        .filter(Boolean)
     ),
   ];
+  // Zęby: w uwagach / consume tylko gdy faktycznie weszły (included); nie Główne.
+  const includedTeethIds = includedRaw.filter((id) => teethIds.has(id));
+  const includedServiceIds = includedRaw.filter((id) => !teethIds.has(id));
   const catalogRequests: ZdPostCreateRequestSnap[] = [];
   const seenCatalog = new Set<string>();
   for (const extra of input.catalogByTwId.values()) {
@@ -173,15 +176,39 @@ export function buildZdPostCreateMarkFreeze(input: {
       catalogRequests.push(requestSnapFromRef(r));
     }
   }
-  const consumed = [...new Set([...catalogIds, ...includedServiceIds, ...teethIds])];
+  const consumed = [
+    ...new Set([...catalogIds, ...includedServiceIds, ...includedTeethIds]),
+  ];
   return {
     pendingGlowneCatalogIds: catalogIds,
     pendingGlowneServiceIds: includedServiceIds,
     consumedOrderIds: consumed,
     catalogRequests,
     serviceLines: serviceSnaps,
-    teethServiceCount: teethIds.size,
+    teethServiceCount: includedTeethIds.length,
     omittedServiceCount: Math.max(0, Math.trunc(input.omittedServiceCount ?? 0)),
+  };
+}
+
+/** Merge liczników po create: serwer często zwraca 0 po pre-filter usług — nie nadpisuj ostrzeżenia klienta. */
+export function mergePostCreateServiceCounts(
+  freeze: Pick<ZdPostCreateMarkFreeze, "omittedServiceCount" | "teethServiceCount">,
+  server?: {
+    omittedServiceCount?: number | null;
+    teethServiceCount?: number | null;
+  }
+): Pick<ZdPostCreateMarkFreeze, "omittedServiceCount" | "teethServiceCount"> {
+  const serverOmitted = Math.max(
+    0,
+    Math.trunc(Number(server?.omittedServiceCount) || 0)
+  );
+  const serverTeeth = Math.max(
+    0,
+    Math.trunc(Number(server?.teethServiceCount) || 0)
+  );
+  return {
+    omittedServiceCount: Math.max(freeze.omittedServiceCount, serverOmitted),
+    teethServiceCount: Math.max(freeze.teethServiceCount, serverTeeth),
   };
 }
 
@@ -195,6 +222,212 @@ export function pendingGlowneOrderIds(
       ...freeze.pendingGlowneServiceIds,
     ]),
   ];
+}
+
+/**
+ * Consume z sesji post-create tylko gdy dokument jest potwierdzony.
+ * timeout_recovery ma markFreeze.consumedOrderIds do CTA po linku, ale NIE wolno
+ * wycinać extras z listy / drugiego Create (false timeout → under-order).
+ */
+export function confirmedPostCreateConsumedOrderIds(
+  session: ZdPostCreateSession | null | undefined
+): string[] {
+  if (!session) return [];
+  if (session.kind === "timeout_recovery") return [];
+  const dokId = session.dokId != null ? Math.trunc(Number(session.dokId)) : 0;
+  if (!(dokId > 0)) return [];
+  return session.markFreeze.consumedOrderIds ?? [];
+}
+
+/**
+ * Po Główne: odejmij processed (+ opcjonalnie durable skips) od pending;
+ * glowneDone gdy pusto. incomplete zostają w pending (retry).
+ */
+export function applyGlowneMarkResultToPostCreateSession(
+  session: ZdPostCreateSession,
+  input: {
+    processedIds: readonly string[];
+    /** Status / zęby / zły dostawca — wyjdź z pending, bez undo. */
+    dropPendingIds?: readonly string[];
+  }
+): ZdPostCreateSession {
+  const marked = new Set(
+    input.processedIds.map((id) => String(id ?? "").trim()).filter(Boolean)
+  );
+  const drop = new Set(
+    [
+      ...(input.dropPendingIds ?? []),
+      ...input.processedIds,
+    ]
+      .map((id) => String(id ?? "").trim())
+      .filter(Boolean)
+  );
+  const glowneMarkedIds = [
+    ...new Set([...(session.glowneMarkedIds ?? []), ...marked]),
+  ];
+  const pendingGlowneCatalogIds =
+    session.markFreeze.pendingGlowneCatalogIds.filter((id) => !drop.has(id));
+  const pendingGlowneServiceIds =
+    session.markFreeze.pendingGlowneServiceIds.filter((id) => !drop.has(id));
+  const remaining =
+    pendingGlowneCatalogIds.length + pendingGlowneServiceIds.length;
+  return {
+    ...session,
+    glowneMarkedIds,
+    glowneDone: remaining === 0,
+    markFreeze: {
+      ...session.markFreeze,
+      pendingGlowneCatalogIds,
+      pendingGlowneServiceIds,
+    },
+  };
+}
+
+/** @deprecated prefer applyGlowneMarkResultToPostCreateSession */
+export function applyGlowneProcessedToPostCreateSession(
+  session: ZdPostCreateSession,
+  processedIds: readonly string[]
+): ZdPostCreateSession {
+  return applyGlowneMarkResultToPostCreateSession(session, { processedIds });
+}
+
+/** Listy próśb w panelu — tylko to, co jeszcze czeka na Główne + zęby faktycznie na ZD. */
+export function pendingGlownePreviewLists(freeze: ZdPostCreateMarkFreeze): {
+  catalogRequests: ZdPostCreateRequestSnap[];
+  serviceLines: ZdPostCreateServiceSnap[];
+} {
+  const pendingCat = new Set(freeze.pendingGlowneCatalogIds);
+  const pendingSvc = new Set(freeze.pendingGlowneServiceIds);
+  const consumed = new Set(freeze.consumedOrderIds);
+  return {
+    catalogRequests: freeze.catalogRequests.filter((r) =>
+      pendingCat.has(r.orderId)
+    ),
+    serviceLines: freeze.serviceLines
+      .map((line) => ({
+        ...line,
+        requests: line.requests.filter((r) =>
+          line.reason === "teeth"
+            ? consumed.has(r.orderId)
+            : pendingSvc.has(r.orderId)
+        ),
+      }))
+      .filter((line) => line.requests.length > 0),
+  };
+}
+
+/** Stuby do undo Główne — niezależne od live pendingIndividuals. */
+export function undoStubsFromMarkFreeze(
+  freeze: ZdPostCreateMarkFreeze,
+  orderIds: readonly string[]
+): ZdEstimatePendingIndividualOrder[] {
+  const want = new Set(
+    orderIds.map((id) => String(id ?? "").trim()).filter(Boolean)
+  );
+  if (!want.size) return [];
+  const out: ZdEstimatePendingIndividualOrder[] = [];
+  const seen = new Set<string>();
+  const push = (r: ZdPostCreateRequestSnap) => {
+    if (!want.has(r.orderId) || seen.has(r.orderId)) return;
+    seen.add(r.orderId);
+    out.push({
+      id: r.orderId,
+      salesPersonId: "",
+      salesPersonName: r.salesPersonName,
+      products: r.products,
+      symbol: r.symbol,
+      mikranCode: null,
+      subiektTwId: null,
+      qty: r.qty,
+      requestNote: r.requestNote,
+    });
+  };
+  for (const r of freeze.catalogRequests) push(r);
+  for (const line of freeze.serviceLines) {
+    for (const r of line.requests) push(r);
+  }
+  return out;
+}
+
+/**
+ * Po create: zsynchronizuj catalog/services freeze z listami zaakceptowanymi przez serwer.
+ */
+export function reconcileMarkFreezeWithAcceptedIds(
+  freeze: ZdPostCreateMarkFreeze,
+  input: {
+    acceptedCatalogOrderIds?: readonly string[] | null;
+    includedServiceOrderIds?: readonly string[] | null;
+  }
+): ZdPostCreateMarkFreeze {
+  const teethIds = new Set(
+    freeze.serviceLines
+      .filter((l) => l.reason === "teeth")
+      .flatMap((l) => l.requests.map((r) => r.orderId))
+  );
+  const catalogIds =
+    input.acceptedCatalogOrderIds != null
+      ? [
+          ...new Set(
+            input.acceptedCatalogOrderIds
+              .map((id) => String(id ?? "").trim())
+              .filter(Boolean)
+          ),
+        ]
+      : freeze.pendingGlowneCatalogIds;
+  const catalogSet = new Set(catalogIds);
+  const includedRaw =
+    input.includedServiceOrderIds != null
+      ? [
+          ...new Set(
+            input.includedServiceOrderIds
+              .map((id) => String(id ?? "").trim())
+              .filter(Boolean)
+          ),
+        ]
+      : [
+          ...freeze.pendingGlowneServiceIds,
+          ...freeze.consumedOrderIds.filter((id) => teethIds.has(id)),
+        ];
+  const includedTeeth = includedRaw.filter((id) => teethIds.has(id));
+  const includedServices = includedRaw.filter((id) => !teethIds.has(id));
+  return {
+    ...freeze,
+    pendingGlowneCatalogIds: catalogIds,
+    pendingGlowneServiceIds: includedServices,
+    catalogRequests: freeze.catalogRequests.filter((r) =>
+      catalogSet.has(r.orderId)
+    ),
+    consumedOrderIds: [
+      ...new Set([...catalogIds, ...includedServices, ...includedTeeth]),
+    ],
+    // Gdy serwer podał included — teeth = tylko te na dokumencie (nie max z klienta).
+    teethServiceCount:
+      input.includedServiceOrderIds != null
+        ? includedTeeth.length
+        : freeze.teethServiceCount,
+  };
+}
+
+/** Sumuj jednostki ZD po twId (wiele pozycji Subiekta na ten sam towar). */
+export function aggregateCreatedZdLineQtys(
+  lines: readonly { twId: number; ilosc: number }[] | null | undefined
+): Map<number, number> {
+  const map = new Map<number, number>();
+  for (const row of lines ?? []) {
+    const tw = Math.trunc(Number(row.twId) || 0);
+    const qty = Math.max(0, Math.round(Number(row.ilosc) || 0));
+    if (!(tw > 0) || !(qty > 0)) continue;
+    map.set(tw, (map.get(tw) ?? 0) + qty);
+  }
+  return map;
+}
+
+export function createdLinesFromQtyMap(
+  map: ReadonlyMap<number, number>
+): Array<{ twId: number; ilosc: number }> {
+  return [...map.entries()]
+    .filter(([twId, ilosc]) => twId > 0 && ilosc > 0)
+    .map(([twId, ilosc]) => ({ twId, ilosc }));
 }
 
 export function excludeConsumedPendingOrders(
@@ -378,6 +611,8 @@ export function buildZdPostCreateSessionFromLink(input: {
   /** Gdy brak previous snap (ręczne Powiąż) — zamroź live preview. */
   previewLines?: readonly ZdCreatePreviewLine[] | null;
   lineMeta?: readonly ZdPostCreateLineMetaInput[] | null;
+  /** Qty z dokumentu Subiekta (jednostki ZD) — nadpisuje preview po timeout→link. */
+  createdLines?: readonly { twId: number; ilosc: number }[] | null;
   markFreeze?: ZdPostCreateMarkFreeze | null;
   createdAtMs?: number;
 }): ZdPostCreateSession {
@@ -389,7 +624,11 @@ export function buildZdPostCreateSessionFromLink(input: {
     !fromPrev && input.previewLines?.length
       ? snapLinesFromCreatePreview(input.previewLines, input.lineMeta)
       : null;
-  const linesSnapshot = fromPrev ?? fromLive ?? [];
+  const baseSnap = fromPrev ?? fromLive ?? [];
+  const linesSnapshot = applyCreatedQtyToLineSnapshot(
+    baseSnap,
+    input.createdLines
+  );
   return {
     kind: "linked",
     supplierId: (input.supplierId || prev?.supplierId || "").trim(),

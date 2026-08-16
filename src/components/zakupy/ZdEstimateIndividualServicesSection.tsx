@@ -72,7 +72,7 @@ export function ZdEstimateIndividualServicesSection({
             Usługi jednorazowe (prośby)
           </h3>
           <p className="mt-0.5 text-xs leading-snug text-slate-600">
-            Trafią do uwag ZD (nie jako towar). Po utworzeniu ZD w podsumowaniu
+            Trafią do uwag ZD (nie jako towar). Po utworzeniu ZD w panelu na tej stronie
             zdecydujesz, czy odznaczyć je jako Główne (oprócz pozycji zębowych).
           </p>
           {excludedRoutedCount > 0 ? (

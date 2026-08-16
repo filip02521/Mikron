@@ -2182,6 +2182,8 @@ export type ZdEstimateLinkSnapshotResult =
       snapshot: ZdEstimateOrderSnapshotRow;
       lineCount: number;
       dokNrPelny: string;
+      /** Jednostki dokumentu Subiekta (ob_Ilosc) — do bump otwarteZd / snap qty. */
+      createdLines: Array<{ twId: number; ilosc: number }>;
     }
   | { ok: false; message: string };
 
@@ -2380,7 +2382,19 @@ export async function actionLinkZdEstimateSnapshot(input: {
       lines: built.lines,
     });
 
-    return { ok: true, snapshot, lineCount, dokNrPelny };
+    const createdByTw = new Map<number, number>();
+    for (const l of doc.dok_Pozycja ?? []) {
+      const twId = Math.trunc(Number(l.ob_TowId ?? 0));
+      const ilosc = Math.max(0, Math.round(Number(l.ob_Ilosc) || 0));
+      if (!(twId > 0) || !(ilosc > 0)) continue;
+      createdByTw.set(twId, (createdByTw.get(twId) ?? 0) + ilosc);
+    }
+    const createdLines = [...createdByTw.entries()].map(([twId, ilosc]) => ({
+      twId,
+      ilosc,
+    }));
+
+    return { ok: true, snapshot, lineCount, dokNrPelny, createdLines };
   } catch (e) {
     return {
       ok: false,
@@ -2505,6 +2519,9 @@ export type ZdEstimateCreateZdResult =
       composedUwagi?: string | null;
       omittedServiceCount?: number;
       teethServiceCount?: number;
+      includedServiceOrderIds?: string[];
+      /** Catalog IDs zaakceptowane przez serwer (Nowe + extras). */
+      acceptedCatalogOrderIds?: string[];
     }
   | {
       ok: false;
@@ -2518,7 +2535,7 @@ export type ZdEstimateCreateZdResult =
  * Tworzy ZD na hoście ORDERS (obecnie często live :5080 — aktualna baza).
  * Snapshot historii z host_kind zgodnym z URL (live | orders_test).
  * kontrahentId zawsze z DB po supplierId — nie z klienta.
- * Nie oznacza próśb ani planu — to decyzja w podsumowaniu po create.
+ * Nie oznacza próśb ani planu — to decyzja w panelu po create.
  */
 export async function actionCreateZdFromEstimate(input: {
   supplierId: string;
@@ -2526,7 +2543,12 @@ export async function actionCreateZdFromEstimate(input: {
   scopeMode?: ZdEstimateSnapshotScopeMode | null;
   grtId?: number | null;
   cechaId?: number | null;
-  lines: Array<{ twId: number; ilosc: number }>;
+  lines: Array<{
+    twId: number;
+    ilosc: number;
+    symbol?: string | null;
+    plu?: string | null;
+  }>;
   lineMeta?: ZdEstimateLinkLineMeta[] | null;
   /**
    * Wymagane przy ORDERS live (:5080) — serwer odrzuci create bez tego.
@@ -2539,7 +2561,7 @@ export async function actionCreateZdFromEstimate(input: {
    */
   individualCatalogOrderIds?: string[] | null;
   /**
-   * OrderIds usług do uwag (Główne jest decyzją w podsumowaniu).
+   * OrderIds usług do uwag (Główne jest decyzją w panelu po create).
    * Serwer dokłada blok usług do uwag (nie zależy od edycji tekstu).
    */
   individualServiceOrderIds?: string[] | null;
@@ -2639,15 +2661,15 @@ export async function actionCreateZdFromEstimate(input: {
   );
   const pendingById = new Map(pendingForExtras.map((o) => [o.id, o]));
 
-  let pairsForMark: Awaited<ReturnType<typeof fetchZdProductPairs>> = [];
-  let bomsForMark: Awaited<ReturnType<typeof fetchZdProductBoms>> = [];
-  let teethForMark: Set<number>;
+  let pairsForExtras: Awaited<ReturnType<typeof fetchZdProductPairs>> = [];
+  let bomsForExtras: Awaited<ReturnType<typeof fetchZdProductBoms>> = [];
+  let teethForExtras: Set<number>;
   try {
-    ;[pairsForMark, bomsForMark] = await Promise.all([
+    ;[pairsForExtras, bomsForExtras] = await Promise.all([
       fetchZdProductPairs(),
       fetchZdProductBoms(),
     ]);
-    teethForMark = await fetchTeethProductTwIdSet();
+    teethForExtras = await fetchTeethProductTwIdSet();
   } catch (e) {
     return {
       ok: false,
@@ -2684,17 +2706,17 @@ export async function actionCreateZdFromEstimate(input: {
     const plu = String(l.plu ?? "").trim();
     if (l.twId > 0 && plu) mikranByTw.set(l.twId, plu);
   }
-  const markBundle = buildIndividualEstimateExtras({
+  const extrasBundle = buildIndividualEstimateExtras({
     orders: pendingForExtras,
     lines: stubLines,
-    pairs: pairsForMark,
-    boms: bomRowsToRefs(bomsForMark),
-    teethTwIds: teethForMark,
+    pairs: pairsForExtras,
+    boms: bomRowsToRefs(bomsForExtras),
+    teethTwIds: teethForExtras,
     mikranByTw,
   });
   const validCatalogIds = new Set(
     collectIndividualOrderIdsForZdCreate({
-      byTwId: markBundle.byTwId,
+      byTwId: extrasBundle.byTwId,
       createdTwIds,
       serviceOrderIds: [],
     })
@@ -2706,12 +2728,12 @@ export async function actionCreateZdFromEstimate(input: {
     unitsPerPackageByTwId.set(row.subiektTwId, row.unitsPerPackage);
     packagingModeByTwId.set(row.subiektTwId, row.documentUnitMode);
   }
-  for (const pair of pairsForMark) {
+  for (const pair of pairsForExtras) {
     unitsPerPackageByTwId.set(pair.packTwId, pair.unitsPerPack);
     packagingModeByTwId.set(pair.packTwId, "packages");
   }
   const extraPiecesByTwId = new Map<number, number>();
-  for (const [tw, extra] of markBundle.byTwId) {
+  for (const [tw, extra] of extrasBundle.byTwId) {
     if (extra.extraPieces > 0 && createdTwIds.has(tw)) {
       extraPiecesByTwId.set(tw, extra.extraPieces);
     }
@@ -2752,7 +2774,7 @@ export async function actionCreateZdFromEstimate(input: {
   // Uwagi z pełnej listy usług wskazanej przez klienta (Główne jest decyzją po create).
   const serviceIdsForUwagi = [...serviceIds];
 
-  const serviceLinesForUwagi = markBundle.serviceLines
+  const serviceLinesForUwagi = extrasBundle.serviceLines
     .map((line) => ({
       ...line,
       requests: line.requests.filter((r) =>
@@ -2761,7 +2783,7 @@ export async function actionCreateZdFromEstimate(input: {
     }))
     .filter((line) => line.requests.length > 0);
 
-  // Dołóż serviceIds spoza markBundle.serviceLines (np. prośba na wykluczonej
+  // Dołóż serviceIds spoza extrasBundle.serviceLines (np. prośba na wykluczonej
   // pozycji, którą klient świadomie wrzuca do uwag).
   const coveredService = new Set(
     serviceLinesForUwagi.flatMap((l) => l.requests.map((r) => r.orderId))
@@ -2793,16 +2815,16 @@ export async function actionCreateZdFromEstimate(input: {
   const baseUwagi =
     (input.uwagi ?? "").trim() ||
     defaultZdCreateUwagi({
-      supplierName: khRes.supplierName,
+      scopeMode: scopeRes.scopeMode,
       scopeLabel:
         scopeRes.scopeMode === "grupa"
           ? scopeRes.grtId != null
-            ? `grupa ${scopeRes.grtId}`
+            ? String(scopeRes.grtId)
             : null
           : scopeRes.cechaId != null
-            ? `cecha ${scopeRes.cechaId}`
+            ? String(scopeRes.cechaId)
             : null,
-      dateKey: new Date().toISOString().slice(0, 10),
+      dateKey: warsawNowParts().dateKey,
     });
   const composedUwagi = composeZdCreateUwagiWithServices({
     baseUwagi,
@@ -2869,6 +2891,8 @@ export async function actionCreateZdFromEstimate(input: {
     composedUwagi: composedUwagi.uwagi,
     omittedServiceCount: composedUwagi.omittedServiceCount,
     teethServiceCount: teethServiceOrderIds.size,
+    includedServiceOrderIds: composedUwagi.includedServiceOrderIds,
+    acceptedCatalogOrderIds: catalogIds,
   });
 
   let dokNrPelny = `ZD/${dokId}`;
@@ -2881,7 +2905,7 @@ export async function actionCreateZdFromEstimate(input: {
         ok: true as const,
         dokId,
         dokNrPelny,
-        lineCount: linesCheck.lines.length,
+        lineCount: createLines.length,
         snapshotOk: false,
         snapshotMessage: "Brak konfiguracji hosta — historia nie zapisana.",
       });
@@ -2905,7 +2929,7 @@ export async function actionCreateZdFromEstimate(input: {
         ok: true as const,
         dokId,
         dokNrPelny,
-        lineCount: linesCheck.lines.length,
+        lineCount: createLines.length,
         snapshotOk: false,
         snapshotMessage:
           e instanceof Error
@@ -2923,7 +2947,7 @@ export async function actionCreateZdFromEstimate(input: {
         ok: true as const,
         dokId,
         dokNrPelny,
-        lineCount: linesCheck.lines.length,
+        lineCount: createLines.length,
         snapshotOk: false,
         snapshotMessage:
           e instanceof Error
@@ -2948,7 +2972,7 @@ export async function actionCreateZdFromEstimate(input: {
         ok: true as const,
         dokId,
         dokNrPelny,
-        lineCount: linesCheck.lines.length,
+        lineCount: createLines.length,
         snapshotOk: false,
         snapshotMessage: `ZD utworzone (${dokNrPelny}), ${enrichSnapshotPackagingErrorMessage(
           built.message,
@@ -2963,7 +2987,7 @@ export async function actionCreateZdFromEstimate(input: {
         ok: true as const,
         dokId,
         dokNrPelny,
-        lineCount: linesCheck.lines.length,
+        lineCount: createLines.length,
         snapshotOk: false,
         snapshotMessage:
           "ZD utworzone, ale nie udało się odczytać pozycji do historii — użyj „Powiąż ZD”.",
@@ -3010,7 +3034,7 @@ export async function actionCreateZdFromEstimate(input: {
       ok: true as const,
       dokId,
       dokNrPelny,
-      lineCount: linesCheck.lines.length,
+      lineCount: createLines.length,
       snapshotOk: false,
       snapshotMessage:
         e instanceof Error
@@ -3114,12 +3138,15 @@ export type ZdEstimateMarkGlowneResult =
   | {
       ok: true;
       processedIds: string[];
+      /** Durable skips (status / zęby / dostawca) — wyjdź z pending. */
       skippedIds: string[];
+      /** Niekompletne — zostają w pending do retry. */
+      incompleteIds: string[];
       skippedIncompleteCount: number;
       message: string;
       undo?: DailyPanelUndoPayload;
     }
-  | { ok: false; message: string };
+  | { ok: false; message: string; skippedIds?: string[]; incompleteIds?: string[] };
 
 export async function actionMarkZdEstimateIndividualsGlowne(input: {
   supplierId: string;
@@ -3149,9 +3176,14 @@ export async function actionMarkZdEstimateIndividualsGlowne(input: {
   let teethTwIds = new Set<number>();
   try {
     teethTwIds = await fetchTeethProductTwIdSet();
-  } catch {
-    // Freeze klienta już wycina zęby z CTA; brak katalogu nie blokuje Główne reszty.
-    teethTwIds = new Set();
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        e instanceof Error
+          ? `Nie udało się wczytać katalogu zębów przed Główne: ${e.message}`
+          : "Nie udało się wczytać katalogu zębów przed Główne.",
+    };
   }
 
   const skippedIds: string[] = [];
@@ -3202,13 +3234,33 @@ export async function actionMarkZdEstimateIndividualsGlowne(input: {
   }
 
   if (!processable.length) {
-    if (incompleteIds.length) {
+    if (incompleteIds.length && !skippedIds.length) {
       return {
         ok: false,
         message:
           incompleteIds.length === 1
             ? "Prośba nie ma kompletnych danych — uzupełnij przed Główne."
             : `${incompleteIds.length} próśb nie ma kompletnych danych — uzupełnij przed Główne.`,
+        incompleteIds,
+        skippedIds: [],
+      };
+    }
+    if (skippedIds.length) {
+      const parts = [
+        "Żadna z wybranych próśb nie kwalifikuje się już do Główne (status / dostawca / zęby).",
+      ];
+      if (incompleteIds.length) {
+        parts.push(
+          `${incompleteIds.length} niekompletnych nadal czeka na uzupełnienie.`
+        );
+      }
+      return {
+        ok: true,
+        processedIds: [],
+        skippedIds,
+        incompleteIds,
+        skippedIncompleteCount: incompleteIds.length,
+        message: parts.join(" "),
       };
     }
     return {
@@ -3228,21 +3280,25 @@ export async function actionMarkZdEstimateIndividualsGlowne(input: {
       { skipSupplierSchedule: true }
     );
     revalidateAfterZdEstimateMark();
-    const extraSkip = [...skippedIds, ...incompleteIds, ...markRes.skippedIds];
+    const durableSkip = [
+      ...new Set([...skippedIds, ...markRes.skippedIds]),
+    ];
     const parts = [
       `Odznaczono ${markRes.processedIds.length} ${
         markRes.processedIds.length === 1 ? "prośbę" : "próśb"
       } jako Główne (bez przesunięcia planu).`,
     ];
-    if (extraSkip.length) {
+    if (durableSkip.length || incompleteIds.length) {
+      const skipN = durableSkip.length + incompleteIds.length;
       parts.push(
-        `Pominięto ${extraSkip.length} (status / zęby / niekompletne).`
+        `Pominięto ${skipN} (status / zęby / niekompletne).`
       );
     }
     return {
       ok: true,
       processedIds: markRes.processedIds,
-      skippedIds: extraSkip,
+      skippedIds: durableSkip,
+      incompleteIds,
       skippedIncompleteCount: incompleteIds.length,
       message: parts.join(" "),
       undo: buildDailyPanelUndoPayload({

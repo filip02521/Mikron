@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
 import { ZD_ESTIMATE_BULK_MAX } from "@/lib/orders/zd-estimate-bulk";
+import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 
 export type ZdEstimateBulkLinePreview = {
   tw_Id: number;
@@ -39,7 +40,7 @@ function BulkExcludeDialogForm({
       open
       onClose={onCancel}
       title={`Wyklucz ${actionCount}${overLimit ? ` z ${lines.length}` : ""} ${actionCount === 1 ? "produkt" : "produktów"}`}
-      titleHint="Zaznaczone produkty znikną z „Do ZD” przy kolejnych szacunkach. Lista jest wspólna dla działu zakupów."
+      titleHint={ZD_ESTIMATE_UI.bulkExcludeDialogHint}
       titleId="zd-estimate-bulk-exclude-title"
       size="md"
       tier="raised"

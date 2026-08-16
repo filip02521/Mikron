@@ -15,9 +15,9 @@ import type { ZdEstimateQtyTier } from "@/components/zakupy/ZdEstimateQtyValue";
 import { ZdEstimateStatusBadge } from "@/components/zakupy/ZdEstimateStatusBadge";
 
 /**
- * Wspólny stack metryki w sztukach (Sprzed. / Cel):
- * liczba + „szt”; ≈ op. w tej samej linii (`inlineApprox`) albo pod spodem.
- * Kanały sprzedaży pary — w tooltip (title), nie w stopce.
+ * Metryka w sztukach (Sprzed. / Cel / …).
+ * Przybliżenie w opakowaniach zostaje tylko w tooltipie — nie w komórce,
+ * żeby nie mieszać się z kolumną „Opak.” i ilościami magazynowymi.
  */
 export function ZdEstimatePiecesMetricCell({
   pieces,
@@ -26,19 +26,16 @@ export function ZdEstimatePiecesMetricCell({
   title,
   subline,
   footer,
-  inlineApprox = false,
   zeroAsDash = false,
 }: {
   pieces: number;
-  /** ≥2 → pokaż przybliżenie w op. (para lub opakowanie). */
+  /** ≥2 → dopisek ≈ op. w title (tooltip). */
   unitsPerPack?: number | null;
   /** b = Cel, c = Sprzed. */
   tier?: ZdEstimateQtyTier;
   title?: string;
   subline?: ReactNode;
   footer?: ReactNode;
-  /** Sprzed. pary: 1 linia (szt + ≈ op.), bez drugiej linii. */
-  inlineApprox?: boolean;
   /** Sprzed.: 0 → „—”. Cel/Dost. zawsze cyfra. */
   zeroAsDash?: boolean;
 }) {
@@ -46,7 +43,6 @@ export function ZdEstimatePiecesMetricCell({
   const ratio = normalizeUnitsPerPack(unitsPerPack ?? null);
   const hint = formatPairPiecesUiHint(raw, ratio ?? 1, formatQty);
   const fullTitle = title ?? hint.title;
-  const approx = hint.packsApproxLabel;
   const showDash = zeroAsDash && raw < 1e-9;
   const qtyClass = tier === "b" ? "zd-est-qty--b" : "zd-est-qty--c";
 
@@ -62,15 +58,9 @@ export function ZdEstimatePiecesMetricCell({
           <>
             <span className={qtyClass}>{formatZdEstimateTableQty(raw)}</span>
             <span className="zd-est-unit ml-0.5">szt</span>
-            {inlineApprox && approx ? (
-              <span className="zd-est-unit ml-1">{approx}</span>
-            ) : null}
           </>
         )}
       </span>
-      {!showDash && !inlineApprox && approx ? (
-        <span className="zd-est-unit">{approx}</span>
-      ) : null}
       {!showDash && subline ? (
         <span className="flex w-full min-w-0 flex-col items-start gap-px">
           {subline}
@@ -152,7 +142,7 @@ export function ZdEstimatePairMetaBadge({
   );
 }
 
-/** Komórka Cel (i inne metryki sztuk): stack szt → ≈ op. → delta. */
+/** Komórka Cel (i inne metryki sztuk): szt (+ delta); ≈ op. tylko w tooltip. */
 export function ZdEstimatePairPiecesCell({
   pieces,
   unitsPerPack,
@@ -173,7 +163,7 @@ export function ZdEstimatePairPiecesCell({
 }
 
 /**
- * Kolumna Sprzedaż dla pary: 1 linia (szt + ≈ op.); kanały tylko w tooltip.
+ * Kolumna Sprzedaż dla pary: sztuki; kanały i ≈ op. tylko w tooltip.
  */
 export function ZdEstimatePairSalesCell({
   pair,
@@ -189,14 +179,20 @@ export function ZdEstimatePairSalesCell({
     },
     formatQty
   );
+  const packHint = formatPairPiecesUiHint(
+    pair.sprzedazSzt,
+    pair.unitsPerPack,
+    formatQty
+  );
 
   return (
     <ZdEstimatePiecesMetricCell
       pieces={pair.sprzedazSzt}
       unitsPerPack={pair.unitsPerPack}
       tier="c"
-      title={channels.title}
-      inlineApprox
+      title={[channels.title, packHint.packsApproxLabel]
+        .filter(Boolean)
+        .join(" · ")}
       zeroAsDash
     />
   );

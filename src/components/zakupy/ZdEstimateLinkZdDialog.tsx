@@ -55,6 +55,7 @@ export function ZdEstimateLinkZdDialog({
     dokId: number;
     dokNrPelny: string;
     lineCount: number;
+    createdLines: Array<{ twId: number; ilosc: number }>;
   }) => void;
   onError: (message: string) => void;
 }) {
@@ -99,6 +100,7 @@ export function ZdEstimateLinkZdDialog({
   if (!open) return null;
 
   const confirm = () => {
+    if (busy) return;
     if (!supplierId?.trim()) {
       onError("Wybierz dostawcę w workbenchu — historia jest per kontrahent.");
       return;
@@ -122,6 +124,7 @@ export function ZdEstimateLinkZdDialog({
         dokId: res.snapshot.dokId,
         dokNrPelny: res.dokNrPelny,
         lineCount: res.lineCount,
+        createdLines: res.createdLines ?? [],
       });
       onClose();
     });
@@ -138,7 +141,7 @@ export function ZdEstimateLinkZdDialog({
       }
       titleId="zd-estimate-link-zd-title"
       size="md"
-      tier="raised"
+      tier="top"
       disableBackdropClose={busy}
       bodyClassName="space-y-4 px-5 py-5 sm:px-6"
       loadingMessage={busy ? "Zapisuję…" : null}

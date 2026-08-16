@@ -273,8 +273,8 @@ export function ZdEstimateOnRequestModal({
     <ModalShell
       open={open}
       onClose={onClose}
-      title="Tylko na prośbę"
-      titleHint="Bez aktywnej prośby handlowca produkt zostaje poza Do ZD. Z prośbą — na listę tylko w ilości z prośby (bez celu zapasu). Lista wspólna dla działu — nie mylić z „w razie potrzeby” u dostawcy."
+      title={ZD_ESTIMATE_UI.onRequestModalTitle}
+      titleHint={ZD_ESTIMATE_UI.onRequestModalHint}
       size="xl"
       bodyClassName="space-y-4 px-5 py-4 sm:px-6 sm:py-5"
       loadingMessage={pending ? "Zapisuję…" : null}
@@ -310,10 +310,10 @@ export function ZdEstimateOnRequestModal({
           />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-900">
-              Zamawianie tylko przy prośbie
+              {ZD_ESTIMATE_UI.onRequestIntroTitle}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Usuń wpis, gdy produkt ma wrócić do zwykłego liczenia zapasu.{" "}
+              {ZD_ESTIMATE_UI.onRequestIntroBody}{" "}
               {ZD_ESTIMATE_UI.onRequestVsHardExclude}
             </p>
           </div>

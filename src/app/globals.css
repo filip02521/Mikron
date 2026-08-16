@@ -332,11 +332,10 @@ select:disabled,
   --zd-est-check-w: 2.75rem;
   /* Towar: symbol + skrót nazwy (sticky) */
   --zd-est-symbol-w: 12.5rem;
-  --zd-est-dozd-w: 5.5rem;
+  --zd-est-dozd-w: 6.25rem;
   --zd-est-sticky-dozd-left: calc(var(--zd-est-check-w) + var(--zd-est-symbol-w));
   /* Status: kompaktowe badge’e w jednej linii */
   --zd-est-status-w: 10.75rem;
-  --zd-est-confidence-w: 4.25rem;
   /*
    * Liczby: jedna baza + jeden akcent decyzji (Do ZD).
    * Różnice B/C/D = waga/opacity, NIE rozmiar (spójność skanu).
@@ -351,7 +350,7 @@ select:disabled,
   --zd-num-color-unit: #94a3b8;
   --zd-num-color-decision: #065f46;
   --zd-num-color-warn: #92400e;
-  min-width: 60rem;
+  min-width: 57rem;
   font-size: 0.8125rem;
   line-height: 1.35;
   border-collapse: separate;
@@ -480,9 +479,11 @@ select:disabled,
 
 .data-table.zd-estimate-table td.zd-estimate-pack-col,
 .data-table.zd-estimate-table th.zd-estimate-pack-col {
-  width: 4.25rem;
-  min-width: 4.25rem;
+  width: 5.75rem;
+  min-width: 5.75rem;
+  max-width: 6.5rem;
   text-align: left;
+  vertical-align: middle;
 }
 
 /* Checkbox — sticky left */
@@ -543,6 +544,11 @@ select:disabled,
 .data-table.zd-estimate-table td.zd-estimate-dozd-col.zd-estimate-dozd-col--idle {
   background-color: rgb(248 250 252 / 0.9);
   box-shadow: inset 2px 0 0 0 #cbd5e1, 1px 0 0 #e2e8f0;
+}
+
+.data-table.zd-estimate-table td.zd-estimate-dozd-col.zd-estimate-dozd-col--review {
+  background-color: rgb(255 251 235 / 0.85);
+  box-shadow: inset 2px 0 0 0 #fbbf24, 1px 0 0 #fde68a;
 }
 
 .data-table.zd-estimate-table thead th.zd-estimate-dozd-col {
@@ -630,82 +636,67 @@ select:disabled,
   color: #78350f;
 }
 
-/* Pewność — wąska kolumna, pill jak Status */
-.data-table.zd-estimate-table th.zd-estimate-confidence-col,
-.data-table.zd-estimate-table td.zd-estimate-confidence-col {
-  width: var(--zd-est-confidence-w);
-  min-width: var(--zd-est-confidence-w);
-  max-width: var(--zd-est-confidence-w);
-  padding-left: 0.4rem;
-  padding-right: 0.4rem;
-  font-variant-numeric: tabular-nums;
-  text-align: center;
-  vertical-align: middle;
-}
-
-.data-table.zd-estimate-table th.zd-estimate-confidence-col > button {
-  display: inline-flex;
-  width: auto;
-  justify-content: center;
-}
-
-.data-table.zd-estimate-table .zd-est-confidence {
+/* Pewność — whisper pod ilością Do ZD */
+.data-table.zd-estimate-table .zd-est-dozd-confidence {
   display: inline-flex;
   max-width: 100%;
   align-items: center;
-  gap: 0.3rem;
-  height: 1.375rem;
-  padding: 0 0.4rem;
-  border-radius: 0.25rem;
-  font-size: 0.6875rem;
+  gap: 0.2rem;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--zd-num-unit);
   font-weight: 600;
-  line-height: 1;
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
-  box-shadow: inset 0 0 0 1px rgb(15 23 42 / 0.08);
 }
 
-.data-table.zd-estimate-table .zd-est-confidence--idle {
-  background: transparent;
-  box-shadow: none;
-  color: var(--zd-num-color-dash);
-  font-weight: 500;
-  padding-left: 0;
-}
-
-.data-table.zd-estimate-table .zd-est-confidence--ok {
-  background: #f8fafc;
+.data-table.zd-estimate-table .zd-est-dozd-confidence--ok {
   color: var(--zd-num-color-quiet);
 }
 
-.data-table.zd-estimate-table .zd-est-confidence--review {
-  background: #fffbeb;
+.data-table.zd-estimate-table .zd-est-dozd-confidence--review {
   color: var(--zd-num-color-warn);
 }
 
-.data-table.zd-estimate-table .zd-est-confidence--accepted {
-  background: #ecfdf5;
+.data-table.zd-estimate-table .zd-est-dozd-confidence--accepted {
   color: var(--zd-num-color-decision);
 }
 
-.data-table.zd-estimate-table .zd-est-confidence__dot {
-  width: 0.375rem;
-  height: 0.375rem;
+.data-table.zd-estimate-table .zd-est-dozd-confidence__pct {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd-confidence__dot {
+  width: 0.3rem;
+  height: 0.3rem;
   flex-shrink: 0;
   border-radius: 9999px;
   background: #f59e0b;
 }
 
-.data-table.zd-estimate-table button.zd-est-confidence--review {
-  cursor: pointer;
-  transition: background-color 120ms ease;
-}
-
-.data-table.zd-estimate-table button.zd-est-confidence--review:hover {
+.data-table.zd-estimate-table .zd-est-dozd-confidence__accept {
+  flex-shrink: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0.2rem;
   background: #fef3c7;
+  padding: 0 0.28rem;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+  color: #92400e;
+  cursor: pointer;
 }
 
-.data-table.zd-estimate-table button.zd-est-confidence--review:focus-visible {
+.data-table.zd-estimate-table .zd-est-dozd-confidence__accept:hover {
+  background: #fde68a;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd-confidence__accept:focus-visible {
   outline: 2px solid rgb(245 158 11 / 0.55);
   outline-offset: 1px;
 }
@@ -779,6 +770,10 @@ select:disabled,
   background-color: rgb(241 245 249 / 0.95);
 }
 
+.data-table.zd-estimate-table tbody tr:nth-child(even):not([class*="bg-"]) td.zd-estimate-dozd-col.zd-estimate-dozd-col--review {
+  background-color: rgb(254 243 199 / 0.7);
+}
+
 .data-table.zd-estimate-table tbody tr:nth-child(even):not([class*="bg-"]) td.zd-estimate-check-col,
 .data-table.zd-estimate-table tbody tr:nth-child(even):not([class*="bg-"]) td.zd-estimate-symbol-col,
 .data-table.zd-estimate-table tbody tr:nth-child(even):not([class*="bg-"]) td:last-child {
@@ -795,6 +790,10 @@ select:disabled,
 
 .data-table.zd-estimate-table tbody tr:hover td.zd-estimate-dozd-col.zd-estimate-dozd-col--idle {
   background-color: #e2e8f0;
+}
+
+.data-table.zd-estimate-table tbody tr:hover td.zd-estimate-dozd-col.zd-estimate-dozd-col--review {
+  background-color: #fde68a;
 }
 
 .data-table.zd-estimate-table tbody tr:hover td.zd-estimate-check-col,

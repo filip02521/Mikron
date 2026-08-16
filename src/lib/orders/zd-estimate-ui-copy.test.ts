@@ -5,6 +5,7 @@ import {
   buildImplicitPieceSnapshotNotice,
   formatImplicitPieceSnapshotHint,
   zdEstimateCreateConfirmLabel,
+  zdEstimateCreateTitleHint,
   zdEstimateCechaScopeCaption,
   zdEstimateEmptyListDescription,
   zdEstimateHostBadgeLabel,
@@ -83,7 +84,29 @@ describe("zd-estimate-ui-copy", () => {
     });
     expect(text).toMatch(/aktualnej bazie/);
     expect(text).toMatch(/zdecydujesz/i);
+    expect(text).toMatch(/panelu na tej stronie/);
+    expect(text).not.toMatch(/\/podsumowanie/);
     expect(text).not.toMatch(/zostaną odznaczone jako Główne/);
+  });
+
+  it("title hint rozróżnia panel kreatora od trasy /podsumowanie", () => {
+    const hint = zdEstimateCreateTitleHint({ isLive: true, port: 5080 });
+    expect(hint).toMatch(/panelu po utworzeniu na tej stronie/);
+    expect(hint).not.toMatch(/w podsumowaniu zdecydujesz/);
+  });
+
+  it("dismiss post-create mówi o panelu, nie o podsumowaniu", () => {
+    expect(ZD_ESTIMATE_UI.postCreateDismissCta).toMatch(/panel/i);
+    expect(ZD_ESTIMATE_UI.postCreateDismissHint).toMatch(/ten panel/);
+    expect(ZD_ESTIMATE_UI.postCreateDismissHint).not.toMatch(/podsumowanie/);
+    expect(ZD_ESTIMATE_UI.createAfterSuccessDecideNoGlowne).toMatch(
+      /panelu na tej stronie/
+    );
+    expect(ZD_ESTIMATE_UI.postCreateStatusGlowneClearedSkipped).toMatch(
+      /pominięto/i
+    );
+    expect(ZD_ESTIMATE_UI.createOmittedServicesHint).not.toMatch(/Skróć bazę/);
+    expect(ZD_ESTIMATE_UI.listShowZkColumnTitle).not.toMatch(/\bAPI\b/);
   });
 
   it("route loading bez „dla dostawcy” i ze stałym flow description", () => {
@@ -149,20 +172,33 @@ describe("zd-estimate-ui-copy", () => {
   });
 
   it("prep / launch / recount copy", () => {
-    expect(zdEstimateScopeDashedHint("grupa")).toMatch(/skrót|wyszukaj grupę/);
+    expect(zdEstimateScopeDashedHint("grupa")).toMatch(/skrót|wyszukaj grupę/i);
     expect(zdEstimateScopeDashedHint("cecha")).toMatch(/Wyszukaj cechę/);
     expect(zdEstimateScopeDashedHint("grupa")).not.toMatch(/Policz listę/);
-    expect(zdEstimateReadyToCountHint()).toMatch(/Gotowe/);
+    expect(zdEstimateReadyToCountHint()).toMatch(/Policz listę/);
     expect(zdEstimateScopeChangedHint()).toMatch(/Zmieniono zakres/);
     expect(zdEstimateNeedsSettingsHint()).toMatch(/pod tą kartą/);
     expect(zdEstimateNeedsSettingsHint()).not.toMatch(/powyżej/);
-    expect(zdEstimatePrepCardHint()).toMatch(/całego działu zakupów/);
+    expect(zdEstimatePrepCardHint()).toMatch(/całego działu|wspólne dla działu/);
     expect(zdEstimatePoliciesSectionHint()).toMatch(/Do ZD/);
     expect(zdEstimateCechaScopeCaption()).toMatch(/Zaawansowane/);
     expect(ZD_ESTIMATE_UI.boostPowerLabel).toBe("Podbicie Do ZD");
     expect(ZD_ESTIMATE_UI.extrasPolicyLabel).toBe("Prośby i niedobór");
     expect(ZD_ESTIMATE_UI.extrasPolicySumShort).toBe("Suma");
     expect(ZD_ESTIMATE_UI.extrasPolicyMaxShort).toBe("Maksimum");
+    expect(ZD_ESTIMATE_UI.menuExclusionsDescription).toMatch(/pomijane/);
+    expect(ZD_ESTIMATE_UI.menuOnRequestDescription).toMatch(/prośby/);
+    expect(ZD_ESTIMATE_UI.menuPackagingDescription).toMatch(/jednostkę/);
+    expect(ZD_ESTIMATE_UI.menuPairsDescription).toMatch(/pacz/);
+    expect(ZD_ESTIMATE_UI.menuBomsDescription).toMatch(/Zestawy|składniki/);
+    expect(ZD_ESTIMATE_UI.menuScopesDescription).toMatch(/Dziś/);
+    expect(ZD_ESTIMATE_UI.menuSnapshotsDescription).toMatch(/korygują|histor/);
+    expect(ZD_ESTIMATE_UI.exclusionsModalHint).toMatch(/Policz listę/);
+    expect(ZD_ESTIMATE_UI.onRequestModalHint).toMatch(/celu zapasu/);
+    expect(ZD_ESTIMATE_UI.pairsModalHint).toMatch(/paczki/);
+    expect(ZD_ESTIMATE_UI.packagingModalHint).toMatch(/Tryb A/);
+    expect(ZD_ESTIMATE_UI.extrasPolicySumHint).toMatch(/niedobór/);
+    expect(ZD_ESTIMATE_UI.extrasPolicyMaxHint).toMatch(/większa/);
     expect(ZD_ESTIMATE_UI.changeSupplierScopeHint).toMatch(/formularzu/);
     expect(ZD_ESTIMATE_UI.changeSupplierScopeHint).not.toMatch(/poniżej/);
     expect(
@@ -186,6 +222,28 @@ describe("zd-estimate-ui-copy", () => {
     expect(zdEstimateRecountOverlayMessage()).toMatch(/listę Do ZD/);
     expect(ZD_ESTIMATE_UI.createGateEstimating).toMatch(/listy Do ZD/i);
     expect(ZD_ESTIMATE_UI.createGateEstimating).not.toMatch(/szacunku/);
+  });
+
+  it("opisy menu i polityk są pełnymi zdaniami po polsku", () => {
+    for (const text of [
+      ZD_ESTIMATE_UI.menuExclusionsDescription,
+      ZD_ESTIMATE_UI.menuOnRequestDescription,
+      ZD_ESTIMATE_UI.menuPackagingDescription,
+      ZD_ESTIMATE_UI.menuPairsDescription,
+      ZD_ESTIMATE_UI.menuBomsDescription,
+      ZD_ESTIMATE_UI.menuScopesDescription,
+      ZD_ESTIMATE_UI.menuSnapshotsDescription,
+      ZD_ESTIMATE_UI.boostNeedsRecountBody,
+      ZD_ESTIMATE_UI.historyNeedsRecountBody,
+      ZD_ESTIMATE_UI.reviewAcceptHint,
+      ZD_ESTIMATE_UI.reviewZeroHint,
+      ZD_ESTIMATE_UI.onRequestVsHardExclude,
+    ]) {
+      expect(text.length).toBeGreaterThan(40);
+      expect(text).not.toMatch(/\bAPI\b/);
+      expect(text).not.toMatch(/\bsnapshot\b/i);
+      expect(text).not.toMatch(/\bboost\b/i);
+    }
   });
 
   it("packagingLiveFlash mówi o pokryciu i Do ZD", () => {
@@ -262,9 +320,17 @@ describe("zd-estimate-ui-copy", () => {
     expect(zdEstimateSuppliersUnmappedBadge(2, { compact: true })).toBe(
       "2 bez map."
     );
-    expect(zdEstimateSuppliersMenuAriaLabel(0)).toMatch(/mapowania zakresów/i);
+    expect(zdEstimateSuppliersMenuAriaLabel(0)).toMatch(
+      /przypisanie zakresu|historia powiązań/i
+    );
     expect(zdEstimateSuppliersMenuAriaLabel(2)).toMatch(/bez mapowania/i);
     expect(zdEstimateSuppliersScopesItemSuffix(0)).toBe("");
     expect(zdEstimateSuppliersScopesItemSuffix(1)).toMatch(/bez mapowania/);
+  });
+
+  it("Do ZD hint + sort po pewności (po usunięciu kolumny)", () => {
+    expect(ZD_ESTIMATE_UI.listSortByConfidence).toMatch(/pewności/i);
+    expect(ZD_ESTIMATE_UI.doZdColumnHint).toMatch(/pewności/i);
+    expect(ZD_ESTIMATE_UI.doZdColumnHint).toMatch(/weryfikacji/i);
   });
 });

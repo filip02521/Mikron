@@ -273,8 +273,8 @@ export function ZdEstimateExclusionsModal({
     <ModalShell
       open={open}
       onClose={onClose}
-      title="Wykluczenia ZD"
-      titleHint="Produkty na tej liście są pomijane przy każdym kolejnym szacunku zamówienia. Lista jest wspólna dla całego działu zakupów."
+      title={ZD_ESTIMATE_UI.exclusionsModalTitle}
+      titleHint={ZD_ESTIMATE_UI.exclusionsModalHint}
       size="xl"
       bodyClassName="space-y-4 px-5 py-4 sm:px-6 sm:py-5"
       loadingMessage={pending ? "Zapisuję…" : null}
@@ -310,11 +310,10 @@ export function ZdEstimateExclusionsModal({
           />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-900">
-              Trwałe pomijanie przy „Do ZD”
+              {ZD_ESTIMATE_UI.exclusionsIntroTitle}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Przywróć produkt, gdy znów ma wrócić na listę szacunku. Notatka
-              pomaga innym w dziale zrozumieć powód.{" "}
+              {ZD_ESTIMATE_UI.exclusionsIntroBody}{" "}
               {ZD_ESTIMATE_UI.onRequestVsHardExclude}
             </p>
           </div>

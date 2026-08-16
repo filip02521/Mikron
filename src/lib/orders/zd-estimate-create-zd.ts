@@ -283,14 +283,21 @@ export function normalizeZdCreateUwagi(
 }
 
 export function defaultZdCreateUwagi(input: {
-  supplierName: string;
+  /** Czy zakres to grupa towarowa, czy cecha Subiekta. */
+  scopeMode: "grupa" | "cecha";
+  /** Nazwa grupy lub cechy (bez prefiksu „Grupa”/„Cecha”). */
   scopeLabel: string | null;
   dateKey: string;
 }): string {
+  const label = input.scopeLabel?.trim() || null;
+  const scopePart = label
+    ? input.scopeMode === "cecha"
+      ? `Cecha ${label}`
+      : `Grupa ${label}`
+    : null;
   const parts = [
     "OnTime kreator",
-    input.supplierName.trim() || null,
-    input.scopeLabel?.trim() || null,
+    scopePart,
     input.dateKey.trim() || null,
   ].filter(Boolean);
   return parts.join(" · ").slice(0, ZD_CREATE_MAX_UWAGI_LEN);
