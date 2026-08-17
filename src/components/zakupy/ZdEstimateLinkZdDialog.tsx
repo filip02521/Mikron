@@ -12,6 +12,8 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
+import type { ImplicitPieceSnapshotNotice } from "@/lib/orders/zd-estimate-ui-copy";
+import { ZdEstimateImplicitPieceNotice } from "@/components/zakupy/ZdEstimateImplicitPieceNotice";
 
 export function ZdEstimateLinkZdDialog({
   open,
@@ -21,8 +23,11 @@ export function ZdEstimateLinkZdDialog({
   cechaId,
   lineMeta,
   orderableTwIds,
-  implicitPieceSnapshotHint,
+  implicitPieceSnapshotNotice = null,
+  onOpenPackaging,
+  onOpenPairs,
   initialNr,
+  titleHint,
   pending: pendingExternal,
   onClose,
   onLinked,
@@ -37,12 +42,21 @@ export function ZdEstimateLinkZdDialog({
   /** tw_Id z orderable preview — potwierdzone 1:1 przy braku opakowania. */
   orderableTwIds?: number[] | null;
   /** Preflight: pozycje bez opakowania/pary zapisane jako sztuki. */
-  implicitPieceSnapshotHint?: string | null;
+  implicitPieceSnapshotNotice?: ImplicitPieceSnapshotNotice | null;
+  onOpenPackaging?: () => void;
+  onOpenPairs?: () => void;
   /** Prefill numeru (np. po create bez snapshotu / timeout). */
   initialNr?: string | null;
+  /** Nadpisuje domyślny titleHint (recovery po create). */
+  titleHint?: string | null;
   pending?: boolean;
   onClose: () => void;
-  onLinked: (info: { dokNrPelny: string; lineCount: number }) => void;
+  onLinked: (info: {
+    dokId: number;
+    dokNrPelny: string;
+    lineCount: number;
+    createdLines: Array<{ twId: number; ilosc: number }>;
+  }) => void;
   onError: (message: string) => void;
 }) {
   const nrId = useId();
@@ -53,6 +67,7 @@ export function ZdEstimateLinkZdDialog({
   const [pending, startPending] = useTransition();
   const busy = pending || pendingExternal;
 
+  // Reset + lista kandydatów tylko przy otwarciu — nie przy późniejszym patchu prefillu.
   useEffect(() => {
     if (!open) return;
     queueMicrotask(() => {
@@ -69,11 +84,23 @@ export function ZdEstimateLinkZdDialog({
       }
       setDocs(res.documents);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- open-only; initialNr patch poniżej
+  }, [open]);
+
+  // Timeout recovery: uzupełnij nr gdy async candidates dojdą, bez kasowania wyboru użytkownika.
+  useEffect(() => {
+    if (!open) return;
+    const next = initialNr?.trim() ?? "";
+    if (!next) return;
+    queueMicrotask(() => {
+      setNr((prev) => (prev.trim() ? prev : next));
+    });
   }, [open, initialNr]);
 
   if (!open) return null;
 
   const confirm = () => {
+    if (busy) return;
     if (!supplierId?.trim()) {
       onError("Wybierz dostawcę w workbenchu — historia jest per kontrahent.");
       return;
@@ -93,7 +120,12 @@ export function ZdEstimateLinkZdDialog({
         onError(res.message);
         return;
       }
-      onLinked({ dokNrPelny: res.dokNrPelny, lineCount: res.lineCount });
+      onLinked({
+        dokId: res.snapshot.dokId,
+        dokNrPelny: res.dokNrPelny,
+        lineCount: res.lineCount,
+        createdLines: res.createdLines ?? [],
+      });
       onClose();
     });
   };
@@ -103,10 +135,13 @@ export function ZdEstimateLinkZdDialog({
       open
       onClose={onClose}
       title="Powiąż ZD"
-      titleHint="Gdy ZD powstało poza OnTime (lub po timeout create) — zapisz snapshot. „Utwórz ZD” robi to automatycznie."
+      titleHint={
+        titleHint?.trim() ||
+        "Gdy ZD powstało poza OnTime (lub po timeout create) — zapisz snapshot. „Utwórz ZD” robi to automatycznie."
+      }
       titleId="zd-estimate-link-zd-title"
       size="md"
-      tier="raised"
+      tier="top"
       disableBackdropClose={busy}
       bodyClassName="space-y-4 px-5 py-5 sm:px-6"
       loadingMessage={busy ? "Zapisuję…" : null}
@@ -143,10 +178,12 @@ export function ZdEstimateLinkZdDialog({
         </div>
       }
     >
-      {implicitPieceSnapshotHint ? (
-        <p className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2.5 text-xs leading-snug text-amber-950">
-          {implicitPieceSnapshotHint}
-        </p>
+      {implicitPieceSnapshotNotice ? (
+        <ZdEstimateImplicitPieceNotice
+          notice={implicitPieceSnapshotNotice}
+          onOpenPackaging={onOpenPackaging}
+          onOpenPairs={onOpenPairs}
+        />
       ) : null}
       <div className="space-y-2">
         <label

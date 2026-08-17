@@ -28,6 +28,10 @@ function line(
     celZapasuTracked: 0,
     salesTrackDelta: 0,
     salesTrackReasons: [],
+    salesTrackConfidence: 0,
+    salesTrackQtyReview: false,
+    salesTrackHeldExtraQty: 0,
+    salesTrackAllowedExtraQty: 0,
     otwarteZkBezRez: 0,
     otwarteZkZarezerwowane: 0,
     otwarteZd: 0,
@@ -66,6 +70,17 @@ describe("zd-product-pair-units", () => {
         unitsPerPack: 100,
       })
     ).toBe(140);
+  });
+
+  it("pairCover: ujemne dostepne (dług rez.) zmniejsza cover", () => {
+    expect(
+      pairCoverPieces({
+        pieceDostepne: -28,
+        packDostepne: 0,
+        unitsPerPack: 10,
+        packOtwarteZd: 0,
+      })
+    ).toBe(-28);
   });
 
   it("indexuje pack i piece", () => {

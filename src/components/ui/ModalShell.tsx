@@ -9,7 +9,7 @@ import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 
 export type ModalTier = "standard" | "raised" | "top" | "stack" | "overlay";
-export type ModalSize = "sm" | "md" | "lg" | "xl";
+export type ModalSize = "sm" | "md" | "lg" | "xl" | "full";
 
 const tierZ: Record<ModalTier, { backdrop: string; panel: string }> = {
   standard: { backdrop: "z-50", panel: "z-[55]" },
@@ -26,6 +26,7 @@ const sizeClass: Record<ModalSize, string> = {
   md: "max-w-lg",
   lg: "max-w-2xl",
   xl: "w-[min(100%-1.5rem,72rem)] max-w-5xl",
+  full: "w-[min(100%-1rem,88rem)] max-w-none",
 };
 
 export function ModalShell({
@@ -87,12 +88,16 @@ export function ModalShell({
 
   const shell = (
     <>
-      <button
-        type="button"
-        className={cn(modalBackdropClass, z.backdrop)}
-        aria-label="Zamknij"
-        onClick={disableBackdropClose ? undefined : onClose}
-      />
+      {disableBackdropClose ? (
+        <div className={cn(modalBackdropClass, z.backdrop)} aria-hidden />
+      ) : (
+        <button
+          type="button"
+          className={cn(modalBackdropClass, z.backdrop)}
+          aria-label="Zamknij"
+          onClick={onClose}
+        />
+      )}
       <div
         role={role}
         aria-modal="true"

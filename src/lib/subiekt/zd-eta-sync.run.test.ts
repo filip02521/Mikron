@@ -109,11 +109,15 @@ function zdListItem(id: number, khId = 9001) {
   };
 }
 
+function futureDeadline(daysAhead = 30): string {
+  return new Date(Date.now() + daysAhead * 86_400_000).toISOString().slice(0, 10);
+}
+
 function zdDoc(
   id: number,
   date: string,
   symbol: string,
-  deadline = "2026-08-01"
+  deadline = futureDeadline(30)
 ): SubiektDocument {
   return {
     dok_Id: id,
@@ -223,7 +227,7 @@ describe("runZdEtaSync (integracja)", () => {
     fetchDeliveryStats.mockResolvedValue([stats]);
     getAppSupplierRefsCached.mockResolvedValue([supplierRef]);
     getSubiektZdDocumentCached.mockImplementation(async (id: number) =>
-      zdDoc(id, "2026-06-01", "ABC-1", "2026-08-15")
+      zdDoc(id, "2026-06-01", "ABC-1", futureDeadline(20))
     );
     searchSubiektZdCached.mockResolvedValue({ data: [] });
   });
@@ -244,6 +248,10 @@ describe("runZdEtaSync (integracja)", () => {
   });
 
   it("zapisuje termin z dopasowanego ZD z indeksu", async () => {
+    const deadline = futureDeadline(20);
+    getSubiektZdDocumentCached.mockImplementation(async (id: number) =>
+      zdDoc(id, "2026-06-01", "ABC-1", deadline)
+    );
     const result = await runZdEtaSync({
       salesPersonId: "sp1",
       maxOrders: 1,
@@ -255,13 +263,14 @@ describe("runZdEtaSync (integracja)", () => {
     expect(result.updated).toBe(1);
     expect(result.processed).toBe(1);
     expect(orderUpdates).toHaveLength(1);
-    expect(orderUpdates[0]?.patch.zd_fulfillment_deadline).toBe("2026-08-15");
+    expect(orderUpdates[0]?.patch.zd_fulfillment_deadline).toBe(deadline);
     expect(orderUpdates[0]?.patch.zd_fulfillment_source).toBe("zd");
     expect(orderUpdates[0]?.patch.zd_fulfillment_dok_nr).toBe("ZD/101/2026");
     expect(orderUpdates[0]?.patch.zd_fulfillment_dok_id).toBe(101);
   });
 
   it("zapisuje zmianę terminu ZD wykrytą przy ponownym sync", async () => {
+    const deadline = futureDeadline(25);
     mockOrders = [
       overdueOrder({
         zd_fulfillment_source: "zd",
@@ -271,7 +280,7 @@ describe("runZdEtaSync (integracja)", () => {
       }),
     ];
     getSubiektZdDocumentCached.mockResolvedValue(
-      zdDoc(101, "2026-06-01", "ABC-1", "2026-08-15")
+      zdDoc(101, "2026-06-01", "ABC-1", deadline)
     );
 
     const result = await runZdEtaSync({
@@ -284,18 +293,18 @@ describe("runZdEtaSync (integracja)", () => {
     });
 
     expect(result.updated).toBe(1);
-    expect(orderUpdates[0]?.patch.zd_fulfillment_deadline).toBe("2026-08-15");
+    expect(orderUpdates[0]?.patch.zd_fulfillment_deadline).toBe(deadline);
     expect(orderUpdates[0]?.patch.zd_fulfillment_previous_deadline).toBe("2026-07-01");
     expect(orderUpdates[0]?.patch.zd_fulfillment_deadline_changed_at).toBeDefined();
     expect(orderUpdates[0]?.patch.zd_fulfillment_deadline_change_seen_at).toBeNull();
   });
 
   it("przy backupie bez dopasowania tylko odświeża synced_at gdy termin już zapisany", async () => {
-    const futureDeadline = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+    const deadline = futureDeadline(30);
     mockOrders = [
       overdueOrder({
         zd_fulfillment_source: "zd",
-        zd_fulfillment_deadline: futureDeadline,
+        zd_fulfillment_deadline: deadline,
         zd_fulfillment_dok_nr: "ZD/stary",
         zd_fulfillment_synced_at: "2026-06-01T00:00:00Z",
       }),
@@ -318,11 +327,11 @@ describe("runZdEtaSync (integracja)", () => {
   });
 
   it("przy force zachowuje aktywny termin ZD gdy brak nowego dopasowania", async () => {
-    const futureDeadline = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+    const deadline = futureDeadline(30);
     mockOrders = [
       overdueOrder({
         zd_fulfillment_source: "zd",
-        zd_fulfillment_deadline: futureDeadline,
+        zd_fulfillment_deadline: deadline,
         zd_fulfillment_dok_nr: "ZD/stary",
         zd_fulfillment_synced_at: "2026-06-01T00:00:00Z",
       }),
@@ -377,7 +386,7 @@ describe("runZdEtaSync (integracja)", () => {
       data: [zdListItem(301)],
     });
     getSubiektZdDocumentCached.mockResolvedValue(
-      zdDoc(301, "2026-06-01", "ABC-1", "2026-08-20")
+      zdDoc(301, "2026-06-01", "ABC-1", futureDeadline(40))
     );
 
     const { matched } = await liveSearchZdDocsForOrder(
@@ -395,12 +404,13 @@ describe("runZdEtaSync (integracja)", () => {
   });
 
   it("runZdEtaSync uruchamia live search gdy brak dopasowania w indeksie", async () => {
+    const deadline = futureDeadline(40);
     mockIndexRows = [];
     searchSubiektZdCached.mockResolvedValue({
       data: [zdListItem(301)],
     });
     getSubiektZdDocumentCached.mockResolvedValue(
-      zdDoc(301, "2026-06-01", "ABC-1", "2026-08-20")
+      zdDoc(301, "2026-06-01", "ABC-1", deadline)
     );
 
     const result = await runZdEtaSync({
@@ -414,7 +424,7 @@ describe("runZdEtaSync (integracja)", () => {
 
     expect(result.processed).toBe(1);
     expect(result.updated).toBe(1);
-    expect(orderUpdates[0]?.patch.zd_fulfillment_deadline).toBe("2026-08-20");
+    expect(orderUpdates[0]?.patch.zd_fulfillment_deadline).toBe(deadline);
   });
 
   it("globalny sync stronicuje zapytanie o zamówienia", async () => {

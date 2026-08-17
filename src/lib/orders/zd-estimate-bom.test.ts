@@ -65,6 +65,10 @@ function line(
     celZapasuTracked: 0,
     salesTrackDelta: 0,
     salesTrackReasons: [],
+    salesTrackConfidence: 0,
+    salesTrackQtyReview: false,
+    salesTrackHeldExtraQty: 0,
+    salesTrackAllowedExtraQty: 0,
     otwarteZkBezRez: 0,
     otwarteZkZarezerwowane: 0,
     otwarteZd: 0,
@@ -680,6 +684,22 @@ describe("Castorit BOM + pary", () => {
     expect(after.find((l) => l.tw_Id === 10)?.doZamowieniaReczne).toBe(60);
     const orderable = filterOrderableLinesWithPackaging(after, new Map());
     expect(orderable.map((r) => r.tw_Id).sort()).toEqual([10, 20, 30]);
+  });
+
+  it("assembled_parent finalize czyści salesTrackQtyReview", () => {
+    const parent = line({
+      tw_Id: 99,
+      tw_Symbol: "PARENT",
+      doZamowieniaReczne: 5,
+      salesTrackQtyReview: true,
+      salesTrackHeldExtraQty: 1,
+      salesTrackReasons: ["thin_cover", "boost_held"],
+      bom: { role: "assembled_parent" },
+    });
+    const after = applyBomPurchaseTargetFinalize([parent]);
+    expect(after[0]?.doZamowieniaReczne).toBe(0);
+    expect(after[0]?.salesTrackQtyReview).toBe(false);
+    expect(after[0]?.salesTrackReasons).toEqual(["thin_cover"]);
   });
 
   it("P3 kit_only: A/B doZd=0 nawet gdy składnik jest packiem pary", () => {

@@ -3,6 +3,8 @@
  * Pasek i checklista idą z czasem — nie stoją na 0% podczas długiego POST Sfery.
  */
 
+import { formatZdEstimateElapsedCompact } from "@/lib/orders/zd-estimate-loading-ui";
+
 /** Limit timeoutu create (zgodnie z SUBIEKT_ORDERS_ZD_CREATE_TIMEOUT_MS). */
 export const ZD_CREATE_PROGRESS_TIMEOUT_MS = 180_000;
 
@@ -115,10 +117,7 @@ export function createZdProgressDurationHint(lineCount: number): string {
   return "Zwykle poniżej minuty; maksymalnie ok. 3 minuty.";
 }
 
+/** @deprecated Użyj formatZdEstimateElapsedCompact — ten sam format `12s` / `1:05`. */
 export function formatZdCreateElapsedLabel(elapsedMs: number): string {
-  const sec = Math.floor(Math.max(0, elapsedMs) / 1000);
-  if (sec < 60) return `Minęło ${sec} s`;
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `Minęło ${m}:${String(s).padStart(2, "0")}`;
+  return formatZdEstimateElapsedCompact(elapsedMs);
 }

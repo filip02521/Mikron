@@ -19,9 +19,11 @@ import {
 } from "@/lib/orders/zd-estimate-bom-policy";
 import {
   computeSalesTrackedCel,
+  reconcileSalesTrackQtyMetaAfterHistory,
   resolveSprzedazDziennie,
   type SalesTrackReason,
 } from "@/lib/orders/zd-estimate-sales-track";
+import { clearSalesTrackQtyReviewMeta } from "@/lib/orders/zd-estimate-post-create";
 import { zdDocumentUnitsToPieces } from "@/lib/orders/zd-estimate-units";
 import {
   indexZdProductPairs,
@@ -166,7 +168,13 @@ export function expandZdEstimateBoms(
   boms: readonly ZdProductBomRef[],
   options?: {
     missingComponentTwIds?: ReadonlySet<number> | null;
-    packagingByTwId?: ReadonlyMap<number, { unitsPerPackage: number }> | null;
+    packagingByTwId?: ReadonlyMap<
+      number,
+      {
+        unitsPerPackage: number;
+        documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode | null;
+      }
+    > | null;
   }
 ): ManualZdEstimateLineWithBom[] {
   if (!boms.length) {
@@ -203,9 +211,13 @@ export function expandZdEstimateBoms(
     const parentSales = Math.max(0, asNum(parent.sprzedazOkres));
     const parentDost = Math.max(0, asNum(parent.dostepne));
     const parentZdRaw = Math.max(0, asNum(parent.otwarteZd));
-    const parentPack =
-      packagingByTwId?.get(parentId)?.unitsPerPackage ?? null;
-    const parentZdPieces = zdDocumentUnitsToPieces(parentZdRaw, parentPack);
+    const parentPackRow = packagingByTwId?.get(parentId);
+    const parentPack = parentPackRow?.unitsPerPackage ?? null;
+    const parentZdPieces = zdDocumentUnitsToPieces(
+      parentZdRaw,
+      parentPack,
+      parentPackRow?.documentUnitMode
+    );
     const useCover =
       explode && bom.stockAsCover !== false && allocation === "explode";
     const coverBase = useCover ? parentDost + parentZdPieces : 0;
@@ -315,7 +327,8 @@ export function expandZdEstimateBoms(
     byTw.set(cid, {
       ...existing,
       sprzedazOkres: Math.max(0, asNum(existing.sprzedazOkres)) + salesAdd,
-      dostepne: Math.max(0, asNum(existing.dostepne)) + coverAdd,
+      // Zachowaj ujemne dostępne składnika; cover z rodzica się dokłada.
+      dostepne: asNum(existing.dostepne) + coverAdd,
       bom: {
         role: "component",
         parentTwIds: parentIdsByComp.get(cid) ?? [],
@@ -371,11 +384,20 @@ export type RematerializeSoloAfterBomOptions = {
   zapasMin?: number;
   salesTrack?: boolean;
   salesTrackCuts?: boolean;
+  salesTrackPolicy?: Partial<
+    typeof import("@/lib/orders/zd-estimate-sales-track").ZD_SALES_TRACK
+  > | null;
   historyByTwId?: ReadonlyMap<
     number,
     { lastOrderedQty: number; linkedAt: string }
   > | null;
-  packagingByTwId?: ReadonlyMap<number, { unitsPerPackage: number }> | null;
+  packagingByTwId?: ReadonlyMap<
+    number,
+    {
+      unitsPerPackage: number;
+      documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode | null;
+    }
+  > | null;
   /** SKU w parze — skip rematerialize (applyPairs nadpisze). */
   productPairs?: readonly ZdProductPairRef[] | null;
 };
@@ -403,7 +425,7 @@ export function rematerializeSoloAfterBom(
     line: ManualZdEstimateLineWithBom
   ): ManualZdEstimateLineWithBom {
     const sprzedazOkres = Math.max(0, asNum(line.sprzedazOkres));
-    const dostepne = Math.max(0, asNum(line.dostepne));
+    const dostepne = asNum(line.dostepne);
     const tempo = resolveSprzedazDziennie({
       sprzedazOkres,
       sprzedazDziennie: 0,
@@ -414,14 +436,20 @@ export function rematerializeSoloAfterBom(
 
     let celTracked = celBase;
     let salesTrackDelta = 0;
-    const salesTrackReasons: SalesTrackReason[] = [];
+    let salesTrackReasons: SalesTrackReason[] = [];
+    let salesTrackConfidence = 0;
+    let salesTrackQtyReview = false;
+    let salesTrackHeldExtraQty = 0;
+    let salesTrackAllowedExtraQty = 0;
 
-    const packUnits =
-      options.packagingByTwId?.get(line.tw_Id)?.unitsPerPackage ?? null;
+    const packRow = options.packagingByTwId?.get(line.tw_Id);
+    const packUnits = packRow?.unitsPerPackage ?? null;
     const otwarteZdPieces = zdDocumentUnitsToPieces(
       Math.max(0, asNum(line.otwarteZd)),
-      packUnits
+      packUnits,
+      packRow?.documentUnitMode
     );
+    const coverForQty = dostepne + otwarteZdPieces;
 
     if (salesTrack && celBase > 0) {
       const track = computeSalesTrackedCel({
@@ -434,10 +462,15 @@ export function rematerializeSoloAfterBom(
         dniOkresu,
         enabled: true,
         cutsEnabled: salesTrackCuts,
+        policy: options.salesTrackPolicy ?? undefined,
       });
       celTracked = track.celTracked;
       salesTrackDelta = track.deltaPieces;
-      salesTrackReasons.push(...track.reasons);
+      salesTrackReasons = [...track.reasons];
+      salesTrackConfidence = track.confidence;
+      salesTrackQtyReview = track.qtyReview;
+      salesTrackHeldExtraQty = track.heldExtraQty;
+      salesTrackAllowedExtraQty = track.allowedExtraQty;
 
       const hist = options.historyByTwId?.get(line.tw_Id);
       if (hist && salesTrackCuts) {
@@ -446,7 +479,7 @@ export function rematerializeSoloAfterBom(
           celBase,
           sprzedazOkres,
           sprzedazDziennie: tempo,
-          coverStock: dostepne + otwarteZdPieces,
+          coverStock: coverForQty,
           dniZapasu,
           dniOkresu,
           lastOrderedQty: hist.lastOrderedQty,
@@ -456,6 +489,18 @@ export function rematerializeSoloAfterBom(
           celTracked = histAdj.celTracked;
           salesTrackDelta = celTracked - celBase;
           salesTrackReasons.push(...histAdj.reasons);
+          const reconciled = reconcileSalesTrackQtyMetaAfterHistory({
+            celBase,
+            celTracked,
+            coverStock: coverForQty,
+            confidence: salesTrackConfidence,
+            reasons: salesTrackReasons,
+            policy: options.salesTrackPolicy ?? undefined,
+          });
+          salesTrackReasons = reconciled.salesTrackReasons;
+          salesTrackQtyReview = reconciled.salesTrackQtyReview;
+          salesTrackHeldExtraQty = reconciled.salesTrackHeldExtraQty;
+          salesTrackAllowedExtraQty = reconciled.salesTrackAllowedExtraQty;
         }
       }
     }
@@ -473,6 +518,10 @@ export function rematerializeSoloAfterBom(
       celZapasuTracked: celTracked,
       salesTrackDelta,
       salesTrackReasons,
+      salesTrackConfidence,
+      salesTrackQtyReview,
+      salesTrackHeldExtraQty,
+      salesTrackAllowedExtraQty,
       doZamowieniaReczne,
       wkladZk: Math.max(0, asNum(line.doZamowieniaApi) - doZamowieniaReczne),
     };
@@ -480,7 +529,7 @@ export function rematerializeSoloAfterBom(
 
   return lines.map((line) => {
     if (isAssembledBomParent(line)) {
-      return { ...line, doZamowieniaReczne: 0 };
+      return clearSalesTrackQtyReviewMeta({ ...line, doZamowieniaReczne: 0 });
     }
 
     // purchased_kit: jak zwykły SKU (nie zero z roli).
@@ -494,21 +543,21 @@ export function rematerializeSoloAfterBom(
     }
     if (pairIndex.has(line.tw_Id)) {
       if (isBomPurchaseBlockedWithoutExplode(line)) {
-        return { ...line, doZamowieniaReczne: 0 };
+        return clearSalesTrackQtyReviewMeta({ ...line, doZamowieniaReczne: 0 });
       }
       return line;
     }
 
     // purchaseBlocked bez wkładu explode — zero bez remat.
     if (isBomPurchaseBlockedWithoutExplode(line)) {
-      return { ...line, doZamowieniaReczne: 0 };
+      return clearSalesTrackQtyReviewMeta({ ...line, doZamowieniaReczne: 0 });
     }
 
     let next = rematerializeNeed(line);
 
     // Explode wygrywa nad kit_only — zostaw need gdy jest contributionSales.
     if (isBomPurchaseBlockedWithoutExplode(next)) {
-      next = { ...next, doZamowieniaReczne: 0 };
+      next = clearSalesTrackQtyReviewMeta({ ...next, doZamowieniaReczne: 0 });
     }
 
     return next;
@@ -524,15 +573,19 @@ export function applyBomPurchaseTargetFinalize(
 ): ManualZdEstimateLineWithBom[] {
   return lines.map((line) => {
     if (isAssembledBomParent(line)) {
-      if (line.doZamowieniaReczne === 0) return line;
-      return { ...line, doZamowieniaReczne: 0 };
+      if (line.doZamowieniaReczne === 0 && !line.salesTrackQtyReview) {
+        return line;
+      }
+      return clearSalesTrackQtyReviewMeta({ ...line, doZamowieniaReczne: 0 });
     }
     if (
       line.bom?.purchaseBlocked &&
       isBomPurchaseBlockedWithoutExplode(line)
     ) {
-      if (line.doZamowieniaReczne === 0) return line;
-      return { ...line, doZamowieniaReczne: 0 };
+      if (line.doZamowieniaReczne === 0 && !line.salesTrackQtyReview) {
+        return line;
+      }
+      return clearSalesTrackQtyReviewMeta({ ...line, doZamowieniaReczne: 0 });
     }
     return line;
   });

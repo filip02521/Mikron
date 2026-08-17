@@ -42,6 +42,7 @@ export function DeliveryJournalReceiptCard({
   actions,
   carrierCatalog,
   pendingCount,
+  onGoToReceive,
 }: {
   receipt: WarehouseDeliveryReceipt;
   highlightQuery?: string;
@@ -49,6 +50,8 @@ export function DeliveryJournalReceiptCard({
   actions?: ReactNode;
   carrierCatalog?: WarehouseCarrierRow[];
   pendingCount?: number;
+  /** Przełącza zakładkę Przyjęcie w QueueClient (bez soft router.push). */
+  onGoToReceive?: (supplierName: string | null) => void;
 }) {
   const router = useRouter();
   const note = receipt.note.trim();
@@ -60,10 +63,17 @@ export function DeliveryJournalReceiptCard({
   const hasPending = pendingCount != null && pendingCount > 0;
 
   const goToReceiveQueue = () => {
-    const params = new URLSearchParams();
-    if (receipt.supplierName && receipt.supplierName !== "—") {
-      params.set("supplier", receipt.supplierName);
+    const supplierName =
+      receipt.supplierName && receipt.supplierName !== "—"
+        ? receipt.supplierName
+        : null;
+    if (onGoToReceive) {
+      onGoToReceive(supplierName);
+      return;
     }
+    // Fallback poza QueueClient (np. izolowany preview).
+    const params = new URLSearchParams();
+    if (supplierName) params.set("supplier", supplierName);
     const query = params.toString() ? `?${params.toString()}` : "";
     router.push(`/kolejka${query}#kolejka-przyjecie`);
   };
@@ -122,5 +132,6 @@ export function DeliveryJournalReceiptCard({
         </div>
         {actions ? <div className="flex shrink-0 flex-wrap gap-2">{actions}</div> : null}
       </div>
-    </li>);
+    </li>
+  );
 }

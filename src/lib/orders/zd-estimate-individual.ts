@@ -913,7 +913,7 @@ export function individualServiceReasonLabel(
   }
 }
 
-/** Preflight: czy da się oznaczyć te orderIds jako Główne (interwał + status). */
+/** Filtr próśb po id (create / freeze) — bez side-effects. */
 export function filterPendingOrdersByIds(
   orders: readonly ZdEstimatePendingIndividualOrder[],
   ids: readonly string[]

@@ -13,3 +13,10 @@ export const floatingToastStackAboveClass =
 /** Undo / toast nad sticky Create/TSV/Link w kreatorze ZD. */
 export const floatingToastAboveZdStickyClass =
   "bottom-[calc(9.25rem+env(safe-area-inset-bottom,0px))] md:bottom-[6.75rem]";
+
+/**
+ * Gdy sticky ma caption gate / hint opakowań — pasek jest wyższy.
+ * Używaj razem z `floatingToastAboveZdStickyClass` (nadpisuje bottom).
+ */
+export const floatingToastAboveZdStickyTallClass =
+  "bottom-[calc(12.75rem+env(safe-area-inset-bottom,0px))] md:bottom-[9.75rem]";

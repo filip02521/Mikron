@@ -4,11 +4,18 @@ import {
   type ManualZdEstimateLine,
 } from "./zd-estimate-manual";
 import {
+  assertPackagingUnits,
   computeZdPackOrderQty,
   effectiveZdDocumentUnits,
   filterOrderableLinesWithPackaging,
+  formatZdPackDocumentLabel,
   formatZdPackHint,
+  formatZdPackOrderPreviewLine,
+  formatZdPackRoundupLine,
+  getZdPackRoundupInfo,
   lineAllowsZdDocumentUnitOverride,
+  piecesArrivingForZdUnits,
+  packagingRowsToRefreshLookup,
   pruneZdDocumentUnitOverrides,
   resolveOrderQtyForLine,
   summarizePackOrderQty,
@@ -27,6 +34,44 @@ describe("computeZdPackOrderQty", () => {
     });
   });
 
+  it("9 szt / N=10 → 1 na ZD, dobicie do 10", () => {
+    const q = computeZdPackOrderQty(9, 10, "karton");
+    expect(q).toMatchObject({
+      piecesNeeded: 9,
+      unitsPerPackage: 10,
+      zdUnits: 1,
+      piecesArriving: 10,
+      hasPackaging: true,
+      roundedUp: true,
+      packageLabel: "karton",
+      documentUnitMode: "packages",
+    });
+    expect(formatZdPackDocumentLabel(q)).toBe("1 karton");
+    expect(formatZdPackRoundupLine(q)).toBe("dobicie +1 szt (9→10)");
+  });
+
+  it("Mode B: 8 szt / N=5 → Do ZD 10 (sztuki), nie 2 paczki", () => {
+    const q = computeZdPackOrderQty(8, 5, "zbiorcze", "pieces_multiple");
+    expect(q).toMatchObject({
+      piecesNeeded: 8,
+      unitsPerPackage: 5,
+      zdUnits: 10,
+      piecesArriving: 10,
+      hasPackaging: true,
+      roundedUp: true,
+      documentUnitMode: "pieces_multiple",
+    });
+    expect(formatZdPackDocumentLabel(q)).toBeNull();
+    expect(formatZdPackHint(q)).toContain("10 szt (paczka 5)");
+    expect(formatZdPackRoundupLine(q)).toBe("dobicie +2 szt (8→10)");
+  });
+
+  it("Mode B exact multiple: 10/5 → 10, bez dobicia", () => {
+    const q = computeZdPackOrderQty(10, 5, "op.", "pieces_multiple");
+    expect(q.zdUnits).toBe(10);
+    expect(q.roundedUp).toBe(false);
+  });
+
   it("EVE: 250 szt przy 100 → 3 na ZD, przyjdzie 300", () => {
     const q = computeZdPackOrderQty(250, 100, "paczka");
     expect(q.zdUnits).toBe(3);
@@ -42,6 +87,86 @@ describe("computeZdPackOrderQty", () => {
       hasPackaging: false,
       roundedUp: false,
     });
+  });
+});
+
+describe("assertPackagingUnits + format helpers", () => {
+  it("odrzuca 1, 0 i powyżej limitu; akceptuje 2", () => {
+    expect(assertPackagingUnits(1).ok).toBe(false);
+    expect(assertPackagingUnits(0).ok).toBe(false);
+    expect(assertPackagingUnits(100_001).ok).toBe(false);
+    expect(assertPackagingUnits(100_001)).toMatchObject({
+      ok: false,
+      message: expect.stringContaining("100 000"),
+    });
+    expect(assertPackagingUnits(2)).toEqual({ ok: true, units: 2 });
+    expect(assertPackagingUnits(100_000)).toEqual({
+      ok: true,
+      units: 100_000,
+    });
+  });
+
+  it("piecesArrivingForZdUnits: A × N, B identity", () => {
+    expect(piecesArrivingForZdUnits(2, 10)).toBe(20);
+    expect(piecesArrivingForZdUnits(2, 10, "packages")).toBe(20);
+    expect(piecesArrivingForZdUnits(10, 5, "pieces_multiple")).toBe(10);
+    expect(piecesArrivingForZdUnits(0, 10)).toBe(0);
+    expect(piecesArrivingForZdUnits(5, 1)).toBe(5);
+  });
+
+  it("zdDocumentUnitsToPieces: B bez × N", async () => {
+    const { zdDocumentUnitsToPieces } = await import(
+      "./zd-estimate-units"
+    );
+    expect(zdDocumentUnitsToPieces(10, 5, "packages")).toBe(50);
+    expect(zdDocumentUnitsToPieces(10, 5, "pieces_multiple")).toBe(10);
+  });
+
+  it("packagingRowsToRefreshLookup: N + tryb", () => {
+    const map = packagingRowsToRefreshLookup([
+      {
+        subiektTwId: 7,
+        unitsPerPackage: 10,
+        documentUnitMode: "pieces_multiple",
+      },
+    ]);
+    expect(map.get(7)).toEqual({
+      unitsPerPackage: 10,
+      documentUnitMode: "pieces_multiple",
+    });
+  });
+
+  it("formatZdPackDocumentLabel / roundup / hint ze trim label", () => {
+    const plain = computeZdPackOrderQty(5, 1);
+    expect(formatZdPackDocumentLabel(plain)).toBeNull();
+    expect(formatZdPackRoundupLine(plain)).toBeNull();
+    const exact = computeZdPackOrderQty(20, 10, "  op.  ");
+    expect(formatZdPackRoundupLine(exact)).toBeNull();
+    expect(formatZdPackDocumentLabel(exact)).toBe("2 op.");
+    expect(formatZdPackHint(exact)).toBe("2 op. × 10 = 20 szt");
+    const round = computeZdPackOrderQty(9, 10, "karton");
+    expect(formatZdPackHint(round)).toContain("1 karton × 10 = 10 szt");
+    expect(formatZdPackHint(round)).toContain("potrzeba 9 szt");
+  });
+
+  it("formatZdPackOrderPreviewLine: A paczki, B sztuki", () => {
+    const a = computeZdPackOrderQty(8, 5, "op.", "packages");
+    expect(formatZdPackOrderPreviewLine(a)).toBe("2 × 5 = 10 szt");
+    const b = computeZdPackOrderQty(8, 5, "op.", "pieces_multiple");
+    expect(formatZdPackOrderPreviewLine(b)).toBe(
+      "10 szt (wielokrotność 5)"
+    );
+  });
+
+  it("getZdPackRoundupInfo / formatZdPackRoundupLine", () => {
+    const round = computeZdPackOrderQty(1, 5, "op.", "pieces_multiple");
+    expect(getZdPackRoundupInfo(round)).toEqual({
+      extra: 4,
+      need: 1,
+      arrive: 5,
+    });
+    expect(formatZdPackRoundupLine(round)).toBe("dobicie +4 szt (1→5)");
+    expect(getZdPackRoundupInfo(computeZdPackOrderQty(5, 5))).toBeNull();
   });
 });
 
@@ -63,6 +188,10 @@ describe("resolveOrderQtyForLine + para", () => {
         celZapasuTracked: 500,
         salesTrackDelta: 0,
         salesTrackReasons: [],
+        salesTrackConfidence: 0,
+        salesTrackQtyReview: false,
+        salesTrackHeldExtraQty: 0,
+        salesTrackAllowedExtraQty: 0,
         otwarteZkBezRez: 0,
         otwarteZkZarezerwowane: 0,
         otwarteZd: 0,
@@ -105,6 +234,10 @@ describe("resolveOrderQtyForLine + para", () => {
       celZapasuTracked: 50,
       salesTrackDelta: 0,
       salesTrackReasons: [],
+      salesTrackConfidence: 0,
+      salesTrackQtyReview: false,
+      salesTrackHeldExtraQty: 0,
+      salesTrackAllowedExtraQty: 0,
       otwarteZkBezRez: 0,
       otwarteZkZarezerwowane: 0,
       otwarteZd: 0,
@@ -142,6 +275,10 @@ describe("resolveOrderQtyForLine + para", () => {
       celZapasuTracked: 0,
       salesTrackDelta: 0,
       salesTrackReasons: [],
+      salesTrackConfidence: 0,
+      salesTrackQtyReview: false,
+      salesTrackHeldExtraQty: 0,
+      salesTrackAllowedExtraQty: 0,
       otwarteZkBezRez: 0,
       otwarteZkZarezerwowane: 0,
       otwarteZd: 0,
@@ -303,6 +440,28 @@ describe("resolveOrderQtyForLine + individualExtra", () => {
     expect(q.zdUnits).toBe(1);
   });
 
+  it("extrasPolicy max: nie dubluje gdy extra < need", () => {
+    const line = mapZdEstimateLineToManual(
+      {
+        tw_Id: 1,
+        tw_Symbol: "X",
+        tw_Nazwa: "x",
+        celZapasu: 40,
+        dostepne: 10,
+        otwarteZd: 0,
+        doZamowienia: 30,
+        sprzedazOkres: 0,
+        sprzedazDziennie: 0,
+      },
+      { salesTrack: false }
+    );
+    const pack = { unitsPerPackage: 1, packageLabel: "szt" };
+    const sum = resolveOrderQtyForLine(line, pack, 8, false, "sum");
+    const max = resolveOrderQtyForLine(line, pack, 8, false, "max");
+    expect(sum.piecesNeeded).toBe(38);
+    expect(max.piecesNeeded).toBe(30);
+  });
+
   it("pack + partnerMissing + extra → zdUnits > 0", () => {
     const q = resolveOrderQtyForLine(
       {
@@ -320,6 +479,10 @@ describe("resolveOrderQtyForLine + individualExtra", () => {
         celZapasuTracked: 0,
         salesTrackDelta: 0,
         salesTrackReasons: [],
+        salesTrackConfidence: 0,
+        salesTrackQtyReview: false,
+        salesTrackHeldExtraQty: 0,
+        salesTrackAllowedExtraQty: 0,
         otwarteZkBezRez: 0,
         otwarteZkZarezerwowane: 0,
         otwarteZd: 0,
@@ -364,6 +527,10 @@ describe("resolveOrderQtyForLine + individualExtra", () => {
         celZapasuTracked: 0,
         salesTrackDelta: 0,
         salesTrackReasons: [],
+        salesTrackConfidence: 0,
+        salesTrackQtyReview: false,
+        salesTrackHeldExtraQty: 0,
+        salesTrackAllowedExtraQty: 0,
         otwarteZkBezRez: 0,
         otwarteZkZarezerwowane: 0,
         otwarteZd: 0,
@@ -406,6 +573,10 @@ describe("resolveOrderQtyForLine + BOM parent", () => {
       celZapasuTracked: 5,
       salesTrackDelta: 0,
       salesTrackReasons: [],
+      salesTrackConfidence: 0,
+      salesTrackQtyReview: false,
+      salesTrackHeldExtraQty: 0,
+      salesTrackAllowedExtraQty: 0,
       otwarteZkBezRez: 0,
       otwarteZkZarezerwowane: 0,
       otwarteZd: 0,
@@ -434,6 +605,10 @@ describe("effectiveZdDocumentUnits + override w summary/filter", () => {
     celZapasuTracked: 8,
     salesTrackDelta: 0,
     salesTrackReasons: [],
+    salesTrackConfidence: 0,
+    salesTrackQtyReview: false,
+    salesTrackHeldExtraQty: 0,
+    salesTrackAllowedExtraQty: 0,
     otwarteZkBezRez: 0,
     otwarteZkZarezerwowane: 0,
     otwarteZd: 0,
@@ -495,6 +670,10 @@ describe("resolveOrderQtyForLine extra_only", () => {
       celZapasuTracked: 500,
       salesTrackDelta: 0,
       salesTrackReasons: [],
+      salesTrackConfidence: 0,
+      salesTrackQtyReview: false,
+      salesTrackHeldExtraQty: 0,
+      salesTrackAllowedExtraQty: 0,
       otwarteZkBezRez: 0,
       otwarteZkZarezerwowane: 0,
       otwarteZd: 0,
@@ -529,6 +708,10 @@ describe("resolveOrderQtyForLine extra_only", () => {
       celZapasuTracked: 5000,
       salesTrackDelta: 0,
       salesTrackReasons: [],
+      salesTrackConfidence: 0,
+      salesTrackQtyReview: false,
+      salesTrackHeldExtraQty: 0,
+      salesTrackAllowedExtraQty: 0,
       otwarteZkBezRez: 0,
       otwarteZkZarezerwowane: 0,
       otwarteZd: 0,
@@ -576,6 +759,10 @@ describe("resolveOrderQtyForLine extra_only", () => {
       celZapasuTracked: 0,
       salesTrackDelta: 0,
       salesTrackReasons: [],
+      salesTrackConfidence: 0,
+      salesTrackQtyReview: false,
+      salesTrackHeldExtraQty: 0,
+      salesTrackAllowedExtraQty: 0,
       otwarteZkBezRez: 0,
       otwarteZkZarezerwowane: 0,
       otwarteZd: 0,
@@ -617,6 +804,10 @@ describe("pruneZdDocumentUnitOverrides + extraOnly", () => {
     celZapasuTracked: 500,
     salesTrackDelta: 0,
     salesTrackReasons: [],
+    salesTrackConfidence: 0,
+    salesTrackQtyReview: false,
+    salesTrackHeldExtraQty: 0,
+    salesTrackAllowedExtraQty: 0,
     otwarteZkBezRez: 0,
     otwarteZkZarezerwowane: 0,
     otwarteZd: 0,
@@ -674,6 +865,10 @@ describe("filterOrderableLinesWithPackaging + extraOnly", () => {
       celZapasuTracked: 100,
       salesTrackDelta: 0,
       salesTrackReasons: [],
+      salesTrackConfidence: 0,
+      salesTrackQtyReview: false,
+      salesTrackHeldExtraQty: 0,
+      salesTrackAllowedExtraQty: 0,
       otwarteZkBezRez: 0,
       otwarteZkZarezerwowane: 0,
       otwarteZd: 0,

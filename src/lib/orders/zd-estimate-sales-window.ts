@@ -35,6 +35,8 @@ export function resolveLaunchDniZapasu(input: {
   supplierDniZapasu?: number | null;
   groupDniZapasu?: number | null;
   quickGroupDniZapasu?: number | null;
+  /** Ostatnie dni z prefs użytkownika — tylko gdy brak interwału stock. */
+  prefsDniZapasu?: number | null;
   defaultDni: number;
 }): number {
   const pick = (v: number | null | undefined) =>
@@ -43,6 +45,7 @@ export function resolveLaunchDniZapasu(input: {
     pick(input.supplierDniZapasu) ??
     pick(input.groupDniZapasu) ??
     pick(input.quickGroupDniZapasu) ??
+    pick(input.prefsDniZapasu) ??
     Math.max(1, Math.round(input.defaultDni))
   );
 }

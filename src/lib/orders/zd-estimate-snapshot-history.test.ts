@@ -444,6 +444,17 @@ describe("resolveSnapshotPackForTwId", () => {
       })
     ).toEqual({ ok: false });
   });
+
+  it("Mode B: packaging → ratio 1 (packaging_pieces)", () => {
+    expect(
+      resolveSnapshotPackForTwId(5, {
+        packagingByTwId: packaging,
+        pairRatioByTwId: pairs,
+        packagingModeByTwId: new Map([[5, "pieces_multiple"]]),
+        requirePackaging: true,
+      })
+    ).toEqual({ ok: true, ratio: 1, source: "packaging_pieces" });
+  });
 });
 
 describe("snapshot workflow matrix (1028-style)", () => {

@@ -4,6 +4,7 @@ import {
   computeManualOrderQty,
   filterOrderableManualLines,
   mapZdEstimateLineToManual,
+  mapZdEstimateLinesSolo,
   manualLinesToTsv,
   salesWindowFromDniZapasu,
   stockPeriodToDniZapasu,
@@ -57,10 +58,26 @@ describe("computeManualOrderQty", () => {
     ).toBe(0);
   });
 
-  it("ujemne dostępne nie zawyża qty (clamp do 0)", () => {
+  it("ujemne dostępne (dług rezerwacji) zwiększa qty", () => {
     expect(
       computeManualOrderQty({ celZapasu: 4, dostepne: -1, otwarteZd: 0 })
-    ).toBe(4);
+    ).toBe(5);
+  });
+
+  it("screenshot: stan12 rez40 cel83 → potrzeba 111 szt", () => {
+    expect(
+      computeManualOrderQty({ celZapasu: 83, dostepne: -28, otwarteZd: 0 })
+    ).toBe(111);
+  });
+
+  it("screenshot pack 10: 111 szt → 12 op. (arrive 120)", () => {
+    const pieces = computeManualOrderQty({
+      celZapasu: 83,
+      dostepne: -28,
+      otwarteZd: 0,
+    });
+    expect(Math.ceil(pieces / 10)).toBe(12);
+    expect(12 * 10).toBe(120);
   });
 
   it("nie uwzględnia ZK (osobne pole w mapowaniu)", () => {
@@ -203,6 +220,76 @@ describe("mapZdEstimateLineToManual", () => {
     expect(raw.doZamowieniaReczne).toBe(28);
     expect(packed.doZamowieniaReczne).toBe(10);
     expect(packed.otwarteZd).toBe(2); // surowe jednostki API
+  });
+
+  it("live remat Manual: doZamowieniaApi bez doZamowienia", () => {
+    const mapped = mapZdEstimateLineToManual(base, { salesTrack: false });
+    expect(mapped.doZamowieniaApi).toBe(469.516);
+    const again = mapZdEstimateLineToManual(mapped, { salesTrack: false });
+    expect(again.doZamowieniaApi).toBe(469.516);
+    expect(again.wkladZk).toBe(mapped.wkladZk);
+  });
+
+  it("mapZdEstimateLinesSolo: opakowanie z mapy, pary bez track", () => {
+    const solo = {
+      ...base,
+      tw_Id: 1,
+      celZapasu: 40,
+      dostepne: 10,
+      otwarteZd: 2,
+      sprzedazOkres: 0,
+      sprzedazDziennie: 0,
+      doZamowienia: 100,
+    };
+    const packSku = {
+      ...base,
+      tw_Id: 100,
+      celZapasu: 40,
+      dostepne: 0,
+      otwarteZd: 0,
+      sprzedazOkres: 80,
+      sprzedazDziennie: 2,
+      doZamowienia: 40,
+    };
+    const out = mapZdEstimateLinesSolo([solo, packSku], {
+      dniZapasu: 30,
+      salesTrack: true,
+      packagingByTwId: new Map([
+        [1, { unitsPerPackage: 10, documentUnitMode: "packages" }],
+      ]),
+      productPairs: [{ packTwId: 100, pieceTwId: 200, unitsPerPack: 10 }],
+    });
+    expect(out.find((l) => l.tw_Id === 1)?.doZamowieniaReczne).toBe(10);
+    const packLine = out.find((l) => l.tw_Id === 100)!;
+    expect(packLine.celZapasuTracked).toBe(packLine.celZapasu);
+    expect(packLine.salesTrackDelta).toBe(0);
+  });
+
+  it("opakowanie Mode B: otwarteZd bez × N", () => {
+    const line = {
+      ...base,
+      celZapasu: 40,
+      dostepne: 10,
+      otwarteZd: 10, // Mode B: 10 szt na dokumencie
+      sprzedazOkres: 0,
+      sprzedazDziennie: 0,
+      doZamowienia: 100,
+      otwarteZkBezRez: 0,
+    };
+    const packedA = mapZdEstimateLineToManual(line, {
+      salesTrack: false,
+      unitsPerPackage: 5,
+      documentUnitMode: "packages",
+    });
+    // A: 10 op. × 5 = 50 szt cover → doZam = max(0, 40-10-50)=0
+    expect(packedA.doZamowieniaReczne).toBe(0);
+    const packedB = mapZdEstimateLineToManual(line, {
+      salesTrack: false,
+      unitsPerPackage: 5,
+      documentUnitMode: "pieces_multiple",
+    });
+    // B: 10 szt cover → 40-10-10=20
+    expect(packedB.doZamowieniaReczne).toBe(20);
   });
 
   it("opakowanie × historia: snapshot qty w sztukach vs paczki w otwarteZd", () => {
@@ -456,5 +543,39 @@ describe("manualLinesToTsv", () => {
     expect(tsv.split("\n")[0]).toContain("cel_sledzony");
     expect(tsv.split("\n")[0]).toContain("delta_sledzenia");
     expect(tsv).toContain("\t7\t");
+  });
+
+  it("Mode B: do_zd = sztuki dobite, nie liczba paczek", () => {
+    const m = mapZdEstimateLineToManual(
+      {
+        tw_Id: 1,
+        tw_Symbol: "X",
+        tw_Nazwa: "Towar",
+        celZapasu: 8,
+        dostepne: 0,
+        otwarteZd: 0,
+        doZamowienia: 8,
+        otwarteZkBezRez: 0,
+        tw_Stan: 0,
+        tw_StanRez: 0,
+        sprzedazOkres: 0,
+        sprzedazDziennie: 0,
+      },
+      { salesTrack: false }
+    );
+    expect(m.doZamowieniaReczne).toBe(8);
+    const tsvA = manualLinesToTsv(
+      [m],
+      new Map([[1, { unitsPerPackage: 5, documentUnitMode: "packages" }]])
+    );
+    expect(tsvA.split("\n")[1]?.split("\t")[2]).toBe("2");
+    const tsvB = manualLinesToTsv(
+      [m],
+      new Map([
+        [1, { unitsPerPackage: 5, documentUnitMode: "pieces_multiple" }],
+      ])
+    );
+    expect(tsvB.split("\n")[1]?.split("\t")[2]).toBe("10");
+    expect(tsvB.split("\n")[1]?.split("\t")[4]).toBe("10");
   });
 });

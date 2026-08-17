@@ -63,4 +63,23 @@ describe("resolveLaunchDniZapasu", () => {
       })
     ).toBe(30);
   });
+
+  it("prefs tylko gdy brak interwału stock", () => {
+    expect(
+      resolveLaunchDniZapasu({
+        supplierDniZapasu: 60,
+        prefsDniZapasu: 21,
+        defaultDni: 30,
+      })
+    ).toBe(60);
+    expect(
+      resolveLaunchDniZapasu({
+        supplierDniZapasu: null,
+        groupDniZapasu: null,
+        quickGroupDniZapasu: null,
+        prefsDniZapasu: 21,
+        defaultDni: 30,
+      })
+    ).toBe(21);
+  });
 });

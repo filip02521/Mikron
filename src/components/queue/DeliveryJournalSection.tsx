@@ -144,6 +144,7 @@ function ReceiptRow({
   canManageCarriers,
   onManageCarriers,
   pendingCount,
+  onGoToReceive,
 }: {
   receipt: WarehouseDeliveryReceipt;
   suppliers: SupplierOption[];
@@ -157,6 +158,7 @@ function ReceiptRow({
   canManageCarriers?: boolean;
   onManageCarriers?: () => void;
   pendingCount?: number;
+  onGoToReceive?: (supplierName: string | null) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -222,28 +224,29 @@ function ReceiptRow({
           }}
         />
         <DeliveryJournalReceiptCard
-        receipt={receipt}
-        highlightQuery={highlightQuery}
-        carrierCatalog={carriers}
-        pendingCount={pendingCount}
-        actions={
-          !readOnly ? (
-            <>
-              <Button variant="secondary" size="sm" disabled={pending} onClick={() => setEditing(true)}>
-                Edytuj
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={pending}
-                onClick={() => setDeleteOpen(true)}
-              >
-                Usuń
-              </Button>
-            </>
-          ) : undefined
-        }
-      />
+          receipt={receipt}
+          highlightQuery={highlightQuery}
+          carrierCatalog={carriers}
+          pendingCount={pendingCount}
+          onGoToReceive={onGoToReceive}
+          actions={
+            !readOnly ? (
+              <>
+                <Button variant="secondary" size="sm" disabled={pending} onClick={() => setEditing(true)}>
+                  Edytuj
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  Usuń
+                </Button>
+              </>
+            ) : undefined
+          }
+        />
       </>
     );
   }
@@ -430,6 +433,7 @@ export function DeliveryJournalSection({
   todayDateKey,
   canEditJournal = false,
   canManageCarriers = false,
+  onGoToReceive,
 }: {
   suppliers: SupplierOption[];
   carriers: WarehouseCarrierRow[];
@@ -442,6 +446,7 @@ export function DeliveryJournalSection({
   todayDateKey: string;
   canEditJournal?: boolean;
   canManageCarriers?: boolean;
+  onGoToReceive?: (supplierName: string | null) => void;
 }) {
   const [toast, setToast] = useState<ToastNotice | null>(null);
   const { readOnly: previewReadOnly, blockIfReadOnly } = usePreviewMutationBlocker(
@@ -895,6 +900,7 @@ export function DeliveryJournalSection({
                 canManageCarriers={canManageCarriers}
                 onManageCarriers={() => setCarriersModalOpen(true)}
                 pendingCount={r.supplierId ? pendingBySupplier[r.supplierId] : undefined}
+                onGoToReceive={onGoToReceive}
               />
             ))}
           </ul>

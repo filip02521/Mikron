@@ -5,17 +5,30 @@ import {
   type ZdEstimateIndividualTwExtra,
 } from "@/lib/orders/zd-estimate-individual";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
-import { cn } from "@/lib/cn";
+import { zdEstimateProsbaWord } from "@/lib/orders/zd-estimate-ui-copy";
+import { ZdEstimateStatusBadge } from "@/components/zakupy/ZdEstimateStatusBadge";
 
-/** Badge pod nazwą — rezerwa próśb jest już w „Do ZD” (bez drugiego +qty w komórce). */
+/** Badge prośby w kolumnie Status — 1 linia; osoby / polityka w title. */
 export function ZdEstimateIndividualMetaBadge({
   extra,
+  extrasPolicy = "sum",
+  doZdSuppressed = false,
 }: {
   extra: ZdEstimateIndividualTwExtra;
+  extrasPolicy?: "sum" | "max";
+  doZdSuppressed?: boolean;
 }) {
   const people = formatIndividualSalesPeopleShort(extra.requests);
+  const policyBit =
+    extrasPolicy === "max"
+      ? "Polityka: max(niedobór, prośba) — bez dublowania gdy prośba pokrywa niedobór."
+      : "Polityka: suma (niedobór + prośba) — rezerwa na wierzchu.";
+  const inclusionBit = doZdSuppressed
+    ? "Rezerwa NIE jest w aktualnym „Do ZD” (nadpisanie albo wykluczenie)."
+    : `Rezerwa ${formatQty(extra.extraPieces)} szt jest już wliczona w kolumnę „Do ZD” (przed zaokrągleniem opakowania).`;
   const title = [
-    `Rezerwa ${formatQty(extra.extraPieces)} szt jest już wliczona w kolumnę „Do ZD” (przed zaokrągleniem opakowania).`,
+    inclusionBit,
+    policyBit,
     ...extra.requests.map((r) => {
       const bits = [
         r.salesPersonName,
@@ -27,27 +40,24 @@ export function ZdEstimateIndividualMetaBadge({
     }),
   ].join("\n");
 
+  const meta = doZdSuppressed
+    ? "poza Do ZD"
+    : extrasPolicy === "max"
+      ? "max"
+      : `${formatQty(extra.extraPieces)} szt`;
+
+  const peopleHint =
+    people +
+    (extra.requests.length > 1
+      ? ` · ${extra.requests.length} ${zdEstimateProsbaWord(extra.requests.length)}`
+      : "");
+
   return (
-    <span
-      className={cn(
-        "flex max-w-[min(100%,22rem)] flex-col gap-0.5 rounded-md bg-emerald-50 px-1.5 py-1 text-left ring-1 ring-emerald-100"
-      )}
-      title={title}
-    >
-      <span className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-950">
-        <span className="rounded bg-emerald-200/70 px-1 py-px text-emerald-950">
-          Prośba
-        </span>
-        <span className="rounded bg-emerald-100/90 px-1 py-px font-semibold normal-case tracking-normal text-emerald-900">
-          już w Do ZD
-        </span>
-      </span>
-      <span className="truncate text-[10px] font-medium normal-case tracking-normal text-slate-600">
-        {people}
-        {extra.requests.length > 1
-          ? ` · ${extra.requests.length} próśb`
-          : ""}
-      </span>
-    </span>
+    <ZdEstimateStatusBadge
+      kind="Prośba"
+      meta={meta}
+      tone={doZdSuppressed ? "amber" : "emerald"}
+      title={[title, peopleHint].filter(Boolean).join("\n")}
+    />
   );
 }

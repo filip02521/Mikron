@@ -783,3 +783,13 @@ export function IconChartTrend(props: StrokeIconProps) {
     </Svg>
   );
 }
+
+/** Cel / tarcza — zapas docelowy */
+export function IconTarget(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="3" />
+    </Svg>
+  );
+}

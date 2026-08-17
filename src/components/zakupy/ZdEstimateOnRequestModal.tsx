@@ -77,7 +77,7 @@ function OnRequestRow({
   return (
     <li
       className={cn(
-        "rounded-xl border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm shadow-slate-900/[0.02]",
+        "rounded-lg border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm shadow-slate-900/[0.02]",
         editing && "border-indigo-200/80 ring-1 ring-indigo-100"
       )}
     >
@@ -273,8 +273,8 @@ export function ZdEstimateOnRequestModal({
     <ModalShell
       open={open}
       onClose={onClose}
-      title="Tylko na prośbę"
-      titleHint="Bez aktywnej prośby handlowca produkt zostaje poza Do ZD. Z prośbą — na listę tylko w ilości z prośby (bez celu zapasu). Lista wspólna dla działu — nie mylić z „w razie potrzeby” u dostawcy."
+      title={ZD_ESTIMATE_UI.onRequestModalTitle}
+      titleHint={ZD_ESTIMATE_UI.onRequestModalHint}
       size="xl"
       bodyClassName="space-y-4 px-5 py-4 sm:px-6 sm:py-5"
       loadingMessage={pending ? "Zapisuję…" : null}
@@ -300,7 +300,7 @@ export function ZdEstimateOnRequestModal({
         </div>
       }
     >
-      <div className="rounded-xl border border-slate-200/80 bg-slate-50/60 px-4 py-3">
+      <div className="rounded-lg border border-slate-200/80 bg-slate-50/60 px-4 py-3">
         <div className="flex gap-3">
           <IconClipboardList
             size={18}
@@ -310,10 +310,10 @@ export function ZdEstimateOnRequestModal({
           />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-900">
-              Zamawianie tylko przy prośbie
+              {ZD_ESTIMATE_UI.onRequestIntroTitle}
             </p>
             <p className="mt-1 text-xs leading-relaxed text-slate-500">
-              Usuń wpis, gdy produkt ma wrócić do zwykłego liczenia zapasu.{" "}
+              {ZD_ESTIMATE_UI.onRequestIntroBody}{" "}
               {ZD_ESTIMATE_UI.onRequestVsHardExclude}
             </p>
           </div>

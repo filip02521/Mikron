@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { glowneScheduleSupplierIds, glowneSchedulableSupplierIds } from "./glowne-supplier-placement";
+import {
+  glowneScheduleSupplierIds,
+  glowneSchedulableSupplierIds,
+  glowneShouldTouchSupplierSchedule,
+} from "./glowne-supplier-placement";
 
 describe("glowneScheduleSupplierIds", () => {
   it("Główne — zamówienie i stock_out przesuwają harmonogram, via_panel nie", () => {
@@ -59,5 +63,20 @@ describe("glowneSchedulableSupplierIds", () => {
       [{ id: "s-cycle", order_on_demand: false, interval_raw: "co 2 tygodnie" }]
     );
     expect([...schedulable]).toEqual(["s-cycle"]);
+  });
+});
+
+describe("glowneShouldTouchSupplierSchedule", () => {
+  it("Dziś (bez flagi) rusza plan przy Główne", () => {
+    expect(glowneShouldTouchSupplierSchedule("GLOWNE")).toBe(true);
+    expect(glowneShouldTouchSupplierSchedule("POBOCZNE")).toBe(false);
+  });
+
+  it("kreator z skipSupplierSchedule nie rusza planu", () => {
+    expect(
+      glowneShouldTouchSupplierSchedule("GLOWNE", {
+        skipSupplierSchedule: true,
+      })
+    ).toBe(false);
   });
 });

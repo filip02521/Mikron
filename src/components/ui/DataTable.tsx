@@ -5,12 +5,22 @@ import { cn } from "@/lib/cn";
 export function TableScroll({
   children,
   className,
+  id,
+  ...rest
 }: {
   children: React.ReactNode;
   className?: string;
-}) {
+  id?: string;
+} & React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("table-scroll -mx-px overflow-x-auto px-0 pb-0 sm:px-6 sm:pb-6", className)}>
+    <div
+      id={id}
+      className={cn(
+        "table-scroll -mx-px overflow-x-auto px-0 pb-0 sm:px-6 sm:pb-6",
+        className
+      )}
+      {...rest}
+    >
       {children}
     </div>
   );

@@ -3,7 +3,12 @@
  * qty w snapshotcie = sztuki (ob_Ilosc × opakowanie/para).
  */
 
-import { zdDocumentUnitsToPieces } from "@/lib/orders/zd-estimate-units";
+import {
+  isPackagingPackagesMode,
+  normalizePackagingDocumentUnitMode,
+  zdDocumentUnitsToPieces,
+  type ZdPackagingDocumentUnitMode,
+} from "@/lib/orders/zd-estimate-units";
 import type { SubiektDocument } from "@/lib/subiekt/types";
 
 export type ZdEstimateSnapshotLineMeta = {
@@ -33,18 +38,32 @@ export type ImplicitPieceSnapshotLine = {
 };
 
 export type SnapshotPackResolution =
-  | { ok: true; ratio: number; source: "pair" | "packaging" | "confirmed" | "legacy" }
+  | {
+      ok: true;
+      ratio: number;
+      source:
+        | "pair"
+        | "packaging"
+        | "packaging_pieces"
+        | "confirmed"
+        | "legacy";
+    }
   | { ok: false };
 
 /**
  * Jedno źródło prawdy: skąd bierzemy ratio jednostka ZD → sztuki dla tw_Id.
- * Używane przez builder snapshotu i preflight UI.
+ * Mode B (pieces_multiple): ratio = 1 (dokument już w sztukach).
  */
 export function resolveSnapshotPackForTwId(
   twId: number,
   options: {
     packagingByTwId: ReadonlyMap<number, number>;
     pairRatioByTwId: ReadonlyMap<number, number>;
+    /** Mode per tw — gdy pieces_multiple, ratio=1 mimo N w packagingByTwId. */
+    packagingModeByTwId?: ReadonlyMap<
+      number,
+      ZdPackagingDocumentUnitMode
+    > | null;
     confirmedEstimateTwIds?: ReadonlySet<number> | null;
     requirePackaging?: boolean;
   }
@@ -62,6 +81,12 @@ export function resolveSnapshotPackForTwId(
     Number.isFinite(packFromTable) &&
     packFromTable > 0;
   if (hasPackaging) {
+    const mode = normalizePackagingDocumentUnitMode(
+      options.packagingModeByTwId?.get(twId)
+    );
+    if (!isPackagingPackagesMode(mode)) {
+      return { ok: true, ratio: 1, source: "packaging_pieces" };
+    }
     return { ok: true, ratio: packFromTable!, source: "packaging" };
   }
 
@@ -144,8 +169,11 @@ export function buildZdEstimateSnapshotLinesFromDoc(
   doc: SubiektDocument,
   options: {
     packagingByTwId?: ReadonlyMap<number, number> | null;
+    packagingModeByTwId?: ReadonlyMap<
+      number,
+      ZdPackagingDocumentUnitMode
+    > | null;
     pairRatioByTwId?: ReadonlyMap<number, number> | null;
-    lineMeta?: readonly ZdEstimateSnapshotLineMeta[] | null;
     /** tw_Id z bieżącego kreatora / Create — brak opakowania = potwierdzone 1:1. */
     confirmedEstimateTwIds?: ReadonlySet<number> | null;
     /**
@@ -153,6 +181,7 @@ export function buildZdEstimateSnapshotLinesFromDoc(
      * → błąd (bez cichego ×1).
      */
     requirePackaging?: boolean;
+    lineMeta?: readonly ZdEstimateSnapshotLineMeta[] | null;
   } = {}
 ): ZdEstimateSnapshotLineBuilt[] {
   const built = buildZdEstimateSnapshotLinesFromDocChecked(doc, options);
@@ -167,6 +196,10 @@ export function buildZdEstimateSnapshotLinesFromDocChecked(
   doc: SubiektDocument,
   options: {
     packagingByTwId?: ReadonlyMap<number, number> | null;
+    packagingModeByTwId?: ReadonlyMap<
+      number,
+      ZdPackagingDocumentUnitMode
+    > | null;
     pairRatioByTwId?: ReadonlyMap<number, number> | null;
     lineMeta?: readonly ZdEstimateSnapshotLineMeta[] | null;
     confirmedEstimateTwIds?: ReadonlySet<number> | null;
@@ -174,6 +207,7 @@ export function buildZdEstimateSnapshotLinesFromDocChecked(
   } = {}
 ): BuildZdEstimateSnapshotLinesResult {
   const packagingByTwId = options.packagingByTwId ?? new Map<number, number>();
+  const packagingModeByTwId = options.packagingModeByTwId ?? null;
   const pairRatioByTwId = options.pairRatioByTwId ?? new Map<number, number>();
   const confirmedEstimateTwIds = options.confirmedEstimateTwIds ?? null;
   const requirePackaging = options.requirePackaging === true;
@@ -201,6 +235,7 @@ export function buildZdEstimateSnapshotLinesFromDocChecked(
 
     const resolved = resolveSnapshotPackForTwId(twId, {
       packagingByTwId,
+      packagingModeByTwId,
       pairRatioByTwId,
       confirmedEstimateTwIds,
       requirePackaging,

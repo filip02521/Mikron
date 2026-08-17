@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyCreatedQtyToPreviewLines,
   applyCreatedZdUnitsToOtwarteZd,
   buildZdCreateApiBody,
   buildZdCreatePreviewFromOrderable,
@@ -7,11 +8,13 @@ import {
   defaultZdCreateUwagi,
   ensureZdCreateLinesCoverIndividualExtras,
   normalizeZdCreateUwagi,
+  previewBomOrPairLabel,
   resolveZdCreateKhId,
   validateZdCreateClientLines,
   ZD_CREATE_MAX_LINES,
   ZD_CREATE_MAX_QTY,
 } from "@/lib/orders/zd-estimate-create-zd";
+import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import { buildZdEstimateSnapshotLinesFromDoc } from "@/lib/orders/zd-estimate-snapshot-lines";
 
@@ -32,6 +35,10 @@ function baseLine(
     celZapasuTracked: 10,
     salesTrackDelta: 0,
     salesTrackReasons: [],
+    salesTrackConfidence: 0,
+    salesTrackQtyReview: false,
+    salesTrackHeldExtraQty: 0,
+    salesTrackAllowedExtraQty: 0,
     otwarteZkBezRez: 0,
     otwarteZkZarezerwowane: 0,
     otwarteZd: 0,
@@ -178,6 +185,9 @@ describe("buildZdCreatePreviewFromOrderable", () => {
     const preview = buildZdCreatePreviewFromOrderable(lines, new Map());
     expect(preview.lines.map((l) => l.symbol).sort()).toEqual(["A", "K"]);
     expect(preview.lines.find((l) => l.symbol === "K")?.ilosc).toBe(20);
+    expect(preview.lines.find((l) => l.symbol === "K")?.bomOrPairLabel).toBe(
+      "komplet (kupujemy)"
+    );
   });
 
   it("respektuje override jednostek dokumentu", () => {
@@ -255,6 +265,112 @@ describe("buildZdCreatePreviewFromOrderable", () => {
     expect(preview.lines).toHaveLength(1);
     expect(preview.lines[0]?.ilosc).toBe(1); // ceil(25/40)
     expect(preview.lines[0]?.individualExtraPieces).toBe(25);
+    expect(preview.lines[0]?.extraOnly).toBe(true);
+    expect(preview.lines[0]?.celZapasuTracked).toBe(10);
+  });
+
+  it("extrasPolicy max: preview ilosc = max(need, extra), nie suma", () => {
+    const lines = [
+      baseLine({
+        tw_Id: 1,
+        tw_Symbol: "X",
+        celZapasu: 40,
+        celZapasuTracked: 40,
+        dostepne: 10,
+        doZamowieniaReczne: 30,
+      }),
+    ];
+    const pack = new Map([[1, { unitsPerPackage: 1, packageLabel: "szt" }]]);
+    const extras = new Map([[1, 8]]);
+    const sum = buildZdCreatePreviewFromOrderable(
+      lines,
+      pack,
+      extras,
+      null,
+      null,
+      "sum"
+    );
+    const max = buildZdCreatePreviewFromOrderable(
+      lines,
+      pack,
+      extras,
+      null,
+      null,
+      "max"
+    );
+    expect(sum.lines[0]?.ilosc).toBe(38);
+    expect(max.lines[0]?.ilosc).toBe(30);
+  });
+
+  it("applyCreatedQtyToPreviewLines nadpisuje ilosc po bumpie serwera", () => {
+    const preview = buildZdCreatePreviewFromOrderable(
+      [
+        baseLine({
+          tw_Id: 3,
+          tw_Symbol: "KARTON",
+          doZamowieniaReczne: 0,
+          pair: {
+            role: "pack",
+            twinTwId: 2,
+            unitsPerPack: 40,
+            sprzedazSzt: 0,
+            coverSzt: 0,
+            pieceSprzedaz: 0,
+            packSprzedaz: 0,
+            pieceDostepne: 0,
+            packDostepne: 0,
+            partnerMissing: false,
+          },
+        }),
+      ],
+      new Map([[3, { unitsPerPackage: 40, packageLabel: "op." }]]),
+      new Map([[3, 25]]),
+      null,
+      new Set([3])
+    );
+    const next = applyCreatedQtyToPreviewLines(preview.lines, [
+      { twId: 3, ilosc: 2 },
+    ]);
+    expect(next[0]?.ilosc).toBe(2);
+    expect(next[0]?.piecesArriving).toBe(80);
+  });
+
+  it("previewBomOrPairLabel: explode / kit / para", () => {
+    expect(
+      previewBomOrPairLabel({
+        bom: { role: "assembled_parent" },
+        pair: null,
+      })
+    ).toBe("zestaw (składamy)");
+    expect(
+      previewBomOrPairLabel({
+        bom: { role: "purchased_kit", purchaseTarget: "kit_only" },
+        pair: null,
+      })
+    ).toBe("komplet (tylko K)");
+    expect(
+      previewBomOrPairLabel({
+        bom: { role: "component" },
+        pair: null,
+      })
+    ).toBe("składnik BOM");
+    expect(
+      previewBomOrPairLabel({
+        bom: null,
+        pair: {
+          role: "pack",
+          twinTwId: 2,
+          unitsPerPack: 40,
+          sprzedazSzt: 0,
+          coverSzt: 0,
+          pieceSprzedaz: 0,
+          packSprzedaz: 0,
+          pieceDostepne: 0,
+          packDostepne: 0,
+          partnerMissing: false,
+        },
+      })
+    ).toBe("para 40 szt/op.");
   });
 });
 
@@ -299,11 +415,25 @@ describe("buildZdCreateApiBody + uwagi", () => {
     expect(normalizeZdCreateUwagi("  ")).toBeNull();
     expect(
       defaultZdCreateUwagi({
-        supplierName: "A",
-        scopeLabel: "G",
+        scopeMode: "grupa",
+        scopeLabel: "Polkard",
         dateKey: "2026-08-08",
       })
-    ).toBe("OnTime kreator · A · G · 2026-08-08");
+    ).toBe("OnTime kreator · Grupa Polkard · 2026-08-08");
+    expect(
+      defaultZdCreateUwagi({
+        scopeMode: "cecha",
+        scopeLabel: "Ivoclar",
+        dateKey: "2026-08-08",
+      })
+    ).toBe("OnTime kreator · Cecha Ivoclar · 2026-08-08");
+    expect(
+      defaultZdCreateUwagi({
+        scopeMode: "grupa",
+        scopeLabel: null,
+        dateKey: "2026-08-08",
+      })
+    ).toBe("OnTime kreator · 2026-08-08");
   });
 });
 
@@ -329,6 +459,36 @@ describe("canCreateZdFromEstimateState", () => {
         createDoneDokId: null,
       }).ok
     ).toBe(true);
+
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: false,
+        mutating: false,
+        creating: false,
+        createDoneDokId: null,
+        boostNeedsRecount: true,
+      }).ok
+    ).toBe(false);
+
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: false,
+        mutating: false,
+        creating: false,
+        createDoneDokId: null,
+        historyNeedsRecount: true,
+      }).ok
+    ).toBe(false);
 
     expect(
       canCreateZdFromEstimateState({
@@ -372,6 +532,54 @@ describe("canCreateZdFromEstimateState", () => {
         createUnlockedAfterDone: true,
       }).ok
     ).toBe(true);
+
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: false,
+        mutating: false,
+        creating: false,
+        createDoneDokId: null,
+        createUnconfirmedAttempt: true,
+      }).ok
+    ).toBe(false);
+
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: false,
+        mutating: false,
+        creating: false,
+        createDoneDokId: null,
+        createUnconfirmedAttempt: true,
+        createUnlockedAfterDone: true,
+      }).ok
+    ).toBe(true);
+
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: true,
+        mutating: false,
+        creating: false,
+        createDoneDokId: null,
+      })
+    ).toEqual({
+      ok: false,
+      reason: ZD_ESTIMATE_UI.createGateEstimating,
+    });
 
     expect(
       canCreateZdFromEstimateState({
@@ -430,6 +638,19 @@ describe("ensureZdCreateLinesCoverIndividualExtras", () => {
     expect(res.lines[0]?.ilosc).toBe(5);
     expect(res.bumped).toEqual([]);
   });
+
+  it("Mode B: 15 szt / N=10 → minZd 20 (sztuki), nie 2 paczki", () => {
+    const res = ensureZdCreateLinesCoverIndividualExtras({
+      lines: [{ twId: 10, ilosc: 1, symbol: "P" }],
+      extraPiecesByTwId: new Map([[10, 15]]),
+      unitsPerPackageByTwId: new Map([[10, 10]]),
+      packagingModeByTwId: new Map([[10, "pieces_multiple"]]),
+    });
+    expect(res.lines[0]?.ilosc).toBe(20);
+    expect(res.bumped).toEqual([
+      { twId: 10, from: 1, to: 20, extraPieces: 15 },
+    ]);
+  });
 });
 
 describe("applyCreatedZdUnitsToOtwarteZd", () => {
@@ -437,6 +658,55 @@ describe("applyCreatedZdUnitsToOtwarteZd", () => {
     const lines = [baseLine({ tw_Id: 1, otwarteZd: 2 })];
     const next = applyCreatedZdUnitsToOtwarteZd(lines, new Map([[1, 5]]));
     expect(next[0]?.otwarteZd).toBe(7);
+  });
+
+  it("Mode B: otwarteZd w sztukach — bez × N przy przeliczeniu doZamowienia", () => {
+    const lines = [
+      baseLine({
+        tw_Id: 1,
+        otwarteZd: 0,
+        celZapasu: 20,
+        celZapasuTracked: 20,
+        dostepne: 0,
+        doZamowieniaReczne: 20,
+      }),
+    ];
+    const pack = new Map([
+      [
+        1,
+        {
+          unitsPerPackage: 5,
+          documentUnitMode: "pieces_multiple" as const,
+        },
+      ],
+    ]);
+    // Create wysłał 10 szt (Mode B) — otwarte +10, cover pieces = 10 (nie 50)
+    const next = applyCreatedZdUnitsToOtwarteZd(
+      lines,
+      new Map([[1, 10]]),
+      pack
+    );
+    expect(next[0]?.otwarteZd).toBe(10);
+    expect(next[0]?.doZamowieniaReczne).toBe(10);
+  });
+
+  it("czyści salesTrackQtyReview na bumped", () => {
+    const lines = [
+      baseLine({
+        tw_Id: 1,
+        otwarteZd: 0,
+        celZapasuTracked: 10,
+        doZamowieniaReczne: 10,
+        salesTrackQtyReview: true,
+        salesTrackHeldExtraQty: 1,
+        salesTrackAllowedExtraQty: 0,
+        salesTrackReasons: ["thin_cover", "boost_held"],
+      }),
+    ];
+    const next = applyCreatedZdUnitsToOtwarteZd(lines, new Map([[1, 10]]));
+    expect(next[0]?.salesTrackQtyReview).toBe(false);
+    expect(next[0]?.salesTrackHeldExtraQty).toBe(0);
+    expect(next[0]?.salesTrackReasons).toEqual(["thin_cover"]);
   });
 });
 
@@ -463,6 +733,33 @@ describe("buildZdEstimateSnapshotLinesFromDoc", () => {
         celAtLink: 100,
         deltaAtLink: -1,
         ratioAtLink: null,
+      },
+    ]);
+  });
+
+  it("Mode B: qty snapshot = sztuki z dokumentu (ratio 1)", () => {
+    const lines = buildZdEstimateSnapshotLinesFromDoc(
+      {
+        dok_Id: 1,
+        dok_Pozycja: [
+          { ob_TowId: 10, ob_Ilosc: 10, tw_Symbol: "K", tw_Nazwa: "Karton" },
+        ],
+      },
+      {
+        packagingByTwId: new Map([[10, 5]]),
+        packagingModeByTwId: new Map([[10, "pieces_multiple"]]),
+        lineMeta: [{ twId: 10, celAtLink: 100, deltaAtLink: -1 }],
+      }
+    );
+    expect(lines).toEqual([
+      {
+        twId: 10,
+        twSymbol: "K",
+        twNazwa: "Karton",
+        qty: 10,
+        celAtLink: 100,
+        deltaAtLink: -1,
+        ratioAtLink: 1,
       },
     ]);
   });

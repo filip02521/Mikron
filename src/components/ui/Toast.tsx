@@ -58,6 +58,7 @@ export function Toast({
   durationMs,
   action,
   stacked = false,
+  className,
 }: {
   /** @deprecated Preferuj {@link title} + {@link description}. */
   message?: string;
@@ -70,6 +71,8 @@ export function Toast({
   durationMs?: number;
   action?: React.ReactNode;
   stacked?: boolean;
+  /** Nadpisuje domyślną pozycję (np. nad sticky Create ZD). */
+  className?: string;
 }) {
   const copy = resolveNoticeCopy({ title, description, message: message ?? text });
   const autoMs = durationMs ?? (action ? TOAST_DURATION_WITH_ACTION_MS : TOAST_DURATION_DEFAULT_MS);
@@ -93,8 +96,9 @@ export function Toast({
       className={cn(
         systemNoticeUndoClass,
         "fixed z-[65] max-w-[min(100vw-1.5rem,26rem)]",
-        stacked ? floatingToastStackAboveClass : floatingToastBottomClass,
         "left-4 right-4 sm:left-auto sm:right-6",
+        className ??
+          (stacked ? floatingToastStackAboveClass : floatingToastBottomClass)
       )}
       style={{ ["--toast-duration" as string]: `${autoMs}ms` }}
     >
