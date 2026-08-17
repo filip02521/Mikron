@@ -82,6 +82,11 @@ export function canAccessOperations(role: UserRole, workspaces?: Workspace[]): b
   return isAdmin(role) || hasProcurementFunction(role, "dostawy");
 }
 
+/** Kreator ZD / Przygotuj ZD — ten sam zakres co operacje dostaw (admin, zakupy, obszar dostawy). */
+export function canAccessZdEstimate(role: UserRole, workspaces?: Workspace[]): boolean {
+  return canAccessOperations(role, workspaces);
+}
+
 /** Baza dostawców i urlopy (tor dzienny lub zęby). */
 export function canManageSuppliers(role: UserRole, workspaces?: Workspace[]): boolean {
   if (workspaces && workspaces.length > 0)
@@ -140,11 +145,6 @@ function canAccessPathForRole(
   options?: CanAccessPathOptions
 ): boolean {
   const ws = options?.workspaces;
-
-  // Przed remapem panelu admina — realna rola `admin` (nie „zakupy” z cookie).
-  if (pathname === "/zakupy/szacunek" || pathname.startsWith("/zakupy/szacunek/")) {
-    return isAdmin(role);
-  }
 
   if (isAdmin(role) && options?.adminPanelContext && options.adminPanelContext !== "admin") {
     if (pathname === "/admin/wybor-handlowca") return true;

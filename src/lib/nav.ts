@@ -371,8 +371,8 @@ function operationsTodayItems(
     },
   ];
 
-  // Kreator ZD — tylko admin (requireZdEstimateAdmin); w „Dziś” obok panelu.
-  if (role === "admin") {
+  // Kreator ZD — operacje dostaw (admin + zakupy); w „Dziś” obok panelu.
+  if (role === "admin" || role === "zakupy") {
     items.push({
       href: "/zakupy/szacunek",
       label: "Kreator ZD",

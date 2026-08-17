@@ -3,6 +3,7 @@ import {
   canAccessCarrierPhones,
   canAccessPath,
   canAccessTeethPanel,
+  canAccessZdEstimate,
   canManageSalesTeam,
   homePathForRole,
   isSalesAccount,
@@ -39,6 +40,7 @@ describe("redirectPathAfterLogin role defaults", () => {
     expect(redirectPathAfterLogin("sales", "/plan")).toBe("/plan");
     expect(redirectPathAfterLogin("admin", "/admin")).toBe("/admin");
     expect(redirectPathAfterLogin("zakupy", "/kolejka")).toBe("/kolejka");
+    expect(redirectPathAfterLogin("zakupy", "/zakupy/szacunek")).toBe("/zakupy/szacunek");
   });
 
   it("odrzuca niedozwolony next i wraca do domyślnej strony roli", () => {
@@ -111,23 +113,46 @@ describe("auth-roles zakupy_zeby", () => {
     expect(canAccessPath("admin", "/zeby/kolejka")).toBe(true);
   });
 
-  it("canAccessPath: Magazyn Gądki dla operacji dostaw; Kreator ZD tylko admin", () => {
+  it("canAccessPath: Magazyn Gądki i Kreator ZD dla operacji dostaw", () => {
     expect(canAccessPath("zakupy", "/zakupy/gadki")).toBe(true);
     expect(canAccessPath("admin", "/zakupy/gadki")).toBe(true);
     expect(canAccessPath("magazyn", "/zakupy/gadki")).toBe(false);
     expect(canAccessPath("sales", "/zakupy/gadki")).toBe(false);
-    expect(canAccessPath("zakupy", "/zakupy/szacunek")).toBe(false);
+    expect(canAccessPath("zakupy", "/zakupy/szacunek")).toBe(true);
     expect(canAccessPath("admin", "/zakupy/szacunek")).toBe(true);
     expect(canAccessPath("sales", "/zakupy/szacunek")).toBe(false);
+    expect(canAccessPath("magazyn", "/zakupy/szacunek")).toBe(false);
     expect(
       canAccessPath("admin", "/zakupy/szacunek", { adminPanelContext: "zakupy" })
     ).toBe(true);
+    expect(
+      canAccessPath("admin", "/zakupy/szacunek", { adminPanelContext: "magazyn" })
+    ).toBe(false);
+    expect(
+      canAccessPath("admin", "/zakupy/szacunek", { adminPanelContext: "sales" })
+    ).toBe(false);
     expect(
       canAccessPath("zakupy_zeby", "/zakupy/gadki", { procurementWorkspace: "zeby" })
     ).toBe(false);
     expect(
       canAccessPath("zakupy_zeby", "/zakupy/gadki", { procurementWorkspace: "dostawy" })
     ).toBe(true);
+    expect(
+      canAccessPath("zakupy_zeby", "/zakupy/szacunek", { procurementWorkspace: "zeby" })
+    ).toBe(false);
+    expect(
+      canAccessPath("zakupy_zeby", "/zakupy/szacunek", { procurementWorkspace: "dostawy" })
+    ).toBe(true);
+    expect(
+      canAccessPath("zakupy", "/zakupy/szacunek", {
+        workspaces: ["dostawy"],
+      })
+    ).toBe(true);
+    expect(
+      canAccessPath("zakupy", "/zakupy/szacunek", {
+        workspaces: ["magazyn"],
+      })
+    ).toBe(false);
   });
 
   it("canAccessPath odrzuca zakupy na /zeby", () => {
@@ -285,5 +310,23 @@ describe("canAccessCarrierPhones", () => {
   it("odmawia handlowcom", () => {
     expect(canAccessCarrierPhones("sales")).toBe(false);
     expect(canAccessCarrierPhones("sales_manager")).toBe(false);
+  });
+});
+
+describe("canAccessZdEstimate", () => {
+  it("zezwala na kreator ZD kontom operacji dostaw", () => {
+    expect(canAccessZdEstimate("admin")).toBe(true);
+    expect(canAccessZdEstimate("zakupy")).toBe(true);
+    expect(canAccessZdEstimate("zakupy_zeby")).toBe(true);
+    expect(canAccessZdEstimate("zakupy", ["dostawy"])).toBe(true);
+    expect(canAccessZdEstimate("zakupy_zeby", ["dostawy", "zeby"])).toBe(true);
+  });
+
+  it("odmawia handlowcom, magazynowi i kontom bez obszaru dostawy", () => {
+    expect(canAccessZdEstimate("sales")).toBe(false);
+    expect(canAccessZdEstimate("sales_manager")).toBe(false);
+    expect(canAccessZdEstimate("magazyn")).toBe(false);
+    expect(canAccessZdEstimate("zakupy", ["magazyn"])).toBe(false);
+    expect(canAccessZdEstimate("zakupy_zeby", ["zeby"])).toBe(false);
   });
 });
