@@ -173,20 +173,23 @@ describe("navForRole struktura zakupów", () => {
       ["Panel dzienny", "indigo"],
       ["Weryfikacja", "amber"],
       ["Przyjęcie towaru", "emerald"],
+      ["Kreator ZD", "violet"],
     ]);
   });
 
-  it("admin — Kreator ZD w sekcji Dziś (nie w Dostawcach)", () => {
-    const today = navForRole("admin").find((g) => g.title === NAV_SECTION_TODAY);
-    expect(today?.items.map((item) => item.href)).toEqual([
-      "/podsumowanie",
-      "/weryfikacja",
-      "/kolejka",
-      "/zakupy/szacunek",
-    ]);
-    expect(today?.items.find((i) => i.href === "/zakupy/szacunek")?.tone).toBe(
-      "violet"
-    );
+  it("admin i zakupy — Kreator ZD w sekcji Dziś (nie w Dostawcach)", () => {
+    for (const role of ["admin", "zakupy"] as const) {
+      const today = navForRole(role).find((g) => g.title === NAV_SECTION_TODAY);
+      expect(today?.items.map((item) => item.href)).toEqual([
+        "/podsumowanie",
+        "/weryfikacja",
+        "/kolejka",
+        "/zakupy/szacunek",
+      ]);
+      expect(today?.items.find((i) => i.href === "/zakupy/szacunek")?.tone).toBe(
+        "violet"
+      );
+    }
   });
 
   it("mobile overflow zawiera notatki, narzędzia i numery kurierów", () => {
@@ -197,6 +200,7 @@ describe("navForRole struktura zakupów", () => {
     expect(labels).toContain("Historia");
     expect(labels).toContain("Zamówienie grupowe");
     expect(labels).toContain("Numery kurierów");
+    expect(labels).toContain("Kreator ZD");
   });
 });
 
@@ -300,13 +304,15 @@ describe("navForAppContext", () => {
     expect(groups[0]?.items[0]?.href).toBe("/zeby/kolejka");
   });
 
-  it("zakupy_zeby w obszarze dostawy używa menu zakupów", () => {
+  it("zakupy_zeby w obszarze dostawy używa menu zakupów z Kreatorem ZD", () => {
     const groups = navForAppContext({
       realRole: "zakupy_zeby",
       navRole: "zakupy_zeby",
       procurementWorkspace: "dostawy",
     });
     expect(groups[0]?.items[0]?.href).toBe("/podsumowanie");
+    const today = groups.find((g) => g.title === NAV_SECTION_TODAY);
+    expect(today?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
   });
 });
 
@@ -326,7 +332,7 @@ describe("navForRole zakupy_zeby", () => {
     expect(allHrefs.some((href) => href.startsWith("/zeby"))).toBe(false);
   });
 
-  it("zakupy ma Magazyn Gądki; Kreator ZD tylko admin w Dziś; zęby/magazyn — bez obu", () => {
+  it("zakupy ma Magazyn Gądki i Kreator ZD w Dziś; zęby/magazyn — bez obu", () => {
     const suppliers = navForRole("zakupy").find((g) => g.title === NAV_SECTION_SUPPLIERS);
     const gadki = suppliers?.items.find((i) => i.href === "/zakupy/gadki");
     expect(gadki?.icon).toBe("magazynGadki");
@@ -334,7 +340,7 @@ describe("navForRole zakupy_zeby", () => {
     expect(suppliers?.items.some((i) => i.href === "/zakupy/gadki")).toBe(true);
     expect(suppliers?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(false);
     const zakupyToday = navForRole("zakupy").find((g) => g.title === NAV_SECTION_TODAY);
-    expect(zakupyToday?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(false);
+    expect(zakupyToday?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
     const adminToday = navForRole("admin").find((g) => g.title === NAV_SECTION_TODAY);
     expect(adminToday?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
     const adminSuppliers = navForRole("admin").find((g) => g.title === NAV_SECTION_SUPPLIERS);
@@ -344,6 +350,7 @@ describe("navForRole zakupy_zeby", () => {
     expect(teethHrefs.includes("/zakupy/szacunek")).toBe(false);
     const magHrefs = navForRole("magazyn").flatMap((g) => g.items.map((i) => i.href));
     expect(magHrefs.includes("/zakupy/gadki")).toBe(false);
+    expect(magHrefs.includes("/zakupy/szacunek")).toBe(false);
   });
 });
 

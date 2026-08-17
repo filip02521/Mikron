@@ -1,7 +1,7 @@
 "use server";
 
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
-// @service-role-ok — autoryzacja requireZdEstimateAdmin(); service role z pełnym scope po warstwie aplikacji.
+// @service-role-ok — autoryzacja requireZdEstimateAdmin() (operacje dostaw); service role z pełnym scope po warstwie aplikacji.
 import { requireZdEstimateAdmin } from "@/lib/auth";
 import {
   deleteZdEstimateExclusion,
