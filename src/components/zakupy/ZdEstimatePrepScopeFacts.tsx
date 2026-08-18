@@ -1,7 +1,13 @@
 "use client";
 
+import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { buildZdEstimateScopeFactParts } from "@/lib/orders/zd-estimate-scope-facts";
+import {
+  zdEstimateScopeKindLabel,
+  zdEstimateScopeLinkedCaption,
+  zdEstimateScopeLinkedTitle,
+} from "@/lib/orders/zd-estimate-ui-copy";
 import {
   zdEstimateChromeGapClass,
   zdEstimateScopeFactChipAccentClass,
@@ -11,26 +17,33 @@ import {
 } from "@/lib/ui/ontime-theme";
 
 /**
- * Belka faktów zakresu — inline (prep) / toolbar (top bar).
+ * Belka faktów zakresu — inline (prep) / toolbar (top bar) / card (potwierdzenie wyboru).
  * Toolbar: jeden primary + cicha linia meta (bez dublowania Holtrade×2).
  */
 export function ZdEstimatePrepScopeFacts({
   variant,
+  scopeMode = "grupa",
   scopeName,
   stockLabel,
   dniZapasu,
   supplierLabel,
   dataOd,
   dataDo,
+  caption,
+  tone = "ready",
   className,
 }: {
-  variant: "inline" | "toolbar";
+  variant: "inline" | "toolbar" | "card";
+  scopeMode?: "grupa" | "cecha";
   scopeName: string;
   stockLabel: string | null;
   dniZapasu: string;
   supplierLabel: string | null;
   dataOd: string;
   dataDo: string;
+  /** Nadpisuje domyślny podpis w wariancie card. */
+  caption?: string | null;
+  tone?: "ready" | "warn";
   className?: string;
 }) {
   const parts = buildZdEstimateScopeFactParts({
@@ -57,10 +70,66 @@ export function ZdEstimatePrepScopeFacts({
         aria-label="Parametry zakresu"
         title={parts.summaryTitle}
       >
-        <span className={zdEstimateScopeFactPrimaryClass}>{parts.primary}</span>
+        <span className={zdEstimateScopeFactPrimaryClass}>
+          <span className="mr-1.5 font-medium text-indigo-700/70">
+            {zdEstimateScopeKindLabel(scopeMode)}
+          </span>
+          {parts.primary}
+        </span>
         {metaBits.length > 0 ? (
           <p className={zdEstimateScopeFactMetaClass}>{metaBits.join(" · ")}</p>
         ) : null}
+      </div>
+    );
+  }
+
+  if (variant === "card") {
+    const warn = tone === "warn";
+    const captionText =
+      caption === undefined ? zdEstimateScopeLinkedCaption() : caption;
+    const title = [parts.summaryTitle, captionText].filter(Boolean).join(" — ");
+    return (
+      <div
+        className={cn(
+          "flex h-8 min-w-0 items-center gap-2 rounded-md border px-2.5",
+          warn
+            ? "border-amber-200/80 bg-amber-50/80"
+            : "border-emerald-200/70 bg-emerald-50/70",
+          className
+        )}
+        role="status"
+        aria-label={zdEstimateScopeLinkedTitle(scopeMode)}
+        title={title}
+      >
+        <IconCircleCheck
+          size={14}
+          strokeWidth={2.25}
+          className={cn(
+            "shrink-0",
+            warn ? "text-amber-700" : "text-emerald-700"
+          )}
+          aria-hidden
+        />
+        <p className="min-w-0 flex-1 truncate text-[12px] leading-none">
+          <span
+            className={cn(
+              "font-medium",
+              warn ? "text-amber-800/80" : "text-emerald-800/80"
+            )}
+          >
+            {zdEstimateScopeKindLabel(scopeMode)}
+          </span>
+          <span className="font-semibold tracking-tight text-slate-900">
+            {" "}
+            {parts.primary}
+          </span>
+          {metaBits.length > 0 ? (
+            <span className="text-slate-500">
+              {" "}
+              · {metaBits.join(" · ")}
+            </span>
+          ) : null}
+        </p>
       </div>
     );
   }

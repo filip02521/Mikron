@@ -613,6 +613,111 @@ describe("canCreateZdFromEstimateState", () => {
       ok: false,
       reason: expect.stringMatching(/Skład|niekompletny|dociągnij/i),
     });
+
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: false,
+        mutating: false,
+        creating: false,
+        createDoneDokId: null,
+        pendingIndividualsError: "Nie wczytano próśb przy Policz.",
+      })
+    ).toEqual({
+      ok: false,
+      reason: ZD_ESTIMATE_UI.createGatePendingIndividualsError,
+    });
+
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: false,
+        mutating: false,
+        creating: false,
+        createDoneDokId: null,
+        pendingIndividualsTruncated: true,
+      })
+    ).toEqual({
+      ok: false,
+      reason: ZD_ESTIMATE_UI.createGatePendingIndividualsTruncated,
+    });
+
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: false,
+        mutating: false,
+        creating: false,
+        createDoneDokId: null,
+        pendingIndividualsLoading: true,
+      })
+    ).toEqual({
+      ok: false,
+      reason: ZD_ESTIMATE_UI.createGatePendingIndividualsLoading,
+    });
+
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: false,
+        mutating: false,
+        creating: false,
+        createDoneDokId: null,
+        historyFetchFailed: true,
+      })
+    ).toEqual({
+      ok: false,
+      reason: ZD_ESTIMATE_UI.createGateHistoryFetchFailed,
+    });
+
+    // Para z brakującym partnerem: qty 0 na tych paczkach + banner — nie blokuje reszty ZD.
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: false,
+        mutating: false,
+        creating: false,
+        createDoneDokId: null,
+      }).ok
+    ).toBe(true);
+
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: false,
+        mutating: false,
+        creating: false,
+        createDoneDokId: null,
+        pendingIndividualsError: "   ",
+        pendingIndividualsTruncated: false,
+        pendingIndividualsLoading: false,
+        historyFetchFailed: false,
+      }).ok
+    ).toBe(true);
   });
 });
 
