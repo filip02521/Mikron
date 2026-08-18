@@ -447,6 +447,16 @@ export type CanCreateZdState = {
   boostNeedsRecount?: boolean;
   /** Kwalifikacja snapshotów do history cut zmieniona — wymagany re-Policz. */
   historyNeedsRecount?: boolean;
+  /** Fetch historii snapshotów rzucił przy Policz — cięcia historyczne mogły nie wejść.
+   * Pusta historia (brak wierszy) to nie błąd.
+   */
+  historyFetchFailed?: boolean;
+  /** Fetch próśb przy Policz / reload nieudany. */
+  pendingIndividualsError?: string | null;
+  /** Wczytano tylko prefix próśb (limit 500) — Create na serwerze i tak odrzuci. */
+  pendingIndividualsTruncated?: boolean;
+  /** Trwa fetch próśb — Create nie może iść na stale/pustej liście. */
+  pendingIndividualsLoading?: boolean;
 };
 
 export function canCreateZdFromEstimateState(
@@ -462,6 +472,30 @@ export function canCreateZdFromEstimateState(
     return {
       ok: false,
       reason: ZD_ESTIMATE_UI.createGateNeedsSettings,
+    };
+  }
+  if (state.pendingIndividualsError?.trim()) {
+    return {
+      ok: false,
+      reason: ZD_ESTIMATE_UI.createGatePendingIndividualsError,
+    };
+  }
+  if (state.pendingIndividualsTruncated) {
+    return {
+      ok: false,
+      reason: ZD_ESTIMATE_UI.createGatePendingIndividualsTruncated,
+    };
+  }
+  if (state.pendingIndividualsLoading) {
+    return {
+      ok: false,
+      reason: ZD_ESTIMATE_UI.createGatePendingIndividualsLoading,
+    };
+  }
+  if (state.historyFetchFailed) {
+    return {
+      ok: false,
+      reason: ZD_ESTIMATE_UI.createGateHistoryFetchFailed,
     };
   }
   if (state.boostNeedsRecount) {

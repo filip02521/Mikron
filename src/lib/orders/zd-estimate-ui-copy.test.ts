@@ -39,6 +39,9 @@ import {
   zdEstimateRouteLoadingHint,
   zdEstimateScopeChangedHint,
   zdEstimateScopeDashedHint,
+  zdEstimateScopeKindLabel,
+  zdEstimateScopeLinkedCaption,
+  zdEstimateScopeLinkedTitle,
   zdEstimateSnapshotsFooterCount,
   zdEstimateSnapshotsLinesCount,
   zdEstimateSupplierScopesFooterCount,
@@ -112,6 +115,11 @@ describe("zd-estimate-ui-copy", () => {
     );
     expect(ZD_ESTIMATE_UI.createOmittedServicesHint).not.toMatch(/Skróć bazę/);
     expect(ZD_ESTIMATE_UI.listShowZkColumnTitle).not.toMatch(/\bAPI\b/);
+    expect(ZD_ESTIMATE_UI.createGatePendingIndividualsError).toMatch(
+      /próśb handlowców/
+    );
+    expect(ZD_ESTIMATE_UI.createGateHistoryFetchFailed).toMatch(/historii/);
+    expect(ZD_ESTIMATE_UI.createGatePendingIndividualsTruncated).toMatch(/500/);
   });
 
   it("sort Symbol / Nazwa — osobne hinty, Status bez sortu po nazwie", () => {
@@ -196,6 +204,12 @@ describe("zd-estimate-ui-copy", () => {
     expect(zdEstimateScopeDashedHint("cecha")).toMatch(/Wyszukaj cechę/);
     expect(zdEstimateScopeDashedHint("grupa")).not.toMatch(/Policz listę/);
     expect(zdEstimateReadyToCountHint()).toMatch(/Policz listę/);
+    expect(zdEstimateScopeKindLabel("grupa")).toBe("Grupa");
+    expect(zdEstimateScopeKindLabel("cecha")).toBe("Cecha");
+    expect(zdEstimateScopeLinkedTitle("grupa")).toMatch(/grupa/i);
+    expect(zdEstimateScopeLinkedTitle("cecha")).toMatch(/cecha/i);
+    expect(zdEstimateScopeLinkedCaption()).toMatch(/Powiązano/);
+    expect(zdEstimateScopeLinkedCaption()).toMatch(/policzyć listę/i);
     expect(zdEstimateScopeChangedHint()).toMatch(/Zmieniono zakres/);
     expect(zdEstimateNeedsSettingsHint()).toMatch(/pod tą kartą/);
     expect(zdEstimateNeedsSettingsHint()).not.toMatch(/powyżej/);

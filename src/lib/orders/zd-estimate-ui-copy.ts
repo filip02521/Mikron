@@ -296,6 +296,18 @@ export function zdEstimateReadyToCountHint(): string {
   return "Zakres gotowy — kliknij „Policz listę”, żeby wyliczyć ilości Do ZD.";
 }
 
+export function zdEstimateScopeKindLabel(mode: "grupa" | "cecha"): string {
+  return mode === "cecha" ? "Cecha" : "Grupa";
+}
+
+export function zdEstimateScopeLinkedTitle(mode: "grupa" | "cecha"): string {
+  return mode === "cecha" ? "Wybrana cecha" : "Wybrana grupa";
+}
+
+export function zdEstimateScopeLinkedCaption(): string {
+  return "Powiązano z Subiektem — możesz policzyć listę Do ZD.";
+}
+
 export function zdEstimateScopeChangedHint(): string {
   return "Zmieniono zakres — policz listę ponownie, żeby odświeżyć ilości Do ZD.";
 }
@@ -497,6 +509,18 @@ export const ZD_ESTIMATE_UI = {
   createGateMutating: "Trwa inna operacja — poczekaj na zakończenie.",
   createGateExplodeBomIncomplete:
     "Skład w trybie „Składamy” jest niekompletny (brak towarów w wyniku) — dociągnij brakujące pozycje („Policz listę”), zanim utworzysz ZD.",
+  createGatePendingIndividualsError:
+    "Nie wczytano próśb handlowców — wczytaj ponownie albo przelicz listę, zanim utworzysz ZD (mogłyby wejść dopiero przy zapisie).",
+  createGatePendingIndividualsTruncated:
+    "Wczytano tylko pierwsze 500 próśb — odznacz zbędne w panelu Dziś, zanim utworzysz ZD.",
+  createGatePendingIndividualsLoading:
+    "Wczytuję prośby handlowców — poczekaj, zanim utworzysz ZD.",
+  createGateHistoryFetchFailed:
+    "Nie wczytano historii zamówień ZD — przelicz listę, zanim utworzysz dokument (korekty z historii mogły nie wejść).",
+  historyFetchFailedTitle: "Nie wczytano historii zamówień ZD",
+  historyFetchFailedBody:
+    "Lista Do ZD poszła bez korekt z zapisanych dokumentów (cięcia przy wolnej sprzedaży / skoku). Przelicz listę, zanim utworzysz ZD — inaczej ilości mogą być zawyżone.",
+  historyFetchFailedCta: "Policz ponownie",
   createProgressDisclaimer:
     "Postęp jest szacunkowy (Subiekt nie pokazuje kroków na bieżąco) — lista może dłużej zostać na „Tworzenie w Subiekcie”.",
   createQtyBumpNote:
