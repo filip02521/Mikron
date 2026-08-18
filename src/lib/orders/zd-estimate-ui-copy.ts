@@ -191,11 +191,36 @@ export function zdEstimateCreateProgressSnapshotFailedHint(): string {
 }
 
 export function zdEstimateCreateProgressFooterBusy(): string {
-  return "Proszę nie zamykać tej karty ani okna przeglądarki.";
+  return "Zostajesz na tym ekranie do końca tworzenia — nie zamykaj karty ani okna przeglądarki.";
 }
 
 export function zdEstimateCreateProgressFooterLong(): string {
   return "Sfera nadal pracuje — to normalne przy większych listach. Nie zamykaj karty ani okna.";
+}
+
+/** Hint belki okna loadingu create — ten sam trop co Policz, plus nota o szacunkowym pasku. */
+export function zdEstimateCreateProgressWindowHint(input: {
+  isLive: boolean;
+  configured?: boolean;
+}): string {
+  return [
+    zdEstimatePageHint({
+      isLive: input.isLive,
+      configured: input.configured ?? true,
+    }),
+    ZD_ESTIMATE_UI.createProgressDisclaimer,
+  ].join("\n\n");
+}
+
+/** Stopka create: szacunek czasu + „zostań na ekranie”; po 45s — nota o Sferze. */
+export function zdEstimateCreateProgressFooterNote(input: {
+  elapsedMs: number;
+  durationHint: string;
+}): string {
+  if (input.elapsedMs >= 45_000) return zdEstimateCreateProgressFooterLong();
+  const duration = input.durationHint.trim();
+  const busy = zdEstimateCreateProgressFooterBusy();
+  return duration ? `${duration} ${busy}` : busy;
 }
 
 export function zdEstimateLoadingBusyDetailProgress(): string {
@@ -412,6 +437,11 @@ export function zdEstimatePageHint(input: {
 
 export function zdEstimatePrepCardHint(): string {
   return "Tu wybierasz zakres z Subiekta (grupę albo cechę) i zasady liczenia. Reguły listy oraz mapowania dostawców są wspólne dla działu — zmiana dotyczy wszystkich użytkowników zakupów i obowiązuje przy każdym „Policz listę”.";
+}
+
+/** Lead karty zakresu — start i zmiana grupy / cechy przy już wczytanej liście. */
+export function zdEstimatePrepIdleLead(): string {
+  return "Wybierz skrót grupy albo wyszukaj inną w Subiekcie. Dni zapasu i okno sprzedaży ustawią się z karty dostawcy.";
 }
 
 export function zdEstimateEmptyListDescription(isLive: boolean): string {

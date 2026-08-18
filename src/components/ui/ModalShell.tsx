@@ -48,6 +48,7 @@ export function ModalShell({
   loadingMessage,
   disableBackdropClose = false,
   bodyScroll = true,
+  ariaLabel,
 }: {
   open: boolean;
   onClose: () => void;
@@ -69,6 +70,8 @@ export function ModalShell({
   disableBackdropClose?: boolean;
   /** Domyślnie treść modala przewija się wewnątrz panelu; wyłącz dla krótkich formularzy bez wewnętrznego scrolla. */
   bodyScroll?: boolean;
+  /** Nazwa dialogu, gdy nie ma widocznego `title` (np. scena loadingu). */
+  ariaLabel?: string;
 }) {
   useBodyScrollLock(open);
 
@@ -102,6 +105,7 @@ export function ModalShell({
         role={role}
         aria-modal="true"
         aria-labelledby={hasHeader ? titleId : undefined}
+        aria-label={!hasHeader ? ariaLabel : undefined}
         aria-describedby={describedById}
         className={cn(
           modalPanelClass,

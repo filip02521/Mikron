@@ -27,6 +27,7 @@ import {
   type PlannedOrderDateDisplay,
 } from "@/lib/orders/planned-order-date-label";
 import { todayInWarsaw } from "@/lib/time/warsaw";
+import { TEETH_GROUP_ORDER_FILE_FALLBACK_NAME } from "@/lib/teeth/teeth-mark-ordered";
 import type { WeekDayPlan } from "@/lib/orders/summary-workspace";
 import {
   formatOrderQuantityLabel,
@@ -385,7 +386,7 @@ function rowToLine(
     teethDetails: mapOrderTeethDetailsToEdit(order.teeth_details),
     isTeeth: Boolean(order.is_teeth),
     teethOrderFileName: order.teeth_order_file_path?.trim()
-      ? (order.teeth_order_file_name ?? null)
+      ? (order.teeth_order_file_name?.trim() || TEETH_GROUP_ORDER_FILE_FALLBACK_NAME)
       : null,
     lineAcknowledgeMode: resolveLinePickupAckMode(order),
     teethLineDelivered: order.teeth_line_delivered ?? null,

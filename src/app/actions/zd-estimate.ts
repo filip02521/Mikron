@@ -641,7 +641,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
       a.name.localeCompare(b.name, "pl")
     );
   } catch {
-    suppliers = [];
+    // zostaw []
   }
 
   let exclusions: ZdEstimateExclusionRow[] = [];
@@ -709,14 +709,14 @@ export async function actionZdEstimateBootstrap(): Promise<{
   try {
     uiPrefs = await fetchOwnZdEstimateUiPrefs();
   } catch {
-    uiPrefs = ZD_ESTIMATE_UI_PREFS_DEFAULTS;
+    // zostaw domyślne
   }
 
   let extrasPolicy = ZD_ESTIMATE_EXTRAS_POLICY_DEFAULT;
   try {
     extrasPolicy = await fetchZdEstimateExtrasPolicy();
   } catch {
-    extrasPolicy = ZD_ESTIMATE_EXTRAS_POLICY_DEFAULT;
+    // zostaw domyślne
   }
 
   let todayScopeCoverage = zdEstimateScopeCoverage([], []);
@@ -736,7 +736,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
       scopes.map((s) => s.supplierId)
     );
   } catch {
-    todayScopeCoverage = zdEstimateScopeCoverage([], []);
+    // zostaw puste pokrycie
   }
 
   return {
@@ -3184,7 +3184,7 @@ export async function actionMarkZdEstimateIndividualsGlowne(input: {
     .in("id", requested);
   if (error) return { ok: false, message: error.message };
 
-  let teethTwIds = new Set<number>();
+  let teethTwIds: Set<number>;
   try {
     teethTwIds = await fetchTeethProductTwIdSet();
   } catch (e) {

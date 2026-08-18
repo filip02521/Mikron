@@ -17,6 +17,8 @@ import {
   zdEstimateCreateProgressCompleteHint,
   zdEstimateCreateProgressFooterBusy,
   zdEstimateCreateProgressFooterLong,
+  zdEstimateCreateProgressFooterNote,
+  zdEstimateCreateProgressWindowHint,
   zdEstimateLaunchProgressSteps,
   zdEstimateLoadingBusyDetailProgress,
   zdEstimateLoadingBusyDetailRoute,
@@ -27,6 +29,7 @@ import {
   zdEstimatePageLead,
   zdEstimatePoliciesSectionHint,
   zdEstimatePrepCardHint,
+  zdEstimatePrepIdleLead,
   zdEstimateProsbaWord,
   zdEstimateProsbaWordAccusative,
   zdEstimateLaunchReadyToastDescription,
@@ -214,6 +217,8 @@ describe("zd-estimate-ui-copy", () => {
     expect(zdEstimateNeedsSettingsHint()).toMatch(/pod tą kartą/);
     expect(zdEstimateNeedsSettingsHint()).not.toMatch(/powyżej/);
     expect(zdEstimatePrepCardHint()).toMatch(/całego działu|wspólne dla działu/);
+    expect(zdEstimatePrepIdleLead()).toMatch(/skrót grupy|wyszukaj/i);
+    expect(zdEstimatePrepIdleLead()).not.toMatch(/Policz listę/);
     expect(zdEstimatePoliciesSectionHint()).toMatch(/Do ZD/);
     expect(zdEstimateCechaScopeCaption()).toMatch(/Zaawansowane/);
     expect(ZD_ESTIMATE_UI.boostPowerLabel).toBe("Podbicie Do ZD");
@@ -256,8 +261,38 @@ describe("zd-estimate-ui-copy", () => {
     expect(
       zdEstimateCreateProgressCompleteHint({ snapshotOk: true })
     ).toMatch(/zamykam/);
-    expect(zdEstimateCreateProgressFooterBusy()).toMatch(/nie zamykać/i);
+    expect(zdEstimateCreateProgressFooterBusy()).toMatch(/nie zamykaj/i);
+    expect(zdEstimateCreateProgressFooterBusy()).toMatch(/ekranie/);
     expect(zdEstimateCreateProgressFooterLong()).toMatch(/Sfera/i);
+    expect(
+      zdEstimateCreateProgressFooterNote({
+        elapsedMs: 1_000,
+        durationHint: "Zwykle poniżej minuty; maksymalnie ok. 3 minuty.",
+      })
+    ).toMatch(/poniżej minuty/);
+    expect(
+      zdEstimateCreateProgressFooterNote({
+        elapsedMs: 1_000,
+        durationHint: "Zwykle poniżej minuty; maksymalnie ok. 3 minuty.",
+      })
+    ).toMatch(/ekranie/);
+    expect(
+      zdEstimateCreateProgressFooterNote({
+        elapsedMs: 45_000,
+        durationHint: "Zwykle poniżej minuty; maksymalnie ok. 3 minuty.",
+      })
+    ).toMatch(/Sfera/);
+    expect(
+      zdEstimateCreateProgressWindowHint({
+        isLive: true,
+      })
+    ).toMatch(/szacunkowy/);
+    expect(
+      zdEstimateCreateProgressWindowHint({
+        isLive: false,
+        configured: true,
+      })
+    ).toMatch(/testowym/);
     expect(zdEstimateLoadingBusyDetailProgress()).toMatch(/szacunkowy/);
     expect(zdEstimateLoadingBusyDetailRoute()).toMatch(/ustawień/);
     expect(

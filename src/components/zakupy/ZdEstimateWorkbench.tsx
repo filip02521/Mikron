@@ -96,6 +96,7 @@ import {
   zdEstimateNeedsSettingsHint,
   zdEstimatePageHint,
   zdEstimatePrepCardHint,
+  zdEstimatePrepIdleLead,
   zdEstimatePoliciesSectionHint,
   zdEstimateCechaScopeCaption,
   zdEstimateProsbaWord,
@@ -329,10 +330,10 @@ import {
   zdEstimateListBodyInsetClass,
   zdEstimateListBodyPadClass,
   zdEstimateNestedWellClass,
-  zdEstimatePrepFooterClass,
-  zdEstimatePrepInsetClass,
+  zdEstimatePrepIdleBodyClass,
+  zdEstimatePrepIdleFooterClass,
+  zdEstimatePrepFormInsetXClass,
   zdEstimatePrepPrimaryButtonClass,
-  zdEstimatePrepScopeScrollClass,
   zdEstimateRadiusNestedClass,
   zdEstimateShadowControlClass,
   zdEstimateSoftStatusStripClass,
@@ -1985,6 +1986,8 @@ export function ZdEstimateWorkbench({
     scopeMode === "grupa" ? selectedGroup != null : selectedCecha != null;
   const canPolicz =
     bootstrap.configured && scopeSelected && settingsTrusted;
+  /** Karta zakresu otwarta (start albo Zmień zakres) — ten sam czytelny formularz. */
+  const prepFormOpen = !lines || !prepCollapsed;
   const activeScopeLabel = resolveZdEstimateActiveScopeLabel({
     scopeMode,
     selectedGroupName: selectedGroup?.grt_Nazwa,
@@ -4030,6 +4033,12 @@ export function ZdEstimateWorkbench({
     <div
       className={cn(
         zdEstimateWorkbenchStackClass,
+        // Bez listy: scroll całego formularza, jeśli nie mieści się w oknie.
+        // Przy liście workbench NIE scrolluje — tabela ma własny scrollport
+        // (#zd-estimate-table-scroll); overflow tu psuje sticky nagłówki.
+        !showLaunchProgress &&
+          !lines &&
+          "overflow-y-auto overscroll-contain",
         // Zjedz dolny py insetu (fill: py-2) — clearance docka jest końcem treści.
         showResultStickyActions && !showLaunchProgress && "-mb-2"
       )}
@@ -4663,35 +4672,40 @@ export function ZdEstimateWorkbench({
         </>
       ) : null}
 
-      {!showLaunchProgress && (!lines || !prepCollapsed) ? (
+      {!showLaunchProgress && prepFormOpen ? (
       <Card
         padding={false}
         className={cn(
-          "relative shrink-0 overflow-visible",
+          "relative flex shrink-0 flex-col overflow-visible",
           zdEstimateCardSurfaceClass
         )}
       >
         <CardHeader
           inset
-          density="micro"
+          density="compact"
+          className={zdEstimatePrepFormInsetXClass}
           title="Zakres i polityki"
           hint={zdEstimatePrepCardHint()}
+          description={zdEstimatePrepIdleLead()}
         />
 
-        <div
-          className={cn(
-            zdEstimatePrepInsetClass,
-            zdEstimatePrepScopeScrollClass,
-            "space-y-2.5"
-          )}
-        >
-          <section className="space-y-2">
+        <div className={zdEstimatePrepIdleBodyClass}>
+        <div className="min-w-0 space-y-3">
+          <section className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className={panelTypography.sectionLabel}>Zakres</p>
+              <p
+                className={cn(
+                  panelTypography.sectionLabel,
+                  "text-xs tracking-wide text-slate-700"
+                )}
+              >
+                Zakres
+              </p>
               <SegmentedControl
                 ariaLabel="Tryb zakresu szacunku"
                 value={scopeMode}
                 onChange={changeScopeMode}
+                touchFriendly
                 options={[
                   {
                     value: "grupa",
@@ -4709,7 +4723,12 @@ export function ZdEstimateWorkbench({
 
             {scopeMode === "grupa" ? (
               <>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap content-start gap-2">
+                  {bootstrap.quickGroups.length === 0 ? (
+                    <p className="w-full text-sm leading-snug text-slate-600">
+                      Brak skrótów grup — wyszukaj grupę poniżej.
+                    </p>
+                  ) : null}
                   {bootstrap.quickGroups.map((g) => {
                     const active = selectedGroup?.grt_Id === g.grt_Id;
                     return (
@@ -4724,14 +4743,16 @@ export function ZdEstimateWorkbench({
                             : "Brak zapasu na karcie — 30 dni"
                         }
                         className={cn(
-                          "inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-left text-xs leading-none transition",
+                          "inline-flex h-10 items-center gap-1.5 rounded-md border px-3 text-left text-sm leading-none transition",
                           "disabled:cursor-not-allowed disabled:opacity-50",
                           active
                             ? "border-indigo-300 bg-indigo-50 text-indigo-950 shadow-sm shadow-indigo-900/5"
                             : "border-slate-200/90 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
                         )}
                       >
-                        <span className="font-medium">{g.grt_Nazwa}</span>
+                        <span className="max-w-[16rem] truncate font-medium">
+                          {g.grt_Nazwa}
+                        </span>
                         {g.dniZapasu != null ? (
                           <span className="rounded-md bg-white/90 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-slate-500 ring-1 ring-slate-200/80">
                             {g.dniZapasu}d
@@ -4745,9 +4766,9 @@ export function ZdEstimateWorkbench({
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
                   <div className="relative min-w-0 flex-1">
                     <IconSearch
-                      size={16}
+                      size={18}
                       strokeWidth={1.75}
-                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                      className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                     />
                     <Input
                       value={groupQuery}
@@ -4760,7 +4781,7 @@ export function ZdEstimateWorkbench({
                       }}
                       placeholder="Szukaj innej grupy…"
                       disabled={!bootstrap.configured}
-                      className="h-9 pl-9"
+                      className="h-11 pl-10 text-sm"
                     />
                   </div>
                   <Button
@@ -4768,7 +4789,7 @@ export function ZdEstimateWorkbench({
                     variant="secondary"
                     onClick={searchGroups}
                     disabled={busy || !bootstrap.configured || !groupQuery.trim()}
-                    className="h-9 shrink-0 sm:min-w-[7rem]"
+                    className="h-11 shrink-0 sm:min-w-[7.5rem]"
                   >
                     {searching ? "Szukam…" : "Szukaj"}
                   </Button>
@@ -4814,15 +4835,15 @@ export function ZdEstimateWorkbench({
               </>
             ) : (
               <>
-                <p className="text-xs leading-snug text-slate-500">
+                <p className="text-sm leading-snug text-slate-600">
                   {zdEstimateCechaScopeCaption()}
                 </p>
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
                   <div className="relative min-w-0 flex-1">
                     <IconSearch
-                      size={16}
+                      size={18}
                       strokeWidth={1.75}
-                      className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                      className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
                     />
                     <Input
                       value={cechaQuery}
@@ -4835,7 +4856,7 @@ export function ZdEstimateWorkbench({
                       }}
                       placeholder="Szukaj cechy (np. Ivoclar)…"
                       disabled={!bootstrap.configured}
-                      className="h-9 pl-9"
+                      className="h-11 pl-10 text-sm"
                     />
                   </div>
                   <Button
@@ -4843,7 +4864,7 @@ export function ZdEstimateWorkbench({
                     variant="secondary"
                     onClick={searchCechy}
                     disabled={busy || !bootstrap.configured || !cechaQuery.trim()}
-                    className="h-9 shrink-0 sm:min-w-[7rem]"
+                    className="h-11 shrink-0 sm:min-w-[7.5rem]"
                   >
                     {searching ? "Szukam…" : "Szukaj"}
                   </Button>
@@ -4889,128 +4910,9 @@ export function ZdEstimateWorkbench({
               </>
             )}
           </section>
-
-          {showAdvanced ? (
-            <div
-              className={cn(
-                "space-y-3 p-3.5 sm:p-4",
-                zdEstimateNestedWellClass
-              )}
-            >
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                <Field
-                  label="Dostawca (nadpisanie)"
-                  hint={ZD_ESTIMATE_UI.advancedSupplierOverrideHint}
-                >
-                  <Select
-                    value={supplierId ?? ""}
-                    onChange={(e) => onSupplierOverride(e.target.value)}
-                  >
-                    <option value="">
-                      {scopeMode === "cecha" ? "— z cechy —" : "— z grupy —"}
-                    </option>
-                    {bootstrap.suppliers.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                        {s.dniZapasu != null
-                          ? ` · ${s.stockLabel} (${s.dniZapasu} d)`
-                          : s.stockLabel !== "—"
-                            ? ` · ${s.stockLabel}`
-                            : ""}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-                <Field
-                  label="Dni zapasu"
-                  hint={ZD_ESTIMATE_UI.advancedDniZapasuHint}
-                >
-                  <Input
-                    type="number"
-                    min={1}
-                    max={730}
-                    value={dniZapasu}
-                    onChange={(e) => onDniZapasuChange(e.target.value)}
-                  />
-                </Field>
-                <Field
-                  label="Data od"
-                  hint={ZD_ESTIMATE_UI.advancedDataOdHint}
-                >
-                  <Input
-                    type="date"
-                    value={dataOd}
-                    onChange={(e) => {
-                      setSalesWindowSource("manual");
-                      setDataOd(e.target.value);
-                    }}
-                  />
-                </Field>
-                <Field
-                  label="Data do"
-                  hint={ZD_ESTIMATE_UI.advancedDataDoHint}
-                >
-                  <Input
-                    type="date"
-                    value={dataDo}
-                    onChange={(e) => {
-                      const nextDo = e.target.value;
-                      setSalesWindowSource("manual");
-                      setDataDo(nextDo);
-                      setDataOd(
-                        nextDataOdAfterDataDoChange({
-                          source: "manual",
-                          dataDo: nextDo,
-                          dataOd,
-                          dniZapasu: Number(dniZapasu),
-                        })
-                      );
-                    }}
-                  />
-                </Field>
-              </div>
-              {salesWindowSource === "manual" ? (
-                <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-[12px] text-amber-950">
-                  <span className="font-medium">
-                    {ZD_ESTIMATE_UI.advancedSalesWindowManualNote}
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    onClick={restoreSalesWindowFromStock}
-                  >
-                    Przywróć z zapasu
-                  </Button>
-                </div>
-              ) : null}
-              <div className="grid gap-2 sm:grid-cols-2">
-                <Field label={ZD_ESTIMATE_UI.advancedZapasMinLabel}>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={zapasMin}
-                    onChange={(e) => setZapasMin(e.target.value)}
-                    title={ZD_ESTIMATE_UI.advancedZapasMinHint}
-                  />
-                </Field>
-              </div>
-              {selectedSupplier && selectedSupplier.dniZapasu == null ? (
-                <Alert tone="warning" title="Dostawca bez liczbowego zapasu">
-                  „{selectedSupplier.name}”: {selectedSupplier.stockLabel}. Ustaw
-                  dni zapasu ręcznie.
-                </Alert>
-              ) : null}
-            </div>
-          ) : null}
         </div>
 
-        <div
-          className={cn(
-            zdEstimatePrepInsetClass,
-            "shrink-0 space-y-3 border-t border-slate-100/90"
-          )}
-        >
+        <div className="flex min-w-0 flex-col gap-4">
           {scopeSelected && scopeLabel ? (
             <ZdEstimatePrepScopeFacts
               variant="card"
@@ -5035,7 +4937,7 @@ export function ZdEstimateWorkbench({
           ) : (
             <div
               className={cn(
-                "flex min-h-8 items-center border-dashed px-2.5 py-2 text-[12px] leading-snug text-slate-600",
+                "border-dashed px-3.5 py-3 text-sm leading-relaxed text-slate-700",
                 zdEstimateNestedWellClass
               )}
             >
@@ -5043,15 +4945,14 @@ export function ZdEstimateWorkbench({
             </div>
           )}
 
-          <section
-            className={cn(
-              "space-y-2.5",
-              !(scopeSelected && scopeLabel) &&
-                "border-t border-slate-100 pt-3"
-            )}
-          >
+          <section className="space-y-3">
             <div className="flex flex-wrap items-center gap-1.5">
-              <p className={panelTypography.sectionLabel}>
+              <p
+                className={cn(
+                  panelTypography.sectionLabel,
+                  "text-xs tracking-wide text-slate-700"
+                )}
+              >
                 {ZD_ESTIMATE_UI.policiesSectionLabel}
               </p>
               <HelpHintBubble
@@ -5063,7 +4964,7 @@ export function ZdEstimateWorkbench({
             </div>
             <div className="flex flex-col gap-2 sm:gap-2.5">
               <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
-                <span className="shrink-0 text-xs font-medium text-slate-600 sm:w-[7.5rem]">
+                <span className="shrink-0 text-sm font-medium text-slate-700 sm:w-[8.5rem]">
                   {ZD_ESTIMATE_UI.boostPowerLabel}
                 </span>
                 <SegmentedControl
@@ -5081,7 +4982,7 @@ export function ZdEstimateWorkbench({
                 />
               </div>
               <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
-                <span className="shrink-0 text-xs font-medium text-slate-600 sm:w-[7.5rem]">
+                <span className="shrink-0 text-sm font-medium text-slate-700 sm:w-[8.5rem]">
                   {ZD_ESTIMATE_UI.extrasPolicyLabel}
                 </span>
                 <SegmentedControl
@@ -5107,16 +5008,134 @@ export function ZdEstimateWorkbench({
               </div>
             </div>
           </section>
+        </div>
+
+        {showAdvanced ? (
+          <div
+            id="zd-estimate-prep-advanced"
+            className={cn(
+              "space-y-3 p-3.5 sm:p-4 lg:col-span-2",
+              zdEstimateNestedWellClass
+            )}
+          >
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <Field
+                label="Dostawca (nadpisanie)"
+                hint={ZD_ESTIMATE_UI.advancedSupplierOverrideHint}
+              >
+                <Select
+                  value={supplierId ?? ""}
+                  onChange={(e) => onSupplierOverride(e.target.value)}
+                >
+                  <option value="">
+                    {scopeMode === "cecha" ? "— z cechy —" : "— z grupy —"}
+                  </option>
+                  {bootstrap.suppliers.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                      {s.dniZapasu != null
+                        ? ` · ${s.stockLabel} (${s.dniZapasu} d)`
+                        : s.stockLabel !== "—"
+                          ? ` · ${s.stockLabel}`
+                          : ""}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field
+                label="Dni zapasu"
+                hint={ZD_ESTIMATE_UI.advancedDniZapasuHint}
+              >
+                <Input
+                  type="number"
+                  min={1}
+                  max={730}
+                  value={dniZapasu}
+                  onChange={(e) => onDniZapasuChange(e.target.value)}
+                />
+              </Field>
+              <Field
+                label="Data od"
+                hint={ZD_ESTIMATE_UI.advancedDataOdHint}
+              >
+                <Input
+                  type="date"
+                  value={dataOd}
+                  onChange={(e) => {
+                    setSalesWindowSource("manual");
+                    setDataOd(e.target.value);
+                  }}
+                />
+              </Field>
+              <Field
+                label="Data do"
+                hint={ZD_ESTIMATE_UI.advancedDataDoHint}
+              >
+                <Input
+                  type="date"
+                  value={dataDo}
+                  onChange={(e) => {
+                    const nextDo = e.target.value;
+                    setSalesWindowSource("manual");
+                    setDataDo(nextDo);
+                    setDataOd(
+                      nextDataOdAfterDataDoChange({
+                        source: "manual",
+                        dataDo: nextDo,
+                        dataOd,
+                        dniZapasu: Number(dniZapasu),
+                      })
+                    );
+                  }}
+                />
+              </Field>
+            </div>
+            {salesWindowSource === "manual" ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-[12px] text-amber-950">
+                <span className="font-medium">
+                  {ZD_ESTIMATE_UI.advancedSalesWindowManualNote}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={restoreSalesWindowFromStock}
+                >
+                  Przywróć z zapasu
+                </Button>
+              </div>
+            ) : null}
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Field label={ZD_ESTIMATE_UI.advancedZapasMinLabel}>
+                <Input
+                  type="number"
+                  min={0}
+                  value={zapasMin}
+                  onChange={(e) => setZapasMin(e.target.value)}
+                  title={ZD_ESTIMATE_UI.advancedZapasMinHint}
+                />
+              </Field>
+            </div>
+            {selectedSupplier && selectedSupplier.dniZapasu == null ? (
+              <Alert tone="warning" title="Dostawca bez liczbowego zapasu">
+                „{selectedSupplier.name}”: {selectedSupplier.stockLabel}. Ustaw
+                dni zapasu ręcznie.
+              </Alert>
+            ) : null}
+          </div>
+        ) : null}
+        </div>
 
           <div
             id={ZD_ESTIMATE_POLICZ_CTA_ID}
-            className={zdEstimatePrepFooterClass}
+            className={zdEstimatePrepIdleFooterClass}
           >
             <button
               type="button"
-              className="inline-flex items-center gap-1.5 self-start rounded-md px-1 py-0.5 text-xs font-medium text-slate-600 transition hover:bg-slate-100/80 hover:text-slate-900"
+              className="inline-flex items-center gap-1.5 self-start rounded-md px-1 py-0.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100/80 hover:text-slate-900"
               onClick={() => setShowAdvanced((v) => !v)}
               aria-expanded={showAdvanced}
+              aria-controls="zd-estimate-prep-advanced"
             >
               <IconChevronDown
                 size={15}
@@ -5130,7 +5149,7 @@ export function ZdEstimateWorkbench({
             </button>
             <div className="flex w-full flex-col gap-1.5 sm:w-auto sm:items-end">
               {scopeSelected && scopeNeedsRecount ? (
-                <p className="max-w-sm text-[11px] leading-snug text-amber-800 sm:text-right">
+                <p className="max-w-sm text-sm leading-snug text-amber-800 sm:text-right">
                   {zdEstimateScopeChangedHint()}
                 </p>
               ) : null}
@@ -5139,12 +5158,12 @@ export function ZdEstimateWorkbench({
               !(boostNeedsRecount && lines) &&
               !(historyNeedsRecount && lines) &&
               canPolicz ? (
-                <p className="text-xs leading-snug text-emerald-800 sm:text-right">
+                <p className="text-sm leading-snug text-emerald-800 sm:text-right">
                   {zdEstimateReadyToCountHint()}
                 </p>
               ) : null}
               {scopeSelected && !settingsTrusted ? (
-                <p className="max-w-sm text-xs leading-snug text-amber-800 sm:text-right">
+                <p className="max-w-sm text-sm leading-snug text-amber-800 sm:text-right">
                   {zdEstimateNeedsSettingsHint()}
                 </p>
               ) : null}
@@ -5171,6 +5190,7 @@ export function ZdEstimateWorkbench({
               }
               className={cn(
                 zdEstimatePrepPrimaryButtonClass,
+                "h-11 min-h-11 text-sm sm:min-w-[12rem]",
                 canPolicz &&
                   !estimating &&
                   "shadow-md shadow-indigo-500/20 ring-2 ring-indigo-500/25"
@@ -5221,7 +5241,6 @@ export function ZdEstimateWorkbench({
               </div>
             </div>
           </div>
-        </div>
       </Card>
       ) : null}
 
@@ -5363,7 +5382,12 @@ export function ZdEstimateWorkbench({
       </div>
       ) : null}
 
-      <div className="flex min-h-0 flex-1 flex-col gap-1.5">
+      <div
+        className={cn(
+          "flex min-h-0 flex-col gap-1.5",
+          (Boolean(lines) || lastEstimateFailed) && "flex-1"
+        )}
+      >
       {!lines &&
       !estimating &&
       !launchBlocking &&
@@ -6379,44 +6403,6 @@ export function ZdEstimateWorkbench({
         </>
       ) : null}
 
-      {!showLaunchProgress && canPolicz && !prepCollapsed ? (
-        <>
-          <div
-            aria-hidden
-            className={cn(zdEstimateStickyClearanceClass, "md:hidden")}
-          />
-          <div
-            className={cn(
-              zdEstimateStickyDockClass,
-              "md:hidden",
-              // Nad Create, gdy lista + prep expanded — oba sticky w tym samym czasie.
-              showResultStickyActions &&
-                "bottom-[calc(3.5rem+3.75rem+env(safe-area-inset-bottom,0px))]"
-            )}
-          >
-            <div
-              className={cn(
-                zdEstimateStickyBarClass,
-                "items-center gap-1.5 border-indigo-200/80"
-              )}
-            >
-              <p className="min-w-0 flex-1 truncate text-xs font-medium leading-none text-slate-700">
-                {scopeLabel ?? "Zakres gotowy"}
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => runEstimate()}
-                disabled={estimating || !canPolicz}
-                className={zdEstimateDockButtonClass}
-              >
-                {estimating ? zdEstimateCountingButtonLabel() : "Policz listę"}
-              </Button>
-            </div>
-          </div>
-        </>
-      ) : null}
-
       {showResultStickyActions && !showLaunchProgress ? (
         <div className="flex flex-col">
           <ZdEstimateSelectionToolsReveal
@@ -7020,6 +7006,15 @@ export function ZdEstimateWorkbench({
           ordersIsLive={bootstrap.ordersIsLive}
           ordersPort={bootstrap.ordersPort ?? bootstrap.testPort}
           ordersHostLabel={bootstrap.ordersHostLabel}
+          host={{
+            configured: bootstrap.configured,
+            isLive: bootstrap.ordersIsLive,
+            port: bootstrap.ordersPort ?? bootstrap.testPort,
+            salesEndFromFs: bootstrap.salesEndFromFs,
+            salesEndKeyFormatted: bootstrap.salesEndFromFs
+              ? formatPlDate(bootstrap.salesEndKey)
+              : null,
+          }}
           extrasPolicy={extrasPolicy}
           onClose={closeCreateZdModal}
           onSubmitStart={(snap) => {

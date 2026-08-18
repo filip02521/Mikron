@@ -14,7 +14,7 @@ export const TEETH_PROCUREMENT_FLOW_STAGES = [
     stage: "Kolejka zakupów",
     actor: "Zakupy zęby",
     where: "Panel zębów → Kolejka",
-    detail: "Specyfikacja, batch per dostawca",
+    detail: "Specyfikacja, jeden plik na grupę dostawcy",
   },
   {
     stage: "Zamówione",
