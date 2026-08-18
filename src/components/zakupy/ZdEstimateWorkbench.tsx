@@ -109,6 +109,7 @@ import {
   zdEstimateRecountOverlayMessage,
   zdEstimateScopeChangedHint,
   zdEstimateScopeDashedHint,
+  zdEstimateScopeLinkedCaption,
   zdEstimateScopeModeCechaHint,
   zdEstimateScopeModeGrupaHint,
   buildImplicitPieceSnapshotNotice,
@@ -626,6 +627,8 @@ export function ZdEstimateWorkbench({
   const [boostNeedsRecount, setBoostNeedsRecount] = useState(false);
   /** Kwalifikacja snapshotów do history cut zmieniona — lista Do ZD nieaktualna. */
   const [historyNeedsRecount, setHistoryNeedsRecount] = useState(false);
+  /** Fetch historii przy Policz rzucił — cięcia mogły nie wejść. */
+  const [historyFetchFailed, setHistoryFetchFailed] = useState(false);
   const [extrasPolicy, setExtrasPolicy] = useState<ZdEstimateExtrasPolicy>(
     bootstrap.extrasPolicy ?? "sum"
   );
@@ -1875,6 +1878,10 @@ export function ZdEstimateWorkbench({
         explodeBomIncomplete,
         boostNeedsRecount,
         historyNeedsRecount,
+        historyFetchFailed,
+        pendingIndividualsError,
+        pendingIndividualsTruncated,
+        pendingIndividualsLoading: Boolean(supplierId && pendingIndividualsLoading),
       }),
     [
       bootstrap.configured,
@@ -1892,6 +1899,10 @@ export function ZdEstimateWorkbench({
       explodeBomIncomplete,
       boostNeedsRecount,
       historyNeedsRecount,
+      historyFetchFailed,
+      pendingIndividualsError,
+      pendingIndividualsTruncated,
+      pendingIndividualsLoading,
     ]
   );
 
@@ -2042,6 +2053,7 @@ export function ZdEstimateWorkbench({
     // Brak listy → dirty boosta / historii nieaktualne; applied = aktualne radio.
     setBoostNeedsRecount(false);
     setHistoryNeedsRecount(false);
+    setHistoryFetchFailed(false);
     setAppliedBoostPreset(boostPreset);
     setAppliedBoostPolicy(policyForBoostPreset(boostPreset));
     if (opts?.fromScopeChange) {
@@ -2332,6 +2344,8 @@ export function ZdEstimateWorkbench({
         setScopeNeedsRecount(false);
         setBoostNeedsRecount(false);
         setHistoryNeedsRecount(false);
+        setHistoryFetchFailed(false);
+        setPendingIndividualsLoading(false);
         setAppliedBoostPreset(boostPreset);
         setAppliedBoostPolicy(policyForBoostPreset(boostPreset));
         setRecountStatusMessage(null);
@@ -2395,6 +2409,8 @@ export function ZdEstimateWorkbench({
           }
         }
         setHistoryByTwId(histMap);
+        setHistoryFetchFailed(Boolean(res.historyFetchFailed));
+        setPendingIndividualsLoading(false);
         if (res.pendingIndividuals != null) {
           pendingFetchGenRef.current += 1;
           setPendingIndividuals(res.pendingIndividuals);
@@ -2740,6 +2756,9 @@ export function ZdEstimateWorkbench({
   const createGateShownAsFullAlert =
     Boolean(boostNeedsRecount && lines) ||
     Boolean(historyNeedsRecount && lines) ||
+    Boolean(historyFetchFailed && lines) ||
+    Boolean(pendingIndividualsError) ||
+    Boolean(pendingIndividualsTruncated) ||
     packagingPairConflicts.length > 0 ||
     explodeBomIncomplete ||
     !settingsTrusted ||
@@ -2776,7 +2795,6 @@ export function ZdEstimateWorkbench({
     if (!id) return;
     const gen = ++pendingFetchGenRef.current;
     setPendingIndividualsLoading(true);
-    setPendingIndividualsError(null);
     void (async () => {
       const res = await actionFetchZdEstimatePendingIndividuals(id);
       if (gen !== pendingFetchGenRef.current) return;
@@ -4063,6 +4081,7 @@ export function ZdEstimateWorkbench({
           scopeSelected && scopeLabel ? (
             <ZdEstimatePrepScopeFacts
               variant="toolbar"
+              scopeMode={scopeMode}
               scopeName={scopeLabel}
               stockLabel={stockLabel}
               dniZapasu={dniZapasu}
@@ -4332,6 +4351,9 @@ export function ZdEstimateWorkbench({
       {pendingIndividualsError ? (
         <Alert tone="error" title="Nie wczytano próśb">
           <span className="block">{pendingIndividualsError}</span>
+          <span className="mt-1 block text-sm">
+            {ZD_ESTIMATE_UI.createGatePendingIndividualsError}
+          </span>
           <span className="mt-2 flex flex-wrap gap-2">
             <Button
               type="button"
@@ -4349,7 +4371,7 @@ export function ZdEstimateWorkbench({
       {pendingIndividualsTruncated ? (
         <Alert tone="warning" title="Limit 500 próśb">
           Wczytano pierwsze 500 próśb Nowe — możliwe, że część nie weszła do
-          szacunku. Odznacz zbędne w panelu Dziś.
+          szacunku. {ZD_ESTIMATE_UI.createGatePendingIndividualsTruncated}
         </Alert>
       ) : null}
 
@@ -4539,6 +4561,32 @@ export function ZdEstimateWorkbench({
                 onClick={() => runEstimate()}
               >
                 {ZD_ESTIMATE_UI.historyNeedsRecountCta}
+              </Button>
+            </Alert>
+          ) : null,
+          historyFetchFailed && lines ? (
+            <Alert
+              key="history-fetch-failed"
+              tone="error"
+              title={ZD_ESTIMATE_UI.historyFetchFailedTitle}
+            >
+              <p className="text-sm leading-snug">
+                {ZD_ESTIMATE_UI.historyFetchFailedBody}
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                className="mt-3"
+                disabled={
+                  estimating ||
+                  mutating ||
+                  !bootstrap.configured ||
+                  !scopeSelected ||
+                  !settingsTrusted
+                }
+                onClick={() => runEstimate()}
+              >
+                {ZD_ESTIMATE_UI.historyFetchFailedCta}
               </Button>
             </Alert>
           ) : null,
@@ -4865,7 +4913,28 @@ export function ZdEstimateWorkbench({
         </div>
 
         <div className="flex min-w-0 flex-col gap-4">
-          {scopeSelected && scopeLabel ? null : (
+          {scopeSelected && scopeLabel ? (
+            <ZdEstimatePrepScopeFacts
+              variant="card"
+              scopeMode={scopeMode}
+              scopeName={scopeLabel}
+              stockLabel={stockLabel}
+              dniZapasu={dniZapasu}
+              supplierLabel={supplierLabel}
+              dataOd={dataOd}
+              dataDo={dataDo}
+              tone={
+                !settingsTrusted || scopeNeedsRecount ? "warn" : "ready"
+              }
+              caption={
+                !settingsTrusted
+                  ? zdEstimateNeedsSettingsHint()
+                  : scopeNeedsRecount
+                    ? zdEstimateScopeChangedHint()
+                    : zdEstimateScopeLinkedCaption()
+              }
+            />
+          ) : (
             <div
               className={cn(
                 "border-dashed px-3.5 py-3 text-sm leading-relaxed text-slate-700",
@@ -5218,7 +5287,8 @@ export function ZdEstimateWorkbench({
               <p className="text-sm leading-snug">
                 Nie udało się dociągnąć {pairPartnerMissingCount}{" "}
                 {pairPartnerMissingCount === 1 ? "towaru" : "towarów"} z pary —
-                linie tych paczek mają ilość 0.
+                linie tych paczek mają ilość 0 (albo tylko prośbę). Reszta listy
+                nadal może iść na ZD.
               </p>
               {missingPartnerTwIds.length > 0 ? (
                 <p className="mt-1.5 text-[12px] text-slate-700">

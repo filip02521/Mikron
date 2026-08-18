@@ -260,7 +260,12 @@ export type ZdEstimateRunResult =
       result: ManualZdEstimateResult;
       /** Historia snapshotów użyta w Policz (do live refresh). */
       historyByTwId: ZdEstimateHistoryEntryDto[];
-      /** Wiszące prośby dostawcy (zamówienie Nowe) — merge po stronie klienta. null = fetch nieudany (nie nadpisuj UI). */
+      /**
+       * Fetch historii rzucił (nie: pusta mapa). Cięcia historyczne mogły nie wejść —
+       * UI blokuje Create do ponownego Policz.
+       */
+      historyFetchFailed?: boolean;
+      /** Wiszące prośby dostawcy (zamówienie Nowe). null = fetch nieudany (UI czyści listę i blokuje Create). */
       pendingIndividuals: ZdEstimatePendingIndividualOrder[] | null;
       /** true gdy fetch próśb ucięty limitem (możliwe brakujące). */
       pendingIndividualsTruncated?: boolean;
@@ -937,6 +942,7 @@ export async function actionRunZdEstimateManual(
       number,
       { lastOrderedQty: number; linkedAt: string }
     > | null = null;
+    let historyFetchFailed = false;
     const khResolve = await resolveSupplierKhIdsForHistory(input.supplierId);
     const supplierKhIds = khResolve.ok ? khResolve.khIds : [];
     const historyScope = historyScopeFromRun(scope);
@@ -965,8 +971,10 @@ export async function actionRunZdEstimateManual(
           });
         }
       } catch {
-        // Historia opcjonalna — szacunek działa bez snapshotów.
+        // Historia opcjonalna dla samego wyliczenia — bez snapshotów lista działa.
+        // Fetch error ≠ pusta historia: UI blokuje Create, żeby nie pójść bez cięć.
         historyByTwId = null;
+        historyFetchFailed = true;
       }
     }
 
@@ -1158,7 +1166,9 @@ export async function actionRunZdEstimateManual(
           missingBomTwIds.delete(id);
         }
       } catch {
-        // zostaje w missing*
+        // Pusta odpowiedź / timeout jednego SKU: zostaje w missing*.
+        // Pary → qty 0 + banner; explode BOM → osobny gate Create.
+        // Nie zrywamy całego Policz — reszta zakresu ma zostać na liście.
       }
     }
 
@@ -1176,7 +1186,7 @@ export async function actionRunZdEstimateManual(
           });
         }
       } catch {
-        /* ignore */
+        historyFetchFailed = true;
       }
     }
 
@@ -1307,6 +1317,7 @@ export async function actionRunZdEstimateManual(
       ok: true,
       result,
       historyByTwId: historyMapToDto(historyByTwId),
+      historyFetchFailed,
       pendingIndividuals,
       pendingIndividualsTruncated,
       pendingIndividualsError,
