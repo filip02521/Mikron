@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState, useTransition } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 import { actionCreateZdFromEstimate } from "@/app/actions/zd-estimate";
 import type { ZdEstimateLinkLineMeta } from "@/app/actions/zd-estimate";
 import { ZdEstimateCreateZdProgressPanel } from "@/components/zakupy/ZdEstimateCreateZdProgress";
@@ -22,10 +22,10 @@ import {
 } from "@/lib/orders/zd-estimate-individual";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import type { ZdPostCreateMarkFreeze } from "@/lib/orders/zd-estimate-post-create";
+import type { ZdEstimateHostStrip } from "@/lib/orders/zd-estimate-host";
 import {
   zdEstimateCreateConfirmLabel,
-  zdEstimateCreateProgressCompleteTitle,
-  zdEstimateCreateProgressTitle,
+  zdEstimateCreateProgressAriaLabel,
   zdEstimateCreateTitleHint,
   zdEstimateProsbaWord,
   ZD_ESTIMATE_UI,
@@ -74,6 +74,7 @@ export function ZdEstimateCreateZdDialog({
   ordersIsLive,
   ordersPort,
   ordersHostLabel = null,
+  host = null,
   extrasPolicy = "sum",
 }: {
   open: boolean;
@@ -131,6 +132,8 @@ export function ZdEstimateCreateZdDialog({
   ordersIsLive: boolean;
   ordersPort: number;
   ordersHostLabel?: string | null;
+  /** Belka hosta na loadingu create — ten sam model co Policz. */
+  host?: ZdEstimateHostStrip | null;
   extrasPolicy?: "sum" | "max";
 }) {
   const uwagiId = useId();
@@ -145,6 +148,7 @@ export function ZdEstimateCreateZdDialog({
   const [progressSnapshotOk, setProgressSnapshotOk] = useState<boolean | null>(
     null
   );
+  const wasCreatingRef = useRef(false);
 
   const baseMax = Math.max(
     0,
@@ -168,6 +172,27 @@ export function ZdEstimateCreateZdDialog({
       );
     });
   }, [open, scopeMode, scopeLabel, dateKey, initialUwagi, baseMax]);
+
+  useEffect(() => {
+    if (!open) {
+      wasCreatingRef.current = false;
+      return;
+    }
+    const creating = pending && progressStartedAtMs != null;
+    if (creating) {
+      wasCreatingRef.current = true;
+      return;
+    }
+    if (!wasCreatingRef.current) return;
+    wasCreatingRef.current = false;
+    const confirm = document.getElementById(confirmId);
+    if (!(confirm instanceof HTMLElement)) return;
+    try {
+      confirm.focus({ preventScroll: true });
+    } catch {
+      confirm.focus();
+    }
+  }, [open, pending, progressStartedAtMs, confirmId]);
 
   const liveCompose = useMemo(
     () =>
@@ -315,23 +340,21 @@ export function ZdEstimateCreateZdDialog({
     <ModalShell
       open
       onClose={onClose}
-      title={
-        showProgress
-          ? progressComplete
-            ? zdEstimateCreateProgressCompleteTitle({
-                snapshotOk: progressSnapshotOk,
-              })
-            : zdEstimateCreateProgressTitle()
-          : "Utwórz ZD w Subiekcie"
-      }
-      titleHint={titleHint}
+      title={showProgress ? undefined : "Utwórz ZD w Subiekcie"}
+      titleHint={showProgress ? undefined : titleHint}
       titleId="zd-estimate-create-zd-title"
-      size="xl"
+      ariaLabel={showProgress ? zdEstimateCreateProgressAriaLabel() : undefined}
+      size={showProgress ? "md" : "xl"}
       tier="raised"
       disableBackdropClose={pending}
+      className={
+        showProgress
+          ? "border-0 bg-transparent shadow-none ring-0"
+          : undefined
+      }
       bodyClassName={
         showProgress
-          ? "px-4 py-3 sm:px-5 sm:py-4"
+          ? "p-0"
           : "space-y-4 px-5 py-4 sm:px-6 sm:py-5"
       }
       footer={
@@ -366,11 +389,22 @@ export function ZdEstimateCreateZdDialog({
     >
       {showProgress ? (
         <ZdEstimateCreateZdProgressPanel
+          key={progressStartedAtMs}
           startedAtMs={progressStartedAtMs}
           lineCount={preview.lineCount}
           supplierName={supplierName}
+          scopeLabel={scopeLabel}
+          scopeMode={scopeMode}
           forceComplete={progressComplete}
           snapshotOk={progressSnapshotOk}
+          ordersIsLive={ordersIsLive}
+          host={
+            host ?? {
+              configured: true,
+              isLive: ordersIsLive,
+              port: ordersPort,
+            }
+          }
         />
       ) : (
         <>

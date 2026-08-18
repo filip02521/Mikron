@@ -19,7 +19,8 @@ export type ZdEstimateLoadingWindowHost = ZdEstimateHostStrip;
 
 /**
  * Okno loadingu Kreatora ZD — brand + treść checklisty.
- * `stage` = pełna scena w workbenchu; `embedded` = karta w modalu (bez tła sceny).
+ * `stage` = pełna scena (workbench albo chromeless modal);
+ * `embedded` = karta bez tła sceny.
  */
 export function ZdEstimateLoadingWindow({
   title = "Kreator ZD",
@@ -34,6 +35,7 @@ export function ZdEstimateLoadingWindow({
   focusId,
   variant = "stage",
   showBrandHeader = true,
+  titleAs = "h1",
 }: {
   title?: string;
   description?: string;
@@ -48,8 +50,11 @@ export function ZdEstimateLoadingWindow({
   focusId?: string;
   variant?: "stage" | "embedded";
   showBrandHeader?: boolean;
+  /** `h2` w dialogu — strona kreatora ma już `h1`. */
+  titleAs?: "h1" | "h2";
 }) {
   const hostConfigured = host?.configured === true;
+  const TitleTag = titleAs;
   const hostDetail =
     hostConfigured && host
       ? zdEstimateHostStripDetail({
@@ -85,9 +90,9 @@ export function ZdEstimateLoadingWindow({
                 className="zd-est-loading-window__mark hidden size-1.5 shrink-0 rounded-full bg-indigo-500 sm:inline-block"
                 aria-hidden
               />
-              <h1 className="truncate text-sm font-medium tracking-tight text-slate-800 sm:text-[13px]">
+              <TitleTag className="truncate text-sm font-medium tracking-tight text-slate-800 sm:text-[13px]">
                 {title}
-              </h1>
+              </TitleTag>
               {showHintSlot ? (
                 combinedHint ? (
                   <HelpHintBubble

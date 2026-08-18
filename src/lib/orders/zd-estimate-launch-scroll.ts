@@ -5,6 +5,9 @@
  */
 
 export const ZD_ESTIMATE_LAUNCH_FOCUS_ID = "zd-estimate-launch-focus";
+/** Okno loadingu „Utwórz ZD” — ten sam chrome co Policz. */
+export const ZD_ESTIMATE_CREATE_PROGRESS_FOCUS_ID =
+  "zd-estimate-create-progress-focus";
 export const ZD_ESTIMATE_ASSIGN_FOCUS_ID = "zd-estimate-assign-focus";
 export const ZD_ESTIMATE_ERROR_FOCUS_ID = "zd-estimate-error-focus";
 export const ZD_ESTIMATE_LIST_FOCUS_ID = "zd-estimate-list-focus";
