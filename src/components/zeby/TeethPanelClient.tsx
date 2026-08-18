@@ -292,7 +292,7 @@ export function TeethPanelClient({
             updated: result.updated,
             ordersCompleted: result.ordersCompleted,
             skipped: markAnalysis?.withoutSpecIds.length ?? 0,
-            skippedFiles: markAnalysis?.withoutFileIds.length ?? 0,
+            skippedFiles: markAnalysis?.withoutFileGroupCount ?? 0,
             plPozycja,
           }),
         );

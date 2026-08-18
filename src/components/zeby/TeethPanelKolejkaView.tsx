@@ -8,13 +8,14 @@ import { panelSubsectionInsetClass } from "@/lib/ui/ontime-theme";
 
 import { teethPanelSupplierCardClass } from "@/lib/teeth/teeth-panel-ui";
 
-import { plPozycja } from "@/lib/ui/polish-plurals";
+import { plPozycja, plProsba } from "@/lib/ui/polish-plurals";
 
 import { Button } from "@/components/ui/Button";
 
 import { TeethPanelEmpty } from "@/components/zeby/TeethPanelSection";
 
 import { TeethQueueBatchTable } from "@/components/zeby/TeethQueueBatchTable";
+import { TeethOrderFileUpload } from "@/components/zeby/TeethOrderFileUpload";
 import { TeethPanelScheduleBanner } from "@/components/zeby/TeethPanelScheduleBanner";
 import { TeethPanelStatsBar } from "@/components/zeby/TeethPanelStatsBar";
 import { detectTeethDuplicates } from "@/lib/teeth/teeth-duplicate-detect";
@@ -31,6 +32,7 @@ import {
 
 import type { TeethPanelReadinessContext } from "@/lib/teeth/teeth-panel-order-readiness";
 import { distinctTeethProductLineLabelsForOrders } from "@/lib/teeth/teeth-panel-order-readiness";
+import { resolveTeethGroupOrderFile, teethOrderFileGroupKey } from "@/lib/teeth/teeth-mark-ordered";
 
 import type { TeethQueueGroup, TeethQueueItem, TeethPositionSelection } from "@/lib/data/teeth-queue-shared";
 
@@ -116,7 +118,7 @@ export function TeethPanelKolejkaView({
 
   onEditSaved?: (message?: string) => void;
 
-  onFileChanged?: (orderId: string, hasFile: boolean) => void;
+  onFileChanged?: () => void;
 
 }) {
 
@@ -148,30 +150,41 @@ export function TeethPanelKolejkaView({
     setFileStateOverrides(new Map());
   }
 
-  const orderHasFile = useCallback((orderId: string): boolean => {
-    const override = fileStateOverrides.get(orderId);
-    if (override != null) return override;
+  const groupKeyForOrder = useCallback((orderId: string): string => {
     const order = ordersById.get(orderId);
-    return Boolean(order?.teeth_order_file_path?.trim());
-  }, [fileStateOverrides, ordersById]);
+    return order ? teethOrderFileGroupKey(order) : orderId;
+  }, [ordersById]);
 
-  const handleFileChanged = useCallback((orderId: string, hasFile: boolean) => {
+  const groupHasFile = useCallback((groupKey: string, items: TeethQueueItem[]): boolean => {
+    const override = fileStateOverrides.get(groupKey);
+    if (override != null) return override;
+    return resolveTeethGroupOrderFile(items).hasFile;
+  }, [fileStateOverrides]);
+
+  const handleGroupFileChanged = useCallback((groupKey: string, hasFile: boolean) => {
     setFileStateOverrides((prev) => {
       const next = new Map(prev);
-      next.set(orderId, hasFile);
+      next.set(groupKey, hasFile);
       return next;
     });
-    onFileChanged?.(orderId, hasFile);
+    onFileChanged?.();
   }, [onFileChanged]);
 
-  // Check if all selected orders have files attached
   const selectedOrdersHaveFiles = useMemo(() => {
     if (positionSelection.size === 0) return false;
+    const missing = new Set<string>();
     for (const orderId of positionSelection.keys()) {
-      if (!orderHasFile(orderId)) return false;
+      const groupKey = groupKeyForOrder(orderId);
+      const order = ordersById.get(orderId);
+      const siblings = order
+        ? [...ordersById.values()].filter(
+            (item) => teethOrderFileGroupKey(item) === groupKey
+          )
+        : [];
+      if (!groupHasFile(groupKey, siblings)) missing.add(groupKey);
     }
-    return true;
-  }, [positionSelection, orderHasFile]);
+    return missing.size === 0;
+  }, [positionSelection, groupKeyForOrder, ordersById, groupHasFile]);
 
   if (!groups.length || groups.every((g) => !g.items.length)) {
 
@@ -264,7 +277,7 @@ export function TeethPanelKolejkaView({
 
             {!selectedOrdersHaveFiles ? (
               <span className="max-w-[16rem] text-[11px] leading-snug text-amber-800 sm:max-w-[20rem]">
-                Załącz plik zamówienia (Excel/PDF/XML) do zaznaczonych próśb — wtedy odblokuje się oznaczanie.
+                Wrzuć jeden plik zamówienia (Excel/PDF/XML) przy każdej zaznaczonej grupie dostawcy — wtedy odblokuje się oznaczanie.
               </span>
             ) : null}
 
@@ -314,7 +327,7 @@ export function TeethPanelKolejkaView({
 
               className="min-h-9"
 
-              title={selectedOrdersHaveFiles ? TEETH_MARK_ORDERED_TITLE : "Załącz plik zamówienia do wszystkich zaznaczonych pozycji, aby móc oznaczyć jako zamówione"}
+              title={selectedOrdersHaveFiles ? TEETH_MARK_ORDERED_TITLE : "Wrzuć jeden plik zamówienia przy każdej zaznaczonej grupie dostawcy, aby móc oznaczyć jako zamówione"}
 
             >
 
@@ -353,14 +366,15 @@ export function TeethPanelKolejkaView({
 
         const supplierId = group.supplierId ?? group.dueSchedule?.supplier_id ?? null;
 
-        const groupOrdersHaveFiles =
-          realItems.length > 0 && realItems.every((item) => orderHasFile(item.id));
+        const groupFileKey = group.supplierId ?? "__no_supplier";
+        const groupFile = resolveTeethGroupOrderFile(realItems);
+        const groupOrdersHaveFile = groupHasFile(groupFileKey, realItems);
         const canMarkGroup =
-          (realItems.length > 0 && groupOrdersHaveFiles) ||
+          (realItems.length > 0 && groupOrdersHaveFile) ||
           (scheduleOnly && realItems.length === 0);
         const markDisabledReason =
-          realItems.length > 0 && !groupOrdersHaveFiles
-            ? "Załącz plik zamówienia (Excel/PDF/XML) do wszystkich próśb w grupie."
+          realItems.length > 0 && !groupOrdersHaveFile
+            ? "Wrzuć jeden plik zamówienia (Excel/PDF/XML) dla całej grupy dostawcy."
             : null;
 
 
@@ -368,7 +382,7 @@ export function TeethPanelKolejkaView({
         const handleMarkGroup = () => {
 
           if (realItems.length > 0) {
-            if (!groupOrdersHaveFiles) return;
+            if (!groupOrdersHaveFile) return;
 
             const selections: TeethPositionSelection[] = [];
             for (const item of realItems) {
@@ -444,12 +458,34 @@ export function TeethPanelKolejkaView({
             ) : null}
 
             {realItems.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-2 border-b border-slate-100/90 px-3 py-2 sm:px-4 lg:px-5">
+                <TeethOrderFileUpload
+                  orderId={
+                    (realItems.find((item) => item.teeth_order_file_path?.trim()) ??
+                      realItems[0]!).id
+                  }
+                  existingFileName={groupFile.fileName}
+                  required={!groupOrdersHaveFile}
+                  locked={realItems.every(
+                    (item) => item.status !== "Nowe" && item.status !== "Weryfikacja"
+                  )}
+                  slotHint={
+                    realItems.length > 1
+                      ? `Jeden plik na ${realItems.length} ${plProsba(realItems.length)} u ${group.supplierName}.`
+                      : `Plik zamówienia u ${group.supplierName}.`
+                  }
+                  onUploaded={() => handleGroupFileChanged(groupFileKey, true)}
+                  onRemoved={() => handleGroupFileChanged(groupFileKey, false)}
+                />
+              </div>
+            ) : null}
+
+            {realItems.length > 0 ? (
               <TeethQueueBatchTable
                 items={realItems}
                 positionSelection={positionSelection}
                 onTogglePosition={onTogglePosition}
                 onEditSaved={onEditSaved}
-                onFileChanged={handleFileChanged}
               />
             ) : null}
           </div>

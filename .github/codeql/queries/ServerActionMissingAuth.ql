@@ -47,7 +47,8 @@ predicate isAuthFunction(string fnName) {
     // doesn't follow call graph into other function bodies
     "acknowledgeOrders",
     "actionSearchZdReceiveFilter",
-    "actionListActiveVacationsForSupplier"
+    "actionListActiveVacationsForSupplier",
+    "actionFetchCarrierPhones"
   ]
 }
 

@@ -78,13 +78,6 @@ export async function actionFetchCarrierPhones(
   }
 }
 
-/** @deprecated użyj {@link actionFetchCarrierPhones}. */
-export async function actionFetchCarrierPhonesForOperations(
-  carrierSlug?: string
-): Promise<CarrierPhonesFetchResult> {
-  return actionFetchCarrierPhones(carrierSlug);
-}
-
 export async function actionCreateCarrierPhone(input: {
   carrierSlug: string;
   label: string;

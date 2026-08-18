@@ -1,5 +1,5 @@
 import type { IndividualOrderTeethDetail } from "@/types/database";
-import { plPozycja, plProsba } from "@/lib/ui/polish-plurals";
+import { plPozycja } from "@/lib/ui/polish-plurals";
 import { orderHasTeethSpec } from "@/lib/teeth/teeth-panel-filters";
 import type { TeethPanelReadinessContext } from "@/lib/teeth/teeth-panel-order-readiness";
 
@@ -7,13 +7,17 @@ export const TEETH_MARK_ORDERED_BLOCKED_MESSAGE =
   "Uzupełnij kompletną listę zębów przed oznaczeniem zamówienia u dostawcy.";
 
 export const TEETH_MARK_ORDERED_FILE_REQUIRED_MESSAGE =
-  "Załącz plik zamówienia (Excel, PDF lub XML) do każdej prośby przed oznaczeniem jako zamówione.";
+  "Załącz jeden plik zamówienia (Excel, PDF lub XML) na grupę dostawcy — zanim oznaczysz jako zamówione.";
+
+/** Gdy w Storage jest ścieżka, a w bazie brakuje oryginalnej nazwy. */
+export const TEETH_GROUP_ORDER_FILE_FALLBACK_NAME = "plik zamówienia";
 
 export type TeethMarkOrderedOrderInput = {
   teeth_details?: IndividualOrderTeethDetail[] | null | undefined;
   products?: string;
   quantity?: string;
   subiekt_tw_id?: number | null;
+  supplier_id?: string | null;
   teeth_order_file_path?: string | null;
   teeth_order_file_name?: string | null;
 };
@@ -23,6 +27,8 @@ export type TeethMarkOrderedAnalysis = {
   withSpecIds: string[];
   withoutSpecIds: string[];
   withoutFileIds: string[];
+  /** Ile grup dostawcy w zaznaczeniu nie ma jeszcze pliku. */
+  withoutFileGroupCount: number;
   hasMissingSpec: boolean;
   hasMissingFile: boolean;
   canMarkAny: boolean;
@@ -37,6 +43,39 @@ export function orderHasTeethOrderFile(order: {
   return Boolean(order.teeth_order_file_path?.trim());
 }
 
+/** Klucz grupy pliku = dostawca z kolejki (Ivoclar = jeden plik na wszystkie prośby). */
+export function teethOrderFileGroupKey(order: {
+  supplier_id?: string | null;
+}): string {
+  const id = String(order.supplier_id ?? "").trim();
+  return id || "__no_supplier";
+}
+
+/** Grupy dostawcy, w których choć jedna oczekująca prośba ma plik. */
+export function teethSupplierGroupsWithOrderFile(
+  orders: Iterable<TeethMarkOrderedOrderInput>
+): Set<string> {
+  const keys = new Set<string>();
+  for (const order of orders) {
+    if (orderHasTeethOrderFile(order)) {
+      keys.add(teethOrderFileGroupKey(order));
+    }
+  }
+  return keys;
+}
+
+export function resolveTeethGroupOrderFile(
+  items: readonly TeethMarkOrderedOrderInput[]
+): { hasFile: boolean; fileName: string | null } {
+  for (const item of items) {
+    if (orderHasTeethOrderFile(item)) {
+      const name = item.teeth_order_file_name?.trim();
+      return { hasFile: true, fileName: name || TEETH_GROUP_ORDER_FILE_FALLBACK_NAME };
+    }
+  }
+  return { hasFile: false, fileName: null };
+}
+
 export function analyzeTeethMarkOrdered(
   orderIds: string[],
   ordersById: Map<string, TeethMarkOrderedOrderInput>,
@@ -45,6 +84,7 @@ export function analyzeTeethMarkOrdered(
   const withSpecIds: string[] = [];
   const withoutSpecIds: string[] = [];
   const withoutFileIds: string[] = [];
+  const groupsWithFile = teethSupplierGroupsWithOrderFile(ordersById.values());
 
   for (const id of orderIds) {
     const order = ordersById.get(id);
@@ -53,11 +93,17 @@ export function analyzeTeethMarkOrdered(
       withoutSpecIds.push(id);
       continue;
     }
-    if (!orderHasTeethOrderFile(order)) {
+    if (!groupsWithFile.has(teethOrderFileGroupKey(order))) {
       withoutFileIds.push(id);
       continue;
     }
     withSpecIds.push(id);
+  }
+
+  const withoutFileGroupKeys = new Set<string>();
+  for (const id of withoutFileIds) {
+    const order = ordersById.get(id);
+    if (order) withoutFileGroupKeys.add(teethOrderFileGroupKey(order));
   }
 
   return {
@@ -65,6 +111,7 @@ export function analyzeTeethMarkOrdered(
     withSpecIds,
     withoutSpecIds,
     withoutFileIds,
+    withoutFileGroupCount: withoutFileGroupKeys.size,
     hasMissingSpec: withoutSpecIds.length > 0,
     hasMissingFile: withoutFileIds.length > 0,
     canMarkAny: withSpecIds.length > 0,
@@ -77,19 +124,23 @@ export function teethMarkOrderedConfirmMessage(
 ): string {
   const ready = analysis.selectedPositionCount ?? analysis.withSpecIds.length;
   const skippedOrders = analysis.withoutSpecIds.length;
-  const skippedFiles = analysis.withoutFileIds.length;
+  const skippedFileGroups = analysis.hasMissingFile
+    ? Math.max(1, analysis.withoutFileGroupCount)
+    : analysis.withoutFileGroupCount;
 
   if (!analysis.canMarkAny) {
     if (analysis.hasMissingFile && analysis.hasMissingSpec) {
       return (
         `${TEETH_MARK_ORDERED_BLOCKED_MESSAGE}\n\n` +
-        `Dodatkowo brakuje pliku zamówienia przy ${skippedFiles} ${plProsba(skippedFiles)}.`
+        `Dodatkowo brakuje pliku zamówienia przy ${skippedFileGroups} ${
+          skippedFileGroups === 1 ? "grupie dostawcy" : "grupach dostawcy"
+        }.`
       );
     }
     if (analysis.hasMissingFile) {
       return (
         `${TEETH_MARK_ORDERED_FILE_REQUIRED_MESSAGE}\n\n` +
-        `Plik musi być załączony przy każdej prośbie — wtedy odblokuje się oznaczanie.`
+        `Jeden plik pokrywa wszystkie prośby u tego dostawcy — wrzuć go przy grupie, wtedy odblokuje się oznaczanie.`
       );
     }
     return (
@@ -114,8 +165,10 @@ export function teethMarkOrderedConfirmMessage(
   }
   if (analysis.hasMissingFile) {
     notes.push(
-      `${skippedFiles} ${plProsba(skippedFiles)} bez pliku zamówienia — ` +
-        `pominę ${skippedFiles === 1 ? "ją" : "je"} do czasu załączenia pliku.`
+      `${skippedFileGroups} ${
+        skippedFileGroups === 1 ? "grupa dostawcy nie ma" : "grup dostawcy nie ma"
+      } pliku zamówienia — ` +
+        `pominę te prośby do czasu wrzucenia jednego pliku przy grupie.`
     );
   }
 

@@ -543,6 +543,7 @@ export function teethMarkOrderedToast(opts: {
   updated: number;
   ordersCompleted: number;
   skipped: number;
+  /** Ile grup dostawcy bez pliku (jeden plik na grupę). */
   skippedFiles?: number;
   plPozycja: (n: number) => string;
 }): ToastNotice {
@@ -562,7 +563,7 @@ export function teethMarkOrderedToast(opts: {
     }
     if (skippedFiles > 0) {
       reasons.push(
-        `${skippedFiles} ${skippedFiles === 1 ? "prośbę" : "próśb"} bez pliku zamówienia`
+        `${skippedFiles} ${skippedFiles === 1 ? "grupę dostawcy" : "grup dostawcy"} bez pliku zamówienia`
       );
     }
     return toastWarning(

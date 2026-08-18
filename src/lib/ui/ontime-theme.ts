@@ -330,25 +330,31 @@ export const zdEstimateNestedWellClass = cn(
 export const zdEstimateSoftStatusStripClass =
   "shrink-0 max-h-[4.5rem] space-y-2 overflow-y-auto overscroll-contain sm:max-h-[7rem]";
 
-/** Scroll zakresu w karcie prep (Policz / polityki pinned poniżej). */
-export const zdEstimatePrepScopeScrollClass =
-  "min-h-0 max-h-[min(30vh,12rem)] overflow-y-auto overscroll-contain md:max-h-[min(32vh,16rem)]";
+/**
+ * Karta zakresu (start i Zmień zakres): naturalna wysokość, bez max-height 12rem.
+ * Przy braku listy scroll jest na workbenchu — nie na polach.
+ */
+export const zdEstimatePrepFormInsetXClass = "px-4 sm:px-6";
+
+export const zdEstimatePrepIdleBodyClass = cn(
+  "grid grid-cols-1 content-start gap-5 py-4 sm:gap-6 sm:py-5",
+  zdEstimatePrepFormInsetXClass,
+  "lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.9fr)] lg:items-start lg:gap-x-8"
+);
+
+/** Stopka Policz karty zakresu — ten sam inset X co treść, zaraz pod polami. */
+export const zdEstimatePrepIdleFooterClass = cn(
+  "scroll-mt-24 flex shrink-0 flex-col border-t border-slate-100/90 bg-slate-50/55 sm:flex-row sm:items-center sm:justify-between",
+  zdEstimatePrepFormInsetXClass,
+  "gap-2 py-3 sm:py-3.5"
+);
 
 /** Luźniejszy inset niż panel dzienny — tabela potrzebuje powietrza. */
 export const zdEstimateSectionInsetClass =
   "px-4 py-5 sm:px-6 sm:py-6 lg:px-7 lg:py-6";
 
-/** Inset formularza prep — ten sam X co chrome, ciaśniejszy Y. */
-export const zdEstimatePrepInsetClass = cn(
-  zdEstimateChromeInsetXClass,
-  "py-2.5 sm:py-3"
-);
-
 /** Wewnętrzny stack sekcji w kartach prep / lista. */
 export const zdEstimateSectionStackClass = "space-y-5";
-
-/** Stack sekcji w karcie przygotowania — gęstszy niż lista. */
-export const zdEstimatePrepStackClass = "space-y-3";
 
 /** Chipy faktów zakresu (grupa / zapas / dostawca / okno). */
 export const zdEstimateScopeFactChipClass =
@@ -525,12 +531,6 @@ export const zdEstimatePrepPrimaryButtonClass = cn(
   "py-0"
 );
 
-/** Stopka Policz w karcie prep — inset X jak chrome. */
-export const zdEstimatePrepFooterClass = cn(
-  "scroll-mt-24 flex flex-col border-t border-slate-100/90 bg-gradient-to-b from-slate-50/50 to-transparent sm:flex-row sm:items-center sm:justify-between",
-  zdEstimateChromeInsetXClass,
-  "gap-1.5 py-2.5"
-);
 /**
  * Selection / bulk — w flow na dole (nad sticky Create), żeby akcje
  * grupowe były w polu widzenia przy scrollu na dół strony.
