@@ -12,7 +12,6 @@ import {
   teethPanelIncompleteDetailClass,
 } from "@/lib/teeth/teeth-panel-ui";
 import { TeethPanelEditOrderTrigger } from "@/components/zeby/TeethPanelEditOrderTrigger";
-import { TeethOrderFileUpload } from "@/components/zeby/TeethOrderFileUpload";
 import { ProcurementSalesRequestNote } from "@/components/orders/ProcurementSalesRequestNote";
 import {
   orderHasIncompleteTeethSpec,
@@ -188,7 +187,6 @@ export function TeethQueueBatchTable({
   onTogglePosition,
   onEditSaved,
   alwaysShowEdit = false,
-  onFileChanged,
 }: {
   items: TeethQueueItem[];
   positionSelection: Map<string, Set<number>>;
@@ -196,8 +194,6 @@ export function TeethQueueBatchTable({
   onEditSaved?: (message?: string) => void;
   /** Pokaż przycisk "Edytuj listę" przy każdej pozycji, nie tylko przy problemowych (np. weryfikacja OCR). */
   alwaysShowEdit?: boolean;
-  /** Callback gdy plik zamówienia został wgrany/usunięty — do odświeżenia stanu blokady. */
-  onFileChanged?: (orderId: string, hasFile: boolean) => void;
 }) {
   const teethProductInfo = useTeethProductInfo();
   const readinessCtx = useMemo(
@@ -289,14 +285,6 @@ export function TeethQueueBatchTable({
                 <th className="py-1.5 px-2 hidden sm:table-cell">Typ</th>
                 <th className="py-1.5 px-2 sm:hidden">Szczęka / Typ</th>
                 <th className="py-1.5 px-2 text-right tabular-nums">Szt.</th>
-                <th className="py-1.5 px-2 min-w-[7.5rem]">
-                  <span className="inline-flex flex-col gap-0.5">
-                    <span>Plik</span>
-                    <span className="normal-case tracking-normal font-normal text-slate-400">
-                      Excel / PDF / XML
-                    </span>
-                  </span>
-                </th>
                 <th className="py-1.5 pr-3 pl-2 sm:pr-4 lg:pr-5" />
               </tr>
             </thead>
@@ -364,7 +352,7 @@ export function TeethQueueBatchTable({
                     {row.isFirstRowOfSalesPerson ? (
                       <tr>
                         <td
-                          colSpan={9}
+                          colSpan={8}
                           className={cn(
                             "border-b border-slate-200/80 bg-white/60 px-3 py-1.5 sm:px-4 lg:px-5",
                             index > 0 && "border-t border-slate-200/80",
@@ -464,25 +452,6 @@ export function TeethQueueBatchTable({
                           {row.totalOrdered}/{row.totalCount}
                         </span>
                       ) : row.totalCount}
-                    </td>
-                    <td className="py-1.5 px-2">
-                      <div className="flex flex-col gap-0.5">
-                        {row.orderEntries.map((e) => (
-                          <TeethOrderFileUpload
-                            key={e.orderId}
-                            orderId={e.orderId}
-                            existingFileName={
-                              e.item.teeth_order_file_path?.trim()
-                                ? (e.item.teeth_order_file_name ?? null)
-                                : null
-                            }
-                            required
-                            locked={e.item.status !== "Nowe" && e.item.status !== "Weryfikacja"}
-                            onUploaded={() => onFileChanged?.(e.orderId, true)}
-                            onRemoved={() => onFileChanged?.(e.orderId, false)}
-                          />
-                        ))}
-                      </div>
                     </td>
                     <td className="py-1.5 pr-3 pl-2 sm:pr-4 lg:pr-5">
                       {onEditSaved ? (
