@@ -78,7 +78,7 @@ export function SummaryWorkspace({
   supplierStatsMode?: Record<string, StatsMode>;
   verificationOrders?: IndividualOrder[];
   teethLaneBySupplierId?: Record<string, TeethSupplierLaneSnapshot>;
-  /** Przygotuj ZD w drawerze — wyłącznie administrator. */
+  /** Przygotuj ZD w drawerze — Kreator ZD (operacje dostaw). */
   canPrepareZd?: boolean;
 }) {
   const {

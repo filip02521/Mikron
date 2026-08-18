@@ -18,6 +18,7 @@ export function TeethOrderFileUpload({
   existingFileName,
   required = false,
   locked = false,
+  slotHint = null,
   onUploaded,
   onRemoved,
 }: {
@@ -27,6 +28,8 @@ export function TeethOrderFileUpload({
   required?: boolean;
   /** Po oznaczeniu jako zamówione — tylko pobieranie, bez zmiany pliku. */
   locked?: boolean;
+  /** Krótki podpis przy wrzucaniu (np. jeden plik na grupę dostawcy). */
+  slotHint?: string | null;
   onUploaded?: (fileName: string) => void;
   onRemoved?: () => void;
 }) {
@@ -128,12 +131,15 @@ export function TeethOrderFileUpload({
               disabled={pending}
               onClick={handleRemove}
               className="inline-flex shrink-0 items-center rounded-md border border-slate-200 bg-white p-1 text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-red-600 disabled:opacity-50"
-              title="Usuń plik"
+              title="Usuń plik z całej grupy dostawcy"
             >
               <IconTrash2 size={13} strokeWidth={2} />
             </button>
           ) : null}
         </div>
+        {slotHint ? (
+          <span className="text-[10px] leading-snug text-slate-500">{slotHint}</span>
+        ) : null}
         {error ? <span className="text-[10px] leading-snug text-red-600">{error}</span> : null}
       </div>
     );
@@ -166,11 +172,14 @@ export function TeethOrderFileUpload({
             ? "border-amber-300/90 bg-amber-50 text-amber-900 ring-1 ring-amber-200/70 hover:bg-amber-100/80"
             : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
         )}
-        title="Załącz plik zamówienia (Excel, PDF lub XML) — wymagany przed oznaczeniem"
+        title="Załącz jeden plik zamówienia (Excel, PDF lub XML) na grupę dostawcy — wymagany przed oznaczeniem"
       >
         {pending ? <Spinner size="sm" /> : <IconFilePlus size={13} strokeWidth={2} />}
-        {required ? "Wymagany plik" : "Załącz plik"}
+        {required ? "Wymagany plik grupy" : "Załącz plik"}
       </button>
+      {slotHint ? (
+        <span className="text-[10px] leading-snug text-slate-500">{slotHint}</span>
+      ) : null}
       {error ? <span className="text-[10px] leading-snug text-red-600">{error}</span> : null}
     </div>
   );

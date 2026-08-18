@@ -651,10 +651,9 @@ export async function actionUploadTeethOrderFile(
   }
   const supabase = createAdminClient();
 
-  // Verify the order exists and is a teeth order
   const { data: order, error: orderError } = await supabase
     .from("individual_orders")
-    .select("id, is_teeth, status, sales_cancelled_at")
+    .select("id, is_teeth, status, sales_cancelled_at, supplier_id")
     .eq("id", orderId)
     .single();
 
@@ -674,24 +673,27 @@ export async function actionUploadTeethOrderFile(
     };
   }
 
-  // Remove old file if exists
-  const { data: existingOrder } = await supabase
-    .from("individual_orders")
-    .select("teeth_order_file_path")
-    .eq("id", orderId)
-    .single();
+  const {
+    fetchPendingTeethFileGroupSiblings,
+    unionTeethFileGroupOrderIds,
+    applyTeethOrderFileToPendingGroup,
+  } = await import("@/lib/data/teeth-order-file-group");
+  const siblings = await fetchPendingTeethFileGroupSiblings(supabase, [
+    order.supplier_id ?? null,
+  ]);
+  const groupOrderIds = unionTeethFileGroupOrderIds(orderId, siblings);
+  const oldPaths = [
+    ...new Set(
+      siblings
+        .map((row) => row.teeth_order_file_path?.trim())
+        .filter((path): path is string => Boolean(path))
+    ),
+  ];
 
-  if (existingOrder?.teeth_order_file_path) {
-    await supabase.storage
-      .from("teeth-order-files")
-      .remove([existingOrder.teeth_order_file_path])
-      .catch(() => {});
-  }
-
-  // Upload new file
   const { randomUUID } = await import("crypto");
   const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
-  const storagePath = `teeth-orders/${orderId}/${randomUUID()}.${ext}`;
+  const groupSlug = String(order.supplier_id ?? "bez-dostawcy").trim() || "bez-dostawcy";
+  const storagePath = `teeth-orders/group/${groupSlug}/${randomUUID()}.${ext}`;
 
   const arrayBuffer = await file.arrayBuffer();
   const { error: uploadError } = await supabase.storage
@@ -706,27 +708,47 @@ export async function actionUploadTeethOrderFile(
     return { success: false, error: "Nie udało się wgrać pliku." };
   }
 
-  // Update order record
-  const { error: updateError } = await supabase
-    .from("individual_orders")
-    .update({
-      teeth_order_file_path: storagePath,
-      teeth_order_file_name: file.name,
-    })
-    .eq("id", orderId);
-
-  if (updateError) {
-    console.error("[actionUploadTeethOrderFile] DB update error:", updateError.message);
-    // Clean up orphaned file
+  try {
+    await applyTeethOrderFileToPendingGroup(supabase, groupOrderIds, {
+      path: storagePath,
+      name: file.name,
+    });
+  } catch (updateError) {
+    console.error(
+      "[actionUploadTeethOrderFile] DB update error:",
+      updateError instanceof Error ? updateError.message : updateError
+    );
     await supabase.storage.from("teeth-order-files").remove([storagePath]).catch(() => {});
     return { success: false, error: "Nie udało się zapisać informacji o pliku." };
   }
 
+  await removeUnreferencedTeethOrderStoragePaths(supabase, oldPaths);
+
   revalidatePath("/zeby");
+  revalidatePath("/zeby/kolejka");
   revalidatePath("/kolejka");
   revalidatePath("/moje");
 
   return { success: true, fileName: file.name };
+}
+
+async function removeUnreferencedTeethOrderStoragePaths(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>>,
+  paths: string[]
+): Promise<void> {
+  const unique = [...new Set(paths.map((p) => p.trim()).filter(Boolean))];
+  if (unique.length === 0) return;
+  const leftover: string[] = [];
+  for (const path of unique) {
+    const { count, error } = await supabase
+      .from("individual_orders")
+      .select("id", { count: "exact", head: true })
+      .eq("teeth_order_file_path", path);
+    if (error || (count ?? 0) > 0) continue;
+    leftover.push(path);
+  }
+  if (leftover.length === 0) return;
+  await supabase.storage.from("teeth-order-files").remove(leftover).catch(() => {});
 }
 
 export async function actionRemoveTeethOrderFile(
@@ -742,7 +764,7 @@ export async function actionRemoveTeethOrderFile(
 
   const { data: order, error: orderError } = await supabase
     .from("individual_orders")
-    .select("id, is_teeth, teeth_order_file_path, status")
+    .select("id, is_teeth, teeth_order_file_path, status, supplier_id, sales_cancelled_at")
     .eq("id", orderId)
     .single();
 
@@ -752,30 +774,43 @@ export async function actionRemoveTeethOrderFile(
   if (!order.is_teeth) {
     return { success: false, error: "To nie jest zamówienie zębowe." };
   }
+  if (order.sales_cancelled_at) {
+    return { success: false, error: "Zamówienie zostało anulowane." };
+  }
   if (order.status === "Zamowione" || order.status === "Czesciowo_zrealizowane" || order.status === "Zrealizowane") {
     return { success: false, error: "Nie można usunąć pliku z już zamówionej pozycji." };
   }
 
-  if (order.teeth_order_file_path) {
-    await supabase.storage
-      .from("teeth-order-files")
-      .remove([order.teeth_order_file_path])
-      .catch(() => {});
+  const {
+    fetchPendingTeethFileGroupSiblings,
+    unionTeethFileGroupOrderIds,
+    clearTeethOrderFileOnPendingGroup,
+  } = await import("@/lib/data/teeth-order-file-group");
+  const siblings = await fetchPendingTeethFileGroupSiblings(supabase, [
+    order.supplier_id ?? null,
+  ]);
+  const groupOrderIds = unionTeethFileGroupOrderIds(orderId, siblings);
+  const oldPaths = [
+    ...new Set(
+      siblings
+        .map((row) => row.teeth_order_file_path?.trim())
+        .filter((path): path is string => Boolean(path))
+    ),
+  ];
+  if (order.teeth_order_file_path?.trim()) {
+    oldPaths.push(order.teeth_order_file_path.trim());
   }
 
-  const { error: updateError } = await supabase
-    .from("individual_orders")
-    .update({
-      teeth_order_file_path: null,
-      teeth_order_file_name: null,
-    })
-    .eq("id", orderId);
-
-  if (updateError) {
+  try {
+    await clearTeethOrderFileOnPendingGroup(supabase, groupOrderIds);
+  } catch {
     return { success: false, error: "Nie udało się zaktualizować zamówienia." };
   }
 
+  await removeUnreferencedTeethOrderStoragePaths(supabase, oldPaths);
+
   revalidatePath("/zeby");
+  revalidatePath("/zeby/kolejka");
   revalidatePath("/kolejka");
   revalidatePath("/moje");
 
@@ -793,24 +828,46 @@ export async function actionGetTeethOrderFileUrl(
 
   const { data: order, error } = await supabase
     .from("individual_orders")
-    .select("teeth_order_file_path, teeth_order_file_name")
+    .select("teeth_order_file_path, teeth_order_file_name, supplier_id")
     .eq("id", orderId)
     .single();
 
-  if (error || !order?.teeth_order_file_path) {
+  if (error || !order) {
     return { url: null, fileName: null };
   }
 
+  let path = order.teeth_order_file_path?.trim() || null;
+  let fileName = order.teeth_order_file_name?.trim() || null;
+  if (!path) {
+    const { fetchPendingTeethFileGroupSiblings } = await import(
+      "@/lib/data/teeth-order-file-group"
+    );
+    const siblings = await fetchPendingTeethFileGroupSiblings(supabase, [
+      order.supplier_id ?? null,
+    ]);
+    const withFile = siblings.find((row) => row.teeth_order_file_path?.trim());
+    path = withFile?.teeth_order_file_path?.trim() || null;
+    fileName = withFile?.teeth_order_file_name?.trim() || fileName;
+  }
+  if (!path) {
+    return { url: null, fileName: null };
+  }
+
+  const { TEETH_GROUP_ORDER_FILE_FALLBACK_NAME } = await import(
+    "@/lib/teeth/teeth-mark-ordered"
+  );
+  const displayName = fileName || TEETH_GROUP_ORDER_FILE_FALLBACK_NAME;
+
   const { data, error: urlError } = await supabase.storage
     .from("teeth-order-files")
-    .createSignedUrl(order.teeth_order_file_path, 3600);
+    .createSignedUrl(path, 3600);
 
   if (urlError) {
     console.error("[actionGetTeethOrderFileUrl] Error:", urlError.message);
-    return { url: null, fileName: order.teeth_order_file_name ?? null };
+    return { url: null, fileName: displayName };
   }
 
-  return { url: data?.signedUrl ?? null, fileName: order.teeth_order_file_name ?? null };
+  return { url: data?.signedUrl ?? null, fileName: displayName };
 }
 
 export async function actionGetTeethOrderFileUrlForSales(

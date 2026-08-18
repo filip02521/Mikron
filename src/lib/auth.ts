@@ -10,6 +10,7 @@ import {
   canAccessOperations,
   canAccessTeethPanel,
   canAccessWarehouse,
+  canAccessZdEstimate,
   canManageSalesTeam,
   canManageSuppliers,
   isAdmin,
@@ -143,13 +144,17 @@ export async function requireOperations(
 }
 
 /**
- * Kreator ZD / Przygotuj ZD — wyłącznie administrator.
+ * Kreator ZD / Przygotuj ZD — operacje dostaw (admin + zakupy + obszar dostawy).
  * Mutacje dozwolone w cookie panelu `admin` lub `zakupy` (jak pozostałe operacje).
+ * Nazwa historyczna — wcześniej tylko admin; CodeQL i akcje nadal wołają ten helper.
  */
 export async function requireZdEstimateAdmin(
   intent: AuthIntent = "read"
 ): Promise<SessionUser> {
-  const user = await requireAdmin();
+  const user = await requireLoggedInUser();
+  if (!canAccessZdEstimate(user.role, user.assignedWorkspaces)) {
+    throw new Error("Brak uprawnień do kreatora ZD");
+  }
   if (intent === "mutate") {
     await assertAdminPanelAllowsOperationsMutations(user);
   }

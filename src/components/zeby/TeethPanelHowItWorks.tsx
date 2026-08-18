@@ -23,7 +23,7 @@ export function TeethPanelHowItWorksContent() {
         <ul className="list-disc space-y-1.5 pl-4">
           <li>
             <strong className="font-medium text-slate-800">Kolejka</strong> — prośby handlowców
-            pogrupowane wg dostawcy. Tu oznaczasz zamówienie i uzupełniasz listę zębów.
+            pogrupowane wg dostawcy. Tu wrzucasz jeden plik zamówienia na grupę, oznaczasz zamówienie i uzupełniasz listę zębów.
           </li>
           <li>
             <strong className="font-medium text-slate-800">Przyjęcie</strong> — porównujesz dostawę
