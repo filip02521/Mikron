@@ -11,7 +11,8 @@ import {
 
 describe("informacja-flow-copy", () => {
   it("definiuje dwie ścieżki w formularzu handlowca", () => {
-    expect(INFORMACJA_FLOW_DIRECT.label).toBe("Informacja o dostępności");
+    expect(INFORMACJA_FLOW_DIRECT.label).toBe("Powiadom, gdy będzie na magazynie");
+    expect(INFORMACJA_FLOW_DIRECT.short).toMatch(/nie zapytanie u dostawcy/i);
     expect(INFORMACJA_FLOW_STOCK_OUT.short).toContain("działu zakupów");
     expect(INFORMACJA_FLOW_UI).toHaveLength(2);
     expect(INFORMACJA_FLOW_UI[0]!.path).toBe("direct");

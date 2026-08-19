@@ -42,6 +42,7 @@ export const PAGE_TITLES = {
   procurementVacations: "Urlopy",
   magazynGadki: "Magazyn Gądki",
   zdEstimate: "Kreator ZD",
+  ivoclarReport: "Raporty Ivoclar",
   inactiveSuppliers: "Nieaktywni dostawcy",
   team: "Zespół",
   teamSales: "Handlowcy zespołu",
@@ -65,6 +66,8 @@ export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>
   magazynGadki: "Podgląd stałych ZK magazynu zewnętrznego Gądki",
   zdEstimate:
     "Lista produktów do zamówienia u dostawcy — jak proces ręczny (sprzedaż, stan, otwarte ZD)",
+  ivoclarReport:
+    "Podgląd sprzedaży FS i stanów Ivoclar — wiersze i braki do pliku tygodniowego",
   adminTeethProducts:
     "Lista towarów z wyłączoną kontrolą stanu magazynowego przy prośbach o zamówienie",
 };

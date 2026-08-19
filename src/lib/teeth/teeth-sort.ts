@@ -1,5 +1,6 @@
 import type { TeethQueueGroup, TeethQueueItem } from "@/lib/data/teeth-queue";
 import { isScheduledItem } from "@/lib/data/teeth-queue";
+import { resolveTeethQueueEnteredAt } from "@/lib/teeth/teeth-queue-wait";
 
 export type TeethSortKey = "supplier" | "created" | "items" | "eta";
 
@@ -25,13 +26,13 @@ export function sortTeethQueueGroups(
         const aNewest = Math.max(
           ...a.items
             .filter((i): i is TeethQueueItem => !isScheduledItem(i))
-            .map((i) => new Date(i.action_at).getTime() || 0),
+            .map((i) => new Date(resolveTeethQueueEnteredAt(i) ?? i.action_at).getTime() || 0),
           0,
         );
         const bNewest = Math.max(
           ...b.items
             .filter((i): i is TeethQueueItem => !isScheduledItem(i))
-            .map((i) => new Date(i.action_at).getTime() || 0),
+            .map((i) => new Date(resolveTeethQueueEnteredAt(i) ?? i.action_at).getTime() || 0),
           0,
         );
         return bNewest - aNewest;

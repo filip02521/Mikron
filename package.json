@@ -71,16 +71,17 @@
     "verify-sales-request-note": "tsx scripts/verify-sales-request-note-migration.ts"
   },
   "dependencies": {
-    "@google/genai": "^2.17.1",
+    "@google/genai": "^2.16.0",
     "@supabase/ssr": "^0.12.4",
-    "@supabase/supabase-js": "^2.112.3",
+    "@supabase/supabase-js": "^2.112.2",
     "@tailwindcss/postcss": "^4",
     "@tanstack/react-virtual": "^3.14.9",
     "date-fns": "^4.4.0",
-    "next": "16.3.1",
+    "exceljs": "^4.4.0",
+    "next": "16.3.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "resend": "^6.20.0",
+    "resend": "^6.18.1",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4"
   },
@@ -99,10 +100,10 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.5",
     "eslint": "^10",
-    "eslint-config-next": "16.3.1",
-    "happy-dom": "^20.11.2",
-    "pg": "^8.23.0",
-    "tsx": "^4.23.12",
+    "eslint-config-next": "16.3.0",
+    "happy-dom": "^20.11.0",
+    "pg": "^8.22.0",
+    "tsx": "^4.23.10",
     "typescript": "^6.0.3",
     "vitest": "^4.1.10"
   }

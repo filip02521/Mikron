@@ -504,7 +504,7 @@ export const ZK_WATCH_LINE_STATUS_LEGEND: {
   { state: "uncovered", hint: "Brak prośby — zamów z karty ZK" },
   { state: "in_request", hint: "W aktywnej prośbie — czekasz na dostawę" },
   { state: "partial", hint: "Część ilości już dotarła" },
-  { state: "informacja_ready", hint: "Magazyn potwierdził dostępność (informacja)" },
+  { state: "informacja_ready", hint: "Towar dostępny (informacja)" },
   { state: "delivered", hint: "Na regale — automatycznie zaznaczone na liście" },
   { state: "in_stock", hint: "Odebrane z regału — checkbox = zakończone ręcznie" },
   { state: "arrived", hint: "Zakończone ręcznie" },
@@ -537,7 +537,7 @@ export const ZK_WATCH_STATUS_GUIDE_ITEMS: {
   },
   {
     state: "informacja_ready",
-    hint: "Prośba informacyjna — magazyn potwierdził dostępność towaru (nie mylić z „Na regale”).",
+    hint: "Prośba informacyjna — towar dostępny (potwierdzenie magazynu lub automatyczne ze stanu Subiekta).",
   },
   {
     state: "delivered",

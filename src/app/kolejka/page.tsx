@@ -7,6 +7,10 @@ import {
   fetchWarehouseInventory,
 } from "@/lib/data/queries";
 import { runOrderMaintenanceBeforePageLoad } from "@/lib/services/deferred-order-maintenance";
+import {
+  INFORMACJA_STOCK_SYNC_PAGE_BUDGET_MS,
+  runInformacjaStockAutoArrive,
+} from "@/lib/services/informacja-stock-sync";
 import { actionFetchTodayDeliveryJournal, actionListWarehouseAssignSuppliers } from "@/app/actions/warehouse-delivery";
 import { getSessionUser } from "@/lib/auth";
 import { canManageSuppliers, isMagazyn, canAccessWarehouse } from "@/lib/auth-roles";
@@ -23,6 +27,18 @@ export const dynamic = "force-dynamic";
 
 export default async function KolejkaPage() {
   await runOrderMaintenanceBeforePageLoad();
+
+  let informacjaAutoArrivedCount = 0;
+  try {
+    const syncResult = await runInformacjaStockAutoArrive({
+      lockedBy: "kolejka-page-load",
+      maxDurationMs: INFORMACJA_STOCK_SYNC_PAGE_BUDGET_MS,
+      revalidate: false,
+    });
+    informacjaAutoArrivedCount = syncResult.updated;
+  } catch (e) {
+    console.error("[kolejka informacja-stock-sync]", e);
+  }
 
   const session = await getSessionUser();
   const role = session?.role ?? null;
@@ -82,6 +98,7 @@ export default async function KolejkaPage() {
       showDailyPanelLink={role != null && hasProcurementFunction(role, "dostawy", session?.assignedWorkspaces) && !isMagazyn(role, session?.assignedWorkspaces)}
       showTeethLink={role != null && hasProcurementFunction(role, "zeby", session?.assignedWorkspaces) && !isMagazyn(role, session?.assignedWorkspaces)}
       loadError={error}
+      informacjaAutoArrivedCount={informacjaAutoArrivedCount}
     />
   );
 }

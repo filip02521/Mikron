@@ -85,10 +85,11 @@ describe("buildCronMonitorSnapshot", () => {
         morning_sync: null,
         catalog_zd_sync: null,
         zd_eta_sync: null,
+        informacja_stock_sync: null,
       },
       new Date("2026-06-18T06:30:00.000Z")
     );
-    expect(snapshot.jobs.length).toBe(5);
+    expect(snapshot.jobs.length).toBe(6);
     expect(snapshot.issueCount).toBeGreaterThan(0);
   });
 
@@ -109,6 +110,7 @@ describe("buildCronMonitorSnapshot", () => {
             importPending: 42,
           },
         },
+        informacja_stock_sync: null,
       },
       new Date("2026-06-23T00:30:00.000Z"),
       {

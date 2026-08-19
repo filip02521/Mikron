@@ -48,6 +48,9 @@ import {
   INFORMACJA_FLOW_SALES_DIRECT,
   INFORMACJA_FLOW_SALES_STOCK_OUT,
   INFORMACJA_FLOW_SALES_STOCK_OUT_ORDERED,
+  INFORMACJA_FLOW_SALES_AUTO_ARRIVED_DETAIL,
+  INFORMACJA_FLOW_SALES_READY_MANUAL_DETAIL,
+  resolveInformacjaArrivedSourceMix,
 } from "@/lib/orders/informacja-flow-copy";
 import {
   isAwaitingInformacjaAck,
@@ -265,6 +268,8 @@ export type MyOrderRow = MyOrderRowCore &
     requestKind: "zamowienie" | "informacja";
     /** Ścieżka prośby informacyjnej — do formularza edycji. */
     informacjaPath?: InformacjaFlowPath;
+    /** Skąd zamknięto informację (auto Subiekt vs magazyn) — do copy inboxu. */
+    informacjaArrivedSourceMix?: import("@/lib/orders/informacja-flow-copy").InformacjaArrivedSourceMix;
     canEditBySales: boolean;
     plannedOrderDate?: PlannedOrderDateDisplay | null;
     /** Termin realizacji zsynchronizowany z dokumentu ZD. */
@@ -432,6 +437,12 @@ function withAckMeta(
     informacjaPath:
       rep?.request_kind === "informacja"
         ? (informacjaFlowPathFromOrder(rep) ?? "direct")
+        : undefined,
+    informacjaArrivedSourceMix:
+      rep?.request_kind === "informacja"
+        ? resolveInformacjaArrivedSourceMix(
+            visible.map((o) => o.informacja_arrived_source)
+          )
         : undefined,
     salesCancelPhase: resolveGroupSalesCancelPhase(visible),
     salesCancelOrderIds: visible
@@ -735,7 +746,9 @@ function presentInformacja(
         ...base,
         statusTitle: "Dostępne",
         statusDetail:
-          "Towar jest na magazynie. Potwierdź, że widziałeś/aś powiadomienie — wpis zniknie z listy.",
+          order.informacja_arrived_source === "stock_auto"
+            ? INFORMACJA_FLOW_SALES_AUTO_ARRIVED_DETAIL
+            : INFORMACJA_FLOW_SALES_READY_MANUAL_DETAIL,
         timingLabel: order.delivery_at
           ? `E-mail ${formatPlDate(order.delivery_at.slice(0, 10))}`
           : null,

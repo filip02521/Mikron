@@ -32,6 +32,9 @@ import { ReceiveQueueVirtualTbody } from "@/components/queue/receive-queue/Recei
 import { ReceiveQueueSelectionBar } from "@/components/queue/receive-queue/ReceiveQueueSelectionBar";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import { useReceiveQueueStockAlert } from "@/hooks/useReceiveQueueStockAlert";
+import { useInformacjaQueueStockHint } from "@/hooks/useInformacjaQueueStockHint";
+import { isSubiektVerifiedOrder } from "@/lib/orders/product-source";
+import { INFORMACJA_AUTO_STOCK_QUEUE_HINT } from "@/lib/orders/informacja-flow-copy";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 import { useDeliveryNotificationFlush, cancelScheduledNotificationFlushes } from "@/lib/client/use-delivery-notification-flush";
 import {
@@ -220,6 +223,16 @@ export function ReceiveQueueTable({
 
   const { stockByTwId, availableTwIds, availableCount, loading: stockAlertLoading } =
     useReceiveQueueStockAlert(deliveryOrders, true);
+
+  const { availableTwIds: informacjaAvailableTwIds } = useInformacjaQueueStockHint(
+    informacjaOrders,
+    true
+  );
+
+  const showInformacjaAutoHint = useMemo(
+    () => informacjaOrders.some((o) => isSubiektVerifiedOrder(o) && !o.is_teeth),
+    [informacjaOrders]
+  );
 
   const handleStockBadgeClick = useCallback((orderId: string) => {
     const order = deliveryOrders.find((o) => o.id === orderId);
@@ -721,6 +734,11 @@ export function ReceiveQueueTable({
   const toolbar = (
     <div className="border-b border-slate-100 px-3 py-3 sm:px-4 lg:px-6">
       <div className="space-y-3">
+        {showInformacjaAutoHint ? (
+          <p className="rounded-lg border border-sky-100 bg-sky-50/80 px-3 py-2 text-xs leading-relaxed text-sky-900">
+            {INFORMACJA_AUTO_STOCK_QUEUE_HINT}
+          </p>
+        ) : null}
         <div className={receiveQueueToolbarSectionClass}>
           <div className="flex items-center justify-between gap-2">
             <button
@@ -1078,6 +1096,7 @@ export function ReceiveQueueTable({
             toggleProductGroup={toggleProductGroup}
             ackCancelDisposition={ackCancelDisposition}
             stockByTwId={stockByTwId}
+            informacjaAvailableTwIds={informacjaAvailableTwIds}
             onStockBadgeClick={handleStockBadgeClick}
             renderClassic={() =>
               supplierGroups.map((group, groupIndex) => {
@@ -1149,6 +1168,17 @@ export function ReceiveQueueTable({
                           const stockAvailable = twId != null && twId > 0 && stockByTwId
                             ? stockByTwId[Math.trunc(twId)]?.available ?? null
                             : null;
+                          const informacjaStockHint = !isInfo
+                            ? null
+                            : o.is_teeth
+                              ? "teeth"
+                              : !isSubiektVerifiedOrder(o)
+                                ? "manual_only"
+                                : twId != null &&
+                                    twId > 0 &&
+                                    informacjaAvailableTwIds.has(Math.trunc(twId))
+                                  ? "auto_ready"
+                                  : null;
 
                           return (
                             <ReceiveQueueRow
@@ -1164,6 +1194,7 @@ export function ReceiveQueueTable({
                               pending={pending}
                               inputVal={inputVal}
                               stockAvailable={stockAvailable}
+                              informacjaStockHint={informacjaStockHint}
                               searchQuery={productSearchActive ? productSearch : null}
                               onToggleSelected={() => toggleSelected(o.id)}
                               onQtyChange={(value) =>

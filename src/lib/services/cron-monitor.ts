@@ -50,6 +50,15 @@ export const CRON_JOB_DEFINITIONS: CronJobDefinition[] = [
     description: "Synchronizacja terminów ZD z Subiekta na aktywnych prośbach handlowców.",
   },
   {
+    id: "informacja_stock_sync",
+    label: "Informacja — stan Subiekta",
+    schedule: "pn–pt co godz. 8:00–18:00",
+    endpoint: "/api/cron/informacja-stock-sync",
+    scheduled: true,
+    description:
+      "Automatyczne powiadomienie handlowca, gdy towar z prośby informacyjnej pojawi się na stanie w Subiekcie.",
+  },
+  {
     id: "catalog_zd_sync",
     label: "Katalog z ZD",
     schedule: "codziennie 2:00–4:40 co 20 min",
@@ -164,6 +173,28 @@ function summarizeRunDetail(jobId: CronJobId, run: CronRunPayload | null): strin
       }
       if (typeof detail.processed === "number") lines.push(`Sprawdzono: ${detail.processed}`);
       if (detail.timedOut === true) lines.push("Limit czasu — kontynuacja przy następnym wywołaniu");
+      if (detail.subiektOffline === true) lines.push("Subiekt offline");
+      break;
+    }
+    case "informacja_stock_sync": {
+      if (typeof detail.candidates === "number") {
+        lines.push(`Kandydaci: ${detail.candidates}`);
+      }
+      if (typeof detail.eligible === "number") {
+        lines.push(`Ze stanem: ${detail.eligible}`);
+      }
+      if (typeof detail.updated === "number") {
+        lines.push(`Powiadomiono: ${detail.updated}`);
+      }
+      if (typeof detail.emailSent === "number") {
+        lines.push(`E-maile: ${detail.emailSent}`);
+      }
+      if (typeof detail.emailError === "string") {
+        lines.push(`Uwaga e-mail: ${detail.emailError}`);
+      }
+      if (detail.timedOut === true) {
+        lines.push("Limit czasu — kontynuacja przy następnym wywołaniu");
+      }
       if (detail.subiektOffline === true) lines.push("Subiekt offline");
       break;
     }
@@ -321,7 +352,7 @@ export function evaluateCronJob(
       ? isMorningRoutineStale(run, now)
       : job.id === "catalog_zd_sync"
         ? isCatalogSyncStale(run, now, catalogState)
-        : job.id === "process_deliveries"
+        : job.id === "process_deliveries" || job.id === "informacja_stock_sync"
           ? isWorkHoursJobStale(run, now, 2.5)
           : job.id === "zd_eta_sync"
             ? isWorkHoursJobStale(run, now, 3.5)

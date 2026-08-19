@@ -12,6 +12,10 @@ import { collectNotepadTodayTasks } from "@/lib/sales/notepad-today-tasks";
 import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
 import { buildNotatnikPageHref } from "@/lib/sales/notepad-page-tabs";
 import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
+import {
+  informacjaReadyDayStartSubtitle,
+  informacjaReadyDayStartTitle,
+} from "@/lib/orders/informacja-flow-copy";
 import { mojeSectionDomId } from "@/lib/orders/moje-section-focus";
 import {
   MOJE_MIXED_ACTION_SECTION_ID,
@@ -280,11 +284,8 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       id: "informacja-ready",
       source: "informacja_ready",
       priority: PRIORITY.informacja_ready,
-      title:
-        n === 1
-          ? "Potwierdź informację o dotarciu produktów"
-          : `Potwierdź informacje o dotarciu produktów (${n})`,
-      subtitle: "Zakupy potwierdziły dotarcie — potwierdź informację",
+      title: informacjaReadyDayStartTitle(n),
+      subtitle: informacjaReadyDayStartSubtitle(informacjaRows),
       href,
       scrollTarget: MOJE_INFORMACJA_SECTION,
       count: n,

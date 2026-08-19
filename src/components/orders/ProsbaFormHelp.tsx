@@ -29,7 +29,7 @@ export function ProsbaFormHelp({
       <HelpBlock title="Co tu zgłaszasz">
         <p>
           Formalne zgłoszenie do działu zakupów — zamówienie u dostawcy albo informacja o
-          dostępności towaru. Ogólne pytanie bez zamawiania zadaj na{" "}
+          towarze (np. powiadomienie, gdy pojawi się na magazynie). Ogólne pytanie bez zamawiania zadaj na{" "}
           <Link href="/tablica" className="font-medium text-indigo-700 hover:underline">
             Tablicy
           </Link>

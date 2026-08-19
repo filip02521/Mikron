@@ -15,6 +15,8 @@ import { Button } from "@/components/ui/Button";
 import { IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { teethPanelEditLinkClass } from "@/lib/teeth/teeth-panel-ui";
 import type { TeethQueueItem } from "@/lib/data/teeth-queue-shared";
+import { formatPlDate } from "@/lib/display-labels";
+import { resolveTeethQueueEnteredAt } from "@/lib/teeth/teeth-queue-wait";
 import type { TeethProductLine } from "@/lib/teeth/teeth-catalog-types";
 
 type OrderWithSpecs = {
@@ -161,6 +163,10 @@ function OrderRows({
   const anteriorSpecs = order.specs.filter((s) => s.kind === "anterior");
   const posteriorSpecs = order.specs.filter((s) => s.kind === "posterior");
   const hasPosterior = posteriorSpecs.length > 0;
+  const submittedAt = resolveTeethQueueEnteredAt(order.item) ?? order.item.action_at;
+  const submittedLabel = submittedAt
+    ? `zgłoszono ${formatPlDate(submittedAt.slice(0, 10))}`
+    : null;
 
   return (
     <>
@@ -178,6 +184,9 @@ function OrderRows({
                 <span className="text-[11px] font-semibold text-slate-700">
                   {salesName}
                 </span>
+                {submittedLabel ? (
+                  <span className="text-[10px] font-medium text-slate-500">{submittedLabel}</span>
+                ) : null}
               </div>
               <div className="flex items-center gap-1">
                 {!hasNoLine && onApproveOrder ? (

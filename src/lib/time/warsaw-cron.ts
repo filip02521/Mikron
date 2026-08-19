@@ -17,7 +17,8 @@ export async function recordCronSkipped(
     | "process_deliveries"
     | "morning_sync"
     | "catalog_zd_sync"
-    | "zd_eta_sync",
+    | "zd_eta_sync"
+    | "informacja_stock_sync",
   reason: string,
   detail?: Record<string, unknown>
 ): Promise<void> {

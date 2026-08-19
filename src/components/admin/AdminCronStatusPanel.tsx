@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { useCallback, useMemo, useState, useTransition } from "react";
-import { actionGetCronMonitorStatus } from "@/app/actions/admin";
+import {
+  actionGetCronMonitorStatus,
+  actionGetInformacjaStockAutoEnabled,
+  actionSetInformacjaStockAutoEnabled,
+} from "@/app/actions/admin";
 import { IconChevronDown } from "@/components/icons/StrokeIcons";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -141,14 +145,26 @@ export function AdminCronStatusPanel({
   initialSnapshot: Awaited<ReturnType<typeof actionGetCronMonitorStatus>>;
 }) {
   const [snapshot, setSnapshot] = useState(initialSnapshot);
+  const [informacjaStockAutoEnabled, setInformacjaStockAutoEnabled] = useState(
+    initialSnapshot.informacjaStockAutoEnabled
+  );
+  const [toggleError, setToggleError] = useState<string | null>(null);
   const [filter, setFilter] = useState<JobFilter>("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [togglePending, startToggleTransition] = useTransition();
+
+  const syncToggleFromServer = useCallback(async () => {
+    const { enabled } = await actionGetInformacjaStockAutoEnabled();
+    setInformacjaStockAutoEnabled(enabled);
+  }, []);
 
   const refresh = useCallback(() => {
     startTransition(async () => {
       const next = await actionGetCronMonitorStatus();
       setSnapshot(next);
+      setInformacjaStockAutoEnabled(next.informacjaStockAutoEnabled);
+      setToggleError(null);
     });
   }, []);
 
@@ -237,6 +253,63 @@ export function AdminCronStatusPanel({
             value={formatWarsawDateTime(snapshot.generatedAt).slice(0, 16)}
             hint="Czas ostatniego odczytu z bazy"
           />
+        </div>
+
+        <div className="rounded-md border border-slate-200/90 bg-slate-50/70 px-3.5 py-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-medium text-slate-900">
+                  Auto-odznaczanie informacji ze stanu Subiekta
+                </p>
+                <Badge variant={informacjaStockAutoEnabled ? "success" : "warning"}>
+                  {informacjaStockAutoEnabled ? "Włączone" : "Wyłączone"}
+                </Badge>
+              </div>
+              <p className="text-xs leading-relaxed text-slate-600">
+                Globalny przełącznik dla crona i szybkiej automatyki przy wejściu na{" "}
+                <code className="text-[0.9em]">/kolejka</code>.
+                Domyślnie włączone; wyłączenie zatrzymuje auto-domykanie pozycji informacyjnych.
+              </p>
+              {toggleError ? <p className="text-xs font-medium text-red-700">{toggleError}</p> : null}
+            </div>
+            <label
+              className={cn(
+                "flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-all",
+                informacjaStockAutoEnabled
+                  ? "border-indigo-200/80 bg-indigo-50/40"
+                  : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40",
+                togglePending && "opacity-70"
+              )}
+            >
+              <span className="text-sm font-medium text-slate-800">
+                {togglePending ? "Zapisuję…" : "Aktywna automatyka"}
+              </span>
+              <input
+                type="checkbox"
+                role="switch"
+                aria-checked={informacjaStockAutoEnabled}
+                aria-label="Przełącz automatyczne odznaczanie informacji ze stanu Subiekta"
+                checked={informacjaStockAutoEnabled}
+                disabled={togglePending}
+                onChange={(e) => {
+                  setToggleError(null);
+                  const next = e.target.checked;
+                  setInformacjaStockAutoEnabled(next);
+                  startToggleTransition(async () => {
+                    const result = await actionSetInformacjaStockAutoEnabled(next);
+                    if (!result.ok) {
+                      await syncToggleFromServer();
+                      setToggleError(result.message);
+                      return;
+                    }
+                    setInformacjaStockAutoEnabled(result.enabled);
+                  });
+                }}
+                className="toggle-switch toggle-indigo"
+              />
+            </label>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">

@@ -47,6 +47,8 @@ npm run install-cron:win -- -List
 npm run install-cron:win -- -Uninstall
 ```
 
+Pełna lista zadań cron (w tym `informacja-stock-sync`, `zd-eta-sync`): [cron-windows-server.md](cron-windows-server.md).
+
 Logi: `logs\cron-*.log` w katalogu projektu · podgląd: `taskschd.msc`
 
 Upewnij się, że strefa czasowa serwera Windows to **(UTC+01:00) Warszawa** (Panel sterowania → Data i godzina → Strefa czasowa).

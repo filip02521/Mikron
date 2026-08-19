@@ -118,8 +118,14 @@ export interface IndividualOrder {
   informacja_queue_via_daily_panel?: boolean;
   /** Informacja: koniec stanu — tylko panel Dziś (zamówienie u dostawcy), bez powiadomienia handlowca. */
   informacja_stock_out_reorder?: boolean;
+  /** Skąd zamknięto informację: ręcznie (magazyn) lub automatycznie (stan Subiekta). */
+  informacja_arrived_source?: "manual" | "stock_auto" | null;
   status: IndividualOrderStatus;
   action_at: string;
+  /** Kiedy rekord powstał w bazie (ISO). */
+  created_at?: string;
+  /** Moment wejścia prośby zębowej do kolejki działu zębów. */
+  teeth_queue_entered_at?: string | null;
   /** Moment oznaczenia Główne/Uzupełniające — start liczenia czasu realizacji. */
   ordered_at: string | null;
   /** Wspólne ID pozycji z jednego formularza / jednego zapisu. */

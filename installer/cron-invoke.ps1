@@ -1,7 +1,6 @@
 # Wywolanie endpointu cron OnTime (Harmonogram zadan Windows / reczny test).
 param(
   [Parameter(Mandatory = $true)]
-  [ValidateSet("morning", "process-deliveries", "catalog-zd-sync", "zd-eta-sync", "morning-sync")]
   [string]$Job,
 
   [string]$ProjectRoot = (Split-Path -Parent $PSScriptRoot),
@@ -10,6 +9,18 @@ param(
 
   [switch]$Force
 )
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
+
+. (Join-Path $PSScriptRoot "cron-jobs.ps1")
+
+try {
+  Get-CronJobDefinition -Id $Job | Out-Null
+} catch {
+  Write-Error $_.Exception.Message
+  exit 1
+}
 
 function Read-EnvValue {
   param(
@@ -46,14 +57,7 @@ if ($portRaw -and $portRaw -match '^\d+$') {
   $Port = [int]$portRaw
 }
 
-$path = switch ($Job) {
-  "morning" { "/api/cron/morning" }
-  "process-deliveries" { "/api/cron/process-deliveries" }
-  "catalog-zd-sync" { "/api/cron/catalog-zd-sync" }
-  "zd-eta-sync" { "/api/cron/zd-eta-sync" }
-  "morning-sync" { "/api/cron/morning-sync" }
-}
-
+$path = Get-CronPathForJob -Id $Job
 $url = "http://127.0.0.1:$Port$path"
 if ($Force) {
   $url += "?force=1"
@@ -65,6 +69,9 @@ $logFile = Join-Path $logDir "cron-$Job.log"
 
 $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 try {
+  if (-not (Get-Command curl.exe -ErrorAction SilentlyContinue)) {
+    throw "Brak curl.exe w PATH. Zainstaluj curl (Windows 10+) lub dodaj do PATH."
+  }
   $response = curl.exe -fsS -H "Authorization: Bearer $cronSecret" $url 2>&1
   $status = $LASTEXITCODE
   $message = if ($status -eq 0) { "OK $response" } else { "FAIL ($status): $response" }

@@ -16,6 +16,7 @@ const defaultLanOrigins = [
 ];
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["exceljs"],
   /** Wymagane w dev przy wejściu z telefonu po IP (Next blokuje cross-origin). */
   allowedDevOrigins: [
     ...defaultLanOrigins,

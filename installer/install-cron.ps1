@@ -3,15 +3,17 @@
 # Uruchom PowerShell jako Administrator w katalogu projektu:
 #   .\installer\install-cron.ps1
 #   .\installer\install-cron.ps1 -Install
-#   .\installer\install-cron.ps1 -Test -Job morning -Force
+#   .\installer\install-cron.ps1 -Test -Job informacja-stock-sync -Force
 #   .\installer\install-cron.ps1 -Uninstall
+#
+# Pelna instrukcja Windows Server: docs/cron-windows-server.md
 #
 param(
   [string]$ProjectRoot = "",
   [switch]$Install,
   [switch]$Uninstall,
   [switch]$Test,
-  [ValidateSet("morning", "process-deliveries", "catalog-zd-sync", "zd-eta-sync", "morning-sync")]
+  [ValidateSet("morning", "process-deliveries", "informacja-stock-sync", "catalog-zd-sync", "zd-eta-sync", "morning-sync")]
   [string]$Job = "morning",
   [switch]$Force,
   [switch]$List
@@ -20,14 +22,19 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+. (Join-Path $PSScriptRoot "cron-jobs.ps1")
+
 $CatalogZdSyncSlots = @("0200", "0220", "0240", "0300", "0320", "0340", "0400", "0420", "0440")
 $TaskNames = @(
   "OnTime Cron Morning",
   "OnTime Cron Process Deliveries",
-  "OnTime Cron ZD ETA Sync",
+  "OnTime Cron Informacja Stock Sync",
+  "OnTime Cron ZD ETA Sync"
+) + ($CatalogZdSyncSlots | ForEach-Object { "OnTime Cron Catalog ZD Sync $_" })
+$LegacyTaskNames = @(
   "OnTime Cron Catalog ZD Sync",
   "OnTime Cron Catalog ZD Sync Continue"
-) + ($CatalogZdSyncSlots | ForEach-Object { "OnTime Cron Catalog ZD Sync $_" })
+)
 
 function Write-Step([string]$Message) {
   Write-Host ""
@@ -189,6 +196,10 @@ function Install-CronScheduledTasks {
 
   Write-Step "Harmonogram zadan OnTime (Europe/Warsaw - ustaw strefe serwera na Windows)"
 
+  foreach ($legacyName in $LegacyTaskNames) {
+    Remove-ScheduledTaskIfExists $legacyName | Out-Null
+  }
+
   $trMorning = Get-CronInvokeCommand -Root $Root -JobName "morning"
   New-SchTasksCronTask "OnTime Cron Morning" @(
     "/Create", "/F", "/TN", "OnTime Cron Morning", "/TR", $trMorning,
@@ -196,8 +207,9 @@ function Install-CronScheduledTasks {
     "/D", "MON,TUE,WED,THU,FRI", "/ST", "06:00"
   )
 
-  $trDeliveries = Get-CronInvokeCommand -Root $Root -JobName "process-deliveries"
   Register-WeekdayRepeatingCronTask -Name "OnTime Cron Process Deliveries" -Root $Root -JobName "process-deliveries" -Interval "PT1H"
+
+  Register-WeekdayRepeatingCronTask -Name "OnTime Cron Informacja Stock Sync" -Root $Root -JobName "informacja-stock-sync" -Interval "PT1H"
 
   Register-WeekdayRepeatingCronTask -Name "OnTime Cron ZD ETA Sync" -Root $Root -JobName "zd-eta-sync" -Interval "PT2H"
 
@@ -210,15 +222,10 @@ function Install-CronScheduledTasks {
     )
   }
 
-  Write-Host ""
-  Write-Host "Harmonogram:" -ForegroundColor White
-  Write-Host "  06:00 pn-pt     -> morning"
-  Write-Host "  08-18 pn-pt     -> process-deliveries (co godz.)"
-  Write-Host "  08-18 pn-pt     -> zd-eta-sync (co 2 h)"
-  Write-Host "  02:00-04:40     -> catalog-zd-sync (co 20 min, noc, Subiekt LAN)"
-  Write-Host ""
+  Show-CronJobsTable
   Write-Host "Logi: $Root\logs\cron-*.log"
   Write-Host "Podglad: taskschd.msc (Harmonogram zadan)"
+  Write-Host "Dokumentacja: docs/cron-windows-server.md"
 }
 
 function Show-ScheduledTasks {
@@ -247,7 +254,7 @@ if ($Uninstall) {
     throw "Odinstalowanie wymaga PowerShell jako Administrator."
   }
   Write-Step "Usuwanie zadan cron"
-  foreach ($name in $TaskNames) {
+  foreach ($name in ($TaskNames + $LegacyTaskNames)) {
     Remove-ScheduledTaskIfExists $name | Out-Null
   }
   Write-Host ""
@@ -271,15 +278,21 @@ if ($List) {
 # Domyslnie: podglad + instrukcja
 Write-Step "OnTime - cron na Windows"
 Write-Host "Katalog projektu: $Root"
-Write-Host ""
+Show-CronJobsTable
 Write-Host "Instalacja (Administrator):" -ForegroundColor Yellow
 Write-Host "  .\installer\install-cron.ps1 -Install"
 Write-Host "  npm run install-cron:win -- -Install"
+Write-Host "  .\installer\install-windows-service.ps1 -WithCron   # aplikacja + cron razem"
 Write-Host ""
-Write-Host "Test reczny:" -ForegroundColor Yellow
-Write-Host "  .\installer\install-cron.ps1 -Test -Job morning -Force"
+Write-Host "Test reczny (pomija okna czasowe z -Force):" -ForegroundColor Yellow
+foreach ($jobId in (Get-CronJobIds)) {
+  Write-Host "  .\installer\install-cron.ps1 -Test -Job $jobId -Force"
+}
 Write-Host ""
-Write-Host "Usuniecie:" -ForegroundColor Yellow
+Write-Host "Podglad zadan / usuniecie:" -ForegroundColor Yellow
+Write-Host "  .\installer\install-cron.ps1 -List"
 Write-Host "  .\installer\install-cron.ps1 -Uninstall"
+Write-Host ""
+Write-Host "Pelna instrukcja Windows Server: docs/cron-windows-server.md" -ForegroundColor Cyan
 Write-Host ""
 Show-ScheduledTasks

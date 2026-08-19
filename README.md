@@ -86,12 +86,14 @@ Nagłówek: `Authorization: Bearer <CRON_SECRET>`
 |------------------------------|----------|---------|
 | **6:00** | `/api/cron/morning` | Przelicza terminy dostawców (panel dzienny), domyka kolejkę realizacji |
 | **Co godzinę 8:00–18:59** | `/api/cron/process-deliveries` | Zapasowe domknięcie dostaw z kolejki |
-| **Noc (1:00–4:59)** | `/api/cron/catalog-zd-sync` | Indeks ZD + import do katalogu produktów (wymaga Subiekta w LAN) |
+| **Co godzinę 8:00–18:59** | `/api/cron/informacja-stock-sync` | Auto-powiadomienia prośby „Powiadom, gdy będzie na magazynie” (stan Subiekta) |
+| **8, 10, 12, 14, 16, 18** | `/api/cron/zd-eta-sync` | Backup sync terminów ZD na prośbach |
+| **Noc (2:00–4:40 co 20 min)** | `/api/cron/catalog-zd-sync` | Indeks ZD + import do katalogu produktów (wymaga Subiekta w LAN) |
 
 **Serwer Linux:** na serwerze uruchom:
 
 ```bash
-npm run install-cron -- --install   # wymaga sudo — instaluje /etc/cron.d/system-dostaw
+sudo npm run install-cron -- --install   # instaluje /etc/cron.d/system-dostaw
 npm run install-cron -- --test morning --force   # test połączenia
 ```
 
@@ -99,12 +101,13 @@ npm run install-cron -- --test morning --force   # test połączenia
 
 ```powershell
 npm run install-cron:win -- -Install
-npm run install-cron:win -- -Test -Job morning -Force
+npm run install-cron:win -- -Test -Job informacja-stock-sync -Force
+npm run install-cron:win -- -List
 ```
 
 Albo razem z usługą Windows: `.\installer\install-windows-service.ps1 -WithCron`
 
-Szczegóły: [docs/catalog-zd-sync-cron.md](docs/catalog-zd-sync-cron.md).  
+Szczegóły: [docs/cron-windows-server.md](docs/cron-windows-server.md) (Windows Server), [docs/catalog-zd-sync-cron.md](docs/catalog-zd-sync-cron.md) (nocny katalog).  
 **Vercel:** wpisy w `vercel.json` — tylko jeśli produkcja widzi API Subiekta (zwykle nie, bez tunelu).
 
 Vercel uruchamia crony w UTC; w kodzie sprawdzana jest strefa **Europe/Warsaw** (CET/CEST).

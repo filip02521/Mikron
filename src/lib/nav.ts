@@ -384,6 +384,17 @@ function operationsTodayItems(
       tier: "compact",
       mobileSlot: "overflow",
     });
+    items.push({
+      href: "/zakupy/raporty-ivoclar",
+      label: "Raporty Ivoclar",
+      mobileLabel: "Ivoclar",
+      description: "Sellout FS i stany",
+      icon: "chartTrend",
+      tone: "sky",
+      iconTone: "sky",
+      tier: "compact",
+      mobileSlot: "overflow",
+    });
   }
 
   return items;
@@ -964,6 +975,7 @@ export function pageTitle(pathname: string): string {
   }
   if (pathname.startsWith("/zakupy/gadki")) return "Magazyn Gądki";
   if (pathname.startsWith("/zakupy/szacunek")) return "Kreator ZD";
+  if (pathname.startsWith("/zakupy/raporty-ivoclar")) return "Raporty Ivoclar";
   if (pathname === "/urlopy" || pathname.startsWith("/urlopy/")) {
     return "Urlopy działu";
   }

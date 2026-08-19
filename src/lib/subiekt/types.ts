@@ -31,6 +31,9 @@ export type SubiektListParams = {
   dataOd?: string;
   dataDo?: string;
   includeBlocked?: boolean;
+  /** Filtr towarów po cesze (`ctw_Id`) — host ORDERS. */
+  cechaId?: number;
+  grupaId?: number;
 };
 
 export type SubiektSingleEnvelope<T> = {
@@ -143,6 +146,9 @@ export type SubiektKontrahent = {
   adr_NazwaPelna?: string | null;
   adr_NIP?: string | null;
   adr_Miejscowosc?: string | null;
+  adr_Kod?: string | null;
+  adr_Poczta?: string | null;
+  adr_Ulica?: string | null;
   [key: string]: unknown;
 };
 
@@ -191,6 +197,7 @@ export type SubiektDocument = {
   dok_WartNetto?: number | null;
   dok_WartBrutto?: number | null;
   dok_Status?: number | null;
+  dok_StatusNazwa?: string | null;
   dok_Pozycja?: SubiektDocumentLine[];
   kh__Kontrahent_Odbiorca?: SubiektKontrahent | null;
   kh__Kontrahent_Platnik?: SubiektKontrahent | null;

@@ -202,6 +202,7 @@ const DOSTAWY_WORKSPACE_PATH_PREFIXES = [
   "/zamowienia",
   "/zakupy/gadki",
   "/zakupy/szacunek",
+  "/zakupy/raporty-ivoclar",
   "/zakupy/tablica",
   "/urlopy",
   "/kurierzy",
