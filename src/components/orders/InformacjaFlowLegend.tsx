@@ -114,7 +114,7 @@ export function InformacjaFlowLegendDetailed({ className }: { className?: string
         </ol>
       </div>
       <p className="text-[11px] text-slate-500">
-        {INFORMACJA_FLOW_DIRECT.label} — domyślna ścieżka w formularzu handlowca (kolejka magazynu).
+        {INFORMACJA_FLOW_DIRECT.label} — domyślna ścieżka w formularzu handlowca (stan magazynowy, bez zapytania u dostawcy).
       </p>
     </div>
   );

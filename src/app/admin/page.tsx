@@ -8,9 +8,14 @@ import { AdminDataShortcuts } from "@/components/admin/AdminDataShortcuts";
 import { DeliveryStatsDiagnosticsPanel } from "@/components/admin/DeliveryStatsDiagnosticsPanel";
 import { SubiektIntegrationPanel } from "@/components/admin/SubiektIntegrationPanel";
 import { fetchDeliveryStatsDiagnostics } from "@/lib/data/delivery-stats-diagnostics";
+import { fetchInformacjaStockAutoEnabled } from "@/lib/data/informacja-stock-auto";
 import { buildCronMonitorSnapshot } from "@/lib/services/cron-monitor";
 import type { CronJobId } from "@/lib/services/cron-run-log";
 import type { SubiektAuthMode } from "@/lib/subiekt/config";
+
+type AdminCronPanelSnapshot = ReturnType<typeof buildCronMonitorSnapshot> & {
+  informacjaStockAutoEnabled: boolean;
+};
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
@@ -43,16 +48,24 @@ export default async function AdminPage() {
     /* diagnostyka opcjonalna — panel pokaże komunikat */
   }
 
-  let cronMonitor = buildCronMonitorSnapshot({
-    morning_routine: null,
-    process_deliveries: null,
-    morning_sync: null,
-    catalog_zd_sync: null,
-    zd_eta_sync: null,
-  } satisfies Record<CronJobId, null>);
+  let cronMonitor: AdminCronPanelSnapshot = {
+    ...buildCronMonitorSnapshot({
+      morning_routine: null,
+      process_deliveries: null,
+      morning_sync: null,
+      catalog_zd_sync: null,
+      zd_eta_sync: null,
+      informacja_stock_sync: null,
+    } satisfies Record<CronJobId, null>),
+    informacjaStockAutoEnabled: true,
+  };
   try {
     const { fetchCronMonitorSnapshot } = await import("@/lib/services/cron-monitor");
-    cronMonitor = await fetchCronMonitorSnapshot();
+    const [snapshot, informacjaStockAutoEnabled] = await Promise.all([
+      fetchCronMonitorSnapshot(),
+      fetchInformacjaStockAutoEnabled(),
+    ]);
+    cronMonitor = { ...snapshot, informacjaStockAutoEnabled };
   } catch {
     /* fallback — pusty snapshot, panel i tak się wyświetli */
   }

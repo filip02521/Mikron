@@ -111,6 +111,10 @@ describe("pageTitle", () => {
     expect(pageTitle("/zakupy/szacunek")).toBe("Kreator ZD");
   });
 
+  it("zwraca Raporty Ivoclar dla /zakupy/raporty-ivoclar", () => {
+    expect(pageTitle("/zakupy/raporty-ivoclar")).toBe("Raporty Ivoclar");
+  });
+
   it("zwraca ZK czekające dla /notatnik i /zk", () => {
     expect(pageTitle("/notatnik")).toBe("Notatnik");
     expect(pageTitle("/zk")).toBe("ZK czekające");
@@ -174,6 +178,7 @@ describe("navForRole struktura zakupów", () => {
       ["Weryfikacja", "amber"],
       ["Przyjęcie towaru", "emerald"],
       ["Kreator ZD", "violet"],
+      ["Raporty Ivoclar", "sky"],
     ]);
   });
 
@@ -185,6 +190,7 @@ describe("navForRole struktura zakupów", () => {
         "/weryfikacja",
         "/kolejka",
         "/zakupy/szacunek",
+        "/zakupy/raporty-ivoclar",
       ]);
       expect(today?.items.find((i) => i.href === "/zakupy/szacunek")?.tone).toBe(
         "violet"
@@ -201,6 +207,7 @@ describe("navForRole struktura zakupów", () => {
     expect(labels).toContain("Zamówienie grupowe");
     expect(labels).toContain("Numery kurierów");
     expect(labels).toContain("Kreator ZD");
+    expect(labels).toContain("Raporty Ivoclar");
   });
 });
 
@@ -313,6 +320,7 @@ describe("navForAppContext", () => {
     expect(groups[0]?.items[0]?.href).toBe("/podsumowanie");
     const today = groups.find((g) => g.title === NAV_SECTION_TODAY);
     expect(today?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
+    expect(today?.items.some((i) => i.href === "/zakupy/raporty-ivoclar")).toBe(true);
   });
 });
 
@@ -341,16 +349,21 @@ describe("navForRole zakupy_zeby", () => {
     expect(suppliers?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(false);
     const zakupyToday = navForRole("zakupy").find((g) => g.title === NAV_SECTION_TODAY);
     expect(zakupyToday?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
+    expect(zakupyToday?.items.some((i) => i.href === "/zakupy/raporty-ivoclar")).toBe(true);
     const adminToday = navForRole("admin").find((g) => g.title === NAV_SECTION_TODAY);
     expect(adminToday?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
+    expect(adminToday?.items.some((i) => i.href === "/zakupy/raporty-ivoclar")).toBe(true);
     const adminSuppliers = navForRole("admin").find((g) => g.title === NAV_SECTION_SUPPLIERS);
     expect(adminSuppliers?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(false);
+    expect(adminSuppliers?.items.some((i) => i.href === "/zakupy/raporty-ivoclar")).toBe(false);
     const teethHrefs = navForRole("zakupy_zeby").flatMap((g) => g.items.map((i) => i.href));
     expect(teethHrefs.includes("/zakupy/gadki")).toBe(false);
     expect(teethHrefs.includes("/zakupy/szacunek")).toBe(false);
+    expect(teethHrefs.includes("/zakupy/raporty-ivoclar")).toBe(false);
     const magHrefs = navForRole("magazyn").flatMap((g) => g.items.map((i) => i.href));
     expect(magHrefs.includes("/zakupy/gadki")).toBe(false);
     expect(magHrefs.includes("/zakupy/szacunek")).toBe(false);
+    expect(magHrefs.includes("/zakupy/raporty-ivoclar")).toBe(false);
   });
 });
 

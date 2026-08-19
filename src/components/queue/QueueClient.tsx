@@ -22,6 +22,7 @@ import type { WarehouseDeliveryReceipt } from "@/lib/warehouse/delivery-receipts
 import { buildWarehouseInventoryRows } from "@/lib/orders/warehouse-inventory";
 import { summarizeQueueInbox } from "@/lib/orders/queue-inbox";
 import { mergeReceiveQueueOrders } from "@/lib/orders/receive-queue";
+import { formatInformacjaAutoArrivedToast } from "@/lib/orders/informacja-flow-copy";
 import { supplierKey } from "@/lib/orders/queue-supplier-groups";
 
 const RECEIVE_SCROLL_HASHES = new Set([
@@ -51,6 +52,7 @@ export function QueueClient({
   showDailyPanelLink = false,
   showTeethLink = false,
   loadError = null,
+  informacjaAutoArrivedCount = 0,
 }: {
   orders: IndividualOrder[];
   informacjaOrders: IndividualOrder[];
@@ -71,17 +73,32 @@ export function QueueClient({
   showDailyPanelLink?: boolean;
   showTeethLink?: boolean;
   loadError?: string | null;
+  /** Liczba pozycji informacyjnych domkniętych auto-sync przy wejściu na stronę. */
+  informacjaAutoArrivedCount?: number;
 }) {
   const [view, setView] = useState<QueueView>("receive");
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
-  const [toast, setToast] = useState<ReceiveQueueToast | null>(null);
+  const autoArrivedToast = useMemo((): ReceiveQueueToast | null => {
+    if (informacjaAutoArrivedCount <= 0) return null;
+    const { title, text } = formatInformacjaAutoArrivedToast(informacjaAutoArrivedCount);
+    return { title, text, tone: "success" };
+  }, [informacjaAutoArrivedCount]);
+  const [actionToast, setActionToast] = useState<ReceiveQueueToast | null>(null);
+  const [autoToastDismissed, setAutoToastDismissed] = useState(false);
+  const toast = actionToast ?? (autoToastDismissed ? null : autoArrivedToast);
   /** Fokus z badge „N oczekuje” — nonce wymusza re-aplikację przy tym samym dostawcy. */
   const [receiveFocus, setReceiveFocus] = useState<{
     supplierName: string | null;
     nonce: number;
   } | null>(null);
 
-  const dismissToast = useCallback(() => setToast(null), []);
+  const dismissToast = useCallback(() => {
+    if (actionToast) {
+      setActionToast(null);
+      return;
+    }
+    setAutoToastDismissed(true);
+  }, [actionToast]);
 
   const receiveQueue = useMemo(
     () => mergeReceiveQueueOrders(orders, informacjaOrders),
@@ -252,7 +269,7 @@ export function QueueClient({
               warehouseInventory={warehouseInventory}
               supplierSchedules={supplierSchedules}
               receiveFocus={receiveFocus}
-              onToast={setToast}
+              onToast={setActionToast}
               onPendingChange={setPendingMessage}
             />
           </section>

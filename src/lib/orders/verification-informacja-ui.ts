@@ -63,7 +63,7 @@ function pathUi(path: InformacjaFlowPath, pathLocked: boolean): VerificationInfo
     default:
       return {
         path: "direct",
-        badgeLabel: INFORMACJA_FLOW_DIRECT.label,
+        badgeLabel: INFORMACJA_FLOW_DIRECT.badgeLabel,
         badgeTone: "violet",
         queueHint: "Od razu kolejka magazynu — e-mail po przyjęciu towaru",
         pathLocked: false,

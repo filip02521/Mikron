@@ -80,7 +80,7 @@ export function RequestKindToggle({
             Informacja o towarze
           </span>
           <span className="mt-0.5 block text-xs leading-relaxed text-slate-600">
-            Wybierz ścieżkę poniżej — informacja o dostępności albo brak na stanie.
+            Wybierz ścieżkę poniżej — powiadomienie o stanie magazynowym albo brak na stanie.
           </span>
         </span>
       </button>

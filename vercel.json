@@ -9,6 +9,10 @@
       "schedule": "0 6-18 * * 1-5"
     },
     {
+      "path": "/api/cron/informacja-stock-sync",
+      "schedule": "0 6-18 * * 1-5"
+    },
+    {
       "path": "/api/cron/catalog-zd-sync",
       "schedule": "0 1 * * *"
     },

@@ -81,7 +81,8 @@ export function buildDeliveryNotificationItem(
 
 /** Pozycja informacyjna — towar jest na magazynie. */
 export function buildInformacjaNotificationItem(
-  order: OrderForEmail
+  order: OrderForEmail,
+  options?: { arrivedSource?: "manual" | "stock_auto" }
 ): SalesInformacjaNotificationItem {
   return {
     kind: "informacja",
@@ -89,6 +90,7 @@ export function buildInformacjaNotificationItem(
     products: productsLabel(order.products),
     symbol: symbolOrNull(order.symbol),
     clientName: clientOrNull(order),
+    arrivedSource: options?.arrivedSource ?? "manual",
   };
 }
 

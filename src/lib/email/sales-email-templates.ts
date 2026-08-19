@@ -108,6 +108,7 @@ function renderInformacjaItem(
   item: SalesInformacjaNotificationItem,
   cardOpts?: ItemCardOpts
 ): string {
+  const isAuto = item.arrivedSource === "stock_auto";
   const rows: string[] = [];
   if (item.clientName) rows.push(emailDataRow("Klient", item.clientName));
   rows.push(emailDataRow("Produkt", item.products));
@@ -118,6 +119,14 @@ function renderInformacjaItem(
       "Informacja o dostępności — bez zamówienia u dostawcy"
     )
   );
+  if (isAuto) {
+    rows.push(
+      emailDataRow(
+        "Źródło",
+        "Dostępność wykryto automatycznie na podstawie stanu magazynowego w Subiekcie"
+      )
+    );
+  }
   rows.push(
     emailDataRow(
       "Co dalej",
@@ -127,7 +136,7 @@ function renderInformacjaItem(
 
   return emailItemCard(
     {
-      label: "Na regale",
+      label: isAuto ? "Na stanie" : "Na regale",
       bg: EMAIL_THEME.infoBg,
       color: EMAIL_THEME.info,
       border: EMAIL_THEME.infoBorder,
@@ -252,11 +261,22 @@ export function renderInformacjaArrivedEmail(params: {
   const sorted = sortBySupplierThenProduct(params.items);
   const count = sorted.length;
   const suppliers = uniqueSupplierCount(sorted);
+  const allAuto = sorted.every((i) => i.arrivedSource === "stock_auto");
+  const anyAuto = sorted.some((i) => i.arrivedSource === "stock_auto");
 
-  const leadFixed =
-    count === 1
+  const leadFixed = allAuto
+    ? count === 1
+      ? "Towar, o który prosiłeś/aś wyłącznie o <strong>informację o dostępności</strong>, jest już na stanie w Subiekcie."
+      : `Na stanie w Subiekcie są już <strong>${polishPozycjeLabel(count)}</strong> z prośby informacyjnej.`
+    : count === 1
       ? "Towar, o który prosiłeś/aś wyłącznie o <strong>informację o dostępności</strong>, czeka na odbiór na regale."
       : `Na regale są już <strong>${polishPozycjeLabel(count)}</strong> z prośby informacyjnej.`;
+
+  const confirmParagraph = allAuto
+    ? "Dostępność wykryto automatycznie na podstawie stanu magazynowego w Subiekcie — możesz poinformować klienta lub odebrać towar."
+    : anyAuto
+      ? "Część pozycji potwierdzono ręcznie na magazynie, część wykryto automatycznie w Subiekcie — możesz poinformować klienta lub odebrać towar."
+      : "To nie było zamówienie u dostawcy — magazyn potwierdza dostępność towaru, a Ty możesz poinformować klienta lub odebrać towar.";
 
   const body = [
     emailGreeting(firstName(params.recipientName)),
@@ -266,9 +286,7 @@ export function renderInformacjaArrivedEmail(params: {
           `Poniżej ${polishPozycjeLabel(count)} od <strong>${suppliers}</strong> dostawców — każda karta opisuje osobny towar.`
         )
       : "",
-    emailMutedParagraph(
-      "To nie było zamówienie u dostawcy — magazyn potwierdza dostępność towaru, a Ty możesz poinformować klienta lub odebrać towar."
-    ),
+    emailMutedParagraph(confirmParagraph),
     renderInformacjaItems(sorted),
     emailButton(mojeUrl(), "Otwórz Moje zamówienia"),
     emailMutedParagraph(
@@ -284,10 +302,15 @@ export function renderInformacjaArrivedEmail(params: {
       ? `Informacja: ${sorted[0]!.supplierName} — towar na stanie`
       : suppliers > 1
         ? `${polishPozycjeLabel(count)} · ${suppliers} dostawców`
-        : `${polishPozycjeLabel(count)} informacyjne na regale`;
+        : allAuto
+          ? `${polishPozycjeLabel(count)} informacyjne — stan Subiekta`
+          : `${polishPozycjeLabel(count)} informacyjne na regale`;
 
   return {
-    subject: subjectForItems("OnTime · Informacja — na regale", sorted),
+    subject: subjectForItems(
+      allAuto ? "OnTime · Informacja — na stanie" : "OnTime · Informacja — na regale",
+      sorted
+    ),
     html: emailDocument({
       preheader,
       headerTitle: "Informacja o towarze",

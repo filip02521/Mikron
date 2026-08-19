@@ -6,7 +6,7 @@ export const PROSBA_FORM_SECTION_COPY = {
   },
   requestKind: {
     title: "Co chcesz zgłosić?",
-    hint: "Zamówienie u dostawcy albo informacja o dostępności — pola niżej dopasują się do wyboru.",
+    hint: "Zamówienie u dostawcy albo informacja o towarze (np. powiadomienie, gdy pojawi się na magazynie).",
   },
   products: {
     title: "Produkty",

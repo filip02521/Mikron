@@ -4,6 +4,7 @@ import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
 
 import { revalidatePath } from "next/cache";
+import { revalidateAfterInformacjaArrived } from "@/lib/orders/informacja-arrived-revalidate";
 import {
   requireAdmin,
   requireAdminForMutation,
@@ -26,6 +27,10 @@ import {
   canAccessSalesPerson,
 } from "@/lib/data/sales-group-access";
 import { fetchDeliveryStatsDiagnostics } from "@/lib/data/delivery-stats-diagnostics";
+import {
+  fetchInformacjaStockAutoEnabled,
+  upsertInformacjaStockAutoEnabled,
+} from "@/lib/data/informacja-stock-auto";
 import { tryAcquireLock, releaseLock } from "@/lib/services/locks";
 import {
   deactivateExpiredVacations,
@@ -142,30 +147,7 @@ import {
 } from "@/lib/services/daily-panel-undo";
 
 function revalidateAll() {
-  revalidatePath("/", "layout");
-  revalidatePath("/");
-  revalidatePath("/podsumowanie");
-  revalidatePath("/kolejka");
-  revalidatePath("/dostawy");
-  revalidatePath("/historia");
-  revalidatePath("/moje");
-  revalidatePath("/plan");
-  revalidatePath("/prosba");
-  revalidatePath("/weryfikacja");
-  revalidatePath("/zeby");
-  revalidatePath("/zeby/przyjecie");
-  revalidatePath("/zeby/kolejka");
-  revalidatePath("/zeby/historia");
-  revalidatePath("/zeby/harmonogram");
-  revalidatePath("/zeby/status-magazynu");
-  revalidatePath("/lokalizacje/[location]", "page");
-  revalidatePath("/admin");
-  revalidatePath("/admin/handlowcy");
-  revalidatePath("/admin/uzytkownicy");
-  revalidatePath("/zespol", "page");
-  revalidatePath("/zespol/handlowcy", "page");
-  revalidatePath("/zespol/grupy", "page");
-  revalidatePath("/zakupy/dostawcy");
+  revalidateAfterInformacjaArrived();
 }
 
 export async function actionDeleteIndividualHistory(orderId: string) {
@@ -1899,5 +1881,33 @@ export async function actionGetSystemStatus() {
 export async function actionGetCronMonitorStatus() {
   await requireAdmin();
   const { fetchCronMonitorSnapshot } = await import("@/lib/services/cron-monitor");
-  return fetchCronMonitorSnapshot();
+  const [snapshot, informacjaStockAutoEnabled] = await Promise.all([
+    fetchCronMonitorSnapshot(),
+    fetchInformacjaStockAutoEnabled(),
+  ]);
+  return { ...snapshot, informacjaStockAutoEnabled };
+}
+
+export async function actionGetInformacjaStockAutoEnabled() {
+  await requireAdmin();
+  return { enabled: await fetchInformacjaStockAutoEnabled() };
+}
+
+export async function actionSetInformacjaStockAutoEnabled(
+  enabled: unknown
+): Promise<{ ok: true; enabled: boolean } | { ok: false; message: string }> {
+  await requireAdminForMutation();
+  if (typeof enabled !== "boolean") {
+    return { ok: false, message: "Nieprawidłowa wartość przełącznika." };
+  }
+  try {
+    const next = await upsertInformacjaStockAutoEnabled(enabled);
+    revalidatePath("/admin");
+    return { ok: true, enabled: next };
+  } catch (e) {
+    return {
+      ok: false,
+      message: userFacingErrorText(e, "Nie udało się zapisać ustawienia."),
+    };
+  }
 }

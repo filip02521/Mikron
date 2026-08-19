@@ -151,7 +151,7 @@ export function buildProcurementFormReadiness(input: {
             ? "Sygnał „brak na stanie” w Prośbach handlowców — zamówienie u dostawcy, bez e-maila do handlowca."
             : input.informacjaViaDailyPanel
               ? "Informacja trafi najpierw do Prośb handlowców — po Główne/Uzupełniające do magazynu."
-              : "Informacja o dostępności — kolejka magazynu, potem e-mail do handlowca."
+              : "Powiadomienie o stanie magazynowym — kolejka magazynu, potem e-mail do handlowca."
           : "Kompletne dane — trafi do panelu dziennego.",
       tone: "ready",
       steps,

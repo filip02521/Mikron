@@ -13,7 +13,7 @@ describe("InformacjaFlowPicker", () => {
   it("renderuje dwie ścieżki dla handlowca", () => {
     render(<InformacjaFlowPicker path="direct" onChange={vi.fn()} />);
 
-    expect(screen.getByRole("radio", { name: /Informacja o dostępności/i })).toBeTruthy();
+    expect(screen.getByRole("radio", { name: /Powiadom, gdy będzie na magazynie/i })).toBeTruthy();
     expect(screen.getByRole("radio", { name: /Brak na stanie/i })).toBeTruthy();
     expect(screen.queryByRole("radio", { name: /Najpierw zamówienie u dostawcy/i })).toBeNull();
   });
@@ -32,7 +32,7 @@ describe("InformacjaFlowPicker", () => {
     render(<InformacjaFlowPicker path="direct" onChange={onChange} />);
 
     const stockOut = screen.getByRole("radio", { name: /Brak na stanie/i });
-    expect(screen.getByRole("radio", { name: /Informacja o dostępności/i }).getAttribute("aria-checked")).toBe(
+    expect(screen.getByRole("radio", { name: /Powiadom, gdy będzie na magazynie/i }).getAttribute("aria-checked")).toBe(
       "true"
     );
     expect(stockOut.getAttribute("aria-checked")).toBe("false");

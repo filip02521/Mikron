@@ -4,7 +4,7 @@
 # Wymaga: .env.local z CRON_SECRET (i opcjonalnie APP_PORT / NEXT_PUBLIC_APP_URL)
 #
 #   npm run install-cron              # generuje /tmp/system-dostaw.cron
-#   npm run install-cron -- --install # kopiuje do /etc/cron.d/system-dostaw (sudo)
+#   sudo npm run install-cron -- --install # kopiuje do /etc/cron.d/system-dostaw
 #   npm run install-cron -- --test    # test jednego endpointu (morning, force)
 #
 # Opcje:
@@ -13,7 +13,7 @@
 #   --output FILE       plik wyjściowy (domyślnie /tmp/system-dostaw.cron)
 #   --base URL          baza HTTP aplikacji (domyślnie http://127.0.0.1:PORT)
 #   --from-env FILE     wczytaj env z innego pliku zamiast .env.local
-#   --test [JOB]        wywołaj endpoint (morning|process-deliveries|catalog-zd-sync|zd-eta-sync)
+#   --test [JOB]        wywołaj endpoint (morning|process-deliveries|informacja-stock-sync|catalog-zd-sync|zd-eta-sync|morning-sync)
 #   --force             przy --test dodaj ?force=1 (pomija okna czasowe)
 #
 set -euo pipefail
@@ -45,7 +45,15 @@ while [[ $# -gt 0 ]]; do
     --output) OUTPUT="$2"; shift 2 ;;
     --base) BASE_URL="$2"; shift 2 ;;
     --from-env) FROM_ENV="$2"; shift 2 ;;
-    --test) TEST_JOB="${2:-morning}"; shift; [[ "${1:-}" == "--force" ]] && { TEST_FORCE=true; shift; } || true ;;
+    --test)
+      TEST_JOB="morning"
+      if [[ -n "${2:-}" && "${2:-}" != --* ]]; then
+        TEST_JOB="$2"
+        shift 2
+      else
+        shift
+      fi
+      ;;
     --force) TEST_FORCE=true; shift ;;
     *) die "Nieznana opcja: $1 (użyj --help)" ;;
   esac
@@ -90,10 +98,11 @@ cron_path_for_job() {
   case "$1" in
     morning) echo "/api/cron/morning" ;;
     process-deliveries) echo "/api/cron/process-deliveries" ;;
+    informacja-stock-sync) echo "/api/cron/informacja-stock-sync" ;;
     catalog-zd-sync) echo "/api/cron/catalog-zd-sync" ;;
     zd-eta-sync) echo "/api/cron/zd-eta-sync" ;;
     morning-sync) echo "/api/cron/morning-sync" ;;
-    *) die "Nieznany job: $1 (morning|process-deliveries|catalog-zd-sync|zd-eta-sync|morning-sync)" ;;
+    *) die "Nieznany job: $1 (morning|process-deliveries|informacja-stock-sync|catalog-zd-sync|zd-eta-sync|morning-sync)" ;;
   esac
 }
 
@@ -119,7 +128,7 @@ write_cron_file() {
 # Katalog projektu: ${ROOT}
 # Strefa: Europe/Warsaw (CRON_TZ)
 #
-# Instalacja: npm run install-cron -- --install
+# Instalacja: sudo npm run install-cron -- --install
 # Logi: /var/log/system-dostaw-cron.log , /var/log/system-dostaw-catalog.log
 #
 SHELL=/bin/bash
@@ -133,6 +142,9 @@ BASE=${BASE_URL}
 
 # Pon–pt co godzinę 8:00–18:00 — zapasowe domknięcie dostaw
 0 8-18 * * 1-5 root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/process-deliveries" >> /var/log/system-dostaw-cron.log 2>&1
+
+# Pon–pt co godzinę 8:00–18:00 — automatyczne powiadomienia informacji ze stanu Subiekta
+0 8-18 * * 1-5 root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/informacja-stock-sync" >> /var/log/system-dostaw-cron.log 2>&1
 
 # Pon–pt co 2 h 8–18 — backup sync terminów ZD (w godzinach pracy)
 0 8,10,12,14,16,18 * * 1-5 root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/zd-eta-sync" >> /var/log/system-dostaw-cron.log 2>&1
@@ -161,6 +173,7 @@ log ""
 log "Harmonogram (Europe/Warsaw):"
 log "  06:00 pn–pt     → /api/cron/morning"
 log "  08–18 pn–pt    → /api/cron/process-deliveries (co godzinę)"
+log "  08–18 pn–pt    → /api/cron/informacja-stock-sync (co godzinę)"
 log "  08–18 pn–pt    → /api/cron/zd-eta-sync (8,10,12,14,16,18)"
 log "  02:00–04:40     → /api/cron/catalog-zd-sync (co 20 min, noc, Subiekt LAN)"
 log ""
@@ -172,7 +185,7 @@ if ! $INSTALL; then
   sed 's/^CRON_SECRET=.*/CRON_SECRET=[ukryty]/' "$OUTPUT" | sed 's/^/  /'
   log ""
   log "Instalacja (jako root na serwerze Linux):"
-  log "  npm run install-cron -- --install"
+  log "  sudo npm run install-cron -- --install"
   log "  # albo:"
   log "  sudo cp ${OUTPUT} ${CRON_DEST}"
   log "  sudo chmod 644 ${CRON_DEST}"

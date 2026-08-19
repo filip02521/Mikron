@@ -15,6 +15,7 @@ import { ReceiveQueueGroupMenu } from "@/components/queue/receive-queue/ReceiveQ
 import { ReceiveQueueRow } from "@/components/queue/receive-queue/ReceiveQueueRow";
 import { formatReceiveGroupHeaderSummary } from "@/lib/orders/receive-queue";
 import { isInformacjaRequest } from "@/lib/orders/individual";
+import { isSubiektVerifiedOrder } from "@/lib/orders/product-source";
 import {
   informacjaProductKey,
   orderIdsInProductGroup,
@@ -71,6 +72,7 @@ export function ReceiveQueueVirtualTbody({
   toggleProductGroup,
   ackCancelDisposition,
   stockByTwId,
+  informacjaAvailableTwIds,
   onStockBadgeClick,
   renderClassic,
 }: {
@@ -97,6 +99,7 @@ export function ReceiveQueueVirtualTbody({
   toggleProductGroup: (list: IndividualOrder[], startIndex: number, checked: boolean) => void;
   ackCancelDisposition: (order: IndividualOrder) => void;
   stockByTwId?: Record<number, { available: number }>;
+  informacjaAvailableTwIds?: Set<number>;
   onStockBadgeClick?: (orderId: string) => void;
   renderClassic: () => React.ReactNode;
 }) {
@@ -215,6 +218,17 @@ export function ReceiveQueueVirtualTbody({
         const stockAvailable = twId != null && twId > 0 && stockByTwId
           ? stockByTwId[Math.trunc(twId)]?.available ?? null
           : null;
+        const informacjaStockHint = !isInfo
+          ? null
+          : o.is_teeth
+            ? "teeth"
+            : !isSubiektVerifiedOrder(o)
+              ? "manual_only"
+              : twId != null &&
+                  twId > 0 &&
+                  informacjaAvailableTwIds?.has(Math.trunc(twId))
+                ? "auto_ready"
+                : null;
 
         return (
           <ReceiveQueueRow
@@ -230,6 +244,7 @@ export function ReceiveQueueVirtualTbody({
             pending={pending}
             inputVal={inputVal}
             stockAvailable={stockAvailable}
+            informacjaStockHint={informacjaStockHint}
             searchQuery={productSearchActive ? productSearch : null}
             onToggleSelected={() => toggleSelected(o.id)}
             onQtyChange={(value) => setQty((s) => ({ ...s, [o.id]: value }))}

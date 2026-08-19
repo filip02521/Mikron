@@ -32,6 +32,13 @@ import { jawRequiredForKind, mouldEncodesExplicitJaw } from "@/lib/teeth/teeth-m
 import { Badge } from "@/components/ui/Badge";
 import { plPozycja, plProsba, plWiersz } from "@/lib/ui/polish-plurals";
 import type { TeethQueueItem } from "@/lib/data/teeth-queue-shared";
+import {
+  formatTeethQueueWaitDays,
+  oldestTeethQueueEnteredAt,
+  resolveTeethQueueEnteredAt,
+  teethQueueWaitCalendarDays,
+} from "@/lib/teeth/teeth-queue-wait";
+import { formatPlDate } from "@/lib/display-labels";
 
 const JAW_LABELS = { upper: "Góra", lower: "Dół" } as const;
 
@@ -258,6 +265,18 @@ export function TeethQueueBatchTable({
     return map;
   }, [groupRows]);
 
+  const oldestEnteredBySales = useMemo(() => {
+    const map = new Map<string | null, string>();
+    for (const item of items) {
+      const key = item.sales_person_name ?? null;
+      const at = resolveTeethQueueEnteredAt(item);
+      if (!at) continue;
+      const prev = map.get(key);
+      if (!prev || at < prev) map.set(key, at);
+    }
+    return map;
+  }, [items]);
+
   return (
     <div className={teethPanelBatchStripClass}>
       <div className="space-y-2 py-2.5">
@@ -346,6 +365,18 @@ export function TeethQueueBatchTable({
       : "border-l-2 border-l-indigo-300/50";
 
                 const salesRowCount = salesPersonRowCounts.get(row.salesPersonName) ?? 0;
+                const oldestEntered = row.salesPersonName
+                  ? oldestEnteredBySales.get(row.salesPersonName)
+                  : oldestTeethQueueEnteredAt(
+                      row.orderEntries.map((entry) => entry.item),
+                    );
+                const waitLabel =
+                  oldestEntered != null
+                    ? (() => {
+                        const days = teethQueueWaitCalendarDays(oldestEntered);
+                        return `od ${formatPlDate(oldestEntered.slice(0, 10))} · ${formatTeethQueueWaitDays(days)}`;
+                      })()
+                    : null;
 
                 return (
                   <Fragment key={`${row.key}-${index}`}>
@@ -371,6 +402,14 @@ export function TeethQueueBatchTable({
                             <span className="text-[10px] text-slate-400">
                               {salesRowCount} {plWiersz(salesRowCount)}
                             </span>
+                            {waitLabel ? (
+                              <span
+                                className="text-[10px] font-medium text-slate-500"
+                                title="W kolejce działu zębów"
+                              >
+                                {waitLabel}
+                              </span>
+                            ) : null}
                             {salesIssues && (salesIssues.missingList || salesIssues.incomplete || salesIssues.needsHeader || salesIssues.informacja) ? (
                               <div className="flex flex-wrap items-center gap-1">
                                 {salesIssues.missingList ? (

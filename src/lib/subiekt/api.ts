@@ -111,6 +111,17 @@ export async function searchSubiektZd(
   return subiektList<SubiektDocument>(SUBIEKT_PATHS.documentsZd, params);
 }
 
+export async function searchSubiektFs(
+  params: Omit<SubiektListParams, "typ"> = {}
+): Promise<SubiektListEnvelope<SubiektDocument>> {
+  return subiektList<SubiektDocument>(SUBIEKT_PATHS.documentsFs, params);
+}
+
+export async function getSubiektFs(id: number | string): Promise<SubiektDocument> {
+  const res = await subiektGet<SubiektDocument>(SUBIEKT_PATHS.documentFs(id));
+  return res.data;
+}
+
 export async function getSubiektDocument(
   id: number | string
 ): Promise<SubiektDocument> {
@@ -229,6 +240,39 @@ export async function fetchSubiektZdEstimatePage(
     pageSize: params.pageSize,
   });
   return subiektJson(`${SUBIEKT_PATHS.ordersZdEstimate}${qs}`, {}, config);
+}
+
+/** Lista towarów na hoście ORDERS (np. filtr cechaId). */
+export async function searchSubiektOrdersProducts(
+  params: SubiektListParams = {}
+): Promise<SubiektListEnvelope<SubiektProduct>> {
+  return subiektList<SubiektProduct>(
+    SUBIEKT_PATHS.products,
+    params,
+    ordersConfigOrThrow()
+  );
+}
+
+/** Lista FS na hoście ORDERS — nagłówki (pozycje dopiero w GET szczegółu). */
+export async function searchSubiektOrdersFs(
+  params: Omit<SubiektListParams, "typ"> = {}
+): Promise<SubiektListEnvelope<SubiektDocument>> {
+  return subiektList<SubiektDocument>(
+    SUBIEKT_PATHS.documentsFs,
+    params,
+    ordersConfigOrThrow()
+  );
+}
+
+/** Pełna FS (z liniami) na hoście ORDERS. */
+export async function getSubiektOrdersFs(
+  id: number | string
+): Promise<SubiektDocument> {
+  const res = await subiektGet<SubiektDocument>(
+    SUBIEKT_PATHS.documentFs(id),
+    ordersConfigOrThrow()
+  );
+  return res.data;
 }
 
 /** Lista ZD na hoście ORDERS — do powiązania ze szacunkiem. */

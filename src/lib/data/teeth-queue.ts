@@ -164,6 +164,7 @@ export async function fetchTeethQueue(): Promise<TeethQueueGroup[]> {
     .eq("teeth_ocr_pending", false)
     .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
     .is("sales_cancelled_at", null)
+    .order("teeth_queue_entered_at", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true })
     .limit(500);
 
@@ -976,7 +977,11 @@ export async function approveTeethOcr(orderIds: string[]): Promise<{ updated: nu
 
   const { data, error } = await supabase
     .from("individual_orders")
-    .update({ teeth_ocr_pending: false, status: "Nowe" })
+    .update({
+      teeth_ocr_pending: false,
+      status: "Nowe",
+      teeth_queue_entered_at: new Date().toISOString(),
+    })
     .in("id", orderIds)
     .eq("is_teeth", true)
     .eq("teeth_ocr_pending", true)

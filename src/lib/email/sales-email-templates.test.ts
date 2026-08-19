@@ -47,6 +47,27 @@ describe("sales email templates", () => {
     expect(html).toContain("Informacja o dostępności");
     expect(html).toContain("Na regale");
     expect(html).toContain("widziałem/am powiadomienie");
+    expect(html).toContain("magazyn potwierdza dostępność");
+  });
+
+  it("informacja stock_auto — copy o Subiekcie, nie magazyn potwierdził", () => {
+    const { html, subject } = renderInformacjaArrivedEmail({
+      recipientName: "Anna",
+      items: [
+        {
+          kind: "informacja",
+          supplierName: "X",
+          products: "Produkt",
+          symbol: null,
+          clientName: null,
+          arrivedSource: "stock_auto",
+        },
+      ],
+    });
+    expect(subject).toContain("na stanie");
+    expect(html).toContain("Na stanie");
+    expect(html).toContain("stanu magazynowego w Subiekcie");
+    expect(html).not.toContain("magazyn potwierdza dostępność");
   });
 
   it("delivery omits partial hint when all items complete", () => {
