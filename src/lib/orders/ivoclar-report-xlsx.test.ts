@@ -91,7 +91,6 @@ describe("buildIvoclarInventoryXlsx", () => {
     expect(JSON.stringify(matrix)).not.toContain("504378");
   });
 });
-
 describe("ivoclarXlsxToBase64", () => {
   it("zwraca niepusty base64 dla zbudowanego pliku xlsx", async () => {
     const row = buildIvoclarSelloutRow({
