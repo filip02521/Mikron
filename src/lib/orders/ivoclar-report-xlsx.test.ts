@@ -7,7 +7,11 @@ import {
   IVOCLAR_SELLOUT_FILE_COLUMNS,
   ivoclarReportXlsxFilename,
 } from "./ivoclar-report";
-import { buildIvoclarInventoryXlsx, buildIvoclarSelloutXlsx } from "./ivoclar-report-xlsx";
+import {
+  buildIvoclarInventoryXlsx,
+  buildIvoclarSelloutXlsx,
+  ivoclarXlsxToBase64,
+} from "./ivoclar-report-xlsx";
 
 async function readSheetMatrix(bytes: Uint8Array, sheetName: string): Promise<unknown[][]> {
   const workbook = new Workbook();
@@ -85,5 +89,27 @@ describe("buildIvoclarInventoryXlsx", () => {
     expect(matrix[0]).toEqual([...IVOCLAR_INVENTORY_FILE_COLUMNS]);
     expect(matrix[1]).toEqual(["504377", 7]);
     expect(JSON.stringify(matrix)).not.toContain("504378");
+  });
+});
+
+describe("ivoclarXlsxToBase64", () => {
+  it("zwraca niepusty base64 dla zbudowanego pliku xlsx", async () => {
+    const row = buildIvoclarSelloutRow({
+      dokId: 3,
+      dokNr: "FS 3/2026",
+      dokDataWyst: "2026-08-12",
+      khId: 9,
+      khName: "Gabinet",
+      twId: 12,
+      twSymbol: "517020",
+      twNazwa: "Zestaw 2",
+      quantity: 1,
+      postalRaw: "00-834",
+      city: "Warszawa",
+    });
+    const file = await buildIvoclarSelloutXlsx([row], "Sellout_test");
+    const base64 = ivoclarXlsxToBase64(file.bytes);
+    expect(base64.length).toBeGreaterThan(100);
+    expect(/^[A-Za-z0-9+/=]+$/.test(base64)).toBe(true);
   });
 });

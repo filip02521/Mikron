@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  filterNavGroupsByAccess,
   isNavItemActive,
   navForRole,
   navItemDisplayTone,
@@ -7,6 +8,8 @@ import {
   navMobileOverflowItems,
   navMobilePrimaryItems,
   NAV_SECTION_DAILY,
+  NAV_SECTION_ADMIN_TOOLS,
+  NAV_SECTION_SYSTEM,
   NAV_SECTION_SUPPLIERS,
   NAV_SECTION_TEAM,
   NAV_SECTION_TODAY,
@@ -20,6 +23,7 @@ import {
   pageTitle,
   type NavItem,
 } from "./nav";
+import { MAIL_CENTER_MODULE_SLUG } from "@/lib/admin-modules";
 
 describe("isNavItemActive", () => {
   const zespolSiblings = ["/zespol", "/zespol/handlowcy", "/zespol/grupy"];
@@ -69,8 +73,8 @@ describe("isNavItemActive", () => {
   it("podświetla Administracja tylko na hubie system/konta/handlowcy", () => {
     const siblings = ["/admin", "/admin/zgloszenia", "/admin/produkty", "/zespol/grupy"];
     expect(isNavItemActive("/admin", "/admin", siblings)).toBe(true);
-    expect(isNavItemActive("/admin/uzytkownicy", "/admin", siblings)).toBe(true);
-    expect(isNavItemActive("/admin/handlowcy", "/admin", siblings)).toBe(true);
+    expect(isNavItemActive("/admin/uzytkownicy", "/admin", siblings)).toBe(false);
+    expect(isNavItemActive("/admin/handlowcy", "/admin", siblings)).toBe(false);
     expect(isNavItemActive("/admin/dostawcy", "/admin", siblings)).toBe(false);
     expect(isNavItemActive("/admin/urlopy", "/admin", siblings)).toBe(false);
     expect(isNavItemActive("/admin/zgloszenia", "/admin", siblings)).toBe(false);
@@ -128,6 +132,25 @@ describe("navForRole admin dostawcy", () => {
     expect(suppliers?.items[0]?.href).toBe("/admin/dostawcy");
     expect(suppliers?.items[2]?.href).toBe("/admin/urlopy");
   });
+
+  it("rozdziela dawny hub admina od narzędzi konfiguracyjnych", () => {
+    const groups = navForRole("admin");
+    const system = groups.find((g) => g.title === NAV_SECTION_SYSTEM);
+    const config = groups.find((g) => g.title === NAV_SECTION_ADMIN_TOOLS);
+
+    expect(system?.items.map((item) => item.href)).toEqual([
+      "/admin",
+      "/admin/uzytkownicy",
+      "/admin/handlowcy",
+      "/admin/mail",
+    ]);
+    expect(config?.items.map((item) => item.href)).toEqual([
+      "/admin/zgloszenia",
+      "/admin/produkty",
+      "/admin/produkty/zeby",
+      "/zespol/grupy",
+    ]);
+  });
 });
 
 describe("navForRole struktura zakupów", () => {
@@ -139,6 +162,7 @@ describe("navForRole struktura zakupów", () => {
       NAV_SECTION_SUPPLIERS,
       NAV_SECTION_TOOLS,
       NAV_SECTION_CARRIERS,
+      NAV_SECTION_SYSTEM,
     ]);
   });
 
@@ -149,6 +173,7 @@ describe("navForRole struktura zakupów", () => {
       NAV_SECTION_SUPPLIERS,
       NAV_SECTION_TOOLS,
       NAV_SECTION_CARRIERS,
+      NAV_SECTION_SYSTEM,
     ]);
   });
 
@@ -157,6 +182,7 @@ describe("navForRole struktura zakupów", () => {
     const defaultCollapsed = groups.filter((g) => g.defaultCollapsed);
     expect(defaultCollapsed.map((g) => g.title)).toEqual([
       NAV_SECTION_TOOLS,
+      NAV_SECTION_SYSTEM,
     ]);
   });
 
@@ -211,6 +237,41 @@ describe("navForRole struktura zakupów", () => {
   });
 });
 
+describe("filterNavGroupsByAccess admin modules", () => {
+  it("ukrywa /admin/mail dla non-admin bez modułu", () => {
+    const groups = filterNavGroupsByAccess(navForRole("sales"), "sales", [], null, []);
+    const hrefs = groups.flatMap((g) => g.items.map((i) => i.href));
+    expect(hrefs).not.toContain("/admin/mail");
+  });
+
+  it("pokazuje tylko /admin/mail z sekcji System dla non-admin z modułem", () => {
+    const groups = filterNavGroupsByAccess(
+      navForRole("sales"),
+      "sales",
+      [],
+      null,
+      [MAIL_CENTER_MODULE_SLUG]
+    );
+    const system = groups.find((g) => g.title === NAV_SECTION_SYSTEM);
+    expect(system?.items.map((item) => item.href)).toEqual(["/admin/mail"]);
+  });
+
+  it("nie pokazuje innych adminowych linków dla non-admin z modułem", () => {
+    const groups = filterNavGroupsByAccess(
+      navForRole("sales"),
+      "sales",
+      [],
+      null,
+      [MAIL_CENTER_MODULE_SLUG]
+    );
+    const hrefs = groups.flatMap((g) => g.items.map((i) => i.href));
+    expect(hrefs).not.toContain("/admin");
+    expect(hrefs).not.toContain("/admin/uzytkownicy");
+    expect(hrefs).not.toContain("/admin/handlowcy");
+    expect(hrefs).not.toContain("/admin/zgloszenia");
+  });
+});
+
 describe("teethNavGroups", () => {
   it("ma sekcje Dziś → Dostawcy → Zespół (+ Narzędzia gdy jest podsumowanie miesiąca)", () => {
     const groups = teethNavGroups();
@@ -229,8 +290,11 @@ describe("teethNavGroups", () => {
 
   it("żadna sekcja nie jest zwijana (pojedyncze linki zawsze widoczne)", () => {
     const groups = teethNavGroups();
-    expect(groups.every((g) => !g.collapsible)).toBe(true);
-    expect(groups.every((g) => !g.defaultCollapsed)).toBe(true);
+    const systemGroup = groups.find((g) => g.title === NAV_SECTION_SYSTEM);
+    expect(groups.filter((g) => g.title !== NAV_SECTION_SYSTEM).every((g) => !g.collapsible)).toBe(true);
+    expect(groups.filter((g) => g.title !== NAV_SECTION_SYSTEM).every((g) => !g.defaultCollapsed)).toBe(true);
+    expect(systemGroup?.collapsible).toBe(true);
+    expect(systemGroup?.defaultCollapsed).toBe(true);
   });
 
   it("sekcja Dziś — pipeline: kolejka → weryfikacja → przyjęcie → historia", () => {
@@ -295,6 +359,7 @@ describe("teethNavGroups", () => {
     if (new Date().getDate() <= 7) {
       expectedLabels.push("Podsumowanie miesiąca");
     }
+    expectedLabels.push("Centrum maili");
     expect(overflow.map((item) => item.label)).toEqual(expectedLabels);
     expect(overflow.every((item) => item.tier === "compact")).toBe(true);
   });
@@ -375,6 +440,7 @@ describe("navForRole magazyn", () => {
       "Zespół",
       NAV_SECTION_TOOLS,
       NAV_SECTION_CARRIERS,
+      NAV_SECTION_SYSTEM,
     ]);
   });
 
@@ -384,6 +450,7 @@ describe("navForRole magazyn", () => {
     expect(collapsibleSections.map((g) => g.title)).toEqual([
       NAV_SECTION_TOOLS,
       NAV_SECTION_CARRIERS,
+      NAV_SECTION_SYSTEM,
     ]);
   });
 
@@ -392,6 +459,7 @@ describe("navForRole magazyn", () => {
     const defaultCollapsed = groups.filter((g) => g.defaultCollapsed);
     expect(defaultCollapsed.map((g) => g.title)).toEqual([
       NAV_SECTION_TOOLS,
+      NAV_SECTION_SYSTEM,
     ]);
   });
 

@@ -1,7 +1,10 @@
 import type { CronJobId, CronRunPayload } from "@/lib/services/cron-run-log";
 import { CRON_JOB_IDS, readAllCronRuns } from "@/lib/services/cron-run-log";
+import { computeIvoclarWeeklyPeriod } from "@/lib/services/mail/ivoclar-weekly-mail";
+import { getLatestSentLogForPeriod } from "@/lib/services/mail/mail-log";
 import type { CatalogZdSyncState } from "@/lib/subiekt/catalog-zd-sync";
 import { catalogZdSyncNeedsContinue } from "@/lib/subiekt/catalog-zd-sync-summary";
+import type { MailSendLog } from "@/types/database";
 import {
   formatWarsawDateTime,
   isWarsawBusinessDay,
@@ -74,6 +77,14 @@ export const CRON_JOB_DEFINITIONS: CronJobDefinition[] = [
     scheduled: false,
     description: "Przeliczenie terminów dostawców bez dostaw i retencji — do testów serwisowych.",
   },
+  {
+    id: "scheduled_mails",
+    label: "Maile raportowe",
+    schedule: "pn 7:00–9:00 (Warszawa)",
+    endpoint: "/api/cron/scheduled-mails",
+    scheduled: true,
+    description: "Automatyczna wysyłka raportu Ivoclar (Sellout + Inventory) — poprzedni tydzień.",
+  },
 ];
 
 export type CronJobMonitorRow = {
@@ -93,6 +104,11 @@ export type CronJobMonitorRow = {
   ok: boolean | null;
   error: string | null;
   summaryLines: string[];
+};
+
+type CronMonitorContext = {
+  catalogState?: CatalogZdSyncState | null;
+  scheduledMailSentLog?: MailSendLog | null;
 };
 
 function hoursSince(iso: string, now: Date): number {
@@ -119,8 +135,19 @@ function runWarsawDateKey(run: CronRunPayload | null): string | null {
   return warsawDateKeyFromIso(run.at);
 }
 
-function summarizeRunDetail(jobId: CronJobId, run: CronRunPayload | null): string[] {
-  if (!run) return ["Brak zapisanego uruchomienia w bazie."];
+function summarizeRunDetail(
+  jobId: CronJobId,
+  run: CronRunPayload | null,
+  context?: CronMonitorContext
+): string[] {
+  if (!run) {
+    if (jobId === "scheduled_mails" && context?.scheduledMailSentLog?.finished_at) {
+      return [
+        `Ostatni udany mail: ${formatWarsawDateTime(context.scheduledMailSentLog.finished_at)}`,
+      ];
+    }
+    return ["Brak zapisanego uruchomienia w bazie."];
+  }
   const detail = runDetail(run) ?? {};
   const lines: string[] = [];
 
@@ -219,6 +246,19 @@ function summarizeRunDetail(jobId: CronJobId, run: CronRunPayload | null): strin
       }
       break;
     }
+    case "scheduled_mails": {
+      if (context?.scheduledMailSentLog?.finished_at) {
+        lines.push(`Ostatni udany mail: ${formatWarsawDateTime(context.scheduledMailSentLog.finished_at)}`);
+      }
+      if (typeof detail.status === "string") lines.push(`Status maila: ${detail.status}`);
+      if (detail.hadWarnings === true) lines.push("Wysłano z ostrzeżeniami");
+      if (typeof detail.logId === "string") lines.push(`Log: ${detail.logId.slice(0, 8)}…`);
+      if (typeof detail.issuesCount === "number") lines.push(`Issues: ${detail.issuesCount}`);
+      if (typeof detail.blockingIssueCount === "number" && detail.blockingIssueCount > 0) {
+        lines.push(`Blocking: ${detail.blockingIssueCount}`);
+      }
+      break;
+    }
   }
 
   if (Array.isArray(detail.issues) && detail.issues.length) {
@@ -226,6 +266,21 @@ function summarizeRunDetail(jobId: CronJobId, run: CronRunPayload | null): strin
   }
 
   return lines.length ? lines : ["Uruchomienie bez dodatkowych metryk."];
+}
+
+function isScheduledMailsStale(
+  run: CronRunPayload | null,
+  now: Date,
+  sentLog?: MailSendLog | null
+): boolean {
+  const { weekday, hour, dateKey } = warsawNowParts(now);
+  if (weekday !== "Mon" || hour < 10) return false;
+  if (sentLog?.status === "sent") return false;
+  if (!run) return true;
+  if (isSkippedRun(run) && skipReason(run) === "already_sent") return false;
+  const detail = runDetail(run);
+  if (detail?.status === "sent" && runWarsawDateKey(run) === dateKey) return false;
+  return true;
 }
 
 function isMorningRoutineStale(run: CronRunPayload | null, now: Date): boolean {
@@ -344,33 +399,40 @@ export function evaluateCronJob(
   job: CronJobDefinition,
   run: CronRunPayload | null,
   now = new Date(),
-  catalogState?: CatalogZdSyncState | null
+  context?: CronMonitorContext
 ): CronJobMonitorRow {
   const skipped = isSkippedRun(run);
   const stale = job.scheduled
     ? job.id === "morning_routine"
       ? isMorningRoutineStale(run, now)
       : job.id === "catalog_zd_sync"
-        ? isCatalogSyncStale(run, now, catalogState)
+        ? isCatalogSyncStale(run, now, context?.catalogState)
         : job.id === "process_deliveries" || job.id === "informacja_stock_sync"
           ? isWorkHoursJobStale(run, now, 2.5)
           : job.id === "zd_eta_sync"
             ? isWorkHoursJobStale(run, now, 3.5)
-            : false
+            : job.id === "scheduled_mails"
+              ? isScheduledMailsStale(run, now, context?.scheduledMailSentLog)
+              : false
     : false;
 
   let tone: CronMonitorTone;
   let statusLabel: string;
 
   if (job.id === "catalog_zd_sync") {
-    if (!run && !catalogState) {
+    if (!run && !context?.catalogState) {
       tone = stale ? "warning" : "neutral";
       statusLabel = stale ? "Brak danych — zaległe" : "Brak zapisanego stanu";
     } else {
-      const catalogStatus = evaluateCatalogCronStatus(run, stale, catalogState, now);
+      const catalogStatus = evaluateCatalogCronStatus(run, stale, context?.catalogState, now);
       tone = catalogStatus.tone;
       statusLabel = catalogStatus.statusLabel;
     }
+  } else if (job.id === "scheduled_mails" && context?.scheduledMailSentLog?.status === "sent" && !stale) {
+    tone = context.scheduledMailSentLog.had_warnings ? "warning" : "success";
+    statusLabel = context.scheduledMailSentLog.had_warnings
+      ? "OK — wysłano z ostrzeżeniami"
+      : "OK — wysłano";
   } else if (!run) {
     tone = job.scheduled ? "warning" : "neutral";
     statusLabel = job.scheduled ? "Nigdy nie uruchomiono" : "Tylko ręcznie";
@@ -404,17 +466,21 @@ export function evaluateCronJob(
     skipReason: skipReason(run),
     ok: run?.ok ?? null,
     error: run?.error ?? null,
-    summaryLines: summarizeRunDetail(job.id, run),
+    summaryLines: summarizeRunDetail(job.id, run, context),
   };
 }
 
 export function buildCronMonitorSnapshot(
   runs: Record<CronJobId, CronRunPayload | null>,
   now = new Date(),
-  catalogState?: CatalogZdSyncState | null
+  catalogState?: CatalogZdSyncState | null,
+  scheduledMailSentLog?: MailSendLog | null
 ): { jobs: CronJobMonitorRow[]; generatedAt: string; issueCount: number } {
   const jobs = CRON_JOB_DEFINITIONS.map((def) =>
-    evaluateCronJob(def, runs[def.id], now, def.id === "catalog_zd_sync" ? catalogState : undefined)
+    evaluateCronJob(def, runs[def.id], now, {
+      catalogState: def.id === "catalog_zd_sync" ? catalogState : undefined,
+      scheduledMailSentLog: def.id === "scheduled_mails" ? scheduledMailSentLog : undefined,
+    })
   );
   const issueCount = jobs.filter(
     (job) =>
@@ -428,8 +494,13 @@ export function buildCronMonitorSnapshot(
 
 export async function fetchCronMonitorSnapshot(now = new Date()) {
   const { readCatalogZdSyncState } = await import("@/lib/subiekt/catalog-zd-sync");
-  const [runs, catalogState] = await Promise.all([readAllCronRuns(), readCatalogZdSyncState()]);
-  return buildCronMonitorSnapshot(runs, now, catalogState);
+  const scheduledPeriodKey = computeIvoclarWeeklyPeriod(warsawNowParts(now).dateKey).periodKey;
+  const [runs, catalogState, scheduledMailSentLog] = await Promise.all([
+    readAllCronRuns(),
+    readCatalogZdSyncState(),
+    getLatestSentLogForPeriod("ivoclar_weekly", scheduledPeriodKey),
+  ]);
+  return buildCronMonitorSnapshot(runs, now, catalogState, scheduledMailSentLog);
 }
 
 /** Weryfikacja spójności listy jobów w logu. */

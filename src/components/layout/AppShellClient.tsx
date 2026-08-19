@@ -134,6 +134,7 @@ export function AppShellClient({
   adminPanelPreview = null,
   procurementWorkspace = null,
   canSwitchProcurementWorkspace = false,
+  adminModules = [],
   userEmail,
   showLoginLink,
   salesPersonId = null,
@@ -154,6 +155,7 @@ export function AppShellClient({
   adminPanelPreview?: AdminPanelContext | null;
   procurementWorkspace?: ProcurementWorkspace | null;
   canSwitchProcurementWorkspace?: boolean;
+  adminModules?: string[];
   assignedWorkspaces?: Workspace[];
   userEmail?: string | null;
   showLoginLink?: boolean;
@@ -283,6 +285,7 @@ export function AppShellClient({
               adminPanelContext={adminPanelPreview ?? "admin"}
               procurementWorkspace={procurementWorkspace}
               canSwitchProcurementWorkspace={canSwitchProcurementWorkspace}
+              adminModules={adminModules}
               assignedWorkspaces={assignedWorkspaces}
               userEmail={userEmail}
               salesPersonName={salesPersonName}
@@ -393,6 +396,7 @@ export function AppShellClient({
               role={role ?? "sales"}
               realRole={realRole}
               adminPanelContext={adminPanelPreview ?? "admin"}
+              adminModules={adminModules}
             />
           </Suspense>
         ) : null}
@@ -404,6 +408,7 @@ export function AppShellClient({
             procurementWorkspace={procurementWorkspace}
             canSwitchProcurementWorkspace={canSwitchProcurementWorkspace}
             assignedWorkspaces={assignedWorkspaces}
+            adminModules={adminModules}
             navBadges={navBadges}
           />
         ) : null}
@@ -414,6 +419,7 @@ export function AppShellClient({
             procurementWorkspace={procurementWorkspace}
             canSwitchProcurementWorkspace={canSwitchProcurementWorkspace}
             assignedWorkspaces={assignedWorkspaces}
+            adminModules={adminModules}
             navBadges={navBadges}
           />
         ) : null}
@@ -424,6 +430,7 @@ export function AppShellClient({
             procurementWorkspace={procurementWorkspace}
             canSwitchProcurementWorkspace={canSwitchProcurementWorkspace}
             assignedWorkspaces={assignedWorkspaces}
+            adminModules={adminModules}
             navBadges={navBadges}
           />
         ) : null}

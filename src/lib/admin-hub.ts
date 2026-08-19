@@ -1,4 +1,4 @@
-export type AdminHubTab = "system" | "users" | "sales";
+export type AdminHubTab = "system" | "users" | "sales" | "mail";
 
 export const ADMIN_HUB_TAB_COPY: Record<
   AdminHubTab,
@@ -16,6 +16,10 @@ export const ADMIN_HUB_TAB_COPY: Record<
     label: "Handlowcy",
     hint: "Osoby, e-maile i powiązania z kontami",
   },
+  mail: {
+    label: "Maile",
+    hint: "Harmonogramy raportów, odbiorcy i rejestr wysyłek",
+  },
 };
 
 export function adminHubPaths() {
@@ -23,12 +27,14 @@ export function adminHubPaths() {
     system: "/admin",
     users: "/admin/uzytkownicy",
     sales: "/admin/handlowcy",
+    mail: "/admin/mail",
   } as const;
 }
 
 export function activeAdminHubTab(pathname: string): AdminHubTab {
   if (pathname.startsWith("/admin/uzytkownicy")) return "users";
   if (pathname.startsWith("/admin/handlowcy")) return "sales";
+  if (pathname.startsWith("/admin/mail")) return "mail";
   return "system";
 }
 
@@ -40,5 +46,7 @@ export function adminHubHint(tab: AdminHubTab): string {
       return "Konto logowania ≠ karta handlowca: handlowiec musi być na liście Handlowcy, potem tworzysz konto z rolą „handlowiec” i powiązaniem. Zaproszenia generujesz z zakładki Handlowcy.";
     case "sales":
       return "Lista osób do powiadomień i panelu „Moje zamówienia”. Grupy (Sklep, Biuro) zakładasz w menu Grupy; kierowników przypisujesz w zakładce Konta.";
+    case "mail":
+      return "Zaplanowane maile raportowe: odbiorcy, harmonogram i pełna historia wysyłek z brakami danych.";
   }
 }

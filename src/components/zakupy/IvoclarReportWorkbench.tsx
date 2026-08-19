@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import {
   actionExportIvoclarInventoryXlsx,
@@ -277,7 +278,11 @@ export function IvoclarReportWorkbench({
           {IVOCLAR_REPORT_COPY.sourceNote} {IVOCLAR_REPORT_COPY.inventoryNote}
         </p>
         <p className="mt-1.5">
-          {IVOCLAR_REPORT_COPY.sendScheduleNote} {IVOCLAR_REPORT_COPY.sendToNote}
+          {IVOCLAR_REPORT_COPY.sendScheduleNote} {IVOCLAR_REPORT_COPY.sendToNote}{" "}
+          <Link href="/admin/mail/ivoclar_weekly" className="font-medium text-indigo-700 hover:underline">
+            Centrum maili (harmonogram i logi)
+          </Link>
+          .
         </p>
       </Alert>
 

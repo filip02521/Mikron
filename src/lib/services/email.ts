@@ -58,6 +58,77 @@ export async function sendHtmlEmail(params: {
   return { ok: true, id: data?.id ?? "" };
 }
 
+export type EmailAttachmentInput = {
+  filename: string;
+  content: string;
+  contentType?: string;
+};
+
+export type MultiRecipientEmailParams = {
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
+  subject: string;
+  html: string;
+  attachments?: EmailAttachmentInput[];
+};
+
+export async function sendHtmlEmailWithAttachments(
+  params: MultiRecipientEmailParams
+): Promise<
+  | { ok: true; id: string; deliveredTo: string[] }
+  | { ok: false; error: string; intendedTo: string[] }
+> {
+  const resend = getResend();
+  const intendedTo = params.to.filter(Boolean);
+  const intendedCc = (params.cc ?? []).filter(Boolean);
+  const intendedBcc = (params.bcc ?? []).filter(Boolean);
+
+  if (!intendedTo.length) {
+    return { ok: false, error: "Brak odbiorców TO", intendedTo: [] };
+  }
+
+  const overrideTo = getEmailOverrideTo();
+  const to = overrideTo ? [overrideTo] : intendedTo;
+  const cc = overrideTo ? [] : intendedCc;
+  const bcc = overrideTo ? [] : intendedBcc;
+  const subject = overrideTo
+    ? `[TEST → ${intendedTo.join(", ")}] ${params.subject}`
+    : params.subject;
+
+  if (!resend) {
+    return {
+      ok: false,
+      error:
+        "Brak RESEND_API_KEY — dodaj do .env.local i zrestartuj serwer (npm run dev)",
+      intendedTo,
+    };
+  }
+
+  const attachments = (params.attachments ?? []).map((a) => ({
+    filename: a.filename,
+    content: a.content,
+    contentType:
+      a.contentType ??
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  }));
+
+  const { data, error } = await resend.emails.send({
+    from: getEmailFromAddress(),
+    to,
+    cc: cc.length ? cc : undefined,
+    bcc: bcc.length ? bcc : undefined,
+    subject,
+    html: params.html,
+    attachments: attachments.length ? attachments : undefined,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message, intendedTo };
+  }
+  return { ok: true, id: data?.id ?? "", deliveredTo: to };
+}
+
 export async function sendDeliveryNotificationEmails(
   notifications: Map<string, SalesPersonEmailBatch>
 ): Promise<EmailSendResult> {
