@@ -4168,7 +4168,22 @@ export async function actionSetZdEstimateSnapshotHistoryEligible(input: {
 
 const ZD_ESTIMATE_UI_SESSION_TTL_MS = 60 * 60 * 1000; // housekeeping; timer liczy się po stronie klienta
 
+const ZD_ESTIMATE_UI_SESSION_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 type ZdEstimateUiSessionPayload = ZdEstimateUiSessionSnapshot;
+
+function parseZdEstimateUiSessionId(
+  raw: string | null | undefined
+): string | null {
+  const id = String(raw ?? "").trim();
+  if (!id || !ZD_ESTIMATE_UI_SESSION_ID_RE.test(id)) return null;
+  return id.toLowerCase();
+}
+
+function revalidateZdEstimateUiSessionPaths() {
+  revalidatePath("/zakupy/szacunek");
+}
 
 export async function actionCreateZdEstimateUiSession(input: {
   payload: ZdEstimateUiSessionPayload;
@@ -4208,6 +4223,7 @@ export async function actionCreateZdEstimateUiSession(input: {
     return { ok: false, message: error?.message ?? "Nie udało się utworzyć sesji." };
   }
 
+  revalidateZdEstimateUiSessionPaths();
   return { ok: true, sessionId: data.id };
 }
 
@@ -4222,6 +4238,11 @@ export async function actionUpsertZdEstimateUiSessionSnapshot(input: {
   const user = await getSessionUser();
   if (!user) {
     return { ok: false, message: "Brak sesji.", reason: "error" };
+  }
+
+  const sessionId = parseZdEstimateUiSessionId(input.sessionId);
+  if (!sessionId) {
+    return { ok: false, message: "Nieprawidłowy identyfikator sesji.", reason: "error" };
   }
 
   const supabase = createAdminClient();
@@ -4239,7 +4260,7 @@ export async function actionUpsertZdEstimateUiSessionSnapshot(input: {
       schema_version: input.schemaVersion,
       updated_at: now.toISOString(),
     })
-    .eq("id", input.sessionId)
+    .eq("id", sessionId)
     .eq("owner_user_id", user.id)
     .eq("status", "active")
     .select("id")
@@ -4259,6 +4280,7 @@ export async function actionUpsertZdEstimateUiSessionSnapshot(input: {
     };
   }
 
+  revalidateZdEstimateUiSessionPaths();
   return { ok: true, sessionId: data.id };
 }
 
@@ -4280,12 +4302,17 @@ export async function actionGetZdEstimateUiSession(input: {
     return { ok: false, message: "Brak sesji.", reason: "not_found" };
   }
 
+  const sessionId = parseZdEstimateUiSessionId(input.sessionId);
+  if (!sessionId) {
+    return { ok: false, message: "Nieprawidłowy identyfikator sesji.", reason: "not_found" };
+  }
+
   const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from("zd_estimate_ui_sessions")
     .select("payload, schema_version, status, expires_at, updated_at")
-    .eq("id", input.sessionId)
+    .eq("id", sessionId)
     .eq("owner_user_id", user.id)
     .maybeSingle();
 
@@ -4306,8 +4333,9 @@ export async function actionGetZdEstimateUiSession(input: {
     await supabase
       .from("zd_estimate_ui_sessions")
       .delete()
-      .eq("id", input.sessionId)
+      .eq("id", sessionId)
       .eq("owner_user_id", user.id);
+    revalidateZdEstimateUiSessionPaths();
     return { ok: false, message: "Sesja wygasła.", reason: "expired" };
   }
 
@@ -4329,18 +4357,24 @@ export async function actionDeleteZdEstimateUiSession(input: {
     return { ok: false, message: "Brak sesji." };
   }
 
+  const sessionId = parseZdEstimateUiSessionId(input.sessionId);
+  if (!sessionId) {
+    return { ok: false, message: "Nieprawidłowy identyfikator sesji." };
+  }
+
   const supabase = createAdminClient();
 
   const { error } = await supabase
     .from("zd_estimate_ui_sessions")
     .delete()
-    .eq("id", input.sessionId)
+    .eq("id", sessionId)
     .eq("owner_user_id", user.id);
 
   if (error) {
     return { ok: false, message: error.message };
   }
 
+  revalidateZdEstimateUiSessionPaths();
   return { ok: true };
 }
 

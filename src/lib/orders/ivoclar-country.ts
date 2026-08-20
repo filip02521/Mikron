@@ -503,7 +503,7 @@ function formatPostalForCountry(
     return nospace;
   }
   if (shape === "pl_hyphen") return raw;
-  return raw || null;
+  return raw;
 }
 
 type Ranked = {
