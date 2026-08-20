@@ -149,6 +149,7 @@ export async function actionCreateAppUser(form: {
       createdAt: created.user.created_at ?? new Date().toISOString(),
       lastSignInAt: null,
       assignedWorkspaces: form.role === "zakupy" ? (form.assignedWorkspaces ?? []) : [],
+      mailCenterModuleEnabled: false,
     },
   };
 }

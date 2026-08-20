@@ -13,7 +13,7 @@
 #   --output FILE       plik wyjściowy (domyślnie /tmp/system-dostaw.cron)
 #   --base URL          baza HTTP aplikacji (domyślnie http://127.0.0.1:PORT)
 #   --from-env FILE     wczytaj env z innego pliku zamiast .env.local
-#   --test [JOB]        wywołaj endpoint (morning|process-deliveries|informacja-stock-sync|catalog-zd-sync|zd-eta-sync|morning-sync)
+#   --test [JOB]        wywołaj endpoint (morning|process-deliveries|informacja-stock-sync|catalog-zd-sync|zd-eta-sync|morning-sync|scheduled-mails)
 #   --force             przy --test dodaj ?force=1 (pomija okna czasowe)
 #
 set -euo pipefail
@@ -102,7 +102,8 @@ cron_path_for_job() {
     catalog-zd-sync) echo "/api/cron/catalog-zd-sync" ;;
     zd-eta-sync) echo "/api/cron/zd-eta-sync" ;;
     morning-sync) echo "/api/cron/morning-sync" ;;
-    *) die "Nieznany job: $1 (morning|process-deliveries|informacja-stock-sync|catalog-zd-sync|zd-eta-sync|morning-sync)" ;;
+    scheduled-mails) echo "/api/cron/scheduled-mails" ;;
+    *) die "Nieznany job: $1 (morning|process-deliveries|informacja-stock-sync|catalog-zd-sync|zd-eta-sync|morning-sync|scheduled-mails)" ;;
   esac
 }
 
@@ -149,6 +150,9 @@ BASE=${BASE_URL}
 # Pon–pt co 2 h 8–18 — backup sync terminów ZD (w godzinach pracy)
 0 8,10,12,14,16,18 * * 1-5 root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/zd-eta-sync" >> /var/log/system-dostaw-cron.log 2>&1
 
+# Pon 7–9 — maile raportowe Ivoclar
+0 7-9 * * 1 root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/scheduled-mails" >> /var/log/system-dostaw-cron.log 2>&1
+
 # Noc 02:00–04:40 co 20 min — synchronizacja katalogu ZD (do ~14 min na wywołanie)
 0 2 * * * root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/catalog-zd-sync" >> /var/log/system-dostaw-catalog.log 2>&1
 20 2 * * * root curl -fsS -H "Authorization: Bearer \$CRON_SECRET" "\$BASE/api/cron/catalog-zd-sync" >> /var/log/system-dostaw-catalog.log 2>&1
@@ -175,6 +179,7 @@ log "  06:00 pn–pt     → /api/cron/morning"
 log "  08–18 pn–pt    → /api/cron/process-deliveries (co godzinę)"
 log "  08–18 pn–pt    → /api/cron/informacja-stock-sync (co godzinę)"
 log "  08–18 pn–pt    → /api/cron/zd-eta-sync (8,10,12,14,16,18)"
+log "  07–09 pn       → /api/cron/scheduled-mails (Ivoclar weekly)"
 log "  02:00–04:40     → /api/cron/catalog-zd-sync (co 20 min, noc, Subiekt LAN)"
 log ""
 log "Baza HTTP: ${BASE_URL}"

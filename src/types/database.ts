@@ -550,6 +550,93 @@ export type ZdProductBomComponent = {
   component_nazwa: string | null;
 };
 
+export type MailJobRecipientRole = "to" | "cc" | "bcc";
+
+export type MailSendTriggerKind = "cron" | "manual" | "test";
+
+export type MailSendStatus =
+  | "pending"
+  | "generating"
+  | "sent"
+  | "failed"
+  | "blocked"
+  | "skipped";
+
+export type MailSendIssueSeverity = "blocking" | "warning" | "info";
+
+export type AdminModuleSlug = "ivoclar_weekly_mail_center";
+
+export type UserAdminModule = {
+  user_id: string;
+  module_slug: AdminModuleSlug;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MailJobDefinition = {
+  id: string;
+  label: string;
+  description: string;
+  enabled: boolean;
+  schedule_label: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MailJobRecipient = {
+  id: string;
+  job_id: string;
+  email: string;
+  display_name: string | null;
+  recipient_role: MailJobRecipientRole;
+  enabled: boolean;
+  sort_order: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MailSendLog = {
+  id: string;
+  job_id: string;
+  period_key: string;
+  attempt_no: number;
+  trigger_kind: MailSendTriggerKind;
+  triggered_by: string | null;
+  status: MailSendStatus;
+  period_from: string | null;
+  period_to: string | null;
+  subject: string | null;
+  resend_message_ids: string[];
+  recipient_snapshot: unknown;
+  attachment_manifest: unknown;
+  summary: Record<string, unknown>;
+  events: MailSendEvent[];
+  error_message: string | null;
+  had_warnings: boolean;
+  started_at: string;
+  finished_at: string | null;
+  created_at: string;
+};
+
+export type MailSendEvent = {
+  at: string;
+  kind: string;
+  message?: string;
+};
+
+export type MailSendIssue = {
+  id: string;
+  send_log_id: string;
+  severity: MailSendIssueSeverity;
+  code: string;
+  message: string;
+  context: Record<string, unknown>;
+  count: number;
+};
+
 export const LOCATION_FLAGS: Record<SupplierLocation, string> = {
   POLSKA: "🇵🇱 ",
   ZAGRANICA: "🌍 ",

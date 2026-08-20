@@ -39,6 +39,7 @@ import {
   redirectWithSession,
   refreshSupabaseSession,
 } from "@/lib/supabase/middleware";
+import { hasMailCenterModuleForUserId } from "@/lib/admin-modules";
 import {
   isPasswordChangeExemptApiPath,
   MUST_CHANGE_PASSWORD_MESSAGE,
@@ -242,7 +243,14 @@ export async function proxy(request: NextRequest) {
         workspaces
       );
 
+  const isMailCenterRoute = pathname.startsWith("/admin/mail");
+  const hasMailCenterModule =
+    isMailCenterRoute && role !== "admin"
+      ? await hasMailCenterModuleForUserId(user.id)
+      : false;
+
   if (
+    !hasMailCenterModule &&
     !canAccessPath(role, pathname, {
       previewSalesPersonId,
       adminPanelContext,
@@ -266,7 +274,7 @@ export async function proxy(request: NextRequest) {
     sessionResponse.cookies.set(buildProcurementWorkspaceCookie(procurementWorkspace));
   }
 
-  if (matchesPrefix(pathname, ADMIN_PREFIXES) && role !== "admin") {
+  if (matchesPrefix(pathname, ADMIN_PREFIXES) && role !== "admin" && !(isMailCenterRoute && hasMailCenterModule)) {
     return redirectWithSession(
       request,
       sessionResponse,

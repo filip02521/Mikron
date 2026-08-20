@@ -37,6 +37,7 @@ export function MobileOperationsNav({
   procurementWorkspace = null,
   canSwitchProcurementWorkspace = false,
   assignedWorkspaces,
+  adminModules = [],
   navBadges = { nowe: 0, weryfikacja: 0, realizacja: 0 },
 }: {
   role: UserRole;
@@ -44,6 +45,7 @@ export function MobileOperationsNav({
   procurementWorkspace?: ProcurementWorkspace | null;
   canSwitchProcurementWorkspace?: boolean;
   assignedWorkspaces?: Workspace[];
+  adminModules?: string[];
   navBadges?: {
     nowe?: number;
     weryfikacja?: number;
@@ -66,7 +68,13 @@ export function MobileOperationsNav({
           badges: navBadges,
         })
       : navForRole(role, navBadges);
-  const groups = filterNavGroupsByAccess(rawGroups, role, assignedWorkspaces, procurementWorkspace);
+  const groups = filterNavGroupsByAccess(
+    rawGroups,
+    role,
+    assignedWorkspaces,
+    procurementWorkspace,
+    adminModules
+  );
   const primaryItems = navMobilePrimaryItems(groups);
   const overflowItems = navMobileOverflowItems(groups);
   const allPrimaryHrefs = primaryItems.map((item) => item.href);

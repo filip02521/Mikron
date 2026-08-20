@@ -21,6 +21,7 @@ Opcjonalnie: `INFORMACJA_STOCK_AUTO_ENABLED=1` w `.env.local`, aby włączyć au
 | `informacja-stock-sync` | `/api/cron/informacja-stock-sync` | **08:00–18:00 co godz.** | Auto-powiadomienia „Powiadom, gdy będzie na magazynie” |
 | `zd-eta-sync` | `/api/cron/zd-eta-sync` | **08:00–18:00 co 2 h** | Backup sync terminów ZD na prośbach |
 | `catalog-zd-sync` | `/api/cron/catalog-zd-sync` | **codziennie 02:00–04:40 co 20 min** | Indeks ZD + import katalogu (noc) |
+| `scheduled-mails` | `/api/cron/scheduled-mails` | **pn 07:00, 08:00, 09:00** | Raport Ivoclar (Sellout + Inventory) — poprzedni tydzień |
 | `morning-sync` | `/api/cron/morning-sync` | **ręcznie** | Tylko przeliczenie harmonogramów (serwis / test) |
 
 Źródło prawdy dla nazw jobów: `installer/cron-jobs.ps1`.

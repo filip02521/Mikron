@@ -2,6 +2,9 @@
  * Teksty UI kreatora ZD — polszczyzna dla zakupów, bez żargonu API/SQL.
  */
 
+import { formatWarsawDateTime } from "@/lib/time/warsaw";
+import { formatZdEstimateElapsedCompact } from "@/lib/orders/zd-estimate-loading-ui";
+
 /** Krótki flow w intro — ten sam na loadingu i stronie (bez skoku copy). */
 export const ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION =
   "Zakres Subiekta → lista do zamówienia → Utwórz ZD.";
@@ -229,6 +232,113 @@ export function zdEstimateLoadingBusyDetailProgress(): string {
 
 export function zdEstimateLoadingBusyDetailRoute(): string {
   return "wczytywanie ustawień";
+}
+
+export function zdEstimateLoadingBusyDetailSessionResume(): string {
+  return "przywracanie sesji";
+}
+
+/**
+ * Route loading przy powrocie do zapisanej sesji (resume=1 / token away).
+ * Inne copy niż pierwsze wejście — nie sugerujemy „nowego” kreatora.
+ */
+export function zdEstimateSessionResumeRouteLoadingAriaLabel(): string {
+  return "Wznawiam sesję kreatora ZD";
+}
+
+export function zdEstimateSessionResumeRouteLoadingTitle(): string {
+  return "Wracam do sesji…";
+}
+
+export function zdEstimateSessionResumeRouteLoadingHint(): string {
+  return "Przywracam zapisaną listę i Twoje zmiany — to nie jest ponowne liczenie.";
+}
+
+export function zdEstimateSessionResumeRouteLoadingFooter(): string {
+  return "Kontynuujesz poprzednią pracę. „Policz listę” uruchomisz tylko wtedy, gdy sam tego chcesz.";
+}
+
+export function zdEstimateSessionResumeRouteLoadingSteps(): ReadonlyArray<{
+  id: string;
+  title: string;
+  activeHint: string;
+  doneHint: string;
+}> {
+  return [
+    {
+      id: "open",
+      title: "Otwieram kreator",
+      activeHint: "Wchodzę tam, gdzie skończyłeś…",
+      doneHint: "Kreator gotowy",
+    },
+    {
+      id: "snapshot",
+      title: "Wczytuję zapis sesji",
+      activeHint: "Pobieram snapshot listy z serwera…",
+      doneHint: "Snapshot wczytany",
+    },
+    {
+      id: "restore",
+      title: "Przywracam widok",
+      activeHint: "Składam listę, filtry i zmiany…",
+      doneHint: "Możesz kontynuować",
+    },
+  ];
+}
+
+/** Panel w workbenchu podczas restoreExternalSession. */
+export function zdEstimateSessionResumeProgressTitle(input: {
+  returningFromAway: boolean;
+}): string {
+  return input.returningFromAway
+    ? "Wracam do sesji kreatora…"
+    : "Przywracam sesję…";
+}
+
+export function zdEstimateSessionResumeProgressCompleteTitle(): string {
+  return "Sesja gotowa";
+}
+
+export function zdEstimateSessionResumeProgressCompleteHint(): string {
+  return "Pokazuję zapisaną listę…";
+}
+
+export function zdEstimateSessionResumeProgressFooter(): string {
+  return "To nie jest nowe liczenie — wracasz do poprzedniego wyniku „Policz”.";
+}
+
+export function zdEstimateSessionResumeProgressSteps(): ReadonlyArray<{
+  id: string;
+  title: string;
+  activeHint: string;
+  doneHint: string;
+}> {
+  return [
+    {
+      id: "token",
+      title: "Wznawiam timer sesji",
+      activeHint: "Zatrzymuję licznik wygaśnięcia…",
+      doneHint: "Sesja aktywna w kreatorze",
+    },
+    {
+      id: "fetch",
+      title: "Pobieram zapis",
+      activeHint: "Wczytuję snapshot z bazy…",
+      doneHint: "Snapshot gotowy",
+    },
+    {
+      id: "apply",
+      title: "Przywracam listę",
+      activeHint: "Odtwarzam pozycje Do ZD i Twoje edycje…",
+      doneHint: "Lista przywrócona",
+    },
+  ];
+}
+
+export function zdEstimateSessionResumeScopeChipLabel(
+  scopeMode: "grupa" | "cecha"
+): string {
+  return scopeMode === "cecha" ? "Cecha" : "Grupa";
 }
 
 /**
@@ -980,3 +1090,95 @@ export function formatImplicitPieceSnapshotHint(
 ): string | null {
   return buildImplicitPieceSnapshotNotice(lines, maxNames)?.summaryLine ?? null;
 }
+
+// ============================================================================
+// Zewnętrzna sesja kreatora ZD (po „Policz” i wyjściu na inne stronę)
+// ============================================================================
+
+export const zdEstimateExternalSessionFloatingTitle = "Sesja Kreatora ZD";
+
+export function zdEstimateExternalSessionFloatingCountdown(input: {
+  remainingMs: number;
+}): string {
+  return `Wygasa za ${formatZdEstimateElapsedCompact(input.remainingMs)}`;
+}
+
+export const zdEstimateExternalSessionFloatingHint =
+  "Po powrocie wczytamy listę i Twoje zmiany — bez ponownego liczenia.";
+
+export const zdEstimateExternalSessionFloatingCompactLabel = "Sesja";
+
+export const zdEstimateExternalSessionReturnCtaLabel = "Wróć do kreatora";
+
+export const zdEstimateExternalSessionCloseCtaLabel = "Zamknij sesję";
+
+export const zdEstimateExternalSessionCancelButtonLabel =
+  "Anuluj sesję kreatora";
+
+export const zdEstimateExternalSessionActiveStatusTitle = "Sesja aktywna";
+
+export const zdEstimateExternalSessionActiveStatusBody =
+  "Na tym ekranie nie wygasa. Po wyjściu z kreatora masz 3 min na powrót.";
+
+export function zdEstimateExternalSessionRestoredToastDescription(input: {
+  updatedAt: string | null;
+}): string {
+  const when = input.updatedAt ? formatWarsawDateTime(input.updatedAt) : null;
+  return when
+    ? `Przywrócono listę i zmiany z ${when}. To nie było ponowne liczenie — możesz od razu kontynuować.`
+    : "Przywrócono zapisaną listę i zmiany. To nie było ponowne liczenie — możesz od razu kontynuować.";
+}
+
+export const zdEstimateExternalSessionRestoredToastTitle =
+  "Sesja wznowiona";
+
+export const zdEstimateExternalSessionExpiredAlertTitle =
+  "Poprzednia sesja wygasła";
+
+export const zdEstimateExternalSessionExpiredAlertBody =
+  "Nie można wznowić poprzedniego wyniku. Policz listę od nowa, aby kontynuować.";
+
+export const zdEstimateExternalSessionRestoreFailedAlertTitle =
+  "Nie udało się przywrócić poprzedniej sesji";
+
+export const zdEstimateExternalSessionRestoreFailedAlertBody =
+  "Poprzedniej sesji nie udało się przywrócić — policz ponownie.";
+
+export const zdEstimateExternalSessionPersistFailedAlertTitle =
+  "Lista jest gotowa, ale nie zapisaliśmy sesji wznowienia";
+
+export const zdEstimateExternalSessionPersistFailedAlertBody =
+  "Jeśli opuścisz kreator, nie wrócisz do tego wyniku po nawigacji.";
+
+export const zdEstimateExternalSessionAutorunConflictTitle =
+  "Masz aktywną sesję kreatora";
+
+export const zdEstimateExternalSessionAutorunConflictMessage =
+  "Możesz wznowić poprzednią sesję albo odrzucić ją i policzyć listę od nowa.";
+
+export const zdEstimateExternalSessionAutorunResumeLabel =
+  "Wznów poprzednią sesję";
+
+export const zdEstimateExternalSessionAutorunDiscardLabel =
+  "Odrzuć sesję i policz od nowa";
+
+export const zdEstimateExternalSessionScopeChangeTitle =
+  "Zamknąć obecną sesję?";
+
+export const zdEstimateExternalSessionScopeChangeMessage =
+  "Zmiana dostawcy, grupy, cechy lub okna sprzedaży zakończy obecną sesję i usunie jej wynik.";
+
+export const zdEstimateExternalSessionScopeChangeConfirmLabel =
+  "Kontynuuj i zamknij sesję";
+
+export const zdEstimateExternalSessionScopeChangeCancelLabel =
+  "Zostań przy obecnej sesji";
+
+export const zdEstimateExternalSessionCancelConfirmTitle =
+  "Anulować sesję kreatora ZD?";
+
+export const zdEstimateExternalSessionCancelConfirmMessage =
+  "Zamkniesz bieżącą sesję kreatora. Nie będziesz mógł wrócić do przywróconego snapshotu po nawigacji.";
+
+export const zdEstimateExternalSessionCancelConfirmLabel = "Anuluj sesję";
+export const zdEstimateExternalSessionCancelDialogCancelLabel = "Zostań";

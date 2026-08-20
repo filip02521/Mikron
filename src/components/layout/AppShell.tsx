@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { Suspense } from "react";
 import { getSessionUser } from "@/lib/auth";
+import { fetchEnabledAdminModulesForUserId } from "@/lib/admin-modules";
 import { isAuthLayoutPath } from "@/lib/auth/auth-layout-paths";
 import {
   effectiveNavRole,
@@ -45,6 +46,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     Boolean(session?.salesPersonId) &&
     !session?.mustChangePassword &&
     !session?.salesOnboardingCompletedAt;
+
+  const adminModules =
+    !lightShell && session
+      ? await fetchEnabledAdminModulesForUserId(session.id)
+      : [];
 
   const teethProductInfoResult =
     session && !lightShell
@@ -102,6 +108,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       activeDelegations={activeDelegations}
       uniformBackground={session?.uniformBackground ?? false}
       fontScale={session?.fontScale ?? "default"}
+      adminModules={adminModules}
     >
       {children}
     </AppShellClient>

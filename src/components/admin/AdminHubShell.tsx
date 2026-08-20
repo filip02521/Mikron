@@ -1,6 +1,5 @@
 "use client";
 
-import { AdminHubNav } from "@/components/admin/AdminHubNav";
 import { NavIcon } from "@/components/icons/NavIcon";
 import { navIconTileIdleClass, type NavIconKey } from "@/components/icons/NavIcon";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
@@ -12,12 +11,14 @@ const TAB_ICON: Record<AdminHubTab, NavIconKey> = {
   system: "admin",
   users: "teamAccounts",
   sales: "team",
+  mail: "admin",
 };
 
 const TAB_TITLE: Record<AdminHubTab, string> = {
   system: "Administracja",
   users: "Konta użytkowników",
   sales: "Handlowcy",
+  mail: "Centrum maili",
 };
 
 const TAB_DESCRIPTION: Record<AdminHubTab, string> = {
@@ -26,6 +27,7 @@ const TAB_DESCRIPTION: Record<AdminHubTab, string> = {
   users: "Logowanie do systemu, role i hasła. Handlowiec musi mieć kartę w zakładce Handlowcy.",
   sales:
     "Osoby kontaktowe, powiadomienia e-mail i linki zaproszeń do zakładania kont.",
+  mail: "Harmonogramy maili raportowych, odbiorcy i rejestr wysyłek z brakami danych.",
 };
 
 export function AdminHubShell({
@@ -61,10 +63,6 @@ export function AdminHubShell({
           description={headerDescription}
           action={action}
         />
-
-        <div className="border-b border-slate-100 bg-slate-50/40 px-3 py-3 sm:px-4">
-          <AdminHubNav activeTab={activeTab} embedded />
-        </div>
 
         <div className={adminHubBodyClass}>{children}</div>
       </Card>

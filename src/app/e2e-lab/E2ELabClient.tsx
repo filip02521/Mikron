@@ -4,6 +4,7 @@ import { useState } from "react";
 import { InformacjaFlowPicker } from "@/components/orders/InformacjaFlowPicker";
 import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reorder";
 import { E2ELabPreviewBlockerSection } from "./E2ELabPreviewBlockerSection";
+import { E2ELabExternalSessionSection } from "./E2ELabExternalSessionSection";
 import { E2ELabZdEstimateIndividualsSection } from "./E2ELabZdEstimateIndividualsSection";
 
 /** Izolowany harness UI dla testów Playwright — bez auth. */
@@ -24,6 +25,7 @@ export function E2ELabClient() {
       </section>
 
       <E2ELabPreviewBlockerSection />
+      <E2ELabExternalSessionSection />
       <E2ELabZdEstimateIndividualsSection />
     </main>
   );

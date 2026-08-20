@@ -56,6 +56,7 @@ export default async function AdminPage() {
       catalog_zd_sync: null,
       zd_eta_sync: null,
       informacja_stock_sync: null,
+      scheduled_mails: null,
     } satisfies Record<CronJobId, null>),
     informacjaStockAutoEnabled: true,
   };

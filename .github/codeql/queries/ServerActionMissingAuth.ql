@@ -35,6 +35,8 @@ predicate isAuthFunction(string fnName) {
     "requireReceiveNotificationFlush",
     "requireSupplierManagement",
     "requireSubiektLookup",
+    "requireMailCenterAccess",
+    "requireMailCenterForMutation",
     // Helper functions that internally call getSessionUser*()
     "assertSalesAccess",
     "assertProcurementAccess",

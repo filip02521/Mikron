@@ -1,9 +1,15 @@
 import { requireAdmin, requireOperations, requireWarehouse, getSessionUser } from "@/lib/auth";
 import { canAccessOperations, canManageSuppliers } from "@/lib/auth-roles";
+import { requireMailCenterAccess } from "@/lib/auth/admin-modules";
 
 /** Defense-in-depth obok proxy — sekcja /admin. */
 export async function ensureAdminSection(): Promise<void> {
   await requireAdmin();
+}
+
+/** Centrum maili: `role=admin` lub moduł `MAIL_CENTER_MODULE_SLUG`. */
+export async function ensureMailCenterSectionAccess(): Promise<void> {
+  await requireMailCenterAccess();
 }
 
 /** Panel operacji zakupowych (admin + zakupy + zakupy_zeby dla dostawców). */

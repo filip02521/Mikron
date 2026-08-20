@@ -14,6 +14,7 @@ import {
   actionGeneratePasswordResetLink,
   actionDeleteAppUser,
 } from "@/app/actions/users";
+import { actionSetMailCenterModuleEnabledForUser } from "@/app/actions/admin-modules";
 import { SetUserPasswordDialog } from "@/components/admin/SetUserPasswordDialog";
 import { UsersRoleHelpPanel } from "@/components/admin/UsersRoleHelpPanel";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -21,6 +22,7 @@ import { Field, Input, Select } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ModalShell } from "@/components/ui/ModalShell";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Badge } from "@/components/ui/Badge";
@@ -72,6 +74,11 @@ function managerGroupToggleClass(active: boolean): string {
   );
 }
 
+function workspaceSummaryLabel(workspaces: Workspace[]): string {
+  if (!workspaces.length) return "Brak grup";
+  return `${workspaces.length} ${workspaces.length === 1 ? "grupa" : workspaces.length < 5 ? "grupy" : "grup"}`;
+}
+
 export function UsersAdminClient({
   initialUsers,
   salesPeople,
@@ -118,6 +125,12 @@ export function UsersAdminClient({
     email: string;
   } | null>(null);
   const [newPassword, setNewPassword] = useState("");
+  const [accessModalUserId, setAccessModalUserId] = useState<string | null>(null);
+
+  // UI: moduły przypisujemy w osobnym modalu, żeby nie rozjeżdżać tabeli wiersz po wierszu.
+  const [moduleModalUser, setModuleModalUser] = useState<AppUserRow | null>(null);
+  const [moduleDraftMailCenterEnabled, setModuleDraftMailCenterEnabled] =
+    useState(false);
 
   const incomingUsersSignature = useMemo(
     () => usersAdminListSignature(initialUsers),
@@ -274,7 +287,22 @@ export function UsersAdminClient({
     });
   };
 
-  const saveUserPermissions = (u: AppUserRow) => {
+  const resetUserDraft = (u: AppUserRow, savedManagerGroups: string[]) => {
+    setEdits((prev) => ({
+      ...prev,
+      [u.id]: {
+        role: u.role,
+        salesPersonId: u.salesPersonId ?? "",
+        assignedWorkspaces: u.assignedWorkspaces ?? [],
+      },
+    }));
+    setManagerGroups((prev) => ({
+      ...prev,
+      [u.id]: [...savedManagerGroups],
+    }));
+  };
+
+  const saveUserPermissions = (u: AppUserRow, options?: { closeModal?: boolean }) => {
     const edit = edits[u.id];
     if (!edit) return;
     start(async () => {
@@ -326,15 +354,558 @@ export function UsersAdminClient({
         [u.id]: {
           role: savedRole,
           salesPersonId: savedSalesPersonId ?? "",
+          assignedWorkspaces: savedRole === "zakupy" ? (edit.assignedWorkspaces ?? []) : [],
         },
       }));
+      if (options?.closeModal) {
+        setAccessModalUserId((current) => (current === u.id ? null : current));
+      }
       setToast(USERS_TOAST.savedPermissions);
     });
   };
 
+  const openModuleModalForUser = (u: AppUserRow) => {
+    setModuleModalUser(u);
+    setModuleDraftMailCenterEnabled(u.mailCenterModuleEnabled);
+  };
+
+  const closeModuleModal = () => setModuleModalUser(null);
+
+  const saveUserModulesFromModal = () => {
+    if (!moduleModalUser) return;
+    const userId = moduleModalUser.id;
+    const enabled = moduleDraftMailCenterEnabled;
+
+    start(async () => {
+      const r = await actionSetMailCenterModuleEnabledForUser({
+        userId,
+        enabled,
+      });
+
+      if ("error" in r) {
+        setToast(toastFromError(r.error));
+        return;
+      }
+
+      setUsers((prev) =>
+        prev.map((x) =>
+          x.id === userId ? { ...x, mailCenterModuleEnabled: enabled } : x
+        )
+      );
+
+      setToast({
+        text: enabled
+          ? "Włączono dostęp do Centrum maili."
+          : "Wyłączono dostęp do Centrum maili.",
+        tone: "success",
+      });
+      closeModuleModal();
+    });
+  };
+
+  const accessModalUser =
+    accessModalUserId ? users.find((user) => user.id === accessModalUserId) ?? null : null;
+  const accessModalEdit = accessModalUser ? edits[accessModalUser.id] : null;
+  const accessModalRole = accessModalEdit?.role ?? accessModalUser?.role ?? null;
+  const accessModalManagerGroups = accessModalUser
+    ? managerGroups[accessModalUser.id] ?? []
+    : [];
+  const accessModalSavedManagerGroups = accessModalUser
+    ? committedManagerGroups[accessModalUser.id] ?? []
+    : [];
+  const accessModalSalesTaken =
+    accessModalUser &&
+    accessModalEdit &&
+    roleRequiresSalesPerson(accessModalEdit.role) &&
+    accessModalEdit.salesPersonId
+      ? users.some(
+          (user) =>
+            user.id !== accessModalUser.id &&
+            user.salesPersonId === accessModalEdit.salesPersonId
+        )
+      : false;
+  const accessModalManagerNeedsGroups =
+    accessModalEdit?.role === "sales_manager" &&
+    salesGroups.length > 0 &&
+    accessModalManagerGroups.length === 0;
+  const accessModalAssignedWorkspaces =
+    accessModalEdit?.assignedWorkspaces ?? accessModalUser?.assignedWorkspaces ?? [];
+  const accessModalLinkedSalesPerson =
+    accessModalUser && accessModalEdit && roleRequiresSalesPerson(accessModalEdit.role)
+      ? salesPersonLabel(
+          salesPeople,
+          accessModalEdit.salesPersonId || accessModalUser.salesPersonId,
+          accessModalUser.salesPersonName
+        )
+      : "—";
+  const accessModalIsDirty =
+    accessModalUser && accessModalEdit
+      ? userRowHasUnsavedChanges(
+          accessModalUser,
+          accessModalEdit,
+          accessModalManagerGroups,
+          accessModalSavedManagerGroups
+        )
+      : false;
+
   return (
     <>
       {toast ? <NoticeToast notice={toast} onDismiss={dismiss} /> : null}
+
+      <ModalShell
+        open={!!accessModalUser}
+        onClose={() => setAccessModalUserId(null)}
+        title="Edytuj konto"
+        description={accessModalUser?.email}
+        titleId="admin-user-access-modal-title"
+        size="lg"
+        tier="raised"
+        disableBackdropClose={pending}
+        loadingMessage={pending ? "Zapisywanie zmian…" : null}
+        bodyClassName="px-5 py-4 sm:px-6"
+        footer={
+          accessModalUser ? (
+            <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                variant="ghost"
+                className="min-h-11 w-full sm:w-auto"
+                onClick={() => setAccessModalUserId(null)}
+                disabled={pending}
+              >
+                Zamknij
+              </Button>
+              <Button
+                variant="secondary"
+                className="min-h-11 w-full sm:w-auto"
+                disabled={pending}
+                onClick={() => resetUserDraft(accessModalUser, accessModalSavedManagerGroups)}
+              >
+                Cofnij zmiany
+              </Button>
+              <Button
+                className="min-h-11 w-full sm:w-auto"
+                disabled={pending || !!accessModalSalesTaken || accessModalManagerNeedsGroups}
+                onClick={() => saveUserPermissions(accessModalUser, { closeModal: true })}
+              >
+                Zapisz konto
+              </Button>
+            </div>
+          ) : null
+        }
+      >
+        {accessModalUser && accessModalEdit && accessModalRole ? (
+          <div className="space-y-5">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-xl border border-slate-200/70 bg-slate-50/70 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                  Rola
+                </p>
+                <div className="mt-2">
+                  <span className={roleBadgeClass(accessModalRole)}>
+                    {ROLE_LABELS[accessModalRole]}
+                  </span>
+                    {accessModalIsDirty ? (
+                      <Badge
+                        variant="warning"
+                        className="mt-2 block text-[10px]"
+                      >
+                        Niezapisane zmiany
+                      </Badge>
+                    ) : null}
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-200/70 bg-slate-50/70 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                  Powiązanie
+                </p>
+                <p className="mt-2 text-sm font-medium text-slate-900">
+                  {accessModalLinkedSalesPerson}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200/70 bg-slate-50/70 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                  Moduły
+                </p>
+                <p className="mt-2 text-sm font-medium text-slate-900">
+                  {accessModalUser.mailCenterModuleEnabled ? "1 aktywny" : "Brak aktywnych"}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200/70 bg-slate-50/70 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                  Ostatnie logowanie
+                </p>
+                <p className="mt-2 text-sm font-medium text-slate-900">
+                  {accessModalUser.lastSignInAt
+                    ? formatPlDate(accessModalUser.lastSignInAt.slice(0, 10))
+                    : "Nigdy"}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+              <div className="space-y-4">
+                <section className="space-y-4 rounded-xl border border-slate-200/70 bg-white/70 p-4">
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                      Dostęp
+                    </p>
+                    <p className="text-sm text-slate-600">
+                      Określ rolę konta i zakres dostępu w systemie.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {accessModalUser.mailCenterModuleEnabled ? (
+                      <Badge variant="success">Centrum maili aktywne</Badge>
+                    ) : (
+                      <Badge variant="default">Centrum maili wyłączone</Badge>
+                    )}
+                  </div>
+
+                  <Field label="Rola konta">
+                    <Select
+                      value={accessModalEdit.role}
+                      onChange={(e) =>
+                        updateEdit(accessModalUser.id, {
+                          role: e.target.value as UserRole,
+                        })
+                      }
+                    >
+                      {ROLE_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+
+                  <Button
+                    variant="outline"
+                    className="justify-center sm:w-fit"
+                    disabled={pending || accessModalRole === "admin"}
+                    onClick={() => openModuleModalForUser(accessModalUser)}
+                  >
+                    Zarządzaj modułami dostępu
+                  </Button>
+                </section>
+
+                <section className="space-y-4 rounded-xl border border-slate-200/70 bg-white/70 p-4">
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                      Powiązania i przypisania
+                    </p>
+                    <p className="text-sm text-slate-600">
+                      Ustal przypięcia do handlowca oraz grup odpowiednich dla roli.
+                    </p>
+                  </div>
+
+                  {roleRequiresSalesPerson(accessModalEdit.role) ? (
+                    <Field
+                      label="Powiązany handlowiec"
+                      hint="Jedna osoba handlowa może być przypięta tylko do jednego konta."
+                    >
+                      <Select
+                        value={accessModalEdit.salesPersonId}
+                        onChange={(e) =>
+                          updateEdit(accessModalUser.id, {
+                            salesPersonId: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="">—</option>
+                        {salesPeople.map((p) => {
+                          const taken =
+                            users.some(
+                              (x) =>
+                                x.id !== accessModalUser.id && x.salesPersonId === p.id
+                            ) && accessModalEdit.salesPersonId !== p.id;
+                          return (
+                            <option key={p.id} value={p.id} disabled={taken}>
+                              {p.name}
+                              {taken ? " · zajęty" : ""}
+                            </option>
+                          );
+                        })}
+                      </Select>
+                      {accessModalSalesTaken ? (
+                        <p className="mt-2 text-xs text-amber-700">
+                          Ten handlowiec ma już inne konto.
+                        </p>
+                      ) : null}
+                    </Field>
+                  ) : null}
+
+                  {accessModalRole === "zakupy" ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-slate-900">Grupy zakupowe</p>
+                        <Badge variant="default">
+                          {workspaceSummaryLabel(accessModalAssignedWorkspaces)}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {PROCUREMENT_WORKSPACE_OPTIONS.map((opt) => {
+                          const checked = accessModalAssignedWorkspaces.includes(opt.value);
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => {
+                                const current = accessModalAssignedWorkspaces;
+                                const next = checked
+                                  ? current.filter((w) => w !== opt.value)
+                                  : [...current, opt.value];
+                                updateEdit(accessModalUser.id, {
+                                  assignedWorkspaces: next as Workspace[],
+                                });
+                              }}
+                              className={managerGroupToggleClass(checked)}
+                            >
+                              {opt.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {accessModalRole === "sales_manager" ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-slate-900">Grupy kierownika</p>
+                        <Badge variant="default">
+                          {accessModalManagerGroups.length
+                            ? `${accessModalManagerGroups.length} aktywne`
+                            : "Brak przypisań"}
+                        </Badge>
+                      </div>
+                      {salesGroups.length ? (
+                        <div className="flex flex-wrap gap-1">
+                          {salesGroups.map((g) => {
+                            const checked = accessModalManagerGroups.includes(g.id);
+                            return (
+                              <button
+                                key={g.id}
+                                type="button"
+                                onClick={() => toggleManagerGroup(accessModalUser.id, g.id)}
+                                className={managerGroupToggleClass(checked)}
+                              >
+                                {g.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-amber-700">Brak grup w systemie</span>
+                      )}
+                      {accessModalManagerNeedsGroups ? (
+                        <p className="text-xs text-amber-700">
+                          Wybierz co najmniej jedną grupę.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </section>
+              </div>
+
+              <div className="space-y-4 rounded-xl border border-slate-200/70 bg-slate-50/70 p-4">
+                <div>
+                  <p className="text-sm font-medium text-slate-900">Operacje na koncie</p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                    Szybkie działania pomocnicze bez zmiany danych logowania i roli.
+                  </p>
+                </div>
+
+                <div className="grid gap-2">
+                  <Button
+                    variant="outline"
+                    className="justify-center"
+                    onClick={() => {
+                      setPasswordModal({
+                        userId: accessModalUser.id,
+                        email: accessModalUser.email,
+                      });
+                      setNewPassword("");
+                    }}
+                  >
+                    Ustaw hasło
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="justify-center"
+                    disabled={pending}
+                    onClick={() => {
+                      start(async () => {
+                        const r = await actionGeneratePasswordResetLink(
+                          accessModalUser.email
+                        );
+                        if ("error" in r) {
+                          setToast(toastFromError(r.error));
+                          return;
+                        }
+                        try {
+                          await navigator.clipboard.writeText(r.link);
+                          setToast({
+                            text: "Link do ustawienia hasła skopiowany do schowka.",
+                            tone: "success",
+                          });
+                        } catch {
+                          setToast({
+                            text: `Link: ${r.link}`,
+                            tone: "success",
+                          });
+                        }
+                      });
+                    }}
+                  >
+                    Kopiuj link hasła
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="justify-center"
+                    disabled={pending || accessModalRole === "admin"}
+                    onClick={() => openModuleModalForUser(accessModalUser)}
+                  >
+                    Zarządzaj modułami
+                  </Button>
+                  {accessModalUser.id !== currentUserId ? (
+                    <Button
+                      variant="secondary"
+                      className="justify-center text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                      disabled={pending}
+                      onClick={() => setDeleteTarget(accessModalUser)}
+                    >
+                      Usuń konto
+                    </Button>
+                  ) : null}
+                </div>
+
+                <div className="rounded-lg border border-slate-200/70 bg-white/80 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                    Stan konta
+                  </p>
+                  <div className="mt-2 space-y-2 text-sm text-slate-700">
+                    <div className="flex items-center justify-between gap-3">
+                      <span>E-mail</span>
+                      <span className="break-all text-right font-medium text-slate-900">
+                        {accessModalUser.email}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Powiązany handlowiec</span>
+                      <span className="font-medium text-slate-900">
+                        {accessModalLinkedSalesPerson}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Centrum maili</span>
+                      <Badge
+                        variant={
+                          accessModalUser.mailCenterModuleEnabled
+                            ? "success"
+                            : "default"
+                        }
+                        className="whitespace-nowrap"
+                      >
+                        {accessModalUser.mailCenterModuleEnabled
+                          ? "Aktywne"
+                          : "Wyłączone"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Grupy zakupowe</span>
+                      <span className="font-medium text-slate-900">
+                        {accessModalRole === "zakupy"
+                          ? workspaceSummaryLabel(accessModalAssignedWorkspaces)
+                          : "—"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span>Grupy kierownika</span>
+                      <span className="font-medium text-slate-900">
+                        {accessModalRole === "sales_manager"
+                          ? `${accessModalManagerGroups.length}`
+                          : "—"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </ModalShell>
+
+      <ModalShell
+        open={!!moduleModalUser}
+        onClose={closeModuleModal}
+        title="Moduły dostępu"
+        description={moduleModalUser?.email}
+        titleId="admin-modules-modal-title"
+        size="sm"
+        tier="raised"
+        disableBackdropClose={pending}
+        loadingMessage={pending ? "Zapisywanie modułów…" : null}
+        bodyClassName="px-5 py-4 sm:px-6"
+        footer={
+          <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="ghost"
+              className="min-h-11 w-full sm:w-auto"
+              onClick={closeModuleModal}
+              disabled={pending}
+            >
+              Anuluj
+            </Button>
+            <Button
+              className="min-h-11 w-full sm:w-auto"
+              onClick={saveUserModulesFromModal}
+              disabled={
+                pending ||
+                !moduleModalUser ||
+                moduleModalUser.mailCenterModuleEnabled ===
+                  moduleDraftMailCenterEnabled
+              }
+            >
+              Zapisz
+            </Button>
+          </div>
+        }
+      >
+        {moduleModalUser ? (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-slate-200/70 bg-white/60 p-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-slate-900">
+                    Centrum maili (Ivoclar weekly)
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                    Umożliwia dostęp do `/admin/mail` oraz uruchamianie wysyłek raportów Ivoclar weekly.
+                  </p>
+                </div>
+
+                <label className="flex items-center gap-2 pt-0.5">
+                  <input
+                    type="checkbox"
+                    checked={moduleDraftMailCenterEnabled}
+                    disabled={pending || moduleModalUser.role === "admin"}
+                    onChange={(e) => setModuleDraftMailCenterEnabled(e.target.checked)}
+                    className="h-4 w-4 accent-indigo-600"
+                    aria-label="Centrum maili — włączone/wyłączone"
+                  />
+                  <span className="text-xs text-slate-700">Włączone</span>
+                </label>
+              </div>
+            </div>
+
+            <p className="text-[11px] leading-snug text-slate-500">
+              Panel jest przygotowany do dodania kolejnych modułów: wystarczy dopiąć kolejne sekcje “toggle” w tym miejscu
+              i podłączyć osobne server actions.
+            </p>
+          </div>
+        ) : null}
+      </ModalShell>
 
       <ConfirmDialog
         open={!!deleteTarget}
@@ -583,7 +1154,7 @@ export function UsersAdminClient({
             inset
             density="compact"
             title={`Użytkownicy (${users.length})`}
-            description="Role, powiązania z handlowcami i hasła. Zmiany zapisujesz w wierszu — nie ma autozapisu."
+            description="Lista pokazuje podsumowanie kont i szybkie akcje. Pełną edycję roli, grup i powiązań otwierasz z przycisku Edytuj."
             action={
               <div className="flex flex-wrap items-center justify-end gap-2">
                 {unsavedCount > 0 ? (
@@ -641,7 +1212,15 @@ export function UsersAdminClient({
             />
           ) : (
             <TableScroll>
-              <DataTable>
+              <DataTable className="min-w-[1180px]">
+                <colgroup>
+                  <col className="w-[23%]" />
+                  <col className="w-[26%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[9%]" />
+                  <col className="w-[180px]" />
+                </colgroup>
                 <thead>
                   <tr>
                     <th>E-mail</th>
@@ -665,26 +1244,24 @@ export function UsersAdminClient({
                     );
                     const isSelf = u.id === currentUserId;
                     const displayRole = edit?.role ?? u.role;
-                    const salesTakenByOther =
-                      edit &&
-                      roleRequiresSalesPerson(edit.role) &&
-                      edit.salesPersonId &&
-                      users.some(
-                        (x) =>
-                          x.id !== u.id && x.salesPersonId === edit.salesPersonId
-                      );
-                    const managerNeedsGroups =
-                      edit?.role === "sales_manager" &&
-                      salesGroups.length > 0 &&
-                      draftManagerGroups.length === 0;
+                    const assignedWorkspaces =
+                      edit?.assignedWorkspaces ?? u.assignedWorkspaces ?? [];
+                    const linkedSalesPersonName =
+                      roleRequiresSalesPerson(displayRole)
+                        ? salesPersonLabel(
+                            salesPeople,
+                            edit?.salesPersonId || u.salesPersonId,
+                            u.salesPersonName
+                          )
+                        : "—";
                     return (
                       <tr
                         key={u.id}
                         className={isDirty ? "bg-amber-50/60" : undefined}
                       >
-                        <td>
+                        <td className="align-top">
                           <div className="space-y-1">
-                            <div className="font-medium text-slate-900">
+                            <div className="break-all font-medium text-slate-900">
                               {u.email}
                               {isSelf ? (
                                 <span className="ml-2 text-xs font-normal text-slate-500">
@@ -699,207 +1276,133 @@ export function UsersAdminClient({
                             ) : null}
                           </div>
                         </td>
-                        <td>
+                        <td className="align-top">
                           <div className="space-y-2">
-                            <span className={roleBadgeClass(displayRole)}>
-                              {ROLE_LABELS[displayRole]}
-                            </span>
-                            <Select
-                              className="min-w-[10rem]"
-                              value={edit?.role ?? u.role}
-                              onChange={(e) =>
-                                updateEdit(u.id, { role: e.target.value as UserRole })
-                              }
-                            >
-                              {ROLE_OPTIONS.map((o) => (
-                                <option key={o.value} value={o.value}>
-                                  {o.label}
-                                </option>
-                              ))}
-                            </Select>
-                            {displayRole === "zakupy" ? (
-                              <div className="flex flex-wrap gap-1.5 pt-1">
-                                {PROCUREMENT_WORKSPACE_OPTIONS.map((opt) => {
-                                  const checked = (edit?.assignedWorkspaces ?? u.assignedWorkspaces ?? []).includes(opt.value);
-                                  return (
-                                    <button
-                                      key={opt.value}
-                                      type="button"
-                                      onClick={() => {
-                                        const current = edit?.assignedWorkspaces ?? u.assignedWorkspaces ?? [];
-                                        const next = checked
-                                          ? current.filter((w) => w !== opt.value)
-                                          : [...current, opt.value];
-                                        updateEdit(u.id, { assignedWorkspaces: next as Workspace[] });
-                                      }}
-                                      className={managerGroupToggleClass(checked)}
-                                    >
-                                      {opt.label}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            ) : null}
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={roleBadgeClass(displayRole)}>
+                                {ROLE_LABELS[displayRole]}
+                              </span>
+                              <Badge
+                                variant={
+                                  u.mailCenterModuleEnabled ? "success" : "default"
+                                }
+                                className="whitespace-nowrap"
+                              >
+                                Centrum maili:{" "}
+                                {u.mailCenterModuleEnabled ? "Aktywne" : "Wyłączone"}
+                              </Badge>
+                            </div>
+                            <p className="text-xs leading-relaxed text-slate-500">
+                              {isDirty
+                                ? "Masz lokalne zmiany w uprawnieniach tego konta."
+                                : "Rola i dostęp są zapisane zgodnie z aktualnym stanem konta."}
+                            </p>
                           </div>
                         </td>
-                        <td>
-                          {edit && roleRequiresSalesPerson(edit.role) ? (
-                            <>
-                              <Select
-                                className="min-w-[10rem]"
-                                value={edit.salesPersonId}
-                                onChange={(e) =>
-                                  updateEdit(u.id, { salesPersonId: e.target.value })
-                                }
-                              >
-                                <option value="">—</option>
-                                {salesPeople.map((p) => {
-                                  const taken =
-                                    users.some(
-                                      (x) =>
-                                        x.id !== u.id && x.salesPersonId === p.id
-                                    ) && edit.salesPersonId !== p.id;
-                                  return (
-                                    <option
-                                      key={p.id}
-                                      value={p.id}
-                                      disabled={taken}
-                                    >
-                                      {p.name}
-                                      {taken ? " · zajęty" : ""}
-                                    </option>
-                                  );
-                                })}
-                              </Select>
-                              {salesTakenByOther ? (
-                                <p className="mt-1 text-xs text-amber-700">
-                                  Ten handlowiec ma już inne konto.
-                                </p>
-                              ) : null}
-                            </>
-                          ) : (
-                            <span className="text-slate-400">—</span>
-                          )}
+                        <td className="align-top">
+                          <span className={linkedSalesPersonName === "—" ? "text-slate-400" : "text-slate-700"}>
+                            {linkedSalesPersonName}
+                          </span>
                         </td>
-                        <td>
-                          {edit?.role === "sales_manager" && salesGroups.length ? (
-                            <div className="flex flex-wrap gap-1">
-                              {salesGroups.map((g) => {
-                                const checked = (managerGroups[u.id] ?? []).includes(g.id);
-                                return (
-                                  <button
-                                    key={g.id}
-                                    type="button"
-                                    onClick={() => toggleManagerGroup(u.id, g.id)}
-                                    className={managerGroupToggleClass(checked)}
-                                  >
-                                    {g.name}
-                                  </button>
-                                );
-                              })}
+                        <td className="align-top">
+                          {displayRole === "sales_manager" && salesGroups.length ? (
+                            <div className="space-y-2">
+                              <p className="text-xs font-medium text-slate-600">
+                                Grupy kierownika
+                              </p>
+                              <div className="flex flex-wrap gap-1">
+                                {salesGroups
+                                  .filter((g) => draftManagerGroups.includes(g.id))
+                                  .map((g) => (
+                                    <span
+                                      key={g.id}
+                                      className="rounded-full border border-indigo-200/70 bg-indigo-50/60 px-2 py-0.5 text-[11px] font-medium text-indigo-700"
+                                    >
+                                      {g.name}
+                                    </span>
+                                  ))}
+                              </div>
                             </div>
-                          ) : edit?.role === "sales_manager" ? (
+                          ) : displayRole === "zakupy" ? (
+                            <div className="space-y-2">
+                              <p className="text-xs font-medium text-slate-600">
+                                Grupy zakupowe
+                              </p>
+                              {(edit?.assignedWorkspaces ?? u.assignedWorkspaces ?? []).length ? (
+                                <div className="space-y-2">
+                                  <Badge variant="default">
+                                    {workspaceSummaryLabel(assignedWorkspaces)}
+                                  </Badge>
+                                  <div className="flex flex-wrap gap-1">
+                                    {assignedWorkspaces.map((workspace) => {
+                                      const option = PROCUREMENT_WORKSPACE_OPTIONS.find(
+                                        (item) => item.value === workspace
+                                      );
+                                      return (
+                                        <span
+                                          key={workspace}
+                                          className="rounded-full border border-indigo-200/70 bg-indigo-50/60 px-2 py-0.5 text-[11px] font-medium text-indigo-700"
+                                        >
+                                          {option?.label ?? workspace}
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-slate-400">Brak przypisań</span>
+                              )}
+                            </div>
+                          ) : displayRole === "sales_manager" ? (
                             <span className="text-xs text-amber-700">Brak grup w systemie</span>
                           ) : (
                             <span className="text-slate-400">—</span>
                           )}
-                          {managerNeedsGroups ? (
-                            <p className="mt-1 text-xs text-amber-700">
-                              Wybierz co najmniej jedną grupę.
-                            </p>
-                          ) : null}
                         </td>
-                        <td className="whitespace-nowrap text-sm text-slate-600 tabular-nums">
+                        <td className="align-top whitespace-nowrap text-sm text-slate-600 tabular-nums">
                           {u.lastSignInAt
                             ? formatPlDate(u.lastSignInAt.slice(0, 10))
                             : (
                               <span className="text-slate-400">Nigdy</span>
                             )}
                         </td>
-                        <td>
-                          <div className="flex flex-col items-end gap-1.5">
-                            {isDirty ? (
-                              <div className="flex flex-wrap justify-end gap-1">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={
-                                    pending ||
-                                    !!salesTakenByOther ||
-                                    managerNeedsGroups
-                                  }
-                                  onClick={() => saveUserPermissions(u)}
-                                >
-                                  Zapisz
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  disabled={pending}
-                                  onClick={() => {
-                                    setEdits((prev) => ({
-                                      ...prev,
-                                      [u.id]: {
-                                        role: u.role,
-                                        salesPersonId: u.salesPersonId ?? "",
-                                        assignedWorkspaces: u.assignedWorkspaces ?? [],
-                                      },
-                                    }));
-                                    setManagerGroups((prev) => ({
-                                      ...prev,
-                                      [u.id]: [...savedManagerGroups],
-                                    }));
-                                  }}
-                                >
-                                  Cofnij
-                                </Button>
-                              </div>
-                            ) : null}
-                            <div className="flex flex-wrap justify-end gap-1">
+                        <td className="align-top">
+                          <div className="flex min-w-[156px] flex-col items-stretch gap-2">
+                            <div className="grid grid-cols-1 gap-2">
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => {
-                                  setPasswordModal({ userId: u.id, email: u.email });
-                                  setNewPassword("");
-                                }}
+                                className="justify-center"
+                                onClick={() => setAccessModalUserId(u.id)}
                               >
-                                Hasło
+                                Edytuj
                               </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                disabled={pending}
-                                onClick={() => {
-                                  start(async () => {
-                                    const r = await actionGeneratePasswordResetLink(u.email);
-                                    if ("error" in r) {
-                                      setToast(toastFromError(r.error));
-                                      return;
-                                    }
-                                    try {
-                                      await navigator.clipboard.writeText(r.link);
-                                      setToast({
-                                        text: "Link do ustawienia hasła skopiowany do schowka.",
-                                        tone: "success",
-                                      });
-                                    } catch {
-                                      setToast({
-                                        text: `Link: ${r.link}`,
-                                        tone: "success",
-                                      });
-                                    }
-                                  });
-                                }}
-                              >
-                                Link hasła
-                              </Button>
-                              {!isSelf ? (
+                              {isDirty ? (
                                 <Button
                                   variant="ghost"
                                   size="sm"
+                                  className="justify-center"
                                   disabled={pending}
-                                  className="text-rose-600 hover:text-rose-700"
+                                  onClick={() => resetUserDraft(u, savedManagerGroups)}
+                                >
+                                  Cofnij
+                                </Button>
+                              ) : null}
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                className="justify-center"
+                                disabled={pending || displayRole === "admin"}
+                                onClick={() => openModuleModalForUser(u)}
+                              >
+                                Moduły
+                              </Button>
+                              {!isSelf ? (
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  disabled={pending}
+                                  className="justify-center text-rose-600 hover:bg-rose-50 hover:text-rose-700"
                                   onClick={() => setDeleteTarget(u)}
                                 >
                                   Usuń

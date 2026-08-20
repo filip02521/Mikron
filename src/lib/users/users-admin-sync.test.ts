@@ -16,6 +16,7 @@ const row = (patch: Partial<AppUserRow>): AppUserRow => ({
   createdAt: "2020-01-01",
   lastSignInAt: null,
   assignedWorkspaces: [],
+  mailCenterModuleEnabled: false,
   ...patch,
 });
 

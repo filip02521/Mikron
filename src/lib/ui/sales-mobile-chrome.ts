@@ -15,6 +15,20 @@ export const floatingToastAboveZdStickyClass =
   "bottom-[calc(9.25rem+env(safe-area-inset-bottom,0px))] md:bottom-[6.75rem]";
 
 /**
+ * Zakładka sesji kreatora ZD przy prawej krawędzi (poza kreatorem — countdown).
+ * Nad dolną nawigacją mobile; toasty zostają po prawej u dołu.
+ */
+export const floatingZdSessionRailClass =
+  "right-[env(safe-area-inset-right,0px)] top-[min(38%,16rem)]";
+
+/**
+ * @deprecated Prefer {@link floatingZdSessionRailClass}.
+ * Pływające powiadomienie sesji kreatora ZD — lewy dolny róg (stary układ).
+ */
+export const floatingZdSessionNoticeClass =
+  "bottom-[calc(0.75rem+var(--mobile-bottom-chrome,0px))] left-4 md:left-6";
+
+/**
  * Gdy sticky ma caption gate / hint opakowań — pasek jest wyższy.
  * Używaj razem z `floatingToastAboveZdStickyClass` (nadpisuje bottom).
  */

@@ -11,6 +11,14 @@ export const ZD_ESTIMATE_LAUNCH_STEP_COUNT = 4;
 export const ZD_ESTIMATE_ROUTE_LOADING_STEP_MS = 1100;
 export const ZD_ESTIMATE_ROUTE_LOADING_STEP_COUNT = 3;
 
+/** Wznowienie sesji po wyjściu z kreatora — szybszy rytm niż Policz, wolniejszy niż błysk. */
+export const ZD_ESTIMATE_SESSION_RESUME_STEP_MS = 900;
+export const ZD_ESTIMATE_SESSION_RESUME_STEP_COUNT = 3;
+/** Krótki finisz animacji po restore — lista jest już gotowa pod spodem. */
+export const ZD_ESTIMATE_SESSION_RESUME_MIN_VISIBLE_MS = 900;
+/** Po udanym restore nie czekamy dłużej — tylko domknięcie checklisty. */
+export const ZD_ESTIMATE_SESSION_RESUME_COMPLETE_TAIL_MS = 350;
+
 /**
  * @param elapsedMs — czas od startu panelu
  * @param scopeAlreadyResolved — po SSR zakres jest znany → krok 0 od razu „done”
