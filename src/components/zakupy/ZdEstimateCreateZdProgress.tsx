@@ -3,46 +3,74 @@
 import { useEffect, useState } from "react";
 import { ZdEstimateLoadingBody } from "@/components/zakupy/ZdEstimateLoadingBody";
 import { ZdEstimateLoadingWindow } from "@/components/zakupy/ZdEstimateLoadingWindow";
+import type { ZdEstimateHostStrip } from "@/lib/orders/zd-estimate-host";
 import {
   createZdProgressDurationHint,
   createZdProgressPercent,
   createZdProgressStepFromElapsed,
   ZD_CREATE_PROGRESS_STEPS,
 } from "@/lib/orders/zd-estimate-create-progress";
+import { ZD_ESTIMATE_CREATE_PROGRESS_FOCUS_ID } from "@/lib/orders/zd-estimate-launch-scroll";
 import { zdEstimateLoadingElapsedLabel } from "@/lib/orders/zd-estimate-loading-ui";
 import {
-  ZD_ESTIMATE_UI,
+  ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION,
   zdEstimateCreateProgressAriaLabel,
   zdEstimateCreateProgressCompleteHint,
   zdEstimateCreateProgressCompleteTitle,
-  zdEstimateCreateProgressFooterBusy,
-  zdEstimateCreateProgressFooterLong,
+  zdEstimateCreateProgressFooterNote,
   zdEstimateCreateProgressSnapshotFailedHint,
   zdEstimateCreateProgressTitle,
+  zdEstimateCreateProgressWindowHint,
   zdEstimateLoadingBusyDetailProgress,
 } from "@/lib/orders/zd-estimate-ui-copy";
 
+/**
+ * Loading „Utwórz ZD” — to samo okno co Policz / wczytywanie trasy
+ * (belka Kreatora, checklista, pasek). Kroki i pasek są szacunkowe.
+ */
 export function ZdEstimateCreateZdProgressPanel({
   startedAtMs,
   lineCount,
   supplierName,
+  scopeLabel,
+  scopeMode,
   forceComplete = false,
   snapshotOk = null,
+  host = null,
+  ordersIsLive = false,
+  titleAs = "h2",
 }: {
   startedAtMs: number;
   lineCount: number;
   supplierName?: string | null;
+  scopeLabel?: string | null;
+  scopeMode?: "grupa" | "cecha" | null;
   forceComplete?: boolean;
   /** null = jeszcze w toku; true/false po create. */
   snapshotOk?: boolean | null;
+  host?: ZdEstimateHostStrip | null;
+  ordersIsLive?: boolean;
+  titleAs?: "h1" | "h2";
 }) {
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const isLive = host?.isLive ?? ordersIsLive;
+  const configured = host?.configured ?? true;
 
   useEffect(() => {
     if (forceComplete) return;
-    const id = window.setInterval(() => setNowMs(Date.now()), 200);
+    const id = window.setInterval(() => setNowMs(Date.now()), 250);
     return () => window.clearInterval(id);
   }, [startedAtMs, forceComplete]);
+
+  useEffect(() => {
+    const el = document.getElementById(ZD_ESTIMATE_CREATE_PROGRESS_FOCUS_ID);
+    if (!el) return;
+    try {
+      el.focus({ preventScroll: true });
+    } catch {
+      el.focus();
+    }
+  }, []);
 
   const elapsedMs = Math.max(0, nowMs - startedAtMs);
   const stepIndex = createZdProgressStepFromElapsed(elapsedMs, {
@@ -67,6 +95,15 @@ export function ZdEstimateCreateZdProgressPanel({
     ...(supplierName
       ? [{ label: "Dostawca", value: supplierName } as const]
       : []),
+    ...(scopeLabel
+      ? [
+          {
+            label: scopeMode === "cecha" ? "Cecha" : "Grupa",
+            value: scopeLabel,
+            tone: "emerald" as const,
+          },
+        ]
+      : []),
     {
       label: "Lista",
       value: `${lineCount} poz.`,
@@ -75,15 +112,21 @@ export function ZdEstimateCreateZdProgressPanel({
 
   const footerNote = forceComplete
     ? null
-    : elapsedMs >= 45_000
-      ? zdEstimateCreateProgressFooterLong()
-      : zdEstimateCreateProgressFooterBusy();
+    : zdEstimateCreateProgressFooterNote({
+        elapsedMs,
+        durationHint: createZdProgressDurationHint(lineCount),
+      });
 
   return (
     <ZdEstimateLoadingWindow
-      variant="embedded"
-      showBrandHeader={false}
-      windowClassName="shadow-none ring-1 ring-indigo-100/80 border-indigo-100/90"
+      focusId={ZD_ESTIMATE_CREATE_PROGRESS_FOCUS_ID}
+      titleAs={titleAs}
+      description={ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION}
+      hint={zdEstimateCreateProgressWindowHint({
+        isLive,
+        configured,
+      })}
+      host={host}
     >
       <ZdEstimateLoadingBody
         statusTitle={statusTitle}
@@ -92,9 +135,6 @@ export function ZdEstimateCreateZdProgressPanel({
           completeFailed ? "warning" : forceComplete ? "complete" : "busy"
         }
         chips={chips}
-        disclaimer={
-          forceComplete ? null : ZD_ESTIMATE_UI.createProgressDisclaimer
-        }
         elapsedLabel={zdEstimateLoadingElapsedLabel({
           elapsedMs,
           forceComplete,
@@ -104,14 +144,10 @@ export function ZdEstimateCreateZdProgressPanel({
         activeStepIndex={clamped}
         forceComplete={forceComplete}
         progressPct={percent}
-        footerMeta={
-          forceComplete ? null : createZdProgressDurationHint(lineCount)
-        }
         footerNote={footerNote}
         busy={!forceComplete}
         ariaLabel={zdEstimateCreateProgressAriaLabel()}
         progressAriaLabel="Postęp tworzenia ZD"
-        showStepDoneHints
         stepFailureId={completeFailed ? "snapshot" : null}
         stepFailureHint={
           completeFailed

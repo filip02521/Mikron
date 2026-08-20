@@ -363,6 +363,28 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(item?.href).toContain("focusOrders=o-inf");
   });
 
+  it("informacja stock_auto — subtitle o Subiekcie", () => {
+    const snapshot = buildSalesDayStartSnapshot({
+      rows: [
+        row({
+          id: "inf-auto",
+          kind: "informacja",
+          acknowledgeMode: "availability",
+          pickupPendingCount: 1,
+          pickupPendingIds: ["o-inf"],
+          orderIds: ["o-inf"],
+          informacjaArrivedSourceMix: "stock_auto",
+          informacjaPath: "direct",
+        }),
+      ],
+    });
+
+    const item = snapshot.items.find((i) => i.source === "informacja_ready");
+    expect(item?.subtitle).toContain("Subiekcie");
+    expect(item?.title).toContain("powiadomienie o dostępności");
+    expect(item?.subtitle).not.toContain("Zakupy");
+  });
+
   it("cleared gdy brak akcji", () => {
     const snapshot = buildSalesDayStartSnapshot({ rows: [] });
     expect(snapshot.cleared).toBe(true);

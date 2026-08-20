@@ -78,7 +78,7 @@ describe("EditIndividualRequestModal", () => {
     );
 
     const flowPicker = screen.getByRole("radiogroup", { name: /Ścieżka informacji/i });
-    expect(within(flowPicker).getByRole("radio", { name: /Informacja o dostępności/i })).toBeTruthy();
+    expect(within(flowPicker).getByRole("radio", { name: /Powiadom, gdy będzie na magazynie/i })).toBeTruthy();
     expect(within(flowPicker).getByRole("radio", { name: /Brak na stanie/i })).toBeTruthy();
     expect(screen.queryByRole("radio", { name: /Najpierw zamówienie u dostawcy/i })).toBeNull();
   });

@@ -7,7 +7,7 @@ test.describe("InformacjaFlowPicker (E2E lab)", () => {
   });
 
   test("domyślnie zaznacza direct i pozwala wybrać stock_out", async ({ page }) => {
-    await expect(page.getByRole("radio", { name: /Informacja o dostępności/i })).toHaveAttribute(
+    await expect(page.getByRole("radio", { name: /Powiadom, gdy będzie na magazynie/i })).toHaveAttribute(
       "aria-checked",
       "true"
     );

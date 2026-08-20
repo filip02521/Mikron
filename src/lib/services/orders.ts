@@ -41,6 +41,11 @@ import type { IndividualRequestKind } from "@/types/database";
 import { INFORMACJA_NO_QUANTITY, quantityForRequestKind } from "@/lib/orders/individual";
 import { isInformacjaWarehouseQueueOrder } from "@/lib/orders/informacja-warehouse-queue";
 import {
+  isInformacjaStockAvailableForAutoArrive,
+  type InformacjaArrivedSource,
+} from "@/lib/orders/informacja-stock-auto-arrive";
+import type { ProsbaLineStockSnapshot } from "@/lib/orders/prosba-stock-check";
+import {
   flagsFromInformacjaFlowPath,
   isInformacjaStockOutReorder,
 } from "@/lib/orders/informacja-stock-out-reorder";
@@ -397,6 +402,13 @@ export async function batchAddIndividualOrders(
             : false,
         teeth_ocr_pending: Boolean(e.teethOcrPending),
         teeth_ocr_image_path: e.teethOcrImagePath ?? null,
+        teeth_queue_entered_at:
+          draft.subiektTwId != null &&
+          draft.subiektTwId > 0 &&
+          teethTwIdSet.has(Math.trunc(draft.subiektTwId)) &&
+          !e.teethOcrPending
+            ? new Date().toISOString()
+            : null,
         ...normalizeZkProsbaSourceInput({
           sourceZkWatchId: e.sourceZkWatchId,
           sourceZkNumber: e.sourceZkNumber,
@@ -998,6 +1010,7 @@ export async function updateIndividualRequestGroup(
       is_teeth: isTeeth,
       teeth_ocr_pending: Boolean(line.teethOcrPending),
       teeth_ocr_image_path: line.teethOcrImagePath ?? null,
+      teeth_queue_entered_at: isTeeth && !line.teethOcrPending ? new Date().toISOString() : null,
     };
 
     if (existingLineId) {
@@ -1517,7 +1530,12 @@ export async function notifySalesRequestNoteUpdatedForOrders(
 }
 
 export async function markInformacjaArrived(
-  orderIds: string[]
+  orderIds: string[],
+  options?: {
+    source?: InformacjaArrivedSource;
+    /** Przy source=stock_auto — świeża mapa stanu do re-walidacji tuż przed zapisem (TOCTOU). */
+    stockByTwId?: Record<number, ProsbaLineStockSnapshot>;
+  }
 ): Promise<{
   updated: number;
   skipped: number;
@@ -1525,6 +1543,8 @@ export async function markInformacjaArrived(
   emailSent: number;
   emailError?: string;
 }> {
+  const source: InformacjaArrivedSource = options?.source ?? "manual";
+  const stockByTwId = options?.stockByTwId;
   const uniqueIds = [...new Set(orderIds)];
   assertMaxBatchSize(uniqueIds.length, MAX_QUEUE_BATCH_SIZE, "pozycji informacyjnych");
   const supabase = createAdminClient();
@@ -1546,15 +1566,41 @@ export async function markInformacjaArrived(
       continue;
     }
 
+    if (source === "stock_auto") {
+      const twId =
+        order.subiekt_tw_id != null && order.subiekt_tw_id > 0
+          ? Math.trunc(order.subiekt_tw_id)
+          : null;
+      if (twId == null) {
+        skipped++;
+        continue;
+      }
+      const snap = stockByTwId?.[twId];
+      if (!isInformacjaStockAvailableForAutoArrive(snap)) {
+        skipped++;
+        continue;
+      }
+    }
+
     const shelfUpdate: Record<string, unknown> = {
       status: "Zrealizowane",
       delivered_quantity: INFORMACJA_NO_QUANTITY,
       delivery_at: new Date().toISOString(),
+      informacja_arrived_source: source,
     };
     if (!order.warehouse_shelf?.trim()) {
       shelfUpdate.warehouse_shelf = WAREHOUSE_SHELF_DEFAULT;
     }
-    await supabase.from("individual_orders").update(shelfUpdate).eq("id", id);
+    const { data: updatedRows, error: updateError } = await supabase
+      .from("individual_orders")
+      .update(shelfUpdate)
+      .eq("id", id)
+      .in("status", ["Nowe", "Zamowione", "Czesciowo_zrealizowane"])
+      .select("id");
+    if (updateError || !updatedRows?.length) {
+      skipped++;
+      continue;
+    }
     updated++;
 
     let person = personEmailCache.get(order.sales_person_id);
@@ -1564,7 +1610,7 @@ export async function markInformacjaArrived(
     }
 
     if (person) {
-      const item = buildInformacjaNotificationItem(order);
+      const item = buildInformacjaNotificationItem(order, { arrivedSource: source });
       const existing = notifications.get(person.personId);
       if (existing) {
         existing.items.push(item);

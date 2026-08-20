@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
+  filterNavGroupsByAccess,
   isNavItemActive,
   navForRole,
   navItemDisplayTone,
@@ -33,6 +34,7 @@ export function MobileSalesNav({
   role = "sales",
   realRole = null,
   adminPanelContext = "admin",
+  adminModules = [],
 }: {
   navBadges?: {
     salesMoje?: number;
@@ -43,6 +45,7 @@ export function MobileSalesNav({
   role?: UserRole;
   realRole?: UserRole | null;
   adminPanelContext?: AdminPanelContext;
+  adminModules?: string[];
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -55,7 +58,13 @@ export function MobileSalesNav({
   const navLocked = useSalesNavLocked();
   const salesUpdates = useSalesUpdates();
   const navRole = isSalesManager(role) ? "sales_manager" : "sales";
-  const groups = navForRole(navRole, navBadges);
+  const groups = filterNavGroupsByAccess(
+    navForRole(navRole, navBadges),
+    navRole,
+    [],
+    null,
+    adminModules
+  );
   const primaryItems = navMobilePrimaryItems(groups);
   const overflowItems = navMobileOverflowItems(groups);
   const allPrimaryHrefs = primaryItems.map((item) => item.href);

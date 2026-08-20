@@ -20,6 +20,11 @@ import {
   TEETH_MARK_ORDERED_BLOCKED_MESSAGE,
   TEETH_MARK_ORDERED_FILE_REQUIRED_MESSAGE,
 } from "@/lib/teeth/teeth-mark-ordered";
+import {
+  fetchPendingTeethFileGroupSiblings,
+  mergeTeethFileGroupSiblingsIntoOrders,
+  copySharedTeethOrderFileOntoUncoveredSiblings,
+} from "@/lib/data/teeth-order-file-group";
 import { teethPanelReadinessContextFromMaps } from "@/lib/teeth/teeth-panel-order-readiness";
 import { resolveSupplierForTeethManufacturer } from "@/lib/orders/teeth-ocr-prosba-prefill";
 import { fetchSuppliersForForm } from "@/lib/data/queries";
@@ -159,6 +164,7 @@ export async function fetchTeethQueue(): Promise<TeethQueueGroup[]> {
     .eq("teeth_ocr_pending", false)
     .in("status", [...TEETH_QUEUE_PENDING_STATUSES])
     .is("sales_cancelled_at", null)
+    .order("teeth_queue_entered_at", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: true })
     .limit(500);
 
@@ -406,6 +412,13 @@ export async function markTeethOrdered(
     kindByTwId: new Map(teethProducts.map((row) => [row.twId, row.kind])),
   });
   const ordersById = new Map(orders.map((order) => [order.id, order]));
+  mergeTeethFileGroupSiblingsIntoOrders(
+    ordersById,
+    await fetchPendingTeethFileGroupSiblings(
+      supabase,
+      orders.map((order) => order.supplier_id)
+    )
+  );
   const analysis = analyzeTeethMarkOrdered(uniqueIds, ordersById, readinessCtx);
   const idsToMark = analysis.withSpecIds;
 
@@ -420,6 +433,8 @@ export async function markTeethOrdered(
     }
     throw new Error(TEETH_MARK_ORDERED_BLOCKED_MESSAGE);
   }
+
+  await copySharedTeethOrderFileOntoUncoveredSiblings(supabase, ordersById);
 
   const { data: beforeUpdate } = await supabase
     .from("individual_orders")
@@ -506,6 +521,13 @@ export async function markTeethPositionsOrdered(
     normalizeIndividualOrders(rawOrders ?? [])
   );
   const ordersById = new Map(orders.map((order) => [order.id, order]));
+  mergeTeethFileGroupSiblingsIntoOrders(
+    ordersById,
+    await fetchPendingTeethFileGroupSiblings(
+      supabase,
+      orders.map((order) => order.supplier_id)
+    )
+  );
 
   const teethProducts = await fetchTeethProductInfo().catch(() => []);
   const readinessCtx = teethPanelReadinessContextFromMaps({
@@ -515,26 +537,18 @@ export async function markTeethPositionsOrdered(
     kindByTwId: new Map(teethProducts.map((row) => [row.twId, row.kind])),
   });
 
-  // Filtruj pozycje z kompletną specyfikacją i załączonym plikiem zamówienia
+  // Filtruj pozycje z kompletną specyfikacją; plik = jeden na grupę dostawcy.
+  const analysis = analyzeTeethMarkOrdered(allOrderIds, ordersById, readinessCtx);
+  const readyIds = new Set(analysis.withSpecIds);
   const validSelections: TeethPositionSelection[] = [];
-  let blockedByFile = false;
-  let blockedBySpec = false;
+  const blockedByFile = analysis.hasMissingFile;
+  const blockedBySpec = analysis.hasMissingSpec;
 
   for (const sel of filtered) {
+    if (!readyIds.has(sel.orderId)) continue;
     const order = ordersById.get(sel.orderId);
     if (!order) continue;
     const details = order.teeth_details ?? [];
-    const readiness = analyzeTeethMarkOrdered(
-      [sel.orderId],
-      new Map([[sel.orderId, order]]),
-      readinessCtx
-    );
-    if (!readiness.canMarkAny) {
-      if (readiness.hasMissingFile) blockedByFile = true;
-      if (readiness.hasMissingSpec) blockedBySpec = true;
-      continue;
-    }
-    // Filtruj pozycje które jeszcze nie są zamówione
     const positionsToMark = sel.positions.filter((pos) => {
       const detail = details.find((d) => d.position === pos);
       return detail && !detail.ordered_at;
@@ -556,6 +570,8 @@ export async function markTeethPositionsOrdered(
         : TEETH_MARK_ORDERED_BLOCKED_MESSAGE
     );
   }
+
+  await copySharedTeethOrderFileOntoUncoveredSiblings(supabase, ordersById);
 
   // Oznacz poszczególne pozycje w individual_order_teeth_details
   let updatedCount = 0;
@@ -961,7 +977,11 @@ export async function approveTeethOcr(orderIds: string[]): Promise<{ updated: nu
 
   const { data, error } = await supabase
     .from("individual_orders")
-    .update({ teeth_ocr_pending: false, status: "Nowe" })
+    .update({
+      teeth_ocr_pending: false,
+      status: "Nowe",
+      teeth_queue_entered_at: new Date().toISOString(),
+    })
     .in("id", orderIds)
     .eq("is_teeth", true)
     .eq("teeth_ocr_pending", true)

@@ -12,7 +12,6 @@ import {
   teethPanelIncompleteDetailClass,
 } from "@/lib/teeth/teeth-panel-ui";
 import { TeethPanelEditOrderTrigger } from "@/components/zeby/TeethPanelEditOrderTrigger";
-import { TeethOrderFileUpload } from "@/components/zeby/TeethOrderFileUpload";
 import { ProcurementSalesRequestNote } from "@/components/orders/ProcurementSalesRequestNote";
 import {
   orderHasIncompleteTeethSpec,
@@ -33,6 +32,13 @@ import { jawRequiredForKind, mouldEncodesExplicitJaw } from "@/lib/teeth/teeth-m
 import { Badge } from "@/components/ui/Badge";
 import { plPozycja, plProsba, plWiersz } from "@/lib/ui/polish-plurals";
 import type { TeethQueueItem } from "@/lib/data/teeth-queue-shared";
+import {
+  formatTeethQueueWaitDays,
+  oldestTeethQueueEnteredAt,
+  resolveTeethQueueEnteredAt,
+  teethQueueWaitCalendarDays,
+} from "@/lib/teeth/teeth-queue-wait";
+import { formatPlDate } from "@/lib/display-labels";
 
 const JAW_LABELS = { upper: "Góra", lower: "Dół" } as const;
 
@@ -188,7 +194,6 @@ export function TeethQueueBatchTable({
   onTogglePosition,
   onEditSaved,
   alwaysShowEdit = false,
-  onFileChanged,
 }: {
   items: TeethQueueItem[];
   positionSelection: Map<string, Set<number>>;
@@ -196,8 +201,6 @@ export function TeethQueueBatchTable({
   onEditSaved?: (message?: string) => void;
   /** Pokaż przycisk "Edytuj listę" przy każdej pozycji, nie tylko przy problemowych (np. weryfikacja OCR). */
   alwaysShowEdit?: boolean;
-  /** Callback gdy plik zamówienia został wgrany/usunięty — do odświeżenia stanu blokady. */
-  onFileChanged?: (orderId: string, hasFile: boolean) => void;
 }) {
   const teethProductInfo = useTeethProductInfo();
   const readinessCtx = useMemo(
@@ -262,6 +265,18 @@ export function TeethQueueBatchTable({
     return map;
   }, [groupRows]);
 
+  const oldestEnteredBySales = useMemo(() => {
+    const map = new Map<string | null, string>();
+    for (const item of items) {
+      const key = item.sales_person_name ?? null;
+      const at = resolveTeethQueueEnteredAt(item);
+      if (!at) continue;
+      const prev = map.get(key);
+      if (!prev || at < prev) map.set(key, at);
+    }
+    return map;
+  }, [items]);
+
   return (
     <div className={teethPanelBatchStripClass}>
       <div className="space-y-2 py-2.5">
@@ -289,14 +304,6 @@ export function TeethQueueBatchTable({
                 <th className="py-1.5 px-2 hidden sm:table-cell">Typ</th>
                 <th className="py-1.5 px-2 sm:hidden">Szczęka / Typ</th>
                 <th className="py-1.5 px-2 text-right tabular-nums">Szt.</th>
-                <th className="py-1.5 px-2 min-w-[7.5rem]">
-                  <span className="inline-flex flex-col gap-0.5">
-                    <span>Plik</span>
-                    <span className="normal-case tracking-normal font-normal text-slate-400">
-                      Excel / PDF / XML
-                    </span>
-                  </span>
-                </th>
                 <th className="py-1.5 pr-3 pl-2 sm:pr-4 lg:pr-5" />
               </tr>
             </thead>
@@ -358,13 +365,25 @@ export function TeethQueueBatchTable({
       : "border-l-2 border-l-indigo-300/50";
 
                 const salesRowCount = salesPersonRowCounts.get(row.salesPersonName) ?? 0;
+                const oldestEntered = row.salesPersonName
+                  ? oldestEnteredBySales.get(row.salesPersonName)
+                  : oldestTeethQueueEnteredAt(
+                      row.orderEntries.map((entry) => entry.item),
+                    );
+                const waitLabel =
+                  oldestEntered != null
+                    ? (() => {
+                        const days = teethQueueWaitCalendarDays(oldestEntered);
+                        return `od ${formatPlDate(oldestEntered.slice(0, 10))} · ${formatTeethQueueWaitDays(days)}`;
+                      })()
+                    : null;
 
                 return (
                   <Fragment key={`${row.key}-${index}`}>
                     {row.isFirstRowOfSalesPerson ? (
                       <tr>
                         <td
-                          colSpan={9}
+                          colSpan={8}
                           className={cn(
                             "border-b border-slate-200/80 bg-white/60 px-3 py-1.5 sm:px-4 lg:px-5",
                             index > 0 && "border-t border-slate-200/80",
@@ -383,6 +402,14 @@ export function TeethQueueBatchTable({
                             <span className="text-[10px] text-slate-400">
                               {salesRowCount} {plWiersz(salesRowCount)}
                             </span>
+                            {waitLabel ? (
+                              <span
+                                className="text-[10px] font-medium text-slate-500"
+                                title="W kolejce działu zębów"
+                              >
+                                {waitLabel}
+                              </span>
+                            ) : null}
                             {salesIssues && (salesIssues.missingList || salesIssues.incomplete || salesIssues.needsHeader || salesIssues.informacja) ? (
                               <div className="flex flex-wrap items-center gap-1">
                                 {salesIssues.missingList ? (
@@ -464,25 +491,6 @@ export function TeethQueueBatchTable({
                           {row.totalOrdered}/{row.totalCount}
                         </span>
                       ) : row.totalCount}
-                    </td>
-                    <td className="py-1.5 px-2">
-                      <div className="flex flex-col gap-0.5">
-                        {row.orderEntries.map((e) => (
-                          <TeethOrderFileUpload
-                            key={e.orderId}
-                            orderId={e.orderId}
-                            existingFileName={
-                              e.item.teeth_order_file_path?.trim()
-                                ? (e.item.teeth_order_file_name ?? null)
-                                : null
-                            }
-                            required
-                            locked={e.item.status !== "Nowe" && e.item.status !== "Weryfikacja"}
-                            onUploaded={() => onFileChanged?.(e.orderId, true)}
-                            onRemoved={() => onFileChanged?.(e.orderId, false)}
-                          />
-                        ))}
-                      </div>
                     </td>
                     <td className="py-1.5 pr-3 pl-2 sm:pr-4 lg:pr-5">
                       {onEditSaved ? (

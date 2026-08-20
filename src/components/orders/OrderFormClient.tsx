@@ -1660,7 +1660,7 @@ export function OrderFormClient({
             description={
               lockedSalesPerson
                 ? requestKind === "informacja"
-                  ? `Handlowiec: ${lockedSalesPerson.name} · informacja o dostępności`
+                  ? `Handlowiec: ${lockedSalesPerson.name} · powiadomienie o stanie magazynowym`
                   : `Handlowiec: ${lockedSalesPerson.name}`
                 : undefined
             }
@@ -1904,7 +1904,7 @@ export function OrderFormClient({
                 ? "Sygnały „brak na stanie” trafią do Prośb handlowców w panelu Dziś."
                 : informacjaFlags.informacjaQueueViaDailyPanel
                   ? "Informacja przez panel Dziś — najpierw Główne/Uzupełniające, potem magazyn."
-                  : "Informacja o dostępności trafi od razu do kolejki magazynu."
+                  : "Powiadomienie o stanie magazynowym trafi od razu do kolejki magazynu."
               : "Zamówienia trafiają do panelu dziennego po zapisie kompletnych danych (dostawca, produkt z Subiekta lub ręcznie, ilość)."}
           </p>
           <div className="flex flex-wrap gap-2">

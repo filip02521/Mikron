@@ -12,6 +12,7 @@ import type { DeliveryStats, IndividualOrder, StatsMode } from "@/types/database
 import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
 import {
   INFORMACJA_FLOW_SALES_READY_ACK_HEADLINE,
+  informacjaReadyAckSubline,
   isInformacjaAvailabilityPendingStatusTitle,
 } from "@/lib/orders/informacja-flow-copy";
 import { progressLabelInSubline } from "@/lib/orders/my-order-card-ui";
@@ -165,7 +166,10 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     return {
       headline: INFORMACJA_FLOW_SALES_READY_ACK_HEADLINE,
       headlineTone: "informacja",
-      subline: "Potwierdź, że widziałeś/aś e-mail od magazynu",
+      subline: informacjaReadyAckSubline({
+        sourceMix: row.informacjaArrivedSourceMix ?? null,
+        informacjaPath: row.informacjaPath,
+      }),
       sortPriority: 10,
     };
   }

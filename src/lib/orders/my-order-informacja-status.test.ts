@@ -68,4 +68,19 @@ describe("informacja status copy", () => {
     expect(result.zamowienia).toHaveLength(0);
     expect(result.productLineCount).toBe(0);
   });
+
+  it("Zrealizowane stock_auto — copy o Subiekcie", () => {
+    const row = presentMyOrders(
+      [
+        informacjaOrder({
+          status: "Zrealizowane",
+          delivery_at: "2026-05-15T10:00:00Z",
+          informacja_arrived_source: "stock_auto",
+        }),
+      ],
+      []
+    ).informacje[0]!;
+    expect(row.statusTitle).toBe("Dostępne");
+    expect(row.statusDetail).toContain("Subiekcie");
+  });
 });

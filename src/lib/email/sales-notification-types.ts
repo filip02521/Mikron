@@ -17,6 +17,8 @@ export type SalesInformacjaNotificationItem = {
   products: string;
   symbol: string | null;
   clientName: string | null;
+  /** Skąd zamknięto prośbę — wpływa na copy w e-mailu. */
+  arrivedSource?: "manual" | "stock_auto";
 };
 
 /** Anulowanie prośby przez dział dostaw. */

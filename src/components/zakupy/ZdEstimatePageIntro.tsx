@@ -22,7 +22,11 @@ export type ZdEstimatePageIntroHost = ZdEstimateHostStrip;
 
 /**
  * Top bar Kreatora ZD — tożsamość · fakty zakresu · akcje.
- * Lead / kroki tylko w HelpHint. Wszystkie elementy na wspólnej osi h-8.
+ * Lead / kroki tylko w HelpHint.
+ *
+ * Layout:
+ * - xl+: jeden rząd (tożsamość | fakty | akcje)
+ * - <xl: rząd 1 = tożsamość + akcje; rząd 2 = fakty (bez nachodzenia)
  */
 export function ZdEstimatePageIntro({
   title = "Kreator ZD",
@@ -79,131 +83,158 @@ export function ZdEstimatePageIntro({
   const scopeTrimmed = scopeLabel?.trim() || null;
   const useLegacyChips = facts == null;
 
-  return (
-    <header className={zdEstimatePageIntroClass}>
-      <div className={zdEstimatePageIntroRowClass}>
-        {/* Tożsamość */}
-        <div
-          className={cn(
-            "flex shrink-0 items-center gap-1.5",
-            zdEstimateChromeControlHeightClass
-          )}
-        >
-          <h1
+  const legacyFacts =
+    useLegacyChips && (contextLabel || scopeTrimmed) ? (
+      <div
+        className={cn(
+          "flex min-w-0 items-center gap-1.5",
+          zdEstimateChromeControlHeightClass
+        )}
+      >
+        {contextLabel ? (
+          <span
+            title={contextLabel}
             className={cn(
-              "inline-flex items-center text-sm font-semibold leading-none tracking-tight text-slate-900",
+              "inline-flex max-w-[12rem] items-center truncate rounded-md bg-indigo-50/90 px-2 text-[11px] font-medium leading-none text-indigo-900/90 ring-1 ring-inset ring-indigo-100/90 sm:max-w-[16rem]",
               zdEstimateChromeControlHeightClass
             )}
           >
-            {title}
-          </h1>
-          {showHintSlot ? (
-            combinedHint ? (
-              <span
-                className={cn(
-                  "inline-flex items-center justify-center",
-                  zdEstimateChromeControlHeightClass
-                )}
-              >
-                <HelpHintBubble
-                  message={combinedHint}
-                  tone="slate"
-                  size="sm"
-                  ariaLabel={hintAriaLabel}
-                />
-              </span>
-            ) : (
-              <span
-                aria-hidden
-                className={cn(
-                  "inline-flex items-center justify-center",
-                  zdEstimateChromeControlHeightClass
-                )}
-              >
-                <span className="inline-block size-4 rounded-full bg-slate-100 motion-safe:animate-pulse" />
-              </span>
-            )
-          ) : null}
-          {hostConfigured && host ? (
-            <span
-              title={hostDetail ?? undefined}
+            {contextLabel}
+          </span>
+        ) : null}
+        {scopeTrimmed ? (
+          <span
+            title={scopeTrimmed}
+            className={cn(
+              "inline-flex max-w-[10rem] items-center truncate rounded-md bg-emerald-50/90 px-2 text-[11px] font-medium leading-none text-emerald-900/90 ring-1 ring-inset ring-emerald-100/90 sm:max-w-[14rem]",
+              zdEstimateChromeControlHeightClass
+            )}
+          >
+            {scopeTrimmed}
+          </span>
+        ) : null}
+      </div>
+    ) : null;
+
+  const factsNode = facts ?? legacyFacts;
+  const hasFacts = Boolean(factsNode);
+
+  return (
+    <header className={zdEstimatePageIntroClass}>
+      <div className="flex min-w-0 flex-col gap-1.5">
+        <div className={zdEstimatePageIntroRowClass}>
+          {/* Tożsamość */}
+          <div
+            className={cn(
+              "flex shrink-0 items-center gap-1.5",
+              zdEstimateChromeControlHeightClass
+            )}
+          >
+            <h1
               className={cn(
-                "inline-flex items-center",
+                "inline-flex items-center text-sm font-semibold leading-none tracking-tight text-slate-900",
                 zdEstimateChromeControlHeightClass
               )}
             >
-              <Badge
-                variant={host.isLive ? "warning" : "success"}
+              {title}
+            </h1>
+            {showHintSlot ? (
+              combinedHint ? (
+                <span
+                  className={cn(
+                    "inline-flex items-center justify-center",
+                    zdEstimateChromeControlHeightClass
+                  )}
+                >
+                  <HelpHintBubble
+                    message={combinedHint}
+                    tone="slate"
+                    size="sm"
+                    ariaLabel={hintAriaLabel}
+                  />
+                </span>
+              ) : (
+                <span
+                  aria-hidden
+                  className={cn(
+                    "inline-flex items-center justify-center",
+                    zdEstimateChromeControlHeightClass
+                  )}
+                >
+                  <span className="inline-block size-4 rounded-full bg-slate-100 motion-safe:animate-pulse" />
+                </span>
+              )
+            ) : null}
+            {hostConfigured && host ? (
+              <span
+                title={hostDetail ?? undefined}
                 className={cn(
-                  zdEstimateHostBadgeClass,
-                  host.isLive
-                    ? "ring-1 ring-amber-300/60"
-                    : "ring-1 ring-emerald-300/50"
+                  "inline-flex items-center",
+                  zdEstimateChromeControlHeightClass
                 )}
               >
-                {zdEstimateHostBadgeLabel({
-                  isLive: host.isLive,
-                  port: host.port,
-                })}
-              </Badge>
-            </span>
-          ) : hostPlaceholder ? (
-            <span
-              aria-hidden
+                <Badge
+                  variant={host.isLive ? "warning" : "success"}
+                  className={cn(
+                    zdEstimateHostBadgeClass,
+                    host.isLive
+                      ? "ring-1 ring-amber-300/60"
+                      : "ring-1 ring-emerald-300/50"
+                  )}
+                >
+                  {zdEstimateHostBadgeLabel({
+                    isLive: host.isLive,
+                    port: host.port,
+                  })}
+                </Badge>
+              </span>
+            ) : hostPlaceholder ? (
+              <span
+                aria-hidden
+                className={cn(
+                  "inline-block w-[4.5rem] shrink-0 rounded-md bg-slate-100 motion-safe:animate-pulse",
+                  zdEstimateChromeControlHeightClass
+                )}
+              />
+            ) : null}
+          </div>
+
+          {/* Fakty — tylko w jednym rzędzie na xl+ (nie walczą z przyciskami) */}
+          {hasFacts ? (
+            <div
               className={cn(
-                "inline-block w-[4.5rem] shrink-0 rounded-md bg-slate-100 motion-safe:animate-pulse",
+                "hidden min-w-0 flex-1 items-center xl:flex",
                 zdEstimateChromeControlHeightClass
               )}
-            />
+            >
+              {factsNode}
+            </div>
+          ) : (
+            <div className="hidden min-w-0 flex-1 xl:block" aria-hidden />
+          )}
+
+          {actions ? (
+            <div
+              className={cn(
+                zdEstimateToolbarActionsClusterClass,
+                "ml-auto"
+              )}
+            >
+              {actions}
+            </div>
           ) : null}
         </div>
 
-        {/* Fakty — ta sama oś pionowa */}
-        {facts ? (
+        {/* Fakty pod spodem poniżej xl — pełna szerokość, zero overlap */}
+        {hasFacts ? (
           <div
             className={cn(
-              "flex min-w-0 flex-1 items-center",
+              "min-w-0 xl:hidden",
               zdEstimateChromeControlHeightClass
             )}
           >
-            {facts}
+            {factsNode}
           </div>
-        ) : useLegacyChips && (contextLabel || scopeTrimmed) ? (
-          <div
-            className={cn(
-              "flex min-w-0 flex-1 items-center gap-1.5",
-              zdEstimateChromeControlHeightClass
-            )}
-          >
-            {contextLabel ? (
-              <span
-                title={contextLabel}
-                className={cn(
-                  "inline-flex max-w-[12rem] items-center truncate rounded-md bg-indigo-50/90 px-2 text-[11px] font-medium leading-none text-indigo-900/90 ring-1 ring-inset ring-indigo-100/90 sm:max-w-[16rem]",
-                  zdEstimateChromeControlHeightClass
-                )}
-              >
-                {contextLabel}
-              </span>
-            ) : null}
-            {scopeTrimmed ? (
-              <span
-                title={scopeTrimmed}
-                className={cn(
-                  "inline-flex max-w-[10rem] items-center truncate rounded-md bg-emerald-50/90 px-2 text-[11px] font-medium leading-none text-emerald-900/90 ring-1 ring-inset ring-emerald-100/90 sm:max-w-[14rem]",
-                  zdEstimateChromeControlHeightClass
-                )}
-              >
-                {scopeTrimmed}
-              </span>
-            ) : null}
-          </div>
-        ) : (
-          <div className="min-w-0 flex-1" aria-hidden />
-        )}
-
-        {actions ? (
-          <div className={zdEstimateToolbarActionsClusterClass}>{actions}</div>
         ) : null}
       </div>
     </header>

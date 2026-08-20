@@ -16,7 +16,7 @@ export type ZdEstimateLoadingStep = {
   title: string;
   /** Podpowiedź tylko w strefie statusu (nie powtarzaj w wierszu kroku). */
   activeHint: string;
-  /** Podtekst pod tytułem kroku, gdy `showStepDoneHints` (np. create ZD). */
+  /** Podtekst pod tytułem kroku, gdy `showStepDoneHints`. */
   doneHint?: string;
 };
 
@@ -31,8 +31,9 @@ export type { ZdEstimateLoadingStatusTone };
 /**
  * Wspólne body loadingu Kreatora ZD:
  * status (1 komunikat) + cicha checklista + pasek postępu.
- * Hint aktywnego kroku jest tylko u góry — w liście nie dublujemy go
- * (chyba że `showStepDoneHints` dla zakończonych / failure).
+ * Hint aktywnego kroku jest tylko u góry — w liście nie dublujemy go.
+ * `showStepDoneHints` pokazuje podtekst zakończonych kroków; błąd kroku
+ * (`stepFailureId`) zawsze może mieć własny podpis.
  */
 export function ZdEstimateLoadingBody({
   statusTitle,
@@ -66,7 +67,7 @@ export function ZdEstimateLoadingBody({
   /** 0–100; gdy brak — wyliczany z indeksu kroku. */
   progressPct?: number;
   footerNote?: string | null;
-  /** Lewa strona footera (np. szacunek czasu create). */
+  /** Lewa strona footera (np. dodatkowy meta wiersz). */
   footerMeta?: string | null;
   busy?: boolean;
   ariaLabel?: string;
@@ -74,7 +75,7 @@ export function ZdEstimateLoadingBody({
   showStepDoneHints?: boolean;
   stepFailureId?: string | null;
   stepFailureHint?: string | null;
-  /** Krótka nota pod hintem statusu (np. disclaimer create). */
+  /** Krótka nota pod hintem statusu. */
   disclaimer?: string | null;
 }) {
   const clamped = Math.max(
@@ -184,8 +185,10 @@ export function ZdEstimateLoadingBody({
           const doneHintText = failed
             ? stepFailureHint ?? step.doneHint
             : step.doneHint;
-          const showHint =
-            showStepDoneHints && doneHintText && (done || failed);
+          const showHint = Boolean(
+            (failed && doneHintText) ||
+              (showStepDoneHints && doneHintText && done)
+          );
           return (
             <li
               key={step.id}

@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   analyzeTeethMarkOrdered,
   orderHasTeethOrderFile,
+  resolveTeethGroupOrderFile,
+  TEETH_GROUP_ORDER_FILE_FALLBACK_NAME,
+  teethOrderFileGroupKey,
   teethMarkOrderedConfirmLabel,
   teethMarkOrderedConfirmMessage,
   TEETH_MARK_ORDERED_BLOCKED_MESSAGE,
@@ -30,6 +33,33 @@ describe("orderHasTeethOrderFile", () => {
       })
     ).toBe(true);
     expect(orderHasTeethOrderFile({})).toBe(false);
+  });
+});
+
+describe("teethOrderFileGroupKey / resolveTeethGroupOrderFile", () => {
+  it("grupuje po dostawcy, puste id jako jedna grupa", () => {
+    expect(teethOrderFileGroupKey({ supplier_id: "ivoclar" })).toBe("ivoclar");
+    expect(teethOrderFileGroupKey({ supplier_id: "  " })).toBe("__no_supplier");
+    expect(teethOrderFileGroupKey({})).toBe("__no_supplier");
+  });
+
+  it("plik grupy = pierwszy kompletny path w zestawie", () => {
+    expect(
+      resolveTeethGroupOrderFile([
+        { teeth_order_file_name: "x.xlsx" },
+        { teeth_order_file_path: "teeth-orders/g/a.xlsx", teeth_order_file_name: "ivoclar.xlsx" },
+      ])
+    ).toEqual({ hasFile: true, fileName: "ivoclar.xlsx" });
+    expect(resolveTeethGroupOrderFile([{ supplier_id: "x" }])).toEqual({
+      hasFile: false,
+      fileName: null,
+    });
+  });
+
+  it("gdy jest path bez nazwy, pokazuje zastępczą etykietę a nie pusty upload", () => {
+    expect(
+      resolveTeethGroupOrderFile([{ teeth_order_file_path: "teeth-orders/g/a.xlsx" }])
+    ).toEqual({ hasFile: true, fileName: TEETH_GROUP_ORDER_FILE_FALLBACK_NAME });
   });
 });
 
@@ -109,6 +139,64 @@ describe("analyzeTeethMarkOrdered", () => {
     expect(analysis.canMarkAny).toBe(false);
     expect(analysis.withoutFileIds).toEqual(["a"]);
   });
+
+  it("jeden plik w grupie dostawcy pokrywa pozostałe prośby", () => {
+    const map = new Map([
+      [
+        "a",
+        {
+          supplier_id: "ivoclar",
+          teeth_details: [completeRow],
+          teeth_order_file_path: "teeth-orders/a/a.xlsx",
+          teeth_order_file_name: "ivoclar.xlsx",
+        },
+      ],
+      [
+        "b",
+        {
+          supplier_id: "ivoclar",
+          teeth_details: [{ ...completeRow, id: "t2", order_id: "b" }],
+        },
+      ],
+      [
+        "c",
+        {
+          supplier_id: "ivoclar",
+          teeth_details: [{ ...completeRow, id: "t3", order_id: "c" }],
+        },
+      ],
+    ]);
+    const analysis = analyzeTeethMarkOrdered(["b", "c"], map);
+    expect(analysis.withSpecIds).toEqual(["b", "c"]);
+    expect(analysis.withoutFileIds).toEqual([]);
+    expect(analysis.hasMissingFile).toBe(false);
+    expect(analysis.canMarkAny).toBe(true);
+  });
+
+  it("plik innej grupy dostawcy nie pokrywa zaznaczenia", () => {
+    const map = new Map([
+      [
+        "a",
+        {
+          supplier_id: "ivoclar",
+          teeth_details: [completeRow],
+          teeth_order_file_path: "teeth-orders/a/a.xlsx",
+        },
+      ],
+      [
+        "b",
+        {
+          supplier_id: "vita",
+          teeth_details: [{ ...completeRow, id: "t2", order_id: "b" }],
+        },
+      ],
+    ]);
+    const analysis = analyzeTeethMarkOrdered(["b"], map);
+    expect(analysis.withSpecIds).toEqual([]);
+    expect(analysis.withoutFileIds).toEqual(["b"]);
+    expect(analysis.withoutFileGroupCount).toBe(1);
+    expect(analysis.canMarkAny).toBe(false);
+  });
 });
 
 describe("teethMarkOrderedConfirmLabel", () => {
@@ -119,6 +207,7 @@ describe("teethMarkOrderedConfirmLabel", () => {
         withSpecIds: [],
         withoutSpecIds: ["b"],
         withoutFileIds: [],
+        withoutFileGroupCount: 0,
         hasMissingSpec: true,
         hasMissingFile: false,
         canMarkAny: false,
@@ -134,6 +223,7 @@ describe("teethMarkOrderedConfirmMessage", () => {
       withSpecIds: [],
       withoutSpecIds: ["b"],
       withoutFileIds: [],
+      withoutFileGroupCount: 0,
       hasMissingSpec: true,
       hasMissingFile: false,
       canMarkAny: false,
@@ -147,6 +237,7 @@ describe("teethMarkOrderedConfirmMessage", () => {
       withSpecIds: [],
       withoutSpecIds: [],
       withoutFileIds: ["a"],
+      withoutFileGroupCount: 1,
       hasMissingSpec: false,
       hasMissingFile: true,
       canMarkAny: false,
@@ -160,6 +251,7 @@ describe("teethMarkOrderedConfirmMessage", () => {
       withSpecIds: [],
       withoutSpecIds: ["a"],
       withoutFileIds: ["b"],
+      withoutFileGroupCount: 1,
       hasMissingSpec: true,
       hasMissingFile: true,
       canMarkAny: false,
@@ -168,17 +260,34 @@ describe("teethMarkOrderedConfirmMessage", () => {
     expect(msg).toContain("pliku zamówienia");
   });
 
-  it("informuje o pominięciu próśb bez pliku przy częściowym oznaczeniu", () => {
+  it("informuje o pominięciu grupy bez pliku przy częściowym oznaczeniu", () => {
     const msg = teethMarkOrderedConfirmMessage({
       orderIds: ["a", "b"],
       withSpecIds: ["a"],
       withoutSpecIds: [],
       withoutFileIds: ["b"],
+      withoutFileGroupCount: 1,
       hasMissingSpec: false,
       hasMissingFile: true,
       canMarkAny: true,
       selectedPositionCount: 2,
     });
-    expect(msg).toContain("bez pliku zamówienia");
+    expect(msg).toMatch(/grupa dostawcy nie ma/);
+  });
+
+  it("nie mówi o 0 grupach, gdy brakuje pliku a licznik grup jest pusty", () => {
+    const msg = teethMarkOrderedConfirmMessage({
+      orderIds: ["a", "b"],
+      withSpecIds: ["a"],
+      withoutSpecIds: [],
+      withoutFileIds: ["b"],
+      withoutFileGroupCount: 0,
+      hasMissingSpec: false,
+      hasMissingFile: true,
+      canMarkAny: true,
+      selectedPositionCount: 2,
+    });
+    expect(msg).not.toMatch(/0 grup/);
+    expect(msg).toMatch(/grupa dostawcy nie ma/);
   });
 });

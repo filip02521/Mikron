@@ -2,7 +2,7 @@
 
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja requireZdEstimateAdmin() (operacje dostaw); service role z pełnym scope po warstwie aplikacji.
-import { requireZdEstimateAdmin } from "@/lib/auth";
+import { getSessionUser, requireZdEstimateAdmin } from "@/lib/auth";
 import {
   deleteZdEstimateExclusion,
   deleteZdEstimateExclusionsMany,
@@ -192,6 +192,7 @@ import {
   resolveZdEstimateRunScope,
   type ZdEstimateRunMode,
 } from "@/lib/orders/zd-estimate-scope";
+import type { ZdEstimateUiSessionSnapshot } from "@/lib/orders/zd-estimate-ui-session-snapshot";
 
 export type ZdEstimateHistoryEntryDto = {
   twId: number;
@@ -260,7 +261,12 @@ export type ZdEstimateRunResult =
       result: ManualZdEstimateResult;
       /** Historia snapshotów użyta w Policz (do live refresh). */
       historyByTwId: ZdEstimateHistoryEntryDto[];
-      /** Wiszące prośby dostawcy (zamówienie Nowe) — merge po stronie klienta. null = fetch nieudany (nie nadpisuj UI). */
+      /**
+       * Fetch historii rzucił (nie: pusta mapa). Cięcia historyczne mogły nie wejść —
+       * UI blokuje Create do ponownego Policz.
+       */
+      historyFetchFailed?: boolean;
+      /** Wiszące prośby dostawcy (zamówienie Nowe). null = fetch nieudany (UI czyści listę i blokuje Create). */
       pendingIndividuals: ZdEstimatePendingIndividualOrder[] | null;
       /** true gdy fetch próśb ucięty limitem (możliwe brakujące). */
       pendingIndividualsTruncated?: boolean;
@@ -636,7 +642,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
       a.name.localeCompare(b.name, "pl")
     );
   } catch {
-    suppliers = [];
+    // zostaw []
   }
 
   let exclusions: ZdEstimateExclusionRow[] = [];
@@ -704,14 +710,14 @@ export async function actionZdEstimateBootstrap(): Promise<{
   try {
     uiPrefs = await fetchOwnZdEstimateUiPrefs();
   } catch {
-    uiPrefs = ZD_ESTIMATE_UI_PREFS_DEFAULTS;
+    // zostaw domyślne
   }
 
   let extrasPolicy = ZD_ESTIMATE_EXTRAS_POLICY_DEFAULT;
   try {
     extrasPolicy = await fetchZdEstimateExtrasPolicy();
   } catch {
-    extrasPolicy = ZD_ESTIMATE_EXTRAS_POLICY_DEFAULT;
+    // zostaw domyślne
   }
 
   let todayScopeCoverage = zdEstimateScopeCoverage([], []);
@@ -731,7 +737,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
       scopes.map((s) => s.supplierId)
     );
   } catch {
-    todayScopeCoverage = zdEstimateScopeCoverage([], []);
+    // zostaw puste pokrycie
   }
 
   return {
@@ -937,6 +943,7 @@ export async function actionRunZdEstimateManual(
       number,
       { lastOrderedQty: number; linkedAt: string }
     > | null = null;
+    let historyFetchFailed = false;
     const khResolve = await resolveSupplierKhIdsForHistory(input.supplierId);
     const supplierKhIds = khResolve.ok ? khResolve.khIds : [];
     const historyScope = historyScopeFromRun(scope);
@@ -965,8 +972,10 @@ export async function actionRunZdEstimateManual(
           });
         }
       } catch {
-        // Historia opcjonalna — szacunek działa bez snapshotów.
+        // Historia opcjonalna dla samego wyliczenia — bez snapshotów lista działa.
+        // Fetch error ≠ pusta historia: UI blokuje Create, żeby nie pójść bez cięć.
         historyByTwId = null;
+        historyFetchFailed = true;
       }
     }
 
@@ -1158,7 +1167,9 @@ export async function actionRunZdEstimateManual(
           missingBomTwIds.delete(id);
         }
       } catch {
-        // zostaje w missing*
+        // Pusta odpowiedź / timeout jednego SKU: zostaje w missing*.
+        // Pary → qty 0 + banner; explode BOM → osobny gate Create.
+        // Nie zrywamy całego Policz — reszta zakresu ma zostać na liście.
       }
     }
 
@@ -1176,7 +1187,7 @@ export async function actionRunZdEstimateManual(
           });
         }
       } catch {
-        /* ignore */
+        historyFetchFailed = true;
       }
     }
 
@@ -1307,6 +1318,7 @@ export async function actionRunZdEstimateManual(
       ok: true,
       result,
       historyByTwId: historyMapToDto(historyByTwId),
+      historyFetchFailed,
       pendingIndividuals,
       pendingIndividualsTruncated,
       pendingIndividualsError,
@@ -3173,7 +3185,7 @@ export async function actionMarkZdEstimateIndividualsGlowne(input: {
     .in("id", requested);
   if (error) return { ok: false, message: error.message };
 
-  let teethTwIds = new Set<number>();
+  let teethTwIds: Set<number>;
   try {
     teethTwIds = await fetchTeethProductTwIdSet();
   } catch (e) {
@@ -4148,5 +4160,221 @@ export async function actionSetZdEstimateSnapshotHistoryEligible(input: {
       ),
     };
   }
+}
+
+// ============================================================================
+// Sesje UI kreatora ZD (/zakupy/szacunek) — snapshot + odtwarzanie po nawigacji
+// ============================================================================
+
+const ZD_ESTIMATE_UI_SESSION_TTL_MS = 60 * 60 * 1000; // housekeeping; timer liczy się po stronie klienta
+
+const ZD_ESTIMATE_UI_SESSION_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+type ZdEstimateUiSessionPayload = ZdEstimateUiSessionSnapshot;
+
+function parseZdEstimateUiSessionId(
+  raw: string | null | undefined
+): string | null {
+  const id = String(raw ?? "").trim();
+  if (!id || !ZD_ESTIMATE_UI_SESSION_ID_RE.test(id)) return null;
+  return id.toLowerCase();
+}
+
+function revalidateZdEstimateUiSessionPaths() {
+  revalidatePath("/zakupy/szacunek");
+}
+
+export async function actionCreateZdEstimateUiSession(input: {
+  payload: ZdEstimateUiSessionPayload;
+  schemaVersion: number;
+}): Promise<
+  | { ok: true; sessionId: string }
+  | { ok: false; message: string }
+> {
+  const user = await getSessionUser();
+  if (!user) {
+    return { ok: false, message: "Brak sesji." };
+  }
+
+  const supabase = createAdminClient();
+  const now = new Date();
+
+  // Nowe „Policz” zastępuje poprzednią aktywną sesję (usuń zamiast zostawiać status=expired).
+  await supabase
+    .from("zd_estimate_ui_sessions")
+    .delete()
+    .eq("owner_user_id", user.id)
+    .eq("status", "active");
+
+  const { data, error } = await supabase
+    .from("zd_estimate_ui_sessions")
+    .insert({
+      owner_user_id: user.id,
+      status: "active",
+      expires_at: new Date(now.getTime() + ZD_ESTIMATE_UI_SESSION_TTL_MS).toISOString(),
+      payload: input.payload as unknown,
+      schema_version: input.schemaVersion,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    return { ok: false, message: error?.message ?? "Nie udało się utworzyć sesji." };
+  }
+
+  revalidateZdEstimateUiSessionPaths();
+  return { ok: true, sessionId: data.id };
+}
+
+export async function actionUpsertZdEstimateUiSessionSnapshot(input: {
+  sessionId: string;
+  payload: ZdEstimateUiSessionPayload;
+  schemaVersion: number;
+}): Promise<
+  | { ok: true; sessionId: string }
+  | { ok: false; message: string; reason: "not_found" | "error" }
+> {
+  const user = await getSessionUser();
+  if (!user) {
+    return { ok: false, message: "Brak sesji.", reason: "error" };
+  }
+
+  const sessionId = parseZdEstimateUiSessionId(input.sessionId);
+  if (!sessionId) {
+    return { ok: false, message: "Nieprawidłowy identyfikator sesji.", reason: "error" };
+  }
+
+  const supabase = createAdminClient();
+  const now = new Date();
+  const expiresAt = new Date(
+    now.getTime() + ZD_ESTIMATE_UI_SESSION_TTL_MS
+  ).toISOString();
+
+  const { data, error } = await supabase
+    .from("zd_estimate_ui_sessions")
+    .update({
+      status: "active",
+      expires_at: expiresAt,
+      payload: input.payload as unknown,
+      schema_version: input.schemaVersion,
+      updated_at: now.toISOString(),
+    })
+    .eq("id", sessionId)
+    .eq("owner_user_id", user.id)
+    .eq("status", "active")
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, message: error.message, reason: "error" };
+  }
+
+  if (!data) {
+    // Nie odtwarzaj tu — recreate po stronie klienta tylko gdy sessionId nadal bieżący
+    // (inaczej stary in-flight upsert kasowałby nowszą sesję po „Policz”).
+    return {
+      ok: false,
+      message: "Nie udało się zaktualizować sesji — wygasła lub nie istnieje.",
+      reason: "not_found",
+    };
+  }
+
+  revalidateZdEstimateUiSessionPaths();
+  return { ok: true, sessionId: data.id };
+}
+
+export async function actionGetZdEstimateUiSession(input: {
+  sessionId: string;
+}): Promise<
+  | {
+      ok: true;
+      payload: ZdEstimateUiSessionPayload;
+      schemaVersion: number;
+      status: string;
+      expiresAt: string;
+      updatedAt: string;
+    }
+  | { ok: false; message: string; reason: "not_found" | "expired" }
+> {
+  const user = await getSessionUser();
+  if (!user) {
+    return { ok: false, message: "Brak sesji.", reason: "not_found" };
+  }
+
+  const sessionId = parseZdEstimateUiSessionId(input.sessionId);
+  if (!sessionId) {
+    return { ok: false, message: "Nieprawidłowy identyfikator sesji.", reason: "not_found" };
+  }
+
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from("zd_estimate_ui_sessions")
+    .select("payload, schema_version, status, expires_at, updated_at")
+    .eq("id", sessionId)
+    .eq("owner_user_id", user.id)
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, message: error.message, reason: "not_found" };
+  }
+
+  if (!data) {
+    return { ok: false, message: "Nie znaleziono sesji.", reason: "not_found" };
+  }
+
+  const expiresAt =
+    data.expires_at instanceof Date ? data.expires_at : new Date(data.expires_at);
+  const expired =
+    data.status !== "active" || expiresAt.getTime() <= Date.now();
+
+  if (expired) {
+    await supabase
+      .from("zd_estimate_ui_sessions")
+      .delete()
+      .eq("id", sessionId)
+      .eq("owner_user_id", user.id);
+    revalidateZdEstimateUiSessionPaths();
+    return { ok: false, message: "Sesja wygasła.", reason: "expired" };
+  }
+
+  return {
+    ok: true,
+    payload: data.payload as ZdEstimateUiSessionSnapshot,
+    schemaVersion: Number(data.schema_version),
+    status: data.status as string,
+    expiresAt: expiresAt.toISOString(),
+    updatedAt: (data.updated_at instanceof Date ? data.updated_at : new Date(data.updated_at)).toISOString(),
+  };
+}
+
+export async function actionDeleteZdEstimateUiSession(input: {
+  sessionId: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const user = await getSessionUser();
+  if (!user) {
+    return { ok: false, message: "Brak sesji." };
+  }
+
+  const sessionId = parseZdEstimateUiSessionId(input.sessionId);
+  if (!sessionId) {
+    return { ok: false, message: "Nieprawidłowy identyfikator sesji." };
+  }
+
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from("zd_estimate_ui_sessions")
+    .delete()
+    .eq("id", sessionId)
+    .eq("owner_user_id", user.id);
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  revalidateZdEstimateUiSessionPaths();
+  return { ok: true };
 }
 

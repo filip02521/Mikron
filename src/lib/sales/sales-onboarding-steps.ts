@@ -77,7 +77,7 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
       href: "/prosba",
       title: "Nowa prośba",
       lead:
-        "Tu zgłaszasz potrzebę do zakupów: zamówienie u dostawcy albo informację o dostępności towaru. To nie to samo co pytanie na Tablicy.",
+        "Tu zgłaszasz potrzebę do zakupów: zamówienie u dostawcy albo informację o towarze. To nie to samo co pytanie na Tablicy.",
       bullets: [
         "Na górze wybierz rodzaj: Zamówienie u dostawcy albo Informacja o towarze.",
         `Przy informacji: „${informacjaDirect}” (e-mail do Ciebie + wpis w „Moje zamówienia”) albo „${informacjaStockOut}” (tylko sygnał dla zakupów — bez wpisu u Ciebie).`,

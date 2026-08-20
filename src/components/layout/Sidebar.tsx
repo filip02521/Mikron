@@ -483,6 +483,7 @@ export function Sidebar({
   procurementWorkspace = null,
   canSwitchProcurementWorkspace = false,
   assignedWorkspaces = [],
+  adminModules = [],
   userEmail,
   salesPersonName,
   userAssignmentLabel,
@@ -496,6 +497,7 @@ export function Sidebar({
   procurementWorkspace?: ProcurementWorkspace | null;
   canSwitchProcurementWorkspace?: boolean;
   assignedWorkspaces?: Workspace[];
+  adminModules?: string[];
   userEmail?: string | null;
   salesPersonName?: string | null;
   userAssignmentLabel?: string | null;
@@ -535,8 +537,9 @@ export function Sidebar({
           role,
           assignedWorkspaces,
           procurementWorkspace,
+          adminModules
         )
-      : filterNavGroupsByAccess(navForRole(role, navBadges), role, assignedWorkspaces, procurementWorkspace)
+      : filterNavGroupsByAccess(navForRole(role, navBadges), role, assignedWorkspaces, procurementWorkspace, adminModules)
     : [];
   const workspaceSubtitle = subtitleForProcurementWorkspace(procurementWorkspace);
 

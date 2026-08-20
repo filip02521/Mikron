@@ -35,6 +35,8 @@ predicate isAuthFunction(string fnName) {
     "requireReceiveNotificationFlush",
     "requireSupplierManagement",
     "requireSubiektLookup",
+    "requireMailCenterAccess",
+    "requireMailCenterForMutation",
     // Helper functions that internally call getSessionUser*()
     "assertSalesAccess",
     "assertProcurementAccess",
@@ -47,7 +49,8 @@ predicate isAuthFunction(string fnName) {
     // doesn't follow call graph into other function bodies
     "acknowledgeOrders",
     "actionSearchZdReceiveFilter",
-    "actionListActiveVacationsForSupplier"
+    "actionListActiveVacationsForSupplier",
+    "actionFetchCarrierPhones"
   ]
 }
 

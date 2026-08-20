@@ -165,6 +165,25 @@ describe("enrichMyOrderSalesUi", () => {
     expect(ui.sortPriority).toBe(10);
   });
 
+  it("informacja stock_auto — subline o Subiekcie, nie magazynie", () => {
+    const row = presentMyOrders(
+      [
+        {
+          ...baseOrder,
+          request_kind: "informacja",
+          status: "Zrealizowane",
+          quantity: "-",
+          delivery_at: "2026-05-15T10:00:00Z",
+          informacja_arrived_source: "stock_auto",
+        },
+      ],
+      []
+    ).informacje[0]!;
+    const ui = enrichMyOrderSalesUi(row);
+    expect(ui.subline).toContain("Subiekcie");
+    expect(ui.subline).not.toContain("magazynu");
+  });
+
   it("część na magazynie ma ton stock, nie warning jak po terminie", () => {
     const partial = presentMyOrders(
       [{ ...baseOrder, status: "Czesciowo_zrealizowane", delivered_quantity: "2" }],

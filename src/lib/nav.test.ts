@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  filterNavGroupsByAccess,
   isNavItemActive,
   navForRole,
   navItemDisplayTone,
@@ -7,6 +8,8 @@ import {
   navMobileOverflowItems,
   navMobilePrimaryItems,
   NAV_SECTION_DAILY,
+  NAV_SECTION_ADMIN_TOOLS,
+  NAV_SECTION_SYSTEM,
   NAV_SECTION_SUPPLIERS,
   NAV_SECTION_TEAM,
   NAV_SECTION_TODAY,
@@ -20,6 +23,7 @@ import {
   pageTitle,
   type NavItem,
 } from "./nav";
+import { MAIL_CENTER_MODULE_SLUG } from "@/lib/admin-modules";
 
 describe("isNavItemActive", () => {
   const zespolSiblings = ["/zespol", "/zespol/handlowcy", "/zespol/grupy"];
@@ -69,8 +73,8 @@ describe("isNavItemActive", () => {
   it("podświetla Administracja tylko na hubie system/konta/handlowcy", () => {
     const siblings = ["/admin", "/admin/zgloszenia", "/admin/produkty", "/zespol/grupy"];
     expect(isNavItemActive("/admin", "/admin", siblings)).toBe(true);
-    expect(isNavItemActive("/admin/uzytkownicy", "/admin", siblings)).toBe(true);
-    expect(isNavItemActive("/admin/handlowcy", "/admin", siblings)).toBe(true);
+    expect(isNavItemActive("/admin/uzytkownicy", "/admin", siblings)).toBe(false);
+    expect(isNavItemActive("/admin/handlowcy", "/admin", siblings)).toBe(false);
     expect(isNavItemActive("/admin/dostawcy", "/admin", siblings)).toBe(false);
     expect(isNavItemActive("/admin/urlopy", "/admin", siblings)).toBe(false);
     expect(isNavItemActive("/admin/zgloszenia", "/admin", siblings)).toBe(false);
@@ -111,6 +115,10 @@ describe("pageTitle", () => {
     expect(pageTitle("/zakupy/szacunek")).toBe("Kreator ZD");
   });
 
+  it("zwraca Raporty Ivoclar dla /zakupy/raporty-ivoclar", () => {
+    expect(pageTitle("/zakupy/raporty-ivoclar")).toBe("Raporty Ivoclar");
+  });
+
   it("zwraca ZK czekające dla /notatnik i /zk", () => {
     expect(pageTitle("/notatnik")).toBe("Notatnik");
     expect(pageTitle("/zk")).toBe("ZK czekające");
@@ -124,6 +132,25 @@ describe("navForRole admin dostawcy", () => {
     expect(suppliers?.items[0]?.href).toBe("/admin/dostawcy");
     expect(suppliers?.items[2]?.href).toBe("/admin/urlopy");
   });
+
+  it("rozdziela dawny hub admina od narzędzi konfiguracyjnych", () => {
+    const groups = navForRole("admin");
+    const system = groups.find((g) => g.title === NAV_SECTION_SYSTEM);
+    const config = groups.find((g) => g.title === NAV_SECTION_ADMIN_TOOLS);
+
+    expect(system?.items.map((item) => item.href)).toEqual([
+      "/admin",
+      "/admin/uzytkownicy",
+      "/admin/handlowcy",
+      "/admin/mail",
+    ]);
+    expect(config?.items.map((item) => item.href)).toEqual([
+      "/admin/zgloszenia",
+      "/admin/produkty",
+      "/admin/produkty/zeby",
+      "/zespol/grupy",
+    ]);
+  });
 });
 
 describe("navForRole struktura zakupów", () => {
@@ -135,6 +162,7 @@ describe("navForRole struktura zakupów", () => {
       NAV_SECTION_SUPPLIERS,
       NAV_SECTION_TOOLS,
       NAV_SECTION_CARRIERS,
+      NAV_SECTION_SYSTEM,
     ]);
   });
 
@@ -145,6 +173,7 @@ describe("navForRole struktura zakupów", () => {
       NAV_SECTION_SUPPLIERS,
       NAV_SECTION_TOOLS,
       NAV_SECTION_CARRIERS,
+      NAV_SECTION_SYSTEM,
     ]);
   });
 
@@ -153,6 +182,7 @@ describe("navForRole struktura zakupów", () => {
     const defaultCollapsed = groups.filter((g) => g.defaultCollapsed);
     expect(defaultCollapsed.map((g) => g.title)).toEqual([
       NAV_SECTION_TOOLS,
+      NAV_SECTION_SYSTEM,
     ]);
   });
 
@@ -174,6 +204,7 @@ describe("navForRole struktura zakupów", () => {
       ["Weryfikacja", "amber"],
       ["Przyjęcie towaru", "emerald"],
       ["Kreator ZD", "violet"],
+      ["Raporty Ivoclar", "sky"],
     ]);
   });
 
@@ -185,6 +216,7 @@ describe("navForRole struktura zakupów", () => {
         "/weryfikacja",
         "/kolejka",
         "/zakupy/szacunek",
+        "/zakupy/raporty-ivoclar",
       ]);
       expect(today?.items.find((i) => i.href === "/zakupy/szacunek")?.tone).toBe(
         "violet"
@@ -201,6 +233,42 @@ describe("navForRole struktura zakupów", () => {
     expect(labels).toContain("Zamówienie grupowe");
     expect(labels).toContain("Numery kurierów");
     expect(labels).toContain("Kreator ZD");
+    expect(labels).toContain("Raporty Ivoclar");
+  });
+});
+
+describe("filterNavGroupsByAccess admin modules", () => {
+  it("ukrywa /admin/mail dla non-admin bez modułu", () => {
+    const groups = filterNavGroupsByAccess(navForRole("sales"), "sales", [], null, []);
+    const hrefs = groups.flatMap((g) => g.items.map((i) => i.href));
+    expect(hrefs).not.toContain("/admin/mail");
+  });
+
+  it("pokazuje tylko /admin/mail z sekcji System dla non-admin z modułem", () => {
+    const groups = filterNavGroupsByAccess(
+      navForRole("sales"),
+      "sales",
+      [],
+      null,
+      [MAIL_CENTER_MODULE_SLUG]
+    );
+    const system = groups.find((g) => g.title === NAV_SECTION_SYSTEM);
+    expect(system?.items.map((item) => item.href)).toEqual(["/admin/mail"]);
+  });
+
+  it("nie pokazuje innych adminowych linków dla non-admin z modułem", () => {
+    const groups = filterNavGroupsByAccess(
+      navForRole("sales"),
+      "sales",
+      [],
+      null,
+      [MAIL_CENTER_MODULE_SLUG]
+    );
+    const hrefs = groups.flatMap((g) => g.items.map((i) => i.href));
+    expect(hrefs).not.toContain("/admin");
+    expect(hrefs).not.toContain("/admin/uzytkownicy");
+    expect(hrefs).not.toContain("/admin/handlowcy");
+    expect(hrefs).not.toContain("/admin/zgloszenia");
   });
 });
 
@@ -222,8 +290,11 @@ describe("teethNavGroups", () => {
 
   it("żadna sekcja nie jest zwijana (pojedyncze linki zawsze widoczne)", () => {
     const groups = teethNavGroups();
-    expect(groups.every((g) => !g.collapsible)).toBe(true);
-    expect(groups.every((g) => !g.defaultCollapsed)).toBe(true);
+    const systemGroup = groups.find((g) => g.title === NAV_SECTION_SYSTEM);
+    expect(groups.filter((g) => g.title !== NAV_SECTION_SYSTEM).every((g) => !g.collapsible)).toBe(true);
+    expect(groups.filter((g) => g.title !== NAV_SECTION_SYSTEM).every((g) => !g.defaultCollapsed)).toBe(true);
+    expect(systemGroup?.collapsible).toBe(true);
+    expect(systemGroup?.defaultCollapsed).toBe(true);
   });
 
   it("sekcja Dziś — pipeline: kolejka → weryfikacja → przyjęcie → historia", () => {
@@ -288,6 +359,7 @@ describe("teethNavGroups", () => {
     if (new Date().getDate() <= 7) {
       expectedLabels.push("Podsumowanie miesiąca");
     }
+    expectedLabels.push("Centrum maili");
     expect(overflow.map((item) => item.label)).toEqual(expectedLabels);
     expect(overflow.every((item) => item.tier === "compact")).toBe(true);
   });
@@ -313,6 +385,7 @@ describe("navForAppContext", () => {
     expect(groups[0]?.items[0]?.href).toBe("/podsumowanie");
     const today = groups.find((g) => g.title === NAV_SECTION_TODAY);
     expect(today?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
+    expect(today?.items.some((i) => i.href === "/zakupy/raporty-ivoclar")).toBe(true);
   });
 });
 
@@ -341,16 +414,21 @@ describe("navForRole zakupy_zeby", () => {
     expect(suppliers?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(false);
     const zakupyToday = navForRole("zakupy").find((g) => g.title === NAV_SECTION_TODAY);
     expect(zakupyToday?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
+    expect(zakupyToday?.items.some((i) => i.href === "/zakupy/raporty-ivoclar")).toBe(true);
     const adminToday = navForRole("admin").find((g) => g.title === NAV_SECTION_TODAY);
     expect(adminToday?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
+    expect(adminToday?.items.some((i) => i.href === "/zakupy/raporty-ivoclar")).toBe(true);
     const adminSuppliers = navForRole("admin").find((g) => g.title === NAV_SECTION_SUPPLIERS);
     expect(adminSuppliers?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(false);
+    expect(adminSuppliers?.items.some((i) => i.href === "/zakupy/raporty-ivoclar")).toBe(false);
     const teethHrefs = navForRole("zakupy_zeby").flatMap((g) => g.items.map((i) => i.href));
     expect(teethHrefs.includes("/zakupy/gadki")).toBe(false);
     expect(teethHrefs.includes("/zakupy/szacunek")).toBe(false);
+    expect(teethHrefs.includes("/zakupy/raporty-ivoclar")).toBe(false);
     const magHrefs = navForRole("magazyn").flatMap((g) => g.items.map((i) => i.href));
     expect(magHrefs.includes("/zakupy/gadki")).toBe(false);
     expect(magHrefs.includes("/zakupy/szacunek")).toBe(false);
+    expect(magHrefs.includes("/zakupy/raporty-ivoclar")).toBe(false);
   });
 });
 
@@ -362,6 +440,7 @@ describe("navForRole magazyn", () => {
       "Zespół",
       NAV_SECTION_TOOLS,
       NAV_SECTION_CARRIERS,
+      NAV_SECTION_SYSTEM,
     ]);
   });
 
@@ -371,6 +450,7 @@ describe("navForRole magazyn", () => {
     expect(collapsibleSections.map((g) => g.title)).toEqual([
       NAV_SECTION_TOOLS,
       NAV_SECTION_CARRIERS,
+      NAV_SECTION_SYSTEM,
     ]);
   });
 
@@ -379,6 +459,7 @@ describe("navForRole magazyn", () => {
     const defaultCollapsed = groups.filter((g) => g.defaultCollapsed);
     expect(defaultCollapsed.map((g) => g.title)).toEqual([
       NAV_SECTION_TOOLS,
+      NAV_SECTION_SYSTEM,
     ]);
   });
 

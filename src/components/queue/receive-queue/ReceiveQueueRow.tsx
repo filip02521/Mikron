@@ -18,6 +18,12 @@ import {
   warehouseCancelFulfillButtonLabel,
 } from "@/lib/orders/warehouse-cancel-fulfillment";
 import { informacjaWarehouseQueueActionLabel } from "@/lib/orders/informacja-warehouse-queue";
+import {
+  INFORMACJA_AUTO_STOCK_ROW_BADGE,
+  INFORMACJA_AUTO_STOCK_ROW_DETAIL,
+  INFORMACJA_MANUAL_ONLY_TOOLTIP,
+  INFORMACJA_TEETH_MANUAL_ONLY_HINT,
+} from "@/lib/orders/informacja-flow-copy";
 import { partialReceiveCrossLabel } from "@/lib/orders/warehouse-cross-link";
 import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
 import {
@@ -92,6 +98,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
   inputVal,
   searchQuery = null,
   stockAvailable = null,
+  informacjaStockHint = null,
   onToggleSelected,
   onQtyChange,
   onSaveDelivery,
@@ -116,6 +123,8 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
   inputVal: string;
   searchQuery?: string | null;
   stockAvailable?: number | null;
+  /** Hint automatyki: stan Subiekta > 0 / ręcznie / zęby. */
+  informacjaStockHint?: "auto_ready" | "manual_only" | "teeth" | null;
   onToggleSelected: () => void;
   onQtyChange: (value: string) => void;
   onSaveDelivery: () => void;
@@ -248,6 +257,30 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
           >
             <ClockIcon className="size-2.5 shrink-0" />
             {waitingDays} {waitingDays === 1 ? "dzień" : "dni"}
+          </span>
+        ) : null}
+        {isInfo && informacjaStockHint === "auto_ready" ? (
+          <span
+            className="mt-0.5 ml-3 inline-flex max-w-full items-center rounded-full bg-emerald-100/90 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200/60"
+            title={INFORMACJA_AUTO_STOCK_ROW_DETAIL}
+          >
+            {INFORMACJA_AUTO_STOCK_ROW_BADGE}
+          </span>
+        ) : null}
+        {isInfo && informacjaStockHint === "manual_only" ? (
+          <span
+            className="mt-0.5 ml-3 inline-flex max-w-full items-center rounded-full bg-slate-100/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 ring-1 ring-inset ring-slate-200/50"
+            title={INFORMACJA_MANUAL_ONLY_TOOLTIP}
+          >
+            Tylko ręcznie
+          </span>
+        ) : null}
+        {isInfo && informacjaStockHint === "teeth" ? (
+          <span
+            className="mt-0.5 ml-3 inline-flex max-w-full items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 ring-1 ring-inset ring-amber-200/50"
+            title={INFORMACJA_TEETH_MANUAL_ONLY_HINT}
+          >
+            Zęby — ręcznie
           </span>
         ) : null}
       </td>

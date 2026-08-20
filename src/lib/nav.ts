@@ -1,4 +1,5 @@
 import type { UserRole, Workspace } from "@/types/database";
+import { MAIL_CENTER_MODULE_SLUG } from "@/lib/admin-modules";
 import { isSalesManager, canAccessPath } from "@/lib/auth-roles";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import { salesManagerNavTeamDescriptions } from "@/lib/sales/team-ui";
@@ -74,6 +75,7 @@ export const NAV_SECTION_TOOLS = "Archiwum i narzędzia";
 /** Sekcja narzędzi w menu działu zębów — opcjonalne (np. podsumowanie miesiąca). */
 export const NAV_SECTION_TEETH_TOOLS = "Narzędzia";
 export const NAV_SECTION_SYSTEM = "System";
+export const NAV_SECTION_ADMIN_TOOLS = "Konfiguracja";
 export const NAV_SECTION_DAILY = "Codziennie";
 export const NAV_SECTION_ZK = "ZK i terminy";
 export const NAV_SECTION_INFO = "Informacje";
@@ -88,9 +90,7 @@ export const NAV_SECTION_EXTRAS = "Dodatkowe opcje";
  */
 function isAdminSidebarRootActive(pathname: string): boolean {
   return (
-    pathname === "/admin" ||
-    pathname.startsWith("/admin/uzytkownicy") ||
-    pathname.startsWith("/admin/handlowcy")
+    pathname === "/admin"
   );
 }
 
@@ -327,6 +327,12 @@ export function teethNavGroups(badges: NavBadges = {}): NavGroup[] {
   if (extras.length > 0) {
     groups.push({ title: NAV_SECTION_TEETH_TOOLS, items: extras });
   }
+  groups.push({
+    title: NAV_SECTION_SYSTEM,
+    items: [adminMailCenterNavItem],
+    collapsible: true,
+    defaultCollapsed: true,
+  });
   return groups;
 }
 
@@ -381,6 +387,17 @@ function operationsTodayItems(
       icon: "groupOrder",
       tone: "violet",
       iconTone: "violet",
+      tier: "compact",
+      mobileSlot: "overflow",
+    });
+    items.push({
+      href: "/zakupy/raporty-ivoclar",
+      label: "Raporty Ivoclar",
+      mobileLabel: "Ivoclar",
+      description: "Sellout FS i stany",
+      icon: "chartTrend",
+      tone: "sky",
+      iconTone: "sky",
       tier: "compact",
       mobileSlot: "overflow",
     });
@@ -567,6 +584,16 @@ const carrierContactItems: NavItem[] = [
   },
 ];
 
+const adminMailCenterNavItem: NavItem = {
+  href: "/admin/mail",
+  label: "Centrum maili",
+  description: "Harmonogramy maili raportowych, odbiorcy i rejestr wysyłek z brakami danych.",
+  icon: "admin",
+  tone: "violet",
+  tier: "compact",
+  mobileSlot: "overflow",
+};
+
 function adminSystemItems(badges: { adminBugReports?: number }): NavItem[] {
   const compact = {
     tier: "compact" as const,
@@ -582,6 +609,40 @@ function adminSystemItems(badges: { adminBugReports?: number }): NavItem[] {
       tone: "violet",
       ...compact,
     },
+    {
+      href: "/admin/uzytkownicy",
+      label: "Konta",
+      description: "Logowanie, role i zarządzanie modułami",
+      icon: "teamAccounts",
+      tone: "violet",
+      ...compact,
+    },
+    {
+      href: "/admin/handlowcy",
+      label: "Handlowcy",
+      description: "Osoby kontaktowe, e-maile i zaproszenia",
+      icon: "team",
+      tone: "violet",
+      ...compact,
+    },
+    {
+      href: "/admin/mail",
+      label: "Centrum maili",
+      description: "Harmonogramy maili raportowych, odbiorcy i rejestr wysyłek z brakami danych.",
+      icon: "admin",
+      tone: "violet",
+      ...compact,
+    },
+  ];
+}
+
+function adminConfigurationItems(badges: { adminBugReports?: number }): NavItem[] {
+  const compact = {
+    tier: "compact" as const,
+    mobileSlot: "overflow" as const,
+  };
+
+  return [
     {
       href: "/admin/zgloszenia",
       label: "Zgłoszenia",
@@ -647,6 +708,20 @@ function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
     groups.push({
       title: NAV_SECTION_SYSTEM,
       items: adminSystemItems(badges),
+      collapsible: true,
+    });
+    groups.push({
+      title: NAV_SECTION_ADMIN_TOOLS,
+      items: adminConfigurationItems(badges),
+      collapsible: true,
+      defaultCollapsed: true,
+    });
+  } else {
+    // Dla modułowych userów panel admina ma być osiągalny z menu tylko w ograniczonym zakresie.
+    // Pełna filtracja (czy /admin/mail ma się pojawić) odbywa się w `filterNavGroupsByAccess`.
+    groups.push({
+      title: NAV_SECTION_SYSTEM,
+      items: [adminMailCenterNavItem],
       collapsible: true,
       defaultCollapsed: true,
     });
@@ -723,6 +798,12 @@ function magazynNavGroups(badges: NavBadges): NavGroup[] {
       items: carrierContactItems,
       collapsible: true,
     },
+    {
+      title: NAV_SECTION_SYSTEM,
+      items: [adminMailCenterNavItem],
+      collapsible: true,
+      defaultCollapsed: true,
+    },
   ];
 
   return groups;
@@ -763,12 +844,18 @@ export function filterNavGroupsByAccess(
   role: UserRole,
   workspaces?: Workspace[],
   procurementWorkspace?: ProcurementWorkspace | null,
+  adminModules: string[] = [],
 ): NavGroup[] {
   return groups
     .map((group) => ({
       ...group,
       items: group.items.filter((item) => {
         const pathname = item.href.split("?")[0]!;
+        if (pathname === "/admin/mail" || pathname.startsWith("/admin/mail/")) {
+          // `canAccessPath()` dla `/admin/*` zwraca false dla non-admin,
+          // a modułowy dostęp do Centrum maili ma być niezależny od roli.
+          return role === "admin" || adminModules.includes(MAIL_CENTER_MODULE_SLUG);
+        }
         return canAccessPath(role, pathname, { workspaces, procurementWorkspace });
       }),
     }))
@@ -947,6 +1034,14 @@ export function navForRole(
     });
   }
 
+  // Dla modułowych użytkowników panel admina ma być dostępny tylko w zakresie modułu Centrum maili.
+  groups.push({
+    title: NAV_SECTION_SYSTEM,
+    items: [adminMailCenterNavItem],
+    collapsible: true,
+    defaultCollapsed: true,
+  });
+
   return groups;
 }
 
@@ -964,6 +1059,7 @@ export function pageTitle(pathname: string): string {
   }
   if (pathname.startsWith("/zakupy/gadki")) return "Magazyn Gądki";
   if (pathname.startsWith("/zakupy/szacunek")) return "Kreator ZD";
+  if (pathname.startsWith("/zakupy/raporty-ivoclar")) return "Raporty Ivoclar";
   if (pathname === "/urlopy" || pathname.startsWith("/urlopy/")) {
     return "Urlopy działu";
   }
@@ -997,6 +1093,7 @@ export function pageTitle(pathname: string): string {
     if (pathname.startsWith("/admin/uzytkownicy")) return "Konta";
     if (pathname.startsWith("/admin/zgloszenia")) return "Zgłoszenia";
     if (pathname.startsWith("/admin/handlowcy")) return "Handlowcy";
+    if (pathname.startsWith("/admin/mail")) return "Centrum maili";
     if (pathname.startsWith("/admin/produkty/zeby")) return "Produkty zębne";
     if (pathname.startsWith("/admin/produkty")) return "Katalog produktów";
     return "Administracja";

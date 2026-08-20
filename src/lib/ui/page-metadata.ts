@@ -37,11 +37,13 @@ export const PAGE_TITLES = {
   adminTeethProducts: "Produkty zębne",
   adminVacations: "Urlopy",
   adminReports: "Zgłoszenia",
+  adminMail: "Centrum maili",
   procurementBoard: "Tablica",
   procurementSuppliers: "Dostawcy",
   procurementVacations: "Urlopy",
   magazynGadki: "Magazyn Gądki",
   zdEstimate: "Kreator ZD",
+  ivoclarReport: "Raporty Ivoclar",
   inactiveSuppliers: "Nieaktywni dostawcy",
   team: "Zespół",
   teamSales: "Handlowcy zespołu",
@@ -60,11 +62,14 @@ export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>
   zeby: "Prośby handlowców na zęby syntetyczne — kolejka zamówień u dostawcy",
   dostawy: "Nadchodzące dostawy — terminy ZD i prognoza paczek",
   admin: "Konfiguracja systemu, użytkownicy i narzędzia serwisowe",
+  adminMail: "Harmonogramy maili raportowych, odbiorcy i historia wysyłek",
   monthlySummary: "Statystyki miesięczne — handlowcy, dostawy i zakupy",
   carriers: "Numery telefonów i kontakty do kurierów — szybki dostęp z dziennika dostaw",
   magazynGadki: "Podgląd stałych ZK magazynu zewnętrznego Gądki",
   zdEstimate:
     "Lista produktów do zamówienia u dostawcy — jak proces ręczny (sprzedaż, stan, otwarte ZD)",
+  ivoclarReport:
+    "Podgląd sprzedaży FS i stanów Ivoclar — wiersze i braki do pliku tygodniowego",
   adminTeethProducts:
     "Lista towarów z wyłączoną kontrolą stanu magazynowego przy prośbach o zamówienie",
 };
