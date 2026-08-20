@@ -23,6 +23,7 @@ import {
   actionListZdEstimatePackaging,
   actionListZdProductPairs,
   actionListZdProductBoms,
+  actionGetZdEstimateUiSession,
   actionMarkZdEstimateOnRequest,
   actionMarkZdEstimateOnRequestProducts,
   actionClearZdEstimateOnRequest,
@@ -40,6 +41,9 @@ import {
   actionUpsertZdEstimatePackaging,
   actionUpsertZdEstimatePackagingBulk,
   actionUpsertZdEstimateSupplierScope,
+  actionCreateZdEstimateUiSession,
+  actionDeleteZdEstimateUiSession,
+  actionUpsertZdEstimateUiSessionSnapshot,
   type ZdEstimateCechaOption,
   type ZdEstimateGroupOption,
   type ZdEstimateSupplierOption,
@@ -85,6 +89,26 @@ import {
   onRequestTwIdSet,
   retargetTwIdToPackIfPiece,
 } from "@/lib/orders/zd-estimate-on-request";
+import {
+  ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
+  cancelPendingZdEstimateExternalSessionAwayStart,
+  createZdEstimateExternalSessionToken,
+  pauseAwayTimerOnReturnToExternalSession,
+  recreateZdEstimateExternalSessionTokenPreservingTimer,
+  scheduleZdEstimateExternalSessionAwayStart,
+  readZdEstimateExternalSessionToken,
+  peekZdEstimateExternalSessionToken,
+  clearZdEstimateExternalSessionToken,
+  writeZdEstimateExternalSessionToken,
+  consumeExpiredOrInvalidZdEstimateExternalSessionToken,
+} from "@/lib/orders/zd-estimate-external-session";
+import {
+  buildZdEstimateUiSessionSnapshot,
+  historyEntriesFromMap,
+  historyMapFromEntries,
+  parseZdEstimateUiSessionSnapshot,
+  type ZdEstimateUiSessionSnapshot,
+} from "@/lib/orders/zd-estimate-ui-session-snapshot";
 import { bomRowsToRefs, bomRowHidesHardExclude, bomRowHidesOnRequest, hasUnresolvedExplodeBomNodes } from "@/lib/orders/zd-estimate-bom";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 import {
@@ -113,6 +137,27 @@ import {
   zdEstimateScopeModeCechaHint,
   zdEstimateScopeModeGrupaHint,
   buildImplicitPieceSnapshotNotice,
+  zdEstimateExternalSessionCancelButtonLabel,
+  zdEstimateExternalSessionCancelConfirmTitle,
+  zdEstimateExternalSessionCancelConfirmMessage,
+  zdEstimateExternalSessionCancelConfirmLabel,
+  zdEstimateExternalSessionCancelDialogCancelLabel,
+  zdEstimateExternalSessionRestoredToastTitle,
+  zdEstimateExternalSessionRestoredToastDescription,
+  zdEstimateExternalSessionExpiredAlertTitle,
+  zdEstimateExternalSessionExpiredAlertBody,
+  zdEstimateExternalSessionRestoreFailedAlertTitle,
+  zdEstimateExternalSessionRestoreFailedAlertBody,
+  zdEstimateExternalSessionPersistFailedAlertTitle,
+  zdEstimateExternalSessionPersistFailedAlertBody,
+  zdEstimateExternalSessionAutorunConflictTitle,
+  zdEstimateExternalSessionAutorunConflictMessage,
+  zdEstimateExternalSessionAutorunResumeLabel,
+  zdEstimateExternalSessionAutorunDiscardLabel,
+  zdEstimateExternalSessionScopeChangeTitle,
+  zdEstimateExternalSessionScopeChangeMessage,
+  zdEstimateExternalSessionScopeChangeConfirmLabel,
+  zdEstimateExternalSessionScopeChangeCancelLabel,
 } from "@/lib/orders/zd-estimate-ui-copy";
 import { shouldUseZdEstimateProgressShell } from "@/lib/orders/zd-estimate-progress-shell";
 import { applyGroupStockWindow } from "@/lib/orders/zd-estimate-group-stock";
@@ -265,6 +310,8 @@ import { ZdEstimateRowActions } from "@/components/zakupy/ZdEstimateRowActions";
 import {
   ZdEstimateLaunchProgressPanel,
 } from "@/components/zakupy/ZdEstimateLaunchProgress";
+import { ZdEstimateSessionResumeProgressPanel } from "@/components/zakupy/ZdEstimateSessionResumeProgressPanel";
+import { ZdEstimateExternalSessionActiveChip } from "@/components/zakupy/ZdEstimateExternalSessionActiveChip";
 import { ZdEstimatePageIntro } from "@/components/zakupy/ZdEstimatePageIntro";
 import { ZdEstimatePrepScopeFacts } from "@/components/zakupy/ZdEstimatePrepScopeFacts";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
@@ -273,7 +320,14 @@ import { ZdEstimateRecountOverlay } from "@/components/zakupy/ZdEstimateRecountO
 import { Alert } from "@/components/ui/Alert";
 import {
   launchProgressMinRevealWaitMs,
+  ZD_ESTIMATE_SESSION_RESUME_COMPLETE_TAIL_MS,
+  ZD_ESTIMATE_SESSION_RESUME_MIN_VISIBLE_MS,
 } from "@/lib/orders/zd-estimate-launch-progress";
+import {
+  clearZdEstimateExternalSessionResumeQueryParam,
+  isZdEstimateExternalSessionReturnNavigation,
+  shouldShowZdEstimateSessionResumeLoading,
+} from "@/lib/orders/zd-estimate-external-session-resume";
 import {
   scrollZdEstimateAfterSelectionChange,
   scrollZdEstimateIntoView,
@@ -439,6 +493,10 @@ type RunMeta = {
 
 type ListFilter = ZdEstimateListFilter;
 
+const ZD_ESTIMATE_EXTERNAL_SESSION_PERSIST_DEBOUNCE_MS = 600;
+
+import { deleteZdEstimateExternalSessionRecord } from "@/lib/orders/zd-estimate-external-session-actions";
+
 function resolveWindowForGroup(
   group: ZdEstimateGroupOption,
   suppliers: ZdEstimateSupplierOption[],
@@ -511,13 +569,20 @@ export function ZdEstimateWorkbench({
   const pendingFetchGenRef = useRef(0);
   /** Lokalny guard w ramach jednego mountu (sessionStorage chroni remount). */
   const launchedRef = useRef(false);
+  /** Gdy odtwarzamy snapshot sesji, nie nadpisuj jej re-fetchem próśb po supplierId. */
+  const skipPendingIndividualsFetchRef = useRef(false);
   /** Opóźniony reveal sukcesu — min. czas widoczności checklisty. */
   const launchRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
-  const runEstimateRef = useRef<(opts?: { fromLaunch?: boolean }) => void>(
-    () => {}
-  );
+  const runEstimateRef = useRef<
+    (opts?: {
+      fromLaunch?: boolean;
+      mode?: ZdEstimateRunMode;
+      grupaId?: number;
+      cechaId?: number;
+    }) => void
+  >(() => {});
 
   const [scopeMode, setScopeMode] = useState<ZdEstimateRunMode>(
     () => launch?.mode ?? "grupa"
@@ -917,6 +982,66 @@ export function ZdEstimateWorkbench({
     "set"
   );
   const [bulkRestoreOpen, setBulkRestoreOpen] = useState(false);
+  const [cancelExternalSessionOpen, setCancelExternalSessionOpen] =
+    useState(false);
+  const cancelExternalSessionSessionIdRef = useRef<string | null>(null);
+  const externalSessionIdRef = useRef<string | null>(null);
+  const externalSessionRestoreGenRef = useRef(0);
+  const externalSessionPersistTimerRef = useRef<number | null>(null);
+  const externalSessionPersistInFlightRef = useRef(false);
+  const externalSessionPersistQueuedRef = useRef(false);
+  const externalSessionCreatedAtRef = useRef<string | null>(null);
+  const externalSessionPersistSkipRef = useRef(false);
+  const externalSessionRestoredRef = useRef(false);
+  const flushExternalSessionPersistRef = useRef<() => Promise<void>>(
+    async () => undefined
+  );
+  const scheduleExternalSessionPersistRef = useRef<() => void>(() => undefined);
+  const externalSessionAutorunPendingRef = useRef<{
+    mode: ZdEstimateRunMode;
+    grupaId?: number;
+    cechaId?: number;
+    launchKey: string;
+  } | null>(null);
+  const externalSessionAutorunBlockedRef = useRef(false);
+  const scopeChangePendingActionRef = useRef<(() => void) | null>(null);
+  const [externalSessionTokenState, setExternalSessionTokenState] =
+    useState<ReturnType<typeof peekZdEstimateExternalSessionToken>>(null);
+  const [externalSessionRestoredToast, setExternalSessionRestoredToast] =
+    useState<string | null>(null);
+  const [externalSessionExpiredAlert, setExternalSessionExpiredAlert] =
+    useState(false);
+  const [externalSessionRestoreFailedAlert, setExternalSessionRestoreFailedAlert] =
+    useState(false);
+  const [externalSessionPersistFailedAlert, setExternalSessionPersistFailedAlert] =
+    useState(false);
+  const [externalSessionAutorunConflictOpen, setExternalSessionAutorunConflictOpen] =
+    useState(false);
+  const [externalSessionScopeChangeOpen, setExternalSessionScopeChangeOpen] =
+    useState(false);
+  const sessionResumeStartedAtMsRef = useRef(Date.now());
+  const sessionResumeRevealTimerRef = useRef<number | null>(null);
+  const pendingRestoredToastRef = useRef<string | null>(null);
+  /** Blokuje formularz zakresu do czasu restore (także cichego refreshu z tokenem). */
+  const [sessionRestorePending, setSessionRestorePending] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return Boolean(peekZdEstimateExternalSessionToken());
+  });
+  const [sessionResumeBlocking, setSessionResumeBlocking] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const token = peekZdEstimateExternalSessionToken();
+    if (!token) return false;
+    return shouldShowZdEstimateSessionResumeLoading({ token });
+  });
+  const [sessionResumeForceComplete, setSessionResumeForceComplete] =
+    useState(false);
+  const [sessionResumeReturningFromAway, setSessionResumeReturningFromAway] =
+    useState(() => {
+      if (typeof window === "undefined") return false;
+      return isZdEstimateExternalSessionReturnNavigation(
+        peekZdEstimateExternalSessionToken()
+      );
+    });
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
   const prevSelectedCountRef = useRef(0);
   const selectedCountLiveRef = useRef(0);
@@ -1987,7 +2112,8 @@ export function ZdEstimateWorkbench({
   const canPolicz =
     bootstrap.configured && scopeSelected && settingsTrusted;
   /** Karta zakresu otwarta (start albo Zmień zakres) — ten sam czytelny formularz. */
-  const prepFormOpen = !lines || !prepCollapsed;
+  const prepFormOpen =
+    !sessionRestorePending && (!lines || !prepCollapsed);
   const activeScopeLabel = resolveZdEstimateActiveScopeLabel({
     scopeMode,
     selectedGroupName: selectedGroup?.grt_Nazwa,
@@ -2012,6 +2138,562 @@ export function ZdEstimateWorkbench({
       ? selectedCecha?.supplierName
       : selectedGroup?.supplierName) ??
     null;
+
+  const syncExternalSessionTokenState = useCallback(() => {
+    setExternalSessionTokenState(peekZdEstimateExternalSessionToken());
+  }, []);
+
+  const finishSessionResumeReveal = useCallback(
+    (
+      ok: boolean,
+      opts?: { linesReady?: boolean; restoreGen?: number }
+    ) => {
+      // Stary restore nie może zdejmować gate'a nowszego restore.
+      if (
+        opts?.restoreGen != null &&
+        opts.restoreGen !== externalSessionRestoreGenRef.current
+      ) {
+        return;
+      }
+      if (sessionResumeRevealTimerRef.current != null) {
+        window.clearTimeout(sessionResumeRevealTimerRef.current);
+        sessionResumeRevealTimerRef.current = null;
+      }
+      if (!ok) {
+        setSessionResumeForceComplete(false);
+        setSessionResumeBlocking(false);
+        setSessionRestorePending(false);
+        pendingRestoredToastRef.current = null;
+        return;
+      }
+
+      setSessionResumeForceComplete(true);
+      const minVisibleMs = opts?.linesReady
+        ? ZD_ESTIMATE_SESSION_RESUME_COMPLETE_TAIL_MS
+        : ZD_ESTIMATE_SESSION_RESUME_MIN_VISIBLE_MS;
+      const waitMs = launchProgressMinRevealWaitMs(
+        sessionResumeStartedAtMsRef.current,
+        Date.now(),
+        minVisibleMs
+      );
+      const revealGen = externalSessionRestoreGenRef.current;
+      sessionResumeRevealTimerRef.current = window.setTimeout(() => {
+        sessionResumeRevealTimerRef.current = null;
+        if (revealGen !== externalSessionRestoreGenRef.current) return;
+        setSessionResumeBlocking(false);
+        setSessionRestorePending(false);
+        setSessionResumeForceComplete(false);
+        // Odśwież token state — status „Sesja aktywna” musi wrócić razem z listą.
+        setExternalSessionTokenState(peekZdEstimateExternalSessionToken());
+        if (pendingRestoredToastRef.current) {
+          setExternalSessionRestoredToast(pendingRestoredToastRef.current);
+          pendingRestoredToastRef.current = null;
+        }
+      }, waitMs);
+    },
+    []
+  );
+
+  const endExternalSession = useCallback(
+    async (opts?: { sessionId?: string | null }) => {
+      const sessionId =
+        opts?.sessionId ??
+        externalSessionIdRef.current ??
+        readZdEstimateExternalSessionToken()?.sessionId ??
+        null;
+
+      externalSessionRestoreGenRef.current += 1;
+      externalSessionIdRef.current = null;
+      externalSessionCreatedAtRef.current = null;
+      externalSessionRestoredRef.current = false;
+      externalSessionPersistSkipRef.current = true;
+      externalSessionPersistQueuedRef.current = false;
+      setSessionRestorePending(false);
+      setSessionResumeBlocking(false);
+      cancelPendingZdEstimateExternalSessionAwayStart();
+      if (externalSessionPersistTimerRef.current != null) {
+        window.clearTimeout(externalSessionPersistTimerRef.current);
+        externalSessionPersistTimerRef.current = null;
+      }
+
+      clearZdEstimateExternalSessionToken();
+      syncExternalSessionTokenState();
+      setExternalSessionPersistFailedAlert(false);
+
+      if (sessionId) {
+        await deleteZdEstimateExternalSessionRecord(sessionId);
+      }
+    },
+    [syncExternalSessionTokenState]
+  );
+
+  const buildCurrentExternalSessionSnapshot =
+    useCallback((): ZdEstimateUiSessionSnapshot | null => {
+      if (!lines || !linesBase) return null;
+
+      return buildZdEstimateUiSessionSnapshot({
+        createdAt: externalSessionCreatedAtRef.current ?? undefined,
+        linesBase,
+        lines,
+        historyByTwId: historyEntriesFromMap(historyByTwId),
+        historyFetchFailed,
+        pendingIndividuals,
+        pendingIndividualsTruncated,
+        pendingIndividualsError,
+        meta: meta ?? {
+          pagesFetched: 0,
+          totalCountApi: 0,
+          truncated: false,
+          ordersBaseUrl: "",
+          durationMs: 0,
+          totalFromSubiekt: 0,
+        },
+        missingPartnerTwIds,
+        missingBomTwIds,
+        paramInfo: paramInfo ?? {},
+        exclusions,
+        onRequests,
+        packaging,
+        productPairs,
+        productBoms,
+        teethTwIds,
+        boostPreset,
+        appliedBoostPreset,
+        boostNeedsRecount,
+        scopeMode,
+        selectedGroup,
+        selectedCecha,
+        groupQuery,
+        cechaQuery,
+        supplierId,
+        dniZapasu,
+        dataOd,
+        dataDo,
+        zapasMin,
+        showAdvanced,
+        salesWindowSource,
+        qtyOverrideByTwId,
+        acceptedReviewTwIds,
+        sessionIncludeTwIds,
+        listFilter,
+        listSearch,
+        sortKey,
+        sortDir,
+        columns,
+        columnOrder,
+      });
+    }, [
+      lines,
+      linesBase,
+      historyByTwId,
+      historyFetchFailed,
+      pendingIndividuals,
+      pendingIndividualsTruncated,
+      pendingIndividualsError,
+      meta,
+      missingPartnerTwIds,
+      missingBomTwIds,
+      paramInfo,
+      exclusions,
+      onRequests,
+      packaging,
+      productPairs,
+      productBoms,
+      teethTwIds,
+      appliedBoostPreset,
+      boostPreset,
+      boostNeedsRecount,
+      scopeMode,
+      selectedGroup,
+      selectedCecha,
+      groupQuery,
+      cechaQuery,
+      supplierId,
+      dniZapasu,
+      dataOd,
+      dataDo,
+      zapasMin,
+      showAdvanced,
+      salesWindowSource,
+      qtyOverrideByTwId,
+      acceptedReviewTwIds,
+      sessionIncludeTwIds,
+      listFilter,
+      listSearch,
+      sortKey,
+      sortDir,
+      columns,
+      columnOrder,
+    ]);
+
+  const flushExternalSessionPersist = useCallback(async () => {
+    if (externalSessionPersistTimerRef.current != null) {
+      window.clearTimeout(externalSessionPersistTimerRef.current);
+      externalSessionPersistTimerRef.current = null;
+    }
+
+    if (externalSessionPersistInFlightRef.current) {
+      externalSessionPersistQueuedRef.current = true;
+      return;
+    }
+
+    const sessionId = externalSessionIdRef.current;
+    if (!sessionId || externalSessionPersistSkipRef.current) return;
+
+    const snapshot = buildCurrentExternalSessionSnapshot();
+    if (!snapshot) return;
+
+    externalSessionPersistInFlightRef.current = true;
+    try {
+      const res = await actionUpsertZdEstimateUiSessionSnapshot({
+        sessionId,
+        payload: snapshot,
+        schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
+      });
+
+      // Sesja wymieniona w trakcie requestu (nowe Policz / end) — wynik starego upsertu ignoruj.
+      if (externalSessionIdRef.current !== sessionId) return;
+
+      if (!res.ok && res.reason === "not_found") {
+        // Bieżąca sesja zniknęła z DB — odtwórz tylko jeśli nadal jesteśmy na tym ID
+        // i nie trwa nowe Policz / end (skip).
+        if (
+          externalSessionIdRef.current !== sessionId ||
+          externalSessionPersistSkipRef.current
+        ) {
+          return;
+        }
+        const created = await actionCreateZdEstimateUiSession({
+          payload: snapshot,
+          schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
+        });
+        if (
+          externalSessionIdRef.current !== sessionId ||
+          externalSessionPersistSkipRef.current
+        ) {
+          if (created.ok) {
+            void deleteZdEstimateExternalSessionRecord(created.sessionId);
+          }
+          return;
+        }
+        if (!created.ok) {
+          setExternalSessionPersistFailedAlert(true);
+          console.warn(
+            "Sesja UI kreatora: recreate po not_found nieudany.",
+            created.message
+          );
+          return;
+        }
+        externalSessionIdRef.current = created.sessionId;
+        const prev = peekZdEstimateExternalSessionToken();
+        const token = recreateZdEstimateExternalSessionTokenPreservingTimer({
+          sessionId: created.sessionId,
+          schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
+          supplierId: prev?.supplierId ?? supplierId,
+          scopeMode: (prev?.scopeMode ??
+            (scopeMode === "cecha" ? "cecha" : "grupa")) as "grupa" | "cecha",
+          grupaId:
+            prev?.grupaId ??
+            (scopeMode === "grupa" ? selectedGroup?.grt_Id ?? null : null),
+          cechaId:
+            prev?.cechaId ??
+            (scopeMode === "cecha" ? selectedCecha?.ctw_Id ?? null : null),
+          previous: prev,
+        });
+        writeZdEstimateExternalSessionToken(token);
+        syncExternalSessionTokenState();
+        setExternalSessionPersistFailedAlert(false);
+        return;
+      }
+
+      if (!res.ok) {
+        setExternalSessionPersistFailedAlert(true);
+        console.warn("Sesja UI kreatora: upsert nieudany.", res.message);
+        return;
+      }
+
+      setExternalSessionPersistFailedAlert(false);
+    } finally {
+      externalSessionPersistInFlightRef.current = false;
+      if (
+        externalSessionPersistQueuedRef.current &&
+        externalSessionIdRef.current &&
+        !externalSessionPersistSkipRef.current
+      ) {
+        externalSessionPersistQueuedRef.current = false;
+        void flushExternalSessionPersistRef.current();
+      } else {
+        externalSessionPersistQueuedRef.current = false;
+      }
+    }
+  }, [
+    buildCurrentExternalSessionSnapshot,
+    scopeMode,
+    selectedCecha?.ctw_Id,
+    selectedGroup?.grt_Id,
+    supplierId,
+    syncExternalSessionTokenState,
+  ]);
+
+  const scheduleExternalSessionPersist = useCallback(() => {
+    if (!externalSessionIdRef.current || externalSessionPersistSkipRef.current) {
+      return;
+    }
+    if (externalSessionPersistTimerRef.current != null) {
+      window.clearTimeout(externalSessionPersistTimerRef.current);
+    }
+    externalSessionPersistTimerRef.current = window.setTimeout(() => {
+      externalSessionPersistTimerRef.current = null;
+      void flushExternalSessionPersistRef.current();
+    }, ZD_ESTIMATE_EXTERNAL_SESSION_PERSIST_DEBOUNCE_MS);
+  }, []);
+
+  flushExternalSessionPersistRef.current = flushExternalSessionPersist;
+  scheduleExternalSessionPersistRef.current = scheduleExternalSessionPersist;
+
+  const hasActiveExternalSessionWork = lines != null;
+
+  const requestScopeChangeWithSessionGuard = useCallback(
+    (action: () => void) => {
+      if (!hasActiveExternalSessionWork) {
+        action();
+        return;
+      }
+      scopeChangePendingActionRef.current = action;
+      setExternalSessionScopeChangeOpen(true);
+    },
+    [hasActiveExternalSessionWork]
+  );
+
+  const applyExternalSessionPayload = useCallback(
+    (payload: ZdEstimateUiSessionSnapshot, restoreGen: number) => {
+      if (restoreGen !== externalSessionRestoreGenRef.current) return;
+
+      setScopeMode(payload.scopeMode);
+      setSelectedGroup(payload.selectedGroup ?? null);
+      setSelectedCecha(payload.selectedCecha ?? null);
+      setGroupQuery(payload.groupQuery ?? payload.selectedGroup?.grt_Nazwa ?? "");
+      setCechaQuery(payload.cechaQuery ?? payload.selectedCecha?.ctw_Nazwa ?? "");
+      setSupplierId(payload.supplierId ?? null);
+      setDniZapasu(String(payload.dniZapasu ?? ""));
+      setDataOd(payload.dataOd);
+      setDataDo(payload.dataDo);
+      setZapasMin(String(payload.zapasMin ?? ""));
+      setShowAdvanced(Boolean(payload.showAdvanced));
+      setSalesWindowSource(payload.salesWindowSource ?? "stock");
+
+      setLinesBase(payload.linesBase);
+      setLines(payload.lines);
+      setHistoryByTwId(historyMapFromEntries(payload.historyByTwId));
+      setHistoryFetchFailed(Boolean(payload.historyFetchFailed));
+
+      setPendingIndividualsLoading(false);
+      setPendingIndividuals(payload.pendingIndividuals ?? []);
+      setPendingIndividualsTruncated(
+        Boolean(payload.pendingIndividualsTruncated)
+      );
+      setPendingIndividualsError(payload.pendingIndividualsError ?? null);
+
+      setOnRequests(payload.onRequests ?? []);
+      setOnRequestsError(null);
+      setExclusions(payload.exclusions ?? []);
+      setExclusionsError(null);
+      setPackaging(payload.packaging ?? []);
+      setPackagingError(null);
+      setProductPairs(payload.productPairs ?? []);
+      setProductPairsError(null);
+      setProductBoms(payload.productBoms ?? []);
+      setProductBomsError(null);
+      setTeethTwIds(payload.teethTwIds ?? []);
+      setTeethProductsError(null);
+      setMissingPartnerTwIds(payload.missingPartnerTwIds ?? []);
+      setMissingBomTwIds(payload.missingBomTwIds ?? []);
+
+      setQtyOverrideByTwId(payload.qtyOverrideByTwId ?? {});
+      setAcceptedReviewTwIds(payload.acceptedReviewTwIds ?? {});
+      setSessionIncludeTwIds(payload.sessionIncludeTwIds ?? {});
+
+      setListFilter(payload.listFilter ?? "order");
+      setListSearch(payload.listSearch ?? "");
+      setSortKey(payload.sortKey);
+      setSortDir(payload.sortDir);
+      setColumns(payload.columns ?? columns);
+      setColumnOrder(payload.columnOrder ?? columnOrder);
+
+      setParamInfo(payload.paramInfo ?? {});
+      if (payload.meta) setMeta(payload.meta);
+
+      const restoredBoostNeedsRecount = payload.boostPreset
+        ? Boolean(payload.boostNeedsRecount) ||
+          (payload.appliedBoostPreset != null &&
+            payload.boostPreset !== payload.appliedBoostPreset)
+        : false;
+
+      if (payload.boostPreset) {
+        setBoostPreset(payload.boostPreset);
+        const applied =
+          payload.appliedBoostPreset ?? payload.boostPreset;
+        setAppliedBoostPreset(applied);
+        setAppliedBoostPolicy(policyForBoostPreset(applied));
+      }
+
+      // Restore = snapshot roboczy, nie post-create / create-lock z bieżącego mountu.
+      setPostCreate(null);
+      setConsumedOnThisZdIds([]);
+      glowneRemovedForUndoRef.current = [];
+      glowneUndoOrderIdsRef.current = [];
+      setCreateDoneDokId(null);
+      setCreateDoneDokNr(null);
+      setCreateUnconfirmedAttempt(false);
+      setCreateUnlockedAfterDone(false);
+      setCreateUndoVisible(false);
+      setCreateZdOpen(false);
+      setCreatingZd(false);
+      setLinkZdOpen(false);
+      setLinkNrPrefill(null);
+      createPreviewCaptureRef.current = null;
+      setCreatePreviewFrozen(null);
+      createLineMetaCaptureRef.current = null;
+      createMarkFreezeCaptureRef.current = null;
+      setCreateMarkFreezeFrozen(null);
+      timeoutRecoveryFreezeRef.current = null;
+      resetSelectionQuiet();
+      setFeedback(null);
+      setErrorMessage(null);
+      setLastEstimateFailed(false);
+      setScopeNeedsRecount(false);
+      setBoostNeedsRecount(restoredBoostNeedsRecount);
+      setHistoryNeedsRecount(false);
+      setScopeRemapActive(false);
+      setPrepCollapsed(true);
+      setLaunchReadyMessage(null);
+      setRecountStatusMessage(null);
+    },
+    [columnOrder, columns, resetSelectionQuiet]
+  );
+
+  const restoreExternalSession = useCallback(
+    async (token: NonNullable<ReturnType<typeof peekZdEstimateExternalSessionToken>>) => {
+      sessionResumeStartedAtMsRef.current = Date.now();
+      setSessionResumeReturningFromAway(
+        isZdEstimateExternalSessionReturnNavigation(token)
+      );
+      if (shouldShowZdEstimateSessionResumeLoading({ token })) {
+        setSessionResumeBlocking(true);
+      }
+      setSessionResumeForceComplete(false);
+      setSessionRestorePending(true);
+      clearZdEstimateExternalSessionResumeQueryParam();
+
+      const restoreGen = ++externalSessionRestoreGenRef.current;
+      setExternalSessionExpiredAlert(false);
+      setExternalSessionRestoreFailedAlert(false);
+      setExternalSessionRestoredToast(null);
+
+      skipPendingIndividualsFetchRef.current = true;
+
+      const failRestore = async (
+        opts: {
+          expired?: boolean;
+          deleteSessionId?: string | null;
+          clearToken?: boolean;
+        } = {}
+      ) => {
+        if (opts.clearToken !== false) {
+          clearZdEstimateExternalSessionToken();
+          syncExternalSessionTokenState();
+        }
+        if (opts.deleteSessionId) {
+          await deleteZdEstimateExternalSessionRecord(opts.deleteSessionId);
+        }
+        if (opts.expired) {
+          setExternalSessionExpiredAlert(true);
+        } else {
+          setExternalSessionRestoreFailedAlert(true);
+        }
+        finishSessionResumeReveal(false, { restoreGen });
+      };
+
+      try {
+      const paused = pauseAwayTimerOnReturnToExternalSession(token);
+      if (paused.remainingMs <= 0) {
+        await failRestore({
+          expired: true,
+          deleteSessionId: paused.sessionId,
+        });
+        return;
+      }
+
+      writeZdEstimateExternalSessionToken(paused);
+      syncExternalSessionTokenState();
+
+      const got = await actionGetZdEstimateUiSession({
+        sessionId: paused.sessionId,
+      });
+
+      if (restoreGen !== externalSessionRestoreGenRef.current) {
+        // Nowszy restore przejął gate — nie zdejmuj go.
+        return;
+      }
+
+      if (!got.ok) {
+        await failRestore({
+          expired: got.reason === "expired",
+          // expired: serwer już usuwa; not_found: nie ma czego kasować.
+          deleteSessionId: null,
+        });
+        return;
+      }
+
+      if (
+        got.schemaVersion !== ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION
+      ) {
+        await failRestore({ deleteSessionId: paused.sessionId });
+        return;
+      }
+
+      const payload = parseZdEstimateUiSessionSnapshot(
+        got.payload,
+        got.schemaVersion
+      );
+      if (!payload) {
+        await failRestore({ deleteSessionId: paused.sessionId });
+        return;
+      }
+
+      externalSessionIdRef.current = paused.sessionId;
+      externalSessionCreatedAtRef.current = payload.createdAt;
+      externalSessionPersistSkipRef.current = false;
+      externalSessionRestoredRef.current = true;
+
+      applyExternalSessionPayload(payload, restoreGen);
+      if (restoreGen !== externalSessionRestoreGenRef.current) {
+        return;
+      }
+
+      pendingRestoredToastRef.current =
+        zdEstimateExternalSessionRestoredToastDescription({
+          updatedAt: payload.updatedAt ?? got.updatedAt,
+        });
+      setExternalSessionPersistFailedAlert(false);
+      finishSessionResumeReveal(true, { linesReady: true, restoreGen });
+      } catch (e) {
+        console.warn("Sesja UI kreatora: restore rzucił błąd.", e);
+        if (restoreGen === externalSessionRestoreGenRef.current) {
+          await failRestore({
+            deleteSessionId: token.sessionId,
+          });
+        }
+      } finally {
+        skipPendingIndividualsFetchRef.current = false;
+      }
+    },
+    [
+      applyExternalSessionPayload,
+      finishSessionResumeReveal,
+      syncExternalSessionTokenState,
+    ]
+  );
 
   const clearEstimateResult = (opts?: { fromScopeChange?: boolean }) => {
     estimateGenRef.current += 1;
@@ -2076,130 +2758,198 @@ export function ZdEstimateWorkbench({
 
   const changeScopeMode = (mode: ZdEstimateRunMode) => {
     if (mode === scopeMode) return;
-    setScopeMode(mode);
-    setFeedback(null);
-    setErrorMessage(null);
-    clearEstimateResult({ fromScopeChange: lines != null });
-    if (mode === "grupa") {
-      setSelectedCecha(null);
-      setCechaHits([]);
-      setCechaQuery("");
-    } else {
-      setSelectedGroup(null);
-      setGroupHits([]);
-      setGroupQuery("");
-    }
+    requestScopeChangeWithSessionGuard(() => {
+      void endExternalSession();
+      setScopeMode(mode);
+      setFeedback(null);
+      setErrorMessage(null);
+      clearEstimateResult({ fromScopeChange: lines != null });
+      if (mode === "grupa") {
+        setSelectedCecha(null);
+        setCechaHits([]);
+        setCechaQuery("");
+      } else {
+        setSelectedGroup(null);
+        setGroupHits([]);
+        setGroupQuery("");
+      }
+    });
   };
 
   const selectGroup = (group: ZdEstimateGroupOption) => {
     const scopeChanged =
       scopeMode !== "grupa" || selectedGroup?.grt_Id !== group.grt_Id;
-    setScopeMode("grupa");
-    setSelectedGroup(group);
-    setSelectedCecha(null);
-    setCechaHits([]);
-    setGroupQuery(group.grt_Nazwa);
-    setGroupHits([]);
-    setFeedback(null);
-    setErrorMessage(null);
-
     const applied = resolveWindowForGroup(
       group,
       bootstrap.suppliers,
       bootstrap.salesEndKey
     );
     const supplierChanged = applied.supplierId !== supplierId;
-    if (scopeChanged || supplierChanged) {
-      clearEstimateResult({ fromScopeChange: lines != null });
-    } else setCopyOk(false);
+    const affectsScope = scopeChanged || supplierChanged;
 
-    setSupplierId(applied.supplierId);
-    setDniZapasu(String(applied.dniZapasu));
-    if (shouldApplyStockSalesWindow(salesWindowSource)) {
-      setDataOd(applied.dataOd);
-      setDataDo(applied.dataDo);
-    }
-    requestAnimationFrame(() => {
-      scrollZdEstimateIntoView(ZD_ESTIMATE_POLICZ_CTA_ID, {
-        behavior: "smooth",
-        block: "nearest",
-        offsetPx: 24,
+    const applySelection = () => {
+      setScopeMode("grupa");
+      setSelectedGroup(group);
+      setSelectedCecha(null);
+      setCechaHits([]);
+      setGroupQuery(group.grt_Nazwa);
+      setGroupHits([]);
+      setFeedback(null);
+      setErrorMessage(null);
+
+      if (affectsScope) {
+        clearEstimateResult({ fromScopeChange: lines != null });
+      } else setCopyOk(false);
+
+      setSupplierId(applied.supplierId);
+      setDniZapasu(String(applied.dniZapasu));
+      if (shouldApplyStockSalesWindow(salesWindowSource)) {
+        setDataOd(applied.dataOd);
+        setDataDo(applied.dataDo);
+      }
+      requestAnimationFrame(() => {
+        scrollZdEstimateIntoView(ZD_ESTIMATE_POLICZ_CTA_ID, {
+          behavior: "smooth",
+          block: "nearest",
+          offsetPx: 24,
+        });
       });
+    };
+
+    if (!affectsScope) {
+      applySelection();
+      return;
+    }
+
+    requestScopeChangeWithSessionGuard(() => {
+      void endExternalSession();
+      applySelection();
     });
   };
 
   const selectCecha = (cecha: ZdEstimateCechaOption) => {
     const scopeChanged =
       scopeMode !== "cecha" || selectedCecha?.ctw_Id !== cecha.ctw_Id;
-    setScopeMode("cecha");
-    setSelectedCecha(cecha);
-    setSelectedGroup(null);
-    setGroupHits([]);
-    setCechaQuery(cecha.ctw_Nazwa);
-    setCechaHits([]);
-    setFeedback(null);
-    setErrorMessage(null);
-
     const applied = resolveWindowForCecha(
       cecha,
       bootstrap.suppliers,
       bootstrap.salesEndKey
     );
     const supplierChanged = applied.supplierId !== supplierId;
-    if (scopeChanged || supplierChanged) {
-      clearEstimateResult({ fromScopeChange: lines != null });
-    } else setCopyOk(false);
+    const affectsScope = scopeChanged || supplierChanged;
 
-    setSupplierId(applied.supplierId);
-    setDniZapasu(String(applied.dniZapasu));
-    if (shouldApplyStockSalesWindow(salesWindowSource)) {
-      setDataOd(applied.dataOd);
-      setDataDo(applied.dataDo);
-    }
-    requestAnimationFrame(() => {
-      scrollZdEstimateIntoView(ZD_ESTIMATE_POLICZ_CTA_ID, {
-        behavior: "smooth",
-        block: "nearest",
-        offsetPx: 24,
+    const applySelection = () => {
+      setScopeMode("cecha");
+      setSelectedCecha(cecha);
+      setSelectedGroup(null);
+      setGroupHits([]);
+      setCechaQuery(cecha.ctw_Nazwa);
+      setCechaHits([]);
+      setFeedback(null);
+      setErrorMessage(null);
+
+      if (affectsScope) {
+        clearEstimateResult({ fromScopeChange: lines != null });
+      } else setCopyOk(false);
+
+      setSupplierId(applied.supplierId);
+      setDniZapasu(String(applied.dniZapasu));
+      if (shouldApplyStockSalesWindow(salesWindowSource)) {
+        setDataOd(applied.dataOd);
+        setDataDo(applied.dataDo);
+      }
+      requestAnimationFrame(() => {
+        scrollZdEstimateIntoView(ZD_ESTIMATE_POLICZ_CTA_ID, {
+          behavior: "smooth",
+          block: "nearest",
+          offsetPx: 24,
+        });
       });
+    };
+
+    if (!affectsScope) {
+      applySelection();
+      return;
+    }
+
+    requestScopeChangeWithSessionGuard(() => {
+      void endExternalSession();
+      applySelection();
     });
   };
 
   const onDniZapasuChange = (raw: string) => {
     dniZapasuTouchedForPrefsRef.current = true;
-    setDniZapasu(raw);
     const n = Math.round(Number(raw));
-    if (!Number.isFinite(n) || n < 1) return;
-    dniZapasuPrefsValueRef.current = n;
-    // Świadoma zmiana zapasu → wróć do okna ze stocku (nadpisuje ręczne daty).
-    setSalesWindowSource("stock");
-    const end = dataDo || bootstrap.salesEndKey;
-    setDataOd(salesWindowFromDniZapasu(n, end).dataOd);
+    const currentN = Math.round(Number(dniZapasu));
+    const valid = Number.isFinite(n) && n >= 1;
+    const valueChanged = valid && n !== currentN;
+    const affectsScope = lines != null && valueChanged;
+
+    const applyValidChange = () => {
+      setDniZapasu(raw);
+      dniZapasuPrefsValueRef.current = n;
+      setSalesWindowSource("stock");
+      const end = dataDo || bootstrap.salesEndKey;
+      setDataOd(salesWindowFromDniZapasu(n, end).dataOd);
+      clearEstimateResult({ fromScopeChange: true });
+    };
+
+    if (!affectsScope) {
+      setDniZapasu(raw);
+      if (valueChanged) {
+        dniZapasuPrefsValueRef.current = n;
+        setSalesWindowSource("stock");
+        const end = dataDo || bootstrap.salesEndKey;
+        setDataOd(salesWindowFromDniZapasu(n, end).dataOd);
+      }
+      return;
+    }
+
+    requestScopeChangeWithSessionGuard(() => {
+      void endExternalSession();
+      applyValidChange();
+    });
   };
 
   const onSupplierOverride = (id: string) => {
-    if (!id) {
-      setSupplierId(null);
-      clearEstimateResult({ fromScopeChange: lines != null });
+    if (id === (supplierId ?? "")) return;
+
+    const affectsScope = lines != null;
+
+    const applyChange = () => {
+      if (!id) {
+        setSupplierId(null);
+        clearEstimateResult({ fromScopeChange: lines != null });
+        return;
+      }
+      const prev = supplierId;
+      const s = bootstrap.suppliers.find((x) => x.id === id);
+      setSupplierId(id);
+      if (prev !== id) {
+        clearEstimateResult({ fromScopeChange: lines != null });
+      }
+      if (!s?.dniZapasu) return;
+      setDniZapasu(String(s.dniZapasu));
+      if (shouldApplyStockSalesWindow(salesWindowSource)) {
+        setDataOd(
+          salesWindowFromDniZapasu(
+            s.dniZapasu,
+            dataDo || bootstrap.salesEndKey
+          ).dataOd
+        );
+      }
+    };
+
+    if (!affectsScope) {
+      applyChange();
       return;
     }
-    const prev = supplierId;
-    const s = bootstrap.suppliers.find((x) => x.id === id);
-    setSupplierId(id);
-    if (prev !== id) {
-      // Inna historia kh — nie trzymaj cut poprzedniego dostawcy na liście.
-      clearEstimateResult({ fromScopeChange: lines != null });
-    }
-    if (!s?.dniZapasu) return;
-    setDniZapasu(String(s.dniZapasu));
-    if (shouldApplyStockSalesWindow(salesWindowSource)) {
-      setDataOd(
-        salesWindowFromDniZapasu(
-          s.dniZapasu,
-          dataDo || bootstrap.salesEndKey
-        ).dataOd
-      );
-    }
+
+    requestScopeChangeWithSessionGuard(() => {
+      void endExternalSession();
+      applyChange();
+    });
   };
 
   const restoreSalesWindowFromStock = () => {
@@ -2208,9 +2958,81 @@ export function ZdEstimateWorkbench({
       Number.isFinite(n) && n >= 1 ? n : DEFAULT_DNI_ZAPASU;
     const end = bootstrap.salesEndKey;
     const window = salesWindowFromDniZapasu(days, end);
-    setSalesWindowSource("stock");
-    setDataOd(window.dataOd);
-    setDataDo(window.dataDo);
+    const affectsScope =
+      lines != null &&
+      (salesWindowSource !== "stock" ||
+        dataOd !== window.dataOd ||
+        dataDo !== window.dataDo);
+
+    const applyRestore = () => {
+      setSalesWindowSource("stock");
+      setDataOd(window.dataOd);
+      setDataDo(window.dataDo);
+      clearEstimateResult({ fromScopeChange: true });
+    };
+
+    if (!affectsScope) {
+      setSalesWindowSource("stock");
+      setDataOd(window.dataOd);
+      setDataDo(window.dataDo);
+      return;
+    }
+
+    requestScopeChangeWithSessionGuard(() => {
+      void endExternalSession();
+      applyRestore();
+    });
+  };
+
+  const onManualDataOdChange = (value: string) => {
+    const affectsScope = lines != null && value !== dataOd;
+
+    const applyChange = () => {
+      setSalesWindowSource("manual");
+      setDataOd(value);
+      clearEstimateResult({ fromScopeChange: true });
+    };
+
+    if (!affectsScope) {
+      setSalesWindowSource("manual");
+      setDataOd(value);
+      return;
+    }
+
+    requestScopeChangeWithSessionGuard(() => {
+      void endExternalSession();
+      applyChange();
+    });
+  };
+
+  const onManualDataDoChange = (nextDo: string) => {
+    const nextOd = nextDataOdAfterDataDoChange({
+      source: "manual",
+      dataDo: nextDo,
+      dataOd,
+      dniZapasu: Number(dniZapasu),
+    });
+    const affectsScope =
+      lines != null && (nextDo !== dataDo || nextOd !== dataOd);
+
+    const applyChange = () => {
+      setSalesWindowSource("manual");
+      setDataDo(nextDo);
+      setDataOd(nextOd);
+      clearEstimateResult({ fromScopeChange: true });
+    };
+
+    if (!affectsScope) {
+      setSalesWindowSource("manual");
+      setDataDo(nextDo);
+      setDataOd(nextOd);
+      return;
+    }
+
+    requestScopeChangeWithSessionGuard(() => {
+      void endExternalSession();
+      applyChange();
+    });
   };
 
   const searchGroups = () => {
@@ -2263,6 +3085,10 @@ export function ZdEstimateWorkbench({
     grupaId?: number;
     cechaId?: number;
   }) => {
+    externalSessionRestoreGenRef.current += 1;
+    setExternalSessionExpiredAlert(false);
+    setExternalSessionRestoreFailedAlert(false);
+    setExternalSessionRestoredToast(null);
     setFeedback(null);
     setErrorMessage(null);
     setCopyOk(false);
@@ -2370,6 +3196,7 @@ export function ZdEstimateWorkbench({
         setCreateMarkFreezeFrozen(null);
         timeoutRecoveryFreezeRef.current = null;
         clearProgressBlocking();
+        void endExternalSession();
         if (
           useProgressShell &&
           isZdEstimateLaunchTimeoutFeedback({
@@ -2411,6 +3238,11 @@ export function ZdEstimateWorkbench({
         setHistoryByTwId(histMap);
         setHistoryFetchFailed(Boolean(res.historyFetchFailed));
         setPendingIndividualsLoading(false);
+        // Nowe Policz = nowa sesja robocza; zdejmij post-create / lock z poprzedniego ZD.
+        setPostCreate(null);
+        setConsumedOnThisZdIds([]);
+        glowneRemovedForUndoRef.current = [];
+        glowneUndoOrderIdsRef.current = [];
         if (res.pendingIndividuals != null) {
           pendingFetchGenRef.current += 1;
           setPendingIndividuals(res.pendingIndividuals);
@@ -2578,12 +3410,224 @@ export function ZdEstimateWorkbench({
         setProductBomsError(null);
         reportError(ZD_BOM_UI.refreshFailed(freshBoms.message));
       }
+
+      // Po sukcesie „Policz” zapisz snapshot UI sesji kreatora ZD oraz token timeru w sessionStorage.
+      try {
+        const pendingIndividualsOk = res.pendingIndividuals != null;
+        const snapshotPayload = buildZdEstimateUiSessionSnapshot({
+          linesBase: res.result.pozycjeBase ?? res.result.pozycje,
+          lines: res.result.pozycje,
+          historyByTwId: (res.historyByTwId ?? [])
+            .filter((e) => e.twId > 0)
+            .map((e) => ({
+              twId: e.twId,
+              lastOrderedQty: e.lastOrderedQty,
+              linkedAt: e.linkedAt,
+            })),
+          historyFetchFailed: Boolean(res.historyFetchFailed),
+          pendingIndividuals: pendingIndividualsOk
+            ? (res.pendingIndividuals ?? [])
+            : [],
+          pendingIndividualsTruncated: pendingIndividualsOk
+            ? Boolean(res.pendingIndividualsTruncated)
+            : false,
+          pendingIndividualsError: pendingIndividualsOk
+            ? null
+            : res.pendingIndividualsError?.trim() ||
+              "Nie wczytano próśb przy Policz — użyj „Wczytaj ponownie” albo policz listę jeszcze raz.",
+          meta: {
+            pagesFetched: res.meta.pagesFetched,
+            totalCountApi: res.meta.totalCountApi,
+            truncated: res.meta.truncated,
+            ordersBaseUrl: res.meta.ordersBaseUrl,
+            durationMs: res.meta.durationMs,
+            totalFromSubiekt: res.meta.totalFromSubiekt,
+          },
+          missingPartnerTwIds: res.meta.pairMissingTwIds ?? [],
+          missingBomTwIds: res.meta.bomMissingTwIds ?? [],
+          paramInfo: res.result.parametry as Record<string, unknown>,
+          exclusions:
+            genExBefore === exclusionsGenRef.current
+              ? freshEx.ok
+                ? freshEx.exclusions
+                : res.exclusions
+              : exclusions,
+          onRequests: res.onRequests != null ? res.onRequests : onRequests,
+          packaging:
+            genPackBefore === packagingGenRef.current
+              ? freshPack.ok
+                ? freshPack.packaging
+                : res.packaging
+              : packaging,
+          productPairs:
+            genPairsBefore === pairsGenRef.current
+              ? freshPairs.ok
+                ? freshPairs.pairs
+                : res.productPairs ?? []
+              : productPairs,
+          productBoms: freshBoms.ok ? freshBoms.boms : res.productBoms ?? [],
+          teethTwIds: res.teethTwIds ?? [],
+          boostPreset: res.boostPreset ?? boostPreset,
+          appliedBoostPreset: res.boostPreset ?? appliedBoostPreset,
+          boostNeedsRecount: false,
+          scopeMode,
+          selectedGroup,
+          selectedCecha,
+          groupQuery,
+          cechaQuery,
+          supplierId,
+          dniZapasu,
+          dataOd,
+          dataDo,
+          zapasMin,
+          showAdvanced,
+          salesWindowSource,
+          qtyOverrideByTwId: {},
+          acceptedReviewTwIds: {},
+          sessionIncludeTwIds: {},
+          listFilter: "order",
+          listSearch: "",
+          sortKey,
+          sortDir,
+          columns,
+          columnOrder,
+        });
+
+        externalSessionPersistSkipRef.current = true;
+        externalSessionPersistQueuedRef.current = false;
+        if (externalSessionPersistTimerRef.current != null) {
+          window.clearTimeout(externalSessionPersistTimerRef.current);
+          externalSessionPersistTimerRef.current = null;
+        }
+        // Odłącz stary ID i token od razu — in-flight upsert/recreate nie walczy
+        // z create, a notice/unmount nie startuje away na usuniętej sesji DB.
+        externalSessionIdRef.current = null;
+        clearZdEstimateExternalSessionToken();
+        syncExternalSessionTokenState();
+        const persist = await actionCreateZdEstimateUiSession({
+          payload: snapshotPayload,
+          schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
+        });
+
+        if (estimateGen !== estimateGenRef.current) {
+          if (persist.ok) {
+            void deleteZdEstimateExternalSessionRecord(persist.sessionId);
+          }
+          return;
+        }
+
+        if (!persist.ok) {
+          externalSessionIdRef.current = null;
+          externalSessionCreatedAtRef.current = null;
+          clearZdEstimateExternalSessionToken();
+          syncExternalSessionTokenState();
+          setExternalSessionPersistFailedAlert(true);
+          console.warn("Sesja UI kreatora: zapis nieudany.", persist.message);
+          return;
+        }
+
+        externalSessionIdRef.current = persist.sessionId;
+        externalSessionCreatedAtRef.current = snapshotPayload.createdAt;
+        externalSessionPersistSkipRef.current = false;
+        externalSessionPersistQueuedRef.current = false;
+        setExternalSessionPersistFailedAlert(false);
+        setExternalSessionRestoredToast(null);
+        externalSessionRestoredRef.current = false;
+
+        const token = createZdEstimateExternalSessionToken({
+          sessionId: persist.sessionId,
+          schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
+          supplierId,
+          scopeMode: scopeMode as "grupa" | "cecha",
+          grupaId: scopeMode === "grupa" ? selectedGroup?.grt_Id ?? null : null,
+          cechaId: scopeMode === "cecha" ? selectedCecha?.ctw_Id ?? null : null,
+        });
+
+        writeZdEstimateExternalSessionToken(token);
+        syncExternalSessionTokenState();
+      } catch (e) {
+        externalSessionIdRef.current = null;
+        externalSessionCreatedAtRef.current = null;
+        clearZdEstimateExternalSessionToken();
+        syncExternalSessionTokenState();
+        setExternalSessionPersistFailedAlert(true);
+        console.warn("Sesja UI kreatora: zapis payloadu rzucił błąd.", e);
+      }
     });
   };
 
   useEffect(() => {
     runEstimateRef.current = runEstimate;
   });
+
+  // Sesja zewnętrzna: restore albo konflikt z autorun na mount (przed pierwszym paintem treści).
+  useLayoutEffect(() => {
+    syncExternalSessionTokenState();
+
+    const token = peekZdEstimateExternalSessionToken();
+    const wantsAutorun =
+      Boolean(launch?.autorun) &&
+      !launch?.needsAssign &&
+      bootstrap.configured &&
+      launchHasRunnableScope(launch);
+
+    if (token && wantsAutorun && launch?.launchKey) {
+      externalSessionAutorunBlockedRef.current = true;
+      externalSessionAutorunPendingRef.current = {
+        mode: launch.mode!,
+        grupaId: launch.grupaId ?? undefined,
+        cechaId: launch.cechaId ?? undefined,
+        launchKey: launch.launchKey,
+      };
+      // Trzymaj gate restore — formularz zakresu nie miga pod dialogiem konfliktu.
+      setSessionResumeBlocking(false);
+      setSessionRestorePending(true);
+      setExternalSessionAutorunConflictOpen(true);
+      return;
+    }
+
+    if (!token) {
+      setSessionRestorePending(false);
+      setSessionResumeBlocking(false);
+      return;
+    }
+
+    skipPendingIndividualsFetchRef.current = true;
+    void restoreExternalSession(token).catch(() => {
+      /* błąd obsłużony w restoreExternalSession */
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const runPendingAutorunAfterSessionDiscard = useCallback(() => {
+    const pending = externalSessionAutorunPendingRef.current;
+    externalSessionAutorunPendingRef.current = null;
+    externalSessionAutorunBlockedRef.current = false;
+    if (!pending) return;
+
+    launchedRef.current = true;
+    markZdEstimateLaunchAutorunDone(pending.launchKey);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (url.searchParams.has("autorun")) {
+        url.searchParams.delete("autorun");
+        const qs = url.searchParams.toString();
+        window.history.replaceState(
+          {},
+          "",
+          `${url.pathname}${qs ? `?${qs}` : ""}${url.hash}`
+        );
+      }
+    }
+    queueMicrotask(() => {
+      runEstimateRef.current?.({
+        fromLaunch: true,
+        mode: pending.mode,
+        grupaId: pending.grupaId,
+        cechaId: pending.cechaId,
+      });
+    });
+  }, []);
 
   const openCreateZdModal = useCallback(() => {
     setLinkZdOpen(false);
@@ -2609,6 +3653,7 @@ export function ZdEstimateWorkbench({
 
   // Prośby przy supplierId (także needsAssign — bez czekania na Policz).
   useEffect(() => {
+    if (skipPendingIndividualsFetchRef.current) return;
     const id = supplierId?.trim();
     if (!id) {
       queueMicrotask(() => {
@@ -2650,8 +3695,9 @@ export function ZdEstimateWorkbench({
   useEffect(() => {
     if (!launch?.autorun || launch.needsAssign) return;
     if (launchedRef.current) return;
-    // Page wyłącza autorun gdy !configured — nic do zrobienia.
     if (!bootstrap.configured) return;
+    if (externalSessionAutorunBlockedRef.current) return;
+    if (peekZdEstimateExternalSessionToken()) return;
 
     const failLaunch = (message: string) => {
       launchedRef.current = true;
@@ -2740,14 +3786,138 @@ export function ZdEstimateWorkbench({
     };
   }, []);
 
+  // Unmount kreatora => flush persist + odroczony start away.
+  // Odroczenie (~120ms) anulujemy przy remount na poziomie modułu —
+  // Strict Mode / szybki leave→return nie traktują się jak wyjście
+  // (token zostaje „paused”; instance useRef tego nie ogarnia).
+  useEffect(() => {
+    cancelPendingZdEstimateExternalSessionAwayStart();
+
+    const expiredId = consumeExpiredOrInvalidZdEstimateExternalSessionToken();
+    if (expiredId) {
+      void deleteZdEstimateExternalSessionRecord(expiredId);
+    }
+
+    return () => {
+      void flushExternalSessionPersistRef.current();
+      scheduleZdEstimateExternalSessionAwayStart({
+        onExpiredSessionId: (sessionId) => {
+          void deleteZdEstimateExternalSessionRecord(sessionId);
+        },
+      });
+    };
+  }, []);
+
+  // Debounced persist zmian użytkownika po Policz.
+  useEffect(() => {
+    if (!lines || !externalSessionIdRef.current) return;
+    if (externalSessionPersistSkipRef.current) return;
+    scheduleExternalSessionPersistRef.current();
+    return () => {
+      if (externalSessionPersistTimerRef.current != null) {
+        window.clearTimeout(externalSessionPersistTimerRef.current);
+        externalSessionPersistTimerRef.current = null;
+      }
+    };
+  }, [
+    lines,
+    linesBase,
+    historyByTwId,
+    historyFetchFailed,
+    pendingIndividuals,
+    pendingIndividualsTruncated,
+    pendingIndividualsError,
+    meta,
+    missingPartnerTwIds,
+    missingBomTwIds,
+    paramInfo,
+    exclusions,
+    onRequests,
+    packaging,
+    productPairs,
+    productBoms,
+    teethTwIds,
+    boostPreset,
+    appliedBoostPreset,
+    boostNeedsRecount,
+    scopeMode,
+    selectedGroup,
+    selectedCecha,
+    groupQuery,
+    cechaQuery,
+    supplierId,
+    dniZapasu,
+    dataOd,
+    dataDo,
+    zapasMin,
+    showAdvanced,
+    salesWindowSource,
+    qtyOverrideByTwId,
+    acceptedReviewTwIds,
+    sessionIncludeTwIds,
+    listFilter,
+    listSearch,
+    sortKey,
+    sortDir,
+    columns,
+    columnOrder,
+  ]);
+
+  useEffect(() => {
+    const onHide = () => {
+      void flushExternalSessionPersistRef.current();
+    };
+    window.addEventListener("pagehide", onHide);
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") onHide();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onVisibility);
+      void flushExternalSessionPersistRef.current();
+    };
+  }, []);
+
   /** Jeden spokojny panel — pierwsze Policz (menu i daily), bez overlay na formularzu. */
   const showLaunchProgress = Boolean(
     launchBlocking ||
       (estimating && !lines && !launchReadyMessage)
   );
 
+  useEffect(() => {
+    return () => {
+      if (sessionResumeRevealTimerRef.current != null) {
+        window.clearTimeout(sessionResumeRevealTimerRef.current);
+        sessionResumeRevealTimerRef.current = null;
+      }
+    };
+  }, []);
+
   /** Sticky Create/TSV/Link gdy jest wynik Policz (także przy 0 Do ZD). */
   const showResultStickyActions = Boolean(lines);
+  /** Pełny panel resume tylko przy realnym powrocie z away — nie przy F5 na kreatorze. */
+  const showSessionResumeProgress = Boolean(
+    sessionResumeBlocking && !showLaunchProgress
+  );
+  /** Cichy restore (F5): blokuj treść + lekki spinner, bez pełnego gate'a. */
+  const showQuietSessionRestore = Boolean(
+    sessionRestorePending &&
+      !sessionResumeBlocking &&
+      !showLaunchProgress &&
+      !externalSessionAutorunConflictOpen
+  );
+  const canCancelExternalSession = Boolean(
+    lines != null &&
+      externalSessionTokenState != null &&
+      externalSessionTokenState.awayExpiresAtMs == null
+  );
+  const showExternalSessionActiveStatus = Boolean(
+    canCancelExternalSession &&
+      !showSessionResumeProgress &&
+      !showQuietSessionRestore &&
+      !showLaunchProgress
+  );
 
   /** Blur na liście przy każdym Policz, gdy wynik już jest na ekranie. */
   const showListRecountOverlay = Boolean(estimating && lines);
@@ -2815,9 +3985,9 @@ export function ZdEstimateWorkbench({
   const launchScopeLabel = activeScopeLabel;
   const launchScopeMode: "grupa" | "cecha" = scopeMode;
 
-  // Scroll: start progress / assign — celuj w scroll parent (appMain), nie window.
+  // Scroll: start progress / resume / assign — celuj w scroll parent (appMain), nie window.
   useEffect(() => {
-    if (showLaunchProgress) {
+    if (showLaunchProgress || showSessionResumeProgress) {
       // Okno jest wyśrodkowane w scenie — `start` ściągałoby je do góry i psuło kompozycję.
       return scrollZdEstimateWhenReady(ZD_ESTIMATE_LAUNCH_FOCUS_ID, {
         initialDelayMs: 80,
@@ -2834,7 +4004,12 @@ export function ZdEstimateWorkbench({
       });
     }
     return;
-  }, [showLaunchProgress, assignHint, launch?.fromDaily]);
+  }, [
+    showLaunchProgress,
+    showSessionResumeProgress,
+    assignHint,
+    launch?.fromDaily,
+  ]);
 
   // Scroll na dół po reveal listy — raz na toast „Lista gotowa”.
   // Nie w deps `lines`: refresh par/BOM podczas toastu nie może gonić sticky.
@@ -2852,6 +4027,30 @@ export function ZdEstimateWorkbench({
       maxAttempts: 28,
     });
   }, [launchReadyMessage, lines, showLaunchProgress, estimating]);
+
+  // Scroll: reveal listy po wznowieniu sesji (raz na udany restore).
+  const sessionRestoreRevealDoneRef = useRef(false);
+  useEffect(() => {
+    if (sessionRestorePending || !lines) {
+      sessionRestoreRevealDoneRef.current = false;
+      return;
+    }
+    if (showLaunchProgress || showSessionResumeProgress || estimating) return;
+    if (sessionRestoreRevealDoneRef.current) return;
+    if (!externalSessionRestoredRef.current) return;
+    sessionRestoreRevealDoneRef.current = true;
+    return scrollZdEstimateRevealListWhenReady({
+      initialDelayMs: 60,
+      settlePassesMs: [120, 280],
+      maxAttempts: 24,
+    });
+  }, [
+    sessionRestorePending,
+    lines,
+    showLaunchProgress,
+    showSessionResumeProgress,
+    estimating,
+  ]);
 
   // Scroll: błąd po progress (menu i daily) — nie podczas postępu
   useEffect(() => {
@@ -4037,10 +5236,16 @@ export function ZdEstimateWorkbench({
         // Przy liście workbench NIE scrolluje — tabela ma własny scrollport
         // (#zd-estimate-table-scroll); overflow tu psuje sticky nagłówki.
         !showLaunchProgress &&
+          !showSessionResumeProgress &&
+          !showQuietSessionRestore &&
           !lines &&
           "overflow-y-auto overscroll-contain",
         // Zjedz dolny py insetu (fill: py-2) — clearance docka jest końcem treści.
-        showResultStickyActions && !showLaunchProgress && "-mb-2"
+        showResultStickyActions &&
+          !showLaunchProgress &&
+          !showSessionResumeProgress &&
+          !showQuietSessionRestore &&
+          "-mb-2"
       )}
     >
       {showLaunchProgress && launchStartedAtMs != null ? (
@@ -4069,8 +5274,46 @@ export function ZdEstimateWorkbench({
         </div>
       ) : null}
 
+      {showSessionResumeProgress ? (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <ZdEstimateSessionResumeProgressPanel
+            key={sessionResumeStartedAtMsRef.current}
+            startedAtMs={sessionResumeStartedAtMsRef.current}
+            returningFromAway={sessionResumeReturningFromAway}
+            forceComplete={sessionResumeForceComplete}
+            supplierName={activeSupplierName}
+            scopeLabel={activeScopeLabel}
+            scopeMode={scopeMode}
+            ordersIsLive={bootstrap.ordersIsLive}
+            host={{
+              configured: bootstrap.configured,
+              isLive: bootstrap.ordersIsLive,
+              port: bootstrap.ordersPort ?? bootstrap.testPort,
+              salesEndFromFs: bootstrap.salesEndFromFs,
+              salesEndKeyFormatted: bootstrap.salesEndFromFs
+                ? formatPlDate(bootstrap.salesEndKey)
+                : null,
+            }}
+          />
+        </div>
+      ) : null}
+
+      {showQuietSessionRestore ? (
+        <div
+          className="flex min-h-[12rem] flex-1 flex-col items-center justify-center gap-3 px-4 py-10"
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <Spinner className="size-6 text-slate-500" />
+          <p className="text-sm font-medium text-slate-700">
+            Przywracanie listy…
+          </p>
+        </div>
+      ) : null}
+
       {/* Podczas przygotowania z panelu — tylko checklista, bez szumu formularza. */}
-      {!showLaunchProgress ? (
+      {!showLaunchProgress && !showSessionResumeProgress && !sessionRestorePending ? (
         <>
       <ZdEstimatePageIntro
         hint={zdEstimatePageHint({
@@ -4201,7 +5444,47 @@ export function ZdEstimateWorkbench({
         />
       ) : null}
 
+      {externalSessionRestoredToast ? (
+        <Toast
+          tone="success"
+          title={zdEstimateExternalSessionRestoredToastTitle}
+          description={externalSessionRestoredToast}
+          durationMs={8000}
+          onDismiss={() => setExternalSessionRestoredToast(null)}
+          className={cn(
+            floatingToastAboveZdStickyClass,
+            stickyCreateGateCaption || selectedCount > 0
+              ? floatingToastAboveZdStickyTallClass
+              : undefined
+          )}
+        />
+      ) : null}
+
       <div className="flex shrink-0 flex-col gap-1.5">
+      {externalSessionExpiredAlert ? (
+        <Alert tone="warning" title={zdEstimateExternalSessionExpiredAlertTitle}>
+          {zdEstimateExternalSessionExpiredAlertBody}
+        </Alert>
+      ) : null}
+
+      {externalSessionRestoreFailedAlert ? (
+        <Alert
+          tone="warning"
+          title={zdEstimateExternalSessionRestoreFailedAlertTitle}
+        >
+          {zdEstimateExternalSessionRestoreFailedAlertBody}
+        </Alert>
+      ) : null}
+
+      {externalSessionPersistFailedAlert && lines ? (
+        <Alert
+          tone="warning"
+          title={zdEstimateExternalSessionPersistFailedAlertTitle}
+        >
+          {zdEstimateExternalSessionPersistFailedAlertBody}
+        </Alert>
+      ) : null}
+
       {/* Status LIVE/test jest w ZdEstimatePageIntro — tu tylko blokada. */}
       {!bootstrap.configured ? (
         <Alert tone="error" title="Kreator ZD zablokowany">
@@ -4672,7 +5955,7 @@ export function ZdEstimateWorkbench({
         </>
       ) : null}
 
-      {!showLaunchProgress && prepFormOpen ? (
+      {!showLaunchProgress && !showSessionResumeProgress && prepFormOpen ? (
       <Card
         padding={false}
         className={cn(
@@ -5061,10 +6344,7 @@ export function ZdEstimateWorkbench({
                 <Input
                   type="date"
                   value={dataOd}
-                  onChange={(e) => {
-                    setSalesWindowSource("manual");
-                    setDataOd(e.target.value);
-                  }}
+                  onChange={(e) => onManualDataOdChange(e.target.value)}
                 />
               </Field>
               <Field
@@ -5074,19 +6354,7 @@ export function ZdEstimateWorkbench({
                 <Input
                   type="date"
                   value={dataDo}
-                  onChange={(e) => {
-                    const nextDo = e.target.value;
-                    setSalesWindowSource("manual");
-                    setDataDo(nextDo);
-                    setDataOd(
-                      nextDataOdAfterDataDoChange({
-                        source: "manual",
-                        dataDo: nextDo,
-                        dataOd,
-                        dniZapasu: Number(dniZapasu),
-                      })
-                    );
-                  }}
+                  onChange={(e) => onManualDataDoChange(e.target.value)}
                 />
               </Field>
             </div>
@@ -5244,7 +6512,7 @@ export function ZdEstimateWorkbench({
       </Card>
       ) : null}
 
-      {!showLaunchProgress ? (
+      {!showLaunchProgress && !showSessionResumeProgress && !sessionRestorePending ? (
         <>
 
       {kitOnlyBlockedAlertCount > 0 ||
@@ -6403,7 +7671,7 @@ export function ZdEstimateWorkbench({
         </>
       ) : null}
 
-      {showResultStickyActions && !showLaunchProgress ? (
+      {showResultStickyActions && !showLaunchProgress && !showSessionResumeProgress && !sessionRestorePending ? (
         <div className="flex flex-col">
           <ZdEstimateSelectionToolsReveal
             open={selectionToolsOpen}
@@ -6525,6 +7793,28 @@ export function ZdEstimateWorkbench({
                 >
                   Utwórz ZD
                 </Button>
+                {showExternalSessionActiveStatus ? (
+                  <ZdEstimateExternalSessionActiveChip />
+                ) : null}
+                {canCancelExternalSession ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className={zdEstimateDockButtonClass}
+                    onClick={() => {
+                      const token = externalSessionTokenState;
+                      if (!token) return;
+                      cancelExternalSessionSessionIdRef.current =
+                        token.sessionId;
+                      setCancelExternalSessionOpen(true);
+                    }}
+                    disabled={mutating}
+                    title="Anuluj zapis sesji kreatora ZD (przestanie działać przycisk „Wróć do kreatora”)."
+                  >
+                    {zdEstimateExternalSessionCancelButtonLabel}
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   size="sm"
@@ -6584,7 +7874,10 @@ export function ZdEstimateWorkbench({
           placement="floating"
           paused={linkZdOpen}
           className={
-            showResultStickyActions && !showLaunchProgress
+            showResultStickyActions &&
+              !showLaunchProgress &&
+              !showSessionResumeProgress &&
+              !showQuietSessionRestore
               ? cn(
                   floatingToastAboveZdStickyClass,
                   stickyCreateGateCaption || selectedCount > 0
@@ -6611,6 +7904,73 @@ export function ZdEstimateWorkbench({
           onDismiss={() => setCreateUndoVisible(false)}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={externalSessionAutorunConflictOpen}
+        title={zdEstimateExternalSessionAutorunConflictTitle}
+        message={zdEstimateExternalSessionAutorunConflictMessage}
+        confirmLabel={zdEstimateExternalSessionAutorunResumeLabel}
+        cancelLabel={zdEstimateExternalSessionAutorunDiscardLabel}
+        disableBackdropClose
+        onCancel={() => {
+          setExternalSessionAutorunConflictOpen(false);
+          void (async () => {
+            await endExternalSession();
+            runPendingAutorunAfterSessionDiscard();
+          })();
+        }}
+        onConfirm={() => {
+          setExternalSessionAutorunConflictOpen(false);
+          externalSessionAutorunBlockedRef.current = false;
+          externalSessionAutorunPendingRef.current = null;
+          if (launch?.launchKey) {
+            launchedRef.current = true;
+            markZdEstimateLaunchAutorunDone(launch.launchKey);
+            setLaunchBlocking(false);
+          }
+          const token = peekZdEstimateExternalSessionToken();
+          if (!token) return;
+          skipPendingIndividualsFetchRef.current = true;
+          void restoreExternalSession(token);
+        }}
+      />
+
+      <ConfirmDialog
+        open={externalSessionScopeChangeOpen}
+        title={zdEstimateExternalSessionScopeChangeTitle}
+        message={zdEstimateExternalSessionScopeChangeMessage}
+        confirmLabel={zdEstimateExternalSessionScopeChangeConfirmLabel}
+        cancelLabel={zdEstimateExternalSessionScopeChangeCancelLabel}
+        onCancel={() => {
+          scopeChangePendingActionRef.current = null;
+          setExternalSessionScopeChangeOpen(false);
+        }}
+        onConfirm={() => {
+          const action = scopeChangePendingActionRef.current;
+          scopeChangePendingActionRef.current = null;
+          setExternalSessionScopeChangeOpen(false);
+          action?.();
+        }}
+      />
+
+      <ConfirmDialog
+        open={cancelExternalSessionOpen && canCancelExternalSession}
+        title={zdEstimateExternalSessionCancelConfirmTitle}
+        message={zdEstimateExternalSessionCancelConfirmMessage}
+        confirmLabel={zdEstimateExternalSessionCancelConfirmLabel}
+        cancelLabel={zdEstimateExternalSessionCancelDialogCancelLabel}
+        pending={mutating && cancelExternalSessionOpen}
+        onCancel={() => setCancelExternalSessionOpen(false)}
+        onConfirm={() => {
+          const sessionId = cancelExternalSessionSessionIdRef.current;
+          cancelExternalSessionSessionIdRef.current = null;
+          startMutate(async () => {
+            setCancelExternalSessionOpen(false);
+            clearEstimateResult();
+            await endExternalSession({ sessionId });
+          });
+        }}
+      />
 
       <ConfirmDialog
         open={bulkRestoreOpen && restoreEligibleLines.length > 0}
@@ -6870,6 +8230,7 @@ export function ZdEstimateWorkbench({
           setLinkNrPrefill(null);
           setLinkZdOpen(false);
           if (dokId > 0) {
+            void endExternalSession();
             setCreateDoneDokId(dokId);
             setCreateDoneDokNr(dokNrPelny);
             setCreateUnconfirmedAttempt(false);
@@ -7051,6 +8412,7 @@ export function ZdEstimateWorkbench({
             includedServiceOrderIds,
             acceptedCatalogOrderIds,
           }) => {
+            void endExternalSession();
             const previewSnap =
               createPreviewCaptureRef.current ?? createZdPreview;
             const freezeBase =

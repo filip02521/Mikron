@@ -12,6 +12,7 @@ export function ConfirmDialog({
   danger,
   pending,
   tier = "raised",
+  disableBackdropClose,
   onConfirm,
   onCancel,
 }: {
@@ -23,6 +24,8 @@ export function ConfirmDialog({
   danger?: boolean;
   pending?: boolean;
   tier?: ModalTier;
+  /** Gdy true — klik w tło nie wywołuje onCancel (np. wymuszone wybory). */
+  disableBackdropClose?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -35,7 +38,7 @@ export function ConfirmDialog({
       role="alertdialog"
       size="sm"
       tier={tier}
-      disableBackdropClose={pending}
+      disableBackdropClose={pending || disableBackdropClose}
       loadingMessage={pending ? "Przetwarzanie…" : null}
       bodyClassName="px-5 py-4 sm:px-6"
       footer={

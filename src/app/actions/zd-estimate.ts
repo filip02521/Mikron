@@ -2,7 +2,7 @@
 
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja requireZdEstimateAdmin() (operacje dostaw); service role z pełnym scope po warstwie aplikacji.
-import { requireZdEstimateAdmin } from "@/lib/auth";
+import { getSessionUser, requireZdEstimateAdmin } from "@/lib/auth";
 import {
   deleteZdEstimateExclusion,
   deleteZdEstimateExclusionsMany,
@@ -192,6 +192,7 @@ import {
   resolveZdEstimateRunScope,
   type ZdEstimateRunMode,
 } from "@/lib/orders/zd-estimate-scope";
+import type { ZdEstimateUiSessionSnapshot } from "@/lib/orders/zd-estimate-ui-session-snapshot";
 
 export type ZdEstimateHistoryEntryDto = {
   twId: number;
@@ -4159,5 +4160,187 @@ export async function actionSetZdEstimateSnapshotHistoryEligible(input: {
       ),
     };
   }
+}
+
+// ============================================================================
+// Sesje UI kreatora ZD (/zakupy/szacunek) — snapshot + odtwarzanie po nawigacji
+// ============================================================================
+
+const ZD_ESTIMATE_UI_SESSION_TTL_MS = 60 * 60 * 1000; // housekeeping; timer liczy się po stronie klienta
+
+type ZdEstimateUiSessionPayload = ZdEstimateUiSessionSnapshot;
+
+export async function actionCreateZdEstimateUiSession(input: {
+  payload: ZdEstimateUiSessionPayload;
+  schemaVersion: number;
+}): Promise<
+  | { ok: true; sessionId: string }
+  | { ok: false; message: string }
+> {
+  const user = await getSessionUser();
+  if (!user) {
+    return { ok: false, message: "Brak sesji." };
+  }
+
+  const supabase = createAdminClient();
+  const now = new Date();
+
+  // Nowe „Policz” zastępuje poprzednią aktywną sesję (usuń zamiast zostawiać status=expired).
+  await supabase
+    .from("zd_estimate_ui_sessions")
+    .delete()
+    .eq("owner_user_id", user.id)
+    .eq("status", "active");
+
+  const { data, error } = await supabase
+    .from("zd_estimate_ui_sessions")
+    .insert({
+      owner_user_id: user.id,
+      status: "active",
+      expires_at: new Date(now.getTime() + ZD_ESTIMATE_UI_SESSION_TTL_MS).toISOString(),
+      payload: input.payload as unknown,
+      schema_version: input.schemaVersion,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    return { ok: false, message: error?.message ?? "Nie udało się utworzyć sesji." };
+  }
+
+  return { ok: true, sessionId: data.id };
+}
+
+export async function actionUpsertZdEstimateUiSessionSnapshot(input: {
+  sessionId: string;
+  payload: ZdEstimateUiSessionPayload;
+  schemaVersion: number;
+}): Promise<
+  | { ok: true; sessionId: string }
+  | { ok: false; message: string; reason: "not_found" | "error" }
+> {
+  const user = await getSessionUser();
+  if (!user) {
+    return { ok: false, message: "Brak sesji.", reason: "error" };
+  }
+
+  const supabase = createAdminClient();
+  const now = new Date();
+  const expiresAt = new Date(
+    now.getTime() + ZD_ESTIMATE_UI_SESSION_TTL_MS
+  ).toISOString();
+
+  const { data, error } = await supabase
+    .from("zd_estimate_ui_sessions")
+    .update({
+      status: "active",
+      expires_at: expiresAt,
+      payload: input.payload as unknown,
+      schema_version: input.schemaVersion,
+      updated_at: now.toISOString(),
+    })
+    .eq("id", input.sessionId)
+    .eq("owner_user_id", user.id)
+    .eq("status", "active")
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, message: error.message, reason: "error" };
+  }
+
+  if (!data) {
+    // Nie odtwarzaj tu — recreate po stronie klienta tylko gdy sessionId nadal bieżący
+    // (inaczej stary in-flight upsert kasowałby nowszą sesję po „Policz”).
+    return {
+      ok: false,
+      message: "Nie udało się zaktualizować sesji — wygasła lub nie istnieje.",
+      reason: "not_found",
+    };
+  }
+
+  return { ok: true, sessionId: data.id };
+}
+
+export async function actionGetZdEstimateUiSession(input: {
+  sessionId: string;
+}): Promise<
+  | {
+      ok: true;
+      payload: ZdEstimateUiSessionPayload;
+      schemaVersion: number;
+      status: string;
+      expiresAt: string;
+      updatedAt: string;
+    }
+  | { ok: false; message: string; reason: "not_found" | "expired" }
+> {
+  const user = await getSessionUser();
+  if (!user) {
+    return { ok: false, message: "Brak sesji.", reason: "not_found" };
+  }
+
+  const supabase = createAdminClient();
+
+  const { data, error } = await supabase
+    .from("zd_estimate_ui_sessions")
+    .select("payload, schema_version, status, expires_at, updated_at")
+    .eq("id", input.sessionId)
+    .eq("owner_user_id", user.id)
+    .maybeSingle();
+
+  if (error) {
+    return { ok: false, message: error.message, reason: "not_found" };
+  }
+
+  if (!data) {
+    return { ok: false, message: "Nie znaleziono sesji.", reason: "not_found" };
+  }
+
+  const expiresAt =
+    data.expires_at instanceof Date ? data.expires_at : new Date(data.expires_at);
+  const expired =
+    data.status !== "active" || expiresAt.getTime() <= Date.now();
+
+  if (expired) {
+    await supabase
+      .from("zd_estimate_ui_sessions")
+      .delete()
+      .eq("id", input.sessionId)
+      .eq("owner_user_id", user.id);
+    return { ok: false, message: "Sesja wygasła.", reason: "expired" };
+  }
+
+  return {
+    ok: true,
+    payload: data.payload as ZdEstimateUiSessionSnapshot,
+    schemaVersion: Number(data.schema_version),
+    status: data.status as string,
+    expiresAt: expiresAt.toISOString(),
+    updatedAt: (data.updated_at instanceof Date ? data.updated_at : new Date(data.updated_at)).toISOString(),
+  };
+}
+
+export async function actionDeleteZdEstimateUiSession(input: {
+  sessionId: string;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+  const user = await getSessionUser();
+  if (!user) {
+    return { ok: false, message: "Brak sesji." };
+  }
+
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from("zd_estimate_ui_sessions")
+    .delete()
+    .eq("id", input.sessionId)
+    .eq("owner_user_id", user.id);
+
+  if (error) {
+    return { ok: false, message: error.message };
+  }
+
+  return { ok: true };
 }
 

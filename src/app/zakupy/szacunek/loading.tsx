@@ -2,8 +2,8 @@ import { ZdEstimateRouteLoading } from "@/components/zakupy/ZdEstimateRouteLoadi
 import { zdEstimatePageShellClass } from "@/lib/ui/ontime-theme";
 
 /**
- * Loading RSC — animowana checklista bootstrapu (nie kroki Policz).
- * Ten sam fill-viewport shell co page.tsx, żeby karta nie siedziała u góry.
+ * Loading RSC — krótki bootstrap kreatora.
+ * Pełne wznowienie sesji robi workbench (jeden gate resume).
  */
 export default function ZdEstimateLoading() {
   return (
