@@ -8,7 +8,10 @@ import {
   ZD_ESTIMATE_ROUTE_LOADING_STEP_COUNT,
   ZD_ESTIMATE_ROUTE_LOADING_STEP_MS,
 } from "@/lib/orders/zd-estimate-launch-progress";
-import { zdEstimateLoadingElapsedLabel } from "@/lib/orders/zd-estimate-loading-ui";
+import {
+  resolveZdEstimateTimedLoadingBarPct,
+  zdEstimateLoadingElapsedLabel,
+} from "@/lib/orders/zd-estimate-loading-ui";
 import {
   ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION,
   zdEstimateLoadingBusyDetailRoute,
@@ -44,13 +47,13 @@ export function ZdEstimateRouteLoading() {
     stepCount,
   });
   const clamped = Math.max(0, Math.min(activeStepIndex, steps.length - 1));
-  const progressPct = Math.min(
-    92,
-    ((clamped +
-      Math.min(1, (elapsedMs % stepMs) / stepMs)) /
-      steps.length) *
-      100
-  );
+  // Monotonicznie po elapsed — bez `% stepMs` (to skakało wstecz na ostatnim kroku).
+  const progressPct = resolveZdEstimateTimedLoadingBarPct({
+    elapsedMs,
+    stepMs,
+    stepCount,
+    busyCapPct: 92,
+  });
 
   const title = zdEstimateRouteLoadingTitle();
   const activeHint = steps[clamped]!.activeHint;

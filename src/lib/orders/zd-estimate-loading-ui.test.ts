@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatZdEstimateElapsedCompact,
   resolveZdEstimateLoadingBarPct,
+  resolveZdEstimateTimedLoadingBarPct,
   resolveZdEstimateLoadingStatusTone,
   resolveZdEstimateLoadingStepVisual,
   zdEstimateLoadingElapsedLabel,
@@ -70,6 +71,41 @@ describe("zd-estimate-loading-ui", () => {
         forceComplete: true,
       })
     ).toBe(100);
+  });
+
+  it("timed bar pct — monotonic, no jump back on last step wrap", () => {
+    const stepMs = 1100;
+    const stepCount = 3;
+    const samples = [0, 500, 1100, 2200, 3299, 3300, 4400, 10_000].map(
+      (elapsedMs) =>
+        resolveZdEstimateTimedLoadingBarPct({
+          elapsedMs,
+          stepMs,
+          stepCount,
+          busyCapPct: 92,
+        })
+    );
+
+    for (let i = 1; i < samples.length; i++) {
+      expect(samples[i]!).toBeGreaterThanOrEqual(samples[i - 1]!);
+    }
+    expect(samples[0]).toBe(4);
+    expect(samples[samples.length - 1]).toBe(92);
+
+    // Stary bug: modulo na ostatnim kroku dawało spadek ~92 → ~66.
+    const nearEndOfLast = resolveZdEstimateTimedLoadingBarPct({
+      elapsedMs: 3 * stepMs - 1,
+      stepMs,
+      stepCount,
+      busyCapPct: 92,
+    });
+    const wrapPastLast = resolveZdEstimateTimedLoadingBarPct({
+      elapsedMs: 3 * stepMs,
+      stepMs,
+      stepCount,
+      busyCapPct: 92,
+    });
+    expect(wrapPastLast).toBeGreaterThanOrEqual(nearEndOfLast);
   });
 
   it("step visual — failure tylko na wskazanym kroku przy complete", () => {

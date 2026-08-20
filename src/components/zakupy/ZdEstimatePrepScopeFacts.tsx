@@ -65,16 +65,16 @@ export function ZdEstimatePrepScopeFacts({
   if (toolbar) {
     return (
       <div
-        className={cn("flex h-8 min-w-0 w-full items-center gap-2", className)}
+        className={cn("flex h-8 min-w-0 w-full items-center gap-1.5 sm:gap-2", className)}
         role="status"
         aria-label="Parametry zakresu"
         title={parts.summaryTitle}
       >
         <span className={zdEstimateScopeFactPrimaryClass}>
-          <span className="mr-1.5 font-medium text-indigo-700/70">
+          <span className="mr-1.5 shrink-0 font-medium text-indigo-700/70">
             {zdEstimateScopeKindLabel(scopeMode)}
           </span>
-          {parts.primary}
+          <span className="min-w-0 truncate">{parts.primary}</span>
         </span>
         {metaBits.length > 0 ? (
           <p className={zdEstimateScopeFactMetaClass}>{metaBits.join(" · ")}</p>

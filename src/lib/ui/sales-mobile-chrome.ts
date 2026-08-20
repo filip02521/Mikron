@@ -12,7 +12,7 @@ export const floatingToastStackAboveClass =
 
 /** Undo / toast nad sticky Create/TSV/Link w kreatorze ZD. */
 export const floatingToastAboveZdStickyClass =
-  "bottom-[calc(9.25rem+env(safe-area-inset-bottom,0px))] md:bottom-[6.75rem]";
+  "bottom-[calc(9.75rem+env(safe-area-inset-bottom,0px))] md:bottom-[6.75rem]";
 
 /**
  * Zakładka sesji kreatora ZD przy prawej krawędzi (poza kreatorem — countdown).
@@ -33,4 +33,4 @@ export const floatingZdSessionNoticeClass =
  * Używaj razem z `floatingToastAboveZdStickyClass` (nadpisuje bottom).
  */
 export const floatingToastAboveZdStickyTallClass =
-  "bottom-[calc(12.75rem+env(safe-area-inset-bottom,0px))] md:bottom-[9.75rem]";
+  "bottom-[calc(13.5rem+env(safe-area-inset-bottom,0px))] md:bottom-[9.75rem]";

@@ -356,13 +356,24 @@ select:disabled,
   --zd-est-pad-x: 0.45rem;
   --zd-est-pad-x-tight: 0.35rem;
   --zd-est-pad-x-flow: 0.3rem;
+  --zd-est-check-pad-l: 0.65rem;
+  --zd-est-dozd-pad-x: 0.4rem;
   /* Jedna baza liczb; metric (Sprzed./Cel) +0.25rem na ikonę w nagłówku */
   --zd-est-num-w: 5rem;
   --zd-est-metric-w: 5.25rem;
   --zd-est-pack-w: 5rem;
+  /* Bazowa szerokość pod przycisk; + scroll-pad = miejsce na overlay scrollbar */
   --zd-est-actions-w: 3rem;
+  --zd-est-actions-scroll-pad: 0.875rem;
   --zd-est-section-pad: 0.7rem;
   --zd-est-section-rule: #e2e8f0;
+  --zd-est-symbol-fs: 0.8125rem;
+  --zd-est-name-fs: 0.75rem;
+  --zd-est-dozd-unit-max: 2.4rem;
+  --zd-est-dozd-input-max: 4.75rem;
+  --zd-est-dozd-input-min: 2.75rem;
+  --zd-est-dozd-input-h: 1.875rem;
+  --zd-est-name-max-w: none;
   /*
    * Liczby: jedna baza + jeden akcent decyzji (Do ZD).
    * Różnice B/C/D = waga/opacity, NIE rozmiar (spójność skanu).
@@ -404,6 +415,7 @@ select:disabled,
   }
 }
 
+/* Desktop default: Do ZD za Nazwą (+ Opak. gdy włączone). Nadpisywane w ≤767px (blok na końcu sekcji). */
 .data-table.zd-estimate-table.zd-estimate-table--pack {
   --zd-est-sticky-dozd-left: calc(
     var(--zd-est-check-w) + var(--zd-est-identity-w) + var(--zd-est-pack-w)
@@ -524,38 +536,74 @@ select:disabled,
 }
 
 /*
- * Sprzed. + Cel — para „planowania” (tempo → cel).
- * Delikatny indigo wash + ikona w nagłówku; bez konkurencji z Do ZD (emerald).
+ * Sprzed. vs Cel — dwa sąsiednie sygnały planu, świadomie rozróżnione:
+ *   Sprzed. = fakt / tempo (chłodny sky) → Cel = cel zapasu (indigo).
+ * Para czyta się jako „było → cel”, bez konkurencji z Do ZD (emerald).
  */
-.data-table.zd-estimate-table th.zd-estimate-metric-col--plan,
-.data-table.zd-estimate-table td.zd-estimate-metric-col--plan {
-  background-color: rgb(238 242 255 / 0.42);
-  box-shadow: inset 0 2px 0 0 rgb(165 180 252 / 0.55);
+.data-table.zd-estimate-table th.zd-estimate-metric-col--sales,
+.data-table.zd-estimate-table td.zd-estimate-metric-col--sales {
+  background-color: rgb(240 249 255 / 0.55);
+  box-shadow: inset 0 2px 0 0 rgb(125 211 252 / 0.7);
+}
+
+.data-table.zd-estimate-table th.zd-estimate-metric-col--target,
+.data-table.zd-estimate-table td.zd-estimate-metric-col--target {
+  background-color: rgb(238 242 255 / 0.55);
+  box-shadow:
+    inset 1px 0 0 rgb(199 210 254 / 0.95),
+    inset 0 2px 0 0 rgb(165 180 252 / 0.65);
 }
 
 .data-table.zd-estimate-table
-  th.zd-estimate-metric-col--plan.zd-estimate-col--section,
+  th.zd-estimate-metric-col--sales.zd-estimate-col--section,
 .data-table.zd-estimate-table
-  td.zd-estimate-metric-col--plan.zd-estimate-col--section {
+  td.zd-estimate-metric-col--sales.zd-estimate-col--section {
   box-shadow:
     inset 1px 0 0 var(--zd-est-section-rule),
-    inset 0 2px 0 0 rgb(165 180 252 / 0.55);
+    inset 0 2px 0 0 rgb(125 211 252 / 0.7);
 }
 
-.data-table.zd-estimate-table thead th.zd-estimate-metric-col--plan {
-  background-color: rgb(224 231 255 / 0.55);
+.data-table.zd-estimate-table
+  th.zd-estimate-metric-col--target.zd-estimate-col--section,
+.data-table.zd-estimate-table
+  td.zd-estimate-metric-col--target.zd-estimate-col--section {
+  box-shadow:
+    inset 1px 0 0 var(--zd-est-section-rule),
+    inset 0 2px 0 0 rgb(165 180 252 / 0.65);
+}
+
+.data-table.zd-estimate-table thead th.zd-estimate-metric-col--sales {
+  background-color: rgb(224 242 254 / 0.72);
+  color: #0369a1;
+  box-shadow:
+    inset 0 2px 0 0 rgb(56 189 248 / 0.75),
+    0 1px 0 #e2e8f0;
+}
+
+.data-table.zd-estimate-table thead th.zd-estimate-metric-col--target {
+  background-color: rgb(224 231 255 / 0.72);
   color: #4338ca;
   box-shadow:
-    inset 0 2px 0 0 rgb(129 140 248 / 0.65),
+    inset 1px 0 0 rgb(165 180 252 / 0.9),
+    inset 0 2px 0 0 rgb(129 140 248 / 0.7),
     0 1px 0 #e2e8f0;
 }
 
 .data-table.zd-estimate-table
   thead
-  th.zd-estimate-metric-col--plan.zd-estimate-col--section {
+  th.zd-estimate-metric-col--sales.zd-estimate-col--section {
   box-shadow:
     inset 1px 0 0 var(--zd-est-section-rule),
-    inset 0 2px 0 0 rgb(129 140 248 / 0.65),
+    inset 0 2px 0 0 rgb(56 189 248 / 0.75),
+    0 1px 0 #e2e8f0;
+}
+
+.data-table.zd-estimate-table
+  thead
+  th.zd-estimate-metric-col--target.zd-estimate-col--section {
+  box-shadow:
+    inset 1px 0 0 var(--zd-est-section-rule),
+    inset 0 2px 0 0 rgb(129 140 248 / 0.7),
     0 1px 0 #e2e8f0;
 }
 
@@ -570,27 +618,73 @@ select:disabled,
 
 .data-table.zd-estimate-table .zd-est-metric-th__icon {
   flex-shrink: 0;
-  opacity: 0.9;
+  opacity: 0.95;
 }
 
 .data-table.zd-estimate-table .zd-est-metric-th__icon--sales {
-  color: #4f46e5;
+  color: #0284c7;
 }
 
 .data-table.zd-estimate-table .zd-est-metric-th__icon--target {
-  color: #6366f1;
+  color: #4f46e5;
 }
 
 .data-table.zd-estimate-table .zd-est-metric-th__label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  letter-spacing: 0.02em;
+}
+
+.data-table.zd-estimate-table
+  thead
+  th.zd-estimate-metric-col--sales
+  .zd-est-metric-th__label {
+  font-weight: 600;
+}
+
+.data-table.zd-estimate-table
+  thead
+  th.zd-estimate-metric-col--target
+  .zd-est-metric-th__label {
+  font-weight: 700;
+}
+
+/* Liczby: Sprzed. spokojniejszy slate-sky; Cel mocniejszy indigo. */
+.data-table.zd-estimate-table
+  td.zd-estimate-metric-col--sales
+  .zd-est-qty--c {
+  color: #0f172a;
+}
+
+.data-table.zd-estimate-table
+  td.zd-estimate-metric-col--sales
+  .zd-est-unit {
+  color: #64748b;
+}
+
+.data-table.zd-estimate-table
+  td.zd-estimate-metric-col--target
+  .zd-est-qty--b {
+  color: #312e81;
+}
+
+.data-table.zd-estimate-table
+  td.zd-estimate-metric-col--target
+  .zd-est-unit {
+  color: #6366f1;
 }
 
 .data-table.zd-estimate-table td.zd-estimate-metric-col .zd-estimate-metric-stack {
   width: 100%;
   align-items: center;
   text-align: center;
+}
+
+.data-table.zd-estimate-table td.zd-estimate-metric-col .zd-estimate-metric-stack > span,
+.data-table.zd-estimate-table td.zd-estimate-num-col > span {
+  max-width: 100%;
+  overflow: hidden;
 }
 
 /* Liczby: wyśrodkowanie zawartości w komórce (poziom + pion) */
@@ -710,7 +804,7 @@ select:disabled,
   width: var(--zd-est-check-w);
   min-width: var(--zd-est-check-w);
   max-width: var(--zd-est-check-w);
-  padding-left: 0.65rem;
+  padding-left: var(--zd-est-check-pad-l);
   padding-right: var(--zd-est-pad-x-tight);
   vertical-align: middle;
   background: #fff;
@@ -742,7 +836,7 @@ select:disabled,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.8125rem;
+  font-size: var(--zd-est-symbol-fs);
   font-weight: 600;
   line-height: 1.25;
   letter-spacing: -0.015em;
@@ -763,7 +857,7 @@ select:disabled,
   z-index: 1;
   width: 18%;
   min-width: var(--zd-est-product-name-w);
-  max-width: none;
+  max-width: var(--zd-est-name-max-w);
   padding-left: var(--zd-est-pad-x-tight);
   padding-right: var(--zd-est-pad-x);
   background: #fff;
@@ -780,7 +874,7 @@ select:disabled,
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   overflow: hidden;
-  font-size: 0.75rem;
+  font-size: var(--zd-est-name-fs);
   font-weight: 500;
   line-height: 1.3;
   color: #475569;
@@ -807,8 +901,8 @@ select:disabled,
   width: var(--zd-est-dozd-w);
   min-width: var(--zd-est-dozd-w);
   max-width: var(--zd-est-dozd-w);
-  padding-left: 0.4rem;
-  padding-right: 0.4rem;
+  padding-left: var(--zd-est-dozd-pad-x);
+  padding-right: var(--zd-est-dozd-pad-x);
   text-align: center;
   background-color: rgb(236 253 245 / 0.42);
   box-shadow: inset 3px 0 0 0 #34d399, 1px 0 0 rgb(167 243 208 / 0.85);
@@ -858,14 +952,14 @@ select:disabled,
   box-sizing: border-box;
   -moz-appearance: textfield;
   appearance: textfield;
-  height: 1.875rem;
+  height: var(--zd-est-dozd-input-h);
   width: 100%;
-  max-width: 4.75rem;
-  min-width: 2.75rem;
+  max-width: var(--zd-est-dozd-input-max);
+  min-width: var(--zd-est-dozd-input-min);
   border-radius: 0.45rem;
   border: 1px solid rgb(167 243 208 / 0.95);
   background: #fff;
-  padding: 0 0.4rem;
+  padding: 0 var(--zd-est-dozd-pad-x);
   font-size: var(--zd-num-decision);
   font-weight: 600;
   line-height: 1;
@@ -927,7 +1021,7 @@ select:disabled,
 
 .data-table.zd-estimate-table .zd-est-dozd-unit {
   flex-shrink: 0;
-  max-width: 2.4rem;
+  max-width: var(--zd-est-dozd-unit-max);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1112,16 +1206,17 @@ select:disabled,
 
 .data-table.zd-estimate-table th.zd-estimate-actions-col,
 .data-table.zd-estimate-table td.zd-estimate-actions-col {
-  padding-right: var(--zd-est-pad-x);
+  /* Extra padding-right: overlay scrollbar (macOS) nie wcina się w przycisk ⋮ */
+  padding-right: calc(var(--zd-est-pad-x) + var(--zd-est-actions-scroll-pad));
   padding-left: var(--zd-est-pad-x-tight);
   position: sticky;
   right: 0;
   z-index: 1;
   background: #fff;
   box-shadow: -1px 0 0 #e2e8f0;
-  width: var(--zd-est-actions-w);
-  min-width: var(--zd-est-actions-w);
-  max-width: var(--zd-est-actions-w);
+  width: calc(var(--zd-est-actions-w) + var(--zd-est-actions-scroll-pad));
+  min-width: calc(var(--zd-est-actions-w) + var(--zd-est-actions-scroll-pad));
+  max-width: calc(var(--zd-est-actions-w) + var(--zd-est-actions-scroll-pad));
   text-align: center;
   vertical-align: middle;
 }
@@ -1203,8 +1298,15 @@ select:disabled,
 .data-table.zd-estimate-table
   tbody
   tr:nth-child(even):not([class*="bg-"])
-  td.zd-estimate-metric-col--plan {
-  background-color: rgb(224 231 255 / 0.48);
+  td.zd-estimate-metric-col--sales {
+  background-color: rgb(224 242 254 / 0.58);
+}
+
+.data-table.zd-estimate-table
+  tbody
+  tr:nth-child(even):not([class*="bg-"])
+  td.zd-estimate-metric-col--target {
+  background-color: rgb(224 231 255 / 0.55);
 }
 
 .data-table.zd-estimate-table tbody tr:nth-child(even):not([class*="bg-"]) td.zd-estimate-check-col,
@@ -1231,12 +1333,20 @@ select:disabled,
   background-color: #d1fae5;
 }
 
-.data-table.zd-estimate-table tbody tr:hover td.zd-estimate-metric-col--plan,
+.data-table.zd-estimate-table tbody tr:hover td.zd-estimate-metric-col--sales,
 .data-table.zd-estimate-table
   tbody
   tr:nth-child(even):not([class*="bg-"]):hover
-  td.zd-estimate-metric-col--plan {
-  background-color: rgb(199 210 254 / 0.55);
+  td.zd-estimate-metric-col--sales {
+  background-color: rgb(186 230 253 / 0.62);
+}
+
+.data-table.zd-estimate-table tbody tr:hover td.zd-estimate-metric-col--target,
+.data-table.zd-estimate-table
+  tbody
+  tr:nth-child(even):not([class*="bg-"]):hover
+  td.zd-estimate-metric-col--target {
+  background-color: rgb(199 210 254 / 0.62);
 }
 
 .data-table.zd-estimate-table
@@ -1308,7 +1418,11 @@ select:disabled,
 .data-table.zd-estimate-table
   tbody
   tr[class*="bg-slate"]
-  td.zd-estimate-metric-col--plan {
+  td.zd-estimate-metric-col--sales,
+.data-table.zd-estimate-table
+  tbody
+  tr[class*="bg-slate"]
+  td.zd-estimate-metric-col--target {
   background-color: rgb(241 245 249 / 0.95);
 }
 
@@ -1329,6 +1443,27 @@ select:disabled,
   background-color: #e0e7ff !important;
 }
 
+/* Przy zaznaczeniu zachowaj czytelny podział Sprzed. (sky) vs Cel (indigo). */
+.data-table.zd-estimate-table
+  tbody
+  tr[data-selected="true"]
+  td.zd-estimate-metric-col--sales {
+  background-color: #bae6fd !important;
+  box-shadow:
+    inset 1px 0 0 transparent,
+    inset 0 2px 0 0 rgb(14 165 233 / 0.55);
+}
+
+.data-table.zd-estimate-table
+  tbody
+  tr[data-selected="true"]
+  td.zd-estimate-metric-col--target {
+  background-color: #c7d2fe !important;
+  box-shadow:
+    inset 1px 0 0 rgb(99 102 241 / 0.45),
+    inset 0 2px 0 0 rgb(79 70 229 / 0.5);
+}
+
 .data-table.zd-estimate-table tbody tr[data-selected="true"] td.zd-estimate-check-col,
 .data-table.zd-estimate-table tbody tr[data-selected="true"] td.zd-estimate-symbol-col,
 .data-table.zd-estimate-table tbody tr[data-selected="true"] td.zd-estimate-product-name-col,
@@ -1346,6 +1481,20 @@ select:disabled,
 
 .data-table.zd-estimate-table tbody tr[data-selected="true"]:hover td {
   background-color: #c7d2fe !important;
+}
+
+.data-table.zd-estimate-table
+  tbody
+  tr[data-selected="true"]:hover
+  td.zd-estimate-metric-col--sales {
+  background-color: #7dd3fc !important;
+}
+
+.data-table.zd-estimate-table
+  tbody
+  tr[data-selected="true"]:hover
+  td.zd-estimate-metric-col--target {
+  background-color: #a5b4fc !important;
 }
 
 .data-table.zd-estimate-table tbody tr[data-selected="true"]:hover td.zd-estimate-dozd-col {
@@ -1494,6 +1643,296 @@ select:disabled,
   box-shadow: inset 0 0 0 1px rgb(15 23 42 / 0.08);
 }
 
+/*
+ * Responsywność Kreatora ZD — NA KOŃCU sekcji tabeli (po wszystkich sticky),
+ * żeby max-width override’y wygrywały z regułami position/left/box-shadow.
+ */
+@media (max-width: 1023px) {
+  .data-table.zd-estimate-table {
+    --zd-est-check-w: 2.25rem;
+    --zd-est-symbol-w: 7rem;
+    --zd-est-product-name-w: 8.5rem;
+    --zd-est-dozd-w: 6.75rem;
+    --zd-est-status-w: 11rem;
+    --zd-est-num-w: 4.5rem;
+    --zd-est-metric-w: 4.75rem;
+    --zd-est-pack-w: 4.5rem;
+    --zd-est-actions-w: 2.75rem;
+    --zd-est-pad-y: 0.42rem;
+    --zd-est-pad-x: 0.35rem;
+    --zd-est-pad-x-tight: 0.28rem;
+    --zd-est-pad-x-flow: 0.22rem;
+    --zd-est-check-pad-l: 0.55rem;
+    --zd-est-dozd-pad-x: 0.32rem;
+    --zd-est-section-pad: 0.55rem;
+    --zd-est-symbol-fs: 0.75rem;
+    --zd-est-name-fs: 0.6875rem;
+    --zd-est-dozd-unit-max: 2.1rem;
+    --zd-est-dozd-input-max: 4.25rem;
+    --zd-est-dozd-input-min: 2.5rem;
+    --zd-est-dozd-input-h: 1.8rem;
+    --zd-num: 0.8125rem;
+    --zd-num-decision: 1rem;
+    --zd-num-unit: 0.5625rem;
+    min-width: 54rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .data-table.zd-estimate-table {
+    --zd-est-compact-mode: 1;
+    --zd-est-check-w: 2rem;
+    --zd-est-symbol-w: 5.25rem;
+    --zd-est-product-name-w: 7rem;
+    --zd-est-name-max-w: 10.5rem;
+    --zd-est-dozd-w: 6.15rem;
+    --zd-est-status-w: 9.25rem;
+    --zd-est-num-w: 4.15rem;
+    --zd-est-metric-w: 4.4rem;
+    --zd-est-pack-w: 4.15rem;
+    --zd-est-actions-w: 2.5rem;
+    --zd-est-pad-y: 0.38rem;
+    --zd-est-pad-x: 0.28rem;
+    --zd-est-pad-x-tight: 0.2rem;
+    --zd-est-pad-x-flow: 0.16rem;
+    --zd-est-check-pad-l: 0.45rem;
+    --zd-est-dozd-pad-x: 0.28rem;
+    --zd-est-section-pad: 0.42rem;
+    --zd-est-symbol-fs: 0.6875rem;
+    --zd-est-name-fs: 0.625rem;
+    --zd-est-dozd-unit-max: 1.85rem;
+    --zd-est-dozd-input-max: 3.65rem;
+    --zd-est-dozd-input-min: 2.25rem;
+    --zd-est-dozd-input-h: 1.7rem;
+    --zd-num: 0.75rem;
+    --zd-num-decision: 0.9375rem;
+    --zd-num-unit: 0.5rem;
+    --zd-est-sticky-dozd-left: calc(
+      var(--zd-est-check-w) + var(--zd-est-symbol-w)
+    );
+    min-width: 44rem;
+  }
+
+  .data-table.zd-estimate-table.zd-estimate-table--pack {
+    --zd-est-sticky-dozd-left: calc(
+      var(--zd-est-check-w) + var(--zd-est-symbol-w)
+    );
+  }
+
+  /* Nazwa: sticky tylko w pionie (nagłówek), bez left */
+  .data-table.zd-estimate-table th.zd-estimate-product-name-col,
+  .data-table.zd-estimate-table.zd-estimate-table--pack
+    th.zd-estimate-product-name-col,
+  .data-table.zd-estimate-table.zd-estimate-table--pack
+    thead
+    th.zd-estimate-product-name-col {
+    position: sticky;
+    top: 0;
+    left: auto;
+    z-index: 2;
+    width: auto;
+    min-width: var(--zd-est-product-name-w);
+    max-width: var(--zd-est-name-max-w);
+    box-shadow: 0 1px 0 #e2e8f0;
+    background: #f8fafc;
+  }
+
+  .data-table.zd-estimate-table td.zd-estimate-product-name-col,
+  .data-table.zd-estimate-table tbody td.zd-estimate-product-name-col,
+  .data-table.zd-estimate-table.zd-estimate-table--pack
+    td.zd-estimate-product-name-col,
+  .data-table.zd-estimate-table.zd-estimate-table--pack
+    tbody
+    td.zd-estimate-product-name-col {
+    position: static;
+    left: auto;
+    z-index: auto;
+    width: auto;
+    min-width: var(--zd-est-product-name-w);
+    max-width: var(--zd-est-name-max-w);
+    box-shadow: none;
+  }
+
+  /* Opak.: bez sticky left (wyższa specyficzność niż baza --pack) */
+  .data-table.zd-estimate-table.zd-estimate-table--pack
+    thead
+    th.zd-estimate-pack-col {
+    position: sticky;
+    top: 0;
+    left: auto;
+    z-index: 2;
+    background: #f8fafc;
+    box-shadow: 0 1px 0 #e2e8f0;
+  }
+
+  .data-table.zd-estimate-table.zd-estimate-table--pack td.zd-estimate-pack-col,
+  .data-table.zd-estimate-table.zd-estimate-table--pack
+    tbody
+    td.zd-estimate-pack-col {
+    position: static;
+    left: auto;
+    z-index: auto;
+    box-shadow: none;
+  }
+
+  /* Krawędź sticky na Symbolu — także przy włączonym --pack */
+  .data-table.zd-estimate-table th.zd-estimate-symbol-col,
+  .data-table.zd-estimate-table td.zd-estimate-symbol-col,
+  .data-table.zd-estimate-table tbody td.zd-estimate-symbol-col,
+  .data-table.zd-estimate-table.zd-estimate-table--pack
+    th.zd-estimate-symbol-col,
+  .data-table.zd-estimate-table.zd-estimate-table--pack
+    td.zd-estimate-symbol-col,
+  .data-table.zd-estimate-table.zd-estimate-table--pack
+    tbody
+    td.zd-estimate-symbol-col {
+    box-shadow: 1px 0 0 #e2e8f0;
+  }
+
+  .data-table.zd-estimate-table thead th.zd-estimate-symbol-col,
+  .data-table.zd-estimate-table.zd-estimate-table--pack
+    thead
+    th.zd-estimate-symbol-col {
+    box-shadow: 1px 0 0 #e2e8f0, 0 1px 0 #e2e8f0;
+  }
+
+  /* Striping Nazwy/Opak. jak zwykłe komórki (nie „płyta” sticky) */
+  .data-table.zd-estimate-table
+    tbody
+    tr:nth-child(even):not([class*="bg-"])
+    td.zd-estimate-product-name-col,
+  .data-table.zd-estimate-table
+    tbody
+    tr:nth-child(even):not([class*="bg-"])
+    td.zd-estimate-pack-col {
+    background-color: rgb(248 250 252 / 0.7);
+  }
+
+  .data-table.zd-estimate-table
+    tbody
+    tr:hover
+    td.zd-estimate-product-name-col,
+  .data-table.zd-estimate-table tbody tr:hover td.zd-estimate-pack-col,
+  .data-table.zd-estimate-table
+    tbody
+    tr:nth-child(even):not([class*="bg-"]):hover
+    td.zd-estimate-product-name-col,
+  .data-table.zd-estimate-table
+    tbody
+    tr:nth-child(even):not([class*="bg-"]):hover
+    td.zd-estimate-pack-col {
+    background-color: #f1f5f9;
+  }
+
+  .data-table.zd-estimate-table .zd-est-product-name {
+    -webkit-line-clamp: 2;
+    line-height: 1.25;
+  }
+
+  .data-table.zd-estimate-table .zd-est-dozd {
+    gap: 0.2rem;
+  }
+
+  .data-table.zd-estimate-table .zd-est-dozd-value {
+    gap: 0.18rem;
+  }
+
+  .data-table.zd-estimate-table .zd-est-pack-cell-sub {
+    display: none;
+  }
+
+  .data-table.zd-estimate-table td.zd-estimate-status-col {
+    max-width: 10.5rem;
+  }
+
+  .data-table.zd-estimate-table .zd-est-status {
+    gap: 0.18rem;
+  }
+
+  .data-table.zd-estimate-table .zd-est-status-badge,
+  .data-table.zd-estimate-table .zd-est-status-more {
+    height: 1.25rem;
+    padding: 0 0.3rem;
+    font-size: 0.5625rem;
+  }
+
+  .data-table.zd-estimate-table .zd-est-dozd-hint-row {
+    gap: 0.1rem;
+  }
+
+  .data-table.zd-estimate-table .zd-est-metric-th {
+    gap: 0.12rem;
+  }
+
+  .data-table.zd-estimate-table .zd-est-metric-th__icon {
+    width: 0.7rem;
+    height: 0.7rem;
+  }
+
+  .data-table.zd-estimate-table thead th {
+    padding-top: 0.48rem;
+    padding-bottom: 0.48rem;
+    letter-spacing: 0.04em;
+  }
+
+  .data-table.zd-estimate-table td.zd-estimate-actions-col button {
+    height: 1.75rem;
+    width: 1.75rem;
+  }
+}
+
+@media (max-width: 479px) {
+  .data-table.zd-estimate-table {
+    --zd-est-check-w: 1.85rem;
+    --zd-est-symbol-w: 4.4rem;
+    --zd-est-product-name-w: 6.25rem;
+    --zd-est-name-max-w: 9rem;
+    --zd-est-dozd-w: 5.65rem;
+    --zd-est-status-w: 8.25rem;
+    --zd-est-num-w: 3.9rem;
+    --zd-est-metric-w: 4.15rem;
+    --zd-est-pack-w: 3.75rem;
+    --zd-est-actions-w: 2.25rem;
+    --zd-est-pad-y: 0.34rem;
+    --zd-est-pad-x: 0.22rem;
+    --zd-est-pad-x-tight: 0.16rem;
+    --zd-est-pad-x-flow: 0.12rem;
+    --zd-est-check-pad-l: 0.35rem;
+    --zd-est-dozd-pad-x: 0.22rem;
+    --zd-est-section-pad: 0.36rem;
+    --zd-est-symbol-fs: 0.625rem;
+    --zd-est-name-fs: 0.5625rem;
+    --zd-est-dozd-unit-max: 1.6rem;
+    --zd-est-dozd-input-max: 3.35rem;
+    --zd-est-dozd-input-min: 2.1rem;
+    --zd-est-dozd-input-h: 1.6rem;
+    --zd-num: 0.6875rem;
+    --zd-num-decision: 0.875rem;
+    --zd-num-unit: 0.5rem;
+    --zd-est-sticky-dozd-left: calc(
+      var(--zd-est-check-w) + var(--zd-est-symbol-w)
+    );
+    min-width: 40rem;
+  }
+
+  .data-table.zd-estimate-table.zd-estimate-table--pack {
+    --zd-est-sticky-dozd-left: calc(
+      var(--zd-est-check-w) + var(--zd-est-symbol-w)
+    );
+  }
+
+  .data-table.zd-estimate-table thead th {
+    font-size: 0.5rem;
+    letter-spacing: 0.035em;
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
+  }
+
+  .data-table.zd-estimate-table .zd-est-metric-th__icon {
+    display: none;
+  }
+}
+
 /* Kolejka przyjęcia — czytelniejsze wiersze */
 .data-table.receive-queue-table tbody tr:hover td {
   background-color: #f1f5f9;
@@ -1603,8 +2042,24 @@ main:has([data-zd-estimate-viewport]) [data-zd-estimate-viewport] {
   overflow: auto;
   overscroll-behavior: contain;
   isolation: isolate;
+  /* Rezerwuje tor pod scrollbar — sticky Akcje nie wchodzi pod klasyczny pasek */
+  scrollbar-gutter: stable;
   /* Bez `contain: paint` — sticky kolumny zostawiały pustą szparę po prawej. */
   -webkit-overflow-scrolling: touch;
+  background-color: #fff;
+  /*
+   * Hint poziomego scrolla: cienie na krawędziach (local = znikają przy brzegu).
+   * Prawy cień zaczyna się za gutterem sticky Akcje.
+   */
+  background-image:
+    linear-gradient(#fff, #fff),
+    linear-gradient(#fff, #fff),
+    linear-gradient(90deg, rgb(15 23 42 / 0.08), transparent),
+    linear-gradient(270deg, rgb(15 23 42 / 0.08), transparent);
+  background-position: 0 0, 100% 0, 0 0, 100% 0;
+  background-repeat: no-repeat;
+  background-size: 1.1rem 100%, 1.1rem 100%, 0.7rem 100%, 0.7rem 100%;
+  background-attachment: local, local, scroll, scroll;
 }
 
 @keyframes action-loading-shimmer {
