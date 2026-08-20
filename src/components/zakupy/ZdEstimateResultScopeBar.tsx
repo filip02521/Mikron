@@ -18,7 +18,7 @@ function ScopeFact({
       <p className={panelTypography.caption}>{label}</p>
       <p
         className={cn(
-          "mt-1 text-sm font-semibold leading-snug tabular-nums tracking-tight text-slate-900",
+          "mt-1 max-w-full truncate text-sm font-semibold leading-snug tabular-nums tracking-tight text-slate-900",
           valueClassName
         )}
         title={title ?? value}
@@ -83,8 +83,8 @@ export function ZdEstimateResultScopeBar({
       role="status"
       aria-label="Zakres szacunku"
     >
-      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-        <div className="grid min-w-0 flex-1 grid-cols-2 gap-x-5 gap-y-3 sm:grid-cols-4">
+      <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2.5 sm:gap-x-4 sm:gap-y-3">
+        <div className="grid min-w-0 flex-1 grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-4 sm:gap-x-5 sm:gap-y-3">
           <ScopeFact
             label="Widoczne"
             value={visibleLabel}

@@ -297,6 +297,7 @@ export function clampZdEstimateTableScroll(): boolean {
 /**
  * Nazwa może rosnąć z wolną szerokością — zsynchronizuj sticky left
  * (Opak. / Do ZD) z faktyczną szerokością kolumny Nazwa.
+ * W trybie compact (≤767px Nazwa nie jest sticky) — czyść override.
  */
 export function syncZdEstimateFlexibleColumnStickyWidths(): void {
   if (typeof document === "undefined") return;
@@ -304,6 +305,15 @@ export function syncZdEstimateFlexibleColumnStickyWidths(): void {
     "table.data-table.zd-estimate-table"
   ) as HTMLTableElement | null;
   if (!table) return;
+  const compact =
+    getComputedStyle(table).getPropertyValue("--zd-est-compact-mode").trim() ===
+    "1";
+  if (compact) {
+    if (table.style.getPropertyValue("--zd-est-name-used-w")) {
+      table.style.removeProperty("--zd-est-name-used-w");
+    }
+    return;
+  }
   const nameTh = table.querySelector(
     "thead th.zd-estimate-product-name-col"
   ) as HTMLTableCellElement | null;

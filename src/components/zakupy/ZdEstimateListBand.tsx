@@ -202,13 +202,18 @@ export function ZdEstimateListBand({
           "flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3"
         )}
       >
-        <div className={cn("flex min-w-0 items-center", zdEstimateChromeGapClass)}>
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 items-center",
+            zdEstimateChromeGapClass
+          )}
+        >
           <SegmentedControl
             ariaLabel="Filtr listy"
             value={listFilter}
             onChange={onListFilterChange}
             density="compact"
-            className="w-full justify-stretch sm:w-auto sm:shrink-0"
+            className="min-w-0 flex-1 justify-stretch sm:w-auto sm:flex-none sm:shrink-0"
             options={[
               {
                 value: "order",
@@ -217,27 +222,54 @@ export function ZdEstimateListBand({
               },
               {
                 value: "all",
-                label: "Wszystkie",
+                label: (
+                  <>
+                    <span className="sm:hidden">Wsz.</span>
+                    <span className="hidden sm:inline">Wszystkie</span>
+                  </>
+                ),
                 title: ZD_ESTIMATE_UI.listFilterAllTitleWithCount(inScopeCount),
               },
               {
                 value: "review",
-                label: `${ZD_ESTIMATE_UI.listFilterReviewShort}${filterCountSuffix(reviewInGroupCount)}`,
+                label: (
+                  <>
+                    <span className="sm:hidden">
+                      Wer.{filterCountSuffix(reviewInGroupCount)}
+                    </span>
+                    <span className="hidden sm:inline">
+                      {ZD_ESTIMATE_UI.listFilterReviewShort}
+                      {filterCountSuffix(reviewInGroupCount)}
+                    </span>
+                  </>
+                ),
                 title: ZD_ESTIMATE_UI.listFilterReviewTitle,
               },
               {
                 value: "excluded",
-                label: `${ZD_ESTIMATE_UI.listFilterExcludedShort}${filterCountSuffix(excludedInGroupCount)}`,
+                label: (
+                  <>
+                    <span className="sm:hidden">
+                      Wykl.{filterCountSuffix(excludedInGroupCount)}
+                    </span>
+                    <span className="hidden sm:inline">
+                      {ZD_ESTIMATE_UI.listFilterExcludedShort}
+                      {filterCountSuffix(excludedInGroupCount)}
+                    </span>
+                  </>
+                ),
                 title: ZD_ESTIMATE_UI.excludedFilterTitle,
               },
             ]}
           />
-          <HelpHintBubble
-            message={ZD_ESTIMATE_UNITS_LEGEND}
-            tone="slate"
-            size="sm"
-            ariaLabel="Legenda jednostek listy"
-          />
+          <span className="inline-flex shrink-0 items-center">
+            <HelpHintBubble
+              message={ZD_ESTIMATE_UNITS_LEGEND}
+              tone="slate"
+              size="sm"
+              ariaLabel="Legenda jednostek listy"
+            />
+          </span>
         </div>
 
         <div
@@ -246,11 +278,11 @@ export function ZdEstimateListBand({
             zdEstimateChromeGapClass
           )}
         >
-          <div className="relative min-w-0 flex-1 sm:w-[15rem] sm:flex-none lg:w-[16rem]">
+          <div className="relative min-w-0 flex-1 sm:w-[14rem] sm:flex-none md:w-[15rem] lg:w-[16rem]">
             <IconSearch
               size={14}
               strokeWidth={2}
-              className="pointer-events-none absolute left-2.5 top-1/2 z-[1] -translate-y-1/2 text-slate-400"
+              className="pointer-events-none absolute left-2 top-1/2 z-[1] -translate-y-1/2 text-slate-400 sm:left-2.5"
               aria-hidden
             />
             <label className="block w-full">
@@ -262,8 +294,8 @@ export function ZdEstimateListBand({
                 placeholder="Symbol, nazwa, PLU…"
                 className={cn(
                   zdEstimateToolbarSearchClass,
-                  "pl-8",
-                  searchTrimmed || showSearchCounts ? "pr-14" : "pr-3"
+                  "pl-7 sm:pl-8",
+                  searchTrimmed || showSearchCounts ? "pr-12 sm:pr-14" : "pr-2.5 sm:pr-3"
                 )}
               />
             </label>

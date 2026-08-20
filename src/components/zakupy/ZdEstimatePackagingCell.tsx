@@ -85,7 +85,7 @@ export function ZdEstimatePackagingCell({
       {qty.hasPackaging ? (
         <span
           className={cn(
-            "text-[10px] font-medium leading-none tracking-tight",
+            "zd-est-pack-cell-sub text-[10px] font-medium leading-none tracking-tight",
             conflict ? "text-amber-900" : "text-slate-500"
           )}
         >
@@ -96,7 +96,7 @@ export function ZdEstimatePackagingCell({
               : "dobicie szt."}
         </span>
       ) : (
-        <span className="text-[10px] font-medium leading-none tracking-tight text-slate-400">
+        <span className="zd-est-pack-cell-sub text-[10px] font-medium leading-none tracking-tight text-slate-400">
           ustaw
         </span>
       )}

@@ -66,6 +66,32 @@ export function resolveZdEstimateLoadingBarPct(input: {
   );
 }
 
+/**
+ * Monotoniczny pasek dla route loading (bootstrap).
+ * Bez `elapsed % stepMs` — modulo na ostatnim kroku skakało wstecz (92% → ~66%).
+ * Po oczekiwanym czasie kroków zatrzymuje się na `busyCapPct`.
+ */
+export function resolveZdEstimateTimedLoadingBarPct(input: {
+  elapsedMs: number;
+  stepMs: number;
+  stepCount: number;
+  /** Sufit podczas busy (strona jeszcze nie przyszła). */
+  busyCapPct?: number;
+  floorPct?: number;
+}): number {
+  const stepCount = Math.max(1, Math.floor(input.stepCount));
+  const stepMs = Math.max(1, input.stepMs);
+  const busyCap = Math.min(99, Math.max(50, input.busyCapPct ?? 92));
+  const floorPct = Math.max(0, input.floorPct ?? 4);
+  const elapsed = Math.max(0, Number.isFinite(input.elapsedMs) ? input.elapsedMs : 0);
+
+  const expectedMs = stepCount * stepMs;
+  if (elapsed >= expectedMs) return busyCap;
+
+  const linear = (elapsed / expectedMs) * busyCap;
+  return Math.min(busyCap, Math.max(floorPct, linear));
+}
+
 export function resolveZdEstimateLoadingStepVisual(input: {
   index: number;
   activeStepIndex: number;

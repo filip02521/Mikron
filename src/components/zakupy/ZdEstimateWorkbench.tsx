@@ -4290,6 +4290,7 @@ export function ZdEstimateWorkbench({
     if (!lines) return;
     let raf = 0;
     let ro: ResizeObserver | null = null;
+    let mql: MediaQueryList | null = null;
     const runAll = () => {
       if (raf) cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
@@ -4306,6 +4307,7 @@ export function ZdEstimateWorkbench({
         clampZdEstimateTableScroll();
       });
     };
+    const onViewportMode = () => runAll();
     const t0 = window.setTimeout(runAll, 0);
     const t1 = window.setTimeout(runAll, 120);
     const t2 = window.setTimeout(runAll, 320);
@@ -4318,12 +4320,28 @@ export function ZdEstimateWorkbench({
       if (tableEl) ro.observe(tableEl);
       if (tableNode) ro.observe(tableNode);
     }
+    // Przejście desktop ↔ compact sticky — natychmiastowy re-sync offsetów.
+    if (typeof window.matchMedia === "function") {
+      mql = window.matchMedia("(max-width: 767px)");
+      if (typeof mql.addEventListener === "function") {
+        mql.addEventListener("change", onViewportMode);
+      } else {
+        mql.addListener(onViewportMode);
+      }
+    }
     return () => {
       window.clearTimeout(t0);
       window.clearTimeout(t1);
       window.clearTimeout(t2);
       if (raf) cancelAnimationFrame(raf);
       ro?.disconnect();
+      if (mql) {
+        if (typeof mql.removeEventListener === "function") {
+          mql.removeEventListener("change", onViewportMode);
+        } else {
+          mql.removeListener(onViewportMode);
+        }
+      }
     };
   }, [listFilter, listSearch, lines, visibleLines.length]);
 
@@ -7043,11 +7061,11 @@ export function ZdEstimateWorkbench({
                               <th
                                 key={col}
                                 className={cn(
-                                  "zd-estimate-metric-col zd-estimate-metric-col--plan",
+                                  "zd-estimate-metric-col zd-estimate-metric-col--sales",
                                   flowCls,
                                   sectionCls
                                 )}
-                                title="Sprzedaż w oknie w sztukach. Przybliżenie w opakowaniach — w podpowiedzi (hover), nie w komórce."
+                                title="Sprzedaż w oknie — fakt / tempo (sztuki). Przybliżenie w opakowaniach — w podpowiedzi (hover)."
                               >
                                 <span className="zd-est-metric-th">
                                   <IconChartTrend
@@ -7066,11 +7084,11 @@ export function ZdEstimateWorkbench({
                               <th
                                 key={col}
                                 className={cn(
-                                  "zd-estimate-metric-col zd-estimate-metric-col--plan",
+                                  "zd-estimate-metric-col zd-estimate-metric-col--target",
                                   flowCls,
                                   sectionCls
                                 )}
-                                title="Cel zapasu w sztukach. Przybliżenie w opakowaniach — w podpowiedzi (hover)."
+                                title="Cel zapasu — planowana ilość na stanie (sztuki). Przybliżenie w opakowaniach — w podpowiedzi (hover)."
                               >
                                 <span className="zd-est-metric-th">
                                   <IconTarget
@@ -7481,7 +7499,7 @@ export function ZdEstimateWorkbench({
                                   <td
                                     key={col}
                                     className={cn(
-                                      "zd-estimate-metric-col zd-estimate-metric-col--plan",
+                                      "zd-estimate-metric-col zd-estimate-metric-col--sales",
                                       flowCls,
                                       sectionCls
                                     )}
@@ -7509,7 +7527,7 @@ export function ZdEstimateWorkbench({
                                   <td
                                     key={col}
                                     className={cn(
-                                      "zd-estimate-metric-col zd-estimate-metric-col--plan",
+                                      "zd-estimate-metric-col zd-estimate-metric-col--target",
                                       flowCls,
                                       sectionCls
                                     )}
@@ -7766,7 +7784,7 @@ export function ZdEstimateWorkbench({
               id={ZD_ESTIMATE_STICKY_ACTIONS_ID}
               className={cn(zdEstimateStickyBarClass, "flex-col gap-1.5")}
             >
-              <div className="flex flex-wrap items-center gap-1.5">
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                 <Button
                   type="button"
                   size="sm"

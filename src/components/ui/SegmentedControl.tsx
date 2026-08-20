@@ -1,10 +1,11 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 export type SegmentOption<T extends string> = {
   value: T;
-  label: string;
+  label: ReactNode;
   title?: string;
 };
 
@@ -55,7 +56,7 @@ export function SegmentedControl<T extends string>({
             className={cn(
               "min-w-0 truncate rounded-[5px] font-medium transition",
               compact
-                ? "px-2 text-[11px] leading-none sm:px-2.5"
+                ? "flex-1 px-1.5 text-[10px] leading-none sm:flex-none sm:px-2.5 sm:text-[11px]"
                 : "px-2.5 py-1.5 text-xs sm:px-3 sm:text-sm",
               touchFriendly &&
                 !compact &&

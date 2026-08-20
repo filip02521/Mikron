@@ -283,7 +283,7 @@ export const zdEstimateLoadingWindowHeaderClass =
 
 /** Pionowy rytm workbencha fill (micro → prep → lista → sticky). */
 export const zdEstimateWorkbenchStackClass =
-  "relative flex min-h-0 flex-1 flex-col gap-1.5";
+  "relative flex min-h-0 flex-1 flex-col gap-1 sm:gap-1.5";
 
 /**
  * Skala gęstości chrome Kreatora ZD (top bar + belka listy):
@@ -292,9 +292,9 @@ export const zdEstimateWorkbenchStackClass =
  * - inset X: px-3 → sm:px-4 → lg:px-5
  * Dock sticky: h-9 (36px) — nieco większy pod kciuk.
  */
-export const zdEstimateChromeInsetXClass = "px-3 sm:px-4 lg:px-5";
+export const zdEstimateChromeInsetXClass = "px-2.5 sm:px-4 lg:px-5";
 export const zdEstimateChromeInsetYClass = "py-1.5";
-export const zdEstimateChromeGapClass = "gap-1.5";
+export const zdEstimateChromeGapClass = "gap-1 sm:gap-1.5";
 export const zdEstimateChromeControlHeightClass = "h-8";
 export const zdEstimateDockControlHeightClass = "h-9";
 
@@ -328,16 +328,16 @@ export const zdEstimateNestedWellClass = cn(
 
 /** Soft status strip — wewnętrzny scroll, nie rozpycha viewportu. */
 export const zdEstimateSoftStatusStripClass =
-  "shrink-0 max-h-[4.5rem] space-y-2 overflow-y-auto overscroll-contain sm:max-h-[7rem]";
+  "shrink-0 max-h-[5rem] space-y-1.5 overflow-y-auto overscroll-contain px-0.5 sm:max-h-[7rem] sm:space-y-2";
 
 /**
  * Karta zakresu (start i Zmień zakres): naturalna wysokość, bez max-height 12rem.
  * Przy braku listy scroll jest na workbenchu — nie na polach.
  */
-export const zdEstimatePrepFormInsetXClass = "px-4 sm:px-6";
+export const zdEstimatePrepFormInsetXClass = "px-3.5 sm:px-6";
 
 export const zdEstimatePrepIdleBodyClass = cn(
-  "grid grid-cols-1 content-start gap-5 py-4 sm:gap-6 sm:py-5",
+  "grid grid-cols-1 content-start gap-4 py-3.5 sm:gap-6 sm:py-5",
   zdEstimatePrepFormInsetXClass,
   "lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.9fr)] lg:items-start lg:gap-x-8"
 );
@@ -346,7 +346,7 @@ export const zdEstimatePrepIdleBodyClass = cn(
 export const zdEstimatePrepIdleFooterClass = cn(
   "scroll-mt-24 flex shrink-0 flex-col border-t border-slate-100/90 bg-slate-50/55 sm:flex-row sm:items-center sm:justify-between",
   zdEstimatePrepFormInsetXClass,
-  "gap-2 py-3 sm:py-3.5"
+  "gap-2 py-2.5 sm:py-3.5"
 );
 
 /** Luźniejszy inset niż panel dzienny — tabela potrzebuje powietrza. */
@@ -370,9 +370,9 @@ export const zdEstimateScopeFactChipToolbarClass =
 export const zdEstimateScopeFactChipToolbarAccentClass =
   "inline-flex h-6 max-w-full items-center truncate rounded-md bg-indigo-50/90 px-2 text-[11px] font-semibold text-indigo-950 ring-1 ring-inset ring-indigo-200/65";
 
-/** Primary zakresu w top barze — h-8 jak kontrolki chrome. */
+/** Primary zakresu w top barze — h-8 jak kontrolki chrome; może się kurczyć. */
 export const zdEstimateScopeFactPrimaryClass = cn(
-  "inline-flex max-w-[14rem] shrink-0 items-center truncate rounded-md bg-indigo-50/95 px-2.5 text-[12px] font-semibold leading-none tracking-tight text-indigo-950 ring-1 ring-inset ring-indigo-200/70 sm:max-w-[18rem]",
+  "inline-flex min-w-0 max-w-full shrink items-center truncate rounded-md bg-indigo-50/95 px-2 text-[11px] font-semibold leading-none tracking-tight text-indigo-950 ring-1 ring-inset ring-indigo-200/70 sm:max-w-[18rem] sm:px-2.5 sm:text-[12px] xl:max-w-[22rem]",
   zdEstimateChromeControlHeightClass
 );
 
@@ -401,7 +401,10 @@ export const zdEstimatePageIntroClass = cn(
   "py-1.5"
 );
 
-/** Wiersz top bara — jedna oś pionowa h-8. */
+/**
+ * Główny rząd top bara — tożsamość + (xl) fakty + akcje.
+ * Bez wrap: fakty poniżej xl są w osobnym rzędzie w PageIntro.
+ */
 export const zdEstimatePageIntroRowClass = cn(
   "flex min-w-0 items-center gap-2 sm:gap-3",
   zdEstimateChromeControlHeightClass
@@ -412,7 +415,7 @@ export const zdEstimatePageIntroRowClass = cn(
  * Nakładać na Button jako className (nadpisuje size="sm").
  */
 export const zdEstimateToolbarActionClass = cn(
-  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 border border-slate-200/80 bg-white px-2.5 text-xs font-medium leading-none text-slate-700 transition",
+  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-1 border border-slate-200/80 bg-white px-2 text-[11px] font-medium leading-none text-slate-700 transition sm:gap-1.5 sm:px-2.5 sm:text-xs",
   zdEstimateRadiusControlClass,
   zdEstimateShadowControlClass,
   "hover:border-indigo-200/80 hover:bg-indigo-50/50 hover:text-indigo-950",
@@ -423,7 +426,7 @@ export const zdEstimateToolbarActionClass = cn(
 
 /** Menu Dostawcy / Reguły — ten sam box co CTA, akcent indigo. */
 export const zdEstimateToolbarMenuClass = cn(
-  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-1.5 border border-indigo-100/80 bg-white px-2.5 text-xs font-medium leading-none text-indigo-800/90 transition",
+  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-1 border border-indigo-100/80 bg-white px-2 text-[11px] font-medium leading-none text-indigo-800/90 transition sm:gap-1.5 sm:px-2.5 sm:text-xs",
   zdEstimateRadiusControlClass,
   zdEstimateShadowControlClass,
   "hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950",
@@ -480,7 +483,7 @@ export const zdEstimateListBodyInsetClass =
 /** Inset usług / empty state nad tabelą (wyrównany do belki). */
 export const zdEstimateListBodyPadClass = cn(
   zdEstimateChromeInsetXClass,
-  "pt-2"
+  "pt-1.5 sm:pt-2"
 );
 
 /** Cichy separator stref w belce / top barze (wysokość ≈ kontrolka). */
@@ -489,7 +492,7 @@ export const zdEstimateChromeDividerClass =
 
 /** Truncated / recount pod belką listy. */
 export const zdEstimateStatusNoteClass =
-  "inline-flex h-6 max-w-[12rem] items-center truncate rounded-md bg-amber-50/90 px-1.5 text-[10px] font-medium leading-none text-amber-900/90 ring-1 ring-inset ring-amber-200/70 sm:max-w-[16rem]";
+  "inline-flex h-6 max-w-full items-center truncate rounded-md bg-amber-50/90 px-1.5 text-[10px] font-medium leading-none text-amber-900/90 ring-1 ring-inset ring-amber-200/70 sm:max-w-[16rem]";
 
 /**
  * Dock Create/Policz — `h-0` + sticky, żeby pasek NIE dokładał wysokości
@@ -500,7 +503,7 @@ export const zdEstimateStickyDockClass =
 
 /** Pasek Create / Policz — absolute w docku; py dopasowane do h-9. */
 export const zdEstimateStickyBarClass = cn(
-  "pointer-events-auto absolute bottom-0 left-0 right-0 flex border border-slate-200/85 bg-white/95 backdrop-blur-md",
+  "pointer-events-auto absolute bottom-0 left-0 right-0 flex min-w-0 border border-slate-200/85 bg-white/95 backdrop-blur-md",
   zdEstimateRadiusSurfaceClass,
   zdEstimateShadowDockClass,
   zdEstimateChromeInsetXClass,
@@ -509,7 +512,7 @@ export const zdEstimateStickyBarClass = cn(
 
 /** Przyciski w sticky dock / mobile Policz — h-9. */
 export const zdEstimateDockButtonClass = cn(
-  "inline-flex shrink-0 items-center justify-center gap-1.5 px-3 text-xs font-medium leading-none",
+  "inline-flex shrink-0 items-center justify-center gap-1 px-2.5 text-[11px] font-medium leading-none sm:gap-1.5 sm:px-3 sm:text-xs",
   zdEstimateRadiusControlClass,
   zdEstimateDockControlHeightClass,
   "py-0"
@@ -519,9 +522,11 @@ export const zdEstimateDockButtonClass = cn(
  * Clearance w flow pod zadokowanym paskiem (żeby ostatnia treść nie była
  * zasłonięta). Wysokość ≈ pasek; wariant tall = caption gate.
  */
-export const zdEstimateStickyClearanceClass = "shrink-0 w-full h-14 sm:h-[3.75rem]";
+/** Clearance pod dock — mobile liczy wrap przycisków + bottom nav. */
+export const zdEstimateStickyClearanceClass =
+  "shrink-0 w-full h-[4.5rem] sm:h-[3.75rem]";
 export const zdEstimateStickyClearanceTallClass =
-  "shrink-0 w-full h-[5.25rem] sm:h-24";
+  "shrink-0 w-full h-[7rem] sm:h-24";
 
 /** Primarny Policz w stopce prep — ten sam box co dock (h-9). */
 export const zdEstimatePrepPrimaryButtonClass = cn(
