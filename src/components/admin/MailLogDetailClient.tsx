@@ -4,7 +4,6 @@ import Link from "next/link";
 import { AdminHubShell } from "@/components/admin/AdminHubShell";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
 import type { MailSendIssue, MailSendLog } from "@/types/database";
 import { panelTypography } from "@/lib/ui/ontime-theme";
