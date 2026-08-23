@@ -24,7 +24,7 @@ export default async function IvoclarReportMovedPage() {
 
   return (
     <div className={adminPageShellClass}>
-      <h1 className={cn(panelTypography.pageTitle, "mb-2")}>Raporty Ivoclar — przeniesione</h1>
+      <h1 className={cn(panelTypography.sectionTitle, "mb-2")}>Raporty Ivoclar — przeniesione</h1>
       <p className={cn(panelTypography.sectionDesc, "max-w-xl")}>
         Status i historia wysyłek są w Centrum maili (<code>/admin/mail</code>). Generowanie
         prowadzi OnTime Raporty.
