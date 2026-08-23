@@ -142,6 +142,7 @@ describe("navForRole admin dostawcy", () => {
       "/admin",
       "/admin/uzytkownicy",
       "/admin/handlowcy",
+      "/admin/wysylki",
       "/admin/mail",
     ]);
     expect(config?.items.map((item) => item.href)).toEqual([
