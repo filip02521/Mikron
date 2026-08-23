@@ -33,7 +33,8 @@ export function redactTransactionalEmailForLog(
 
 /**
  * Zapis logu — nigdy nie rzuca (wysyłka nie może paść przez audit).
- * Wymaga migracji 146.
+ * Wymaga migracji 146. Pełny HTML bez automatycznej retencji —
+ * ops: okresowo `DELETE FROM transactional_email_log WHERE created_at < now() - interval '90 days'`.
  */
 export async function recordTransactionalEmailLog(
   input: TransactionalEmailLogInsert

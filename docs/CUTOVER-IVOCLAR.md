@@ -26,3 +26,9 @@ Pełna procedura: sibling repo `ontime-raporty` → `docs/CUTOVER.md`.
 **Źródło prawdy wysyłki:** OnTime Raporty (FS+PA). OnTime = tylko logi + live SEND badge.
 
 **Provider e-mail runnera:** Amazon SES SMTP (`SMTP_*`, `ontime.mikran.pl`). Kolumna `mail_send_log.resend_message_ids` jest historyczna (zapisuje message-id SMTP).
+
+**Retencja:** `transactional_email_log` trzyma pełny HTML — brak auto-czyszczenia. Przykład ops (90 dni):
+
+```sql
+DELETE FROM transactional_email_log WHERE created_at < now() - interval '90 days';
+```

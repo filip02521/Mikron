@@ -882,7 +882,7 @@ export function UsersAdminClient({
                   </p>
                   <p className="mt-1 text-xs leading-relaxed text-slate-500">
                     Dostęp do `/admin/mail` w trybie odczytu (status i logi). Wysyłkę prowadzi OnTime
-                    Raporty — mutacje w OnTime są zablokowane.
+                    Raporty — w OnTime nie ma już akcji generate/send ani edycji odbiorców.
                   </p>
                 </div>
 
