@@ -67,7 +67,9 @@ export function TransactionalEmailListClient({
   return (
     <AdminHubShell activeTab="wysylki">
       <p className={cn(panelTypography.sectionDesc, "mb-3")}>
-        Każda wysyłka SES z OnTime jest zapisywana z treścią HTML. Kody OTP w
+        Każda wysyłka SES z OnTime jest zapisywana z treścią HTML (pełny HTML —
+        bez automatycznej retencji; przy dużej objętości rozważ okresowe czyszczenie
+        starszych wierszy w <code>transactional_email_log</code>). Kody OTP w
         podglądzie są zredagowane (<code>••••••</code>). Lista pokazuje ostatnie
         wpisy (łącznie w filtrze: {total}).
       </p>
@@ -144,8 +146,11 @@ export function TransactionalEmailListClient({
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-slate-500">
-                    Brak wpisów — wyślij testowy mail albo uruchom migrację{" "}
-                    <code>146_transactional_email_log.sql</code>.
+                    {loadError
+                      ? "Brak danych do wyświetlenia (błąd wczytywania powyżej)."
+                      : kind !== "all" || status !== "all"
+                        ? "Brak wpisów dla wybranego filtra."
+                        : "Brak wysyłek w logu — po pierwszej transakcyjnej wiadomości SES pojawi się tutaj."}
                   </td>
                 </tr>
               ) : (

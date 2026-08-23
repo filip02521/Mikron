@@ -1,25 +1,15 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { requireMailCenterAccess, requireMailCenterForMutation } from "@/lib/auth/admin-modules";
-import { isValidEmail } from "@/lib/security/text-limits";
+import { requireMailCenterAccess } from "@/lib/auth/admin-modules";
 import {
-  deleteMailJobRecipient,
   getLatestMailLogForJob,
   getMailSendLogDetail,
   listMailSendLogs,
   loadAllMailJobs,
   loadMailJob,
   loadMailJobRecipients,
-  setMailJobEnabled,
-  upsertMailJobRecipient,
 } from "@/lib/services/mail/mail-log";
-import type { MailJobRecipient, MailSendLog, MailSendStatus } from "@/types/database";
-
-function revalidateMailPaths(jobId?: string) {
-  revalidatePath("/admin/mail");
-  if (jobId) revalidatePath(`/admin/mail/${jobId}`);
-}
+import type { MailSendLog, MailSendStatus } from "@/types/database";
 
 export async function actionListMailJobs() {
   await requireMailCenterAccess();
@@ -64,64 +54,6 @@ export async function actionGetMailLogDetail(logId: string) {
   const detail = await getMailSendLogDetail(logId);
   if (!detail) return { ok: false as const, message: "Nie znaleziono wpisu logu" };
   return { ok: true as const, ...detail };
-}
-
-export async function actionSetMailJobEnabled(jobId: string, enabled: boolean) {
-  await requireMailCenterForMutation();
-  const ok = await setMailJobEnabled(jobId, enabled);
-  revalidateMailPaths(jobId);
-  return ok ? { success: true } : { error: "Nie udało się zapisać" };
-}
-
-export async function actionUpsertMailRecipient(input: {
-  id?: string;
-  jobId: string;
-  email: string;
-  displayName?: string | null;
-  recipientRole: MailJobRecipient["recipient_role"];
-  enabled: boolean;
-  sortOrder: number;
-}) {
-  await requireMailCenterForMutation();
-  const email = input.email.trim().toLowerCase();
-  if (!isValidEmail(email)) {
-    return { error: "Nieprawidłowy adres e-mail" };
-  }
-  const result = await upsertMailJobRecipient({
-    id: input.id,
-    job_id: input.jobId,
-    email,
-    display_name: input.displayName,
-    recipient_role: input.recipientRole,
-    enabled: input.enabled,
-    sort_order: input.sortOrder,
-  });
-  if (!result.ok) return { error: result.error };
-  revalidateMailPaths(input.jobId);
-  return { success: true, id: result.id };
-}
-
-export async function actionDeleteMailRecipient(id: string, jobId: string) {
-  await requireMailCenterForMutation();
-  const ok = await deleteMailJobRecipient(id);
-  revalidateMailPaths(jobId);
-  return ok ? { success: true } : { error: "Nie udało się usunąć" };
-}
-
-/** Mutacje generate/send usunięte — zawsze 403 przez `requireMailCenterForMutation`. */
-export async function actionPreviewMailJob(_jobId: string) {
-  await requireMailCenterForMutation();
-  return { ok: false as const, message: "Podgląd niedostępny w OnTime" };
-}
-
-export async function actionSendMailJobTest(_jobId: string) {
-  await requireMailCenterForMutation();
-  return { error: "Wysyłka testowa niedostępna w OnTime" };
-}
-
-export async function actionSendMailJobNow(_jobId: string, _force = false) {
-  await requireMailCenterForMutation();
-  return { error: "Wysyłka niedostępna w OnTime" };
 }
 
 export type MailJobListEntry = {

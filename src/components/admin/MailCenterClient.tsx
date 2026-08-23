@@ -11,6 +11,7 @@ import { formatWarsawDateTime } from "@/lib/time/warsaw";
 import type { MailSendLog, MailSendStatus } from "@/types/database";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
+import type { AdminHubTab } from "@/lib/admin-hub";
 import {
   raportyRunnerStatusLabel,
   type RaportyRunnerStatusResult,
@@ -53,10 +54,12 @@ export function MailCenterClient({
   jobs,
   recentLogs,
   runnerStatus,
+  visibleTabs,
 }: {
   jobs: MailJobListEntry[];
   recentLogs: MailSendLog[];
   runnerStatus: RaportyRunnerStatusResult;
+  visibleTabs?: readonly AdminHubTab[];
 }) {
   const jobsInDb = jobs.length;
   const sentRecent = recentLogs.filter((l) => l.status === "sent").length;
@@ -74,7 +77,7 @@ export function MailCenterClient({
       : "wył.";
 
   return (
-    <AdminHubShell activeTab="mail">
+    <AdminHubShell activeTab="mail" visibleTabs={visibleTabs}>
       <p className={cn(panelTypography.sectionDesc, "mb-3")}>
         Centrum maili Ivoclar jest <strong>tylko do odczytu</strong>. Generowanie i wysyłkę
         prowadzi OnTime Raporty — stąd nie ma przycisków Wyślij / Włącz / edycji odbiorców.

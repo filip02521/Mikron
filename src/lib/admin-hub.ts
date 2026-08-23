@@ -1,5 +1,14 @@
 export type AdminHubTab = "system" | "users" | "sales" | "mail" | "wysylki";
 
+/** Kolejność zakładek w hubie administracji. */
+export const ADMIN_HUB_TAB_ORDER: AdminHubTab[] = [
+  "system",
+  "wysylki",
+  "mail",
+  "users",
+  "sales",
+];
+
 export const ADMIN_HUB_TAB_COPY: Record<
   AdminHubTab,
   { label: string; hint: string }
@@ -25,6 +34,13 @@ export const ADMIN_HUB_TAB_COPY: Record<
     hint: "Podgląd transakcyjnych maili OnTime (dostawy, informacja, OTP, tablica)",
   },
 };
+
+/**
+ * Pełny admin widzi cały hub; użytkownik tylko z modułem Ivoclar — samą zakładkę mail.
+ */
+export function resolveAdminHubTabs(fullAdmin: boolean): AdminHubTab[] {
+  return fullAdmin ? [...ADMIN_HUB_TAB_ORDER] : ["mail"];
+}
 
 export function adminHubPaths() {
   return {

@@ -82,12 +82,12 @@ export const CRON_JOB_DEFINITIONS: CronJobDefinition[] = [
   },
   {
     id: "scheduled_mails",
-    label: "Maile raportowe (Ivoclar)",
-    schedule: "pn — OnTime Raporty",
+    label: "Ivoclar (OnTime Raporty)",
+    schedule: "pn — runner Raporty",
     endpoint: "/api/cron/scheduled-mails",
     scheduled: true,
     description:
-      "Wysyłka Ivoclar w OnTime Raporty. Status: mail_send_log. Endpoint OT = legacy no-op.",
+      "Wysyłka tygodniowa Ivoclar działa w OnTime Raporty (nie w tym cronie OT). Status poniżej = mail_send_log z runnera. Endpoint OT to legacy no-op (skipped).",
   },
 ];
 
@@ -447,7 +447,7 @@ export function evaluateCronJob(
     tone = stale ? "warning" : "neutral";
     statusLabel = stale
       ? "Brak wysyłki w mail_send_log (runner)"
-      : "OT no-op — czekamy na runner";
+      : "OT no-op OK — status z runnera";
   } else if (!run) {
     tone = job.scheduled ? "warning" : "neutral";
     statusLabel = job.scheduled ? "Nigdy nie uruchomiono" : "Tylko ręcznie";

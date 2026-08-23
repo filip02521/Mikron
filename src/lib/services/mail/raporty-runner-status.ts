@@ -25,10 +25,8 @@ export type RaportyRunnerStatusResult =
     };
 
 function resolveRaportyRunnerUrl(): string | null {
-  const raw =
-    process.env.RAPORTY_RUNNER_URL?.trim() ||
-    process.env.NEXT_PUBLIC_RAPORTY_RUNNER_URL?.trim() ||
-    "";
+  // Tylko server-side — bez NEXT_PUBLIC_*, żeby URL runnera nie wyciekł do bundla klienta.
+  const raw = process.env.RAPORTY_RUNNER_URL?.trim() || "";
   if (!raw) return null;
   return raw.replace(/\/+$/, "");
 }

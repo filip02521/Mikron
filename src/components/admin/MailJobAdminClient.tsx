@@ -9,6 +9,7 @@ import { formatWarsawDateTime } from "@/lib/time/warsaw";
 import type { MailJobDefinition, MailJobRecipient, MailSendLog } from "@/types/database";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
+import type { AdminHubTab } from "@/lib/admin-hub";
 import {
   raportyRunnerStatusLabel,
   type RaportyRunnerStatusResult,
@@ -19,11 +20,13 @@ export function MailJobAdminClient({
   recipients,
   logs,
   runnerStatus,
+  visibleTabs,
 }: {
   job: MailJobDefinition;
   recipients: MailJobRecipient[];
   logs: MailSendLog[];
   runnerStatus: RaportyRunnerStatusResult;
+  visibleTabs?: readonly AdminHubTab[];
 }) {
   const sendLabel = !runnerStatus.ok
     ? "SEND: nieznany"
@@ -44,6 +47,7 @@ export function MailJobAdminClient({
   return (
     <AdminHubShell
       activeTab="mail"
+      visibleTabs={visibleTabs}
       title={job.label}
       description={job.description}
       action={

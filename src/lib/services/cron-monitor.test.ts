@@ -221,7 +221,7 @@ describe("buildCronMonitorSnapshot", () => {
     };
     const row = evaluateCronJob(scheduledDef, run, now);
     expect(row.stale).toBe(false);
-    expect(row.statusLabel).toBe("OT no-op — czekamy na runner");
+    expect(row.statusLabel).toBe("OT no-op OK — status z runnera");
     expect(row.tone).toBe("neutral");
   });
 });

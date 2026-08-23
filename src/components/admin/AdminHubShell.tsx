@@ -37,12 +37,15 @@ const TAB_DESCRIPTION: Record<AdminHubTab, string> = {
 
 export function AdminHubShell({
   activeTab,
+  visibleTabs,
   title,
   description,
   action,
   children,
 }: {
   activeTab: AdminHubTab;
+  /** Ograniczenie zakładek (np. tylko Ivoclar dla użytkowników z modułem). */
+  visibleTabs?: readonly AdminHubTab[];
   /** Nadpisanie tytułu z domyślnej mapy zakładki. */
   title?: string;
   description?: string;
@@ -55,7 +58,7 @@ export function AdminHubShell({
 
   return (
     <div className={adminPageShellClass}>
-      <AdminHubNav activeTab={activeTab} />
+      <AdminHubNav activeTab={activeTab} visibleTabs={visibleTabs} />
       <Card padding={false} className="mt-3 overflow-hidden">
         <CardHeader
           inset

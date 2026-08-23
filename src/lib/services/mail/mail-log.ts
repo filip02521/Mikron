@@ -40,15 +40,6 @@ export async function loadAllMailJobs(): Promise<MailJobDefinition[]> {
   return (data ?? []) as MailJobDefinition[];
 }
 
-export async function setMailJobEnabled(jobId: string, enabled: boolean): Promise<boolean> {
-  const supabase = createAdminClient();
-  const { error } = await supabase
-    .from("mail_job_definitions")
-    .update({ enabled, updated_at: new Date().toISOString() })
-    .eq("id", jobId);
-  return !error;
-}
-
 export async function loadMailJobRecipients(jobId: string): Promise<MailJobRecipient[]> {
   const supabase = createAdminClient();
   const { data } = await supabase
@@ -58,49 +49,6 @@ export async function loadMailJobRecipients(jobId: string): Promise<MailJobRecip
     .order("sort_order")
     .order("email");
   return (data ?? []) as MailJobRecipient[];
-}
-
-export async function upsertMailJobRecipient(input: {
-  id?: string;
-  job_id: string;
-  email: string;
-  display_name?: string | null;
-  recipient_role: MailJobRecipient["recipient_role"];
-  enabled: boolean;
-  sort_order: number;
-  notes?: string | null;
-}): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
-  const supabase = createAdminClient();
-  const row = {
-    job_id: input.job_id,
-    email: input.email.trim().toLowerCase(),
-    display_name: input.display_name?.trim() || null,
-    recipient_role: input.recipient_role,
-    enabled: input.enabled,
-    sort_order: input.sort_order,
-    notes: input.notes?.trim() || null,
-    updated_at: new Date().toISOString(),
-  };
-
-  if (input.id) {
-    const { error } = await supabase.from("mail_job_recipients").update(row).eq("id", input.id);
-    if (error) return { ok: false, error: error.message };
-    return { ok: true, id: input.id };
-  }
-
-  const { data, error } = await supabase
-    .from("mail_job_recipients")
-    .insert(row)
-    .select("id")
-    .single();
-  if (error) return { ok: false, error: error.message };
-  return { ok: true, id: data.id as string };
-}
-
-export async function deleteMailJobRecipient(id: string): Promise<boolean> {
-  const supabase = createAdminClient();
-  const { error } = await supabase.from("mail_job_recipients").delete().eq("id", id);
-  return !error;
 }
 
 export async function hasSentMailForPeriod(
