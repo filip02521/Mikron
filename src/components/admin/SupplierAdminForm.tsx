@@ -339,14 +339,12 @@ export function SupplierAdminForm({
       </SupplierFormSection>
 
       {showTeethSchedule && form.id && onTeethScheduleToast ? (
-        <div className="sm:col-span-2">
-          <TeethSupplierScheduleFields
-            supplierId={form.id}
-            supplierName={form.name.trim() || "Dostawca"}
-            disabled={disabled}
-            onToast={onTeethScheduleToast}
-          />
-        </div>
+        <TeethSupplierScheduleFields
+          supplierId={form.id}
+          supplierName={form.name.trim() || "Dostawca"}
+          disabled={disabled}
+          onToast={onTeethScheduleToast}
+        />
       ) : null}
       {showTeethSchedule && !form.id ? (
         <p className="text-sm text-slate-500 sm:col-span-2">

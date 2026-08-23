@@ -14,16 +14,22 @@ import type {
   SubiektProduct,
   SubiektProductCecha,
   SubiektProductGroup,
+  SubiektRemanentEnvelope,
+  SubiektRemanentParams,
+  SubiektPanstwo,
   SubiektSingleEnvelope,
   SubiektZdEstimateData,
   SubiektZdEstimateLine,
   SubiektZdEstimateParamsInput,
+  SubiektZdEstimateZkData,
+  SubiektZdEstimateZkParamsInput,
 } from "@/lib/subiekt/types";
 
 /** Timeout Sfery przy tworzeniu ZD (strona szacunku ma maxDuration=180). */
 export const SUBIEKT_ORDERS_ZD_CREATE_TIMEOUT_MS = 180_000;
 import {
   ZD_ESTIMATE_MAX_PAGES,
+  ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY,
   ZD_ESTIMATE_PAGE_SIZE,
 } from "@/lib/orders/zd-estimate-manual";
 import {
@@ -183,12 +189,13 @@ export async function fetchSubiektOrdersLatestFsDateKey(): Promise<string | null
     const firstWide = await fetchFsPage(wideOd, 1, 100);
     collected.push(...(firstWide.data ?? []));
     const totalPages = Math.max(1, firstWide.pagination?.totalPages ?? 1);
-    if (totalPages > 1) {
-      const lastWide = await fetchFsPage(wideOd, totalPages, 100);
-      collected.push(...(lastWide.data ?? []));
-    }
-
-    const recent = await fetchFsPage(recentOd, 1, 100);
+    const [lastWide, recent] = await Promise.all([
+      totalPages > 1
+        ? fetchFsPage(wideOd, totalPages, 100)
+        : Promise.resolve({ data: [] as Array<{ dok_DataWyst?: string | null }> }),
+      fetchFsPage(recentOd, 1, 100),
+    ]);
+    collected.push(...(lastWide.data ?? []));
     collected.push(...(recent.data ?? []));
 
     return pickLatestFsDateKey(collected);
@@ -242,6 +249,35 @@ export async function fetchSubiektZdEstimatePage(
   return subiektJson(`${SUBIEKT_PATHS.ordersZdEstimate}${qs}`, {}, config);
 }
 
+/** Jedna strona rozbicia otwartych ZK towaru — GET /orders/zd/estimate/zk. */
+export async function fetchSubiektZdEstimateZkPage(
+  params: SubiektZdEstimateZkParamsInput
+): Promise<{
+  data: SubiektZdEstimateZkData;
+  pagination?: SubiektListEnvelope<unknown>["pagination"];
+}> {
+  const config = ordersConfigOrThrow();
+  const towarId = Math.trunc(Number(params.towarId));
+  if (!Number.isFinite(towarId) || towarId <= 0) {
+    throw new Error("Nieprawidłowy identyfikator towaru.");
+  }
+  const qs = subiektQueryString({
+    towarId,
+    tylkoBezRez: params.tylkoBezRez,
+    dataOd: params.dataOd,
+    dataDo: params.dataDo,
+    okres: params.okres,
+    dniZapasu: params.dniZapasu,
+    zapasMin: params.zapasMin,
+    zdDataOd: params.zdDataOd,
+    zdDataDo: params.zdDataDo,
+    zdOkres: params.zdOkres,
+    page: params.page,
+    pageSize: params.pageSize,
+  });
+  return subiektJson(`${SUBIEKT_PATHS.ordersZdEstimateZk}${qs}`, {}, config);
+}
+
 /** Lista towarów na hoście ORDERS (np. filtr cechaId). */
 export async function searchSubiektOrdersProducts(
   params: SubiektListParams = {}
@@ -251,6 +287,42 @@ export async function searchSubiektOrdersProducts(
     params,
     ordersConfigOrThrow()
   );
+}
+
+/**
+ * Remanent na dzień — host ORDERS (`GET /products/remanent`).
+ * `tw_Stan` w `/products` to stan bieżący; tu ilość z `dok_MagRuch` na `naDzien`.
+ */
+export async function searchSubiektOrdersProductsRemanent(
+  params: SubiektRemanentParams = {}
+): Promise<SubiektRemanentEnvelope> {
+  const qs = subiektQueryString({
+    naDzien: params.naDzien,
+    magazynId: params.magazynId,
+    grupaId: params.grupaId,
+    cechaId: params.cechaId,
+    towarId: params.towarId,
+    grupujPoCenie: params.grupujPoCenie,
+    rozbicieDostaw: params.rozbicieDostaw,
+    tylkoZIloscia: params.tylkoZIloscia,
+    page: params.page,
+    pageSize: params.pageSize,
+  });
+  return subiektJson<SubiektRemanentEnvelope>(
+    `${SUBIEKT_PATHS.productsRemanent}${qs}`,
+    {},
+    ordersConfigOrThrow()
+  );
+}
+
+/** Słownik państw — host ORDERS (`GET /kraje`). */
+export async function fetchSubiektOrdersKraje(): Promise<SubiektPanstwo[]> {
+  const res = await subiektJson<{ data: SubiektPanstwo[] }>(
+    SUBIEKT_PATHS.kraje,
+    {},
+    ordersConfigOrThrow()
+  );
+  return Array.isArray(res.data) ? res.data : [];
 }
 
 /** Lista FS na hoście ORDERS — nagłówki (pozycje dopiero w GET szczegółu). */
@@ -415,20 +487,46 @@ export async function fetchSubiektZdEstimateAll(
   let pagesFetched = 1;
   let stoppedEarly = false;
 
-  for (let page = 2; page <= pagesToFetch; page++) {
-    const next = await fetchSubiektZdEstimatePage({
-      ...params,
-      tylkoBraki,
-      page,
-      pageSize,
+  if (pagesToFetch > 1) {
+    // Pipeline z limitem współbieżności: commitujemy strony po kolei.
+    // Po pierwszej pustej nie claimujemy kolejnych (mniej zbędnego I/O niż fala „wszystkie naraz”).
+    const concurrency = ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY;
+    let nextClaim = 2;
+    let nextCommit = 2;
+    let haltClaim = false;
+    const buffer = new Map<number, SubiektZdEstimateLine[] | null | undefined>();
+
+    const workers = Array.from({ length: concurrency }, async () => {
+      while (true) {
+        if (haltClaim) return;
+        const page = nextClaim;
+        if (page > pagesToFetch) return;
+        nextClaim += 1;
+
+        const next = await fetchSubiektZdEstimatePage({
+          ...params,
+          tylkoBraki,
+          page,
+          pageSize,
+        });
+        buffer.set(page, next.data?.pozycje);
+
+        while (buffer.has(nextCommit)) {
+          const batch = buffer.get(nextCommit);
+          buffer.delete(nextCommit);
+          if (!Array.isArray(batch) || batch.length === 0) {
+            stoppedEarly = true;
+            haltClaim = true;
+            return;
+          }
+          pozycje.push(...batch);
+          pagesFetched = nextCommit;
+          nextCommit += 1;
+        }
+      }
     });
-    const batch = next.data?.pozycje;
-    if (!Array.isArray(batch) || batch.length === 0) {
-      stoppedEarly = true;
-      break;
-    }
-    pozycje.push(...batch);
-    pagesFetched = page;
+
+    await Promise.all(workers);
   }
 
   return {

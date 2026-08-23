@@ -105,6 +105,33 @@ describe("auth-roles zakupy_zeby", () => {
     expect(canAccessPath("zakupy_zeby", "/admin")).toBe(false);
   });
 
+  it("canAccessPath: /admin/mail dla non-admin z modułem Centrum maili", () => {
+    expect(canAccessPath("sales", "/admin/mail")).toBe(false);
+    expect(
+      canAccessPath("sales", "/admin/mail", {
+        adminModules: ["ivoclar_weekly_mail_center"],
+      })
+    ).toBe(true);
+    expect(
+      canAccessPath("sales", "/admin/mail/ivoclar_weekly", {
+        adminModules: ["ivoclar_weekly_mail_center"],
+      })
+    ).toBe(true);
+    expect(
+      redirectPathAfterLogin("sales", "/admin/mail", {
+        adminModules: ["ivoclar_weekly_mail_center"],
+      })
+    ).toBe("/admin/mail");
+    expect(
+      redirectPathAfterLogin("sales", "/zakupy/raporty-ivoclar", {
+        adminModules: ["ivoclar_weekly_mail_center"],
+      })
+    ).toBe("/admin/mail");
+    expect(redirectPathAfterLogin("sales", "/zakupy/raporty-ivoclar")).toBe(
+      "/zakupy/raporty-ivoclar"
+    );
+  });
+
   it("canAccessPath zezwala na tor dostaw (/kolejka) dzięki funkcji dostawy", () => {
     expect(canAccessPath("zakupy_zeby", "/kolejka")).toBe(true);
   });
@@ -123,9 +150,10 @@ describe("auth-roles zakupy_zeby", () => {
     expect(canAccessPath("admin", "/zakupy/szacunek")).toBe(true);
     expect(canAccessPath("admin", "/zakupy/raporty-ivoclar")).toBe(true);
     expect(canAccessPath("sales", "/zakupy/szacunek")).toBe(false);
-    expect(canAccessPath("sales", "/zakupy/raporty-ivoclar")).toBe(false);
+    // Legacy bookmark: dowolna rola może zobaczyć komunikat o module
+    expect(canAccessPath("sales", "/zakupy/raporty-ivoclar")).toBe(true);
     expect(canAccessPath("magazyn", "/zakupy/szacunek")).toBe(false);
-    expect(canAccessPath("magazyn", "/zakupy/raporty-ivoclar")).toBe(false);
+    expect(canAccessPath("magazyn", "/zakupy/raporty-ivoclar")).toBe(true);
     expect(
       canAccessPath("admin", "/zakupy/szacunek", { adminPanelContext: "zakupy" })
     ).toBe(true);
@@ -146,7 +174,7 @@ describe("auth-roles zakupy_zeby", () => {
     ).toBe(false);
     expect(
       canAccessPath("zakupy_zeby", "/zakupy/raporty-ivoclar", { procurementWorkspace: "zeby" })
-    ).toBe(false);
+    ).toBe(true);
     expect(
       canAccessPath("zakupy_zeby", "/zakupy/szacunek", { procurementWorkspace: "dostawy" })
     ).toBe(true);

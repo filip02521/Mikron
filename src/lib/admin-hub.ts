@@ -18,7 +18,7 @@ export const ADMIN_HUB_TAB_COPY: Record<
   },
   mail: {
     label: "Maile",
-    hint: "Harmonogramy raportów, odbiorcy i rejestr wysyłek",
+    hint: "Status i historia wysyłek Ivoclar (odczyt — wysyłka w OnTime Raporty)",
   },
 };
 
@@ -47,6 +47,6 @@ export function adminHubHint(tab: AdminHubTab): string {
     case "sales":
       return "Lista osób do powiadomień i panelu „Moje zamówienia”. Grupy (Sklep, Biuro) zakładasz w menu Grupy; kierowników przypisujesz w zakładce Konta.";
     case "mail":
-      return "Zaplanowane maile raportowe: odbiorcy, harmonogram i pełna historia wysyłek z brakami danych.";
+      return "Centrum maili Ivoclar jest tylko do odczytu: status joba, odbiorcy i historia wysyłek. Generowanie prowadzi OnTime Raporty.";
   }
 }

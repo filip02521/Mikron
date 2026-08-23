@@ -34,3 +34,14 @@ export const floatingZdSessionNoticeClass =
  */
 export const floatingToastAboveZdStickyTallClass =
   "bottom-[calc(13.5rem+env(safe-area-inset-bottom,0px))] md:bottom-[9.75rem]";
+
+/**
+ * Drugi toast nad pierwszym przy docku ZD (np. „na bieżąco” nad „Przeliczono”).
+ * Składaj z `floatingToastAboveZdStickyClass` (+ Tall gdy dock wyższy).
+ */
+export const floatingToastAboveZdStickyStackClass =
+  "bottom-[calc(15.25rem+env(safe-area-inset-bottom,0px))] md:bottom-[11.25rem]";
+
+/** Tall dock + drugi toast. */
+export const floatingToastAboveZdStickyTallStackClass =
+  "bottom-[calc(19rem+env(safe-area-inset-bottom,0px))] md:bottom-[14.25rem]";

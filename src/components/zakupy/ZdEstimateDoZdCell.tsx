@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import {
+  formatZdPackCompactLabel,
   formatZdPackDocumentLabel,
   formatZdPackHint,
   formatZdPackRoundupLine,
@@ -173,11 +174,18 @@ export function ZdEstimateDoZdCell({
     displayUnits > 0 &&
     !editingBlank;
 
+  const fullPackLabel = qty.packageLabel.trim() || "op.";
+  const compactPackLabel = formatZdPackCompactLabel(fullPackLabel);
+  /** W komórce skrót (zb. / kart.) — pełna etykieta w title / aria. */
   const unitLabel = showPackUnit
-    ? qty.packageLabel.trim() || "op."
+    ? compactPackLabel
     : showSztUnit || showPiecesUnit
       ? "szt"
       : null;
+  const unitTitle =
+    showPackUnit && compactPackLabel.toLowerCase() !== fullPackLabel.toLowerCase()
+      ? fullPackLabel
+      : undefined;
 
   const piecesSubline = hasPiecesSubline ? (
     <span className="zd-est-dozd-pieces tabular-nums">
@@ -278,9 +286,13 @@ export function ZdEstimateDoZdCell({
         value={focused ? draft : String(displayUnits)}
         disabled={overrideDisabled}
         title={fullTitle}
-        aria-label={`Do ZD — nadpisanie. ${
-          qty.hasPackaging ? overrideHint : ""
-        }`}
+        aria-label={[
+          "Do ZD — nadpisanie",
+          showPackUnit ? `jednostka: ${fullPackLabel}` : null,
+          qty.hasPackaging ? overrideHint : null,
+        ]
+          .filter(Boolean)
+          .join(". ")}
         className={cn(
           "zd-est-dozd-input",
           overridden && "zd-est-dozd-input--override",
@@ -308,7 +320,11 @@ export function ZdEstimateDoZdCell({
           setFocused(false);
         }}
       />
-      {unitLabel ? <span className="zd-est-dozd-unit">{unitLabel}</span> : null}
+      {unitLabel ? (
+        <span className="zd-est-dozd-unit" title={unitTitle}>
+          {unitLabel}
+        </span>
+      ) : null}
     </span>
   ) : (
     <span className="zd-est-dozd-value">
@@ -320,7 +336,11 @@ export function ZdEstimateDoZdCell({
       >
         {formatZdEstimateTableQty(displayUnits)}
       </span>
-      {unitLabel ? <span className="zd-est-dozd-unit">{unitLabel}</span> : null}
+      {unitLabel ? (
+        <span className="zd-est-dozd-unit" title={unitTitle}>
+          {unitLabel}
+        </span>
+      ) : null}
     </span>
   );
 

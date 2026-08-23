@@ -19,7 +19,7 @@
 | **OnTime** Kreator ZD | **27 szt** |
 
 Różnica: **12 szt**.  
-**Knyf nie jest w OnTime** — OnTime pokazuje to samo, co API. Rozjazd jest między **Informator GT** a **tym, co API zwraca jako ilości na pozycjach FS**.
+**Knyf nie jest w OnTime** — OnTime pokazuje to samo, co API. Rozjazd jest między **Informator GT** a **tym, co API zwraca w `sprzedazOkres`** (tu: zera na pozycjach FS; PA/WZ nie tłumaczą różnicy 12).
 
 ---
 
@@ -27,7 +27,7 @@ Różnica: **12 szt**.
 
 Informator sumuje **ilości widoczne w GT** na fakturach sprzedaży.
 
-API estimate sumuje **`ob_Ilosc` z pozycji dokumentów FS**.
+API estimate buduje `sprzedazOkres` z **FS+PA+WZ**; w tym case’ie WZ=0, a braki to **`ob_Ilosc: 0` na pozycjach FS**.
 
 Na **trzech fakturach** Informator pokazuje sprzedaż K-Snap (10 + 1 + 1 = **12**), ale w API te same linie mają:
 
@@ -103,7 +103,10 @@ Potwierdzone live:
 ```text
 GET /orders/zd/estimate?towarId=7598&dataOd=2026-06-21&dataDo=2026-08-19&dniZapasu=60
 → sprzedazOkres: 27
+→ wzNiepowiazaneOkres: 0   (K-Snap: rozjazd Informator ≠ WZ; to FS z ob_Ilosc=0)
 ```
+
+Dla porównania SKU z udziałem WZ (np. `605332` w innym oknie): `sprzedazOkres` obejmuje FS+PA+WZ, a `wzNiepowiazaneOkres` to breakdown — OnTime **nie** dolicza WZ drugi raz.
 
 Uwaga poboczna: **Cel 24,55** i „65%” przy Do ZD to **sales-track** (korekta celu zamówienia), nie zmiana sprzedaży. Sprzed. nadal = 27.
 

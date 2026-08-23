@@ -3,7 +3,6 @@ import { isWarsawCatalogSyncWindow } from "@/lib/subiekt/catalog-zd-sync";
 import {
   isWarsawBusinessDay,
   isWarsawMorningRoutineHour,
-  isWarsawScheduledMailWindow,
   isWarsawWorkHours,
 } from "@/lib/time/warsaw";
 

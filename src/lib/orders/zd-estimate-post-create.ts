@@ -340,6 +340,8 @@ export function undoStubsFromMarkFreeze(
       subiektTwId: null,
       qty: r.qty,
       requestNote: r.requestNote,
+      salesClientKhId: null,
+      sourceZkNumber: null,
     });
   };
   for (const r of freeze.catalogRequests) push(r);

@@ -25,11 +25,13 @@ export function SegmentedControl<T extends string>({
   ariaLabel: string;
   className?: string;
   touchFriendly?: boolean;
-  /** Compact = belka listy / chrome (zewnętrzne h-8). */
-  density?: "default" | "compact";
+  /** compact = chrome h-8; dock = prep/dock h-9. */
+  density?: "default" | "compact" | "dock";
   disabled?: boolean;
 }) {
   const compact = density === "compact";
+  const dock = density === "dock";
+  const tight = compact || dock;
 
   return (
     <div
@@ -39,6 +41,7 @@ export function SegmentedControl<T extends string>({
       className={cn(
         "inline-flex max-w-full rounded-md border border-slate-200/90 bg-slate-50/90 p-0.5",
         compact && "h-8 items-stretch rounded-md border-slate-200/80 bg-white/70",
+        dock && "h-9 min-h-9 items-stretch rounded-md border-slate-200/80 bg-white/70",
         disabled && "opacity-60",
         className
       )}
@@ -55,14 +58,16 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(opt.value)}
             className={cn(
               "min-w-0 truncate rounded-[5px] font-medium transition",
-              compact
-                ? "flex-1 px-1.5 text-[10px] leading-none sm:flex-none sm:px-2.5 sm:text-[11px]"
-                : "px-2.5 py-1.5 text-xs sm:px-3 sm:text-sm",
+              compact &&
+                "flex-1 px-1.5 text-[10px] leading-none sm:flex-none sm:px-2.5 sm:text-[11px]",
+              dock &&
+                "flex-1 px-2 text-sm leading-none sm:flex-none sm:px-2.5",
+              !tight && "px-2.5 py-1.5 text-xs sm:px-3 sm:text-sm",
               touchFriendly &&
-                !compact &&
+                !tight &&
                 "min-h-10 flex-1 py-2.5 text-sm sm:flex-none sm:min-h-0 sm:py-1.5 sm:text-sm",
               active
-                ? compact
+                ? tight
                   ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/70"
                   : "bg-white text-slate-900 shadow-sm"
                 : "text-slate-600 hover:bg-white/70 hover:text-slate-900",

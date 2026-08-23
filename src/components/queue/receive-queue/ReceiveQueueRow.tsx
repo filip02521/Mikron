@@ -30,9 +30,10 @@ import {
   queueSupplierLeadingCellClass,
   queueSupplierRowClass,
 } from "@/lib/orders/queue-supplier-groups";
-import { orderPlacementAt } from "@/lib/orders/order-timing";
-import { calculateBusinessDays, parseDateOnly } from "@/lib/orders/dates";
-import { todayInWarsaw } from "@/lib/time/warsaw";
+import {
+  receiveQueueWaitingBusinessDays,
+  receiveQueueWaitingDaysLabel,
+} from "@/lib/orders/receive-queue-waiting";
 
 function NotifyIcon({ className }: { className?: string }) {
   return (
@@ -168,16 +169,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
           ? "Powiadom"
           : null;
 
-  const waitingDays = (() => {
-    if (isInfo) return null;
-    const placement = orderPlacementAt(order);
-    if (!placement) return null;
-    const start = parseDateOnly(placement);
-    if (!start) return null;
-    const today = todayInWarsaw();
-    if (start > today) return 0;
-    return calculateBusinessDays(start, today);
-  })();
+  const waitingDays = isInfo ? null : receiveQueueWaitingBusinessDays(order);
 
   const onQtyKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && canSave) {
@@ -253,10 +245,10 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
                 ? "bg-rose-100/90 text-rose-700 ring-1 ring-inset ring-rose-200/50"
                 : "bg-slate-100/80 text-slate-600 ring-1 ring-inset ring-slate-200/40",
             )}
-            title={`Zamówienie czeka ${waitingDays} ${waitingDays === 1 ? "dzień" : "dni"} w przyjęciu`}
+            title={`Zamówienie czeka ${receiveQueueWaitingDaysLabel(waitingDays)} w przyjęciu`}
           >
             <ClockIcon className="size-2.5 shrink-0" />
-            {waitingDays} {waitingDays === 1 ? "dzień" : "dni"}
+            {receiveQueueWaitingDaysLabel(waitingDays)}
           </span>
         ) : null}
         {isInfo && informacjaStockHint === "auto_ready" ? (

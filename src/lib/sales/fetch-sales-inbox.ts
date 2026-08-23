@@ -34,18 +34,34 @@ export async function buildSalesInboxSnapshotFromLoadedData(
   if (salesVisibleOrders.some((o) => o.is_teeth)) {
     const { attachTeethDetailsToIndividualOrders } = await import("@/lib/data/teeth-queue");
     salesVisibleOrders = await attachTeethDetailsToIndividualOrders(salesVisibleOrders);
+    const { createAdminClient, hasSupabaseConfig } = await import("@/lib/supabase/admin");
+    if (hasSupabaseConfig()) {
+      const { enrichSalesOrdersWithTeethOrderFileMeta } = await import(
+        "@/lib/data/teeth-order-file-group"
+      );
+      salesVisibleOrders = await enrichSalesOrdersWithTeethOrderFileMeta(
+        createAdminClient(),
+        salesVisibleOrders
+      );
+    }
   }
 
   const todayDateKey = formatDateString(todayInWarsaw());
-  const { supplierScheduleById, weekDays } = await loadPlannedOrderScheduleContext(
-    salesVisibleOrders,
-    todayDateKey
-  );
+  const [{ supplierScheduleById, weekDays }, teethLeadDaysBySupplierId] = await Promise.all([
+    loadPlannedOrderScheduleContext(salesVisibleOrders, todayDateKey),
+    (async () => {
+      const { loadTeethLeadDaysBySupplierIdForOrders } = await import(
+        "@/lib/orders/teeth-lead-days-for-presenter"
+      );
+      return loadTeethLeadDaysBySupplierIdForOrders(salesVisibleOrders);
+    })(),
+  ]);
 
   const { zamowienia, informacje } = presentMyOrders(salesVisibleOrders, data.statsRows, {
     supplierScheduleById,
     todayDateKey,
     weekDays,
+    teethLeadDaysBySupplierId,
   });
 
   return buildSalesDayStartSnapshot({

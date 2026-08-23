@@ -5,6 +5,8 @@ import {
   mergeTeethFileGroupSiblingsIntoOrders,
   uncoveredTeethOrderIdsMissingGroupFile,
   unionTeethFileGroupOrderIds,
+  attachTeethOrderFileMetaFromGroupMap,
+  listTeethOrderFilesForReceiveSection,
 } from "./teeth-order-file-group";
 
 describe("mergeTeethFileGroupSiblingsIntoOrders", () => {
@@ -80,5 +82,102 @@ describe("firstTeethOrderFileInGroup", () => {
       path: "teeth-orders/g/a.xlsx",
       name: TEETH_GROUP_ORDER_FILE_FALLBACK_NAME,
     });
+  });
+});
+
+describe("attachTeethOrderFileMetaFromGroupMap", () => {
+  it("uzupełnia brakujący plik z mapy grupy (widok handlowca)", () => {
+    const [enriched] = attachTeethOrderFileMetaFromGroupMap(
+      [
+        {
+          is_teeth: true,
+          supplier_id: "ivoclar",
+          teeth_order_file_path: null,
+          teeth_order_file_name: null,
+        },
+      ],
+      new Map([["ivoclar", { path: "teeth-orders/g/a.xlsx", name: "ivoclar.xlsx" }]])
+    );
+    expect(enriched?.teeth_order_file_path).toBe("teeth-orders/g/a.xlsx");
+    expect(enriched?.teeth_order_file_name).toBe("ivoclar.xlsx");
+  });
+
+  it("nie nadpisuje istniejącego pliku", () => {
+    const [enriched] = attachTeethOrderFileMetaFromGroupMap(
+      [
+        {
+          is_teeth: true,
+          supplier_id: "ivoclar",
+          teeth_order_file_path: "teeth-orders/g/old.xlsx",
+          teeth_order_file_name: "old.xlsx",
+        },
+      ],
+      new Map([["ivoclar", { path: "teeth-orders/g/new.xlsx", name: "new.xlsx" }]])
+    );
+    expect(enriched?.teeth_order_file_path).toBe("teeth-orders/g/old.xlsx");
+  });
+});
+
+describe("listTeethOrderFilesForReceiveSection", () => {
+  it("jeden plik na grupę dostawcy — nawet gdy kilka próśb", () => {
+    const files = listTeethOrderFilesForReceiveSection([
+      {
+        id: "a",
+        supplier_id: "ivoclar",
+        supplier: { name: "Ivoclar" },
+        teeth_order_file_path: "teeth-orders/g/a.xlsx",
+        teeth_order_file_name: "ivoclar.xlsx",
+      },
+      {
+        id: "b",
+        supplier_id: "ivoclar",
+        supplier: { name: "Ivoclar" },
+        teeth_order_file_path: null,
+        teeth_order_file_name: null,
+      },
+    ]);
+    expect(files).toEqual([
+      {
+        groupKey: "ivoclar",
+        orderId: "a",
+        supplierLabel: "Ivoclar",
+        fileName: "ivoclar.xlsx",
+      },
+    ]);
+  });
+
+  it("pomija grupy bez ścieżki Storage", () => {
+    expect(
+      listTeethOrderFilesForReceiveSection([
+        {
+          id: "a",
+          supplier_id: "ivoclar",
+          supplier: { name: "Ivoclar" },
+          teeth_order_file_path: null,
+          teeth_order_file_name: "ghost.xlsx",
+        },
+      ])
+    ).toEqual([]);
+  });
+
+  it("osobne pliki dla różnych dostawców w sekcji", () => {
+    const files = listTeethOrderFilesForReceiveSection([
+      {
+        id: "a",
+        supplier_id: "bego",
+        supplier: { name: "Bego" },
+        teeth_order_file_path: "teeth-orders/b/a.pdf",
+        teeth_order_file_name: "bego.pdf",
+      },
+      {
+        id: "b",
+        supplier_id: "ivoclar",
+        supplier: { name: "Ivoclar" },
+        teeth_order_file_path: "teeth-orders/i/a.xlsx",
+        teeth_order_file_name: "ivoclar.xlsx",
+      },
+    ]);
+    expect(files.map((f) => f.supplierLabel)).toEqual(["Bego", "Ivoclar"]);
+    expect(files.map((f) => f.fileName)).toEqual(["bego.pdf", "ivoclar.xlsx"]);
   });
 });

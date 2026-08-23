@@ -13,7 +13,7 @@ param(
   [switch]$Install,
   [switch]$Uninstall,
   [switch]$Test,
-  [ValidateSet("morning", "process-deliveries", "informacja-stock-sync", "catalog-zd-sync", "zd-eta-sync", "morning-sync", "scheduled-mails")]
+  [ValidateSet("morning", "process-deliveries", "informacja-stock-sync", "catalog-zd-sync", "zd-eta-sync", "morning-sync")]
   [string]$Job = "morning",
   [switch]$Force,
   [switch]$List
@@ -29,14 +29,14 @@ $TaskNames = @(
   "OnTime Cron Morning",
   "OnTime Cron Process Deliveries",
   "OnTime Cron Informacja Stock Sync",
-  "OnTime Cron ZD ETA Sync",
-  "OnTime Cron Scheduled Mails 0700",
-  "OnTime Cron Scheduled Mails 0800",
-  "OnTime Cron Scheduled Mails 0900"
+  "OnTime Cron ZD ETA Sync"
 ) + ($CatalogZdSyncSlots | ForEach-Object { "OnTime Cron Catalog ZD Sync $_" })
 $LegacyTaskNames = @(
   "OnTime Cron Catalog ZD Sync",
-  "OnTime Cron Catalog ZD Sync Continue"
+  "OnTime Cron Catalog ZD Sync Continue",
+  "OnTime Cron Scheduled Mails 0700",
+  "OnTime Cron Scheduled Mails 0800",
+  "OnTime Cron Scheduled Mails 0900"
 )
 
 function Write-Step([string]$Message) {
@@ -215,16 +215,6 @@ function Install-CronScheduledTasks {
   Register-WeekdayRepeatingCronTask -Name "OnTime Cron Informacja Stock Sync" -Root $Root -JobName "informacja-stock-sync" -Interval "PT1H"
 
   Register-WeekdayRepeatingCronTask -Name "OnTime Cron ZD ETA Sync" -Root $Root -JobName "zd-eta-sync" -Interval "PT2H"
-
-  $trScheduled = Get-CronInvokeCommand -Root $Root -JobName "scheduled-mails"
-  foreach ($slot in @("07:00", "08:00", "09:00")) {
-    $slotId = $slot.Replace(":", "")
-    New-SchTasksCronTask "OnTime Cron Scheduled Mails $slotId" @(
-      "/Create", "/F", "/TN", "OnTime Cron Scheduled Mails $slotId", "/TR", $trScheduled,
-      "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "WEEKLY",
-      "/D", "MON", "/ST", $slot
-    )
-  }
 
   $trSync = Get-CronInvokeCommand -Root $Root -JobName "catalog-zd-sync"
   foreach ($slot in @("02:00", "02:20", "02:40", "03:00", "03:20", "03:40", "04:00", "04:20", "04:40")) {

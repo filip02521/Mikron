@@ -30,6 +30,7 @@ function baseLine(
     tw_StanRez: 0,
     dostepne: 0,
     sprzedazOkres: 10,
+    wzNiepowiazaneOkres: 0,
     sprzedazDziennie: 1,
     celZapasu: 10,
     celZapasuTracked: 10,
@@ -117,9 +118,12 @@ describe("buildZdCreatePreviewFromOrderable", () => {
           twinTwId: 3,
           unitsPerPack: 40,
           sprzedazSzt: 0,
+          wzNiepowiazaneSzt: 0,
           coverSzt: 0,
           pieceSprzedaz: 0,
           packSprzedaz: 0,
+          pieceWzNiepowiazane: 0,
+          packWzNiepowiazane: 0,
           pieceDostepne: 0,
           packDostepne: 0,
           partnerMissing: false,
@@ -134,9 +138,12 @@ describe("buildZdCreatePreviewFromOrderable", () => {
           twinTwId: 2,
           unitsPerPack: 40,
           sprzedazSzt: 0,
+          wzNiepowiazaneSzt: 0,
           coverSzt: 0,
           pieceSprzedaz: 0,
           packSprzedaz: 0,
+          pieceWzNiepowiazane: 0,
+          packWzNiepowiazane: 0,
           pieceDostepne: 0,
           packDostepne: 0,
           partnerMissing: false,
@@ -208,9 +215,12 @@ describe("buildZdCreatePreviewFromOrderable", () => {
           twinTwId: 2,
           unitsPerPack: 40,
           sprzedazSzt: 0,
+          wzNiepowiazaneSzt: 0,
           coverSzt: 0,
           pieceSprzedaz: 0,
           packSprzedaz: 0,
+          pieceWzNiepowiazane: 0,
+          packWzNiepowiazane: 0,
           pieceDostepne: 0,
           packDostepne: 0,
           partnerMissing: false,
@@ -233,6 +243,37 @@ describe("buildZdCreatePreviewFromOrderable", () => {
     expect(preview.lineCount).toBe(1);
   });
 
+  it("ignoruje override na piece pary (nigdy na ZD)", () => {
+    const lines = [
+      baseLine({
+        tw_Id: 2,
+        tw_Symbol: "MASA",
+        doZamowieniaReczne: 0,
+        pair: {
+          role: "piece",
+          twinTwId: 3,
+          unitsPerPack: 40,
+          sprzedazSzt: 100,
+          wzNiepowiazaneSzt: 0,
+          coverSzt: 0,
+          pieceSprzedaz: 100,
+          packSprzedaz: 0,
+          pieceWzNiepowiazane: 0,
+          packWzNiepowiazane: 0,
+          pieceDostepne: 0,
+          packDostepne: 0,
+        },
+      }),
+    ];
+    const preview = buildZdCreatePreviewFromOrderable(
+      lines,
+      new Map(),
+      null,
+      new Map([[2, 99]])
+    );
+    expect(preview.lineCount).toBe(0);
+  });
+
   it("extra_only: Create qty = ceil(prośba), bez stocku z doZamowieniaReczne", () => {
     const lines = [
       baseLine({
@@ -244,9 +285,12 @@ describe("buildZdCreatePreviewFromOrderable", () => {
           twinTwId: 2,
           unitsPerPack: 40,
           sprzedazSzt: 0,
+          wzNiepowiazaneSzt: 0,
           coverSzt: 0,
           pieceSprzedaz: 0,
           packSprzedaz: 0,
+          pieceWzNiepowiazane: 0,
+          packWzNiepowiazane: 0,
           pieceDostepne: 0,
           packDostepne: 0,
           partnerMissing: false,
@@ -314,9 +358,12 @@ describe("buildZdCreatePreviewFromOrderable", () => {
             twinTwId: 2,
             unitsPerPack: 40,
             sprzedazSzt: 0,
+            wzNiepowiazaneSzt: 0,
             coverSzt: 0,
             pieceSprzedaz: 0,
             packSprzedaz: 0,
+            pieceWzNiepowiazane: 0,
+            packWzNiepowiazane: 0,
             pieceDostepne: 0,
             packDostepne: 0,
             partnerMissing: false,
@@ -362,9 +409,12 @@ describe("buildZdCreatePreviewFromOrderable", () => {
           twinTwId: 2,
           unitsPerPack: 40,
           sprzedazSzt: 0,
+          wzNiepowiazaneSzt: 0,
           coverSzt: 0,
           pieceSprzedaz: 0,
           packSprzedaz: 0,
+          pieceWzNiepowiazane: 0,
+          packWzNiepowiazane: 0,
           pieceDostepne: 0,
           packDostepne: 0,
           partnerMissing: false,
@@ -666,6 +716,24 @@ describe("canCreateZdFromEstimateState", () => {
     ).toEqual({
       ok: false,
       reason: ZD_ESTIMATE_UI.createGatePendingIndividualsLoading,
+    });
+
+    expect(
+      canCreateZdFromEstimateState({
+        configured: true,
+        settingsTrusted: true,
+        orderableCount: 1,
+        supplierId: "s1",
+        khResolution: khOk,
+        estimating: false,
+        mutating: false,
+        creating: false,
+        createDoneDokId: null,
+        prosbaOverlapPending: true,
+      })
+    ).toEqual({
+      ok: false,
+      reason: ZD_ESTIMATE_UI.createGateProsbaOverlapPending,
     });
 
     expect(

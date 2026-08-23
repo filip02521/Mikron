@@ -69,6 +69,40 @@ describe("my-order-delivery-timing-display", () => {
     });
   });
 
+  it("zęby: tytuł Planowana dostawa (nie Termin z historii dostaw)", () => {
+    const display = buildMyOrderDeliveryTimingDisplay(
+      row({
+        isTeeth: true,
+        timingLabel: "Planowana dostawa: 18.03.2026 · ~4 dni rob.",
+      })
+    );
+    expect(display?.title).toBe("Planowana dostawa");
+    expect(display?.estimate).toContain("18.03.2026");
+    expect(display?.title).not.toBe(MY_ORDER_HISTORY_ESTIMATE_TITLE);
+  });
+
+  it("zęby: detail ze źródła stałego ETA", () => {
+    const display = buildMyOrderDeliveryTimingDisplay(
+      row({
+        isTeeth: true,
+        teethEtaSource: "fixed",
+        timingLabel: "Planowana dostawa: 18.03.2026 · ~4 dni rob.",
+      })
+    );
+    expect(display?.detail).toBe("Termin ustalony dla dostawcy");
+  });
+
+  it("zęby: detail ze źródła historii", () => {
+    const display = buildMyOrderDeliveryTimingDisplay(
+      row({
+        isTeeth: true,
+        teethEtaSource: "history",
+        timingLabel: "Planowana dostawa: 18.03.2026 · ~5 dni rob.",
+      })
+    );
+    expect(display?.detail).toBe("Na podstawie historii dostaw zębów");
+  });
+
   it("buduje blok dla opóźnienia", () => {
     const display = buildMyOrderDeliveryTimingDisplay(
       row({ timingLabel: "ok. 10.05.2026 (~5 dni rob.) · po terminie" })
@@ -95,7 +129,8 @@ describe("my-order-delivery-timing-display", () => {
   it("buduje blok oczekiwania na sync ZD", () => {
     const display = buildMyOrderDeliveryTimingDisplay(
       row({
-        timingLabel: "ok. 22.08.2026 (~5 dni rob.)",
+        // Data w przyszłości względem „dziś” w teście (nie „po terminie”).
+        timingLabel: "ok. 22.12.2026 (~5 dni rob.)",
         zdEtaPending: true,
       })
     );

@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { requireMailCenterAccess, requireMailCenterForMutation } from "@/lib/auth/admin-modules";
-import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { isValidEmail } from "@/lib/security/text-limits";
 import {
   deleteMailJobRecipient,
@@ -15,11 +14,6 @@ import {
   setMailJobEnabled,
   upsertMailJobRecipient,
 } from "@/lib/services/mail/mail-log";
-import {
-  IVOCLAR_WEEKLY_JOB_ID,
-  previewIvoclarWeeklyMail,
-  runIvoclarWeeklyMail,
-} from "@/lib/services/mail/run-ivoclar-weekly-mail";
 import type { MailJobRecipient, MailSendLog, MailSendStatus } from "@/types/database";
 
 function revalidateMailPaths(jobId?: string) {
@@ -114,64 +108,20 @@ export async function actionDeleteMailRecipient(id: string, jobId: string) {
   return ok ? { success: true } : { error: "Nie udało się usunąć" };
 }
 
-export async function actionPreviewMailJob(jobId: string) {
+/** Mutacje generate/send usunięte — zawsze 403 przez `requireMailCenterForMutation`. */
+export async function actionPreviewMailJob(_jobId: string) {
   await requireMailCenterForMutation();
-  if (jobId !== IVOCLAR_WEEKLY_JOB_ID) {
-    return { ok: false as const, message: "Podgląd dostępny tylko dla Ivoclar weekly" };
-  }
-  try {
-    const preview = await previewIvoclarWeeklyMail();
-    if (!preview.ok) return { ok: false as const, message: preview.error };
-    return { ok: true as const, preview };
-  } catch (e) {
-    return {
-      ok: false as const,
-      message: userFacingErrorText(e, "Nie udało się wygenerować podglądu"),
-    };
-  }
+  return { ok: false as const, message: "Podgląd niedostępny w OnTime" };
 }
 
-export async function actionSendMailJobTest(jobId: string) {
+export async function actionSendMailJobTest(_jobId: string) {
   await requireMailCenterForMutation();
-  if (jobId !== IVOCLAR_WEEKLY_JOB_ID) {
-    return { error: "Test dostępny tylko dla Ivoclar weekly" };
-  }
-  try {
-    const result = await runIvoclarWeeklyMail({
-      trigger: "test",
-      skipIdempotency: true,
-    });
-    revalidateMailPaths(jobId);
-    if (!result.ok) return { error: result.error };
-    return { success: true, ...result };
-  } catch (e) {
-    return { error: userFacingErrorText(e, "Wysyłka testowa nie powiodła się") };
-  }
+  return { error: "Wysyłka testowa niedostępna w OnTime" };
 }
 
-export async function actionSendMailJobNow(jobId: string, force = false) {
-  const user = await requireMailCenterForMutation();
-  if (jobId !== IVOCLAR_WEEKLY_JOB_ID) {
-    return { error: "Wysyłka dostępna tylko dla Ivoclar weekly" };
-  }
-  try {
-    const result = await runIvoclarWeeklyMail({
-      trigger: "manual",
-      triggeredBy: user.id,
-      skipIdempotency: force,
-    });
-    revalidateMailPaths(jobId);
-    if (!result.ok) return { error: result.error };
-    if (result.skipped && result.skipReason === "already_sent" && !force) {
-      return {
-        error: "Ten tydzień został już wysłany. Użyj „Wyślij ponownie (force)”.",
-        skipped: true,
-      };
-    }
-    return { success: true, ...result };
-  } catch (e) {
-    return { error: userFacingErrorText(e, "Wysyłka nie powiodła się") };
-  }
+export async function actionSendMailJobNow(_jobId: string, _force = false) {
+  await requireMailCenterForMutation();
+  return { error: "Wysyłka niedostępna w OnTime" };
 }
 
 export type MailJobListEntry = {

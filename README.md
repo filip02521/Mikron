@@ -89,9 +89,8 @@ Nagłówek: `Authorization: Bearer <CRON_SECRET>`
 | **Co godzinę 8:00–18:59** | `/api/cron/informacja-stock-sync` | Auto-powiadomienia prośby „Powiadom, gdy będzie na magazynie” (stan Subiekta) |
 | **8, 10, 12, 14, 16, 18** | `/api/cron/zd-eta-sync` | Backup sync terminów ZD na prośbach |
 | **Noc (2:00–4:40 co 20 min)** | `/api/cron/catalog-zd-sync` | Indeks ZD + import do katalogu produktów (wymaga Subiekta w LAN) |
-| **pn 7:00–9:00** | `/api/cron/scheduled-mails` | Raport Ivoclar (Sellout + Inventory) — poprzedni tydzień |
 
-Panel odbiorców i logów: **Administracja → Maile** (`/admin/mail`).
+Raport Ivoclar (Sellout + Inventory): generowanie i wysyłka w **OnTime Raporty**. W OnTime tylko odczyt logów: **Administracja → Wysyłki Ivoclar** (`/admin/mail`). Zob. `docs/CUTOVER-IVOCLAR.md`.
 
 **Serwer Linux:** na serwerze uruchom:
 

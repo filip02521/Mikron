@@ -248,6 +248,8 @@ export interface TeethSupplierSchedule {
   shift_date: string | null;
   computed_next_date: string | null;
   vacation_note: VacationNote | null;
+  /** Stałe dni robocze do dostawy; null = ETA z historii. */
+  delivery_lead_business_days: number | null;
   created_at: string;
   updated_at: string;
 }

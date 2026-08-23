@@ -66,7 +66,7 @@ Filip: potrzebne **dodatkowe dane z API** — nie „przenieść cały algo do A
 
 | Odpowiedzialność | Endpoint / mechanizm | Uwagi |
 |---|---|---|
-| Sprzedaż w oknie (suma) | `GET /orders/zd/estimate` → `sprzedazOkres`, `sprzedazDziennie` | już jest (FS) |
+| Sprzedaż w oknie (suma) | `GET /orders/zd/estimate` → `sprzedazOkres` (FS+PA+WZ niepowiązane), `wzNiepowiazaneOkres`, `sprzedazDziennie` | już jest |
 | Stany / dostępne / rez. | estimate + `/products` | już jest |
 | Otwarte ZD (cover / in transit) | `otwarteZd` | już jest (termin w przyszłości) |
 | Serie tygodniowe 12m | **`GET /orders/sales/weekly`** (do wdrożenia) | **must** pod ABC/XYZ |

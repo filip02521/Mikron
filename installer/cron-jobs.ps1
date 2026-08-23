@@ -37,12 +37,6 @@ $script:CronJobDefinitions = @(
     Path = "/api/cron/morning-sync"
     Label = "Tylko przeliczenie harmonogramów (test / serwis)"
     Schedule = "ręcznie"
-  },
-  @{
-    Id = "scheduled-mails"
-    Path = "/api/cron/scheduled-mails"
-    Label = "Maile raportowe Ivoclar (pn 7–9)"
-    Schedule = "pn 7:00–9:00"
   }
 )
 

@@ -8,6 +8,7 @@ import {
   expandZdEstimateBoms,
   hasUnresolvedExplodeBomNodes,
   rematerializeSoloAfterBom,
+  zdEstimateLineSalesDemandSignal,
 } from "@/lib/orders/zd-estimate-bom";
 import { refreshZdEstimateLinesWithPairs } from "@/lib/orders/zd-estimate-live-refresh";
 import {
@@ -60,6 +61,7 @@ function line(
     tw_StanRez: 0,
     dostepne: 0,
     sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
     sprzedazDziennie: 0,
     celZapasu: 0,
     celZapasuTracked: 0,
@@ -387,6 +389,7 @@ describe("Castorit BOM + pary", () => {
         tw_Id: PROMO,
         tw_Symbol: "PROMO",
         sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
         dostepne: 1,
         otwarteZd: 2,
         otwarteZkBezRez: 50,
@@ -623,11 +626,26 @@ describe("Castorit BOM + pary", () => {
     expect(p2.sprzedazOkres).toBe(7);
     expect(p1.doZamowieniaReczne).toBe(p2.doZamowieniaReczne);
 
-    // Błąd: expand na już expanded → 7+2=9
+    // Nawet gdy omyłkowo podamy już expanded jako base — coerce odzyskuje własne sales.
+    const fromExpanded = refreshZdEstimateLinesWithPairs({
+      linesBase: once.lines,
+      pairs: [castoritPair],
+      boms: [bom],
+      options: { dniZapasu: 30, dniOkresu: 30, salesTrack: false },
+    });
+    expect(
+      fromExpanded.lines.find((l) => l.tw_Id === PLYN)!.sprzedazOkres
+    ).toBe(7);
+    // Pack: pair+bom — coerce musi odjąć contribution (inaczej 130→210).
+    expect(
+      fromExpanded.lines.find((l) => l.tw_Id === KARTON)!.pair?.sprzedazSzt
+    ).toBe(130);
+
+    // Surowy expand na już expanded: idempotentny (assembled_parent → skip wkładu).
     const doubleExpand = expandZdEstimateBoms(once.lines, [bom]);
     expect(
       doubleExpand.find((l) => l.tw_Id === PLYN)!.sprzedazOkres
-    ).toBeGreaterThan(7);
+    ).toBe(7);
   });
 
   it("P2 buy_separate: K zachowuje doZd, bez rollupu na A/B", () => {
@@ -809,6 +827,7 @@ describe("Castorit BOM + pary", () => {
         tw_Id: PROMO,
         tw_Symbol: "PROMO",
         sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
         dostepne: 0,
         otwarteZd: 2,
       }),
@@ -906,6 +925,7 @@ describe("Castorit BOM + pary", () => {
         tw_Id: 10,
         tw_Symbol: "A",
         sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
         dostepne: 0,
         doZamowieniaReczne: 0,
       }),
@@ -1082,5 +1102,42 @@ describe("Castorit BOM + pary", () => {
     expect(
       bomRowHidesHardExclude({ bom: { role: "assembled_parent" } })
     ).toBe(true);
+  });
+
+  it("zdEstimateLineSalesDemandSignal: piece/parent z zerowaną kolumną", () => {
+    expect(
+      zdEstimateLineSalesDemandSignal(
+        line({
+          tw_Id: 1,
+          tw_Symbol: "PC",
+          sprzedazOkres: 0,
+          pair: {
+            role: "piece",
+            twinTwId: 2,
+            unitsPerPack: 10,
+            sprzedazSzt: 50,
+            wzNiepowiazaneSzt: 0,
+            coverSzt: 0,
+            pieceSprzedaz: 12,
+            packSprzedaz: 0,
+            pieceWzNiepowiazane: 0,
+            packWzNiepowiazane: 0,
+            pieceDostepne: 0,
+            packDostepne: 0,
+          },
+        })
+      )
+    ).toBe(12);
+
+    expect(
+      zdEstimateLineSalesDemandSignal(
+        line({
+          tw_Id: 9,
+          tw_Symbol: "KIT",
+          sprzedazOkres: 0,
+          bom: { role: "assembled_parent", relocatedSales: 8 },
+        })
+      )
+    ).toBe(8);
   });
 });

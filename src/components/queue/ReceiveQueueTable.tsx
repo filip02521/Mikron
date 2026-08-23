@@ -79,9 +79,7 @@ import {
 } from "@/lib/orders/queue-product-groups";
 import { buildSupplierGroupMetrics } from "@/lib/orders/supplier-group-metrics";
 import { useSupplierGroupCollapse } from "@/lib/orders/use-supplier-group-collapse";
-import { orderPlacementAt } from "@/lib/orders/order-timing";
-import { calculateBusinessDays, parseDateOnly } from "@/lib/orders/dates";
-import { todayInWarsaw } from "@/lib/time/warsaw";
+import { maxReceiveQueueWaitingDays } from "@/lib/orders/receive-queue-waiting";
 import {
   formatReceiveGroupHeaderSummary,
   groupReceiveQueueBySupplier,
@@ -102,21 +100,6 @@ import {
 } from "@/lib/orders/queue-batch-notify";
 
 const COL_COUNT = 4;
-
-function maxWaitingDaysForOrders(orders: IndividualOrder[]): number | null {
-  const today = todayInWarsaw();
-  let max: number | null = null;
-  for (const order of orders) {
-    if (isInformacjaRequest(order)) continue;
-    const placement = orderPlacementAt(order);
-    if (!placement) continue;
-    const start = parseDateOnly(placement);
-    if (!start || start > today) continue;
-    const days = calculateBusinessDays(start, today);
-    if (max == null || days > max) max = days;
-  }
-  return max;
-}
 
 export type ReceiveQueueToast = {
   title?: string;
@@ -1122,7 +1105,7 @@ export function ReceiveQueueTable({
                       onToggle={() => collapse.toggle(group.supplierKey)}
                       variant="delivery"
                       scheduleDate={supplierScheduleMap.get(group.supplierKey) ?? null}
-                      maxWaitingDays={maxWaitingDaysForOrders(group.orders)}
+                      maxWaitingDays={maxReceiveQueueWaitingDays(group.orders)}
                       actions={
                         <ReceiveQueueGroupMenu
                           groupIds={groupIds}

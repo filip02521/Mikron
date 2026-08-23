@@ -31,6 +31,8 @@ export function ZdEstimatePrepScopeFacts({
   dataDo,
   caption,
   tone = "ready",
+  /** toolbar: bez zapas/okna gdy edytory są w karcie prep. */
+  density = "full",
   className,
 }: {
   variant: "inline" | "toolbar" | "card";
@@ -44,6 +46,7 @@ export function ZdEstimatePrepScopeFacts({
   /** Nadpisuje domyślny podpis w wariancie card. */
   caption?: string | null;
   tone?: "ready" | "warn";
+  density?: "full" | "short";
   className?: string;
 }) {
   const parts = buildZdEstimateScopeFactParts({
@@ -56,11 +59,12 @@ export function ZdEstimatePrepScopeFacts({
   });
 
   const toolbar = variant === "toolbar";
-  const metaBits = [
-    parts.supplier,
-    parts.stock,
-    parts.window,
-  ].filter(Boolean) as string[];
+  const short = density === "short";
+  const metaBits = (
+    short
+      ? [parts.supplier]
+      : [parts.supplier, parts.stock, parts.window]
+  ).filter(Boolean) as string[];
 
   if (toolbar) {
     return (
@@ -68,7 +72,7 @@ export function ZdEstimatePrepScopeFacts({
         className={cn("flex h-8 min-w-0 w-full items-center gap-1.5 sm:gap-2", className)}
         role="status"
         aria-label="Parametry zakresu"
-        title={parts.summaryTitle}
+        title={short ? [parts.primary, parts.supplier].filter(Boolean).join(" · ") : parts.summaryTitle}
       >
         <span className={zdEstimateScopeFactPrimaryClass}>
           <span className="mr-1.5 shrink-0 font-medium text-indigo-700/70">

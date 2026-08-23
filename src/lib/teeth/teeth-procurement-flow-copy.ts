@@ -165,14 +165,19 @@ export function procurementSubmitSuccessMessage(options: {
 
 export function teethSalesOrderedStatusDetail(
   orderedAt: string | null,
-  deliveryEta: string | null
+  deliveryEta: string | null,
+  leadBusinessDays?: number | null
 ): string {
   const parts: string[] = [];
   if (orderedAt) {
     parts.push(`Zamówiono ${formatPlDate(orderedAt.slice(0, 10))}`);
   }
   if (deliveryEta) {
-    parts.push(`Planowana dostawa: ${formatPlDate(deliveryEta)}`);
+    const lead =
+      leadBusinessDays != null && leadBusinessDays > 0
+        ? ` · ~${leadBusinessDays} dni rob.`
+        : "";
+    parts.push(`Planowana dostawa: ${formatPlDate(deliveryEta)}${lead}`);
   }
   if (parts.length === 0) {
     return "Dostawca przygotowuje zamówienie — termin dostawy pojawi się po ustaleniu.";

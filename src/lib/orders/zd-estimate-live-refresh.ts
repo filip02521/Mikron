@@ -20,6 +20,7 @@ import {
 } from "@/lib/orders/zd-estimate-pairs";
 import type { ZdProductPairRef } from "@/lib/orders/zd-product-pair-units";
 import type { ZdEstimatePackagingRefreshEntry } from "@/lib/orders/zd-estimate-packaging";
+import { coerceZdEstimateLinesBase } from "@/lib/orders/zd-estimate-lines-base";
 
 export function collectMissingZdPairPartnerTwIds(
   lines: readonly { tw_Id: number }[],
@@ -67,7 +68,9 @@ export function refreshZdEstimateLinesWithPairs(input: {
   missingPartnerTwIds: number[];
   missingBomTwIds: number[];
 } {
-  const remappedBase = mapZdEstimateLinesSolo(input.linesBase, {
+  // Zawsze odzyskaj pre-merge base — chroni przed 2× expand gdy UI poda pozycje.
+  const safeBase = coerceZdEstimateLinesBase(input.linesBase);
+  const remappedBase = mapZdEstimateLinesSolo(safeBase, {
     dniZapasu: input.options.dniZapasu,
     dniOkresu: input.options.dniOkresu,
     salesTrack: input.options.salesTrack,

@@ -21,27 +21,10 @@ import {
   orderIdsInProductGroup,
 } from "@/lib/orders/queue-product-groups";
 import { receiveQueueTargetQuantity } from "@/lib/orders/sales-cancel";
-import { orderPlacementAt } from "@/lib/orders/order-timing";
-import { calculateBusinessDays, parseDateOnly } from "@/lib/orders/dates";
-import { todayInWarsaw } from "@/lib/time/warsaw";
+import { maxReceiveQueueWaitingDays } from "@/lib/orders/receive-queue-waiting";
 import { useWindowScrollMargin } from "@/hooks/useWindowScrollMargin";
 
 const COL_COUNT = 4;
-
-function maxWaitingDaysForGroup(orders: IndividualOrder[]): number | null {
-  const today = todayInWarsaw();
-  let max: number | null = null;
-  for (const order of orders) {
-    if (isInformacjaRequest(order)) continue;
-    const placement = orderPlacementAt(order);
-    if (!placement) continue;
-    const start = parseDateOnly(placement);
-    if (!start || start > today) continue;
-    const days = calculateBusinessDays(start, today);
-    if (max == null || days > max) max = days;
-  }
-  return max;
-}
 
 function queueTableScrollMarginOffset(table: HTMLElement): number {
   const thead = table.querySelector("thead");
@@ -176,7 +159,7 @@ export function ReceiveQueueVirtualTbody({
               onToggle={() => collapse.toggle(group.supplierKey)}
               variant="delivery"
               scheduleDate={supplierScheduleMap.get(group.supplierKey) ?? null}
-              maxWaitingDays={maxWaitingDaysForGroup(group.orders)}
+              maxWaitingDays={maxReceiveQueueWaitingDays(group.orders)}
               rowRef={measureRef}
               dataIndex={dataIndex}
               actions={

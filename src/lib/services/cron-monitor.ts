@@ -1,6 +1,9 @@
 import type { CronJobId, CronRunPayload } from "@/lib/services/cron-run-log";
 import { CRON_JOB_IDS, readAllCronRuns } from "@/lib/services/cron-run-log";
-import { computeIvoclarWeeklyPeriod } from "@/lib/services/mail/ivoclar-weekly-mail";
+import {
+  computeIvoclarWeeklyPeriod,
+  IVOCLAR_WEEKLY_JOB_ID,
+} from "@/lib/services/mail/ivoclar-period";
 import { getLatestSentLogForPeriod } from "@/lib/services/mail/mail-log";
 import type { CatalogZdSyncState } from "@/lib/subiekt/catalog-zd-sync";
 import { catalogZdSyncNeedsContinue } from "@/lib/subiekt/catalog-zd-sync-summary";
@@ -79,11 +82,12 @@ export const CRON_JOB_DEFINITIONS: CronJobDefinition[] = [
   },
   {
     id: "scheduled_mails",
-    label: "Maile raportowe",
-    schedule: "pn 7:00–9:00 (Warszawa)",
+    label: "Maile raportowe (Ivoclar)",
+    schedule: "pn — OnTime Raporty",
     endpoint: "/api/cron/scheduled-mails",
     scheduled: true,
-    description: "Automatyczna wysyłka raportu Ivoclar (Sellout + Inventory) — poprzedni tydzień.",
+    description:
+      "Wysyłka Ivoclar w OnTime Raporty. Status: mail_send_log. Endpoint OT = legacy no-op.",
   },
 ];
 
@@ -273,13 +277,10 @@ function isScheduledMailsStale(
   now: Date,
   sentLog?: MailSendLog | null
 ): boolean {
-  const { weekday, hour, dateKey } = warsawNowParts(now);
+  const { weekday, hour } = warsawNowParts(now);
   if (weekday !== "Mon" || hour < 10) return false;
+  // Source of truth: runner writes mail_send_log. OT cron is legacy no-op.
   if (sentLog?.status === "sent") return false;
-  if (!run) return true;
-  if (isSkippedRun(run) && skipReason(run) === "already_sent") return false;
-  const detail = runDetail(run);
-  if (detail?.status === "sent" && runWarsawDateKey(run) === dateKey) return false;
   return true;
 }
 
@@ -433,6 +434,11 @@ export function evaluateCronJob(
     statusLabel = context.scheduledMailSentLog.had_warnings
       ? "OK — wysłano z ostrzeżeniami"
       : "OK — wysłano";
+  } else if (job.id === "scheduled_mails" && skipped && skipReason(run) === "moved_to_ontime_raporty") {
+    tone = stale ? "warning" : "neutral";
+    statusLabel = stale
+      ? "Brak wysyłki w mail_send_log (runner)"
+      : "OT no-op — czekamy na runner";
   } else if (!run) {
     tone = job.scheduled ? "warning" : "neutral";
     statusLabel = job.scheduled ? "Nigdy nie uruchomiono" : "Tylko ręcznie";
@@ -498,7 +504,7 @@ export async function fetchCronMonitorSnapshot(now = new Date()) {
   const [runs, catalogState, scheduledMailSentLog] = await Promise.all([
     readAllCronRuns(),
     readCatalogZdSyncState(),
-    getLatestSentLogForPeriod("ivoclar_weekly", scheduledPeriodKey),
+    getLatestSentLogForPeriod(IVOCLAR_WEEKLY_JOB_ID, scheduledPeriodKey),
   ]);
   return buildCronMonitorSnapshot(runs, now, catalogState, scheduledMailSentLog);
 }

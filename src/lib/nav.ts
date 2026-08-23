@@ -390,17 +390,6 @@ function operationsTodayItems(
       tier: "compact",
       mobileSlot: "overflow",
     });
-    items.push({
-      href: "/zakupy/raporty-ivoclar",
-      label: "Raporty Ivoclar",
-      mobileLabel: "Ivoclar",
-      description: "Sellout FS i stany",
-      icon: "chartTrend",
-      tone: "sky",
-      iconTone: "sky",
-      tier: "compact",
-      mobileSlot: "overflow",
-    });
   }
 
   return items;
@@ -586,8 +575,8 @@ const carrierContactItems: NavItem[] = [
 
 const adminMailCenterNavItem: NavItem = {
   href: "/admin/mail",
-  label: "Centrum maili",
-  description: "Harmonogramy maili raportowych, odbiorcy i rejestr wysyłek z brakami danych.",
+  label: "Wysyłki Ivoclar",
+  description: "Status i historia wysyłek Ivoclar (odczyt — bez sterowania z OnTime).",
   icon: "admin",
   tone: "violet",
   tier: "compact",
@@ -627,8 +616,8 @@ function adminSystemItems(badges: { adminBugReports?: number }): NavItem[] {
     },
     {
       href: "/admin/mail",
-      label: "Centrum maili",
-      description: "Harmonogramy maili raportowych, odbiorcy i rejestr wysyłek z brakami danych.",
+      label: "Wysyłki Ivoclar",
+      description: "Status i historia wysyłek Ivoclar (odczyt — bez sterowania z OnTime).",
       icon: "admin",
       tone: "violet",
       ...compact,
@@ -1059,7 +1048,7 @@ export function pageTitle(pathname: string): string {
   }
   if (pathname.startsWith("/zakupy/gadki")) return "Magazyn Gądki";
   if (pathname.startsWith("/zakupy/szacunek")) return "Kreator ZD";
-  if (pathname.startsWith("/zakupy/raporty-ivoclar")) return "Raporty Ivoclar";
+  if (pathname.startsWith("/zakupy/raporty-ivoclar")) return "Raporty Ivoclar (przeniesione)";
   if (pathname === "/urlopy" || pathname.startsWith("/urlopy/")) {
     return "Urlopy działu";
   }
@@ -1093,7 +1082,7 @@ export function pageTitle(pathname: string): string {
     if (pathname.startsWith("/admin/uzytkownicy")) return "Konta";
     if (pathname.startsWith("/admin/zgloszenia")) return "Zgłoszenia";
     if (pathname.startsWith("/admin/handlowcy")) return "Handlowcy";
-    if (pathname.startsWith("/admin/mail")) return "Centrum maili";
+    if (pathname.startsWith("/admin/mail")) return "Wysyłki Ivoclar";
     if (pathname.startsWith("/admin/produkty/zeby")) return "Produkty zębne";
     if (pathname.startsWith("/admin/produkty")) return "Katalog produktów";
     return "Administracja";

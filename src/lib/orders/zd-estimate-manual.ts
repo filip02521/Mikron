@@ -61,6 +61,15 @@ export const ZD_ESTIMATE_MAX_PAGES = 40;
 /** pageSize przy dociąganiu (max API = 200). */
 export const ZD_ESTIMATE_PAGE_SIZE = 200;
 
+/**
+ * Równoległe strony estimate po echu filtra (strona 1 zawsze solo).
+ * Limit chroni host ORDERS przed floodem (wyższe wartości potrafiły odmawiać połączeń).
+ */
+export const ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY = 4;
+
+/** Równoległe dociąganie brakujących towarId (pary / BOM / prośby) po głównym zakresie. */
+export const ZD_ESTIMATE_MISSING_SKU_FETCH_CONCURRENCY = 4;
+
 export type ManualZdEstimateLine = {
   tw_Id: number;
   tw_Symbol: string;
@@ -72,7 +81,18 @@ export type ManualZdEstimateLine = {
   tw_Stan: number;
   tw_StanRez: number;
   dostepne: number;
+  /**
+   * Sprzedaż w oknie — te same jednostki co API na linii (karta SKU).
+   * Po merge pary: na **paczce** sztuki złączone (piece + pack × ratio);
+   * na **piece** 0 (suma kolumny / TSV bez 2×; meta `pair.sprzedazSzt` ma total).
+   * API: FS + PA + WZ niepowiązane (nie doliczać `wzNiepowiazaneOkres`).
+   */
   sprzedazOkres: number;
+  /**
+   * Breakdown WZ niepowiązanych w oknie — te same jednostki co `sprzedazOkres`
+   * na tej linii (po map: clamp ≤ sprzedaż; po parze: sztuki złączone).
+   */
+  wzNiepowiazaneOkres: number;
   sprzedazDziennie: number;
   /** Cel z API Subiekta (bez podbicia). */
   celZapasu: number;
@@ -222,6 +242,10 @@ export function mapZdEstimateLineToManual(
 
   const celZapasu = asFiniteNumber(line.celZapasu);
   const sprzedazOkres = asFiniteNumber(line.sprzedazOkres);
+  const wzNiepowiazaneOkres = Math.min(
+    Math.max(0, asFiniteNumber(line.wzNiepowiazaneOkres)),
+    Math.max(0, sprzedazOkres)
+  );
   const sprzedazDziennieRaw = asFiniteNumber(line.sprzedazDziennie);
   const otwarteZd = asFiniteNumber(line.otwarteZd);
   const otwarteZdPieces = zdDocumentUnitsToPieces(
@@ -332,6 +356,7 @@ export function mapZdEstimateLineToManual(
     tw_StanRez,
     dostepne,
     sprzedazOkres,
+    wzNiepowiazaneOkres,
     sprzedazDziennie: sprzedazDziennieRaw,
     celZapasu,
     celZapasuTracked: celTracked,

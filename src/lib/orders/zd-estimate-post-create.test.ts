@@ -953,6 +953,8 @@ describe("zd-estimate-post-create", () => {
         subiektTwId: null,
         qty: 2,
         requestNote: "n",
+        salesClientKhId: null,
+        sourceZkNumber: null,
       },
     ]);
   });

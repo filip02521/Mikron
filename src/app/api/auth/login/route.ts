@@ -13,6 +13,7 @@ import {
   sleepMs,
 } from "@/lib/auth/auth-rate-limit";
 import { isAdmin, redirectPathAfterLogin } from "@/lib/auth-roles";
+import { fetchEnabledAdminModulesForUserId } from "@/lib/admin-modules";
 import {
   PROCUREMENT_WORKSPACE_COOKIE,
   buildProcurementWorkspaceCookie,
@@ -228,6 +229,9 @@ export async function POST(request: NextRequest) {
     const adminPanelContext = isAdmin(role)
       ? resolveAdminPanelContext(request.cookies.get(ADMIN_PANEL_COOKIE)?.value)
       : null;
+    const adminModules = isAdmin(role)
+      ? []
+      : await fetchEnabledAdminModulesForUserId(userId);
     redirectTo = redirectPathAfterLogin(role, next, {
       adminPanelContext,
       procurementWorkspace: resolveProcurementWorkspace(
@@ -236,6 +240,7 @@ export async function POST(request: NextRequest) {
         profile.assigned_workspaces
       ),
       workspaces: profile.assigned_workspaces,
+      adminModules,
     });
   }
 

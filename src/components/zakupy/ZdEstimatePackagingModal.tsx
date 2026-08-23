@@ -245,7 +245,7 @@ export function ZdEstimatePackagingModal({
                       <p className="font-semibold tabular-nums text-slate-900">
                         {row.twSymbol ?? `tw_Id ${row.subiektTwId}`}
                       </p>
-                      <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-indigo-900 ring-1 ring-indigo-100">
+                      <span className="max-w-full rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-indigo-900 ring-1 ring-indigo-100 break-words">
                         {row.documentUnitMode === "pieces_multiple"
                           ? `dobij ×${row.unitsPerPackage}`
                           : `1 ${row.packageLabel} = ${row.unitsPerPackage} szt`}

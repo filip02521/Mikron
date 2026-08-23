@@ -145,9 +145,12 @@ export function individualExtraPiecesForTw(
 /**
  * Pełne qty zamówienia dla pozycji: uwzględnia opakowanie przy otwartych ZD
  * i przelicza wynik na jednostki do wpisania w dokumencie.
- * `individualExtraPieces` — rezerwa próśb (sztuki) dodana przed ceil opakowania.
+ * `individualExtraPieces` — surowa rezerwa próśb (sztuki).
+ * `extraOverlapPieces` — overlap z innych ZK; limitujemy do stock need
+ *   (przy need=0 / extraOnly prośba nie spada do 0).
  * `extraOnly` — „tylko na prośbę”: baza stock / bakowany pair qty = 0, tylko extra.
  * `extrasPolicy` — `sum` (need+extra) albo `max(need, extra)`.
+ * `stockNeedReliefPieces` — ulga need (własny source_zk prośby vs stanRez).
  * Para pack zawsze Mode A (packages).
  */
 export function resolveOrderQtyForLine(
@@ -155,11 +158,23 @@ export function resolveOrderQtyForLine(
   packaging?: PackagingLookup | null,
   individualExtraPieces?: number,
   extraOnly = false,
-  extrasPolicy: ZdEstimateExtrasPolicy = "sum"
+  extrasPolicy: ZdEstimateExtrasPolicy = "sum",
+  stockNeedReliefPieces = 0,
+  extraOverlapPieces = 0
 ): ZdPackOrderQty {
-  const extra = Math.max(0, Math.ceil(Number(individualExtraPieces) || 0));
+  const rawExtra = Math.max(0, Math.ceil(Number(individualExtraPieces) || 0));
+  const relief = Math.max(0, Math.ceil(Number(stockNeedReliefPieces) || 0));
+  const uncappedOverlap = Math.max(
+    0,
+    Math.ceil(Number(extraOverlapPieces) || 0)
+  );
   const label = packaging?.packageLabel?.trim() || "op.";
   const mode = packagingDocumentMode(packaging);
+
+  const effectiveExtraForNeed = (stockNeed: number) => {
+    const cappedOverlap = Math.min(uncappedOverlap, Math.max(0, stockNeed));
+    return Math.max(0, rawExtra - cappedOverlap);
+  };
 
   // Assembled parent: nigdy na ZD (także bez extras — explode idzie na składniki).
   if (isAssembledBomParent(line)) {
@@ -168,6 +183,8 @@ export function resolveOrderQtyForLine(
 
   // kit_only composition: baza = 0, ale extras z explode próśb / multi-BOM mogą wejść.
   if (isBomPurchaseBlockedWithoutExplode(line)) {
+    // Baza 0 → overlap nie obcina extra (jak extraOnly).
+    const extra = effectiveExtraForNeed(0);
     if (line.pair?.role === "piece") {
       return computeZdPackOrderQty(0, 1, label, "packages");
     }
@@ -188,13 +205,18 @@ export function resolveOrderQtyForLine(
     return computeZdPackOrderQty(0, 1, label, "packages");
   }
   if (line.pair?.role === "pack") {
-    const base = extraOnly
+    const baseRaw = extraOnly
       ? 0
       : line.pair.partnerMissing
         ? 0
         : Math.max(0, Math.ceil(Number(line.doZamowieniaReczne) || 0));
+    const base = Math.max(0, baseRaw - relief);
     return computeZdPackOrderQty(
-      combineStockNeedWithExtra(base, extra, extrasPolicy),
+      combineStockNeedWithExtra(
+        base,
+        effectiveExtraForNeed(base),
+        extrasPolicy
+      ),
       line.pair.unitsPerPack,
       label,
       "packages"
@@ -203,7 +225,8 @@ export function resolveOrderQtyForLine(
 
   const pack = normalizeUnitsPerPackage(packaging?.unitsPerPackage);
   if (extraOnly) {
-    return computeZdPackOrderQty(extra, pack, label, mode);
+    // need=0 → overlap nie obcina; Do ZD = prośba.
+    return computeZdPackOrderQty(effectiveExtraForNeed(0), pack, label, mode);
   }
   const otwarteZdRaw = Math.max(0, Number(line.otwarteZd) || 0);
   const otwarteZdPieces = zdDocumentUnitsToPieces(
@@ -211,13 +234,17 @@ export function resolveOrderQtyForLine(
     packaging?.unitsPerPackage,
     mode
   );
-  const piecesNeeded = combineStockNeedWithExtra(
+  const stockNeed = Math.max(
+    0,
     computeManualOrderQty({
       celZapasu: line.celZapasuTracked ?? line.celZapasu,
       dostepne: line.dostepne,
       otwarteZd: otwarteZdPieces,
-    }),
-    extra,
+    }) - relief
+  );
+  const piecesNeeded = combineStockNeedWithExtra(
+    stockNeed,
+    effectiveExtraForNeed(stockNeed),
     extrasPolicy
   );
   return computeZdPackOrderQty(piecesNeeded, pack, label, mode);
@@ -230,6 +257,51 @@ export const ZD_PACKAGING_LABEL_PRESETS = [
   "paczka",
   "zbiorcze",
 ] as const;
+
+/**
+ * Skrót etykiety opakowania do gęstej tabeli (Opak. / Do ZD).
+ * Pełna nazwa zostaje w `title` / dialogu — w komórce nigdy nie ucinamy w środku słowa.
+ */
+const ZD_PACK_COMPACT_LABEL_BY_KEY: Record<string, string> = {
+  "op.": "op.",
+  op: "op.",
+  karton: "kart.",
+  paczka: "pac.",
+  zbiorcze: "zb.",
+  zb: "zb.",
+  "zb.": "zb.",
+};
+
+export function formatZdPackCompactLabel(packageLabel: string): string {
+  const raw = packageLabel.trim() || "op.";
+  const key = raw.toLowerCase();
+  const mapped = ZD_PACK_COMPACT_LABEL_BY_KEY[key];
+  if (mapped) return mapped;
+  if (raw.length <= 5) return raw;
+  // Własna etykieta: czytelny skrót z kropką (nie mid-word ellipsis).
+  const stem = raw.replace(/\.+$/, "").trim();
+  if (!stem) return "op.";
+  if (stem.length <= 4) return `${stem}.`;
+  return `${stem.slice(0, 4)}.`;
+}
+
+/** Proporcja w kolumnie Opak.: „szt/zb.” — zawsze mieści się w wąskiej kolumnie. */
+export function formatZdPackTableRatioLabel(packageLabel: string): string {
+  return `szt/${formatZdPackCompactLabel(packageLabel)}`;
+}
+
+/**
+ * Hint „N szt / 1 etykieta” — pełna etykieta (menu, podgląd ZD, tooltips).
+ * Do gęstej tabeli użyj {@link formatZdPackTableRatioLabel}.
+ */
+export function formatZdPackUnitsPerLabelHint(
+  unitsPerPackage: number,
+  packageLabel: string
+): string {
+  const n = Math.max(0, Math.trunc(Number(unitsPerPackage) || 0));
+  const label = packageLabel.trim() || "op.";
+  return `${n} szt / 1 ${label}`;
+}
 
 export const ZD_PACKAGING_UNITS_MIN = 2;
 export const ZD_PACKAGING_UNITS_MAX = 100_000;
@@ -400,14 +472,18 @@ export function effectiveZdDocumentUnits(
   individualExtraPieces?: number | null,
   overrideZdUnits?: number | null,
   extraOnly = false,
-  extrasPolicy: ZdEstimateExtrasPolicy = "sum"
+  extrasPolicy: ZdEstimateExtrasPolicy = "sum",
+  stockNeedReliefPieces = 0,
+  extraOverlapPieces = 0
 ): number {
   const computed = resolveOrderQtyForLine(
     line,
     packaging,
     individualExtraPieces ?? undefined,
     extraOnly,
-    extrasPolicy
+    extrasPolicy,
+    stockNeedReliefPieces,
+    extraOverlapPieces
   ).zdUnits;
   if (!lineAllowsZdDocumentUnitOverride(line)) {
     return computed;
@@ -432,7 +508,9 @@ export function pruneZdDocumentUnitOverrides(
   packagingById: ReadonlyMap<number, PackagingLookup>,
   individualExtraByTwId?: ReadonlyMap<number, number> | null,
   extraOnlyTwIds?: ReadonlySet<number> | null,
-  extrasPolicy: ZdEstimateExtrasPolicy = "sum"
+  extrasPolicy: ZdEstimateExtrasPolicy = "sum",
+  stockNeedReliefByTwId?: ReadonlyMap<number, number> | null,
+  extraOverlapByTwId?: ReadonlyMap<number, number> | null
 ): Record<number, number> {
   let changed = false;
   const next: Record<number, number> = {};
@@ -452,7 +530,9 @@ export function pruneZdDocumentUnitOverrides(
       packagingById.get(twId) ?? null,
       individualExtraPiecesForTw(twId, individualExtraByTwId),
       extraOnlyTwIds?.has(twId) === true,
-      extrasPolicy
+      extrasPolicy,
+      individualExtraPiecesForTw(twId, stockNeedReliefByTwId),
+      individualExtraPiecesForTw(twId, extraOverlapByTwId)
     ).zdUnits;
     if (Math.trunc(override) === computed) {
       changed = true;
@@ -470,7 +550,9 @@ export function summarizePackOrderQty(
   individualExtraByTwId?: ReadonlyMap<number, number> | null,
   qtyOverrideByTwId?: ReadonlyMap<number, number> | null,
   extraOnlyTwIds?: ReadonlySet<number> | null,
-  extrasPolicy: ZdEstimateExtrasPolicy = "sum"
+  extrasPolicy: ZdEstimateExtrasPolicy = "sum",
+  stockNeedReliefByTwId?: ReadonlyMap<number, number> | null,
+  extraOverlapByTwId?: ReadonlyMap<number, number> | null
 ): {
   doZamowieniaCount: number;
   piecesNeededSuma: number;
@@ -492,13 +574,23 @@ export function summarizePackOrderQty(
       line.tw_Id,
       individualExtraByTwId
     );
+    const relief = individualExtraPiecesForTw(
+      line.tw_Id,
+      stockNeedReliefByTwId
+    );
+    const overlap = individualExtraPiecesForTw(
+      line.tw_Id,
+      extraOverlapByTwId
+    );
     const extraOnly = extraOnlyTwIds?.has(line.tw_Id) === true;
     const qty = resolveOrderQtyForLine(
       line,
       pack,
       extra,
       extraOnly,
-      extrasPolicy
+      extrasPolicy,
+      relief,
+      overlap
     );
     const zdUnits = effectiveZdDocumentUnits(
       line,
@@ -506,7 +598,9 @@ export function summarizePackOrderQty(
       extra,
       qtyOverrideByTwId?.get(line.tw_Id),
       extraOnly,
-      extrasPolicy
+      extrasPolicy,
+      relief,
+      overlap
     );
     if (zdUnits <= 0) continue;
     doZamowieniaCount += 1;
@@ -532,7 +626,14 @@ export function filterOrderableLinesWithPackaging(
   individualExtraByTwId?: ReadonlyMap<number, number> | null,
   qtyOverrideByTwId?: ReadonlyMap<number, number> | null,
   extraOnlyTwIds?: ReadonlySet<number> | null,
-  extrasPolicy: ZdEstimateExtrasPolicy = "sum"
+  extrasPolicy: ZdEstimateExtrasPolicy = "sum",
+  /**
+   * Surowe extra (przed overlap). Gdy adjusted qty = 0, a tu > 0 i tw jest
+   * extraOnly — zostaw linię widoczną (Do ZD 0), żeby prośba nie „znikała”.
+   */
+  rawIndividualExtraByTwId?: ReadonlyMap<number, number> | null,
+  stockNeedReliefByTwId?: ReadonlyMap<number, number> | null,
+  extraOverlapByTwId?: ReadonlyMap<number, number> | null
 ): ManualZdEstimateLine[] {
   const excluded =
     excludedTwIds instanceof Set
@@ -540,16 +641,19 @@ export function filterOrderableLinesWithPackaging(
       : new Set(excludedTwIds ?? []);
   return lines.filter((line) => {
     if (excluded.has(line.tw_Id)) return false;
-    return (
-      effectiveZdDocumentUnits(
-        line,
-        packagingById.get(line.tw_Id),
-        individualExtraPiecesForTw(line.tw_Id, individualExtraByTwId),
-        qtyOverrideByTwId?.get(line.tw_Id),
-        extraOnlyTwIds?.has(line.tw_Id) === true,
-        extrasPolicy
-      ) > 0
+    const units = effectiveZdDocumentUnits(
+      line,
+      packagingById.get(line.tw_Id),
+      individualExtraPiecesForTw(line.tw_Id, individualExtraByTwId),
+      qtyOverrideByTwId?.get(line.tw_Id),
+      extraOnlyTwIds?.has(line.tw_Id) === true,
+      extrasPolicy,
+      individualExtraPiecesForTw(line.tw_Id, stockNeedReliefByTwId),
+      individualExtraPiecesForTw(line.tw_Id, extraOverlapByTwId)
     );
+    if (units > 0) return true;
+    if (extraOnlyTwIds?.has(line.tw_Id) !== true) return false;
+    return individualExtraPiecesForTw(line.tw_Id, rawIndividualExtraByTwId) > 0;
   });
 }
 
@@ -560,7 +664,9 @@ export function orderableLinesToTsv(
   individualExtraByTwId?: ReadonlyMap<number, number> | null,
   qtyOverrideByTwId?: ReadonlyMap<number, number> | null,
   extraOnlyTwIds?: ReadonlySet<number> | null,
-  extrasPolicy: ZdEstimateExtrasPolicy = "sum"
+  extrasPolicy: ZdEstimateExtrasPolicy = "sum",
+  stockNeedReliefByTwId?: ReadonlyMap<number, number> | null,
+  extraOverlapByTwId?: ReadonlyMap<number, number> | null
 ): string {
   const header = [
     "symbol",
@@ -587,13 +693,23 @@ export function orderableLinesToTsv(
       line.tw_Id,
       individualExtraByTwId
     );
+    const relief = individualExtraPiecesForTw(
+      line.tw_Id,
+      stockNeedReliefByTwId
+    );
+    const overlap = individualExtraPiecesForTw(
+      line.tw_Id,
+      extraOverlapByTwId
+    );
     const extraOnly = extraOnlyTwIds?.has(line.tw_Id) === true;
     const qty = resolveOrderQtyForLine(
       line,
       pack,
       extra,
       extraOnly,
-      extrasPolicy
+      extrasPolicy,
+      relief,
+      overlap
     );
     const zdUnits = effectiveZdDocumentUnits(
       line,
@@ -601,7 +717,9 @@ export function orderableLinesToTsv(
       extra,
       qtyOverrideByTwId?.get(line.tw_Id),
       extraOnly,
-      extrasPolicy
+      extrasPolicy,
+      relief,
+      overlap
     );
     const piecesArriving =
       qty.hasPackaging && qty.zdUnits > 0

@@ -18,7 +18,7 @@ const TAB_TITLE: Record<AdminHubTab, string> = {
   system: "Administracja",
   users: "Konta użytkowników",
   sales: "Handlowcy",
-  mail: "Centrum maili",
+  mail: "Wysyłki Ivoclar",
 };
 
 const TAB_DESCRIPTION: Record<AdminHubTab, string> = {
@@ -27,7 +27,7 @@ const TAB_DESCRIPTION: Record<AdminHubTab, string> = {
   users: "Logowanie do systemu, role i hasła. Handlowiec musi mieć kartę w zakładce Handlowcy.",
   sales:
     "Osoby kontaktowe, powiadomienia e-mail i linki zaproszeń do zakładania kont.",
-  mail: "Harmonogramy maili raportowych, odbiorcy i rejestr wysyłek z brakami danych.",
+  mail: "Status i historia wysyłek Ivoclar (odczyt — bez sterowania z OnTime).",
 };
 
 export function AdminHubShell({

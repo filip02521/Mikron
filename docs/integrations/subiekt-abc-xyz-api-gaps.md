@@ -21,7 +21,7 @@ Cel tego dokumentu: konkretna lista endpointów / pól, bez których nie da się
 | Zapas dostępny (po rez.) | `dostepne` (gdy brak: OnTime liczy `tw_Stan − tw_StanRez`) | To jest baza cover w OT |
 | Rezerwacje | `tw_StanRez`, `otwarteZkZarezerwowane`, `otwarteZkBezRez` | OnTime qty **nie** dokłada ZK do „Do ZD” — ZK tylko informacyjnie; wzór API `doZamowienia` nadal zawiera `otwarteZkBezRez` |
 | Zamówione w drodze (przybliżenie) | `otwarteZd` | Po fixie API: ZD z **terminem realizacji w przyszłości**. Cover / „in transit”. **Jednostki = jednostki dokumentu ZD** (paczki przy opakowaniu) — OnTime mnoży × `unitsPerPackage` do sztuk |
-| Średni popyt dzienny (przybliżenie) | `sprzedazDziennie`, albo `sprzedazOkres / dniOkresu` | Gotowa **suma w oknie** z estimate (wg API: FS). **Nie** seria tygodniowa → za mało do CV/σ |
+| Średni popyt dzienny (przybliżenie) | `sprzedazDziennie`, albo `sprzedazOkres / dniOkresu` | Gotowa **suma w oknie** z estimate (API: FS + PA + WZ niepowiązane; breakdown `wzNiepowiazaneOkres`). **Nie** seria tygodniowa → za mało do CV/σ |
 | Pack size (częściowo) | OnTime: `zd_estimate_packaging` + `zd_product_pairs` (ręczne / sync) | Brak `GET /products/komplety` na hoście ORDERS |
 | Lead time średni (przybliżenie) | OnTime `delivery_stats` (per **dostawca**) | Używane do **ETA zamówień klientów**, **nie** do qty w kreatorze ZD dziś. Brak σ_L; brak L per SKU z API |
 | Horyzont zapasu w kreatorze | `suppliers.stock_raw` / `stock` → `dniZapasu` | To **„na ile dni trzymać zapas”**, nie lead time \(L\) i nie interwał zamówień (`interval_*`). Interwał dostawcy = kalendarz kolejnego zamówienia, osobna rzecz |
@@ -285,16 +285,14 @@ Jeśli w MSSQL nie ma MOQ — napisać wprost w docs: „brak w Subiekcie → On
 
 ### P2 — jakość popytu (FS vs WZ)
 
-Estimate dziś (kontrakt / zachowanie API): **suma FS (`dok_Typ=2`)** w polu `sprzedazOkres`. OnTime **nie** wybiera typu dokumentu — bierze gotową sumę.
+**Estimate (zamknięte — kontrakt live):** `sprzedazOkres` = **FS + PA + WZ niepowiązane** z FS/PA; breakdown w `wzNiepowiazaneOkres` (te same jednostki karty SKU). OnTime mapuje breakdown 1:1 (clamp ≤ sprzedaż), agreguje WZ tą samą ścieżką co sprzedaż (BOM → pary) i pokazuje dopisek pod Sprzed. — **bez** ponownego doliczania do sumy.
 
-Do ABC/EOQ warto w docs/API:
+Do ABC/EOQ / weekly nadal warto:
 
-1. Parametr `zrodloPopytu=fs|wz|fs_plus_wz_dedup`, **albo**
-2. Osobne pola: `sprzedazFs`, `sprzedazWz`, `sprzedazNetto` (po deduplikacji).
+1. Ten sam wybór źródła na `GET /orders/sales/weekly` (spójność z estimate), **albo**
+2. Jawne pola tygodniowe: `sprzedazFs` / `sprzedazWz` / netto po dedup — jeśli weekly ma zostać rozłączne od sumy estimate.
 
-Bez tego matryca ABC może systematycznie zaniżać / zawyżać obrót względem rzeczywistości magazynowej.
-
-Ten sam wybór źródła powinien obowiązywać `GET /orders/sales/weekly`.
+Bez spójności weekly ↔ estimate matryca ABC może nadal rozjeżdżać się na serii tygodniowej mimo poprawnego okna estimate.
 
 ---
 
@@ -379,7 +377,8 @@ lead-time avg/std             →      SS, ROP (gdy podłączymy L ≠ dniZapasu
 ## 8. Checklist dla API (do odhaczenia)
 
 - [ ] `GET /orders/sales/weekly` — qty + revenue per `tw_Id` × tydzień (12m), reguła zer / `weekStart`
-- [ ] Docs: źródło popytu FS / WZ / dedup (estimate + weekly spójnie)
+- [x] Estimate: `sprzedazOkres` = FS+PA+WZ niepowiązane + breakdown `wzNiepowiazaneOkres` (OnTime konsumuje; bez crawl `/documents/wz`)
+- [ ] Docs/weekly: źródło popytu FS / WZ spójne z estimate (seria tygodniowa)
 - [ ] Cena zakupu i/lub sprzedaży (`/products` i/lub estimate / weekly)
 - [ ] OpenAPI: semantyka `otwarteZd` (termin w przyszłości + jednostki dokumentu)
 - [ ] `GET /products/komplety`

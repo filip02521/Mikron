@@ -21,12 +21,13 @@ Opcjonalnie: `INFORMACJA_STOCK_AUTO_ENABLED=1` w `.env.local`, aby włączyć au
 | `informacja-stock-sync` | `/api/cron/informacja-stock-sync` | **08:00–18:00 co godz.** | Auto-powiadomienia „Powiadom, gdy będzie na magazynie” |
 | `zd-eta-sync` | `/api/cron/zd-eta-sync` | **08:00–18:00 co 2 h** | Backup sync terminów ZD na prośbach |
 | `catalog-zd-sync` | `/api/cron/catalog-zd-sync` | **codziennie 02:00–04:40 co 20 min** | Indeks ZD + import katalogu (noc) |
-| `scheduled-mails` | `/api/cron/scheduled-mails` | **pn 07:00, 08:00, 09:00** | Raport Ivoclar (Sellout + Inventory) — poprzedni tydzień |
 | `morning-sync` | `/api/cron/morning-sync` | **ręcznie** | Tylko przeliczenie harmonogramów (serwis / test) |
+
+Ivoclar weekly: **OnTime Raporty** (nie instalować `scheduled-mails` na OT). Endpoint `/api/cron/scheduled-mails` w OT to legacy no-op; stare SchTasks `OnTime Cron Scheduled Mails *` są usuwane przy `-Install` (lista legacy). Logi: `/admin/mail`. Zob. `docs/CUTOVER-IVOCLAR.md`.
 
 Źródło prawdy dla nazw jobów: `installer/cron-jobs.ps1`.
 
-Na **Vercel** harmonogram może różnić się (UTC, szersze okno dla `process-deliveries` / `informacja-stock-sync`) — patrz `vercel.json`.
+Na **Vercel** harmonogram może różnić się (UTC) — patrz `vercel.json` (bez `scheduled-mails`).
 
 ## Instalacja krok po kroku
 

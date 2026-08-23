@@ -10,6 +10,7 @@ import {
   actionDisableTeethSchedule,
   actionShiftTeethSchedule,
   actionUpsertTeethSchedule,
+  actionUpdateTeethDeliveryLeadDays,
 } from "@/app/actions/teeth-orders";
 import { SupplierFormSection } from "@/components/admin/SupplierFormSection";
 import { Field, Input, Select } from "@/components/ui/Field";
@@ -39,12 +40,15 @@ export function TeethSupplierScheduleFields({
   const [pending, setPending] = useState(false);
   const [orderDay, setOrderDay] = useState<DayOfWeek>(1);
   const [intervalWeeks, setIntervalWeeks] = useState(1);
+  const [leadDaysInput, setLeadDaysInput] = useState("");
   const [shiftOpen, setShiftOpen] = useState(false);
   const [shiftDate, setShiftDate] = useState("");
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
 
   const onToastRef = useRef(onToast);
-  useEffect(() => { onToastRef.current = onToast; });
+  useEffect(() => {
+    onToastRef.current = onToast;
+  });
 
   const reload = useCallback(async () => {
     try {
@@ -54,6 +58,13 @@ export function TeethSupplierScheduleFields({
         setOrderDay(row.order_day_of_week);
         setIntervalWeeks(row.interval_weeks);
         setShiftDate(row.shift_date ?? "");
+        setLeadDaysInput(
+          row.delivery_lead_business_days != null
+            ? String(row.delivery_lead_business_days)
+            : ""
+        );
+      } else {
+        setLeadDaysInput("");
       }
     } catch (e) {
       onToastRef.current(toastFromUnknown(e, TEETH_SCHEDULE_TOAST.loadFailed.text));
@@ -69,13 +80,28 @@ export function TeethSupplierScheduleFields({
         await reload();
       })();
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [reload]);
+
+  const parseLeadDaysFromInput = (): number | null => {
+    const trimmed = leadDaysInput.trim();
+    if (!trimmed) return null;
+    const n = Math.trunc(Number(trimmed));
+    if (!Number.isFinite(n) || n < 0 || n > 60) {
+      throw new Error("Podaj liczbę od 0 do 60 albo zostaw puste (ETA z historii).");
+    }
+    return n === 0 ? null : n;
+  };
 
   const handleUpsert = useCallback(async () => {
     setPending(true);
     try {
-      await actionUpsertTeethSchedule(supplierId, orderDay, intervalWeeks);
+      // Puste pole ETA przy zapisie cyklu → nie kasuj stałego ETA (osobny „Zapisz ETA”).
+      const lead =
+        leadDaysInput.trim() === "" ? undefined : parseLeadDaysFromInput();
+      await actionUpsertTeethSchedule(supplierId, orderDay, intervalWeeks, lead);
       onToastRef.current(TEETH_SCHEDULE_TOAST.saved);
       await reload();
     } catch (e) {
@@ -83,7 +109,21 @@ export function TeethSupplierScheduleFields({
     } finally {
       setPending(false);
     }
-  }, [supplierId, orderDay, intervalWeeks, reload]);
+  }, [supplierId, orderDay, intervalWeeks, leadDaysInput, reload]);
+
+  const handleSaveEta = useCallback(async () => {
+    setPending(true);
+    try {
+      const lead = parseLeadDaysFromInput();
+      await actionUpdateTeethDeliveryLeadDays(supplierId, lead);
+      onToastRef.current(TEETH_SCHEDULE_TOAST.etaSaved);
+      await reload();
+    } catch (e) {
+      onToastRef.current(toastFromUnknown(e, TEETH_SCHEDULE_TOAST.etaSaveFailed.text));
+    } finally {
+      setPending(false);
+    }
+  }, [supplierId, leadDaysInput, reload]);
 
   const handleRemove = useCallback(async () => {
     setConfirmRemoveOpen(false);
@@ -110,7 +150,7 @@ export function TeethSupplierScheduleFields({
             ? TEETH_SCHEDULE_TOAST.shiftRestored
             : shiftDate
               ? TEETH_SCHEDULE_TOAST.shiftToDate(formatPlDate(shiftDate))
-              : TEETH_SCHEDULE_TOAST.shiftUpdated,
+              : TEETH_SCHEDULE_TOAST.shiftUpdated
         );
         await reload();
       } catch (e) {
@@ -124,29 +164,71 @@ export function TeethSupplierScheduleFields({
 
   if (schedule === undefined) {
     return (
-      <SupplierFormSection
-        title="Cykl zębów"
-        description="Wczytywanie…"
-        defaultOpen
-      >
+      <SupplierFormSection title="Cykl zębów" description="Wczytywanie…" defaultOpen>
         <p className="text-sm text-slate-500">Ładowanie ustawień cyklu…</p>
       </SupplierFormSection>
     );
   }
 
+  const savedLead = schedule?.delivery_lead_business_days ?? null;
+  const hasActiveCycle = Boolean(schedule?.computed_next_date);
+
   return (
     <>
+      <SupplierFormSection
+        title="Stałe ETA dostawy"
+        description={`Planowany czas dostawy zębów od ${supplierName} — widoczny u handlowca po oznaczeniu zamówienia.`}
+        defaultOpen
+      >
+        <div className="space-y-4 sm:col-span-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {savedLead != null && savedLead > 0 ? (
+              <Badge variant="info">ETA: {savedLead} dni rob.</Badge>
+            ) : (
+              <Badge variant="default">ETA: z historii</Badge>
+            )}
+          </div>
+          <p className="text-xs leading-relaxed text-slate-600">
+            Po oznaczeniu zamówienia handlowiec zobaczy planowaną datę. Puste pole = ETA z historii
+            dostaw zębów u tego dostawcy. Zapis cyklu poniżej nie czyści ETA — użyj „Zapisz ETA”,
+            żeby zmienić lub wyczyścić.
+          </p>
+          <div className="grid max-w-xs gap-4">
+            <Field label="Stałe ETA dostawy (dni rob.)">
+              <Input
+                type="number"
+                min={0}
+                max={60}
+                inputMode="numeric"
+                placeholder="np. 4"
+                value={leadDaysInput}
+                disabled={disabled || pending}
+                onChange={(e) => setLeadDaysInput(e.target.value)}
+              />
+            </Field>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            disabled={disabled || pending}
+            onClick={() => void handleSaveEta()}
+          >
+            Zapisz ETA
+          </Button>
+        </div>
+      </SupplierFormSection>
+
       <SupplierFormSection
         title="Cykl zębów"
         description={`Osobny harmonogram toru zębów dla ${supplierName} — niezależny od panelu dziennego.`}
         defaultOpen
       >
-        <p className="mb-3 rounded-md border border-emerald-100 bg-emerald-50/60 px-3 py-2 text-xs leading-relaxed text-emerald-950 sm:col-span-2">
+        <p className="rounded-md border border-emerald-100 bg-emerald-50/60 px-3 py-2 text-xs leading-relaxed text-emerald-950 sm:col-span-2">
           {TEETH_DUAL_LANE_COPY.harmonogramBannerBody}
         </p>
 
-        {schedule ? (
-          <div className="space-y-3 sm:col-span-2">
+        {schedule && hasActiveCycle ? (
+          <div className="space-y-4 sm:col-span-2">
             <div className="flex flex-wrap items-center gap-2">
               {schedule.computed_next_date ? (
                 <Badge variant="info">
@@ -154,9 +236,7 @@ export function TeethSupplierScheduleFields({
                 </Badge>
               ) : null}
               {schedule.vacation_note ? (
-                <Badge variant="warning">
-                  {vacationNoteLabel(schedule.vacation_note)}
-                </Badge>
+                <Badge variant="warning">{vacationNoteLabel(schedule.vacation_note)}</Badge>
               ) : null}
               {schedule.shift_date ? (
                 <Badge variant="warning">
@@ -170,7 +250,7 @@ export function TeethSupplierScheduleFields({
               ) : null}
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Dzień zamówienia u dostawcy">
                 <Select
                   value={String(orderDay)}
@@ -231,12 +311,13 @@ export function TeethSupplierScheduleFields({
             </div>
           </div>
         ) : (
-          <div className="space-y-3 sm:col-span-2">
+          <div className="space-y-4 sm:col-span-2">
             <p className="text-sm text-slate-600">
-              Brak cyklu zębów — ustaw dzień i częstotliwość, aby dostawca pojawiał się w kolejce
-              z cyklicznym zamówieniem.
+              {schedule
+                ? "Cykl wyłączony — ustaw dzień i częstotliwość, aby wrócił do kolejki. Stałe ETA powyżej zostaje zachowane."
+                : "Brak cyklu zębów — ustaw dzień i częstotliwość, aby dostawca pojawiał się w kolejce z cyklicznym zamówieniem."}
             </p>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Dzień zamówienia u dostawcy">
                 <Select
                   value={String(orderDay)}
@@ -325,7 +406,7 @@ export function TeethSupplierScheduleFields({
       <ConfirmDialog
         open={confirmRemoveOpen}
         title="Wyłączyć cykl zębów?"
-        message={`${supplierName} zniknie z cyklicznych przypomnień w kolejce zębów. Prośby handlowców nadal będą działać.`}
+        message={`${supplierName} zniknie z cyklicznych przypomnień w kolejce zębów. Prośby handlowców i stałe ETA dostawy nadal będą działać.`}
         confirmLabel="Wyłącz cykl"
         danger
         pending={pending}

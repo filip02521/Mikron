@@ -210,4 +210,18 @@ describe("buildCronMonitorSnapshot", () => {
     expect(scheduled?.stale).toBe(true);
     expect(scheduled?.tone).toBe("warning");
   });
+
+  it("scheduled mails: skip moved_to_ontime_raporty przed 10:00 nie alarmuje jak OT cron", () => {
+    const scheduledDef = CRON_JOB_DEFINITIONS.find((j) => j.id === "scheduled_mails")!;
+    const now = new Date("2026-08-17T06:30:00.000Z"); // 08:30 Warszawa
+    const run: CronRunPayload = {
+      ok: true,
+      at: "2026-08-17T06:00:00.000Z",
+      detail: { skipped: true, reason: "moved_to_ontime_raporty" },
+    };
+    const row = evaluateCronJob(scheduledDef, run, now);
+    expect(row.stale).toBe(false);
+    expect(row.statusLabel).toBe("OT no-op — czekamy na runner");
+    expect(row.tone).toBe("neutral");
+  });
 });

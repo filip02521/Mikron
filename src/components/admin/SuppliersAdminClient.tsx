@@ -410,7 +410,7 @@ export function SuppliersAdminClient({
         title="Usunąć z toru zębów?"
         message={
           teethRemoveTarget
-            ? `„${teethRemoveTarget.name}" zniknie z toru zębów. Karta dostawcy pozostanie w głównym dziale dostaw. Historia i cykl zębów zostaną usunięte.`
+            ? `„${teethRemoveTarget.name}" zniknie z toru zębów. Karta dostawcy pozostanie w głównym dziale dostaw. Historia, cykl zębów i stałe ETA dostawy zostaną usunięte.`
             : ""
         }
         confirmLabel="Usuń z toru zębów"

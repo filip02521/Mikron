@@ -334,19 +334,30 @@ export const zdEstimateSoftStatusStripClass =
  * Karta zakresu (start i Zmień zakres): naturalna wysokość, bez max-height 12rem.
  * Przy braku listy scroll jest na workbenchu — nie na polach.
  */
-export const zdEstimatePrepFormInsetXClass = "px-3.5 sm:px-6";
+export const zdEstimatePrepFormInsetXClass = "px-3.5 sm:px-5";
 
+/** Treść karty przygotowania — jedna kolumna, gęsty stack. */
 export const zdEstimatePrepIdleBodyClass = cn(
-  "grid grid-cols-1 content-start gap-4 py-3.5 sm:gap-6 sm:py-5",
-  zdEstimatePrepFormInsetXClass,
-  "lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.9fr)] lg:items-start lg:gap-x-8"
+  "flex flex-col content-start gap-3 py-3 sm:gap-3.5 sm:py-3.5",
+  zdEstimatePrepFormInsetXClass
+);
+
+/** Belka parametrów biegu (zapas / okno / boost / prośby). */
+export const zdEstimatePrepParamsStripClass =
+  "flex min-w-0 flex-wrap items-end gap-x-3 gap-y-2.5 border-t border-slate-100/90 pt-3";
+
+/** Input / chip / przycisk / Select w prep — jeden box h-9 (jak dock). */
+export const zdEstimatePrepControlClass = cn(
+  zdEstimateDockControlHeightClass,
+  // Nadpisuje Field (min-h-11 / sm:min-h-[2.5rem]) i Button (py-2).
+  "min-h-9 sm:min-h-9 box-border px-3 py-0 text-sm leading-none"
 );
 
 /** Stopka Policz karty zakresu — ten sam inset X co treść, zaraz pod polami. */
 export const zdEstimatePrepIdleFooterClass = cn(
   "scroll-mt-24 flex shrink-0 flex-col border-t border-slate-100/90 bg-slate-50/55 sm:flex-row sm:items-center sm:justify-between",
   zdEstimatePrepFormInsetXClass,
-  "gap-2 py-2.5 sm:py-3.5"
+  "gap-2 py-2.5 sm:py-3"
 );
 
 /** Luźniejszy inset niż panel dzienny — tabela potrzebuje powietrza. */
@@ -490,9 +501,9 @@ export const zdEstimateListBodyPadClass = cn(
 export const zdEstimateChromeDividerClass =
   "hidden h-6 w-px shrink-0 self-center bg-slate-200/80 sm:block";
 
-/** Truncated / recount pod belką listy. */
+/** Truncated / trwały status w belce listy (chip w rzędzie filtrów — bez drugiej linii). */
 export const zdEstimateStatusNoteClass =
-  "inline-flex h-6 max-w-full items-center truncate rounded-md bg-amber-50/90 px-1.5 text-[10px] font-medium leading-none text-amber-900/90 ring-1 ring-inset ring-amber-200/70 sm:max-w-[16rem]";
+  "inline-flex h-6 max-w-[min(100%,14rem)] shrink-0 items-center truncate rounded-md bg-amber-50/90 px-1.5 text-[10px] font-medium leading-none text-amber-900/90 ring-1 ring-inset ring-amber-200/70 sm:max-w-[16rem]";
 
 /**
  * Dock Create/Policz — `h-0` + sticky, żeby pasek NIE dokładał wysokości
@@ -528,12 +539,12 @@ export const zdEstimateStickyClearanceClass =
 export const zdEstimateStickyClearanceTallClass =
   "shrink-0 w-full h-[7rem] sm:h-24";
 
-/** Primarny Policz w stopce prep — ten sam box co dock (h-9). */
+/** Primarny Policz w stopce prep — ten sam box co dock / prep (h-9). */
 export const zdEstimatePrepPrimaryButtonClass = cn(
-  "inline-flex w-full items-center justify-center gap-1.5 px-3 text-xs font-medium leading-none sm:w-auto sm:min-w-[10.5rem]",
+  "inline-flex w-full items-center justify-center gap-1.5 px-3 text-sm font-medium leading-none sm:w-auto sm:min-w-[10.5rem]",
   zdEstimateRadiusControlClass,
   zdEstimateDockControlHeightClass,
-  "py-0"
+  "min-h-9 py-0"
 );
 
 /**

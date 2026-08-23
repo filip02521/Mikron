@@ -23,6 +23,7 @@ function line(partial: {
       otwarteZd: partial.otwarteZd ?? 0,
       doZamowienia: partial.celZapasu,
       sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
       sprzedazDziennie: 0,
     },
     { salesTrack: false }

@@ -164,7 +164,7 @@ export function ZdEstimateListBand({
   /** Gdy szukanie: widoczne / w filtrze. */
   searchVisibleCount?: number;
   searchTotalCount?: number;
-  /** Truncated / recount — pod belką, nie obok szukania. */
+  /** Truncated / trwały status — chip w rzędzie filtrów (bez osobnej linii pod belką). */
   statusNote?: string | null;
   columns: ZdEstimateColumnVisibility;
   columnOrder: readonly ZdEstimateOptionalColumn[];
@@ -262,13 +262,22 @@ export function ZdEstimateListBand({
               },
             ]}
           />
-          <span className="inline-flex shrink-0 items-center">
+          <span className="inline-flex shrink-0 items-center gap-1.5">
             <HelpHintBubble
               message={ZD_ESTIMATE_UNITS_LEGEND}
               tone="slate"
               size="sm"
               ariaLabel="Legenda jednostek listy"
             />
+            {statusNote ? (
+              <span
+                className={zdEstimateStatusNoteClass}
+                title={statusNote}
+                role="status"
+              >
+                {statusNote}
+              </span>
+            ) : null}
           </span>
         </div>
 
@@ -382,10 +391,6 @@ export function ZdEstimateListBand({
           </OverflowMenu>
         </div>
       </div>
-
-      {statusNote ? (
-        <p className={cn(zdEstimateStatusNoteClass, "mt-1.5")}>{statusNote}</p>
-      ) : null}
     </div>
   );
 }
