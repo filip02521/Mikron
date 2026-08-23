@@ -1,26 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useTransition } from "react";
-import {
-  actionSendMailJobNow,
-  actionSendMailJobTest,
-  actionSetMailJobEnabled,
-  type MailJobListEntry,
-} from "@/app/actions/admin-mail";
+import type { MailJobListEntry } from "@/app/actions/admin-mail";
 import { AdminHubShell } from "@/components/admin/AdminHubShell";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
-import { NoticeToast } from "@/components/ui/NoticeToast";
 import { PanelSummaryMetric } from "@/components/ui/PanelSummaryMetric";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
 import type { MailSendLog, MailSendStatus } from "@/types/database";
-import { toastFromUnknown, type ToastNotice } from "@/lib/ui/notice-copy";
-import { useState } from "react";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
+import type { AdminHubTab } from "@/lib/admin-hub";
+import {
+  raportyRunnerStatusLabel,
+  type RaportyRunnerStatusResult,
+} from "@/lib/services/mail/raporty-runner-status";
 
 function statusBadgeVariant(
   status: MailSendStatus | undefined
@@ -39,70 +34,114 @@ function statusBadgeVariant(
   }
 }
 
+function runnerSendBadge(runnerStatus: RaportyRunnerStatusResult): {
+  variant: "success" | "warning" | "danger" | "default";
+  label: string;
+} {
+  if (!runnerStatus.ok) {
+    return { variant: "warning", label: "SEND: nieznany" };
+  }
+  if (runnerStatus.sendEnabled) {
+    return {
+      variant: runnerStatus.overrideTo ? "warning" : "success",
+      label: runnerStatus.overrideTo ? "SEND: wł. (override)" : "SEND: wł.",
+    };
+  }
+  return { variant: "default", label: "SEND: wył." };
+}
+
 export function MailCenterClient({
   jobs,
   recentLogs,
+  runnerStatus,
+  visibleTabs,
 }: {
   jobs: MailJobListEntry[];
   recentLogs: MailSendLog[];
+  runnerStatus: RaportyRunnerStatusResult;
+  visibleTabs?: readonly AdminHubTab[];
 }) {
-  const [toast, setToast] = useState<ToastNotice | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  const activeJobs = jobs.filter((j) => j.job.enabled).length;
+  const jobsInDb = jobs.length;
   const sentRecent = recentLogs.filter((l) => l.status === "sent").length;
   const problemRecent = recentLogs.filter(
     (l) => l.status === "failed" || l.status === "blocked"
   ).length;
-
-  function toggleEnabled(jobId: string, enabled: boolean) {
-    startTransition(async () => {
-      try {
-        const res = await actionSetMailJobEnabled(jobId, enabled);
-        if ("error" in res && res.error) {
-          setToast({ tone: "error", message: res.error });
-        } else {
-          setToast({ tone: "success", message: enabled ? "Job włączony" : "Job wyłączony" });
-          window.location.reload();
-        }
-      } catch (e) {
-        setToast(toastFromUnknown(e, "Nie udało się zapisać"));
-      }
-    });
-  }
-
-  function runJobAction(
-    successMessage: string,
-    fn: () => Promise<{ error?: string; success?: boolean }>
-  ) {
-    startTransition(async () => {
-      try {
-        const res = await fn();
-        if (res.error) {
-          setToast({ tone: "error", message: res.error });
-        } else {
-          setToast({ tone: "success", message: successMessage });
-          window.location.reload();
-        }
-      } catch (e) {
-        setToast(toastFromUnknown(e, "Operacja nie powiodła się"));
-      }
-    });
-  }
+  const sendBadge = runnerSendBadge(runnerStatus);
+  const runnerUrl = runnerStatus.ok
+    ? runnerStatus.runnerUrl
+    : runnerStatus.runnerUrl;
+  const sendMetric = !runnerStatus.ok
+    ? "?"
+    : runnerStatus.sendEnabled
+      ? "wł."
+      : "wył.";
 
   return (
-    <AdminHubShell activeTab="mail">
+    <AdminHubShell activeTab="mail" visibleTabs={visibleTabs}>
+      <p className={cn(panelTypography.sectionDesc, "mb-3")}>
+        Centrum maili Ivoclar jest <strong>tylko do odczytu</strong>. Generowanie i wysyłkę
+        prowadzi OnTime Raporty — stąd nie ma przycisków Wyślij / Włącz / edycji odbiorców.
+        Status <strong>SEND</strong> pochodzi na żywo z runnera (
+        <code>IVOCLAR_SEND_ENABLED</code>
+        ).
+        {runnerUrl ? (
+          <>
+            {" "}
+            Runner:{" "}
+            <a
+              href={runnerUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-indigo-700 hover:underline"
+            >
+              {runnerUrl}
+            </a>
+          </>
+        ) : null}
+      </p>
+
+      <div
+        className={cn(
+          "mb-3 rounded-md border px-3 py-2 text-sm",
+          runnerStatus.ok && runnerStatus.sendEnabled && !runnerStatus.overrideTo
+            ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+            : runnerStatus.ok && runnerStatus.sendEnabled
+              ? "border-amber-200 bg-amber-50 text-amber-950"
+              : runnerStatus.ok
+                ? "border-slate-200 bg-slate-50 text-slate-700"
+                : "border-amber-200 bg-amber-50 text-amber-950"
+        )}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={sendBadge.variant}>{sendBadge.label}</Badge>
+          <span>{raportyRunnerStatusLabel(runnerStatus)}</span>
+        </div>
+        {runnerStatus.ok && runnerStatus.periodLabel ? (
+          <p className={cn(panelTypography.caption, "mt-1 text-slate-600")}>
+            Bieżący okres runnera: {runnerStatus.periodLabel}
+            {runnerStatus.productionSent ? " · produkcja już wysłana" : ""}
+          </p>
+        ) : null}
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-3">
-        <PanelSummaryMetric label="Aktywne joby" value={String(activeJobs)} />
+        <PanelSummaryMetric label="SEND na runnerze" value={sendMetric} />
         <PanelSummaryMetric label="Wysłane (ostatnie)" value={String(sentRecent)} />
         <PanelSummaryMetric label="Problemy (ostatnie)" value={String(problemRecent)} />
       </div>
+      <p className={cn(panelTypography.caption, "mt-1 text-slate-500")}>
+        Joby w bazie (metadane OT): {jobsInDb} — flaga DB <code>enabled</code> nie steruje już
+        wyświetlanym SEND.
+      </p>
 
       <Card padding={false} className="mt-4 overflow-hidden">
         <CardHeader inset density="compact" title="Joby mailowe" />
         <div className="divide-y divide-slate-100">
           {jobs.map(({ job, lastLog }) => (
-            <div key={job.id} className="flex flex-col gap-3 px-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+            <div
+              key={job.id}
+              className="flex flex-col gap-3 px-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-4"
+            >
               <div className="min-w-0 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <Link
@@ -111,53 +150,25 @@ export function MailCenterClient({
                   >
                     {job.label}
                   </Link>
-                  <Badge variant={job.enabled ? "success" : "default"}>
-                    {job.enabled ? "Wł." : "Wył."}
-                  </Badge>
+                  <Badge variant={sendBadge.variant}>{sendBadge.label}</Badge>
                   {lastLog ? (
                     <Badge variant={statusBadgeVariant(lastLog.status)}>{lastLog.status}</Badge>
                   ) : null}
                 </div>
                 <p className={cn(panelTypography.caption, "text-slate-600")}>{job.description}</p>
                 <p className={cn(panelTypography.caption, "text-slate-500")}>
-                  Harmonogram: {job.schedule_label || "—"}
+                  Harmonogram (Raporty): {job.schedule_label || "—"}
                   {lastLog?.finished_at
                     ? ` · Ostatnia: ${formatWarsawDateTime(lastLog.finished_at)}`
                     : ""}
                 </p>
               </div>
               <div className="flex shrink-0 flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={pending}
-                  onClick={() => toggleEnabled(job.id, !job.enabled)}
-                >
-                  {job.enabled ? "Wyłącz" : "Włącz"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={pending}
-                  onClick={() => runJobAction("Wysłano test", () => actionSendMailJobTest(job.id))}
-                >
-                  Wyślij test
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={pending}
-                  onClick={() => runJobAction("Wysłano", () => actionSendMailJobNow(job.id, false))}
-                >
-                  Wyślij teraz
-                </Button>
                 <Link
                   href={`/admin/mail/${job.id}`}
                   className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
                 >
-                  Szczegóły
+                  Logi / szczegóły
                 </Link>
               </div>
             </div>
@@ -216,8 +227,6 @@ export function MailCenterClient({
           </DataTable>
         </TableScroll>
       </Card>
-
-      {toast ? <NoticeToast notice={toast} onDismiss={() => setToast(null)} /> : null}
     </AdminHubShell>
   );
 }

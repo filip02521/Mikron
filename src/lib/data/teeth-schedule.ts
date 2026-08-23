@@ -43,6 +43,13 @@ function parseVacationNote(value: unknown): VacationNote | null {
   return null;
 }
 
+function parseDeliveryLeadDays(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.trunc(n);
+}
+
 function mapScheduleRow(row: Record<string, unknown>): TeethSupplierSchedule {
   return {
     id: String(row.id),
@@ -53,6 +60,7 @@ function mapScheduleRow(row: Record<string, unknown>): TeethSupplierSchedule {
     shift_date: row.shift_date != null ? String(row.shift_date) : null,
     computed_next_date: row.computed_next_date != null ? String(row.computed_next_date) : null,
     vacation_note: parseVacationNote(row.vacation_note),
+    delivery_lead_business_days: parseDeliveryLeadDays(row.delivery_lead_business_days),
     created_at: String(row.created_at ?? ""),
     updated_at: String(row.updated_at ?? ""),
   };
@@ -292,7 +300,8 @@ async function fetchSupplierLocation(supplierId: string): Promise<SupplierLocati
 export async function upsertTeethSchedule(
   supplierId: string,
   orderDayOfWeek: DayOfWeek,
-  intervalWeeks: number
+  intervalWeeks: number,
+  deliveryLeadBusinessDays?: number | null
 ): Promise<void> {
   if (!hasSupabaseConfig()) return;
 
@@ -301,7 +310,7 @@ export async function upsertTeethSchedule(
   // Sprawdź czy już istnieje
   const { data: existing } = await supabase
     .from("teeth_supplier_schedules")
-    .select("id, last_order_date, shift_date")
+    .select("id, last_order_date, shift_date, delivery_lead_business_days")
     .eq("supplier_id", supplierId)
     .maybeSingle();
 
@@ -321,6 +330,11 @@ export async function upsertTeethSchedule(
     shift_date: existing?.shift_date ?? null,
   }, vacations, location);
 
+  const leadDays =
+    deliveryLeadBusinessDays !== undefined
+      ? parseDeliveryLeadDays(deliveryLeadBusinessDays)
+      : parseDeliveryLeadDays(existing?.delivery_lead_business_days);
+
   const { error } = await supabase
     .from("teeth_supplier_schedules")
     .upsert(
@@ -330,11 +344,58 @@ export async function upsertTeethSchedule(
         interval_weeks: intervalWeeks,
         computed_next_date: nextDate ? formatDateString(nextDate) : null,
         vacation_note: vacationNote,
+        delivery_lead_business_days: leadDays,
         updated_at: now,
       },
       { onConflict: "supplier_id" }
     );
 
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Zapisz samo stałe ETA (dni robocze). Tworzy wiersz harmonogramu z domyślnym cyklem 1/1,
+ * gdy dostawca nie ma jeszcze rekordu w teeth_supplier_schedules.
+ */
+export async function updateTeethDeliveryLeadDays(
+  supplierId: string,
+  deliveryLeadBusinessDays: number | null
+): Promise<void> {
+  if (!hasSupabaseConfig()) return;
+
+  const supabase = createAdminClient();
+  const leadDays = parseDeliveryLeadDays(deliveryLeadBusinessDays);
+  const now = new Date().toISOString();
+
+  const { data: existing } = await supabase
+    .from("teeth_supplier_schedules")
+    .select("id, order_day_of_week, interval_weeks, last_order_date, shift_date")
+    .eq("supplier_id", supplierId)
+    .maybeSingle();
+
+  if (existing) {
+    const { error } = await supabase
+      .from("teeth_supplier_schedules")
+      .update({
+        delivery_lead_business_days: leadDays,
+        updated_at: now,
+      })
+      .eq("supplier_id", supplierId);
+    if (error) throw new Error(error.message);
+    return;
+  }
+
+  const { error } = await supabase.from("teeth_supplier_schedules").insert({
+    supplier_id: supplierId,
+    order_day_of_week: 1,
+    interval_weeks: 1,
+    computed_next_date: null,
+    last_order_date: null,
+    shift_date: null,
+    vacation_note: null,
+    delivery_lead_business_days: leadDays,
+    updated_at: now,
+  });
   if (error) throw new Error(error.message);
 }
 
@@ -384,15 +445,37 @@ export async function recalcTeethSchedule(supplierId: string): Promise<void> {
   if (updateErr) throw new Error(updateErr.message);
 }
 
-/** Oznacz że zamówiono u dostawcy zębów — ustaw last_order_date, wyczyść shift_date, przelicz. */
+/** Czy mark-ordered ma przesunąć cykl (nie dotyczy wierszy „tylko ETA” / cykl wyłączony). */
+export function shouldAdvanceTeethCycleOnMarkOrdered(
+  computedNextDate: string | null | undefined
+): boolean {
+  return Boolean(computedNextDate?.trim());
+}
+
+/** Oznacz że zamówiono u dostawcy zębów — ustaw last_order_date, wyczyść shift_date, przelicz.
+ *  Gdy cykl jest wyłączony (`computed_next_date` null — np. tylko stałe ETA), nie włączaj cyklu.
+ *  @returns true gdy cykl został przesunięty.
+ */
 export async function markTeethScheduleOrdered(
   supplierId: string,
   orderDate: Date
-): Promise<void> {
-  if (!hasSupabaseConfig()) return;
+): Promise<boolean> {
+  if (!hasSupabaseConfig()) return false;
 
   const supabase = createAdminClient();
   const orderDateKey = formatDateString(orderDate);
+
+  const { data: existing, error: fetchErr } = await supabase
+    .from("teeth_supplier_schedules")
+    .select("id, computed_next_date")
+    .eq("supplier_id", supplierId)
+    .maybeSingle();
+
+  if (fetchErr) throw new Error(fetchErr.message);
+  if (!existing) return false;
+  if (!shouldAdvanceTeethCycleOnMarkOrdered(existing.computed_next_date as string | null)) {
+    return false;
+  }
 
   const { error } = await supabase
     .from("teeth_supplier_schedules")
@@ -407,6 +490,7 @@ export async function markTeethScheduleOrdered(
   if (error) throw new Error(error.message);
 
   await recalcTeethSchedule(supplierId);
+  return true;
 }
 
 /** Jednorazowe przesunięcie harmonogramu zębów. */

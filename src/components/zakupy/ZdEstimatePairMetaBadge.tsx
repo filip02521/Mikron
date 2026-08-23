@@ -10,9 +10,26 @@ import {
   formatPairSalesChannelsBreakdown,
   normalizeUnitsPerPack,
 } from "@/lib/orders/zd-product-pair-units";
+import {
+  formatWzSalesSubline,
+  formatWzSalesTitle,
+} from "@/lib/orders/zd-estimate-wz-sales-ui";
 import { cn } from "@/lib/cn";
 import type { ZdEstimateQtyTier } from "@/components/zakupy/ZdEstimateQtyValue";
 import { ZdEstimateStatusBadge } from "@/components/zakupy/ZdEstimateStatusBadge";
+
+/** Dopisek „w tym WZ N” — `null` gdy brak (używaj jako `subline={render…(wz)}`). */
+export function renderZdEstimateWzSalesSubline(
+  wzNiepowiazane: unknown
+): ReactNode {
+  const wzSub = formatWzSalesSubline(wzNiepowiazane, formatQty);
+  if (!wzSub) return null;
+  return (
+    <span className="zd-est-metric-subline zd-est-metric-subline--wz text-[10px] font-medium leading-tight text-sky-700/90">
+      {wzSub}
+    </span>
+  );
+}
 
 /**
  * Metryka w sztukach (Sprzed. / Cel / …).
@@ -51,13 +68,15 @@ export function ZdEstimatePiecesMetricCell({
       className="zd-estimate-metric-stack inline-flex w-full min-w-0 max-w-full flex-col items-center gap-0.5 text-center"
       title={fullTitle}
     >
-      <span className="max-w-full truncate leading-none">
+      <span className="inline-flex max-w-full items-baseline justify-center gap-0.5 leading-none">
         {showDash ? (
           <span className={cn(qtyClass, "zd-est-qty--dash")}>—</span>
         ) : (
           <>
-            <span className={qtyClass}>{formatZdEstimateTableQty(raw)}</span>
-            <span className="zd-est-unit ml-0.5">szt</span>
+            <span className={cn("min-w-0 truncate", qtyClass)}>
+              {formatZdEstimateTableQty(raw)}
+            </span>
+            <span className="zd-est-unit shrink-0">szt</span>
           </>
         )}
       </span>
@@ -145,11 +164,25 @@ export function ZdEstimatePairPiecesCell({
   pieces,
   unitsPerPack,
   subline,
+  role = "pack",
 }: {
   pieces: number;
   unitsPerPack: number;
   subline?: ReactNode;
+  /** Piece: cel pary tylko na paczce — dash + tooltip. */
+  role?: "pack" | "piece";
 }) {
+  if (role === "piece") {
+    return (
+      <ZdEstimatePiecesMetricCell
+        pieces={0}
+        unitsPerPack={unitsPerPack}
+        tier="b"
+        zeroAsDash
+        title="Cel zapasu pary jest na wierszu paczki (tu nie zamawiasz sztuk luzem)."
+      />
+    );
+  }
   return (
     <ZdEstimatePiecesMetricCell
       pieces={pieces}
@@ -162,6 +195,7 @@ export function ZdEstimatePairPiecesCell({
 
 /**
  * Kolumna Sprzedaż dla pary: sztuki; kanały i ≈ op. tylko w tooltip.
+ * Paczka: łącznie (Do ZD). Piece: dash — bez 2× w sumie kolumny.
  */
 export function ZdEstimatePairSalesCell({
   pair,
@@ -183,15 +217,37 @@ export function ZdEstimatePairSalesCell({
     formatQty
   );
 
+  if (pair.role === "piece") {
+    return (
+      <ZdEstimatePiecesMetricCell
+        pieces={0}
+        unitsPerPack={pair.unitsPerPack}
+        tier="c"
+        zeroAsDash
+        title={[
+          `Sprzedaż pary łącznie ${formatQty(pair.sprzedazSzt)} szt jest na wierszu paczki (Do ZD).`,
+          `Tu luzem (info): ${formatQty(pair.pieceSprzedaz)} szt — nie doliczane drugi raz.`,
+          channels.title,
+        ].join(" ")}
+      />
+    );
+  }
+
+  const title = formatWzSalesTitle({
+    sprzedazOkres: pair.sprzedazSzt,
+    wzNiepowiazaneOkres: pair.wzNiepowiazaneSzt,
+    formatQty,
+    extraParts: [channels.title, packHint.packsApproxLabel],
+  });
+
   return (
     <ZdEstimatePiecesMetricCell
       pieces={pair.sprzedazSzt}
       unitsPerPack={pair.unitsPerPack}
       tier="c"
-      title={[channels.title, packHint.packsApproxLabel]
-        .filter(Boolean)
-        .join(" · ")}
+      title={title}
       zeroAsDash
+      subline={renderZdEstimateWzSalesSubline(pair.wzNiepowiazaneSzt)}
     />
   );
 }
@@ -230,7 +286,7 @@ export function ZdEstimatePairPackStockCell({
           >
             {formatZdEstimateTableQty(value)}
           </span>
-          <span className="zd-est-unit">op.</span>
+          <span className="zd-est-unit shrink-0">op.</span>
         </>
       )}
     </span>

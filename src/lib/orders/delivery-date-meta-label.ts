@@ -136,7 +136,7 @@ export function buildHistoryEstimateDateMetaDisplay(
   };
 }
 
-const AVG_DAYS = /\(~(\d+)\s*dni\s*rob\.\)/i;
+const AVG_DAYS = /(?:\(|·\s*)~?(\d+)\s*dni\s*rob\.\)?/i;
 
 /** Wyciąga datę i metadane szacunku z timingLabel presentera. */
 export function parseDeliveryEstimateFromTimingLabel(timingLabel: string): {
@@ -164,6 +164,7 @@ function isHistoryTimingLabel(raw: string): boolean {
   return (
     !/^E-mail\s/i.test(raw) &&
     !/^Zamówione\s/i.test(raw) &&
+    !/^Planowana dostawa/i.test(raw) &&
     !ZD_TIMING_LABEL.test(raw)
   );
 }

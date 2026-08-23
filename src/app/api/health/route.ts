@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 
   checks.email_configured = isEmailConfigured();
   if (isProductionRuntime() && !checks.email_configured) {
-    issues.push("Brak RESEND_API_KEY w produkcji");
+    issues.push("Brak konfiguracji SMTP (SMTP_HOST/USER/PASS + EMAIL_FROM lub EMAIL_DOMAIN) w produkcji");
   }
 
   checks.cron_secret = Boolean(getCronSecret());

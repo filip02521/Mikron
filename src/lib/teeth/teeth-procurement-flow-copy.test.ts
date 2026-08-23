@@ -62,6 +62,9 @@ describe("teeth-procurement-flow-copy", () => {
     expect(
       teethSalesOrderedStatusDetail("2026-07-01", "2026-07-15")
     ).toContain("15.07.2026");
+    expect(
+      teethSalesOrderedStatusDetail("2026-07-01", "2026-07-15", 4)
+    ).toContain("~4 dni rob.");
   });
 
   it("procurementSubmitSuccessMessage dla informacji", () => {

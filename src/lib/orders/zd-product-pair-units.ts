@@ -190,6 +190,22 @@ export function pairSalesPieces(input: {
 }
 
 /**
+ * WZ niepowiązane pary w sztukach — ta sama formuła co `pairSalesPieces`
+ * (piece + pack × unitsPerPack).
+ */
+export function pairWzSalesPieces(input: {
+  pieceWzNiepowiazaneOkres: number;
+  packWzNiepowiazaneOkres: number;
+  unitsPerPack: number;
+}): number {
+  return pairSalesPieces({
+    pieceSprzedazOkres: input.pieceWzNiepowiazaneOkres,
+    packSprzedazOkres: input.packWzNiepowiazaneOkres,
+    unitsPerPack: input.unitsPerPack,
+  });
+}
+
+/**
  * tw_Id + twin pary (do wyszukiwania ZD).
  */
 export function twinTwIdsForPairMatch(

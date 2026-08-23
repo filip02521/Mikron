@@ -62,6 +62,19 @@ describe("parseDeliveryEstimateFromTimingLabel", () => {
       overdue: true,
     });
   });
+
+  it("parsuje ~N dni rob. w formacie zębów (bez nawiasów)", () => {
+    const parsed = parseDeliveryEstimateFromTimingLabel(
+      "Planowana dostawa: 18.03.2026 · ~4 dni rob."
+    );
+    expect(parsed.avgBusinessDays).toBe(4);
+    expect(parsed.expectedDate).toEqual(parseDateOnly("2026-03-18"));
+  });
+
+  it("parsuje klasyczny format (~N dni rob.)", () => {
+    const parsed = parseDeliveryEstimateFromTimingLabel("ok. 10.05.2026 (~5 dni rob.)");
+    expect(parsed.avgBusinessDays).toBe(5);
+  });
 });
 
 describe("buildHistoryEstimateDateMetaDisplay", () => {
@@ -123,6 +136,20 @@ describe("resolveLineHistoryEstimateFromTimingLabel", () => {
       resolveLineHistoryEstimateFromTimingLabel("ok. 22.06.2026 (~5 dni rob.)", {
         zdFulfillment: { deadline: "2026-06-24" },
         zdEtaNoMatch: true,
+      })
+    ).toBeNull();
+  });
+
+  it("nie traktuje Planowana dostawa (zęby) jako szacunek z historii", () => {
+    expect(
+      resolveLineHistoryEstimateFromTimingLabel(
+        "Planowana dostawa: 18.03.2026 · ~4 dni rob.",
+        { zdEtaPending: true }
+      )
+    ).toBeNull();
+    expect(
+      resolveMyOrderHistoryDeliveryEstimate({
+        timingLabel: "Planowana dostawa: 18.03.2026 · ~4 dni rob.",
       })
     ).toBeNull();
   });

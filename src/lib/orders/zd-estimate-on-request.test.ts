@@ -121,6 +121,8 @@ describe("hard exclude vs on-request reclassify", () => {
       symbol: "SYM",
       mikranCode: null,
       requestNote: null,
+      salesClientKhId: null,
+      sourceZkNumber: null,
     };
   }
 
@@ -167,6 +169,7 @@ describe("on-request summarize KPI (extra_only)", () => {
       tw_Symbol: "X",
       tw_Nazwa: "X",
       sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
       stan: 0,
       naZamowieniach: 0,
       celZapasu: 1000,

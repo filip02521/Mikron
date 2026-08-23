@@ -32,6 +32,7 @@ import {
   fetchTeethSchedules,
   fetchTeethScheduleForSupplier,
   upsertTeethSchedule,
+  updateTeethDeliveryLeadDays,
   removeTeethSchedule,
   shiftTeethSchedule,
   markTeethScheduleOrdered,
@@ -156,12 +157,33 @@ export async function actionFetchAvailableSuppliersForTeethSchedule(): Promise<
 export async function actionUpsertTeethSchedule(
   supplierId: string,
   orderDayOfWeek: DayOfWeek,
-  intervalWeeks: number
+  intervalWeeks: number,
+  deliveryLeadBusinessDays?: number | null
 ): Promise<{ success: boolean }> {
   await requireTeethPanel("mutate");
   const id = supplierId?.trim();
   if (!id) throw new Error("Brak identyfikatora dostawcy");
-  await upsertTeethSchedule(id, orderDayOfWeek, intervalWeeks);
+  await upsertTeethSchedule(id, orderDayOfWeek, intervalWeeks, deliveryLeadBusinessDays);
+  revalidateTeethSupplierPaths();
+  return { success: true };
+}
+
+export async function actionUpdateTeethDeliveryLeadDays(
+  supplierId: string,
+  deliveryLeadBusinessDays: number | null
+): Promise<{ success: boolean }> {
+  await requireTeethPanel("mutate");
+  const id = supplierId?.trim();
+  if (!id) throw new Error("Brak identyfikatora dostawcy");
+  let days: number | null = null;
+  if (deliveryLeadBusinessDays != null) {
+    const n = Math.trunc(Number(deliveryLeadBusinessDays));
+    if (!Number.isFinite(n) || n < 0 || n > 60) {
+      throw new Error("Stałe ETA musi być liczbą od 0 do 60 dni roboczych (puste = z historii).");
+    }
+    days = n === 0 ? null : n;
+  }
+  await updateTeethDeliveryLeadDays(id, days);
   revalidateTeethSupplierPaths();
   return { success: true };
 }
@@ -177,6 +199,12 @@ export async function actionAddSupplierToTeethLane(
   if (!hasSupabaseConfig()) return { success: true };
 
   const supabase = createAdminClient();
+  const { data: existing } = await supabase
+    .from("teeth_supplier_schedules")
+    .select("delivery_lead_business_days")
+    .eq("supplier_id", id)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("teeth_supplier_schedules")
     .upsert(
@@ -188,6 +216,8 @@ export async function actionAddSupplierToTeethLane(
         last_order_date: null,
         shift_date: null,
         vacation_note: null,
+        delivery_lead_business_days:
+          existing?.delivery_lead_business_days ?? null,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "supplier_id" }
@@ -839,15 +869,18 @@ export async function actionGetTeethOrderFileUrl(
   let path = order.teeth_order_file_path?.trim() || null;
   let fileName = order.teeth_order_file_name?.trim() || null;
   if (!path) {
-    const { fetchPendingTeethFileGroupSiblings } = await import(
+    const { fetchTeethOrderFileMetaBySupplierGroups } = await import(
       "@/lib/data/teeth-order-file-group"
     );
-    const siblings = await fetchPendingTeethFileGroupSiblings(supabase, [
+    const { teethOrderFileGroupKey } = await import("@/lib/teeth/teeth-mark-ordered");
+    const groupFiles = await fetchTeethOrderFileMetaBySupplierGroups(supabase, [
       order.supplier_id ?? null,
     ]);
-    const withFile = siblings.find((row) => row.teeth_order_file_path?.trim());
-    path = withFile?.teeth_order_file_path?.trim() || null;
-    fileName = withFile?.teeth_order_file_name?.trim() || fileName;
+    const meta = groupFiles.get(
+      teethOrderFileGroupKey({ supplier_id: order.supplier_id ?? null })
+    );
+    path = meta?.path ?? null;
+    fileName = meta?.name ?? fileName;
   }
   if (!path) {
     return { url: null, fileName: null };
@@ -894,11 +927,13 @@ export async function actionGetTeethOrderFileUrlForSales(
 
   const { data: order, error } = await supabase
     .from("individual_orders")
-    .select("teeth_order_file_path, teeth_order_file_name, is_teeth, sales_person_id")
+    .select(
+      "teeth_order_file_path, teeth_order_file_name, is_teeth, sales_person_id, supplier_id"
+    )
     .eq("id", orderId)
     .single();
 
-  if (error || !order?.is_teeth || !order?.teeth_order_file_path) {
+  if (error || !order?.is_teeth) {
     return { url: null, fileName: null, error: "Plik zamówienia niedostępny." };
   }
 
@@ -919,18 +954,45 @@ export async function actionGetTeethOrderFileUrlForSales(
     return { url: null, fileName: null, error: "Brak uprawnień do tego pliku." };
   }
 
+  const { TEETH_GROUP_ORDER_FILE_FALLBACK_NAME } = await import(
+    "@/lib/teeth/teeth-mark-ordered"
+  );
+  let path = order.teeth_order_file_path?.trim() || null;
+  let fileName = order.teeth_order_file_name?.trim() || null;
+
+  if (!path) {
+    const { fetchTeethOrderFileMetaBySupplierGroups } = await import(
+      "@/lib/data/teeth-order-file-group"
+    );
+    const groupFiles = await fetchTeethOrderFileMetaBySupplierGroups(supabase, [
+      order.supplier_id ?? null,
+    ]);
+    const { teethOrderFileGroupKey } = await import("@/lib/teeth/teeth-mark-ordered");
+    const meta = groupFiles.get(
+      teethOrderFileGroupKey({ supplier_id: order.supplier_id ?? null })
+    );
+    path = meta?.path ?? null;
+    fileName = meta?.name ?? fileName;
+  }
+
+  if (!path) {
+    return { url: null, fileName: null, error: "Plik zamówienia niedostępny." };
+  }
+
+  const displayName = fileName || TEETH_GROUP_ORDER_FILE_FALLBACK_NAME;
+
   const { data, error: urlError } = await supabase.storage
     .from("teeth-order-files")
-    .createSignedUrl(order.teeth_order_file_path, 3600);
+    .createSignedUrl(path, 3600);
 
   if (urlError) {
     console.error("[actionGetTeethOrderFileUrlForSales] Error:", urlError.message);
     return {
       url: null,
-      fileName: order.teeth_order_file_name ?? null,
+      fileName: displayName,
       error: "Nie udało się przygotować pobierania.",
     };
   }
 
-  return { url: data?.signedUrl ?? null, fileName: order.teeth_order_file_name ?? null };
+  return { url: data?.signedUrl ?? null, fileName: displayName };
 }

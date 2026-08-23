@@ -7,8 +7,10 @@ import { computeManualOrderQty } from "@/lib/orders/zd-estimate-manual";
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import {
   computeZdPackOrderQty,
+  formatZdPackUnitsPerLabelHint,
   getZdPackRoundupInfo,
   isPackagingPackagesMode,
+  lineAllowsZdDocumentUnitOverride,
   packagingDocumentMode,
   piecesArrivingForZdUnits,
   resolveOrderQtyForLine,
@@ -163,8 +165,10 @@ export function buildZdCreatePreviewFromOrderable(
   individualExtraByTwId?: ReadonlyMap<number, number> | null,
   /** Nadpisanie jednostek ZD (dokument) per tw_Id — przed Create. */
   qtyOverrideByTwId?: ReadonlyMap<number, number> | null,
-    extraOnlyTwIds?: ReadonlySet<number> | null,
-  extrasPolicy?: import("@/lib/orders/zd-estimate-extras-policy").ZdEstimateExtrasPolicy
+  extraOnlyTwIds?: ReadonlySet<number> | null,
+  extrasPolicy?: import("@/lib/orders/zd-estimate-extras-policy").ZdEstimateExtrasPolicy,
+  stockNeedReliefByTwId?: ReadonlyMap<number, number> | null,
+  extraOverlapByTwId?: ReadonlyMap<number, number> | null
 ): ZdCreatePreview {
   const previewLines: ZdCreatePreviewLine[] = [];
   let zdUnitsSuma = 0;
@@ -176,28 +180,43 @@ export function buildZdCreatePreviewFromOrderable(
       extra != null && Number.isFinite(extra) && extra > 0
         ? Math.ceil(extra)
         : 0;
+    const reliefRaw = stockNeedReliefByTwId?.get(line.tw_Id);
+    const relief =
+      reliefRaw != null && Number.isFinite(reliefRaw) && reliefRaw > 0
+        ? Math.ceil(reliefRaw)
+        : 0;
+    const overlapRaw = extraOverlapByTwId?.get(line.tw_Id);
+    const overlap =
+      overlapRaw != null && Number.isFinite(overlapRaw) && overlapRaw > 0
+        ? Math.ceil(overlapRaw)
+        : 0;
     const extraOnly = extraOnlyTwIds?.has(line.tw_Id) === true;
     const qty = resolveOrderQtyForLine(
       line,
       packagingById.get(line.tw_Id),
       extraPieces,
       extraOnly,
-      extrasPolicy
+      extrasPolicy,
+      relief,
+      overlap
     );
     const override = qtyOverrideByTwId?.get(line.tw_Id);
     const usedOverride =
-      override != null && Number.isFinite(override) && override >= 0;
-    const zdUnits = usedOverride ? Math.trunc(override) : qty.zdUnits;
-    if (zdUnits <= 0) continue;
+      lineAllowsZdDocumentUnitOverride(line) &&
+      override != null &&
+      Number.isFinite(override) &&
+      override >= 0;
+    const finalZd = usedOverride ? Math.trunc(override!) : qty.zdUnits;
+    if (finalZd <= 0) continue;
     const piecesArriving = usedOverride
       ? piecesArrivingForZdUnits(
-          zdUnits,
+          finalZd,
           qty.unitsPerPackage,
           qty.documentUnitMode
         )
       : qty.piecesArriving;
     const roundup = usedOverride ? null : getZdPackRoundupInfo(qty);
-    zdUnitsSuma += zdUnits;
+    zdUnitsSuma += finalZd;
     piecesArrivingSuma += piecesArriving;
     if (extraPieces > 0) extraRequestLineCount += 1;
     previewLines.push({
@@ -205,10 +224,13 @@ export function buildZdCreatePreviewFromOrderable(
       symbol: line.tw_Symbol,
       nazwa: line.tw_Nazwa,
       plu: line.tw_PLU ?? null,
-      ilosc: zdUnits,
+      ilosc: finalZd,
       packagingHint: qty.hasPackaging
         ? isPackagingPackagesMode(qty.documentUnitMode)
-          ? `${qty.unitsPerPackage} szt / 1 ${qty.packageLabel}`
+          ? formatZdPackUnitsPerLabelHint(
+              qty.unitsPerPackage,
+              qty.packageLabel
+            )
           : `dobij do ${qty.unitsPerPackage} szt`
         : null,
       individualExtraPieces: extraPieces > 0 ? extraPieces : undefined,
@@ -457,6 +479,8 @@ export type CanCreateZdState = {
   pendingIndividualsTruncated?: boolean;
   /** Trwa fetch próśb — Create nie może iść na stale/pustej liście. */
   pendingIndividualsLoading?: boolean;
+  /** Fetch overlap prośba↔ZK w toku — Create na fail-open mógłby zawyżyć qty. */
+  prosbaOverlapPending?: boolean;
 };
 
 export function canCreateZdFromEstimateState(
@@ -490,6 +514,12 @@ export function canCreateZdFromEstimateState(
     return {
       ok: false,
       reason: ZD_ESTIMATE_UI.createGatePendingIndividualsLoading,
+    };
+  }
+  if (state.prosbaOverlapPending) {
+    return {
+      ok: false,
+      reason: ZD_ESTIMATE_UI.createGateProsbaOverlapPending,
     };
   }
   if (state.historyFetchFailed) {

@@ -7,6 +7,9 @@ const TRANSPORT_MESSAGE_PATTERNS = [
   /networkrequestfailed/i,
   /aborted/i,
   /econnreset/i,
+  // Produkcja Next czasem zamiast błędu transportu pokazuje zdigestowany RSC message.
+  /an error occurred in the server components render/i,
+  /specific message is omitted in production builds/i,
 ];
 
 export function isServerActionTransportError(error: unknown): boolean {

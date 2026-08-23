@@ -210,4 +210,32 @@ describe("buildCronMonitorSnapshot", () => {
     expect(scheduled?.stale).toBe(true);
     expect(scheduled?.tone).toBe("warning");
   });
+
+  it("scheduled mails: skip moved_to_ontime_raporty przed 10:00 nie alarmuje jak OT cron", () => {
+    const scheduledDef = CRON_JOB_DEFINITIONS.find((j) => j.id === "scheduled_mails")!;
+    const now = new Date("2026-08-17T06:30:00.000Z"); // 08:30 Warszawa
+    const run: CronRunPayload = {
+      ok: true,
+      at: "2026-08-17T06:00:00.000Z",
+      detail: { skipped: true, reason: "moved_to_ontime_raporty" },
+    };
+    const row = evaluateCronJob(scheduledDef, run, now);
+    expect(row.stale).toBe(false);
+    expect(row.statusLabel).toBe("OT no-op OK — status z runnera");
+    expect(row.tone).toBe("neutral");
+  });
+
+  it("scheduled mails: skip moved_to_ontime_raporty po 10:00 bez sent → Brak wysyłki w mail_send_log", () => {
+    const scheduledDef = CRON_JOB_DEFINITIONS.find((j) => j.id === "scheduled_mails")!;
+    const now = new Date("2026-08-17T08:30:00.000Z"); // 10:30 Warszawa
+    const run: CronRunPayload = {
+      ok: true,
+      at: "2026-08-17T06:00:00.000Z",
+      detail: { skipped: true, reason: "moved_to_ontime_raporty" },
+    };
+    const row = evaluateCronJob(scheduledDef, run, now);
+    expect(row.stale).toBe(true);
+    expect(row.statusLabel).toBe("Brak wysyłki w mail_send_log (runner)");
+    expect(row.tone).toBe("warning");
+  });
 });

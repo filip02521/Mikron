@@ -33,6 +33,8 @@ function PackagingDialogForm({
   individualExtraPieces = 0,
   extraOnly = false,
   extrasPolicy = "sum",
+  stockNeedReliefPieces = 0,
+  extraOverlapPieces = 0,
   onCancel,
   onSave,
   onClear,
@@ -44,6 +46,8 @@ function PackagingDialogForm({
   /** „Tylko na prośbę” z aktywną prośbą — podgląd qty bez celu zapasu. */
   extraOnly?: boolean;
   extrasPolicy?: ZdEstimateExtrasPolicy;
+  stockNeedReliefPieces?: number;
+  extraOverlapPieces?: number;
   onCancel: () => void;
   onSave: (input: {
     unitsPerPackage: number;
@@ -88,7 +92,9 @@ function PackagingDialogForm({
         },
         individualExtraPieces,
         extraOnly,
-        extrasPolicy
+        extrasPolicy,
+        stockNeedReliefPieces,
+        extraOverlapPieces
       )
     : null;
   const roundup = preview ? formatZdPackRoundupLine(preview) : null;
@@ -366,6 +372,8 @@ export function ZdEstimatePackagingDialog({
   individualExtraPieces = 0,
   extraOnly = false,
   extrasPolicy = "sum",
+  stockNeedReliefPieces = 0,
+  extraOverlapPieces = 0,
   onCancel,
   onSave,
   onClear,
@@ -377,6 +385,8 @@ export function ZdEstimatePackagingDialog({
   individualExtraPieces?: number;
   extraOnly?: boolean;
   extrasPolicy?: ZdEstimateExtrasPolicy;
+  stockNeedReliefPieces?: number;
+  extraOverlapPieces?: number;
   onCancel: () => void;
   onSave: (input: {
     unitsPerPackage: number;
@@ -389,13 +399,15 @@ export function ZdEstimatePackagingDialog({
   if (!open || !line) return null;
   return (
     <PackagingDialogForm
-      key={`${line.tw_Id}-${existing?.unitsPerPackage ?? 0}-${existing?.documentUnitMode ?? "packages"}-${existing?.updatedAt ?? ""}-${extraOnly ? "eo" : "st"}-${extrasPolicy}`}
+      key={`${line.tw_Id}-${existing?.unitsPerPackage ?? 0}-${existing?.documentUnitMode ?? "packages"}-${existing?.updatedAt ?? ""}-${extraOnly ? "eo" : "st"}-${extrasPolicy}-${stockNeedReliefPieces}-${extraOverlapPieces}`}
       line={line}
       existing={existing}
       pending={pending}
       individualExtraPieces={individualExtraPieces}
       extraOnly={extraOnly}
       extrasPolicy={extrasPolicy}
+      stockNeedReliefPieces={stockNeedReliefPieces}
+      extraOverlapPieces={extraOverlapPieces}
       onCancel={onCancel}
       onSave={onSave}
       onClear={onClear}

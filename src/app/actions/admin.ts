@@ -1847,7 +1847,7 @@ export async function actionGetSystemStatus() {
   const { isEmailConfigured } = await import("@/lib/env/email-config");
   if (!isEmailConfigured()) {
     issues.push(
-      "Brak RESEND_API_KEY — e-maile wyłączone (ustaw w .env.local i zrestartuj dev)"
+      "Brak konfiguracji SMTP — e-maile wyłączone (ustaw SMTP_HOST/USER/PASS oraz EMAIL_FROM lub EMAIL_DOMAIN i zrestartuj)"
     );
   }
 

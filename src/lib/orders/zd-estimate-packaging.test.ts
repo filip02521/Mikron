@@ -8,10 +8,13 @@ import {
   computeZdPackOrderQty,
   effectiveZdDocumentUnits,
   filterOrderableLinesWithPackaging,
+  formatZdPackCompactLabel,
   formatZdPackDocumentLabel,
   formatZdPackHint,
   formatZdPackOrderPreviewLine,
   formatZdPackRoundupLine,
+  formatZdPackTableRatioLabel,
+  formatZdPackUnitsPerLabelHint,
   getZdPackRoundupInfo,
   lineAllowsZdDocumentUnitOverride,
   piecesArrivingForZdUnits,
@@ -20,6 +23,47 @@ import {
   resolveOrderQtyForLine,
   summarizePackOrderQty,
 } from "./zd-estimate-packaging";
+
+describe("formatZdPackCompactLabel", () => {
+  it("skraca preset zbiorcze / karton / paczka", () => {
+    expect(formatZdPackCompactLabel("zbiorcze")).toBe("zb.");
+    expect(formatZdPackCompactLabel("Zbiorcze")).toBe("zb.");
+    expect(formatZdPackCompactLabel("karton")).toBe("kart.");
+    expect(formatZdPackCompactLabel("paczka")).toBe("pac.");
+    expect(formatZdPackCompactLabel("op.")).toBe("op.");
+    expect(formatZdPackCompactLabel("op")).toBe("op.");
+  });
+
+  it("krótkie własne etykiety zostawia bez ucinania", () => {
+    expect(formatZdPackCompactLabel("szt")).toBe("szt");
+    expect(formatZdPackCompactLabel("BOX")).toBe("BOX");
+  });
+
+  it("długie własne etykiety skraca z kropką (bez mid-word ellipsis)", () => {
+    expect(formatZdPackCompactLabel("eurokarton")).toBe("euro.");
+    expect(formatZdPackCompactLabel("...")).toBe("...");
+    expect(formatZdPackCompactLabel("......")).toBe("op.");
+  });
+
+  it("pusta → op.", () => {
+    expect(formatZdPackCompactLabel("")).toBe("op.");
+    expect(formatZdPackCompactLabel("   ")).toBe("op.");
+  });
+});
+
+describe("formatZdPackTableRatioLabel / UnitsPerLabelHint", () => {
+  it("ratio używa skrótu", () => {
+    expect(formatZdPackTableRatioLabel("zbiorcze")).toBe("szt/zb.");
+    expect(formatZdPackTableRatioLabel("karton")).toBe("szt/kart.");
+  });
+
+  it("hint menu/podgląd zostawia pełną etykietę", () => {
+    expect(formatZdPackUnitsPerLabelHint(10, "zbiorcze")).toBe(
+      "10 szt / 1 zbiorcze"
+    );
+    expect(formatZdPackUnitsPerLabelHint(2.9, "  ")).toBe("2 szt / 1 op.");
+  });
+});
 
 describe("computeZdPackOrderQty", () => {
   it("Falcon: 8 szt przy op. 10 → 1 na ZD, przyjdzie 10", () => {
@@ -183,7 +227,8 @@ describe("resolveOrderQtyForLine + para", () => {
         tw_StanRez: 0,
         dostepne: 0,
         sprzedazOkres: 0,
-        sprzedazDziennie: 0,
+   wzNiepowiazaneOkres: 0,
+      sprzedazDziennie: 0,
         celZapasu: 500,
         celZapasuTracked: 500,
         salesTrackDelta: 0,
@@ -203,9 +248,12 @@ describe("resolveOrderQtyForLine + para", () => {
           twinTwId: 20,
           unitsPerPack: 100,
           sprzedazSzt: 50,
+          wzNiepowiazaneSzt: 0,
           coverSzt: 0,
           pieceSprzedaz: 50,
           packSprzedaz: 0,
+          pieceWzNiepowiazane: 0,
+          packWzNiepowiazane: 0,
           pieceDostepne: 0,
           packDostepne: 0,
         },
@@ -229,6 +277,7 @@ describe("resolveOrderQtyForLine + para", () => {
       tw_StanRez: 0,
       dostepne: 0,
       sprzedazOkres: 50,
+      wzNiepowiazaneOkres: 0,
       sprzedazDziennie: 0,
       celZapasu: 50,
       celZapasuTracked: 50,
@@ -249,9 +298,12 @@ describe("resolveOrderQtyForLine + para", () => {
         twinTwId: 10,
         unitsPerPack: 100,
         sprzedazSzt: 50,
+        wzNiepowiazaneSzt: 0,
         coverSzt: 0,
         pieceSprzedaz: 50,
         packSprzedaz: 0,
+        pieceWzNiepowiazane: 0,
+        packWzNiepowiazane: 0,
         pieceDostepne: 0,
         packDostepne: 0,
       },
@@ -270,6 +322,7 @@ describe("resolveOrderQtyForLine + para", () => {
       tw_StanRez: 0,
       dostepne: 0,
       sprzedazOkres: 0,
+   wzNiepowiazaneOkres: 0,
       sprzedazDziennie: 0,
       celZapasu: 0,
       celZapasuTracked: 0,
@@ -290,9 +343,12 @@ describe("resolveOrderQtyForLine + para", () => {
         twinTwId: 10,
         unitsPerPack: 100,
         sprzedazSzt: 0,
+        wzNiepowiazaneSzt: 0,
         coverSzt: 0,
         pieceSprzedaz: 0,
         packSprzedaz: 0,
+        pieceWzNiepowiazane: 0,
+        packWzNiepowiazane: 0,
         pieceDostepne: 0,
         packDostepne: 0,
       },
@@ -451,7 +507,8 @@ describe("resolveOrderQtyForLine + individualExtra", () => {
         otwarteZd: 0,
         doZamowienia: 30,
         sprzedazOkres: 0,
-        sprzedazDziennie: 0,
+   wzNiepowiazaneOkres: 0,
+      sprzedazDziennie: 0,
       },
       { salesTrack: false }
     );
@@ -474,7 +531,8 @@ describe("resolveOrderQtyForLine + individualExtra", () => {
         tw_StanRez: 0,
         dostepne: 0,
         sprzedazOkres: 0,
-        sprzedazDziennie: 0,
+   wzNiepowiazaneOkres: 0,
+      sprzedazDziennie: 0,
         celZapasu: 0,
         celZapasuTracked: 0,
         salesTrackDelta: 0,
@@ -494,9 +552,12 @@ describe("resolveOrderQtyForLine + individualExtra", () => {
           twinTwId: 20,
           unitsPerPack: 10,
           sprzedazSzt: 0,
+          wzNiepowiazaneSzt: 0,
           coverSzt: 0,
           pieceSprzedaz: 0,
           packSprzedaz: 0,
+          pieceWzNiepowiazane: 0,
+          packWzNiepowiazane: 0,
           pieceDostepne: 0,
           packDostepne: 0,
           partnerMissing: true,
@@ -522,7 +583,8 @@ describe("resolveOrderQtyForLine + individualExtra", () => {
         tw_StanRez: 0,
         dostepne: 0,
         sprzedazOkres: 0,
-        sprzedazDziennie: 0,
+   wzNiepowiazaneOkres: 0,
+      sprzedazDziennie: 0,
         celZapasu: 0,
         celZapasuTracked: 0,
         salesTrackDelta: 0,
@@ -542,9 +604,12 @@ describe("resolveOrderQtyForLine + individualExtra", () => {
           twinTwId: 10,
           unitsPerPack: 100,
           sprzedazSzt: 0,
+          wzNiepowiazaneSzt: 0,
           coverSzt: 0,
           pieceSprzedaz: 0,
           packSprzedaz: 0,
+          pieceWzNiepowiazane: 0,
+          packWzNiepowiazane: 0,
           pieceDostepne: 0,
           packDostepne: 0,
         },
@@ -568,6 +633,7 @@ describe("resolveOrderQtyForLine + BOM parent", () => {
       tw_StanRez: 0,
       dostepne: 0,
       sprzedazOkres: 5,
+     wzNiepowiazaneOkres: 0,
       sprzedazDziennie: 0,
       celZapasu: 5,
       celZapasuTracked: 5,
@@ -600,7 +666,8 @@ describe("effectiveZdDocumentUnits + override w summary/filter", () => {
     tw_StanRez: 0,
     dostepne: 0,
     sprzedazOkres: 0,
-    sprzedazDziennie: 0,
+   wzNiepowiazaneOkres: 0,
+      sprzedazDziennie: 0,
     celZapasu: 8,
     celZapasuTracked: 8,
     salesTrackDelta: 0,
@@ -665,6 +732,7 @@ describe("resolveOrderQtyForLine extra_only", () => {
       tw_StanRez: 0,
       dostepne: 0,
       sprzedazOkres: 0,
+   wzNiepowiazaneOkres: 0,
       sprzedazDziennie: 0,
       celZapasu: 500,
       celZapasuTracked: 500,
@@ -703,6 +771,7 @@ describe("resolveOrderQtyForLine extra_only", () => {
       tw_StanRez: 0,
       dostepne: 0,
       sprzedazOkres: 0,
+   wzNiepowiazaneOkres: 0,
       sprzedazDziennie: 0,
       celZapasu: 5000,
       celZapasuTracked: 5000,
@@ -723,9 +792,12 @@ describe("resolveOrderQtyForLine extra_only", () => {
         twinTwId: 20,
         unitsPerPack: 100,
         sprzedazSzt: 0,
+        wzNiepowiazaneSzt: 0,
         coverSzt: 0,
         pieceSprzedaz: 0,
         packSprzedaz: 0,
+        pieceWzNiepowiazane: 0,
+        packWzNiepowiazane: 0,
         pieceDostepne: 0,
         packDostepne: 0,
         partnerMissing: false,
@@ -754,6 +826,7 @@ describe("resolveOrderQtyForLine extra_only", () => {
       tw_StanRez: 0,
       dostepne: 0,
       sprzedazOkres: 0,
+   wzNiepowiazaneOkres: 0,
       sprzedazDziennie: 0,
       celZapasu: 0,
       celZapasuTracked: 0,
@@ -774,9 +847,12 @@ describe("resolveOrderQtyForLine extra_only", () => {
         twinTwId: 20,
         unitsPerPack: 40,
         sprzedazSzt: 0,
+        wzNiepowiazaneSzt: 0,
         coverSzt: 0,
         pieceSprzedaz: 0,
         packSprzedaz: 0,
+        pieceWzNiepowiazane: 0,
+        packWzNiepowiazane: 0,
         pieceDostepne: 0,
         packDostepne: 0,
         partnerMissing: true,
@@ -799,7 +875,8 @@ describe("pruneZdDocumentUnitOverrides + extraOnly", () => {
     tw_StanRez: 0,
     dostepne: 0,
     sprzedazOkres: 0,
-    sprzedazDziennie: 0,
+   wzNiepowiazaneOkres: 0,
+      sprzedazDziennie: 0,
     celZapasu: 500,
     celZapasuTracked: 500,
     salesTrackDelta: 0,
@@ -860,6 +937,7 @@ describe("filterOrderableLinesWithPackaging + extraOnly", () => {
       tw_StanRez: 0,
       dostepne: 0,
       sprzedazOkres: 0,
+   wzNiepowiazaneOkres: 0,
       sprzedazDziennie: 0,
       celZapasu: 100,
       celZapasuTracked: 100,

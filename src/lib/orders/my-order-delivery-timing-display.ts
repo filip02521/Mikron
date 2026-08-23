@@ -150,6 +150,29 @@ export function buildMyOrderDeliveryTimingDisplay(
   const raw = row.timingLabel?.trim();
   const zd = row.zdFulfillment;
 
+  if (row.isTeeth && raw && /Planowana dostawa/i.test(raw) && !zd) {
+    const { estimate, overdue } = parseMyOrderTimingLabel(raw);
+    if (estimate) {
+      const detail =
+        row.teethEtaSource === "fixed"
+          ? "Termin ustalony dla dostawcy"
+          : row.teethEtaSource === "history"
+            ? "Na podstawie historii dostaw zębów"
+            : row.teethEtaSource === "manual"
+              ? "Termin ustawiony ręcznie"
+              : null;
+      return withUrgency(
+        {
+          title: overdue ? "Planowana dostawa po terminie" : "Planowana dostawa",
+          estimate,
+          detail,
+          tone: overdue ? "overdue" : "default",
+        },
+        row
+      );
+    }
+  }
+
   if (row.zdEtaPending && !zd) {
     const historyEstimate = resolveMyOrderHistoryDeliveryEstimate(row);
     if (historyEstimate?.display.overdue) {

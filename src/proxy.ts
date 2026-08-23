@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import type { UserRole, Workspace } from "@/types/database";
 import { fetchProfileByUserId } from "@/lib/auth/profile";
 import { middlewareNeedsBootstrap } from "@/lib/setup/middleware-bootstrap";
@@ -20,6 +20,7 @@ import {
   canManageSuppliers,
   homePathForRole,
   isAdmin,
+  isIvoclarRaportyLegacyPath,
   isSalesAccount,
   redirectPathAfterLogin,
 } from "@/lib/auth-roles";
@@ -39,7 +40,10 @@ import {
   redirectWithSession,
   refreshSupabaseSession,
 } from "@/lib/supabase/middleware";
-import { hasMailCenterModuleForUserId } from "@/lib/admin-modules";
+import {
+  fetchEnabledAdminModulesForUserId,
+  hasMailCenterModuleForUserId,
+} from "@/lib/admin-modules";
 import {
   isPasswordChangeExemptApiPath,
   MUST_CHANGE_PASSWORD_MESSAGE,
@@ -87,8 +91,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  const { response: sessionResponse, user } = await refreshSupabaseSession(request);
-  sessionResponse.headers.set("x-pathname", pathname);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
+  const requestWithPath = new NextRequest(request, { headers: requestHeaders });
+  const { response: sessionResponse, user } = await refreshSupabaseSession(requestWithPath);
 
   if (
     pathname.startsWith("/api/") &&
@@ -134,6 +140,9 @@ export async function proxy(request: NextRequest) {
             )
           : null;
         const loginWorkspaces = (profile.assigned_workspaces ?? []) as Workspace[];
+        const loginAdminModules = isAdmin(loginRole)
+          ? []
+          : await fetchEnabledAdminModulesForUserId(user.id);
         const loginHome = redirectPathAfterLogin(
           loginRole,
           request.nextUrl.searchParams.get("next"),
@@ -145,6 +154,7 @@ export async function proxy(request: NextRequest) {
               loginWorkspaces
             ),
             workspaces: loginWorkspaces,
+            adminModules: loginAdminModules,
           }
         );
         const entering = splitInternalRedirectPath(postLoginEnteringUrl(loginHome));
@@ -244,10 +254,16 @@ export async function proxy(request: NextRequest) {
       );
 
   const isMailCenterRoute = pathname.startsWith("/admin/mail");
-  const hasMailCenterModule =
-    isMailCenterRoute && role !== "admin"
-      ? await hasMailCenterModuleForUserId(user.id)
-      : false;
+  const isIvoclarLegacyBookmark = isIvoclarRaportyLegacyPath(pathname);
+  const needsMailModuleLookup =
+    (isMailCenterRoute || isIvoclarLegacyBookmark) && role !== "admin";
+  const hasMailCenterModule = needsMailModuleLookup
+    ? await hasMailCenterModuleForUserId(user.id)
+    : false;
+
+  if (isIvoclarLegacyBookmark && (isAdmin(role) || hasMailCenterModule)) {
+    return redirectWithSession(request, sessionResponse, "/admin/mail");
+  }
 
   if (
     !hasMailCenterModule &&
@@ -311,7 +327,9 @@ export async function proxy(request: NextRequest) {
   }
 
   if (matchesPrefix(pathname, PROCUREMENT_PREFIXES) && !canAccessOperations(role, workspaces)) {
-    if (
+    if (isIvoclarLegacyBookmark) {
+      // Legacy bookmark — strona pokazuje komunikat o module; nie wymagamy roli zakupy.
+    } else if (
       pathname.startsWith("/zakupy/dostawcy") ||
       pathname.startsWith("/zakupy/urlopy")
     ) {

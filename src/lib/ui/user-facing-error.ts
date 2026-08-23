@@ -46,6 +46,13 @@ const NETWORK_PATTERNS = [
   /unexpected response was received from the server/i,
 ];
 
+/** Komunikaty Next/React z digetem — nigdy nie pokazuj ich użytkownikowi. */
+const NEXT_DIGEST_ERROR_PATTERNS = [
+  /an error occurred in the server components render/i,
+  /specific message is omitted in production builds/i,
+  /a digest property is included on this error/i,
+];
+
 /** Znane komunikaty auth → krótki, ludzki opis. */
 const KNOWN_AUTH_MESSAGES: Array<{ match: RegExp; description: string }> = [
   {
@@ -165,6 +172,9 @@ export function looksLikeTechnicalErrorDump(cleaned: string): boolean {
       cleaned
     )
   ) {
+    return true;
+  }
+  if (NEXT_DIGEST_ERROR_PATTERNS.some((pattern) => pattern.test(cleaned))) {
     return true;
   }
   // Minifikowany / hex dump

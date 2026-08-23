@@ -32,7 +32,7 @@ function formatResult(label: string, r: ActionResult): string {
   }
   if (r.skipped && r.reason === "weekend") return `${label}: pominięto (weekend)`;
   if (r.skipped && r.reason === "email_not_configured") {
-    return `${label}: pominięto (brak RESEND_API_KEY)`;
+    return `${label}: pominięto (brak konfiguracji SMTP)`;
   }
   if (r.processed != null) return `${label}: przetworzono ${r.processed}`;
   if (r.sent != null) return `${label}: wysłano ${r.sent}`;

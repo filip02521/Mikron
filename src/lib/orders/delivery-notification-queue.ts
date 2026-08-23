@@ -253,7 +253,10 @@ export async function sendPendingDeliveryNotifications(ids: string[]): Promise<{
 
   const supabase = createAdminClient();
   const notifications = new Map<string, SalesPersonEmailBatch>();
-  const skipped: string[] = [];
+  /** Wpisy bez szansy na mail (brak zamówienia / e-maila) — zdejmujemy z kolejki. */
+  const settleWithoutMailIds: string[] = [];
+  /** entry.id → e-mail handlowca (do mapowania sukcesu SMTP). */
+  const entryIdToEmail = new Map<string, string>();
 
   for (const entry of entries) {
     const { data: raw } = await supabase
@@ -264,13 +267,13 @@ export async function sendPendingDeliveryNotifications(ids: string[]): Promise<{
 
     const order = raw ? normalizeIndividualOrder(raw) : null;
     if (!order) {
-      skipped.push(entry.orderId);
+      settleWithoutMailIds.push(entry.id);
       continue;
     }
 
     const person = await resolveSalesPersonEmail(supabase, order);
     if (!person) {
-      skipped.push(order.sales_person?.name?.trim() ?? "Handlowiec");
+      settleWithoutMailIds.push(entry.id);
       continue;
     }
 
@@ -278,6 +281,8 @@ export async function sendPendingDeliveryNotifications(ids: string[]): Promise<{
       { ...order, status: entry.status as IndividualOrderStatus, delivered_quantity: entry.deliveredQuantity },
       { deliveredQuantity: entry.deliveredQuantity }
     );
+
+    entryIdToEmail.set(entry.id, person.email.trim().toLowerCase());
 
     const existing = notifications.get(person.personId);
     if (existing) {
@@ -294,20 +299,35 @@ export async function sendPendingDeliveryNotifications(ids: string[]): Promise<{
   const result = await sendDeliveryNotificationEmails(notifications);
   const sent = result.sent;
 
+  const failedEmails = new Set(
+    result.failures.map((f) => f.to.trim().toLowerCase()).filter(Boolean)
+  );
+
+  const idsToMarkSent: string[] = [...settleWithoutMailIds];
+  for (const [entryId, email] of entryIdToEmail) {
+    if (!failedEmails.has(email)) {
+      idsToMarkSent.push(entryId);
+    }
+  }
+
+  if (idsToMarkSent.length) {
+    await markDeliveryNotificationQueueEntriesSent(idsToMarkSent);
+  }
+
   let error: string | undefined;
   if (result.failures.length) {
     error = `${result.failures[0].to}: ${result.failures[0].error}`;
-  } else if (skipped.length) {
+    console.error(
+      "[delivery-notification-queue] SMTP failures — wpisy zostają w kolejce do ponowienia:",
+      result.failures
+    );
+  } else if (settleWithoutMailIds.length && !notifications.size) {
     const skipNote =
-      skipped.length === 1
-        ? `${skipped[0]}: brak e-maila — zapisano bez powiadomienia`
-        : `${skipped.length} handlowców bez e-maila — zapisano bez powiadomienia`;
+      settleWithoutMailIds.length === 1
+        ? `brak e-maila / zamówienia — zapisano bez powiadomienia`
+        : `${settleWithoutMailIds.length} pozycji bez e-maila — zapisano bez powiadomienia`;
     error = skipNote;
   }
-
-  // Bez zewnętrznego cronu nie ma sensu ponawiać, więc oznaczamy wpisy jako obsłużone,
-  // żeby nie zalegały w kolejce. Błęd e-maila jest logowany do konsoli.
-  await markDeliveryNotificationQueueEntriesSent(entries.map((e) => e.id));
 
   return { sent, error };
 }

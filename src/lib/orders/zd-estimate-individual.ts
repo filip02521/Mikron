@@ -16,6 +16,7 @@ import {
 } from "@/lib/orders/zd-product-pair-units";
 import { extractAlphanumericProductCodeFromName } from "@/lib/subiekt/zd-search-for-product";
 import type { IndividualOrder } from "@/types/database";
+import type { ZdEstimateProsbaOverlapContribution } from "@/lib/orders/zd-estimate-prosba-reservation-overlap";
 
 export type ZdEstimateIndividualRequestRef = {
   orderId: string;
@@ -26,11 +27,16 @@ export type ZdEstimateIndividualRequestRef = {
   symbol: string | null;
   mikranCode: string | null;
   requestNote: string | null;
+  /** kh_Id klienta — do dedupe vs rez. ZK. */
+  salesClientKhId?: number | null;
+  sourceZkNumber?: string | null;
 };
 
 export type ZdEstimateIndividualTwExtra = {
   extraPieces: number;
   requests: ZdEstimateIndividualRequestRef[];
+  /** Wkład próśb po retarget/explode — do dedupe vs rezerwacje ZK. */
+  overlapContributions?: ZdEstimateProsbaOverlapContribution[];
 };
 
 export type ZdEstimateIndividualServiceReason =
@@ -60,6 +66,10 @@ export type ZdEstimatePendingIndividualOrder = {
   subiektTwId: number | null;
   qty: number;
   requestNote: string | null;
+  /** kh_Id odbiorcy z Subiekta — match do dok_OdbiorcaId na ZK. */
+  salesClientKhId?: number | null;
+  /** Numer ZK przy złożeniu prośby — zapasowy match gdy brak kh_Id. */
+  sourceZkNumber?: string | null;
 };
 
 export type ZdEstimateIndividualBundle = {
@@ -93,6 +103,11 @@ export function mapIndividualOrderToPendingDto(
   const qty = activeOrderQuantity(order);
   if (qty == null || !(qty > 0)) return null;
   const sp = order.sales_person;
+  const salesClientKhId =
+    order.sales_client_kh_id != null && Number(order.sales_client_kh_id) > 0
+      ? Math.trunc(Number(order.sales_client_kh_id))
+      : null;
+  const sourceZkNumber = order.source_zk_number?.trim() || null;
   return {
     id: order.id,
     salesPersonId: order.sales_person_id,
@@ -108,6 +123,8 @@ export function mapIndividualOrderToPendingDto(
         : null,
     qty,
     requestNote: order.sales_request_note?.trim() || null,
+    salesClientKhId,
+    sourceZkNumber,
   };
 }
 
@@ -123,6 +140,20 @@ function toRequestRef(
     symbol: order.symbol,
     mikranCode: order.mikranCode,
     requestNote: order.requestNote,
+    salesClientKhId: order.salesClientKhId ?? null,
+    sourceZkNumber: order.sourceZkNumber ?? null,
+  };
+}
+
+function toOverlapContribution(
+  order: ZdEstimatePendingIndividualOrder,
+  qty: number
+): ZdEstimateProsbaOverlapContribution {
+  return {
+    orderId: order.id,
+    qty,
+    salesClientKhId: order.salesClientKhId ?? null,
+    sourceZkNumber: order.sourceZkNumber ?? null,
   };
 }
 
@@ -375,13 +406,17 @@ export function buildIndividualEstimateExtras(
       }
     }
     const prev = byTwId.get(tw);
+    const contribution = toOverlapContribution(order, qty);
     if (prev) {
       prev.extraPieces += qty;
       prev.requests.push(toRequestRef(order));
+      if (!prev.overlapContributions) prev.overlapContributions = [];
+      prev.overlapContributions.push(contribution);
     } else {
       byTwId.set(tw, {
         extraPieces: qty,
         requests: [toRequestRef(order)],
+        overlapContributions: [contribution],
       });
     }
   }
@@ -851,13 +886,34 @@ export function reclassifyMissingTwExtrasToServices(
       }
       if (!keep.length) {
         byTwId.delete(tw);
-      } else if (removedPieces > 0) {
-        const nextPieces = Math.max(0, extra.extraPieces - removedPieces);
-        if (!(nextPieces > 0)) {
-          byTwId.delete(tw);
-        } else {
-          byTwId.set(tw, { extraPieces: nextPieces, requests: keep });
-        }
+        continue;
+      }
+      // Tylko gdy coś usunęliśmy z tego tw — nie przepisuj innych tw
+      // przy okazji globalnego ordersWithMissing (regresja overlap).
+      if (!(removedPieces > 0)) continue;
+
+      const keepOrderIds = new Set(
+        keep.map((r) => String(r.orderId ?? "").trim()).filter(Boolean)
+      );
+      const nextContributions = (extra.overlapContributions ?? []).filter(
+        (c) => keepOrderIds.has(String(c.orderId ?? "").trim())
+      );
+      // Preferuj sumę contribution (poprawne po BOM explode); fallback: req.qty.
+      const nextPieces =
+        (extra.overlapContributions?.length ?? 0) > 0
+          ? nextContributions.reduce(
+              (sum, c) => sum + Math.max(0, Number(c.qty) || 0),
+              0
+            )
+          : Math.max(0, extra.extraPieces - removedPieces);
+      if (!(nextPieces > 0)) {
+        byTwId.delete(tw);
+      } else {
+        byTwId.set(tw, {
+          extraPieces: nextPieces,
+          requests: keep,
+          overlapContributions: nextContributions,
+        });
       }
     }
   }
@@ -876,6 +932,36 @@ export function reclassifyMissingTwExtrasToServices(
       skippedNoQty: bundle.meta.skippedNoQty,
     },
   };
+}
+
+/** Rozszerza present o partnerów pary — extra po piece→pack nie spada do usług. */
+export function expandPresentTwIdsWithPairPartners(
+  presentTwIds: ReadonlySet<number> | readonly number[],
+  pairs: readonly { packTwId: number; pieceTwId: number }[] | null | undefined
+): Set<number> {
+  const present =
+    presentTwIds instanceof Set
+      ? new Set(
+          [...presentTwIds]
+            .map((id) => Math.trunc(Number(id)) || 0)
+            .filter((id) => id > 0)
+        )
+      : new Set(
+          [...(presentTwIds ?? [])]
+            .map((id) => Math.trunc(Number(id)) || 0)
+            .filter((id) => id > 0)
+        );
+  if (!pairs?.length) return present;
+  for (const pair of pairs) {
+    const pack = Math.trunc(Number(pair.packTwId)) || 0;
+    const piece = Math.trunc(Number(pair.pieceTwId)) || 0;
+    if (!(pack > 0 && piece > 0)) continue;
+    if (present.has(pack) || present.has(piece)) {
+      present.add(pack);
+      present.add(piece);
+    }
+  }
+  return present;
 }
 
 /** Buduje mapę mikran/PLU → tw_Id z linii szacunku. */

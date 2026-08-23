@@ -159,7 +159,7 @@ Wspólna zasada: **transparentność** — każdy handlowiec widzi pytania koleg
 
 - [ ] Banner nieprzeczytanych na `/moje`
 - [ ] Polling / wersja w `SalesUpdatesContext`
-- [ ] E-mail digest (Resend) — opcjonalnie
+- [ ] E-mail digest (SES SMTP) — opcjonalnie
 - [ ] Targetowanie grup handlowców (`sales_group_id`)
 
 ### Faza 3

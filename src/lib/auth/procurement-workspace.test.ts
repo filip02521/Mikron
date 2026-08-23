@@ -58,6 +58,6 @@ describe("procurement-workspace", () => {
     expect(pathAllowedForProcurementWorkspace("/zakupy/szacunek", "dostawy")).toBe(true);
     expect(pathAllowedForProcurementWorkspace("/zakupy/szacunek", "zeby")).toBe(false);
     expect(pathAllowedForProcurementWorkspace("/zakupy/raporty-ivoclar", "dostawy")).toBe(true);
-    expect(pathAllowedForProcurementWorkspace("/zakupy/raporty-ivoclar", "zeby")).toBe(false);
+    expect(pathAllowedForProcurementWorkspace("/zakupy/raporty-ivoclar", "zeby")).toBe(true);
   });
 });

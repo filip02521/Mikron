@@ -48,6 +48,8 @@ export function VirtualList<T>({
     getScrollElement: () => parentRef.current,
     estimateSize: (index) => estimateSize(index, items[index]!),
     overscan: 10,
+    // React 19: unikaj flushSync z measureElement w trakcie commit.
+    useFlushSync: false,
   });
 
   useEffect(() => {
@@ -60,6 +62,7 @@ export function VirtualList<T>({
 
   useLayoutEffect(() => {
     if (!enabled) return;
+    // measure() → notify(false); bez flushSync. Sync layout = świeży cache przed paintem.
     virtualizer.measure();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- remeasure on layout-sensitive keys
   }, [enabled, remeasureKey, items.length]);

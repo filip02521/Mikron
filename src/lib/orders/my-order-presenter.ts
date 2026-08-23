@@ -21,12 +21,13 @@ import {
   zdFulfillmentGroupOverdue,
   zdFulfillmentSlots,
 } from "@/lib/orders/my-order-zd-fulfillment-display";
-import { formatDateString, parseDateOnly } from "@/lib/orders/dates";
+import { formatDateString, parseDateOnly, calculateBusinessDays } from "@/lib/orders/dates";
 import {
   buildPlannedOrderDateDisplay,
   type PlannedOrderDateDisplay,
 } from "@/lib/orders/planned-order-date-label";
 import { todayInWarsaw } from "@/lib/time/warsaw";
+import { teethPlacementDateOnly } from "@/lib/data/teeth-delivery-eta";
 import { TEETH_GROUP_ORDER_FILE_FALLBACK_NAME } from "@/lib/teeth/teeth-mark-ordered";
 import type { WeekDayPlan } from "@/lib/orders/summary-workspace";
 import {
@@ -222,6 +223,11 @@ type MyOrderRowCore = {
   rowColor: string;
   /** Czy pozycja jest „zęby" (denormalizowane z individual_orders). */
   isTeeth?: boolean;
+  /**
+   * Skąd wzięła się planowana dostawa zębów (dla copy na /moje).
+   * fixed = stałe ETA dostawcy; history = średnia; manual = ręczny override w historii.
+   */
+  teethEtaSource?: "fixed" | "history" | "manual" | null;
   /** Zęby + zwykły towar w jednej karcie. */
   productLaneKind?: import("@/lib/orders/my-order-lane-meta").MyOrderProductLaneKind;
   /** Wspólny identyfikator prośby z formularza (gdy dotyczy). */
@@ -331,11 +337,13 @@ function rowToLine(
   const lineZdEtaNoMatch = Boolean(
     row.zdEtaNoMatch && !lineZdFulfillment && !lineZdEtaPending
   );
-  const historyEstimate = resolveLineHistoryEstimateFromTimingLabel(row.timingLabel, {
-    zdFulfillment: lineZdFulfillment,
-    zdEtaPending: lineZdEtaPending,
-    zdEtaNoMatch: lineZdEtaNoMatch,
-  });
+  const historyEstimate = order.is_teeth
+    ? null
+    : resolveLineHistoryEstimateFromTimingLabel(row.timingLabel, {
+        zdFulfillment: lineZdFulfillment,
+        zdEtaPending: lineZdEtaPending,
+        zdEtaNoMatch: lineZdEtaNoMatch,
+      });
   const subiektId = order.subiekt_tw_id;
   const subiektTwId =
     typeof subiektId === "number" && Number.isFinite(subiektId) && subiektId > 0
@@ -803,6 +811,8 @@ function presentZamowienie(
   options?: {
     supplierKhIdsBySupplierId?: import("@/lib/orders/my-order-sales-ui").SupplierKhIdsLookup;
     subiektReachable?: boolean;
+    /** Stałe ETA (dni rob.) per dostawca zębów — do teethEtaSource na /moje. */
+    teethLeadDaysBySupplierId?: Record<string, number>;
   }
 ): MyOrderRow {
   const statsMode = (order.supplier?.stats_mode ?? "LACZNIE") as StatsMode;
@@ -841,6 +851,7 @@ function presentZamowienie(
             : null),
     rowColor: SUMMARY_COLORS.historyNew,
     isTeeth: Boolean(order.is_teeth),
+    teethEtaSource: null as MyOrderRow["teethEtaSource"],
     productLaneKind: (order.is_teeth ? "teeth" : "regular") as import("@/lib/orders/my-order-lane-meta").MyOrderProductLaneKind,
   };
 
@@ -877,18 +888,41 @@ function presentZamowienie(
   });
 
   const placement = orderPlacementAt(order);
-  const eta = canEstimateDeliveryEta(order)
-    ? placement
-      ? estimateDeliveryEta(placement, stats, order.order_type, statsMode)
-      : null
-    : null;
+  const eta =
+    order.is_teeth
+      ? null
+      : canEstimateDeliveryEta(order)
+        ? placement
+          ? estimateDeliveryEta(placement, stats, order.order_type, statsMode)
+          : null
+        : null;
 
   let timingLabel: string | null = null;
+  let teethEtaSource: MyOrderRow["teethEtaSource"] = null;
   const teethDeliveryDate = teethProcurementDeliveryEta(order);
   if (order.is_teeth && teethDeliveryDate) {
     const teethDate = parseDateOnly(teethDeliveryDate);
     const overdue = teethDate != null && isPastExpectedDate(teethDate);
-    timingLabel = `Planowana dostawa: ${formatPlDate(teethDeliveryDate)}${overdue ? " · po terminie" : ""}`;
+    const orderedIso = teethProcurementOrderedAt(order);
+    const orderedDate = orderedIso ? teethPlacementDateOnly(orderedIso) : null;
+    const leadDays =
+      orderedDate && teethDate
+        ? calculateBusinessDays(orderedDate, teethDate)
+        : null;
+    const leadPart =
+      leadDays != null && leadDays > 0 ? ` · ~${leadDays} dni rob.` : "";
+    timingLabel = `Planowana dostawa: ${formatPlDate(teethDeliveryDate)}${leadPart}${overdue ? " · po terminie" : ""}`;
+
+    const configuredLead =
+      order.supplier_id && options?.teethLeadDaysBySupplierId
+        ? options.teethLeadDaysBySupplierId[order.supplier_id]
+        : undefined;
+    if (configuredLead != null && configuredLead > 0) {
+      teethEtaSource =
+        leadDays != null && leadDays === configuredLead ? "fixed" : "manual";
+    } else if (options?.teethLeadDaysBySupplierId) {
+      teethEtaSource = "history";
+    }
   } else if (zdFulfillment) {
     if (zdFulfillment.pendingConfirmation) {
       timingLabel = salesZdPrimarySlotTimingLabel(zdFulfillment, false);
@@ -910,6 +944,14 @@ function presentZamowienie(
     );
   }
 
+  const teethDeliveryOverdue =
+    Boolean(order.is_teeth) &&
+    Boolean(teethDeliveryDate) &&
+    (() => {
+      const d = parseDateOnly(teethDeliveryDate!);
+      return d != null && isPastExpectedDate(d);
+    })();
+
   const timingBadgeOverdue = zdFulfillment
     ? zdFulfillment.pendingConfirmation
       ? false
@@ -917,7 +959,9 @@ function presentZamowienie(
         const d = parseDateOnly(zdFulfillment.deadline);
         return d != null && isPastExpectedDate(d);
       })()
-    : eta && isPastExpectedDate(eta.expectedDate);
+    : teethDeliveryOverdue || Boolean(eta && isPastExpectedDate(eta.expectedDate));
+
+  base.teethEtaSource = teethEtaSource;
 
   switch (order.status) {
     case "Weryfikacja":
@@ -960,10 +1004,20 @@ function presentZamowienie(
     case "Zamowione":
       if (order.is_teeth) {
         const teethOrderedAt = teethProcurementOrderedAt(order);
+        const orderedDate = teethOrderedAt ? teethPlacementDateOnly(teethOrderedAt) : null;
+        const deliveryDate = teethDeliveryDate ? parseDateOnly(teethDeliveryDate) : null;
+        const leadDays =
+          orderedDate && deliveryDate
+            ? calculateBusinessDays(orderedDate, deliveryDate)
+            : null;
         return finalize({
           ...base,
           statusTitle: TEETH_SALES_STATUS_ORDERED_TITLE,
-          statusDetail: teethSalesOrderedStatusDetail(teethOrderedAt, teethDeliveryDate),
+          statusDetail: teethSalesOrderedStatusDetail(
+            teethOrderedAt,
+            teethDeliveryDate,
+            leadDays
+          ),
           timingLabel,
           badgeVariant: timingBadgeOverdue ? "danger" : "info",
           rowColor: SUMMARY_COLORS.historyPending,
@@ -1058,6 +1112,7 @@ export function presentMyOrderGroup(
   options?: {
     supplierKhIdsBySupplierId?: import("@/lib/orders/my-order-sales-ui").SupplierKhIdsLookup;
     subiektReachable?: boolean;
+    teethLeadDaysBySupplierId?: Record<string, number>;
   }
 ): MyOrderRow {
   const visibleOrders = orders.filter((o) => !o.sales_acknowledged_at);
@@ -1160,6 +1215,7 @@ export function presentMyOrder(
   options?: {
     supplierKhIdsBySupplierId?: import("@/lib/orders/my-order-sales-ui").SupplierKhIdsLookup;
     subiektReachable?: boolean;
+    teethLeadDaysBySupplierId?: Record<string, number>;
   }
 ): MyOrderRow {
   if (isInformacjaRequest(order)) {
@@ -1231,6 +1287,7 @@ export function presentMyOrders(
     weekDays?: WeekDayPlan[];
     supplierKhIdsBySupplierId?: import("@/lib/orders/my-order-sales-ui").SupplierKhIdsLookup;
     subiektReachable?: boolean;
+    teethLeadDaysBySupplierId?: Record<string, number>;
   }
 ): {
   zamowienia: MyOrderRow[];

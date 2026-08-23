@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeTeethNextDate } from "@/lib/data/teeth-schedule";
+import { computeTeethNextDate, shouldAdvanceTeethCycleOnMarkOrdered } from "@/lib/data/teeth-schedule";
 import { parseDateOnly } from "@/lib/orders/dates";
 import type { DayOfWeek } from "@/types/database";
 
@@ -99,5 +99,17 @@ describe("computeTeethNextDate", () => {
       MONDAY
     );
     expect(result).toEqual(date("2026-07-06"));
+  });
+});
+
+describe("shouldAdvanceTeethCycleOnMarkOrdered", () => {
+  it("aktywny cykl → true", () => {
+    expect(shouldAdvanceTeethCycleOnMarkOrdered("2026-07-06")).toBe(true);
+  });
+
+  it("tylko ETA / cykl wyłączony → false", () => {
+    expect(shouldAdvanceTeethCycleOnMarkOrdered(null)).toBe(false);
+    expect(shouldAdvanceTeethCycleOnMarkOrdered("")).toBe(false);
+    expect(shouldAdvanceTeethCycleOnMarkOrdered("   ")).toBe(false);
   });
 });

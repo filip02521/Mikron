@@ -74,7 +74,7 @@ export function ZkWatchAddBar({
             }
             title={
               canAdd
-                ? "Krótki numer (min. 2 znaki) — ostatnie 30 dni. Pełny format — tylko dany miesiąc."
+                ? "Krótki numer (min. 2 znaki) — najpierw 30 dni, potem do 90 dni. Pełny format — tylko dany miesiąc."
                 : undefined
             }
             value={query}
@@ -89,7 +89,7 @@ export function ZkWatchAddBar({
           />
           {!inline ? (
             <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
-              Krótki numer (min. 2 znaki) — ostatnie 30 dni. Pełny format — tylko dany miesiąc.
+              Krótki numer (min. 2 znaki) — najpierw 30 dni, potem do 90 dni. Pełny format — tylko dany miesiąc.
             </p>
           ) : null}
         </div>

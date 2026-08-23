@@ -81,11 +81,22 @@ async function resolveRedirect(
 
   const adminPanelContext = readAdminPanelContextFromDocument();
 
+  const { data: moduleRows } = await supabase
+    .from("user_admin_modules")
+    .select("module_slug")
+    .eq("user_id", userId)
+    .eq("enabled", true);
+
+  const adminModules = (moduleRows ?? [])
+    .map((r) => r.module_slug)
+    .filter((slug): slug is string => typeof slug === "string");
+
   return {
     ok: true,
     redirectTo: redirectPathAfterLogin(profile.role as UserRole, next, {
       adminPanelContext,
       workspaces: (profile.assigned_workspaces ?? []) as Workspace[],
+      adminModules,
     }),
     accountId: userId,
   };

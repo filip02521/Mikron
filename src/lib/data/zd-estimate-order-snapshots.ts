@@ -429,7 +429,14 @@ export function snapshotHistoryScopeOrFilter(
 /**
  * Historia do Policz: host + kh (+ aliasy) + scope (z legacy fallback).
  * `filters = null` → tylko tw_id (legacy helper).
+ *
+ * Duże cechy (1k+ SKU): `.in(tw_id)` i `.in(supplier_kh_id)` chunkowane.
+ * Sort DESC po `linked_at` + limit wierszy — przy obcięciu PostgREST zostają najnowsze.
  */
+export const ZD_ESTIMATE_HISTORY_TW_ID_CHUNK = 200;
+/** Limit wierszy na jeden chunk tw_id (PostgREST default bywa 1000). */
+export const ZD_ESTIMATE_HISTORY_CHUNK_ROW_LIMIT = 5000;
+
 export async function fetchLatestSnapshotHistoryByTwIds(
   twIds: readonly number[],
   filters: {
@@ -456,10 +463,69 @@ export async function fetchLatestSnapshotHistoryByTwIds(
   if (filters && khIds.length === 0) return map;
 
   const supabase = createAdminClient();
-  let query = supabase
-    .from("zd_estimate_order_snapshot_lines")
-    .select(
-      `
+  const twChunkSize = ZD_ESTIMATE_HISTORY_TW_ID_CHUNK;
+  const khChunkSize = ZD_ESTIMATE_HISTORY_TW_ID_CHUNK;
+  const rowLimit = ZD_ESTIMATE_HISTORY_CHUNK_ROW_LIMIT;
+  const parsed: ZdEstimateOrderSnapshotLineRow[] = [];
+
+  type JoinedHeader = {
+    dok_id: number;
+    dok_nr_pelny: string | null;
+    linked_at: string;
+    supplier_kh_id?: number | null;
+    grt_id?: number | null;
+    cecha_id?: number | null;
+    scope_mode?: string | null;
+    host_kind?: string | null;
+    eligible_for_history?: boolean | null;
+  };
+
+  type Joined = LineDb & {
+    zd_estimate_order_snapshots: JoinedHeader | JoinedHeader[];
+  };
+
+  const ingest = (data: unknown[] | null) => {
+    for (const raw of data ?? []) {
+      const row = raw as unknown as Joined;
+      const snapRaw = row.zd_estimate_order_snapshots;
+      const snap = Array.isArray(snapRaw) ? snapRaw[0] : snapRaw;
+      if (!snap) continue;
+      if (filters) {
+        if (!snapshotHeaderMatchesHistoryFilters(snap, filters)) continue;
+      } else if (snap.eligible_for_history === false) {
+        continue;
+      }
+      parsed.push({
+        id: row.id,
+        snapshotId: row.snapshot_id,
+        twId: Number(row.tw_id),
+        twSymbol: row.tw_symbol?.trim() || null,
+        twNazwa: (row.tw_nazwa ?? "").trim() || "—",
+        qty: asNum(row.qty),
+        celAtLink: finiteOrNull(row.cel_at_link),
+        deltaAtLink: finiteOrNull(row.delta_at_link),
+        linkedAt: snap.linked_at,
+        dokId: Number(snap.dok_id),
+        dokNrPelny: (snap.dok_nr_pelny ?? "").trim(),
+      });
+    }
+  };
+
+  const khChunks: number[][] =
+    filters == null
+      ? [[]]
+      : Array.from(
+          { length: Math.ceil(khIds.length / khChunkSize) },
+          (_, i) => khIds.slice(i * khChunkSize, (i + 1) * khChunkSize)
+        );
+
+  for (let offset = 0; offset < ids.length; offset += twChunkSize) {
+    const twChunk = ids.slice(offset, offset + twChunkSize);
+    for (const khChunk of khChunks) {
+      let query = supabase
+        .from("zd_estimate_order_snapshot_lines")
+        .select(
+          `
       id,
       snapshot_id,
       tw_id,
@@ -480,62 +546,28 @@ export async function fetchLatestSnapshotHistoryByTwIds(
         eligible_for_history
       )
     `
-    )
-    .in("tw_id", ids);
+        )
+        .in("tw_id", twChunk)
+        .order("linked_at", {
+          ascending: false,
+          foreignTable: "zd_estimate_order_snapshots",
+        })
+        .limit(rowLimit);
 
-  if (filters) {
-    query = query
-      .eq("zd_estimate_order_snapshots.host_kind", filters.hostKind)
-      .in("zd_estimate_order_snapshots.supplier_kh_id", khIds)
-      .eq("zd_estimate_order_snapshots.eligible_for_history", true)
-      .or(snapshotHistoryScopeOrFilter(filters.scope), {
-        foreignTable: "zd_estimate_order_snapshots",
-      });
-  }
+      if (filters) {
+        query = query
+          .eq("zd_estimate_order_snapshots.host_kind", filters.hostKind)
+          .in("zd_estimate_order_snapshots.supplier_kh_id", khChunk)
+          .eq("zd_estimate_order_snapshots.eligible_for_history", true)
+          .or(snapshotHistoryScopeOrFilter(filters.scope), {
+            foreignTable: "zd_estimate_order_snapshots",
+          });
+      }
 
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-
-  type JoinedHeader = {
-    dok_id: number;
-    dok_nr_pelny: string | null;
-    linked_at: string;
-    supplier_kh_id?: number | null;
-    grt_id?: number | null;
-    cecha_id?: number | null;
-    scope_mode?: string | null;
-    host_kind?: string | null;
-    eligible_for_history?: boolean | null;
-  };
-
-  type Joined = LineDb & {
-    zd_estimate_order_snapshots: JoinedHeader | JoinedHeader[];
-  };
-
-  const parsed: ZdEstimateOrderSnapshotLineRow[] = [];
-  for (const raw of data ?? []) {
-    const row = raw as unknown as Joined;
-    const snapRaw = row.zd_estimate_order_snapshots;
-    const snap = Array.isArray(snapRaw) ? snapRaw[0] : snapRaw;
-    if (!snap) continue;
-    if (filters) {
-      if (!snapshotHeaderMatchesHistoryFilters(snap, filters)) continue;
-    } else if (snap.eligible_for_history === false) {
-      continue;
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+      ingest(data as unknown[] | null);
     }
-    parsed.push({
-      id: row.id,
-      snapshotId: row.snapshot_id,
-      twId: Number(row.tw_id),
-      twSymbol: row.tw_symbol?.trim() || null,
-      twNazwa: (row.tw_nazwa ?? "").trim() || "—",
-      qty: asNum(row.qty),
-      celAtLink: finiteOrNull(row.cel_at_link),
-      deltaAtLink: finiteOrNull(row.delta_at_link),
-      linkedAt: snap.linked_at,
-      dokId: Number(snap.dok_id),
-      dokNrPelny: (snap.dok_nr_pelny ?? "").trim(),
-    });
   }
 
   parsed.sort(

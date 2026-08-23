@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
 import type { MailSendIssue, MailSendLog } from "@/types/database";
+import type { AdminHubTab } from "@/lib/admin-hub";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
 
@@ -23,9 +24,11 @@ function issueVariant(severity: MailSendIssue["severity"]) {
 export function MailLogDetailClient({
   log,
   issues,
+  visibleTabs,
 }: {
   log: MailSendLog;
   issues: MailSendIssue[];
+  visibleTabs?: readonly AdminHubTab[];
 }) {
   const manifest = Array.isArray(log.attachment_manifest)
     ? (log.attachment_manifest as { name: string; bytes: number; sha256: string }[])
@@ -43,6 +46,7 @@ export function MailLogDetailClient({
   return (
     <AdminHubShell
       activeTab="mail"
+      visibleTabs={visibleTabs}
       title="Szczegóły wysyłki"
       description={`${log.job_id} · ${log.period_key} · próba ${log.attempt_no}`}
       action={

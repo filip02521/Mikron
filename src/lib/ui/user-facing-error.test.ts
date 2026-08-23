@@ -147,6 +147,17 @@ describe("extractRawErrorMessage / userFacingErrorFromUnknown", () => {
     expect(c.description).toBe("Nie udało się wczytać ZD.");
   });
 
+  it("fallback gdy Next production digest (Server Components render)", () => {
+    const c = userFacingErrorFromUnknown(
+      new Error(
+        "An error occurred in the Server Components render. The specific message is omitted in production builds to avoid leaking sensitive details. A digest property is included on this error instance which may provide additional details about the nature of the error."
+      ),
+      "Nie udało się dodać zamówienia."
+    );
+    expect(c.description).toBe("Nie udało się dodać zamówienia.");
+    expect(c.description).not.toMatch(/Server Components/i);
+  });
+
   it("nie nadpisuje sensownego PL fallbackiem", () => {
     const c = userFacingErrorFromUnknown(
       new Error("Nie znaleziono ZK w Subiekcie."),

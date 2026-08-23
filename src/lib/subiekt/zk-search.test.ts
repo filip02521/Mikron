@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   collectMatchingZkDocuments,
   extractZkSearchToken,
+  isShortZkSerialQuery,
   resolveZkSearchScope,
+  suggestFullZkNumberExample,
   validateZkQueryForSubmit,
   zkMonthRangeFromFullNumber,
   zkRecentDaysRange,
+  zkSearchNotFoundMessage,
   ZK_RECENT_SEARCH_DAYS,
+  ZK_RECENT_SEARCH_EXTENDED_DAYS,
 } from "./zk-search";
 import type { SubiektDocument } from "@/lib/subiekt/types";
 
@@ -114,5 +118,36 @@ describe("zkRecentDaysRange", () => {
       dataOd: "2026-04-28",
       dataDo: "2026-05-28",
     });
+  });
+});
+
+describe("isShortZkSerialQuery / suggestFullZkNumberExample", () => {
+  it("krótki numer seryjny tak, dok_Id i pełny numer nie", () => {
+    expect(isShortZkSerialQuery("5779")).toBe(true);
+    expect(isShortZkSerialQuery("5779/M/07/2026")).toBe(false);
+    expect(isShortZkSerialQuery("1782110")).toBe(false);
+  });
+
+  it("buduje przykład pełnego numeru z bieżącego miesiąca", () => {
+    expect(suggestFullZkNumberExample("5779", new Date(2026, 7, 20))).toBe(
+      "5779/M/08/2026"
+    );
+  });
+});
+
+describe("zkSearchNotFoundMessage", () => {
+  it("dla krótkiego numeru podpowiada pełny format", () => {
+    const msg = zkSearchNotFoundMessage(
+      "5779",
+      {
+        mode: "recent",
+        dataOd: "2026-05-22",
+        dataDo: "2026-08-20",
+        days: ZK_RECENT_SEARCH_EXTENDED_DAYS,
+      },
+      new Date(2026, 7, 20)
+    );
+    expect(msg).toContain("ostatnich 90 dni");
+    expect(msg).toContain("5779/M/08/2026");
   });
 });

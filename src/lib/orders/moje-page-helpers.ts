@@ -140,7 +140,13 @@ export async function resolveMojePageContext(
 async function attachTeethDetailsIfNeeded(orders: IndividualOrder[]): Promise<IndividualOrder[]> {
   if (!orders.some((o) => o.is_teeth)) return orders;
   const { attachTeethDetailsToIndividualOrders } = await import("@/lib/data/teeth-queue");
-  return attachTeethDetailsToIndividualOrders(orders);
+  const withDetails = await attachTeethDetailsToIndividualOrders(orders);
+  const { createAdminClient, hasSupabaseConfig } = await import("@/lib/supabase/admin");
+  if (!hasSupabaseConfig()) return withDetails;
+  const { enrichSalesOrdersWithTeethOrderFileMeta } = await import(
+    "@/lib/data/teeth-order-file-group"
+  );
+  return enrichSalesOrdersWithTeethOrderFileMeta(createAdminClient(), withDetails);
 }
 
 async function scheduleAutoAssignSuppliers(

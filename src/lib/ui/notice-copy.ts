@@ -257,6 +257,11 @@ export const TEETH_SCHEDULE_TOAST = {
     "Cykl zamówień zębów nie został pobrany.",
   ),
   saved: toastSuccess("Zapisano", "Cykl zamówień zębów został zaktualizowany."),
+  etaSaved: toastSuccess("Zapisano", "Stałe ETA dostawy zostało zaktualizowane."),
+  etaSaveFailed: toastError(
+    "Nie udało się zapisać",
+    "Stałe ETA dostawy nie zostało zapisane.",
+  ),
   saveFailed: toastError("Nie udało się zapisać", "Cykl zamówień zębów nie został zapisany."),
   disabled: toastSuccess("Wyłączono", "Cykl zębów u tego dostawcy został wyłączony."),
   removeFailed: toastError("Nie udało się usunąć", "Cykl zębów nie został wyłączony."),

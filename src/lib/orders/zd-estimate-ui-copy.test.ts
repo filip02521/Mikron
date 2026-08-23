@@ -216,11 +216,16 @@ describe("zd-estimate-ui-copy", () => {
     expect(zdEstimateScopeChangedHint()).toMatch(/Zmieniono zakres/);
     expect(zdEstimateNeedsSettingsHint()).toMatch(/pod tą kartą/);
     expect(zdEstimateNeedsSettingsHint()).not.toMatch(/powyżej/);
-    expect(zdEstimatePrepCardHint()).toMatch(/całego działu|wspólne dla działu/);
+    expect(zdEstimatePrepCardHint()).toMatch(/Policz listę/);
+    expect(zdEstimatePrepCardHint()).toMatch(/Reguły/);
     expect(zdEstimatePrepIdleLead()).toMatch(/skrót grupy|wyszukaj/i);
     expect(zdEstimatePrepIdleLead()).not.toMatch(/Policz listę/);
     expect(zdEstimatePoliciesSectionHint()).toMatch(/Do ZD/);
-    expect(zdEstimateCechaScopeCaption()).toMatch(/Zaawansowane/);
+    expect(zdEstimateCechaScopeCaption()).toMatch(/Nadpisania/);
+    expect(ZD_ESTIMATE_UI.prepFormTitle).toBe("Przygotowanie");
+    expect(ZD_ESTIMATE_UI.prepOverridesShow).toBe("Nadpisania");
+    expect(ZD_ESTIMATE_UI.prepParamBoostLabel).toBe("Podbicie");
+    expect(ZD_ESTIMATE_UI.prepParamExtrasLabel).toBe("Prośby");
     expect(ZD_ESTIMATE_UI.boostPowerLabel).toBe("Podbicie Do ZD");
     expect(ZD_ESTIMATE_UI.extrasPolicyLabel).toBe("Prośby i niedobór");
     expect(ZD_ESTIMATE_UI.extrasPolicySumShort).toBe("Suma");

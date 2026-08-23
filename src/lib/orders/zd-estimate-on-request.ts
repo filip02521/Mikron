@@ -83,13 +83,34 @@ export function onRequestIdsToClearForExcludedTw(
 /** tw z dodatnią rezerwą katalogową (po piece→pack). */
 export function buildExtraOnlyTwIds(
   onRequestTwIds: ReadonlySet<number>,
-  individualExtraByTwId: ReadonlyMap<number, number> | null | undefined
+  individualExtraByTwId: ReadonlyMap<number, number> | null | undefined,
+  pairs?: readonly { packTwId: number; pieceTwId: number }[] | null
 ): Set<number> {
   const out = new Set<number>();
   if (!individualExtraByTwId) return out;
-  for (const twId of onRequestTwIds) {
+
+  const hasPositiveExtra = (twId: number): boolean => {
     const extra = individualExtraByTwId.get(twId);
-    if (extra != null && Number.isFinite(extra) && extra > 0) out.add(twId);
+    return extra != null && Number.isFinite(extra) && extra > 0;
+  };
+
+  for (const twId of onRequestTwIds) {
+    if (hasPositiveExtra(twId)) {
+      out.add(twId);
+      continue;
+    }
+    // Zapas: extra siedzi na partnerze pary (retarget / kolejność load).
+    if (!pairs?.length) continue;
+    for (const pair of pairs) {
+      const pack = Math.trunc(Number(pair.packTwId)) || 0;
+      const piece = Math.trunc(Number(pair.pieceTwId)) || 0;
+      if (twId !== pack && twId !== piece) continue;
+      const other = twId === pack ? piece : pack;
+      if (other > 0 && hasPositiveExtra(other)) {
+        out.add(twId);
+        break;
+      }
+    }
   }
   return out;
 }

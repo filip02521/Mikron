@@ -12,6 +12,9 @@ export const ONTIME_COMPANY = "Mikran";
 
 export const ONTIME_LOGO_MONOGRAM = "OT";
 
+/** Nazwa wyświetlana w skrzynce odbiorczej (From: …). */
+export const ONTIME_EMAIL_FROM_NAME = "OnTime";
+
 /** Ten sam kształt marki na logowaniu i w aplikacji. */
 export const ONTIME_LOGO_SHAPE = "rounded-full";
 
