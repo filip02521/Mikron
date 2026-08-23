@@ -31,8 +31,8 @@ async function main() {
   const emailOk = isEmailConfigured();
   const emailFrom = getEmailFromAddress();
   const emailOverride = process.env.EMAIL_OVERRIDE_TO?.trim();
-  console.log("E-mail (Resend):");
-  console.log(`  skonfigurowany: ${emailOk ? "TAK" : "NIE (RESEND_API_KEY)"}`);
+  console.log("E-mail (SES SMTP):");
+  console.log(`  skonfigurowany: ${emailOk ? "TAK" : "NIE (SMTP_HOST/USER/PASS + From/domena)"}`);
   console.log(`  domena (EMAIL_DOMAIN): ${getEmailDomain() ?? "(brak)"}`);
   console.log(`  nadawca: ${emailFrom}`);
   console.log(`  EMAIL_OVERRIDE_TO: ${emailOverride ?? "(brak — maile idą do handlowców)"}`);

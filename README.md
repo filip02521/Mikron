@@ -7,7 +7,7 @@ Aplikacja webowa zastępująca arkusz Google Sheets — zarządzanie cyklicznymi
 - **Next.js 16** (App Router)
 - **Node.js 24 LTS** (minimum 20.9 — `nvm use` wczytuje wersję z `.nvmrc`)
 - **Supabase** (PostgreSQL, Auth, RLS)
-- **Resend** (e-maile, opcjonalnie)
+- **Amazon SES SMTP** (e-maile, opcjonalnie — `SMTP_*` + domena `ontime.mikran.pl`)
 
 ## Szybki start
 
@@ -117,6 +117,18 @@ Vercel uruchamia crony w UTC; w kodzie sprawdzana jest strefa **Europe/Warsaw** 
 Tylko synchronizacja harmonogramów: `/api/cron/morning-sync`
 
 E-mail „towar dotarł” wysyłany jest **od razu** po zapisie w Realizacji, nie czeka na cron.
+
+## E-mail (Amazon SES SMTP)
+
+Transakcyjne maile OnTime (OTP resetu hasła, dostawy, tablica) idą przez **Amazon SES SMTP** (`nodemailer`), nie przez Resend.
+
+1. SES **eu-central-1**, identity domena `ontime.mikran.pl` (DKIM), konto **poza sandboxem**.
+2. Env: `SMTP_HOST` / `SMTP_USER` / `SMTP_PASS` / `SMTP_PORT=587` / `SMTP_SECURE=false` + `EMAIL_DOMAIN` lub `EMAIL_FROM` z `@ontime.mikran.pl`.
+3. Usuń `RESEND_API_KEY` z env (Vercel / Windows). Rotuj credentials, jeśli kiedykolwiek wyciekły.
+4. Smoke: ustaw `EMAIL_OVERRIDE_TO`, wyślij jeden mail (`scripts/test-warehouse-emails.ts` lub OTP), potem zdejmij override.
+5. Self-host (Windows): firewall outbound **TCP 587**.
+6. `npm run server-setup` zapisuje `SMTP_*` + `EMAIL_*` (nie Resend).
+7. Tygodniowe maile Ivoclar wysyła **OnTime Raporty** (osobny cutover providera) — patrz `docs/CUTOVER-IVOCLAR.md`.
 
 ## Integracja Subiekt (opcjonalnie)
 

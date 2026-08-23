@@ -43,7 +43,7 @@ Lista wygenerowana z env: `npm run setup-check`
 | Funkcja | Źródło URL |
 |---------|------------|
 | Reset hasła / zaproszenie (admin kopiuje link) | `resolveAppUrl()` → `/auth/confirm` → `/ustaw-haslo` |
-| Przycisk „Moje zamówienia” w mailu Resend | `getAppUrl()` → `/moje` |
+| Przycisk „Moje zamówienia” w mailu (SES SMTP) | `getAppUrl()` → `/moje` |
 | Ciasteczka sesji | ten sam host co w przeglądarce |
 
 Wcześniejszy błąd produkcji: `NEXT_PUBLIC_APP_URL=http://192.168.10.173:3000` (stary Mac dev) — Supabase przekierowywał na nieistniejący host.

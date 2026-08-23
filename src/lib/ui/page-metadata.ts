@@ -38,6 +38,7 @@ export const PAGE_TITLES = {
   adminVacations: "Urlopy",
   adminReports: "Zgłoszenia",
   adminMail: "Wysyłki Ivoclar",
+  adminWysylki: "Wysyłki OnTime",
   procurementBoard: "Tablica",
   procurementSuppliers: "Dostawcy",
   procurementVacations: "Urlopy",
@@ -63,6 +64,8 @@ export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>
   dostawy: "Nadchodzące dostawy — terminy ZD i prognoza paczek",
   admin: "Konfiguracja systemu, użytkownicy i narzędzia serwisowe",
   adminMail: "Status i historia wysyłek Ivoclar (odczyt — bez sterowania z OnTime)",
+  adminWysylki:
+    "Podgląd transakcyjnych maili OnTime — dostawy, informacja o stanie, OTP, tablica",
   monthlySummary: "Statystyki miesięczne — handlowcy, dostawy i zakupy",
   carriers: "Numery telefonów i kontakty do kurierów — szybki dostęp z dziennika dostaw",
   magazynGadki: "Podgląd stałych ZK magazynu zewnętrznego Gądki",

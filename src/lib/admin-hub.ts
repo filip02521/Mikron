@@ -1,4 +1,4 @@
-export type AdminHubTab = "system" | "users" | "sales" | "mail";
+export type AdminHubTab = "system" | "users" | "sales" | "mail" | "wysylki";
 
 export const ADMIN_HUB_TAB_COPY: Record<
   AdminHubTab,
@@ -17,8 +17,12 @@ export const ADMIN_HUB_TAB_COPY: Record<
     hint: "Osoby, e-maile i powiązania z kontami",
   },
   mail: {
-    label: "Maile",
+    label: "Ivoclar",
     hint: "Status i historia wysyłek Ivoclar (odczyt — wysyłka w OnTime Raporty)",
+  },
+  wysylki: {
+    label: "Wysyłki OT",
+    hint: "Podgląd transakcyjnych maili OnTime (dostawy, informacja, OTP, tablica)",
   },
 };
 
@@ -28,6 +32,7 @@ export function adminHubPaths() {
     users: "/admin/uzytkownicy",
     sales: "/admin/handlowcy",
     mail: "/admin/mail",
+    wysylki: "/admin/wysylki",
   } as const;
 }
 
@@ -35,6 +40,7 @@ export function activeAdminHubTab(pathname: string): AdminHubTab {
   if (pathname.startsWith("/admin/uzytkownicy")) return "users";
   if (pathname.startsWith("/admin/handlowcy")) return "sales";
   if (pathname.startsWith("/admin/mail")) return "mail";
+  if (pathname.startsWith("/admin/wysylki")) return "wysylki";
   return "system";
 }
 
@@ -48,5 +54,7 @@ export function adminHubHint(tab: AdminHubTab): string {
       return "Lista osób do powiadomień i panelu „Moje zamówienia”. Grupy (Sklep, Biuro) zakładasz w menu Grupy; kierowników przypisujesz w zakładce Konta.";
     case "mail":
       return "Centrum maili Ivoclar jest tylko do odczytu: status joba, odbiorcy i historia wysyłek. Generowanie prowadzi OnTime Raporty.";
+    case "wysylki":
+      return "Każdy mail transakcyjny OnTime (SES) jest logowany z treścią HTML. Kody OTP w podglądzie są zredagowane. Filtruj po typie i statusie.";
   }
 }

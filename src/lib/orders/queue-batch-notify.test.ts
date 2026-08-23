@@ -58,7 +58,7 @@ describe("queue-batch-notify", () => {
       saved: 1,
       emailSent: 0,
       errors: [],
-      emailError: "Resend timeout",
+      emailError: "SMTP timeout",
     });
     expect(t.tone).toBe("error");
     expect(t.title).toBe("Zapisano dostawę z uwagami");

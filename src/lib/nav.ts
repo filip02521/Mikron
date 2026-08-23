@@ -615,6 +615,14 @@ function adminSystemItems(badges: { adminBugReports?: number }): NavItem[] {
       ...compact,
     },
     {
+      href: "/admin/wysylki",
+      label: "Wysyłki OnTime",
+      description: "Podgląd maili transakcyjnych (dostawy, informacja, OTP)",
+      icon: "admin",
+      tone: "violet",
+      ...compact,
+    },
+    {
       href: "/admin/mail",
       label: "Wysyłki Ivoclar",
       description: "Status i historia wysyłek Ivoclar (odczyt — bez sterowania z OnTime).",
@@ -1082,6 +1090,7 @@ export function pageTitle(pathname: string): string {
     if (pathname.startsWith("/admin/uzytkownicy")) return "Konta";
     if (pathname.startsWith("/admin/zgloszenia")) return "Zgłoszenia";
     if (pathname.startsWith("/admin/handlowcy")) return "Handlowcy";
+    if (pathname.startsWith("/admin/wysylki")) return "Wysyłki OnTime";
     if (pathname.startsWith("/admin/mail")) return "Wysyłki Ivoclar";
     if (pathname.startsWith("/admin/produkty/zeby")) return "Produkty zębne";
     if (pathname.startsWith("/admin/produkty")) return "Katalog produktów";

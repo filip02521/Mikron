@@ -22,3 +22,5 @@ Pełna procedura: zobacz repozytorium sibling `ontime-raporty` → `docs/CUTOVER
 5. **Nie** ustawiać `mail_job_definitions.enabled=false` dopóki runner nie jest pewny — w OnTime i tak nie wysyła.
 
 **Źródło prawdy wysyłki:** OnTime Raporty (FS+PA). OnTime = tylko logi.
+
+**Provider e-mail runnera:** OnTime Raporty używa **tego samego Amazon SES SMTP** co OnTime (`SMTP_*`, `ontime.mikran.pl`). Kolumna `mail_send_log.resend_message_ids` pozostaje historyczna (zapisuje message-id SMTP).

@@ -3,6 +3,7 @@
 import { NavIcon } from "@/components/icons/NavIcon";
 import { navIconTileIdleClass, type NavIconKey } from "@/components/icons/NavIcon";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { AdminHubNav } from "@/components/admin/AdminHubNav";
 import { Card, CardHeader } from "@/components/ui/Card";
 import type { AdminHubTab } from "@/lib/admin-hub";
 import { adminHubBodyClass, adminPageShellClass } from "@/lib/ui/ontime-theme";
@@ -12,6 +13,7 @@ const TAB_ICON: Record<AdminHubTab, NavIconKey> = {
   users: "teamAccounts",
   sales: "team",
   mail: "admin",
+  wysylki: "admin",
 };
 
 const TAB_TITLE: Record<AdminHubTab, string> = {
@@ -19,6 +21,7 @@ const TAB_TITLE: Record<AdminHubTab, string> = {
   users: "Konta użytkowników",
   sales: "Handlowcy",
   mail: "Wysyłki Ivoclar",
+  wysylki: "Wysyłki OnTime",
 };
 
 const TAB_DESCRIPTION: Record<AdminHubTab, string> = {
@@ -28,6 +31,8 @@ const TAB_DESCRIPTION: Record<AdminHubTab, string> = {
   sales:
     "Osoby kontaktowe, powiadomienia e-mail i linki zaproszeń do zakładania kont.",
   mail: "Status i historia wysyłek Ivoclar (odczyt — bez sterowania z OnTime).",
+  wysylki:
+    "Podgląd wszystkich maili transakcyjnych wysyłanych przez OnTime (dostawy, magazyn, OTP, tablica).",
 };
 
 export function AdminHubShell({
@@ -50,7 +55,8 @@ export function AdminHubShell({
 
   return (
     <div className={adminPageShellClass}>
-      <Card padding={false} className="overflow-hidden">
+      <AdminHubNav activeTab={activeTab} />
+      <Card padding={false} className="mt-3 overflow-hidden">
         <CardHeader
           inset
           density="compact"

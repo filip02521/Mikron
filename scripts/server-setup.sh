@@ -19,8 +19,9 @@
 #
 # Zmienne dla --non-interactive (albo ustaw w środowisku przed uruchomieniem):
 #   SETUP_SUPABASE_URL, SETUP_SUPABASE_ANON_KEY, SETUP_SUPABASE_SERVICE_ROLE_KEY
-#   SETUP_RESEND_API_KEY (opcjonalnie)
-#   SETUP_EMAIL_FROM (opcjonalnie)
+#   SETUP_SMTP_HOST, SETUP_SMTP_USER, SETUP_SMTP_PASS (opcjonalnie — bez nich maile wyłączone)
+#   SETUP_SMTP_PORT, SETUP_SMTP_SECURE (opcjonalnie; domyślnie 587 / false)
+#   SETUP_EMAIL_DOMAIN, SETUP_EMAIL_FROM, SETUP_EMAIL_FROM_LOCAL (opcjonalnie)
 #   SETUP_APP_URL (opcjonalnie — inaczej wykryty IP:PORT)
 #   SETUP_SUBIEKT_BASE_URL (opcjonalnie)
 #   SETUP_CRON_SECRET (opcjonalnie — inaczej losowy)
@@ -45,7 +46,7 @@ warn() { printf '⚠ %s\n' "$*" >&2; }
 die() { printf '✗ %s\n' "$*" >&2; exit 1; }
 
 usage() {
-  sed -n '2,28p' "$0" | sed 's/^# \?//'
+  sed -n '2,32p' "$0" | sed 's/^# \?//'
   exit 0
 }
 
@@ -157,8 +158,15 @@ write_env_local() {
 NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
 NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
 SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
-RESEND_API_KEY=${RESEND_API_KEY:-}
-EMAIL_FROM=${EMAIL_FROM:-Mikran - Asystent Zamówień <onboarding@resend.dev>}
+# Amazon SES SMTP (eu-central-1) — puste USER/PASS = maile wyłączone
+SMTP_HOST=${SMTP_HOST:-email-smtp.eu-central-1.amazonaws.com}
+SMTP_PORT=${SMTP_PORT:-587}
+SMTP_USER=${SMTP_USER:-}
+SMTP_PASS=${SMTP_PASS:-}
+SMTP_SECURE=${SMTP_SECURE:-false}
+EMAIL_DOMAIN=${EMAIL_DOMAIN:-ontime.mikran.pl}
+EMAIL_FROM_LOCAL=${EMAIL_FROM_LOCAL:-OnTime}
+EMAIL_FROM=${EMAIL_FROM:-OnTime <tomek@ontime.mikran.pl>}
 CRON_SECRET=${CRON_SECRET}
 NEXT_PUBLIC_APP_URL=${FINAL_APP_URL}
 DEV_ADMIN_MODE=false
@@ -239,7 +247,13 @@ collect_configuration() {
   SUPABASE_URL="${SETUP_SUPABASE_URL:-${NEXT_PUBLIC_SUPABASE_URL:-}}"
   SUPABASE_ANON_KEY="${SETUP_SUPABASE_ANON_KEY:-${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}}"
   SUPABASE_SERVICE_ROLE_KEY="${SETUP_SUPABASE_SERVICE_ROLE_KEY:-${SUPABASE_SERVICE_ROLE_KEY:-}}"
-  RESEND_API_KEY="${SETUP_RESEND_API_KEY:-${RESEND_API_KEY:-}}"
+  SMTP_HOST="${SETUP_SMTP_HOST:-${SMTP_HOST:-email-smtp.eu-central-1.amazonaws.com}}"
+  SMTP_PORT="${SETUP_SMTP_PORT:-${SMTP_PORT:-587}}"
+  SMTP_USER="${SETUP_SMTP_USER:-${SMTP_USER:-}}"
+  SMTP_PASS="${SETUP_SMTP_PASS:-${SMTP_PASS:-}}"
+  SMTP_SECURE="${SETUP_SMTP_SECURE:-${SMTP_SECURE:-false}}"
+  EMAIL_DOMAIN="${SETUP_EMAIL_DOMAIN:-${EMAIL_DOMAIN:-ontime.mikran.pl}}"
+  EMAIL_FROM_LOCAL="${SETUP_EMAIL_FROM_LOCAL:-${EMAIL_FROM_LOCAL:-OnTime}}"
   EMAIL_FROM="${SETUP_EMAIL_FROM:-${EMAIL_FROM:-}}"
   CRON_SECRET="${SETUP_CRON_SECRET:-${CRON_SECRET:-}}"
   SUBIEKT_API_BASE_URL="${SETUP_SUBIEKT_BASE_URL:-${SUBIEKT_API_BASE_URL:-}}"
@@ -251,15 +265,33 @@ collect_configuration() {
     SUPABASE_URL="$(prompt "NEXT_PUBLIC_SUPABASE_URL" "$SUPABASE_URL")"
     SUPABASE_ANON_KEY="$(prompt_secret "NEXT_PUBLIC_SUPABASE_ANON_KEY" "$SUPABASE_ANON_KEY")"
     SUPABASE_SERVICE_ROLE_KEY="$(prompt_secret "SUPABASE_SERVICE_ROLE_KEY" "$SUPABASE_SERVICE_ROLE_KEY")"
-    if [[ -z "$RESEND_API_KEY" ]]; then
-      read -r -p "RESEND_API_KEY (Enter = pomiń, bez maili): " RESEND_API_KEY
+    log ""
+    log "E-mail: Amazon SES SMTP (Enter przy USER = maile wyłączone)."
+    SMTP_HOST="$(prompt "SMTP_HOST" "$SMTP_HOST")"
+    SMTP_PORT="$(prompt "SMTP_PORT" "$SMTP_PORT")"
+    if [[ -z "$SMTP_USER" ]]; then
+      read -r -p "SMTP_USER (Enter = pomiń, bez maili): " SMTP_USER
+    else
+      SMTP_USER="$(prompt "SMTP_USER" "$SMTP_USER")"
     fi
-    if [[ -z "$EMAIL_FROM" ]]; then
-      EMAIL_FROM="$(prompt "EMAIL_FROM" "Mikran - Asystent Zamówień <onboarding@resend.dev>")"
+    if [[ -n "$SMTP_USER" ]]; then
+      SMTP_PASS="$(prompt_secret "SMTP_PASS" "$SMTP_PASS")"
+      SMTP_SECURE="$(prompt "SMTP_SECURE" "$SMTP_SECURE")"
+      EMAIL_DOMAIN="$(prompt "EMAIL_DOMAIN" "$EMAIL_DOMAIN")"
+      EMAIL_FROM_LOCAL="$(prompt "EMAIL_FROM_LOCAL" "$EMAIL_FROM_LOCAL")"
+      if [[ -z "$EMAIL_FROM" ]]; then
+        EMAIL_FROM="$(prompt "EMAIL_FROM" "OnTime <tomek@ontime.mikran.pl>")"
+      else
+        EMAIL_FROM="$(prompt "EMAIL_FROM" "$EMAIL_FROM")"
+      fi
     fi
     if [[ -z "$SUBIEKT_API_BASE_URL" ]]; then
       read -r -p "SUBIEKT_API_BASE_URL (Enter = pomiń): " SUBIEKT_API_BASE_URL
     fi
+  fi
+
+  if [[ -z "$EMAIL_FROM" ]]; then
+    EMAIL_FROM="OnTime <tomek@ontime.mikran.pl>"
   fi
 
   if [[ -z "$CRON_SECRET" || "$CRON_SECRET" == "change-me-in-production" || "$CRON_SECRET" == "dev-local-cron-secret" ]]; then
@@ -405,9 +437,19 @@ print_summary() {
     warn "Brak :3000 w URL — OK tylko gdy masz reverse proxy (port 80 → 3000)."
   fi
   log ""
-  log "Po zmianie URL zrestartuj aplikację."
+  log "E-mail (SES SMTP):"
+  if [[ -n "${SMTP_USER:-}" && -n "${SMTP_PASS:-}" ]]; then
+    log "  Host:    ${SMTP_HOST:-?(brak)}"
+    log "  From:    ${EMAIL_FROM:-?(brak)}"
+    log "  Domain:  ${EMAIL_DOMAIN:-?(brak)}"
+  else
+    warn "SMTP_USER/PASS puste — powiadomienia e-mail wyłączone. Uzupełnij .env.local."
+  fi
+  log ""
+  log "Po zmianie URL lub SMTP zrestartuj aplikację."
   log "Diagnostyka LAN: npm run lan-check"
   log "Pełna weryfikacja: npm run setup-check"
+  log "Smoke maili: EMAIL_OVERRIDE_TO=... npx tsx --env-file=.env.local scripts/test-warehouse-emails.ts"
   log ""
   if [[ "${NEXT_PUBLIC_APP_URL}" == http://* ]]; then
     warn "Używasz HTTP — upewnij się, że Supabase ma ten adres w Redirect URLs."

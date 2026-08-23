@@ -192,6 +192,12 @@ function summarizeRunDetail(
       if (typeof detail.emailSent === "number") {
         lines.push(`E-maile: ${detail.emailSent}`);
       }
+      if (typeof detail.queueFlushSent === "number" && detail.queueFlushSent > 0) {
+        lines.push(`Kolejka undo: ${detail.queueFlushSent}`);
+      }
+      if (typeof detail.queueFlushError === "string") {
+        lines.push(`Kolejka undo — błąd: ${detail.queueFlushError}`);
+      }
       if (detail.emailNotConfigured === true) {
         lines.push("E-mail nie skonfigurowany");
       }
@@ -222,6 +228,9 @@ function summarizeRunDetail(
       }
       if (typeof detail.emailError === "string") {
         lines.push(`Uwaga e-mail: ${detail.emailError}`);
+      }
+      if (detail.emailNotConfigured === true) {
+        lines.push("E-mail nie skonfigurowany");
       }
       if (detail.timedOut === true) {
         lines.push("Limit czasu — kontynuacja przy następnym wywołaniu");

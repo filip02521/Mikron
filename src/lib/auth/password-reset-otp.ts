@@ -335,6 +335,7 @@ export async function sendPasswordResetOtp(params: {
     to: user.email,
     subject,
     html,
+    kind: "password_reset_otp",
   });
 
   if (!sendResult.ok) {

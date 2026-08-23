@@ -8,7 +8,7 @@ import {
 } from "@/lib/admin-hub";
 import { SectionTabNav, type SectionTab } from "@/components/ui/SectionTabNav";
 
-const TAB_ORDER: AdminHubTab[] = ["system", "mail", "users", "sales"];
+const TAB_ORDER: AdminHubTab[] = ["system", "wysylki", "mail", "users", "sales"];
 
 export function AdminHubNav({
   activeTab,

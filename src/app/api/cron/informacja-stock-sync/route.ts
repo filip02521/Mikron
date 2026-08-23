@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeCronRequest } from "@/lib/services/cron-auth";
 import { recordCronRun } from "@/lib/services/cron-run-log";
 import { runInformacjaStockAutoArrive } from "@/lib/services/informacja-stock-sync";
+import { isEmailConfigured } from "@/lib/env/email-config";
+import { isProductionRuntime } from "@/lib/env/app-config";
 import { isWarsawWorkHours } from "@/lib/time/warsaw";
 import { recordCronSkipped, warsawCronContext } from "@/lib/time/warsaw-cron";
 
@@ -62,6 +64,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const emailNotConfigured =
+      isProductionRuntime() && !isEmailConfigured() && (result.updated ?? 0) > 0;
+
     const detail: Record<string, unknown> = {
       candidates: result.candidates,
       eligible: result.eligible,
@@ -70,14 +75,28 @@ export async function GET(request: NextRequest) {
       emailSent: result.emailSent,
       timedOut: result.timedOut ?? false,
       subiektOffline: result.subiektOffline ?? false,
+      emailNotConfigured: emailNotConfigured || undefined,
     };
     if (result.emailError) detail.emailError = result.emailError;
 
+    const errorMessage = emailNotConfigured
+      ? "SMTP not configured"
+      : result.emailError;
+
     await recordCronRun("informacja_stock_sync", {
-      ok: result.ok && !result.emailError,
+      ok: result.ok && !result.emailError && !emailNotConfigured,
       detail,
-      error: result.emailError,
+      error: errorMessage,
     });
+
+    if (emailNotConfigured) {
+      return NextResponse.json({
+        success: false,
+        ...detail,
+        warning:
+          "E-mail nie skonfigurowany — statusy zaktualizowane, powiadomienia nie wysłane",
+      });
+    }
 
     return NextResponse.json({
       success: result.ok && !result.emailError,
