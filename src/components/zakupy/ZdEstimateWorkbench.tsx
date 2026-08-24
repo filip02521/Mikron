@@ -101,6 +101,11 @@ import {
   writeZdEstimateExternalSessionToken,
   consumeExpiredOrInvalidZdEstimateExternalSessionToken,
 } from "@/lib/orders/zd-estimate-external-session";
+import { decideZdEstimateAutorunVsExternalSession } from "@/lib/orders/zd-estimate-external-session-autorun";
+import {
+  zdEstimateStickyToastClass,
+  zdEstimateStickyToastStackIndices,
+} from "@/lib/orders/zd-estimate-sticky-toast-stack";
 import {
   buildZdEstimateUiSessionSnapshot,
   historyEntriesFromMap,
@@ -121,6 +126,7 @@ import {
   zdEstimateLaunchReadyToastDescription,
   zdEstimateLaunchReadyToastTitle,
   zdEstimateRecountListStatus,
+  zdEstimateRecountClosedPreviousSessionPrefix,
   zdEstimateRecountOverlayHint,
   zdEstimateRecountOverlayMessage,
   buildImplicitPieceSnapshotNotice,
@@ -377,9 +383,7 @@ import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
 import {
   floatingToastAboveZdStickyClass,
-  floatingToastAboveZdStickyStackClass,
   floatingToastAboveZdStickyTallClass,
-  floatingToastAboveZdStickyTallStackClass,
 } from "@/lib/ui/sales-mobile-chrome";
 import {
   checkboxBrandClass,
@@ -418,6 +422,30 @@ function launchHasRunnableScope(launch: ZdEstimateLaunchProps | null | undefined
     return launch.grupaId != null && launch.grupaId > 0;
   }
   return launch.cechaId != null && launch.cechaId > 0;
+}
+
+/** Autorun z /podsumowanie zastąpi sesję — nie wchodź w gate restore/resume. */
+function willReplaceExternalSessionOnDailyAutorun(input: {
+  launch: ZdEstimateLaunchProps | null | undefined;
+  bootstrapConfigured: boolean;
+}): boolean {
+  const launch = input.launch;
+  if (typeof window === "undefined") return false;
+  const token = peekZdEstimateExternalSessionToken();
+  if (!token) return false;
+  return (
+    decideZdEstimateAutorunVsExternalSession({
+      hasActiveToken: true,
+      tokenSupplierId: token.supplierId,
+      fromDaily: Boolean(launch?.fromDaily),
+      autorun: Boolean(launch?.autorun),
+      needsAssign: Boolean(launch?.needsAssign),
+      supplierId: launch?.supplierId,
+      hasRunnableScope: launchHasRunnableScope(launch),
+      hasLaunchKey: Boolean(launch?.launchKey),
+      bootstrapConfigured: input.bootstrapConfigured,
+    }).action === "replace_and_autorun"
+  );
 }
 
 function settingsTrustFailMessage(input: {
@@ -1025,6 +1053,15 @@ export function ZdEstimateWorkbench({
     useState(false);
   const [externalSessionAutorunConflictOpen, setExternalSessionAutorunConflictOpen] =
     useState(false);
+  /** Daily „Przygotuj ZD” zamyka starą sesję i odpala autorun (bez dialogu). */
+  const [externalSessionAutorunReplacePending, setExternalSessionAutorunReplacePending] =
+    useState(false);
+  const autorunReplaceMetaRef = useRef<{
+    supplierChanged: boolean;
+    nextSupplierName: string | null;
+  } | null>(null);
+  /** sessionId z momentu decyzji — nie polegaj na tokenie po async gap. */
+  const autorunReplaceSessionIdRef = useRef<string | null>(null);
   const [externalSessionScopeChangeOpen, setExternalSessionScopeChangeOpen] =
     useState(false);
   const sessionResumeStartedAtMsRef = useRef(Date.now());
@@ -1033,10 +1070,26 @@ export function ZdEstimateWorkbench({
   /** Blokuje formularz zakresu do czasu restore (także cichego refreshu z tokenem). */
   const [sessionRestorePending, setSessionRestorePending] = useState(() => {
     if (typeof window === "undefined") return false;
+    if (
+      willReplaceExternalSessionOnDailyAutorun({
+        launch,
+        bootstrapConfigured: bootstrap.configured,
+      })
+    ) {
+      return false;
+    }
     return Boolean(peekZdEstimateExternalSessionToken());
   });
   const [sessionResumeBlocking, setSessionResumeBlocking] = useState(() => {
     if (typeof window === "undefined") return false;
+    if (
+      willReplaceExternalSessionOnDailyAutorun({
+        launch,
+        bootstrapConfigured: bootstrap.configured,
+      })
+    ) {
+      return false;
+    }
     const token = peekZdEstimateExternalSessionToken();
     if (!token) return false;
     return shouldShowZdEstimateSessionResumeLoading({ token });
@@ -1046,6 +1099,14 @@ export function ZdEstimateWorkbench({
   const [sessionResumeReturningFromAway, setSessionResumeReturningFromAway] =
     useState(() => {
       if (typeof window === "undefined") return false;
+      if (
+        willReplaceExternalSessionOnDailyAutorun({
+          launch,
+          bootstrapConfigured: bootstrap.configured,
+        })
+      ) {
+        return false;
+      }
       return isZdEstimateExternalSessionReturnNavigation(
         peekZdEstimateExternalSessionToken()
       );
@@ -3262,6 +3323,7 @@ export function ZdEstimateWorkbench({
         setPrepCollapsed(false);
         setLaunchForceComplete(false);
         setLastEstimateFailed(true);
+        autorunReplaceMetaRef.current = null;
         setScopeNeedsRecount(false);
         setBoostNeedsRecount(false);
         setHistoryNeedsRecount(false);
@@ -3431,22 +3493,35 @@ export function ZdEstimateWorkbench({
         // Po Policz: zwijaj prep — max wysokość tabeli (także recount bez progress shell).
         setPrepCollapsed(true);
         if (useProgressShell) {
+          const closed = autorunReplaceMetaRef.current;
+          autorunReplaceMetaRef.current = null;
           setLaunchReadyMessage(
             zdEstimateLaunchReadyToastDescription({
               doZamowieniaCount: res.meta.doZamowieniaCount,
               pendingIndividualsCount: res.pendingIndividuals?.length ?? 0,
               isLive: bootstrap.ordersIsLive,
+              closedPreviousSession: Boolean(closed),
+              previousSessionSupplierChanged: closed?.supplierChanged,
+              nextSupplierName: closed?.nextSupplierName ?? null,
             })
           );
           setLaunchForceComplete(false);
           setLaunchBlocking(false);
           setRecountStatusMessage(null);
         } else {
+          const closed = autorunReplaceMetaRef.current;
+          autorunReplaceMetaRef.current = null;
+          const recount = zdEstimateRecountListStatus({
+            doZamowieniaCount: res.meta.doZamowieniaCount,
+            durationMs: res.meta.durationMs,
+          });
           setRecountStatusMessage(
-            zdEstimateRecountListStatus({
-              doZamowieniaCount: res.meta.doZamowieniaCount,
-              durationMs: res.meta.durationMs,
-            })
+            closed
+              ? `${zdEstimateRecountClosedPreviousSessionPrefix({
+                  supplierChanged: closed.supplierChanged,
+                  nextSupplierName: closed.nextSupplierName,
+                })}${recount}`
+              : recount
           );
         }
       };
@@ -3607,18 +3682,44 @@ export function ZdEstimateWorkbench({
     runEstimateRef.current = runEstimate;
   });
 
-  // Sesja zewnętrzna: restore albo konflikt z autorun na mount (przed pierwszym paintem treści).
+  // Sesja zewnętrzna: restore, auto-replace (daily Przygotuj ZD) albo konflikt z autorun.
   useLayoutEffect(() => {
     syncExternalSessionTokenState();
 
     const token = peekZdEstimateExternalSessionToken();
-    const wantsAutorun =
-      Boolean(launch?.autorun) &&
-      !launch?.needsAssign &&
-      bootstrap.configured &&
-      launchHasRunnableScope(launch);
+    const decision = decideZdEstimateAutorunVsExternalSession({
+      hasActiveToken: Boolean(token),
+      tokenSupplierId: token?.supplierId,
+      fromDaily: Boolean(launch?.fromDaily),
+      autorun: Boolean(launch?.autorun),
+      needsAssign: Boolean(launch?.needsAssign),
+      supplierId: launch?.supplierId,
+      hasRunnableScope: launchHasRunnableScope(launch),
+      hasLaunchKey: Boolean(launch?.launchKey),
+      bootstrapConfigured: bootstrap.configured,
+    });
 
-    if (token && wantsAutorun && launch?.launchKey) {
+    if (decision.action === "replace_and_autorun" && token && launch?.launchKey) {
+      externalSessionAutorunBlockedRef.current = true;
+      externalSessionAutorunPendingRef.current = {
+        mode: launch.mode!,
+        grupaId: launch.grupaId ?? undefined,
+        cechaId: launch.cechaId ?? undefined,
+        launchKey: launch.launchKey,
+      };
+      autorunReplaceMetaRef.current = {
+        supplierChanged: decision.supplierChanged,
+        nextSupplierName: launch?.supplierName ?? null,
+      };
+      autorunReplaceSessionIdRef.current = token.sessionId;
+      setSessionResumeBlocking(false);
+      setSessionRestorePending(false);
+      setSessionResumeReturningFromAway(false);
+      setExternalSessionAutorunReplacePending(true);
+      return;
+    }
+
+    if (decision.action === "conflict_dialog" && launch?.launchKey) {
       externalSessionAutorunBlockedRef.current = true;
       externalSessionAutorunPendingRef.current = {
         mode: launch.mode!,
@@ -3675,6 +3776,32 @@ export function ZdEstimateWorkbench({
       });
     });
   }, []);
+
+  // Daily „Przygotuj ZD”: zamknij poprzednią sesję (token + DB), potem odblokuj
+  // zwykły autorun (claim/markDone) — bez runPending, żeby Strict Mode remount
+  // mógł ponowić Policz gdy ten effect zostanie anulowany po clear tokena.
+  useEffect(() => {
+    if (!externalSessionAutorunReplacePending) return;
+    let cancelled = false;
+    const sessionId = autorunReplaceSessionIdRef.current;
+    void (async () => {
+      await endExternalSession({ sessionId });
+      if (cancelled) {
+        // Token już skasowany; nie markDone — remount wejdzie w zwykły autorun.
+        return;
+      }
+      const meta = autorunReplaceMetaRef.current;
+      // Meta zostaje do toastu „Lista gotowa” — nie kasuj tu (unikaj 2 nakładających się toastów).
+      autorunReplaceSessionIdRef.current = null;
+      // Odblokuj autorun effect (claim + Policz), nie odpalaj estimate tutaj.
+      externalSessionAutorunPendingRef.current = null;
+      externalSessionAutorunBlockedRef.current = false;
+      setExternalSessionAutorunReplacePending(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [externalSessionAutorunReplacePending, endExternalSession]);
 
   const openCreateZdModal = useCallback(() => {
     setLinkZdOpen(false);
@@ -3744,6 +3871,7 @@ export function ZdEstimateWorkbench({
     if (launchedRef.current) return;
     if (!bootstrap.configured) return;
     if (externalSessionAutorunBlockedRef.current) return;
+    if (externalSessionAutorunReplacePending) return;
     if (peekZdEstimateExternalSessionToken()) return;
 
     const failLaunch = (message: string) => {
@@ -3822,7 +3950,12 @@ export function ZdEstimateWorkbench({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [launch, bootstrap.configured, settingsTrusted]);
+  }, [
+    launch,
+    bootstrap.configured,
+    settingsTrusted,
+    externalSessionAutorunReplacePending,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -3929,6 +4062,7 @@ export function ZdEstimateWorkbench({
   /** Jeden spokojny panel — pierwsze Policz (menu i daily), bez overlay na formularzu. */
   const showLaunchProgress = Boolean(
     launchBlocking ||
+      externalSessionAutorunReplacePending ||
       (estimating && !lines && !launchReadyMessage)
   );
 
@@ -3952,7 +4086,8 @@ export function ZdEstimateWorkbench({
     sessionRestorePending &&
       !sessionResumeBlocking &&
       !showLaunchProgress &&
-      !externalSessionAutorunConflictOpen
+      !externalSessionAutorunConflictOpen &&
+      !externalSessionAutorunReplacePending
   );
   const canCancelExternalSession = Boolean(
     lines != null &&
@@ -4444,6 +4579,16 @@ export function ZdEstimateWorkbench({
   }, [lines, selected]);
 
   const selectedCount = selectedLines.length;
+
+  const stickyToastTallDock = Boolean(
+    stickyCreateGateCaption || selectedCount > 0
+  );
+  const stickyToastStack = zdEstimateStickyToastStackIndices({
+    launchReady: Boolean(launchReadyMessage),
+    sessionRestored: Boolean(externalSessionRestoredToast),
+    recount: Boolean(recountStatusMessage),
+    settingsLive: Boolean(settingsLiveMessage),
+  });
 
   // Live count dla cleanup scrolla (Strict Mode / rapid toggle) — layout, nie render.
   useLayoutEffect(() => {
@@ -5527,12 +5672,10 @@ export function ZdEstimateWorkbench({
           description={launchReadyMessage}
           durationMs={6500}
           onDismiss={() => setLaunchReadyMessage(null)}
-          className={cn(
-            floatingToastAboveZdStickyClass,
-            stickyCreateGateCaption || selectedCount > 0
-              ? floatingToastAboveZdStickyTallClass
-              : undefined
-          )}
+          className={zdEstimateStickyToastClass({
+            stackIndex: stickyToastStack.launchReady ?? 0,
+            tallDock: stickyToastTallDock,
+          })}
         />
       ) : null}
 
@@ -5543,17 +5686,10 @@ export function ZdEstimateWorkbench({
           description={externalSessionRestoredToast}
           durationMs={8000}
           onDismiss={() => setExternalSessionRestoredToast(null)}
-          className={cn(
-            floatingToastAboveZdStickyClass,
-            stickyCreateGateCaption || selectedCount > 0
-              ? floatingToastAboveZdStickyTallClass
-              : undefined,
-            launchReadyMessage
-              ? stickyCreateGateCaption || selectedCount > 0
-                ? floatingToastAboveZdStickyTallStackClass
-                : floatingToastAboveZdStickyStackClass
-              : undefined
-          )}
+          className={zdEstimateStickyToastClass({
+            stackIndex: stickyToastStack.sessionRestored ?? 0,
+            tallDock: stickyToastTallDock,
+          })}
         />
       ) : null}
 
@@ -5565,17 +5701,10 @@ export function ZdEstimateWorkbench({
           description={recountStatusMessage}
           durationMs={4200}
           onDismiss={() => setRecountStatusMessage(null)}
-          className={cn(
-            floatingToastAboveZdStickyClass,
-            stickyCreateGateCaption || selectedCount > 0
-              ? floatingToastAboveZdStickyTallClass
-              : undefined,
-            launchReadyMessage || externalSessionRestoredToast
-              ? stickyCreateGateCaption || selectedCount > 0
-                ? floatingToastAboveZdStickyTallStackClass
-                : floatingToastAboveZdStickyStackClass
-              : undefined
-          )}
+          className={zdEstimateStickyToastClass({
+            stackIndex: stickyToastStack.recount ?? 0,
+            tallDock: stickyToastTallDock,
+          })}
         />
       ) : null}
 
@@ -5587,19 +5716,10 @@ export function ZdEstimateWorkbench({
           description={settingsLiveMessage}
           durationMs={3200}
           onDismiss={() => setSettingsLiveMessage(null)}
-          className={cn(
-            floatingToastAboveZdStickyClass,
-            stickyCreateGateCaption || selectedCount > 0
-              ? floatingToastAboveZdStickyTallClass
-              : undefined,
-            launchReadyMessage ||
-              externalSessionRestoredToast ||
-              recountStatusMessage
-              ? stickyCreateGateCaption || selectedCount > 0
-                ? floatingToastAboveZdStickyTallStackClass
-                : floatingToastAboveZdStickyStackClass
-              : undefined
-          )}
+          className={zdEstimateStickyToastClass({
+            stackIndex: stickyToastStack.settingsLive ?? 0,
+            tallDock: stickyToastTallDock,
+          })}
         />
       ) : null}
 
