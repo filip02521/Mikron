@@ -32,6 +32,7 @@ import {
   undoWindowBannerDescription,
 } from "@/lib/orders/daily-panel-undo";
 import { isAdmin } from "@/lib/auth-roles";
+import { canMutateOperationsNote } from "@/lib/operations/operations-note-access";
 import { sortOperationsNotes } from "@/lib/operations/operations-note-sort";
 import type { OperationsDepartment, OperationsNote, OperationsNoteVisibility, UserRole, Workspace } from "@/types/database";
 import {
@@ -50,7 +51,9 @@ import { NotatnikCollapsible } from "@/components/notatnik/NotatnikCollapsible";
 import { SalesKeyboardShortcutsStrip } from "@/components/sales/SalesKeyboardShortcutsStrip";
 import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 import { cn } from "@/lib/cn";
+import { isEditableKeyboardTarget } from "@/lib/platform/editable-keyboard-target";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 
 type OperationsUndoState = (
   | { type: "archive"; note: OperationsNote; visibility: OperationsNoteVisibility }
@@ -89,12 +92,14 @@ export function OperationsNotepadClient({
 }) {
   const router = useRouter();
   const undoShortcut = useUndoShortcutLabel();
+  const { readOnly: panelReadOnly } = useAdminPanelPreview();
   const allowedDepartments = departmentsForRole(role, assignedWorkspaces);
 
   const [privateNotes, setPrivateNotes] = useState(initial.privateNotes);
   const [publicNotes, setPublicNotes] = useState(initial.publicNotes);
   const [archivedNotes, setArchivedNotes] = useState(initial.archivedNotes);
   const [showArchive, setShowArchive] = useState(false);
+  const [shortcutBoard, setShortcutBoard] = useState<"private" | "public">("private");
   const [focusNoteId, setFocusNoteId] = useState<string | null>(null);
   const [undo, setUndo] = useState<OperationsUndoState | null>(null);
   const [undoFeedback, setUndoFeedback] = useState<ToastNotice | null>(null);
@@ -110,7 +115,6 @@ export function OperationsNotepadClient({
     setPrivateNotes(initial.privateNotes);
     setPublicNotes(initial.publicNotes);
     setArchivedNotes(initial.archivedNotes);
-    setShowArchive(false);
   }
 
   const todayTasks = useMemo(
@@ -136,7 +140,12 @@ export function OperationsNotepadClient({
 
   const handleTodayTaskClick = useCallback((noteId: string) => {
     setFocusNoteId(noteId);
-  }, []);
+    if (publicNotes.some((n) => n.id === noteId)) {
+      setShortcutBoard("public");
+    } else if (privateNotes.some((n) => n.id === noteId)) {
+      setShortcutBoard("private");
+    }
+  }, [privateNotes, publicNotes]);
 
   const handleUndo = useCallback(async () => {
     if (!undo) return;
@@ -182,10 +191,9 @@ export function OperationsNotepadClient({
   }, [undo, department, refresh]);
 
   useEffect(() => {
-    if (!undo) return;
+    if (!undo || panelReadOnly) return;
     const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (isEditableKeyboardTarget(e.target)) return;
       if ((e.metaKey || e.ctrlKey) && e.key === "z") {
         e.preventDefault();
         void handleUndo();
@@ -193,7 +201,7 @@ export function OperationsNotepadClient({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, handleUndo]);
+  }, [undo, panelReadOnly, handleUndo]);
 
   function handleNotesReordered(
     visibility: OperationsNoteVisibility,
@@ -263,6 +271,17 @@ export function OperationsNotepadClient({
   }
 
   const deptLabel = OPERATIONS_DEPARTMENT_LABELS[department];
+  const notesReadOnly = panelReadOnly;
+  const privateHasNotes = privateNotes.length > 0;
+  const publicHasNotes = publicNotes.length > 0;
+  const searchShortcutBoard: "private" | "public" =
+    shortcutBoard === "private"
+      ? privateHasNotes || !publicHasNotes
+        ? "private"
+        : "public"
+      : publicHasNotes || !privateHasNotes
+        ? "public"
+        : "private";
 
   return (
     <div className={OPERATIONS_NOTEPAD_PAGE_CLASS}>
@@ -374,6 +393,7 @@ export function OperationsNotepadClient({
               department={department}
               visibility="private"
               currentUserId={userId}
+              readOnly={notesReadOnly}
               embedded
               focusNoteId={focusNoteId}
               onFocusNoteHandled={handleFocusNoteHandled}
@@ -382,13 +402,17 @@ export function OperationsNotepadClient({
               onNoteArchived={handlePrivateArchived}
               onNotesReordered={(next, prev) => handleNotesReordered("private", next, prev)}
               allowReorder
+              enableWindowShortcuts={!notesReadOnly && shortcutBoard === "private"}
+              enableSearchShortcut={!notesReadOnly && searchShortcutBoard === "private"}
+              onBoardActivate={() => setShortcutBoard("private")}
+              isUserAdmin={isAdmin(role)}
             />
           </NotatnikPanel>
 
           <NotatnikPanel
             domain="panel"
             title="Wspólne"
-            description={`Tablica działu ${deptLabel} — widoczne dla całego zespołu w tym dziale.`}
+            description={`Tablica działu ${deptLabel} — zespół może edytować, archiwizować i przestawiać te notatki.`}
             count={publicNotes.length || undefined}
             icon={<IconUsers size={17} />}
             tileClassName="bg-sky-100 text-sky-800"
@@ -400,6 +424,7 @@ export function OperationsNotepadClient({
               department={department}
               visibility="public"
               currentUserId={userId}
+              readOnly={notesReadOnly}
               embedded
               focusNoteId={focusNoteId}
               onFocusNoteHandled={handleFocusNoteHandled}
@@ -407,7 +432,11 @@ export function OperationsNotepadClient({
               onNoteUpdated={handlePublicUpdated}
               onNoteArchived={handlePublicArchived}
               onNotesReordered={(next, prev) => handleNotesReordered("public", next, prev)}
-              allowReorder={isAdmin(role)}
+              allowReorder
+              enableWindowShortcuts={!notesReadOnly && shortcutBoard === "public"}
+              enableSearchShortcut={!notesReadOnly && searchShortcutBoard === "public"}
+              onBoardActivate={() => setShortcutBoard("public")}
+              isUserAdmin={isAdmin(role)}
             />
           </NotatnikPanel>
 
@@ -424,7 +453,15 @@ export function OperationsNotepadClient({
             >
               <OperationsArchivedNotesSection
                 notes={archivedNotes}
-                canRestore={(note) => note.created_by === userId || isAdmin(role)}
+                canRestore={(note) =>
+                  !notesReadOnly &&
+                  canMutateOperationsNote({
+                    visibility: note.visibility,
+                    createdBy: note.created_by,
+                    userId,
+                    isAdmin: isAdmin(role),
+                  })
+                }
                 onRestored={handleArchivedRestored}
               />
             </NotatnikCollapsible>
