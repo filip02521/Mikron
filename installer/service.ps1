@@ -1,9 +1,7 @@
 # Zarzadzanie usluga Windows OnTime (NSSM).
 #
-#   .\installer\service.ps1 status
-#   .\installer\service.ps1 start
-#   .\installer\service.ps1 stop
-#   .\installer\service.ps1 restart
+#   .\installer\service.ps1 status|start|stop|restart
+# Preferuj: npm run service:stop / service:start / service -- status
 #
 param(
   [Parameter(Position = 0)]
@@ -30,6 +28,31 @@ function Write-Err([string]$Message) {
 
 function Write-Warn([string]$Message) {
   Write-Host "  !!  $Message" -ForegroundColor Yellow
+}
+
+function Get-NssmPath {
+  $candidate = Join-Path $ProjectRoot "nssm.exe"
+  if (Test-Path $candidate) { return $candidate }
+  $cmd = Get-Command nssm.exe -ErrorAction SilentlyContinue
+  if ($cmd) { return $cmd.Source }
+  return $null
+}
+
+function Invoke-Nssm {
+  param([string[]]$Arguments)
+  $nssm = Get-NssmPath
+  if (-not $nssm) { return $null }
+  $prevEa = $ErrorActionPreference
+  $ErrorActionPreference = "Continue"
+  try {
+    $output = & $nssm @Arguments 2>&1
+    return [PSCustomObject]@{
+      ExitCode = $LASTEXITCODE
+      Output = ($output | Out-String)
+    }
+  } finally {
+    $ErrorActionPreference = $prevEa
+  }
 }
 
 function Get-OnTimeService {
@@ -64,58 +87,91 @@ function Get-PortListenerPids([int]$ListenPort) {
   return @($found | Select-Object -Unique)
 }
 
+function Stop-ProcessTree([int]$RootPid) {
+  if ($RootPid -le 0) { return }
+  Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+    Where-Object { $_.ParentProcessId -eq $RootPid } |
+    ForEach-Object { Stop-ProcessTree -RootPid ([int]$_.ProcessId) }
+  Stop-Process -Id $RootPid -Force -ErrorAction SilentlyContinue
+}
+
 function Stop-OnTimeOrphans {
-  # NSSM czesto zostawia node/npm po Stop-Service (Paused / EADDRINUSE / EPERM).
   $rootNorm = (Resolve-Path $ProjectRoot).Path.ToLowerInvariant()
-  Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" -ErrorAction SilentlyContinue | ForEach-Object {
+
+  # 1) Zabij drzewo nssm.exe uruchomionego z katalogu OnTime (trzyma cmd/npm/next).
+  Get-CimInstance Win32_Process -Filter "Name = 'nssm.exe'" -ErrorAction SilentlyContinue | ForEach-Object {
     $cmd = $_.CommandLine
     if (-not $cmd) { $cmd = "" }
+    if ($cmd.ToLowerInvariant().Contains($rootNorm)) {
+      Write-Warn "Zabijam drzewo nssm PID $($_.ProcessId)"
+      Stop-ProcessTree -RootPid ([int]$_.ProcessId)
+    }
+  }
+
+  # 2) Zabij pozostale node/cmd zwiazane z next start / katalogiem projektu.
+  Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | ForEach-Object {
+    if ($_.Name -notmatch '^(node|cmd)\.exe$') { return }
+    $cmd = $_.CommandLine
+    if (-not $cmd) { return }
     $cmdLower = $cmd.ToLowerInvariant()
-    if ($cmdLower.Contains($rootNorm) -or $cmdLower -match "next (start|dev)") {
-      Write-Warn "Zabijam osierocony node PID $($_.ProcessId)"
-      Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+    $isOurs = $cmdLower.Contains($rootNorm) -or ($cmdLower -match "next (start|dev)")
+    if ($isOurs) {
+      Write-Warn "Zabijam $($_.Name) PID $($_.ProcessId)"
+      Stop-ProcessTree -RootPid ([int]$_.ProcessId)
     }
   }
 
+  # 3) Cokolwiek siedzi na porcie aplikacji.
   foreach ($listenPid in (Get-PortListenerPids $Port)) {
-    $proc = Get-Process -Id $listenPid -ErrorAction SilentlyContinue
-    if ($proc -and $proc.ProcessName -match '^(node|npm)$') {
-      Write-Warn "Zwalniam port $Port (PID $listenPid)"
-      Stop-Process -Id $listenPid -Force -ErrorAction SilentlyContinue
-    }
+    Write-Warn "Zwalniam port $Port (PID $listenPid)"
+    Stop-ProcessTree -RootPid $listenPid
   }
-
-  Start-Sleep -Seconds 2
 }
 
 function Stop-OnTimeService {
-  $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
-  if ($svc -and $svc.Status -ne "Stopped") {
-    try {
-      Stop-Service -Name $ServiceName -Force -ErrorAction Stop
-    } catch {
-      Write-Warn "Stop-Service: $_"
-    }
+  # AppExit=Restart natychmiast odpala next po zabiciu node - wylacz na czas stopu.
+  Invoke-Nssm @("set", $ServiceName, "AppExit", "Default", "Exit") | Out-Null
+
+  try {
+    Write-Warn "nssm stop $ServiceName"
+    Invoke-Nssm @("stop", $ServiceName) | Out-Null
     Start-Sleep -Seconds 2
-  }
 
-  Stop-OnTimeOrphans
-
-  $svc = Get-Service -Name $ServiceName
-  if ($svc.Status -ne "Stopped") {
-    # Paused / StartPending - NSSM czasem zostaje w limbo; twardy reset przez nssm stop.
-    $nssm = Join-Path $ProjectRoot "nssm.exe"
-    if (Test-Path $nssm) {
-      Write-Warn "Status $($svc.Status) - wymuszam nssm stop"
-      & $nssm stop $ServiceName | Out-Null
+    $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    if ($svc -and $svc.Status -ne "Stopped") {
+      try {
+        Stop-Service -Name $ServiceName -Force -ErrorAction Stop
+      } catch {
+        Write-Warn "Stop-Service: $_"
+      }
       Start-Sleep -Seconds 2
-      Stop-OnTimeOrphans
     }
+
+    $svcInfo = Get-CimInstance Win32_Service -Filter "Name='$ServiceName'" -ErrorAction SilentlyContinue
+    if ($svcInfo -and $svcInfo.ProcessId -gt 0) {
+      Write-Warn "Zabijam drzewo uslugi PID $($svcInfo.ProcessId)"
+      Stop-ProcessTree -RootPid ([int]$svcInfo.ProcessId)
+    }
+
+    for ($attempt = 1; $attempt -le 8; $attempt++) {
+      Stop-OnTimeOrphans
+      Start-Sleep -Seconds 1
+      $busy = @(Get-PortListenerPids $Port)
+      if ($busy.Count -eq 0) { break }
+      Write-Warn "Port $Port nadal zajety (proba $attempt/8, PID $($busy -join ', '))"
+    }
+  } finally {
+    Invoke-Nssm @("set", $ServiceName, "AppExit", "Default", "Restart") | Out-Null
   }
 
   $svc = Get-Service -Name $ServiceName
+  $busy = @(Get-PortListenerPids $Port)
   if ($svc.Status -ne "Stopped") {
     Write-Err "$ServiceName nie zatrzymala sie (status: $($svc.Status))"
+    exit 1
+  }
+  if ($busy.Count -gt 0) {
+    Write-Err "Port $Port nadal zajety przez PID: $($busy -join ', ')"
     exit 1
   }
   Write-Ok "$ServiceName zatrzymana (port $Port wolny)"
@@ -123,23 +179,21 @@ function Stop-OnTimeService {
 
 function Start-OnTimeService {
   $svc = Get-Service -Name $ServiceName
-  if ($svc.Status -eq "Running") {
+  $busy = @(Get-PortListenerPids $Port)
+
+  if ($svc.Status -eq "Running" -and $busy.Count -gt 0) {
     Write-Ok "$ServiceName juz dziala"
     return
   }
 
-  # Przed startem zawsze wyczysc Paused / osierocone node (EADDRINUSE).
-  if ($svc.Status -ne "Stopped") {
-    Write-Warn "Status $($svc.Status) - najpierw stop + czyszczenie"
+  if ($svc.Status -ne "Stopped" -or $busy.Count -gt 0) {
+    Write-Warn "Czyszczenie przed startem (status=$($svc.Status), portBusy=$($busy.Count -gt 0))"
     Stop-OnTimeService
-  } else {
-    Stop-OnTimeOrphans
   }
 
   $busy = @(Get-PortListenerPids $Port)
   if ($busy.Count -gt 0) {
     Write-Err "Port $Port nadal zajety przez PID: $($busy -join ', ')"
-    Write-Host "  Zabij recznie albo sprawdz: netstat -ano | findstr :$Port"
     exit 1
   }
 
