@@ -1186,6 +1186,26 @@ export const zdEstimateExternalSessionAutorunResumeLabel =
 export const zdEstimateExternalSessionAutorunDiscardLabel =
   "Odrzuć sesję i policz od nowa";
 
+/** Po „Przygotuj ZD” z podsumowania — stara sesja zamknięta automatycznie. */
+export function zdEstimateExternalSessionReplacedByDailyLaunchToast(input: {
+  supplierChanged: boolean;
+  nextSupplierName: string | null;
+}): { title: string; description: string } {
+  if (input.supplierChanged) {
+    const name = input.nextSupplierName?.trim();
+    return {
+      title: "Zamknięto poprzednią sesję",
+      description: name
+        ? `Liczymy listę ZD dla ${name}.`
+        : "Liczymy listę ZD dla wybranego dostawcy.",
+    };
+  }
+  return {
+    title: "Zamknięto poprzednią sesję",
+    description: "Liczymy listę ZD od nowa.",
+  };
+}
+
 export const zdEstimateExternalSessionScopeChangeTitle =
   "Zamknąć obecną sesję?";
 
