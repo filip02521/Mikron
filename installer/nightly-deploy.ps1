@@ -1,5 +1,7 @@
 # Nocny deploy: git pull -> npm ci (gdy trzeba) -> build -> restart uslugi OnTime.
 #
+# Domyslna godzina zadania: 05:00 (po oknie catalog-zd-sync 02:00-04:40, przed morning 06:00).
+#
 # Recznie:
 #   .\installer\nightly-deploy.ps1
 #   .\installer\nightly-deploy.ps1 -Force
@@ -19,7 +21,7 @@ param(
   [switch]$InstallScheduledTask,
   [switch]$UninstallScheduledTask,
   [string]$TaskName = "OnTime Nightly Deploy",
-  [string]$TaskTime = "03:30",
+  [string]$TaskTime = "05:00",
   [string]$TaskRunAs = "",
   [string]$TaskRunAsPassword = ""
 )
@@ -28,6 +30,10 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "npm-ci-for-build.ps1")
+. (Join-Path $PSScriptRoot "cron-env.ps1")
+
+$ProjectRoot = (Resolve-Path $ProjectRoot).Path
+$Port = Get-CronAppPortFromEnv -ProjectRoot $ProjectRoot -DefaultPort $Port
 
 $LogDir = Join-Path $ProjectRoot "logs"
 $LogFile = Join-Path $LogDir "nightly-deploy.log"
@@ -100,9 +106,20 @@ function Resolve-TaskRunAsUser([string]$User) {
   return "$env:USERDOMAIN\$User"
 }
 
+function Test-TaskTimeOverlapsCatalogWindow([string]$Time) {
+  if ($Time -notmatch '^(\d{1,2}):(\d{2})$') { return $false }
+  $minutes = ([int]$Matches[1] * 60) + [int]$Matches[2]
+  # catalog-zd-sync: 02:00-04:40
+  return ($minutes -ge (2 * 60) -and $minutes -le ((4 * 60) + 40))
+}
+
 function Install-NightlyDeployTask {
   $scriptPath = Join-Path $PSScriptRoot "nightly-deploy.ps1"
-  $tr = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -ServiceName `"$ServiceName`" -Branch `"$Branch`""
+  $tr = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`" -ProjectRoot `"$ProjectRoot`" -ServiceName `"$ServiceName`" -Branch `"$Branch`""
+
+  if (Test-TaskTimeOverlapsCatalogWindow $TaskTime) {
+    Write-Log "UWAGA: TaskTime=$TaskTime koliduje z catalog-zd-sync (02:00-04:40). Preferuj 05:00."
+  }
 
   if (Test-ScheduledTaskExists $TaskName) {
     Remove-ScheduledTaskIfExists $TaskName
@@ -145,6 +162,26 @@ function Uninstall-NightlyDeployTask {
     Write-Log "Usunieto zadanie harmonogramu: $TaskName"
   } else {
     Write-Log "Brak zadania harmonogramu: $TaskName"
+  }
+}
+
+function Restore-ServiceAfterFailedDeploy {
+  param([string]$Reason)
+
+  if (-not (Test-ServiceExists $ServiceName)) {
+    Write-Log "KRYTYCZNE: brak uslugi $ServiceName ($Reason) - crony nie beda dzialac"
+    return
+  }
+
+  try {
+    $ok = Start-ServiceAfterNodeInstall -ServiceName $ServiceName
+    if ($ok) {
+      Write-Log "Przywrocono usluge $ServiceName po bledzie deployu ($Reason)"
+    } else {
+      Write-Log "KRYTYCZNE: $ServiceName nadal nie dziala po probie startu ($Reason)"
+    }
+  } catch {
+    Write-Log "KRYTYCZNE: nie udalo sie uruchomic $ServiceName ($Reason): $_"
   }
 }
 
@@ -197,9 +234,11 @@ function Invoke-NightlyDeploy {
     $lockChanged = $true
   }
 
+  $stoppedForDeploy = $false
   Push-Location $ProjectRoot
   try {
     Stop-ServiceForNodeInstall -ProjectRoot $ProjectRoot -ServiceName $ServiceName
+    $stoppedForDeploy = $true
 
     $needInstall = $lockChanged
     if (-not $needInstall) {
@@ -232,6 +271,8 @@ function Invoke-NightlyDeploy {
       throw "Usluga $ServiceName nie dziala po restarcie (status: $($svc.Status))"
     }
 
+    $stoppedForDeploy = $false
+
     try {
       $probe = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/login" -Method Head -TimeoutSec 30 -UseBasicParsing
       Write-Log "HTTP probe OK: $($probe.StatusCode) http://127.0.0.1:$Port/login"
@@ -240,7 +281,16 @@ function Invoke-NightlyDeploy {
     }
 
     Write-Log "Deploy zakonczony pomyslnie"
+  } catch {
+    if ($stoppedForDeploy) {
+      Restore-ServiceAfterFailedDeploy -Reason $_.Exception.Message
+      $stoppedForDeploy = $false
+    }
+    throw
   } finally {
+    if ($stoppedForDeploy) {
+      Restore-ServiceAfterFailedDeploy -Reason "finally"
+    }
     Pop-Location
   }
 }

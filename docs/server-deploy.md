@@ -48,3 +48,5 @@ NODE_ENV=production npm run build
 ## Nocny deploy
 
 `installer/nightly-deploy.ps1` automatycznie uruchamia `deps:ci`, gdy zmienił się lockfile lub brakuje modułów build.
+
+Domyślna godzina zadania Harmonogramu: **05:00** (po `catalog-zd-sync` 02:00–04:40, przed morning 06:00). Przy nieudanym buildzie skrypt **zawsze próbuje uruchomić ponownie** usługę OnTime — inaczej wszystkie crony HTTP milczą.
