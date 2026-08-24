@@ -16,7 +16,9 @@ const TARGET = process.env.EMAIL_OVERRIDE_TO?.trim() ?? "filip.naskret@mikran.co
 
 async function main() {
   if (!isEmailConfigured()) {
-    console.error("Brak RESEND_API_KEY w .env.local");
+    console.error(
+      "Brak konfiguracji SMTP w .env.local (SMTP_HOST/USER/PASS + EMAIL_FROM lub EMAIL_DOMAIN)"
+    );
     process.exit(1);
   }
 

@@ -36,6 +36,62 @@ export type SubiektListParams = {
   grupaId?: number;
 };
 
+/** Query GET /products/remanent — stan magazynowy na dzień (nie bieżący tw_Stan). */
+export type SubiektRemanentParams = {
+  page?: number;
+  pageSize?: number;
+  /** Data remanentu (włącznie); domyślnie dziś po stronie API. */
+  naDzien?: string;
+  magazynId?: number;
+  grupaId?: number;
+  cechaId?: number;
+  towarId?: number;
+  /** Osobny wiersz na towar + cenę partii. */
+  grupujPoCenie?: boolean;
+  /** Osobny wiersz na partię (mr_Id); wygrywa z grupujPoCenie. */
+  rozbicieDostaw?: boolean;
+  /** Domyślnie true w API — tylko ilosc > 0. */
+  tylkoZIloscia?: boolean;
+};
+
+export type SubiektRemanentPozycja = {
+  tw_Id: number;
+  tw_Symbol?: string | null;
+  tw_Nazwa?: string | null;
+  tw_IdGrupa?: number | null;
+  grt_Nazwa?: string | null;
+  /** Pozostałość na magazynie na dzień remanentu. */
+  ilosc?: number | null;
+  cenaMag?: number | null;
+  wartosc?: number | null;
+  mr_Id?: number | null;
+  mr_Data?: string | null;
+  [key: string]: unknown;
+};
+
+export type SubiektRemanentData = {
+  parametry?: {
+    naDzien?: string | null;
+    magazynId?: number | null;
+    cechaId?: number | null;
+    grupaId?: number | null;
+    towarId?: number | null;
+    rozbicieDostaw?: boolean | null;
+    grupujPoCenie?: boolean | null;
+    tylkoZIloscia?: boolean | null;
+    [key: string]: unknown;
+  } | null;
+  sumaIlosc?: number | null;
+  sumaWartosc?: number | null;
+  pozycje?: SubiektRemanentPozycja[] | null;
+};
+
+/** Envelope remanentu — `data` to obiekt (nie tablica), paginacja dotyczy `pozycje`. */
+export type SubiektRemanentEnvelope = {
+  data: SubiektRemanentData;
+  pagination?: SubiektPagination;
+};
+
 export type SubiektSingleEnvelope<T> = {
   data: T;
 };
@@ -105,7 +161,16 @@ export type SubiektZdEstimateLine = {
   tw_Stan?: number | null;
   tw_StanRez?: number | null;
   dostepne?: number | null;
+  /**
+   * Sprzedaż w oknie (jednostki karty SKU). API: FS + PA + WZ niepowiązane z FS/PA.
+   * Breakdown WZ: `wzNiepowiazaneOkres` (te same jednostki).
+   */
   sprzedazOkres?: number | null;
+  /**
+   * Udział WZ niepowiązanych w `sprzedazOkres` — te same jednostki co sprzedaż na linii.
+   * OnTime nie dolicza ponownie do `sprzedazOkres`.
+   */
+  wzNiepowiazaneOkres?: number | null;
   sprzedazDziennie?: number | null;
   celZapasu?: number | null;
   otwarteZkBezRez?: number | null;
@@ -118,6 +183,48 @@ export type SubiektZdEstimateLine = {
 export type SubiektZdEstimateData = {
   parametry: SubiektZdEstimateParams;
   pozycje: SubiektZdEstimateLine[];
+};
+
+/**
+ * Wiersz rozbicia ZK dla towaru — GET /orders/zd/estimate/zk.
+ * Status 5/6 = bez rezerwacji; 7 = zarezerwowany (wchodzi w tw_StanRez).
+ */
+export type SubiektZdEstimateZkLine = {
+  dok_Id: number;
+  dok_Nr?: number | null;
+  dok_NrPelny?: string | null;
+  dok_Status?: number | null;
+  dok_StatusNazwa?: string | null;
+  dok_StatusOpis?: string | null;
+  dok_DataWyst?: string | null;
+  dok_OdbiorcaId?: number | null;
+  kh_Symbol?: string | null;
+  adr_Nazwa?: string | null;
+  ob_Id?: number | null;
+  ob_Ilosc?: number | null;
+  bezRezerwacji?: boolean | null;
+  [key: string]: unknown;
+};
+
+export type SubiektZdEstimateZkData = {
+  podsumowanie: SubiektZdEstimateLine;
+  pozycje: SubiektZdEstimateZkLine[];
+};
+
+export type SubiektZdEstimateZkParamsInput = {
+  towarId: number;
+  /** true (domyślnie w API) = tylko status 5/6; false = też 7 (zarezerwowane). */
+  tylkoBezRez?: boolean;
+  dataOd?: string;
+  dataDo?: string;
+  okres?: string;
+  dniZapasu?: number;
+  zapasMin?: number;
+  zdDataOd?: string;
+  zdDataDo?: string;
+  zdOkres?: string;
+  page?: number;
+  pageSize?: number;
 };
 
 export type SubiektZdEstimateParamsInput = {
@@ -149,6 +256,22 @@ export type SubiektKontrahent = {
   adr_Kod?: string | null;
   adr_Poczta?: string | null;
   adr_Ulica?: string | null;
+  /** Id państwa z kartoteki adresu (sl_Panstwo) — opcjonalne; do raportów preferuj ISO. */
+  adr_IdPanstwo?: number | null;
+  /** Nazwa państwa z JOIN na sl_Panstwo. */
+  adr_Panstwo?: string | null;
+  /** ISO 3166-1 alpha-2 z JOIN na sl_Panstwo (Sellout Ivoclar) — gdy API je zwraca. */
+  pa_KodPanstwaISO?: string | null;
+  [key: string]: unknown;
+};
+
+/** Państwo — GET /kraje */
+export type SubiektPanstwo = {
+  pa_Id: number;
+  pa_Nazwa?: string | null;
+  pa_KodPanstwaUE?: string | null;
+  pa_CzlonekUE?: boolean | null;
+  pa_KodPanstwaISO?: string | null;
   [key: string]: unknown;
 };
 

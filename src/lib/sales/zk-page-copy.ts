@@ -6,7 +6,7 @@ export const ZK_PAGE_SECTION_COPY = {
     "Rozwiń kartę ZK, aby zobaczyć pozycje i statusy. Szukaj po kliencie, numerze lub produkcie.",
   addTitle: "Dodaj ZK z Subiekta",
   addDescription:
-    "Krótki numer (min. 2 znaki) — ostatnie 30 dni. Pełny format, np. 234/M/03/2026 — tylko dany miesiąc. Nie filtruje listy poniżej.",
+    "Krótki numer (min. 2 znaki) — najpierw ostatnie 30 dni, potem do 90 dni. Pełny format, np. 234/M/03/2026 — tylko dany miesiąc. Nie filtruje listy poniżej.",
   todayTasksTitle: "Do zrobienia dziś",
 } as const;
 

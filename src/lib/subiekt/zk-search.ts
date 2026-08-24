@@ -14,7 +14,13 @@ import {
   zkNumbersEquivalent,
 } from "@/lib/subiekt/zk-document";
 
+/** Pierwsza próba dla krótkiego numeru (świeże ZK). */
 export const ZK_RECENT_SEARCH_DAYS = 30;
+/**
+ * Druga próba, gdy w 30 dniach brak trafień — typowe ZK bywają starsze
+ * (np. wystawione 5–8 tygodni temu), a pełny numer nie zawsze jest pod ręką.
+ */
+export const ZK_RECENT_SEARCH_EXTENDED_DAYS = 90;
 export const MIN_ZK_QUERY_LENGTH = 2;
 
 const MONTHS_PL = [
@@ -213,13 +219,43 @@ export function toZkSearchCandidate(doc: SubiektDocument): ZkSearchCandidate {
   };
 }
 
-export function zkSearchNotFoundMessage(query: string, scope: ZkSearchScope): string {
+/** Krótki numer cyfrowy (nie pełny /M/… i nie dok_Id) — kwalifikuje się do rozszerzonego okna. */
+export function isShortZkSerialQuery(query: string): boolean {
+  const compact = normalizeZkQuery(query).replace(/\s+/g, "");
+  if (!/^\d+$/.test(compact)) return false;
+  if (isLikelySubiektDocumentId(compact)) return false;
+  if (isFullZkNumberQuery(compact)) return false;
+  return compact.length >= MIN_ZK_QUERY_LENGTH;
+}
+
+/** Przykład pełnego numeru do podpowiedzi (np. 5779 → 5779/M/07/2026 przy „dziś” w sierpniu). */
+export function suggestFullZkNumberExample(
+  query: string,
+  at: Date = new Date()
+): string | null {
+  if (!isShortZkSerialQuery(query)) return null;
+  const serial = normalizeZkQuery(query).replace(/\s+/g, "");
+  const month = String(at.getMonth() + 1).padStart(2, "0");
+  const year = at.getFullYear();
+  return `${serial}/M/${month}/${year}`;
+}
+
+export function zkSearchNotFoundMessage(
+  query: string,
+  scope: ZkSearchScope,
+  at: Date = new Date()
+): string {
   const q = normalizeZkQuery(query);
   if (scope.mode === "month") {
-    return `Nie znaleziono ZK „${q}” w ${scope.monthLabel}.`;
+    return `Nie znaleziono ZK „${q}” w ${scope.monthLabel}. Sprawdź miesiąc i rok w pełnym numerze.`;
   }
   if (scope.mode === "recent") {
-    return `Nie znaleziono ZK „${q}” z ostatnich ${scope.days} dni.`;
+    const example = suggestFullZkNumberExample(q, at);
+    const base = `Nie znaleziono ZK „${q}” z ostatnich ${scope.days} dni.`;
+    if (example) {
+      return `${base} Jeśli zamówienie jest starsze, wpisz pełny numer (np. ${example}).`;
+    }
+    return base;
   }
   return `Nie znaleziono ZK „${q}” w Subiekcie.`;
 }

@@ -27,6 +27,24 @@ function Stop-ServiceForNodeInstall {
   Start-Sleep -Seconds 2
 }
 
+function Start-ServiceAfterNodeInstall {
+  param(
+    [string]$ServiceName = "OnTime",
+    [int]$SettleSeconds = 3
+  )
+
+  $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+  if (-not $svc) { return $false }
+
+  if ($svc.Status -ne "Running") {
+    Start-Service -Name $ServiceName
+    Start-Sleep -Seconds $SettleSeconds
+    $svc = Get-Service -Name $ServiceName
+  }
+
+  return ($svc.Status -eq "Running")
+}
+
 function Test-NodeModulesComplete {
   param([string]$Root)
 

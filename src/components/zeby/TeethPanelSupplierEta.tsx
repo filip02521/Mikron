@@ -9,12 +9,33 @@ export function TeethPanelSupplierEta({
 }: {
   eta: TeethSupplierDeliveryEta | null | undefined;
 }) {
-  if (!eta) return null;
+  if (!eta) {
+    return (
+      <span
+        className={teethPanelHeaderMetaClass}
+        title="Ustaw stałe ETA w harmonogramie dostawcy (Karty dostawców → tor zębów)"
+      >
+        · brak ETA
+      </span>
+    );
+  }
+
+  const daysPart = `~${eta.avgBusinessDays} dni rob.`;
+  const datePart = `dostawa ~${formatPlDate(eta.expectedDate)}`;
+  const sampleHint =
+    eta.source === "history" && eta.lowConfidence ? " (mała próbka)" : null;
 
   return (
-    <span className={teethPanelHeaderMetaClass}>
-      · dostawa ~{formatPlDate(eta.expectedDate)}
-      {eta.lowConfidence ? " (mała próbka)" : null}
+    <span
+      className={teethPanelHeaderMetaClass}
+      title={
+        eta.source === "fixed"
+          ? "Stałe ETA dostawcy"
+          : "ETA z historii dostaw zębów"
+      }
+    >
+      · {daysPart} · {datePart}
+      {sampleHint}
     </span>
   );
 }

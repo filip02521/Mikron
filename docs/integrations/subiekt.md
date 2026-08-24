@@ -68,6 +68,7 @@ Wszystkie listy zwracają envelope:
 |--------|---------|------|
 | GET | `/health` | Status usługi i SQL |
 | GET | `/products` | Towary (`search`, `symbol`, `page`, `pageSize`, …) |
+| GET | `/products/remanent` | Remanent na dzień (`naDzien`, `cechaId`, …) — stany z `dok_MagRuch`, nie bieżący `tw_Stan` |
 | GET | `/products/:id` | Jeden towar |
 | GET | `/kontrahenci` | Kontrahenci |
 | GET | `/kontrahenci/dostawcy` | Dostawcy |
@@ -95,6 +96,15 @@ Query (host ORDERS): `dataOd`, `dataDo`, `dniZapasu`, `zapasMin`, `tylkoBraki`, 
 | `towarId` | jeden `tw_Id` |
 
 OnTime wysyła XOR: albo `grupaId`, albo `cechaId` (nigdy oba, nigdy puste — bez filtra API zwraca cały katalog). Echo w `parametry.grupaId` / `parametry.cechaId` jest weryfikowane **zaraz po 1. stronie** (przed dociągnięciem kolejnych stron).
+
+**Popyt w oknie (kontrakt live `:5080`):**
+
+| Pole | Znaczenie |
+|------|-----------|
+| `sprzedazOkres` | Suma **FS + PA + WZ niepowiązane** z FS/PA (jednostki karty SKU) |
+| `wzNiepowiazaneOkres` | Breakdown — sam udział WZ w tej sumie (te same jednostki co `sprzedazOkres`) |
+
+OnTime **nie** dolicza `wzNiepowiazaneOkres` ponownie do sprzedaży (unik podwójnego liczenia). Kolumna Sprzed. pokazuje `sprzedazOkres`; przy `wz > 0` dopisek „w tym WZ N”. Opakowania OnTime (`zd_estimate_packaging`) **nie** przeliczają Sprzed./WZ — tylko Do ZD / jednostki dokumentu.
 
 `GET /cechy/towarow`: `search`, `id`, `page`, `pageSize` → `{ ctw_Id, ctw_Nazwa }`.
 

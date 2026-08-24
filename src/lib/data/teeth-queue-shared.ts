@@ -11,6 +11,7 @@ export type TeethSupplierDeliveryEta = {
   avgBusinessDays: number;
   sampleCount: number;
   lowConfidence: boolean;
+  source: "fixed" | "history";
 };
 
 export type TeethQueueItem = IndividualOrder & {

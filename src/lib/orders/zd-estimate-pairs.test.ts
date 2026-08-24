@@ -23,6 +23,7 @@ function line(
     tw_StanRez: 0,
     dostepne: 0,
     sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
     sprzedazDziennie: 0,
     celZapasu: 0,
     celZapasuTracked: 0,
@@ -102,6 +103,7 @@ describe("applyZdEstimatePairs", () => {
         tw_Symbol: "PACK",
         dostepne: 0,
         sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
         otwarteZd: 0,
       }),
       line({
@@ -133,6 +135,7 @@ describe("applyZdEstimatePairs", () => {
         tw_Symbol: "PACK",
         dostepne: 0,
         sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
         otwarteZd: 2, // 2 paczki = 200 szt
       }),
       line({

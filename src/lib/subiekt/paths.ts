@@ -24,11 +24,22 @@ export const SUBIEKT_PATHS = {
   documentsZdCreate: "/documents/zd/create",
   documentsFs: "/documents/fs",
   documentFs: (id: number | string) => `/documents/fs/${id}`,
-  /** Kreator ilości do ZD (sprzedaż FS + stany + otwarte ZK/ZD). */
+  /** Kreator ilości do ZD (sprzedaż FS+PA + WZ niepowiązane + stany + otwarte ZK/ZD). */
   ordersZdEstimate: "/orders/zd/estimate",
+  /** Otwarte ZK towaru (rozbicie rezerwacji / bez rezerwacji) — host ORDERS. */
+  ordersZdEstimateZk: "/orders/zd/estimate/zk",
+  /** Otwarte ZD towaru — host ORDERS. */
+  ordersZdEstimateOtwarteZd: "/orders/zd/estimate/otwarteZd",
   /**
    * Komplety (montaż) — SELECT tw_Komplet.
    * Wymaga wdrożenia na hoście ORDERS; bez endpointu sync zwraca błąd.
    */
   productsKomplety: "/products/komplety",
+  /**
+   * Remanent na dzień (dok_MagRuch) — Inventory Ivoclar / stany historyczne.
+   * Host ORDERS live `:5080` (zweryfikowane 2026-08).
+   */
+  productsRemanent: "/products/remanent",
+  /** Słownik państw (`sl_Panstwo`) — ISO / kod UE. */
+  kraje: "/kraje",
 } as const;

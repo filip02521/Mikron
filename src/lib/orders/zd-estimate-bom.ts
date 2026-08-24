@@ -54,6 +54,8 @@ export type ZdEstimateBomMeta = {
   /** Parenty, z których doliczono wkład (na komponencie). */
   parentTwIds?: number[];
   contributionSales?: number;
+  /** Wkład WZ razem z contributionSales (do odzysku linesBase). */
+  contributionWz?: number;
   contributionCover?: number;
   /** Brak komponentu w wyniku — fail-loud (explode). */
   componentMissing?: boolean;
@@ -61,6 +63,12 @@ export type ZdEstimateBomMeta = {
   purchaseBlocked?: boolean;
   /** Dla purchased_kit — rozróżnienie badge as_sold vs kit_only. */
   purchaseTarget?: BomPurchaseTarget;
+  /**
+   * assemble: sprzedaż zestawu przeniesiona do składników (Sprzed. rodzica = 0,
+   * żeby suma kolumny nie dublowała popytu). Oryginał tu — tooltip / odzysk base.
+   */
+  relocatedSales?: number;
+  relocatedWz?: number;
 };
 
 export type ManualZdEstimateLineWithBom = ManualZdEstimateLine & {
@@ -96,6 +104,28 @@ export function isBomPurchaseBlockedWithoutExplode(
     line.bom?.purchaseBlocked === true &&
     !(asNum(line.bom.contributionSales) > 0)
   );
+}
+
+/**
+ * Sygnał popytu sprzedaży do alertów UI.
+ * Po zerowaniu kolumny Sprzed. na piece / assembled_parent nadal widzi kanał / wkład / relocated.
+ */
+export function zdEstimateLineSalesDemandSignal(
+  line: Pick<ManualZdEstimateLine, "sprzedazOkres" | "pair" | "bom">
+): number {
+  const row = Math.max(0, asNum(line.sprzedazOkres));
+  if (row > 0) return row;
+  if (line.pair) {
+    const channel =
+      line.pair.role === "piece"
+        ? line.pair.pieceSprzedaz
+        : line.pair.packSprzedaz;
+    const ch = Math.max(0, asNum(channel));
+    if (ch > 0) return ch;
+  }
+  const contrib = Math.max(0, asNum(line.bom?.contributionSales));
+  if (contrib > 0) return contrib;
+  return Math.max(0, asNum(line.bom?.relocatedSales));
 }
 
 export function bomBlocksZdOrder(
@@ -187,6 +217,7 @@ export function expandZdEstimateBoms(
   }
 
   const contribSales = new Map<number, number>();
+  const contribWz = new Map<number, number>();
   const contribCover = new Map<number, number>();
   const parentIdsByComp = new Map<number, number[]>();
   const purchaseBlockedComps = new Set<number>();
@@ -208,7 +239,24 @@ export function expandZdEstimateBoms(
     const explode = allocation === "explode";
     const kitOnly = target === "kit_only";
 
-    const parentSales = Math.max(0, asNum(parent.sprzedazOkres));
+    // Idempotencja: już zexplodowany parent — nie dokładać sales/cover drugi raz.
+    if (explode && parent.bom?.role === "assembled_parent") {
+      explodeBomByParent.set(parentId, bom);
+      byTw.set(parentId, {
+        ...parent,
+        doZamowieniaReczne: 0,
+      });
+      continue;
+    }
+
+    const parentSales =
+      explode && (parent.bom?.relocatedSales ?? 0) > 0
+        ? Math.max(0, asNum(parent.bom?.relocatedSales))
+        : Math.max(0, asNum(parent.sprzedazOkres));
+    const parentWz =
+      explode && (parent.bom?.relocatedWz ?? 0) > 0
+        ? Math.max(0, asNum(parent.bom?.relocatedWz))
+        : Math.max(0, asNum(parent.wzNiepowiazaneOkres));
     const parentDost = Math.max(0, asNum(parent.dostepne));
     const parentZdRaw = Math.max(0, asNum(parent.otwarteZd));
     const parentPackRow = packagingByTwId?.get(parentId);
@@ -227,7 +275,22 @@ export function expandZdEstimateBoms(
       byTw.set(parentId, {
         ...parent,
         doZamowieniaReczne: 0,
-        bom: { role: "assembled_parent" },
+        // Popyt zestawu jest w składnikach (contribution) — bez 2× w sumie Sprzed.
+        sprzedazOkres: 0,
+        wzNiepowiazaneOkres: 0,
+        celZapasu: 0,
+        celZapasuTracked: 0,
+        salesTrackDelta: 0,
+        salesTrackReasons: [],
+        salesTrackConfidence: 0,
+        salesTrackQtyReview: false,
+        salesTrackHeldExtraQty: 0,
+        salesTrackAllowedExtraQty: 0,
+        bom: {
+          role: "assembled_parent",
+          relocatedSales: parentSales,
+          relocatedWz: parentWz,
+        },
       });
     } else {
       byTw.set(parentId, {
@@ -255,8 +318,10 @@ export function expandZdEstimateBoms(
       if (explode) {
         // Wspólny składnik w wielu BOM: wkład się SUMUJE (sprzedaż×qty, cover×qty).
         const salesAdd = parentSales * qty;
+        const wzAdd = parentWz * qty;
         const coverAdd = coverBase * qty;
         contribSales.set(cid, (contribSales.get(cid) ?? 0) + salesAdd);
+        contribWz.set(cid, (contribWz.get(cid) ?? 0) + wzAdd);
         contribCover.set(cid, (contribCover.get(cid) ?? 0) + coverAdd);
 
         if (missingOpt?.has(cid) || !byTw.has(cid)) {
@@ -281,9 +346,11 @@ export function expandZdEstimateBoms(
       if (host?.bom?.role !== "assembled_parent") continue;
       const nested = explodeBomByParent.get(cid);
       const salesAdd = contribSales.get(cid) ?? 0;
+      const wzAdd = contribWz.get(cid) ?? 0;
       const coverAdd = contribCover.get(cid) ?? 0;
       const outerParents = parentIdsByComp.get(cid) ?? [];
       contribSales.delete(cid);
+      contribWz.delete(cid);
       contribCover.delete(cid);
       parentIdsByComp.delete(cid);
       purchaseBlockedComps.delete(cid);
@@ -295,6 +362,7 @@ export function expandZdEstimateBoms(
         const qty = Math.trunc(Number(comp.qtyPerParent)) || 0;
         if (!(nid > 0) || qty < 1) continue;
         contribSales.set(nid, (contribSales.get(nid) ?? 0) + salesAdd * qty);
+        contribWz.set(nid, (contribWz.get(nid) ?? 0) + wzAdd * qty);
         contribCover.set(nid, (contribCover.get(nid) ?? 0) + coverAdd * qty);
         const parents = parentIdsByComp.get(nid) ?? [];
         if (!parents.includes(cid)) parents.push(cid);
@@ -321,18 +389,26 @@ export function expandZdEstimateBoms(
     // Nie degraduj zestawu „Składamy” do roli składnika (nested powinien już zepchnąć wkład).
     if (existing.bom?.role === "assembled_parent") continue;
     const coverAdd = contribCover.get(cid) ?? 0;
+    const wzAdd = contribWz.get(cid) ?? 0;
     const siblingMissing = missingFlag.has(cid);
     const blocked =
       purchaseBlockedComps.has(cid) && !(salesAdd > 0);
+    const nextSales = Math.max(0, asNum(existing.sprzedazOkres)) + salesAdd;
+    const nextWz = Math.min(
+      Math.max(0, asNum(existing.wzNiepowiazaneOkres)) + wzAdd,
+      nextSales
+    );
     byTw.set(cid, {
       ...existing,
-      sprzedazOkres: Math.max(0, asNum(existing.sprzedazOkres)) + salesAdd,
+      sprzedazOkres: nextSales,
+      wzNiepowiazaneOkres: nextWz,
       // Zachowaj ujemne dostępne składnika; cover z rodzica się dokłada.
       dostepne: asNum(existing.dostepne) + coverAdd,
       bom: {
         role: "component",
         parentTwIds: parentIdsByComp.get(cid) ?? [],
         contributionSales: salesAdd,
+        contributionWz: wzAdd,
         contributionCover: coverAdd,
         componentMissing: siblingMissing || undefined,
         purchaseBlocked: blocked || undefined,

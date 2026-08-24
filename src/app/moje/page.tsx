@@ -28,6 +28,7 @@ import {
 import { formatDateString } from "@/lib/orders/dates";
 import { todayInWarsaw } from "@/lib/time/warsaw";
 import { IconSettings } from "@/components/icons/StrokeIcons";
+import { loadTeethLeadDaysBySupplierIdForOrders } from "@/lib/orders/teeth-lead-days-for-presenter";
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
@@ -168,6 +169,7 @@ export default async function MojePage({
     weekDays: plannedOrderWeekDays,
     supplierKhIdsBySupplierId,
     subiektReachable,
+    teethLeadDaysBySupplierId: await loadTeethLeadDaysBySupplierIdForOrders(orders),
   });
 
   const dayStartContext = buildDayStartContext(

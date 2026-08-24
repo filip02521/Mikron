@@ -82,6 +82,59 @@ describe("searchZkForAdd", () => {
     }
   });
 
+  it("gdy brak w 30 dniach, szuka w oknie 90 dni", async () => {
+    const older: SubiektDocument = {
+      dok_Id: 1825028,
+      dok_NrPelny: "ZK 5779/M/07/2026",
+      dok_DataWyst: "2026-07-14T00:00:00",
+      dok_OdbiorcaId: 3,
+      kh__Kontrahent_Odbiorca: { kh_Id: 3, adr_Nazwa: "Klient C" },
+    };
+    searchSubiektZk
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: [older] });
+    getSubiektZk.mockResolvedValue(older);
+
+    const at = new Date(2026, 7, 20); // 20.08.2026 — ZK z 14.07 jest poza 30 dniami
+    const result = await searchZkForAdd("5779", at);
+
+    expect(searchSubiektZk).toHaveBeenCalledTimes(2);
+    expect(searchSubiektZk).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        search: "5779",
+        dataOd: "2026-07-21",
+        dataDo: "2026-08-20",
+      })
+    );
+    expect(searchSubiektZk).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        search: "5779",
+        dataOd: "2026-05-22",
+        dataDo: "2026-08-20",
+      })
+    );
+    expect(result.kind).toBe("single");
+    if (result.kind === "single") {
+      expect(result.resolved.subiektDokId).toBe(1825028);
+      expect(result.resolved.zkNumber).toBe("ZK 5779/M/07/2026");
+    }
+  });
+
+  it("po rozszerzeniu do 90 dni nadal brak — komunikat z podpowiedzią pełnego numeru", async () => {
+    searchSubiektZk.mockResolvedValue({ data: [] });
+
+    const result = await searchZkForAdd("5779", new Date(2026, 7, 20));
+
+    expect(searchSubiektZk).toHaveBeenCalledTimes(2);
+    expect(result.kind).toBe("error");
+    if (result.kind === "error") {
+      expect(result.message).toContain("ostatnich 90 dni");
+      expect(result.message).toContain("5779/M/08/2026");
+    }
+  });
+
   it("odrzuca wpis krótszy niż 2 znaki", async () => {
     const result = await searchZkForAdd("5");
     expect(result.kind).toBe("error");

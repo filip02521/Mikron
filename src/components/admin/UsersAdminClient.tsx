@@ -395,8 +395,8 @@ export function UsersAdminClient({
 
       setToast({
         text: enabled
-          ? "Włączono dostęp do Centrum maili."
-          : "Wyłączono dostęp do Centrum maili.",
+          ? "Włączono odczyt Wysyłek Ivoclar."
+          : "Wyłączono odczyt Wysyłek Ivoclar.",
         tone: "success",
       });
       closeModuleModal();
@@ -556,9 +556,9 @@ export function UsersAdminClient({
 
                   <div className="flex flex-wrap items-center gap-2">
                     {accessModalUser.mailCenterModuleEnabled ? (
-                      <Badge variant="success">Centrum maili aktywne</Badge>
+                      <Badge variant="success">Wysyłki Ivoclar aktywne</Badge>
                     ) : (
-                      <Badge variant="default">Centrum maili wyłączone</Badge>
+                      <Badge variant="default">Wysyłki Ivoclar wyłączone</Badge>
                     )}
                   </div>
 
@@ -798,7 +798,7 @@ export function UsersAdminClient({
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <span>Centrum maili</span>
+                      <span>Wysyłki Ivoclar</span>
                       <Badge
                         variant={
                           accessModalUser.mailCenterModuleEnabled
@@ -878,10 +878,11 @@ export function UsersAdminClient({
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-slate-900">
-                    Centrum maili (Ivoclar weekly)
+                    Wysyłki Ivoclar (odczyt)
                   </p>
                   <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                    Umożliwia dostęp do `/admin/mail` oraz uruchamianie wysyłek raportów Ivoclar weekly.
+                    Dostęp do `/admin/mail` w trybie odczytu (status i logi). Wysyłkę prowadzi OnTime
+                    Raporty — w OnTime nie ma już akcji generate/send ani edycji odbiorców.
                   </p>
                 </div>
 
@@ -892,7 +893,7 @@ export function UsersAdminClient({
                     disabled={pending || moduleModalUser.role === "admin"}
                     onChange={(e) => setModuleDraftMailCenterEnabled(e.target.checked)}
                     className="h-4 w-4 accent-indigo-600"
-                    aria-label="Centrum maili — włączone/wyłączone"
+                    aria-label="Wysyłki Ivoclar — włączone/wyłączone"
                   />
                   <span className="text-xs text-slate-700">Włączone</span>
                 </label>
@@ -1288,7 +1289,7 @@ export function UsersAdminClient({
                                 }
                                 className="whitespace-nowrap"
                               >
-                                Centrum maili:{" "}
+                                Wysyłki Ivoclar:{" "}
                                 {u.mailCenterModuleEnabled ? "Aktywne" : "Wyłączone"}
                               </Badge>
                             </div>

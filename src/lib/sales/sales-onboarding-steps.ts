@@ -96,11 +96,11 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
       href: "/plan",
       title: "Harmonogram",
       lead:
-        "Terminy u dostawców — pomaga zaplanować prośbę i powiedzieć klientowi, kiedy realnie można zamówić.",
+        "Terminy u dostawców — pomoże zaplanować prośbę i powiedzieć klientowi, kiedy realnie można zamówić.",
       bullets: [
-        "„Z otwartymi prośbami” — dostawcy z Twoich aktywnych spraw w „Moje zamówienia”. Rozwiń wiersz, aby zobaczyć szczegóły.",
-        "Wyszukiwarka u góry — każdy inny dostawca z bazy firmy.",
-        "„Plan działu dostaw” (pn.–pt.) to dni, w których zakupy składają zamówienia u firmy — to nie data dostawy towaru na magazyn.",
+        "„Dostawcy z otwartymi prośbami” — te same osoby i firmy, u których masz aktywne sprawy w „Moje zamówienia”. Rozwiń wiersz, aby zobaczyć szczegóły.",
+        "Wyszukiwarka u góry — każdy inny aktywny dostawca z bazy firmy.",
+        "Kalendarz „Kiedy dział zakupów zamawia” (pn.–pt.) pokazuje dni składania zamówień u dostawcy — to nie jest data dostawy towaru na magazyn.",
         "Warto zajrzeć przed rozmową z klientem o terminie zamówienia.",
       ],
     },

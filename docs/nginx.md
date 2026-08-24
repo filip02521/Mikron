@@ -108,9 +108,10 @@ copy .env.production.example .env   # uzupełnij klucze
 # pelna instalacja (cron + nightly deploy):
 .\installer\install-windows-service.ps1 -WithCron -WithNightlyDeploy
 
-# samodzielny nocny deploy (pull + build + restart):
+# samodzielny nocny deploy (pull + build + restart; domyslnie 05:00):
 .\installer\nightly-deploy.ps1
 .\installer\nightly-deploy.ps1 -InstallScheduledTask -TaskRunAs "DOMAIN\user" -TaskRunAsPassword "..."
+# (opcjonalnie inna godzina: -TaskTime 05:00 — unikaj 02:00-04:40 = okno catalog)
 
 # odinstalowanie:
 .\installer\install-windows-service.ps1 -Uninstall -NssmPath C:\tools\nssm\win64\nssm.exe

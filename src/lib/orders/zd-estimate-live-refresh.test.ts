@@ -23,6 +23,7 @@ function baseLine(
     tw_StanRez: 0,
     dostepne: 10,
     sprzedazOkres: 20,
+    wzNiepowiazaneOkres: 0,
     sprzedazDziennie: 1,
     celZapasu: 30,
     celZapasuTracked: 30,
@@ -157,6 +158,7 @@ describe("refreshZdEstimateLinesWithPairs", () => {
       doZamowieniaReczne: 28,
       doZamowieniaApi: 77,
       sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
       sprzedazDziennie: 0,
     });
     const { lines } = refreshZdEstimateLinesWithPairs({
@@ -196,6 +198,7 @@ describe("refreshZdEstimateLinesWithPairs", () => {
       otwarteZd: 10,
       doZamowieniaReczne: 0, // A: 10 op. × 5 = 50 szt cover
       sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
       sprzedazDziennie: 0,
     });
     const { lines } = refreshZdEstimateLinesWithPairs({

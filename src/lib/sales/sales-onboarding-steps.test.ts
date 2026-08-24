@@ -111,8 +111,8 @@ describe("sales onboarding steps", () => {
 
   it("plan step describes open requests before procurement calendar", () => {
     const plan = getSalesOnboardingSteps("sales").find((s) => s.id === "plan");
-    expect(plan?.bullets[0]).toMatch(/Z otwartymi prośbami/i);
-    expect(plan?.bullets[2]).toMatch(/Plan działu dostaw/i);
+    expect(plan?.bullets[0]).toMatch(/Dostawcy z otwartymi prośbami/i);
+    expect(plan?.bullets[2]).toMatch(/dział zakupów/i);
   });
 
   it("tablica step focuses on questions and points announcements to moje", () => {

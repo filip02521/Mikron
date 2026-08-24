@@ -4,6 +4,8 @@
  * i scrollerem listy jest `#zd-estimate-table-scroll`.
  */
 
+import { tryZdEstimateVirtualScrollToTwId } from "@/lib/orders/zd-estimate-table-virtual";
+
 export const ZD_ESTIMATE_LAUNCH_FOCUS_ID = "zd-estimate-launch-focus";
 /** Okno loadingu „Utwórz ZD” — ten sam chrome co Policz. */
 export const ZD_ESTIMATE_CREATE_PROGRESS_FOCUS_ID =
@@ -426,50 +428,65 @@ export function scrollZdEstimateTableRowIntoView(
   }
 ): boolean {
   if (typeof document === "undefined") return false;
-  const row = document.querySelector(
-    `[data-zd-estimate-tw-id="${twId}"]`
-  ) as HTMLElement | null;
-  if (!row) return false;
   const behavior = opts?.behavior ?? "smooth";
   const block = opts?.block ?? "nearest";
 
-  const tableScroll = document.getElementById(ZD_ESTIMATE_TABLE_SCROLL_ID);
-  if (tableScroll) {
-    const rowRect = row.getBoundingClientRect();
-    const parentRect = tableScroll.getBoundingClientRect();
-    const fullyVisible =
-      rowRect.top >= parentRect.top - 1 &&
-      rowRect.bottom <= parentRect.bottom + 1;
-    if (!fullyVisible) {
-      let delta = 0;
-      if (block === "center") {
-        delta =
-          rowRect.top -
-          parentRect.top -
-          tableScroll.clientHeight / 2 +
-          rowRect.height / 2;
-      } else if (block === "end") {
-        delta = rowRect.bottom - parentRect.bottom + 8;
-      } else if (block === "start") {
-        delta = rowRect.top - parentRect.top - 8;
-      } else {
-        // nearest
-        if (rowRect.top < parentRect.top) {
-          delta = rowRect.top - parentRect.top - 8;
-        } else if (rowRect.bottom > parentRect.bottom) {
+  const alignMountedRow = (row: HTMLElement): void => {
+    const tableScroll = document.getElementById(ZD_ESTIMATE_TABLE_SCROLL_ID);
+    if (tableScroll) {
+      const rowRect = row.getBoundingClientRect();
+      const parentRect = tableScroll.getBoundingClientRect();
+      const fullyVisible =
+        rowRect.top >= parentRect.top - 1 &&
+        rowRect.bottom <= parentRect.bottom + 1;
+      if (!fullyVisible) {
+        let delta = 0;
+        if (block === "center") {
+          delta =
+            rowRect.top -
+            parentRect.top -
+            tableScroll.clientHeight / 2 +
+            rowRect.height / 2;
+        } else if (block === "end") {
           delta = rowRect.bottom - parentRect.bottom + 8;
+        } else if (block === "start") {
+          delta = rowRect.top - parentRect.top - 8;
+        } else {
+          // nearest
+          if (rowRect.top < parentRect.top) {
+            delta = rowRect.top - parentRect.top - 8;
+          } else if (rowRect.bottom > parentRect.bottom) {
+            delta = rowRect.bottom - parentRect.bottom + 8;
+          }
+        }
+        if (delta !== 0) {
+          tableScroll.scrollTo({
+            top: Math.max(0, tableScroll.scrollTop + delta),
+            behavior,
+          });
         }
       }
-      if (delta !== 0) {
-        tableScroll.scrollTo({
-          top: Math.max(0, tableScroll.scrollTop + delta),
-          behavior,
-        });
-      }
+    } else {
+      row.scrollIntoView({ behavior, block });
     }
-  } else {
-    row.scrollIntoView({ behavior, block });
+  };
+
+  const row = document.querySelector(
+    `[data-zd-estimate-tw-id="${twId}"]`
+  ) as HTMLElement | null;
+  if (row) {
+    alignMountedRow(row);
+    return true;
   }
+
+  // Wirtualny tbody — wiersz poza overscanem nie jest w DOM.
+  if (!tryZdEstimateVirtualScrollToTwId(twId)) return false;
+  requestAnimationFrame(() => {
+    const again = document.querySelector(
+      `[data-zd-estimate-tw-id="${twId}"]`
+    ) as HTMLElement | null;
+    if (again) alignMountedRow(again);
+  });
   return true;
 }
 

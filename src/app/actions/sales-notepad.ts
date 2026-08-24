@@ -69,6 +69,7 @@ import {
   resolveZkCaseNoteSyncOrderIds,
 } from "@/lib/sales/zk-watch-case-note-prosba";
 import { resolveZkProsbaPrefillSalesPersonAccess } from "@/lib/sales/zk-prosba-prefill-access";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import type { SalesNote, SalesNoteColor, SalesZkWatch } from "@/types/database";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -147,7 +148,8 @@ async function assertSubiektReachableForZk(): Promise<void> {
 
 export type ZkAddWatchResult =
   | { kind: "added"; watch: SalesZkWatch }
-  | { kind: "choose"; candidates: ZkSearchCandidate[]; hint: string };
+  | { kind: "choose"; candidates: ZkSearchCandidate[]; hint: string }
+  | { kind: "error"; message: string };
 
 async function persistZkWatch(
   salesPersonId: string,
@@ -248,36 +250,56 @@ async function persistZkWatch(
   return data as SalesZkWatch;
 }
 
-/** Wpisz numer ZK — dodaje obserwację lub zwraca listę do wyboru. */
+/**
+ * Wpisz numer ZK — dodaje obserwację lub zwraca listę do wyboru.
+ * Błędy biznesowe wracają jako `{ kind: "error" }` (bez throw), żeby produkcja
+ * Next nie zamieniała komunikatu PL na generyczny „Server Components render”.
+ */
 export async function actionAddZkWatchByNumber(
   zkQuery: string
 ): Promise<ZkAddWatchResult> {
-  await assertSubiektReachableForZk();
-  const salesPersonId = await salesPersonIdForAction();
-  const result = await searchZkForAdd(zkQuery);
+  try {
+    await assertSubiektReachableForZk();
+    const salesPersonId = await salesPersonIdForAction();
+    const result = await searchZkForAdd(zkQuery);
 
-  if (result.kind === "error") throw new Error(result.message);
-  if (result.kind === "choose") {
+    if (result.kind === "error") {
+      return { kind: "error", message: result.message };
+    }
+    if (result.kind === "choose") {
+      return {
+        kind: "choose",
+        candidates: result.candidates,
+        hint: result.hint,
+      };
+    }
+
+    const watch = await persistZkWatch(salesPersonId, result.resolved);
+    return { kind: "added", watch };
+  } catch (e) {
     return {
-      kind: "choose",
-      candidates: result.candidates,
-      hint: result.hint,
+      kind: "error",
+      message: userFacingErrorText(e, "Nie udało się dodać zamówienia."),
     };
   }
-
-  const watch = await persistZkWatch(salesPersonId, result.resolved);
-  return { kind: "added", watch };
 }
 
 /** Dodaje ZK wybrane z listy kandydatów (po wyszukiwaniu). */
 export async function actionAddZkWatchBySubiektDokId(
   subiektDokId: number
-): Promise<{ watch: SalesZkWatch }> {
-  await assertSubiektReachableForZk();
-  const salesPersonId = await salesPersonIdForAction();
-  const resolved = await resolveZkBySubiektDokId(subiektDokId);
-  const watch = await persistZkWatch(salesPersonId, resolved);
-  return { watch };
+): Promise<ZkAddWatchResult> {
+  try {
+    await assertSubiektReachableForZk();
+    const salesPersonId = await salesPersonIdForAction();
+    const resolved = await resolveZkBySubiektDokId(subiektDokId);
+    const watch = await persistZkWatch(salesPersonId, resolved);
+    return { kind: "added", watch };
+  } catch (e) {
+    return {
+      kind: "error",
+      message: userFacingErrorText(e, "Nie udało się dodać zamówienia."),
+    };
+  }
 }
 
 /**

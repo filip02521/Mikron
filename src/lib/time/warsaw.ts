@@ -62,12 +62,6 @@ export function isWarsawWorkHours(date = new Date()): boolean {
   return !isWeekend && hour >= 8 && hour <= 18;
 }
 
-/** Okno wysyłki maili raportowych Ivoclar: poniedziałek 7:00–9:59 (Warszawa). */
-export function isWarsawScheduledMailWindow(date = new Date()): boolean {
-  const { hour, weekday } = warsawNowParts(date);
-  return weekday === "Mon" && hour >= 7 && hour <= 9;
-}
-
 /** Dziś (kalendarz) w strefie Europe/Warsaw — do zapisu order_date i list zaległych. */
 export function todayInWarsaw(at: Date = new Date()): Date {
   return parseDateOnly(warsawNowParts(at).dateKey)!;

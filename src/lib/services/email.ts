@@ -1,5 +1,8 @@
-import { Resend } from "resend";
-import { getEmailFromAddress, getResendApiKey } from "@/lib/env/email-config";
+import {
+  getEmailFromAddress,
+  getEmailOverrideTo,
+  isEmailConfigured,
+} from "@/lib/env/email-config";
 import type { SalesPersonEmailBatch } from "@/lib/email/sales-notification-types";
 import {
   renderDeliveryArrivedEmail,
@@ -8,16 +11,12 @@ import {
   renderRequestNoteUpdateEmail,
   renderBoardQuestionReplyEmail,
 } from "@/lib/email/sales-email-templates";
+import { sendMailRaw } from "@/lib/services/smtp-transport";
+import { recordTransactionalEmailLog } from "@/lib/services/transactional-email-log";
+import type { TransactionalEmailKind } from "@/types/database";
 
-function getEmailOverrideTo(): string | undefined {
-  return process.env.EMAIL_OVERRIDE_TO?.trim() || undefined;
-}
-
-function getResend() {
-  const key = getResendApiKey();
-  if (!key) return null;
-  return new Resend(key);
-}
+const EMAIL_NOT_CONFIGURED_ERROR =
+  "Brak konfiguracji SMTP / EMAIL_FROM — ustaw SMTP_HOST, SMTP_USER, SMTP_PASS oraz EMAIL_FROM lub EMAIL_DOMAIN (i zrestartuj serwer)";
 
 export type EmailSendResult = {
   sent: number;
@@ -28,36 +27,73 @@ export async function sendHtmlEmail(params: {
   to: string | string[];
   subject: string;
   html: string;
+  kind?: TransactionalEmailKind;
 }): Promise<{ ok: true; id: string } | { ok: false; error: string; to: string }> {
-  const resend = getResend();
+  const kind: TransactionalEmailKind = params.kind ?? "generic";
+  // Przy tablicy `to` wysyłamy tylko pierwszy adres (historyczna parity API).
   const intendedTo = Array.isArray(params.to) ? params.to[0]! : params.to;
   const overrideTo = getEmailOverrideTo();
   const to = overrideTo ?? intendedTo;
   const subject = overrideTo
     ? `[TEST → ${intendedTo}] ${params.subject}`
     : params.subject;
-  if (!resend) {
-    return {
-      ok: false,
-      error:
-        "Brak RESEND_API_KEY — dodaj do .env.local i zrestartuj serwer (npm run dev)",
+  const fromAddress = getEmailFromAddress();
+
+  if (!isEmailConfigured()) {
+    await recordTransactionalEmailLog({
+      kind,
+      status: "failed",
+      toAddresses: [to],
+      intendedTo: [intendedTo],
+      overrideTo: overrideTo ?? null,
+      fromAddress,
+      subject,
+      htmlBody: params.html,
+      errorMessage: EMAIL_NOT_CONFIGURED_ERROR,
+    });
+    return { ok: false, error: EMAIL_NOT_CONFIGURED_ERROR, to };
+  }
+
+  try {
+    const { messageId } = await sendMailRaw({
+      from: fromAddress,
       to,
-    };
+      subject,
+      html: params.html,
+    });
+    await recordTransactionalEmailLog({
+      kind,
+      status: "sent",
+      toAddresses: [to],
+      intendedTo: [intendedTo],
+      overrideTo: overrideTo ?? null,
+      fromAddress,
+      subject,
+      htmlBody: params.html,
+      messageId,
+    });
+    return { ok: true, id: messageId };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    await recordTransactionalEmailLog({
+      kind,
+      status: "failed",
+      toAddresses: [to],
+      intendedTo: [intendedTo],
+      overrideTo: overrideTo ?? null,
+      fromAddress,
+      subject,
+      htmlBody: params.html,
+      errorMessage: message,
+    });
+    return { ok: false, error: message, to };
   }
-
-  const { data, error } = await resend.emails.send({
-    from: getEmailFromAddress(),
-    to,
-    subject,
-    html: params.html,
-  });
-
-  if (error) {
-    return { ok: false, error: error.message, to };
-  }
-  return { ok: true, id: data?.id ?? "" };
 }
 
+/**
+ * Załącznik e-mail.
+ * `content` — string w Base64 (dekodowany do Buffer w transporcie SMTP).
+ */
 export type EmailAttachmentInput = {
   filename: string;
   content: string;
@@ -71,6 +107,7 @@ export type MultiRecipientEmailParams = {
   subject: string;
   html: string;
   attachments?: EmailAttachmentInput[];
+  kind?: TransactionalEmailKind;
 };
 
 export async function sendHtmlEmailWithAttachments(
@@ -79,10 +116,12 @@ export async function sendHtmlEmailWithAttachments(
   | { ok: true; id: string; deliveredTo: string[] }
   | { ok: false; error: string; intendedTo: string[] }
 > {
-  const resend = getResend();
+  const kind: TransactionalEmailKind = params.kind ?? "attachments";
   const intendedTo = params.to.filter(Boolean);
   const intendedCc = (params.cc ?? []).filter(Boolean);
   const intendedBcc = (params.bcc ?? []).filter(Boolean);
+  const fromAddress = getEmailFromAddress();
+  const attachmentNames = (params.attachments ?? []).map((a) => a.filename);
 
   if (!intendedTo.length) {
     return { ok: false, error: "Brak odbiorców TO", intendedTo: [] };
@@ -96,37 +135,78 @@ export async function sendHtmlEmailWithAttachments(
     ? `[TEST → ${intendedTo.join(", ")}] ${params.subject}`
     : params.subject;
 
-  if (!resend) {
-    return {
-      ok: false,
-      error:
-        "Brak RESEND_API_KEY — dodaj do .env.local i zrestartuj serwer (npm run dev)",
+  if (!isEmailConfigured()) {
+    await recordTransactionalEmailLog({
+      kind,
+      status: "failed",
+      toAddresses: to,
+      ccAddresses: cc,
+      bccAddresses: bcc,
       intendedTo,
-    };
+      overrideTo: overrideTo ?? null,
+      fromAddress,
+      subject,
+      htmlBody: params.html,
+      errorMessage: EMAIL_NOT_CONFIGURED_ERROR,
+      hasAttachments: attachmentNames.length > 0,
+      attachmentNames,
+    });
+    return { ok: false, error: EMAIL_NOT_CONFIGURED_ERROR, intendedTo };
   }
 
   const attachments = (params.attachments ?? []).map((a) => ({
     filename: a.filename,
-    content: a.content,
+    content: Buffer.from(a.content, "base64"),
     contentType:
       a.contentType ??
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   }));
 
-  const { data, error } = await resend.emails.send({
-    from: getEmailFromAddress(),
-    to,
-    cc: cc.length ? cc : undefined,
-    bcc: bcc.length ? bcc : undefined,
-    subject,
-    html: params.html,
-    attachments: attachments.length ? attachments : undefined,
-  });
-
-  if (error) {
-    return { ok: false, error: error.message, intendedTo };
+  try {
+    const { messageId } = await sendMailRaw({
+      from: fromAddress,
+      to,
+      cc: cc.length ? cc : undefined,
+      bcc: bcc.length ? bcc : undefined,
+      subject,
+      html: params.html,
+      attachments: attachments.length ? attachments : undefined,
+    });
+    await recordTransactionalEmailLog({
+      kind,
+      status: "sent",
+      toAddresses: to,
+      ccAddresses: cc,
+      bccAddresses: bcc,
+      intendedTo,
+      overrideTo: overrideTo ?? null,
+      fromAddress,
+      subject,
+      htmlBody: params.html,
+      messageId,
+      hasAttachments: attachmentNames.length > 0,
+      attachmentNames,
+    });
+    return { ok: true, id: messageId, deliveredTo: to };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    await recordTransactionalEmailLog({
+      kind,
+      status: "failed",
+      toAddresses: to,
+      ccAddresses: cc,
+      bccAddresses: bcc,
+      intendedTo,
+      overrideTo: overrideTo ?? null,
+      fromAddress,
+      subject,
+      htmlBody: params.html,
+      errorMessage: message,
+      hasAttachments: attachmentNames.length > 0,
+      attachmentNames,
+    });
+    return { ok: false, error: message, intendedTo };
   }
-  return { ok: true, id: data?.id ?? "", deliveredTo: to };
 }
 
 export async function sendDeliveryNotificationEmails(
@@ -152,12 +232,13 @@ export async function sendDeliveryNotificationEmails(
       to,
       subject,
       html,
+      kind: "delivery",
     });
 
     if (send.ok) {
       result.sent++;
     } else {
-      result.failures.push({ to: send.to, error: send.error });
+      result.failures.push({ to, error: send.error });
     }
   }
 
@@ -188,12 +269,13 @@ export async function sendInformacjaArrivedEmails(
       to,
       subject,
       html,
+      kind: "informacja",
     });
 
     if (send.ok) {
       result.sent++;
     } else {
-      result.failures.push({ to: send.to, error: send.error });
+      result.failures.push({ to, error: send.error });
     }
   }
 
@@ -227,12 +309,13 @@ export async function sendProcurementCancelEmails(
       to,
       subject,
       html,
+      kind: "procurement_cancel",
     });
 
     if (send.ok) {
       result.sent++;
     } else {
-      result.failures.push({ to: send.to, error: send.error });
+      result.failures.push({ to, error: send.error });
     }
   }
 
@@ -263,12 +346,13 @@ export async function sendRequestNoteUpdateEmails(
       to,
       subject,
       html,
+      kind: "request_note_update",
     });
 
     if (send.ok) {
       result.sent++;
     } else {
-      result.failures.push({ to: send.to, error: send.error });
+      result.failures.push({ to, error: send.error });
     }
   }
 
@@ -301,5 +385,5 @@ export async function sendBoardQuestionReplyEmail(params: {
     replyBody: params.replyBody,
   });
 
-  return sendHtmlEmail({ to, subject, html });
+  return sendHtmlEmail({ to, subject, html, kind: "board_reply" });
 }

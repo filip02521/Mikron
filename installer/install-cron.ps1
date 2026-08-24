@@ -13,7 +13,7 @@ param(
   [switch]$Install,
   [switch]$Uninstall,
   [switch]$Test,
-  [ValidateSet("morning", "process-deliveries", "informacja-stock-sync", "catalog-zd-sync", "zd-eta-sync", "morning-sync", "scheduled-mails")]
+  [ValidateSet("morning", "process-deliveries", "informacja-stock-sync", "catalog-zd-sync", "zd-eta-sync", "morning-sync")]
   [string]$Job = "morning",
   [switch]$Force,
   [switch]$List
@@ -23,20 +23,21 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "cron-jobs.ps1")
+. (Join-Path $PSScriptRoot "cron-env.ps1")
 
 $CatalogZdSyncSlots = @("0200", "0220", "0240", "0300", "0320", "0340", "0400", "0420", "0440")
 $TaskNames = @(
   "OnTime Cron Morning",
   "OnTime Cron Process Deliveries",
   "OnTime Cron Informacja Stock Sync",
-  "OnTime Cron ZD ETA Sync",
-  "OnTime Cron Scheduled Mails 0700",
-  "OnTime Cron Scheduled Mails 0800",
-  "OnTime Cron Scheduled Mails 0900"
+  "OnTime Cron ZD ETA Sync"
 ) + ($CatalogZdSyncSlots | ForEach-Object { "OnTime Cron Catalog ZD Sync $_" })
 $LegacyTaskNames = @(
   "OnTime Cron Catalog ZD Sync",
-  "OnTime Cron Catalog ZD Sync Continue"
+  "OnTime Cron Catalog ZD Sync Continue",
+  "OnTime Cron Scheduled Mails 0700",
+  "OnTime Cron Scheduled Mails 0800",
+  "OnTime Cron Scheduled Mails 0900"
 )
 
 function Write-Step([string]$Message) {
@@ -108,6 +109,69 @@ function New-SchTasksCronTask {
   Write-Ok "Utworzono: $Name"
 }
 
+function Test-WarsawLikeTimeZone {
+  try {
+    $tz = Get-TimeZone
+  } catch {
+    return $false
+  }
+  $id = $tz.Id
+  # Windows: "Central European Standard Time" = Warszawa / Sarajewo / Skopje
+  if ($id -eq "Central European Standard Time") { return $true }
+  if ($tz.DisplayName -match 'Warszawa|Warsaw|Sarajewo|Belgrade') { return $true }
+  return $false
+}
+
+function Assert-CronInstallPreflight {
+  param([string]$Root)
+
+  Write-Step "Preflight cron"
+
+  if (-not (Get-Command curl.exe -ErrorAction SilentlyContinue)) {
+    throw "Brak curl.exe w PATH (wymagany do wywolan Harmonogramu zadan)."
+  }
+  Write-Ok "curl.exe"
+
+  $secret = Get-CronSecretFromEnv -ProjectRoot $Root
+  if (-not (Test-CronSecretConfigured -Secret $secret)) {
+    throw "Ustaw silny CRON_SECRET w .env.local (nie change-me-in-production / dev-local-cron-secret)."
+  }
+  Write-Ok "CRON_SECRET"
+
+  $envLocal = Join-Path $Root ".env.local"
+  if (Test-Path $envLocal) {
+    if (-not (Test-PathReadableBySystem -Path $envLocal)) {
+      Write-Warn "SYSTEM moze nie czytac .env.local - zadania cron (konto SYSTEM) dostana blad sekretu."
+      Write-Warn "Nadaj odczyt: icacls `"$envLocal`" /grant `"NT AUTHORITY\SYSTEM:(R)`""
+    } else {
+      Write-Ok ".env.local czytelny dla SYSTEM/Admin"
+    }
+  } else {
+    Write-Warn "Brak .env.local w $Root (uzyte bedzie .env jesli istnieje)"
+  }
+
+  if (-not (Test-WarsawLikeTimeZone)) {
+    Write-Warn "Strefa Windows nie wyglada na Europe/Warsaw (Central European Standard Time)."
+    Write-Warn "Harmonogram uzywa czasu lokalnego serwera - ustaw strefe na Warszawa."
+  } else {
+    Write-Ok "Strefa czasowa (Warszawa / CET)"
+  }
+
+  $port = Get-CronAppPortFromEnv -ProjectRoot $Root -DefaultPort 3000
+  Write-Ok "Port aplikacji: $port"
+
+  $logsDir = Join-Path $Root "logs"
+  New-Item -ItemType Directory -Force -Path $logsDir | Out-Null
+  Write-Ok "Katalog logow: $logsDir"
+
+  try {
+    $probe = Invoke-WebRequest -Uri "http://127.0.0.1:$port/login" -Method Head -TimeoutSec 5 -UseBasicParsing
+    Write-Ok "Aplikacja odpowiada na :$port (HTTP $($probe.StatusCode))"
+  } catch {
+    Write-Warn "Aplikacja nie odpowiada na http://127.0.0.1:$port/login - zadania powstana, ale crony beda padac az usluga wstanie."
+  }
+}
+
 function Register-WeekdayRepeatingCronTask {
   param(
     [string]$Name,
@@ -127,6 +191,7 @@ function Register-WeekdayRepeatingCronTask {
 
   $psArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$cronScript`" -Job $JobName -ProjectRoot `"$Root`""
   $escapedArgs = [System.Security.SecurityElement]::Escape($psArgs)
+  $escapedRoot = [System.Security.SecurityElement]::Escape($Root)
   $startDate = (Get-Date).ToString("yyyy-MM-dd")
   $duration = "PT${DurationHours}H"
 
@@ -150,7 +215,7 @@ function Register-WeekdayRepeatingCronTask {
       <Repetition>
         <Interval>$Interval</Interval>
         <Duration>$duration</Duration>
-        <StopAtDurationEnd>true</StopAtDurationEnd>
+        <StopAtDurationEnd>false</StopAtDurationEnd>
       </Repetition>
     </CalendarTrigger>
   </Triggers>
@@ -167,11 +232,16 @@ function Register-WeekdayRepeatingCronTask {
     <StartWhenAvailable>true</StartWhenAvailable>
     <Enabled>true</Enabled>
     <ExecutionTimeLimit>PT1H</ExecutionTimeLimit>
+    <RestartOnFailure>
+      <Interval>PT2M</Interval>
+      <Count>2</Count>
+    </RestartOnFailure>
   </Settings>
   <Actions Context="Author">
     <Exec>
       <Command>powershell.exe</Command>
       <Arguments>$escapedArgs</Arguments>
+      <WorkingDirectory>$escapedRoot</WorkingDirectory>
     </Exec>
   </Actions>
 </Task>
@@ -197,7 +267,9 @@ function Get-CronInvokeCommand {
 function Install-CronScheduledTasks {
   param([string]$Root)
 
-  Write-Step "Harmonogram zadan OnTime (Europe/Warsaw - ustaw strefe serwera na Windows)"
+  Assert-CronInstallPreflight -Root $Root
+
+  Write-Step "Harmonogram zadan OnTime (Europe/Warsaw - czas lokalny Windows)"
 
   foreach ($legacyName in $LegacyTaskNames) {
     Remove-ScheduledTaskIfExists $legacyName | Out-Null
@@ -215,16 +287,6 @@ function Install-CronScheduledTasks {
   Register-WeekdayRepeatingCronTask -Name "OnTime Cron Informacja Stock Sync" -Root $Root -JobName "informacja-stock-sync" -Interval "PT1H"
 
   Register-WeekdayRepeatingCronTask -Name "OnTime Cron ZD ETA Sync" -Root $Root -JobName "zd-eta-sync" -Interval "PT2H"
-
-  $trScheduled = Get-CronInvokeCommand -Root $Root -JobName "scheduled-mails"
-  foreach ($slot in @("07:00", "08:00", "09:00")) {
-    $slotId = $slot.Replace(":", "")
-    New-SchTasksCronTask "OnTime Cron Scheduled Mails $slotId" @(
-      "/Create", "/F", "/TN", "OnTime Cron Scheduled Mails $slotId", "/TR", $trScheduled,
-      "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "WEEKLY",
-      "/D", "MON", "/ST", $slot
-    )
-  }
 
   $trSync = Get-CronInvokeCommand -Root $Root -JobName "catalog-zd-sync"
   foreach ($slot in @("02:00", "02:20", "02:40", "03:00", "03:20", "03:40", "04:00", "04:20", "04:40")) {

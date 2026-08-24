@@ -12,7 +12,7 @@ param(
   [string]$ProjectRoot = "",
   [string]$NssmPath = "",
   [string]$DeployBranch = "main",
-  [string]$NightlyDeployAt = "03:30",
+  [string]$NightlyDeployAt = "05:00",
   [string]$DeployTaskRunAs = "",
   [string]$DeployTaskRunAsPassword = "",
   [switch]$SkipInstall,
@@ -285,13 +285,19 @@ function Uninstall-All {
   if (Test-Path $cronInstaller) {
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $cronInstaller -Uninstall -ProjectRoot $Root | Out-Null
   } else {
-    foreach ($task in @(
+    $catalogSlots = @("0200", "0220", "0240", "0300", "0320", "0340", "0400", "0420", "0440")
+    $fallbackTasks = @(
       "OnTime Cron Morning",
       "OnTime Cron Process Deliveries",
+      "OnTime Cron Informacja Stock Sync",
       "OnTime Cron ZD ETA Sync",
       "OnTime Cron Catalog ZD Sync",
-      "OnTime Cron Catalog ZD Sync Continue"
-    )) {
+      "OnTime Cron Catalog ZD Sync Continue",
+      "OnTime Cron Scheduled Mails 0700",
+      "OnTime Cron Scheduled Mails 0800",
+      "OnTime Cron Scheduled Mails 0900"
+    ) + ($catalogSlots | ForEach-Object { "OnTime Cron Catalog ZD Sync $_" })
+    foreach ($task in $fallbackTasks) {
       Remove-ScheduledTaskIfExists $task
     }
   }

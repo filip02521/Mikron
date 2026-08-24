@@ -42,8 +42,8 @@ export async function assertAdminPanelAllowsProcurementBoardMutations(
 }
 
 /**
- * Operacje zakupowe — admin może mutować w cookie admin lub zakupy
- * (podgląd zakupów to realna praca operacyjna, nie read-only).
+ * Operacje zakupowe — admin może mutować w cookie admin, zakupy lub zakupy_zeby
+ * (zgodnie z isAdminOperationsPreviewReadOnly: te konteksty to realna praca, nie read-only).
  */
 export async function assertAdminPanelAllowsOperationsMutations(
   user: Pick<SessionUser, "role"> | null | undefined
@@ -51,7 +51,7 @@ export async function assertAdminPanelAllowsOperationsMutations(
   if (!user || !isAdmin(user.role)) return;
 
   const ctx = await adminPanelContextFromCookie();
-  if (ctx === "admin" || ctx === "zakupy") return;
+  if (ctx === "admin" || ctx === "zakupy" || ctx === "zakupy_zeby") return;
   throw new Error(ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED);
 }
 

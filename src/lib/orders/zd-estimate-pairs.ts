@@ -20,6 +20,7 @@ import {
   indexZdProductPairs,
   pairCoverPieces,
   pairSalesPieces,
+  pairWzSalesPieces,
   type ZdProductPairRef,
   type ZdProductPairRole,
 } from "@/lib/orders/zd-product-pair-units";
@@ -29,9 +30,15 @@ export type ZdEstimatePairMeta = {
   twinTwId: number;
   unitsPerPack: number;
   sprzedazSzt: number;
+  /** WZ niepowiązane pary w sztukach (piece + pack × ratio), clamp ≤ sprzedazSzt. */
+  wzNiepowiazaneSzt: number;
   coverSzt: number;
   pieceSprzedaz: number;
   packSprzedaz: number;
+  /** Surowe WZ z linii piece (przed × ratio). */
+  pieceWzNiepowiazane: number;
+  /** Surowe WZ z linii pack w jednostkach paczki (przed × ratio). */
+  packWzNiepowiazane: number;
   pieceDostepne: number;
   packDostepne: number;
   /** Brak partnera w wyniku estimate — nie cichy half-merge. */
@@ -154,6 +161,8 @@ export function applyZdEstimatePairs(
     const ratio = pair.unitsPerPack;
     const pieceSprzedaz = pieceLine ? asNum(pieceLine.sprzedazOkres) : 0;
     const packSprzedaz = packLine ? asNum(packLine.sprzedazOkres) : 0;
+    const pieceWz = pieceLine ? Math.max(0, asNum(pieceLine.wzNiepowiazaneOkres)) : 0;
+    const packWz = packLine ? Math.max(0, asNum(packLine.wzNiepowiazaneOkres)) : 0;
     const pieceDost = pieceLine ? asNum(pieceLine.dostepne) : 0;
     const packDost = packLine ? asNum(packLine.dostepne) : 0;
     const packZd = packLine ? Math.max(0, asNum(packLine.otwarteZd)) : 0;
@@ -166,6 +175,14 @@ export function applyZdEstimatePairs(
           packSprzedazOkres: packSprzedaz,
           unitsPerPack: ratio,
         });
+    const wzSztRaw = partnerMissing
+      ? 0
+      : pairWzSalesPieces({
+          pieceWzNiepowiazaneOkres: pieceWz,
+          packWzNiepowiazaneOkres: packWz,
+          unitsPerPack: ratio,
+        });
+    const wzNiepowiazaneSzt = Math.min(wzSztRaw, sprzedazSzt);
     const coverSzt = partnerMissing
       ? 0
       : pairCoverPieces({
@@ -269,9 +286,12 @@ export function applyZdEstimatePairs(
       twinTwId: twin,
       unitsPerPack: ratio,
       sprzedazSzt,
+      wzNiepowiazaneSzt,
       coverSzt,
       pieceSprzedaz,
       packSprzedaz,
+      pieceWzNiepowiazane: pieceWz,
+      packWzNiepowiazane: packWz,
       pieceDostepne: pieceDost,
       packDostepne: packDost,
       partnerMissing: partnerMissing || undefined,
@@ -289,6 +309,7 @@ export function applyZdEstimatePairs(
         salesTrackHeldExtraQty,
         salesTrackAllowedExtraQty,
         sprzedazOkres: sprzedazSzt,
+        wzNiepowiazaneOkres: wzNiepowiazaneSzt,
         sprzedazDziennie: tempo,
         doZamowieniaReczne: piecesNeeded,
         wkladZk: Math.max(0, packLine.doZamowieniaApi - piecesNeeded),
@@ -299,14 +320,18 @@ export function applyZdEstimatePairs(
     if (pieceLine) {
       out.push({
         ...pieceLine,
-        celZapasu: celBase,
-        celZapasuTracked: celTracked,
+        // Cel / sprzedaż pary tylko na paczce — piece poza Do ZD i bez 2× w sumie Sprzed.
+        celZapasu: 0,
+        celZapasuTracked: 0,
         salesTrackDelta: 0,
         salesTrackReasons: [],
         salesTrackConfidence: 0,
         salesTrackQtyReview: false,
         salesTrackHeldExtraQty: 0,
         salesTrackAllowedExtraQty: 0,
+        sprzedazOkres: 0,
+        wzNiepowiazaneOkres: 0,
+        sprzedazDziennie: 0,
         doZamowieniaReczne: 0,
         wkladZk: 0,
         pair: baseMeta("piece", pair.packTwId),

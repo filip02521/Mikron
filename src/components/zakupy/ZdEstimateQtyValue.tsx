@@ -77,8 +77,16 @@ export function ZdEstimateQtyValue({
       )}
       title={title}
     >
-      <span className="max-w-full truncate leading-none">
-        {showDash ? (
+      <span
+        className={cn(
+          "inline-flex max-w-full items-baseline gap-0.5 leading-none",
+          align === "end"
+            ? "justify-end"
+            : align === "start"
+              ? "justify-start"
+              : "justify-center"
+        )}
+      >        {showDash ? (
           <span
             className={cn(
               "zd-est-qty--dash",
@@ -97,6 +105,7 @@ export function ZdEstimateQtyValue({
           <>
             <span
               className={cn(
+                "min-w-0 truncate",
                 tier === "a"
                   ? "zd-est-qty--a"
                   : tier === "b"
@@ -114,13 +123,22 @@ export function ZdEstimateQtyValue({
               {formatZdEstimateTableQty(value)}
             </span>
             {unitKey ? (
-              <span className="zd-est-unit ml-0.5">{UNIT_LABEL[unitKey]}</span>
+              <span className="zd-est-unit shrink-0">{UNIT_LABEL[unitKey]}</span>
             ) : null}
           </>
         )}
       </span>
       {subline && !showDash ? (
-        <span className="flex w-full min-w-0 flex-col items-center gap-px">
+        <span
+          className={cn(
+            "flex w-full min-w-0 flex-col gap-px",
+            align === "end"
+              ? "items-end"
+              : align === "start"
+                ? "items-start"
+                : "items-center"
+          )}
+        >
           {subline}
         </span>
       ) : null}

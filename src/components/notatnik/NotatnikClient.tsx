@@ -79,6 +79,7 @@ import { DelegateModeBackground } from "@/components/moje/DelegatePreviewContext
 import { ZkWatchSection } from "./ZkWatchSection";
 import { mergeSalesPreviewSearchParams } from "@/lib/nav/sales-preview-href";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
+import { isEditableKeyboardTarget } from "@/lib/platform/editable-keyboard-target";
 import { NOTEPAD_UNDO_TOAST, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 import { SalesPageAlerts } from "@/components/sales/SalesPageAlerts";
 import { DelegateSwitcher } from "@/components/moje/DelegateSwitcher";
@@ -400,8 +401,7 @@ export function NotatnikClient({
   useEffect(() => {
     if (!undo || effectiveReadOnly) return;
     const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (isEditableKeyboardTarget(e.target)) return;
       if ((e.metaKey || e.ctrlKey) && e.key === "z") {
         e.preventDefault();
         void handleUndo();

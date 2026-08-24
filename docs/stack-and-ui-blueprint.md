@@ -20,7 +20,7 @@ Szczegóły palety: [design-system.md](./design-system.md). Stos ogólny: [READM
 | Walidacja | **Zod** | formularze, API, env |
 | Daty | **date-fns** | strefa `Europe/Warsaw` w logice biznesowej |
 | Baza + auth | **Supabase** | PostgreSQL, Auth, RLS, `@supabase/ssr` |
-| E-mail | **Resend** | opcjonalnie |
+| E-mail | **Amazon SES SMTP** | opcjonalnie (`SMTP_*`) |
 | Testy jednostkowe | **Vitest** + happy-dom | logika w `src/lib/` |
 | Testy E2E | **Playwright** | Chromium |
 | Deploy (LAN) | Windows NSSM + nginx reverse proxy | `installer/` |

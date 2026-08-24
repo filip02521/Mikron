@@ -6,8 +6,19 @@ import {
   homePathForUser,
   pathAllowedForProcurementWorkspace,
 } from "@/lib/auth/procurement-workspace";
+import { MAIL_CENTER_MODULE_SLUG } from "@/lib/admin-modules";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import type { UserRole, Workspace } from "@/types/database";
+
+/** Stary URL statusu Ivoclar — bookmark → Centrum maili lub komunikat braku modułu. */
+export const IVOCLAR_RAPORTY_LEGACY_PATH = "/zakupy/raporty-ivoclar";
+
+export function isIvoclarRaportyLegacyPath(pathname: string): boolean {
+  return (
+    pathname === IVOCLAR_RAPORTY_LEGACY_PATH ||
+    pathname.startsWith(`${IVOCLAR_RAPORTY_LEGACY_PATH}/`)
+  );
+}
 
 export function isAdmin(role: UserRole): boolean {
   return role === "admin";
@@ -137,6 +148,8 @@ export type CanAccessPathOptions = {
   procurementWorkspace?: ProcurementWorkspace | null;
   /** Przypisane obszary robocze (z profiles.assigned_workspaces). */
   workspaces?: Workspace[];
+  /** Włączone moduły admin (np. Centrum maili) — dla non-admin na `/admin/mail`. */
+  adminModules?: string[];
 };
 
 function canAccessPathForRole(
@@ -153,7 +166,19 @@ function canAccessPathForRole(
     });
   }
 
-  if (pathname.startsWith("/admin")) return isAdmin(role);
+  if (pathname.startsWith("/admin")) {
+    if (isAdmin(role)) return true;
+    if (
+      (pathname === "/admin/mail" || pathname.startsWith("/admin/mail/")) &&
+      options?.adminModules?.includes(MAIL_CENTER_MODULE_SLUG)
+    ) {
+      return true;
+    }
+    return false;
+  }
+  // Legacy bookmark — dowolna zalogowana rola może zobaczyć komunikat / zostać
+  // przekierowana (proxy / redirectPathAfterLogin); dostęp do logów = /admin/mail.
+  if (isIvoclarRaportyLegacyPath(pathname)) return true;
   if (pathname === "/zeby" || pathname.startsWith("/zeby/")) {
     return canAccessTeethPanel(role, ws);
   }
@@ -220,16 +245,31 @@ export function redirectPathAfterLogin(
     adminPanelContext?: AdminPanelContext | null;
     procurementWorkspace?: ProcurementWorkspace | null;
     workspaces?: Workspace[];
+    adminModules?: string[];
   }
 ): string {
   const adminPanelContext = options?.adminPanelContext ?? null;
   const procurementWorkspace = options?.procurementWorkspace ?? null;
   const workspaces = options?.workspaces;
+  const adminModules = options?.adminModules;
   const target = next?.trim() || "/";
   const targetPath = target.split("?")[0] ?? target;
+
+  if (
+    isIvoclarRaportyLegacyPath(targetPath) &&
+    (isAdmin(role) || adminModules?.includes(MAIL_CENTER_MODULE_SLUG))
+  ) {
+    return "/admin/mail";
+  }
+
   if (
     target !== "/" &&
-    canAccessPath(role, targetPath, { adminPanelContext, procurementWorkspace, workspaces })
+    canAccessPath(role, targetPath, {
+      adminPanelContext,
+      procurementWorkspace,
+      workspaces,
+      adminModules,
+    })
   ) {
     return target;
   }

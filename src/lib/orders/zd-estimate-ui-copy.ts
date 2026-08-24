@@ -416,7 +416,7 @@ export function zdEstimateLaunchProgressSteps(input: {
 export function zdEstimateScopeDashedHint(mode: "grupa" | "cecha"): string {
   return mode === "grupa"
     ? "Wybierz skrót albo wyszukaj grupę Subiekta — dni zapasu i okno sprzedaży ustawią się automatycznie (z karty dostawcy lub z nazwy)."
-    : "Wyszukaj cechę Subiekta — zapas i daty sprzedaży ustawią się z nazwy cechy albo z karty dostawcy w „Zaawansowane”.";
+    : "Wyszukaj cechę Subiekta — zapas i daty sprzedaży ustawią się z nazwy cechy albo z karty dostawcy w „Nadpisaniach”.";
 }
 
 export function zdEstimateScopeModeGrupaHint(): string {
@@ -453,7 +453,7 @@ export function zdEstimateNeedsSettingsHint(): string {
 
 /** Jedna linia pod trybem Cecha. */
 export function zdEstimateCechaScopeCaption(): string {
-  return "Cecha może łączyć towary z wielu grup katalogowych. Dni zapasu bierzemy z nazwy cechy albo z dostawcy wskazanego w „Zaawansowane”.";
+  return "Cecha może łączyć towary z wielu grup. Dni zapasu — z nazwy cechy albo z dostawcy w „Nadpisaniach”.";
 }
 
 /** HelpHint przy sekcji polityk liczenia. */
@@ -527,7 +527,7 @@ export function zdEstimateHostStripDetail(input: {
     parts.push("środowisko testowe Subiekta");
   }
   if (input.salesEndFromFs && input.salesEndKeyFormatted) {
-    parts.push(`faktury sprzedaży do ${input.salesEndKeyFormatted}`);
+    parts.push(`sprzedaż (FS+PA) do ${input.salesEndKeyFormatted}`);
   }
   return parts.join(" · ");
 }
@@ -546,10 +546,10 @@ export function zdEstimatePageHint(input: {
 }
 
 export function zdEstimatePrepCardHint(): string {
-  return "Tu wybierasz zakres z Subiekta (grupę albo cechę) i zasady liczenia. Reguły listy oraz mapowania dostawców są wspólne dla działu — zmiana dotyczy wszystkich użytkowników zakupów i obowiązuje przy każdym „Policz listę”.";
+  return "Wybierz zakres i kliknij „Policz listę”. Reguły działu (wykluczenia, opakowania, pary) — menu Reguły.";
 }
 
-/** Lead karty zakresu — start i zmiana grupy / cechy przy już wczytanej liście. */
+/** Lead karty zakresu — legacy; UI prep go nie renderuje. */
 export function zdEstimatePrepIdleLead(): string {
   return "Wybierz skrót grupy albo wyszukaj inną w Subiekcie. Dni zapasu i okno sprzedaży ustawią się z karty dostawcy.";
 }
@@ -591,6 +591,10 @@ export function zdEstimateLaunchReadyToastDescription(input: {
   doZamowieniaCount: number;
   pendingIndividualsCount?: number;
   isLive: boolean;
+  /** Po auto-zamknięciu poprzedniej sesji (Przygotuj ZD z daily). */
+  closedPreviousSession?: boolean;
+  previousSessionSupplierChanged?: boolean;
+  nextSupplierName?: string | null;
 }): string {
   const n = Math.max(0, Math.trunc(Number(input.doZamowieniaCount) || 0));
   const posWord = zdEstimatePlCountWord(n, "pozycja", "pozycje", "pozycji");
@@ -607,7 +611,27 @@ export function zdEstimateLaunchReadyToastDescription(input: {
   const next = input.isLive
     ? "Utwórz ZD w aktualnej bazie albo skopiuj TSV."
     : "Utwórz ZD (test) albo skopiuj TSV.";
-  return `${bits.join(" · ")}. ${next}`;
+  const body = `${bits.join(" · ")}. ${next}`;
+  if (!input.closedPreviousSession) return body;
+
+  if (
+    input.previousSessionSupplierChanged &&
+    input.nextSupplierName?.trim()
+  ) {
+    return `Zamknięto poprzednią sesję — lista dla ${input.nextSupplierName.trim()}. ${body}`;
+  }
+  return `Zamknięto poprzednią sesję. ${body}`;
+}
+
+/** Prefiks do toastu „Lista przeliczona” gdy zamknięto poprzednią sesję. */
+export function zdEstimateRecountClosedPreviousSessionPrefix(input: {
+  supplierChanged: boolean;
+  nextSupplierName: string | null;
+}): string {
+  if (input.supplierChanged && input.nextSupplierName?.trim()) {
+    return `Zamknięto poprzednią sesję — lista dla ${input.nextSupplierName.trim()}. `;
+  }
+  return "Zamknięto poprzednią sesję. ";
 }
 
 export function zdEstimateCreateTitleHint(input: {
@@ -655,6 +679,8 @@ export const ZD_ESTIMATE_UI = {
     "Wczytano tylko pierwsze 500 próśb — odznacz zbędne w panelu Dziś, zanim utworzysz ZD.",
   createGatePendingIndividualsLoading:
     "Wczytuję prośby handlowców — poczekaj, zanim utworzysz ZD.",
+  createGateProsbaOverlapPending:
+    "Trwa korekta próśb o rezerwacje ZK — poczekaj, zanim utworzysz ZD (ilości Do ZD mogą spaść).",
   createGateHistoryFetchFailed:
     "Nie wczytano historii zamówień ZD — przelicz listę, zanim utworzysz dokument (korekty z historii mogły nie wejść).",
   historyFetchFailedTitle: "Nie wczytano historii zamówień ZD",
@@ -699,7 +725,23 @@ export const ZD_ESTIMATE_UI = {
   listFilterReviewTitle:
     "Pozycje z wątpliwym podbiciem Do ZD (niska lub średnia pewność sprzedaży) — warto sprawdzić przed utworzeniem dokumentu",
   listShowStockDetailTitle:
-    "Dodatkowe kolumny: stan magazynowy i rezerwacje (obok kolumny Dostępne)",
+    "Dodatkowe kolumny: stan magazynowy i rezerwacje (obok kolumny Dostępne). Kliknij ilość Rez., żeby zobaczyć ZK z rezerwacją.",
+  reservationsModalTitle: "Rezerwacje ZK",
+  reservationsModalHint:
+    "Otwarte ZK ze statusem Zarezerwowany. Pod statusem widać opis ze słownika Subiekta. Uwagi dokumentu i pełny adres klienta nie są dostępne w tym podglądzie.",
+  reservationsListSummary: (zkCount: number, qtySum: number) =>
+    `${zkCount === 1 ? "1 ZK" : `${zkCount} ZK`} · łącznie ${qtySum} szt. z rezerwacją`,
+  reservationsListAriaLabel: "Lista ZK z rezerwacją towaru",
+  reservationsLoading: "Wczytuję ZK z rezerwacją…",
+  reservationsLoadError: "Nie udało się wczytać listy ZK z rezerwacją.",
+  reservationsEmptyTitle: "Brak ZK z rezerwacją",
+  reservationsEmptyBody:
+    "API nie zwróciło otwartych ZK ze statusem Zarezerwowany dla tego towaru. Stan Rez. może pochodzić z innego mechanizmu magazynowego.",
+  reservationsTruncated:
+    "Lista jest niepełna — za dużo otwartych ZK do przejrzenia w jednym podglądzie. Sprawdź szczegóły w Subiekcie.",
+  reservationsCellTitle: "Pokaż ZK, które rezerwują ten towar",
+  reservationsCellAria: (qty: number, productLabel: string) =>
+    `Rezerwacje: ${qty}. Pokaż ZK dla ${productLabel || "towaru"}`,
   listShowZkColumnTitle:
     "Kolumny diagnostyczne: otwarte ZK oraz surowe ilości z Subiekta — zwykle zbędne przy codziennym zamawianiu",
   listSortByConfidence: "Sortuj po pewności",
@@ -761,6 +803,12 @@ export const ZD_ESTIMATE_UI = {
   createGateBoostNeedsRecount:
     "Zmieniono podbicie sprzedaży — przelicz listę przed utworzeniem ZD.",
   policiesSectionLabel: "Polityki liczenia",
+  prepFormTitle: "Przygotowanie",
+  prepScopePlaceholder: "Wybierz skrót lub wyszukaj…",
+  prepOverridesShow: "Nadpisania",
+  prepOverridesHide: "Ukryj nadpisania",
+  prepParamBoostLabel: "Podbicie",
+  prepParamExtrasLabel: "Prośby",
   historyNeedsRecountTitle: "Zmieniono historię powiązań ZD",
   historyNeedsRecountBody:
     "Włączono lub wyłączono zapisane ZD w historii zamówień. Przelicz listę przed utworzeniem dokumentu — korekta z historii mogła się zmienić.",

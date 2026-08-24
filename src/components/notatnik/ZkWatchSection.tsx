@@ -375,6 +375,10 @@ export function ZkWatchSection({
     clearChoose();
     try {
       const result = await actionAddZkWatchByNumber(value);
+      if (result.kind === "error") {
+        await handleAddFailure(new Error(result.message), value);
+        return;
+      }
       if (result.kind === "choose") {
         setCandidates(result.candidates);
         setChooseHint(result.hint);
@@ -393,9 +397,18 @@ export function ZkWatchSection({
     setLoading(true);
     setError(null);
     try {
-      const { watch } = await actionAddZkWatchBySubiektDokId(candidate.subiektDokId);
+      const result = await actionAddZkWatchBySubiektDokId(candidate.subiektDokId);
+      if (result.kind === "error") {
+        await handleAddFailure(new Error(result.message), candidate.zkNumber);
+        return;
+      }
+      if (result.kind === "choose") {
+        setCandidates(result.candidates);
+        setChooseHint(result.hint);
+        return;
+      }
       clearChoose();
-      await finishWatchAdd(watch);
+      await finishWatchAdd(result.watch);
     } catch (e) {
       await handleAddFailure(e, candidate.zkNumber);
     } finally {

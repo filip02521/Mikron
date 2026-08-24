@@ -131,7 +131,7 @@ describe("notifyBoardQuestionReplyToSales", () => {
     });
     vi.mocked(sendBoardQuestionReplyEmail).mockResolvedValue({
       ok: false,
-      error: "Resend down",
+      error: "SMTP down",
       to: "jan@firma.pl",
     });
 
@@ -142,6 +142,6 @@ describe("notifyBoardQuestionReplyToSales", () => {
       replyBody: "A",
     });
 
-    expect(res).toEqual({ emailSent: false, error: "Resend down" });
+    expect(res).toEqual({ emailSent: false, error: "SMTP down" });
   });
 });

@@ -69,6 +69,21 @@ describe("proxy mail center module access", () => {
     expect(mockHasMailCenterModuleForUserId).toHaveBeenCalledWith("u1");
   });
 
+  it("przekazuje x-pathname na request do refreshSupabaseSession", async () => {
+    mockFetchProfileByUserId.mockResolvedValue({
+      id: "u1",
+      role: "admin",
+      assigned_workspaces: [],
+      must_change_password: false,
+    });
+
+    await proxy(new NextRequest("https://example.com/admin/mail/ivoclar_weekly"));
+
+    expect(mockRefreshSupabaseSession).toHaveBeenCalled();
+    const reqArg = mockRefreshSupabaseSession.mock.calls[0]?.[0] as NextRequest;
+    expect(reqArg.headers.get("x-pathname")).toBe("/admin/mail/ivoclar_weekly");
+  });
+
   it("redirectuje non-admin bez modułu z /admin/mail", async () => {
     mockFetchProfileByUserId.mockResolvedValue({
       id: "u1",
@@ -82,6 +97,40 @@ describe("proxy mail center module access", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toBe("https://example.com/podsumowanie");
+  });
+
+  it("legacy /zakupy/raporty-ivoclar z modułem → /admin/mail", async () => {
+    mockFetchProfileByUserId.mockResolvedValue({
+      id: "u1",
+      role: "sales",
+      assigned_workspaces: [],
+      must_change_password: false,
+    });
+    mockHasMailCenterModuleForUserId.mockResolvedValue(true);
+
+    const response = await proxy(
+      new NextRequest("https://example.com/zakupy/raporty-ivoclar")
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe("https://example.com/admin/mail");
+  });
+
+  it("legacy /zakupy/raporty-ivoclar bez modułu wpuszcza (komunikat na stronie)", async () => {
+    mockFetchProfileByUserId.mockResolvedValue({
+      id: "u1",
+      role: "sales",
+      assigned_workspaces: [],
+      must_change_password: false,
+    });
+    mockHasMailCenterModuleForUserId.mockResolvedValue(false);
+
+    const response = await proxy(
+      new NextRequest("https://example.com/zakupy/raporty-ivoclar")
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
   });
 });
 

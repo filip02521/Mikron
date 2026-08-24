@@ -6,7 +6,6 @@ import { panelSubsectionInsetClass, panelTypography } from "@/lib/ui/ontime-them
 import { teethPanelHeaderMetaClass, teethPanelSupplierHeaderClass } from "@/lib/teeth/teeth-panel-ui";
 import { Button } from "@/components/ui/Button";
 import { TeethPanelSupplierEta } from "@/components/zeby/TeethPanelSupplierEta";
-import { TeethManualEtaEditor } from "@/components/zeby/TeethManualEtaEditor";
 import type { TeethQueueGroup } from "@/lib/data/teeth-queue-shared";
 import { plPozycja } from "@/lib/ui/polish-plurals";
 import { IconTruck } from "@/components/icons/StrokeIcons";
@@ -54,14 +53,6 @@ export function TeethPanelSupplierGroupHeader({
           </span>
         ) : null}
         <TeethPanelSupplierEta eta={group.deliveryEta} />
-        {group.supplierId ? (
-          <TeethManualEtaEditor
-            supplierId={group.supplierId}
-            supplierName={group.supplierName}
-            avgBusinessDays={group.deliveryEta?.avgBusinessDays}
-            lowConfidence={group.deliveryEta?.lowConfidence}
-          />
-        ) : null}
       </div>
       {actions ? (
         <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>

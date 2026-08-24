@@ -248,6 +248,8 @@ export interface TeethSupplierSchedule {
   shift_date: string | null;
   computed_next_date: string | null;
   vacation_note: VacationNote | null;
+  /** Stałe dni robocze do dostawy; null = ETA z historii. */
+  delivery_lead_business_days: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -635,6 +637,37 @@ export type MailSendIssue = {
   message: string;
   context: Record<string, unknown>;
   count: number;
+};
+
+export type TransactionalEmailKind =
+  | "delivery"
+  | "informacja"
+  | "procurement_cancel"
+  | "request_note_update"
+  | "board_reply"
+  | "password_reset_otp"
+  | "generic"
+  | "attachments";
+
+export type TransactionalEmailLogStatus = "sent" | "failed";
+
+export type TransactionalEmailLog = {
+  id: string;
+  kind: TransactionalEmailKind;
+  status: TransactionalEmailLogStatus;
+  to_addresses: string[];
+  cc_addresses: string[];
+  bcc_addresses: string[];
+  intended_to: string[];
+  override_to: string | null;
+  from_address: string;
+  subject: string;
+  html_body: string;
+  message_id: string | null;
+  error_message: string | null;
+  has_attachments: boolean;
+  attachment_names: string[];
+  created_at: string;
 };
 
 export const LOCATION_FLAGS: Record<SupplierLocation, string> = {

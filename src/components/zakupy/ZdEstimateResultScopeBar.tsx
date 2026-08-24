@@ -96,7 +96,7 @@ export function ZdEstimateResultScopeBar({
             valueClassName="sm:text-[0.9375rem]"
             title={
               hasWindow
-                ? `Okres FS użyty do tempa sprzedaży: ${windowLabel}`
+                ? `Okres sprzedaży (FS+PA) użyty do tempa: ${windowLabel}`
                 : undefined
             }
           />

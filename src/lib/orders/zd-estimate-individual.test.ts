@@ -29,6 +29,8 @@ function pending(
     subiektTwId: null,
     qty: 5,
     requestNote: null,
+    salesClientKhId: null,
+    sourceZkNumber: null,
     ...partial,
   };
 }
@@ -47,6 +49,46 @@ function order(partial: Partial<IndividualOrder>): IndividualOrder {
     ...partial,
   } as IndividualOrder;
 }
+
+describe("mapIndividualOrderToPendingDto", () => {
+  it("przekazuje sales_client_kh_id i source_zk_number", () => {
+    const dto = mapIndividualOrderToPendingDto(
+      order({
+        sales_client_kh_id: 4242,
+        source_zk_number: "ZK 12/M/08/2026",
+      })
+    );
+    expect(dto?.salesClientKhId).toBe(4242);
+    expect(dto?.sourceZkNumber).toBe("ZK 12/M/08/2026");
+  });
+});
+
+describe("overlapContributions w buildIndividualEstimateExtras", () => {
+  it("zapisuje wkład z kh_Id do dedupe vs rez. ZK", () => {
+    const bundle = buildIndividualEstimateExtras({
+      orders: [
+        pending({
+          id: "o1",
+          symbol: "SYM",
+          qty: 1,
+          salesClientKhId: 100,
+          sourceZkNumber: "ZK 1",
+        }),
+      ],
+      lines: [{ tw_Id: 10, tw_Symbol: "SYM" }],
+    });
+    const extra = bundle.byTwId.get(10);
+    expect(extra?.extraPieces).toBe(1);
+    expect(extra?.overlapContributions).toEqual([
+      {
+        orderId: "o1",
+        qty: 1,
+        salesClientKhId: 100,
+        sourceZkNumber: "ZK 1",
+      },
+    ]);
+  });
+});
 
 describe("matchZdEstimateTwFromOrder", () => {
   it("kolejność: symbol > PLU > subiektTwId; bez firstToken", () => {
@@ -673,6 +715,90 @@ describe("collectIndividualOrderIdsForZdCreate", () => {
     expect(next.serviceLines.every((s) => s.reason === "fetch_failed")).toBe(
       true
     );
+  });
+
+  it("reclassifyMissing: qty z overlapContributions po explode (nie req.qty)", () => {
+    const keepReq = {
+      orderId: "o-keep",
+      salesPersonId: "s",
+      salesPersonName: "A",
+      qty: 1,
+      products: "p",
+      symbol: "K",
+      mikranCode: null,
+      requestNote: null,
+    };
+    const goneReq = {
+      orderId: "o-gone",
+      salesPersonId: "s",
+      salesPersonName: "A",
+      qty: 1,
+      products: "p",
+      symbol: "G",
+      mikranCode: null,
+      requestNote: null,
+    };
+    const bundle = {
+      byTwId: new Map([
+        [
+          10,
+          {
+            // 1*3 (keep explode) + 1*3 (gone) — req.qty=1 nie wystarczy do odjęcia
+            extraPieces: 6,
+            requests: [keepReq, goneReq],
+            overlapContributions: [
+              {
+                orderId: "o-keep",
+                qty: 3,
+                salesClientKhId: 1,
+                sourceZkNumber: null,
+              },
+              {
+                orderId: "o-gone",
+                qty: 3,
+                salesClientKhId: 2,
+                sourceZkNumber: null,
+              },
+            ],
+          },
+        ],
+        [
+          99,
+          {
+            extraPieces: 3,
+            requests: [goneReq],
+            overlapContributions: [
+              {
+                orderId: "o-gone",
+                qty: 3,
+                salesClientKhId: 2,
+                sourceZkNumber: null,
+              },
+            ],
+          },
+        ],
+      ]),
+      serviceLines:
+        [] as import("./zd-estimate-individual").ZdEstimateIndividualServiceLine[],
+      twIdsToFetch: [99],
+      meta: {
+        orderCount: 2,
+        extraPiecesSum: 9,
+        serviceCount: 0,
+        skippedNoQty: 0,
+      },
+    };
+    const next = reclassifyMissingTwExtrasToServices(bundle, [10]);
+    expect(next.byTwId.get(10)?.extraPieces).toBe(3);
+    expect(next.byTwId.get(10)?.overlapContributions).toEqual([
+      {
+        orderId: "o-keep",
+        qty: 3,
+        salesClientKhId: 1,
+        sourceZkNumber: null,
+      },
+    ]);
+    expect(next.byTwId.has(99)).toBe(false);
   });
 });
 

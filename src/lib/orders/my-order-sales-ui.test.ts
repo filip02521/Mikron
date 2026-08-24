@@ -45,6 +45,142 @@ const baseOrder: IndividualOrder = {
 };
 
 describe("enrichMyOrderSalesUi", () => {
+  it("po oznaczeniu z plikiem zamówienia — handlowiec dostaje nazwę do pobrania", () => {
+    const { zamowienia } = presentMyOrders(
+      [
+        {
+          ...baseOrder,
+          is_teeth: true,
+          status: "Zamowione",
+          ordered_at: "2026-05-01",
+          teeth_order_file_path: "teeth-orders/group/ivoclar/x.xlsx",
+          teeth_order_file_name: "ivoclar-order.xlsx",
+        },
+      ],
+      []
+    );
+    const line = zamowienia[0]?.lines[0];
+    expect(line?.teethOrderFileName).toBe("ivoclar-order.xlsx");
+  });
+
+  it("zęby Zamowione z teeth_delivery_date — timingLabel z datą i ~N dni rob.", () => {
+    const { zamowienia } = presentMyOrders(
+      [
+        {
+          ...baseOrder,
+          is_teeth: true,
+          status: "Zamowione",
+          ordered_at: "2026-05-04T10:00:00+02:00",
+          teeth_ordered_at: "2026-05-04T10:00:00+02:00",
+          teeth_delivery_date: "2026-05-08",
+        },
+      ],
+      []
+    );
+    const row = zamowienia[0];
+    expect(row?.timingLabel).toMatch(/Planowana dostawa: 08\.05\.2026/);
+    expect(row?.timingLabel).toMatch(/~\d+ dni rob\./);
+    expect(row?.statusDetail).toMatch(/Planowana dostawa: 08\.05\.2026/);
+  });
+
+  it("zęby po terminie — badge danger (nie tylko timingLabel)", () => {
+    const { zamowienia } = presentMyOrders(
+      [
+        {
+          ...baseOrder,
+          is_teeth: true,
+          status: "Zamowione",
+          ordered_at: "2020-01-02T10:00:00+01:00",
+          teeth_ordered_at: "2020-01-02T10:00:00+01:00",
+          teeth_delivery_date: "2020-01-10",
+        },
+      ],
+      []
+    );
+    expect(zamowienia[0]?.timingLabel).toMatch(/po terminie/i);
+    expect(zamowienia[0]?.badgeVariant).toBe("danger");
+  });
+
+  it("zęby ze stałym ETA — teethEtaSource fixed", () => {
+    const { zamowienia } = presentMyOrders(
+      [
+        {
+          ...baseOrder,
+          supplier_id: "sup1",
+          is_teeth: true,
+          status: "Zamowione",
+          ordered_at: "2026-05-04T10:00:00+02:00",
+          teeth_ordered_at: "2026-05-04T10:00:00+02:00",
+          teeth_delivery_date: "2026-05-08",
+        },
+      ],
+      [],
+      { teethLeadDaysBySupplierId: { sup1: 4 } }
+    );
+    expect(zamowienia[0]?.teethEtaSource).toBe("fixed");
+  });
+
+  it("zęby z ręcznym override przy stałym ETA — teethEtaSource manual", () => {
+    const { zamowienia } = presentMyOrders(
+      [
+        {
+          ...baseOrder,
+          supplier_id: "sup1",
+          is_teeth: true,
+          status: "Zamowione",
+          ordered_at: "2026-05-04T10:00:00+02:00",
+          teeth_ordered_at: "2026-05-04T10:00:00+02:00",
+          // 10 dni rob. zamiast skonfigurowanych 4
+          teeth_delivery_date: "2026-05-18",
+        },
+      ],
+      [],
+      { teethLeadDaysBySupplierId: { sup1: 4 } }
+    );
+    expect(zamowienia[0]?.teethEtaSource).toBe("manual");
+  });
+
+  it("zęby bez teeth_delivery_date nie biorą ETA z delivery_stats", () => {
+    const { zamowienia } = presentMyOrders(
+      [
+        {
+          ...baseOrder,
+          is_teeth: true,
+          status: "Zamowione",
+          ordered_at: "2026-05-01",
+          teeth_ordered_at: "2026-05-01",
+          teeth_delivery_date: null,
+        },
+      ],
+      [
+        {
+          supplier_id: "sup1",
+          main_avg: 5,
+          side_avg: 5,
+          main_count: 10,
+          side_count: 10,
+        } as never,
+      ]
+    );
+    expect(zamowienia[0]?.timingLabel).toBeNull();
+  });
+
+  it("bez ścieżki Storage nie pokazuje pliku (sama nazwa nie wystarczy)", () => {
+    const { zamowienia } = presentMyOrders(
+      [
+        {
+          ...baseOrder,
+          is_teeth: true,
+          status: "Zamowione",
+          teeth_order_file_path: null,
+          teeth_order_file_name: "ghost.xlsx",
+        },
+      ],
+      []
+    );
+    expect(zamowienia[0]?.lines[0]?.teethOrderFileName).toBeNull();
+  });
+
   it("priorytetyzuje odbiór z magazynu", () => {
     const row = presentMyOrders(
       [{ ...baseOrder, status: "Zrealizowane" }],

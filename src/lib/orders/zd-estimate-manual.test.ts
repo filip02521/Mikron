@@ -159,6 +159,7 @@ describe("mapZdEstimateLineToManual", () => {
         celZapasu: 20,
         dostepne: 25,
         sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
         sprzedazDziennie: 0,
         otwarteZd: 0,
         doZamowienia: 0,
@@ -205,6 +206,7 @@ describe("mapZdEstimateLineToManual", () => {
       dostepne: 10,
       otwarteZd: 2, // 2 op. × 10 = 20 szt
       sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
       sprzedazDziennie: 0,
       doZamowienia: 100,
       otwarteZkBezRez: 0,
@@ -238,6 +240,7 @@ describe("mapZdEstimateLineToManual", () => {
       dostepne: 10,
       otwarteZd: 2,
       sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
       sprzedazDziennie: 0,
       doZamowienia: 100,
     };
@@ -272,6 +275,7 @@ describe("mapZdEstimateLineToManual", () => {
       dostepne: 10,
       otwarteZd: 10, // Mode B: 10 szt na dokumencie
       sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
       sprzedazDziennie: 0,
       doZamowienia: 100,
       otwarteZkBezRez: 0,
@@ -359,6 +363,7 @@ describe("mapZdEstimateLineToManual", () => {
         doZamowienia: 100,
         otwarteZkBezRez: 65,
         sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
         sprzedazDziennie: 0,
       },
       { salesTrack: false }
@@ -534,6 +539,7 @@ describe("manualLinesToTsv", () => {
         tw_Stan: 3,
         tw_StanRez: 0,
         sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
         sprzedazDziennie: 0,
       },
       { salesTrack: false }
@@ -559,6 +565,7 @@ describe("manualLinesToTsv", () => {
         tw_Stan: 0,
         tw_StanRez: 0,
         sprzedazOkres: 0,
+    wzNiepowiazaneOkres: 0,
         sprzedazDziennie: 0,
       },
       { salesTrack: false }

@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { formatShortDate } from "@/lib/sales/notepad-format";
 import type { OperationsNote } from "@/types/database";
 import { NOTE_COLOR_CARD } from "@/components/notatnik/note-styles";
+import { NoteBodyDisplay } from "@/components/notatnik/NoteBodyDisplay";
 import { NOTATNIK_NOTES_GRID_CLASS } from "@/components/notatnik/notatnik-layout";
 
 export function OperationsArchivedNotesSection({
@@ -74,7 +75,12 @@ function ArchivedNoteCard({
       {note.title?.trim() ? (
         <p className="mb-0.5 text-xs font-semibold text-slate-800">{note.title}</p>
       ) : null}
-      <p className="whitespace-pre-wrap leading-snug text-slate-700">{note.body}</p>
+      {note.visibility === "public" && note.author?.email ? (
+        <p className="mb-0.5 text-[10px] text-slate-500">{note.author.email}</p>
+      ) : null}
+      <div className="leading-snug text-slate-700">
+        <NoteBodyDisplay body={note.body} />
+      </div>
       {archivedLabel ? (
         <p className="mt-1.5 text-[10px] text-slate-500">Zarchiwizowano {archivedLabel}</p>
       ) : null}

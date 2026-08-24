@@ -3,6 +3,7 @@
 import { NavIcon } from "@/components/icons/NavIcon";
 import { navIconTileIdleClass, type NavIconKey } from "@/components/icons/NavIcon";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { AdminHubNav } from "@/components/admin/AdminHubNav";
 import { Card, CardHeader } from "@/components/ui/Card";
 import type { AdminHubTab } from "@/lib/admin-hub";
 import { adminHubBodyClass, adminPageShellClass } from "@/lib/ui/ontime-theme";
@@ -12,13 +13,15 @@ const TAB_ICON: Record<AdminHubTab, NavIconKey> = {
   users: "teamAccounts",
   sales: "team",
   mail: "admin",
+  wysylki: "admin",
 };
 
 const TAB_TITLE: Record<AdminHubTab, string> = {
   system: "Administracja",
   users: "Konta użytkowników",
   sales: "Handlowcy",
-  mail: "Centrum maili",
+  mail: "Wysyłki Ivoclar",
+  wysylki: "Wysyłki OnTime",
 };
 
 const TAB_DESCRIPTION: Record<AdminHubTab, string> = {
@@ -27,17 +30,22 @@ const TAB_DESCRIPTION: Record<AdminHubTab, string> = {
   users: "Logowanie do systemu, role i hasła. Handlowiec musi mieć kartę w zakładce Handlowcy.",
   sales:
     "Osoby kontaktowe, powiadomienia e-mail i linki zaproszeń do zakładania kont.",
-  mail: "Harmonogramy maili raportowych, odbiorcy i rejestr wysyłek z brakami danych.",
+  mail: "Status i historia wysyłek Ivoclar (odczyt — bez sterowania z OnTime).",
+  wysylki:
+    "Podgląd wszystkich maili transakcyjnych wysyłanych przez OnTime (dostawy, magazyn, OTP, tablica).",
 };
 
 export function AdminHubShell({
   activeTab,
+  visibleTabs,
   title,
   description,
   action,
   children,
 }: {
   activeTab: AdminHubTab;
+  /** Ograniczenie zakładek (np. tylko Ivoclar dla użytkowników z modułem). */
+  visibleTabs?: readonly AdminHubTab[];
   /** Nadpisanie tytułu z domyślnej mapy zakładki. */
   title?: string;
   description?: string;
@@ -50,7 +58,8 @@ export function AdminHubShell({
 
   return (
     <div className={adminPageShellClass}>
-      <Card padding={false} className="overflow-hidden">
+      <AdminHubNav activeTab={activeTab} visibleTabs={visibleTabs} />
+      <Card padding={false} className="mt-3 overflow-hidden">
         <CardHeader
           inset
           density="compact"

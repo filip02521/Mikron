@@ -14,7 +14,7 @@
  * (otwarte ZD z API przeliczone × opakowanie przed wywołaniem).
  * Deadband wokół dniZapasu ogranicza oscylację boost/cut.
  *
- * Bez historii między uruchomieniami: każdy run jest snapshotem FS + stanu.
+ * Bez historii między uruchomieniami: każdy run jest snapshotem sprzedaży (FS+PA+WZ) + stanu.
  */
 
 export const ZD_SALES_TRACK = {

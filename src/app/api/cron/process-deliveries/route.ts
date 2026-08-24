@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processMarkedDeliveries } from "@/lib/services/orders";
+import { flushAllDueDeliveryNotifications } from "@/lib/orders/delivery-notification-queue";
 import { authorizeCronRequest } from "@/lib/services/cron-auth";
 import { recordCronRun } from "@/lib/services/cron-run-log";
 import { isEmailConfigured } from "@/lib/env/email-config";
@@ -24,44 +25,62 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await processMarkedDeliveries({ lockedBy: "cron-process-deliveries" });
+    const [marked, queueFlush] = await Promise.all([
+      processMarkedDeliveries({ lockedBy: "cron-process-deliveries" }),
+      flushAllDueDeliveryNotifications("all").catch((err) => ({
+        sent: 0,
+        error: err instanceof Error ? err.message : String(err),
+      })),
+    ]);
 
-    if (result.skipped) {
-      await recordCronSkipped("process_deliveries", result.skipReason ?? "skipped", {
+    if (marked.skipped) {
+      // Kolejka undo i tak mogła coś wysłać — raportujemy osobno poniżej gdy nie skipped lock
+      await recordCronSkipped("process_deliveries", marked.skipReason ?? "skipped", {
         lockHeld: true,
+        queueFlushSent: queueFlush.sent,
+        queueFlushError: queueFlush.error,
       });
       return NextResponse.json({
         success: true,
         skipped: true,
-        reason: result.skipReason ?? "skipped",
+        reason: marked.skipReason ?? "skipped",
+        queueFlushSent: queueFlush.sent,
+        queueFlushError: queueFlush.error,
       });
     }
 
-    const hasEmailIssues = result.emailFailures.length > 0;
+    const hasEmailIssues =
+      marked.emailFailures.length > 0 || Boolean(queueFlush.error);
     const emailNotConfigured =
-      isProductionRuntime() && !isEmailConfigured() && result.processed > 0;
+      isProductionRuntime() &&
+      !isEmailConfigured() &&
+      (marked.processed > 0 || Boolean(queueFlush.error));
 
     await recordCronRun("process_deliveries", {
       ok: !hasEmailIssues && !emailNotConfigured,
       detail: {
-        processed: result.processed,
-        emailSent: result.emailSent,
-        emailFailures: result.emailFailures,
+        processed: marked.processed,
+        emailSent: marked.emailSent,
+        emailFailures: marked.emailFailures,
+        queueFlushSent: queueFlush.sent,
+        queueFlushError: queueFlush.error,
         emailNotConfigured: emailNotConfigured || undefined,
       },
       error: emailNotConfigured
-        ? "RESEND_API_KEY not configured"
+        ? "SMTP not configured"
         : hasEmailIssues
-          ? result.emailFailures.join("; ")
+          ? [...marked.emailFailures, queueFlush.error].filter(Boolean).join("; ")
           : undefined,
     });
 
     if (hasEmailIssues) {
       return NextResponse.json({
         success: false,
-        processed: result.processed,
-        emailSent: result.emailSent,
-        emailFailures: result.emailFailures,
+        processed: marked.processed,
+        emailSent: marked.emailSent,
+        emailFailures: marked.emailFailures,
+        queueFlushSent: queueFlush.sent,
+        queueFlushError: queueFlush.error,
         warning: "Statusy zaktualizowane — część e-maili nie wyszła",
       });
     }
@@ -69,16 +88,18 @@ export async function GET(request: NextRequest) {
     if (emailNotConfigured) {
       return NextResponse.json({
         success: false,
-        processed: result.processed,
-        emailSent: result.emailSent,
+        processed: marked.processed,
+        emailSent: marked.emailSent,
+        queueFlushSent: queueFlush.sent,
         warning: "E-mail nie skonfigurowany — statusy zaktualizowane, powiadomienia nie wysłane",
       });
     }
 
     return NextResponse.json({
       success: true,
-      processed: result.processed,
-      emailSent: result.emailSent,
+      processed: marked.processed,
+      emailSent: marked.emailSent,
+      queueFlushSent: queueFlush.sent,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Error";

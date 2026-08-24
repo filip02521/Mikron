@@ -9,7 +9,6 @@ import { fileURLToPath } from "url";
 
 import {
   getEmailFromAddress,
-  isEmailConfigured,
 } from "../src/lib/env/email-config";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -102,16 +101,21 @@ async function main() {
     ok.push("CRON_SECRET");
   }
 
-  if (!env.RESEND_API_KEY) {
-    issues.push("Brak RESEND_API_KEY — powiadomienia e-mail nie będą wysyłane");
+  const smtpHost = env.SMTP_HOST?.trim();
+  const smtpUser = env.SMTP_USER?.trim();
+  const smtpPass = env.SMTP_PASS?.trim();
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    issues.push(
+      "Brak SMTP_HOST / SMTP_USER / SMTP_PASS — powiadomienia e-mail nie będą wysyłane"
+    );
   } else {
-    ok.push("RESEND_API_KEY");
+    ok.push(`SMTP (${smtpHost})`);
   }
 
   if (env.EMAIL_DOMAIN) {
     ok.push(`EMAIL_DOMAIN (${env.EMAIL_DOMAIN})`);
-  } else if (isEmailConfigured()) {
-    issues.push("Brak EMAIL_DOMAIN — ustaw zweryfikowaną domenę Resend");
+  } else if (smtpHost && smtpUser && smtpPass && !env.EMAIL_FROM?.includes("@")) {
+    issues.push("Brak EMAIL_DOMAIN — ustaw zweryfikowaną domenę SES (np. ontime.mikran.pl)");
   }
 
   if (env.EMAIL_FROM) {
@@ -124,8 +128,10 @@ async function main() {
         `EMAIL_FROM to sama etykieta („${env.EMAIL_FROM}”) — używany zostanie ${normalized}`
       );
     }
-  } else if (isEmailConfigured()) {
-    issues.push("Brak EMAIL_FROM — używany domyślny adres Resend (sandbox)");
+  } else if (smtpHost && smtpUser && smtpPass && !env.EMAIL_DOMAIN) {
+    issues.push(
+      "Brak EMAIL_FROM i EMAIL_DOMAIN — ustaw nadawcę z domeny zweryfikowanej w SES"
+    );
   }
 
   if (env.EMAIL_OVERRIDE_TO) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { checkboxBrandClass, controlFocusClass, panelSubsectionInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
 import { TEETH_KIND_LABELS } from "@/lib/teeth/teeth-catalog";
@@ -37,8 +37,20 @@ import {
 } from "@/lib/teeth/teeth-panel-ui";
 import { queueSupplierLeadingCellClass } from "@/lib/orders/queue-supplier-groups";
 import { receiveQueueTargetQuantity } from "@/lib/orders/sales-cancel";
+import {
+  maxReceiveQueueWaitingDays,
+  receiveQueueWaitingBusinessDays,
+  receiveQueueWaitingDaysLabel,
+} from "@/lib/orders/receive-queue-waiting";
 import type { IndividualOrder } from "@/types/database";
 import { plPozycja } from "@/lib/ui/polish-plurals";
+import { listTeethOrderFilesForReceiveSection } from "@/lib/data/teeth-order-file-group";
+import {
+  resolveTeethReceiveBlockTimingDisplay,
+  resolveTeethReceiveOrderTiming,
+  teethReceiveBlockHasMixedTiming,
+} from "@/lib/teeth/teeth-receive-order-timing";
+import { TeethOrderFileUpload } from "@/components/zeby/TeethOrderFileUpload";
 
 const JAW_LABELS = { upper: "Góra", lower: "Dół" } as const;
 const TABLE_COLS = 6;
@@ -74,11 +86,110 @@ function SaveIcon({ className }: { className?: string }) {
   );
 }
 
+function ClockIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      className={className}
+    >
+      <circle cx="10" cy="10" r="7" />
+      <path strokeLinecap="round" d="M10 6v4.5l2.5 1.5" />
+    </svg>
+  );
+}
+
+function WaitingDaysBadge({
+  days,
+  titlePrefix = "Zamówienie czeka",
+}: {
+  days: number;
+  titlePrefix?: string;
+}) {
+  const label = receiveQueueWaitingDaysLabel(days);
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+        days >= 3
+          ? "bg-rose-100/90 text-rose-700 ring-1 ring-inset ring-rose-200/50"
+          : "bg-slate-100/80 text-slate-600 ring-1 ring-inset ring-slate-200/40",
+      )}
+      title={`${titlePrefix} ${label} w przyjęciu`}
+    >
+      <ClockIcon className="size-2.5 shrink-0" />
+      {label}
+    </span>
+  );
+}
+
+function OrderTimingMeta({
+  timing,
+  compact = false,
+}: {
+  timing: { submittedLabel: string | null; orderedLabel: string | null };
+  compact?: boolean;
+}) {
+  const parts: ReactNode[] = [];
+  if (timing.submittedLabel) {
+    parts.push(
+      <span key="submitted" className="inline-flex items-baseline gap-1">
+        <span className="font-medium text-slate-400">Prośba</span>
+        <span className="font-semibold tabular-nums text-slate-700">
+          {timing.submittedLabel}
+        </span>
+      </span>,
+    );
+  }
+  if (timing.orderedLabel) {
+    parts.push(
+      <span key="ordered" className="inline-flex items-baseline gap-1">
+        <span className="font-medium text-slate-400">Zamówiono</span>
+        <span className="font-semibold tabular-nums text-slate-700">
+          {timing.orderedLabel}
+        </span>
+      </span>,
+    );
+  }
+  if (parts.length === 0) return null;
+
+  const title = [
+    timing.submittedLabel ? `Prośba ${timing.submittedLabel}` : null,
+    timing.orderedLabel ? `Zamówiono ${timing.orderedLabel}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <p
+      className={cn(
+        "flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5",
+        compact ? "text-[10px] leading-snug" : "text-[11px] leading-snug",
+      )}
+      title={title}
+    >
+      {parts.map((part, index) => (
+        <span key={index} className="inline-flex items-baseline gap-2">
+          {index > 0 ? <span className="text-slate-300" aria-hidden>·</span> : null}
+          {part}
+        </span>
+      ))}
+    </p>
+  );
+}
+
 function SalesPersonDivider({
   name,
   lineCount,
   stripeIndex,
   hasPartial,
+  waitingDays,
+  timing,
+  timingPrefix,
+  showOrderLevelTiming,
   onFillAll,
   pending,
 }: {
@@ -86,44 +197,95 @@ function SalesPersonDivider({
   lineCount: number;
   stripeIndex: number;
   hasPartial: boolean;
+  waitingDays: number | null;
+  timing: { submittedLabel: string | null; orderedLabel: string | null } | null;
+  /** np. „od” gdy daty w bloku są różne */
+  timingPrefix: { submitted: boolean; ordered: boolean } | null;
+  showOrderLevelTiming: boolean;
   onFillAll?: () => void;
   pending: boolean;
 }) {
   const isEven = stripeIndex % 2 === 0;
+  const displayTiming = timing
+    ? {
+        submittedLabel: timing.submittedLabel
+          ? timingPrefix?.submitted
+            ? `od ${timing.submittedLabel}`
+            : timing.submittedLabel
+          : null,
+        orderedLabel: timing.orderedLabel
+          ? timingPrefix?.ordered
+            ? `od ${timing.orderedLabel}`
+            : timing.orderedLabel
+          : null,
+      }
+    : null;
   return (
     <tr className={teethReceiveSalesPersonRowClass}>
       <td colSpan={TABLE_COLS} className="p-0">
         <div
           className={cn(
-            "flex items-center gap-2 border-b border-slate-200/80 bg-white/60 px-3 py-1.5 sm:px-4 lg:px-5",
+            "border-b border-slate-200/80 bg-white/60 px-3 py-1.5 sm:px-4 lg:px-5",
             stripeIndex > 0 && "border-t border-slate-200/80",
           )}
         >
-          <span
-            className={cn(
-              "size-2 shrink-0 rounded-full",
-              isEven ? "bg-slate-400" : "bg-indigo-400",
-            )}
-            aria-hidden
-          />
-          <span className="truncate text-xs font-semibold text-slate-800">{name}</span>
-          <span className="shrink-0 text-[10px] font-medium tabular-nums text-slate-400">
-            {lineCount} {plPozycja(lineCount)}
-          </span>
-          {hasPartial ? (
-            <span className="shrink-0 rounded-md bg-amber-100/90 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
-              częściowo
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span
+              className={cn(
+                "size-2 shrink-0 rounded-full",
+                isEven ? "bg-slate-400" : "bg-indigo-400",
+              )}
+              aria-hidden
+            />
+            <span className="truncate text-xs font-semibold text-slate-800">{name}</span>
+            <span className="shrink-0 text-[10px] font-medium tabular-nums text-slate-400">
+              {lineCount} {plPozycja(lineCount)}
             </span>
+            {waitingDays != null && waitingDays > 0 && !showOrderLevelTiming ? (
+              <WaitingDaysBadge days={waitingDays} />
+            ) : null}
+            {hasPartial ? (
+              <span className="shrink-0 rounded-md bg-amber-100/90 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                częściowo
+              </span>
+            ) : null}
+            {onFillAll ? (
+              <button
+                type="button"
+                disabled={pending}
+                onClick={onFillAll}
+                className="ml-auto shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 hover:bg-indigo-50 hover:text-indigo-900 disabled:opacity-50 sm:ml-0"
+              >
+                Całość
+              </button>
+            ) : null}
+          </div>
+          {displayTiming &&
+          (displayTiming.submittedLabel || displayTiming.orderedLabel) ? (
+            <div className="mt-1 pl-4">
+              <OrderTimingMeta timing={displayTiming} compact={showOrderLevelTiming} />
+            </div>
           ) : null}
-          {onFillAll ? (
-            <button
-              type="button"
-              disabled={pending}
-              onClick={onFillAll}
-              className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 hover:bg-indigo-50 hover:text-indigo-900 disabled:opacity-50"
-            >
-              Całość
-            </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function OrderTimingRow({
+  timing,
+  waitingDays,
+}: {
+  timing: { submittedLabel: string | null; orderedLabel: string | null };
+  waitingDays: number | null;
+}) {
+  return (
+    <tr className="bg-slate-50/50">
+      <td colSpan={TABLE_COLS} className="p-0">
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-3 py-1 sm:px-4 lg:px-5 lg:pl-7">
+          <OrderTimingMeta timing={timing} />
+          {waitingDays != null && waitingDays > 0 ? (
+            <WaitingDaysBadge days={waitingDays} />
           ) : null}
         </div>
       </td>
@@ -204,6 +366,7 @@ export function TeethReceiveLinesSection({
   onAcknowledgeCancellation: (orderIds: string[]) => void;
 }) {
   const sectionOrders = receiveQueue.filter((order) => orderIds.includes(order.id));
+  const sectionOrderFiles = listTeethOrderFilesForReceiveSection(sectionOrders);
   const orderIdsWithInput = teethReceiveOrderIdsWithSessionInput(
     sectionOrders,
     flatLineQty,
@@ -301,6 +464,24 @@ export function TeethReceiveLinesSection({
         ) : null}
       </div>
 
+      {isOpen && sectionOrderFiles.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100/90 px-3 py-2 sm:px-4 lg:px-5">
+          {sectionOrderFiles.map((file) => (
+            <TeethOrderFileUpload
+              key={file.groupKey}
+              orderId={file.orderId}
+              existingFileName={file.fileName}
+              locked
+              slotHint={
+                sectionOrderFiles.length > 1
+                  ? `Plik zamówienia · ${file.supplierLabel}`
+                  : `Plik zamówienia u ${file.supplierLabel}.`
+              }
+            />
+          ))}
+        </div>
+      ) : null}
+
       {isOpen && flatRows.length > 0 ? (
         <div className={cn(teethReceiveTableWrapClass, "border-t border-slate-200/80")}>
           <table className="w-full min-w-[34rem] border-collapse text-xs">
@@ -391,6 +572,31 @@ export function TeethReceiveLinesSection({
                       blockRows.some((blockRow) => blockRow.orderId === order.id),
                     )
                   : [];
+                const blockWaitingDays = isNewSalesPerson
+                  ? maxReceiveQueueWaitingDays(blockOrders)
+                  : null;
+                const personOrderIds = [
+                  ...new Set(
+                    flatRows
+                      .filter((r) => r.salesPersonKey === row.salesPersonKey)
+                      .map((r) => r.orderId),
+                  ),
+                ];
+                const personOrders = personOrderIds
+                  .map((id) => receiveQueue.find((order) => order.id === id))
+                  .filter((order): order is IndividualOrder => Boolean(order));
+                const showOrderLevelTiming = teethReceiveBlockHasMixedTiming(personOrders);
+                const isFirstRowOfOrder =
+                  rowIndex === 0 || flatRows[rowIndex - 1]?.orderId !== row.orderId;
+                const orderWaitingDays = receiveQueueWaitingBusinessDays(row.order);
+                const orderTiming = resolveTeethReceiveOrderTiming(row.order);
+                const blockTimingDisplay = isNewSalesPerson
+                  ? resolveTeethReceiveBlockTimingDisplay(blockOrders)
+                  : null;
+                const showOrderTimingRow =
+                  isFirstRowOfOrder &&
+                  showOrderLevelTiming &&
+                  Boolean(orderTiming.submittedLabel || orderTiming.orderedLabel);
 
                 return (
                   <Fragment key={row.rowKey}>
@@ -400,12 +606,40 @@ export function TeethReceiveLinesSection({
                         lineCount={salesPersonBlockLength}
                         stripeIndex={row.stripeIndex}
                         hasPartial={blockHasPartial}
+                        waitingDays={blockWaitingDays}
+                        timing={
+                          blockTimingDisplay
+                            ? {
+                                submittedLabel: blockTimingDisplay.submittedLabel,
+                                orderedLabel: blockTimingDisplay.orderedLabel,
+                              }
+                            : null
+                        }
+                        timingPrefix={
+                          blockTimingDisplay
+                            ? {
+                                submitted: blockTimingDisplay.submittedFrom,
+                                ordered: blockTimingDisplay.orderedFrom,
+                              }
+                            : null
+                        }
+                        showOrderLevelTiming={showOrderLevelTiming}
                         pending={pending}
                         onFillAll={
                           blockOrders.length > 0
                             ? () => onFillSalesPerson(blockOrders)
                             : undefined
                         }
+                      />
+                    ) : null}
+
+                    {showOrderTimingRow ? (
+                      <OrderTimingRow
+                        timing={{
+                          submittedLabel: orderTiming.submittedLabel,
+                          orderedLabel: orderTiming.orderedLabel,
+                        }}
+                        waitingDays={orderWaitingDays}
                       />
                     ) : null}
 

@@ -87,6 +87,7 @@ import {
   collectIndividualOrderIdsForZdCreate,
   composeZdCreateUwagiWithServices,
   filterPendingOrdersByIds,
+  individualExtraPiecesMap,
   mapIndividualOrderToPendingDto,
   type ZdEstimatePendingIndividualOrder,
 } from "@/lib/orders/zd-estimate-individual";
@@ -117,8 +118,10 @@ import {
   DEFAULT_DNI_ZAPASU,
   salesWindowFromDniZapasu,
   stockPeriodToDniZapasu,
+  ZD_ESTIMATE_MISSING_SKU_FETCH_CONCURRENCY,
   type ManualZdEstimateResult,
 } from "@/lib/orders/zd-estimate-manual";
+import { mapPool } from "@/lib/async/map-pool";
 import {
   assertPackagingUnits,
   normalizePackagingDocumentUnitMode,
@@ -159,6 +162,7 @@ import {
   createSubiektOrdersZd,
   fetchSubiektOrdersLatestFsDateKey,
   fetchSubiektZdEstimateAll,
+  fetchSubiektZdEstimateZkPage,
   getSubiektOrdersZd,
   searchSubiektOrdersZd,
   searchSubiektProductCechy,
@@ -193,6 +197,19 @@ import {
   type ZdEstimateRunMode,
 } from "@/lib/orders/zd-estimate-scope";
 import type { ZdEstimateUiSessionSnapshot } from "@/lib/orders/zd-estimate-ui-session-snapshot";
+import {
+  fetchAllReservedZkRowsForTwId,
+  sumZdEstimateReservedZkQuantity,
+  type ZdEstimateReservationsSummary,
+  type ZdEstimateReservedZkRow,
+} from "@/lib/orders/zd-estimate-reservations";
+import {
+  collectTwIdsNeedingProsbaReservationOverlap,
+  collectTwIdsNeedingProsbaReservationOverlapWithoutStanRez,
+  individualExtrasAndReliefWithReservationOverlap,
+  reservedRowsToOverlapSlices,
+  type ZdEstimateReservedOverlapSlice,
+} from "@/lib/orders/zd-estimate-prosba-reservation-overlap";
 
 export type ZdEstimateHistoryEntryDto = {
   twId: number;
@@ -272,6 +289,18 @@ export type ZdEstimateRunResult =
       pendingIndividualsTruncated?: boolean;
       /** Komunikat gdy fetch próśb przy Policz się nie udał. */
       pendingIndividualsError?: string | null;
+      /**
+       * Zarezerwowane ZK per tw (overlap prośba↔klient) z Policz —
+       * Workbench nie musi dociągać drugi raz.
+       */
+      prosbaReservedByTwId?: Record<string, ZdEstimateReservedOverlapSlice[]>;
+      /** Tw, dla których Policz próbował dociągnąć overlap (także gdy pusto). */
+      prosbaOverlapCandidateTwIds?: number[];
+      /**
+       * true = overlap dociągnięty / niepotrzebny (można skipnąć refetch w UI).
+       * false/undefined = nie udało się — Workbench powinien dociągnąć sam.
+       */
+      prosbaOverlapResolved?: boolean;
       meta: {
         pagesFetched: number;
         totalCountApi: number;
@@ -647,56 +676,87 @@ export async function actionZdEstimateBootstrap(): Promise<{
 
   let exclusions: ZdEstimateExclusionRow[] = [];
   let exclusionsError: string | null = null;
-  try {
-    exclusions = await fetchZdEstimateExclusions();
-  } catch (e) {
-    exclusionsError =
-      userFacingErrorText(e, "Nie udało się wczytać listy wykluczeń.");
-  }
-
   let onRequests: ZdEstimateOnRequestRow[] = [];
   let onRequestsError: string | null = null;
-  try {
-    onRequests = await fetchZdEstimateOnRequests();
-  } catch (e) {
-    onRequestsError =
-      userFacingErrorText(e, "Nie udało się wczytać listy „tylko na prośbę”.");
-  }
-
   let packaging: ZdEstimatePackagingRow[] = [];
   let packagingError: string | null = null;
-  try {
-    packaging = await fetchZdEstimatePackaging();
-  } catch (e) {
-    packagingError =
-      userFacingErrorText(e, "Nie udało się wczytać ustawień opakowań.");
-  }
-
   let productPairs: ZdProductPairRow[] = [];
   let productPairsError: string | null = null;
-  try {
-    productPairs = await fetchZdProductPairs();
-  } catch (e) {
-    productPairsError =
-      userFacingErrorText(e, "Nie udało się wczytać par kompletów.");
-  }
-
   let productBoms: ZdProductBomRow[] = [];
   let productBomsError: string | null = null;
-  try {
-    productBoms = await fetchZdProductBoms();
-  } catch (e) {
-    productBomsError =
-      e instanceof Error ? e.message : ZD_BOM_UI.loadError;
-  }
-
   let teethTwIds: number[] = [];
   let teethProductsError: string | null = null;
-  try {
-    teethTwIds = [...(await fetchTeethProductTwIdSet())].sort((a, b) => a - b);
-  } catch (e) {
-    teethProductsError =
-      userFacingErrorText(e, "Nie udało się wczytać katalogu produktów zębowych.");
+
+  const [
+    exclusionsSettled,
+    onRequestsSettled,
+    packagingSettled,
+    productPairsSettled,
+    productBomsSettled,
+    teethSettled,
+  ] = await Promise.all([
+    fetchZdEstimateExclusions()
+      .then((value) => ({ ok: true as const, value }))
+      .catch((e: unknown) => ({ ok: false as const, error: e })),
+    fetchZdEstimateOnRequests()
+      .then((value) => ({ ok: true as const, value }))
+      .catch((e: unknown) => ({ ok: false as const, error: e })),
+    fetchZdEstimatePackaging()
+      .then((value) => ({ ok: true as const, value }))
+      .catch((e: unknown) => ({ ok: false as const, error: e })),
+    fetchZdProductPairs()
+      .then((value) => ({ ok: true as const, value }))
+      .catch((e: unknown) => ({ ok: false as const, error: e })),
+    fetchZdProductBoms()
+      .then((value) => ({ ok: true as const, value }))
+      .catch((e: unknown) => ({ ok: false as const, error: e })),
+    fetchTeethProductTwIdSet()
+      .then((value) => ({ ok: true as const, value }))
+      .catch((e: unknown) => ({ ok: false as const, error: e })),
+  ]);
+
+  if (exclusionsSettled.ok) exclusions = exclusionsSettled.value;
+  else {
+    exclusionsError = userFacingErrorText(
+      exclusionsSettled.error,
+      "Nie udało się wczytać listy wykluczeń."
+    );
+  }
+  if (onRequestsSettled.ok) onRequests = onRequestsSettled.value;
+  else {
+    onRequestsError = userFacingErrorText(
+      onRequestsSettled.error,
+      "Nie udało się wczytać listy „tylko na prośbę”."
+    );
+  }
+  if (packagingSettled.ok) packaging = packagingSettled.value;
+  else {
+    packagingError = userFacingErrorText(
+      packagingSettled.error,
+      "Nie udało się wczytać ustawień opakowań."
+    );
+  }
+  if (productPairsSettled.ok) productPairs = productPairsSettled.value;
+  else {
+    productPairsError = userFacingErrorText(
+      productPairsSettled.error,
+      "Nie udało się wczytać par kompletów."
+    );
+  }
+  if (productBomsSettled.ok) productBoms = productBomsSettled.value;
+  else {
+    productBomsError =
+      productBomsSettled.error instanceof Error
+        ? productBomsSettled.error.message
+        : ZD_BOM_UI.loadError;
+  }
+  if (teethSettled.ok) {
+    teethTwIds = [...teethSettled.value].sort((a, b) => a - b);
+  } else {
+    teethProductsError = userFacingErrorText(
+      teethSettled.error,
+      "Nie udało się wczytać katalogu produktów zębowych."
+    );
   }
 
   const quickGroups = [
@@ -862,6 +922,273 @@ export async function actionSearchZdEstimateCechy(query: string): Promise<
   }
 }
 
+export type ZdEstimateProductReservationsResult =
+  | {
+      ok: true;
+      summary: ZdEstimateReservationsSummary;
+      rows: ZdEstimateReservedZkRow[];
+      reservedQtySum: number;
+      truncated: boolean;
+      scannedApiRows: number;
+    }
+  | { ok: false; message: string; feedback?: SubiektFeedback };
+
+/**
+ * Rozbicie rezerwacji magazynowej towaru na konkretne ZK (status 7).
+ * GET /orders/zd/estimate/zk?towarId=&tylkoBezRez=false
+ */
+export async function actionFetchZdEstimateProductReservations(input: {
+  twId: number;
+}): Promise<ZdEstimateProductReservationsResult> {
+  await requireZdEstimateAdmin("read");
+
+  const twId = Math.trunc(Number(input.twId));
+  if (!Number.isFinite(twId) || twId <= 0) {
+    return { ok: false, message: "Nieprawidłowy identyfikator towaru." };
+  }
+
+  const orders = resolveSubiektOrdersConfig();
+  if (!orders.ok) {
+    const feedback = getSubiektFeedback("not_configured", {
+      title: "Brak hosta ORDERS",
+      message: orders.message,
+      hint: `Ustaw SUBIEKT_API_ORDERS_BASE_URL na :${SUBIEKT_ORDERS_LIVE_PORT} (live) lub :${SUBIEKT_ORDERS_TEST_PORT} (test).`,
+    });
+    return { ok: false, message: orders.message, feedback };
+  }
+
+  try {
+    const fetched = await fetchAllReservedZkRowsForTwId({
+      twId,
+      fetchPage: fetchSubiektZdEstimateZkPage,
+    });
+    const rows = fetched.rows;
+    return {
+      ok: true,
+      summary: fetched.summary ?? {
+        twId,
+        symbol: "",
+        name: "",
+        stanRez: 0,
+        otwarteZkZarezerwowane: 0,
+        otwarteZkBezRez: 0,
+      },
+      rows,
+      reservedQtySum: sumZdEstimateReservedZkQuantity(rows),
+      truncated: fetched.truncated,
+      scannedApiRows: fetched.scannedApiRows,
+    };
+  } catch (e) {
+    const feedback = feedbackFromException(e);
+    return { ok: false, message: feedback.message, feedback };
+  }
+}
+
+const ZD_ESTIMATE_PROSBA_OVERLAP_CONCURRENCY = 4;
+
+async function fetchReservedOverlapSlicesByTwIds(
+  twIds: readonly number[]
+): Promise<{
+  reservedByTwId: Map<number, ZdEstimateReservedOverlapSlice[]>;
+  /** true gdy którykolwiek tw rzucił — nie cache'uj skip w UI. */
+  hadFetchErrors: boolean;
+}> {
+  const unique = [
+    ...new Set(
+      twIds
+        .map((id) => Math.trunc(Number(id)) || 0)
+        .filter((id) => id > 0)
+    ),
+  ];
+
+  const out = new Map<number, ZdEstimateReservedOverlapSlice[]>();
+  if (!unique.length) {
+    return { reservedByTwId: out, hadFetchErrors: false };
+  }
+
+  let hadFetchErrors = false;
+  for (let i = 0; i < unique.length; i += ZD_ESTIMATE_PROSBA_OVERLAP_CONCURRENCY) {
+    const chunk = unique.slice(i, i + ZD_ESTIMATE_PROSBA_OVERLAP_CONCURRENCY);
+    const results = await Promise.all(
+      chunk.map(async (twId) => {
+        try {
+          const fetched = await fetchAllReservedZkRowsForTwId({
+            twId,
+            fetchPage: fetchSubiektZdEstimateZkPage,
+          });
+          return {
+            twId,
+            slices: reservedRowsToOverlapSlices(fetched.rows),
+            ok: true as const,
+          };
+        } catch {
+          return {
+            twId,
+            slices: [] as ZdEstimateReservedOverlapSlice[],
+            ok: false as const,
+          };
+        }
+      })
+    );
+    for (const r of results) {
+      if (!r.ok) hadFetchErrors = true;
+      if (r.slices.length) out.set(r.twId, r.slices);
+    }
+  }
+  return { reservedByTwId: out, hadFetchErrors };
+}
+
+function reservedOverlapMapToDto(
+  map: Map<number, ZdEstimateReservedOverlapSlice[]>
+): Record<string, ZdEstimateReservedOverlapSlice[]> {
+  const dto: Record<string, ZdEstimateReservedOverlapSlice[]> = {};
+  for (const [tw, slices] of map) {
+    if (slices.length) dto[String(tw)] = slices;
+  }
+  return dto;
+}
+
+/**
+ * Korekta extras o overlap prośba↔rez. ZK.
+ * `resolved=false` gdy fetch rzucił — caller nie powinien cache'ować skip.
+ */
+async function resolveIndividualExtrasWithReservationOverlap(input: {
+  byTwId: ReadonlyMap<
+    number,
+    {
+      extraPieces: number;
+      overlapContributions?: readonly import("@/lib/orders/zd-estimate-prosba-reservation-overlap").ZdEstimateProsbaOverlapContribution[];
+    }
+  >;
+  /** Linie ze stanRez — gdy brak, dociągamy ZK dla wszystkich tw z extra. */
+  lines?: readonly { tw_Id: number; tw_StanRez?: number | null }[] | null;
+  /** Gdy podane — tylko te tw (np. Create: pozycje na dokumencie). */
+  twIdsFilter?: ReadonlySet<number> | null;
+}): Promise<{
+  adjustedExtraByTwId: Map<number, number>;
+  rawExtraByTwId: Map<number, number>;
+  extraOverlapByTwId: Map<number, number>;
+  stockNeedReliefByTwId: Map<number, number>;
+  reservedByTwId: Map<number, ZdEstimateReservedOverlapSlice[]>;
+  candidateTwIds: number[];
+  resolved: boolean;
+}> {
+  const scopedByTw =
+    input.twIdsFilter != null
+      ? new Map(
+          [...input.byTwId].filter(([tw]) => input.twIdsFilter!.has(tw))
+        )
+      : input.byTwId;
+
+  const rawMap = new Map<number, number>();
+  for (const [tw, extra] of scopedByTw) {
+    if (extra.extraPieces > 0) rawMap.set(tw, extra.extraPieces);
+  }
+
+  const candidateTwIds = input.lines?.length
+    ? collectTwIdsNeedingProsbaReservationOverlap({
+        extraTwIds: rawMap.keys(),
+        lines: input.lines,
+        byTwId: scopedByTw,
+      })
+    : collectTwIdsNeedingProsbaReservationOverlapWithoutStanRez({
+        byTwId: scopedByTw,
+      });
+
+  if (!candidateTwIds.length) {
+    return {
+      adjustedExtraByTwId: rawMap,
+      rawExtraByTwId: rawMap,
+      extraOverlapByTwId: new Map(),
+      stockNeedReliefByTwId: new Map(),
+      reservedByTwId: new Map(),
+      candidateTwIds,
+      resolved: true,
+    };
+  }
+
+  try {
+    const fetched = await fetchReservedOverlapSlicesByTwIds(candidateTwIds);
+    const maps = individualExtrasAndReliefWithReservationOverlap(
+      scopedByTw,
+      fetched.reservedByTwId
+    );
+    const adjustedExtraByTwId = new Map<number, number>();
+    for (const [tw, raw] of maps.extraByTwId) {
+      const overlap = maps.extraOverlapByTwId.get(tw) ?? 0;
+      const effective = Math.max(0, raw - overlap);
+      if (effective > 0) adjustedExtraByTwId.set(tw, effective);
+    }
+    return {
+      adjustedExtraByTwId,
+      rawExtraByTwId: maps.extraByTwId,
+      extraOverlapByTwId: maps.extraOverlapByTwId,
+      stockNeedReliefByTwId: maps.stockNeedReliefByTwId,
+      reservedByTwId: fetched.reservedByTwId,
+      candidateTwIds,
+      // Częściowy sukces: stosujemy to co mamy, ale UI może dociągnąć ponownie.
+      resolved: !fetched.hadFetchErrors,
+    };
+  } catch {
+    return {
+      adjustedExtraByTwId: rawMap,
+      rawExtraByTwId: rawMap,
+      extraOverlapByTwId: new Map(),
+      stockNeedReliefByTwId: new Map(),
+      reservedByTwId: new Map(),
+      candidateTwIds,
+      resolved: false,
+    };
+  }
+}
+
+/**
+ * Zarezerwowane ZK dla kandydatów overlap (prośba + tw_StanRez).
+ * Fail-open: brak / błąd dla jednego tw = bez korekty tego tw.
+ */
+export async function actionFetchZdEstimateProsbaReservationOverlap(input: {
+  twIds: number[];
+}): Promise<
+  | {
+      ok: true;
+      reservedByTwId: Record<string, ZdEstimateReservedOverlapSlice[]>;
+    }
+  | { ok: false; message: string; feedback?: SubiektFeedback }
+> {
+  await requireZdEstimateAdmin("read");
+
+  const orders = resolveSubiektOrdersConfig();
+  if (!orders.ok) {
+    const feedback = getSubiektFeedback("not_configured", {
+      title: "Brak hosta ORDERS",
+      message: orders.message,
+      hint: `Ustaw SUBIEKT_API_ORDERS_BASE_URL na :${SUBIEKT_ORDERS_LIVE_PORT} (live) lub :${SUBIEKT_ORDERS_TEST_PORT} (test).`,
+    });
+    return { ok: false, message: orders.message, feedback };
+  }
+
+  const twIds = Array.isArray(input.twIds) ? input.twIds : [];
+  try {
+    const fetched = await fetchReservedOverlapSlicesByTwIds(twIds);
+    // Przy błędach per-tw zwracamy ok:false żeby Workbench nie trzymał
+    // „pustego resolve” i mógł spróbować ponownie.
+    if (fetched.hadFetchErrors) {
+      return {
+        ok: false,
+        message:
+          "Nie udało się wczytać części rezerwacji ZK do korekty próśb. Spróbuj ponownie.",
+      };
+    }
+    return {
+      ok: true,
+      reservedByTwId: reservedOverlapMapToDto(fetched.reservedByTwId),
+    };
+  } catch (e) {
+    const feedback = feedbackFromException(e);
+    return { ok: false, message: feedback.message, feedback };
+  }
+}
+
 export async function actionRunZdEstimateManual(
   input: ZdEstimateRunInput
 ): Promise<ZdEstimateRunResult> {
@@ -956,35 +1283,41 @@ export async function actionRunZdEstimateManual(
             hostKind,
           }
         : null;
-    if (historyFilters) {
-      // Zawsze materializuj Mapę przy ważnych filtrach — nawet pustą —
-      // żeby drugi fetch (partner/BOM) nie został pominięty.
-      historyByTwId = new Map();
-      try {
-        const snapLines = await fetchLatestSnapshotHistoryByTwIds(
-          twIds,
-          historyFilters
-        );
-        for (const [twId, row] of snapLines) {
-          historyByTwId.set(twId, {
-            lastOrderedQty: row.qty,
-            linkedAt: row.linkedAt,
-          });
-        }
-      } catch {
-        // Historia opcjonalna dla samego wyliczenia — bez snapshotów lista działa.
-        // Fetch error ≠ pusta historia: UI blokuje Create, żeby nie pójść bez cięć.
-        historyByTwId = null;
-        historyFetchFailed = true;
-      }
-    }
+    // Historię ładujemy raz — po dociągnięciu partnerów/BOM/próśb (patrz niżej).
 
-    let exclusions: ZdEstimateExclusionRow[];
-    try {
-      exclusions = await fetchZdEstimateExclusions();
-    } catch (e) {
-      const message =
-        userFacingErrorText(e, "Nie udało się wczytać listy wykluczeń.");
+    const [
+      exclusionsSettled,
+      onRequestsSettled,
+      packagingSettled,
+      productPairsSettled,
+      productBomsSettled,
+      teethSettled,
+    ] = await Promise.all([
+      fetchZdEstimateExclusions()
+        .then((value) => ({ ok: true as const, value }))
+        .catch((e: unknown) => ({ ok: false as const, error: e })),
+      fetchZdEstimateOnRequests()
+        .then((value) => ({ ok: true as const, value }))
+        .catch((e: unknown) => ({ ok: false as const, error: e })),
+      fetchZdEstimatePackaging()
+        .then((value) => ({ ok: true as const, value }))
+        .catch((e: unknown) => ({ ok: false as const, error: e })),
+      fetchZdProductPairs()
+        .then((value) => ({ ok: true as const, value }))
+        .catch((e: unknown) => ({ ok: false as const, error: e })),
+      fetchZdProductBoms()
+        .then((value) => ({ ok: true as const, value }))
+        .catch((e: unknown) => ({ ok: false as const, error: e })),
+      fetchTeethProductTwIdSet()
+        .then((value) => ({ ok: true as const, value }))
+        .catch((e: unknown) => ({ ok: false as const, error: e })),
+    ]);
+
+    if (!exclusionsSettled.ok) {
+      const message = userFacingErrorText(
+        exclusionsSettled.error,
+        "Nie udało się wczytać listy wykluczeń."
+      );
       const feedback = getSubiektFeedback("empty_query", {
         title: "Wykluczenia niedostępne",
         message: `Lista nie została pokazana — bez wykluczeń mogłaby zawierać produkty celowo pomijane. ${message}`,
@@ -992,13 +1325,13 @@ export async function actionRunZdEstimateManual(
       });
       return { ok: false, message: feedback.message, feedback };
     }
+    const exclusions = exclusionsSettled.value;
 
-    let onRequests: ZdEstimateOnRequestRow[];
-    try {
-      onRequests = await fetchZdEstimateOnRequests();
-    } catch (e) {
-      const message =
-        userFacingErrorText(e, "Nie udało się wczytać listy „tylko na prośbę”.");
+    if (!onRequestsSettled.ok) {
+      const message = userFacingErrorText(
+        onRequestsSettled.error,
+        "Nie udało się wczytać listy „tylko na prośbę”."
+      );
       const feedback = getSubiektFeedback("empty_query", {
         title: "Lista „tylko na prośbę” niedostępna",
         message: `Lista nie została pokazana — bez flagi mogłyby wejść produkty zamawiane wyłącznie na prośbę. ${message}`,
@@ -1006,13 +1339,13 @@ export async function actionRunZdEstimateManual(
       });
       return { ok: false, message: feedback.message, feedback };
     }
+    const onRequests = onRequestsSettled.value;
 
-    let packaging: ZdEstimatePackagingRow[];
-    try {
-      packaging = await fetchZdEstimatePackaging();
-    } catch (e) {
-      const message =
-        userFacingErrorText(e, "Nie udało się wczytać ustawień opakowań.");
+    if (!packagingSettled.ok) {
+      const message = userFacingErrorText(
+        packagingSettled.error,
+        "Nie udało się wczytać ustawień opakowań."
+      );
       const feedback = getSubiektFeedback("empty_query", {
         title: "Opakowania niedostępne",
         message: `Lista nie została pokazana — bez opakowań qty ZD mogłoby być w sztukach zamiast paczek. ${message}`,
@@ -1020,13 +1353,13 @@ export async function actionRunZdEstimateManual(
       });
       return { ok: false, message: feedback.message, feedback };
     }
+    const packaging = packagingSettled.value;
 
-    let productPairs: ZdProductPairRow[];
-    try {
-      productPairs = await fetchZdProductPairs();
-    } catch (e) {
-      const message =
-        userFacingErrorText(e, "Nie udało się wczytać mapy par montaż/demontaż.");
+    if (!productPairsSettled.ok) {
+      const message = userFacingErrorText(
+        productPairsSettled.error,
+        "Nie udało się wczytać mapy par montaż/demontaż."
+      );
       const feedback = getSubiektFeedback("empty_query", {
         title: "Pary kompletów niedostępne",
         message: `Lista nie została pokazana — bez mapy par pack i piece mogłyby dostać niezależne qty (podwójne zamówienie). ${message}`,
@@ -1034,13 +1367,13 @@ export async function actionRunZdEstimateManual(
       });
       return { ok: false, message: feedback.message, feedback };
     }
+    const productPairs = productPairsSettled.value;
 
-    let productBoms: ZdProductBomRow[];
-    try {
-      productBoms = await fetchZdProductBoms();
-    } catch (e) {
+    if (!productBomsSettled.ok) {
       const message =
-        e instanceof Error ? e.message : ZD_BOM_UI.loadError;
+        productBomsSettled.error instanceof Error
+          ? productBomsSettled.error.message
+          : ZD_BOM_UI.loadError;
       const feedback = getSubiektFeedback("empty_query", {
         title: ZD_BOM_UI.estimateBlockedTitle,
         message: ZD_BOM_UI.estimateBlockedMessage(message),
@@ -1048,13 +1381,13 @@ export async function actionRunZdEstimateManual(
       });
       return { ok: false, message: feedback.message, feedback };
     }
+    const productBoms = productBomsSettled.value;
 
-    let teethTwIds: number[];
-    try {
-      teethTwIds = [...(await fetchTeethProductTwIdSet())];
-    } catch (e) {
-      const message =
-        userFacingErrorText(e, "Nie udało się wczytać katalogu produktów zębowych.");
+    if (!teethSettled.ok) {
+      const message = userFacingErrorText(
+        teethSettled.error,
+        "Nie udało się wczytać katalogu produktów zębowych."
+      );
       const feedback = getSubiektFeedback("empty_query", {
         title: "Produkty zębowe niedostępne",
         message: `Lista nie została pokazana — bez katalogu zębów pozycje zębowe mogłyby trafić na ZD. ${message}`,
@@ -1062,6 +1395,7 @@ export async function actionRunZdEstimateManual(
       });
       return { ok: false, message: feedback.message, feedback };
     }
+    const teethTwIds = [...teethSettled.value];
 
     const bomRefs = bomRowsToRefs(productBoms);
 
@@ -1147,46 +1481,66 @@ export async function actionRunZdEstimateManual(
     ];
 
     const mergedPozycje = [...fetched.pozycje];
-    for (const towarId of idsToFetch) {
-      try {
-        const one = await fetchSubiektZdEstimateAll({
-          towarId,
-          dniZapasu,
-          dataOd,
-          dataDo,
-          zapasMin: zapasMin > 0 ? zapasMin : undefined,
-          tylkoBraki: false,
-          maxPages: 2,
-        });
-        for (const row of one.pozycje) {
-          const id = Math.trunc(Number(row.tw_Id) || 0);
-          if (!(id > 0) || presentTw.has(id)) continue;
-          mergedPozycje.push(row);
-          presentTw.add(id);
-          missingPartnerTwIds.delete(id);
-          missingBomTwIds.delete(id);
+    // Równolegle (limit), merge w kolejności idsToFetch — jak pętla sekwencyjna.
+    const fetchedExtras = await mapPool(
+      idsToFetch,
+      ZD_ESTIMATE_MISSING_SKU_FETCH_CONCURRENCY,
+      async (towarId) => {
+        try {
+          return await fetchSubiektZdEstimateAll({
+            towarId,
+            dniZapasu,
+            dataOd,
+            dataDo,
+            zapasMin: zapasMin > 0 ? zapasMin : undefined,
+            tylkoBraki: false,
+            maxPages: 2,
+          });
+        } catch {
+          // Pusta odpowiedź / timeout jednego SKU: zostaje w missing*.
+          // Pary → qty 0 + banner; explode BOM → osobny gate Create.
+          // Nie zrywamy całego Policz — reszta zakresu ma zostać na liście.
+          return null;
         }
-      } catch {
-        // Pusta odpowiedź / timeout jednego SKU: zostaje w missing*.
-        // Pary → qty 0 + banner; explode BOM → osobny gate Create.
-        // Nie zrywamy całego Policz — reszta zakresu ma zostać na liście.
+      }
+    );
+    for (const one of fetchedExtras) {
+      if (!one) continue;
+      for (const row of one.pozycje) {
+        const id = Math.trunc(Number(row.tw_Id) || 0);
+        if (!(id > 0) || presentTw.has(id)) continue;
+        mergedPozycje.push(row);
+        presentTw.add(id);
+        missingPartnerTwIds.delete(id);
+        missingBomTwIds.delete(id);
       }
     }
 
-    // odśwież historię dla partnerów / BOM
-    if (historyByTwId && historyFilters && idsToFetch.length) {
+    // Jedna historia: zakres główny + dociągnięte partner/BOM/prośba.
+    if (historyFilters) {
+      historyByTwId = new Map();
       try {
-        const more = await fetchLatestSnapshotHistoryByTwIds(
-          idsToFetch,
+        const historyTwIds = [
+          ...new Set(
+            mergedPozycje
+              .map((p) => Math.trunc(Number(p.tw_Id) || 0))
+              .filter((id) => id > 0)
+          ),
+        ];
+        const snapLines = await fetchLatestSnapshotHistoryByTwIds(
+          historyTwIds,
           historyFilters
         );
-        for (const [twId, row] of more) {
+        for (const [twId, row] of snapLines) {
           historyByTwId.set(twId, {
             lastOrderedQty: row.qty,
             linkedAt: row.linkedAt,
           });
         }
       } catch {
+        // Historia opcjonalna dla samego wyliczenia — bez snapshotów lista działa.
+        // Fetch error ≠ pusta historia: UI blokuje Create, żeby nie pójść bez cięć.
+        historyByTwId = null;
         historyFetchFailed = true;
       }
     }
@@ -1220,7 +1574,14 @@ export async function actionRunZdEstimateManual(
       onRequestIds
     );
 
-    const boostPreset = await fetchZdBoostPowerPreset();
+    const boostAndExtras = await Promise.all([
+      fetchZdBoostPowerPreset(),
+      fetchZdEstimateExtrasPolicy().catch(
+        () => ZD_ESTIMATE_EXTRAS_POLICY_DEFAULT
+      ),
+    ]);
+    const boostPreset = boostAndExtras[0];
+    const extrasPolicyForKpi = boostAndExtras[1];
     const salesTrackPolicy = policyForBoostPreset(boostPreset);
 
     const result = buildManualZdEstimateResult(
@@ -1261,8 +1622,17 @@ export async function actionRunZdEstimateManual(
         documentUnitMode: "packages",
       });
     }
-    const individualExtraLookup = (() => {
-      if (!pendingIndividuals?.length) return null;
+    let prosbaReservedByTwIdDto:
+      | Record<string, ZdEstimateReservedOverlapSlice[]>
+      | undefined;
+    let prosbaOverlapCandidateTwIds: number[] | undefined;
+    let prosbaOverlapResolved = false;
+    let individualExtraLookup: Map<number, number> | null = null;
+    let individualStockNeedRelief: Map<number, number> | null = null;
+    let individualExtraOverlap: Map<number, number> | null = null;
+    let individualExtraRawForLift: Map<number, number> | null = null;
+
+    if (pendingIndividuals?.length) {
       const mikranByTw = new Map<number, string>();
       for (const p of result.pozycje) {
         const plu = String(p.tw_PLU ?? "").trim();
@@ -1276,15 +1646,46 @@ export async function actionRunZdEstimateManual(
         teethTwIds,
         mikranByTw,
       });
-      const map = new Map<number, number>();
-      for (const [tw, extra] of extras.byTwId) {
-        if (extra.extraPieces > 0) map.set(tw, extra.extraPieces);
+      const rawMap = individualExtraPiecesMap(extras);
+      individualExtraRawForLift = rawMap.size ? rawMap : null;
+
+      if (rawMap.size) {
+        const overlap = await resolveIndividualExtrasWithReservationOverlap({
+          byTwId: extras.byTwId,
+          lines: result.pozycje,
+        });
+        prosbaOverlapCandidateTwIds = overlap.candidateTwIds;
+        prosbaOverlapResolved = overlap.resolved;
+        if (overlap.reservedByTwId.size) {
+          prosbaReservedByTwIdDto = reservedOverlapMapToDto(
+            overlap.reservedByTwId
+          );
+        }
+        individualExtraLookup = overlap.rawExtraByTwId.size
+          ? overlap.rawExtraByTwId
+          : null;
+        individualStockNeedRelief = overlap.stockNeedReliefByTwId.size
+          ? overlap.stockNeedReliefByTwId
+          : null;
+        individualExtraOverlap = overlap.extraOverlapByTwId.size
+          ? overlap.extraOverlapByTwId
+          : null;
+      } else {
+        prosbaOverlapCandidateTwIds = [];
+        prosbaOverlapResolved = true;
       }
-      return map.size ? map : null;
-    })();
+    } else if (pendingIndividuals) {
+      // Pusta lista próśb — overlap zbędny.
+      prosbaOverlapCandidateTwIds = [];
+      prosbaOverlapResolved = true;
+    }
+
+    // Lift on-request: zawsze z RAW extras (nie z overlap), żeby pełny overlap
+    // nie wrzucał prośby do usług „excluded”.
     const extraOnlyTwIds = buildExtraOnlyTwIds(
       onRequestIds,
-      individualExtraLookup
+      individualExtraRawForLift,
+      productPairs
     );
     const orderExcluded = buildOrderExcludedTwIds(
       hardBase,
@@ -1298,7 +1699,10 @@ export async function actionRunZdEstimateManual(
       orderExcluded,
       individualExtraLookup,
       null,
-      extraOnlyTwIds
+      extraOnlyTwIds,
+      extrasPolicyForKpi,
+      individualStockNeedRelief,
+      individualExtraOverlap
     );
     // Surowy KPI: bez wykluczeń i bez trybu extra_only (pełny stock+extra).
     const packRaw = summarizePackOrderQty(
@@ -1307,7 +1711,10 @@ export async function actionRunZdEstimateManual(
       null,
       individualExtraLookup,
       null,
-      null
+      null,
+      extrasPolicyForKpi,
+      individualStockNeedRelief,
+      individualExtraOverlap
     );
     // Jak filtr „Wykluczone” w UI — orderExcluded (soft bez prośby + hard), nie bake.
     const excludedInGroupCount = result.pozycje.filter((p) =>
@@ -1322,6 +1729,9 @@ export async function actionRunZdEstimateManual(
       pendingIndividuals,
       pendingIndividualsTruncated,
       pendingIndividualsError,
+      prosbaReservedByTwId: prosbaReservedByTwIdDto,
+      prosbaOverlapCandidateTwIds,
+      prosbaOverlapResolved,
       exclusions,
       onRequests,
       packaging,
@@ -2676,36 +3086,25 @@ export async function actionCreateZdFromEstimate(input: {
   let pairsForExtras: Awaited<ReturnType<typeof fetchZdProductPairs>> = [];
   let bomsForExtras: Awaited<ReturnType<typeof fetchZdProductBoms>> = [];
   let teethForExtras: Set<number>;
-  try {
-    ;[pairsForExtras, bomsForExtras] = await Promise.all([
-      fetchZdProductPairs(),
-      fetchZdProductBoms(),
-    ]);
-    teethForExtras = await fetchTeethProductTwIdSet();
-  } catch (e) {
-    return {
-      ok: false,
-      code: "validation",
-      message:
-        e instanceof Error
-          ? `Nie udało się wczytać par/BOM/zębów przed create: ${e.message}`
-          : "Nie udało się wczytać ustawień produktów przed create.",
-    };
-  }
-
   let packagingForCreate: Awaited<
     ReturnType<typeof fetchZdEstimatePackaging>
   > = [];
   try {
-    packagingForCreate = await fetchZdEstimatePackaging();
+    ;[pairsForExtras, bomsForExtras, teethForExtras, packagingForCreate] =
+      await Promise.all([
+        fetchZdProductPairs(),
+        fetchZdProductBoms(),
+        fetchTeethProductTwIdSet(),
+        fetchZdEstimatePackaging(),
+      ]);
   } catch (e) {
     return {
       ok: false,
       code: "validation",
       message:
         e instanceof Error
-          ? `Nie udało się wczytać opakowań przed create: ${e.message}`
-          : "Nie udało się wczytać opakowań przed create.",
+          ? `Nie udało się wczytać ustawień produktów przed create: ${e.message}`
+          : "Nie udało się wczytać ustawień produktów przed create.",
     };
   }
 
@@ -2744,10 +3143,17 @@ export async function actionCreateZdFromEstimate(input: {
     unitsPerPackageByTwId.set(pair.packTwId, pair.unitsPerPack);
     packagingModeByTwId.set(pair.packTwId, "packages");
   }
+
+  // Dedupe prośba↔rez. ZK przed ensureCover — inaczej serwer podbija qty z powrotem.
+  // Bez pełnych linii estimate nie limitujemy overlap do need (to robi UI).
+  const overlapForCreate = await resolveIndividualExtrasWithReservationOverlap({
+    byTwId: extrasBundle.byTwId,
+    twIdsFilter: createdTwIds,
+  });
   const extraPiecesByTwId = new Map<number, number>();
-  for (const [tw, extra] of extrasBundle.byTwId) {
-    if (extra.extraPieces > 0 && createdTwIds.has(tw)) {
-      extraPiecesByTwId.set(tw, extra.extraPieces);
+  for (const [tw, qty] of overlapForCreate.adjustedExtraByTwId) {
+    if (qty > 0 && createdTwIds.has(tw)) {
+      extraPiecesByTwId.set(tw, qty);
     }
   }
   const coveredLines = ensureZdCreateLinesCoverIndividualExtras({
@@ -2923,50 +3329,14 @@ export async function actionCreateZdFromEstimate(input: {
       });
     }
 
-    let packagingByTwId: Map<number, number>;
-    let packagingModeByTwId: Map<
-      number,
-      ZdPackagingDocumentUnitMode
-    >;
-    try {
-      packagingByTwId = new Map();
-      packagingModeByTwId = new Map();
-      const packaging = await fetchZdEstimatePackaging();
-      for (const row of packaging) {
-        packagingByTwId.set(row.subiektTwId, row.unitsPerPackage);
-        packagingModeByTwId.set(row.subiektTwId, row.documentUnitMode);
-      }
-    } catch (e) {
-      return withCreate({
-        ok: true as const,
-        dokId,
-        dokNrPelny,
-        lineCount: createLines.length,
-        snapshotOk: false,
-        snapshotMessage:
-          e instanceof Error
-            ? `ZD utworzone, opakowania niedostępne — historia nie zapisana: ${e.message}`
-            : "ZD utworzone, opakowania niedostępne — użyj „Powiąż ZD”.",
-      });
+    // Reuse packaging/pairs already loaded earlier in this Create — no second round-trip.
+    const packagingByTwId = new Map<number, number>();
+    const packagingModeByTwId = new Map<number, ZdPackagingDocumentUnitMode>();
+    for (const row of packagingForCreate) {
+      packagingByTwId.set(row.subiektTwId, row.unitsPerPackage);
+      packagingModeByTwId.set(row.subiektTwId, row.documentUnitMode);
     }
-
-    let pairRatioByTwId: Map<number, number>;
-    try {
-      const pairs = await fetchZdProductPairs();
-      pairRatioByTwId = buildPairRatioByTwId(pairs);
-    } catch (e) {
-      return withCreate({
-        ok: true as const,
-        dokId,
-        dokNrPelny,
-        lineCount: createLines.length,
-        snapshotOk: false,
-        snapshotMessage:
-          e instanceof Error
-            ? `ZD utworzone, pary niedostępne — historia nie zapisana: ${e.message}`
-            : "ZD utworzone, pary niedostępne — użyj „Powiąż ZD”.",
-      });
-    }
+    const pairRatioByTwId = buildPairRatioByTwId(pairsForExtras);
 
     const orderableTwIds = new Set(createLines.map((l) => l.twId));
 

@@ -33,7 +33,9 @@ export function sortZdEstimateLines(
   individualExtraByTwId?: ReadonlyMap<number, number> | null,
   qtyOverrideByTwId?: ReadonlyMap<number, number> | null,
   extraOnlyTwIds?: ReadonlySet<number> | null,
-  extrasPolicy?: import("@/lib/orders/zd-estimate-extras-policy").ZdEstimateExtrasPolicy
+  extrasPolicy?: import("@/lib/orders/zd-estimate-extras-policy").ZdEstimateExtrasPolicy,
+  stockNeedReliefByTwId?: ReadonlyMap<number, number> | null,
+  extraOverlapByTwId?: ReadonlyMap<number, number> | null
 ): ManualZdEstimateLine[] {
   const dir = sortDir === "asc" ? 1 : -1;
   const pack = packagingById ?? null;
@@ -55,7 +57,9 @@ export function sortZdEstimateLines(
         individualExtraPiecesForTw(a.tw_Id, individualExtraByTwId),
         qtyOverrideByTwId?.get(a.tw_Id),
         extraOnlyTwIds?.has(a.tw_Id) === true,
-        extrasPolicy
+        extrasPolicy,
+        individualExtraPiecesForTw(a.tw_Id, stockNeedReliefByTwId),
+        individualExtraPiecesForTw(a.tw_Id, extraOverlapByTwId)
       );
       const qb = effectiveZdDocumentUnits(
         b,
@@ -63,7 +67,9 @@ export function sortZdEstimateLines(
         individualExtraPiecesForTw(b.tw_Id, individualExtraByTwId),
         qtyOverrideByTwId?.get(b.tw_Id),
         extraOnlyTwIds?.has(b.tw_Id) === true,
-        extrasPolicy
+        extrasPolicy,
+        individualExtraPiecesForTw(b.tw_Id, stockNeedReliefByTwId),
+        individualExtraPiecesForTw(b.tw_Id, extraOverlapByTwId)
       );
       cmp = qa - qb;
     }
