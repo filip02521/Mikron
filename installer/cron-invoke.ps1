@@ -14,6 +14,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "cron-jobs.ps1")
+. (Join-Path $PSScriptRoot "cron-env.ps1")
 
 try {
   Get-CronJobDefinition -Id $Job | Out-Null
@@ -22,40 +23,16 @@ try {
   exit 1
 }
 
-function Read-EnvValue {
-  param(
-    [string[]]$Files,
-    [string]$Key
-  )
+$ProjectRoot = (Resolve-Path $ProjectRoot).Path
+Set-Location $ProjectRoot
 
-  foreach ($file in $Files) {
-    if (-not (Test-Path $file)) { continue }
-    foreach ($line in Get-Content $file -Encoding UTF8) {
-      if ($line -match "^\s*$([regex]::Escape($Key))=(.+)$") {
-        return $Matches[1].Trim().Trim('"').Trim("'")
-      }
-    }
-  }
-  return $null
-}
-
-$envLocal = Join-Path $ProjectRoot ".env.local"
-$envFile = Join-Path $ProjectRoot ".env"
-$envSources = @($envLocal, $envFile)
-
-$cronSecret = Read-EnvValue -Files $envSources -Key "CRON_SECRET"
-if (-not $cronSecret -or $cronSecret -eq "change-me-in-production" -or $cronSecret -eq "dev-local-cron-secret") {
+$cronSecret = Get-CronSecretFromEnv -ProjectRoot $ProjectRoot
+if (-not (Test-CronSecretConfigured -Secret $cronSecret)) {
   Write-Error "Ustaw silny CRON_SECRET w .env.local (nie change-me-in-production)."
   exit 1
 }
 
-$portRaw = Read-EnvValue -Files $envSources -Key "APP_PORT"
-if (-not $portRaw) {
-  $portRaw = Read-EnvValue -Files $envSources -Key "PORT"
-}
-if ($portRaw -and $portRaw -match '^\d+$') {
-  $Port = [int]$portRaw
-}
+$Port = Get-CronAppPortFromEnv -ProjectRoot $ProjectRoot -DefaultPort $Port
 
 $path = Get-CronPathForJob -Id $Job
 $url = "http://127.0.0.1:$Port$path"

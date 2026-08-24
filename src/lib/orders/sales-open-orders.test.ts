@@ -52,13 +52,16 @@ describe("sales-open-orders", () => {
       order({ id: "b", supplier_id: "s1", products: "B" }),
       order({ id: "c", status: "Anulowane", supplier_id: "s2" }),
       order({ id: "d", sales_acknowledged_at: "2026-05-02", supplier_id: "s3" }),
+      order({ id: "e", supplier_id: "s4", is_teeth: true }),
     ];
     const { zamowienia } = presentMyOrders(orders, []);
     const r = aggregateVisibleMyOrdersBySupplier(orders, []);
     const s1Row = zamowienia.find((row) => row.supplierId === "s1");
-    expect(r.prioritySupplierIds).toEqual(["s1"]);
+    expect(r.prioritySupplierIds).toEqual(expect.arrayContaining(["s1", "s4"]));
     expect(r.openOrderCountBySupplier.s1).toBe(s1Row?.lineCount ?? 0);
     expect(r.prioritySupplierIds).not.toContain("s2");
     expect(r.prioritySupplierIds).not.toContain("s3");
+    expect(r.teethOpenSupplierIds).toContain("s4");
+    expect(r.teethOpenSupplierIds).not.toContain("s1");
   });
 });

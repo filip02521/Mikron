@@ -5,6 +5,8 @@ export const NOTATNIK_NOTES_PAGE_HINT =
 export const NOTATNIK_NOTES_SECTION_COPY = {
   title: "Notatki",
   hint: "Własne przypomnienia — nie trafiają do działu zakupów.",
+  emptyEditable: "Brak notatek — dodaj pierwszą karteczkę.",
+  emptyReadOnly: "Brak notatek.",
 } as const;
 
 export const NOTATNIK_ZK_ARCHIVE_SECTION_COPY = {

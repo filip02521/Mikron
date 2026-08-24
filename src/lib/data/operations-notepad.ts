@@ -54,10 +54,10 @@ export async function fetchOperationsNotepad(
     if (res.error) throw new Error(res.error.message);
   }
 
-  const archivedNotes = sortOperationsNotes([
+  const archivedNotes = [
     ...((archivedPrivateRes.data ?? []) as OperationsNote[]),
     ...((archivedPublicRes.data ?? []) as OperationsNote[]),
-  ]).sort((a, b) => (b.archived_at ?? "").localeCompare(a.archived_at ?? ""));
+  ].sort((a, b) => (b.archived_at ?? "").localeCompare(a.archived_at ?? ""));
 
   return {
     privateNotes: sortOperationsNotes((privateRes.data ?? []) as OperationsNote[]),

@@ -59,6 +59,16 @@ describe("guard admin panel preview", () => {
     ).resolves.toBeUndefined();
   });
 
+  it("zezwalają na mutacje operacji w podglądzie zębów", async () => {
+    cookiesMock.mockReturnValue({
+      get: () => ({ value: "zakupy_zeby" }),
+    });
+
+    await expect(
+      assertAdminPanelAllowsOperationsMutations({ role: "admin" })
+    ).resolves.toBeUndefined();
+  });
+
   it("blokują mutacje operacji w podglądzie magazynu", async () => {
     cookiesMock.mockReturnValue({
       get: () => ({ value: "magazyn" }),

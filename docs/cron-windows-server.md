@@ -6,9 +6,10 @@ Harmonogram zadań Windows wywołuje lokalne endpointy aplikacji (`http://127.0.
 
 1. **Aplikacja działa na serwerze** — zwykle jako usługa Windows (`installer/install-windows-service.ps1`) albo `npm run start` na porcie **3000** (lub `APP_PORT` z `.env.local`).
 2. **`.env.local`** w katalogu projektu z silnym `CRON_SECRET` (nie `change-me-in-production` ani `dev-local-cron-secret`).
-3. **Strefa czasowa serwera:** `(UTC+01:00) Sarajewo, Warszawa, Skopje` (Panel sterowania → Data i godzina → Strefa czasowa). Harmonogram w skryptach zakłada **Europe/Warsaw**.
+3. **Strefa czasowa serwera:** `(UTC+01:00) Sarajewo, Warszawa, Skopje` (Panel sterowania → Data i godzina → Strefa czasowa). Harmonogram w skryptach zakłada **Europe/Warsaw** (czas lokalny Windows, nie `CRON_TZ`).
 4. **curl.exe** w PATH (domyślnie w Windows 10 / Server 2016+).
 5. **Subiekt API** w LAN — wymagane dla `catalog-zd-sync` i `informacja-stock-sync` (oraz częściowo `zd-eta-sync`).
+6. **Konto SYSTEM** musi czytać `.env.local` (zadania cron biegną jako SYSTEM). Przy restrykcyjnych ACL: `icacls .env.local /grant "NT AUTHORITY\SYSTEM:(R)"`.
 
 Opcjonalnie: `INFORMACJA_STOCK_AUTO_ENABLED=1` w `.env.local`, aby włączyć automatyczne powiadomienia ze stanu magazynu (domyślnie włączone, gdy zmienna nie jest ustawiona — patrz `src/lib/env/informacja-stock-auto.ts`).
 
@@ -63,6 +64,10 @@ npm run install-cron:win -- -Install
 ```
 
 Skrypt tworzy zadania w **Harmonogramie zadań** (konto **SYSTEM**, najwyższe uprawnienia). Nazwy zadań zaczynają się od `OnTime Cron …`.
+
+Przed utworzeniem zadań `-Install` robi **preflight**: `curl.exe`, `CRON_SECRET`, czytelność `.env.local` dla SYSTEM, strefa czasowa, probe HTTP na `127.0.0.1:PORT`. Brak żywej aplikacji to ostrzeżenie (nie blokuje instalacji).
+
+Nocny deploy (`-WithNightlyDeploy` / `nightly-deploy.ps1`) domyślnie o **05:00** — po oknie `catalog-zd-sync` (02:00–04:40), przed poranną rutiną 06:00. Przy błędzie buildu usługa OnTime jest **zawsze przywracana**, żeby crony nie milczały.
 
 ### 4. Weryfikacja
 
@@ -119,6 +124,8 @@ npm run install-cron:win -- -Install   # ponowna instalacja po zmianach w skrypt
 | `503` / Subiekt offline | Mostek Subiekt na serwerze LAN; test w **Administracja → Integracja Subiekt** |
 | Brak auto-informacji | `INFORMACJA_STOCK_AUTO_ENABLED`, stan magazynu > 0, prośba z `subiekt_tw_id` |
 | Zła godzina uruchomienia | Strefa czasowa Windows = Warszawa |
+| Wszystkie crony „Zaległe” | Czy usługa `OnTime` działa; `logs\nightly-deploy.log` (fail po stop); `logs\cron-*.log` |
+| `CRON_SECRET` OK lokalnie, 401 z Harmonogramu | ACL `.env.local` — SYSTEM bez odczytu |
 
 Test HTTP bez harmonogramu:
 

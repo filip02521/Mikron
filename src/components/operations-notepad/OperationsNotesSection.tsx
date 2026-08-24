@@ -30,6 +30,8 @@ import type {
 } from "@/types/database";
 import { isFollowUpDue } from "@/lib/sales/notepad-follow-up";
 import { flashNotepadAnchor } from "@/lib/sales/notepad-anchor";
+import { isEditableKeyboardTarget } from "@/lib/platform/editable-keyboard-target";
+import { canMutateOperationsNote } from "@/lib/operations/operations-note-access";
 import { NoteColorPicker, NoteCardToolbar } from "@/components/notatnik/NoteColorPicker";
 import { NotatnikListFilterBar } from "@/components/notatnik/NotatnikListFilterBar";
 import { NoteFollowUpControl } from "@/components/notatnik/NoteFollowUpControl";
@@ -131,8 +133,11 @@ const NoteCard = memo(function NoteCard({
     } else if (pendingKeyboardAction === "pin") {
       const nextPinned = !pinned;
       setPinned(nextPinned);
-      void actionUpdateOperationsNote(note.id, { pinned: nextPinned })
-        .then(() => onUpdated?.({ ...note, pinned: nextPinned }))
+      void actionUpdateOperationsNote(note.id, {
+        pinned: nextPinned,
+        expectedUpdatedAt: note.updated_at,
+      })
+        .then(({ note: saved }) => onUpdated?.(saved))
         .catch(() => setPinned(!nextPinned));
     }
   }
@@ -143,18 +148,15 @@ const NoteCard = memo(function NoteCard({
     setSaving(true);
     setError(null);
     try {
-      await actionUpdateOperationsNote(note.id, {
+      const { note: saved } = await actionUpdateOperationsNote(note.id, {
         body,
         title: title || null,
         color,
+        expectedUpdatedAt: note.updated_at,
       });
-      onUpdated?.({
-        ...note,
-        body: body.trim(),
-        title: title.trim() || null,
-        color,
-      });
+      onUpdated?.(saved);
     } catch (e) {
+      hasChangesRef.current = true;
       setError(userFacingErrorText(e, "Nie udało się zapisać notatki."));
     } finally {
       setSaving(false);
@@ -166,10 +168,14 @@ const NoteCard = memo(function NoteCard({
     const prev = color;
     setColor(nextColor);
     try {
-      await actionUpdateOperationsNote(note.id, { color: nextColor });
-      onUpdated?.({ ...note, color: nextColor });
-    } catch {
+      const { note: saved } = await actionUpdateOperationsNote(note.id, {
+        color: nextColor,
+        expectedUpdatedAt: note.updated_at,
+      });
+      onUpdated?.(saved);
+    } catch (e) {
       setColor(prev);
+      setError(userFacingErrorText(e, "Nie udało się zmienić koloru."));
     }
   }
 
@@ -180,8 +186,11 @@ const NoteCard = memo(function NoteCard({
     setSavingFollowUp(true);
     setError(null);
     try {
-      await actionUpdateOperationsNote(note.id, { follow_up_at: next });
-      onUpdated?.({ ...note, follow_up_at: next });
+      const { note: saved } = await actionUpdateOperationsNote(note.id, {
+        follow_up_at: next,
+        expectedUpdatedAt: note.updated_at,
+      });
+      onUpdated?.(saved);
     } catch (e) {
       setFollowUpAt(prev);
       setError(userFacingErrorText(e, "Nie udało się ustawić przypomnienia."));
@@ -195,8 +204,11 @@ const NoteCard = memo(function NoteCard({
     const nextPinned = !pinned;
     setPinned(nextPinned);
     try {
-      await actionUpdateOperationsNote(note.id, { pinned: nextPinned });
-      onUpdated?.({ ...note, pinned: nextPinned });
+      const { note: saved } = await actionUpdateOperationsNote(note.id, {
+        pinned: nextPinned,
+        expectedUpdatedAt: note.updated_at,
+      });
+      onUpdated?.(saved);
     } catch {
       setPinned(!nextPinned);
     }
@@ -350,6 +362,10 @@ export function OperationsNotesSection({
   onNoteArchived,
   onNotesReordered,
   allowReorder = true,
+  enableWindowShortcuts = true,
+  enableSearchShortcut = true,
+  onBoardActivate,
+  isUserAdmin = false,
 }: {
   notes: OperationsNote[];
   department: OperationsDepartment;
@@ -360,6 +376,11 @@ export function OperationsNotesSection({
   focusNoteId?: string | null;
   onFocusNoteHandled?: (noteId: string) => void;
   allowReorder?: boolean;
+  /** Tylko jedna sekcja na stronie powinna mieć aktywne skróty okienne. */
+  enableWindowShortcuts?: boolean;
+  enableSearchShortcut?: boolean;
+  onBoardActivate?: () => void;
+  isUserAdmin?: boolean;
   onNoteCreated?: (note: OperationsNote) => void;
   onNoteUpdated?: (note: OperationsNote) => void;
   onNoteArchived?: (note: OperationsNote) => void;
@@ -477,7 +498,15 @@ export function OperationsNotesSection({
               <NoteCard
                 note={note}
                 anchorId={`note-${note.id}`}
-                readOnly={readOnly || note.created_by !== currentUserId}
+                readOnly={
+                  readOnly ||
+                  !canMutateOperationsNote({
+                    visibility,
+                    createdBy: note.created_by,
+                    userId: currentUserId,
+                    isAdmin: isUserAdmin,
+                  })
+                }
                 showAuthor={showAuthor}
                 focused={focusedNoteId === note.id}
                 draggable={canDrag}
@@ -492,7 +521,10 @@ export function OperationsNotesSection({
                   keyboardAction?.noteId === note.id ? keyboardAction.action : null
                 }
                 onConsumeKeyboardAction={() => setKeyboardAction(null)}
-                onFocus={() => setFocusedNoteId(note.id)}
+                onFocus={() => {
+                  setFocusedNoteId(note.id);
+                  onBoardActivate?.();
+                }}
                 onUpdated={onNoteUpdated}
                 onArchived={onNoteArchived}
                 onDragStart={() => setDraggingId(note.id)}
@@ -524,20 +556,17 @@ export function OperationsNotesSection({
   }
 
   useEffect(() => {
-    if (readOnly) return;
+    if (readOnly || !enableWindowShortcuts) return;
 
     const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
-      const inField = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" ||
-        (e.target as HTMLElement)?.isContentEditable;
-
-      if (inField) {
+      if (isEditableKeyboardTarget(e.target)) {
         if (e.key === "Escape") (e.target as HTMLElement).blur();
         return;
       }
 
       if (e.key === "n" || e.key === "N") {
         e.preventDefault();
+        onBoardActivate?.();
         setComposeOpen(true);
         return;
       }
@@ -551,6 +580,7 @@ export function OperationsNotesSection({
         const nextIdx = idx < 0 ? 0 : Math.min(idx + 1, filtered.length - 1);
         const nextId = filtered[nextIdx]!.id;
         setFocusedNoteId(nextId);
+        onBoardActivate?.();
         scrollFocusedNoteIntoView(nextId);
         document.getElementById(`note-${nextId}`)?.focus({ preventScroll: true });
         return;
@@ -561,6 +591,7 @@ export function OperationsNotesSection({
         const nextIdx = idx < 0 ? 0 : Math.max(idx - 1, 0);
         const nextId = filtered[nextIdx]!.id;
         setFocusedNoteId(nextId);
+        onBoardActivate?.();
         scrollFocusedNoteIntoView(nextId);
         document.getElementById(`note-${nextId}`)?.focus({ preventScroll: true });
         return;
@@ -582,7 +613,14 @@ export function OperationsNotesSection({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [readOnly, filtered, focusedNoteId, scrollFocusedNoteIntoView]);
+  }, [
+    readOnly,
+    enableWindowShortcuts,
+    filtered,
+    focusedNoteId,
+    scrollFocusedNoteIntoView,
+    onBoardActivate,
+  ]);
 
   async function createNote() {
     const trimmed = draft.trim();
@@ -729,7 +767,10 @@ export function OperationsNotesSection({
             variant="secondary"
             size="sm"
             className={notatnikPrimaryAddButtonClass}
-            onClick={() => setComposeOpen(true)}
+            onClick={() => {
+              onBoardActivate?.();
+              setComposeOpen(true);
+            }}
           >
             <IconPlusCircle size={16} strokeWidth={2} className="mr-1.5 shrink-0" aria-hidden />
             Przypnij nową karteczkę
@@ -752,6 +793,7 @@ export function OperationsNotesSection({
             totalCount={notes.length}
             placeholder={NOTATNIK_NOTES_SEARCH_PLACEHOLDER}
             searchLabel="Szukaj w notatkach"
+            enableShortcut={enableSearchShortcut && !readOnly}
             showIdleHint={false}
             showActiveDetail={false}
             emptyMatchHint="Brak dopasowań — sprawdź tytuł lub treść notatki."
@@ -776,9 +818,15 @@ export function OperationsNotesSection({
             onClear={() => setSearchQuery("")}
             entityLabel="notatek"
           />
-        ) : readOnly ? (
-          <SalesSectionEmptyHint message="Brak notatek." />
-        ) : null
+        ) : (
+          <SalesSectionEmptyHint
+            message={
+              readOnly
+                ? NOTATNIK_NOTES_SECTION_COPY.emptyReadOnly
+                : NOTATNIK_NOTES_SECTION_COPY.emptyEditable
+            }
+          />
+        )
       ) : (
         <>
           {renderNoteGrid(pinnedFiltered, pinnedFiltered.length ? "Przypięte" : undefined)}
