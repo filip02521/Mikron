@@ -180,7 +180,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
       headline:
         n === 1
           ? "Gotowe do odbioru z regału"
-          : `Gotowe do odbioru z regału · ${n} poz.`,
+          : `Gotowe do odbioru z regału · ${n} pozycje`,
       headlineTone: "action",
       subline: null,
       sortPriority: 1,
@@ -191,7 +191,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     const n = row.pickupPendingCount;
     return {
       headline:
-        n === 1 ? "Zęby gotowe do odbioru" : `Zęby gotowe do odbioru · ${n} poz.`,
+        n === 1 ? "Zęby gotowe do odbioru" : `Zęby gotowe do odbioru · ${n} pozycje`,
       headlineTone: "action",
       subline: "Doręczenie osobiste — potwierdź odbiór od magazynu",
       sortPriority: 1,
@@ -202,8 +202,8 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     const teethN = row.pickupTeethPendingIds.length;
     const shelfN = row.pickupShelfPendingIds.length;
     const parts: string[] = [];
-    if (teethN > 0) parts.push(teethN === 1 ? "zęby" : `${teethN} poz. zębowych`);
-    if (shelfN > 0) parts.push(shelfN === 1 ? "towar z regału" : `${shelfN} poz. z regału`);
+    if (teethN > 0) parts.push(teethN === 1 ? "zęby" : `${teethN} pozycje zębowe`);
+    if (shelfN > 0) parts.push(shelfN === 1 ? "towar z regału" : `${shelfN} towary z regału`);
     return {
       headline: "Gotowe do odbioru — zęby i towar",
       headlineTone: "action",

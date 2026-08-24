@@ -453,7 +453,7 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(items).toHaveLength(1);
     expect(items[0]?.count).toBe(2);
     expect(items[0]?.title).toBe("Zakupy zaktualizowały uwagi przy 2 prośbach");
-    expect(items[0]?.subtitle).toBe("Otwórz prośbę i potwierdź „Widziałem” przy uwagach");
+    expect(items[0]?.subtitle).toBe("Otwórz prośbę i potwierdź „Przeczytałem/am” przy uwagach");
   });
 
   it("nie duplikuje powiadomienia o uwagach gdy wiersz jest już w cancel_ack", () => {

@@ -4,6 +4,7 @@ import { cn } from "@/lib/cn";
 import { salesTypography, salesRequestNoteLabelClass } from "@/lib/ui/ontime-theme";
 import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
 import { MyOrderAckButton } from "@/components/moje/MyOrderAckButton";
+import { MOJE_COPY_DEPARTMENT, MOJE_COPY_NOTES_ACK_BUTTON } from "@/lib/orders/my-order-moje-copy";
 
 /** Notatka do zakupów — widoczna w Moje zamówienia; wyróżnienie gdy zakupy właśnie ją zmieniły. */
 export function MyOrderRequestNote({
@@ -52,14 +53,14 @@ export function MyOrderRequestNote({
                 <svg viewBox="0 0 16 16" className="size-3.5" fill="currentColor" aria-hidden>
                   <path d="M3 2a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h6a1 1 0 0 0 .7-.3l3-3a1 1 0 0 0 .3-.7V3a1 1 0 0 0-1-1H3Zm1 2h7v5H8a1 1 0 0 0-1 1v2H4V4Z" />
                 </svg>
-                Uwagi od zakupów
+                Uwagi od działu zakupów
               </span>
               <span className="inline-flex items-center rounded-full bg-indigo-600/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-800 ring-1 ring-inset ring-indigo-200/70">
                 Nowe
               </span>
             </div>
             <p className={cn(salesTypography.rowMeta, "mt-1 text-indigo-900/75")}>
-              Dział zakupów zaktualizował uwagi przy tej prośbie
+              {MOJE_COPY_DEPARTMENT} zaktualizował uwagi przy tej prośbie
             </p>
             <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-relaxed text-slate-900">
               <SearchHighlightText text={trimmed} searchQuery={searchQuery} />
@@ -71,11 +72,11 @@ export function MyOrderRequestNote({
               className="shrink-0 border-indigo-200 text-indigo-900 hover:bg-indigo-50"
               disabled={acknowledgePending}
               preview={tourPreview && !onAcknowledge}
-              title="Potwierdź, że przeczytałeś/aś uwagi od zakupów"
-              ariaLabel="Widziałem uwagi od zakupów"
+              title="Potwierdź, że przeczytałeś/aś uwagi"
+              ariaLabel={`${MOJE_COPY_NOTES_ACK_BUTTON} — uwagi`}
               onClick={() => onAcknowledge?.()}
             >
-              Widziałem
+              {MOJE_COPY_NOTES_ACK_BUTTON}
             </MyOrderAckButton>
           ) : null}
         </div>

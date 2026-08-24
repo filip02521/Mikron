@@ -159,3 +159,41 @@ export function formatZkWatchProsbaScopeSummary(
   if (inStock === 0) return toOrder === 1 ? "1 do zamówienia" : `${toOrder} do zamówienia`;
   return `${toOrder} do zamówienia · ${inStock} pominięte`;
 }
+
+export type ZkProsbaScopeAutoProsbaGateInput = {
+  stockUnavailable: boolean;
+  teethCatalogUnavailable: boolean;
+  overBatchLimit: boolean;
+  stockLoading: boolean;
+  teethIncomplete: boolean;
+};
+
+export type ZkProsbaScopeAutoProsbaGate = {
+  disabled: boolean;
+  hint: string | null;
+};
+
+/** Reguły checkboxa „utwórz prośbę po zapisie” w modalu zakresu ZK. */
+export function deriveZkProsbaScopeAutoProsbaGate(
+  input: ZkProsbaScopeAutoProsbaGateInput
+): ZkProsbaScopeAutoProsbaGate {
+  const disabled =
+    input.stockUnavailable ||
+    input.teethCatalogUnavailable ||
+    input.overBatchLimit ||
+    input.stockLoading;
+
+  const hint = input.overBatchLimit
+    ? "Można dodać maks. 30 pozycji naraz — utwórz prośbę z karty ZK."
+    : input.teethCatalogUnavailable
+      ? "Katalog zębów jest chwilowo niedostępny — odśwież stronę i spróbuj ponownie."
+      : input.stockUnavailable
+        ? "Nie udało się sprawdzić stanu magazynowego — utwórz prośbę później z karty ZK."
+        : input.stockLoading
+          ? "Sprawdzam stan magazynowy…"
+          : input.teethIncomplete
+            ? "Najpierw uzupełnij listę zębów — prośba powstanie po zapisie list."
+            : null;
+
+  return { disabled, hint };
+}

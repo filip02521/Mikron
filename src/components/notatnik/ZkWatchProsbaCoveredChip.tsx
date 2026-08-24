@@ -4,7 +4,8 @@ import {
   zkWatchProsbaCoveredMeta,
   type ZkWatchProsbaCoveredReason,
 } from "@/lib/sales/zk-watch-line-ui-state";
-import { salesTypography } from "@/lib/ui/ontime-theme";
+import { zkWatchProsbaSettledStatusClass } from "@/lib/ui/zk-watch-attention-styles";
+import { zkWatchRowActionStatusClass } from "@/lib/ui/zk-watch-row-action-styles";
 
 export function ZkWatchProsbaCoveredChip({
   reason,
@@ -17,19 +18,19 @@ export function ZkWatchProsbaCoveredChip({
 }) {
   const meta = zkWatchProsbaCoveredMeta(reason);
   const Icon = reason === "scope_excluded" ? IconWarehouse : IconCircleCheck;
+  const isRowSettled = size === "compact" && reason === "complete";
 
   return (
     <span
       className={cn(
-        salesTypography.kindTag,
-        "inline-flex shrink-0 items-center gap-1 rounded-full font-semibold",
-        size === "compact" ? "px-1.5 py-0.5 text-[0.62rem]" : "px-2 py-0.5 text-[0.68rem]",
-        meta.badgeClass,
+        zkWatchRowActionStatusClass,
+        size === "compact" ? "px-2" : "px-2.5",
+        isRowSettled ? zkWatchProsbaSettledStatusClass : meta.badgeClass,
         className
       )}
       title={meta.detail}
     >
-      <Icon size={size === "compact" ? 11 : 12} strokeWidth={2.25} className="text-current opacity-90" />
+      <Icon size={12} strokeWidth={2.25} className="shrink-0 text-current opacity-90" />
       <span>{meta.shortLabel}</span>
     </span>
   );

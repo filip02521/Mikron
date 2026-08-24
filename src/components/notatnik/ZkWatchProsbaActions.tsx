@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import type { MouseEvent } from "react";
-import { Button } from "@/components/ui/Button";
 import { IconCircleCheck, IconPackageCheck } from "@/components/icons/StrokeIcons";
 import type { ZkWatchProsbaCardAction } from "@/lib/sales/zk-watch-line-ui-state";
-import { ZkWatchProsbaCoveredChip } from "./ZkWatchProsbaCoveredChip";
+import {
+  zkWatchRowActionPrimaryClass,
+  zkWatchRowActionSecondaryClass,
+} from "@/lib/ui/zk-watch-row-action-styles";
 
 export function ZkWatchProsbaActions({
   archived,
@@ -43,72 +45,60 @@ export function ZkWatchProsbaActions({
   if (prosbaCardAction.kind === "none") return null;
 
   if (prosbaCardAction.kind === "covered") {
-    return <ZkWatchProsbaCoveredChip reason={prosbaCardAction.reason} size="compact" />;
+    return null;
   }
 
   const label = buttonLabel ?? prosbaCardAction.label;
 
   if (prosbaCardAction.kind === "view_open") {
     return (
-      <Link href={prosbaInTokuHref} title="Przejdź do aktywnej prośby">
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          className="h-8 px-2.5 text-[0.68rem] sm:h-7"
-          disabled={pending}
-        >
-          <span className="inline-flex items-center gap-1.5">
-            <IconCircleCheck size={13} className="shrink-0" />
-            {label}
-          </span>
-        </Button>
+      <Link
+        href={prosbaInTokuHref}
+        title="Przejdź do aktywnej prośby"
+        className={zkWatchRowActionSecondaryClass}
+        aria-disabled={pending || undefined}
+        onClick={pending ? (event) => event.preventDefault() : undefined}
+      >
+        <IconCircleCheck size={13} className="shrink-0" strokeWidth={2.25} />
+        {label}
       </Link>
     );
   }
 
   if (teethCatalogUnavailable) {
     return (
-      <Button
-        type="button"
-        size="sm"
-        variant="secondary"
-        className="h-8 px-2.5 text-[0.68rem] sm:h-7"
-        disabled
+      <span
+        className={zkWatchRowActionSecondaryClass}
+        aria-disabled
         title="Katalog zębów jest chwilowo niedostępny — odśwież stronę i spróbuj ponownie"
       >
         Katalog zębów niedostępny
-      </Button>
+      </span>
     );
   }
 
   if (teethDraftsIncomplete) {
     if (!canEditTeethDrafts) {
       return (
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          className="h-8 px-2.5 text-[0.68rem] sm:h-7"
-          disabled
+        <span
+          className={zkWatchRowActionSecondaryClass}
+          aria-disabled
           title="Najpierw uzupełnij listę zębów dla pozycji ZK"
         >
           Uzupełnij listę zębów
-        </Button>
+        </span>
       );
     }
     return (
-      <Button
+      <button
         type="button"
-        size="sm"
-        variant="secondary"
-        className="h-8 px-2.5 text-[0.68rem] sm:h-7"
+        className={zkWatchRowActionSecondaryClass}
         disabled={pending}
         title="Najpierw uzupełnij listę zębów dla pozycji ZK"
         onClick={() => onTeethDraftRequested?.()}
       >
         Uzupełnij listę zębów
-      </Button>
+      </button>
     );
   }
 
@@ -118,19 +108,21 @@ export function ZkWatchProsbaActions({
       : undefined;
 
   return (
-    <Link href={prosbaHref} onClick={onProsbaClick} title={title}>
-      <Button
-        type="button"
-        size="sm"
-        variant="primary"
-        className="h-8 px-2.5 text-[0.68rem] sm:h-7"
-        disabled={pending}
-      >
-        <span className="inline-flex items-center gap-1.5">
-          <IconPackageCheck size={13} className="shrink-0" />
-          {label}
-        </span>
-      </Button>
+    <Link
+      href={prosbaHref}
+      onClick={(event) => {
+        if (pending) {
+          event.preventDefault();
+          return;
+        }
+        onProsbaClick(event);
+      }}
+      title={title}
+      className={zkWatchRowActionPrimaryClass}
+      aria-disabled={pending || undefined}
+    >
+      <IconPackageCheck size={13} className="shrink-0" strokeWidth={2.25} />
+      {label}
     </Link>
   );
 }

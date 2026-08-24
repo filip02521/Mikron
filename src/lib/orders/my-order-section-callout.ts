@@ -81,7 +81,7 @@ function calloutForPattern(
         count,
         tone: "indigo",
         title: `Zakupy sprawdzają szczegóły — ${label}`,
-        detail: "Dział dostaw uzupełnia dane przed zamówieniem u dostawcy.",
+        detail: "Dział zakupów uzupełnia dane przed zamówieniem u dostawcy.",
       };
   }
 }
@@ -95,7 +95,7 @@ function singleHintMessage(pattern: MyOrderSectionPatternId): string {
     case "partial_ready":
       return "Część towaru jest na magazynie, reszta w drodze od dostawcy.";
     case "verification":
-      return "Dział dostaw uzupełnia dane przed zamówieniem u dostawcy.";
+      return "Dział zakupów uzupełnia dane przed zamówieniem u dostawcy.";
   }
 }
 

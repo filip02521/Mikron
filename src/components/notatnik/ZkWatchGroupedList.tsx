@@ -27,7 +27,7 @@ import {
   ZkWatchClosePendingHost,
   type ZkWatchClosePendingSession,
 } from "./ZkWatchClosePendingHost";
-import { NOTATNIK_ZK_LIST_CLASS } from "./notatnik-layout";
+import { NOTATNIK_ZK_LIST_CLASS, NOTATNIK_ZK_LIST_SCROLL_CLASS } from "./notatnik-layout";
 import {
   buildZkWatchListVirtualItems,
   zkWatchListScrollKey,
@@ -147,6 +147,7 @@ export function ZkWatchGroupedList({
   onProsbaScopeRequested,
   onTeethDraftRequested,
   teethRegistry,
+  autoProsbaPendingWatchId,
   focusWatchId,
   onFocusWatchHandled,
   onLiveAnnounce,
@@ -163,6 +164,7 @@ export function ZkWatchGroupedList({
   onProsbaScopeRequested?: (watchId: string) => void;
   onTeethDraftRequested?: (watchId: string) => void;
   teethRegistry?: import("@/lib/sales/zk-watch-teeth-draft").TeethDraftRegistryLookup;
+  autoProsbaPendingWatchId?: string | null;
   /** Po wejściu z linku (#watch-…) — rozwiń miesiąc i podświetl kartę. */
   focusWatchId?: string | null;
   onFocusWatchHandled?: (watchId: string) => void;
@@ -345,6 +347,7 @@ export function ZkWatchGroupedList({
         threshold={ZK_WATCH_LIST_VIRTUAL_THRESHOLD}
         enabled={zkVirtualEnabled}
         listClassName={NOTATNIK_ZK_LIST_CLASS}
+        className={NOTATNIK_ZK_LIST_SCROLL_CLASS}
         scrollToKey={focusScrollKey}
         estimateSize={(_, item) =>
           item.kind === "month" ? ZK_MONTH_HEADER_ESTIMATE_PX : ZK_WATCH_CARD_ESTIMATE_PX
@@ -395,6 +398,7 @@ export function ZkWatchGroupedList({
               subiektReachable={subiektReachable}
               onRequestCloseWatch={requestCloseWatch}
               closePreviewLoading={closePreviewWatchId === watch.id}
+              autoProsbaPending={autoProsbaPendingWatchId === watch.id}
               closeFlowError={closeFlowErrorByWatchId[watch.id]}
               onRestored={onRestored}
               onRefreshed={onRefreshed}

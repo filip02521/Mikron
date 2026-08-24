@@ -12,6 +12,7 @@ import {
   applyZkProsbaStockFilterToCardAction,
   deriveZkWatchProsbaCardAction,
   formatZkProsbaCardActionLabelAfterStockFilter,
+  formatZkWatchProsbaRowMeta,
   resolveZkWatchProsbaPrefillLineKeys,
   resolveZkWatchLineUiState,
   ZK_WATCH_LINE_FLOW_ORDER,
@@ -158,7 +159,7 @@ describe("deriveZkWatchProsbaCardAction", () => {
     ).toEqual({ kind: "view_open", label: "Otwórz prośbę" });
   });
 
-  it("towar na regale bez odbioru — nie pokazuj Komplet", () => {
+  it("towar na regale bez odbioru — CTA do Moje, nie Komplet", () => {
     expect(
       deriveZkWatchProsbaCardAction({
         lineCount: 1,
@@ -167,6 +168,19 @@ describe("deriveZkWatchProsbaCardAction", () => {
         regalWaitingLineKeys: ["ob:1"],
         newLineKeys: [],
         hasOpenMatchingProsba: false,
+      })
+    ).toEqual({ kind: "view_open", label: "Odbierz w Moje" });
+  });
+
+  it("towar na regale z otwartą prośbą — otwórz prośbę", () => {
+    expect(
+      deriveZkWatchProsbaCardAction({
+        lineCount: 1,
+        uncoveredLineKeys: [],
+        openProsbaLineKeys: ["ob:1"],
+        regalWaitingLineKeys: ["ob:1"],
+        newLineKeys: [],
+        hasOpenMatchingProsba: true,
       })
     ).toEqual({ kind: "view_open", label: "Otwórz prośbę" });
   });
@@ -194,6 +208,27 @@ describe("deriveZkWatchProsbaCardAction", () => {
         hasOpenMatchingProsba: false,
       })
     ).toEqual({ kind: "covered", reason: "complete" });
+  });
+});
+
+describe("formatZkWatchProsbaRowMeta", () => {
+  it("covered complete — Prośba: bez otwartej", () => {
+    expect(
+      formatZkWatchProsbaRowMeta({ kind: "covered", reason: "complete" })
+    ).toBe("Prośba: bez otwartej");
+  });
+
+  it("covered scope_excluded — Prośba: ze stanu magazynowego", () => {
+    expect(
+      formatZkWatchProsbaRowMeta({ kind: "covered", reason: "scope_excluded" })
+    ).toBe("Prośba: ze stanu magazynowego");
+  });
+
+  it("inna akcja — null", () => {
+    expect(formatZkWatchProsbaRowMeta({ kind: "none" })).toBeNull();
+    expect(
+      formatZkWatchProsbaRowMeta({ kind: "view_open", label: "Odbierz w Moje" })
+    ).toBeNull();
   });
 });
 

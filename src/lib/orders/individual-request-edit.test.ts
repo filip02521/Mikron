@@ -3,6 +3,7 @@ import {
   editRequestNoteForSave,
   filterIndividualRequestEditLinesForSave,
   isIndividualOrderEditable,
+  normalizeAddIndividualOrdersInput,
   resolveIndividualRequestEditLineId,
   toIndividualRequestEditLinePayload,
 } from "./individual-request-edit";
@@ -183,5 +184,28 @@ describe("editRequestNoteForSave", () => {
         initialNote: "",
       })
     ).toBe("wspólna");
+  });
+});
+
+describe("normalizeAddIndividualOrdersInput", () => {
+  it("tablica entries — bez stock i ack", () => {
+    const entries = [{ product: "A", quantity: "1" }];
+    expect(normalizeAddIndividualOrdersInput(entries)).toEqual({
+      entries,
+      acknowledgeSufficientStock: undefined,
+    });
+  });
+
+  it("obiekt — przekazuje stockByTwId i acknowledgeSufficientStock", () => {
+    const stockByTwId = {
+      1: { onHand: 5, reserved: 0, available: 5, source: "subiekt" as const },
+    };
+    const input = {
+      entries: [{ product: "B", quantity: "2", subiektTwId: 1 }],
+      acknowledgeSufficientStock: true,
+      stockByTwId,
+    };
+    expect(normalizeAddIndividualOrdersInput(input)).toBe(input);
+    expect(normalizeAddIndividualOrdersInput(input).stockByTwId).toBe(stockByTwId);
   });
 });

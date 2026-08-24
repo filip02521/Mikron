@@ -58,8 +58,16 @@ export function MojeOrdersHelp() {
             lub przy wierszu — najedź lub kliknij, aby zobaczyć wyjaśnienie
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Nagłówek</strong> — etap prośby w
-            prostym języku
+            <strong className="font-medium text-slate-800">Pierwsza linia</strong> — zawsze nazwa
+            towaru (produkt)
+          </li>
+          <li>
+            <strong className="font-medium text-slate-800">Druga linia</strong> — dostawca i
+            ewentualnie klient
+          </li>
+          <li>
+            <strong className="font-medium text-slate-800">Status</strong> — co się dzieje z
+            prośbą (pod produktem lub po prawej)
           </li>
           <li>
             <strong className="font-medium text-slate-800">Zielony przycisk</strong> — potwierdź
@@ -85,8 +93,8 @@ export function MojeOrdersHelp() {
           </li>
           <li>
             <strong className="font-medium text-slate-800">Cofnij</strong> — po anulowaniu,
-            odbiorze lub ukryciu masz kilka sekund na cofnięcie (toast u dołu ekranu lub skrót
-            klawiszowy)
+            odbiorze lub usunięciu z listy masz kilka sekund na cofnięcie (komunikat u dołu ekranu
+            lub skrót klawiszowy)
           </li>
           <li>
             <strong className="font-medium text-slate-800">Rozwiń</strong> — produkty i dodatkowe
@@ -108,15 +116,6 @@ export function MojeOrdersHelp() {
             stanie” nie trafiają tutaj — obsługuje je dział zakupów.
           </li>
         </ul>
-      </HelpBlock>
-
-      <HelpBlock title="Sekcje listy">
-        <p>
-          Prośby są podzielone na sekcje —{" "}
-          <strong className="font-medium text-emerald-900">Potwierdź odbiór z regału</strong> u góry, potem
-          zamówienia u dostawcy i informacje o dostępności. Start dnia przewinie Cię do właściwej
-          sekcji.
-        </p>
       </HelpBlock>
 
       <HelpBlock title="Archiwum">
