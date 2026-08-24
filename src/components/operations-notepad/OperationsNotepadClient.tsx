@@ -145,7 +145,7 @@ export function OperationsNotepadClient({
     } else if (privateNotes.some((n) => n.id === noteId)) {
       setShortcutBoard("private");
     }
-  }, [privateNotes, publicNotes]);
+  }, [privateNotes, publicNotes, setShortcutBoard]);
 
   const handleUndo = useCallback(async () => {
     if (!undo) return;
