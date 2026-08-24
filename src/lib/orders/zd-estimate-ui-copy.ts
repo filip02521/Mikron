@@ -591,6 +591,10 @@ export function zdEstimateLaunchReadyToastDescription(input: {
   doZamowieniaCount: number;
   pendingIndividualsCount?: number;
   isLive: boolean;
+  /** Po auto-zamknięciu poprzedniej sesji (Przygotuj ZD z daily). */
+  closedPreviousSession?: boolean;
+  previousSessionSupplierChanged?: boolean;
+  nextSupplierName?: string | null;
 }): string {
   const n = Math.max(0, Math.trunc(Number(input.doZamowieniaCount) || 0));
   const posWord = zdEstimatePlCountWord(n, "pozycja", "pozycje", "pozycji");
@@ -607,7 +611,27 @@ export function zdEstimateLaunchReadyToastDescription(input: {
   const next = input.isLive
     ? "Utwórz ZD w aktualnej bazie albo skopiuj TSV."
     : "Utwórz ZD (test) albo skopiuj TSV.";
-  return `${bits.join(" · ")}. ${next}`;
+  const body = `${bits.join(" · ")}. ${next}`;
+  if (!input.closedPreviousSession) return body;
+
+  if (
+    input.previousSessionSupplierChanged &&
+    input.nextSupplierName?.trim()
+  ) {
+    return `Zamknięto poprzednią sesję — lista dla ${input.nextSupplierName.trim()}. ${body}`;
+  }
+  return `Zamknięto poprzednią sesję. ${body}`;
+}
+
+/** Prefiks do toastu „Lista przeliczona” gdy zamknięto poprzednią sesję. */
+export function zdEstimateRecountClosedPreviousSessionPrefix(input: {
+  supplierChanged: boolean;
+  nextSupplierName: string | null;
+}): string {
+  if (input.supplierChanged && input.nextSupplierName?.trim()) {
+    return `Zamknięto poprzednią sesję — lista dla ${input.nextSupplierName.trim()}. `;
+  }
+  return "Zamknięto poprzednią sesję. ";
 }
 
 export function zdEstimateCreateTitleHint(input: {
@@ -1185,26 +1209,6 @@ export const zdEstimateExternalSessionAutorunResumeLabel =
 
 export const zdEstimateExternalSessionAutorunDiscardLabel =
   "Odrzuć sesję i policz od nowa";
-
-/** Po „Przygotuj ZD” z podsumowania — stara sesja zamknięta automatycznie. */
-export function zdEstimateExternalSessionReplacedByDailyLaunchToast(input: {
-  supplierChanged: boolean;
-  nextSupplierName: string | null;
-}): { title: string; description: string } {
-  if (input.supplierChanged) {
-    const name = input.nextSupplierName?.trim();
-    return {
-      title: "Zamknięto poprzednią sesję",
-      description: name
-        ? `Liczymy listę ZD dla ${name}.`
-        : "Liczymy listę ZD dla wybranego dostawcy.",
-    };
-  }
-  return {
-    title: "Zamknięto poprzednią sesję",
-    description: "Liczymy listę ZD od nowa.",
-  };
-}
 
 export const zdEstimateExternalSessionScopeChangeTitle =
   "Zamknąć obecną sesję?";

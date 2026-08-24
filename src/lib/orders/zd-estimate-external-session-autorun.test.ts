@@ -3,7 +3,10 @@ import {
   decideZdEstimateAutorunVsExternalSession,
   isDailyPrepareZdAutorunLaunch,
 } from "@/lib/orders/zd-estimate-external-session-autorun";
-import { zdEstimateExternalSessionReplacedByDailyLaunchToast } from "@/lib/orders/zd-estimate-ui-copy";
+import {
+  zdEstimateLaunchReadyToastDescription,
+  zdEstimateRecountClosedPreviousSessionPrefix,
+} from "@/lib/orders/zd-estimate-ui-copy";
 
 describe("isDailyPrepareZdAutorunLaunch", () => {
   const base = {
@@ -147,28 +150,28 @@ describe("decideZdEstimateAutorunVsExternalSession", () => {
   });
 });
 
-describe("zdEstimateExternalSessionReplacedByDailyLaunchToast", () => {
-  it("opisuje zmianę dostawcy", () => {
-    expect(
-      zdEstimateExternalSessionReplacedByDailyLaunchToast({
-        supplierChanged: true,
-        nextSupplierName: "Ivoclar",
-      })
-    ).toEqual({
-      title: "Zamknięto poprzednią sesję",
-      description: "Liczymy listę ZD dla Ivoclar.",
+describe("launch ready toast z zamkniętą sesją", () => {
+  it("scala zamknięcie sesji w jeden opis (bez osobnego toastu)", () => {
+    const text = zdEstimateLaunchReadyToastDescription({
+      doZamowieniaCount: 3,
+      pendingIndividualsCount: 0,
+      isLive: true,
+      closedPreviousSession: true,
+      previousSessionSupplierChanged: true,
+      nextSupplierName: "Ivoclar",
     });
+    expect(text.startsWith("Zamknięto poprzednią sesję — lista dla Ivoclar.")).toBe(
+      true
+    );
+    expect(text).toContain("3 pozycje do ZD");
   });
 
-  it("ten sam dostawca — ogólny opis", () => {
+  it("prefix recount dla tego samego dostawcy", () => {
     expect(
-      zdEstimateExternalSessionReplacedByDailyLaunchToast({
+      zdEstimateRecountClosedPreviousSessionPrefix({
         supplierChanged: false,
-        nextSupplierName: "Ivoclar",
+        nextSupplierName: "X",
       })
-    ).toEqual({
-      title: "Zamknięto poprzednią sesję",
-      description: "Liczymy listę ZD od nowa.",
-    });
+    ).toBe("Zamknięto poprzednią sesję. ");
   });
 });

@@ -103,6 +103,10 @@ import {
 } from "@/lib/orders/zd-estimate-external-session";
 import { decideZdEstimateAutorunVsExternalSession } from "@/lib/orders/zd-estimate-external-session-autorun";
 import {
+  zdEstimateStickyToastClass,
+  zdEstimateStickyToastStackIndices,
+} from "@/lib/orders/zd-estimate-sticky-toast-stack";
+import {
   buildZdEstimateUiSessionSnapshot,
   historyEntriesFromMap,
   historyMapFromEntries,
@@ -122,6 +126,7 @@ import {
   zdEstimateLaunchReadyToastDescription,
   zdEstimateLaunchReadyToastTitle,
   zdEstimateRecountListStatus,
+  zdEstimateRecountClosedPreviousSessionPrefix,
   zdEstimateRecountOverlayHint,
   zdEstimateRecountOverlayMessage,
   buildImplicitPieceSnapshotNotice,
@@ -142,7 +147,6 @@ import {
   zdEstimateExternalSessionAutorunConflictMessage,
   zdEstimateExternalSessionAutorunResumeLabel,
   zdEstimateExternalSessionAutorunDiscardLabel,
-  zdEstimateExternalSessionReplacedByDailyLaunchToast,
   zdEstimateExternalSessionScopeChangeTitle,
   zdEstimateExternalSessionScopeChangeMessage,
   zdEstimateExternalSessionScopeChangeConfirmLabel,
@@ -379,9 +383,7 @@ import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
 import {
   floatingToastAboveZdStickyClass,
-  floatingToastAboveZdStickyStackClass,
   floatingToastAboveZdStickyTallClass,
-  floatingToastAboveZdStickyTallStackClass,
 } from "@/lib/ui/sales-mobile-chrome";
 import {
   checkboxBrandClass,
@@ -1056,11 +1058,10 @@ export function ZdEstimateWorkbench({
     useState(false);
   const autorunReplaceMetaRef = useRef<{
     supplierChanged: boolean;
+    nextSupplierName: string | null;
   } | null>(null);
   /** sessionId z momentu decyzji — nie polegaj na tokenie po async gap. */
   const autorunReplaceSessionIdRef = useRef<string | null>(null);
-  const [externalSessionReplacedToast, setExternalSessionReplacedToast] =
-    useState<{ title: string; description: string } | null>(null);
   const [externalSessionScopeChangeOpen, setExternalSessionScopeChangeOpen] =
     useState(false);
   const sessionResumeStartedAtMsRef = useRef(Date.now());
@@ -3322,6 +3323,7 @@ export function ZdEstimateWorkbench({
         setPrepCollapsed(false);
         setLaunchForceComplete(false);
         setLastEstimateFailed(true);
+        autorunReplaceMetaRef.current = null;
         setScopeNeedsRecount(false);
         setBoostNeedsRecount(false);
         setHistoryNeedsRecount(false);
@@ -3491,22 +3493,35 @@ export function ZdEstimateWorkbench({
         // Po Policz: zwijaj prep — max wysokość tabeli (także recount bez progress shell).
         setPrepCollapsed(true);
         if (useProgressShell) {
+          const closed = autorunReplaceMetaRef.current;
+          autorunReplaceMetaRef.current = null;
           setLaunchReadyMessage(
             zdEstimateLaunchReadyToastDescription({
               doZamowieniaCount: res.meta.doZamowieniaCount,
               pendingIndividualsCount: res.pendingIndividuals?.length ?? 0,
               isLive: bootstrap.ordersIsLive,
+              closedPreviousSession: Boolean(closed),
+              previousSessionSupplierChanged: closed?.supplierChanged,
+              nextSupplierName: closed?.nextSupplierName ?? null,
             })
           );
           setLaunchForceComplete(false);
           setLaunchBlocking(false);
           setRecountStatusMessage(null);
         } else {
+          const closed = autorunReplaceMetaRef.current;
+          autorunReplaceMetaRef.current = null;
+          const recount = zdEstimateRecountListStatus({
+            doZamowieniaCount: res.meta.doZamowieniaCount,
+            durationMs: res.meta.durationMs,
+          });
           setRecountStatusMessage(
-            zdEstimateRecountListStatus({
-              doZamowieniaCount: res.meta.doZamowieniaCount,
-              durationMs: res.meta.durationMs,
-            })
+            closed
+              ? `${zdEstimateRecountClosedPreviousSessionPrefix({
+                  supplierChanged: closed.supplierChanged,
+                  nextSupplierName: closed.nextSupplierName,
+                })}${recount}`
+              : recount
           );
         }
       };
@@ -3694,6 +3709,7 @@ export function ZdEstimateWorkbench({
       };
       autorunReplaceMetaRef.current = {
         supplierChanged: decision.supplierChanged,
+        nextSupplierName: launch?.supplierName ?? null,
       };
       autorunReplaceSessionIdRef.current = token.sessionId;
       setSessionResumeBlocking(false);
@@ -3775,16 +3791,8 @@ export function ZdEstimateWorkbench({
         return;
       }
       const meta = autorunReplaceMetaRef.current;
-      autorunReplaceMetaRef.current = null;
+      // Meta zostaje do toastu „Lista gotowa” — nie kasuj tu (unikaj 2 nakładających się toastów).
       autorunReplaceSessionIdRef.current = null;
-      if (meta) {
-        setExternalSessionReplacedToast(
-          zdEstimateExternalSessionReplacedByDailyLaunchToast({
-            supplierChanged: meta.supplierChanged,
-            nextSupplierName: launch?.supplierName ?? null,
-          })
-        );
-      }
       // Odblokuj autorun effect (claim + Policz), nie odpalaj estimate tutaj.
       externalSessionAutorunPendingRef.current = null;
       externalSessionAutorunBlockedRef.current = false;
@@ -3793,11 +3801,7 @@ export function ZdEstimateWorkbench({
     return () => {
       cancelled = true;
     };
-  }, [
-    externalSessionAutorunReplacePending,
-    endExternalSession,
-    launch?.supplierName,
-  ]);
+  }, [externalSessionAutorunReplacePending, endExternalSession]);
 
   const openCreateZdModal = useCallback(() => {
     setLinkZdOpen(false);
@@ -4575,6 +4579,16 @@ export function ZdEstimateWorkbench({
   }, [lines, selected]);
 
   const selectedCount = selectedLines.length;
+
+  const stickyToastTallDock = Boolean(
+    stickyCreateGateCaption || selectedCount > 0
+  );
+  const stickyToastStack = zdEstimateStickyToastStackIndices({
+    launchReady: Boolean(launchReadyMessage),
+    sessionRestored: Boolean(externalSessionRestoredToast),
+    recount: Boolean(recountStatusMessage),
+    settingsLive: Boolean(settingsLiveMessage),
+  });
 
   // Live count dla cleanup scrolla (Strict Mode / rapid toggle) — layout, nie render.
   useLayoutEffect(() => {
@@ -5658,12 +5672,10 @@ export function ZdEstimateWorkbench({
           description={launchReadyMessage}
           durationMs={6500}
           onDismiss={() => setLaunchReadyMessage(null)}
-          className={cn(
-            floatingToastAboveZdStickyClass,
-            stickyCreateGateCaption || selectedCount > 0
-              ? floatingToastAboveZdStickyTallClass
-              : undefined
-          )}
+          className={zdEstimateStickyToastClass({
+            stackIndex: stickyToastStack.launchReady ?? 0,
+            tallDock: stickyToastTallDock,
+          })}
         />
       ) : null}
 
@@ -5674,38 +5686,10 @@ export function ZdEstimateWorkbench({
           description={externalSessionRestoredToast}
           durationMs={8000}
           onDismiss={() => setExternalSessionRestoredToast(null)}
-          className={cn(
-            floatingToastAboveZdStickyClass,
-            stickyCreateGateCaption || selectedCount > 0
-              ? floatingToastAboveZdStickyTallClass
-              : undefined,
-            launchReadyMessage
-              ? stickyCreateGateCaption || selectedCount > 0
-                ? floatingToastAboveZdStickyTallStackClass
-                : floatingToastAboveZdStickyStackClass
-              : undefined
-          )}
-        />
-      ) : null}
-
-      {externalSessionReplacedToast ? (
-        <Toast
-          tone="warning"
-          title={externalSessionReplacedToast.title}
-          description={externalSessionReplacedToast.description}
-          durationMs={6500}
-          onDismiss={() => setExternalSessionReplacedToast(null)}
-          className={cn(
-            floatingToastAboveZdStickyClass,
-            stickyCreateGateCaption || selectedCount > 0
-              ? floatingToastAboveZdStickyTallClass
-              : undefined,
-            launchReadyMessage || externalSessionRestoredToast
-              ? stickyCreateGateCaption || selectedCount > 0
-                ? floatingToastAboveZdStickyTallStackClass
-                : floatingToastAboveZdStickyStackClass
-              : undefined
-          )}
+          className={zdEstimateStickyToastClass({
+            stackIndex: stickyToastStack.sessionRestored ?? 0,
+            tallDock: stickyToastTallDock,
+          })}
         />
       ) : null}
 
@@ -5717,17 +5701,10 @@ export function ZdEstimateWorkbench({
           description={recountStatusMessage}
           durationMs={4200}
           onDismiss={() => setRecountStatusMessage(null)}
-          className={cn(
-            floatingToastAboveZdStickyClass,
-            stickyCreateGateCaption || selectedCount > 0
-              ? floatingToastAboveZdStickyTallClass
-              : undefined,
-            launchReadyMessage || externalSessionRestoredToast
-              ? stickyCreateGateCaption || selectedCount > 0
-                ? floatingToastAboveZdStickyTallStackClass
-                : floatingToastAboveZdStickyStackClass
-              : undefined
-          )}
+          className={zdEstimateStickyToastClass({
+            stackIndex: stickyToastStack.recount ?? 0,
+            tallDock: stickyToastTallDock,
+          })}
         />
       ) : null}
 
@@ -5739,19 +5716,10 @@ export function ZdEstimateWorkbench({
           description={settingsLiveMessage}
           durationMs={3200}
           onDismiss={() => setSettingsLiveMessage(null)}
-          className={cn(
-            floatingToastAboveZdStickyClass,
-            stickyCreateGateCaption || selectedCount > 0
-              ? floatingToastAboveZdStickyTallClass
-              : undefined,
-            launchReadyMessage ||
-              externalSessionRestoredToast ||
-              recountStatusMessage
-              ? stickyCreateGateCaption || selectedCount > 0
-                ? floatingToastAboveZdStickyTallStackClass
-                : floatingToastAboveZdStickyStackClass
-              : undefined
-          )}
+          className={zdEstimateStickyToastClass({
+            stackIndex: stickyToastStack.settingsLive ?? 0,
+            tallDock: stickyToastTallDock,
+          })}
         />
       ) : null}
 
