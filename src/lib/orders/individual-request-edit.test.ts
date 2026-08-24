@@ -6,6 +6,8 @@ import {
   normalizeAddIndividualOrdersInput,
   resolveIndividualRequestEditLineId,
   toIndividualRequestEditLinePayload,
+  type AddIndividualOrdersEntry,
+  type AddIndividualOrdersInput,
 } from "./individual-request-edit";
 import type { IndividualOrder } from "@/types/database";
 
@@ -189,7 +191,9 @@ describe("editRequestNoteForSave", () => {
 
 describe("normalizeAddIndividualOrdersInput", () => {
   it("tablica entries — bez stock i ack", () => {
-    const entries = [{ product: "A", quantity: "1" }];
+    const entries: AddIndividualOrdersEntry[] = [
+      { salesPersonId: "sp1", product: "A", quantity: "1" },
+    ];
     expect(normalizeAddIndividualOrdersInput(entries)).toEqual({
       entries,
       acknowledgeSufficientStock: undefined,
@@ -200,8 +204,8 @@ describe("normalizeAddIndividualOrdersInput", () => {
     const stockByTwId = {
       1: { onHand: 5, reserved: 0, available: 5, source: "subiekt" as const },
     };
-    const input = {
-      entries: [{ product: "B", quantity: "2", subiektTwId: 1 }],
+    const input: AddIndividualOrdersInput = {
+      entries: [{ salesPersonId: "sp1", product: "B", quantity: "2", subiektTwId: 1 }],
       acknowledgeSufficientStock: true,
       stockByTwId,
     };
