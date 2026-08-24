@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/Button";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import {
   collectProcurementSupplierBlockOrderIds,
+  procurementBlockGroupCountPhrase,
   procurementSupplierBlockConfirmCopy,
   procurementSupplierBlockHasInfoViaPanel,
   procurementSupplierBlockScopeKey,
@@ -18,18 +19,33 @@ import {
   procurementGlowneButtonTitle,
 } from "@/lib/orders/glowne-action-ui";
 import { cn } from "@/lib/cn";
-import { panelSegmentOutlineClass, panelSegmentPrimaryClass } from "@/lib/ui/ontime-theme";
-import { buttonGroupItemClass, panelActionBarShellClass } from "@/lib/ui/surfaces";
+import {
+  panelSegmentOutlineClass,
+  panelSegmentPrimaryClass,
+  type DailyPanelUnseenVariant,
+} from "@/lib/ui/ontime-theme";
+import { buttonGroupItemClass, panelActionBarFooterShellClass } from "@/lib/ui/surfaces";
 
-function ActionCount({ n, variant }: { n: number; variant: "primary" | "outline" }) {
+function ActionCount({
+  n,
+  variant,
+  tone = "prosby",
+}: {
+  n: number;
+  variant: "primary" | "outline";
+  tone?: DailyPanelUnseenVariant;
+}) {
   if (n < 2) return null;
+  const isStockOut = tone === "stockOut";
   return (
     <span
       className={cn(
         "ml-1 inline-flex min-w-[1.15rem] justify-center rounded px-1 text-[10px] font-bold tabular-nums",
         variant === "primary"
           ? "bg-white/25 text-white ring-1 ring-inset ring-white/35"
-          : "bg-indigo-600/15 text-indigo-900 ring-1 ring-inset ring-indigo-300/40"
+          : isStockOut
+            ? "bg-amber-600/15 text-amber-950 ring-1 ring-inset ring-amber-300/40"
+            : "bg-indigo-600/15 text-indigo-900 ring-1 ring-inset ring-indigo-300/40"
       )}
     >
       {n}
@@ -41,10 +57,15 @@ export function ProcurementSupplierBlockActionBar({
   block,
   pending,
   run,
+  itemKind = "request",
+  tone = "prosby",
 }: {
   block: ProcurementSupplierBlock;
   pending: boolean;
   run: DailyPanelRunFn;
+  /** Prośby vs sygnały stock-out — copy w modalu i toastach. */
+  itemKind?: "request" | "signal";
+  tone?: DailyPanelUnseenVariant;
 }) {
   const orderIds = useMemo(
     () => collectProcurementSupplierBlockOrderIds(block),
@@ -52,8 +73,10 @@ export function ProcurementSupplierBlockActionBar({
   );
   const hasInfoViaPanel = procurementSupplierBlockHasInfoViaPanel(block);
   const groupCount = block.requestGroups.length;
+  const groupPhrase = procurementBlockGroupCountPhrase(groupCount, itemKind);
   const scope = { scope: procurementSupplierBlockScopeKey(block.supplierId) };
   const disabled = pending || orderIds.length === 0;
+  const isStockOut = tone === "stockOut";
   const glowneLabel = procurementGlowneButtonLabel({
     hasInfoViaPanel,
     supplierOrderOnDemand: block.supplierOrderOnDemand,
@@ -65,7 +88,7 @@ export function ProcurementSupplierBlockActionBar({
 
   const [confirmMode, setConfirmMode] = useState<"GLOWNE" | "POBOCZNE" | null>(null);
   const confirmCopy = confirmMode
-    ? procurementSupplierBlockConfirmCopy(block, confirmMode)
+    ? procurementSupplierBlockConfirmCopy(block, confirmMode, itemKind)
     : null;
 
   const runMode = (mode: "GLOWNE" | "POBOCZNE") => {
@@ -74,9 +97,9 @@ export function ProcurementSupplierBlockActionBar({
       () => actionProcessIndividual(orderIds, mode),
       mode === "GLOWNE"
         ? block.supplierOrderOnDemand
-          ? `Oznaczono ${groupCount} ${groupCount === 1 ? "prośbę" : "prośby"} u ${block.supplierName} jako główne (bez terminu)`
-          : `Oznaczono ${groupCount} ${groupCount === 1 ? "prośbę" : "prośby"} u ${block.supplierName} jako główne`
-        : `Oznaczono ${groupCount} ${groupCount === 1 ? "prośbę" : "prośby"} u ${block.supplierName} jako uzupełniające`,
+          ? `Oznaczono ${groupPhrase} u ${block.supplierName} jako główne (bez terminu)`
+          : `Oznaczono ${groupPhrase} u ${block.supplierName} jako główne`
+        : `Oznaczono ${groupPhrase} u ${block.supplierName} jako uzupełniające`,
       mode === "GLOWNE"
         ? "Oznaczanie wszystkich jako główne…"
         : "Oznaczanie wszystkich jako uzupełniające…",
@@ -138,7 +161,7 @@ export function ProcurementSupplierBlockActionBar({
       >
         <ButtonGroup
           ariaLabel={`Główne lub uzupełniające — wszystkie grupy, ${block.supplierName}`}
-          className={cn(panelActionBarShellClass, "w-full shrink-0 sm:w-auto")}
+          className={panelActionBarFooterShellClass}
           allowOverflow
         >
           <button
@@ -146,15 +169,17 @@ export function ProcurementSupplierBlockActionBar({
             disabled={disabled}
             className={cn(
               buttonGroupItemClass,
-              panelSegmentPrimaryClass,
-              "min-w-0 flex-1 px-2.5 sm:flex-none",
+              isStockOut
+                ? "bg-amber-600 text-white hover:bg-amber-700"
+                : panelSegmentPrimaryClass,
+              "min-w-0 flex-1 whitespace-nowrap px-2 text-[12px]",
               "transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"
             )}
             title={glowneTitle}
             onClick={() => setConfirmMode("GLOWNE")}
           >
             {glowneLabel}
-            <ActionCount n={groupCount} variant="primary" />
+            <ActionCount n={groupCount} variant="primary" tone={tone} />
           </button>
           <button
             type="button"
@@ -162,13 +187,14 @@ export function ProcurementSupplierBlockActionBar({
             className={cn(
               buttonGroupItemClass,
               panelSegmentOutlineClass,
-              "min-w-0 flex-1 px-2 sm:flex-none",
-              hasInfoViaPanel && "px-1.5"
+              "min-w-0 flex-1 whitespace-nowrap px-2 text-[12px]",
+              hasInfoViaPanel && "px-1.5",
+              isStockOut && "text-amber-950 hover:bg-amber-50"
             )}
             onClick={() => setConfirmMode("POBOCZNE")}
           >
             {hasInfoViaPanel ? "Uzupełn." : "Uzupełniające"}
-            <ActionCount n={groupCount} variant="outline" />
+            <ActionCount n={groupCount} variant="outline" tone={tone} />
           </button>
         </ButtonGroup>
       </div>

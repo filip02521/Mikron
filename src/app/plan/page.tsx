@@ -95,8 +95,8 @@ export default async function PlanPage({
   let openOrderCountBySupplier: Record<string, number> = {};
   let statsBySupplierId: Record<string, DeliveryStats> = {};
   let teethOpenSupplierIds: string[] = [];
-  let teethScheduleBySupplierId: Record<string, TeethSupplierSchedule> = {};
-  let teethHistoryEtaLabelBySupplierId: Record<string, string> = {};
+  const teethScheduleBySupplierId: Record<string, TeethSupplierSchedule> = {};
+  const teethHistoryEtaLabelBySupplierId: Record<string, string> = {};
 
   try {
     const [supplierRows, statsRows, onVacationNow] = await Promise.all([

@@ -100,10 +100,48 @@ export function procurementProductCountLabel(n: number): string {
   return `${n} produktów`;
 }
 
+/** Etykieta „jeszcze N produktów” przy zwiniętej prośbie wielopozycyjnej. */
+export function procurementMoreProductsLabel(remaining: number): string {
+  if (remaining <= 0) return "";
+  if (remaining === 1) return "Jeszcze 1 produkt";
+  if (remaining >= 2 && remaining <= 4) return `Jeszcze ${remaining} produkty`;
+  return `Jeszcze ${remaining} produktów`;
+}
+
 export function procurementUnseenGroupsLabel(n: number): string {
   if (n === 1) return "nowa";
   if (n >= 2 && n <= 4) return "nowe";
   return "nowych";
+}
+
+/** Licznik grup w badge / aria — prośby vs sygnały stock-out. */
+export function procurementBlockGroupCountLabel(
+  n: number,
+  kind: "request" | "signal" = "request"
+): string {
+  if (kind === "signal") {
+    if (n === 1) return "1 sygnał";
+    if (n >= 2 && n <= 4) return `${n} sygnały`;
+    return `${n} sygnałów`;
+  }
+  if (n === 1) return "1 prośba";
+  if (n >= 2 && n <= 4) return `${n} prośby`;
+  return `${n} prośb`;
+}
+
+/** Forma dopełniacza / biernika w zdaniach („Rozwiń N …”, „Oznaczysz N …”). */
+export function procurementBlockGroupCountPhrase(
+  n: number,
+  kind: "request" | "signal" = "request"
+): string {
+  if (kind === "signal") {
+    if (n === 1) return "1 sygnał";
+    if (n >= 2 && n <= 4) return `${n} sygnały`;
+    return `${n} sygnałów`;
+  }
+  if (n === 1) return "1 prośbę";
+  if (n >= 2 && n <= 4) return `${n} prośby`;
+  return `${n} prośb`;
 }
 
 /** Grupy widoczne w UI (pomija zwinięte bloki wieloosobowe u dostawcy). */
@@ -211,7 +249,8 @@ export function procurementSupplierBlockPeopleLine(
 
 export function procurementSupplierBlockConfirmCopy(
   block: ProcurementSupplierBlock,
-  mode: "GLOWNE" | "POBOCZNE"
+  mode: "GLOWNE" | "POBOCZNE",
+  kind: "request" | "signal" = "request"
 ): { title: string; message: string; confirmLabel: string; people: string[] } {
   const groupCount = block.requestGroups.length;
   const products = procurementProductCountLabel(block.lineCount);
@@ -229,9 +268,7 @@ export function procurementSupplierBlockConfirmCopy(
           ? `Główne (bez terminu) u ${block.supplierName}`
           : `Główne u ${block.supplierName}`
         : `Uzupełniające u ${block.supplierName}`,
-    message: `Oznaczysz ${groupCount} ${
-      groupCount === 1 ? "prośbę" : groupCount < 5 ? "prośby" : "prośb"
-    } (${products}) jako ${action}: ${procurementSupplierBlockPeopleLine(block)}. Po potwierdzeniu możesz cofnąć w ciągu 10 sekund.${onDemandNote}`,
+    message: `Oznaczysz ${procurementBlockGroupCountPhrase(groupCount, kind)} (${products}) jako ${action}: ${procurementSupplierBlockPeopleLine(block)}. Po potwierdzeniu możesz cofnąć w ciągu 10 sekund.${onDemandNote}`,
     confirmLabel:
       mode === "GLOWNE"
         ? `${procurementGlowneButtonLabel({

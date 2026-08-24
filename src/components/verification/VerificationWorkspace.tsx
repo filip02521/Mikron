@@ -16,6 +16,7 @@ import {
   actionCompleteVerification,
 } from "@/app/actions/admin";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
+import { stickyAboveMobileChromeClass } from "@/lib/ui/sales-mobile-chrome";
 import { actionLookupSupplierFromCatalogTwId } from "@/app/actions/subiekt";
 import { assessRequestCompleteness } from "@/lib/orders/request-completeness";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -770,7 +771,10 @@ export function VerificationWorkspace({
               className={cn(
                 "flex flex-wrap items-center gap-2 border-t border-slate-200 bg-white px-3 py-3 sm:px-4 lg:px-5",
                 !inModal &&
-                  "sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] z-10 bg-white/95 shadow-[0_-4px_16px_-8px_rgba(15,23,42,0.12)] backdrop-blur-sm md:bottom-0"
+                  cn(
+                    "sticky z-10 bg-white/95 shadow-[0_-4px_16px_-8px_rgba(15,23,42,0.12)] backdrop-blur-sm",
+                    stickyAboveMobileChromeClass
+                  )
               )}
             >
               <Button

@@ -7,7 +7,11 @@ import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { ProcurementSalesRequestNote } from "@/components/orders/ProcurementSalesRequestNote";
 import { sharedRequestNoteFromLines } from "@/lib/orders/sales-request-note";
 import { cn } from "@/lib/cn";
-import { panelTypography } from "@/lib/ui/ontime-theme";
+import { panelTypography, type DailyPanelUnseenVariant } from "@/lib/ui/ontime-theme";
+import {
+  procurementRequestLineInOrderBodyClass,
+  procurementRequestProductTitleClass,
+} from "@/components/summary/procurement-request-row-styles";
 
 /** Klient prośby — widoczny w wierszu grupy panelu Dziś. */
 export function ProcurementRequestClientMeta({
@@ -39,19 +43,26 @@ export const ProcurementRequestLine = memo(function ProcurementRequestLine({
   suppressRequestNote = false,
   suppressClient = false,
   flagSlot,
+  /** Gdy linia jest w insetcie strefy P — bez drugiej ramki. */
+  inOrderBody = false,
+  tone = "prosby",
 }: {
   line: ForSomeoneLine;
   className?: string;
-  /** Gdy notatka jest już w nagłówku grupy — nie duplikuj na każdej pozycji. */
+  /** Gdy notatka jest już w strefie zamówienia (body) — nie duplikuj na pozycji. */
   suppressRequestNote?: boolean;
-  /** Gdy klient jest już w nagłówku grupy — nie duplikuj na pozycji. */
+  /** Gdy klient jest już pokazany na poziomie grupy — nie duplikuj na pozycji. */
   suppressClient?: boolean;
   flagSlot?: React.ReactNode;
+  inOrderBody?: boolean;
+  tone?: DailyPanelUnseenVariant;
 }) {
   return (
     <li
       className={cn(
-        "rounded-md border border-slate-100/80 bg-slate-50/50 px-2 py-1.5 text-xs",
+        inOrderBody
+          ? procurementRequestLineInOrderBodyClass
+          : "rounded-md border border-slate-100/80 bg-slate-50/50 px-2 py-1.5 text-xs",
         className
       )}
     >
@@ -60,30 +71,34 @@ export const ProcurementRequestLine = memo(function ProcurementRequestLine({
         suppressRequestNote={suppressRequestNote}
         suppressClient={suppressClient}
         flagSlot={flagSlot}
+        tone={tone}
       />
     </li>
   );
 });
 
-/** Jedna pozycja inline w nagłówku grupy (bez osobnej listy). */
+/** Jedna pozycja inline w strefie zamówienia (bez osobnej listy). */
 export const ProcurementRequestLineInline = memo(function ProcurementRequestLineInline({
   line,
   className,
   suppressRequestNote = false,
   suppressClient = false,
+  tone = "prosby",
 }: {
   line: ForSomeoneLine;
   className?: string;
   suppressRequestNote?: boolean;
   suppressClient?: boolean;
+  tone?: DailyPanelUnseenVariant;
 }) {
   return (
-    <div className={cn("mt-1", className)}>
+    <div className={cn(className)}>
       <ProcurementRequestLineContent
         line={line}
         compact
         suppressRequestNote={suppressRequestNote}
         suppressClient={suppressClient}
+        tone={tone}
       />
     </div>
   );
@@ -95,12 +110,14 @@ function ProcurementRequestLineContent({
   suppressRequestNote = false,
   suppressClient = false,
   flagSlot,
+  tone = "prosby",
 }: {
   line: ForSomeoneLine;
   compact?: boolean;
   suppressRequestNote?: boolean;
   suppressClient?: boolean;
   flagSlot?: ReactNode;
+  tone?: DailyPanelUnseenVariant;
 }) {
   const hasSymbol = Boolean(line.symbol && line.symbol !== "-");
   const hasQty = Boolean(
@@ -109,45 +126,45 @@ function ProcurementRequestLineContent({
   const hasMeta = hasSymbol || hasQty;
 
   return (
-    <>
-      <p
-        className={cn(
-          "flex items-start gap-1.5 font-medium text-slate-900",
-          compact ? "text-[11px] leading-snug" : "text-xs"
-        )}
-      >
-        <ProductSourceBadge
-          fromSubiekt={line.fromSubiekt}
-          className={cn("mt-0.5 shrink-0", compact ? "size-4" : "size-5")}
-        />
-        <span className="min-w-0 flex-1">
+    <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] gap-x-1.5 gap-y-0.5">
+      <ProductSourceBadge
+        fromSubiekt={line.fromSubiekt}
+        className={cn("mt-0.5 shrink-0", compact ? "size-4" : "size-5")}
+      />
+      <div className="min-w-0">
+        <p className={procurementRequestProductTitleClass(tone)}>
           {line.products}
-        </span>
-      </p>
-      {flagSlot ? (
-        <div className={cn("mt-1 min-w-0", compact ? "pl-5" : "pl-0")}>{flagSlot}</div>
-      ) : null}
-      {hasMeta ? (
-        <p className={cn("mt-0.5 text-slate-500", compact ? "pl-5 text-[10px]" : "text-xs")}>
-          {hasSymbol ? line.symbol : null}
-          {hasSymbol && hasQty ? " · " : null}
-          {hasQty ? `Ilość: ${line.quantity}` : null}
         </p>
-      ) : null}
-      {line.clientName && !suppressClient ? (
-        <MyOrderAssignedClient
-          name={line.clientName}
-          className={cn(compact ? "mt-1 pl-5" : "mt-1.5")}
-        />
-      ) : null}
-      {line.requestNote && !suppressRequestNote ? (
-        <ProcurementSalesRequestNote
-          note={line.requestNote}
-          compact={compact}
-          className={cn(compact ? "mt-1 pl-5" : "mt-1.5")}
-        />
-      ) : null}
-    </>
+        {flagSlot ? <div className="mt-1 min-w-0">{flagSlot}</div> : null}
+        {hasMeta ? (
+          <p className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 text-[11px] leading-snug text-slate-500">
+            {hasSymbol ? (
+              <span className="font-mono tabular-nums text-slate-500">{line.symbol}</span>
+            ) : null}
+            {hasSymbol && hasQty ? (
+              <span className="text-slate-300" aria-hidden>
+                ·
+              </span>
+            ) : null}
+            {hasQty ? (
+              <span className="tabular-nums">
+                <span className="text-slate-400">Ilość</span> {line.quantity}
+              </span>
+            ) : null}
+          </p>
+        ) : null}
+        {line.clientName && !suppressClient ? (
+          <MyOrderAssignedClient name={line.clientName} className="mt-1" />
+        ) : null}
+        {line.requestNote && !suppressRequestNote ? (
+          <ProcurementSalesRequestNote
+            note={line.requestNote}
+            compact={compact}
+            className="mt-1"
+          />
+        ) : null}
+      </div>
+    </div>
   );
 }
 

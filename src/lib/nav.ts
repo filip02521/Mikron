@@ -583,7 +583,7 @@ const adminMailCenterNavItem: NavItem = {
   mobileSlot: "overflow",
 };
 
-function adminSystemItems(badges: { adminBugReports?: number }): NavItem[] {
+function adminSystemItems(): NavItem[] {
   const compact = {
     tier: "compact" as const,
     mobileSlot: "overflow" as const,
@@ -704,7 +704,7 @@ function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
   if (role === "admin") {
     groups.push({
       title: NAV_SECTION_SYSTEM,
-      items: adminSystemItems(badges),
+      items: adminSystemItems(),
       collapsible: true,
     });
     groups.push({
