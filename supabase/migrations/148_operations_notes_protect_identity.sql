@@ -3,6 +3,7 @@
 CREATE OR REPLACE FUNCTION public.operations_notes_protect_identity()
 RETURNS trigger
 LANGUAGE plpgsql
+SET search_path = public
 AS $$
 BEGIN
   IF NEW.created_by IS DISTINCT FROM OLD.created_by
