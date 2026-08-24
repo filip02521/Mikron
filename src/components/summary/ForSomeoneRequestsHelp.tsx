@@ -110,9 +110,9 @@ export function ForSomeoneRequestsSectionHelp() {
       <HelpBlock title="Obsługa wiersza">
         <ul className="list-disc space-y-1.5 pl-4">
           <li>
-            Na komputerze — przyciski <strong className="font-medium text-slate-800">Główne</strong> /{" "}
-            <strong className="font-medium text-slate-800">Uzupełniające</strong> pojawiają się po
-            najechaniu na kartę (albo focus klawiaturą).
+            Na komputerze — przyciski akcji (Główne/Uzupełniające, Pilne, W razie potrzeby) wysuwają się po
+            chwili trzymania wskaźnika na wierszu (albo od razu po focusie klawiaturą) — przy
+            przesuwaniu myszy lista nie „skacze”.
           </li>
           <li>
             Na tablecie i telefonie — przyciski widoczne cały czas.

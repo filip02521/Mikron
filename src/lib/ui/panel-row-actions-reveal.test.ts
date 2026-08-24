@@ -17,6 +17,14 @@ describe("panelRowActionsInlineEnd reserveSpace", () => {
     const cls = panelRowActionsInlineEndClass({});
     expect(cls).toContain("grid-cols-[0fr]");
     expect(cls).toContain("group-hover/panelRow:grid-cols-[1fr]");
+    expect(cls).toContain("group-hover/panelRow:delay-[450ms]");
+    expect(cls).toContain("group-focus-within/panelRow:grid-cols-[1fr]");
+  });
+
+  it("uses hover intent timing on inline content fade", () => {
+    const cls = panelRowActionsInlineEndContentClass({});
+    expect(cls).toContain("group-hover/panelRow:delay-[450ms]");
+    expect(cls).toContain("group-focus-within/panelRow:opacity-100");
   });
 
   it("uses full width content without slide when reserveSpace", () => {
@@ -32,6 +40,9 @@ describe("panelRowActionsFooterReveal", () => {
     expect(cls).toContain("grid-rows-[0fr]");
     expect(cls).toContain("group-hover/panelRow:grid-rows-[1fr]");
     expect(cls).toContain("group-focus-within/panelRow:grid-rows-[1fr]");
+    expect(cls).toContain("group-hover/panelRow:delay-[450ms]");
+    expect(cls).toContain("delay-[120ms]");
+    expect(cls).toContain("group-focus-within/panelRow:delay-0");
   });
 
   it("stays open when forceVisible", () => {

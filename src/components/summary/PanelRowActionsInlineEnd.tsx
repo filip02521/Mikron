@@ -7,7 +7,7 @@ import {
   panelRowActionsInlineEndInnerClass,
 } from "@/lib/ui/panel-row-actions-reveal";
 
-/** Akcje po prawej z animacją hover — fade + slide (+ opcjonalnie grid 0fr–1fr). */
+/** Akcje po prawej z animacją hover — fade + slide (+ opcjonalnie grid 0fr–1fr). Desktop: ~450 ms hover intent. */
 export function PanelRowActionsInlineEnd({
   forceVisible = false,
   reserveSpace = false,

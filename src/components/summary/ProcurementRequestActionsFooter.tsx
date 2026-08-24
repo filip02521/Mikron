@@ -9,8 +9,8 @@ import {
 } from "@/lib/ui/panel-row-actions-reveal";
 
 /**
- * Footer Główne/Uzupełniające — na hover (desktop) zwija się, na touch zawsze widoczny.
- * Wymaga `group/panelRow` na karcie / BlockBar.
+ * Footer Główne/Uzupełniające — na hover (desktop) zwija się; wysuwa po ~450 ms na karcie.
+ * Touch / forceVisible = zawsze widoczny. Wymaga `group/panelRow` na karcie / BlockBar.
  */
 export function ProcurementRequestActionsFooter({
   forceVisible = false,
