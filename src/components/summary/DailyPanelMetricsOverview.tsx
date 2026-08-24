@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import type { DailyInboxSummary } from "@/lib/orders/procurement-daily-ui";
 import { useSupplierHubContext } from "@/components/layout/AppRoleContext";
 import { supplierVacationsHref } from "@/lib/supplier-hub";
+import { DailyPanelVacationNotice } from "@/components/summary/DailyPanelVacationNotice";
 import {
   DailySectionIcon,
   IconCalendar,
@@ -216,27 +216,11 @@ export function DailyPanelMetricsOverview({
 
   const vacationBanner =
     urgentVacationCount > 0 ? (
-      <div
-        className="mt-3 rounded-md border border-amber-200/90 bg-amber-50/70 px-3 py-2.5 text-sm text-amber-950"
-        role="status"
-      >
-        <p className="font-medium">
-          Urlop wpływa na{" "}
-          {urgentVacationCount === 1
-            ? "1 dostawcę"
-            : `${urgentVacationCount} dostawców`}{" "}
-          na liście zaległe / na dziś
-        </p>
-        <p className="mt-0.5 text-xs leading-relaxed text-amber-900/90">
-          Szczegóły przy każdej karcie harmonogramu.{" "}
-          <Link
-            href={vacationsHref}
-            className="font-medium underline hover:text-amber-950"
-          >
-            Urlopy
-          </Link>
-          .
-        </p>
+      <div className="mt-3">
+        <DailyPanelVacationNotice
+          count={urgentVacationCount}
+          vacationsHref={vacationsHref}
+        />
       </div>
     ) : null;
 

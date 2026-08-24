@@ -10,6 +10,7 @@ import type { DailyPanelView } from "@/lib/orders/daily-panel-view";
 import { DailyDayProgressBar } from "@/components/summary/DailyDayProgressBar";
 import { DailyPanelQueueSteps } from "@/components/summary/DailyPanelQueueSteps";
 import { DailyPanelShortcutsPopover } from "@/components/summary/DailyPanelShortcutsPopover";
+import { DailyPanelVacationNotice } from "@/components/summary/DailyPanelVacationNotice";
 import { cn } from "@/lib/cn";
 import {
   panelChromeInsetClass,
@@ -244,15 +245,11 @@ function StatusBandBody({
       ) : null}
 
       {urgentVacationCount > 0 ? (
-        <p className={cn(panelTypography.caption, "leading-snug text-amber-900/90")} role="status">
-          <span className="font-medium text-amber-950">
-            Urlop: {urgentVacationCount}{" "}
-            {urgentVacationCount === 1 ? "dostawca" : "dostawców"} na liście zaległe / na dziś.
-          </span>{" "}
-          <Link href={vacationsHref} className="font-medium underline hover:text-amber-950">
-            Urlopy
-          </Link>
-        </p>
+        <DailyPanelVacationNotice
+          count={urgentVacationCount}
+          vacationsHref={vacationsHref}
+          density="compact"
+        />
       ) : null}
     </>
   );
