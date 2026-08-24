@@ -38,6 +38,22 @@ export function isDailyPrepareZdAutorunLaunch(input: {
   );
 }
 
+function wantsRunnableAutorun(input: {
+  autorun: boolean;
+  needsAssign: boolean;
+  hasRunnableScope: boolean;
+  hasLaunchKey: boolean;
+  bootstrapConfigured: boolean;
+}): boolean {
+  return Boolean(
+    input.autorun &&
+      !input.needsAssign &&
+      input.bootstrapConfigured &&
+      input.hasRunnableScope &&
+      input.hasLaunchKey
+  );
+}
+
 export function decideZdEstimateAutorunVsExternalSession(input: {
   hasActiveToken: boolean;
   tokenSupplierId: string | null | undefined;
@@ -53,15 +69,7 @@ export function decideZdEstimateAutorunVsExternalSession(input: {
     return { action: "none" };
   }
 
-  const wantsAutorun =
-    input.autorun &&
-    !input.needsAssign &&
-    input.bootstrapConfigured &&
-    input.hasRunnableScope &&
-    input.hasLaunchKey;
-
   if (
-    wantsAutorun &&
     isDailyPrepareZdAutorunLaunch({
       fromDaily: input.fromDaily,
       autorun: input.autorun,
@@ -87,7 +95,7 @@ export function decideZdEstimateAutorunVsExternalSession(input: {
     };
   }
 
-  if (wantsAutorun) {
+  if (wantsRunnableAutorun(input)) {
     return { action: "conflict_dialog" };
   }
 

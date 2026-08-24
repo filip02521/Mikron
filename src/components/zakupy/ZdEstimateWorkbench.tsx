@@ -1057,6 +1057,8 @@ export function ZdEstimateWorkbench({
   const autorunReplaceMetaRef = useRef<{
     supplierChanged: boolean;
   } | null>(null);
+  /** sessionId z momentu decyzji — nie polegaj na tokenie po async gap. */
+  const autorunReplaceSessionIdRef = useRef<string | null>(null);
   const [externalSessionReplacedToast, setExternalSessionReplacedToast] =
     useState<{ title: string; description: string } | null>(null);
   const [externalSessionScopeChangeOpen, setExternalSessionScopeChangeOpen] =
@@ -3693,6 +3695,7 @@ export function ZdEstimateWorkbench({
       autorunReplaceMetaRef.current = {
         supplierChanged: decision.supplierChanged,
       };
+      autorunReplaceSessionIdRef.current = token.sessionId;
       setSessionResumeBlocking(false);
       setSessionRestorePending(false);
       setSessionResumeReturningFromAway(false);
@@ -3758,16 +3761,22 @@ export function ZdEstimateWorkbench({
     });
   }, []);
 
-  // Daily „Przygotuj ZD”: zamknij poprzednią sesję (token + DB), potem autorun.
+  // Daily „Przygotuj ZD”: zamknij poprzednią sesję (token + DB), potem odblokuj
+  // zwykły autorun (claim/markDone) — bez runPending, żeby Strict Mode remount
+  // mógł ponowić Policz gdy ten effect zostanie anulowany po clear tokena.
   useEffect(() => {
     if (!externalSessionAutorunReplacePending) return;
     let cancelled = false;
+    const sessionId = autorunReplaceSessionIdRef.current;
     void (async () => {
-      await endExternalSession();
-      if (cancelled) return;
+      await endExternalSession({ sessionId });
+      if (cancelled) {
+        // Token już skasowany; nie markDone — remount wejdzie w zwykły autorun.
+        return;
+      }
       const meta = autorunReplaceMetaRef.current;
       autorunReplaceMetaRef.current = null;
-      setExternalSessionAutorunReplacePending(false);
+      autorunReplaceSessionIdRef.current = null;
       if (meta) {
         setExternalSessionReplacedToast(
           zdEstimateExternalSessionReplacedByDailyLaunchToast({
@@ -3776,7 +3785,10 @@ export function ZdEstimateWorkbench({
           })
         );
       }
-      runPendingAutorunAfterSessionDiscard();
+      // Odblokuj autorun effect (claim + Policz), nie odpalaj estimate tutaj.
+      externalSessionAutorunPendingRef.current = null;
+      externalSessionAutorunBlockedRef.current = false;
+      setExternalSessionAutorunReplacePending(false);
     })();
     return () => {
       cancelled = true;
@@ -3784,7 +3796,6 @@ export function ZdEstimateWorkbench({
   }, [
     externalSessionAutorunReplacePending,
     endExternalSession,
-    runPendingAutorunAfterSessionDiscard,
     launch?.supplierName,
   ]);
 
@@ -4047,6 +4058,7 @@ export function ZdEstimateWorkbench({
   /** Jeden spokojny panel — pierwsze Policz (menu i daily), bez overlay na formularzu. */
   const showLaunchProgress = Boolean(
     launchBlocking ||
+      externalSessionAutorunReplacePending ||
       (estimating && !lines && !launchReadyMessage)
   );
 

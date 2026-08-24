@@ -3,6 +3,7 @@ import {
   decideZdEstimateAutorunVsExternalSession,
   isDailyPrepareZdAutorunLaunch,
 } from "@/lib/orders/zd-estimate-external-session-autorun";
+import { zdEstimateExternalSessionReplacedByDailyLaunchToast } from "@/lib/orders/zd-estimate-ui-copy";
 
 describe("isDailyPrepareZdAutorunLaunch", () => {
   const base = {
@@ -27,6 +28,21 @@ describe("isDailyPrepareZdAutorunLaunch", () => {
       false
     );
     expect(isDailyPrepareZdAutorunLaunch({ ...base, autorun: false })).toBe(
+      false
+    );
+  });
+
+  it("false przy needsAssign / brak bootstrapu / brak zakresu", () => {
+    expect(isDailyPrepareZdAutorunLaunch({ ...base, needsAssign: true })).toBe(
+      false
+    );
+    expect(
+      isDailyPrepareZdAutorunLaunch({ ...base, bootstrapConfigured: false })
+    ).toBe(false);
+    expect(
+      isDailyPrepareZdAutorunLaunch({ ...base, hasRunnableScope: false })
+    ).toBe(false);
+    expect(isDailyPrepareZdAutorunLaunch({ ...base, hasLaunchKey: false })).toBe(
       false
     );
   });
@@ -62,6 +78,22 @@ describe("decideZdEstimateAutorunVsExternalSession", () => {
         supplierId: null,
         autorun: false,
         needsAssign: false,
+        hasRunnableScope: false,
+        hasLaunchKey: false,
+        bootstrapConfigured: true,
+      })
+    ).toEqual({ action: "restore" });
+  });
+
+  it("token + daily + needsAssign → restore (bez autorun)", () => {
+    expect(
+      decideZdEstimateAutorunVsExternalSession({
+        hasActiveToken: true,
+        tokenSupplierId: "old",
+        fromDaily: true,
+        supplierId: "new",
+        autorun: true,
+        needsAssign: true,
         hasRunnableScope: false,
         hasLaunchKey: false,
         bootstrapConfigured: true,
@@ -116,9 +148,7 @@ describe("decideZdEstimateAutorunVsExternalSession", () => {
 });
 
 describe("zdEstimateExternalSessionReplacedByDailyLaunchToast", () => {
-  it("opisuje zmianę dostawcy", async () => {
-    const { zdEstimateExternalSessionReplacedByDailyLaunchToast } =
-      await import("@/lib/orders/zd-estimate-ui-copy");
+  it("opisuje zmianę dostawcy", () => {
     expect(
       zdEstimateExternalSessionReplacedByDailyLaunchToast({
         supplierChanged: true,
@@ -127,6 +157,18 @@ describe("zdEstimateExternalSessionReplacedByDailyLaunchToast", () => {
     ).toEqual({
       title: "Zamknięto poprzednią sesję",
       description: "Liczymy listę ZD dla Ivoclar.",
+    });
+  });
+
+  it("ten sam dostawca — ogólny opis", () => {
+    expect(
+      zdEstimateExternalSessionReplacedByDailyLaunchToast({
+        supplierChanged: false,
+        nextSupplierName: "Ivoclar",
+      })
+    ).toEqual({
+      title: "Zamknięto poprzednią sesję",
+      description: "Liczymy listę ZD od nowa.",
     });
   });
 });
