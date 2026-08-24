@@ -1,7 +1,7 @@
 /** Podpowiedzi nagłówków kart — dymek ? przy tytule. */
 export const SALES_PAGE_HEADER_HINTS = {
   moje: "Tu śledzisz swoje prośby — co jest do odbioru, co czeka u dostawcy i co obserwujemy na magazynie.",
-  plan: "Harmonogram zamówień u dostawców powiązanych z Twoimi prośbami — terminy i wyszukiwarka.",
+  plan: "Pokazuje, kiedy dział zakupów zamawia u dostawcy i kiedy towar zwykle trafia na magazyn — przy Twoich otwartych prośbach oraz w wyszukiwarce.",
   planProcurement:
     "Pełny harmonogram zakupów na ten tydzień — podgląd terminów u wszystkich dostawców.",
   tablica:
@@ -12,7 +12,7 @@ export const SALES_PAGE_HEADER_HINTS = {
     "Dodawanie osób, przypisanie do grupy, konta logowania, hasła startowe i linki zaproszenia.",
   teamGroups: "Grupy sortują listę handlowców w podglądzie kierownika.",
   operationsNotepad:
-    "Notatki operacyjne działu — widoczne w zespole zakupów i magazynu, inne niż prywatny notatnik handlowca.",
+    "Notatki działu — prywatne tylko dla Ciebie; wspólne może edytować, archiwizować i przestawiać cały zespół w tym dziale.",
   dailyPanel:
     "Kolejka zakupów — prośby handlowców na dziś, plan tygodnia i wyjątki poza harmonogramem.",
   verification:
@@ -32,7 +32,7 @@ export function salesHistoriaHeaderHint(months: number, previewCount: number): s
 export const SALES_SEARCH_COPY = {
   moje: "Szukaj po produkcie, dostawcy, kliencie, symbolu lub kodzie PLU",
   zkList: "Klient, numer ZK lub produkt na Twojej liście",
-  planSupplier: "Fragment nazwy dostawcy w harmonogramie",
+  planSupplier: "Wpisz fragment nazwy dostawcy",
   planProcurementSupplier: "Nazwa dostawcy w harmonogramie zakupów",
   boardQuestions: "Temat, treść, autor lub fragment odpowiedzi",
   boardAnnouncements: "Tytuł, treść lub autor ogłoszenia",

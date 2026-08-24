@@ -29,6 +29,7 @@ import {
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import { buildOnboardingPlanDemo } from "@/lib/sales/sales-onboarding-demo-data";
 import { SALES_PAGE_HEADER_HINTS, SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
+import { salesPlanYouHaveOpenRequests } from "@/lib/sales/sales-plan-ui-copy";
 import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
 
 const SEARCH_TABLE_LIMIT = 25;
@@ -42,6 +43,16 @@ export function PlanClient(props: {
   statsBySupplierId?: Record<string, DeliveryStats>;
   error?: string | null;
   pageTitle?: string;
+  /** Admin ?dla= — bez CTA zgłoszenia prośby. */
+  adminReadOnlyPreview?: boolean;
+  /** Dostawcy z otwartą prośbą zębową (dla linii toru zębów w expand). */
+  teethOpenSupplierIds?: string[];
+  teethScheduleBySupplierId?: Record<
+    string,
+    import("@/types/database").TeethSupplierSchedule
+  >;
+  /** ETA z historii zębów (label), gdy brak stałego lead. */
+  teethHistoryEtaLabelBySupplierId?: Record<string, string>;
 }) {
   const tourDemo = useSalesOnboardingDemo("plan");
   const demo = useMemo(() => buildOnboardingPlanDemo(), []);
@@ -66,6 +77,15 @@ export function PlanClient(props: {
         openOrderCountBySupplier={resolved.openOrderCountBySupplier ?? {}}
         tourPreview={tourDemo}
         error={tourDemo ? null : props.error}
+        pageTitle={tourDemo ? undefined : props.pageTitle}
+        adminReadOnlyPreview={tourDemo ? false : Boolean(props.adminReadOnlyPreview)}
+        teethOpenSupplierIds={tourDemo ? [] : props.teethOpenSupplierIds ?? []}
+        teethScheduleBySupplierId={
+          tourDemo ? {} : props.teethScheduleBySupplierId ?? {}
+        }
+        teethHistoryEtaLabelBySupplierId={
+          tourDemo ? {} : props.teethHistoryEtaLabelBySupplierId ?? {}
+        }
       />
     );
   }
@@ -282,10 +302,7 @@ function SupplierPlanSearchCard({
               href="/moje"
               className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 underline"
             >
-              <span>
-                Masz {openOrderCount}{" "}
-                {openOrderCount === 1 ? "otwartą prośbę" : "otwarte prośby"}
-              </span>
+              <span>{salesPlanYouHaveOpenRequests(openOrderCount)}</span>
               <LinkChevron size={13} tone="brand" />
               <span>Moje zamówienia</span>
             </Link>
@@ -336,7 +353,7 @@ function SupplierPlanSearchCard({
         </div>
         <div>
           <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Uwagi harmonogramu
+            Korekta harmonogramu
           </dt>
           <dd className="mt-0.5 text-sm text-slate-800">
             {insight.vacationNote ?? "—"}

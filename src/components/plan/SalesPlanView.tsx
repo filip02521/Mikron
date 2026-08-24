@@ -3,11 +3,14 @@
 import { Suspense, useMemo, useState, type ComponentProps } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import type { SummaryWorkspaceData, WeekDayPlan } from "@/lib/orders/summary-workspace";
-import type { DeliveryStats, SupplierWithSchedule } from "@/types/database";
-import { WeekPlanner } from "@/components/summary/WeekPlanner";
+import type { SummaryWorkspaceData } from "@/lib/orders/summary-workspace";
+import type {
+  DeliveryStats,
+  SupplierWithSchedule,
+  TeethSupplierSchedule,
+} from "@/types/database";
+import { SalesPlanWeekStrip } from "@/components/plan/SalesPlanWeekStrip";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BackChevron } from "@/components/ui/UiGlyphs";
 import { Badge } from "@/components/ui/Badge";
@@ -39,256 +42,446 @@ import {
 } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { cn } from "@/lib/cn";
-import { salesChromeInsetClass, salesPageShellClass, salesTypography } from "@/lib/ui/ontime-theme";
-import { SALES_PAGE_HEADER_HINTS, SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
+import {
+  buttonPrimaryClass,
+  salesChromeInsetClass,
+  salesPageShellClass,
+  salesTypography,
+} from "@/lib/ui/ontime-theme";
+import {
+  SALES_PLAN_COPY,
+  salesPlanOpenRequestsLabel,
+} from "@/lib/sales/sales-plan-ui-copy";
 import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
 import { Alert } from "@/components/ui/Alert";
+import { SupplierVacationNowChip } from "@/components/summary/SupplierVacationNowChip";
+import { formatSupplierVacationRangeTitle } from "@/lib/orders/procurement-supplier-vacation";
 
-const PLAN_INTRO =
-  "Otwarte prośby, terminy u dostawców i wyszukiwarka — w jednym miejscu. Kalendarz działu dostaw to kiedy składamy zamówienia, nie kiedy towar jest na magazynie.";
+const C = SALES_PLAN_COPY;
+
+/** Link stylowany jak Button — bez zagnieżdżania <button> w <a>. */
+function planLinkButtonClass(
+  variant: "primary" | "secondary",
+  size: "sm" | "md" = "md"
+) {
+  return cn(
+    "inline-flex cursor-pointer items-center justify-center gap-1.5 font-medium transition-colors",
+    size === "sm"
+      ? "rounded-md px-2.5 py-1.5 text-xs leading-none"
+      : "rounded-md px-4 py-2 text-sm",
+    variant === "primary"
+      ? buttonPrimaryClass
+      : "border border-[var(--card-border)] bg-[var(--card)] text-slate-700 shadow-sm hover:bg-slate-50"
+  );
+}
 
 function PlanGuide() {
   return (
     <HelpPopover
-      label="Pomoc — harmonogram zakupów"
-      title="Harmonogram"
-      shortLabel="Pomoc"
+      label={C.helpLabel}
+      title={C.helpTitle}
+      shortLabel={C.helpShort}
       icon={<GuideIcon />}
     >
-      <HelpBlock title="Co tu jest">
-        <p>{PLAN_INTRO}</p>
+      <HelpBlock title={C.helpTwoDatesTitle}>
+        <p>{C.helpTwoDatesBody}</p>
       </HelpBlock>
-
-      <HelpBlock title="Z otwartymi prośbami">
-        <p>
-          Dostawcy z aktywnych wpisów w Moje zamówienia. Rozwiń wiersz po termin i czas
-          realizacji.
-        </p>
+      <HelpBlock title={C.helpOpenTitle}>
+        <p>{C.helpOpenBody}</p>
       </HelpBlock>
-
-      <HelpBlock title="Wyszukiwarka">
-        <p>Każdy inny dostawca z bazy — poza listą z otwartymi prośbami.</p>
+      <HelpBlock title={C.helpSearchTitle}>
+        <p>{C.helpSearchBody}</p>
       </HelpBlock>
-
-      <HelpBlock title="Plan działu dostaw">
-        <p>
-          Harmonogram składania zamówień pon.–pt. — rozwiń u góry karty. To terminy zamówień u
-          dostawców, nie daty odbioru towaru z magazynu.
-        </p>
+      <HelpBlock title={C.helpWeekTitle}>
+        <p>{C.helpWeekBody}</p>
       </HelpBlock>
     </HelpPopover>
   );
 }
 
-function nextOrderSummary(insight: SalesSupplierInsight): string {
-  if (insight.orderOnDemand) return "Na żądanie";
-  if (insight.isOverdue) return "Po terminie";
+function orderSummaryLabel(insight: SalesSupplierInsight): string {
+  if (insight.orderOnDemand) return C.labelOnDemand;
+  if (insight.isOverdue) return C.labelOverdue;
   if (insight.weekDayLabel && insight.weekDateLabel) {
     return `${insight.weekDayLabel} ${insight.weekDateLabel}`;
   }
   if (insight.nextDate) {
-    const short = insight.weekDateLabel;
-    return short ? `Plan: ${short}` : "Poza tym tygodniem";
+    return insight.weekDateLabel ?? C.labelOutsideWeek;
   }
-  return "Brak terminu";
+  return C.labelNoDate;
+}
+
+function warehouseSummaryLabel(insight: SalesSupplierInsight): {
+  text: string;
+  empty: boolean;
+  title?: string;
+} {
+  if (insight.orderOnDemand) {
+    return { text: "—", empty: true, title: C.tipOnDemand };
+  }
+  if (!insight.nextDate) {
+    return { text: "—", empty: true, title: C.tipNoOrderDate };
+  }
+  if (!insight.arrivalEta) {
+    return { text: "—", empty: true, title: C.tipNoHistory };
+  }
+  return {
+    text: insight.arrivalEta.shortLabel,
+    empty: false,
+    title: insight.arrivalEta.fullLabel,
+  };
+}
+
+/** Wspólna siatka wiersza — wyrównanie kolumn między wierszami. */
+const PLAN_ROW_GRID =
+  "grid w-full min-w-0 grid-cols-[1.25rem_minmax(0,1fr)] items-center gap-x-2 sm:grid-cols-[1.25rem_minmax(0,1.4fr)_6.5rem_6.5rem_8.25rem] sm:gap-x-3";
+
+function SalesPlanColumnHeader() {
+  return (
+    <div
+      className={cn(
+        "hidden border-b border-slate-200/90 bg-slate-50/90 px-3 py-1.5 sm:grid sm:px-4",
+        PLAN_ROW_GRID
+      )}
+      aria-hidden
+    >
+      <span />
+      <span className={cn(salesTypography.sectionLabel, "text-slate-500")}>
+        {C.colSupplier}
+      </span>
+      <span className={cn(salesTypography.sectionLabel, "text-right text-slate-500")}>
+        {C.colOrder}
+      </span>
+      <span className={cn(salesTypography.sectionLabel, "text-right text-slate-500")}>
+        {C.colWarehouse}
+      </span>
+      <span className="min-w-0" />
+    </div>
+  );
 }
 
 function SalesSupplierRow({
   insight,
   openOrderCount,
   defaultOpen = false,
-  variant = "list",
   previewHref,
   previewDla,
+  adminReadOnlyPreview,
 }: {
   insight: SalesSupplierInsight;
   openOrderCount?: number;
   defaultOpen?: boolean;
-  variant?: "list" | "search";
   previewHref: (href: string) => string;
   previewDla: string | null;
+  adminReadOnlyPreview: boolean;
 }) {
   const [expanded, setExpanded] = useState(defaultOpen);
-  const next = describeNextOrderForSales(insight);
-  const summary = nextOrderSummary(insight);
+  const next = describeNextOrderForSales(insight, {
+    readOnlyPreview: adminReadOnlyPreview,
+  });
+  const orderLabel = orderSummaryLabel(insight);
+  const warehouse = warehouseSummaryLabel(insight);
   const hasOpenRequests = Boolean(openOrderCount && openOrderCount > 0);
+  const titleId = `sales-plan-supplier-${insight.supplierId}`;
+  const panelId = `${titleId}-details`;
 
   return (
     <li
       className={cn(
-        "border-b border-slate-100 transition-[background-color,box-shadow] duration-200 last:border-b-0",
+        "border-b border-slate-100/90 transition-[background-color] duration-150 last:border-b-0",
         expanded
-          ? "z-[1] bg-indigo-50/70 shadow-sm ring-1 ring-inset ring-indigo-200/80"
-          : hasOpenRequests && "bg-indigo-50/25"
+          ? "z-[1] bg-indigo-50/60 ring-1 ring-inset ring-indigo-200/70"
+          : "hover:bg-slate-50/80"
       )}
     >
-      <div className="flex items-stretch gap-1 sm:gap-2">
-        <button
-          type="button"
-          onClick={() => setExpanded((v) => !v)}
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className={cn(
+          PLAN_ROW_GRID,
+          "min-h-[2.85rem] px-3 py-2 text-left sm:px-4",
+          expanded && "bg-indigo-50/30"
+        )}
+        aria-expanded={expanded}
+        aria-controls={panelId}
+        aria-labelledby={titleId}
+      >
+        <IconChevronDown
+          open={expanded}
+          className="shrink-0 text-slate-400"
+          size={16}
+        />
+
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-baseline gap-x-1.5">
+            <span
+              id={titleId}
+              className={cn("min-w-0 truncate", salesTypography.rowTitle, "font-medium")}
+            >
+              {insight.name}
+            </span>
+            <span className="shrink-0 rounded bg-slate-100/90 px-1 py-px text-[10px] font-medium text-slate-500">
+              {locationLabel(insight.location)}
+            </span>
+          </div>
+          <p
+            className={cn(
+              "mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 sm:hidden",
+              salesTypography.rowMeta
+            )}
+          >
+            <span className="tabular-nums text-slate-700">{orderLabel}</span>
+            <span className="text-slate-300" aria-hidden>
+              →
+            </span>
+            <span
+              className={cn(
+                "tabular-nums",
+                warehouse.empty ? "text-slate-400" : "text-slate-700"
+              )}
+              title={warehouse.title}
+            >
+              {warehouse.empty ? C.mobileWarehouseEmpty : warehouse.text}
+            </span>
+            {hasOpenRequests ? (
+              <span className="font-medium text-indigo-600">· {openOrderCount}</span>
+            ) : null}
+            {insight.onVacationNow ? (
+              <span className="font-medium text-amber-700">· {C.labelVacationShort}</span>
+            ) : null}
+            {insight.isOverdue ? (
+              <span className="font-medium text-amber-800">· {C.labelOverdue}</span>
+            ) : null}
+          </p>
+        </div>
+
+        <p
           className={cn(
-            "flex min-h-[2.75rem] min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left transition-colors sm:gap-2.5 sm:px-4",
-            expanded ? "hover:bg-indigo-100/40" : "hover:bg-white/80"
+            "hidden tabular-nums text-right sm:block",
+            salesTypography.rowBody,
+            "font-semibold text-slate-800",
+            insight.isOverdue && "text-amber-900"
           )}
-          aria-expanded={expanded}
-          aria-label={`${expanded ? "Zwiń" : "Rozwiń"} szczegóły: ${insight.name}`}
         >
-          <IconChevronDown
-            open={expanded}
-            className="shrink-0 text-slate-400"
-            size={18}
-          />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <span className={cn("truncate", salesTypography.rowTitle, !expanded && "font-medium")}>
-                {insight.name}
-              </span>
-              <span className={salesTypography.rowMeta}>{locationLabel(insight.location)}</span>
-            </div>
-            <p className={cn("mt-0.5 truncate sm:hidden", salesTypography.rowBody)}>{summary}</p>
-          </div>
-          <div className="hidden shrink-0 text-right sm:block">
-            <p className={cn("max-w-[11rem] truncate font-medium text-slate-800", salesTypography.rowBody)}>
-              {summary}
-            </p>
-            {hasOpenRequests ? (
-              <p className={cn("mt-0.5 font-medium text-indigo-700", salesTypography.rowMeta)}>
-                {openOrderCount}{" "}
-                {openOrderCount === 1 ? "otwarta prośba" : "otwarte prośby"}
-              </p>
-            ) : variant === "search" ? (
-              <p className={cn("mt-0.5", salesTypography.rowMeta, "text-slate-500")}>Harmonogram</p>
-            ) : null}
-          </div>
-          <div className="flex shrink-0 flex-wrap justify-end gap-1 sm:hidden">
-            {insight.isOverdue ? <Badge variant="warning">!</Badge> : null}
-            {hasOpenRequests ? (
-              <Badge variant="info">{openOrderCount}</Badge>
-            ) : null}
-          </div>
-        </button>
-        <div className="hidden shrink-0 flex-wrap items-center gap-1 self-center pr-3 sm:flex">
-          {insight.isOverdue ? <Badge variant="warning">Po terminie</Badge> : null}
-          {insight.orderOnDemand ? <Badge variant="default">Na żądanie</Badge> : null}
-          {!insight.isOverdue && !insight.orderOnDemand && insight.weekDayLabel ? (
-            <Badge variant="info" className="hidden lg:inline-flex">
-              {insight.weekDayLabel}
+          {orderLabel}
+        </p>
+        <p
+          className={cn(
+            "hidden tabular-nums text-right sm:block",
+            salesTypography.rowBody,
+            warehouse.empty
+              ? "font-normal text-slate-400"
+              : "font-semibold text-slate-800"
+          )}
+          title={warehouse.title}
+        >
+          {warehouse.text}
+        </p>
+
+        <div className="hidden min-w-0 flex-wrap items-center justify-end gap-1 sm:flex">
+          {insight.isOverdue ? (
+            <Badge variant="warning" className="px-1.5 py-0 text-[10px]">
+              {C.labelOverdue}
+            </Badge>
+          ) : null}
+          {insight.onVacationNow && insight.vacationWindow ? (
+            <SupplierVacationNowChip window={insight.vacationWindow} compact />
+          ) : null}
+          {insight.orderOnDemand ? (
+            <Badge variant="default" className="px-1.5 py-0 text-[10px]">
+              {C.labelOnDemand}
+            </Badge>
+          ) : null}
+          {insight.activeShift && !insight.isOverdue ? (
+            <Badge variant="info" className="px-1.5 py-0 text-[10px]">
+              {C.labelShifted}
             </Badge>
           ) : null}
           {hasOpenRequests ? (
-            <Badge variant="info" className="tabular-nums">
-              {openOrderCount} {openOrderCount === 1 ? "prośba" : "prośby"}
-            </Badge>
+            <span title={salesPlanOpenRequestsLabel(openOrderCount!)}>
+              <Badge variant="info" className="px-1.5 py-0 text-[10px] tabular-nums">
+                {openOrderCount}
+              </Badge>
+            </span>
           ) : null}
         </div>
-      </div>
+      </button>
 
-      {expanded ? (
-        <div className="border-t border-indigo-200/50 bg-white/60 px-3 pb-3 pt-2 sm:px-4 sm:pb-3.5">
-          <div className="rounded-md border border-slate-200 bg-white p-3 shadow-sm">
-            <div className="border-b border-slate-100 pb-2.5">
-              <p className={cn(salesTypography.sectionLabel, "normal-case tracking-normal text-slate-500")}>
-                Kolejne zamówienie u dostawcy
+      <div
+        id={panelId}
+        role="region"
+        aria-labelledby={titleId}
+        hidden={!expanded}
+        className="border-t border-indigo-200/40 bg-white/70 px-3 pb-3 pt-2 sm:px-4"
+      >
+        {expanded ? (
+          <div className="space-y-2.5 rounded-md border border-slate-200/90 bg-white px-3 py-2.5">
+            <div>
+              <p className={cn(salesTypography.sectionLabel, "text-slate-500")}>
+                {C.expandOrderTitle}
               </p>
-              <p className={cn("mt-0.5 leading-snug", salesTypography.rowTitle)}>{next.primary}</p>
+              <p className={cn("mt-0.5 leading-snug", salesTypography.rowTitle)}>
+                {next.primary}
+              </p>
               {next.secondary ? (
-                <p className={cn("mt-0.5 leading-snug", salesTypography.rowBody)}>{next.secondary}</p>
+                <p className={cn("mt-0.5 leading-snug", salesTypography.rowBody)}>
+                  {next.secondary}
+                </p>
+              ) : null}
+              {insight.lastOrderLabel ? (
+                <p className={cn("mt-1", salesTypography.rowMeta)}>
+                  {C.expandLastOrder(insight.lastOrderLabel)}
+                </p>
+              ) : null}
+              {insight.activeShift ? (
+                <p className={cn("mt-0.5", salesTypography.rowMeta)}>
+                  {C.expandActiveShift}
+                </p>
               ) : null}
             </div>
 
-            <dl className="mt-2.5 grid gap-2 text-xs sm:grid-cols-2 sm:gap-x-4">
+            <dl className="grid gap-2 border-t border-slate-100 pt-2.5 text-xs sm:grid-cols-2 sm:gap-x-4">
               <div>
-                <dt className="font-semibold uppercase tracking-wide text-slate-500">
-                  Czas na magazyn
+                <dt className={cn(salesTypography.sectionLabel, "text-slate-500")}>
+                  {C.expandWarehouseTitle}
                 </dt>
-                <dd className="mt-0.5 font-medium text-slate-900">
-                  {insight.leadTimeSummary ?? "—"}
-                </dd>
-                {insight.leadTimeDetail ? (
-                  <dd className="mt-0.5 text-[0.7rem] text-slate-600">{insight.leadTimeDetail}</dd>
-                ) : null}
+                {insight.arrivalEta ? (
+                  <>
+                    <dd className="mt-0.5 font-medium text-slate-900">
+                      {insight.arrivalEta.fullLabel}
+                    </dd>
+                    {insight.statsMode === "OSOBNO" && insight.leadTimeSummary ? (
+                      <dd className="mt-0.5 text-[0.7rem] text-slate-600">
+                        {insight.leadTimeSummary}
+                      </dd>
+                    ) : null}
+                    {insight.leadTimeDetail ? (
+                      <dd className="mt-0.5 text-[0.7rem] text-slate-600">
+                        {insight.leadTimeDetail}
+                      </dd>
+                    ) : null}
+                  </>
+                ) : insight.orderOnDemand ? (
+                  <>
+                    <dd className="mt-0.5 font-medium text-slate-900">—</dd>
+                    <dd className="mt-0.5 text-[0.7rem] text-slate-600">
+                      {C.expandOnDemandWarehouse}
+                      {insight.leadTimeSummary ? `: ${insight.leadTimeSummary}` : "."}
+                    </dd>
+                    {insight.statsMode === "OSOBNO" && insight.leadTimeDetail ? (
+                      <dd className="mt-0.5 text-[0.7rem] text-slate-600">
+                        {insight.leadTimeDetail}
+                      </dd>
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    <dd className="mt-0.5 font-medium text-slate-900">—</dd>
+                    {insight.leadTimeSummary ? (
+                      <dd className="mt-0.5 text-[0.7rem] text-slate-600">
+                        {insight.leadTimeSummary}
+                      </dd>
+                    ) : null}
+                    {insight.leadTimeDetail ? (
+                      <dd className="mt-0.5 text-[0.7rem] text-slate-600">
+                        {insight.leadTimeDetail}
+                      </dd>
+                    ) : !insight.leadTimeSummary ? (
+                      <dd className="mt-0.5 text-[0.7rem] text-slate-600">
+                        {C.expandNoHistory}
+                      </dd>
+                    ) : null}
+                  </>
+                )}
               </div>
               <div>
-                <dt className="font-semibold uppercase tracking-wide text-slate-500">
-                  Interwał
+                <dt className={cn(salesTypography.sectionLabel, "text-slate-500")}>
+                  {C.expandIntervalTitle}
                 </dt>
-                <dd className="mt-0.5 font-medium text-slate-900">{insight.orderIntervalLabel}</dd>
-                {insight.vacationNote && !next.secondary?.includes(insight.vacationNote) ? (
-                  <dd className="mt-0.5 text-[0.7rem] text-amber-900">{insight.vacationNote}</dd>
+                <dd className="mt-0.5 font-medium text-slate-900">
+                  {insight.orderIntervalLabel}
+                </dd>
+                {insight.vacationNote &&
+                !next.secondary?.includes(insight.vacationNote) ? (
+                  <dd className="mt-0.5 text-[0.7rem] text-amber-900">
+                    {C.expandCycleNote(insight.vacationNote)}
+                  </dd>
                 ) : null}
               </div>
             </dl>
 
-            <div className="mt-2.5 flex flex-wrap gap-2 border-t border-slate-100 pt-2.5">
+            {insight.vacationWindow ? (
+              <div className="border-t border-slate-100 pt-2.5">
+                <p className={cn(salesTypography.sectionLabel, "text-slate-500")}>
+                  {C.expandVacationTitle}
+                </p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <SupplierVacationNowChip window={insight.vacationWindow} />
+                  <span className={salesTypography.rowMeta}>
+                    {formatSupplierVacationRangeTitle(insight.vacationWindow)}
+                  </span>
+                </div>
+              </div>
+            ) : null}
+
+            {insight.teethLine ? (
+              <div className="border-t border-slate-100 pt-2.5">
+                <p className={cn(salesTypography.sectionLabel, "text-slate-500")}>
+                  {C.expandTeethTitle}
+                </p>
+                <p className={cn("mt-0.5", salesTypography.rowBody)}>
+                  {C.expandTeethNext(insight.teethLine.nextOrderLabel)}
+                  {insight.teethLine.etaLabel
+                    ? C.expandTeethEta(insight.teethLine.etaLabel)
+                    : C.expandTeethNoEta}
+                </p>
+              </div>
+            ) : null}
+
+            {insight.contactEmail ? (
+              <div className="border-t border-slate-100 pt-2.5">
+                <p className={cn(salesTypography.sectionLabel, "text-slate-500")}>
+                  {C.expandContactTitle}
+                </p>
+                <a
+                  href={`mailto:${insight.contactEmail}`}
+                  className={cn(
+                    "mt-0.5 inline-block font-medium text-indigo-700 hover:underline",
+                    salesTypography.rowBody
+                  )}
+                >
+                  {insight.contactEmail}
+                </a>
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-2.5">
               {hasOpenRequests ? (
-                <Link href={previewHref("/moje")}>
-                  <Button size="sm" className="gap-1.5">
-                    <IconClipboardList size={14} />
-                    Moje prośby ({openOrderCount})
-                  </Button>
+                <Link
+                  href={previewHref("/moje")}
+                  className={planLinkButtonClass("primary", "sm")}
+                >
+                  <IconClipboardList size={14} />
+                  {C.ctaMyRequests(openOrderCount!)}
                 </Link>
               ) : null}
-              <Link
-                href={prosbaHref({
-                  supplierId: insight.supplierId,
-                  salesPersonId: previewDla ?? undefined,
-                })}
-                title={`Nowa prośba do: ${insight.name}`}
-              >
-                <Button size="sm" variant="secondary">
-                  Zgłoś prośbę do dostawcy
-                </Button>
-              </Link>
+              {!adminReadOnlyPreview ? (
+                <Link
+                  href={prosbaHref({
+                    supplierId: insight.supplierId,
+                    salesPersonId: previewDla ?? undefined,
+                  })}
+                  title={C.ctaNewForSupplierTitle(insight.name)}
+                  className={planLinkButtonClass("secondary", "sm")}
+                >
+                  {C.ctaNewForSupplier}
+                </Link>
+              ) : null}
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </li>
-  );
-}
-
-function ProcurementPlanBlock({
-  open,
-  onOpenChange,
-  days,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  days: WeekDayPlan[];
-}) {
-  return (
-    <div className={cn("border-b border-slate-100 py-3", salesChromeInsetClass)}>
-      <button
-        type="button"
-        onClick={() => onOpenChange(!open)}
-        className="flex w-full cursor-pointer items-start gap-3 rounded-md border border-slate-200 bg-slate-50/50 px-3.5 py-3 text-left transition hover:border-slate-300 hover:bg-slate-50"
-        aria-expanded={open}
-      >
-        <SectionHeadingIcon tileClassName={planSectionIconTileClass("calendar")}>
-          <IconCalendar size={18} />
-        </SectionHeadingIcon>
-        <span className="min-w-0 flex-1">
-          <span className={cn("block", salesTypography.blockTitle)}>
-            Plan zamówień działu dostaw
-          </span>
-          <span className={cn("mt-0.5 block", salesTypography.sectionHint)}>
-            Kalendarz pon.–pt. — kiedy dział składa zamówienia (nie termin towaru na magazynie).
-          </span>
-        </span>
-        <IconChevronDown open={open} className="mt-1 shrink-0 text-slate-400" size={18} />
-      </button>
-      {open ? (
-        <div className="mt-4">
-          <WeekPlanner
-            embedded
-            density="compact"
-            title="Ten tydzień"
-            days={days}
-            readOnly
-          />
-        </div>
-      ) : null}
-    </div>
   );
 }
 
@@ -301,6 +494,10 @@ export function SalesPlanView(props: {
   tourPreview?: boolean;
   error?: string | null;
   pageTitle?: string;
+  adminReadOnlyPreview?: boolean;
+  teethOpenSupplierIds?: string[];
+  teethScheduleBySupplierId?: Record<string, TeethSupplierSchedule>;
+  teethHistoryEtaLabelBySupplierId?: Record<string, string>;
 }) {
   return (
     <Suspense fallback={<SalesPlanViewFallback {...props} />}>
@@ -311,14 +508,20 @@ export function SalesPlanView(props: {
 
 function SalesPlanViewFallback({
   error = null,
-  pageTitle = "Harmonogram",
+  pageTitle = C.pageTitle,
 }: Pick<ComponentProps<typeof SalesPlanViewContent>, "error" | "pageTitle">) {
   return (
     <div className={salesPageShellClass}>
       {error ? <Alert tone="warning">{error}</Alert> : null}
       <Card padding={false} className="overflow-hidden">
-        <CardHeader inset density="compact" title={pageTitle} hint={SALES_PAGE_HEADER_HINTS.plan} hintAriaLabel="O harmonogramie" />
-        <div className="px-4 py-12 text-center text-sm text-slate-500">Ładowanie…</div>
+        <CardHeader
+          inset
+          density="compact"
+          title={pageTitle}
+          hint={C.headerHint}
+          hintAriaLabel={C.headerHintAria}
+        />
+        <div className="px-4 py-12 text-center text-sm text-slate-500">{C.loading}</div>
       </Card>
     </div>
   );
@@ -332,7 +535,11 @@ function SalesPlanViewContent({
   openOrderCountBySupplier,
   tourPreview = false,
   error = null,
-  pageTitle = "Harmonogram",
+  pageTitle = C.pageTitle,
+  adminReadOnlyPreview = false,
+  teethOpenSupplierIds = [],
+  teethScheduleBySupplierId = {},
+  teethHistoryEtaLabelBySupplierId = {},
 }: {
   workspace: SummaryWorkspaceData;
   suppliers: SupplierWithSchedule[];
@@ -342,11 +549,19 @@ function SalesPlanViewContent({
   tourPreview?: boolean;
   error?: string | null;
   pageTitle?: string;
+  adminReadOnlyPreview?: boolean;
+  teethOpenSupplierIds?: string[];
+  teethScheduleBySupplierId?: Record<string, TeethSupplierSchedule>;
+  teethHistoryEtaLabelBySupplierId?: Record<string, string>;
 }) {
   const previewHref = useSalesPreviewHref();
   const previewDla = useSearchParams().get("dla");
   const [query, setQuery] = useState("");
-  const [showProcurementPlan, setShowProcurementPlan] = useState(false);
+
+  const teethOpenSet = useMemo(
+    () => new Set(teethOpenSupplierIds),
+    [teethOpenSupplierIds]
+  );
 
   const searchQuery = query.trim();
   const { searchMatches, searchTotalMatches } = useMemo(() => {
@@ -365,23 +580,56 @@ function SalesPlanViewContent({
     [suppliers, prioritySupplierIds]
   );
 
-  const searchInsights = useMemo(
-    () =>
-      searchMatches.map((s) =>
-        buildSalesSupplierInsight(s, workspace.thisWeekDays, statsBySupplierId[s.id])
-      ),
-    [searchMatches, workspace.thisWeekDays, statsBySupplierId]
-  );
+  const searchInsights = useMemo(() => {
+    return searchMatches.map((s) =>
+      buildSalesSupplierInsight(s, workspace.thisWeekDays, statsBySupplierId[s.id], {
+        todayKey: workspace.todayDateKey,
+        vacationWindow: workspace.suppliersOnVacationNow[s.id] ?? null,
+        teethSchedule: teethScheduleBySupplierId[s.id] ?? null,
+        hasOpenTeethRequest: teethOpenSet.has(s.id),
+        teethHistoryEtaLabel: teethHistoryEtaLabelBySupplierId[s.id] ?? null,
+      })
+    );
+  }, [
+    searchMatches,
+    workspace.thisWeekDays,
+    workspace.todayDateKey,
+    workspace.suppliersOnVacationNow,
+    statsBySupplierId,
+    teethScheduleBySupplierId,
+    teethHistoryEtaLabelBySupplierId,
+    teethOpenSet,
+  ]);
 
-  const myInsights = useMemo(
-    () =>
-      prioritySuppliers.map((s) =>
-        buildSalesSupplierInsight(s, workspace.thisWeekDays, statsBySupplierId[s.id])
-      ),
-    [prioritySuppliers, workspace.thisWeekDays, statsBySupplierId]
-  );
+  const myInsights = useMemo(() => {
+    return prioritySuppliers.map((s) =>
+      buildSalesSupplierInsight(s, workspace.thisWeekDays, statsBySupplierId[s.id], {
+        todayKey: workspace.todayDateKey,
+        vacationWindow: workspace.suppliersOnVacationNow[s.id] ?? null,
+        teethSchedule: teethScheduleBySupplierId[s.id] ?? null,
+        hasOpenTeethRequest: teethOpenSet.has(s.id),
+        teethHistoryEtaLabel: teethHistoryEtaLabelBySupplierId[s.id] ?? null,
+      })
+    );
+  }, [
+    prioritySuppliers,
+    workspace.thisWeekDays,
+    workspace.todayDateKey,
+    workspace.suppliersOnVacationNow,
+    statsBySupplierId,
+    teethScheduleBySupplierId,
+    teethHistoryEtaLabelBySupplierId,
+    teethOpenSet,
+  ]);
 
-  const openRequestCount = myInsights.length;
+  const openRequestCount = useMemo(
+    () =>
+      prioritySupplierIds.reduce(
+        (sum, id) => sum + (openOrderCountBySupplier[id] ?? 0),
+        0
+      ),
+    [prioritySupplierIds, openOrderCountBySupplier]
+  );
 
   return (
     <div className={salesPageShellClass}>
@@ -395,8 +643,8 @@ function SalesPlanViewContent({
             </SectionHeadingIcon>
           }
           title={pageTitle}
-          hint={SALES_PAGE_HEADER_HINTS.plan}
-          hintAriaLabel="O harmonogramie"
+          hint={C.headerHint}
+          hintAriaLabel={C.headerHintAria}
           action={<PlanGuide />}
         />
 
@@ -406,25 +654,17 @@ function SalesPlanViewContent({
           </Alert>
         ) : null}
 
-        {!tourPreview ? (
-          <ProcurementPlanBlock
-            open={showProcurementPlan}
-            onOpenChange={setShowProcurementPlan}
-            days={workspace.thisWeekDays}
-          />
-        ) : null}
-
         <NotatnikListFilterBar
-          visibleLabel="Szukaj dostawcy"
+          visibleLabel={C.searchVisibleLabel}
           value={query}
           onChange={setQuery}
           matchCount={searchQuery ? searchInsights.length : suppliers.length}
           totalCount={searchQuery ? searchTotalMatches : suppliers.length}
-          placeholder={salesSearchPlaceholder(SALES_SEARCH_COPY.planSupplier, false)}
+          placeholder={salesSearchPlaceholder(C.searchPlaceholder, false)}
           showIdleHint={false}
           showActiveDetail={false}
-          emptyMatchHint="Brak dostawcy o takiej nazwie — sprawdź pisownię lub wyczyść filtr."
-          searchLabel="Szukaj dostawcy w harmonogramie"
+          emptyMatchHint={C.searchEmptyHint}
+          searchLabel={C.searchAriaLabel}
           enableShortcut={false}
         />
 
@@ -432,8 +672,8 @@ function SalesPlanViewContent({
           <section aria-labelledby="sales-plan-search-results">
             <SectionListLabel
               id="sales-plan-search-results"
-              title="Wyniki wyszukiwania"
-              hint={`Dla „${searchQuery}”`}
+              title={C.searchSectionTitle}
+              hint={C.searchSectionHint(searchQuery)}
               hintMode="tooltip"
               count={searchInsights.length || undefined}
               icon={<PlanSectionIcon kind="search" size={17} />}
@@ -441,40 +681,48 @@ function SalesPlanViewContent({
             />
             {searchTotalMatches > SALES_PLAN_SEARCH_LIMIT ? (
               <p className="border-b border-slate-100 px-3 py-2 text-xs text-slate-500 sm:px-4">
-                Pokazano pierwsze {SALES_PLAN_SEARCH_LIMIT} z {searchTotalMatches} dopasowań.
+                {C.searchLimitNote(SALES_PLAN_SEARCH_LIMIT, searchTotalMatches)}
               </p>
             ) : null}
             {searchInsights.length ? (
-              <ul>
-                {searchInsights.map((insight, i) => (
-                  <SalesSupplierRow
-                    key={insight.supplierId}
-                    insight={insight}
-                    openOrderCount={openOrderCountBySupplier[insight.supplierId]}
-                    defaultOpen={i === 0}
-                    variant="search"
-                    previewHref={previewHref}
-                    previewDla={previewDla}
-                  />
-                ))}
-              </ul>
+              <>
+                <SalesPlanColumnHeader />
+                <ul>
+                  {searchInsights.map((insight, i) => (
+                    <SalesSupplierRow
+                      key={insight.supplierId}
+                      insight={insight}
+                      openOrderCount={openOrderCountBySupplier[insight.supplierId]}
+                      defaultOpen={i === 0}
+                      previewHref={previewHref}
+                      previewDla={previewDla}
+                      adminReadOnlyPreview={adminReadOnlyPreview}
+                    />
+                  ))}
+                </ul>
+              </>
             ) : (
               <div className={cn("py-10", salesChromeInsetClass)}>
                 <EmptyState
-                  title="Nie znaleziono dostawcy"
-                  description="Sprawdź pisownię lub wpisz krótszy fragment nazwy."
+                  title={C.searchNotFoundTitle}
+                  description={C.searchNotFoundBody}
                   icon={<PlanSectionIcon kind="search" size={28} />}
                 />
               </div>
             )}
-            <div className={cn("border-t border-slate-100 bg-slate-50/80 py-2.5", salesChromeInsetClass)}>
+            <div
+              className={cn(
+                "border-t border-slate-100 bg-slate-50/80 py-2.5",
+                salesChromeInsetClass
+              )}
+            >
               <button
                 type="button"
                 onClick={() => setQuery("")}
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-700 hover:text-indigo-900"
               >
                 <BackChevron className="text-indigo-600" />
-                Wróć do listy z prośbami
+                {C.searchBackToList}
               </button>
             </div>
           </section>
@@ -482,8 +730,8 @@ function SalesPlanViewContent({
           <section aria-labelledby="sales-plan-my-suppliers">
             <SectionListLabel
               id="sales-plan-my-suppliers"
-              title="Z otwartymi prośbami"
-              hint="Te same dostawcy co w „Moje zamówienia” — rozwiń wiersz po szczegóły."
+              title={C.openSectionTitle}
+              hint={C.openSectionHint}
               hintMode="tooltip"
               count={openRequestCount || undefined}
               accent="indigo"
@@ -491,23 +739,27 @@ function SalesPlanViewContent({
               tileClassName={planSectionIconTileClass("prosby")}
             />
             {myInsights.length ? (
-              <ul>
-                {myInsights.map((insight, i) => (
-                  <SalesSupplierRow
-                    key={insight.supplierId}
-                    insight={insight}
-                    openOrderCount={openOrderCountBySupplier[insight.supplierId]}
-                    defaultOpen={i === 0 && myInsights.length <= 3}
-                    previewHref={previewHref}
-                    previewDla={previewDla}
-                  />
-                ))}
-              </ul>
+              <>
+                <SalesPlanColumnHeader />
+                <ul>
+                  {myInsights.map((insight, i) => (
+                    <SalesSupplierRow
+                      key={insight.supplierId}
+                      insight={insight}
+                      openOrderCount={openOrderCountBySupplier[insight.supplierId]}
+                      defaultOpen={i === 0 && myInsights.length <= 3}
+                      previewHref={previewHref}
+                      previewDla={previewDla}
+                      adminReadOnlyPreview={adminReadOnlyPreview}
+                    />
+                  ))}
+                </ul>
+              </>
             ) : (
               <div className={cn("py-10 text-center", salesChromeInsetClass)}>
                 <EmptyState
-                  title="Brak otwartych prośb"
-                  description="Gdy zgłosisz prośbę, dostawca pojawi się tutaj z terminem planowego zakupu. Innego dostawcę znajdziesz w wyszukiwarce powyżej."
+                  title={C.openEmptyTitle}
+                  description={C.openEmptyBody}
                   icon={<IconClipboardList size={28} strokeWidth={1.75} />}
                 />
               </div>
@@ -515,26 +767,52 @@ function SalesPlanViewContent({
           </section>
         )}
 
-        <div className={cn("flex flex-col gap-2.5 border-t border-slate-100 bg-slate-50/90 py-3 sm:flex-row sm:items-center sm:justify-between", salesChromeInsetClass)}>
+        {!tourPreview ? (
+          <SalesPlanWeekStrip
+            thisWeekDays={workspace.thisWeekDays}
+            nextWeekDays={workspace.nextWeekDays}
+            prioritySupplierIds={prioritySupplierIds}
+          />
+        ) : null}
+
+        <div
+          className={cn(
+            "flex flex-col gap-2.5 border-t border-slate-100 bg-slate-50/90 py-3 sm:flex-row sm:items-center sm:justify-between",
+            salesChromeInsetClass
+          )}
+        >
           <p className="text-xs leading-relaxed text-slate-500">
-            Zgłoś nową prośbę lub sprawdź status w{" "}
-            <Link href={previewHref("/moje")} className="font-medium text-indigo-700 hover:underline">
-              Moje zamówienia
-            </Link>
-            .
+            {adminReadOnlyPreview ? (
+              C.footerAdmin
+            ) : (
+              <>
+                {C.footerDefaultPrefix}
+                <Link
+                  href={previewHref("/moje")}
+                  className="font-medium text-indigo-700 hover:underline"
+                >
+                  {C.ctaMyOrders}
+                </Link>
+                {C.footerDefaultSuffix}
+              </>
+            )}
           </p>
           <div className="flex flex-wrap gap-2">
-            <Link href={previewHref("/prosba")}>
-              <Button className="gap-1.5">
+            {!adminReadOnlyPreview ? (
+              <Link
+                href={previewHref("/prosba")}
+                className={cn(planLinkButtonClass("primary"), "gap-1.5")}
+              >
                 <IconPlusCircle size={16} />
-                Nowa prośba
-              </Button>
-            </Link>
-            <Link href={previewHref("/moje")}>
-              <Button variant="secondary" className="gap-1.5">
-                <IconClipboardList size={16} />
-                Moje zamówienia
-              </Button>
+                {C.ctaNewRequest}
+              </Link>
+            ) : null}
+            <Link
+              href={previewHref("/moje")}
+              className={cn(planLinkButtonClass("secondary"), "gap-1.5")}
+            >
+              <IconClipboardList size={16} />
+              {C.ctaMyOrders}
             </Link>
           </div>
         </div>

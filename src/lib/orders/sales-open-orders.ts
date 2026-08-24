@@ -44,6 +44,8 @@ export function aggregateVisibleMyOrdersBySupplier(
 ): {
   prioritySupplierIds: string[];
   openOrderCountBySupplier: Record<string, number>;
+  /** Dostawcy z widoczną otwartą prośbą zębową (tor zębów w expand /plan). */
+  teethOpenSupplierIds: string[];
 } {
   const { zamowienia, informacje } = presentMyOrders(orders, stats);
   const rows = [...zamowienia, ...informacje].filter(
@@ -51,6 +53,7 @@ export function aggregateVisibleMyOrdersBySupplier(
   );
   const openOrderCountBySupplier: Record<string, number> = {};
   const seen = new Set<string>();
+  const teethOpen = new Set<string>();
 
   for (const row of rows) {
     const supplierId = row.supplierId;
@@ -58,10 +61,12 @@ export function aggregateVisibleMyOrdersBySupplier(
     seen.add(supplierId);
     openOrderCountBySupplier[supplierId] =
       (openOrderCountBySupplier[supplierId] ?? 0) + row.lineCount;
+    if (row.isTeeth) teethOpen.add(supplierId);
   }
 
   return {
     prioritySupplierIds: [...seen],
     openOrderCountBySupplier,
+    teethOpenSupplierIds: [...teethOpen],
   };
 }
