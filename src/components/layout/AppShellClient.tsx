@@ -4,7 +4,7 @@ import { Suspense, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { LegacyProcurementRouteRedirect } from "@/components/layout/LegacyProcurementRouteRedirect";
 import { AdminPanelPreviewProvider } from "./AdminPanelPreviewContext";
-import { AdminPreviewBanner } from "./AdminPreviewBanner";
+import { AdminPreviewDock } from "./AdminPreviewDock";
 import { Sidebar } from "./Sidebar";
 import { MobileSalesNav } from "./MobileSalesNav";
 import { MobileSalesHeader } from "./MobileSalesHeader";
@@ -40,7 +40,7 @@ import { cn } from "@/lib/cn";
 import { useNotificationSoundUnlockOnGesture } from "@/lib/client/use-notification-sound-unlock";
 import { useDueDeliveryNotificationSafetyFlush } from "@/lib/client/use-delivery-notification-flush";
 import { forceUnlockAllScroll } from "@/lib/ui/page-scroll-lock";
-import { salesMobileChromeRoot } from "@/lib/ui/sales-mobile-chrome";
+import { salesMobileChromeRoot, adminPreviewDockShellVarsClass } from "@/lib/ui/sales-mobile-chrome";
 import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { appMainClass, appMainInsetClass, appShellClass } from "@/lib/ui/ontime-theme";
 import type { AdminPanelContext } from "@/lib/auth/admin-panel-context";
@@ -99,11 +99,14 @@ function AppShellMain({
   mobileChrome,
   uniformBackground,
   topNotices,
+  adminPreviewDock = false,
 }: {
   children: React.ReactNode;
   mobileChrome: boolean;
   uniformBackground: boolean;
   topNotices?: React.ReactNode;
+  /** Extra bottom padding when admin preview dock is visible. */
+  adminPreviewDock?: boolean;
 }) {
   const coachPadding = useSalesCoachPaddingClass();
 
@@ -113,8 +116,11 @@ function AppShellMain({
         appMainClass,
         "relative isolate",
         mobileChrome
-          ? "ml-0 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:ml-64 md:pb-0"
-          : "ml-0 md:ml-64",
+          ? "ml-0 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px)+var(--admin-preview-dock,0px))] md:ml-64 md:pb-[var(--admin-preview-clearance,0px)]"
+          : cn(
+              "ml-0 md:ml-64",
+              adminPreviewDock && "pb-[var(--admin-preview-clearance,0px)]"
+            ),
         coachPadding
       )}
     >
@@ -275,7 +281,8 @@ export function AppShellClient({
       <div
         className={cn(
           appShellClass,
-          mobileChrome && salesMobileChromeRoot
+          mobileChrome && salesMobileChromeRoot,
+          adminPanelPreview && adminPreviewDockShellVarsClass
         )}
       >
         <div className="hidden md:block">
@@ -335,15 +342,10 @@ export function AppShellClient({
         <AppShellMain
           mobileChrome={mobileChrome}
           uniformBackground={uniformBackground}
+          adminPreviewDock={Boolean(adminPanelPreview)}
           topNotices={
             adminPanelPreview ? (
               <>
-                <AdminPreviewBanner
-                  panelContext={adminPanelPreview}
-                  previewSalesPersonName={
-                    adminPanelPreview === "sales" ? salesPersonName : null
-                  }
-                />
                 {operationsPinnedAnnouncements.length > 0 &&
                 (adminPanelPreview === "admin" || adminPanelPreview === "zakupy") ? (
                   <OperationsGlobalPinnedStrip pinned={operationsPinnedAnnouncements} />
@@ -390,7 +392,14 @@ export function AppShellClient({
         >
           {children}
         </AppShellMain>
-        {salesLive ? (
+        {adminPanelPreview ? (
+          <AdminPreviewDock
+            panelContext={adminPanelPreview}
+            previewSalesPersonName={
+              adminPanelPreview === "sales" ? salesPersonName : null
+            }
+          />
+        ) : null}        {salesLive ? (
           <Suspense fallback={null}>
             <MobileSalesNav
               navBadges={navBadges}

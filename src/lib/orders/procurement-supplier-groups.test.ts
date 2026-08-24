@@ -7,6 +7,9 @@ import {
   flattenProcurementSupplierBlocks,
   formatProcurementSupplierBlockCollapsedHint,
   formatProcurementSupplierBlockSummary,
+  procurementBlockGroupCountLabel,
+  procurementBlockGroupCountPhrase,
+  procurementMoreProductsLabel,
   procurementSupplierBlockConfirmCopy,
   procurementSupplierBlockScopeKey,
   procurementUnseenGroupsLabel,
@@ -325,6 +328,30 @@ describe("zbiorcze akcje bloku", () => {
     expect(copy.message).toContain("A, B");
     expect(copy.confirmLabel).toContain("Główne");
     expect(copy.people).toEqual(["A", "B"]);
+  });
+
+  it("tekst potwierdzenia stock-out używa „sygnały”", () => {
+    const block = buildProcurementSupplierBlocks([
+      group({ supplierId: "dt", supplierName: "DT Shop", person: "A", salesPersonId: "1" }),
+      group({ supplierId: "dt", supplierName: "DT Shop", person: "B", salesPersonId: "2" }),
+    ])[0]!;
+    const copy = procurementSupplierBlockConfirmCopy(block, "GLOWNE", "signal");
+    expect(copy.message).toContain("2 sygnały");
+    expect(copy.message).not.toContain("prośby");
+  });
+
+  it("procurementBlockGroupCountLabel rozróżnia prośby i sygnały", () => {
+    expect(procurementBlockGroupCountLabel(1, "request")).toBe("1 prośba");
+    expect(procurementBlockGroupCountLabel(3, "signal")).toBe("3 sygnały");
+    expect(procurementBlockGroupCountPhrase(1, "request")).toBe("1 prośbę");
+    expect(procurementBlockGroupCountPhrase(5, "signal")).toBe("5 sygnałów");
+  });
+
+  it("procurementMoreProductsLabel odmienia „jeszcze N”", () => {
+    expect(procurementMoreProductsLabel(1)).toBe("Jeszcze 1 produkt");
+    expect(procurementMoreProductsLabel(3)).toBe("Jeszcze 3 produkty");
+    expect(procurementMoreProductsLabel(5)).toBe("Jeszcze 5 produktów");
+    expect(procurementMoreProductsLabel(0)).toBe("");
   });
 
   it("na żądanie — dopisek bez terminu w potwierdzeniu Główne", () => {

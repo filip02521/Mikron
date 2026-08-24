@@ -1265,7 +1265,6 @@ export async function actionRunZdEstimateManual(
           }),
       }
     );
-    const twIds = fetched.pozycje.map((p) => Number(p.tw_Id) || 0);
     let historyByTwId: Map<
       number,
       { lastOrderedQty: number; linkedAt: string }

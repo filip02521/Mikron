@@ -51,13 +51,29 @@ export function StockOutSectionHelp() {
         <p>
           Badge{" "}
           <strong className="font-medium text-amber-800">{INFORMACJA_STOCK_OUT_PANEL_BADGE}</strong>{" "}
-          — w prawym górnym rogu wiersza (bez powtórzenia przy produkcie).
+          — w pasku kontekstu pod tytułem (nie przy produkcie).
         </p>
+      </HelpBlock>
+      <HelpBlock title="Obsługa wiersza">
+        <ul className="list-disc space-y-1.5 pl-4">
+          <li>
+            Na komputerze — Główne / Uzupełniające po najechaniu na kartę (albo focus).
+          </li>
+          <li>Na tablecie i telefonie — przyciski widoczne cały czas.</li>
+          <li>
+            W bloku wielu osób: klik nagłówek — rozwiń / produkty / zwiń (podpowiedź na hover);
+            Zamów razem; wiersz — Tylko ta osoba.
+          </li>
+          <li>
+            Przy wielu produktach: podgląd pierwszej pozycji; klik w kartę (albo Enter) rozwija
+            resztę.
+          </li>
+        </ul>
       </HelpBlock>
       <HelpBlock title="Szczegóły dostawcy">
         <p>
-          Kliknij nazwę dostawcy (pod produktem albo w tytule przy wielu pozycjach). W bloku kilku
-          osób — nazwę w nagłówku bloku. Albo „Szczegóły dostawcy” w menu ⋮.
+          Kliknij nazwę dostawcy w tytule karty albo w nagłówku bloku (wiele osób). Albo
+          „Szczegóły dostawcy” w menu ⋮.
         </p>
       </HelpBlock>
       <HelpBlock title="Flagi">
@@ -93,11 +109,25 @@ export function ForSomeoneRequestsSectionHelp() {
 
       <HelpBlock title="Obsługa wiersza">
         <ul className="list-disc space-y-1.5 pl-4">
-          <li>Na komputerze — przyciski Główne / Uzupełniające po najechaniu na wiersz.</li>
-          <li>Na tablecie i telefonie — przyciski widoczne cały czas.</li>
           <li>
-            Produkty: jeden w wierszu, więcej — przycisk „Produkty”. Zwinięty blok dostawcy nie
-            jest w nawigacji klawiaturą.
+            Na komputerze — przyciski <strong className="font-medium text-slate-800">Główne</strong> /{" "}
+            <strong className="font-medium text-slate-800">Uzupełniające</strong> pojawiają się po
+            najechaniu na kartę (albo focus klawiaturą).
+          </li>
+          <li>
+            Na tablecie i telefonie — przyciski widoczne cały czas.
+          </li>
+          <li>
+            W bloku wielu osób u dostawcy: klik w nagłówek kolejno — rozwiń grupę i produkty →
+            dokończ produkty → zwiń grupę (przy „Nowa” zamiast zwijania bloku zwija produkty). Na
+            hover widać podpowiedź. Najedź —{" "}
+            <strong className="font-medium text-slate-800">Zamów razem</strong>; wiersz osoby —{" "}
+            <strong className="font-medium text-slate-800">Tylko ta osoba</strong>.
+          </li>
+          <li>
+            Produkty: jeden produkt widać od razu; przy wielu — podgląd pierwszej pozycji i klik
+            w kartę (albo Enter) rozwija resztę. Zwinięty blok dostawcy nie jest w nawigacji
+            klawiaturą.
           </li>
         </ul>
       </HelpBlock>

@@ -25,6 +25,16 @@ import { TEETH_SCHEDULE_TOAST, type ToastNotice, toastFromUnknown } from "@/lib/
 
 const WEEKDAYS: DayOfWeek[] = [1, 2, 3, 4, 5];
 
+function parseLeadDaysFromInput(leadDaysInput: string): number | null {
+  const trimmed = leadDaysInput.trim();
+  if (!trimmed) return null;
+  const n = Math.trunc(Number(trimmed));
+  if (!Number.isFinite(n) || n < 0 || n > 60) {
+    throw new Error("Podaj liczbę od 0 do 60 albo zostaw puste (ETA z historii).");
+  }
+  return n === 0 ? null : n;
+}
+
 export function TeethSupplierScheduleFields({
   supplierId,
   supplierName,
@@ -85,22 +95,14 @@ export function TeethSupplierScheduleFields({
     };
   }, [reload]);
 
-  const parseLeadDaysFromInput = (): number | null => {
-    const trimmed = leadDaysInput.trim();
-    if (!trimmed) return null;
-    const n = Math.trunc(Number(trimmed));
-    if (!Number.isFinite(n) || n < 0 || n > 60) {
-      throw new Error("Podaj liczbę od 0 do 60 albo zostaw puste (ETA z historii).");
-    }
-    return n === 0 ? null : n;
-  };
-
   const handleUpsert = useCallback(async () => {
     setPending(true);
     try {
       // Puste pole ETA przy zapisie cyklu → nie kasuj stałego ETA (osobny „Zapisz ETA”).
       const lead =
-        leadDaysInput.trim() === "" ? undefined : parseLeadDaysFromInput();
+        leadDaysInput.trim() === ""
+          ? undefined
+          : parseLeadDaysFromInput(leadDaysInput);
       await actionUpsertTeethSchedule(supplierId, orderDay, intervalWeeks, lead);
       onToastRef.current(TEETH_SCHEDULE_TOAST.saved);
       await reload();
@@ -114,7 +116,7 @@ export function TeethSupplierScheduleFields({
   const handleSaveEta = useCallback(async () => {
     setPending(true);
     try {
-      const lead = parseLeadDaysFromInput();
+      const lead = parseLeadDaysFromInput(leadDaysInput);
       await actionUpdateTeethDeliveryLeadDays(supplierId, lead);
       onToastRef.current(TEETH_SCHEDULE_TOAST.etaSaved);
       await reload();

@@ -1064,7 +1064,8 @@ export function ZdEstimateWorkbench({
   const autorunReplaceSessionIdRef = useRef<string | null>(null);
   const [externalSessionScopeChangeOpen, setExternalSessionScopeChangeOpen] =
     useState(false);
-  const sessionResumeStartedAtMsRef = useRef(Date.now());
+  const sessionResumeStartedAtMsRef = useRef(0);
+  const [sessionResumeStartedAtMs, setSessionResumeStartedAtMs] = useState(0);
   const sessionResumeRevealTimerRef = useRef<number | null>(null);
   const pendingRestoredToastRef = useRef<string | null>(null);
   /** Blokuje formularz zakresu do czasu restore (także cichego refreshu z tokenem). */
@@ -1916,9 +1917,12 @@ export function ZdEstimateWorkbench({
 
   const prosbaOverlapCandidateKey = prosbaOverlapCandidateTwIds.join(",");
 
+  if (!prosbaOverlapCandidateTwIds.length && prosbaReservedByTwId != null) {
+    setProsbaReservedByTwId(null);
+  }
+
   useEffect(() => {
     if (!prosbaOverlapCandidateTwIds.length) {
-      setProsbaReservedByTwId(null);
       skipProsbaOverlapFetchKeyRef.current = null;
       return;
     }
@@ -2604,8 +2608,10 @@ export function ZdEstimateWorkbench({
     }, ZD_ESTIMATE_EXTERNAL_SESSION_PERSIST_DEBOUNCE_MS);
   }, []);
 
-  flushExternalSessionPersistRef.current = flushExternalSessionPersist;
-  scheduleExternalSessionPersistRef.current = scheduleExternalSessionPersist;
+  useEffect(() => {
+    flushExternalSessionPersistRef.current = flushExternalSessionPersist;
+    scheduleExternalSessionPersistRef.current = scheduleExternalSessionPersist;
+  });
 
   const hasActiveExternalSessionWork = lines != null;
 
@@ -2618,7 +2624,7 @@ export function ZdEstimateWorkbench({
       scopeChangePendingActionRef.current = action;
       setExternalSessionScopeChangeOpen(true);
     },
-    [hasActiveExternalSessionWork]
+    [hasActiveExternalSessionWork, setExternalSessionScopeChangeOpen]
   );
 
   const applyExternalSessionPayload = useCallback(
@@ -2731,6 +2737,7 @@ export function ZdEstimateWorkbench({
   const restoreExternalSession = useCallback(
     async (token: NonNullable<ReturnType<typeof peekZdEstimateExternalSessionToken>>) => {
       sessionResumeStartedAtMsRef.current = Date.now();
+      setSessionResumeStartedAtMs(sessionResumeStartedAtMsRef.current);
       setSessionResumeReturningFromAway(
         isZdEstimateExternalSessionReturnNavigation(token)
       );
@@ -3684,6 +3691,8 @@ export function ZdEstimateWorkbench({
 
   // Sesja zewnętrzna: restore, auto-replace (daily Przygotuj ZD) albo konflikt z autorun.
   useLayoutEffect(() => {
+    // Token w localStorage → stan React (zewnętrzne źródło); setState w layoucie przed paint.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync tokenu sesji UI
     syncExternalSessionTokenState();
 
     const token = peekZdEstimateExternalSessionToken();
@@ -3790,7 +3799,6 @@ export function ZdEstimateWorkbench({
         // Token już skasowany; nie markDone — remount wejdzie w zwykły autorun.
         return;
       }
-      const meta = autorunReplaceMetaRef.current;
       // Meta zostaje do toastu „Lista gotowa” — nie kasuj tu (unikaj 2 nakładających się toastów).
       autorunReplaceSessionIdRef.current = null;
       // Odblokuj autorun effect (claim + Policz), nie odpalaj estimate tutaj.
@@ -4469,7 +4477,9 @@ export function ZdEstimateWorkbench({
     layoutKey: tableVirtualLayoutKey,
   });
   const tableVirtualScrollToIndexRef = useRef(tableVirtual.scrollToIndex);
-  tableVirtualScrollToIndexRef.current = tableVirtual.scrollToIndex;
+  useEffect(() => {
+    tableVirtualScrollToIndexRef.current = tableVirtual.scrollToIndex;
+  });
 
   useEffect(() => {
     if (!tableVirtual.enabled) {
@@ -5513,8 +5523,8 @@ export function ZdEstimateWorkbench({
       {showSessionResumeProgress ? (
         <div className="flex min-h-0 flex-1 flex-col">
           <ZdEstimateSessionResumeProgressPanel
-            key={sessionResumeStartedAtMsRef.current}
-            startedAtMs={sessionResumeStartedAtMsRef.current}
+            key={sessionResumeStartedAtMs}
+            startedAtMs={sessionResumeStartedAtMs}
             returningFromAway={sessionResumeReturningFromAway}
             forceComplete={sessionResumeForceComplete}
             supplierName={activeSupplierName}
