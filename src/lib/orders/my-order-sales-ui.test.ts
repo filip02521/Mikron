@@ -204,7 +204,7 @@ describe("enrichMyOrderSalesUi", () => {
       pickupAcknowledgedCount: 9,
       pickupPendingCount: 2,
     });
-    expect(ui.headline).toBe("Gotowe do odbioru z regału · 2 poz.");
+    expect(ui.headline).toBe("Gotowe do odbioru z regału · 2 pozycje");
     expect(ui.subline).toBeNull();
   });
 

@@ -2,11 +2,13 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import { buildOnboardingNotepadDemo } from "@/lib/sales/sales-onboarding-demo-data";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { IconPackageCheck, IconClipboardPen } from "@/components/icons/StrokeIcons";
@@ -77,6 +79,7 @@ import { NotatnikTabBar } from "./NotatnikTabBar";
 import { NOTATNIK_PAGE_CLASS } from "./notatnik-layout";
 import { DelegateModeBackground } from "@/components/moje/DelegatePreviewContext";
 import { ZkWatchSection } from "./ZkWatchSection";
+import type { AutoProsbaToastPayload } from "@/lib/sales/zk-watch-auto-prosba-copy";
 import { mergeSalesPreviewSearchParams } from "@/lib/nav/sales-preview-href";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 import { isEditableKeyboardTarget } from "@/lib/platform/editable-keyboard-target";
@@ -245,6 +248,7 @@ export function NotatnikClient({
   const [undoFeedback, setUndoFeedback] = useState<ToastNotice | null>(null);
   const [unseenWatchIds, setUnseenWatchIds] = useState<Set<string>>(() => new Set());
   const [warehouseToast, setWarehouseToast] = useState<string | null>(null);
+  const [prosbaToast, setProsbaToast] = useState<AutoProsbaToastPayload | null>(null);
   const [subiektStatus, setSubiektStatus] = useState<SubiektAvailability | undefined>(undefined);
   const [appliedSubiektPropKey, setAppliedSubiektPropKey] = useState("");
   const [appliedUrlTabKey, setAppliedUrlTabKey] = useState("");
@@ -1120,6 +1124,9 @@ export function NotatnikClient({
     refresh();
   }
 
+  const handleProsbaToast = useCallback((toast: AutoProsbaToastPayload) => {
+    setProsbaToast(toast);
+  }, []);
   const hasZkArchive = archivedWatches.length > 0;
   const hasNotesArchive = archivedNotes.length > 0;
 
@@ -1138,6 +1145,25 @@ export function NotatnikClient({
     <DelegateModeBackground active={effectiveDelegatePreview || Boolean(teamPreview)} label={teamPreview?.salesPersonName ?? null} className={NOTATNIK_PAGE_CLASS}>
       {warehouseToast && !effectiveReadOnly ? (
         <NoticeToast notice={warehouseToast} onDismiss={() => setWarehouseToast(null)} />
+      ) : null}
+      {prosbaToast && !effectiveReadOnly ? (
+        <NoticeToast
+          notice={{
+            title: prosbaToast.title,
+            message: prosbaToast.message,
+            tone: prosbaToast.tone,
+          }}
+          onDismiss={() => setProsbaToast(null)}
+          action={
+            prosbaToast.actionHref ? (
+              <Link href={prosbaToast.actionHref}>
+                <Button variant="secondary" className="w-full">
+                  {prosbaToast.actionLabel ?? "Prośby tego klienta"}
+                </Button>
+              </Link>
+            ) : undefined
+          }
+        />
       ) : null}
       {undoFeedback && !effectiveReadOnly ? (
         <NoticeToast
@@ -1188,7 +1214,7 @@ export function NotatnikClient({
         />
       ) : null}
 
-      <Card padding={false} className="overflow-hidden">
+      <Card padding={false} className={isZkSurface ? "overflow-visible" : "overflow-hidden"}>
         <CardHeader
           inset
           density="compact"
@@ -1311,6 +1337,7 @@ export function NotatnikClient({
                 focusWatchId={focusWatchId}
                 onFocusWatchHandled={handleFocusWatchHandled}
                 onLiveAnnounce={announceLive}
+                onProsbaToast={tourDemo ? undefined : handleProsbaToast}
               />
         ) : null}
 

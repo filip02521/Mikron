@@ -176,6 +176,8 @@ export type AddIndividualOrdersEntry = {
 export type AddIndividualOrdersInput = {
   entries: AddIndividualOrdersEntry[];
   acknowledgeSufficientStock?: boolean;
+  /** Snapshot stanu z UI (np. auto-prośba po modalu zakresu) — spójny z confirmem użytkownika. */
+  stockByTwId?: Record<number, import("@/lib/orders/prosba-stock-check").ProsbaLineStockSnapshot>;
 };
 
 export function normalizeAddIndividualOrdersInput(

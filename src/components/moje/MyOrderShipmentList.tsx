@@ -50,7 +50,6 @@ import {
 import { cn } from "@/lib/cn";
 import { mojeControlHeightClass } from "@/lib/ui/ontime-theme";
 import {
-  MOJE_SHIPMENT_ROW_ESTIMATE_PX,
   MOJE_SHIPMENT_VIRTUAL_THRESHOLD,
 } from "@/lib/ui/virtual-list-config";
 import { VirtualList } from "@/components/ui/VirtualList";
@@ -241,7 +240,7 @@ export function MyOrderShipmentList({
             orderIds,
             kind: "pickup",
             title:
-              n === 1 ? "Odbiór zapisany" : `Odbiór ${n} poz. zapisany`,
+              n === 1 ? "Odbiór zapisany" : `Odbiór ${n} pozycji zapisany`,
           });
           router.refresh();
         } catch (e) {
@@ -284,7 +283,7 @@ export function MyOrderShipmentList({
             title:
               n === 1
                 ? "Anulowanie potwierdzone — ukryto z listy"
-                : `Potwierdzono ${n} poz. — ukryto z listy`,
+                : `Potwierdzono ${n} pozycji — usunięto z listy`,
           });
           router.refresh();
         } catch (e) {
@@ -315,7 +314,7 @@ export function MyOrderShipmentList({
             title:
               n === 1
                 ? "Rezygnacja potwierdzona — ukryto z listy"
-                : `Potwierdzono ${n} poz. — ukryto z listy`,
+                : `Potwierdzono ${n} pozycji — usunięto z listy`,
           });
           router.refresh();
         } catch (e) {
@@ -391,7 +390,7 @@ export function MyOrderShipmentList({
           reportUndo({
             orderIds,
             kind: "cancel",
-            title: n === 1 ? "Pozycja wycofana" : `${n} poz. wycofane`,
+            title: n === 1 ? "Pozycja wycofana" : `${n} pozycji wycofanych`,
             restoreById,
           });
           router.refresh();
@@ -692,7 +691,7 @@ export function MyOrderShipmentList({
           continuation && "border-t border-slate-100"
         )}
         estimateSize={(_, row) =>
-          expandedIds.has(row.id) ? 240 : MOJE_SHIPMENT_ROW_ESTIMATE_PX
+          expandedIds.has(row.id) ? 300 : 108
         }
         getItemKey={(row) => row.id}
         scrollToKey={focusScrollKey}

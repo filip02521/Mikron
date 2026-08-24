@@ -183,6 +183,17 @@ export type ZkWatchProsbaCardAction =
   | { kind: "new_prosba"; label: string; lineKeys?: string[] }
   | { kind: "supplement"; label: string; lineKeys: string[] };
 
+/** Meta wiersza ZK — status prośby (poza kolumną CTA). */
+export function formatZkWatchProsbaRowMeta(
+  action: ZkWatchProsbaCardAction
+): string | null {
+  if (action.kind !== "covered") return null;
+  if (action.reason === "scope_excluded") {
+    return "Prośba: ze stanu magazynowego";
+  }
+  return "Prośba: bez otwartej";
+}
+
 /** Etykieta i tryb przycisku prośby na karcie ZK. */
 export function deriveZkWatchProsbaCardAction(input: {
   lineCount: number;
@@ -216,10 +227,16 @@ export function deriveZkWatchProsbaCardAction(input: {
       hasOpenMatchingProsba ||
       openProsbaLineKeys.length > 0 ||
       partialLineKeys.length > 0 ||
-      regalWaitingLineKeys.length > 0 ||
       informacjaReadyLineKeys.length > 0
     ) {
       return { kind: "view_open", label: "Otwórz prośbę" };
+    }
+    if (
+      regalWaitingLineKeys.length > 0 &&
+      !hasOpenMatchingProsba &&
+      openProsbaLineKeys.length === 0
+    ) {
+      return { kind: "view_open", label: "Odbierz w Moje" };
     }
     if (scopeExcludedLineKeys.length === lineCount && lineCount > 0) {
       return { kind: "covered", reason: "scope_excluded" };

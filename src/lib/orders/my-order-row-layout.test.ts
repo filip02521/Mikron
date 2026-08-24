@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { MyOrderRow } from "./my-order-presenter";
 import {
+  myOrderCollapsedContextLine,
   myOrderCollapsedMetaFields,
-  myOrderCollapsedProductMode,
   myOrderCollapsedProductSummary,
+  myOrderCollapsedStatusHint,
   myOrderCollapsedSubline,
+  myOrderCollapsedTitle,
   myOrderExpandedNotes,
   myOrderExpandHint,
   myOrderNeedsExpand,
@@ -84,15 +86,25 @@ function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
 }
 
 describe("my-order-row-layout", () => {
-  it("długi subline zamówienia trafia do metadanych, nie do osobnej notatki", () => {
+  it("title nigdy nie zawiera statusu magazynu ani weryfikacji", () => {
+    const r = row({
+      statusTitle: "Częściowo na magazynie",
+      subline: "Magazyn: 5/8 szt.",
+    });
+    expect(myOrderCollapsedTitle(r)).toBe("Produkt A");
+    expect(myOrderCollapsedStatusHint(r)).toContain("Magazyn");
+  });
+
+  it("długi subline zamówienia trafia do hintu, nie do tytułu", () => {
     const r = row();
-    expect(myOrderCollapsedSubline(r)).toBe(r.subline);
+    expect(myOrderCollapsedTitle(r)).toBe("Produkt A");
+    expect(myOrderCollapsedStatusHint(r)).toBe(r.subline);
     expect(myOrderExpandedNotes(r)).toBeNull();
   });
 
-  it("pokazuje subline przy opóźnieniu i częściowej dostawie", () => {
+  it("pokazuje hint przy opóźnieniu i częściowej dostawie — bez produktu w hint", () => {
     expect(
-      myOrderCollapsedSubline(
+      myOrderCollapsedStatusHint(
         row({
           headlineTone: "warning",
           headline: "Po przewidywanym terminie",
@@ -101,13 +113,16 @@ describe("my-order-row-layout", () => {
       )
     ).toBe("ok. 10.05.2026 (~5 dni rob.)");
     expect(
-      myOrderCollapsedSubline(
+      myOrderCollapsedStatusHint(
         row({
           statusTitle: "Częściowo na magazynie",
           subline: "Magazyn: 5/8 szt. · 2 prod.",
         })
       )
-    ).toBe("Produkt A · Magazyn: 5/8 szt. · 2 prod.");
+    ).toBe("Magazyn: 5/8 szt. · 2 prod.");
+    expect(myOrderCollapsedTitle(row({ statusTitle: "Częściowo na magazynie" }))).toBe(
+      "Produkt A"
+    );
   });
 
   it("weryfikacja — skrót na liście bez powtórzenia w expanded", () => {
@@ -117,8 +132,23 @@ describe("my-order-row-layout", () => {
         "Dział dostaw dopasuje dostawcę. Prośba jest zapisana — nie musisz nic uzupełniać.",
       subline: "Zakupy dopasują dostawcę — bez Twojej akcji",
     });
-    expect(myOrderCollapsedSubline(r)).toContain("Zakupy dopasują dostawcę");
+    expect(myOrderCollapsedStatusHint(r)).toContain("Zakupy dopasują dostawcę");
     expect(myOrderExpandedNotes(r)).toBeNull();
+  });
+
+  it("context line — dostawca i pojedynczy klient", () => {
+    expect(myOrderCollapsedContextLine(row())).toBe("Dostawca");
+    expect(
+      myOrderCollapsedContextLine(row({ clientLabel: "Klinika Smile" }))
+    ).toBe("Dostawca · Klinika Smile");
+    expect(
+      myOrderCollapsedContextLine(row({ clientLabel: "3 różnych klientów" }))
+    ).toBe("Dostawca");
+  });
+
+  it("deprecated subline deleguje do statusHint", () => {
+    const r = row();
+    expect(myOrderCollapsedSubline(r)).toBe(myOrderCollapsedStatusHint(r));
   });
 
   it("zamówienie z wieloma pozycjami wymaga rozwinięcia i skrótu produktów", () => {
@@ -133,7 +163,7 @@ describe("my-order-row-layout", () => {
     expect(
       myOrderNeedsExpand(r, { listKind: "zamowienie", showGroupPickup: false })
     ).toBe(true);
-    expect(myOrderCollapsedProductMode(r, "zamowienie")).toBe("summary");
+    expect(myOrderCollapsedProductSummary(r, "zamowienie")).toBe("3 produkty");
     expect(myOrderExpandHint(r, { listKind: "zamowienie", showGroupPickup: false })).toBe(
       "Rozwiń 3 produkty"
     );
@@ -150,14 +180,13 @@ describe("my-order-row-layout", () => {
       statusDetail:
         "Nie składamy zamówienia u dostawcy. Wyślemy e-mail, gdy towar pojawi się na magazynie.",
     });
-    expect(myOrderCollapsedSubline(r)).toBeNull();
+    expect(myOrderCollapsedStatusHint(r)).toBeNull();
     expect(
       myOrderNeedsExpand(r, { listKind: "informacja", showGroupPickup: false })
     ).toBe(true);
-    expect(myOrderCollapsedSubline(r)).toBeNull();
   });
 
-  it("wielu terminów ZD — podpowiedź rozwinięcia zamiast liczby produktów", () => {
+  it("wielu terminów ZD — podpowiedź rozwinięcia z poprawną liczbą", () => {
     const r = row({
       zdFulfillment: {
         deadline: "2026-07-15",
@@ -171,7 +200,7 @@ describe("my-order-row-layout", () => {
       },
     });
     expect(myOrderExpandHint(r, { listKind: "zamowienie", showGroupPickup: false })).toBe(
-      "Rozwiń po oba terminy"
+      "Rozwiń — 2 terminy"
     );
   });
 
@@ -211,14 +240,13 @@ describe("my-order-row-layout", () => {
 
   it("pojedyncza prośba — skrót bez nazwy produktu na liście", () => {
     const r = row({ subline: null });
-    expect(myOrderCollapsedProductMode(r, "zamowienie")).toBe("summary");
     expect(myOrderCollapsedProductSummary(r, "zamowienie")).toBe("1 produkt");
     expect(myOrderExpandHint(r, { listKind: "zamowienie", showGroupPickup: false })).toBe(
       "Rozwiń produkt"
     );
   });
 
-  it("„Zamówione” na czas — termin na zwiniętym wierszu", () => {
+  it("„Zamówione” na czas — termin nie w hint (idzie do railu)", () => {
     const r = row({
       statusTitle: "Zamówione",
       headline: "Zamówione — czekamy na dostawę",
@@ -226,20 +254,22 @@ describe("my-order-row-layout", () => {
       timingLabel: "ok. 20.06.2026 (~8 dni rob.)",
       subline: null,
     });
-    expect(myOrderCollapsedSubline(r)).toBe("Produkt A");
+    expect(myOrderCollapsedTitle(r)).toBe("Produkt A");
+    expect(myOrderCollapsedStatusHint(r)).toBeNull();
   });
 
-  it("zamowione z ostrzezeniem o historii — nazwa produktu ma pierwszenstwo przed subline", () => {
+  it("zamowione z ostrzezeniem o historii — produkt w tytule, nie w hint", () => {
     const r = row({
       statusTitle: "Zamówione",
       headlineTone: "info",
       timingLabel: "ok. 20.06.2026 (~8 dni rob.) · mało historii",
       subline: null,
     });
-    expect(myOrderCollapsedSubline(r)).toBe("Produkt A");
+    expect(myOrderCollapsedTitle(r)).toBe("Produkt A");
+    expect(myOrderCollapsedStatusHint(r)).toBeNull();
   });
 
-  it("po terminie — towar na zwiniętym wierszu zamiast terminu", () => {
+  it("po terminie — produkt w tytule, termin w railu", () => {
     const r = row({
       lineCount: 4,
       lines: Array.from({ length: 4 }, (_, i) => ({
@@ -251,7 +281,8 @@ describe("my-order-row-layout", () => {
       timingLabel: "ok. 10.05.2026 (~5 dni rob.) · po terminie",
       subline: null,
     });
-    expect(myOrderCollapsedSubline(r)).toBe("P0");
+    expect(myOrderCollapsedTitle(r)).toBe("P0");
+    expect(myOrderCollapsedStatusHint(r)).toBeNull();
     const collapsed = myOrderCollapsedMetaFields(r, true);
     expect(collapsed.some((f) => f.label === "Termin")).toBe(false);
     expect(collapsed.some((f) => f.label === "Szacunek")).toBe(false);

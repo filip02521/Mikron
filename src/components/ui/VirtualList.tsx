@@ -112,10 +112,9 @@ export function VirtualList<T>({
               className={cn("list-none", virtualItemClassName)}
               style={{
                 position: "absolute",
-                top: 0,
+                top: virtualRow.start,
                 left: 0,
                 width: "100%",
-                transform: `translateY(${virtualRow.start}px)`,
               }}
             >
               {renderItem(item, virtualRow.index)}

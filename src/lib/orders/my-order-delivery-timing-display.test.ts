@@ -264,6 +264,24 @@ describe("my-order-delivery-timing-display", () => {
     expect(display?.detail).toBe("2 terminy: 15.07.2026 · 22.07.2026");
   });
 
+  it("pokazuje blok w rozwinięciu dla planowanej daty zamówienia u dostawcy", () => {
+    expect(
+      shouldShowMyOrderExpandedDeliveryTiming(
+        row({
+          timingLabel: null,
+          zdFulfillment: null,
+          plannedOrderDate: {
+            caption: "Planowe zamówienie",
+            label: "08.09.2026",
+            badgeVariant: "default",
+            title: "Planowe zamówienie 08.09.2026",
+          },
+        }),
+        true
+      )
+    ).toBe(true);
+  });
+
   it("pokazuje blok w rozwinięciu dla zamówienia z ETA", () => {
     expect(shouldShowMyOrderExpandedDeliveryTiming(row(), true)).toBe(true);
     expect(shouldShowMyOrderExpandedDeliveryTiming(row(), false)).toBe(false);

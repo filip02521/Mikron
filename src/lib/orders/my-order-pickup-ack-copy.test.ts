@@ -19,18 +19,18 @@ describe("myOrderPickupAckLabel", () => {
   });
 
   it("informacja o dostępności", () => {
-    expect(myOrderPickupAckLabel(5, "availability")).toBe("Potwierdź");
+    expect(myOrderPickupAckLabel(5, "availability")).toBe("Potwierdź powiadomienie");
   });
 
   it("compact — krótka etykieta bez licznika (liczba w title)", () => {
-    expect(myOrderPickupAckLabel(1, "pickup", { compact: true })).toBe("Potwierdź");
-    expect(myOrderPickupAckLabel(3, "pickup", { compact: true })).toBe("Potwierdź");
+    expect(myOrderPickupAckLabel(1, "pickup", { compact: true })).toBe("Potwierdź odbiór");
+    expect(myOrderPickupAckLabel(3, "pickup", { compact: true })).toBe("Potwierdź odbiór");
   });
 });
 
 describe("myOrderPickupAckTitle", () => {
   it("odbiór wielu pozycji", () => {
-    expect(myOrderPickupAckTitle(3)).toContain("3 poz.");
+    expect(myOrderPickupAckTitle(3)).toContain("3 pozycji");
   });
 });
 

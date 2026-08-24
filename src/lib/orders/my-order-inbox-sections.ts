@@ -32,13 +32,13 @@ export const MY_ORDER_TEETH_ACTION_SECTION_COPY = {
 
 export const MY_ORDER_MIXED_ACTION_SECTION_COPY = {
   title: "Potwierdź odbiór (zęby i towar)",
-  hint: "W tej prośbie są zęby i towar z regału — każdy typ potwierdzasz osobno (inny przepływ magazynowy).",
+  hint: "W tej prośbie są zęby i towar z regału — każdy typ potwierdzasz osobno.",
   icon: "mixed-pickup" as const,
   accent: "indigo" as const satisfies MyOrderSectionAccent,
 };
 
 export const MY_ORDER_DISMISS_SECTION_COPY = {
-  title: "Do zamknięcia",
+  title: "Anulowania do potwierdzenia",
   hint: "Anulowania i rezygnacje — potwierdź, aby usunąć wpis z listy.",
   icon: "dismiss" as const,
   accent: "slate" as const satisfies MyOrderSectionAccent,
@@ -60,7 +60,7 @@ export const MY_ORDER_PROGRESS_SECTION_COPY: Record<
 > = {
   ordered_progress: {
     title: "Czekamy na dostawę",
-    hint: "Zamówienia już złożone u dostawcy. U góry najbliższy termin — rozwiń wiersz, aby zobaczyć datę z ZD.",
+    hint: "Zamówienia już złożone u dostawcy. U góry najbliższy termin — rozwiń wiersz, aby zobaczyć termin u dostawcy.",
     icon: "zamowienie",
     accent: "slate",
   },
@@ -73,7 +73,8 @@ export const MY_ORDER_PROGRESS_SECTION_COPY: Record<
 };
 
 export const MY_ORDER_PROGRESS_SECTION_EMPTY: Record<MyOrderProgressSectionId, string> = {
-  ordered_progress: "Obecnie nie masz zamówień u dostawcy — wszystko jest wcześniej w procesie.",
+  ordered_progress:
+    "Obecnie nie masz zamówień u dostawcy — wszystkie prośby są na wcześniejszym etapie.",
   before_order: "Obecnie nie masz prośb przed zamówieniem u dostawcy.",
 };
 

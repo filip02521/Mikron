@@ -64,7 +64,6 @@ import {
   handleProcurementProsbaKeyboardEvent,
   PROCUREMENT_PROSBA_KEYBOARD_HINTS,
 } from "@/lib/orders/procurement-prosba-keyboard";
-import { PROCUREMENT_TEAM_LABEL, PROCUREMENT_TEAM_LABEL_TITLE } from "@/lib/orders/procurement-copy";
 import { useSalesOnboardingDemo } from "@/components/sales/SalesOnboardingContext";
 import { buildOnboardingProsbaLines } from "@/lib/sales/sales-onboarding-demo-data";
 import {
@@ -107,39 +106,7 @@ import {
   procurementSubmitSuccessMessage,
 } from "@/lib/teeth/teeth-procurement-flow-copy";
 import { resolveTeethCatalogProduct } from "@/lib/teeth/teeth-dual-kind";
-
-function formatSubmitResult(
-  r: {
-    count: number;
-    complete: number;
-    verification: number;
-  },
-  requestKind: IndividualRequestKind,
-  forSales?: boolean
-): string {
-  const { complete, verification } = r;
-  if (forSales) {
-    if (verification > 0 && complete === 0) {
-      return "Prośba zapisana — dział zakupów dopracuje szczegóły. Śledź status w „Moje zamówienia”.";
-    }
-    if (verification > 0 && complete > 0) {
-      return `Zapisano prośbę (${complete} od razu do realizacji, ${verification} do weryfikacji). Sprawdź „Moje zamówienia”.`;
-    }
-    return requestKind === "informacja"
-      ? "Prośba o dostępność zapisana."
-      : "Prośba zapisana.";
-  }
-  if (verification > 0 && complete > 0) {
-    return `Zapisano ${complete} kompletnych i ${verification} do weryfikacji przez ${PROCUREMENT_TEAM_LABEL}.`;
-  }
-  if (verification > 0) {
-    return `Przekazano ${verification} pozycji do weryfikacji — ${PROCUREMENT_TEAM_LABEL} uzupełni brakujące dane (dostawca, opis).`;
-  }
-  if (requestKind === "informacja") {
-    return `Dodano ${complete} prośb(y) informacyjn(e). ${PROCUREMENT_TEAM_LABEL_TITLE} powiadomi Cię e-mailem, gdy towar będzie na magazynie.`;
-  }
-  return `Dodano ${complete} pozycji do panelu dziennego.`;
-}
+import { formatSubmitResult } from "@/lib/orders/prosba-submit-result-copy";
 
 interface Entry {
   id: string;

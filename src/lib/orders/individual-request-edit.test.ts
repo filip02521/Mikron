@@ -3,8 +3,11 @@ import {
   editRequestNoteForSave,
   filterIndividualRequestEditLinesForSave,
   isIndividualOrderEditable,
+  normalizeAddIndividualOrdersInput,
   resolveIndividualRequestEditLineId,
   toIndividualRequestEditLinePayload,
+  type AddIndividualOrdersEntry,
+  type AddIndividualOrdersInput,
 } from "./individual-request-edit";
 import type { IndividualOrder } from "@/types/database";
 
@@ -183,5 +186,30 @@ describe("editRequestNoteForSave", () => {
         initialNote: "",
       })
     ).toBe("wspólna");
+  });
+});
+
+describe("normalizeAddIndividualOrdersInput", () => {
+  it("tablica entries — bez stock i ack", () => {
+    const entries: AddIndividualOrdersEntry[] = [
+      { salesPersonId: "sp1", product: "A", quantity: "1" },
+    ];
+    expect(normalizeAddIndividualOrdersInput(entries)).toEqual({
+      entries,
+      acknowledgeSufficientStock: undefined,
+    });
+  });
+
+  it("obiekt — przekazuje stockByTwId i acknowledgeSufficientStock", () => {
+    const stockByTwId = {
+      1: { onHand: 5, reserved: 0, available: 5, source: "subiekt" as const },
+    };
+    const input: AddIndividualOrdersInput = {
+      entries: [{ salesPersonId: "sp1", product: "B", quantity: "2", subiektTwId: 1 }],
+      acknowledgeSufficientStock: true,
+      stockByTwId,
+    };
+    expect(normalizeAddIndividualOrdersInput(input)).toBe(input);
+    expect(normalizeAddIndividualOrdersInput(input).stockByTwId).toBe(stockByTwId);
   });
 });

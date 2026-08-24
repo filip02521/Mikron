@@ -104,15 +104,11 @@ export function shouldShowCollapsedProductSummary(
   row: MyOrderRow,
   opts: {
     expanded: boolean;
-    showRowHeadline: boolean;
-    suppressSharedHeadline: boolean;
-    hasCollapsedSubline: boolean;
+    hasStatusHint: boolean;
   }
 ): boolean {
   if (opts.expanded || row.lineCount <= 1) return false;
-  if (opts.showRowHeadline && !opts.suppressSharedHeadline && opts.hasCollapsedSubline) {
-    return false;
-  }
+  if (opts.hasStatusHint) return false;
   return true;
 }
 
@@ -134,19 +130,45 @@ export function filterRedundantExpandedMetaFields(
   });
 }
 
-/** Czy pokazać subline na zwiniętym wierszu — bez duplikatu przy ukrytym nagłówku sekcji. */
-export function shouldShowCollapsedSubline(
-  collapsedSubline: string | null,
+/** Czy pokazać hint statusu na zwiniętym wierszu — bez duplikatu przy ukrytym nagłówku sekcji. */
+export function shouldShowCollapsedStatusHint(
+  statusHint: string | null,
   opts: {
     showHeadlineBanner: boolean;
     showRowHeadline: boolean;
     suppressSharedHeadline: boolean;
   }
 ): boolean {
-  if (!collapsedSubline?.trim() || opts.showHeadlineBanner) return false;
+  if (!statusHint?.trim() || opts.showHeadlineBanner) return false;
   if (opts.suppressSharedHeadline && !opts.showRowHeadline) {
     return true;
   }
   if (opts.showRowHeadline) return true;
   return false;
+}
+
+/** @deprecated Użyj shouldShowCollapsedStatusHint */
+export function shouldShowCollapsedSubline(
+  statusHint: string | null,
+  opts: {
+    showHeadlineBanner: boolean;
+    showRowHeadline: boolean;
+    suppressSharedHeadline: boolean;
+  }
+): boolean {
+  return shouldShowCollapsedStatusHint(statusHint, opts);
+}
+
+/** Ukryj uwagi na pozycji, gdy ta sama treść jest już w panelu grupowym (ContextStrip lub unread strip). */
+export function shouldHideLineRequestNote(sharedRequestNote: string | null | undefined): boolean {
+  return Boolean(sharedRequestNote?.trim());
+}
+
+/** Pill w railu — gdy headline ukryty (callout sekcji). */
+export function shouldShowCollapsedStatusPill(
+  row: MyOrderRow,
+  opts: { suppressSharedHeadline: boolean; showRowHeadline: boolean }
+): boolean {
+  if (!opts.suppressSharedHeadline || opts.showRowHeadline) return false;
+  return shouldShowOrderStatusBadge(row);
 }

@@ -141,9 +141,9 @@ export function buildCollapsedZdMixedNoMatchHint(lines: LineZdTermState[]): stri
     return buildCollapsedZdPendingOnlyHint(withoutZd.length);
   }
   if (withHistory.length) {
-    return `${countLabel} bez terminu w ZD — rozwiń po szacunek z historii`;
+    return `${countLabel} bez terminu u dostawcy — rozwiń po szacunek z historii`;
   }
-  return `${countLabel} bez terminu w ZD — rozwiń po szczegóły`;
+  return `${countLabel} bez terminu u dostawcy — rozwiń po szczegóły`;
 }
 
 /** Zwinięty wiersz / subline — tylko najwcześniejszy termin ZD. */
@@ -226,7 +226,7 @@ export function salesZdGroupTimingLabel(
   const overdueSuffix = overdue ? " · po terminie" : "";
 
   if (uniqueDates.length === 1) {
-    return `${uniqueDates[0]} · ${sorted.length} poz.${overdueSuffix}`;
+    return `${uniqueDates[0]} · ${sorted.length} pozycje${overdueSuffix}`;
   }
   if (sorted.length === 2) {
     return `2 terminy: ${uniqueDates[0]} i ${uniqueDates[uniqueDates.length - 1]}${overdueSuffix}`;

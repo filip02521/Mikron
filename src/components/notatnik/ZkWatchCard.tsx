@@ -3,10 +3,10 @@
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { useMemo, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { actionRefreshZkWatchFromSubiekt, actionRestoreZkWatch, actionDeleteArchivedZkWatch } from "@/app/actions/sales-notepad";
-import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
+import { ActionLoadingOverlay, actionLoadingVirtualItemScopeClass } from "@/components/ui/ActionLoadingOverlay";
 import { cn } from "@/lib/cn";
 import { formatZkWatchDisplayNumber } from "@/lib/sales/notepad-format";
-import { isFollowUpDue, buildMojeClientLink } from "@/lib/sales/notepad-follow-up";
+import { isFollowUpDue, buildMojeClientLink, formatFollowUpLabel } from "@/lib/sales/notepad-follow-up";
 import {
   prosbaHrefFromZkWatch,
   stashZkProsbaPrefill,
@@ -30,6 +30,7 @@ import {
   formatZkProsbaCardActionLabelAfterStockFilter,
   formatZkWatchLineCheckboxPreview,
   formatZkWatchLineCheckboxShort,
+  formatZkWatchProsbaRowMeta,
   resolveZkWatchProsbaCardLineKeys,
   resolveZkWatchProsbaPrefillLineKeys,
 } from "@/lib/sales/zk-watch-line-ui-state";
@@ -39,11 +40,25 @@ import {
   mojeQueueRowActionsClass,
   mojeQueueRowLayoutClass,
   mojeQueueRowMainClass,
-  mojeShipmentRowClass,
 } from "@/lib/ui/moje-shipment-row-styles";
 import { salesTypography } from "@/lib/ui/ontime-theme";
+import {
+  buildZkWatchCardMetaSummary,
+  deriveZkWatchFollowUpDueBadge,
+  deriveZkWatchRowAttention,
+  deriveZkWatchRowChrome,
+  deriveZkWatchRowSecondaryMeta,
+} from "@/lib/sales/zk-watch-row-attention";
+import {
+  zkWatchRowAttentionBadgeClass,
+  zkWatchRowActionsMobileDividerClass,
+  zkWatchRowShellClassForChrome,
+} from "@/lib/ui/zk-watch-attention-styles";
+import { zkWatchRowActionBarClass } from "@/lib/ui/zk-watch-row-action-styles";
 import { formatZkWatchNotePreview } from "@/lib/sales/zk-watch-row-display";
+import { ZkCaseNoteProsbaChip } from "./ZkCaseNoteProsbaChip";
 import { ZkWatchFollowUpButton } from "./ZkWatchFollowUpButton";
+import { ZkWatchRowAccentRail, ZkWatchRowAttentionRail } from "./ZkWatchRowAttentionRail";
 import { ZkWatchOverflowMenu } from "./ZkWatchOverflowMenu";
 import { ZkWatchProsbaActions } from "./ZkWatchProsbaActions";
 import { buildZkWatchLineViews } from "@/lib/sales/zk-watch-lines";
@@ -80,6 +95,7 @@ export function ZkWatchCard({
   teethRegistry,
   onRequestCloseWatch,
   closePreviewLoading = false,
+  autoProsbaPending = false,
   closeFlowError,
 }: {
   watch: SalesZkWatch;
@@ -111,6 +127,7 @@ export function ZkWatchCard({
   teethRegistry?: import("@/lib/sales/zk-watch-teeth-draft").TeethDraftRegistryLookup;
   onRequestCloseWatch?: (watch: SalesZkWatch) => void;
   closePreviewLoading?: boolean;
+  autoProsbaPending?: boolean;
   closeFlowError?: string;
 }) {
   const [restoring, setRestoring] = useState(false);
@@ -188,23 +205,9 @@ export function ZkWatchCard({
     ...checkboxContext,
   });
   const readyToClose = !archived && allLinesChecked;
+  const regalWaitingCount = orderHints?.regalWaitingLineKeys?.length ?? 0;
+  const hasRegalWaiting = regalWaitingCount > 0;
   const hasInformacjaReady = (orderHints?.informacjaReadyLineKeys?.length ?? 0) > 0;
-  const hasPhysicalDeliverySignal =
-    (orderHints?.matchedDeliveredLineKeys?.length ?? 0) > 0 ||
-    (orderHints?.inStockLineKeys?.length ?? 0) > 0 ||
-    (orderHints?.regalWaitingLineKeys?.length ?? 0) > 0;
-  const isInformacjaReadyAccent =
-    hasInformacjaReady &&
-    !readyToClose &&
-    !followUpDue &&
-    !hasNewWarehouseArrival &&
-    !hasPhysicalDeliverySignal;
-  const isNewlyAddedAccent =
-    isNewlyAdded &&
-    !archived &&
-    !hasNewWarehouseArrival &&
-    !hasNewZkLines &&
-    !isInformacjaReadyAccent;
   const uncoveredLineKeys = useMemo(
     () => orderHints?.uncoveredLineKeys ?? [],
     [orderHints?.uncoveredLineKeys]
@@ -373,7 +376,33 @@ export function ZkWatchCard({
         lineCoverageByKey: orderHints.lineCoverageByKey,
       })
     : null;
-  const cardMetaSummary = [prosbaScopeSummary, lineStatusSummary].filter(Boolean).join(" · ") || null;
+
+  const attentionInput = {
+    archived,
+    hasNewWarehouseArrival,
+    followUpDue,
+    followUpLabel: followUpDue ? formatFollowUpLabel(watch.follow_up_at) : null,
+    regalWaitingCount,
+    hasRegalWaiting,
+    hasInformacjaReady,
+    hasNewZkLines,
+    isNewlyAdded,
+    readyToClose,
+    hiddenOutsideScope,
+  };
+  const primaryAttention = deriveZkWatchRowAttention(attentionInput);
+  const followUpDueBadge = deriveZkWatchFollowUpDueBadge(attentionInput);
+  const rowChrome = deriveZkWatchRowChrome(attentionInput);
+  const prosbaRowMeta = prosbaScopeConfigured
+    ? formatZkWatchProsbaRowMeta(displayProsbaCardAction)
+    : null;
+  const cardMetaSummary = buildZkWatchCardMetaSummary({
+    prosbaScopeSummary,
+    prosbaRowMeta,
+    lineStatusSummary,
+    secondaryMeta: deriveZkWatchRowSecondaryMeta(attentionInput),
+    primaryAttention,
+  });
 
   const prosbaActionCount = uncoveredLineKeys.length;
 
@@ -405,7 +434,15 @@ export function ZkWatchCard({
     restoring ||
     deleting ||
     refreshing ||
-    closePreviewLoading;
+    closePreviewLoading ||
+    autoProsbaPending;
+  const showCardOverlay = closePreviewLoading || autoProsbaPending;
+
+  const prosbaViewHref =
+    displayProsbaCardAction.kind === "view_open" &&
+    displayProsbaCardAction.label === "Odbierz w Moje"
+      ? mojeClientHref
+      : prosbaInTokuHref;
 
   const displayNumber = formatZkWatchDisplayNumber(watch.zk_number);
   const productPreview =
@@ -425,13 +462,9 @@ export function ZkWatchCard({
 
   const rowAriaLabel = [
     `${displayNumber} ${watch.client_label}`,
-    readyToClose ? "gotowe do zamknięcia" : null,
-    followUpDue ? "przypomnienie do działania" : null,
-    isNewlyAdded ? "nowo dodane ZK" : null,
-    hasNewZkLines ? "nowe pozycje w ZK" : null,
-    hasTrackedScope && hiddenOutsideScope > 0
-      ? `${hiddenOutsideScope} pozycji spoza wybranego zakresu`
-      : null,
+    primaryAttention?.label,
+    followUpDueBadge?.label,
+    cardMetaSummary,
     "pokaż szczegóły ZK",
   ]
     .filter(Boolean)
@@ -511,39 +544,23 @@ export function ZkWatchCard({
   return (
     <article
       id={anchorId}
-      className={cn(
-        anchorId && "scroll-mt-3 scroll-mb-3",
-        mojeShipmentRowClass({
-          expanded: false,
-          isAction: readyToClose,
-          isUrgent: followUpDue,
-          isInformacja: false,
-          deliveryBorderAccent: isNewlyAddedAccent
-            ? "border-l-violet-500"
-            : isInformacjaReadyAccent
-              ? "border-l-sky-500"
-              : undefined,
-          deliveryCollapsedBg: isNewlyAddedAccent
-            ? "bg-violet-50/30"
-            : isInformacjaReadyAccent
-              ? "bg-sky-50/35"
-              : undefined,
-          visualTone: archived ? "archive" : "default",
-        }),
-        followUpDue && readyToClose && "ring-1 ring-inset ring-amber-300/50",
-        hasInformacjaReady &&
-          !hasNewWarehouseArrival &&
-          isInformacjaReadyAccent &&
-          "ring-1 ring-inset ring-sky-300/70",
-        hasNewWarehouseArrival && "ring-1 ring-inset ring-teal-300/80",
-        hasNewZkLines && !hasNewWarehouseArrival && "ring-1 ring-inset ring-amber-300/70",
-        isNewlyAddedAccent && "ring-1 ring-inset ring-violet-300/70",
-        closePreviewLoading && "relative"
-      )}
+      className={anchorId ? "scroll-mt-3 scroll-mb-3" : undefined}
     >
+      <div
+        className={cn(
+          zkWatchRowShellClassForChrome(rowChrome, { archived }),
+          showCardOverlay && actionLoadingVirtualItemScopeClass
+        )}
+      >
       {closePreviewLoading ? (
         <ActionLoadingOverlay message="Sprawdzam pozycje…" variant="section" />
       ) : null}
+      {autoProsbaPending ? (
+        <ActionLoadingOverlay message="Tworzę prośbę…" variant="section" />
+      ) : null}
+      {rowChrome.railKind ? <ZkWatchRowAttentionRail kind={rowChrome.railKind} /> : null}
+      {rowChrome.accentKind ? <ZkWatchRowAccentRail kind={rowChrome.accentKind} /> : null}
+      <div className="min-w-0 flex-1">
       <div
         className={cn(
           mojeQueueRowLayoutClass,
@@ -559,7 +576,7 @@ export function ZkWatchCard({
           aria-label={rowAriaLabel}
         >
           <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 items-baseline gap-x-1.5">
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
               <span
                 className={cn(
                   "shrink-0 font-semibold tabular-nums text-slate-900",
@@ -576,29 +593,20 @@ export function ZkWatchCard({
               >
                 {watch.client_label}
               </span>
-              {hasNewWarehouseArrival ? (
-                <span className="shrink-0 inline-flex items-center gap-0.5 rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-emerald-700 ring-1 ring-inset ring-emerald-200/80">
-                  Na regale
-                </span>
-              ) : null}
-              {isNewlyAdded && !archived ? (
-                <span className="shrink-0 inline-flex items-center gap-0.5 rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-violet-700 ring-1 ring-inset ring-violet-200/80">
-                  Nowe
-                </span>
-              ) : null}
-              {hasNewZkLines ? (
-                <span className="shrink-0 inline-flex items-center gap-0.5 rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-amber-700 ring-1 ring-inset ring-amber-200/80">
-                  Nowe pozycje
-                </span>
-              ) : null}
-              {hasTrackedScope && hiddenOutsideScope > 0 ? (
+              {primaryAttention ? (
                 <span
-                  className="shrink-0"
-                  title={`${hiddenOutsideScope} poz. spoza wybranego zakresu — pełną listę zobaczysz w podglądzie ZK`}
+                  className={zkWatchRowAttentionBadgeClass(primaryAttention.kind)}
+                  title={primaryAttention.title}
                 >
-                  <span className="inline-flex items-center rounded-md bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-600 ring-1 ring-inset ring-slate-200/80">
-                    +{hiddenOutsideScope} poz. ZK
-                  </span>
+                  {primaryAttention.label}
+                </span>
+              ) : null}
+              {followUpDueBadge ? (
+                <span
+                  className={zkWatchRowAttentionBadgeClass(followUpDueBadge.kind)}
+                  title={followUpDueBadge.title}
+                >
+                  {followUpDueBadge.label}
                 </span>
               ) : null}
             </div>
@@ -626,32 +634,24 @@ export function ZkWatchCard({
             ) : null}
 
             {notePreview ? (
-              <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1.5">
+              <div className="mt-0.5 flex min-w-0 items-baseline gap-1.5">
                 {noteProsbaStatus !== "none" ? (
-                  <span
-                    className={cn(
-                      "inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset",
-                      noteProsbaStatus === "in_prosba"
-                        ? "bg-emerald-50 text-emerald-800 ring-emerald-200/80"
-                        : noteProsbaStatus === "private"
-                          ? "bg-indigo-50 text-indigo-800 ring-indigo-200/80"
-                          : "bg-amber-50 text-amber-900 ring-amber-200/80"
-                    )}
-                    title={noteProsbaCopy.description}
-                  >
-                    {noteProsbaCopy.label}
-                  </span>
+                  <ZkCaseNoteProsbaChip
+                    status={noteProsbaStatus}
+                    pendingKind={noteProsbaPendingKind}
+                    variant="row"
+                  />
                 ) : null}
                 <button
                   type="button"
                   data-zk-row-action=""
                   onClick={handleNoteClick}
                   className={cn(
-                    "min-w-0 max-w-full truncate text-left font-medium",
+                    "min-w-0 flex-1 truncate text-left",
                     salesTypography.rowMeta,
-                    "rounded-sm text-indigo-900/90 transition hover:bg-indigo-50/80"
+                    "text-slate-600 transition hover:text-indigo-900"
                   )}
-                  title={notePreview}
+                  title={noteProsbaCopy.description}
                 >
                   {notePreview}
                 </button>
@@ -673,9 +673,16 @@ export function ZkWatchCard({
           </div>
         </div>
 
-        <div className={mojeQueueRowActionsClass} data-zk-row-action="">
+        <div
+          className={cn(
+            mojeQueueRowActionsClass,
+            (rowChrome.railKind || rowChrome.accentKind) &&
+              zkWatchRowActionsMobileDividerClass
+          )}
+          data-zk-row-action=""
+        >
           <div
-            className="flex items-center justify-end gap-1"
+            className={zkWatchRowActionBarClass}
             onMouseEnter={() => setProsbaStockArmed(true)}
             onFocusCapture={() => setProsbaStockArmed(true)}
             onMouseDown={() => setProsbaStockArmed(true)}
@@ -685,7 +692,7 @@ export function ZkWatchCard({
               pending={pending}
               prosbaCardAction={displayProsbaCardAction}
               prosbaHref={prosbaHref}
-              prosbaInTokuHref={prosbaInTokuHref}
+              prosbaInTokuHref={prosbaViewHref}
               onProsbaClick={handleProsbaClick}
               uncoveredCount={prosbaActionCount}
               buttonLabel={prosbaButtonLabel}
@@ -738,9 +745,13 @@ export function ZkWatchCard({
       </div>
 
       {displayError ? (
-        <p className="border-t border-slate-100 px-3 py-1.5 text-xs text-red-600">{displayError}</p>
+        <p className="border-t border-slate-100/90 px-3 py-1.5 text-xs text-red-600">
+          {displayError}
+        </p>
       ) : null}
 
+      </div>
+      </div>
     </article>
   );
 }

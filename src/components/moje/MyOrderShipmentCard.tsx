@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useId, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { SalesClientAssignment } from "@/lib/orders/sales-client-label";
 import {
@@ -9,17 +9,10 @@ import {
   type SalesCancelPhase,
 } from "@/lib/orders/sales-cancel";
 import type { MyOrderLine } from "@/lib/orders/my-order-presenter";
-import { PlannedOrderDateMeta } from "@/components/orders/PlannedOrderDateMeta";
-import { MyOrderEstimatedDeliveryMeta } from "@/components/moje/MyOrderEstimatedDeliveryMeta";
 import {
-  InformacjaEmailSentMeta,
   shouldShowInformacjaEmailSentMeta,
 } from "@/components/moje/InformacjaEmailSentMeta";
-import { ZdFulfillmentDateMeta } from "@/components/orders/ZdFulfillmentDateMeta";
-import { ZdEtaPendingMeta } from "@/components/orders/ZdEtaPendingMeta";
 import { resolveMyOrderHistoryDeliveryEstimate } from "@/lib/orders/delivery-date-meta-label";
-import { MyOrderKindBadge } from "@/components/moje/MyOrderKindBadge";
-import { MyOrderProductLaneBadge } from "@/components/moje/MyOrderProductLaneBadge";
 import { displayProductLaneKind } from "@/lib/orders/my-order-lane-meta";
 import { MyOrderRequestProgressBar } from "@/components/moje/MyOrderRequestProgressBar";
 import {
@@ -29,11 +22,12 @@ import {
 import {
   filterRedundantExpandedMetaFields,
   progressLabelInSubline,
+  shouldHideLineRequestNote,
   shouldShowCollapsedProductSummary,
-  shouldShowCollapsedSubline,
+  shouldShowCollapsedStatusHint,
+  shouldShowCollapsedStatusPill,
   shouldShowExpandedOrderStatusBadge,
   shouldShowMyOrderHeadlineBanner,
-  shouldShowOrderStatusBadge,
 } from "@/lib/orders/my-order-card-ui";
 import {
   EMPTY_MY_ORDER_SECTION_PATTERNS,
@@ -44,13 +38,22 @@ import {
 import type { MyOrderListKind } from "@/lib/orders/my-order-row-layout";
 import { myOrderCollapsedMobileTiming } from "@/lib/orders/my-order-collapsed-mobile-timing";
 import {
+  myOrderCollapsedContextLine,
   myOrderCollapsedProductSummary,
-  myOrderCollapsedSubline,
+  myOrderCollapsedStatusHint,
+  myOrderCollapsedTitle,
   myOrderExpandHint,
   myOrderExpandedNotes,
   myOrderNeedsExpand,
-  myOrderProductPreviewLine,
 } from "@/lib/orders/my-order-row-layout";
+import { isClientNamesAggregateSummary } from "@/lib/orders/sales-client-label";
+import {
+  MOJE_COPY_DISMISS_ACK_BUTTON,
+  mojeCopyNotesAckTooltip,
+} from "@/lib/orders/my-order-moje-copy";
+import { MyOrderCollapsedRowZones } from "@/components/moje/MyOrderCollapsedRowZones";
+import { MyOrderExpandedContextStrip } from "@/components/moje/MyOrderExpandedContextStrip";
+import { MyOrderRowMetaRail } from "@/components/moje/MyOrderRowMetaRail";
 import { myOrderExpandedMetaFields } from "@/lib/orders/my-order-sales-ui";
 import {
   buildMyOrderDeliveryTimingDisplay,
@@ -66,7 +69,6 @@ import { MyOrderLineItem } from "@/components/moje/MyOrderLineItem";
 import { MyOrderShipmentOverflowMenu, type MyOrderShipmentOverflowMenuProps } from "@/components/moje/MyOrderShipmentOverflowMenu";
 import { MyOrderHeadlineBanner } from "@/components/moje/MyOrderHeadlineBanner";
 import { MyOrderRowPatternHint } from "@/components/moje/MyOrderRowPatternHint";
-import { MyOrderStatusPill } from "@/components/moje/MyOrderStatusPill";
 import { IconCircleCheck, IconPackageCheck, IconTooth } from "@/components/icons/StrokeIcons";
 import { ZkProsbaLinkChip } from "@/components/orders/ZkProsbaLinkChip";
 import { cn } from "@/lib/cn";
@@ -76,10 +78,10 @@ import {
   mojeSecondaryControlClass,
   panelSegmentFirstClass,
   panelSegmentLastClass,
-  salesTypography,
 } from "@/lib/ui/ontime-theme";
 import {
   mojeQueueRowActionsClass,
+  mojeQueueRowActionsInlineClass,
   mojeQueueRowLayoutClass,
   mojeQueueRowMainClass,
   mojeShipmentBulkPickupFooterClass,
@@ -94,15 +96,14 @@ import {
 } from "@/lib/ui/moje-shipment-row-styles";
 import { mojeActionBarShellClass } from "@/lib/ui/surfaces";
 import {
-  myOrderPickupAckAllLabel,
   myOrderPickupAckLabel,
+  myOrderMixedPickupBulkHint,
+  myOrderPickupAckAllLabel,
   myOrderPickupAckLineLabel,
   myOrderPickupAckLineTitle,
   myOrderPickupAckTitle,
-  myOrderMixedPickupBulkHint,
   type MyOrderPickupAckMode,
 } from "@/lib/orders/my-order-pickup-ack-copy";
-import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
 import {
   buildHeadlineClass,
   buildOverflowMenuProps,
@@ -447,7 +448,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   const dismissAckIds = needsCancelNoticeAck
     ? row.cancelNoticeOrderIds
     : row.cancelledAckOrderIds;
-  const dismissAckLabel = "Zamknij";
+  const dismissAckLabel = MOJE_COPY_DISMISS_ACK_BUTTON;
   const dismissAckTitle = needsCancelNoticeAck
     ? "Potwierdzam zapoznanie się z rezygnacją — usuń z listy"
     : "Potwierdzam anulowanie — usuń z listy";
@@ -494,7 +495,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     row.salesCancelPhase &&
     onCancelRequest;
   const showEditLink = canAcknowledge && !tourPreview && row.canEditBySales && onEditRequest;
-  const showStatusBadge = shouldShowOrderStatusBadge(row);
   const canEditClient = canAcknowledge && Boolean(onSaveClient);
 
   const isInformacjaAck =
@@ -524,8 +524,9 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
 
   const expandCtx = { listKind, showGroupPickup };
   const needsExpand = myOrderNeedsExpand(row, expandCtx);
-  const collapsedSubline = myOrderCollapsedSubline(row);
-  const productPreviewLine = myOrderProductPreviewLine(row);
+  const collapsedTitle = myOrderCollapsedTitle(row);
+  const collapsedContextLine = myOrderCollapsedContextLine(row);
+  const statusHint = myOrderCollapsedStatusHint(row);
   const showHeadlineBanner = shouldShowMyOrderHeadlineBanner(row, {
     expanded,
     compactActionLayout,
@@ -534,7 +535,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   const mobileTiming = myOrderCollapsedMobileTiming(row, {
     expanded,
     showProgress,
-    collapsedSubline,
+    collapsedSubline: statusHint,
   });
   const expandedNotes = myOrderExpandedNotes(row);
   const requestProgress = useMemo(
@@ -544,18 +545,20 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
         : null,
     [row]
   );
-  const showCollapsedSublineText = shouldShowCollapsedSubline(collapsedSubline, {
+  const showStatusHintText = shouldShowCollapsedStatusHint(statusHint, {
     showHeadlineBanner,
     showRowHeadline,
     suppressSharedHeadline,
   });
+  const showStatusPillInRail = shouldShowCollapsedStatusPill(row, {
+    suppressSharedHeadline,
+    showRowHeadline,
+  });
   const expandedMeta = filterRedundantExpandedMetaFields(
     row,
-    [
-      { label: "Dostawca", value: row.supplierName },
-      ...myOrderExpandedMetaFields(row, showProgress),
-    ]
+    myOrderExpandedMetaFields(row, showProgress)
       .filter((field) => field.label !== "Klient")
+      .filter((field) => field.label !== "Dostawca")
       .filter((field) => field.label !== "ZK")
       .filter((field) => field.label !== "Uwagi")
       .filter((field) => field.label !== "Od dostaw")
@@ -563,21 +566,20 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
       .filter((field) => field.label !== "Zamówiono")
       .filter((field) => field.label !== "Magazyn")
   );
-  const expandedDeliveryTiming = buildMyOrderDeliveryTimingDisplay(row);
   const showExpandedDeliveryTiming = shouldShowMyOrderExpandedDeliveryTiming(
     row,
     showProgress
   );
+  const expandedDeliveryTiming = showExpandedDeliveryTiming
+    ? buildMyOrderDeliveryTimingDisplay(row)
+    : null;
   const expandHint = myOrderExpandHint(row, expandCtx);
   const productSummaryRaw = myOrderCollapsedProductSummary(row, listKind);
   const showCollapsedProductSummary = shouldShowCollapsedProductSummary(row, {
     expanded,
-    showRowHeadline,
-    suppressSharedHeadline,
-    hasCollapsedSubline: Boolean(collapsedSubline),
+    hasStatusHint: Boolean(showStatusHintText && statusHint),
   });
   const productSummary = showCollapsedProductSummary ? productSummaryRaw : null;
-  const plannedOrderDate = row.plannedOrderDate ?? null;
   const zdEtaPending = Boolean(row.zdEtaPending && subiektReachable);
   const showInformacjaTimingMeta = shouldShowInformacjaEmailSentMeta(row);
   const historyDeliveryEstimate = resolveMyOrderHistoryDeliveryEstimate(row);
@@ -588,9 +590,11 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   const showZdEtaPendingMeta = zdEtaPending;
   const showZdEtaPendingWithEstimate =
     zdEtaPending && (historyDeliveryEstimate !== null || zdFulfillment !== null);
+  const showExpandedTimingContext =
+    showExpandedDeliveryTiming || Boolean(row.plannedOrderDate);
   const showExpandedStatusBadge = shouldShowExpandedOrderStatusBadge(row, {
     hasRequestProgress: Boolean(requestProgress),
-    hasExpandedDeliveryTiming: Boolean(showExpandedDeliveryTiming),
+    hasExpandedDeliveryTiming: Boolean(showExpandedTimingContext),
   });
 
   const showAllProductLines = linesOpen || searchShowsProductLines;
@@ -618,6 +622,14 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     if (!needsExpand) return;
     if (expanded) setClientEditorLineId(null);
     onToggleRow?.(row.id);
+  };
+
+  const handleMainRowKeyDown = (event: KeyboardEvent) => {
+    if (!needsExpand) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleToggle();
+    }
   };
 
   const soleLine = row.lineCount === 1 ? row.lines[0] : undefined;
@@ -695,6 +707,11 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   const compactCancelAck =
     compactActionLayout && !expanded && isCancelAck;
 
+  const showCollapsedHeadline =
+    showRowHeadline &&
+    !expanded &&
+    (!showHeadlineBanner || compactPickupOrAvailability || compactCancelAck);
+
   const bannerAckInHeadline =
     showHeadlineBanner && (Boolean(showSinglePickup) || Boolean(showDismissAck));
   const bannerPickup = bannerAckInHeadline && Boolean(showSinglePickup);
@@ -710,7 +727,16 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
       onClick={() => onAcknowledgePickup(row.pickupPendingIds, shelfPickup)}
     >
       <span className="inline-flex items-center gap-1.5">
-        <IconPackageCheck size={14} className="shrink-0" />
+        {ackMode === "teeth_handover" ? (
+          <IconTooth size={14} className="shrink-0" />
+        ) : isMixedPickup ? (
+          <>
+            <IconTooth size={14} className="shrink-0" />
+            <IconPackageCheck size={14} className="shrink-0" />
+          </>
+        ) : (
+          <IconPackageCheck size={14} className="shrink-0" />
+        )}
         {pickupAckLabel}
       </span>
     </MyOrderAckButton>
@@ -729,6 +755,21 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
       </span>
     </MyOrderAckButton>
   ) : undefined;
+
+  const collapsedMetaRailProps = {
+    row,
+    searchQuery,
+    showInformacjaTimingMeta,
+    showEstimatedDeliveryMeta,
+    showZdEtaPendingMeta,
+    showZdEtaPendingWithEstimate,
+    showStatusPill: showStatusPillInRail,
+    productSummary,
+    productSummaryExpandHint: needsExpand ? expandHint : null,
+    mobileTiming,
+    isUrgent,
+    isStock,
+  } as const;
 
   const toolbar = (
     <ShipmentToolbar
@@ -755,7 +796,10 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     />
   );
 
-  const hideLineClient = false;
+  const hideLineClient =
+    row.lineCount > 1 &&
+    Boolean(row.clientLabel?.trim()) &&
+    !isClientNamesAggregateSummary(row.clientLabel);
   const sharedRequestNote =
     row.requestNote && !isRequestNotesAggregateSummary(row.requestNote)
       ? row.requestNote
@@ -766,13 +810,13 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     Boolean(row.requestNoteUnread) && canActOnRequestNote;
   const showSharedUnreadRequestNote =
     showUnreadRequestNoteChrome && Boolean(sharedRequestNote && unreadRequestNoteIds.length);
-  const hideLineRequestNote = showSharedUnreadRequestNote;
+  const hideLineRequestNote = shouldHideLineRequestNote(sharedRequestNote);
   const sharedProcurementCancelNote =
     row.procurementCancelNote &&
     !isProcurementCancelNotesAggregateSummary(row.procurementCancelNote)
       ? row.procurementCancelNote
       : null;
-  const hideLineProcurementCancelNote = false;
+  const hideLineProcurementCancelNote = Boolean(sharedProcurementCancelNote);
   const expandedLineActionColumn =
     expanded && row.lineCount > 1 && (showGroupPickup || showPerLineCancel);
   const hideLineWarehouseProgress =
@@ -818,11 +862,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     tourPreview,
     pending,
     acknowledgeLineLabel:
-      lineAckMode === "teeth_handover"
-        ? "Potwierdź zęby"
-        : lineAckMode === "pickup"
-          ? myOrderPickupAckLineLabel()
-          : myOrderPickupAckLineLabel(),
+      lineAckMode === "teeth_handover" ? "Potwierdź zęby" : myOrderPickupAckLineLabel(),
     acknowledgeLineTitle: myOrderPickupAckLineTitle(line.product, lineAckMode),
     onAcknowledgePickup: showGroupPickup
       ? (id: string) => {
@@ -858,7 +898,13 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     isInformacja,
   );
 
-  const bannerSubline = collapsedSubline;
+  const bannerSubline = statusHint;
+  const sharedClientLabel =
+    row.clientLabel && !isClientNamesAggregateSummary(row.clientLabel)
+      ? row.clientLabel
+      : null;
+  const useCompactActionsLayout =
+    compactPickupOrAvailability || compactCancelAck || (needsAck && !expanded);
 
   const archiveAccent: MojeShipmentRowArchiveAccent = row.isArchive
     ? row.kind === "informacja"
@@ -904,10 +950,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
         />
       ) : null}
       <div className={cn("px-2 py-1.5 sm:px-3 sm:py-2", mojeQueueRowLayoutClass)}>
-        <div
-          className={cn(mojeQueueRowMainClass, needsExpand && "cursor-pointer")}
-          onClick={needsExpand ? handleToggle : undefined}
-        >
+        <div className={mojeQueueRowMainClass}>
         <button
           type="button"
           data-moje-row-toggle=""
@@ -928,198 +971,106 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           {needsExpand ? <ChevronIcon open={expanded} /> : null}
         </button>
 
-        <div className="flex min-w-0 flex-1 items-start gap-1">
-          <div className="min-w-0 flex-1">
-          <div
-            className={cn(
-              "w-full text-left",
-              needsExpand &&
-                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-indigo-300"
-            )}
-          >
-            {!showHeadlineBanner && showCollapsedSublineText && collapsedSubline && !isDismiss ? (
-              <div className="flex min-w-0 items-baseline gap-2">
-                <SearchHighlightText
-                  text={collapsedSubline}
-                  searchQuery={searchQuery}
-                  className={cn(
-                    "truncate",
-                    salesTypography.rowTitle,
-                    isStock && "text-sky-800",
-                    suppressSharedHeadline &&
-                      isUrgent &&
-                      "text-amber-900",
-                    suppressSharedHeadline &&
-                      isStock &&
-                      "text-sky-900",
-                    suppressSharedHeadline &&
-                      headlineTone === "info" &&
-                      !isInformacja &&
-                      "text-indigo-800",
-                    suppressSharedHeadline &&
-                      isInformacja &&
-                      "text-violet-900"
-                  )}
-                />
-                {row.lineCount > 1 ? (
-                  <span className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-indigo-700">
-                    +{row.lineCount - 1}
-                  </span>
-                ) : null}
-                <MyOrderKindBadge row={row} listKind={listKind} />
-                <MyOrderProductLaneBadge laneKind={displayLaneKind} />
-              </div>
-            ) : (
-              <div className="flex min-w-0 items-baseline gap-2">
-                <SearchHighlightText
-                  text={productPreviewLine || row.supplierName}
-                  searchQuery={searchQuery}
-                  className={cn("truncate", salesTypography.rowTitle)}
-                />
-                {row.lineCount > 1 ? (
-                  <span className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-indigo-700">
-                    +{row.lineCount - 1}
-                  </span>
-                ) : null}
-                <MyOrderKindBadge row={row} listKind={listKind} />
-                <MyOrderProductLaneBadge laneKind={displayLaneKind} />
-              </div>
-            )}
-            {suppressSharedHeadline ? (
-              <span className="sr-only">{headline}</span>
-            ) : null}
-            {showRowHeadline && !expanded && (!showHeadlineBanner || compactPickupOrAvailability || compactCancelAck) ? (
-              <SearchHighlightText
-                text={headline}
-                searchQuery={searchQuery}
-                className={headlineClass}
-                as="p"
-              />
-            ) : null}
-            {(!showHeadlineBanner && showCollapsedSublineText && collapsedSubline) || productPreviewLine ? (
-              <SearchHighlightText
-                text={row.supplierName}
-                searchQuery={searchQuery}
-                className={cn(
-                  "mt-0.5 truncate",
-                  salesTypography.rowMeta
-                )}
-                as="p"
-              />
-            ) : null}
-            {!showHeadlineBanner && mobileTiming ? (
-              <SearchHighlightText
-                text={mobileTiming}
-                searchQuery={searchQuery}
-                className={cn(
-                  "mt-0.5 truncate font-medium tabular-nums sm:hidden",
-                  salesTypography.rowMeta,
-                  isUrgent && "text-amber-900",
-                  isStock && "text-sky-800",
-                  !isUrgent && !isStock && "text-slate-600"
-                )}
-                as="p"
-              />
-            ) : null}
-            {/* Client/note/procurement note — only in expanded view */}
-          </div>
-          {(row.sourceZkNumber ||
-            sharedRequestNote ||
-            sharedProcurementCancelNote ||
-            showUnreadRequestNoteChrome) ? (
-            <div className="mt-0.5 flex items-center gap-1.5">
-              {sharedRequestNote ||
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 items-start gap-1",
+            needsExpand && "cursor-pointer"
+          )}
+          onClick={needsExpand ? handleToggle : undefined}
+          onKeyDown={needsExpand ? handleMainRowKeyDown : undefined}
+          role={needsExpand ? "button" : undefined}
+          tabIndex={needsExpand ? 0 : undefined}
+          aria-expanded={needsExpand ? expanded : undefined}
+          aria-controls={needsExpand ? panelId : undefined}
+          aria-label={needsExpand ? expandHint : undefined}
+        >
+          <MyOrderCollapsedRowZones
+            row={row}
+            listKind={listKind}
+            title={collapsedTitle}
+            contextLine={collapsedContextLine}
+            statusLine={showCollapsedHeadline ? headline : null}
+            statusLineClassName={headlineClass}
+            statusHint={statusHint}
+            showStatusHint={showStatusHintText}
+            srOnlyHeadline={suppressSharedHeadline ? headline : null}
+            searchQuery={searchQuery}
+            displayLaneKind={displayLaneKind}
+            showInlineLineCountBadge={!productSummary}
+            chips={
+              row.sourceZkNumber ||
+              sharedRequestNote ||
               sharedProcurementCancelNote ||
               showUnreadRequestNoteChrome ? (
-                <span
-                  className={cn(
-                    "shrink-0 inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium leading-none ring-1 ring-inset",
-                    showUnreadRequestNoteChrome
-                      ? "bg-indigo-100 text-indigo-800 ring-indigo-300/80"
-                      : "bg-indigo-50 text-indigo-500 ring-indigo-200/70"
-                  )}
-                  title={
-                    showUnreadRequestNoteChrome
-                      ? showSharedUnreadRequestNote
-                        ? "Zakupy zaktualizowały uwagi — przeczytaj poniżej i potwierdź Widziałem"
-                        : "Zakupy zaktualizowały uwagi — rozwiń, aby przeczytać"
-                      : "Prośba zawiera uwagi"
-                  }
-                >
-                  <svg viewBox="0 0 16 16" className="size-3" fill="currentColor" aria-hidden>
-                    <path d="M3 2a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h6a1 1 0 0 0 .7-.3l3-3a1 1 0 0 0 .3-.7V3a1 1 0 0 0-1-1H3Zm1 2h7v5H8a1 1 0 0 0-1 1v2H4V4Z" />
-                  </svg>
-                  {showUnreadRequestNoteChrome ? "Nowe uwagi" : "Uwagi"}
-                </span>
-              ) : null}
-              {row.sourceZkNumber ? (
-                <ZkProsbaLinkChip
-                  zkNumber={row.sourceZkNumber}
-                  zkWatchId={row.sourceZkWatchId}
-                  salesPersonId={row.salesPersonId}
-                  searchQuery={searchQuery}
-                  inline
-                  className="max-w-full"
+                <>
+                  {sharedRequestNote ||
+                  sharedProcurementCancelNote ||
+                  showUnreadRequestNoteChrome ? (
+                    <span
+                      className={cn(
+                        "shrink-0 inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium leading-none ring-1 ring-inset",
+                        showUnreadRequestNoteChrome
+                          ? "bg-indigo-100 text-indigo-800 ring-indigo-300/80"
+                          : "bg-indigo-50 text-indigo-500 ring-indigo-200/70"
+                      )}
+                      title={
+                        showUnreadRequestNoteChrome
+                          ? mojeCopyNotesAckTooltip(showSharedUnreadRequestNote)
+                          : "Prośba zawiera uwagi"
+                      }
+                      aria-label={
+                        showUnreadRequestNoteChrome
+                          ? mojeCopyNotesAckTooltip(showSharedUnreadRequestNote)
+                          : "Prośba zawiera uwagi"
+                      }
+                    >
+                      <svg viewBox="0 0 16 16" className="size-3" fill="currentColor" aria-hidden>
+                        <path d="M3 2a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h6a1 1 0 0 0 .7-.3l3-3a1 1 0 0 0 .3-.7V3a1 1 0 0 0-1-1H3Zm1 2h7v5H8a1 1 0 0 0-1 1v2H4V4Z" />
+                      </svg>
+                      {showUnreadRequestNoteChrome ? "Nowe uwagi" : "Uwagi"}
+                    </span>
+                  ) : null}
+                  {row.sourceZkNumber ? (
+                    <ZkProsbaLinkChip
+                      zkNumber={row.sourceZkNumber}
+                      zkWatchId={row.sourceZkWatchId}
+                      salesPersonId={row.salesPersonId}
+                      searchQuery={searchQuery}
+                      inline
+                      className="max-w-full"
+                    />
+                  ) : null}
+                </>
+              ) : null
+            }
+            patternHint={
+              rowPatternHint && showCollapsedHeadline ? (
+                <MyOrderRowPatternHint
+                  message={rowPatternHint.message}
+                  tone={rowPatternHint.tone}
+                  className="mt-0.5"
                 />
-              ) : null}
-            </div>
-          ) : null}
-          </div>
-          {rowPatternHint &&
-          !expanded &&
-          showRowHeadline &&
-          (!showHeadlineBanner || compactPickupOrAvailability || compactCancelAck) ? (
-            <MyOrderRowPatternHint
-              message={rowPatternHint.message}
-              tone={rowPatternHint.tone}
-              className="mt-0.5"
-            />
-          ) : null}
-        </div>
+              ) : null
+            }
+          />
 
         {!expanded ? (
-          <div className="hidden min-w-0 max-w-[42%] shrink-0 items-center justify-end gap-2 sm:flex">
-            {showInformacjaTimingMeta && row.timingLabel ? (
-              <InformacjaEmailSentMeta timingLabel={row.timingLabel} />
-            ) : null}
-            {!showInformacjaTimingMeta && zdFulfillment ? (
-              <ZdFulfillmentDateMeta
-                fulfillment={zdFulfillment}
-                collapsed
-                lines={row.lines}
-              />
-            ) : null}
-            {!showInformacjaTimingMeta && showEstimatedDeliveryMeta ? (
-              <MyOrderEstimatedDeliveryMeta row={row} />
-            ) : null}
-            {showZdEtaPendingMeta ? (
-              <ZdEtaPendingMeta compact={showZdEtaPendingWithEstimate} />
-            ) : null}
-            {plannedOrderDate ? <PlannedOrderDateMeta display={plannedOrderDate} /> : null}
-            {showStatusBadge ? (
-              <MyOrderStatusPill
-                label={row.statusTitle}
-                variant={row.badgeVariant}
-                searchQuery={searchQuery}
-              />
-            ) : null}
-            {productSummary ? (
-              <SearchHighlightText
-                text={productSummary}
-                searchQuery={searchQuery}
-                className={cn("font-medium tabular-nums text-slate-500", salesTypography.rowMeta)}
-              />
-            ) : null}
-          </div>
+          <MyOrderRowMetaRail
+            {...collapsedMetaRailProps}
+            className="hidden sm:flex"
+          />
         ) : null}
         </div>
 
         <div
-          className={mojeQueueRowActionsClass}
+          className={cn(
+            useCompactActionsLayout ? mojeQueueRowActionsInlineClass : mojeQueueRowActionsClass
+          )}
           onClick={(event) => event.stopPropagation()}
           onMouseDown={(event) => event.stopPropagation()}
         >
           {toolbar}
+        </div>
         </div>
       </div>
 
@@ -1144,48 +1095,11 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
         </div>
       ) : null}
 
-      {/* Mobile meta — single inline row, no border-t duplication */}
-      {!expanded &&
-      (showStatusBadge ||
-        productSummary ||
-        plannedOrderDate ||
-        zdFulfillment ||
-        showZdEtaPendingMeta ||
-        showInformacjaTimingMeta ||
-        showEstimatedDeliveryMeta) ? (
-        <div className="flex flex-wrap items-center justify-end gap-1.5 px-3 pb-1 pt-0 sm:hidden">
-          {showInformacjaTimingMeta && row.timingLabel ? (
-            <InformacjaEmailSentMeta timingLabel={row.timingLabel} />
-          ) : null}
-          {!showInformacjaTimingMeta && zdFulfillment ? (
-            <ZdFulfillmentDateMeta
-              fulfillment={zdFulfillment}
-              collapsed
-              lines={row.lines}
-            />
-          ) : null}
-          {!showInformacjaTimingMeta && showEstimatedDeliveryMeta ? (
-            <MyOrderEstimatedDeliveryMeta row={row} />
-          ) : null}
-          {showZdEtaPendingMeta ? (
-            <ZdEtaPendingMeta compact={showZdEtaPendingWithEstimate} />
-          ) : null}
-          {plannedOrderDate ? <PlannedOrderDateMeta display={plannedOrderDate} /> : null}
-          {showStatusBadge ? (
-            <MyOrderStatusPill
-              label={row.statusTitle}
-              variant={row.badgeVariant}
-              searchQuery={searchQuery}
-            />
-          ) : null}
-          {productSummary ? (
-            <SearchHighlightText
-              text={productSummary}
-              searchQuery={searchQuery}
-              className={cn("font-medium text-slate-500", salesTypography.rowMeta)}
-            />
-          ) : null}
-        </div>
+      {!expanded ? (
+        <MyOrderRowMetaRail
+          {...collapsedMetaRailProps}
+          className="items-start px-3 pb-1.5 pt-0 sm:hidden"
+        />
       ) : null}
 
       {needsExpand ? (
@@ -1205,54 +1119,27 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
         >
           {requestProgress ? <MyOrderRequestProgressBar track={requestProgress} className="mt-2 -mb-1" /> : null}
 
-          {/* Meta + notes — single row: notes left, meta right */}
-          {(expandedMeta.length > 0 || showExpandedStatusBadge || expandedNotes) ? (
-            <div className="flex items-start justify-end gap-3 px-3 pt-2 mb-0.5">
-              {/* Notes — left (spacer to push meta right) */}
-              {expandedNotes ? (
-                <div className="min-w-0 flex-1">
-                  <span className="inline-flex items-start gap-1 rounded bg-sky-50 px-1.5 py-1 text-[10px] leading-snug text-sky-700">
-                    <svg viewBox="0 0 16 16" className="mt-0.5 size-3 shrink-0" fill="currentColor" aria-hidden>
-                      <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm0 3a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 8 4Zm0 8a.875.875 0 1 1 0-1.75.875.875 0 0 1 0 1.75Z" />
-                    </svg>
-                    <SearchHighlightText
-                      text={expandedNotes}
-                      searchQuery={searchQuery}
-                      className="text-sky-700"
-                    />
-                  </span>
-                </div>
-              ) : null}
-
-              {/* Meta — right */}
-              {expandedMeta.length > 0 || showExpandedStatusBadge ? (
-                <div className="flex shrink-0 flex-wrap items-baseline justify-end gap-x-1.5 gap-y-0 text-[10px] leading-tight">
-                  {showExpandedStatusBadge ? (
-                    <MyOrderStatusPill
-                      label={row.statusTitle}
-                      variant={row.badgeVariant}
-                      searchQuery={searchQuery}
-                      className="text-xs"
-                    />
-                  ) : null}
-                  {expandedMeta.map((f, i) => (
-                    <span key={f.label} className="inline-flex items-baseline gap-0.5">
-                      {i > 0 ? <span className="text-slate-300">·</span> : null}
-                      <span className="font-medium text-indigo-400">{f.label}</span>
-                      <SearchHighlightText
-                        text={f.value}
-                        searchQuery={searchQuery}
-                        className={cn(
-                          "text-slate-600",
-                          f.emphasize && "font-semibold text-amber-700"
-                        )}
-                      />
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
+          <MyOrderExpandedContextStrip
+            row={row}
+            searchQuery={searchQuery}
+            metaFields={expandedMeta}
+            showStatusBadge={showExpandedStatusBadge}
+            expandedNotes={expandedNotes}
+            showInformacjaTimingMeta={showInformacjaTimingMeta}
+            showEstimatedDeliveryMeta={showEstimatedDeliveryMeta}
+            showExpandedDeliveryTiming={showExpandedDeliveryTiming}
+            showZdEtaPendingMeta={showZdEtaPendingMeta}
+            expandedDeliveryTiming={expandedDeliveryTiming}
+            sharedRequestNote={sharedRequestNote}
+            sharedProcurementCancelNote={sharedProcurementCancelNote}
+            showSharedUnreadRequestNote={showSharedUnreadRequestNote}
+            clientLabel={hideLineClient ? sharedClientLabel : null}
+            progressLabel={
+              hideLineWarehouseProgress && row.progressLabel?.trim()
+                ? row.progressLabel
+                : null
+            }
+          />
 
           {row.lineCount > 0 ? (
             <div className={mojeShipmentLinesShellClass}>
@@ -1367,47 +1254,27 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                         ) : null}
                       </div>
                     ) : (
-                    <MyOrderAckButton
-                      variant="bulkPickup"
-                      disabled={pending}
-                      preview={tourPreview}
-                      title={pickupAckTitle}
-                      ariaLabel={pickupAckTitle}
-                      onClick={() => onAcknowledgePickup(row.pickupPendingIds, shelfPickup)}
-                    >
-                      <span className="inline-flex items-center gap-1.5">
-                        {ackMode === "teeth_handover" ? (
-                          <IconTooth size={14} className="shrink-0" />
-                        ) : (
-                          <IconPackageCheck size={14} className="shrink-0" />
-                        )}
-                        {myOrderPickupAckAllLabel()}
-                      </span>
-                    </MyOrderAckButton>
+                      <MyOrderAckButton
+                        variant="bulkPickup"
+                        disabled={pending}
+                        preview={tourPreview}
+                        title={pickupAckTitle}
+                        ariaLabel={pickupAckTitle}
+                        onClick={() => onAcknowledgePickup(row.pickupPendingIds, shelfPickup)}
+                      >
+                        <span className="inline-flex items-center gap-1.5">
+                          {ackMode === "teeth_handover" ? (
+                            <IconTooth size={14} className="shrink-0" />
+                          ) : (
+                            <IconPackageCheck size={14} className="shrink-0" />
+                          )}
+                          {myOrderPickupAckAllLabel()}
+                        </span>
+                      </MyOrderAckButton>
                     )}
                   </div>
                 </div>
               ) : null}
-            </div>
-          ) : null}
-
-          {/* Delivery timing — below product section */}
-          {showExpandedDeliveryTiming && expandedDeliveryTiming ? (
-            <div className="flex flex-wrap items-center gap-2 px-3 py-0 text-[10px] leading-tight">
-              {showInformacjaTimingMeta && row.timingLabel ? (
-                <InformacjaEmailSentMeta timingLabel={row.timingLabel} />
-              ) : null}
-              {!showInformacjaTimingMeta && zdFulfillment ? (
-                <ZdFulfillmentDateMeta
-                  fulfillment={zdFulfillment}
-                  inline
-                  lines={row.lines}
-                />
-              ) : null}
-              {!showInformacjaTimingMeta && showEstimatedDeliveryMeta ? (
-                <MyOrderEstimatedDeliveryMeta row={row} inline />
-              ) : null}
-              {plannedOrderDate ? <PlannedOrderDateMeta display={plannedOrderDate} inline /> : null}
             </div>
           ) : null}
 
