@@ -7,6 +7,7 @@ import {
   mergeZkWatchLineChecksPreservingProsbaScope,
   countZkWatchLinesOutsideTrackedScope,
   getZkWatchTrackedScopeLineKeys,
+  deriveZkProsbaScopeAutoProsbaGate,
 } from "./zk-watch-prosba-scope";
 import { allZkWatchLinesCheckboxChecked } from "./zk-watch-line-ui-state";
 import type { ZkWatchLineView } from "./zk-watch-lines";
@@ -155,5 +156,88 @@ describe("zk-watch-prosba-scope", () => {
         lineCoverageByKey: { "ob:1": "delivered" },
       })
     ).toBe(false);
+  });
+});
+
+describe("deriveZkProsbaScopeAutoProsbaGate", () => {
+  const ready = {
+    stockUnavailable: false,
+    teethCatalogUnavailable: false,
+    overBatchLimit: false,
+    stockLoading: false,
+    teethIncomplete: false,
+  };
+
+  it("włączone gdy wszystko gotowe", () => {
+    expect(deriveZkProsbaScopeAutoProsbaGate(ready)).toEqual({
+      disabled: false,
+      hint: null,
+    });
+  });
+
+  it("blokuje podczas ładowania magazynu", () => {
+    const gate = deriveZkProsbaScopeAutoProsbaGate({ ...ready, stockLoading: true });
+    expect(gate.disabled).toBe(true);
+    expect(gate.hint).toContain("Sprawdzam stan");
+  });
+
+  it("blokuje przy >30 pozycjach", () => {
+    const gate = deriveZkProsbaScopeAutoProsbaGate({ ...ready, overBatchLimit: true });
+    expect(gate.disabled).toBe(true);
+    expect(gate.hint).toContain("30 pozycji");
+  });
+
+  it("blokuje gdy katalog zębów niedostępny", () => {
+    const gate = deriveZkProsbaScopeAutoProsbaGate({
+      ...ready,
+      teethCatalogUnavailable: true,
+    });
+    expect(gate.disabled).toBe(true);
+    expect(gate.hint).toContain("Katalog zębów");
+  });
+
+  it("blokuje gdy fetch stanu się nie udał", () => {
+    const gate = deriveZkProsbaScopeAutoProsbaGate({
+      ...ready,
+      stockUnavailable: true,
+    });
+    expect(gate.disabled).toBe(true);
+    expect(gate.hint).toContain("Nie udało się sprawdzić");
+  });
+
+  it("nie blokuje przy niekompletnych zębach — tylko hint", () => {
+    const gate = deriveZkProsbaScopeAutoProsbaGate({
+      ...ready,
+      teethIncomplete: true,
+    });
+    expect(gate.disabled).toBe(false);
+    expect(gate.hint).toContain("listę zębów");
+  });
+
+  it("priorytet hintów: batch > katalog > stock fail > loading > zęby", () => {
+    expect(
+      deriveZkProsbaScopeAutoProsbaGate({
+        ...ready,
+        overBatchLimit: true,
+        stockLoading: true,
+        teethIncomplete: true,
+      }).hint
+    ).toContain("30 pozycji");
+
+    expect(
+      deriveZkProsbaScopeAutoProsbaGate({
+        ...ready,
+        teethCatalogUnavailable: true,
+        stockLoading: true,
+      }).hint
+    ).toContain("Katalog zębów");
+
+    expect(
+      deriveZkProsbaScopeAutoProsbaGate({
+        ...ready,
+        stockUnavailable: true,
+        stockLoading: true,
+      }).hint
+    ).toContain("Nie udało się");
   });
 });

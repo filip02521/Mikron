@@ -42,6 +42,14 @@ export function NotatnikGuide({ surface }: { surface: NotatnikSurface }) {
             </p>
           </HelpBlock>
           <HelpBlock title="Stany pozycji (regal → Moje → klient)">
+            <p className="mb-2">
+              <strong className="font-medium text-slate-800">Na regale</strong> (fiolet) to
+              towar czekający na odbiór w Moje — wymaga działania.{" "}
+              <strong className="font-medium text-slate-800">Prośba: bez otwartej</strong> (szary
+              tekst w wierszu) oznacza, że nie ma aktywnej prośby — to informacja, nie akcja.{" "}
+              <strong className="font-medium text-slate-800">Zakończone</strong> to ręczne
+              odhaczenie po odbiorze u klienta.
+            </p>
             <ZkWatchStatusGuideContent compact />
           </HelpBlock>
         </>

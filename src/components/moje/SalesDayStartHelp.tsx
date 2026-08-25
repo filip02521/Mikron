@@ -4,6 +4,7 @@ import { HelpPopover, GuideIcon } from "@/components/ui/HelpPopover";
 import { HelpBlock } from "@/components/ui/HelpBlock";
 import { pageToolbarSizingClass, pageToolbarSurfaceClass } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
+import { MOJE_COPY_NOTES_ACK_BUTTON } from "@/lib/orders/my-order-moje-copy";
 
 export function SalesDayStartHelp() {
   return (
@@ -24,7 +25,8 @@ export function SalesDayStartHelp() {
       <HelpBlock title="Kliknięcie pozycji">
         <p>
           Pozycje z zamówień przewijają listę do właściwej karty. Przy uwagach od zakupów otwórz
-          prośbę i potwierdź <strong className="font-medium text-slate-800">Widziałem</strong>, żeby
+          prośbę i potwierdź{" "}
+          <strong className="font-medium text-slate-800">{MOJE_COPY_NOTES_ACK_BUTTON}</strong>, żeby
           sygnał zniknął. Przypomnienia ZK i notatki otwierają odpowiednią stronę. Ogłoszenia
           przewijają do sekcji poniżej.
         </p>

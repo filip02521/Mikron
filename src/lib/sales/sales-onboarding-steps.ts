@@ -134,7 +134,7 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
         "Zakładka „ZK” — wpisz numer ZK. System wczyta klienta i pozycje z Subiekta.",
         "Przy ZK jest „Zgłoś prośbę” — formularz wypełni się sam klientem i pozycjami.",
         "W liście pozycji chipy pokazują etap: „Na regale” (auto-zaznaczenie), „Odebrane z regału” (Moje), „Zakończone” (ręczny checkbox po odbiorze).",
-        "Badge „Na regale” na karcie oznacza nowy towar czekający na odbiór. Po obejrzeniu znika z „Do zrobienia dziś”.",
+        "Badge „Nowy na regale” oznacza nieodczytany towar czekający na odbiór. Po obejrzeniu znika z „Do zrobienia dziś”, ale fioletowy badge „Czeka na odbiór” zostaje na karcie ZK.",
         "„Notatnik” (prywatne przypomnienia) to osobna pozycja w menu — bez wysyłki do zakupów.",
         "Liczba przy „ZK czekające” w menu oznacza zaległe przypomnienia ZK (oddzielnie licznik Notatnika).",
       ],

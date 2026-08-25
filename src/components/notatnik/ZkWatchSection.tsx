@@ -6,6 +6,7 @@ import {
 } from "@/lib/ui/user-facing-error";
 import dynamic from "next/dynamic";
 import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   actionAddZkWatchByNumber,
   actionAddZkWatchBySubiektDokId,
@@ -21,12 +22,37 @@ import type { ZkSearchCandidate } from "@/lib/subiekt/resolve-zk-document";
 import { cn } from "@/lib/cn";
 import { brandLinkSubtleClass, notatnikPrimaryAddButtonClass, salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
 import { compareZkWatches } from "@/lib/sales/zk-watch-sort";
+import { buildZkWatchLineViews } from "@/lib/sales/zk-watch-lines";
+import { getZkWatchProsbaScopeLineKeys } from "@/lib/sales/zk-watch-prosba-scope";
 import { watchNeedsNotepadAttention } from "@/lib/sales/notepad-follow-up";
 import {
   filterZkWatchesByClientQuery,
+  computeZkWatchOrderHints,
   type ZkLinkableOrder,
   type ZkWatchOrderHints,
 } from "@/lib/sales/zk-watch-order-link";
+import { buildClientAutoProsbaLines } from "@/lib/sales/zk-watch-auto-prosba";
+import {
+  toastForScopeSavedOnly,
+  toastForAutoProsbaDialogCancelled,
+  toastForTeethSkippedAfterScope,
+  toastForScopeSavedProsbaFailed,
+  normalizeAutoProsbaToastAfterScopeSaved,
+  buildAutoProsbaClientBlockedToast,
+  nextAutoProsbaAckAfterConfirm,
+  mapZkQuantityConfirmLabelForAuto,
+  type AutoProsbaToastPayload,
+} from "@/lib/sales/zk-watch-auto-prosba-copy";
+import { actionAutoCreateProsbaFromZkWatch } from "@/app/actions/sales-notepad";
+import {
+  buildProsbaSubmitStockConfirm,
+  buildProsbaSubmitZkQuantityConfirm,
+  type ProsbaLineStockSnapshot,
+} from "@/lib/orders/prosba-stock-check";
+import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
+import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
+import type { ProductLineDraft } from "@/components/orders/request-product-lines";
+import type { ZkProsbaScopeSavedMeta } from "./ZkWatchProsbaScopeModal";
 import { ZK_KEYBOARD_HINTS, ZK_PAGE_SECTION_COPY } from "@/lib/sales/zk-page-copy";
 import { summarizeZkWatchList } from "@/lib/sales/zk-list-stats";
 import { SalesKeyboardShortcutsStrip } from "@/components/sales/SalesKeyboardShortcutsStrip";
@@ -55,14 +81,16 @@ const ZkWatchTeethDraftModal = dynamic(
   { ssr: false }
 );
 import { collectZkTeethLineCandidates, zkWatchTeethDraftsReady } from "@/lib/sales/zk-watch-teeth-draft";
-import { useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 import { NotatnikListFilterBar } from "./NotatnikListFilterBar";
 import { ZkListMetaStrip } from "./ZkListMetaStrip";
 import { ZkWatchStatusGuideStrip } from "./ZkWatchStatusGuideStrip";
 import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
 import { SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
 import { useNotepadListFilter } from "@/hooks/use-notepad-list-filter";
-import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
+import { NOTATNIK_ZK_LIST_SECTION_CLASS } from "./notatnik-layout";
+import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
+import { buildMojeClientLink } from "@/lib/sales/notepad-follow-up";
+import { flashNotepadAnchor } from "@/lib/sales/notepad-anchor";
 
 export function ZkWatchSection({
   watches,
@@ -94,6 +122,7 @@ export function ZkWatchSection({
   focusWatchId,
   onFocusWatchHandled,
   onLiveAnnounce,
+  onProsbaToast,
 }: {
   watches: SalesZkWatch[];
   zkHintsByWatchId?: Map<string, ZkWatchOrderHints>;
@@ -114,6 +143,7 @@ export function ZkWatchSection({
   focusWatchId?: string | null;
   onFocusWatchHandled?: (watchId: string) => void;
   onLiveAnnounce?: (message: string) => void;
+  onProsbaToast?: (toast: AutoProsbaToastPayload) => void;
   readOnly?: boolean;
   delegatePreview?: boolean;
   tourPreview?: boolean;
@@ -131,6 +161,8 @@ export function ZkWatchSection({
     options?: { skipRouterRefresh?: boolean }
   ) => void;
 }) {
+  const router = useRouter();
+  const teethExemptTwIds = useTeethExemptTwIds();
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [scopeDismissed, setScopeDismissed] = useState<{
@@ -149,6 +181,28 @@ export function ZkWatchSection({
   const [addPanelExpanded, setAddPanelExpanded] = useState(false);
   const [teethDraftWatchId, setTeethDraftWatchId] = useState<string | null>(null);
   const teethProductInfo = useTeethProductInfo();
+  const [autoProsbaIntent, setAutoProsbaIntent] = useState<{
+    watchId: string;
+    selectedScopeCount: number;
+    stockByTwId: Record<number, ProsbaLineStockSnapshot>;
+  } | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmKind, setConfirmKind] = useState<"stock" | "zk_quantity" | null>(null);
+  const [confirmTitle, setConfirmTitle] = useState("Towar na stanie");
+  const [confirmMessage, setConfirmMessage] = useState("");
+  const [confirmLabel, setConfirmLabel] = useState("Utwórz prośbę mimo stanu");
+  const [autoProsbaSubmitting, setAutoProsbaSubmitting] = useState(false);
+  const [autoProsbaPendingWatchId, setAutoProsbaPendingWatchId] = useState<string | null>(null);
+  const pendingLinesRef = useRef<ProductLineDraft[]>([]);
+  const pendingWatchRef = useRef<SalesZkWatch | null>(null);
+  const pendingScopeCountRef = useRef(0);
+  const pendingStockRef = useRef<Record<number, import("@/lib/orders/prosba-stock-check").ProsbaLineStockSnapshot>>(
+    {}
+  );
+  const pendingAckRef = useRef<{
+    acknowledgeSufficientStock?: boolean;
+    acknowledgeZkQuantityMismatch?: boolean;
+  }>({});
   const canRequestTeethDrafts = !readOnly && !tourPreview;
   const [appliedTeethDraftOpenNonce, setAppliedTeethDraftOpenNonce] = useState(0);
 
@@ -177,6 +231,214 @@ export function ZkWatchSection({
     }),
     [teethProductInfo]
   );
+
+  function resolveWatchHints(watch: SalesZkWatch): ZkWatchOrderHints {
+    return computeZkWatchOrderHints(watch, linkableOrders);
+  }
+
+  function scopeLineKeysForWatch(watch: SalesZkWatch): string[] {
+    return getZkWatchProsbaScopeLineKeys(watch, buildZkWatchLineViews(watch)) ?? [];
+  }
+
+  function emitProsbaToastAfterScopeSaved(
+    toast: AutoProsbaToastPayload,
+    selectedScopeCount?: number
+  ) {
+    emitProsbaToast(
+      normalizeAutoProsbaToastAfterScopeSaved(toast, {
+        selectedScopeCount: selectedScopeCount ?? pendingScopeCountRef.current,
+      })
+    );
+  }
+
+  function emitProsbaToast(toast: AutoProsbaToastPayload) {
+    onProsbaToast?.(toast);
+  }
+
+  function mojeHrefForWatch(watch: SalesZkWatch): string {
+    return buildMojeClientLink(watch.sales_person_id, watch.client_label, {
+      clientKhId: watch.client_kh_id,
+      zkWatchId: watch.id,
+      zkNumber: watch.zk_number,
+    });
+  }
+
+  function toastForClientBlocked(
+    watch: SalesZkWatch,
+    hints: ZkWatchOrderHints,
+    blocked: import("@/lib/sales/zk-watch-auto-prosba").AutoProsbaBlockReason
+  ): AutoProsbaToastPayload {
+    return buildAutoProsbaClientBlockedToast({
+      watch,
+      hints,
+      blocked,
+      mojeHref: mojeHrefForWatch(watch),
+      mojeHrefWithFocus: (ids) =>
+        appendMojeFocusOrderIds(mojeHrefForWatch(watch), ids),
+    });
+  }
+
+  async function submitAutoProsba(ack: {
+    acknowledgeSufficientStock?: boolean;
+    acknowledgeZkQuantityMismatch?: boolean;
+  }) {
+    const watch = pendingWatchRef.current;
+    if (!watch || autoProsbaSubmitting) return;
+    setAutoProsbaSubmitting(true);
+    setAutoProsbaPendingWatchId(watch.id);
+    let reopenStockConfirm = false;
+    try {
+      const result = await actionAutoCreateProsbaFromZkWatch(watch.id, {
+        acknowledgeSufficientStock: ack.acknowledgeSufficientStock,
+        selectedScopeCount: pendingScopeCountRef.current,
+        stockByTwId: pendingStockRef.current,
+      });
+      if (result.code === "error_stock_ack_required") {
+        reopenStockConfirm = true;
+        setConfirmTitle("Towar na stanie");
+        setConfirmMessage(result.message);
+        setConfirmLabel("Utwórz prośbę mimo stanu");
+        setConfirmKind("stock");
+        setConfirmOpen(true);
+        return;
+      }
+      emitProsbaToastAfterScopeSaved(result);
+      if (result.tone === "success") {
+        router.refresh();
+        flashNotepadAnchor(`watch-${watch.id}`);
+      }
+    } catch (e) {
+      emitProsbaToast(
+        toastForScopeSavedProsbaFailed(
+          userFacingErrorText(e, "Nie udało się utworzyć prośby.")
+        )
+      );
+    } finally {
+      setAutoProsbaSubmitting(false);
+      setAutoProsbaPendingWatchId(null);
+      if (!reopenStockConfirm) {
+        setAutoProsbaIntent(null);
+        pendingWatchRef.current = null;
+        pendingLinesRef.current = [];
+        pendingAckRef.current = {};
+        pendingStockRef.current = {};
+      }
+    }
+  }
+
+  function runConfirmAndSubmit(
+    lines: ProductLineDraft[],
+    ack: {
+      acknowledgeSufficientStock?: boolean;
+      acknowledgeZkQuantityMismatch?: boolean;
+    }
+  ) {
+    if (!ack.acknowledgeSufficientStock) {
+      const stockConfirm = buildProsbaSubmitStockConfirm(
+        lines,
+        "zamowienie",
+        teethExemptTwIds
+      );
+      if (stockConfirm) {
+        pendingLinesRef.current = lines;
+        pendingAckRef.current = ack;
+        setConfirmTitle("Towar na stanie");
+        setConfirmMessage(stockConfirm.message);
+        setConfirmLabel("Utwórz prośbę mimo stanu");
+        setConfirmKind("stock");
+        setConfirmOpen(true);
+        return;
+      }
+    }
+
+    if (!ack.acknowledgeZkQuantityMismatch) {
+      const zkConfirm = buildProsbaSubmitZkQuantityConfirm(lines, "zamowienie");
+      if (zkConfirm) {
+        pendingLinesRef.current = lines;
+        pendingAckRef.current = ack;
+        setConfirmTitle(zkConfirm.title);
+        setConfirmMessage(zkConfirm.message);
+        setConfirmLabel(mapZkQuantityConfirmLabelForAuto(zkConfirm.confirmLabel));
+        setConfirmKind("zk_quantity");
+        setConfirmOpen(true);
+        return;
+      }
+    }
+
+    void submitAutoProsba(ack);
+  }
+
+  async function runAutoProsbaChain(
+    watch: SalesZkWatch,
+    intent: {
+      selectedScopeCount: number;
+      stockByTwId: Record<number, ProsbaLineStockSnapshot>;
+    }
+  ) {
+    if (autoProsbaSubmitting || confirmOpen) return;
+    const hints = resolveWatchHints(watch);
+    const built = buildClientAutoProsbaLines({
+      watch,
+      hints,
+      teethRegistry,
+      stockByTwId: intent.stockByTwId,
+    });
+
+    if (built.blocked || !built.lines.length) {
+      emitProsbaToastAfterScopeSaved(
+        toastForClientBlocked(
+          watch,
+          hints,
+          built.blocked ?? "no_effective_lines"
+        ),
+        intent.selectedScopeCount
+      );
+      setAutoProsbaIntent(null);
+      return;
+    }
+
+    pendingWatchRef.current = watch;
+    pendingScopeCountRef.current = intent.selectedScopeCount;
+    pendingStockRef.current = intent.stockByTwId;
+    pendingLinesRef.current = built.lines;
+    pendingAckRef.current = {};
+    runConfirmAndSubmit(built.lines, {});
+  }
+
+  function beginAutoProsbaAfterScope(
+    updated: SalesZkWatch,
+    meta: ZkProsbaScopeSavedMeta
+  ) {
+    if (!meta.autoProsba) {
+      emitProsbaToast(toastForScopeSavedOnly(meta.selectedScopeCount));
+      return;
+    }
+
+    const intent = {
+      watchId: updated.id,
+      selectedScopeCount: meta.selectedScopeCount,
+      stockByTwId: meta.stockByTwId,
+    };
+    setAutoProsbaIntent(intent);
+
+    const scopeKeys = scopeLineKeysForWatch(updated);
+    const candidates = collectZkTeethLineCandidates(updated, teethRegistry).filter(
+      (candidate) => scopeKeys.includes(candidate.lineKey)
+    );
+    if (
+      candidates.length > 0 &&
+      !zkWatchTeethDraftsReady(updated, teethRegistry, {
+        lineKeys: scopeKeys,
+        requestKind: "zamowienie",
+      })
+    ) {
+      openTeethDraftModal(updated.id);
+      return;
+    }
+
+    void runAutoProsbaChain(updated, intent);
+  }
+
   const addPanelOpen = watches.length === 0 || addPanelExpanded;
   const canAddZk = subiektReachable;
   const searchActive = listFilter.trim().length > 0;
@@ -447,6 +709,7 @@ export function ZkWatchSection({
         onClosed={onWatchClosed}
         onRefreshed={onWatchRefreshed}
         onProsbaScopeRequested={onProsbaScopeRequested}
+        autoProsbaPendingWatchId={autoProsbaPendingWatchId}
         onTeethDraftRequested={openTeethDraftModal}
         teethRegistry={teethRegistry}
       />
@@ -508,7 +771,7 @@ export function ZkWatchSection({
       </div>
 
       {embedded ? (
-        <section className={mojeShipmentSectionShellClass} aria-label={ZK_PAGE_SECTION_COPY.listTitle}>
+        <section className={NOTATNIK_ZK_LIST_SECTION_CLASS} aria-label={ZK_PAGE_SECTION_COPY.listTitle}>
           <div className="border-b border-slate-100 bg-slate-50/40">
             <div className={cn(salesChromeInsetClass, "space-y-2.5 py-2.5")}>
               {!readOnly && !delegatePreview && !tourPreview && addPanelOpen ? (
@@ -602,7 +865,7 @@ export function ZkWatchSection({
           {listBody}
         </section>
       ) : (
-        <div className={mojeShipmentSectionShellClass}>{listBody}</div>
+        <div className={NOTATNIK_ZK_LIST_SECTION_CLASS}>{listBody}</div>
       )}
 
       {prosbaScopeWatch ? (
@@ -611,20 +874,18 @@ export function ZkWatchSection({
           watch={prosbaScopeWatch}
           open={prosbaScopeModalOpen}
           required={!prosbaScopeConfigured}
+          readOnly={readOnly}
+          tourPreview={tourPreview}
+          delegatePreview={delegatePreview}
+          teethRegistry={teethRegistry}
           onClose={() =>
             setScopeDismissed({ watchId: prosbaScopeWatch.id, nonce: prosbaScopeOpenNonce })
           }
-          onSaved={(updated) => {
+          onSaved={(updated, meta) => {
             setScopeDismissed(null);
             onProsbaScopeConfigured?.(prosbaScopeWatch.id);
             onWatchRefreshed?.(updated, undefined, { skipRouterRefresh: true });
-            const candidates = collectZkTeethLineCandidates(updated, teethRegistry);
-            if (
-              candidates.length > 0 &&
-              !zkWatchTeethDraftsReady(updated, teethRegistry)
-            ) {
-              openTeethDraftModal(updated.id);
-            }
+            beginAutoProsbaAfterScope(updated, meta);
           }}
         />
       ) : null}
@@ -634,14 +895,66 @@ export function ZkWatchSection({
           key={teethDraftWatch.id}
           open
           watch={teethDraftWatch}
-          onClose={() => setTeethDraftWatchId(null)}
-          onSkipLater={() => setTeethDraftWatchId(null)}
+          onClose={() => {
+            if (autoProsbaIntent?.watchId === teethDraftWatch.id) {
+              emitProsbaToast(toastForTeethSkippedAfterScope());
+              setAutoProsbaIntent(null);
+            }
+            setTeethDraftWatchId(null);
+          }}
+          onSkipLater={() => {
+            if (autoProsbaIntent?.watchId === teethDraftWatch.id) {
+              emitProsbaToast(toastForTeethSkippedAfterScope());
+              setAutoProsbaIntent(null);
+            }
+            setTeethDraftWatchId(null);
+          }}
           onSaved={(updated) => {
             setTeethDraftWatchId(null);
             onWatchRefreshed?.(updated, undefined, { skipRouterRefresh: true });
+            if (autoProsbaIntent?.watchId === updated.id) {
+              void runAutoProsbaChain(updated, {
+                selectedScopeCount: autoProsbaIntent.selectedScopeCount,
+                stockByTwId: autoProsbaIntent.stockByTwId,
+              });
+            }
           }}
         />
       ) : null}
+
+      <ProsbaStockConfirmDialog
+        open={confirmOpen}
+        title={confirmTitle}
+        message={confirmMessage}
+        confirmLabel={confirmLabel}
+        cancelLabel="Zostaw tylko zakres"
+        pending={autoProsbaSubmitting}
+        onCancel={() => {
+          setConfirmOpen(false);
+          setConfirmKind(null);
+          pendingLinesRef.current = [];
+          pendingWatchRef.current = null;
+          pendingAckRef.current = {};
+          pendingStockRef.current = {};
+          setAutoProsbaPendingWatchId(null);
+          setAutoProsbaIntent(null);
+          emitProsbaToast(toastForAutoProsbaDialogCancelled());
+        }}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          const lines = pendingLinesRef.current;
+          const prevAck = pendingAckRef.current;
+          const kind = confirmKind;
+          setConfirmKind(null);
+          if (kind === "stock") {
+            const nextAck = nextAutoProsbaAckAfterConfirm("stock", prevAck);
+            pendingAckRef.current = nextAck;
+            runConfirmAndSubmit(lines, nextAck);
+            return;
+          }
+          void submitAutoProsba(nextAutoProsbaAckAfterConfirm("zk_quantity", prevAck));
+        }}
+      />
     </div>
   );
 }

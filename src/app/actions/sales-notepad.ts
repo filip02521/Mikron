@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { resolveSalesPersonForUser } from "@/lib/auth/sales-person";
-import { isSalesAccount } from "@/lib/auth-roles";
+import { isSalesAccount, isSalesManager } from "@/lib/auth-roles";
 import { isProfileActiveDelegateForSalesPerson } from "@/lib/data/vacation-delegations";
 import { canAccessSalesPerson } from "@/lib/data/sales-group-access";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -43,6 +43,7 @@ import { fetchTeethProductInfo } from "@/lib/data/teeth-products";
 import {
   type ZkProsbaPrefill,
   zkProsbaPrefillFromWatch,
+  extractProsbaLinesFromZkWatch,
 } from "@/lib/orders/zk-watch-prosba-prefill";
 import { teethLineDetailsComplete } from "@/lib/teeth/teeth-validation";
 import {
@@ -62,6 +63,28 @@ import {
 import { fetchZkWatchForProsbaPrefill } from "@/lib/sales/fetch-zk-watch-for-prefill";
 import { enrichZkProsbaPrefillWithLiveStock } from "@/lib/orders/fetch-prosba-line-stock";
 import { fetchAllZkLinkableOrdersForSalesPerson } from "@/lib/sales/zk-watch-close-pending-fetch";
+import { computeZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
+import {
+  assessZkWatchAutoProsbaEligibility,
+  buildServerAutoProsbaEntries,
+  resolveAutoProsbaLineKeys,
+  resolveAutoProsbaResultCodeAfterSubmit,
+  resolveClientAutoProsbaStockSnapshot,
+} from "@/lib/sales/zk-watch-auto-prosba";
+import {
+  buildAutoProsbaSuccessToast,
+  toastForAutoProsbaBlockedCode,
+  type AutoProsbaToastPayload,
+} from "@/lib/sales/zk-watch-auto-prosba-copy";
+import { buildMojeClientLink } from "@/lib/sales/notepad-follow-up";
+import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
+import { fetchProsbaLineStock } from "@/lib/orders/fetch-prosba-line-stock";
+import { collectProsbaLineTwIdsMissingStock } from "@/lib/orders/prosba-stock-check";
+import { ProsbaSufficientStockError } from "@/lib/orders/prosba-stock-server";
+import { assertCanSubmitIndividualOrders } from "@/lib/auth/assert-order-submit-access";
+import { shouldIncludeZkCaseNoteInPrefill } from "@/lib/sales/zk-watch-case-note-prosba";
+import { actionAddIndividualOrders } from "@/app/actions/admin";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { polishPozycjeLabel } from "@/lib/email/polish-plural";
 import {
   normalizeZkCaseNote,
@@ -69,7 +92,6 @@ import {
   resolveZkCaseNoteSyncOrderIds,
 } from "@/lib/sales/zk-watch-case-note-prosba";
 import { resolveZkProsbaPrefillSalesPersonAccess } from "@/lib/sales/zk-prosba-prefill-access";
-import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import type { SalesNote, SalesNoteColor, SalesZkWatch } from "@/types/database";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -925,7 +947,11 @@ export async function actionUpdateZkWatchProsbaScope(
   watchId: string,
   lineKeysToOrder: string[]
 ) {
-  const salesPersonId = await salesPersonIdForAction();
+  const user = await getSessionUser();
+  if (!user || !isSalesAccount(user.role)) {
+    throw new Error("Wymagane logowanie");
+  }
+
   const supabase = createAdminClient();
 
   const { data: row, error: fetchError } = await supabase
@@ -936,14 +962,22 @@ export async function actionUpdateZkWatchProsbaScope(
 
   if (fetchError) throw new Error(fetchError.message);
   if (!row) throw new Error("Nie znaleziono wpisu.");
-  if (row.sales_person_id !== salesPersonId) {
+
+  const watch = row as SalesZkWatch;
+  const own = await resolveSalesPersonForUser(user);
+  const isDelegate = await isProfileActiveDelegateForSalesPerson(
+    user.id,
+    watch.sales_person_id
+  );
+  if (own?.id !== watch.sales_person_id && !isDelegate) {
     throw new Error("Brak uprawnień do tego wpisu.");
   }
-  if (row.closed_at || row.archived_at) {
+
+  if (watch.closed_at || watch.archived_at) {
     throw new Error("Nie można zmieniać zakresu prośby dla zamkniętego ZK.");
   }
 
-  const views = buildZkWatchLineViews(row as SalesZkWatch);
+  const views = buildZkWatchLineViews(watch);
   const productViews = views.filter((view) => view.key !== "summary");
   if (!productViews.length) {
     throw new Error("Brak pozycji towarowych w tym ZK.");
@@ -951,7 +985,7 @@ export async function actionUpdateZkWatchProsbaScope(
 
   const validKeys = new Set(productViews.map((view) => view.key));
   const selected = new Set(lineKeysToOrder.filter((key) => validKeys.has(key)));
-  const previousChecks = parseZkWatchLineChecks((row as SalesZkWatch).line_checks);
+  const previousChecks = parseZkWatchLineChecks(watch.line_checks);
   const needsProsbaByKey = new Map<string, boolean>(
     productViews.map((view) => [view.key, selected.has(view.key)])
   );
@@ -960,14 +994,11 @@ export async function actionUpdateZkWatchProsbaScope(
   });
 
   const watchForDrafts = {
-    ...(row as SalesZkWatch),
+    ...watch,
     line_checks: sanitized,
   };
   const excludedDraftKeys = teethDraftKeysExcludedFromScope(watchForDrafts);
-  const nextTeethDrafts = clearZkTeethDraftsForKeys(
-    (row as SalesZkWatch).teeth_drafts,
-    excludedDraftKeys
-  );
+  const nextTeethDrafts = clearZkTeethDraftsForKeys(watch.teeth_drafts, excludedDraftKeys);
 
   const { data, error } = await supabase
     .from("sales_zk_watches")
@@ -1667,4 +1698,176 @@ export async function actionGetZkProsbaPrefill(
     return prefill;
   }
   return enrichZkProsbaPrefillWithLiveStock(prefill);
+}
+
+export type AutoProsbaActionResult = AutoProsbaToastPayload;
+
+/** Automatyczna prośba po zapisie zakresu ZK (checkbox w modalu). */
+export async function actionAutoCreateProsbaFromZkWatch(
+  watchId: string,
+  options?: {
+    acknowledgeSufficientStock?: boolean;
+    selectedScopeCount?: number;
+    delegateFor?: string;
+    stockByTwId?: Record<number, import("@/lib/orders/prosba-stock-check").ProsbaLineStockSnapshot>;
+  }
+): Promise<AutoProsbaActionResult> {
+  const user = await getSessionUser();
+  if (!user || !isSalesAccount(user.role)) {
+    return toastForAutoProsbaBlockedCode("blocked_unauthorized");
+  }
+
+  const supabase = createAdminClient();
+  const { data: row, error: fetchError } = await supabase
+    .from("sales_zk_watches")
+    .select("*")
+    .eq("id", watchId.trim())
+    .maybeSingle();
+
+  if (fetchError) {
+    return toastForAutoProsbaBlockedCode(
+      "error_generic",
+      userFacingErrorText(fetchError, "Nie udało się odczytać ZK.")
+    );
+  }
+  if (!row) {
+    return toastForAutoProsbaBlockedCode("blocked_unauthorized");
+  }
+
+  const watch = row as SalesZkWatch;
+  const own = await resolveSalesPersonForUser(user);
+  const isDelegate = await isProfileActiveDelegateForSalesPerson(
+    user.id,
+    watch.sales_person_id
+  );
+  const delegateFor = options?.delegateFor?.trim();
+  let accessOk =
+    own?.id === watch.sales_person_id ||
+    isDelegate ||
+    (delegateFor === watch.sales_person_id &&
+      (await isProfileActiveDelegateForSalesPerson(user.id, delegateFor)));
+  if (!accessOk && isSalesManager(user.role)) {
+    accessOk = await canAccessSalesPerson(user, watch.sales_person_id);
+  }
+  if (!accessOk) {
+    return toastForAutoProsbaBlockedCode("blocked_unauthorized");
+  }
+
+  let teethCatalogAvailable = true;
+  const teethInfo = await fetchTeethProductInfo().catch(() => {
+    teethCatalogAvailable = false;
+    return [];
+  });
+  const teethRegistry = {
+    ...buildTeethDraftRegistryFromProductInfo(teethInfo),
+    catalogAvailable: teethCatalogAvailable,
+  };
+
+  const linkableOrders = await fetchAllZkLinkableOrdersForSalesPerson(
+    supabase,
+    watch.sales_person_id
+  );
+  const hints = computeZkWatchOrderHints(watch, linkableOrders);
+
+  const eligibility = assessZkWatchAutoProsbaEligibility({
+    watch,
+    hints,
+    teethRegistry,
+  });
+  if (!eligibility.ok) {
+    const blocked = toastForAutoProsbaBlockedCode(eligibility.code);
+    const mojeHref = buildMojeClientLink(watch.sales_person_id, watch.client_label, {
+      clientKhId: watch.client_kh_id,
+      zkWatchId: watch.id,
+      zkNumber: watch.zk_number,
+    });
+    if (eligibility.code === "redirect_open_prosba") {
+      blocked.actionHref = appendMojeFocusOrderIds(
+        mojeHref,
+        hints.matchingOpenRequestIds
+      );
+    } else if (eligibility.code === "skipped_already_covered") {
+      blocked.actionHref = mojeHref;
+    }
+    return blocked;
+  }
+
+  const lineKeys = resolveAutoProsbaLineKeys(watch, hints);
+  if (!lineKeys.length) {
+    const skipped = toastForAutoProsbaBlockedCode("skipped_already_covered");
+    skipped.actionHref = buildMojeClientLink(watch.sales_person_id, watch.client_label, {
+      clientKhId: watch.client_kh_id,
+      zkWatchId: watch.id,
+      zkNumber: watch.zk_number,
+    });
+    return skipped;
+  }
+
+  const draftLines = extractProsbaLinesFromZkWatch(watch, { lineKeys });
+  const twIds = collectProsbaLineTwIdsMissingStock(draftLines, "zamowienie");
+  const clientStockByTwId = resolveClientAutoProsbaStockSnapshot(options?.stockByTwId);
+  const stockByTwId =
+    clientStockByTwId ?? (twIds.length ? await fetchProsbaLineStock(twIds) : {});
+  const lines = buildServerAutoProsbaEntries({ watch, lineKeys, teethRegistry, stockByTwId });
+
+  try {
+    await assertCanSubmitIndividualOrders(user, lines);
+  } catch (e) {
+    return toastForAutoProsbaBlockedCode(
+      "blocked_unauthorized",
+      userFacingErrorText(e, "Brak uprawnień.")
+    );
+  }
+
+  try {
+    const result = await actionAddIndividualOrders({
+      entries: lines,
+      acknowledgeSufficientStock: options?.acknowledgeSufficientStock,
+      stockByTwId,
+    });
+
+    const code = resolveAutoProsbaResultCodeAfterSubmit({
+      hints,
+      lineKeys,
+      selectedScopeCount: options?.selectedScopeCount,
+      complete: result.complete,
+      verification: result.verification,
+    });
+
+    const mojeHref = buildMojeClientLink(watch.sales_person_id, watch.client_label, {
+      clientKhId: watch.client_kh_id,
+      zkWatchId: watch.id,
+      zkNumber: watch.zk_number,
+    });
+    const actionHref =
+      code === "created_supplement" || hints.matchingOpenRequestIds.length
+        ? appendMojeFocusOrderIds(mojeHref, hints.matchingOpenRequestIds)
+        : mojeHref;
+
+    scheduleNotepadRevalidation();
+
+    return buildAutoProsbaSuccessToast({
+      code,
+      watch,
+      count: result.count,
+      complete: result.complete,
+      verification: result.verification,
+      selectedScopeCount: options?.selectedScopeCount,
+      effectiveLineCount: lineKeys.length,
+      includeCaseNote: shouldIncludeZkCaseNoteInPrefill(watch),
+      actionHref,
+    });
+  } catch (e) {
+    if (e instanceof ProsbaSufficientStockError) {
+      return toastForAutoProsbaBlockedCode("error_stock_ack_required", e.message);
+    }
+    const message = userFacingErrorText(e, "Nie udało się utworzyć prośby.");
+    if (message.includes("Trwa inna operacja")) {
+      return toastForAutoProsbaBlockedCode("blocked_batch_lock");
+    }
+    if (message.includes("maks.") || message.includes("30")) {
+      return toastForAutoProsbaBlockedCode("blocked_batch_size");
+    }
+    return toastForAutoProsbaBlockedCode("error_generic", message);
+  }
 }

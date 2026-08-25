@@ -390,7 +390,7 @@ export async function actionUndoDailyPanelChange(payload: DailyPanelUndoPayload)
 export async function actionAddIndividualOrders(
   input: AddIndividualOrdersInput | AddIndividualOrdersEntry[]
 ) {
-  const { entries, acknowledgeSufficientStock } = normalizeAddIndividualOrdersInput(input);
+  const { entries, acknowledgeSufficientStock, stockByTwId } = normalizeAddIndividualOrdersInput(input);
   const user = await getSessionUser();
   if (!user) throw new Error("Wymagane logowanie");
 
@@ -421,6 +421,7 @@ export async function actionAddIndividualOrders(
       lines: zamowienieLines,
       requestKind: "zamowienie",
       acknowledgeSufficientStock,
+      stockByTwId,
     });
   }
 

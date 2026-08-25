@@ -76,10 +76,16 @@ describe("zk-watch-case-note-prosba", () => {
 
   it("copy statusów rozróżnia brak i nieaktualną treść", () => {
     expect(zkCaseNoteProsbaStatusCopy("private").label).toMatch(/Ciebie/i);
+    expect(zkCaseNoteProsbaStatusCopy("private").shortLabel).toBe("Prywatna");
     expect(zkCaseNoteProsbaStatusCopy("in_prosba").label).toMatch(/prośbie/i);
+    expect(zkCaseNoteProsbaStatusCopy("in_prosba").shortLabel).toBe("W prośbie");
     expect(zkCaseNoteProsbaStatusCopy("planned").label).toMatch(/prośby/i);
+    expect(zkCaseNoteProsbaStatusCopy("planned").shortLabel).toBe("Do prośby");
     expect(zkCaseNoteProsbaStatusCopy("planned_pending_attach", "stale").label).toMatch(
       /aktualiz/i
+    );
+    expect(zkCaseNoteProsbaStatusCopy("planned_pending_attach", "stale").shortLabel).toBe(
+      "Do aktualizacji"
     );
     expect(zkCaseNoteAttachActionLabel("stale")).toMatch(/Zaktualizuj/i);
     expect(zkCaseNoteWithoutNoteCountLabel(2)).toBe("2 pozycje bez aktualnej notatki");

@@ -14,7 +14,8 @@ import { actionUpdateZkWatchFollowUp } from "@/app/actions/sales-notepad";
 import { IconCalendar } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { computeAnchoredDropdownPosition } from "@/lib/ui/dropdown-anchor";
-import { controlFocusClass, panelDropdownShellClass, panelToolbarIconButtonClass } from "@/lib/ui/ontime-theme";
+import { controlFocusClass, panelDropdownShellClass } from "@/lib/ui/ontime-theme";
+import { zkWatchRowFollowUpIconClass } from "@/lib/ui/zk-watch-row-action-styles";
 import { formatFollowUpLabel, isFollowUpDue } from "@/lib/sales/notepad-follow-up";
 import type { SalesZkWatch } from "@/types/database";
 import { FollowUpQuickDates } from "./FollowUpQuickDates";
@@ -153,28 +154,20 @@ export function ZkWatchFollowUpButton({
             ? `Przyp. ${followUpLabel}${followUpDue ? " — do działania" : ""}`
             : "Przypomnienie"
         }
-        className={cn(
-          panelToolbarIconButtonClass,
-          "relative h-10 w-10 sm:h-7 sm:w-7",
-          !hasFollowUp &&
-            "border-dashed border-slate-200/90 bg-slate-50/40 text-slate-400 shadow-none hover:border-slate-300 hover:bg-slate-100/70 hover:text-slate-600",
-          hasFollowUp &&
-            !followUpDue &&
-            "border-violet-500 bg-violet-600 text-white shadow-md ring-2 ring-violet-200/80 hover:border-violet-600 hover:bg-violet-700 hover:text-white",
-          followUpDue &&
-            "border-amber-500 bg-amber-500 text-white shadow-md ring-2 ring-amber-200/80 hover:border-amber-600 hover:bg-amber-600 hover:text-white",
-          open &&
-            (hasFollowUp
-              ? "ring-offset-1"
-              : "border-indigo-300 bg-indigo-50 text-indigo-700")
-        )}
+        className={zkWatchRowFollowUpIconClass({
+          hasFollowUp,
+          followUpDue,
+          open,
+        })}
       >
         <IconCalendar size={hasFollowUp ? 16 : 15} />
         {followUpDay ? (
           <span
             className={cn(
-              "absolute -bottom-0.5 -right-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full px-0.5 text-[9px] font-bold leading-none",
-              followUpDue ? "bg-white text-amber-700" : "bg-white text-violet-700"
+              "absolute -bottom-0.5 -right-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-md px-0.5 text-[9px] font-bold leading-none ring-1 ring-inset",
+              followUpDue
+                ? "bg-amber-100 text-amber-900 ring-amber-200/80"
+                : "bg-violet-100 text-violet-900 ring-violet-200/80"
             )}
           >
             {Number(followUpDay)}

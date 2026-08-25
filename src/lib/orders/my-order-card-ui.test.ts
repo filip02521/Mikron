@@ -4,11 +4,13 @@ import {
   progressLabelInSubline,
   rowNeedsSalesAcknowledgement,
   shouldShowCollapsedProductSummary,
+  shouldShowCollapsedStatusPill,
   shouldShowExpandedOrderStatusBadge,
   shouldShowMyOrderHeadlineBanner,
   shouldShowOrderStatusBadge,
   shouldShowOrderStatusDetail,
   filterRedundantExpandedMetaFields,
+  shouldHideLineRequestNote,
 } from "./my-order-card-ui";
 import type { MyOrderRow } from "./my-order-presenter";
 import { createTestMyOrderRow } from "./test-fixtures";
@@ -206,15 +208,33 @@ describe("my-order-card-ui", () => {
     );
   });
 
-  it("ukrywa productSummary na desktopie gdy nagłówek i subline już niosą status", () => {
+  it("pill w railu gdy headline ukryty przez callout sekcji", () => {
+    const badgeRow = row({
+      headline: "Zamówione",
+      statusTitle: "Zamówione",
+      headlineTone: "neutral",
+    });
+    expect(
+      shouldShowCollapsedStatusPill(badgeRow, {
+        suppressSharedHeadline: true,
+        showRowHeadline: false,
+      })
+    ).toBe(true);
+    expect(
+      shouldShowCollapsedStatusPill(badgeRow, {
+        suppressSharedHeadline: false,
+        showRowHeadline: true,
+      })
+    ).toBe(false);
+  });
+
+  it("ukrywa productSummary gdy jest status hint", () => {
     expect(
       shouldShowCollapsedProductSummary(
         row({ lineCount: 3, subline: "Magazyn: 1 z 3 szt." }),
         {
           expanded: false,
-          showRowHeadline: true,
-          suppressSharedHeadline: false,
-          hasCollapsedSubline: true,
+          hasStatusHint: true,
         }
       )
     ).toBe(false);
@@ -223,11 +243,15 @@ describe("my-order-card-ui", () => {
         row({ lineCount: 3, subline: null }),
         {
           expanded: false,
-          showRowHeadline: true,
-          suppressSharedHeadline: false,
-          hasCollapsedSubline: false,
+          hasStatusHint: false,
         }
       )
     ).toBe(true);
+  });
+
+  it("shouldHideLineRequestNote — ukrywa per-line gdy jest wspólna notatka grupy", () => {
+    expect(shouldHideLineRequestNote(null)).toBe(false);
+    expect(shouldHideLineRequestNote("  ")).toBe(false);
+    expect(shouldHideLineRequestNote("pilne")).toBe(true);
   });
 });

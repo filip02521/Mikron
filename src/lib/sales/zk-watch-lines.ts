@@ -25,7 +25,7 @@ export type ZkWatchLineView = {
   completed_manually: boolean;
 };
 
-/** Pozycje usługowe (pakowanie, koszt dostawy) — nie liczą się w checkliście towaru. */
+/** Pozycje usługowe (pakowanie, koszt dostawy, dopłata wagowa) — nie liczą się w checkliście towaru. */
 const ZK_SHIPPING_COST_SYMBOL_RE = /^KOSZTY(?:\/|$)/i;
 
 export function isZkWatchShippingCostLine(line: SubiektDocumentLine): boolean {
@@ -37,6 +37,8 @@ export function isZkWatchShippingCostLine(line: SubiektDocumentLine): boolean {
   if (name.includes("pakowanie przesyłki")) return true;
   if (name.includes("koszty dostawy")) return true;
   if (name.includes("koszt") && name.includes("przesyłk")) return true;
+  if (name.includes("opłata za dodatkowe") && name.includes("kg")) return true;
+  if (name.includes("opłata za dodatkową wag")) return true;
   return false;
 }
 

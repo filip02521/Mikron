@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { actionUpdateZkWatchProsbaScope } from "@/app/actions/sales-notepad";
 import { Button } from "@/components/ui/Button";
@@ -24,9 +24,16 @@ import {
 import { formatZkWatchDisplayNumber } from "@/lib/sales/notepad-format";
 import { buildZkWatchLineViews, parseZkWatchLineChecks } from "@/lib/sales/zk-watch-lines";
 import {
+  deriveZkProsbaScopeAutoProsbaGate,
   getZkWatchProsbaScopeLineKeys,
   needsProsbaByKeyFromChecks,
 } from "@/lib/sales/zk-watch-prosba-scope";
+import {
+  collectZkTeethLineCandidates,
+  zkWatchTeethDraftsReady,
+  type TeethDraftRegistryLookup,
+} from "@/lib/sales/zk-watch-teeth-draft";
+import { MAX_BATCH_ORDER_LINES } from "@/lib/security/text-limits";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 import type { SalesZkWatch } from "@/types/database";
@@ -131,10 +138,20 @@ function useZkProsbaScopeSelection(watch: SalesZkWatch, open: boolean) {
   };
 }
 
+export type ZkProsbaScopeSavedMeta = {
+  autoProsba: boolean;
+  selectedScopeCount: number;
+  stockByTwId: Record<number, import("@/lib/orders/prosba-stock-check").ProsbaLineStockSnapshot>;
+};
+
 export function ZkWatchProsbaScopeModal({
   watch,
   open,
   required = false,
+  readOnly = false,
+  tourPreview = false,
+  delegatePreview = false,
+  teethRegistry,
   onClose,
   onSaved,
 }: {
@@ -142,14 +159,20 @@ export function ZkWatchProsbaScopeModal({
   open: boolean;
   /** Gdy true — nie można zamknąć bez zapisu (pierwsze dodanie ZK). */
   required?: boolean;
+  readOnly?: boolean;
+  tourPreview?: boolean;
+  delegatePreview?: boolean;
+  teethRegistry?: TeethDraftRegistryLookup;
   onClose: () => void;
-  onSaved: (watch: SalesZkWatch) => void;
+  onSaved: (watch: SalesZkWatch, meta: ZkProsbaScopeSavedMeta) => void;
 }) {
   const teethExemptTwIds = useTeethExemptTwIds();
   const { productLines, orderMarked, setOrderMarked, stockByTwId, rawStockByTwId, stockLoading, stockFetchTimedOut, hasExistingScope } =
     useZkProsbaScopeSelection(watch, open);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [autoProsba, setAutoProsba] = useState(false);
+  const canOfferAutoProsba = !readOnly && !tourPreview && !delegatePreview;
   const displayNumber = formatZkWatchDisplayNumber(watch.zk_number);
   const lineKeysToOrder = zkProsbaScopeLineKeysToOrder(productLines, orderMarked);
   const allLinesSufficient =
@@ -180,7 +203,12 @@ export function ZkWatchProsbaScopeModal({
     const keysToOrder = zkProsbaScopeLineKeysToOrder(productLines, orderMarked);
     try {
       const { watch: updated } = await actionUpdateZkWatchProsbaScope(watch.id, keysToOrder);
-      onSaved(updated);
+      onSaved(updated, {
+        autoProsba: autoProsbaActive && canOfferAutoProsba,
+        selectedScopeCount: keysToOrder.length,
+        stockByTwId: { ...stockByTwId },
+      });
+      setAutoProsba(false);
       onClose();
     } catch (e) {
       setError(userFacingErrorText(e, "Nie udało się zapisać zakresu."));
@@ -191,11 +219,39 @@ export function ZkWatchProsbaScopeModal({
 
   const orderCount = lineKeysToOrder.length;
   const totalLines = productLines.length;
+  const teethCandidates =
+    teethRegistry && orderCount > 0
+      ? collectZkTeethLineCandidates(watch, teethRegistry).filter((c) =>
+          lineKeysToOrder.includes(c.lineKey)
+        )
+      : [];
+  const teethIncomplete =
+    teethRegistry != null &&
+    teethCandidates.length > 0 &&
+    !zkWatchTeethDraftsReady(watch, teethRegistry, {
+      lineKeys: lineKeysToOrder,
+      requestKind: "zamowienie",
+    });
+  const teethCatalogUnavailable = teethRegistry?.catalogAvailable === false;
+  const overBatchLimit = orderCount > MAX_BATCH_ORDER_LINES;
+  const { disabled: autoProsbaDisabled, hint: autoProsbaHint } = deriveZkProsbaScopeAutoProsbaGate({
+    stockUnavailable,
+    teethCatalogUnavailable,
+    overBatchLimit,
+    stockLoading,
+    teethIncomplete,
+  });
+  const autoProsbaActive = autoProsba && !autoProsbaDisabled;
+
+  const handleClose = useCallback(() => {
+    setAutoProsba(false);
+    onClose();
+  }, [onClose]);
 
   return (
     <ModalShell
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       disableBackdropClose={required}
       size="md"
       title={`${displayNumber} — co zamawiamy?`}
@@ -219,11 +275,11 @@ export function ZkWatchProsbaScopeModal({
           </div>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             {required ? (
-              <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={saving}>
+              <Button type="button" variant="ghost" size="sm" onClick={handleClose} disabled={saving}>
                 Skonfiguruj później
               </Button>
             ) : (
-              <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={saving}>
+              <Button type="button" variant="ghost" size="sm" onClick={handleClose} disabled={saving}>
                 Anuluj
               </Button>
             )}
@@ -238,12 +294,14 @@ export function ZkWatchProsbaScopeModal({
               )}
             >
               {saving
-                ? "Zapisuję…"
+                ? "Zapisuję zakres…"
                 : awaitingAutoMark
                   ? "Sprawdzam stan…"
-                  : orderCount === 0
-                    ? "Zapisz — bez prośby"
-                    : `Zapisz (${orderCount})`}
+                  : autoProsbaActive && orderCount > 0
+                    ? `Zapisz i utwórz prośbę (${orderCount})`
+                    : orderCount === 0
+                      ? "Zapisz — bez prośby"
+                      : `Zapisz (${orderCount})`}
             </Button>
           </div>
         </div>
@@ -411,6 +469,40 @@ export function ZkWatchProsbaScopeModal({
             <span>Nic nie zaznaczono do zamówienia — zaznacz pozycje, które chcesz wysłać w prośbie.</span>
           </div>
         )
+      ) : null}
+
+      {canOfferAutoProsba && orderCount > 0 ? (
+        <div className="space-y-2 rounded-xl border border-slate-200/80 bg-slate-50/50 px-4 py-3">
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={autoProsbaActive}
+              disabled={saving || autoProsbaDisabled}
+              onChange={(e) => setAutoProsba(e.target.checked)}
+              className="mt-0.5 size-4 shrink-0 rounded-md border-slate-300 text-indigo-600 focus:ring-2 focus:ring-indigo-500/40"
+            />
+            <span className="min-w-0 flex-1">
+              <span className="text-sm font-semibold text-slate-900">
+                Utwórz prośbę od razu ({orderCount})
+              </span>
+              {autoProsbaActive ? (
+                <span className="mt-1 block space-y-0.5 text-xs leading-relaxed text-slate-600">
+                  <span className="block">Wybrane pozycje trafią do prośby bez formularza.</span>
+                  <span className="block">
+                    Gdy brakuje dostawcy — dział zakupów uzupełni dane w weryfikacji.
+                  </span>
+                  <span className="block">Towar na stanie wymaga dodatkowego potwierdzenia.</span>
+                  <span className="block">
+                    Do prośby dodamy tylko pozycje, których jeszcze nie ma w otwartej prośbie.
+                  </span>
+                </span>
+              ) : null}
+            </span>
+          </label>
+          {autoProsbaHint ? (
+            <p className="text-xs leading-relaxed text-amber-800">{autoProsbaHint}</p>
+          ) : null}
+        </div>
       ) : null}
 
       {/* Error */}

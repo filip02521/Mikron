@@ -132,6 +132,32 @@ describe("zk-watch-lines", () => {
     expect(views[0]?.product).toBe("Szczotka");
     expect(isZkWatchShippingCostLine({ tw_Symbol: "KOSZTY/1" })).toBe(true);
     expect(isZkWatchShippingCostLine({ tw_Nazwa: "Filtr", tw_Symbol: "F-1" })).toBe(false);
+    expect(
+      isZkWatchShippingCostLine({ tw_Nazwa: "Opłata za dodatkowe 25 kg", tw_Symbol: "DOP-25" })
+    ).toBe(true);
+    expect(
+      isZkWatchShippingCostLine({ tw_Nazwa: "Opłata za dodatkowy materiał", tw_Symbol: "MAT-1" })
+    ).toBe(false);
+  });
+
+  it("pomija opłatę za dodatkową wagę przesyłki", () => {
+    const views = buildZkWatchLineViews(
+      watch({
+        subiekt_snapshot: {
+          dok_Pozycja: [
+            { ob_Id: 10, tw_Nazwa: "Implant", tw_Symbol: "IMP-1", ob_Ilosc: 1 },
+            {
+              ob_Id: 11,
+              tw_Nazwa: "Opłata za dodatkowe 25 kg",
+              tw_Symbol: "DOP-25",
+              ob_Ilosc: 1,
+            },
+          ],
+        },
+      })
+    );
+    expect(views).toHaveLength(1);
+    expect(views[0]?.product).toBe("Implant");
   });
 
   it("allZkWatchLinesArrived wymaga wszystkich pozycji na miejscu", () => {
