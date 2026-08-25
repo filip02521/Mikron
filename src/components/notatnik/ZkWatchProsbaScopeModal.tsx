@@ -5,7 +5,6 @@ import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { actionUpdateZkWatchProsbaScope } from "@/app/actions/sales-notepad";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
-import { Spinner } from "@/components/ui/Spinner";
 import { useProsbaLineStockBatchFetch } from "@/hooks/useProsbaLineStockBatchFetch";
 import { cn } from "@/lib/cn";
 import {
@@ -34,15 +33,15 @@ import {
   type TeethDraftRegistryLookup,
 } from "@/lib/sales/zk-watch-teeth-draft";
 import { MAX_BATCH_ORDER_LINES } from "@/lib/security/text-limits";
+import { plPozycja } from "@/lib/ui/polish-plurals";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 import type { SalesZkWatch } from "@/types/database";
+import { IconClipboardList } from "@/components/icons/StrokeIcons";
 import {
-  IconClipboardList,
-  IconCircleCheck,
-  IconAlertCircle,
-  IconInfoCircle,
-} from "@/components/icons/StrokeIcons";
+  ZK_PROSBA_MODAL_BODY_CLASS,
+  ZkProsbaModalCallout,
+} from "@/components/notatnik/ZkProsbaModalCallout";
 
 function useZkProsbaScopeSelection(watch: SalesZkWatch, open: boolean) {
   const teethExemptTwIds = useTeethExemptTwIds();
@@ -256,9 +255,9 @@ export function ZkWatchProsbaScopeModal({
       size="md"
       title={`${displayNumber} — co zamawiamy?`}
       description={watch.client_label}
-      bodyClassName="space-y-3 px-5 py-4 sm:px-6"
+      bodyClassName={ZK_PROSBA_MODAL_BODY_CLASS}
       footer={
-        <div className="flex w-full items-center justify-between gap-3">
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2 text-xs text-slate-500">
             {orderCount > 0 ? (
               <>
@@ -266,7 +265,7 @@ export function ZkWatchProsbaScopeModal({
                   {orderCount}
                 </span>
                 <span className="font-medium text-slate-700">
-                  {orderCount === 1 ? "pozycja do zamówienia" : `${orderCount} pozycji do zamówienia`}
+                  {orderCount} {plPozycja(orderCount)} do zamówienia
                 </span>
               </>
             ) : (
@@ -307,62 +306,52 @@ export function ZkWatchProsbaScopeModal({
         </div>
       }
     >
-      {/* Info card — gradient with icon */}
-      <div className="relative overflow-hidden rounded-xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50/80 via-indigo-50/40 to-sky-50/30 px-4 py-3.5">
-        <div className="flex items-start gap-3">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100/80 text-indigo-600">
-            <IconClipboardList size={18} strokeWidth={2} />
+      <div className="overflow-hidden rounded-lg border border-indigo-200/60 bg-gradient-to-br from-indigo-50/80 via-indigo-50/40 to-sky-50/30 px-3.5 py-2.5">
+        <div className="flex items-start gap-2.5">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-indigo-100/80 text-indigo-600">
+            <IconClipboardList size={16} strokeWidth={2} />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-indigo-950">Zaznacz pozycje do zamówienia</p>
             <p className="mt-0.5 text-xs leading-relaxed text-indigo-900/70">
-              Zaznaczone pozycje trafią do prośby u zakupów. Odznacz towar, który macie na stanie w
-              Subiekcie — system uwzględnia rezerwacje z tego ZK. Oznaczenie &bdquo;na magazynie&rdquo; pojawi się dopiero po dostawie z prośby.
+              Zaznaczone trafią do prośby u zakupów. Odznacz towar na stanie w Subiekcie
+              (uwzględniamy rezerwacje z tego ZK). Status &bdquo;na magazynie&rdquo; pojawi się po
+              dostawie z prośby.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Stock loading state */}
       {stockLoading ? (
-        <div className="flex items-center gap-2.5 rounded-lg border border-sky-200/60 bg-sky-50/50 px-3.5 py-2.5 text-xs text-sky-800">
-          <Spinner size="sm" className="border-sky-200 border-t-sky-600" />
+        <ZkProsbaModalCallout tone="sky" icon="spinner" role="status">
           <span className="font-medium">Sprawdzam stan magazynowy w Subiekcie…</span>
-        </div>
+        </ZkProsbaModalCallout>
       ) : null}
 
-      {/* Stock timeout warning */}
       {stockFetchTimedOut ? (
-        <div className="flex items-start gap-2.5 rounded-lg border border-amber-200/80 bg-amber-50/70 px-3.5 py-2.5 text-xs leading-relaxed text-amber-950">
-          <IconAlertCircle size={16} className="mt-0.5 shrink-0 text-amber-600" />
-          <span>Sprawdzanie stanu trwa zbyt długo — możesz zaznaczyć pozycje ręcznie lub zapisać bez automatycznego podpowiedzenia.</span>
-        </div>
+        <ZkProsbaModalCallout tone="amber" role="status">
+          Sprawdzanie stanu trwa zbyt długo — zaznacz pozycje ręcznie lub zapisz bez
+          automatycznego podpowiadania.
+        </ZkProsbaModalCallout>
       ) : null}
 
-      {/* Stock fetch failed */}
       {stockUnavailable && !stockFetchTimedOut ? (
-        <div className="flex items-start gap-2.5 rounded-lg border border-amber-200/80 bg-amber-50/70 px-3.5 py-2.5 text-xs leading-relaxed text-amber-950">
-          <IconAlertCircle size={16} className="mt-0.5 shrink-0 text-amber-600" />
-          <span>Nie udało się pobrać stanu z Subiekta — zaznacz ręcznie pozycje do zamówienia.</span>
-        </div>
+        <ZkProsbaModalCallout tone="amber" role="status">
+          Nie udało się pobrać stanu z Subiekta — zaznacz ręcznie pozycje do zamówienia.
+        </ZkProsbaModalCallout>
       ) : null}
 
-      {/* Auto-marked hint */}
       {!stockLoading && autoMarkedCount > 0 && !noneMarkedForOrder ? (
-        <div className="flex items-center gap-2 rounded-lg bg-slate-50/80 px-3 py-2 text-xs text-slate-600">
-          <IconInfoCircle size={14} className="shrink-0 text-slate-400" />
-          <span>{formatZkProsbaAutoMarkedHint(autoMarkedCount)}</span>
-        </div>
+        <ZkProsbaModalCallout tone="info">
+          {formatZkProsbaAutoMarkedHint(autoMarkedCount)}
+        </ZkProsbaModalCallout>
       ) : null}
 
-      {/* Items list */}
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between px-1">
-          <span className={salesTypography.sectionLabel}>
-            Pozycje z ZK
-          </span>
+        <div className="flex items-center justify-between px-0.5">
+          <span className={salesTypography.sectionLabel}>Pozycje z ZK</span>
           <span className="text-[11px] font-medium text-slate-400">
-            {totalLines} {totalLines === 1 ? "pozycja" : totalLines < 5 ? "pozycje" : "pozycji"}
+            {totalLines} {plPozycja(totalLines)}
           </span>
         </div>
         <ul
@@ -456,24 +445,29 @@ export function ZkWatchProsbaScopeModal({
         </ul>
       </div>
 
-      {/* Empty selection hint */}
       {noneMarkedForOrder && !stockLoading ? (
         allLinesSufficient ? (
-          <div className="flex items-start gap-2.5 rounded-lg border border-emerald-200/70 bg-emerald-50/50 px-3.5 py-2.5 text-xs leading-relaxed text-emerald-900">
-            <IconCircleCheck size={16} className="mt-0.5 shrink-0 text-emerald-600" />
-            <span>Wszystkie pozycje są na stanie i zarezerwowane w tym ZK — zapisz, jeśli nic nie trzeba zamawiać u dostawcy.</span>
-          </div>
+          <ZkProsbaModalCallout tone="emerald">
+            Wszystkie pozycje są na stanie i zarezerwowane w tym ZK — zapisz, jeśli nic nie trzeba
+            zamawiać u dostawcy.
+          </ZkProsbaModalCallout>
         ) : (
-          <div className="flex items-start gap-2.5 rounded-lg border border-amber-200/70 bg-amber-50/50 px-3.5 py-2.5 text-xs leading-relaxed text-amber-900">
-            <IconAlertCircle size={16} className="mt-0.5 shrink-0 text-amber-600" />
-            <span>Nic nie zaznaczono do zamówienia — zaznacz pozycje, które chcesz wysłać w prośbie.</span>
-          </div>
+          <ZkProsbaModalCallout tone="amber">
+            Nic nie zaznaczono do zamówienia — zaznacz pozycje, które chcesz wysłać w prośbie.
+          </ZkProsbaModalCallout>
         )
       ) : null}
 
       {canOfferAutoProsba && orderCount > 0 ? (
-        <div className="space-y-2 rounded-xl border border-slate-200/80 bg-slate-50/50 px-4 py-3">
-          <label className="flex cursor-pointer items-start gap-3">
+        <div
+          className={cn(
+            "space-y-2.5 rounded-lg border px-3.5 py-2.5",
+            autoProsbaActive
+              ? "border-indigo-200/70 bg-indigo-50/40"
+              : "border-slate-200/80 bg-slate-50/50"
+          )}
+        >
+          <label className="flex cursor-pointer items-start gap-2.5">
             <input
               type="checkbox"
               checked={autoProsbaActive}
@@ -485,32 +479,25 @@ export function ZkWatchProsbaScopeModal({
               <span className="text-sm font-semibold text-slate-900">
                 Utwórz prośbę od razu ({orderCount})
               </span>
-              {autoProsbaActive ? (
-                <span className="mt-1 block space-y-0.5 text-xs leading-relaxed text-slate-600">
-                  <span className="block">Wybrane pozycje trafią do prośby bez formularza.</span>
-                  <span className="block">
-                    Gdy brakuje dostawcy — dział zakupów uzupełni dane w weryfikacji.
-                  </span>
-                  <span className="block">Towar na stanie wymaga dodatkowego potwierdzenia.</span>
-                  <span className="block">
-                    Do prośby dodamy tylko pozycje, których jeszcze nie ma w otwartej prośbie.
-                  </span>
-                </span>
-              ) : null}
+              <span className="mt-0.5 block text-xs leading-relaxed text-slate-600">
+                {autoProsbaActive
+                  ? "Po zapisie utworzymy prośbę bez formularza. Brak dostawcy uzupełnią zakupy; towar na stanie wymaga potwierdzenia. Pominiemy pozycje już w otwartej prośbie."
+                  : "Po zapisie zakresu od razu utworzymy prośbę z zaznaczonych pozycji."}
+              </span>
             </span>
           </label>
           {autoProsbaHint ? (
-            <p className="text-xs leading-relaxed text-amber-800">{autoProsbaHint}</p>
+            <ZkProsbaModalCallout tone="amber" className="bg-amber-50/90">
+              {autoProsbaHint}
+            </ZkProsbaModalCallout>
           ) : null}
         </div>
       ) : null}
 
-      {/* Error */}
       {error ? (
-        <div className="flex items-start gap-2.5 rounded-lg border border-rose-200/80 bg-rose-50/70 px-3.5 py-2.5 text-xs leading-relaxed text-rose-800" role="alert">
-          <IconAlertCircle size={16} className="mt-0.5 shrink-0 text-rose-600" />
-          <span>{error}</span>
-        </div>
+        <ZkProsbaModalCallout tone="rose" role="alert">
+          {error}
+        </ZkProsbaModalCallout>
       ) : null}
     </ModalShell>
   );

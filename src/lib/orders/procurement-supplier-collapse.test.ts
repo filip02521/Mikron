@@ -60,21 +60,29 @@ function block(
 }
 
 describe("procurement-supplier-collapse", () => {
-  it("domyślnie zwija 3+ grupy bez nowych", () => {
-    const b = block("a", ["Kasia", "Jan", "Ola"]);
-    expect(shouldDefaultCollapseProcurementBlock(b)).toBe(true);
-    expect(isProcurementSupplierBlockCollapsed(b, new Map())).toBe(true);
+  it("domyślnie zwija każdy blok wieloosobowy bez nowych", () => {
+    const three = block("a", ["Kasia", "Jan", "Ola"]);
+    expect(shouldDefaultCollapseProcurementBlock(three)).toBe(true);
+    expect(isProcurementSupplierBlockCollapsed(three, new Map())).toBe(true);
+
+    const two = block("b", ["Kasia", "Jan"]);
+    expect(shouldDefaultCollapseProcurementBlock(two)).toBe(true);
+    expect(isProcurementSupplierBlockCollapsed(two, new Map())).toBe(true);
   });
 
-  it("2 grupy — domyślnie rozwinięte", () => {
-    const b = block("b", ["Kasia", "Jan"]);
+  it("1 grupa — bez nagłówka, nie zwijana", () => {
+    const b = block("solo", ["Kasia"]);
     expect(shouldDefaultCollapseProcurementBlock(b)).toBe(false);
     expect(isProcurementSupplierBlockCollapsed(b, new Map())).toBe(false);
   });
 
-  it("nowe prośby — zawsze rozwinięte", () => {
+  it("nowe prośby — zawsze rozwinięte przez forceExpanded (nie sam hasUnseen)", () => {
     const b = block("c", ["Kasia", "Jan", "Ola", "Piotr"], true);
-    expect(isProcurementSupplierBlockCollapsed(b, new Map([["c", true]]))).toBe(false);
+    // Sam hasUnseen na bloku nie blokuje zwinięcia — tylko live forceExpanded.
+    expect(isProcurementSupplierBlockCollapsed(b, new Map([["c", true]]))).toBe(true);
+    expect(
+      isProcurementSupplierBlockCollapsed(b, new Map([["c", true]]), new Set(["c"]))
+    ).toBe(false);
   });
 
   it("ręczne rozwinięcie nadpisuje domyślne zwinięcie", () => {
@@ -85,7 +93,7 @@ describe("procurement-supplier-collapse", () => {
   it("collapsedProcurementSupplierIds i bulk expanded", () => {
     const blocks = [block("e", ["A", "B", "C"]), block("f", ["X", "Y"])];
     const collapsed = collapsedProcurementSupplierIds(blocks, new Map());
-    expect([...collapsed]).toEqual(["e"]);
+    expect([...collapsed].sort()).toEqual(["e", "f"]);
     expect(allCollapsibleProcurementBlocksExpanded(blocks, new Map())).toBe(false);
     expect(
       allCollapsibleProcurementBlocksExpanded(

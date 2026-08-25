@@ -1156,8 +1156,11 @@ export function NotatnikClient({
           onDismiss={() => setProsbaToast(null)}
           action={
             prosbaToast.actionHref ? (
-              <Link href={prosbaToast.actionHref}>
-                <Button variant="secondary" className="w-full">
+              <Link
+                href={prosbaToast.actionHref}
+                onClick={() => setProsbaToast(null)}
+              >
+                <Button variant="secondary" size="sm" className="w-full min-h-10">
                   {prosbaToast.actionLabel ?? "Prośby tego klienta"}
                 </Button>
               </Link>

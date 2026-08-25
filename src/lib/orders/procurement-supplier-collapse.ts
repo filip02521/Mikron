@@ -1,8 +1,11 @@
 import type { ProcurementSupplierBlock } from "@/lib/orders/procurement-supplier-groups";
 import { showProcurementSupplierBlockHeader } from "@/lib/orders/procurement-supplier-groups";
 
-/** Od ilu grup (osób) u dostawcy domyślnie zwijamy listę w panelu Dziś. */
-export const PROCUREMENT_SUPPLIER_DEFAULT_COLLAPSE_MIN_GROUPS = 3;
+/**
+ * Od ilu grup (osób) u dostawcy domyślnie zwijamy listę w panelu Dziś.
+ * 2 = każdy blok z nagłówkiem dostawcy (wieloosobowy) startuje zwinięty.
+ */
+export const PROCUREMENT_SUPPLIER_DEFAULT_COLLAPSE_MIN_GROUPS = 2;
 
 export type ProcurementSupplierCollapseOverrides = ReadonlyMap<string, boolean>;
 
@@ -13,12 +16,11 @@ export function isProcurementSupplierBlockCollapsible(
   return showProcurementSupplierBlockHeader(block);
 }
 
-/** Domyślnie zwinięty: 3+ grupy i brak nieprzeczytanych. */
+/** Domyślnie zwinięty: każdy zwijalny blok (live „Nowa” wymusza rozwinięcie przez forceExpanded). */
 export function shouldDefaultCollapseProcurementBlock(
   block: ProcurementSupplierBlock
 ): boolean {
   if (!isProcurementSupplierBlockCollapsible(block)) return false;
-  if (block.hasUnseen) return false;
   return block.requestGroups.length >= PROCUREMENT_SUPPLIER_DEFAULT_COLLAPSE_MIN_GROUPS;
 }
 
@@ -28,14 +30,18 @@ export function listCollapsibleProcurementBlocks(
   return blocks.filter(isProcurementSupplierBlockCollapsible);
 }
 
-/** Czy blok jest zwinięty — nowe prośby zawsze rozwijają (serwer lub lokalny tracker). */
+/**
+ * Czy blok jest zwinięty.
+ * Nie używa `block.hasUnseen` (sygnał serwera) — po lokalnym „widziane” badge
+ * użytkownik ma móc zwinąć; live badge wymusza `forceExpandedSupplierIds`.
+ */
 export function isProcurementSupplierBlockCollapsed(
   block: ProcurementSupplierBlock,
   manualOverrides: ProcurementSupplierCollapseOverrides,
   forceExpandedSupplierIds: ReadonlySet<string> = new Set()
 ): boolean {
   if (!isProcurementSupplierBlockCollapsible(block)) return false;
-  if (block.hasUnseen || forceExpandedSupplierIds.has(block.supplierId)) return false;
+  if (forceExpandedSupplierIds.has(block.supplierId)) return false;
 
   const manual = manualOverrides.get(block.supplierId);
   if (manual !== undefined) return manual;
@@ -81,8 +87,9 @@ export function allCollapsibleProcurementBlocksExpanded(
   );
 }
 
+/** v2 — domyślnie wszystkie bloki wieloosobowe zwinięte (wcześniej dopiero od 3 osób). */
 export function procurementSupplierCollapseStorageKey(): string {
-  return "procurement-supplier-collapse-v1";
+  return "procurement-supplier-collapse-v2";
 }
 
 export function readProcurementSupplierCollapseOverrides(): Map<string, boolean> {

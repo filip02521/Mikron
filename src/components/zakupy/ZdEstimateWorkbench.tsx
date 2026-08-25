@@ -2532,6 +2532,10 @@ export function ZdEstimateWorkbench({
           externalSessionPersistSkipRef.current
         ) {
           if (created.ok) {
+            console.warn(
+              "Sesja UI kreatora: usuwam recreate — ID już nieaktualne.",
+              created.sessionId
+            );
             void deleteZdEstimateExternalSessionRecord(created.sessionId);
           }
           return;
@@ -3640,6 +3644,10 @@ export function ZdEstimateWorkbench({
 
         if (estimateGen !== estimateGenRef.current) {
           if (persist.ok) {
+            console.warn(
+              "Sesja UI kreatora: usuwam świeżo utworzoną sesję — Policz unieważniony (estimateGen).",
+              persist.sessionId
+            );
             void deleteZdEstimateExternalSessionRecord(persist.sessionId);
           }
           return;

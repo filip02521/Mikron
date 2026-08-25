@@ -110,6 +110,63 @@ describe("zd-estimate-ui-session-snapshot", () => {
       })
     ).toBeNull();
   });
+
+  it("akceptuje pusty ordersBaseUrl (fallback) — nie kasuje sesji przy restore", () => {
+    const snapshot = buildZdEstimateUiSessionSnapshot({
+      linesBase: [],
+      lines: [],
+      historyByTwId: [],
+      historyFetchFailed: false,
+      pendingIndividuals: [],
+      pendingIndividualsTruncated: false,
+      pendingIndividualsError: null,
+      meta: {
+        pagesFetched: 1,
+        totalCountApi: 0,
+        truncated: false,
+        ordersBaseUrl: "",
+        durationMs: 10,
+        totalFromSubiekt: 0,
+      },
+      missingPartnerTwIds: [],
+      missingBomTwIds: [],
+      paramInfo: {},
+      exclusions: [],
+      onRequests: [],
+      packaging: [],
+      productPairs: [],
+      productBoms: [],
+      teethTwIds: [],
+      boostPreset: "gentle",
+      scopeMode: "grupa",
+      selectedGroup: null,
+      selectedCecha: null,
+      groupQuery: "",
+      cechaQuery: "",
+      supplierId: null,
+      dniZapasu: "30",
+      dataOd: "2026-01-01",
+      dataDo: "2026-01-31",
+      zapasMin: "0",
+      showAdvanced: false,
+      salesWindowSource: "stock",
+      qtyOverrideByTwId: {},
+      acceptedReviewTwIds: {},
+      sessionIncludeTwIds: {},
+      listFilter: "order",
+      listSearch: "",
+      sortKey: "symbol",
+      sortDir: "asc",
+      columns: {} as never,
+      columnOrder: [],
+    });
+    const parsed = parseZdEstimateUiSessionSnapshot({
+      ...snapshot,
+      meta: { ...snapshot.meta, ordersBaseUrl: "" },
+    });
+    expect(parsed).not.toBeNull();
+    expect(parsed?.meta.ordersBaseUrl).toBe("unknown");
+  });
 });
 
 describe("zd-estimate-external-session peek", () => {

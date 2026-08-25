@@ -180,12 +180,15 @@ export function parseZdEstimateUiSessionSnapshot(
     typeof meta.pagesFetched !== "number" ||
     typeof meta.totalCountApi !== "number" ||
     typeof meta.truncated !== "boolean" ||
-    !isNonEmptyString(meta.ordersBaseUrl) ||
     typeof meta.durationMs !== "number" ||
     typeof meta.totalFromSubiekt !== "number"
   ) {
     return null;
   }
+
+  const ordersBaseUrl = isNonEmptyString(meta.ordersBaseUrl)
+    ? meta.ordersBaseUrl
+    : "unknown";
 
   return {
     ...p,
@@ -195,7 +198,10 @@ export function parseZdEstimateUiSessionSnapshot(
     boostPreset,
     appliedBoostPreset,
     boostNeedsRecount: Boolean(p.boostNeedsRecount),
-    meta,
+    meta: {
+      ...meta,
+      ordersBaseUrl,
+    },
     historyByTwId: Array.isArray(p.historyByTwId) ? p.historyByTwId : [],
     historyFetchFailed: Boolean(p.historyFetchFailed),
     pendingIndividuals: Array.isArray(p.pendingIndividuals)

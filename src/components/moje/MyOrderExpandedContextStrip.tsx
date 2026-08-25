@@ -2,18 +2,11 @@
 
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { MyOrderMetaField } from "@/lib/orders/my-order-sales-ui";
-import { MyOrderExpandedDeliveryTiming } from "@/components/moje/MyOrderExpandedDeliveryTiming";
-import { InformacjaEmailSentMeta } from "@/components/moje/InformacjaEmailSentMeta";
-import { MyOrderEstimatedDeliveryMeta } from "@/components/moje/MyOrderEstimatedDeliveryMeta";
 import { MyOrderProcurementCancelNote } from "@/components/moje/MyOrderProcurementCancelNote";
 import { MyOrderRequestNote } from "@/components/moje/MyOrderRequestNote";
 import { MyOrderStatusPill } from "@/components/moje/MyOrderStatusPill";
-import { PlannedOrderDateMeta } from "@/components/orders/PlannedOrderDateMeta";
-import { ZdEtaPendingMeta } from "@/components/orders/ZdEtaPendingMeta";
-import { ZdFulfillmentDateMeta } from "@/components/orders/ZdFulfillmentDateMeta";
 import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
 import { cn } from "@/lib/cn";
-import type { MyOrderDeliveryTimingDisplay } from "@/lib/orders/my-order-delivery-timing-display";
 
 export type MyOrderExpandedContextStripProps = {
   row: MyOrderRow;
@@ -21,11 +14,6 @@ export type MyOrderExpandedContextStripProps = {
   metaFields: MyOrderMetaField[];
   showStatusBadge: boolean;
   expandedNotes?: string | null;
-  showInformacjaTimingMeta: boolean;
-  showEstimatedDeliveryMeta: boolean;
-  showExpandedDeliveryTiming: boolean;
-  showZdEtaPendingMeta?: boolean;
-  expandedDeliveryTiming?: MyOrderDeliveryTimingDisplay | null;
   sharedRequestNote?: string | null;
   sharedProcurementCancelNote?: string | null;
   showSharedUnreadRequestNote?: boolean;
@@ -33,38 +21,24 @@ export type MyOrderExpandedContextStripProps = {
   progressLabel?: string | null;
 };
 
-/** Kontekst grupy nad listą produktów: klient, termin, magazyn, uwagi. */
+/**
+ * Kontekst grupy nad listą produktów: klient, status, uwagi.
+ * Termin dostawy jest w osobnym panelu nad produktami ({@link MyOrderExpandedDeliveryPanel}).
+ */
 export function MyOrderExpandedContextStrip({
   row,
   searchQuery,
   metaFields,
   showStatusBadge,
   expandedNotes,
-  showInformacjaTimingMeta,
-  showEstimatedDeliveryMeta,
-  showExpandedDeliveryTiming,
-  showZdEtaPendingMeta = false,
-  expandedDeliveryTiming = null,
   sharedRequestNote,
   sharedProcurementCancelNote,
   showSharedUnreadRequestNote,
   clientLabel,
   progressLabel,
 }: MyOrderExpandedContextStripProps) {
-  const zdFulfillment = row.zdFulfillment ?? null;
-  const plannedOrderDate = row.plannedOrderDate ?? null;
-
-  const hasDeliveryTiming =
-    showExpandedDeliveryTiming &&
-    (expandedDeliveryTiming ||
-      showInformacjaTimingMeta ||
-      zdFulfillment ||
-      showEstimatedDeliveryMeta ||
-      showZdEtaPendingMeta);
-
-  const hasTiming = hasDeliveryTiming || Boolean(plannedOrderDate);
-
-  const hasNotesPanel = sharedProcurementCancelNote || (sharedRequestNote && !showSharedUnreadRequestNote);
+  const hasNotesPanel =
+    sharedProcurementCancelNote || (sharedRequestNote && !showSharedUnreadRequestNote);
 
   const hasContent =
     clientLabel ||
@@ -72,7 +46,6 @@ export function MyOrderExpandedContextStrip({
     metaFields.length > 0 ||
     showStatusBadge ||
     expandedNotes ||
-    hasTiming ||
     hasNotesPanel;
 
   if (!hasContent) return null;
@@ -128,33 +101,6 @@ export function MyOrderExpandedContextStrip({
           </svg>
           <SearchHighlightText text={expandedNotes} searchQuery={searchQuery} className="text-sky-700" />
         </span>
-      ) : null}
-
-      {hasTiming ? (
-        <div className="flex flex-wrap items-center gap-2 text-[10px] leading-tight">
-          {hasDeliveryTiming ? (
-            expandedDeliveryTiming ? (
-              <MyOrderExpandedDeliveryTiming
-                display={expandedDeliveryTiming}
-                searchQuery={searchQuery}
-              />
-            ) : (
-              <>
-                {showInformacjaTimingMeta && row.timingLabel ? (
-                  <InformacjaEmailSentMeta timingLabel={row.timingLabel} />
-                ) : null}
-                {!showInformacjaTimingMeta && zdFulfillment ? (
-                  <ZdFulfillmentDateMeta fulfillment={zdFulfillment} inline lines={row.lines} />
-                ) : null}
-                {!showInformacjaTimingMeta && showEstimatedDeliveryMeta ? (
-                  <MyOrderEstimatedDeliveryMeta row={row} inline />
-                ) : null}
-                {showZdEtaPendingMeta ? <ZdEtaPendingMeta compact={false} /> : null}
-              </>
-            )
-          ) : null}
-          {plannedOrderDate ? <PlannedOrderDateMeta display={plannedOrderDate} inline /> : null}
-        </div>
       ) : null}
 
       {hasNotesPanel ? (

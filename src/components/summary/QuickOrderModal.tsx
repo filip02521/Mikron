@@ -96,6 +96,7 @@ export function QuickOrderModal({
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
   const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
   const [stockConfirmMessage, setStockConfirmMessage] = useState("");
+  const [stockConfirmSummary, setStockConfirmSummary] = useState<string | null>(null);
   const pendingSubmitRef = useRef<AddIndividualOrdersEntry[]>([]);
 
   const supplierRefs = toAppSupplierRefs(suppliers);
@@ -259,6 +260,7 @@ export function QuickOrderModal({
     const stockConfirm = buildProsbaSubmitStockConfirm(lines, requestKind, teethExemptTwIds);
     if (stockConfirm) {
       pendingSubmitRef.current = entries;
+      setStockConfirmSummary(stockConfirm.summary);
       setStockConfirmMessage(stockConfirm.message);
       setStockConfirmOpen(true);
       return;
@@ -351,9 +353,11 @@ export function QuickOrderModal({
       <ProsbaStockConfirmDialog
         open={stockConfirmOpen}
         message={stockConfirmMessage}
+        summary={stockConfirmSummary}
         pending={pending}
         onCancel={() => {
           setStockConfirmOpen(false);
+          setStockConfirmSummary(null);
           pendingSubmitRef.current = [];
         }}
         onConfirm={() =>

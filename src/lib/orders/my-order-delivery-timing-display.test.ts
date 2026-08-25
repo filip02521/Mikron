@@ -197,7 +197,7 @@ describe("my-order-delivery-timing-display", () => {
         },
       })
     );
-    expect(display?.title).toBe("Planowana dostawa:");
+    expect(display?.title).toBe("Planowana dostawa");
     expect(display?.tone).toBe("zd-sourced");
     expect(display?.estimate).toContain("ZD/81/2026");
     expect(display?.detail ?? "").not.toContain("zaktualizowano");
@@ -240,7 +240,7 @@ describe("my-order-delivery-timing-display", () => {
         zdEtaNoMatch: true,
       })
     );
-    expect(display?.title).toBe("Planowana dostawa:");
+    expect(display?.title).toBe("Planowana dostawa");
     expect(display?.estimate).toContain(deadlinePl);
     expect(display?.detail).toContain(MY_ORDER_HISTORY_ESTIMATE_MIXED_ZD_GROUP_DETAIL);
   });

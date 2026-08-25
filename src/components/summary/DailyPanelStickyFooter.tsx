@@ -8,7 +8,7 @@ import { DailyPanelSyncControl } from "@/components/summary/DailyPanelSyncContro
 import { cn } from "@/lib/cn";
 import { panelChromeInsetClass } from "@/lib/ui/ontime-theme";
 
-/** Sticky stopka pod zakładkami — status Dziś (opcjonalnie) + sync na wszystkich widokach. */
+/** Stopka pod zakładkami (scrolluje z treścią) — status Dziś + sync na wszystkich widokach. */
 export function DailyPanelStickyFooter({
   view,
   summary,

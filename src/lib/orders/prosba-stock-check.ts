@@ -2,6 +2,7 @@ import type { ProductLineDraft } from "@/components/orders/request-product-lines
 import { parseOrderQuantity } from "@/lib/orders/individual";
 import { buildProsbaSufficientStockSummary } from "@/lib/orders/prosba-line-stock-ui";
 import { isStockExemptTwId } from "@/lib/orders/teeth-stock-exempt";
+import { plPozycja } from "@/lib/ui/polish-plurals";
 import type { SubiektProduct } from "@/lib/subiekt/types";
 import type { IndividualRequestKind } from "@/types/database";
 
@@ -137,14 +138,18 @@ export function filterProsbaLinesWithSufficientStock(
 export function buildProsbaSubmitStockConfirm(
   lines: ProductLineDraft[],
   requestKind: IndividualRequestKind,
-  stockExemptTwIds?: ReadonlySet<number>
-): { sufficientLines: ProductLineDraft[]; message: string } | null {
+  stockExemptTwIds?: ReadonlySet<number>,
+  options?: { intent?: "send" | "create" }
+): { sufficientLines: ProductLineDraft[]; message: string; summary: string } | null {
   if (requestKind !== "zamowienie") return null;
   const sufficientLines = filterProsbaLinesWithSufficientStock(lines, requestKind, stockExemptTwIds);
   if (!sufficientLines.length) return null;
   return {
     sufficientLines,
-    message: formatProsbaSubmitStockConfirmMessage(sufficientLines),
+    summary: formatProsbaSubmitStockConfirmSummary(sufficientLines.length),
+    message: formatProsbaSubmitStockConfirmMessage(sufficientLines, {
+      intent: options?.intent ?? "send",
+    }),
   };
 }
 
@@ -534,7 +539,20 @@ export function applyProsbaLineStockMap(
   return { next, changed };
 }
 
-export function formatProsbaSubmitStockConfirmMessage(lines: ProductLineDraft[]): string {
+export function formatProsbaSubmitStockConfirmSummary(count: number): string {
+  const n = Math.abs(Math.trunc(count));
+  if (n <= 0) return "";
+  if (n === 1) return "1 pozycja ma wystarczający stan magazynowy";
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  const few = mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14);
+  return `${n} ${plPozycja(n)} ${few ? "mają" : "ma"} wystarczający stan magazynowy`;
+}
+
+export function formatProsbaSubmitStockConfirmMessage(
+  lines: ProductLineDraft[],
+  options?: { intent?: "send" | "create" }
+): string {
   const names = lines.map((line) => {
     const name = line.product.trim() || line.symbol.trim() || "Produkt";
     const qty = line.quantity.trim();
@@ -548,7 +566,11 @@ export function formatProsbaSubmitStockConfirmMessage(lines: ProductLineDraft[])
         : "";
     return `• ${name} — ${qty} szt.${availPart}`;
   });
-  return `Część pozycji ma wystarczający stan magazynowy:\n\n${names.join("\n")}\n\nCzy na pewno wysłać prośbę o zamówienie?`;
+  const closing =
+    options?.intent === "create"
+      ? "Czy na pewno utworzyć prośbę mimo stanu?"
+      : "Czy na pewno wysłać prośbę o zamówienie?";
+  return `${names.join("\n")}\n\n${closing}`;
 }
 
 export function mergeStockIntoLinePatch(

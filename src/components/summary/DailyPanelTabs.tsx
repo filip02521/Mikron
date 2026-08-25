@@ -8,8 +8,8 @@ import {
 } from "@/lib/orders/daily-panel-view";
 import {
   panelChromeInsetClass,
-  panelStickyChromeClass,
   panelTabIdleClass,
+  panelTabsChromeClass,
   panelTypography,
   tabBadgeSelectedClass,
   tabSelectedClass,
@@ -36,7 +36,7 @@ export function DailyPanelTabs({
   exceptionsCount?: number;
   onChange: (view: DailyPanelView) => void;
   footer?: React.ReactNode;
-  /** Pod stopką zakładek (np. pasek statusu Dziś) — scrolluje razem ze sticky chrome. */
+  /** Pod stopką zakładek (np. pasek statusu Dziś) — scrolluje z treścią. */
   afterFooter?: React.ReactNode;
 }) {
   const tabRefs = useRef<Partial<Record<DailyPanelView, HTMLButtonElement | null>>>({});
@@ -90,7 +90,7 @@ export function DailyPanelTabs({
     !hideVerificationBadge && verificationCount > 0;
 
   return (
-    <div className={panelStickyChromeClass}>
+    <div className={panelTabsChromeClass}>
       <div
         role="tablist"
         aria-label="Widoki panelu dziennego"

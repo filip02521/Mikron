@@ -30,7 +30,12 @@ export function needsProsbaByKeyFromChecks(
   );
 }
 
-/** Klucze pozycji, które mogą trafić do prośby. null = zakres jeszcze nieustalony (legacy: wszystkie). */
+/**
+ * Klucze pozycji, które mogą trafić do prośby.
+ * null = zakres jeszcze nieustalony (legacy: wszystkie).
+ * Nowe linie bez needs_prosba NIE zerują zakresu — nie są na liście (pending),
+ * a wykluczenia (needs_prosba: false) zostają w order-link osobno.
+ */
 export function getZkWatchProsbaScopeLineKeys(
   watch: Pick<SalesZkWatch, "line_checks">,
   lineViews: ZkWatchLineView[]
@@ -39,7 +44,7 @@ export function getZkWatchProsbaScopeLineKeys(
   const productLines = productLineViews(lineViews);
   if (productLines.length === 0) return [];
 
-  if (!isZkWatchProsbaScopeConfigured(checks, lineViews)) {
+  if (!hasZkWatchTrackedProsbaScope(watch)) {
     return null;
   }
 
@@ -101,7 +106,7 @@ export function countZkWatchInStockLines(
 ): number {
   const checks = parseZkWatchLineChecks(watch.line_checks);
   const productLines = productLineViews(lineViews);
-  if (!isZkWatchProsbaScopeConfigured(checks, lineViews)) return 0;
+  if (!hasZkWatchTrackedProsbaScope(watch)) return 0;
   const needsByKey = needsProsbaByKeyFromChecks(checks);
   return productLines.filter((line) => needsByKey.get(line.key) === false).length;
 }
@@ -147,17 +152,28 @@ export function formatZkWatchProsbaScopeSummary(
   const productLines = productLineViews(lineViews);
   if (productLines.length === 0) return null;
 
-  if (!isZkWatchProsbaScopeConfigured(checks, lineViews)) {
+  if (!hasZkWatchTrackedProsbaScope(watch)) {
     return "Wybierz pozycje do zamówienia";
   }
 
   const needsByKey = needsProsbaByKeyFromChecks(checks);
   const toOrder = productLines.filter((line) => needsByKey.get(line.key) === true).length;
-  const inStock = productLines.length - toOrder;
+  const skipped = productLines.filter((line) => needsByKey.get(line.key) === false).length;
+  const pending = productLines.length - toOrder - skipped;
 
-  if (toOrder === 0) return "Bez prośby — nic nie wybrane";
-  if (inStock === 0) return toOrder === 1 ? "1 do zamówienia" : `${toOrder} do zamówienia`;
-  return `${toOrder} do zamówienia · ${inStock} pominięte`;
+  if (toOrder === 0 && pending === 0) return "Bez prośby — nic nie wybrane";
+  const parts: string[] = [];
+  if (toOrder > 0) {
+    parts.push(toOrder === 1 ? "1 do zamówienia" : `${toOrder} do zamówienia`);
+  }
+  if (skipped > 0) {
+    parts.push(`${skipped} pominięte`);
+  }
+  if (pending > 0) {
+    parts.push(pending === 1 ? "1 nowa" : `${pending} nowe`);
+  }
+  if (parts.length === 0) return "Wybierz pozycje do zamówienia";
+  return parts.join(" · ");
 }
 
 export type ZkProsbaScopeAutoProsbaGateInput = {
@@ -192,7 +208,7 @@ export function deriveZkProsbaScopeAutoProsbaGate(
         : input.stockLoading
           ? "Sprawdzam stan magazynowy…"
           : input.teethIncomplete
-            ? "Najpierw uzupełnij listę zębów — prośba powstanie po zapisie list."
+            ? "Najpierw uzupełnij listę zębów — prośba powstanie po zapisie."
             : null;
 
   return { disabled, hint };

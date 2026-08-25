@@ -53,8 +53,9 @@ import {
 } from "@/lib/orders/my-order-moje-copy";
 import { MyOrderCollapsedRowZones } from "@/components/moje/MyOrderCollapsedRowZones";
 import { MyOrderExpandedContextStrip } from "@/components/moje/MyOrderExpandedContextStrip";
+import { MyOrderExpandedDeliveryPanel } from "@/components/moje/MyOrderExpandedDeliveryPanel";
 import { MyOrderRowMetaRail } from "@/components/moje/MyOrderRowMetaRail";
-import { myOrderExpandedMetaFields } from "@/lib/orders/my-order-sales-ui";
+import { myOrderExpandedMetaFields, myOrderExpandedOrderTypeLabel } from "@/lib/orders/my-order-sales-ui";
 import {
   buildMyOrderDeliveryTimingDisplay,
   shouldShowMyOrderExpandedDeliveryTiming,
@@ -566,6 +567,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
       .filter((field) => field.label !== "Zamówiono")
       .filter((field) => field.label !== "Magazyn")
   );
+  const expandedOrderTypeLabel = myOrderExpandedOrderTypeLabel(row);
   const showExpandedDeliveryTiming = shouldShowMyOrderExpandedDeliveryTiming(
     row,
     showProgress
@@ -854,7 +856,13 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     hideZdLineDetail: isLineZdDetailRedundantWithExpandedGroupTiming(
       row,
       line,
-      Boolean(expanded && showExpandedDeliveryTiming)
+      Boolean(
+        expanded &&
+          (showExpandedDeliveryTiming ||
+            Boolean(zdFulfillment) ||
+            showEstimatedDeliveryMeta ||
+            showZdEtaPendingMeta)
+      )
     ),
     canAcknowledge: showGroupPickup,
     lineActionColumn: expandedLineActionColumn,
@@ -1117,7 +1125,12 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           aria-label={`Szczegóły: ${row.supplierName}`}
           className={mojeShipmentExpandedPanelClass}
         >
-          {requestProgress ? <MyOrderRequestProgressBar track={requestProgress} className="mt-2 -mb-1" /> : null}
+          {requestProgress ? (
+            <MyOrderRequestProgressBar
+              track={requestProgress}
+              className="py-1"
+            />
+          ) : null}
 
           <MyOrderExpandedContextStrip
             row={row}
@@ -1125,11 +1138,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             metaFields={expandedMeta}
             showStatusBadge={showExpandedStatusBadge}
             expandedNotes={expandedNotes}
-            showInformacjaTimingMeta={showInformacjaTimingMeta}
-            showEstimatedDeliveryMeta={showEstimatedDeliveryMeta}
-            showExpandedDeliveryTiming={showExpandedDeliveryTiming}
-            showZdEtaPendingMeta={showZdEtaPendingMeta}
-            expandedDeliveryTiming={expandedDeliveryTiming}
             sharedRequestNote={sharedRequestNote}
             sharedProcurementCancelNote={sharedProcurementCancelNote}
             showSharedUnreadRequestNote={showSharedUnreadRequestNote}
@@ -1141,7 +1149,18 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             }
           />
 
+          <MyOrderExpandedDeliveryPanel
+            row={row}
+            searchQuery={searchQuery}
+            showInformacjaTimingMeta={showInformacjaTimingMeta}
+            showEstimatedDeliveryMeta={showEstimatedDeliveryMeta}
+            showExpandedDeliveryTiming={showExpandedDeliveryTiming}
+            showZdEtaPendingMeta={showZdEtaPendingMeta}
+            expandedDeliveryTiming={expandedDeliveryTiming}
+          />
+
           {row.lineCount > 0 ? (
+            <div className="space-y-1.5">
             <div className={mojeShipmentLinesShellClass}>
               <div className={mojeShipmentLinesHeaderClass}>
                 <p className={mojeShipmentLinesHeaderTitleClass}>
@@ -1275,6 +1294,13 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                   </div>
                 </div>
               ) : null}
+            </div>
+            {expandedOrderTypeLabel ? (
+              <p className="flex flex-wrap items-baseline gap-x-1.5 px-0.5 text-[11px] leading-snug text-slate-500">
+                <span className="font-medium text-indigo-400">Typ</span>
+                <span className="text-slate-600">{expandedOrderTypeLabel}</span>
+              </p>
+            ) : null}
             </div>
           ) : null}
 

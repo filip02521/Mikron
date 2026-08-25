@@ -5,8 +5,10 @@ import {
   buildAutoProsbaSuccessToast,
   formatAddedPozycjeCount,
   formatAutoProsbaSkippedLinesMessage,
+  formatAutoProsbaStockConfirmSummary,
   formatZkScopeSavedToast,
   mapZkQuantityConfirmLabelForAuto,
+  mapZkQuantityConfirmMessageForAuto,
   normalizeAutoProsbaToastAfterScopeSaved,
   nextAutoProsbaAckAfterConfirm,
   shouldPassThroughAutoProsbaToastAfterScope,
@@ -122,7 +124,7 @@ describe("toastForAutoProsbaDialogCancelled", () => {
     const toast = toastForAutoProsbaDialogCancelled();
     expect(toast.title).toBe("Zakres zapisany");
     expect(toast.tone).toBe("warning");
-    expect(toast.message).toContain("Prośba nie została utworzona");
+    expect(toast.message).toContain("Prośba nie powstała");
   });
 });
 
@@ -142,7 +144,7 @@ describe("toastForScopeSavedProsbaFailed", () => {
     expect(toast.title).toBe("Zakres zapisany");
     expect(toast.message).toContain("Błąd sieci");
     expect(toast.message).not.toContain("Zakres pozostaje zapisany");
-    expect(toast.message).toContain("Możesz ją dodać ręcznie z karty ZK");
+    expect(toast.message).toContain("Możesz dodać ją z karty ZK");
   });
 });
 
@@ -213,6 +215,25 @@ describe("mapZkQuantityConfirmLabelForAuto", () => {
   });
 });
 
+describe("mapZkQuantityConfirmMessageForAuto", () => {
+  it("podmienia czasowniki wysyłki w treści dialogu", () => {
+    expect(
+      mapZkQuantityConfirmMessageForAuto("Czy potwierdzasz podział i wysyłasz prośbę?")
+    ).toBe("Czy potwierdzasz podział i tworzysz prośbę?");
+    expect(
+      mapZkQuantityConfirmMessageForAuto("Czy na pewno chcesz złożyć prośbę na taką ilość?")
+    ).toBe("Czy na pewno chcesz utworzyć prośbę na taką ilość?");
+  });
+});
+
+describe("formatAutoProsbaStockConfirmSummary", () => {
+  it("odmienia pozycje", () => {
+    expect(formatAutoProsbaStockConfirmSummary(1)).toContain("1 pozycja");
+    expect(formatAutoProsbaStockConfirmSummary(2)).toContain("2 pozycje");
+    expect(formatAutoProsbaStockConfirmSummary(5)).toContain("5 pozycji");
+  });
+});
+
 describe("shouldPassThroughAutoProsbaToastAfterScopeSaved", () => {
   it("przepuszcza tylko sukces", () => {
     expect(
@@ -250,7 +271,7 @@ describe("normalizeAutoProsbaToastAfterScopeSaved", () => {
     );
     expect(normalized.title).toBe("Zakres zapisany");
     expect(normalized.message).toContain("Zapisano zakres — 2 pozycje");
-    expect(normalized.message).toContain("Te pozycje są już w prośbie");
+    expect(normalized.message).toContain("już w otwartej prośbie");
   });
   it("blocked_teeth_incomplete → toast zębów", () => {
     const normalized = normalizeAutoProsbaToastAfterScopeSaved(
@@ -268,7 +289,7 @@ describe("normalizeAutoProsbaToastAfterScopeSaved", () => {
 
     const normalized = normalizeAutoProsbaToastAfterScopeSaved(toast);
     expect(normalized.title).toBe("Zakres zapisany");
-    expect(normalized.message).toContain("Prośba nie została utworzona");
+    expect(normalized.message).toContain("Prośba nie powstała");
     expect(normalized.message).toContain("Filtr");
   });
 
@@ -279,7 +300,7 @@ describe("normalizeAutoProsbaToastAfterScopeSaved", () => {
     );
     expect(normalized.title).toBe("Zakres zapisany");
     expect(normalized.message).toContain("4 pozycje");
-    expect(normalized.message).toContain("już w prośbie");
+    expect(normalized.message).toContain("pokryte prośbą");
   });
 
   it("sukces created — bez zmian", () => {
@@ -300,7 +321,7 @@ describe("normalizeAutoProsbaToastAfterScopeSaved", () => {
       toastForAutoProsbaBlockedCode("error_stock_ack_required")
     );
     expect(normalized.title).toBe("Zakres zapisany");
-    expect(normalized.message).toContain("Prośba nie została utworzona");
+    expect(normalized.message).toContain("Prośba nie powstała");
   });
 });
 

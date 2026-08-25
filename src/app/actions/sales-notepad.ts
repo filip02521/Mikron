@@ -1614,7 +1614,8 @@ export async function actionGetZkProsbaPrefillByWatchId(
   watchId: string,
   salesPersonIdOverride?: string,
   lineKeys?: string[],
-  requestKind?: ZkProsbaPrefill["requestKind"]
+  requestKind?: ZkProsbaPrefill["requestKind"],
+  mode?: ZkProsbaPrefill["mode"]
 ): Promise<ZkProsbaPrefill | null> {
   const trimmed = watchId.trim();
   if (!trimmed) return null;
@@ -1651,7 +1652,8 @@ export async function actionGetZkProsbaPrefillByWatchId(
     catalogAvailable: teethCatalogAvailable,
   };
   const options = {
-    ...(lineKeys?.length ? { lineKeys, mode: "supplement" as const } : {}),
+    ...(lineKeys?.length ? { lineKeys } : {}),
+    ...(mode === "supplement" || mode === "full" ? { mode } : {}),
     ...(requestKind ? { requestKind } : {}),
     teethRegistry,
   };

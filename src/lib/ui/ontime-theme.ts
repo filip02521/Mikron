@@ -220,12 +220,16 @@ export const pageToolbarSurfaceClass =
 export const brandIconTileClass =
   "bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30";
 
-/** Sticky zakładki panelu dziennego */
+/** Sticky chrome (np. wyszukiwanie dostawcy na panelu dziennym). */
 export const panelStickyChromeClass =
   "sticky top-0 z-20 border-b border-indigo-100/75 bg-[var(--card)]/95 shadow-[var(--shadow-card-elevated)] backdrop-blur-sm";
 
 /** @deprecated Alias — użyj {@link panelStickyChromeClass}. */
 export const panelStickyTabsClass = panelStickyChromeClass;
+
+/** Zakładki / status pod sticky wyszukiwaniem — scrollują z treścią. */
+export const panelTabsChromeClass =
+  "border-b border-indigo-100/75 bg-[var(--card)]";
 
 /** Panel dzienny / operacje zakupów — wąska kolumna; lekko szersza tylko na 2xl+. */
 export const panelWorkspaceShellClass = "relative mx-auto w-full max-w-3xl 2xl:max-w-4xl";

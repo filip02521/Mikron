@@ -4535,7 +4535,8 @@ export async function actionSetZdEstimateSnapshotHistoryEligible(input: {
 // Sesje UI kreatora ZD (/zakupy/szacunek) — snapshot + odtwarzanie po nawigacji
 // ============================================================================
 
-const ZD_ESTIMATE_UI_SESSION_TTL_MS = 60 * 60 * 1000; // housekeeping; timer liczy się po stronie klienta
+/** TTL w DB (housekeeping). Timer 3 min „away” liczy klient — DB musi żyć dłużej niż praca przy liście. */
+const ZD_ESTIMATE_UI_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
 const ZD_ESTIMATE_UI_SESSION_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -4550,10 +4551,15 @@ function parseZdEstimateUiSessionId(
   return id.toLowerCase();
 }
 
-function revalidateZdEstimateUiSessionPaths() {
-  revalidatePath("/zakupy/szacunek");
+function isUniqueViolationMessage(message: string | undefined): boolean {
+  const m = (message ?? "").toLowerCase();
+  return m.includes("duplicate key") || m.includes("unique constraint");
 }
 
+/**
+ * Nie wołamy revalidatePath — zapis snapshotu nie zmienia RSC page, a refresh
+ * po Server Action potrafi zresetować workbench / wyścig z tokenem sessionStorage.
+ */
 export async function actionCreateZdEstimateUiSession(input: {
   payload: ZdEstimateUiSessionPayload;
   schemaVersion: number;
@@ -4567,33 +4573,64 @@ export async function actionCreateZdEstimateUiSession(input: {
   }
 
   const supabase = createAdminClient();
-  const now = new Date();
 
-  // Nowe „Policz” zastępuje poprzednią aktywną sesję (usuń zamiast zostawiać status=expired).
-  await supabase
-    .from("zd_estimate_ui_sessions")
-    .delete()
-    .eq("owner_user_id", user.id)
-    .eq("status", "active");
+  const clearActive = async (): Promise<{ ok: true } | { ok: false; message: string }> => {
+    const { error } = await supabase
+      .from("zd_estimate_ui_sessions")
+      .delete()
+      .eq("owner_user_id", user.id)
+      .eq("status", "active");
+    if (error) {
+      console.error("[zd-ui-session] delete active failed", error.message);
+      return { ok: false, message: error.message };
+    }
+    return { ok: true };
+  };
 
-  const { data, error } = await supabase
-    .from("zd_estimate_ui_sessions")
-    .insert({
-      owner_user_id: user.id,
-      status: "active",
-      expires_at: new Date(now.getTime() + ZD_ESTIMATE_UI_SESSION_TTL_MS).toISOString(),
-      payload: input.payload as unknown,
-      schema_version: input.schemaVersion,
-    })
-    .select("id")
-    .single();
+  const insertActive = async (): Promise<
+    | { ok: true; sessionId: string }
+    | { ok: false; message: string }
+  > => {
+    const now = new Date();
+    const { data, error } = await supabase
+      .from("zd_estimate_ui_sessions")
+      .insert({
+        owner_user_id: user.id,
+        status: "active",
+        expires_at: new Date(now.getTime() + ZD_ESTIMATE_UI_SESSION_TTL_MS).toISOString(),
+        payload: input.payload as unknown,
+        schema_version: input.schemaVersion,
+      })
+      .select("id")
+      .single();
 
-  if (error || !data) {
-    return { ok: false, message: error?.message ?? "Nie udało się utworzyć sesji." };
+    if (error || !data) {
+      return {
+        ok: false,
+        message: error?.message ?? "Nie udało się utworzyć sesji.",
+      };
+    }
+    return { ok: true, sessionId: data.id };
+  };
+
+  // Nowe „Policz” zastępuje poprzednią aktywną sesję.
+  const cleared = await clearActive();
+  if (!cleared.ok) return cleared;
+
+  let created = await insertActive();
+  if (!created.ok && isUniqueViolationMessage(created.message)) {
+    // Wyścig dwóch Policz — spróbuj jeszcze raz po ponownym clear.
+    const clearedAgain = await clearActive();
+    if (!clearedAgain.ok) return clearedAgain;
+    created = await insertActive();
   }
 
-  revalidateZdEstimateUiSessionPaths();
-  return { ok: true, sessionId: data.id };
+  if (!created.ok) {
+    console.error("[zd-ui-session] create failed", created.message);
+    return created;
+  }
+
+  return created;
 }
 
 export async function actionUpsertZdEstimateUiSessionSnapshot(input: {
@@ -4649,7 +4686,6 @@ export async function actionUpsertZdEstimateUiSessionSnapshot(input: {
     };
   }
 
-  revalidateZdEstimateUiSessionPaths();
   return { ok: true, sessionId: data.id };
 }
 
@@ -4704,7 +4740,6 @@ export async function actionGetZdEstimateUiSession(input: {
       .delete()
       .eq("id", sessionId)
       .eq("owner_user_id", user.id);
-    revalidateZdEstimateUiSessionPaths();
     return { ok: false, message: "Sesja wygasła.", reason: "expired" };
   }
 
@@ -4743,7 +4778,6 @@ export async function actionDeleteZdEstimateUiSession(input: {
     return { ok: false, message: error.message };
   }
 
-  revalidateZdEstimateUiSessionPaths();
   return { ok: true };
 }
 

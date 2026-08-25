@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { SummaryStandardItem } from "@/lib/orders/summary";
 import { formatDateString } from "@/lib/orders/dates";
-import { locationLabel } from "@/lib/display-labels";
+import { locationLabel, vacationNoteLabel } from "@/lib/display-labels";
 import {
   enrichUrgentItem,
   splitUrgentItems,
@@ -14,7 +14,6 @@ import { Badge } from "@/components/ui/Badge";
 import { HelpPopover } from "@/components/ui/HelpPopover";
 import { HelpBlock } from "@/components/ui/HelpBlock";
 import { ScheduleSupplierActionBar } from "@/components/summary/ScheduleSupplierActionBar";
-import { vacationNoteLabel } from "@/lib/display-labels";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import { SupplierContactActions } from "@/components/procurement/SupplierContactActions";
@@ -22,23 +21,20 @@ import type { SupplierSummaryMeta } from "@/lib/orders/summary-workspace";
 import { cn } from "@/lib/cn";
 import {
   checkboxBrandClass,
-  panelNameLinkClass,
   panelTypography,
   rowPendingRingClass,
 } from "@/lib/ui/ontime-theme";
+import { panelRowClearFocusOnLeave, panelRowGroupClass } from "@/lib/ui/panel-row-actions-reveal";
 import {
-  PanelRowActionsInlineEnd,
-} from "@/components/summary/PanelRowActionsInlineEnd";
-import {
-  panelRowClearFocusOnLeave,
-  panelRowGroupClass,
-} from "@/lib/ui/panel-row-actions-reveal";
-import {
+  urgentCardBodyClass,
   urgentCardClassName,
+  urgentCardFooterClass,
+  urgentCardTone,
   urgentGroupDividerClassName,
   urgentGroupHeadingClassName,
-  urgentStatusBadgeVariant,
+  urgentSupplierNameLinkClass,
 } from "@/components/summary/urgent-card-styles";
+import { UrgentScheduleDateMeta } from "@/components/summary/UrgentScheduleDateMeta";
 import {
   DailyPanelSubsectionBar,
   dailyPanelQueueShellClass,
@@ -46,10 +42,12 @@ import {
 } from "@/components/summary/DailyPanelSubsectionBar";
 import { HelpMenuGlyph, PanelQueueStatDot } from "@/components/ui/UiGlyphs";
 import { DAILY_PANEL_QUEUE_SECTION, dailyPanelQueueSectionScrollClass } from "@/lib/orders/daily-panel-section-anchors";
+import { dailyPanelListBodyClass } from "@/components/summary/daily-panel-list-styles";
+import { ProcurementRequestActionsFooter } from "@/components/summary/ProcurementRequestActionsFooter";
 import {
-  panelQueueRowActionsClass,
-  panelQueueRowLayoutClass,
-} from "@/lib/ui/surfaces";
+  ProcurementRequestCardHeader,
+  ProcurementRequestContextBlock,
+} from "@/components/summary/ProcurementRequestCardZones";
 
 export type UrgentQueuePart = "full" | "overdue" | "today";
 
@@ -98,8 +96,8 @@ function SectionHelp() {
 
       <HelpBlock title="Komputer i mobile">
         <p>
-          Na komputerze przyciski pojawiają się po najechaniu na wiersz. Na tablecie i telefonie
-          są widoczne cały czas.
+          Na komputerze pasek akcji (Zamówione / Przesuń) wysuwa się po chwili na karcie — jak w
+          prośbach. Na tablecie i telefonie jest widoczny cały czas.
         </p>
       </HelpBlock>
     </HelpPopover>
@@ -132,95 +130,121 @@ function UrgentCard({
   const ui = enrichUrgentItem(item, todayDateKey);
   const dateLabel = formatDateString(item.nextDate, "dd.MM");
   const isOverdue = ui.statusTitle === "Zaległe";
+  const tone = urgentCardTone(isOverdue);
+  const vacationLabel = item.vacationNote ? vacationNoteLabel(item.vacationNote) : null;
+  const rawDetail =
+    ui.statusDetail &&
+    (!vacationLabel || ui.statusDetail !== vacationLabel)
+      ? ui.statusDetail
+      : null;
+  // Data / „Dziś” jest w trailing (UrgentScheduleDateMeta) — bez powtórki w opisie.
+  const detailText =
+    rawDetail &&
+    !(isOverdue && rawDetail === `Termin planowy: ${dateLabel}`)
+      ? rawDetail
+      : null;
+
+  const chips = vacationLabel ? (
+    <Badge variant="warning" className="w-fit text-[10px]">
+      {vacationLabel}
+    </Badge>
+  ) : null;
+
+  const meta = (
+    <span
+      className={cn(
+        panelTypography.rowMeta,
+        "inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5"
+      )}
+    >
+      <span>{locationLabel(item.location)}</span>
+      {supplierMeta ? (
+        <>
+          <span aria-hidden className="text-slate-300">
+            ·
+          </span>
+          <SupplierContactActions
+            notes={supplierMeta.notes}
+            mails={supplierMeta.mails}
+            extraInfo={supplierMeta.extra_info}
+            display="rowMeta"
+          />
+        </>
+      ) : null}
+    </span>
+  );
 
   return (
     <article
       className={cn(
-        panelRowGroupClass(urgentCardClassName(isOverdue)),
+        panelRowGroupClass(urgentCardClassName(tone)),
         rowPending && rowPendingRingClass
       )}
       aria-busy={rowPending}
       onMouseLeave={panelRowClearFocusOnLeave}
     >
-      <div className="px-2.5 py-2 sm:px-3">
-        <div className={panelQueueRowLayoutClass}>
-          <div className="flex min-w-0 flex-1 gap-2">
-            <input
-              type="checkbox"
-              className={cn("mt-0.5 h-5 w-5 shrink-0 sm:h-4 sm:w-4", checkboxBrandClass)}
-              checked={checked}
-              disabled={rowPending}
-              onChange={onToggle}
-              aria-label={`Zaznacz ${item.supplierName}`}
-            />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-1.5">
+      <div className={urgentCardBodyClass}>
+        <div className="flex min-w-0 gap-2">
+          <input
+            type="checkbox"
+            className={cn("mt-0.5 h-5 w-5 shrink-0 sm:h-4 sm:w-4", checkboxBrandClass)}
+            checked={checked}
+            disabled={rowPending}
+            onChange={onToggle}
+            aria-label={`Zaznacz ${item.supplierName}`}
+          />
+          <div className="min-w-0 flex-1">
+            <ProcurementRequestCardHeader
+              title={
                 <button
                   type="button"
-                  className={cn(panelTypography.rowTitle, panelNameLinkClass, "text-left")}
+                  className={cn(
+                    panelTypography.rowTitle,
+                    urgentSupplierNameLinkClass(tone),
+                    "min-w-0 max-w-full truncate"
+                  )}
                   onClick={() => onOpenSupplier(item.supplierId)}
                 >
                   {item.supplierName}
                 </button>
-                <Badge variant={urgentStatusBadgeVariant(isOverdue)} className="text-[10px]">
-                  {ui.statusTitle}
-                  {isOverdue ? ` · ${dateLabel}` : null}
-                </Badge>
-                {item.vacationNote ? (
-                  <Badge variant="warning" className="text-[10px]">
-                    {vacationNoteLabel(item.vacationNote)}
-                  </Badge>
-                ) : null}
-              </div>
-              <p className={cn("mt-0.5", panelTypography.rowMeta)}>
-                {locationLabel(item.location)}
-                {supplierMeta ? (
-                  <>
-                    {" · "}
-                    <SupplierContactActions
-                      notes={supplierMeta.notes}
-                      mails={supplierMeta.mails}
-                      extraInfo={supplierMeta.extra_info}
-                      display="rowMeta"
-                    />
-                  </>
-                ) : null}
-              </p>
-              {ui.statusDetail && item.vacationNote ? (
-                <p
-                  className={cn(
-                    "mt-0.5 line-clamp-2",
-                    panelTypography.caption,
-                    "text-amber-900/90"
-                  )}
-                >
-                  {ui.statusDetail}
-                </p>
-              ) : ui.statusDetail && isOverdue ? (
-                <p className={cn("mt-0.5", panelTypography.caption, "text-slate-500")}>
-                  {ui.statusDetail}
-                </p>
-              ) : null}
-            </div>
-          </div>
-          <PanelRowActionsInlineEnd
-            forceVisible={rowPending}
-            className={panelQueueRowActionsClass}
-            contentClassName="w-full sm:w-max [&>*]:w-full sm:[&>*]:w-auto"
-          >
-            <ScheduleSupplierActionBar
-              supplierId={item.supplierId}
-              supplierName={item.supplierName}
-              location={item.location}
-              pending={rowPending}
-              run={run}
-              onOpenSupplier={() => onOpenSupplier(item.supplierId)}
-              onVacation={() => onVacation(item.supplierId)}
-              onEdit={() => onEdit(item.supplierId)}
+              }
+              trailing={
+                <UrgentScheduleDateMeta tone={tone} dateLabel={dateLabel} />
+              }
             />
-          </PanelRowActionsInlineEnd>
+            <ProcurementRequestContextBlock chips={chips} meta={meta} />
+            {detailText ? (
+              <p
+                className={cn(
+                  "mt-0.5 line-clamp-2",
+                  panelTypography.caption,
+                  isOverdue || vacationLabel ? "text-amber-900/85" : "text-slate-500"
+                )}
+              >
+                {detailText}
+              </p>
+            ) : null}
+          </div>
         </div>
       </div>
+
+      <ProcurementRequestActionsFooter
+        forceVisible={rowPending}
+        className={urgentCardFooterClass}
+      >
+        <ScheduleSupplierActionBar
+          layout="footer"
+          tone={tone}
+          supplierId={item.supplierId}
+          supplierName={item.supplierName}
+          location={item.location}
+          pending={rowPending}
+          run={run}
+          onOpenSupplier={() => onOpenSupplier(item.supplierId)}
+          onVacation={() => onVacation(item.supplierId)}
+          onEdit={() => onEdit(item.supplierId)}
+        />
+      </ProcurementRequestActionsFooter>
     </article>
   );
 }
@@ -442,7 +466,7 @@ export function UrgentOrdersSection({
           action={headerAction}
         />
       )}
-      <div className="space-y-1.5 p-2 sm:p-2.5">
+      <div className={dailyPanelListBodyClass}>
         {showOverdue ? (
           <UrgentGroup
             title="Zaległe"

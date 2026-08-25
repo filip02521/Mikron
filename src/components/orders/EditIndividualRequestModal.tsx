@@ -122,6 +122,7 @@ export function EditIndividualRequestModal({
   const [formNotice, setFormNotice] = useState<FormMessage | null>(null);
   const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
   const [stockConfirmMessage, setStockConfirmMessage] = useState("");
+  const [stockConfirmSummary, setStockConfirmSummary] = useState<string | null>(null);
   const pendingSaveLinesRef = useRef<ProductLineDraft[]>([]);
 
   const sortedSuppliers = useMemo(
@@ -301,6 +302,7 @@ export function EditIndividualRequestModal({
             handleProsbaStockSubmitError(
               e,
               (message) => {
+                setStockConfirmSummary(null);
                 setStockConfirmMessage(message);
                 setStockConfirmOpen(true);
               },
@@ -422,6 +424,7 @@ export function EditIndividualRequestModal({
       );
       if (stockConfirm) {
         pendingSaveLinesRef.current = linesToSave;
+        setStockConfirmSummary(stockConfirm.summary);
         setStockConfirmMessage(stockConfirm.message);
         setStockConfirmOpen(true);
         return;
@@ -524,10 +527,12 @@ export function EditIndividualRequestModal({
       <ProsbaStockConfirmDialog
         open={stockConfirmOpen}
         message={stockConfirmMessage}
+        summary={stockConfirmSummary}
         pending={pending}
         confirmLabel="Zapisz mimo to"
         onCancel={() => {
           setStockConfirmOpen(false);
+          setStockConfirmSummary(null);
           pendingSaveLinesRef.current = [];
         }}
         onConfirm={() =>

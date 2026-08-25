@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   filterZkWatchProductLineViewsForScope,
+  formatZkWatchProsbaScopeSummary,
   getZkWatchProsbaScopeLineKeys,
   hasZkWatchTrackedProsbaScope,
   isZkWatchProsbaScopeConfigured,
@@ -50,6 +51,58 @@ describe("zk-watch-prosba-scope", () => {
       ],
     };
     expect(getZkWatchProsbaScopeLineKeys(watch, lines)).toEqual(["ob:1"]);
+  });
+
+  it("nowe linie bez needs_prosba nie zerują zakresu — wybrane zostają", () => {
+    const watch = {
+      line_checks: [
+        { key: "ob:1", arrived: false, needs_prosba: true },
+        { key: "ob:2", arrived: false, needs_prosba: false },
+      ],
+    };
+    const withNew: ZkWatchLineView[] = [
+      ...lines,
+      {
+        key: "ob:3",
+        product: "C",
+        symbol: null,
+        quantityLabel: "1 szt.",
+        quantity: 1,
+        subiektTwId: 3,
+        arrived: false,
+        shelf_marked: false,
+        completed_manually: false,
+      },
+    ];
+    expect(isZkWatchProsbaScopeConfigured(watch.line_checks, withNew)).toBe(false);
+    expect(getZkWatchProsbaScopeLineKeys(watch, withNew)).toEqual(["ob:1"]);
+    expect(hasZkWatchTrackedProsbaScope(watch)).toBe(true);
+  });
+
+  it("formatZkWatchProsbaScopeSummary pokazuje nowe pozycje bez decyzji", () => {
+    const watch = {
+      line_checks: [
+        { key: "ob:1", arrived: false, needs_prosba: true },
+        { key: "ob:2", arrived: false, needs_prosba: false },
+      ],
+    };
+    const withNew: ZkWatchLineView[] = [
+      ...lines,
+      {
+        key: "ob:3",
+        product: "C",
+        symbol: null,
+        quantityLabel: "1 szt.",
+        quantity: 1,
+        subiektTwId: 3,
+        arrived: false,
+        shelf_marked: false,
+        completed_manually: false,
+      },
+    ];
+    expect(formatZkWatchProsbaScopeSummary(watch, withNew)).toBe(
+      "1 do zamówienia · 1 pominięte · 1 nowa"
+    );
   });
 
   it("zachowuje needs_prosba przy aktualizacji arrived", () => {

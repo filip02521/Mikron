@@ -4,6 +4,7 @@ import {
   enrichMyOrderSalesUi,
   myOrderMetaFields,
   myOrderExpandedMetaFields,
+  myOrderExpandedOrderTypeLabel,
   parseStatusDetailMetaParts,
   sortMyOrderRows,
   summarizeMyOrdersInbox,
@@ -492,7 +493,7 @@ describe("parseStatusDetailMetaParts", () => {
     );
   });
 
-  it("myOrderExpandedMetaFields dodaje typ i zamówiono", () => {
+  it("myOrderExpandedMetaFields dodaje zamówiono; typ osobno pod produktem", () => {
     const row = presentMyOrders(
       [{ ...baseOrder, order_type: "Poboczne", ordered_at: "2026-05-06" }],
       [
@@ -508,7 +509,8 @@ describe("parseStatusDetailMetaParts", () => {
       ]
     ).zamowienia[0];
     const fields = myOrderExpandedMetaFields(row, true);
-    expect(fields.some((f) => f.label === "Typ")).toBe(true);
+    expect(fields.some((f) => f.label === "Typ")).toBe(false);
     expect(fields.some((f) => f.label === "Zamówiono")).toBe(true);
+    expect(myOrderExpandedOrderTypeLabel(row)).toBe("Poza planem");
   });
 });

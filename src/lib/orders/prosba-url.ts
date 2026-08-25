@@ -12,8 +12,10 @@ export function prosbaHref(options?: {
   zk?: string;
   klient?: string;
   clientKhId?: number | null;
-  /** Klucze linii ZK (uzupełniająca prośba) — przetrwa otwarcie w nowej karcie. */
+  /** Klucze linii ZK — przetrwa otwarcie w nowej karcie. */
   zkLineKeys?: string[];
+  /** Uzupełniająca prośba (nie pierwsza częściowa). */
+  supplement?: boolean;
   requestKind?: IndividualRequestKind;
 }): string {
   const params = new URLSearchParams();
@@ -26,6 +28,9 @@ export function prosbaHref(options?: {
   if (options?.klient?.trim()) params.set("klient", options.klient.trim().slice(0, 80));
   if (options?.zkLineKeys?.length) {
     params.set("zkLines", options.zkLineKeys.join(","));
+  }
+  if (options?.supplement) {
+    params.set("uzupelnienie", "1");
   }
   if (options?.requestKind === "informacja") {
     params.set("rodzaj", "informacja");

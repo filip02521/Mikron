@@ -149,6 +149,13 @@ export function ForSomeoneRequestsSectionHelp() {
             <strong className="font-medium text-slate-800">Do zamówienia</strong>, Magazyn→info, Urlop.
           </li>
           <li>
+            Tory są <strong className="font-medium text-slate-800">domyślnie zwinięte</strong>. W
+            zwiniętym torze widać tylko prośby jeszcze nieprzeczytane na serwerze (badge{" "}
+            <strong className="font-medium text-violet-800">Nowa</strong>) — licznik pokazuje np.{" "}
+            <em>1/5</em>. Rozwiń nagłówek toru albo kliknij tor w pasku „Tory”, by zobaczyć
+            wszystkie prośby w tej sekcji.
+          </li>
+          <li>
             <strong className="font-medium text-slate-800">Tor ustawia się po fladze</strong> — nie
             przesuwasz ręcznie. Menu „Więcej → Flaga: …”, chip albo edytor flagi zapisuje oznaczenie;
             prośba od razu pojawia się w <em>osobnym torze tej flagi</em> (kolor tła = kolor flagi
@@ -161,9 +168,13 @@ export function ForSomeoneRequestsSectionHelp() {
           <li>
             Badge <strong className="font-medium text-violet-800">Nowa</strong> znika po najechaniu —
             to nie przenosi od razu z „Do rozdzielenia” (dopiero po odświeżeniu danych z serwera).
+            Karta zostaje w podglądzie zwiniętego toru do odświeżenia; po odświeżeniu znika z peeka
+            (zostaje w pełnym torze po rozwinięciu, jeśli nadal jest w kolejce).
           </li>
           <li>
-            „Zamów razem” działa tylko dla osób w <em>tym samym</em> torze u dostawcy.
+            „Zamów razem” działa tylko dla osób w <em>tym samym</em> torze u dostawcy. W
+            podglądzie zwiniętego toru obejmuje wyłącznie widoczne (nowe) osoby — rozwiń tor,
+            by zamówić wszystkich.
           </li>
         </ul>
       </HelpBlock>
@@ -199,7 +210,7 @@ export function ForSomeoneRequestsSectionHelp() {
         <p>
           Użyj <strong className="font-medium text-slate-800">Zamów razem</strong> (wszyscy w tym
           torze) albo <strong className="font-medium text-slate-800">Tylko ta osoba</strong> w
-          wierszu. Przy trzech i więcej osobach lista domyślnie jest zwinięta — rozwija się, gdy
+          wierszu. Przy dwóch i więcej osobach lista domyślnie jest zwinięta — rozwija się, gdy
           pojawi się badge Nowa.
         </p>
       </HelpBlock>

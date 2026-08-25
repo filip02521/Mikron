@@ -602,6 +602,28 @@ describe("computeZkWatchOrderHints", () => {
     expect(hintsPicked.regalWaitingLineKeys).toEqual([]);
   });
 
+  it("nowe linie z Subiekta nie wracają pominiętych na stanie do uncovered", () => {
+    const w = watch({
+      id: "w-new-lines-scope",
+      subiekt_snapshot: {
+        dok_Pozycja: [
+          { tw_Nazwa: "A", tw_Symbol: "A", ob_Ilosc: 1, ob_TowId: 1, ob_Id: 1 },
+          { tw_Nazwa: "B", tw_Symbol: "B", ob_Ilosc: 1, ob_TowId: 2, ob_Id: 2 },
+          { tw_Nazwa: "C", tw_Symbol: "C", ob_Ilosc: 1, ob_TowId: 3, ob_Id: 3 },
+        ],
+      },
+      line_checks: [
+        { key: "ob:1", arrived: false, needs_prosba: true },
+        { key: "ob:2", arrived: false, needs_prosba: false },
+        // ob:3 — nowa pozycja bez decyzji
+      ],
+    });
+    const hints = computeZkWatchOrderHints(w, []);
+    expect(hints.prosbaScopeConfigured).toBe(true);
+    expect(hints.scopeExcludedLineKeys).toEqual(["ob:2"]);
+    expect(hints.uncoveredLineKeys).toEqual(["ob:1", "ob:3"]);
+  });
+
   it("częściowa dostawa po odbiorze z regału — prośba nadal otwarta, nie Komplet", () => {
     const w = watch({ id: "w-partial-ack" });
     const order = linkOrder({

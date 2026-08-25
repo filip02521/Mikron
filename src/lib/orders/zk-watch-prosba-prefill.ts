@@ -162,19 +162,23 @@ function serializePrefillLine(line: ProductLineDraft): ProductLineDraft {
 }
 
 /** Bezpieczny payload Server Action → klient (tylko JSON-serializowalne pola). */
+export function resolveZkProsbaPrefillMode(
+  options?: Pick<ZkProsbaPrefillOptions, "mode" | "requestKind" | "lineKeys">
+): ZkProsbaPrefillMode {
+  if (options?.mode === "supplement" || options?.mode === "full") {
+    return options.mode;
+  }
+  // lineKeys same ≠ uzupełnienie — pierwsza częściowa prośba też ma lineKeys.
+  return "full";
+}
+
 export function zkProsbaPrefillFromWatch(
   watch: SalesZkWatch,
   options?: ZkProsbaPrefillOptions
 ): ZkProsbaPrefill {
   const lines = extractProsbaLinesFromZkWatch(watch, options).map(serializePrefillLine);
 
-  const mode =
-    options?.mode ??
-    (options?.requestKind === "informacja"
-      ? "full"
-      : options?.lineKeys?.length
-        ? "supplement"
-        : "full");
+  const mode = resolveZkProsbaPrefillMode(options);
 
   const allowedTwIds = collectZkWatchAllowedTwIds(watch);
   const includeCaseNote = shouldIncludeZkCaseNoteInPrefill(watch);
@@ -442,7 +446,7 @@ export function buildProsbaPrefillFromUrlParams(options: {
 
 export function prosbaHrefFromZkWatch(
   watch: SalesZkWatch,
-  options?: Pick<ZkProsbaPrefillOptions, "lineKeys" | "requestKind">
+  options?: Pick<ZkProsbaPrefillOptions, "lineKeys" | "requestKind" | "mode">
 ): string {
   return prosbaHref({
     salesPersonId: watch.sales_person_id,
@@ -452,6 +456,7 @@ export function prosbaHrefFromZkWatch(
     klient: watch.client_label,
     clientKhId: watch.client_kh_id,
     zkLineKeys: options?.lineKeys,
+    supplement: resolveZkProsbaPrefillMode(options) === "supplement",
     requestKind: options?.requestKind,
   });
 }

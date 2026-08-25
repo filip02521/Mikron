@@ -60,12 +60,12 @@ const BLOCKED_COPY: Record<
 > = {
   redirect_open_prosba: {
     title: "Pozycje już w prośbie",
-    message: "Te pozycje są już w prośbie — otwórz ją w „Moje zamówienia”.",
+    message: "Te pozycje są już w otwartej prośbie — otwórz ją w „Moje zamówienia”.",
     tone: "warning",
   },
   skipped_already_covered: {
     title: "Bez zmian w prośbie",
-    message: "Te pozycje są już w prośbie — nic nie dodano.",
+    message: "Te pozycje są już pokryte prośbą — nic nie dodano.",
     tone: "warning",
   },
   blocked_teeth_incomplete: {
@@ -101,7 +101,7 @@ const BLOCKED_COPY: Record<
   },
   blocked_batch_lock: {
     title: "Trwa inna operacja",
-    message: "Trwa inna operacja dodawania zamówień — spróbuj za chwilę.",
+    message: "Trwa inne dodawanie zamówień — spróbuj za chwilę.",
     tone: "warning",
   },
   blocked_batch_size: {
@@ -158,7 +158,7 @@ export function toastForAutoProsbaDialogCancelled(): AutoProsbaToastPayload {
   return {
     code: "skipped_already_covered",
     title: "Zakres zapisany",
-    message: "Prośba nie została utworzona. Możesz ją dodać ręcznie z karty ZK.",
+    message: "Prośba nie powstała. Możesz dodać ją ręcznie z karty ZK.",
     tone: "warning",
   };
 }
@@ -180,7 +180,7 @@ export function toastForScopeSavedProsbaFailed(reason: string): AutoProsbaToastP
   return {
     code: "error_generic",
     title: "Zakres zapisany",
-    message: `Prośba nie została utworzona: ${trimmed || reason.trim()}. Możesz ją dodać ręcznie z karty ZK.`,
+    message: `Prośba nie powstała: ${trimmed || reason.trim()}. Możesz dodać ją z karty ZK.`,
     tone: "error",
   };
 }
@@ -357,4 +357,23 @@ export function mapZkQuantityConfirmLabelForAuto(confirmLabel: string): string {
     next = next.charAt(0).toUpperCase() + next.slice(1);
   }
   return next;
+}
+
+/** Treść confirm zk_quantity w auto-flow (bez „wysył”). */
+export function mapZkQuantityConfirmMessageForAuto(message: string): string {
+  return message
+    .replace(/i wysyłasz prośbę\?/gi, "i tworzysz prośbę?")
+    .replace(/chcesz złożyć prośbę/gi, "chcesz utworzyć prośbę")
+    .replace(/wysłać prośbę/gi, "utworzyć prośbę");
+}
+
+/** Lead do dialogu stock w auto-flow. */
+export function formatAutoProsbaStockConfirmSummary(count: number): string {
+  const n = Math.abs(Math.trunc(count));
+  if (n <= 0) return "";
+  if (n === 1) return "1 pozycja w prośbie ma wystarczający stan";
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  const few = mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14);
+  return `${n} ${plPozycja(n)} w prośbie ${few ? "mają" : "ma"} wystarczający stan`;
 }

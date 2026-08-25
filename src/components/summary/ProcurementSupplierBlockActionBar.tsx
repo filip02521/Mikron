@@ -59,6 +59,7 @@ export function ProcurementSupplierBlockActionBar({
   run,
   itemKind = "request",
   tone = "prosby",
+  orderScopeNote = null,
 }: {
   block: ProcurementSupplierBlock;
   pending: boolean;
@@ -66,6 +67,8 @@ export function ProcurementSupplierBlockActionBar({
   /** Prośby vs sygnały stock-out — copy w modalu i toastach. */
   itemKind?: "request" | "signal";
   tone?: DailyPanelUnseenVariant;
+  /** Dopisek w modalu (np. częściowy peek zwiniętego toru). */
+  orderScopeNote?: string | null;
 }) {
   const orderIds = useMemo(
     () => collectProcurementSupplierBlockOrderIds(block),
@@ -88,7 +91,9 @@ export function ProcurementSupplierBlockActionBar({
 
   const [confirmMode, setConfirmMode] = useState<"GLOWNE" | "POBOCZNE" | null>(null);
   const confirmCopy = confirmMode
-    ? procurementSupplierBlockConfirmCopy(block, confirmMode, itemKind)
+    ? procurementSupplierBlockConfirmCopy(block, confirmMode, itemKind, {
+        scopeNote: orderScopeNote,
+      })
     : null;
 
   const runMode = (mode: "GLOWNE" | "POBOCZNE") => {

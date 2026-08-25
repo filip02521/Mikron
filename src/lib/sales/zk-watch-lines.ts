@@ -42,6 +42,21 @@ export function isZkWatchShippingCostLine(line: SubiektDocumentLine): boolean {
   return false;
 }
 
+/**
+ * Gratis / materiały marketingowe z ZK — nie pokazujemy w zakresie prośby
+ * ani na checkliście towaru (np. „Torba ekologiczna mikran.pl”).
+ */
+export function isZkWatchNonOrderablePromoLine(line: SubiektDocumentLine): boolean {
+  const name = (line.tw_Nazwa ?? "").trim().toLowerCase();
+  if (!name) return false;
+  if (name.includes("torba ekologiczna")) return true;
+  return false;
+}
+
+export function isZkWatchExcludedFromLineViews(line: SubiektDocumentLine): boolean {
+  return isZkWatchShippingCostLine(line) || isZkWatchNonOrderablePromoLine(line);
+}
+
 export function zkLineKey(line: SubiektDocumentLine, index: number): string {
   if (line.ob_Id != null && Number.isFinite(Number(line.ob_Id))) {
     return `ob:${Math.trunc(Number(line.ob_Id))}`;
@@ -134,7 +149,7 @@ export function buildZkWatchLineViews(watch: SalesZkWatch): ZkWatchLineView[] {
 
   if (pozycje.length > 0) {
     return pozycje
-      .filter((line) => !isZkWatchShippingCostLine(line))
+      .filter((line) => !isZkWatchExcludedFromLineViews(line))
       .map((line, index) => lineViewFromSubiekt(line, index, checksByKey));
   }
 

@@ -13,7 +13,7 @@ import {
 } from "./my-order-row-layout";
 import { presentMyOrders } from "./my-order-presenter";
 import type { IndividualOrder } from "@/types/database";
-import { myOrderExpandedMetaFields } from "./my-order-sales-ui";
+import { myOrderExpandedMetaFields, myOrderExpandedOrderTypeLabel } from "./my-order-sales-ui";
 
 function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
   return {
@@ -334,7 +334,8 @@ describe("my-order-row-layout", () => {
     ]).zamowienia[0];
 
     const meta = myOrderExpandedMetaFields(r, true);
-    expect(meta.some((f) => f.label === "Typ" && f.value === "Poza planem")).toBe(true);
+    expect(meta.some((f) => f.label === "Typ")).toBe(false);
+    expect(myOrderExpandedOrderTypeLabel(r)).toBe("Poza planem");
     expect(meta.some((f) => f.label === "Zamówiono" && f.value === "06.05.2026")).toBe(true);
     expect(myOrderExpandedNotes(r)).toBeNull();
   });

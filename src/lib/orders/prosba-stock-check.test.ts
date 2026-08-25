@@ -190,7 +190,28 @@ describe("buildProsbaSubmitStockConfirm", () => {
       "zamowienie"
     );
     expect(result?.sufficientLines).toHaveLength(1);
+    expect(result?.summary).toContain("1 pozycja");
     expect(result?.message).toContain("Czy na pewno");
+    expect(result?.message).toContain("•");
+  });
+
+  it("intent create — pytanie o utworzenie prośby", () => {
+    const result = buildProsbaSubmitStockConfirm(
+      [
+        {
+          ...baseLine,
+          quantity: "2",
+          onHand: 5,
+          reserved: 0,
+          available: 5,
+          stockSource: "subiekt",
+        },
+      ],
+      "zamowienie",
+      undefined,
+      { intent: "create" }
+    );
+    expect(result?.message).toContain("utworzyć prośbę mimo stanu");
   });
 });
 

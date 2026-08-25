@@ -8,6 +8,9 @@ import {
   type ProcurementRequestLaneId,
 } from "@/lib/orders/procurement-request-lanes";
 import {
+  dailyPanelUnseenBadgeClass,
+} from "@/lib/ui/ontime-theme";
+import {
   procurementRequestLaneCountPillClass,
   procurementRequestLaneDotClass,
   procurementRequestLaneHeaderClass,
@@ -36,9 +39,12 @@ export function procurementRequestLaneHint(
 export function ProcurementRequestLaneHeader({
   label,
   count,
+  countLabel,
   collapsed,
   tone,
   hint,
+  collapsedHint,
+  peekUnseenCount = 0,
   onToggle,
   canMoveUp = false,
   canMoveDown = false,
@@ -47,11 +53,18 @@ export function ProcurementRequestLaneHeader({
   onMoveDown,
 }: {
   label: string;
+  /** Liczba całkowita w torze (aria / fallback). */
   count: number;
+  /** Widoczna etykieta licznika (`3` albo `1/5`). */
+  countLabel?: string;
   collapsed: boolean;
   tone: ProcurementRequestLaneTone;
   /** Krótki podtytuł kontekstu — tylko gdy rozwinięty i jest treść. */
   hint?: string | null;
+  /** Podtytuł przy zwiniętym torze (np. „tylko nowe”). */
+  collapsedHint?: string | null;
+  /** Ile nowych w podglądzie zwiniętego toru (badge). */
+  peekUnseenCount?: number;
   onToggle: () => void;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
@@ -61,7 +74,11 @@ export function ProcurementRequestLaneHeader({
 }) {
   const resolvedTone = resolveProcurementRequestLaneTone(tone);
   const showMove = Boolean(onMoveUp || onMoveDown);
-  const hintText = hint?.trim() || null;
+  const expandedHintText = hint?.trim() || null;
+  const collapsedHintText = collapsedHint?.trim() || null;
+  const subtitle = collapsed ? collapsedHintText : expandedHintText;
+  const visibleCount = (countLabel ?? String(count)).trim() || String(count);
+  const showPeekBadge = collapsed && peekUnseenCount > 0;
 
   return (
     <div
@@ -75,6 +92,11 @@ export function ProcurementRequestLaneHeader({
         className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left sm:px-3"
         onClick={onToggle}
         aria-expanded={!collapsed}
+        aria-label={
+          collapsed
+            ? `${label}, ${count}, ${PROCUREMENT_REQUEST_LANE_COPY.laneExpand}`
+            : `${label}, ${count}, ${PROCUREMENT_REQUEST_LANE_COPY.laneCollapse}`
+        }
       >
         <IconChevronDown
           size={14}
@@ -86,31 +108,29 @@ export function ProcurementRequestLaneHeader({
           <span className="block truncate text-[12px] font-semibold tracking-tight text-slate-800">
             {label}
           </span>
-          {hintText ? (
-            <span
-              className={cn(
-                "grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none",
-                collapsed
-                  ? "grid-rows-[0fr] opacity-0"
-                  : "grid-rows-[1fr] opacity-100"
-              )}
-              aria-hidden={collapsed}
-            >
-              <span className="min-h-0 overflow-hidden">
-                <span className="mt-0.5 block truncate text-[10px] font-medium leading-snug text-slate-500">
-                  {hintText}
-                </span>
-              </span>
+          {subtitle ? (
+            <span className="mt-0.5 block truncate text-[10px] font-medium leading-snug text-slate-500">
+              {subtitle}
             </span>
           ) : null}
         </span>
+        {showPeekBadge ? (
+          <span
+            className={cn(
+              "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
+              dailyPanelUnseenBadgeClass("prosby")
+            )}
+          >
+            {peekUnseenCount}{" "}
+            {peekUnseenCount === 1
+              ? "nowa"
+              : peekUnseenCount >= 2 && peekUnseenCount <= 4
+                ? "nowe"
+                : "nowych"}
+          </span>
+        ) : null}
         <span className={cn(procurementRequestLaneCountPillClass(resolvedTone))}>
-          {count}
-        </span>
-        <span className="sr-only">
-          {collapsed
-            ? PROCUREMENT_REQUEST_LANE_COPY.laneExpand
-            : PROCUREMENT_REQUEST_LANE_COPY.laneCollapse}
+          {visibleCount}
         </span>
       </button>
       {showMove ? (

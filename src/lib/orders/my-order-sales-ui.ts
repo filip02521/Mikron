@@ -496,7 +496,11 @@ export function isExpandedSublineRedundant(row: MyOrderRow): boolean {
   return false;
 }
 
-/** Metadane rozwinięcia — typ/zamówienie ze statusDetail bez osobnego calloutu. */
+/** Metadane rozwinięcia — zamówienie ze statusDetail bez osobnego calloutu. */
+export function myOrderExpandedOrderTypeLabel(row: MyOrderRow): string | null {
+  return parseStatusDetailMetaParts(row.statusDetail).orderTypeLabel;
+}
+
 export function myOrderExpandedMetaFields(
   row: MyOrderRow,
   showProgress: boolean
@@ -504,11 +508,8 @@ export function myOrderExpandedMetaFields(
   const fields = myOrderMetaFields(row, showProgress);
   const parsed = parseStatusDetailMetaParts(row.statusDetail);
 
-  let insertIndex = 1;
-  if (parsed.orderTypeLabel) {
-    fields.splice(insertIndex, 0, { label: "Typ", value: parsed.orderTypeLabel });
-    insertIndex++;
-  }
+  const insertIndex = 1;
+  // „Typ” (planowa / poza planem) jest pod produktem — nie w pasku meta.
   if (parsed.orderedAtLabel && parsed.orderedAtLabel !== row.submittedLabel) {
     fields.splice(insertIndex, 0, {
       label: "Zamówiono",

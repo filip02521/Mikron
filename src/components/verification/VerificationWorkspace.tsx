@@ -139,6 +139,7 @@ export function VerificationWorkspace({
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
   const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
   const [stockConfirmMessage, setStockConfirmMessage] = useState("");
+  const [stockConfirmSummary, setStockConfirmSummary] = useState<string | null>(null);
 
   const supplierRefs = useMemo(() => toAppSupplierRefs(suppliers), [suppliers]);
 
@@ -467,6 +468,7 @@ export function VerificationWorkspace({
       teethExemptTwIds
     );
     if (stockConfirm) {
+      setStockConfirmSummary(stockConfirm.summary);
       setStockConfirmMessage(stockConfirm.message);
       setStockConfirmOpen(true);
       return;
@@ -807,8 +809,12 @@ export function VerificationWorkspace({
       <ProsbaStockConfirmDialog
         open={stockConfirmOpen}
         message={stockConfirmMessage}
+        summary={stockConfirmSummary}
         pending={pending}
-        onCancel={() => setStockConfirmOpen(false)}
+        onCancel={() => {
+          setStockConfirmOpen(false);
+          setStockConfirmSummary(null);
+        }}
         onConfirm={() => performSave({ acknowledgeSufficientStock: true })}
       />
     <div

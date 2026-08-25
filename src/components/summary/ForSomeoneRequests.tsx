@@ -122,6 +122,13 @@ import {
   type ProcurementRequestLaneId,
   type ProcurementRequestLaneVariant,
 } from "@/lib/orders/procurement-request-lanes";
+import {
+  countProcurementBlockGroups,
+  isProcurementLaneExpanded,
+  isProcurementLanePeekPartialSupplier,
+  procurementLaneDisplayBlocks,
+  resolveProcurementLaneChrome,
+} from "@/lib/orders/procurement-request-lane-collapse";
 import { PROCUREMENT_REQUEST_LANE_COPY } from "@/lib/orders/procurement-request-lane-copy";
 import {
   actionReorderProcurementFlagsAndLaneOrder,
@@ -422,7 +429,8 @@ export function ForSomeoneRequests({
   );
   const unseenVariant: DailyPanelUnseenVariant = isStockOutSection ? "stockOut" : "prosby";
   const [manageFlagsOpen, setManageFlagsOpen] = useState(false);
-  const [collapsedLanes, setCollapsedLanes] = useState<Set<ProcurementRequestLaneId>>(
+  /** Puste = wszystkie tory zwinięte (domyślnie); rozwinięcie = pełna lista w torze. */
+  const [expandedLanes, setExpandedLanes] = useState<Set<ProcurementRequestLaneId>>(
     () => new Set()
   );
   const [fallbackPrefs, setFallbackPrefs] = useState(() => ({
@@ -621,13 +629,29 @@ export function ForSomeoneRequests({
 
   const ensureLaneExpanded = useCallback((laneId: ProcurementRequestLaneId) => {
     if (isStockOutSection) return;
-    setCollapsedLanes((prev) => {
-      if (!prev.has(laneId)) return prev;
+    setExpandedLanes((prev) => {
+      if (prev.has(laneId)) return prev;
       const next = new Set(prev);
-      next.delete(laneId);
+      next.add(laneId);
       return next;
     });
   }, [isStockOutSection]);
+
+  const navigateToLane = useCallback(
+    (laneId: ProcurementRequestLaneId, anchorId: string) => {
+      ensureLaneExpanded(laneId);
+      const scroll = () => {
+        document
+          .getElementById(anchorId)
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      };
+      scroll();
+      requestAnimationFrame(() => {
+        requestAnimationFrame(scroll);
+      });
+    },
+    [ensureLaneExpanded]
+  );
 
   const unanimousGroupFlagNote = useCallback(
     (lines: SummaryForSomeoneEnriched["lines"]): string | null => {
@@ -721,9 +745,18 @@ export function ForSomeoneRequests({
     }
     const out: SummaryForSomeoneEnriched[] = [];
     for (const row of laneBlockRows) {
-      if (collapsedLanes.has(row.laneId)) continue;
+      const laneExpanded = isProcurementLaneExpanded(row.laneId, expandedLanes);
+      const displayBlocks = procurementLaneDisplayBlocks(
+        row.blocks,
+        laneExpanded,
+        flagSortById
+      );
+      /** Peek: ignoruj zwinięcie bloku dostawcy — karty nowych muszą zostać w nawigacji. */
+      const supplierCollapseForNav = laneExpanded
+        ? collapsedSuppliers
+        : new Set<string>();
       out.push(
-        ...filterNavigableProcurementGroups(row.blocks, collapsedSuppliers)
+        ...filterNavigableProcurementGroups(displayBlocks, supplierCollapseForNav)
       );
     }
     return out;
@@ -731,8 +764,9 @@ export function ForSomeoneRequests({
     isStockOutSection,
     stockOutBlocks,
     laneBlockRows,
-    collapsedLanes,
+    expandedLanes,
     collapsedSuppliers,
+    flagSortById,
   ]);
 
   const unseenGroupCount = useMemo(
@@ -740,8 +774,8 @@ export function ForSomeoneRequests({
     [displayGroups, isGroupUnseen]
   );
   const multiLineKeys = useMemo(
-    () => displayGroups.filter((g) => g.lines.length >= 2).map((g) => groupKey(g)),
-    [displayGroups, groupKey]
+    () => navigableGroups.filter((g) => g.lines.length >= 2).map((g) => groupKey(g)),
+    [navigableGroups, groupKey]
   );
 
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
@@ -833,7 +867,7 @@ export function ForSomeoneRequests({
   );
 
   const toggleLaneCollapsed = useCallback((laneId: ProcurementRequestLaneId) => {
-    setCollapsedLanes((prev) => {
+    setExpandedLanes((prev) => {
       const next = new Set(prev);
       if (next.has(laneId)) next.delete(laneId);
       else next.add(laneId);
@@ -966,7 +1000,11 @@ export function ForSomeoneRequests({
    * 3) wszystko otwarte → zwiń blok (albo tylko produkty, gdy collapse zablokowany przez „Nowa”)
    */
   const toggleSupplierBlockHeader = useCallback(
-    (block: ProcurementSupplierBlock, isCollapsed: boolean) => {
+    (
+      block: ProcurementSupplierBlock,
+      isCollapsed: boolean,
+      options?: { allowBlockCollapse?: boolean }
+    ) => {
       if (isCollapsed) {
         expandSupplierBlockFully(block);
         return;
@@ -980,8 +1018,14 @@ export function ForSomeoneRequests({
         expandSupplierBlockFully(block);
         return;
       }
+      const allowBlockCollapse = options?.allowBlockCollapse !== false;
+      const blockHasLocalUnseen = block.requestGroups.some((g) =>
+        isGroupUnseen(g)
+      );
       const canCollapseBlock =
-        !block.hasUnseen && !forceExpandedSupplierIds.has(block.supplierId);
+        allowBlockCollapse &&
+        !blockHasLocalUnseen &&
+        !forceExpandedSupplierIds.has(block.supplierId);
       if (canCollapseBlock) {
         toggleSupplierCollapse(block.supplierId);
       } else {
@@ -995,6 +1039,7 @@ export function ForSomeoneRequests({
       groupKey,
       expanded,
       forceExpandedSupplierIds,
+      isGroupUnseen,
     ]
   );
 
@@ -1015,7 +1060,13 @@ export function ForSomeoneRequests({
           variant="ghost"
           size="sm"
           className="h-8 px-2 text-xs"
-          onClick={() => setAllSupplierBlocksExpanded(!allSupplierBlocksExpanded)}
+          onClick={() => {
+            const nextExpanded = !allSupplierBlocksExpanded;
+            if (nextExpanded) {
+              setExpandedLanes(new Set(visibleLaneIds));
+            }
+            setAllSupplierBlocksExpanded(nextExpanded);
+          }}
         >
           {allSupplierBlocksExpanded
             ? "Zwiń bloki dostawców"
@@ -1035,6 +1086,7 @@ export function ForSomeoneRequests({
     <ProcurementRequestLaneNav
       items={laneNavItems}
       onManageClick={() => setManageFlagsOpen(true)}
+      onLaneNavigate={navigateToLane}
     />
   );
   const [cancelTarget, setCancelTarget] = useState<{
@@ -1310,20 +1362,46 @@ export function ForSomeoneRequests({
       <div className={procurementRequestLanesBodyClass}>
         {listSections.map((laneRow) => {
           const showLaneChrome = laneRow.showLaneChrome;
-          const laneCollapsed =
-            showLaneChrome &&
-            laneRow.laneId != null &&
-            collapsedLanes.has(laneRow.laneId);
-          const laneGroupCount = laneRow.blocks.reduce(
-            (n, b) => n + b.requestGroups.length,
-            0
-          );
+          const laneExpanded =
+            !showLaneChrome ||
+            laneRow.laneId == null ||
+            isProcurementLaneExpanded(laneRow.laneId, expandedLanes);
+          const laneGroupCount = countProcurementBlockGroups(laneRow.blocks);
+          const displayBlocks = showLaneChrome
+            ? procurementLaneDisplayBlocks(
+                laneRow.blocks,
+                laneExpanded,
+                flagSortById
+              )
+            : laneRow.blocks;
+          const peekGroupCount = laneExpanded
+            ? 0
+            : countProcurementBlockGroups(displayBlocks);
+          const laneChrome = showLaneChrome
+            ? resolveProcurementLaneChrome({
+                laneExpanded,
+                totalGroupCount: laneGroupCount,
+                peekGroupCount,
+                peekHint: PROCUREMENT_REQUEST_LANE_COPY.laneCollapsedPeekHint,
+                allNewHint: PROCUREMENT_REQUEST_LANE_COPY.laneCollapsedAllNewHint,
+                emptyCollapsedHint:
+                  PROCUREMENT_REQUEST_LANE_COPY.laneCollapsedEmptyHint,
+              })
+            : null;
+          const laneCollapsed = Boolean(laneChrome?.chromeCollapsed);
+          const laneBodyOpen = laneChrome?.bodyOpen ?? true;
+          const fullBlocksBySupplier = showLaneChrome
+            ? new Map(laneRow.blocks.map((b) => [b.supplierId, b]))
+            : null;
           const blocksList = (
                 <ul className={procurementRequestLaneContentClass}>
-                  {laneRow.blocks.map((block) => {
+                  {displayBlocks.map((block) => {
                     const showSupplierHeader = showProcurementSupplierBlockHeader(block);
+                    /** W peeku zwiniętego toru zawsze pokazuj karty — zwijanie bloku tylko w pełnym torze. */
                     const supplierCollapsed =
-                      showSupplierHeader && collapsedSuppliers.has(block.supplierId);
+                      showSupplierHeader &&
+                      laneExpanded &&
+                      collapsedSuppliers.has(block.supplierId);
                     const blockMultiKeys = showSupplierHeader
                       ? block.requestGroups
                           .filter((g) => g.lines.length >= 2)
@@ -1332,9 +1410,13 @@ export function ForSomeoneRequests({
                     const blockProductsFullyOpen =
                       blockMultiKeys.length === 0 ||
                       blockMultiKeys.every((k) => expanded.has(k));
+                    const blockHasLocalUnseen = block.requestGroups.some((g) =>
+                      isGroupUnseen(g)
+                    );
                     const blockCanCollapse =
                       showSupplierHeader &&
-                      !block.hasUnseen &&
+                      laneExpanded &&
+                      !blockHasLocalUnseen &&
                       !forceExpandedSupplierIds.has(block.supplierId);
                     const blockHeaderHint = !showSupplierHeader
                       ? undefined
@@ -1361,6 +1443,16 @@ export function ForSomeoneRequests({
                             supplierId: block.supplierId,
                           })
                         : null;
+                    const peekPartialOrder =
+                      showLaneChrome &&
+                      isProcurementLanePeekPartialSupplier({
+                        laneExpanded,
+                        fullBlock: fullBlocksBySupplier?.get(block.supplierId),
+                        displayBlock: block,
+                      });
+                    const orderScopeNote = peekPartialOrder
+                      ? PROCUREMENT_REQUEST_LANE_COPY.lanePeekOrderScopeNote
+                      : null;
 
                     return (
                       <li
@@ -1389,10 +1481,13 @@ export function ForSomeoneRequests({
                             }
                             flagDefinitions={localFlagDefinitions}
                             onToggleCollapse={() =>
-                              toggleSupplierBlockHeader(block, supplierCollapsed)
+                              toggleSupplierBlockHeader(block, supplierCollapsed, {
+                                allowBlockCollapse: laneExpanded,
+                              })
                             }
                             headerActionHint={blockHeaderHint}
                             onOpenSupplier={onOpenSupplier}
+                            orderScopeNote={orderScopeNote}
                           />
                         ) : null}
                         {!supplierCollapsed ? (
@@ -1911,9 +2006,12 @@ export function ForSomeoneRequests({
               <ProcurementRequestLaneHeader
                 label={laneRow.label}
                 count={laneGroupCount}
+                countLabel={laneChrome?.countLabel}
                 collapsed={laneCollapsed}
                 tone={laneRow.tone}
                 hint={procurementRequestLaneHint(laneId)}
+                collapsedHint={laneChrome?.subtitle}
+                peekUnseenCount={laneChrome?.peekGroupCount ?? 0}
                 onToggle={() => toggleLaneCollapsed(laneId)}
                 canMoveUp={canMoveVisibleLane(visibleLaneIds, laneId, -1)}
                 canMoveDown={canMoveVisibleLane(visibleLaneIds, laneId, 1)}
@@ -1921,7 +2019,7 @@ export function ForSomeoneRequests({
                 onMoveUp={() => moveLane(laneId, -1)}
                 onMoveDown={() => moveLane(laneId, 1)}
               />
-              <ProcurementRequestLaneCollapse open={!laneCollapsed}>
+              <ProcurementRequestLaneCollapse open={laneBodyOpen}>
                 {blocksList}
               </ProcurementRequestLaneCollapse>
             </section>

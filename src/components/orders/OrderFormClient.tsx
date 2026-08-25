@@ -238,6 +238,7 @@ export function OrderFormClient({
   const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
   const [stockConfirmKind, setStockConfirmKind] = useState<"stock" | "zk_quantity" | null>(null);
   const [stockConfirmMessage, setStockConfirmMessage] = useState("");
+  const [stockConfirmSummary, setStockConfirmSummary] = useState<string | null>(null);
   const [stockConfirmTitle, setStockConfirmTitle] = useState("Towar na stanie");
   const [stockConfirmConfirmLabel, setStockConfirmConfirmLabel] = useState("Wyślij mimo to");
   const pendingSubmitEntriesRef = useRef<(Entry & { requestNote?: string })[]>([]);
@@ -328,7 +329,8 @@ export function OrderFormClient({
             resolved.zkWatchId,
             searchParams.get("dla")?.trim() || lockedId || undefined,
             resolved.lineKeys,
-            resolved.requestKind
+            resolved.requestKind,
+            resolved.mode
           );
           if (fromWatch?.teethDraftsIncomplete) {
             setFormNotice({
@@ -451,7 +453,8 @@ export function OrderFormClient({
                 watchId,
                 delegateId || undefined,
                 fromStorage.lineKeys,
-                fromStorage.requestKind
+                fromStorage.requestKind,
+                fromStorage.mode
               );
               if (fromWatch) {
                 await applyZkPrefill(fromWatch);
@@ -473,6 +476,8 @@ export function OrderFormClient({
       const zkLineKeys = parseProsbaZkLineKeysParam(searchParams.get("zkLines"));
       const requestKindFromUrl =
         searchParams.get("rodzaj") === "informacja" ? ("informacja" as const) : undefined;
+      const modeFromUrl =
+        searchParams.get("uzupelnienie") === "1" ? ("supplement" as const) : undefined;
 
       try {
         if (cancelled) return;
@@ -481,7 +486,8 @@ export function OrderFormClient({
             zkWatch,
             delegateId || undefined,
             zkLineKeys,
-            requestKindFromUrl
+            requestKindFromUrl,
+            modeFromUrl
           );
           if (!cancelled && fromWatch && (fromWatch.lines.length || fromWatch.teethDraftsIncomplete)) {
             await applyZkPrefill(fromWatch);
@@ -786,6 +792,7 @@ export function OrderFormClient({
         handleProsbaStockSubmitError(
           e,
           (message) => {
+            setStockConfirmSummary(null);
             setStockConfirmMessage(message);
             setStockConfirmKind("stock");
             setStockConfirmOpen(true);
@@ -820,6 +827,7 @@ export function OrderFormClient({
         pendingSubmitAckRef.current = mergedAck;
         setStockConfirmTitle("Towar na stanie");
         setStockConfirmConfirmLabel("Wyślij mimo to");
+        setStockConfirmSummary(stockConfirm.summary);
         setStockConfirmMessage(stockConfirm.message);
         setStockConfirmKind("stock");
         setStockConfirmOpen(true);
@@ -834,6 +842,7 @@ export function OrderFormClient({
         pendingSubmitAckRef.current = mergedAck;
         setStockConfirmTitle(zkConfirm.title);
         setStockConfirmConfirmLabel(zkConfirm.confirmLabel);
+        setStockConfirmSummary(null);
         setStockConfirmMessage(zkConfirm.message);
         setStockConfirmKind("zk_quantity");
         setStockConfirmOpen(true);
@@ -1224,11 +1233,13 @@ export function OrderFormClient({
       open={stockConfirmOpen}
       title={stockConfirmTitle}
       message={stockConfirmMessage}
+      summary={stockConfirmSummary}
       confirmLabel={stockConfirmConfirmLabel}
       pending={pending}
       onCancel={() => {
         setStockConfirmOpen(false);
         setStockConfirmKind(null);
+        setStockConfirmSummary(null);
         pendingSubmitEntriesRef.current = [];
         pendingSubmitAckRef.current = {};
       }}
@@ -1238,6 +1249,7 @@ export function OrderFormClient({
         const prevAck = pendingSubmitAckRef.current;
         const kind = stockConfirmKind;
         setStockConfirmKind(null);
+        setStockConfirmSummary(null);
         if (kind === "stock") {
           runSubmitWithConfirms(entries, { ...prevAck, acknowledgeSufficientStock: true });
           return;

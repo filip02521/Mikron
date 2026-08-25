@@ -76,6 +76,7 @@ export function ProcurementSupplierBlockBar({
   flagDefinitions = [],
   unseenPeopleNames,
   headerActionHint = "expand-all",
+  orderScopeNote = null,
 }: {
   block: ProcurementSupplierBlock;
   collapsed: boolean;
@@ -96,6 +97,8 @@ export function ProcurementSupplierBlockBar({
     | "expand-products"
     | "collapse-block"
     | "collapse-products";
+  /** Dopisek w modalu Zamów razem (np. częściowy peek). */
+  orderScopeNote?: string | null;
 }) {
   const summary = formatProcurementSupplierBlockSummary(block);
   const groupCount = block.requestGroups.length;
@@ -325,6 +328,7 @@ export function ProcurementSupplierBlockBar({
               run={run}
               itemKind={groupKind}
               tone={unseenVariant}
+              orderScopeNote={orderScopeNote}
             />
           </div>
         </div>

@@ -641,7 +641,6 @@ export function computeZkWatchOrderHints(
   const relevant = orders.filter((o) => orderRelevantToZkWatch(o, watch));
   const prosbaScopeKeys = getZkWatchProsbaScopeLineKeys(watch, lineViews);
   const prosbaScopeConfigured = prosbaScopeKeys !== null;
-  const prosbaScopeSet = prosbaScopeKeys ? new Set(prosbaScopeKeys) : null;
   const checks = parseZkWatchLineChecks(watch.line_checks);
   const needsByKey = new Map(
     checks
@@ -664,9 +663,7 @@ export function computeZkWatchOrderHints(
   for (const line of lineViews) {
     if (line.key === "summary") continue;
 
-    const scopeExcluded =
-      prosbaScopeSet != null &&
-      (!prosbaScopeSet.has(line.key) || needsByKey.get(line.key) === false);
+    const scopeExcluded = needsByKey.get(line.key) === false;
     if (scopeExcluded) {
       scopeExcludedLineKeys.push(line.key);
     }

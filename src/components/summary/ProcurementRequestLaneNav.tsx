@@ -29,10 +29,13 @@ export type ProcurementRequestLaneNavItem = {
 export function ProcurementRequestLaneNav({
   items,
   onManageClick,
+  onLaneNavigate,
   className,
 }: {
   items: ProcurementRequestLaneNavItem[];
   onManageClick?: () => void;
+  /** Skok do sekcji (rodzic rozwija tor + scroll). */
+  onLaneNavigate?: (laneId: ProcurementRequestLaneId, anchorId: string) => void;
   className?: string;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
@@ -102,6 +105,10 @@ export function ProcurementRequestLaneNav({
                   )}
                   onClick={(e) => {
                     e.preventDefault();
+                    if (onLaneNavigate) {
+                      onLaneNavigate(item.laneId, item.anchorId);
+                      return;
+                    }
                     document
                       .getElementById(item.anchorId)
                       ?.scrollIntoView({ behavior: "smooth", block: "start" });

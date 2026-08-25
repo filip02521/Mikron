@@ -41,6 +41,8 @@ import {
   buildAutoProsbaClientBlockedToast,
   nextAutoProsbaAckAfterConfirm,
   mapZkQuantityConfirmLabelForAuto,
+  mapZkQuantityConfirmMessageForAuto,
+  formatAutoProsbaStockConfirmSummary,
   type AutoProsbaToastPayload,
 } from "@/lib/sales/zk-watch-auto-prosba-copy";
 import { actionAutoCreateProsbaFromZkWatch } from "@/app/actions/sales-notepad";
@@ -190,6 +192,7 @@ export function ZkWatchSection({
   const [confirmKind, setConfirmKind] = useState<"stock" | "zk_quantity" | null>(null);
   const [confirmTitle, setConfirmTitle] = useState("Towar na stanie");
   const [confirmMessage, setConfirmMessage] = useState("");
+  const [confirmSummary, setConfirmSummary] = useState<string | null>(null);
   const [confirmLabel, setConfirmLabel] = useState("Utwórz prośbę mimo stanu");
   const [autoProsbaSubmitting, setAutoProsbaSubmitting] = useState(false);
   const [autoProsbaPendingWatchId, setAutoProsbaPendingWatchId] = useState<string | null>(null);
@@ -296,6 +299,9 @@ export function ZkWatchSection({
       if (result.code === "error_stock_ack_required") {
         reopenStockConfirm = true;
         setConfirmTitle("Towar na stanie");
+        setConfirmSummary(
+          formatAutoProsbaStockConfirmSummary(pendingLinesRef.current.length) || null
+        );
         setConfirmMessage(result.message);
         setConfirmLabel("Utwórz prośbę mimo stanu");
         setConfirmKind("stock");
@@ -337,12 +343,14 @@ export function ZkWatchSection({
       const stockConfirm = buildProsbaSubmitStockConfirm(
         lines,
         "zamowienie",
-        teethExemptTwIds
+        teethExemptTwIds,
+        { intent: "create" }
       );
       if (stockConfirm) {
         pendingLinesRef.current = lines;
         pendingAckRef.current = ack;
         setConfirmTitle("Towar na stanie");
+        setConfirmSummary(stockConfirm.summary);
         setConfirmMessage(stockConfirm.message);
         setConfirmLabel("Utwórz prośbę mimo stanu");
         setConfirmKind("stock");
@@ -357,7 +365,8 @@ export function ZkWatchSection({
         pendingLinesRef.current = lines;
         pendingAckRef.current = ack;
         setConfirmTitle(zkConfirm.title);
-        setConfirmMessage(zkConfirm.message);
+        setConfirmSummary(null);
+        setConfirmMessage(mapZkQuantityConfirmMessageForAuto(zkConfirm.message));
         setConfirmLabel(mapZkQuantityConfirmLabelForAuto(zkConfirm.confirmLabel));
         setConfirmKind("zk_quantity");
         setConfirmOpen(true);
@@ -926,12 +935,14 @@ export function ZkWatchSection({
         open={confirmOpen}
         title={confirmTitle}
         message={confirmMessage}
+        summary={confirmSummary}
         confirmLabel={confirmLabel}
         cancelLabel="Zostaw tylko zakres"
         pending={autoProsbaSubmitting}
         onCancel={() => {
           setConfirmOpen(false);
           setConfirmKind(null);
+          setConfirmSummary(null);
           pendingLinesRef.current = [];
           pendingWatchRef.current = null;
           pendingAckRef.current = {};
@@ -946,6 +957,7 @@ export function ZkWatchSection({
           const prevAck = pendingAckRef.current;
           const kind = confirmKind;
           setConfirmKind(null);
+          setConfirmSummary(null);
           if (kind === "stock") {
             const nextAck = nextAutoProsbaAckAfterConfirm("stock", prevAck);
             pendingAckRef.current = nextAck;

@@ -250,7 +250,8 @@ export function procurementSupplierBlockPeopleLine(
 export function procurementSupplierBlockConfirmCopy(
   block: ProcurementSupplierBlock,
   mode: "GLOWNE" | "POBOCZNE",
-  kind: "request" | "signal" = "request"
+  kind: "request" | "signal" = "request",
+  options?: { scopeNote?: string | null }
 ): { title: string; message: string; confirmLabel: string; people: string[] } {
   const groupCount = block.requestGroups.length;
   const products = procurementProductCountLabel(block.lineCount);
@@ -261,6 +262,7 @@ export function procurementSupplierBlockConfirmCopy(
     mode === "GLOWNE" && block.supplierOrderOnDemand
       ? ` ${PROCUREMENT_GLOWNE_ON_DEMAND_HINT}`
       : "";
+  const scopeNote = options?.scopeNote?.trim();
   return {
     title:
       mode === "GLOWNE"
@@ -268,7 +270,9 @@ export function procurementSupplierBlockConfirmCopy(
           ? `Główne (bez terminu) u ${block.supplierName}`
           : `Główne u ${block.supplierName}`
         : `Uzupełniające u ${block.supplierName}`,
-    message: `Oznaczysz ${procurementBlockGroupCountPhrase(groupCount, kind)} (${products}) jako ${action}: ${procurementSupplierBlockPeopleLine(block)}. Po potwierdzeniu możesz cofnąć w ciągu 10 sekund.${onDemandNote}`,
+    message: `Oznaczysz ${procurementBlockGroupCountPhrase(groupCount, kind)} (${products}) jako ${action}: ${procurementSupplierBlockPeopleLine(block)}. Po potwierdzeniu możesz cofnąć w ciągu 10 sekund.${onDemandNote}${
+      scopeNote ? ` ${scopeNote}` : ""
+    }`,
     confirmLabel:
       mode === "GLOWNE"
         ? `${procurementGlowneButtonLabel({

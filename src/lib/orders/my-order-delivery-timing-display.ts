@@ -217,7 +217,7 @@ export function buildMyOrderDeliveryTimingDisplay(
         : baseDetail;
     return withUrgency(
       {
-        title: overdue ? "Planowana dostawa po terminie" : "Planowana dostawa:",
+        title: overdue ? "Planowana dostawa po terminie" : "Planowana dostawa",
         estimate: zdEstimate,
         detail: mixedDetail,
         tone: overdue ? "overdue" : "zd-sourced",

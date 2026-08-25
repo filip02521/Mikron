@@ -48,7 +48,13 @@ import {
 } from "@/components/icons/StrokeIcons";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { brandIconTileClass, panelChromeInsetClass, panelSectionInsetClass, panelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
+import {
+  brandIconTileClass,
+  panelChromeInsetClass,
+  panelSectionInsetClass,
+  panelStickyChromeClass,
+  panelWorkspaceShellClass,
+} from "@/lib/ui/ontime-theme";
 import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { cn } from "@/lib/cn";
@@ -374,7 +380,13 @@ export function SummaryWorkspace({
           hintAriaLabel="O panelu dziennym"
         />
 
-        <div className={cn(panelChromeInsetClass, "flex items-center border-b border-slate-100 py-2.5 sm:py-3")}>
+        <div
+          className={cn(
+            panelStickyChromeClass,
+            panelChromeInsetClass,
+            "flex items-center py-2.5 sm:py-3"
+          )}
+        >
           <DailyPanelActionsBar
             summary={inboxSummary}
             suppliers={supplierDirectory}
