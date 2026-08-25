@@ -29,6 +29,12 @@ export const zkWatchRowActionSecondaryClass = cn(
   "border border-slate-200/90 bg-white text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
 );
 
+/** CTA odbioru z regału (Odbierz w Moje) — lekko wyróżnione względem Otwórz prośbę. */
+export const zkWatchRowActionPickupClass = cn(
+  zkWatchRowActionTextBaseClass,
+  "border border-violet-200/90 bg-violet-50 text-violet-800 shadow-sm hover:border-violet-300 hover:bg-violet-100/80 hover:text-violet-900"
+);
+
 /** Status pokrycia prośby (Obsłużone, Na regale itd.) — ten sam kształt co przyciski. */
 export const zkWatchRowActionStatusClass = cn(
   "inline-flex shrink-0 items-center gap-1 rounded-md font-semibold ring-1 ring-inset",

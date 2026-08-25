@@ -1,47 +1,62 @@
 import { cn } from "@/lib/cn";
 
-/** Wspólna baza badge'y w nagłówku wiersza ZK. */
-export const zkWatchRowInlineBadgeClass =
-  "inline-flex shrink-0 items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium leading-none ring-1 ring-inset";
+/**
+ * Wspólna baza badge'y uwagi w wierszu ZK —
+ * jedna wysokość, padding i ring, żeby „Do zamknięcia” / „Czeka na odbiór” / przypomnienie
+ * wyglądały jak jedna rodzina chipów.
+ */
+export const zkWatchRowInlineBadgeClass = cn(
+  "inline-flex shrink-0 items-center gap-1",
+  "h-5 max-w-[14rem] rounded-md px-1.5",
+  "text-[10px] font-medium leading-none tracking-[0.01em]",
+  "ring-1 ring-inset",
+  "shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]"
+);
+
+/** Mocniejszy chip (akcja / pilne). */
+const zkWatchRowInlineBadgeEmphasisClass = "font-semibold";
 
 export const zkWatchRegalInlineBadgeClass = cn(
   zkWatchRowInlineBadgeClass,
-  "bg-violet-50 text-violet-800 ring-violet-200/80"
+  "bg-violet-50/95 text-violet-800 ring-violet-200/75"
 );
 
 export const zkWatchRegalNewInlineBadgeClass = cn(
   zkWatchRowInlineBadgeClass,
-  "bg-violet-100 font-semibold text-violet-900 ring-violet-300/80"
+  zkWatchRowInlineBadgeEmphasisClass,
+  "bg-violet-100/95 text-violet-950 ring-violet-300/70"
 );
 
 export const zkWatchInformacjaInlineBadgeClass = cn(
   zkWatchRowInlineBadgeClass,
-  "bg-sky-50 text-sky-800 ring-sky-200/80"
+  "bg-sky-50/95 text-sky-800 ring-sky-200/75"
 );
 
 export const zkWatchNewLinesInlineBadgeClass = cn(
   zkWatchRowInlineBadgeClass,
-  "bg-amber-50 text-amber-800 ring-amber-200/80"
+  "bg-amber-50/90 text-amber-800 ring-amber-200/70"
 );
 
 export const zkWatchNewlyAddedInlineBadgeClass = cn(
   zkWatchRowInlineBadgeClass,
-  "bg-indigo-50 text-indigo-800 ring-indigo-200/80"
+  "bg-indigo-50/95 text-indigo-800 ring-indigo-200/75"
 );
 
 export const zkWatchReadyToCloseInlineBadgeClass = cn(
   zkWatchRowInlineBadgeClass,
-  "bg-emerald-100 font-semibold text-emerald-900 ring-emerald-300/80"
+  zkWatchRowInlineBadgeEmphasisClass,
+  "bg-emerald-50 text-emerald-900 ring-emerald-300/70"
 );
 
 export const zkWatchScopeOverflowInlineBadgeClass = cn(
   zkWatchRowInlineBadgeClass,
-  "bg-slate-50 text-slate-600 ring-slate-200/80"
+  "bg-slate-50/95 text-slate-600 ring-slate-200/80"
 );
 
 export const zkWatchFollowUpInlineBadgeClass = cn(
   zkWatchRowInlineBadgeClass,
-  "bg-amber-50 font-semibold text-amber-900 ring-amber-200/80"
+  zkWatchRowInlineBadgeEmphasisClass,
+  "bg-amber-50 text-amber-950 ring-amber-300/75"
 );
 
 /** @deprecated Używaj {@link zkWatchRowShellClassForAccent} — zachowane dla kompatybilności testów. */

@@ -5,6 +5,7 @@ import type { MouseEvent } from "react";
 import { IconCircleCheck, IconPackageCheck } from "@/components/icons/StrokeIcons";
 import type { ZkWatchProsbaCardAction } from "@/lib/sales/zk-watch-line-ui-state";
 import {
+  zkWatchRowActionPickupClass,
   zkWatchRowActionPrimaryClass,
   zkWatchRowActionSecondaryClass,
 } from "@/lib/ui/zk-watch-row-action-styles";
@@ -51,11 +52,12 @@ export function ZkWatchProsbaActions({
   const label = buttonLabel ?? prosbaCardAction.label;
 
   if (prosbaCardAction.kind === "view_open") {
+    const isPickup = label === "Odbierz w Moje";
     return (
       <Link
         href={prosbaInTokuHref}
-        title="Przejdź do aktywnej prośby"
-        className={zkWatchRowActionSecondaryClass}
+        title={isPickup ? "Przejdź do odbioru w Moje zamówienia" : "Przejdź do aktywnej prośby"}
+        className={isPickup ? zkWatchRowActionPickupClass : zkWatchRowActionSecondaryClass}
         aria-disabled={pending || undefined}
         onClick={pending ? (event) => event.preventDefault() : undefined}
       >

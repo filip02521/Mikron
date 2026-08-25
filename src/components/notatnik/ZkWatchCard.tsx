@@ -50,13 +50,13 @@ import {
   deriveZkWatchRowSecondaryMeta,
 } from "@/lib/sales/zk-watch-row-attention";
 import {
-  zkWatchRowAttentionBadgeClass,
   zkWatchRowActionsMobileDividerClass,
   zkWatchRowShellClassForChrome,
 } from "@/lib/ui/zk-watch-attention-styles";
 import { zkWatchRowActionBarClass } from "@/lib/ui/zk-watch-row-action-styles";
 import { formatZkWatchNotePreview } from "@/lib/sales/zk-watch-row-display";
 import { ZkCaseNoteProsbaChip } from "./ZkCaseNoteProsbaChip";
+import { ZkWatchAttentionBadge } from "./ZkWatchAttentionBadge";
 import { ZkWatchFollowUpButton } from "./ZkWatchFollowUpButton";
 import { ZkWatchRowAccentRail, ZkWatchRowAttentionRail } from "./ZkWatchRowAttentionRail";
 import { ZkWatchOverflowMenu } from "./ZkWatchOverflowMenu";
@@ -576,7 +576,7 @@ export function ZkWatchCard({
           aria-label={rowAriaLabel}
         >
           <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1">
               <span
                 className={cn(
                   "shrink-0 font-semibold tabular-nums text-slate-900",
@@ -594,20 +594,18 @@ export function ZkWatchCard({
                 {watch.client_label}
               </span>
               {primaryAttention ? (
-                <span
-                  className={zkWatchRowAttentionBadgeClass(primaryAttention.kind)}
+                <ZkWatchAttentionBadge
+                  kind={primaryAttention.kind}
+                  label={primaryAttention.label}
                   title={primaryAttention.title}
-                >
-                  {primaryAttention.label}
-                </span>
+                />
               ) : null}
               {followUpDueBadge ? (
-                <span
-                  className={zkWatchRowAttentionBadgeClass(followUpDueBadge.kind)}
+                <ZkWatchAttentionBadge
+                  kind={followUpDueBadge.kind}
+                  label={followUpDueBadge.label}
                   title={followUpDueBadge.title}
-                >
-                  {followUpDueBadge.label}
-                </span>
+                />
               ) : null}
             </div>
 
