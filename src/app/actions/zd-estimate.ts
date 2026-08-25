@@ -4557,8 +4557,11 @@ function isUniqueViolationMessage(message: string | undefined): boolean {
 }
 
 /**
- * Nie wołamy revalidatePath — zapis snapshotu nie zmienia RSC page, a refresh
- * po Server Action potrafi zresetować workbench / wyścig z tokenem sessionStorage.
+ * Ephemeral snapshot workbencha „Policz ZD” (zd_estimate_ui_sessions).
+ *
+ * Świadomie bez revalidatePath/revalidateTag — snapshot nie jest źródłem RSC,
+ * a pełny refresh po Server Action resetuje workbench / wyściguje z tokenem
+ * sessionStorage. Wyjątek zarejestrowany w MissingRevalidateAfterMutation.ql.
  */
 export async function actionCreateZdEstimateUiSession(input: {
   payload: ZdEstimateUiSessionPayload;

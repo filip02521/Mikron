@@ -231,11 +231,9 @@ export function deriveZkWatchProsbaCardAction(input: {
     ) {
       return { kind: "view_open", label: "Otwórz prośbę" };
     }
-    if (
-      regalWaitingLineKeys.length > 0 &&
-      !hasOpenMatchingProsba &&
-      openProsbaLineKeys.length === 0
-    ) {
+    // Tu już wiemy: brak otwartej prośby i openProsbaLineKeys — warunek
+    // !hasOpenMatchingProsba && length === 0 byłby zawsze prawdziwy (CodeQL).
+    if (regalWaitingLineKeys.length > 0) {
       return { kind: "view_open", label: "Odbierz w Moje" };
     }
     if (scopeExcludedLineKeys.length === lineCount && lineCount > 0) {

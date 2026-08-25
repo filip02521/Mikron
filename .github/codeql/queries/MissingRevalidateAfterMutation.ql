@@ -54,5 +54,13 @@ where
     // Świadomie bez revalidate: lokalny UI oznacza „seen”; pełny revalidate
     // po hoverze + Główne/Uzupełniające potrafi zabić UndoToast (remount).
     "actionMarkProcurementRequestsSeen",
+    // Świadomie bez revalidatePath: ephemeral snapshot workbencha w DB.
+    // revalidatePath("/zakupy/szacunek") po Server Action resetuje stan UI
+    // i wyściguje z tokenem sessionStorage — dane i tak wracają przez
+    // actionGet / client, nie przez RSC.
+    "actionCreateZdEstimateUiSession",
+    "actionUpsertZdEstimateUiSessionSnapshot",
+    "actionGetZdEstimateUiSession",
+    "actionDeleteZdEstimateUiSession",
   ]
 select f, "Server action '" + f.getName() + "' wykonuje mutację bazy danych ale nie wywołuje revalidatePath/revalidateTag (ani helpera revalidate*) — dane mogą być nieaktualne."
