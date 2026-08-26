@@ -1048,7 +1048,7 @@ export const ZD_ESTIMATE_UI = {
   postCreateMailComposeBody: "Treść",
   packagingDialogTitle: "Karton / opakowanie",
   packagingDialogHint:
-    "Wybierz, jak przeliczać niedobór w sztukach na jednostki dokumentu: paczki na ZD albo sztuki z dobiciem do wielokrotności N.",
+    "Wybierz, jak przeliczać niedobór w sztukach na jednostki dokumentu ZD: paczki albo sztuki z dobiciem.",
   packagingModePackagesLabel: "1 na ZD = N szt (paczki na dokumencie)",
   packagingModePiecesLabel: "Do ZD w sztukach — dobij do wielokrotności N",
   packagingModePackagesHint:
@@ -1063,10 +1063,10 @@ export const ZD_ESTIMATE_UI = {
     "Opakowania zaktualizowane — pokrycie i Do ZD przeliczone.",
   packagingModalTitle: "Opakowania ZD",
   packagingModalHint:
-    "Ustaw, jak przeliczać niedobór w sztukach na jednostki dokumentu ZD. Tryb A: 1 na ZD = opakowanie (wpisujesz liczbę paczek; opcjonalnie wielokrotność M). Tryb B: Do ZD w sztukach z dobiciem do wielokrotności N. Sztuki 1:1 — usuń opakowanie, nie zapisuj „1”.",
+    "Ustaw, jak przeliczać niedobór w sztukach na jednostki dokumentu ZD. Tryb A: 1 na ZD = opakowanie (wpisujesz liczbę paczek; możesz też włączyć kupno co M paczek). Tryb B: Do ZD w sztukach z dobiciem do wielokrotności N. Sztuki 1:1 — usuń opakowanie, nie zapisuj „1”.",
   packagingIntroTitle: "1 na ZD → N sztuk na magazynie i w sprzedaży",
   packagingIntroBody:
-    "Kreator liczy niedobór w sztukach. Kolumna „Do ZD” pokazuje jednostki dokumentu: albo liczbę paczek (tryb A), albo sztuki dobite do pełnego N (tryb B). W trybie A możesz też ustawić wielokrotność liczby paczek (np. kupno co 10 op.). Możesz też edytować opakowanie z wiersza listy wyniku.",
+    "Kreator liczy niedobór w sztukach. Kolumna „Do ZD” pokazuje jednostki dokumentu: albo liczbę paczek (tryb A), albo sztuki dobite do pełnego N (tryb B). W trybie A możesz osobno włączyć kupno w wielokrotności paczek (np. co 10 op.).",
   packagingUnitsLabel: "Sztuk w 1 na ZD",
   packagingUnitsHint:
     "Minimum 2 (max 100 000). W trybie A: ile sztuk = 1 na ZD. W trybie B: wielokrotność dobicia sztuk. Sztuki 1:1 — „Usuń”, nie zapisuj „1”.",
@@ -1082,17 +1082,24 @@ export const ZD_ESTIMATE_UI = {
     "Opakowanie wymaga co najmniej 2 sztuk na 1 jednostkę ZD. Sztuki 1:1 — usuń ustawienie.",
   packagingUnitsMaxError:
     "Liczba sztuk w opakowaniu jest zbyt duża (max 100 000).",
-  packagingOrderMultipleLabel: "Kupuj w wielokrotności (liczba paczek)",
+  packagingOrderMultipleEnableLabel: "Kupuj w wielokrotności paczek",
+  packagingOrderMultipleEnableHint:
+    "Włącz, gdy dostawca sprzedaje tylko pełne partie (np. zawsze co 10 op.). Wyłączone = Do ZD to dokładnie tyle opakowań, ile wynika z niedoboru — bez dodatkowego dobicia.",
+  packagingOrderMultipleLabel: "Wielokrotność (liczba paczek)",
   packagingOrderMultipleHint:
-    "Opcjonalnie. Np. 10 = gdy brakuje 2–3 op., Do ZD = 10 op. Puste = bez dodatkowego dobicia.",
+    "Np. 10 = przy niedoborze 2–3 op. Do ZD = 10 op. Minimum 2. Puste pole przy włączonej opcji nie jest dozwolone.",
   packagingOrderMultiplePlaceholder: "np. 10",
   packagingOrderMultipleShort: (m: number) => `co ${m}`,
+  packagingOrderMultipleOffCaption:
+    "Opcja wyłączona — bez dobicia liczby paczek do partii.",
+  packagingOrderMultipleRequiredError:
+    "Podaj wielokrotność (co najmniej 2) albo wyłącz opcję „Kupuj w wielokrotności paczek”.",
   packagingOrderMultipleMinError:
-    "Wielokrotność paczek wymaga co najmniej 2 (albo zostaw puste).",
+    "Wielokrotność paczek wymaga co najmniej 2.",
   packagingOrderMultipleMaxError:
     "Wielokrotność paczek jest zbyt duża (max 100 000).",
   packagingOrderMultipleModeHint:
-    "Dostępne tylko w trybie opakowań (1 na ZD = N szt).",
+    "Wielokrotność paczek jest dostępna tylko w trybie „1 na ZD = N szt”.",
   packagingDoZdOrderMultipleWarn: (m: number) =>
     `Ilość nie jest wielokrotnością ${m} op. — zwykle kupujecie co ${m}.`,
   packagingBulkUnitsHint:

@@ -221,7 +221,7 @@ describe("buildZdCreatePreviewFromOrderable", () => {
     expect(preview.lines.map((l) => l.symbol).sort()).toEqual(["A", "K"]);
     expect(preview.lines.find((l) => l.symbol === "K")?.ilosc).toBe(20);
     expect(preview.lines.find((l) => l.symbol === "K")?.bomOrPairLabel).toBe(
-      "komplet (kupujemy)"
+      "komplet (kupowany)"
     );
   });
 
@@ -422,7 +422,7 @@ describe("buildZdCreatePreviewFromOrderable", () => {
         bom: { role: "purchased_kit", purchaseTarget: "kit_only" },
         pair: null,
       })
-    ).toBe("komplet (sprz. zestawu)");
+    ).toBe("tylko komplet");
     expect(
       previewBomOrPairLabel({
         bom: {
@@ -431,7 +431,7 @@ describe("buildZdCreatePreviewFromOrderable", () => {
         },
         pair: null,
       })
-    ).toBe("komplet (ze składników)");
+    ).toBe("komplet ze składników");
     expect(
       previewBomOrPairLabel({
         bom: { role: "component" },
