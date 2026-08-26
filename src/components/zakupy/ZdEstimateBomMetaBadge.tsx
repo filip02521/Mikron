@@ -29,7 +29,7 @@ export function ZdEstimateBomMetaBadge({ bom }: { bom: ZdEstimateBomMeta }) {
           tone="indigo"
           title={
             bom.rollupSales != null && bom.rollupSales > 0
-              ? `${ZD_BOM_UI.badgeKitFromComponentsTitle} Rollup: +${formatQty(bom.rollupSales)}.`
+              ? `${ZD_BOM_UI.badgeKitFromComponentsTitle} Ze sprzedaży składników: +${formatQty(bom.rollupSales)}.`
               : ZD_BOM_UI.badgeKitFromComponentsTitle
           }
         />

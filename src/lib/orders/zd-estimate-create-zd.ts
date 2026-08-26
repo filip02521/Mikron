@@ -76,11 +76,11 @@ export function previewBomOrPairLabel(
     return "zestaw (składamy)";
   }
   if (bomRole === "purchased_kit") {
-    if (line.bom?.purchaseTarget === "kit_only") return "komplet (sprz. zestawu)";
+    if (line.bom?.purchaseTarget === "kit_only") return "tylko komplet";
     if (line.bom?.purchaseTarget === "kit_from_components") {
-      return "komplet (ze składników)";
+      return "komplet ze składników";
     }
-    return "komplet (kupujemy)";
+    return "komplet (kupowany)";
   }
   if (bomRole === "component") {
     return line.bom?.purchaseBlocked ? "składnik (poza zakupem)" : "składnik BOM";

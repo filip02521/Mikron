@@ -59,6 +59,7 @@ function PackagingDialogForm({
   }) => void;
   onClear: () => void;
 }) {
+  const orderEnableId = useId();
   const unitsId = useId();
   const orderMultId = useId();
   const labelId = useId();
@@ -68,6 +69,9 @@ function PackagingDialogForm({
   const pairPackBlocksPiecesMode = line.pair?.role === "pack";
   const [units, setUnits] = useState(
     String(existing?.unitsPerPackage ?? 10)
+  );
+  const [orderMultipleEnabled, setOrderMultipleEnabled] = useState(
+    existing?.orderMultiple != null && existing.orderMultiple >= 2
   );
   const [orderMultiple, setOrderMultiple] = useState(
     existing?.orderMultiple != null ? String(existing.orderMultiple) : ""
@@ -88,18 +92,25 @@ function PackagingDialogForm({
   const unitsOk = unitsCheck.ok;
   const unitsNum = unitsOk ? unitsCheck.units : Math.trunc(Number(units));
   const showUnitsError = units.trim() !== "" && !unitsOk;
-  const orderCheck = assertOrderMultiple(
-    effectiveMode === "pieces_multiple" ? null : orderMultiple
-  );
-  const orderOk = orderCheck.ok;
+  const packagesMode = isPackagingPackagesMode(effectiveMode);
+  const orderActive = packagesMode && orderMultipleEnabled;
+  const orderCheck = assertOrderMultiple(orderActive ? orderMultiple : null);
+  const orderValueOk =
+    !orderActive ||
+    (orderCheck.ok && orderCheck.orderMultiple != null);
   const showOrderError =
-    effectiveMode === "packages" &&
-    orderMultiple.trim() !== "" &&
-    !orderOk;
+    orderActive &&
+    (orderMultiple.trim() === "" || !orderCheck.ok || !orderValueOk);
+  const orderErrorMessage =
+    orderActive && orderMultiple.trim() === ""
+      ? ZD_ESTIMATE_UI.packagingOrderMultipleRequiredError
+      : !orderCheck.ok
+        ? orderCheck.message
+        : orderActive && orderCheck.orderMultiple == null
+          ? ZD_ESTIMATE_UI.packagingOrderMultipleRequiredError
+          : null;
   const resolvedOrderMultiple =
-    effectiveMode === "packages" && orderOk
-      ? orderCheck.orderMultiple
-      : null;
+    orderActive && orderCheck.ok ? orderCheck.orderMultiple : null;
   const preview = unitsOk
     ? resolveOrderQtyForLine(
         line,
@@ -117,8 +128,7 @@ function PackagingDialogForm({
       )
     : null;
   const roundup = preview ? formatZdPackRoundupLine(preview) : null;
-  const packagesMode = isPackagingPackagesMode(effectiveMode);
-  const canSave = unitsOk && orderOk;
+  const canSave = unitsOk && orderValueOk;
 
   return (
     <ModalShell
@@ -162,15 +172,12 @@ function PackagingDialogForm({
               className="min-h-11 w-full sm:w-auto"
               disabled={pending || !canSave}
               onClick={() => {
-                if (!unitsCheck.ok || !orderOk) return;
+                if (!unitsCheck.ok || !orderValueOk) return;
                 onSave({
                   unitsPerPackage: unitsCheck.units,
                   packageLabel: label.trim() || "op.",
                   documentUnitMode: effectiveMode,
-                  orderMultiple:
-                    effectiveMode === "pieces_multiple"
-                      ? null
-                      : orderCheck.orderMultiple,
+                  orderMultiple: resolvedOrderMultiple,
                   note: note.trim(),
                 });
               }}
@@ -264,7 +271,11 @@ function PackagingDialogForm({
             className="mt-0.5"
             checked={effectiveMode === "pieces_multiple"}
             disabled={pending || pairPackBlocksPiecesMode}
-            onChange={() => setDocumentUnitMode("pieces_multiple")}
+            onChange={() => {
+              setDocumentUnitMode("pieces_multiple");
+              setOrderMultipleEnabled(false);
+              setOrderMultiple("");
+            }}
           />
           <span className="min-w-0">
             <span className="block text-xs font-semibold text-slate-900">
@@ -325,31 +336,86 @@ function PackagingDialogForm({
       </div>
 
       {packagesMode ? (
-        <label htmlFor={orderMultId} className="block">
-          <span className="text-xs font-medium text-slate-600">
-            {ZD_ESTIMATE_UI.packagingOrderMultipleLabel}
-          </span>
-          <Input
-            id={orderMultId}
-            type="number"
-            min={ZD_PACKAGING_UNITS_MIN}
-            max={ZD_PACKAGING_UNITS_MAX}
-            value={orderMultiple}
-            onChange={(e) => setOrderMultiple(e.target.value)}
-            disabled={pending}
-            placeholder={ZD_ESTIMATE_UI.packagingOrderMultiplePlaceholder}
-            className="mt-1.5"
-            aria-invalid={showOrderError || undefined}
-          />
-          <p className={cn(panelTypography.caption, "mt-1")}>
-            {ZD_ESTIMATE_UI.packagingOrderMultipleHint}
-          </p>
-          {showOrderError && !orderOk ? (
-            <p className="mt-1 text-xs font-medium text-amber-900">
-              {orderCheck.message}
-            </p>
-          ) : null}
-        </label>
+        <div className="space-y-2">
+          <label
+            htmlFor={orderEnableId}
+            className={cn(
+              "flex cursor-pointer gap-2.5 rounded-lg border px-3 py-2.5",
+              orderMultipleEnabled
+                ? "border-indigo-200 bg-indigo-50/50"
+                : "border-slate-200 bg-white"
+            )}
+          >
+            <input
+              id={orderEnableId}
+              type="checkbox"
+              className="mt-0.5"
+              checked={orderMultipleEnabled}
+              disabled={pending}
+              onChange={(e) => {
+                const on = e.target.checked;
+                setOrderMultipleEnabled(on);
+                if (!on) setOrderMultiple("");
+              }}
+            />
+            <span className="min-w-0">
+              <span className="block text-xs font-semibold text-slate-900">
+                {ZD_ESTIMATE_UI.packagingOrderMultipleEnableLabel}
+              </span>
+              <span className="mt-0.5 block text-[11px] leading-snug text-slate-500">
+                {ZD_ESTIMATE_UI.packagingOrderMultipleEnableHint}
+              </span>
+            </span>
+          </label>
+          <div
+            className={cn(
+              "rounded-lg border px-3 py-2.5 transition",
+              orderMultipleEnabled
+                ? "border-slate-200 bg-white"
+                : "border-slate-200/80 bg-slate-100/80 opacity-70"
+            )}
+            aria-disabled={!orderMultipleEnabled}
+          >
+            <label htmlFor={orderMultId} className="block">
+              <span
+                className={cn(
+                  "text-xs font-medium",
+                  orderMultipleEnabled ? "text-slate-600" : "text-slate-400"
+                )}
+              >
+                {ZD_ESTIMATE_UI.packagingOrderMultipleLabel}
+              </span>
+              <Input
+                id={orderMultId}
+                type="number"
+                min={ZD_PACKAGING_UNITS_MIN}
+                max={ZD_PACKAGING_UNITS_MAX}
+                value={orderMultiple}
+                onChange={(e) => setOrderMultiple(e.target.value)}
+                disabled={pending || !orderMultipleEnabled}
+                placeholder={ZD_ESTIMATE_UI.packagingOrderMultiplePlaceholder}
+                className="mt-1.5"
+                aria-invalid={showOrderError || undefined}
+              />
+            </label>
+            {orderMultipleEnabled ? (
+              <>
+                <p className={cn(panelTypography.caption, "mt-1")}>
+                  {ZD_ESTIMATE_UI.packagingOrderMultipleHint}
+                </p>
+                {showOrderError && orderErrorMessage ? (
+                  <p className="mt-1 text-xs font-medium text-amber-900">
+                    {orderErrorMessage}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p className={cn(panelTypography.caption, "mt-1 text-slate-400")}>
+                {ZD_ESTIMATE_UI.packagingOrderMultipleOffCaption}
+              </p>
+            )}
+          </div>
+        </div>
       ) : (
         <p className={cn(panelTypography.caption)}>
           {ZD_ESTIMATE_UI.packagingOrderMultipleModeHint}
