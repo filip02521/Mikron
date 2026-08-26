@@ -76,9 +76,11 @@ export function previewBomOrPairLabel(
     return "zestaw (składamy)";
   }
   if (bomRole === "purchased_kit") {
-    return line.bom?.purchaseTarget === "kit_only"
-      ? "komplet (tylko K)"
-      : "komplet (kupujemy)";
+    if (line.bom?.purchaseTarget === "kit_only") return "komplet (sprz. zestawu)";
+    if (line.bom?.purchaseTarget === "kit_from_components") {
+      return "komplet (ze składników)";
+    }
+    return "komplet (kupujemy)";
   }
   if (bomRole === "component") {
     return line.bom?.purchaseBlocked ? "składnik (poza zakupem)" : "składnik BOM";
@@ -227,10 +229,17 @@ export function buildZdCreatePreviewFromOrderable(
       ilosc: finalZd,
       packagingHint: qty.hasPackaging
         ? isPackagingPackagesMode(qty.documentUnitMode)
-          ? formatZdPackUnitsPerLabelHint(
-              qty.unitsPerPackage,
-              qty.packageLabel
-            )
+          ? [
+              formatZdPackUnitsPerLabelHint(
+                qty.unitsPerPackage,
+                qty.packageLabel
+              ),
+              qty.orderMultiple >= 2
+                ? ZD_ESTIMATE_UI.packagingOrderMultipleShort(qty.orderMultiple)
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")
           : `dobij do ${qty.unitsPerPackage} szt`
         : null,
       individualExtraPieces: extraPieces > 0 ? extraPieces : undefined,
@@ -394,6 +403,7 @@ export function ensureZdCreateLinesCoverIndividualExtras(input: {
     number,
     ZdPackagingDocumentUnitMode
   > | null;
+  orderMultipleByTwId?: ReadonlyMap<number, number> | null;
 }): {
   lines: ZdCreateClientLineInput[];
   bumped: Array<{
@@ -426,11 +436,13 @@ export function ensureZdCreateLinesCoverIndividualExtras(input: {
     );
     const mode =
       input.packagingModeByTwId?.get(line.twId) ?? "packages";
+    const orderMultiple = input.orderMultipleByTwId?.get(line.twId) ?? null;
     const minZd = computeZdPackOrderQty(
       extraPieces,
       units,
       "op.",
-      mode
+      mode,
+      orderMultiple
     ).zdUnits;
     if (!(minZd > line.ilosc)) return { ...line };
     bumped.push({

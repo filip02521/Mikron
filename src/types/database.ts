@@ -525,7 +525,11 @@ export type VacationDelegation = {
 
 /** Skład/komplet ZD (zd_product_boms) — policy v1. */
 export type ZdProductBomDemandAllocation = "explode" | "separate";
-export type ZdProductBomPurchaseTarget = "components" | "as_sold" | "kit_only";
+export type ZdProductBomPurchaseTarget =
+  | "components"
+  | "as_sold"
+  | "kit_only"
+  | "kit_from_components";
 
 export type ZdProductBom = {
   id: string;

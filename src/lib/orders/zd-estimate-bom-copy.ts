@@ -28,7 +28,7 @@ export const ZD_BOM_UI = {
   panelTitle: "Składy",
   modalTitle: "Składy i komplety",
   modalHint:
-    "Trzy sposoby kupowania zestawu: (1) Składamy — zestaw nie idzie na ZD, sprzedaż obciąża składniki; (2) Kupujemy K i części — komplet i składniki osobno; (3) Tylko komplet — na ZD wyłącznie zestaw. Pary karton↔sztuki to osobny mechanizm w „Pary”.",
+    "Cztery sposoby kupowania zestawu: (1) Składamy — zestaw nie idzie na ZD, sprzedaż obciąża składniki; (2) Kupujemy K i części — komplet i składniki osobno; (3) Tylko komplet — na ZD wyłącznie zestaw z jego własnej sprzedaży; (4) Komplet ze składników — na ZD wyłącznie zestaw, a ilość bierze MAX ze sprzedaży składników (np. MIX 6 kolorów). Pary karton↔sztuki to osobny mechanizm w „Pary”.",
 
   introTitle: "Zestaw i składniki",
   introBody:
@@ -48,9 +48,12 @@ export const ZD_BOM_UI = {
   presetBuySeparate: "Kupujemy K i części",
   presetBuySeparateHint:
     "Komplet i składniki zamawiane osobno — każdy według własnej sprzedaży i stanu. Używaj, gdy komplet też bywa sprzedawany jako całość.",
-  presetKitOnly: "Tylko komplet",
+  presetKitOnly: "Tylko komplet (sprzedaż zestawu)",
   presetKitOnlyHint:
-    "Na ZD tylko zestaw. Składniki są zablokowane — przy ich sprzedaży lub prośbie zobaczysz alert (zamów zestaw albo zmień preset).",
+    "Na ZD tylko zestaw — według własnej sprzedaży i stanu kompletu. Składniki zablokowane (przy ich sprzedaży zobaczysz alert).",
+  presetKitFromComponents: "Komplet ze sprzedaży składników",
+  presetKitFromComponentsHint:
+    "Na ZD tylko zestaw. Ilość = własna sprzedaż kompletu + MAX(sprzedaż składnika ÷ szt. w zestawie). Prośby na składnikach też idą na komplet (MAX po kolorach). Składniki zablokowane.",
 
   stockAsCoverLabel: "Wliczaj stan zestawu do pokrycia składników",
   stockAsCoverHintSeed:
@@ -87,7 +90,8 @@ export const ZD_BOM_UI = {
   listCoverOff: "bez wliczania stanu zestawu",
   listPresetAssemble: "składamy",
   listPresetBuySeparate: "kupujemy K i części",
-  listPresetKitOnly: "tylko komplet",
+  listPresetKitOnly: "tylko komplet (sprz. zestawu)",
+  listPresetKitFromComponents: "komplet ze składników",
 
   badgeZestawTitle:
     "Składamy: ten towar nie idzie na ZD — popyt i pokrycie są na składnikach.",
@@ -98,12 +102,15 @@ export const ZD_BOM_UI = {
     "Komplet kupowany osobno: ten towar może iść na ZD wg własnej sprzedaży.",
   badgePurchasedKitRole: "kupowany",
   badgeKitOnlyTitle:
-    "Tylko komplet: na ZD idzie zestaw; składniki są zablokowane.",
-  badgeKitOnlyRole: "tylko kit",
+    "Tylko komplet (sprzedaż zestawu): na ZD idzie zestaw wg własnej sprzedaży; składniki zablokowane.",
+  badgeKitOnlyRole: "sprz. zestawu",
+  badgeKitFromComponentsTitle:
+    "Komplet ze składników: na ZD idzie zestaw; ilość = własna sprzedaż + MAX(sprzedaż składnika ÷ szt. w zestawie). Składniki zablokowane.",
+  badgeKitFromComponentsRole: "ze składników",
   badgeSkladnikRole: "składnik",
   badgePurchaseBlockedRole: "blokada",
   badgePurchaseBlockedTitle:
-    "Preset „Tylko komplet”: ten składnik nie idzie na ZD. Zamawiaj zestaw albo zmień preset.",
+    "Składnik poza zakupem katalogowym — zamawiaj komplet albo zmień preset składu.",
   /** @deprecated Używaj `badgeMissingChip` w chipie; to zdanie zostaje dla legacy. */
   badgeMissingShort: "Brak towaru w wyniku — ilość może być niepełna",
   badgeMissingChip: "brak",
@@ -133,7 +140,7 @@ export const ZD_BOM_UI = {
         : mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)
           ? "składniki mają"
           : "składników ma";
-    return `${n} ${noun} sprzedaż lub prośbę przy presecie „Tylko komplet” — na ZD nie wejdą jako pozycje katalogowe. Zmień preset albo zamów komplet.`;
+    return `${n} ${noun} sprzedaż lub prośbę przy presecie „Tylko komplet (sprzedaż zestawu)” — na ZD nie wejdą jako pozycje katalogowe. Zmień preset na „Komplet ze sprzedaży składników” (rollup + prośby na MIX), „Kupujemy K i części” / „Składamy”, albo zamów komplet ręcznie.`;
   },
   alertExplodeIncompleteTitle: "Skład „Składamy” niekompletny",
   alertExplodeIncompleteBody:
@@ -206,6 +213,8 @@ export function zdBomPresetLabel(preset: BomPresetId): string {
       return ZD_BOM_UI.presetBuySeparate;
     case "kit_only":
       return ZD_BOM_UI.presetKitOnly;
+    case "kit_from_components":
+      return ZD_BOM_UI.presetKitFromComponents;
     case "assemble":
     default:
       return ZD_BOM_UI.presetAssemble;
@@ -218,6 +227,8 @@ export function zdBomPresetListLabel(preset: BomPresetId): string {
       return ZD_BOM_UI.listPresetBuySeparate;
     case "kit_only":
       return ZD_BOM_UI.listPresetKitOnly;
+    case "kit_from_components":
+      return ZD_BOM_UI.listPresetKitFromComponents;
     case "assemble":
     default:
       return ZD_BOM_UI.listPresetAssemble;

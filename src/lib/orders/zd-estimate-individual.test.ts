@@ -321,6 +321,39 @@ describe("buildIndividualEstimateExtras", () => {
     expect(bundle.serviceLines[0]?.reason).toBe("bom_component_not_purchased");
   });
 
+  it("kit_from_components: prośby na kolorach → MAX kit-equiv na rodzicu", () => {
+    const bundle = buildIndividualEstimateExtras({
+      orders: [
+        pending({ id: "y1", subiektTwId: 1, qty: 3 }),
+        pending({ id: "y2", subiektTwId: 1, qty: 2 }),
+        pending({ id: "b1", subiektTwId: 2, qty: 4 }),
+      ],
+      lines: [
+        { tw_Id: 99, tw_Symbol: "MIX" },
+        { tw_Id: 1, tw_Symbol: "YELLOW" },
+        { tw_Id: 2, tw_Symbol: "BLUE" },
+      ],
+      boms: [
+        {
+          parentTwId: 99,
+          stockAsCover: false,
+          demandAllocation: "separate",
+          purchaseTarget: "kit_from_components",
+          components: [
+            { componentTwId: 1, qtyPerParent: 1 },
+            { componentTwId: 2, qtyPerParent: 1 },
+          ],
+        },
+      ],
+    });
+    // yellow 3+2=5, blue 4 → max=5 na MIX; nie service
+    expect(bundle.serviceLines).toHaveLength(0);
+    expect(bundle.byTwId.get(1)).toBeUndefined();
+    expect(bundle.byTwId.get(2)).toBeUndefined();
+    expect(bundle.byTwId.get(99)?.extraPieces).toBe(5);
+    expect(bundle.byTwId.get(99)?.requests).toHaveLength(3);
+  });
+
   it("składnik w kit_only i explode → explode wygrywa (rezerwa katalogowa)", () => {
     const bundle = buildIndividualEstimateExtras({
       orders: [pending({ id: "p", subiektTwId: 1, qty: 2 })],

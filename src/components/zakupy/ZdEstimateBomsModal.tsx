@@ -427,6 +427,11 @@ export function ZdEstimateBomsModal({
                   ZD_BOM_UI.presetBuySeparateHint,
                 ],
                 ["kit_only", ZD_BOM_UI.presetKitOnly, ZD_BOM_UI.presetKitOnlyHint],
+                [
+                  "kit_from_components",
+                  ZD_BOM_UI.presetKitFromComponents,
+                  ZD_BOM_UI.presetKitFromComponentsHint,
+                ],
               ] as const
             ).map(([id, title, hint]) => (
               <label
@@ -532,6 +537,11 @@ export function ZdEstimateBomsModal({
                   ZD_BOM_UI.presetBuySeparateHint,
                 ],
                 ["kit_only", ZD_BOM_UI.presetKitOnly, ZD_BOM_UI.presetKitOnlyHint],
+                [
+                  "kit_from_components",
+                  ZD_BOM_UI.presetKitFromComponents,
+                  ZD_BOM_UI.presetKitFromComponentsHint,
+                ],
               ] as const
             ).map(([id, title, hint]) => (
               <label

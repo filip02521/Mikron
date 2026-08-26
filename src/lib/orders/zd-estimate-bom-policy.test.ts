@@ -22,11 +22,16 @@ describe("zd-estimate-bom-policy", () => {
       demandAllocation: "separate",
       purchaseTarget: "kit_only",
     });
+    expect(policyFromBomPreset("kit_from_components")).toEqual({
+      demandAllocation: "separate",
+      purchaseTarget: "kit_from_components",
+    });
   });
 
   it("rejects illegal pairs", () => {
     expect(isValidBomPolicyPair("explode", "as_sold")).toBe(false);
     expect(isValidBomPolicyPair("separate", "components")).toBe(false);
+    expect(isValidBomPolicyPair("separate", "kit_from_components")).toBe(true);
     expect(() => assertValidBomPolicy("explode", "kit_only")).toThrow();
   });
 

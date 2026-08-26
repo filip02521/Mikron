@@ -4,6 +4,7 @@ import {
   type ManualZdEstimateLine,
 } from "./zd-estimate-manual";
 import {
+  assertOrderMultiple,
   assertPackagingUnits,
   computeZdPackOrderQty,
   effectiveZdDocumentUnits,
@@ -16,6 +17,7 @@ import {
   formatZdPackTableRatioLabel,
   formatZdPackUnitsPerLabelHint,
   getZdPackRoundupInfo,
+  isZdUnitsMultipleOfOrderMultiple,
   lineAllowsZdDocumentUnitOverride,
   piecesArrivingForZdUnits,
   packagingRowsToRefreshLookup,
@@ -132,6 +134,53 @@ describe("computeZdPackOrderQty", () => {
       roundedUp: false,
     });
   });
+
+  it("orderMultiple M=10, N=48: niedobór 2–3 op. → 10; exact 10; 11→20; need 0→0", () => {
+    // 144 szt = 3 op. → ceil do 10
+    expect(computeZdPackOrderQty(144, 48, "op.", "packages", 10)).toMatchObject({
+      zdUnits: 10,
+      piecesArriving: 480,
+      packsBeforeOrderMultiple: 3,
+      orderMultiple: 10,
+      roundedUp: true,
+    });
+    // 96 szt = 2 op. → 10
+    expect(computeZdPackOrderQty(96, 48, "op.", "packages", 10).zdUnits).toBe(
+      10
+    );
+    // 480 szt = 10 op. exact
+    expect(computeZdPackOrderQty(480, 48, "op.", "packages", 10)).toMatchObject({
+      zdUnits: 10,
+      packsBeforeOrderMultiple: 10,
+      roundedUp: false,
+    });
+    // 481 → 11 → 20
+    expect(computeZdPackOrderQty(481, 48, "op.", "packages", 10)).toMatchObject({
+      zdUnits: 20,
+      packsBeforeOrderMultiple: 11,
+    });
+    // bez M: 144 → 3
+    expect(computeZdPackOrderQty(144, 48, "op.", "packages", null).zdUnits).toBe(
+      3
+    );
+    // need 0 → nigdy nie dobijamy do M
+    expect(computeZdPackOrderQty(0, 48, "op.", "packages", 10)).toMatchObject({
+      zdUnits: 0,
+      piecesArriving: 0,
+      packsBeforeOrderMultiple: null,
+    });
+  });
+
+  it("Mode B ignoruje orderMultiple", () => {
+    const q = computeZdPackOrderQty(8, 5, "op.", "pieces_multiple", 10);
+    expect(q).toMatchObject({
+      zdUnits: 10,
+      piecesArriving: 10,
+      orderMultiple: 0,
+      packsBeforeOrderMultiple: null,
+      documentUnitMode: "pieces_multiple",
+    });
+  });
 });
 
 describe("assertPackagingUnits + format helpers", () => {
@@ -150,9 +199,10 @@ describe("assertPackagingUnits + format helpers", () => {
     });
   });
 
-  it("piecesArrivingForZdUnits: A × N, B identity", () => {
+  it("piecesArrivingForZdUnits: A × N, B identity — bez M", () => {
     expect(piecesArrivingForZdUnits(2, 10)).toBe(20);
     expect(piecesArrivingForZdUnits(2, 10, "packages")).toBe(20);
+    expect(piecesArrivingForZdUnits(2, 48)).toBe(96);
     expect(piecesArrivingForZdUnits(10, 5, "pieces_multiple")).toBe(10);
     expect(piecesArrivingForZdUnits(0, 10)).toBe(0);
     expect(piecesArrivingForZdUnits(5, 1)).toBe(5);
@@ -166,18 +216,55 @@ describe("assertPackagingUnits + format helpers", () => {
     expect(zdDocumentUnitsToPieces(10, 5, "pieces_multiple")).toBe(10);
   });
 
-  it("packagingRowsToRefreshLookup: N + tryb", () => {
+  it("packagingRowsToRefreshLookup: N + tryb + M", () => {
     const map = packagingRowsToRefreshLookup([
       {
         subiektTwId: 7,
         unitsPerPackage: 10,
         documentUnitMode: "pieces_multiple",
+        orderMultiple: 10, // Mode B — strip M
+      },
+      {
+        subiektTwId: 8,
+        unitsPerPackage: 48,
+        documentUnitMode: "packages",
+        orderMultiple: 10,
       },
     ]);
     expect(map.get(7)).toEqual({
       unitsPerPackage: 10,
       documentUnitMode: "pieces_multiple",
+      orderMultiple: null,
     });
+    expect(map.get(8)).toEqual({
+      unitsPerPackage: 48,
+      documentUnitMode: "packages",
+      orderMultiple: 10,
+    });
+  });
+
+  it("assertOrderMultiple + isZdUnitsMultipleOfOrderMultiple", () => {
+    expect(assertOrderMultiple(null)).toEqual({
+      ok: true,
+      orderMultiple: null,
+    });
+    expect(assertOrderMultiple("")).toEqual({
+      ok: true,
+      orderMultiple: null,
+    });
+    expect(assertOrderMultiple(1)).toEqual({
+      ok: true,
+      orderMultiple: null,
+    });
+    expect(assertOrderMultiple(10)).toEqual({
+      ok: true,
+      orderMultiple: 10,
+    });
+    expect(assertOrderMultiple(100_001).ok).toBe(false);
+    expect(isZdUnitsMultipleOfOrderMultiple(10, 10)).toBe(true);
+    expect(isZdUnitsMultipleOfOrderMultiple(3, 10)).toBe(false);
+    expect(isZdUnitsMultipleOfOrderMultiple(0, 10)).toBe(true);
+    expect(isZdUnitsMultipleOfOrderMultiple(7, null)).toBe(true);
   });
 
   it("formatZdPackDocumentLabel / roundup / hint ze trim label", () => {
@@ -208,9 +295,18 @@ describe("assertPackagingUnits + format helpers", () => {
       extra: 4,
       need: 1,
       arrive: 5,
+      packsBefore: null,
+      packsAfter: null,
     });
     expect(formatZdPackRoundupLine(round)).toBe("dobicie +4 szt (1→5)");
     expect(getZdPackRoundupInfo(computeZdPackOrderQty(5, 5))).toBeNull();
+
+    const packMult = computeZdPackOrderQty(144, 48, "op.", "packages", 10);
+    expect(getZdPackRoundupInfo(packMult)).toMatchObject({
+      packsBefore: 3,
+      packsAfter: 10,
+    });
+    expect(formatZdPackRoundupLine(packMult)).toBe("3→10 op.");
   });
 });
 
@@ -264,6 +360,60 @@ describe("resolveOrderQtyForLine + para", () => {
     expect(q.unitsPerPackage).toBe(100);
     expect(q.zdUnits).toBe(1);
     expect(q.piecesArriving).toBe(100);
+  });
+
+  it("para pack + orderMultiple M — dobija paczki", () => {
+    const q = resolveOrderQtyForLine(
+      {
+        tw_Id: 10,
+        tw_Symbol: "P",
+        tw_Nazwa: "P",
+        tw_IdGrupa: null,
+        grt_Nazwa: "—",
+        tw_Stan: 0,
+        tw_StanRez: 0,
+        dostepne: 0,
+        sprzedazOkres: 0,
+        wzNiepowiazaneOkres: 0,
+        sprzedazDziennie: 0,
+        celZapasu: 144,
+        celZapasuTracked: 144,
+        salesTrackDelta: 0,
+        salesTrackReasons: [],
+        salesTrackConfidence: 0,
+        salesTrackQtyReview: false,
+        salesTrackHeldExtraQty: 0,
+        salesTrackAllowedExtraQty: 0,
+        otwarteZkBezRez: 0,
+        otwarteZkZarezerwowane: 0,
+        otwarteZd: 0,
+        doZamowieniaApi: 0,
+        doZamowieniaReczne: 144,
+        wkladZk: 0,
+        pair: {
+          role: "pack",
+          twinTwId: 20,
+          unitsPerPack: 48,
+          sprzedazSzt: 0,
+          wzNiepowiazaneSzt: 0,
+          coverSzt: 0,
+          pieceSprzedaz: 0,
+          packSprzedaz: 0,
+          pieceWzNiepowiazane: 0,
+          packWzNiepowiazane: 0,
+          pieceDostepne: 0,
+          packDostepne: 0,
+        },
+      },
+      {
+        unitsPerPackage: 48,
+        packageLabel: "op.",
+        orderMultiple: 10,
+      }
+    );
+    expect(q.zdUnits).toBe(10);
+    expect(q.packsBeforeOrderMultiple).toBe(3);
+    expect(q.piecesArriving).toBe(480);
   });
 
   it("piece w parze → zdUnits 0 (TSV / orderable)", () => {
