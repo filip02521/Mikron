@@ -21,6 +21,20 @@ export function ZdEstimateBomMetaBadge({ bom }: { bom: ZdEstimateBomMeta }) {
   }
 
   if (bom.role === "purchased_kit") {
+    if (bom.purchaseTarget === "kit_from_components") {
+      return (
+        <ZdEstimateStatusBadge
+          kind="Komplet"
+          meta={ZD_BOM_UI.badgeKitFromComponentsRole}
+          tone="indigo"
+          title={
+            bom.rollupSales != null && bom.rollupSales > 0
+              ? `${ZD_BOM_UI.badgeKitFromComponentsTitle} Rollup: +${formatQty(bom.rollupSales)}.`
+              : ZD_BOM_UI.badgeKitFromComponentsTitle
+          }
+        />
+      );
+    }
     const kitOnly = bom.purchaseTarget === "kit_only";
     return (
       <ZdEstimateStatusBadge

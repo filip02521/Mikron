@@ -3,9 +3,17 @@
  */
 
 export type BomDemandAllocation = "explode" | "separate";
-export type BomPurchaseTarget = "components" | "as_sold" | "kit_only";
+export type BomPurchaseTarget =
+  | "components"
+  | "as_sold"
+  | "kit_only"
+  | "kit_from_components";
 
-export type BomPresetId = "assemble" | "buy_separate" | "kit_only";
+export type BomPresetId =
+  | "assemble"
+  | "buy_separate"
+  | "kit_only"
+  | "kit_from_components";
 
 export type BomPolicyPair = {
   demandAllocation: BomDemandAllocation;
@@ -16,6 +24,7 @@ export const BOM_PRESET_IDS: readonly BomPresetId[] = [
   "assemble",
   "buy_separate",
   "kit_only",
+  "kit_from_components",
 ] as const;
 
 export function policyFromBomPreset(preset: BomPresetId): BomPolicyPair {
@@ -24,6 +33,11 @@ export function policyFromBomPreset(preset: BomPresetId): BomPolicyPair {
       return { demandAllocation: "separate", purchaseTarget: "as_sold" };
     case "kit_only":
       return { demandAllocation: "separate", purchaseTarget: "kit_only" };
+    case "kit_from_components":
+      return {
+        demandAllocation: "separate",
+        purchaseTarget: "kit_from_components",
+      };
     case "assemble":
     default:
       return { demandAllocation: "explode", purchaseTarget: "components" };
@@ -38,6 +52,9 @@ export function presetFromBomPolicy(
   const t = normalizePurchaseTarget(target);
   if (a === "separate" && t === "as_sold") return "buy_separate";
   if (a === "separate" && t === "kit_only") return "kit_only";
+  if (a === "separate" && t === "kit_from_components") {
+    return "kit_from_components";
+  }
   return "assemble";
 }
 
@@ -48,8 +65,21 @@ export function normalizeDemandAllocation(
 }
 
 export function normalizePurchaseTarget(raw: unknown): BomPurchaseTarget {
-  if (raw === "as_sold" || raw === "kit_only") return raw;
+  if (
+    raw === "as_sold" ||
+    raw === "kit_only" ||
+    raw === "kit_from_components"
+  ) {
+    return raw;
+  }
   return "components";
+}
+
+/** Składniki poza ZD — klasyczny kit_only albo rollup ze składników. */
+export function purchaseTargetBlocksComponents(
+  target: BomPurchaseTarget | string | null | undefined
+): boolean {
+  return target === "kit_only" || target === "kit_from_components";
 }
 
 export function isValidBomPolicyPair(
@@ -57,7 +87,11 @@ export function isValidBomPolicyPair(
   target: BomPurchaseTarget
 ): boolean {
   if (allocation === "explode") return target === "components";
-  return target === "as_sold" || target === "kit_only";
+  return (
+    target === "as_sold" ||
+    target === "kit_only" ||
+    target === "kit_from_components"
+  );
 }
 
 export function assertValidBomPolicy(
@@ -89,7 +123,8 @@ export function resolveBomPolicyFromInput(input: {
   if (
     input.preset === "assemble" ||
     input.preset === "buy_separate" ||
-    input.preset === "kit_only"
+    input.preset === "kit_only" ||
+    input.preset === "kit_from_components"
   ) {
     return policyFromBomPreset(input.preset);
   }

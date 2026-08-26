@@ -585,4 +585,42 @@ describe("manualLinesToTsv", () => {
     expect(tsvB.split("\n")[1]?.split("\t")[2]).toBe("10");
     expect(tsvB.split("\n")[1]?.split("\t")[4]).toBe("10");
   });
+
+  it("packages + orderMultiple: do_zd dobija do M", () => {
+    const m = mapZdEstimateLineToManual(
+      {
+        tw_Id: 1,
+        tw_Symbol: "C202085",
+        tw_Nazwa: "Towar",
+        celZapasu: 144,
+        dostepne: 0,
+        otwarteZd: 0,
+        doZamowienia: 144,
+        otwarteZkBezRez: 0,
+        tw_Stan: 0,
+        tw_StanRez: 0,
+        sprzedazOkres: 0,
+        wzNiepowiazaneOkres: 0,
+        sprzedazDziennie: 0,
+      },
+      { salesTrack: false }
+    );
+    expect(m.doZamowieniaReczne).toBe(144);
+    const tsv = manualLinesToTsv(
+      [m],
+      new Map([
+        [
+          1,
+          {
+            unitsPerPackage: 48,
+            documentUnitMode: "packages",
+            orderMultiple: 10,
+          },
+        ],
+      ])
+    );
+    // 144/48 = 3 op. → ceil do 10
+    expect(tsv.split("\n")[1]?.split("\t")[2]).toBe("10");
+    expect(tsv.split("\n")[1]?.split("\t")[4]).toBe("480");
+  });
 });

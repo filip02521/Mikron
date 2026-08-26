@@ -9,6 +9,7 @@ import type { ZdProductBomRef } from "@/lib/orders/zd-estimate-bom";
 import {
   normalizeDemandAllocation,
   normalizePurchaseTarget,
+  purchaseTargetBlocksComponents,
 } from "@/lib/orders/zd-estimate-bom-policy";
 import {
   indexZdProductPairs,
@@ -279,10 +280,10 @@ function indexBomTwKinds(boms: readonly ZdProductBomRef[]): Map<number, BomTwKin
     }
   }
 
-  // 2) kit_only components — pomiń parentów oraz składniki objęte explode.
+  // 2) kit_only / kit_from_components components — pomiń parentów oraz składniki objęte explode.
   for (const bom of boms) {
     const target = normalizePurchaseTarget(bom.purchaseTarget);
-    if (target !== "kit_only") continue;
+    if (!purchaseTargetBlocksComponents(target)) continue;
     for (const c of bom.components ?? []) {
       const cid = Math.trunc(Number(c.componentTwId)) || 0;
       if (!(cid > 0)) continue;
@@ -350,7 +351,8 @@ export type BuildIndividualEstimateExtrasInput = {
 /**
  * Buduje rezerwę po tw_Id + linie usług.
  * Assembled K → explode na składniki; purchased kit → rezerwa na K;
- * kit_only component → service.
+ * kit_only component → service;
+ * kit_from_components component → rezerwa na rodzicu (MAX kit-equiv po składnikach).
  */
 export function buildIndividualEstimateExtras(
   input: BuildIndividualEstimateExtrasInput
@@ -389,6 +391,16 @@ export function buildIndividualEstimateExtras(
             .filter((id) => id > 0)
         );
 
+  /** parentTw → sumy kit-equiv per składnik + zamówienia (MAX po składnikach jak sprzedaż). */
+  const kitFromComponentsPending = new Map<
+    number,
+    {
+      byComponent: Map<number, number>;
+      requests: ReturnType<typeof toRequestRef>[];
+      overlapContributions: ReturnType<typeof toOverlapContribution>[];
+    }
+  >();
+
   function addExtra(targetTw: number, order: ZdEstimatePendingIndividualOrder, qty: number) {
     let tw = targetTw;
     const pairHit = pairIndex.get(tw);
@@ -419,6 +431,72 @@ export function buildIndividualEstimateExtras(
         overlapContributions: [contribution],
       });
     }
+  }
+
+  function noteKitFromComponentsExtra(
+    parentTwId: number,
+    componentTwId: number,
+    kitEquiv: number,
+    order: ZdEstimatePendingIndividualOrder
+  ) {
+    const kits = Math.max(0, Math.ceil(kitEquiv));
+    if (!(kits > 0) || !(parentTwId > 0)) {
+      pushService(serviceLines, "bom_component_not_purchased", order);
+      return;
+    }
+    if (fetchFailed.has(parentTwId)) {
+      pushService(serviceLines, "fetch_failed", order);
+      return;
+    }
+    if (!byTw.has(parentTwId) && !fetchSeen.has(parentTwId)) {
+      fetchSeen.add(parentTwId);
+      twIdsToFetch.push(parentTwId);
+    }
+    const prev = kitFromComponentsPending.get(parentTwId);
+    const contribution = toOverlapContribution(order, kits);
+    const req = toRequestRef(order);
+    if (!prev) {
+      kitFromComponentsPending.set(parentTwId, {
+        byComponent: new Map([[componentTwId, kits]]),
+        requests: [req],
+        overlapContributions: [contribution],
+      });
+      return;
+    }
+    prev.byComponent.set(
+      componentTwId,
+      (prev.byComponent.get(componentTwId) ?? 0) + kits
+    );
+    prev.requests.push(req);
+    prev.overlapContributions.push(contribution);
+  }
+
+  function routeBlockedComponentExtra(
+    bomHit: Extract<BomTwKind, { kind: "kit_only_component" }>,
+    componentTwId: number,
+    order: ZdEstimatePendingIndividualOrder,
+    factor: number
+  ) {
+    const target = normalizePurchaseTarget(bomHit.bom.purchaseTarget);
+    if (target === "kit_from_components") {
+      const parentTwId = Math.trunc(Number(bomHit.bom.parentTwId)) || 0;
+      const comp = (bomHit.bom.components ?? []).find(
+        (c) => Math.trunc(Number(c.componentTwId)) === componentTwId
+      );
+      const qtyPer = Math.trunc(Number(comp?.qtyPerParent)) || 0;
+      if (!(parentTwId > 0) || qtyPer < 1) {
+        pushService(serviceLines, "bom_component_not_purchased", order);
+        return;
+      }
+      noteKitFromComponentsExtra(
+        parentTwId,
+        componentTwId,
+        (order.qty * factor) / qtyPer,
+        order
+      );
+      return;
+    }
+    pushService(serviceLines, "bom_component_not_purchased", order);
   }
 
   /** Explode prośby przez nested zestawy „Składamy” aż do liścia (z qty). */
@@ -452,7 +530,7 @@ export function buildIndividualEstimateExtras(
       return;
     }
     if (bomHit?.kind === "kit_only_component") {
-      pushService(serviceLines, "bom_component_not_purchased", order);
+      routeBlockedComponentExtra(bomHit, targetTw, order, factor);
       return;
     }
     addExtra(targetTw, order, order.qty * factor);
@@ -487,12 +565,33 @@ export function buildIndividualEstimateExtras(
     }
 
     if (bomHit?.kind === "kit_only_component") {
-      pushService(serviceLines, "bom_component_not_purchased", order);
+      routeBlockedComponentExtra(bomHit, targetTw, order, 1);
       continue;
     }
 
     // purchased_kit parent i zwykłe SKU — rezerwa katalogowa (z pair retarget w addExtra).
     addExtra(targetTw, order, order.qty);
+  }
+
+  for (const [parentTwId, agg] of kitFromComponentsPending) {
+    let kitEquiv = 0;
+    for (const n of agg.byComponent.values()) {
+      kitEquiv = Math.max(kitEquiv, n);
+    }
+    if (!(kitEquiv > 0)) continue;
+    const prev = byTwId.get(parentTwId);
+    if (prev) {
+      prev.extraPieces += kitEquiv;
+      prev.requests.push(...agg.requests);
+      if (!prev.overlapContributions) prev.overlapContributions = [];
+      prev.overlapContributions.push(...agg.overlapContributions);
+    } else {
+      byTwId.set(parentTwId, {
+        extraPieces: kitEquiv,
+        requests: agg.requests,
+        overlapContributions: agg.overlapContributions,
+      });
+    }
   }
 
   let extraPiecesSum = 0;

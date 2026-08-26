@@ -168,6 +168,32 @@ describe("buildZdCreatePreviewFromOrderable", () => {
     expect(preview.lines.find((l) => l.symbol === "PLYN")?.ilosc).toBe(7);
   });
 
+  it("packages + orderMultiple: Do ZD i hint „co M”", () => {
+    const lines = [
+      baseLine({
+        tw_Id: 1,
+        tw_Symbol: "C202085",
+        celZapasu: 144,
+        celZapasuTracked: 144,
+        doZamowieniaReczne: 144,
+      }),
+    ];
+    const pack = new Map([
+      [
+        1,
+        {
+          unitsPerPackage: 48,
+          packageLabel: "op.",
+          orderMultiple: 10,
+        },
+      ],
+    ]);
+    const preview = buildZdCreatePreviewFromOrderable(lines, pack);
+    expect(preview.lines[0]?.ilosc).toBe(10);
+    expect(preview.lines[0]?.packagingHint).toBe("48 szt / 1 op. · co 10");
+    expect(preview.lines[0]?.piecesArriving).toBe(480);
+  });
+
   it("purchased_kit wchodzi do preview Create", () => {
     const lines = [
       baseLine({
@@ -394,7 +420,16 @@ describe("buildZdCreatePreviewFromOrderable", () => {
         bom: { role: "purchased_kit", purchaseTarget: "kit_only" },
         pair: null,
       })
-    ).toBe("komplet (tylko K)");
+    ).toBe("komplet (sprz. zestawu)");
+    expect(
+      previewBomOrPairLabel({
+        bom: {
+          role: "purchased_kit",
+          purchaseTarget: "kit_from_components",
+        },
+        pair: null,
+      })
+    ).toBe("komplet (ze składników)");
     expect(
       previewBomOrPairLabel({
         bom: { role: "component" },
@@ -822,6 +857,19 @@ describe("ensureZdCreateLinesCoverIndividualExtras", () => {
     expect(res.lines[0]?.ilosc).toBe(20);
     expect(res.bumped).toEqual([
       { twId: 10, from: 1, to: 20, extraPieces: 15 },
+    ]);
+  });
+
+  it("packages + orderMultiple: extras 144 / N=48 / M=10 → bump do 10", () => {
+    const res = ensureZdCreateLinesCoverIndividualExtras({
+      lines: [{ twId: 10, ilosc: 3, symbol: "C202085" }],
+      extraPiecesByTwId: new Map([[10, 144]]),
+      unitsPerPackageByTwId: new Map([[10, 48]]),
+      orderMultipleByTwId: new Map([[10, 10]]),
+    });
+    expect(res.lines[0]?.ilosc).toBe(10);
+    expect(res.bumped).toEqual([
+      { twId: 10, from: 3, to: 10, extraPieces: 144 },
     ]);
   });
 });

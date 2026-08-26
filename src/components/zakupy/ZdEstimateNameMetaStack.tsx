@@ -42,9 +42,11 @@ function pairSummary(
 function bomSummary(bom: ZdEstimateBomMeta): string {
   if (bom.role === "assembled_parent") return "Skład · nie ZD";
   if (bom.role === "purchased_kit") {
-    return bom.purchaseTarget === "kit_only"
-      ? "Komplet · tylko kit"
-      : "Komplet · kupowany";
+    if (bom.purchaseTarget === "kit_only") return "Komplet · sprz. zestawu";
+    if (bom.purchaseTarget === "kit_from_components") {
+      return "Komplet · ze składników";
+    }
+    return "Komplet · kupowany";
   }
   if (bom.componentMissing) return "Skład · brak";
   if (bom.purchaseBlocked) return "Skład · blokada";

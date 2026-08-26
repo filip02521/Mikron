@@ -1806,6 +1806,7 @@ export function ZdEstimateWorkbench({
         unitsPerPackage: row.unitsPerPackage,
         packageLabel: row.packageLabel,
         documentUnitMode: row.documentUnitMode,
+        orderMultiple: row.orderMultiple,
       });
     }
     for (const pair of productPairs) {
@@ -1814,6 +1815,7 @@ export function ZdEstimateWorkbench({
         unitsPerPackage: pair.unitsPerPack,
         packageLabel: existing?.packageLabel ?? "op.",
         documentUnitMode: "packages",
+        orderMultiple: existing?.orderMultiple ?? null,
       });
     }
     return map;
@@ -1951,10 +1953,20 @@ export function ZdEstimateWorkbench({
 
   const kitOnlyBlockedAlertCount = useMemo(() => {
     if (!lines?.length && individualBundle.serviceLines.length === 0) return 0;
+    const byTw = new Map((lines ?? []).map((l) => [l.tw_Id, l]));
     const blockedTwIds = new Set<number>();
     for (const l of lines ?? []) {
       if (l.bom?.purchaseBlocked !== true) continue;
-      // Piece/assembled_parent mają Sprzed.=0 w kolumnie — bierz kanał / wkład.
+      const parents = l.bom.parentTwIds ?? [];
+      // Przy „komplet ze składników” popyt idzie na kit — bez alertu „bez ścieżki”.
+      if (
+        parents.length > 0 &&
+        !parents.some(
+          (pid) => byTw.get(pid)?.bom?.purchaseTarget === "kit_only"
+        )
+      ) {
+        continue;
+      }
       if (zdEstimateLineSalesDemandSignal(l) > 0) blockedTwIds.add(l.tw_Id);
     }
     let serviceHits = 0;
@@ -4922,6 +4934,7 @@ export function ZdEstimateWorkbench({
     unitsPerPackage: number;
     packageLabel: string;
     documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode;
+    orderMultiple: number | null;
     note: string;
   }) => {
     const products = toBulkProducts(selectedLines);
@@ -4933,6 +4946,7 @@ export function ZdEstimateWorkbench({
         unitsPerPackage: input.unitsPerPackage,
         packageLabel: input.packageLabel,
         documentUnitMode: input.documentUnitMode,
+        orderMultiple: input.orderMultiple,
         note: input.note.trim() || undefined,
       });
       if (!res.ok) {
@@ -5405,6 +5419,7 @@ export function ZdEstimateWorkbench({
     unitsPerPackage: number;
     packageLabel: string;
     documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode;
+    orderMultiple: number | null;
     note: string;
   }) => {
     const line = packagingCandidate;
@@ -5421,6 +5436,7 @@ export function ZdEstimateWorkbench({
           unitsPerPackage: input.unitsPerPackage,
           packageLabel: input.packageLabel,
           documentUnitMode: input.documentUnitMode,
+          orderMultiple: input.orderMultiple,
           note: input.note,
         });
         if (!res.ok) {

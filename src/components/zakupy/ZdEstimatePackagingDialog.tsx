@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import {
+  assertOrderMultiple,
   assertPackagingUnits,
   formatZdPackHint,
   formatZdPackOrderPreviewLine,
@@ -53,11 +54,13 @@ function PackagingDialogForm({
     unitsPerPackage: number;
     packageLabel: string;
     documentUnitMode: ZdPackagingDocumentUnitMode;
+    orderMultiple: number | null;
     note: string;
   }) => void;
   onClear: () => void;
 }) {
   const unitsId = useId();
+  const orderMultId = useId();
   const labelId = useId();
   const noteId = useId();
   const modePackagesId = useId();
@@ -65,6 +68,9 @@ function PackagingDialogForm({
   const pairPackBlocksPiecesMode = line.pair?.role === "pack";
   const [units, setUnits] = useState(
     String(existing?.unitsPerPackage ?? 10)
+  );
+  const [orderMultiple, setOrderMultiple] = useState(
+    existing?.orderMultiple != null ? String(existing.orderMultiple) : ""
   );
   const [label, setLabel] = useState(existing?.packageLabel ?? "op.");
   const [note, setNote] = useState(existing?.note ?? "");
@@ -82,6 +88,18 @@ function PackagingDialogForm({
   const unitsOk = unitsCheck.ok;
   const unitsNum = unitsOk ? unitsCheck.units : Math.trunc(Number(units));
   const showUnitsError = units.trim() !== "" && !unitsOk;
+  const orderCheck = assertOrderMultiple(
+    effectiveMode === "pieces_multiple" ? null : orderMultiple
+  );
+  const orderOk = orderCheck.ok;
+  const showOrderError =
+    effectiveMode === "packages" &&
+    orderMultiple.trim() !== "" &&
+    !orderOk;
+  const resolvedOrderMultiple =
+    effectiveMode === "packages" && orderOk
+      ? orderCheck.orderMultiple
+      : null;
   const preview = unitsOk
     ? resolveOrderQtyForLine(
         line,
@@ -89,6 +107,7 @@ function PackagingDialogForm({
           unitsPerPackage: unitsCheck.units,
           packageLabel: label.trim() || "op.",
           documentUnitMode: effectiveMode,
+          orderMultiple: resolvedOrderMultiple,
         },
         individualExtraPieces,
         extraOnly,
@@ -99,6 +118,7 @@ function PackagingDialogForm({
     : null;
   const roundup = preview ? formatZdPackRoundupLine(preview) : null;
   const packagesMode = isPackagingPackagesMode(effectiveMode);
+  const canSave = unitsOk && orderOk;
 
   return (
     <ModalShell
@@ -140,13 +160,17 @@ function PackagingDialogForm({
             <Button
               type="button"
               className="min-h-11 w-full sm:w-auto"
-              disabled={pending || !unitsOk}
+              disabled={pending || !canSave}
               onClick={() => {
-                if (!unitsCheck.ok) return;
+                if (!unitsCheck.ok || !orderOk) return;
                 onSave({
                   unitsPerPackage: unitsCheck.units,
                   packageLabel: label.trim() || "op.",
                   documentUnitMode: effectiveMode,
+                  orderMultiple:
+                    effectiveMode === "pieces_multiple"
+                      ? null
+                      : orderCheck.orderMultiple,
                   note: note.trim(),
                 });
               }}
@@ -300,6 +324,38 @@ function PackagingDialogForm({
         </div>
       </div>
 
+      {packagesMode ? (
+        <label htmlFor={orderMultId} className="block">
+          <span className="text-xs font-medium text-slate-600">
+            {ZD_ESTIMATE_UI.packagingOrderMultipleLabel}
+          </span>
+          <Input
+            id={orderMultId}
+            type="number"
+            min={ZD_PACKAGING_UNITS_MIN}
+            max={ZD_PACKAGING_UNITS_MAX}
+            value={orderMultiple}
+            onChange={(e) => setOrderMultiple(e.target.value)}
+            disabled={pending}
+            placeholder={ZD_ESTIMATE_UI.packagingOrderMultiplePlaceholder}
+            className="mt-1.5"
+            aria-invalid={showOrderError || undefined}
+          />
+          <p className={cn(panelTypography.caption, "mt-1")}>
+            {ZD_ESTIMATE_UI.packagingOrderMultipleHint}
+          </p>
+          {showOrderError && !orderOk ? (
+            <p className="mt-1 text-xs font-medium text-amber-900">
+              {orderCheck.message}
+            </p>
+          ) : null}
+        </label>
+      ) : (
+        <p className={cn(panelTypography.caption)}>
+          {ZD_ESTIMATE_UI.packagingOrderMultipleModeHint}
+        </p>
+      )}
+
       {preview && preview.hasPackaging && preview.piecesNeeded > 0 ? (
         <div className="space-y-1.5 rounded-lg border border-emerald-200/70 bg-emerald-50/50 px-3 py-2.5">
           <p className="text-xs text-emerald-950">
@@ -392,6 +448,7 @@ export function ZdEstimatePackagingDialog({
     unitsPerPackage: number;
     packageLabel: string;
     documentUnitMode: ZdPackagingDocumentUnitMode;
+    orderMultiple: number | null;
     note: string;
   }) => void;
   onClear: () => void;
@@ -399,7 +456,7 @@ export function ZdEstimatePackagingDialog({
   if (!open || !line) return null;
   return (
     <PackagingDialogForm
-      key={`${line.tw_Id}-${existing?.unitsPerPackage ?? 0}-${existing?.documentUnitMode ?? "packages"}-${existing?.updatedAt ?? ""}-${extraOnly ? "eo" : "st"}-${extrasPolicy}-${stockNeedReliefPieces}-${extraOverlapPieces}`}
+      key={`${line.tw_Id}-${existing?.unitsPerPackage ?? 0}-${existing?.orderMultiple ?? ""}-${existing?.documentUnitMode ?? "packages"}-${existing?.updatedAt ?? ""}-${extraOnly ? "eo" : "st"}-${extrasPolicy}-${stockNeedReliefPieces}-${extraOverlapPieces}`}
       line={line}
       existing={existing}
       pending={pending}

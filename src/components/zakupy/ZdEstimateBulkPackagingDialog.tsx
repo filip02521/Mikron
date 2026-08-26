@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
 import { ZD_ESTIMATE_BULK_MAX } from "@/lib/orders/zd-estimate-bulk";
 import {
+  assertOrderMultiple,
   assertPackagingUnits,
   ZD_PACKAGING_UNITS_MAX,
   ZD_PACKAGING_UNITS_MIN,
@@ -41,16 +42,19 @@ export function ZdEstimateBulkPackagingDialog({
     unitsPerPackage: number;
     packageLabel: string;
     documentUnitMode: ZdPackagingDocumentUnitMode;
+    orderMultiple: number | null;
     note: string;
   }) => void;
   onClear: () => void;
 }) {
   const unitsId = useId();
+  const orderMultId = useId();
   const labelId = useId();
   const noteId = useId();
   const modePackagesId = useId();
   const modePiecesId = useId();
   const [units, setUnits] = useState("10");
+  const [orderMultiple, setOrderMultiple] = useState("");
   const [label, setLabel] = useState("op.");
   const [note, setNote] = useState("");
   const [documentUnitMode, setDocumentUnitMode] =
@@ -67,9 +71,16 @@ export function ZdEstimateBulkPackagingDialog({
   const packagesMode = effectiveMode === "packages";
 
   const unitsCheck = assertPackagingUnits(units);
-  const canSave = unitsCheck.ok;
-  const unitsNum = canSave ? unitsCheck.units : Math.trunc(Number(units));
-  const showUnitsError = units.trim() !== "" && !canSave;
+  const orderCheck = assertOrderMultiple(
+    packagesMode ? orderMultiple : null
+  );
+  const canSave = unitsCheck.ok && orderCheck.ok;
+  const unitsNum = unitsCheck.ok
+    ? unitsCheck.units
+    : Math.trunc(Number(units));
+  const showUnitsError = units.trim() !== "" && !unitsCheck.ok;
+  const showOrderError =
+    packagesMode && orderMultiple.trim() !== "" && !orderCheck.ok;
   const preview = lines.slice(0, 8);
   const rest = lines.length - preview.length;
   const overLimit = lines.length > ZD_ESTIMATE_BULK_MAX;
@@ -162,11 +173,14 @@ export function ZdEstimateBulkPackagingDialog({
             className="min-h-11 w-full sm:w-auto"
             disabled={pending || !canSave}
             onClick={() => {
-              if (!unitsCheck.ok) return;
+              if (!unitsCheck.ok || !orderCheck.ok) return;
               onSave({
                 unitsPerPackage: unitsCheck.units,
                 packageLabel: label.trim() || "op.",
                 documentUnitMode: effectiveMode,
+                orderMultiple: packagesMode
+                  ? orderCheck.orderMultiple
+                  : null,
                 note: note.trim(),
               });
             }}
@@ -298,11 +312,43 @@ export function ZdEstimateBulkPackagingDialog({
         </div>
       </div>
 
+      {packagesMode ? (
+        <label htmlFor={orderMultId} className="block">
+          <span className="text-xs font-medium text-slate-600">
+            {ZD_ESTIMATE_UI.packagingOrderMultipleLabel}
+          </span>
+          <Input
+            id={orderMultId}
+            type="number"
+            min={ZD_PACKAGING_UNITS_MIN}
+            max={ZD_PACKAGING_UNITS_MAX}
+            value={orderMultiple}
+            onChange={(e) => setOrderMultiple(e.target.value)}
+            disabled={pending}
+            placeholder={ZD_ESTIMATE_UI.packagingOrderMultiplePlaceholder}
+            className="mt-1.5"
+            aria-invalid={showOrderError || undefined}
+          />
+          <p className={cn(panelTypography.caption, "mt-1")}>
+            {ZD_ESTIMATE_UI.packagingOrderMultipleHint}
+          </p>
+          {showOrderError && !orderCheck.ok ? (
+            <p className="mt-1 text-xs font-medium text-amber-900">
+              {orderCheck.message}
+            </p>
+          ) : null}
+        </label>
+      ) : null}
+
       {canSave ? (
         <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/50 px-3 py-2.5">
           <p className="text-xs font-semibold text-emerald-950">
             {packagesMode
-              ? `Dla każdego: 1 ${label.trim() || "op."} = ${unitsNum} szt`
+              ? `Dla każdego: 1 ${label.trim() || "op."} = ${unitsNum} szt${
+                  orderCheck.ok && orderCheck.orderMultiple
+                    ? ` · co ${orderCheck.orderMultiple} op.`
+                    : ""
+                }`
               : `Dla każdego: Do ZD w sztukach, dobij do wielokrotności ${unitsNum}`}
           </p>
           <p className="mt-0.5 text-[11px] leading-snug text-emerald-900/85">

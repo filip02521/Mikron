@@ -30,6 +30,7 @@ import {
 import { applyZdEstimateHistoryCuts } from "@/lib/orders/zd-estimate-history-track";
 import {
   isPackagingPackagesMode,
+  normalizeOrderMultiple,
   normalizePackagingDocumentUnitMode,
   normalizeUnitsPerPackage,
   zdDocumentUnitsToPieces,
@@ -605,6 +606,7 @@ export type ManualLinePackagingLookup = {
   unitsPerPackage: number;
   packageLabel?: string;
   documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode | null;
+  orderMultiple?: number | null;
 } | null;
 
 /**
@@ -650,6 +652,10 @@ export function manualLinesToTsv(
       zd = arriving;
     } else {
       zd = Math.ceil(pieces / units);
+      const m = normalizeOrderMultiple(pack?.orderMultiple);
+      if (m >= 2 && zd > 0) {
+        zd = Math.ceil(zd / m) * m;
+      }
       arriving = zd * units;
     }
     return [

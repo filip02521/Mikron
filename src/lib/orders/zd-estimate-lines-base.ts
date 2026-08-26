@@ -57,6 +57,12 @@ export function coerceZdEstimateLinesBase(
         const relocatedWz = Math.max(0, asNum(l.bom.relocatedWz));
         if (relocated > 0) ownSales = relocated;
         if (relocatedWz > 0 || relocated > 0) ownWz = relocatedWz;
+      } else if (
+        l.bom?.role === "purchased_kit" &&
+        l.bom.kitOwnSales != null
+      ) {
+        ownSales = Math.max(0, asNum(l.bom.kitOwnSales));
+        ownWz = Math.max(0, asNum(l.bom.kitOwnWz));
       }
 
       const sprzedazOkres = Math.max(0, asNum(ownSales));
@@ -105,6 +111,18 @@ export function coerceZdEstimateLinesBase(
         bom: null,
         sprzedazOkres,
         wzNiepowiazaneOkres: Math.min(wzRaw, sprzedazOkres),
+      };
+    }
+
+    if (l.bom?.role === "purchased_kit" && l.bom.kitOwnSales != null) {
+      const ownSales = Math.max(0, asNum(l.bom.kitOwnSales));
+      const ownWz = Math.max(0, asNum(l.bom.kitOwnWz));
+      return {
+        ...l,
+        pair: null,
+        bom: null,
+        sprzedazOkres: ownSales,
+        wzNiepowiazaneOkres: Math.min(ownWz, ownSales),
       };
     }
 
