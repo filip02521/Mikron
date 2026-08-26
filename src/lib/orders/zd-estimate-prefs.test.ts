@@ -1,29 +1,39 @@
 import { describe, expect, it } from "vitest";
 import {
+  isZdEstimateFavorite,
   mergeZdEstimateUiPrefsIntoPreferences,
   moveZdEstimateColumnOrder,
   parseZdEstimateColumnOrder,
   parseZdEstimateColumnVisibility,
+  parseZdEstimateFavoriteRefs,
   parseZdEstimateUiPrefs,
   resolveZdEstimateColumnSectionStarts,
   resolveZdEstimateScrollableColumnOrder,
   resolveZdEstimateVisibleColumnOrder,
   serializeZdEstimateUiPrefs,
   toggleZdEstimateColumnVisibility,
+  toggleZdEstimateFavorite,
+  zdEstimateUiPrefsEqual,
   zdEstimateUiPrefsFromProfilePreferences,
   ZD_ESTIMATE_COLUMN_ORDER_DEFAULTS,
   ZD_ESTIMATE_COLUMN_VISIBILITY_DEFAULTS,
+  ZD_ESTIMATE_FAVORITE_GROUPS_SEED,
+  ZD_ESTIMATE_FAVORITE_SCOPE_CAP,
   ZD_ESTIMATE_PREFS_KEY,
   ZD_ESTIMATE_UI_PREFS_DEFAULTS,
   type ZdEstimateOptionalColumn,
 } from "./zd-estimate-prefs";
 
 describe("parseZdEstimateUiPrefs", () => {
-  it("puste / śmieci → defaults", () => {
+  it("puste / śmieci → defaults (w tym seed ulubionych grup)", () => {
     expect(parseZdEstimateUiPrefs(null)).toEqual(ZD_ESTIMATE_UI_PREFS_DEFAULTS);
     expect(parseZdEstimateUiPrefs({ boost: "aggressive" })).toEqual(
       ZD_ESTIMATE_UI_PREFS_DEFAULTS
     );
+    expect(parseZdEstimateUiPrefs(null).favoriteGroups).toEqual(
+      ZD_ESTIMATE_FAVORITE_GROUPS_SEED.map((f) => ({ ...f }))
+    );
+    expect(parseZdEstimateUiPrefs(null).favoriteCechy).toEqual([]);
   });
 
   it("nie wpuszcza boostu do serializacji", () => {
@@ -89,6 +99,106 @@ describe("parseZdEstimateUiPrefs", () => {
     expect(parsed.columns.sales).toBe(false);
     expect(parsed.showStockDetail).toBe(false);
     expect(parsed.showZkColumn).toBe(false);
+  });
+
+  it("brak klucza favoriteGroups → seed; [] zostaje puste", () => {
+    expect(parseZdEstimateUiPrefs({ zapasMin: 1 }).favoriteGroups).toEqual(
+      ZD_ESTIMATE_FAVORITE_GROUPS_SEED.map((f) => ({ ...f }))
+    );
+    expect(
+      parseZdEstimateUiPrefs({ favoriteGroups: [] }).favoriteGroups
+    ).toEqual([]);
+    expect(
+      parseZdEstimateUiPrefs({
+        favoriteGroups: [{ id: 99, label: "X" }],
+      }).favoriteGroups
+    ).toEqual([{ id: 99, label: "X" }]);
+  });
+
+  it("brak klucza favoriteCechy → []; [] zostaje puste", () => {
+    expect(parseZdEstimateUiPrefs({ zapasMin: 1 }).favoriteCechy).toEqual([]);
+    expect(parseZdEstimateUiPrefs({ favoriteCechy: [] }).favoriteCechy).toEqual(
+      []
+    );
+  });
+
+  it("serialize zawsze zapisuje klucze ulubionych (pustka ≠ seed)", () => {
+    const cleared = parseZdEstimateUiPrefs({
+      favoriteGroups: [],
+      favoriteCechy: [],
+    });
+    const blob = serializeZdEstimateUiPrefs(cleared);
+    expect(blob.favoriteGroups).toEqual([]);
+    expect(blob.favoriteCechy).toEqual([]);
+    expect(parseZdEstimateUiPrefs(blob).favoriteGroups).toEqual([]);
+  });
+
+  it("merge favoriteGroups: [] nie przywraca seedu", () => {
+    const seeded = mergeZdEstimateUiPrefsIntoPreferences({}, {});
+    expect(
+      zdEstimateUiPrefsFromProfilePreferences(seeded).favoriteGroups.length
+    ).toBeGreaterThan(0);
+    const cleared = mergeZdEstimateUiPrefsIntoPreferences(seeded, {
+      favoriteGroups: [],
+    });
+    expect(
+      zdEstimateUiPrefsFromProfilePreferences(cleared).favoriteGroups
+    ).toEqual([]);
+  });
+
+  it("equal uwzględnia ulubione", () => {
+    const a = parseZdEstimateUiPrefs({ favoriteGroups: [{ id: 1, label: "A" }] });
+    const b = parseZdEstimateUiPrefs({ favoriteGroups: [{ id: 1, label: "A" }] });
+    const c = parseZdEstimateUiPrefs({ favoriteGroups: [{ id: 2, label: "B" }] });
+    expect(zdEstimateUiPrefsEqual(a, b)).toBe(true);
+    expect(zdEstimateUiPrefsEqual(a, c)).toBe(false);
+  });
+});
+
+describe("toggleZdEstimateFavorite", () => {
+  it("dodaje / usuwa; cap bez dodania", () => {
+    const a = toggleZdEstimateFavorite([], { id: 1, label: "A" });
+    expect(a).toEqual({
+      ok: true,
+      next: [{ id: 1, label: "A" }],
+      added: true,
+    });
+    expect(isZdEstimateFavorite(a.next, 1)).toBe(true);
+    const removed = toggleZdEstimateFavorite(a.next, { id: 1, label: "A" });
+    expect(removed.next).toEqual([]);
+    expect(removed.added).toBe(false);
+
+    const full = Array.from(
+      { length: ZD_ESTIMATE_FAVORITE_SCOPE_CAP },
+      (_, i) => ({
+        id: i + 1,
+        label: `G${i + 1}`,
+      })
+    );
+    const capped = toggleZdEstimateFavorite(full, {
+      id: 999,
+      label: "Nope",
+    });
+    expect(capped.ok).toBe(false);
+    if (!capped.ok) expect(capped.reason).toBe("at_cap");
+    expect(capped.next).toHaveLength(ZD_ESTIMATE_FAVORITE_SCOPE_CAP);
+  });
+
+  it("parseFavoriteRefs: dedupe, cap, whenMissing", () => {
+    expect(
+      parseZdEstimateFavoriteRefs(undefined, [{ id: 7, label: "S" }])
+    ).toEqual([{ id: 7, label: "S" }]);
+    expect(
+      parseZdEstimateFavoriteRefs([
+        { id: 1, label: "A" },
+        { id: 1, label: "B" },
+        { id: 0, label: "bad" },
+        { id: 2, label: "  " },
+      ])
+    ).toEqual([
+      { id: 1, label: "A" },
+      { id: 2, label: "#2" },
+    ]);
   });
 });
 

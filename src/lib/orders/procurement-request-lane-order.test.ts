@@ -43,6 +43,46 @@ describe("defaultProcurementLaneOrder", () => {
   });
 });
 
+describe("normalizeProcurementLaneOrder", () => {
+  it("zachowuje custom order z app_settings, ale triage zawsze pierwsze", () => {
+    const saved = [
+      "urlop",
+      "triage",
+      procurementFlagLaneId(PROCUREMENT_FLAG_SEED.pilne),
+      "do_zamowienia",
+    ];
+    const order = normalizeProcurementLaneOrder(saved, defs);
+    expect(order[0]).toBe("triage");
+    expect(order.indexOf("urlop")).toBeGreaterThan(0);
+    expect(order).toContain("magazyn_info");
+    expect(order).toContain(procurementFlagLaneId(PROCUREMENT_FLAG_SEED.wstrzymane));
+  });
+
+  it("zapis z do_zamowienia na górze i tak stawia triage pierwsze", () => {
+    const saved = [
+      "do_zamowienia",
+      procurementFlagLaneId(PROCUREMENT_FLAG_SEED.pilne),
+      "triage",
+      "urlop",
+    ];
+    const order = normalizeProcurementLaneOrder(saved, defs);
+    expect(order[0]).toBe("triage");
+    expect(order.indexOf("do_zamowienia")).toBeGreaterThan(0);
+  });
+
+  it("zapis bez magazyn_info wstawia go przed urlop (ogon systemowy)", () => {
+    const saved = [
+      "triage",
+      procurementFlagLaneId(PROCUREMENT_FLAG_SEED.pilne),
+      "do_zamowienia",
+      "urlop",
+    ];
+    const order = normalizeProcurementLaneOrder(saved, defs);
+    expect(order.indexOf("do_zamowienia")).toBeLessThan(order.indexOf("magazyn_info"));
+    expect(order.indexOf("magazyn_info")).toBeLessThan(order.indexOf("urlop"));
+  });
+});
+
 describe("moveVisibleLaneInOrder", () => {
   it("przesuwa Do zamówienia nad Urlop wśród widocznych", () => {
     const order = defaultProcurementLaneOrder(defs);
@@ -58,33 +98,18 @@ describe("moveVisibleLaneInOrder", () => {
     expect(iUrlop).toBeLessThan(iDo);
     // magazyn_info zostaje w pełnej kolejności mimo że niewidoczny
     expect(next).toContain("magazyn_info");
-  });
-});
-
-describe("normalizeProcurementLaneOrder", () => {
-  it("zachowuje custom order z app_settings", () => {
-    const saved = [
-      "urlop",
-      "triage",
-      procurementFlagLaneId(PROCUREMENT_FLAG_SEED.pilne),
-      "do_zamowienia",
-    ];
-    const order = normalizeProcurementLaneOrder(saved, defs);
-    expect(order[0]).toBe("urlop");
-    expect(order).toContain("magazyn_info");
-    expect(order).toContain(procurementFlagLaneId(PROCUREMENT_FLAG_SEED.wstrzymane));
+    expect(next![0]).toBe("triage");
   });
 
-  it("zapis bez magazyn_info wstawia go przed urlop (ogon systemowy)", () => {
-    const saved = [
+  it("nie pozwala przestawić triage ani wejść nad niego", () => {
+    const order = defaultProcurementLaneOrder(defs);
+    const visible = [
       "triage",
-      procurementFlagLaneId(PROCUREMENT_FLAG_SEED.pilne),
       "do_zamowienia",
       "urlop",
-    ];
-    const order = normalizeProcurementLaneOrder(saved, defs);
-    expect(order.indexOf("do_zamowienia")).toBeLessThan(order.indexOf("magazyn_info"));
-    expect(order.indexOf("magazyn_info")).toBeLessThan(order.indexOf("urlop"));
+    ] as const;
+    expect(moveVisibleLaneInOrder(order, "triage", 1, visible)).toBeNull();
+    expect(moveVisibleLaneInOrder(order, "do_zamowienia", -1, visible)).toBeNull();
   });
 });
 

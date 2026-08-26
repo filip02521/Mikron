@@ -16,6 +16,11 @@ import {
   IconChevronDown,
   IconSearch,
 } from "@/components/icons/StrokeIcons";
+import {
+  ZdEstimateFavoriteCechaChip,
+  ZdEstimateFavoriteGroupChip,
+  ZdEstimateFavoriteStarButton,
+} from "@/components/zakupy/ZdEstimateFavoriteScopeControls";
 import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
 import {
@@ -57,19 +62,33 @@ export type ZdEstimatePrepFormProps = {
   estimating: boolean;
   scopeMode: ZdEstimateRunMode;
   onScopeModeChange: (mode: ZdEstimateRunMode) => void;
+  /** Ulubione grupy — lokalny state (nie frozen bootstrap). */
   quickGroups: ZdEstimateGroupOption[];
+  /** Ulubione cechy — lokalny state. */
+  quickCechy: ZdEstimateCechaOption[];
+  isGroupFavorite: (grtId: number) => boolean;
+  isCechaFavorite: (ctwId: number) => boolean;
+  onToggleGroupFavorite: (group: ZdEstimateGroupOption) => void;
+  onToggleCechaFavorite: (cecha: ZdEstimateCechaOption) => void;
+  onBrowseCatalog: () => void;
   selectedGroup: ZdEstimateGroupOption | null;
+  /** Wybór z chipa ulubionych (czyści listę wyników wyszukiwania). */
   onSelectGroup: (group: ZdEstimateGroupOption) => void;
+  /** Wybór z wiersza wyników — zostawia hits (gwiazdka po 1 hicie). */
+  onSelectGroupHit: (group: ZdEstimateGroupOption) => void;
   groupQuery: string;
   onGroupQueryChange: (value: string) => void;
   onSearchGroups: () => void;
   groupHits: ZdEstimateGroupOption[];
+  onClearGroupHits: () => void;
   selectedCecha: ZdEstimateCechaOption | null;
   onSelectCecha: (cecha: ZdEstimateCechaOption) => void;
+  onSelectCechaHit: (cecha: ZdEstimateCechaOption) => void;
   cechaQuery: string;
   onCechaQueryChange: (value: string) => void;
   onSearchCechy: () => void;
   cechaHits: ZdEstimateCechaOption[];
+  onClearCechaHits: () => void;
   scopeSelected: boolean;
   settingsTrusted: boolean;
   scopeNeedsRecount: boolean;
@@ -121,18 +140,28 @@ export function ZdEstimatePrepForm({
   scopeMode,
   onScopeModeChange,
   quickGroups,
+  quickCechy,
+  isGroupFavorite,
+  isCechaFavorite,
+  onToggleGroupFavorite,
+  onToggleCechaFavorite,
+  onBrowseCatalog,
   selectedGroup,
   onSelectGroup,
+  onSelectGroupHit,
   groupQuery,
   onGroupQueryChange,
   onSearchGroups,
   groupHits,
+  onClearGroupHits,
   selectedCecha,
   onSelectCecha,
+  onSelectCechaHit,
   cechaQuery,
   onCechaQueryChange,
   onSearchCechy,
   cechaHits,
+  onClearCechaHits,
   scopeSelected,
   settingsTrusted,
   scopeNeedsRecount,
@@ -247,41 +276,40 @@ export function ZdEstimatePrepForm({
 
           {scopeMode === "grupa" ? (
             <>
-              <div className="flex flex-wrap content-start gap-1.5">
-                {quickGroups.map((g) => {
-                  const active = selectedGroup?.grt_Id === g.grt_Id;
-                  return (
-                    <button
-                      key={g.grt_Id}
-                      type="button"
-                      disabled={!configured}
-                      onClick={() => onSelectGroup(g)}
-                      title={
-                        g.dniZapasu != null
-                          ? `${g.supplierName ?? "dostawca"} · zapas ${g.stockLabel} (${g.dniZapasu} d)`
-                          : "Brak zapasu na karcie — 30 dni"
-                      }
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-md border text-left transition",
-                        zdEstimatePrepControlClass,
-                        "disabled:cursor-not-allowed disabled:opacity-50",
-                        active
-                          ? "border-indigo-300 bg-indigo-50 text-indigo-950 shadow-sm shadow-indigo-900/5"
-                          : "border-slate-200/90 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                      )}
-                    >
-                      <span className="max-w-[16rem] truncate font-medium">
-                        {g.grt_Nazwa}
-                      </span>
-                      {g.dniZapasu != null ? (
-                        <span className="rounded-md bg-white/90 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-slate-500 ring-1 ring-slate-200/80">
-                          {g.dniZapasu}d
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
+              {quickGroups.length > 0 ? (
+                <div
+                  className="flex flex-wrap content-start gap-1.5"
+                  role="list"
+                  aria-label="Ulubione grupy"
+                >
+                  {quickGroups.map((g) => (
+                    <div key={g.grt_Id} role="listitem">
+                      <ZdEstimateFavoriteGroupChip
+                        group={g}
+                        active={selectedGroup?.grt_Id === g.grt_Id}
+                        disabled={!configured}
+                        onSelect={() => onSelectGroup(g)}
+                        onRemoveFavorite={() => onToggleGroupFavorite(g)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2 rounded-md border border-dashed border-slate-200/90 bg-slate-50/70 px-3 py-3 sm:flex-row sm:items-center">
+                  <p className="min-w-0 flex-1 text-sm leading-snug text-slate-600">
+                    {ZD_ESTIMATE_UI.prepFavoritesEmptyGroups}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={!configured}
+                    onClick={onBrowseCatalog}
+                    className={cn(zdEstimatePrepControlClass, "w-full shrink-0 sm:w-auto")}
+                  >
+                    {ZD_ESTIMATE_UI.prepFavoritesAddCta}
+                  </Button>
+                </div>
+              )}
 
               <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
                 <div className="relative min-w-0 flex-1">
@@ -309,58 +337,130 @@ export function ZdEstimatePrepForm({
                   variant="secondary"
                   onClick={onSearchGroups}
                   disabled={busy || !configured || !groupQuery.trim()}
-                  className={cn(zdEstimatePrepControlClass, "w-full shrink-0 sm:w-auto sm:min-w-[6.5rem]")}
+                  className={cn(
+                    zdEstimatePrepControlClass,
+                    "w-full shrink-0 sm:w-auto sm:min-w-[6.5rem]"
+                  )}
                 >
                   {searching ? "Szukam…" : "Szukaj"}
                 </Button>
               </div>
 
-              {groupHits.length > 1 ? (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                {quickGroups.length > 0 ? (
+                  <button
+                    type="button"
+                    disabled={!configured}
+                    onClick={onBrowseCatalog}
+                    className="text-sm font-medium text-indigo-700 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {ZD_ESTIMATE_UI.prepBrowseCatalogCta}
+                  </button>
+                ) : null}
+                {groupHits.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={onClearGroupHits}
+                    className="text-sm text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline"
+                  >
+                    {ZD_ESTIMATE_UI.prepClearHitsCta}
+                  </button>
+                ) : null}
+              </div>
+
+              {groupHits.length > 0 ? (
                 <ul
                   className={cn(
-                    "max-h-44 divide-y divide-slate-100 overflow-y-auto border border-slate-200/90 bg-white",
+                    "max-h-52 divide-y divide-slate-100 overflow-y-auto border border-slate-200/90 bg-white",
                     zdEstimateRadiusNestedClass,
                     zdEstimateShadowControlClass
                   )}
+                  role="listbox"
+                  aria-label="Wyniki grup"
                 >
-                  {groupHits.map((g) => (
-                    <li key={g.grt_Id}>
-                      <button
-                        type="button"
-                        className={cn(
-                          "flex w-full items-center justify-between gap-4 px-3 py-2 text-left text-sm transition hover:bg-slate-50",
-                          selectedGroup?.grt_Id === g.grt_Id && "bg-indigo-50/70"
-                        )}
-                        onClick={() => onSelectGroup(g)}
-                      >
-                        <span className="min-w-0">
-                          <span className="block font-medium text-slate-900">
-                            {g.grt_Nazwa}
-                          </span>
-                          {g.supplierName ? (
-                            <span className="mt-0.5 block truncate text-xs text-slate-500">
-                              {g.supplierName}
-                              {g.supplierMatchSource === "mapping"
-                                ? ` · ${ZD_ESTIMATE_UI.supplierFromMappingHitSuffix}`
-                                : ""}
-                              {g.stockLabel ? ` · ${g.stockLabel}` : ""}
+                  {groupHits.map((g) => {
+                    const fav = isGroupFavorite(g.grt_Id);
+                    const selected = selectedGroup?.grt_Id === g.grt_Id;
+                    return (
+                      <li key={g.grt_Id} className="flex items-stretch" role="option" aria-selected={selected}>
+                        <button
+                          type="button"
+                          className={cn(
+                            "flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-3 py-2 text-left text-sm transition hover:bg-slate-50",
+                            selected && "bg-indigo-50/80"
+                          )}
+                          onClick={() => onSelectGroupHit(g)}
+                        >
+                          <span className="min-w-0">
+                            <span className="block font-medium text-slate-900">
+                              {g.grt_Nazwa}
                             </span>
-                          ) : null}
-                        </span>
-                        <span className="shrink-0 text-xs tabular-nums text-slate-400">
-                          #{g.grt_Id}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
+                            {g.supplierName ? (
+                              <span className="mt-0.5 block truncate text-xs text-slate-500">
+                                {g.supplierName}
+                                {g.supplierMatchSource === "mapping"
+                                  ? ` · ${ZD_ESTIMATE_UI.supplierFromMappingHitSuffix}`
+                                  : ""}
+                                {g.stockLabel ? ` · ${g.stockLabel}` : ""}
+                              </span>
+                            ) : null}
+                          </span>
+                          <span className="shrink-0 text-xs tabular-nums text-slate-400">
+                            #{g.grt_Id}
+                          </span>
+                        </button>
+                        <ZdEstimateFavoriteStarButton
+                          favorited={fav}
+                          label={g.grt_Nazwa}
+                          onToggle={() => onToggleGroupFavorite(g)}
+                        />
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : null}
             </>
           ) : (
             <>
+              {quickCechy.length > 0 ? (
+                <div
+                  className="flex flex-wrap content-start gap-1.5"
+                  role="list"
+                  aria-label="Ulubione cechy"
+                >
+                  {quickCechy.map((c) => (
+                    <div key={c.ctw_Id} role="listitem">
+                      <ZdEstimateFavoriteCechaChip
+                        cecha={c}
+                        active={selectedCecha?.ctw_Id === c.ctw_Id}
+                        disabled={!configured}
+                        onSelect={() => onSelectCecha(c)}
+                        onRemoveFavorite={() => onToggleCechaFavorite(c)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2 rounded-md border border-dashed border-slate-200/90 bg-slate-50/70 px-3 py-3 sm:flex-row sm:items-center">
+                  <p className="min-w-0 flex-1 text-sm leading-snug text-slate-600">
+                    {ZD_ESTIMATE_UI.prepFavoritesEmptyCechy}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={!configured}
+                    onClick={onBrowseCatalog}
+                    className={cn(zdEstimatePrepControlClass, "w-full shrink-0 sm:w-auto")}
+                  >
+                    {ZD_ESTIMATE_UI.prepFavoritesAddCta}
+                  </Button>
+                </div>
+              )}
+
               <p className="text-sm leading-snug text-slate-600">
                 {zdEstimateCechaScopeCaption()}
               </p>
+
               <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
                 <div className="relative min-w-0 flex-1">
                   <IconSearch
@@ -387,50 +487,86 @@ export function ZdEstimatePrepForm({
                   variant="secondary"
                   onClick={onSearchCechy}
                   disabled={busy || !configured || !cechaQuery.trim()}
-                  className={cn(zdEstimatePrepControlClass, "w-full shrink-0 sm:w-auto sm:min-w-[6.5rem]")}
+                  className={cn(
+                    zdEstimatePrepControlClass,
+                    "w-full shrink-0 sm:w-auto sm:min-w-[6.5rem]"
+                  )}
                 >
                   {searching ? "Szukam…" : "Szukaj"}
                 </Button>
               </div>
 
-              {cechaHits.length > 1 ? (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                {quickCechy.length > 0 ? (
+                  <button
+                    type="button"
+                    disabled={!configured}
+                    onClick={onBrowseCatalog}
+                    className="text-sm font-medium text-indigo-700 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {ZD_ESTIMATE_UI.prepBrowseCatalogCta}
+                  </button>
+                ) : null}
+                {cechaHits.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={onClearCechaHits}
+                    className="text-sm text-slate-500 underline-offset-2 hover:text-slate-700 hover:underline"
+                  >
+                    {ZD_ESTIMATE_UI.prepClearHitsCta}
+                  </button>
+                ) : null}
+              </div>
+
+              {cechaHits.length > 0 ? (
                 <ul
                   className={cn(
-                    "max-h-44 divide-y divide-slate-100 overflow-y-auto border border-slate-200/90 bg-white",
+                    "max-h-52 divide-y divide-slate-100 overflow-y-auto border border-slate-200/90 bg-white",
                     zdEstimateRadiusNestedClass,
                     zdEstimateShadowControlClass
                   )}
+                  role="listbox"
+                  aria-label="Wyniki cech"
                 >
-                  {cechaHits.map((c) => (
-                    <li key={c.ctw_Id}>
-                      <button
-                        type="button"
-                        className={cn(
-                          "flex w-full items-center justify-between gap-4 px-3 py-2 text-left text-sm transition hover:bg-slate-50",
-                          selectedCecha?.ctw_Id === c.ctw_Id && "bg-indigo-50/70"
-                        )}
-                        onClick={() => onSelectCecha(c)}
-                      >
-                        <span className="min-w-0">
-                          <span className="block font-medium text-slate-900">
-                            {c.ctw_Nazwa}
-                          </span>
-                          {c.supplierName ? (
-                            <span className="mt-0.5 block truncate text-xs text-slate-500">
-                              {c.supplierName}
-                              {c.supplierMatchSource === "mapping"
-                                ? ` · ${ZD_ESTIMATE_UI.supplierFromMappingHitSuffix}`
-                                : ""}
-                              {c.stockLabel ? ` · ${c.stockLabel}` : ""}
+                  {cechaHits.map((c) => {
+                    const fav = isCechaFavorite(c.ctw_Id);
+                    const selected = selectedCecha?.ctw_Id === c.ctw_Id;
+                    return (
+                      <li key={c.ctw_Id} className="flex items-stretch" role="option" aria-selected={selected}>
+                        <button
+                          type="button"
+                          className={cn(
+                            "flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-3 py-2 text-left text-sm transition hover:bg-slate-50",
+                            selected && "bg-indigo-50/80"
+                          )}
+                          onClick={() => onSelectCechaHit(c)}
+                        >
+                          <span className="min-w-0">
+                            <span className="block font-medium text-slate-900">
+                              {c.ctw_Nazwa}
                             </span>
-                          ) : null}
-                        </span>
-                        <span className="shrink-0 text-xs tabular-nums text-slate-400">
-                          #{c.ctw_Id}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
+                            {c.supplierName ? (
+                              <span className="mt-0.5 block truncate text-xs text-slate-500">
+                                {c.supplierName}
+                                {c.supplierMatchSource === "mapping"
+                                  ? ` · ${ZD_ESTIMATE_UI.supplierFromMappingHitSuffix}`
+                                  : ""}
+                                {c.stockLabel ? ` · ${c.stockLabel}` : ""}
+                              </span>
+                            ) : null}
+                          </span>
+                          <span className="shrink-0 text-xs tabular-nums text-slate-400">
+                            #{c.ctw_Id}
+                          </span>
+                        </button>
+                        <ZdEstimateFavoriteStarButton
+                          favorited={fav}
+                          label={c.ctw_Nazwa}
+                          onToggle={() => onToggleCechaFavorite(c)}
+                        />
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : null}
             </>

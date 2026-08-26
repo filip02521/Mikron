@@ -20,7 +20,8 @@ export const PROCUREMENT_REQUEST_LANE_COPY = {
   flagOrderToast: "Zapisano kolejność torów",
   flagSetToast: "Ustawiono flagę",
   flagClearedToast: "Usunięto flagę",
-  triageHint: "Nowe lub jeszcze nierozdzielone — ustaw flagę albo zamów.",
+  triageHint:
+    "Nowe lub jeszcze nierozdzielone — zawsze na górze listy torów. Ustaw flagę albo zamów.",
   doSprawdzeniaHint: "Sprawdzenie ceny / dostępności u dostawcy przed zamówieniem.",
   doZamowieniaHint: "Gotowe do Główne / Uzupełniające.",
   magazynInfoHint: "Prośby z panelu Informacja — do potwierdzenia magazynu.",

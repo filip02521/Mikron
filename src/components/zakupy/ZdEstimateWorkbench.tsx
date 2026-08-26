@@ -62,14 +62,21 @@ import {
   moveZdEstimateColumnOrder,
   resolveZdEstimateColumnSectionStarts,
   resolveZdEstimateScrollableColumnOrder,
+  isZdEstimateFavorite,
   toggleZdEstimateColumnVisibility,
+  toggleZdEstimateFavorite,
   zdEstimateColumnOrderEqual,
   zdEstimateColumnVisibilityEqual,
   type ZdEstimateColumnVisibility,
+  type ZdEstimateFavoriteRef,
   type ZdEstimateListFilter,
   type ZdEstimateOptionalColumn,
   type ZdEstimateUiPrefs,
 } from "@/lib/orders/zd-estimate-prefs";
+import {
+  resolveZdEstimateFavoriteCechaChips,
+  resolveZdEstimateFavoriteGroupChips,
+} from "@/lib/orders/zd-estimate-scope-favorites";
 import {
   collectTodayScheduleSuppliers,
   zdEstimateScopeCoverage,
@@ -327,6 +334,7 @@ import { ZdEstimateExternalSessionActiveChip } from "@/components/zakupy/ZdEstim
 import { ZdEstimatePageIntro } from "@/components/zakupy/ZdEstimatePageIntro";
 import { ZdEstimatePrepScopeFacts } from "@/components/zakupy/ZdEstimatePrepScopeFacts";
 import { ZdEstimatePrepForm } from "@/components/zakupy/ZdEstimatePrepForm";
+import { ZdEstimateScopeCatalogDialog } from "@/components/zakupy/ZdEstimateScopeCatalogDialog";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { ZdEstimateRecountOverlay } from "@/components/zakupy/ZdEstimateRecountOverlay";
@@ -495,6 +503,7 @@ type Bootstrap = {
   defaultWindow: { dataOd: string; dataDo: string };
   suppliers: ZdEstimateSupplierOption[];
   quickGroups: ZdEstimateGroupOption[];
+  quickCechy: ZdEstimateCechaOption[];
   exclusions: ZdEstimateExclusionRow[];
   exclusionsError: string | null;
   onRequests: ZdEstimateOnRequestRow[];
@@ -928,6 +937,21 @@ export function ZdEstimateWorkbench({
     useState<ZdEstimateSalesWindowSource>("stock");
   const [zapasMin, setZapasMin] = useState(String(uiPrefs.zapasMin));
   const [showAdvanced, setShowAdvanced] = useState(uiPrefs.showAdvanced);
+  const [favoriteGroups, setFavoriteGroups] = useState<ZdEstimateFavoriteRef[]>(
+    () => uiPrefs.favoriteGroups.map((f) => ({ ...f }))
+  );
+  const [favoriteCechy, setFavoriteCechy] = useState<ZdEstimateFavoriteRef[]>(
+    () => uiPrefs.favoriteCechy.map((f) => ({ ...f }))
+  );
+  const [groupEnrichById, setGroupEnrichById] = useState(
+    () => new Map(bootstrap.quickGroups.map((g) => [g.grt_Id, g] as const))
+  );
+  const [cechaEnrichById, setCechaEnrichById] = useState(() => {
+    return new Map(
+      (bootstrap.quickCechy ?? []).map((c) => [c.ctw_Id, c] as const)
+    );
+  });
+  const [scopeCatalogOpen, setScopeCatalogOpen] = useState(false);
   const [prepCollapsed, setPrepCollapsed] = useState(false);
   const [launchReadyMessage, setLaunchReadyMessage] = useState<string | null>(
     null
@@ -1451,6 +1475,8 @@ export function ZdEstimateWorkbench({
     sortKey: ZdEstimateListSortKey;
     sortDir: ZdEstimateListSortDir;
     dniZapasu?: number | null;
+    favoriteGroups: ZdEstimateFavoriteRef[];
+    favoriteCechy: ZdEstimateFavoriteRef[];
   }>({
     zapasMin: Number(zapasMin) || 0,
     showAdvanced,
@@ -1459,6 +1485,8 @@ export function ZdEstimateWorkbench({
     listFilter,
     sortKey,
     sortDir,
+    favoriteGroups,
+    favoriteCechy,
   });
   const prefsLastSavedFingerprintRef = useRef(
     JSON.stringify({
@@ -1470,6 +1498,8 @@ export function ZdEstimateWorkbench({
       sortKey: uiPrefs.sortKey,
       sortDir: uiPrefs.sortDir,
       dniZapasu: "__omit__",
+      favoriteGroups: uiPrefs.favoriteGroups,
+      favoriteCechy: uiPrefs.favoriteCechy,
     })
   );
 
@@ -1488,6 +1518,12 @@ export function ZdEstimateWorkbench({
       listFilter: prefsPayloadRef.current.listFilter,
       sortKey: prefsPayloadRef.current.sortKey,
       sortDir: prefsPayloadRef.current.sortDir,
+      favoriteGroups: prefsPayloadRef.current.favoriteGroups.map((f) => ({
+        ...f,
+      })),
+      favoriteCechy: prefsPayloadRef.current.favoriteCechy.map((f) => ({
+        ...f,
+      })),
       ...(prefsPayloadRef.current.dniZapasu !== undefined
         ? { dniZapasu: prefsPayloadRef.current.dniZapasu }
         : {}),
@@ -1501,6 +1537,8 @@ export function ZdEstimateWorkbench({
       sortKey: patch.sortKey,
       sortDir: patch.sortDir,
       dniZapasu: "dniZapasu" in patch ? patch.dniZapasu : "__omit__",
+      favoriteGroups: patch.favoriteGroups,
+      favoriteCechy: patch.favoriteCechy,
     });
     if (fingerprint === prefsLastSavedFingerprintRef.current) {
       prefsDirtyRef.current = false;
@@ -1511,7 +1549,7 @@ export function ZdEstimateWorkbench({
       if (!res.ok) {
         prefsDirtyRef.current = true;
         flashSettingsLive(
-          res.message || "Nie udało się zapisać układu kolumn."
+          res.message || "Nie udało się zapisać preferencji kreatora."
         );
         return;
       }
@@ -1528,6 +1566,8 @@ export function ZdEstimateWorkbench({
       listFilter,
       sortKey,
       sortDir,
+      favoriteGroups: favoriteGroups.map((f) => ({ ...f })),
+      favoriteCechy: favoriteCechy.map((f) => ({ ...f })),
       ...(dniZapasuTouchedForPrefsRef.current
         ? { dniZapasu: dniZapasuPrefsValueRef.current }
         : {}),
@@ -1559,6 +1599,8 @@ export function ZdEstimateWorkbench({
     sortKey,
     sortDir,
     dniZapasu,
+    favoriteGroups,
+    favoriteCechy,
     flushZdEstimateUiPrefsSave,
   ]);
 
@@ -3214,7 +3256,7 @@ export function ZdEstimateWorkbench({
       setSelectedCecha(null);
       setCechaHits([]);
       setGroupQuery(group.grt_Nazwa);
-      setGroupHits([]);
+      // Nie czyść groupHits — 1 wynik wyszukiwania musi zostać z gwiazdką (plan ulubionych).
       setFeedback(null);
       setErrorMessage(null);
 
@@ -3272,7 +3314,7 @@ export function ZdEstimateWorkbench({
       setSelectedGroup(null);
       setGroupHits([]);
       setCechaQuery(cecha.ctw_Nazwa);
-      setCechaHits([]);
+      // Nie czyść cechaHits — 1 wynik wyszukiwania musi zostać z gwiazdką.
       setFeedback(null);
       setErrorMessage(null);
 
@@ -3576,6 +3618,94 @@ export function ZdEstimateWorkbench({
     });
   };
 
+  const quickGroupsLive = useMemo(
+    () => resolveZdEstimateFavoriteGroupChips(favoriteGroups, groupEnrichById),
+    [favoriteGroups, groupEnrichById]
+  );
+  const quickCechyLive = useMemo(
+    () => resolveZdEstimateFavoriteCechaChips(favoriteCechy, cechaEnrichById),
+    [favoriteCechy, cechaEnrichById]
+  );
+
+  const rememberGroupEnrich = useCallback((group: ZdEstimateGroupOption) => {
+    setGroupEnrichById((prev) => {
+      const next = new Map(prev);
+      next.set(group.grt_Id, group);
+      return next;
+    });
+    const label = group.grt_Nazwa.trim();
+    if (!label) return;
+    setFavoriteGroups((prev) => {
+      const i = prev.findIndex((f) => f.id === group.grt_Id);
+      if (i < 0 || prev[i]!.label === label) return prev;
+      const next = [...prev];
+      next[i] = { id: group.grt_Id, label };
+      return next;
+    });
+  }, []);
+
+  const rememberCechaEnrich = useCallback((cecha: ZdEstimateCechaOption) => {
+    setCechaEnrichById((prev) => {
+      const next = new Map(prev);
+      next.set(cecha.ctw_Id, cecha);
+      return next;
+    });
+    const label = cecha.ctw_Nazwa.trim();
+    if (!label) return;
+    setFavoriteCechy((prev) => {
+      const i = prev.findIndex((f) => f.id === cecha.ctw_Id);
+      if (i < 0 || prev[i]!.label === label) return prev;
+      const next = [...prev];
+      next[i] = { id: cecha.ctw_Id, label };
+      return next;
+    });
+  }, []);
+
+  const toggleGroupFavorite = useCallback(
+    (group: ZdEstimateGroupOption) => {
+      rememberGroupEnrich(group);
+      setFavoriteGroups((prev) => {
+        const res = toggleZdEstimateFavorite(prev, {
+          id: group.grt_Id,
+          label: group.grt_Nazwa,
+        });
+        if (!res.ok) {
+          flashSettingsLive(ZD_ESTIMATE_UI.prepFavoriteCapFlash);
+          return prev;
+        }
+        return res.next;
+      });
+    },
+    [flashSettingsLive, rememberGroupEnrich]
+  );
+
+  const toggleCechaFavorite = useCallback(
+    (cecha: ZdEstimateCechaOption) => {
+      rememberCechaEnrich(cecha);
+      setFavoriteCechy((prev) => {
+        const res = toggleZdEstimateFavorite(prev, {
+          id: cecha.ctw_Id,
+          label: cecha.ctw_Nazwa,
+        });
+        if (!res.ok) {
+          flashSettingsLive(ZD_ESTIMATE_UI.prepFavoriteCapFlash);
+          return prev;
+        }
+        return res.next;
+      });
+    },
+    [flashSettingsLive, rememberCechaEnrich]
+  );
+
+  const isGroupFavoriteCb = useCallback(
+    (grtId: number) => isZdEstimateFavorite(favoriteGroups, grtId),
+    [favoriteGroups]
+  );
+  const isCechaFavoriteCb = useCallback(
+    (ctwId: number) => isZdEstimateFavorite(favoriteCechy, ctwId),
+    [favoriteCechy]
+  );
+
   const searchGroups = () => {
     setFeedback(null);
     setErrorMessage(null);
@@ -3588,9 +3718,15 @@ export function ZdEstimateWorkbench({
         return;
       }
       setGroupHits(res.groups);
+      if (res.groups.length > 0) {
+        setGroupEnrichById((prev) => {
+          const next = new Map(prev);
+          for (const g of res.groups) next.set(g.grt_Id, g);
+          return next;
+        });
+      }
       if (res.groups.length === 1) {
         selectGroup(res.groups[0]!);
-        return;
       }
       if (res.groups.length === 0) {
         setErrorMessage("Brak grup dla tej frazy.");
@@ -3610,9 +3746,15 @@ export function ZdEstimateWorkbench({
         return;
       }
       setCechaHits(res.cechy);
+      if (res.cechy.length > 0) {
+        setCechaEnrichById((prev) => {
+          const next = new Map(prev);
+          for (const c of res.cechy) next.set(c.ctw_Id, c);
+          return next;
+        });
+      }
       if (res.cechy.length === 1) {
         selectCecha(res.cechy[0]!);
-        return;
       }
       if (res.cechy.length === 0) {
         setErrorMessage("Brak cech dla tej frazy.");
@@ -6624,6 +6766,7 @@ export function ZdEstimateWorkbench({
       ) : null}
 
       {!showLaunchProgress && !showSessionResumeProgress && prepFormOpen ? (
+        <>
         <ZdEstimatePrepForm
           configured={bootstrap.configured}
           busy={busy}
@@ -6632,19 +6775,43 @@ export function ZdEstimateWorkbench({
           estimating={estimating}
           scopeMode={scopeMode}
           onScopeModeChange={changeScopeMode}
-          quickGroups={bootstrap.quickGroups}
+          quickGroups={quickGroupsLive}
+          quickCechy={quickCechyLive}
+          isGroupFavorite={isGroupFavoriteCb}
+          isCechaFavorite={isCechaFavoriteCb}
+          onToggleGroupFavorite={toggleGroupFavorite}
+          onToggleCechaFavorite={toggleCechaFavorite}
+          onBrowseCatalog={() => setScopeCatalogOpen(true)}
           selectedGroup={selectedGroup}
-          onSelectGroup={selectGroup}
+          onSelectGroup={(g) => {
+            rememberGroupEnrich(g);
+            setGroupHits([]);
+            selectGroup(g);
+          }}
+          onSelectGroupHit={(g) => {
+            rememberGroupEnrich(g);
+            selectGroup(g);
+          }}
           groupQuery={groupQuery}
           onGroupQueryChange={setGroupQuery}
           onSearchGroups={searchGroups}
           groupHits={groupHits}
+          onClearGroupHits={() => setGroupHits([])}
           selectedCecha={selectedCecha}
-          onSelectCecha={selectCecha}
+          onSelectCecha={(c) => {
+            rememberCechaEnrich(c);
+            setCechaHits([]);
+            selectCecha(c);
+          }}
+          onSelectCechaHit={(c) => {
+            rememberCechaEnrich(c);
+            selectCecha(c);
+          }}
           cechaQuery={cechaQuery}
           onCechaQueryChange={setCechaQuery}
           onSearchCechy={searchCechy}
           cechaHits={cechaHits}
+          onClearCechaHits={() => setCechaHits([])}
           scopeSelected={scopeSelected}
           settingsTrusted={settingsTrusted}
           scopeNeedsRecount={scopeNeedsRecount}
@@ -6677,6 +6844,33 @@ export function ZdEstimateWorkbench({
           )}
           onAssignAndRun={confirmAssignAndRun}
         />
+        <ZdEstimateScopeCatalogDialog
+          open={scopeCatalogOpen}
+          onClose={() => setScopeCatalogOpen(false)}
+          mode={scopeMode}
+          configured={bootstrap.configured}
+          favoriteGroups={favoriteGroups}
+          favoriteCechy={favoriteCechy}
+          groupEnrichById={groupEnrichById}
+          cechaEnrichById={cechaEnrichById}
+          isGroupFavorite={isGroupFavoriteCb}
+          isCechaFavorite={isCechaFavoriteCb}
+          onToggleGroupFavorite={toggleGroupFavorite}
+          onToggleCechaFavorite={toggleCechaFavorite}
+          onSelectGroup={(g) => {
+            rememberGroupEnrich(g);
+            setGroupHits([]);
+            selectGroup(g);
+          }}
+          onSelectCecha={(c) => {
+            rememberCechaEnrich(c);
+            setCechaHits([]);
+            selectCecha(c);
+          }}
+          onRememberGroup={rememberGroupEnrich}
+          onRememberCecha={rememberCechaEnrich}
+        />
+        </>
       ) : null}
 
       {!showLaunchProgress && !showSessionResumeProgress && !sessionRestorePending ? (

@@ -78,8 +78,8 @@ Wszystkie listy zwracają envelope:
 | GET | `/documents/zd` | Zamówienia do dostawców (typ 15) |
 | GET | `/documents/zd/:id` | Jedno ZD (pełne linie) |
 | POST | `/documents/zd/create` | Host ORDERS (`:5080` live / `:5082` test) — tworzy ZD (Sfera `DodajZD`) |
-| GET | `/groups` | Grupy towarowe (`sl_GrupaTw`) — zwykle na hoście ORDERS |
-| GET | `/cechy/towarow` | Słownik cech towarów (`sl_CechaTw`) — host ORDERS |
+| GET | `/groups` | Grupy towarowe (`sl_GrupaTw`) — host ORDERS; query: `search?`, `id?`, `page`, `pageSize` |
+| GET | `/cechy/towarow` | Słownik cech towarów (`sl_CechaTw`) — host ORDERS; query: `search?`, `id?`, `page`, `pageSize` → `{ ctw_Id, ctw_Nazwa }` |
 | GET | `/orders/zd/estimate` | Kreator ilości do ZD — `/zakupy/szacunek` (host ORDERS) |
 | GET | `/products/komplety` | **Do wdrożenia:** komplety `tw_Komplet` (pack↔piece, `liczba`) — sync par w OnTime |
 | GET | `/examples` | Przykłady zapytań |
@@ -105,8 +105,6 @@ OnTime wysyła XOR: albo `grupaId`, albo `cechaId` (nigdy oba, nigdy puste — b
 | `wzNiepowiazaneOkres` | Breakdown — sam udział WZ w tej sumie (te same jednostki co `sprzedazOkres`) |
 
 OnTime **nie** dolicza `wzNiepowiazaneOkres` ponownie do sprzedaży (unik podwójnego liczenia). Kolumna Sprzed. pokazuje `sprzedazOkres`; przy `wz > 0` dopisek „w tym WZ N”. Opakowania OnTime (`zd_estimate_packaging`) **nie** przeliczają Sprzed./WZ — tylko Do ZD / jednostki dokumentu.
-
-`GET /cechy/towarow`: `search`, `id`, `page`, `pageSize` → `{ ctw_Id, ctw_Nazwa }`.
 
 ### Spec `GET /products/komplety` (host ORDERS — brakuje w API)
 
