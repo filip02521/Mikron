@@ -49,6 +49,7 @@ import { warsawDateKeyFromIso } from "@/lib/time/warsaw";
 function makeEstimate(dateStr: string, avgDays = 5, sampleCount = 5): DeliveryEtaEstimate {
   return {
     avgBusinessDays: avgDays,
+    primaryBusinessDays: avgDays,
     expectedDate: parseDateOnly(dateStr)!,
     sampleCount,
     lowConfidence: sampleCount < 3,

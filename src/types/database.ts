@@ -133,6 +133,8 @@ export interface IndividualOrder {
   /** Wspólne ID pozycji zamówionych jedną akcją w panelu dziennym. */
   placement_group_id?: string | null;
   delivery_at: string | null;
+  /** Pierwsze przyjęcie magazynowe (częściowe lub pełne) — nie nadpisywane. */
+  first_delivery_at?: string | null;
   /** Handlowiec potwierdził anulowanie lub odbiór — ukryte w „Moje zamówienia”. */
   sales_acknowledged_at?: string | null;
   /** Handlowiec wycofał prośbę — informacja dla działu dostaw. */

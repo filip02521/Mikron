@@ -364,7 +364,6 @@ export function OperationsUpdatesBanner() {
   return (
     <SystemNotice
       variant="action"
-      className="mb-4 sm:mb-6"
       title="Są nowe prośby lub zmiany w panelu dziennym"
       description={MICROCOPY.notices.operationsUpdates}
       action={

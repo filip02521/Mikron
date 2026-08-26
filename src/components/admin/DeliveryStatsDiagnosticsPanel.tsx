@@ -359,23 +359,51 @@ export function DeliveryStatsDiagnosticsPanel({
 
               <HelpBlock title="Reguły liczenia">
                 <ul className="list-disc space-y-1.5 pl-4 text-xs">
-                  <li>Jedna próbka na dostawcę i dzień zamówienia (wcześniejsza dostawa wygrywa).</li>
                   <li>
-                    Liczymy dni robocze między datą zamówienia a datą dostawy na magazyn.
+                    Próbki w <code>delivery_stats_samples</code> (1 wiersz / zamówienie); mean ważony
+                    dniem+typem. Zęby i cancel-disposition poza commodity.
                   </li>
                   <li>
-                    Pomijamy: informacje, częściowe realizacje, brak produktu, brak dat i
-                    duplikaty.
+                    Dni robocze po dacie kalendarzowej Warszawy (placement → delivery).
                   </li>
-                  <li>Przy zapisie pełnej realizacji statystyki aktualizują się przyrostowo.</li>
-                  <li>Poniżej 3 próbek ETA w panelu oznaczone jest jako szacunek.</li>
+                  <li>
+                    Pomijamy: informacje, częściowe realizacje, brak produktu, brak dat, zęby,
+                    cancel-disposition.
+                  </li>
+                  <li>
+                    Flagi: <code>DELIVERY_STATS_FROM_SAMPLES</code> /{" "}
+                    <code>ETA_USE_P50</code> (env lub app_settings).
+                  </li>
+                  <li>Poniżej 5 próbek ETA oznaczone jest jako szacunek.</li>
                 </ul>
               </HelpBlock>
 
               <HelpBlock title="Odświeżenie">
                 <p className="text-xs text-slate-500">
                   Ostatnie odświeżenie widoku: {formatTimestamp(data.generatedAt)}
+                  {data.summary.samplesSource
+                    ? ` · źródło health: ${data.summary.samplesSource}`
+                    : ""}
                 </p>
+                {data.summary.missingOrderedAtCount != null &&
+                data.summary.missingOrderedAtCount > 0 ? (
+                  <p className="mt-1 text-xs text-amber-700">
+                    Brak ordered_at: {data.summary.missingOrderedAtCount} zrealizowanych
+                  </p>
+                ) : null}
+                {data.summary.skipEventsLast7Days &&
+                data.summary.skipEventsLast7Days.length > 0 ? (
+                  <div className="mt-2 text-xs text-slate-600">
+                    <p className="font-medium">Skip events (7 dni):</p>
+                    <ul className="mt-1 list-disc pl-4">
+                      {data.summary.skipEventsLast7Days.slice(0, 8).map((row) => (
+                        <li key={row.reason}>
+                          {row.reason}: {row.count}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </HelpBlock>
             </HelpPopover>
           }

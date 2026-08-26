@@ -16,6 +16,10 @@ export type DeliveryStatsOrderInput = {
   delivery_at: string | null;
   order_type: string | null;
   products: string;
+  /** Zęby nie wchodzą do commodity delivery_stats. */
+  is_teeth?: boolean | null;
+  sales_cancelled_at?: string | null;
+  procurement_cancel_disposition?: string | null;
 };
 
 export type AggregatedDeliveryStats = {
@@ -45,6 +49,18 @@ export type SkippedDeliveryStatsOrder = {
 
 export function deliveryStatsDedupKey(
   supplierId: string,
+  placementDate: string,
+  orderType?: string | null
+): string {
+  if (orderType === "Glowne" || orderType === "Poboczne") {
+    return `${supplierId}|${placementDate}|${orderType}`;
+  }
+  return `${supplierId}|${placementDate}`;
+}
+
+/** Legacy day-only dedup (pre-samples incremental). */
+export function deliveryStatsDayDedupKey(
+  supplierId: string,
   placementDate: string
 ): string {
   return `${supplierId}|${placementDate}`;
@@ -60,6 +76,41 @@ export function placementDateFromOrder(
   });
   if (!placement) return null;
   return warsawDateKeyFromIso(placement);
+}
+
+export function deliveryDateKeyFromIso(deliveryAtIso: string | null | undefined): string | null {
+  if (!deliveryAtIso?.trim()) return null;
+  return warsawDateKeyFromIso(deliveryAtIso);
+}
+
+/**
+ * Dni robocze wyłącznie po datach kalendarzowych Warszawy (YYYY-MM-DD).
+ * Unika skew Vercel UTC przy parseDateOnly(pełne ISO).
+ */
+export function businessDaysBetweenWarsawDateKeys(
+  placementDateKey: string,
+  deliveryDateKey: string
+): number | null {
+  const orderDate = parseDateOnly(placementDateKey);
+  const deliveryDate = parseDateOnly(deliveryDateKey);
+  if (!orderDate || !deliveryDate) return null;
+  const days = calculateBusinessDays(orderDate, deliveryDate);
+  return days >= 0 ? days : null;
+}
+
+export function isCancelDispositionStatsPoison(
+  row: Pick<
+    DeliveryStatsOrderInput,
+    "sales_cancelled_at" | "procurement_cancel_disposition"
+  >
+): boolean {
+  return Boolean(row.sales_cancelled_at && row.procurement_cancel_disposition);
+}
+
+export function isTeethStatsPoison(
+  row: Pick<DeliveryStatsOrderInput, "is_teeth">
+): boolean {
+  return row.is_teeth === true;
 }
 
 /** Deterministyczny wybór próbki: najwcześniejsza dostawa, potem id. */
@@ -96,7 +147,10 @@ function finalizeAggregate(raw: {
   };
 }
 
-/** Agregacja próbek — jedna próbka na dostawcę + dzień zamówienia (canonical / pełne przeliczenie). */
+/**
+ * Agregacja z historii orders — jedna waga na (dostawca, dzień zamówienia, typ).
+ * Po cutoverze samples używamy `aggregateDeliveryStatsFromSampleRows`.
+ */
 export function aggregateDeliveryStatsFromOrders(orders: DeliveryStatsOrderInput[]): {
   bySupplier: Map<string, AggregatedDeliveryStats>;
   samples: DeliveryStatsSample[];
@@ -123,6 +177,18 @@ export function aggregateDeliveryStatsFromOrders(orders: DeliveryStatsOrderInput
       });
       continue;
     }
+    if (isTeethStatsPoison(row)) {
+      skipped.push({ orderId: row.id, supplierId: row.supplier_id, reason: "zęby" });
+      continue;
+    }
+    if (isCancelDispositionStatsPoison(row)) {
+      skipped.push({
+        orderId: row.id,
+        supplierId: row.supplier_id,
+        reason: "cancel-disposition",
+      });
+      continue;
+    }
     if (isMissingProduct(row.products)) {
       skipped.push({ orderId: row.id, supplierId: row.supplier_id, reason: "brak produktu" });
       continue;
@@ -137,8 +203,8 @@ export function aggregateDeliveryStatsFromOrders(orders: DeliveryStatsOrderInput
     }
 
     const placementDate = placementDateFromOrder(row);
-    const deliveryDate = parseDateOnly(row.delivery_at);
-    if (!placementDate || !deliveryDate) {
+    const deliveryDateKey = deliveryDateKeyFromIso(row.delivery_at);
+    if (!placementDate || !deliveryDateKey) {
       skipped.push({
         orderId: row.id,
         supplierId: row.supplier_id,
@@ -147,28 +213,20 @@ export function aggregateDeliveryStatsFromOrders(orders: DeliveryStatsOrderInput
       continue;
     }
 
-    const orderDate = parseDateOnly(
-      orderPlacementAt({
-        ordered_at: row.ordered_at,
-        action_at: row.action_at,
-        status: row.status as never,
-      })!
-    )!;
-    const deliveryDateKey = warsawDateKeyFromIso(deliveryDate.toISOString());
-    const dedupKey = deliveryStatsDedupKey(row.supplier_id, placementDate);
+    const days = businessDaysBetweenWarsawDateKeys(placementDate, deliveryDateKey);
+    if (days == null) {
+      skipped.push({ orderId: row.id, supplierId: row.supplier_id, reason: "ujemne dni robocze" });
+      continue;
+    }
+
+    const orderType = row.order_type === "Glowne" ? "Glowne" : "Poboczne";
+    const dedupKey = deliveryStatsDedupKey(row.supplier_id, placementDate, orderType);
     if (processed.has(dedupKey)) {
       skipped.push({ orderId: row.id, supplierId: row.supplier_id, reason: "duplikat dnia" });
       continue;
     }
 
-    const days = calculateBusinessDays(orderDate, deliveryDate);
-    if (days < 0) {
-      skipped.push({ orderId: row.id, supplierId: row.supplier_id, reason: "ujemne dni robocze" });
-      continue;
-    }
-
     processed.add(dedupKey);
-    const orderType = row.order_type === "Glowne" ? "Glowne" : "Poboczne";
     if (!rawBySupplier.has(row.supplier_id)) {
       rawBySupplier.set(row.supplier_id, {
         Glowne: { sum: 0, count: 0 },
@@ -221,21 +279,31 @@ export function aggregatedToDeliveryStatsRow(
   };
 }
 
-/** Przyrostowo: czy inne zrealizowane zamówienie już zajęło ten dzień zamówienia u dostawcy. */
+/** Przyrostowo: czy inne zrealizowane zamówienie już zajęło ten dzień+typ u dostawcy. */
 export function hasSiblingDeliveryStatsSample(
   order: DeliveryStatsOrderInput,
   siblings: DeliveryStatsOrderInput[]
 ): boolean {
   const placementDate = placementDateFromOrder(order);
   if (!placementDate || !order.supplier_id) return false;
-  const dedupKey = deliveryStatsDedupKey(order.supplier_id, placementDate);
+  const orderType =
+    order.order_type === "Glowne" || order.order_type === "Poboczne"
+      ? order.order_type
+      : null;
+  const dedupKey = deliveryStatsDedupKey(order.supplier_id, placementDate, orderType);
   return siblings.some((row) => {
     if (row.id === order.id) return false;
     if (row.status !== DELIVERY_STATS_COMPLETED_STATUS) return false;
     if (row.supplier_id !== order.supplier_id) return false;
+    if (isTeethStatsPoison(row) || isCancelDispositionStatsPoison(row)) return false;
+    if (isMissingProduct(row.products)) return false;
     const siblingDate = placementDateFromOrder(row);
     if (!siblingDate) return false;
-    return deliveryStatsDedupKey(row.supplier_id!, siblingDate) === dedupKey;
+    const siblingType =
+      row.order_type === "Glowne" || row.order_type === "Poboczne" ? row.order_type : null;
+    return (
+      deliveryStatsDedupKey(row.supplier_id!, siblingDate, siblingType) === dedupKey
+    );
   });
 }
 
@@ -244,18 +312,18 @@ export function businessDaysForDeliveryStatsSample(
   deliveryAtIso: string
 ): number | null {
   if (order.request_kind === "informacja") return null;
+  if (isTeethStatsPoison(order)) return null;
+  if (isCancelDispositionStatsPoison(order)) return null;
   if (isMissingProduct(order.products)) return null;
   if (!order.supplier_id || !order.order_type || order.order_type === "None") return null;
 
-  const placement = orderPlacementAt({
+  const placementDate = placementDateFromOrder({
     ordered_at: order.ordered_at,
     action_at: order.action_at,
-    status: order.status as never,
+    status: order.status,
   });
-  const orderDate = placement ? parseDateOnly(placement) : null;
-  const deliveryDate = parseDateOnly(deliveryAtIso);
-  if (!orderDate || !deliveryDate) return null;
+  const deliveryDateKey = deliveryDateKeyFromIso(deliveryAtIso);
+  if (!placementDate || !deliveryDateKey) return null;
 
-  const days = calculateBusinessDays(orderDate, deliveryDate);
-  return days >= 0 ? days : null;
+  return businessDaysBetweenWarsawDateKeys(placementDate, deliveryDateKey);
 }

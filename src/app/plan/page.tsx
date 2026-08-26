@@ -97,6 +97,11 @@ export default async function PlanPage({
   let teethOpenSupplierIds: string[] = [];
   const teethScheduleBySupplierId: Record<string, TeethSupplierSchedule> = {};
   const teethHistoryEtaLabelBySupplierId: Record<string, string> = {};
+  let etaUseP50 = false;
+  let etaQuantilesBySupplierId: Record<
+    string,
+    import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
+  > = {};
 
   try {
     const [supplierRows, statsRows, onVacationNow] = await Promise.all([
@@ -108,6 +113,14 @@ export default async function PlanPage({
     statsBySupplierId = Object.fromEntries(
       (statsRows as DeliveryStats[]).map((s) => [s.supplier_id, s])
     );
+    const { loadDeliveryEtaQuantilesForSupplierIds } = await import(
+      "@/lib/orders/delivery-eta-quantiles-load"
+    );
+    const etaQuantiles = await loadDeliveryEtaQuantilesForSupplierIds(
+      (statsRows as DeliveryStats[]).map((s) => s.supplier_id)
+    );
+    etaUseP50 = etaQuantiles.useP50;
+    etaQuantilesBySupplierId = etaQuantiles.bySupplierId;
     workspace = {
       ...buildSummaryWorkspace(suppliers, []),
       suppliersOnVacationNow: onVacationNow,
@@ -196,6 +209,8 @@ export default async function PlanPage({
           prioritySupplierIds={prioritySupplierIds}
           openOrderCountBySupplier={openOrderCountBySupplier}
           statsBySupplierId={statsBySupplierId}
+          etaUseP50={etaUseP50}
+          etaQuantilesBySupplierId={etaQuantilesBySupplierId}
           error={error}
           pageTitle={
             isTeamPreview && salesPersonName
@@ -215,6 +230,8 @@ export default async function PlanPage({
           prioritySupplierIds={prioritySupplierIds}
           openOrderCountBySupplier={openOrderCountBySupplier}
           statsBySupplierId={statsBySupplierId}
+          etaUseP50={etaUseP50}
+          etaQuantilesBySupplierId={etaQuantilesBySupplierId}
           error={error}
         />
       )}

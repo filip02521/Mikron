@@ -41,6 +41,11 @@ export function PlanClient(props: {
   prioritySupplierIds?: string[];
   openOrderCountBySupplier?: Record<string, number>;
   statsBySupplierId?: Record<string, DeliveryStats>;
+  etaUseP50?: boolean;
+  etaQuantilesBySupplierId?: Record<
+    string,
+    import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
+  >;
   error?: string | null;
   pageTitle?: string;
   /** Admin ?dla= — bez CTA zgłoszenia prośby. */
@@ -73,6 +78,10 @@ export function PlanClient(props: {
         workspace={resolved.workspace}
         suppliers={resolved.suppliers}
         statsBySupplierId={resolved.statsBySupplierId ?? {}}
+        etaUseP50={tourDemo ? false : Boolean(props.etaUseP50)}
+        etaQuantilesBySupplierId={
+          tourDemo ? {} : props.etaQuantilesBySupplierId ?? {}
+        }
         prioritySupplierIds={resolved.prioritySupplierIds ?? []}
         openOrderCountBySupplier={resolved.openOrderCountBySupplier ?? {}}
         tourPreview={tourDemo}

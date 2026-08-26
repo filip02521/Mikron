@@ -19,11 +19,24 @@ import { recalcSingleSupplierSchedule } from "@/lib/services/sync";
 import {
   aggregateDeliveryStatsFromOrders,
   aggregatedToDeliveryStatsRow,
+  businessDaysBetweenWarsawDateKeys,
   businessDaysForDeliveryStatsSample,
   DELIVERY_STATS_COMPLETED_STATUS,
+  deliveryDateKeyFromIso,
   hasSiblingDeliveryStatsSample,
+  isCancelDispositionStatsPoison,
+  isTeethStatsPoison,
+  placementDateFromOrder,
   type DeliveryStatsOrderInput,
 } from "@/lib/orders/delivery-stats-aggregation";
+import { fetchDeliveryStatsFromSamplesEnabled } from "@/lib/data/delivery-stats-flags";
+import {
+  incrementDeliveryStatsAtomic,
+  insertDeliveryStatsSample,
+  recomputeAllDeliveryStatsFromSamples,
+  recordDeliveryStatsSkipEvent,
+  softDeleteDeliveryStatsSampleForOrder,
+} from "@/lib/data/delivery-stats-samples";
 import type {
   IndividualOrder,
   IndividualOrderStatus,
@@ -1761,7 +1774,16 @@ async function applyDeliveredQuantityUpdate(
     update.teeth_line_delivered = opts.teethLineDelivered;
   }
   if (status === "Zrealizowane" || status === "Czesciowo_zrealizowane") {
-    update.delivery_at = new Date().toISOString();
+    // Nie nadpisuj delivery_at przy edycji qty gdy status już był zrealizowany —
+    // chroni realną datę przyjęcia i spójność delivery_stats_samples.
+    if (
+      prevStatus !== "Zrealizowane" &&
+      prevStatus !== "Czesciowo_zrealizowane"
+    ) {
+      update.delivery_at = new Date().toISOString();
+    } else if (!order.delivery_at) {
+      update.delivery_at = new Date().toISOString();
+    }
     if (!order.is_teeth && !order.warehouse_shelf?.trim()) {
       update.warehouse_shelf = WAREHOUSE_SHELF_DEFAULT;
     }
@@ -1769,7 +1791,40 @@ async function applyDeliveredQuantityUpdate(
     update.delivery_at = null;
   }
 
+  if (
+    status !== "Zrealizowane" &&
+    status !== "Czesciowo_zrealizowane" &&
+    order.first_delivery_at
+  ) {
+    update.first_delivery_at = null;
+  }
+
   await supabase.from("individual_orders").update(update).eq("id", orderId);
+
+  if (
+    (status === "Zrealizowane" || status === "Czesciowo_zrealizowane") &&
+    !order.first_delivery_at &&
+    typeof update.delivery_at === "string"
+  ) {
+    const { error: firstDeliveryError } = await supabase
+      .from("individual_orders")
+      .update({ first_delivery_at: update.delivery_at })
+      .eq("id", orderId)
+      .is("first_delivery_at", null);
+    if (firstDeliveryError) {
+      console.warn(
+        "first_delivery_at update skipped (migracja 152?):",
+        firstDeliveryError.message
+      );
+    }
+  }
+
+  if (
+    prevStatus === DELIVERY_STATS_COMPLETED_STATUS &&
+    status !== DELIVERY_STATS_COMPLETED_STATUS
+  ) {
+    await softDeleteDeliveryStatsSampleForOrder(orderId);
+  }
 
   if (shouldSyncZkWatchLineChecksAfterDeliveryChange(
     prevStatus,
@@ -1963,7 +2018,7 @@ async function fetchSupplierCompletedOrdersForStats(
   const { data } = await supabase
     .from("individual_orders")
     .select(
-      "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products"
+      "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition"
     )
     .eq("supplier_id", supplierId)
     .eq("request_kind", "zamowienie")
@@ -1972,31 +2027,11 @@ async function fetchSupplierCompletedOrdersForStats(
   return ((data ?? []) as DeliveryStatsOrderInput[]).filter((row) => row.id !== excludeOrderId);
 }
 
-async function tryIncrementDeliveryStatsFromOrder(
+function toDeliveryStatsCandidate(
   order: IndividualOrder,
   deliveryAtIso: string
-): Promise<boolean> {
-  if (order.request_kind !== "zamowienie") return false;
-  if (!order.supplier_id || !order.supplier || order.order_type === "None") return false;
-
-  const days = businessDaysForDeliveryStatsSample(
-    {
-      id: order.id,
-      supplier_id: order.supplier_id,
-      request_kind: order.request_kind,
-      status: DELIVERY_STATS_COMPLETED_STATUS,
-      ordered_at: order.ordered_at,
-      action_at: order.action_at,
-      delivery_at: deliveryAtIso,
-      order_type: order.order_type,
-      products: order.products,
-    },
-    deliveryAtIso
-  );
-  if (days == null) return false;
-
-  const siblings = await fetchSupplierCompletedOrdersForStats(order.supplier_id, order.id);
-  const candidate: DeliveryStatsOrderInput = {
+): DeliveryStatsOrderInput {
+  return {
     id: order.id,
     supplier_id: order.supplier_id,
     request_kind: order.request_kind,
@@ -2006,8 +2041,105 @@ async function tryIncrementDeliveryStatsFromOrder(
     delivery_at: deliveryAtIso,
     order_type: order.order_type,
     products: order.products,
+    is_teeth: order.is_teeth === true,
+    sales_cancelled_at: order.sales_cancelled_at ?? null,
+    procurement_cancel_disposition: order.procurement_cancel_disposition ?? null,
   };
-  if (hasSiblingDeliveryStatsSample(candidate, siblings)) return false;
+}
+
+async function tryIncrementDeliveryStatsFromOrder(
+  order: IndividualOrder,
+  deliveryAtIso: string
+): Promise<boolean> {
+  if (order.request_kind !== "zamowienie") return false;
+  if (!order.supplier_id || !order.supplier || order.order_type === "None") return false;
+
+  const candidate = toDeliveryStatsCandidate(order, deliveryAtIso);
+
+  if (isTeethStatsPoison(candidate)) {
+    await recordDeliveryStatsSkipEvent({
+      orderId: order.id,
+      supplierId: order.supplier_id,
+      reason: "zęby",
+    });
+    return false;
+  }
+  if (isCancelDispositionStatsPoison(candidate)) {
+    await recordDeliveryStatsSkipEvent({
+      orderId: order.id,
+      supplierId: order.supplier_id,
+      reason: "cancel-disposition",
+    });
+    return false;
+  }
+
+  const days = businessDaysForDeliveryStatsSample(candidate, deliveryAtIso);
+  if (days == null) {
+    await recordDeliveryStatsSkipEvent({
+      orderId: order.id,
+      supplierId: order.supplier_id,
+      reason: "brak daty lub niekwalifikujące",
+    });
+    return false;
+  }
+
+  const placementDate = placementDateFromOrder(candidate);
+  const deliveryDate = deliveryDateKeyFromIso(deliveryAtIso);
+  if (!placementDate || !deliveryDate) return false;
+
+  let businessDaysFirst: number | null = null;
+  const firstAt = order.first_delivery_at ?? deliveryAtIso;
+  const firstKey = deliveryDateKeyFromIso(firstAt);
+  if (firstKey) {
+    businessDaysFirst = businessDaysBetweenWarsawDateKeys(placementDate, firstKey);
+  }
+
+  const orderType = order.order_type === "Glowne" ? "Glowne" : "Poboczne";
+  const sampleResult = await insertDeliveryStatsSample({
+    supplierId: order.supplier_id,
+    orderId: order.id,
+    placementDate,
+    deliveryDate,
+    firstDeliveryDate: firstKey,
+    businessDaysFull: days,
+    businessDaysFirst,
+    orderType,
+    isTeeth: false,
+    source: "receive",
+  });
+
+  const fromSamples = await fetchDeliveryStatsFromSamplesEnabled();
+  if (sampleResult === "duplicate") {
+    // Orphan po złym undo / race — przy fladze samples i tak zsynchronizuj agregat.
+    if (fromSamples) {
+      const { recomputeDeliveryStatsForSupplier } = await import(
+        "@/lib/data/delivery-stats-samples"
+      );
+      await recomputeDeliveryStatsForSupplier(order.supplier_id);
+    }
+    return false;
+  }
+  if (sampleResult === "error") {
+    // nadal spróbuj legacy increment, żeby nie stracić statystyk gdy tabela samples nie istnieje
+  }
+
+  if (fromSamples) {
+    const { recomputeDeliveryStatsForSupplier } = await import(
+      "@/lib/data/delivery-stats-samples"
+    );
+    await recomputeDeliveryStatsForSupplier(order.supplier_id);
+    return sampleResult === "inserted";
+  }
+
+  const siblings = await fetchSupplierCompletedOrdersForStats(order.supplier_id, order.id);
+  if (hasSiblingDeliveryStatsSample(candidate, siblings)) {
+    await recordDeliveryStatsSkipEvent({
+      orderId: order.id,
+      supplierId: order.supplier_id,
+      reason: "duplikat dnia",
+    });
+    return false;
+  }
 
   await updateSupplierStats(order.supplier_id, days, order.order_type);
   return true;
@@ -2018,42 +2150,7 @@ export async function updateSupplierStats(
   deliveryDays: number,
   orderType: OrderType
 ) {
-  const supabase = createAdminClient();
-  const isMain = orderType === "Glowne";
-  const { data: existing } = await supabase
-    .from("delivery_stats")
-    .select("main_sum, side_sum, main_count, side_count")
-    .eq("supplier_id", supplierId)
-    .maybeSingle();
-
-  if (existing) {
-    const sumCol = isMain ? "main_sum" : "side_sum";
-    const countCol = isMain ? "main_count" : "side_count";
-    const avgCol = isMain ? "main_avg" : "side_avg";
-    const currentSum = Number(existing[sumCol as keyof typeof existing] ?? 0);
-    const currentCount = Number(existing[countCol as keyof typeof existing] ?? 0);
-    const newSum = currentSum + deliveryDays;
-    const newCount = currentCount + 1;
-    await supabase
-      .from("delivery_stats")
-      .update({
-        [sumCol]: newSum,
-        [countCol]: newCount,
-        [avgCol]: Math.round(newSum / newCount),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("supplier_id", supplierId);
-  } else {
-    await supabase.from("delivery_stats").insert({
-      supplier_id: supplierId,
-      main_sum: isMain ? deliveryDays : null,
-      main_count: isMain ? 1 : null,
-      main_avg: isMain ? deliveryDays : null,
-      side_sum: !isMain ? deliveryDays : null,
-      side_count: !isMain ? 1 : null,
-      side_avg: !isMain ? deliveryDays : null,
-    });
-  }
+  await incrementDeliveryStatsAtomic(supplierId, deliveryDays, orderType);
 }
 
 export type ProcessDeliveriesResult = {
@@ -2144,15 +2241,34 @@ async function processMarkedDeliveriesUnlocked(): Promise<ProcessDeliveriesResul
       updatePayload.warehouse_shelf = WAREHOUSE_SHELF_DEFAULT;
     }
 
-    const { error: updateError } = await supabase
+    const { data: updatedRows, error: updateError } = await supabase
       .from("individual_orders")
       .update(updatePayload)
       .eq("id", order.id)
-      .eq("status", "Zamowione");
+      .eq("status", "Zamowione")
+      .select("id");
 
     if (updateError) {
       console.error("processMarkedDeliveries update", order.id, updateError.message);
       continue;
+    }
+    if (!updatedRows?.length) {
+      // Race: ktoś już przyjął zamówienie — nie dubluj stats/e-mail
+      continue;
+    }
+
+    if (!order.first_delivery_at) {
+      const { error: firstDeliveryError } = await supabase
+        .from("individual_orders")
+        .update({ first_delivery_at: updatePayload.delivery_at })
+        .eq("id", order.id)
+        .is("first_delivery_at", null);
+      if (firstDeliveryError) {
+        console.warn(
+          "processMarkedDeliveries first_delivery_at:",
+          firstDeliveryError.message
+        );
+      }
     }
 
     processed++;
@@ -2217,18 +2333,30 @@ async function processMarkedDeliveriesUnlocked(): Promise<ProcessDeliveriesResul
 }
 
 export async function recalculateAllStats() {
+  const fromSamples = await fetchDeliveryStatsFromSamplesEnabled();
+  if (fromSamples) {
+    return recomputeAllDeliveryStatsFromSamples();
+  }
+
   const supabase = createAdminClient();
-  await supabase.from("delivery_stats").delete().neq("supplier_id", "00000000-0000-0000-0000-000000000000");
+  await supabase
+    .from("delivery_stats")
+    .delete()
+    .neq("supplier_id", "00000000-0000-0000-0000-000000000000");
 
   const { data: history } = await supabase
     .from("individual_orders")
-    .select("*")
+    .select(
+      "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition"
+    )
     .eq("request_kind", "zamowienie")
     .eq("status", DELIVERY_STATS_COMPLETED_STATUS)
     .order("delivery_at", { ascending: true })
     .order("id", { ascending: true });
 
-  const { bySupplier } = aggregateDeliveryStatsFromOrders(history ?? []);
+  const { bySupplier } = aggregateDeliveryStatsFromOrders(
+    (history ?? []) as DeliveryStatsOrderInput[]
+  );
 
   for (const [supplierId, agg] of bySupplier) {
     await supabase.from("delivery_stats").insert(aggregatedToDeliveryStatsRow(supplierId, agg));

@@ -153,7 +153,12 @@ import {
   zdEstimateExternalSessionScopeChangeCancelLabel,
 } from "@/lib/orders/zd-estimate-ui-copy";
 import { shouldUseZdEstimateProgressShell } from "@/lib/orders/zd-estimate-progress-shell";
-import { applyGroupStockWindow } from "@/lib/orders/zd-estimate-group-stock";
+import { applyGroupStockWindow, resolveSupplierForScopeSelection } from "@/lib/orders/zd-estimate-group-stock";
+import {
+  findUniqueSupplierIdForCecha,
+  findUniqueSupplierIdForGrupa,
+} from "@/lib/orders/zd-estimate-supplier-scope";
+import type { ZdEstimateSupplierScopeRow } from "@/lib/data/zd-estimate-supplier-scopes";
 import {
   resolveZdEstimateActiveScopeLabel,
   resolveZdEstimateActiveSupplierName,
@@ -505,6 +510,7 @@ type Bootstrap = {
   uiPrefs?: ZdEstimateUiPrefs;
   extrasPolicy?: ZdEstimateExtrasPolicy;
   todayScopeCoverage?: ZdEstimateScopeCoverage;
+  supplierScopes?: import("@/lib/data/zd-estimate-supplier-scopes").ZdEstimateSupplierScopeRow[];
 };
 
 type RunMeta = {
@@ -527,25 +533,31 @@ function resolveWindowForGroup(
   suppliers: ZdEstimateSupplierOption[],
   salesEndKey: string
 ) {
-  if (group.dniZapasu != null && group.dniZapasu > 0) {
-    const window = salesWindowFromDniZapasu(group.dniZapasu, salesEndKey);
+  if (group.supplierId) {
+    const card = suppliers.find((s) => s.id === group.supplierId);
+    const rawDni = group.dniZapasu ?? card?.dniZapasu ?? null;
+    const dniZapasu =
+      rawDni != null && rawDni > 0 ? rawDni : DEFAULT_DNI_ZAPASU;
+    const window = salesWindowFromDniZapasu(dniZapasu, salesEndKey);
     return {
-      dniZapasu: group.dniZapasu,
+      dniZapasu,
       dataOd: window.dataOd,
       dataDo: window.dataDo,
       supplierId: group.supplierId,
-      supplierName: group.supplierName,
-      stockLabel: group.stockLabel,
+      supplierName: group.supplierName ?? card?.name ?? null,
+      stockLabel: group.stockLabel ?? card?.stockLabel ?? null,
       matched: true as const,
+      matchSource: group.supplierMatchSource ?? null,
     };
   }
-  return applyGroupStockWindow({
+  const applied = applyGroupStockWindow({
     groupName: group.grt_Nazwa,
     suppliers,
     salesEndKey,
     fallbackDniZapasu: DEFAULT_DNI_ZAPASU,
     salesWindowFromDniZapasu,
   });
+  return { ...applied, matchSource: applied.matched ? ("name" as const) : null };
 }
 
 function resolveWindowForCecha(
@@ -553,25 +565,195 @@ function resolveWindowForCecha(
   suppliers: ZdEstimateSupplierOption[],
   salesEndKey: string
 ) {
-  if (cecha.dniZapasu != null && cecha.dniZapasu > 0) {
-    const window = salesWindowFromDniZapasu(cecha.dniZapasu, salesEndKey);
+  if (cecha.supplierId) {
+    const card = suppliers.find((s) => s.id === cecha.supplierId);
+    const rawDni = cecha.dniZapasu ?? card?.dniZapasu ?? null;
+    const dniZapasu =
+      rawDni != null && rawDni > 0 ? rawDni : DEFAULT_DNI_ZAPASU;
+    const window = salesWindowFromDniZapasu(dniZapasu, salesEndKey);
     return {
-      dniZapasu: cecha.dniZapasu,
+      dniZapasu,
       dataOd: window.dataOd,
       dataDo: window.dataDo,
       supplierId: cecha.supplierId,
-      supplierName: cecha.supplierName,
-      stockLabel: cecha.stockLabel,
+      supplierName: cecha.supplierName ?? card?.name ?? null,
+      stockLabel: cecha.stockLabel ?? card?.stockLabel ?? null,
       matched: true as const,
+      matchSource: cecha.supplierMatchSource ?? null,
     };
   }
-  return applyGroupStockWindow({
+  const applied = applyGroupStockWindow({
     groupName: cecha.ctw_Nazwa,
     suppliers,
     salesEndKey,
     fallbackDniZapasu: DEFAULT_DNI_ZAPASU,
     salesWindowFromDniZapasu,
   });
+  return { ...applied, matchSource: applied.matched ? ("name" as const) : null };
+}
+
+function mappingNoticeForSelection(input: {
+  matchSource: "mapping" | "name" | null | undefined;
+  supplierName: string | null | undefined;
+  scopeLabel: string;
+}): string | null {
+  if (input.matchSource !== "mapping" || !input.supplierName?.trim()) return null;
+  return ZD_ESTIMATE_UI.supplierFromMappingNotice(
+    input.supplierName.trim(),
+    input.scopeLabel
+  );
+}
+
+function enrichLaunchGroupOption(
+  launch: NonNullable<ZdEstimateLaunchProps>,
+  suppliers: ZdEstimateSupplierOption[],
+  scopes: readonly ZdEstimateSupplierScopeRow[]
+): ZdEstimateGroupOption | null {
+  if (launch.mode !== "grupa" || !launch.grupaId) return null;
+  const label = launch.label?.trim() || `Grupa ${launch.grupaId}`;
+  const mappedId = findUniqueSupplierIdForGrupa(scopes, launch.grupaId);
+  const resolved = resolveSupplierForScopeSelection({
+    scopeName: label,
+    suppliers,
+    mappedSupplierId: mappedId,
+  });
+  if (resolved.supplier) {
+    return {
+      grt_Id: launch.grupaId,
+      grt_Nazwa: label,
+      supplierId: resolved.supplier.id,
+      supplierName: resolved.supplier.name,
+      dniZapasu: resolved.supplier.dniZapasu ?? null,
+      stockLabel: resolved.supplier.stockLabel ?? null,
+      subiektKhId: resolved.supplier.subiektKhId ?? null,
+      additionalSubiektKhIds: resolved.supplier.additionalSubiektKhIds ?? [],
+      supplierMatchSource: resolved.source,
+      supplierMappingUnresolved: false,
+    };
+  }
+  if (resolved.mappingUnresolved) {
+    const keepLaunch =
+      Boolean(mappedId) && launch.supplierId != null && launch.supplierId === mappedId;
+    return {
+      grt_Id: launch.grupaId,
+      grt_Nazwa: label,
+      supplierId: keepLaunch ? launch.supplierId : null,
+      supplierName: keepLaunch ? (launch.supplierName ?? null) : null,
+      dniZapasu: null,
+      stockLabel: null,
+      subiektKhId: null,
+      additionalSubiektKhIds: [],
+      supplierMatchSource: null,
+      supplierMappingUnresolved: true,
+    };
+  }
+  const fromLaunch = launch.supplierId
+    ? suppliers.find((s) => s.id === launch.supplierId) ?? null
+    : null;
+  return {
+    grt_Id: launch.grupaId,
+    grt_Nazwa: label,
+    supplierId: fromLaunch?.id ?? launch.supplierId ?? null,
+    supplierName: fromLaunch?.name ?? launch.supplierName ?? null,
+    dniZapasu: fromLaunch?.dniZapasu ?? null,
+    stockLabel: fromLaunch?.stockLabel ?? null,
+    subiektKhId: fromLaunch?.subiektKhId ?? null,
+    additionalSubiektKhIds: fromLaunch?.additionalSubiektKhIds ?? [],
+    supplierMatchSource: null,
+    supplierMappingUnresolved: false,
+  };
+}
+
+function enrichLaunchCechaOption(
+  launch: NonNullable<ZdEstimateLaunchProps>,
+  suppliers: ZdEstimateSupplierOption[],
+  scopes: readonly ZdEstimateSupplierScopeRow[]
+): ZdEstimateCechaOption | null {
+  if (launch.mode !== "cecha" || !launch.cechaId) return null;
+  const label = launch.label?.trim() || `Cecha ${launch.cechaId}`;
+  const mappedId = findUniqueSupplierIdForCecha(scopes, launch.cechaId);
+  const resolved = resolveSupplierForScopeSelection({
+    scopeName: label,
+    suppliers,
+    mappedSupplierId: mappedId,
+  });
+  if (resolved.supplier) {
+    return {
+      ctw_Id: launch.cechaId,
+      ctw_Nazwa: label,
+      supplierId: resolved.supplier.id,
+      supplierName: resolved.supplier.name,
+      dniZapasu: resolved.supplier.dniZapasu ?? null,
+      stockLabel: resolved.supplier.stockLabel ?? null,
+      subiektKhId: resolved.supplier.subiektKhId ?? null,
+      additionalSubiektKhIds: resolved.supplier.additionalSubiektKhIds ?? [],
+      supplierMatchSource: resolved.source,
+      supplierMappingUnresolved: false,
+    };
+  }
+  if (resolved.mappingUnresolved) {
+    const keepLaunch =
+      Boolean(mappedId) && launch.supplierId != null && launch.supplierId === mappedId;
+    return {
+      ctw_Id: launch.cechaId,
+      ctw_Nazwa: label,
+      supplierId: keepLaunch ? launch.supplierId : null,
+      supplierName: keepLaunch ? (launch.supplierName ?? null) : null,
+      dniZapasu: null,
+      stockLabel: null,
+      subiektKhId: null,
+      additionalSubiektKhIds: [],
+      supplierMatchSource: null,
+      supplierMappingUnresolved: true,
+    };
+  }
+  const fromLaunch = launch.supplierId
+    ? suppliers.find((s) => s.id === launch.supplierId) ?? null
+    : null;
+  return {
+    ctw_Id: launch.cechaId,
+    ctw_Nazwa: label,
+    supplierId: fromLaunch?.id ?? launch.supplierId ?? null,
+    supplierName: fromLaunch?.name ?? launch.supplierName ?? null,
+    dniZapasu: fromLaunch?.dniZapasu ?? null,
+    stockLabel: fromLaunch?.stockLabel ?? null,
+    subiektKhId: fromLaunch?.subiektKhId ?? null,
+    additionalSubiektKhIds: fromLaunch?.additionalSubiektKhIds ?? [],
+    supplierMatchSource: null,
+    supplierMappingUnresolved: false,
+  };
+}
+
+function applyScopeSupplierFields<
+  T extends {
+    supplierId?: string | null;
+    supplierName?: string | null;
+    dniZapasu?: number | null;
+    stockLabel?: string | null;
+    subiektKhId?: number | null;
+    additionalSubiektKhIds?: number[];
+    supplierMatchSource?: "mapping" | "name" | null;
+    supplierMappingUnresolved?: boolean;
+  },
+>(
+  base: T,
+  resolved: {
+    supplier: ZdEstimateSupplierOption | null;
+    source: "mapping" | "name" | null;
+    mappingUnresolved?: boolean;
+  }
+): T {
+  return {
+    ...base,
+    supplierId: resolved.supplier?.id ?? null,
+    supplierName: resolved.supplier?.name ?? null,
+    dniZapasu: resolved.supplier?.dniZapasu ?? null,
+    stockLabel: resolved.supplier?.stockLabel ?? null,
+    subiektKhId: resolved.supplier?.subiektKhId ?? null,
+    additionalSubiektKhIds: resolved.supplier?.additionalSubiektKhIds ?? [],
+    supplierMatchSource: resolved.source,
+    supplierMappingUnresolved: resolved.mappingUnresolved === true,
+  };
 }
 
 export function ZdEstimateWorkbench({
@@ -618,44 +800,86 @@ export function ZdEstimateWorkbench({
   );
   const [groupHits, setGroupHits] = useState<ZdEstimateGroupOption[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<ZdEstimateGroupOption | null>(
-    () => {
-      if (launch?.mode !== "grupa" || !launch.grupaId) return null;
-      const s = bootstrap.suppliers.find((x) => x.id === launch.supplierId);
-      return {
-        grt_Id: launch.grupaId,
-        grt_Nazwa: launch.label?.trim() || `Grupa ${launch.grupaId}`,
-        supplierId: launch.supplierId,
-        supplierName: launch.supplierName ?? s?.name ?? null,
-        dniZapasu: s?.dniZapasu ?? null,
-        stockLabel: s?.stockLabel ?? null,
-        subiektKhId: s?.subiektKhId ?? null,
-        additionalSubiektKhIds: s?.additionalSubiektKhIds ?? [],
-      };
-    }
+    () =>
+      launch
+        ? enrichLaunchGroupOption(
+            launch,
+            bootstrap.suppliers,
+            bootstrap.supplierScopes ?? []
+          )
+        : null
   );
   const [cechaQuery, setCechaQuery] = useState(() =>
     launch?.mode === "cecha" ? launch.label?.trim() ?? "" : ""
   );
   const [cechaHits, setCechaHits] = useState<ZdEstimateCechaOption[]>([]);
   const [selectedCecha, setSelectedCecha] = useState<ZdEstimateCechaOption | null>(
-    () => {
-      if (launch?.mode !== "cecha" || !launch.cechaId) return null;
-      const s = bootstrap.suppliers.find((x) => x.id === launch.supplierId);
-      return {
-        ctw_Id: launch.cechaId,
-        ctw_Nazwa: launch.label?.trim() || `Cecha ${launch.cechaId}`,
-        supplierId: launch.supplierId,
-        supplierName: launch.supplierName ?? s?.name ?? null,
-        dniZapasu: s?.dniZapasu ?? null,
-        stockLabel: s?.stockLabel ?? null,
-        subiektKhId: s?.subiektKhId ?? null,
-        additionalSubiektKhIds: s?.additionalSubiektKhIds ?? [],
-      };
+    () =>
+      launch
+        ? enrichLaunchCechaOption(
+            launch,
+            bootstrap.suppliers,
+            bootstrap.supplierScopes ?? []
+          )
+        : null
+  );
+  const [supplierId, setSupplierId] = useState<string | null>(() => {
+    if (!launch) return null;
+    if (launch.mode === "grupa") {
+      return (
+        enrichLaunchGroupOption(
+          launch,
+          bootstrap.suppliers,
+          bootstrap.supplierScopes ?? []
+        )?.supplierId ??
+        launch.supplierId ??
+        null
+      );
     }
-  );
-  const [supplierId, setSupplierId] = useState<string | null>(
-    launch?.supplierId ?? null
-  );
+    if (launch.mode === "cecha") {
+      return (
+        enrichLaunchCechaOption(
+          launch,
+          bootstrap.suppliers,
+          bootstrap.supplierScopes ?? []
+        )?.supplierId ??
+        launch.supplierId ??
+        null
+      );
+    }
+    return launch.supplierId ?? null;
+  });
+  /** Komunikat: dostawca przypisany z mapowania zakresów. */
+  const [supplierFromMappingNotice, setSupplierFromMappingNotice] = useState<
+    string | null
+  >(() => {
+    if (!launch) return null;
+    if (launch.mode === "grupa") {
+      const g = enrichLaunchGroupOption(
+        launch,
+        bootstrap.suppliers,
+        bootstrap.supplierScopes ?? []
+      );
+      return mappingNoticeForSelection({
+        matchSource: g?.supplierMatchSource,
+        supplierName: g?.supplierName,
+        scopeLabel: g?.grt_Nazwa ?? "",
+      });
+    }
+    if (launch.mode === "cecha") {
+      const c = enrichLaunchCechaOption(
+        launch,
+        bootstrap.suppliers,
+        bootstrap.supplierScopes ?? []
+      );
+      return mappingNoticeForSelection({
+        matchSource: c?.supplierMatchSource,
+        supplierName: c?.supplierName,
+        scopeLabel: c?.ctw_Nazwa ?? "",
+      });
+    }
+    return null;
+  });
   const [dniZapasu, setDniZapasu] = useState(() => {
     const fromSupplier = bootstrap.suppliers.find(
       (s) => s.id === launch?.supplierId
@@ -1001,6 +1225,8 @@ export function ZdEstimateWorkbench({
   const [missingBomTwIds, setMissingBomTwIds] = useState<number[]>([]);
   const bomMissingCount = missingBomTwIds.length;
   const [createUnlockedAfterDone, setCreateUnlockedAfterDone] = useState(false);
+  const [createTimeoutUnlockConfirmOpen, setCreateTimeoutUnlockConfirmOpen] =
+    useState(false);
   const [qtyOverrideByTwId, setQtyOverrideByTwId] = useState<Record<number, number>>({});
   const [sessionIncludeTwIds, setSessionIncludeTwIds] = useState<Record<number, true>>({});
   const [createUndoVisible, setCreateUndoVisible] = useState(false);
@@ -2653,6 +2879,19 @@ export function ZdEstimateWorkbench({
       setGroupQuery(payload.groupQuery ?? payload.selectedGroup?.grt_Nazwa ?? "");
       setCechaQuery(payload.cechaQuery ?? payload.selectedCecha?.ctw_Nazwa ?? "");
       setSupplierId(payload.supplierId ?? null);
+      setSupplierFromMappingNotice(
+        payload.scopeMode === "cecha"
+          ? mappingNoticeForSelection({
+              matchSource: payload.selectedCecha?.supplierMatchSource,
+              supplierName: payload.selectedCecha?.supplierName,
+              scopeLabel: payload.selectedCecha?.ctw_Nazwa ?? "",
+            })
+          : mappingNoticeForSelection({
+              matchSource: payload.selectedGroup?.supplierMatchSource,
+              supplierName: payload.selectedGroup?.supplierName,
+              scopeLabel: payload.selectedGroup?.grt_Nazwa ?? "",
+            })
+      );
       setDniZapasu(String(payload.dniZapasu ?? ""));
       setDataOd(payload.dataOd);
       setDataDo(payload.dataDo);
@@ -2723,6 +2962,7 @@ export function ZdEstimateWorkbench({
       setCreateDoneDokId(null);
       setCreateDoneDokNr(null);
       setCreateUnconfirmedAttempt(false);
+      setCreateTimeoutUnlockConfirmOpen(false);
       setCreateUnlockedAfterDone(false);
       setCreateUndoVisible(false);
       setCreateZdOpen(false);
@@ -2896,6 +3136,7 @@ export function ZdEstimateWorkbench({
     setCreateDoneDokId(null);
     setCreateDoneDokNr(null);
     setCreateUnconfirmedAttempt(false);
+    setCreateTimeoutUnlockConfirmOpen(false);
     setCreateZdOpen(false);
     setCreatingZd(false);
     setLinkZdOpen(false);
@@ -2952,6 +3193,7 @@ export function ZdEstimateWorkbench({
         setGroupHits([]);
         setGroupQuery("");
       }
+      setSupplierFromMappingNotice(null);
     });
   };
 
@@ -2982,6 +3224,13 @@ export function ZdEstimateWorkbench({
 
       setSupplierId(applied.supplierId);
       setDniZapasu(String(applied.dniZapasu));
+      setSupplierFromMappingNotice(
+        mappingNoticeForSelection({
+          matchSource: applied.matchSource,
+          supplierName: applied.supplierName,
+          scopeLabel: group.grt_Nazwa,
+        })
+      );
       if (shouldApplyStockSalesWindow(salesWindowSource)) {
         setDataOd(applied.dataOd);
         setDataDo(applied.dataDo);
@@ -3033,6 +3282,13 @@ export function ZdEstimateWorkbench({
 
       setSupplierId(applied.supplierId);
       setDniZapasu(String(applied.dniZapasu));
+      setSupplierFromMappingNotice(
+        mappingNoticeForSelection({
+          matchSource: applied.matchSource,
+          supplierName: applied.supplierName,
+          scopeLabel: cecha.ctw_Nazwa,
+        })
+      );
       if (shouldApplyStockSalesWindow(salesWindowSource)) {
         setDataOd(applied.dataOd);
         setDataDo(applied.dataDo);
@@ -3091,12 +3347,118 @@ export function ZdEstimateWorkbench({
     });
   };
 
+  const handleSupplierScopesChange = useCallback(
+    (
+      scopes: ZdEstimateSupplierScopeRow[],
+      meta: { reason: "load" | "mutate" }
+    ) => {
+      setTodayCoverage(
+        zdEstimateScopeCoverage(
+          collectTodayScheduleSuppliers({
+            todayKey: bootstrap.todayKey,
+            suppliers: bootstrap.suppliers,
+          }),
+          scopes.map((s) => s.supplierId)
+        )
+      );
+      if (meta.reason !== "mutate") return;
+
+      setGroupHits([]);
+      setCechaHits([]);
+
+      if (scopeMode === "grupa" && selectedGroup) {
+        const next = applyScopeSupplierFields(
+          selectedGroup,
+          resolveSupplierForScopeSelection({
+            scopeName: selectedGroup.grt_Nazwa,
+            suppliers: bootstrap.suppliers,
+            mappedSupplierId: findUniqueSupplierIdForGrupa(
+              scopes,
+              selectedGroup.grt_Id
+            ),
+          })
+        );
+        setSelectedGroup(next);
+        const applied = resolveWindowForGroup(
+          next,
+          bootstrap.suppliers,
+          bootstrap.salesEndKey
+        );
+        if (applied.supplierId !== supplierId) {
+          clearEstimateResult({ fromScopeChange: lines != null });
+        }
+        setSupplierId(applied.supplierId);
+        setDniZapasu(String(applied.dniZapasu));
+        setSupplierFromMappingNotice(
+          mappingNoticeForSelection({
+            matchSource: applied.matchSource,
+            supplierName: applied.supplierName,
+            scopeLabel: next.grt_Nazwa,
+          })
+        );
+        if (shouldApplyStockSalesWindow(salesWindowSource)) {
+          setDataOd(applied.dataOd);
+          setDataDo(applied.dataDo);
+        }
+        return;
+      }
+
+      if (scopeMode === "cecha" && selectedCecha) {
+        const next = applyScopeSupplierFields(
+          selectedCecha,
+          resolveSupplierForScopeSelection({
+            scopeName: selectedCecha.ctw_Nazwa,
+            suppliers: bootstrap.suppliers,
+            mappedSupplierId: findUniqueSupplierIdForCecha(
+              scopes,
+              selectedCecha.ctw_Id
+            ),
+          })
+        );
+        setSelectedCecha(next);
+        const applied = resolveWindowForCecha(
+          next,
+          bootstrap.suppliers,
+          bootstrap.salesEndKey
+        );
+        if (applied.supplierId !== supplierId) {
+          clearEstimateResult({ fromScopeChange: lines != null });
+        }
+        setSupplierId(applied.supplierId);
+        setDniZapasu(String(applied.dniZapasu));
+        setSupplierFromMappingNotice(
+          mappingNoticeForSelection({
+            matchSource: applied.matchSource,
+            supplierName: applied.supplierName,
+            scopeLabel: next.ctw_Nazwa,
+          })
+        );
+        if (shouldApplyStockSalesWindow(salesWindowSource)) {
+          setDataOd(applied.dataOd);
+          setDataDo(applied.dataDo);
+        }
+      }
+    },
+    [
+      bootstrap.salesEndKey,
+      bootstrap.suppliers,
+      bootstrap.todayKey,
+      lines,
+      salesWindowSource,
+      scopeMode,
+      selectedCecha,
+      selectedGroup,
+      supplierId,
+    ]
+  );
+
   const onSupplierOverride = (id: string) => {
     if (id === (supplierId ?? "")) return;
 
     const affectsScope = lines != null;
 
     const applyChange = () => {
+      setSupplierFromMappingNotice(null);
       if (!id) {
         setSupplierId(null);
         clearEstimateResult({ fromScopeChange: lines != null });
@@ -3363,6 +3725,7 @@ export function ZdEstimateWorkbench({
         setCreateDoneDokId(null);
         setCreateDoneDokNr(null);
         setCreateUnconfirmedAttempt(false);
+        setCreateTimeoutUnlockConfirmOpen(false);
         setCreateUnlockedAfterDone(false);
         setCreateUndoVisible(false);
         setCreateZdOpen(false);
@@ -3458,6 +3821,7 @@ export function ZdEstimateWorkbench({
         setCreateDoneDokId(null);
         setCreateDoneDokNr(null);
         setCreateUnconfirmedAttempt(false);
+        setCreateTimeoutUnlockConfirmOpen(false);
         setCreateUnlockedAfterDone(false);
         setCreateUndoVisible(false);
         setCreateZdOpen(false);
@@ -5810,6 +6174,10 @@ export function ZdEstimateWorkbench({
             openLinkZdModal();
           }}
           onUnlockCreate={() => {
+            if (createUnconfirmedAttempt) {
+              setCreateTimeoutUnlockConfirmOpen(true);
+              return;
+            }
             setCreateUnlockedAfterDone(true);
             setCreateUndoVisible(false);
             // Nie kasuj timeoutRecoveryFreezeRef — link po odblokowaniu
@@ -5989,11 +6357,17 @@ export function ZdEstimateWorkbench({
               variant="secondary"
               className="mt-3"
               onClick={() => {
+                if (createUnconfirmedAttempt) {
+                  setCreateTimeoutUnlockConfirmOpen(true);
+                  return;
+                }
                 setCreateUnlockedAfterDone(true);
                 setCreateUndoVisible(false);
               }}
             >
-              Odblokuj tworzenie ZD (świadomie)
+              {createUnconfirmedAttempt
+                ? "Sprawdziłem Subiekt — odblokuj Create"
+                : "Odblokuj tworzenie ZD (świadomie)"}
             </Button>
           ) : null}
         </Alert>
@@ -6293,6 +6667,7 @@ export function ZdEstimateWorkbench({
           onSupplierOverride={onSupplierOverride}
           suppliers={bootstrap.suppliers}
           selectedSupplier={selectedSupplier}
+          supplierFromMappingNotice={supplierFromMappingNotice}
           zapasMin={zapasMin}
           onZapasMinChange={setZapasMin}
           onPolicz={() => runEstimate()}
@@ -7766,14 +8141,37 @@ export function ZdEstimateWorkbench({
               ? "Tworzenie ZD zablokowane na wypadek, że dokument już powstał. Odblokuj świadomie albo powiąż ZD."
               : "Odblokuj tworzenie ZD świadomie — dokument w Subiekcie zostaje (to nie anuluje ZD)."
           }
-          undoLabel="Odblokuj tworzenie ZD"
+          undoLabel={
+            createUnconfirmedAttempt
+              ? "Sprawdziłem Subiekt — odblokuj"
+              : "Odblokuj tworzenie ZD"
+          }
           onUndo={() => {
+            if (createUnconfirmedAttempt) {
+              setCreateTimeoutUnlockConfirmOpen(true);
+              return;
+            }
             setCreateUnlockedAfterDone(true);
             setCreateUndoVisible(false);
           }}
           onDismiss={() => setCreateUndoVisible(false)}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={createTimeoutUnlockConfirmOpen}
+        title={ZD_ESTIMATE_UI.postCreateTimeoutUnlockConfirmTitle}
+        message={ZD_ESTIMATE_UI.postCreateTimeoutUnlockConfirmMessage}
+        confirmLabel={ZD_ESTIMATE_UI.postCreateTimeoutUnlockConfirmLabel}
+        cancelLabel="Anuluj"
+        onCancel={() => setCreateTimeoutUnlockConfirmOpen(false)}
+        onConfirm={() => {
+          setCreateTimeoutUnlockConfirmOpen(false);
+          if (!createUnconfirmedAttempt) return;
+          setCreateUnlockedAfterDone(true);
+          setCreateUndoVisible(false);
+        }}
+      />
 
       <ConfirmDialog
         open={externalSessionAutorunConflictOpen}
@@ -8044,17 +8442,7 @@ export function ZdEstimateWorkbench({
         configured={bootstrap.configured}
         onError={reportError}
         todayCoverage={todayCoverage}
-        onMappedSupplierIdsChange={(ids) => {
-          setTodayCoverage(
-            zdEstimateScopeCoverage(
-              collectTodayScheduleSuppliers({
-                todayKey: bootstrap.todayKey,
-                suppliers: bootstrap.suppliers,
-              }),
-              ids
-            )
-          );
-        }}
+        onScopesChange={handleSupplierScopesChange}
       />
 
       <ZdEstimateSnapshotsModal
@@ -8120,6 +8508,7 @@ export function ZdEstimateWorkbench({
             setCreateDoneDokId(dokId);
             setCreateDoneDokNr(dokNrPelny);
             setCreateUnconfirmedAttempt(false);
+            setCreateTimeoutUnlockConfirmOpen(false);
             setCreateUnlockedAfterDone(false);
             setCreateUndoVisible(true);
           }
@@ -8323,6 +8712,7 @@ export function ZdEstimateWorkbench({
             setCreateDoneDokId(dokId);
             setCreateDoneDokNr(dokNrPelny);
             setCreateUnconfirmedAttempt(false);
+            setCreateTimeoutUnlockConfirmOpen(false);
             setCreateUnlockedAfterDone(false);
             setCreateUndoVisible(true);
             timeoutRecoveryFreezeRef.current = null;

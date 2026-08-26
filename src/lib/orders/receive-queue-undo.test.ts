@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   attachDeliveryNotificationQueueIds,
   collectDeliveryNotificationQueueIds,
+  shouldSoftDeleteDeliveryStatsOnRevert,
   type DeliverySnapshot,
 } from "./receive-queue-undo-shared";
 
@@ -40,5 +41,17 @@ describe("receive-queue-undo notification queue", () => {
         { ...snapshots[1]!, orderId: "c", queueId: "q2" },
       ])
     ).toEqual(["q1", "q2"]);
+  });
+});
+
+describe("shouldSoftDeleteDeliveryStatsOnRevert", () => {
+  it("usuwa próbkę gdy undo wraca do Zamowione / Czesciowo / Nowe", () => {
+    expect(shouldSoftDeleteDeliveryStatsOnRevert("Zamowione")).toBe(true);
+    expect(shouldSoftDeleteDeliveryStatsOnRevert("Czesciowo_zrealizowane")).toBe(true);
+    expect(shouldSoftDeleteDeliveryStatsOnRevert("Nowe")).toBe(true);
+  });
+
+  it("nie usuwa próbki gdy undo zostawia Zrealizowane (np. tylko qty)", () => {
+    expect(shouldSoftDeleteDeliveryStatsOnRevert("Zrealizowane")).toBe(false);
   });
 });

@@ -64,6 +64,8 @@ export function QuickOrderModal({
   suppliers,
   salesPeople,
   statsBySupplierId = {},
+  etaUseP50 = false,
+  etaQuantilesBySupplierId = {},
 }: {
   open: boolean;
   onClose: () => void;
@@ -71,6 +73,11 @@ export function QuickOrderModal({
   /** Wyłącznie karty z Admin → Handlowcy (fetchSalesPeopleForPicker). */
   salesPeople: { id: string; name: string; email: string }[];
   statsBySupplierId?: Record<string, DeliveryStats>;
+  etaUseP50?: boolean;
+  etaQuantilesBySupplierId?: Record<
+    string,
+    import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
+  >;
 }) {
   const router = useRouter();
   const teethExemptTwIds = useTeethExemptTwIds();
@@ -464,6 +471,8 @@ export function QuickOrderModal({
                     supplierIds={supplierId.trim() ? [supplierId.trim()] : []}
                     suppliers={suppliers}
                     statsBySupplierId={statsBySupplierId}
+                    etaUseP50={etaUseP50}
+                    etaQuantilesBySupplierId={etaQuantilesBySupplierId}
                   />
                 ) : null}
               </div>
@@ -500,6 +509,8 @@ export function QuickOrderModal({
               groupSupplierId={supplierId}
               formSuppliers={suppliers}
               statsBySupplierId={statsBySupplierId}
+              etaUseP50={etaUseP50}
+              etaQuantilesBySupplierId={etaQuantilesBySupplierId}
               showLinkedLeadTime={false}
             />
 

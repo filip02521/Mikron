@@ -3,8 +3,11 @@ import { fetchDeliveryStats } from "@/lib/data/queries";
 import { normalizeIndividualOrders } from "@/lib/data/normalize-order";
 import {
   estimateDeliveryEta,
+  estimateOptionsFromQuantiles,
   isPastExpectedDate,
+  type EstimateDeliveryEtaOptions,
 } from "@/lib/orders/delivery-eta";
+import type { DeliveryStatsQuantiles } from "@/lib/orders/delivery-stats-samples";
 import { getDeliveryProgress } from "@/lib/orders/individual";
 import { parseDateOnly } from "@/lib/orders/dates";
 import { canEstimateDeliveryEta, orderPlacementAt } from "@/lib/orders/order-timing";
@@ -205,7 +208,11 @@ function statsBySupplierId(
 export function isZdEtaOverdueCandidate(
   order: IndividualOrder,
   stats: ReturnType<typeof statsBySupplierId>[string] | undefined,
-  statsMode: StatsMode
+  statsMode: StatsMode,
+  etaOptions?: EstimateDeliveryEtaOptions | {
+    quantiles?: DeliveryStatsQuantiles | null;
+    useP50?: boolean;
+  }
 ): boolean {
   if (order.request_kind === "informacja") return false;
   if (order.status !== "Zamowione" && order.status !== "Czesciowo_zrealizowane") {
@@ -224,7 +231,23 @@ export function isZdEtaOverdueCandidate(
     if (zdDeadline && isPastExpectedDate(zdDeadline)) return true;
   }
 
-  const eta = estimateDeliveryEta(placement, stats, order.order_type, statsMode);
+  const options: EstimateDeliveryEtaOptions | undefined =
+    etaOptions && "p50BusinessDays" in etaOptions
+      ? etaOptions
+      : etaOptions
+        ? estimateOptionsFromQuantiles(
+            (etaOptions as { quantiles?: DeliveryStatsQuantiles | null }).quantiles,
+            (etaOptions as { useP50?: boolean }).useP50
+          )
+        : undefined;
+
+  const eta = estimateDeliveryEta(
+    placement,
+    stats,
+    order.order_type,
+    statsMode,
+    options
+  );
   if (eta && isPastExpectedDate(eta.expectedDate)) return true;
 
   if (order.status === "Czesciowo_zrealizowane") {
@@ -379,8 +402,16 @@ export function selectZdEtaSyncCandidates(
   statsMap: Record<string, ReturnType<typeof statsBySupplierId>[string] | undefined>,
   supplierById: Map<string, SupplierRef>,
   nowMs: number,
-  options?: Pick<ZdEtaSyncOptions, "force" | "maxOrders">
+  options?: Pick<ZdEtaSyncOptions, "force" | "maxOrders"> & {
+    etaUseP50?: boolean;
+    etaBySupplier?: Record<
+      string,
+      import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
+    >;
+  }
 ): IndividualOrder[] {
+  const etaUseP50 = options?.etaUseP50 === true;
+  const etaBySupplier = options?.etaBySupplier;
   const candidates = orders.filter((order) => {
     const supplier = order.supplier_id ? supplierById.get(order.supplier_id) : undefined;
     const statsMode = (order.supplier?.stats_mode ?? "LACZNIE") as StatsMode;
@@ -395,6 +426,25 @@ export function selectZdEtaSyncCandidates(
   });
 
   candidates.sort((a, b) => {
+    const overdueRank = (o: IndividualOrder) => {
+      const statsMode = (o.supplier?.stats_mode ?? "LACZNIE") as StatsMode;
+      const bucket = o.supplier_id ? etaBySupplier?.[o.supplier_id] : undefined;
+      const q =
+        statsMode === "LACZNIE"
+          ? bucket?.LACZNIE
+          : o.order_type === "Poboczne"
+            ? bucket?.Poboczne
+            : bucket?.Glowne;
+      return isZdEtaOverdueCandidate(o, statsMap[o.supplier_id!], statsMode, {
+        quantiles: q ?? null,
+        useP50: etaUseP50,
+      })
+        ? 0
+        : 1;
+    };
+    const oa = overdueRank(a);
+    const ob = overdueRank(b);
+    if (oa !== ob) return oa - ob;
     const partialKnownRank = (o: IndividualOrder) =>
       orderHasPartialDeliveryRemaining(o) && hasKnownZdFulfillmentDocId(o)
         ? 0
@@ -1040,12 +1090,33 @@ export async function runZdEtaSync(options: ZdEtaSyncOptions = {}): Promise<ZdEt
     const supplierById = new Map(suppliers.map((s) => [s.id, s]));
     const nowMs = Date.now();
 
+    let etaUseP50 = false;
+    let etaBySupplier: Record<
+      string,
+      import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
+    > = {};
+    try {
+      const { loadDeliveryEtaQuantilesForOrders } = await import(
+        "@/lib/orders/delivery-eta-quantiles-load"
+      );
+      const loaded = await loadDeliveryEtaQuantilesForOrders(orders);
+      etaUseP50 = loaded.useP50;
+      etaBySupplier = loaded.bySupplierId;
+    } catch (e) {
+      console.warn("zdEtaSync eta quantiles:", e);
+    }
+
     const candidates = selectZdEtaSyncCandidates(
       orders,
       statsMap,
       supplierById,
       nowMs,
-      { force: options.force, maxOrders: options.maxOrders }
+      {
+        force: options.force,
+        maxOrders: options.maxOrders,
+        etaUseP50,
+        etaBySupplier,
+      }
     );
 
     const extraKhBySupplierId = await loadExtraKhIdsBySupplierIdFromZdIndex();

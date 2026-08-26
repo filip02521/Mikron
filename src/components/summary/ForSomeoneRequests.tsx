@@ -29,6 +29,7 @@ import { ProcurementCancelDialog } from "@/components/procurement/ProcurementCan
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import type { DeliveryStats, StatsMode } from "@/types/database";
 import { formatSupplierLeadTimeBrief } from "@/lib/orders/delivery-eta";
+import { leadTimeDisplayFromQuantiles } from "@/lib/orders/delivery-eta-quantiles-load";
 import {
   ProcurementRequestLine,
   ProcurementRequestLineInline,
@@ -42,6 +43,14 @@ import {
 } from "@/components/orders/EditIndividualRequestModal";
 import { editInitialFromForSomeoneGroup } from "@/lib/orders/individual-request-edit-ui";
 import { IndividualRequestActionBar } from "@/components/summary/IndividualRequestActionBar";
+import { ProcurementProcessLinesModal } from "@/components/summary/ProcurementProcessLinesModal";
+import {
+  filterProcessLineIds,
+  processLinesSuccessToast,
+  shouldPickLinesBeforeProcess,
+  type ProcurementProcessAction,
+} from "@/lib/orders/procurement-process-lines";
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import {
   ProcurementRequestFlagChip,
   ProcurementRequestFlagGroupChip,
@@ -318,6 +327,8 @@ export function ForSomeoneRequests({
   procurementLaneOrder = null,
   lanePrefs,
   notify,
+  etaUseP50 = false,
+  etaQuantilesBySupplierId = {},
 }: {
   groups: SummaryForSomeoneEnriched[];
   isScopePending: (scope: string) => boolean;
@@ -350,8 +361,14 @@ export function ForSomeoneRequests({
     setLocalLaneOrder: Dispatch<SetStateAction<ProcurementRequestLaneId[]>>;
   };
   notify?: (text: string, tone?: "success" | "error") => void;
+  etaUseP50?: boolean;
+  etaQuantilesBySupplierId?: Record<
+    string,
+    import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
+  >;
 }) {
   const isStockOutSection = variant === "stockOut";
+  const { readOnly: adminPreviewReadOnly } = useAdminPanelPreview();
   const laneVariant: ProcurementRequestLaneVariant = isStockOutSection
     ? "stockOut"
     : "requests";
@@ -1099,6 +1116,10 @@ export function ForSomeoneRequests({
     initial: EditIndividualRequestInitial;
     scopeKey: string;
   } | null>(null);
+  const [processTarget, setProcessTarget] = useState<{
+    action: ProcurementProcessAction;
+    groupKey: string;
+  } | null>(null);
   const [focusedGroupKey, setFocusedGroupKey] = useState<string | null>(null);
 
   const resolvedFocusedGroupKey = useMemo(() => {
@@ -1112,6 +1133,82 @@ export function ForSomeoneRequests({
     if (!resolvedFocusedGroupKey) return null;
     return navigableGroups.find((g) => groupKey(g) === resolvedFocusedGroupKey) ?? null;
   }, [resolvedFocusedGroupKey, navigableGroups, groupKey]);
+
+  const processGroup = useMemo(() => {
+    if (!processTarget) return null;
+    const live =
+      navigableGroups.find((g) => groupKey(g) === processTarget.groupKey) ??
+      null;
+    if (!live || !shouldPickLinesBeforeProcess(live.lines.length)) return null;
+    return live;
+  }, [processTarget, navigableGroups, groupKey]);
+
+  const processModalOpen = processTarget !== null && processGroup !== null;
+
+  const requestProcessForGroup = useCallback(
+    (group: SummaryForSomeoneEnriched, action: ProcurementProcessAction) => {
+      const key = groupKey(group);
+      if (shouldPickLinesBeforeProcess(group.lines.length)) {
+        // Nie nakładaj na edycję / anulowanie / flagę.
+        if (editTarget || cancelTarget || flagEditTarget) return;
+        markGroupSeen(group);
+        // Podgląd admina: toast bez otwierania pickera (jak 1-linia przez run).
+        if (adminPreviewReadOnly) {
+          run(
+            async () => ({ success: true as const }),
+            processLinesSuccessToast({
+              action,
+              selectedCount: group.orderIds.length,
+              totalCount: group.orderIds.length,
+              supplierOrderOnDemand: group.supplierOrderOnDemand,
+            }),
+            action === "GLOWNE"
+              ? "Oznaczanie jako główne…"
+              : "Oznaczanie jako uzupełniające…",
+            { scope: key }
+          );
+          return;
+        }
+        setProcessTarget({ action, groupKey: key });
+        return;
+      }
+
+      if (action === "GLOWNE") {
+        run(
+          () => actionProcessIndividual(group.orderIds, "GLOWNE"),
+          processLinesSuccessToast({
+            action: "GLOWNE",
+            selectedCount: group.orderIds.length,
+            totalCount: group.orderIds.length,
+            supplierOrderOnDemand: group.supplierOrderOnDemand,
+          }),
+          "Oznaczanie jako główne…",
+          { scope: key }
+        );
+        return;
+      }
+
+      run(
+        () => actionProcessIndividual(group.orderIds, "POBOCZNE"),
+        processLinesSuccessToast({
+          action: "POBOCZNE",
+          selectedCount: group.orderIds.length,
+          totalCount: group.orderIds.length,
+        }),
+        "Oznaczanie jako uzupełniające…",
+        { scope: key }
+      );
+    },
+    [
+      adminPreviewReadOnly,
+      cancelTarget,
+      editTarget,
+      flagEditTarget,
+      groupKey,
+      markGroupSeen,
+      run,
+    ]
+  );
 
   useEffect(() => {
     if (!focusedGroup) return;
@@ -1128,7 +1225,15 @@ export function ForSomeoneRequests({
   }, [resolvedFocusedGroupKey]);
 
   useEffect(() => {
-    if (editTarget || cancelTarget || flagEditTarget || !navigableGroups.length) return;
+    if (
+      editTarget ||
+      cancelTarget ||
+      flagEditTarget ||
+      processModalOpen ||
+      !navigableGroups.length
+    ) {
+      return;
+    }
 
     const onKey = (e: KeyboardEvent) => {
       const root = sectionRootRef.current;
@@ -1199,38 +1304,30 @@ export function ForSomeoneRequests({
 
       if ((e.key === "g" || e.key === "G") && e.shiftKey) {
         e.preventDefault();
-        const glowneConfirm = group.supplierOrderOnDemand
-          ? `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako główne bez terminu planowego?`
-          : `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako zamówienie główne?`;
-        if (!window.confirm(glowneConfirm)) {
-          return;
+        if (!shouldPickLinesBeforeProcess(group.lines.length)) {
+          const glowneConfirm = group.supplierOrderOnDemand
+            ? `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako główne bez terminu planowego?`
+            : `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako zamówienie główne?`;
+          if (!window.confirm(glowneConfirm)) {
+            return;
+          }
         }
-        run(
-          () => actionProcessIndividual(group.orderIds, "GLOWNE"),
-          group.supplierOrderOnDemand
-            ? "Oznaczono jako główne (bez terminu planowego)"
-            : "Oznaczono jako zamówienie główne",
-          "Oznaczanie jako główne…",
-          { scope: key }
-        );
+        requestProcessForGroup(group, "GLOWNE");
         return;
       }
 
       if ((e.key === "u" || e.key === "U") && e.shiftKey) {
         e.preventDefault();
-        if (
-          !window.confirm(
-            `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako uzupełniające?`
-          )
-        ) {
-          return;
+        if (!shouldPickLinesBeforeProcess(group.lines.length)) {
+          if (
+            !window.confirm(
+              `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako uzupełniające?`
+            )
+          ) {
+            return;
+          }
         }
-        run(
-          () => actionProcessIndividual(group.orderIds, "POBOCZNE"),
-          "Oznaczono jako uzupełniające",
-          "Oznaczanie jako uzupełniające…",
-          { scope: key }
-        );
+        requestProcessForGroup(group, "POBOCZNE");
       }
     };
 
@@ -1243,10 +1340,12 @@ export function ForSomeoneRequests({
     editTarget,
     cancelTarget,
     flagEditTarget,
+    processModalOpen,
     run,
     markGroupSeen,
     groupKey,
     toggleGroupProductsExpanded,
+    requestProcessForGroup,
   ]);
 
   const Wrapper = "section";
@@ -1315,6 +1414,54 @@ export function ForSomeoneRequests({
         onCancel={() => setFlagEditTarget(null)}
         onConfirm={saveFlagEdit}
       />
+      <ProcurementProcessLinesModal
+        open={processModalOpen}
+        action={processTarget?.action ?? "GLOWNE"}
+        lines={processGroup?.lines ?? []}
+        supplierName={processGroup?.supplierName ?? ""}
+        personName={processGroup?.person ?? ""}
+        supplierOrderOnDemand={processGroup?.supplierOrderOnDemand ?? false}
+        pending={
+          processTarget
+            ? isScopePending(processTarget.groupKey)
+            : false
+        }
+        onCancel={() => setProcessTarget(null)}
+        onConfirm={(selectedIds) => {
+          if (!processTarget || !processGroup) return;
+          const { action } = processTarget;
+          const key = processTarget.groupKey;
+          const ids = filterProcessLineIds(
+            selectedIds,
+            processGroup.lines.map((l) => l.id)
+          );
+          if (!ids.length) {
+            setProcessTarget(null);
+            return;
+          }
+          const total = processGroup.lines.length;
+          run(
+            () => actionProcessIndividual(ids, action),
+            processLinesSuccessToast({
+              action,
+              selectedCount: ids.length,
+              totalCount: total,
+              supplierOrderOnDemand: processGroup.supplierOrderOnDemand,
+            }),
+            action === "GLOWNE"
+              ? "Oznaczanie jako główne…"
+              : "Oznaczanie jako uzupełniające…",
+            {
+              scope: key,
+              onSuccess: () => setProcessTarget(null),
+              // Tylko podgląd admina — przy błędzie serwera zostaw modal (retry / zmiana zaznaczenia).
+              onError: (reason) => {
+                if (reason === "readonly") setProcessTarget(null);
+              },
+            }
+          );
+        }}
+      />
       <ProcurementFlagDefinitionsManageModal
           open={manageFlagsOpen}
           definitions={localFlagDefinitions}
@@ -1340,7 +1487,13 @@ export function ForSomeoneRequests({
             () => actionProcessIndividual(orderIds, "ANULOWANO", note),
             "Anulowano prośbę",
             "Anulowanie prośby…",
-            { scope: scopeKey, onSuccess: () => setCancelTarget(null) }
+            {
+              scope: scopeKey,
+              onSuccess: () => setCancelTarget(null),
+              onError: (reason) => {
+                if (reason === "readonly") setCancelTarget(null);
+              },
+            }
           );
         }}
       />
@@ -1431,7 +1584,14 @@ export function ForSomeoneRequests({
                     const blockStatsMode = supplierStatsMode[block.supplierId] ?? "LACZNIE";
                     const blockLeadTimeBrief =
                       showSupplierHeader && blockStats
-                        ? formatSupplierLeadTimeBrief(blockStats, blockStatsMode)
+                        ? formatSupplierLeadTimeBrief(
+                            blockStats,
+                            blockStatsMode,
+                            leadTimeDisplayFromQuantiles(
+                              etaQuantilesBySupplierId[block.supplierId],
+                              etaUseP50
+                            )
+                          )
                         : null;
                     const blockScopeKey = procurementSupplierBlockScopeKey(block.supplierId);
                     const blockPending = isScopePending(blockScopeKey);
@@ -1506,7 +1666,14 @@ export function ForSomeoneRequests({
                               const stats = statsBySupplierId[g.supplierId];
                               const statsMode = supplierStatsMode[g.supplierId] ?? "LACZNIE";
                               const leadTimeBrief = stats
-                                ? formatSupplierLeadTimeBrief(stats, statsMode)
+                                ? formatSupplierLeadTimeBrief(
+                                    stats,
+                                    statsMode,
+                                    leadTimeDisplayFromQuantiles(
+                                      etaQuantilesBySupplierId[g.supplierId],
+                                      etaUseP50
+                                    )
+                                  )
                                 : null;
                               const hasInfoViaPanel =
                                 !isStockOutSection && g.lines.some((l) => l.informacjaViaPanel);
@@ -1935,14 +2102,17 @@ export function ForSomeoneRequests({
                                       }
                                     >
                                             <IndividualRequestActionBar
-                                              orderIds={g.orderIds}
                                               supplierId={g.supplierId || null}
                                               hasInfoViaPanel={hasInfoViaPanel}
                                               supplierOrderOnDemand={g.supplierOrderOnDemand}
                                               headline={ui.headline}
                                               pending={groupPending}
-                                              scopeKey={key}
-                                              run={run}
+                                              canPickLines={shouldPickLinesBeforeProcess(
+                                                g.lines.length
+                                              )}
+                                              onRequestProcess={(action) =>
+                                                requestProcessForGroup(g, action)
+                                              }
                                               density={showSupplierHeader ? "nested" : "default"}
                                               tone={unseenVariant}
                                               hasFlag={Boolean(currentFlagId) || flagSummary.kind === "mixed"}

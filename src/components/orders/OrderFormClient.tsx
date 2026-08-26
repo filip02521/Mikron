@@ -168,6 +168,8 @@ export function OrderFormClient({
   forceReadOnly = false,
   suppliersOnVacationNow = {},
   statsBySupplierId = {},
+  etaUseP50 = false,
+  etaQuantilesBySupplierId = {},
 }: {
   suppliers: OrderFormSupplierOption[];
   salesPeople: { id: string; name: string }[];
@@ -188,6 +190,11 @@ export function OrderFormClient({
   suppliersOnVacationNow?: Record<string, SupplierOnVacationWindow>;
   /** Średnie czasy dostawy (`delivery_stats`) — meta przy znanym dostawcy. */
   statsBySupplierId?: Record<string, DeliveryStats>;
+  etaUseP50?: boolean;
+  etaQuantilesBySupplierId?: Record<
+    string,
+    import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
+  >;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -1399,6 +1406,8 @@ export function OrderFormClient({
                   supplierIds={[scheduleSupplier.id]}
                   suppliers={suppliers}
                   statsBySupplierId={statsBySupplierId}
+                  etaUseP50={etaUseP50}
+                  etaQuantilesBySupplierId={etaQuantilesBySupplierId}
                   showSupplierNames={false}
                 />
               ) : null}
@@ -1497,6 +1506,8 @@ export function OrderFormClient({
                   groupSupplierId={group[0]?.supplierId || initialSupplierId || ""}
                   formSuppliers={suppliers}
                   statsBySupplierId={statsBySupplierId}
+                  etaUseP50={etaUseP50}
+                  etaQuantilesBySupplierId={etaQuantilesBySupplierId}
                   showLinkedLeadTime={!tourDemo}
                   linkedLeadTimeOmitSupplierIds={
                     scheduleSupplier ? [scheduleSupplier.id] : undefined
@@ -1741,6 +1752,8 @@ export function OrderFormClient({
                             }
                             suppliers={suppliers}
                             statsBySupplierId={statsBySupplierId}
+                  etaUseP50={etaUseP50}
+                  etaQuantilesBySupplierId={etaQuantilesBySupplierId}
                           />
                         ) : null}
                       </div>
@@ -1778,6 +1791,8 @@ export function OrderFormClient({
                         }
                         suppliers={suppliers}
                         statsBySupplierId={statsBySupplierId}
+                  etaUseP50={etaUseP50}
+                  etaQuantilesBySupplierId={etaQuantilesBySupplierId}
                       />
                     ) : null}
                   </div>
@@ -1816,6 +1831,8 @@ export function OrderFormClient({
                   groupSupplierId={group[0]?.supplierId ?? ""}
                   formSuppliers={suppliers}
                   statsBySupplierId={statsBySupplierId}
+                  etaUseP50={etaUseP50}
+                  etaQuantilesBySupplierId={etaQuantilesBySupplierId}
                   showLinkedLeadTime={false}
                   allowedTwIds={zkProsbaLinkContext?.allowedTwIds ?? undefined}
                   allowedTwIdsHint={

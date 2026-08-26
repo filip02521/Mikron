@@ -395,6 +395,68 @@ export function validateZdCreateClientLines(
  * Nie zaniża qty względem klienta — tylko podbija, gdy extras > wysłane.
  * Mode B: minZd = ceil(extra/N)*N (sztuki), nie liczba paczek.
  */
+export function minZdUnitsForExtraPieces(
+  extraPieces: number,
+  unitsPerPackage: number | null | undefined,
+  documentUnitMode: ZdPackagingDocumentUnitMode | null | undefined,
+  orderMultiple: number | null | undefined = null
+): number {
+  const pieces =
+    extraPieces != null && Number.isFinite(extraPieces) && extraPieces > 0
+      ? Math.ceil(extraPieces)
+      : 0;
+  if (!(pieces > 0)) return 0;
+  const units = Math.max(1, Math.trunc(Number(unitsPerPackage) || 1));
+  const mode = documentUnitMode ?? "packages";
+  return computeZdPackOrderQty(
+    pieces,
+    units,
+    "op.",
+    mode,
+    orderMultiple
+  ).zdUnits;
+}
+
+/**
+ * Kandydaci overlap ZK: fetch tylko gdy linia create nie pokrywa minZd(raw extra).
+ * Brak linii → toFetch. Nie zawęża scoped extras poza candidates.
+ */
+export function partitionProsbaOverlapFetchTwIds(input: {
+  candidates: readonly number[];
+  rawExtraByTwId: ReadonlyMap<number, number>;
+  linesByTwId: ReadonlyMap<number, { ilosc: number }>;
+  unitsPerPackageByTwId?: ReadonlyMap<number, number> | null;
+  packagingModeByTwId?: ReadonlyMap<
+    number,
+    ZdPackagingDocumentUnitMode
+  > | null;
+  orderMultipleByTwId?: ReadonlyMap<number, number> | null;
+}): { toFetch: number[]; skipCover: number[] } {
+  const toFetch: number[] = [];
+  const skipCover: number[] = [];
+  for (const rawTw of input.candidates) {
+    const tw = Math.trunc(Number(rawTw)) || 0;
+    if (!(tw > 0)) continue;
+    const rawExtra = input.rawExtraByTwId.get(tw);
+    if (!(rawExtra != null && Number.isFinite(rawExtra) && rawExtra > 0)) {
+      continue;
+    }
+    const line = input.linesByTwId.get(tw);
+    const minZd = minZdUnitsForExtraPieces(
+      rawExtra,
+      input.unitsPerPackageByTwId?.get(tw),
+      input.packagingModeByTwId?.get(tw),
+      input.orderMultipleByTwId?.get(tw)
+    );
+    if (!line || !(line.ilosc >= minZd)) {
+      toFetch.push(tw);
+    } else {
+      skipCover.push(tw);
+    }
+  }
+  return { toFetch, skipCover };
+}
+
 export function ensureZdCreateLinesCoverIndividualExtras(input: {
   lines: readonly ZdCreateClientLineInput[];
   extraPiecesByTwId: ReadonlyMap<number, number> | null | undefined;

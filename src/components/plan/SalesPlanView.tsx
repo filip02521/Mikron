@@ -30,6 +30,7 @@ import {
   describeNextOrderForSales,
   type SalesSupplierInsight,
 } from "@/lib/orders/sales-supplier-insight";
+import { leadTimeDisplayFromQuantiles } from "@/lib/orders/delivery-eta-quantiles-load";
 import { prosbaHref } from "@/lib/orders/prosba-url";
 import { useSalesPreviewHref } from "@/lib/nav/use-sales-preview-href";
 import {
@@ -489,6 +490,11 @@ export function SalesPlanView(props: {
   workspace: SummaryWorkspaceData;
   suppliers: SupplierWithSchedule[];
   statsBySupplierId: Record<string, DeliveryStats>;
+  etaUseP50?: boolean;
+  etaQuantilesBySupplierId?: Record<
+    string,
+    import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
+  >;
   prioritySupplierIds: string[];
   openOrderCountBySupplier: Record<string, number>;
   tourPreview?: boolean;
@@ -531,6 +537,8 @@ function SalesPlanViewContent({
   workspace,
   suppliers,
   statsBySupplierId,
+  etaUseP50 = false,
+  etaQuantilesBySupplierId = {},
   prioritySupplierIds,
   openOrderCountBySupplier,
   tourPreview = false,
@@ -544,6 +552,11 @@ function SalesPlanViewContent({
   workspace: SummaryWorkspaceData;
   suppliers: SupplierWithSchedule[];
   statsBySupplierId: Record<string, DeliveryStats>;
+  etaUseP50?: boolean;
+  etaQuantilesBySupplierId?: Record<
+    string,
+    import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
+  >;
   prioritySupplierIds: string[];
   openOrderCountBySupplier: Record<string, number>;
   tourPreview?: boolean;
@@ -588,6 +601,15 @@ function SalesPlanViewContent({
         teethSchedule: teethScheduleBySupplierId[s.id] ?? null,
         hasOpenTeethRequest: teethOpenSet.has(s.id),
         teethHistoryEtaLabel: teethHistoryEtaLabelBySupplierId[s.id] ?? null,
+        useP50: etaUseP50,
+        quantiles:
+          s.stats_mode === "OSOBNO"
+            ? etaQuantilesBySupplierId[s.id]?.Glowne ?? null
+            : etaQuantilesBySupplierId[s.id]?.LACZNIE ?? null,
+        leadTimeDisplay: leadTimeDisplayFromQuantiles(
+          etaQuantilesBySupplierId[s.id],
+          etaUseP50
+        ),
       })
     );
   }, [
@@ -599,6 +621,8 @@ function SalesPlanViewContent({
     teethScheduleBySupplierId,
     teethHistoryEtaLabelBySupplierId,
     teethOpenSet,
+    etaUseP50,
+    etaQuantilesBySupplierId,
   ]);
 
   const myInsights = useMemo(() => {
@@ -609,6 +633,15 @@ function SalesPlanViewContent({
         teethSchedule: teethScheduleBySupplierId[s.id] ?? null,
         hasOpenTeethRequest: teethOpenSet.has(s.id),
         teethHistoryEtaLabel: teethHistoryEtaLabelBySupplierId[s.id] ?? null,
+        useP50: etaUseP50,
+        quantiles:
+          s.stats_mode === "OSOBNO"
+            ? etaQuantilesBySupplierId[s.id]?.Glowne ?? null
+            : etaQuantilesBySupplierId[s.id]?.LACZNIE ?? null,
+        leadTimeDisplay: leadTimeDisplayFromQuantiles(
+          etaQuantilesBySupplierId[s.id],
+          etaUseP50
+        ),
       })
     );
   }, [
@@ -620,6 +653,8 @@ function SalesPlanViewContent({
     teethScheduleBySupplierId,
     teethHistoryEtaLabelBySupplierId,
     teethOpenSet,
+    etaUseP50,
+    etaQuantilesBySupplierId,
   ]);
 
   const openRequestCount = useMemo(

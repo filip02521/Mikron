@@ -17,7 +17,7 @@ const baseOrder = {
 };
 
 describe("aggregateDeliveryStatsFromOrders", () => {
-  it("liczy jedną próbkę na dostawcę i dzień zamówienia", () => {
+  it("OSOBNO: Glowne i Poboczne tego samego dnia mają osobne wagi", () => {
     const orders = [
       {
         ...baseOrder,
@@ -29,6 +29,28 @@ describe("aggregateDeliveryStatsFromOrders", () => {
         id: "o2",
         delivery_at: "2026-05-07T12:00:00Z",
         order_type: "Poboczne",
+        products: "Widget 2",
+      },
+    ];
+
+    const { bySupplier, samples, skipped } = aggregateDeliveryStatsFromOrders(orders);
+    expect(samples).toHaveLength(2);
+    expect(skipped.some((s) => s.reason === "duplikat dnia")).toBe(false);
+    expect(bySupplier.get("s1")?.main_count).toBe(1);
+    expect(bySupplier.get("s1")?.side_count).toBe(1);
+  });
+
+  it("ten sam typ tego samego dnia — jedna próbka (duplikat)", () => {
+    const orders = [
+      {
+        ...baseOrder,
+        id: "o1",
+        delivery_at: "2026-05-06T12:00:00Z",
+      },
+      {
+        ...baseOrder,
+        id: "o2",
+        delivery_at: "2026-05-07T12:00:00Z",
         products: "Widget 2",
       },
     ];

@@ -44,6 +44,10 @@ export default async function ProsbaPage({
   let statsBySupplierId: Awaited<
     ReturnType<typeof fetchSupplierFormContext>
   >["statsBySupplierId"] = {};
+  let etaUseP50 = false;
+  let etaQuantilesBySupplierId: Awaited<
+    ReturnType<typeof fetchSupplierFormContext>
+  >["etaQuantilesBySupplierId"] = {};
   let suppliersOnVacationNow: Record<string, SupplierOnVacationWindow> = {};
   let salesPeople: { id: string; name: string }[] = [];
   let lockedSalesPerson: { id: string; name: string } | null = null;
@@ -58,6 +62,8 @@ export default async function ProsbaPage({
     ]);
     suppliers = ctx.suppliers;
     statsBySupplierId = ctx.statsBySupplierId;
+    etaUseP50 = ctx.etaUseP50;
+    etaQuantilesBySupplierId = ctx.etaQuantilesBySupplierId;
     suppliersOnVacationNow = onVacation;
   } catch (error) {
     logDevPageError("prosba/page:suppliers", error);
@@ -156,6 +162,8 @@ export default async function ProsbaPage({
             forceReadOnly
             suppliersOnVacationNow={suppliersOnVacationNow}
             statsBySupplierId={statsBySupplierId}
+          etaUseP50={etaUseP50}
+          etaQuantilesBySupplierId={etaQuantilesBySupplierId}
           />
         </Suspense>
       </DelegateModeBackground>
@@ -229,6 +237,8 @@ export default async function ProsbaPage({
           managerSelfId={managerSelfId ?? undefined}
           suppliersOnVacationNow={suppliersOnVacationNow}
           statsBySupplierId={statsBySupplierId}
+          etaUseP50={etaUseP50}
+          etaQuantilesBySupplierId={etaQuantilesBySupplierId}
         />
       ) : (
         <OrderFormClient
@@ -241,6 +251,8 @@ export default async function ProsbaPage({
           managerSelfId={managerSelfId ?? undefined}
           suppliersOnVacationNow={suppliersOnVacationNow}
           statsBySupplierId={statsBySupplierId}
+          etaUseP50={etaUseP50}
+          etaQuantilesBySupplierId={etaQuantilesBySupplierId}
         />
       )}
       </Suspense>

@@ -12,18 +12,24 @@ export function SupplierLeadTimeHint({
   orderType,
   className,
   compact = false,
+  leadTimeDisplay,
+  etaOptions,
 }: {
   stats: DeliveryStats | null | undefined;
   statsMode: StatsMode;
   orderType?: OrderType;
   className?: string;
   compact?: boolean;
+  leadTimeDisplay?: import("@/lib/orders/delivery-eta").LeadTimeDisplayOptions;
+  etaOptions?: import("@/lib/orders/delivery-eta").EstimateDeliveryEtaOptions;
 }) {
   const hydrated = useClientHydrated();
   const hint = buildSupplierLeadTimeHint(stats, statsMode, {
     orderType,
     fromPlacementDate:
       hydrated && orderType && orderType !== "None" ? todayInWarsaw() : undefined,
+    ...leadTimeDisplay,
+    ...etaOptions,
   });
 
   if (!hint.lines.length) return null;

@@ -92,6 +92,8 @@ export type ZdEstimatePrepFormProps = {
   onSupplierOverride: (value: string) => void;
   suppliers: ZdEstimateSupplierOption[];
   selectedSupplier: ZdEstimateSupplierOption | null;
+  /** Komunikat po auto-przypisaniu dostawcy z mapowania zakresów. */
+  supplierFromMappingNotice?: string | null;
   zapasMin: string;
   onZapasMinChange: (value: string) => void;
   onPolicz: () => void;
@@ -153,6 +155,7 @@ export function ZdEstimatePrepForm({
   onSupplierOverride,
   suppliers,
   selectedSupplier,
+  supplierFromMappingNotice = null,
   zapasMin,
   onZapasMinChange,
   onPolicz,
@@ -337,6 +340,9 @@ export function ZdEstimatePrepForm({
                           {g.supplierName ? (
                             <span className="mt-0.5 block truncate text-xs text-slate-500">
                               {g.supplierName}
+                              {g.supplierMatchSource === "mapping"
+                                ? ` · ${ZD_ESTIMATE_UI.supplierFromMappingHitSuffix}`
+                                : ""}
                               {g.stockLabel ? ` · ${g.stockLabel}` : ""}
                             </span>
                           ) : null}
@@ -412,6 +418,9 @@ export function ZdEstimatePrepForm({
                           {c.supplierName ? (
                             <span className="mt-0.5 block truncate text-xs text-slate-500">
                               {c.supplierName}
+                              {c.supplierMatchSource === "mapping"
+                                ? ` · ${ZD_ESTIMATE_UI.supplierFromMappingHitSuffix}`
+                                : ""}
                               {c.stockLabel ? ` · ${c.stockLabel}` : ""}
                             </span>
                           ) : null}
@@ -427,6 +436,77 @@ export function ZdEstimatePrepForm({
             </>
           )}
         </section>
+
+        {scopeSelected ? (
+          selectedSupplier ? (
+            <div
+              className={cn(
+                "flex flex-wrap items-center gap-x-2 gap-y-1.5 border px-3 py-2.5",
+                supplierFromMappingNotice
+                  ? "border-indigo-200/80 bg-indigo-50/70"
+                  : "border-emerald-200/80 bg-emerald-50/60",
+                zdEstimateRadiusNestedClass
+              )}
+              role="status"
+              aria-live="polite"
+            >
+              <span
+                className={cn(
+                  "inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-[10px] font-semibold uppercase tracking-wide",
+                  supplierFromMappingNotice
+                    ? "bg-indigo-100 text-indigo-800"
+                    : "bg-emerald-100 text-emerald-900"
+                )}
+              >
+                {ZD_ESTIMATE_UI.supplierLinkedLabel}
+              </span>
+              <p
+                className={cn(
+                  "min-w-0 flex-1 text-sm font-medium leading-snug",
+                  supplierFromMappingNotice
+                    ? "text-indigo-950"
+                    : "text-emerald-950"
+                )}
+              >
+                {selectedSupplier.name}
+                {supplierFromMappingNotice ? (
+                  <span className="ml-1.5 font-normal text-indigo-800/80">
+                    · {ZD_ESTIMATE_UI.supplierLinkedFromMappingBadge}
+                  </span>
+                ) : null}
+              </p>
+              {selectedSupplier.stockLabel &&
+              selectedSupplier.stockLabel !== "—" ? (
+                <span
+                  className={cn(
+                    "shrink-0 text-xs tabular-nums",
+                    supplierFromMappingNotice
+                      ? "text-indigo-700/80"
+                      : "text-emerald-800/80"
+                  )}
+                >
+                  zapas {selectedSupplier.stockLabel}
+                  {selectedSupplier.dniZapasu != null
+                    ? ` (${selectedSupplier.dniZapasu} d)`
+                    : ""}
+                </span>
+              ) : null}
+            </div>
+          ) : (
+            <div
+              className={cn(
+                "border border-amber-200/90 bg-amber-50/70 px-3 py-2.5 text-sm leading-snug text-amber-950",
+                zdEstimateRadiusNestedClass
+              )}
+              role="status"
+            >
+              {(selectedGroup?.supplierMappingUnresolved ||
+                selectedCecha?.supplierMappingUnresolved)
+                ? ZD_ESTIMATE_UI.supplierMappingUnresolvedHint
+                : ZD_ESTIMATE_UI.supplierUnlinkedHint}
+            </div>
+          )
+        ) : null}
 
         {/* Strefa 2 — parametry biegu */}
         <section
