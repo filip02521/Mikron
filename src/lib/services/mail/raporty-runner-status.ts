@@ -5,8 +5,19 @@ export type RaportyRunnerStatus = {
   sendEnabled: boolean;
   overrideTo: string | null;
   productionSent: boolean;
+  productionRangeSent: boolean;
+  testRangeSent: boolean;
   periodKey: string | null;
   periodLabel: string | null;
+  lastSentLabel: string | null;
+  lastSentAtLabel: string | null;
+  nextWeekLabel: string | null;
+  nextWeekReady: boolean;
+  localSent: boolean;
+  dbSent: boolean;
+  crashSticky: boolean;
+  runnerStateStatus: string | null;
+  runnerStateError: string | null;
   runnerUrl: string;
 };
 
@@ -84,8 +95,25 @@ export async function fetchRaportyRunnerStatus(
       sendEnabled?: unknown;
       overrideTo?: unknown;
       productionSent?: unknown;
+      productionRangeSent?: unknown;
+      testRangeSent?: unknown;
+      localSent?: unknown;
+      dbSent?: unknown;
+      crashSticky?: unknown;
       period?: { periodKey?: unknown; periodLabel?: unknown };
       defaultPeriod?: { periodKey?: unknown; periodLabel?: unknown };
+      lastSent?: {
+        label?: unknown;
+        finishedAtLabel?: unknown;
+      } | null;
+      nextWeekAction?: {
+        canClick?: unknown;
+        week?: { label?: unknown } | null;
+      };
+      state?: {
+        status?: unknown;
+        error?: unknown;
+      };
     };
 
     if (body.ok !== true || typeof body.sendEnabled !== "boolean") {
@@ -98,9 +126,29 @@ export async function fetchRaportyRunnerStatus(
       sendEnabled: body.sendEnabled,
       overrideTo: typeof body.overrideTo === "string" ? body.overrideTo : null,
       productionSent: body.productionSent === true,
+      productionRangeSent: body.productionRangeSent === true,
+      testRangeSent: body.testRangeSent === true,
       periodKey: typeof period?.periodKey === "string" ? period.periodKey : null,
       periodLabel:
         typeof period?.periodLabel === "string" ? period.periodLabel : null,
+      lastSentLabel:
+        typeof body.lastSent?.label === "string" ? body.lastSent.label : null,
+      lastSentAtLabel:
+        typeof body.lastSent?.finishedAtLabel === "string"
+          ? body.lastSent.finishedAtLabel
+          : null,
+      nextWeekLabel:
+        typeof body.nextWeekAction?.week?.label === "string"
+          ? body.nextWeekAction.week.label
+          : null,
+      nextWeekReady: body.nextWeekAction?.canClick === true,
+      localSent: body.localSent === true,
+      dbSent: body.dbSent === true,
+      crashSticky: body.crashSticky === true,
+      runnerStateStatus:
+        typeof body.state?.status === "string" ? body.state.status : null,
+      runnerStateError:
+        typeof body.state?.error === "string" ? body.state.error : null,
       runnerUrl,
     };
   } catch (e) {
@@ -121,11 +169,11 @@ export function raportyRunnerStatusLabel(
   if (!status.ok) {
     switch (status.reason) {
       case "missing_url":
-        return "Brak RAPORTY_RUNNER_URL — nie da się odczytać SEND z runnera";
+        return "Brak adresu RAPORTY_RUNNER_URL — nie można odczytać statusu wysyłki";
       case "missing_secret":
         return "Brak CRON_SECRET / RAPORTY_CRON_SECRET do odczytu statusu runnera";
       case "unauthorized":
-        return "Runner odrzucił auth (sprawdź CRON_SECRET vs RAPORTY_CRON_SECRET)";
+        return "Runner odrzucił autoryzację (sprawdź CRON_SECRET względem RAPORTY_CRON_SECRET)";
       case "invalid_response":
         return "Runner zwrócił nieoczekiwaną odpowiedź statusu";
       case "unreachable":
@@ -133,6 +181,12 @@ export function raportyRunnerStatusLabel(
           ? `Runner niedostępny (${status.detail})`
           : "Runner niedostępny";
     }
+  }
+  if (status.crashSticky) {
+    return "Uwaga: runner w stanie unknown_after_crash — sprawdź OnTime Raporty";
+  }
+  if (status.runnerStateStatus === "sending") {
+    return "Runner w trakcie wysyłki…";
   }
   if (status.sendEnabled) {
     return status.overrideTo
