@@ -804,7 +804,36 @@ export const ZD_ESTIMATE_UI = {
     "Zmieniono podbicie sprzedaży — przelicz listę przed utworzeniem ZD.",
   policiesSectionLabel: "Polityki liczenia",
   prepFormTitle: "Przygotowanie",
-  prepScopePlaceholder: "Wybierz skrót lub wyszukaj…",
+  prepScopePlaceholder: "Wybierz ulubiony zakres albo wyszukaj…",
+  prepFavoritesEmptyGroups:
+    "Brak ulubionych grup — dodaj skróty z katalogu Subiekta.",
+  prepFavoritesEmptyCechy:
+    "Brak ulubionych cech — dodaj skróty z katalogu Subiekta.",
+  prepFavoritesAddCta: "Dodaj ulubione",
+  prepBrowseCatalogCta: "Przeglądaj katalog",
+  prepClearHitsCta: "Wyczyść wyniki",
+  prepFavoriteRemoveAria: (label: string) =>
+    `Usuń „${label}” z ulubionych`,
+  prepFavoriteStarAddAria: (label: string) =>
+    `Dodaj „${label}” do ulubionych`,
+  prepFavoriteStarRemoveAria: (label: string) =>
+    `Usuń „${label}” z ulubionych`,
+  prepFavoriteCapFlash:
+    "Możesz mieć co najwyżej 12 ulubionych w tym trybie — usuń któryś skrót.",
+  scopeCatalogTitleGroups: "Grupy towarowe",
+  scopeCatalogTitleCechy: "Cechy towarów",
+  scopeCatalogHint:
+    "Gwiazdka dodaje skrót w Zakresie. Klik wiersza wybiera zakres i zamyka okno.",
+  scopeCatalogSearchPlaceholderGroups: "Szukaj grupy…",
+  scopeCatalogSearchPlaceholderCechy: "Szukaj cechy…",
+  scopeCatalogSearchRequired:
+    "Wpisz fragment nazwy, aby przeszukać katalog Subiekta.",
+  scopeCatalogFavoritesHeading: "Twoje ulubione",
+  scopeCatalogResultsHeading: "Katalog",
+  scopeCatalogLoadMore: "Wczytaj więcej",
+  scopeCatalogEmpty: "Brak wyników dla tej frazy.",
+  scopeCatalogLoading: "Wczytuję katalog…",
+  scopeCatalogClose: "Zamknij",
   prepOverridesShow: "Nadpisania",
   prepOverridesHide: "Ukryj nadpisania",
   prepParamBoostLabel: "Podbicie",

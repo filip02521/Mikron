@@ -661,6 +661,8 @@ export async function actionZdEstimateBootstrap(): Promise<{
   defaultWindow: { dataOd: string; dataDo: string };
   suppliers: ZdEstimateSupplierOption[];
   quickGroups: ZdEstimateGroupOption[];
+  /** Ulubione cechy z prefs — chipy w trybie Cecha. */
+  quickCechy: ZdEstimateCechaOption[];
   exclusions: ZdEstimateExclusionRow[];
   /** Gdy ustawione — nie ufaj pustej liście wykluczeń (błąd odczytu). */
   exclusionsError: string | null;
@@ -829,12 +831,20 @@ export async function actionZdEstimateBootstrap(): Promise<{
     // zostaw puste pokrycie / scopes
   }
 
-  const quickGroups = [
-    { grt_Id: 17, grt_Nazwa: "Falcon" },
-    { grt_Id: 28, grt_Nazwa: "Ivoclar Technical" },
-    { grt_Id: 3, grt_Nazwa: "Ivoclar Clinical" },
-    { grt_Id: 264, grt_Nazwa: "Ivoclar DIGITAL" },
-  ].map((g) => enrichGroup(g, suppliers, supplierScopes));
+  const quickGroups = uiPrefs.favoriteGroups.map((f) =>
+    enrichGroup(
+      { grt_Id: f.id, grt_Nazwa: f.label },
+      suppliers,
+      supplierScopes
+    )
+  );
+  const quickCechy = uiPrefs.favoriteCechy.map((f) =>
+    enrichCecha(
+      { ctw_Id: f.id, ctw_Nazwa: f.label },
+      suppliers,
+      supplierScopes
+    )
+  );
 
   return {
     configured: summary.ordersConfigured,
@@ -853,6 +863,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
     defaultWindow,
     suppliers,
     quickGroups,
+    quickCechy,
     exclusions,
     exclusionsError,
     onRequests,
@@ -967,6 +978,180 @@ export async function actionSearchZdEstimateCechy(query: string): Promise<
       )
       .filter((c) => Number.isFinite(c.ctw_Id) && c.ctw_Id > 0);
     return { ok: true, cechy };
+  } catch (e) {
+    const feedback = feedbackFromException(e);
+    return { ok: false, message: feedback.message, feedback };
+  }
+}
+
+const ZD_ESTIMATE_SCOPE_CATALOG_PAGE_SIZE = 40;
+
+export type ZdEstimateScopeCatalogPageMeta = {
+  page: number;
+  pageSize: number;
+  totalCount: number | null;
+  totalPages: number | null;
+  hasMore: boolean;
+};
+
+function resolveCatalogPageMeta(
+  page: number,
+  pageSize: number,
+  rowCount: number,
+  pagination: { totalCount?: number; totalPages?: number } | null | undefined
+): ZdEstimateScopeCatalogPageMeta {
+  const totalCount =
+    pagination?.totalCount != null && Number.isFinite(pagination.totalCount)
+      ? Math.max(0, Math.trunc(pagination.totalCount))
+      : null;
+  const totalPages =
+    pagination?.totalPages != null && Number.isFinite(pagination.totalPages)
+      ? Math.max(0, Math.trunc(pagination.totalPages))
+      : totalCount != null
+        ? Math.max(1, Math.ceil(totalCount / pageSize))
+        : null;
+  const hasMore =
+    totalPages != null
+      ? page < totalPages
+      : rowCount >= pageSize;
+  return { page, pageSize, totalCount, totalPages, hasMore };
+}
+
+/** Katalog grup — `search` opcjonalne (puste = pierwsza strona słownika, jeśli API pozwala). */
+export async function actionListZdEstimateGroups(input?: {
+  page?: number;
+  pageSize?: number;
+  search?: string | null;
+}): Promise<
+  | {
+      ok: true;
+      groups: ZdEstimateGroupOption[];
+      meta: ZdEstimateScopeCatalogPageMeta;
+    }
+  | { ok: false; message: string; feedback?: SubiektFeedback }
+> {
+  await requireZdEstimateAdmin("read");
+  const page = Math.max(1, Math.trunc(Number(input?.page) || 1));
+  const pageSize = Math.min(
+    100,
+    Math.max(
+      1,
+      Math.trunc(Number(input?.pageSize) || ZD_ESTIMATE_SCOPE_CATALOG_PAGE_SIZE)
+    )
+  );
+  const search = String(input?.search ?? "").trim();
+
+  const orders = resolveSubiektOrdersConfig();
+  if (!orders.ok) {
+    const feedback = getSubiektFeedback("not_configured", {
+      title: "Brak hosta ORDERS",
+      message: orders.message,
+      hint: `Ustaw SUBIEKT_API_ORDERS_BASE_URL na :${SUBIEKT_ORDERS_LIVE_PORT} (live) lub :${SUBIEKT_ORDERS_TEST_PORT} (test).`,
+    });
+    return { ok: false, message: orders.message, feedback };
+  }
+
+  try {
+    const suppliers = await loadZdEstimateSupplierOptions();
+    let scopes: ZdEstimateScopeMappingRef[] = [];
+    try {
+      scopes = await listZdEstimateSupplierScopes();
+    } catch {
+      scopes = [];
+    }
+    const res = await searchSubiektProductGroups({
+      ...(search ? { search } : {}),
+      page,
+      pageSize,
+    });
+    const groups = (res.data ?? [])
+      .map((g: SubiektProductGroup) =>
+        enrichGroup(
+          {
+            grt_Id: Number(g.grt_Id),
+            grt_Nazwa: String(g.grt_Nazwa ?? "").trim() || `Grupa ${g.grt_Id}`,
+          },
+          suppliers,
+          scopes
+        )
+      )
+      .filter((g) => Number.isFinite(g.grt_Id) && g.grt_Id > 0);
+    return {
+      ok: true,
+      groups,
+      meta: resolveCatalogPageMeta(page, pageSize, groups.length, res.pagination),
+    };
+  } catch (e) {
+    const feedback = feedbackFromException(e);
+    return { ok: false, message: feedback.message, feedback };
+  }
+}
+
+/** Katalog cech — `search` opcjonalne. */
+export async function actionListZdEstimateCechy(input?: {
+  page?: number;
+  pageSize?: number;
+  search?: string | null;
+}): Promise<
+  | {
+      ok: true;
+      cechy: ZdEstimateCechaOption[];
+      meta: ZdEstimateScopeCatalogPageMeta;
+    }
+  | { ok: false; message: string; feedback?: SubiektFeedback }
+> {
+  await requireZdEstimateAdmin("read");
+  const page = Math.max(1, Math.trunc(Number(input?.page) || 1));
+  const pageSize = Math.min(
+    100,
+    Math.max(
+      1,
+      Math.trunc(Number(input?.pageSize) || ZD_ESTIMATE_SCOPE_CATALOG_PAGE_SIZE)
+    )
+  );
+  const search = String(input?.search ?? "").trim();
+
+  const orders = resolveSubiektOrdersConfig();
+  if (!orders.ok) {
+    const feedback = getSubiektFeedback("not_configured", {
+      title: "Brak hosta ORDERS",
+      message: orders.message,
+      hint: `Ustaw SUBIEKT_API_ORDERS_BASE_URL na :${SUBIEKT_ORDERS_LIVE_PORT} (live) lub :${SUBIEKT_ORDERS_TEST_PORT} (test).`,
+    });
+    return { ok: false, message: orders.message, feedback };
+  }
+
+  try {
+    const suppliers = await loadZdEstimateSupplierOptions();
+    let scopes: ZdEstimateScopeMappingRef[] = [];
+    try {
+      scopes = await listZdEstimateSupplierScopes();
+    } catch {
+      scopes = [];
+    }
+    const res = await searchSubiektProductCechy({
+      ...(search ? { search } : {}),
+      page,
+      pageSize,
+    });
+    const cechy = (res.data ?? [])
+      .map((c: SubiektProductCecha) =>
+        enrichCecha(
+          {
+            ctw_Id: Number(c.ctw_Id),
+            ctw_Nazwa:
+              String(c.ctw_Nazwa ?? "").trim() || `Cecha ${c.ctw_Id}`,
+          },
+          suppliers,
+          scopes
+        )
+      )
+      .filter((c) => Number.isFinite(c.ctw_Id) && c.ctw_Id > 0);
+    return {
+      ok: true,
+      cechy,
+      meta: resolveCatalogPageMeta(page, pageSize, cechy.length, res.pagination),
+    };
   } catch (e) {
     const feedback = feedbackFromException(e);
     return { ok: false, message: feedback.message, feedback };
