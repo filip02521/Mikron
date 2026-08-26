@@ -5,12 +5,19 @@ export type RaportyRunnerStatus = {
   sendEnabled: boolean;
   overrideTo: string | null;
   productionSent: boolean;
+  productionRangeSent: boolean;
+  testRangeSent: boolean;
   periodKey: string | null;
   periodLabel: string | null;
   lastSentLabel: string | null;
   lastSentAtLabel: string | null;
   nextWeekLabel: string | null;
   nextWeekReady: boolean;
+  localSent: boolean;
+  dbSent: boolean;
+  crashSticky: boolean;
+  runnerStateStatus: string | null;
+  runnerStateError: string | null;
   runnerUrl: string;
 };
 
@@ -88,6 +95,11 @@ export async function fetchRaportyRunnerStatus(
       sendEnabled?: unknown;
       overrideTo?: unknown;
       productionSent?: unknown;
+      productionRangeSent?: unknown;
+      testRangeSent?: unknown;
+      localSent?: unknown;
+      dbSent?: unknown;
+      crashSticky?: unknown;
       period?: { periodKey?: unknown; periodLabel?: unknown };
       defaultPeriod?: { periodKey?: unknown; periodLabel?: unknown };
       lastSent?: {
@@ -97,6 +109,10 @@ export async function fetchRaportyRunnerStatus(
       nextWeekAction?: {
         canClick?: unknown;
         week?: { label?: unknown } | null;
+      };
+      state?: {
+        status?: unknown;
+        error?: unknown;
       };
     };
 
@@ -110,6 +126,8 @@ export async function fetchRaportyRunnerStatus(
       sendEnabled: body.sendEnabled,
       overrideTo: typeof body.overrideTo === "string" ? body.overrideTo : null,
       productionSent: body.productionSent === true,
+      productionRangeSent: body.productionRangeSent === true,
+      testRangeSent: body.testRangeSent === true,
       periodKey: typeof period?.periodKey === "string" ? period.periodKey : null,
       periodLabel:
         typeof period?.periodLabel === "string" ? period.periodLabel : null,
@@ -124,6 +142,13 @@ export async function fetchRaportyRunnerStatus(
           ? body.nextWeekAction.week.label
           : null,
       nextWeekReady: body.nextWeekAction?.canClick === true,
+      localSent: body.localSent === true,
+      dbSent: body.dbSent === true,
+      crashSticky: body.crashSticky === true,
+      runnerStateStatus:
+        typeof body.state?.status === "string" ? body.state.status : null,
+      runnerStateError:
+        typeof body.state?.error === "string" ? body.state.error : null,
       runnerUrl,
     };
   } catch (e) {
@@ -156,6 +181,12 @@ export function raportyRunnerStatusLabel(
           ? `Runner niedostępny (${status.detail})`
           : "Runner niedostępny";
     }
+  }
+  if (status.crashSticky) {
+    return "Uwaga: runner w stanie unknown_after_crash — sprawdź OnTime Raporty";
+  }
+  if (status.runnerStateStatus === "sending") {
+    return "Runner w trakcie wysyłki…";
   }
   if (status.sendEnabled) {
     return status.overrideTo

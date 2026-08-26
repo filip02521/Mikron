@@ -15,6 +15,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
 import {
+  assertOrderMultiple,
   assertPackagingUnits,
   ZD_PACKAGING_UNITS_MAX,
   ZD_PACKAGING_UNITS_MIN,
@@ -46,6 +47,7 @@ export function ZdEstimatePackagingModal({
   const [query, setQuery] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draftUnits, setDraftUnits] = useState("");
+  const [draftOrderMultiple, setDraftOrderMultiple] = useState("");
   const [draftLabel, setDraftLabel] = useState("op.");
   const [draftNote, setDraftNote] = useState("");
   const [draftMode, setDraftMode] =
@@ -61,6 +63,7 @@ export function ZdEstimatePackagingModal({
         e.grtNazwa ?? "",
         e.note,
         String(e.unitsPerPackage),
+        e.orderMultiple != null ? String(e.orderMultiple) : "",
         String(e.subiektTwId),
       ]
         .join(" ")
@@ -72,10 +75,21 @@ export function ZdEstimatePackagingModal({
   const draftUnitsCheck = assertPackagingUnits(draftUnits);
   const draftUnitsOk = draftUnitsCheck.ok;
   const showDraftUnitsError = draftUnits.trim() !== "" && !draftUnitsOk;
+  const draftOrderCheck = assertOrderMultiple(
+    draftMode === "pieces_multiple" ? null : draftOrderMultiple
+  );
+  const draftOrderOk = draftOrderCheck.ok;
+  const showDraftOrderError =
+    draftMode === "packages" &&
+    draftOrderMultiple.trim() !== "" &&
+    !draftOrderOk;
 
   const beginEdit = (row: ZdEstimatePackagingRow) => {
     setEditingId(row.subiektTwId);
     setDraftUnits(String(row.unitsPerPackage));
+    setDraftOrderMultiple(
+      row.orderMultiple != null ? String(row.orderMultiple) : ""
+    );
     setDraftLabel(row.packageLabel);
     setDraftNote(row.note);
     setDraftMode(
@@ -96,6 +110,13 @@ export function ZdEstimatePackagingModal({
     )
       ? "packages"
       : draftMode;
+    const orderCheck = assertOrderMultiple(
+      mode === "pieces_multiple" ? null : draftOrderMultiple
+    );
+    if (!orderCheck.ok) {
+      onError(orderCheck.message);
+      return;
+    }
     start(async () => {
       const res = await actionUpsertZdEstimatePackaging({
         subiektTwId: row.subiektTwId,
@@ -106,6 +127,8 @@ export function ZdEstimatePackagingModal({
         unitsPerPackage: unitsCheck.units,
         packageLabel: draftLabel,
         documentUnitMode: mode,
+        orderMultiple:
+          mode === "pieces_multiple" ? null : orderCheck.orderMultiple,
         note: draftNote,
       });
       if (!res.ok) {
@@ -248,7 +271,9 @@ export function ZdEstimatePackagingModal({
                       <span className="max-w-full rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-indigo-900 ring-1 ring-indigo-100 break-words">
                         {row.documentUnitMode === "pieces_multiple"
                           ? `dobij ×${row.unitsPerPackage}`
-                          : `1 ${row.packageLabel} = ${row.unitsPerPackage} szt`}
+                          : row.orderMultiple != null
+                            ? `1 ${row.packageLabel} = ${row.unitsPerPackage} szt · ${ZD_ESTIMATE_UI.packagingOrderMultipleShort(row.orderMultiple)}`
+                            : `1 ${row.packageLabel} = ${row.unitsPerPackage} szt`}
                       </span>
                     </div>
                     <p className="text-sm text-slate-600">{row.twNazwa}</p>
@@ -349,9 +374,34 @@ export function ZdEstimatePackagingModal({
                         />
                       </div>
                     </div>
+                    {editMode === "packages" ? (
+                      <label className="block text-xs font-medium text-slate-600">
+                        {ZD_ESTIMATE_UI.packagingOrderMultipleLabel}
+                        <Input
+                          type="number"
+                          min={2}
+                          max={100000}
+                          className="mt-1 max-w-[12rem]"
+                          value={draftOrderMultiple}
+                          onChange={(e) => setDraftOrderMultiple(e.target.value)}
+                          placeholder={
+                            ZD_ESTIMATE_UI.packagingOrderMultiplePlaceholder
+                          }
+                          aria-invalid={showDraftOrderError || undefined}
+                        />
+                      </label>
+                    ) : null}
                     {showDraftUnitsError ? (
                       <p className={cn(panelTypography.caption, "text-amber-800")}>
                         {draftUnitsCheck.message}
+                      </p>
+                    ) : showDraftOrderError ? (
+                      <p className={cn(panelTypography.caption, "text-amber-800")}>
+                        {draftOrderCheck.message}
+                      </p>
+                    ) : editMode === "packages" ? (
+                      <p className={panelTypography.caption}>
+                        {ZD_ESTIMATE_UI.packagingOrderMultipleHint}
                       </p>
                     ) : (
                       <p className={panelTypography.caption}>
@@ -375,7 +425,7 @@ export function ZdEstimatePackagingModal({
                       <Button
                         type="button"
                         size="sm"
-                        disabled={pending || !draftUnitsOk}
+                        disabled={pending || !draftUnitsOk || !draftOrderOk}
                         onClick={() => save(row)}
                       >
                         {pending ? <Spinner className="size-4" /> : "Zapisz"}

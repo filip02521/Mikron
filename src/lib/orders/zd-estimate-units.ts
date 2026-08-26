@@ -26,6 +26,19 @@ export function normalizeUnitsPerPackage(
 }
 
 /**
+ * Wielokrotność liczby paczek (tryb packages).
+ * NULL / 1 / NaN → wyłączone (0 w normalizacji = off).
+ */
+export function normalizeOrderMultiple(
+  value: number | null | undefined
+): number {
+  if (value == null) return 0;
+  const n = Math.trunc(Number(value));
+  if (!Number.isFinite(n) || n < 2) return 0;
+  return n;
+}
+
+/**
  * Otwarte ZD / qty z dokumentu → sztuki.
  * Mode A (packages): API trzyma paczki → × N.
  * Mode B (pieces_multiple): dokument już w sztukach → identity.

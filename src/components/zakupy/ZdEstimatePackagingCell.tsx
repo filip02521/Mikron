@@ -33,6 +33,8 @@ export function ZdEstimatePackagingCell({
   const packagesMode = isPackagingPackagesMode(qty.documentUnitMode);
   const label = qty.packageLabel.trim() || "op.";
   const compact = formatZdPackCompactLabel(label);
+  const orderMult =
+    packagesMode && qty.orderMultiple >= 2 ? qty.orderMultiple : null;
   const title = qty.hasPackaging
     ? [
         formatZdPackHint(qty) ||
@@ -56,6 +58,15 @@ export function ZdEstimatePackagingCell({
       ? formatZdPackTableRatioLabel(label)
       : "×N"
     : null;
+  const modeSub = !qty.hasPackaging
+    ? "ustaw"
+    : conflict
+      ? "Konflikt"
+      : packagesMode
+        ? orderMult != null
+          ? `co ${orderMult}`
+          : "paczki"
+        : "dobicie";
 
   return (
     <button
@@ -69,7 +80,7 @@ export function ZdEstimatePackagingCell({
               compact.toLowerCase() !== label.toLowerCase()
                 ? ` (${compact})`
                 : ""
-            }. Edytuj`
+            }${orderMult != null ? ` · co ${orderMult}` : ""}. Edytuj`
           : "Ustaw opakowanie"
       }
       className={cn(
@@ -93,20 +104,16 @@ export function ZdEstimatePackagingCell({
           {ratio}
         </span>
       ) : null}
-      {qty.hasPackaging ? (
-        <span
-          className={cn(
-            "zd-est-pack-cell-sub text-[10px] font-medium leading-none tracking-tight",
-            conflict ? "text-amber-900" : "text-slate-500"
-          )}
-        >
-          {conflict ? "Konflikt" : packagesMode ? "paczki" : "dobicie"}
-        </span>
-      ) : (
-        <span className="zd-est-pack-cell-sub text-[10px] font-medium leading-none tracking-tight text-slate-400">
-          ustaw
-        </span>
-      )}
+      <span
+        className={cn(
+          "zd-est-pack-cell-sub text-[10px] font-medium leading-none tracking-tight",
+          !qty.hasPackaging && "text-slate-400",
+          qty.hasPackaging && conflict && "text-amber-900",
+          qty.hasPackaging && !conflict && "text-slate-500"
+        )}
+      >
+        {modeSub}
+      </span>
     </button>
   );
 }

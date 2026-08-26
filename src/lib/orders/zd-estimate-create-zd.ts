@@ -76,9 +76,11 @@ export function previewBomOrPairLabel(
     return "zestaw (składamy)";
   }
   if (bomRole === "purchased_kit") {
-    return line.bom?.purchaseTarget === "kit_only"
-      ? "komplet (tylko K)"
-      : "komplet (kupujemy)";
+    if (line.bom?.purchaseTarget === "kit_only") return "komplet (sprz. zestawu)";
+    if (line.bom?.purchaseTarget === "kit_from_components") {
+      return "komplet (ze składników)";
+    }
+    return "komplet (kupujemy)";
   }
   if (bomRole === "component") {
     return line.bom?.purchaseBlocked ? "składnik (poza zakupem)" : "składnik BOM";
@@ -227,10 +229,17 @@ export function buildZdCreatePreviewFromOrderable(
       ilosc: finalZd,
       packagingHint: qty.hasPackaging
         ? isPackagingPackagesMode(qty.documentUnitMode)
-          ? formatZdPackUnitsPerLabelHint(
-              qty.unitsPerPackage,
-              qty.packageLabel
-            )
+          ? [
+              formatZdPackUnitsPerLabelHint(
+                qty.unitsPerPackage,
+                qty.packageLabel
+              ),
+              qty.orderMultiple >= 2
+                ? ZD_ESTIMATE_UI.packagingOrderMultipleShort(qty.orderMultiple)
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")
           : `dobij do ${qty.unitsPerPackage} szt`
         : null,
       individualExtraPieces: extraPieces > 0 ? extraPieces : undefined,
@@ -389,7 +398,8 @@ export function validateZdCreateClientLines(
 export function minZdUnitsForExtraPieces(
   extraPieces: number,
   unitsPerPackage: number | null | undefined,
-  documentUnitMode: ZdPackagingDocumentUnitMode | null | undefined
+  documentUnitMode: ZdPackagingDocumentUnitMode | null | undefined,
+  orderMultiple: number | null | undefined = null
 ): number {
   const pieces =
     extraPieces != null && Number.isFinite(extraPieces) && extraPieces > 0
@@ -398,7 +408,13 @@ export function minZdUnitsForExtraPieces(
   if (!(pieces > 0)) return 0;
   const units = Math.max(1, Math.trunc(Number(unitsPerPackage) || 1));
   const mode = documentUnitMode ?? "packages";
-  return computeZdPackOrderQty(pieces, units, "op.", mode).zdUnits;
+  return computeZdPackOrderQty(
+    pieces,
+    units,
+    "op.",
+    mode,
+    orderMultiple
+  ).zdUnits;
 }
 
 /**
@@ -414,6 +430,7 @@ export function partitionProsbaOverlapFetchTwIds(input: {
     number,
     ZdPackagingDocumentUnitMode
   > | null;
+  orderMultipleByTwId?: ReadonlyMap<number, number> | null;
 }): { toFetch: number[]; skipCover: number[] } {
   const toFetch: number[] = [];
   const skipCover: number[] = [];
@@ -428,7 +445,8 @@ export function partitionProsbaOverlapFetchTwIds(input: {
     const minZd = minZdUnitsForExtraPieces(
       rawExtra,
       input.unitsPerPackageByTwId?.get(tw),
-      input.packagingModeByTwId?.get(tw)
+      input.packagingModeByTwId?.get(tw),
+      input.orderMultipleByTwId?.get(tw)
     );
     if (!line || !(line.ilosc >= minZd)) {
       toFetch.push(tw);
@@ -447,6 +465,7 @@ export function ensureZdCreateLinesCoverIndividualExtras(input: {
     number,
     ZdPackagingDocumentUnitMode
   > | null;
+  orderMultipleByTwId?: ReadonlyMap<number, number> | null;
 }): {
   lines: ZdCreateClientLineInput[];
   bumped: Array<{
@@ -473,11 +492,20 @@ export function ensureZdCreateLinesCoverIndividualExtras(input: {
         ? Math.ceil(extraRaw)
         : 0;
     if (!(extraPieces > 0)) return { ...line };
-    const minZd = minZdUnitsForExtraPieces(
-      extraPieces,
-      input.unitsPerPackageByTwId?.get(line.twId),
-      input.packagingModeByTwId?.get(line.twId)
+    const units = Math.max(
+      1,
+      Math.trunc(Number(input.unitsPerPackageByTwId?.get(line.twId)) || 1)
     );
+    const mode =
+      input.packagingModeByTwId?.get(line.twId) ?? "packages";
+    const orderMultiple = input.orderMultipleByTwId?.get(line.twId) ?? null;
+    const minZd = computeZdPackOrderQty(
+      extraPieces,
+      units,
+      "op.",
+      mode,
+      orderMultiple
+    ).zdUnits;
     if (!(minZd > line.ilosc)) return { ...line };
     bumped.push({
       twId: line.twId,

@@ -1063,13 +1063,13 @@ export const ZD_ESTIMATE_UI = {
     "Opakowania zaktualizowane — pokrycie i Do ZD przeliczone.",
   packagingModalTitle: "Opakowania ZD",
   packagingModalHint:
-    "Ustaw, jak przeliczać niedobór w sztukach na jednostki dokumentu ZD. Tryb A: 1 na ZD = opakowanie (wpisujesz liczbę paczek). Tryb B: Do ZD w sztukach z dobiciem do wielokrotności N. Sztuki 1:1 — usuń opakowanie, nie zapisuj „1”.",
+    "Ustaw, jak przeliczać niedobór w sztukach na jednostki dokumentu ZD. Tryb A: 1 na ZD = opakowanie (wpisujesz liczbę paczek; opcjonalnie wielokrotność M). Tryb B: Do ZD w sztukach z dobiciem do wielokrotności N. Sztuki 1:1 — usuń opakowanie, nie zapisuj „1”.",
   packagingIntroTitle: "1 na ZD → N sztuk na magazynie i w sprzedaży",
   packagingIntroBody:
-    "Kreator liczy niedobór w sztukach. Kolumna „Do ZD” pokazuje jednostki dokumentu: albo liczbę paczek (tryb A), albo sztuki dobite do pełnego N (tryb B). Możesz też edytować opakowanie z wiersza listy wyniku.",
-  packagingUnitsLabel: "Sztuk w 1 na ZD / wielokrotność",
+    "Kreator liczy niedobór w sztukach. Kolumna „Do ZD” pokazuje jednostki dokumentu: albo liczbę paczek (tryb A), albo sztuki dobite do pełnego N (tryb B). W trybie A możesz też ustawić wielokrotność liczby paczek (np. kupno co 10 op.). Możesz też edytować opakowanie z wiersza listy wyniku.",
+  packagingUnitsLabel: "Sztuk w 1 na ZD",
   packagingUnitsHint:
-    "Minimum 2 (max 100 000). Sztuki 1:1 — przycisk „Usuń (sztuki 1:1)”, nie zapisuj „1”.",
+    "Minimum 2 (max 100 000). W trybie A: ile sztuk = 1 na ZD. W trybie B: wielokrotność dobicia sztuk. Sztuki 1:1 — „Usuń”, nie zapisuj „1”.",
   packagingLabelField: "Etykieta",
   packagingClearCta: "Usuń (sztuki 1:1)",
   packagingNeedLabel: "Potrzeba",
@@ -1082,6 +1082,19 @@ export const ZD_ESTIMATE_UI = {
     "Opakowanie wymaga co najmniej 2 sztuk na 1 jednostkę ZD. Sztuki 1:1 — usuń ustawienie.",
   packagingUnitsMaxError:
     "Liczba sztuk w opakowaniu jest zbyt duża (max 100 000).",
+  packagingOrderMultipleLabel: "Kupuj w wielokrotności (liczba paczek)",
+  packagingOrderMultipleHint:
+    "Opcjonalnie. Np. 10 = gdy brakuje 2–3 op., Do ZD = 10 op. Puste = bez dodatkowego dobicia.",
+  packagingOrderMultiplePlaceholder: "np. 10",
+  packagingOrderMultipleShort: (m: number) => `co ${m}`,
+  packagingOrderMultipleMinError:
+    "Wielokrotność paczek wymaga co najmniej 2 (albo zostaw puste).",
+  packagingOrderMultipleMaxError:
+    "Wielokrotność paczek jest zbyt duża (max 100 000).",
+  packagingOrderMultipleModeHint:
+    "Dostępne tylko w trybie opakowań (1 na ZD = N szt).",
+  packagingDoZdOrderMultipleWarn: (m: number) =>
+    `Ilość nie jest wielokrotnością ${m} op. — zwykle kupujecie co ${m}.`,
   packagingBulkUnitsHint:
     "Minimum 2 (max 100 000) dla wszystkich zaznaczonych. Sztuki 1:1 — osobna akcja „Usuń opakowanie”, nie zapisuj „1”.",
   packagingBulkPreviewPackages:

@@ -39,15 +39,15 @@ function runnerSendBadge(runnerStatus: RaportyRunnerStatusResult): {
   label: string;
 } {
   if (!runnerStatus.ok) {
-    return { variant: "warning", label: "Wysyłka: nieznany stan" };
+    return { variant: "warning", label: "SEND: nieznany" };
   }
   if (runnerStatus.sendEnabled) {
     return {
       variant: runnerStatus.overrideTo ? "warning" : "success",
-      label: runnerStatus.overrideTo ? "Wysyłka: wł. (override)" : "Wysyłka: włączona",
+      label: runnerStatus.overrideTo ? "SEND: wł. (override)" : "SEND: wł.",
     };
   }
-  return { variant: "default", label: "Wysyłka: wyłączona" };
+  return { variant: "default", label: "SEND: wył." };
 }
 
 export function MailCenterClient({
@@ -80,8 +80,8 @@ export function MailCenterClient({
     <AdminHubShell activeTab="mail" visibleTabs={visibleTabs}>
       <p className={cn(panelTypography.sectionDesc, "mb-3")}>
         Centrum maili Ivoclar jest <strong>tylko do odczytu</strong>. Generowanie i wysyłkę
-        prowadzi OnTime Raporty — stąd nie ma przycisków Wyślij / Włącz ani edycji odbiorców.
-        Status <strong>wysyłki (SEND)</strong> pochodzi na żywo z runnera (
+        prowadzi OnTime Raporty — stąd nie ma przycisków Wyślij / Włącz / edycji odbiorców.
+        Status <strong>SEND</strong> pochodzi na żywo z runnera (
         <code>IVOCLAR_SEND_ENABLED</code>
         ).
         {runnerUrl ? (
@@ -119,7 +119,29 @@ export function MailCenterClient({
         {runnerStatus.ok && runnerStatus.periodLabel ? (
           <p className={cn(panelTypography.caption, "mt-1 text-slate-600")}>
             Bieżący okres w runnerze: {runnerStatus.periodLabel}
-            {runnerStatus.productionSent ? " · już wysłany" : " · do wysyłki"}
+            {runnerStatus.productionSent
+              ? " · produkcja tygodnia automatycznego: wysłana"
+              : " · produkcja tygodnia automatycznego: do wysyłki"}
+            {runnerStatus.localSent || runnerStatus.dbSent
+              ? ` · store: lokalnie ${runnerStatus.localSent ? "tak" : "nie"} / DB ${runnerStatus.dbSent ? "tak" : "nie"}`
+              : null}
+          </p>
+        ) : null}
+        {runnerStatus.ok && runnerStatus.crashSticky ? (
+          <p className="mt-2 rounded border border-amber-300 bg-amber-100/80 px-2 py-1.5 text-sm text-amber-950">
+            Runner zgłasza <strong>unknown_after_crash</strong>
+            {runnerStatus.runnerStateError
+              ? ` (${runnerStatus.runnerStateError})`
+              : ""}
+            . Nie generuj ponownie z OnTime — dokończ w OnTime Raporty (Wymuś
+            wysyłkę + potwierdzenie).
+          </p>
+        ) : null}
+        {runnerStatus.ok &&
+        runnerStatus.runnerStateStatus === "sending" &&
+        !runnerStatus.crashSticky ? (
+          <p className="mt-2 rounded border border-sky-200 bg-sky-50 px-2 py-1.5 text-sm text-sky-950">
+            Runner jest w trakcie wysyłki…
           </p>
         ) : null}
         {runnerStatus.ok &&
@@ -153,7 +175,9 @@ export function MailCenterClient({
               >
                 {runnerStatus.nextWeekReady
                   ? "Możesz przejść dalej — w Raportach kliknij „Licz kolejny tydzień”"
-                  : "Najpierw wyślij raport za bieżący tydzień w OnTime Raporty"}
+                  : runnerStatus.testRangeSent && !runnerStatus.productionRangeSent
+                    ? "Wysłano tylko test (override) — produkcja nadal otwarta"
+                    : "Najpierw wyślij raport produkcyjny za wybrany okres w OnTime Raporty"}
               </p>
             </div>
           </div>
@@ -161,13 +185,13 @@ export function MailCenterClient({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <PanelSummaryMetric label="Wysyłka na runnerze" value={sendMetric} />
+        <PanelSummaryMetric label="SEND na runnerze" value={sendMetric} />
         <PanelSummaryMetric label="Wysłane (ostatnie)" value={String(sentRecent)} />
         <PanelSummaryMetric label="Problemy (ostatnie)" value={String(problemRecent)} />
       </div>
       <p className={cn(panelTypography.caption, "mt-1 text-slate-500")}>
-        Joby w bazie (metadane OnTime): {jobsInDb}. Flaga DB <code>enabled</code> nie steruje już
-        wyświetlanym statusem wysyłki.
+        Joby w bazie (metadane OT): {jobsInDb} — flaga DB <code>enabled</code> nie steruje już
+        wyświetlanym SEND.
       </p>
 
       <Card padding={false} className="mt-4 overflow-hidden">

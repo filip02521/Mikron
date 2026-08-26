@@ -26,7 +26,7 @@ describe("ZD_BOM_UI status chip meta", () => {
   it("chip meta są krótkie (nie zdania)", () => {
     expect(ZD_BOM_UI.badgeNieZamawiasz).toBe("nie ZD");
     expect(ZD_BOM_UI.badgePurchasedKitRole).toBe("kupowany");
-    expect(ZD_BOM_UI.badgeKitOnlyRole).toBe("tylko kit");
+    expect(ZD_BOM_UI.badgeKitOnlyRole).toBe("sprz. zestawu");
     expect(ZD_BOM_UI.badgePurchaseBlockedRole).toBe("blokada");
     expect(ZD_BOM_UI.badgeMissingChip).toBe("brak");
     expect(ZD_BOM_UI.badgeSalesFromZestawChip("12")).toBe("+12");

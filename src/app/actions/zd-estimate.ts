@@ -130,6 +130,7 @@ import {
 } from "@/lib/orders/zd-estimate-manual";
 import { mapPool } from "@/lib/async/map-pool";
 import {
+  assertOrderMultiple,
   assertPackagingUnits,
   normalizePackagingDocumentUnitMode,
   summarizePackOrderQty,
@@ -1637,6 +1638,7 @@ export async function actionRunZdEstimateManual(
       }
     }
 
+    // Cover / bake: tylko N + tryb (bez M) — M wchodzi dopiero w packagingLookup → Do ZD.
     const packagingByTwId = new Map<
       number,
       {
@@ -1704,6 +1706,7 @@ export async function actionRunZdEstimateManual(
         unitsPerPackage: row.unitsPerPackage,
         packageLabel: row.packageLabel,
         documentUnitMode: row.documentUnitMode,
+        orderMultiple: row.orderMultiple,
       });
     }
     for (const pair of productPairs) {
@@ -1712,6 +1715,7 @@ export async function actionRunZdEstimateManual(
         unitsPerPackage: pair.unitsPerPack,
         packageLabel: existing?.packageLabel ?? "op.",
         documentUnitMode: "packages",
+        orderMultiple: existing?.orderMultiple ?? null,
       });
     }
     let prosbaReservedByTwIdDto:
@@ -2293,6 +2297,7 @@ export async function actionUpsertZdEstimatePackaging(input: {
   unitsPerPackage: number;
   packageLabel?: string;
   documentUnitMode?: ZdPackagingDocumentUnitMode | null;
+  orderMultiple?: number | null;
   note?: string;
 }): Promise<ZdEstimatePackagingActionResult> {
   const user = await requireZdEstimateAdmin("mutate");
@@ -2303,6 +2308,12 @@ export async function actionUpsertZdEstimatePackaging(input: {
   const documentUnitMode = normalizePackagingDocumentUnitMode(
     input.documentUnitMode
   );
+  const orderCheck = assertOrderMultiple(
+    documentUnitMode === "pieces_multiple" ? null : input.orderMultiple
+  );
+  if (!orderCheck.ok) {
+    return { ok: false, message: orderCheck.message };
+  }
   if (documentUnitMode === "pieces_multiple") {
     try {
       const pairs = await fetchZdProductPairs();
@@ -2331,6 +2342,10 @@ export async function actionUpsertZdEstimatePackaging(input: {
       ...input,
       unitsPerPackage: unitsCheck.units,
       documentUnitMode,
+      orderMultiple:
+        documentUnitMode === "pieces_multiple"
+          ? null
+          : orderCheck.orderMultiple,
       createdBy: user.id,
     });
     const packaging = await fetchZdEstimatePackaging();
@@ -2499,6 +2514,7 @@ export async function actionUpsertZdEstimatePackagingBulk(input: {
   unitsPerPackage: number;
   packageLabel?: string;
   documentUnitMode?: ZdPackagingDocumentUnitMode | null;
+  orderMultiple?: number | null;
   note?: string;
 }): Promise<ZdEstimateBulkPackagingActionResult> {
   const user = await requireZdEstimateAdmin("mutate");
@@ -2516,6 +2532,14 @@ export async function actionUpsertZdEstimatePackagingBulk(input: {
   const documentUnitMode = normalizePackagingDocumentUnitMode(
     input.documentUnitMode
   );
+  const orderCheck = assertOrderMultiple(
+    documentUnitMode === "pieces_multiple" ? null : input.orderMultiple
+  );
+  if (!orderCheck.ok) {
+    return { ok: false, message: orderCheck.message };
+  }
+  const orderMultiple =
+    documentUnitMode === "pieces_multiple" ? null : orderCheck.orderMultiple;
 
   let packTwIds = new Set<number>();
   if (documentUnitMode === "pieces_multiple") {
@@ -2559,6 +2583,7 @@ export async function actionUpsertZdEstimatePackagingBulk(input: {
         unitsPerPackage: units,
         packageLabel: input.packageLabel,
         documentUnitMode,
+        orderMultiple,
         note: input.note?.trim()
           ? input.note.trim().slice(0, 500)
           : undefined,
@@ -3243,13 +3268,18 @@ export async function actionCreateZdFromEstimate(input: {
 
   const unitsPerPackageByTwId = new Map<number, number>();
   const packagingModeByTwId = new Map<number, ZdPackagingDocumentUnitMode>();
+  const orderMultipleByTwId = new Map<number, number>();
   for (const row of packagingForCreate) {
     unitsPerPackageByTwId.set(row.subiektTwId, row.unitsPerPackage);
     packagingModeByTwId.set(row.subiektTwId, row.documentUnitMode);
+    if (row.orderMultiple != null && row.orderMultiple >= 2) {
+      orderMultipleByTwId.set(row.subiektTwId, row.orderMultiple);
+    }
   }
   for (const pair of pairsForExtras) {
     unitsPerPackageByTwId.set(pair.packTwId, pair.unitsPerPack);
     packagingModeByTwId.set(pair.packTwId, "packages");
+    // orderMultiple z wiersza packaging (jeśli był) zostaje z pętli powyżej
   }
 
   // Dedupe prośba↔rez. ZK przed ensureCover — inaczej serwer podbija qty z powrotem.
@@ -3304,6 +3334,7 @@ export async function actionCreateZdFromEstimate(input: {
     extraPiecesByTwId,
     unitsPerPackageByTwId,
     packagingModeByTwId,
+    orderMultipleByTwId,
   });
   const createLines = coveredLines.lines;
 
@@ -4199,9 +4230,21 @@ export async function actionUpsertZdProductBom(input: {
   parentTwId: number;
   label?: string | null;
   stockAsCover?: boolean;
-  preset?: "assemble" | "buy_separate" | "kit_only" | string | null;
+  preset?:
+    | "assemble"
+    | "buy_separate"
+    | "kit_only"
+    | "kit_from_components"
+    | string
+    | null;
   demandAllocation?: "explode" | "separate" | string | null;
-  purchaseTarget?: "components" | "as_sold" | "kit_only" | string | null;
+  purchaseTarget?:
+    | "components"
+    | "as_sold"
+    | "kit_only"
+    | "kit_from_components"
+    | string
+    | null;
   note?: string | null;
   parentSymbol?: string | null;
   parentNazwa?: string | null;

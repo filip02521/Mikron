@@ -92,8 +92,48 @@ describe("fetchRaportyRunnerStatus", () => {
       periodKey: "2026-W33",
       lastSentLabel: null,
       nextWeekReady: false,
+      crashSticky: false,
+      localSent: false,
+      dbSent: false,
     });
     expect(raportyRunnerStatusLabel(result)).toContain("IVOCLAR_SEND_ENABLED≠1");
+  });
+
+  it("mapuje crashSticky i nextWeekReady niezależnie od productionSent", async () => {
+    snapshotEnv();
+    process.env.RAPORTY_RUNNER_URL = "http://raporty.local";
+    process.env.CRON_SECRET = "secret";
+    const result = await fetchRaportyRunnerStatus({
+      fetchImpl: vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ok: true,
+          sendEnabled: true,
+          overrideTo: "ops@example.com",
+          productionSent: false,
+          productionRangeSent: false,
+          testRangeSent: true,
+          localSent: true,
+          dbSent: true,
+          crashSticky: true,
+          state: { status: "unknown_after_crash", error: "partial_send" },
+          period: { periodKey: "2026-W33", periodLabel: "…" },
+          nextWeekAction: { canClick: false, week: { label: "next" } },
+        }),
+      }) as unknown as typeof fetch,
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      productionSent: false,
+      testRangeSent: true,
+      nextWeekReady: false,
+      crashSticky: true,
+      runnerStateStatus: "unknown_after_crash",
+    });
+    if (result.ok) {
+      expect(raportyRunnerStatusLabel(result)).toContain("unknown_after_crash");
+    }
   });
 
   it("unauthorized przy 401", async () => {
