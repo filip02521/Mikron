@@ -118,9 +118,69 @@ export function MailCenterClient({
         </div>
         {runnerStatus.ok && runnerStatus.periodLabel ? (
           <p className={cn(panelTypography.caption, "mt-1 text-slate-600")}>
-            Bieżący okres runnera: {runnerStatus.periodLabel}
-            {runnerStatus.productionSent ? " · produkcja już wysłana" : ""}
+            Bieżący okres w runnerze: {runnerStatus.periodLabel}
+            {runnerStatus.productionSent
+              ? " · produkcja tygodnia automatycznego: wysłana"
+              : " · produkcja tygodnia automatycznego: do wysyłki"}
+            {runnerStatus.localSent || runnerStatus.dbSent
+              ? ` · store: lokalnie ${runnerStatus.localSent ? "tak" : "nie"} / DB ${runnerStatus.dbSent ? "tak" : "nie"}`
+              : null}
           </p>
+        ) : null}
+        {runnerStatus.ok && runnerStatus.crashSticky ? (
+          <p className="mt-2 rounded border border-amber-300 bg-amber-100/80 px-2 py-1.5 text-sm text-amber-950">
+            Runner zgłasza <strong>unknown_after_crash</strong>
+            {runnerStatus.runnerStateError
+              ? ` (${runnerStatus.runnerStateError})`
+              : ""}
+            . Nie generuj ponownie z OnTime — dokończ w OnTime Raporty (Wymuś
+            wysyłkę + potwierdzenie).
+          </p>
+        ) : null}
+        {runnerStatus.ok &&
+        runnerStatus.runnerStateStatus === "sending" &&
+        !runnerStatus.crashSticky ? (
+          <p className="mt-2 rounded border border-sky-200 bg-sky-50 px-2 py-1.5 text-sm text-sky-950">
+            Runner jest w trakcie wysyłki…
+          </p>
+        ) : null}
+        {runnerStatus.ok &&
+        (runnerStatus.lastSentLabel || runnerStatus.nextWeekLabel) ? (
+          <div className="mt-2 grid gap-2 border-t border-black/5 pt-2 sm:grid-cols-2">
+            <div>
+              <p className={cn(panelTypography.caption, "text-slate-500")}>
+                Ostatni wysłany raport
+              </p>
+              <p className="text-sm font-semibold text-slate-900">
+                {runnerStatus.lastSentLabel ?? "—"}
+              </p>
+              {runnerStatus.lastSentAtLabel ? (
+                <p className={cn(panelTypography.caption, "text-emerald-800")}>
+                  Zakończono wysyłkę: {runnerStatus.lastSentAtLabel}
+                </p>
+              ) : null}
+            </div>
+            <div>
+              <p className={cn(panelTypography.caption, "text-slate-500")}>
+                Kolejny tydzień
+              </p>
+              <p className="text-sm font-semibold text-slate-900">
+                {runnerStatus.nextWeekLabel ?? "—"}
+              </p>
+              <p
+                className={cn(
+                  panelTypography.caption,
+                  runnerStatus.nextWeekReady ? "text-emerald-800" : "text-amber-800"
+                )}
+              >
+                {runnerStatus.nextWeekReady
+                  ? "Możesz przejść dalej — w Raportach kliknij „Licz kolejny tydzień”"
+                  : runnerStatus.testRangeSent && !runnerStatus.productionRangeSent
+                    ? "Wysłano tylko test (override) — produkcja nadal otwarta"
+                    : "Najpierw wyślij raport produkcyjny za wybrany okres w OnTime Raporty"}
+              </p>
+            </div>
+          </div>
         ) : null}
       </div>
 
