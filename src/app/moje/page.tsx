@@ -170,6 +170,16 @@ export default async function MojePage({
     supplierKhIdsBySupplierId,
     subiektReachable,
     teethLeadDaysBySupplierId: await loadTeethLeadDaysBySupplierIdForOrders(orders),
+    ...(await (async () => {
+      const { loadDeliveryEtaQuantilesForOrders } = await import(
+        "@/lib/orders/delivery-eta-quantiles-load"
+      );
+      const q = await loadDeliveryEtaQuantilesForOrders(orders);
+      return {
+        useP50: q.useP50,
+        etaQuantilesBySupplierId: q.bySupplierId,
+      };
+    })()),
   });
 
   const dayStartContext = buildDayStartContext(

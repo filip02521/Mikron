@@ -366,7 +366,6 @@ export function SalesUpdatesBanner() {
   return (
     <SystemNotice
       variant="action"
-      className="mb-4 sm:mb-6"
       title="Są nowe informacje o zamówieniach"
       description={description}
       action={

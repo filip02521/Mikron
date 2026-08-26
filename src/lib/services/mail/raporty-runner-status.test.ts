@@ -90,6 +90,8 @@ describe("fetchRaportyRunnerStatus", () => {
       ok: true,
       sendEnabled: false,
       periodKey: "2026-W33",
+      lastSentLabel: null,
+      nextWeekReady: false,
     });
     expect(raportyRunnerStatusLabel(result)).toContain("IVOCLAR_SEND_ENABLED≠1");
   });

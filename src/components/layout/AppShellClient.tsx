@@ -24,6 +24,7 @@ import {
   TeethUpdatesBanner,
   TeethUpdatesProvider,
 } from "@/components/zeby/TeethUpdatesContext";
+import { PageNoticeStack } from "@/components/ui/PageNoticeStack";
 import { OperationsBoardQuestionsNotice } from "@/components/operations/OperationsBoardQuestionsNotice";
 import { SalesOnboardingGate } from "@/components/sales/SalesOnboardingGate";
 import { AppRoleProvider } from "@/components/layout/AppRoleContext";
@@ -345,7 +346,7 @@ export function AppShellClient({
           adminPreviewDock={Boolean(adminPanelPreview)}
           topNotices={
             adminPanelPreview ? (
-              <>
+              <PageNoticeStack>
                 {operationsPinnedAnnouncements.length > 0 &&
                 (adminPanelPreview === "admin" || adminPanelPreview === "zakupy") ? (
                   <OperationsGlobalPinnedStrip pinned={operationsPinnedAnnouncements} />
@@ -356,9 +357,9 @@ export function AppShellClient({
                 {adminPanelPreview === "admin" || adminPanelPreview === "zakupy" ? (
                   !isOnMonthlySummaryPage ? <MonthlySummaryNotice /> : null
                 ) : null}
-              </>
+              </PageNoticeStack>
             ) : salesLive ? (
-              <>
+              <PageNoticeStack>
                 {salesBoardAttention ? (
                   <Suspense fallback={null}>
                     <SalesGlobalPinnedStrip attention={salesBoardAttention} />
@@ -366,9 +367,9 @@ export function AppShellClient({
                 ) : null}
                 {!isOnMonthlySummaryPage ? <MonthlySummaryNotice /> : null}
                 <SalesUpdatesBanner />
-              </>
+              </PageNoticeStack>
             ) : operationsLive && !salesLive ? (
-              <>
+              <PageNoticeStack>
                 {operationsPinnedAnnouncements.length > 0 ? (
                   <OperationsGlobalPinnedStrip pinned={operationsPinnedAnnouncements} />
                 ) : null}
@@ -376,17 +377,17 @@ export function AppShellClient({
                 {!isOnMonthlySummaryPage ? <MonthlySummaryNotice /> : null}
                 <OperationsUpdatesBanner />
                 <TeethUpdatesBanner />
-              </>
+              </PageNoticeStack>
             ) : teethLive && !salesLive ? (
-              <>
+              <PageNoticeStack>
                 {!isOnMonthlySummaryPage ? <MonthlySummaryNotice /> : null}
                 <TeethUpdatesBanner />
-              </>
+              </PageNoticeStack>
             ) : magazynLive && !salesLive ? (
-              <>
+              <PageNoticeStack>
                 {!isOnMonthlySummaryPage ? <MonthlySummaryNotice /> : null}
                 <OperationsUpdatesBanner />
-              </>
+              </PageNoticeStack>
             ) : null
           }
         >

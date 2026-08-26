@@ -253,6 +253,7 @@ export function ZdEstimateSupplierScopesModal({
   onError,
   todayCoverage,
   onMappedSupplierIdsChange,
+  onScopesChange,
 }: {
   open: boolean;
   onClose: () => void;
@@ -260,7 +261,12 @@ export function ZdEstimateSupplierScopesModal({
   configured: boolean;
   onError: (message: string) => void;
   todayCoverage?: ZdEstimateScopeCoverage | null;
+  /** @deprecated Prefer onScopesChange — kept for coverage-only callers. */
   onMappedSupplierIdsChange?: (supplierIds: string[]) => void;
+  onScopesChange?: (
+    scopes: ZdEstimateSupplierScopeRow[],
+    meta: { reason: "load" | "mutate" }
+  ) => void;
 }) {
   const searchId = useId();
   const searchRef = useRef<HTMLInputElement>(null);
@@ -303,6 +309,7 @@ export function ZdEstimateSupplierScopesModal({
           return;
         }
         setScopes(res.scopes);
+        onScopesChange?.(res.scopes, { reason: "load" });
         onMappedSupplierIdsChange?.(res.scopes.map((s) => s.supplierId));
       });
     });
@@ -443,6 +450,7 @@ export function ZdEstimateSupplierScopesModal({
       setScopes((prev) => {
         const next = prev.filter((s) => s.supplierId !== supplierId);
         const merged = [res.scope, ...next];
+        onScopesChange?.(merged, { reason: "mutate" });
         onMappedSupplierIdsChange?.(merged.map((s) => s.supplierId));
         return merged;
       });
@@ -466,6 +474,7 @@ export function ZdEstimateSupplierScopesModal({
       }
       setScopes((prev) => {
         const next = prev.filter((s) => s.supplierId !== supplierId);
+        onScopesChange?.(next, { reason: "mutate" });
         onMappedSupplierIdsChange?.(next.map((s) => s.supplierId));
         return next;
       });

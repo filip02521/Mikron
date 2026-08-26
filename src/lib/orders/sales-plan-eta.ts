@@ -4,8 +4,10 @@
  */
 import {
   estimateDeliveryEta,
+  estimateOptionsFromQuantiles,
   formatEtaLabel,
   type DeliveryEtaEstimate,
+  type EstimateDeliveryEtaOptions,
 } from "@/lib/orders/delivery-eta";
 import {
   calculateBusinessDate,
@@ -14,6 +16,7 @@ import {
 } from "@/lib/orders/dates";
 import type { DeliveryStats, StatsMode, TeethSupplierSchedule } from "@/types/database";
 import { todayDateKeyInWarsaw } from "@/lib/time/warsaw";
+import type { DeliveryStatsQuantiles } from "@/lib/orders/delivery-stats-samples";
 
 export type SalesPlanArrivalEta = {
   dateKey: string;
@@ -51,13 +54,20 @@ export function buildSalesPlanArrivalEta(input: {
   startAt: string | null;
   stats: DeliveryStats | undefined;
   statsMode: StatsMode;
+  etaOptions?: EstimateDeliveryEtaOptions;
+  quantiles?: DeliveryStatsQuantiles | null;
+  useP50?: boolean;
 }): SalesPlanArrivalEta | null {
   if (!input.startAt) return null;
+  const options =
+    input.etaOptions ??
+    estimateOptionsFromQuantiles(input.quantiles, input.useP50);
   const estimate = estimateDeliveryEta(
     input.startAt,
     input.stats,
     "Glowne",
-    input.statsMode
+    input.statsMode,
+    options
   );
   if (!estimate) return null;
   return arrivalEtaFromEstimate(estimate);
@@ -71,7 +81,8 @@ export function arrivalEtaFromEstimate(
     dateKey,
     shortLabel: shortOkLabel(dateKey),
     fullLabel: formatEtaLabel(estimate),
-    avgBusinessDays: estimate.avgBusinessDays,
+    /** Primary (p50/mean) — zgodne z datą; nie surowa średnia. */
+    avgBusinessDays: estimate.primaryBusinessDays,
     lowConfidence: estimate.lowConfidence,
   };
 }
@@ -110,6 +121,7 @@ export function buildSalesPlanTeethLine(
         nextOrderLabel,
         etaLabel: formatEtaLabel({
           avgBusinessDays: days,
+          primaryBusinessDays: days,
           expectedDate: expected,
           sampleCount: 0,
           lowConfidence: false,

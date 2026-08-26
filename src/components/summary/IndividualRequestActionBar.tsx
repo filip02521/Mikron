@@ -5,7 +5,6 @@ import {
   RequestGroupOverflowMenu,
   type RequestGroupFlagShortcut,
 } from "@/components/summary/RequestGroupOverflowMenu";
-import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import { cn } from "@/lib/cn";
 import {
   panelSegmentLastClass,
@@ -18,11 +17,12 @@ import {
   panelActionBarFooterShellClass,
   panelActionSegmentClass,
 } from "@/lib/ui/surfaces";
-import { actionProcessIndividual } from "@/app/actions/admin";
 import {
   procurementGlowneButtonLabel,
   procurementGlowneButtonTitle,
 } from "@/lib/orders/glowne-action-ui";
+import { processLinesButtonTitle } from "@/lib/orders/procurement-process-lines";
+import type { ProcurementProcessAction } from "@/lib/orders/procurement-process-lines";
 import { procurementRequestFooterScopeLabelClass } from "@/components/summary/procurement-request-row-styles";
 
 const footerPrimaryClass = cn(
@@ -64,14 +64,13 @@ function nestedShellClass(tone: DailyPanelUnseenVariant) {
 
 /** Główne + Uzupełniające + menu Więcej — prośby handlowców. */
 export function IndividualRequestActionBar({
-  orderIds,
   supplierId,
   hasInfoViaPanel,
   supplierOrderOnDemand = false,
   headline,
   pending,
-  scopeKey,
-  run,
+  canPickLines = false,
+  onRequestProcess,
   onEdit,
   onCancel,
   onOpenSupplierDetails,
@@ -84,14 +83,14 @@ export function IndividualRequestActionBar({
   density = "default",
   tone = "prosby",
 }: {
-  orderIds: string[];
   supplierId: string | null;
   hasInfoViaPanel: boolean;
   supplierOrderOnDemand?: boolean;
   headline: string;
   pending: boolean;
-  scopeKey: string;
-  run: DailyPanelRunFn;
+  /** Grupa ≥2 linii — title z hintem wyboru części. */
+  canPickLines?: boolean;
+  onRequestProcess: (action: ProcurementProcessAction) => void;
   onEdit: () => void;
   onCancel: () => void;
   onOpenSupplierDetails?: () => void;
@@ -107,7 +106,6 @@ export function IndividualRequestActionBar({
   tone?: DailyPanelUnseenVariant;
 }) {
   const disabled = pending || !supplierId;
-  const scope = { scope: scopeKey };
   const nested = density === "nested";
 
   const shellClass = nested ? nestedShellClass(tone) : panelActionBarFooterShellClass;
@@ -119,9 +117,17 @@ export function IndividualRequestActionBar({
     supplierOrderOnDemand,
     compact: nested,
   });
-  const glowneTitle = procurementGlowneButtonTitle({
+  const glowneBaseTitle = procurementGlowneButtonTitle({
     hasInfoViaPanel,
     supplierOrderOnDemand,
+  });
+  const glowneTitle = processLinesButtonTitle({
+    canPickLines,
+    baseTitle: glowneBaseTitle,
+  });
+  const uzupelniajaceTitle = processLinesButtonTitle({
+    canPickLines,
+    baseTitle: null,
   });
   const uzupelniajaceLabel =
     hasInfoViaPanel || nested ? "Uzupełn." : "Uzupełniające";
@@ -141,16 +147,7 @@ export function IndividualRequestActionBar({
         disabled={disabled}
         className={primaryClass}
         title={glowneTitle}
-        onClick={() =>
-          run(
-            () => actionProcessIndividual(orderIds, "GLOWNE"),
-            supplierOrderOnDemand
-              ? "Oznaczono jako główne (bez terminu planowego)"
-              : "Oznaczono jako zamówienie główne",
-            "Oznaczanie jako główne…",
-            scope
-          )
-        }
+        onClick={() => onRequestProcess("GLOWNE")}
       >
         {glowneLabel}
       </button>
@@ -158,14 +155,8 @@ export function IndividualRequestActionBar({
         type="button"
         disabled={disabled}
         className={outlineClass}
-        onClick={() =>
-          run(
-            () => actionProcessIndividual(orderIds, "POBOCZNE"),
-            "Oznaczono jako uzupełniające",
-            "Oznaczanie jako uzupełniające…",
-            scope
-          )
-        }
+        title={uzupelniajaceTitle}
+        onClick={() => onRequestProcess("POBOCZNE")}
       >
         {uzupelniajaceLabel}
       </button>

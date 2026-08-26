@@ -40,6 +40,8 @@
     "backfill-sales-ack-zrealizowane": "tsx scripts/backfill-sales-acknowledged-zrealizowane.ts",
     "import-stats-pdf": "tsx scripts/import-delivery-stats-from-pdf.ts",
     "import-stats-csv": "tsx scripts/import-delivery-stats-from-csv.ts",
+    "audit-delivery-stats": "tsx --env-file=.env.local scripts/audit-delivery-stats-live.ts",
+    "backfill-delivery-stats-samples": "tsx --env-file=.env.local scripts/backfill-delivery-stats-samples.ts",
     "import-historia": "tsx scripts/import-historia-from-csv.ts",
     "rebuild-schedules-from-historia": "tsx scripts/rebuild-schedules-from-historia.ts",
     "seed": "tsx scripts/seed-demo.ts",

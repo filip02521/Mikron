@@ -386,6 +386,59 @@ export function validateZdCreateClientLines(
  * Nie zaniża qty względem klienta — tylko podbija, gdy extras > wysłane.
  * Mode B: minZd = ceil(extra/N)*N (sztuki), nie liczba paczek.
  */
+export function minZdUnitsForExtraPieces(
+  extraPieces: number,
+  unitsPerPackage: number | null | undefined,
+  documentUnitMode: ZdPackagingDocumentUnitMode | null | undefined
+): number {
+  const pieces =
+    extraPieces != null && Number.isFinite(extraPieces) && extraPieces > 0
+      ? Math.ceil(extraPieces)
+      : 0;
+  if (!(pieces > 0)) return 0;
+  const units = Math.max(1, Math.trunc(Number(unitsPerPackage) || 1));
+  const mode = documentUnitMode ?? "packages";
+  return computeZdPackOrderQty(pieces, units, "op.", mode).zdUnits;
+}
+
+/**
+ * Kandydaci overlap ZK: fetch tylko gdy linia create nie pokrywa minZd(raw extra).
+ * Brak linii → toFetch. Nie zawęża scoped extras poza candidates.
+ */
+export function partitionProsbaOverlapFetchTwIds(input: {
+  candidates: readonly number[];
+  rawExtraByTwId: ReadonlyMap<number, number>;
+  linesByTwId: ReadonlyMap<number, { ilosc: number }>;
+  unitsPerPackageByTwId?: ReadonlyMap<number, number> | null;
+  packagingModeByTwId?: ReadonlyMap<
+    number,
+    ZdPackagingDocumentUnitMode
+  > | null;
+}): { toFetch: number[]; skipCover: number[] } {
+  const toFetch: number[] = [];
+  const skipCover: number[] = [];
+  for (const rawTw of input.candidates) {
+    const tw = Math.trunc(Number(rawTw)) || 0;
+    if (!(tw > 0)) continue;
+    const rawExtra = input.rawExtraByTwId.get(tw);
+    if (!(rawExtra != null && Number.isFinite(rawExtra) && rawExtra > 0)) {
+      continue;
+    }
+    const line = input.linesByTwId.get(tw);
+    const minZd = minZdUnitsForExtraPieces(
+      rawExtra,
+      input.unitsPerPackageByTwId?.get(tw),
+      input.packagingModeByTwId?.get(tw)
+    );
+    if (!line || !(line.ilosc >= minZd)) {
+      toFetch.push(tw);
+    } else {
+      skipCover.push(tw);
+    }
+  }
+  return { toFetch, skipCover };
+}
+
 export function ensureZdCreateLinesCoverIndividualExtras(input: {
   lines: readonly ZdCreateClientLineInput[];
   extraPiecesByTwId: ReadonlyMap<number, number> | null | undefined;
@@ -420,18 +473,11 @@ export function ensureZdCreateLinesCoverIndividualExtras(input: {
         ? Math.ceil(extraRaw)
         : 0;
     if (!(extraPieces > 0)) return { ...line };
-    const units = Math.max(
-      1,
-      Math.trunc(Number(input.unitsPerPackageByTwId?.get(line.twId)) || 1)
-    );
-    const mode =
-      input.packagingModeByTwId?.get(line.twId) ?? "packages";
-    const minZd = computeZdPackOrderQty(
+    const minZd = minZdUnitsForExtraPieces(
       extraPieces,
-      units,
-      "op.",
-      mode
-    ).zdUnits;
+      input.unitsPerPackageByTwId?.get(line.twId),
+      input.packagingModeByTwId?.get(line.twId)
+    );
     if (!(minZd > line.ilosc)) return { ...line };
     bumped.push({
       twId: line.twId,

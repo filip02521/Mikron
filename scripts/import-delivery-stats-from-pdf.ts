@@ -70,6 +70,23 @@ async function main() {
       console.error(row.supplierName, upsertError.message);
     } else {
       upserted++;
+      try {
+        const { upsertImportDeliveryStatsSamples } = await import(
+          "../src/lib/data/delivery-stats-samples"
+        );
+        await upsertImportDeliveryStatsSamples({
+          supplierId,
+          mainAvg: row.main_avg,
+          mainCount: row.main_count,
+          sideAvg: row.side_avg,
+          sideCount: row.side_count,
+        });
+      } catch (e) {
+        console.warn(
+          `Import samples dla ${row.supplierName}:`,
+          e instanceof Error ? e.message : e
+        );
+      }
     }
   }
 

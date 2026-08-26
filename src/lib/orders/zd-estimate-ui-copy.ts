@@ -809,6 +809,20 @@ export const ZD_ESTIMATE_UI = {
   prepOverridesHide: "Ukryj nadpisania",
   prepParamBoostLabel: "Podbicie",
   prepParamExtrasLabel: "Prośby",
+  /** Widoczny status powiązania dostawcy (bez rozwijania Nadpisań). */
+  supplierLinkedLabel: "Powiązano z dostawcą",
+  supplierLinkedFromMappingBadge: "z mapowania",
+  supplierUnlinkedHint:
+    "Nie powiązano z dostawcą — rozwiń Nadpisania poniżej, aby wybrać ręcznie.",
+  supplierMappingUnresolvedHint:
+    "Mapowanie wskazuje dostawcę spoza aktywnej listy — wybierz kartę w Nadpisaniach albo popraw mapowanie zakresów.",
+  /**
+   * Po wyborze grupy/cechy z zapisanym mapowaniem —
+   * np. Resione → Dongguan Godsaid Technology.
+   */
+  supplierFromMappingNotice: (supplierName: string, scopeLabel: string) =>
+    `Przypisano dostawcę „${supplierName}” z mapowania zakresu „${scopeLabel}”.`,
+  supplierFromMappingHitSuffix: "z mapowania",
   historyNeedsRecountTitle: "Zmieniono historię powiązań ZD",
   historyNeedsRecountBody:
     "Włączono lub wyłączono zapisane ZD w historii zamówień. Przelicz listę przed utworzeniem dokumentu — korekta z historii mogła się zmienić.",
@@ -1019,6 +1033,10 @@ export const ZD_ESTIMATE_UI = {
   postCreateTimeoutLockLabel: "niepotwierdzony (timeout)",
   postCreateTimeoutLockBody:
     "Ostatnie tworzenie ZD mogło się udać w Subiekcie mimo timeoutu. Sprawdź dokument, powiąż historię, przelicz listę albo odblokuj świadomie — unikaj duplikatu.",
+  postCreateTimeoutUnlockConfirmTitle: "Odblokować tworzenie ZD po timeout?",
+  postCreateTimeoutUnlockConfirmMessage:
+    "Dokument mógł już powstać w Subiekcie. Najpierw sprawdź listę ZD / użyj „Powiąż ZD”. Odblokowanie Create pozwoli wysłać kolejne ZD i łatwo zrobić duplikat.",
+  postCreateTimeoutUnlockConfirmLabel: "Sprawdziłem Subiekt — odblokuj",
   postCreateUnlockCta: "Odblokuj tworzenie ZD",
   postCreateMailComposeCta: "Edytuj i wyślij…",
   postCreateMailComposeTitle: "Wiadomość do dostawcy",

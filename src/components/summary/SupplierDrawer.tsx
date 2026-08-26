@@ -77,6 +77,7 @@ export function SupplierDrawer({
   teethLane,
   deliveryStats,
   statsMode = "LACZNIE",
+  leadTimeDisplay,
   onClose,
   isScopePending,
   run,
@@ -91,6 +92,7 @@ export function SupplierDrawer({
   /** Statystyki z `delivery_stats` — średni czas dostawy (SSR panelu). */
   deliveryStats?: DeliveryStats | null;
   statsMode?: StatsMode;
+  leadTimeDisplay?: import("@/lib/orders/delivery-eta").LeadTimeDisplayOptions;
   onClose: () => void;
   isScopePending: (supplierId: string) => boolean;
   run: DailyPanelRunFn;
@@ -365,6 +367,7 @@ export function SupplierDrawer({
             className="mt-3"
             stats={deliveryStats}
             statsMode={supplier.stats_mode ?? statsMode}
+            leadTimeDisplay={leadTimeDisplay}
           />
 
           {supplier.shift_date ? (

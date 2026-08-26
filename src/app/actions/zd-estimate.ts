@@ -79,9 +79,11 @@ import {
   buildZdCreateApiBody,
   ensureZdCreateLinesCoverIndividualExtras,
   listZdEstimateSupplierKhIds,
+  partitionProsbaOverlapFetchTwIds,
   resolveZdCreateKhId,
   validateZdCreateClientLines,
 } from "@/lib/orders/zd-estimate-create-zd";
+import { resolveDocAfterZdCreate } from "@/lib/orders/zd-estimate-create-doc";
 import {
   buildIndividualEstimateExtras,
   collectIndividualOrderIdsForZdCreate,
@@ -112,7 +114,12 @@ import {
   captureScheduleSnapshot,
   buildMarkOrderedFeedback,
 } from "@/lib/services/daily-panel-undo";
-import { matchSupplierForGroupName } from "@/lib/orders/zd-estimate-group-stock";
+import { resolveSupplierForScopeSelection } from "@/lib/orders/zd-estimate-group-stock";
+import {
+  findUniqueSupplierIdForCecha,
+  findUniqueSupplierIdForGrupa,
+  type ZdEstimateScopeMappingRef,
+} from "@/lib/orders/zd-estimate-supplier-scope";
 import {
   buildManualZdEstimateResult,
   DEFAULT_DNI_ZAPASU,
@@ -244,6 +251,10 @@ export type ZdEstimateGroupOption = {
   stockLabel: string | null;
   subiektKhId: number | null;
   additionalSubiektKhIds: number[];
+  /** Skąd wzięto dostawcę: mapowanie zakresów albo heurystyka nazwy. */
+  supplierMatchSource?: "mapping" | "name" | null;
+  /** Mapowanie DB wskazuje ID, którego nie ma na aktywnej liście dostawców. */
+  supplierMappingUnresolved?: boolean;
 };
 
 export type ZdEstimateCechaOption = {
@@ -255,6 +266,8 @@ export type ZdEstimateCechaOption = {
   stockLabel: string | null;
   subiektKhId: number | null;
   additionalSubiektKhIds: number[];
+  supplierMatchSource?: "mapping" | "name" | null;
+  supplierMappingUnresolved?: boolean;
 };
 
 export type ZdEstimateRunInput = {
@@ -521,9 +534,16 @@ function historyScopeFromRun(scope: {
 
 function enrichGroup(
   group: { grt_Id: number; grt_Nazwa: string },
-  suppliers: ZdEstimateSupplierOption[]
+  suppliers: ZdEstimateSupplierOption[],
+  scopes: readonly ZdEstimateScopeMappingRef[] = []
 ): ZdEstimateGroupOption {
-  const matched = matchSupplierForGroupName(group.grt_Nazwa, suppliers);
+  const mappedSupplierId = findUniqueSupplierIdForGrupa(scopes, group.grt_Id);
+  const { supplier: matched, source, mappingUnresolved } =
+    resolveSupplierForScopeSelection({
+      scopeName: group.grt_Nazwa,
+      suppliers,
+      mappedSupplierId,
+    });
   return {
     grt_Id: group.grt_Id,
     grt_Nazwa: group.grt_Nazwa,
@@ -533,14 +553,23 @@ function enrichGroup(
     stockLabel: matched?.stockLabel ?? null,
     subiektKhId: matched?.subiektKhId ?? null,
     additionalSubiektKhIds: matched?.additionalSubiektKhIds ?? [],
+    supplierMatchSource: source,
+    supplierMappingUnresolved: mappingUnresolved === true,
   };
 }
 
 function enrichCecha(
   cecha: { ctw_Id: number; ctw_Nazwa: string },
-  suppliers: ZdEstimateSupplierOption[]
+  suppliers: ZdEstimateSupplierOption[],
+  scopes: readonly ZdEstimateScopeMappingRef[] = []
 ): ZdEstimateCechaOption {
-  const matched = matchSupplierForGroupName(cecha.ctw_Nazwa, suppliers);
+  const mappedSupplierId = findUniqueSupplierIdForCecha(scopes, cecha.ctw_Id);
+  const { supplier: matched, source, mappingUnresolved } =
+    resolveSupplierForScopeSelection({
+      scopeName: cecha.ctw_Nazwa,
+      suppliers,
+      mappedSupplierId,
+    });
   return {
     ctw_Id: cecha.ctw_Id,
     ctw_Nazwa: cecha.ctw_Nazwa,
@@ -550,6 +579,8 @@ function enrichCecha(
     stockLabel: matched?.stockLabel ?? null,
     subiektKhId: matched?.subiektKhId ?? null,
     additionalSubiektKhIds: matched?.additionalSubiektKhIds ?? [],
+    supplierMatchSource: source,
+    supplierMappingUnresolved: mappingUnresolved === true,
   };
 }
 
@@ -647,6 +678,8 @@ export async function actionZdEstimateBootstrap(): Promise<{
   uiPrefs: import("@/lib/orders/zd-estimate-prefs").ZdEstimateUiPrefs;
   extrasPolicy: import("@/lib/orders/zd-estimate-extras-policy").ZdEstimateExtrasPolicy;
   todayScopeCoverage: import("@/lib/orders/zd-estimate-scope-coverage").ZdEstimateScopeCoverage;
+  /** Mapowania dostawca → grupa/cecha — do auto-przypisania przy wyborze zakresu. */
+  supplierScopes: import("@/lib/data/zd-estimate-supplier-scopes").ZdEstimateSupplierScopeRow[];
 }> {
   await requireZdEstimateAdmin("read");
 
@@ -759,13 +792,6 @@ export async function actionZdEstimateBootstrap(): Promise<{
     );
   }
 
-  const quickGroups = [
-    { grt_Id: 17, grt_Nazwa: "Falcon" },
-    { grt_Id: 28, grt_Nazwa: "Ivoclar Technical" },
-    { grt_Id: 3, grt_Nazwa: "Ivoclar Clinical" },
-    { grt_Id: 264, grt_Nazwa: "Ivoclar DIGITAL" },
-  ].map((g) => enrichGroup(g, suppliers));
-
   let uiPrefs = ZD_ESTIMATE_UI_PREFS_DEFAULTS;
   try {
     uiPrefs = await fetchOwnZdEstimateUiPrefs();
@@ -781,8 +807,10 @@ export async function actionZdEstimateBootstrap(): Promise<{
   }
 
   let todayScopeCoverage = zdEstimateScopeCoverage([], []);
+  let supplierScopes: Awaited<ReturnType<typeof listZdEstimateSupplierScopes>> =
+    [];
   try {
-    const scopes = await listZdEstimateSupplierScopes();
+    supplierScopes = await listZdEstimateSupplierScopes();
     const todaySuppliers = collectTodayScheduleSuppliers({
       todayKey,
       suppliers: suppliers.map((s) => ({
@@ -794,11 +822,18 @@ export async function actionZdEstimateBootstrap(): Promise<{
     });
     todayScopeCoverage = zdEstimateScopeCoverage(
       todaySuppliers,
-      scopes.map((s) => s.supplierId)
+      supplierScopes.map((s) => s.supplierId)
     );
   } catch {
-    // zostaw puste pokrycie
+    // zostaw puste pokrycie / scopes
   }
+
+  const quickGroups = [
+    { grt_Id: 17, grt_Nazwa: "Falcon" },
+    { grt_Id: 28, grt_Nazwa: "Ivoclar Technical" },
+    { grt_Id: 3, grt_Nazwa: "Ivoclar Clinical" },
+    { grt_Id: 264, grt_Nazwa: "Ivoclar DIGITAL" },
+  ].map((g) => enrichGroup(g, suppliers, supplierScopes));
 
   return {
     configured: summary.ordersConfigured,
@@ -832,6 +867,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
     uiPrefs,
     extrasPolicy,
     todayScopeCoverage,
+    supplierScopes,
   };
 }
 
@@ -855,6 +891,12 @@ export async function actionSearchZdEstimateGroups(query: string): Promise<
 
   try {
     const suppliers = await loadZdEstimateSupplierOptions();
+    let scopes: ZdEstimateScopeMappingRef[] = [];
+    try {
+      scopes = await listZdEstimateSupplierScopes();
+    } catch {
+      scopes = [];
+    }
     const { data } = await searchSubiektProductGroups({
       search: q,
       page: 1,
@@ -867,7 +909,8 @@ export async function actionSearchZdEstimateGroups(query: string): Promise<
             grt_Id: Number(g.grt_Id),
             grt_Nazwa: String(g.grt_Nazwa ?? "").trim() || `Grupa ${g.grt_Id}`,
           },
-          suppliers
+          suppliers,
+          scopes
         )
       )
       .filter((g) => Number.isFinite(g.grt_Id) && g.grt_Id > 0);
@@ -898,6 +941,12 @@ export async function actionSearchZdEstimateCechy(query: string): Promise<
 
   try {
     const suppliers = await loadZdEstimateSupplierOptions();
+    let scopes: ZdEstimateScopeMappingRef[] = [];
+    try {
+      scopes = await listZdEstimateSupplierScopes();
+    } catch {
+      scopes = [];
+    }
     const { data } = await searchSubiektProductCechy({
       search: q,
       page: 1,
@@ -911,7 +960,8 @@ export async function actionSearchZdEstimateCechy(query: string): Promise<
             ctw_Nazwa:
               String(c.ctw_Nazwa ?? "").trim() || `Cecha ${c.ctw_Id}`,
           },
-          suppliers
+          suppliers,
+          scopes
         )
       )
       .filter((c) => Number.isFinite(c.ctw_Id) && c.ctw_Id > 0);
@@ -1051,6 +1101,9 @@ function reservedOverlapMapToDto(
 /**
  * Korekta extras o overlap prośba↔rez. ZK.
  * `resolved=false` gdy fetch rzucił — caller nie powinien cache'ować skip.
+ *
+ * `coverLines` (create): fetch ZK tylko dla kandydatów z ilosc < minZd(raw);
+ * scoped extras nadal obejmują wszystkie twIdsFilter (non-identity zostają).
  */
 async function resolveIndividualExtrasWithReservationOverlap(input: {
   byTwId: ReadonlyMap<
@@ -1064,6 +1117,16 @@ async function resolveIndividualExtrasWithReservationOverlap(input: {
   lines?: readonly { tw_Id: number; tw_StanRez?: number | null }[] | null;
   /** Gdy podane — tylko te tw (np. Create: pozycje na dokumencie). */
   twIdsFilter?: ReadonlySet<number> | null;
+  /**
+   * Create: linie przed ensureCover — partition skipCover vs toFetch.
+   * Policz nie podaje → fetch wszystkich candidates (bez zmian).
+   */
+  coverLines?: readonly { twId: number; ilosc: number }[] | null;
+  unitsPerPackageByTwId?: ReadonlyMap<number, number> | null;
+  packagingModeByTwId?: ReadonlyMap<
+    number,
+    import("@/lib/orders/zd-estimate-packaging").ZdPackagingDocumentUnitMode
+  > | null;
 }): Promise<{
   adjustedExtraByTwId: Map<number, number>;
   rawExtraByTwId: Map<number, number>;
@@ -1071,6 +1134,8 @@ async function resolveIndividualExtrasWithReservationOverlap(input: {
   stockNeedReliefByTwId: Map<number, number>;
   reservedByTwId: Map<number, ZdEstimateReservedOverlapSlice[]>;
   candidateTwIds: number[];
+  overlapTwFetched: number[];
+  overlapTwSkipped: number[];
   resolved: boolean;
 }> {
   const scopedByTw =
@@ -1095,7 +1160,27 @@ async function resolveIndividualExtrasWithReservationOverlap(input: {
         byTwId: scopedByTw,
       });
 
-  if (!candidateTwIds.length) {
+  let toFetch = candidateTwIds;
+  let skipCover: number[] = [];
+  if (input.coverLines != null) {
+    const linesByTwId = new Map<number, { ilosc: number }>();
+    for (const line of input.coverLines) {
+      const tw = Math.trunc(Number(line.twId)) || 0;
+      if (!(tw > 0)) continue;
+      linesByTwId.set(tw, { ilosc: Number(line.ilosc) || 0 });
+    }
+    const parted = partitionProsbaOverlapFetchTwIds({
+      candidates: candidateTwIds,
+      rawExtraByTwId: rawMap,
+      linesByTwId,
+      unitsPerPackageByTwId: input.unitsPerPackageByTwId,
+      packagingModeByTwId: input.packagingModeByTwId,
+    });
+    toFetch = parted.toFetch;
+    skipCover = parted.skipCover;
+  }
+
+  if (!candidateTwIds.length || !toFetch.length) {
     return {
       adjustedExtraByTwId: rawMap,
       rawExtraByTwId: rawMap,
@@ -1103,12 +1188,14 @@ async function resolveIndividualExtrasWithReservationOverlap(input: {
       stockNeedReliefByTwId: new Map(),
       reservedByTwId: new Map(),
       candidateTwIds,
+      overlapTwFetched: [],
+      overlapTwSkipped: skipCover,
       resolved: true,
     };
   }
 
   try {
-    const fetched = await fetchReservedOverlapSlicesByTwIds(candidateTwIds);
+    const fetched = await fetchReservedOverlapSlicesByTwIds(toFetch);
     const maps = individualExtrasAndReliefWithReservationOverlap(
       scopedByTw,
       fetched.reservedByTwId
@@ -1116,6 +1203,8 @@ async function resolveIndividualExtrasWithReservationOverlap(input: {
     const adjustedExtraByTwId = new Map<number, number>();
     for (const [tw, raw] of maps.extraByTwId) {
       const overlap = maps.extraOverlapByTwId.get(tw) ?? 0;
+      // Policz bez coverLines: bit-identycznie jak wcześniej (nie ceil tutaj —
+      // overlap z dedupe i tak jest ceil; applyOverlapToExtraPieces zmienia floats).
       const effective = Math.max(0, raw - overlap);
       if (effective > 0) adjustedExtraByTwId.set(tw, effective);
     }
@@ -1126,6 +1215,8 @@ async function resolveIndividualExtrasWithReservationOverlap(input: {
       stockNeedReliefByTwId: maps.stockNeedReliefByTwId,
       reservedByTwId: fetched.reservedByTwId,
       candidateTwIds,
+      overlapTwFetched: toFetch,
+      overlapTwSkipped: skipCover,
       // Częściowy sukces: stosujemy to co mamy, ale UI może dociągnąć ponownie.
       resolved: !fetched.hadFetchErrors,
     };
@@ -1137,6 +1228,8 @@ async function resolveIndividualExtrasWithReservationOverlap(input: {
       stockNeedReliefByTwId: new Map(),
       reservedByTwId: new Map(),
       candidateTwIds,
+      overlapTwFetched: toFetch,
+      overlapTwSkipped: skipCover,
       resolved: false,
     };
   }
@@ -3000,6 +3093,17 @@ export async function actionCreateZdFromEstimate(input: {
     return { ok: false, code: "error", message: orders.message };
   }
 
+  const t0 = performance.now();
+  let msPendingOrders = 0;
+  let msProductSettings = 0;
+  let msOverlap = 0;
+  let msSferaCreate = 0;
+  let msDocResolve = 0;
+  let msSnapshot = 0;
+  let overlapCandidateCount = 0;
+  let overlapTwFetched: number[] = [];
+  let overlapTwSkipped: number[] = [];
+
   const persistSnapshots = shouldPersistZdEstimateOrderSnapshots(
     orders.config.baseUrl
   );
@@ -3025,6 +3129,7 @@ export async function actionCreateZdFromEstimate(input: {
     grtId: input.grtId ?? null,
     cechaId: input.cechaId ?? null,
     lineCount: Array.isArray(input.lines) ? input.lines.length : 0,
+    persistSnapshots,
   });
 
   const khRes = await resolveSupplierKhForCreateFromDb(input.supplierId);
@@ -3054,9 +3159,11 @@ export async function actionCreateZdFromEstimate(input: {
 
   let pendingForSupplier: ZdEstimatePendingIndividualOrder[] = [];
   try {
+    const tPending = performance.now();
     const pendingRes = await fetchZdEstimatePendingIndividualOrders(
       input.supplierId
     );
+    msPendingOrders = Math.round(performance.now() - tPending);
     pendingForSupplier = pendingRes.orders;
     if (pendingRes.truncated) {
       return {
@@ -3089,6 +3196,7 @@ export async function actionCreateZdFromEstimate(input: {
     ReturnType<typeof fetchZdEstimatePackaging>
   > = [];
   try {
+    const tSettings = performance.now();
     ;[pairsForExtras, bomsForExtras, teethForExtras, packagingForCreate] =
       await Promise.all([
         fetchZdProductPairs(),
@@ -3096,6 +3204,7 @@ export async function actionCreateZdFromEstimate(input: {
         fetchTeethProductTwIdSet(),
         fetchZdEstimatePackaging(),
       ]);
+    msProductSettings = Math.round(performance.now() - tSettings);
   } catch (e) {
     return {
       ok: false,
@@ -3144,11 +3253,46 @@ export async function actionCreateZdFromEstimate(input: {
   }
 
   // Dedupe prośba↔rez. ZK przed ensureCover — inaczej serwer podbija qty z powrotem.
-  // Bez pełnych linii estimate nie limitujemy overlap do need (to robi UI).
+  // coverLines: fetch ZK tylko gdy ilosc < minZd(raw); scoped extras bez zmian.
+  const tOverlap = performance.now();
   const overlapForCreate = await resolveIndividualExtrasWithReservationOverlap({
     byTwId: extrasBundle.byTwId,
     twIdsFilter: createdTwIds,
+    coverLines: linesCheck.lines,
+    unitsPerPackageByTwId,
+    packagingModeByTwId,
   });
+  msOverlap = Math.round(performance.now() - tOverlap);
+  overlapCandidateCount = overlapForCreate.candidateTwIds.length;
+  overlapTwFetched = overlapForCreate.overlapTwFetched;
+  overlapTwSkipped = overlapForCreate.overlapTwSkipped;
+
+  // Fail-open raw extras przy błędzie ZK → ensureCover mógłby over-bumpnąć vs UI.
+  if (!overlapForCreate.resolved) {
+    console.warn("[zd-estimate:create:fail]", {
+      hostKind,
+      ordersBaseUrl: orders.config.baseUrl,
+      userId: user.id,
+      supplierId: input.supplierId,
+      khId: khRes.khId,
+      code: "validation",
+      message: "overlap_unresolved",
+      msPendingOrders,
+      msProductSettings,
+      msOverlap,
+      msTotal: Math.round(performance.now() - t0),
+      overlapCandidateCount,
+      overlapTwFetched: overlapTwFetched.length,
+      overlapTwSkipped: overlapTwSkipped.length,
+    });
+    return {
+      ok: false,
+      code: "validation",
+      message:
+        "Nie udało się zweryfikować rezerwacji ZK względem próśb. Odśwież Policz i spróbuj ponownie utworzyć ZD.",
+    };
+  }
+
   const extraPiecesByTwId = new Map<number, number>();
   for (const [tw, qty] of overlapForCreate.adjustedExtraByTwId) {
     if (qty > 0 && createdTwIds.has(tw)) {
@@ -3256,10 +3400,30 @@ export async function actionCreateZdFromEstimate(input: {
   });
 
   let dokId = 0;
+  let createdDoc: Awaited<ReturnType<typeof createSubiektOrdersZd>>;
+  const tCreate = performance.now();
   try {
-    const created = await createSubiektOrdersZd(body);
-    dokId = Math.trunc(Number(created.dok_Id));
+    createdDoc = await createSubiektOrdersZd(body);
+    msSferaCreate = Math.round(performance.now() - tCreate);
+    dokId = Math.trunc(Number(createdDoc.dok_Id));
     if (!(dokId > 0)) {
+      console.warn("[zd-estimate:create:fail]", {
+        hostKind,
+        ordersBaseUrl: orders.config.baseUrl,
+        userId: user.id,
+        supplierId: input.supplierId,
+        khId: khRes.khId,
+        code: "error",
+        message: "Subiekt nie zwrócił dok_Id po utworzeniu ZD.",
+        msPendingOrders,
+        msProductSettings,
+        msOverlap,
+        msSferaCreate,
+        msTotal: Math.round(performance.now() - t0),
+        overlapCandidateCount,
+        overlapTwFetched: overlapTwFetched.length,
+        overlapTwSkipped: overlapTwSkipped.length,
+      });
       return {
         ok: false,
         code: "error",
@@ -3270,13 +3434,18 @@ export async function actionCreateZdFromEstimate(input: {
       hostKind,
       ordersBaseUrl: orders.config.baseUrl,
       dokId,
-      dokNrPelny: created.dok_NrPelny ?? null,
+      dokNrPelny: createdDoc.dok_NrPelny ?? null,
       userId: user.id,
       supplierId: input.supplierId,
       khId: khRes.khId,
       lineCount: createLines.length,
+      msSferaCreate,
+      msOverlap,
+      overlapTwFetched: overlapTwFetched.length,
+      overlapTwSkipped: overlapTwSkipped.length,
     });
   } catch (e) {
+    msSferaCreate = Math.round(performance.now() - tCreate);
     const mapped = mapZdCreateSubiektError(e);
     console.warn("[zd-estimate:create:fail]", {
       hostKind,
@@ -3286,6 +3455,14 @@ export async function actionCreateZdFromEstimate(input: {
       khId: khRes.khId,
       code: mapped.code,
       message: mapped.message,
+      msPendingOrders,
+      msProductSettings,
+      msOverlap,
+      msSferaCreate,
+      msTotal: Math.round(performance.now() - t0),
+      overlapCandidateCount,
+      overlapTwFetched: overlapTwFetched.length,
+      overlapTwSkipped: overlapTwSkipped.length,
     });
     return {
       ok: false,
@@ -3301,6 +3478,30 @@ export async function actionCreateZdFromEstimate(input: {
       .flatMap((l) => l.requests.map((r) => r.orderId))
   );
 
+  const logCreateDone = (extra: Record<string, unknown>) => {
+    console.info("[zd-estimate:create:done]", {
+      hostKind,
+      ordersBaseUrl: orders.config.baseUrl,
+      dokId,
+      userId: user.id,
+      supplierId: input.supplierId,
+      khId: khRes.khId,
+      lineCount: createLines.length,
+      persistSnapshots,
+      overlapCandidateCount,
+      overlapTwFetched: overlapTwFetched.length,
+      overlapTwSkipped: overlapTwSkipped.length,
+      msPendingOrders,
+      msProductSettings,
+      msOverlap,
+      msSferaCreate,
+      msDocResolve,
+      msSnapshot,
+      msTotal: Math.round(performance.now() - t0),
+      ...extra,
+    });
+  };
+
   const withCreate = <T extends Record<string, unknown>>(base: T) => ({
     ...base,
     createdLines: createLines.map((l) => ({ twId: l.twId, ilosc: l.ilosc })),
@@ -3313,11 +3514,30 @@ export async function actionCreateZdFromEstimate(input: {
   });
 
   let dokNrPelny = `ZD/${dokId}`;
+  let docSource: "create" | "reget" | null = null;
+  let didReget = false;
   try {
-    const doc = await getSubiektOrdersZd(dokId);
-    dokNrPelny = String(doc.dok_NrPelny ?? "").trim() || dokNrPelny;
+    const tDoc = performance.now();
+    const resolved = await resolveDocAfterZdCreate({
+      created: createdDoc,
+      dokId,
+      createLines: createLines.map((l) => ({ twId: l.twId, ilosc: l.ilosc })),
+      persistSnapshots,
+      getById: getSubiektOrdersZd,
+    });
+    msDocResolve = Math.round(performance.now() - tDoc);
+    const doc = resolved.doc;
+    dokNrPelny = resolved.dokNrPelny;
+    docSource = resolved.source;
+    didReget = resolved.didReget;
 
     if (!persistSnapshots) {
+      logCreateDone({
+        dokNrPelny,
+        snapshotOk: false,
+        docSource,
+        didReget,
+      });
       return withCreate({
         ok: true as const,
         dokId,
@@ -3330,18 +3550,22 @@ export async function actionCreateZdFromEstimate(input: {
 
     // Reuse packaging/pairs already loaded earlier in this Create — no second round-trip.
     const packagingByTwId = new Map<number, number>();
-    const packagingModeByTwId = new Map<number, ZdPackagingDocumentUnitMode>();
+    const packagingModeByTwIdSnap = new Map<
+      number,
+      ZdPackagingDocumentUnitMode
+    >();
     for (const row of packagingForCreate) {
       packagingByTwId.set(row.subiektTwId, row.unitsPerPackage);
-      packagingModeByTwId.set(row.subiektTwId, row.documentUnitMode);
+      packagingModeByTwIdSnap.set(row.subiektTwId, row.documentUnitMode);
     }
     const pairRatioByTwId = buildPairRatioByTwId(pairsForExtras);
 
     const orderableTwIds = new Set(createLines.map((l) => l.twId));
 
+    const tSnap = performance.now();
     const built = buildZdEstimateSnapshotLinesFromDocChecked(doc, {
       packagingByTwId,
-      packagingModeByTwId,
+      packagingModeByTwId: packagingModeByTwIdSnap,
       pairRatioByTwId,
       lineMeta: input.lineMeta ?? null,
       confirmedEstimateTwIds: orderableTwIds,
@@ -3349,6 +3573,13 @@ export async function actionCreateZdFromEstimate(input: {
     });
 
     if (!built.ok) {
+      msSnapshot = Math.round(performance.now() - tSnap);
+      logCreateDone({
+        dokNrPelny,
+        snapshotOk: false,
+        docSource,
+        didReget,
+      });
       return withCreate({
         ok: true as const,
         dokId,
@@ -3364,6 +3595,13 @@ export async function actionCreateZdFromEstimate(input: {
     }
 
     if (!built.lines.length) {
+      msSnapshot = Math.round(performance.now() - tSnap);
+      logCreateDone({
+        dokNrPelny,
+        snapshotOk: false,
+        docSource,
+        didReget,
+      });
       return withCreate({
         ok: true as const,
         dokId,
@@ -3390,6 +3628,14 @@ export async function actionCreateZdFromEstimate(input: {
         eligibleForHistory,
         lines: built.lines,
       });
+      msSnapshot = Math.round(performance.now() - tSnap);
+      logCreateDone({
+        dokNrPelny,
+        snapshotOk: true,
+        docSource,
+        didReget,
+        snapshotLineCount: lineCount,
+      });
       return withCreate({
         ok: true as const,
         dokId,
@@ -3398,6 +3644,13 @@ export async function actionCreateZdFromEstimate(input: {
         snapshotOk: true,
       });
     } catch (snapErr) {
+      msSnapshot = Math.round(performance.now() - tSnap);
+      logCreateDone({
+        dokNrPelny,
+        snapshotOk: false,
+        docSource,
+        didReget,
+      });
       return withCreate({
         ok: true as const,
         dokId,
@@ -3411,6 +3664,13 @@ export async function actionCreateZdFromEstimate(input: {
       });
     }
   } catch (e) {
+    logCreateDone({
+      dokNrPelny,
+      snapshotOk: false,
+      docSource,
+      didReget,
+      error: e instanceof Error ? e.message : "unknown",
+    });
     return withCreate({
       ok: true as const,
       dokId,

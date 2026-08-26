@@ -39,8 +39,10 @@ export function buildDeliveryDateMetaDisplay(
   const overdue = targetKey < todayStr;
 
   const estimateDetail = [
-    options?.avgBusinessDays != null && options.avgBusinessDays > 0
-      ? `~${options.avgBusinessDays} dni rob.`
+    options?.avgBusinessDays != null && options.avgBusinessDays >= 0
+      ? options.avgBusinessDays === 0
+        ? "tego samego dnia rob."
+        : `~${options.avgBusinessDays} dni rob.`
       : null,
     options?.lowConfidence ? "mało historii" : null,
   ]

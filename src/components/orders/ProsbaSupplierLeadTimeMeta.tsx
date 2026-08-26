@@ -11,6 +11,7 @@ import {
 } from "@/lib/orders/prosba-form-lead-time";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { DeliveryStats } from "@/types/database";
+import { leadTimeDisplayFromQuantiles } from "@/lib/orders/delivery-eta-quantiles-load";
 
 type LeadTimeRow = {
   supplierId: string;
@@ -29,6 +30,8 @@ export function ProsbaSupplierLeadTimeMeta({
   showSupplierNames = false,
   variant = "default",
   className,
+  etaUseP50 = false,
+  etaQuantilesBySupplierId = {},
 }: {
   supplierIds: string[];
   suppliers: OrderFormSupplierOption[];
@@ -41,6 +44,11 @@ export function ProsbaSupplierLeadTimeMeta({
    */
   variant?: "default" | "underLink";
   className?: string;
+  etaUseP50?: boolean;
+  etaQuantilesBySupplierId?: Record<
+    string,
+    import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
+  >;
 }) {
   const rows = useMemo(() => {
     const out: LeadTimeRow[] = [];
@@ -48,7 +56,8 @@ export function ProsbaSupplierLeadTimeMeta({
       const supplier = suppliers.find((s) => s.id === id);
       const meta = buildProsbaFormLeadTimeMeta(
         statsBySupplierId[id],
-        supplier?.stats_mode ?? "LACZNIE"
+        (supplier?.stats_mode ?? "LACZNIE") as import("@/types/database").StatsMode,
+        leadTimeDisplayFromQuantiles(etaQuantilesBySupplierId[id], etaUseP50)
       );
       if (!meta) continue;
       out.push({
@@ -58,7 +67,7 @@ export function ProsbaSupplierLeadTimeMeta({
       });
     }
     return out;
-  }, [supplierIds, suppliers, statsBySupplierId]);
+  }, [supplierIds, suppliers, statsBySupplierId, etaUseP50, etaQuantilesBySupplierId]);
 
   if (rows.length === 0) return null;
 

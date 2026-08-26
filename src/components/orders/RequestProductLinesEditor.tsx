@@ -83,6 +83,8 @@ export function RequestProductLinesEditor({
   groupSupplierId,
   formSuppliers,
   statsBySupplierId,
+  etaUseP50 = false,
+  etaQuantilesBySupplierId = {},
   showLinkedLeadTime = false,
   linkedLeadTimeOmitSupplierIds,
 }: {
@@ -144,6 +146,11 @@ export function RequestProductLinesEditor({
   /** Pełna lista dostawców z stats_mode — meta czasu dostawy pod powiązaniem produktu. */
   formSuppliers?: OrderFormSupplierOption[];
   statsBySupplierId?: Record<string, DeliveryStats>;
+  etaUseP50?: boolean;
+  etaQuantilesBySupplierId?: Record<
+    string,
+    import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
+  >;
   /** Meta dostawy pod „Powiązano z Subiektem” / „Z bazy” (tylko zamowienie). */
   showLinkedLeadTime?: boolean;
   /** Nie powtarzaj mety dla tych dostawców (np. już w banerze harmonogramu). */
@@ -378,6 +385,8 @@ export function RequestProductLinesEditor({
               supplierIds={[lineSupplierId]}
               suppliers={formSuppliers}
               statsBySupplierId={statsBySupplierId}
+              etaUseP50={etaUseP50}
+              etaQuantilesBySupplierId={etaQuantilesBySupplierId}
             />
           ) : null;
 

@@ -97,7 +97,6 @@ export function ProcurementSupplierBlockActionBar({
     : null;
 
   const runMode = (mode: "GLOWNE" | "POBOCZNE") => {
-    setConfirmMode(null);
     run(
       () => actionProcessIndividual(orderIds, mode),
       mode === "GLOWNE"
@@ -108,7 +107,13 @@ export function ProcurementSupplierBlockActionBar({
       mode === "GLOWNE"
         ? "Oznaczanie wszystkich jako główne…"
         : "Oznaczanie wszystkich jako uzupełniające…",
-      scope
+      {
+        ...scope,
+        onSuccess: () => setConfirmMode(null),
+        onError: (reason) => {
+          if (reason === "readonly") setConfirmMode(null);
+        },
+      }
     );
   };
 

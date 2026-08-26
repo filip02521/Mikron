@@ -11,7 +11,16 @@ export type DeliverySnapshot = {
   teethLineDelivered?: Record<string, number> | null;
   /** Identyfikator wpisu w kolejce opóźnionych powiadomień e-mail. */
   queueId?: string;
+  /** Pierwsze przyjęcie — przywracane przy undo, żeby ETA first-receipt pozostało spójne. */
+  firstDeliveryAt?: string | null;
 };
+
+/** Czy przywrócony status wymaga usunięcia próbki delivery_stats (nie jest już Zrealizowane). */
+export function shouldSoftDeleteDeliveryStatsOnRevert(
+  restoredStatus: string
+): boolean {
+  return restoredStatus !== "Zrealizowane";
+}
 
 export type DeliveryUndoToken = {
   kind: "delivery";

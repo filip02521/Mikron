@@ -726,10 +726,17 @@ export function aggregateGroupZdEtaState(
 export function salesTimingLabel(
   expectedDate: Date,
   avgDays: number,
-  lowConfidence: boolean
+  lowConfidence: boolean,
+  options?: { sameDay?: boolean }
 ): string {
   const date = formatDateString(expectedDate, "dd.MM.yyyy");
   const conf = lowConfidence ? " · mało historii" : "";
   const overdue = isPastExpectedDate(expectedDate) ? " · po terminie" : "";
+  if (options?.sameDay || avgDays === 0) {
+    return `ok. ${date} (tego samego dnia rob.)${conf}${overdue}`;
+  }
+  if (avgDays === 1) {
+    return `ok. ${date} (~1 dzień rob. · nazajutrz)${conf}${overdue}`;
+  }
   return `ok. ${date} (~${avgDays} dni rob.)${conf}${overdue}`;
 }
