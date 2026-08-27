@@ -1695,6 +1695,17 @@ export function ForSomeoneRequests({
                                   : null;
                               const countLabel = procurementProductCountLabel(g.lines.length);
                               const clientLabel = clientNamesSummaryFromLines(g.lines);
+                              const sharedClientKhId = (() => {
+                                if (!clientLabel || clientLabel.includes("różnych klientów")) {
+                                  return null;
+                                }
+                                const khIds = g.lines
+                                  .map((l) => l.clientKhId)
+                                  .filter((id): id is number => id != null && id > 0);
+                                if (khIds.length === 0) return null;
+                                const first = khIds[0]!;
+                                return khIds.every((id) => id === first) ? first : null;
+                              })();
                               const sharedGroupNote = hasMultiLine ? procurementGroupRequestNote(g.lines) : null;
                               const suppressLineRequestNote = shouldSuppressProcurementLineRequestNote(sharedGroupNote);
                               const suppressLineClient = shouldSuppressProcurementLineClient(clientLabel);
@@ -2008,6 +2019,7 @@ export function ForSomeoneRequests({
                                               {showClientInOrderBody ? (
                                                 <ProcurementRequestClientMeta
                                                   clientLabel={clientLabel}
+                                                  clientKhId={sharedClientKhId}
                                                 />
                                               ) : null}
                                               {sharedGroupNote ? (

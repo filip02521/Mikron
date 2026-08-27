@@ -54,7 +54,7 @@ describe("NotesSection", () => {
     render(<NotesSection embedded notes={[]} />);
     fireEvent.click(screen.getByRole("button", { name: /Przypnij nową karteczkę/i }));
     expect(screen.getByText("Nowa karteczka")).toBeTruthy();
-    expect(document.querySelector('[data-placeholder="Wpisz notatkę…"]')).toBeTruthy();
+    expect(document.querySelector('[data-placeholder="Treść (opcjonalnie)"]')).toBeTruthy();
   });
 
   it("podświetla notatkę z deep linku tylko raz", () => {

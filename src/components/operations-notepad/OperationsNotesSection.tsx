@@ -29,6 +29,7 @@ import type {
   SalesNoteColor,
 } from "@/types/database";
 import { isFollowUpDue } from "@/lib/sales/notepad-follow-up";
+import { NOTE_TITLE_REQUIRED_MESSAGE, normalizeNoteBody, normalizeNoteTitle } from "@/lib/sales/note-content";
 import { flashNotepadAnchor } from "@/lib/sales/notepad-anchor";
 import { isEditableKeyboardTarget } from "@/lib/platform/editable-keyboard-target";
 import { canMutateOperationsNote } from "@/lib/operations/operations-note-access";
@@ -109,11 +110,14 @@ const NoteCard = memo(function NoteCard({
   const [savingFollowUp, setSavingFollowUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasChangesRef = useRef(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   if (noteSyncKey !== appliedNoteSyncKey) {
     setAppliedNoteSyncKey(noteSyncKey);
-    setBody(note.body);
-    setTitle(note.title ?? "");
+    if (!hasChangesRef.current) {
+      setBody(note.body);
+      setTitle(note.title ?? "");
+    }
     setColor(note.color);
     setPinned(note.pinned);
     const iso = note.follow_up_at?.slice(0, 10) ?? null;
@@ -128,6 +132,10 @@ const NoteCard = memo(function NoteCard({
     if (pendingKeyboardAction === "edit") {
       setActive(true);
       setTimeout(() => {
+        if (!normalizeNoteTitle(title)) {
+          titleInputRef.current?.focus();
+          return;
+        }
         document.querySelector<HTMLElement>(`#note-${note.id} .rich-note-editor`)?.focus();
       }, 0);
     } else if (pendingKeyboardAction === "pin") {
@@ -148,9 +156,14 @@ const NoteCard = memo(function NoteCard({
     setSaving(true);
     setError(null);
     try {
+      const nextTitle = normalizeNoteTitle(title);
+      if (!nextTitle) {
+        throw new Error(NOTE_TITLE_REQUIRED_MESSAGE);
+      }
+      const nextBody = normalizeNoteBody(body);
       const { note: saved } = await actionUpdateOperationsNote(note.id, {
-        body,
-        title: title || null,
+        body: nextBody,
+        title: nextTitle,
         color,
         expectedUpdatedAt: note.updated_at,
       });
@@ -158,6 +171,9 @@ const NoteCard = memo(function NoteCard({
     } catch (e) {
       hasChangesRef.current = true;
       setError(userFacingErrorText(e, "Nie udało się zapisać notatki."));
+      if (!normalizeNoteTitle(title)) {
+        titleInputRef.current?.focus();
+      }
     } finally {
       setSaving(false);
     }
@@ -273,6 +289,7 @@ const NoteCard = memo(function NoteCard({
             ) : null
           ) : (
             <input
+              ref={titleInputRef}
               type="text"
               value={title}
               onChange={(e) => {
@@ -280,7 +297,8 @@ const NoteCard = memo(function NoteCard({
                 hasChangesRef.current = true;
               }}
               onBlur={() => void save()}
-              placeholder="Tytuł (opcjonalnie)"
+              placeholder="Tytuł (wymagany)"
+              aria-required
               className="w-full bg-transparent pr-4 text-[13px] font-bold leading-snug text-slate-900 outline-none placeholder:text-slate-400/70"
             />
           )}
@@ -300,7 +318,7 @@ const NoteCard = memo(function NoteCard({
                 onSave={() => void save()}
                 onActiveChange={setActive}
                 editable={!readOnly}
-                placeholder="Wpisz notatkę…"
+                placeholder="Treść (opcjonalnie)"
               />
             )}
           </div>
@@ -417,7 +435,8 @@ export function OperationsNotesSection({
     composeOpen || Boolean(draft.trim() || draftTitle.trim() || draftFollowUp);
 
   useEffect(() => {
-    if (composeOpen) composeRef.current?.querySelector<HTMLElement>(".rich-note-editor")?.focus();
+    if (!composeOpen) return;
+    composeRef.current?.querySelector<HTMLInputElement>("input[type='text']")?.focus();
   }, [composeOpen]);
 
   useEffect(() => {
@@ -623,16 +642,26 @@ export function OperationsNotesSection({
   ]);
 
   async function createNote() {
-    const trimmed = draft.trim();
-    if (!trimmed || saving) return;
+    if (saving) return;
+    const nextTitle = normalizeNoteTitle(draftTitle);
+    if (!nextTitle) {
+      setError(NOTE_TITLE_REQUIRED_MESSAGE);
+      composeRef.current?.querySelector<HTMLInputElement>("input[type='text']")?.focus();
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      const { note } = await actionCreateOperationsNote(department, visibility, trimmed, {
-        title: draftTitle.trim() || null,
-        color: draftColor,
-        follow_up_at: draftFollowUp.trim() || null,
-      });
+      const { note } = await actionCreateOperationsNote(
+        department,
+        visibility,
+        normalizeNoteBody(draft),
+        {
+          title: nextTitle,
+          color: draftColor,
+          follow_up_at: draftFollowUp.trim() || null,
+        }
+      );
       setDraft("");
       setDraftTitle("");
       setDraftColor("default");
@@ -709,7 +738,8 @@ export function OperationsNotesSection({
                       type="text"
                       value={draftTitle}
                       onChange={(e) => setDraftTitle(e.target.value)}
-                      placeholder="Tytuł (opcjonalnie)"
+                      placeholder="Tytuł (wymagany)"
+                      aria-required
                       className={cn(NOTATNIK_INPUT_CLASS, "w-full text-sm font-semibold")}
                     />
                     <RichNoteEditor
@@ -718,7 +748,7 @@ export function OperationsNotesSection({
                       onSave={() => void createNote()}
                       saveOnBlur={false}
                       editable={!saving}
-                      placeholder="Wpisz notatkę…"
+                      placeholder="Treść (opcjonalnie)"
                     />
                     <div className="space-y-1.5 border-t border-slate-100 pt-2">
                       <span className={cn(salesTypography.chrome, "text-slate-600")}>Przypomnij</span>
@@ -751,7 +781,11 @@ export function OperationsNotesSection({
                         >
                           Anuluj
                         </Button>
-                        <Button size="sm" disabled={saving || !draft.trim()} onClick={() => void createNote()}>
+                        <Button
+                          size="sm"
+                          disabled={saving || !normalizeNoteTitle(draftTitle)}
+                          onClick={() => void createNote()}
+                        >
                           {saving ? "Zapis…" : "Dodaj"}
                         </Button>
                       </div>

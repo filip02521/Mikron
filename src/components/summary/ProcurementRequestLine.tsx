@@ -16,9 +16,11 @@ import {
 /** Klient prośby — widoczny w wierszu grupy panelu Dziś. */
 export function ProcurementRequestClientMeta({
   clientLabel,
+  clientKhId,
   className,
 }: {
   clientLabel: string | null;
+  clientKhId?: number | null;
   className?: string;
 }) {
   if (!clientLabel) return null;
@@ -34,7 +36,13 @@ export function ProcurementRequestClientMeta({
     );
   }
 
-  return <MyOrderAssignedClient name={clientLabel} className={className} />;
+  return (
+    <MyOrderAssignedClient
+      name={clientLabel}
+      clientKhId={clientKhId}
+      className={className}
+    />
+  );
 }
 
 export const ProcurementRequestLine = memo(function ProcurementRequestLine({
@@ -154,7 +162,11 @@ function ProcurementRequestLineContent({
           </p>
         ) : null}
         {line.clientName && !suppressClient ? (
-          <MyOrderAssignedClient name={line.clientName} className="mt-1" />
+          <MyOrderAssignedClient
+            name={line.clientName}
+            clientKhId={line.clientKhId}
+            className="mt-1"
+          />
         ) : null}
         {line.requestNote && !suppressRequestNote ? (
           <ProcurementSalesRequestNote
