@@ -94,14 +94,14 @@ const NoteCard = memo(function NoteCard({
   const [saving, setSaving] = useState(false);
   const [savingFollowUp, setSavingFollowUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const hasChangesRef = useRef(false);
+  const [contentDirty, setContentDirty] = useState(false);
   const titleInputRef = useRef<HTMLInputElement>(null);
   const noteSyncKey = `${note.id}\0${note.updated_at}\0${note.title ?? ""}\0${note.body}\0${note.color}\0${note.pinned}\0${note.follow_up_at ?? ""}`;
   const [appliedNoteSyncKey, setAppliedNoteSyncKey] = useState(noteSyncKey);
 
   if (noteSyncKey !== appliedNoteSyncKey) {
     setAppliedNoteSyncKey(noteSyncKey);
-    if (!hasChangesRef.current) {
+    if (!contentDirty) {
       setBody(note.body);
       setTitle(note.title ?? "");
     }
@@ -128,8 +128,8 @@ const NoteCard = memo(function NoteCard({
   }, [startInEditMode, note.id, title]);
 
   async function save() {
-    if (!hasChangesRef.current) return;
-    hasChangesRef.current = false;
+    if (!contentDirty) return;
+    setContentDirty(false);
     setSaving(true);
     setError(null);
     try {
@@ -150,7 +150,7 @@ const NoteCard = memo(function NoteCard({
         color,
       });
     } catch (e) {
-      hasChangesRef.current = true;
+      setContentDirty(true);
       setError(userFacingErrorText(e, "Nie udało się zapisać notatki."));
       if (!normalizeNoteTitle(title)) {
         titleInputRef.current?.focus();
@@ -265,7 +265,7 @@ const NoteCard = memo(function NoteCard({
               value={title}
               onChange={(e) => {
                 setTitle(e.target.value);
-                hasChangesRef.current = true;
+                setContentDirty(true);
               }}
               onBlur={() => void save()}
               placeholder="Tytuł (wymagany)"
@@ -283,7 +283,7 @@ const NoteCard = memo(function NoteCard({
                 value={body}
                 onChange={(md) => {
                   setBody(md);
-                  hasChangesRef.current = true;
+                  setContentDirty(true);
                 }}
                 onSave={() => void save()}
                 onActiveChange={(isActive) => {

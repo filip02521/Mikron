@@ -159,7 +159,6 @@ export function VerificationWorkspace({
 
   if (resolvedActiveId && resolvedActiveId !== loadedOrderId) {
     setLoadedOrderId(resolvedActiveId);
-    quantityStashRef.current = "";
     const order = orders.find((item) => item.id === resolvedActiveId);
     if (order) {
       setValidationAttempted(false);
@@ -175,6 +174,10 @@ export function VerificationWorkspace({
       setForm(f);
     }
   }
+
+  useEffect(() => {
+    quantityStashRef.current = "";
+  }, [loadedOrderId]);
 
   useEffect(() => {
     if (!loadedOrderId) return;

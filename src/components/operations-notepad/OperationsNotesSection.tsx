@@ -109,12 +109,13 @@ const NoteCard = memo(function NoteCard({
   const [saving, setSaving] = useState(false);
   const [savingFollowUp, setSavingFollowUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const hasChangesRef = useRef(false);
+  const [contentDirty, setContentDirty] = useState(false);
+  const [focusEditRequest, setFocusEditRequest] = useState(0);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   if (noteSyncKey !== appliedNoteSyncKey) {
     setAppliedNoteSyncKey(noteSyncKey);
-    if (!hasChangesRef.current) {
+    if (!contentDirty) {
       setBody(note.body);
       setTitle(note.title ?? "");
     }
@@ -131,13 +132,7 @@ const NoteCard = memo(function NoteCard({
     onConsumeKeyboardAction?.();
     if (pendingKeyboardAction === "edit") {
       setActive(true);
-      setTimeout(() => {
-        if (!normalizeNoteTitle(title)) {
-          titleInputRef.current?.focus();
-          return;
-        }
-        document.querySelector<HTMLElement>(`#note-${note.id} .rich-note-editor`)?.focus();
-      }, 0);
+      setFocusEditRequest((n) => n + 1);
     } else if (pendingKeyboardAction === "pin") {
       const nextPinned = !pinned;
       setPinned(nextPinned);
@@ -150,9 +145,21 @@ const NoteCard = memo(function NoteCard({
     }
   }
 
+  useEffect(() => {
+    if (!focusEditRequest) return;
+    const timer = setTimeout(() => {
+      if (!normalizeNoteTitle(title)) {
+        titleInputRef.current?.focus();
+        return;
+      }
+      document.querySelector<HTMLElement>(`#note-${note.id} .rich-note-editor`)?.focus();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [focusEditRequest, note.id, title]);
+
   async function save() {
-    if (!hasChangesRef.current) return;
-    hasChangesRef.current = false;
+    if (!contentDirty) return;
+    setContentDirty(false);
     setSaving(true);
     setError(null);
     try {
@@ -169,7 +176,7 @@ const NoteCard = memo(function NoteCard({
       });
       onUpdated?.(saved);
     } catch (e) {
-      hasChangesRef.current = true;
+      setContentDirty(true);
       setError(userFacingErrorText(e, "Nie udało się zapisać notatki."));
       if (!normalizeNoteTitle(title)) {
         titleInputRef.current?.focus();
@@ -294,7 +301,7 @@ const NoteCard = memo(function NoteCard({
               value={title}
               onChange={(e) => {
                 setTitle(e.target.value);
-                hasChangesRef.current = true;
+                setContentDirty(true);
               }}
               onBlur={() => void save()}
               placeholder="Tytuł (wymagany)"
@@ -313,7 +320,7 @@ const NoteCard = memo(function NoteCard({
                 value={body}
                 onChange={(md) => {
                   setBody(md);
-                  hasChangesRef.current = true;
+                  setContentDirty(true);
                 }}
                 onSave={() => void save()}
                 onActiveChange={setActive}
