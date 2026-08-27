@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { OverflowMenu, OverflowMenuItem } from "@/components/ui/OverflowMenu";
+import { zkWatchRowActionIconClass } from "@/lib/ui/zk-watch-row-action-styles";
 
 export function ZkWatchOverflowMenu({
   label,
@@ -48,7 +49,7 @@ export function ZkWatchOverflowMenu({
       disabled={disabled}
       align="end"
       iconOnly
-      triggerClassName="h-10 w-10 sm:h-7 sm:w-7"
+      triggerClassName={zkWatchRowActionIconClass}
     >
       {archived ? (
         <>

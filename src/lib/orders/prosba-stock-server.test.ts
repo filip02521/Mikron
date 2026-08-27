@@ -101,4 +101,45 @@ describe("assertProsbaSubmitStockAllowed", () => {
     });
     expect(sufficient).toEqual([]);
   });
+
+  it("stockByTwId z klienta — bez fetchProsbaLineStock", async () => {
+    const snapshot = {
+      7: { onHand: 3, reserved: 0, available: 3, source: "subiekt" as const },
+    };
+    await expect(
+      assertProsbaSubmitStockAllowed({
+        lines: [{ subiektTwId: 7, quantity: "1", product: "Filtr" }],
+        requestKind: "zamowienie",
+        stockByTwId: snapshot,
+      })
+    ).rejects.toMatchObject({ code: PROSBA_STOCK_ACK_REQUIRED_CODE });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("pusty stockByTwId w find — nadal fetchuje Subiekt", async () => {
+    mockFetch.mockResolvedValue({
+      3: { onHand: 1, reserved: 0, available: 1, source: "subiekt" },
+    });
+    const sufficient = await findProsbaLinesWithSufficientStock({
+      lines: [{ subiektTwId: 3, quantity: "1", product: "X" }],
+      requestKind: "zamowienie",
+    });
+    expect(mockFetch).toHaveBeenCalledWith([3]);
+    expect(sufficient).toHaveLength(1);
+  });
+
+  it("ack przepuszcza przy tym samym snapshot co klient", async () => {
+    const snapshot = {
+      8: { onHand: 10, reserved: 0, available: 10, source: "subiekt" as const },
+    };
+    await expect(
+      assertProsbaSubmitStockAllowed({
+        lines: [{ subiektTwId: 8, quantity: "2", product: "Śruba" }],
+        requestKind: "zamowienie",
+        acknowledgeSufficientStock: true,
+        stockByTwId: snapshot,
+      })
+    ).resolves.toBeUndefined();
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
 });

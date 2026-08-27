@@ -52,6 +52,10 @@ export type BuildSalesSupplierInsightOptions = {
   hasOpenTeethRequest?: boolean;
   /** ETA z historii zębów (gdy brak stałego lead) — z loadera /plan. */
   teethHistoryEtaLabel?: string | null;
+  useP50?: boolean;
+  quantiles?: import("@/lib/orders/delivery-stats-samples").DeliveryStatsQuantiles | null;
+  /** Preferowane nad pojedynczym quantiles dla lead-time (gł./pob.). */
+  leadTimeDisplay?: import("@/lib/orders/delivery-eta").LeadTimeDisplayOptions;
 };
 
 function daysLabel(n: number): string {
@@ -64,15 +68,27 @@ function daysLabel(n: number): string {
 function formatAvgDays(avg: number, count: number): string {
   const deliveries =
     count === 1 ? "dostawa" : count >= 2 && count <= 4 ? "dostawy" : "dostaw";
+  if (avg === 0) {
+    return `tego samego dnia roboczego · ${count} ${deliveries} w historii`;
+  }
   return `~${avg} ${daysLabel(avg)} · ${count} ${deliveries} w historii`;
 }
 
 export function formatLeadTimeForSales(
   stats: DeliveryStats | undefined,
-  statsMode: StatsMode
+  statsMode: StatsMode,
+  display?: import("@/lib/orders/delivery-eta").LeadTimeDisplayOptions
 ): Pick<SalesSupplierInsight, "leadTimeSummary" | "leadTimeDetail" | "leadTimeLowConfidence" | "sampleCount"> {
-  const sampleCount = totalSampleCount(stats);
-  const lowConfidence = sampleCount > 0 && sampleCount < 3;
+  const sampleCount =
+    display?.nOrders != null && display.nOrders > 0
+      ? display.nOrders
+      : totalSampleCount(stats);
+  const useP50 = display?.useP50 === true;
+  const lowConfidence =
+    sampleCount > 0 &&
+    (sampleCount < 5 ||
+      display?.variability === "wide" ||
+      display?.hasRecentSample === false);
 
   if (!stats || sampleCount === 0) {
     return {
@@ -86,12 +102,18 @@ export function formatLeadTimeForSales(
 
   if (statsMode === "LACZNIE") {
     const avg = combinedAvgDays(stats);
-    if (avg != null && avg > 0) {
+    if (avg != null && avg >= 0) {
+      const n =
+        useP50 && display?.p50Combined != null && Number.isFinite(display.p50Combined)
+          ? Math.round(display.p50Combined)
+          : Math.round(avg);
       return {
-        leadTimeSummary: formatAvgDays(avg, sampleCount),
+        leadTimeSummary: formatAvgDays(n, sampleCount),
         leadTimeDetail: lowConfidence
           ? "Mało danych w historii — szacunek jest orientacyjny."
-          : "Średni czas od złożenia zamówienia u dostawcy do przyjęcia towaru na magazyn.",
+          : useP50
+            ? "Typowy czas (mediana) od złożenia zamówienia u dostawcy do przyjęcia towaru na magazyn."
+            : "Średni czas od złożenia zamówienia u dostawcy do przyjęcia towaru na magazyn.",
         leadTimeLowConfidence: lowConfidence,
         sampleCount,
       };
@@ -100,12 +122,20 @@ export function formatLeadTimeForSales(
     const main = mainAvgDays(stats);
     const side = sideAvgDays(stats);
     const parts: string[] = [];
-    if (main != null && main > 0 && stats.main_count) {
-      parts.push(`Zamówienia planowe: ${formatAvgDays(main, stats.main_count)}`);
+    if (main != null && main >= 0 && stats.main_count) {
+      const n =
+        useP50 && display?.p50Main != null && Number.isFinite(display.p50Main)
+          ? Math.round(display.p50Main)
+          : Math.round(main);
+      parts.push(`Zamówienia planowe: ${formatAvgDays(n, stats.main_count)}`);
     }
-    if (side != null && side > 0 && stats.side_count) {
+    if (side != null && side >= 0 && stats.side_count) {
+      const n =
+        useP50 && display?.p50Side != null && Number.isFinite(display.p50Side)
+          ? Math.round(display.p50Side)
+          : Math.round(side);
       parts.push(
-        `Zamówienia uzupełniające: ${formatAvgDays(side, stats.side_count)}`
+        `Zamówienia uzupełniające: ${formatAvgDays(n, stats.side_count)}`
       );
     }
     if (parts.length) {
@@ -136,7 +166,18 @@ export function buildSalesSupplierInsight(
   const base = buildSupplierPlanInsight(supplier, weekDays);
   // Spójne z ETA: overdue względem todayKey z loadera (nie osobnego zegara w plan-preview).
   const isOverdue = Boolean(base.nextDate && base.nextDate < todayKey);
-  const lead = formatLeadTimeForSales(stats, supplier.stats_mode);
+  const lead = formatLeadTimeForSales(
+    stats,
+    supplier.stats_mode,
+    options?.leadTimeDisplay ?? {
+      useP50: options?.useP50,
+      p50Combined: options?.quantiles?.p50,
+      p50Main: options?.quantiles?.p50,
+      nOrders: options?.quantiles?.nOrders,
+      variability: options?.quantiles?.variability,
+      hasRecentSample: options?.quantiles?.hasRecentSample,
+    }
+  );
   const orderOnDemand = supplier.order_on_demand;
   const startAt = salesPlanEtaStartAt({
     nextDate: base.nextDate,
@@ -148,6 +189,8 @@ export function buildSalesSupplierInsight(
     startAt,
     stats,
     statsMode: supplier.stats_mode,
+    useP50: options?.useP50,
+    quantiles: options?.quantiles,
   });
   const vacationWindow = options?.vacationWindow ?? null;
   const contact = buildSupplierContactUi(

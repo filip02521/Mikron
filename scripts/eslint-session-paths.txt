@@ -27,10 +27,14 @@ src/components/subiekt/SubiektClientNameField.tsx
 src/components/subiekt/SubiektProductLineFields.tsx
 src/components/summary/DailyPanelStatusBand.tsx
 src/components/summary/ForSomeoneRequests.tsx
+src/components/summary/IndividualRequestActionBar.tsx
+src/components/summary/ProcurementProcessLinesModal.tsx
 src/components/summary/ProcurementRequestLine.tsx
+src/components/summary/ProcurementSupplierBlockActionBar.tsx
 src/components/summary/QuickOrderModal.tsx
 src/components/summary/SupplierDrawer.tsx
 src/components/summary/ShiftMenu.tsx
+src/components/summary/useDailyPanelRunner.ts
 src/components/summary/useProcurementSupplierCollapse.ts
 src/components/ui/Toast.tsx
 src/components/ui/UndoToast.tsx
@@ -41,6 +45,8 @@ src/hooks/useDailyUrgentProgress.ts
 src/hooks/useLatest.ts
 src/lib/client/use-client-hydrated.ts
 src/lib/orders/my-order-row-layout.ts
+src/lib/orders/procurement-process-lines.ts
+src/lib/orders/procurement-process-lines-copy.ts
 src/app/login/LoginForm.tsx
 src/app/ustaw-haslo/SetPasswordForm.tsx
 src/app/setup/SetupForm.tsx

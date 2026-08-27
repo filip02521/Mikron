@@ -4,6 +4,9 @@ import { Spinner } from "@/components/ui/Spinner";
 import { cn } from "@/lib/cn";
 import { useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 
+/** Kontener section-overlay w wierszu listy — wymaga `relative` na bezpośrednim rodzicu overlay. */
+export const actionLoadingVirtualItemScopeClass = "relative";
+
 export function ActionLoadingOverlay({
   message = "Przetwarzanie…",
   hint = "Proszę czekać",
@@ -12,7 +15,7 @@ export function ActionLoadingOverlay({
 }: {
   message?: string;
   hint?: string;
-  /** section = nad kartą/sekcją; viewport = cały ekran; modal = wewnątrz okna dialogowego */
+  /** section = nad kartą/sekcją (wymaga relative rodzica; w VirtualList użyj actionLoadingVirtualItemScopeClass) */
   variant?: "section" | "viewport" | "modal";
   className?: string;
 }) {
@@ -23,7 +26,7 @@ export function ActionLoadingOverlay({
       ? "fixed inset-0 z-[70]"
       : variant === "modal"
         ? "absolute inset-0 z-20 rounded-lg"
-        : "absolute inset-0 z-30 rounded-md";
+        : "absolute inset-0 z-30 overflow-hidden rounded-md";
 
   const pointerEvents =
     variant === "viewport" ? "pointer-events-none" : "";

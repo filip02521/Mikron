@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useCallback, useEffect, useRef, useSyncExternalStore } from "react";
-import type { Dispatch, SetStateAction } from "react";
+import type { Dispatch, SetStateAction, ReactNode } from "react";
 import type {
   SummaryForSomeoneEnriched,
   SupplierSummaryMeta,
@@ -15,13 +15,13 @@ import { useProcurementSupplierCollapse } from "@/components/summary/useProcurem
 import {
   buildProcurementSupplierBlocks,
   filterNavigableProcurementGroups,
+  procurementMoreProductsLabel,
   procurementProductCountLabel,
   showProcurementSupplierBlockHeader,
   procurementSupplierBlockScopeKey,
   type ProcurementSupplierBlock,
 } from "@/lib/orders/procurement-supplier-groups";
 import { ProcurementSupplierBlockBar } from "@/components/summary/ProcurementSupplierBlockBar";
-import { locationLabel } from "@/lib/display-labels";
 import { actionMarkProcurementRequestsSeen, actionProcessIndividual, actionSetProcurementRequestFlags } from "@/app/actions/admin";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -29,6 +29,7 @@ import { ProcurementCancelDialog } from "@/components/procurement/ProcurementCan
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import type { DeliveryStats, StatsMode } from "@/types/database";
 import { formatSupplierLeadTimeBrief } from "@/lib/orders/delivery-eta";
+import { leadTimeDisplayFromQuantiles } from "@/lib/orders/delivery-eta-quantiles-load";
 import {
   ProcurementRequestLine,
   ProcurementRequestLineInline,
@@ -42,6 +43,14 @@ import {
 } from "@/components/orders/EditIndividualRequestModal";
 import { editInitialFromForSomeoneGroup } from "@/lib/orders/individual-request-edit-ui";
 import { IndividualRequestActionBar } from "@/components/summary/IndividualRequestActionBar";
+import { ProcurementProcessLinesModal } from "@/components/summary/ProcurementProcessLinesModal";
+import {
+  filterProcessLineIds,
+  processLinesSuccessToast,
+  shouldPickLinesBeforeProcess,
+  type ProcurementProcessAction,
+} from "@/lib/orders/procurement-process-lines";
+import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import {
   ProcurementRequestFlagChip,
   ProcurementRequestFlagGroupChip,
@@ -61,10 +70,10 @@ import {
   type SupplierOnVacationWindow,
 } from "@/lib/orders/procurement-supplier-vacation";
 import { SupplierVacationNowChip } from "@/components/summary/SupplierVacationNowChip";
+import { IconChevronRight } from "@/components/icons/StrokeIcons";
 import { ProcurementFlagDefinitionsManageModal } from "@/components/summary/ProcurementFlagDefinitionsManageModal";
 import {
   dailyPanelUnseenBadgeClass,
-  panelNameLinkClass,
   panelTextLinkClass,
   panelTypography,
   type DailyPanelUnseenVariant,
@@ -82,18 +91,26 @@ import {
   dailyPanelQueueShellClass,
 } from "@/components/summary/DailyPanelSubsectionBar";
 import { cn } from "@/lib/cn";
-import { PanelRowActionsInlineEnd } from "@/components/summary/PanelRowActionsInlineEnd";
 import { panelRowClearFocusOnLeave } from "@/lib/ui/panel-row-actions-reveal";
 import {
+  ProcurementRequestCardHeader,
+  ProcurementRequestContextBlock,
+  ProcurementRequestContextMetaItem,
+  ProcurementRequestOrderBody,
+} from "@/components/summary/ProcurementRequestCardZones";
+import { ProcurementRequestActionsFooter } from "@/components/summary/ProcurementRequestActionsFooter";
+import {
   procurementNestedRowMeta,
+  procurementRequestCardBodyClass,
+  procurementRequestCardBodyNestedClass,
+  procurementRequestCardFooterClass,
+  procurementRequestCardFooterNestedClass,
+  procurementRequestExpandProductsClass,
   procurementRequestRowClassName,
+  procurementSupplierNameLinkClass,
 } from "@/components/summary/procurement-request-row-styles";
 import { shouldSuppressProcurementLineClient, shouldSuppressProcurementLineRequestNote, shouldSuppressProcurementGroupPlannedOrderDate } from "@/components/summary/procurement-request-client-ui";
 import { dailyPanelQueueSectionScrollClass } from "@/lib/orders/daily-panel-section-anchors";
-import {
-  panelQueueRowActionsClass,
-  panelQueueRowLayoutClass,
-} from "@/lib/ui/surfaces";
 import {
   INFORMACJA_STOCK_OUT_PROCUREMENT_SECTION_HINT,
 } from "@/lib/orders/informacja-flow-copy";
@@ -114,6 +131,13 @@ import {
   type ProcurementRequestLaneId,
   type ProcurementRequestLaneVariant,
 } from "@/lib/orders/procurement-request-lanes";
+import {
+  countProcurementBlockGroups,
+  isProcurementLaneExpanded,
+  isProcurementLanePeekPartialSupplier,
+  procurementLaneDisplayBlocks,
+  resolveProcurementLaneChrome,
+} from "@/lib/orders/procurement-request-lane-collapse";
 import { PROCUREMENT_REQUEST_LANE_COPY } from "@/lib/orders/procurement-request-lane-copy";
 import {
   actionReorderProcurementFlagsAndLaneOrder,
@@ -303,6 +327,8 @@ export function ForSomeoneRequests({
   procurementLaneOrder = null,
   lanePrefs,
   notify,
+  etaUseP50 = false,
+  etaQuantilesBySupplierId = {},
 }: {
   groups: SummaryForSomeoneEnriched[];
   isScopePending: (scope: string) => boolean;
@@ -335,8 +361,14 @@ export function ForSomeoneRequests({
     setLocalLaneOrder: Dispatch<SetStateAction<ProcurementRequestLaneId[]>>;
   };
   notify?: (text: string, tone?: "success" | "error") => void;
+  etaUseP50?: boolean;
+  etaQuantilesBySupplierId?: Record<
+    string,
+    import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
+  >;
 }) {
   const isStockOutSection = variant === "stockOut";
+  const { readOnly: adminPreviewReadOnly } = useAdminPanelPreview();
   const laneVariant: ProcurementRequestLaneVariant = isStockOutSection
     ? "stockOut"
     : "requests";
@@ -414,7 +446,8 @@ export function ForSomeoneRequests({
   );
   const unseenVariant: DailyPanelUnseenVariant = isStockOutSection ? "stockOut" : "prosby";
   const [manageFlagsOpen, setManageFlagsOpen] = useState(false);
-  const [collapsedLanes, setCollapsedLanes] = useState<Set<ProcurementRequestLaneId>>(
+  /** Puste = wszystkie tory zwinięte (domyślnie); rozwinięcie = pełna lista w torze. */
+  const [expandedLanes, setExpandedLanes] = useState<Set<ProcurementRequestLaneId>>(
     () => new Set()
   );
   const [fallbackPrefs, setFallbackPrefs] = useState(() => ({
@@ -613,13 +646,29 @@ export function ForSomeoneRequests({
 
   const ensureLaneExpanded = useCallback((laneId: ProcurementRequestLaneId) => {
     if (isStockOutSection) return;
-    setCollapsedLanes((prev) => {
-      if (!prev.has(laneId)) return prev;
+    setExpandedLanes((prev) => {
+      if (prev.has(laneId)) return prev;
       const next = new Set(prev);
-      next.delete(laneId);
+      next.add(laneId);
       return next;
     });
   }, [isStockOutSection]);
+
+  const navigateToLane = useCallback(
+    (laneId: ProcurementRequestLaneId, anchorId: string) => {
+      ensureLaneExpanded(laneId);
+      const scroll = () => {
+        document
+          .getElementById(anchorId)
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      };
+      scroll();
+      requestAnimationFrame(() => {
+        requestAnimationFrame(scroll);
+      });
+    },
+    [ensureLaneExpanded]
+  );
 
   const unanimousGroupFlagNote = useCallback(
     (lines: SummaryForSomeoneEnriched["lines"]): string | null => {
@@ -713,9 +762,18 @@ export function ForSomeoneRequests({
     }
     const out: SummaryForSomeoneEnriched[] = [];
     for (const row of laneBlockRows) {
-      if (collapsedLanes.has(row.laneId)) continue;
+      const laneExpanded = isProcurementLaneExpanded(row.laneId, expandedLanes);
+      const displayBlocks = procurementLaneDisplayBlocks(
+        row.blocks,
+        laneExpanded,
+        flagSortById
+      );
+      /** Peek: ignoruj zwinięcie bloku dostawcy — karty nowych muszą zostać w nawigacji. */
+      const supplierCollapseForNav = laneExpanded
+        ? collapsedSuppliers
+        : new Set<string>();
       out.push(
-        ...filterNavigableProcurementGroups(row.blocks, collapsedSuppliers)
+        ...filterNavigableProcurementGroups(displayBlocks, supplierCollapseForNav)
       );
     }
     return out;
@@ -723,8 +781,9 @@ export function ForSomeoneRequests({
     isStockOutSection,
     stockOutBlocks,
     laneBlockRows,
-    collapsedLanes,
+    expandedLanes,
     collapsedSuppliers,
+    flagSortById,
   ]);
 
   const unseenGroupCount = useMemo(
@@ -732,8 +791,8 @@ export function ForSomeoneRequests({
     [displayGroups, isGroupUnseen]
   );
   const multiLineKeys = useMemo(
-    () => displayGroups.filter((g) => g.lines.length >= 2).map((g) => groupKey(g)),
-    [displayGroups, groupKey]
+    () => navigableGroups.filter((g) => g.lines.length >= 2).map((g) => groupKey(g)),
+    [navigableGroups, groupKey]
   );
 
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
@@ -825,7 +884,7 @@ export function ForSomeoneRequests({
   );
 
   const toggleLaneCollapsed = useCallback((laneId: ProcurementRequestLaneId) => {
-    setCollapsedLanes((prev) => {
+    setExpandedLanes((prev) => {
       const next = new Set(prev);
       if (next.has(laneId)) next.delete(laneId);
       else next.add(laneId);
@@ -899,6 +958,108 @@ export function ForSomeoneRequests({
     [multiLineKeys]
   );
 
+  const toggleGroupProductsExpanded = useCallback((key: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  /** Otwórz blok dostawcy (jeśli zwinięty) i rozwiń wszystkie wielopozycyjne prośby w grupie. */
+  const expandSupplierBlockFully = useCallback(
+    (block: ProcurementSupplierBlock) => {
+      if (collapsedSuppliers.has(block.supplierId)) {
+        toggleSupplierCollapse(block.supplierId);
+      }
+      const keys = block.requestGroups
+        .filter((g) => g.lines.length >= 2)
+        .map((g) => groupKey(g));
+      if (keys.length === 0) return;
+      setExpanded((prev) => {
+        const next = new Set(prev);
+        let changed = false;
+        for (const k of keys) {
+          if (!next.has(k)) {
+            next.add(k);
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    },
+    [collapsedSuppliers, toggleSupplierCollapse, groupKey]
+  );
+
+  const collapseProductsInBlock = useCallback(
+    (block: ProcurementSupplierBlock) => {
+      const keys = block.requestGroups
+        .filter((g) => g.lines.length >= 2)
+        .map((g) => groupKey(g));
+      if (keys.length === 0) return;
+      setExpanded((prev) => {
+        const next = new Set(prev);
+        let changed = false;
+        for (const k of keys) {
+          if (next.delete(k)) changed = true;
+        }
+        return changed ? next : prev;
+      });
+    },
+    [groupKey]
+  );
+
+  /**
+   * Klik w nagłówek grupy:
+   * 1) zwinięty → rozwiń blok + produkty
+   * 2) otwarty, produkty zwinięte → rozwiń produkty
+   * 3) wszystko otwarte → zwiń blok (albo tylko produkty, gdy collapse zablokowany przez „Nowa”)
+   */
+  const toggleSupplierBlockHeader = useCallback(
+    (
+      block: ProcurementSupplierBlock,
+      isCollapsed: boolean,
+      options?: { allowBlockCollapse?: boolean }
+    ) => {
+      if (isCollapsed) {
+        expandSupplierBlockFully(block);
+        return;
+      }
+      const multiKeys = block.requestGroups
+        .filter((g) => g.lines.length >= 2)
+        .map((g) => groupKey(g));
+      const productsFullyOpen =
+        multiKeys.length === 0 || multiKeys.every((k) => expanded.has(k));
+      if (!productsFullyOpen) {
+        expandSupplierBlockFully(block);
+        return;
+      }
+      const allowBlockCollapse = options?.allowBlockCollapse !== false;
+      const blockHasLocalUnseen = block.requestGroups.some((g) =>
+        isGroupUnseen(g)
+      );
+      const canCollapseBlock =
+        allowBlockCollapse &&
+        !blockHasLocalUnseen &&
+        !forceExpandedSupplierIds.has(block.supplierId);
+      if (canCollapseBlock) {
+        toggleSupplierCollapse(block.supplierId);
+      } else {
+        collapseProductsInBlock(block);
+      }
+    },
+    [
+      expandSupplierBlockFully,
+      collapseProductsInBlock,
+      toggleSupplierCollapse,
+      groupKey,
+      expanded,
+      forceExpandedSupplierIds,
+      isGroupUnseen,
+    ]
+  );
+
   const queueToolbarActions = (
     <div className="flex flex-wrap items-center justify-end gap-1">
       {unseenGroupCount > 0 ? (
@@ -916,7 +1077,13 @@ export function ForSomeoneRequests({
           variant="ghost"
           size="sm"
           className="h-8 px-2 text-xs"
-          onClick={() => setAllSupplierBlocksExpanded(!allSupplierBlocksExpanded)}
+          onClick={() => {
+            const nextExpanded = !allSupplierBlocksExpanded;
+            if (nextExpanded) {
+              setExpandedLanes(new Set(visibleLaneIds));
+            }
+            setAllSupplierBlocksExpanded(nextExpanded);
+          }}
         >
           {allSupplierBlocksExpanded
             ? "Zwiń bloki dostawców"
@@ -936,6 +1103,7 @@ export function ForSomeoneRequests({
     <ProcurementRequestLaneNav
       items={laneNavItems}
       onManageClick={() => setManageFlagsOpen(true)}
+      onLaneNavigate={navigateToLane}
     />
   );
   const [cancelTarget, setCancelTarget] = useState<{
@@ -947,6 +1115,10 @@ export function ForSomeoneRequests({
     orderIds: string[];
     initial: EditIndividualRequestInitial;
     scopeKey: string;
+  } | null>(null);
+  const [processTarget, setProcessTarget] = useState<{
+    action: ProcurementProcessAction;
+    groupKey: string;
   } | null>(null);
   const [focusedGroupKey, setFocusedGroupKey] = useState<string | null>(null);
 
@@ -961,6 +1133,82 @@ export function ForSomeoneRequests({
     if (!resolvedFocusedGroupKey) return null;
     return navigableGroups.find((g) => groupKey(g) === resolvedFocusedGroupKey) ?? null;
   }, [resolvedFocusedGroupKey, navigableGroups, groupKey]);
+
+  const processGroup = useMemo(() => {
+    if (!processTarget) return null;
+    const live =
+      navigableGroups.find((g) => groupKey(g) === processTarget.groupKey) ??
+      null;
+    if (!live || !shouldPickLinesBeforeProcess(live.lines.length)) return null;
+    return live;
+  }, [processTarget, navigableGroups, groupKey]);
+
+  const processModalOpen = processTarget !== null && processGroup !== null;
+
+  const requestProcessForGroup = useCallback(
+    (group: SummaryForSomeoneEnriched, action: ProcurementProcessAction) => {
+      const key = groupKey(group);
+      if (shouldPickLinesBeforeProcess(group.lines.length)) {
+        // Nie nakładaj na edycję / anulowanie / flagę.
+        if (editTarget || cancelTarget || flagEditTarget) return;
+        markGroupSeen(group);
+        // Podgląd admina: toast bez otwierania pickera (jak 1-linia przez run).
+        if (adminPreviewReadOnly) {
+          run(
+            async () => ({ success: true as const }),
+            processLinesSuccessToast({
+              action,
+              selectedCount: group.orderIds.length,
+              totalCount: group.orderIds.length,
+              supplierOrderOnDemand: group.supplierOrderOnDemand,
+            }),
+            action === "GLOWNE"
+              ? "Oznaczanie jako główne…"
+              : "Oznaczanie jako uzupełniające…",
+            { scope: key }
+          );
+          return;
+        }
+        setProcessTarget({ action, groupKey: key });
+        return;
+      }
+
+      if (action === "GLOWNE") {
+        run(
+          () => actionProcessIndividual(group.orderIds, "GLOWNE"),
+          processLinesSuccessToast({
+            action: "GLOWNE",
+            selectedCount: group.orderIds.length,
+            totalCount: group.orderIds.length,
+            supplierOrderOnDemand: group.supplierOrderOnDemand,
+          }),
+          "Oznaczanie jako główne…",
+          { scope: key }
+        );
+        return;
+      }
+
+      run(
+        () => actionProcessIndividual(group.orderIds, "POBOCZNE"),
+        processLinesSuccessToast({
+          action: "POBOCZNE",
+          selectedCount: group.orderIds.length,
+          totalCount: group.orderIds.length,
+        }),
+        "Oznaczanie jako uzupełniające…",
+        { scope: key }
+      );
+    },
+    [
+      adminPreviewReadOnly,
+      cancelTarget,
+      editTarget,
+      flagEditTarget,
+      groupKey,
+      markGroupSeen,
+      run,
+    ]
+  );
 
   useEffect(() => {
     if (!focusedGroup) return;
@@ -977,7 +1225,15 @@ export function ForSomeoneRequests({
   }, [resolvedFocusedGroupKey]);
 
   useEffect(() => {
-    if (editTarget || cancelTarget || flagEditTarget || !navigableGroups.length) return;
+    if (
+      editTarget ||
+      cancelTarget ||
+      flagEditTarget ||
+      processModalOpen ||
+      !navigableGroups.length
+    ) {
+      return;
+    }
 
     const onKey = (e: KeyboardEvent) => {
       const root = sectionRootRef.current;
@@ -1031,12 +1287,7 @@ export function ForSomeoneRequests({
       if (e.key === "Enter") {
         if (group.lines.length < 2) return;
         e.preventDefault();
-        setExpanded((prev) => {
-          const next = new Set(prev);
-          if (next.has(key)) next.delete(key);
-          else next.add(key);
-          return next;
-        });
+        toggleGroupProductsExpanded(key);
         return;
       }
 
@@ -1053,38 +1304,30 @@ export function ForSomeoneRequests({
 
       if ((e.key === "g" || e.key === "G") && e.shiftKey) {
         e.preventDefault();
-        const glowneConfirm = group.supplierOrderOnDemand
-          ? `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako główne bez terminu planowego?`
-          : `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako zamówienie główne?`;
-        if (!window.confirm(glowneConfirm)) {
-          return;
+        if (!shouldPickLinesBeforeProcess(group.lines.length)) {
+          const glowneConfirm = group.supplierOrderOnDemand
+            ? `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako główne bez terminu planowego?`
+            : `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako zamówienie główne?`;
+          if (!window.confirm(glowneConfirm)) {
+            return;
+          }
         }
-        run(
-          () => actionProcessIndividual(group.orderIds, "GLOWNE"),
-          group.supplierOrderOnDemand
-            ? "Oznaczono jako główne (bez terminu planowego)"
-            : "Oznaczono jako zamówienie główne",
-          "Oznaczanie jako główne…",
-          { scope: key }
-        );
+        requestProcessForGroup(group, "GLOWNE");
         return;
       }
 
       if ((e.key === "u" || e.key === "U") && e.shiftKey) {
         e.preventDefault();
-        if (
-          !window.confirm(
-            `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako uzupełniające?`
-          )
-        ) {
-          return;
+        if (!shouldPickLinesBeforeProcess(group.lines.length)) {
+          if (
+            !window.confirm(
+              `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako uzupełniające?`
+            )
+          ) {
+            return;
+          }
         }
-        run(
-          () => actionProcessIndividual(group.orderIds, "POBOCZNE"),
-          "Oznaczono jako uzupełniające",
-          "Oznaczanie jako uzupełniające…",
-          { scope: key }
-        );
+        requestProcessForGroup(group, "POBOCZNE");
       }
     };
 
@@ -1097,9 +1340,12 @@ export function ForSomeoneRequests({
     editTarget,
     cancelTarget,
     flagEditTarget,
+    processModalOpen,
     run,
     markGroupSeen,
     groupKey,
+    toggleGroupProductsExpanded,
+    requestProcessForGroup,
   ]);
 
   const Wrapper = "section";
@@ -1168,6 +1414,54 @@ export function ForSomeoneRequests({
         onCancel={() => setFlagEditTarget(null)}
         onConfirm={saveFlagEdit}
       />
+      <ProcurementProcessLinesModal
+        open={processModalOpen}
+        action={processTarget?.action ?? "GLOWNE"}
+        lines={processGroup?.lines ?? []}
+        supplierName={processGroup?.supplierName ?? ""}
+        personName={processGroup?.person ?? ""}
+        supplierOrderOnDemand={processGroup?.supplierOrderOnDemand ?? false}
+        pending={
+          processTarget
+            ? isScopePending(processTarget.groupKey)
+            : false
+        }
+        onCancel={() => setProcessTarget(null)}
+        onConfirm={(selectedIds) => {
+          if (!processTarget || !processGroup) return;
+          const { action } = processTarget;
+          const key = processTarget.groupKey;
+          const ids = filterProcessLineIds(
+            selectedIds,
+            processGroup.lines.map((l) => l.id)
+          );
+          if (!ids.length) {
+            setProcessTarget(null);
+            return;
+          }
+          const total = processGroup.lines.length;
+          run(
+            () => actionProcessIndividual(ids, action),
+            processLinesSuccessToast({
+              action,
+              selectedCount: ids.length,
+              totalCount: total,
+              supplierOrderOnDemand: processGroup.supplierOrderOnDemand,
+            }),
+            action === "GLOWNE"
+              ? "Oznaczanie jako główne…"
+              : "Oznaczanie jako uzupełniające…",
+            {
+              scope: key,
+              onSuccess: () => setProcessTarget(null),
+              // Tylko podgląd admina — przy błędzie serwera zostaw modal (retry / zmiana zaznaczenia).
+              onError: (reason) => {
+                if (reason === "readonly") setProcessTarget(null);
+              },
+            }
+          );
+        }}
+      />
       <ProcurementFlagDefinitionsManageModal
           open={manageFlagsOpen}
           definitions={localFlagDefinitions}
@@ -1193,7 +1487,13 @@ export function ForSomeoneRequests({
             () => actionProcessIndividual(orderIds, "ANULOWANO", note),
             "Anulowano prośbę",
             "Anulowanie prośby…",
-            { scope: scopeKey, onSuccess: () => setCancelTarget(null) }
+            {
+              scope: scopeKey,
+              onSuccess: () => setCancelTarget(null),
+              onError: (reason) => {
+                if (reason === "readonly") setCancelTarget(null);
+              },
+            }
           );
         }}
       />
@@ -1215,25 +1515,83 @@ export function ForSomeoneRequests({
       <div className={procurementRequestLanesBodyClass}>
         {listSections.map((laneRow) => {
           const showLaneChrome = laneRow.showLaneChrome;
-          const laneCollapsed =
-            showLaneChrome &&
-            laneRow.laneId != null &&
-            collapsedLanes.has(laneRow.laneId);
-          const laneGroupCount = laneRow.blocks.reduce(
-            (n, b) => n + b.requestGroups.length,
-            0
-          );
+          const laneExpanded =
+            !showLaneChrome ||
+            laneRow.laneId == null ||
+            isProcurementLaneExpanded(laneRow.laneId, expandedLanes);
+          const laneGroupCount = countProcurementBlockGroups(laneRow.blocks);
+          const displayBlocks = showLaneChrome
+            ? procurementLaneDisplayBlocks(
+                laneRow.blocks,
+                laneExpanded,
+                flagSortById
+              )
+            : laneRow.blocks;
+          const peekGroupCount = laneExpanded
+            ? 0
+            : countProcurementBlockGroups(displayBlocks);
+          const laneChrome = showLaneChrome
+            ? resolveProcurementLaneChrome({
+                laneExpanded,
+                totalGroupCount: laneGroupCount,
+                peekGroupCount,
+                peekHint: PROCUREMENT_REQUEST_LANE_COPY.laneCollapsedPeekHint,
+                allNewHint: PROCUREMENT_REQUEST_LANE_COPY.laneCollapsedAllNewHint,
+                emptyCollapsedHint:
+                  PROCUREMENT_REQUEST_LANE_COPY.laneCollapsedEmptyHint,
+              })
+            : null;
+          const laneCollapsed = Boolean(laneChrome?.chromeCollapsed);
+          const laneBodyOpen = laneChrome?.bodyOpen ?? true;
+          const fullBlocksBySupplier = showLaneChrome
+            ? new Map(laneRow.blocks.map((b) => [b.supplierId, b]))
+            : null;
           const blocksList = (
                 <ul className={procurementRequestLaneContentClass}>
-                  {laneRow.blocks.map((block) => {
+                  {displayBlocks.map((block) => {
                     const showSupplierHeader = showProcurementSupplierBlockHeader(block);
+                    /** W peeku zwiniętego toru zawsze pokazuj karty — zwijanie bloku tylko w pełnym torze. */
                     const supplierCollapsed =
-                      showSupplierHeader && collapsedSuppliers.has(block.supplierId);
+                      showSupplierHeader &&
+                      laneExpanded &&
+                      collapsedSuppliers.has(block.supplierId);
+                    const blockMultiKeys = showSupplierHeader
+                      ? block.requestGroups
+                          .filter((g) => g.lines.length >= 2)
+                          .map((g) => groupKey(g))
+                      : [];
+                    const blockProductsFullyOpen =
+                      blockMultiKeys.length === 0 ||
+                      blockMultiKeys.every((k) => expanded.has(k));
+                    const blockHasLocalUnseen = block.requestGroups.some((g) =>
+                      isGroupUnseen(g)
+                    );
+                    const blockCanCollapse =
+                      showSupplierHeader &&
+                      laneExpanded &&
+                      !blockHasLocalUnseen &&
+                      !forceExpandedSupplierIds.has(block.supplierId);
+                    const blockHeaderHint = !showSupplierHeader
+                      ? undefined
+                      : supplierCollapsed
+                        ? ("expand-all" as const)
+                        : !blockProductsFullyOpen
+                          ? ("expand-products" as const)
+                          : blockCanCollapse
+                            ? ("collapse-block" as const)
+                            : ("collapse-products" as const);
                     const blockStats = statsBySupplierId[block.supplierId];
                     const blockStatsMode = supplierStatsMode[block.supplierId] ?? "LACZNIE";
                     const blockLeadTimeBrief =
                       showSupplierHeader && blockStats
-                        ? formatSupplierLeadTimeBrief(blockStats, blockStatsMode)
+                        ? formatSupplierLeadTimeBrief(
+                            blockStats,
+                            blockStatsMode,
+                            leadTimeDisplayFromQuantiles(
+                              etaQuantilesBySupplierId[block.supplierId],
+                              etaUseP50
+                            )
+                          )
                         : null;
                     const blockScopeKey = procurementSupplierBlockScopeKey(block.supplierId);
                     const blockPending = isScopePending(blockScopeKey);
@@ -1245,6 +1603,16 @@ export function ForSomeoneRequests({
                             supplierId: block.supplierId,
                           })
                         : null;
+                    const peekPartialOrder =
+                      showLaneChrome &&
+                      isProcurementLanePeekPartialSupplier({
+                        laneExpanded,
+                        fullBlock: fullBlocksBySupplier?.get(block.supplierId),
+                        displayBlock: block,
+                      });
+                    const orderScopeNote = peekPartialOrder
+                      ? PROCUREMENT_REQUEST_LANE_COPY.lanePeekOrderScopeNote
+                      : null;
 
                     return (
                       <li
@@ -1272,8 +1640,14 @@ export function ForSomeoneRequests({
                               suppliersOnVacationNow[block.supplierId] ?? null
                             }
                             flagDefinitions={localFlagDefinitions}
-                            onToggleCollapse={() => toggleSupplierCollapse(block.supplierId)}
+                            onToggleCollapse={() =>
+                              toggleSupplierBlockHeader(block, supplierCollapsed, {
+                                allowBlockCollapse: laneExpanded,
+                              })
+                            }
+                            headerActionHint={blockHeaderHint}
                             onOpenSupplier={onOpenSupplier}
+                            orderScopeNote={orderScopeNote}
                           />
                         ) : null}
                         {!supplierCollapsed ? (
@@ -1292,7 +1666,14 @@ export function ForSomeoneRequests({
                               const stats = statsBySupplierId[g.supplierId];
                               const statsMode = supplierStatsMode[g.supplierId] ?? "LACZNIE";
                               const leadTimeBrief = stats
-                                ? formatSupplierLeadTimeBrief(stats, statsMode)
+                                ? formatSupplierLeadTimeBrief(
+                                    stats,
+                                    statsMode,
+                                    leadTimeDisplayFromQuantiles(
+                                      etaQuantilesBySupplierId[g.supplierId],
+                                      etaUseP50
+                                    )
+                                  )
                                 : null;
                               const hasInfoViaPanel =
                                 !isStockOutSection && g.lines.some((l) => l.informacjaViaPanel);
@@ -1301,10 +1682,17 @@ export function ForSomeoneRequests({
                                 : hasInfoViaPanel
                                   ? "info"
                                   : "default";
-                              const showStatusBadge = Boolean(ui.statusTitle?.trim());
+                              const showStatusBadge =
+                                Boolean(ui.statusTitle?.trim()) && !hasInfoViaPanel;
                               const singleLine = g.lines.length === 1 ? g.lines[0]! : null;
                               const hasMultiLine = g.lines.length >= 2;
                               const isOpen = hasMultiLine && expanded.has(key);
+                              const previewLine = hasMultiLine && !isOpen ? g.lines[0]! : null;
+                              const moreProductsCount = hasMultiLine && !isOpen ? g.lines.length - 1 : 0;
+                              const moreProductsLabel =
+                                moreProductsCount > 0
+                                  ? procurementMoreProductsLabel(moreProductsCount)
+                                  : null;
                               const countLabel = procurementProductCountLabel(g.lines.length);
                               const clientLabel = clientNamesSummaryFromLines(g.lines);
                               const sharedGroupNote = hasMultiLine ? procurementGroupRequestNote(g.lines) : null;
@@ -1319,23 +1707,139 @@ export function ForSomeoneRequests({
                               const rowSubline = showSupplierHeader
                                 ? procurementNestedRowMeta({
                                     countLabel,
-                                    locationLabel: locationLabel(g.location),
                                     noteSuffix,
                                   })
                                 : isStockOutSection
                                   ? ui.subline
                                   : null;
                               const showRowLeadTime = !showSupplierHeader || !blockLeadTimeBrief;
-                              const expandDividerClass =
-                                unseenVariant === "stockOut"
-                                  ? "border-amber-100/80"
-                                  : "border-indigo-100/70";
                               const flagSummary = summarizeGroupProcurementFlags(
                                 g.lines,
                                 flagSortById
                               );
                               const currentFlagId =
                                 flagSummary.kind === "single" ? flagSummary.flag : null;
+
+                              const hasFlags = flagSummary.kind !== "none";
+                              const showPersonInContext =
+                                !isStockOutSection && !showSupplierHeader;
+                              const showNestedStockOutPerson =
+                                isStockOutSection &&
+                                showSupplierHeader &&
+                                ui.headline !== g.supplierName;
+                              const showStockOutSupplierMeta =
+                                isStockOutSection &&
+                                !showSupplierHeader &&
+                                Boolean(g.supplierId) &&
+                                ui.headline !== g.supplierName;
+                              const showOnDemandHint =
+                                Boolean(g.supplierOrderOnDemand) && !isStockOutSection;
+                              const showContextStrip =
+                                isUnseen ||
+                                showVacationOnRow ||
+                                hasFlags ||
+                                showPersonInContext ||
+                                showNestedStockOutPerson ||
+                                showStockOutSupplierMeta ||
+                                Boolean(rowSubline) ||
+                                showStatusBadge ||
+                                (showRowLeadTime && Boolean(leadTimeBrief)) ||
+                                showOnDemandHint;
+                              const showClientInOrderBody = Boolean(clientLabel);
+                              const showOrderBody =
+                                Boolean(singleLine) ||
+                                hasMultiLine ||
+                                Boolean(sharedGroupNote) ||
+                                showClientInOrderBody;
+                              const orderBodyFlat =
+                                Boolean(singleLine) &&
+                                !hasMultiLine &&
+                                !sharedGroupNote &&
+                                !isOpen;
+
+                              const contextTextItems: ReactNode[] = [];
+                              if (showPersonInContext) {
+                                contextTextItems.push(
+                                  <ProcurementRequestContextMetaItem
+                                    key="person"
+                                    emphasis
+                                    showSep={false}
+                                  >
+                                    {ui.headline}
+                                  </ProcurementRequestContextMetaItem>
+                                );
+                              }
+                              if (showNestedStockOutPerson) {
+                                contextTextItems.push(
+                                  <ProcurementRequestContextMetaItem
+                                    key="so-person"
+                                    emphasis
+                                    showSep={false}
+                                  >
+                                    {g.person}
+                                  </ProcurementRequestContextMetaItem>
+                                );
+                              }
+                              if (showStockOutSupplierMeta) {
+                                contextTextItems.push(
+                                  <ProcurementRequestContextMetaItem
+                                    key="so-sup"
+                                    showSep={contextTextItems.length > 0}
+                                    className="min-w-0"
+                                  >
+                                    <button
+                                      type="button"
+                                      className={cn(
+                                        panelTextLinkClass,
+                                        "inline-flex min-w-0 max-w-full truncate align-baseline text-left"
+                                      )}
+                                      onClick={() => onOpenSupplier(g.supplierId)}
+                                      aria-label={`Szczegóły dostawcy ${g.supplierName}`}
+                                    >
+                                      {g.supplierName}
+                                    </button>
+                                    {rowSubline ? (
+                                      <span className="text-slate-500">{` · ${rowSubline}`}</span>
+                                    ) : null}
+                                  </ProcurementRequestContextMetaItem>
+                                );
+                              } else if (rowSubline) {
+                                contextTextItems.push(
+                                  <ProcurementRequestContextMetaItem
+                                    key="sub"
+                                    showSep={contextTextItems.length > 0}
+                                  >
+                                    {rowSubline}
+                                  </ProcurementRequestContextMetaItem>
+                                );
+                              }
+                              if (showRowLeadTime && leadTimeBrief) {
+                                contextTextItems.push(
+                                  <ProcurementRequestContextMetaItem
+                                    key="eta"
+                                    showSep={contextTextItems.length > 0}
+                                  >
+                                    {leadTimeBrief}
+                                  </ProcurementRequestContextMetaItem>
+                                );
+                              }
+                              if (showOnDemandHint) {
+                                contextTextItems.push(
+                                  <ProcurementRequestContextMetaItem
+                                    key="od"
+                                    showSep={contextTextItems.length > 0}
+                                    className="text-slate-500"
+                                    title={PROCUREMENT_GLOWNE_ON_DEMAND_HINT}
+                                  >
+                                    Na żądanie
+                                  </ProcurementRequestContextMetaItem>
+                                );
+                              }
+                              const hasContextChips =
+                                isUnseen ||
+                                showVacationOnRow ||
+                                hasFlags ||
+                                showStatusBadge;
 
                               return (
                                 <li key={key}>
@@ -1348,16 +1852,34 @@ export function ForSomeoneRequests({
                                       isFocused,
                                       highlightFresh,
                                       pending: groupPending,
+                                      expandable: hasMultiLine,
                                     })}
                                     aria-busy={groupPending}
+                                    title={
+                                      hasMultiLine
+                                        ? isOpen
+                                          ? "Kliknij, aby ukryć produkty"
+                                          : "Kliknij, aby pokazać wszystkie produkty"
+                                        : undefined
+                                    }
                                     onMouseEnter={() => scheduleMarkSeen(g)}
                                     onPointerDown={(e) => {
                                       if (e.pointerType === "touch") scheduleMarkSeen(g);
                                     }}
                                     onClick={(e) => {
                                       const t = e.target as HTMLElement;
-                                      if (t.closest("button, a, [role='button']")) return;
+                                      if (
+                                        t.closest(
+                                          "button, a, [role='button'], input, textarea, select, [data-no-card-toggle]"
+                                        )
+                                      ) {
+                                        return;
+                                      }
                                       scheduleMarkSeen(g);
+                                      setFocusedGroupKey(key);
+                                      if (hasMultiLine) {
+                                        toggleGroupProductsExpanded(key);
+                                      }
                                     }}
                                     onMouseLeave={(e) => {
                                       cancelMarkSeen(g);
@@ -1365,177 +1887,234 @@ export function ForSomeoneRequests({
                                       if (resolvedFocusedGroupKey === key) setFocusedGroupKey(null);
                                     }}
                                   >
-                                    <div className="px-2.5 py-2 sm:px-3">
-                                      <div className={panelQueueRowLayoutClass}>
-                                        <div className="min-w-0 flex-1">
-                                          <p className={cn(panelTypography.rowTitle, "min-w-0")}>
-                                            {isStockOutSection ? (
-                                              // Bez bloku dostawcy: gdy tytuł = nazwa dostawcy (wiele pozycji) — klikalny.
-                                              !showSupplierHeader &&
-                                              g.supplierId &&
-                                              ui.headline === g.supplierName ? (
-                                                <button
-                                                  type="button"
-                                                  className={panelNameLinkClass}
-                                                  onClick={() => onOpenSupplier(g.supplierId)}
-                                                  aria-label={`Szczegóły dostawcy ${g.supplierName}`}
-                                                >
-                                                  {g.supplierName}
-                                                </button>
-                                              ) : showSupplierHeader &&
-                                                ui.headline === g.supplierName ? (
-                                                // W bloku dostawcy nie powtarzaj nazwy — pokaż osobę.
-                                                g.person
-                                              ) : (
-                                                ui.headline
-                                              )
-                                            ) : showSupplierHeader ? (
-                                              ui.headline
-                                            ) : (
-                                              <button
-                                                type="button"
-                                                className={panelNameLinkClass}
-                                                onClick={() => onOpenSupplier(g.supplierId)}
-                                              >
-                                                {g.supplierName}
-                                              </button>
-                                            )}
-                                          </p>
-                                          {isUnseen ||
-                                          showVacationOnRow ||
-                                          g.lines.some((l) => Boolean(l.procurementFlag)) ? (
-                                            <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5">
-                                              {isUnseen ? (
-                                                <Badge
-                                                  className={cn(
-                                                    "w-fit shrink-0 px-1.5 py-0 text-[10px] font-semibold",
-                                                    dailyPanelUnseenBadgeClass(unseenVariant)
-                                                  )}
-                                                >
-                                                  Nowa
-                                                </Badge>
-                                              ) : null}
-                                              {showVacationOnRow ? (
-                                                <SupplierVacationNowChip
-                                                  window={suppliersOnVacationNow[g.supplierId]!}
-                                                  className="max-w-full"
+                                    <div
+                                      className={
+                                        showSupplierHeader
+                                          ? procurementRequestCardBodyNestedClass
+                                          : procurementRequestCardBodyClass
+                                      }
+                                    >
+                                          <ProcurementRequestCardHeader
+                                            title={
+                                              <p className={cn(panelTypography.rowTitle, "min-w-0 truncate")}>
+                                                {isStockOutSection ? (
+                                                  showSupplierHeader ? (
+                                                    ui.headline === g.supplierName ? (
+                                                      g.person
+                                                    ) : (
+                                                      ui.headline
+                                                    )
+                                                  ) : g.supplierId &&
+                                                    ui.headline === g.supplierName ? (
+                                                    <button
+                                                      type="button"
+                                                      className={cn(
+                                                        procurementSupplierNameLinkClass("stockOut"),
+                                                        "max-w-full truncate"
+                                                      )}
+                                                      onClick={() => onOpenSupplier(g.supplierId)}
+                                                      aria-label={`Szczegóły dostawcy ${g.supplierName}`}
+                                                    >
+                                                      {g.supplierName}
+                                                    </button>
+                                                  ) : (
+                                                    ui.headline
+                                                  )
+                                                ) : showSupplierHeader ? (
+                                                  ui.headline
+                                                ) : (
+                                                  <button
+                                                    type="button"
+                                                    className={cn(
+                                                      procurementSupplierNameLinkClass("prosby"),
+                                                      "max-w-full truncate"
+                                                    )}
+                                                    onClick={() => onOpenSupplier(g.supplierId)}
+                                                  >
+                                                    {g.supplierName}
+                                                  </button>
+                                                )}
+                                              </p>
+                                            }
+                                            trailing={
+                                              !suppressGroupPlannedOrderDate && ui.plannedOrderDate ? (
+                                                <PlannedOrderDateMeta
+                                                  display={ui.plannedOrderDate}
+                                                  density="panel"
+                                                  className="shrink-0"
+                                                />
+                                              ) : null
+                                            }
+                                          />
+                                          {showContextStrip ? (
+                                            <ProcurementRequestContextBlock
+                                              chips={
+                                                hasContextChips ? (
+                                                  <>
+                                                    {isUnseen ? (
+                                                      <Badge
+                                                        className={cn(
+                                                          "w-fit shrink-0 px-1.5 py-0 text-[10px] font-semibold",
+                                                          dailyPanelUnseenBadgeClass(unseenVariant)
+                                                        )}
+                                                      >
+                                                        Nowa
+                                                      </Badge>
+                                                    ) : null}
+                                                    {showVacationOnRow ? (
+                                                      <SupplierVacationNowChip
+                                                        window={
+                                                          suppliersOnVacationNow[g.supplierId]!
+                                                        }
+                                                        className="max-w-full"
+                                                      />
+                                                    ) : null}
+                                                    {hasFlags ? (
+                                                      <ProcurementRequestFlagGroupChip
+                                                        lines={g.lines}
+                                                        definitions={localFlagDefinitions}
+                                                        disabled={groupPending}
+                                                        onClick={() => openFlagEditor(g)}
+                                                        className="max-w-full"
+                                                      />
+                                                    ) : null}
+                                                    {showStatusBadge ? (
+                                                      <Badge
+                                                        variant={statusBadgeVariant}
+                                                        className="w-fit text-[10px]"
+                                                      >
+                                                        {ui.statusTitle}
+                                                      </Badge>
+                                                    ) : null}
+                                                  </>
+                                                ) : null
+                                              }
+                                              meta={
+                                                contextTextItems.length > 0
+                                                  ? contextTextItems
+                                                  : null
+                                              }
+                                            />
+                                          ) : null}
+
+                                          {showOrderBody ? (
+                                            <ProcurementRequestOrderBody
+                                              flat={orderBodyFlat}
+                                              interactive={Boolean(
+                                                singleLine || previewLine || isOpen || hasMultiLine
+                                              )}
+                                              tone={unseenVariant}
+                                            >
+                                              {showClientInOrderBody ? (
+                                                <ProcurementRequestClientMeta
+                                                  clientLabel={clientLabel}
                                                 />
                                               ) : null}
-                                              <ProcurementRequestFlagGroupChip
-                                                lines={g.lines}
-                                                definitions={localFlagDefinitions}
-                                                disabled={groupPending}
-                                                onClick={() => openFlagEditor(g)}
-                                                className="max-w-full"
-                                              />
-                                            </div>
-                                          ) : null}
-                                          {isStockOutSection &&
-                                          !showSupplierHeader &&
-                                          g.supplierId &&
-                                          ui.headline !== g.supplierName ? (
-                                            <p className={cn(panelTypography.rowMeta, "mt-0.5 text-slate-500")}>
-                                              <button
-                                                type="button"
-                                                className={cn(
-                                                  panelTextLinkClass,
-                                                  "inline-flex min-w-0 max-w-full truncate align-baseline text-left"
-                                                )}
-                                                onClick={() => onOpenSupplier(g.supplierId)}
-                                                aria-label={`Szczegóły dostawcy ${g.supplierName}`}
-                                              >
-                                                {g.supplierName}
-                                              </button>
-                                              {rowSubline ? (
-                                                <span>{` · ${rowSubline}`}</span>
+                                              {sharedGroupNote ? (
+                                                <ProcurementSalesRequestNote
+                                                  note={sharedGroupNote}
+                                                />
                                               ) : null}
-                                            </p>
-                                          ) : !isStockOutSection && !showSupplierHeader ? (
-                                            <p className={cn(panelTypography.rowMeta, "mt-0.5 text-slate-500")}>
-                                              {ui.headline}
-                                              {rowSubline ? ` · ${rowSubline}` : null}
-                                            </p>
-                                          ) : rowSubline ? (
-                                            <p className={cn(panelTypography.rowMeta, "mt-0.5 text-slate-500")}>
-                                              {rowSubline}
-                                            </p>
+                                              {singleLine ? (
+                                                <ProcurementRequestLineInline
+                                                  line={singleLine}
+                                                  tone={unseenVariant}
+                                                  suppressRequestNote={suppressLineRequestNote}
+                                                  suppressClient={suppressLineClient || showClientInOrderBody}
+                                                />
+                                              ) : null}
+                                              {previewLine ? (
+                                                <ProcurementRequestLineInline
+                                                  line={previewLine}
+                                                  tone={unseenVariant}
+                                                  suppressRequestNote={suppressLineRequestNote}
+                                                  suppressClient={suppressLineClient || showClientInOrderBody}
+                                                />
+                                              ) : null}
+                                              {hasMultiLine ? (
+                                                <Button
+                                                  type="button"
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className={procurementRequestExpandProductsClass}
+                                                  aria-expanded={isOpen}
+                                                  onClick={() => {
+                                                    setFocusedGroupKey(key);
+                                                    toggleGroupProductsExpanded(key);
+                                                  }}
+                                                >
+                                                  <IconChevronRight
+                                                    size={14}
+                                                    strokeWidth={2.25}
+                                                    className={cn(
+                                                      "mr-1 shrink-0 text-slate-400 transition-transform",
+                                                      isOpen && "rotate-90"
+                                                    )}
+                                                    aria-hidden
+                                                  />
+                                                  {isOpen
+                                                    ? "Ukryj produkty"
+                                                    : moreProductsLabel
+                                                      ? `${moreProductsLabel} · pokaż wszystkie`
+                                                      : `Produkty (${g.lines.length})`}
+                                                </Button>
+                                              ) : null}
+                                              {isOpen ? (
+                                                <ul className="min-w-0">
+                                                  {g.lines.map((line) => (
+                                                    <ProcurementRequestLine
+                                                      key={line.id}
+                                                      line={line}
+                                                      inOrderBody
+                                                      tone={unseenVariant}
+                                                      suppressRequestNote={suppressLineRequestNote}
+                                                      suppressClient={
+                                                        suppressLineClient || showClientInOrderBody
+                                                      }
+                                                      flagSlot={
+                                                        line.procurementFlag ? (
+                                                          <ProcurementRequestFlagChip
+                                                            flag={line.procurementFlag}
+                                                            note={line.procurementFlagNote}
+                                                            definitions={localFlagDefinitions}
+                                                            disabled={groupPending}
+                                                            onClick={() =>
+                                                              openFlagEditor(g, {
+                                                                orderId: line.id,
+                                                              })
+                                                            }
+                                                          />
+                                                        ) : null
+                                                      }
+                                                    />
+                                                  ))}
+                                                </ul>
+                                              ) : null}
+                                            </ProcurementRequestOrderBody>
                                           ) : null}
-                                          {clientLabel && !showSupplierHeader ? (
-                                            <ProcurementRequestClientMeta
-                                              clientLabel={clientLabel}
-                                              className="mt-0.5"
-                                            />
-                                          ) : null}
-                                          {sharedGroupNote ? (
-                                            <ProcurementSalesRequestNote
-                                              note={sharedGroupNote}
-                                              className="mt-1"
-                                            />
-                                          ) : null}
-                                          {showStatusBadge ? (
-                                            <Badge
-                                              variant={statusBadgeVariant}
-                                              className="mt-1 w-fit text-[10px]"
-                                            >
-                                              {ui.statusTitle}
-                                            </Badge>
-                                          ) : null}
-                                          {showRowLeadTime && leadTimeBrief ? (
-                                            <p className={cn(panelTypography.rowMeta, "mt-0.5 text-slate-500")}>
-                                              {leadTimeBrief}
-                                            </p>
-                                          ) : null}
-                                          {g.supplierOrderOnDemand && !isStockOutSection ? (
-                                            <p className={cn(panelTypography.rowMeta, "mt-0.5 text-slate-500")}>
-                                              {PROCUREMENT_GLOWNE_ON_DEMAND_HINT}
-                                            </p>
-                                          ) : null}
-                                          {singleLine ? (
-                                            <div className="mt-1.5">
-                                              <ProcurementRequestLineInline
-                                                line={singleLine}
-                                                suppressRequestNote={suppressLineRequestNote}
-                                                suppressClient={suppressLineClient}
-                                              />
-                                            </div>
-                                          ) : null}
-                                          {hasMultiLine ? (
-                                            <Button
-                                              type="button"
-                                              variant="ghost"
-                                              size="sm"
-                                              className="mt-1.5 h-7 px-2 text-xs"
-                                              onClick={() => {
-                                                setExpanded((prev) => {
-                                                  const next = new Set(prev);
-                                                  if (next.has(key)) next.delete(key);
-                                                  else next.add(key);
-                                                  return next;
-                                                });
-                                              }}
-                                            >
-                                              {isOpen ? "Ukryj produkty" : `Produkty (${g.lines.length})`}
-                                            </Button>
-                                          ) : null}
-                                        </div>
-                                        <div className="flex w-full shrink-0 flex-col items-end gap-1.5 self-start sm:w-auto">
-                                          {!suppressGroupPlannedOrderDate && ui.plannedOrderDate ? (
-                                            <PlannedOrderDateMeta
-                                              display={ui.plannedOrderDate}
-                                              className="shrink-0"
-                                            />
-                                          ) : null}
-                                          <PanelRowActionsInlineEnd className={panelQueueRowActionsClass}>
+                                    </div>
+                                    <ProcurementRequestActionsFooter
+                                      forceVisible={groupPending || isFocused}
+                                      className={
+                                        showSupplierHeader
+                                          ? procurementRequestCardFooterNestedClass
+                                          : procurementRequestCardFooterClass
+                                      }
+                                    >
                                             <IndividualRequestActionBar
-                                              orderIds={g.orderIds}
                                               supplierId={g.supplierId || null}
                                               hasInfoViaPanel={hasInfoViaPanel}
                                               supplierOrderOnDemand={g.supplierOrderOnDemand}
                                               headline={ui.headline}
                                               pending={groupPending}
-                                              scopeKey={key}
-                                              run={run}
+                                              canPickLines={shouldPickLinesBeforeProcess(
+                                                g.lines.length
+                                              )}
+                                              onRequestProcess={(action) =>
+                                                requestProcessForGroup(g, action)
+                                              }
                                               density={showSupplierHeader ? "nested" : "default"}
+                                              tone={unseenVariant}
                                               hasFlag={Boolean(currentFlagId) || flagSummary.kind === "mixed"}
                                               currentFlagId={currentFlagId}
                                               onSetFlag={() => openFlagEditor(g)}
@@ -1565,37 +2144,7 @@ export function ForSomeoneRequests({
                                                 })
                                               }
                                             />
-                                          </PanelRowActionsInlineEnd>
-                                        </div>
-                                      </div>
-                                    </div>
-                                    {isOpen ? (
-                                      <div className={cn("border-t", expandDividerClass)}>
-                                        <ul className="space-y-1 px-2.5 py-1.5 sm:px-3">
-                                          {g.lines.map((line) => (
-                                            <ProcurementRequestLine
-                                              key={line.id}
-                                              line={line}
-                                              suppressRequestNote={suppressLineRequestNote}
-                                              suppressClient={suppressLineClient}
-                                              flagSlot={
-                                                line.procurementFlag ? (
-                                                  <ProcurementRequestFlagChip
-                                                    flag={line.procurementFlag}
-                                                    note={line.procurementFlagNote}
-                                                    definitions={localFlagDefinitions}
-                                                    disabled={groupPending}
-                                                    onClick={() =>
-                                                      openFlagEditor(g, { orderId: line.id })
-                                                    }
-                                                  />
-                                                ) : null
-                                              }
-                                            />
-                                          ))}
-                                        </ul>
-                                      </div>
-                                    ) : null}
+                                    </ProcurementRequestActionsFooter>
                                   </article>
                                 </li>
                               );
@@ -1627,9 +2176,12 @@ export function ForSomeoneRequests({
               <ProcurementRequestLaneHeader
                 label={laneRow.label}
                 count={laneGroupCount}
+                countLabel={laneChrome?.countLabel}
                 collapsed={laneCollapsed}
                 tone={laneRow.tone}
                 hint={procurementRequestLaneHint(laneId)}
+                collapsedHint={laneChrome?.subtitle}
+                peekUnseenCount={laneChrome?.peekGroupCount ?? 0}
                 onToggle={() => toggleLaneCollapsed(laneId)}
                 canMoveUp={canMoveVisibleLane(visibleLaneIds, laneId, -1)}
                 canMoveDown={canMoveVisibleLane(visibleLaneIds, laneId, 1)}
@@ -1637,7 +2189,7 @@ export function ForSomeoneRequests({
                 onMoveUp={() => moveLane(laneId, -1)}
                 onMoveDown={() => moveLane(laneId, 1)}
               />
-              <ProcurementRequestLaneCollapse open={!laneCollapsed}>
+              <ProcurementRequestLaneCollapse open={laneBodyOpen}>
                 {blocksList}
               </ProcurementRequestLaneCollapse>
             </section>

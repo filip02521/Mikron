@@ -62,14 +62,21 @@ import {
   moveZdEstimateColumnOrder,
   resolveZdEstimateColumnSectionStarts,
   resolveZdEstimateScrollableColumnOrder,
+  isZdEstimateFavorite,
   toggleZdEstimateColumnVisibility,
+  toggleZdEstimateFavorite,
   zdEstimateColumnOrderEqual,
   zdEstimateColumnVisibilityEqual,
   type ZdEstimateColumnVisibility,
+  type ZdEstimateFavoriteRef,
   type ZdEstimateListFilter,
   type ZdEstimateOptionalColumn,
   type ZdEstimateUiPrefs,
 } from "@/lib/orders/zd-estimate-prefs";
+import {
+  resolveZdEstimateFavoriteCechaChips,
+  resolveZdEstimateFavoriteGroupChips,
+} from "@/lib/orders/zd-estimate-scope-favorites";
 import {
   collectTodayScheduleSuppliers,
   zdEstimateScopeCoverage,
@@ -153,7 +160,12 @@ import {
   zdEstimateExternalSessionScopeChangeCancelLabel,
 } from "@/lib/orders/zd-estimate-ui-copy";
 import { shouldUseZdEstimateProgressShell } from "@/lib/orders/zd-estimate-progress-shell";
-import { applyGroupStockWindow } from "@/lib/orders/zd-estimate-group-stock";
+import { applyGroupStockWindow, resolveSupplierForScopeSelection } from "@/lib/orders/zd-estimate-group-stock";
+import {
+  findUniqueSupplierIdForCecha,
+  findUniqueSupplierIdForGrupa,
+} from "@/lib/orders/zd-estimate-supplier-scope";
+import type { ZdEstimateSupplierScopeRow } from "@/lib/data/zd-estimate-supplier-scopes";
 import {
   resolveZdEstimateActiveScopeLabel,
   resolveZdEstimateActiveSupplierName,
@@ -322,6 +334,7 @@ import { ZdEstimateExternalSessionActiveChip } from "@/components/zakupy/ZdEstim
 import { ZdEstimatePageIntro } from "@/components/zakupy/ZdEstimatePageIntro";
 import { ZdEstimatePrepScopeFacts } from "@/components/zakupy/ZdEstimatePrepScopeFacts";
 import { ZdEstimatePrepForm } from "@/components/zakupy/ZdEstimatePrepForm";
+import { ZdEstimateScopeCatalogDialog } from "@/components/zakupy/ZdEstimateScopeCatalogDialog";
 import { SubiektFeedbackAlert } from "@/components/subiekt/SubiektFeedbackAlert";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { ZdEstimateRecountOverlay } from "@/components/zakupy/ZdEstimateRecountOverlay";
@@ -490,6 +503,7 @@ type Bootstrap = {
   defaultWindow: { dataOd: string; dataDo: string };
   suppliers: ZdEstimateSupplierOption[];
   quickGroups: ZdEstimateGroupOption[];
+  quickCechy: ZdEstimateCechaOption[];
   exclusions: ZdEstimateExclusionRow[];
   exclusionsError: string | null;
   onRequests: ZdEstimateOnRequestRow[];
@@ -505,6 +519,7 @@ type Bootstrap = {
   uiPrefs?: ZdEstimateUiPrefs;
   extrasPolicy?: ZdEstimateExtrasPolicy;
   todayScopeCoverage?: ZdEstimateScopeCoverage;
+  supplierScopes?: import("@/lib/data/zd-estimate-supplier-scopes").ZdEstimateSupplierScopeRow[];
 };
 
 type RunMeta = {
@@ -527,25 +542,31 @@ function resolveWindowForGroup(
   suppliers: ZdEstimateSupplierOption[],
   salesEndKey: string
 ) {
-  if (group.dniZapasu != null && group.dniZapasu > 0) {
-    const window = salesWindowFromDniZapasu(group.dniZapasu, salesEndKey);
+  if (group.supplierId) {
+    const card = suppliers.find((s) => s.id === group.supplierId);
+    const rawDni = group.dniZapasu ?? card?.dniZapasu ?? null;
+    const dniZapasu =
+      rawDni != null && rawDni > 0 ? rawDni : DEFAULT_DNI_ZAPASU;
+    const window = salesWindowFromDniZapasu(dniZapasu, salesEndKey);
     return {
-      dniZapasu: group.dniZapasu,
+      dniZapasu,
       dataOd: window.dataOd,
       dataDo: window.dataDo,
       supplierId: group.supplierId,
-      supplierName: group.supplierName,
-      stockLabel: group.stockLabel,
+      supplierName: group.supplierName ?? card?.name ?? null,
+      stockLabel: group.stockLabel ?? card?.stockLabel ?? null,
       matched: true as const,
+      matchSource: group.supplierMatchSource ?? null,
     };
   }
-  return applyGroupStockWindow({
+  const applied = applyGroupStockWindow({
     groupName: group.grt_Nazwa,
     suppliers,
     salesEndKey,
     fallbackDniZapasu: DEFAULT_DNI_ZAPASU,
     salesWindowFromDniZapasu,
   });
+  return { ...applied, matchSource: applied.matched ? ("name" as const) : null };
 }
 
 function resolveWindowForCecha(
@@ -553,25 +574,195 @@ function resolveWindowForCecha(
   suppliers: ZdEstimateSupplierOption[],
   salesEndKey: string
 ) {
-  if (cecha.dniZapasu != null && cecha.dniZapasu > 0) {
-    const window = salesWindowFromDniZapasu(cecha.dniZapasu, salesEndKey);
+  if (cecha.supplierId) {
+    const card = suppliers.find((s) => s.id === cecha.supplierId);
+    const rawDni = cecha.dniZapasu ?? card?.dniZapasu ?? null;
+    const dniZapasu =
+      rawDni != null && rawDni > 0 ? rawDni : DEFAULT_DNI_ZAPASU;
+    const window = salesWindowFromDniZapasu(dniZapasu, salesEndKey);
     return {
-      dniZapasu: cecha.dniZapasu,
+      dniZapasu,
       dataOd: window.dataOd,
       dataDo: window.dataDo,
       supplierId: cecha.supplierId,
-      supplierName: cecha.supplierName,
-      stockLabel: cecha.stockLabel,
+      supplierName: cecha.supplierName ?? card?.name ?? null,
+      stockLabel: cecha.stockLabel ?? card?.stockLabel ?? null,
       matched: true as const,
+      matchSource: cecha.supplierMatchSource ?? null,
     };
   }
-  return applyGroupStockWindow({
+  const applied = applyGroupStockWindow({
     groupName: cecha.ctw_Nazwa,
     suppliers,
     salesEndKey,
     fallbackDniZapasu: DEFAULT_DNI_ZAPASU,
     salesWindowFromDniZapasu,
   });
+  return { ...applied, matchSource: applied.matched ? ("name" as const) : null };
+}
+
+function mappingNoticeForSelection(input: {
+  matchSource: "mapping" | "name" | null | undefined;
+  supplierName: string | null | undefined;
+  scopeLabel: string;
+}): string | null {
+  if (input.matchSource !== "mapping" || !input.supplierName?.trim()) return null;
+  return ZD_ESTIMATE_UI.supplierFromMappingNotice(
+    input.supplierName.trim(),
+    input.scopeLabel
+  );
+}
+
+function enrichLaunchGroupOption(
+  launch: NonNullable<ZdEstimateLaunchProps>,
+  suppliers: ZdEstimateSupplierOption[],
+  scopes: readonly ZdEstimateSupplierScopeRow[]
+): ZdEstimateGroupOption | null {
+  if (launch.mode !== "grupa" || !launch.grupaId) return null;
+  const label = launch.label?.trim() || `Grupa ${launch.grupaId}`;
+  const mappedId = findUniqueSupplierIdForGrupa(scopes, launch.grupaId);
+  const resolved = resolveSupplierForScopeSelection({
+    scopeName: label,
+    suppliers,
+    mappedSupplierId: mappedId,
+  });
+  if (resolved.supplier) {
+    return {
+      grt_Id: launch.grupaId,
+      grt_Nazwa: label,
+      supplierId: resolved.supplier.id,
+      supplierName: resolved.supplier.name,
+      dniZapasu: resolved.supplier.dniZapasu ?? null,
+      stockLabel: resolved.supplier.stockLabel ?? null,
+      subiektKhId: resolved.supplier.subiektKhId ?? null,
+      additionalSubiektKhIds: resolved.supplier.additionalSubiektKhIds ?? [],
+      supplierMatchSource: resolved.source,
+      supplierMappingUnresolved: false,
+    };
+  }
+  if (resolved.mappingUnresolved) {
+    const keepLaunch =
+      Boolean(mappedId) && launch.supplierId != null && launch.supplierId === mappedId;
+    return {
+      grt_Id: launch.grupaId,
+      grt_Nazwa: label,
+      supplierId: keepLaunch ? launch.supplierId : null,
+      supplierName: keepLaunch ? (launch.supplierName ?? null) : null,
+      dniZapasu: null,
+      stockLabel: null,
+      subiektKhId: null,
+      additionalSubiektKhIds: [],
+      supplierMatchSource: null,
+      supplierMappingUnresolved: true,
+    };
+  }
+  const fromLaunch = launch.supplierId
+    ? suppliers.find((s) => s.id === launch.supplierId) ?? null
+    : null;
+  return {
+    grt_Id: launch.grupaId,
+    grt_Nazwa: label,
+    supplierId: fromLaunch?.id ?? launch.supplierId ?? null,
+    supplierName: fromLaunch?.name ?? launch.supplierName ?? null,
+    dniZapasu: fromLaunch?.dniZapasu ?? null,
+    stockLabel: fromLaunch?.stockLabel ?? null,
+    subiektKhId: fromLaunch?.subiektKhId ?? null,
+    additionalSubiektKhIds: fromLaunch?.additionalSubiektKhIds ?? [],
+    supplierMatchSource: null,
+    supplierMappingUnresolved: false,
+  };
+}
+
+function enrichLaunchCechaOption(
+  launch: NonNullable<ZdEstimateLaunchProps>,
+  suppliers: ZdEstimateSupplierOption[],
+  scopes: readonly ZdEstimateSupplierScopeRow[]
+): ZdEstimateCechaOption | null {
+  if (launch.mode !== "cecha" || !launch.cechaId) return null;
+  const label = launch.label?.trim() || `Cecha ${launch.cechaId}`;
+  const mappedId = findUniqueSupplierIdForCecha(scopes, launch.cechaId);
+  const resolved = resolveSupplierForScopeSelection({
+    scopeName: label,
+    suppliers,
+    mappedSupplierId: mappedId,
+  });
+  if (resolved.supplier) {
+    return {
+      ctw_Id: launch.cechaId,
+      ctw_Nazwa: label,
+      supplierId: resolved.supplier.id,
+      supplierName: resolved.supplier.name,
+      dniZapasu: resolved.supplier.dniZapasu ?? null,
+      stockLabel: resolved.supplier.stockLabel ?? null,
+      subiektKhId: resolved.supplier.subiektKhId ?? null,
+      additionalSubiektKhIds: resolved.supplier.additionalSubiektKhIds ?? [],
+      supplierMatchSource: resolved.source,
+      supplierMappingUnresolved: false,
+    };
+  }
+  if (resolved.mappingUnresolved) {
+    const keepLaunch =
+      Boolean(mappedId) && launch.supplierId != null && launch.supplierId === mappedId;
+    return {
+      ctw_Id: launch.cechaId,
+      ctw_Nazwa: label,
+      supplierId: keepLaunch ? launch.supplierId : null,
+      supplierName: keepLaunch ? (launch.supplierName ?? null) : null,
+      dniZapasu: null,
+      stockLabel: null,
+      subiektKhId: null,
+      additionalSubiektKhIds: [],
+      supplierMatchSource: null,
+      supplierMappingUnresolved: true,
+    };
+  }
+  const fromLaunch = launch.supplierId
+    ? suppliers.find((s) => s.id === launch.supplierId) ?? null
+    : null;
+  return {
+    ctw_Id: launch.cechaId,
+    ctw_Nazwa: label,
+    supplierId: fromLaunch?.id ?? launch.supplierId ?? null,
+    supplierName: fromLaunch?.name ?? launch.supplierName ?? null,
+    dniZapasu: fromLaunch?.dniZapasu ?? null,
+    stockLabel: fromLaunch?.stockLabel ?? null,
+    subiektKhId: fromLaunch?.subiektKhId ?? null,
+    additionalSubiektKhIds: fromLaunch?.additionalSubiektKhIds ?? [],
+    supplierMatchSource: null,
+    supplierMappingUnresolved: false,
+  };
+}
+
+function applyScopeSupplierFields<
+  T extends {
+    supplierId?: string | null;
+    supplierName?: string | null;
+    dniZapasu?: number | null;
+    stockLabel?: string | null;
+    subiektKhId?: number | null;
+    additionalSubiektKhIds?: number[];
+    supplierMatchSource?: "mapping" | "name" | null;
+    supplierMappingUnresolved?: boolean;
+  },
+>(
+  base: T,
+  resolved: {
+    supplier: ZdEstimateSupplierOption | null;
+    source: "mapping" | "name" | null;
+    mappingUnresolved?: boolean;
+  }
+): T {
+  return {
+    ...base,
+    supplierId: resolved.supplier?.id ?? null,
+    supplierName: resolved.supplier?.name ?? null,
+    dniZapasu: resolved.supplier?.dniZapasu ?? null,
+    stockLabel: resolved.supplier?.stockLabel ?? null,
+    subiektKhId: resolved.supplier?.subiektKhId ?? null,
+    additionalSubiektKhIds: resolved.supplier?.additionalSubiektKhIds ?? [],
+    supplierMatchSource: resolved.source,
+    supplierMappingUnresolved: resolved.mappingUnresolved === true,
+  };
 }
 
 export function ZdEstimateWorkbench({
@@ -618,44 +809,86 @@ export function ZdEstimateWorkbench({
   );
   const [groupHits, setGroupHits] = useState<ZdEstimateGroupOption[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<ZdEstimateGroupOption | null>(
-    () => {
-      if (launch?.mode !== "grupa" || !launch.grupaId) return null;
-      const s = bootstrap.suppliers.find((x) => x.id === launch.supplierId);
-      return {
-        grt_Id: launch.grupaId,
-        grt_Nazwa: launch.label?.trim() || `Grupa ${launch.grupaId}`,
-        supplierId: launch.supplierId,
-        supplierName: launch.supplierName ?? s?.name ?? null,
-        dniZapasu: s?.dniZapasu ?? null,
-        stockLabel: s?.stockLabel ?? null,
-        subiektKhId: s?.subiektKhId ?? null,
-        additionalSubiektKhIds: s?.additionalSubiektKhIds ?? [],
-      };
-    }
+    () =>
+      launch
+        ? enrichLaunchGroupOption(
+            launch,
+            bootstrap.suppliers,
+            bootstrap.supplierScopes ?? []
+          )
+        : null
   );
   const [cechaQuery, setCechaQuery] = useState(() =>
     launch?.mode === "cecha" ? launch.label?.trim() ?? "" : ""
   );
   const [cechaHits, setCechaHits] = useState<ZdEstimateCechaOption[]>([]);
   const [selectedCecha, setSelectedCecha] = useState<ZdEstimateCechaOption | null>(
-    () => {
-      if (launch?.mode !== "cecha" || !launch.cechaId) return null;
-      const s = bootstrap.suppliers.find((x) => x.id === launch.supplierId);
-      return {
-        ctw_Id: launch.cechaId,
-        ctw_Nazwa: launch.label?.trim() || `Cecha ${launch.cechaId}`,
-        supplierId: launch.supplierId,
-        supplierName: launch.supplierName ?? s?.name ?? null,
-        dniZapasu: s?.dniZapasu ?? null,
-        stockLabel: s?.stockLabel ?? null,
-        subiektKhId: s?.subiektKhId ?? null,
-        additionalSubiektKhIds: s?.additionalSubiektKhIds ?? [],
-      };
+    () =>
+      launch
+        ? enrichLaunchCechaOption(
+            launch,
+            bootstrap.suppliers,
+            bootstrap.supplierScopes ?? []
+          )
+        : null
+  );
+  const [supplierId, setSupplierId] = useState<string | null>(() => {
+    if (!launch) return null;
+    if (launch.mode === "grupa") {
+      return (
+        enrichLaunchGroupOption(
+          launch,
+          bootstrap.suppliers,
+          bootstrap.supplierScopes ?? []
+        )?.supplierId ??
+        launch.supplierId ??
+        null
+      );
     }
-  );
-  const [supplierId, setSupplierId] = useState<string | null>(
-    launch?.supplierId ?? null
-  );
+    if (launch.mode === "cecha") {
+      return (
+        enrichLaunchCechaOption(
+          launch,
+          bootstrap.suppliers,
+          bootstrap.supplierScopes ?? []
+        )?.supplierId ??
+        launch.supplierId ??
+        null
+      );
+    }
+    return launch.supplierId ?? null;
+  });
+  /** Komunikat: dostawca przypisany z mapowania zakresów. */
+  const [supplierFromMappingNotice, setSupplierFromMappingNotice] = useState<
+    string | null
+  >(() => {
+    if (!launch) return null;
+    if (launch.mode === "grupa") {
+      const g = enrichLaunchGroupOption(
+        launch,
+        bootstrap.suppliers,
+        bootstrap.supplierScopes ?? []
+      );
+      return mappingNoticeForSelection({
+        matchSource: g?.supplierMatchSource,
+        supplierName: g?.supplierName,
+        scopeLabel: g?.grt_Nazwa ?? "",
+      });
+    }
+    if (launch.mode === "cecha") {
+      const c = enrichLaunchCechaOption(
+        launch,
+        bootstrap.suppliers,
+        bootstrap.supplierScopes ?? []
+      );
+      return mappingNoticeForSelection({
+        matchSource: c?.supplierMatchSource,
+        supplierName: c?.supplierName,
+        scopeLabel: c?.ctw_Nazwa ?? "",
+      });
+    }
+    return null;
+  });
   const [dniZapasu, setDniZapasu] = useState(() => {
     const fromSupplier = bootstrap.suppliers.find(
       (s) => s.id === launch?.supplierId
@@ -704,6 +937,21 @@ export function ZdEstimateWorkbench({
     useState<ZdEstimateSalesWindowSource>("stock");
   const [zapasMin, setZapasMin] = useState(String(uiPrefs.zapasMin));
   const [showAdvanced, setShowAdvanced] = useState(uiPrefs.showAdvanced);
+  const [favoriteGroups, setFavoriteGroups] = useState<ZdEstimateFavoriteRef[]>(
+    () => uiPrefs.favoriteGroups.map((f) => ({ ...f }))
+  );
+  const [favoriteCechy, setFavoriteCechy] = useState<ZdEstimateFavoriteRef[]>(
+    () => uiPrefs.favoriteCechy.map((f) => ({ ...f }))
+  );
+  const [groupEnrichById, setGroupEnrichById] = useState(
+    () => new Map(bootstrap.quickGroups.map((g) => [g.grt_Id, g] as const))
+  );
+  const [cechaEnrichById, setCechaEnrichById] = useState(() => {
+    return new Map(
+      (bootstrap.quickCechy ?? []).map((c) => [c.ctw_Id, c] as const)
+    );
+  });
+  const [scopeCatalogOpen, setScopeCatalogOpen] = useState(false);
   const [prepCollapsed, setPrepCollapsed] = useState(false);
   const [launchReadyMessage, setLaunchReadyMessage] = useState<string | null>(
     null
@@ -1001,6 +1249,8 @@ export function ZdEstimateWorkbench({
   const [missingBomTwIds, setMissingBomTwIds] = useState<number[]>([]);
   const bomMissingCount = missingBomTwIds.length;
   const [createUnlockedAfterDone, setCreateUnlockedAfterDone] = useState(false);
+  const [createTimeoutUnlockConfirmOpen, setCreateTimeoutUnlockConfirmOpen] =
+    useState(false);
   const [qtyOverrideByTwId, setQtyOverrideByTwId] = useState<Record<number, number>>({});
   const [sessionIncludeTwIds, setSessionIncludeTwIds] = useState<Record<number, true>>({});
   const [createUndoVisible, setCreateUndoVisible] = useState(false);
@@ -1064,7 +1314,8 @@ export function ZdEstimateWorkbench({
   const autorunReplaceSessionIdRef = useRef<string | null>(null);
   const [externalSessionScopeChangeOpen, setExternalSessionScopeChangeOpen] =
     useState(false);
-  const sessionResumeStartedAtMsRef = useRef(Date.now());
+  const sessionResumeStartedAtMsRef = useRef(0);
+  const [sessionResumeStartedAtMs, setSessionResumeStartedAtMs] = useState(0);
   const sessionResumeRevealTimerRef = useRef<number | null>(null);
   const pendingRestoredToastRef = useRef<string | null>(null);
   /** Blokuje formularz zakresu do czasu restore (także cichego refreshu z tokenem). */
@@ -1224,6 +1475,8 @@ export function ZdEstimateWorkbench({
     sortKey: ZdEstimateListSortKey;
     sortDir: ZdEstimateListSortDir;
     dniZapasu?: number | null;
+    favoriteGroups: ZdEstimateFavoriteRef[];
+    favoriteCechy: ZdEstimateFavoriteRef[];
   }>({
     zapasMin: Number(zapasMin) || 0,
     showAdvanced,
@@ -1232,6 +1485,8 @@ export function ZdEstimateWorkbench({
     listFilter,
     sortKey,
     sortDir,
+    favoriteGroups,
+    favoriteCechy,
   });
   const prefsLastSavedFingerprintRef = useRef(
     JSON.stringify({
@@ -1243,6 +1498,8 @@ export function ZdEstimateWorkbench({
       sortKey: uiPrefs.sortKey,
       sortDir: uiPrefs.sortDir,
       dniZapasu: "__omit__",
+      favoriteGroups: uiPrefs.favoriteGroups,
+      favoriteCechy: uiPrefs.favoriteCechy,
     })
   );
 
@@ -1261,6 +1518,12 @@ export function ZdEstimateWorkbench({
       listFilter: prefsPayloadRef.current.listFilter,
       sortKey: prefsPayloadRef.current.sortKey,
       sortDir: prefsPayloadRef.current.sortDir,
+      favoriteGroups: prefsPayloadRef.current.favoriteGroups.map((f) => ({
+        ...f,
+      })),
+      favoriteCechy: prefsPayloadRef.current.favoriteCechy.map((f) => ({
+        ...f,
+      })),
       ...(prefsPayloadRef.current.dniZapasu !== undefined
         ? { dniZapasu: prefsPayloadRef.current.dniZapasu }
         : {}),
@@ -1274,6 +1537,8 @@ export function ZdEstimateWorkbench({
       sortKey: patch.sortKey,
       sortDir: patch.sortDir,
       dniZapasu: "dniZapasu" in patch ? patch.dniZapasu : "__omit__",
+      favoriteGroups: patch.favoriteGroups,
+      favoriteCechy: patch.favoriteCechy,
     });
     if (fingerprint === prefsLastSavedFingerprintRef.current) {
       prefsDirtyRef.current = false;
@@ -1284,7 +1549,7 @@ export function ZdEstimateWorkbench({
       if (!res.ok) {
         prefsDirtyRef.current = true;
         flashSettingsLive(
-          res.message || "Nie udało się zapisać układu kolumn."
+          res.message || "Nie udało się zapisać preferencji kreatora."
         );
         return;
       }
@@ -1301,6 +1566,8 @@ export function ZdEstimateWorkbench({
       listFilter,
       sortKey,
       sortDir,
+      favoriteGroups: favoriteGroups.map((f) => ({ ...f })),
+      favoriteCechy: favoriteCechy.map((f) => ({ ...f })),
       ...(dniZapasuTouchedForPrefsRef.current
         ? { dniZapasu: dniZapasuPrefsValueRef.current }
         : {}),
@@ -1332,6 +1599,8 @@ export function ZdEstimateWorkbench({
     sortKey,
     sortDir,
     dniZapasu,
+    favoriteGroups,
+    favoriteCechy,
     flushZdEstimateUiPrefsSave,
   ]);
 
@@ -1805,6 +2074,7 @@ export function ZdEstimateWorkbench({
         unitsPerPackage: row.unitsPerPackage,
         packageLabel: row.packageLabel,
         documentUnitMode: row.documentUnitMode,
+        orderMultiple: row.orderMultiple,
       });
     }
     for (const pair of productPairs) {
@@ -1813,6 +2083,7 @@ export function ZdEstimateWorkbench({
         unitsPerPackage: pair.unitsPerPack,
         packageLabel: existing?.packageLabel ?? "op.",
         documentUnitMode: "packages",
+        orderMultiple: existing?.orderMultiple ?? null,
       });
     }
     return map;
@@ -1916,9 +2187,12 @@ export function ZdEstimateWorkbench({
 
   const prosbaOverlapCandidateKey = prosbaOverlapCandidateTwIds.join(",");
 
+  if (!prosbaOverlapCandidateTwIds.length && prosbaReservedByTwId != null) {
+    setProsbaReservedByTwId(null);
+  }
+
   useEffect(() => {
     if (!prosbaOverlapCandidateTwIds.length) {
-      setProsbaReservedByTwId(null);
       skipProsbaOverlapFetchKeyRef.current = null;
       return;
     }
@@ -1947,10 +2221,20 @@ export function ZdEstimateWorkbench({
 
   const kitOnlyBlockedAlertCount = useMemo(() => {
     if (!lines?.length && individualBundle.serviceLines.length === 0) return 0;
+    const byTw = new Map((lines ?? []).map((l) => [l.tw_Id, l]));
     const blockedTwIds = new Set<number>();
     for (const l of lines ?? []) {
       if (l.bom?.purchaseBlocked !== true) continue;
-      // Piece/assembled_parent mają Sprzed.=0 w kolumnie — bierz kanał / wkład.
+      const parents = l.bom.parentTwIds ?? [];
+      // Przy „komplet ze składników” popyt idzie na kit — bez alertu „bez ścieżki”.
+      if (
+        parents.length > 0 &&
+        !parents.some(
+          (pid) => byTw.get(pid)?.bom?.purchaseTarget === "kit_only"
+        )
+      ) {
+        continue;
+      }
       if (zdEstimateLineSalesDemandSignal(l) > 0) blockedTwIds.add(l.tw_Id);
     }
     let serviceHits = 0;
@@ -2528,6 +2812,10 @@ export function ZdEstimateWorkbench({
           externalSessionPersistSkipRef.current
         ) {
           if (created.ok) {
+            console.warn(
+              "Sesja UI kreatora: usuwam recreate — ID już nieaktualne.",
+              created.sessionId
+            );
             void deleteZdEstimateExternalSessionRecord(created.sessionId);
           }
           return;
@@ -2604,8 +2892,10 @@ export function ZdEstimateWorkbench({
     }, ZD_ESTIMATE_EXTERNAL_SESSION_PERSIST_DEBOUNCE_MS);
   }, []);
 
-  flushExternalSessionPersistRef.current = flushExternalSessionPersist;
-  scheduleExternalSessionPersistRef.current = scheduleExternalSessionPersist;
+  useEffect(() => {
+    flushExternalSessionPersistRef.current = flushExternalSessionPersist;
+    scheduleExternalSessionPersistRef.current = scheduleExternalSessionPersist;
+  });
 
   const hasActiveExternalSessionWork = lines != null;
 
@@ -2618,7 +2908,7 @@ export function ZdEstimateWorkbench({
       scopeChangePendingActionRef.current = action;
       setExternalSessionScopeChangeOpen(true);
     },
-    [hasActiveExternalSessionWork]
+    [hasActiveExternalSessionWork, setExternalSessionScopeChangeOpen]
   );
 
   const applyExternalSessionPayload = useCallback(
@@ -2631,6 +2921,19 @@ export function ZdEstimateWorkbench({
       setGroupQuery(payload.groupQuery ?? payload.selectedGroup?.grt_Nazwa ?? "");
       setCechaQuery(payload.cechaQuery ?? payload.selectedCecha?.ctw_Nazwa ?? "");
       setSupplierId(payload.supplierId ?? null);
+      setSupplierFromMappingNotice(
+        payload.scopeMode === "cecha"
+          ? mappingNoticeForSelection({
+              matchSource: payload.selectedCecha?.supplierMatchSource,
+              supplierName: payload.selectedCecha?.supplierName,
+              scopeLabel: payload.selectedCecha?.ctw_Nazwa ?? "",
+            })
+          : mappingNoticeForSelection({
+              matchSource: payload.selectedGroup?.supplierMatchSource,
+              supplierName: payload.selectedGroup?.supplierName,
+              scopeLabel: payload.selectedGroup?.grt_Nazwa ?? "",
+            })
+      );
       setDniZapasu(String(payload.dniZapasu ?? ""));
       setDataOd(payload.dataOd);
       setDataDo(payload.dataDo);
@@ -2701,6 +3004,7 @@ export function ZdEstimateWorkbench({
       setCreateDoneDokId(null);
       setCreateDoneDokNr(null);
       setCreateUnconfirmedAttempt(false);
+      setCreateTimeoutUnlockConfirmOpen(false);
       setCreateUnlockedAfterDone(false);
       setCreateUndoVisible(false);
       setCreateZdOpen(false);
@@ -2731,6 +3035,7 @@ export function ZdEstimateWorkbench({
   const restoreExternalSession = useCallback(
     async (token: NonNullable<ReturnType<typeof peekZdEstimateExternalSessionToken>>) => {
       sessionResumeStartedAtMsRef.current = Date.now();
+      setSessionResumeStartedAtMs(sessionResumeStartedAtMsRef.current);
       setSessionResumeReturningFromAway(
         isZdEstimateExternalSessionReturnNavigation(token)
       );
@@ -2873,6 +3178,7 @@ export function ZdEstimateWorkbench({
     setCreateDoneDokId(null);
     setCreateDoneDokNr(null);
     setCreateUnconfirmedAttempt(false);
+    setCreateTimeoutUnlockConfirmOpen(false);
     setCreateZdOpen(false);
     setCreatingZd(false);
     setLinkZdOpen(false);
@@ -2929,6 +3235,7 @@ export function ZdEstimateWorkbench({
         setGroupHits([]);
         setGroupQuery("");
       }
+      setSupplierFromMappingNotice(null);
     });
   };
 
@@ -2949,7 +3256,7 @@ export function ZdEstimateWorkbench({
       setSelectedCecha(null);
       setCechaHits([]);
       setGroupQuery(group.grt_Nazwa);
-      setGroupHits([]);
+      // Nie czyść groupHits — 1 wynik wyszukiwania musi zostać z gwiazdką (plan ulubionych).
       setFeedback(null);
       setErrorMessage(null);
 
@@ -2959,6 +3266,13 @@ export function ZdEstimateWorkbench({
 
       setSupplierId(applied.supplierId);
       setDniZapasu(String(applied.dniZapasu));
+      setSupplierFromMappingNotice(
+        mappingNoticeForSelection({
+          matchSource: applied.matchSource,
+          supplierName: applied.supplierName,
+          scopeLabel: group.grt_Nazwa,
+        })
+      );
       if (shouldApplyStockSalesWindow(salesWindowSource)) {
         setDataOd(applied.dataOd);
         setDataDo(applied.dataDo);
@@ -3000,7 +3314,7 @@ export function ZdEstimateWorkbench({
       setSelectedGroup(null);
       setGroupHits([]);
       setCechaQuery(cecha.ctw_Nazwa);
-      setCechaHits([]);
+      // Nie czyść cechaHits — 1 wynik wyszukiwania musi zostać z gwiazdką.
       setFeedback(null);
       setErrorMessage(null);
 
@@ -3010,6 +3324,13 @@ export function ZdEstimateWorkbench({
 
       setSupplierId(applied.supplierId);
       setDniZapasu(String(applied.dniZapasu));
+      setSupplierFromMappingNotice(
+        mappingNoticeForSelection({
+          matchSource: applied.matchSource,
+          supplierName: applied.supplierName,
+          scopeLabel: cecha.ctw_Nazwa,
+        })
+      );
       if (shouldApplyStockSalesWindow(salesWindowSource)) {
         setDataOd(applied.dataOd);
         setDataDo(applied.dataDo);
@@ -3068,12 +3389,118 @@ export function ZdEstimateWorkbench({
     });
   };
 
+  const handleSupplierScopesChange = useCallback(
+    (
+      scopes: ZdEstimateSupplierScopeRow[],
+      meta: { reason: "load" | "mutate" }
+    ) => {
+      setTodayCoverage(
+        zdEstimateScopeCoverage(
+          collectTodayScheduleSuppliers({
+            todayKey: bootstrap.todayKey,
+            suppliers: bootstrap.suppliers,
+          }),
+          scopes.map((s) => s.supplierId)
+        )
+      );
+      if (meta.reason !== "mutate") return;
+
+      setGroupHits([]);
+      setCechaHits([]);
+
+      if (scopeMode === "grupa" && selectedGroup) {
+        const next = applyScopeSupplierFields(
+          selectedGroup,
+          resolveSupplierForScopeSelection({
+            scopeName: selectedGroup.grt_Nazwa,
+            suppliers: bootstrap.suppliers,
+            mappedSupplierId: findUniqueSupplierIdForGrupa(
+              scopes,
+              selectedGroup.grt_Id
+            ),
+          })
+        );
+        setSelectedGroup(next);
+        const applied = resolveWindowForGroup(
+          next,
+          bootstrap.suppliers,
+          bootstrap.salesEndKey
+        );
+        if (applied.supplierId !== supplierId) {
+          clearEstimateResult({ fromScopeChange: lines != null });
+        }
+        setSupplierId(applied.supplierId);
+        setDniZapasu(String(applied.dniZapasu));
+        setSupplierFromMappingNotice(
+          mappingNoticeForSelection({
+            matchSource: applied.matchSource,
+            supplierName: applied.supplierName,
+            scopeLabel: next.grt_Nazwa,
+          })
+        );
+        if (shouldApplyStockSalesWindow(salesWindowSource)) {
+          setDataOd(applied.dataOd);
+          setDataDo(applied.dataDo);
+        }
+        return;
+      }
+
+      if (scopeMode === "cecha" && selectedCecha) {
+        const next = applyScopeSupplierFields(
+          selectedCecha,
+          resolveSupplierForScopeSelection({
+            scopeName: selectedCecha.ctw_Nazwa,
+            suppliers: bootstrap.suppliers,
+            mappedSupplierId: findUniqueSupplierIdForCecha(
+              scopes,
+              selectedCecha.ctw_Id
+            ),
+          })
+        );
+        setSelectedCecha(next);
+        const applied = resolveWindowForCecha(
+          next,
+          bootstrap.suppliers,
+          bootstrap.salesEndKey
+        );
+        if (applied.supplierId !== supplierId) {
+          clearEstimateResult({ fromScopeChange: lines != null });
+        }
+        setSupplierId(applied.supplierId);
+        setDniZapasu(String(applied.dniZapasu));
+        setSupplierFromMappingNotice(
+          mappingNoticeForSelection({
+            matchSource: applied.matchSource,
+            supplierName: applied.supplierName,
+            scopeLabel: next.ctw_Nazwa,
+          })
+        );
+        if (shouldApplyStockSalesWindow(salesWindowSource)) {
+          setDataOd(applied.dataOd);
+          setDataDo(applied.dataDo);
+        }
+      }
+    },
+    [
+      bootstrap.salesEndKey,
+      bootstrap.suppliers,
+      bootstrap.todayKey,
+      lines,
+      salesWindowSource,
+      scopeMode,
+      selectedCecha,
+      selectedGroup,
+      supplierId,
+    ]
+  );
+
   const onSupplierOverride = (id: string) => {
     if (id === (supplierId ?? "")) return;
 
     const affectsScope = lines != null;
 
     const applyChange = () => {
+      setSupplierFromMappingNotice(null);
       if (!id) {
         setSupplierId(null);
         clearEstimateResult({ fromScopeChange: lines != null });
@@ -3191,6 +3618,94 @@ export function ZdEstimateWorkbench({
     });
   };
 
+  const quickGroupsLive = useMemo(
+    () => resolveZdEstimateFavoriteGroupChips(favoriteGroups, groupEnrichById),
+    [favoriteGroups, groupEnrichById]
+  );
+  const quickCechyLive = useMemo(
+    () => resolveZdEstimateFavoriteCechaChips(favoriteCechy, cechaEnrichById),
+    [favoriteCechy, cechaEnrichById]
+  );
+
+  const rememberGroupEnrich = useCallback((group: ZdEstimateGroupOption) => {
+    setGroupEnrichById((prev) => {
+      const next = new Map(prev);
+      next.set(group.grt_Id, group);
+      return next;
+    });
+    const label = group.grt_Nazwa.trim();
+    if (!label) return;
+    setFavoriteGroups((prev) => {
+      const i = prev.findIndex((f) => f.id === group.grt_Id);
+      if (i < 0 || prev[i]!.label === label) return prev;
+      const next = [...prev];
+      next[i] = { id: group.grt_Id, label };
+      return next;
+    });
+  }, []);
+
+  const rememberCechaEnrich = useCallback((cecha: ZdEstimateCechaOption) => {
+    setCechaEnrichById((prev) => {
+      const next = new Map(prev);
+      next.set(cecha.ctw_Id, cecha);
+      return next;
+    });
+    const label = cecha.ctw_Nazwa.trim();
+    if (!label) return;
+    setFavoriteCechy((prev) => {
+      const i = prev.findIndex((f) => f.id === cecha.ctw_Id);
+      if (i < 0 || prev[i]!.label === label) return prev;
+      const next = [...prev];
+      next[i] = { id: cecha.ctw_Id, label };
+      return next;
+    });
+  }, []);
+
+  const toggleGroupFavorite = useCallback(
+    (group: ZdEstimateGroupOption) => {
+      rememberGroupEnrich(group);
+      setFavoriteGroups((prev) => {
+        const res = toggleZdEstimateFavorite(prev, {
+          id: group.grt_Id,
+          label: group.grt_Nazwa,
+        });
+        if (!res.ok) {
+          flashSettingsLive(ZD_ESTIMATE_UI.prepFavoriteCapFlash);
+          return prev;
+        }
+        return res.next;
+      });
+    },
+    [flashSettingsLive, rememberGroupEnrich]
+  );
+
+  const toggleCechaFavorite = useCallback(
+    (cecha: ZdEstimateCechaOption) => {
+      rememberCechaEnrich(cecha);
+      setFavoriteCechy((prev) => {
+        const res = toggleZdEstimateFavorite(prev, {
+          id: cecha.ctw_Id,
+          label: cecha.ctw_Nazwa,
+        });
+        if (!res.ok) {
+          flashSettingsLive(ZD_ESTIMATE_UI.prepFavoriteCapFlash);
+          return prev;
+        }
+        return res.next;
+      });
+    },
+    [flashSettingsLive, rememberCechaEnrich]
+  );
+
+  const isGroupFavoriteCb = useCallback(
+    (grtId: number) => isZdEstimateFavorite(favoriteGroups, grtId),
+    [favoriteGroups]
+  );
+  const isCechaFavoriteCb = useCallback(
+    (ctwId: number) => isZdEstimateFavorite(favoriteCechy, ctwId),
+    [favoriteCechy]
+  );
+
   const searchGroups = () => {
     setFeedback(null);
     setErrorMessage(null);
@@ -3203,9 +3718,15 @@ export function ZdEstimateWorkbench({
         return;
       }
       setGroupHits(res.groups);
+      if (res.groups.length > 0) {
+        setGroupEnrichById((prev) => {
+          const next = new Map(prev);
+          for (const g of res.groups) next.set(g.grt_Id, g);
+          return next;
+        });
+      }
       if (res.groups.length === 1) {
         selectGroup(res.groups[0]!);
-        return;
       }
       if (res.groups.length === 0) {
         setErrorMessage("Brak grup dla tej frazy.");
@@ -3225,9 +3746,15 @@ export function ZdEstimateWorkbench({
         return;
       }
       setCechaHits(res.cechy);
+      if (res.cechy.length > 0) {
+        setCechaEnrichById((prev) => {
+          const next = new Map(prev);
+          for (const c of res.cechy) next.set(c.ctw_Id, c);
+          return next;
+        });
+      }
       if (res.cechy.length === 1) {
         selectCecha(res.cechy[0]!);
-        return;
       }
       if (res.cechy.length === 0) {
         setErrorMessage("Brak cech dla tej frazy.");
@@ -3257,6 +3784,8 @@ export function ZdEstimateWorkbench({
     const cechaId =
       opts?.cechaId ??
       (mode === "cecha" ? selectedCecha?.ctw_Id : undefined);
+    // Trzymaj UI scope w sync z faktycznym Policz (autorun / override opts).
+    if (mode !== scopeMode) setScopeMode(mode);
     const useProgressShell = shouldUseZdEstimateProgressShell({
       hasLines: lines != null,
     });
@@ -3300,17 +3829,55 @@ export function ZdEstimateWorkbench({
     setLastEstimateFailed(false);
     setScopeNeedsRecount(false);
     const estimateGen = ++estimateGenRef.current;
+    const scopeLabelForRun =
+      mode === "cecha"
+        ? selectedCecha?.ctw_Nazwa ?? (cechaQuery.trim() || null)
+        : selectedGroup?.grt_Nazwa ?? (groupQuery.trim() || null);
     startEstimate(async () => {
       const res = await actionRunZdEstimateManual({
         mode,
         ...(mode === "grupa" ? { grupaId } : { cechaId }),
+        scopeLabel: scopeLabelForRun,
         supplierId: supplierId ?? null,
         dniZapasu: Number(dniZapasu),
         dataOd,
         dataDo,
         zapasMin: Number(zapasMin) || 0,
+        uiSessionSeed: {
+          selectedGroup: mode === "grupa" ? selectedGroup : null,
+          selectedCecha: mode === "cecha" ? selectedCecha : null,
+          groupQuery,
+          cechaQuery,
+          showAdvanced,
+          salesWindowSource,
+          sortKey,
+          sortDir,
+          columns,
+          columnOrder,
+        },
       });
-      if (estimateGen !== estimateGenRef.current) return;
+      if (estimateGen !== estimateGenRef.current) {
+        // Serwer mógł już skasować poprzednią active i/lub utworzyć nową —
+        // nie zostawiaj orphan DB ani tokenu wskazującego na skasowaną sesję.
+        if (res.ok && res.uiSessionRotated) {
+          externalSessionIdRef.current = null;
+          externalSessionCreatedAtRef.current = null;
+          clearZdEstimateExternalSessionToken();
+          syncExternalSessionTokenState();
+        }
+        if (
+          res.ok &&
+          typeof res.uiSessionId === "string" &&
+          res.uiSessionId.trim()
+        ) {
+          console.warn(
+            "Sesja UI kreatora: usuwam sesję serwerową — Policz unieważniony przed apply (estimateGen).",
+            res.uiSessionId
+          );
+          void deleteZdEstimateExternalSessionRecord(res.uiSessionId.trim());
+        }
+        return;
+      }
       if (!res.ok) {
         setLines(null);
         setLinesBase(null);
@@ -3340,6 +3907,7 @@ export function ZdEstimateWorkbench({
         setCreateDoneDokId(null);
         setCreateDoneDokNr(null);
         setCreateUnconfirmedAttempt(false);
+        setCreateTimeoutUnlockConfirmOpen(false);
         setCreateUnlockedAfterDone(false);
         setCreateUndoVisible(false);
         setCreateZdOpen(false);
@@ -3435,6 +4003,7 @@ export function ZdEstimateWorkbench({
         setCreateDoneDokId(null);
         setCreateDoneDokNr(null);
         setCreateUnconfirmedAttempt(false);
+        setCreateTimeoutUnlockConfirmOpen(false);
         setCreateUnlockedAfterDone(false);
         setCreateUndoVisible(false);
         setCreateZdOpen(false);
@@ -3543,78 +4112,9 @@ export function ZdEstimateWorkbench({
         applySuccessUi();
       }
 
-      // Meta z Policz (exclusions/packaging/pairs/BOM) — bez ponownego actionList*
-      // (te same dane już w res; drugie I/O było zbędne i mogło rozjechać się z qty).
-
-      // Po sukcesie „Policz” zapisz snapshot UI sesji kreatora ZD oraz token timeru w sessionStorage.
+      // Po sukcesie „Policz”: sesja UI. Preferuj zapis z serwera (ten sam request co Policz) —
+      // duże cechy (Ivoclar) nie muszą ponownie uploadować ~tysięcy linii.
       try {
-        const pendingIndividualsOk = res.pendingIndividuals != null;
-        const snapshotPayload = buildZdEstimateUiSessionSnapshot({
-          linesBase: coerceZdEstimateLinesBase(
-            res.result.pozycjeBase ?? res.result.pozycje
-          ),
-          lines: res.result.pozycje,
-          historyByTwId: (res.historyByTwId ?? [])
-            .filter((e) => e.twId > 0)
-            .map((e) => ({
-              twId: e.twId,
-              lastOrderedQty: e.lastOrderedQty,
-              linkedAt: e.linkedAt,
-            })),
-          historyFetchFailed: Boolean(res.historyFetchFailed),
-          pendingIndividuals: pendingIndividualsOk
-            ? (res.pendingIndividuals ?? [])
-            : [],
-          pendingIndividualsTruncated: pendingIndividualsOk
-            ? Boolean(res.pendingIndividualsTruncated)
-            : false,
-          pendingIndividualsError: pendingIndividualsOk
-            ? null
-            : res.pendingIndividualsError?.trim() ||
-              "Nie wczytano próśb przy Policz — użyj „Wczytaj ponownie” albo policz listę jeszcze raz.",
-          meta: {
-            pagesFetched: res.meta.pagesFetched,
-            totalCountApi: res.meta.totalCountApi,
-            truncated: res.meta.truncated,
-            ordersBaseUrl: res.meta.ordersBaseUrl,
-            durationMs: res.meta.durationMs,
-            totalFromSubiekt: res.meta.totalFromSubiekt,
-          },
-          missingPartnerTwIds: res.meta.pairMissingTwIds ?? [],
-          missingBomTwIds: res.meta.bomMissingTwIds ?? [],
-          paramInfo: res.result.parametry as Record<string, unknown>,
-          exclusions: res.exclusions ?? [],
-          onRequests: res.onRequests ?? [],
-          packaging: res.packaging ?? [],
-          productPairs: res.productPairs ?? [],
-          productBoms: res.productBoms ?? [],
-          teethTwIds: res.teethTwIds ?? [],
-          boostPreset: res.boostPreset ?? boostPreset,
-          appliedBoostPreset: res.boostPreset ?? appliedBoostPreset,
-          boostNeedsRecount: false,
-          scopeMode,
-          selectedGroup,
-          selectedCecha,
-          groupQuery,
-          cechaQuery,
-          supplierId,
-          dniZapasu,
-          dataOd,
-          dataDo,
-          zapasMin,
-          showAdvanced,
-          salesWindowSource,
-          qtyOverrideByTwId: {},
-          acceptedReviewTwIds: {},
-          sessionIncludeTwIds: {},
-          listFilter: "order",
-          listSearch: "",
-          sortKey,
-          sortDir,
-          columns,
-          columnOrder,
-        });
-
         externalSessionPersistSkipRef.current = true;
         externalSessionPersistQueuedRef.current = false;
         if (externalSessionPersistTimerRef.current != null) {
@@ -3626,30 +4126,183 @@ export function ZdEstimateWorkbench({
         externalSessionIdRef.current = null;
         clearZdEstimateExternalSessionToken();
         syncExternalSessionTokenState();
-        const persist = await actionCreateZdEstimateUiSession({
-          payload: snapshotPayload,
-          schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
-        });
 
-        if (estimateGen !== estimateGenRef.current) {
-          if (persist.ok) {
-            void deleteZdEstimateExternalSessionRecord(persist.sessionId);
+        const tokenScopeMode = mode as "grupa" | "cecha";
+        const tokenGrupaId =
+          tokenScopeMode === "grupa" &&
+          typeof grupaId === "number" &&
+          grupaId > 0
+            ? grupaId
+            : null;
+        const tokenCechaId =
+          tokenScopeMode === "cecha" &&
+          typeof cechaId === "number" &&
+          cechaId > 0
+            ? cechaId
+            : null;
+
+        let sessionId: string | null =
+          typeof res.uiSessionId === "string" && res.uiSessionId.trim()
+            ? res.uiSessionId.trim()
+            : null;
+        let createdAt: string | null =
+          typeof res.uiSessionCreatedAt === "string" &&
+          res.uiSessionCreatedAt.trim()
+            ? res.uiSessionCreatedAt.trim()
+            : null;
+
+        if (!sessionId) {
+          const pendingIndividualsOk = res.pendingIndividuals != null;
+          const fallbackGroup =
+            tokenScopeMode === "grupa"
+              ? (selectedGroup ??
+                (tokenGrupaId != null && tokenGrupaId > 0
+                  ? {
+                      grt_Id: tokenGrupaId,
+                      grt_Nazwa:
+                        scopeLabelForRun || `Grupa ${tokenGrupaId}`,
+                      supplierId,
+                      supplierName: null,
+                      dniZapasu: null,
+                      stockLabel: null,
+                      subiektKhId: null,
+                      additionalSubiektKhIds: [],
+                      supplierMatchSource: null,
+                      supplierMappingUnresolved: false,
+                    }
+                  : null))
+              : null;
+          const fallbackCecha =
+            tokenScopeMode === "cecha"
+              ? (selectedCecha ??
+                (tokenCechaId != null && tokenCechaId > 0
+                  ? {
+                      ctw_Id: tokenCechaId,
+                      ctw_Nazwa:
+                        scopeLabelForRun || `Cecha ${tokenCechaId}`,
+                      supplierId,
+                      supplierName: null,
+                      dniZapasu: null,
+                      stockLabel: null,
+                      subiektKhId: null,
+                      additionalSubiektKhIds: [],
+                      supplierMatchSource: null,
+                      supplierMappingUnresolved: false,
+                    }
+                  : null))
+              : null;
+          const snapshotPayload = buildZdEstimateUiSessionSnapshot({
+            linesBase: coerceZdEstimateLinesBase(
+              res.result.pozycjeBase ?? res.result.pozycje
+            ),
+            lines: res.result.pozycje,
+            historyByTwId: (res.historyByTwId ?? [])
+              .filter((e) => e.twId > 0)
+              .map((e) => ({
+                twId: e.twId,
+                lastOrderedQty: e.lastOrderedQty,
+                linkedAt: e.linkedAt,
+              })),
+            historyFetchFailed: Boolean(res.historyFetchFailed),
+            pendingIndividuals: pendingIndividualsOk
+              ? (res.pendingIndividuals ?? [])
+              : [],
+            pendingIndividualsTruncated: pendingIndividualsOk
+              ? Boolean(res.pendingIndividualsTruncated)
+              : false,
+            pendingIndividualsError: pendingIndividualsOk
+              ? null
+              : res.pendingIndividualsError?.trim() ||
+                "Nie wczytano próśb przy Policz — użyj „Wczytaj ponownie” albo policz listę jeszcze raz.",
+            meta: {
+              pagesFetched: res.meta.pagesFetched,
+              totalCountApi: res.meta.totalCountApi,
+              truncated: res.meta.truncated,
+              ordersBaseUrl: res.meta.ordersBaseUrl,
+              durationMs: res.meta.durationMs,
+              totalFromSubiekt: res.meta.totalFromSubiekt,
+            },
+            missingPartnerTwIds: res.meta.pairMissingTwIds ?? [],
+            missingBomTwIds: res.meta.bomMissingTwIds ?? [],
+            paramInfo: res.result.parametry as Record<string, unknown>,
+            exclusions: res.exclusions ?? [],
+            onRequests: res.onRequests ?? [],
+            packaging: res.packaging ?? [],
+            productPairs: res.productPairs ?? [],
+            productBoms: res.productBoms ?? [],
+            teethTwIds: res.teethTwIds ?? [],
+            boostPreset: res.boostPreset ?? boostPreset,
+            appliedBoostPreset: res.boostPreset ?? appliedBoostPreset,
+            boostNeedsRecount: false,
+            scopeMode: tokenScopeMode,
+            selectedGroup: fallbackGroup,
+            selectedCecha: fallbackCecha,
+            groupQuery:
+              tokenScopeMode === "grupa"
+                ? groupQuery || fallbackGroup?.grt_Nazwa || ""
+                : groupQuery,
+            cechaQuery:
+              tokenScopeMode === "cecha"
+                ? cechaQuery || fallbackCecha?.ctw_Nazwa || ""
+                : cechaQuery,
+            supplierId,
+            dniZapasu,
+            dataOd,
+            dataDo,
+            zapasMin,
+            showAdvanced,
+            salesWindowSource,
+            qtyOverrideByTwId: {},
+            acceptedReviewTwIds: {},
+            sessionIncludeTwIds: {},
+            listFilter: "order",
+            listSearch: "",
+            sortKey,
+            sortDir,
+            columns,
+            columnOrder,
+          });
+
+          const persist = await actionCreateZdEstimateUiSession({
+            payload: snapshotPayload,
+            schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
+          });
+
+          if (estimateGen !== estimateGenRef.current) {
+            if (persist.ok) {
+              console.warn(
+                "Sesja UI kreatora: usuwam świeżo utworzoną sesję — Policz unieważniony (estimateGen).",
+                persist.sessionId
+              );
+              void deleteZdEstimateExternalSessionRecord(persist.sessionId);
+            }
+            return;
           }
+
+          if (!persist.ok) {
+            externalSessionIdRef.current = null;
+            externalSessionCreatedAtRef.current = null;
+            clearZdEstimateExternalSessionToken();
+            syncExternalSessionTokenState();
+            setExternalSessionPersistFailedAlert(true);
+            console.warn("Sesja UI kreatora: zapis nieudany.", persist.message);
+            return;
+          }
+
+          sessionId = persist.sessionId;
+          createdAt = snapshotPayload.createdAt;
+        } else if (estimateGen !== estimateGenRef.current) {
+          console.warn(
+            "Sesja UI kreatora: usuwam świeżo utworzoną sesję serwerową — Policz unieważniony (estimateGen).",
+            sessionId
+          );
+          void deleteZdEstimateExternalSessionRecord(sessionId);
           return;
         }
 
-        if (!persist.ok) {
-          externalSessionIdRef.current = null;
-          externalSessionCreatedAtRef.current = null;
-          clearZdEstimateExternalSessionToken();
-          syncExternalSessionTokenState();
-          setExternalSessionPersistFailedAlert(true);
-          console.warn("Sesja UI kreatora: zapis nieudany.", persist.message);
-          return;
-        }
-
-        externalSessionIdRef.current = persist.sessionId;
-        externalSessionCreatedAtRef.current = snapshotPayload.createdAt;
+        externalSessionIdRef.current = sessionId;
+        externalSessionCreatedAtRef.current =
+          createdAt ?? new Date().toISOString();
         externalSessionPersistSkipRef.current = false;
         externalSessionPersistQueuedRef.current = false;
         setExternalSessionPersistFailedAlert(false);
@@ -3657,12 +4310,12 @@ export function ZdEstimateWorkbench({
         externalSessionRestoredRef.current = false;
 
         const token = createZdEstimateExternalSessionToken({
-          sessionId: persist.sessionId,
+          sessionId,
           schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
           supplierId,
-          scopeMode: scopeMode as "grupa" | "cecha",
-          grupaId: scopeMode === "grupa" ? selectedGroup?.grt_Id ?? null : null,
-          cechaId: scopeMode === "cecha" ? selectedCecha?.ctw_Id ?? null : null,
+          scopeMode: tokenScopeMode,
+          grupaId: tokenGrupaId,
+          cechaId: tokenCechaId,
         });
 
         writeZdEstimateExternalSessionToken(token);
@@ -3684,6 +4337,8 @@ export function ZdEstimateWorkbench({
 
   // Sesja zewnętrzna: restore, auto-replace (daily Przygotuj ZD) albo konflikt z autorun.
   useLayoutEffect(() => {
+    // Token w localStorage → stan React (zewnętrzne źródło); setState w layoucie przed paint.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync tokenu sesji UI
     syncExternalSessionTokenState();
 
     const token = peekZdEstimateExternalSessionToken();
@@ -3790,7 +4445,6 @@ export function ZdEstimateWorkbench({
         // Token już skasowany; nie markDone — remount wejdzie w zwykły autorun.
         return;
       }
-      const meta = autorunReplaceMetaRef.current;
       // Meta zostaje do toastu „Lista gotowa” — nie kasuj tu (unikaj 2 nakładających się toastów).
       autorunReplaceSessionIdRef.current = null;
       // Odblokuj autorun effect (claim + Policz), nie odpalaj estimate tutaj.
@@ -4469,7 +5123,9 @@ export function ZdEstimateWorkbench({
     layoutKey: tableVirtualLayoutKey,
   });
   const tableVirtualScrollToIndexRef = useRef(tableVirtual.scrollToIndex);
-  tableVirtualScrollToIndexRef.current = tableVirtual.scrollToIndex;
+  useEffect(() => {
+    tableVirtualScrollToIndexRef.current = tableVirtual.scrollToIndex;
+  });
 
   useEffect(() => {
     if (!tableVirtual.enabled) {
@@ -4904,6 +5560,7 @@ export function ZdEstimateWorkbench({
     unitsPerPackage: number;
     packageLabel: string;
     documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode;
+    orderMultiple: number | null;
     note: string;
   }) => {
     const products = toBulkProducts(selectedLines);
@@ -4915,6 +5572,7 @@ export function ZdEstimateWorkbench({
         unitsPerPackage: input.unitsPerPackage,
         packageLabel: input.packageLabel,
         documentUnitMode: input.documentUnitMode,
+        orderMultiple: input.orderMultiple,
         note: input.note.trim() || undefined,
       });
       if (!res.ok) {
@@ -5387,6 +6045,7 @@ export function ZdEstimateWorkbench({
     unitsPerPackage: number;
     packageLabel: string;
     documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode;
+    orderMultiple: number | null;
     note: string;
   }) => {
     const line = packagingCandidate;
@@ -5403,6 +6062,7 @@ export function ZdEstimateWorkbench({
           unitsPerPackage: input.unitsPerPackage,
           packageLabel: input.packageLabel,
           documentUnitMode: input.documentUnitMode,
+          orderMultiple: input.orderMultiple,
           note: input.note,
         });
         if (!res.ok) {
@@ -5513,8 +6173,8 @@ export function ZdEstimateWorkbench({
       {showSessionResumeProgress ? (
         <div className="flex min-h-0 flex-1 flex-col">
           <ZdEstimateSessionResumeProgressPanel
-            key={sessionResumeStartedAtMsRef.current}
-            startedAtMs={sessionResumeStartedAtMsRef.current}
+            key={sessionResumeStartedAtMs}
+            startedAtMs={sessionResumeStartedAtMs}
             returningFromAway={sessionResumeReturningFromAway}
             forceComplete={sessionResumeForceComplete}
             supplierName={activeSupplierName}
@@ -5776,6 +6436,10 @@ export function ZdEstimateWorkbench({
             openLinkZdModal();
           }}
           onUnlockCreate={() => {
+            if (createUnconfirmedAttempt) {
+              setCreateTimeoutUnlockConfirmOpen(true);
+              return;
+            }
             setCreateUnlockedAfterDone(true);
             setCreateUndoVisible(false);
             // Nie kasuj timeoutRecoveryFreezeRef — link po odblokowaniu
@@ -5955,11 +6619,17 @@ export function ZdEstimateWorkbench({
               variant="secondary"
               className="mt-3"
               onClick={() => {
+                if (createUnconfirmedAttempt) {
+                  setCreateTimeoutUnlockConfirmOpen(true);
+                  return;
+                }
                 setCreateUnlockedAfterDone(true);
                 setCreateUndoVisible(false);
               }}
             >
-              Odblokuj tworzenie ZD (świadomie)
+              {createUnconfirmedAttempt
+                ? "Sprawdziłem Subiekt — odblokuj Create"
+                : "Odblokuj tworzenie ZD (świadomie)"}
             </Button>
           ) : null}
         </Alert>
@@ -6216,6 +6886,7 @@ export function ZdEstimateWorkbench({
       ) : null}
 
       {!showLaunchProgress && !showSessionResumeProgress && prepFormOpen ? (
+        <>
         <ZdEstimatePrepForm
           configured={bootstrap.configured}
           busy={busy}
@@ -6224,19 +6895,43 @@ export function ZdEstimateWorkbench({
           estimating={estimating}
           scopeMode={scopeMode}
           onScopeModeChange={changeScopeMode}
-          quickGroups={bootstrap.quickGroups}
+          quickGroups={quickGroupsLive}
+          quickCechy={quickCechyLive}
+          isGroupFavorite={isGroupFavoriteCb}
+          isCechaFavorite={isCechaFavoriteCb}
+          onToggleGroupFavorite={toggleGroupFavorite}
+          onToggleCechaFavorite={toggleCechaFavorite}
+          onBrowseCatalog={() => setScopeCatalogOpen(true)}
           selectedGroup={selectedGroup}
-          onSelectGroup={selectGroup}
+          onSelectGroup={(g) => {
+            rememberGroupEnrich(g);
+            setGroupHits([]);
+            selectGroup(g);
+          }}
+          onSelectGroupHit={(g) => {
+            rememberGroupEnrich(g);
+            selectGroup(g);
+          }}
           groupQuery={groupQuery}
           onGroupQueryChange={setGroupQuery}
           onSearchGroups={searchGroups}
           groupHits={groupHits}
+          onClearGroupHits={() => setGroupHits([])}
           selectedCecha={selectedCecha}
-          onSelectCecha={selectCecha}
+          onSelectCecha={(c) => {
+            rememberCechaEnrich(c);
+            setCechaHits([]);
+            selectCecha(c);
+          }}
+          onSelectCechaHit={(c) => {
+            rememberCechaEnrich(c);
+            selectCecha(c);
+          }}
           cechaQuery={cechaQuery}
           onCechaQueryChange={setCechaQuery}
           onSearchCechy={searchCechy}
           cechaHits={cechaHits}
+          onClearCechaHits={() => setCechaHits([])}
           scopeSelected={scopeSelected}
           settingsTrusted={settingsTrusted}
           scopeNeedsRecount={scopeNeedsRecount}
@@ -6259,6 +6954,7 @@ export function ZdEstimateWorkbench({
           onSupplierOverride={onSupplierOverride}
           suppliers={bootstrap.suppliers}
           selectedSupplier={selectedSupplier}
+          supplierFromMappingNotice={supplierFromMappingNotice}
           zapasMin={zapasMin}
           onZapasMinChange={setZapasMin}
           onPolicz={() => runEstimate()}
@@ -6268,6 +6964,33 @@ export function ZdEstimateWorkbench({
           )}
           onAssignAndRun={confirmAssignAndRun}
         />
+        <ZdEstimateScopeCatalogDialog
+          open={scopeCatalogOpen}
+          onClose={() => setScopeCatalogOpen(false)}
+          mode={scopeMode}
+          configured={bootstrap.configured}
+          favoriteGroups={favoriteGroups}
+          favoriteCechy={favoriteCechy}
+          groupEnrichById={groupEnrichById}
+          cechaEnrichById={cechaEnrichById}
+          isGroupFavorite={isGroupFavoriteCb}
+          isCechaFavorite={isCechaFavoriteCb}
+          onToggleGroupFavorite={toggleGroupFavorite}
+          onToggleCechaFavorite={toggleCechaFavorite}
+          onSelectGroup={(g) => {
+            rememberGroupEnrich(g);
+            setGroupHits([]);
+            selectGroup(g);
+          }}
+          onSelectCecha={(c) => {
+            rememberCechaEnrich(c);
+            setCechaHits([]);
+            selectCecha(c);
+          }}
+          onRememberGroup={rememberGroupEnrich}
+          onRememberCecha={rememberCechaEnrich}
+        />
+        </>
       ) : null}
 
       {!showLaunchProgress && !showSessionResumeProgress && !sessionRestorePending ? (
@@ -7732,14 +8455,37 @@ export function ZdEstimateWorkbench({
               ? "Tworzenie ZD zablokowane na wypadek, że dokument już powstał. Odblokuj świadomie albo powiąż ZD."
               : "Odblokuj tworzenie ZD świadomie — dokument w Subiekcie zostaje (to nie anuluje ZD)."
           }
-          undoLabel="Odblokuj tworzenie ZD"
+          undoLabel={
+            createUnconfirmedAttempt
+              ? "Sprawdziłem Subiekt — odblokuj"
+              : "Odblokuj tworzenie ZD"
+          }
           onUndo={() => {
+            if (createUnconfirmedAttempt) {
+              setCreateTimeoutUnlockConfirmOpen(true);
+              return;
+            }
             setCreateUnlockedAfterDone(true);
             setCreateUndoVisible(false);
           }}
           onDismiss={() => setCreateUndoVisible(false)}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={createTimeoutUnlockConfirmOpen}
+        title={ZD_ESTIMATE_UI.postCreateTimeoutUnlockConfirmTitle}
+        message={ZD_ESTIMATE_UI.postCreateTimeoutUnlockConfirmMessage}
+        confirmLabel={ZD_ESTIMATE_UI.postCreateTimeoutUnlockConfirmLabel}
+        cancelLabel="Anuluj"
+        onCancel={() => setCreateTimeoutUnlockConfirmOpen(false)}
+        onConfirm={() => {
+          setCreateTimeoutUnlockConfirmOpen(false);
+          if (!createUnconfirmedAttempt) return;
+          setCreateUnlockedAfterDone(true);
+          setCreateUndoVisible(false);
+        }}
+      />
 
       <ConfirmDialog
         open={externalSessionAutorunConflictOpen}
@@ -8010,17 +8756,7 @@ export function ZdEstimateWorkbench({
         configured={bootstrap.configured}
         onError={reportError}
         todayCoverage={todayCoverage}
-        onMappedSupplierIdsChange={(ids) => {
-          setTodayCoverage(
-            zdEstimateScopeCoverage(
-              collectTodayScheduleSuppliers({
-                todayKey: bootstrap.todayKey,
-                suppliers: bootstrap.suppliers,
-              }),
-              ids
-            )
-          );
-        }}
+        onScopesChange={handleSupplierScopesChange}
       />
 
       <ZdEstimateSnapshotsModal
@@ -8086,6 +8822,7 @@ export function ZdEstimateWorkbench({
             setCreateDoneDokId(dokId);
             setCreateDoneDokNr(dokNrPelny);
             setCreateUnconfirmedAttempt(false);
+            setCreateTimeoutUnlockConfirmOpen(false);
             setCreateUnlockedAfterDone(false);
             setCreateUndoVisible(true);
           }
@@ -8289,6 +9026,7 @@ export function ZdEstimateWorkbench({
             setCreateDoneDokId(dokId);
             setCreateDoneDokNr(dokNrPelny);
             setCreateUnconfirmedAttempt(false);
+            setCreateTimeoutUnlockConfirmOpen(false);
             setCreateUnlockedAfterDone(false);
             setCreateUndoVisible(true);
             timeoutRecoveryFreezeRef.current = null;

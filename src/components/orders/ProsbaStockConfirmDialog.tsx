@@ -7,6 +7,7 @@ export function ProsbaStockConfirmDialog({
   message,
   pending,
   title = "Towar na stanie",
+  summary,
   confirmLabel = "Wyślij mimo to",
   cancelLabel = "Wróć do formularza",
   onCancel,
@@ -16,6 +17,8 @@ export function ProsbaStockConfirmDialog({
   message: string;
   pending?: boolean;
   title?: string;
+  /** Np. „2 pozycje mają wystarczający stan”. */
+  summary?: string | null;
   confirmLabel?: string;
   cancelLabel?: string;
   onCancel: () => void;
@@ -26,6 +29,7 @@ export function ProsbaStockConfirmDialog({
       open={open}
       title={title}
       message={message}
+      summary={summary}
       confirmLabel={confirmLabel}
       cancelLabel={cancelLabel}
       pending={pending}

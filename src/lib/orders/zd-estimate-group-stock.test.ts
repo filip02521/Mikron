@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyGroupStockWindow,
   matchSupplierForGroupName,
+  resolveSupplierForScopeSelection,
 } from "./zd-estimate-group-stock";
 import { salesWindowFromDniZapasu } from "./zd-estimate-manual";
 
@@ -45,6 +46,43 @@ describe("matchSupplierForGroupName", () => {
 
   it("brak dopasowania", () => {
     expect(matchSupplierForGroupName("3M Espe", suppliers)).toBeNull();
+  });
+});
+
+describe("resolveSupplierForScopeSelection", () => {
+  it("mapowanie wygrywa nad nazwą (Resione → Dongguan)", () => {
+    const list = [
+      ...suppliers,
+      { id: "dg", name: "Dongguan Godsaid Technology", dniZapasu: 45, stockLabel: "45 d" },
+    ];
+    const r = resolveSupplierForScopeSelection({
+      scopeName: "Resione",
+      suppliers: list,
+      mappedSupplierId: "dg",
+    });
+    expect(r.source).toBe("mapping");
+    expect(r.supplier?.id).toBe("dg");
+  });
+
+  it("bez mapowania — heurystyka nazwy", () => {
+    const r = resolveSupplierForScopeSelection({
+      scopeName: "Falcon",
+      suppliers,
+      mappedSupplierId: null,
+    });
+    expect(r.source).toBe("name");
+    expect(r.supplier?.id).toBe("f");
+  });
+
+  it("mapowanie na nieaktywnego dostawcę — bez fallbacku po nazwie", () => {
+    const r = resolveSupplierForScopeSelection({
+      scopeName: "Falcon",
+      suppliers,
+      mappedSupplierId: "missing-supplier",
+    });
+    expect(r.supplier).toBeNull();
+    expect(r.source).toBeNull();
+    expect(r.mappingUnresolved).toBe(true);
   });
 });
 

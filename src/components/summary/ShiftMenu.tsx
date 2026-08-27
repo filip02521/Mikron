@@ -38,6 +38,10 @@ export function ShiftMenu({
   onShiftDate,
   grouped = false,
   compact = false,
+  /** Rozciągnij segment (footer karty Dziś). */
+  fill = false,
+  /** Nadpisanie klasy przycisku gdy grouped (np. footer shift segment). */
+  segmentClassName,
   className,
 }: {
   disabled?: boolean;
@@ -45,6 +49,8 @@ export function ShiftMenu({
   onShiftDate: (isoDate: string) => void;
   grouped?: boolean;
   compact?: boolean;
+  fill?: boolean;
+  segmentClassName?: string;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -217,7 +223,10 @@ export function ShiftMenu({
   return (
     <div
       ref={anchorRef}
-      className={cn("relative flex shrink-0", grouped && "shrink-0", compact && "min-w-0 flex-1")}
+      className={cn(
+        "relative flex shrink-0",
+        (compact || fill) && "min-w-0 flex-1"
+      )}
     >
       <Button
         type="button"
@@ -234,10 +243,15 @@ export function ShiftMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         className={cn(
-          grouped && !compact && cn(panelSegmentControlClass, open && panelSegmentControlOpenClass),
+          grouped &&
+            !compact &&
+            (segmentClassName
+              ? cn(segmentClassName, open && panelSegmentControlOpenClass)
+              : cn(panelSegmentControlClass, open && panelSegmentControlOpenClass)),
           grouped &&
             compact &&
             "h-7 min-h-7 w-full !rounded-md border border-slate-200/90 px-2 text-xs font-medium text-slate-700 shadow-none hover:bg-indigo-50/60",
+          fill && "w-full",
           className
         )}
       >

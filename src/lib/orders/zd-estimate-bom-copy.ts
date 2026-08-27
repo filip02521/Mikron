@@ -28,15 +28,15 @@ export const ZD_BOM_UI = {
   panelTitle: "Składy",
   modalTitle: "Składy i komplety",
   modalHint:
-    "Trzy sposoby kupowania zestawu: (1) Składamy — zestaw nie idzie na ZD, sprzedaż obciąża składniki; (2) Kupujemy K i części — komplet i składniki osobno; (3) Tylko komplet — na ZD wyłącznie zestaw. Pary karton↔sztuki to osobny mechanizm w „Pary”.",
+    "Wybierz, jak kupować zestaw: tylko składniki, komplet i części osobno, tylko komplet albo komplet wyliczony ze sprzedaży składników. Pary karton↔sztuki ustawiasz osobno w „Pary”.",
 
   introTitle: "Zestaw i składniki",
   introBody:
-    "Wybierz, jak kupować zestaw, i podaj ile sztuk każdego składnika wchodzi w 1 zestaw (np. proszek ×1 + płyn ×2). Po zapisie lista Do ZD przelicza się od razu.",
+    "Wskaż zestaw, składniki oraz ile sztuk każdego składnika wchodzi w 1 zestaw (np. proszek ×1 + płyn ×2). Po zapisie lista „Do ZD” przelicza się od razu.",
 
   seedHeading: "Zaznaczone towary — wskaż zestaw i ilości",
   seedQtyHint:
-    "Na karcie składnika wpisz ile sztuk wchodzi w 1 zestaw (np. proszek = 1, płyn = 2). To nie są kilogramy ani jednostki dokumentu ZD.",
+    "Na karcie składnika wpisz, ile sztuk wchodzi w 1 zestaw (np. proszek = 1, płyn = 2). To nie są kilogramy ani jednostki dokumentu ZD.",
   seedParentQtyHint: "Zestaw — bez osobnej ilości",
   roleZestaw: "Zestaw",
   roleSkladnik: "Składnik",
@@ -44,17 +44,20 @@ export const ZD_BOM_UI = {
   presetLegend: "Jak kupować zestaw?",
   presetAssemble: "Składamy (tylko składniki)",
   presetAssembleHint:
-    "Zestaw nie trafia na ZD. Sprzedaż zestawu doliczana jest do niedoboru składników — zamawiasz części, nie komplet.",
-  presetBuySeparate: "Kupujemy K i części",
+    "Zestaw nie trafia na ZD. Sprzedaż zestawu powiększa niedobór składników — zamawiasz części, nie komplet.",
+  presetBuySeparate: "Kupujemy komplet i części",
   presetBuySeparateHint:
-    "Komplet i składniki zamawiane osobno — każdy według własnej sprzedaży i stanu. Używaj, gdy komplet też bywa sprzedawany jako całość.",
-  presetKitOnly: "Tylko komplet",
+    "Komplet i składniki zamawiane osobno — każdy według własnej sprzedaży i stanu. Użyj, gdy komplet też bywa sprzedawany jako całość.",
+  presetKitOnly: "Tylko komplet (sprzedaż zestawu)",
   presetKitOnlyHint:
-    "Na ZD tylko zestaw. Składniki są zablokowane — przy ich sprzedaży lub prośbie zobaczysz alert (zamów zestaw albo zmień preset).",
+    "Na ZD tylko zestaw — według własnej sprzedaży i stanu kompletu. Składniki są zablokowane; przy ich sprzedaży zobaczysz alert.",
+  presetKitFromComponents: "Komplet ze sprzedaży składników",
+  presetKitFromComponentsHint:
+    "Na ZD tylko zestaw. Ilość = własna sprzedaż kompletu + maksimum ze sprzedaży składników (sprzedaż ÷ sztuk w zestawie). Prośby na składnikach też trafiają na komplet (maksimum po wariantach). Składniki są zablokowane.",
 
   stockAsCoverLabel: "Wliczaj stan zestawu do pokrycia składników",
   stockAsCoverHintSeed:
-    "Jeśli na magazynie leży osobno zestaw i osobno składniki, pokrycie może się zdublować — wtedy wyłącz tę opcję świadomie.",
+    "Jeśli na magazynie leży osobno zestaw i osobno składniki, pokrycie może się zdublować — wtedy świadomie wyłącz tę opcję.",
   stockAsCoverHintManual:
     "Domyślnie włączone przy „Składamy”. Wyłącz, gdy zestaw i składniki są trzymane osobno na magazynie i nie powinny się wzajemnie pokrywać.",
 
@@ -80,14 +83,15 @@ export const ZD_BOM_UI = {
 
   emptyTitle: "Brak składów",
   emptyDescription:
-    "Dodaj komplet / promocję (zestaw i składniki z ilością sztuk) albo zaznacz towary na liście i wybierz „Skład”.",
+    "Dodaj komplet lub promocję (zestaw i składniki z ilością sztuk) albo zaznacz towary na liście i wybierz „Skład”.",
 
   needComponent: "Dodaj co najmniej jeden składnik.",
   listCoverOn: "stan zestawu w pokryciu",
   listCoverOff: "bez wliczania stanu zestawu",
   listPresetAssemble: "składamy",
-  listPresetBuySeparate: "kupujemy K i części",
-  listPresetKitOnly: "tylko komplet",
+  listPresetBuySeparate: "kupujemy komplet i części",
+  listPresetKitOnly: "tylko komplet (sprzedaż zestawu)",
+  listPresetKitFromComponents: "komplet ze składników",
 
   badgeZestawTitle:
     "Składamy: ten towar nie idzie na ZD — popyt i pokrycie są na składnikach.",
@@ -95,15 +99,18 @@ export const ZD_BOM_UI = {
   /** Chip meta — krótkie; pełny sens w title. */
   badgeNieZamawiasz: "nie ZD",
   badgePurchasedKitTitle:
-    "Komplet kupowany osobno: ten towar może iść na ZD wg własnej sprzedaży.",
+    "Komplet kupowany osobno: ten towar może iść na ZD według własnej sprzedaży.",
   badgePurchasedKitRole: "kupowany",
   badgeKitOnlyTitle:
-    "Tylko komplet: na ZD idzie zestaw; składniki są zablokowane.",
-  badgeKitOnlyRole: "tylko kit",
+    "Tylko komplet: na ZD idzie zestaw według własnej sprzedaży; składniki są zablokowane.",
+  badgeKitOnlyRole: "tylko komplet",
+  badgeKitFromComponentsTitle:
+    "Komplet ze składników: na ZD idzie zestaw; ilość = własna sprzedaż + maksimum ze sprzedaży składników (÷ sztuk w zestawie). Składniki są zablokowane.",
+  badgeKitFromComponentsRole: "ze składników",
   badgeSkladnikRole: "składnik",
   badgePurchaseBlockedRole: "blokada",
   badgePurchaseBlockedTitle:
-    "Preset „Tylko komplet”: ten składnik nie idzie na ZD. Zamawiaj zestaw albo zmień preset.",
+    "Składnik poza zakupem katalogowym — zamawiaj komplet albo zmień sposób kupowania w składzie.",
   /** @deprecated Używaj `badgeMissingChip` w chipie; to zdanie zostaje dla legacy. */
   badgeMissingShort: "Brak towaru w wyniku — ilość może być niepełna",
   badgeMissingChip: "brak",
@@ -133,11 +140,11 @@ export const ZD_BOM_UI = {
         : mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)
           ? "składniki mają"
           : "składników ma";
-    return `${n} ${noun} sprzedaż lub prośbę przy presecie „Tylko komplet” — na ZD nie wejdą jako pozycje katalogowe. Zmień preset albo zamów komplet.`;
+    return `${n} ${noun} sprzedaż lub prośbę przy trybie „Tylko komplet (sprzedaż zestawu)” — na ZD nie wejdą jako pozycje katalogowe. Zmień tryb na „Komplet ze sprzedaży składników” (ilość z wariantów + prośby), „Kupujemy komplet i części” albo „Składamy”, albo zamów komplet ręcznie.`;
   },
   alertExplodeIncompleteTitle: "Skład „Składamy” niekompletny",
   alertExplodeIncompleteBody:
-    "Brakuje towarów ze składu „Składamy” w wyniku — Do ZD i tworzenie ZD są zablokowane, aż dociągniesz pozycje („Policz listę” ponownie).",
+    "Brakuje towarów ze składu „Składamy” w wyniku — „Do ZD” i tworzenie ZD są zablokowane, aż dociągniesz pozycje („Policz listę” ponownie).",
 
   bulkButton: "Skład",
   bulkTitleReady:
@@ -176,7 +183,7 @@ export const ZD_BOM_UI = {
   loadErrorShort: "Nie udało się wczytać składów.",
   saveError: "Nie udało się zapisać składu.",
   deleteError: "Nie udało się usunąć składu.",
-  errBadPolicy: "Niedozwolona kombinacja presetu zakupu dla składu.",
+  errBadPolicy: "Niedozwolona kombinacja sposobu kupowania dla składu.",
 
   errBadParentId: "Nieprawidłowy identyfikator towaru zestawu.",
   errNeedComponent: "Skład musi mieć co najmniej jeden składnik.",
@@ -206,6 +213,8 @@ export function zdBomPresetLabel(preset: BomPresetId): string {
       return ZD_BOM_UI.presetBuySeparate;
     case "kit_only":
       return ZD_BOM_UI.presetKitOnly;
+    case "kit_from_components":
+      return ZD_BOM_UI.presetKitFromComponents;
     case "assemble":
     default:
       return ZD_BOM_UI.presetAssemble;
@@ -218,6 +227,8 @@ export function zdBomPresetListLabel(preset: BomPresetId): string {
       return ZD_BOM_UI.listPresetBuySeparate;
     case "kit_only":
       return ZD_BOM_UI.listPresetKitOnly;
+    case "kit_from_components":
+      return ZD_BOM_UI.listPresetKitFromComponents;
     case "assemble":
     default:
       return ZD_BOM_UI.listPresetAssemble;

@@ -25,6 +25,17 @@ const DEFAULT_SYSTEM_TAIL: readonly ProcurementSystemLaneId[] = [
   "urlop",
 ] as const;
 
+/**
+ * „Do rozdzielenia” (triage) jest zawsze na początku — to kolejka wejściowa.
+ * Inne tory można przestawiać pod nim; zapisana pozycja triage jest ignorowana.
+ */
+export function pinProcurementTriageFirst(
+  order: readonly ProcurementRequestLaneId[]
+): ProcurementRequestLaneId[] {
+  const rest = order.filter((id) => id !== "triage");
+  return ["triage", ...rest];
+}
+
 /** Domyślna kolejność: triage → flagi (sort_order) → do zamówienia → magazyn → urlop. */
 export function defaultProcurementLaneOrder(
   definitions: ProcurementFlagDefinition[]
@@ -34,7 +45,7 @@ export function defaultProcurementLaneOrder(
     .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label, "pl"))
     .map((d) => procurementFlagLaneId(d.id));
 
-  return ["triage", ...flags, ...DEFAULT_SYSTEM_TAIL];
+  return pinProcurementTriageFirst([...flags, ...DEFAULT_SYSTEM_TAIL]);
 }
 
 function parseSavedLaneOrder(raw: unknown): string[] | null {
@@ -155,20 +166,22 @@ export function normalizeProcurementLaneOrder(
     result.push(id);
   }
 
-  return result;
+  return pinProcurementTriageFirst(result);
 }
 
-/** Zamień tor z sąsiadem wśród aktualnie widocznych torów. */
+/** Zamień tor z sąsiadem wśród aktualnie widocznych torów (triage zostaje na górze). */
 export function moveVisibleLaneInOrder(
   order: readonly ProcurementRequestLaneId[],
   laneId: ProcurementRequestLaneId,
   dir: -1 | 1,
   visibleLaneIds: readonly ProcurementRequestLaneId[]
 ): ProcurementRequestLaneId[] | null {
+  if (laneId === "triage") return null;
+
   const visIdx = visibleLaneIds.indexOf(laneId);
   if (visIdx < 0) return null;
   const neighborId = visibleLaneIds[visIdx + dir];
-  if (!neighborId) return null;
+  if (!neighborId || neighborId === "triage") return null;
 
   const i = order.indexOf(laneId);
   const j = order.indexOf(neighborId);
@@ -177,7 +190,7 @@ export function moveVisibleLaneInOrder(
   const next = [...order];
   next[i] = neighborId;
   next[j] = laneId;
-  return next;
+  return pinProcurementTriageFirst(next);
 }
 
 /**
@@ -213,13 +226,13 @@ export function replaceActiveFlagSequenceInLaneOrder(
     used.add(flagIdFromLaneId(lane));
   }
 
-  return next;
+  return pinProcurementTriageFirst(next);
 }
 
 export function serializeProcurementLaneOrder(
   order: readonly ProcurementRequestLaneId[]
 ): string[] {
-  return order.map((id) => id);
+  return pinProcurementTriageFirst(order).map((id) => id);
 }
 
 export function canMoveVisibleLane(
@@ -227,8 +240,10 @@ export function canMoveVisibleLane(
   laneId: ProcurementRequestLaneId,
   dir: -1 | 1
 ): boolean {
+  if (laneId === "triage") return false;
   const idx = visibleLaneIds.indexOf(laneId);
   if (idx < 0) return false;
   const neighbor = visibleLaneIds[idx + dir];
-  return Boolean(neighbor);
+  if (!neighbor || neighbor === "triage") return false;
+  return true;
 }

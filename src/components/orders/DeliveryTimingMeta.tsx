@@ -38,7 +38,7 @@ export function DeliveryTimingMeta({
   return (
     <div
       className={cn(
-        "min-w-0",
+        inline ? "min-w-0" : "shrink-0",
         inline
           ? "flex items-center gap-1.5"
           : "flex flex-col items-end gap-0.5 text-right",
@@ -46,8 +46,10 @@ export function DeliveryTimingMeta({
       )}
       title={title}
     >
-      <div className={cn("flex items-center gap-1", inline ? "" : "flex-wrap justify-end")}>
-        <span className={captionToneClass[captionTone]}>{caption}</span>
+      <div className={cn("flex items-center gap-1", inline ? "" : "flex-nowrap justify-end")}>
+        <span className={cn(captionToneClass[captionTone], !inline && "whitespace-nowrap")}>
+          {caption}
+        </span>
         {accessory}
       </div>
       {children}

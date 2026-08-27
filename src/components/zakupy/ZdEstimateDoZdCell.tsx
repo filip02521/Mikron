@@ -9,6 +9,7 @@ import {
   formatZdPackRoundupLine,
   getZdPackRoundupInfo,
   isPackagingPackagesMode,
+  isZdUnitsMultipleOfOrderMultiple,
   piecesArrivingForZdUnits,
   type ZdPackOrderQty,
 } from "@/lib/orders/zd-estimate-packaging";
@@ -99,6 +100,14 @@ export function ZdEstimateDoZdCell({
     ? ZD_ESTIMATE_UI.packagingOverrideHint
     : ZD_ESTIMATE_UI.packagingOverrideHintPieces;
   const baseHint = formatZdPackHint(qty);
+  const orderMultipleWarn =
+    overridden &&
+    packagesMode &&
+    qty.orderMultiple >= 2 &&
+    displayUnits > 0 &&
+    !isZdUnitsMultipleOfOrderMultiple(displayUnits, qty.orderMultiple)
+      ? ZD_ESTIMATE_UI.packagingDoZdOrderMultipleWarn(qty.orderMultiple)
+      : null;
 
   const confidenceUi = buildZdEstimateConfidenceUi({
     confidence,
@@ -139,6 +148,7 @@ export function ZdEstimateDoZdCell({
           .join(". ")
       : baseHint || "Nadpisz ilość Do ZD przed utworzeniem dokumentu",
     roundupFull ? `↑ ${roundupFull}` : null,
+    orderMultipleWarn,
     qty.hasPackaging ? overrideHint : null,
     confidenceUi.hasSignal ? confidenceUi.title || null : null,
   ]
@@ -260,7 +270,9 @@ export function ZdEstimateDoZdCell({
       </button>
     ) : hintKind === "roundup" && roundupInfo != null ? (
       <span className="zd-est-dozd-hint" title={roundupFull ?? undefined}>
-        ↑ +{roundupInfo.extra}
+        {roundupInfo.packsBefore != null && roundupInfo.packsAfter != null
+          ? `↑ ${roundupInfo.packsBefore}→${roundupInfo.packsAfter}`
+          : `↑ +${roundupInfo.extra}`}
       </span>
     ) : hintKind === "confidence" ? (
       confidenceWhisper
@@ -296,7 +308,8 @@ export function ZdEstimateDoZdCell({
         className={cn(
           "zd-est-dozd-input",
           overridden && "zd-est-dozd-input--override",
-          !overridden && displayUnits <= 0 && "zd-est-dozd-input--idle"
+          !overridden && displayUnits <= 0 && "zd-est-dozd-input--idle",
+          orderMultipleWarn && "zd-est-dozd-input--order-mult-warn"
         )}
         onFocus={() => {
           setFocused(true);
@@ -348,6 +361,14 @@ export function ZdEstimateDoZdCell({
     <span className="zd-est-dozd" title={fullTitle || undefined}>
       {valueRow}
       {hintLine}
+      {orderMultipleWarn && !editingBlank ? (
+        <span
+          className="zd-est-dozd-order-mult-warn"
+          title={orderMultipleWarn}
+        >
+          co {qty.orderMultiple}?
+        </span>
+      ) : null}
     </span>
   );
 }

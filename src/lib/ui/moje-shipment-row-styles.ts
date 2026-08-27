@@ -9,6 +9,10 @@ export const mojeShipmentSectionShellClass =
 export const mojeQueueRowLayoutClass =
   "flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2";
 
+/** Slot akcji inline — bez border-t na mobile (ack-only). */
+export const mojeQueueRowActionsInlineClass =
+  "w-full sm:w-auto sm:shrink-0 sm:self-center";
+
 /** Slot akcji w wierszu — pełna szerokość na mobile. */
 export const mojeQueueRowActionsClass =
   "w-full border-t border-slate-100/90 pt-2 sm:w-auto sm:shrink-0 sm:border-0 sm:pt-0 sm:self-center";

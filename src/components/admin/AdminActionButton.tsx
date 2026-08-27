@@ -67,7 +67,7 @@ export function AdminActionButton({
     };
   }, []);
 
-  return (
+  const body = (
     <>
       {pendingMessage ? (
         <ActionLoadingOverlay
@@ -114,5 +114,11 @@ export function AdminActionButton({
         )}
       </Button>
     </>
+  );
+
+  return overlayVariant === "section" ? (
+    <span className="relative inline-flex">{body}</span>
+  ) : (
+    body
   );
 }

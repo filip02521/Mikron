@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
 import { ZD_ESTIMATE_BULK_MAX } from "@/lib/orders/zd-estimate-bulk";
 import {
+  assertOrderMultiple,
   assertPackagingUnits,
   ZD_PACKAGING_UNITS_MAX,
   ZD_PACKAGING_UNITS_MIN,
@@ -41,16 +42,21 @@ export function ZdEstimateBulkPackagingDialog({
     unitsPerPackage: number;
     packageLabel: string;
     documentUnitMode: ZdPackagingDocumentUnitMode;
+    orderMultiple: number | null;
     note: string;
   }) => void;
   onClear: () => void;
 }) {
   const unitsId = useId();
+  const orderEnableId = useId();
+  const orderMultId = useId();
   const labelId = useId();
   const noteId = useId();
   const modePackagesId = useId();
   const modePiecesId = useId();
   const [units, setUnits] = useState("10");
+  const [orderMultipleEnabled, setOrderMultipleEnabled] = useState(false);
+  const [orderMultiple, setOrderMultiple] = useState("");
   const [label, setLabel] = useState("op.");
   const [note, setNote] = useState("");
   const [documentUnitMode, setDocumentUnitMode] =
@@ -65,11 +71,31 @@ export function ZdEstimateBulkPackagingDialog({
     ? "packages"
     : documentUnitMode;
   const packagesMode = effectiveMode === "packages";
+  const orderActive = packagesMode && orderMultipleEnabled;
 
   const unitsCheck = assertPackagingUnits(units);
-  const canSave = unitsCheck.ok;
-  const unitsNum = canSave ? unitsCheck.units : Math.trunc(Number(units));
-  const showUnitsError = units.trim() !== "" && !canSave;
+  const orderCheck = assertOrderMultiple(orderActive ? orderMultiple : null);
+  const orderValueOk =
+    !orderActive ||
+    (orderCheck.ok && orderCheck.orderMultiple != null);
+  const canSave = unitsCheck.ok && orderValueOk;
+  const unitsNum = unitsCheck.ok
+    ? unitsCheck.units
+    : Math.trunc(Number(units));
+  const showUnitsError = units.trim() !== "" && !unitsCheck.ok;
+  const showOrderError =
+    orderActive &&
+    (orderMultiple.trim() === "" || !orderCheck.ok || !orderValueOk);
+  const orderErrorMessage =
+    orderActive && orderMultiple.trim() === ""
+      ? ZD_ESTIMATE_UI.packagingOrderMultipleRequiredError
+      : !orderCheck.ok
+        ? orderCheck.message
+        : orderActive && orderCheck.orderMultiple == null
+          ? ZD_ESTIMATE_UI.packagingOrderMultipleRequiredError
+          : null;
+  const resolvedOrderMultiple =
+    orderActive && orderCheck.ok ? orderCheck.orderMultiple : null;
   const preview = lines.slice(0, 8);
   const rest = lines.length - preview.length;
   const overLimit = lines.length > ZD_ESTIMATE_BULK_MAX;
@@ -162,11 +188,12 @@ export function ZdEstimateBulkPackagingDialog({
             className="min-h-11 w-full sm:w-auto"
             disabled={pending || !canSave}
             onClick={() => {
-              if (!unitsCheck.ok) return;
+              if (!unitsCheck.ok || !orderValueOk) return;
               onSave({
                 unitsPerPackage: unitsCheck.units,
                 packageLabel: label.trim() || "op.",
                 documentUnitMode: effectiveMode,
+                orderMultiple: resolvedOrderMultiple,
                 note: note.trim(),
               });
             }}
@@ -238,7 +265,11 @@ export function ZdEstimateBulkPackagingDialog({
             className="mt-0.5"
             checked={effectiveMode === "pieces_multiple"}
             disabled={pending || pairPackBlocksPiecesMode}
-            onChange={() => setDocumentUnitMode("pieces_multiple")}
+            onChange={() => {
+              setDocumentUnitMode("pieces_multiple");
+              setOrderMultipleEnabled(false);
+              setOrderMultiple("");
+            }}
           />
           <span className="min-w-0">
             <span className="block text-xs font-semibold text-slate-900">
@@ -298,11 +329,98 @@ export function ZdEstimateBulkPackagingDialog({
         </div>
       </div>
 
+      {packagesMode ? (
+        <div className="space-y-2">
+          <label
+            htmlFor={orderEnableId}
+            className={cn(
+              "flex cursor-pointer gap-2.5 rounded-lg border px-3 py-2.5",
+              orderMultipleEnabled
+                ? "border-indigo-200 bg-indigo-50/50"
+                : "border-slate-200 bg-white"
+            )}
+          >
+            <input
+              id={orderEnableId}
+              type="checkbox"
+              className="mt-0.5"
+              checked={orderMultipleEnabled}
+              disabled={pending}
+              onChange={(e) => {
+                const on = e.target.checked;
+                setOrderMultipleEnabled(on);
+                if (!on) setOrderMultiple("");
+              }}
+            />
+            <span className="min-w-0">
+              <span className="block text-xs font-semibold text-slate-900">
+                {ZD_ESTIMATE_UI.packagingOrderMultipleEnableLabel}
+              </span>
+              <span className="mt-0.5 block text-[11px] leading-snug text-slate-500">
+                {ZD_ESTIMATE_UI.packagingOrderMultipleEnableHint}
+              </span>
+            </span>
+          </label>
+          <div
+            className={cn(
+              "rounded-lg border px-3 py-2.5 transition",
+              orderMultipleEnabled
+                ? "border-slate-200 bg-white"
+                : "border-slate-200/80 bg-slate-100/80 opacity-70"
+            )}
+            aria-disabled={!orderMultipleEnabled}
+          >
+            <label htmlFor={orderMultId} className="block">
+              <span
+                className={cn(
+                  "text-xs font-medium",
+                  orderMultipleEnabled ? "text-slate-600" : "text-slate-400"
+                )}
+              >
+                {ZD_ESTIMATE_UI.packagingOrderMultipleLabel}
+              </span>
+              <Input
+                id={orderMultId}
+                type="number"
+                min={ZD_PACKAGING_UNITS_MIN}
+                max={ZD_PACKAGING_UNITS_MAX}
+                value={orderMultiple}
+                onChange={(e) => setOrderMultiple(e.target.value)}
+                disabled={pending || !orderMultipleEnabled}
+                placeholder={ZD_ESTIMATE_UI.packagingOrderMultiplePlaceholder}
+                className="mt-1.5"
+                aria-invalid={showOrderError || undefined}
+              />
+            </label>
+            {orderMultipleEnabled ? (
+              <>
+                <p className={cn(panelTypography.caption, "mt-1")}>
+                  {ZD_ESTIMATE_UI.packagingOrderMultipleHint}
+                </p>
+                {showOrderError && orderErrorMessage ? (
+                  <p className="mt-1 text-xs font-medium text-amber-900">
+                    {orderErrorMessage}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p className={cn(panelTypography.caption, "mt-1 text-slate-400")}>
+                {ZD_ESTIMATE_UI.packagingOrderMultipleOffCaption}
+              </p>
+            )}
+          </div>
+        </div>
+      ) : null}
+
       {canSave ? (
         <div className="rounded-lg border border-emerald-200/70 bg-emerald-50/50 px-3 py-2.5">
           <p className="text-xs font-semibold text-emerald-950">
             {packagesMode
-              ? `Dla każdego: 1 ${label.trim() || "op."} = ${unitsNum} szt`
+              ? `Dla każdego: 1 ${label.trim() || "op."} = ${unitsNum} szt${
+                  resolvedOrderMultiple != null
+                    ? ` · co ${resolvedOrderMultiple} op.`
+                    : ""
+                }`
               : `Dla każdego: Do ZD w sztukach, dobij do wielokrotności ${unitsNum}`}
           </p>
           <p className="mt-0.5 text-[11px] leading-snug text-emerald-900/85">

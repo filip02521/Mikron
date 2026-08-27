@@ -220,12 +220,16 @@ export const pageToolbarSurfaceClass =
 export const brandIconTileClass =
   "bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30";
 
-/** Sticky zakładki panelu dziennego */
+/** Sticky chrome (np. wyszukiwanie dostawcy na panelu dziennym). */
 export const panelStickyChromeClass =
   "sticky top-0 z-20 border-b border-indigo-100/75 bg-[var(--card)]/95 shadow-[var(--shadow-card-elevated)] backdrop-blur-sm";
 
 /** @deprecated Alias — użyj {@link panelStickyChromeClass}. */
 export const panelStickyTabsClass = panelStickyChromeClass;
+
+/** Zakładki / status pod sticky wyszukiwaniem — scrollują z treścią. */
+export const panelTabsChromeClass =
+  "border-b border-indigo-100/75 bg-[var(--card)]";
 
 /** Panel dzienny / operacje zakupów — wąska kolumna; lekko szersza tylko na 2xl+. */
 export const panelWorkspaceShellClass = "relative mx-auto w-full max-w-3xl 2xl:max-w-4xl";
@@ -510,7 +514,7 @@ export const zdEstimateStatusNoteClass =
  * do scrollHeight (in-flow sticky + bottom + pb main = „kilometr” pustki).
  */
 export const zdEstimateStickyDockClass =
-  "pointer-events-none sticky z-30 h-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:bottom-3";
+  "pointer-events-none sticky z-30 h-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px)+var(--admin-preview-dock,0px))] md:bottom-[calc(0.75rem+var(--admin-preview-dock,0px))]";
 
 /** Pasek Create / Policz — absolute w docku; py dopasowane do h-9. */
 export const zdEstimateStickyBarClass = cn(
@@ -936,34 +940,14 @@ export function dailyPanelUnseenBadgeClass(variant: DailyPanelUnseenVariant): st
   return "bg-violet-600 text-white ring-1 ring-violet-700/30";
 }
 
-/** Obudowa wielu prośb u jednego dostawcy — ton bez lewego paska. */
-export function procurementSupplierBlockShellClass(
-  variant: DailyPanelUnseenVariant = "prosby"
-): string {
-  if (variant === "stockOut") {
-    return "overflow-hidden rounded-md border border-amber-200/85 bg-amber-50/20 shadow-sm";
-  }
-  return "overflow-hidden rounded-md border border-indigo-200/75 bg-indigo-50/15 shadow-sm";
-}
-
 /** Nagłówek bloku dostawcy (wiele osób / grup). */
 export function procurementSupplierBlockHeaderClass(
   variant: DailyPanelUnseenVariant = "prosby"
 ): string {
   if (variant === "stockOut") {
-    return "border-b border-amber-100/80 bg-amber-50/40";
+    return "border-b border-amber-100/80 bg-amber-50/55";
   }
-  return "border-b border-slate-100/90 bg-slate-50/55";
-}
-
-/** Lista prośb wewnątrz bloku dostawcy — wspólny kontener, bez osobnych ramek. */
-export function procurementSupplierBlockInnerListClass(
-  variant: DailyPanelUnseenVariant = "prosby"
-): string {
-  if (variant === "stockOut") {
-    return "divide-y divide-amber-100/80 bg-amber-50/10";
-  }
-  return "divide-y divide-indigo-100/70 bg-indigo-50/10";
+  return "border-b border-indigo-100/60 bg-indigo-50/40";
 }
 
 export const panelMetricTileClass =

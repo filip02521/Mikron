@@ -119,19 +119,36 @@ export function ZdEstimateReservationsModal({
   const [stanRez, setStanRez] = useState(listReservedQty);
   const [truncated, setTruncated] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [loadEpoch, setLoadEpoch] = useState<{
+    open: boolean;
+    twId: number;
+    listReservedQty: number;
+  }>({ open: false, twId, listReservedQty });
+
+  if (
+    open !== loadEpoch.open ||
+    (open &&
+      (twId !== loadEpoch.twId || listReservedQty !== loadEpoch.listReservedQty))
+  ) {
+    setLoadEpoch({ open, twId, listReservedQty });
+    if (open) {
+      setError(null);
+      setRows([]);
+      setReservedQtySum(0);
+      setStanRez(listReservedQty);
+      setTruncated(false);
+      setLoaded(false);
+    }
+  }
 
   useEffect(() => {
     if (!open) return;
-    setError(null);
-    setRows([]);
-    setReservedQtySum(0);
-    setStanRez(listReservedQty);
-    setTruncated(false);
-    setLoaded(false);
+    let cancelled = false;
 
     startTransition(async () => {
       try {
         const result = await actionFetchZdEstimateProductReservations({ twId });
+        if (cancelled) return;
         if (!result.ok) {
           setError(
             userFacingErrorText(result.message, ZD_ESTIMATE_UI.reservationsLoadError)
@@ -145,10 +162,15 @@ export function ZdEstimateReservationsModal({
         setTruncated(result.truncated);
         setLoaded(true);
       } catch (e) {
+        if (cancelled) return;
         setError(userFacingErrorText(e, ZD_ESTIMATE_UI.reservationsLoadError));
         setLoaded(true);
       }
     });
+
+    return () => {
+      cancelled = true;
+    };
   }, [open, twId, listReservedQty]);
 
   const productSymbol = symbol.trim();

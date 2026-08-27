@@ -1,8 +1,11 @@
 import { formatPlDate } from "@/lib/display-labels";
 import {
   estimateDeliveryEta,
+  estimateOptionsFromQuantiles,
   isPastExpectedDate,
 } from "@/lib/orders/delivery-eta";
+import { pickQuantilesForOrderType } from "@/lib/orders/delivery-eta-quantiles-load";
+import type { DeliveryEtaSupplierQuantiles } from "@/lib/orders/delivery-eta-quantiles-load";
 import {
   enrichMyOrderSalesUi,
   aggregateGroupZdEtaState,
@@ -813,6 +816,8 @@ function presentZamowienie(
     subiektReachable?: boolean;
     /** Stałe ETA (dni rob.) per dostawca zębów — do teethEtaSource na /moje. */
     teethLeadDaysBySupplierId?: Record<string, number>;
+    useP50?: boolean;
+    etaQuantilesBySupplierId?: Record<string, DeliveryEtaSupplierQuantiles>;
   }
 ): MyOrderRow {
   const statsMode = (order.supplier?.stats_mode ?? "LACZNIE") as StatsMode;
@@ -888,12 +893,25 @@ function presentZamowienie(
   });
 
   const placement = orderPlacementAt(order);
+  const quantiles = pickQuantilesForOrderType(
+    order.supplier_id && options?.etaQuantilesBySupplierId
+      ? options.etaQuantilesBySupplierId[order.supplier_id]
+      : undefined,
+    statsMode,
+    order.order_type
+  );
   const eta =
     order.is_teeth
       ? null
       : canEstimateDeliveryEta(order)
         ? placement
-          ? estimateDeliveryEta(placement, stats, order.order_type, statsMode)
+          ? estimateDeliveryEta(
+              placement,
+              stats,
+              order.order_type,
+              statsMode,
+              estimateOptionsFromQuantiles(quantiles, options?.useP50)
+            )
           : null
         : null;
 
@@ -939,8 +957,9 @@ function presentZamowienie(
   } else if (eta) {
     timingLabel = salesTimingLabel(
       eta.expectedDate,
-      eta.avgBusinessDays,
-      eta.lowConfidence
+      eta.primaryBusinessDays,
+      eta.lowConfidence,
+      { sameDay: eta.sameDay }
     );
   }
 
@@ -1113,6 +1132,8 @@ export function presentMyOrderGroup(
     supplierKhIdsBySupplierId?: import("@/lib/orders/my-order-sales-ui").SupplierKhIdsLookup;
     subiektReachable?: boolean;
     teethLeadDaysBySupplierId?: Record<string, number>;
+    useP50?: boolean;
+    etaQuantilesBySupplierId?: Record<string, DeliveryEtaSupplierQuantiles>;
   }
 ): MyOrderRow {
   const visibleOrders = orders.filter((o) => !o.sales_acknowledged_at);
@@ -1216,6 +1237,8 @@ export function presentMyOrder(
     supplierKhIdsBySupplierId?: import("@/lib/orders/my-order-sales-ui").SupplierKhIdsLookup;
     subiektReachable?: boolean;
     teethLeadDaysBySupplierId?: Record<string, number>;
+    useP50?: boolean;
+    etaQuantilesBySupplierId?: Record<string, DeliveryEtaSupplierQuantiles>;
   }
 ): MyOrderRow {
   if (isInformacjaRequest(order)) {
@@ -1288,6 +1311,8 @@ export function presentMyOrders(
     supplierKhIdsBySupplierId?: import("@/lib/orders/my-order-sales-ui").SupplierKhIdsLookup;
     subiektReachable?: boolean;
     teethLeadDaysBySupplierId?: Record<string, number>;
+    useP50?: boolean;
+    etaQuantilesBySupplierId?: Record<string, DeliveryEtaSupplierQuantiles>;
   }
 ): {
   zamowienia: MyOrderRow[];

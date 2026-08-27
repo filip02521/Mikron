@@ -36,7 +36,7 @@ describe("shouldSuppressProcurementLineClient", () => {
 });
 
 describe("shouldSuppressProcurementLineRequestNote", () => {
-  it("suppresses per-line note when shared note is in group header", () => {
+  it("suppresses per-line note when shared note is in order body", () => {
     expect(shouldSuppressProcurementLineRequestNote("pilne")).toBe(true);
   });
 

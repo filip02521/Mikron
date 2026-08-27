@@ -47,21 +47,30 @@ export async function buildSalesInboxSnapshotFromLoadedData(
   }
 
   const todayDateKey = formatDateString(todayInWarsaw());
-  const [{ supplierScheduleById, weekDays }, teethLeadDaysBySupplierId] = await Promise.all([
-    loadPlannedOrderScheduleContext(salesVisibleOrders, todayDateKey),
-    (async () => {
-      const { loadTeethLeadDaysBySupplierIdForOrders } = await import(
-        "@/lib/orders/teeth-lead-days-for-presenter"
-      );
-      return loadTeethLeadDaysBySupplierIdForOrders(salesVisibleOrders);
-    })(),
-  ]);
+  const [{ supplierScheduleById, weekDays }, teethLeadDaysBySupplierId, etaQuantiles] =
+    await Promise.all([
+      loadPlannedOrderScheduleContext(salesVisibleOrders, todayDateKey),
+      (async () => {
+        const { loadTeethLeadDaysBySupplierIdForOrders } = await import(
+          "@/lib/orders/teeth-lead-days-for-presenter"
+        );
+        return loadTeethLeadDaysBySupplierIdForOrders(salesVisibleOrders);
+      })(),
+      (async () => {
+        const { loadDeliveryEtaQuantilesForOrders } = await import(
+          "@/lib/orders/delivery-eta-quantiles-load"
+        );
+        return loadDeliveryEtaQuantilesForOrders(salesVisibleOrders);
+      })(),
+    ]);
 
   const { zamowienia, informacje } = presentMyOrders(salesVisibleOrders, data.statsRows, {
     supplierScheduleById,
     todayDateKey,
     weekDays,
     teethLeadDaysBySupplierId,
+    useP50: etaQuantiles.useP50,
+    etaQuantilesBySupplierId: etaQuantiles.bySupplierId,
   });
 
   return buildSalesDayStartSnapshot({

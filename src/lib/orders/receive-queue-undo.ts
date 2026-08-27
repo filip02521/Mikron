@@ -23,13 +23,30 @@ export {
 
 export async function captureDeliverySnapshot(orderId: string): Promise<DeliverySnapshot | null> {
   const supabase = createAdminClient();
-  const { data, error } = await supabase
+  const fullSelect =
+    "id, delivered_quantity, status, delivery_at, warehouse_shelf, teeth_line_delivered, first_delivery_at";
+  const legacySelect =
+    "id, delivered_quantity, status, delivery_at, warehouse_shelf, teeth_line_delivered";
+
+  let data: Record<string, unknown> | null = null;
+  const full = await supabase
     .from("individual_orders")
-    .select("id, delivered_quantity, status, delivery_at, warehouse_shelf, teeth_line_delivered")
+    .select(fullSelect)
     .eq("id", orderId)
     .maybeSingle();
-
-  if (error || !data) return null;
+  if (full.error) {
+    const legacy = await supabase
+      .from("individual_orders")
+      .select(legacySelect)
+      .eq("id", orderId)
+      .maybeSingle();
+    if (legacy.error || !legacy.data) return null;
+    data = legacy.data as Record<string, unknown>;
+  } else if (!full.data) {
+    return null;
+  } else {
+    data = full.data as Record<string, unknown>;
+  }
 
   return {
     orderId: data.id as string,
@@ -38,6 +55,7 @@ export async function captureDeliverySnapshot(orderId: string): Promise<Delivery
     deliveryAt: (data.delivery_at as string | null) ?? null,
     warehouseShelf: (data.warehouse_shelf as string | null) ?? null,
     teethLineDelivered: parseTeethLineDelivered(data.teeth_line_delivered),
+    firstDeliveryAt: (data.first_delivery_at as string | null | undefined) ?? null,
   };
 }
 
@@ -45,20 +63,32 @@ export async function captureDeliverySnapshots(orderIds: string[]): Promise<Deli
   const unique = [...new Set(orderIds.filter(Boolean))];
   if (!unique.length) return [];
   const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("individual_orders")
-    .select("id, delivered_quantity, status, delivery_at, warehouse_shelf, teeth_line_delivered")
-    .in("id", unique);
+  const fullSelect =
+    "id, delivered_quantity, status, delivery_at, warehouse_shelf, teeth_line_delivered, first_delivery_at";
+  const legacySelect =
+    "id, delivered_quantity, status, delivery_at, warehouse_shelf, teeth_line_delivered";
 
-  if (error) throw new Error(error.message);
+  let rows: Record<string, unknown>[] = [];
+  const full = await supabase.from("individual_orders").select(fullSelect).in("id", unique);
+  if (full.error) {
+    const legacy = await supabase
+      .from("individual_orders")
+      .select(legacySelect)
+      .in("id", unique);
+    if (legacy.error) throw new Error(legacy.error.message);
+    rows = (legacy.data ?? []) as Record<string, unknown>[];
+  } else {
+    rows = (full.data ?? []) as Record<string, unknown>[];
+  }
 
-  return (data ?? []).map((row) => ({
+  return rows.map((row) => ({
     orderId: row.id as string,
     deliveredQuantity: (row.delivered_quantity as string) ?? "",
     status: (row.status as string) ?? "",
     deliveryAt: (row.delivery_at as string | null) ?? null,
     warehouseShelf: (row.warehouse_shelf as string | null) ?? null,
     teethLineDelivered: parseTeethLineDelivered(row.teeth_line_delivered),
+    firstDeliveryAt: (row.first_delivery_at as string | null | undefined) ?? null,
   }));
 }
 
@@ -71,11 +101,41 @@ export async function revertDeliverySnapshot(snapshot: DeliverySnapshot): Promis
     warehouse_shelf: snapshot.warehouseShelf,
     teeth_line_delivered: snapshot.teethLineDelivered ?? null,
   };
+  if ("firstDeliveryAt" in snapshot) {
+    update.first_delivery_at = snapshot.firstDeliveryAt ?? null;
+  } else if (
+    snapshot.status !== "Zrealizowane" &&
+    snapshot.status !== "Czesciowo_zrealizowane"
+  ) {
+    // Stare tokeny undo bez firstDeliveryAt — i tak wyczyść przy cofaniu przyjęcia.
+    update.first_delivery_at = null;
+  }
   const { error } = await supabase.from("individual_orders").update(update).eq("id", snapshot.orderId);
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Soft-delete próbek stats dla zamówień, które po undo nie będą już Zrealizowane,
+ * potem przywróć migawki wierszy.
+ */
 export async function revertDeliverySnapshots(snapshots: DeliverySnapshot[]): Promise<void> {
+  const { softDeleteDeliveryStatsSampleForOrder } = await import(
+    "@/lib/data/delivery-stats-samples"
+  );
+  const { shouldSoftDeleteDeliveryStatsOnRevert } = await import(
+    "@/lib/orders/receive-queue-undo-shared"
+  );
+
+  for (const snapshot of snapshots) {
+    if (shouldSoftDeleteDeliveryStatsOnRevert(snapshot.status)) {
+      const ok = await softDeleteDeliveryStatsSampleForOrder(snapshot.orderId, {
+        throwOnError: true,
+      });
+      // ok=false = brak aktywnej próbki (np. teeth / cancel / częściowe) — OK
+      void ok;
+    }
+  }
+
   for (const snapshot of snapshots) {
     await revertDeliverySnapshot(snapshot);
   }

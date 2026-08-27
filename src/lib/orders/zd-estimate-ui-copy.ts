@@ -804,11 +804,57 @@ export const ZD_ESTIMATE_UI = {
     "Zmieniono podbicie sprzedaży — przelicz listę przed utworzeniem ZD.",
   policiesSectionLabel: "Polityki liczenia",
   prepFormTitle: "Przygotowanie",
-  prepScopePlaceholder: "Wybierz skrót lub wyszukaj…",
+  prepScopePlaceholder: "Wybierz ulubiony zakres albo wyszukaj…",
+  prepFavoritesEmptyGroups:
+    "Brak ulubionych grup — dodaj skróty z katalogu Subiekta.",
+  prepFavoritesEmptyCechy:
+    "Brak ulubionych cech — dodaj skróty z katalogu Subiekta.",
+  prepFavoritesAddCta: "Dodaj ulubione",
+  prepBrowseCatalogCta: "Przeglądaj katalog",
+  prepClearHitsCta: "Wyczyść wyniki",
+  prepFavoriteRemoveAria: (label: string) =>
+    `Usuń „${label}” z ulubionych`,
+  prepFavoriteStarAddAria: (label: string) =>
+    `Dodaj „${label}” do ulubionych`,
+  prepFavoriteStarRemoveAria: (label: string) =>
+    `Usuń „${label}” z ulubionych`,
+  prepFavoriteCapFlash:
+    "Możesz mieć co najwyżej 12 ulubionych w tym trybie — usuń któryś skrót.",
+  scopeCatalogTitleGroups: "Grupy towarowe",
+  scopeCatalogTitleCechy: "Cechy towarów",
+  scopeCatalogHint:
+    "Gwiazdka dodaje skrót w Zakresie. Klik wiersza wybiera zakres i zamyka okno.",
+  scopeCatalogSearchPlaceholderGroups: "Szukaj grupy…",
+  scopeCatalogSearchPlaceholderCechy: "Szukaj cechy…",
+  scopeCatalogSearchRequired:
+    "Wpisz fragment nazwy, aby przeszukać katalog Subiekta.",
+  scopeCatalogFavoritesHeading: "Twoje ulubione",
+  scopeCatalogResultsHeading: "Katalog",
+  scopeCatalogLoadMore: "Wczytaj więcej",
+  scopeCatalogEmpty: "Brak wyników dla tej frazy.",
+  scopeCatalogLoading: "Wczytuję katalog…",
+  scopeCatalogClose: "Zamknij",
   prepOverridesShow: "Nadpisania",
   prepOverridesHide: "Ukryj nadpisania",
   prepParamBoostLabel: "Podbicie",
   prepParamExtrasLabel: "Prośby",
+  /** Widoczny status powiązania dostawcy (bez rozwijania Nadpisań). */
+  supplierLinkedLabel: "Powiązano z dostawcą",
+  /** Badge banera gdy dostawca pochodzi z mapowania zakresów (nie dubluj „· z mapowania” przy nazwie). */
+  supplierLinkedFromMappingLabel: "Z mapowania",
+  supplierUnlinkedHint:
+    "Nie powiązano z dostawcą — rozwiń Nadpisania poniżej, aby wybrać ręcznie.",
+  supplierMappingUnresolvedHint:
+    "Mapowanie wskazuje dostawcę spoza aktywnej listy — wybierz kartę w Nadpisaniach albo popraw mapowanie zakresów.",
+  /**
+   * Po wyborze grupy/cechy z zapisanym mapowaniem —
+   * np. Resione → Dongguan Godsaid Technology.
+   * Używane jako flaga/aria; baner pokazuje short label + nazwę dostawcy.
+   */
+  supplierFromMappingNotice: (supplierName: string, scopeLabel: string) =>
+    `Przypisano dostawcę „${supplierName}” z mapowania zakresu „${scopeLabel}”.`,
+  /** Sufiks w wierszu wyników wyszukiwania (tylko niewybrane — wybrane mają baner statusu). */
+  supplierFromMappingHitSuffix: "z mapowania",
   historyNeedsRecountTitle: "Zmieniono historię powiązań ZD",
   historyNeedsRecountBody:
     "Włączono lub wyłączono zapisane ZD w historii zamówień. Przelicz listę przed utworzeniem dokumentu — korekta z historii mogła się zmienić.",
@@ -1019,6 +1065,10 @@ export const ZD_ESTIMATE_UI = {
   postCreateTimeoutLockLabel: "niepotwierdzony (timeout)",
   postCreateTimeoutLockBody:
     "Ostatnie tworzenie ZD mogło się udać w Subiekcie mimo timeoutu. Sprawdź dokument, powiąż historię, przelicz listę albo odblokuj świadomie — unikaj duplikatu.",
+  postCreateTimeoutUnlockConfirmTitle: "Odblokować tworzenie ZD po timeout?",
+  postCreateTimeoutUnlockConfirmMessage:
+    "Dokument mógł już powstać w Subiekcie. Najpierw sprawdź listę ZD / użyj „Powiąż ZD”. Odblokowanie Create pozwoli wysłać kolejne ZD i łatwo zrobić duplikat.",
+  postCreateTimeoutUnlockConfirmLabel: "Sprawdziłem Subiekt — odblokuj",
   postCreateUnlockCta: "Odblokuj tworzenie ZD",
   postCreateMailComposeCta: "Edytuj i wyślij…",
   postCreateMailComposeTitle: "Wiadomość do dostawcy",
@@ -1030,7 +1080,7 @@ export const ZD_ESTIMATE_UI = {
   postCreateMailComposeBody: "Treść",
   packagingDialogTitle: "Karton / opakowanie",
   packagingDialogHint:
-    "Wybierz, jak przeliczać niedobór w sztukach na jednostki dokumentu: paczki na ZD albo sztuki z dobiciem do wielokrotności N.",
+    "Wybierz, jak przeliczać niedobór w sztukach na jednostki dokumentu ZD: paczki albo sztuki z dobiciem.",
   packagingModePackagesLabel: "1 na ZD = N szt (paczki na dokumencie)",
   packagingModePiecesLabel: "Do ZD w sztukach — dobij do wielokrotności N",
   packagingModePackagesHint:
@@ -1045,13 +1095,13 @@ export const ZD_ESTIMATE_UI = {
     "Opakowania zaktualizowane — pokrycie i Do ZD przeliczone.",
   packagingModalTitle: "Opakowania ZD",
   packagingModalHint:
-    "Ustaw, jak przeliczać niedobór w sztukach na jednostki dokumentu ZD. Tryb A: 1 na ZD = opakowanie (wpisujesz liczbę paczek). Tryb B: Do ZD w sztukach z dobiciem do wielokrotności N. Sztuki 1:1 — usuń opakowanie, nie zapisuj „1”.",
+    "Ustaw, jak przeliczać niedobór w sztukach na jednostki dokumentu ZD. Tryb A: 1 na ZD = opakowanie (wpisujesz liczbę paczek; możesz też włączyć kupno co M paczek). Tryb B: Do ZD w sztukach z dobiciem do wielokrotności N. Sztuki 1:1 — usuń opakowanie, nie zapisuj „1”.",
   packagingIntroTitle: "1 na ZD → N sztuk na magazynie i w sprzedaży",
   packagingIntroBody:
-    "Kreator liczy niedobór w sztukach. Kolumna „Do ZD” pokazuje jednostki dokumentu: albo liczbę paczek (tryb A), albo sztuki dobite do pełnego N (tryb B). Możesz też edytować opakowanie z wiersza listy wyniku.",
-  packagingUnitsLabel: "Sztuk w 1 na ZD / wielokrotność",
+    "Kreator liczy niedobór w sztukach. Kolumna „Do ZD” pokazuje jednostki dokumentu: albo liczbę paczek (tryb A), albo sztuki dobite do pełnego N (tryb B). W trybie A możesz osobno włączyć kupno w wielokrotności paczek (np. co 10 op.).",
+  packagingUnitsLabel: "Sztuk w 1 na ZD",
   packagingUnitsHint:
-    "Minimum 2 (max 100 000). Sztuki 1:1 — przycisk „Usuń (sztuki 1:1)”, nie zapisuj „1”.",
+    "Minimum 2 (max 100 000). W trybie A: ile sztuk = 1 na ZD. W trybie B: wielokrotność dobicia sztuk. Sztuki 1:1 — „Usuń”, nie zapisuj „1”.",
   packagingLabelField: "Etykieta",
   packagingClearCta: "Usuń (sztuki 1:1)",
   packagingNeedLabel: "Potrzeba",
@@ -1064,6 +1114,26 @@ export const ZD_ESTIMATE_UI = {
     "Opakowanie wymaga co najmniej 2 sztuk na 1 jednostkę ZD. Sztuki 1:1 — usuń ustawienie.",
   packagingUnitsMaxError:
     "Liczba sztuk w opakowaniu jest zbyt duża (max 100 000).",
+  packagingOrderMultipleEnableLabel: "Kupuj w wielokrotności paczek",
+  packagingOrderMultipleEnableHint:
+    "Włącz, gdy dostawca sprzedaje tylko pełne partie (np. zawsze co 10 op.). Wyłączone = Do ZD to dokładnie tyle opakowań, ile wynika z niedoboru — bez dodatkowego dobicia.",
+  packagingOrderMultipleLabel: "Wielokrotność (liczba paczek)",
+  packagingOrderMultipleHint:
+    "Np. 10 = przy niedoborze 2–3 op. Do ZD = 10 op. Minimum 2. Puste pole przy włączonej opcji nie jest dozwolone.",
+  packagingOrderMultiplePlaceholder: "np. 10",
+  packagingOrderMultipleShort: (m: number) => `co ${m}`,
+  packagingOrderMultipleOffCaption:
+    "Opcja wyłączona — bez dobicia liczby paczek do partii.",
+  packagingOrderMultipleRequiredError:
+    "Podaj wielokrotność (co najmniej 2) albo wyłącz opcję „Kupuj w wielokrotności paczek”.",
+  packagingOrderMultipleMinError:
+    "Wielokrotność paczek wymaga co najmniej 2.",
+  packagingOrderMultipleMaxError:
+    "Wielokrotność paczek jest zbyt duża (max 100 000).",
+  packagingOrderMultipleModeHint:
+    "Wielokrotność paczek jest dostępna tylko w trybie „1 na ZD = N szt”.",
+  packagingDoZdOrderMultipleWarn: (m: number) =>
+    `Ilość nie jest wielokrotnością ${m} op. — zwykle kupujecie co ${m}.`,
   packagingBulkUnitsHint:
     "Minimum 2 (max 100 000) dla wszystkich zaznaczonych. Sztuki 1:1 — osobna akcja „Usuń opakowanie”, nie zapisuj „1”.",
   packagingBulkPreviewPackages:
@@ -1081,6 +1151,26 @@ export const ZD_ESTIMATE_UI = {
     "rozjazd opakowania / trybu względem pary — tworzenie ZD zablokowane do ujednolicenia.",
   packagingLabelPresetsAria: "Szybki wybór etykiety opakowania",
 } as const;
+
+/**
+ * Meta dostawcy pod nazwą w wyniku wyszukiwania zakresu.
+ * Nie używaj dla wiersza już wybranego — baner „Powiązano / Z mapowania” jest SSOT.
+ */
+export function zdEstimateScopeHitSupplierMeta(hit: {
+  supplierName?: string | null;
+  supplierMatchSource?: "mapping" | "name" | null;
+  stockLabel?: string | null;
+}): string | null {
+  const name = hit.supplierName?.trim();
+  if (!name) return null;
+  const bits = [name];
+  if (hit.supplierMatchSource === "mapping") {
+    bits.push(ZD_ESTIMATE_UI.supplierFromMappingHitSuffix);
+  }
+  const stock = hit.stockLabel?.trim();
+  if (stock && stock !== "—") bits.push(stock);
+  return bits.join(" · ");
+}
 
 /** Hint po timeout create, gdy async znalazł świeże ZD. */
 export function formatPostCreateCandidatesHint(n: number): string | null {

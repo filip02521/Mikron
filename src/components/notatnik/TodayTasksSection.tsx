@@ -23,8 +23,8 @@ function taskBadge(kind: NotepadTodayTaskKind) {
       );
     case "zk-warehouse-arrival":
       return (
-        <Badge variant="success" className="text-[10px]">
-          Na regale
+        <Badge variant="purple" className="text-[10px]">
+          Nowy na regale
         </Badge>
       );
     case "note-follow-up":

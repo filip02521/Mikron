@@ -6,7 +6,6 @@ import type { DeliveryStats, StatsMode } from "@/types/database";
 import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DailyPanelEmptyGuide } from "@/components/summary/DailyPanelEmptyGuide";
-import { DailyPanelVerificationBanner } from "@/components/summary/DailyPanelVerificationBanner";
 import { SalesCancelledDailyPanel } from "@/components/summary/SalesCancelledDailyPanel";
 import { ForSomeoneRequests } from "@/components/summary/ForSomeoneRequests";
 import { UrgentOrdersSection } from "@/components/summary/UrgentOrdersSection";
@@ -43,10 +42,11 @@ export function DailyTodayView({
   onToggle,
   onSelectAllInScope,
   onBulkOrdered,
-  onOpenVerification,
   onOpenWeek,
   highlightFresh = false,
   notify,
+  etaUseP50 = false,
+  etaQuantilesBySupplierId = {},
 }: {
   workspace: SummaryWorkspaceData;
   verificationCount: number;
@@ -77,10 +77,14 @@ export function DailyTodayView({
   onToggle: (supplierId: string) => void;
   onSelectAllInScope: (checked: boolean, supplierIds: string[]) => void;
   onBulkOrdered: () => void;
-  onOpenVerification: () => void;
   onOpenWeek: () => void;
   highlightFresh?: boolean;
   notify?: (text: string, tone?: "success" | "error") => void;
+  etaUseP50?: boolean;
+  etaQuantilesBySupplierId?: Record<
+    string,
+    import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
+  >;
 }) {
   const hasCancelled = workspace.salesCancelledNotices.length > 0;
   const showEmpty = !hasTodayWork && verificationCount === 0 && !hasCancelled;
@@ -103,12 +107,6 @@ export function DailyTodayView({
                 notices={workspace.salesCancelledNotices}
                 isScopePending={isScopePending}
                 run={run}
-              />
-            ) : null}
-            {verificationCount > 0 ? (
-              <DailyPanelVerificationBanner
-                count={verificationCount}
-                onOpenModal={onOpenVerification}
               />
             ) : null}
             {hasTodayWork ? (
@@ -160,6 +158,8 @@ export function DailyTodayView({
                     procurementLaneOrder={workspace.procurementLaneOrder}
                     lanePrefs={lanePrefs}
                     notify={notify}
+                    etaUseP50={etaUseP50}
+                    etaQuantilesBySupplierId={etaQuantilesBySupplierId}
                   />
                 ) : null}
 
@@ -185,6 +185,8 @@ export function DailyTodayView({
                     procurementLaneOrder={workspace.procurementLaneOrder}
                     lanePrefs={lanePrefs}
                     notify={notify}
+                    etaUseP50={etaUseP50}
+                    etaQuantilesBySupplierId={etaQuantilesBySupplierId}
                   />
                 ) : null}
 

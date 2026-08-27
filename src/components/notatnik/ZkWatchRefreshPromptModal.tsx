@@ -2,13 +2,18 @@
 
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState, type MouseEvent } from "react";
 import { actionPatchZkWatchProsbaScopeLines } from "@/app/actions/sales-notepad";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
-import { Spinner } from "@/components/ui/Spinner";
+import {
+  ZK_PROSBA_MODAL_BODY_CLASS,
+  ZkProsbaModalCallout,
+} from "@/components/notatnik/ZkProsbaModalCallout";
 import { cn } from "@/lib/cn";
+import { plPozycja } from "@/lib/ui/polish-plurals";
 import { buttonPrimaryClass } from "@/lib/ui/ontime-theme";
 import {
   assessProsbaLineStock,
@@ -90,6 +95,7 @@ export function ZkWatchRefreshPromptModal({
   /** Gdy brak list zębów — zamknij prompt i otwórz modal szkiców. */
   onRequireTeethDrafts?: (watch: SalesZkWatch) => void;
 }) {
+  const router = useRouter();
   const teethExemptTwIds = useTeethExemptTwIds();
   const teethProductInfo = useTeethProductInfo();
   const teethRegistry = useMemo(
@@ -261,7 +267,9 @@ export function ZkWatchRefreshPromptModal({
           );
           return;
         }
+        const targetHref = prosbaHrefFromZkWatch(updated, supplementOptions);
         onConfirm();
+        router.push(targetHref);
       } catch (e) {
         setPrefillError(userFacingErrorText(e, "Nie udało się zapisać zakresu pozycji."));
       } finally {
@@ -306,6 +314,11 @@ export function ZkWatchRefreshPromptModal({
     queuePosition != null && queueTotal != null && queueTotal > 1
       ? ` (${queuePosition} z ${queueTotal})`
       : "";
+  const showQueueProgress =
+    queuePosition != null && queueTotal != null && queueTotal > 1;
+  const queueProgressPct = showQueueProgress
+    ? Math.round((queuePosition / queueTotal) * 100)
+    : 0;
 
   return (
     <ModalShell
@@ -314,7 +327,7 @@ export function ZkWatchRefreshPromptModal({
       size="md"
       title={`${displayNumber} — nowe pozycje w Subiekcie${queueLabel}`}
       description={watch.client_label}
-      bodyClassName="space-y-4 px-5 py-4 sm:px-6"
+      bodyClassName={ZK_PROSBA_MODAL_BODY_CLASS}
       footer={
         <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button type="button" variant="ghost" size="sm" onClick={handleLater} disabled={patching}>
@@ -350,97 +363,124 @@ export function ZkWatchRefreshPromptModal({
         </div>
       }
     >
-      <div className="rounded-lg border border-amber-200/90 bg-amber-50/80 px-3 py-3 text-sm text-amber-950">
-        <p className="font-medium">
+      {showQueueProgress ? (
+        <ZkProsbaModalCallout tone="neutral" icon="none" role="status">
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-semibold text-slate-800">
+              Okno {queuePosition} z {queueTotal}
+            </span>
+            <span className="text-[11px] font-medium text-slate-500">
+              Kolejne ZK po tej decyzji
+            </span>
+          </div>
+          <div
+            className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200/90"
+            aria-hidden
+          >
+            <div
+              className="h-full rounded-full bg-indigo-500 transition-[width] duration-300"
+              style={{ width: `${queueProgressPct}%` }}
+            />
+          </div>
+        </ZkProsbaModalCallout>
+      ) : null}
+
+      <ZkProsbaModalCallout tone="amber">
+        <p className="text-sm font-semibold text-amber-950">
           Dopisano{" "}
           {polishCountLabel(addedCount, ["pozycję", "pozycje", "pozycji"])} do tego ZK.
         </p>
         {statusSummary ? (
-          <p className="mt-1 text-amber-900/90">
+          <p className="mt-1 text-xs leading-relaxed text-amber-900/90">
             Pozostałe pozycje: {statusSummary}.
           </p>
         ) : null}
-        {redirectToOpenProsba ? (
-          <p className="mt-2 text-xs leading-relaxed text-amber-900/85">
-            Nowe pozycje mają wystarczający stan w Subiekcie — sprawdź aktywną prośbę powiązaną z
-            tym ZK.
+        {!redirectToOpenProsba ? (
+          <p className="mt-1.5 text-xs leading-relaxed text-amber-900/85">
+            Zaznacz nowe pozycje do uzupełniającej prośby. Wcześniejsze pozostają w dotychczasowych
+            prośbach.
           </p>
-        ) : (
-          <p className="mt-2 text-xs leading-relaxed text-amber-900/85">
-            Zaznacz nowe pozycje do uzupełniającej prośby powiązanej z tym ZK. Wcześniejsze pozycje
-            pozostają w dotychczasowych prośbach.
-          </p>
-        )}
-      </div>
+        ) : null}
+      </ZkProsbaModalCallout>
 
       {stockLoading ? (
-        <p className="flex items-center gap-2 text-xs text-slate-600">
-          <Spinner size="sm" />
-          Sprawdzam stan magazynowy w Subiekcie…
-        </p>
+        <ZkProsbaModalCallout tone="sky" icon="spinner" role="status">
+          <span className="font-medium">Sprawdzam stan magazynowy w Subiekcie…</span>
+        </ZkProsbaModalCallout>
       ) : null}
 
       {stockFetchTimedOut ? (
-        <p className="rounded-md border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-xs leading-relaxed text-amber-950">
+        <ZkProsbaModalCallout tone="amber" role="status">
           Sprawdzanie stanu trwa zbyt długo — zaznacz pozycje ręcznie lub oznacz na stanie.
-        </p>
+        </ZkProsbaModalCallout>
       ) : null}
 
       {stockFetchFailed && !stockFetchTimedOut ? (
-        <p className="rounded-md border border-amber-200/90 bg-amber-50/80 px-3 py-2 text-xs leading-relaxed text-amber-950">
+        <ZkProsbaModalCallout tone="amber" role="status">
           Nie udało się pobrać stanu z Subiekta — zaznacz ręcznie pozycje do zamówienia.
-        </p>
+        </ZkProsbaModalCallout>
       ) : null}
 
       {!stockLoading && autoMarkedCount > 0 && linesToAddCount > 0 ? (
-        <p className={cn(salesTypography.rowMeta, "text-slate-600")}>
+        <ZkProsbaModalCallout tone="info">
           {formatZkProsbaAutoMarkedHint(autoMarkedCount)}
-        </p>
+        </ZkProsbaModalCallout>
       ) : null}
 
       {allOnStock && linesToAddCount === 0 && !redirectToOpenProsba ? (
-        <p className={cn(salesTypography.rowMeta, "text-slate-700")}>
+        <ZkProsbaModalCallout tone="emerald">
           Subiekt potwierdza wystarczający stan na wszystkich nowych pozycjach — uzupełnienie
           prośby nie jest potrzebne.
-        </p>
+        </ZkProsbaModalCallout>
       ) : null}
 
       {redirectToOpenProsba ? (
-        <p className={cn(salesTypography.rowMeta, "text-indigo-900/90")}>
-          Nowe pozycje mają wystarczający stan w Subiekcie, ale jest już aktywna prośba powiązana z
-          tym ZK — przejdź do niej, aby sprawdzić status zamówienia.
-        </p>
+        <ZkProsbaModalCallout tone="indigo">
+          Nowe pozycje mają wystarczający stan, ale jest już aktywna prośba powiązana z tym ZK —
+          przejdź do niej, aby sprawdzić status.
+        </ZkProsbaModalCallout>
       ) : null}
 
       {diff.quantityChanged.length > 0 ? (
-        <p className={cn(salesTypography.rowMeta, "text-slate-600")}>
-          Uwaga: {diff.quantityChanged.length}{" "}
-          {diff.quantityChanged.length === 1 ? "pozycja ma" : "pozycje mają"} zmienioną ilość w
-          Subiekcie — sprawdź, czy dotychczasowe prośby nadal są poprawne.
-        </p>
+        <ZkProsbaModalCallout tone="amber">
+          Uwaga:{" "}
+          {polishCountLabel(diff.quantityChanged.length, [
+            "pozycja ma",
+            "pozycje mają",
+            "pozycji ma",
+          ])}{" "}
+          zmienioną ilość w Subiekcie — sprawdź, czy dotychczasowe prośby nadal są poprawne.
+        </ZkProsbaModalCallout>
       ) : null}
 
       {prefillError ? (
-        <p className={cn(salesTypography.rowMeta, "text-rose-700")}>{prefillError}</p>
+        <ZkProsbaModalCallout tone="rose" role="alert">
+          {prefillError}
+        </ZkProsbaModalCallout>
       ) : null}
 
-      <div>
-        <p className={cn(salesTypography.kindTag, "mb-2 text-slate-500")}>
-          Nowe pozycje w ZK — zaznacz do prośby
-        </p>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between px-0.5">
+          <span className={salesTypography.sectionLabel}>
+            Nowe pozycje — zaznacz do prośby
+          </span>
+          <span className="text-[11px] font-medium text-slate-400">
+            {addedCount} {plPozycja(addedCount)}
+          </span>
+        </div>
         {!stockLoading && selectionInitialized && skippedCount > 0 && linesToAddCount > 0 ? (
-          <p className={cn(salesTypography.rowMeta, "mb-2 text-slate-600")}>
+          <ZkProsbaModalCallout tone="info">
             {polishCountLabel(linesToAddCount, [
               "pozycja trafi",
               "pozycje trafią",
               "pozycji trafi",
             ])}{" "}
             do prośby — pozostałe pominięte.
-          </p>
+          </ZkProsbaModalCallout>
         ) : null}
         <ul
           className={cn(
-            "divide-y divide-slate-100 rounded-lg border border-slate-200/90 bg-white",
+            "divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm",
             selectionBusy && "pointer-events-none opacity-60"
           )}
           aria-busy={selectionBusy || undefined}
@@ -477,10 +517,10 @@ export function ZkWatchRefreshPromptModal({
               <li key={key}>
                 <label
                   className={cn(
-                    "flex cursor-pointer items-start gap-3 px-3 py-2.5 transition",
+                    "flex cursor-pointer items-start gap-3 px-3.5 py-3 transition-colors duration-150",
                     sufficient && !markedForOrder
-                      ? "bg-emerald-50/40 hover:bg-emerald-50/55"
-                      : "bg-amber-50/40 hover:bg-amber-50/55"
+                      ? "bg-emerald-50/40 hover:bg-emerald-50/60"
+                      : "bg-amber-50/40 hover:bg-amber-50/60"
                   )}
                 >
                   <input
@@ -493,12 +533,12 @@ export function ZkWatchRefreshPromptModal({
                         ? `${line.product} — do zamówienia, odznacz aby pominąć`
                         : `${line.product} — pominięte, zaznacz aby zamówić`
                     }
-                    className="mt-0.5 size-4 shrink-0 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    className="mt-0.5 size-4 shrink-0 rounded-md border-slate-300 text-indigo-600 transition-colors focus:ring-2 focus:ring-indigo-500/40 focus:ring-offset-0"
                   />
                   <div className="min-w-0 flex-1">
                     <p className={cn(salesTypography.rowTitle, "text-slate-900")}>{line.product}</p>
                     {(line.symbol || line.quantityLabel) && (
-                      <p className={cn(salesTypography.rowMeta, "mt-0.5 text-slate-600")}>
+                      <p className={cn(salesTypography.rowMeta, "mt-0.5 text-slate-500")}>
                         {[line.symbol, line.quantityLabel].filter(Boolean).join(" · ")}
                       </p>
                     )}
@@ -516,7 +556,7 @@ export function ZkWatchRefreshPromptModal({
                       <span
                         className={cn(
                           salesTypography.kindTag,
-                          "rounded-full px-1.5 py-0.5",
+                          "rounded-full px-2 py-0.5 leading-none",
                           sufficient && !markedForOrder
                             ? "bg-emerald-100 text-emerald-950 ring-1 ring-emerald-200/80"
                             : "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80"

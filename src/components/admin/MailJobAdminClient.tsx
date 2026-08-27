@@ -29,12 +29,12 @@ export function MailJobAdminClient({
   visibleTabs?: readonly AdminHubTab[];
 }) {
   const sendLabel = !runnerStatus.ok
-    ? "SEND: nieznany"
+    ? "Wysyłka: nieznany stan"
     : runnerStatus.sendEnabled
       ? runnerStatus.overrideTo
-        ? "SEND: wł. (override)"
-        : "SEND: wł."
-      : "SEND: wył.";
+        ? "Wysyłka: wł. (override)"
+        : "Wysyłka: włączona"
+      : "Wysyłka: wyłączona";
   const sendVariant =
     !runnerStatus.ok
       ? "warning"
@@ -77,7 +77,7 @@ export function MailJobAdminClient({
             {raportyRunnerStatusLabel(runnerStatus)}
           </p>
           <p className={cn(panelTypography.caption, "mt-1 text-slate-500")}>
-            Metadane w OT: job DB{" "}
+            Metadane w OnTime: job w bazie{" "}
             <code>{job.enabled ? "enabled=true" : "enabled=false"}</code> (nie mylić z{" "}
             <code>IVOCLAR_SEND_ENABLED</code> na runnerze).
           </p>

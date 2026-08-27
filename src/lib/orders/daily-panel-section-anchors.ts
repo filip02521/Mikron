@@ -30,11 +30,11 @@ export function scrollToDailyPanelSection(key: DailyPanelQueueSectionKey): void 
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-/** Margines scrolla pod sticky chrome na zakładce Dziś (pełny pasek statusu). */
-export const dailyPanelQueueSectionScrollClass = "scroll-mt-40 sm:scroll-mt-32";
+/** Margines scrolla pod sticky wyszukiwaniem dostawcy (kompaktowy pasek narzędzi). */
+export const dailyPanelQueueSectionScrollClass = "scroll-mt-24 sm:scroll-mt-20";
 
-/** Margines gdy sticky to tylko zakładki + sync (Tydzień / Wyjątki). */
-export const dailyPanelTabScrollClass = "scroll-mt-28 sm:scroll-mt-24";
+/** Margines kotwic Tydzień / Wyjątki — ten sam sticky search. */
+export const dailyPanelTabScrollClass = "scroll-mt-24 sm:scroll-mt-20";
 
 /** Etykieta czasu od ostatniej synchronizacji (poll lub odświeżenie). */
 export function formatDailyPanelSyncLabel(

@@ -1,10 +1,12 @@
 /** Spójne etykiety potwierdzenia odbioru / dostępności w /moje. */
 
+import { MOJE_COPY_AVAILABILITY_ACK_BUTTON } from "@/lib/orders/my-order-moje-copy";
+
 export type MyOrderPickupAckMode = "pickup" | "teeth_handover" | "availability";
 
 export const MY_ORDER_PICKUP_ACK_LABEL = "Potwierdź odbiór";
 export const MY_ORDER_TEETH_ACK_LABEL = "Potwierdź odbiór zębów";
-export const MY_ORDER_AVAILABILITY_ACK_LABEL = "Potwierdź";
+export const MY_ORDER_AVAILABILITY_ACK_LABEL = MOJE_COPY_AVAILABILITY_ACK_BUTTON;
 export const MY_ORDER_PICKUP_ACK_LINE_LABEL = "Potwierdź tę pozycję";
 export const MY_ORDER_PICKUP_ACK_ALL_LABEL = "Potwierdź wszystko";
 
@@ -31,13 +33,13 @@ export function myOrderPickupAckLabel(
   if (mode === "availability") return MY_ORDER_AVAILABILITY_ACK_LABEL;
   if (mode === "teeth_handover") {
     const n = Math.max(0, Math.trunc(pendingCount));
-    if (options?.compact) return "Potwierdź";
+    if (options?.compact) return MY_ORDER_TEETH_ACK_LABEL;
     if (n > 1) return `${MY_ORDER_TEETH_ACK_LABEL} (${n})`;
     return MY_ORDER_TEETH_ACK_LABEL;
   }
   const n = Math.max(0, Math.trunc(pendingCount));
   if (options?.compact) {
-    return "Potwierdź";
+    return MY_ORDER_PICKUP_ACK_LABEL;
   }
   if (n > 1) return `${MY_ORDER_PICKUP_ACK_LABEL} (${n})`;
   return MY_ORDER_PICKUP_ACK_LABEL;
@@ -79,11 +81,11 @@ export function myOrderPickupAckTitle(
   if (mode === "teeth_handover") {
     const base = "Potwierdzam, że odebrałem/am zęby od magazynu";
     const n = Math.max(0, Math.trunc(pendingCount));
-    if (n > 1) return `${base} — ${n} poz.`;
+    if (n > 1) return `${base} — ${n} pozycji`;
     return base;
   }
   const base = "Potwierdzam odbiór towaru z magazynu";
   const n = Math.max(0, Math.trunc(pendingCount));
-  if (n > 1) return `${base} — ${n} poz.`;
+  if (n > 1) return `${base} — ${n} pozycji`;
   return base;
 }

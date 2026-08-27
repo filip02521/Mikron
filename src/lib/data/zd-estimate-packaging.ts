@@ -1,6 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
+  assertOrderMultiple,
   assertPackagingUnits,
+  normalizeOrderMultiple,
   normalizePackagingDocumentUnitMode,
   type ZdPackagingDocumentUnitMode,
 } from "@/lib/orders/zd-estimate-packaging";
@@ -20,6 +22,11 @@ export type ZdEstimatePackagingRow = {
    * pieces_multiple = Do ZD w sztukach, dobij do wielokrotności N.
    */
   documentUnitMode: ZdPackagingDocumentUnitMode;
+  /**
+   * Wielokrotność liczby paczek (packages). null = off.
+   * Ignorowane w pieces_multiple.
+   */
+  orderMultiple: number | null;
   note: string;
   createdAt: string;
   updatedAt: string;
@@ -35,6 +42,7 @@ type DbRow = {
   units_per_package: number;
   package_label: string | null;
   document_unit_mode?: string | null;
+  order_multiple?: number | null;
   note: string | null;
   created_at: string;
   updated_at: string;
@@ -42,11 +50,24 @@ type DbRow = {
 };
 
 const SELECT_COLS =
-  "subiekt_tw_id, tw_symbol, tw_nazwa, grt_id, grt_nazwa, units_per_package, package_label, document_unit_mode, note, created_at, updated_at, created_by";
+  "subiekt_tw_id, tw_symbol, tw_nazwa, grt_id, grt_nazwa, units_per_package, package_label, document_unit_mode, order_multiple, note, created_at, updated_at, created_by";
 
 const PG_UNIQUE_VIOLATION = "23505";
 
+function mapOrderMultipleFromDb(raw: unknown): number | null {
+  if (raw == null) return null;
+  const n = normalizeOrderMultiple(Number(raw));
+  return n >= 2 ? n : null;
+}
+
 export function mapZdEstimatePackagingRow(row: DbRow): ZdEstimatePackagingRow {
+  const documentUnitMode = normalizePackagingDocumentUnitMode(
+    row.document_unit_mode
+  );
+  const orderMultiple =
+    documentUnitMode === "pieces_multiple"
+      ? null
+      : mapOrderMultipleFromDb(row.order_multiple);
   return {
     subiektTwId: Number(row.subiekt_tw_id),
     twSymbol: row.tw_symbol?.trim() || null,
@@ -55,7 +76,8 @@ export function mapZdEstimatePackagingRow(row: DbRow): ZdEstimatePackagingRow {
     grtNazwa: row.grt_nazwa?.trim() || null,
     unitsPerPackage: Math.trunc(Number(row.units_per_package)),
     packageLabel: (row.package_label ?? "op.").trim() || "op.",
-    documentUnitMode: normalizePackagingDocumentUnitMode(row.document_unit_mode),
+    documentUnitMode,
+    orderMultiple,
     note: (row.note ?? "").trim(),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -96,6 +118,7 @@ async function updateExistingPackaging(input: {
   unitsPerPackage: number;
   packageLabel: string;
   documentUnitMode: ZdPackagingDocumentUnitMode;
+  orderMultiple: number | null;
   note?: string;
 }): Promise<ZdEstimatePackagingRow> {
   const existing = await fetchZdEstimatePackagingOne(input.subiektTwId);
@@ -117,6 +140,7 @@ async function updateExistingPackaging(input: {
       units_per_package: input.unitsPerPackage,
       package_label: input.packageLabel,
       document_unit_mode: input.documentUnitMode,
+      order_multiple: input.orderMultiple,
       note,
       updated_at: new Date().toISOString(),
     })
@@ -130,6 +154,7 @@ async function updateExistingPackaging(input: {
 /**
  * Zapisuje opakowanie (units_per_package ≥ 2, zgodnie z DB).
  * Sztuki 1:1: deleteZdEstimatePackaging / „Usuń” w UI — nie upsert(1).
+ * Mode B: order_multiple zawsze null.
  */
 export async function upsertZdEstimatePackaging(input: {
   subiektTwId: number;
@@ -140,6 +165,7 @@ export async function upsertZdEstimatePackaging(input: {
   unitsPerPackage: number;
   packageLabel?: string;
   documentUnitMode?: ZdPackagingDocumentUnitMode | null;
+  orderMultiple?: number | null;
   note?: string;
   createdBy?: string | null;
 }): Promise<ZdEstimatePackagingRow | null> {
@@ -156,6 +182,14 @@ export async function upsertZdEstimatePackaging(input: {
   const documentUnitMode = normalizePackagingDocumentUnitMode(
     input.documentUnitMode
   );
+  const orderCheck = assertOrderMultiple(
+    documentUnitMode === "pieces_multiple" ? null : input.orderMultiple
+  );
+  if (!orderCheck.ok) {
+    throw new Error(orderCheck.message);
+  }
+  const orderMultiple =
+    documentUnitMode === "pieces_multiple" ? null : orderCheck.orderMultiple;
 
   const twNazwa = input.twNazwa.trim() || `Towar ${subiektTwId}`;
   const twSymbol = input.twSymbol?.trim() || null;
@@ -175,6 +209,7 @@ export async function upsertZdEstimatePackaging(input: {
       unitsPerPackage: units,
       packageLabel,
       documentUnitMode,
+      orderMultiple,
       note: input.note,
     });
   }
@@ -191,6 +226,7 @@ export async function upsertZdEstimatePackaging(input: {
       units_per_package: units,
       package_label: packageLabel,
       document_unit_mode: documentUnitMode,
+      order_multiple: orderMultiple,
       note: (input.note ?? "").trim().slice(0, 500),
       created_at: now,
       updated_at: now,
@@ -212,6 +248,7 @@ export async function upsertZdEstimatePackaging(input: {
       unitsPerPackage: units,
       packageLabel,
       documentUnitMode,
+      orderMultiple,
       note: input.note,
     });
   }

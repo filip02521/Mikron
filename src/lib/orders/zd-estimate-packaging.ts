@@ -17,6 +17,7 @@ import {
 } from "@/lib/orders/zd-estimate-bom";
 import {
   isPackagingPackagesMode,
+  normalizeOrderMultiple,
   normalizePackagingDocumentUnitMode,
   normalizeUnitsPerPackage,
   zdDocumentUnitsToPieces,
@@ -30,6 +31,7 @@ import {
 
 export {
   normalizeUnitsPerPackage,
+  normalizeOrderMultiple,
   zdDocumentUnitsToPieces,
   normalizePackagingDocumentUnitMode,
   isPackagingPackagesMode,
@@ -46,16 +48,22 @@ export type ZdPackOrderQty = {
   /** Ile sztuk fizycznie przyjdzie. */
   piecesArriving: number;
   hasPackaging: boolean;
-  /** Ceil opakowania zawyżył dostawę względem potrzeby. */
+  /** Ceil opakowania / wielokrotność paczek zawyżył dostawę względem potrzeby. */
   roundedUp: boolean;
   packageLabel: string;
   documentUnitMode: ZdPackagingDocumentUnitMode;
+  /** Wielokrotność liczby paczek (0 = off). */
+  orderMultiple: number;
+  /** Liczba paczek przed dobiciem do M (packages); null gdy M off / Mode B. */
+  packsBeforeOrderMultiple: number | null;
 };
 
 export type PackagingLookup = {
   unitsPerPackage: number;
   packageLabel?: string;
   documentUnitMode?: ZdPackagingDocumentUnitMode | null;
+  /** Wielokrotność liczby paczek (packages); null/1 = off. */
+  orderMultiple?: number | null;
 };
 
 export function packagingDocumentMode(
@@ -64,31 +72,47 @@ export function packagingDocumentMode(
   return normalizePackagingDocumentUnitMode(packaging?.documentUnitMode);
 }
 
+function emptyPackQty(
+  pack: number,
+  label: string,
+  mode: ZdPackagingDocumentUnitMode,
+  orderMultiple: number
+): ZdPackOrderQty {
+  return {
+    piecesNeeded: 0,
+    unitsPerPackage: pack,
+    zdUnits: 0,
+    piecesArriving: 0,
+    hasPackaging: pack > 1,
+    roundedUp: false,
+    packageLabel: label,
+    documentUnitMode: mode,
+    orderMultiple,
+    packsBeforeOrderMultiple: null,
+  };
+}
+
 /**
  * piecesNeeded (szt) → jednostki ZD + ile sztuk przyjdzie.
+ * `orderMultiple` — tylko tryb packages; dobija liczbę paczek gdy > 0.
  */
 export function computeZdPackOrderQty(
   piecesNeeded: number,
   unitsPerPackage: number | null | undefined,
   packageLabel = "op.",
-  documentUnitMode: ZdPackagingDocumentUnitMode | null | undefined = "packages"
+  documentUnitMode: ZdPackagingDocumentUnitMode | null | undefined = "packages",
+  orderMultiple: number | null | undefined = null
 ): ZdPackOrderQty {
   const pieces = Math.max(0, Math.ceil(Number(piecesNeeded) || 0));
   const pack = normalizeUnitsPerPackage(unitsPerPackage);
   const label = packageLabel.trim() || "op.";
   const mode = normalizePackagingDocumentUnitMode(documentUnitMode);
+  const mult = isPackagingPackagesMode(mode)
+    ? normalizeOrderMultiple(orderMultiple)
+    : 0;
 
   if (pieces <= 0) {
-    return {
-      piecesNeeded: 0,
-      unitsPerPackage: pack,
-      zdUnits: 0,
-      piecesArriving: 0,
-      hasPackaging: pack > 1,
-      roundedUp: false,
-      packageLabel: label,
-      documentUnitMode: mode,
-    };
+    return emptyPackQty(pack, label, mode, mult);
   }
 
   if (pack <= 1) {
@@ -101,6 +125,8 @@ export function computeZdPackOrderQty(
       roundedUp: false,
       packageLabel: label,
       documentUnitMode: "packages",
+      orderMultiple: 0,
+      packsBeforeOrderMultiple: null,
     };
   }
 
@@ -115,10 +141,16 @@ export function computeZdPackOrderQty(
       roundedUp: piecesArriving > pieces,
       packageLabel: label,
       documentUnitMode: "pieces_multiple",
+      orderMultiple: 0,
+      packsBeforeOrderMultiple: null,
     };
   }
 
-  const zdUnits = Math.ceil(pieces / pack);
+  const packsBefore = Math.ceil(pieces / pack);
+  let zdUnits = packsBefore;
+  if (mult >= 2 && zdUnits > 0) {
+    zdUnits = Math.ceil(zdUnits / mult) * mult;
+  }
   const piecesArriving = zdUnits * pack;
   return {
     piecesNeeded: pieces,
@@ -129,6 +161,8 @@ export function computeZdPackOrderQty(
     roundedUp: piecesArriving > pieces,
     packageLabel: label,
     documentUnitMode: "packages",
+    orderMultiple: mult,
+    packsBeforeOrderMultiple: mult >= 2 ? packsBefore : null,
   };
 }
 
@@ -170,6 +204,7 @@ export function resolveOrderQtyForLine(
   );
   const label = packaging?.packageLabel?.trim() || "op.";
   const mode = packagingDocumentMode(packaging);
+  const orderMult = packaging?.orderMultiple ?? null;
 
   const effectiveExtraForNeed = (stockNeed: number) => {
     const cappedOverlap = Math.min(uncappedOverlap, Math.max(0, stockNeed));
@@ -178,7 +213,7 @@ export function resolveOrderQtyForLine(
 
   // Assembled parent: nigdy na ZD (także bez extras — explode idzie na składniki).
   if (isAssembledBomParent(line)) {
-    return computeZdPackOrderQty(0, 1, label, "packages");
+    return computeZdPackOrderQty(0, 1, label, "packages", null);
   }
 
   // kit_only composition: baza = 0, ale extras z explode próśb / multi-BOM mogą wejść.
@@ -186,23 +221,24 @@ export function resolveOrderQtyForLine(
     // Baza 0 → overlap nie obcina extra (jak extraOnly).
     const extra = effectiveExtraForNeed(0);
     if (line.pair?.role === "piece") {
-      return computeZdPackOrderQty(0, 1, label, "packages");
+      return computeZdPackOrderQty(0, 1, label, "packages", null);
     }
     if (line.pair?.role === "pack") {
       return computeZdPackOrderQty(
         extra,
         line.pair.unitsPerPack,
         label,
-        "packages"
+        "packages",
+        orderMult
       );
     }
     const pack = normalizeUnitsPerPackage(packaging?.unitsPerPackage);
-    return computeZdPackOrderQty(extra, pack, label, mode);
+    return computeZdPackOrderQty(extra, pack, label, mode, orderMult);
   }
 
   // Para: qty już policzone w sztukach (cover/sales złączone) — Mode A.
   if (line.pair?.role === "piece") {
-    return computeZdPackOrderQty(0, 1, label, "packages");
+    return computeZdPackOrderQty(0, 1, label, "packages", null);
   }
   if (line.pair?.role === "pack") {
     const baseRaw = extraOnly
@@ -219,14 +255,21 @@ export function resolveOrderQtyForLine(
       ),
       line.pair.unitsPerPack,
       label,
-      "packages"
+      "packages",
+      orderMult
     );
   }
 
   const pack = normalizeUnitsPerPackage(packaging?.unitsPerPackage);
   if (extraOnly) {
     // need=0 → overlap nie obcina; Do ZD = prośba.
-    return computeZdPackOrderQty(effectiveExtraForNeed(0), pack, label, mode);
+    return computeZdPackOrderQty(
+      effectiveExtraForNeed(0),
+      pack,
+      label,
+      mode,
+      orderMult
+    );
   }
   const otwarteZdRaw = Math.max(0, Number(line.otwarteZd) || 0);
   const otwarteZdPieces = zdDocumentUnitsToPieces(
@@ -247,7 +290,7 @@ export function resolveOrderQtyForLine(
     effectiveExtraForNeed(stockNeed),
     extrasPolicy
   );
-  return computeZdPackOrderQty(piecesNeeded, pack, label, mode);
+  return computeZdPackOrderQty(piecesNeeded, pack, label, mode, orderMult);
 }
 
 /** Etykiety presetów w dialogach opakowania (tylko prezentacja). */
@@ -327,6 +370,52 @@ export function assertPackagingUnits(
 }
 
 /**
+ * Walidacja order_multiple przy zapisie.
+ * Puste / null / "" → off (null). ≥ 2 jak units.
+ */
+export function assertOrderMultiple(
+  value: unknown
+):
+  | { ok: true; orderMultiple: number | null }
+  | { ok: false; message: string } {
+  if (value == null || value === "") {
+    return { ok: true, orderMultiple: null };
+  }
+  const n = Math.trunc(Number(value));
+  if (!Number.isFinite(n) || n < 1) {
+    return { ok: true, orderMultiple: null };
+  }
+  if (n === 1) {
+    return { ok: true, orderMultiple: null };
+  }
+  if (n < ZD_PACKAGING_UNITS_MIN) {
+    return {
+      ok: false,
+      message: ZD_ESTIMATE_UI.packagingOrderMultipleMinError,
+    };
+  }
+  if (n > ZD_PACKAGING_UNITS_MAX) {
+    return {
+      ok: false,
+      message: ZD_ESTIMATE_UI.packagingOrderMultipleMaxError,
+    };
+  }
+  return { ok: true, orderMultiple: n };
+}
+
+/** Czy ręczne Do ZD jest wielokrotnością M (packages). */
+export function isZdUnitsMultipleOfOrderMultiple(
+  zdUnits: number,
+  orderMultiple: number | null | undefined
+): boolean {
+  const m = normalizeOrderMultiple(orderMultiple);
+  if (m < 2) return true;
+  const u = Math.trunc(Number(zdUnits) || 0);
+  if (u <= 0) return true;
+  return u % m === 0;
+}
+
+/**
  * Krótka etykieta jednostek dokumentu.
  * A: „1 karton” / „3 op.” — B: null (dokument w sztukach).
  */
@@ -355,7 +444,10 @@ export function formatZdPackHint(qty: ZdPackOrderQty): string {
   }
   const doc = formatZdPackDocumentLabel(qty);
   if (!doc) return "—";
-  return `${doc} × ${qty.unitsPerPackage} = ${qty.piecesArriving} szt${over}`;
+  const packWord = qty.packageLabel.trim() || "op.";
+  const multHint =
+    qty.orderMultiple >= 2 ? ` · co ${qty.orderMultiple} ${packWord}` : "";
+  return `${doc} × ${qty.unitsPerPackage} = ${qty.piecesArriving} szt${multHint}${over}`;
 }
 
 /**
@@ -369,7 +461,15 @@ export function formatZdPackOrderPreviewLine(qty: ZdPackOrderQty): string {
   if (!isPackagingPackagesMode(qty.documentUnitMode)) {
     return `${formatQty(qty.zdUnits)} szt (wielokrotność ${qty.unitsPerPackage})`;
   }
-  return `${qty.zdUnits} × ${qty.unitsPerPackage} = ${formatQty(qty.piecesArriving)} szt`;
+  const packStep =
+    qty.orderMultiple >= 2 &&
+    qty.packsBeforeOrderMultiple != null &&
+    qty.packsBeforeOrderMultiple !== qty.zdUnits
+      ? ` (${qty.packsBeforeOrderMultiple}→${qty.zdUnits} op.)`
+      : qty.orderMultiple >= 2
+        ? ` · co ${qty.orderMultiple}`
+        : "";
+  return `${qty.zdUnits} × ${qty.unitsPerPackage} = ${formatQty(qty.piecesArriving)} szt${packStep}`;
 }
 
 /** Dane dobicia — do kompaktowego UI w wąskiej kolumnie Do ZD. */
@@ -377,30 +477,67 @@ export type ZdPackRoundupInfo = {
   extra: number;
   need: number;
   arrive: number;
+  /** Dobicie liczby paczek (packages + orderMultiple). */
+  packsBefore: number | null;
+  packsAfter: number | null;
 };
 
 export function getZdPackRoundupInfo(
   qty: Pick<
     ZdPackOrderQty,
-    "roundedUp" | "piecesNeeded" | "piecesArriving" | "hasPackaging"
+    | "roundedUp"
+    | "piecesNeeded"
+    | "piecesArriving"
+    | "hasPackaging"
+    | "zdUnits"
+    | "packsBeforeOrderMultiple"
+    | "orderMultiple"
+    | "documentUnitMode"
+    | "packageLabel"
   >
 ): ZdPackRoundupInfo | null {
   if (!qty.hasPackaging || !qty.roundedUp) return null;
   const need = Math.max(0, Math.round(Number(qty.piecesNeeded) || 0));
   const arrive = Math.max(0, Math.round(Number(qty.piecesArriving) || 0));
   if (!(arrive > need) || need <= 0) return null;
-  return { extra: arrive - need, need, arrive };
+  const packsBefore =
+    isPackagingPackagesMode(qty.documentUnitMode) &&
+    qty.orderMultiple >= 2 &&
+    qty.packsBeforeOrderMultiple != null
+      ? qty.packsBeforeOrderMultiple
+      : null;
+  const packsAfter =
+    packsBefore != null && qty.zdUnits > packsBefore ? qty.zdUnits : null;
+  return {
+    extra: arrive - need,
+    need,
+    arrive,
+    packsBefore,
+    packsAfter,
+  };
 }
 
-/** Linia dobicia: „dobicie +1 szt (9→10)” albo null. */
+/** Linia dobicia: paczki „3→10 op.” albo sztuki „dobicie +1 szt (9→10)”. */
 export function formatZdPackRoundupLine(
   qty: Pick<
     ZdPackOrderQty,
-    "roundedUp" | "piecesNeeded" | "piecesArriving" | "hasPackaging"
+    | "roundedUp"
+    | "piecesNeeded"
+    | "piecesArriving"
+    | "hasPackaging"
+    | "zdUnits"
+    | "packsBeforeOrderMultiple"
+    | "orderMultiple"
+    | "documentUnitMode"
+    | "packageLabel"
   >
 ): string | null {
   const info = getZdPackRoundupInfo(qty);
   if (!info) return null;
+  if (info.packsBefore != null && info.packsAfter != null) {
+    const label = qty.packageLabel?.trim() || "op.";
+    return `${info.packsBefore}→${info.packsAfter} ${label}`;
+  }
   return `dobicie +${info.extra} szt (${info.need}→${info.arrive})`;
 }
 
@@ -433,21 +570,27 @@ export function packagingByTwId<T extends { subiektTwId: number }>(
 export type ZdEstimatePackagingRefreshEntry = {
   unitsPerPackage: number;
   documentUnitMode?: ZdPackagingDocumentUnitMode | null;
+  orderMultiple?: number | null;
 };
 
-/** Mapa na live remat / Policz (N + tryb dokumentu). */
+/** Mapa na live remat / Policz (N + tryb + wielokrotność paczek). Mode B → M null. */
 export function packagingRowsToRefreshLookup(
   rows: readonly {
     subiektTwId: number;
     unitsPerPackage: number;
     documentUnitMode?: ZdPackagingDocumentUnitMode | null;
+    orderMultiple?: number | null;
   }[]
 ): Map<number, ZdEstimatePackagingRefreshEntry> {
   const map = new Map<number, ZdEstimatePackagingRefreshEntry>();
   for (const row of rows) {
+    const mode = normalizePackagingDocumentUnitMode(row.documentUnitMode);
     map.set(row.subiektTwId, {
       unitsPerPackage: row.unitsPerPackage,
-      documentUnitMode: row.documentUnitMode,
+      documentUnitMode: mode,
+      orderMultiple: isPackagingPackagesMode(mode)
+        ? row.orderMultiple ?? null
+        : null,
     });
   }
   return map;

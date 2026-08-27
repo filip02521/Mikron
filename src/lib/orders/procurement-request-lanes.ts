@@ -103,7 +103,7 @@ export function systemLanesForVariant(
 }
 
 /**
- * Kolejność sekcji: triage → flagi (sort_order) → do zamówienia → magazyn → urlop.
+ * Kolejność sekcji: triage (zawsze pierwsze) → flagi → do zamówienia → magazyn → urlop.
  * Flagi wstawiane osobno w partition / lane-order.
  */
 export function resolveProcurementRequestGroupPath(

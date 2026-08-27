@@ -68,13 +68,20 @@ export const buttonGroupItemClass = "border-0 shadow-none";
 export const panelActionSegmentClass =
   "flex h-full min-h-0 shrink-0 items-center justify-center leading-none";
 
-/** Układ wiersza kolejki — treść nad akcjami na wąskim ekranie. */
+/** Układ wiersza kolejki — treść nad akcjami na wąskim ekranie; na sm+ szyna akcji nie ściska treści. */
 export const panelQueueRowLayoutClass =
-  "flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-2";
+  "flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3";
 
-/** Slot akcji w wierszu — pełna szerokość na mobile. */
+/** Slot akcji w wierszu — pełna szerokość na mobile; na sm+ w stałej szynie. */
 export const panelQueueRowActionsClass =
-  "w-full border-t border-slate-100/90 pt-2 sm:w-auto sm:shrink-0 sm:border-0 sm:pt-0 sm:self-start";
+  "w-full border-t border-slate-100/90 pt-2 sm:w-full sm:shrink-0 sm:border-0 sm:pt-0 sm:self-start";
+
+/**
+ * Shell akcji w footerze karty prośby — pełna szerokość, bez sm:w-auto i bez cienia
+ * (footer ma już border-t; unikamy podwójnego chrome).
+ */
+export const panelActionBarFooterShellClass =
+  "inline-flex h-7 min-h-7 w-full max-w-full items-stretch overflow-hidden rounded-md border border-slate-200/90 bg-white sm:w-full";
 
 /** Karta w kolumnie planu tygodnia — zawsze pionowo (kolumny są wąskie niezależnie od viewportu). */
 export const weekPlannerCardLayoutClass = "flex flex-col gap-1.5";

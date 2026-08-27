@@ -40,6 +40,7 @@ predicate isAuthFunction(string fnName) {
     // Helper functions that internally call getSessionUser*()
     "assertSalesAccess",
     "assertProcurementAccess",
+    "assertNoteAccess",
     "userIdForMutation",
     "salesPersonIdForAction",
     "salesReporterForAction",

@@ -184,6 +184,24 @@ describe("zk-watch-prosba-prefill", () => {
     expect(prefill.mode).toBe("supplement");
   });
 
+  it("lineKeys bez mode=supplement → pierwsza / częściowa prośba (full)", () => {
+    const prefill = zkProsbaPrefillFromWatch(baseWatch, {
+      lineKeys: ["ob:0"],
+    });
+    expect(prefill.mode).toBe("full");
+    expect(prefill.supplementLineCount).toBeUndefined();
+    expect(prefill.lineKeys).toEqual(["ob:0"]);
+  });
+
+  it("prosbaHrefFromZkWatch dodaje uzupelnienie=1 tylko dla supplement", () => {
+    expect(prosbaHrefFromZkWatch(baseWatch, { lineKeys: ["ob:1"] })).not.toContain(
+      "uzupelnienie=1"
+    );
+    expect(
+      prosbaHrefFromZkWatch(baseWatch, { lineKeys: ["ob:1"], mode: "supplement" })
+    ).toContain("uzupelnienie=1");
+  });
+
   it("enrichZkProsbaPrefillWithStock uzupełnia linie o stan magazynowy", () => {
     const prefill = zkProsbaPrefillFromWatch(baseWatch);
     const enriched = enrichZkProsbaPrefillWithStock(prefill, {

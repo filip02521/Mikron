@@ -130,11 +130,16 @@ export async function assertProsbaSubmitStockAllowed(input: {
   lines: ProsbaStockServerLine[];
   requestKind: IndividualRequestKind;
   acknowledgeSufficientStock?: boolean;
+  stockByTwId?: Record<number, ProsbaLineStockSnapshot>;
 }): Promise<void> {
-  const { lines, requestKind, acknowledgeSufficientStock } = input;
+  const { lines, requestKind, acknowledgeSufficientStock, stockByTwId } = input;
   if (requestKind !== "zamowienie") return;
 
-  const sufficientLines = await findProsbaLinesWithSufficientStock({ lines, requestKind });
+  const sufficientLines = await findProsbaLinesWithSufficientStock({
+    lines,
+    requestKind,
+    stockByTwId,
+  });
 
   if (!sufficientLines.length) return;
 

@@ -33,11 +33,15 @@ describe("avgDaysForOrderType LACZNIE", () => {
 
 describe("formatSupplierLeadTimeBrief", () => {
   it("LACZNIE — jedna krótka linia", () => {
-    expect(formatSupplierLeadTimeBrief(stats, "LACZNIE")).toBe("~8 dni rob.");
+    expect(formatSupplierLeadTimeBrief(stats, "LACZNIE", { useP50: false })).toBe(
+      "~8 dni rob. · szacunek"
+    );
   });
 
   it("OSOBNO — główne i poboczne", () => {
-    expect(formatSupplierLeadTimeBrief(stats, "OSOBNO")).toBe("gł. ~10 d · pob. ~5 d");
+    expect(formatSupplierLeadTimeBrief(stats, "OSOBNO", { useP50: false })).toBe(
+      "gł. ~10 d · pob. ~5 d · szacunek"
+    );
   });
 
   it("brak historii — null", () => {
@@ -57,21 +61,21 @@ describe("orderTypesForLeadTimeHints", () => {
 
 describe("buildSupplierDrawerLeadTime", () => {
   it("empty gdy brak historii", () => {
-    const m = buildSupplierDrawerLeadTime(null, "LACZNIE");
+    const m = buildSupplierDrawerLeadTime(null, "LACZNIE", { useP50: false });
     expect(m.kind).toBe("empty");
   });
 
   it("LACZNIE — combined z ważoną średnią", () => {
-    const m = buildSupplierDrawerLeadTime(stats, "LACZNIE");
+    const m = buildSupplierDrawerLeadTime(stats, "LACZNIE", { useP50: false });
     expect(m.kind).toBe("combined");
     if (m.kind !== "combined") return;
     expect(m.primary.avgDisplay).toBe("~8");
-    expect(m.lowConfidence).toBe(false);
+    expect(m.lowConfidence).toBe(true); // n=4 < 5
     expect(m.modeLabel).toBe("łącznie");
     expect(m.sampleLabel).toContain("4 dostawy");
   });
 
-  it("LACZNIE — lowConfidence przy <3 próbach", () => {
+  it("LACZNIE — lowConfidence przy <5 próbach", () => {
     const thin: DeliveryStats = {
       supplier_id: "x",
       main_sum: 10,
@@ -81,7 +85,7 @@ describe("buildSupplierDrawerLeadTime", () => {
       side_count: 0,
       side_avg: null,
     };
-    const m = buildSupplierDrawerLeadTime(thin, "LACZNIE");
+    const m = buildSupplierDrawerLeadTime(thin, "LACZNIE", { useP50: false });
     expect(m.kind).toBe("combined");
     if (m.kind !== "combined") return;
     expect(m.lowConfidence).toBe(true);
@@ -98,7 +102,7 @@ describe("buildSupplierDrawerLeadTime", () => {
       side_count: 0,
       side_avg: null,
     };
-    const m = buildSupplierDrawerLeadTime(rich, "LACZNIE");
+    const m = buildSupplierDrawerLeadTime(rich, "LACZNIE", { useP50: false });
     expect(m.kind).toBe("combined");
     if (m.kind !== "combined") return;
     expect(m.lowConfidence).toBe(false);
@@ -106,11 +110,23 @@ describe("buildSupplierDrawerLeadTime", () => {
   });
 
   it("OSOBNO — split gł./pob.", () => {
-    const m = buildSupplierDrawerLeadTime(stats, "OSOBNO");
+    const m = buildSupplierDrawerLeadTime(stats, "OSOBNO", { useP50: false });
     expect(m.kind).toBe("split");
     if (m.kind !== "split") return;
     expect(m.main?.avgDisplay).toBe("~10");
     expect(m.side?.avgDisplay).toBe("~5");
     expect(m.modeLabel).toBe("osobno");
+  });
+
+  it("LACZNIE + p50 — primary z mediany", () => {
+    const m = buildSupplierDrawerLeadTime(stats, "LACZNIE", {
+      useP50: true,
+      p50Combined: 4,
+      nOrders: 4,
+    });
+    expect(m.kind).toBe("combined");
+    if (m.kind !== "combined") return;
+    expect(m.primary.avgDisplay).toBe("~4");
+    expect(m.title).toBe("Typowy czas dostawy");
   });
 });

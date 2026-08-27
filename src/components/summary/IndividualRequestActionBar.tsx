@@ -5,43 +5,72 @@ import {
   RequestGroupOverflowMenu,
   type RequestGroupFlagShortcut,
 } from "@/components/summary/RequestGroupOverflowMenu";
-import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import { cn } from "@/lib/cn";
-import { panelSegmentLastClass, panelSegmentOutlineClass, panelSegmentPrimaryClass } from "@/lib/ui/ontime-theme";
-import { buttonGroupItemClass, panelActionBarShellClass, panelActionSegmentClass } from "@/lib/ui/surfaces";
-import { actionProcessIndividual } from "@/app/actions/admin";
+import {
+  panelSegmentLastClass,
+  panelSegmentOutlineClass,
+  panelSegmentPrimaryClass,
+  type DailyPanelUnseenVariant,
+} from "@/lib/ui/ontime-theme";
+import {
+  buttonGroupItemClass,
+  panelActionBarFooterShellClass,
+  panelActionSegmentClass,
+} from "@/lib/ui/surfaces";
 import {
   procurementGlowneButtonLabel,
   procurementGlowneButtonTitle,
 } from "@/lib/orders/glowne-action-ui";
+import { processLinesButtonTitle } from "@/lib/orders/procurement-process-lines";
+import type { ProcurementProcessAction } from "@/lib/orders/procurement-process-lines";
+import { procurementRequestFooterScopeLabelClass } from "@/components/summary/procurement-request-row-styles";
+
+const footerPrimaryClass = cn(
+  buttonGroupItemClass,
+  panelSegmentPrimaryClass,
+  "min-w-0 flex-1 whitespace-nowrap px-2 text-[12px] transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"
+);
+
+const footerOutlineClass = cn(
+  buttonGroupItemClass,
+  panelSegmentOutlineClass,
+  "min-w-0 flex-1 whitespace-nowrap px-2 text-[12px]"
+);
+
+function nestedPrimarySegmentClass(tone: DailyPanelUnseenVariant) {
+  return cn(
+    panelActionSegmentClass,
+    "min-w-0 flex-1 whitespace-nowrap px-1.5 text-[11px] font-semibold border-0 text-white",
+    "transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50",
+    tone === "stockOut"
+      ? "bg-amber-600 hover:bg-amber-700"
+      : "bg-indigo-600 hover:bg-indigo-700"
+  );
+}
 
 const nestedOutlineSegmentClass = cn(
   panelActionSegmentClass,
-  "px-2 text-[11px] font-semibold",
+  "min-w-0 flex-1 whitespace-nowrap px-1.5 text-[11px] font-semibold",
   "border-0 border-l border-slate-200 bg-slate-50 text-slate-700",
   "transition-colors duration-150 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
 );
 
-const nestedPrimarySegmentClass = cn(
-  panelActionSegmentClass,
-  "px-2 text-[11px] font-semibold",
-  "border-0 bg-indigo-600 text-white",
-  "transition-colors duration-150 hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
-);
+function nestedShellClass(tone: DailyPanelUnseenVariant) {
+  return cn(
+    panelActionBarFooterShellClass,
+    tone === "stockOut" ? "border-amber-200/70" : "border-indigo-200/70"
+  );
+}
 
-const nestedShellClass =
-  "inline-flex h-6 min-h-6 items-stretch overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm";
-
-/** Główne + Uzupełniające + menu Więcej — prośby handlowców (zwykłe kliknięcie). */
+/** Główne + Uzupełniające + menu Więcej — prośby handlowców. */
 export function IndividualRequestActionBar({
-  orderIds,
   supplierId,
   hasInfoViaPanel,
   supplierOrderOnDemand = false,
   headline,
   pending,
-  scopeKey,
-  run,
+  canPickLines = false,
+  onRequestProcess,
   onEdit,
   onCancel,
   onOpenSupplierDetails,
@@ -52,52 +81,56 @@ export function IndividualRequestActionBar({
   onSetFlagShortcut,
   onClearFlag,
   density = "default",
+  tone = "prosby",
 }: {
-  orderIds: string[];
   supplierId: string | null;
   hasInfoViaPanel: boolean;
   supplierOrderOnDemand?: boolean;
   headline: string;
   pending: boolean;
-  scopeKey: string;
-  run: DailyPanelRunFn;
+  /** Grupa ≥2 linii — title z hintem wyboru części. */
+  canPickLines?: boolean;
+  onRequestProcess: (action: ProcurementProcessAction) => void;
   onEdit: () => void;
   onCancel: () => void;
   onOpenSupplierDetails?: () => void;
   onSetFlag?: () => void;
   hasFlag?: boolean;
-  /** Jednogłośna flaga grupy — podświetlenie w menu. */
   currentFlagId?: string | null;
-  /** Skróty ustawienia flagi — tor układa się automatycznie. */
   flagShortcuts?: RequestGroupFlagShortcut[];
   onSetFlagShortcut?: (flagId: string) => void;
   onClearFlag?: () => void;
-  /** W bloku wieloosobowym u dostawcy — mniejsze przyciski, etykieta „tylko ta osoba”. */
+  /** W bloku wieloosobowym u dostawcy — etykieta „tylko ta osoba”. */
   density?: "default" | "nested";
+  /** Ton UI — amber w stock-out, indigo w prośbach. */
+  tone?: DailyPanelUnseenVariant;
 }) {
   const disabled = pending || !supplierId;
-  const scope = { scope: scopeKey };
   const nested = density === "nested";
-  const shellClass = nested ? nestedShellClass : panelActionBarShellClass;
-  const primaryClass = nested
-    ? nestedPrimarySegmentClass
-    : cn(
-        buttonGroupItemClass,
-        panelSegmentPrimaryClass,
-        "transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"
-      );
-  const outlineClass = nested
-    ? nestedOutlineSegmentClass
-    : cn(buttonGroupItemClass, panelSegmentOutlineClass);
+
+  const shellClass = nested ? nestedShellClass(tone) : panelActionBarFooterShellClass;
+  const primaryClass = nested ? nestedPrimarySegmentClass(tone) : footerPrimaryClass;
+  const outlineClass = nested ? nestedOutlineSegmentClass : footerOutlineClass;
+
   const glowneLabel = procurementGlowneButtonLabel({
     hasInfoViaPanel,
     supplierOrderOnDemand,
     compact: nested,
   });
-  const glowneTitle = procurementGlowneButtonTitle({
+  const glowneBaseTitle = procurementGlowneButtonTitle({
     hasInfoViaPanel,
     supplierOrderOnDemand,
   });
+  const glowneTitle = processLinesButtonTitle({
+    canPickLines,
+    baseTitle: glowneBaseTitle,
+  });
+  const uzupelniajaceTitle = processLinesButtonTitle({
+    canPickLines,
+    baseTitle: null,
+  });
+  const uzupelniajaceLabel =
+    hasInfoViaPanel || nested ? "Uzupełn." : "Uzupełniające";
 
   const group = (
     <ButtonGroup
@@ -114,16 +147,7 @@ export function IndividualRequestActionBar({
         disabled={disabled}
         className={primaryClass}
         title={glowneTitle}
-        onClick={() =>
-          run(
-            () => actionProcessIndividual(orderIds, "GLOWNE"),
-            supplierOrderOnDemand
-              ? "Oznaczono jako główne (bez terminu planowego)"
-              : "Oznaczono jako zamówienie główne",
-            "Oznaczanie jako główne…",
-            scope
-          )
-        }
+        onClick={() => onRequestProcess("GLOWNE")}
       >
         {glowneLabel}
       </button>
@@ -131,22 +155,19 @@ export function IndividualRequestActionBar({
         type="button"
         disabled={disabled}
         className={outlineClass}
-        onClick={() =>
-          run(
-            () => actionProcessIndividual(orderIds, "POBOCZNE"),
-            "Oznaczono jako uzupełniające",
-            "Oznaczanie jako uzupełniające…",
-            scope
-          )
-        }
+        title={uzupelniajaceTitle}
+        onClick={() => onRequestProcess("POBOCZNE")}
       >
-        {hasInfoViaPanel ? "Uzupełn." : nested ? "Uzupełn." : "Uzupełniające"}
+        {uzupelniajaceLabel}
       </button>
       <RequestGroupOverflowMenu
         headline={headline}
         disabled={pending}
         iconOnly
-        className={nested ? "border-0 border-l border-slate-200" : panelSegmentLastClass}
+        className={cn(
+          nested ? "border-0 border-l border-slate-200" : panelSegmentLastClass,
+          "shrink-0"
+        )}
         onEdit={onEdit}
         onCancel={onCancel}
         onOpenSupplierDetails={onOpenSupplierDetails}
@@ -162,9 +183,9 @@ export function IndividualRequestActionBar({
 
   if (nested) {
     return (
-      <div className="flex flex-col items-end gap-0.5">
-        <span className="text-[10px] font-medium text-slate-400">Tylko ta osoba</span>
-        {group}
+      <div className="flex w-full min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+        <span className={procurementRequestFooterScopeLabelClass}>Tylko ta osoba</span>
+        <div className="min-w-0 flex-1">{group}</div>
       </div>
     );
   }

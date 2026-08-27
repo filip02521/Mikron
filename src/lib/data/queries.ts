@@ -513,6 +513,25 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
   const supplierStatsMode = Object.fromEntries(
     schedules.map((s) => [s.id, (s.stats_mode ?? "LACZNIE") as import("@/types/database").StatsMode])
   );
+
+  let etaUseP50 = false;
+  let etaQuantilesBySupplierId: Record<
+    string,
+    import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
+  > = {};
+  try {
+    const { loadDeliveryEtaQuantilesForSupplierIds } = await import(
+      "@/lib/orders/delivery-eta-quantiles-load"
+    );
+    const loaded = await loadDeliveryEtaQuantilesForSupplierIds(
+      Object.keys(statsBySupplierId)
+    );
+    etaUseP50 = loaded.useP50;
+    etaQuantilesBySupplierId = loaded.bySupplierId;
+  } catch (e) {
+    console.warn("fetchSummaryWorkspace eta quantiles:", e);
+  }
+
   return {
     workspace: {
       ...workspace,
@@ -532,6 +551,8 @@ export async function fetchSummaryWorkspace(options?: { salesPersonId?: string }
     statsBySupplierId,
     supplierStatsMode,
     teethLaneBySupplierId: teethLaneIndexToRecord(teethLaneIndex),
+    etaUseP50,
+    etaQuantilesBySupplierId,
   };
 }
 
@@ -671,9 +692,30 @@ export async function fetchSupplierDeliveryContext(options?: { lightSuppliers?: 
   const statsBySupplierId = Object.fromEntries(
     statsRows.map((s) => [s.supplier_id, s])
   );
+
+  let etaUseP50 = false;
+  let etaQuantilesBySupplierId: Record<
+    string,
+    import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
+  > = {};
+  try {
+    const { loadDeliveryEtaQuantilesForSupplierIds } = await import(
+      "@/lib/orders/delivery-eta-quantiles-load"
+    );
+    const loaded = await loadDeliveryEtaQuantilesForSupplierIds(
+      Object.keys(statsBySupplierId)
+    );
+    etaUseP50 = loaded.useP50;
+    etaQuantilesBySupplierId = loaded.bySupplierId;
+  } catch (e) {
+    console.warn("fetchSupplierDeliveryContext eta quantiles:", e);
+  }
+
   return {
     suppliers,
     statsBySupplierId,
+    etaUseP50,
+    etaQuantilesBySupplierId,
   };
 }
 

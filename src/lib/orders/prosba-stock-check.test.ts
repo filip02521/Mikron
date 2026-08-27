@@ -8,6 +8,7 @@ import {
   assessProsbaLineStockFromDraft,
   assessProsbaLineZkQuantity,
   buildProsbaSubmitStockConfirm,
+  buildProsbaSubmitUnknownStockConfirm,
   buildProsbaSubmitZkQuantityConfirm,
   buildZkProsbaScopeInitialOrderMarked,
   collectProsbaLineTwIdsMissingStock,
@@ -169,6 +170,42 @@ describe("filterProsbaLinesWithSufficientStock", () => {
   });
 });
 
+describe("buildProsbaSubmitUnknownStockConfirm", () => {
+  it("wymaga potwierdzenia gdy TW ma qty bez snapshotu stanu", () => {
+    const result = buildProsbaSubmitUnknownStockConfirm(
+      [{ ...baseLine, quantity: "2", subiektTwId: 10 }],
+      "zamowienie"
+    );
+    expect(result?.unknownLines).toHaveLength(1);
+    expect(result?.message).toMatch(/stanu magazynowego/);
+  });
+
+  it("null gdy stan jest znany lub poza zamówieniem", () => {
+    expect(
+      buildProsbaSubmitUnknownStockConfirm(
+        [
+          {
+            ...baseLine,
+            quantity: "2",
+            subiektTwId: 10,
+            onHand: 5,
+            reserved: 0,
+            available: 5,
+            stockSource: "subiekt",
+          },
+        ],
+        "zamowienie"
+      )
+    ).toBeNull();
+    expect(
+      buildProsbaSubmitUnknownStockConfirm(
+        [{ ...baseLine, quantity: "2", subiektTwId: 10 }],
+        "informacja"
+      )
+    ).toBeNull();
+  });
+});
+
 describe("buildProsbaSubmitStockConfirm", () => {
   it("zwraca null bez sufficient lub poza zamówieniem", () => {
     expect(buildProsbaSubmitStockConfirm([], "zamowienie")).toBeNull();
@@ -190,7 +227,28 @@ describe("buildProsbaSubmitStockConfirm", () => {
       "zamowienie"
     );
     expect(result?.sufficientLines).toHaveLength(1);
+    expect(result?.summary).toContain("1 pozycja");
     expect(result?.message).toContain("Czy na pewno");
+    expect(result?.message).toContain("•");
+  });
+
+  it("intent create — pytanie o utworzenie prośby", () => {
+    const result = buildProsbaSubmitStockConfirm(
+      [
+        {
+          ...baseLine,
+          quantity: "2",
+          onHand: 5,
+          reserved: 0,
+          available: 5,
+          stockSource: "subiekt",
+        },
+      ],
+      "zamowienie",
+      undefined,
+      { intent: "create" }
+    );
+    expect(result?.message).toContain("utworzyć prośbę mimo stanu");
   });
 });
 

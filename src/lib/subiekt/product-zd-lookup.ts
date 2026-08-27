@@ -3,7 +3,9 @@ import { fetchDeliveryStats } from "@/lib/data/queries";
 import { getAppSupplierRefsCached } from "@/lib/data/supplier-refs";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatDateString } from "@/lib/orders/dates";
-import { estimateDeliveryEta } from "@/lib/orders/delivery-eta";
+import { estimateDeliveryEta, estimateOptionsFromQuantiles, formatEtaLabel } from "@/lib/orders/delivery-eta";
+import type { DeliveryStatsQuantiles } from "@/lib/orders/delivery-stats-samples";
+import type { EstimateDeliveryEtaOptions } from "@/lib/orders/delivery-eta";
 import { orderPlacementAt } from "@/lib/orders/order-timing";
 import { isSubiektReachable } from "@/lib/subiekt/availability";
 import {
@@ -183,13 +185,20 @@ export function buildAppOrderDeliveryEstimate(input: {
   statsMode: StatsMode;
   deliveryStats: Awaited<ReturnType<typeof fetchDeliveryStats>>;
   supplierId: string;
+  etaOptions?: EstimateDeliveryEtaOptions;
+  quantiles?: DeliveryStatsQuantiles | null;
+  useP50?: boolean;
 }): ProductZdLookupAppOrderHint | null {
   const stats = input.deliveryStats.find((row) => row.supplier_id === input.supplierId) ?? null;
+  const options =
+    input.etaOptions ??
+    estimateOptionsFromQuantiles(input.quantiles, input.useP50);
   const estimate = estimateDeliveryEta(
     input.placementAt,
     stats,
     input.orderType,
-    input.statsMode
+    input.statsMode,
+    options
   );
   if (!estimate) return null;
   return {
@@ -197,25 +206,45 @@ export function buildAppOrderDeliveryEstimate(input: {
     orderedAt: input.placementAt,
     orderType: input.orderType,
     estimatedDeadline: formatDateString(estimate.expectedDate, "yyyy-MM-dd"),
-    estimateLabel: `ok. ${formatDateString(estimate.expectedDate, "dd.MM.yyyy")} · ~${estimate.avgBusinessDays} dni rob.${
-      estimate.lowConfidence ? " (mało danych)" : ""
-    }`,
+    estimateLabel: formatEtaLabel(estimate),
     lowConfidence: estimate.lowConfidence,
   };
 }
 
-export function resolveProductZdLookupAppOrderHint(
+export async function resolveProductZdLookupAppOrderHint(
   context: ProductLookupContext,
   deliveryStats: Awaited<ReturnType<typeof fetchDeliveryStats>>
-): ProductZdLookupAppOrderHint | null {
+): Promise<ProductZdLookupAppOrderHint | null> {
   const openOrder = context.openOrder;
   if (!openOrder) return null;
+  let quantiles = null;
+  let useP50 = false;
+  try {
+    const { loadDeliveryEtaQuantilesForSupplierIds } = await import(
+      "@/lib/orders/delivery-eta-quantiles-load"
+    );
+    const { pickQuantilesForOrderType } = await import(
+      "@/lib/orders/delivery-eta-quantiles-load"
+    );
+    const loaded = await loadDeliveryEtaQuantilesForSupplierIds([openOrder.supplierId]);
+    useP50 = loaded.useP50;
+    quantiles =
+      pickQuantilesForOrderType(
+        loaded.bySupplierId[openOrder.supplierId],
+        openOrder.statsMode,
+        openOrder.orderType
+      ) ?? null;
+  } catch {
+    /* mean fallback */
+  }
   const estimate = buildAppOrderDeliveryEstimate({
     placementAt: openOrder.orderedAt,
     orderType: openOrder.orderType,
     statsMode: openOrder.statsMode,
     supplierId: openOrder.supplierId,
     deliveryStats,
+    useP50,
+    quantiles,
   });
   if (!estimate) return null;
   return { ...estimate, orderId: openOrder.id };
@@ -1089,7 +1118,7 @@ export async function lookupProductZdDelivery(
     }
 
     const appOrderHint = context.openOrder
-      ? resolveProductZdLookupAppOrderHint(context, await fetchDeliveryStats())
+      ? await resolveProductZdLookupAppOrderHint(context, await fetchDeliveryStats())
       : null;
 
     return {

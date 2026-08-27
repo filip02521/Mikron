@@ -79,9 +79,11 @@ import {
   buildZdCreateApiBody,
   ensureZdCreateLinesCoverIndividualExtras,
   listZdEstimateSupplierKhIds,
+  partitionProsbaOverlapFetchTwIds,
   resolveZdCreateKhId,
   validateZdCreateClientLines,
 } from "@/lib/orders/zd-estimate-create-zd";
+import { resolveDocAfterZdCreate } from "@/lib/orders/zd-estimate-create-doc";
 import {
   buildIndividualEstimateExtras,
   collectIndividualOrderIdsForZdCreate,
@@ -112,7 +114,12 @@ import {
   captureScheduleSnapshot,
   buildMarkOrderedFeedback,
 } from "@/lib/services/daily-panel-undo";
-import { matchSupplierForGroupName } from "@/lib/orders/zd-estimate-group-stock";
+import { resolveSupplierForScopeSelection } from "@/lib/orders/zd-estimate-group-stock";
+import {
+  findUniqueSupplierIdForCecha,
+  findUniqueSupplierIdForGrupa,
+  type ZdEstimateScopeMappingRef,
+} from "@/lib/orders/zd-estimate-supplier-scope";
 import {
   buildManualZdEstimateResult,
   DEFAULT_DNI_ZAPASU,
@@ -123,6 +130,7 @@ import {
 } from "@/lib/orders/zd-estimate-manual";
 import { mapPool } from "@/lib/async/map-pool";
 import {
+  assertOrderMultiple,
   assertPackagingUnits,
   normalizePackagingDocumentUnitMode,
   summarizePackOrderQty,
@@ -198,6 +206,11 @@ import {
 } from "@/lib/orders/zd-estimate-scope";
 import type { ZdEstimateUiSessionSnapshot } from "@/lib/orders/zd-estimate-ui-session-snapshot";
 import {
+  buildZdEstimateUiSessionSnapshotFromPolicz,
+  type ZdEstimateUiSessionPoliczSeed,
+} from "@/lib/orders/zd-estimate-ui-session-from-policz";
+import { ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION } from "@/lib/orders/zd-estimate-external-session";
+import {
   fetchAllReservedZkRowsForTwId,
   sumZdEstimateReservedZkQuantity,
   type ZdEstimateReservationsSummary,
@@ -244,6 +257,10 @@ export type ZdEstimateGroupOption = {
   stockLabel: string | null;
   subiektKhId: number | null;
   additionalSubiektKhIds: number[];
+  /** Skąd wzięto dostawcę: mapowanie zakresów albo heurystyka nazwy. */
+  supplierMatchSource?: "mapping" | "name" | null;
+  /** Mapowanie DB wskazuje ID, którego nie ma na aktywnej liście dostawców. */
+  supplierMappingUnresolved?: boolean;
 };
 
 export type ZdEstimateCechaOption = {
@@ -255,6 +272,8 @@ export type ZdEstimateCechaOption = {
   stockLabel: string | null;
   subiektKhId: number | null;
   additionalSubiektKhIds: number[];
+  supplierMatchSource?: "mapping" | "name" | null;
+  supplierMappingUnresolved?: boolean;
 };
 
 export type ZdEstimateRunInput = {
@@ -263,6 +282,8 @@ export type ZdEstimateRunInput = {
   grupaId?: number | null;
   /** Wymagane gdy mode === "cecha". */
   cechaId?: number | null;
+  /** Etykieta zakresu (nazwa cechy/grupy) — do seeda sesji UI po Policz. */
+  scopeLabel?: string | null;
   /** Dostawca OnTime — filtr historii snapshotów (kh + aliasy). Bez → brak historii. */
   supplierId?: string | null;
   dniZapasu: number;
@@ -270,6 +291,11 @@ export type ZdEstimateRunInput = {
   dataOd?: string | null;
   dataDo?: string | null;
   zapasMin?: number;
+  /**
+   * Lekki seed UI (bez linii) — sesja zapisuje się po stronie serwera w tym samym
+   * Policz, żeby duże cechy (np. Ivoclar) nie musiały ponownie uploadować snapshotu.
+   */
+  uiSessionSeed?: ZdEstimateUiSessionPoliczSeed | null;
 };
 
 export type ZdEstimateRunResult =
@@ -335,6 +361,17 @@ export type ZdEstimateRunResult =
       teethTwIds: number[];
       /** Wspólna moc boosta użyta w tym Policz. */
       boostPreset: ZdBoostPowerPreset;
+      /**
+       * Sesja UI utworzona na serwerze razem z Policz (bez drugiego ciężkiego POST).
+       * null = zapis nieudany — klient może spróbować fallbacku.
+       */
+      uiSessionId?: string | null;
+      uiSessionCreatedAt?: string | null;
+      /**
+       * true = serwer skasował poprzednią active sesję (nawet gdy insert padł).
+       * Klient musi unieważnić lokalny token przy porzuconym Policz.
+       */
+      uiSessionRotated?: boolean;
     }
   | {
       ok: false;
@@ -521,9 +558,16 @@ function historyScopeFromRun(scope: {
 
 function enrichGroup(
   group: { grt_Id: number; grt_Nazwa: string },
-  suppliers: ZdEstimateSupplierOption[]
+  suppliers: ZdEstimateSupplierOption[],
+  scopes: readonly ZdEstimateScopeMappingRef[] = []
 ): ZdEstimateGroupOption {
-  const matched = matchSupplierForGroupName(group.grt_Nazwa, suppliers);
+  const mappedSupplierId = findUniqueSupplierIdForGrupa(scopes, group.grt_Id);
+  const { supplier: matched, source, mappingUnresolved } =
+    resolveSupplierForScopeSelection({
+      scopeName: group.grt_Nazwa,
+      suppliers,
+      mappedSupplierId,
+    });
   return {
     grt_Id: group.grt_Id,
     grt_Nazwa: group.grt_Nazwa,
@@ -533,14 +577,23 @@ function enrichGroup(
     stockLabel: matched?.stockLabel ?? null,
     subiektKhId: matched?.subiektKhId ?? null,
     additionalSubiektKhIds: matched?.additionalSubiektKhIds ?? [],
+    supplierMatchSource: source,
+    supplierMappingUnresolved: mappingUnresolved === true,
   };
 }
 
 function enrichCecha(
   cecha: { ctw_Id: number; ctw_Nazwa: string },
-  suppliers: ZdEstimateSupplierOption[]
+  suppliers: ZdEstimateSupplierOption[],
+  scopes: readonly ZdEstimateScopeMappingRef[] = []
 ): ZdEstimateCechaOption {
-  const matched = matchSupplierForGroupName(cecha.ctw_Nazwa, suppliers);
+  const mappedSupplierId = findUniqueSupplierIdForCecha(scopes, cecha.ctw_Id);
+  const { supplier: matched, source, mappingUnresolved } =
+    resolveSupplierForScopeSelection({
+      scopeName: cecha.ctw_Nazwa,
+      suppliers,
+      mappedSupplierId,
+    });
   return {
     ctw_Id: cecha.ctw_Id,
     ctw_Nazwa: cecha.ctw_Nazwa,
@@ -550,6 +603,8 @@ function enrichCecha(
     stockLabel: matched?.stockLabel ?? null,
     subiektKhId: matched?.subiektKhId ?? null,
     additionalSubiektKhIds: matched?.additionalSubiektKhIds ?? [],
+    supplierMatchSource: source,
+    supplierMappingUnresolved: mappingUnresolved === true,
   };
 }
 
@@ -629,6 +684,8 @@ export async function actionZdEstimateBootstrap(): Promise<{
   defaultWindow: { dataOd: string; dataDo: string };
   suppliers: ZdEstimateSupplierOption[];
   quickGroups: ZdEstimateGroupOption[];
+  /** Ulubione cechy z prefs — chipy w trybie Cecha. */
+  quickCechy: ZdEstimateCechaOption[];
   exclusions: ZdEstimateExclusionRow[];
   /** Gdy ustawione — nie ufaj pustej liście wykluczeń (błąd odczytu). */
   exclusionsError: string | null;
@@ -647,6 +704,8 @@ export async function actionZdEstimateBootstrap(): Promise<{
   uiPrefs: import("@/lib/orders/zd-estimate-prefs").ZdEstimateUiPrefs;
   extrasPolicy: import("@/lib/orders/zd-estimate-extras-policy").ZdEstimateExtrasPolicy;
   todayScopeCoverage: import("@/lib/orders/zd-estimate-scope-coverage").ZdEstimateScopeCoverage;
+  /** Mapowania dostawca → grupa/cecha — do auto-przypisania przy wyborze zakresu. */
+  supplierScopes: import("@/lib/data/zd-estimate-supplier-scopes").ZdEstimateSupplierScopeRow[];
 }> {
   await requireZdEstimateAdmin("read");
 
@@ -759,13 +818,6 @@ export async function actionZdEstimateBootstrap(): Promise<{
     );
   }
 
-  const quickGroups = [
-    { grt_Id: 17, grt_Nazwa: "Falcon" },
-    { grt_Id: 28, grt_Nazwa: "Ivoclar Technical" },
-    { grt_Id: 3, grt_Nazwa: "Ivoclar Clinical" },
-    { grt_Id: 264, grt_Nazwa: "Ivoclar DIGITAL" },
-  ].map((g) => enrichGroup(g, suppliers));
-
   let uiPrefs = ZD_ESTIMATE_UI_PREFS_DEFAULTS;
   try {
     uiPrefs = await fetchOwnZdEstimateUiPrefs();
@@ -781,8 +833,10 @@ export async function actionZdEstimateBootstrap(): Promise<{
   }
 
   let todayScopeCoverage = zdEstimateScopeCoverage([], []);
+  let supplierScopes: Awaited<ReturnType<typeof listZdEstimateSupplierScopes>> =
+    [];
   try {
-    const scopes = await listZdEstimateSupplierScopes();
+    supplierScopes = await listZdEstimateSupplierScopes();
     const todaySuppliers = collectTodayScheduleSuppliers({
       todayKey,
       suppliers: suppliers.map((s) => ({
@@ -794,11 +848,26 @@ export async function actionZdEstimateBootstrap(): Promise<{
     });
     todayScopeCoverage = zdEstimateScopeCoverage(
       todaySuppliers,
-      scopes.map((s) => s.supplierId)
+      supplierScopes.map((s) => s.supplierId)
     );
   } catch {
-    // zostaw puste pokrycie
+    // zostaw puste pokrycie / scopes
   }
+
+  const quickGroups = uiPrefs.favoriteGroups.map((f) =>
+    enrichGroup(
+      { grt_Id: f.id, grt_Nazwa: f.label },
+      suppliers,
+      supplierScopes
+    )
+  );
+  const quickCechy = uiPrefs.favoriteCechy.map((f) =>
+    enrichCecha(
+      { ctw_Id: f.id, ctw_Nazwa: f.label },
+      suppliers,
+      supplierScopes
+    )
+  );
 
   return {
     configured: summary.ordersConfigured,
@@ -817,6 +886,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
     defaultWindow,
     suppliers,
     quickGroups,
+    quickCechy,
     exclusions,
     exclusionsError,
     onRequests,
@@ -832,6 +902,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
     uiPrefs,
     extrasPolicy,
     todayScopeCoverage,
+    supplierScopes,
   };
 }
 
@@ -855,6 +926,12 @@ export async function actionSearchZdEstimateGroups(query: string): Promise<
 
   try {
     const suppliers = await loadZdEstimateSupplierOptions();
+    let scopes: ZdEstimateScopeMappingRef[] = [];
+    try {
+      scopes = await listZdEstimateSupplierScopes();
+    } catch {
+      scopes = [];
+    }
     const { data } = await searchSubiektProductGroups({
       search: q,
       page: 1,
@@ -867,7 +944,8 @@ export async function actionSearchZdEstimateGroups(query: string): Promise<
             grt_Id: Number(g.grt_Id),
             grt_Nazwa: String(g.grt_Nazwa ?? "").trim() || `Grupa ${g.grt_Id}`,
           },
-          suppliers
+          suppliers,
+          scopes
         )
       )
       .filter((g) => Number.isFinite(g.grt_Id) && g.grt_Id > 0);
@@ -898,6 +976,12 @@ export async function actionSearchZdEstimateCechy(query: string): Promise<
 
   try {
     const suppliers = await loadZdEstimateSupplierOptions();
+    let scopes: ZdEstimateScopeMappingRef[] = [];
+    try {
+      scopes = await listZdEstimateSupplierScopes();
+    } catch {
+      scopes = [];
+    }
     const { data } = await searchSubiektProductCechy({
       search: q,
       page: 1,
@@ -911,11 +995,186 @@ export async function actionSearchZdEstimateCechy(query: string): Promise<
             ctw_Nazwa:
               String(c.ctw_Nazwa ?? "").trim() || `Cecha ${c.ctw_Id}`,
           },
-          suppliers
+          suppliers,
+          scopes
         )
       )
       .filter((c) => Number.isFinite(c.ctw_Id) && c.ctw_Id > 0);
     return { ok: true, cechy };
+  } catch (e) {
+    const feedback = feedbackFromException(e);
+    return { ok: false, message: feedback.message, feedback };
+  }
+}
+
+const ZD_ESTIMATE_SCOPE_CATALOG_PAGE_SIZE = 40;
+
+export type ZdEstimateScopeCatalogPageMeta = {
+  page: number;
+  pageSize: number;
+  totalCount: number | null;
+  totalPages: number | null;
+  hasMore: boolean;
+};
+
+function resolveCatalogPageMeta(
+  page: number,
+  pageSize: number,
+  rowCount: number,
+  pagination: { totalCount?: number; totalPages?: number } | null | undefined
+): ZdEstimateScopeCatalogPageMeta {
+  const totalCount =
+    pagination?.totalCount != null && Number.isFinite(pagination.totalCount)
+      ? Math.max(0, Math.trunc(pagination.totalCount))
+      : null;
+  const totalPages =
+    pagination?.totalPages != null && Number.isFinite(pagination.totalPages)
+      ? Math.max(0, Math.trunc(pagination.totalPages))
+      : totalCount != null
+        ? Math.max(1, Math.ceil(totalCount / pageSize))
+        : null;
+  const hasMore =
+    totalPages != null
+      ? page < totalPages
+      : rowCount >= pageSize;
+  return { page, pageSize, totalCount, totalPages, hasMore };
+}
+
+/** Katalog grup — `search` opcjonalne (puste = pierwsza strona słownika, jeśli API pozwala). */
+export async function actionListZdEstimateGroups(input?: {
+  page?: number;
+  pageSize?: number;
+  search?: string | null;
+}): Promise<
+  | {
+      ok: true;
+      groups: ZdEstimateGroupOption[];
+      meta: ZdEstimateScopeCatalogPageMeta;
+    }
+  | { ok: false; message: string; feedback?: SubiektFeedback }
+> {
+  await requireZdEstimateAdmin("read");
+  const page = Math.max(1, Math.trunc(Number(input?.page) || 1));
+  const pageSize = Math.min(
+    100,
+    Math.max(
+      1,
+      Math.trunc(Number(input?.pageSize) || ZD_ESTIMATE_SCOPE_CATALOG_PAGE_SIZE)
+    )
+  );
+  const search = String(input?.search ?? "").trim();
+
+  const orders = resolveSubiektOrdersConfig();
+  if (!orders.ok) {
+    const feedback = getSubiektFeedback("not_configured", {
+      title: "Brak hosta ORDERS",
+      message: orders.message,
+      hint: `Ustaw SUBIEKT_API_ORDERS_BASE_URL na :${SUBIEKT_ORDERS_LIVE_PORT} (live) lub :${SUBIEKT_ORDERS_TEST_PORT} (test).`,
+    });
+    return { ok: false, message: orders.message, feedback };
+  }
+
+  try {
+    const suppliers = await loadZdEstimateSupplierOptions();
+    let scopes: ZdEstimateScopeMappingRef[] = [];
+    try {
+      scopes = await listZdEstimateSupplierScopes();
+    } catch {
+      scopes = [];
+    }
+    const res = await searchSubiektProductGroups({
+      ...(search ? { search } : {}),
+      page,
+      pageSize,
+    });
+    const groups = (res.data ?? [])
+      .map((g: SubiektProductGroup) =>
+        enrichGroup(
+          {
+            grt_Id: Number(g.grt_Id),
+            grt_Nazwa: String(g.grt_Nazwa ?? "").trim() || `Grupa ${g.grt_Id}`,
+          },
+          suppliers,
+          scopes
+        )
+      )
+      .filter((g) => Number.isFinite(g.grt_Id) && g.grt_Id > 0);
+    return {
+      ok: true,
+      groups,
+      meta: resolveCatalogPageMeta(page, pageSize, groups.length, res.pagination),
+    };
+  } catch (e) {
+    const feedback = feedbackFromException(e);
+    return { ok: false, message: feedback.message, feedback };
+  }
+}
+
+/** Katalog cech — `search` opcjonalne. */
+export async function actionListZdEstimateCechy(input?: {
+  page?: number;
+  pageSize?: number;
+  search?: string | null;
+}): Promise<
+  | {
+      ok: true;
+      cechy: ZdEstimateCechaOption[];
+      meta: ZdEstimateScopeCatalogPageMeta;
+    }
+  | { ok: false; message: string; feedback?: SubiektFeedback }
+> {
+  await requireZdEstimateAdmin("read");
+  const page = Math.max(1, Math.trunc(Number(input?.page) || 1));
+  const pageSize = Math.min(
+    100,
+    Math.max(
+      1,
+      Math.trunc(Number(input?.pageSize) || ZD_ESTIMATE_SCOPE_CATALOG_PAGE_SIZE)
+    )
+  );
+  const search = String(input?.search ?? "").trim();
+
+  const orders = resolveSubiektOrdersConfig();
+  if (!orders.ok) {
+    const feedback = getSubiektFeedback("not_configured", {
+      title: "Brak hosta ORDERS",
+      message: orders.message,
+      hint: `Ustaw SUBIEKT_API_ORDERS_BASE_URL na :${SUBIEKT_ORDERS_LIVE_PORT} (live) lub :${SUBIEKT_ORDERS_TEST_PORT} (test).`,
+    });
+    return { ok: false, message: orders.message, feedback };
+  }
+
+  try {
+    const suppliers = await loadZdEstimateSupplierOptions();
+    let scopes: ZdEstimateScopeMappingRef[] = [];
+    try {
+      scopes = await listZdEstimateSupplierScopes();
+    } catch {
+      scopes = [];
+    }
+    const res = await searchSubiektProductCechy({
+      ...(search ? { search } : {}),
+      page,
+      pageSize,
+    });
+    const cechy = (res.data ?? [])
+      .map((c: SubiektProductCecha) =>
+        enrichCecha(
+          {
+            ctw_Id: Number(c.ctw_Id),
+            ctw_Nazwa:
+              String(c.ctw_Nazwa ?? "").trim() || `Cecha ${c.ctw_Id}`,
+          },
+          suppliers,
+          scopes
+        )
+      )
+      .filter((c) => Number.isFinite(c.ctw_Id) && c.ctw_Id > 0);
+    return {
+      ok: true,
+      cechy,
+      meta: resolveCatalogPageMeta(page, pageSize, cechy.length, res.pagination),
+    };
   } catch (e) {
     const feedback = feedbackFromException(e);
     return { ok: false, message: feedback.message, feedback };
@@ -1051,6 +1310,9 @@ function reservedOverlapMapToDto(
 /**
  * Korekta extras o overlap prośba↔rez. ZK.
  * `resolved=false` gdy fetch rzucił — caller nie powinien cache'ować skip.
+ *
+ * `coverLines` (create): fetch ZK tylko dla kandydatów z ilosc < minZd(raw);
+ * scoped extras nadal obejmują wszystkie twIdsFilter (non-identity zostają).
  */
 async function resolveIndividualExtrasWithReservationOverlap(input: {
   byTwId: ReadonlyMap<
@@ -1064,6 +1326,16 @@ async function resolveIndividualExtrasWithReservationOverlap(input: {
   lines?: readonly { tw_Id: number; tw_StanRez?: number | null }[] | null;
   /** Gdy podane — tylko te tw (np. Create: pozycje na dokumencie). */
   twIdsFilter?: ReadonlySet<number> | null;
+  /**
+   * Create: linie przed ensureCover — partition skipCover vs toFetch.
+   * Policz nie podaje → fetch wszystkich candidates (bez zmian).
+   */
+  coverLines?: readonly { twId: number; ilosc: number }[] | null;
+  unitsPerPackageByTwId?: ReadonlyMap<number, number> | null;
+  packagingModeByTwId?: ReadonlyMap<
+    number,
+    import("@/lib/orders/zd-estimate-packaging").ZdPackagingDocumentUnitMode
+  > | null;
 }): Promise<{
   adjustedExtraByTwId: Map<number, number>;
   rawExtraByTwId: Map<number, number>;
@@ -1071,6 +1343,8 @@ async function resolveIndividualExtrasWithReservationOverlap(input: {
   stockNeedReliefByTwId: Map<number, number>;
   reservedByTwId: Map<number, ZdEstimateReservedOverlapSlice[]>;
   candidateTwIds: number[];
+  overlapTwFetched: number[];
+  overlapTwSkipped: number[];
   resolved: boolean;
 }> {
   const scopedByTw =
@@ -1095,7 +1369,27 @@ async function resolveIndividualExtrasWithReservationOverlap(input: {
         byTwId: scopedByTw,
       });
 
-  if (!candidateTwIds.length) {
+  let toFetch = candidateTwIds;
+  let skipCover: number[] = [];
+  if (input.coverLines != null) {
+    const linesByTwId = new Map<number, { ilosc: number }>();
+    for (const line of input.coverLines) {
+      const tw = Math.trunc(Number(line.twId)) || 0;
+      if (!(tw > 0)) continue;
+      linesByTwId.set(tw, { ilosc: Number(line.ilosc) || 0 });
+    }
+    const parted = partitionProsbaOverlapFetchTwIds({
+      candidates: candidateTwIds,
+      rawExtraByTwId: rawMap,
+      linesByTwId,
+      unitsPerPackageByTwId: input.unitsPerPackageByTwId,
+      packagingModeByTwId: input.packagingModeByTwId,
+    });
+    toFetch = parted.toFetch;
+    skipCover = parted.skipCover;
+  }
+
+  if (!candidateTwIds.length || !toFetch.length) {
     return {
       adjustedExtraByTwId: rawMap,
       rawExtraByTwId: rawMap,
@@ -1103,12 +1397,14 @@ async function resolveIndividualExtrasWithReservationOverlap(input: {
       stockNeedReliefByTwId: new Map(),
       reservedByTwId: new Map(),
       candidateTwIds,
+      overlapTwFetched: [],
+      overlapTwSkipped: skipCover,
       resolved: true,
     };
   }
 
   try {
-    const fetched = await fetchReservedOverlapSlicesByTwIds(candidateTwIds);
+    const fetched = await fetchReservedOverlapSlicesByTwIds(toFetch);
     const maps = individualExtrasAndReliefWithReservationOverlap(
       scopedByTw,
       fetched.reservedByTwId
@@ -1116,6 +1412,8 @@ async function resolveIndividualExtrasWithReservationOverlap(input: {
     const adjustedExtraByTwId = new Map<number, number>();
     for (const [tw, raw] of maps.extraByTwId) {
       const overlap = maps.extraOverlapByTwId.get(tw) ?? 0;
+      // Policz bez coverLines: bit-identycznie jak wcześniej (nie ceil tutaj —
+      // overlap z dedupe i tak jest ceil; applyOverlapToExtraPieces zmienia floats).
       const effective = Math.max(0, raw - overlap);
       if (effective > 0) adjustedExtraByTwId.set(tw, effective);
     }
@@ -1126,6 +1424,8 @@ async function resolveIndividualExtrasWithReservationOverlap(input: {
       stockNeedReliefByTwId: maps.stockNeedReliefByTwId,
       reservedByTwId: fetched.reservedByTwId,
       candidateTwIds,
+      overlapTwFetched: toFetch,
+      overlapTwSkipped: skipCover,
       // Częściowy sukces: stosujemy to co mamy, ale UI może dociągnąć ponownie.
       resolved: !fetched.hadFetchErrors,
     };
@@ -1137,6 +1437,8 @@ async function resolveIndividualExtrasWithReservationOverlap(input: {
       stockNeedReliefByTwId: new Map(),
       reservedByTwId: new Map(),
       candidateTwIds,
+      overlapTwFetched: toFetch,
+      overlapTwSkipped: skipCover,
       resolved: false,
     };
   }
@@ -1265,7 +1567,6 @@ export async function actionRunZdEstimateManual(
           }),
       }
     );
-    const twIds = fetched.pozycje.map((p) => Number(p.tw_Id) || 0);
     let historyByTwId: Map<
       number,
       { lastOrderedQty: number; linkedAt: string }
@@ -1545,6 +1846,7 @@ export async function actionRunZdEstimateManual(
       }
     }
 
+    // Cover / bake: tylko N + tryb (bez M) — M wchodzi dopiero w packagingLookup → Do ZD.
     const packagingByTwId = new Map<
       number,
       {
@@ -1612,6 +1914,7 @@ export async function actionRunZdEstimateManual(
         unitsPerPackage: row.unitsPerPackage,
         packageLabel: row.packageLabel,
         documentUnitMode: row.documentUnitMode,
+        orderMultiple: row.orderMultiple,
       });
     }
     for (const pair of productPairs) {
@@ -1620,6 +1923,7 @@ export async function actionRunZdEstimateManual(
         unitsPerPackage: pair.unitsPerPack,
         packageLabel: existing?.packageLabel ?? "op.",
         documentUnitMode: "packages",
+        orderMultiple: existing?.orderMultiple ?? null,
       });
     }
     let prosbaReservedByTwIdDto:
@@ -1721,10 +2025,82 @@ export async function actionRunZdEstimateManual(
       orderExcluded.has(p.tw_Id)
     ).length;
 
+    const meta = {
+      pagesFetched: fetched.pagesFetched,
+      totalCountApi: fetched.totalCountApi,
+      truncated: fetched.truncated,
+      ordersBaseUrl: orders.config.baseUrl,
+      durationMs: Date.now() - started,
+      totalFromSubiekt: result.totalFromSubiekt,
+      doZamowieniaCount: packAfter.doZamowieniaCount,
+      doZamowieniaSuma: packAfter.zdUnitsSuma,
+      doZamowieniaCountRaw: packRaw.doZamowieniaCount,
+      doZamowieniaSumaRaw: packRaw.zdUnitsSuma,
+      doZamowieniaZdUnitsSuma: packAfter.zdUnitsSuma,
+      doZamowieniaZdUnitsSumaRaw: packRaw.zdUnitsSuma,
+      excludedInGroupCount,
+      pairPartnerMissingCount: missingPartnerTwIds.size,
+      pairMissingTwIds: [...missingPartnerTwIds],
+      bomMissingCount: missingBomTwIds.size,
+      bomMissingTwIds: [...missingBomTwIds],
+    };
+
+    const historyDto = historyMapToDto(historyByTwId);
+
+    // Sesja UI na serwerze — bez drugiego uploadu snapshotu z przeglądarki
+    // (duże cechy, np. Ivoclar ~1590 SKU, potrafiły wyłożyć osobny create).
+    let uiSessionId: string | null = null;
+    let uiSessionCreatedAt: string | null = null;
+    let uiSessionRotated = false;
+    try {
+      const snapshot = buildZdEstimateUiSessionSnapshotFromPolicz({
+        mode: scope.mode,
+        grupaId: scope.mode === "grupa" ? scope.grupaId : null,
+        cechaId: scope.mode === "cecha" ? scope.cechaId : null,
+        scopeLabel: input.scopeLabel ?? null,
+        supplierId: String(input.supplierId ?? "").trim() || null,
+        dniZapasu,
+        dataOd,
+        dataDo,
+        zapasMin,
+        result,
+        historyByTwId: historyDto,
+        historyFetchFailed,
+        pendingIndividuals,
+        pendingIndividualsTruncated,
+        pendingIndividualsError,
+        meta,
+        exclusions,
+        onRequests,
+        packaging,
+        productPairs,
+        productBoms,
+        teethTwIds,
+        boostPreset,
+        seed: input.uiSessionSeed ?? null,
+      });
+      const persisted = await persistZdEstimateUiSessionSnapshot({
+        payload: snapshot,
+        schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
+      });
+      uiSessionRotated = persisted.rotated;
+      if (persisted.ok) {
+        uiSessionId = persisted.sessionId;
+        uiSessionCreatedAt = snapshot.createdAt;
+      } else {
+        console.warn(
+          "[zd-ui-session] persist after Policz failed",
+          persisted.message
+        );
+      }
+    } catch (persistErr) {
+      console.warn("[zd-ui-session] persist after Policz threw", persistErr);
+    }
+
     return {
       ok: true,
       result,
-      historyByTwId: historyMapToDto(historyByTwId),
+      historyByTwId: historyDto,
       historyFetchFailed,
       pendingIndividuals,
       pendingIndividualsTruncated,
@@ -1739,25 +2115,10 @@ export async function actionRunZdEstimateManual(
       productBoms,
       teethTwIds,
       boostPreset,
-      meta: {
-        pagesFetched: fetched.pagesFetched,
-        totalCountApi: fetched.totalCountApi,
-        truncated: fetched.truncated,
-        ordersBaseUrl: orders.config.baseUrl,
-        durationMs: Date.now() - started,
-        totalFromSubiekt: result.totalFromSubiekt,
-        doZamowieniaCount: packAfter.doZamowieniaCount,
-        doZamowieniaSuma: packAfter.zdUnitsSuma,
-        doZamowieniaCountRaw: packRaw.doZamowieniaCount,
-        doZamowieniaSumaRaw: packRaw.zdUnitsSuma,
-        doZamowieniaZdUnitsSuma: packAfter.zdUnitsSuma,
-        doZamowieniaZdUnitsSumaRaw: packRaw.zdUnitsSuma,
-        excludedInGroupCount,
-        pairPartnerMissingCount: missingPartnerTwIds.size,
-        pairMissingTwIds: [...missingPartnerTwIds],
-        bomMissingCount: missingBomTwIds.size,
-        bomMissingTwIds: [...missingBomTwIds],
-      },
+      meta,
+      uiSessionId,
+      uiSessionCreatedAt,
+      uiSessionRotated,
     };
   } catch (e) {
     if (e instanceof SubiektZdEstimateFirstPageRejectedError) {
@@ -2201,6 +2562,7 @@ export async function actionUpsertZdEstimatePackaging(input: {
   unitsPerPackage: number;
   packageLabel?: string;
   documentUnitMode?: ZdPackagingDocumentUnitMode | null;
+  orderMultiple?: number | null;
   note?: string;
 }): Promise<ZdEstimatePackagingActionResult> {
   const user = await requireZdEstimateAdmin("mutate");
@@ -2211,6 +2573,12 @@ export async function actionUpsertZdEstimatePackaging(input: {
   const documentUnitMode = normalizePackagingDocumentUnitMode(
     input.documentUnitMode
   );
+  const orderCheck = assertOrderMultiple(
+    documentUnitMode === "pieces_multiple" ? null : input.orderMultiple
+  );
+  if (!orderCheck.ok) {
+    return { ok: false, message: orderCheck.message };
+  }
   if (documentUnitMode === "pieces_multiple") {
     try {
       const pairs = await fetchZdProductPairs();
@@ -2239,6 +2607,10 @@ export async function actionUpsertZdEstimatePackaging(input: {
       ...input,
       unitsPerPackage: unitsCheck.units,
       documentUnitMode,
+      orderMultiple:
+        documentUnitMode === "pieces_multiple"
+          ? null
+          : orderCheck.orderMultiple,
       createdBy: user.id,
     });
     const packaging = await fetchZdEstimatePackaging();
@@ -2407,6 +2779,7 @@ export async function actionUpsertZdEstimatePackagingBulk(input: {
   unitsPerPackage: number;
   packageLabel?: string;
   documentUnitMode?: ZdPackagingDocumentUnitMode | null;
+  orderMultiple?: number | null;
   note?: string;
 }): Promise<ZdEstimateBulkPackagingActionResult> {
   const user = await requireZdEstimateAdmin("mutate");
@@ -2424,6 +2797,14 @@ export async function actionUpsertZdEstimatePackagingBulk(input: {
   const documentUnitMode = normalizePackagingDocumentUnitMode(
     input.documentUnitMode
   );
+  const orderCheck = assertOrderMultiple(
+    documentUnitMode === "pieces_multiple" ? null : input.orderMultiple
+  );
+  if (!orderCheck.ok) {
+    return { ok: false, message: orderCheck.message };
+  }
+  const orderMultiple =
+    documentUnitMode === "pieces_multiple" ? null : orderCheck.orderMultiple;
 
   let packTwIds = new Set<number>();
   if (documentUnitMode === "pieces_multiple") {
@@ -2467,6 +2848,7 @@ export async function actionUpsertZdEstimatePackagingBulk(input: {
         unitsPerPackage: units,
         packageLabel: input.packageLabel,
         documentUnitMode,
+        orderMultiple,
         note: input.note?.trim()
           ? input.note.trim().slice(0, 500)
           : undefined,
@@ -3001,6 +3383,17 @@ export async function actionCreateZdFromEstimate(input: {
     return { ok: false, code: "error", message: orders.message };
   }
 
+  const t0 = performance.now();
+  let msPendingOrders = 0;
+  let msProductSettings = 0;
+  let msOverlap = 0;
+  let msSferaCreate = 0;
+  let msDocResolve = 0;
+  let msSnapshot = 0;
+  let overlapCandidateCount = 0;
+  let overlapTwFetched: number[] = [];
+  let overlapTwSkipped: number[] = [];
+
   const persistSnapshots = shouldPersistZdEstimateOrderSnapshots(
     orders.config.baseUrl
   );
@@ -3026,6 +3419,7 @@ export async function actionCreateZdFromEstimate(input: {
     grtId: input.grtId ?? null,
     cechaId: input.cechaId ?? null,
     lineCount: Array.isArray(input.lines) ? input.lines.length : 0,
+    persistSnapshots,
   });
 
   const khRes = await resolveSupplierKhForCreateFromDb(input.supplierId);
@@ -3055,9 +3449,11 @@ export async function actionCreateZdFromEstimate(input: {
 
   let pendingForSupplier: ZdEstimatePendingIndividualOrder[] = [];
   try {
+    const tPending = performance.now();
     const pendingRes = await fetchZdEstimatePendingIndividualOrders(
       input.supplierId
     );
+    msPendingOrders = Math.round(performance.now() - tPending);
     pendingForSupplier = pendingRes.orders;
     if (pendingRes.truncated) {
       return {
@@ -3090,6 +3486,7 @@ export async function actionCreateZdFromEstimate(input: {
     ReturnType<typeof fetchZdEstimatePackaging>
   > = [];
   try {
+    const tSettings = performance.now();
     ;[pairsForExtras, bomsForExtras, teethForExtras, packagingForCreate] =
       await Promise.all([
         fetchZdProductPairs(),
@@ -3097,6 +3494,7 @@ export async function actionCreateZdFromEstimate(input: {
         fetchTeethProductTwIdSet(),
         fetchZdEstimatePackaging(),
       ]);
+    msProductSettings = Math.round(performance.now() - tSettings);
   } catch (e) {
     return {
       ok: false,
@@ -3135,21 +3533,61 @@ export async function actionCreateZdFromEstimate(input: {
 
   const unitsPerPackageByTwId = new Map<number, number>();
   const packagingModeByTwId = new Map<number, ZdPackagingDocumentUnitMode>();
+  const orderMultipleByTwId = new Map<number, number>();
   for (const row of packagingForCreate) {
     unitsPerPackageByTwId.set(row.subiektTwId, row.unitsPerPackage);
     packagingModeByTwId.set(row.subiektTwId, row.documentUnitMode);
+    if (row.orderMultiple != null && row.orderMultiple >= 2) {
+      orderMultipleByTwId.set(row.subiektTwId, row.orderMultiple);
+    }
   }
   for (const pair of pairsForExtras) {
     unitsPerPackageByTwId.set(pair.packTwId, pair.unitsPerPack);
     packagingModeByTwId.set(pair.packTwId, "packages");
+    // orderMultiple z wiersza packaging (jeśli był) zostaje z pętli powyżej
   }
 
   // Dedupe prośba↔rez. ZK przed ensureCover — inaczej serwer podbija qty z powrotem.
-  // Bez pełnych linii estimate nie limitujemy overlap do need (to robi UI).
+  // coverLines: fetch ZK tylko gdy ilosc < minZd(raw); scoped extras bez zmian.
+  const tOverlap = performance.now();
   const overlapForCreate = await resolveIndividualExtrasWithReservationOverlap({
     byTwId: extrasBundle.byTwId,
     twIdsFilter: createdTwIds,
+    coverLines: linesCheck.lines,
+    unitsPerPackageByTwId,
+    packagingModeByTwId,
   });
+  msOverlap = Math.round(performance.now() - tOverlap);
+  overlapCandidateCount = overlapForCreate.candidateTwIds.length;
+  overlapTwFetched = overlapForCreate.overlapTwFetched;
+  overlapTwSkipped = overlapForCreate.overlapTwSkipped;
+
+  // Fail-open raw extras przy błędzie ZK → ensureCover mógłby over-bumpnąć vs UI.
+  if (!overlapForCreate.resolved) {
+    console.warn("[zd-estimate:create:fail]", {
+      hostKind,
+      ordersBaseUrl: orders.config.baseUrl,
+      userId: user.id,
+      supplierId: input.supplierId,
+      khId: khRes.khId,
+      code: "validation",
+      message: "overlap_unresolved",
+      msPendingOrders,
+      msProductSettings,
+      msOverlap,
+      msTotal: Math.round(performance.now() - t0),
+      overlapCandidateCount,
+      overlapTwFetched: overlapTwFetched.length,
+      overlapTwSkipped: overlapTwSkipped.length,
+    });
+    return {
+      ok: false,
+      code: "validation",
+      message:
+        "Nie udało się zweryfikować rezerwacji ZK względem próśb. Odśwież Policz i spróbuj ponownie utworzyć ZD.",
+    };
+  }
+
   const extraPiecesByTwId = new Map<number, number>();
   for (const [tw, qty] of overlapForCreate.adjustedExtraByTwId) {
     if (qty > 0 && createdTwIds.has(tw)) {
@@ -3161,6 +3599,7 @@ export async function actionCreateZdFromEstimate(input: {
     extraPiecesByTwId,
     unitsPerPackageByTwId,
     packagingModeByTwId,
+    orderMultipleByTwId,
   });
   const createLines = coveredLines.lines;
 
@@ -3257,10 +3696,30 @@ export async function actionCreateZdFromEstimate(input: {
   });
 
   let dokId = 0;
+  let createdDoc: Awaited<ReturnType<typeof createSubiektOrdersZd>>;
+  const tCreate = performance.now();
   try {
-    const created = await createSubiektOrdersZd(body);
-    dokId = Math.trunc(Number(created.dok_Id));
+    createdDoc = await createSubiektOrdersZd(body);
+    msSferaCreate = Math.round(performance.now() - tCreate);
+    dokId = Math.trunc(Number(createdDoc.dok_Id));
     if (!(dokId > 0)) {
+      console.warn("[zd-estimate:create:fail]", {
+        hostKind,
+        ordersBaseUrl: orders.config.baseUrl,
+        userId: user.id,
+        supplierId: input.supplierId,
+        khId: khRes.khId,
+        code: "error",
+        message: "Subiekt nie zwrócił dok_Id po utworzeniu ZD.",
+        msPendingOrders,
+        msProductSettings,
+        msOverlap,
+        msSferaCreate,
+        msTotal: Math.round(performance.now() - t0),
+        overlapCandidateCount,
+        overlapTwFetched: overlapTwFetched.length,
+        overlapTwSkipped: overlapTwSkipped.length,
+      });
       return {
         ok: false,
         code: "error",
@@ -3271,13 +3730,18 @@ export async function actionCreateZdFromEstimate(input: {
       hostKind,
       ordersBaseUrl: orders.config.baseUrl,
       dokId,
-      dokNrPelny: created.dok_NrPelny ?? null,
+      dokNrPelny: createdDoc.dok_NrPelny ?? null,
       userId: user.id,
       supplierId: input.supplierId,
       khId: khRes.khId,
       lineCount: createLines.length,
+      msSferaCreate,
+      msOverlap,
+      overlapTwFetched: overlapTwFetched.length,
+      overlapTwSkipped: overlapTwSkipped.length,
     });
   } catch (e) {
+    msSferaCreate = Math.round(performance.now() - tCreate);
     const mapped = mapZdCreateSubiektError(e);
     console.warn("[zd-estimate:create:fail]", {
       hostKind,
@@ -3287,6 +3751,14 @@ export async function actionCreateZdFromEstimate(input: {
       khId: khRes.khId,
       code: mapped.code,
       message: mapped.message,
+      msPendingOrders,
+      msProductSettings,
+      msOverlap,
+      msSferaCreate,
+      msTotal: Math.round(performance.now() - t0),
+      overlapCandidateCount,
+      overlapTwFetched: overlapTwFetched.length,
+      overlapTwSkipped: overlapTwSkipped.length,
     });
     return {
       ok: false,
@@ -3302,6 +3774,30 @@ export async function actionCreateZdFromEstimate(input: {
       .flatMap((l) => l.requests.map((r) => r.orderId))
   );
 
+  const logCreateDone = (extra: Record<string, unknown>) => {
+    console.info("[zd-estimate:create:done]", {
+      hostKind,
+      ordersBaseUrl: orders.config.baseUrl,
+      dokId,
+      userId: user.id,
+      supplierId: input.supplierId,
+      khId: khRes.khId,
+      lineCount: createLines.length,
+      persistSnapshots,
+      overlapCandidateCount,
+      overlapTwFetched: overlapTwFetched.length,
+      overlapTwSkipped: overlapTwSkipped.length,
+      msPendingOrders,
+      msProductSettings,
+      msOverlap,
+      msSferaCreate,
+      msDocResolve,
+      msSnapshot,
+      msTotal: Math.round(performance.now() - t0),
+      ...extra,
+    });
+  };
+
   const withCreate = <T extends Record<string, unknown>>(base: T) => ({
     ...base,
     createdLines: createLines.map((l) => ({ twId: l.twId, ilosc: l.ilosc })),
@@ -3314,11 +3810,30 @@ export async function actionCreateZdFromEstimate(input: {
   });
 
   let dokNrPelny = `ZD/${dokId}`;
+  let docSource: "create" | "reget" | null = null;
+  let didReget = false;
   try {
-    const doc = await getSubiektOrdersZd(dokId);
-    dokNrPelny = String(doc.dok_NrPelny ?? "").trim() || dokNrPelny;
+    const tDoc = performance.now();
+    const resolved = await resolveDocAfterZdCreate({
+      created: createdDoc,
+      dokId,
+      createLines: createLines.map((l) => ({ twId: l.twId, ilosc: l.ilosc })),
+      persistSnapshots,
+      getById: getSubiektOrdersZd,
+    });
+    msDocResolve = Math.round(performance.now() - tDoc);
+    const doc = resolved.doc;
+    dokNrPelny = resolved.dokNrPelny;
+    docSource = resolved.source;
+    didReget = resolved.didReget;
 
     if (!persistSnapshots) {
+      logCreateDone({
+        dokNrPelny,
+        snapshotOk: false,
+        docSource,
+        didReget,
+      });
       return withCreate({
         ok: true as const,
         dokId,
@@ -3331,18 +3846,22 @@ export async function actionCreateZdFromEstimate(input: {
 
     // Reuse packaging/pairs already loaded earlier in this Create — no second round-trip.
     const packagingByTwId = new Map<number, number>();
-    const packagingModeByTwId = new Map<number, ZdPackagingDocumentUnitMode>();
+    const packagingModeByTwIdSnap = new Map<
+      number,
+      ZdPackagingDocumentUnitMode
+    >();
     for (const row of packagingForCreate) {
       packagingByTwId.set(row.subiektTwId, row.unitsPerPackage);
-      packagingModeByTwId.set(row.subiektTwId, row.documentUnitMode);
+      packagingModeByTwIdSnap.set(row.subiektTwId, row.documentUnitMode);
     }
     const pairRatioByTwId = buildPairRatioByTwId(pairsForExtras);
 
     const orderableTwIds = new Set(createLines.map((l) => l.twId));
 
+    const tSnap = performance.now();
     const built = buildZdEstimateSnapshotLinesFromDocChecked(doc, {
       packagingByTwId,
-      packagingModeByTwId,
+      packagingModeByTwId: packagingModeByTwIdSnap,
       pairRatioByTwId,
       lineMeta: input.lineMeta ?? null,
       confirmedEstimateTwIds: orderableTwIds,
@@ -3350,6 +3869,13 @@ export async function actionCreateZdFromEstimate(input: {
     });
 
     if (!built.ok) {
+      msSnapshot = Math.round(performance.now() - tSnap);
+      logCreateDone({
+        dokNrPelny,
+        snapshotOk: false,
+        docSource,
+        didReget,
+      });
       return withCreate({
         ok: true as const,
         dokId,
@@ -3365,6 +3891,13 @@ export async function actionCreateZdFromEstimate(input: {
     }
 
     if (!built.lines.length) {
+      msSnapshot = Math.round(performance.now() - tSnap);
+      logCreateDone({
+        dokNrPelny,
+        snapshotOk: false,
+        docSource,
+        didReget,
+      });
       return withCreate({
         ok: true as const,
         dokId,
@@ -3391,6 +3924,14 @@ export async function actionCreateZdFromEstimate(input: {
         eligibleForHistory,
         lines: built.lines,
       });
+      msSnapshot = Math.round(performance.now() - tSnap);
+      logCreateDone({
+        dokNrPelny,
+        snapshotOk: true,
+        docSource,
+        didReget,
+        snapshotLineCount: lineCount,
+      });
       return withCreate({
         ok: true as const,
         dokId,
@@ -3399,6 +3940,13 @@ export async function actionCreateZdFromEstimate(input: {
         snapshotOk: true,
       });
     } catch (snapErr) {
+      msSnapshot = Math.round(performance.now() - tSnap);
+      logCreateDone({
+        dokNrPelny,
+        snapshotOk: false,
+        docSource,
+        didReget,
+      });
       return withCreate({
         ok: true as const,
         dokId,
@@ -3412,6 +3960,13 @@ export async function actionCreateZdFromEstimate(input: {
       });
     }
   } catch (e) {
+    logCreateDone({
+      dokNrPelny,
+      snapshotOk: false,
+      docSource,
+      didReget,
+      error: e instanceof Error ? e.message : "unknown",
+    });
     return withCreate({
       ok: true as const,
       dokId,
@@ -3940,9 +4495,21 @@ export async function actionUpsertZdProductBom(input: {
   parentTwId: number;
   label?: string | null;
   stockAsCover?: boolean;
-  preset?: "assemble" | "buy_separate" | "kit_only" | string | null;
+  preset?:
+    | "assemble"
+    | "buy_separate"
+    | "kit_only"
+    | "kit_from_components"
+    | string
+    | null;
   demandAllocation?: "explode" | "separate" | string | null;
-  purchaseTarget?: "components" | "as_sold" | "kit_only" | string | null;
+  purchaseTarget?:
+    | "components"
+    | "as_sold"
+    | "kit_only"
+    | "kit_from_components"
+    | string
+    | null;
   note?: string | null;
   parentSymbol?: string | null;
   parentNazwa?: string | null;
@@ -4536,7 +5103,8 @@ export async function actionSetZdEstimateSnapshotHistoryEligible(input: {
 // Sesje UI kreatora ZD (/zakupy/szacunek) — snapshot + odtwarzanie po nawigacji
 // ============================================================================
 
-const ZD_ESTIMATE_UI_SESSION_TTL_MS = 60 * 60 * 1000; // housekeeping; timer liczy się po stronie klienta
+/** TTL w DB (housekeeping). Timer 3 min „away” liczy klient — DB musi żyć dłużej niż praca przy liście. */
+const ZD_ESTIMATE_UI_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
 const ZD_ESTIMATE_UI_SESSION_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -4551,8 +5119,93 @@ function parseZdEstimateUiSessionId(
   return id.toLowerCase();
 }
 
-function revalidateZdEstimateUiSessionPaths() {
-  revalidatePath("/zakupy/szacunek");
+function isUniqueViolationMessage(message: string | undefined): boolean {
+  const m = (message ?? "").toLowerCase();
+  return m.includes("duplicate key") || m.includes("unique constraint");
+}
+
+/**
+ * Ephemeral snapshot workbencha „Policz ZD” (zd_estimate_ui_sessions).
+ *
+ * Świadomie bez revalidatePath/revalidateTag — snapshot nie jest źródłem RSC,
+ * a pełny refresh po Server Action resetuje workbench / wyściguje z tokenem
+ * sessionStorage. Wyjątek zarejestrowany w MissingRevalidateAfterMutation.ql.
+ */
+async function persistZdEstimateUiSessionSnapshot(input: {
+  payload: ZdEstimateUiSessionPayload;
+  schemaVersion: number;
+}): Promise<
+  | { ok: true; sessionId: string; rotated: true }
+  | { ok: false; message: string; rotated: boolean }
+> {
+  const user = await getSessionUser();
+  if (!user) {
+    return { ok: false, message: "Brak sesji.", rotated: false };
+  }
+
+  const supabase = createAdminClient();
+
+  const clearActive = async (): Promise<
+    { ok: true } | { ok: false; message: string }
+  > => {
+    const { error } = await supabase
+      .from("zd_estimate_ui_sessions")
+      .delete()
+      .eq("owner_user_id", user.id)
+      .eq("status", "active");
+    if (error) {
+      console.error("[zd-ui-session] delete active failed", error.message);
+      return { ok: false, message: error.message };
+    }
+    return { ok: true };
+  };
+
+  const insertActive = async (): Promise<
+    | { ok: true; sessionId: string }
+    | { ok: false; message: string }
+  > => {
+    const now = new Date();
+    const { data, error } = await supabase
+      .from("zd_estimate_ui_sessions")
+      .insert({
+        owner_user_id: user.id,
+        status: "active",
+        expires_at: new Date(
+          now.getTime() + ZD_ESTIMATE_UI_SESSION_TTL_MS
+        ).toISOString(),
+        payload: input.payload as unknown,
+        schema_version: input.schemaVersion,
+      })
+      .select("id")
+      .single();
+
+    if (error || !data) {
+      return {
+        ok: false,
+        message: error?.message ?? "Nie udało się utworzyć sesji.",
+      };
+    }
+    return { ok: true, sessionId: data.id };
+  };
+
+  // Nowe „Policz” zastępuje poprzednią aktywną sesję.
+  const cleared = await clearActive();
+  if (!cleared.ok) return { ...cleared, rotated: false };
+
+  let created = await insertActive();
+  if (!created.ok && isUniqueViolationMessage(created.message)) {
+    // Wyścig dwóch Policz — spróbuj jeszcze raz po ponownym clear.
+    const clearedAgain = await clearActive();
+    if (!clearedAgain.ok) return { ...clearedAgain, rotated: true };
+    created = await insertActive();
+  }
+
+  if (!created.ok) {
+    console.error("[zd-ui-session] create failed", created.message);
+    return { ...created, rotated: true };
+  }
+
+  return { ok: true, sessionId: created.sessionId, rotated: true };
 }
 
 export async function actionCreateZdEstimateUiSession(input: {
@@ -4566,35 +5219,7 @@ export async function actionCreateZdEstimateUiSession(input: {
   if (!user) {
     return { ok: false, message: "Brak sesji." };
   }
-
-  const supabase = createAdminClient();
-  const now = new Date();
-
-  // Nowe „Policz” zastępuje poprzednią aktywną sesję (usuń zamiast zostawiać status=expired).
-  await supabase
-    .from("zd_estimate_ui_sessions")
-    .delete()
-    .eq("owner_user_id", user.id)
-    .eq("status", "active");
-
-  const { data, error } = await supabase
-    .from("zd_estimate_ui_sessions")
-    .insert({
-      owner_user_id: user.id,
-      status: "active",
-      expires_at: new Date(now.getTime() + ZD_ESTIMATE_UI_SESSION_TTL_MS).toISOString(),
-      payload: input.payload as unknown,
-      schema_version: input.schemaVersion,
-    })
-    .select("id")
-    .single();
-
-  if (error || !data) {
-    return { ok: false, message: error?.message ?? "Nie udało się utworzyć sesji." };
-  }
-
-  revalidateZdEstimateUiSessionPaths();
-  return { ok: true, sessionId: data.id };
+  return persistZdEstimateUiSessionSnapshot(input);
 }
 
 export async function actionUpsertZdEstimateUiSessionSnapshot(input: {
@@ -4650,7 +5275,6 @@ export async function actionUpsertZdEstimateUiSessionSnapshot(input: {
     };
   }
 
-  revalidateZdEstimateUiSessionPaths();
   return { ok: true, sessionId: data.id };
 }
 
@@ -4705,7 +5329,6 @@ export async function actionGetZdEstimateUiSession(input: {
       .delete()
       .eq("id", sessionId)
       .eq("owner_user_id", user.id);
-    revalidateZdEstimateUiSessionPaths();
     return { ok: false, message: "Sesja wygasła.", reason: "expired" };
   }
 
@@ -4744,7 +5367,6 @@ export async function actionDeleteZdEstimateUiSession(input: {
     return { ok: false, message: error.message };
   }
 
-  revalidateZdEstimateUiSessionPaths();
   return { ok: true };
 }
 

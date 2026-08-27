@@ -26,18 +26,18 @@ describe("buildProsbaFormLeadTimeMeta", () => {
     expect(m).toEqual({
       primaryText: "~8 dni rob.",
       sampleText: "4 dostawy",
-      lowConfidence: false,
+      lowConfidence: true,
       tooltip: PROSBA_FORM_LEAD_TIME_TOOLTIP,
     });
   });
 
-  it("OSOBNO — gł./pob. bez sufiksu szacunek w primary", () => {
+  it("OSOBNO — gł./pob. z lowConfidence przy n<5", () => {
     const m = buildProsbaFormLeadTimeMeta(stats, "OSOBNO");
     expect(m?.primaryText).toBe("gł. ~10 d · pob. ~5 d");
-    expect(m?.lowConfidence).toBe(false);
+    expect(m?.lowConfidence).toBe(true);
   });
 
-  it("lowConfidence przy <3 próbach — bez „szacunek” w primaryText", () => {
+  it("lowConfidence przy <5 próbach — bez „szacunek” w primaryText", () => {
     const thin: DeliveryStats = {
       supplier_id: "x",
       main_sum: 10,

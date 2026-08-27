@@ -21,6 +21,10 @@ export default async function NoweZamowieniePage() {
   let statsBySupplierId: Awaited<
     ReturnType<typeof fetchSupplierFormContext>
   >["statsBySupplierId"] = {};
+  let etaUseP50 = false;
+  let etaQuantilesBySupplierId: Awaited<
+    ReturnType<typeof fetchSupplierFormContext>
+  >["etaQuantilesBySupplierId"] = {};
   let suppliersOnVacationNow: Record<string, SupplierOnVacationWindow> = {};
   let salesPeople: { id: string; name: string }[] = [];
   let loadError: string | null = null;
@@ -31,6 +35,8 @@ export default async function NoweZamowieniePage() {
     ]);
     suppliers = ctx.suppliers;
     statsBySupplierId = ctx.statsBySupplierId;
+    etaUseP50 = ctx.etaUseP50;
+    etaQuantilesBySupplierId = ctx.etaQuantilesBySupplierId;
     suppliersOnVacationNow = onVacation;
     salesPeople = await fetchSalesPeopleForPicker();
   } catch (error) {
@@ -57,6 +63,8 @@ export default async function NoweZamowieniePage() {
         lockedSalesPerson={lockedSalesPerson}
         suppliersOnVacationNow={suppliersOnVacationNow}
         statsBySupplierId={statsBySupplierId}
+        etaUseP50={etaUseP50}
+        etaQuantilesBySupplierId={etaQuantilesBySupplierId}
       />
     </div>
   );

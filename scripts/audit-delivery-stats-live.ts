@@ -8,6 +8,7 @@ import { aggregateDeliveryStatsFromOrders } from "../src/lib/orders/delivery-sta
 import { DELIVERY_STATS_COMPLETED_STATUS } from "../src/lib/orders/delivery-stats-aggregation";
 import { calculateBusinessDays, parseDateOnly } from "../src/lib/orders/dates";
 import { orderPlacementAt } from "../src/lib/orders/order-timing";
+import { warsawDateKeyFromIso } from "../src/lib/time/warsaw";
 
 async function main() {
   if (!hasSupabaseConfig()) {
@@ -102,15 +103,19 @@ async function main() {
     }
 
     const placement = orderPlacementAt(order);
-    const orderDate = placement ? parseDateOnly(placement) : null;
-    const deliveryDate = parseDateOnly(order.delivery_at);
+    const orderDateKey = placement ? warsawDateKeyFromIso(placement) : null;
+    const deliveryDateKey = order.delivery_at
+      ? warsawDateKeyFromIso(String(order.delivery_at))
+      : null;
+    const orderDate = orderDateKey ? parseDateOnly(orderDateKey) : null;
+    const deliveryDate = deliveryDateKey ? parseDateOnly(deliveryDateKey) : null;
     const recomputedDays =
       orderDate && deliveryDate ? calculateBusinessDays(orderDate, deliveryDate) : null;
 
     const ok =
       order.status === DELIVERY_STATS_COMPLETED_STATUS &&
       recomputedDays === sample.businessDays &&
-      sample.placementDate === orderDate?.toISOString().slice(0, 10);
+      sample.placementDate === orderDateKey;
 
     console.log(
       `${ok ? "OK" : "WARN"} ${supplier.slice(0, 20)} | order ${sample.orderId.slice(0, 8)}… | ` +
@@ -205,7 +210,89 @@ async function main() {
   for (const row of skipped) {
     reasons[row.reason] = (reasons[row.reason] ?? 0) + 1;
   }
-  console.log("\n=== POWODY POMINIĘCIA (723 → 419 próbek) ===", reasons);
+  console.log("\n=== POWODY POMINIĘCIA ===", reasons);
+
+  // --- A0: overnight / partials / avg=0 / teeth / cancel / brak ordered_at ---
+  const { data: completedDeep } = await supabase
+    .from("individual_orders")
+    .select(
+      "id, supplier_id, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition, request_kind"
+    )
+    .eq("request_kind", "zamowienie")
+    .eq("status", DELIVERY_STATS_COMPLETED_STATUS)
+    .not("delivery_at", "is", null)
+    .limit(5000);
+
+  const { data: partials } = await supabase
+    .from("individual_orders")
+    .select("id, supplier_id, ordered_at, action_at, delivery_at, is_teeth")
+    .eq("request_kind", "zamowienie")
+    .eq("status", "Czesciowo_zrealizowane")
+    .not("delivery_at", "is", null)
+    .limit(2000);
+
+  let overnight = 0;
+  let missingOrderedAt = 0;
+  let teethCount = 0;
+  let cancelDisposition = 0;
+  let sameDay = 0;
+  let nextMorningLike = 0;
+
+  for (const row of completedDeep ?? []) {
+    if (row.is_teeth === true) teethCount++;
+    if (!row.ordered_at) missingOrderedAt++;
+    if (row.sales_cancelled_at && row.procurement_cancel_disposition) {
+      cancelDisposition++;
+    }
+    const placement = orderPlacementAt({
+      ordered_at: row.ordered_at,
+      action_at: row.action_at ?? "",
+      status: row.status as never,
+    });
+    if (!placement || !row.delivery_at) continue;
+    const pKey = warsawDateKeyFromIso(placement);
+    const dKey = warsawDateKeyFromIso(String(row.delivery_at));
+    const pDate = parseDateOnly(pKey);
+    const dDate = parseDateOnly(dKey);
+    if (!pDate || !dDate) continue;
+    const days = calculateBusinessDays(pDate, dDate);
+    if (days === 0) sameDay++;
+    if (days === 1) {
+      overnight++;
+      // D → D+1 kalendarzowo (często „zamówione wieczór, rano przyjęte”)
+      const pMs = pDate.getTime();
+      const dMs = dDate.getTime();
+      if (dMs - pMs <= 2 * 24 * 60 * 60 * 1000) nextMorningLike++;
+    }
+  }
+
+  console.log("\n=== A0 JAKOŚĆ PRÓBEK (completed, max 5000) ===");
+  console.log(`completed scanned: ${(completedDeep ?? []).length}`);
+  console.log(`same-day (0 dni rob.): ${sameDay}`);
+  console.log(`overnight-ish (1 dzień rob.): ${overnight} (kal. ≤2d: ${nextMorningLike})`);
+  console.log(`is_teeth: ${teethCount}`);
+  console.log(`cancel-disposition (sales_cancelled + disposition): ${cancelDisposition}`);
+  console.log(`brak ordered_at: ${missingOrderedAt}`);
+  console.log(`partials z delivery_at: ${(partials ?? []).length}`);
+
+  const { data: statsRows } = await supabase
+    .from("delivery_stats")
+    .select("supplier_id, main_avg, side_avg, main_count, side_count");
+  const avgZero = (statsRows ?? []).filter((r) => {
+    const mainN = Number(r.main_count ?? 0);
+    const sideN = Number(r.side_count ?? 0);
+    const mainAvg = r.main_avg == null ? null : Number(r.main_avg);
+    const sideAvg = r.side_avg == null ? null : Number(r.side_avg);
+    return (
+      (mainN > 0 && mainAvg === 0) ||
+      (sideN > 0 && sideAvg === 0) ||
+      (mainN + sideN > 0 &&
+        Math.round(
+          ((mainAvg ?? 0) * mainN + (sideAvg ?? 0) * sideN) / (mainN + sideN)
+        ) === 0)
+    );
+  });
+  console.log(`delivery_stats z avg===0 (main/side/combined): ${avgZero.length}`);
 
   // outlier deep dive
   for (const namePattern of ["Giedrius", "IPD POLAND", "Denon Dental"]) {

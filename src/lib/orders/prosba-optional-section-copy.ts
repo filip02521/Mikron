@@ -1,10 +1,10 @@
-/** Teksty zwijanych sekcji opcjonalnych w formularzu prośby. */
+import { MOJE_COPY_NOTES_ACK_BUTTON } from "@/lib/orders/my-order-moje-copy";
 export const PROSBA_OPTIONAL_SECTION_COPY = {
   lineNote: {
     title: "Notatka do tej pozycji",
     description: "Kontekst dla zakupów — termin, pilność, ustalenia z klientem",
     procurementDescription:
-      "Zmiana uwag powiadomi handlowca e-mailem i w Start dnia — potwierdzi „Widziałem” w Moje zamówienia.",
+      `Zmiana uwag powiadomi handlowca e-mailem i w Start dnia — potwierdzi „${MOJE_COPY_NOTES_ACK_BUTTON}” w Moje zamówienia.`,
     copyToAllLines: "Skopiuj notatkę na wszystkie pozycje",
   },
   client: {

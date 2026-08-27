@@ -120,8 +120,8 @@ describe("product-zd-lookup", () => {
     expect(estimate?.estimateLabel).toContain("dni rob.");
   });
 
-  it("resolveProductZdLookupAppOrderHint — tylko przy otwartej prośbie", () => {
-    const hint = resolveProductZdLookupAppOrderHint(
+  it("resolveProductZdLookupAppOrderHint — tylko przy otwartej prośbie", async () => {
+    const hint = await resolveProductZdLookupAppOrderHint(
       {
         placementAt: "2026-05-12",
         supplierId: "chifa",
@@ -149,7 +149,7 @@ describe("product-zd-lookup", () => {
     expect(hint?.orderId).toBe("ord-1");
     expect(hint?.estimateLabel).toContain("dni rob.");
     expect(
-      resolveProductZdLookupAppOrderHint(
+      await resolveProductZdLookupAppOrderHint(
         { placementAt: null, supplierId: null, supplierName: null, openOrder: null },
         []
       )

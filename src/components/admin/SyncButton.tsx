@@ -32,7 +32,7 @@ export function SyncButton({
     };
   }, []);
 
-  return (
+  const body = (
     <>
       {pendingMessage ? (
         <ActionLoadingOverlay
@@ -84,5 +84,11 @@ export function SyncButton({
         )}
       </Button>
     </>
+  );
+
+  return overlayVariant === "section" ? (
+    <span className="relative inline-flex">{body}</span>
+  ) : (
+    body
   );
 }

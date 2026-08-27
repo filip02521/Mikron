@@ -180,7 +180,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
       headline:
         n === 1
           ? "Gotowe do odbioru z regału"
-          : `Gotowe do odbioru z regału · ${n} poz.`,
+          : `Gotowe do odbioru z regału · ${n} pozycje`,
       headlineTone: "action",
       subline: null,
       sortPriority: 1,
@@ -191,7 +191,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     const n = row.pickupPendingCount;
     return {
       headline:
-        n === 1 ? "Zęby gotowe do odbioru" : `Zęby gotowe do odbioru · ${n} poz.`,
+        n === 1 ? "Zęby gotowe do odbioru" : `Zęby gotowe do odbioru · ${n} pozycje`,
       headlineTone: "action",
       subline: "Doręczenie osobiste — potwierdź odbiór od magazynu",
       sortPriority: 1,
@@ -202,8 +202,8 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     const teethN = row.pickupTeethPendingIds.length;
     const shelfN = row.pickupShelfPendingIds.length;
     const parts: string[] = [];
-    if (teethN > 0) parts.push(teethN === 1 ? "zęby" : `${teethN} poz. zębowych`);
-    if (shelfN > 0) parts.push(shelfN === 1 ? "towar z regału" : `${shelfN} poz. z regału`);
+    if (teethN > 0) parts.push(teethN === 1 ? "zęby" : `${teethN} pozycje zębowe`);
+    if (shelfN > 0) parts.push(shelfN === 1 ? "towar z regału" : `${shelfN} towary z regału`);
     return {
       headline: "Gotowe do odbioru — zęby i towar",
       headlineTone: "action",
@@ -496,7 +496,11 @@ export function isExpandedSublineRedundant(row: MyOrderRow): boolean {
   return false;
 }
 
-/** Metadane rozwinięcia — typ/zamówienie ze statusDetail bez osobnego calloutu. */
+/** Metadane rozwinięcia — zamówienie ze statusDetail bez osobnego calloutu. */
+export function myOrderExpandedOrderTypeLabel(row: MyOrderRow): string | null {
+  return parseStatusDetailMetaParts(row.statusDetail).orderTypeLabel;
+}
+
 export function myOrderExpandedMetaFields(
   row: MyOrderRow,
   showProgress: boolean
@@ -504,11 +508,8 @@ export function myOrderExpandedMetaFields(
   const fields = myOrderMetaFields(row, showProgress);
   const parsed = parseStatusDetailMetaParts(row.statusDetail);
 
-  let insertIndex = 1;
-  if (parsed.orderTypeLabel) {
-    fields.splice(insertIndex, 0, { label: "Typ", value: parsed.orderTypeLabel });
-    insertIndex++;
-  }
+  const insertIndex = 1;
+  // „Typ” (planowa / poza planem) jest pod produktem — nie w pasku meta.
   if (parsed.orderedAtLabel && parsed.orderedAtLabel !== row.submittedLabel) {
     fields.splice(insertIndex, 0, {
       label: "Zamówiono",
@@ -725,10 +726,17 @@ export function aggregateGroupZdEtaState(
 export function salesTimingLabel(
   expectedDate: Date,
   avgDays: number,
-  lowConfidence: boolean
+  lowConfidence: boolean,
+  options?: { sameDay?: boolean }
 ): string {
   const date = formatDateString(expectedDate, "dd.MM.yyyy");
   const conf = lowConfidence ? " · mało historii" : "";
   const overdue = isPastExpectedDate(expectedDate) ? " · po terminie" : "";
+  if (options?.sameDay || avgDays === 0) {
+    return `ok. ${date} (tego samego dnia rob.)${conf}${overdue}`;
+  }
+  if (avgDays === 1) {
+    return `ok. ${date} (~1 dzień rob. · nazajutrz)${conf}${overdue}`;
+  }
   return `ok. ${date} (~${avgDays} dni rob.)${conf}${overdue}`;
 }

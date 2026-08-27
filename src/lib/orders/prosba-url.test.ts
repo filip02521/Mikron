@@ -39,6 +39,20 @@ describe("prosba-url", () => {
     );
   });
 
+  it("prosbaHref przekazuje uzupelnienie dla supplement", () => {
+    expect(
+      prosbaHref({
+        salesPersonId: "sp1",
+        fromZk: true,
+        zkWatchId: "watch-uuid",
+        zkLineKeys: ["a", "b"],
+        supplement: true,
+      })
+    ).toBe(
+      "/prosba?dla=sp1&fromZk=1&zkWatch=watch-uuid&zkLines=a%2Cb&uzupelnienie=1"
+    );
+  });
+
   it("prosbaHref obsługuje prefill z Tablicy", () => {
     expect(prosbaHref({ fromBoard: true })).toBe("/prosba?fromBoard=1");
     expect(prosbaHref({ salesPersonId: "sp1", fromBoard: true })).toBe(

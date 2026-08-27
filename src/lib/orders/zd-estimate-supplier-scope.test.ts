@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   classifySupplierBrand,
+  findUniqueSupplierIdForCecha,
+  findUniqueSupplierIdForGrupa,
   parseZdEstimateLaunchQuery,
   pickUniqueScopeByName,
   resolveZdEstimateSupplierScopeFromSources,
@@ -107,6 +109,52 @@ describe("pickUniqueScopeByName", () => {
         { mode: "grupa", id: 99, label: "Other" },
       ])
     ).toEqual({ mode: "grupa", id: 17, label: "Falcon" });
+  });
+});
+
+describe("findUniqueSupplierIdForGrupa / Cecha", () => {
+  const scopes = [
+    {
+      supplierId: "dongguan",
+      mode: "grupa" as const,
+      grupaId: 505,
+      cechaId: null,
+    },
+    {
+      supplierId: "ivoclar",
+      mode: "cecha" as const,
+      grupaId: null,
+      cechaId: 2738,
+    },
+  ];
+
+  it("Resione grupa → Dongguan", () => {
+    expect(findUniqueSupplierIdForGrupa(scopes, 505)).toBe("dongguan");
+  });
+
+  it("brak mapowania → null", () => {
+    expect(findUniqueSupplierIdForGrupa(scopes, 17)).toBeNull();
+  });
+
+  it("ambiguous gdy dwa dostawcy na tę samą grupę", () => {
+    expect(
+      findUniqueSupplierIdForGrupa(
+        [
+          ...scopes,
+          {
+            supplierId: "other",
+            mode: "grupa",
+            grupaId: 505,
+            cechaId: null,
+          },
+        ],
+        505
+      )
+    ).toBeNull();
+  });
+
+  it("cecha → dostawca", () => {
+    expect(findUniqueSupplierIdForCecha(scopes, 2738)).toBe("ivoclar");
   });
 });
 

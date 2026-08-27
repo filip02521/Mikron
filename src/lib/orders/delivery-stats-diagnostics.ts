@@ -33,6 +33,11 @@ export type DeliveryStatsSupplierDiagnostic = {
   unusedOrderCount: number;
 };
 
+export type DeliveryStatsSkipReasonCount = {
+  reason: string;
+  count: number;
+};
+
 export type DeliveryStatsDiagnosticsSummary = {
   supplierCount: number;
   activeSupplierCount: number;
@@ -46,6 +51,12 @@ export type DeliveryStatsDiagnosticsSummary = {
   totalHistoryOrders: number;
   totalUnusedOrders: number;
   lastStatsUpdate: string | null;
+  /** Skip events z ostatnich 7 dni (top powodów). */
+  skipEventsLast7Days?: DeliveryStatsSkipReasonCount[];
+  missingOrderedAtCount?: number;
+  teethExcludedCount?: number;
+  cancelDispositionExcludedCount?: number;
+  samplesSource?: "orders" | "delivery_stats_samples";
 };
 
 export type DeliveryStatsDiagnostics = {
@@ -141,8 +152,8 @@ function evaluateHealth(
     }
   }
 
-  if (totalSamples > 0 && totalSamples < 3) {
-    notes.push("Mniej niż 3 próbki — ETA oznaczone jako szacunek (niska pewność)");
+  if (totalSamples > 0 && totalSamples < 5) {
+    notes.push("Mniej niż 5 próbek — ETA oznaczone jako szacunek (niska pewność)");
     return { health: "low_samples", notes };
   }
 
@@ -155,8 +166,15 @@ export function buildDeliveryStatsDiagnostics(input: {
   storedStats: StoredStatsRow[];
   orders: DeliveryStatsOrderInput[];
   generatedAt?: string;
+  skipEventsLast7Days?: DeliveryStatsSkipReasonCount[];
+  missingOrderedAtCount?: number;
+  samplesSource?: "orders" | "delivery_stats_samples";
+  /** Gdy podane — health vs day-weighted samples zamiast agregacji orders. */
+  recomputedBySupplierFromSamples?: Map<string, AggregatedDeliveryStats>;
 }): DeliveryStatsDiagnostics {
   const { bySupplier, samples, skipped } = aggregateDeliveryStatsFromOrders(input.orders);
+  const healthBySupplier =
+    input.recomputedBySupplierFromSamples ?? bySupplier;
   const storedById = new Map(input.storedStats.map((s) => [s.supplier_id, s]));
 
   const samplesBySupplier = new Map<string, DeliveryStatsSample[]>();
@@ -168,6 +186,8 @@ export function buildDeliveryStatsDiagnostics(input: {
 
   const eligibleBySupplier = new Map<string, number>();
   const skippedBySupplier = new Map<string, number>();
+  let teethExcludedCount = 0;
+  let cancelDispositionExcludedCount = 0;
   for (const row of input.orders) {
     if (!row.supplier_id) continue;
     eligibleBySupplier.set(row.supplier_id, (eligibleBySupplier.get(row.supplier_id) ?? 0) + 1);
@@ -175,13 +195,15 @@ export function buildDeliveryStatsDiagnostics(input: {
   for (const row of skipped) {
     if (!row.supplierId) continue;
     skippedBySupplier.set(row.supplierId, (skippedBySupplier.get(row.supplierId) ?? 0) + 1);
+    if (row.reason === "zęby") teethExcludedCount++;
+    if (row.reason === "cancel-disposition") cancelDispositionExcludedCount++;
   }
 
   const suppliers: DeliveryStatsSupplierDiagnostic[] = input.suppliers.map((supplier) => {
     const storedRow = storedById.get(supplier.id) ?? null;
     const stored = storedAsDeliveryStats(storedRow);
     const recomputed =
-      bySupplier.get(supplier.id) ?? {
+      healthBySupplier.get(supplier.id) ?? {
         main_sum: 0,
         main_count: 0,
         main_avg: null,
@@ -190,7 +212,10 @@ export function buildDeliveryStatsDiagnostics(input: {
         side_avg: null,
       };
     const supplierSamples = samplesBySupplier.get(supplier.id) ?? [];
-    const totalSamples = supplierSamples.length;
+    const totalSamples =
+      input.recomputedBySupplierFromSamples != null
+        ? (recomputed.main_count ?? 0) + (recomputed.side_count ?? 0)
+        : supplierSamples.length;
     const { health, notes } = evaluateHealth(stored, recomputed, totalSamples);
 
     return {
@@ -245,10 +270,18 @@ export function buildDeliveryStatsDiagnostics(input: {
       (s) => s.health === "mismatch" || s.health === "missing_row"
     ).length,
     suppliersIntegrityIssue: suppliers.filter((s) => s.health === "integrity").length,
-    totalSamples: samples.length,
+    totalSamples:
+      input.recomputedBySupplierFromSamples != null
+        ? suppliers.reduce((n, s) => n + s.totalSamples, 0)
+        : samples.length,
     totalHistoryOrders: input.orders.length,
     totalUnusedOrders: skipped.length,
     lastStatsUpdate,
+    skipEventsLast7Days: input.skipEventsLast7Days,
+    missingOrderedAtCount: input.missingOrderedAtCount,
+    teethExcludedCount,
+    cancelDispositionExcludedCount,
+    samplesSource: input.samplesSource ?? "orders",
   };
 
   return {

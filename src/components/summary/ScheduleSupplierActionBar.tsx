@@ -8,7 +8,16 @@ import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import type { SupplierLocation } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { panelSegmentPrimaryClass } from "@/lib/ui/ontime-theme";
-import { buttonGroupItemClass, panelActionBarShellClass } from "@/lib/ui/surfaces";
+import {
+  buttonGroupItemClass,
+  panelActionBarShellClass,
+} from "@/lib/ui/surfaces";
+import {
+  urgentFooterPrimaryClass,
+  urgentFooterShellClass,
+  urgentFooterShiftSegmentClass,
+  type UrgentCardTone,
+} from "@/components/summary/urgent-card-styles";
 import {
   DAILY_PANEL_MARK_ORDERED_LABEL,
   DAILY_PANEL_MARK_ORDERED_PENDING,
@@ -28,6 +37,10 @@ export function ScheduleSupplierActionBar({
   onEdit,
   className,
   compact,
+  /** Footer karty Dziś — pełna szerokość jak prośby (bez sm:w-auto). */
+  layout = "inline",
+  /** Ton footera (zaległe amber / na dziś indigo). */
+  tone = "today",
 }: {
   supplierId: string;
   supplierName: string;
@@ -40,6 +53,8 @@ export function ScheduleSupplierActionBar({
   className?: string;
   /** Układ pionowy — wąskie kolumny planu tygodnia */
   compact?: boolean;
+  layout?: "inline" | "footer";
+  tone?: UrgentCardTone;
 }) {
   const scope = { scope: supplierId };
   const markOrdered = () =>
@@ -49,6 +64,23 @@ export function ScheduleSupplierActionBar({
       DAILY_PANEL_MARK_ORDERED_PENDING_OVERLAY,
       scope
     );
+
+  const shiftHandlers = {
+    onShiftWeeks: (w: number) =>
+      run(
+        () => actionShiftOrder(supplierId, w, null),
+        `Przesunięto o ${w} ${w === 1 ? "tydzień" : "tygodnie"}`,
+        `Przesuwanie o ${w} ${w === 1 ? "tydzień" : "tygodnie"}…`,
+        scope
+      ),
+    onShiftDate: (iso: string) =>
+      run(
+        () => actionShiftOrder(supplierId, null, iso),
+        "Ustawiono datę przesunięcia",
+        "Zapisywanie nowej daty…",
+        scope
+      ),
+  };
 
   if (compact) {
     return (
@@ -74,22 +106,7 @@ export function ScheduleSupplierActionBar({
             compact
             disabled={pending}
             className="min-w-0 flex-1"
-            onShiftWeeks={(w) =>
-              run(
-                () => actionShiftOrder(supplierId, w, null),
-                `Przesunięto o ${w} ${w === 1 ? "tydzień" : "tygodnie"}`,
-                `Przesuwanie o ${w} ${w === 1 ? "tydzień" : "tygodnie"}…`,
-                scope
-              )
-            }
-            onShiftDate={(iso) =>
-              run(
-                () => actionShiftOrder(supplierId, null, iso),
-                "Ustawiono datę przesunięcia",
-                "Zapisywanie nowej daty…",
-                scope
-              )
-            }
+            {...shiftHandlers}
           />
           <SupplierQuickActionsMenu
             grouped
@@ -110,21 +127,31 @@ export function ScheduleSupplierActionBar({
     );
   }
 
+  const isFooter = layout === "footer";
+
   return (
     <div
       role="group"
       aria-label={`Akcje harmonogramu — ${supplierName}`}
       aria-busy={pending}
-      className={cn(panelActionBarShellClass, pending && "opacity-60", className)}
+      className={cn(
+        isFooter ? urgentFooterShellClass(tone) : panelActionBarShellClass,
+        pending && "opacity-60",
+        className
+      )}
     >
       <button
         type="button"
         disabled={pending}
-        className={cn(
-          buttonGroupItemClass,
-          panelSegmentPrimaryClass,
-          "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/50"
-        )}
+        className={
+          isFooter
+            ? urgentFooterPrimaryClass(tone)
+            : cn(
+                buttonGroupItemClass,
+                panelSegmentPrimaryClass,
+                "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/50"
+              )
+        }
         onClick={markOrdered}
       >
         {pending ? DAILY_PANEL_MARK_ORDERED_PENDING : DAILY_PANEL_MARK_ORDERED_LABEL}
@@ -132,22 +159,9 @@ export function ScheduleSupplierActionBar({
       <ShiftMenu
         grouped
         disabled={pending}
-        onShiftWeeks={(w) =>
-          run(
-            () => actionShiftOrder(supplierId, w, null),
-            `Przesunięto o ${w} ${w === 1 ? "tydzień" : "tygodnie"}`,
-            `Przesuwanie o ${w} ${w === 1 ? "tydzień" : "tygodnie"}…`,
-            scope
-          )
-        }
-        onShiftDate={(iso) =>
-          run(
-            () => actionShiftOrder(supplierId, null, iso),
-            "Ustawiono datę przesunięcia",
-            "Zapisywanie nowej daty…",
-            scope
-          )
-        }
+        fill={isFooter}
+        segmentClassName={isFooter ? urgentFooterShiftSegmentClass : undefined}
+        {...shiftHandlers}
       />
       <SupplierQuickActionsMenu
         grouped

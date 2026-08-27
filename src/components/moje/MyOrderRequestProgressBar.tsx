@@ -55,7 +55,7 @@ export function MyOrderRequestProgressBar({
   return (
     <nav
       aria-label="Postęp prośby"
-      className={cn("px-1 py-1", className)}
+      className={cn("px-0.5", className)}
     >
       <ol className="flex items-start gap-0">
         {track.steps.map((step, index) => {

@@ -159,9 +159,9 @@ export function procurementRequestLaneSupplierShellClass(
   variant: "prosby" | "stockOut" = "prosby"
 ): string {
   if (variant === "stockOut") {
-    return "overflow-hidden rounded-md border border-amber-200/70 bg-white/80 shadow-sm";
+    return "overflow-hidden rounded-md border border-amber-200/75 border-l-[3px] border-l-amber-500/80 bg-white/90 shadow-sm";
   }
-  return "overflow-hidden rounded-md border border-slate-200/70 bg-white/85 shadow-sm";
+  return "overflow-hidden rounded-md border border-slate-200/80 border-l-[3px] border-l-indigo-500/70 bg-white/90 shadow-sm";
 }
 
 export function procurementRequestLaneSupplierInnerListClass(

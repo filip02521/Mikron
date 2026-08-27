@@ -41,6 +41,10 @@ export default async function PodsumowaniePage() {
   let teethLaneBySupplierId: Awaited<
     ReturnType<typeof fetchSummaryWorkspace>
   >["teethLaneBySupplierId"] = {};
+  let etaUseP50 = false;
+  let etaQuantilesBySupplierId: Awaited<
+    ReturnType<typeof fetchSummaryWorkspace>
+  >["etaQuantilesBySupplierId"] = {};
   let verificationOrders: IndividualOrder[] = [];
   let error: string | null = null;
 
@@ -57,6 +61,8 @@ export default async function PodsumowaniePage() {
     statsBySupplierId = data.statsBySupplierId;
     supplierStatsMode = data.supplierStatsMode;
     teethLaneBySupplierId = data.teethLaneBySupplierId;
+    etaUseP50 = data.etaUseP50;
+    etaQuantilesBySupplierId = data.etaQuantilesBySupplierId;
   } catch (e) {
     error = userFacingErrorText(e, "Błąd ładowania");
   }
@@ -80,6 +86,8 @@ export default async function PodsumowaniePage() {
           verificationOrders={verificationOrders}
           teethLaneBySupplierId={teethLaneBySupplierId}
           canPrepareZd={canPrepareZd}
+          etaUseP50={etaUseP50}
+          etaQuantilesBySupplierId={etaQuantilesBySupplierId}
         />
       </Suspense>
     </>

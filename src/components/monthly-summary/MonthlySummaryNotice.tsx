@@ -1,14 +1,56 @@
 "use client";
 
 import { useMemo } from "react";
-import Link from "next/link";
-import { cn } from "@/lib/cn";
+import {
+  PageAttentionStrip,
+  PageAttentionStripCta,
+} from "@/components/ui/PageAttentionStrip";
 import {
   defaultMonthlySummaryMonthKey,
   monthLabelFromKey,
 } from "@/lib/data/monthly-stats-shared";
-import { markMonthlySummarySeen, MONTHLY_SUMMARY_HREF } from "@/lib/monthly-summary-attention";
+import {
+  markMonthlySummarySeen,
+  MONTHLY_SUMMARY_HREF,
+} from "@/lib/monthly-summary-attention";
 import { useMonthlySummaryNeedsAttention } from "@/hooks/useMonthlySummaryAttention";
+
+function MonthlyChartIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M3 3v18h18" />
+      <path d="M7 14l4-4 3 3 5-5" />
+    </svg>
+  );
+}
+
+function DismissIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
+  );
+}
 
 export function MonthlySummaryNotice() {
   const monthKey = useMemo(() => defaultMonthlySummaryMonthKey(), []);
@@ -18,54 +60,31 @@ export function MonthlySummaryNotice() {
   if (!needsAttention) return null;
 
   return (
-    <div
-      className={cn(
-        "group relative mb-4 flex items-center gap-2.5 overflow-hidden sm:mb-6",
-        "rounded-lg border border-violet-200/50 bg-gradient-to-r from-violet-50/80 via-indigo-50/60 to-transparent",
-        "px-3 py-2 shadow-sm transition-all hover:border-violet-300/60",
-        "md:mr-12 md:max-w-[calc(100%-3.5rem)]"
-      )}
-    >
-      <Link
-        href={MONTHLY_SUMMARY_HREF}
-        className="flex min-w-0 flex-1 items-center gap-2.5"
-        onClick={() => markMonthlySummarySeen(monthKey)}
-      >
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-sm">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 3v18h18" />
-            <path d="M7 14l4-4 3 3 5-5" />
-          </svg>
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold leading-tight text-violet-900">
-            Podsumowanie za {monthLabel}
-          </p>
-          <p className="truncate text-[11px] leading-tight text-violet-600/80">
-            Statystyki zespołu są gotowe do przejrzenia
-          </p>
-        </div>
-        <span className="shrink-0 rounded-md bg-violet-100/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-700 transition-colors group-hover:bg-violet-200/80">
-          Zobacz
-        </span>
-      </Link>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          markMonthlySummarySeen(monthKey);
-        }}
-        aria-label="Zamknij powiadomienie"
-        className={cn(
-          "flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-violet-400",
-          "transition-colors hover:bg-violet-100 hover:text-violet-700"
-        )}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M18 6L6 18M6 6l12 12" />
-        </svg>
-      </button>
-    </div>
+    <PageAttentionStrip
+      tone="violet"
+      edge="inset"
+      icon={<MonthlyChartIcon size={15} />}
+      title={`Podsumowanie za ${monthLabel}`}
+      hint="Statystyki zespołu są gotowe do przejrzenia"
+      actions={
+        <>
+          <PageAttentionStripCta
+            tone="violet"
+            href={MONTHLY_SUMMARY_HREF}
+            onClick={() => markMonthlySummarySeen(monthKey)}
+          >
+            Zobacz
+          </PageAttentionStripCta>
+          <button
+            type="button"
+            onClick={() => markMonthlySummarySeen(monthKey)}
+            aria-label="Zamknij powiadomienie"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-violet-200/80 bg-white/90 text-violet-500 transition hover:bg-violet-50 hover:text-violet-800"
+          >
+            <DismissIcon />
+          </button>
+        </>
+      }
+    />
   );
 }

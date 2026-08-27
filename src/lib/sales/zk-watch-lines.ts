@@ -25,7 +25,7 @@ export type ZkWatchLineView = {
   completed_manually: boolean;
 };
 
-/** Pozycje usługowe (pakowanie, koszt dostawy) — nie liczą się w checkliście towaru. */
+/** Pozycje usługowe (pakowanie, koszt dostawy, dopłata wagowa) — nie liczą się w checkliście towaru. */
 const ZK_SHIPPING_COST_SYMBOL_RE = /^KOSZTY(?:\/|$)/i;
 
 export function isZkWatchShippingCostLine(line: SubiektDocumentLine): boolean {
@@ -37,7 +37,24 @@ export function isZkWatchShippingCostLine(line: SubiektDocumentLine): boolean {
   if (name.includes("pakowanie przesyłki")) return true;
   if (name.includes("koszty dostawy")) return true;
   if (name.includes("koszt") && name.includes("przesyłk")) return true;
+  if (name.includes("opłata za dodatkowe") && name.includes("kg")) return true;
+  if (name.includes("opłata za dodatkową wag")) return true;
   return false;
+}
+
+/**
+ * Gratis / materiały marketingowe z ZK — nie pokazujemy w zakresie prośby
+ * ani na checkliście towaru (np. „Torba ekologiczna mikran.pl”).
+ */
+export function isZkWatchNonOrderablePromoLine(line: SubiektDocumentLine): boolean {
+  const name = (line.tw_Nazwa ?? "").trim().toLowerCase();
+  if (!name) return false;
+  if (name.includes("torba ekologiczna")) return true;
+  return false;
+}
+
+export function isZkWatchExcludedFromLineViews(line: SubiektDocumentLine): boolean {
+  return isZkWatchShippingCostLine(line) || isZkWatchNonOrderablePromoLine(line);
 }
 
 export function zkLineKey(line: SubiektDocumentLine, index: number): string {
@@ -132,7 +149,7 @@ export function buildZkWatchLineViews(watch: SalesZkWatch): ZkWatchLineView[] {
 
   if (pozycje.length > 0) {
     return pozycje
-      .filter((line) => !isZkWatchShippingCostLine(line))
+      .filter((line) => !isZkWatchExcludedFromLineViews(line))
       .map((line, index) => lineViewFromSubiekt(line, index, checksByKey));
   }
 

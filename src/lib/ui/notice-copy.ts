@@ -454,7 +454,7 @@ export const MY_ORDERS_TOAST = {
     "Potwierdzenie odbioru nie zostało wycofane.",
   ),
   undoDismissFailed: toastError(
-    "Nie udało się cofnąć ukrycia",
+    "Nie udało się cofnąć usunięcia",
     "Pozycja nie wróciła na listę.",
   ),
   undoCancelFailed: toastError(

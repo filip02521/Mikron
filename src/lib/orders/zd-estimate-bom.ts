@@ -1,6 +1,6 @@
 /**
  * Składy/komplety (BOM) w kreatorze ZD.
- * Presety: assemble (explode+components), buy_separate, kit_only.
+ * Presety: assemble, buy_separate, kit_only, kit_from_components (rollup max).
  * Expand → rematerialize; finalize purchase gates po pairs (osobna funkcja).
  */
 
@@ -13,6 +13,7 @@ import {
   isValidBomPolicyPair,
   normalizeDemandAllocation,
   normalizePurchaseTarget,
+  purchaseTargetBlocksComponents,
   resolveBomStockAsCover,
   type BomDemandAllocation,
   type BomPurchaseTarget,
@@ -59,9 +60,9 @@ export type ZdEstimateBomMeta = {
   contributionCover?: number;
   /** Brak komponentu w wyniku — fail-loud (explode). */
   componentMissing?: boolean;
-  /** kit_only: składnik poza ZD. */
+  /** kit_only / kit_from_components: składnik poza ZD. */
   purchaseBlocked?: boolean;
-  /** Dla purchased_kit — rozróżnienie badge as_sold vs kit_only. */
+  /** Dla purchased_kit — rozróżnienie badge. */
   purchaseTarget?: BomPurchaseTarget;
   /**
    * assemble: sprzedaż zestawu przeniesiona do składników (Sprzed. rodzica = 0,
@@ -69,6 +70,15 @@ export type ZdEstimateBomMeta = {
    */
   relocatedSales?: number;
   relocatedWz?: number;
+  /**
+   * kit_from_components: własna sprzedaż zestawu przed rollupem
+   * (odzysk linesBase + idempotentny re-expand).
+   */
+  kitOwnSales?: number;
+  kitOwnWz?: number;
+  /** Max(sprzedaż_składnika / qty) doliczone do zestawu. */
+  rollupSales?: number;
+  rollupWz?: number;
 };
 
 export type ManualZdEstimateLineWithBom = ManualZdEstimateLine & {
@@ -96,7 +106,7 @@ export function isPurchasedBomKit(
   return line.bom?.role === "purchased_kit";
 }
 
-/** purchaseBlocked bez wkładu explode — poza ścieżką zakupu (kit_only). */
+/** purchaseBlocked bez wkładu explode — poza ścieżką zakupu (kit_only / rollup). */
 export function isBomPurchaseBlockedWithoutExplode(
   line: Pick<ManualZdEstimateLineWithBom, "bom"> | { bom?: ZdEstimateBomMeta | null }
 ): boolean {
@@ -104,6 +114,37 @@ export function isBomPurchaseBlockedWithoutExplode(
     line.bom?.purchaseBlocked === true &&
     !(asNum(line.bom.contributionSales) > 0)
   );
+}
+
+/**
+ * Ile kompletów wynika ze sprzedaży składników (MIX 6 itd.).
+ * Na składnik: sales / qtyPerParent; na zestaw: MAX po składnikach
+ * (najmocniejszy kolor „ciągnie” ilość kompletów — nie da się kupić „ułamka MIX”).
+ */
+export function computeKitSalesRollupFromComponents(
+  components: readonly ZdProductBomComponentRef[],
+  byTw: ReadonlyMap<
+    number,
+    Pick<ManualZdEstimateLine, "sprzedazOkres" | "wzNiepowiazaneOkres">
+  >
+): { rollupSales: number; rollupWz: number } {
+  let rollupSales = 0;
+  let rollupWz = 0;
+  for (const comp of components) {
+    const cid = Math.trunc(Number(comp.componentTwId)) || 0;
+    const qty = Math.trunc(Number(comp.qtyPerParent)) || 0;
+    if (!(cid > 0) || qty < 1) continue;
+    const row = byTw.get(cid);
+    if (!row) continue;
+    const sales = Math.max(0, asNum(row.sprzedazOkres));
+    const wz = Math.max(0, asNum(row.wzNiepowiazaneOkres));
+    rollupSales = Math.max(rollupSales, sales / qty);
+    rollupWz = Math.max(rollupWz, wz / qty);
+  }
+  return {
+    rollupSales,
+    rollupWz: Math.min(rollupSales, rollupWz),
+  };
 }
 
 /**
@@ -213,6 +254,24 @@ export function expandZdEstimateBoms(
 
   const byTw = new Map<number, ManualZdEstimateLineWithBom>();
   for (const line of lines) {
+    // Idempotencja kit_from_components: lines mogą mieć już rollup w sprzedazOkres.
+    // Przywróć własną sprzedaż z meta zanim wyzerujemy bom (inaczej 2× expand → 2× rollup).
+    if (
+      line.bom?.role === "purchased_kit" &&
+      line.bom.purchaseTarget === "kit_from_components" &&
+      line.bom.kitOwnSales != null &&
+      Number.isFinite(line.bom.kitOwnSales)
+    ) {
+      const ownSales = Math.max(0, asNum(line.bom.kitOwnSales));
+      const ownWz = Math.max(0, asNum(line.bom.kitOwnWz));
+      byTw.set(line.tw_Id, {
+        ...line,
+        sprzedazOkres: ownSales,
+        wzNiepowiazaneOkres: Math.min(ownWz, ownSales),
+        bom: null,
+      });
+      continue;
+    }
     byTw.set(line.tw_Id, { ...line, bom: null });
   }
 
@@ -237,7 +296,7 @@ export function expandZdEstimateBoms(
     // Nielegalna para (np. refs poza upsert/DB) — pomiń BOM.
     if (!isValidBomPolicyPair(allocation, target)) continue;
     const explode = allocation === "explode";
-    const kitOnly = target === "kit_only";
+    const blocksComponents = purchaseTargetBlocksComponents(target);
 
     // Idempotencja: już zexplodowany parent — nie dokładać sales/cover drugi raz.
     if (explode && parent.bom?.role === "assembled_parent") {
@@ -293,11 +352,49 @@ export function expandZdEstimateBoms(
         },
       });
     } else {
+      const fromComponents = target === "kit_from_components";
+      const ownSales =
+        parent.bom?.role === "purchased_kit" &&
+        parent.bom.kitOwnSales != null &&
+        Number.isFinite(parent.bom.kitOwnSales)
+          ? Math.max(0, asNum(parent.bom.kitOwnSales))
+          : Math.max(0, asNum(parent.sprzedazOkres));
+      const ownWz =
+        parent.bom?.role === "purchased_kit" &&
+        parent.bom.kitOwnWz != null &&
+        Number.isFinite(parent.bom.kitOwnWz)
+          ? Math.max(0, asNum(parent.bom.kitOwnWz))
+          : Math.max(0, asNum(parent.wzNiepowiazaneOkres));
+
+      let rollupSales = 0;
+      let rollupWz = 0;
+      if (fromComponents) {
+        const rolled = computeKitSalesRollupFromComponents(
+          bom.components,
+          byTw
+        );
+        rollupSales = rolled.rollupSales;
+        rollupWz = rolled.rollupWz;
+      }
+
+      const nextSales = ownSales + rollupSales;
+      const nextWz = Math.min(nextSales, ownWz + rollupWz);
+
       byTw.set(parentId, {
         ...parent,
+        sprzedazOkres: nextSales,
+        wzNiepowiazaneOkres: nextWz,
         bom: {
           role: "purchased_kit",
           purchaseTarget: target,
+          ...(fromComponents
+            ? {
+                kitOwnSales: ownSales,
+                kitOwnWz: ownWz,
+                rollupSales,
+                rollupWz,
+              }
+            : {}),
         },
       });
     }
@@ -311,7 +408,7 @@ export function expandZdEstimateBoms(
       if (!parents.includes(parentId)) parents.push(parentId);
       parentIdsByComp.set(cid, parents);
 
-      if (kitOnly) {
+      if (blocksComponents) {
         purchaseBlockedComps.add(cid);
       }
 

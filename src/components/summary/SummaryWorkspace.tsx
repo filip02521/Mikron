@@ -32,6 +32,7 @@ import { DailyPanelStickyFooter } from "@/components/summary/DailyPanelStickyFoo
 import { DailyPanelContentFooter } from "@/components/summary/DailyPanelContentFooter";
 import { DailyTodayView } from "@/components/summary/DailyTodayView";
 import { DailyWeekView } from "@/components/summary/DailyWeekView";
+import { leadTimeDisplayFromQuantiles } from "@/lib/orders/delivery-eta-quantiles-load";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { SupplierVacationModal } from "@/components/procurement/SupplierVacationModal";
 import { SupplierEditModal } from "@/components/procurement/SupplierEditModal";
@@ -42,13 +43,21 @@ import { OnDemandSuppliersSheet } from "@/components/summary/OnDemandSuppliersSh
 import { DailyPanelActionsBar } from "@/components/summary/DailyPanelActionsBar";
 import { DailyPanelExceptionsView } from "@/components/summary/DailyPanelExceptionsView";
 import { OperationsPanelRefreshStrip } from "@/components/operations/OperationsUpdatesContext";
-import { DailyPanelBoardQuestionsBanner } from "@/components/summary/DailyPanelBoardQuestionsBanner";
+import { BoardQuestionsAttentionNotice } from "@/components/department-board/BoardQuestionsAttentionNotice";
+import { DailyPanelVerificationBanner } from "@/components/summary/DailyPanelVerificationBanner";
+import { PageNoticeStack } from "@/components/ui/PageNoticeStack";
 import {
   IconLayoutPanel,
 } from "@/components/icons/StrokeIcons";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { brandIconTileClass, panelChromeInsetClass, panelSectionInsetClass, panelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
+import {
+  brandIconTileClass,
+  panelChromeInsetClass,
+  panelSectionInsetClass,
+  panelStickyChromeClass,
+  panelWorkspaceShellClass,
+} from "@/lib/ui/ontime-theme";
 import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
 import { cn } from "@/lib/cn";
@@ -69,6 +78,8 @@ export function SummaryWorkspace({
   verificationOrders = [],
   teethLaneBySupplierId = {},
   canPrepareZd = false,
+  etaUseP50 = false,
+  etaQuantilesBySupplierId = {},
 }: {
   workspace: SummaryWorkspaceData;
   suppliers: OrderFormSupplierOption[];
@@ -80,6 +91,11 @@ export function SummaryWorkspace({
   teethLaneBySupplierId?: Record<string, TeethSupplierLaneSnapshot>;
   /** Przygotuj ZD w drawerze — Kreator ZD (operacje dostaw). */
   canPrepareZd?: boolean;
+  etaUseP50?: boolean;
+  etaQuantilesBySupplierId?: Record<
+    string,
+    import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
+  >;
 }) {
   const {
     pendingMessage,
@@ -374,7 +390,13 @@ export function SummaryWorkspace({
           hintAriaLabel="O panelu dziennym"
         />
 
-        <div className={cn(panelChromeInsetClass, "flex items-center border-b border-slate-100 py-2.5 sm:py-3")}>
+        <div
+          className={cn(
+            panelStickyChromeClass,
+            panelChromeInsetClass,
+            "flex items-center py-2.5 sm:py-3"
+          )}
+        >
           <DailyPanelActionsBar
             summary={inboxSummary}
             suppliers={supplierDirectory}
@@ -408,13 +430,23 @@ export function SummaryWorkspace({
           }
         />
 
-        <DailyPanelBoardQuestionsBanner
-          className={cn(
-            "rounded-none border-x-0 border-t-0 border-b border-amber-200/65 bg-amber-50/75",
-            panelChromeInsetClass,
-            "px-3 py-2.5 sm:px-4"
-          )}
-        />
+        <PageNoticeStack spaceAfter={false}>
+          <BoardQuestionsAttentionNotice
+            edge="flush"
+            suppressPathHide
+            className={cn(
+              "border-b border-amber-200/65",
+              panelChromeInsetClass,
+              "px-3 py-2.5 sm:px-4"
+            )}
+          />
+          {panelView === "dzis" ? (
+            <DailyPanelVerificationBanner
+              count={verificationCount}
+              onOpenModal={() => setVerificationModalOpen(true)}
+            />
+          ) : null}
+        </PageNoticeStack>
 
         <DailyPanelToolbar
           view={panelView}
@@ -453,10 +485,11 @@ export function SummaryWorkspace({
             onToggle={toggle}
             onSelectAllInScope={selectUrgentScope}
             onBulkOrdered={processBulk}
-            onOpenVerification={() => setVerificationModalOpen(true)}
             onOpenWeek={() => setPanelView("tydzien")}
             highlightFresh={highlightFresh}
             notify={notify}
+            etaUseP50={etaUseP50}
+            etaQuantilesBySupplierId={etaQuantilesBySupplierId}
           />
         ) : null}
 
@@ -508,6 +541,14 @@ export function SummaryWorkspace({
               "LACZNIE"
             : "LACZNIE"
         }
+        leadTimeDisplay={
+          drawerId
+            ? leadTimeDisplayFromQuantiles(
+                etaQuantilesBySupplierId[drawerId],
+                etaUseP50
+              )
+            : undefined
+        }
         onClose={() => setDrawerId(null)}
         isScopePending={isScopePending}
         run={run}
@@ -542,6 +583,8 @@ export function SummaryWorkspace({
         suppliers={suppliers}
         salesPeople={salesPeople}
         statsBySupplierId={statsBySupplierId}
+        etaUseP50={etaUseP50}
+        etaQuantilesBySupplierId={etaQuantilesBySupplierId}
       />
 
       <VerificationModal

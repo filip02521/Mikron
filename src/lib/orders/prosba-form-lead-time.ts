@@ -38,13 +38,21 @@ function sampleCountLabel(n: number): string {
  */
 export function buildProsbaFormLeadTimeMeta(
   stats: DeliveryStats | null | undefined,
-  statsMode: StatsMode
+  statsMode: StatsMode,
+  display?: import("@/lib/orders/delivery-eta").LeadTimeDisplayOptions
 ): ProsbaFormLeadTimeMeta | null {
-  const brief = formatSupplierLeadTimeBrief(stats, statsMode);
+  const brief = formatSupplierLeadTimeBrief(stats, statsMode, display);
   if (!brief) return null;
 
-  const sampleCount = totalSampleCount(stats);
-  const lowConfidence = sampleCount > 0 && sampleCount < 3;
+  const sampleCount =
+    display?.nOrders != null && display.nOrders > 0
+      ? display.nOrders
+      : totalSampleCount(stats);
+  const lowConfidence =
+    sampleCount > 0 &&
+    (sampleCount < 5 ||
+      display?.variability === "wide" ||
+      display?.hasRecentSample === false);
   const primaryText = brief.replace(/\s·\sszacunek$/, "");
 
   return {

@@ -769,6 +769,184 @@ describe("Castorit BOM + pary", () => {
     expect(resolveOrderQtyForLine(karton).zdUnits).toBe(0);
   });
 
+  it("P4 kit_from_components (MIX 6): Do ZD kitu = max sprzedaży kolorów, składniki zablokowane", () => {
+    const MIX = 990;
+    const colors = [
+      { id: 101, sales: 3.15 },
+      { id: 102, sales: 2.49 },
+      { id: 103, sales: 12 },
+      { id: 104, sales: 2.66 },
+      { id: 105, sales: 11 },
+      { id: 106, sales: 10 },
+    ] as const;
+    const lines = [
+      ...colors.map((c) =>
+        line({
+          tw_Id: c.id,
+          tw_Symbol: `C${c.id}`,
+          sprzedazOkres: c.sales,
+          dostepne: 0,
+          doZamowieniaReczne: Math.ceil(c.sales),
+        })
+      ),
+      line({
+        tw_Id: MIX,
+        tw_Symbol: "C300990",
+        sprzedazOkres: 0,
+        dostepne: 0,
+        doZamowieniaReczne: 0,
+      }),
+    ];
+    const bom = {
+      parentTwId: MIX,
+      stockAsCover: false,
+      demandAllocation: "separate" as const,
+      purchaseTarget: "kit_from_components" as const,
+      components: colors.map((c) => ({
+        componentTwId: c.id,
+        qtyPerParent: 1,
+      })),
+    };
+    const after = applyBomPurchaseTargetFinalize(
+      applyZdEstimateBoms(lines, [bom], {
+        dniZapasu: 30,
+        dniOkresu: 30,
+        salesTrack: false,
+      })
+    );
+    const kit = after.find((l) => l.tw_Id === MIX)!;
+    expect(kit.bom?.role).toBe("purchased_kit");
+    expect(kit.bom?.purchaseTarget).toBe("kit_from_components");
+    expect(kit.bom?.rollupSales).toBe(12);
+    expect(kit.bom?.kitOwnSales).toBe(0);
+    expect(kit.sprzedazOkres).toBe(12);
+    expect(kit.doZamowieniaReczne).toBe(12);
+    for (const c of colors) {
+      const row = after.find((l) => l.tw_Id === c.id)!;
+      expect(row.bom?.purchaseBlocked).toBe(true);
+      expect(row.doZamowieniaReczne).toBe(0);
+      expect(resolveOrderQtyForLine(row).zdUnits).toBe(0);
+    }
+    expect(resolveOrderQtyForLine(kit).zdUnits).toBe(12);
+  });
+
+  it("P4b kit_from_components: własna sprzedaż kitu + rollup (max)", () => {
+    const MIX = 991;
+    const after = applyBomPurchaseTargetFinalize(
+      applyZdEstimateBoms(
+        [
+          line({
+            tw_Id: 201,
+            tw_Symbol: "A",
+            sprzedazOkres: 4,
+            dostepne: 0,
+          }),
+          line({
+            tw_Id: 202,
+            tw_Symbol: "B",
+            sprzedazOkres: 9,
+            dostepne: 0,
+          }),
+          line({
+            tw_Id: MIX,
+            tw_Symbol: "MIX",
+            sprzedazOkres: 3,
+            dostepne: 0,
+          }),
+        ],
+        [
+          {
+            parentTwId: MIX,
+            stockAsCover: false,
+            demandAllocation: "separate",
+            purchaseTarget: "kit_from_components",
+            components: [
+              { componentTwId: 201, qtyPerParent: 1 },
+              { componentTwId: 202, qtyPerParent: 1 },
+            ],
+          },
+        ],
+        { dniZapasu: 30, dniOkresu: 30, salesTrack: false }
+      )
+    );
+    const kit = after.find((l) => l.tw_Id === MIX)!;
+    expect(kit.bom?.kitOwnSales).toBe(3);
+    expect(kit.bom?.rollupSales).toBe(9);
+    expect(kit.sprzedazOkres).toBe(12);
+    expect(kit.doZamowieniaReczne).toBe(12);
+  });
+
+  it("P4c kit_from_components: qtyPerParent>1 — sales/qty", () => {
+    const MIX = 992;
+    const after = applyBomPurchaseTargetFinalize(
+      applyZdEstimateBoms(
+        [
+          line({
+            tw_Id: 301,
+            tw_Symbol: "X",
+            sprzedazOkres: 20,
+            dostepne: 0,
+          }),
+          line({
+            tw_Id: MIX,
+            tw_Symbol: "MIX",
+            sprzedazOkres: 0,
+            dostepne: 0,
+          }),
+        ],
+        [
+          {
+            parentTwId: MIX,
+            stockAsCover: false,
+            demandAllocation: "separate",
+            purchaseTarget: "kit_from_components",
+            components: [{ componentTwId: 301, qtyPerParent: 4 }],
+          },
+        ],
+        { dniZapasu: 30, dniOkresu: 30, salesTrack: false }
+      )
+    );
+    const kit = after.find((l) => l.tw_Id === MIX)!;
+    expect(kit.bom?.rollupSales).toBe(5);
+    expect(kit.doZamowieniaReczne).toBe(5);
+  });
+
+  it("P4d kit_from_components: 2× expand nie dubluje rollupu", () => {
+    const MIX = 993;
+    const bom = {
+      parentTwId: MIX,
+      stockAsCover: false,
+      demandAllocation: "separate" as const,
+      purchaseTarget: "kit_from_components" as const,
+      components: [
+        { componentTwId: 401, qtyPerParent: 1 },
+        { componentTwId: 402, qtyPerParent: 1 },
+      ],
+    };
+    const base = [
+      line({ tw_Id: 401, tw_Symbol: "A", sprzedazOkres: 4, dostepne: 0 }),
+      line({ tw_Id: 402, tw_Symbol: "B", sprzedazOkres: 9, dostepne: 0 }),
+      line({ tw_Id: MIX, tw_Symbol: "MIX", sprzedazOkres: 1, dostepne: 0 }),
+    ];
+    const once = applyZdEstimateBoms(base, [bom], {
+      dniZapasu: 30,
+      dniOkresu: 30,
+      salesTrack: false,
+    });
+    const twice = applyZdEstimateBoms(once, [bom], {
+      dniZapasu: 30,
+      dniOkresu: 30,
+      salesTrack: false,
+    });
+    const k1 = once.find((l) => l.tw_Id === MIX)!;
+    const k2 = twice.find((l) => l.tw_Id === MIX)!;
+    expect(k1.sprzedazOkres).toBe(10); // 1 + max(4,9)
+    expect(k2.sprzedazOkres).toBe(10);
+    expect(k1.bom?.kitOwnSales).toBe(1);
+    expect(k2.bom?.kitOwnSales).toBe(1);
+    expect(k2.bom?.rollupSales).toBe(9);
+  });
+
   it("multi-BOM: explode wygrywa nad kit_only na tym samym składniku", () => {
     const lines = [
       line({

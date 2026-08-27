@@ -1,6 +1,6 @@
 import { cn } from "@/lib/cn";
 import { controlFocusClass, salesPageShellClass, surfaceCardClass } from "@/lib/ui/ontime-theme";
-import { mojeShipmentListClass } from "@/lib/ui/moje-shipment-row-styles";
+import { mojeShipmentListClass, mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
 
 /** Domyślna szerokość stron handlowca (= {@link salesPageShellClass}). */
 export const NOTATNIK_PAGE_CLASS = salesPageShellClass;
@@ -19,6 +19,15 @@ export const NOTATNIK_NOTES_GRID_CLASS = "grid grid-cols-2 gap-x-3 gap-y-7 sm:ga
 
 /** Lista ZK — ten sam wzorzec co /moje (divide-y, bez odstępów). */
 export const NOTATNIK_ZK_LIST_CLASS = mojeShipmentListClass;
+
+/** Scroll listy ZK — pozwala wychodzić znacznikowi „gotowe do zamknięcia” poza krawędź. */
+export const NOTATNIK_ZK_LIST_SCROLL_CLASS = "overflow-x-visible";
+
+/** Obudowa listy ZK — znaczniki boczne mogą wychodzić poza biały panel. */
+export const NOTATNIK_ZK_LIST_SECTION_CLASS = cn(
+  mojeShipmentSectionShellClass,
+  "overflow-visible"
+);
 
 export const NOTATNIK_ZK_ACTIONS_CLASS =
   "grid grid-cols-2 gap-1.5 border-t border-slate-100 pt-2 sm:grid-cols-3";

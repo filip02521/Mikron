@@ -106,6 +106,26 @@ export function resolveZdEstimateColumnSectionStarts(
   return starts;
 }
 
+/** Skrót zakresu (grupa / cecha) w ulubionych — id Subiekta + cached nazwa. */
+export type ZdEstimateFavoriteRef = {
+  id: number;
+  label: string;
+};
+
+export const ZD_ESTIMATE_FAVORITE_SCOPE_CAP = 12;
+
+/**
+ * Seed chipów grupy gdy w prefs **brak** klucza `favoriteGroups`
+ * (nie gdy użytkownik zapisał pustą listę `[]`).
+ */
+export const ZD_ESTIMATE_FAVORITE_GROUPS_SEED: readonly ZdEstimateFavoriteRef[] =
+  [
+    { id: 17, label: "Falcon" },
+    { id: 28, label: "Ivoclar Technical" },
+    { id: 3, label: "Ivoclar Clinical" },
+    { id: 264, label: "Ivoclar DIGITAL" },
+  ];
+
 export type ZdEstimateUiPrefs = {
   zapasMin: number;
   showAdvanced: boolean;
@@ -125,6 +145,10 @@ export type ZdEstimateUiPrefs = {
    * Nie nadpisuje zapasu z harmonogramu przy launchu z Dziś.
    */
   dniZapasu: number | null;
+  /** Ulubione grupy towarowe (kolejność = kolejność chipów). */
+  favoriteGroups: ZdEstimateFavoriteRef[];
+  /** Ulubione cechy towarów. */
+  favoriteCechy: ZdEstimateFavoriteRef[];
 };
 
 export const ZD_ESTIMATE_UI_PREFS_DEFAULTS: ZdEstimateUiPrefs = {
@@ -138,6 +162,8 @@ export const ZD_ESTIMATE_UI_PREFS_DEFAULTS: ZdEstimateUiPrefs = {
   sortKey: "doZd",
   sortDir: "desc",
   dniZapasu: null,
+  favoriteGroups: ZD_ESTIMATE_FAVORITE_GROUPS_SEED.map((f) => ({ ...f })),
+  favoriteCechy: [],
 };
 
 const SORT_KEYS = new Set<ZdEstimateListSortKey>([
@@ -283,6 +309,86 @@ export function resolveZdEstimateVisibleColumnOrder(
   return parseZdEstimateColumnOrder(columnOrder).filter((key) => columns[key]);
 }
 
+/**
+ * Parsuje listę ulubionych.
+ * `whenMissing` tylko gdy wywołujący wie, że klucza nie było w JSON.
+ */
+export function parseZdEstimateFavoriteRefs(
+  raw: unknown,
+  whenMissing?: readonly ZdEstimateFavoriteRef[]
+): ZdEstimateFavoriteRef[] {
+  if (raw === undefined && whenMissing) {
+    return whenMissing.map((f) => ({ id: f.id, label: f.label }));
+  }
+  if (!Array.isArray(raw)) return [];
+  const out: ZdEstimateFavoriteRef[] = [];
+  const seen = new Set<number>();
+  for (const item of raw) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+    const row = item as Record<string, unknown>;
+    const id = Math.trunc(Number(row.id));
+    if (!Number.isFinite(id) || id <= 0 || seen.has(id)) continue;
+    const label = String(row.label ?? "").trim() || `#${id}`;
+    seen.add(id);
+    out.push({ id, label });
+    if (out.length >= ZD_ESTIMATE_FAVORITE_SCOPE_CAP) break;
+  }
+  return out;
+}
+
+export function zdEstimateFavoriteRefsEqual(
+  a: readonly ZdEstimateFavoriteRef[],
+  b: readonly ZdEstimateFavoriteRef[]
+): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((f, i) => f.id === b[i]!.id && f.label === b[i]!.label);
+}
+
+export function isZdEstimateFavorite(
+  list: readonly ZdEstimateFavoriteRef[],
+  id: number
+): boolean {
+  const n = Math.trunc(Number(id));
+  if (!Number.isFinite(n) || n <= 0) return false;
+  return list.some((f) => f.id === n);
+}
+
+export type ToggleZdEstimateFavoriteResult =
+  | { ok: true; next: ZdEstimateFavoriteRef[]; added: boolean }
+  | {
+      ok: false;
+      reason: "at_cap";
+      next: ZdEstimateFavoriteRef[];
+      added: false;
+    };
+
+/** Toggle ulubionego — nowe na końcu; cap bez dodania. */
+export function toggleZdEstimateFavorite(
+  list: readonly ZdEstimateFavoriteRef[],
+  ref: ZdEstimateFavoriteRef
+): ToggleZdEstimateFavoriteResult {
+  const id = Math.trunc(Number(ref.id));
+  if (!Number.isFinite(id) || id <= 0) {
+    return { ok: true, next: [...list], added: false };
+  }
+  const label = String(ref.label ?? "").trim() || `#${id}`;
+  if (list.some((f) => f.id === id)) {
+    return {
+      ok: true,
+      next: list.filter((f) => f.id !== id),
+      added: false,
+    };
+  }
+  if (list.length >= ZD_ESTIMATE_FAVORITE_SCOPE_CAP) {
+    return { ok: false, reason: "at_cap", next: [...list], added: false };
+  }
+  return {
+    ok: true,
+    next: [...list, { id, label }],
+    added: true,
+  };
+}
+
 /** Parsuje surowy JSON — nieznane / boost pola są ignorowane. */
 export function parseZdEstimateUiPrefs(raw: unknown): ZdEstimateUiPrefs {
   const obj =
@@ -295,6 +401,14 @@ export function parseZdEstimateUiPrefs(raw: unknown): ZdEstimateUiPrefs {
     showStockDetail: obj.showStockDetail,
   });
   const columnOrder = parseZdEstimateColumnOrder(obj.columnOrder);
+  const hasFavoriteGroups = Object.prototype.hasOwnProperty.call(
+    obj,
+    "favoriteGroups"
+  );
+  const hasFavoriteCechy = Object.prototype.hasOwnProperty.call(
+    obj,
+    "favoriteCechy"
+  );
   return {
     zapasMin: asZapasMin(obj.zapasMin),
     showAdvanced: asBool(obj.showAdvanced, false),
@@ -306,6 +420,12 @@ export function parseZdEstimateUiPrefs(raw: unknown): ZdEstimateUiPrefs {
     sortKey,
     sortDir: asSortDir(obj.sortDir, sortKey),
     dniZapasu: asDniZapasu(obj.dniZapasu),
+    favoriteGroups: hasFavoriteGroups
+      ? parseZdEstimateFavoriteRefs(obj.favoriteGroups)
+      : parseZdEstimateFavoriteRefs(undefined, ZD_ESTIMATE_FAVORITE_GROUPS_SEED),
+    favoriteCechy: hasFavoriteCechy
+      ? parseZdEstimateFavoriteRefs(obj.favoriteCechy)
+      : [],
   };
 }
 
@@ -337,6 +457,15 @@ export function serializeZdEstimateUiPrefs(
     ...(normalized.dniZapasu != null
       ? { dniZapasu: normalized.dniZapasu }
       : {}),
+    // Zawsze zapisuj klucze — `[]` ≠ brak klucza (seed).
+    favoriteGroups: normalized.favoriteGroups.map((f) => ({
+      id: f.id,
+      label: f.label,
+    })),
+    favoriteCechy: normalized.favoriteCechy.map((f) => ({
+      id: f.id,
+      label: f.label,
+    })),
   };
 }
 
@@ -363,6 +492,16 @@ export function mergeZdEstimateUiPrefsIntoPreferences(
   const nextOrder = parseZdEstimateColumnOrder(
     patch.columnOrder ?? current.columnOrder
   );
+  const nextFavorites = {
+    favoriteGroups:
+      patch.favoriteGroups != null
+        ? parseZdEstimateFavoriteRefs(patch.favoriteGroups)
+        : current.favoriteGroups,
+    favoriteCechy:
+      patch.favoriteCechy != null
+        ? parseZdEstimateFavoriteRefs(patch.favoriteCechy)
+        : current.favoriteCechy,
+  };
   const next = parseZdEstimateUiPrefs({
     ...current,
     ...patch,
@@ -371,6 +510,7 @@ export function mergeZdEstimateUiPrefsIntoPreferences(
     columnOrder: nextOrder,
     showZkColumn: nextColumns.zk,
     showStockDetail: nextColumns.stock,
+    ...nextFavorites,
   });
   const serialized = serializeZdEstimateUiPrefs(next);
   return {
@@ -391,6 +531,8 @@ export function zdEstimateUiPrefsEqual(
     a.listFilter === b.listFilter &&
     a.sortKey === b.sortKey &&
     a.sortDir === b.sortDir &&
-    a.dniZapasu === b.dniZapasu
+    a.dniZapasu === b.dniZapasu &&
+    zdEstimateFavoriteRefsEqual(a.favoriteGroups, b.favoriteGroups) &&
+    zdEstimateFavoriteRefsEqual(a.favoriteCechy, b.favoriteCechy)
   );
 }

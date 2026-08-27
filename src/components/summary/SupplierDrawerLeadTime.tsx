@@ -16,12 +16,14 @@ export function SupplierDrawerLeadTime({
   stats,
   statsMode,
   className,
+  leadTimeDisplay,
 }: {
   stats: DeliveryStats | null | undefined;
   statsMode: StatsMode;
   className?: string;
+  leadTimeDisplay?: import("@/lib/orders/delivery-eta").LeadTimeDisplayOptions;
 }) {
-  const model = buildSupplierDrawerLeadTime(stats, statsMode);
+  const model = buildSupplierDrawerLeadTime(stats, statsMode, leadTimeDisplay);
 
   return (
     <section

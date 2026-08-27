@@ -63,6 +63,37 @@ export function matchSupplierForGroupName<T extends GroupSupplierMatchInput>(
   return [...candidates].sort((a, b) => a.name.length - b.name.length)[0] ?? null;
 }
 
+import type { ZdEstimateSupplierMatchSource } from "@/lib/orders/zd-estimate-supplier-scope";
+
+export type { ZdEstimateSupplierMatchSource };
+
+/**
+ * Preferuje mapowanie zakresów (DB), potem heurystykę nazwy grupy ↔ dostawca.
+ * Gdy mapowanie wskazuje ID spoza listy aktywnych dostawców — nie zgaduj po nazwie.
+ */
+export function resolveSupplierForScopeSelection<
+  T extends GroupSupplierMatchInput,
+>(input: {
+  scopeName: string;
+  suppliers: readonly T[];
+  mappedSupplierId?: string | null;
+}): {
+  supplier: T | null;
+  source: ZdEstimateSupplierMatchSource | null;
+  /** true = jest ID z mapowania, ale brak karty w `suppliers` (nieaktywny / usunięty). */
+  mappingUnresolved?: boolean;
+} {
+  const mappedId = input.mappedSupplierId?.trim() || null;
+  if (mappedId) {
+    const fromMap = input.suppliers.find((s) => s.id === mappedId) ?? null;
+    if (fromMap) return { supplier: fromMap, source: "mapping" };
+    return { supplier: null, source: null, mappingUnresolved: true };
+  }
+  const byName = matchSupplierForGroupName(input.scopeName, input.suppliers);
+  if (byName) return { supplier: byName, source: "name" };
+  return { supplier: null, source: null };
+}
+
 export type AppliedStockWindow = {
   dniZapasu: number;
   dataOd: string;

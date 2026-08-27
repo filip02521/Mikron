@@ -78,8 +78,8 @@ Wszystkie listy zwracają envelope:
 | GET | `/documents/zd` | Zamówienia do dostawców (typ 15) |
 | GET | `/documents/zd/:id` | Jedno ZD (pełne linie) |
 | POST | `/documents/zd/create` | Host ORDERS (`:5080` live / `:5082` test) — tworzy ZD (Sfera `DodajZD`) |
-| GET | `/groups` | Grupy towarowe (`sl_GrupaTw`) — zwykle na hoście ORDERS |
-| GET | `/cechy/towarow` | Słownik cech towarów (`sl_CechaTw`) — host ORDERS |
+| GET | `/groups` | Grupy towarowe (`sl_GrupaTw`) — host ORDERS; query: `search?`, `id?`, `page`, `pageSize` |
+| GET | `/cechy/towarow` | Słownik cech towarów (`sl_CechaTw`) — host ORDERS; query: `search?`, `id?`, `page`, `pageSize` → `{ ctw_Id, ctw_Nazwa }` |
 | GET | `/orders/zd/estimate` | Kreator ilości do ZD — `/zakupy/szacunek` (host ORDERS) |
 | GET | `/products/komplety` | **Do wdrożenia:** komplety `tw_Komplet` (pack↔piece, `liczba`) — sync par w OnTime |
 | GET | `/examples` | Przykłady zapytań |
@@ -105,8 +105,6 @@ OnTime wysyła XOR: albo `grupaId`, albo `cechaId` (nigdy oba, nigdy puste — b
 | `wzNiepowiazaneOkres` | Breakdown — sam udział WZ w tej sumie (te same jednostki co `sprzedazOkres`) |
 
 OnTime **nie** dolicza `wzNiepowiazaneOkres` ponownie do sprzedaży (unik podwójnego liczenia). Kolumna Sprzed. pokazuje `sprzedazOkres`; przy `wz > 0` dopisek „w tym WZ N”. Opakowania OnTime (`zd_estimate_packaging`) **nie** przeliczają Sprzed./WZ — tylko Do ZD / jednostki dokumentu.
-
-`GET /cechy/towarow`: `search`, `id`, `page`, `pageSize` → `{ ctw_Id, ctw_Nazwa }`.
 
 ### Spec `GET /products/komplety` (host ORDERS — brakuje w API)
 
@@ -172,7 +170,7 @@ OnTime wymaga `confirmLiveCreate=true` przy hoście live.
 - `kontrahentId` = dostawca (`kh_Id`)
 - `ilosc` = jednostki dokumentu ZD (paczki, gdy opakowanie)
 - Odpowiedź: `201` + dokument jak `GET /documents/zd/{id}`
-- OnTime (`/zakupy/szacunek`): przycisk **Utwórz ZD** — kh z `suppliers.subiekt_kh_id` (lub alias), potem re-GET i **zapis snapshotu historii** do `zd_estimate_order_snapshots` z `host_kind=live` (gdy ORDERS=:5080) albo `orders_test` (gdy :5082). Historia przy Policz filtruje po `supplier_kh_id` (primary+aliasy) + zakresie (`cecha`/`grupa`) + `host_kind`; stare wiersze bez `scope_mode` (legacy) nadal pasują po kh+host. ZD ze statusem spełnionym (`dok_Status=8`) zapisuje się z `eligible_for_history=false` i nie wchodzi do cutów historii. Cut `history_slow` (wolno po ZD) oraz `sales_spike` (okno FS ≫ oczekiwane względem ostatniego zamówienia) korygują cel — snapshoty **nie** wchodzą do cover (`otwarteZd`). Timeout HTTP create: 180s.
+- OnTime (`/zakupy/szacunek`): przycisk **Utwórz ZD** — kh z `suppliers.subiekt_kh_id` (lub alias). Po udanym create do snapshotu historii używa odpowiedzi create, gdy każdy wysłany `towarId` ma w `dok_Pozycja` sumę `ob_Ilosc` ≥ wysłaną `ilosc`; w przeciwnym razie re-GET `GET /documents/zd/{id}`. Gdy host nie zapisuje snapshotów — bez re-GET (numer z create / fallback `ZD/{id}`). Snapshot do `zd_estimate_order_snapshots` z `host_kind=live` (gdy ORDERS=:5080) albo `orders_test` (gdy :5082). Historia przy Policz filtruje po `supplier_kh_id` (primary+aliasy) + zakresie (`cecha`/`grupa`) + `host_kind`; stare wiersze bez `scope_mode` (legacy) nadal pasują po kh+host. ZD ze statusem spełnionym (`dok_Status=8`) zapisuje się z `eligible_for_history=false` i nie wchodzi do cutów historii. Cut `history_slow` (wolno po ZD) oraz `sales_spike` (okno FS ≫ oczekiwane względem ostatniego zamówienia) korygują cel — snapshoty **nie** wchodzą do cover (`otwarteZd`). Timeout HTTP create: 180s. Przed create serwer weryfikuje overlap prośba↔ZK; przy błędzie pobrania rezerwacji Create jest odrzucany (bez fail-open over-bump).
 
 ### Semantyka `GET /documents/zd` (lista)
 

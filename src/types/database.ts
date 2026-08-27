@@ -133,6 +133,8 @@ export interface IndividualOrder {
   /** Wspólne ID pozycji zamówionych jedną akcją w panelu dziennym. */
   placement_group_id?: string | null;
   delivery_at: string | null;
+  /** Pierwsze przyjęcie magazynowe (częściowe lub pełne) — nie nadpisywane. */
+  first_delivery_at?: string | null;
   /** Handlowiec potwierdził anulowanie lub odbiór — ukryte w „Moje zamówienia”. */
   sales_acknowledged_at?: string | null;
   /** Handlowiec wycofał prośbę — informacja dla działu dostaw. */
@@ -525,7 +527,11 @@ export type VacationDelegation = {
 
 /** Skład/komplet ZD (zd_product_boms) — policy v1. */
 export type ZdProductBomDemandAllocation = "explode" | "separate";
-export type ZdProductBomPurchaseTarget = "components" | "as_sold" | "kit_only";
+export type ZdProductBomPurchaseTarget =
+  | "components"
+  | "as_sold"
+  | "kit_only"
+  | "kit_from_components";
 
 export type ZdProductBom = {
   id: string;

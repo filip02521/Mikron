@@ -248,7 +248,6 @@ export function TeethUpdatesBanner() {
   return (
     <SystemNotice
       variant="action"
-      className="mb-4 sm:mb-6"
       title="Są nowe pozycje w panelu zębów"
       description={MICROCOPY.notices.teethUpdates}
       action={

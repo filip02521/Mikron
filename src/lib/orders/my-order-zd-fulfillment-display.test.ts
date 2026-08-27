@@ -173,7 +173,7 @@ describe("buildCollapsedZdMixedNoMatchHint", () => {
       { zdEtaNoMatch: true, historyEstimateLabel: "ok. 22.06.2026 (~5 dni rob.)" },
       { zdFulfillment: { deadline: "2026-06-24", dokNr: "ZD/1", syncedAt: null, source: "zd" } },
     ]);
-    expect(hint).toBe("2 pozycje bez terminu w ZD — rozwiń po szacunek z historii");
+    expect(hint).toBe("2 pozycje bez terminu u dostawcy — rozwiń po szacunek z historii");
   });
 
   it("gdy wszystkie bez ZD czekają na sync — poprawna odmiana", () => {
@@ -182,7 +182,7 @@ describe("buildCollapsedZdMixedNoMatchHint", () => {
       { zdEtaPending: true },
       { zdFulfillment: { deadline: "2026-06-24", dokNr: "ZD/1", syncedAt: null, source: "zd" } },
     ]);
-    expect(hint).toBe("2 pozycje czekają na termin w ZD — rozwiń po szczegóły");
+    expect(hint).toBe("2 pozycje czekają na termin u dostawcy — rozwiń po szczegóły");
   });
 });
 

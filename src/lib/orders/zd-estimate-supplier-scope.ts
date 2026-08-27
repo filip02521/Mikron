@@ -11,6 +11,52 @@ export type ZdEstimateScopeCandidate = {
   label: string;
 };
 
+export type ZdEstimateSupplierMatchSource = "mapping" | "name";
+
+/** Wiersz mapowania wystarczający do reverse lookup (grupa/cecha → dostawca). */
+export type ZdEstimateScopeMappingRef = {
+  supplierId: string;
+  mode: ZdEstimateRunMode;
+  grupaId: number | null;
+  cechaId: number | null;
+};
+
+/**
+ * Unikalny dostawca z mapowania dla grupy Subiekta.
+ * null = brak albo wiele mapowań na ten sam grt_Id.
+ */
+export function findUniqueSupplierIdForGrupa(
+  scopes: readonly ZdEstimateScopeMappingRef[],
+  grupaId: number
+): string | null {
+  const id = Math.trunc(Number(grupaId));
+  if (!(id > 0)) return null;
+  const hits = scopes.filter(
+    (s) => s.mode === "grupa" && s.grupaId != null && Math.trunc(s.grupaId) === id
+  );
+  if (hits.length !== 1) return null;
+  const supplierId = hits[0]!.supplierId.trim();
+  return supplierId || null;
+}
+
+/**
+ * Unikalny dostawca z mapowania dla cechy Subiekta.
+ * null = brak albo wiele mapowań na ten sam ctw_Id.
+ */
+export function findUniqueSupplierIdForCecha(
+  scopes: readonly ZdEstimateScopeMappingRef[],
+  cechaId: number
+): string | null {
+  const id = Math.trunc(Number(cechaId));
+  if (!(id > 0)) return null;
+  const hits = scopes.filter(
+    (s) => s.mode === "cecha" && s.cechaId != null && Math.trunc(s.cechaId) === id
+  );
+  if (hits.length !== 1) return null;
+  const supplierId = hits[0]!.supplierId.trim();
+  return supplierId || null;
+}
+
 export type ZdEstimateSupplierScopeResolved =
   | {
       ok: true;

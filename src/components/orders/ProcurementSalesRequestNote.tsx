@@ -17,13 +17,16 @@ export function ProcurementSalesRequestNote({
   return (
     <p
       className={cn(
+        "flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5",
         panelTypography.rowMeta,
         compact && "text-[11px] leading-snug",
         className
       )}
     >
-      <span className={salesRequestNoteLabelClass}>Uwagi</span>{" "}
-      <span className="whitespace-pre-wrap font-medium text-slate-800">{trimmed}</span>
+      <span className={salesRequestNoteLabelClass}>Uwagi</span>
+      <span className="min-w-0 flex-1 whitespace-pre-wrap font-medium leading-snug text-slate-800">
+        {trimmed}
+      </span>
     </p>
   );
 }

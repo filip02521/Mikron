@@ -23,7 +23,10 @@ export type ZkCaseNotePendingAttachKind = "missing" | "stale" | "mixed";
 
 export type ZkCaseNoteProsbaStatusCopy = {
   status: ZkCaseNoteProsbaStatus;
+  /** Etykieta w modalu / sekcji notatki. */
   label: string;
+  /** Krótka etykieta w wierszu listy ZK. */
+  shortLabel: string;
   description: string;
   tone: "slate" | "indigo" | "amber" | "emerald";
 };
@@ -157,6 +160,7 @@ export function zkCaseNoteProsbaStatusCopy(
       return {
         status,
         label: "Brak notatki",
+        shortLabel: "Brak notatki",
         description: "Dodaj notatkę, jeśli chcesz coś zapamiętać przy tym ZK.",
         tone: "slate",
       };
@@ -164,6 +168,7 @@ export function zkCaseNoteProsbaStatusCopy(
       return {
         status,
         label: "Tylko u Ciebie",
+        shortLabel: "Prywatna",
         description:
           "Zakupy nie widzą tej notatki w prośbie. Włącz „Dołącz do prośby”, żeby ją przekazać.",
         tone: "indigo",
@@ -171,7 +176,8 @@ export function zkCaseNoteProsbaStatusCopy(
     case "planned":
       return {
         status,
-        label: "Dołączana do nowej prośby",
+        label: "Dołączana do prośby",
+        shortLabel: "Do prośby",
         description:
           "Przy „Utwórz prośbę” / „Uzupełnij” notatka trafi do uwag pozycji — zakupy ją zobaczą.",
         tone: "amber",
@@ -180,7 +186,8 @@ export function zkCaseNoteProsbaStatusCopy(
       if (pendingKind === "stale") {
         return {
           status,
-          label: "Do zaktualizowania",
+          label: "Do zaktualizowania w prośbie",
+          shortLabel: "Do aktualizacji",
           description:
             "W otwartej prośbie jest starsza treść. Zaktualizuj ją, żeby zakupy widziały aktualną notatkę.",
           tone: "amber",
@@ -189,7 +196,8 @@ export function zkCaseNoteProsbaStatusCopy(
       if (pendingKind === "mixed") {
         return {
           status,
-          label: "Do dołączenia / aktualizacji",
+          label: "Częściowo w prośbie",
+          shortLabel: "Wymaga sync",
           description:
             "Część otwartych pozycji nie ma tej notatki albo ma starą treść. Zsynchronizuj z prośbą.",
           tone: "amber",
@@ -197,7 +205,8 @@ export function zkCaseNoteProsbaStatusCopy(
       }
       return {
         status,
-        label: "Do dołączenia",
+        label: "Do dołączenia do prośby",
+        shortLabel: "Do dołączenia",
         description:
           "Jest otwarta prośba bez tej notatki. Możesz dodać ją teraz albo przy kolejnym uzupełnieniu.",
         tone: "amber",
@@ -206,6 +215,7 @@ export function zkCaseNoteProsbaStatusCopy(
       return {
         status,
         label: "W prośbie",
+        shortLabel: "W prośbie",
         description: "Ta sama treść jest już w notatce powiązanej prośby — zakupy ją widzą.",
         tone: "emerald",
       };

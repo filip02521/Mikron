@@ -26,6 +26,8 @@ export const DAILY_PANEL_SCOPE_BULK = "__bulk__";
 export const DAILY_PANEL_SCOPE_GLOBAL = "__global__";
 export const DAILY_PANEL_SCOPE_PLAN = "__plan__";
 
+export type DailyPanelRunErrorReason = "readonly" | "failure";
+
 export type DailyPanelRunOptions = {
   /** Id dostawcy, klucz grupy prośby, __bulk__, __plan__ itd. */
   scope?: string;
@@ -33,8 +35,11 @@ export type DailyPanelRunOptions = {
   overlay?: boolean;
   /** Wywołane po udanej akcji (przed refresh). */
   onSuccess?: () => void;
-  /** Wywołane po nieudanej akcji (przed refresh). */
-  onError?: () => void;
+  /**
+   * Po nieudanej akcji (przed refresh).
+   * `readonly` = podgląd admina (bez requestu); `failure` = błąd serwera/sieci.
+   */
+  onError?: (reason: DailyPanelRunErrorReason) => void;
 };
 
 export type DailyPanelRunFn = (
@@ -111,7 +116,7 @@ export function useDailyPanelRunner() {
     (action, successMessage, pendingMsg = "Przetwarzanie…", options) => {
       if (readOnly) {
         setFlash(ADMIN_PREVIEW_TOAST);
-        options?.onError?.();
+        options?.onError?.("readonly");
         return;
       }
 
@@ -155,7 +160,7 @@ export function useDailyPanelRunner() {
           consumeDailyPanelUndoRefreshFlag();
           setFlash(toastFromUnknown(e, DAILY_PANEL_TOAST.genericError.text));
           needsRefreshRef.current = true;
-          options?.onError?.();
+          options?.onError?.("failure");
         } finally {
           clearSafetyTimer();
           setPendingScope(null);

@@ -7,7 +7,9 @@ import {
   canCreateZdFromEstimateState,
   defaultZdCreateUwagi,
   ensureZdCreateLinesCoverIndividualExtras,
+  minZdUnitsForExtraPieces,
   normalizeZdCreateUwagi,
+  partitionProsbaOverlapFetchTwIds,
   previewBomOrPairLabel,
   resolveZdCreateKhId,
   validateZdCreateClientLines,
@@ -168,6 +170,32 @@ describe("buildZdCreatePreviewFromOrderable", () => {
     expect(preview.lines.find((l) => l.symbol === "PLYN")?.ilosc).toBe(7);
   });
 
+  it("packages + orderMultiple: Do ZD i hint „co M”", () => {
+    const lines = [
+      baseLine({
+        tw_Id: 1,
+        tw_Symbol: "C202085",
+        celZapasu: 144,
+        celZapasuTracked: 144,
+        doZamowieniaReczne: 144,
+      }),
+    ];
+    const pack = new Map([
+      [
+        1,
+        {
+          unitsPerPackage: 48,
+          packageLabel: "op.",
+          orderMultiple: 10,
+        },
+      ],
+    ]);
+    const preview = buildZdCreatePreviewFromOrderable(lines, pack);
+    expect(preview.lines[0]?.ilosc).toBe(10);
+    expect(preview.lines[0]?.packagingHint).toBe("48 szt / 1 op. · co 10");
+    expect(preview.lines[0]?.piecesArriving).toBe(480);
+  });
+
   it("purchased_kit wchodzi do preview Create", () => {
     const lines = [
       baseLine({
@@ -193,7 +221,7 @@ describe("buildZdCreatePreviewFromOrderable", () => {
     expect(preview.lines.map((l) => l.symbol).sort()).toEqual(["A", "K"]);
     expect(preview.lines.find((l) => l.symbol === "K")?.ilosc).toBe(20);
     expect(preview.lines.find((l) => l.symbol === "K")?.bomOrPairLabel).toBe(
-      "komplet (kupujemy)"
+      "komplet (kupowany)"
     );
   });
 
@@ -394,7 +422,16 @@ describe("buildZdCreatePreviewFromOrderable", () => {
         bom: { role: "purchased_kit", purchaseTarget: "kit_only" },
         pair: null,
       })
-    ).toBe("komplet (tylko K)");
+    ).toBe("tylko komplet");
+    expect(
+      previewBomOrPairLabel({
+        bom: {
+          role: "purchased_kit",
+          purchaseTarget: "kit_from_components",
+        },
+        pair: null,
+      })
+    ).toBe("komplet ze składników");
     expect(
       previewBomOrPairLabel({
         bom: { role: "component" },
@@ -823,6 +860,101 @@ describe("ensureZdCreateLinesCoverIndividualExtras", () => {
     expect(res.bumped).toEqual([
       { twId: 10, from: 1, to: 20, extraPieces: 15 },
     ]);
+  });
+
+  it("packages + orderMultiple: extras 144 / N=48 / M=10 → bump do 10", () => {
+    const res = ensureZdCreateLinesCoverIndividualExtras({
+      lines: [{ twId: 10, ilosc: 3, symbol: "C202085" }],
+      extraPiecesByTwId: new Map([[10, 144]]),
+      unitsPerPackageByTwId: new Map([[10, 48]]),
+      orderMultipleByTwId: new Map([[10, 10]]),
+    });
+    expect(res.lines[0]?.ilosc).toBe(10);
+    expect(res.bumped).toEqual([
+      { twId: 10, from: 3, to: 10, extraPieces: 144 },
+    ]);
+  });
+
+  it("non-identity extra + niski ilosc → bump mimo skipCover innego tw", () => {
+    // Symulacja: adjusted zawiera raw dla non-identity (50) + skipCover nie zmienia floor.
+    const res = ensureZdCreateLinesCoverIndividualExtras({
+      lines: [
+        { twId: 50, ilosc: 1 },
+        { twId: 60, ilosc: 5 },
+      ],
+      extraPiecesByTwId: new Map([
+        [50, 15],
+        [60, 8],
+      ]),
+      unitsPerPackageByTwId: new Map([
+        [50, 10],
+        [60, 10],
+      ]),
+    });
+    expect(res.lines.find((l) => l.twId === 50)?.ilosc).toBe(2);
+    expect(res.lines.find((l) => l.twId === 60)?.ilosc).toBe(5);
+    expect(res.bumped.map((b) => b.twId)).toEqual([50]);
+  });
+});
+
+describe("partitionProsbaOverlapFetchTwIds", () => {
+  const units = new Map([[10, 10], [20, 10], [30, 10]]);
+
+  it("ilosc ≥ minZd(raw) → skipCover", () => {
+    const minZd = minZdUnitsForExtraPieces(15, 10, "packages");
+    expect(minZd).toBe(2);
+    const r = partitionProsbaOverlapFetchTwIds({
+      candidates: [10],
+      rawExtraByTwId: new Map([[10, 15]]),
+      linesByTwId: new Map([[10, { ilosc: 2 }]]),
+      unitsPerPackageByTwId: units,
+    });
+    expect(r).toEqual({ toFetch: [], skipCover: [10] });
+  });
+
+  it("ilosc < minZd(raw) → toFetch", () => {
+    const r = partitionProsbaOverlapFetchTwIds({
+      candidates: [10],
+      rawExtraByTwId: new Map([[10, 15]]),
+      linesByTwId: new Map([[10, { ilosc: 1 }]]),
+      unitsPerPackageByTwId: units,
+    });
+    expect(r).toEqual({ toFetch: [10], skipCover: [] });
+  });
+
+  it("brak linii → toFetch", () => {
+    const r = partitionProsbaOverlapFetchTwIds({
+      candidates: [10],
+      rawExtraByTwId: new Map([[10, 5]]),
+      linesByTwId: new Map(),
+      unitsPerPackageByTwId: units,
+    });
+    expect(r.toFetch).toEqual([10]);
+    expect(r.skipCover).toEqual([]);
+  });
+
+  it("mieszanka cover + under + Mode B zgodne z ensureCover", () => {
+    const r = partitionProsbaOverlapFetchTwIds({
+      candidates: [10, 20, 30],
+      rawExtraByTwId: new Map([
+        [10, 15],
+        [20, 15],
+        [30, 15],
+      ]),
+      linesByTwId: new Map([
+        [10, { ilosc: 2 }],
+        [20, { ilosc: 1 }],
+        [30, { ilosc: 20 }],
+      ]),
+      unitsPerPackageByTwId: units,
+      packagingModeByTwId: new Map([
+        [10, "packages"],
+        [20, "packages"],
+        [30, "pieces_multiple"],
+      ]),
+    });
+    expect(r.skipCover.sort()).toEqual([10, 30]);
+    expect(r.toFetch).toEqual([20]);
   });
 });
 

@@ -1,4 +1,5 @@
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
+import { isClientNamesAggregateSummary } from "@/lib/orders/sales-client-label";
 import { isInformacjaAvailabilityPendingStatusTitle } from "@/lib/orders/informacja-flow-copy";
 import {
   linesWithoutZdTerm,
@@ -18,8 +19,27 @@ import {
 
 export type MyOrderListKind = "zamowienie" | "informacja";
 
-/** Krótka wskazówka pod nagłówkiem — tylko to, co potrzebne bez rozwijania. */
-export function myOrderCollapsedSubline(row: MyOrderRow): string | null {
+/** L1 — zawsze produkt (fallback: supplierName gdy brak linii). */
+export function myOrderCollapsedTitle(row: MyOrderRow): string {
+  const product = myOrderProductPreviewLine(row)?.trim();
+  if (product) return product;
+  return row.supplierName?.trim() || row.product?.trim() || "Prośba";
+}
+
+/** L2 — dostawca · klient (klient tylko gdy pojedynczy, nie agregat). */
+export function myOrderCollapsedContextLine(row: MyOrderRow): string {
+  const supplier = row.supplierName?.trim() || "";
+  const client = row.clientLabel?.trim();
+  const showClient =
+    client && !isClientNamesAggregateSummary(client) && client !== supplier;
+  if (showClient) {
+    return supplier ? `${supplier} · ${client}` : client;
+  }
+  return supplier;
+}
+
+/** Krótki hint statusu — max 1 linia; bez produktu, bez terminu (termin → rail). */
+export function myOrderCollapsedStatusHint(row: MyOrderRow): string | null {
   if (
     row.acknowledgeMode === "pickup" ||
     row.acknowledgeMode === "availability" ||
@@ -28,7 +48,7 @@ export function myOrderCollapsedSubline(row: MyOrderRow): string | null {
     row.acknowledgeMode === "cancel_notice" ||
     row.acknowledgeMode === "cancelled"
   ) {
-    return row.subline ?? null;
+    return row.subline?.trim() ?? null;
   }
 
   if (isProsbaHandoffStatus(row.statusTitle)) {
@@ -36,27 +56,17 @@ export function myOrderCollapsedSubline(row: MyOrderRow): string | null {
   }
 
   if (row.statusTitle === "Częściowo na magazynie" && row.subline?.trim()) {
-    const product = myOrderProductPreviewLine(row);
-    return product ? `${product} · ${row.subline}` : row.subline;
+    return row.subline.trim();
   }
 
   if (row.headlineTone === "warning") {
-    if (row.subline?.trim()) return row.subline;
-    if (row.timingLabel?.trim()) {
-      const product = myOrderProductPreviewLine(row);
-      if (product) return product;
-      return row.timingLabel.replace(" · po terminie", "").trim();
-    }
+    if (row.subline?.trim()) return row.subline.trim();
     return null;
   }
 
   if (row.headlineTone === "info" && row.statusTitle === "Zamówione") {
-    if (row.subline?.trim()) return row.subline;
-    if (row.timingLabel?.trim()) {
-      const product = myOrderProductPreviewLine(row);
-      if (product) return product;
-      return row.timingLabel.replace(" · po terminie", "").trim();
-    }
+    if (row.subline?.trim()) return row.subline.trim();
+    return null;
   }
 
   if (
@@ -65,10 +75,15 @@ export function myOrderCollapsedSubline(row: MyOrderRow): string | null {
     !isInformacjaFlowSublineExpandedOnly(row.statusTitle) &&
     row.subline?.trim()
   ) {
-    return row.subline;
+    return row.subline.trim();
   }
 
   return null;
+}
+
+/** @deprecated Użyj myOrderCollapsedStatusHint */
+export function myOrderCollapsedSubline(row: MyOrderRow): string | null {
+  return myOrderCollapsedStatusHint(row);
 }
 
 /** Statusy informacyjne, których subline ma się pojawić dopiero po rozwinięciu jako badge — nie w zwiniętej karcie. */
@@ -83,7 +98,7 @@ function isInformacjaFlowSublineExpandedOnly(statusTitle: string): boolean {
 /** Dłuższe wyjaśnienia — wyłącznie w rozwinięciu. */
 export function myOrderExpandedNotes(row: MyOrderRow): string | null {
   const parts: string[] = [];
-  const collapsed = myOrderCollapsedSubline(row);
+  const collapsed = myOrderCollapsedStatusHint(row);
 
   if (shouldShowOrderStatusDetail(row) && row.statusDetail?.trim()) {
     const { remainder } = parseStatusDetailMetaParts(row.statusDetail);
@@ -152,16 +167,6 @@ export function myOrderNeedsExpand(row: MyOrderRow, ctx: MyOrderExpandContext): 
   return false;
 }
 
-/** @deprecated Lista produktów tylko w panelu rozwinięcia — zawsze skrót na wierszu. */
-export function myOrderCollapsedProductMode(
-  _row: MyOrderRow,
-  _listKind: MyOrderListKind
-): "full" | "summary" {
-  void _row;
-  void _listKind;
-  return "summary";
-}
-
 /** Krótki opis liczby pozycji na zwiniętym wierszu (bez nazw towaru). */
 export function myOrderCollapsedProductSummary(
   row: MyOrderRow,
@@ -191,6 +196,14 @@ function pluralProdukty(n: number): string {
   return "produktów";
 }
 
+function pluralTerminy(n: number): string {
+  if (n === 1) return "termin";
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "terminy";
+  return "terminów";
+}
+
 /** Tekst zachęty przy zwiniętym wierszu z chevronem. */
 export function myOrderExpandHint(row: MyOrderRow, ctx: MyOrderExpandContext): string {
   if (
@@ -198,7 +211,9 @@ export function myOrderExpandHint(row: MyOrderRow, ctx: MyOrderExpandContext): s
     zdFulfillmentHasMultipleSlots(row.zdFulfillment)
   ) {
     const n = zdFulfillmentSlots(row.zdFulfillment).length;
-    return n === 2 ? "Rozwiń po oba terminy" : `Rozwiń po ${n} terminy`;
+    return n === 2
+      ? "Rozwiń — 2 terminy"
+      : `Rozwiń — ${n} ${pluralTerminy(n)}`;
   }
   const withoutZd = linesWithoutZdTerm(row.lines);
   if (row.zdFulfillment && withoutZd.length) {

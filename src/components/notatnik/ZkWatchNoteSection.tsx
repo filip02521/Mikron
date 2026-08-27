@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { polishPozycjeLabel } from "@/lib/email/polish-plural";
 import { salesTypography } from "@/lib/ui/ontime-theme";
+import { zkCaseNoteProsbaCalloutClassForTone } from "@/lib/ui/zk-case-note-prosba-styles";
 import {
   ZK_MODAL_SECTION_HINTS,
   ZK_MODAL_SECTION_TITLES,
@@ -29,15 +30,20 @@ import {
 } from "@/lib/sales/zk-watch-case-note-prosba";
 import type { ZkLinkableOrder } from "@/lib/sales/zk-watch-order-link";
 import type { SalesZkWatch } from "@/types/database";
+import { ZkCaseNoteProsbaChip } from "./ZkCaseNoteProsbaChip";
 import { NOTATNIK_TEXTAREA_CLASS } from "./notatnik-layout";
 import { ZkWatchModalSection } from "./ZkWatchModalSection";
 
-const STATUS_CHIP: Record<ZkCaseNoteProsbaStatus, string> = {
-  none: "bg-slate-100 text-slate-600 ring-slate-200/80",
-  private: "bg-indigo-50 text-indigo-800 ring-indigo-200/80",
-  planned: "bg-amber-50 text-amber-900 ring-amber-200/80",
-  planned_pending_attach: "bg-amber-50 text-amber-900 ring-amber-200/80",
-  in_prosba: "bg-emerald-50 text-emerald-800 ring-emerald-200/80",
+const INCLUDE_HINT: Record<ZkCaseNoteProsbaStatus, string | null> = {
+  none: null,
+  private:
+    "Włącz, żeby zakupy widziały notatkę w uwagach pozycji przy następnej prośbie.",
+  planned:
+    "Przy zapisie notatki treść trafi do nowej lub uzupełnianej prośby.",
+  planned_pending_attach:
+    "Masz otwartą prośbę — możesz dodać lub zaktualizować notatkę od razu.",
+  in_prosba:
+    "Notatka jest już w prośbie. Edycja zaktualizuje uwagi tam, gdzie to bezpieczne.",
 };
 
 export function ZkWatchNoteSection({
@@ -247,18 +253,29 @@ export function ZkWatchNoteSection({
       title={ZK_MODAL_SECTION_TITLES.note}
       hint={ZK_MODAL_SECTION_HINTS.note}
     >
-      <div className="mb-2.5 flex flex-wrap items-center gap-2">
-        <span
-          className={cn(
-            "inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset",
-            STATUS_CHIP[status]
-          )}
-        >
-          {statusCopy.label}
-        </span>
-        <p className={cn(salesTypography.rowMeta, "text-slate-500")}>
-          {statusCopy.description}
-        </p>
+      <div
+        className={cn(
+          "mb-2.5 flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3",
+          status !== "none" && zkCaseNoteProsbaCalloutClassForTone(statusCopy.tone)
+        )}
+      >
+        {status !== "none" ? (
+          <>
+            <ZkCaseNoteProsbaChip
+              status={status}
+              pendingKind={pendingKind}
+              variant="modal"
+              className="shrink-0"
+            />
+            <p className={cn(salesTypography.rowMeta, "min-w-0 text-slate-600")}>
+              {statusCopy.description}
+            </p>
+          </>
+        ) : (
+          <p className={cn(salesTypography.rowMeta, "text-slate-500")}>
+            {statusCopy.description}
+          </p>
+        )}
       </div>
 
       {noteOpen && canEdit ? (
@@ -350,9 +367,8 @@ export function ZkWatchNoteSection({
                 Dołącz do prośby
               </span>
               <span className={cn(salesTypography.rowMeta, "mt-0.5 block text-slate-500")}>
-                Zakupy zobaczą tę treść w uwagach pozycji. Działa przy nowej prośbie,
-                uzupełnieniu oraz przy późniejszej edycji notatki (aktualizacja otwartej
-                prośby).
+                {INCLUDE_HINT[status] ??
+                  "Zakupy zobaczą tę treść w uwagach pozycji przy tworzeniu lub uzupełnianiu prośby."}
               </span>
             </span>
           </label>

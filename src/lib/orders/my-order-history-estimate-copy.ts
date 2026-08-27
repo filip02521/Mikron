@@ -54,3 +54,9 @@ export const MY_ORDER_HISTORY_ESTIMATE_LOW_CONFIDENCE_DETAIL =
 /** Sufiks w timingLabel przy małej liczbie próbek w historii. */
 export const MY_ORDER_HISTORY_ESTIMATE_LOW_CONFIDENCE_SUFFIX =
   " (mało historii — orientacyjnie)";
+
+export const MY_ORDER_HISTORY_ESTIMATE_SAME_DAY_DETAIL =
+  "U tego dostawcy towar często dociera tego samego dnia roboczego.";
+
+export const MY_ORDER_HISTORY_ESTIMATE_NEXT_MORNING_DETAIL =
+  "U tego dostawcy typowy czas to ok. 1 dzień roboczy (często nazajutrz).";

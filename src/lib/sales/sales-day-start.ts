@@ -12,6 +12,7 @@ import { collectNotepadTodayTasks } from "@/lib/sales/notepad-today-tasks";
 import { formatProsbaZkLinkNumber } from "@/lib/orders/zk-prosba-link-display";
 import { buildNotatnikPageHref } from "@/lib/sales/notepad-page-tabs";
 import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
+import { MOJE_COPY_NOTES_ACK_BUTTON } from "@/lib/orders/my-order-moje-copy";
 import {
   informacjaReadyDayStartSubtitle,
   informacjaReadyDayStartTitle,
@@ -422,7 +423,7 @@ function buildNoteFromProcurementItems(rows: MyOrderRow[]): SalesDayStartItem[] 
       source: "note_from_procurement",
       priority: PRIORITY.note_from_procurement,
       title: `Zakupy zaktualizowały uwagi przy ${noteRows.length} prośbach`,
-      subtitle: "Otwórz prośbę i potwierdź „Widziałem” przy uwagach",
+      subtitle: `Otwórz prośbę i potwierdź „${MOJE_COPY_NOTES_ACK_BUTTON}” przy uwagach`,
       href,
       count: noteRows.length,
       ctaLabel: "Zobacz",

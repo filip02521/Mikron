@@ -7,6 +7,10 @@ import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Spinner } from "@/components/ui/Spinner";
 import {
+  ZK_PROSBA_MODAL_BODY_CLASS,
+  ZkProsbaModalCallout,
+} from "@/components/notatnik/ZkProsbaModalCallout";
+import {
   TeethOrderBuilderModal,
   type TeethOrderBuilderSaveResult,
 } from "@/components/teeth/TeethOrderBuilderModal";
@@ -27,7 +31,6 @@ import { manufacturerForProductLine } from "@/lib/teeth/teeth-catalog";
 import { TEETH_KIND_LABELS, type TeethKind, type TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 import { resolveTeethCatalogProduct } from "@/lib/teeth/teeth-dual-kind";
 import type { SalesZkWatch } from "@/types/database";
-import { IconAlertCircle } from "@/components/icons/StrokeIcons";
 
 function registryFromProductInfo(
   info: ReturnType<typeof useTeethProductInfo>
@@ -261,7 +264,7 @@ export function ZkWatchTeethDraftModal({
         size="lg"
         title={`${displayNumber} — listy zębów`}
         description={watch.client_label}
-        bodyClassName="space-y-3 px-5 py-4 sm:px-6"
+        bodyClassName={ZK_PROSBA_MODAL_BODY_CLASS}
         footer={
           <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
             <Button
@@ -291,36 +294,34 @@ export function ZkWatchTeethDraftModal({
           </div>
         }
       >
-        <div className="rounded-xl border border-amber-200/70 bg-amber-50/50 px-4 py-3 text-sm text-amber-950">
-          <p className={cn(salesTypography.rowTitle, "font-semibold")}>
+        <ZkProsbaModalCallout tone="amber">
+          <p className="text-sm font-semibold text-amber-950">
             Uzupełnij listy zębów przed prośbą
           </p>
-          <p className={cn("mt-1", salesTypography.rowBody, "text-amber-900/80")}>
-            Dla pozycji zębowych z ZK podaj kolor, wzór i typ (przednie / boczne).
-            Możesz uzupełnić później — wtedy przycisk prośby pozostanie zablokowany.
+          <p className="mt-1 text-xs leading-relaxed text-amber-900/85">
+            Dla pozycji zębowych z ZK podaj kolor, wzór i typ (przednie / boczne). Możesz uzupełnić
+            później — wtedy przycisk prośby pozostanie zablokowany.
           </p>
-        </div>
+        </ZkProsbaModalCallout>
 
         {error ? (
-          <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50/80 px-3 py-2 text-sm text-red-800">
-            <IconAlertCircle size={16} className="mt-0.5 shrink-0" />
-            <p>{error}</p>
-          </div>
+          <ZkProsbaModalCallout tone="rose" role="alert">
+            {error}
+          </ZkProsbaModalCallout>
         ) : null}
 
         {catalogUnavailable ? (
-          <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50/80 px-3 py-2 text-sm text-red-800">
-            <IconAlertCircle size={16} className="mt-0.5 shrink-0" />
-            <p>
-              Katalog zębów jest chwilowo niedostępny — odśwież stronę i spróbuj ponownie.
-            </p>
-          </div>
+          <ZkProsbaModalCallout tone="rose" role="alert">
+            Katalog zębów jest chwilowo niedostępny — odśwież stronę i spróbuj ponownie.
+          </ZkProsbaModalCallout>
         ) : null}
 
         {!catalogUnavailable && candidates.length === 0 ? (
-          <p className="text-sm text-slate-600">Brak pozycji zębowych w zakresie prośby.</p>
+          <ZkProsbaModalCallout tone="info">
+            Brak pozycji zębowych w zakresie prośby.
+          </ZkProsbaModalCallout>
         ) : !catalogUnavailable ? (
-          <ul className="space-y-2">
+          <ul className="space-y-1.5">
             {candidates.map((c) => {
               const draft = draftsByKey[c.lineKey];
               const ready = draft
@@ -332,10 +333,10 @@ export function ZkWatchTeethDraftModal({
                 <li
                   key={c.lineKey}
                   className={cn(
-                    "rounded-lg border px-3 py-2.5",
+                    "rounded-lg border px-3.5 py-2.5",
                     ready
                       ? "border-emerald-200/80 bg-emerald-50/40"
-                      : "border-slate-200 bg-white"
+                      : "border-slate-200/80 bg-white"
                   )}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
@@ -396,9 +397,9 @@ export function ZkWatchTeethDraftModal({
         ) : null}
 
         {!catalogUnavailable && incomplete.length > 0 ? (
-          <p className="text-xs text-slate-500">
+          <ZkProsbaModalCallout tone="info">
             Pozostało do uzupełnienia: {incomplete.length}
-          </p>
+          </ZkProsbaModalCallout>
         ) : null}
       </ModalShell>
 

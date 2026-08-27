@@ -87,6 +87,7 @@ export async function estimateTeethDeliveryEtaBatch(
   for (const [supplierId, days] of fixedDays) {
     result.set(supplierId, {
       avgBusinessDays: days,
+      primaryBusinessDays: days,
       expectedDate: calculateBusinessDate(start, days),
       sampleCount: 0,
       lowConfidence: false,
@@ -126,7 +127,7 @@ export async function estimateTeethDeliveryEtaBatch(
       const orderedAt = row.teeth_ordered_at ?? row.ordered_at;
       if (!orderedAt || !row.delivery_at) continue;
       const s = teethPlacementDateOnly(String(orderedAt));
-      const e = parseDateOnly(row.delivery_at as string);
+      const e = teethPlacementDateOnly(String(row.delivery_at));
       if (!s || !e) continue;
       const days = calculateBusinessDays(s, e);
       if (days >= 0) samples.push(days);
@@ -134,12 +135,14 @@ export async function estimateTeethDeliveryEtaBatch(
     if (samples.length === 0) continue;
     const avg = samples.reduce((sum, d) => sum + d, 0) / samples.length;
     const avgRounded = Math.round(avg);
-    if (avgRounded <= 0) continue;
+    if (avgRounded < 0) continue;
     result.set(supplierId, {
       avgBusinessDays: avgRounded,
+      primaryBusinessDays: avgRounded,
       expectedDate: calculateBusinessDate(start, avgRounded),
       sampleCount: samples.length,
-      lowConfidence: samples.length < 3,
+      lowConfidence: samples.length < 5,
+      sameDay: avgRounded === 0,
       source: "history",
     });
   }
