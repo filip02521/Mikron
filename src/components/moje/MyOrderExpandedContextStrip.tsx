@@ -2,6 +2,7 @@
 
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import type { MyOrderMetaField } from "@/lib/orders/my-order-sales-ui";
+import { MyOrderAssignedClient } from "@/components/moje/MyOrderAssignedClient";
 import { MyOrderProcurementCancelNote } from "@/components/moje/MyOrderProcurementCancelNote";
 import { MyOrderRequestNote } from "@/components/moje/MyOrderRequestNote";
 import { MyOrderStatusPill } from "@/components/moje/MyOrderStatusPill";
@@ -18,6 +19,8 @@ export type MyOrderExpandedContextStripProps = {
   sharedProcurementCancelNote?: string | null;
   showSharedUnreadRequestNote?: boolean;
   clientLabel?: string | null;
+  /** kh_Id Subiekta — gdy wspólny klient grupy (kopiowanie NIP). */
+  clientKhId?: number | null;
   progressLabel?: string | null;
 };
 
@@ -35,6 +38,7 @@ export function MyOrderExpandedContextStrip({
   sharedProcurementCancelNote,
   showSharedUnreadRequestNote,
   clientLabel,
+  clientKhId,
   progressLabel,
 }: MyOrderExpandedContextStripProps) {
   const hasNotesPanel =
@@ -63,10 +67,12 @@ export function MyOrderExpandedContextStrip({
             />
           ) : null}
           {clientLabel ? (
-            <span className="inline-flex items-baseline gap-0.5">
-              <span className="font-medium text-indigo-400">Klient</span>
-              <SearchHighlightText text={clientLabel} searchQuery={searchQuery} className="text-slate-600" />
-            </span>
+            <MyOrderAssignedClient
+              name={clientLabel}
+              clientKhId={clientKhId}
+              searchQuery={searchQuery}
+              className="text-[10px] leading-tight"
+            />
           ) : null}
           {progressLabel ? (
             <span className="inline-flex items-baseline gap-0.5">

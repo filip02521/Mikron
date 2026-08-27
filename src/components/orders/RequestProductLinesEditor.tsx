@@ -35,6 +35,12 @@ import {
   prosbaLineHasSubmitBlockers,
   shouldShowProsbaLineFieldValidation,
 } from "@/lib/orders/prosba-line-field-validation";
+import {
+  applyInformacjaQuantityClear,
+  applyZamowienieQuantityRestore,
+  pruneQuantityStash,
+  updateStashOnInformacjaEnter,
+} from "@/lib/orders/request-kind-quantity";
 import { MAX_BATCH_ORDER_LINES } from "@/lib/security/text-limits";
 import { MAX_CLIENT_NAME_LEN } from "@/lib/orders/sales-client-label";
 import type { AppSupplierRef } from "@/lib/subiekt/match-supplier";
@@ -243,10 +249,39 @@ export function RequestProductLinesEditor({
     }
   }
 
+  const quantityStashRef = useRef<Record<string, string>>({});
+  const prevRequestKindRef = useRef<IndividualRequestKind>(requestKind);
+
   useEffect(() => {
-    if (requestKind !== "informacja") return;
-    if (!lines.some((l) => l.quantity.trim() !== "")) return;
-    onChange(lines.map((l) => ({ ...l, quantity: "" })));
+    const prevKind = prevRequestKindRef.current;
+    const lineIds = lines.map((l) => l.id);
+    quantityStashRef.current = pruneQuantityStash(quantityStashRef.current, lineIds);
+
+    if (prevKind !== requestKind) {
+      prevRequestKindRef.current = requestKind;
+
+      if (requestKind === "informacja" && prevKind === "zamowienie") {
+        quantityStashRef.current = updateStashOnInformacjaEnter(
+          quantityStashRef.current,
+          lines
+        );
+        const cleared = applyInformacjaQuantityClear(lines);
+        if (cleared) onChange(cleared);
+        return;
+      }
+
+      if (requestKind === "zamowienie" && prevKind === "informacja") {
+        const restored = applyZamowienieQuantityRestore(lines, quantityStashRef.current);
+        if (restored) onChange(restored);
+        return;
+      }
+    }
+
+    // Ten sam rodzaj: utrzymuj regułę „informacja bez ilości” (np. po picku produktu).
+    if (requestKind === "informacja") {
+      const cleared = applyInformacjaQuantityClear(lines);
+      if (cleared) onChange(cleared);
+    }
   }, [requestKind, lines, onChange]);
 
   const addLine = () => {

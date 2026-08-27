@@ -130,6 +130,7 @@ function zdDoc(
 }
 
 vi.mock("@/lib/supabase/admin", () => ({
+  hasSupabaseConfig: () => true,
   createAdminClient: () => ({
     from: (table: string) => {
       if (table === "individual_orders") {
