@@ -140,11 +140,11 @@ describe("request-kind-quantity", () => {
 
   it("round-trip po ręcznym skasowaniu: nie wraca stara ilość, bierze zkQuantity", () => {
     let stash = updateStashOnInformacjaEnter({}, [
-      { id: "a", quantity: "5", zkQuantity: 10 },
+      { id: "a", quantity: "5" },
     ]);
     // powrót, użytkownik kasuje ilość, znowu informacja
     stash = updateStashOnInformacjaEnter(stash, [
-      { id: "a", quantity: "", zkQuantity: 10 },
+      { id: "a", quantity: "" },
     ]);
     expect(stash).toEqual({});
     const restored = applyZamowienieQuantityRestore(
