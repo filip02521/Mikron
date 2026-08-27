@@ -134,6 +134,52 @@ export function filterProsbaLinesWithSufficientStock(
   return lines.filter((line) => isProsbaLineStockSufficient(line, requestKind, stockExemptTwIds));
 }
 
+export function filterProsbaLinesWithUnknownStock(
+  lines: ProductLineDraft[],
+  requestKind: IndividualRequestKind,
+  stockExemptTwIds?: ReadonlySet<number>
+): ProductLineDraft[] {
+  if (requestKind !== "zamowienie") return [];
+  return lines.filter((line) => {
+    if (isStockExemptTwId(line.subiektTwId, stockExemptTwIds)) return false;
+    const twId = Math.trunc(Number(line.subiektTwId) || 0);
+    if (twId <= 0) return false;
+    const qty = parseOrderQuantity(line.quantity);
+    if (qty == null || qty <= 0) return false;
+    return assessProsbaLineStockFromDraft(line, requestKind, stockExemptTwIds) === "unknown";
+  });
+}
+
+/**
+ * Gdy stan magazynowy nie doszedł (timeout / brak snapshotu) — wymuś świadome potwierdzenie
+ * zamiast cichej wysyłki bez ack.
+ */
+export function buildProsbaSubmitUnknownStockConfirm(
+  lines: ProductLineDraft[],
+  requestKind: IndividualRequestKind,
+  stockExemptTwIds?: ReadonlySet<number>,
+  options?: { intent?: "send" | "create" }
+): { unknownLines: ProductLineDraft[]; message: string; summary: string } | null {
+  if (requestKind !== "zamowienie") return null;
+  const unknownLines = filterProsbaLinesWithUnknownStock(lines, requestKind, stockExemptTwIds);
+  if (!unknownLines.length) return null;
+  const n = unknownLines.length;
+  const noun = plPozycja(n);
+  const intent = options?.intent ?? "send";
+  const verb = intent === "create" ? "utworzyć prośbę" : "wysłać prośbę";
+  return {
+    unknownLines,
+    summary:
+      n === 1
+        ? "1 pozycja bez potwierdzonego stanu magazynowego"
+        : `${n} ${noun} bez potwierdzonego stanu magazynowego`,
+    message:
+      n === 1
+        ? `Nie udało się wczytać stanu magazynowego dla 1 pozycji. Możesz ${verb} mimo to albo wrócić i spróbować ponownie.`
+        : `Nie udało się wczytać stanu magazynowego dla ${n} ${noun}. Możesz ${verb} mimo to albo wrócić i spróbować ponownie.`,
+  };
+}
+
 /** Stan dialogu potwierdzenia wysyłki / zapisu przy pełnym stanie magazynowym. */
 export function buildProsbaSubmitStockConfirm(
   lines: ProductLineDraft[],

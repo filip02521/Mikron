@@ -206,6 +206,11 @@ import {
 } from "@/lib/orders/zd-estimate-scope";
 import type { ZdEstimateUiSessionSnapshot } from "@/lib/orders/zd-estimate-ui-session-snapshot";
 import {
+  buildZdEstimateUiSessionSnapshotFromPolicz,
+  type ZdEstimateUiSessionPoliczSeed,
+} from "@/lib/orders/zd-estimate-ui-session-from-policz";
+import { ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION } from "@/lib/orders/zd-estimate-external-session";
+import {
   fetchAllReservedZkRowsForTwId,
   sumZdEstimateReservedZkQuantity,
   type ZdEstimateReservationsSummary,
@@ -277,6 +282,8 @@ export type ZdEstimateRunInput = {
   grupaId?: number | null;
   /** Wymagane gdy mode === "cecha". */
   cechaId?: number | null;
+  /** Etykieta zakresu (nazwa cechy/grupy) — do seeda sesji UI po Policz. */
+  scopeLabel?: string | null;
   /** Dostawca OnTime — filtr historii snapshotów (kh + aliasy). Bez → brak historii. */
   supplierId?: string | null;
   dniZapasu: number;
@@ -284,6 +291,11 @@ export type ZdEstimateRunInput = {
   dataOd?: string | null;
   dataDo?: string | null;
   zapasMin?: number;
+  /**
+   * Lekki seed UI (bez linii) — sesja zapisuje się po stronie serwera w tym samym
+   * Policz, żeby duże cechy (np. Ivoclar) nie musiały ponownie uploadować snapshotu.
+   */
+  uiSessionSeed?: ZdEstimateUiSessionPoliczSeed | null;
 };
 
 export type ZdEstimateRunResult =
@@ -349,6 +361,17 @@ export type ZdEstimateRunResult =
       teethTwIds: number[];
       /** Wspólna moc boosta użyta w tym Policz. */
       boostPreset: ZdBoostPowerPreset;
+      /**
+       * Sesja UI utworzona na serwerze razem z Policz (bez drugiego ciężkiego POST).
+       * null = zapis nieudany — klient może spróbować fallbacku.
+       */
+      uiSessionId?: string | null;
+      uiSessionCreatedAt?: string | null;
+      /**
+       * true = serwer skasował poprzednią active sesję (nawet gdy insert padł).
+       * Klient musi unieważnić lokalny token przy porzuconym Policz.
+       */
+      uiSessionRotated?: boolean;
     }
   | {
       ok: false;
@@ -2002,10 +2025,82 @@ export async function actionRunZdEstimateManual(
       orderExcluded.has(p.tw_Id)
     ).length;
 
+    const meta = {
+      pagesFetched: fetched.pagesFetched,
+      totalCountApi: fetched.totalCountApi,
+      truncated: fetched.truncated,
+      ordersBaseUrl: orders.config.baseUrl,
+      durationMs: Date.now() - started,
+      totalFromSubiekt: result.totalFromSubiekt,
+      doZamowieniaCount: packAfter.doZamowieniaCount,
+      doZamowieniaSuma: packAfter.zdUnitsSuma,
+      doZamowieniaCountRaw: packRaw.doZamowieniaCount,
+      doZamowieniaSumaRaw: packRaw.zdUnitsSuma,
+      doZamowieniaZdUnitsSuma: packAfter.zdUnitsSuma,
+      doZamowieniaZdUnitsSumaRaw: packRaw.zdUnitsSuma,
+      excludedInGroupCount,
+      pairPartnerMissingCount: missingPartnerTwIds.size,
+      pairMissingTwIds: [...missingPartnerTwIds],
+      bomMissingCount: missingBomTwIds.size,
+      bomMissingTwIds: [...missingBomTwIds],
+    };
+
+    const historyDto = historyMapToDto(historyByTwId);
+
+    // Sesja UI na serwerze — bez drugiego uploadu snapshotu z przeglądarki
+    // (duże cechy, np. Ivoclar ~1590 SKU, potrafiły wyłożyć osobny create).
+    let uiSessionId: string | null = null;
+    let uiSessionCreatedAt: string | null = null;
+    let uiSessionRotated = false;
+    try {
+      const snapshot = buildZdEstimateUiSessionSnapshotFromPolicz({
+        mode: scope.mode,
+        grupaId: scope.mode === "grupa" ? scope.grupaId : null,
+        cechaId: scope.mode === "cecha" ? scope.cechaId : null,
+        scopeLabel: input.scopeLabel ?? null,
+        supplierId: String(input.supplierId ?? "").trim() || null,
+        dniZapasu,
+        dataOd,
+        dataDo,
+        zapasMin,
+        result,
+        historyByTwId: historyDto,
+        historyFetchFailed,
+        pendingIndividuals,
+        pendingIndividualsTruncated,
+        pendingIndividualsError,
+        meta,
+        exclusions,
+        onRequests,
+        packaging,
+        productPairs,
+        productBoms,
+        teethTwIds,
+        boostPreset,
+        seed: input.uiSessionSeed ?? null,
+      });
+      const persisted = await persistZdEstimateUiSessionSnapshot({
+        payload: snapshot,
+        schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
+      });
+      uiSessionRotated = persisted.rotated;
+      if (persisted.ok) {
+        uiSessionId = persisted.sessionId;
+        uiSessionCreatedAt = snapshot.createdAt;
+      } else {
+        console.warn(
+          "[zd-ui-session] persist after Policz failed",
+          persisted.message
+        );
+      }
+    } catch (persistErr) {
+      console.warn("[zd-ui-session] persist after Policz threw", persistErr);
+    }
+
     return {
       ok: true,
       result,
-      historyByTwId: historyMapToDto(historyByTwId),
+      historyByTwId: historyDto,
       historyFetchFailed,
       pendingIndividuals,
       pendingIndividualsTruncated,
@@ -2020,25 +2115,10 @@ export async function actionRunZdEstimateManual(
       productBoms,
       teethTwIds,
       boostPreset,
-      meta: {
-        pagesFetched: fetched.pagesFetched,
-        totalCountApi: fetched.totalCountApi,
-        truncated: fetched.truncated,
-        ordersBaseUrl: orders.config.baseUrl,
-        durationMs: Date.now() - started,
-        totalFromSubiekt: result.totalFromSubiekt,
-        doZamowieniaCount: packAfter.doZamowieniaCount,
-        doZamowieniaSuma: packAfter.zdUnitsSuma,
-        doZamowieniaCountRaw: packRaw.doZamowieniaCount,
-        doZamowieniaSumaRaw: packRaw.zdUnitsSuma,
-        doZamowieniaZdUnitsSuma: packAfter.zdUnitsSuma,
-        doZamowieniaZdUnitsSumaRaw: packRaw.zdUnitsSuma,
-        excludedInGroupCount,
-        pairPartnerMissingCount: missingPartnerTwIds.size,
-        pairMissingTwIds: [...missingPartnerTwIds],
-        bomMissingCount: missingBomTwIds.size,
-        bomMissingTwIds: [...missingBomTwIds],
-      },
+      meta,
+      uiSessionId,
+      uiSessionCreatedAt,
+      uiSessionRotated,
     };
   } catch (e) {
     if (e instanceof SubiektZdEstimateFirstPageRejectedError) {
@@ -5051,21 +5131,23 @@ function isUniqueViolationMessage(message: string | undefined): boolean {
  * a pełny refresh po Server Action resetuje workbench / wyściguje z tokenem
  * sessionStorage. Wyjątek zarejestrowany w MissingRevalidateAfterMutation.ql.
  */
-export async function actionCreateZdEstimateUiSession(input: {
+async function persistZdEstimateUiSessionSnapshot(input: {
   payload: ZdEstimateUiSessionPayload;
   schemaVersion: number;
 }): Promise<
-  | { ok: true; sessionId: string }
-  | { ok: false; message: string }
+  | { ok: true; sessionId: string; rotated: true }
+  | { ok: false; message: string; rotated: boolean }
 > {
   const user = await getSessionUser();
   if (!user) {
-    return { ok: false, message: "Brak sesji." };
+    return { ok: false, message: "Brak sesji.", rotated: false };
   }
 
   const supabase = createAdminClient();
 
-  const clearActive = async (): Promise<{ ok: true } | { ok: false; message: string }> => {
+  const clearActive = async (): Promise<
+    { ok: true } | { ok: false; message: string }
+  > => {
     const { error } = await supabase
       .from("zd_estimate_ui_sessions")
       .delete()
@@ -5088,7 +5170,9 @@ export async function actionCreateZdEstimateUiSession(input: {
       .insert({
         owner_user_id: user.id,
         status: "active",
-        expires_at: new Date(now.getTime() + ZD_ESTIMATE_UI_SESSION_TTL_MS).toISOString(),
+        expires_at: new Date(
+          now.getTime() + ZD_ESTIMATE_UI_SESSION_TTL_MS
+        ).toISOString(),
         payload: input.payload as unknown,
         schema_version: input.schemaVersion,
       })
@@ -5106,22 +5190,36 @@ export async function actionCreateZdEstimateUiSession(input: {
 
   // Nowe „Policz” zastępuje poprzednią aktywną sesję.
   const cleared = await clearActive();
-  if (!cleared.ok) return cleared;
+  if (!cleared.ok) return { ...cleared, rotated: false };
 
   let created = await insertActive();
   if (!created.ok && isUniqueViolationMessage(created.message)) {
     // Wyścig dwóch Policz — spróbuj jeszcze raz po ponownym clear.
     const clearedAgain = await clearActive();
-    if (!clearedAgain.ok) return clearedAgain;
+    if (!clearedAgain.ok) return { ...clearedAgain, rotated: true };
     created = await insertActive();
   }
 
   if (!created.ok) {
     console.error("[zd-ui-session] create failed", created.message);
-    return created;
+    return { ...created, rotated: true };
   }
 
-  return created;
+  return { ok: true, sessionId: created.sessionId, rotated: true };
+}
+
+export async function actionCreateZdEstimateUiSession(input: {
+  payload: ZdEstimateUiSessionPayload;
+  schemaVersion: number;
+}): Promise<
+  | { ok: true; sessionId: string }
+  | { ok: false; message: string }
+> {
+  const user = await getSessionUser();
+  if (!user) {
+    return { ok: false, message: "Brak sesji." };
+  }
+  return persistZdEstimateUiSessionSnapshot(input);
 }
 
 export async function actionUpsertZdEstimateUiSessionSnapshot(input: {

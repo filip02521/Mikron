@@ -326,15 +326,20 @@ export function buildAutoProsbaClientBlockedToast(input: {
 
 /** Następny stan ack po confirm dialogu stock / qty (jak OrderFormClient). */
 export function nextAutoProsbaAckAfterConfirm(
-  kind: "stock" | "zk_quantity",
+  kind: "stock" | "unknown_stock" | "zk_quantity",
   prevAck: {
     acknowledgeSufficientStock?: boolean;
+    acknowledgeUnknownStock?: boolean;
     acknowledgeZkQuantityMismatch?: boolean;
   }
 ): {
   acknowledgeSufficientStock?: boolean;
+  acknowledgeUnknownStock?: boolean;
   acknowledgeZkQuantityMismatch?: boolean;
 } {
+  if (kind === "unknown_stock") {
+    return { ...prevAck, acknowledgeUnknownStock: true };
+  }
   if (kind === "stock") {
     return { ...prevAck, acknowledgeSufficientStock: true };
   }

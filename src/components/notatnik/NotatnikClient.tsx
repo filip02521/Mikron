@@ -80,6 +80,11 @@ import { NOTATNIK_PAGE_CLASS } from "./notatnik-layout";
 import { DelegateModeBackground } from "@/components/moje/DelegatePreviewContext";
 import { ZkWatchSection } from "./ZkWatchSection";
 import type { AutoProsbaToastPayload } from "@/lib/sales/zk-watch-auto-prosba-copy";
+import {
+  clearProsbaSuccessFlash,
+  consumeProsbaSuccessFlash,
+  prosbaSuccessFlashToAutoToast,
+} from "@/lib/orders/prosba-success-flash";
 import { mergeSalesPreviewSearchParams } from "@/lib/nav/sales-preview-href";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 import { isEditableKeyboardTarget } from "@/lib/platform/editable-keyboard-target";
@@ -401,6 +406,18 @@ export function NotatnikClient({
       );
     }
   }, [undo, navigateToTab, refresh, effectiveDelegatePreview, teamPreview]);
+
+  useEffect(() => {
+    const flash = consumeProsbaSuccessFlash();
+    if (!flash) return;
+    // Podgląd / tour: skonsumuj flash, żeby nie wisiał do kolejnego wejścia na ZK.
+    if (effectiveReadOnly || tourDemo) {
+      clearProsbaSuccessFlash();
+      return;
+    }
+    // Odłóż poza body effectu (react-hooks/set-state-in-effect).
+    queueMicrotask(() => setProsbaToast(prosbaSuccessFlashToAutoToast(flash)));
+  }, [effectiveReadOnly, tourDemo]);
 
   useEffect(() => {
     if (!undo || effectiveReadOnly) return;

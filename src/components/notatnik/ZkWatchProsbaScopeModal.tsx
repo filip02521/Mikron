@@ -171,7 +171,9 @@ export function ZkWatchProsbaScopeModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [autoProsba, setAutoProsba] = useState(false);
-  const canOfferAutoProsba = !readOnly && !tourPreview && !delegatePreview;
+  const canOfferAutoProsba = !readOnly && !tourPreview;
+  // delegatePreview: AUTO jest dozwolone (serwer też), jak manual /prosba.
+  void delegatePreview;
   const displayNumber = formatZkWatchDisplayNumber(watch.zk_number);
   const lineKeysToOrder = zkProsbaScopeLineKeysToOrder(productLines, orderMarked);
   const allLinesSufficient =

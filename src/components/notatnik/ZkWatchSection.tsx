@@ -48,6 +48,7 @@ import {
 import { actionAutoCreateProsbaFromZkWatch } from "@/app/actions/sales-notepad";
 import {
   buildProsbaSubmitStockConfirm,
+  buildProsbaSubmitUnknownStockConfirm,
   buildProsbaSubmitZkQuantityConfirm,
   type ProsbaLineStockSnapshot,
 } from "@/lib/orders/prosba-stock-check";
@@ -93,6 +94,7 @@ import { NOTATNIK_ZK_LIST_SECTION_CLASS } from "./notatnik-layout";
 import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
 import { buildMojeClientLink } from "@/lib/sales/notepad-follow-up";
 import { flashNotepadAnchor } from "@/lib/sales/notepad-anchor";
+import { clearUnseenNewZkLineKeys } from "@/lib/client/zk-watch-new-lines-snapshot";
 
 export function ZkWatchSection({
   watches,
@@ -189,7 +191,7 @@ export function ZkWatchSection({
     stockByTwId: Record<number, ProsbaLineStockSnapshot>;
   } | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmKind, setConfirmKind] = useState<"stock" | "zk_quantity" | null>(null);
+  const [confirmKind, setConfirmKind] = useState<"stock" | "unknown_stock" | "zk_quantity" | null>(null);
   const [confirmTitle, setConfirmTitle] = useState("Towar na stanie");
   const [confirmMessage, setConfirmMessage] = useState("");
   const [confirmSummary, setConfirmSummary] = useState<string | null>(null);
@@ -204,6 +206,7 @@ export function ZkWatchSection({
   );
   const pendingAckRef = useRef<{
     acknowledgeSufficientStock?: boolean;
+    acknowledgeUnknownStock?: boolean;
     acknowledgeZkQuantityMismatch?: boolean;
   }>({});
   const canRequestTeethDrafts = !readOnly && !tourPreview;
@@ -295,6 +298,7 @@ export function ZkWatchSection({
         acknowledgeSufficientStock: ack.acknowledgeSufficientStock,
         selectedScopeCount: pendingScopeCountRef.current,
         stockByTwId: pendingStockRef.current,
+        ...(delegatePreview ? { delegateFor: watch.sales_person_id } : {}),
       });
       if (result.code === "error_stock_ack_required") {
         reopenStockConfirm = true;
@@ -310,6 +314,8 @@ export function ZkWatchSection({
       }
       emitProsbaToastAfterScopeSaved(result);
       if (result.tone === "success") {
+        clearUnseenNewZkLineKeys(watch.sales_person_id, watch.id);
+        onNewZkLinesSeen?.(watch.id);
         router.refresh();
         flashNotepadAnchor(`watch-${watch.id}`);
       }
@@ -336,9 +342,30 @@ export function ZkWatchSection({
     lines: ProductLineDraft[],
     ack: {
       acknowledgeSufficientStock?: boolean;
+      acknowledgeUnknownStock?: boolean;
       acknowledgeZkQuantityMismatch?: boolean;
     }
   ) {
+    if (!ack.acknowledgeUnknownStock) {
+      const unknownConfirm = buildProsbaSubmitUnknownStockConfirm(
+        lines,
+        "zamowienie",
+        teethExemptTwIds,
+        { intent: "create" }
+      );
+      if (unknownConfirm) {
+        pendingLinesRef.current = lines;
+        pendingAckRef.current = ack;
+        setConfirmTitle("Brak stanu magazynowego");
+        setConfirmSummary(unknownConfirm.summary);
+        setConfirmMessage(unknownConfirm.message);
+        setConfirmLabel("Utwórz prośbę mimo to");
+        setConfirmKind("unknown_stock");
+        setConfirmOpen(true);
+        return;
+      }
+    }
+
     if (!ack.acknowledgeSufficientStock) {
       const stockConfirm = buildProsbaSubmitStockConfirm(
         lines,
@@ -958,6 +985,12 @@ export function ZkWatchSection({
           const kind = confirmKind;
           setConfirmKind(null);
           setConfirmSummary(null);
+          if (kind === "unknown_stock") {
+            const nextAck = nextAutoProsbaAckAfterConfirm("unknown_stock", prevAck);
+            pendingAckRef.current = nextAck;
+            runConfirmAndSubmit(lines, nextAck);
+            return;
+          }
           if (kind === "stock") {
             const nextAck = nextAutoProsbaAckAfterConfirm("stock", prevAck);
             pendingAckRef.current = nextAck;
