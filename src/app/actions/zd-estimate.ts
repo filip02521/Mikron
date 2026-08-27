@@ -5215,6 +5215,10 @@ export async function actionCreateZdEstimateUiSession(input: {
   | { ok: true; sessionId: string }
   | { ok: false; message: string }
 > {
+  const user = await getSessionUser();
+  if (!user) {
+    return { ok: false, message: "Brak sesji." };
+  }
   return persistZdEstimateUiSessionSnapshot(input);
 }
 

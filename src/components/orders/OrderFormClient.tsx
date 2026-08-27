@@ -374,7 +374,6 @@ export function OrderFormClient({
     async function applyZkPrefill(prefill: ZkProsbaPrefill) {
       if (cancelled) return;
       if (prefill.teethDraftsIncomplete) {
-        if (cancelled) return;
         setFormNotice({
           title: "Najpierw uzupełnij listę zębów",
           text: "Wróć do notatnika ZK i uzupełnij listę zębów (kolor, wzór, rozmiar), zanim utworzysz prośbę.",
@@ -384,7 +383,6 @@ export function OrderFormClient({
         return;
       }
       if (!prefill.lines.length) {
-        if (cancelled) return;
         setFormNotice({
           title: "Brak pozycji z ZK",
           text: "To ZK nie ma pozycji do prośby — wróć do notatnika albo odśwież kartę ZK.",
