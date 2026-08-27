@@ -295,7 +295,9 @@ export function OrderFormClient({
 
   useEffect(() => {
     zkPrefillAppliedRef.current = false;
-    if (zkPrefillFromUrl) setZkPrefillLoading(true);
+    if (zkPrefillFromUrl) {
+      queueMicrotask(() => setZkPrefillLoading(true));
+    }
   }, [zkPrefillFlowKey, zkPrefillFromUrl]);
 
   const clearFormNotice = useCallback(() => setFormNotice(null), [setFormNotice]);
@@ -356,14 +358,18 @@ export function OrderFormClient({
     const fromZkFlow =
       searchParams.get("fromZk") === "1" || Boolean(zkWatchParam) || Boolean(zkParam);
     if (tourDemo || !fromZkFlow) {
-      setZkPrefillLoading(false);
+      queueMicrotask(() => setZkPrefillLoading(false));
       return;
     }
 
     let cancelled = false;
     /** Pełny skeleton tylko przy pierwszym wczytaniu — re-run po katalogu zębów nie czyści panelu. */
     const blockingLoad = !zkPrefillAppliedRef.current;
-    if (blockingLoad) setZkPrefillLoading(true);
+    if (blockingLoad) {
+      queueMicrotask(() => {
+        if (!cancelled) setZkPrefillLoading(true);
+      });
+    }
 
     async function applyZkPrefill(prefill: ZkProsbaPrefill) {
       if (cancelled) return;

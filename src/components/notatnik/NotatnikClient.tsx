@@ -415,7 +415,8 @@ export function NotatnikClient({
       clearProsbaSuccessFlash();
       return;
     }
-    setProsbaToast(prosbaSuccessFlashToAutoToast(flash));
+    // Odłóż poza body effectu (react-hooks/set-state-in-effect).
+    queueMicrotask(() => setProsbaToast(prosbaSuccessFlashToAutoToast(flash)));
   }, [effectiveReadOnly, tourDemo]);
 
   useEffect(() => {
