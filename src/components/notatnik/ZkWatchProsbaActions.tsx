@@ -10,6 +10,34 @@ import {
   zkWatchRowActionSecondaryClass,
 } from "@/lib/ui/zk-watch-row-action-styles";
 
+function InformacjaLink({
+  href,
+  pending,
+  onClick,
+}: {
+  href: string;
+  pending?: boolean;
+  onClick: (event: MouseEvent<HTMLAnchorElement>) => void;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={(event) => {
+        if (pending) {
+          event.preventDefault();
+          return;
+        }
+        onClick(event);
+      }}
+      title="Utwórz prośbę informacyjną o dostępność (bez zamówienia u dostawcy)"
+      className={zkWatchRowActionSecondaryClass}
+      aria-disabled={pending || undefined}
+    >
+      Informacja
+    </Link>
+  );
+}
+
 export function ZkWatchProsbaActions({
   archived,
   pending,
@@ -17,6 +45,8 @@ export function ZkWatchProsbaActions({
   prosbaHref,
   prosbaInTokuHref,
   onProsbaClick,
+  informacjaHref,
+  onInformacjaClick,
   uncoveredCount,
   buttonLabel,
   teethDraftsIncomplete = false,
@@ -30,12 +60,15 @@ export function ZkWatchProsbaActions({
   prosbaHref: string;
   prosbaInTokuHref: string;
   onProsbaClick: (event: MouseEvent<HTMLAnchorElement>) => void;
+  /** Opcjonalna prośba informacyjna z tych samych pozycji ZK. */
+  informacjaHref?: string | null;
+  onInformacjaClick?: (event: MouseEvent<HTMLAnchorElement>) => void;
   uncoveredCount: number;
   /** Etykieta po filtrze stanu magazynowego (domyślnie z action.label). */
   buttonLabel?: string;
-  /** Brak kompletnych list zębów — zablokuj create, pokaż uzupełnienie. */
+  /** Brak kompletnych list zębów — zablokuj zamowienie, nie Informację. */
   teethDraftsIncomplete?: boolean;
-  /** Katalog zębów niedostępny — zablokuj create bez otwierania pustego modala. */
+  /** Katalog zębów niedostępny — zablokuj zamowienie bez otwierania pustego modala. */
   teethCatalogUnavailable?: boolean;
   /** false w tour/readOnly — nie pokazuj martwego CTA uzupełniania. */
   canEditTeethDrafts?: boolean;
@@ -50,6 +83,10 @@ export function ZkWatchProsbaActions({
   }
 
   const label = buttonLabel ?? prosbaCardAction.label;
+  const informacja =
+    informacjaHref && onInformacjaClick ? (
+      <InformacjaLink href={informacjaHref} pending={pending} onClick={onInformacjaClick} />
+    ) : null;
 
   if (prosbaCardAction.kind === "view_open") {
     const isPickup = label === "Odbierz w Moje";
@@ -69,29 +106,29 @@ export function ZkWatchProsbaActions({
 
   if (teethCatalogUnavailable) {
     return (
-      <span
-        className={zkWatchRowActionSecondaryClass}
-        aria-disabled
-        title="Katalog zębów jest chwilowo niedostępny — odśwież stronę i spróbuj ponownie"
-      >
-        Katalog zębów niedostępny
-      </span>
+      <>
+        <span
+          className={zkWatchRowActionSecondaryClass}
+          aria-disabled
+          title="Katalog zębów jest chwilowo niedostępny — odśwież stronę i spróbuj ponownie"
+        >
+          Katalog zębów niedostępny
+        </span>
+        {informacja}
+      </>
     );
   }
 
   if (teethDraftsIncomplete) {
-    if (!canEditTeethDrafts) {
-      return (
-        <span
-          className={zkWatchRowActionSecondaryClass}
-          aria-disabled
-          title="Najpierw uzupełnij listę zębów dla pozycji ZK"
-        >
-          Uzupełnij listę zębów
-        </span>
-      );
-    }
-    return (
+    const teethCta = !canEditTeethDrafts ? (
+      <span
+        className={zkWatchRowActionSecondaryClass}
+        aria-disabled
+        title="Najpierw uzupełnij listę zębów dla pozycji ZK"
+      >
+        Uzupełnij listę zębów
+      </span>
+    ) : (
       <button
         type="button"
         className={zkWatchRowActionSecondaryClass}
@@ -102,6 +139,12 @@ export function ZkWatchProsbaActions({
         Uzupełnij listę zębów
       </button>
     );
+    return (
+      <>
+        {teethCta}
+        {informacja}
+      </>
+    );
   }
 
   const title =
@@ -110,21 +153,24 @@ export function ZkWatchProsbaActions({
       : undefined;
 
   return (
-    <Link
-      href={prosbaHref}
-      onClick={(event) => {
-        if (pending) {
-          event.preventDefault();
-          return;
-        }
-        onProsbaClick(event);
-      }}
-      title={title}
-      className={zkWatchRowActionPrimaryClass}
-      aria-disabled={pending || undefined}
-    >
-      <IconPackageCheck size={13} className="shrink-0" strokeWidth={2.25} />
-      {label}
-    </Link>
+    <>
+      <Link
+        href={prosbaHref}
+        onClick={(event) => {
+          if (pending) {
+            event.preventDefault();
+            return;
+          }
+          onProsbaClick(event);
+        }}
+        title={title}
+        className={zkWatchRowActionPrimaryClass}
+        aria-disabled={pending || undefined}
+      >
+        <IconPackageCheck size={13} className="shrink-0" strokeWidth={2.25} />
+        {label}
+      </Link>
+      {informacja}
+    </>
   );
 }

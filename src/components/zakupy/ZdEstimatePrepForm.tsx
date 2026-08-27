@@ -36,6 +36,7 @@ import {
   zdEstimateNeedsSettingsHint,
   zdEstimatePrepCardHint,
   zdEstimateScopeChangedHint,
+  zdEstimateScopeHitSupplierMeta,
   zdEstimateScopeModeCechaHint,
   zdEstimateScopeModeGrupaHint,
 } from "@/lib/orders/zd-estimate-ui-copy";
@@ -381,6 +382,8 @@ export function ZdEstimatePrepForm({
                   {groupHits.map((g) => {
                     const fav = isGroupFavorite(g.grt_Id);
                     const selected = selectedGroup?.grt_Id === g.grt_Id;
+                    const supplierMeta =
+                      selected ? null : zdEstimateScopeHitSupplierMeta(g);
                     return (
                       <li key={g.grt_Id} className="flex items-stretch" role="option" aria-selected={selected}>
                         <button
@@ -395,13 +398,9 @@ export function ZdEstimatePrepForm({
                             <span className="block font-medium text-slate-900">
                               {g.grt_Nazwa}
                             </span>
-                            {g.supplierName ? (
+                            {supplierMeta ? (
                               <span className="mt-0.5 block truncate text-xs text-slate-500">
-                                {g.supplierName}
-                                {g.supplierMatchSource === "mapping"
-                                  ? ` · ${ZD_ESTIMATE_UI.supplierFromMappingHitSuffix}`
-                                  : ""}
-                                {g.stockLabel ? ` · ${g.stockLabel}` : ""}
+                                {supplierMeta}
                               </span>
                             ) : null}
                           </span>
@@ -531,6 +530,8 @@ export function ZdEstimatePrepForm({
                   {cechaHits.map((c) => {
                     const fav = isCechaFavorite(c.ctw_Id);
                     const selected = selectedCecha?.ctw_Id === c.ctw_Id;
+                    const supplierMeta =
+                      selected ? null : zdEstimateScopeHitSupplierMeta(c);
                     return (
                       <li key={c.ctw_Id} className="flex items-stretch" role="option" aria-selected={selected}>
                         <button
@@ -545,13 +546,9 @@ export function ZdEstimatePrepForm({
                             <span className="block font-medium text-slate-900">
                               {c.ctw_Nazwa}
                             </span>
-                            {c.supplierName ? (
+                            {supplierMeta ? (
                               <span className="mt-0.5 block truncate text-xs text-slate-500">
-                                {c.supplierName}
-                                {c.supplierMatchSource === "mapping"
-                                  ? ` · ${ZD_ESTIMATE_UI.supplierFromMappingHitSuffix}`
-                                  : ""}
-                                {c.stockLabel ? ` · ${c.stockLabel}` : ""}
+                                {supplierMeta}
                               </span>
                             ) : null}
                           </span>
@@ -585,6 +582,10 @@ export function ZdEstimatePrepForm({
               )}
               role="status"
               aria-live="polite"
+              aria-label={
+                supplierFromMappingNotice ??
+                `${ZD_ESTIMATE_UI.supplierLinkedLabel}: ${selectedSupplier.name}`
+              }
             >
               <span
                 className={cn(
@@ -594,7 +595,9 @@ export function ZdEstimatePrepForm({
                     : "bg-emerald-100 text-emerald-900"
                 )}
               >
-                {ZD_ESTIMATE_UI.supplierLinkedLabel}
+                {supplierFromMappingNotice
+                  ? ZD_ESTIMATE_UI.supplierLinkedFromMappingLabel
+                  : ZD_ESTIMATE_UI.supplierLinkedLabel}
               </span>
               <p
                 className={cn(
@@ -605,11 +608,6 @@ export function ZdEstimatePrepForm({
                 )}
               >
                 {selectedSupplier.name}
-                {supplierFromMappingNotice ? (
-                  <span className="ml-1.5 font-normal text-indigo-800/80">
-                    · {ZD_ESTIMATE_UI.supplierLinkedFromMappingBadge}
-                  </span>
-                ) : null}
               </p>
               {selectedSupplier.stockLabel &&
               selectedSupplier.stockLabel !== "—" ? (

@@ -72,6 +72,7 @@ import {
 } from "@/app/actions/sales-notepad";
 import { ProsbaVsBoardHint } from "@/components/department-board/ProsbaVsBoardHint";
 import { ZkProsbaLinkBanner } from "@/components/orders/ZkProsbaLinkBanner";
+import { ProsbaZkPrefillLoading } from "@/components/orders/ProsbaZkPrefillLoading";
 import { ProsbaSupplierVacationNotice } from "@/components/orders/ProsbaSupplierVacationNotice";
 import {
   buildProsbaSupplierVacationNoticeModel,
@@ -97,7 +98,7 @@ import { DEPARTMENT_BOARD_QUESTIONS_FORM } from "@/lib/department-board/copy";
 import { readTeethOcrProsbaPrefill, clearTeethOcrProsbaPrefill, resolveSupplierForTeethPrefill } from "@/lib/orders/teeth-ocr-prosba-prefill";
 import { clearUnseenNewZkLineKeys, removeUnseenNewZkLineKeys } from "@/lib/client/zk-watch-new-lines-snapshot";
 import { ProsbaStockConfirmDialog } from "@/components/orders/ProsbaStockConfirmDialog";
-import { buildProsbaSubmitStockConfirm, buildProsbaSubmitZkQuantityConfirm, formatProsbaZkQuantityFormBanner, applyProsbaLineStockMap, collectProsbaLineTwIdsMissingStock } from "@/lib/orders/prosba-stock-check";
+import { buildProsbaSubmitStockConfirm, buildProsbaSubmitUnknownStockConfirm, buildProsbaSubmitZkQuantityConfirm, formatProsbaZkQuantityFormBanner, applyProsbaLineStockMap, collectProsbaLineTwIdsMissingStock } from "@/lib/orders/prosba-stock-check";
 import { handleProsbaStockSubmitError } from "@/lib/orders/prosba-stock-submit-error";
 import { useTeethExemptTwIds, useTeethProductInfo } from "@/components/layout/TeethExemptContext";
 import { prosbaLinesIncludeTeethProduct } from "@/lib/orders/teeth-stock-exempt";
@@ -107,6 +108,11 @@ import {
 } from "@/lib/teeth/teeth-procurement-flow-copy";
 import { resolveTeethCatalogProduct } from "@/lib/teeth/teeth-dual-kind";
 import { formatSubmitResult } from "@/lib/orders/prosba-submit-result-copy";
+import { notatnikZkWatchHref } from "@/lib/orders/notatnik-zk-watch-href";
+import {
+  buildZkProsbaSuccessFlash,
+  stashProsbaSuccessFlash,
+} from "@/lib/orders/prosba-success-flash";
 
 interface Entry {
   id: string;
@@ -213,7 +219,10 @@ export function OrderFormClient({
   );
   const [pending, start] = useTransition();
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  /** Po udanym submit z ZK — blokada ponownej wysyłki do czasu unmount / nawigacji. */
+  const [submitLocked, setSubmitLocked] = useState(false);
   const pendingSafetyRef = useRef<number | null>(null);
+
 
   useEffect(() => {
     return () => {
@@ -228,6 +237,18 @@ export function OrderFormClient({
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
   const deferSupplierResolve = Boolean(singleGroup && lockedSalesPerson);
   const [formNotice, setFormNotice] = useState<FormMessage | null>(null);
+  const zkPrefillFromUrl = useMemo(() => {
+    if (tourDemo) return false;
+    return (
+      searchParams.get("fromZk") === "1" ||
+      Boolean(searchParams.get("zkWatch")?.trim()) ||
+      Boolean(searchParams.get("zk")?.trim())
+    );
+  }, [searchParams, tourDemo]);
+  /** Od razu na pierwszym paint — bez pustego panelu przed effectem. */
+  const [zkPrefillLoading, setZkPrefillLoading] = useState(zkPrefillFromUrl);
+  const zkPrefillNumberHint =
+    searchParams.get("zk")?.trim() || null;
   /** Po prefill z ZK — link „Moje zamówienia” z tym samym filtrem co w notatniku. */
   const [zkProsbaLinkContext, setZkProsbaLinkContext] = useState<{
     zkWatchId: string | null;
@@ -243,7 +264,9 @@ export function OrderFormClient({
   } | null>(null);
   const [validationAttempted, setValidationAttempted] = useState(false);
   const [stockConfirmOpen, setStockConfirmOpen] = useState(false);
-  const [stockConfirmKind, setStockConfirmKind] = useState<"stock" | "zk_quantity" | null>(null);
+  const [stockConfirmKind, setStockConfirmKind] = useState<
+    "stock" | "unknown_stock" | "zk_quantity" | null
+  >(null);
   const [stockConfirmMessage, setStockConfirmMessage] = useState("");
   const [stockConfirmSummary, setStockConfirmSummary] = useState<string | null>(null);
   const [stockConfirmTitle, setStockConfirmTitle] = useState("Towar na stanie");
@@ -251,9 +274,29 @@ export function OrderFormClient({
   const pendingSubmitEntriesRef = useRef<(Entry & { requestNote?: string })[]>([]);
   const pendingSubmitAckRef = useRef<{
     acknowledgeSufficientStock?: boolean;
+    acknowledgeUnknownStock?: boolean;
     acknowledgeZkQuantityMismatch?: boolean;
   }>({});
   const submitRef = useRef<() => void>(() => {});
+  const zkPrefillAppliedRef = useRef(false);
+
+  const zkPrefillFlowKey = useMemo(
+    () =>
+      [
+        searchParams.get("zkWatch") ?? "",
+        searchParams.get("zk") ?? "",
+        searchParams.get("zkLines") ?? "",
+        searchParams.get("fromZk") ?? "",
+        lockedId,
+        tourDemo ? "1" : "0",
+      ].join("|"),
+    [searchParams, lockedId, tourDemo]
+  );
+
+  useEffect(() => {
+    zkPrefillAppliedRef.current = false;
+    if (zkPrefillFromUrl) setZkPrefillLoading(true);
+  }, [zkPrefillFlowKey, zkPrefillFromUrl]);
 
   const clearFormNotice = useCallback(() => setFormNotice(null), [setFormNotice]);
 
@@ -312,20 +355,38 @@ export function OrderFormClient({
     const zkParam = searchParams.get("zk")?.trim();
     const fromZkFlow =
       searchParams.get("fromZk") === "1" || Boolean(zkWatchParam) || Boolean(zkParam);
-    if (tourDemo || !fromZkFlow) return;
+    if (tourDemo || !fromZkFlow) {
+      setZkPrefillLoading(false);
+      return;
+    }
 
     let cancelled = false;
+    /** Pełny skeleton tylko przy pierwszym wczytaniu — re-run po katalogu zębów nie czyści panelu. */
+    const blockingLoad = !zkPrefillAppliedRef.current;
+    if (blockingLoad) setZkPrefillLoading(true);
 
     async function applyZkPrefill(prefill: ZkProsbaPrefill) {
+      if (cancelled) return;
       if (prefill.teethDraftsIncomplete) {
+        if (cancelled) return;
         setFormNotice({
           title: "Najpierw uzupełnij listę zębów",
           text: "Wróć do notatnika ZK i uzupełnij listę zębów (kolor, wzór, rozmiar), zanim utworzysz prośbę.",
           tone: "warning",
         });
+        zkPrefillAppliedRef.current = true;
         return;
       }
-      if (!prefill.lines.length) return;
+      if (!prefill.lines.length) {
+        if (cancelled) return;
+        setFormNotice({
+          title: "Brak pozycji z ZK",
+          text: "To ZK nie ma pozycji do prośby — wróć do notatnika albo odśwież kartę ZK.",
+          tone: "warning",
+        });
+        zkPrefillAppliedRef.current = true;
+        return;
+      }
       let resolved = prefill;
       if (
         !zkProsbaCatalogLocked(resolved) &&
@@ -339,24 +400,37 @@ export function OrderFormClient({
             resolved.requestKind,
             resolved.mode
           );
-          if (fromWatch?.teethDraftsIncomplete) {
+          if (cancelled) return;
+          if (!fromWatch) {
+            setFormNotice({
+              title: "Nie udało się wczytać ZK",
+              text: "ZK jest zamknięte, niedostępne albo wygasło — wróć do notatnika.",
+              tone: "warning",
+            });
+            zkPrefillAppliedRef.current = true;
+            return;
+          }
+          if (fromWatch.teethDraftsIncomplete) {
             setFormNotice({
               title: "Najpierw uzupełnij listę zębów",
               text: "Wróć do notatnika ZK i uzupełnij listę zębów (kolor, wzór, rozmiar), zanim utworzysz prośbę.",
               tone: "warning",
             });
+            zkPrefillAppliedRef.current = true;
             return;
           }
-          if (fromWatch && zkProsbaCatalogLocked(fromWatch)) {
+          if (zkProsbaCatalogLocked(fromWatch)) {
             resolved = {
               ...resolved,
               allowedTwIds: fromWatch.allowedTwIds,
             };
           }
         } catch {
-          /* allowlista — best effort */
+          /* allowlista — best effort gdy serwer chwilowo niedostępny */
         }
       }
+
+      if (cancelled) return;
 
       const clientName = resolved.clientName?.trim() || "";
       const clientKhId = resolved.clientKhId ?? null;
@@ -373,7 +447,7 @@ export function OrderFormClient({
       }
       setValidationAttempted(false);
       setFormNotice(null);
-      setMsg(null);
+      // Nie kasuj toastu sukcesu — po ZK i tak wracamy na /zk; przy re-run katalogu zębów toast musi zostać.
       if (resolved.zkWatchId || resolved.zkNumber.trim()) {
         setZkProsbaLinkContext({
           zkWatchId: resolved.zkWatchId,
@@ -443,97 +517,141 @@ export function OrderFormClient({
 
       if (!cancelled) {
         setGroups([baseLines]);
+        zkPrefillAppliedRef.current = true;
       }
     }
 
     async function loadZkPrefill() {
-      const delegateId = searchParams.get("dla")?.trim() || lockedId;
-      if (!delegateId) return;
+      try {
+        const delegateId = searchParams.get("dla")?.trim() || lockedId;
+        if (!delegateId) return;
 
-      const fromStorage = readZkProsbaPrefill();
-      if (fromStorage && (fromStorage.lines.length || fromStorage.teethDraftsIncomplete)) {
-        if (!cancelled) {
-          const watchId = fromStorage.zkWatchId?.trim();
-          if (watchId) {
-            try {
-              const fromWatch = await actionGetZkProsbaPrefillByWatchId(
-                watchId,
-                delegateId || undefined,
-                fromStorage.lineKeys,
-                fromStorage.requestKind,
-                fromStorage.mode
-              );
-              if (fromWatch) {
-                await applyZkPrefill(fromWatch);
+        const fromStorage = readZkProsbaPrefill();
+        if (fromStorage && (fromStorage.lines.length || fromStorage.teethDraftsIncomplete)) {
+          if (!cancelled) {
+            const watchId = fromStorage.zkWatchId?.trim();
+            if (watchId) {
+              // Zawsze waliduj po serwerze — stash nie może ożywić zamkniętego ZK.
+              try {
+                const fromWatch = await actionGetZkProsbaPrefillByWatchId(
+                  watchId,
+                  delegateId || undefined,
+                  fromStorage.lineKeys,
+                  fromStorage.requestKind,
+                  fromStorage.mode
+                );
                 clearZkProsbaPrefill();
+                if (fromWatch) {
+                  await applyZkPrefill(fromWatch);
+                  return;
+                }
+                setFormNotice({
+                  title: "Nie udało się wczytać ZK",
+                  text: "ZK jest zamknięte, niedostępne albo wygasło — wróć do notatnika.",
+                  tone: "warning",
+                });
+                zkPrefillAppliedRef.current = true;
+                return;
+              } catch (err) {
+                clearZkProsbaPrefill();
+                setFormNotice({
+                  title: "Nie udało się wczytać ZK",
+                  text: userFacingErrorText(err, "Uzupełnij prośbę ręcznie lub wróć do notatnika."),
+                  tone: "warning",
+                });
+                zkPrefillAppliedRef.current = true;
                 return;
               }
-            } catch {
-              /* fallback do stash poniżej */
             }
-          }
-          await applyZkPrefill(fromStorage);
-          clearZkProsbaPrefill();
-        }
-        return;
-      }
-
-      const zkWatch = searchParams.get("zkWatch")?.trim();
-      const zk = searchParams.get("zk")?.trim();
-      const zkLineKeys = parseProsbaZkLineKeysParam(searchParams.get("zkLines"));
-      const requestKindFromUrl =
-        searchParams.get("rodzaj") === "informacja" ? ("informacja" as const) : undefined;
-      const modeFromUrl =
-        searchParams.get("uzupelnienie") === "1" ? ("supplement" as const) : undefined;
-
-      try {
-        if (cancelled) return;
-        if (zkWatch) {
-          const fromWatch = await actionGetZkProsbaPrefillByWatchId(
-            zkWatch,
-            delegateId || undefined,
-            zkLineKeys,
-            requestKindFromUrl,
-            modeFromUrl
-          );
-          if (!cancelled && fromWatch && (fromWatch.lines.length || fromWatch.teethDraftsIncomplete)) {
-            await applyZkPrefill(fromWatch);
-            return;
-          }
-          if (!cancelled && zkLineKeys?.length) {
+            // Stash bez watchId — nie aplikuj (brak walidacji zamknięcia / allowlisty).
+            clearZkProsbaPrefill();
             setFormNotice({
               title: "Nie udało się wczytać ZK",
-              text: "Uzupełnij prośbę ręcznie lub wróć do notatnika.",
+              text: "Brak powiązania z kartą ZK — wróć do notatnika i utwórz prośbę ponownie.",
               tone: "warning",
             });
-            return;
+            zkPrefillAppliedRef.current = true;
           }
+          return;
         }
-        if (zk) {
-          const fromServer = await actionGetZkProsbaPrefill(zk, delegateId || undefined);
-          if (!cancelled && fromServer && (fromServer.lines.length || fromServer.teethDraftsIncomplete)) {
-            await applyZkPrefill(fromServer);
-            return;
-          }
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setFormNotice({
-            title: "Nie udało się wczytać ZK",
-            text: userFacingErrorText(err, "Uzupełnij prośbę ręcznie."),
-            tone: "warning",
-          });
-        }
-      }
 
-      const fromUrl = buildProsbaPrefillFromUrlParams({
-        klient: searchParams.get("klient"),
-        kh: searchParams.get("kh"),
-        zk: searchParams.get("zk"),
-        zkWatch: searchParams.get("zkWatch"),
-      });
-      if (!cancelled && fromUrl?.lines.length && !zkLineKeys?.length) {
-        await applyZkPrefill(fromUrl);
+        const zkWatch = searchParams.get("zkWatch")?.trim();
+        const zk = searchParams.get("zk")?.trim();
+        const zkLineKeys = parseProsbaZkLineKeysParam(searchParams.get("zkLines"));
+        const requestKindFromUrl =
+          searchParams.get("rodzaj") === "informacja" ? ("informacja" as const) : undefined;
+        const modeFromUrl =
+          searchParams.get("uzupelnienie") === "1" ? ("supplement" as const) : undefined;
+
+        try {
+          if (cancelled) return;
+          if (zkWatch) {
+            const fromWatch = await actionGetZkProsbaPrefillByWatchId(
+              zkWatch,
+              delegateId || undefined,
+              zkLineKeys,
+              requestKindFromUrl,
+              modeFromUrl
+            );
+            if (!cancelled && fromWatch && (fromWatch.lines.length || fromWatch.teethDraftsIncomplete)) {
+              await applyZkPrefill(fromWatch);
+              return;
+            }
+            // Nie spadaj do URL stub — bez allowlisty katalog byłby odblokowany.
+            if (!cancelled) {
+              setFormNotice({
+                title: "Nie udało się wczytać ZK",
+                text: zkLineKeys?.length
+                  ? "Uzupełnij prośbę ręcznie lub wróć do notatnika."
+                  : "ZK jest zamknięte, niedostępne albo wygasło — wróć do notatnika.",
+                tone: "warning",
+              });
+              zkPrefillAppliedRef.current = true;
+            }
+            return;
+          }
+          if (zk) {
+            const fromServer = await actionGetZkProsbaPrefill(zk, delegateId || undefined);
+            if (!cancelled && fromServer && (fromServer.lines.length || fromServer.teethDraftsIncomplete)) {
+              await applyZkPrefill(fromServer);
+              return;
+            }
+            if (!cancelled) {
+              setFormNotice({
+                title: "Nie udało się wczytać ZK",
+                text: "ZK jest zamknięte, niedostępne albo wygasło — wróć do notatnika.",
+                tone: "warning",
+              });
+              zkPrefillAppliedRef.current = true;
+              return;
+            }
+          }
+        } catch (err) {
+          if (!cancelled) {
+            setFormNotice({
+              title: "Nie udało się wczytać ZK",
+              text: userFacingErrorText(err, "Uzupełnij prośbę ręcznie."),
+              tone: "warning",
+            });
+            zkPrefillAppliedRef.current = true;
+          }
+          return;
+        }
+
+        // Stub URL tylko gdy nie było zkWatch/zk (np. sam klient z query).
+        const fromUrl = buildProsbaPrefillFromUrlParams({
+          klient: searchParams.get("klient"),
+          kh: searchParams.get("kh"),
+          zk: searchParams.get("zk"),
+          zkWatch: searchParams.get("zkWatch"),
+        });
+        if (!cancelled && fromUrl?.lines.length && !zkLineKeys?.length) {
+          await applyZkPrefill(fromUrl);
+        } else if (!cancelled) {
+          zkPrefillAppliedRef.current = true;
+        }
+      } finally {
+        if (!cancelled) setZkPrefillLoading(false);
       }
     }
 
@@ -703,6 +821,7 @@ export function OrderFormClient({
     pendingSafetyRef.current = window.setTimeout(() => setPendingMessage(null), ACTION_PENDING_SAFETY_FORM_MS);
     start(async () => {
       const zkCtx = zkProsbaLinkContext;
+      let redirectingToZk = false;
       try {
         assertProsbaLinesBelongToZk(entries, zkCtx?.allowedTwIds);
         const r = await actionAddIndividualOrders({
@@ -755,32 +874,26 @@ export function OrderFormClient({
         const stockOutHidden =
           requestKind === "informacja" && informacjaFlags.informacjaStockOutReorder;
 
-        setMsg({
-          title: "Prośba zapisana",
-          text: zkCtx
-            ? `Powiązano z ${zkCtx.zkNumber}.`
-            : defaultSuccessText,
-          tone: "success",
-          actionHref: stockOutHidden
-            ? undefined
-            : zkCtx
-              ? buildMojeClientLink(lockedId, zkCtx.clientLabel, {
-                  preview: submitForOther,
-                  clientKhId: zkCtx.clientKhId,
-                  zkWatchId: zkCtx.zkWatchId,
-                  zkNumber: zkCtx.zkNumber,
-                })
-              : submitForOther
-                ? `/moje?dla=${lockedSalesPerson?.id ?? lockedId}`
-                : "/moje",
-          actionLabel: stockOutHidden
-            ? undefined
-            : zkCtx
-              ? "Prośby tego klienta"
-              : submitForOther
-                ? "Prośby handlowca"
-                : "Moje zamówienia",
-        });
+        const mojeActionHref = stockOutHidden
+          ? undefined
+          : zkCtx
+            ? buildMojeClientLink(lockedId, zkCtx.clientLabel, {
+                preview: submitForOther,
+                clientKhId: zkCtx.clientKhId,
+                zkWatchId: zkCtx.zkWatchId,
+                zkNumber: zkCtx.zkNumber,
+              })
+            : submitForOther
+              ? `/moje?dla=${lockedSalesPerson?.id ?? lockedId}`
+              : "/moje";
+        const mojeActionLabel = stockOutHidden
+          ? undefined
+          : zkCtx
+            ? "Prośby tego klienta"
+            : submitForOther
+              ? "Prośby handlowca"
+              : "Moje zamówienia";
+
         if (zkCtx?.zkWatchId && lockedId) {
           if (zkCtx.mode === "supplement" && zkCtx.lineKeys?.length) {
             removeUnseenNewZkLineKeys(lockedId, zkCtx.zkWatchId, zkCtx.lineKeys);
@@ -788,6 +901,101 @@ export function OrderFormClient({
             clearUnseenNewZkLineKeys(lockedId, zkCtx.zkWatchId);
           }
         }
+
+        // Prośba z ZK: wróć na kartę ZK + flash toast (lokalny toast ginie przy nawigacji /
+        // revalidatePath, a URL fromZk powodował ponowne wypełnienie formularza).
+        // Wymagamy zkWatchId — bez niego focusWatch nie działa, zostaw toast na /prosba.
+        if (
+          zkCtx?.zkWatchId?.trim() &&
+          singleGroup &&
+          lockedSalesPerson
+        ) {
+          const flash = buildZkProsbaSuccessFlash({
+            zkNumber: zkCtx.zkNumber,
+            zkWatchId: zkCtx.zkWatchId,
+            count: r.count,
+            complete: r.complete,
+            verification: r.verification,
+            requestKind,
+            mode: zkCtx.mode,
+            actionHref: mojeActionHref,
+            actionLabel: mojeActionLabel,
+          });
+          stashProsbaSuccessFlash(flash);
+          const backHref =
+            notatnikZkWatchHref(zkCtx.zkWatchId, {
+              salesPersonId: lockedId,
+              previewDla: submitForOther
+                ? searchParams.get("dla")?.trim() || lockedId
+                : searchParams.get("dla"),
+            }) ?? "/zk";
+          redirectingToZk = true;
+          setSubmitLocked(true);
+          setPendingMessage("Prośba zapisana — wracam do ZK…");
+          // Po udanym zapisie blokujemy ponowną wysyłkę do unmountu.
+          // Jeśli nawigacja się wywali / zawiesi — po safety pokaż sukces lokalnie i odblokuj UI
+          // (bez możliwości cichego double-submit: grupy zostaną wyczyszczone jak niżej w recovery).
+          if (pendingSafetyRef.current) window.clearTimeout(pendingSafetyRef.current);
+          const recoverAfterFailedRedirect = () => {
+            if (pendingSafetyRef.current) {
+              window.clearTimeout(pendingSafetyRef.current);
+              pendingSafetyRef.current = null;
+            }
+            // Zostaw submitLocked — prośba już jest zapisana; bez ponownej wysyłki.
+            setPendingMessage(null);
+            setMsg({
+              title: "Prośba zapisana",
+              text: flash.message,
+              tone: "success",
+              actionHref: backHref,
+              actionLabel: "Wróć do ZK",
+            });
+            setFormNotice(null);
+            setValidationAttempted(false);
+            setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
+            setZkProsbaLinkContext(null);
+            setGroups(buildInitialGroups(lockedId, initialSupplierId));
+            setStockConfirmOpen(false);
+            setStockConfirmKind(null);
+          };
+          pendingSafetyRef.current = window.setTimeout(
+            recoverAfterFailedRedirect,
+            ACTION_PENDING_SAFETY_FORM_MS
+          );
+          setFormNotice(null);
+          setValidationAttempted(false);
+          setStockConfirmOpen(false);
+          setStockConfirmKind(null);
+          try {
+            const nav = router.push(backHref) as void | Promise<unknown>;
+            if (nav && typeof (nav as Promise<unknown>).then === "function") {
+              void (nav as Promise<unknown>).catch(() => {
+                recoverAfterFailedRedirect();
+              });
+            }
+          } catch {
+            recoverAfterFailedRedirect();
+          }
+          return;
+        }
+
+        setMsg({
+          title: "Prośba zapisana",
+          text: zkCtx
+            ? buildZkProsbaSuccessFlash({
+                zkNumber: zkCtx.zkNumber,
+                zkWatchId: zkCtx.zkWatchId,
+                count: r.count,
+                complete: r.complete,
+                verification: r.verification,
+                requestKind,
+                mode: zkCtx.mode,
+              }).message
+            : defaultSuccessText,
+          tone: "success",
+          actionHref: mojeActionHref,
+          actionLabel: mojeActionLabel,
+        });
         setFormNotice(null);
         setValidationAttempted(false);
         setInformacjaPath(DEFAULT_INFORMACJA_FLOW_PATH);
@@ -809,11 +1017,13 @@ export function OrderFormClient({
           }
         );
       } finally {
-        if (pendingSafetyRef.current) {
-          window.clearTimeout(pendingSafetyRef.current);
-          pendingSafetyRef.current = null;
+        if (!redirectingToZk) {
+          if (pendingSafetyRef.current) {
+            window.clearTimeout(pendingSafetyRef.current);
+            pendingSafetyRef.current = null;
+          }
+          setPendingMessage(null);
         }
-        setPendingMessage(null);
       }
     });
   };
@@ -822,10 +1032,30 @@ export function OrderFormClient({
     entries: (Entry & { requestNote?: string })[],
     ack: {
       acknowledgeSufficientStock?: boolean;
+      acknowledgeUnknownStock?: boolean;
       acknowledgeZkQuantityMismatch?: boolean;
     } = {}
   ) => {
     const mergedAck = { ...pendingSubmitAckRef.current, ...ack };
+
+    if (requestKind === "zamowienie" && !mergedAck.acknowledgeUnknownStock) {
+      const unknownConfirm = buildProsbaSubmitUnknownStockConfirm(
+        entries,
+        "zamowienie",
+        teethExemptTwIds
+      );
+      if (unknownConfirm) {
+        pendingSubmitEntriesRef.current = entries;
+        pendingSubmitAckRef.current = mergedAck;
+        setStockConfirmTitle("Brak stanu magazynowego");
+        setStockConfirmConfirmLabel("Wyślij mimo to");
+        setStockConfirmSummary(unknownConfirm.summary);
+        setStockConfirmMessage(unknownConfirm.message);
+        setStockConfirmKind("unknown_stock");
+        setStockConfirmOpen(true);
+        return;
+      }
+    }
 
     if (requestKind === "zamowienie" && !mergedAck.acknowledgeSufficientStock) {
       const stockConfirm = buildProsbaSubmitStockConfirm(entries, "zamowienie", teethExemptTwIds);
@@ -873,6 +1103,19 @@ export function OrderFormClient({
       setFormNotice({
         title: "Tryb podglądu",
         text: "Formularz nie wysyła prośby — to tylko demonstracja.",
+        tone: "warning",
+      });
+      return;
+    }
+
+    if (submitLocked || pendingMessage || pending) {
+      return;
+    }
+
+    if (zkPrefillLoading) {
+      setFormNotice({
+        title: "Trwa wczytywanie ZK",
+        text: "Poczekaj, aż pozycje z zamówienia klienta się uzupełnią, potem wyślij prośbę.",
         tone: "warning",
       });
       return;
@@ -1257,6 +1500,10 @@ export function OrderFormClient({
         const kind = stockConfirmKind;
         setStockConfirmKind(null);
         setStockConfirmSummary(null);
+        if (kind === "unknown_stock") {
+          runSubmitWithConfirms(entries, { ...prevAck, acknowledgeUnknownStock: true });
+          return;
+        }
         if (kind === "stock") {
           runSubmitWithConfirms(entries, { ...prevAck, acknowledgeSufficientStock: true });
           return;
@@ -1299,7 +1546,11 @@ export function OrderFormClient({
     return (
       <div className={cn("relative space-y-5", msg && "pb-44")}>
         {pendingMessage ? (
-          <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
+          <ActionLoadingOverlay
+            message={pendingMessage}
+            variant="viewport"
+            className="pointer-events-auto"
+          />
         ) : null}
         {toastSlot}
         {stockConfirmDialog}
@@ -1478,16 +1729,29 @@ export function OrderFormClient({
             <ProsbaFormProductsSection
               requestKind={requestKind}
               informacjaPath={informacjaPath}
-              showShortageLookup={prosbaLinesIncludeTeethProduct(group, teethExemptTwIds)}
+              showShortageLookup={
+                !zkPrefillLoading &&
+                prosbaLinesIncludeTeethProduct(group, teethExemptTwIds)
+              }
               hint={
-                zkCatalogLocked
-                  ? ZK_PROSBA_LINK_BANNER_COPY.productsSectionHint
-                  : requestKind === "informacja"
-                    ? informacjaProductsFormHint(informacjaPath)
-                    : PROSBA_FORM_SECTION_COPY.products.orderHint
+                zkPrefillLoading
+                  ? "Trwa wczytywanie pozycji z zamówienia klienta."
+                  : zkCatalogLocked
+                    ? ZK_PROSBA_LINK_BANNER_COPY.productsSectionHint
+                    : requestKind === "informacja"
+                      ? informacjaProductsFormHint(informacjaPath)
+                      : PROSBA_FORM_SECTION_COPY.products.orderHint
               }
             >
               <div className="space-y-3">
+                {zkPrefillLoading ? (
+                  <ProsbaZkPrefillLoading
+                    zkNumber={
+                      zkProsbaLinkContext?.zkNumber ?? zkPrefillNumberHint
+                    }
+                  />
+                ) : (
+                  <>
                 {vacationNoticeModel ? (
                   <ProsbaSupplierVacationNotice model={vacationNoticeModel} />
                 ) : null}
@@ -1546,6 +1810,8 @@ export function OrderFormClient({
                   teethExemptTwIds={teethExemptTwIds}
                   zkAllowedTwIds={zkProsbaLinkContext?.allowedTwIds ?? undefined}
                 />
+                  </>
+                )}
               </div>
             </ProsbaFormProductsSection>
           </div>
@@ -1562,16 +1828,36 @@ export function OrderFormClient({
               </p>
             ) : null}
             <Button
-              disabled={pending || tourDemo || readOnly || !canSubmitProsba}
+              disabled={
+                pending ||
+                tourDemo ||
+                readOnly ||
+                zkPrefillLoading ||
+                submitLocked ||
+                Boolean(pendingMessage) ||
+                !canSubmitProsba
+              }
               onClick={submit}
               title={
-                !canSubmitProsba && !pending && !tourDemo
-                  ? prosbaReadiness.headline
-                  : undefined
+                zkPrefillLoading
+                  ? "Trwa wczytywanie pozycji z ZK"
+                  : submitLocked || pendingMessage
+                    ? "Prośba jest już wysyłana"
+                    : !canSubmitProsba && !pending && !tourDemo
+                      ? prosbaReadiness.headline
+                      : undefined
               }
               className="w-full shrink-0 sm:w-auto sm:min-w-[10rem]"
             >
-              {tourDemo ? "Podgląd — bez wysyłki" : pending ? "Wysyłanie…" : "Wyślij prośbę"}
+              {tourDemo
+                ? "Podgląd — bez wysyłki"
+                : pending || submitLocked
+                  ? pendingMessage?.startsWith("Prośba zapisana")
+                    ? "Wraca do ZK…"
+                    : "Wysyłanie…"
+                  : zkPrefillLoading
+                    ? "Wczytywanie ZK…"
+                    : "Wyślij prośbę"}
             </Button>
           </div>
           </div>
@@ -1585,7 +1871,11 @@ export function OrderFormClient({
   return (
     <div className={cn("relative space-y-6", msg && "pb-44")}>
       {pendingMessage ? (
-        <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
+        <ActionLoadingOverlay
+          message={pendingMessage}
+          variant="viewport"
+          className="pointer-events-auto"
+        />
       ) : null}
       {toastSlot}
       {stockConfirmDialog}

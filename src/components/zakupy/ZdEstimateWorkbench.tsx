@@ -3784,6 +3784,8 @@ export function ZdEstimateWorkbench({
     const cechaId =
       opts?.cechaId ??
       (mode === "cecha" ? selectedCecha?.ctw_Id : undefined);
+    // Trzymaj UI scope w sync z faktycznym Policz (autorun / override opts).
+    if (mode !== scopeMode) setScopeMode(mode);
     const useProgressShell = shouldUseZdEstimateProgressShell({
       hasLines: lines != null,
     });
@@ -3827,17 +3829,55 @@ export function ZdEstimateWorkbench({
     setLastEstimateFailed(false);
     setScopeNeedsRecount(false);
     const estimateGen = ++estimateGenRef.current;
+    const scopeLabelForRun =
+      mode === "cecha"
+        ? selectedCecha?.ctw_Nazwa ?? (cechaQuery.trim() || null)
+        : selectedGroup?.grt_Nazwa ?? (groupQuery.trim() || null);
     startEstimate(async () => {
       const res = await actionRunZdEstimateManual({
         mode,
         ...(mode === "grupa" ? { grupaId } : { cechaId }),
+        scopeLabel: scopeLabelForRun,
         supplierId: supplierId ?? null,
         dniZapasu: Number(dniZapasu),
         dataOd,
         dataDo,
         zapasMin: Number(zapasMin) || 0,
+        uiSessionSeed: {
+          selectedGroup: mode === "grupa" ? selectedGroup : null,
+          selectedCecha: mode === "cecha" ? selectedCecha : null,
+          groupQuery,
+          cechaQuery,
+          showAdvanced,
+          salesWindowSource,
+          sortKey,
+          sortDir,
+          columns,
+          columnOrder,
+        },
       });
-      if (estimateGen !== estimateGenRef.current) return;
+      if (estimateGen !== estimateGenRef.current) {
+        // Serwer mógł już skasować poprzednią active i/lub utworzyć nową —
+        // nie zostawiaj orphan DB ani tokenu wskazującego na skasowaną sesję.
+        if (res.ok && res.uiSessionRotated) {
+          externalSessionIdRef.current = null;
+          externalSessionCreatedAtRef.current = null;
+          clearZdEstimateExternalSessionToken();
+          syncExternalSessionTokenState();
+        }
+        if (
+          res.ok &&
+          typeof res.uiSessionId === "string" &&
+          res.uiSessionId.trim()
+        ) {
+          console.warn(
+            "Sesja UI kreatora: usuwam sesję serwerową — Policz unieważniony przed apply (estimateGen).",
+            res.uiSessionId
+          );
+          void deleteZdEstimateExternalSessionRecord(res.uiSessionId.trim());
+        }
+        return;
+      }
       if (!res.ok) {
         setLines(null);
         setLinesBase(null);
@@ -4072,78 +4112,9 @@ export function ZdEstimateWorkbench({
         applySuccessUi();
       }
 
-      // Meta z Policz (exclusions/packaging/pairs/BOM) — bez ponownego actionList*
-      // (te same dane już w res; drugie I/O było zbędne i mogło rozjechać się z qty).
-
-      // Po sukcesie „Policz” zapisz snapshot UI sesji kreatora ZD oraz token timeru w sessionStorage.
+      // Po sukcesie „Policz”: sesja UI. Preferuj zapis z serwera (ten sam request co Policz) —
+      // duże cechy (Ivoclar) nie muszą ponownie uploadować ~tysięcy linii.
       try {
-        const pendingIndividualsOk = res.pendingIndividuals != null;
-        const snapshotPayload = buildZdEstimateUiSessionSnapshot({
-          linesBase: coerceZdEstimateLinesBase(
-            res.result.pozycjeBase ?? res.result.pozycje
-          ),
-          lines: res.result.pozycje,
-          historyByTwId: (res.historyByTwId ?? [])
-            .filter((e) => e.twId > 0)
-            .map((e) => ({
-              twId: e.twId,
-              lastOrderedQty: e.lastOrderedQty,
-              linkedAt: e.linkedAt,
-            })),
-          historyFetchFailed: Boolean(res.historyFetchFailed),
-          pendingIndividuals: pendingIndividualsOk
-            ? (res.pendingIndividuals ?? [])
-            : [],
-          pendingIndividualsTruncated: pendingIndividualsOk
-            ? Boolean(res.pendingIndividualsTruncated)
-            : false,
-          pendingIndividualsError: pendingIndividualsOk
-            ? null
-            : res.pendingIndividualsError?.trim() ||
-              "Nie wczytano próśb przy Policz — użyj „Wczytaj ponownie” albo policz listę jeszcze raz.",
-          meta: {
-            pagesFetched: res.meta.pagesFetched,
-            totalCountApi: res.meta.totalCountApi,
-            truncated: res.meta.truncated,
-            ordersBaseUrl: res.meta.ordersBaseUrl,
-            durationMs: res.meta.durationMs,
-            totalFromSubiekt: res.meta.totalFromSubiekt,
-          },
-          missingPartnerTwIds: res.meta.pairMissingTwIds ?? [],
-          missingBomTwIds: res.meta.bomMissingTwIds ?? [],
-          paramInfo: res.result.parametry as Record<string, unknown>,
-          exclusions: res.exclusions ?? [],
-          onRequests: res.onRequests ?? [],
-          packaging: res.packaging ?? [],
-          productPairs: res.productPairs ?? [],
-          productBoms: res.productBoms ?? [],
-          teethTwIds: res.teethTwIds ?? [],
-          boostPreset: res.boostPreset ?? boostPreset,
-          appliedBoostPreset: res.boostPreset ?? appliedBoostPreset,
-          boostNeedsRecount: false,
-          scopeMode,
-          selectedGroup,
-          selectedCecha,
-          groupQuery,
-          cechaQuery,
-          supplierId,
-          dniZapasu,
-          dataOd,
-          dataDo,
-          zapasMin,
-          showAdvanced,
-          salesWindowSource,
-          qtyOverrideByTwId: {},
-          acceptedReviewTwIds: {},
-          sessionIncludeTwIds: {},
-          listFilter: "order",
-          listSearch: "",
-          sortKey,
-          sortDir,
-          columns,
-          columnOrder,
-        });
-
         externalSessionPersistSkipRef.current = true;
         externalSessionPersistQueuedRef.current = false;
         if (externalSessionPersistTimerRef.current != null) {
@@ -4155,34 +4126,183 @@ export function ZdEstimateWorkbench({
         externalSessionIdRef.current = null;
         clearZdEstimateExternalSessionToken();
         syncExternalSessionTokenState();
-        const persist = await actionCreateZdEstimateUiSession({
-          payload: snapshotPayload,
-          schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
-        });
 
-        if (estimateGen !== estimateGenRef.current) {
-          if (persist.ok) {
-            console.warn(
-              "Sesja UI kreatora: usuwam świeżo utworzoną sesję — Policz unieważniony (estimateGen).",
-              persist.sessionId
-            );
-            void deleteZdEstimateExternalSessionRecord(persist.sessionId);
+        const tokenScopeMode = mode as "grupa" | "cecha";
+        const tokenGrupaId =
+          tokenScopeMode === "grupa" &&
+          typeof grupaId === "number" &&
+          grupaId > 0
+            ? grupaId
+            : null;
+        const tokenCechaId =
+          tokenScopeMode === "cecha" &&
+          typeof cechaId === "number" &&
+          cechaId > 0
+            ? cechaId
+            : null;
+
+        let sessionId: string | null =
+          typeof res.uiSessionId === "string" && res.uiSessionId.trim()
+            ? res.uiSessionId.trim()
+            : null;
+        let createdAt: string | null =
+          typeof res.uiSessionCreatedAt === "string" &&
+          res.uiSessionCreatedAt.trim()
+            ? res.uiSessionCreatedAt.trim()
+            : null;
+
+        if (!sessionId) {
+          const pendingIndividualsOk = res.pendingIndividuals != null;
+          const fallbackGroup =
+            tokenScopeMode === "grupa"
+              ? (selectedGroup ??
+                (tokenGrupaId != null && tokenGrupaId > 0
+                  ? {
+                      grt_Id: tokenGrupaId,
+                      grt_Nazwa:
+                        scopeLabelForRun || `Grupa ${tokenGrupaId}`,
+                      supplierId,
+                      supplierName: null,
+                      dniZapasu: null,
+                      stockLabel: null,
+                      subiektKhId: null,
+                      additionalSubiektKhIds: [],
+                      supplierMatchSource: null,
+                      supplierMappingUnresolved: false,
+                    }
+                  : null))
+              : null;
+          const fallbackCecha =
+            tokenScopeMode === "cecha"
+              ? (selectedCecha ??
+                (tokenCechaId != null && tokenCechaId > 0
+                  ? {
+                      ctw_Id: tokenCechaId,
+                      ctw_Nazwa:
+                        scopeLabelForRun || `Cecha ${tokenCechaId}`,
+                      supplierId,
+                      supplierName: null,
+                      dniZapasu: null,
+                      stockLabel: null,
+                      subiektKhId: null,
+                      additionalSubiektKhIds: [],
+                      supplierMatchSource: null,
+                      supplierMappingUnresolved: false,
+                    }
+                  : null))
+              : null;
+          const snapshotPayload = buildZdEstimateUiSessionSnapshot({
+            linesBase: coerceZdEstimateLinesBase(
+              res.result.pozycjeBase ?? res.result.pozycje
+            ),
+            lines: res.result.pozycje,
+            historyByTwId: (res.historyByTwId ?? [])
+              .filter((e) => e.twId > 0)
+              .map((e) => ({
+                twId: e.twId,
+                lastOrderedQty: e.lastOrderedQty,
+                linkedAt: e.linkedAt,
+              })),
+            historyFetchFailed: Boolean(res.historyFetchFailed),
+            pendingIndividuals: pendingIndividualsOk
+              ? (res.pendingIndividuals ?? [])
+              : [],
+            pendingIndividualsTruncated: pendingIndividualsOk
+              ? Boolean(res.pendingIndividualsTruncated)
+              : false,
+            pendingIndividualsError: pendingIndividualsOk
+              ? null
+              : res.pendingIndividualsError?.trim() ||
+                "Nie wczytano próśb przy Policz — użyj „Wczytaj ponownie” albo policz listę jeszcze raz.",
+            meta: {
+              pagesFetched: res.meta.pagesFetched,
+              totalCountApi: res.meta.totalCountApi,
+              truncated: res.meta.truncated,
+              ordersBaseUrl: res.meta.ordersBaseUrl,
+              durationMs: res.meta.durationMs,
+              totalFromSubiekt: res.meta.totalFromSubiekt,
+            },
+            missingPartnerTwIds: res.meta.pairMissingTwIds ?? [],
+            missingBomTwIds: res.meta.bomMissingTwIds ?? [],
+            paramInfo: res.result.parametry as Record<string, unknown>,
+            exclusions: res.exclusions ?? [],
+            onRequests: res.onRequests ?? [],
+            packaging: res.packaging ?? [],
+            productPairs: res.productPairs ?? [],
+            productBoms: res.productBoms ?? [],
+            teethTwIds: res.teethTwIds ?? [],
+            boostPreset: res.boostPreset ?? boostPreset,
+            appliedBoostPreset: res.boostPreset ?? appliedBoostPreset,
+            boostNeedsRecount: false,
+            scopeMode: tokenScopeMode,
+            selectedGroup: fallbackGroup,
+            selectedCecha: fallbackCecha,
+            groupQuery:
+              tokenScopeMode === "grupa"
+                ? groupQuery || fallbackGroup?.grt_Nazwa || ""
+                : groupQuery,
+            cechaQuery:
+              tokenScopeMode === "cecha"
+                ? cechaQuery || fallbackCecha?.ctw_Nazwa || ""
+                : cechaQuery,
+            supplierId,
+            dniZapasu,
+            dataOd,
+            dataDo,
+            zapasMin,
+            showAdvanced,
+            salesWindowSource,
+            qtyOverrideByTwId: {},
+            acceptedReviewTwIds: {},
+            sessionIncludeTwIds: {},
+            listFilter: "order",
+            listSearch: "",
+            sortKey,
+            sortDir,
+            columns,
+            columnOrder,
+          });
+
+          const persist = await actionCreateZdEstimateUiSession({
+            payload: snapshotPayload,
+            schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
+          });
+
+          if (estimateGen !== estimateGenRef.current) {
+            if (persist.ok) {
+              console.warn(
+                "Sesja UI kreatora: usuwam świeżo utworzoną sesję — Policz unieważniony (estimateGen).",
+                persist.sessionId
+              );
+              void deleteZdEstimateExternalSessionRecord(persist.sessionId);
+            }
+            return;
           }
+
+          if (!persist.ok) {
+            externalSessionIdRef.current = null;
+            externalSessionCreatedAtRef.current = null;
+            clearZdEstimateExternalSessionToken();
+            syncExternalSessionTokenState();
+            setExternalSessionPersistFailedAlert(true);
+            console.warn("Sesja UI kreatora: zapis nieudany.", persist.message);
+            return;
+          }
+
+          sessionId = persist.sessionId;
+          createdAt = snapshotPayload.createdAt;
+        } else if (estimateGen !== estimateGenRef.current) {
+          console.warn(
+            "Sesja UI kreatora: usuwam świeżo utworzoną sesję serwerową — Policz unieważniony (estimateGen).",
+            sessionId
+          );
+          void deleteZdEstimateExternalSessionRecord(sessionId);
           return;
         }
 
-        if (!persist.ok) {
-          externalSessionIdRef.current = null;
-          externalSessionCreatedAtRef.current = null;
-          clearZdEstimateExternalSessionToken();
-          syncExternalSessionTokenState();
-          setExternalSessionPersistFailedAlert(true);
-          console.warn("Sesja UI kreatora: zapis nieudany.", persist.message);
-          return;
-        }
-
-        externalSessionIdRef.current = persist.sessionId;
-        externalSessionCreatedAtRef.current = snapshotPayload.createdAt;
+        externalSessionIdRef.current = sessionId;
+        externalSessionCreatedAtRef.current =
+          createdAt ?? new Date().toISOString();
         externalSessionPersistSkipRef.current = false;
         externalSessionPersistQueuedRef.current = false;
         setExternalSessionPersistFailedAlert(false);
@@ -4190,12 +4310,12 @@ export function ZdEstimateWorkbench({
         externalSessionRestoredRef.current = false;
 
         const token = createZdEstimateExternalSessionToken({
-          sessionId: persist.sessionId,
+          sessionId,
           schemaVersion: ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION,
           supplierId,
-          scopeMode: scopeMode as "grupa" | "cecha",
-          grupaId: scopeMode === "grupa" ? selectedGroup?.grt_Id ?? null : null,
-          cechaId: scopeMode === "cecha" ? selectedCecha?.ctw_Id ?? null : null,
+          scopeMode: tokenScopeMode,
+          grupaId: tokenGrupaId,
+          cechaId: tokenCechaId,
         });
 
         writeZdEstimateExternalSessionToken(token);

@@ -840,7 +840,8 @@ export const ZD_ESTIMATE_UI = {
   prepParamExtrasLabel: "Prośby",
   /** Widoczny status powiązania dostawcy (bez rozwijania Nadpisań). */
   supplierLinkedLabel: "Powiązano z dostawcą",
-  supplierLinkedFromMappingBadge: "z mapowania",
+  /** Badge banera gdy dostawca pochodzi z mapowania zakresów (nie dubluj „· z mapowania” przy nazwie). */
+  supplierLinkedFromMappingLabel: "Z mapowania",
   supplierUnlinkedHint:
     "Nie powiązano z dostawcą — rozwiń Nadpisania poniżej, aby wybrać ręcznie.",
   supplierMappingUnresolvedHint:
@@ -848,9 +849,11 @@ export const ZD_ESTIMATE_UI = {
   /**
    * Po wyborze grupy/cechy z zapisanym mapowaniem —
    * np. Resione → Dongguan Godsaid Technology.
+   * Używane jako flaga/aria; baner pokazuje short label + nazwę dostawcy.
    */
   supplierFromMappingNotice: (supplierName: string, scopeLabel: string) =>
     `Przypisano dostawcę „${supplierName}” z mapowania zakresu „${scopeLabel}”.`,
+  /** Sufiks w wierszu wyników wyszukiwania (tylko niewybrane — wybrane mają baner statusu). */
   supplierFromMappingHitSuffix: "z mapowania",
   historyNeedsRecountTitle: "Zmieniono historię powiązań ZD",
   historyNeedsRecountBody:
@@ -1148,6 +1151,26 @@ export const ZD_ESTIMATE_UI = {
     "rozjazd opakowania / trybu względem pary — tworzenie ZD zablokowane do ujednolicenia.",
   packagingLabelPresetsAria: "Szybki wybór etykiety opakowania",
 } as const;
+
+/**
+ * Meta dostawcy pod nazwą w wyniku wyszukiwania zakresu.
+ * Nie używaj dla wiersza już wybranego — baner „Powiązano / Z mapowania” jest SSOT.
+ */
+export function zdEstimateScopeHitSupplierMeta(hit: {
+  supplierName?: string | null;
+  supplierMatchSource?: "mapping" | "name" | null;
+  stockLabel?: string | null;
+}): string | null {
+  const name = hit.supplierName?.trim();
+  if (!name) return null;
+  const bits = [name];
+  if (hit.supplierMatchSource === "mapping") {
+    bits.push(ZD_ESTIMATE_UI.supplierFromMappingHitSuffix);
+  }
+  const stock = hit.stockLabel?.trim();
+  if (stock && stock !== "—") bits.push(stock);
+  return bits.join(" · ");
+}
 
 /** Hint po timeout create, gdy async znalazł świeże ZD. */
 export function formatPostCreateCandidatesHint(n: number): string | null {

@@ -42,6 +42,7 @@ import {
   zdEstimateRouteLoadingHint,
   zdEstimateScopeChangedHint,
   zdEstimateScopeDashedHint,
+  zdEstimateScopeHitSupplierMeta,
   zdEstimateScopeKindLabel,
   zdEstimateScopeLinkedCaption,
   zdEstimateScopeLinkedTitle,
@@ -226,6 +227,9 @@ describe("zd-estimate-ui-copy", () => {
     expect(ZD_ESTIMATE_UI.prepOverridesShow).toBe("Nadpisania");
     expect(ZD_ESTIMATE_UI.prepParamBoostLabel).toBe("Podbicie");
     expect(ZD_ESTIMATE_UI.prepParamExtrasLabel).toBe("Prośby");
+    expect(ZD_ESTIMATE_UI.supplierLinkedLabel).toBe("Powiązano z dostawcą");
+    expect(ZD_ESTIMATE_UI.supplierLinkedFromMappingLabel).toBe("Z mapowania");
+    expect(ZD_ESTIMATE_UI.supplierFromMappingHitSuffix).toBe("z mapowania");
     expect(ZD_ESTIMATE_UI.boostPowerLabel).toBe("Podbicie Do ZD");
     expect(ZD_ESTIMATE_UI.extrasPolicyLabel).toBe("Prośby i niedobór");
     expect(ZD_ESTIMATE_UI.extrasPolicySumShort).toBe("Suma");
@@ -416,6 +420,24 @@ describe("zd-estimate-ui-copy", () => {
     expect(zdEstimateSuppliersMenuAriaLabel(2)).toMatch(/bez mapowania/i);
     expect(zdEstimateSuppliersScopesItemSuffix(0)).toBe("");
     expect(zdEstimateSuppliersScopesItemSuffix(1)).toMatch(/bez mapowania/);
+  });
+
+  it("scope hit supplier meta — preview w wynikach, bez pustego stocku", () => {
+    expect(zdEstimateScopeHitSupplierMeta({})).toBeNull();
+    expect(
+      zdEstimateScopeHitSupplierMeta({
+        supplierName: "Ivoclar Vivadent - EXCEL",
+        supplierMatchSource: "mapping",
+        stockLabel: "2 mies.",
+      })
+    ).toBe("Ivoclar Vivadent - EXCEL · z mapowania · 2 mies.");
+    expect(
+      zdEstimateScopeHitSupplierMeta({
+        supplierName: "Ivoclar Vivadent - EXCEL",
+        supplierMatchSource: "name",
+        stockLabel: "—",
+      })
+    ).toBe("Ivoclar Vivadent - EXCEL");
   });
 
   it("Do ZD hint + sort po pewności (po usunięciu kolumny)", () => {

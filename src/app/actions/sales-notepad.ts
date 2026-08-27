@@ -61,6 +61,7 @@ import {
   resolveTeethCatalogProduct,
 } from "@/lib/teeth/teeth-dual-kind";
 import { fetchZkWatchForProsbaPrefill } from "@/lib/sales/fetch-zk-watch-for-prefill";
+import { nullIfZkWatchClosedForProsba } from "@/lib/sales/zk-watch-closed-for-prosba";
 import { enrichZkProsbaPrefillWithLiveStock } from "@/lib/orders/fetch-prosba-line-stock";
 import { fetchAllZkLinkableOrdersForSalesPerson } from "@/lib/sales/zk-watch-close-pending-fetch";
 import { computeZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
@@ -1641,7 +1642,10 @@ export async function actionGetZkProsbaPrefillByWatchId(
   if (error) throw new Error(error.message);
   if (!data) return null;
 
-  const watch = data as SalesZkWatch;
+  const watch = nullIfZkWatchClosedForProsba(data as SalesZkWatch);
+  if (!watch) {
+    return null;
+  }
   let teethCatalogAvailable = true;
   const teethInfo = await fetchTeethProductInfo().catch(() => {
     teethCatalogAvailable = false;
@@ -1684,7 +1688,8 @@ export async function actionGetZkProsbaPrefill(
   const salesPersonId = await resolveSalesPersonIdForProsbaPrefill(user, salesPersonIdOverride);
 
   const supabase = createAdminClient();
-  const watch = await fetchZkWatchForProsbaPrefill(supabase, salesPersonId, trimmed);
+  const watchRaw = await fetchZkWatchForProsbaPrefill(supabase, salesPersonId, trimmed);
+  const watch = nullIfZkWatchClosedForProsba(watchRaw);
   if (!watch) return null;
   let teethCatalogAvailable = true;
   const teethInfo = await fetchTeethProductInfo().catch(() => {

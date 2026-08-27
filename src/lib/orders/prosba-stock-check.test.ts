@@ -8,6 +8,7 @@ import {
   assessProsbaLineStockFromDraft,
   assessProsbaLineZkQuantity,
   buildProsbaSubmitStockConfirm,
+  buildProsbaSubmitUnknownStockConfirm,
   buildProsbaSubmitZkQuantityConfirm,
   buildZkProsbaScopeInitialOrderMarked,
   collectProsbaLineTwIdsMissingStock,
@@ -166,6 +167,42 @@ describe("filterProsbaLinesWithSufficientStock", () => {
     ];
     expect(filterProsbaLinesWithSufficientStock(lines, "zamowienie", exempt)).toEqual([]);
     expect(buildProsbaSubmitStockConfirm(lines, "zamowienie", exempt)).toBeNull();
+  });
+});
+
+describe("buildProsbaSubmitUnknownStockConfirm", () => {
+  it("wymaga potwierdzenia gdy TW ma qty bez snapshotu stanu", () => {
+    const result = buildProsbaSubmitUnknownStockConfirm(
+      [{ ...baseLine, quantity: "2", subiektTwId: 10 }],
+      "zamowienie"
+    );
+    expect(result?.unknownLines).toHaveLength(1);
+    expect(result?.message).toMatch(/stanu magazynowego/);
+  });
+
+  it("null gdy stan jest znany lub poza zamówieniem", () => {
+    expect(
+      buildProsbaSubmitUnknownStockConfirm(
+        [
+          {
+            ...baseLine,
+            quantity: "2",
+            subiektTwId: 10,
+            onHand: 5,
+            reserved: 0,
+            available: 5,
+            stockSource: "subiekt",
+          },
+        ],
+        "zamowienie"
+      )
+    ).toBeNull();
+    expect(
+      buildProsbaSubmitUnknownStockConfirm(
+        [{ ...baseLine, quantity: "2", subiektTwId: 10 }],
+        "informacja"
+      )
+    ).toBeNull();
   });
 });
 

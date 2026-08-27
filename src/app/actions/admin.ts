@@ -63,6 +63,8 @@ import {
 import { assertProsbaSubmitStockAllowed } from "@/lib/orders/prosba-stock-server";
 import { assertProsbaLinesBelongToZk } from "@/lib/orders/zk-prosba-catalog-guard";
 import { collectZkWatchAllowedTwIds } from "@/lib/orders/zk-watch-prosba-prefill";
+import { assertZkWatchOpenForProsba } from "@/lib/sales/zk-watch-closed-for-prosba";
+import { assertZkLinkedZamowienieStillUncovered } from "@/lib/sales/zk-prosba-coverage-guard";
 import type { ProcurementCancelDispositionInput } from "@/lib/orders/procurement-disposition";
 import {
   canEditProcurementCancelNote,
@@ -436,10 +438,17 @@ export async function actionAddIndividualOrders(
       .eq("id", sourceZkWatchId)
       .maybeSingle();
     if (watchError) throw new Error(watchError.message);
-    if (watchRow) {
-      const allowedTwIds = new Set(collectZkWatchAllowedTwIds(watchRow as import("@/types/database").SalesZkWatch));
-      assertProsbaLinesBelongToZk(normalized, allowedTwIds);
+    if (!watchRow) {
+      throw new Error("ZK niedostępne — odśwież notatnik i spróbuj ponownie.");
     }
+    const watch = watchRow as import("@/types/database").SalesZkWatch;
+    assertZkWatchOpenForProsba(watch);
+    const allowedTwIds = new Set(collectZkWatchAllowedTwIds(watch));
+    assertProsbaLinesBelongToZk(normalized, allowedTwIds);
+    await assertZkLinkedZamowienieStillUncovered({
+      watch,
+      entries: normalized,
+    });
   }
 
   const createdBy = user.id === "dev" ? undefined : user.id;

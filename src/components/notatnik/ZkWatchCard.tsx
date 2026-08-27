@@ -428,8 +428,34 @@ export function ZkWatchCard({
       });
     }
   }
+
+  function handleInformacjaClick(event: MouseEvent<HTMLAnchorElement>) {
+    // Informacja nie wymaga list zębów — teeth gate dotyczy tylko zamówienia.
+    setProsbaStockArmed(true);
+    const ok = stashZkProsbaPrefill(watch, {
+      ...prosbaPrefillOptions,
+      requestKind: "informacja",
+      stockByTwId: prosbaRawStockByTwId,
+      ...(teethRegistry ? { teethRegistry } : {}),
+    });
+    if (!ok) {
+      event.preventDefault();
+      setError({
+        watchId: watch.id,
+        message: "Brak pozycji do dodania do prośby — odśwież ZK z Subiekta.",
+      });
+    }
+  }
   const canEdit = !readOnly && !tourPreview && !archived;
   const canEditZkActions = canEdit && !delegatePreview;
+  const informacjaHref =
+    canEdit &&
+    (prosbaCardAction.kind === "new_prosba" || prosbaCardAction.kind === "supplement")
+      ? prosbaHrefFromZkWatch(watch, {
+          ...prosbaPrefillOptions,
+          requestKind: "informacja",
+        })
+      : null;
   const pending =
     restoring ||
     deleting ||
@@ -692,6 +718,8 @@ export function ZkWatchCard({
               prosbaHref={prosbaHref}
               prosbaInTokuHref={prosbaViewHref}
               onProsbaClick={handleProsbaClick}
+              informacjaHref={informacjaHref}
+              onInformacjaClick={handleInformacjaClick}
               uncoveredCount={prosbaActionCount}
               buttonLabel={prosbaButtonLabel}
               teethDraftsIncomplete={teethDraftsIncomplete}
