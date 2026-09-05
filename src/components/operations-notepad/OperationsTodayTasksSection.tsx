@@ -52,7 +52,7 @@ export function OperationsTodayTasksSection({
                     {note.visibility === "public" ? "Wspólna" : "Prywatna"}
                   </Badge>
                   <span className="truncate text-xs font-semibold text-slate-900">
-                    {note.title?.trim() || note.body.trim().slice(0, 80)}
+                    {note.title?.trim() || note.body.trim().slice(0, 80) || "Notatka"}
                   </span>
                 </div>
                 {note.follow_up_at ? (

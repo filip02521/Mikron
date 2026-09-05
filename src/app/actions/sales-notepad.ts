@@ -22,6 +22,10 @@ import { extractZkSerial, zkNumbersEquivalent } from "@/lib/subiekt/zk-document"
 import { isSubiektReachable } from "@/lib/subiekt/availability";
 import { UNDO_WINDOW_MS, undoExpiredServerMessage } from "@/lib/orders/daily-panel-undo";
 import {
+  resolveNoteCreateFields,
+  resolveNoteUpdateContentFields,
+} from "@/lib/sales/note-content";
+import {
   buildZkWatchLineViews,
   mergeLineChecksAfterRefresh,
   parseZkWatchLineChecks,
@@ -1126,8 +1130,10 @@ export async function actionCreateSalesNote(
   options?: { title?: string | null; color?: SalesNoteColor; follow_up_at?: string | null }
 ) {
   const salesPersonId = await salesPersonIdForAction();
-  const trimmed = body.trim();
-  if (!trimmed) throw new Error("Notatka nie może być pusta.");
+  const { title, body: normalizedBody } = resolveNoteCreateFields({
+    body,
+    title: options?.title,
+  });
 
   const followUp =
     options?.follow_up_at?.trim().slice(0, 10) || null;
@@ -1149,8 +1155,8 @@ export async function actionCreateSalesNote(
     .from("sales_notes")
     .insert({
       sales_person_id: salesPersonId,
-      title: options?.title?.trim() || null,
-      body: trimmed,
+      title,
+      body: normalizedBody,
       color: options?.color ?? "default",
       follow_up_at: followUp,
       sort_order: sortOrder,
@@ -1178,7 +1184,7 @@ export async function actionUpdateSalesNote(
 
   const { data: row, error: fetchError } = await supabase
     .from("sales_notes")
-    .select("id, sales_person_id")
+    .select("id, sales_person_id, title")
     .eq("id", noteId)
     .maybeSingle();
 
@@ -1188,13 +1194,15 @@ export async function actionUpdateSalesNote(
     throw new Error("Brak uprawnień do tej notatki.");
   }
 
+  const contentPatch = resolveNoteUpdateContentFields({
+    currentTitle: row.title,
+    title: payload.title,
+    body: payload.body,
+  });
+
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (payload.body !== undefined) {
-    const trimmed = payload.body.trim();
-    if (!trimmed) throw new Error("Notatka nie może być pusta.");
-    patch.body = trimmed;
-  }
-  if (payload.title !== undefined) patch.title = payload.title?.trim() || null;
+  if (contentPatch.title !== undefined) patch.title = contentPatch.title;
+  if (contentPatch.body !== undefined) patch.body = contentPatch.body;
   if (payload.color !== undefined) patch.color = payload.color;
   if (payload.pinned !== undefined) patch.pinned = payload.pinned;
   if (payload.follow_up_at !== undefined) {

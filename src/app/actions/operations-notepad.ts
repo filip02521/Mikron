@@ -24,6 +24,10 @@ import type {
   Workspace,
 } from "@/types/database";
 import { UNDO_WINDOW_MS, undoExpiredServerMessage } from "@/lib/orders/daily-panel-undo";
+import {
+  resolveNoteCreateFields,
+  resolveNoteUpdateContentFields,
+} from "@/lib/sales/note-content";
 
 function revalidateOperationsNotepad() {
   revalidatePath("/notatki");
@@ -37,6 +41,7 @@ type NoteAccessRow = {
   visibility: OperationsNoteVisibility;
   archived_at: string | null;
   updated_at: string;
+  title: string | null;
 };
 
 function assertDepartmentAccess(
@@ -56,7 +61,7 @@ async function assertNoteAccess(noteId: string): Promise<NoteAccessRow & { userI
   const supabase = createAdminClient();
   const { data: row, error } = await supabase
     .from("operations_notes")
-    .select("id, created_by, department, visibility, archived_at, updated_at")
+    .select("id, created_by, department, visibility, archived_at, updated_at, title")
     .eq("id", noteId)
     .maybeSingle();
 
@@ -110,8 +115,10 @@ export async function actionCreateOperationsNote(
   const user = await getSessionUserForMutation();
   assertDepartmentAccess(department, user.role, user.assignedWorkspaces);
 
-  const trimmed = body.trim();
-  if (!trimmed) throw new Error("Notatka nie może być pusta.");
+  const { title, body: normalizedBody } = resolveNoteCreateFields({
+    body,
+    title: options?.title,
+  });
 
   const color = options?.color !== undefined ? parseOperationsNoteColor(options.color) : "default";
   const followUp = parseOperationsNoteFollowUpAt(options?.follow_up_at);
@@ -124,8 +131,8 @@ export async function actionCreateOperationsNote(
       department,
       visibility,
       created_by: user.id,
-      title: options?.title?.trim() || null,
-      body: trimmed,
+      title,
+      body: normalizedBody,
       color,
       follow_up_at: followUp,
       sort_order: sortOrder,
@@ -155,13 +162,15 @@ export async function actionUpdateOperationsNote(
     throw new Error(OPERATIONS_NOTE_ARCHIVED_MUTATE_MESSAGE);
   }
 
+  const contentPatch = resolveNoteUpdateContentFields({
+    currentTitle: row.title,
+    title: payload.title,
+    body: payload.body,
+  });
+
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (payload.body !== undefined) {
-    const trimmed = payload.body.trim();
-    if (!trimmed) throw new Error("Notatka nie może być pusta.");
-    patch.body = trimmed;
-  }
-  if (payload.title !== undefined) patch.title = payload.title?.trim() || null;
+  if (contentPatch.title !== undefined) patch.title = contentPatch.title;
+  if (contentPatch.body !== undefined) patch.body = contentPatch.body;
   if (payload.color !== undefined) patch.color = parseOperationsNoteColor(payload.color);
   if (payload.pinned !== undefined) patch.pinned = payload.pinned;
   if (payload.follow_up_at !== undefined) {

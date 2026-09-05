@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useState, type MouseEvent } from "react";
 import { zdFulfillmentDeadlineChangeShortLabel } from "@/lib/orders/zd-fulfillment-deadline-change";
 import { parseDateOnly } from "@/lib/orders/dates";
 import { isPastExpectedDate } from "@/lib/orders/delivery-eta";
@@ -40,6 +40,7 @@ import {
   SearchHighlightJoined,
   SearchHighlightText,
 } from "@/components/moje/SearchHighlightText";
+import { copyTextToClipboard } from "@/lib/ui/copy-text-to-clipboard";
 
 function CopyBadge({
   text,
@@ -55,28 +56,45 @@ function CopyBadge({
   searchQuery?: string | null;
 }) {
   const [copied, setCopied] = useState(false);
-  const onClick = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(copyValue);
+  const [failed, setFailed] = useState(false);
+  const onClick = useCallback(
+    async (e: MouseEvent) => {
+      e.stopPropagation();
+      setFailed(false);
+      const ok = await copyTextToClipboard(copyValue);
+      if (!ok) {
+        setFailed(true);
+        setTimeout(() => setFailed(false), 1600);
+        return;
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 1200);
-    } catch {
-      // ignore
-    }
-  }, [copyValue]);
+    },
+    [copyValue]
+  );
 
   return (
     <button
       type="button"
       onClick={onClick}
-      title={copied ? "Skopiowano!" : `${title} — kliknij, aby skopiować`}
+      title={
+        copied
+          ? "Skopiowano!"
+          : failed
+            ? "Nie udało się skopiować — spróbuj ponownie"
+            : `${title} — kliknij, aby skopiować`
+      }
       className={cn(
         "shrink-0 cursor-pointer rounded px-1 py-0.5 font-mono text-[10px] font-semibold transition-colors",
         className,
-        copied && "ring-2 ring-emerald-400"
+        copied && "ring-2 ring-emerald-400",
+        failed && "ring-2 ring-red-400"
       )}
     >
-      <SearchHighlightText text={copied ? "✓ skopiowano" : text} searchQuery={searchQuery} />
+      <SearchHighlightText
+        text={copied ? "✓ skopiowano" : failed ? "błąd" : text}
+        searchQuery={searchQuery}
+      />
     </button>
   );
 }

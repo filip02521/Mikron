@@ -911,6 +911,15 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     row.clientLabel && !isClientNamesAggregateSummary(row.clientLabel)
       ? row.clientLabel
       : null;
+  const sharedClientKhId = (() => {
+    if (!hideLineClient || !sharedClientLabel) return null;
+    const khIds = row.lines
+      .map((l) => l.clientKhId)
+      .filter((id): id is number => id != null && id > 0);
+    if (khIds.length === 0) return null;
+    const first = khIds[0]!;
+    return khIds.every((id) => id === first) ? first : null;
+  })();
   const useCompactActionsLayout =
     compactPickupOrAvailability || compactCancelAck || (needsAck && !expanded);
 
@@ -1142,6 +1151,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             sharedProcurementCancelNote={sharedProcurementCancelNote}
             showSharedUnreadRequestNote={showSharedUnreadRequestNote}
             clientLabel={hideLineClient ? sharedClientLabel : null}
+            clientKhId={hideLineClient ? sharedClientKhId : null}
             progressLabel={
               hideLineWarehouseProgress && row.progressLabel?.trim()
                 ? row.progressLabel

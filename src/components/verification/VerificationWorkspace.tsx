@@ -155,6 +155,7 @@ export function VerificationWorkspace({
     return f;
   });
   const [loadedOrderId, setLoadedOrderId] = useState<string | null>(null);
+  const quantityStashRef = useRef("");
 
   if (resolvedActiveId && resolvedActiveId !== loadedOrderId) {
     setLoadedOrderId(resolvedActiveId);
@@ -173,6 +174,10 @@ export function VerificationWorkspace({
       setForm(f);
     }
   }
+
+  useEffect(() => {
+    quantityStashRef.current = "";
+  }, [loadedOrderId]);
 
   useEffect(() => {
     if (!loadedOrderId) return;
@@ -298,16 +303,31 @@ export function VerificationWorkspace({
           return;
         }
       }
-      setForm((f) => ({
-        ...f,
-        requestKind,
-        quantity: requestKind === "informacja" ? "" : f.quantity,
-        informacjaPath:
-          requestKind === "informacja"
-            ? (f.informacjaPath ??
-              (active ? (informacjaFlowPathFromOrder(active) ?? "direct") : "direct"))
-            : null,
-      }));
+      setForm((f) => {
+        let quantity = f.quantity;
+        if (requestKind === "informacja" && f.requestKind !== "informacja") {
+          // Zawsze nadpisz stash — pusta ilość kasuje poprzednią wartość.
+          quantityStashRef.current = f.quantity.trim();
+          quantity = "";
+        } else if (requestKind === "zamowienie" && f.requestKind === "informacja") {
+          const stashed = quantityStashRef.current.trim();
+          const fromOrder = active?.quantity?.trim() || "";
+          // Nie przywracaj "-" / pustych znaczników z informacji
+          const orderQty =
+            fromOrder && fromOrder !== "-" ? fromOrder : "";
+          quantity = stashed || orderQty || f.quantity;
+        }
+        return {
+          ...f,
+          requestKind,
+          quantity,
+          informacjaPath:
+            requestKind === "informacja"
+              ? (f.informacjaPath ??
+                (active ? (informacjaFlowPathFromOrder(active) ?? "direct") : "direct"))
+              : null,
+        };
+      });
     },
     [active]
   );
