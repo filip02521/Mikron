@@ -19,7 +19,6 @@ export interface SessionContext {
   ip?: string | null;
 }
 
-const DEV_SESSION_SECRET = "dev-session-secret-min-32-characters-long";
 const MIN_SECRET_LENGTH = 32;
 
 function sessionSecret(): string {
@@ -30,7 +29,9 @@ function sessionSecret(): string {
       `Brak SESSION_SECRET o długości min. ${MIN_SECRET_LENGTH} znaków w produkcji.`
     );
   }
-  return DEV_SESSION_SECRET;
+  throw new Error(
+    `Brak SESSION_SECRET (min. ${MIN_SECRET_LENGTH} znaków) — ustaw w .env.local (patrz .env.example).`
+  );
 }
 
 /**

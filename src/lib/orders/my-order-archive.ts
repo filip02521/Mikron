@@ -24,7 +24,6 @@ import type { DeliveryStats, IndividualOrder } from "@/types/database";
 
 import {
   ARCHIVE_EXPANDED_DAYS,
-  ARCHIVE_EXPANDED_GROUP_LIMIT,
   ARCHIVE_RECENT_DAYS,
 } from "@/lib/orders/my-order-archive-constants";
 

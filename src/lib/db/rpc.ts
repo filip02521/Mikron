@@ -135,7 +135,7 @@ function toPostgrestError(err: unknown, functionName: string): PostgrestError {
 }
 
 function prepareArgument(value: unknown, typeName: string | undefined): unknown {
-  if (value === undefined || value === null) return null;
+  if (value == null) return null;
   if (typeName === "json" || typeName === "jsonb") {
     return typeof value === "string" ? value : JSON.stringify(value);
   }
