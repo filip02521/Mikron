@@ -727,3 +727,41 @@ export function salesCancelQueueBanner(order: IndividualOrder): string {
   }
   return `Rezygnacja ${person} — towar może jeszcze dotrzeć. Po dostawie wybierz: na stan albo zwrot.`;
 }
+
+/** Cofnięcie wycofania prośby w oknie undo — przywraca aktywną pozycję na liście. */
+export type SalesCancelUndoRestore = {
+  sales_cancelled_at?: string | null;
+  sales_cancelled_quantity?: string | null;
+  sales_cancel_phase?: string | null;
+  status?: IndividualOrderStatus | null;
+  procurement_cancel_disposition?: string | null;
+  procurement_cancel_disposition_at?: string | null;
+  procurement_sales_cancel_ack_at?: string | null;
+  warehouse_cancel_fulfilled_at?: string | null;
+};
+
+/** Migawka przed rezygnacją — do przywrócenia przy cofnięciu (⌘Z). */
+export function salesCancelUndoRestoreSnapshot(
+  order: Pick<
+    IndividualOrder,
+    | "sales_cancelled_at"
+    | "sales_cancelled_quantity"
+    | "sales_cancel_phase"
+    | "status"
+    | "procurement_cancel_disposition"
+    | "procurement_cancel_disposition_at"
+    | "procurement_sales_cancel_ack_at"
+    | "warehouse_cancel_fulfilled_at"
+  >
+): SalesCancelUndoRestore {
+  return {
+    sales_cancelled_at: order.sales_cancelled_at ?? null,
+    sales_cancelled_quantity: order.sales_cancelled_quantity ?? null,
+    sales_cancel_phase: order.sales_cancel_phase ?? null,
+    status: order.status,
+    procurement_cancel_disposition: order.procurement_cancel_disposition ?? null,
+    procurement_cancel_disposition_at: order.procurement_cancel_disposition_at ?? null,
+    procurement_sales_cancel_ack_at: order.procurement_sales_cancel_ack_at ?? null,
+    warehouse_cancel_fulfilled_at: order.warehouse_cancel_fulfilled_at ?? null,
+  };
+}

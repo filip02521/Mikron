@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { PanelSummaryMetric } from "@/components/ui/PanelSummaryMetric";
-import { TRANSACTIONAL_EMAIL_KIND_LABELS } from "@/lib/services/transactional-email-log";
+import { TRANSACTIONAL_EMAIL_KIND_LABELS } from "@/lib/services/transactional-email-labels";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";

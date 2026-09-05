@@ -10,7 +10,7 @@ import {
 import { normalizeSalesClientKhId } from "@/lib/orders/sales-client-match";
 import { extractZkSerial } from "@/lib/subiekt/zk-document";
 import type { SalesZkWatch } from "@/types/database";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@/lib/db/admin";
 import {
   collectZkWatchPendingAckItems,
   isZkWatchPendingAckOrder,

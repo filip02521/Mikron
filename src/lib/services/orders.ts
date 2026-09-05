@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@/lib/db/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { formatDbError } from "@/lib/supabase/db-errors";
 import {

@@ -1,12 +1,10 @@
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import fs from "fs";
 
 async function main() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("Missing env");
+  if (!process.env.DATABASE_URL?.trim()) throw new Error("Brak DATABASE_URL");
 
-  const supabase = createClient(url, key);
+  const supabase = createClient();
   const csvPath =
     process.argv[2] ||
     "/Users/Filip/Downloads/System Dostaw v.9 Synchronizacja DK z HI, Częściowa realizacja - DLA KOGOŚ (1).csv";

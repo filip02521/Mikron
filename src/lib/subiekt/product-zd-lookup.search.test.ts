@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SubiektDocument } from "@/lib/subiekt/types";
 
 const mocks = vi.hoisted(() => ({
@@ -75,12 +75,18 @@ function zdDoc(
 
 describe("liveSearchProductZdBySymbolWindows", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-18T12:00:00+02:00"));
     vi.clearAllMocks();
     mocks.getSubiektZdDocumentCached.mockImplementation(async (id: number) =>
       zdDoc(id, {
         dok_Pozycja: [{ ob_TowId: 999, tw_Symbol: "OTHER", ob_Ilosc: 1 }],
       })
     );
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("odrzuca wiersze listy innego kontrahenta przed loadDoc", async () => {
@@ -183,6 +189,8 @@ describe("searchProductZdWithSupplier", () => {
   const product = { tw_Id: 16012, tw_Symbol: "MSDHLGY-104C", tw_Nazwa: "Craftsman" };
 
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-18T12:00:00+02:00"));
     vi.clearAllMocks();
     mocks.loadSupplierHistoriaOrderDates.mockResolvedValue([]);
     mocks.loadZdIndexRowsForPlacements.mockResolvedValue([]);
@@ -205,6 +213,10 @@ describe("searchProductZdWithSupplier", () => {
       matched: null,
     });
     mocks.liveSearchZdDocsByTwIdForOrder.mockResolvedValue({ doc: null, peeked: 0 });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("używa liveSearchZdDocsByTwIdForOrder gdy indeks i symbol nie trafiają", async () => {

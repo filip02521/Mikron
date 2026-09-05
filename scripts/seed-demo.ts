@@ -1,9 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
+import { loadScriptEnv } from "./lib/db-client";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-const supabase = createClient(url, key);
+loadScriptEnv();
+const supabase = createClient();
 
 async function main() {
   const { data: sales } = await supabase

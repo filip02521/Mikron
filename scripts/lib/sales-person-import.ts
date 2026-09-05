@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "../../src/lib/db/admin";
 import {
   normalizeSalesAlias,
   SALES_SHEET_ALIASES,

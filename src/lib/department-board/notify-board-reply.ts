@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveSalesPersonEmailById } from "@/lib/orders/resolve-sales-person-email";
 import { sendBoardQuestionReplyEmail } from "@/lib/services/email";
 import type { ResolvedSalesPersonContact } from "@/lib/orders/resolve-sales-person-email";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@/lib/db/admin";
 
 export type NotifyBoardQuestionReplyResult = {
   emailSent: boolean;

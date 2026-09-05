@@ -23,7 +23,7 @@ import {
   pageTitle,
   type NavItem,
 } from "./nav";
-import { MAIL_CENTER_MODULE_SLUG } from "@/lib/admin-modules";
+import { MAIL_CENTER_MODULE_SLUG } from "@/lib/admin-module-slugs";
 
 describe("isNavItemActive", () => {
   const zespolSiblings = ["/zespol", "/zespol/handlowcy", "/zespol/grupy"];

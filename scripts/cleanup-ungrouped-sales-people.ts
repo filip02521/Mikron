@@ -5,7 +5,7 @@
  *   npx tsx --env-file=.env.local scripts/cleanup-ungrouped-sales-people.ts
  *   npx tsx --env-file=.env.local scripts/cleanup-ungrouped-sales-people.ts --apply
  */
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import {
   isManagedSalesPersonEmail,
   isTeamSalesPerson,
@@ -45,11 +45,9 @@ function findMergeTarget(
 
 async function main() {
   const apply = process.argv.includes("--apply");
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("Brak NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY");
+  if (!process.env.DATABASE_URL?.trim()) throw new Error("Brak DATABASE_URL");
 
-  const supabase = createClient(url, key);
+  const supabase = createClient();
   const { data: all, error } = await supabase
     .from("sales_people")
     .select("id, name, email, group_id");

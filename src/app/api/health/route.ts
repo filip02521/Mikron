@@ -25,9 +25,9 @@ export async function GET(request: NextRequest) {
   const checks: Record<string, boolean | string> = {};
   const issues: string[] = [];
 
-  checks.supabase_configured = hasSupabaseConfig();
-  if (!checks.supabase_configured) {
-    issues.push("Brak konfiguracji Supabase");
+  checks.database = hasSupabaseConfig();
+  if (!checks.database) {
+    issues.push("Brak konfiguracji DATABASE_URL");
   }
 
   checks.email_configured = isEmailConfigured();

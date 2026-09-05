@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@/lib/db/admin";
 import { TEETH_QUEUE_PENDING_STATUSES } from "@/lib/data/teeth-queue-shared";
 import {
   orderHasTeethOrderFile,

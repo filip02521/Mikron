@@ -1,6 +1,6 @@
 import { findZkWatchByNumber } from "@/lib/sales/find-zk-watch-by-number";
 import type { SalesZkWatch } from "@/types/database";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@/lib/db/admin";
 
 /** Jedna karta ZK do prefillu prośby — bez ładowania wszystkich snapshotów handlowca. */
 export async function fetchZkWatchForProsbaPrefill(

@@ -1,16 +1,12 @@
-import { createClient } from "@supabase/supabase-js";
 import { isE2ELab } from "@/lib/e2e-lab/mode";
+import { createAdminClient, hasDatabaseConfig } from "@/lib/db/admin";
 
-/** Szybkie sprawdzenie w middleware (Edge) — czy jest już admin w bazie */
+/** Szybkie sprawdzenie w middleware — czy jest już admin w bazie */
 export async function middlewareNeedsBootstrap(): Promise<boolean> {
   if (isE2ELab()) return false;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) return false;
+  if (!hasDatabaseConfig()) return false;
 
-  const supabase = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
+  const supabase = createAdminClient();
 
   const { count, error } = await supabase
     .from("profiles")

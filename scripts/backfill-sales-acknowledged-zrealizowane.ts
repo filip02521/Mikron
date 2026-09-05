@@ -6,7 +6,7 @@
  * npx tsx scripts/backfill-sales-acknowledged-zrealizowane.ts --dry-run
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import type { IndividualOrder } from "../src/types/database";
 
 const PAGE = 500;
@@ -18,13 +18,11 @@ function ackAt(order: Pick<IndividualOrder, "delivery_at" | "ordered_at" | "acti
 
 async function main() {
   const dryRun = process.argv.includes("--dry-run");
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error("Ustaw NEXT_PUBLIC_SUPABASE_URL i SUPABASE_SERVICE_ROLE_KEY (.env.local)");
+  if (!process.env.DATABASE_URL?.trim()) {
+    throw new Error("Ustaw DATABASE_URL (.env / .env.local)");
   }
 
-  const supabase = createClient(url, key);
+  const supabase = createClient();
   let offset = 0;
   let scanned = 0;
   let updated = 0;

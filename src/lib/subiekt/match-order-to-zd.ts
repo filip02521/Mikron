@@ -1,7 +1,7 @@
 import type { IndividualOrder } from "@/types/database";
 import type { SubiektDocument, SubiektDocumentLine } from "@/lib/subiekt/types";
 import { getDeliveryProgress } from "@/lib/orders/individual";
-import { lineTowId } from "@/lib/subiekt/zd-catalog-import";
+import { lineTowId } from "@/lib/subiekt/zd-document-line";
 import { buildZdMatchProfileFromDocument } from "@/lib/warehouse/zd-receive-filter";
 import {
   isActiveZdFulfillmentDocument,
@@ -10,7 +10,7 @@ import {
 import {
   effectiveProductSymbol,
   extractAlphanumericProductCodeFromName,
-} from "@/lib/subiekt/zd-search-for-product";
+} from "@/lib/subiekt/zd-product-name-parse";
 import {
   pairQtyToPieces,
   type ZdProductPairRef,

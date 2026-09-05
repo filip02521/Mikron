@@ -15,7 +15,7 @@ import {
   indexZdProductPairs,
   type ZdProductPairRef,
 } from "@/lib/orders/zd-product-pair-units";
-import { extractAlphanumericProductCodeFromName } from "@/lib/subiekt/zd-search-for-product";
+import { extractAlphanumericProductCodeFromName } from "@/lib/subiekt/zd-product-name-parse";
 import type { IndividualOrder } from "@/types/database";
 import type { ZdEstimateProsbaOverlapContribution } from "@/lib/orders/zd-estimate-prosba-reservation-overlap";
 

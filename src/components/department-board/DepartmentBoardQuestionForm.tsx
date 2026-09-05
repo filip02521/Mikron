@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ClipboardEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { IconChevronDown, IconClipboardPen } from "@/components/icons/StrokeIcons";
@@ -26,6 +26,7 @@ import {
   BoardQuestionImagesField,
   type BoardQuestionImageDraft,
 } from "@/components/department-board/BoardQuestionImagesField";
+import { imageFilesFromClipboardData } from "@/lib/department-board/attachments";
 import { cn } from "@/lib/cn";
 import { floatingToastBottomClass } from "@/lib/ui/sales-mobile-chrome";
 import { brandLinkClass, salesTypography } from "@/lib/ui/ontime-theme";
@@ -79,8 +80,21 @@ function QuestionFormFields({
   idPrefix: string;
 }) {
   const busy = saving || imagesCompressing;
+
+  function handlePaste(event: ClipboardEvent) {
+    if (tourDemo || busy) return;
+    const files = imageFilesFromClipboardData(event.clipboardData);
+    if (!files.length) return;
+    // Tylko obraz — zwykły tekst wkleja się normalnie w tytuł / treść.
+    event.preventDefault();
+    void onAddImages(files);
+  }
+
   return (
-    <div className={embedded ? boardQuestionsFormEmbeddedBodyClass : boardQuestionsFormBodyClass}>
+    <div
+      className={embedded ? boardQuestionsFormEmbeddedBodyClass : boardQuestionsFormBodyClass}
+      onPaste={handlePaste}
+    >
       <QuestionFormIntro />
 
       <div>

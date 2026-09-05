@@ -14,6 +14,64 @@ export type BoardImageMime = (typeof BOARD_IMAGE_ALLOWED_MIME)[number];
 
 export const BOARD_IMAGE_ACCEPT = "image/jpeg,image/jpg,image/png,image/webp";
 
+/**
+ * Obrazy ze schowka (Win+Shift+S / Snipping Tool / Ctrl+V).
+ * Zwraca tylko pliki image/* — tekstowy paste nie jest przechwytywany.
+ */
+export function imageFilesFromClipboardData(
+  data: DataTransfer | null | undefined
+): File[] {
+  if (!data) return [];
+
+  const fromItems: File[] = [];
+  if (data.items?.length) {
+    for (const item of Array.from(data.items)) {
+      if (item.kind !== "file") continue;
+      const type = (item.type || "").toLowerCase();
+      if (!type.startsWith("image/")) continue;
+      const file = item.getAsFile();
+      if (file && file.size > 0) fromItems.push(normalizeClipboardImageFile(file));
+    }
+  }
+  if (fromItems.length) return fromItems;
+
+  const fromFiles: File[] = [];
+  if (data.files?.length) {
+    for (const file of Array.from(data.files)) {
+      const type = (file.type || "").toLowerCase();
+      if (!type.startsWith("image/")) continue;
+      if (file.size <= 0) continue;
+      fromFiles.push(normalizeClipboardImageFile(file));
+    }
+  }
+  return fromFiles;
+}
+
+function clipboardImageExtension(mime: string): string {
+  if (mime === "image/png") return "png";
+  if (mime === "image/webp") return "webp";
+  if (mime === "image/jpeg" || mime === "image/jpg") return "jpg";
+  return "png";
+}
+
+/** Windows często daje pustą nazwę albo „image.png”. */
+function normalizeClipboardImageFile(file: File): File {
+  const mime = (file.type || "image/png").toLowerCase();
+  const name = file.name?.trim() || "";
+  const hasUsefulName =
+    name.length > 0 &&
+    name.toLowerCase() !== "image.png" &&
+    name.toLowerCase() !== "image.jpg" &&
+    name.toLowerCase() !== "image.jpeg" &&
+    name.toLowerCase() !== "image.webp";
+  if (hasUsefulName) return file;
+  const ext = clipboardImageExtension(mime);
+  return new File([file], `zrzut-${Date.now()}.${ext}`, {
+    type: mime.startsWith("image/") ? mime : "image/png",
+    lastModified: file.lastModified || Date.now(),
+  });
+}
+
 export function isBoardImageMime(value: string | null | undefined): value is BoardImageMime {
   if (!value) return false;
   return (BOARD_IMAGE_ALLOWED_MIME as readonly string[]).includes(value);

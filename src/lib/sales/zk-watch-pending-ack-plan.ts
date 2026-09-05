@@ -11,7 +11,7 @@ import {
   type ZkWatchPendingAckItem,
 } from "@/lib/sales/zk-watch-close-pending";
 import type { IndividualOrder, IndividualOrderStatus, SalesZkWatch } from "@/types/database";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@/lib/db/admin";
 
 export type AckOptions = {
   allowedStatuses?: IndividualOrderStatus[];

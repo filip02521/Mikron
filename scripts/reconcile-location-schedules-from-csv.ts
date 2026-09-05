@@ -3,7 +3,7 @@
  *   npx tsx --env-file=.env.local scripts/reconcile-location-schedules-from-csv.ts --dir "/Users/.../Downloads"
  *   npx tsx --env-file=.env.local scripts/reconcile-location-schedules-from-csv.ts --fix --dir "..."
  */
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import { existsSync } from "fs";
 import {
   applyLocationScheduleRows,
@@ -15,8 +15,6 @@ import {
 } from "./lib/location-schedule-csv";
 import type { LocationScheduleRow } from "./lib/location-schedule-pdf";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 type ScheduleFields = {
   order_date: string | null;
@@ -180,10 +178,10 @@ async function compareLocation(
 }
 
 async function main() {
-  if (!url || !key) {
-    console.error("Ustaw NEXT_PUBLIC_SUPABASE_URL i SUPABASE_SERVICE_ROLE_KEY");
-    process.exit(1);
-  }
+  if (!process.env.DATABASE_URL?.trim()) {
+  console.error("Ustaw DATABASE_URL (.env / .env.local)");
+  process.exit(1);
+}
 
   const argv = process.argv.slice(2);
   const fix = argv.includes("--fix");
@@ -214,7 +212,7 @@ async function main() {
     process.exit(1);
   }
 
-  const supabase = createClient(url, key);
+  const supabase = createClient();
   let total = 0;
   for (const loc of locs) {
     total += await compareLocation(supabase, loc, found[loc]!, fix);

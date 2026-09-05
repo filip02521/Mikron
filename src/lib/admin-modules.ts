@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { MAIL_CENTER_MODULE_SLUG } from "@/lib/admin-module-slugs";
 
-export const MAIL_CENTER_MODULE_SLUG = "ivoclar_weekly_mail_center";
+export { MAIL_CENTER_MODULE_SLUG };
 
 export async function fetchMailCenterModuleEnabledForUserId(
   userId: string

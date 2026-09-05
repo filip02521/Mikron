@@ -24,7 +24,7 @@ import {
   undoExpiresAtNow,
   undoWindowBannerDescription,
 } from "@/lib/orders/daily-panel-undo";
-import type { SalesCancelUndoRestore } from "@/lib/orders/sales-cancel-db";
+import type { SalesCancelUndoRestore } from "@/lib/orders/sales-cancel";
 import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 import { useUndoShortcutLabel } from "@/lib/platform/keyboard-shortcut-label";
 import { MY_ORDERS_TOAST, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";

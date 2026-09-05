@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "../../src/lib/db/admin";
 import { findLocationScheduleCsvs } from "./location-schedule-csv";
 import { readLocationScheduleCsv } from "./location-schedule-csv";
 import { applyLocationScheduleRows } from "./apply-location-schedule-rows";

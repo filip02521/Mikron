@@ -31,7 +31,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { SalesPartialCancelDialog } from "@/components/moje/SalesPartialCancelDialog";
 import { TeethPartialCancelDialog } from "@/components/moje/TeethPartialCancelDialog";
 import type { SalesCancelPhase } from "@/lib/orders/sales-cancel";
-import type { SalesCancelUndoRestore } from "@/lib/orders/sales-cancel-db";
+import type { SalesCancelUndoRestore } from "@/lib/orders/sales-cancel";
 import type { TeethLineDetail } from "@/lib/teeth/teeth-catalog";
 import { useMyOrderPickupShelfDialog } from "@/components/moje/MyOrderPickupShelfDialogProvider";
 import { useMyOrderShipmentUndo } from "@/components/moje/MyOrderShipmentUndoProvider";

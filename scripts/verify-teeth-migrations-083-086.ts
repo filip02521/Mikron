@@ -1,12 +1,15 @@
 /**
- * Weryfikuje migracje 083–086 na podłączonej bazie Supabase.
+ * Weryfikuje migracje 083–086 na podłączonej bazie PostgreSQL.
  * Użycie: npx tsx scripts/verify-teeth-migrations-083-086.ts
  */
 
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
-import { createClient } from "@supabase/supabase-js";
-import pg from "pg";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
+import {
+  createVerifyPgClient,
+  isRlsDisabledOnPublic,
+} from "./lib/verify-pg";
 
 function loadEnvLocal(): Record<string, string> {
   const path = join(process.cwd(), ".env.local");
@@ -30,32 +33,20 @@ function loadEnvLocal(): Record<string, string> {
 }
 
 function buildPgConnectionString(env: Record<string, string>): string | null {
-  if (env.DATABASE_URL) return env.DATABASE_URL;
-  const password = env.SUPABASE_DB_PASSWORD;
-  const url = env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!password || !url) return null;
-
-  const m = url.match(/https:\/\/([^.]+)\.supabase\.co/);
-  if (!m) return null;
-  const ref = m[1];
-  const host = env.SUPABASE_DB_HOST ?? "aws-0-eu-central-1.pooler.supabase.com";
-  const port = env.SUPABASE_DB_PORT ?? "5432";
-  const user = env.SUPABASE_DB_USER ?? `postgres.${ref}`;
-  return `postgresql://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/postgres`;
+  return env.DATABASE_URL?.trim() || null;
 }
 
 type Check = { id: string; ok: boolean; detail: string };
 
 async function main() {
   const env = { ...process.env, ...loadEnvLocal() } as Record<string, string>;
-  const url = env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    console.error("Brak NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY");
+  if (!env.DATABASE_URL?.trim()) {
+    console.error("Brak DATABASE_URL (.env / .env.local)");
     process.exit(1);
   }
+  process.env.DATABASE_URL = env.DATABASE_URL;
 
-  const supabase = createClient(url, key);
+  const supabase = createClient();
   const checks: Check[] = [];
 
   const { error: e083 } = await supabase
@@ -99,20 +90,33 @@ async function main() {
 
   const pgConn = buildPgConnectionString(env);
   if (pgConn) {
-    const client = new pg.Client({ connectionString: pgConn, ssl: { rejectUnauthorized: false } });
+    const client = createVerifyPgClient(pgConn);
     await client.connect();
     try {
-      const fn = await client.query<{ def: string }>(
-        `SELECT pg_get_functiondef(oid) AS def FROM pg_proc WHERE proname = 'can_access_teeth_panel' LIMIT 1`,
-      );
-      const def = fn.rows[0]?.def ?? "";
-      checks.push({
-        id: "085",
-        ok: def.includes("zakupy_zeby"),
-        detail: def.includes("zakupy_zeby")
-          ? "can_access_teeth_panel (admin + zakupy_zeby)"
-          : "funkcja can_access_teeth_panel bez zakupy_zeby lub brak",
-      });
+      if (await isRlsDisabledOnPublic(client)) {
+        checks.push({
+          id: "085",
+          ok: true,
+          detail: "RLS wyłączone (local PG / app-auth) — can_access_teeth_panel w app layer",
+        });
+      } else {
+        const fn = await client.query<{ def: string }>(
+          `SELECT pg_get_functiondef(oid) AS def
+           FROM pg_proc p
+           JOIN pg_namespace n ON n.oid = p.pronamespace
+           WHERE p.proname = 'can_access_teeth_panel'
+             AND n.nspname IN ('public', 'private')
+           LIMIT 1`,
+        );
+        const def = fn.rows[0]?.def ?? "";
+        checks.push({
+          id: "085",
+          ok: def.includes("zakupy_zeby"),
+          detail: def.includes("zakupy_zeby")
+            ? "can_access_teeth_panel (admin + zakupy_zeby)"
+            : "funkcja can_access_teeth_panel bez zakupy_zeby lub brak",
+        });
+      }
     } finally {
       await client.end();
     }
@@ -120,7 +124,7 @@ async function main() {
     checks.push({
       id: "085",
       ok: false,
-      detail: "pominięto — brak SUPABASE_DB_PASSWORD / DATABASE_URL",
+      detail: "pominięto — brak DATABASE_URL",
     });
   }
 

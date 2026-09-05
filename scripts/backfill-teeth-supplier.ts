@@ -6,19 +6,19 @@
  *
  * Run: npx tsx scripts/backfill-teeth-supplier.ts
  */
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import { fetchTeethProductInfo } from "../src/lib/data/teeth-products";
 import { fetchSuppliersForForm } from "../src/lib/data/queries";
 import { resolveSupplierForTeethManufacturer } from "../src/lib/orders/teeth-ocr-prosba-prefill";
 
 async function main() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    console.error("Brak NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY. Użyj --env-file=.env.local");
+  if (!env.DATABASE_URL?.trim()) {
+    console.error("Brak DATABASE_URL (.env / .env.local)");
     process.exit(1);
   }
-  const supabase = createClient(url, key);
+  process.env.DATABASE_URL = env.DATABASE_URL;
+
+  const supabase = createClient();
 
   const teethProducts = await fetchTeethProductInfo().catch(() => []);
   const manufacturerByTwId = new Map(teethProducts.map((row) => [row.twId, row.manufacturer]));

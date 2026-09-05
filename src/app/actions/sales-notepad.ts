@@ -98,7 +98,7 @@ import {
 } from "@/lib/sales/zk-watch-case-note-prosba";
 import { resolveZkProsbaPrefillSalesPersonAccess } from "@/lib/sales/zk-prosba-prefill-access";
 import type { SalesNote, SalesNoteColor, SalesZkWatch } from "@/types/database";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@/lib/db/admin";
 
 async function salesPersonIdForAction(delegateFor?: string): Promise<string> {
   const user = await getSessionUser();

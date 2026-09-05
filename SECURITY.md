@@ -4,8 +4,8 @@
 
 1. **Proxy (`src/proxy.ts`)** — routing, sesja, role, podgląd panelu admina.
 2. **Server actions / SSR** — `require*()`, scope helpers (`canAccessSalesPerson`).
-3. **Supabase service role** — domyślny klient danych w aplikacji (`createAdminClient()`).
-4. **RLS w Postgres** — druga linia obrony przy bezpośrednim API z JWT użytkownika.
+3. **PostgreSQL (`createAdminClient()`)** — jeden użytkownik DB `ontime_app`, **RLS wyłączone**.
+4. **Autoryzacja** — `proxy.ts` + `require*()`; sesja cookie `ontime_session` (httpOnly).
 
 ## Role
 
@@ -41,55 +41,49 @@
 
 ## Sekrety produkcyjne
 
+- `DATABASE_URL` — PostgreSQL (`ontime_app`)
+- `SESSION_SECRET` — min. 32 znaki (hash sesji)
+- `STORAGE_ROOT` / `STORAGE_SIGNING_SECRET` — pliki lokalne
 - `CRON_SECRET` — health + crony
-- `PASSWORD_RESET_OTP_SECRET` — min. 32 znaki, **nie** service role key
+- `PASSWORD_RESET_OTP_SECRET` — min. 32 znaki, osobny od `SESSION_SECRET`
 - `SETUP_TOKEN` — pierwszy admin (min. 16 znaków)
 - **Nie ustawiaj** `E2E_LAB=1` na produkcji
 
 ## Weryfikacja przed deployem
 
 ```bash
-npm run verify:deploy   # migracje + env + audyty
+npm run verify:deploy   # env + audyty
+npm run verify:deploy:postgres   # + db:migrate (staging)
 npm test
 npm run build
 ```
 
-Migracje Supabase: **068–070** (RLS aliasów Subiekt, kierownik, sales_people).
+Szczegóły bazy: [docs/database-local-postgres.md](docs/database-local-postgres.md).  
+Cutover: [docs/cutover-postgres.md](docs/cutover-postgres.md).  
+Zamknięcie migracji: [docs/migration-closure-checklist.md](docs/migration-closure-checklist.md).
 
-Pełna weryfikacja polityk RLS (068–070): ustaw `SUPABASE_DB_PASSWORD` w `.env.local`.
+## Scope danych (zamiast RLS)
 
-## RLS `sales_people` (070)
+RLS jest **wyłączone**. Ograniczenia roli (`sales` / `sales_manager` / …) egzekwuje warstwa aplikacji (`require*()`, `canAccessSalesPerson`).
 
-| Rola | SELECT przez JWT |
-|------|------------------|
-| `admin` | wszystkie (polityka admin) |
-| `zakupy` | wszystkie (`is_operations`) |
-| `magazyn` | wszystkie (`is_magazyn`) |
-| `sales` | tylko własna karta (`my_sales_person_id`) |
+| Rola | Dostęp (aplikacja) |
+|------|---------------------|
+| `admin` | pełny |
+| `zakupy` / `magazyn` | operacje w swoim panelu |
+| `sales` | własna karta handlowca |
 | `sales_manager` | własna + zespół w scope grup |
-
-Aplikacja (SSR / actions) używa **service role** — UI handlowca bez zmian.
-
-## Migracja JWT (w toku)
-
-| Ścieżka | Klient | Status |
-|---------|--------|--------|
-| `getSessionUser()` | JWT → `fetchOwnProfileForSession()` | ✅ RLS `profiles` |
-| `completeSalesOnboarding()` | JWT → update własnego profilu | ✅ |
-| Middleware / lookup po id | service role → `fetchProfileByUserId()` | bez zmian |
-| Reszta actions / data | service role | backlog iteracyjny |
 
 Nowe mutacje własnych danych użytkownika: adnotacja `@user-jwt-ok`.
 
 ## Cookies sesji
 
-`httpOnly: false` — wymagane przez `@supabase/ssr` (odświeżanie sesji w przeglądarce). Admin panel cookie jest `httpOnly: true`.
+Sesja `ontime_session` jest `httpOnly: true`. Cookie podglądu panelu admina też jest `httpOnly: true`.
 
 ## CI / audyt
 
 - `npm run audit:admin-mutations` — mutacje admin bez `requireAdminForMutation`.
-- `npm run audit:service-role` — `createAdminClient()` w actions wymaga `@service-role-ok`.
-- Oba audyty w GitHub Actions (`security-audit` job).
+- `npm run audit:db-access` / `audit:service-role` — `createAdminClient()` w actions wymaga `@db-ok` / `@service-role-ok`.
+- Joby w GitHub Actions: `security-audit`, `integration` (postgres:16 + `db:migrate`).
 
 ## Error boundaries
 
@@ -97,7 +91,7 @@ Wspólny komponent: `src/components/errors/RouteErrorScreen.tsx`.
 
 `error.tsx`: globalny + `/admin`, `/zakupy`, `/podsumowanie`, `/kolejka`, `/moje`, `/prosba`, `/zespol`.
 
-## Znane ograniczenia (backlog)
+## Znane ograniczenia
 
-- Dalsza migracja odczytów/mutacji sales na user JWT + RLS (orders, notepad itd.).
-- Service-role w `src/lib/data/*` — kolejne iteracje z `@service-role-ok` lub JWT.
+- Klient DB zachowuje API PostgREST (`from().select()`); pełny schemat Drizzle jest opcjonalnym follow-upem.
+- Jednorazowy skrypt `scripts/migrate-storage-from-supabase.ts` nadal czyta Storage API przy cutoverze.

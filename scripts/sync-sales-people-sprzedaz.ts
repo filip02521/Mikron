@@ -10,7 +10,7 @@
  */
 import { readFileSync, copyFileSync, mkdirSync } from "fs";
 import { resolve } from "path";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import { parseCsv } from "./lib/parse-csv";
 import {
   normalizeSalesAlias,
@@ -63,12 +63,10 @@ async function main() {
     ? process.argv[2]
     : DEFAULT_CSV;
   const apply = process.argv.includes("--apply");
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) throw new Error("Brak NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY");
+  if (!process.env.DATABASE_URL?.trim()) throw new Error("Brak DATABASE_URL");
 
   const canonical = loadSprzedazCsv(csvPath);
-  const supabase = createClient(url, key);
+  const supabase = createClient();
 
   console.log("=== SPRZEDAŻ → handlowcy ===");
   console.log("Źródło:", csvPath);

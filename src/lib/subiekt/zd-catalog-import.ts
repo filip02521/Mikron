@@ -4,7 +4,10 @@ import { getSubiektZdDocumentCached } from "@/lib/subiekt/subiekt-runtime-cache"
 import { SubiektRequestError } from "@/lib/subiekt/errors";
 import { extractDocKhIds } from "@/lib/subiekt/zd-document-kh";
 import type { SubiektDocumentLine } from "@/lib/subiekt/types";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@/lib/db/admin";
+import { lineTowId } from "@/lib/subiekt/zd-document-line";
+
+export { lineTowId };
 
 export type PendingZdImportScope = {
   supplierId: string;
@@ -19,14 +22,6 @@ export type PendingZdIndexRow = {
 
 function nowIso(): string {
   return new Date().toISOString();
-}
-
-export function lineTowId(line: SubiektDocumentLine): number | null {
-  const raw = line.ob_TowId;
-  if (raw == null) return null;
-  const n = Number(raw);
-  if (!Number.isFinite(n) || n <= 0) return null;
-  return Math.trunc(n);
 }
 
 export type ZdCatalogImportResult = {

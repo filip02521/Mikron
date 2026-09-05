@@ -1,5 +1,5 @@
-import type { TeethQueueGroup, TeethQueueItem } from "@/lib/data/teeth-queue";
-import { isScheduledItem } from "@/lib/data/teeth-queue";
+import type { TeethQueueGroup, TeethQueueItem } from "@/lib/data/teeth-queue-shared";
+import { groupTeethItemsBySupplier, isScheduledItem } from "@/lib/data/teeth-queue-shared";
 import {
   orderTeethListReadyForOrder,
   type TeethPanelOrderLike,
@@ -8,7 +8,7 @@ import {
 import { teethQueueOrderNeedsHeaderData } from "@/lib/teeth/teeth-queue-gate";
 import type { IndividualOrderTeethDetail } from "@/types/database";
 
-export { groupTeethItemsBySupplier } from "@/lib/data/teeth-queue";
+export { groupTeethItemsBySupplier };
 
 export type TeethPanelFilters = {
   supplierId: string | null;

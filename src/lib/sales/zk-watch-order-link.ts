@@ -12,7 +12,7 @@ import {
   normalizeSalesClientKhId,
 } from "@/lib/orders/sales-client-match";
 import { orderExplicitlyLinkedToZkWatch } from "@/lib/orders/zk-prosba-source";
-import { isZkWatchArchived } from "@/lib/data/sales-notepad";
+import { isZkWatchArchived } from "@/lib/data/sales-notepad-shared";
 import { getDeliveryProgress, INFORMACJA_NO_QUANTITY, parseOrderQuantity } from "@/lib/orders/individual";
 import {
   activeOrderQuantity,

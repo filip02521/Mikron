@@ -3,13 +3,11 @@
  * npx tsx scripts/fix-bad-intervals.ts
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 async function main() {
-  const supabase = createClient(url, key);
+  const supabase = createClient();
   const { data: suppliers } = await supabase
     .from("suppliers")
     .select("id, name, interval_weeks");

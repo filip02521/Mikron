@@ -77,12 +77,11 @@ async function main() {
   else if (nodeCheck.ok) ok.push(nodeCheck.ok);
 
   const required = [
-    "NEXT_PUBLIC_SUPABASE_URL",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-    "SUPABASE_SERVICE_ROLE_KEY",
+    "DATABASE_URL",
+    "SESSION_SECRET",
   ];
   for (const key of required) {
-    if (!env[key] || env[key]!.includes("your-")) {
+    if (!env[key] || env[key]!.includes("your-") || env[key]!.includes("CHANGE_ME")) {
       issues.push(`Brak lub placeholder: ${key}`);
     } else {
       ok.push(key);
@@ -92,7 +91,7 @@ async function main() {
   if (env.DEV_ADMIN_MODE === "true") {
     ok.push("DEV_ADMIN_MODE (dev bez logowania)");
   } else if (process.env.NODE_ENV !== "production") {
-    ok.push("Logowanie Supabase Auth na chronionych trasach (produkcja: DEV_ADMIN_MODE=false)");
+    ok.push("Logowanie lokalne (cookie ontime_session; produkcja: DEV_ADMIN_MODE=false)");
   }
 
   if (!env.CRON_SECRET || env.CRON_SECRET === "change-me-in-production") {
@@ -158,28 +157,22 @@ async function main() {
     process.env.APP_SERVER_HOST = env.APP_SERVER_HOST;
     process.env.APP_PORT = env.APP_PORT;
     process.env.APP_EXTRA_REDIRECT_URLS = env.APP_EXTRA_REDIRECT_URLS;
-    const { getSupabaseAuthRedirectUrls } = await import("../src/lib/env/app-config");
-    console.log("\nSupabase → Authentication → Redirect URLs (dopisz wszystkie):");
-    for (const redirect of getSupabaseAuthRedirectUrls()) {
-      console.log(`  ${redirect}`);
-    }
-    console.log(`  Site URL: ${appUrl}\n`);
+    const { getAppUrl } = await import("../src/lib/env/app-config");
+    console.log(`\nAPP_URL: ${getAppUrl()}\n`);
   }
 
-  if (env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (env.DATABASE_URL) {
     try {
-      const { createClient } = await import("@supabase/supabase-js");
-      const supabase = createClient(
-        env.NEXT_PUBLIC_SUPABASE_URL,
-        env.SUPABASE_SERVICE_ROLE_KEY
-      );
-      const tables = ["suppliers", "sales_people", "profiles", "sales_bug_reports"] as const;
+      process.env.DATABASE_URL = env.DATABASE_URL;
+      const { createAdminClient } = await import("../src/lib/db/admin");
+      const db = createAdminClient();
+      const tables = ["suppliers", "sales_people", "profiles", "app_users"] as const;
       for (const t of tables) {
-        const { error, count } = await supabase
+        const { error, count } = await db
           .from(t)
           .select("*", { count: "exact", head: true });
-        if (error?.message?.includes("does not exist")) {
-          issues.push(`Tabela ${t} nie istnieje — uruchom migracje SQL w Supabase`);
+        if (error?.message?.includes("does not exist") || error?.code === "42P01") {
+          issues.push(`Tabela ${t} nie istnieje — uruchom npm run db:migrate`);
         } else if (error) {
           issues.push(`Błąd ${t}: ${error.message}`);
         } else {
@@ -188,14 +181,14 @@ async function main() {
       }
 
       const { runSchemaChecks } = await import("../src/lib/supabase/schema-check");
-      const schema = await runSchemaChecks(supabase);
+      const schema = await runSchemaChecks(db);
       if (schema.ok) {
-        ok.push("Schemat bazy (migracje 006–013)");
+        ok.push("Schemat bazy (schema-check)");
       } else {
         issues.push(...schema.issues);
       }
     } catch (e) {
-      issues.push(`Połączenie Supabase: ${e instanceof Error ? e.message : e}`);
+      issues.push(`Połączenie Postgres: ${e instanceof Error ? e.message : e}`);
     }
   }
 
@@ -208,12 +201,9 @@ async function main() {
     console.log("\nDo poprawy:");
     issues.forEach((l) => console.log("  ✗", l));
     console.log("\nKroki:");
-    console.log("  1. cp .env.example .env");
-    console.log(
-      "  2. SQL Editor: migracje z supabase/migrations/ (min. 001, 002, 004-006)"
-    );
-    console.log("  3. echo DEV_ADMIN_MODE=true >> .env  (dev)");
-    console.log("  4. npm run seed  lub  npm run migrate -- ./data");
+    console.log("  1. cp .env.example .env.local && uzupełnij DATABASE_URL / SESSION_SECRET");
+    console.log("  2. docker compose -f docker-compose.db.yml up -d && npm run db:migrate");
+    console.log("  3. npm run seed");
     process.exit(1);
   }
   console.log("\nKonfiguracja wygląda poprawnie.\n");

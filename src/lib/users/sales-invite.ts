@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@/lib/db/admin";
 import {
   buildPasswordConfirmLink,
   emailOtpTypeFromVerification,
@@ -18,7 +18,10 @@ export async function findAuthUserByEmail(
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
     if (error) throw new Error(error.message);
 
-    const hit = data.users.find((u) => u.email?.trim().toLowerCase() === normalized);
+    const hit = data.users.find(
+      (u: { id: string; email?: string | null }) =>
+        u.email?.trim().toLowerCase() === normalized
+    );
     if (hit?.email) return { id: hit.id, email: hit.email };
 
     if (data.users.length < 1000) break;

@@ -3,15 +3,13 @@
  *
  *   npx tsx scripts/verify-location-schedules-import.ts --dir "/Users/Filip/Downloads"
  */
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import {
   findLocationScheduleCsvs,
   readLocationScheduleCsv,
 } from "./lib/location-schedule-csv";
 import { matchSupplierId } from "../src/lib/orders/delivery-stats-import";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 function eq(a: string | null | undefined, b: string | null): boolean {
   return (a ?? null) === (b ?? null);
@@ -24,13 +22,13 @@ async function main() {
     console.error("Użycie: … --dir /ścieżka/do/eksportów");
     process.exit(1);
   }
-  if (!url || !key) {
-    console.error("Brak NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY");
-    process.exit(1);
-  }
+  if (!process.env.DATABASE_URL?.trim()) {
+  console.error("Ustaw DATABASE_URL (.env / .env.local)");
+  process.exit(1);
+}
 
   const found = findLocationScheduleCsvs(dir);
-  const supabase = createClient(url, key);
+  const supabase = createClient();
   let totalMismatch = 0;
 
   for (const loc of ["POLSKA", "ZAGRANICA", "IMPORT"] as const) {

@@ -11,7 +11,7 @@ import {
 } from "@/lib/orders/prosba-form-lead-time";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { DeliveryStats } from "@/types/database";
-import { leadTimeDisplayFromQuantiles } from "@/lib/orders/delivery-eta-quantiles-load";
+import { leadTimeDisplayFromQuantiles } from "@/lib/orders/delivery-eta-quantiles-shared";
 
 type LeadTimeRow = {
   supplierId: string;

@@ -1,4 +1,4 @@
-import { isZkWatchArchived } from "@/lib/data/sales-notepad";
+import { isZkWatchArchived } from "@/lib/data/sales-notepad-shared";
 import type { SalesZkWatch } from "@/types/database";
 
 export const ZK_WATCH_CLOSED_FOR_PROSBA_MESSAGE =

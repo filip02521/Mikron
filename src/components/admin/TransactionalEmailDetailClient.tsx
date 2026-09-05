@@ -5,7 +5,7 @@ import { AdminHubShell } from "@/components/admin/AdminHubShell";
 import { EmailHtmlPreview } from "@/components/admin/EmailHtmlPreview";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { TRANSACTIONAL_EMAIL_KIND_LABELS } from "@/lib/services/transactional-email-log";
+import { TRANSACTIONAL_EMAIL_KIND_LABELS } from "@/lib/services/transactional-email-labels";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
 import type {
   TransactionalEmailKind,

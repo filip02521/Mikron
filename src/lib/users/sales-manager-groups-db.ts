@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@/lib/db/admin";
 
 /** Usuwa przypisania grup kierownika (np. przed zmianą roli). */
 export async function deleteSalesManagerGroupsForProfile(

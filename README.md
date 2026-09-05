@@ -6,20 +6,22 @@ Aplikacja webowa zastępująca arkusz Google Sheets — zarządzanie cyklicznymi
 
 - **Next.js 16** (App Router)
 - **Node.js 24 LTS** (minimum 20.9 — `nvm use` wczytuje wersję z `.nvmrc`)
-- **Supabase** (PostgreSQL, Auth, RLS)
+- **PostgreSQL 16** (lokalny / Docker; auth w aplikacji, sesja cookie)
 - **Amazon SES SMTP** (e-maile, opcjonalnie — `SMTP_*` + domena `ontime.mikran.pl`)
 
 ## Szybki start
 
-1. Utwórz projekt na [supabase.com](https://supabase.com) i skopiuj `.env.example` → `.env.local`.
-2. Uruchom migracje SQL w Supabase **SQL Editor** (kolejno, po kolei):
-   - `001_initial_schema.sql`
-   - `002_auth_profile_trigger.sql` (oraz opcjonalnie `002_interval_raw.sql`, `003_stock_raw.sql` jeśli importujesz CSV)
-   - `004_zakupy_role.sql` — rola zakupów
-   - `005_profile_role_guard.sql`
-   - `006_request_kind_informacja.sql` — **wymagane** dla „Informacja gdy dotarło”
+1. Skopiuj `.env.example` → `.env.local` i ustaw `DATABASE_URL`, `SESSION_SECRET`, `STORAGE_ROOT`.
+2. Uruchom bazę i migracje:
 
-   Sprawdzenie: `npm run setup-check` (powinno pokazać `request_kind` OK).
+```bash
+docker compose -f docker-compose.db.yml up -d
+npm run db:migrate
+npm run setup-check
+```
+
+Szczegóły: [docs/database-local-postgres.md](docs/database-local-postgres.md).
+
 3. Zainstaluj zależności i uruchom dev:
 
 ```bash
@@ -141,6 +143,16 @@ npm run test
 ```
 
 Logika dat, urlopów i podsumowania jest w `src/lib/orders/` — zgodna z oryginalnym skryptem GAS v12.
+
+## Produkcja Windows (PostgreSQL lokalny)
+
+1. Role i bazy: `installer/setup-postgres-roles.sql` (hasła `CHANGE_ME_*` → produkcyjne)
+2. Schema: `npm run db:migrate` **albo** restore pełnego dumpa (`pg_restore`)
+3. `.env` z `.env.production.example` — **bez** kluczy Supabase
+4. Storage: `STORAGE_ROOT` (np. `D:\OnTime\storage`)
+5. Usługa: `.\installer\install-windows-service.ps1`
+
+Docs: [docs/database-local-postgres.md](docs/database-local-postgres.md), [docs/cutover-postgres.md](docs/cutover-postgres.md), [docs/verify-postgres-checklist.md](docs/verify-postgres-checklist.md).
 
 ## Role użytkowników
 

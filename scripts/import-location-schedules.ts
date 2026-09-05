@@ -5,14 +5,12 @@
  *   npx tsx scripts/import-location-schedules.ts POLSKA
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import type { LocationScheduleRow } from "./lib/location-schedule-pdf";
 import { applyLocationScheduleRows } from "./lib/apply-location-schedule-rows";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 async function main() {
   const location = (process.argv[2] || "ZAGRANICA").toUpperCase();
@@ -21,10 +19,10 @@ async function main() {
     process.exit(1);
   }
 
-  if (!url || !key) {
-    console.error("Ustaw NEXT_PUBLIC_SUPABASE_URL i SUPABASE_SERVICE_ROLE_KEY");
-    process.exit(1);
-  }
+  if (!process.env.DATABASE_URL?.trim()) {
+  console.error("Ustaw DATABASE_URL (.env / .env.local)");
+  process.exit(1);
+}
 
   const slug = location.toLowerCase();
   const dataPath = join(process.cwd(), "data", `${slug}-schedules.json`);
@@ -37,7 +35,7 @@ async function main() {
     (r) => r.name && !/^\d{4}-\d{2}-\d{2}$/.test(r.name) && !/^w razie potrzeby$/i.test(r.name)
   );
 
-  const supabase = createClient(url, key);
+  const supabase = createClient();
   const result = await applyLocationScheduleRows(supabase, location, rows);
 
   console.log(`${location}: zaktualizowano ${result.updated}/${result.total}`);

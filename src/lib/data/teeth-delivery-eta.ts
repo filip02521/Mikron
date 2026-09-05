@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@/lib/db/admin";
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import {
   calculateBusinessDate,
@@ -7,7 +7,9 @@ import {
   parseDateOnly,
 } from "@/lib/orders/dates";
 import type { DeliveryEtaEstimate } from "@/lib/orders/delivery-eta";
-import { warsawDateKeyFromIso } from "@/lib/time/warsaw";
+import { teethPlacementDateOnly } from "@/lib/data/teeth-delivery-eta-date";
+
+export { teethPlacementDateOnly };
 
 export type TeethDeliveryEtaSource = "fixed" | "history";
 
@@ -15,14 +17,6 @@ export type TeethDeliveryEtaSource = "fixed" | "history";
 export type TeethDeliveryEtaEstimate = DeliveryEtaEstimate & {
   source: TeethDeliveryEtaSource;
 };
-
-/** Data kalendarzowa w Warszawie z ISO lub YYYY-MM-DD (Vercel = UTC). */
-export function teethPlacementDateOnly(placementAt: string): Date | null {
-  const raw = placementAt.trim();
-  if (!raw) return null;
-  const key = raw.length === 10 ? raw : warsawDateKeyFromIso(raw);
-  return parseDateOnly(key);
-}
 
 /**
  * Stałe dni robocze per dostawca z teeth_supplier_schedules.

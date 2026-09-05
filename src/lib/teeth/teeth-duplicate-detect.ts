@@ -1,5 +1,5 @@
-import type { TeethQueueEntry } from "@/lib/data/teeth-queue";
-import { isScheduledItem } from "@/lib/data/teeth-queue";
+import type { TeethQueueEntry } from "@/lib/data/teeth-queue-shared";
+import { isScheduledItem } from "@/lib/data/teeth-queue-shared";
 
 export type TeethDuplicateWarning = {
   salesPersonName: string;

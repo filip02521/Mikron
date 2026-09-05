@@ -7,7 +7,7 @@ import { readFileSync } from "fs";
 import { parseCsv, headerIndex } from "./lib/parse-csv";
 import { parseFlexibleDate } from "./lib/location-schedule-pdf";
 import { parseInterval, calculateNextOrderDate, formatDateString } from "../src/lib/orders/dates";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import { matchSupplierId } from "../src/lib/orders/delivery-stats-import";
 
 type Issue = { row: number; supplier: string; kind: string; detail: string };
@@ -157,11 +157,8 @@ async function main() {
     console.log("\nBrak problemów strukturalnych w datach/ZAPAS.");
   }
 
-  if (location && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+  if (location && process.env.DATABASE_URL?.trim()) {
+    const supabase = createClient();
     const { data: suppliers } = await supabase
       .from("suppliers")
       .select("id, name, interval_raw, interval_weeks")

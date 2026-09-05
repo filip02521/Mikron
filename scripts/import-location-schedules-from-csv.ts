@@ -9,7 +9,7 @@
  *   npx tsx scripts/import-location-schedules-from-csv.ts --dir "/Users/.../Downloads"
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import { existsSync } from "fs";
 import {
   findLocationScheduleCsvs,
@@ -17,12 +17,10 @@ import {
 } from "./lib/location-schedule-csv";
 import { applyLocationScheduleRows } from "./lib/apply-location-schedule-rows";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 async function importOne(location: string, csvPath: string) {
   const rows = readLocationScheduleCsv(csvPath);
-  const supabase = createClient(url, key);
+  const supabase = createClient();
   const result = await applyLocationScheduleRows(supabase, location, rows);
   console.log(`${location}: zaktualizowano ${result.updated}/${result.total} (${csvPath})`);
   if (result.missing.length) {
@@ -35,10 +33,10 @@ async function importOne(location: string, csvPath: string) {
 }
 
 async function main() {
-  if (!url || !key) {
-    console.error("Ustaw NEXT_PUBLIC_SUPABASE_URL i SUPABASE_SERVICE_ROLE_KEY");
-    process.exit(1);
-  }
+  if (!process.env.DATABASE_URL?.trim()) {
+  console.error("Ustaw DATABASE_URL (.env / .env.local)");
+  process.exit(1);
+}
 
   const argv = process.argv.slice(2);
   const dirIdx = argv.indexOf("--dir");

@@ -6,6 +6,7 @@ import {
   fetchAllZkLinkableOrdersForSalesPerson,
 } from "@/lib/sales/zk-watch-close-pending-fetch";
 import type { SalesNote, SalesZkWatch } from "@/types/database";
+import { partitionSalesZkWatches } from "@/lib/data/sales-notepad-shared";
 
 export type SalesNotepadData = {
   zkWatches: SalesZkWatch[];
@@ -17,6 +18,8 @@ export type SalesNotepadData = {
   /** Brak kolumny sales_client_kh_id — uruchom migrację 052. */
   zkOrdersMigrationMissing?: boolean;
 };
+
+export { isZkWatchArchived, partitionSalesZkWatches } from "@/lib/data/sales-notepad-shared";
 
 export async function fetchZkLinkableOrdersForSalesPerson(
   salesPersonId: string
@@ -35,22 +38,6 @@ export async function fetchZkLinkableOrdersForSalesPerson(
     }
     throw error instanceof Error ? error : new Error(message);
   }
-}
-
-export function isZkWatchArchived(
-  watch: Pick<SalesZkWatch, "closed_at" | "archived_at">
-): boolean {
-  return Boolean(watch.closed_at || watch.archived_at);
-}
-
-export function partitionSalesZkWatches(watches: SalesZkWatch[]): Pick<
-  SalesNotepadData,
-  "zkWatches" | "archivedZkWatches"
-> {
-  return {
-    zkWatches: watches.filter((w) => !isZkWatchArchived(w)),
-    archivedZkWatches: watches.filter((w) => isZkWatchArchived(w)),
-  };
 }
 
 /** Lekkie pobranie pod panel Start dnia — bez powiązań ZK z zamówieniami. */

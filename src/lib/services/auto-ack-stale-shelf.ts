@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@/lib/db/admin";
 import type { IndividualOrder } from "@/types/database";
 import { classifyOnShelf, businessDaysWaiting } from "@/lib/orders/warehouse-inventory";
 import { normalizeIndividualOrder } from "@/lib/data/normalize-order";

@@ -29,7 +29,7 @@ import { ProcurementCancelDialog } from "@/components/procurement/ProcurementCan
 import type { DailyPanelRunFn } from "@/components/summary/useDailyPanelRunner";
 import type { DeliveryStats, StatsMode } from "@/types/database";
 import { formatSupplierLeadTimeBrief } from "@/lib/orders/delivery-eta";
-import { leadTimeDisplayFromQuantiles } from "@/lib/orders/delivery-eta-quantiles-load";
+import { leadTimeDisplayFromQuantiles } from "@/lib/orders/delivery-eta-quantiles-shared";
 import {
   ProcurementRequestLine,
   ProcurementRequestLineInline,

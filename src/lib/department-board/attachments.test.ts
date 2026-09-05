@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   BOARD_IMAGE_MAX_COUNT,
   boardImageStoragePrefix,
+  imageFilesFromClipboardData,
   isBoardImageMime,
   isBoardImageStoragePath,
   looksLikeBoardImageBytes,
@@ -65,5 +66,63 @@ describe("board attachments validation", () => {
     expect(looksLikeBoardImageBytes(new Uint8Array([1, 2, 3]), "image/jpeg")).toBe(
       false
     );
+  });
+});
+
+describe("imageFilesFromClipboardData", () => {
+  function mockClipboard(items: Array<{ type: string; file: File | null }>): DataTransfer {
+    return {
+      items: {
+        length: items.length,
+        [Symbol.iterator]: function* () {
+          for (const item of items) {
+            yield {
+              kind: "file" as const,
+              type: item.type,
+              getAsFile: () => item.file,
+            };
+          }
+        },
+      },
+      files: {
+        length: 0,
+        item: () => null,
+        [Symbol.iterator]: function* () {},
+      },
+    } as unknown as DataTransfer;
+  }
+
+  it("wyciąga PNG ze schowka (jak Win+Shift+S)", () => {
+    const png = new File([new Uint8Array([1, 2, 3])], "image.png", {
+      type: "image/png",
+    });
+    const files = imageFilesFromClipboardData(
+      mockClipboard([{ type: "image/png", file: png }])
+    );
+    expect(files).toHaveLength(1);
+    expect(files[0]?.type).toBe("image/png");
+    expect(files[0]?.name).toMatch(/^zrzut-\d+\.png$/);
+  });
+
+  it("ignoruje tekst i puste pliki", () => {
+    expect(imageFilesFromClipboardData(null)).toEqual([]);
+    const empty = new File([], "image.png", { type: "image/png" });
+    const files = imageFilesFromClipboardData(
+      mockClipboard([
+        { type: "text/plain", file: null },
+        { type: "image/png", file: empty },
+      ])
+    );
+    expect(files).toEqual([]);
+  });
+
+  it("zachowuje sensowną nazwę pliku", () => {
+    const named = new File([new Uint8Array([9])], "etykieta.webp", {
+      type: "image/webp",
+    });
+    const files = imageFilesFromClipboardData(
+      mockClipboard([{ type: "image/webp", file: named }])
+    );
+    expect(files[0]?.name).toBe("etykieta.webp");
   });
 });

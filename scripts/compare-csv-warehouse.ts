@@ -3,7 +3,7 @@
  * Usage: npx tsx scripts/compare-csv-warehouse.ts "/path/to/file.csv"
  */
 import { readFileSync } from "fs";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import { buildWarehouseInventoryRow } from "../src/lib/orders/warehouse-inventory";
 import type { IndividualOrder } from "../src/types/database";
 
@@ -50,10 +50,7 @@ async function main() {
       id: p[9]?.trim(),
     };
   }).filter((r) => r.id);
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const s = createClient(url, key);
+  const s = createClient();
 
   const ids = csvRows.map((r) => r.id);
   const dbById = new Map<string, IndividualOrder>();

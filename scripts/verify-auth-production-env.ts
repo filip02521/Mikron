@@ -52,13 +52,36 @@ function main() {
       `✗ PASSWORD_RESET_OTP_SECRET za krótki (${otpSecret.length} znaków) — użyj min. ${MIN_OTP_SECRET_LENGTH}.`
     );
     failed = true;
-  } else if (otpSecret === env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
+  } else if (otpSecret === env.SESSION_SECRET?.trim()) {
     console.warn(
-      "⚠ PASSWORD_RESET_OTP_SECRET = SUPABASE_SERVICE_ROLE_KEY — działa, ale lepiej osobny losowy sekret."
+      "⚠ PASSWORD_RESET_OTP_SECRET = SESSION_SECRET — działa, ale lepiej osobny losowy sekret."
     );
     console.log("✓ PASSWORD_RESET_OTP_SECRET ustawiony");
   } else {
     console.log("✓ PASSWORD_RESET_OTP_SECRET ustawiony");
+  }
+
+  const sessionSecret = env.SESSION_SECRET?.trim() ?? "";
+  if (!sessionSecret || sessionSecret.length < 32) {
+    console.error("✗ SESSION_SECRET wymagany (min. 32 znaki). Wygeneruj: openssl rand -hex 32");
+    failed = true;
+  } else {
+    console.log("✓ SESSION_SECRET ustawiony");
+  }
+
+  const databaseUrl = env.DATABASE_URL?.trim() ?? "";
+  if (!databaseUrl) {
+    console.error("✗ Brak DATABASE_URL");
+    failed = true;
+  } else {
+    console.log("✓ DATABASE_URL ustawiony");
+  }
+
+  const storageSecret = env.STORAGE_SIGNING_SECRET?.trim() ?? "";
+  if (!storageSecret || storageSecret.length < 32) {
+    console.warn("⚠ STORAGE_SIGNING_SECRET brak lub za krótki — upload plików wymaga min. 32 znaków.");
+  } else {
+    console.log("✓ STORAGE_SIGNING_SECRET ustawiony");
   }
 
   const cron = env.CRON_SECRET?.trim() ?? "";

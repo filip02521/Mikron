@@ -23,10 +23,9 @@ describe("E2E lab mode", () => {
     expect(isE2ELab()).toBe(true);
   });
 
-  it("skips live Supabase config in lab mode", () => {
+  it("skips live database config in lab mode", () => {
     vi.stubEnv("E2E_LAB", "1");
-    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co");
-    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "ci-placeholder-service-key");
+    vi.stubEnv("DATABASE_URL", "postgresql://ontime_app:dev@127.0.0.1:5432/ontime_dev");
     expect(hasSupabaseConfig()).toBe(false);
   });
 

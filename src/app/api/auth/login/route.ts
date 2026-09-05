@@ -1,6 +1,8 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import type { AuthChangeEvent } from "@supabase/supabase-js";
+import { COOKIE_NAME, sessionCookieOptions } from "@/lib/auth-local/cookies";
+import { verifyPassword } from "@/lib/auth-local/password";
+import { createSession } from "@/lib/auth-local/session";
+import { findUserByEmail } from "@/lib/auth-local/users";
 import {
   ADMIN_PANEL_COOKIE,
   resolveAdminPanelContext,
@@ -23,7 +25,6 @@ import {
 import { fetchProfileByUserId } from "@/lib/auth/profile";
 import { resolveLoginEmailFromAccountId } from "@/lib/auth/resolve-login-account";
 import { translateAuthError } from "@/lib/auth-errors";
-import { supabaseCookieOptions } from "@/lib/supabase/cookie-options";
 import type { UserRole } from "@/types/database";
 
 type LoginBody = {
@@ -31,12 +32,6 @@ type LoginBody = {
   email?: string;
   password?: string;
   next?: string | null;
-};
-
-type CookieToSet = {
-  name: string;
-  value: string;
-  options?: Parameters<NextResponse["cookies"]["set"]>[2];
 };
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
@@ -119,59 +114,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const cookiesToAttach: CookieToSet[] = [];
+  const user = await findUserByEmail(email);
+  const passwordOk = user
+    ? await verifyPassword(password, user.passwordHash)
+    : false;
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookieOptions: supabaseCookieOptions(),
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          for (const cookie of cookiesToSet) {
-            request.cookies.set(cookie.name, cookie.value);
-            cookiesToAttach.push(cookie);
-          }
-        },
-      },
-    }
-  );
-
-  let cookiesResolved = false;
-  const cookiesReady = new Promise<void>((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      if (!cookiesResolved) {
-        reject(new Error("auth_cookie_timeout"));
-      }
-    }, 10_000);
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent) => {
-      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
-        await new Promise((r) => setTimeout(r, 80));
-        if (!cookiesResolved) {
-          cookiesResolved = true;
-          clearTimeout(timeout);
-          subscription.unsubscribe();
-          resolve();
-        }
-      }
-    });
-  });
-  // Prevent unhandled rejection if the promise rejects before we await it
-  // (e.g. when signInWithPassword fails and we return early).
-  cookiesReady.catch(() => {});
-
-  const { data: signData, error: signError } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
-
-  if (signError) {
+  if (!user || !passwordOk) {
     await sleepMs(LOGIN_FAIL_DELAY_MS);
     if (ip) {
       await recordAuthRateLimitEvent({
@@ -182,36 +130,15 @@ export async function POST(request: NextRequest) {
       bucketKey: authRateLimitBucket("login:email", email),
     });
     return NextResponse.json(
-      { ok: false as const, error: translateAuthError(signError.message) },
+      { ok: false as const, error: translateAuthError("Invalid login credentials") },
       { status: 401 }
     );
   }
 
-  try {
-    await cookiesReady;
-  } catch {
-    if (cookiesToAttach.length === 0) {
-      return NextResponse.json(
-        {
-          ok: false as const,
-          error: "Nie udało się zapisać sesji na serwerze.",
-        },
-        { status: 500 }
-      );
-    }
-  }
-
-  const userId = signData.user?.id;
-  if (!userId) {
-    return NextResponse.json(
-      { ok: false as const, error: "Nie udało się odczytać sesji." },
-      { status: 500 }
-    );
-  }
+  const userId = user.id;
 
   const profile = await fetchProfileByUserId(userId);
   if (!profile) {
-    await supabase.auth.signOut();
     return NextResponse.json(
       {
         ok: false as const,
@@ -220,6 +147,11 @@ export async function POST(request: NextRequest) {
       { status: 403 }
     );
   }
+
+  const { rawToken, expiresAt } = await createSession(userId, {
+    userAgent: request.headers.get("user-agent"),
+    ip,
+  });
 
   let redirectTo: string;
   if (profile.must_change_password) {
@@ -245,9 +177,11 @@ export async function POST(request: NextRequest) {
   }
 
   const jsonResponse = NextResponse.json({ ok: true as const, redirectTo, accountId: userId });
-  for (const { name, value, options } of cookiesToAttach) {
-    jsonResponse.cookies.set(name, value, options);
-  }
+  jsonResponse.cookies.set(COOKIE_NAME, rawToken, {
+    ...sessionCookieOptions(),
+    expires: expiresAt,
+    maxAge: Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)),
+  });
 
   if (!profile.must_change_password) {
     const role = profile.role as UserRole;
