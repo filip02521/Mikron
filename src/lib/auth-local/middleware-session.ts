@@ -93,13 +93,19 @@ export function redirectWithSession(
   pathname: string,
   searchParams?: Record<string, string>
 ): NextResponse {
+  // pathname może zawierać query (np. `/moje?dla=…`) — nie wolno wkładać tego w url.pathname.
+  const queryIndex = pathname.indexOf("?");
+  const pathOnly = queryIndex === -1 ? pathname : pathname.slice(0, queryIndex);
+  const fromPath =
+    queryIndex === -1
+      ? {}
+      : Object.fromEntries(new URLSearchParams(pathname.slice(queryIndex + 1)));
+
   const url = request.nextUrl.clone();
-  url.pathname = pathname;
+  url.pathname = pathOnly || "/";
   url.search = "";
-  if (searchParams) {
-    for (const [key, value] of Object.entries(searchParams)) {
-      url.searchParams.set(key, value);
-    }
+  for (const [key, value] of Object.entries({ ...fromPath, ...searchParams })) {
+    url.searchParams.set(key, value);
   }
   const redirect = NextResponse.redirect(url);
   sessionResponse.cookies.getAll().forEach((cookie) => {
