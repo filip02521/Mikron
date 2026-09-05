@@ -1,22 +1,11 @@
 import { isE2ELab } from "@/lib/e2e-lab/mode";
-import { createAdminClient, hasDatabaseConfig } from "@/lib/db/admin";
+import { needsBootstrapSetup } from "@/lib/setup/bootstrap";
 
-/** Szybkie sprawdzenie w middleware — czy jest już admin w bazie */
+/**
+ * Historycznie używane w proxy — zostawione dla testów / kompatybilności.
+ * Proxy już nie wymusza /setup (uniknięcie ERR_TOO_MANY_REDIRECTS).
+ */
 export async function middlewareNeedsBootstrap(): Promise<boolean> {
   if (isE2ELab()) return false;
-  if (!hasDatabaseConfig()) return false;
-
-  const supabase = createAdminClient();
-
-  const { count, error } = await supabase
-    .from("profiles")
-    .select("id", { count: "exact", head: true })
-    .eq("role", "admin");
-
-  if (error) {
-    console.error("middlewareNeedsBootstrap:", error.message);
-    // Przy chwilowym błędzie DB nie przekierowuj całej aplikacji na /setup.
-    return false;
-  }
-  return (count ?? 0) === 0;
+  return needsBootstrapSetup();
 }
