@@ -1,5 +1,5 @@
-import type { TeethQueueGroup, TeethQueueItem } from "@/lib/data/teeth-queue";
-import { isScheduledItem } from "@/lib/data/teeth-queue";
+import type { TeethQueueGroup, TeethQueueItem } from "@/lib/data/teeth-queue-shared";
+import { isScheduledItem } from "@/lib/data/teeth-queue-shared";
 import { resolveTeethQueueEnteredAt } from "@/lib/teeth/teeth-queue-wait";
 
 export type TeethSortKey = "supplier" | "created" | "items" | "eta";

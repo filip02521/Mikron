@@ -4,7 +4,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdminForMutation } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { MAIL_CENTER_MODULE_SLUG } from "@/lib/admin-modules";
+import { MAIL_CENTER_MODULE_SLUG } from "@/lib/admin-module-slugs";
 
 export async function actionSetMailCenterModuleEnabledForUser(
   input: { userId: string; enabled: boolean }

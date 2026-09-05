@@ -2,18 +2,16 @@
  * Porównanie dostawców app vs dopasowanie nazwą z Subiekta.
  * npx tsx scripts/audit-subiekt-supplier-map.ts
  */
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import { searchSubiektSuppliers } from "../src/lib/subiekt/api";
 import {
   formatSubiektKontrahentLabel,
   matchSubiektKontrahentToSupplier,
 } from "../src/lib/subiekt/match-supplier";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 async function main() {
-  const supabase = createClient(url, key);
+  const supabase = createClient();
   const { data: suppliers, error } = await supabase
     .from("suppliers")
     .select("id, name")

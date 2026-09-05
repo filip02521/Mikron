@@ -78,10 +78,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: lint
     env:
-      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+      DATABASE_URL: postgresql://ontime_app:test@127.0.0.1:5432/ontime_test
+      SESSION_SECRET: ci-test-session-secret-minimum-32-chars
+      STORAGE_ROOT: /tmp/ontime-storage
+      STORAGE_SIGNING_SECRET: ci-storage-signing-secret-32charsxx
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3099
       CRON_SECRET: ci-test-secret
+      PASSWORD_RESET_OTP_SECRET: ci-password-reset-otp-secret-32c
     steps:
       - uses: actions/checkout@v7
 
@@ -106,11 +109,13 @@ jobs:
     env:
       CI: true
       E2E_LAB: "1"
-      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
-      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-key
+      DATABASE_URL: postgresql://ontime_app:test@127.0.0.1:5432/ontime_test
+      SESSION_SECRET: ci-test-session-secret-minimum-32-chars
+      STORAGE_ROOT: /tmp/ontime-storage
+      STORAGE_SIGNING_SECRET: ci-storage-signing-secret-32charsxx
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3099
       CRON_SECRET: ci-test-secret
+      PASSWORD_RESET_OTP_SECRET: ci-password-reset-otp-secret-32c
     steps:
       - uses: actions/checkout@v7
 
@@ -135,3 +140,43 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  integration:
+    name: Postgres integration (db:migrate)
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ontime_app
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: ontime_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ontime_app -d ontime_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ontime_app:test@127.0.0.1:5432/ontime_test
+      SESSION_SECRET: ci-test-session-secret-minimum-32-chars
+      STORAGE_ROOT: /tmp/ontime-storage
+      STORAGE_SIGNING_SECRET: ci-storage-signing-secret-32charsxx
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply migrations
+        run: npm run db:migrate
+
+      - name: Verify db env
+        run: npm run verify:db-env

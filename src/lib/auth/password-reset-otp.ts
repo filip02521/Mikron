@@ -1,18 +1,12 @@
 import { createHash, randomInt, timingSafeEqual } from "crypto";
-import type { EmailOtpType } from "@supabase/supabase-js";
 import {
   isAuthUserLoginEligible,
   loginDirectoryDisplayName,
 } from "@/lib/auth/login-directory";
 import { maskEmailForDisplay } from "@/lib/auth/mask-email";
-import {
-  emailOtpTypeFromVerification,
-  passwordSetupConfirmUrl,
-} from "@/lib/auth/password-link-redirect";
 import { renderPasswordResetOtpEmail } from "@/lib/email/password-reset-email";
 import { isEmailConfigured } from "@/lib/env/email-config";
 import { isProductionRuntime } from "@/lib/env/app-config";
-import { resolveAppUrl } from "@/lib/env/resolve-app-url.server";
 import { sendHtmlEmail } from "@/lib/services/email";
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 
@@ -43,7 +37,7 @@ export type SendPasswordResetOtpResult =
   | { ok: false; error: string; retryAfterSec?: number };
 
 export type VerifyPasswordResetOtpResult =
-  | { ok: true; tokenHash: string; otpType: EmailOtpType }
+  | { ok: true; userId: string }
   | { ok: false; error: string; invalidateCode?: boolean };
 
 function otpPepper(): string {
@@ -422,31 +416,12 @@ export async function verifyPasswordResetOtp(params: {
 
   await markOtpConsumed(row.id);
 
-  const supabase = createAdminClient();
-  const appUrl = await resolveAppUrl();
-  const { data, error } = await supabase.auth.admin.generateLink({
-    type: "recovery",
-    email: user.email,
-    options: {
-      redirectTo: passwordSetupConfirmUrl(appUrl),
-    },
-  });
-
-  if (error || !data.properties?.hashed_token) {
-    console.error("[password-reset] generateLink failed:", error?.message);
-    return { ok: false, error: "Nie udało się przygotować resetu hasła. Spróbuj ponownie." };
-  }
-
   console.info("[password-reset] code verified", {
     userId: user.id,
     email: maskEmailForDisplay(user.email),
   });
 
-  return {
-    ok: true,
-    tokenHash: data.properties.hashed_token,
-    otpType: emailOtpTypeFromVerification(data.properties.verification_type),
-  };
+  return { ok: true, userId: user.id };
 }
 
 async function markOtpConsumed(id: string): Promise<void> {

@@ -2,7 +2,12 @@
 
 import { resolveLoginDisplayName } from "@/lib/users/display-name";
 import type { UserRole } from "@/types/database";
-import type { User } from "@supabase/supabase-js";
+type AuthUserLike = {
+  email?: string | null;
+  is_anonymous?: boolean | null;
+  banned_until?: string | null;
+  email_confirmed_at?: string | null;
+};
 
 export type LoginDirectoryAccount = {
   id: string;
@@ -83,7 +88,7 @@ export function filterLoginDirectoryAccounts(
 
 /** Czy konto Auth może pojawić się na liście logowania. */
 export function isAuthUserLoginEligible(
-  user: Pick<User, "email" | "is_anonymous" | "banned_until" | "email_confirmed_at">
+  user: AuthUserLike
 ): boolean {
   if (user.is_anonymous) return false;
   if (!user.email?.trim()) return false;

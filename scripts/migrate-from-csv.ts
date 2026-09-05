@@ -10,7 +10,7 @@
  *   historia_indywidualne.csv, historia.csv (opcjonalnie)
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import {
@@ -19,15 +19,13 @@ import {
 } from "../src/lib/orders/dates";
 import { parseCsv, headerIndex } from "./lib/parse-csv";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-if (!url || !key) {
-  console.error("Ustaw NEXT_PUBLIC_SUPABASE_URL i SUPABASE_SERVICE_ROLE_KEY");
+if (!process.env.DATABASE_URL?.trim()) {
+  console.error("Ustaw DATABASE_URL (.env / .env.local)");
   process.exit(1);
 }
 
-const supabase = createClient(url, key);
+const supabase = createClient();
 
 function loadCsv(dir: string, name: string): string[][] | null {
   const p = join(dir, name);

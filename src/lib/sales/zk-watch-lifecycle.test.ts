@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isZkWatchArchived, partitionSalesZkWatches } from "@/lib/data/sales-notepad";
+import { isZkWatchArchived, partitionSalesZkWatches } from "@/lib/data/sales-notepad-shared";
 import { watchNeedsNotepadAttention } from "@/lib/sales/notepad-follow-up";
 import { collectNotepadTodayTasks } from "@/lib/sales/notepad-today-tasks";
 import { sortZkWatches } from "@/lib/sales/zk-watch-sort";

@@ -5,7 +5,7 @@
 
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 
 function loadEnvLocal(): Record<string, string> {
   const path = join(process.cwd(), ".env.local");
@@ -30,14 +30,13 @@ function loadEnvLocal(): Record<string, string> {
 
 async function main() {
   const env = { ...process.env, ...loadEnvLocal() } as Record<string, string>;
-  const url = env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    console.error("Brak NEXT_PUBLIC_SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY");
+  if (!env.DATABASE_URL?.trim()) {
+    console.error("Brak DATABASE_URL (.env / .env.local)");
     process.exit(1);
   }
+  process.env.DATABASE_URL = env.DATABASE_URL;
 
-  const supabase = createClient(url, key);
+  const supabase = createClient();
 
   const { error: headErr } = await supabase
     .from("sales_bug_reports")

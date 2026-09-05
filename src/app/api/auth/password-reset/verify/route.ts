@@ -9,10 +9,8 @@ import {
   OTP_MAX_SENDS_WINDOW_MS,
   PASSWORD_RESET_SETUP_PATH,
 } from "@/lib/auth/password-reset-constants";
-import {
-  attachRouteAuthCookies,
-  createSupabaseRouteHandlerClient,
-} from "@/lib/supabase/route-auth";
+import { COOKIE_NAME, sessionCookieOptions } from "@/lib/auth-local/cookies";
+import { createSession } from "@/lib/auth-local/session";
 
 type VerifyBody = {
   accountId?: string;
@@ -100,28 +98,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { supabase, cookiesToAttach } = createSupabaseRouteHandlerClient(request);
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      token_hash: result.tokenHash,
-      type: result.otpType,
+    const { rawToken, expiresAt } = await createSession(result.userId, {
+      userAgent: request.headers.get("user-agent"),
+      ip,
     });
-
-    if (verifyError) {
-      return NextResponse.json(
-        {
-          ok: false as const,
-          error: "Nie udało się rozpocząć resetu hasła. Wyślij kod ponownie.",
-        },
-        { status: 400 }
-      );
-    }
 
     const jsonResponse = NextResponse.json({
       ok: true as const,
       redirectTo: PASSWORD_RESET_SETUP_PATH,
     });
-
-    return attachRouteAuthCookies(jsonResponse, cookiesToAttach);
+    jsonResponse.cookies.set(COOKIE_NAME, rawToken, {
+      ...sessionCookieOptions(),
+      expires: expiresAt,
+      maxAge: Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000)),
+    });
+    return jsonResponse;
   } catch (error) {
     console.error("[password-reset/verify]", error);
     return NextResponse.json(

@@ -1,4 +1,4 @@
-import type { EmailOtpType } from "@supabase/supabase-js";
+export type EmailOtpType = "invite" | "recovery" | "signup" | "magiclink" | "email";
 import { getAppUrl } from "@/lib/env/app-config";
 
 export const PASSWORD_SETUP_PATH = "/ustaw-haslo";

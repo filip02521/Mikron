@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import type { EmailOtpType } from "@supabase/supabase-js";
+import type { EmailOtpType } from "@/lib/auth/password-link-redirect";
 import { translatePasswordLinkError } from "@/lib/auth/password-link-errors";
 import { safePasswordSetupNextPath } from "@/lib/auth/password-link-redirect";
 import {

@@ -5,14 +5,12 @@
  * npx tsx scripts/backfill-ustawienia-from-json.ts
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import { intervalWeeksForStorage, parseInterval } from "../src/lib/orders/dates";
 import { detectOrderOnDemandFromFields } from "../src/lib/orders/supplier-on-demand";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 type UstawieniaRow = {
   name: string;
@@ -61,17 +59,17 @@ function loadScheduleStockMap(): Map<string, string> {
 }
 
 async function main() {
-  if (!url || !key) {
-    console.error("Ustaw NEXT_PUBLIC_SUPABASE_URL i SUPABASE_SERVICE_ROLE_KEY");
-    process.exit(1);
-  }
+  if (!process.env.DATABASE_URL?.trim()) {
+  console.error("Ustaw DATABASE_URL (.env / .env.local)");
+  process.exit(1);
+}
 
   const rows = JSON.parse(
     readFileSync(join(process.cwd(), "data", "ustawienia.json"), "utf-8")
   ) as UstawieniaRow[];
 
   const scheduleStock = loadScheduleStockMap();
-  const supabase = createClient(url, key);
+  const supabase = createClient();
 
   let ok = 0;
   let missing = 0;

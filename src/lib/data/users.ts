@@ -1,6 +1,6 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
 import type { UserRole, Workspace } from "@/types/database";
-import { MAIL_CENTER_MODULE_SLUG } from "@/lib/admin-modules";
+import { MAIL_CENTER_MODULE_SLUG } from "@/lib/admin-module-slugs";
 
 export type AppUserRow = {
   id: string;

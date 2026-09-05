@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@/lib/db/admin";
 
 /** Sprawdza, czy handlowiec nie jest już powiązany z innym kontem. */
 export async function assertUniqueSalesPersonLink(

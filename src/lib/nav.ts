@@ -1,5 +1,5 @@
 import type { UserRole, Workspace } from "@/types/database";
-import { MAIL_CENTER_MODULE_SLUG } from "@/lib/admin-modules";
+import { MAIL_CENTER_MODULE_SLUG } from "@/lib/admin-module-slugs";
 import { isSalesManager, canAccessPath } from "@/lib/auth-roles";
 import type { ProcurementWorkspace } from "@/lib/auth/procurement-workspace";
 import { salesManagerNavTeamDescriptions } from "@/lib/sales/team-ui";

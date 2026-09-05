@@ -1,12 +1,13 @@
 "use client";
 
-import { useId, useRef } from "react";
+import { useId, useRef, type ClipboardEvent } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { IconCamera, IconX } from "@/components/icons/StrokeIcons";
 import {
   BOARD_IMAGE_ACCEPT,
   BOARD_IMAGE_MAX_COUNT,
+  imageFilesFromClipboardData,
 } from "@/lib/department-board/attachments";
 import { DEPARTMENT_BOARD_QUESTIONS_FORM } from "@/lib/department-board/copy";
 import { boardQuestionsFieldLabelClass } from "@/lib/department-board/department-board-questions-ui";
@@ -37,8 +38,20 @@ export function BoardQuestionImagesField({
   const remaining = BOARD_IMAGE_MAX_COUNT - images.length;
   const canAdd = remaining > 0 && !disabled;
 
+  function handlePaste(event: ClipboardEvent) {
+    if (!canAdd) return;
+    const files = imageFilesFromClipboardData(event.clipboardData);
+    if (!files.length) return;
+    event.preventDefault();
+    event.stopPropagation();
+    void onAddFiles(files);
+  }
+
   return (
-    <div>
+    <div
+      onPaste={handlePaste}
+      aria-label={DEPARTMENT_BOARD_QUESTIONS_FORM.imagesPasteAriaLabel}
+    >
       <div className="flex items-baseline justify-between gap-2">
         <label htmlFor={inputId} className={boardQuestionsFieldLabelClass}>
           {DEPARTMENT_BOARD_QUESTIONS_FORM.imagesLabel}

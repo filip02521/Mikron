@@ -4,7 +4,7 @@
  *   npx tsx scripts/verify-schedule-intervals.ts ZAGRANICA
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import {
   calculateNextOrderDate,
   parseDateOnly,
@@ -15,8 +15,6 @@ import {
 import { recalcScheduleRow } from "../src/lib/orders/recalc";
 import type { SupplierLocation } from "../src/types/database";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 function daysDiff(a: string, b: string): number {
   const da = parseDateOnly(a)!;
@@ -26,7 +24,7 @@ function daysDiff(a: string, b: string): number {
 
 async function main() {
   const location = (process.argv[2] || "ZAGRANICA").toUpperCase() as SupplierLocation;
-  const supabase = createClient(url, key);
+  const supabase = createClient();
 
   const { data: suppliers } = await supabase
     .from("suppliers")

@@ -3,13 +3,11 @@
  * npx tsx scripts/backfill-interval-raw.ts
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { intervalWeeksForStorage, parseInterval } from "../src/lib/orders/dates";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 /** Nazwa w PDF ≠ nazwa w bazie (po imporcie harmonogramów). */
 const NAME_ALIASES: Record<string, string> = {
@@ -18,16 +16,16 @@ const NAME_ALIASES: Record<string, string> = {
 };
 
 async function main() {
-  if (!url || !key) {
-    console.error("Ustaw NEXT_PUBLIC_SUPABASE_URL i SUPABASE_SERVICE_ROLE_KEY");
-    process.exit(1);
-  }
+  if (!process.env.DATABASE_URL?.trim()) {
+  console.error("Ustaw DATABASE_URL (.env / .env.local)");
+  process.exit(1);
+}
 
   const rows = JSON.parse(
     readFileSync(join(process.cwd(), "data", "ustawienia.json"), "utf-8")
   ) as { name: string; interval_raw: string }[];
 
-  const supabase = createClient(url, key);
+  const supabase = createClient();
   let ok = 0;
   let fail = 0;
 

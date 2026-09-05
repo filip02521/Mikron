@@ -24,7 +24,9 @@ predicate isAuthFunction(string fnName) {
     "requireSupplierManagement",
     "requireSubiektLookup",
     "authorizeCronRequest",
-    "authorizeHealthRequest"
+    "authorizeHealthRequest",
+    // Lokalne sesje (post-Supabase): walidacja cookie ontime_session
+    "validateSession"
   ]
 }
 
@@ -40,11 +42,13 @@ predicate isApiRouteFile(File f) {
   f.getBaseName() = "route.tsx"
 }
 
-/** Trasy celowo publiczne — logowanie, reset hasła, health/live.
- *  Te endpointy nie używają sesji bo użytkownik nie jest zalogowany. */
+/** Trasy celowo publiczne — logowanie, reset hasła, health/live, status sesji, logout.
+ *  Session/logout muszą działać bez zalogowania (null / kasowanie cookie). */
 predicate isPublicRoute(File f) {
   f.getAbsolutePath().regexpMatch(".*/api/auth/login.*") or
   f.getAbsolutePath().regexpMatch(".*/api/auth/password-reset.*") or
+  f.getAbsolutePath().regexpMatch(".*/api/auth/session.*") or
+  f.getAbsolutePath().regexpMatch(".*/api/auth/logout.*") or
   f.getAbsolutePath().regexpMatch(".*/api/health/live.*") or
   f.getAbsolutePath().regexpMatch(".*/auth/confirm.*")
 }

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@/lib/db/admin";
 
 /** Po zmianie e-mailu na karcie handlowca — zsynchronizuj login w auth i profiles. */
 export async function syncLinkedSalesPersonLoginEmail(

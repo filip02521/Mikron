@@ -30,7 +30,7 @@ import {
   describeNextOrderForSales,
   type SalesSupplierInsight,
 } from "@/lib/orders/sales-supplier-insight";
-import { leadTimeDisplayFromQuantiles } from "@/lib/orders/delivery-eta-quantiles-load";
+import { leadTimeDisplayFromQuantiles } from "@/lib/orders/delivery-eta-quantiles-shared";
 import { prosbaHref } from "@/lib/orders/prosba-url";
 import { useSalesPreviewHref } from "@/lib/nav/use-sales-preview-href";
 import {

@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@/lib/db/admin";
 import { isProcurementDraftReady } from "@/lib/orders/procurement-readiness";
 import { isTeethZamowienie } from "@/lib/teeth/teeth-lifecycle";
 import type { IndividualOrderStatus, IndividualRequestKind, IndividualOrder } from "@/types/database";

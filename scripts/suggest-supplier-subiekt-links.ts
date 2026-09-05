@@ -5,22 +5,20 @@
  * Zapis:    npx tsx scripts/suggest-supplier-subiekt-links.ts --apply
  * Próg:     npx tsx scripts/suggest-supplier-subiekt-links.ts --apply --min-score=85
  */
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import { searchSubiektSuppliers } from "../src/lib/subiekt/api";
 import {
   formatSubiektKontrahentLabel,
   scoreSupplierKontrahentMatch,
 } from "../src/lib/subiekt/match-supplier";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const apply = process.argv.includes("--apply");
 const minScore = Number(
   process.argv.find((a) => a.startsWith("--min-score="))?.split("=")[1] ?? "82"
 );
 
 async function main() {
-  const supabase = createClient(url, key);
+  const supabase = createClient();
   const { data: suppliers, error } = await supabase
     .from("suppliers")
     .select("id, name, subiekt_kh_id")

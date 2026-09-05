@@ -32,7 +32,7 @@ import { DailyPanelStickyFooter } from "@/components/summary/DailyPanelStickyFoo
 import { DailyPanelContentFooter } from "@/components/summary/DailyPanelContentFooter";
 import { DailyTodayView } from "@/components/summary/DailyTodayView";
 import { DailyWeekView } from "@/components/summary/DailyWeekView";
-import { leadTimeDisplayFromQuantiles } from "@/lib/orders/delivery-eta-quantiles-load";
+import { leadTimeDisplayFromQuantiles } from "@/lib/orders/delivery-eta-quantiles-shared";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { SupplierVacationModal } from "@/components/procurement/SupplierVacationModal";
 import { SupplierEditModal } from "@/components/procurement/SupplierEditModal";

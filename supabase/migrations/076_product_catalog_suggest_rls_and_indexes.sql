@@ -24,10 +24,27 @@ END
 $$;
 
 -- Odczyt katalogu dla wszystkich zalogowanych użytkowników (handlowcy przy offline Subiekta).
-CREATE POLICY IF NOT EXISTS subiekt_products_select_authenticated ON subiekt_products
-  FOR SELECT TO authenticated
-  USING (true);
-
-CREATE POLICY IF NOT EXISTS product_supplier_links_select_authenticated ON product_supplier_links
-  FOR SELECT TO authenticated
-  USING (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'subiekt_products'
+      AND policyname = 'subiekt_products_select_authenticated'
+  ) THEN
+    CREATE POLICY subiekt_products_select_authenticated ON subiekt_products
+      FOR SELECT TO authenticated
+      USING (true);
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'product_supplier_links'
+      AND policyname = 'product_supplier_links_select_authenticated'
+  ) THEN
+    CREATE POLICY product_supplier_links_select_authenticated ON product_supplier_links
+      FOR SELECT TO authenticated
+      USING (true);
+  END IF;
+END
+$$;

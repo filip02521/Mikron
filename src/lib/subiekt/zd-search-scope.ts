@@ -186,14 +186,34 @@ export function placementIsOlderThanRollingWindow(
 /**
  * Kolejne okna miesięczne do browse / filtrowania indeksu.
  * Stare zgłoszenie: miesiąc wstecz + miesiąc zgłoszenia + 2 miesiące naprzód.
- * Świeże: ostatnie 3 miesiące kalendarzowe.
+ * Świeże: ostatnie 3 miesiące kalendarzowe — zawsze z miesiącem prośby (±1 wstecz),
+ * żeby przy sync na granicy rolling 3m nie zgubić ZD z miesiąca zamówienia
+ * (np. prośba czerwiec, sync we wrześniu).
  */
 export function zdPlacementBrowseMonthChunks(
   placementIso: string | null | undefined,
   at: Date = new Date()
 ): ZdMonthBrowseChunk[] {
-  if (!placementIso?.trim() || !placementIsOlderThanRollingWindow(placementIso, at)) {
+  if (!placementIso?.trim()) {
     return recentCalendarMonthChunks(at, ZD_CONTRACTOR_EXTENDED_MONTHS);
+  }
+
+  if (!placementIsOlderThanRollingWindow(placementIso, at)) {
+    const recent = recentCalendarMonthChunks(at, ZD_CONTRACTOR_EXTENDED_MONTHS);
+    const placement = parseDateOnly(placementIso);
+    if (!placement) return recent;
+
+    const chunkMap = new Map<string, ZdMonthBrowseChunk>();
+    for (const chunk of recent) {
+      chunkMap.set(`${chunk.dataOd}|${chunk.dataDo}`, chunk);
+    }
+    const todayKey = dateKey(at);
+    for (let i = ZD_PLACEMENT_BROWSE_MONTHS_BEFORE; i >= 0; i--) {
+      const chunk = monthBrowseChunkFromAnchor(subMonths(startOfMonth(placement), i));
+      if (chunk.dataOd > todayKey) continue;
+      chunkMap.set(`${chunk.dataOd}|${chunk.dataDo}`, chunk);
+    }
+    return [...chunkMap.values()].sort((a, b) => a.dataOd.localeCompare(b.dataOd));
   }
 
   const placement = parseDateOnly(placementIso);

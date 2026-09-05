@@ -51,3 +51,6 @@ next-env.d.ts
 
 # windsurf / codeium MCP config (contains tokens)
 .codeium
+data/cutover/
+data/handoff/
+.storage-dev/

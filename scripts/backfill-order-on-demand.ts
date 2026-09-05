@@ -4,14 +4,12 @@
  * npx tsx scripts/backfill-order-on-demand.ts
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import { detectOrderOnDemandFromFields } from "../src/lib/orders/supplier-on-demand";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 async function main() {
-  const supabase = createClient(url, key);
+  const supabase = createClient();
   const { data, error } = await supabase
     .from("suppliers")
     .select("id, name, stock_raw, interval_raw, extra_info, order_on_demand");

@@ -3,14 +3,13 @@ import type { SubiektDocument, SubiektDocumentLine } from "@/lib/subiekt/types";
 import type { AppSupplierRef } from "@/lib/subiekt/match-supplier";
 import { findSupplierBySubiektKhId } from "@/lib/subiekt/match-supplier";
 import { extractDocKhIds } from "@/lib/subiekt/zd-document-kh";
-import { lineTowId } from "@/lib/subiekt/zd-catalog-import";
+import { lineTowId } from "@/lib/subiekt/zd-document-line";
 import { filterOrdersBySupplier } from "@/lib/orders/supplier-filter-summary";
 import {
   resolveOrderMatchSymbols,
   type ZdPairMatchIndex,
 } from "@/lib/subiekt/match-order-to-zd";
 import { twinTwIdsForPairMatch } from "@/lib/orders/zd-product-pair-units";
-import { loadZdPairMatchIndex } from "@/lib/orders/zd-product-pair-stock";
 
 export type ZdMatchLinePreview = {
   towId: number | null;
@@ -232,14 +231,4 @@ export function buildZdReceiveFilterState(input: {
     supplierName: input.supplier.name,
     profile,
   };
-}
-
-/** Buduje filtr przyjęcia z mapą par (twin pack↔piece). */
-export async function buildZdReceiveFilterStateWithPairs(input: {
-  dokId: number;
-  doc: SubiektDocument;
-  supplier: AppSupplierRef;
-}): Promise<ZdReceiveFilterState> {
-  const pairs = await loadZdPairMatchIndex();
-  return buildZdReceiveFilterState({ ...input, pairs });
 }

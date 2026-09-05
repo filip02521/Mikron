@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
-import { ARCHIVE_RECENT_DAYS, ARCHIVE_EXPANDED_DAYS } from "@/lib/orders/my-order-archive";
+import { ARCHIVE_RECENT_DAYS, ARCHIVE_EXPANDED_DAYS } from "@/lib/orders/my-order-archive-constants";
 import {
   filterMyOrderRowsBySearch,
   searchQueryTokens,

@@ -8,9 +8,9 @@ import { fetchSalesGroups } from "@/lib/data/sales-groups";
 import type { SalesGroupRow } from "@/lib/data/sales-groups";
 import {
   applyAdminPanelReadOnlyTeamUi,
-  resolveSalesTeamUiContext,
   type SalesTeamUiContext,
 } from "@/lib/sales/team-ui";
+import { resolveSalesTeamUiContext } from "@/lib/sales/team-ui-server";
 import { zespolLoadErrorMessage } from "@/lib/sales/zespol-load-errors";
 
 export type ZespolPageContext = {

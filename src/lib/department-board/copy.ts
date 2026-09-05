@@ -39,11 +39,13 @@ export const DEPARTMENT_BOARD_QUESTIONS_FORM = {
   introLinkLabel: "Nowa prośba",
   expandHint: "Rozwiń",
   imagesLabel: "Zdjęcia (opcjonalnie)",
-  imagesHint: "Do 3 zdjęć — np. etykieta, opakowanie lub zrzut z Subiekta.",
+  imagesHint:
+    "Do 3 zdjęć — wklej zrzut (Ctrl+V) albo wybierz plik (etykieta, opakowanie, Subiekt).",
   imagesAdd: "Dodaj zdjęcie",
   imagesAddMore: "Dodaj kolejne",
   imagesCompressing: "Przetwarzanie zdjęć…",
   imagesTooMany: "Możesz dodać maksymalnie 3 zdjęcia.",
+  imagesPasteAriaLabel: "Wklej zdjęcie ze schowka (Ctrl+V)",
   quickProsbaHint:
     "Pytanie na Tablicy nie zamawia towaru. Żeby go zamówić, złóż prośbę.",
   quickProsbaCta: "Szybka prośba",

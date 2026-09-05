@@ -110,6 +110,16 @@ describe("zd-search-scope", () => {
     ]);
   });
 
+  it("świeże zgłoszenie na granicy rolling — obejmuje miesiąc prośby (czerwiec przy sync we wrześniu)", () => {
+    const syncAt = new Date("2026-09-01T12:00:00+02:00");
+    const placement = "2026-06-15";
+    expect(placementIsOlderThanRollingWindow(placement, syncAt)).toBe(false);
+    const chunks = zdPlacementBrowseMonthChunks(placement, syncAt);
+    expect(chunks.some((c) => c.dataOd === "2026-06-01")).toBe(true);
+    expect(chunks.some((c) => c.dataOd === "2026-05-01")).toBe(true);
+    expect(chunks.some((c) => c.dataOd === "2026-09-01")).toBe(true);
+  });
+
   it("buildZdSearchPlacements — prośba + historia dostawcy, bez duplikatów", () => {
     const syncAt = new Date("2026-06-18T12:00:00+02:00");
     expect(

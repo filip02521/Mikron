@@ -1,0 +1,21 @@
+# Lokalny PostgreSQL 16 do developmentu (plan migracji — zał. G).
+# Usage: docker compose -f docker-compose.db.yml up -d
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ontime_app
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: ontime_dev
+    volumes:
+      - ontime_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ontime_app -d ontime_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  ontime_pg_data:

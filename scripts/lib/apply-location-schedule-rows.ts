@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "../../src/lib/db/admin";
 import type { LocationScheduleRow } from "./location-schedule-pdf";
 
 export const LOCATION_SCHEDULE_NAME_ALIASES: Record<

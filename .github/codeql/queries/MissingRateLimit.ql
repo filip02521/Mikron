@@ -26,9 +26,11 @@ predicate isSensitivePath(File f) {
   f.getAbsolutePath().regexpMatch(".*/api/teeth-vision.*")
 }
 
-/** Trasy celowo bez rate limitu — login-form to tylko redirect. */
+/** Trasy celowo bez rate limitu — formularz login (redirect), status sesji, logout. */
 predicate isExcludedPath(File f) {
-  f.getAbsolutePath().regexpMatch(".*/api/auth/login-form.*")
+  f.getAbsolutePath().regexpMatch(".*/api/auth/login-form.*") or
+  f.getAbsolutePath().regexpMatch(".*/api/auth/session.*") or
+  f.getAbsolutePath().regexpMatch(".*/api/auth/logout.*")
 }
 
 predicate isRateLimitCall(CallExpr call) {

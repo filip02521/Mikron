@@ -5,20 +5,18 @@
  *   npx tsx --env-file=.env.local scripts/backfill-informacja-legacy-rows.ts
  *   npx tsx --env-file=.env.local scripts/backfill-informacja-legacy-rows.ts --apply
  */
-import { createClient } from "@supabase/supabase-js";
+import { createAdminClient as createClient } from "../src/lib/db/admin";
 import { shouldTreatAsInformacjaOnly } from "../src/lib/orders/informacja-import-rules";
 import { INFORMACJA_NO_QUANTITY } from "../src/lib/orders/individual";
 
 const apply = process.argv.includes("--apply");
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-if (!url || !key) {
-  console.error("Brak NEXT_PUBLIC_SUPABASE_URL lub SUPABASE_SERVICE_ROLE_KEY");
+if (!process.env.DATABASE_URL?.trim()) {
+  console.error("Ustaw DATABASE_URL (.env / .env.local)");
   process.exit(1);
 }
 
-const supabase = createClient(url, key);
+const supabase = createClient();
 
 async function main() {
   const { data: stanPerson } = await supabase

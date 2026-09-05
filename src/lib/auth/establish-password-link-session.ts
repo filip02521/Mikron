@@ -1,4 +1,4 @@
-import type { EmailOtpType, SupabaseClient } from "@supabase/supabase-js";
+import type { EmailOtpType } from "@/lib/auth/password-link-redirect";
 
 export type PasswordLinkParseResult =
   | { kind: "code"; code: string }
@@ -6,7 +6,22 @@ export type PasswordLinkParseResult =
   | { kind: "hash"; access_token: string; refresh_token: string }
   | { kind: "none" };
 
-/** Wyciąga tokeny z query lub hash po przekierowaniu z Supabase Auth. */
+type PasswordLinkAuthClient = {
+  auth: {
+    exchangeCodeForSession?: (code: string) => Promise<{ error: { message: string } | null }>;
+    verifyOtp?: (params: {
+      token_hash: string;
+      type?: string | null;
+    }) => Promise<{ error: { message: string } | null }>;
+    setSession?: (tokens: {
+      access_token: string;
+      refresh_token: string;
+    }) => Promise<{ error: { message: string } | null }>;
+    getSession?: () => Promise<{ data: { session: unknown } }>;
+  };
+};
+
+/** Wyciąga tokeny z query lub hash po przekierowaniu. */
 export function parsePasswordLinkFromLocation(
   search: string,
   hash: string
@@ -41,10 +56,11 @@ export type EstablishPasswordLinkSessionResult =
 
 /**
  * Ustanawia sesję po kliknięciu linku zaproszenia / resetu hasła.
- * Obsługuje PKCE (?code=), OTP (?token_hash=) i starszy format (#access_token=).
+ * Preferowana ścieżka: pełne przekierowanie na `/auth/confirm` (ustawia cookie httpOnly).
+ * Ten helper zostaje dla legacy client-side flows.
  */
 export async function establishPasswordLinkSession(
-  supabase: SupabaseClient,
+  supabase: PasswordLinkAuthClient,
   location?: Pick<Location, "search" | "hash" | "pathname">
 ): Promise<EstablishPasswordLinkSessionResult> {
   const search = location?.search ?? "";
@@ -52,12 +68,26 @@ export async function establishPasswordLinkSession(
   const parsed = parsePasswordLinkFromLocation(search, hash);
 
   if (parsed.kind === "code") {
+    if (!supabase.auth.exchangeCodeForSession) {
+      return { ok: false, error: "missing_session" };
+    }
     const { error } = await supabase.auth.exchangeCodeForSession(parsed.code);
     if (error) return { ok: false, error: error.message };
     return { ok: true };
   }
 
   if (parsed.kind === "otp") {
+    if (!supabase.auth.verifyOtp) {
+      // Browser: przekieruj na confirm route
+      if (typeof window !== "undefined") {
+        const url = new URL("/auth/confirm", window.location.origin);
+        url.searchParams.set("token_hash", parsed.token_hash);
+        url.searchParams.set("type", parsed.type);
+        window.location.assign(url.toString());
+        return { ok: true };
+      }
+      return { ok: false, error: "missing_session" };
+    }
     const { error } = await supabase.auth.verifyOtp({
       token_hash: parsed.token_hash,
       type: parsed.type,
@@ -67,6 +97,9 @@ export async function establishPasswordLinkSession(
   }
 
   if (parsed.kind === "hash") {
+    if (!supabase.auth.setSession) {
+      return { ok: false, error: "missing_session" };
+    }
     const { error } = await supabase.auth.setSession({
       access_token: parsed.access_token,
       refresh_token: parsed.refresh_token,
@@ -75,15 +108,12 @@ export async function establishPasswordLinkSession(
     return { ok: true };
   }
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (session) return { ok: true };
+  const sessionResult = await supabase.auth.getSession?.();
+  if (sessionResult?.data?.session) return { ok: true };
 
   return { ok: false, error: "missing_session" };
 }
 
-/** Usuwa tokeny z query po udanej weryfikacji (zachowuje np. ?wymagane=1). */
 export function scrubPasswordLinkFromUrl(
   pathname: string,
   search: string
@@ -103,7 +133,6 @@ export function scrubPasswordLinkFromUrl(
   return q ? `${pathname}?${q}` : pathname;
 }
 
-/** Czyści query i hash z tokenów po ustanowieniu sesji (hash nie trafia do serwera). */
 export function scrubPasswordLinkFromLocation(
   pathname: string,
   search: string,

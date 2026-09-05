@@ -375,6 +375,19 @@ if (-not (Test-Path $envFile)) {
 }
 Write-Ok ".env istnieje"
 
+# Walidacja kluczowych zmiennych Postgres
+$envText = Get-Content $envFile -Raw
+if ($envText -notmatch '(?m)^DATABASE_URL=') {
+  Write-Err "Brak DATABASE_URL w .env — lokalny PostgreSQL jest wymagany"
+  exit 1
+}
+if ($envText -notmatch '(?m)^SESSION_SECRET=.+') {
+  Write-Warn "Brak SESSION_SECRET — sesje nie beda dzialac"
+}
+if ($envText -notmatch '(?m)^STORAGE_ROOT=') {
+  Write-Warn "Brak STORAGE_ROOT — uploady OCR/tablica wymagaja katalogu"
+}
+
 Push-Location $Root
 try {
   if (-not $SkipInstall) {
