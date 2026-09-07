@@ -190,6 +190,7 @@ import {
   SubiektRequestError,
   SubiektTimeoutError,
 } from "@/lib/subiekt/errors";
+import { formatZdCreateSferaUserMessage } from "@/lib/subiekt/sfera-create-error";
 import { zdListItemMatchesSupplierKhIds } from "@/lib/subiekt/zd-document-kh";
 import { isFulfilledZdDocumentStatus } from "@/lib/subiekt/zd-fulfillment-date";
 import {
@@ -3251,11 +3252,13 @@ async function resolveSupplierKhForCreateFromDb(
 
 function mapZdCreateSubiektError(e: unknown): {
   code: "timeout" | "validation" | "sfera" | "network" | "error";
+  title?: string;
   message: string;
 } {
   if (e instanceof SubiektTimeoutError) {
     return {
       code: "timeout",
+      title: "Timeout Sfery",
       message:
         "Timeout przy tworzeniu ZD (Sfera). Sprawdź w Subiekcie, czy dokument powstał — nie twórz ponownie w ciemno.",
     };
@@ -3281,7 +3284,7 @@ function mapZdCreateSubiektError(e: unknown): {
     const apiError =
       String(parsed?.error ?? "").trim() || e.bodySnippet || e.message;
     if (apiCode === "validation_error" || e.status === 400) {
-      return { code: "validation", message: apiError };
+      return { code: "validation", title: "Błąd walidacji", message: apiError };
     }
     if (
       apiCode === "sfera_not_configured" ||
@@ -3289,11 +3292,24 @@ function mapZdCreateSubiektError(e: unknown): {
       e.status === 503 ||
       e.status === 409
     ) {
+      const formatted = formatZdCreateSferaUserMessage(apiError);
       return {
         code: "sfera",
-        message:
-          apiError ||
-          "Sfera Subiekta niedostępna lub zajęta. Spróbuj za chwilę.",
+        title: formatted.title,
+        message: formatted.message,
+      };
+    }
+    // Sfera czasem zwraca HRESULT w 500/502 z mylącą wskazówką SQL — mapuj zanim pokażemy surowy tekst.
+    if (
+      /0x[0-9a-fA-F]{8}/.test(apiError) ||
+      /HRESULT/i.test(apiError) ||
+      /InsERT|Sfera/i.test(apiError)
+    ) {
+      const formatted = formatZdCreateSferaUserMessage(apiError);
+      return {
+        code: "sfera",
+        title: formatted.title,
+        message: formatted.message,
       };
     }
     return { code: "error", message: apiError || e.message };
@@ -3301,6 +3317,7 @@ function mapZdCreateSubiektError(e: unknown): {
   const feedback = feedbackFromException(e);
   return {
     code: "network",
+    title: feedback.title,
     message: feedback.message || (userFacingErrorText(e, "Błąd Subiekta.")),
   };
 }
@@ -3331,6 +3348,8 @@ export type ZdEstimateCreateZdResult =
       ok: false;
       code: "timeout" | "validation" | "sfera" | "network" | "error";
       message: string;
+      /** Krótki nagłówek Alert (np. zajęta licencja Sfery). */
+      title?: string;
       /** Przy timeout — kh do wyszukania świeżego ZD. */
       supplierKhId?: number;
     };
@@ -3764,6 +3783,7 @@ export async function actionCreateZdFromEstimate(input: {
       ok: false,
       code: mapped.code,
       message: mapped.message,
+      title: mapped.title,
       supplierKhId: mapped.code === "timeout" ? khRes.khId : undefined,
     };
   }

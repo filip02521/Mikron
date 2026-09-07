@@ -127,7 +127,10 @@ export function ZdEstimateCreateZdDialog({
     includedServiceOrderIds?: string[];
     acceptedCatalogOrderIds?: string[];
   }) => void;
-  onError: (message: string, opts?: { timeoutKhId?: number }) => void;
+  onError: (
+    message: string,
+    opts?: { timeoutKhId?: number; title?: string }
+  ) => void;
   onSubmitStart?: (snap: ZdCreateSubmitFreezeSnap) => void;
   ordersIsLive: boolean;
   ordersPort: number;
@@ -300,6 +303,7 @@ export function ZdEstimateCreateZdDialog({
         setProgressSnapshotOk(null);
         onError(res.message, {
           timeoutKhId: res.code === "timeout" ? res.supplierKhId : undefined,
+          title: res.title,
         });
         return;
       }

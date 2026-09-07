@@ -1088,6 +1088,7 @@ export function ZdEstimateWorkbench({
   const [sortKey, setSortKey] = useState<ZdEstimateListSortKey>(uiPrefs.sortKey);
   const [sortDir, setSortDir] = useState<ZdEstimateListSortDir>(uiPrefs.sortDir);
   const [feedback, setFeedback] = useState<SubiektFeedback | null>(null);
+  const [errorTitle, setErrorTitle] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(() => {
     if (!launch?.autorun || launch.needsAssign) return null;
     if (!bootstrap.configured) return null;
@@ -1448,10 +1449,19 @@ export function ZdEstimateWorkbench({
     []
   );
 
-  const reportError = useCallback((message: string) => {
-    setFeedback(null);
-    setErrorMessage(userFacingErrorTextFromMessage(message));
-  }, []);
+  const reportError = useCallback(
+    (message: string, opts?: { title?: string }) => {
+      setFeedback(null);
+      setErrorTitle(opts?.title?.trim() || null);
+      setErrorMessage(userFacingErrorTextFromMessage(message));
+    },
+    []
+  );
+
+  // Gdy ktoś czyści errorMessage bez tytułu — nie zostawiaj starego nagłówka Alert.
+  useEffect(() => {
+    if (!errorMessage) setErrorTitle(null);
+  }, [errorMessage]);
 
   const flashSettingsLive = useCallback((message: string) => {
     setSettingsLiveMessage(message);
@@ -6874,7 +6884,7 @@ export function ZdEstimateWorkbench({
             </div>
           ) : errorMessage ? (
             <div key="error" id={ZD_ESTIMATE_ERROR_FOCUS_ID} className="scroll-mt-4">
-              <Alert tone="error" title="Błąd">
+              <Alert tone="error" title={errorTitle ?? "Błąd"}>
                 {errorMessage}
               </Alert>
             </div>
@@ -9097,7 +9107,7 @@ export function ZdEstimateWorkbench({
           }}
           onError={(message, opts) => {
             setCreatingZd(false);
-            reportError(message);
+            reportError(message, { title: opts?.title });
             const timeoutKh = opts?.timeoutKhId;
             if (timeoutKh != null && timeoutKh > 0) {
               setCreateZdOpen(false);
