@@ -2144,6 +2144,27 @@ export async function actionRunZdEstimateManual(
         },
       };
     }
+    if (e instanceof SubiektRequestError && e.status >= 500) {
+      const raw = (e.bodySnippet || "").replace(/\s+/g, " ").trim();
+      const snippet =
+        raw.length > 220 ? `${raw.slice(0, 220).trim()}…` : raw || null;
+      return {
+        ok: false,
+        message:
+          "Subiekt ORDERS nie policzył tego zakresu (błąd SQL/REST po stronie API).",
+        feedback: {
+          ...feedback,
+          code: "server_error",
+          title: "Subiekt nie policzył zakresu",
+          message:
+            "Usługa ORDERS zwróciła błąd wewnętrzny przy szacunku. " +
+            "Duże cechy (np. Ivoclar) często przeciążają zapytanie SQL — to nie jest baza Postgres OnTime.",
+          hint: snippet
+            ? `Odpowiedź API (HTTP ${e.status}): ${snippet}`
+            : `HTTP ${e.status} bez treści. Spróbuj grupy „Ivoclar Technical/Clinical” zamiast całej cechy, albo sprawdź logi serwisu Subiekta :5080.`,
+        },
+      };
+    }
     return {
       ok: false,
       message: feedback.message,
@@ -3264,15 +3285,26 @@ function mapZdCreateSubiektError(e: unknown): {
     };
   }
   if (e instanceof SubiektRequestError) {
-    let parsed: { error?: string; code?: string } | null = null;
+    let parsed: {
+      error?: string;
+      message?: string;
+      detail?: string;
+      description?: string;
+      code?: string;
+    } | null = null;
     try {
       parsed = JSON.parse(e.bodySnippet) as {
         error?: string;
+        message?: string;
+        detail?: string;
+        description?: string;
         code?: string;
       };
     } catch {
       const codeM = e.bodySnippet.match(/"code"\s*:\s*"([^"]+)"/);
-      const errM = e.bodySnippet.match(/"error"\s*:\s*"((?:\\.|[^"\\])*)"/);
+      const errM = e.bodySnippet.match(
+        /"(?:error|message|detail)"\s*:\s*"((?:\\.|[^"\\])*)"/
+      );
       if (codeM || errM) {
         parsed = {
           code: codeM?.[1],
@@ -3281,40 +3313,59 @@ function mapZdCreateSubiektError(e: unknown): {
       }
     }
     const apiCode = String(parsed?.code ?? "").trim();
-    const apiError =
-      String(parsed?.error ?? "").trim() || e.bodySnippet || e.message;
+    const apiError = String(
+      parsed?.error ??
+        parsed?.message ??
+        parsed?.detail ??
+        parsed?.description ??
+        ""
+    ).trim();
+    // Pełny blob (JSON + pola) — HRESULT bywa w body, a nie w `error`.
+    const errorBlob = [apiError, e.bodySnippet, e.message]
+      .filter(Boolean)
+      .join("\n");
     if (apiCode === "validation_error" || e.status === 400) {
-      return { code: "validation", title: "Błąd walidacji", message: apiError };
+      const formatted = formatZdCreateSferaUserMessage(errorBlob);
+      // Walidacja zwykle bez HRESULT — zostaw apiError, chyba że to jednak Sfera.
+      if (/HRESULT|0x[0-9a-fA-F]{8}/i.test(errorBlob)) {
+        return {
+          code: "sfera",
+          title: formatted.title,
+          message: formatted.message,
+        };
+      }
+      return {
+        code: "validation",
+        title: "Błąd walidacji",
+        message: apiError || errorBlob || e.message,
+      };
     }
-    if (
+
+    // Zawsze humanizuj odpowiedzi create ZD (licencja / COM / myląca wskazówka SQL).
+    const formatted = formatZdCreateSferaUserMessage(errorBlob);
+    const isSferaStatus =
       apiCode === "sfera_not_configured" ||
       apiCode === "sfera_error" ||
       e.status === 503 ||
-      e.status === 409
-    ) {
-      const formatted = formatZdCreateSferaUserMessage(apiError);
-      return {
-        code: "sfera",
-        title: formatted.title,
-        message: formatted.message,
-      };
-    }
-    // Sfera czasem zwraca HRESULT w 500/502 z mylącą wskazówką SQL — mapuj zanim pokażemy surowy tekst.
-    if (
-      /0x[0-9a-fA-F]{8}/.test(apiError) ||
-      /HRESULT/i.test(apiError) ||
-      /InsERT|Sfera/i.test(apiError)
-    ) {
-      const formatted = formatZdCreateSferaUserMessage(apiError);
-      return {
-        code: "sfera",
-        title: formatted.title,
-        message: formatted.message,
-      };
-    }
-    return { code: "error", message: apiError || e.message };
+      e.status === 409 ||
+      /HRESULT|0x[0-9a-fA-F]{8}|InsERT|Sfera/i.test(errorBlob);
+    return {
+      code: isSferaStatus ? "sfera" : "error",
+      title: formatted.title,
+      message: formatted.message,
+    };
   }
   const feedback = feedbackFromException(e);
+  const blob =
+    e instanceof Error ? `${e.message}\n${String(e)}` : String(e ?? "");
+  if (/HRESULT|0x[0-9a-fA-F]{8}|InsERT/i.test(blob)) {
+    const formatted = formatZdCreateSferaUserMessage(blob);
+    return {
+      code: "sfera",
+      title: formatted.title,
+      message: formatted.message,
+    };
+  }
   return {
     code: "network",
     title: feedback.title,
