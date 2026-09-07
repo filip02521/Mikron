@@ -49,6 +49,8 @@ export function collectMissingZdPairPartnerTwIds(
 export type RefreshZdEstimateLinesOptions = ApplyZdEstimatePairsOptions & {
   packagingByTwId?: ReadonlyMap<number, ZdEstimatePackagingRefreshEntry> | null;
   missingBomTwIds?: ReadonlySet<number> | null;
+  /** tw_Id → minimum stanów w sztukach fizycznych. */
+  minStockByTwId?: ReadonlyMap<number, number> | null;
 };
 
 /**
@@ -79,6 +81,7 @@ export function refreshZdEstimateLinesWithPairs(input: {
     historyByTwId: input.options.historyByTwId,
     packagingByTwId: input.options.packagingByTwId,
     productPairs: input.pairs,
+    minStockByTwId: input.options.minStockByTwId,
   });
 
   const boms = input.boms ?? [];
@@ -102,6 +105,7 @@ export function refreshZdEstimateLinesWithPairs(input: {
           packagingByTwId: input.options.packagingByTwId,
           productPairs: input.pairs,
           missingComponentTwIds: missingBomSet,
+          minStockByTwId: input.options.minStockByTwId,
         })
       : remappedBase.map((l) => ({ ...l, bom: null as null, pair: null }));
 

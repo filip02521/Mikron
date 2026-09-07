@@ -132,7 +132,7 @@ export function ZdEstimateOrderPreviewTable({
           <tbody>
             {filtered.map((l, i) => (
               <tr key={l.twId} className="border-t border-slate-100 align-top">
-                <td className="px-2.5 py-1.5 tabular-nums text-slate-400">
+                <td className="px-2.5 py-1.5 tabular-nums text-slate-500">
                   {i + 1}
                 </td>
                 <td className="px-2.5 py-1.5 font-mono text-xs text-slate-700">
@@ -147,24 +147,24 @@ export function ZdEstimateOrderPreviewTable({
                   <span className="whitespace-normal break-words">{l.nazwa}</span>
                   <span className="mt-0.5 flex flex-wrap gap-1">
                     {l.bomOrPairLabel ? (
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-indigo-800">
+                      <span className="text-[11px] font-medium uppercase tracking-wide text-indigo-800">
                         {l.bomOrPairLabel}
                       </span>
                     ) : null}
                     {(l.individualExtraPieces ?? 0) > 0 ? (
-                      <span className="text-[10px] font-semibold uppercase text-emerald-700">
+                      <span className="text-[11px] font-semibold uppercase text-emerald-700">
                         {extrasPolicy === "max"
                           ? `prośba ${formatQty(l.individualExtraPieces ?? 0)} szt`
                           : `+prośba ${formatQty(l.individualExtraPieces ?? 0)} szt`}
                       </span>
                     ) : null}
                     {l.extraOnly ? (
-                      <span className="text-[10px] font-medium uppercase text-amber-800">
+                      <span className="text-[11px] font-medium uppercase text-amber-800">
                         tylko prośba
                       </span>
                     ) : null}
                     {compact && l.plu?.trim() ? (
-                      <span className="font-mono text-[10px] text-slate-400">
+                      <span className="font-mono text-[11px] text-slate-500">
                         PLU {l.plu.trim()}
                       </span>
                     ) : null}
@@ -179,7 +179,7 @@ export function ZdEstimateOrderPreviewTable({
                     </div>
                   ) : null}
                   {l.packagingHint ? (
-                    <div className="text-[11px] text-slate-400">
+                    <div className="text-[11px] text-slate-500">
                       {l.packagingHint}
                     </div>
                   ) : null}

@@ -82,6 +82,7 @@ export function ZdEstimatePostCreatePanel({
   const [mails, setMails] = useState("");
   const [extraInfo, setExtraInfo] = useState("");
   const [tsvCopied, setTsvCopied] = useState(false);
+  const [tsvError, setTsvError] = useState(false);
   const [mailOpen, setMailOpen] = useState(false);
   const [mailSubject, setMailSubject] = useState("");
   const [mailBody, setMailBody] = useState("");
@@ -228,9 +229,12 @@ export function ZdEstimatePostCreatePanel({
       postCreateLinesSnapshotToTsv(session.linesSnapshot)
     );
     if (!ok) {
+      setTsvError(true);
       onCopyError?.("Nie udało się skopiować TSV.");
+      window.setTimeout(() => setTsvError(false), 3000);
       return;
     }
+    setTsvError(false);
     setTsvCopied(true);
     window.setTimeout(() => setTsvCopied(false), 2000);
   };
@@ -380,6 +384,15 @@ export function ZdEstimatePostCreatePanel({
 
   return (
     <>
+      {/* Region aria-live dla czytników ekranu — komunikaty statusu akcji. */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {glowneError ? `Błąd oznaczania Główne: ${glowneError}. ` : null}
+        {glowneInfo ? `${glowneInfo}. ` : null}
+        {scheduleError ? `Błąd planu: ${scheduleError}. ` : null}
+        {scheduleHint ? `${scheduleHint}. ` : null}
+        {tsvError ? "Kopiowanie TSV nie powiodło się. " : null}
+        {tsvCopied ? "TSV skopiowano. " : null}
+      </div>
       <ModalShell
         open
         onClose={onDismiss}
@@ -484,10 +497,13 @@ export function ZdEstimatePostCreatePanel({
                   className="min-h-11 w-full sm:w-auto"
                   disabled={!session.linesSnapshot.length}
                   onClick={() => void copyTsv()}
+                  aria-live="polite"
                 >
-                  {tsvCopied
-                    ? "Skopiowano"
-                    : ZD_ESTIMATE_UI.postCreateCopyTsvCta}
+                  {tsvError
+                    ? "Nie skopiowano"
+                    : tsvCopied
+                      ? "Skopiowano"
+                      : ZD_ESTIMATE_UI.postCreateCopyTsvCta}
                 </Button>
               </div>
               <Button
@@ -584,7 +600,7 @@ export function ZdEstimatePostCreatePanel({
                 zdEstimateShadowControlClass
               )}
             >
-              <p className={cn(panelTypography.sectionLabel, "text-slate-500")}>
+              <p className={cn(panelTypography.sectionLabel, "text-slate-600")}>
                 {ZD_ESTIMATE_UI.postCreateMarksTitle}
               </p>
               {!canAct ? (
@@ -601,6 +617,7 @@ export function ZdEstimatePostCreatePanel({
                     </p>
                   </div>
                   <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                    {glowneIds.length > 0 || session.glowneDone ? (
                     <Button
                       type="button"
                       variant="secondary"
@@ -611,6 +628,7 @@ export function ZdEstimatePostCreatePanel({
                         glownePending
                       }
                       onClick={markGlowne}
+                      aria-busy={glownePending}
                     >
                       {glownePending ? (
                         <span className="inline-flex items-center gap-2">
@@ -626,6 +644,7 @@ export function ZdEstimatePostCreatePanel({
                         }`
                       )}
                     </Button>
+                    ) : null}
                     <Button
                       type="button"
                       variant="secondary"
@@ -637,6 +656,7 @@ export function ZdEstimatePostCreatePanel({
                       }
                       onClick={markSchedule}
                       title={scheduleHint ?? undefined}
+                      aria-busy={schedulePending}
                     >
                       {schedulePending ? (
                         <span className="inline-flex items-center gap-2">
@@ -676,8 +696,8 @@ export function ZdEstimatePostCreatePanel({
                 zdEstimateShadowControlClass
               )}
             >
-              <p className={cn(panelTypography.sectionLabel, "text-slate-500")}>
-                Kontakt dostawcy
+              <p className={cn(panelTypography.sectionLabel, "text-slate-600")}>
+                {ZD_ESTIMATE_UI.postCreateContactTitle}
               </p>
               {contactLoading ? (
                 <p className="mt-2 inline-flex items-center gap-2 text-sm text-slate-600">
@@ -720,10 +740,10 @@ export function ZdEstimatePostCreatePanel({
                   <p
                     className={cn(
                       panelTypography.sectionLabel,
-                      "text-slate-500"
+                      "text-slate-600"
                     )}
                   >
-                    Uwagi na dokumencie
+                    {ZD_ESTIMATE_UI.postCreateUwagiTitle}
                   </p>
                   <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
                     {session.composedUwagi}
@@ -865,7 +885,7 @@ function StatusDot({
   return (
     <span
       className={cn(
-        "mt-1.5 size-2 shrink-0 rounded-full ring-2 ring-white",
+        "mt-1.5 size-2.5 shrink-0 rounded-full ring-2 ring-white",
         unsure
           ? "bg-amber-500"
           : ok

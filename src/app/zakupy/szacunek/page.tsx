@@ -14,8 +14,8 @@ import { parseZdEstimateLaunchQuery } from "@/lib/orders/zd-estimate-supplier-sc
 
 export const metadata: Metadata = pageMetadataFor("zdEstimate");
 export const dynamic = "force-dynamic";
-/** Ciężki estimate (np. cecha ~1590 SKU) + resolve Subiekta. */
-export const maxDuration = 180;
+/** Ciężki estimate (duże cechy) + resolve Subiekta — align z nginx proxy_read_timeout 300s. */
+export const maxDuration = 300;
 
 export default async function ZdEstimatePage({
   searchParams,

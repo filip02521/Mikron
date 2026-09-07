@@ -7,6 +7,7 @@ import { computeManualOrderQty } from "@/lib/orders/zd-estimate-manual";
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import {
   computeZdPackOrderQty,
+  effectiveZdDocumentUnits,
   formatZdPackUnitsPerLabelHint,
   getZdPackRoundupInfo,
   isPackagingPackagesMode,
@@ -170,7 +171,8 @@ export function buildZdCreatePreviewFromOrderable(
   extraOnlyTwIds?: ReadonlySet<number> | null,
   extrasPolicy?: import("@/lib/orders/zd-estimate-extras-policy").ZdEstimateExtrasPolicy,
   stockNeedReliefByTwId?: ReadonlyMap<number, number> | null,
-  extraOverlapByTwId?: ReadonlyMap<number, number> | null
+  extraOverlapByTwId?: ReadonlyMap<number, number> | null,
+  minStockByTwId?: ReadonlyMap<number, number> | null
 ): ZdCreatePreview {
   const previewLines: ZdCreatePreviewLine[] = [];
   let zdUnitsSuma = 0;
@@ -200,7 +202,8 @@ export function buildZdCreatePreviewFromOrderable(
       extraOnly,
       extrasPolicy,
       relief,
-      overlap
+      overlap,
+      minStockByTwId?.get(line.tw_Id)
     );
     const override = qtyOverrideByTwId?.get(line.tw_Id);
     const usedOverride =
@@ -208,7 +211,20 @@ export function buildZdCreatePreviewFromOrderable(
       override != null &&
       Number.isFinite(override) &&
       override >= 0;
-    const finalZd = usedOverride ? Math.trunc(override!) : qty.zdUnits;
+    // Normalizuj override przez effectiveZdDocumentUnits (dobicie do M/pack).
+    const finalZd = usedOverride
+      ? effectiveZdDocumentUnits(
+          line,
+          packagingById.get(line.tw_Id),
+          extraPieces,
+          override,
+          extraOnly,
+          extrasPolicy,
+          relief,
+          overlap,
+          minStockByTwId?.get(line.tw_Id)
+        )
+      : qty.zdUnits;
     if (finalZd <= 0) continue;
     const piecesArriving = usedOverride
       ? piecesArrivingForZdUnits(
@@ -557,74 +573,86 @@ export type CanCreateZdState = {
   prosbaOverlapPending?: boolean;
 };
 
+export type ZdEstimateCreateGateTone = "loading" | "warning" | "error";
+
 export function canCreateZdFromEstimateState(
   state: CanCreateZdState
-): { ok: true } | { ok: false; reason: string } {
+): { ok: true } | { ok: false; reason: string; tone: ZdEstimateCreateGateTone } {
   if (!state.configured) {
     return {
       ok: false,
+      tone: "error",
       reason: "Brak połączenia z hostem ORDERS (live :5080 / test :5082).",
     };
   }
   if (!state.settingsTrusted) {
     return {
       ok: false,
+      tone: "warning",
       reason: ZD_ESTIMATE_UI.createGateNeedsSettings,
     };
   }
   if (state.pendingIndividualsError?.trim()) {
     return {
       ok: false,
+      tone: "error",
       reason: ZD_ESTIMATE_UI.createGatePendingIndividualsError,
     };
   }
   if (state.pendingIndividualsTruncated) {
     return {
       ok: false,
+      tone: "warning",
       reason: ZD_ESTIMATE_UI.createGatePendingIndividualsTruncated,
     };
   }
   if (state.pendingIndividualsLoading) {
     return {
       ok: false,
+      tone: "loading",
       reason: ZD_ESTIMATE_UI.createGatePendingIndividualsLoading,
     };
   }
   if (state.prosbaOverlapPending) {
     return {
       ok: false,
+      tone: "loading",
       reason: ZD_ESTIMATE_UI.createGateProsbaOverlapPending,
     };
   }
   if (state.historyFetchFailed) {
     return {
       ok: false,
+      tone: "warning",
       reason: ZD_ESTIMATE_UI.createGateHistoryFetchFailed,
     };
   }
   if (state.boostNeedsRecount) {
     return {
       ok: false,
+      tone: "warning",
       reason: ZD_ESTIMATE_UI.createGateBoostNeedsRecount,
     };
   }
   if (state.historyNeedsRecount) {
     return {
       ok: false,
+      tone: "warning",
       reason: ZD_ESTIMATE_UI.createGateHistoryNeedsRecount,
     };
   }
   if (state.explodeBomIncomplete) {
     return {
       ok: false,
+      tone: "warning",
       reason: ZD_ESTIMATE_UI.createGateExplodeBomIncomplete,
     };
   }
   if (state.estimating) {
-    return { ok: false, reason: ZD_ESTIMATE_UI.createGateEstimating };
+    return { ok: false, tone: "loading", reason: ZD_ESTIMATE_UI.createGateEstimating };
   }
   if (state.mutating || state.creating) {
-    return { ok: false, reason: ZD_ESTIMATE_UI.createGateMutating };
+    return { ok: false, tone: "loading", reason: ZD_ESTIMATE_UI.createGateMutating };
   }
   const createLocked =
     !state.createUnlockedAfterDone &&
@@ -633,6 +661,7 @@ export function canCreateZdFromEstimateState(
   if (createLocked) {
     return {
       ok: false,
+      tone: "warning",
       reason: state.createUnconfirmedAttempt
         ? "Ostatnie tworzenie ZD zakończyło się timeoutem — sprawdź Subiekt / powiąż dokument, przelicz listę albo odblokuj świadomie."
         : "ZD już utworzone z tej listy — powiąż inne ZD ręcznie, przelicz listę albo odblokuj świadomie.",
@@ -644,15 +673,17 @@ export function canCreateZdFromEstimateState(
   ) {
     return {
       ok: false,
+      tone: "warning",
       reason: `Konflikt opakowanie ↔ para (${state.packagingPairConflictCount}) — ujednolić przed utworzeniem ZD.`,
     };
   }
   if (!(state.orderableCount > 0)) {
-    return { ok: false, reason: "Brak pozycji do ZD." };
+    return { ok: false, tone: "warning", reason: "Brak pozycji do ZD." };
   }
   if (!state.supplierId?.trim()) {
     return {
       ok: false,
+      tone: "warning",
       reason:
         "Wybierz dostawcę (pole zaawansowane) albo uzupełnij dopasowanie grupy/cechy do kartoteki.",
     };
@@ -661,6 +692,7 @@ export function canCreateZdFromEstimateState(
   if (!kh || !kh.ok) {
     return {
       ok: false,
+      tone: "error",
       reason: kh && !kh.ok ? kh.message : "Brak identyfikatora kontrahenta (kh) dostawcy w Subiekcie.",
     };
   }
@@ -671,7 +703,8 @@ export function canCreateZdFromEstimateState(
 export function applyCreatedZdUnitsToOtwarteZd(
   lines: ManualZdEstimateLine[],
   created: ReadonlyMap<number, number>,
-  packagingById?: ReadonlyMap<number, PackagingLookup> | null
+  packagingById?: ReadonlyMap<number, PackagingLookup> | null,
+  minStockByTwId?: ReadonlyMap<number, number> | null
 ): ManualZdEstimateLine[] {
   if (created.size === 0) return lines;
   return lines.map((line) => {
@@ -689,9 +722,12 @@ export function applyCreatedZdUnitsToOtwarteZd(
       celZapasu: line.celZapasuTracked ?? line.celZapasu,
       dostepne: line.dostepne,
       otwarteZd: otwarteZdPieces,
+      minStockSzt: minStockByTwId?.get(line.tw_Id),
     });
     // Cover się zmienił — stary review qty z tracka jest nieaktualny.
     const cleared = clearSalesTrackQtyReviewMeta(line);
-    return { ...cleared, otwarteZd, doZamowieniaReczne };
+    // wkladZk = API − ręcznie; odśwież bo doZamowieniaReczne się zmieniło.
+    const wkladZk = Math.max(0, (Number(line.doZamowieniaApi) || 0) - doZamowieniaReczne);
+    return { ...cleared, otwarteZd, doZamowieniaReczne, wkladZk };
   });
 }

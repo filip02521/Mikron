@@ -147,6 +147,8 @@ export function ZdEstimateListBand({
   columnsAreDefault,
   onSortByConfidence,
   sortKeyIsConfidence,
+  onSortByMinStock,
+  sortKeyIsMinStock,
   visibleCount,
   allVisibleSelected,
   selectedCount,
@@ -177,6 +179,8 @@ export function ZdEstimateListBand({
   columnsAreDefault: boolean;
   onSortByConfidence: () => void;
   sortKeyIsConfidence?: boolean;
+  onSortByMinStock: () => void;
+  sortKeyIsMinStock?: boolean;
   visibleCount: number;
   allVisibleSelected: boolean;
   selectedCount: number;
@@ -310,7 +314,7 @@ export function ZdEstimateListBand({
             </label>
             {showSearchCounts ? (
               <span
-                className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 text-[10px] tabular-nums leading-none text-slate-400"
+                className="pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 text-[11px] tabular-nums leading-none text-slate-500"
                 title="Trafienia szukania / pozycje w aktywnym filtrze"
               >
                 {searchVisibleCount}
@@ -376,6 +380,14 @@ export function ZdEstimateListBand({
               {sortKeyIsConfidence
                 ? `✓ ${ZD_ESTIMATE_UI.listSortByConfidence}`
                 : ZD_ESTIMATE_UI.listSortByConfidence}
+            </OverflowMenuItem>
+            <OverflowMenuItem
+              onClick={onSortByMinStock}
+              disabled={disabled}
+            >
+              {sortKeyIsMinStock
+                ? `✓ ${ZD_ESTIMATE_UI.listSortByMinStock}`
+                : ZD_ESTIMATE_UI.listSortByMinStock}
             </OverflowMenuItem>
             {canSelectVisible ? (
               <>

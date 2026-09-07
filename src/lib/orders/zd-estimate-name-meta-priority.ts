@@ -12,7 +12,8 @@ export type ZdEstimateNameMetaKind =
   | "session_include"
   | "name_auto_exclude"
   | "soft_on_request"
-  | "lifted_extra_only";
+  | "lifted_extra_only"
+  | "min_stock";
 
 /** Wyższa liczba = ważniejsze (primary). */
 export const ZD_ESTIMATE_NAME_META_PRIORITY: Record<
@@ -28,6 +29,8 @@ export const ZD_ESTIMATE_NAME_META_PRIORITY: Record<
   individual: 80,
   pair: 60,
   bom: 50,
+  /** Minimum stanów — informacyjne, niska priorytet. */
+  min_stock: 30,
   lifted_extra_only: 25,
 };
 

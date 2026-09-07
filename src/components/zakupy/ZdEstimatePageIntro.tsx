@@ -132,7 +132,7 @@ export function ZdEstimatePageIntro({
           >
             <h1
               className={cn(
-                "inline-flex items-center text-sm font-semibold leading-none tracking-tight text-slate-900",
+                "inline-flex items-center text-base font-semibold leading-none tracking-tight text-slate-900",
                 zdEstimateChromeControlHeightClass
               )}
             >

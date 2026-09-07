@@ -37,6 +37,8 @@ import {
   zdEstimateReadyToCountHint,
   zdEstimateRecountOverlayHint,
   zdEstimateRecountOverlayMessage,
+  zdEstimateRunPhaseStatusHint,
+  zdEstimateTruncatedListStatusNote,
   zdEstimateRouteLoadingSteps,
   zdEstimateRouteLoadingSubtitle,
   zdEstimateRouteLoadingHint,
@@ -84,8 +86,9 @@ describe("zd-estimate-ui-copy", () => {
 
   it("empty / launch bez „testowego” na live", () => {
     expect(zdEstimateEmptyListDescription(true)).not.toMatch(/testowego/);
-    expect(zdEstimateLaunchFetchHint(true)).toMatch(/aktualnej bazy/);
+    expect(zdEstimateLaunchFetchHint(true)).toMatch(/Subiekta \(live\)/);
     expect(zdEstimateLaunchFetchHint(false)).toMatch(/testowego/);
+    expect(zdEstimateLaunchFetchHint(true, 50_000)).toMatch(/nadal liczy/);
   });
 
   it("confirm live nie obiecuje automatycznego Główne", () => {
@@ -313,7 +316,21 @@ describe("zd-estimate-ui-copy", () => {
     expect(zdEstimateRecountOverlayHint(true)).toMatch(/aktualnej bazy/);
     expect(zdEstimateRecountOverlayHint(true)).toMatch(/Utwórz ZD/);
     expect(zdEstimateRecountOverlayHint(false)).toMatch(/testowego/);
+    expect(zdEstimateRecountOverlayHint(true, "Strona 2/5…")).toBe(
+      "Strona 2/5…"
+    );
     expect(zdEstimateRecountOverlayMessage()).toMatch(/listę Do ZD/);
+    expect(zdEstimateTruncatedListStatusNote()).toMatch(/Create/);
+    expect(
+      zdEstimateRunPhaseStatusHint({
+        phase: "fetch",
+        isLive: true,
+        pagesLabel: "Strona 3/10",
+      })
+    ).toMatch(/Strona 3\/10/);
+    expect(
+      zdEstimateRunPhaseStatusHint({ phase: "settings", isLive: true })
+    ).toMatch(/wykluczenia/i);
     expect(ZD_ESTIMATE_UI.createGateEstimating).toMatch(/listy Do ZD/i);
     expect(ZD_ESTIMATE_UI.createGateEstimating).not.toMatch(/szacunku/);
   });

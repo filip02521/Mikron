@@ -573,6 +573,8 @@ export type RematerializeSoloAfterBomOptions = {
   > | null;
   /** SKU w parze — skip rematerialize (applyPairs nadpisze). */
   productPairs?: readonly ZdProductPairRef[] | null;
+  /** tw_Id → minimum stanów w sztukach fizycznych. */
+  minStockByTwId?: ReadonlyMap<number, number> | null;
 };
 
 /**
@@ -682,6 +684,7 @@ export function rematerializeSoloAfterBom(
       celZapasu: celTracked,
       dostepne,
       otwarteZd: otwarteZdPieces,
+      minStockSzt: options.minStockByTwId?.get(line.tw_Id),
     });
 
     return {
@@ -749,7 +752,12 @@ export function applyBomPurchaseTargetFinalize(
       if (line.doZamowieniaReczne === 0 && !line.salesTrackQtyReview) {
         return line;
       }
-      return clearSalesTrackQtyReviewMeta({ ...line, doZamowieniaReczne: 0 });
+      // doZamowieniaReczne=0 → wkladZk = pełny wkład API (jeśli był > 0).
+      return clearSalesTrackQtyReviewMeta({
+        ...line,
+        doZamowieniaReczne: 0,
+        wkladZk: Math.max(0, (Number(line.doZamowieniaApi) || 0) - 0),
+      });
     }
     if (
       line.bom?.purchaseBlocked &&
@@ -758,7 +766,11 @@ export function applyBomPurchaseTargetFinalize(
       if (line.doZamowieniaReczne === 0 && !line.salesTrackQtyReview) {
         return line;
       }
-      return clearSalesTrackQtyReviewMeta({ ...line, doZamowieniaReczne: 0 });
+      return clearSalesTrackQtyReviewMeta({
+        ...line,
+        doZamowieniaReczne: 0,
+        wkladZk: Math.max(0, (Number(line.doZamowieniaApi) || 0) - 0),
+      });
     }
     return line;
   });

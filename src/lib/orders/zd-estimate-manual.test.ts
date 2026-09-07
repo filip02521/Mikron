@@ -86,6 +86,72 @@ describe("computeManualOrderQty", () => {
       computeManualOrderQty({ celZapasu: 10, dostepne: 10, otwarteZd: 0 })
     ).toBe(0);
   });
+
+  it("minStockSzt dobija cel gdy cel < minimum", () => {
+    expect(
+      computeManualOrderQty({
+        celZapasu: 5,
+        dostepne: 3,
+        otwarteZd: 0,
+        minStockSzt: 10,
+      })
+    ).toBe(7);
+  });
+
+  it("minStockSzt zamawia przy braku sprzedaży (cel = 0)", () => {
+    expect(
+      computeManualOrderQty({
+        celZapasu: 0,
+        dostepne: 2,
+        otwarteZd: 0,
+        minStockSzt: 10,
+      })
+    ).toBe(8);
+  });
+
+  it("minStockSzt zamawia pełne minimum przy pustym magazynie", () => {
+    expect(
+      computeManualOrderQty({
+        celZapasu: 0,
+        dostepne: 0,
+        otwarteZd: 0,
+        minStockSzt: 10,
+      })
+    ).toBe(10);
+  });
+
+  it("minStockSzt nie zmienia wyniku gdy cel > minimum", () => {
+    expect(
+      computeManualOrderQty({
+        celZapasu: 50,
+        dostepne: 10,
+        otwarteZd: 0,
+        minStockSzt: 10,
+      })
+    ).toBe(40);
+  });
+
+  it("minStockSzt = 0 = brak minimum (zachowuje stare zachowanie)", () => {
+    expect(
+      computeManualOrderQty({
+        celZapasu: 0,
+        dostepne: 0,
+        otwarteZd: 0,
+        minStockSzt: 0,
+      })
+    ).toBe(0);
+  });
+
+  it("minStockSzt uwzględnia otwarte ZD", () => {
+    expect(
+      computeManualOrderQty({
+        celZapasu: 0,
+        dostepne: 0,
+        otwarteZd: 4,
+        minStockSzt: 10,
+      })
+    ).toBe(6);
+  });
 });
 
 describe("mapZdEstimateLineToManual", () => {

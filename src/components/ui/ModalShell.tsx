@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { modalBackdropClass, modalPanelClass } from "@/lib/ui/surfaces";
 import { ActionLoadingOverlay } from "@/components/ui/ActionLoadingOverlay";
 import { HelpHintBubble } from "@/components/ui/HelpHintBubble";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
+
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 export type ModalTier = "standard" | "raised" | "top" | "stack" | "overlay";
 export type ModalSize = "sm" | "md" | "lg" | "xl" | "full";
@@ -75,14 +78,69 @@ export function ModalShell({
 }) {
   useBodyScrollLock(open);
 
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+
+  const focusFirst = useCallback(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const focusable = panel.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+    if (focusable) {
+      focusable.focus();
+    } else {
+      panel.focus();
+    }
+  }, []);
+
   useEffect(() => {
     if (!open) return;
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+    // Skup pierwszy focusable w modalu (rAF czeka na mount dzieci).
+    const raf = requestAnimationFrame(focusFirst);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !disableBackdropClose) onClose();
+      if (e.key === "Escape" && !disableBackdropClose) {
+        onClose();
+        return;
+      }
+      // Focus trap — Tab/Shift+Tab zostaje w modalu.
+      if (e.key !== "Tab") return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusable = Array.from(
+        panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
+      ).filter((el) => el.offsetParent !== null || el === document.activeElement);
+      if (focusable.length === 0) {
+        e.preventDefault();
+        panel.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey) {
+        if (active === first || !panel.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (active === last || !panel.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose, disableBackdropClose]);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("keydown", onKey);
+      // Przywróć fokus do elementu, który otworzył modal.
+      const prev = previouslyFocusedRef.current;
+      if (prev && typeof prev.focus === "function") {
+        prev.focus();
+      }
+      previouslyFocusedRef.current = null;
+    };
+  }, [open, onClose, disableBackdropClose, focusFirst]);
 
   if (!open) return null;
 
@@ -102,11 +160,13 @@ export function ModalShell({
         />
       )}
       <div
+        ref={panelRef}
         role={role}
         aria-modal="true"
         aria-labelledby={hasHeader ? titleId : undefined}
         aria-label={!hasHeader ? ariaLabel : undefined}
         aria-describedby={describedById}
+        tabIndex={-1}
         className={cn(
           modalPanelClass,
           "fixed left-1/2 top-1/2 max-h-[min(calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem),880px)] w-[min(100%-1rem,100%)] -translate-x-1/2 -translate-y-1/2 sm:w-full",

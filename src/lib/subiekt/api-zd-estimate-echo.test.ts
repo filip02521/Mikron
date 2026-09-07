@@ -87,6 +87,43 @@ describe("fetchSubiektZdEstimateAll validateFirstPage", () => {
     expect(result.parametry.cechaId).toBe(2738);
   });
 
+  it("emits onProgress after each committed page", async () => {
+    pageMock.mockReset();
+    pageMock
+      .mockResolvedValueOnce({
+        data: {
+          parametry: { cechaId: 1 },
+          pozycje: [{ tw_Id: 1 }, { tw_Id: 2 }],
+        },
+        pagination: { totalPages: 2, totalCount: 3 },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          parametry: { cechaId: 1 },
+          pozycje: [{ tw_Id: 3 }],
+        },
+        pagination: { totalPages: 2, totalCount: 3 },
+      });
+
+    const progress: Array<{ pagesCommitted: number; linesSoFar: number }> = [];
+    await fetchSubiektZdEstimateAll(
+      { cechaId: 1, dniZapasu: 30 },
+      {
+        onProgress: (p) => {
+          progress.push({
+            pagesCommitted: p.pagesCommitted,
+            linesSoFar: p.linesSoFar,
+          });
+        },
+      }
+    );
+
+    expect(progress).toEqual([
+      { pagesCommitted: 1, linesSoFar: 2 },
+      { pagesCommitted: 2, linesSoFar: 3 },
+    ]);
+  });
+
   it("merges parallel pages in page order and stops at first empty batch", async () => {
     pageMock.mockReset();
     pageMock.mockImplementation(async (path: string) => {

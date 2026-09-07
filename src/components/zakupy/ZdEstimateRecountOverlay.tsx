@@ -11,12 +11,22 @@ import { zdEstimateRecountOverlayPlaceClass } from "@/lib/ui/ontime-theme";
 export function ZdEstimateRecountOverlay({
   message,
   hint,
+  progressPct = null,
   className,
 }: {
   message: string;
   hint?: string;
+  /** 0–100 — determinate; null = indeterminate sweep. */
+  progressPct?: number | null;
   className?: string;
 }) {
+  const determinate =
+    progressPct != null &&
+    Number.isFinite(progressPct) &&
+    progressPct >= 0 &&
+    progressPct <= 100;
+  const pct = determinate ? Math.round(progressPct) : null;
+
   return (
     <div
       role="status"
@@ -33,7 +43,14 @@ export function ZdEstimateRecountOverlay({
         className="zd-est-loading-bar zd-est-loading-bar--indeterminate pointer-events-none absolute inset-x-0 top-0 h-0.5 overflow-hidden rounded-t-md"
         aria-hidden
       >
-        <div className="zd-est-loading-bar__fill zd-est-loading-bar__fill--sweep h-full w-1/3 rounded-full bg-indigo-500" />
+        {pct != null ? (
+          <div
+            className="zd-est-loading-bar__fill h-full rounded-full bg-indigo-500 transition-[width] duration-300 ease-out"
+            style={{ width: `${pct}%` }}
+          />
+        ) : (
+          <div className="zd-est-loading-bar__fill zd-est-loading-bar__fill--sweep h-full w-1/3 rounded-full bg-indigo-500" />
+        )}
       </div>
 
       <div className="zd-est-recount-overlay__card relative mx-4 w-full max-w-[22rem] overflow-hidden rounded-lg border border-slate-200/90 bg-white/95 px-5 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_18px_40px_-16px_rgba(15,23,42,0.28)] ring-1 ring-slate-900/[0.04] backdrop-blur-sm">
@@ -59,7 +76,14 @@ export function ZdEstimateRecountOverlay({
           className="zd-est-loading-bar mt-4 h-1.5 overflow-hidden rounded-full bg-slate-200/85"
           aria-hidden
         >
-          <div className="zd-est-loading-bar__fill zd-est-loading-bar__fill--indeterminate h-full w-2/5 rounded-full bg-indigo-500" />
+          {pct != null ? (
+            <div
+              className="zd-est-loading-bar__fill h-full rounded-full bg-indigo-500 transition-[width] duration-300 ease-out"
+              style={{ width: `${pct}%` }}
+            />
+          ) : (
+            <div className="zd-est-loading-bar__fill zd-est-loading-bar__fill--indeterminate h-full w-2/5 rounded-full bg-indigo-500" />
+          )}
         </div>
       </div>
     </div>

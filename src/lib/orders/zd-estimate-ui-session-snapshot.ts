@@ -1,6 +1,7 @@
 import type { ZdEstimateExclusionRow } from "@/lib/data/zd-estimate-exclusions";
 import type { ZdEstimateOnRequestRow } from "@/lib/data/zd-estimate-on-request";
 import type { ZdEstimatePackagingRow } from "@/lib/data/zd-estimate-packaging";
+import type { ZdEstimateMinStockRow } from "@/lib/data/zd-estimate-min-stock";
 import type { ZdProductPairRow } from "@/lib/data/zd-product-pairs";
 import type { ZdProductBomRow } from "@/lib/data/zd-product-boms";
 import {
@@ -65,6 +66,7 @@ export type ZdEstimateUiSessionSnapshot = {
   exclusions: ZdEstimateExclusionRow[];
   onRequests: ZdEstimateOnRequestRow[];
   packaging: ZdEstimatePackagingRow[];
+  minStock: ZdEstimateMinStockRow[];
   productPairs: ZdProductPairRow[];
   productBoms: ZdProductBomRow[];
   teethTwIds: number[];
@@ -219,6 +221,7 @@ export function parseZdEstimateUiSessionSnapshot(
     exclusions: Array.isArray(p.exclusions) ? p.exclusions : [],
     onRequests: Array.isArray(p.onRequests) ? p.onRequests : [],
     packaging: Array.isArray(p.packaging) ? p.packaging : [],
+    minStock: Array.isArray(p.minStock) ? p.minStock : [],
     productPairs: Array.isArray(p.productPairs) ? p.productPairs : [],
     productBoms: Array.isArray(p.productBoms) ? p.productBoms : [],
     teethTwIds: Array.isArray(p.teethTwIds) ? p.teethTwIds : [],

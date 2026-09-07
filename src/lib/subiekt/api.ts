@@ -1,6 +1,9 @@
 import { subiektFetch, subiektJson } from "@/lib/subiekt/client";
 import { resolveSubiektOrdersConfig } from "@/lib/subiekt/config";
-import { SubiektRequestError } from "@/lib/subiekt/errors";
+import {
+  SubiektRequestError,
+  SubiektTimeoutError,
+} from "@/lib/subiekt/errors";
 import { SUBIEKT_PATHS } from "@/lib/subiekt/paths";
 import { subiektQueryString } from "@/lib/subiekt/query";
 import type { SubiektConfig } from "@/lib/subiekt/config";
@@ -24,9 +27,6 @@ import type {
   SubiektZdEstimateZkData,
   SubiektZdEstimateZkParamsInput,
 } from "@/lib/subiekt/types";
-
-/** Timeout Sfery przy tworzeniu ZD (strona szacunku ma maxDuration=180). */
-export const SUBIEKT_ORDERS_ZD_CREATE_TIMEOUT_MS = 180_000;
 import {
   ZD_ESTIMATE_MAX_PAGES,
   ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY,
@@ -37,6 +37,12 @@ import {
   pickLatestFsDateKey,
 } from "@/lib/orders/zd-estimate-bulk";
 import { warsawDateKeyDaysAgo, warsawNowParts } from "@/lib/time/warsaw";
+
+/** Timeout Sfery przy tworzeniu ZD (strona szacunku ma maxDuration=300 ≈ nginx). */
+export const SUBIEKT_ORDERS_ZD_CREATE_TIMEOUT_MS = 180_000;
+
+/** Duże cechy — mniejsza współbieżność stron estimate (mniej ciśnienia na SQL). */
+export const ZD_ESTIMATE_LARGE_TOTAL_COUNT = 1500;
 
 export type { SubiektListParams };
 
@@ -226,6 +232,16 @@ export async function searchSubiektProductCechy(
   );
 }
 
+function isTransientZdEstimatePageError(e: unknown): boolean {
+  if (e instanceof SubiektTimeoutError) return true;
+  if (e instanceof SubiektRequestError && e.status >= 500) return true;
+  return false;
+}
+
+async function sleepMs(ms: number): Promise<void> {
+  await new Promise((r) => setTimeout(r, ms));
+}
+
 /** Jedna strona kreatora ZD — GET /orders/zd/estimate. */
 export async function fetchSubiektZdEstimatePage(
   params: SubiektZdEstimateParamsInput = {}
@@ -247,6 +263,29 @@ export async function fetchSubiektZdEstimatePage(
     pageSize: params.pageSize,
   });
   return subiektJson(`${SUBIEKT_PATHS.ordersZdEstimate}${qs}`, {}, config);
+}
+
+/** Jak `fetchSubiektZdEstimatePage`, z 1 retry na timeout / HTTP ≥500. */
+export async function fetchSubiektZdEstimatePageWithRetry(
+  params: SubiektZdEstimateParamsInput = {},
+  opts?: { retries?: number; retryDelayMs?: number }
+): Promise<{
+  data: SubiektZdEstimateData;
+  pagination?: SubiektListEnvelope<unknown>["pagination"];
+}> {
+  const retries = Math.max(0, opts?.retries ?? 1);
+  const retryDelayMs = Math.max(0, opts?.retryDelayMs ?? 400);
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await fetchSubiektZdEstimatePage(params);
+    } catch (e) {
+      lastError = e;
+      if (attempt >= retries || !isTransientZdEstimatePageError(e)) throw e;
+      await sleepMs(retryDelayMs);
+    }
+  }
+  throw lastError;
 }
 
 /** Jedna strona rozbicia otwartych ZK towaru — GET /orders/zd/estimate/zk. */
@@ -427,6 +466,13 @@ export class SubiektZdEstimateFirstPageRejectedError extends Error {
   }
 }
 
+export type SubiektZdEstimateAllProgress = {
+  pagesCommitted: number;
+  totalPages: number;
+  totalCountApi: number;
+  linesSoFar: number;
+};
+
 export async function fetchSubiektZdEstimateAll(
   params: Omit<SubiektZdEstimateParamsInput, "page" | "pageSize"> & {
     pageSize?: number;
@@ -438,6 +484,8 @@ export async function fetchSubiektZdEstimateAll(
       pozycje: SubiektZdEstimateLine[];
       totalCountApi: number;
     }) => { ok: true } | { ok: false; title: string; message: string };
+    /** Po page 1 i po każdym kolejnym commit (kolejność stron). */
+    onProgress?: (p: SubiektZdEstimateAllProgress) => void;
   }
 ): Promise<{
   parametry: SubiektZdEstimateData["parametry"];
@@ -453,7 +501,7 @@ export async function fetchSubiektZdEstimateAll(
   const maxPages = Math.max(1, params.maxPages ?? ZD_ESTIMATE_MAX_PAGES);
   const tylkoBraki = params.tylkoBraki ?? false;
 
-  const first = await fetchSubiektZdEstimatePage({
+  const first = await fetchSubiektZdEstimatePageWithRetry({
     ...params,
     tylkoBraki,
     page: 1,
@@ -483,6 +531,16 @@ export async function fetchSubiektZdEstimateAll(
     }
   }
 
+  const emitProgress = (pagesCommitted: number) => {
+    options?.onProgress?.({
+      pagesCommitted,
+      totalPages: Math.min(totalPages, maxPages),
+      totalCountApi,
+      linesSoFar: pozycje.length,
+    });
+  };
+  emitProgress(1);
+
   const pagesToFetch = Math.min(totalPages, maxPages);
   let pagesFetched = 1;
   let stoppedEarly = false;
@@ -490,7 +548,10 @@ export async function fetchSubiektZdEstimateAll(
   if (pagesToFetch > 1) {
     // Pipeline z limitem współbieżności: commitujemy strony po kolei.
     // Po pierwszej pustej nie claimujemy kolejnych (mniej zbędnego I/O niż fala „wszystkie naraz”).
-    const concurrency = ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY;
+    const concurrency =
+      totalCountApi > ZD_ESTIMATE_LARGE_TOTAL_COUNT
+        ? Math.min(2, ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY)
+        : ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY;
     let nextClaim = 2;
     let nextCommit = 2;
     let haltClaim = false;
@@ -503,7 +564,7 @@ export async function fetchSubiektZdEstimateAll(
         if (page > pagesToFetch) return;
         nextClaim += 1;
 
-        const next = await fetchSubiektZdEstimatePage({
+        const next = await fetchSubiektZdEstimatePageWithRetry({
           ...params,
           tylkoBraki,
           page,
@@ -521,6 +582,7 @@ export async function fetchSubiektZdEstimateAll(
           }
           pozycje.push(...batch);
           pagesFetched = nextCommit;
+          emitProgress(pagesFetched);
           nextCommit += 1;
         }
       }

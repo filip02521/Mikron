@@ -36,6 +36,13 @@ import {
   upsertZdEstimatePackaging,
   type ZdEstimatePackagingRow,
 } from "@/lib/data/zd-estimate-packaging";
+import {
+  deleteZdEstimateMinStock,
+  fetchZdEstimateMinStock,
+  minStockRowsToMap,
+  upsertZdEstimateMinStock,
+  type ZdEstimateMinStockRow,
+} from "@/lib/data/zd-estimate-min-stock";
 import { fetchZdBoostPowerPreset, upsertZdBoostPowerPreset } from "@/lib/data/zd-estimate-boost-preset";
 import {
   fetchZdEstimateExtrasPolicy,
@@ -210,6 +217,15 @@ import {
   buildZdEstimateUiSessionSnapshotFromPolicz,
   type ZdEstimateUiSessionPoliczSeed,
 } from "@/lib/orders/zd-estimate-ui-session-from-policz";
+import {
+  completeZdEstimateRunProgress,
+  failZdEstimateRunProgress,
+  getZdEstimateRunProgressForOwner,
+  isValidZdEstimateRunProgressId,
+  registerZdEstimateRunProgress,
+  updateZdEstimateRunProgress,
+  type ZdEstimateRunProgressPollResult,
+} from "@/lib/orders/zd-estimate-run-progress";
 import { ZD_ESTIMATE_UI_SESSION_SNAPSHOT_SCHEMA_VERSION } from "@/lib/orders/zd-estimate-external-session";
 import {
   fetchAllReservedZkRowsForTwId,
@@ -297,6 +313,11 @@ export type ZdEstimateRunInput = {
    * Policz, żeby duże cechy (np. Ivoclar) nie musiały ponownie uploadować snapshotu.
    */
   uiSessionSeed?: ZdEstimateUiSessionPoliczSeed | null;
+  /**
+   * Client-minted UUID for live progress polling (in-memory, owner-bound).
+   * Optional — without it Policz works as before.
+   */
+  progressId?: string | null;
 };
 
 export type ZdEstimateRunResult =
@@ -356,6 +377,7 @@ export type ZdEstimateRunResult =
       exclusions: ZdEstimateExclusionRow[];
       onRequests: ZdEstimateOnRequestRow[];
       packaging: ZdEstimatePackagingRow[];
+      minStock: ZdEstimateMinStockRow[];
       productPairs: ZdProductPairRow[];
       productBoms: ZdProductBomRow[];
       /** Odświeżony katalog zębów — auto-wykluczenia. */
@@ -694,6 +716,8 @@ export async function actionZdEstimateBootstrap(): Promise<{
   onRequestsError: string | null;
   packaging: ZdEstimatePackagingRow[];
   packagingError: string | null;
+  minStock: ZdEstimateMinStockRow[];
+  minStockError: string | null;
   productPairs: ZdProductPairRow[];
   productPairsError: string | null;
   productBoms: ZdProductBomRow[];
@@ -740,6 +764,8 @@ export async function actionZdEstimateBootstrap(): Promise<{
   let onRequestsError: string | null = null;
   let packaging: ZdEstimatePackagingRow[] = [];
   let packagingError: string | null = null;
+  let minStock: ZdEstimateMinStockRow[] = [];
+  let minStockError: string | null = null;
   let productPairs: ZdProductPairRow[] = [];
   let productPairsError: string | null = null;
   let productBoms: ZdProductBomRow[] = [];
@@ -751,6 +777,7 @@ export async function actionZdEstimateBootstrap(): Promise<{
     exclusionsSettled,
     onRequestsSettled,
     packagingSettled,
+    minStockSettled,
     productPairsSettled,
     productBomsSettled,
     teethSettled,
@@ -762,6 +789,9 @@ export async function actionZdEstimateBootstrap(): Promise<{
       .then((value) => ({ ok: true as const, value }))
       .catch((e: unknown) => ({ ok: false as const, error: e })),
     fetchZdEstimatePackaging()
+      .then((value) => ({ ok: true as const, value }))
+      .catch((e: unknown) => ({ ok: false as const, error: e })),
+    fetchZdEstimateMinStock()
       .then((value) => ({ ok: true as const, value }))
       .catch((e: unknown) => ({ ok: false as const, error: e })),
     fetchZdProductPairs()
@@ -794,6 +824,13 @@ export async function actionZdEstimateBootstrap(): Promise<{
     packagingError = userFacingErrorText(
       packagingSettled.error,
       "Nie udało się wczytać ustawień opakowań."
+    );
+  }
+  if (minStockSettled.ok) minStock = minStockSettled.value;
+  else {
+    minStockError = userFacingErrorText(
+      minStockSettled.error,
+      "Nie udało się wczytać minimum stanów."
     );
   }
   if (productPairsSettled.ok) productPairs = productPairsSettled.value;
@@ -894,6 +931,8 @@ export async function actionZdEstimateBootstrap(): Promise<{
     onRequestsError,
     packaging,
     packagingError,
+    minStock,
+    minStockError,
     productPairs,
     productPairsError,
     productBoms,
@@ -1495,10 +1534,35 @@ export async function actionFetchZdEstimateProsbaReservationOverlap(input: {
 export async function actionRunZdEstimateManual(
   input: ZdEstimateRunInput
 ): Promise<ZdEstimateRunResult> {
-  await requireZdEstimateAdmin("read");
+  const user = await requireZdEstimateAdmin("read");
+  let progressId: string | null = isValidZdEstimateRunProgressId(input.progressId)
+    ? input.progressId.trim()
+    : null;
+  // Sync register before any network await — poll must see the row immediately.
+  if (progressId) {
+    const reg = registerZdEstimateRunProgress({
+      progressId,
+      ownerUserId: user.id,
+    });
+    if (!reg.ok) {
+      // Never steal another admin's slot — continue Policz without live progress.
+      progressId = null;
+    }
+  }
+  const touchProgress = (
+    patch: Parameters<typeof updateZdEstimateRunProgress>[2]
+  ) => {
+    if (!progressId) return;
+    updateZdEstimateRunProgress(progressId, user.id, patch);
+  };
+  const failProgress = (message?: string | null) => {
+    if (!progressId) return;
+    failZdEstimateRunProgress(progressId, user.id, message);
+  };
 
   const orders = resolveSubiektOrdersConfig();
   if (!orders.ok) {
+    failProgress(orders.message);
     const feedback = getSubiektFeedback("not_configured", {
       title: "Brak hosta ORDERS",
       message: orders.message,
@@ -1513,6 +1577,7 @@ export async function actionRunZdEstimateManual(
     cechaId: input.cechaId,
   });
   if (!scope.ok) {
+    failProgress(scope.message);
     const feedback = getSubiektFeedback("empty_query", {
       title: scope.title,
       message: scope.message,
@@ -1522,6 +1587,7 @@ export async function actionRunZdEstimateManual(
 
   const dniZapasu = Math.round(Number(input.dniZapasu));
   if (!Number.isFinite(dniZapasu) || dniZapasu < 1 || dniZapasu > 730) {
+    failProgress("Niepoprawny zapas");
     const feedback = getSubiektFeedback("empty_query", {
       title: "Niepoprawny zapas",
       message: "Okres zapasu (dni) musi być w zakresie 1–730.",
@@ -1547,6 +1613,13 @@ export async function actionRunZdEstimateManual(
   try {
     // Pełna lista towarów zakresu z Subiekta (nie tylko braki API / nie nasza baza).
     // Echo filtra zaraz po 1. stronie — bez tego stary API mógłby dociągnąć cały katalog.
+    touchProgress({ phase: "fetch" });
+    let lastFetchProgress = {
+      pagesCommitted: 0,
+      totalPages: 0,
+      totalCountApi: 0,
+      linesSoFar: 0,
+    };
     const fetched = await fetchSubiektZdEstimateAll(
       {
         ...(scope.mode === "grupa"
@@ -1566,8 +1639,38 @@ export async function actionRunZdEstimateManual(
             expectedCechaId: scope.cechaId,
             parametry,
           }),
+        onProgress: (p) => {
+          lastFetchProgress = {
+            pagesCommitted: p.pagesCommitted,
+            totalPages: p.totalPages,
+            totalCountApi: p.totalCountApi,
+            linesSoFar: p.linesSoFar,
+          };
+          touchProgress({
+            phase: "fetch",
+            pagesCommitted: p.pagesCommitted,
+            totalPages: p.totalPages,
+            totalCountApi: p.totalCountApi,
+            linesSoFar: p.linesSoFar,
+          });
+        },
       }
     );
+    touchProgress({
+      phase: "settings",
+      pagesCommitted: Math.max(
+        lastFetchProgress.pagesCommitted,
+        fetched.pagesFetched
+      ),
+      totalPages: Math.max(
+        lastFetchProgress.totalPages,
+        fetched.pagesFetched,
+        1
+      ),
+      totalCountApi:
+        lastFetchProgress.totalCountApi || fetched.totalCountApi,
+      linesSoFar: fetched.pozycje.length,
+    });
     let historyByTwId: Map<
       number,
       { lastOrderedQty: number; linkedAt: string }
@@ -1591,6 +1694,7 @@ export async function actionRunZdEstimateManual(
       exclusionsSettled,
       onRequestsSettled,
       packagingSettled,
+      minStockSettled,
       productPairsSettled,
       productBomsSettled,
       teethSettled,
@@ -1602,6 +1706,9 @@ export async function actionRunZdEstimateManual(
         .then((value) => ({ ok: true as const, value }))
         .catch((e: unknown) => ({ ok: false as const, error: e })),
       fetchZdEstimatePackaging()
+        .then((value) => ({ ok: true as const, value }))
+        .catch((e: unknown) => ({ ok: false as const, error: e })),
+      fetchZdEstimateMinStock()
         .then((value) => ({ ok: true as const, value }))
         .catch((e: unknown) => ({ ok: false as const, error: e })),
       fetchZdProductPairs()
@@ -1625,6 +1732,7 @@ export async function actionRunZdEstimateManual(
         message: `Lista nie została pokazana — bez wykluczeń mogłaby zawierać produkty celowo pomijane. ${message}`,
         hint: "Odśwież stronę lub spróbuj ponownie za chwilę.",
       });
+      failProgress(feedback.message);
       return { ok: false, message: feedback.message, feedback };
     }
     const exclusions = exclusionsSettled.value;
@@ -1639,6 +1747,7 @@ export async function actionRunZdEstimateManual(
         message: `Lista nie została pokazana — bez flagi mogłyby wejść produkty zamawiane wyłącznie na prośbę. ${message}`,
         hint: "Odśwież stronę lub spróbuj ponownie za chwilę.",
       });
+      failProgress(feedback.message);
       return { ok: false, message: feedback.message, feedback };
     }
     const onRequests = onRequestsSettled.value;
@@ -1653,9 +1762,14 @@ export async function actionRunZdEstimateManual(
         message: `Lista nie została pokazana — bez opakowań qty ZD mogłoby być w sztukach zamiast paczek. ${message}`,
         hint: "Odśwież stronę lub spróbuj ponownie za chwilę.",
       });
+      failProgress(feedback.message);
       return { ok: false, message: feedback.message, feedback };
     }
     const packaging = packagingSettled.value;
+
+    // Min stock — soft fail (bez minimum lista działa, po prostu bez dobijania).
+    const minStock = minStockSettled.ok ? minStockSettled.value : [];
+    const minStockByTwId = minStockRowsToMap(minStock);
 
     if (!productPairsSettled.ok) {
       const message = userFacingErrorText(
@@ -1667,6 +1781,7 @@ export async function actionRunZdEstimateManual(
         message: `Lista nie została pokazana — bez mapy par pack i piece mogłyby dostać niezależne qty (podwójne zamówienie). ${message}`,
         hint: "Odśwież stronę lub spróbuj ponownie za chwilę.",
       });
+      failProgress(feedback.message);
       return { ok: false, message: feedback.message, feedback };
     }
     const productPairs = productPairsSettled.value;
@@ -1681,6 +1796,7 @@ export async function actionRunZdEstimateManual(
         message: ZD_BOM_UI.estimateBlockedMessage(message),
         hint: "Odśwież stronę lub spróbuj ponownie za chwilę.",
       });
+      failProgress(feedback.message);
       return { ok: false, message: feedback.message, feedback };
     }
     const productBoms = productBomsSettled.value;
@@ -1695,6 +1811,7 @@ export async function actionRunZdEstimateManual(
         message: `Lista nie została pokazana — bez katalogu zębów pozycje zębowe mogłyby trafić na ZD. ${message}`,
         hint: "Odśwież stronę lub sprawdź tabelę produktów zębowych w adminie.",
       });
+      failProgress(feedback.message);
       return { ok: false, message: feedback.message, feedback };
     }
     const teethTwIds = [...teethSettled.value];
@@ -1781,6 +1898,8 @@ export async function actionRunZdEstimateManual(
         ...individualTwIdsToFetch,
       ]),
     ];
+
+    touchProgress({ phase: "enrich" });
 
     const mergedPozycje = [...fetched.pozycje];
     // Równolegle (limit), merge w kolejności idsToFetch — jak pętla sekwencyjna.
@@ -1887,6 +2006,7 @@ export async function actionRunZdEstimateManual(
     const extrasPolicyForKpi = boostAndExtras[1];
     const salesTrackPolicy = policyForBoostPreset(boostPreset);
 
+    touchProgress({ phase: "compose" });
     const result = buildManualZdEstimateResult(
       fetched.parametry,
       mergedPozycje,
@@ -1901,6 +2021,7 @@ export async function actionRunZdEstimateManual(
         excludedTwIds: bakeExcludedPreview,
         zapasMin,
         salesTrackPolicy,
+        minStockByTwId,
       }
     );
 
@@ -2007,7 +2128,8 @@ export async function actionRunZdEstimateManual(
       extraOnlyTwIds,
       extrasPolicyForKpi,
       individualStockNeedRelief,
-      individualExtraOverlap
+      individualExtraOverlap,
+      minStockByTwId
     );
     // Surowy KPI: bez wykluczeń i bez trybu extra_only (pełny stock+extra).
     const packRaw = summarizePackOrderQty(
@@ -2019,7 +2141,8 @@ export async function actionRunZdEstimateManual(
       null,
       extrasPolicyForKpi,
       individualStockNeedRelief,
-      individualExtraOverlap
+      individualExtraOverlap,
+      minStockByTwId
     );
     // Jak filtr „Wykluczone” w UI — orderExcluded (soft bez prośby + hard), nie bake.
     const excludedInGroupCount = result.pozycje.filter((p) =>
@@ -2074,6 +2197,7 @@ export async function actionRunZdEstimateManual(
         exclusions,
         onRequests,
         packaging,
+        minStock,
         productPairs,
         productBoms,
         teethTwIds,
@@ -2098,6 +2222,7 @@ export async function actionRunZdEstimateManual(
       console.warn("[zd-ui-session] persist after Policz threw", persistErr);
     }
 
+    if (progressId) completeZdEstimateRunProgress(progressId, user.id);
     return {
       ok: true,
       result,
@@ -2112,6 +2237,7 @@ export async function actionRunZdEstimateManual(
       exclusions,
       onRequests,
       packaging,
+      minStock,
       productPairs,
       productBoms,
       teethTwIds,
@@ -2122,7 +2248,9 @@ export async function actionRunZdEstimateManual(
       uiSessionRotated,
     };
   } catch (e) {
+    const pagesHint = progressPagesHint(progressId, user.id);
     if (e instanceof SubiektZdEstimateFirstPageRejectedError) {
+      failProgress(e.message);
       const feedback = getSubiektFeedback("empty_query", {
         title: e.title,
         message: e.message,
@@ -2132,6 +2260,7 @@ export async function actionRunZdEstimateManual(
     }
     const feedback = feedbackFromException(e);
     if (feedback.code === "timeout") {
+      failProgress(feedback.message);
       return {
         ok: false,
         message: feedback.message,
@@ -2140,11 +2269,17 @@ export async function actionRunZdEstimateManual(
           title: "Przekroczono czas oczekiwania szacunku",
           message:
             "Budowanie listy do zamówienia trwało zbyt długo (limit czasu API lub serwera).",
-          hint: "Spróbuj ponownie albo zawęź zakres. Duże cechy mogą wymagać kilku minut — strona ma limit ~3 min.",
+          hint: [
+            "Spróbuj ponownie albo zawęź zakres. Limit serwera / nginx to ok. 5 min.",
+            pagesHint,
+          ]
+            .filter(Boolean)
+            .join(" "),
         },
       };
     }
     if (e instanceof SubiektRequestError && e.status >= 500) {
+      failProgress(feedback.message);
       const raw = (e.bodySnippet || "").replace(/\s+/g, " ").trim();
       const snippet =
         raw.length > 220 ? `${raw.slice(0, 220).trim()}…` : raw || null;
@@ -2159,18 +2294,51 @@ export async function actionRunZdEstimateManual(
           message:
             "Usługa ORDERS zwróciła błąd wewnętrzny przy szacunku. " +
             "Duże cechy (np. Ivoclar) często przeciążają zapytanie SQL — to nie jest baza Postgres OnTime.",
-          hint: snippet
-            ? `Odpowiedź API (HTTP ${e.status}): ${snippet}`
-            : `HTTP ${e.status} bez treści. Spróbuj grupy „Ivoclar Technical/Clinical” zamiast całej cechy, albo sprawdź logi serwisu Subiekta :5080.`,
+          hint: [
+            snippet
+              ? `Odpowiedź API (HTTP ${e.status}): ${snippet}`
+              : `HTTP ${e.status} bez treści. Spróbuj grupy „Ivoclar Technical/Clinical” zamiast całej cechy, albo sprawdź logi serwisu Subiekta :5080.`,
+            pagesHint,
+          ]
+            .filter(Boolean)
+            .join(" "),
         },
       };
     }
+    failProgress(feedback.message);
     return {
       ok: false,
       message: feedback.message,
-      feedback,
+      feedback: pagesHint
+        ? {
+            ...feedback,
+            hint: [feedback.hint, pagesHint].filter(Boolean).join(" "),
+          }
+        : feedback,
     };
   }
+}
+
+function progressPagesHint(
+  progressId: string | null,
+  ownerUserId: string
+): string | null {
+  if (!progressId) return null;
+  const poll = getZdEstimateRunProgressForOwner(progressId, ownerUserId);
+  if (!poll.found) return null;
+  const { pagesCommitted, totalPages } = poll.snapshot;
+  if (!(pagesCommitted > 0) || !(totalPages > 0)) return null;
+  return `(Ostatni postęp: strona ${pagesCommitted}/${totalPages}.)`;
+}
+
+export async function actionPollZdEstimateRunProgress(
+  progressId: string
+): Promise<ZdEstimateRunProgressPollResult> {
+  const user = await requireZdEstimateAdmin("read");
+  if (!isValidZdEstimateRunProgressId(progressId)) {
+    return { found: false };
+  }
+  return getZdEstimateRunProgressForOwner(progressId.trim(), user.id);
 }
 
 
@@ -2575,6 +2743,20 @@ export async function actionListZdEstimatePackaging(): Promise<ZdEstimatePackagi
   }
 }
 
+export async function actionListZdEstimateMinStock(): Promise<ZdEstimateMinStockActionResult> {
+  await requireZdEstimateAdmin("read");
+  try {
+    const minStock = await fetchZdEstimateMinStock();
+    return { ok: true, minStock };
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        userFacingErrorText(e, "Nie udało się pobrać minimum stanów."),
+    };
+  }
+}
+
 export async function actionUpsertZdEstimatePackaging(input: {
   subiektTwId: number;
   twSymbol?: string | null;
@@ -2659,6 +2841,61 @@ export async function actionDeleteZdEstimatePackaging(
       ok: false,
       message:
         userFacingErrorText(e, "Nie udało się usunąć opakowania."),
+    };
+  }
+}
+
+export type ZdEstimateMinStockActionResult =
+  | { ok: true; minStock: ZdEstimateMinStockRow[] }
+  | { ok: false; message: string };
+
+export async function actionUpsertZdEstimateMinStock(input: {
+  subiektTwId: number;
+  twSymbol?: string | null;
+  twNazwa: string;
+  grtId?: number | null;
+  grtNazwa?: string | null;
+  minStockSzt: number;
+  note?: string;
+}): Promise<ZdEstimateMinStockActionResult> {
+  const user = await requireZdEstimateAdmin("mutate");
+  const minStockSzt = Math.max(0, Math.trunc(Number(input.minStockSzt)));
+  if (!Number.isFinite(minStockSzt) || minStockSzt > 1_000_000) {
+    return {
+      ok: false,
+      message: "Minimum stanów musi być liczbą całkowitą 0–1 000 000.",
+    };
+  }
+  try {
+    await upsertZdEstimateMinStock({
+      ...input,
+      minStockSzt,
+      createdBy: user.id,
+    });
+    const minStock = await fetchZdEstimateMinStock();
+    return { ok: true, minStock };
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        userFacingErrorText(e, "Nie udało się zapisać minimum stanów."),
+    };
+  }
+}
+
+export async function actionDeleteZdEstimateMinStock(
+  subiektTwId: number
+): Promise<ZdEstimateMinStockActionResult> {
+  await requireZdEstimateAdmin("mutate");
+  try {
+    await deleteZdEstimateMinStock(subiektTwId);
+    const minStock = await fetchZdEstimateMinStock();
+    return { ok: true, minStock };
+  } catch (e) {
+    return {
+      ok: false,
+      message:
+        userFacingErrorText(e, "Nie udało się usunąć minimum stanów."),
     };
   }
 }
