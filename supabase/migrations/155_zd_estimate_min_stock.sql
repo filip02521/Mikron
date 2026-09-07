@@ -42,8 +42,8 @@ CREATE POLICY zd_estimate_min_stock_ops
   ON public.zd_estimate_min_stock
   FOR ALL
   TO authenticated
-  USING (public.is_operations())
-  WITH CHECK (public.is_operations());
+  USING (private.is_operations())
+  WITH CHECK (private.is_operations());
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.zd_estimate_min_stock TO authenticated;
 
