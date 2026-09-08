@@ -289,10 +289,6 @@ export function AdminMigrationsPanel() {
                 {(status?.pending ?? []).map((m) => {
                   const isExpanded = expanded.has(m.filename);
                   const result = results[m.filename];
-                  const isApplying =
-                    pending &&
-                    Object.keys(results).length === 0 &&
-                    (status?.pending[0]?.filename ?? null) === m.filename;
                   return (
                     <li key={m.filename} className="px-3 py-2.5">
                       <div className="flex items-start gap-2">
@@ -346,7 +342,7 @@ export function AdminMigrationsPanel() {
                             disabled={pending}
                             onClick={() => handleApplyOne(m.filename)}
                           >
-                            {isApplying ? (
+                            {pending ? (
                               <>
                                 <Spinner size="sm" />
                                 …

@@ -5,15 +5,50 @@
  */
 
 import { existsSync, readdirSync, readFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
-import type { PoolClient } from "pg";
-import { withClient } from "./pool";
+import { join } from "path";
+import { Pool, type PoolClient } from "pg";
 
-const root =
-  typeof __dirname !== "undefined"
-    ? join(__dirname, "..", "..")
-    : join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+/** Root projektu — process.cwd() działa niezawodnie w Next.js (dev + prod). */
+const root = process.cwd();
+
+/**
+ * Pula migratora — używa DATABASE_MIGRATE_URL (ontime_migrator, CREATEDB)
+ * z fallbackiem na DATABASE_URL (dev — ontime_app jest ownerem).
+ * Oddzielna od puli aplikacji, bo migracje wymagają uprawnień DDL.
+ */
+declare global {
+  var __migratorPool: Pool | undefined;
+}
+
+function getMigratorPool(): Pool {
+  if (!global.__migratorPool) {
+    const url =
+      process.env.DATABASE_MIGRATE_URL?.trim() ||
+      process.env.DATABASE_URL?.trim();
+    if (!url) {
+      throw new Error("Brak DATABASE_MIGRATE_URL / DATABASE_URL");
+    }
+    global.__migratorPool = new Pool({
+      connectionString: url,
+      max: 2,
+      idleTimeoutMillis: 10_000,
+      connectionTimeoutMillis: 5_000,
+    });
+  }
+  return global.__migratorPool;
+}
+
+async function withMigratorClient<T>(
+  fn: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  const pool = getMigratorPool();
+  const client = await pool.connect();
+  try {
+    return await fn(client);
+  } finally {
+    client.release();
+  }
+}
 
 /** Kolejność plików w obrębie tego samego prefixu (gdy jest kilka wersji). */
 const PREFIX_ORDER: Record<string, string[]> = {
@@ -165,11 +200,6 @@ export interface PendingMigration {
   preview: string;
 }
 
-export interface AppliedMigration {
-  filename: string;
-  applied_at: string;
-}
-
 export interface MigrationStatus {
   pending: PendingMigration[];
   appliedCount: number;
@@ -187,7 +217,7 @@ export async function ensureJournal(client: PoolClient): Promise<void> {
 
 /** Zwraca listę oczekujących migracji + liczbę zastosowanych. */
 export async function getMigrationStatus(): Promise<MigrationStatus> {
-  return withClient(async (client) => {
+  return withMigratorClient(async (client) => {
     await ensureJournal(client);
     const { rows } = await client.query<{ filename: string }>(
       `SELECT filename FROM schema_migrations ORDER BY filename`,
@@ -230,7 +260,7 @@ export async function applyMigration(
   const sql = readFileSync(filePath, "utf-8");
   const statements = splitSqlStatements(sql);
 
-  return withClient(async (client) => {
+  return withMigratorClient(async (client) => {
     await client.query("BEGIN");
     try {
       const { rows } = await client.query(
@@ -279,7 +309,7 @@ export async function markMigrationApplied(
   if (!filePath) {
     return { filename, success: false, error: "Plik migracji nie istnieje", statementsApplied: 0 };
   }
-  return withClient(async (client) => {
+  return withMigratorClient(async (client) => {
     await ensureJournal(client);
     await client.query(
       `INSERT INTO schema_migrations (filename) VALUES ($1)
@@ -302,7 +332,7 @@ export async function markMigrationsAppliedUpTo(
     if (prefix <= maxPrefix) toMark.push(key);
   }
   if (toMark.length === 0) return { marked: [], skipped: [] };
-  return withClient(async (client) => {
+  return withMigratorClient(async (client) => {
     await ensureJournal(client);
     const marked: string[] = [];
     const skipped: string[] = [];

@@ -35,16 +35,23 @@ CREATE INDEX IF NOT EXISTS zd_estimate_min_stock_symbol_lower_idx
 COMMENT ON TABLE public.zd_estimate_min_stock IS
   'Minimum stanów w sztukach fizycznych per produkt — dobija cel ZD nawet przy braku sprzedaży. Trwałe, współdzielone przez ops.';
 
-ALTER TABLE public.zd_estimate_min_stock ENABLE ROW LEVEL SECURITY;
+-- RLS tylko gdy schema private istnieje (Supabase). Na czystym PG (overlay 0002)
+-- private jest zdropowane, RLS wyłączone — pomijamy.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'private') THEN
+    ALTER TABLE public.zd_estimate_min_stock ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS zd_estimate_min_stock_ops ON public.zd_estimate_min_stock;
-CREATE POLICY zd_estimate_min_stock_ops
-  ON public.zd_estimate_min_stock
-  FOR ALL
-  TO authenticated
-  USING (private.is_operations())
-  WITH CHECK (private.is_operations());
+    DROP POLICY IF EXISTS zd_estimate_min_stock_ops ON public.zd_estimate_min_stock;
+    CREATE POLICY zd_estimate_min_stock_ops
+      ON public.zd_estimate_min_stock
+      FOR ALL
+      TO authenticated
+      USING (private.is_operations())
+      WITH CHECK (private.is_operations());
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.zd_estimate_min_stock TO authenticated;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON public.zd_estimate_min_stock TO authenticated;
+  END IF;
+END $$;
 
 NOTIFY pgrst, 'reload schema';
