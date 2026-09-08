@@ -121,7 +121,7 @@ export interface DatabaseClient {
  */
 let cachedClient: DatabaseClient | null = null;
 
-export function createAdminClient(..._unused: unknown[]): DatabaseClient {
+export function createAdminClient(..._: unknown[]): DatabaseClient {
   // Tak jak poprzedni klient Supabase: brak konfiguracji zgłaszamy natychmiast,
   // żeby literówka w env nie objawiała się jako „pusta lista” w interfejsie.
   // W trybie E2E lab kod i tak bramkuje się na hasDatabaseConfig().

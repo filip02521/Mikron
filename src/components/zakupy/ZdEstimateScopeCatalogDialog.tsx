@@ -93,6 +93,7 @@ export function ZdEstimateScopeCatalogDialog({
   useEffect(() => {
     if (!open) return;
     loadGenRef.current += 1;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setFilter("");
     setDebounced("");
     setPage(1);
@@ -198,6 +199,7 @@ export function ZdEstimateScopeCatalogDialog({
   // Jedno ładowanie przy open / zmianie frazy (bez osobnego „clear” effect — mniej migotania).
   useEffect(() => {
     if (!open || !configured) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPage(1);
     setGroups([]);
     setCechy([]);

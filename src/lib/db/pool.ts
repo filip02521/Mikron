@@ -1,7 +1,6 @@
 import { Pool, type PoolClient, type QueryResultRow } from "pg";
 
 declare global {
-  // eslint-disable-next-line no-var
   var __ontimePool: Pool | undefined;
 }
 

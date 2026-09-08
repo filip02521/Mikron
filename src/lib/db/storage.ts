@@ -41,7 +41,7 @@ export function createLocalStorage() {
   return {
     from(bucket: string) {
       return {
-        async upload(objectPath: string, body: unknown, _opts?: { contentType?: string; upsert?: boolean }) {
+        async upload(objectPath: string, body: unknown, _o?: { contentType?: string; upsert?: boolean }) {
           try {
             const dbPath = toDbPath(bucket, objectPath);
             await writeStorageObject(dbPath, await toBuffer(body));
