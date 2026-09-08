@@ -72,15 +72,15 @@
     "verify-sales-request-note": "tsx scripts/verify-sales-request-note-migration.ts"
   },
   "dependencies": {
-    "@google/genai": "^2.19.0",
+    "@google/genai": "^2.21.0",
     "@tailwindcss/postcss": "^4",
     "@tanstack/react-virtual": "^3.14.10",
     "bcryptjs": "^3.0.3",
     "date-fns": "^4.4.0",
     "drizzle-orm": "^0.45.2",
     "exceljs": "^4.4.0",
-    "next": "16.3.3",
-    "nodemailer": "^9.0.6",
+    "next": "16.3.4",
+    "nodemailer": "^9.1.1",
     "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -108,9 +108,9 @@
     "@vitejs/plugin-react": "^6.1.1",
     "drizzle-kit": "^0.31.10",
     "eslint": "^10",
-    "eslint-config-next": "16.3.3",
-    "happy-dom": "^20.11.12",
-    "tsx": "^4.23.12",
+    "eslint-config-next": "16.3.4",
+    "happy-dom": "^20.14.0",
+    "tsx": "^4.23.13",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11"
   }
