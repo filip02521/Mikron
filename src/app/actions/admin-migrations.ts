@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, requireAdminForMutation } from "@/lib/auth";
 import {
   getMigrationStatus,
   applyMigration,
@@ -27,7 +27,7 @@ export async function actionGetMigrationStatus(): Promise<MigrationStatus> {
 export async function actionApplyMigration(
   filename: string,
 ): Promise<MigrationApplyResult> {
-  await requireAdmin();
+  await requireAdminForMutation();
   return applyMigration(filename);
 }
 
@@ -39,7 +39,7 @@ export async function actionApplyMigration(
 export async function actionApplyAllPendingMigrations(): Promise<
   MigrationApplyResult[]
 > {
-  await requireAdmin();
+  await requireAdminForMutation();
   return applyAllPendingMigrations();
 }
 
@@ -50,7 +50,7 @@ export async function actionApplyAllPendingMigrations(): Promise<
 export async function actionMarkMigrationApplied(
   filename: string,
 ): Promise<MigrationApplyResult> {
-  await requireAdmin();
+  await requireAdminForMutation();
   return markMigrationApplied(filename);
 }
 
@@ -61,6 +61,6 @@ export async function actionMarkMigrationApplied(
 export async function actionMarkMigrationsAppliedUpTo(
   maxPrefix: number,
 ): Promise<{ marked: string[]; skipped: string[] }> {
-  await requireAdmin();
+  await requireAdminForMutation();
   return markMigrationsAppliedUpTo(maxPrefix);
 }
