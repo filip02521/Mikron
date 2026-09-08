@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -30,7 +30,7 @@ export function AdminMigrationsPanel() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [results, setResults] = useState<Record<string, MigrationApplyResult>>({});
   const [pending, startTransition] = useTransition();
-  const [refreshPending, startRefresh] = useTransition();
+  const [, startRefresh] = useTransition();
 
   const dismiss = useCallback(() => setToast(null), []);
   const notify = (text: string, tone: "success" | "error" = "success") =>
@@ -50,10 +50,11 @@ export function AdminMigrationsPanel() {
     });
   }, []);
 
-  // Początkowe ładowanie — przez transition, nie effect.
-  if (loading && !refreshPending && status === null && !error) {
+  // Początkowe ładowanie — w effect, nie w renderze.
+  useEffect(() => {
     refresh();
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleExpand = (filename: string) => {
     setExpanded((prev) => {
