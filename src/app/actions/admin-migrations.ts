@@ -5,6 +5,8 @@ import {
   getMigrationStatus,
   applyMigration,
   applyAllPendingMigrations,
+  markMigrationApplied,
+  markMigrationsAppliedUpTo,
   type MigrationApplyResult,
   type MigrationStatus,
 } from "@/lib/db/migrations";
@@ -39,4 +41,26 @@ export async function actionApplyAllPendingMigrations(): Promise<
 > {
   await requireAdmin();
   return applyAllPendingMigrations();
+}
+
+/**
+ * Oznacza pojedynczą migrację jako wykonaną bez wykonywania SQL.
+ * Dla baz, które zostały założone ręcznie (migracje już są w schemacie).
+ */
+export async function actionMarkMigrationApplied(
+  filename: string,
+): Promise<MigrationApplyResult> {
+  await requireAdmin();
+  return markMigrationApplied(filename);
+}
+
+/**
+ * Oznacza wszystkie migracje z prefixem <= maxPrefix jako wykonane (bez SQL).
+ * Dla baz, które zostały założone ręcznie — jednorazowa operacja inicjalizacji.
+ */
+export async function actionMarkMigrationsAppliedUpTo(
+  maxPrefix: number,
+): Promise<{ marked: string[]; skipped: string[] }> {
+  await requireAdmin();
+  return markMigrationsAppliedUpTo(maxPrefix);
 }

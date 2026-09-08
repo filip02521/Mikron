@@ -14,6 +14,8 @@ import {
   actionGetMigrationStatus,
   actionApplyMigration,
   actionApplyAllPendingMigrations,
+  actionMarkMigrationApplied,
+  actionMarkMigrationsAppliedUpTo,
 } from "@/app/actions/admin-migrations";
 import type {
   MigrationStatus,
@@ -106,6 +108,40 @@ export function AdminMigrationsPanel() {
     });
   };
 
+  const handleMarkOne = (filename: string) => {
+    startTransition(async () => {
+      try {
+        await actionMarkMigrationApplied(filename);
+        notify(`Oznaczono jako wykonaną: ${filename}`);
+        await refresh();
+      } catch (err) {
+        notify(
+          `Błąd: ${err instanceof Error ? err.message : "nieznany"}`,
+          "error",
+        );
+      }
+    });
+  };
+
+  const handleMarkUpTo = (maxPrefix: number) => {
+    startTransition(async () => {
+      try {
+        const { marked } = await actionMarkMigrationsAppliedUpTo(maxPrefix);
+        if (marked.length > 0) {
+          notify(`Oznaczono ${marked.length} migracji (do ${maxPrefix}) jako wykonane`);
+        } else {
+          notify(`Wszystkie migracje do ${maxPrefix} już były oznaczone`);
+        }
+        await refresh();
+      } catch (err) {
+        notify(
+          `Błąd: ${err instanceof Error ? err.message : "nieznany"}`,
+          "error",
+        );
+      }
+    });
+  };
+
   const pendingCount = status?.pending.length ?? 0;
   const hasPending = pendingCount > 0;
 
@@ -153,6 +189,36 @@ export function AdminMigrationsPanel() {
               </p>
             </div>
           </div>
+
+          {/* Inicjalizacja — oznacz migracje do 150 jako wykonane */}
+          {!loading && !error && (status?.appliedCount ?? 0) === 0 && hasPending ? (
+            <div className="rounded-md border border-amber-200/80 bg-amber-50/40 px-3 py-2.5 text-sm text-amber-950">
+              <p className="font-medium">Pierwsza konfiguracja na tej bazie</p>
+              <p className="mt-0.5 text-amber-800">
+                Jeśli baza została założona ręcznie (migracje 1–150 już są w schemacie),
+                oznacz je jako wykonane bez wykonywania SQL. Potem tylko nowe migracje
+                będą faktycznie aplikowane.
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => handleMarkUpTo(150)}
+                >
+                  Oznacz 1–150 jako wykonane
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => handleMarkUpTo(152)}
+                >
+                  Oznacz 1–152 jako wykonane
+                </Button>
+              </div>
+            </div>
+          ) : null}
 
           {/* Ładowanie / błąd */}
           {loading ? (
@@ -265,6 +331,14 @@ export function AdminMigrationsPanel() {
                             onClick={() => toggleExpand(m.filename)}
                           >
                             {isExpanded ? "Ukryj" : "Podgląd"}
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={pending}
+                            onClick={() => handleMarkOne(m.filename)}
+                          >
+                            Oznacz wykonaną
                           </Button>
                           <Button
                             variant="primary"

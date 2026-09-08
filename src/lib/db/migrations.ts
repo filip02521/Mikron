@@ -269,3 +269,52 @@ export async function applyAllPendingMigrations(): Promise<MigrationApplyResult[
   }
   return results;
 }
+
+/** Oznacza pojedynczą migrację jako wykonaną bez wykonywania SQL. */
+export async function markMigrationApplied(
+  filename: string,
+): Promise<MigrationApplyResult> {
+  const files = migrationFiles();
+  const filePath = files.find((f) => migrationKey(f) === filename);
+  if (!filePath) {
+    return { filename, success: false, error: "Plik migracji nie istnieje", statementsApplied: 0 };
+  }
+  return withClient(async (client) => {
+    await ensureJournal(client);
+    await client.query(
+      `INSERT INTO schema_migrations (filename) VALUES ($1)
+       ON CONFLICT (filename) DO NOTHING`,
+      [filename],
+    );
+    return { filename, success: true, statementsApplied: 0 };
+  });
+}
+
+/** Oznacza wszystkie migracje z prefixem <= maxPrefix jako wykonane (bez SQL). */
+export async function markMigrationsAppliedUpTo(
+  maxPrefix: number,
+): Promise<{ marked: string[]; skipped: string[] }> {
+  const files = migrationFiles();
+  const toMark: string[] = [];
+  for (const filePath of files) {
+    const key = migrationKey(filePath);
+    const prefix = Number(key.match(/(\d+)/)?.[1] ?? 0);
+    if (prefix <= maxPrefix) toMark.push(key);
+  }
+  if (toMark.length === 0) return { marked: [], skipped: [] };
+  return withClient(async (client) => {
+    await ensureJournal(client);
+    const marked: string[] = [];
+    const skipped: string[] = [];
+    for (const filename of toMark) {
+      const { rowCount } = await client.query(
+        `INSERT INTO schema_migrations (filename) VALUES ($1)
+         ON CONFLICT (filename) DO NOTHING`,
+        [filename],
+      );
+      if (rowCount && rowCount > 0) marked.push(filename);
+      else skipped.push(filename);
+    }
+    return { marked, skipped };
+  });
+}
