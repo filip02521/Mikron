@@ -42,7 +42,6 @@ import {
 } from "@/lib/orders/zd-estimate-ui-copy";
 import { ZD_ESTIMATE_POLICZ_CTA_ID } from "@/lib/orders/zd-estimate-launch-scroll";
 import {
-  panelTypography,
   zdEstimateCardSurfaceClass,
   zdEstimateNestedWellClass,
   zdEstimatePrepControlClass,
@@ -127,7 +126,9 @@ function formatWindowShort(dataOd: string, dataDo: string): string {
 }
 
 const stripLabelClass =
-  "text-[11px] font-medium uppercase tracking-wide text-slate-500";
+  "text-xs font-semibold uppercase tracking-wide text-slate-600";
+const sectionLabelClass =
+  "text-xs font-semibold uppercase tracking-wide text-slate-700";
 
 /**
  * Karta przygotowania Kreatora ZD: zakres → parametry biegu → nadpisania → Policz.
@@ -241,13 +242,8 @@ export function ZdEstimatePrepForm({
         {/* Strefa 1 — wybór zakresu */}
         <section className="min-w-0 space-y-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p
-              className={cn(
-                panelTypography.sectionLabel,
-                "text-xs tracking-wide text-slate-700"
-              )}
-            >
-              Zakres
+            <p className={sectionLabelClass}>
+              <span className="mr-1 text-indigo-500/70">1</span>Zakres
             </p>
             <SegmentedControl
               ariaLabel="Tryb zakresu szacunku"
@@ -389,8 +385,8 @@ export function ZdEstimatePrepForm({
                         <button
                           type="button"
                           className={cn(
-                            "flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-3 py-2 text-left text-sm transition hover:bg-slate-50",
-                            selected && "bg-indigo-50/80"
+                            "flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-3 py-2 text-left text-sm transition hover:bg-slate-100/70",
+                            selected && "bg-indigo-50 ring-1 ring-inset ring-indigo-200/60"
                           )}
                           onClick={() => onSelectGroupHit(g)}
                         >
@@ -404,7 +400,7 @@ export function ZdEstimatePrepForm({
                               </span>
                             ) : null}
                           </span>
-                          <span className="shrink-0 text-xs tabular-nums text-slate-400">
+                          <span className="shrink-0 text-xs tabular-nums text-slate-500">
                             #{g.grt_Id}
                           </span>
                         </button>
@@ -537,8 +533,8 @@ export function ZdEstimatePrepForm({
                         <button
                           type="button"
                           className={cn(
-                            "flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-3 py-2 text-left text-sm transition hover:bg-slate-50",
-                            selected && "bg-indigo-50/80"
+                            "flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-3 py-2 text-left text-sm transition hover:bg-slate-100/70",
+                            selected && "bg-indigo-50 ring-1 ring-inset ring-indigo-200/60"
                           )}
                           onClick={() => onSelectCechaHit(c)}
                         >
@@ -552,7 +548,7 @@ export function ZdEstimatePrepForm({
                               </span>
                             ) : null}
                           </span>
-                          <span className="shrink-0 text-xs tabular-nums text-slate-400">
+                          <span className="shrink-0 text-xs tabular-nums text-slate-500">
                             #{c.ctw_Id}
                           </span>
                         </button>
@@ -589,7 +585,7 @@ export function ZdEstimatePrepForm({
             >
               <span
                 className={cn(
-                  "inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-[10px] font-semibold uppercase tracking-wide",
+                  "inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-[11px] font-semibold uppercase tracking-wide",
                   supplierFromMappingNotice
                     ? "bg-indigo-100 text-indigo-800"
                     : "bg-emerald-100 text-emerald-900"
@@ -649,7 +645,7 @@ export function ZdEstimatePrepForm({
         >
           <div className="flex min-w-0 flex-col gap-1">
             <label className={stripLabelClass} htmlFor="zd-prep-dni-zapasu">
-              Zapas
+              Zapas (dni)
             </label>
             <Input
               id="zd-prep-dni-zapasu"
@@ -665,7 +661,7 @@ export function ZdEstimatePrepForm({
           </div>
 
           <div className="flex min-w-0 flex-col gap-1 sm:min-w-[11rem]">
-            <span className={stripLabelClass}>Okno</span>
+            <span className={stripLabelClass}>Okno sprzedaży</span>
             <div className="flex flex-wrap items-center gap-1.5">
               <span
                 className={cn(
@@ -861,6 +857,7 @@ export function ZdEstimatePrepForm({
               showAdvanced && "rotate-180"
             )}
           />
+          <span className="mr-0.5 text-indigo-500/70">3</span>
           {showAdvanced
             ? ZD_ESTIMATE_UI.prepOverridesHide
             : ZD_ESTIMATE_UI.prepOverridesShow}

@@ -109,6 +109,8 @@ export type ApplyZdEstimatePairsOptions = {
    * Puste = wszyscy partnerzy obecni.
    */
   missingPartnerTwIds?: ReadonlySet<number> | null;
+  /** tw_Id → minimum stanów w sztukach fizycznych (do pack qty). */
+  minStockByTwId?: ReadonlyMap<number, number> | null;
 };
 
 /**
@@ -269,12 +271,14 @@ export function applyZdEstimatePairs(
     }
 
     const packExcluded = excluded?.has(pair.packTwId) === true;
+    const packMinStock = options.minStockByTwId?.get(pair.packTwId) ?? 0;
     let piecesNeeded = 0;
     if (!partnerMissing && !packExcluded) {
       piecesNeeded = computeManualOrderQty({
         celZapasu: celTracked,
         dostepne: coverSzt,
         otwarteZd: 0, // już w coverSzt
+        minStockSzt: packMinStock,
       });
     }
 

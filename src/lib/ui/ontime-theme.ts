@@ -507,7 +507,7 @@ export const zdEstimateChromeDividerClass =
 
 /** Truncated / trwały status w belce listy (chip w rzędzie filtrów — bez drugiej linii). */
 export const zdEstimateStatusNoteClass =
-  "inline-flex h-6 max-w-[min(100%,14rem)] shrink-0 items-center truncate rounded-md bg-amber-50/90 px-1.5 text-[10px] font-medium leading-none text-amber-900/90 ring-1 ring-inset ring-amber-200/70 sm:max-w-[16rem]";
+  "inline-flex h-6 max-w-[min(100%,14rem)] shrink-0 items-center truncate rounded-md bg-amber-50/90 px-1.5 text-[11px] font-medium leading-none text-amber-900/90 ring-1 ring-inset ring-amber-200/70 sm:max-w-[16rem]";
 
 /**
  * Dock Create/Policz — `h-0` + sticky, żeby pasek NIE dokładał wysokości
@@ -1118,7 +1118,7 @@ export const zdEstimateSelectionGroupClass =
   "flex min-w-0 flex-col gap-1 sm:px-2.5 first:sm:pl-0 last:sm:pr-0";
 
 export const zdEstimateSelectionGroupLabelClass =
-  "text-[10px] font-semibold uppercase tracking-[0.06em] text-indigo-800/55";
+  "text-[11px] font-semibold uppercase tracking-[0.06em] text-indigo-800/70";
 
 export const zdEstimateSelectionGroupButtonsClass =
   "flex flex-wrap items-center gap-1.5";

@@ -1323,7 +1323,7 @@ select:disabled,
   position: sticky;
   top: 0;
   z-index: 2;
-  box-shadow: 0 1px 0 #e2e8f0;
+  box-shadow: 0 1px 0 #e2e8f0, 0 2px 4px -2px rgb(15 23 42 / 0.06);
   background: #f8fafc;
   white-space: nowrap;
 }
@@ -1386,6 +1386,21 @@ select:disabled,
   background-color: rgb(254 243 199 / 0.7);
 }
 
+/* Wiersz dobijany do minimum stanów — subtelny emerald akcent po lewej */
+.data-table.zd-estimate-table tbody tr.zd-estimate-row-min-stock td.zd-estimate-check-col,
+.data-table.zd-estimate-table tbody tr.zd-estimate-row-min-stock td.zd-estimate-symbol-col,
+.data-table.zd-estimate-table tbody tr.zd-estimate-row-min-stock td.zd-estimate-product-name-col {
+  box-shadow: inset 2px 0 0 0 rgb(16 185 129 / 0.55);
+}
+
+.data-table.zd-estimate-table tbody tr.zd-estimate-row-min-stock:not([data-zebra="even"]) td:not(.zd-estimate-dozd-col):not(.zd-estimate-actions-col) {
+  background-color: rgb(236 253 245 / 0.35);
+}
+
+.data-table.zd-estimate-table tbody tr.zd-estimate-row-min-stock[data-zebra="even"]:not([class*="bg-"]) td:not(.zd-estimate-dozd-col):not(.zd-estimate-actions-col) {
+  background-color: rgb(220 252 231 / 0.3);
+}
+
 .data-table.zd-estimate-table
   tbody
   tr[data-zebra="even"]:not([class*="bg-"])
@@ -1408,12 +1423,35 @@ select:disabled,
   background-color: #f8fafc;
 }
 
+/* Zaznaczony wiersz — indigo akcent po lewej + subtelne tło */
+.data-table.zd-estimate-table tbody tr.zd-estimate-row-selected td.zd-estimate-check-col,
+.data-table.zd-estimate-table tbody tr.zd-estimate-row-selected td.zd-estimate-symbol-col {
+  box-shadow: inset 2px 0 0 0 rgb(99 102 241 / 0.6);
+}
+
+.data-table.zd-estimate-table tbody tr.zd-estimate-row-selected:not([data-zebra="even"]) td:not(.zd-estimate-dozd-col):not(.zd-estimate-actions-col) {
+  background-color: rgb(238 242 255 / 0.5);
+}
+
+.data-table.zd-estimate-table tbody tr.zd-estimate-row-selected[data-zebra="even"]:not([class*="bg-"]) td:not(.zd-estimate-dozd-col):not(.zd-estimate-actions-col) {
+  background-color: rgb(224 231 255 / 0.35);
+}
+
 .data-table.zd-estimate-table tbody tr:hover td,
 .data-table.zd-estimate-table
   tbody
   tr[data-zebra="even"]:not([class*="bg-"]):hover
   td {
   background-color: #f1f5f9;
+}
+
+/* Zaznaczony wiersz ma priorytet nad hover */
+.data-table.zd-estimate-table tbody tr.zd-estimate-row-selected:hover td:not(.zd-estimate-dozd-col):not(.zd-estimate-actions-col),
+.data-table.zd-estimate-table
+  tbody
+  tr.zd-estimate-row-selected[data-zebra="even"]:not([class*="bg-"]):hover
+  td:not(.zd-estimate-dozd-col):not(.zd-estimate-actions-col) {
+  background-color: rgb(224 231 255 / 0.6);
 }
 
 .data-table.zd-estimate-table tbody tr:hover td.zd-estimate-dozd-col,
@@ -1943,9 +1981,9 @@ select:disabled,
 
   .data-table.zd-estimate-table .zd-est-status-badge,
   .data-table.zd-estimate-table .zd-est-status-more {
-    height: 1.25rem;
-    padding: 0 0.3rem;
-    font-size: 0.5625rem;
+    height: 1.3rem;
+    padding: 0 0.32rem;
+    font-size: 0.6875rem;
   }
 
   .data-table.zd-estimate-table .zd-est-dozd-hint-row {
@@ -2013,7 +2051,7 @@ select:disabled,
   }
 
   .data-table.zd-estimate-table thead th {
-    font-size: 0.5rem;
+    font-size: 0.625rem;
     letter-spacing: 0.035em;
     padding-top: 0.4rem;
     padding-bottom: 0.4rem;

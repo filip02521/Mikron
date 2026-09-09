@@ -2,14 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 import { proxy } from "./proxy";
 
-const mockMiddlewareNeedsBootstrap = vi.hoisted(() => vi.fn());
 const mockRefreshSupabaseSession = vi.hoisted(() => vi.fn());
 const mockFetchProfileByUserId = vi.hoisted(() => vi.fn());
 const mockHasMailCenterModuleForUserId = vi.hoisted(() => vi.fn());
-
-vi.mock("@/lib/setup/middleware-bootstrap", () => ({
-  middlewareNeedsBootstrap: mockMiddlewareNeedsBootstrap,
-}));
 
 vi.mock("@/lib/supabase/middleware", () => ({
   refreshSupabaseSession: mockRefreshSupabaseSession,
@@ -46,11 +41,25 @@ function stubSessionResponse() {
 describe("proxy mail center module access", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockMiddlewareNeedsBootstrap.mockResolvedValue(false);
     mockRefreshSupabaseSession.mockResolvedValue({
       response: stubSessionResponse(),
       user: { id: "u1" },
     });
+  });
+
+  it("nie zapętla /login ↔ /setup (bootstrap tylko na stronach RSC)", async () => {
+    mockRefreshSupabaseSession.mockResolvedValue({
+      response: stubSessionResponse(),
+      user: null,
+    });
+
+    const login = await proxy(new NextRequest("http://ontime.mikran.pl/login"));
+    expect(login.status).toBe(200);
+    expect(login.headers.get("location")).toBeNull();
+
+    const setup = await proxy(new NextRequest("http://ontime.mikran.pl/setup"));
+    expect(setup.status).toBe(200);
+    expect(setup.headers.get("location")).toBeNull();
   });
 
   it("wpuszcza non-admin z modułem na /admin/mail", async () => {

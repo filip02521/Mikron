@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   launchProgressMinRevealWaitMs,
   launchProgressStepFromElapsed,
+  resolveLaunchProgressStep,
+  ZD_ESTIMATE_LAUNCH_CALC_HOLD_MS,
+  ZD_ESTIMATE_LAUNCH_FETCH_HOLD_CECHA_MS,
+  ZD_ESTIMATE_LAUNCH_FETCH_HOLD_MS,
   ZD_ESTIMATE_LAUNCH_STEP_MS,
 } from "@/lib/orders/zd-estimate-launch-progress";
 
@@ -27,6 +31,64 @@ describe("launchProgressStepFromElapsed", () => {
     ).toBe(3);
     expect(
       launchProgressStepFromElapsed(ZD_ESTIMATE_LAUNCH_STEP_MS * 9, opts)
+    ).toBe(3);
+  });
+
+  it("parks on Towary i stany when parkOnFetch (Policz)", () => {
+    const opts = {
+      scopeAlreadyResolved: true as const,
+      parkOnFetch: true as const,
+    };
+    expect(launchProgressStepFromElapsed(0, opts)).toBe(1);
+    expect(launchProgressStepFromElapsed(10_000, opts)).toBe(1);
+    expect(
+      launchProgressStepFromElapsed(ZD_ESTIMATE_LAUNCH_FETCH_HOLD_MS - 1, opts)
+    ).toBe(1);
+    expect(
+      launchProgressStepFromElapsed(ZD_ESTIMATE_LAUNCH_FETCH_HOLD_MS, opts)
+    ).toBe(2);
+    expect(
+      launchProgressStepFromElapsed(
+        ZD_ESTIMATE_LAUNCH_FETCH_HOLD_MS + ZD_ESTIMATE_LAUNCH_CALC_HOLD_MS,
+        opts
+      )
+    ).toBe(3);
+  });
+
+  it("holds longer on fetch for cecha", () => {
+    const opts = {
+      scopeAlreadyResolved: true as const,
+      parkOnFetch: true as const,
+      scopeMode: "cecha" as const,
+    };
+    expect(
+      launchProgressStepFromElapsed(
+        ZD_ESTIMATE_LAUNCH_FETCH_HOLD_MS + 1_000,
+        opts
+      )
+    ).toBe(1);
+    expect(
+      launchProgressStepFromElapsed(
+        ZD_ESTIMATE_LAUNCH_FETCH_HOLD_CECHA_MS,
+        opts
+      )
+    ).toBe(2);
+  });
+
+  it("live phase wins over timed park", () => {
+    expect(
+      resolveLaunchProgressStep({
+        elapsedMs: ZD_ESTIMATE_LAUNCH_FETCH_HOLD_MS + 60_000,
+        scopeAlreadyResolved: true,
+        livePhase: "fetch",
+      })
+    ).toBe(1);
+    expect(
+      resolveLaunchProgressStep({
+        elapsedMs: 0,
+        scopeAlreadyResolved: true,
+        livePhase: "compose",
+      })
     ).toBe(3);
   });
 });

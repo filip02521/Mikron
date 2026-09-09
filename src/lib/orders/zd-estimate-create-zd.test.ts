@@ -665,6 +665,7 @@ describe("canCreateZdFromEstimateState", () => {
       })
     ).toEqual({
       ok: false,
+      tone: "loading",
       reason: ZD_ESTIMATE_UI.createGateEstimating,
     });
 
@@ -698,6 +699,7 @@ describe("canCreateZdFromEstimateState", () => {
       })
     ).toEqual({
       ok: false,
+      tone: "warning",
       reason: expect.stringMatching(/Skład|niekompletny|dociągnij/i),
     });
 
@@ -716,6 +718,7 @@ describe("canCreateZdFromEstimateState", () => {
       })
     ).toEqual({
       ok: false,
+      tone: "error",
       reason: ZD_ESTIMATE_UI.createGatePendingIndividualsError,
     });
 
@@ -734,6 +737,7 @@ describe("canCreateZdFromEstimateState", () => {
       })
     ).toEqual({
       ok: false,
+      tone: "warning",
       reason: ZD_ESTIMATE_UI.createGatePendingIndividualsTruncated,
     });
 
@@ -752,6 +756,7 @@ describe("canCreateZdFromEstimateState", () => {
       })
     ).toEqual({
       ok: false,
+      tone: "loading",
       reason: ZD_ESTIMATE_UI.createGatePendingIndividualsLoading,
     });
 
@@ -770,6 +775,7 @@ describe("canCreateZdFromEstimateState", () => {
       })
     ).toEqual({
       ok: false,
+      tone: "loading",
       reason: ZD_ESTIMATE_UI.createGateProsbaOverlapPending,
     });
 
@@ -788,6 +794,7 @@ describe("canCreateZdFromEstimateState", () => {
       })
     ).toEqual({
       ok: false,
+      tone: "warning",
       reason: ZD_ESTIMATE_UI.createGateHistoryFetchFailed,
     });
 

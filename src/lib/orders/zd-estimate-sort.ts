@@ -8,7 +8,8 @@ export type ZdEstimateListSortKey =
   | "symbol"
   | "name"
   | "doZd"
-  | "confidence";
+  | "confidence"
+  | "minStock";
 export type ZdEstimateListSortDir = "asc" | "desc";
 
 export type ZdEstimateSortPackaging = {
@@ -35,7 +36,8 @@ export function sortZdEstimateLines(
   extraOnlyTwIds?: ReadonlySet<number> | null,
   extrasPolicy?: import("@/lib/orders/zd-estimate-extras-policy").ZdEstimateExtrasPolicy,
   stockNeedReliefByTwId?: ReadonlyMap<number, number> | null,
-  extraOverlapByTwId?: ReadonlyMap<number, number> | null
+  extraOverlapByTwId?: ReadonlyMap<number, number> | null,
+  minStockByTwId?: ReadonlyMap<number, number> | null
 ): ManualZdEstimateLine[] {
   const dir = sortDir === "asc" ? 1 : -1;
   const pack = packagingById ?? null;
@@ -50,6 +52,10 @@ export function sortZdEstimateLines(
       cmp =
         (Number(a.salesTrackConfidence) || 0) -
         (Number(b.salesTrackConfidence) || 0);
+    } else if (sortKey === "minStock") {
+      const ma = minStockByTwId?.get(a.tw_Id) ?? 0;
+      const mb = minStockByTwId?.get(b.tw_Id) ?? 0;
+      cmp = ma - mb;
     } else {
       const qa = effectiveZdDocumentUnits(
         a,
@@ -59,7 +65,8 @@ export function sortZdEstimateLines(
         extraOnlyTwIds?.has(a.tw_Id) === true,
         extrasPolicy,
         individualExtraPiecesForTw(a.tw_Id, stockNeedReliefByTwId),
-        individualExtraPiecesForTw(a.tw_Id, extraOverlapByTwId)
+        individualExtraPiecesForTw(a.tw_Id, extraOverlapByTwId),
+        individualExtraPiecesForTw(a.tw_Id, minStockByTwId)
       );
       const qb = effectiveZdDocumentUnits(
         b,
@@ -69,7 +76,8 @@ export function sortZdEstimateLines(
         extraOnlyTwIds?.has(b.tw_Id) === true,
         extrasPolicy,
         individualExtraPiecesForTw(b.tw_Id, stockNeedReliefByTwId),
-        individualExtraPiecesForTw(b.tw_Id, extraOverlapByTwId)
+        individualExtraPiecesForTw(b.tw_Id, extraOverlapByTwId),
+        individualExtraPiecesForTw(b.tw_Id, minStockByTwId)
       );
       cmp = qa - qb;
     }
@@ -82,5 +90,7 @@ export function sortZdEstimateLines(
 export function defaultDirForZdEstimateSortKey(
   key: ZdEstimateListSortKey
 ): ZdEstimateListSortDir {
-  return key === "doZd" || key === "confidence" ? "desc" : "asc";
+  return key === "doZd" || key === "confidence" || key === "minStock"
+    ? "desc"
+    : "asc";
 }

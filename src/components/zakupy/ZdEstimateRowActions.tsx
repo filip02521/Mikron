@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import {
   OverflowMenu,
   OverflowMenuItem,
   OverflowMenuLabel,
   OverflowMenuSeparator,
 } from "@/components/ui/OverflowMenu";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 /**
  * Akcje wiersza listy kreatora — menu zamiast dwóch przycisków,
@@ -29,9 +31,11 @@ export function ZdEstimateRowActions({
   /** kit_only composition — bez „Na prośbę” (nie obchodzić purchaseBlocked). */
   hideOnRequest = false,
   packagingHint,
+  minStockHint,
   disabled,
   pending,
   onPackaging,
+  onMinStock,
   onExclude,
   onRestore,
   onSessionInclude,
@@ -48,9 +52,12 @@ export function ZdEstimateRowActions({
   hideOnRequest?: boolean;
   /** np. „10 szt / 1 op.” albo null gdy 1:1 */
   packagingHint: string | null;
+  /** np. „min 10 szt” albo null gdy brak minimum */
+  minStockHint: string | null;
   disabled?: boolean;
   pending?: boolean;
   onPackaging: () => void;
+  onMinStock?: () => void;
   onExclude: () => void;
   onRestore: () => void;
   onSessionInclude?: () => void;
@@ -61,6 +68,7 @@ export function ZdEstimateRowActions({
   const showRestore = dbExcluded;
   const showExclude =
     !dbExcluded && !nameAutoExcluded && !hideHardExclude;
+  const [confirmExcludeOpen, setConfirmExcludeOpen] = useState(false);
   const showSessionInclude =
     nameAutoExcluded &&
     !sessionIncluded &&
@@ -83,6 +91,7 @@ export function ZdEstimateRowActions({
   const showClearOnRequest = onRequest && Boolean(onClearOnRequest);
 
   return (
+    <>
     <OverflowMenu
       label={`Akcje: ${symbol}`}
       align="end"
@@ -102,6 +111,18 @@ export function ZdEstimateRowActions({
             : "1 na ZD = N sztuk (np. Falcon 10)"}
         </span>
       </OverflowMenuItem>
+      {onMinStock ? (
+        <OverflowMenuItem disabled={disabled || pending} onClick={onMinStock}>
+          <span className="block font-medium leading-snug">
+            {minStockHint ? "Minimum stanów" : "Ustaw minimum stanów"}
+          </span>
+          <span className="mt-0.5 block text-[11px] font-normal leading-snug text-slate-400">
+            {minStockHint
+              ? minStockHint
+              : "Dobijaj do minimum nawet bez sprzedaży"}
+          </span>
+        </OverflowMenuItem>
+      ) : null}
       {nameAutoExcluded ? (
         <>
           <OverflowMenuSeparator />
@@ -184,7 +205,7 @@ export function ZdEstimateRowActions({
         </OverflowMenuItem>
       ) : null}
       {showExclude ? (
-        <OverflowMenuItem danger disabled={disabled || pending} onClick={onExclude}>
+        <OverflowMenuItem danger disabled={disabled || pending} onClick={() => setConfirmExcludeOpen(true)}>
           <span className="block font-medium leading-snug">Wyklucz</span>
           <span className="mt-0.5 block text-[11px] font-normal leading-snug text-red-600/75">
             Ukryj przy kolejnych szacunkach
@@ -192,5 +213,19 @@ export function ZdEstimateRowActions({
         </OverflowMenuItem>
       ) : null}
     </OverflowMenu>
+      <ConfirmDialog
+        open={confirmExcludeOpen}
+        title="Wykluczyć pozycję?"
+        message={`Pozycja ${symbol} zostanie ukryta przy kolejnych szacunkach. Możesz ją przywrócić z menu akcji wiersza.`}
+        confirmLabel="Wyklucz"
+        cancelLabel="Anuluj"
+        danger
+        onConfirm={() => {
+          setConfirmExcludeOpen(false);
+          onExclude();
+        }}
+        onCancel={() => setConfirmExcludeOpen(false)}
+      />
+    </>
   );
 }

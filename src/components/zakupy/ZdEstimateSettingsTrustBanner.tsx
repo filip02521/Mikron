@@ -8,6 +8,7 @@ export type ZdEstimateSettingsPartKey =
   | "exclusions"
   | "onRequest"
   | "packaging"
+  | "minStock"
   | "pairs"
   | "boms"
   | "teeth";
@@ -16,6 +17,7 @@ const PART_LABEL: Record<ZdEstimateSettingsPartKey, string> = {
   exclusions: "Wykluczenia",
   onRequest: "Tylko na prośbę",
   packaging: "Opakowania",
+  minStock: "Minimum stanów",
   pairs: "Pary",
   boms: ZD_BOM_UI.panelTitle,
   teeth: "Zęby",

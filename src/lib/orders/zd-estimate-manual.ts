@@ -197,13 +197,23 @@ export function computeManualOrderQty(input: {
   celZapasu: number;
   dostepne: number;
   otwarteZd: number;
+  /**
+   * Minimum stanów w sztukach fizycznych — dobija cel z max(cel, minStock).
+   * Gdy brak sprzedaży (cel = 0), minimum wymusza dokup do zadanego poziomu.
+   */
+  minStockSzt?: number;
 }): number {
-  const cel = asFiniteNumber(input.celZapasu);
+  const celBase = asFiniteNumber(input.celZapasu);
+  const minStock = Math.max(0, asFiniteNumber(input.minStockSzt));
+  const cel = Math.max(celBase, minStock);
   const dostepne = asFiniteNumber(input.dostepne);
   const otwarteZd = Math.max(0, asFiniteNumber(input.otwarteZd));
   const raw = cel - dostepne - otwarteZd;
   if (!(raw > 0)) return 0;
-  return Math.ceil(raw - Number.EPSILON);
+  // Tolerancja błędów zmiennoprzecinkowych: raw=1.0000000001 → 1, nie 2.
+  const rounded = Math.round(raw * 1e6) / 1e6;
+  if (!(rounded > 0)) return 0;
+  return Math.ceil(rounded - 1e-9);
 }
 
 export type MapZdEstimateLineOptions = {
@@ -228,6 +238,11 @@ export type MapZdEstimateLineOptions = {
   salesTrackPolicy?: Partial<
     typeof import("@/lib/orders/zd-estimate-sales-track").ZD_SALES_TRACK
   > | null;
+  /**
+   * Minimum stanów w sztukach fizycznych per produkt — dobija cel
+   * z max(celTracked, minStockSzt). Brak = 0 (bez minimum).
+   */
+  minStockSzt?: number;
 };
 
 export function mapZdEstimateLineToManual(
@@ -340,6 +355,7 @@ export function mapZdEstimateLineToManual(
     celZapasu: celTracked,
     dostepne,
     otwarteZd: otwarteZdPieces,
+    minStockSzt: options?.minStockSzt,
   });
 
   return {
@@ -396,6 +412,8 @@ export type ZdEstimateSoloMapOptions = {
     }
   > | null;
   productPairs?: readonly ZdProductPairRef[] | null;
+  /** tw_Id → minimum stanów w sztukach fizycznych. */
+  minStockByTwId?: ReadonlyMap<number, number> | null;
 };
 
 /**
@@ -411,6 +429,7 @@ export function mapZdEstimateLinesSolo(
   const dniZapasu = Math.max(1, Math.round(options.dniZapasu));
   const historyByTwId = options.historyByTwId ?? null;
   const packagingByTwId = options.packagingByTwId ?? null;
+  const minStockByTwId = options.minStockByTwId ?? null;
   const pairIndex = indexZdProductPairs(options.productPairs ?? []);
 
   return lines.map((line) => {
@@ -423,6 +442,7 @@ export function mapZdEstimateLinesSolo(
       pairIndex,
       packRow?.unitsPerPackage
     );
+    const minStock = minStockByTwId?.get(twId) ?? 0;
     return mapZdEstimateLineToManual(line, {
       dniZapasu,
       dniOkresu: options.dniOkresu,
@@ -432,6 +452,7 @@ export function mapZdEstimateLinesSolo(
       history: hist,
       unitsPerPackage: packUnits,
       documentUnitMode: inPair ? "packages" : packRow?.documentUnitMode,
+      minStockSzt: minStock,
     });
   });
 }
@@ -473,6 +494,8 @@ export function buildManualZdEstimateResult(
     /** Wykluczenia (pack wykluczony → qty 0). */
     excludedTwIds?: ReadonlySet<number> | null;
     zapasMin?: number | null;
+    /** tw_Id → minimum stanów w sztukach fizycznych. */
+    minStockByTwId?: ReadonlyMap<number, number> | null;
   }
 ): ManualZdEstimateResult {
   const onlyManualBraki = options?.onlyManualBraki === true;
@@ -486,6 +509,7 @@ export function buildManualZdEstimateResult(
       : null;
   const historyByTwId = options?.historyByTwId ?? null;
   const packagingByTwId = options?.packagingByTwId ?? null;
+  const minStockByTwId = options?.minStockByTwId ?? null;
   const pairs = options?.productPairs ?? [];
   const boms = options?.productBoms ?? [];
   const zapasMin =
@@ -501,6 +525,7 @@ export function buildManualZdEstimateResult(
     historyByTwId,
     packagingByTwId,
     productPairs: pairs,
+    minStockByTwId,
   });
 
   const pozycjeBase = mapped.map((l) => ({
@@ -522,6 +547,7 @@ export function buildManualZdEstimateResult(
           packagingByTwId,
           productPairs: pairs,
           missingComponentTwIds: options?.missingBomTwIds,
+          minStockByTwId,
         })
       : mapped.map((l) => ({ ...l, bom: null as null }));
 
@@ -537,6 +563,7 @@ export function buildManualZdEstimateResult(
           excludedTwIds: options?.excludedTwIds,
           historyByTwId,
           missingPartnerTwIds: options?.missingPartnerTwIds,
+          minStockByTwId,
         })
       : afterBom.map((l) => ({ ...l, pair: null }));
 

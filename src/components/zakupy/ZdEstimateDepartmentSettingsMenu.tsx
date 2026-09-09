@@ -17,11 +17,13 @@ export type ZdEstimateDepartmentSettingsMenuProps = {
   exclusionsCount: number;
   onRequestsCount: number;
   packagingCount: number;
+  minStockCount: number;
   pairsCount: number;
   bomsCount: number;
   onOpenExclusions: () => void;
   onOpenOnRequest: () => void;
   onOpenPackaging: () => void;
+  onOpenMinStock: () => void;
   onOpenPairs: () => void;
   onOpenBoms: () => void;
   disabled?: boolean;
@@ -61,11 +63,13 @@ export function ZdEstimateDepartmentSettingsMenu({
   exclusionsCount,
   onRequestsCount,
   packagingCount,
+  minStockCount,
   pairsCount,
   bomsCount,
   onOpenExclusions,
   onOpenOnRequest,
   onOpenPackaging,
+  onOpenMinStock,
   onOpenPairs,
   onOpenBoms,
   disabled,
@@ -119,6 +123,13 @@ export function ZdEstimateDepartmentSettingsMenu({
           title={ZD_ESTIMATE_UI.menuPackagingTitle}
           description={ZD_ESTIMATE_UI.menuPackagingDescription}
           count={packagingCount}
+        />
+      </OverflowMenuItem>
+      <OverflowMenuItem disabled={disabled} onClick={onOpenMinStock}>
+        <MenuOption
+          title={ZD_ESTIMATE_UI.menuMinStockTitle}
+          description={ZD_ESTIMATE_UI.menuMinStockDescription}
+          count={minStockCount}
         />
       </OverflowMenuItem>
       <OverflowMenuItem disabled={disabled} onClick={onOpenPairs}>

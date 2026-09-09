@@ -21,7 +21,6 @@ import { loadCutoverEnv, resolveSupabaseDbUrl, resolveSupabaseStorageCredentials
 const CUTOVER_DIR = join(process.cwd(), "data", "cutover");
 const SNAPSHOT_FILE = join(CUTOVER_DIR, "counts-source.json");
 const AUTH_CSV = join(CUTOVER_DIR, "auth_users_export.csv");
-const PUBLIC_DUMP = join(CUTOVER_DIR, "public-data.dump");
 const PUBLIC_SQL = join(CUTOVER_DIR, "public-data.sql");
 
 function stripIncompatibleSessionSettings(sqlPath: string) {

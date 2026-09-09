@@ -153,8 +153,17 @@ export function zdEstimateRouteLoadingFooter(): string {
   return "To nie jest jeszcze liczenie listy — zaraz wybierzesz zakres i klikniesz „Policz listę”.";
 }
 
-export function zdEstimateLaunchProgressFooter(): string {
-  return "Zostajesz na tym ekranie do końca liczenia — lista pojawi się automatycznie.";
+export function zdEstimateLaunchProgressFooter(
+  elapsedMs = 0,
+  pagesLabel?: string | null
+): string {
+  if (pagesLabel) {
+    return `${pagesLabel}. Lista pojawi się automatycznie — nie zamykaj tej karty.`;
+  }
+  if (elapsedMs >= 45_000) {
+    return "Wciąż czekam na Subiekta — duże zakresy (cechy) potrafią trwać kilka minut (limit ok. 5 min). Nie odświeżaj strony.";
+  }
+  return "Najdłużej trwa odczyt „Towary i stany” z Subiekta. Lista pojawi się automatycznie — nie zamykaj tej karty.";
 }
 
 export function zdEstimateLaunchProgressCompleteTitle(): string {
@@ -407,7 +416,8 @@ export function zdEstimateLaunchProgressSteps(input: {
     {
       id: "list",
       title: "Lista do ZD",
-      activeHint: "Składam pozycje „Do ZD”…",
+      activeHint:
+        "Składam pozycje „Do ZD” — jeśli Subiekt jeszcze odpowiada, poczekaj chwilę…",
       doneHint: "Lista gotowa",
     },
   ];
@@ -481,11 +491,52 @@ export function zdEstimateRecountOverlayMessage(): string {
   return "Przeliczam listę Do ZD";
 }
 
-export function zdEstimateRecountOverlayHint(isLive: boolean): string {
+export function zdEstimateRecountOverlayHint(
+  isLive: boolean,
+  liveHint?: string | null
+): string {
+  if (liveHint?.trim()) return liveHint.trim();
   const host = isLive
     ? "Pobieram świeże dane z aktualnej bazy Subiekta"
     : "Pobieram świeże dane z testowego Subiekta";
   return `${host}. Edycja i „Utwórz ZD” są wstrzymane — ilości mogą się zmienić.`;
+}
+
+export function zdEstimateTruncatedListStatusNote(): string {
+  return "lista niepełna — limit stron Subiekta; Create może pominąć SKU";
+}
+
+/** Status hint z live fazy Policz (strony + post-fetch). */
+export function zdEstimateRunPhaseStatusHint(input: {
+  phase: import("@/lib/orders/zd-estimate-run-progress").ZdEstimateRunPhase;
+  isLive: boolean;
+  pagesLabel?: string | null;
+  elapsedMs?: number;
+}): string {
+  const pages = input.pagesLabel?.trim() || null;
+  switch (input.phase) {
+    case "starting":
+      return "Startuję liczenie listy…";
+    case "fetch":
+      if (pages) {
+        return input.isLive
+          ? `Pobieram z Subiekta (live): ${pages}…`
+          : `Pobieram z testowego Subiekta: ${pages}…`;
+      }
+      return zdEstimateLaunchFetchHint(input.isLive, input.elapsedMs ?? 0);
+    case "settings":
+      return "Wczytuję wykluczenia, opakowania, pary i BOM…";
+    case "enrich":
+      return "Dociągam braki partnerów, BOM i prośby handlowców…";
+    case "compose":
+      return "Składam pozycje „Do ZD”…";
+    case "done":
+      return zdEstimateLaunchProgressCompleteHint();
+    case "error":
+      return "Liczenie przerwane — zobacz komunikat błędu.";
+    default:
+      return zdEstimateLaunchFetchHint(input.isLive, input.elapsedMs ?? 0);
+  }
 }
 
 export function zdEstimateRecountListStatus(input: {
@@ -561,10 +612,18 @@ export function zdEstimateEmptyListDescription(isLive: boolean): string {
   return `Wybierz zakres (grupę albo cechę) i kliknij „Policz listę”. Dane pochodzą z ${host} — pełny zakres towarów.`;
 }
 
-export function zdEstimateLaunchFetchHint(isLive: boolean): string {
+export function zdEstimateLaunchFetchHint(
+  isLive: boolean,
+  elapsedMs = 0
+): string {
+  if (elapsedMs >= 45_000) {
+    return isLive
+      ? "Subiekt live nadal liczy ten zakres — to normalne przy dużych cechach. Czekam…"
+      : "Testowy Subiekt nadal liczy ten zakres — to normalne przy dużych cechach. Czekam…";
+  }
   return isLive
-    ? "Pobieram pełny zakres z aktualnej bazy Subiekta…"
-    : "Pobieram pełny zakres z testowego Subiekta…";
+    ? "Pobieram towary, stany i sprzedaż z Subiekta (live) — to zwykle najdłuższy krok…"
+    : "Pobieram towary, stany i sprzedaż z testowego Subiekta — to zwykle najdłuższy krok…";
 }
 
 export function zdEstimateBlockedDailyCtaMessage(): string {
@@ -745,6 +804,7 @@ export const ZD_ESTIMATE_UI = {
   listShowZkColumnTitle:
     "Kolumny diagnostyczne: otwarte ZK oraz surowe ilości z Subiekta — zwykle zbędne przy codziennym zamawianiu",
   listSortByConfidence: "Sortuj po pewności",
+  listSortByMinStock: "Sortuj po minimum stanów",
   listColumnMenuLabel: "Kolumny listy",
   listColumnToggleHint: "Włącz / wyłącz kolumnę — zapisuje się w profilu",
   listColumnOrderHint: "Zmień kolejność kolumn na liście",
@@ -772,6 +832,9 @@ export const ZD_ESTIMATE_UI = {
   listMoreMenuLabel: "Ustawienia listy (kolumny, sortowanie, zaznaczenie)",
   listFilterReviewShort: "Weryfikacja",
   listFilterExcludedShort: "Wykluczone",
+  listFilterMinStockShort: "Minimum",
+  listFilterMinStockTitle:
+    "Pozycje z ustawionym minimum stanów — kreator dobija cel z max(cel ze sprzedaży, minimum)",
   listSortSymbolHint:
     "Sortowanie po symbolu Subiekta (A→Z). Osobna kolumna — sticky przy przewijaniu.",
   listSortNameHint:
@@ -871,6 +934,9 @@ export const ZD_ESTIMATE_UI = {
   menuPackagingTitle: "Opakowania",
   menuPackagingDescription:
     "Ile sztuk wchodzi w jedną jednostkę na dokumencie ZD (paczka albo dobicie w sztukach).",
+  menuMinStockTitle: "Minimum stanów",
+  menuMinStockDescription:
+    "Minimalna liczba sztuk na stanie — dobija cel ZD nawet przy braku sprzedaży (np. 10 szt = zawsze zamawiaj do 10).",
   menuPairsTitle: "Pary",
   menuPairsDescription:
     "Karton kupowany ↔ sztuki sprzedawane: popyt i stan w sztukach, na ZD zamawiasz paczkę.",
@@ -1035,6 +1101,8 @@ export const ZD_ESTIMATE_UI = {
   postCreateStatusSchedulePending: "Plan tygodnia — czekają na Twoją decyzję",
   postCreateStatusScheduleDone: "Plan oznaczony jako złożony",
   postCreateMarksTitle: "Oznaczenia po utworzeniu",
+  postCreateContactTitle: "Kontakt dostawcy",
+  postCreateUwagiTitle: "Uwagi na dokumencie",
   postCreateMarksTimeoutHint:
     "Oznaczenia próśb i planu będą dostępne po potwierdzeniu dokumentu (powiąż ZD).",
   postCreateMarkGlowneCta: "Oznacz prośby jako Główne",
@@ -1104,6 +1172,42 @@ export const ZD_ESTIMATE_UI = {
     "Minimum 2 (max 100 000). W trybie A: ile sztuk = 1 na ZD. W trybie B: wielokrotność dobicia sztuk. Sztuki 1:1 — „Usuń”, nie zapisuj „1”.",
   packagingLabelField: "Etykieta",
   packagingClearCta: "Usuń (sztuki 1:1)",
+  minStockModalTitle: "Minimum stanów ZD",
+  minStockModalHint:
+    "Ustaw minimalną liczbę sztuk fizycznych na stanie dla konkretnych produktów. Kreator dobija cel ZD z max(cel ze sprzedaży, minimum) — nawet przy braku sprzedaży zamówi do zadanego minimum. Wpisz 0 albo usuń, żeby wyłączyć.",
+  minStockIntroTitle: "Dobijaj do minimum nawet bez sprzedaży",
+  minStockIntroBody:
+    "Przykład: produkt z minimum 10 szt i zerowej sprzedaży — kreator policzy cel = 10, więc zamówi tyle, żeby po uwzględnieniu stanu i otwartych ZD osiągnąć 10 szt. Minimum działa na sztuki fizyczne (przed opakowaniem i BOM/pair).",
+  minStockValueLabel: "Minimum (szt)",
+  minStockValueHint:
+    "Liczba całkowita 0–1 000 000. 0 = brak minimum (produkt liczy się normalnie ze sprzedaży).",
+  minStockValueRequiredError: "Podaj minimum stanów (liczba całkowita ≥ 0).",
+  minStockNoteLabel: "Notatka",
+  minStockClearCta: "Usuń minimum",
+  minStockLiveFlash: "Minimum stanów zaktualizowane — lista przeliczona.",
+  minStockBadgeShort: "min",
+  minStockAddSectionTitle: "Dodaj produkt",
+  minStockAddPlaceholder: "Wpisz symbol lub nazwę towaru z Subiekta…",
+  minStockAddHint: "Wyszukaj towar w Subiekcie i ustaw mu minimum stanów.",
+  minStockAddAlreadyConfigured: "Już na liście poniżej — edytuj w sekcji lista.",
+  minStockAddNoResults: "Brak wyników. Sprawdź symbol lub nazwę.",
+  minStockAddMinLabel: "Minimum (szt)",
+  minStockAddNoteLabel: "Notatka (opcjonalna)",
+  minStockAddCta: "Dodaj minimum",
+  minStockSortSymbol: "Symbol",
+  minStockSortValue: "Wartość",
+  minStockSortDate: "Data",
+  minStockSummaryProducts: "produkty",
+  minStockSummaryPieces: "szt łącznie",
+  minStockSummaryAvg: "śr.",
+  minStockBatchDeleteCta: "Usuń zaznaczone",
+  minStockBatchSelectAll: "Zaznacz wszystkie",
+  minStockBatchClear: "Odznacz",
+  minStockEmptyTitle: "Brak minimum stanów",
+  minStockEmptyBody:
+    "Dodaj pierwszy produkt powyżej (wyszukaj w Subiekcie) albo na liście szacunku otwórz menu ⋮ przy produkcie i wybierz „Minimum stanów”.",
+  minStockNoFilterResults: "Nic nie pasuje do filtrów",
+  minStockNoFilterHint: "Spróbuj inne hasło albo wyczyść filtry grupy.",
   packagingNeedLabel: "Potrzeba",
   packagingOrderLabel: "Na ZD",
   packagingOverrideHint:

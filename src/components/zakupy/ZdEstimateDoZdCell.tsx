@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
 import {
   formatZdPackCompactLabel,
@@ -55,6 +55,8 @@ export function ZdEstimateDoZdCell({
 }) {
   const [focused, setFocused] = useState(false);
   const [draft, setDraft] = useState("");
+  const warnId = useId();
+  const unitId = useId();
 
   if (excluded) {
     return (
@@ -298,6 +300,8 @@ export function ZdEstimateDoZdCell({
         value={focused ? draft : String(displayUnits)}
         disabled={overrideDisabled}
         title={fullTitle}
+        aria-invalid={orderMultipleWarn ? true : undefined}
+        aria-describedby={[orderMultipleWarn ? warnId : null, unitLabel ? unitId : null].filter(Boolean).join(" ") || undefined}
         aria-label={[
           "Do ZD — nadpisanie",
           showPackUnit ? `jednostka: ${fullPackLabel}` : null,
@@ -334,7 +338,7 @@ export function ZdEstimateDoZdCell({
         }}
       />
       {unitLabel ? (
-        <span className="zd-est-dozd-unit" title={unitTitle}>
+        <span id={unitId} className="zd-est-dozd-unit" title={unitTitle}>
           {unitLabel}
         </span>
       ) : null}
@@ -350,7 +354,7 @@ export function ZdEstimateDoZdCell({
         {formatZdEstimateTableQty(displayUnits)}
       </span>
       {unitLabel ? (
-        <span className="zd-est-dozd-unit" title={unitTitle}>
+        <span id={unitId} className="zd-est-dozd-unit" title={unitTitle}>
           {unitLabel}
         </span>
       ) : null}
@@ -363,6 +367,7 @@ export function ZdEstimateDoZdCell({
       {hintLine}
       {orderMultipleWarn && !editingBlank ? (
         <span
+          id={warnId}
           className="zd-est-dozd-order-mult-warn"
           title={orderMultipleWarn}
         >

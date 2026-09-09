@@ -171,6 +171,7 @@ const SORT_KEYS = new Set<ZdEstimateListSortKey>([
   "name",
   "doZd",
   "confidence",
+  "minStock",
 ]);
 
 const OPTIONAL_COLUMN_SET = new Set<string>(ZD_ESTIMATE_OPTIONAL_COLUMNS);

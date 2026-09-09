@@ -3,7 +3,6 @@ import { upsertSubiektProduct, bumpProductSupplierLinkBy } from "@/lib/data/prod
 import { getSubiektZdDocumentCached } from "@/lib/subiekt/subiekt-runtime-cache";
 import { SubiektRequestError } from "@/lib/subiekt/errors";
 import { extractDocKhIds } from "@/lib/subiekt/zd-document-kh";
-import type { SubiektDocumentLine } from "@/lib/subiekt/types";
 import type { SupabaseClient } from "@/lib/db/admin";
 import { lineTowId } from "@/lib/subiekt/zd-document-line";
 

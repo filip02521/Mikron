@@ -113,7 +113,7 @@ export function ZdEstimateCreateRequestsPreview({
                 <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-600">
                   <span
                     className={cn(
-                      "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
+                      "rounded px-1.5 py-0.5 text-[11px] font-semibold uppercase",
                       REASON_CHIP[line.reason]
                     )}
                   >

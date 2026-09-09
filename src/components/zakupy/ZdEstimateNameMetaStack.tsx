@@ -132,6 +132,7 @@ export function ZdEstimateNameMetaStack({
   nameHit,
   softOnRequest,
   liftedExtraOnly,
+  minStockSzt,
 }: {
   pairMeta?: ZdEstimatePairMeta | null;
   packagingConflict?: boolean;
@@ -144,6 +145,7 @@ export function ZdEstimateNameMetaStack({
   nameHit?: ZdNameAutoExcludeMatch | null;
   softOnRequest: boolean;
   liftedExtraOnly: boolean;
+  minStockSzt?: number | null;
 }) {
   const items: StackItem[] = [];
 
@@ -183,6 +185,21 @@ export function ZdEstimateNameMetaStack({
       kind: "bom",
       summary: bomSummary(bomMeta),
       node: <ZdEstimateBomMetaBadge bom={bomMeta} />,
+    });
+  }
+
+  if (minStockSzt && minStockSzt > 0) {
+    items.push({
+      kind: "min_stock",
+      summary: `min ${minStockSzt} szt`,
+      node: (
+        <ZdEstimateStatusBadge
+          kind="min"
+          meta={`${minStockSzt} szt`}
+          tone="emerald"
+          title={`Minimum stanów: ${minStockSzt} szt — kreator dobija cel z max(cel ze sprzedaży, ${minStockSzt})`}
+        />
+      ),
     });
   }
 

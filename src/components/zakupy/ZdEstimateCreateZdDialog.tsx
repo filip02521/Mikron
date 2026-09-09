@@ -32,7 +32,7 @@ import {
   type ImplicitPieceSnapshotNotice,
 } from "@/lib/orders/zd-estimate-ui-copy";
 import type { ZdEstimateRunMode } from "@/lib/orders/zd-estimate-scope";
-import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
+import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import { ZdEstimateImplicitPieceNotice } from "@/components/zakupy/ZdEstimateImplicitPieceNotice";
 
 export type ZdCreateSubmitFreezeSnap = {
@@ -127,7 +127,10 @@ export function ZdEstimateCreateZdDialog({
     includedServiceOrderIds?: string[];
     acceptedCatalogOrderIds?: string[];
   }) => void;
-  onError: (message: string, opts?: { timeoutKhId?: number }) => void;
+  onError: (
+    message: string,
+    opts?: { timeoutKhId?: number; title?: string }
+  ) => void;
   onSubmitStart?: (snap: ZdCreateSubmitFreezeSnap) => void;
   ordersIsLive: boolean;
   ordersPort: number;
@@ -300,6 +303,7 @@ export function ZdEstimateCreateZdDialog({
         setProgressSnapshotOk(null);
         onError(res.message, {
           timeoutKhId: res.code === "timeout" ? res.supplierKhId : undefined,
+          title: res.title,
         });
         return;
       }
@@ -503,7 +507,7 @@ export function ZdEstimateCreateZdDialog({
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <label
                 htmlFor={uwagiId}
-                className={cn(panelTypography.sectionLabel, "text-slate-700")}
+                className="text-sm font-semibold text-slate-700"
               >
                 Uwagi na ZD
               </label>

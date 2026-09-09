@@ -6,6 +6,7 @@
 import type { ZdEstimateExclusionRow } from "@/lib/data/zd-estimate-exclusions";
 import type { ZdEstimateOnRequestRow } from "@/lib/data/zd-estimate-on-request";
 import type { ZdEstimatePackagingRow } from "@/lib/data/zd-estimate-packaging";
+import type { ZdEstimateMinStockRow } from "@/lib/data/zd-estimate-min-stock";
 import type { ZdProductBomRow } from "@/lib/data/zd-product-boms";
 import type { ZdProductPairRow } from "@/lib/data/zd-product-pairs";
 import type { ZdBoostPowerPreset } from "@/lib/orders/zd-estimate-boost-presets";
@@ -101,6 +102,7 @@ export function buildZdEstimateUiSessionSnapshotFromPolicz(input: {
   exclusions: ZdEstimateExclusionRow[];
   onRequests: ZdEstimateOnRequestRow[];
   packaging: ZdEstimatePackagingRow[];
+  minStock: ZdEstimateMinStockRow[];
   productPairs: ZdProductPairRow[];
   productBoms: ZdProductBomRow[];
   teethTwIds: number[];
@@ -189,6 +191,7 @@ export function buildZdEstimateUiSessionSnapshotFromPolicz(input: {
     exclusions: input.exclusions,
     onRequests: input.onRequests,
     packaging: input.packaging,
+    minStock: input.minStock,
     productPairs: input.productPairs,
     productBoms: input.productBoms,
     teethTwIds: input.teethTwIds,

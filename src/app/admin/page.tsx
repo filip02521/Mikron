@@ -2,6 +2,7 @@ import { actionGetSystemStatus } from "@/app/actions/admin";
 import { actionGetSubiektStatus } from "@/app/actions/subiekt";
 import { AdminCronStatusPanel } from "@/components/admin/AdminCronStatusPanel";
 import { AdminHubShell } from "@/components/admin/AdminHubShell";
+import { AdminMigrationsPanel } from "@/components/admin/AdminMigrationsPanel";
 import { AdminSystemStatus } from "@/components/admin/AdminSystemStatus";
 import { AdminToolsPanel } from "@/components/admin/AdminToolsPanel";
 import { AdminDataShortcuts } from "@/components/admin/AdminDataShortcuts";
@@ -74,6 +75,7 @@ export default async function AdminPage() {
   return (
     <AdminHubShell activeTab="system">
       <AdminSystemStatus isHealthy={status.isHealthy} issues={status.issues} />
+      <AdminMigrationsPanel />
       <AdminCronStatusPanel initialSnapshot={cronMonitor} />
       <SubiektIntegrationPanel
         initialConfigured={subiektStatus.configured}

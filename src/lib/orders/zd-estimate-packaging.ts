@@ -194,7 +194,8 @@ export function resolveOrderQtyForLine(
   extraOnly = false,
   extrasPolicy: ZdEstimateExtrasPolicy = "sum",
   stockNeedReliefPieces = 0,
-  extraOverlapPieces = 0
+  extraOverlapPieces = 0,
+  minStockSzt?: number
 ): ZdPackOrderQty {
   const rawExtra = Math.max(0, Math.ceil(Number(individualExtraPieces) || 0));
   const relief = Math.max(0, Math.ceil(Number(stockNeedReliefPieces) || 0));
@@ -263,8 +264,13 @@ export function resolveOrderQtyForLine(
   const pack = normalizeUnitsPerPackage(packaging?.unitsPerPackage);
   if (extraOnly) {
     // need=0 → overlap nie obcina; Do ZD = prośba.
-    return computeZdPackOrderQty(
+    // Minimum stanów dobija niezależnie od prośby (zapasowy floor).
+    const effectiveExtra = Math.max(
       effectiveExtraForNeed(0),
+      minStockSzt ?? 0
+    );
+    return computeZdPackOrderQty(
+      effectiveExtra,
       pack,
       label,
       mode,
@@ -283,6 +289,7 @@ export function resolveOrderQtyForLine(
       celZapasu: line.celZapasuTracked ?? line.celZapasu,
       dostepne: line.dostepne,
       otwarteZd: otwarteZdPieces,
+      minStockSzt,
     }) - relief
   );
   const piecesNeeded = combineStockNeedWithExtra(
@@ -559,6 +566,27 @@ export function piecesArrivingForZdUnits(
   return units * pack;
 }
 
+/**
+ * Sztuki fizycznie przychodzące dla `zdUnits` (po nadpisaniu) na bazie
+ * wyliczonego `qty`. Skaluje proporcjonalnie gdy `qty.zdUnits > 0`,
+ * w przeciwnym razie liczy bezpośrednio z `piecesArrivingForZdUnits`
+ * (zamiast traktować zdUnits jako sztuki — błąd gdy mode=packages).
+ */
+export function piecesArrivingForZdUnitsFromQty(
+  zdUnits: number,
+  qty: Pick<ZdPackOrderQty, "zdUnits" | "piecesArriving" | "hasPackaging" | "unitsPerPackage" | "documentUnitMode">
+): number {
+  const units = Math.max(0, Math.trunc(Number(zdUnits) || 0));
+  if (qty.hasPackaging && qty.zdUnits > 0) {
+    return Math.round((qty.piecesArriving / qty.zdUnits) * units);
+  }
+  return piecesArrivingForZdUnits(
+    units,
+    qty.unitsPerPackage,
+    qty.documentUnitMode
+  );
+}
+
 export function packagingByTwId<T extends { subiektTwId: number }>(
   rows: readonly T[]
 ): Map<number, T> {
@@ -617,7 +645,8 @@ export function effectiveZdDocumentUnits(
   extraOnly = false,
   extrasPolicy: ZdEstimateExtrasPolicy = "sum",
   stockNeedReliefPieces = 0,
-  extraOverlapPieces = 0
+  extraOverlapPieces = 0,
+  minStockSzt?: number
 ): number {
   const computed = resolveOrderQtyForLine(
     line,
@@ -626,7 +655,8 @@ export function effectiveZdDocumentUnits(
     extraOnly,
     extrasPolicy,
     stockNeedReliefPieces,
-    extraOverlapPieces
+    extraOverlapPieces,
+    minStockSzt
   ).zdUnits;
   if (!lineAllowsZdDocumentUnitOverride(line)) {
     return computed;
@@ -636,7 +666,23 @@ export function effectiveZdDocumentUnits(
     Number.isFinite(overrideZdUnits) &&
     overrideZdUnits >= 0
   ) {
-    return Math.trunc(overrideZdUnits);
+    const raw = Math.trunc(overrideZdUnits);
+    // Normalizuj nadpisanie do wielokrotności jak computeZdPackOrderQty:
+    //  - packages + orderMultiple >= 2: dobij paczki do M
+    //  - pieces_multiple + pack > 1:    dobij sztuki do pack
+    const mode = packagingDocumentMode(packaging);
+    const pack = normalizeUnitsPerPackage(packaging?.unitsPerPackage);
+    if (isPackagingPackagesMode(mode)) {
+      const mult = normalizeOrderMultiple(packaging?.orderMultiple);
+      if (mult >= 2 && raw > 0) {
+        return Math.ceil(raw / mult) * mult;
+      }
+      return raw;
+    }
+    if (pack > 1 && raw > 0) {
+      return Math.ceil(raw / pack) * pack;
+    }
+    return raw;
   }
   return computed;
 }
@@ -653,7 +699,8 @@ export function pruneZdDocumentUnitOverrides(
   extraOnlyTwIds?: ReadonlySet<number> | null,
   extrasPolicy: ZdEstimateExtrasPolicy = "sum",
   stockNeedReliefByTwId?: ReadonlyMap<number, number> | null,
-  extraOverlapByTwId?: ReadonlyMap<number, number> | null
+  extraOverlapByTwId?: ReadonlyMap<number, number> | null,
+  minStockByTwId?: ReadonlyMap<number, number> | null
 ): Record<number, number> {
   let changed = false;
   const next: Record<number, number> = {};
@@ -675,7 +722,8 @@ export function pruneZdDocumentUnitOverrides(
       extraOnlyTwIds?.has(twId) === true,
       extrasPolicy,
       individualExtraPiecesForTw(twId, stockNeedReliefByTwId),
-      individualExtraPiecesForTw(twId, extraOverlapByTwId)
+      individualExtraPiecesForTw(twId, extraOverlapByTwId),
+      individualExtraPiecesForTw(twId, minStockByTwId)
     ).zdUnits;
     if (Math.trunc(override) === computed) {
       changed = true;
@@ -695,7 +743,8 @@ export function summarizePackOrderQty(
   extraOnlyTwIds?: ReadonlySet<number> | null,
   extrasPolicy: ZdEstimateExtrasPolicy = "sum",
   stockNeedReliefByTwId?: ReadonlyMap<number, number> | null,
-  extraOverlapByTwId?: ReadonlyMap<number, number> | null
+  extraOverlapByTwId?: ReadonlyMap<number, number> | null,
+  minStockByTwId?: ReadonlyMap<number, number> | null
 ): {
   doZamowieniaCount: number;
   piecesNeededSuma: number;
@@ -725,6 +774,7 @@ export function summarizePackOrderQty(
       line.tw_Id,
       extraOverlapByTwId
     );
+    const minStock = individualExtraPiecesForTw(line.tw_Id, minStockByTwId);
     const extraOnly = extraOnlyTwIds?.has(line.tw_Id) === true;
     const qty = resolveOrderQtyForLine(
       line,
@@ -733,7 +783,8 @@ export function summarizePackOrderQty(
       extraOnly,
       extrasPolicy,
       relief,
-      overlap
+      overlap,
+      minStock
     );
     const zdUnits = effectiveZdDocumentUnits(
       line,
@@ -743,16 +794,14 @@ export function summarizePackOrderQty(
       extraOnly,
       extrasPolicy,
       relief,
-      overlap
+      overlap,
+      minStock
     );
     if (zdUnits <= 0) continue;
     doZamowieniaCount += 1;
     piecesNeededSuma += qty.piecesNeeded;
     zdUnitsSuma += zdUnits;
-    piecesArrivingSuma +=
-      qty.hasPackaging && qty.zdUnits > 0
-        ? Math.round((qty.piecesArriving / qty.zdUnits) * zdUnits)
-        : zdUnits;
+    piecesArrivingSuma += piecesArrivingForZdUnitsFromQty(zdUnits, qty);
   }
   return {
     doZamowieniaCount,
@@ -776,7 +825,8 @@ export function filterOrderableLinesWithPackaging(
    */
   rawIndividualExtraByTwId?: ReadonlyMap<number, number> | null,
   stockNeedReliefByTwId?: ReadonlyMap<number, number> | null,
-  extraOverlapByTwId?: ReadonlyMap<number, number> | null
+  extraOverlapByTwId?: ReadonlyMap<number, number> | null,
+  minStockByTwId?: ReadonlyMap<number, number> | null
 ): ManualZdEstimateLine[] {
   const excluded =
     excludedTwIds instanceof Set
@@ -792,7 +842,8 @@ export function filterOrderableLinesWithPackaging(
       extraOnlyTwIds?.has(line.tw_Id) === true,
       extrasPolicy,
       individualExtraPiecesForTw(line.tw_Id, stockNeedReliefByTwId),
-      individualExtraPiecesForTw(line.tw_Id, extraOverlapByTwId)
+      individualExtraPiecesForTw(line.tw_Id, extraOverlapByTwId),
+      individualExtraPiecesForTw(line.tw_Id, minStockByTwId)
     );
     if (units > 0) return true;
     if (extraOnlyTwIds?.has(line.tw_Id) !== true) return false;
@@ -809,7 +860,8 @@ export function orderableLinesToTsv(
   extraOnlyTwIds?: ReadonlySet<number> | null,
   extrasPolicy: ZdEstimateExtrasPolicy = "sum",
   stockNeedReliefByTwId?: ReadonlyMap<number, number> | null,
-  extraOverlapByTwId?: ReadonlyMap<number, number> | null
+  extraOverlapByTwId?: ReadonlyMap<number, number> | null,
+  minStockByTwId?: ReadonlyMap<number, number> | null
 ): string {
   const header = [
     "symbol",
@@ -844,6 +896,7 @@ export function orderableLinesToTsv(
       line.tw_Id,
       extraOverlapByTwId
     );
+    const minStock = individualExtraPiecesForTw(line.tw_Id, minStockByTwId);
     const extraOnly = extraOnlyTwIds?.has(line.tw_Id) === true;
     const qty = resolveOrderQtyForLine(
       line,
@@ -852,7 +905,8 @@ export function orderableLinesToTsv(
       extraOnly,
       extrasPolicy,
       relief,
-      overlap
+      overlap,
+      minStock
     );
     const zdUnits = effectiveZdDocumentUnits(
       line,
@@ -862,12 +916,10 @@ export function orderableLinesToTsv(
       extraOnly,
       extrasPolicy,
       relief,
-      overlap
+      overlap,
+      minStock
     );
-    const piecesArriving =
-      qty.hasPackaging && qty.zdUnits > 0
-        ? Math.round((qty.piecesArriving / qty.zdUnits) * zdUnits)
-        : zdUnits;
+    const piecesArriving = piecesArrivingForZdUnitsFromQty(zdUnits, qty);
     return [
       line.tw_Symbol,
       line.tw_Nazwa,

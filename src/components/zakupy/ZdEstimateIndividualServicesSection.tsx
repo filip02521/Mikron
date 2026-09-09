@@ -104,7 +104,7 @@ export function ZdEstimateIndividualServicesSection({
                   <span
                     key={reason}
                     className={cn(
-                      "rounded-md px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset",
+                      "rounded-md px-1.5 py-px text-[11px] font-semibold uppercase tracking-wide ring-1 ring-inset",
                       REASON_CHIP[reason]
                     )}
                   >
@@ -171,7 +171,7 @@ export function ZdEstimateIndividualServicesSection({
                   </span>
                   <span
                     className={cn(
-                      "rounded-md px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide ring-1 ring-inset",
+                      "rounded-md px-1.5 py-px text-[11px] font-semibold uppercase tracking-wide ring-1 ring-inset",
                       REASON_CHIP[line.reason]
                     )}
                   >

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { UserRole, Workspace } from "@/types/database";
 import { fetchProfileByUserId } from "@/lib/auth/profile";
-import { middlewareNeedsBootstrap } from "@/lib/setup/middleware-bootstrap";
 import {
   ADMIN_PANEL_COOKIE,
   homePathForAdminPanelContext,
@@ -79,17 +78,9 @@ export async function proxy(request: NextRequest) {
 
   const publicAuthPaths = ["/setup", "/login", "/ustaw-haslo", "/auth/confirm"];
 
-  const needsSetup = await middlewareNeedsBootstrap();
-  if (needsSetup) {
-    if (pathname !== "/setup") {
-      return NextResponse.redirect(new URL("/setup", request.url));
-    }
-    return NextResponse.next();
-  }
-
-  if (pathname === "/setup") {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
+  // Bootstrap (brak admina) rozstrzygają wyłącznie strony /login i /setup.
+  // Sprawdzanie w proxy dawało ERR_TOO_MANY_REDIRECTS, gdy middleware i RSC
+  // inaczej widziały DATABASE_URL / wynik count (np. Edge vs Node).
 
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-pathname", pathname);
