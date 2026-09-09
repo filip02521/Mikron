@@ -2679,6 +2679,14 @@ html.ontime-scroll-locked main {
   opacity: 0.55;
 }
 
+/* Klikalny checkbox w trybie odczytu */
+.note-body-display .todo-checkbox {
+  cursor: pointer;
+}
+.note-body-display .todo-checkbox:hover {
+  border-color: rgb(99 102 241);
+}
+
 .rich-note-editor ul.todo-list > li[data-checked="true"] {
   text-decoration: line-through;
   opacity: 0.55;

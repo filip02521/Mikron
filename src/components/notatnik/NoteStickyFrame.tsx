@@ -41,11 +41,11 @@ export function NoteStickyFrame({
       className={cn(
         "group/sticky relative isolate pt-2 transition-[transform,z-index] duration-200 ease-out will-change-transform",
         straight
-          ? "z-30 [transform:rotate(0deg)_scale(1.01)]"
+          ? "z-30 [transform:rotate(0deg)]"
           : cn(
-              "z-0 [transform:rotate(var(--note-tilt))_scale(1)]",
-              "hover:z-20 hover:[transform:rotate(0deg)_scale(1.025)]",
-              "focus-within:z-30 focus-within:[transform:rotate(0deg)_scale(1.02)]"
+              "z-0 [transform:rotate(var(--note-tilt))]",
+              "hover:z-20 hover:[transform:rotate(0deg)]",
+              "focus-within:z-30 focus-within:[transform:rotate(0deg)]"
             ),
         className
       )}
