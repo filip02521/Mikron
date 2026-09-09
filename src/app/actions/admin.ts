@@ -1135,27 +1135,41 @@ export async function actionRevertToPending(
 
   const supabase = createAdminClient();
   const errors: string[] = [];
-  let count = 0;
+  const revertedIds: string[] = [];
 
   // Pobierz aktualny stan zamówień
+  // UWAGA: warehouse_cleared_by może nie istnieć na starszych bazach (migracja 100).
+  // Selectujemy bez niego — resetujemy tylko warehouse_cleared_at (współistnieje z _by).
   const { data: orders, error: fetchErr } = await supabase
     .from("individual_orders")
     .select(
-      "id, status, delivered_quantity, delivery_at, warehouse_shelf, first_delivery_at, teeth_line_delivered, sales_acknowledged_at, warehouse_cleared_at, sales_person_id, source_zk_watch_id, source_zk_number, request_kind, is_teeth"
+      "id, status, delivered_quantity, delivery_at, warehouse_shelf, first_delivery_at, teeth_line_delivered, sales_acknowledged_at, warehouse_cleared_at, sales_cancelled_at, sales_person_id, source_zk_watch_id, source_zk_number, request_kind, is_teeth"
     )
     .in("id", ids);
 
-  if (fetchErr) throw new Error(fetchErr.message);
+  if (fetchErr) {
+    if (fetchErr.message?.includes("warehouse_cleared_at")) {
+      throw new Error(WAREHOUSE_CLEARED_MIGRATION_HINT);
+    }
+    throw new Error(fetchErr.message);
+  }
 
   const rows = (orders ?? []) as Array<Record<string, unknown>>;
 
   for (const row of rows) {
     const orderId = row.id as string;
     const currentStatus = (row.status as string) ?? "";
+    const salesCancelledAt = (row.sales_cancelled_at as string | null) ?? null;
 
     // Tylko zamówienia zrealizowane / częściowo zrealizowane można cofnąć
     if (currentStatus !== "Zrealizowane" && currentStatus !== "Czesciowo_zrealizowane") {
       errors.push(`${orderId}: status "${currentStatus}" — można cofnąć tylko zrealizowane`);
+      continue;
+    }
+
+    // Nie cofaj zamówień z aktywną rezygnacją handlowca
+    if (salesCancelledAt) {
+      errors.push(`${orderId}: zamówienie ma rezygnację — nie można cofnąć`);
       continue;
     }
 
@@ -1194,35 +1208,32 @@ export async function actionRevertToPending(
         warehouse_cleared_at: null,
         warehouse_cleared_by: null,
       };
-      // warehouse_shelf — resetuj tylko jeśli nie jest to default (nie nadpisuj pustego)
+      // warehouse_shelf — resetuj tylko jeśli nie jest to default
       if (row.warehouse_shelf && row.warehouse_shelf !== WAREHOUSE_SHELF_DEFAULT) {
         update.warehouse_shelf = WAREHOUSE_SHELF_DEFAULT;
       }
 
+      // Guard na status — race condition: ktoś mógł zmienić status między SELECT a UPDATE
       const { error: updErr } = await supabase
         .from("individual_orders")
         .update(update)
-        .eq("id", orderId);
+        .eq("id", orderId)
+        .in("status", ["Zrealizowane", "Czesciowo_zrealizowane"])
+        .is("sales_cancelled_at", null);
 
       if (updErr) throw new Error(updErr.message);
-      count++;
-
-      // 4. Synchronizuj ZK watch line checks
-      try {
-        const { syncZkWatchLineChecksFromOrder } = await import(
-          "@/lib/sales/zk-watch-order-sync"
-        );
-        await syncZkWatchLineChecksFromOrder({
-          ...(row as unknown as import("@/types/database").IndividualOrder),
-          status: "Zamowione",
-          delivered_quantity: "",
-          sales_acknowledged_at: null,
-        });
-      } catch (e) {
-        console.error("[actionRevertToPending] sync ZK watch:", e);
-      }
+      revertedIds.push(orderId);
     } catch (e) {
       errors.push(`${orderId}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  // 4. Synchronizuj ZK watch line checks (re-fetch z DB — pełne dane)
+  if (revertedIds.length) {
+    try {
+      await syncZkWatchAfterDeliveryRevert(revertedIds);
+    } catch (e) {
+      console.error("[actionRevertToPending] sync ZK watch:", e);
     }
   }
 
@@ -1234,7 +1245,7 @@ export async function actionRevertToPending(
   }
 
   revalidateAll();
-  return { success: true, count, errors };
+  return { success: true, count: revertedIds.length, errors };
 }
 
 export async function actionBatchUpdateDelivered(
