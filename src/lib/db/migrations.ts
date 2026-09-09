@@ -207,12 +207,17 @@ export interface MigrationStatus {
 }
 
 export async function ensureJournal(client: PoolClient): Promise<void> {
-  await client.query(`
-    CREATE TABLE IF NOT EXISTS schema_migrations (
-      filename TEXT PRIMARY KEY,
-      applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    )
-  `);
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        filename TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+  } catch {
+    // Tabela już istnieje (z dumpa) lub rola nie ma DDL — ignorujemy.
+    // getMigrationStatus i tak woła SELECT, który zadziała jeśli tabela istnieje.
+  }
 }
 
 /** Zwraca listę oczekujących migracji + liczbę zastosowanych. */
