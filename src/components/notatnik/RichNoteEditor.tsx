@@ -106,6 +106,7 @@ function exitTodoList(editor: HTMLElement) {
 type FormatState = {
   bold: boolean;
   italic: boolean;
+  underline: boolean;
   ul: boolean;
   ol: boolean;
   todo: boolean;
@@ -135,7 +136,7 @@ export function RichNoteEditor({
   const ref = useRef<HTMLDivElement>(null);
   const lastValueRef = useRef(value);
   const isInternalChangeRef = useRef(false);
-  const [activeFormats, setActiveFormats] = useState<FormatState>({ bold: false, italic: false, ul: false, ol: false, todo: false });
+  const [activeFormats, setActiveFormats] = useState<FormatState>({ bold: false, italic: false, underline: false, ul: false, ol: false, todo: false });
 
   const refreshActiveFormats = useCallback(() => {
     if (!editable) return;
@@ -150,6 +151,7 @@ export function RichNoteEditor({
       setActiveFormats({
         bold: document.queryCommandState("bold"),
         italic: document.queryCommandState("italic"),
+        underline: document.queryCommandState("underline"),
         ul: !cursorInTodo && document.queryCommandState("insertUnorderedList"),
         ol: document.queryCommandState("insertOrderedList"),
         todo: cursorInTodo,
@@ -198,24 +200,9 @@ export function RichNoteEditor({
   }, [onActiveChange, refreshActiveFormats]);
 
   const exec = useCallback(
-    (command: "bold" | "italic" | "insertUnorderedList" | "insertOrderedList" | "insertTodoList" | "selectAllBold") => {
+    (command: "bold" | "italic" | "underline" | "insertUnorderedList" | "insertOrderedList" | "insertTodoList") => {
       const el = ref.current;
       if (!el || !editable) return;
-      if (command === "selectAllBold") {
-        el.focus();
-        const range = document.createRange();
-        range.selectNodeContents(el);
-        const sel = window.getSelection();
-        if (sel) {
-          sel.removeAllRanges();
-          sel.addRange(range);
-        }
-        document.execCommand("bold", false);
-        sel?.removeAllRanges();
-        emitChange();
-        refreshActiveFormats();
-        return;
-      }
       if (command !== "insertTodoList") {
         el.focus();
         document.execCommand(command, false);
@@ -306,6 +293,9 @@ export function RichNoteEditor({
       } else if (key === "i") {
         e.preventDefault();
         exec("italic");
+      } else if (key === "u") {
+        e.preventDefault();
+        exec("underline");
       } else if (key === "enter") {
         e.preventDefault();
         onSave?.();
@@ -335,10 +325,28 @@ export function RichNoteEditor({
             if (checkbox) {
               toggleTodoCheckbox(checkbox);
               emitChange();
+              // Zaznacz całą linijkę tekstu przy tym checkboxie
               const li = checkbox.closest("li") as HTMLLIElement | null;
               if (li) {
                 const sel = window.getSelection();
-                if (sel) placeCursorAfterCheckbox(li, sel);
+                if (sel) {
+                  const range = document.createRange();
+                  // Zaznacz wszystkie dzieci <li> oprócz checkboxa
+                  const textNodes = Array.from(li.childNodes).filter(
+                    (n) => !(n.nodeType === Node.ELEMENT_NODE && (n as Element).classList.contains("todo-checkbox"))
+                  );
+                  if (textNodes.length > 0) {
+                    const firstNode = textNodes[0]!;
+                    const lastNode = textNodes[textNodes.length - 1]!;
+                    range.setStartBefore(firstNode);
+                    range.setEndAfter(lastNode);
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    refreshActiveFormats();
+                  } else {
+                    placeCursorAfterCheckbox(li, sel);
+                  }
+                }
               }
             }
           }}
@@ -348,6 +356,7 @@ export function RichNoteEditor({
             "text-[13px] leading-relaxed text-slate-900",
             "[&_strong]:font-semibold [&_strong]:text-slate-900",
             "[&_em]:italic",
+            "[&_u]:underline [&_span[data-underline=true]]:underline",
             "[&_ul]:list-disc [&_ul]:pl-5 [&_ul]:marker:text-slate-400",
             "[&_ul.todo-list]:list-none [&_ul.todo-list]:pl-0",
             "[&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:marker:font-medium [&_ol]:marker:text-slate-500",
@@ -364,7 +373,7 @@ export function RichNoteEditor({
   );
 }
 
-type ExecFn = (command: "bold" | "italic" | "insertUnorderedList" | "insertOrderedList" | "insertTodoList" | "selectAllBold") => void;
+type ExecFn = (command: "bold" | "italic" | "underline" | "insertUnorderedList" | "insertOrderedList" | "insertTodoList") => void;
 
 const ToolbarContext = createContext<ExecFn | null>(null);
 
@@ -403,14 +412,81 @@ function ToolbarButton({
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       className={cn(
-        "inline-flex h-6 min-w-6 items-center justify-center rounded px-1.5 text-[11px] font-semibold transition disabled:opacity-40",
+        "inline-flex h-7 min-w-7 items-center justify-center rounded-md px-1.5 transition",
+        "disabled:cursor-not-allowed disabled:opacity-30",
         active
-          ? "bg-indigo-100 text-indigo-800"
-          : "text-slate-500 hover:bg-slate-100/80 hover:text-slate-800"
+          ? "bg-indigo-600 text-white shadow-sm"
+          : "text-slate-500 hover:bg-slate-100 hover:text-slate-800 active:bg-slate-200"
       )}
     >
       {label}
     </button>
+  );
+}
+
+function BoldGlyph() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 4h8a4 4 0 0 1 0 8H6z" />
+      <path d="M6 12h9a4 4 0 0 1 0 8H6z" />
+    </svg>
+  );
+}
+
+function UnderlineGlyph() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 3v6a6 6 0 0 0 12 0V3" />
+      <line x1="4" y1="21" x2="20" y2="21" strokeWidth="2.5" />
+    </svg>
+  );
+}
+
+function ItalicGlyph() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <line x1="19" y1="4" x2="10" y2="4" />
+      <line x1="14" y1="20" x2="5" y2="20" />
+      <line x1="15" y1="4" x2="9" y2="20" />
+    </svg>
+  );
+}
+
+function BulletListGlyph() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <line x1="8" y1="6" x2="21" y2="6" />
+      <line x1="8" y1="12" x2="21" y2="12" />
+      <line x1="8" y1="18" x2="21" y2="18" />
+      <circle cx="3.5" cy="6" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="3.5" cy="12" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="3.5" cy="18" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function NumberListGlyph() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <line x1="10" y1="6" x2="21" y2="6" />
+      <line x1="10" y1="12" x2="21" y2="12" />
+      <line x1="10" y1="18" x2="21" y2="18" />
+      <text x="2" y="7.5" fontSize="6" fill="currentColor" stroke="none" fontFamily="sans-serif" fontWeight="600">1</text>
+      <text x="2" y="13.5" fontSize="6" fill="currentColor" stroke="none" fontFamily="sans-serif" fontWeight="600">2</text>
+      <text x="2" y="19.5" fontSize="6" fill="currentColor" stroke="none" fontFamily="sans-serif" fontWeight="600">3</text>
+    </svg>
+  );
+}
+
+function TodoCheckGlyph() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="3" width="6" height="6" rx="1.5" />
+      <path d="M4.5 6l1.5 1.5L8 4.5" strokeWidth="2.5" />
+      <line x1="12" y1="6" x2="21" y2="6" />
+      <rect x="3" y="14" width="6" height="6" rx="1.5" />
+      <line x1="12" y1="17" x2="21" y2="17" />
+    </svg>
   );
 }
 
@@ -421,27 +497,18 @@ function RichNoteEditorToolbar({ editable, activeFormats }: { editable: boolean;
   return (
     <div
       className={cn(
-        "pointer-events-none absolute -top-7 right-6 flex items-center gap-0.5 rounded-md border border-slate-200 bg-white/95 px-1 py-0.5 shadow-sm backdrop-blur-sm transition-opacity duration-150 z-10",
+        "pointer-events-none absolute -top-8 right-4 flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white/95 px-1 py-1 shadow-md shadow-slate-900/8 backdrop-blur-sm transition-opacity duration-150 z-10",
         "opacity-0",
         editable && "group-hover/sticky:pointer-events-auto group-hover/sticky:opacity-100 group-focus-within/sticky:pointer-events-auto group-focus-within/sticky:opacity-100"
       )}
     >
-      <ToolbarButton label="B" title="Pogrubienie (Ctrl+B)" disabled={!editable} active={activeFormats.bold} onClick={() => exec("bold")} />
-      <ToolbarButton label="B∗" title="Pogrub wszystko" disabled={!editable} onClick={() => exec("selectAllBold")} />
-      <ToolbarButton label="I" title="Kursywa (Ctrl+I)" disabled={!editable} active={activeFormats.italic} onClick={() => exec("italic")} />
-      <span className="mx-0.5 h-3 w-px bg-slate-200" aria-hidden />
-      <ToolbarButton label="•" title="Lista punktowana" disabled={!editable} active={activeFormats.ul} onClick={() => exec("insertUnorderedList")} />
-      <ToolbarButton label="1." title="Lista numerowana" disabled={!editable} active={activeFormats.ol} onClick={() => exec("insertOrderedList")} />
+      <ToolbarButton label={<BoldGlyph />} title="Pogrubienie (Ctrl+B)" disabled={!editable} active={activeFormats.bold} onClick={() => exec("bold")} />
+      <ToolbarButton label={<ItalicGlyph />} title="Kursywa (Ctrl+I)" disabled={!editable} active={activeFormats.italic} onClick={() => exec("italic")} />
+      <ToolbarButton label={<UnderlineGlyph />} title="Podkreślenie (Ctrl+U)" disabled={!editable} active={activeFormats.underline} onClick={() => exec("underline")} />
+      <span className="mx-0.5 h-4 w-px bg-slate-200" aria-hidden />
+      <ToolbarButton label={<BulletListGlyph />} title="Lista punktowana" disabled={!editable} active={activeFormats.ul} onClick={() => exec("insertUnorderedList")} />
+      <ToolbarButton label={<NumberListGlyph />} title="Lista numerowana" disabled={!editable} active={activeFormats.ol} onClick={() => exec("insertOrderedList")} />
       <ToolbarButton label={<TodoCheckGlyph />} title="Lista zadań" disabled={!editable} active={activeFormats.todo} onClick={() => exec("insertTodoList")} />
     </div>
-  );
-}
-
-function TodoCheckGlyph() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <rect x="2" y="2" width="12" height="12" rx="2.5" />
-      <path d="M5 8.5l2 2 4-4.5" />
-    </svg>
   );
 }

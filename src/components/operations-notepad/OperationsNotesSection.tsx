@@ -57,6 +57,7 @@ export const NOTATNIK_KEYBOARD_HINTS = [
   { keys: ["P"], label: "przypnij" },
   { keys: ["Ctrl", "B"], label: "pogrubienie" },
   { keys: ["Ctrl", "I"], label: "kursywa" },
+  { keys: ["Ctrl", "U"], label: "podkreślenie" },
   { keys: ["Ctrl", "Enter"], label: "zapisz" },
   { keys: ["Ctrl", "Z"], label: "cofnij" },
 ] as const;

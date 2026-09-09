@@ -89,23 +89,35 @@ export function parseNoteBodyBlocks(body: string): NoteBodyBlock[] {
   return blocks;
 }
 
-const INLINE_BOLD_RE = /\*\*(.+?)\*\*/g;
-
-/** Renderuje **pogrubienie** w jednej linii. */
+/** Renderuje **pogrubienie** i __podkreślenie__ w jednej linii. */
 export function formatInlineNoteText(text: string): ReactNode {
-  if (!text.includes("**")) return text;
+  if (!text.includes("**") && !text.includes("__")) return text;
 
+  // Najpierw podkreślenie, potem pogrubienie (pogrubienie może zawierać podkreślenie)
   const parts: ReactNode[] = [];
+
+  // Tokenizacja — dzielimy na segmenty **bold**, __underline__, plain
+  const tokenRe = /(\*\*(.+?)\*\*|__(.+?)__)/g;
   let lastIndex = 0;
-  for (const match of text.matchAll(INLINE_BOLD_RE)) {
+  let keyIndex = 0;
+  for (const match of text.matchAll(tokenRe)) {
     const index = match.index ?? 0;
     if (index > lastIndex) {
       parts.push(text.slice(lastIndex, index));
     }
-    parts.push(
-      createElement("strong", { key: `${index}-b`, className: "font-semibold text-slate-900" }, match[1])
-    );
+    if (match[2] !== undefined) {
+      // **bold**
+      parts.push(
+        createElement("strong", { key: `${keyIndex}-b`, className: "font-semibold text-slate-900" }, match[2])
+      );
+    } else if (match[3] !== undefined) {
+      // __underline__
+      parts.push(
+        createElement("u", { key: `${keyIndex}-u`, className: "underline" }, match[3])
+      );
+    }
     lastIndex = index + match[0].length;
+    keyIndex++;
   }
   if (lastIndex < text.length) {
     parts.push(text.slice(lastIndex));
@@ -256,6 +268,7 @@ function inlineMarkdownToHtml(text: string): string {
   let out = escapeHtml(text);
   out = out.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
   out = out.replace(/\*(.+?)\*/g, "<em>$1</em>");
+  out = out.replace(/__(.+?)__/g, "<u>$1</u>");
   return out;
 }
 
@@ -306,6 +319,14 @@ function isItalicNode(el: Element): boolean {
   return false;
 }
 
+function isUnderlineNode(el: Element): boolean {
+  const tag = el.tagName.toLowerCase();
+  if (tag === "u") return true;
+  const style = (el as HTMLElement).style;
+  if (style.textDecoration === "underline" || (style.textDecorationLine === "underline")) return true;
+  return false;
+}
+
 function nodeToMarkdown(node: Node): string {
   if (node.nodeType === Node.TEXT_NODE) {
     return unescapeHtml(node.textContent ?? "");
@@ -318,6 +339,7 @@ function nodeToMarkdown(node: Node): string {
 
   if (isBoldNode(el)) return `**${inner}**`;
   if (isItalicNode(el)) return `*${inner}*`;
+  if (isUnderlineNode(el)) return `__${inner}__`;
 
   if (tag === "br") return "\n";
   if (tag === "p") return `${inner}\n\n`;
