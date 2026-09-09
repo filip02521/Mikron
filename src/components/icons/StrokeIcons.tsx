@@ -721,6 +721,16 @@ export function IconX(props: StrokeIconProps) {
   );
 }
 
+/** Cofnij / Undo (strzałka powrotna) */
+export function IconUndoLeft(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M3 7v6h6" />
+      <path d="M21 17a9 9 0 0 0-15-6.7L3 13" />
+    </Svg>
+  );
+}
+
 /** Gwiazdka — ulubione (`filled` = aktywna). */
 export function IconStar({
   filled = false,

@@ -1114,6 +1114,129 @@ export async function actionClearFromShelf(orderIds: string[]): Promise<{
   return { success: true, count };
 }
 
+/**
+ * Cofa przyjęcie towaru — resetuje zamówienie z powrotem do "Zamowione" (Oczekuje).
+ * Czyści: delivered_quantity, delivery_at, warehouse_shelf, first_delivery_at,
+ * teeth_line_delivered, sales_acknowledged_at, warehouse_cleared_at.
+ * Anuluje kolejkę powiadomień e-mail i soft-delete próbki delivery_stats.
+ * Synchronizuje line_checks w powiązanych ZK.
+ *
+ * Dostępne z poziomu regału (inwentaryzacja) — dla magazynu/admina.
+ * Nie ma limitu czasu (w przeciwieństwie do actionUndoDelivery).
+ */
+export async function actionRevertToPending(
+  orderIds: string[]
+): Promise<{ success: true; count: number; errors: string[] }> {
+  const ids = [...new Set(orderIds.filter(Boolean))];
+  if (!ids.length) return { success: true, count: 0, errors: [] };
+
+  const { requireWarehouse } = await import("@/lib/auth");
+  await requireWarehouse("mutate");
+
+  const supabase = createAdminClient();
+  const errors: string[] = [];
+  let count = 0;
+
+  // Pobierz aktualny stan zamówień
+  const { data: orders, error: fetchErr } = await supabase
+    .from("individual_orders")
+    .select(
+      "id, status, delivered_quantity, delivery_at, warehouse_shelf, first_delivery_at, teeth_line_delivered, sales_acknowledged_at, warehouse_cleared_at, sales_person_id, source_zk_watch_id, source_zk_number, request_kind, is_teeth"
+    )
+    .in("id", ids);
+
+  if (fetchErr) throw new Error(fetchErr.message);
+
+  const rows = (orders ?? []) as Array<Record<string, unknown>>;
+
+  for (const row of rows) {
+    const orderId = row.id as string;
+    const currentStatus = (row.status as string) ?? "";
+
+    // Tylko zamówienia zrealizowane / częściowo zrealizowane można cofnąć
+    if (currentStatus !== "Zrealizowane" && currentStatus !== "Czesciowo_zrealizowane") {
+      errors.push(`${orderId}: status "${currentStatus}" — można cofnąć tylko zrealizowane`);
+      continue;
+    }
+
+    try {
+      // 1. Anuluj kolejkę powiadomień e-mail dla tego zamówienia
+      try {
+        const { getPendingNotificationQueueIdsForOrder } = await import(
+          "@/lib/orders/delivery-notification-queue"
+        );
+        const queueIds = await getPendingNotificationQueueIdsForOrder(orderId);
+        if (queueIds.length) {
+          await cancelDeliveryNotificationQueueEntries(queueIds);
+        }
+      } catch (e) {
+        console.error("[actionRevertToPending] cancel notifications:", e);
+      }
+
+      // 2. Soft-delete próbki delivery_stats (status nie będzie już Zrealizowane)
+      try {
+        const { softDeleteDeliveryStatsSampleForOrder } = await import(
+          "@/lib/data/delivery-stats-samples"
+        );
+        await softDeleteDeliveryStatsSampleForOrder(orderId);
+      } catch (e) {
+        console.error("[actionRevertToPending] soft-delete stats:", e);
+      }
+
+      // 3. Reset zamówienia do stanu "Zamowione" (Oczekuje)
+      const update: Record<string, unknown> = {
+        status: "Zamowione",
+        delivered_quantity: "",
+        delivery_at: null,
+        first_delivery_at: null,
+        teeth_line_delivered: null,
+        sales_acknowledged_at: null,
+        warehouse_cleared_at: null,
+        warehouse_cleared_by: null,
+      };
+      // warehouse_shelf — resetuj tylko jeśli nie jest to default (nie nadpisuj pustego)
+      if (row.warehouse_shelf && row.warehouse_shelf !== WAREHOUSE_SHELF_DEFAULT) {
+        update.warehouse_shelf = WAREHOUSE_SHELF_DEFAULT;
+      }
+
+      const { error: updErr } = await supabase
+        .from("individual_orders")
+        .update(update)
+        .eq("id", orderId);
+
+      if (updErr) throw new Error(updErr.message);
+      count++;
+
+      // 4. Synchronizuj ZK watch line checks
+      try {
+        const { syncZkWatchLineChecksFromOrder } = await import(
+          "@/lib/sales/zk-watch-order-sync"
+        );
+        await syncZkWatchLineChecksFromOrder({
+          ...(row as unknown as import("@/types/database").IndividualOrder),
+          status: "Zamowione",
+          delivered_quantity: "",
+          sales_acknowledged_at: null,
+        });
+      } catch (e) {
+        console.error("[actionRevertToPending] sync ZK watch:", e);
+      }
+    } catch (e) {
+      errors.push(`${orderId}: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  // 5. Przelicz statystyki
+  try {
+    await recalculateAllStats();
+  } catch (e) {
+    console.error("[actionRevertToPending] recalculateAllStats:", e);
+  }
+
+  revalidateAll();
+  return { success: true, count, errors };
+}
+
 export async function actionBatchUpdateDelivered(
   updates: Array<{ orderId: string; qty: string; teethLineDelivered?: Record<string, number> | null }>
 ): Promise<

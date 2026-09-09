@@ -136,6 +136,21 @@ export async function getOrderIdsForNotificationQueueIds(
   return [...new Set((data ?? []).map((row) => String(row.order_id)))];
 }
 
+/** Pobiera nieanulowane, niewysłane wpisy kolejki powiadomień dla danego zamówienia. */
+export async function getPendingNotificationQueueIdsForOrder(
+  orderId: string
+): Promise<string[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("delivery_notification_queue")
+    .select("id")
+    .eq("order_id", orderId)
+    .is("sent_at", null)
+    .is("cancelled_at", null);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => row.id as string);
+}
+
 export async function flushAllDueDeliveryNotifications(
   scope: DeliveryNotificationFlushScope = "all"
 ): Promise<{
