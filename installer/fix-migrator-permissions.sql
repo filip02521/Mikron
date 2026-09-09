@@ -27,18 +27,29 @@ ALTER DEFAULT PRIVILEGES FOR ROLE ontime_app IN SCHEMA public
   GRANT EXECUTE ON FUNCTIONS TO ontime_migrator;
 
 -- 6. Domyślne uprawnienia dla przyszłych tabel stworzonych przez postgres
---    (gdy postgres tworzy tabelę ręcznie, ontime_migrator automatycznie dostaje ALL)
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
-  GRANT ALL PRIVILEGES ON TABLES TO ontime_migrator;
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
-  GRANT ALL PRIVILEGES ON SEQUENCES TO ontime_migrator;
+--    (tylko jeśli rola postgres istnieje)
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'postgres') THEN
+    ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+      GRANT ALL PRIVILEGES ON TABLES TO ontime_migrator;
+    ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+      GRANT ALL PRIVILEGES ON SEQUENCES TO ontime_migrator;
+  END IF;
+END
+$$;
 
--- 7. Jeśli schema_migrations nie istnieje lub jest własnością innej roli,
---    ontime_migrator musi mieć INSERT. Powyższy GRANT ALL TABLES to obejmuje.
---    Ale dodatkowo upewnijmy się, że ontime_app też ma SELECT na schema_migrations:
-GRANT SELECT ON schema_migrations TO ontime_app;
+-- 7. ontime_app musi mieć SELECT na schema_migrations (do odczytu statusu)
+--    Tylko jeśli tabela istnieje.
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'schema_migrations') THEN
+    GRANT SELECT ON public.schema_migrations TO ontime_app;
+  END IF;
+END
+$$;
 
--- 8. Przeniesienie ownershipu schema_migrations na ontime_migrator (opcjonalnie)
+-- 8. Przeniesienie ownershipu schema_migrations na ontime_migrator
 --    Jeśli schema_migrations została stworzona przez postgres lub ontime_app,
 --    ontime_migrator nie może jej DROP/ALTER. To naprawia:
 DO $$
