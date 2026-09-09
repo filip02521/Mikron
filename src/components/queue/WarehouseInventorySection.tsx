@@ -3,7 +3,7 @@ import { ToastNotice, WAREHOUSE_TOAST, toastFromUnknown } from "@/lib/ui/notice-
 
 import { Fragment, useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { actionSetWarehouseShelf, actionClearFromShelf } from "@/app/actions/admin";
+import { actionSetWarehouseShelf, actionClearFromShelf, actionRevertToPending } from "@/app/actions/admin";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
 import { SectionListLabel } from "@/components/ui/SectionListLabel";
 import {
@@ -13,6 +13,7 @@ import {
   IconPackageCheck,
   IconWarehouse,
   IconX,
+  IconUndoLeft,
 } from "@/components/icons/StrokeIcons";
 import { QueueGroupExpandControl } from "@/components/queue/QueueGroupExpandControl";
 import { QueueMetricTab } from "@/components/queue/QueueMetricTab";
@@ -179,6 +180,8 @@ export function WarehouseInventorySection({
   const [search, setSearch] = useState("");
   const [clearConfirmId, setClearConfirmId] = useState<string | null>(null);
   const [clearPending, startClear] = useTransition();
+  const [revertConfirmId, setRevertConfirmId] = useState<string | null>(null);
+  const [revertPending, startRevert] = useTransition();
 
   const rows = useMemo(() => buildWarehouseInventoryRows(orders), [orders]);
   const supplierMetrics = useMemo(
@@ -299,6 +302,27 @@ export function WarehouseInventorySection({
     [blockIfReadOnly, router]
   );
 
+  const revertToPending = useCallback(
+    (orderId: string) => {
+      if (blockIfReadOnly()) return;
+      startRevert(async () => {
+        try {
+          const result = await actionRevertToPending([orderId]);
+          if (result.count > 0) {
+            setToast({ text: "Przyjęcie cofnięte — pozycja wróciła do kolejki oczekujących", tone: "success" });
+          } else if (result.errors.length > 0) {
+            setToast({ text: result.errors[0], tone: "error" });
+          }
+          setRevertConfirmId(null);
+          router.refresh();
+        } catch (e) {
+          setToast(toastFromUnknown(e, "Nie udało się cofnąć przyjęcia"));
+        }
+      });
+    },
+    [blockIfReadOnly, router]
+  );
+
   const shelfOptions = summary.byShelf.map((s) => s.shelf);
 
   const renderDataRow = (
@@ -396,16 +420,28 @@ export function WarehouseInventorySection({
         </td>
         <td className="align-top">
           {canClearFromShelf ? (
-            <button
-              type="button"
-              disabled={pending || clearPending}
-              onClick={() => setClearConfirmId(o.id)}
-              className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-40"
-              title="Zdejmij z regału"
-            >
-              <IconX size={13} />
-              <span className="hidden sm:inline">Zdejmij</span>
-            </button>
+            <div className="flex flex-col gap-1">
+              <button
+                type="button"
+                disabled={pending || clearPending || revertPending}
+                onClick={() => setRevertConfirmId(o.id)}
+                className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-40"
+                title="Cofnij przyjęcie — wróci do kolejki oczekujących"
+              >
+                <IconUndoLeft size={13} />
+                <span className="hidden sm:inline">Cofnij</span>
+              </button>
+              <button
+                type="button"
+                disabled={pending || clearPending || revertPending}
+                onClick={() => setClearConfirmId(o.id)}
+                className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-40"
+                title="Zdejmij z regału"
+              >
+                <IconX size={13} />
+                <span className="hidden sm:inline">Zdejmij</span>
+              </button>
+            </div>
           ) : null}
         </td>
       </tr>
@@ -627,6 +663,18 @@ export function WarehouseInventorySection({
         onCancel={() => setClearConfirmId(null)}
         onConfirm={() => {
           if (clearConfirmId) clearFromShelf(clearConfirmId);
+        }}
+      />
+      <ConfirmDialog
+        open={revertConfirmId !== null}
+        title="Cofnąć przyjęcie towaru?"
+        message="Pozycja wróci do kolejki przyjęć jako oczekująca. Ilość dostarczona, data przyjęcia, regał i potwierdzenie handlowca zostaną wyczyszczone. Powiadomienie e-mail zostanie anulowane."
+        confirmLabel="Cofnij przyjęcie"
+        danger
+        pending={revertPending}
+        onCancel={() => setRevertConfirmId(null)}
+        onConfirm={() => {
+          if (revertConfirmId) revertToPending(revertConfirmId);
         }}
       />
     </section>

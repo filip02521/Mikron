@@ -80,10 +80,29 @@ export function ModalShell({
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  // Refs dla wartości używanych w keydown, żeby effect nie re-runował się
+  // (i nie kradł focusu z pola edytowanego przez użytkownika) przy każdym
+  // re-renderze parenta (np. live panel przez useSyncExternalStore).
+  const onCloseRef = useRef(onClose);
+  const disableBackdropCloseRef = useRef(disableBackdropClose);
+  const didFocusRef = useRef(false);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    disableBackdropCloseRef.current = disableBackdropClose;
+  });
 
   const focusFirst = useCallback(() => {
     const panel = panelRef.current;
     if (!panel) return;
+    // Preferuj pierwszą kontrolkę formularza (input/textarea/select) zamiast
+    // przycisku w nagłówku (np. HelpHintBubble), którego onFocus pokazuje dymek.
+    const formControl = panel.querySelector<HTMLElement>(
+      "input:not([disabled]), textarea:not([disabled]), select:not([disabled])"
+    );
+    if (formControl) {
+      formControl.focus();
+      return;
+    }
     const focusable = panel.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
     if (focusable) {
       focusable.focus();
@@ -93,13 +112,20 @@ export function ModalShell({
   }, []);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      didFocusRef.current = false;
+      return;
+    }
     previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
-    // Skup pierwszy focusable w modalu (rAF czeka na mount dzieci).
-    const raf = requestAnimationFrame(focusFirst);
+    // Skup pierwszy focusable w modalu tylko raz przy otwarciu (rAF czeka na mount dzieci).
+    let raf = 0;
+    if (!didFocusRef.current) {
+      didFocusRef.current = true;
+      raf = requestAnimationFrame(focusFirst);
+    }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !disableBackdropClose) {
-        onClose();
+      if (e.key === "Escape" && !disableBackdropCloseRef.current) {
+        onCloseRef.current();
         return;
       }
       // Focus trap — Tab/Shift+Tab zostaje w modalu.
@@ -131,7 +157,7 @@ export function ModalShell({
     };
     window.addEventListener("keydown", onKey);
     return () => {
-      cancelAnimationFrame(raf);
+      if (raf) cancelAnimationFrame(raf);
       window.removeEventListener("keydown", onKey);
       // Przywróć fokus do elementu, który otworzył modal.
       const prev = previouslyFocusedRef.current;
@@ -139,8 +165,9 @@ export function ModalShell({
         prev.focus();
       }
       previouslyFocusedRef.current = null;
+      didFocusRef.current = false;
     };
-  }, [open, onClose, disableBackdropClose, focusFirst]);
+  }, [open, focusFirst]);
 
   if (!open) return null;
 

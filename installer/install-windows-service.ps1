@@ -381,6 +381,9 @@ if ($envText -notmatch '(?m)^DATABASE_URL=') {
   Write-Err "Brak DATABASE_URL w .env — lokalny PostgreSQL jest wymagany"
   exit 1
 }
+if ($envText -notmatch '(?m)^DATABASE_MIGRATE_URL=') {
+  Write-Warn "Brak DATABASE_MIGRATE_URL w .env — panel migracji w /admin uzyje DATABASE_URL (ontime_app). Dodaj DATABASE_MIGRATE_URL=postgresql://ontime_migrator:<haslo>@127.0.0.1:5432/ontime aby migracje mialy uprawnienia DDL."
+}
 if ($envText -notmatch '(?m)^SESSION_SECRET=.+') {
   Write-Warn "Brak SESSION_SECRET — sesje nie beda dzialac"
 }
