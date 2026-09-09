@@ -237,6 +237,42 @@ const NoteCard = memo(function NoteCard({
     }
   }
 
+  async function toggleTodo(lineIndex: number, checked: boolean) {
+    // Parsuje body, zamienia stan checkboxa w danej linii, zapisuje
+    const lines = body.replace(/\r\n/g, "\n").split("\n");
+    let todoCount = 0;
+    let updated = false;
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i]!.match(/^(\s*)([-*])\s+\[([ xX])\]\s+(.+)$/);
+      if (m) {
+        if (todoCount === lineIndex) {
+          lines[i] = `${m[1]!}${m[2]!} [${checked ? "x" : " "}] ${m[4]!}`;
+          updated = true;
+          break;
+        }
+        todoCount++;
+      }
+    }
+    if (!updated) return;
+    const nextBody = lines.join("\n");
+    setBody(nextBody);
+    setContentDirty(true);
+    try {
+      const nextTitle = normalizeNoteTitle(title);
+      if (!nextTitle) return;
+      const { note: saved } = await actionUpdateOperationsNote(note.id, {
+        body: normalizeNoteBody(nextBody),
+        title: nextTitle,
+        color,
+        expectedUpdatedAt: note.updated_at,
+      });
+      onUpdated?.(saved);
+    } catch (e) {
+      setError(userFacingErrorText(e, "Nie udało się zapisać zmiany checkboxa."));
+      setBody(body);
+    }
+  }
+
   async function archive() {
     setError(null);
     try {
@@ -314,7 +350,7 @@ const NoteCard = memo(function NoteCard({
           ) : null}
           <div className={cn("mt-1 pr-1")}>
             {readOnly ? (
-              <NoteBodyDisplay body={note.body} />
+              <NoteBodyDisplay body={note.body} onTodoToggle={(lineIndex, checked) => void toggleTodo(lineIndex, checked)} />
             ) : (
               <RichNoteEditor
                 value={body}

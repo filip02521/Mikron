@@ -198,9 +198,24 @@ export function RichNoteEditor({
   }, [onActiveChange, refreshActiveFormats]);
 
   const exec = useCallback(
-    (command: "bold" | "italic" | "insertUnorderedList" | "insertOrderedList" | "insertTodoList") => {
+    (command: "bold" | "italic" | "insertUnorderedList" | "insertOrderedList" | "insertTodoList" | "selectAllBold") => {
       const el = ref.current;
       if (!el || !editable) return;
+      if (command === "selectAllBold") {
+        el.focus();
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        if (sel) {
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+        document.execCommand("bold", false);
+        sel?.removeAllRanges();
+        emitChange();
+        refreshActiveFormats();
+        return;
+      }
       if (command !== "insertTodoList") {
         el.focus();
         document.execCommand(command, false);
@@ -313,18 +328,6 @@ export function RichNoteEditor({
           onKeyDown={handleKeyDown}
           onMouseUp={() => {
             refreshActiveFormats();
-            const sel = window.getSelection();
-            if (!sel || !sel.rangeCount) return;
-            const range = sel.getRangeAt(0);
-            let node: Node | null = range.startContainer;
-            if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
-            const li = (node as Element | null)?.closest("ul.todo-list > li");
-            if (!li) return;
-            const checkbox = li.querySelector(".todo-checkbox");
-            if (!checkbox) return;
-            if (range.startContainer === li || (range.startContainer.nodeType === Node.TEXT_NODE && range.startContainer.parentElement === li && range.startOffset === 0)) {
-              placeCursorAfterCheckbox(li as HTMLLIElement, sel);
-            }
           }}
           onClick={(e) => {
             const target = e.target as Element;
@@ -361,7 +364,7 @@ export function RichNoteEditor({
   );
 }
 
-type ExecFn = (command: "bold" | "italic" | "insertUnorderedList" | "insertOrderedList" | "insertTodoList") => void;
+type ExecFn = (command: "bold" | "italic" | "insertUnorderedList" | "insertOrderedList" | "insertTodoList" | "selectAllBold") => void;
 
 const ToolbarContext = createContext<ExecFn | null>(null);
 
@@ -424,6 +427,7 @@ function RichNoteEditorToolbar({ editable, activeFormats }: { editable: boolean;
       )}
     >
       <ToolbarButton label="B" title="Pogrubienie (Ctrl+B)" disabled={!editable} active={activeFormats.bold} onClick={() => exec("bold")} />
+      <ToolbarButton label="B∗" title="Pogrub wszystko" disabled={!editable} onClick={() => exec("selectAllBold")} />
       <ToolbarButton label="I" title="Kursywa (Ctrl+I)" disabled={!editable} active={activeFormats.italic} onClick={() => exec("italic")} />
       <span className="mx-0.5 h-3 w-px bg-slate-200" aria-hidden />
       <ToolbarButton label="•" title="Lista punktowana" disabled={!editable} active={activeFormats.ul} onClick={() => exec("insertUnorderedList")} />
