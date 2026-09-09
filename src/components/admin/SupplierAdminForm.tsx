@@ -19,6 +19,7 @@ import {
   activeWarehouseCarrierOptions,
 } from "@/lib/warehouse/delivery-carriers";
 import { TeethSupplierScheduleFields } from "@/components/teeth/TeethSupplierScheduleFields";
+import { SupplierCustomsDocuments } from "@/components/admin/SupplierCustomsDocuments";
 
 export type SupplierAdminFormState = {
   id?: string;
@@ -49,6 +50,7 @@ export function SupplierAdminForm({
   showTeethSchedule = false,
   teethLane = false,
   onTeethScheduleToast,
+  onToast,
 }: {
   form: SupplierAdminFormState;
   disabled?: boolean;
@@ -63,6 +65,8 @@ export function SupplierAdminForm({
   /** Tryb toru zębów — pola karty tylko do odczytu, edytowalny tylko cykl zębów */
   teethLane?: boolean;
   onTeethScheduleToast?: (notice: ToastNotice) => void;
+  /** Toast dla sekcji dokumentów odpraw (karty dostawców IMPORT). */
+  onToast?: (notice: ToastNotice) => void;
 }) {
   const carriers = activeWarehouseCarrierOptions(
     carrierOptions.length
@@ -95,7 +99,14 @@ export function SupplierAdminForm({
           onChange={(e) => onChange({ ...form, name: e.target.value })}
         />
       </Field>
-      <Field label="Lokalizacja">
+      <Field
+        label="Lokalizacja"
+        hint={
+          form.id && form.location !== "IMPORT"
+            ? "Dokumenty odprawy celnej są widoczne tylko dla dostawców typu Import. Zmiana lokalizacji nie usuwa wgranych dokumentów — wrócą po ponownym ustawieniu Import."
+            : undefined
+        }
+      >
         <Select
           disabled={fieldDisabled}
           value={form.location}
@@ -337,6 +348,14 @@ export function SupplierAdminForm({
           Zlecamy odbiór palety
         </label>
       </SupplierFormSection>
+
+      {form.location === "IMPORT" && form.id && !teethLane ? (
+        <SupplierCustomsDocuments
+          supplierId={form.id}
+          disabled={disabled ?? false}
+          onToast={(notice) => onToast?.(notice)}
+        />
+      ) : null}
 
       {showTeethSchedule && form.id && onTeethScheduleToast ? (
         <TeethSupplierScheduleFields
