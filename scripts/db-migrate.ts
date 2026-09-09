@@ -78,12 +78,17 @@ function overlayFiles(): string[] {
 }
 
 async function ensureJournal(client: pg.Client) {
-  await client.query(`
-    CREATE TABLE IF NOT EXISTS schema_migrations (
-      filename TEXT PRIMARY KEY,
-      applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    )
-  `);
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS schema_migrations (
+        filename TEXT PRIMARY KEY,
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      )
+    `);
+  } catch {
+    // Tabela już istnieje (z dumpa) lub rola nie ma DDL — ignorujemy.
+    // SELECT z schema_migrations i tak zadziała jeśli tabela istnieje.
+  }
 }
 
 /**
