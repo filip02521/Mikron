@@ -103,6 +103,10 @@ import {
   MAX_SUPPLIER_NAME_LEN,
   MAX_SUPPLIER_NOTES_LEN,
 } from "@/lib/security/text-limits";
+import {
+  normalizeMinOrderCurrency,
+  normalizeMinOrderValue,
+} from "@/lib/suppliers/min-order-currency";
 import { dateToIso, parseDateOnly, snapToBusinessDay } from "@/lib/orders/dates";
 import {
   validateVacationFormInput,
@@ -1410,6 +1414,10 @@ export async function actionUpsertSupplier(form: {
   is_active: boolean;
   default_delivery_carrier?: string | null;
   default_delivery_shipment_form?: string | null;
+  /** Minimalna wartość zamówienia (kwota). null = brak minimum. */
+  min_order_value?: number | null;
+  /** Symbol waluty dla min_order_value (np. PLN, EUR). */
+  min_order_currency?: string | null;
 }) {
   await requireSupplierManagement("mutate");
   const supplierId = form.id?.trim() || undefined;
@@ -1460,6 +1468,16 @@ export async function actionUpsertSupplier(form: {
     payload.default_delivery_shipment_form = form.default_delivery_shipment_form?.trim()
       ? parseWarehouseShipmentForm(form.default_delivery_shipment_form)
       : null;
+  }
+
+  // Minimalna wartość zamówienia — zapis tylko gdy pole jest przekazane (partial save).
+  if (form.min_order_value !== undefined) {
+    const value = normalizeMinOrderValue(form.min_order_value);
+    payload.min_order_value = value;
+    payload.min_order_currency = normalizeMinOrderCurrency(
+      form.min_order_currency,
+      value
+    );
   }
 
   if (supplierId) {

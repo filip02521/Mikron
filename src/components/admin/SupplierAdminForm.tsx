@@ -20,6 +20,7 @@ import {
 } from "@/lib/warehouse/delivery-carriers";
 import { TeethSupplierScheduleFields } from "@/components/teeth/TeethSupplierScheduleFields";
 import { SupplierCustomsDocuments } from "@/components/admin/SupplierCustomsDocuments";
+import { MIN_ORDER_CURRENCY_OPTIONS } from "@/lib/suppliers/min-order-currency";
 
 export type SupplierAdminFormState = {
   id?: string;
@@ -38,6 +39,10 @@ export type SupplierAdminFormState = {
   subiekt_kh_id: number | null;
   default_delivery_carrier: string;
   default_delivery_shipment_form: string;
+  /** Minimalna wartość zamówienia (kwota). null = brak minimum. */
+  min_order_value: number | null;
+  /** Symbol waluty dla min_order_value (np. PLN, EUR). Puste = brak. */
+  min_order_currency: string;
 };
 
 export function SupplierAdminForm({
@@ -161,6 +166,53 @@ export function SupplierAdminForm({
             value={form.extra_info}
             onChange={(e) => onPatchCycleFields({ extra_info: e.target.value })}
           />
+        </Field>
+        <Field
+          label="Minimalna wartość zamówienia"
+          className="sm:col-span-2"
+          hint="Opcjonalnie — kwota, poniżej której dostawca nie realizuje zamówienia. Puste = brak minimum."
+        >
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="0.01"
+              disabled={fieldDisabled}
+              placeholder="np. 500.00"
+              value={form.min_order_value ?? ""}
+              onChange={(e) => {
+                const raw = e.target.value;
+                const parsed = raw === "" ? null : Number(raw);
+                onChange({
+                  ...form,
+                  min_order_value:
+                    parsed != null && Number.isFinite(parsed) && parsed > 0
+                      ? parsed
+                      : null,
+                  min_order_currency:
+                    parsed != null && parsed > 0 && !form.min_order_currency
+                      ? "PLN"
+                      : form.min_order_currency,
+                });
+              }}
+            />
+            <Select
+              disabled={fieldDisabled || form.min_order_value == null}
+              value={form.min_order_currency}
+              onChange={(e) =>
+                onChange({ ...form, min_order_currency: e.target.value })
+              }
+              className="w-40 shrink-0"
+            >
+              <option value="">—</option>
+              {MIN_ORDER_CURRENCY_OPTIONS.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </Select>
+          </div>
         </Field>
       </SupplierFormSection>
 
