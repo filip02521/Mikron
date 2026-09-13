@@ -30,6 +30,9 @@ export function folderForDbPrefix(dbPath: string): string {
   if (trimmed.startsWith("teeth-orders/")) {
     return path.join(storageRoot(), "teeth-orders", trimmed.slice("teeth-orders/".length));
   }
+  if (trimmed.startsWith("customs-documents/")) {
+    return path.join(storageRoot(), "customs-documents", trimmed.slice("customs-documents/".length));
+  }
   throw new Error(`Unknown storage prefix: ${dbPath}`);
 }
 

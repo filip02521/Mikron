@@ -24,6 +24,7 @@ import {
   canonicalizeOrderMethodNotes,
   validateSupplierContactFields,
 } from "@/lib/orders/validate-supplier-contact";
+import { MIN_ORDER_CURRENCY_OPTIONS } from "@/lib/suppliers/min-order-currency";
 
 const LOCATIONS: { value: SupplierLocation; label: string }[] = [
   { value: "POLSKA", label: "Polska" },
@@ -48,6 +49,8 @@ function formFromSupplier(s: SupplierSummaryMeta | null) {
       order_on_demand: false,
       is_active: true,
       subiekt_kh_id: null as number | null,
+      min_order_value: null as number | null,
+      min_order_currency: "",
     };
   }
   return {
@@ -70,6 +73,9 @@ function formFromSupplier(s: SupplierSummaryMeta | null) {
     }),
     is_active: s.is_active !== false,
     subiekt_kh_id: s.subiekt_kh_id ?? null,
+    min_order_value:
+      s.min_order_value != null ? Number(s.min_order_value) : null,
+    min_order_currency: s.min_order_currency ?? "",
   };
 }
 
@@ -285,6 +291,53 @@ function SupplierEditModalInner({
             value={form.mails}
             onChange={(e) => setForm({ ...form, mails: e.target.value })}
           />
+        </Field>
+        <Field
+          label="Minimalna wartość zamówienia"
+          className="sm:col-span-2"
+          hint="Opcjonalnie — kwota, poniżej której dostawca nie realizuje zamówienia. Puste = brak minimum."
+        >
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="0.01"
+              disabled={pending}
+              placeholder="np. 500.00"
+              value={form.min_order_value ?? ""}
+              onChange={(e) => {
+                const raw = e.target.value;
+                const parsed = raw === "" ? null : Number(raw);
+                setForm((f) => ({
+                  ...f,
+                  min_order_value:
+                    parsed != null && Number.isFinite(parsed) && parsed > 0
+                      ? parsed
+                      : null,
+                  min_order_currency:
+                    parsed != null && parsed > 0 && !f.min_order_currency
+                      ? "PLN"
+                      : f.min_order_currency,
+                }));
+              }}
+            />
+            <Select
+              disabled={pending || form.min_order_value == null}
+              value={form.min_order_currency}
+              onChange={(e) =>
+                setForm({ ...form, min_order_currency: e.target.value })
+              }
+              className="w-40 shrink-0"
+            >
+              <option value="">—</option>
+              {MIN_ORDER_CURRENCY_OPTIONS.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </Select>
+          </div>
         </Field>
         <label className="flex cursor-pointer items-start gap-2 sm:col-span-2">
           <input

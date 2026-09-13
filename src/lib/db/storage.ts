@@ -9,12 +9,13 @@ const BUCKET_PREFIX: Record<string, string> = {
   "teeth-ocr-images": "teeth-ocr/",
   "teeth-order-files": "teeth-orders/",
   "department-board-images": "board/",
+  "customs-documents": "customs-documents/",
 };
 
 function toDbPath(bucket: string, objectPath: string): string {
   const prefix = BUCKET_PREFIX[bucket];
   const rel = objectPath.replace(/^\/+/, "");
-  if (prefix && (rel.startsWith("board/") || rel.startsWith("teeth-ocr/") || rel.startsWith("teeth-orders/"))) {
+  if (prefix && (rel.startsWith("board/") || rel.startsWith("teeth-ocr/") || rel.startsWith("teeth-orders/") || rel.startsWith("customs-documents/"))) {
     return rel;
   }
   if (prefix) return `${prefix}${rel}`;

@@ -82,6 +82,10 @@ export type SupplierSummaryMeta = {
   on_vacation_now?: boolean;
   stats_mode: StatsMode;
   subiekt_kh_id: number | null;
+  /** Minimalna wartość zamówienia u dostawcy. NULL = brak minimum. */
+  min_order_value?: number | null;
+  /** Symbol waluty dla min_order_value (np. PLN, EUR). */
+  min_order_currency?: string | null;
 };
 
 export type ForSomeoneLine = {
@@ -223,6 +227,9 @@ function toMeta(s: SupplierWithSchedule): SupplierSummaryMeta {
     vacation_note: sch?.vacation_note ?? null,
     stats_mode: (s.stats_mode ?? "LACZNIE") as StatsMode,
     subiekt_kh_id: s.subiekt_kh_id ?? null,
+    min_order_value:
+      s.min_order_value != null ? Number(s.min_order_value) : null,
+    min_order_currency: s.min_order_currency ?? null,
   };
 }
 
@@ -257,6 +264,9 @@ function ensureSupplierMetaFromOrders(
       vacation_note: null,
       stats_mode: (s.stats_mode ?? "LACZNIE") as StatsMode,
       subiekt_kh_id: s.subiekt_kh_id ?? null,
+      min_order_value:
+        s.min_order_value != null ? Number(s.min_order_value) : null,
+      min_order_currency: s.min_order_currency ?? null,
     };
   }
 }

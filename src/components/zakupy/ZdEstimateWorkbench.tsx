@@ -114,6 +114,11 @@ import {
   writeZdEstimateExternalSessionToken,
   consumeExpiredOrInvalidZdEstimateExternalSessionToken,
 } from "@/lib/orders/zd-estimate-external-session";
+import {
+  readZdEstimatePrepFormSession,
+  writeZdEstimatePrepFormSession,
+  type ZdEstimatePrepFormSession,
+} from "@/lib/orders/zd-estimate-prep-form-session";
 import { decideZdEstimateAutorunVsExternalSession } from "@/lib/orders/zd-estimate-external-session-autorun";
 import {
   zdEstimateStickyToastClass,
@@ -826,11 +831,24 @@ export function ZdEstimateWorkbench({
     }) => void
   >(() => {});
 
+  /**
+   * Ephemeral prep-form state (sessionStorage) — odtwarza wybór zakresu
+   * i parametry Policz po nawigacji do /podsumowanie i z powrotem,
+   * gdy nie ma aktywnej sesji zewnętrznej (post-Policz).
+   * Sesja zewnętrzna (DB) nadpisuje te wartości po restore.
+   */
+  const [prepFormSession] = useState<ZdEstimatePrepFormSession | null>(() =>
+    readZdEstimatePrepFormSession()
+  );
   const [scopeMode, setScopeMode] = useState<ZdEstimateRunMode>(
-    () => launch?.mode ?? "grupa"
+    () => launch?.mode ?? prepFormSession?.scopeMode ?? "grupa"
   );
   const [groupQuery, setGroupQuery] = useState(() =>
-    launch?.mode === "grupa" ? launch.label?.trim() ?? "" : ""
+    launch?.mode === "grupa"
+      ? launch.label?.trim() ?? ""
+      : prepFormSession?.scopeMode === "grupa"
+        ? prepFormSession.groupQuery
+        : ""
   );
   const [groupHits, setGroupHits] = useState<ZdEstimateGroupOption[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<ZdEstimateGroupOption | null>(
@@ -841,10 +859,14 @@ export function ZdEstimateWorkbench({
             bootstrap.suppliers,
             bootstrap.supplierScopes ?? []
           )
-        : null
+        : prepFormSession?.selectedGroup ?? null
   );
   const [cechaQuery, setCechaQuery] = useState(() =>
-    launch?.mode === "cecha" ? launch.label?.trim() ?? "" : ""
+    launch?.mode === "cecha"
+      ? launch.label?.trim() ?? ""
+      : prepFormSession?.scopeMode === "cecha"
+        ? prepFormSession.cechaQuery
+        : ""
   );
   const [cechaHits, setCechaHits] = useState<ZdEstimateCechaOption[]>([]);
   const [selectedCecha, setSelectedCecha] = useState<ZdEstimateCechaOption | null>(
@@ -855,66 +877,90 @@ export function ZdEstimateWorkbench({
             bootstrap.suppliers,
             bootstrap.supplierScopes ?? []
           )
-        : null
+        : prepFormSession?.selectedCecha ?? null
   );
   const [supplierId, setSupplierId] = useState<string | null>(() => {
-    if (!launch) return null;
-    if (launch.mode === "grupa") {
-      return (
-        enrichLaunchGroupOption(
-          launch,
-          bootstrap.suppliers,
-          bootstrap.supplierScopes ?? []
-        )?.supplierId ??
-        launch.supplierId ??
-        null
-      );
+    if (launch) {
+      if (launch.mode === "grupa") {
+        return (
+          enrichLaunchGroupOption(
+            launch,
+            bootstrap.suppliers,
+            bootstrap.supplierScopes ?? []
+          )?.supplierId ??
+          launch.supplierId ??
+          null
+        );
+      }
+      if (launch.mode === "cecha") {
+        return (
+          enrichLaunchCechaOption(
+            launch,
+            bootstrap.suppliers,
+            bootstrap.supplierScopes ?? []
+          )?.supplierId ??
+          launch.supplierId ??
+          null
+        );
+      }
+      return launch.supplierId ?? null;
     }
-    if (launch.mode === "cecha") {
-      return (
-        enrichLaunchCechaOption(
-          launch,
-          bootstrap.suppliers,
-          bootstrap.supplierScopes ?? []
-        )?.supplierId ??
-        launch.supplierId ??
-        null
-      );
-    }
-    return launch.supplierId ?? null;
+    return prepFormSession?.supplierId ?? null;
   });
   /** Komunikat: dostawca przypisany z mapowania zakresów. */
   const [supplierFromMappingNotice, setSupplierFromMappingNotice] = useState<
     string | null
   >(() => {
-    if (!launch) return null;
-    if (launch.mode === "grupa") {
-      const g = enrichLaunchGroupOption(
-        launch,
-        bootstrap.suppliers,
-        bootstrap.supplierScopes ?? []
-      );
+    if (launch) {
+      if (launch.mode === "grupa") {
+        const g = enrichLaunchGroupOption(
+          launch,
+          bootstrap.suppliers,
+          bootstrap.supplierScopes ?? []
+        );
+        return mappingNoticeForSelection({
+          matchSource: g?.supplierMatchSource,
+          supplierName: g?.supplierName,
+          scopeLabel: g?.grt_Nazwa ?? "",
+        });
+      }
+      if (launch.mode === "cecha") {
+        const c = enrichLaunchCechaOption(
+          launch,
+          bootstrap.suppliers,
+          bootstrap.supplierScopes ?? []
+        );
+        return mappingNoticeForSelection({
+          matchSource: c?.supplierMatchSource,
+          supplierName: c?.supplierName,
+          scopeLabel: c?.ctw_Nazwa ?? "",
+        });
+      }
+      return null;
+    }
+    // Brak launchu — odtwórz notice z prep-form session (jeśli zapisany).
+    if (prepFormSession?.scopeMode === "grupa" && prepFormSession.selectedGroup) {
+      const g = prepFormSession.selectedGroup;
       return mappingNoticeForSelection({
-        matchSource: g?.supplierMatchSource,
-        supplierName: g?.supplierName,
-        scopeLabel: g?.grt_Nazwa ?? "",
+        matchSource: g.supplierMatchSource ?? null,
+        supplierName: g.supplierName,
+        scopeLabel: g.grt_Nazwa ?? "",
       });
     }
-    if (launch.mode === "cecha") {
-      const c = enrichLaunchCechaOption(
-        launch,
-        bootstrap.suppliers,
-        bootstrap.supplierScopes ?? []
-      );
+    if (prepFormSession?.scopeMode === "cecha" && prepFormSession.selectedCecha) {
+      const c = prepFormSession.selectedCecha;
       return mappingNoticeForSelection({
-        matchSource: c?.supplierMatchSource,
-        supplierName: c?.supplierName,
-        scopeLabel: c?.ctw_Nazwa ?? "",
+        matchSource: c.supplierMatchSource ?? null,
+        supplierName: c.supplierName,
+        scopeLabel: c.ctw_Nazwa ?? "",
       });
     }
     return null;
   });
   const [dniZapasu, setDniZapasu] = useState(() => {
+    if (!launch && prepFormSession?.dniZapasu) {
+      return prepFormSession.dniZapasu;
+    }
     const fromSupplier = bootstrap.suppliers.find(
       (s) => s.id === launch?.supplierId
     )?.dniZapasu;
@@ -935,6 +981,9 @@ export function ZdEstimateWorkbench({
     );
   });
   const [dataOd, setDataOd] = useState(() => {
+    if (!launch && prepFormSession?.dataOd) {
+      return prepFormSession.dataOd;
+    }
     const fromSupplier = bootstrap.suppliers.find(
       (s) => s.id === launch?.supplierId
     )?.dniZapasu;
@@ -953,15 +1002,35 @@ export function ZdEstimateWorkbench({
     });
     return salesWindowFromDniZapasu(n, bootstrap.salesEndKey).dataOd;
   });
-  const [dataDo, setDataDo] = useState(bootstrap.defaultWindow.dataDo);
+  const [dataDo, setDataDo] = useState(
+    () =>
+      !launch && prepFormSession?.dataDo
+        ? prepFormSession.dataDo
+        : bootstrap.defaultWindow.dataDo
+  );
   /**
    * manual = użytkownik ustawił Data od/do — nie nadpisuj z zapasu dostawcy/grupy.
    * Zmiana „Dni zapasu” wraca do stock (świadome przeliczenie okna).
    */
   const [salesWindowSource, setSalesWindowSource] =
-    useState<ZdEstimateSalesWindowSource>("stock");
-  const [zapasMin, setZapasMin] = useState(String(uiPrefs.zapasMin));
-  const [showAdvanced, setShowAdvanced] = useState(uiPrefs.showAdvanced);
+    useState<ZdEstimateSalesWindowSource>(
+      () =>
+        !launch && prepFormSession?.salesWindowSource
+          ? prepFormSession.salesWindowSource
+          : "stock"
+    );
+  const [zapasMin, setZapasMin] = useState(
+    () =>
+      !launch && prepFormSession?.zapasMin != null
+        ? prepFormSession.zapasMin
+        : String(uiPrefs.zapasMin)
+  );
+  const [showAdvanced, setShowAdvanced] = useState(
+    () =>
+      !launch && prepFormSession?.showAdvanced != null
+        ? prepFormSession.showAdvanced
+        : uiPrefs.showAdvanced
+  );
   const [favoriteGroups, setFavoriteGroups] = useState<ZdEstimateFavoriteRef[]>(
     () => uiPrefs.favoriteGroups.map((f) => ({ ...f }))
   );
@@ -994,7 +1063,10 @@ export function ZdEstimateWorkbench({
   /** Fetch historii przy Policz rzucił — cięcia mogły nie wejść. */
   const [historyFetchFailed, setHistoryFetchFailed] = useState(false);
   const [extrasPolicy, setExtrasPolicy] = useState<ZdEstimateExtrasPolicy>(
-    bootstrap.extrasPolicy ?? "sum"
+    () =>
+      !launch && prepFormSession?.extrasPolicy
+        ? prepFormSession.extrasPolicy
+        : bootstrap.extrasPolicy ?? "sum"
   );
   const [todayCoverage, setTodayCoverage] = useState<ZdEstimateScopeCoverage>(
     bootstrap.todayScopeCoverage ??
@@ -1006,7 +1078,10 @@ export function ZdEstimateWorkbench({
   const [snapshotsPanelOpen, setSnapshotsPanelOpen] = useState(false);
   /** Zapisany w app_settings (radio). */
   const [boostPreset, setBoostPreset] = useState<ZdBoostPowerPreset>(
-    ZD_BOOST_POWER_DEFAULT
+    () =>
+      !launch && prepFormSession?.boostPreset
+        ? prepFormSession.boostPreset
+        : ZD_BOOST_POWER_DEFAULT
   );
   /** Preset użyty przy ostatnim Policz / live remat (do dirty A→B→A). */
   const [appliedBoostPreset, setAppliedBoostPreset] =
@@ -1745,6 +1820,111 @@ export function ZdEstimateWorkbench({
       flushZdEstimateUiPrefsSave();
     };
   }, [flushZdEstimateUiPrefsSave]);
+
+  // ---------------------------------------------------------------------------
+  // Prep-form session (sessionStorage) — debounced write + flush na unmount.
+  // Odtwarza wybór zakresu i parametry Policz po nawigacji do /podsumowanie
+  // i z powrotem, gdy nie ma aktywnej sesji zewnętrznej (post-Policz).
+  // ---------------------------------------------------------------------------
+  const prepFormSessionTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (prepFormSessionTimerRef.current != null) {
+      window.clearTimeout(prepFormSessionTimerRef.current);
+    }
+    prepFormSessionTimerRef.current = window.setTimeout(() => {
+      prepFormSessionTimerRef.current = null;
+      writeZdEstimatePrepFormSession({
+        scopeMode,
+        selectedGroup,
+        selectedCecha,
+        groupQuery,
+        cechaQuery,
+        supplierId,
+        dniZapasu,
+        dataOd,
+        dataDo,
+        zapasMin,
+        showAdvanced,
+        salesWindowSource,
+        boostPreset,
+        extrasPolicy,
+      });
+    }, 400);
+    return () => {
+      if (prepFormSessionTimerRef.current != null) {
+        window.clearTimeout(prepFormSessionTimerRef.current);
+        prepFormSessionTimerRef.current = null;
+      }
+    };
+  }, [
+    scopeMode,
+    selectedGroup,
+    selectedCecha,
+    groupQuery,
+    cechaQuery,
+    supplierId,
+    dniZapasu,
+    dataOd,
+    dataDo,
+    zapasMin,
+    showAdvanced,
+    salesWindowSource,
+    boostPreset,
+    extrasPolicy,
+  ]);
+
+  // Flush na unmount / page hide — nie zgub ostatnich zmian.
+  useEffect(() => {
+    const flushPrepFormSession = () => {
+      if (prepFormSessionTimerRef.current != null) {
+        window.clearTimeout(prepFormSessionTimerRef.current);
+        prepFormSessionTimerRef.current = null;
+      }
+      writeZdEstimatePrepFormSession({
+        scopeMode,
+        selectedGroup,
+        selectedCecha,
+        groupQuery,
+        cechaQuery,
+        supplierId,
+        dniZapasu,
+        dataOd,
+        dataDo,
+        zapasMin,
+        showAdvanced,
+        salesWindowSource,
+        boostPreset,
+        extrasPolicy,
+      });
+    };
+    const onHide = () => flushPrepFormSession();
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flushPrepFormSession();
+    };
+    window.addEventListener("pagehide", onHide);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onVisibility);
+      flushPrepFormSession();
+    };
+  }, [
+    scopeMode,
+    selectedGroup,
+    selectedCecha,
+    groupQuery,
+    cechaQuery,
+    supplierId,
+    dniZapasu,
+    dataOd,
+    dataDo,
+    zapasMin,
+    showAdvanced,
+    salesWindowSource,
+    boostPreset,
+    extrasPolicy,
+  ]);
 
   const selectedSupplier = useMemo(
     () => bootstrap.suppliers.find((s) => s.id === supplierId) ?? null,

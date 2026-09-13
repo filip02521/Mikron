@@ -31,7 +31,21 @@ export async function GET(request: NextRequest) {
           ? "image/webp"
           : ext === "pdf"
             ? "application/pdf"
-            : "image/jpeg";
+            : ext === "jpg" || ext === "jpeg"
+              ? "image/jpeg"
+              : ext === "docx"
+                ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                : ext === "xlsx"
+                  ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  : ext === "xls"
+                    ? "application/vnd.ms-excel"
+                    : ext === "doc"
+                      ? "application/msword"
+                      : ext === "txt"
+                        ? "text/plain"
+                        : ext === "csv"
+                          ? "text/csv"
+                          : "application/octet-stream";
     return new NextResponse(new Uint8Array(bytes), {
       headers: {
         "Content-Type": type,

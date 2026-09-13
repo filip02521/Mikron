@@ -5,6 +5,10 @@ import {
 } from "@/lib/orders/supplier-on-demand";
 import { canonicalizeOrderMethodNotes } from "@/lib/orders/validate-supplier-contact";
 import { isSupplierActive } from "./active";
+import {
+  normalizeMinOrderCurrency,
+  normalizeMinOrderValue,
+} from "./min-order-currency";
 
 export function emptySupplierAdminForm(): SupplierAdminFormState {
   return {
@@ -23,6 +27,8 @@ export function emptySupplierAdminForm(): SupplierAdminFormState {
     subiekt_kh_id: null,
     default_delivery_carrier: "",
     default_delivery_shipment_form: "",
+    min_order_value: null,
+    min_order_currency: "",
   };
 }
 
@@ -44,6 +50,9 @@ export function supplierToAdminForm(s: SupplierWithSchedule): SupplierAdminFormS
     subiekt_kh_id: s.subiekt_kh_id ?? null,
     default_delivery_carrier: s.default_delivery_carrier ?? "",
     default_delivery_shipment_form: s.default_delivery_shipment_form ?? "",
+    min_order_value:
+      s.min_order_value != null ? Number(s.min_order_value) : null,
+    min_order_currency: s.min_order_currency ?? "",
   };
 }
 
@@ -52,6 +61,7 @@ export function applyAdminFormToSupplierRow(
   existing: SupplierWithSchedule,
   form: SupplierAdminFormState
 ): SupplierWithSchedule {
+  const minOrderValue = normalizeMinOrderValue(form.min_order_value);
   return {
     ...existing,
     name: form.name.trim(),
@@ -69,5 +79,10 @@ export function applyAdminFormToSupplierRow(
     subiekt_kh_id: form.subiekt_kh_id,
     default_delivery_carrier: form.default_delivery_carrier.trim() || null,
     default_delivery_shipment_form: form.default_delivery_shipment_form.trim() || null,
+    min_order_value: minOrderValue,
+    min_order_currency: normalizeMinOrderCurrency(
+      form.min_order_currency,
+      minOrderValue
+    ),
   };
 }

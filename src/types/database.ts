@@ -45,6 +45,10 @@ export interface Supplier {
   /** Domyślny kurier w dzienniku dostaw magazynu. */
   default_delivery_carrier?: string | null;
   default_delivery_shipment_form?: string | null;
+  /** Minimalna wartość zamówienia u dostawcy (kwota). NULL = brak minimum. */
+  min_order_value?: number | null;
+  /** Symbol waluty dla min_order_value (np. PLN, EUR, USD). NULL gdy brak minimum. */
+  min_order_currency?: string | null;
 }
 
 export interface SupplierSchedule {

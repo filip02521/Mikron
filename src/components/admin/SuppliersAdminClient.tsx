@@ -458,6 +458,7 @@ export function SuppliersAdminClient({
             showTeethSchedule={teethLane}
             teethLane={teethLane}
             onTeethScheduleToast={setToast}
+            onToast={setToast}
             onSubiektLinked={(khId) => {
               setForm((f) => ({ ...f, subiekt_kh_id: khId }));
               if (form.id) {
