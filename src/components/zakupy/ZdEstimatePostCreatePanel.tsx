@@ -38,6 +38,12 @@ import {
 import { buildSupplierContactUi } from "@/lib/orders/supplier-contact";
 import { supplierCardsHref, supplierHubContextForRole } from "@/lib/supplier-hub";
 import { copyTextToClipboard } from "@/lib/ui/copy-text-to-clipboard";
+import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
+import {
+  IconAlertCircle,
+  IconCircleCheck,
+  IconMail,
+} from "@/components/icons/StrokeIcons";
 import {
   buttonPrimaryClass,
   controlFocusClass,
@@ -83,6 +89,7 @@ export function ZdEstimatePostCreatePanel({
   const [extraInfo, setExtraInfo] = useState("");
   const [tsvCopied, setTsvCopied] = useState(false);
   const [tsvError, setTsvError] = useState(false);
+  const [dokCopied, setDokCopied] = useState(false);
   const [mailOpen, setMailOpen] = useState(false);
   const [mailSubject, setMailSubject] = useState("");
   const [mailBody, setMailBody] = useState("");
@@ -124,7 +131,12 @@ export function ZdEstimatePostCreatePanel({
       const res = await actionGetSupplierContact(session.supplierId);
       if (cancelled) return;
       if (!res.ok) {
-        setContactError(res.message);
+        setContactError(
+          userFacingErrorTextFromMessage(
+            res.message,
+            "Nie udało się wczytać kontaktu dostawcy."
+          )
+        );
         setNotes("");
         setMails("");
         setExtraInfo("");
@@ -158,7 +170,12 @@ export function ZdEstimatePostCreatePanel({
       if (cancelled) return;
       if (!res.ok) {
         setScheduleCanMark(false);
-        setScheduleHint(res.message);
+        setScheduleHint(
+          userFacingErrorTextFromMessage(
+            res.message,
+            "Nie udało się sprawdzić planu tygodnia dostawcy."
+          )
+        );
         return;
       }
       setScheduleCanMark(res.canMark);
@@ -215,14 +232,6 @@ export function ZdEstimatePostCreatePanel({
       ? ZD_ESTIMATE_UI.postCreateStatusSchedulePending
       : scheduleHint || ZD_ESTIMATE_UI.postCreateStatusScheduleNone;
 
-  const headerDescription = [
-    dokLabel,
-    session.supplierName,
-    `${session.lineCount} poz.`,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
   const copyTsv = async () => {
     if (!session.linesSnapshot.length) return;
     const ok = await copyTextToClipboard(
@@ -237,6 +246,18 @@ export function ZdEstimatePostCreatePanel({
     setTsvError(false);
     setTsvCopied(true);
     window.setTimeout(() => setTsvCopied(false), 2000);
+  };
+
+  const copyDokNr = async () => {
+    const nr = session.dokNrPelny?.trim();
+    if (!nr) return;
+    const ok = await copyTextToClipboard(nr);
+    if (!ok) {
+      onCopyError?.("Nie udało się skopiować numeru ZD.");
+      return;
+    }
+    setDokCopied(true);
+    window.setTimeout(() => setDokCopied(false), 2000);
   };
 
   const openDzis = () => {
@@ -271,7 +292,9 @@ export function ZdEstimatePostCreatePanel({
         orderIds: glowneIds,
       });
       if (!res.ok) {
-        setGlowneError(res.message);
+        setGlowneError(
+          userFacingErrorTextFromMessage(res.message, "Nie udało się oznaczyć Główne.")
+        );
         return;
       }
       onGlowneMarked?.({
@@ -309,7 +332,9 @@ export function ZdEstimatePostCreatePanel({
         supplierId: session.supplierId,
       });
       if (!res.ok) {
-        setScheduleError(res.message);
+        setScheduleError(
+          userFacingErrorTextFromMessage(res.message, "Nie udało się zapisać planu.")
+        );
         return;
       }
       onScheduleMarked?.();
@@ -397,7 +422,6 @@ export function ZdEstimatePostCreatePanel({
         open
         onClose={onDismiss}
         title={title}
-        description={headerDescription}
         titleHint={ZD_ESTIMATE_UI.postCreateModalHint}
         titleHintAriaLabel="O panelu po utworzeniu ZD"
         titleId="zd-post-create-title"
@@ -405,107 +429,34 @@ export function ZdEstimatePostCreatePanel({
         tier="raised"
         bodyClassName="space-y-4 px-5 py-4 sm:px-6 sm:py-5"
         footer={
-          <div className="flex w-full flex-col gap-3">
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-              {session.fromDaily ? (
-                <Button
-                  type="button"
-                  variant="primary"
-                  className="min-h-11 w-full sm:w-auto"
-                  onClick={openDzis}
-                >
-                  {ZD_ESTIMATE_UI.postCreateDzisCta}
-                </Button>
-              ) : null}
-
-              {mailtoSeed ? (
-                <>
-                  <a
-                    href={mailtoSeed.href}
-                    className={cn(
-                      session.fromDaily
-                        ? "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md border border-[var(--card-border)] bg-[var(--card)] px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 sm:w-auto"
-                        : cn(
-                            buttonPrimaryClass,
-                            "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium sm:w-auto"
-                          )
-                    )}
-                  >
-                    {ZD_ESTIMATE_UI.postCreateMailCta}
-                  </a>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="min-h-11 w-full sm:w-auto"
-                    onClick={openMailComposer}
-                  >
-                    {ZD_ESTIMATE_UI.postCreateMailComposeCta}
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  type="button"
-                  variant={session.fromDaily ? "secondary" : "primary"}
-                  className="min-h-11 w-full sm:w-auto"
-                  disabled
-                  title={ZD_ESTIMATE_UI.postCreateMailDisabled}
-                >
-                  {ZD_ESTIMATE_UI.postCreateMailCta}
-                </Button>
-              )}
-
-              {!session.fromDaily ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="min-h-11 w-full sm:w-auto"
-                  onClick={openDzis}
-                >
-                  {ZD_ESTIMATE_UI.postCreateDzisCta}
-                </Button>
-              ) : null}
-
-              {needLink ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-h-11 w-full border-amber-300 bg-amber-50 text-amber-950 hover:bg-amber-100 sm:w-auto"
-                  onClick={onOpenLink}
-                >
-                  {session.kind === "timeout_recovery"
-                    ? ZD_ESTIMATE_UI.postCreateLinkTimeoutCta
-                    : ZD_ESTIMATE_UI.postCreateLinkHistoryCta}
-                </Button>
-              ) : null}
-            </div>
-
-            <div className="flex flex-col gap-2 border-t border-slate-100 pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                {createLocked && onUnlockCreate ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="min-h-11 w-full sm:w-auto"
-                    onClick={onUnlockCreate}
-                  >
-                    {ZD_ESTIMATE_UI.postCreateUnlockCta}
-                  </Button>
-                ) : null}
+          <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              {createLocked && onUnlockCreate ? (
                 <Button
                   type="button"
                   variant="ghost"
                   className="min-h-11 w-full sm:w-auto"
-                  disabled={!session.linesSnapshot.length}
-                  onClick={() => void copyTsv()}
-                  aria-live="polite"
+                  onClick={onUnlockCreate}
                 >
-                  {tsvError
-                    ? "Nie skopiowano"
-                    : tsvCopied
-                      ? "Skopiowano"
-                      : ZD_ESTIMATE_UI.postCreateCopyTsvCta}
+                  {ZD_ESTIMATE_UI.postCreateUnlockCta}
                 </Button>
-              </div>
+              ) : null}
+              <Button
+                type="button"
+                variant="ghost"
+                className="min-h-11 w-full sm:w-auto"
+                disabled={!session.linesSnapshot.length}
+                onClick={() => void copyTsv()}
+                aria-live="polite"
+              >
+                {tsvError
+                  ? "Nie skopiowano"
+                  : tsvCopied
+                    ? "Skopiowano"
+                    : ZD_ESTIMATE_UI.postCreateCopyTsvCta}
+              </Button>
+            </div>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
               <Button
                 type="button"
                 variant="ghost"
@@ -515,70 +466,174 @@ export function ZdEstimatePostCreatePanel({
               >
                 {ZD_ESTIMATE_UI.postCreateDismissCta}
               </Button>
+              {needLink && session.kind !== "timeout_recovery" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-11 w-full border-amber-300 bg-amber-50 text-amber-950 hover:bg-amber-100 sm:w-auto"
+                  onClick={onOpenLink}
+                >
+                  {ZD_ESTIMATE_UI.postCreateLinkHistoryCta}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant={session.kind === "timeout_recovery" ? "secondary" : "primary"}
+                className="min-h-11 w-full sm:w-auto"
+                onClick={openDzis}
+              >
+                {ZD_ESTIMATE_UI.postCreateDzisCta}
+              </Button>
+              {session.kind === "timeout_recovery" ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  className="min-h-11 w-full sm:w-auto"
+                  onClick={onOpenLink}
+                >
+                  {ZD_ESTIMATE_UI.postCreateLinkTimeoutCta}
+                </Button>
+              ) : null}
             </div>
           </div>
         }
       >
-        {(candidatesHint || createLocked) && (
-          <div className="space-y-2">
-            {candidatesHint ? (
-              <p className="rounded-md border border-amber-200/90 bg-amber-50/90 px-3 py-2 text-sm text-amber-950">
-                {candidatesHint}
+        {session.kind === "timeout_recovery" ? (
+          <section
+            className="flex items-start gap-3 rounded-xl bg-amber-50 px-4 py-3.5 ring-1 ring-amber-200"
+            aria-labelledby="zd-post-create-hero"
+          >
+            <IconAlertCircle
+              size={28}
+              className="mt-0.5 shrink-0 text-amber-600"
+              aria-hidden
+            />
+            <div className="min-w-0 space-y-1">
+              <p
+                id="zd-post-create-hero"
+                className="text-base font-semibold text-amber-950"
+              >
+                Nie wiadomo, czy ZD powstało w Subiekcie
               </p>
-            ) : null}
-            {createLocked ? (
-              <p className="rounded-md border border-amber-200/90 bg-amber-50/90 px-3 py-2 text-sm text-amber-950">
-                {session.kind === "timeout_recovery"
-                  ? ZD_ESTIMATE_UI.postCreateTimeoutLockBody
-                  : "Tworzenie ZD zablokowane dla tej listy — odblokuj świadomie, powiąż ZD albo przelicz listę."}
+              <p className="text-sm leading-relaxed text-amber-950/90">
+                {ZD_ESTIMATE_UI.postCreateTimeoutLockBody}
               </p>
+              {candidatesHint ? (
+                <p className="text-sm font-medium text-amber-950">
+                  {candidatesHint}
+                </p>
+              ) : null}
+            </div>
+          </section>
+        ) : (
+          <section
+            className="flex flex-col gap-3 rounded-xl bg-emerald-50/80 px-4 py-3.5 ring-1 ring-emerald-200 sm:flex-row sm:items-center sm:justify-between"
+            aria-labelledby="zd-post-create-hero"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <IconCircleCheck
+                size={32}
+                className="shrink-0 text-emerald-600"
+                aria-hidden
+              />
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+                  {session.kind === "linked"
+                    ? "Powiązano z dokumentem"
+                    : "Utworzono w Subiekcie"}
+                </p>
+                <p
+                  id="zd-post-create-hero"
+                  className="truncate text-2xl font-semibold tabular-nums tracking-tight text-slate-900"
+                >
+                  {dokLabel}
+                </p>
+                <p className="truncate text-sm text-slate-600">
+                  {session.supplierName} · {session.lineCount} poz.
+                </p>
+              </div>
+            </div>
+            {session.dokNrPelny?.trim() ? (
+              <Button
+                type="button"
+                variant="secondary"
+                className="min-h-10 w-full shrink-0 sm:w-auto"
+                onClick={() => void copyDokNr()}
+                aria-live="polite"
+              >
+                {dokCopied ? "Skopiowano numer" : "Kopiuj numer ZD"}
+              </Button>
             ) : null}
-          </div>
+          </section>
         )}
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {createLocked && session.kind !== "timeout_recovery" ? (
+          <p className="rounded-md bg-amber-50/90 px-3 py-2 text-sm text-amber-950 ring-1 ring-amber-200/90">
+            Tworzenie ZD zablokowane dla tej listy — odblokuj świadomie, powiąż ZD
+            albo przelicz listę.
+          </p>
+        ) : null}
+        {candidatesHint && session.kind !== "timeout_recovery" ? (
+          <p className="rounded-md bg-amber-50/90 px-3 py-2 text-sm text-amber-950 ring-1 ring-amber-200/90">
+            {candidatesHint}
+          </p>
+        ) : null}
+
+        <ul className="flex flex-wrap gap-2" aria-label="Status">
           {statusItems.map((item) => (
-            <div
+            <li
               key={item.key}
-              className="flex items-start gap-2.5 rounded-md border border-slate-200/80 bg-slate-50/70 px-3 py-2.5"
+              className={cn(
+                "inline-flex max-w-full items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ring-1",
+                item.unsure
+                  ? "bg-amber-50 text-amber-950 ring-amber-200"
+                  : item.ok
+                    ? "bg-emerald-50 text-emerald-900 ring-emerald-200"
+                    : item.soft
+                      ? "bg-slate-50 text-slate-700 ring-slate-200"
+                      : "bg-amber-50 text-amber-950 ring-amber-200"
+              )}
             >
               <StatusDot
                 ok={item.ok}
                 unsure={item.unsure}
                 soft={item.soft}
+                className="mt-0"
               />
-              <span className="min-w-0 text-sm leading-snug text-slate-800">
+              <span className="min-w-0 truncate" title={item.label}>
                 {item.label}
               </span>
-            </div>
+            </li>
           ))}
-        </div>
+        </ul>
 
-        {session.bumped.length > 0 ? (
-          <p className="rounded-md border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs leading-relaxed text-amber-950">
-            Serwer podbił ilość na {session.bumped.length}{" "}
-            {session.bumped.length === 1 ? "pozycji" : "pozycjach"} do pokrycia
-            próśb
-            {session.bumped.slice(0, 6).map((b) => (
-              <span key={b.twId} className="ml-1 tabular-nums">
-                ({b.from}→{b.to})
-              </span>
-            ))}
-            .
-          </p>
-        ) : null}
-
-        {session.markFreeze.teethServiceCount > 0 ? (
-          <p className="text-xs leading-relaxed text-slate-600">
-            {ZD_ESTIMATE_UI.createTeethNote}
-          </p>
-        ) : null}
-
-        {session.markFreeze.omittedServiceCount > 0 ? (
-          <p className="rounded-md border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs text-amber-950">
-            {session.markFreeze.omittedServiceCount} usług nie zmieściło się w
-            uwagach — nie wejdą na listę Główne.
-          </p>
+        {session.bumped.length > 0 ||
+        session.markFreeze.omittedServiceCount > 0 ||
+        session.markFreeze.teethServiceCount > 0 ? (
+          <ul className="space-y-1 text-xs leading-relaxed">
+            {session.bumped.length > 0 ? (
+              <li className="text-amber-950">
+                Serwer podbił ilość na {session.bumped.length}{" "}
+                {session.bumped.length === 1 ? "pozycji" : "pozycjach"} do
+                pokrycia próśb
+                {session.bumped.slice(0, 6).map((b) => (
+                  <span key={b.twId} className="ml-1 tabular-nums">
+                    ({b.from}→{b.to})
+                  </span>
+                ))}
+                .
+              </li>
+            ) : null}
+            {session.markFreeze.omittedServiceCount > 0 ? (
+              <li className="text-amber-950">
+                {session.markFreeze.omittedServiceCount} usług nie zmieściło się w
+                uwagach — nie wejdą na listę Główne.
+              </li>
+            ) : null}
+            {session.markFreeze.teethServiceCount > 0 ? (
+              <li className="text-slate-600">{ZD_ESTIMATE_UI.createTeethNote}</li>
+            ) : null}
+          </ul>
         ) : null}
 
         <div
@@ -587,146 +642,179 @@ export function ZdEstimatePostCreatePanel({
             hasRequestsPreview ? "lg:grid-cols-5" : null
           )}
         >
-          <div
+          <section
             className={cn(
-              "space-y-4",
+              "border border-slate-200/80 bg-white p-3.5 sm:p-4",
+              zdEstimateRadiusSurfaceClass,
+              zdEstimateShadowControlClass,
               hasRequestsPreview ? "lg:col-span-3" : null
             )}
+            aria-labelledby="zd-post-create-next"
           >
-            <section
-              className={cn(
-                "border border-slate-200/80 bg-white p-3.5 sm:p-4",
-                zdEstimateRadiusSurfaceClass,
-                zdEstimateShadowControlClass
-              )}
+            <p
+              id="zd-post-create-next"
+              className={cn(panelTypography.sectionLabel, "text-slate-600")}
             >
-              <p className={cn(panelTypography.sectionLabel, "text-slate-600")}>
-                {ZD_ESTIMATE_UI.postCreateMarksTitle}
+              Co dalej
+            </p>
+            {!canAct ? (
+              <p className="mt-2 text-sm leading-relaxed text-amber-900">
+                {ZD_ESTIMATE_UI.postCreateMarksTimeoutHint}
               </p>
-              {!canAct ? (
-                <p className="mt-2 text-sm leading-relaxed text-amber-900">
-                  {ZD_ESTIMATE_UI.postCreateMarksTimeoutHint}
-                </p>
-              ) : (
-                <div className="mt-3 space-y-3">
-                  <div className="space-y-1.5 text-xs leading-relaxed text-slate-600">
-                    <p>{ZD_ESTIMATE_UI.postCreateMarkGlowneHint}</p>
-                    <p>{ZD_ESTIMATE_UI.postCreateMarkScheduleHint}</p>
-                    <p className="text-amber-900">
-                      {ZD_ESTIMATE_UI.postCreateMarkDzisWarning}
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                    {glowneIds.length > 0 || session.glowneDone ? (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="min-h-11 w-full sm:w-auto"
-                      disabled={
-                        session.glowneDone ||
-                        !glowneIds.length ||
-                        glownePending
-                      }
-                      onClick={markGlowne}
-                      aria-busy={glownePending}
-                    >
-                      {glownePending ? (
-                        <span className="inline-flex items-center gap-2">
-                          <Spinner className="size-4" /> Odznaczam…
-                        </span>
-                      ) : session.glowneDone ? (
-                        glowneDoneViaSkip
-                          ? ZD_ESTIMATE_UI.postCreateStatusGlowneClearedSkipped
-                          : ZD_ESTIMATE_UI.postCreateStatusGlowneDone
-                      ) : (
-                        `${ZD_ESTIMATE_UI.postCreateMarkGlowneCta}${
-                          glowneIds.length ? ` (${glowneIds.length})` : ""
-                        }`
-                      )}
-                    </Button>
-                    ) : null}
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="min-h-11 w-full sm:w-auto"
-                      disabled={
-                        session.scheduleDone ||
-                        !scheduleCanMark ||
-                        schedulePending
-                      }
-                      onClick={markSchedule}
-                      title={scheduleHint ?? undefined}
-                      aria-busy={schedulePending}
-                    >
-                      {schedulePending ? (
-                        <span className="inline-flex items-center gap-2">
-                          <Spinner className="size-4" /> Zapisuję plan…
-                        </span>
-                      ) : session.scheduleDone ? (
-                        ZD_ESTIMATE_UI.postCreateStatusScheduleDone
-                      ) : (
-                        ZD_ESTIMATE_UI.postCreateMarkScheduleCta
-                      )}
-                    </Button>
-                  </div>
+            ) : null}
+            <ol className="mt-3 space-y-3">
+              {canAct && (glowneIds.length > 0 || session.glowneDone) ? (
+                <NextStep
+                  n={1}
+                  done={session.glowneDone}
+                  doneLabel={
+                    glowneDoneViaSkip
+                      ? glowneInfo || ZD_ESTIMATE_UI.postCreateStatusGlowneClearedSkipped
+                      : ZD_ESTIMATE_UI.postCreateStatusGlowneDone
+                  }
+                  title="Prośby jako Główne"
+                  hint={ZD_ESTIMATE_UI.postCreateMarkGlowneHint}
+                >
+                  <Button
+                    type="button"
+                    variant={session.glowneDone ? "ghost" : "secondary"}
+                    className="min-h-10 w-full sm:w-auto"
+                    disabled={session.glowneDone || !glowneIds.length || glownePending}
+                    onClick={markGlowne}
+                    aria-busy={glownePending}
+                  >
+                    {glownePending ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Spinner className="size-4" /> Odznaczam…
+                      </span>
+                    ) : session.glowneDone ? (
+                      glowneDoneViaSkip
+                        ? ZD_ESTIMATE_UI.postCreateStatusGlowneClearedSkipped
+                        : ZD_ESTIMATE_UI.postCreateStatusGlowneDone
+                    ) : (
+                      `${ZD_ESTIMATE_UI.postCreateMarkGlowneCta}${
+                        glowneIds.length ? ` (${glowneIds.length})` : ""
+                      }`
+                    )}
+                  </Button>
                   {glowneInfo ? (
-                    <p className="rounded-md border border-slate-200/80 bg-slate-50/80 px-2.5 py-2 text-sm text-slate-800">
-                      {glowneInfo}
-                    </p>
+                    <p className="text-sm text-slate-700">{glowneInfo}</p>
                   ) : null}
                   {glowneError ? (
-                    <p className="text-sm text-rose-800">{glowneError}</p>
-                  ) : null}
-                  {scheduleError ? (
-                    <p className="text-sm text-rose-800">{scheduleError}</p>
-                  ) : null}
-                  {!scheduleCanMark &&
-                  scheduleHint &&
-                  !session.scheduleDone ? (
-                    <p className="text-xs text-slate-600">{scheduleHint}</p>
-                  ) : null}
-                </div>
-              )}
-            </section>
-
-            <section
-              className={cn(
-                "border border-slate-200/80 bg-white p-3.5 sm:p-4",
-                zdEstimateRadiusSurfaceClass,
-                zdEstimateShadowControlClass
-              )}
-            >
-              <p className={cn(panelTypography.sectionLabel, "text-slate-600")}>
-                {ZD_ESTIMATE_UI.postCreateContactTitle}
-              </p>
-              {contactLoading ? (
-                <p className="mt-2 inline-flex items-center gap-2 text-sm text-slate-600">
-                  <Spinner className="size-4" /> Wczytuję…
-                </p>
-              ) : contactError ? (
-                <p className="mt-2 text-sm text-amber-900">{contactError}</p>
-              ) : (
-                <div className="mt-2 space-y-2">
-                  <SupplierContactActions
-                    notes={notes}
-                    mails={mails}
-                    extraInfo={extraInfo}
-                  />
-                  {!contactUi.contactLink && !contactUi.copyText ? (
-                    <p className="text-sm text-slate-600">
-                      {ZD_ESTIMATE_UI.postCreateNoContact}{" "}
-                      <Link
-                        href={cardsHref}
-                        className="font-medium text-indigo-700 underline-offset-2 hover:underline"
-                      >
-                        {ZD_ESTIMATE_UI.postCreateCardsLink}
-                      </Link>
+                    <p className="text-sm text-rose-800" role="alert">
+                      {glowneError}
                     </p>
                   ) : null}
-                </div>
-              )}
-            </section>
-          </div>
+                </NextStep>
+              ) : null}
+
+              {canAct ? (
+                <NextStep
+                  n={glowneIds.length > 0 || session.glowneDone ? 2 : 1}
+                  done={session.scheduleDone}
+                  doneLabel={ZD_ESTIMATE_UI.postCreateStatusScheduleDone}
+                  title="Plan tygodnia"
+                  hint={ZD_ESTIMATE_UI.postCreateMarkScheduleHint}
+                  warning={
+                    session.scheduleDone || scheduleCanMark
+                      ? ZD_ESTIMATE_UI.postCreateMarkDzisWarning
+                      : null
+                  }
+                >
+                  <Button
+                    type="button"
+                    variant={session.scheduleDone ? "ghost" : "secondary"}
+                    className="min-h-10 w-full sm:w-auto"
+                    disabled={
+                      session.scheduleDone || !scheduleCanMark || schedulePending
+                    }
+                    onClick={markSchedule}
+                    title={scheduleHint ?? undefined}
+                    aria-busy={schedulePending}
+                  >
+                    {schedulePending ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Spinner className="size-4" /> Zapisuję plan…
+                      </span>
+                    ) : session.scheduleDone ? (
+                      ZD_ESTIMATE_UI.postCreateStatusScheduleDone
+                    ) : (
+                      ZD_ESTIMATE_UI.postCreateMarkScheduleCta
+                    )}
+                  </Button>
+                  {scheduleError ? (
+                    <p className="text-sm text-rose-800" role="alert">
+                      {scheduleError}
+                    </p>
+                  ) : null}
+                  {!scheduleCanMark && scheduleHint && !session.scheduleDone ? (
+                    <p className="text-xs text-slate-600">{scheduleHint}</p>
+                  ) : null}
+                </NextStep>
+              ) : null}
+
+              <NextStep
+                n={
+                  !canAct
+                    ? 1
+                    : glowneIds.length > 0 || session.glowneDone
+                      ? 3
+                      : 2
+                }
+                done={false}
+                title="Wyślij zamówienie do dostawcy"
+              >
+                {contactLoading ? (
+                  <p className="inline-flex items-center gap-2 text-sm text-slate-600">
+                    <Spinner className="size-4" /> Wczytuję kontakt…
+                  </p>
+                ) : contactError ? (
+                  <p className="text-sm text-amber-900">{contactError}</p>
+                ) : (
+                  <div className="space-y-2">
+                    {mailtoSeed ? (
+                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                        <a
+                          href={mailtoSeed.href}
+                          className={cn(
+                            buttonPrimaryClass,
+                            "inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium sm:w-auto"
+                          )}
+                        >
+                          <IconMail size={16} aria-hidden />
+                          {ZD_ESTIMATE_UI.postCreateMailCta}
+                        </a>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="min-h-10 w-full sm:w-auto"
+                          onClick={openMailComposer}
+                        >
+                          {ZD_ESTIMATE_UI.postCreateMailComposeCta}
+                        </Button>
+                      </div>
+                    ) : null}
+                    <SupplierContactActions
+                      notes={notes}
+                      mails={mails}
+                      extraInfo={extraInfo}
+                    />
+                    {!contactUi.contactLink && !contactUi.copyText ? (
+                      <p className="text-sm text-slate-600">
+                        {ZD_ESTIMATE_UI.postCreateNoContact}{" "}
+                        <Link
+                          href={cardsHref}
+                          className="font-medium text-indigo-700 underline-offset-2 hover:underline"
+                        >
+                          {ZD_ESTIMATE_UI.postCreateCardsLink}
+                        </Link>
+                      </p>
+                    ) : null}
+                  </div>
+                )}
+              </NextStep>
+            </ol>
+          </section>
 
           {hasRequestsPreview && (
             <div className="space-y-4 lg:col-span-2">
@@ -877,15 +965,18 @@ function StatusDot({
   ok,
   unsure,
   soft,
+  className,
 }: {
   ok: boolean;
   unsure?: boolean;
   soft?: boolean;
+  className?: string;
 }) {
   return (
     <span
       className={cn(
         "mt-1.5 size-2.5 shrink-0 rounded-full ring-2 ring-white",
+        className,
         unsure
           ? "bg-amber-500"
           : ok
@@ -896,5 +987,70 @@ function StatusDot({
       )}
       aria-hidden
     />
+  );
+}
+
+function NextStep({
+  n,
+  done,
+  doneLabel,
+  title,
+  hint,
+  warning,
+  children,
+}: {
+  n: number;
+  done: boolean;
+  /** Po wykonaniu: krótka linia zamiast opisu i przycisku. */
+  doneLabel?: string | null;
+  title: string;
+  hint?: string | null;
+  warning?: string | null;
+  children: React.ReactNode;
+}) {
+  if (done && doneLabel) {
+    return (
+      <li className="flex gap-3">
+        <span
+          className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-semibold text-emerald-800"
+          aria-hidden
+        >
+          ✓
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-slate-900">{title}</p>
+          <p className="mt-0.5 text-sm text-emerald-800">{doneLabel}</p>
+        </div>
+      </li>
+    );
+  }
+  return (
+    <li className="flex gap-3">
+      <span
+        className={cn(
+          "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
+          done
+            ? "bg-emerald-100 text-emerald-800"
+            : "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
+        )}
+        aria-hidden
+      >
+        {done ? "✓" : n}
+      </span>
+      <div className="min-w-0 flex-1 space-y-2">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">{title}</p>
+          {hint ? (
+            <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{hint}</p>
+          ) : null}
+          {warning ? (
+            <p className="mt-0.5 text-xs leading-relaxed text-amber-900">
+              {warning}
+            </p>
+          ) : null}
+        </div>
+        {children}
+      </div>
+    </li>
   );
 }

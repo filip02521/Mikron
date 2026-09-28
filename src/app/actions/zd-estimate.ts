@@ -197,7 +197,10 @@ import {
   SubiektRequestError,
   SubiektTimeoutError,
 } from "@/lib/subiekt/errors";
-import { formatZdCreateSferaUserMessage } from "@/lib/subiekt/sfera-create-error";
+import {
+  formatZdCreateSferaUserMessage,
+  humanizeSferaCreateError,
+} from "@/lib/subiekt/sfera-create-error";
 import { zdListItemMatchesSupplierKhIds } from "@/lib/subiekt/zd-document-kh";
 import { isFulfilledZdDocumentStatus } from "@/lib/subiekt/zd-fulfillment-date";
 import {
@@ -3575,6 +3578,20 @@ function mapZdCreateSubiektError(e: unknown): {
         code: "validation",
         title: "Błąd walidacji",
         message: apiError || errorBlob || e.message,
+      };
+    }
+
+    // Timeout po stronie ORDERS (504 / SQL „limit czasu”) — ZD mógł powstać,
+    // więc code "timeout" (UI szuka świeżego ZD zamiast zachęcać do ponowienia).
+    if (
+      e.status === 504 ||
+      humanizeSferaCreateError(errorBlob)?.kind === "timeout"
+    ) {
+      return {
+        code: "timeout",
+        title: "Timeout Sfery",
+        message:
+          "Timeout przy tworzeniu ZD (Sfera). Sprawdź w Subiekcie, czy dokument powstał — nie twórz ponownie w ciemno.",
       };
     }
 

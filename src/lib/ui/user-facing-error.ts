@@ -51,6 +51,8 @@ const NEXT_DIGEST_ERROR_PATTERNS = [
   /an error occurred in the server components render/i,
   /specific message is omitted in production builds/i,
   /a digest property is included on this error/i,
+  // Produkcyjny build Reacta: „Minified React error #441; visit https://react.dev/…”
+  /minified react error/i,
 ];
 
 /** Znane komunikaty auth → krótki, ludzki opis. */
@@ -175,6 +177,14 @@ export function looksLikeTechnicalErrorDump(cleaned: string): boolean {
     return true;
   }
   if (NEXT_DIGEST_ERROR_PATTERNS.some((pattern) => pattern.test(cleaned))) {
+    return true;
+  }
+  // Surowe komunikaty PostgreSQL (angielskie, techniczne) — nie dla użytkownika.
+  if (
+    /invalid input syntax for type|violates (?:foreign key|not-null|check|unique) constraint|duplicate key value violates|(?:relation|column) "[^"]+"(?: of relation "[^"]+")? does not exist|syntax error at or near|permission denied for (?:table|schema|relation)/i.test(
+      cleaned
+    )
+  ) {
     return true;
   }
   // Minifikowany / hex dump

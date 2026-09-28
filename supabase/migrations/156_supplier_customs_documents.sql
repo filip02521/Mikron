@@ -35,8 +35,21 @@ ALTER TABLE public.supplier_customs_documents DISABLE ROW LEVEL SECURITY;
 -- Mutacje i odczyt idą przez service role w server actions.
 
 -- Storage bucket dla dokumentów odpraw (PDF, obrazy, dokumenty).
+-- Tylko zgodność wstecz: aplikacja trzyma pliki lokalnie (src/lib/storage/local),
+-- storage.buckets nie jest nigdzie czytane. Na produkcji rola ontime_migrator
+-- nie ma dostępu do schematu storage („odmowa dostępu do schematu storage”)
+-- — wtedy pomijamy wpis zamiast wywracać całą migrację.
 DO $$
 BEGIN
+  IF to_regnamespace('storage') IS NULL
+    OR to_regclass('storage.buckets') IS NULL
+    OR NOT has_schema_privilege('storage', 'USAGE')
+    OR NOT has_table_privilege('storage.buckets', 'SELECT, INSERT')
+  THEN
+    RAISE NOTICE 'storage.buckets niedostępne — pomijam bucket customs-documents (pliki są lokalne).';
+    RETURN;
+  END IF;
+
   IF NOT EXISTS (
     SELECT 1 FROM storage.buckets WHERE id = 'customs-documents'
   ) THEN
@@ -60,5 +73,8 @@ BEGIN
       ]
     );
   END IF;
+EXCEPTION
+  WHEN insufficient_privilege OR undefined_table OR invalid_schema_name THEN
+    RAISE NOTICE 'storage.buckets niedostępne (%) — pomijam bucket customs-documents.', SQLERRM;
 END
 $$;
