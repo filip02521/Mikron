@@ -50,21 +50,22 @@ export function TeethPanelSection({
 
 export function TeethPanelTabPanel({
   id,
-  labelledBy,
   children,
   className,
+  bare = false,
 }: {
   id: string;
-  labelledBy: string;
+  /** @deprecated Zakładki zastąpił pasek etapów — zostaje dla zgodności. */
+  labelledBy?: string;
   children: ReactNode;
   className?: string;
+  /** Bez wewnętrznych marginesów karty (widok układa własne karty). */
+  bare?: boolean;
 }) {
   return (
     <div
       id={id}
-      role="tabpanel"
-      aria-labelledby={labelledBy}
-      className={cn(panelSectionInsetClass, "space-y-3 pb-4 pt-3", className)}
+      className={cn(bare ? "space-y-4" : cn(panelSectionInsetClass, "space-y-3 pb-4 pt-3"), className)}
     >
       {children}
     </div>

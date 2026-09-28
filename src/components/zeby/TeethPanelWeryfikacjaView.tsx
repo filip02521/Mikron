@@ -1,16 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { cn } from "@/lib/cn";
-import { panelSubsectionInsetClass, panelTypography } from "@/lib/ui/ontime-theme";
-import { teethPanelSupplierCardClass } from "@/lib/teeth/teeth-panel-ui";
-import { plPozycja } from "@/lib/ui/polish-plurals";
+import { plProsba } from "@/lib/ui/polish-plurals";
+import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { TeethPanelEmpty } from "@/components/zeby/TeethPanelSection";
 import { TeethVerificationInlineList } from "@/components/zeby/TeethVerificationInlineList";
-import { TeethPanelSupplierGroupHeader } from "@/components/zeby/TeethPanelSupplierGroupHeader";
 import { TeethOcrImage } from "@/components/zeby/TeethOcrImage";
 import { IconScanLine, IconCircleCheck, IconAlertCircle } from "@/components/icons/StrokeIcons";
 import Link from "next/link";
@@ -52,12 +49,15 @@ export function TeethPanelWeryfikacjaView({
     try {
       const result = await actionApproveTeethOcr(orderIds);
       onApproveDone(
-        `Zatwierdzono ${result.updated} ${plPozycja(result.updated)} — trafią do kolejki.`,
+        `Zatwierdzono ${result.updated} ${plProsba(result.updated)} — są teraz w „Do zamówienia”.`,
         "success",
       );
     } catch (e) {
       console.error("[TeethPanelWeryfikacjaView] approveTeethOcr failed:", e);
-      onApproveDone("Nie udało się zatwierdzić pozycji. Spróbuj ponownie.", "error");
+      onApproveDone(
+        userFacingErrorText(e, "Nie udało się zatwierdzić. Spróbuj ponownie."),
+        "error",
+      );
     } finally {
       setLocalPending(false);
     }
@@ -113,34 +113,38 @@ export function TeethPanelWeryfikacjaView({
   }
 
   return (
-    <div className="space-y-3">
-      {missingDataCount > 0 ? (
-        <div className="flex items-center gap-2 rounded-md border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-sm text-amber-800">
-          <IconAlertCircle size={18} className="shrink-0 text-amber-600" />
-          <span>
-            <strong>{missingDataCount}</strong>{" "}
-            {missingDataCount === 1 ? "pozycja ma niekompletne dane" : missingDataCount < 5 ? "pozycje mają niekompletne dane" : "pozycji ma niekompletne dane"}
-            {" — uzupełnij przed zatwierdzeniem"}
-          </span>
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-slate-900">
+            {allOrderIds.length} {plProsba(allOrderIds.length)} czeka na sprawdzenie
+          </p>
+          <p className="text-xs text-slate-500">
+            Porównaj listę ze zdjęciem, popraw pomyłki odczytu i zatwierdź — prośba trafi do
+            zamówienia.
+          </p>
         </div>
-      ) : null}
-      <div className="flex items-center justify-between gap-2 px-1">
-        <p className={panelTypography.chrome}>
-          {allOrderIds.length} {plPozycja(allOrderIds.length)} oczekuje na weryfikację
-        </p>
         <Button
           type="button"
           variant="primary"
-          size="sm"
+          className="min-h-10 shrink-0"
           disabled={pending || localPending}
           aria-busy={localPending}
-          aria-label={`Zatwierdź wszystkie — ${allOrderIds.length} ${plPozycja(allOrderIds.length)}`}
-          onClick={() => requestApprove(allOrderIds, "wszystkie pozycje")}
+          onClick={() => requestApprove(allOrderIds, "wszystkie prośby")}
         >
           {localPending ? <Spinner size="sm" /> : <IconCircleCheck size={16} />}
           Zatwierdź wszystkie
         </Button>
       </div>
+      {missingDataCount > 0 ? (
+        <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
+          <IconAlertCircle size={18} className="shrink-0 text-amber-600" />
+          <span>
+            <strong>{missingDataCount}</strong> {plProsba(missingDataCount)} bez koloru lub typu przy
+            którymś zębie — uzupełnij przed zatwierdzeniem.
+          </span>
+        </div>
+      ) : null}
 
       {groups.map((group) => {
         const realItems = group.items.filter(
@@ -157,30 +161,34 @@ export function TeethPanelWeryfikacjaView({
         const productLineLabels = distinctTeethProductLineLabelsForOrders(realItems, readinessCtx);
 
         return (
-          <div
+          <section
             key={group.supplierId ?? "__no_supplier"}
-            className={cn(teethPanelSupplierCardClass, panelSubsectionInsetClass, "overflow-visible")}
+            aria-label={`Dostawca ${group.supplierName}`}
+            className="rounded-xl border border-slate-200 bg-white shadow-sm"
           >
-            <TeethPanelSupplierGroupHeader
-              group={group}
-              orderCount={orderIds.length}
-              productLineLabels={productLineLabels}
-              actions={
-                orderIds.length > 0 ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    disabled={pending || localPending}
-                    onClick={() => requestApprove(orderIds, group.supplierName ?? "tej grupy")}
-                  >
-                    <IconCircleCheck size={16} />
-                    Zatwierdź ({orderIds.length})
-                  </Button>
-                ) : null
-              }
-            />
-            <div className="flex flex-col gap-3 lg:flex-row">
+            <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 sm:px-5">
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold text-slate-900">{group.supplierName}</h2>
+                <p className="text-xs text-slate-500">
+                  {orderIds.length} {plProsba(orderIds.length)}
+                  {productLineLabels.length > 0 ? ` · ${productLineLabels.join(" · ")}` : ""}
+                </p>
+              </div>
+              {orderIds.length > 1 ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="min-h-9"
+                  disabled={pending || localPending}
+                  onClick={() => requestApprove(orderIds, group.supplierName ?? "tej grupy")}
+                >
+                  <IconCircleCheck size={16} />
+                  Zatwierdź u tego dostawcy ({orderIds.length})
+                </Button>
+              ) : null}
+            </header>
+            <div className="flex flex-col gap-3 px-4 py-3 sm:px-5 lg:flex-row">
               <div className="min-w-0 flex-1">
                 <TeethVerificationInlineList
                   items={realItems}
@@ -226,7 +234,7 @@ export function TeethPanelWeryfikacjaView({
                 </div>
               ) : null}
             </div>
-          </div>
+          </section>
         );
       })}
 
@@ -256,7 +264,7 @@ export function TeethPanelWeryfikacjaView({
               disabled={localPending}
             >
               <IconCircleCheck size={18} />
-              Zatwierdź {approveTarget?.orderIds.length ?? 0} {plPozycja(approveTarget?.orderIds.length ?? 0)}
+              Zatwierdź {approveTarget?.orderIds.length ?? 0} {plProsba(approveTarget?.orderIds.length ?? 0)}
             </Button>
           </div>
         }
@@ -267,10 +275,10 @@ export function TeethPanelWeryfikacjaView({
           </div>
           <div className="space-y-1">
             <p className="text-sm font-medium text-slate-900">
-              Zatwierdzić {approveTarget?.orderIds.length ?? 0} {plPozycja(approveTarget?.orderIds.length ?? 0)} — {approveTarget?.label}?
+              Zatwierdzić {approveTarget?.orderIds.length ?? 0} {plProsba(approveTarget?.orderIds.length ?? 0)} — {approveTarget?.label}?
             </p>
             <p className="text-xs text-slate-500">
-              Pozycje trafią do kolejki zamówień i nie będzie można ich już edytować w weryfikacji.
+              Prośby przejdą do „Do zamówienia”. Późniejsze poprawki zrobisz tam przyciskiem „Edytuj”.
             </p>
           </div>
         </div>

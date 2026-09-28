@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -10,10 +10,9 @@ import { ModalShell } from "@/components/ui/ModalShell";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { TEETH_PANEL_TOAST, teethMarkOrderedToast, toastFromError, toastSuccess, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 import { Input } from "@/components/ui/Field";
-import { IconTooth, IconArchive, IconPlusCircle } from "@/components/icons/StrokeIcons";
+import { IconTooth, IconArchive, IconPlusCircle, IconScanLine } from "@/components/icons/StrokeIcons";
 import type { TeethQueueGroup, TeethQueueItem, TeethPositionSelection } from "@/lib/data/teeth-queue-shared";
 import { isScheduledItem } from "@/lib/data/teeth-queue-shared";
-import { TeethPanelTabs } from "@/components/zeby/TeethPanelTabs";
 import {
   TEETH_TAB_HINTS,
   TEETH_TAB_PAGE_TITLES,
@@ -21,7 +20,7 @@ import {
 } from "@/components/zeby/teeth-panel-copy";
 import { TeethPanelEmpty, TeethPanelTabPanel } from "@/components/zeby/TeethPanelSection";
 import { TeethPanelWorkspaceCard } from "@/components/zeby/TeethPanelWorkspaceCard";
-import { TeethPanelFiltersBar } from "@/components/zeby/TeethPanelFiltersBar";
+import { TeethPanelFiltersBar, teethToolbarSelectClass } from "@/components/zeby/TeethPanelFiltersBar";
 import { TeethPanelKolejkaView } from "@/components/zeby/TeethPanelKolejkaView";
 import { sortTeethQueueGroups, TEETH_SORT_LABELS, type TeethSortKey } from "@/lib/teeth/teeth-sort";
 import { TeethPanelWeryfikacjaView } from "@/components/zeby/TeethPanelWeryfikacjaView";
@@ -56,12 +55,6 @@ import {
   type TeethMarkOrderedAnalysis,
 } from "@/lib/teeth/teeth-mark-ordered";
 import { teethPanelReadinessContextFromMaps } from "@/lib/teeth/teeth-panel-order-readiness";
-
-const TEETH_TAB_PATHS: Record<Tab, string> = {
-  kolejka: "/zeby/kolejka",
-  weryfikacja: "/zeby/weryfikacja",
-  historia: "/zeby/historia",
-};
 
 export function TeethPanelClient({
   initialGroups,
@@ -206,18 +199,15 @@ export function TeethPanelClient({
     return next;
   }, [positionSelectionRaw, visibleOrderIds, ordersById]);
 
-  const totalItems = useMemo(
-    () => groups.reduce((sum, g) => sum + g.items.length, 0),
-    [groups]
-  );
-
-  const togglePosition = useCallback((orderId: string, position: number) => {
+  const setPositions = useCallback((orderId: string, positions: number[], select: boolean) => {
+    if (positions.length === 0) return;
     setPositionSelection((prev) => {
       const next = new Map(prev);
-      const positions = next.get(orderId) ?? new Set<number>();
-      const updated = new Set(positions);
-      if (updated.has(position)) updated.delete(position);
-      else updated.add(position);
+      const updated = new Set(next.get(orderId) ?? []);
+      for (const p of positions) {
+        if (select) updated.add(p);
+        else updated.delete(p);
+      }
       if (updated.size > 0) next.set(orderId, updated);
       else next.delete(orderId);
       return next;
@@ -369,13 +359,6 @@ export function TeethPanelClient({
     return () => document.removeEventListener("keydown", handler);
   }, [tab, positionSelection, markConfirmOpen, pending, requestMarkPositionsOrdered]);
 
-  const navigateTab = useCallback(
-    (id: Tab) => {
-      router.push(TEETH_TAB_PATHS[id], { scroll: false });
-    },
-    [router],
-  );
-
   return (
     <>
       <a
@@ -390,6 +373,8 @@ export function TeethPanelClient({
         icon={
           tab === "historia" ? (
             <IconArchive size={20} strokeWidth={1.75} />
+          ) : tab === "weryfikacja" ? (
+            <IconScanLine size={20} />
           ) : (
             <IconTooth size={20} />
           )
@@ -400,13 +385,10 @@ export function TeethPanelClient({
           : tab === "historia" ? TEETH_HISTORIA_ICON_TILE
           : TEETH_KOLEJKA_ICON_TILE
         }
+        bare
         headerAside={
-          <Button
-            size="sm"
-            className="h-9 gap-1.5 px-3 text-xs"
-            onClick={() => setQuickOrderOpen(true)}
-          >
-            <IconPlusCircle size={15} />
+          <Button className="min-h-10 gap-1.5" onClick={() => setQuickOrderOpen(true)}>
+            <IconPlusCircle size={16} />
             {TEETH_QUICK_ORDER_COPY.ctaLabel}
           </Button>
         }
@@ -416,39 +398,30 @@ export function TeethPanelClient({
           ) : null
         }
       >
-        <div id="teeth-panel-main" className="md:hidden">
-          <TeethPanelTabs
-            active={tab}
-            queueCount={totalItems}
-            verificationCount={tab === "weryfikacja" ? totalItems : undefined}
-            hint={TEETH_TAB_HINTS[tab]}
-            onChange={navigateTab}
-          />
-        </div>
 
         {tab === "kolejka" ? (
-          <TeethPanelTabPanel id="teeth-panel-view-kolejka" labelledBy="teeth-panel-tab-kolejka">
+          <TeethPanelTabPanel id="teeth-panel-view-kolejka" bare>
             <TeethPanelFiltersBar
               filters={filters}
               onChange={setFilters}
               suppliers={filterOptions.suppliers}
               salesPeople={filterOptions.salesPeople}
+              trailing={
+                <label className="flex items-center gap-2 text-sm text-slate-500">
+                  <span className="hidden sm:inline">Sortuj</span>
+                  <select
+                    aria-label="Sortowanie"
+                    value={sortKey}
+                    onChange={(e) => setSortKey(e.target.value as TeethSortKey)}
+                    className={teethToolbarSelectClass}
+                  >
+                    {Object.entries(TEETH_SORT_LABELS).map(([key, label]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                </label>
+              }
             />
-            <div className="mb-2 flex items-center gap-2">
-              <label htmlFor="teeth-sort-select" className="text-xs font-medium text-slate-500">
-                Sortuj:
-              </label>
-              <select
-                id="teeth-sort-select"
-                value={sortKey}
-                onChange={(e) => setSortKey(e.target.value as TeethSortKey)}
-                className="rounded-md border border-slate-200/80 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-sm outline-none transition-colors hover:border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400"
-              >
-                {Object.entries(TEETH_SORT_LABELS).map(([key, label]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
-            </div>
             {groups.length === 0 ? (
               <TeethPanelEmpty
                 title="Kolejka jest pusta"
@@ -477,8 +450,9 @@ export function TeethPanelClient({
                 pending={pending}
                 selectedPositionCount={selectedPositionCount}
                 selectedOrderCount={selectedOrderCount}
-                onTogglePosition={togglePosition}
+                onSetPositions={setPositions}
                 onToggleSelectAllInGroup={toggleSelectAllInGroup}
+                onClearSelection={() => setPositionSelection(new Map())}
                 onRequestMarkPositionsOrdered={requestMarkPositionsOrdered}
                 onSetDeliveryDate={() => setDeliveryDateOpen(true)}
                 onMarkScheduleOrdered={handleMarkScheduleOrdered}
@@ -493,7 +467,7 @@ export function TeethPanelClient({
             )}
           </TeethPanelTabPanel>
         ) : tab === "weryfikacja" ? (
-          <TeethPanelTabPanel id="teeth-panel-view-weryfikacja" labelledBy="teeth-panel-tab-weryfikacja">
+          <TeethPanelTabPanel id="teeth-panel-view-weryfikacja" bare>
             <TeethPanelWeryfikacjaView
               groups={filteredGroups}
               pending={pending}
@@ -514,7 +488,7 @@ export function TeethPanelClient({
             />
           </TeethPanelTabPanel>
         ) : (
-          <TeethPanelTabPanel id="teeth-panel-view-historia" labelledBy="teeth-panel-tab-historia">
+          <TeethPanelTabPanel id="teeth-panel-view-historia" bare>
             <TeethPanelFiltersBar
               filters={displayFilters}
               onChange={setFilters}

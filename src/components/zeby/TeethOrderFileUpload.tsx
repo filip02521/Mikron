@@ -175,7 +175,7 @@ export function TeethOrderFileUpload({
         title="Załącz jeden plik zamówienia (Excel, PDF lub XML) na grupę dostawcy — wymagany przed oznaczeniem"
       >
         {pending ? <Spinner size="sm" /> : <IconFilePlus size={13} strokeWidth={2} />}
-        {required ? "Wymagany plik grupy" : "Załącz plik"}
+        {required ? "Wgraj plik zamówienia" : "Załącz plik"}
       </button>
       {slotHint ? (
         <span className="text-[10px] leading-snug text-slate-500">{slotHint}</span>

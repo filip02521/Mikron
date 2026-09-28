@@ -1,23 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
-import {
-  panelChoiceChipClass,
-  panelChoiceChipIdleClass,
-  panelChoiceChipSelectedClass,
-} from "@/lib/ui/ontime-theme";
 import {
   countActiveTeethPanelFilters,
   EMPTY_TEETH_PANEL_FILTERS,
   type TeethPanelFilters,
 } from "@/lib/teeth/teeth-panel-filters";
-import { teethPanelFiltersBarClass } from "@/lib/teeth/teeth-panel-ui";
-import { receiveQueueToolbarSectionClass } from "@/lib/ui/queue-panel-styles";
-import { queueToolbarFieldLabelClass } from "@/lib/ui/queue-panel-styles";
-import { IconChevronDown } from "@/components/icons/StrokeIcons";
 
-function FilterChip({
+export const teethToolbarSelectClass =
+  "h-9 min-w-0 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800 shadow-sm outline-none transition-colors hover:border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30";
+
+function ToggleChip({
   label,
   active,
   onClick,
@@ -32,9 +26,10 @@ function FilterChip({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        panelChoiceChipClass,
-        "inline-flex shrink-0 items-center gap-1.5 px-2.5 py-1.5 text-xs",
-        active ? panelChoiceChipSelectedClass : panelChoiceChipIdleClass,
+        "inline-flex h-9 shrink-0 items-center rounded-lg border px-3 text-sm font-medium transition-colors",
+        active
+          ? "border-amber-300 bg-amber-50 text-amber-900"
+          : "border-slate-200 bg-white text-slate-600 shadow-sm hover:border-slate-300 hover:text-slate-900",
       )}
     >
       {label}
@@ -42,12 +37,14 @@ function FilterChip({
   );
 }
 
+/** Zwarty pasek filtrów — zawsze widoczny, bez rozwijania. */
 export function TeethPanelFiltersBar({
   filters,
   onChange,
   suppliers,
   salesPeople,
   showQueueFilters = true,
+  trailing,
   className,
 }: {
   filters: TeethPanelFilters;
@@ -56,173 +53,63 @@ export function TeethPanelFiltersBar({
   salesPeople: { id: string; name: string }[];
   /** Filtry specyficzne dla kolejki (specyfikacja, dane ogólne). */
   showQueueFilters?: boolean;
+  /** Dodatkowe kontrolki po prawej (np. sortowanie). */
+  trailing?: ReactNode;
   className?: string;
 }) {
-  const [open, setOpen] = useState(false);
   const activeCount = countActiveTeethPanelFilters(
     showQueueFilters ? filters : { ...filters, missingSpecOnly: false, verificationOnly: false },
   );
 
-  const activeSupplier = suppliers.find((s) => s.id === filters.supplierId);
-  const activeSalesPerson = salesPeople.find((sp) => sp.id === filters.salesPersonId);
-
-  const summaryParts: string[] = [];
-  if (activeSupplier) summaryParts.push(activeSupplier.name);
-  if (activeSalesPerson) summaryParts.push(activeSalesPerson.name);
-  if (showQueueFilters && filters.missingSpecOnly) summaryParts.push("Do uzupełnienia");
-  if (showQueueFilters && filters.verificationOnly) summaryParts.push("Brak danych ogólnych");
-
   return (
-    <div className={cn(teethPanelFiltersBarClass, className)}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 py-1 text-left"
-        aria-expanded={open}
+    <div
+      role="search"
+      aria-label="Filtry"
+      className={cn("grid grid-cols-2 items-center gap-2 sm:flex sm:flex-wrap", className)}
+    >
+      <select
+        aria-label="Dostawca"
+        value={filters.supplierId ?? ""}
+        onChange={(e) => onChange({ ...filters, supplierId: e.target.value || null })}
+        className={cn(teethToolbarSelectClass, "w-full sm:w-auto sm:max-w-[14rem]")}
       >
-        <div className="flex min-w-0 items-center gap-2">
-          <IconChevronDown
-            open={open}
-            size={14}
-            strokeWidth={2}
-            className="shrink-0 text-slate-400"
-          />
-          <span className="text-xs font-semibold text-slate-700">Filtry</span>
-          {activeCount > 0 ? (
-            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-100 px-1 text-[10px] font-bold tabular-nums text-indigo-700">
-              {activeCount}
-            </span>
-          ) : null}
-          {summaryParts.length > 0 ? (
-            <span className="hidden truncate text-[11px] text-slate-500 sm:inline">
-              {summaryParts.join(" · ")}
-            </span>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          {activeCount > 0 ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onChange(EMPTY_TEETH_PANEL_FILTERS);
-              }}
-              className="text-[10px] font-medium text-indigo-700 transition hover:text-indigo-900"
-            >
-              Wyczyść
-            </button>
-          ) : null}
-        </div>
-      </button>
-
-      {open ? (
-      <div className="space-y-2 pt-1">
-        <div className={cn(receiveQueueToolbarSectionClass, "border-slate-200/80 shadow-none")}>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className={queueToolbarFieldLabelClass}>Dostawca</span>
-            {filters.supplierId ? (
-              <button
-                type="button"
-                onClick={() => onChange({ ...filters, supplierId: null })}
-                className="text-[10px] font-medium text-indigo-700 transition hover:text-indigo-900"
-              >
-                Wyczyść
-              </button>
-            ) : null}
-          </div>
-          <div
-            className="mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible"
-            role="group"
-            aria-label="Filtr dostawcy"
-          >
-            <FilterChip
-              label="Wszyscy"
-              active={!filters.supplierId}
-              onClick={() => onChange({ ...filters, supplierId: null })}
-            />
-            {suppliers.map((s) => (
-              <FilterChip
-                key={s.id}
-                label={s.name}
-                active={filters.supplierId === s.id}
-                onClick={() =>
-                  onChange({
-                    ...filters,
-                    supplierId: filters.supplierId === s.id ? null : s.id,
-                  })
-                }
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className={cn(receiveQueueToolbarSectionClass, "border-slate-200/80 shadow-none")}>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className={queueToolbarFieldLabelClass}>Handlowiec</span>
-            {filters.salesPersonId ? (
-              <button
-                type="button"
-                onClick={() => onChange({ ...filters, salesPersonId: null })}
-                className="text-[10px] font-medium text-indigo-700 transition hover:text-indigo-900"
-              >
-                Wyczyść
-              </button>
-            ) : null}
-          </div>
-          <div
-            className="mt-1.5 flex gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible"
-            role="group"
-            aria-label="Filtr handlowca"
-          >
-            <FilterChip
-              label="Wszyscy"
-              active={!filters.salesPersonId}
-              onClick={() => onChange({ ...filters, salesPersonId: null })}
-            />
-            {salesPeople.map((sp) => (
-              <FilterChip
-                key={sp.id}
-                label={sp.name}
-                active={filters.salesPersonId === sp.id}
-                onClick={() =>
-                  onChange({
-                    ...filters,
-                    salesPersonId: filters.salesPersonId === sp.id ? null : sp.id,
-                  })
-                }
-              />
-            ))}
-          </div>
-        </div>
-
-        {showQueueFilters ? (
-          <div className={cn(receiveQueueToolbarSectionClass, "border-slate-200/80 shadow-none")}>
-            <span className={queueToolbarFieldLabelClass}>Szybkie filtry</span>
-            <div
-              className="mt-1.5 flex flex-wrap gap-1.5"
-              role="group"
-              aria-label="Szybkie filtry"
-            >
-              <FilterChip
-                label="Do uzupełnienia"
-                active={filters.missingSpecOnly}
-                onClick={() =>
-                  onChange({ ...filters, missingSpecOnly: !filters.missingSpecOnly })
-                }
-              />
-              <FilterChip
-                label="Brak danych ogólnych"
-                active={filters.verificationOnly}
-                onClick={() =>
-                  onChange({ ...filters, verificationOnly: !filters.verificationOnly })
-                }
-              />
-            </div>
-          </div>
-        ) : null}
-
-      </div>
+        <option value="">Wszyscy dostawcy</option>
+        {suppliers.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
+          </option>
+        ))}
+      </select>
+      <select
+        aria-label="Handlowiec"
+        value={filters.salesPersonId ?? ""}
+        onChange={(e) => onChange({ ...filters, salesPersonId: e.target.value || null })}
+        className={cn(teethToolbarSelectClass, "w-full sm:w-auto sm:max-w-[14rem]")}
+      >
+        <option value="">Wszyscy handlowcy</option>
+        {salesPeople.map((sp) => (
+          <option key={sp.id} value={sp.id}>
+            {sp.name}
+          </option>
+        ))}
+      </select>
+      {showQueueFilters ? (
+        <ToggleChip
+          label="Tylko do uzupełnienia"
+          active={filters.missingSpecOnly}
+          onClick={() => onChange({ ...filters, missingSpecOnly: !filters.missingSpecOnly })}
+        />
       ) : null}
+      {activeCount > 0 ? (
+        <button
+          type="button"
+          onClick={() => onChange(EMPTY_TEETH_PANEL_FILTERS)}
+          className="h-9 px-1 text-sm font-medium text-indigo-700 hover:text-indigo-900"
+        >
+          Wyczyść filtry
+        </button>
+      ) : null}
+      {trailing ? <div className="flex items-center justify-end gap-2 sm:ml-auto">{trailing}</div> : null}
     </div>
   );
 }

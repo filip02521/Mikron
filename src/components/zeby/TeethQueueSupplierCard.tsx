@@ -1,0 +1,305 @@
+"use client";
+
+import { useMemo, useState, type ReactNode } from "react";
+import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/Button";
+import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
+import { formatPlDate, vacationNoteLabel } from "@/lib/display-labels";
+import { plProsba } from "@/lib/ui/polish-plurals";
+import { polishPluralWord } from "@/lib/email/polish-plural";
+import {
+  IconCalendar,
+  IconChevronDown,
+  IconCircleCheck,
+  IconClipboardList,
+  IconTruck,
+} from "@/components/icons/StrokeIcons";
+import { TeethOrderFileUpload } from "@/components/zeby/TeethOrderFileUpload";
+import { TeethQueueOrderRow } from "@/components/zeby/TeethQueueOrderRow";
+import { TeethQueueOrderSummary } from "@/components/zeby/TeethQueueOrderSummary";
+import type {
+  TeethQueueGroup,
+  TeethQueueItem,
+  TeethSupplierDeliveryEta,
+} from "@/lib/data/teeth-queue-shared";
+import type { TeethPanelReadinessContext } from "@/lib/teeth/teeth-panel-order-readiness";
+import {
+  teethOrderQueueState,
+  teethOrderStateNeedsFix,
+  teethOrderUnorderedPositions,
+} from "@/lib/teeth/teeth-queue-view-model";
+
+type StepTone = "done" | "todo" | "warn" | "idle";
+
+function StepMarker({ tone, index }: { tone: StepTone; index: number }) {
+  return (
+    <span
+      className={cn(
+        "flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
+        tone === "done" && "bg-emerald-500 text-white",
+        tone === "warn" && "bg-amber-400 text-amber-950",
+        tone === "todo" && "bg-indigo-600 text-white",
+        tone === "idle" && "bg-slate-200 text-slate-600",
+      )}
+      aria-hidden
+    >
+      {tone === "done" ? <IconCircleCheck size={14} strokeWidth={2.5} /> : index}
+    </span>
+  );
+}
+
+function Step({
+  index,
+  tone,
+  title,
+  children,
+}: {
+  index: number;
+  tone: StepTone;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 gap-2.5">
+      <StepMarker tone={tone} index={index} />
+      <div className="min-w-0 flex-1">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{title}</p>
+        <div className="mt-1 min-w-0">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function etaLabel(eta: TeethSupplierDeliveryEta | null | undefined): string | null {
+  if (!eta) return null;
+  return `dostawa zwykle ~${eta.avgBusinessDays} dni rob. (ok. ${formatPlDate(eta.expectedDate)})`;
+}
+
+export function TeethQueueSupplierCard({
+  group,
+  items,
+  readinessCtx,
+  positionSelection,
+  pending,
+  hasFile,
+  fileName,
+  onFileChanged,
+  onTogglePositions,
+  onToggleAll,
+  onMarkGroup,
+  onMarkSchedule,
+  onEditSaved,
+}: {
+  group: TeethQueueGroup;
+  items: TeethQueueItem[];
+  readinessCtx?: TeethPanelReadinessContext;
+  positionSelection: Map<string, Set<number>>;
+  pending: boolean;
+  hasFile: boolean;
+  fileName: string | null;
+  onFileChanged: (hasFile: boolean) => void;
+  onTogglePositions: (orderId: string, positions: number[], select: boolean) => void;
+  onToggleAll: () => void;
+  onMarkGroup: () => void;
+  onMarkSchedule: () => void;
+  onEditSaved?: (message?: string) => void;
+}) {
+  const [summaryOpen, setSummaryOpen] = useState(false);
+
+  const rows = useMemo(
+    () =>
+      items.map((item) => ({ item, state: teethOrderQueueState(item, readinessCtx) })),
+    [items, readinessCtx],
+  );
+  const needsFixCount = rows.filter((r) => teethOrderStateNeedsFix(r.state)).length;
+  const readyCount = rows.filter((r) => r.state === "ready").length;
+  const openTeeth = items.reduce((sum, item) => sum + teethOrderUnorderedPositions(item).length, 0);
+
+  const allSelected =
+    openTeeth > 0 &&
+    items.every((item) => {
+      const open = teethOrderUnorderedPositions(item);
+      const sel = positionSelection.get(item.id);
+      return open.every((p) => sel?.has(p));
+    });
+
+  const schedule = group.dueSchedule ?? null;
+  const scheduleOnly = items.length === 0 && Boolean(schedule);
+  const locked = items.length > 0 && items.every((i) => i.status !== "Nowe" && i.status !== "Weryfikacja");
+  const fileOwnerId = (items.find((i) => i.teeth_order_file_path?.trim()) ?? items[0])?.id ?? null;
+
+  const listTone: StepTone = needsFixCount > 0 ? "warn" : "done";
+  const fileTone: StepTone = hasFile ? "done" : "todo";
+  const markTone: StepTone = hasFile && readyCount > 0 ? "todo" : "idle";
+  const eta = etaLabel(group.deliveryEta);
+
+  return (
+    <section
+      aria-label={`Dostawca ${group.supplierName}`}
+      className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+    >
+      <header className="space-y-4 border-b border-slate-100 px-4 py-4 sm:px-5">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-slate-900">{group.supplierName}</h2>
+            <p className="mt-0.5 text-xs text-slate-500">
+              {items.length > 0 ? (
+                <>
+                  {items.length} {plProsba(items.length)} · {openTeeth} {polishPluralWord(openTeeth, "ząb", "zęby", "zębów")} do zamówienia
+                </>
+              ) : (
+                "Brak próśb handlowców"
+              )}
+              {eta ? <> · {eta}</> : null}
+            </p>
+          </div>
+          {schedule?.computed_next_date ? (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-800 ring-1 ring-inset ring-sky-200"
+              title="Stały cykl zamówień z harmonogramu dostawcy"
+            >
+              <IconCalendar size={13} />
+              Cykl: {formatPlDate(schedule.computed_next_date)}
+              {schedule.vacation_note ? ` · ${vacationNoteLabel(schedule.vacation_note)}` : ""}
+            </span>
+          ) : null}
+        </div>
+
+        {!group.supplierId && items.length > 0 ? (
+          <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
+            <p className="font-semibold">Te prośby nie mają dostawcy</p>
+            <p className="mt-0.5 text-xs text-amber-800">
+              Kliknij „Uzupełnij” przy prośbie i wybierz dostawcę — prośba przeniesie się do
+              jego karty, gdzie ją zamówisz.
+            </p>
+          </div>
+        ) : scheduleOnly ? (
+          <div className="flex flex-col gap-3 rounded-lg bg-sky-50/60 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-sky-900">
+              Dziś przypada zamówienie z harmonogramu. Złóż je u dostawcy i oznacz — termin
+              przesunie się na kolejny cykl.
+            </p>
+            <Button size="sm" className="min-h-9 shrink-0" disabled={pending} onClick={onMarkSchedule}>
+              <IconTruck size={15} />
+              Oznacz cykl jako zamówiony
+            </Button>
+          </div>
+        ) : (
+          <div className="grid gap-4 rounded-lg bg-slate-50/80 p-3 sm:grid-cols-3 sm:gap-3">
+            <Step index={1} tone={listTone} title="Lista zębów">
+              {needsFixCount > 0 ? (
+                <p className="text-sm font-medium text-amber-800">
+                  {needsFixCount} {plProsba(needsFixCount)} do uzupełnienia
+                  <span className="block text-xs font-normal text-amber-700">
+                    Zostaną pominięte przy oznaczaniu.
+                  </span>
+                </p>
+              ) : (
+                <p className="text-sm font-medium text-emerald-700">Wszystkie kompletne</p>
+              )}
+            </Step>
+            <Step index={2} tone={fileTone} title="Plik zamówienia">
+              {fileOwnerId ? (
+                <TeethOrderFileUpload
+                  orderId={fileOwnerId}
+                  existingFileName={fileName}
+                  required={!hasFile}
+                  locked={locked}
+                  slotHint={hasFile ? null : "Excel, PDF lub XML — jeden na całego dostawcę"}
+                  onUploaded={() => onFileChanged(true)}
+                  onRemoved={() => onFileChanged(false)}
+                />
+              ) : null}
+            </Step>
+            <Step index={3} tone={markTone} title="Po złożeniu u dostawcy">
+              <Button
+                size="sm"
+                className="min-h-9 w-full sm:w-auto"
+                disabled={pending || !hasFile || readyCount === 0}
+                onClick={onMarkGroup}
+                title={
+                  !hasFile
+                    ? "Najpierw wgraj plik zamówienia"
+                    : readyCount === 0
+                      ? "Żadna prośba nie ma kompletnej listy"
+                      : "Oznacz wszystkie kompletne prośby jako zamówione"
+                }
+              >
+                <IconTruck size={15} />
+                Oznacz jako zamówione
+              </Button>
+              {!hasFile ? (
+                <p className="mt-1 text-[11px] text-slate-500">Odblokuje się po wgraniu pliku.</p>
+              ) : readyCount === 0 ? (
+                <p className="mt-1 text-[11px] text-amber-700">Najpierw uzupełnij listy.</p>
+              ) : null}
+            </Step>
+          </div>
+        )}
+      </header>
+
+      {items.length > 0 ? (
+        <>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/40 px-4 py-2 sm:px-5">
+            <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                disabled={openTeeth === 0}
+                onChange={onToggleAll}
+                className={checkboxBrandClass}
+              />
+              Zaznacz wszystkie
+            </label>
+            <button
+              type="button"
+              aria-expanded={summaryOpen}
+              onClick={() => setSummaryOpen((v) => !v)}
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-indigo-700 transition-colors hover:bg-indigo-50"
+            >
+              <IconClipboardList size={14} />
+              Zestawienie do zamówienia
+              <IconChevronDown
+                size={14}
+                className={cn("transition-transform", summaryOpen && "rotate-180")}
+              />
+            </button>
+          </div>
+
+          {summaryOpen ? (
+            <TeethQueueOrderSummary supplierName={group.supplierName} items={items} />
+          ) : null}
+
+          <ul className="divide-y divide-slate-100">
+            {rows.map(({ item, state }) => (
+              <TeethQueueOrderRow
+                key={item.id}
+                item={item}
+                state={state}
+                selected={positionSelection.get(item.id)}
+                onToggleOrder={() => {
+                  const open = teethOrderUnorderedPositions(item);
+                  const sel = positionSelection.get(item.id);
+                  const all = open.length > 0 && open.every((p) => sel?.has(p));
+                  onTogglePositions(item.id, open, !all);
+                }}
+                onTogglePositions={(positions, select) =>
+                  onTogglePositions(item.id, positions, select)
+                }
+                onEditSaved={onEditSaved}
+              />
+            ))}
+          </ul>
+
+          {schedule && !scheduleOnly ? (
+            <p className="flex items-center gap-2 border-t border-slate-100 px-4 py-2 text-[11px] text-slate-500 sm:px-5">
+              <IconCalendar size={13} className="text-sky-600" />
+              Oznaczenie próśb przesunie też cykl z harmonogramu na kolejny termin.
+            </p>
+          ) : null}
+        </>
+      ) : null}
+
+    </section>
+  );
+}
