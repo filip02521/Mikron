@@ -584,7 +584,6 @@ async function applyCaseNoteToOpenProsbaOrders(
       // Notatka od handlowca — bez sygnału „uwagi od zakupów”.
       sales_request_note_updated_at: null,
       sales_request_note_seen_at: null,
-      updated_at: new Date().toISOString(),
     })
     .in("id", orderIds)
     .eq("sales_person_id", salesPersonId);

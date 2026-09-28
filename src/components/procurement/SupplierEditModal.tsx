@@ -138,11 +138,13 @@ function SupplierEditModalInner({
     run(
       async () => {
         const result = await actionUpsertSupplier(snapshot);
-        const msg = !snapshot.is_active
+        if (!result.success) throw new Error(result.error);
+        const baseMsg = !snapshot.is_active
           ? "Dostawca oznaczony jako nieaktywny — zniknie z cyklu w panelu dziennym."
           : isNew
             ? `Dodano dostawcę „${snapshot.name.trim()}”.`
             : "Zapisano zmiany dostawcy.";
+        const msg = result.warning ? `${baseMsg} ${result.warning}` : baseMsg;
         onSaved?.(result.id, msg);
         onClose();
       },

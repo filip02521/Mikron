@@ -203,7 +203,8 @@ export function InactiveSuppliersAdminClient({
     }
     start(async () => {
       try {
-        await actionUpsertSupplier(snapshot);
+        const result = await actionUpsertSupplier(snapshot);
+        if (!result.success) throw new Error(result.error);
         if (snapshot.id) {
           if (snapshot.is_active) {
             setRows((list) => list.filter((x) => x.id !== snapshot.id));
@@ -220,6 +221,7 @@ export function InactiveSuppliersAdminClient({
             setToast(SUPPLIER_TOAST.savedCard);
           }
         }
+        if (result.warning) setToast({ text: result.warning, tone: "warning" });
         resetForm();
         router.refresh();
       } catch (e) {

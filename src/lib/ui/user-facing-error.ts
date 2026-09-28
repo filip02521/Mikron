@@ -51,6 +51,8 @@ const NEXT_DIGEST_ERROR_PATTERNS = [
   /an error occurred in the server components render/i,
   /specific message is omitted in production builds/i,
   /a digest property is included on this error/i,
+  // Produkcyjny build Reacta: „Minified React error #441; visit https://react.dev/…”
+  /minified react error/i,
 ];
 
 /** Znane komunikaty auth → krótki, ludzki opis. */
