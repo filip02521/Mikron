@@ -449,7 +449,9 @@ export function formatZkWatchLineStatusSummaryFromCounts(
   }
   if (counts.uncovered > 0) {
     const n = counts.uncovered;
-    parts.push(n === 1 ? "1 do zamówienia" : `${n} do zamówienia`);
+    // „bez prośby” (jak chip „Brak prośby”) — „do zamówienia” to już zakres
+    // z formatZkWatchProsbaScopeSummary; oba stoją w jednym wierszu karty.
+    parts.push(`${n} bez prośby`);
   }
   if (counts.partial > 0) {
     const n = counts.partial;
