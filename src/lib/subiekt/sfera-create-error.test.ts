@@ -30,6 +30,42 @@ describe("humanizeSferaCreateError", () => {
     expect(h?.kind).toBe("license_limit");
   });
 
+  it("timeout Subiekta NIE jest zajętą licencją (SubiektTimeoutError)", () => {
+    const h = humanizeSferaCreateError("Przekroczono limit czasu (60000 ms)");
+    expect(h?.kind).toBe("timeout");
+    expect(h?.title).not.toMatch(/licencj/i);
+    expect(h?.message).toMatch(/nie jest problem z licencją/i);
+  });
+
+  it("timeout SQL / HTTP z ORDERS to timeout, nie licencja", () => {
+    for (const raw of [
+      "Subiekt: Przekroczono limit czasu wykonania zapytania SQL",
+      "Execution Timeout Expired. The timeout period elapsed",
+      "Upłynął limit czasu operacji",
+      "request timed out",
+    ]) {
+      expect(humanizeSferaCreateError(raw)?.kind).toBe("timeout");
+    }
+  });
+
+  it("inny „przekroczony limit” (bez licencji) nie daje zajętej licencji", () => {
+    expect(
+      humanizeSferaCreateError("Przekroczony limit pozycji w dokumencie")?.kind
+    ).not.toBe("license_limit");
+  });
+
+  it("jawny HRESULT licencji wygrywa nawet z tekstem o timeout", () => {
+    expect(
+      humanizeSferaCreateError("HRESULT=0x800413D5 po timeout operacji")?.kind
+    ).toBe("license_limit");
+  });
+
+  it("tekst „przekroczono limit licencji” nadal mapuje na licencję", () => {
+    expect(
+      humanizeSferaCreateError("Przekroczono limit licencji programu")?.kind
+    ).toBe("license_limit");
+  });
+
   it("zwraca null dla nierozpoznanego błędu", () => {
     expect(humanizeSferaCreateError("random failure xyz")).toBeNull();
   });
