@@ -6,7 +6,6 @@ import {
   mojeSectionDomId,
   mojeSectionHeadingDomId,
 } from "@/lib/orders/moje-section-focus";
-import { mojeShipmentSectionShellClass } from "@/lib/ui/moje-shipment-row-styles";
 
 /** Karta sekcji listy /moje — cel scrollu i podświetlenia Start dnia. */
 export function MojeSectionShell({
@@ -21,7 +20,11 @@ export function MojeSectionShell({
   return (
     <div
       id={mojeSectionDomId(sectionIcon)}
-      className={cn(mojeShipmentSectionShellClass, "scroll-mt-24", className)}
+      className={cn(
+        // Płaskie sekcje w jednej karcie (bez „karty w karcie”) — oddzielone cienką linią.
+        "scroll-mt-24 border-t border-slate-200/70 first:border-t-0",
+        className
+      )}
       aria-labelledby={mojeSectionHeadingDomId(sectionIcon)}
     >
       {children}

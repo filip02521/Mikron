@@ -51,15 +51,15 @@ export function MyOrderCollapsedRowZones({
 }: MyOrderCollapsedRowZonesProps) {
   return (
     <div className="min-w-0 flex-1">
-      <div className="flex min-w-0 items-baseline gap-2">
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5 sm:flex-nowrap">
         <SearchHighlightText
           text={title}
           searchQuery={searchQuery}
-          className={cn("truncate", salesTypography.rowTitle)}
+          className={cn("min-w-0 sm:truncate", salesTypography.rowTitle)}
         />
         {showInlineLineCountBadge && row.lineCount > 1 ? (
           <span
-            className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-indigo-700"
+            className="shrink-0 text-xs font-medium tabular-nums text-slate-400"
             title={`Prośba ma ${row.lineCount} ${polishPluralWord(row.lineCount, "produkt", "produkty", "produktów")}`}
           >
             +{row.lineCount - 1}{" "}

@@ -3,7 +3,7 @@ import { salesTypography } from "@/lib/ui/ontime-theme";
 
 /** Jedna sekcja listy (nagłówek + wiersze) — zaokrąglenie tylko na zewnątrz. */
 export const mojeShipmentSectionShellClass =
-  "overflow-hidden rounded-lg border border-slate-200/80 bg-white shadow-sm shadow-slate-200/40";
+  "overflow-hidden rounded-xl border border-slate-200/80 bg-white";
 
 /** Układ wiersza — treść nad akcjami na wąskim ekranie. */
 export const mojeQueueRowLayoutClass =
@@ -38,12 +38,7 @@ export function mojeShipmentRowClass({
   isCancelAck,
   isDismiss,
   isUrgent,
-  isStock,
-  isInformacja,
   visualTone = "default",
-  deliveryBorderAccent,
-  deliveryCollapsedBg,
-  archiveAccent = "default",
 }: {
   expanded: boolean;
   isAction: boolean;
@@ -54,71 +49,41 @@ export function mojeShipmentRowClass({
   isStock?: boolean;
   isInformacja: boolean;
   visualTone?: MojeShipmentRowVisualTone;
+  /** @deprecated Wiersze w toku są neutralne — akcent tylko dla akcji/problemów. */
   deliveryBorderAccent?: string | null;
+  /** @deprecated jw. */
   deliveryCollapsedBg?: string | null;
   archiveAccent?: MojeShipmentRowArchiveAccent;
 }): string {
   if (visualTone === "archive") {
-    const accent =
-      archiveAccent === "cancelled"
-        ? "border-l-red-300"
-        : archiveAccent === "informacja"
-          ? "border-l-violet-300"
-          : archiveAccent === "completed"
-            ? "border-l-emerald-300"
-            : "border-l-slate-200/70";
+    // Archiwum: bez kolorowych pasków — status mówi tekst wiersza.
     return cn(
-      "border-l-[3px] transition-all duration-150",
-      accent,
-      expanded ? "bg-slate-50/70" : "bg-slate-50/45 hover:bg-slate-50/65"
+      "border-l-2 border-l-transparent transition-colors duration-150",
+      expanded ? "bg-slate-50/60" : "bg-white hover:bg-slate-50/70"
     );
   }
 
+  // Stonowana lista: bez kolorowych teł wierszy. Wąski akcent tylko tam, gdzie handlowiec
+  // musi coś zrobić (odbiór, potwierdzenie) albo jest problem (opóźnienie).
   const accent = isAction
     ? "border-l-emerald-500"
     : isInformacjaAck
-      ? "border-l-violet-500"
-      : isDismiss
-        ? "border-l-rose-400"
-        : isCancelAck
-          ? "border-l-amber-500"
-          : isUrgent
-            ? "border-l-amber-500"
-            : deliveryBorderAccent
-              ? deliveryBorderAccent
-              : isStock
-                ? "border-l-sky-500"
-                : isInformacja
-                  ? "border-l-violet-400"
-                  : "border-l-slate-200";
+      ? "border-l-violet-400"
+      : isDismiss || isCancelAck
+        ? "border-l-amber-400"
+        : isUrgent
+          ? "border-l-amber-400"
+          : "border-l-transparent";
 
   return cn(
-    "border-l-[3px] transition-all duration-150",
+    "border-l-2 transition-colors duration-150",
     accent,
-    isAction && !expanded && "bg-emerald-50/35",
-    isInformacjaAck && !expanded && "bg-violet-50/40",
-    isDismiss && !expanded && "bg-rose-50/30",
-    isCancelAck && !expanded && "bg-amber-50/50",
-    !expanded && isStock && !deliveryCollapsedBg && "bg-sky-50/35",
-    !expanded && deliveryCollapsedBg,
-    expanded
-      ? "bg-slate-50/50"
-      : isAction
-        ? "hover:bg-emerald-50/50"
-        : isInformacjaAck
-          ? "hover:bg-violet-50/55"
-          : isDismiss
-            ? "hover:bg-rose-50/45"
-            : isCancelAck
-              ? "hover:bg-amber-50/65"
-            : deliveryCollapsedBg
-              ? "hover:brightness-[0.98]"
-              : "bg-white hover:bg-slate-50/50"
+    expanded ? "bg-slate-50/60" : "bg-white hover:bg-slate-50/70"
   );
 }
 
 export const mojeShipmentExpandedRowShellClass =
-  "relative z-[2] mb-2 mt-0.5 rounded-lg shadow-lg ring-1 ring-slate-200/60";
+  "relative z-[2] my-1 rounded-lg shadow-sm ring-1 ring-slate-200/80";
 
 export const mojeShipmentExpandedMetaShellClass =
   "px-0 py-0";
@@ -163,8 +128,8 @@ export const mojeShipmentLineActionColumnClass =
 
 /** Kompaktowy trigger ⋮ przy pozycji produktu — widoczny, spójny z menu karty. */
 export const mojeLineCancelMenuTriggerClass = cn(
-  "h-8 w-8 border-slate-200/90 text-slate-500 shadow-sm",
-  "hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+  "h-8 w-8 border-transparent bg-transparent text-slate-400 shadow-none",
+  "hover:border-slate-200 hover:bg-white hover:text-slate-700"
 );
 
 /** Stopka zbiorczego potwierdzenia pod listą produktów. */
