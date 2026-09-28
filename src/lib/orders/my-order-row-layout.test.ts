@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { MyOrderRow } from "./my-order-presenter";
 import {
   myOrderCollapsedContextLine,
+  myOrderCollapsedContextParts,
   myOrderCollapsedMetaFields,
   myOrderCollapsedProductSummary,
   myOrderCollapsedStatusHint,
@@ -144,6 +145,16 @@ describe("my-order-row-layout", () => {
     expect(
       myOrderCollapsedContextLine(row({ clientLabel: "3 różnych klientów" }))
     ).toBe("Dostawca");
+  });
+
+  it("context parts — klient osobno, agregat klientów pominięty", () => {
+    expect(myOrderCollapsedContextParts(row({ clientLabel: "Klinika Smile" }))).toEqual({
+      client: "Klinika Smile",
+      supplier: "Dostawca",
+    });
+    expect(
+      myOrderCollapsedContextParts(row({ clientLabel: "3 różnych klientów" })).client
+    ).toBeNull();
   });
 
   it("deprecated subline deleguje do statusHint", () => {

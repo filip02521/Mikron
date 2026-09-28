@@ -64,7 +64,7 @@ export function MyOrderLineClientField({
             type="button"
             disabled={disabled}
             onClick={() => void onSave({ clientName: null, clientKhId: null })}
-            className="font-medium text-red-700 hover:text-red-900 disabled:opacity-50"
+            className="font-medium text-slate-500 hover:text-red-700 disabled:opacity-50"
           >
             Usuń
           </button>
@@ -81,7 +81,10 @@ export function MyOrderLineClientField({
       className={cn(
         "mt-1 text-left text-[0.68rem] font-medium disabled:opacity-50",
         brandLinkSubtleClass,
-        className
+        className,
+        // Pusty stan bez kreski i widoczny po najechaniu na pozycję — lista nie powtarza
+        // tego samego linku przy każdym produkcie (klawiatura: widoczny przy fokusie).
+        "mt-1 border-t-0 pt-0 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/line:opacity-100 [@media(hover:hover)]:focus-visible:opacity-100"
       )}
     >
       Przypisz klienta
