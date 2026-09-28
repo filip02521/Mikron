@@ -12,7 +12,6 @@ import { MojeClientKhFilterBanner } from "@/components/moje/MojeClientKhFilterBa
 import { MojeOrdersSearchBar, MojeOrdersSearchEmptyHint } from "@/components/moje/MojeOrdersSearchBar";
 import { useMojeOrdersSearch } from "@/components/moje/useMojeOrdersSearch";
 import { sortMyOrderRows } from "@/lib/orders/my-order-sales-ui";
-import { formatProsbaCount } from "@/lib/orders/my-order-plural";
 import { MICROCOPY } from "@/lib/ui/microcopy";
 import { cn } from "@/lib/cn";
 import { MyOrderPickupShelfDialogProvider } from "@/components/moje/MyOrderPickupShelfDialogProvider";
@@ -25,7 +24,7 @@ import { ZdFulfillmentDeadlineChangeAutoAck } from "@/components/moje/ZdFulfillm
 import { type SalesDayStartContext } from "@/lib/sales/sales-day-start";
 import { useSalesInbox } from "@/components/sales/SalesInboxContext";
 import { MyOrderShipmentList } from "@/components/moje/MyOrderShipmentList";
-import { MyOrdersRowLegend } from "@/components/moje/MyOrdersRowLegend";
+import { MojeSectionJumpNav } from "@/components/moje/MojeSectionJumpNav";
 import { MojeOrdersHelp } from "@/components/moje/MojeOrdersGuide";
 import { MojeOrdersEmptyGuide } from "@/components/moje/MojeOrdersEmptyGuide";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -40,7 +39,7 @@ import {
   mojeSectionIconTileClass,
 } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { salesChromeInsetClass, salesTypography, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
+import { salesChromeInsetClass, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { MyOrderSectionPatternId } from "@/lib/orders/my-order-section-callout";
 import { deriveMyOrderSectionDisplayState } from "@/lib/orders/my-order-section-callout";
@@ -75,93 +74,6 @@ function cardDomId(rowId: string) {
 
 import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 
-function prosbaUnitLabel(n: number): string {
-  return formatProsbaCount(n).replace(/^\d+\s+/, "");
-}
-
-function lineUnitLabel(n: number): string {
-  if (n === 1) return "pozycja";
-  const mod10 = n % 10;
-  const mod100 = n % 100;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "pozycje";
-  return "pozycji";
-}
-
-function MojeOrdersOverviewStats({
-  shipmentCount,
-  lineCount,
-  searchActive,
-  clientLinkFilterActive = false,
-  className,
-}: {
-  shipmentCount: number;
-  lineCount: number;
-  filteredCount: number;
-  searchActive: boolean;
-  clientLinkFilterActive?: boolean;
-  archiveMatchCount?: number;
-  className?: string;
-}) {
-  if (searchActive) return null;
-  if (clientLinkFilterActive) return null;
-  return (
-    <div className={cn("min-w-0 flex-1", className)}>
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="inline-flex items-baseline gap-1.5">
-          <span className={salesTypography.statValue}>{shipmentCount}</span>
-          <span className={salesTypography.statLabel}>{prosbaUnitLabel(shipmentCount)}</span>
-        </div>
-        <span className="hidden h-3.5 w-px bg-slate-200 sm:block" aria-hidden />
-        <div className="inline-flex items-baseline gap-1.5">
-          <span className={salesTypography.statValue}>{lineCount}</span>
-          <span className={salesTypography.statLabel}>{lineUnitLabel(lineCount)}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Statystyki listy (lewo) + legenda kolorów wierszy (prawo) w jednym pasku. */
-function MojeOrdersListMetaStrip({
-  shipmentCount,
-  lineCount,
-  filteredCount,
-  searchActive,
-  clientLinkFilterActive = false,
-  archiveMatchCount = 0,
-}: {
-  shipmentCount: number;
-  lineCount: number;
-  filteredCount: number;
-  searchActive: boolean;
-  clientLinkFilterActive?: boolean;
-  archiveMatchCount?: number;
-}) {
-  const stats = (
-    <MojeOrdersOverviewStats
-      shipmentCount={shipmentCount}
-      lineCount={lineCount}
-      filteredCount={filteredCount}
-      searchActive={searchActive}
-      clientLinkFilterActive={clientLinkFilterActive}
-      archiveMatchCount={archiveMatchCount}
-    />
-  );
-
-  return (
-    <div
-      className={cn(
-        salesChromeInsetClass,
-        "flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-200/80 bg-slate-50/35 py-2.5",
-        stats ? "justify-between" : "justify-start"
-      )}
-    >
-      {stats}
-      <MyOrdersRowLegend className={stats ? "shrink-0 sm:justify-end" : undefined} />
-    </div>
-  );
-}
-
 import type { SectionListAccent } from "@/components/ui/SectionListLabel";
 import type { MyOrderSectionAccent } from "@/lib/orders/my-order-section-accent";
 
@@ -192,6 +104,7 @@ function MojeSectionListLabel({
       accent={toSectionListAccent(accent)}
       icon={<MojeSectionIcon kind={icon} size={17} />}
       tileClassName={mojeSectionIconTileClass(icon)}
+      titleClassName="text-sm normal-case tracking-normal"
     />
   );
 }
@@ -352,7 +265,6 @@ function MojeOrdersViewContent({
   informacje,
   archiwumRecent = [],
   archiwumExtended = [],
-  productLineCount,
   canAcknowledge = false,
   canEdit: canEditProp,
   showProsbaCta = false,
@@ -520,27 +432,6 @@ function MojeOrdersViewContent({
     return ids.size;
   }, [archiwumRecent, archiwumExtended, filterQuery, clientKhFilter, clientLinkFilterOpts]);
 
-  const filteredLineCount = useMemo(() => {
-    if (!searchActive) {
-      return (
-        productLineCount ??
-        zamowienia.reduce((n, r) => n + r.lineCount, 0) +
-          informacje.reduce((n, r) => n + r.lineCount, 0)
-      );
-    }
-    return [...searchFilteredZamowienia, ...searchFilteredInformacje].reduce(
-      (n, r) => n + r.lineCount,
-      0
-    );
-  }, [
-    searchActive,
-    productLineCount,
-    zamowienia,
-    informacje,
-    searchFilteredZamowienia,
-    searchFilteredInformacje,
-  ]);
-
   const { actionZamowienia, progressZamowienia } = useMemo(() => {
     const { needsAction, inProgress } = partitionMyOrderRowsBySalesAction(filteredZamowienia);
     return {
@@ -629,7 +520,6 @@ function MojeOrdersViewContent({
     ) : null;
 
   const shipmentCount = zamowienia.length + informacje.length;
-  const filteredCount = filteredZamowienia.length + filteredInformacje.length;
   const actionCount = actionZamowienia.length + actionInformacje.length;
   const actionShelfCount = actionShelfZamowienia.length + actionInformacje.length;
   const actionTeethCount = actionTeethZamowienia.length;
@@ -787,7 +677,8 @@ function MojeOrdersViewContent({
             }
           />
           {!tourPreview && showSalesSync ? <MojeOrdersSyncStrip /> : null}
-          {subiektAvailability ? (
+          {/* „Nieskonfigurowany” to informacja dla admina — handlowiec widzi pasek tylko przy realnej awarii. */}
+          {subiektAvailability?.configured ? (
             <SubiektStatusBar
               initial={subiektAvailability}
               embedded
@@ -861,7 +752,8 @@ function MojeOrdersViewContent({
 
         {!tourPreview && showSalesSync ? <MojeOrdersSyncStrip /> : null}
 
-        {subiektAvailability ? (
+        {/* „Nieskonfigurowany” to informacja dla admina — handlowiec widzi pasek tylko przy realnej awarii. */}
+          {subiektAvailability?.configured ? (
           <SubiektStatusBar
             initial={subiektAvailability}
             embedded
@@ -871,14 +763,25 @@ function MojeOrdersViewContent({
 
         {searchBar}
 
-        <MojeOrdersListMetaStrip
-          shipmentCount={shipmentCount}
-          lineCount={filteredLineCount}
-          filteredCount={filteredCount}
-          searchActive={searchActive}
-          clientLinkFilterActive={clientLinkFilterActive}
-          archiveMatchCount={archiveMatchCount}
-        />
+        {!searchActive && !clientLinkFilterActive ? (
+          <div className={cn(salesChromeInsetClass, "border-t border-slate-200/80 bg-slate-50/40 py-3")}>
+            <MojeSectionJumpNav
+              items={[
+                { icon: MY_ORDER_ACTION_SECTION_COPY.icon, label: "Do odbioru z regału", count: actionShelfCount, needsAction: true },
+                { icon: MY_ORDER_MIXED_ACTION_SECTION_COPY.icon, label: "Do odbioru: zęby i towar", count: actionMixedCount, needsAction: true },
+                { icon: MY_ORDER_TEETH_ACTION_SECTION_COPY.icon, label: "Zęby do odbioru", count: actionTeethCount, needsAction: true },
+                { icon: MY_ORDER_DISMISS_SECTION_COPY.icon, label: "Anulowania do potwierdzenia", count: actionDismissCount, needsAction: true },
+                ...(showZamowieniaProgressSplit
+                  ? [
+                      { icon: MY_ORDER_PROGRESS_SECTION_COPY.ordered_progress.icon, label: MY_ORDER_PROGRESS_SECTION_COPY.ordered_progress.title, count: orderedProgressZamowienia.length },
+                      { icon: MY_ORDER_PROGRESS_SECTION_COPY.before_order.icon, label: MY_ORDER_PROGRESS_SECTION_COPY.before_order.title, count: beforeOrderZamowienia.length },
+                    ]
+                  : []),
+                { icon: MY_ORDER_INFORMACJA_SECTION_COPY.icon, label: MY_ORDER_INFORMACJA_SECTION_COPY.title, count: informacjeListRows.length },
+              ]}
+            />
+          </div>
+        ) : null}
 
         {searchActive && searchMatchCount === 0 && !archiveMatchCount ? (
           <MojeOrdersSearchEmptyHint query={filterQuery} onClear={() => setSearchQuery("")} />

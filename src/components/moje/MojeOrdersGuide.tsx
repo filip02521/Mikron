@@ -28,7 +28,7 @@ export function MojeOrdersHelp() {
     <HelpPopover
       label="Pomoc — jak czytać listę Moje zamówienia"
       title="Moje zamówienia"
-      shortLabel="Lista"
+      shortLabel="Pomoc"
       icon={<GuideIcon />}
       buttonClassName={cn(pageToolbarSurfaceClass, pageToolbarSizingClass, "px-2.5")}
     >

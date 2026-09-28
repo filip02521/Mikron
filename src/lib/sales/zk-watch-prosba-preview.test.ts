@@ -203,7 +203,7 @@ describe("resolveZkProsbaPreviewDelivery", () => {
     expect(delivery.deliveryCaption).toContain("Planowana dostawa");
     expect(delivery.deliveryDisplay).not.toBeNull();
     expect(delivery.deliveryDisplay?.title).toContain("2027");
-    expect(delivery.deliveryCaption).not.toBe("Z historii");
+    expect(delivery.deliveryCaption).not.toBe("Szac. dostawa");
   });
 
   it("uses delivery_at when ZD missing", () => {
@@ -213,7 +213,7 @@ describe("resolveZkProsbaPreviewDelivery", () => {
       delivery_at: "2026-07-15",
     });
 
-    expect(delivery.deliveryCaption).toBe("Z historii");
+    expect(delivery.deliveryCaption).toBe("Szac. dostawa");
     expect(delivery.deliveryDisplay).not.toBeNull();
   });
 });
@@ -253,7 +253,7 @@ describe("formatZkProsbaPreviewMetaLine", () => {
         requestKind: "zamowienie",
         ...delivery,
       })
-    ).toContain("Z historii:");
+    ).toContain("Szac. dostawa:");
   });
 
   it("uses deliveryEmptyLabel instead of generic missing-date text", () => {
