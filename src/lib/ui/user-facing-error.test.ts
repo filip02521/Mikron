@@ -158,6 +158,17 @@ describe("extractRawErrorMessage / userFacingErrorFromUnknown", () => {
     expect(c.description).not.toMatch(/Server Components/i);
   });
 
+  it("fallback gdy minified React error (#441 z server action)", () => {
+    const c = userFacingErrorFromUnknown(
+      new Error(
+        "Minified React error #441; visit https://react.dev/errors/441 for the full message or use the non-minified dev environment for full errors and additional helpful warnings."
+      ),
+      "Nie udało się dodać notatki do prośby."
+    );
+    expect(c.description).toBe("Nie udało się dodać notatki do prośby.");
+    expect(c.description).not.toMatch(/react/i);
+  });
+
   it("nie nadpisuje sensownego PL fallbackiem", () => {
     const c = userFacingErrorFromUnknown(
       new Error("Nie znaleziono ZK w Subiekcie."),
