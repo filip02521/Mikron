@@ -39,6 +39,7 @@ import type { MyOrderListKind } from "@/lib/orders/my-order-row-layout";
 import { myOrderCollapsedMobileTiming } from "@/lib/orders/my-order-collapsed-mobile-timing";
 import {
   myOrderCollapsedContextLine,
+  myOrderCollapsedContextParts,
   myOrderCollapsedProductSummary,
   myOrderCollapsedStatusHint,
   myOrderCollapsedTitle,
@@ -527,6 +528,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   const needsExpand = myOrderNeedsExpand(row, expandCtx);
   const collapsedTitle = myOrderCollapsedTitle(row);
   const collapsedContextLine = myOrderCollapsedContextLine(row);
+  const collapsedContextParts = myOrderCollapsedContextParts(row);
   const statusHint = myOrderCollapsedStatusHint(row);
   const showHeadlineBanner = shouldShowMyOrderHeadlineBanner(row, {
     expanded,
@@ -1025,6 +1027,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             listKind={listKind}
             title={collapsedTitle}
             contextLine={collapsedContextLine}
+            contextParts={collapsedContextParts}
             statusLine={showCollapsedHeadline ? headline : null}
             statusLineClassName={headlineClass}
             statusHint={statusHint}

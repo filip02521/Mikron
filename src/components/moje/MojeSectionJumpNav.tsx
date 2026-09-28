@@ -27,8 +27,13 @@ export function MojeSectionJumpNav({
   if (visible.length === 0) return null;
 
   const jump = (icon: MojeSectionIconKind) => {
-    const el = document.getElementById(mojeSectionDomId(icon));
-    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Zwinięta sekcja („Przed zamówieniem”) rozwija się przy przejściu ze skrótu.
+    window.dispatchEvent(new CustomEvent("moje:open-section", { detail: icon }));
+    requestAnimationFrame(() => {
+      document
+        .getElementById(mojeSectionDomId(icon))
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
 
   return (

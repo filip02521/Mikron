@@ -13,6 +13,7 @@ import { MojeOrdersSearchBar, MojeOrdersSearchEmptyHint } from "@/components/moj
 import { useMojeOrdersSearch } from "@/components/moje/useMojeOrdersSearch";
 import { sortMyOrderRows } from "@/lib/orders/my-order-sales-ui";
 import { MICROCOPY } from "@/lib/ui/microcopy";
+import { formatProsbaCount } from "@/lib/orders/my-order-plural";
 import { cn } from "@/lib/cn";
 import { MyOrderPickupShelfDialogProvider } from "@/components/moje/MyOrderPickupShelfDialogProvider";
 import {
@@ -87,12 +88,14 @@ function MojeSectionListLabel({
   count,
   accent,
   icon,
+  badges,
 }: {
   title: string;
   hint?: string;
   count?: number;
   accent: MyOrderSectionAccent;
   icon: MojeSectionIconKind;
+  badges?: React.ReactNode;
 }) {
   return (
     <SectionListLabel
@@ -105,6 +108,7 @@ function MojeSectionListLabel({
       icon={<MojeSectionIcon kind={icon} size={17} />}
       tileClassName={mojeSectionIconTileClass(icon)}
       titleClassName="text-sm normal-case tracking-normal"
+      badges={badges}
     />
   );
 }
@@ -169,26 +173,71 @@ function MyOrderShipmentBlock({
   );
 }
 
+const MOJE_SECTION_OPEN_EVENT = "moje:open-section";
+
+/** Zapamiętany wybór rozwinięcia sekcji (per przeglądarka) + otwieranie ze skrótów sekcji. */
+function useMojeSectionOpenPreference(
+  sectionIcon: string
+): [boolean | null, (open: boolean) => void] {
+  const storageKey = `moje-section-open:${sectionIcon}`;
+  const [open, setOpen] = useState<boolean | null>(null);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- odczyt preferencji po montażu (SSR bez localStorage)
+      if (raw === "1" || raw === "0") setOpen(raw === "1");
+    } catch {
+      /* brak localStorage — domyślny stan */
+    }
+    const onOpen = (e: Event) => {
+      if ((e as CustomEvent<string>).detail === sectionIcon) setOpen(true);
+    };
+    window.addEventListener(MOJE_SECTION_OPEN_EVENT, onOpen);
+    return () => window.removeEventListener(MOJE_SECTION_OPEN_EVENT, onOpen);
+  }, [storageKey, sectionIcon]);
+  const update = useCallback(
+    (next: boolean) => {
+      setOpen(next);
+      try {
+        window.localStorage.setItem(storageKey, next ? "1" : "0");
+      } catch {
+        /* ignoruj */
+      }
+    },
+    [storageKey]
+  );
+  return [open, update];
+}
+
 function MyOrderZamowieniaProgressSection({
   sectionId,
   rows,
   showSectionLabel,
   showWhenEmpty,
   listProps,
+  defaultCollapsed = false,
 }: {
   sectionId: MyOrderProgressSectionId;
   rows: MyOrderRow[];
   showSectionLabel: boolean;
   showWhenEmpty?: boolean;
+  /** Sekcja bez działań po stronie handlowca — domyślnie zwinięta do jednego wiersza. */
+  defaultCollapsed?: boolean;
   listProps: Omit<
     ComponentProps<typeof MyOrderShipmentBlock>,
     "rows" | "listKind" | "showProgress" | "embedded" | "suppressedSectionPatterns"
   >;
 }) {
   const sectionCallouts = useMyOrderSectionCallouts(rows);
-  if (rows.length === 0 && !showWhenEmpty) return null;
-
   const copy = MY_ORDER_PROGRESS_SECTION_COPY[sectionId];
+  const [openPref, setOpenPref] = useMojeSectionOpenPreference(copy.icon);
+  const focusInSection = Boolean(
+    listProps.focusRowIds && rows.some((r) => listProps.focusRowIds!.has(r.id))
+  );
+  const collapsed =
+    defaultCollapsed && rows.length > 0 && !focusInSection && openPref !== true;
+
+  if (rows.length === 0 && !showWhenEmpty) return null;
 
   return (
     <MojeSectionShell sectionIcon={copy.icon}>
@@ -199,13 +248,43 @@ function MyOrderZamowieniaProgressSection({
           count={rows.length}
           icon={copy.icon}
           accent={copy.accent}
+          badges={
+            defaultCollapsed && rows.length > 0 && !collapsed ? (
+              <button
+                type="button"
+                onClick={() => setOpenPref(false)}
+                aria-expanded
+                className="ml-1 rounded-md px-2 py-0.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-50"
+              >
+                Zwiń
+              </button>
+            ) : null
+          }
         />
       ) : null}
+      {collapsed ? (
+        <button
+          type="button"
+          onClick={() => setOpenPref(true)}
+          aria-expanded={false}
+          className="flex w-full items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-left text-sm text-slate-600 transition-colors hover:bg-slate-50"
+        >
+          <span>
+            <span className="font-semibold text-slate-800">
+              {rows.length} {formatProsbaCount(rows.length).replace(/^\d+\s+/, "")}
+            </span>{" "}
+            czeka na zamówienie u dostawcy — nie musisz nic robić.
+          </span>
+          <span className="shrink-0 text-xs font-semibold text-indigo-700">Pokaż listę</span>
+        </button>
+      ) : null}
+      {collapsed ? null : (
       <MyOrderSectionNoticeList
         callouts={sectionCallouts.callouts}
         singleHints={sectionCallouts.singleHints}
       />
-      {rows.length > 0 ? (
+      )}
+      {collapsed ? null : rows.length > 0 ? (
         <MyOrderShipmentBlock
           embedded
           rows={rows}
@@ -912,6 +991,10 @@ function MojeOrdersViewContent({
               showSectionLabel={showProgressSectionLabels}
               showWhenEmpty={showZamowieniaProgressSplit}
               listProps={listProps}
+              defaultCollapsed={
+                beforeOrderZamowienia.length > 3 &&
+                (actionCount > 0 || orderedProgressZamowienia.length > 0)
+              }
             />
           </>
         ) : (
