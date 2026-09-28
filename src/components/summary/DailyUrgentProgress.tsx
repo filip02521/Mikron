@@ -40,7 +40,7 @@ export function DailyUrgentProgressBar({
           </p>
           <p className="mt-0.5 text-xs text-slate-500">
             {progress.complete
-              ? `Wszystkie ${progress.total} zamówienia z listy zaległe / na dziś są obsłużone.`
+              ? `Wszystkie zamówienia z listy zaległe / na dziś (${progress.total}) są obsłużone.`
               : progress.remaining > 0
                 ? `Zostało ${progress.remaining} z ${progress.total} · zrobione ${progress.done}`
                 : `Zrobione ${progress.done} z ${progress.total}`}

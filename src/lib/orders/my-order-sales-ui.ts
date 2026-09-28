@@ -25,6 +25,14 @@ import {
 import {
   MY_ORDER_NO_HISTORY_ESTIMATE_YET_SUBLINE,
 } from "@/lib/orders/my-order-history-estimate-copy";
+import { polishPozycjeLabel } from "@/lib/email/polish-plural";
+
+/** 2–4 (bez 12–14) → forma „pozycje / towary”, reszta → „pozycji / towarów”. */
+function polishFew(n: number): boolean {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  return mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14);
+}
 
 export type SupplierKhIdsLookup = Record<string, readonly number[]>;
 
@@ -180,7 +188,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
       headline:
         n === 1
           ? "Gotowe do odbioru z regału"
-          : `Gotowe do odbioru z regału · ${n} pozycje`,
+          : `Gotowe do odbioru z regału · ${polishPozycjeLabel(n)}`,
       headlineTone: "action",
       subline: null,
       sortPriority: 1,
@@ -191,7 +199,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     const n = row.pickupPendingCount;
     return {
       headline:
-        n === 1 ? "Zęby gotowe do odbioru" : `Zęby gotowe do odbioru · ${n} pozycje`,
+        n === 1 ? "Zęby gotowe do odbioru" : `Zęby gotowe do odbioru · ${polishPozycjeLabel(n)}`,
       headlineTone: "action",
       subline: "Doręczenie osobiste — potwierdź odbiór od magazynu",
       sortPriority: 1,
@@ -202,8 +210,20 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     const teethN = row.pickupTeethPendingIds.length;
     const shelfN = row.pickupShelfPendingIds.length;
     const parts: string[] = [];
-    if (teethN > 0) parts.push(teethN === 1 ? "zęby" : `${teethN} pozycje zębowe`);
-    if (shelfN > 0) parts.push(shelfN === 1 ? "towar z regału" : `${shelfN} towary z regału`);
+    if (teethN > 0) {
+      parts.push(
+        teethN === 1
+          ? "zęby"
+          : `${teethN} ${polishFew(teethN) ? "pozycje zębowe" : "pozycji zębowych"}`
+      );
+    }
+    if (shelfN > 0) {
+      parts.push(
+        shelfN === 1
+          ? "towar z regału"
+          : `${shelfN} ${polishFew(shelfN) ? "towary" : "towarów"} z regału`
+      );
+    }
     return {
       headline: "Gotowe do odbioru — zęby i towar",
       headlineTone: "action",

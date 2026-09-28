@@ -153,6 +153,7 @@ import {
   buildMarkOrderedFeedback,
   buildScheduleFeedback,
 } from "@/lib/services/daily-panel-undo";
+import { polishPlural } from "@/lib/email/polish-plural";
 
 function revalidateAll() {
   revalidateAfterInformacjaArrived();
@@ -324,7 +325,7 @@ export async function actionProcessIndividual(
             ? [
                 processResult.skippedTeethCount === 1
                   ? "1 pozycja zębowa realizowana jest w panelu /zeby — pominięto w panelu dziennym."
-                  : `${processResult.skippedTeethCount} pozycje zębowe realizowane są w panelu /zeby — pominięto w panelu dziennym.`,
+                  : `${polishPlural(processResult.skippedTeethCount, "pozycja zębowa", "pozycje zębowe", "pozycji zębowych")} — realizacja w panelu /zeby, pominięto w panelu dziennym.`,
               ]
             : []),
         ];

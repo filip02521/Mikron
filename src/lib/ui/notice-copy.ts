@@ -8,6 +8,7 @@ import { undoWindowLongLabel } from "@/lib/orders/daily-panel-undo";
 import { TEETH_LIST_INCOMPLETE_MESSAGE } from "@/lib/teeth/teeth-validation";
 import { userFacingErrorFromUnknown } from "@/lib/ui/user-facing-error";
 import { redirectToLoginIfSessionError } from "@/lib/auth/session-login-redirect";
+import { polishPlural, polishPluralWord } from "@/lib/email/polish-plural";
 
 export type { FormMessage };
 
@@ -381,7 +382,7 @@ export const TEETH_RECEIVE_TOAST = {
       "Rozliczono anulację",
       count === 1
         ? "Pozycja została usunięta z kolejki przyjęcia."
-        : `${count} pozycje zostały usunięte z kolejki przyjęcia.`,
+        : `${polishPlural(count, "pozycja", "pozycje", "pozycji")} ${polishPluralWord(count, "została usunięta", "zostały usunięte", "zostało usuniętych")} z kolejki przyjęcia.`,
     ),
   cancellationAckFailed: toastFromError(
     undefined,
