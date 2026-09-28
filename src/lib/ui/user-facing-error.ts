@@ -179,6 +179,14 @@ export function looksLikeTechnicalErrorDump(cleaned: string): boolean {
   if (NEXT_DIGEST_ERROR_PATTERNS.some((pattern) => pattern.test(cleaned))) {
     return true;
   }
+  // Surowe komunikaty PostgreSQL (angielskie, techniczne) — nie dla użytkownika.
+  if (
+    /invalid input syntax for type|violates (?:foreign key|not-null|check|unique) constraint|duplicate key value violates|(?:relation|column) "[^"]+"(?: of relation "[^"]+")? does not exist|syntax error at or near|permission denied for (?:table|schema|relation)/i.test(
+      cleaned
+    )
+  ) {
+    return true;
+  }
   // Minifikowany / hex dump
   if (/^[a-f0-9]{16,}$/i.test(cleaned)) return true;
   return false;

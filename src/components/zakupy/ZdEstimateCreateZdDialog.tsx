@@ -34,6 +34,10 @@ import {
 import type { ZdEstimateRunMode } from "@/lib/orders/zd-estimate-scope";
 import { controlFocusClass } from "@/lib/ui/ontime-theme";
 import { ZdEstimateImplicitPieceNotice } from "@/components/zakupy/ZdEstimateImplicitPieceNotice";
+import {
+  IconAlertCircle,
+  IconInfoCircle,
+} from "@/components/icons/StrokeIcons";
 
 export type ZdCreateSubmitFreezeSnap = {
   includedServiceOrderIds: string[];
@@ -250,6 +254,42 @@ export function ZdEstimateCreateZdDialog({
     return idx >= 0 ? liveCompose.uwagi.slice(idx) : null;
   }, [liveCompose.uwagi]);
 
+  const warnings: Array<{ key: string; text: string }> = [];
+  if (usedAlias) {
+    warnings.push({
+      key: "alias",
+      text: `Kontrahent ${khId} to alias dostawcy — ustaw go jako główny kh na karcie dostawcy.`,
+    });
+  }
+  if (pendingReviewCount > 0) {
+    warnings.push({
+      key: "review",
+      text: ZD_ESTIMATE_UI.createPendingReviewWarn(pendingReviewCount),
+    });
+  }
+  if (liveOmittedServiceCount > 0) {
+    warnings.push({
+      key: "omitted",
+      text: `${liveOmittedServiceCount} ${
+        liveOmittedServiceCount === 1 ? "usługa nie zmieści się" : "usług nie zmieści się"
+      } w limicie uwag — te prośby nie wejdą na listę Główne. ${ZD_ESTIMATE_UI.createOmittedServicesHint}`,
+    });
+  }
+  if (excludedWithIndividualCount > 0) {
+    warnings.push({
+      key: "excluded",
+      text: `${excludedWithIndividualCount} ${zdEstimateProsbaWord(excludedWithIndividualCount)} ${
+        excludedWithIndividualCount === 1 ? "z wykluczonej pozycji trafi" : "z wykluczonych pozycji trafią"
+      } do uwag jako usługa (bez ilości towaru).`,
+    });
+  }
+  if (preview.softWarnOverLimit) {
+    warnings.push({
+      key: "size",
+      text: `Dużo pozycji (>${ZD_CREATE_SOFT_WARN_LINES}) — Subiekt może długo pracować; limit czasu to ok. 3 minuty.`,
+    });
+  }
+
   const titleHint = useMemo(() => {
     const base = zdEstimateCreateTitleHint({
       isLive: ordersIsLive,
@@ -363,7 +403,33 @@ export function ZdEstimateCreateZdDialog({
       }
       footer={
         showProgress ? null : (
-          <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <label
+              className={cn(
+                "flex min-w-0 cursor-pointer items-start gap-2.5 rounded-md px-3 py-2 text-sm leading-snug ring-1 transition sm:max-w-[36rem]",
+                confirmed
+                  ? "bg-emerald-50/70 text-emerald-950 ring-emerald-200"
+                  : ordersIsLive
+                    ? "bg-amber-50/80 text-amber-950 ring-amber-200"
+                    : "bg-slate-50 text-slate-800 ring-slate-200"
+              )}
+            >
+              <input
+                id={confirmId}
+                type="checkbox"
+                checked={confirmed}
+                onChange={(e) => setConfirmed(e.target.checked)}
+                className="mt-0.5 size-4 shrink-0 accent-indigo-600"
+              />
+              <span>
+                {/* Decyzja Główne / plan jest w „Po utworzeniu” — tu krótko. */}
+                {zdEstimateCreateConfirmLabel({
+                  isLive: ordersIsLive,
+                  port: ordersPort,
+                })}
+              </span>
+            </label>
+            <div className="flex shrink-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="ghost"
@@ -378,15 +444,21 @@ export function ZdEstimateCreateZdDialog({
               className="min-h-11 w-full sm:w-auto"
               onClick={submit}
               disabled={pending || !confirmed || preview.lineCount === 0}
+              title={
+                !confirmed
+                  ? "Najpierw zaznacz potwierdzenie obok"
+                  : undefined
+              }
             >
               {pending ? (
                 <span className="inline-flex items-center gap-2">
                   <Spinner className="size-4" /> Tworzę ZD…
                 </span>
               ) : (
-                "Utwórz ZD"
+                `Utwórz ZD (${preview.lineCount} poz.)`
               )}
             </Button>
+            </div>
           </div>
         )
       }
@@ -412,95 +484,118 @@ export function ZdEstimateCreateZdDialog({
         />
       ) : (
         <>
-          <div className="rounded-lg border border-slate-200/90 bg-slate-50/80 px-3 py-2.5 text-sm text-slate-800">
-            <p>
-              <span className="font-medium">{supplierName}</span>
-              <span className="text-slate-500"> · kontrahent {khId}</span>
-              {usedAlias ? (
-                <span className="ml-1 text-amber-800">
-                  (alias — ustaw główny kh)
-                </span>
-              ) : null}
-            </p>
-            <p className="mt-1 text-slate-600">
-              {preview.lineCount} poz. · suma do ZD{" "}
-              <span className="font-medium tabular-nums text-slate-900">
-                {formatQty(preview.zdUnitsSuma)}
-              </span>
-              {preview.piecesArrivingSuma > 0 &&
-              preview.piecesArrivingSuma !== preview.zdUnitsSuma ? (
-                <>
-                  {" "}
-                  · {formatQty(preview.piecesArrivingSuma)} szt
-                </>
-              ) : null}
-              {scopeLabel ? (
-                <>
-                  {" "}
-                  · zakres <span className="font-medium">{scopeLabel}</span>
-                </>
-              ) : null}
-            </p>
-            {glowneCount > 0 ? (
-              <p className="mt-2 text-emerald-900">
-                {ZD_ESTIMATE_UI.createAfterSuccessDecide}{" "}
-                {glowneCount}{" "}
-                {zdEstimateProsbaWord(glowneCount)}{" "}
-                {glowneCount === 1
-                  ? "kwalifikuje się"
-                  : "kwalifikują się"}{" "}
-                do osobnego Główne
-                {catalogGlowneCount > 0 && liveGlowneServiceCount > 0
-                  ? ` (${catalogGlowneCount} na pozycjach, ${liveGlowneServiceCount} w uwagach)`
-                  : liveGlowneServiceCount > 0
-                    ? " (usługi w uwagach)"
-                    : ""}
-                .
-              </p>
-            ) : (
-              <p className="mt-2 text-slate-600">
-                {ZD_ESTIMATE_UI.createAfterSuccessDecideNoGlowne}
-              </p>
+          <div
+            className={cn(
+              "flex items-start gap-2.5 rounded-lg px-3.5 py-2.5 text-sm ring-1",
+              ordersIsLive
+                ? "bg-rose-50/80 text-rose-950 ring-rose-200"
+                : "bg-sky-50/80 text-sky-950 ring-sky-200"
             )}
-            {excludedWithIndividualCount > 0 ? (
-              <p className="mt-2 text-amber-900">
-                {excludedWithIndividualCount}{" "}
-                {zdEstimateProsbaWord(excludedWithIndividualCount)}{" "}
-                {excludedWithIndividualCount === 1
-                  ? "z wykluczonej pozycji"
-                  : "z wykluczonych pozycji"}{" "}
-                {excludedWithIndividualCount === 1 ? "trafi" : "trafią"} do uwag
-                jako usługa (bez ilości towaru).
-              </p>
-            ) : null}
-            {liveOmittedServiceCount > 0 ? (
-              <p className="mt-2 rounded-md border border-amber-200/80 bg-amber-50/80 px-2.5 py-2 text-xs text-amber-950">
-                {liveOmittedServiceCount}{" "}
-                {liveOmittedServiceCount === 1
-                  ? "usługa nie zmieści się"
-                  : "usług nie zmieści się"}{" "}
-                w limicie uwag — te prośby{" "}
-                <span className="font-semibold">nie wejdą na listę Główne</span>
-                . {ZD_ESTIMATE_UI.createOmittedServicesHint}
-              </p>
-            ) : null}
-            {pendingReviewCount > 0 ? (
-              <p className="mt-2 rounded-md border border-amber-200/80 bg-amber-50/80 px-2.5 py-2 text-xs text-amber-950">
-                {ZD_ESTIMATE_UI.createPendingReviewWarn(pendingReviewCount)}
-              </p>
-            ) : null}
-            {preview.softWarnOverLimit ? (
-              <p className="mt-2 text-amber-900">
-                Dużo pozycji (&gt;{ZD_CREATE_SOFT_WARN_LINES}) — Subiekt może
-                długo pracować; limit czasu to ok. 3 minuty.
-              </p>
-            ) : null}
-            <p className="mt-2 text-xs leading-snug text-slate-600">
-              {ZD_ESTIMATE_UI.createQtyBumpNote}
+          >
+            <IconAlertCircle
+              size={18}
+              className={cn(
+                "mt-0.5 shrink-0",
+                ordersIsLive ? "text-rose-600" : "text-sky-600"
+              )}
+              aria-hidden
+            />
+            <p className="min-w-0 leading-snug">
+              <span className="font-semibold">
+                {ordersIsLive
+                  ? "Aktualna baza Subiekta"
+                  : "Testowy Subiekt"}
+              </span>{" "}
+              <span className="tabular-nums">(:{ordersPort})</span>
+              {ordersHostLabel?.trim() ? (
+                <span className="opacity-75"> · {ordersHostLabel.trim()}</span>
+              ) : null}
+              {" — "}
+              dokumentu nie da się cofnąć z OnTime.
             </p>
-            <p className="mt-1 text-xs leading-snug text-slate-600">
-              {ZD_ESTIMATE_UI.createTeethNote}
+          </div>
+
+          <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <SummaryTile
+              label="Dostawca"
+              value={supplierName}
+              sub={`kontrahent ${khId}${usedAlias ? " (alias)" : ""}`}
+              className="col-span-2 sm:col-span-1"
+            />
+            <SummaryTile
+              label="Pozycji"
+              value={String(preview.lineCount)}
+            />
+            <SummaryTile
+              label="Suma do ZD"
+              value={formatQty(preview.zdUnitsSuma)}
+              sub={
+                preview.piecesArrivingSuma > 0 &&
+                preview.piecesArrivingSuma !== preview.zdUnitsSuma
+                  ? `przyjdzie ${formatQty(preview.piecesArrivingSuma)} szt`
+                  : "jedn. dokumentu"
+              }
+            />
+            <SummaryTile
+              label={
+                scopeMode === "cecha"
+                  ? "Cecha"
+                  : scopeMode === "grupa"
+                    ? "Grupa"
+                    : "Zakres"
+              }
+              value={scopeLabel?.trim() || "—"}
+              className="col-span-2 sm:col-span-1"
+            />
+          </dl>
+
+          {warnings.length > 0 ? (
+            <ul
+              className="space-y-1.5 rounded-lg bg-amber-50/80 px-3.5 py-2.5 text-sm text-amber-950 ring-1 ring-amber-200"
+              aria-label="Do sprawdzenia przed utworzeniem"
+            >
+              {warnings.map((w) => (
+                <li key={w.key} className="flex items-start gap-2 leading-snug">
+                  <IconAlertCircle
+                    size={16}
+                    className="mt-0.5 shrink-0 text-amber-600"
+                    aria-hidden
+                  />
+                  <span>{w.text}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          <div className="rounded-lg bg-slate-50/80 px-3.5 py-2.5 ring-1 ring-slate-200/80">
+            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <IconInfoCircle size={14} aria-hidden /> Po utworzeniu
             </p>
+            <ul className="mt-1.5 list-disc space-y-1 pl-5 text-xs leading-relaxed text-slate-600 marker:text-slate-300">
+              <li className={glowneCount > 0 ? "text-emerald-900" : undefined}>
+                {glowneCount > 0 ? (
+                  <>
+                    Zdecydujesz, czy oznaczyć{" "}
+                    <span className="font-semibold">
+                      {glowneCount} {zdEstimateProsbaWord(glowneCount)}
+                    </span>{" "}
+                    jako Główne
+                    {catalogGlowneCount > 0 && liveGlowneServiceCount > 0
+                      ? ` (${catalogGlowneCount} na pozycjach, ${liveGlowneServiceCount} w uwagach)`
+                      : liveGlowneServiceCount > 0
+                        ? " (usługi w uwagach)"
+                        : ""}{" "}
+                    i czy oznaczyć plan jako złożony.
+                  </>
+                ) : (
+                  ZD_ESTIMATE_UI.createAfterSuccessDecideNoGlowne
+                )}
+              </li>
+              <li>{ZD_ESTIMATE_UI.createQtyBumpNote}</li>
+              {teethOrderIds.size > 0 ? (
+                <li>{ZD_ESTIMATE_UI.createTeethNote}</li>
+              ) : null}
+            </ul>
           </div>
 
           <div className="space-y-2">
@@ -566,24 +661,44 @@ export function ZdEstimateCreateZdDialog({
             />
           ) : null}
 
-          <label className="flex items-start gap-2 text-sm text-slate-700">
-            <input
-              id={confirmId}
-              type="checkbox"
-              checked={confirmed}
-              onChange={(e) => setConfirmed(e.target.checked)}
-              className="mt-1"
-            />
-            <span>
-              {zdEstimateCreateConfirmLabel({
-                isLive: ordersIsLive,
-                port: ordersPort,
-                markCount: glowneCount,
-              })}
-            </span>
-          </label>
         </>
       )}
     </ModalShell>
+  );
+}
+
+function SummaryTile({
+  label,
+  value,
+  sub,
+  className,
+}: {
+  label: string;
+  value: string;
+  sub?: string | null;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "min-w-0 rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200/90",
+        className
+      )}
+    >
+      <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </dt>
+      <dd
+        className="mt-0.5 truncate text-base font-semibold tabular-nums text-slate-900"
+        title={value}
+      >
+        {value}
+      </dd>
+      {sub ? (
+        <dd className="truncate text-xs text-slate-500" title={sub}>
+          {sub}
+        </dd>
+      ) : null}
+    </div>
   );
 }
