@@ -5,6 +5,7 @@
 
 export type SferaCreateErrorKind =
   | "license_limit"
+  | "timeout"
   | "sfera_host_limit"
   | "sfera_busy"
   | "sfera_not_configured"
@@ -41,15 +42,32 @@ function extractHresults(raw: string): string[] {
   return [...found];
 }
 
+/**
+ * Tylko jawna wzmianka o LICENCJI. Samo „przekroczono limit” to w polskich
+ * komunikatach najczęściej timeout („Przekroczono limit czasu (60000 ms)” —
+ * SubiektTimeoutError, SQL Server) — wcześniej każdy timeout Policz / create
+ * ZD pokazywał się jako „Zajęta licencja Subiekta”.
+ */
 function mentionsLicenseOverflow(raw: string): boolean {
   const m = raw.toLowerCase();
   return (
-    m.includes("przekroczony limit") ||
-    m.includes("przekroczono limit") ||
+    /przekroczon[yoa]\s+limit\s+(?:wykupionych\s+)?licencj/.test(m) ||
     m.includes("limit wykupionych licenc") ||
     m.includes("ins_e_przekroczony_limit_licencji") ||
     m.includes("zajęta licencja") ||
     m.includes("zajeta licencja")
+  );
+}
+
+/** Timeout HTTP / SQL / Sfery — osobny przypadek, nie licencja. */
+function mentionsTimeout(raw: string): boolean {
+  const m = raw.toLowerCase();
+  return (
+    /przekroczon[yoa]\s+(?:limit\s+)?czas/.test(m) ||
+    m.includes("limit czasu") ||
+    m.includes("upłynął limit") ||
+    m.includes("uplynal limit") ||
+    /\btime[\s-]?out\b|\btimed out\b|\betimedout\b/.test(m)
   );
 }
 
@@ -89,6 +107,19 @@ export function humanizeSferaCreateError(
         "Nie udało się utworzyć ZD — wszystkie stanowiska z licencją Sfery są zajęte. " +
         "Zamknij zbędne okna Subiekta i inne programy korzystające ze Sfery, poczekaj chwilę i spróbuj ponownie. " +
         "Jeśli problem wraca, IT: Program Serwisowy → zajęte stanowiska Sfery (identyfikator 31).",
+    };
+  }
+
+  // Timeout sprawdzamy dopiero po jawnym HRESULT licencji: „0x800413D5 … timeout”
+  // to nadal licencja, ale sam „Przekroczono limit czasu” — już nie.
+  if (!hasHostLimitHresult && !mentionsSferaHostLimit(raw) && mentionsTimeout(raw)) {
+    return {
+      kind: "timeout",
+      title: "Subiekt nie odpowiedział na czas",
+      message:
+        "Przekroczono czas oczekiwania na Subiekta (to nie jest problem z licencją). " +
+        "Spróbuj ponownie albo zawęź zakres. Przy tworzeniu ZD najpierw sprawdź w Subiekcie, " +
+        "czy dokument już powstał — nie twórz go drugi raz w ciemno.",
     };
   }
 

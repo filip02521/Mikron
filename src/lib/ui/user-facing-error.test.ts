@@ -169,6 +169,14 @@ describe("extractRawErrorMessage / userFacingErrorFromUnknown", () => {
     expect(c.description).not.toMatch(/react/i);
   });
 
+  it("surowy błąd PostgreSQL → fallback", () => {
+    const c = userFacingErrorFromUnknown(
+      new Error('invalid input syntax for type uuid: "sup-1"'),
+      "Nie wczytano kontaktu dostawcy."
+    );
+    expect(c.description).toBe("Nie wczytano kontaktu dostawcy.");
+  });
+
   it("nie nadpisuje sensownego PL fallbackiem", () => {
     const c = userFacingErrorFromUnknown(
       new Error("Nie znaleziono ZK w Subiekcie."),
