@@ -1433,6 +1433,7 @@ export async function actionUpsertSupplier(
   form: UpsertSupplierForm
 ): Promise<UpsertSupplierResult> {
   try {
+    await requireSupplierManagement("mutate");
     return await upsertSupplier(form);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -1458,8 +1459,8 @@ function isMissingMinOrderColumnError(
 const MIN_ORDER_MIGRATION_WARNING =
   "Zapisano bez minimalnej wartości zamówienia — baza nie ma jeszcze kolumn z migracji 157_supplier_min_order_value.sql (Admin → Migracje).";
 
+/** Wywoływane tylko z actionUpsertSupplier — po requireSupplierManagement. */
 async function upsertSupplier(form: UpsertSupplierForm): Promise<UpsertSupplierResult> {
-  await requireSupplierManagement("mutate");
   const supplierId = form.id?.trim() || undefined;
   const notes = canonicalizeOrderMethodNotes(
     clampText(form.notes, MAX_SUPPLIER_NOTES_LEN)
