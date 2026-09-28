@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { cn } from "@/lib/cn";
+import { IconMessageSquare } from "@/components/icons/StrokeIcons";
 
 /**
  * Drugorzędny przycisk zgłoszenia — widoczny, ale poza główną nawigacją.
@@ -57,7 +58,8 @@ export function SalesBugReportTrigger({ className }: { className?: string }) {
         }}
         className={cn(
           "fixed z-20 select-none",
-          "rounded-full border border-slate-300/90 bg-white/95 px-3 py-1.5",
+          // Telefon: sama ikona — pigułka z tekstem zasłaniała przyciski na kartach listy.
+          "inline-flex items-center gap-1.5 rounded-full border border-slate-300/90 bg-white/95 p-2 md:px-3 md:py-1.5",
           "text-[11px] font-medium text-slate-600 shadow-sm backdrop-blur-sm",
           "transition hover:border-slate-400 hover:bg-white hover:text-slate-800 hover:shadow",
           "bottom-[calc(3.85rem+env(safe-area-inset-bottom,0px))] right-3 md:bottom-4 md:right-5",
@@ -66,7 +68,8 @@ export function SalesBugReportTrigger({ className }: { className?: string }) {
         aria-label="Zgłoś problem z aplikacją"
         title="Zgłoś problem"
       >
-        Zgłoś problem
+        <IconMessageSquare size={14} className="md:hidden" aria-hidden />
+        <span className="hidden md:inline">Zgłoś problem</span>
       </button>
 
       <ModalShell

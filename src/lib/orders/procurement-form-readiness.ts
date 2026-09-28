@@ -7,6 +7,7 @@ import {
 import type { ProsbaReadinessLine } from "@/lib/orders/prosba-form-readiness";
 import { prosbaLineHasTeethBlockers } from "@/lib/orders/prosba-line-field-validation";
 import type { IndividualRequestKind } from "@/types/database";
+import { polishPlural } from "@/lib/email/polish-plural";
 
 export type ProcurementReadinessStepState = "empty" | "done";
 
@@ -105,7 +106,7 @@ export function buildProcurementFormReadiness(input: {
       detail: productDone
         ? filled.length === 1
           ? "Symbol, kod lub opis"
-          : `${filled.length} pozycje`
+          : polishPlural(filled.length, "pozycja", "pozycje", "pozycji")
         : "Symbol, kod Mikran lub nazwa z Subiekta",
     },
   ];

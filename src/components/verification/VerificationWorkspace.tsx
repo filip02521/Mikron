@@ -82,6 +82,7 @@ import { panelPageShellClass, panelSectionInsetClass, panelTypography } from "@/
 import { ProcurementCancelDialog } from "@/components/procurement/ProcurementCancelDialog";
 import { cn } from "@/lib/cn";
 import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
+import { unwrapActionResult } from "@/lib/actions/action-error";
 
 export function VerificationWorkspace({
   orders,
@@ -406,7 +407,7 @@ export function VerificationWorkspace({
     pendingSafetyRef.current = window.setTimeout(() => setPendingMessage(null), ACTION_PENDING_SAFETY_FORM_MS);
     start(async () => {
       try {
-        await actionCompleteVerification(active.id, {
+        await unwrapActionResult(actionCompleteVerification(active.id, {
           supplierId: form.supplierId,
           salesPersonId: form.salesPersonId,
           symbol: form.symbol,
@@ -425,7 +426,7 @@ export function VerificationWorkspace({
               : undefined,
           acknowledgeSufficientStock: options?.acknowledgeSufficientStock,
           teethDetails: form.teethDetails ?? null,
-        });
+        }));
         setToast(
           informacjaUi?.completeSuccessMessage
             ? VERIFICATION_TOAST.savedInformacja(informacjaUi.completeSuccessMessage)

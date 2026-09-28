@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/cn";
 import { panelTypography } from "@/lib/ui/ontime-theme";
+import { plPozycja } from "@/lib/ui/polish-plurals";
 import type { TeethReceiveInboxSummary } from "@/lib/orders/receive-queue-teeth";
 
 export function TeethReceiveSummaryBand({
@@ -26,11 +27,11 @@ export function TeethReceiveSummaryBand({
           <span className="text-sm font-bold tabular-nums">{summary.activeCount}</span>
         </div>
         <div className="min-w-0">
-          <p className={cn(panelTypography.sectionLabel, "text-indigo-800/90")}>W kolejce</p>
+          <p className={cn(panelTypography.sectionLabel, "text-indigo-800/90")}>Czeka na dostawę</p>
           <p className={cn(panelTypography.caption, "truncate text-indigo-900/75")}>
             {queueCount === 0
-              ? "Czeka na oznaczenie w kolejce"
-              : `${queueCount} ${queueCount === 1 ? "pozycja" : queueCount < 5 ? "pozycje" : "pozycji"} do rozliczenia`}
+              ? "Nic nie jest w drodze"
+              : `${queueCount} ${plPozycja(queueCount)} do przyjęcia`}
           </p>
         </div>
       </div>

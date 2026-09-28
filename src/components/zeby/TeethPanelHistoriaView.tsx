@@ -2,25 +2,26 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
-import { cn } from "@/lib/cn";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { Input } from "@/components/ui/Field";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
-import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
 import Link from "next/link";
 import { TeethPanelEmpty, TeethPanelListSkeleton } from "@/components/zeby/TeethPanelSection";
-import { TeethPanelHistoryOrderEntry } from "@/components/zeby/TeethPanelHistoryOrderEntry";
+import {
+  TeethPanelHistoryOrderEntry,
+  teethHistoryState,
+  type TeethHistoryState,
+} from "@/components/zeby/TeethPanelHistoryOrderEntry";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import type { TeethPanelReadinessContext } from "@/lib/teeth/teeth-panel-order-readiness";
-import { TeethPanelSupplierGroupHeader } from "@/components/zeby/TeethPanelSupplierGroupHeader";
 import {
   EMPTY_TEETH_PANEL_FILTERS,
   filterTeethHistoryGroups,
   countActiveTeethPanelFilters,
   type TeethPanelFilters,
 } from "@/lib/teeth/teeth-panel-filters";
-import { teethPanelHistoryOrdersListClass, teethPanelSupplierCardClass } from "@/lib/teeth/teeth-panel-ui";
 import type { TeethQueueGroup, TeethQueueItem } from "@/lib/data/teeth-queue-shared";
 import {
   groupTeethItemsBySupplier,
@@ -36,8 +37,10 @@ import {
   actionUnmarkTeethOrdered,
 } from "@/app/actions/teeth-orders";
 import { TeethPanelAuditLog } from "@/components/zeby/TeethPanelAuditLog";
-import { IconCircleCheck, IconAlertCircle, IconSearch } from "@/components/icons/StrokeIcons";
+import { IconCircleCheck, IconAlertCircle, IconSearch, IconCalendar } from "@/components/icons/StrokeIcons";
 import { TEETH_PANEL_TOAST, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
+
+const plZamowienie = (n: number) => polishPluralWord(n, "zamówienie", "zamówienia", "zamówień");
 
 export function TeethPanelHistoriaView({
   groups,
@@ -277,105 +280,118 @@ export function TeethPanelHistoriaView({
     );
   }
 
+  const allHistoryItems = displayGroups.flatMap((g) =>
+    g.items.filter((i): i is TeethQueueItem => !isScheduledItem(i)),
+  );
+  const countByState = (state: TeethHistoryState) =>
+    allHistoryItems.filter((i) => teethHistoryState(i) === state).length;
+
   return (
     <>
-      <div className="mb-3 flex items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <IconSearch size={16} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <IconSearch size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
-            type="text"
+            type="search"
             value={searchSpec}
             onChange={(e) => setSearchSpec(e.target.value)}
-            placeholder="Szukaj po kolorze, fasonie, produkcie, handlowcu…"
-            className="w-full rounded-md border border-slate-200/80 bg-white py-1.5 pl-8 pr-3 text-sm text-slate-700 shadow-sm outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400"
+            placeholder="Szukaj: kolor, fason, produkt, handlowiec…"
+            className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 shadow-sm outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30"
             aria-label="Szukaj w historii zamówień"
           />
         </div>
         <Button
           variant={bulkDateMode ? "primary" : "secondary"}
-          size="sm"
+          className="min-h-10"
           onClick={() => {
             setBulkDateMode((v) => !v);
             setBulkSelectedIds(new Set());
           }}
         >
-          {bulkDateMode ? "Anuluj" : "Zmień datę (grupowo)"}
+          <IconCalendar size={15} />
+          {bulkDateMode ? "Zakończ zaznaczanie" : "Zmień datę kilku"}
         </Button>
       </div>
+
       {bulkDateMode ? (
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-indigo-200/80 bg-indigo-50/80 px-3 py-2">
-          <span className="text-sm font-medium text-indigo-700">
-            Zaznaczono: {bulkSelectedIds.size}
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/70 px-4 py-3">
+          <span className="text-sm font-medium text-indigo-900">
+            Zaznacz zamówienia poniżej · wybrano {bulkSelectedIds.size}
           </span>
           <Input
             type="date"
             value={bulkDateValue}
             onChange={(e) => setBulkDateValue(e.target.value)}
-            className="w-auto"
-            aria-label="Data dostawy dla zaznaczonych"
+            className="w-auto sm:ml-auto"
+            aria-label="Nowa data dostawy dla zaznaczonych"
           />
           <Button
             size="sm"
+            className="min-h-9"
             disabled={bulkSelectedIds.size === 0 || !bulkDateValue || bulkDatePending}
             onClick={() => void handleBulkSaveDate()}
           >
             {bulkDatePending ? <Spinner size="sm" /> : null}
-            Zapisz datę
+            Ustaw datę
           </Button>
         </div>
       ) : null}
+
       {delayedItems.length > 0 ? (
-        <div className="mb-3 flex items-center gap-2 rounded-md border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-sm text-amber-800">
-          <IconAlertCircle size={18} className="shrink-0 text-amber-600" />
+        <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50/70 px-4 py-3 text-sm text-red-800">
+          <IconAlertCircle size={18} className="shrink-0 text-red-600" />
           <span>
-            <strong>{delayedItems.length}</strong>{" "}
-            {delayedItems.length === 1 ? "opóźniona dostawa" : delayedItems.length < 5 ? "opóźnione dostawy" : "opóźnionych dostaw"}{" "}
-            — sprawdź daty poniżej
+            <strong>{delayedItems.length}</strong> {plZamowienie(delayedItems.length)} po terminie
+            dostawy — skontaktuj się z dostawcą albo popraw datę.
           </span>
         </div>
       ) : null}
-      <div className="space-y-3">
-        {displayGroups.map((group) => {
-        const items = group.items.filter(
-          (i): i is TeethQueueItem => !isScheduledItem(i),
-        );
 
+      <p className="text-xs text-slate-500">
+        W drodze: <strong className="text-slate-700">{countByState("in_transit")}</strong>
+        {" · "}Opóźnione: <strong className="text-slate-700">{countByState("late")}</strong>
+        {" · "}Częściowo: <strong className="text-slate-700">{countByState("partial")}</strong>
+        {" · "}Dostarczone: <strong className="text-slate-700">{countByState("done")}</strong>
+      </p>
+
+      {displayGroups.map((group) => {
+        const items = group.items.filter((i): i is TeethQueueItem => !isScheduledItem(i));
         return (
-          <div key={group.supplierId ?? "__no_supplier"} className={teethPanelSupplierCardClass}>
-            <TeethPanelSupplierGroupHeader
-              group={group}
-              orderCount={items.length}
-              hideProductLines
-            />
-
-            <div className={teethPanelHistoryOrdersListClass}>
+          <section
+            key={group.supplierId ?? "__no_supplier"}
+            aria-label={`Dostawca ${group.supplierName}`}
+            className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
+          >
+            <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-100 px-4 py-3 sm:px-5">
+              <h2 className="text-base font-semibold text-slate-900">{group.supplierName}</h2>
+              <span className="text-xs text-slate-500">
+                {items.length} {plZamowienie(items.length)}
+              </span>
+            </header>
+            <ul className="divide-y divide-slate-100">
               {items.map((item) => (
-                <div key={item.id} className="flex items-start gap-2">
-                  {bulkDateMode ? (
-                    <input
-                      type="checkbox"
-                      checked={bulkSelectedIds.has(item.id)}
-                      onChange={() => toggleBulkSelect(item.id)}
-                      className={cn("mt-1 size-4 shrink-0", checkboxBrandClass)}
-                      aria-label={`Zaznacz ${item.products}`}
-                    />
-                  ) : null}
-                  <TeethPanelHistoryOrderEntry
-                    item={item}
-                    onEditDate={bulkDateMode ? undefined : () => openDateEditor(item)}
-                    onUnmark={
-                      bulkDateMode
-                        ? undefined
-                        : item.status === "Zamowione" ? () => setUnmarkId(item.id) : undefined
-                    }
-                  />
-                </div>
+                <TeethPanelHistoryOrderEntry
+                  key={item.id}
+                  item={item}
+                  selectable={bulkDateMode}
+                  selected={bulkSelectedIds.has(item.id)}
+                  onToggleSelected={() => toggleBulkSelect(item.id)}
+                  onEditDate={
+                    bulkDateMode || item.status === "Zrealizowane" || item.status === "Anulowane"
+                      ? undefined
+                      : () => openDateEditor(item)
+                  }
+                  onUnmark={
+                    !bulkDateMode && item.status === "Zamowione"
+                      ? () => setUnmarkId(item.id)
+                      : undefined
+                  }
+                />
               ))}
-            </div>
-          </div>
+            </ul>
+          </section>
         );
       })}
-      </div>
 
       {hasMore ? (
         <div className="flex justify-center px-3 pb-2 pt-1">

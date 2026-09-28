@@ -55,6 +55,7 @@ import {
 import { VirtualList } from "@/components/ui/VirtualList";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { MyOrderSectionPatternId } from "@/lib/orders/my-order-section-callout";
+import { unwrapActionResult } from "@/lib/actions/action-error";
 
 const EditIndividualRequestModal = dynamic(
   () =>
@@ -386,7 +387,7 @@ export function MyOrderShipmentList({
       setPendingMessage(n === 1 ? "Anulowanie pozycji…" : `Anulowanie ${n} pozycji…`);
       start(async () => {
         try {
-          await actionSalesCancelOrders(orderIds, { quantityById });
+          await unwrapActionResult(actionSalesCancelOrders(orderIds, { quantityById }));
           reportUndo({
             orderIds,
             kind: "cancel",

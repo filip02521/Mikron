@@ -91,8 +91,13 @@ export function formatZkProsbaProductLabel(
   order: Pick<ZkLinkableOrder, "products" | "symbol" | "mikran_code">
 ): string {
   const product = order.products?.trim();
-  const sym = order.symbol?.trim() || order.mikran_code?.trim();
-  if (product && sym) return `${product} (${sym})`;
+  // „-” to placeholder braku symbolu (normalizeDraftProducts) — nie pokazuj „(-)”.
+  const cleanSym = (v: string | null | undefined) => {
+    const t = v?.trim() ?? "";
+    return /^[\s\-–—_.]*$/.test(t) ? "" : t;
+  };
+  const sym = cleanSym(order.symbol) || cleanSym(order.mikran_code);
+  if (product && sym && sym !== product) return `${product} (${sym})`;
   return product || sym || "Pozycja bez opisu";
 }
 

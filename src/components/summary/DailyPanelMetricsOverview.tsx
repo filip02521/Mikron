@@ -22,6 +22,7 @@ import {
   sectionIconTileBrandClass,
   sectionIconTileBrandSoftClass,
 } from "@/lib/ui/ontime-theme";
+import { polishPlural } from "@/lib/email/polish-plural";
 
 function MetricTile({
   value,
@@ -75,9 +76,11 @@ function MetricTile({
 
 function buildMetricsSummary(summary: DailyInboxSummary): string {
   const parts: string[] = [];
-  if (summary.overdueCount > 0) parts.push(`${summary.overdueCount} zaległe`);
+  if (summary.overdueCount > 0) {
+    parts.push(polishPlural(summary.overdueCount, "zaległe", "zaległe", "zaległych"));
+  }
   if (summary.forSomeoneGroupCount > 0) {
-    parts.push(`${summary.forSomeoneGroupCount} prośby`);
+    parts.push(polishPlural(summary.forSomeoneGroupCount, "prośba", "prośby", "próśb"));
   }
   if (summary.todayCount > 0) parts.push(`${summary.todayCount} na dziś`);
   if (summary.weekPlanCount > 0) parts.push(`${summary.weekPlanCount} w planie`);

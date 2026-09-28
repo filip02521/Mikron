@@ -50,21 +50,22 @@ export function TeethPanelSection({
 
 export function TeethPanelTabPanel({
   id,
-  labelledBy,
   children,
   className,
+  bare = false,
 }: {
   id: string;
-  labelledBy: string;
+  /** @deprecated Zakładki zastąpił pasek etapów — zostaje dla zgodności. */
+  labelledBy?: string;
   children: ReactNode;
   className?: string;
+  /** Bez wewnętrznych marginesów karty (widok układa własne karty). */
+  bare?: boolean;
 }) {
   return (
     <div
       id={id}
-      role="tabpanel"
-      aria-labelledby={labelledBy}
-      className={cn(panelSectionInsetClass, "space-y-3 pb-4 pt-3", className)}
+      className={cn(bare ? "space-y-4" : cn(panelSectionInsetClass, "space-y-3 pb-4 pt-3"), className)}
     >
       {children}
     </div>
@@ -75,13 +76,13 @@ export function TeethPanelEmpty({
   title,
   description,
   icon,
-  tone = "emerald",
+  tone = "indigo",
   action,
 }: {
   title: string;
   description?: string;
   icon: ReactNode;
-  tone?: "emerald" | "sky" | "amber";
+  tone?: "indigo" | "emerald" | "sky" | "amber";
   action?: ReactNode;
 }) {
   const iconShellClass =
@@ -89,7 +90,9 @@ export function TeethPanelEmpty({
       ? "bg-sky-50 text-sky-700"
       : tone === "amber"
         ? "bg-amber-50 text-amber-800"
-        : "bg-emerald-50 text-emerald-700";
+        : tone === "emerald"
+          ? "bg-emerald-50 text-emerald-700"
+          : "bg-indigo-50 text-indigo-700";
 
   return (
     <div className="overflow-hidden rounded-md border border-slate-200/80 bg-[var(--card)] shadow-sm">

@@ -37,7 +37,12 @@ export function SalesKeyboardShortcutsStrip({
       summaryClassName={cn("items-center", isToolbar ? "gap-1.5 py-0 px-2" : "py-2")}
       bodyClassName={isToolbar ? "pb-2 pt-1.5" : "pb-2.5 pt-2"}
       className={cn(
-        isToolbar ? "shrink-0 border-slate-200/70 bg-white/80" : embedded ? "bg-white/70" : undefined,
+        // Toolbar też bez telefonu (jak wariant strip) — tam nie ma klawiatury.
+        isToolbar
+          ? "hidden shrink-0 border-slate-200/70 bg-white/80 sm:block"
+          : embedded
+            ? "bg-white/70"
+            : undefined,
         className
       )}
     >

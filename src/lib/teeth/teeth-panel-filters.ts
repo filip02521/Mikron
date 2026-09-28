@@ -150,8 +150,11 @@ function matchesTeethItemFilters(
   if (filters.salesPersonId && item.sales_person_id !== filters.salesPersonId) {
     return false;
   }
-  if (filters.missingSpecOnly && orderHasTeethSpec(item, ctx)) {
-    return false;
+  // „Do uzupełnienia” = brak/niepełna lista zębów albo braki w samej prośbie
+  // (dostawca, ilość) — tak samo jak licznik w kolejce.
+  if (filters.missingSpecOnly) {
+    if (item.request_kind === "informacja") return false;
+    if (orderHasTeethSpec(item, ctx) && !teethQueueOrderNeedsHeaderData(item)) return false;
   }
   if (filters.verificationOnly && !teethQueueOrderNeedsHeaderData(item)) {
     return false;

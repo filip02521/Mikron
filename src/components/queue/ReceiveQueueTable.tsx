@@ -98,6 +98,7 @@ import {
   requiresQueueBatchConfirm,
   selectedSaveButtonLabel,
 } from "@/lib/orders/queue-batch-notify";
+import { unwrapActionResult } from "@/lib/actions/action-error";
 
 const COL_COUNT = 4;
 
@@ -477,7 +478,7 @@ export function ReceiveQueueTable({
     onPendingChange("Zapisywanie dostawy…");
     start(async () => {
       try {
-        const result = await actionUpdateDelivered(order.id, value);
+        const result = await unwrapActionResult(actionUpdateDelivered(order.id, value));
         setQty((s) => {
           const next = { ...s };
           delete next[order.id];
@@ -584,7 +585,7 @@ export function ReceiveQueueTable({
       try {
         if (updates.length === 1 && orderIds.length === 1) {
           const only = updates[0]!;
-          const result = await actionUpdateDelivered(only.orderId, only.qty);
+          const result = await unwrapActionResult(actionUpdateDelivered(only.orderId, only.qty));
           setSelected((s) => {
             const next = { ...s };
             delete next[only.orderId];

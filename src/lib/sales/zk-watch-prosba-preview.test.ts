@@ -224,6 +224,15 @@ describe("formatZkProsbaProductLabel", () => {
       "XYZ"
     );
   });
+
+  it("nie pokazuje placeholdera „(-)” przy braku symbolu", () => {
+    expect(
+      formatZkProsbaProductLabel({ products: "Zęby B82", symbol: "-", mikran_code: null })
+    ).toBe("Zęby B82");
+    expect(
+      formatZkProsbaProductLabel({ products: "Zęby B82", symbol: "-", mikran_code: "896" })
+    ).toBe("Zęby B82 (896)");
+  });
 });
 
 describe("resolveZkProsbaPreviewStatusBadgeVariant", () => {

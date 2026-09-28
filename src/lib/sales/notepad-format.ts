@@ -42,11 +42,11 @@ function readSnapshotStatusLabel(watch: SalesZkWatch): string | null {
 
 export function zkWatchSubtitle(
   watch: SalesZkWatch,
-  options?: { omitLineSummary?: boolean }
+  options?: { omitLineSummary?: boolean; omitIssued?: boolean }
 ): string | null {
   const parts: string[] = [];
   const issued = formatShortDate(watch.zk_issued_at);
-  if (issued) parts.push(`Wystawiono ${issued}`);
+  if (issued && !options?.omitIssued) parts.push(`Wystawiono ${issued}`);
   if (!options?.omitLineSummary && watch.line_summary?.trim()) {
     parts.push(watch.line_summary.trim());
   }

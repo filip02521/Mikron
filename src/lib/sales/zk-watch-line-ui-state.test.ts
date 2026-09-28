@@ -559,7 +559,7 @@ describe("buildZkWatchLineStatusSummary", () => {
         scopeExcludedLineKeys: [],
         lineCoverageByKey: { a: "uncovered", b: "delivered" },
       })
-    ).toBe("1 do zamówienia · 1 odebrane z regału");
+    ).toBe("1 bez prośby · 1 odebrane z regału");
   });
 
   it("sumuje rozłączne stany dla dwóch pozycji", () => {
@@ -574,7 +574,7 @@ describe("buildZkWatchLineStatusSummary", () => {
         scopeExcludedLineKeys: [],
         lineCoverageByKey: { a: "uncovered", b: "delivered" },
       })
-    ).toBe("1 do zamówienia · 1 na regale");
+    ).toBe("1 bez prośby · 1 na regale");
   });
 
   it("checkbox shelf_marked nie tworzy osobnego wiersza w summary", () => {
