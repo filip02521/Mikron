@@ -343,6 +343,8 @@ export function TeethPanelClient({
     const handler = (e: KeyboardEvent) => {
       const target = e.target;
       if (target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement) return;
+      // Enter na przycisku/linku (np. chip zębów) ma kliknąć ten element, a nie otwierać oznaczania.
+      if (target instanceof HTMLElement && target.closest("button, a, [role='dialog'], [role='alertdialog']")) return;
       if (e.key === "Escape" && positionSelection.size > 0) {
         e.preventDefault();
         setPositionSelection(new Map());

@@ -36,10 +36,10 @@ function StepMarker({ tone, index }: { tone: StepTone; index: number }) {
     <span
       className={cn(
         "flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold",
-        tone === "done" && "bg-emerald-500 text-white",
+        tone === "done" && "bg-indigo-600 text-white",
         tone === "warn" && "bg-amber-400 text-amber-950",
-        tone === "todo" && "bg-indigo-600 text-white",
-        tone === "idle" && "bg-slate-200 text-slate-600",
+        tone === "todo" && "bg-white text-indigo-700 ring-2 ring-indigo-500",
+        tone === "idle" && "bg-white text-slate-400 ring-1 ring-slate-300",
       )}
       aria-hidden
     >
@@ -185,7 +185,7 @@ export function TeethQueueSupplierCard({
             </Button>
           </div>
         ) : (
-          <div className="grid gap-4 rounded-lg bg-slate-50/80 p-3 sm:grid-cols-3 sm:gap-3">
+          <div className="grid gap-4 rounded-lg bg-gradient-to-r from-indigo-50/70 to-sky-50/50 p-3 ring-1 ring-inset ring-indigo-100 sm:grid-cols-3 sm:gap-3">
             <Step index={1} tone={listTone} title="Lista zębów">
               {needsFixCount > 0 ? (
                 <p className="text-sm font-medium text-amber-800">
@@ -195,7 +195,7 @@ export function TeethQueueSupplierCard({
                   </span>
                 </p>
               ) : (
-                <p className="text-sm font-medium text-emerald-700">Wszystkie kompletne</p>
+                <p className="text-sm font-medium text-slate-800">Wszystkie kompletne</p>
               )}
             </Step>
             <Step index={2} tone={fileTone} title="Plik zamówienia">
@@ -241,16 +241,21 @@ export function TeethQueueSupplierCard({
       {items.length > 0 ? (
         <>
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/40 px-4 py-2 sm:px-5">
-            <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600">
-              <input
-                type="checkbox"
-                checked={allSelected}
-                disabled={openTeeth === 0}
-                onChange={onToggleAll}
-                className={checkboxBrandClass}
-              />
-              Zaznacz wszystkie
-            </label>
+            {group.supplierId ? (
+              <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  disabled={openTeeth === 0}
+                  onChange={onToggleAll}
+                  className={checkboxBrandClass}
+                />
+                Zaznacz wszystkie
+              </label>
+            ) : (
+              <span className="text-xs text-slate-500">Najpierw przypisz dostawcę</span>
+            )}
+            {group.supplierId ? (
             <button
               type="button"
               aria-expanded={summaryOpen}
@@ -264,9 +269,10 @@ export function TeethQueueSupplierCard({
                 className={cn("transition-transform", summaryOpen && "rotate-180")}
               />
             </button>
+            ) : null}
           </div>
 
-          {summaryOpen ? (
+          {summaryOpen && group.supplierId ? (
             <TeethQueueOrderSummary supplierName={group.supplierName} items={items} />
           ) : null}
 
@@ -287,6 +293,7 @@ export function TeethQueueSupplierCard({
                   onTogglePositions(item.id, positions, select)
                 }
                 onEditSaved={onEditSaved}
+                selectable={Boolean(group.supplierId)}
               />
             ))}
           </ul>

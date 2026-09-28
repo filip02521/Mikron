@@ -330,10 +330,10 @@ describe("teethNavGroups", () => {
   it("sekcja Dziś ma semantyke jak Dostawy — bez osobnych iconTone", () => {
     const today = teethNavGroups().find((g) => g.title === NAV_SECTION_TODAY);
     expect(today?.items.map((item) => [item.label, item.tone, item.iconTone, item.tier, item.highlight])).toEqual([
-      ["Kolejka", "indigo", undefined, "primary", true],
-      ["Weryfikacja", "amber", undefined, "primary", undefined],
-      ["Przyjęcie", "emerald", undefined, "primary", undefined],
-      ["Historia", "slate", undefined, "primary", undefined],
+      ["Do zamówienia", "indigo", undefined, "primary", true],
+      ["Weryfikacja", "indigo", undefined, "primary", undefined],
+      ["Przyjęcie", "indigo", undefined, "primary", undefined],
+      ["Historia", "indigo", undefined, "primary", undefined],
     ]);
   });
 
@@ -346,7 +346,7 @@ describe("teethNavGroups", () => {
   it("mobile primary — cztery codzienne ekrany workflow", () => {
     const primary = navMobilePrimaryItems(teethNavGroups());
     expect(primary.map((item) => item.mobileLabel ?? item.label)).toEqual([
-      "Kolejka",
+      "Zamów",
       "Weryfikacja",
       "Przyjęcie",
       "Historia",

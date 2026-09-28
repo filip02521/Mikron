@@ -20,16 +20,8 @@ type FlowStep = {
   caption: string;
   icon: ReactNode;
   count?: number;
-  /** Kolor licznika, gdy są pozycje do zrobienia. */
-  tone: "amber" | "indigo" | "emerald" | "slate";
 };
 
-const TONE_BADGE: Record<FlowStep["tone"], string> = {
-  amber: "bg-amber-500 text-white",
-  indigo: "bg-indigo-600 text-white",
-  emerald: "bg-emerald-600 text-white",
-  slate: "bg-slate-200 text-slate-700",
-};
 
 /**
  * Na telefonie te same etapy są w dolnym pasku nawigacji — tu tylko od md.
@@ -49,7 +41,6 @@ export function TeethFlowNav({ className }: { className?: string }) {
       caption: "Listy ze zdjęć",
       icon: <IconScanLine size={16} strokeWidth={2} />,
       count: navBadges.teethVerification,
-      tone: "amber",
     },
     {
       id: "kolejka",
@@ -58,7 +49,6 @@ export function TeethFlowNav({ className }: { className?: string }) {
       caption: "Zamów u dostawcy",
       icon: <IconTooth size={16} />,
       count: navBadges.teethQueue,
-      tone: "indigo",
     },
     {
       id: "przyjecie",
@@ -67,7 +57,6 @@ export function TeethFlowNav({ className }: { className?: string }) {
       caption: "Co dotarło",
       icon: <IconWarehouse size={16} />,
       count: navBadges.teethReceivePending,
-      tone: "emerald",
     },
     {
       id: "historia",
@@ -75,7 +64,6 @@ export function TeethFlowNav({ className }: { className?: string }) {
       label: "Historia",
       caption: "Zamówione i dostarczone",
       icon: <IconArchive size={16} strokeWidth={2} />,
-      tone: "slate",
     },
   ];
 
@@ -99,14 +87,16 @@ export function TeethFlowNav({ className }: { className?: string }) {
                 className={cn(
                   "group flex min-h-12 flex-1 items-center gap-2.5 rounded-lg border px-3 py-2 transition-colors",
                   active
-                    ? "border-indigo-200 bg-white shadow-sm ring-1 ring-indigo-100"
+                    ? "border-indigo-200 bg-white shadow-sm ring-1 ring-indigo-100 shadow-indigo-600/5"
                     : "border-transparent bg-slate-100/70 hover:border-slate-200 hover:bg-white",
                 )}
               >
                 <span
                   className={cn(
                     "flex size-8 shrink-0 items-center justify-center rounded-md",
-                    active ? "bg-indigo-600 text-white" : "bg-white text-slate-500 ring-1 ring-slate-200",
+                    active
+                      ? "bg-gradient-to-br from-indigo-600 to-sky-600 text-white"
+                      : "bg-white text-indigo-600/70 ring-1 ring-slate-200",
                   )}
                   aria-hidden
                 >
@@ -122,10 +112,7 @@ export function TeethFlowNav({ className }: { className?: string }) {
                     {step.label}
                     {count > 0 ? (
                       <span
-                        className={cn(
-                          "rounded-full px-1.5 py-px text-[11px] font-bold tabular-nums leading-4",
-                          TONE_BADGE[step.tone],
-                        )}
+                        className="rounded-full bg-indigo-600 px-1.5 py-px text-[11px] font-bold tabular-nums leading-4 text-white"
                       >
                         {count}
                       </span>

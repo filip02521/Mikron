@@ -99,7 +99,6 @@ export function TeethPanelWeryfikacjaView({
         title="Brak pozycji do weryfikacji"
         description="Prośby z listą zębów wczytaną ze zdjęcia pojawią się tutaj do weryfikacji przed zamówieniem."
         icon={<IconScanLine size={24} strokeWidth={1.75} />}
-        tone="amber"
         action={
           <Link
             href="/zeby/kolejka"

@@ -76,13 +76,13 @@ export function TeethPanelEmpty({
   title,
   description,
   icon,
-  tone = "emerald",
+  tone = "indigo",
   action,
 }: {
   title: string;
   description?: string;
   icon: ReactNode;
-  tone?: "emerald" | "sky" | "amber";
+  tone?: "indigo" | "emerald" | "sky" | "amber";
   action?: ReactNode;
 }) {
   const iconShellClass =
@@ -90,7 +90,9 @@ export function TeethPanelEmpty({
       ? "bg-sky-50 text-sky-700"
       : tone === "amber"
         ? "bg-amber-50 text-amber-800"
-        : "bg-emerald-50 text-emerald-700";
+        : tone === "emerald"
+          ? "bg-emerald-50 text-emerald-700"
+          : "bg-indigo-50 text-indigo-700";
 
   return (
     <div className="overflow-hidden rounded-md border border-slate-200/80 bg-[var(--card)] shadow-sm">

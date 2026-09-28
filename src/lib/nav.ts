@@ -213,9 +213,9 @@ function teethTodayNavItems(
   return [
     {
       href: "/zeby/kolejka",
-      label: "Kolejka",
-      mobileLabel: "Kolejka",
-      description: "Prośby handlowców — oznacz zamówione u dostawcy",
+      label: "Do zamówienia",
+      mobileLabel: "Zamów",
+      description: "Prośby handlowców — zamów u dostawcy i oznacz",
       icon: "teeth",
       tone: "indigo",
       tier: "primary",
@@ -227,9 +227,9 @@ function teethTodayNavItems(
       href: "/zeby/weryfikacja",
       label: "Weryfikacja",
       mobileLabel: "Weryfikacja",
-      description: "Prośby z listą zębów ze zdjęcia — zweryfikuj i zatwierdź",
+      description: "Listy zębów ze zdjęć — sprawdź i zatwierdź",
       icon: "teeth",
-      tone: "amber",
+      tone: "indigo",
       tier: "primary",
       mobileSlot: "primary",
       badge: badges.teethVerification,
@@ -240,7 +240,7 @@ function teethTodayNavItems(
       mobileLabel: "Przyjęcie",
       description: "Co dotarło od dostawcy — wpisz ilości i braki",
       icon: "warehouse",
-      tone: "emerald",
+      tone: "indigo",
       tier: "primary",
       mobileSlot: "primary",
       badge: badges.teethReceivePending,
@@ -249,9 +249,9 @@ function teethTodayNavItems(
       href: "/zeby/historia",
       label: "Historia",
       mobileLabel: "Historia",
-      description: "Zamówione u dostawcy — ETA, audyt i korekty",
+      description: "Zamówione u dostawcy — daty dostaw i korekty",
       icon: "history",
-      tone: "slate",
+      tone: "indigo",
       tier: "primary",
       mobileSlot: "primary",
     },
@@ -267,7 +267,7 @@ function teethSuppliersNavItems(): NavItem[] {
       mobileLabel: "Braki",
       description: "Niedostępne warianty u dostawcy — ostrzeżenie przy prośbie",
       icon: "catalog",
-      tone: "amber",
+      tone: "slate",
       tier: "compact",
       mobileSlot: "overflow",
     },
@@ -1062,11 +1062,11 @@ export function pageTitle(pathname: string): string {
   }
   if (pathname.startsWith("/lokalizacje/")) return "Terminy zamówień";
   if (pathname.startsWith("/zeby/przyjecie")) return "Przyjęcie";
-  if (pathname.startsWith("/zeby/kolejka")) return "Kolejka";
-  if (pathname.startsWith("/zeby/weryfikacja")) return "Weryfikacja zębów";
+  if (pathname.startsWith("/zeby/kolejka")) return "Do zamówienia";
+  if (pathname.startsWith("/zeby/weryfikacja")) return "Weryfikacja list";
   if (pathname.startsWith("/zeby/historia")) return "Historia";
   if (pathname.startsWith("/zeby/braki")) return "Braki";
-  if (pathname.startsWith("/zeby")) return "Kolejka";
+  if (pathname.startsWith("/zeby")) return "Do zamówienia";
 
   for (const role of ["admin", "zakupy", "zakupy_zeby", "magazyn", "sales", "sales_manager"] as const) {
     for (const g of navForRole(role)) {

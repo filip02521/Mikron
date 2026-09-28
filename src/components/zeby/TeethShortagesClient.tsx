@@ -10,7 +10,7 @@ import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { NoticeToast } from "@/components/ui/NoticeToast";
-import { IconAlertCircle } from "@/components/icons/StrokeIcons";
+import { IconAlertCircle, IconPlusCircle } from "@/components/icons/StrokeIcons";
 import { TeethPanelWorkspaceCard } from "@/components/zeby/TeethPanelWorkspaceCard";
 import { TeethPanelTabPanel } from "@/components/zeby/TeethPanelSection";
 import {
@@ -212,7 +212,10 @@ export function TeethShortagesClient({
       icon={<IconAlertCircle size={20} />}
       iconTileClassName={TEETH_BRAKI_ICON_TILE}
       headerAside={
-        <TeethShortageAddCta compact onClick={openCreate} disabled={pending} />
+        <Button className="min-h-10 gap-1.5" onClick={openCreate} disabled={pending}>
+          <IconPlusCircle size={16} />
+          {TEETH_BRAKI_ADD_COPY.ctaLabel}
+        </Button>
       }
       beforeCard={
         <>
@@ -264,10 +267,10 @@ export function TeethShortagesClient({
           </div>
 
           {filtered.length === 0 ? (
-            <div className="overflow-hidden rounded-md border border-amber-200/60 bg-gradient-to-b from-amber-50/80 via-white to-white shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-indigo-100 bg-gradient-to-b from-indigo-50/70 via-white to-white shadow-sm">
               <div className="relative px-4 py-10 text-center sm:px-6 sm:py-12">
                 <span
-                  className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(ellipse_at_top,_rgba(245,158,11,0.14),_transparent_70%)]"
+                  className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(ellipse_at_top,_rgba(79,70,229,0.10),_transparent_70%)]"
                   aria-hidden
                 />
                 <div className="relative">

@@ -22,7 +22,7 @@ import {
 } from "@/lib/teeth/teeth-queue-view-model";
 
 const STATE_BADGE: Record<TeethOrderQueueState, string> = {
-  ready: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  ready: "bg-indigo-50 text-indigo-700 ring-indigo-200",
   missing_list: "bg-amber-50 text-amber-800 ring-amber-300",
   incomplete: "bg-amber-50 text-amber-800 ring-amber-300",
   needs_header: "bg-amber-50 text-amber-800 ring-amber-300",
@@ -48,8 +48,11 @@ export function TeethQueueOrderRow({
   onToggleOrder,
   onTogglePositions,
   onEditSaved,
+  selectable = true,
 }: {
   item: TeethQueueItem;
+  /** Prośby bez dostawcy nie da się zamówić — bez zaznaczania. */
+  selectable?: boolean;
   state: TeethOrderQueueState;
   /** Zaznaczone pozycje tej prośby. */
   selected: Set<number> | undefined;
@@ -58,7 +61,9 @@ export function TeethQueueOrderRow({
   onEditSaved?: (message?: string) => void;
 }) {
   const lines = teethOrderSpecLines(item);
-  const unorderedTotal = lines.reduce((sum, l) => sum + l.unorderedPositions.length, 0);
+  const unorderedTotal = selectable
+    ? lines.reduce((sum, l) => sum + l.unorderedPositions.length, 0)
+    : 0;
   const selectedCount = unorderedTotal > 0
     ? lines.reduce(
         (sum, l) => sum + l.unorderedPositions.filter((p) => selected?.has(p)).length,
@@ -158,22 +163,25 @@ export function TeethQueueOrderRow({
         {lines.length > 0 ? (
           <ul className="flex flex-wrap gap-1.5" aria-label="Zęby w prośbie">
             {lines.map((line) => {
-              const open = line.unorderedPositions;
+              const open = selectable ? line.unorderedPositions : [];
               const lineSelected = open.length > 0 && open.every((p) => selected?.has(p));
               const label = formatTeethSpecLabel(line);
-              const qty = open.length > 0 ? open.length : line.total;
-              const done = open.length === 0;
+              const qty = line.unorderedPositions.length > 0 ? line.unorderedPositions.length : line.total;
+              const done = line.unorderedPositions.length === 0;
+              const locked = !done && !selectable;
               return (
                 <li key={line.key}>
                   <button
                     type="button"
-                    disabled={done}
-                    aria-pressed={done ? undefined : lineSelected}
+                    disabled={done || locked}
+                    aria-pressed={done || locked ? undefined : lineSelected}
                     onClick={() => onTogglePositions(open, !lineSelected)}
                     title={
                       done
                         ? "Już zamówione u dostawcy"
-                        : lineSelected
+                        : locked
+                          ? undefined
+                          : lineSelected
                           ? "Odznacz te zęby"
                           : "Zaznacz tylko te zęby"
                     }
@@ -181,6 +189,8 @@ export function TeethQueueOrderRow({
                       "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset transition-colors",
                       done
                         ? "cursor-default bg-slate-50 text-slate-400 ring-slate-200 line-through decoration-slate-300"
+                        : locked
+                          ? "cursor-default bg-white text-slate-700 ring-slate-200"
                         : lineSelected
                           ? "bg-indigo-600 text-white ring-indigo-600"
                           : "bg-white text-slate-800 ring-slate-200 hover:ring-indigo-300",
