@@ -82,9 +82,8 @@ export function MyOrderLineClientField({
         "mt-1 text-left text-[0.68rem] font-medium disabled:opacity-50",
         brandLinkSubtleClass,
         className,
-        // Pusty stan bez kreski i widoczny po najechaniu na pozycję — lista nie powtarza
-        // tego samego linku przy każdym produkcie (klawiatura: widoczny przy fokusie).
-        "mt-1 border-t-0 pt-0 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/line:opacity-100 [@media(hover:hover)]:focus-visible:opacity-100"
+        // Pusty stan: bez kreski, szary — nie konkuruje z nazwą produktu i statusem.
+        "mt-1 border-t-0 pt-0 text-slate-400 hover:text-indigo-700"
       )}
     >
       Przypisz klienta

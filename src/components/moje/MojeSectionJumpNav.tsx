@@ -50,21 +50,15 @@ export function MojeSectionJumpNav({
           type="button"
           onClick={() => jump(item.icon)}
           className={cn(
-            "inline-flex min-h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-3 py-1 text-sm font-medium transition-colors",
-            item.needsAction
-              ? "border-indigo-200 bg-indigo-600 text-white shadow-sm hover:bg-indigo-700"
-              : "border-slate-200 bg-white text-slate-700 hover:border-indigo-200 hover:text-indigo-800",
+            "inline-flex h-8 shrink-0 items-center gap-2 whitespace-nowrap rounded-md border border-slate-200 bg-white px-2.5 text-[13px] transition-colors hover:border-slate-300 hover:bg-slate-50",
+            item.needsAction ? "font-semibold text-slate-900" : "font-medium text-slate-600",
           )}
         >
+          {item.needsAction ? (
+            <span aria-hidden className="size-1.5 rounded-full bg-emerald-500" />
+          ) : null}
           {item.label}
-          <span
-            className={cn(
-              "rounded-full px-1.5 text-xs font-bold tabular-nums",
-              item.needsAction ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700",
-            )}
-          >
-            {item.count}
-          </span>
+          <span className="tabular-nums text-slate-400">{item.count}</span>
         </button>
       ))}
     </nav>

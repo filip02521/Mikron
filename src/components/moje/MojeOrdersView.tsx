@@ -37,7 +37,6 @@ import {
   IconClipboardList,
   MojeSectionIcon,
   type MojeSectionIconKind,
-  mojeSectionIconTileClass,
 } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { salesChromeInsetClass, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
@@ -75,25 +74,20 @@ function cardDomId(rowId: string) {
 
 import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 
-import type { SectionListAccent } from "@/components/ui/SectionListLabel";
 import type { MyOrderSectionAccent } from "@/lib/orders/my-order-section-accent";
-
-function toSectionListAccent(accent: MyOrderSectionAccent): SectionListAccent {
-  return accent;
-}
 
 function MojeSectionListLabel({
   title,
   hint,
   count,
-  accent,
   icon,
   badges,
 }: {
   title: string;
   hint?: string;
   count?: number;
-  accent: MyOrderSectionAccent;
+  /** @deprecated Nagłówki sekcji są stonowane (neutral) — akcent zostaje w wierszach. */
+  accent?: MyOrderSectionAccent;
   icon: MojeSectionIconKind;
   badges?: React.ReactNode;
 }) {
@@ -103,12 +97,19 @@ function MojeSectionListLabel({
       title={title}
       hint={hint}
       hintMode="tooltip"
-      count={count}
-      accent={toSectionListAccent(accent)}
-      icon={<MojeSectionIcon kind={icon} size={17} />}
-      tileClassName={mojeSectionIconTileClass(icon)}
-      titleClassName="text-sm normal-case tracking-normal"
-      badges={badges}
+      // Stonowane nagłówki: białe tło, szara ikona — kolor zostaje dla akcji w wierszach.
+      accent="neutral"
+      icon={<MojeSectionIcon kind={icon} size={16} />}
+      tileClassName="bg-slate-100 text-slate-500"
+      titleClassName="text-sm normal-case tracking-normal text-slate-900"
+      badges={
+        <>
+          {count != null && count > 0 ? (
+            <span className="text-sm font-normal tabular-nums text-slate-400">{count}</span>
+          ) : null}
+          {badges}
+        </>
+      }
     />
   );
 }
@@ -267,7 +268,7 @@ function MyOrderZamowieniaProgressSection({
           type="button"
           onClick={() => setOpenPref(true)}
           aria-expanded={false}
-          className="flex w-full items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-left text-sm text-slate-600 transition-colors hover:bg-slate-50"
+          className="flex w-full items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-left text-sm text-slate-600 transition-colors hover:bg-slate-50 sm:pl-[3.25rem]"
         >
           <span>
             <span className="font-semibold text-slate-800">
@@ -843,7 +844,7 @@ function MojeOrdersViewContent({
         {searchBar}
 
         {!searchActive && !clientLinkFilterActive ? (
-          <div className={cn(salesChromeInsetClass, "border-t border-slate-200/80 bg-slate-50/40 py-3")}>
+          <div className={cn(salesChromeInsetClass, "py-3")}>
             <MojeSectionJumpNav
               items={[
                 { icon: MY_ORDER_ACTION_SECTION_COPY.icon, label: "Do odbioru z regału", count: actionShelfCount, needsAction: true },
@@ -874,9 +875,9 @@ function MojeOrdersViewContent({
           />
         ) : null}
 
-        <div className="space-y-3 p-3 sm:p-4">
+        <div className="border-t border-slate-200/70">
         {actionCount > 0 ? (
-          <div className="space-y-3">
+          <div className="border-b border-slate-200/70 last:border-b-0">
             {actionShelfCount > 0 ? (
               <MojeSectionShell sectionIcon={MY_ORDER_ACTION_SECTION_COPY.icon}>
                 <MojeSectionListLabel

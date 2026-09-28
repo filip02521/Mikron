@@ -238,7 +238,11 @@ function ShipmentToolbar({
           ? cn(mojeActionOverflowSegmentClass, panelSegmentLastClass)
           : undefined
       }
-      triggerClassName={useActionShell ? undefined : "h-10 w-10 sm:h-8 sm:w-8"}
+      triggerClassName={
+        useActionShell
+          ? undefined
+          : "h-10 w-10 border-transparent bg-transparent text-slate-400 shadow-none hover:border-slate-200 hover:bg-white hover:text-slate-700 sm:h-8 sm:w-8"
+      }
     />
   ) : null;
 
