@@ -1595,17 +1595,13 @@ export function OrderFormClient({
               submitForOther
                 ? `Zgłaszasz w imieniu: ${lockedSalesPerson.name}. Po wysłaniu prośba pojawi się w jego liście „Moje zamówienia”.`
                 : zkProsbaLinkContext && !tourDemo
-                  ? [
-                      zkProsbaLinkContext.mode === "supplement"
-                        ? ZK_PROSBA_LINK_BANNER_COPY.titleSupplement
-                        : ZK_PROSBA_LINK_BANNER_COPY.titleFull,
-                      `· ZK ${zkProsbaLinkContext.zkNumber.trim()}`,
-                      zkProsbaLinkContext.clientLabel?.trim()
-                        ? `· ${zkProsbaLinkContext.clientLabel.trim()}`
-                        : null,
+                  ? // Tytuł „Tworzysz prośbę…” jest w banerze poniżej — tu tylko ZK i klient.
+                    [
+                      `ZK ${zkProsbaLinkContext.zkNumber.trim().replace(/^zk\s*/i, "")}`,
+                      zkProsbaLinkContext.clientLabel?.trim() || null,
                     ]
                       .filter(Boolean)
-                      .join(" ")
+                      .join(" · ")
                   : undefined
             }
           />

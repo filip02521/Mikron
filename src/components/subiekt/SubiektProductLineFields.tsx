@@ -1090,7 +1090,7 @@ export function SubiektProductLineFields({
             <Input
               disabled={disabled}
               readOnly={linkedFromSubiekt}
-              placeholder="896"
+              placeholder="np. 896"
               inputMode="numeric"
               maxLength={MAX_MIKRAN_CODE_LEN}
               value={value.mikranCode}

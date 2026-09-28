@@ -269,6 +269,20 @@ export function ZkWatchLinesModal({
               tourPreview={tourPreview}
               archived={archived}
               newLineKeys={newLineKeys}
+              onRequestProsba={
+                !readOnly && !tourPreview && !archived
+                  ? () => {
+                      onClose();
+                      // Ta sama akcja co przycisk na karcie (zęby, stan, prefill).
+                      window.setTimeout(() => {
+                        const cta = document.querySelector<HTMLElement>(
+                          `[data-zk-prosba-cta="${watch.id}"]`
+                        );
+                        cta?.click();
+                      }, 60);
+                    }
+                  : undefined
+              }
             />
             <ZkWatchNoteSection
               key={`${watchKey}-note`}

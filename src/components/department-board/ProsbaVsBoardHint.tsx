@@ -24,11 +24,12 @@ export function ProsbaVsBoardHint() {
       className={cn("border-b border-slate-100 py-2.5", salesChromeInsetClass)}
     >
       <div className="flex items-center gap-2 sm:gap-3">
-        <div className="flex min-w-0 flex-1 items-center justify-center gap-2 sm:gap-2.5">
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-2.5">
           <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-700">
             <IconInfoCircle size={15} strokeWidth={2} />
           </span>
-          <p className="text-xs leading-snug text-slate-600 sm:whitespace-nowrap">
+          {/* Bez nowrap: długie zdanie nachodziło na „Ukryj” i wypychało ikonę poza kartę. */}
+          <p className="min-w-0 text-xs leading-snug text-slate-600">
             To formularz <strong className="font-semibold text-slate-800">prośby o towar</strong> — trafia
             do procesu zamówień. Ogólne pytanie do działu zakupów (bez zamawiania) zadaj na{" "}
             <Link href="/tablica" className={cn(brandLinkClass, "font-medium")}>
