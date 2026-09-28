@@ -1398,7 +1398,7 @@ export async function actionFetchDeliveryStatsDiagnostics() {
   return { success: true, data };
 }
 
-export async function actionUpsertSupplier(form: {
+export type UpsertSupplierForm = {
   id?: string;
   name: string;
   location: SupplierLocation;
@@ -1418,7 +1418,47 @@ export async function actionUpsertSupplier(form: {
   min_order_value?: number | null;
   /** Symbol waluty dla min_order_value (np. PLN, EUR). */
   min_order_currency?: string | null;
-}) {
+};
+
+export type UpsertSupplierResult =
+  | { success: true; id: string; warning?: string }
+  | { success: false; error: string };
+
+/**
+ * Zapis karty dostawcy (edycja + nowy). Zwraca `{ success: false, error }` zamiast
+ * rzucać — w buildzie produkcyjnym Next ukrywa treść wyjątku z server action
+ * (klient widzi tylko „Minified React error #441”).
+ */
+export async function actionUpsertSupplier(
+  form: UpsertSupplierForm
+): Promise<UpsertSupplierResult> {
+  try {
+    return await upsertSupplier(form);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("[actionUpsertSupplier]", message);
+    return { success: false, error: message || "Nie udało się zapisać dostawcy." };
+  }
+}
+
+const SUPPLIER_MIN_ORDER_COLUMNS = ["min_order_value", "min_order_currency"] as const;
+
+/** Brak kolumn z migracji 157 (baza jeszcze niezmigrowana). */
+function isMissingMinOrderColumnError(
+  error: { code?: string; message?: string } | null
+): boolean {
+  if (!error) return false;
+  const message = error.message ?? "";
+  return (
+    (error.code === "42703" || /does not exist|could not find/i.test(message)) &&
+    SUPPLIER_MIN_ORDER_COLUMNS.some((col) => message.includes(col))
+  );
+}
+
+const MIN_ORDER_MIGRATION_WARNING =
+  "Zapisano bez minimalnej wartości zamówienia — baza nie ma jeszcze kolumn z migracji 157_supplier_min_order_value.sql (Admin → Migracje).";
+
+async function upsertSupplier(form: UpsertSupplierForm): Promise<UpsertSupplierResult> {
   await requireSupplierManagement("mutate");
   const supplierId = form.id?.trim() || undefined;
   const notes = canonicalizeOrderMethodNotes(
@@ -1480,28 +1520,70 @@ export async function actionUpsertSupplier(form: {
     );
   }
 
+  let warning: string | undefined;
+  const dropMinOrderColumns = () => {
+    const hadValue = payload.min_order_value != null;
+    for (const col of SUPPLIER_MIN_ORDER_COLUMNS) delete payload[col];
+    if (hadValue) warning = MIN_ORDER_MIGRATION_WARNING;
+    console.warn("[actionUpsertSupplier] brak kolumn min_order_* — zapis bez nich");
+  };
+
   if (supplierId) {
-    const { error } = await supabase.from("suppliers").update(payload).eq("id", supplierId);
-    if (error) throw new Error(error.message);
+    let { data: updated, error } = await supabase
+      .from("suppliers")
+      .update(payload)
+      .eq("id", supplierId)
+      .select("id");
+    if (isMissingMinOrderColumnError(error) && "min_order_value" in payload) {
+      dropMinOrderColumns();
+      ({ data: updated, error } = await supabase
+        .from("suppliers")
+        .update(payload)
+        .eq("id", supplierId)
+        .select("id"));
+    }
+    if (error) throw new Error(supplierSaveErrorMessage(error));
+    if (!updated?.length) {
+      throw new Error("Nie znaleziono dostawcy — odśwież listę i spróbuj ponownie.");
+    }
     if (payload.is_active) {
       await recalcSingleSupplierSchedule(supplierId);
     }
     revalidateAll();
-    return { success: true as const, id: supplierId };
+    return { success: true, id: supplierId, ...(warning ? { warning } : {}) };
   }
 
-  const { data, error: insertError } = await supabase
+  let { data, error: insertError } = await supabase
     .from("suppliers")
     .insert(payload)
     .select("id")
     .single();
-  if (insertError) throw new Error(insertError.message);
-  if (data) {
-    await supabase.from("supplier_schedules").insert({ supplier_id: data.id });
-    await recalcSingleSupplierSchedule(data.id);
+  if (isMissingMinOrderColumnError(insertError) && "min_order_value" in payload) {
+    dropMinOrderColumns();
+    ({ data, error: insertError } = await supabase
+      .from("suppliers")
+      .insert(payload)
+      .select("id")
+      .single());
   }
+  if (insertError) throw new Error(supplierSaveErrorMessage(insertError));
+  if (!data?.id) throw new Error("Nie udało się dodać dostawcy.");
+  const { error: scheduleError } = await supabase
+    .from("supplier_schedules")
+    .insert({ supplier_id: data.id });
+  if (scheduleError && scheduleError.code !== "23505") {
+    console.error("[actionUpsertSupplier] supplier_schedules", scheduleError.message);
+  }
+  await recalcSingleSupplierSchedule(data.id);
   revalidateAll();
-  return { success: true as const, id: data?.id ?? "" };
+  return { success: true, id: data.id, ...(warning ? { warning } : {}) };
+}
+
+function supplierSaveErrorMessage(error: { code?: string; message?: string }): string {
+  if (error.code === "23505") {
+    return "Dostawca o takiej nazwie już istnieje — użyj innej nazwy albo edytuj istniejącą kartę (sprawdź też zakładkę Nieaktywni).";
+  }
+  return error.message || "Nie udało się zapisać dostawcy.";
 }
 
 export async function actionSetSupplierActive(

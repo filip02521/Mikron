@@ -322,7 +322,8 @@ export function SuppliersAdminClient({
     }
     start(async () => {
       try {
-        await actionUpsertSupplier(snapshot);
+        const result = await actionUpsertSupplier(snapshot);
+        if (!result.success) throw new Error(result.error);
         if (snapshot.id) {
           if (!snapshot.is_active) {
             setRows((list) => list.filter((x) => x.id !== snapshot.id));
@@ -342,6 +343,7 @@ export function SuppliersAdminClient({
             : "Dodano dostawcę",
           tone: "success",
         });
+        if (result.warning) setToast({ text: result.warning, tone: "warning" });
         resetForm();
         router.refresh();
       } catch (e) {
