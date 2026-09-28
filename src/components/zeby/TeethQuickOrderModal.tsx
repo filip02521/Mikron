@@ -36,6 +36,7 @@ import {
 import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 import type { AddIndividualOrdersEntry } from "@/lib/orders/individual-request-edit";
 import { TEETH_QUICK_ORDER_COPY } from "@/components/zeby/teeth-panel-copy";
+import { unwrapActionResult } from "@/lib/actions/action-error";
 
 export function TeethQuickOrderModal({
   open,
@@ -126,7 +127,7 @@ export function TeethQuickOrderModal({
     pendingSafetyRef.current = window.setTimeout(() => setPendingMessage(null), ACTION_PENDING_SAFETY_FORM_MS);
     start(async () => {
       try {
-        const r = await actionAddIndividualOrders({ entries });
+        const r = await unwrapActionResult(actionAddIndividualOrders({ entries }));
         const lanes = classifyProsbaLinesByLane(entries, teethExemptTwIds);
         setFormNotice({
           text: procurementSubmitSuccessMessage({

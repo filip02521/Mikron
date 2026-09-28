@@ -77,6 +77,7 @@ import {
   requiresQueueBatchConfirm,
 } from "@/lib/orders/queue-batch-notify";
 import type { ReceiveQueueToast } from "@/components/queue/ReceiveQueueTable";
+import { unwrapActionResult } from "@/lib/actions/action-error";
 
 function filterOrdersByProductLine(
   orders: IndividualOrder[],
@@ -349,11 +350,11 @@ export function TeethReceiveLinesPanel({
       try {
         if (updates.length === 1) {
           const only = updates[0]!;
-          const result = await actionUpdateDelivered(
+          const result = await unwrapActionResult(actionUpdateDelivered(
             only.orderId,
             only.qty,
             only.teethLineDelivered,
-          );
+          ));
           if (result.undo) {
             setUndoError(null);
             setUndo(result.undo);

@@ -1,5 +1,7 @@
 "use server";
 
+import { runActionSafely, type ActionErrorResult } from "@/lib/actions/action-error";
+
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
 
@@ -198,20 +200,23 @@ export async function actionSyncData() {
 
 export async function actionMarkOrdered(
   supplierId: string
-): Promise<DailyPanelActionResult> {
-  const user = await requireOperations("mutate");
-  const scheduleBefore = await captureScheduleSnapshot(supplierId);
-  await markStandardOrdered(supplierId, user.email);
-  const feedbackLines = await buildMarkOrderedFeedback([supplierId]);
-  revalidateAll();
-  return {
-    success: true,
-    feedbackLines,
-    undo: buildDailyPanelUndoPayload({
-      kind: "schedules",
-      snapshots: [scheduleBefore],
-    }),
-  };
+): Promise<DailyPanelActionResult | ActionErrorResult> {
+  // Błędy przez wartość zwracaną — w produkcji Next ukrywa treść throw.
+  return runActionSafely(async () => {
+    const user = await requireOperations("mutate");
+    const scheduleBefore = await captureScheduleSnapshot(supplierId);
+    await markStandardOrdered(supplierId, user.email);
+    const feedbackLines = await buildMarkOrderedFeedback([supplierId]);
+    revalidateAll();
+    return {
+      success: true,
+      feedbackLines,
+      undo: buildDailyPanelUndoPayload({
+        kind: "schedules",
+        snapshots: [scheduleBefore],
+      }),
+    };
+  });
 }
 
 export async function actionShiftOrder(
@@ -275,63 +280,66 @@ export async function actionProcessIndividual(
   orderIds: string[],
   action: "GLOWNE" | "POBOCZNE" | "ANULOWANO",
   procurementCancelNote?: string | null
-): Promise<DailyPanelActionResult> {
-  const user = await requireOperations("mutate");
-  const individualsBefore = await captureIndividualOrdersSnapshot(orderIds);
-  const glowneSupplierIds =
-    action === "GLOWNE" ? await supplierIdsForGlownePlacement(orderIds) : [];
-  const scheduleBefore =
-    action === "GLOWNE"
-      ? await captureScheduleSnapshots(glowneSupplierIds)
-      : [];
+): Promise<DailyPanelActionResult | ActionErrorResult> {
+  // Błędy przez wartość zwracaną — w produkcji Next ukrywa treść throw.
+  return runActionSafely(async () => {
+    const user = await requireOperations("mutate");
+    const individualsBefore = await captureIndividualOrdersSnapshot(orderIds);
+    const glowneSupplierIds =
+      action === "GLOWNE" ? await supplierIdsForGlownePlacement(orderIds) : [];
+    const scheduleBefore =
+      action === "GLOWNE"
+        ? await captureScheduleSnapshots(glowneSupplierIds)
+        : [];
 
-  const processResult = await processIndividualFromSummary(
-    orderIds,
-    action,
-    user.email,
-    procurementCancelNote,
-  );
-  revalidateAll();
+    const processResult = await processIndividualFromSummary(
+      orderIds,
+      action,
+      user.email,
+      procurementCancelNote,
+    );
+    revalidateAll();
 
-  const token =
-    scheduleBefore.length > 0
-      ? {
-          kind: "combined" as const,
-          schedules: scheduleBefore,
-          individuals: individualsBefore,
-        }
-      : { kind: "individual" as const, snapshots: individualsBefore };
+    const token =
+      scheduleBefore.length > 0
+        ? {
+            kind: "combined" as const,
+            schedules: scheduleBefore,
+            individuals: individualsBefore,
+          }
+        : { kind: "individual" as const, snapshots: individualsBefore };
 
-  // Feedback tylko ozdabia toast — błąd nie może zabić undo (Główne i Uzupełniające).
-  // Payload budujemy dopiero po feedbacku, żeby okno 10 s nie tykało podczas await.
-  let feedbackLines: string[] | undefined;
-  if (action !== "ANULOWANO") {
-    try {
-      feedbackLines = [
-        ...(await buildProcessIndividualFeedback(
-          orderIds,
-          action,
-          glowneSupplierIds
-        )),
-        ...(processResult.skippedTeethCount > 0
-          ? [
-              processResult.skippedTeethCount === 1
-                ? "1 pozycja zębowa realizowana jest w panelu /zeby — pominięto w panelu dziennym."
-                : `${processResult.skippedTeethCount} pozycje zębowe realizowane są w panelu /zeby — pominięto w panelu dziennym.`,
-            ]
-          : []),
-      ];
-      if (!feedbackLines.length) feedbackLines = undefined;
-    } catch {
-      feedbackLines = undefined;
+    // Feedback tylko ozdabia toast — błąd nie może zabić undo (Główne i Uzupełniające).
+    // Payload budujemy dopiero po feedbacku, żeby okno 10 s nie tykało podczas await.
+    let feedbackLines: string[] | undefined;
+    if (action !== "ANULOWANO") {
+      try {
+        feedbackLines = [
+          ...(await buildProcessIndividualFeedback(
+            orderIds,
+            action,
+            glowneSupplierIds
+          )),
+          ...(processResult.skippedTeethCount > 0
+            ? [
+                processResult.skippedTeethCount === 1
+                  ? "1 pozycja zębowa realizowana jest w panelu /zeby — pominięto w panelu dziennym."
+                  : `${processResult.skippedTeethCount} pozycje zębowe realizowane są w panelu /zeby — pominięto w panelu dziennym.`,
+              ]
+            : []),
+        ];
+        if (!feedbackLines.length) feedbackLines = undefined;
+      } catch {
+        feedbackLines = undefined;
+      }
     }
-  }
 
-  return {
-    success: true,
-    undo: buildDailyPanelUndoPayload(token),
-    feedbackLines,
-  };
+    return {
+      success: true,
+      undo: buildDailyPanelUndoPayload(token),
+      feedbackLines,
+    };
+  });
 }
 
 export async function actionMarkInformacjaArrived(
@@ -396,96 +404,99 @@ export async function actionUndoDailyPanelChange(payload: DailyPanelUndoPayload)
 export async function actionAddIndividualOrders(
   input: AddIndividualOrdersInput | AddIndividualOrdersEntry[]
 ) {
-  const { entries, acknowledgeSufficientStock, stockByTwId } = normalizeAddIndividualOrdersInput(input);
-  const user = await getSessionUser();
-  if (!user) throw new Error("Wymagane logowanie");
+  // Błędy przez wartość zwracaną — w produkcji Next ukrywa treść throw.
+  return runActionSafely(async () => {
+    const { entries, acknowledgeSufficientStock, stockByTwId } = normalizeAddIndividualOrdersInput(input);
+    const user = await getSessionUser();
+    if (!user) throw new Error("Wymagane logowanie");
 
-  await assertCanSubmitIndividualOrders(user, entries);
+    await assertCanSubmitIndividualOrders(user, entries);
 
-  let salesPersonIdForSales: string | null = null;
-  if (isSales(user.role)) {
-    const { resolveSalesPersonForUser } = await import("@/lib/auth/sales-person");
-    const resolved = await resolveSalesPersonForUser(user);
-    if (!resolved) {
-      throw new Error(
-        "Konto nie jest powiązane z handlowcem — poproś administratora o ustawienie profilu lub e-mail zgodny z kartą handlowca."
-      );
+    let salesPersonIdForSales: string | null = null;
+    if (isSales(user.role)) {
+      const { resolveSalesPersonForUser } = await import("@/lib/auth/sales-person");
+      const resolved = await resolveSalesPersonForUser(user);
+      if (!resolved) {
+        throw new Error(
+          "Konto nie jest powiązane z handlowcem — poproś administratora o ustawienie profilu lub e-mail zgodny z kartą handlowca."
+        );
+      }
+      salesPersonIdForSales = resolved.id;
     }
-    salesPersonIdForSales = resolved.id;
-  }
 
-  const normalized = entries.map((e) => ({
-    ...e,
-    salesPersonId: salesPersonIdForSales ?? e.salesPersonId,
-  }));
+    const normalized = entries.map((e) => ({
+      ...e,
+      salesPersonId: salesPersonIdForSales ?? e.salesPersonId,
+    }));
 
-  const zamowienieLines = normalized.filter(
-    (e) => (e.requestKind ?? "zamowienie") === "zamowienie"
-  );
-  if (zamowienieLines.length) {
-    await assertProsbaSubmitStockAllowed({
-      lines: zamowienieLines,
-      requestKind: "zamowienie",
-      acknowledgeSufficientStock,
-      stockByTwId,
-    });
-  }
-
-  const sourceZkWatchId = normalized
-    .map((e) => (typeof e.sourceZkWatchId === "string" ? e.sourceZkWatchId.trim() : ""))
-    .find((id) => id.length > 0);
-  if (sourceZkWatchId) {
-    const supabase = createAdminClient();
-    const { data: watchRow, error: watchError } = await supabase
-      .from("sales_zk_watches")
-      .select("*")
-      .eq("id", sourceZkWatchId)
-      .maybeSingle();
-    if (watchError) throw new Error(watchError.message);
-    if (!watchRow) {
-      throw new Error("ZK niedostępne — odśwież notatnik i spróbuj ponownie.");
+    const zamowienieLines = normalized.filter(
+      (e) => (e.requestKind ?? "zamowienie") === "zamowienie"
+    );
+    if (zamowienieLines.length) {
+      await assertProsbaSubmitStockAllowed({
+        lines: zamowienieLines,
+        requestKind: "zamowienie",
+        acknowledgeSufficientStock,
+        stockByTwId,
+      });
     }
-    const watch = watchRow as import("@/types/database").SalesZkWatch;
-    assertZkWatchOpenForProsba(watch);
-    const allowedTwIds = new Set(collectZkWatchAllowedTwIds(watch));
-    assertProsbaLinesBelongToZk(normalized, allowedTwIds);
-    await assertZkLinkedZamowienieStillUncovered({
-      watch,
-      entries: normalized,
-    });
-  }
 
-  const createdBy = user.id === "dev" ? undefined : user.id;
-  const submitMode =
-    isSales(user.role) || isSalesManager(user.role) ? "sales" : "procurement";
-  const sourceZkLineKeys = [
-    ...new Set(
-      normalized.flatMap((e) =>
-        Array.isArray(e.sourceZkLineKeys)
-          ? e.sourceZkLineKeys.map((k) => String(k).trim()).filter(Boolean)
-          : []
-      )
-    ),
-  ];
-  const result = await batchAddIndividualOrders(normalized, createdBy, {
-    submitMode,
-    ...(sourceZkLineKeys.length ? { sourceZkLineKeys } : {}),
+    const sourceZkWatchId = normalized
+      .map((e) => (typeof e.sourceZkWatchId === "string" ? e.sourceZkWatchId.trim() : ""))
+      .find((id) => id.length > 0);
+    if (sourceZkWatchId) {
+      const supabase = createAdminClient();
+      const { data: watchRow, error: watchError } = await supabase
+        .from("sales_zk_watches")
+        .select("*")
+        .eq("id", sourceZkWatchId)
+        .maybeSingle();
+      if (watchError) throw new Error(watchError.message);
+      if (!watchRow) {
+        throw new Error("ZK niedostępne — odśwież notatnik i spróbuj ponownie.");
+      }
+      const watch = watchRow as import("@/types/database").SalesZkWatch;
+      assertZkWatchOpenForProsba(watch);
+      const allowedTwIds = new Set(collectZkWatchAllowedTwIds(watch));
+      assertProsbaLinesBelongToZk(normalized, allowedTwIds);
+      await assertZkLinkedZamowienieStillUncovered({
+        watch,
+        entries: normalized,
+      });
+    }
+
+    const createdBy = user.id === "dev" ? undefined : user.id;
+    const submitMode =
+      isSales(user.role) || isSalesManager(user.role) ? "sales" : "procurement";
+    const sourceZkLineKeys = [
+      ...new Set(
+        normalized.flatMap((e) =>
+          Array.isArray(e.sourceZkLineKeys)
+            ? e.sourceZkLineKeys.map((k) => String(k).trim()).filter(Boolean)
+            : []
+        )
+      ),
+    ];
+    const result = await batchAddIndividualOrders(normalized, createdBy, {
+      submitMode,
+      ...(sourceZkLineKeys.length ? { sourceZkLineKeys } : {}),
+    });
+    // Dla handlowców unikamy ciężkiego "revalidateAll" (potrafi trwać długo),
+    // bo ich submit dotyczy głównie kilku widoków.
+    if (isSales(user.role) || isSalesManager(user.role)) {
+      revalidatePath("/moje");
+      revalidatePath("/prosba");
+      revalidatePath("/podsumowanie");
+      revalidatePath("/notatnik");
+      revalidatePath("/zk");
+      revalidatePath("/weryfikacja");
+      revalidatePath("/zeby");
+      revalidatePath("/", "layout");
+    } else {
+      revalidateAll();
+    }
+    return { success: true, ...result };
   });
-  // Dla handlowców unikamy ciężkiego "revalidateAll" (potrafi trwać długo),
-  // bo ich submit dotyczy głównie kilku widoków.
-  if (isSales(user.role) || isSalesManager(user.role)) {
-    revalidatePath("/moje");
-    revalidatePath("/prosba");
-    revalidatePath("/podsumowanie");
-    revalidatePath("/notatnik");
-    revalidatePath("/zk");
-    revalidatePath("/weryfikacja");
-    revalidatePath("/zeby");
-    revalidatePath("/", "layout");
-  } else {
-    revalidateAll();
-  }
-  return { success: true, ...result };
 }
 
 export async function actionUpdateIndividualRequest(
@@ -531,18 +542,21 @@ export async function actionCompleteVerification(
     teethDetails?: import("@/lib/teeth/teeth-catalog").TeethLineDetail[] | null;
   }
 ) {
-  await requireOperations("mutate");
-  const requestKind = data.requestKind ?? "zamowienie";
-  if (requestKind === "zamowienie") {
-    await assertProsbaSubmitStockAllowed({
-      lines: [data],
-      requestKind,
-      acknowledgeSufficientStock: data.acknowledgeSufficientStock,
-    });
-  }
-  await completeVerificationOrder(orderId, data);
-  revalidateAll();
-  return { success: true };
+  // Błędy przez wartość zwracaną — w produkcji Next ukrywa treść throw.
+  return runActionSafely(async () => {
+    await requireOperations("mutate");
+    const requestKind = data.requestKind ?? "zamowienie";
+    if (requestKind === "zamowienie") {
+      await assertProsbaSubmitStockAllowed({
+        lines: [data],
+        requestKind,
+        acknowledgeSufficientStock: data.acknowledgeSufficientStock,
+      });
+    }
+    await completeVerificationOrder(orderId, data);
+    revalidateAll();
+    return { success: true };
+  });
 }
 
 export async function actionCancelVerification(
@@ -947,33 +961,36 @@ export async function actionUpdateDelivered(
   qty: string,
   teethLineDelivered?: Record<string, number> | null,
 ) {
-  const { requireReceiveMutateForOrders } = await import("@/lib/auth");
-  await requireReceiveMutateForOrders([orderId], "mutate");
-  const snapshot = await captureDeliverySnapshot(orderId);
-  const { emailQueued, queueId, emailError } = await updateDeliveredQuantity(orderId, qty, {
-    teethLineDelivered,
+  // Błędy przez wartość zwracaną — w produkcji Next ukrywa treść throw.
+  return runActionSafely(async () => {
+    const { requireReceiveMutateForOrders } = await import("@/lib/auth");
+    await requireReceiveMutateForOrders([orderId], "mutate");
+    const snapshot = await captureDeliverySnapshot(orderId);
+    const { emailQueued, queueId, emailError } = await updateDeliveredQuantity(orderId, qty, {
+      teethLineDelivered,
+    });
+    revalidateAll();
+
+    const snapshotsWithQueue = snapshot
+      ? attachDeliveryNotificationQueueIds(
+          [snapshot],
+          // orderId is validated by requireReceiveMutateForOrders above;
+          // use snapshot.orderId (from DB) as key to avoid user-controlled property injection.
+          queueId ? { [snapshot.orderId]: queueId } : {}
+        )
+      : [];
+
+    return {
+      success: true,
+      emailQueued,
+      emailError,
+      /** @deprecated użyj {@link emailQueued} */
+      emailSent: false,
+      undo: snapshotsWithQueue.length
+        ? buildDeliveryUndoPayload({ kind: "delivery", snapshots: snapshotsWithQueue })
+        : undefined,
+    };
   });
-  revalidateAll();
-
-  const snapshotsWithQueue = snapshot
-    ? attachDeliveryNotificationQueueIds(
-        [snapshot],
-        // orderId is validated by requireReceiveMutateForOrders above;
-        // use snapshot.orderId (from DB) as key to avoid user-controlled property injection.
-        queueId ? { [snapshot.orderId]: queueId } : {}
-      )
-    : [];
-
-  return {
-    success: true,
-    emailQueued,
-    emailError,
-    /** @deprecated użyj {@link emailQueued} */
-    emailSent: false,
-    undo: snapshotsWithQueue.length
-      ? buildDeliveryUndoPayload({ kind: "delivery", snapshots: snapshotsWithQueue })
-      : undefined,
-  };
 }
 
 const WAREHOUSE_CANCEL_FULFILLED_MIGRATION_HINT =
