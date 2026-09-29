@@ -48,6 +48,7 @@ import {
   markPickupShelfNoticeSeen,
 } from "@/lib/orders/my-order-pickup-shelf-notice";
 import { cn } from "@/lib/cn";
+import { mojeControlHeightClass } from "@/lib/ui/ontime-theme";
 import {
   MOJE_SHIPMENT_VIRTUAL_THRESHOLD,
 } from "@/lib/ui/virtual-list-config";
@@ -669,12 +670,12 @@ export function MyOrderShipmentList({
         />
       ) : null}
       {sortedRows.length > 1 ? (
-        <div className="flex justify-end border-b border-slate-100 px-3 py-0.5 sm:px-4">
+        <div className="flex justify-end border-b border-slate-100 px-3 py-1.5 sm:px-4">
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="min-h-8 px-2 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
+            className={cn(mojeControlHeightClass, "px-3 text-xs font-semibold")}
             onClick={() => (allExpanded ? collapseAll() : expandAll())}
           >
             {allExpanded ? "Zwiń wszystkie" : "Rozwiń wszystkie"}

@@ -1,6 +1,6 @@
 /** Etykiety terminu z historii dostaw na /moje (bez terminu ZD w Subiekcie). */
 
-export const MY_ORDER_HISTORY_ESTIMATE_CAPTION = "Szac. dostawa";
+export const MY_ORDER_HISTORY_ESTIMATE_CAPTION = "Z historii";
 
 export const MY_ORDER_HISTORY_ESTIMATE_TITLE = "Termin z historii dostaw";
 

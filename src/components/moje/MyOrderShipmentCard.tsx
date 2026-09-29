@@ -39,7 +39,6 @@ import type { MyOrderListKind } from "@/lib/orders/my-order-row-layout";
 import { myOrderCollapsedMobileTiming } from "@/lib/orders/my-order-collapsed-mobile-timing";
 import {
   myOrderCollapsedContextLine,
-  myOrderCollapsedContextParts,
   myOrderCollapsedProductSummary,
   myOrderCollapsedStatusHint,
   myOrderCollapsedTitle,
@@ -238,11 +237,7 @@ function ShipmentToolbar({
           ? cn(mojeActionOverflowSegmentClass, panelSegmentLastClass)
           : undefined
       }
-      triggerClassName={
-        useActionShell
-          ? undefined
-          : "h-10 w-10 border-transparent bg-transparent text-slate-400 shadow-none hover:border-slate-200 hover:bg-white hover:text-slate-700 sm:h-8 sm:w-8"
-      }
+      triggerClassName={useActionShell ? undefined : "h-10 w-10 sm:h-8 sm:w-8"}
     />
   ) : null;
 
@@ -532,7 +527,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
   const needsExpand = myOrderNeedsExpand(row, expandCtx);
   const collapsedTitle = myOrderCollapsedTitle(row);
   const collapsedContextLine = myOrderCollapsedContextLine(row);
-  const collapsedContextParts = myOrderCollapsedContextParts(row);
   const statusHint = myOrderCollapsedStatusHint(row);
   const showHeadlineBanner = shouldShowMyOrderHeadlineBanner(row, {
     expanded,
@@ -774,8 +768,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     showStatusPill: showStatusPillInRail,
     productSummary,
     productSummaryExpandHint: needsExpand ? expandHint : null,
-    // Szacowany termin ma własną etykietę w railu — bez drugiej „Dziś · 28.09” na telefonie.
-    mobileTiming: showEstimatedDeliveryMeta ? null : mobileTiming,
+    mobileTiming,
     isUrgent,
     isStock,
   } as const;
@@ -804,18 +797,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
       shelfPickup={shelfPickup}
     />
   );
-
-  // Tylko menu „⋮” (bez przycisków potwierdzenia) — na telefonie w rogu wiersza zamiast osobnego pasa.
-  const toolbarMenuOnly = !(
-    (showDismissAck && !bannerDismiss) ||
-    showBulkPickup ||
-    (showSinglePickup && !bannerPickup)
-  );
-
-  // Odbiór do potwierdzenia, ale przycisk jest dopiero w rozwinięciu (np. zęby + towar osobno) —
-  // na komputerze pokaż go od razu w wierszu, żeby nie trzeba było zgadywać.
-  const showExpandToConfirm =
-    isAction && toolbarMenuOnly && needsExpand && !expanded && canAcknowledge && !tourPreview;
 
   const hideLineClient =
     row.lineCount > 1 &&
@@ -985,13 +966,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           action={bannerAction}
         />
       ) : null}
-      <div
-        className={cn(
-          "relative px-2 py-1.5 sm:px-3 sm:py-2",
-          mojeQueueRowLayoutClass,
-          toolbarMenuOnly && "max-sm:pr-12"
-        )}
-      >
+      <div className={cn("px-2 py-1.5 sm:px-3 sm:py-2", mojeQueueRowLayoutClass)}>
         <div className={mojeQueueRowMainClass}>
         <button
           type="button"
@@ -1031,7 +1006,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             listKind={listKind}
             title={collapsedTitle}
             contextLine={collapsedContextLine}
-            contextParts={collapsedContextParts}
             statusLine={showCollapsedHeadline ? headline : null}
             statusLineClassName={headlineClass}
             statusHint={statusHint}
@@ -1106,40 +1080,16 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
         </div>
         </div>
 
-        {!expanded ? (
-          <MyOrderRowMetaRail
-            {...collapsedMetaRailProps}
-            className="items-start pl-12 sm:hidden"
-          />
-        ) : null}
-
         {/* Akcje obok (desktop) / pod treścią (telefon) — nie w tym samym wierszu flex co tytuł,
             bo `w-full` na telefonie ściskało tytuł i status do zera. */}
         <div
           className={cn(
-            useCompactActionsLayout ? mojeQueueRowActionsInlineClass : mojeQueueRowActionsClass,
-            toolbarMenuOnly &&
-              "max-sm:absolute max-sm:right-2 max-sm:top-1.5 max-sm:w-auto max-sm:border-0 max-sm:pt-0"
+            useCompactActionsLayout ? mojeQueueRowActionsInlineClass : mojeQueueRowActionsClass
           )}
           onClick={(event) => event.stopPropagation()}
           onMouseDown={(event) => event.stopPropagation()}
         >
-          {showExpandToConfirm ? (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleToggle}
-                className="hidden min-h-9 items-center gap-1.5 rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 sm:inline-flex"
-                title="Rozwiń i potwierdź odbiór poszczególnych pozycji"
-              >
-                <IconCircleCheck size={14} className="shrink-0" />
-                Potwierdź odbiór
-              </button>
-              {toolbar}
-            </div>
-          ) : (
-            toolbar
-          )}
+          {toolbar}
         </div>
       </div>
 
@@ -1162,6 +1112,13 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             }
           />
         </div>
+      ) : null}
+
+      {!expanded ? (
+        <MyOrderRowMetaRail
+          {...collapsedMetaRailProps}
+          className="items-start px-3 pb-1.5 pt-0 sm:hidden"
+        />
       ) : null}
 
       {needsExpand ? (

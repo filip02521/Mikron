@@ -72,11 +72,8 @@ export function SectionListLabel({
   domain = "sales",
   icon,
   tileClassName,
-  titleClassName,
 }: {
   id?: string;
-  /** Nadpisanie stylu tytułu (np. zwykła wielkość liter w Moje zamówienia). */
-  titleClassName?: string;
   title: string;
   hint?: string;
   /** inline — opis pod tytułem; tooltip — ikona ? z dymkiem. */
@@ -105,7 +102,7 @@ export function SectionListLabel({
         <SectionHeadingIcon tileClassName={tileClassName}>{icon}</SectionHeadingIcon>
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
-            <h3 id={id} className={cn(titleClass, titleClassName, id && "scroll-mt-24")}>
+            <h3 id={id} className={cn(titleClass, id && "scroll-mt-24")}>
               {title}
             </h3>
             {hint && hintMode === "tooltip" ? (

@@ -86,7 +86,7 @@ export default async function MojePage({
 
   if (role && isSalesAccount(role) && linkError && !previewSalesPersonId) {
     return (
-      <div className={cn(salesPageShellClass, "lg:max-w-4xl 2xl:max-w-5xl")}>
+      <div className={salesPageShellClass}>
         <SalesAccountLinkRequired
           title="Moje zamówienia"
           hint="Tutaj śledzisz status prośb. Konto musi być przypisane do Twojego profilu handlowca."
@@ -197,27 +197,13 @@ export default async function MojePage({
           className={cn(
             buttonPrimaryClass,
             pageToolbarSizingClass,
-            // !hidden: CardHeader wymusza [&_a]:inline-flex; na telefonie prośbę zgłasza się z dolnego paska.
-            "rounded-md font-medium no-underline max-sm:!hidden"
+            "hidden rounded-md font-medium no-underline sm:inline-flex"
           )}
         >
           Zgłoś prośbę
         </Link>
       ) : null
     ) : undefined;
-
-  // Ustawienia w nagłówku listy (zamiast osobnego przycisku nad kartą).
-  const settingsHeaderLink =
-    viewingOwnPanel && !isTeamPreview && !isDelegatePreview ? (
-      <Link
-        href="/ustawienia"
-        aria-label="Ustawienia"
-        title="Ustawienia"
-        className="inline-flex size-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-800"
-      >
-        <IconSettings size={16} />
-      </Link>
-    ) : null;
 
   const showSalesSync = Boolean(
     !adminSalesPreview && !isDelegatePreview && (role && !canAccessOperations(role, workspaces))
@@ -228,7 +214,7 @@ export default async function MojePage({
     : null;
 
   return (
-    <DelegateModeBackground active={isDelegatePreview || isTeamPreview} label={salesPersonName} className={cn(salesPageShellClass, "lg:max-w-4xl 2xl:max-w-5xl")}>
+    <DelegateModeBackground active={isDelegatePreview || isTeamPreview} label={salesPersonName} className={salesPageShellClass}>
       <SalesPageAlerts
         teamPreview={
           isTeamPreview && salesPersonId && salesPersonName
@@ -258,6 +244,18 @@ export default async function MojePage({
         <Alert tone="error">{loadError}</Alert>
       ) : null}
 
+      {viewingOwnPanel && !isTeamPreview && !isDelegatePreview ? (
+        <div className="flex justify-end pb-1">
+          <Link
+            href="/ustawienia"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/80 bg-white/60 px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm transition-all hover:border-slate-300 hover:bg-white hover:text-slate-700 hover:shadow"
+          >
+            <IconSettings size={14} className="shrink-0 text-slate-400" />
+            Ustawienia
+          </Link>
+        </div>
+      ) : null}
+
       {role != null && canAccessOperations(role, workspaces) && !salesPersonId && isAdmin(role) ? (
         <SystemNotice
           variant="action"
@@ -284,14 +282,7 @@ export default async function MojePage({
               ? "Tryb zastępstwa — potwierdzenie odbioru i zamknięcie ZK aktywne. Edycja i anulowanie są wyłączone."
               : undefined
         }
-        headerActions={
-          salesHeaderActions || settingsHeaderLink ? (
-            <>
-              {salesHeaderActions}
-              {settingsHeaderLink}
-            </>
-          ) : undefined
-        }
+        headerActions={salesHeaderActions}
         archiwumRecent={showSalesPersonOrdersPanel ? archiwumRecent : []}
         archiwumExtended={showSalesPersonOrdersPanel ? archiwumExtended : []}
         canAcknowledge={!!viewingOwnPanel || isDelegatePreview}

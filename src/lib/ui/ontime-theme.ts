@@ -690,9 +690,9 @@ export const salesClientNameClass = "font-medium text-indigo-900";
 
 /** Etykieta powiązania ZK — fiolet jak w notatniku, ten sam układ co „Klient”. */
 export const salesZkLabelClass =
-  "inline-flex items-center rounded-md bg-white px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-500 ring-1 ring-inset ring-slate-200";
+  "inline-flex items-center rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-violet-600 ring-1 ring-inset ring-violet-200/70";
 
-export const salesZkNumberClass = "text-[11px] font-medium leading-none text-slate-700";
+export const salesZkNumberClass = "text-[11px] font-medium leading-none text-violet-900";
 
 /** Wewnętrzny padding sekcji panelu. */
 export const panelSectionInsetClass = "px-3 py-3 sm:px-4 sm:py-4 lg:px-5 lg:py-4";

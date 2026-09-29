@@ -38,18 +38,6 @@ export function myOrderCollapsedContextLine(row: MyOrderRow): string {
   return supplier;
 }
 
-/** L2 rozbite na części — klient wyróżniony (po nim handlowiec szuka), dostawca obok. */
-export function myOrderCollapsedContextParts(row: MyOrderRow): {
-  client: string | null;
-  supplier: string;
-} {
-  const supplier = row.supplierName?.trim() || "";
-  const client = row.clientLabel?.trim();
-  const showClient =
-    client && !isClientNamesAggregateSummary(client) && client !== supplier;
-  return { client: showClient ? client : null, supplier };
-}
-
 /** Krótki hint statusu — max 1 linia; bez produktu, bez terminu (termin → rail). */
 export function myOrderCollapsedStatusHint(row: MyOrderRow): string | null {
   if (
