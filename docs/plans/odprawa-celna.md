@@ -1,0 +1,52 @@
+# Odprawa celna importu — plan
+
+Cel: z ZD (Subiekt) i faktury dostawcy spoza UE przygotować dane dla agencji celnej —
+opis PL, materiał, kod CN, stawka VAT, załączniki — w formacie maila, którego już
+używamy (przykład: Aswad, faktura AI/3177/26), plus Excel i edycja w aplikacji.
+
+## Zasady
+
+- **Źródło pozycji = faktura dostawcy** (to ją widzi urząd). ZD z Subiekta daje polskie
+  nazwy i kontrolę ilości; dopasowanie po kodzie artykułu dostawcy (np. `DE-1196`), potem po nazwie.
+- **Pamięć decyzji** — `customs_product_cards` (dostawca + kod artykułu). Zatwierdzona karta
+  wypełnia pozycję w kolejnych odprawach i jest oznaczona „Zatwierdzone wcześniej”.
+  Historia zmian: `customs_product_card_events`.
+- **VAT 8% tylko z dokumentem** — artykuł musi być wymieniony w dokumencie z karty dostawcy
+  (np. Annex A deklaracji zgodności → `customs_document_articles`). Taki dokument jest
+  automatycznie dołączany do maila. Bez dokumentu: 23%. Rozbieżność karta ↔ dokument → ostrzeżenie.
+- **Migawka wysłanych danych** — `customs_clearance_lines.sent_snapshot`; późniejsza edycja karty
+  nie zmienia historii odprawy.
+
+## Stany pozycji w widoku
+
+| Stan | Znaczenie |
+| --- | --- |
+| Zatwierdzone wcześniej | karta zatwierdzona, zgodna z dokumentami |
+| Zmieniło się | karta zatwierdzona, ale dokumenty dostawcy mówią co innego |
+| Propozycja | AI / skopiowane z podobnego artykułu — do zatwierdzenia |
+| Brak | nowy artykuł, trzeba uzupełnić |
+
+## Etapy
+
+1. **Fundament** (ten PR): migracja `158_customs_clearance.sql`, logika w `src/lib/customs/`
+   (normalizacja kodów, reguła VAT, stany, mail w formacie Mikranu z zakresami „8-9.”, lista załączników), testy na Aswad.
+2. **Widok odprawy**: wybór dostawcy (IMPORT) i ZD z Subiekta → wgranie faktury PDF → tabela pozycji
+   z edycją i zatwierdzaniem kart → podgląd maila + załączniki → eksport Excel (`exceljs`).
+3. **AI (Gemini)**: OCR faktury (skany bez warstwy tekstu), wyciąganie listy artykułów z deklaracji
+   do `customs_document_articles` (z akceptacją człowieka), propozycje opisu PL / materiału / CN
+   na podstawie nazwy, ZD i dokumentów dostawcy. AI nigdy nie zatwierdza — tylko proponuje.
+4. **Dopracowanie**: wysyłka maila z aplikacji, historia odpraw dostawcy, raporty.
+
+## Do sprawdzenia w Subiekt API (lokalnie, w sieci firmowej / VPN)
+
+Chmura nie widzi `192.168.0.140`, więc te zapytania trzeba uruchomić u siebie:
+
+```bash
+B=http://192.168.0.140:5080/api/v1
+curl -s $B/docs | head -c 2000                    # OpenAPI — lista pól
+curl -s "$B/documents/zd?limit=5"                 # ostatnie ZD (id)
+curl -s $B/documents/zd/<id_ZD_Aswad>             # pozycje: czy jest kod dostawcy?
+curl -s $B/products/<ob_TowId_z_pozycji>          # karta towaru: pola dostawcy, CN/PKWiU, waga, kraj
+```
+
+Szukamy: numeru artykułu u dostawcy (np. `DE-1196`), kodu CN / PKWiU, stawki VAT, masy, kraju pochodzenia.
