@@ -22,8 +22,10 @@ import { Spinner } from "@/components/ui/Spinner";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { cn } from "@/lib/cn";
 import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
+import type { SupplierLocation } from "@/types/database";
 import {
   buildMailtoHref,
+  buildZdSupplierMailBody,
   buildZdSupplierMailto,
   pendingGlowneOrderIds,
   pendingGlownePreviewLists,
@@ -54,7 +56,6 @@ import {
 
 export function ZdEstimatePostCreatePanel({
   session,
-  dateKey,
   createLocked = false,
   onDismiss,
   onOpenLink,
@@ -65,7 +66,8 @@ export function ZdEstimatePostCreatePanel({
   onUndoMark,
 }: {
   session: ZdPostCreateSession;
-  dateKey: string;
+  /** Nieużywane od czasu stałej treści maila — zostawione dla zgodności wywołań. */
+  dateKey?: string;
   /** Create nadal zablokowany — pokaż CTA w panelu (bez osobnego banera). */
   createLocked?: boolean;
   onDismiss: () => void;
@@ -87,6 +89,8 @@ export function ZdEstimatePostCreatePanel({
   const [notes, setNotes] = useState("");
   const [mails, setMails] = useState("");
   const [extraInfo, setExtraInfo] = useState("");
+  const [location, setLocation] = useState<SupplierLocation>("POLSKA");
+  const [mailBodyCopied, setMailBodyCopied] = useState(false);
   const [tsvCopied, setTsvCopied] = useState(false);
   const [tsvError, setTsvError] = useState(false);
   const [dokCopied, setDokCopied] = useState(false);
@@ -146,6 +150,7 @@ export function ZdEstimatePostCreatePanel({
       setNotes(res.notes);
       setMails(res.mails);
       setExtraInfo(res.extra_info);
+      setLocation(res.location);
       setContactLoading(false);
     })();
     return () => {
@@ -207,8 +212,7 @@ export function ZdEstimatePostCreatePanel({
         email,
         dokNr: session.dokNrPelny,
         supplierName: session.supplierName,
-        lineCount: session.lineCount,
-        dateKey,
+        location,
       })
     : null;
   const candidatesHint = formatPostCreateCandidatesHint(
@@ -258,6 +262,16 @@ export function ZdEstimatePostCreatePanel({
     }
     setDokCopied(true);
     window.setTimeout(() => setDokCopied(false), 2000);
+  };
+
+  const copyMailBody = async () => {
+    const ok = await copyTextToClipboard(buildZdSupplierMailBody(location));
+    if (!ok) {
+      onCopyError?.("Nie udało się skopiować treści maila.");
+      return;
+    }
+    setMailBodyCopied(true);
+    window.setTimeout(() => setMailBodyCopied(false), 2000);
   };
 
   const openDzis = () => {
@@ -772,6 +786,18 @@ export function ZdEstimatePostCreatePanel({
                   <p className="text-sm text-amber-900">{contactError}</p>
                 ) : (
                   <div className="space-y-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="min-h-10 w-full sm:w-auto"
+                      onClick={() => void copyMailBody()}
+                    >
+                      {mailBodyCopied
+                        ? ZD_ESTIMATE_UI.postCreateMailBodyCopied
+                        : location === "POLSKA"
+                          ? ZD_ESTIMATE_UI.postCreateMailBodyCopyPl
+                          : ZD_ESTIMATE_UI.postCreateMailBodyCopyEn}
+                    </Button>
                     {mailtoSeed ? (
                       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                         <a

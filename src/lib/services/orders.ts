@@ -898,7 +898,11 @@ export async function updateIndividualRequestGroup(
     const kind = payload.requestKind;
     const existingLineId = resolveIndividualRequestEditLineId(line.id, existingOrderIds);
     const existingOrder = existingLineId ? existingOrderById.get(existingLineId) : null;
-    const effectiveSupplierId = payload.supplierId.trim() || (existingOrder?.supplier_id ?? "");
+    // Dostawca per pozycja ma pierwszeństwo — w jednej prośbie mogą być produkty różnych dostawców.
+    const effectiveSupplierId =
+      line.supplierId?.trim() ||
+      payload.supplierId.trim() ||
+      (existingOrder?.supplier_id ?? "");
     const informacjaFlags = resolveInformacjaFlags(existingLineId);
     const sanitized = sanitizeOrderDraftFields({
       symbol: line.symbol,

@@ -81,6 +81,33 @@ export type EditIndividualRequestInitial = {
   lines: ProductLineDraft[];
 };
 
+function withLineSupplier(
+  lines: ProductLineDraft[],
+  lineId: string,
+  supplierId: string
+): ProductLineDraft[] {
+  return lines.map((line) =>
+    line.id === lineId ? { ...line, supplierId: supplierId || undefined } : line
+  );
+}
+
+/** Zmiana towaru w pozycji unieważnia jej dostawcę — ustali go ponowne dopasowanie z Subiekta. */
+function dropStaleLineSuppliers(
+  prev: ProductLineDraft[],
+  next: ProductLineDraft[]
+): ProductLineDraft[] {
+  const prevById = new Map(prev.map((line) => [line.id, line]));
+  return next.map((line) => {
+    const before = prevById.get(line.id);
+    if (!before || !line.supplierId) return line;
+    const productChanged =
+      (before.subiektTwId ?? null) !== (line.subiektTwId ?? null) ||
+      before.symbol !== line.symbol ||
+      before.mikranCode !== line.mikranCode;
+    return productChanged ? { ...line, supplierId: undefined } : line;
+  });
+}
+
 export function EditIndividualRequestModal({
   open,
   onClose,
@@ -133,12 +160,12 @@ export function EditIndividualRequestModal({
   const [resolvingSupplier, setResolvingSupplier] = useState(false);
 
   const vacationNoticeModel = useMemo(() => {
-    const hits = collectProsbaVacationHits([], suppliersOnVacationNow, {
+    const hits = collectProsbaVacationHits(lines, suppliersOnVacationNow, {
       fallbackSupplierId: supplierId,
       supplierNames: Object.fromEntries(suppliers.map((s) => [s.id, s.name])),
     });
     return buildProsbaSupplierVacationNoticeModel(hits);
-  }, [supplierId, suppliers, suppliersOnVacationNow]);
+  }, [lines, supplierId, suppliers, suppliersOnVacationNow]);
 
   const procurementLanes = useMemo(
     () => classifyProsbaLinesByLane(lines, teethExemptTwIds),
@@ -243,6 +270,12 @@ export function EditIndividualRequestModal({
   } else if (appliedResetKey) {
     setAppliedResetKey("");
   }
+
+  /** Ręczny wybór dostawcy w sekcji „Dostawca” — dotyczy wszystkich pozycji. */
+  const applyGroupSupplier = useCallback((id: string) => {
+    setSupplierId(id);
+    setLines((prev) => prev.map((line) => ({ ...line, supplierId: id || undefined })));
+  }, []);
 
   const saveRef = useRef<() => void>(() => {});
   const addLineRef = useRef<() => void>(() => {});
@@ -628,7 +661,7 @@ export function EditIndividualRequestModal({
                 <SupplierPickerField
                   suppliers={sortedSuppliers}
                   value={supplierId}
-                  onChange={setSupplierId}
+                  onChange={applyGroupSupplier}
                   disabled={pending}
                   allowEmpty
                   emptyLabel="— wybierz —"
@@ -679,7 +712,7 @@ export function EditIndividualRequestModal({
               lines={lines}
               onChange={(next) => {
                 setFormNotice(null);
-                setLines(next);
+                setLines(dropStaleLineSuppliers(lines, next));
               }}
               requestKind={requestKind}
               appearance="prosba"
@@ -694,13 +727,20 @@ export function EditIndividualRequestModal({
               unifiedFeedback={mode === "procurement"}
               onSupplierResolved={
                 mode === "procurement"
-                  ? ({ supplierId: id }) => {
+                  ? ({ supplierId: id }, lineId) => {
+                      // Dostawca tylko dla tej pozycji — inne produkty w prośbie zachowują swoich.
+                      setLines((prev) => withLineSupplier(prev, lineId, id));
                       setSupplierId(id);
                     }
                   : undefined
               }
               onSupplierMappingMissing={
-                mode === "procurement" ? () => setSupplierId("") : undefined
+                mode === "procurement"
+                  ? (lineId) => {
+                      setLines((prev) => withLineSupplier(prev, lineId, ""));
+                      setSupplierId("");
+                    }
+                  : undefined
               }
               onResolvingSupplierChange={
                 mode === "procurement" ? setResolvingSupplier : undefined

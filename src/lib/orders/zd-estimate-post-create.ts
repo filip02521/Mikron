@@ -4,6 +4,7 @@
  */
 
 import type { ZdCreatePreviewLine } from "@/lib/orders/zd-estimate-create-zd";
+import type { SupplierLocation } from "@/types/database";
 import type {
   ZdEstimateIndividualServiceLine,
   ZdEstimateIndividualServiceReason,
@@ -737,12 +738,29 @@ export function postCreateCreatedUnitsByTwId(
   return map;
 }
 
+/** Gotowa treść maila z zamówieniem ZD — PL dla dostawców z Polski, EN dla zagranicy/importu. */
+export function buildZdSupplierMailBody(location: SupplierLocation | null | undefined): string {
+  return isZdSupplierAbroad(location)
+    ? ["Dear Sir or Madam,", "", "Please find attached our new order.", "", "Thank you,"].join("\n")
+    : [
+        "Dzień dobry,",
+        "",
+        "Przesyłam zamówienie w załączniku, uprzejmie proszę o realizację.",
+        "",
+        "Dziękuję,",
+      ].join("\n");
+}
+
+function isZdSupplierAbroad(location: SupplierLocation | null | undefined): boolean {
+  return location === "ZAGRANICA" || location === "IMPORT";
+}
+
 export function buildZdSupplierMailto(input: {
   email: string;
   dokNr: string | null;
   supplierName: string;
-  lineCount: number;
-  dateKey: string;
+  /** Brak = Polska (treść po polsku). */
+  location?: SupplierLocation | null;
 }): { href: string; subject: string; body: string } | null {
   const email = String(input.email ?? "")
     .replace(/^mailto:/i, "")
@@ -750,20 +768,14 @@ export function buildZdSupplierMailto(input: {
   if (!email || !email.includes("@")) return null;
   const dok = String(input.dokNr ?? "").trim();
   const name = String(input.supplierName ?? "").trim() || "Dostawca";
-  const n = Math.max(0, Math.round(Number(input.lineCount) || 0));
-  const dateKey = String(input.dateKey ?? "").trim();
-  const subject = dok
-    ? `ZD ${dok} — ${name}`
-    : `Zamówienie ZD — ${name}`;
-  const bodyLines = [
-    dok ? `Numer ZD: ${dok}` : "Numer ZD: (do potwierdzenia w Subiekcie)",
-    `Dostawca: ${name}`,
-    `Pozycji: ${n}`,
-    dateKey ? `Data: ${dateKey}` : null,
-    "",
-    "Proszę o potwierdzenie przyjęcia zamówienia.",
-  ].filter((x): x is string => x != null);
-  const body = bodyLines.join("\n");
+  const subject = isZdSupplierAbroad(input.location)
+    ? dok
+      ? `New order ${dok}`
+      : "New order"
+    : dok
+      ? `ZD ${dok} — ${name}`
+      : `Zamówienie ZD — ${name}`;
+  const body = buildZdSupplierMailBody(input.location);
   const href = buildMailtoHref({ email, subject, body });
   if (!href) return null;
   return { href, subject, body };
