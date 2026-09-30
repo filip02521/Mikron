@@ -56,9 +56,12 @@ import { useTeethShortageHits } from "@/components/layout/TeethShortagesContext"
 import { cn } from "@/lib/cn";
 import { panelChoiceChipClass, panelChoiceChipIdleClass, panelChoiceChipSelectedClass } from "@/lib/ui/ontime-theme";
 
+/**
+ * Treść przewija się w panelu — na niskich ekranach (laptop) stopka z „Zapisz listę”
+ * musi zostać widoczna. Bez scrolla długa lista wypychała stopkę poza okno.
+ */
 const TEETH_MODAL_SHELL_LAYOUT = {
-  bodyScroll: false,
-  bodyClassName: "overflow-visible px-3 py-3 sm:px-5",
+  bodyClassName: "px-3 py-3 sm:px-5",
   className:
     "top-[max(0.5rem,env(safe-area-inset-top))] max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-0.75rem)] -translate-y-0",
 } as const;

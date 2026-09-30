@@ -6,6 +6,7 @@ import type { InformacjaFlowPath } from "@/lib/orders/informacja-stock-out-reord
 import { E2ELabPreviewBlockerSection } from "./E2ELabPreviewBlockerSection";
 import { E2ELabExternalSessionSection } from "./E2ELabExternalSessionSection";
 import { E2ELabZdEstimateIndividualsSection } from "./E2ELabZdEstimateIndividualsSection";
+import { E2ELabTeethBuilderSection } from "./E2ELabTeethBuilderSection";
 
 /** Izolowany harness UI dla testów Playwright — bez auth. */
 export function E2ELabClient() {
@@ -27,6 +28,7 @@ export function E2ELabClient() {
       <E2ELabPreviewBlockerSection />
       <E2ELabExternalSessionSection />
       <E2ELabZdEstimateIndividualsSection />
+      <E2ELabTeethBuilderSection />
     </main>
   );
 }
