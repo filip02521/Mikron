@@ -32,7 +32,9 @@ import {
   teethOrderQueueState,
   teethOrderStateNeedsFix,
   teethOrderUnorderedPositions,
+  teethSelectionsForItems,
   formatTeethSpecLabel,
+  type TeethMarkScope,
 } from "@/lib/teeth/teeth-queue-view-model";
 import { parseTeethJaw, parseTeethKind } from "@/lib/teeth/teeth-catalog-types";
 
@@ -99,6 +101,7 @@ export function TeethPanelKolejkaView({
   onRequestMarkPositionsOrdered: (
     selections: TeethPositionSelection[],
     supplierName?: string | null,
+    scope?: TeethMarkScope,
   ) => void;
   onMarkScheduleOrdered: (supplierId: string, supplierName: string) => void;
   onSetDeliveryDate: () => void;
@@ -250,6 +253,7 @@ export function TeethPanelKolejkaView({
         const items = group.items.filter((i): i is TeethQueueItem => !isScheduledItem(i));
         const fileKey = group.supplierId ?? "__no_supplier";
         const supplierId = group.supplierId ?? group.dueSchedule?.supplier_id ?? null;
+        const groupSelections = teethSelectionsForItems(items, positionSelection);
         return (
           <TeethQueueSupplierCard
             key={fileKey}
@@ -263,12 +267,19 @@ export function TeethPanelKolejkaView({
             onFileChanged={(hasFile) => handleGroupFileChanged(fileKey, hasFile)}
             onTogglePositions={onSetPositions}
             onToggleAll={() => onToggleSelectAllInGroup(group)}
+            selectedTeethCount={groupSelections.reduce((sum, sel) => sum + sel.positions.length, 0)}
             onMarkGroup={() => {
-              const groupSelections = items
-                .map((item) => ({ orderId: item.id, positions: teethOrderUnorderedPositions(item) }))
-                .filter((s) => s.positions.length > 0);
+              // Gdy coś zaznaczono u tego dostawcy — oznaczamy TYLKO zaznaczenie,
+              // nigdy całego dostawcy „przy okazji”.
               if (groupSelections.length > 0) {
-                onRequestMarkPositionsOrdered(groupSelections, group.supplierName);
+                onRequestMarkPositionsOrdered(groupSelections, group.supplierName, "selection");
+                return;
+              }
+              const all = items
+                .map((item) => ({ orderId: item.id, positions: teethOrderUnorderedPositions(item) }))
+                .filter((sel) => sel.positions.length > 0);
+              if (all.length > 0) {
+                onRequestMarkPositionsOrdered(all, group.supplierName, "all");
               }
             }}
             onMarkSchedule={() => {
@@ -285,7 +296,13 @@ export function TeethPanelKolejkaView({
           <div
             role="region"
             aria-label="Zaznaczone zęby"
-            className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+4.75rem)] z-40 mx-auto max-w-3xl md:bottom-6"
+            className={cn(
+              "fixed inset-x-3 z-40 mx-auto max-w-3xl",
+              // Telefon: nad dolną nawigacją i paskiem podglądu admina.
+              "bottom-[calc(env(safe-area-inset-bottom)+4.75rem+var(--admin-preview-dock,0px))]",
+              // Desktop: obok sidebara (16rem) i nad paskiem „Podgląd: …”.
+              "md:left-[calc(16rem+1.5rem)] md:right-6 md:bottom-[calc(1.5rem+var(--admin-preview-clearance,0px))]",
+            )}
           >
             <div className="flex flex-col gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white shadow-2xl sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
@@ -325,7 +342,7 @@ export function TeethPanelKolejkaView({
                 </Button>
                 <Button
                   size="sm"
-                  onClick={() => onRequestMarkPositionsOrdered(selections())}
+                  onClick={() => onRequestMarkPositionsOrdered(selections(), null, "selection")}
                   disabled={pending || selectionMissingFiles.length > 0}
                   className="min-h-9"
                   title={
@@ -335,7 +352,7 @@ export function TeethPanelKolejkaView({
                   }
                 >
                   <IconTruck size={15} />
-                  Oznacz jako zamówione
+                  Oznacz zaznaczone ({selectedPositionCount})
                 </Button>
               </div>
             </div>

@@ -538,7 +538,16 @@ export function TeethReceiveLinesPanel({
             ? batchDeliveryConfirmMessage(receiveQueue, batchSaveConfirm.orderIds, {
                 fullQuantity: batchSaveConfirm.fullQuantity,
                 teethHandover: true,
-              })
+              }) +
+              (batchSaveConfirm.fullQuantity &&
+              teethReceiveOrderIdsWithSessionInput(
+                receiveQueue.filter((o) => batchSaveConfirm.orderIds.includes(o.id)),
+                flatLineQty,
+                manualQty,
+                canPickSpec,
+              ).length > 0
+                ? "\n\nUwaga: w tej sekcji są wpisane ilości częściowe — „Całość” je pominie i przyjmie pełne ilości. Jeśli dotarła tylko część, anuluj i użyj „Zapisz wprowadzone”."
+                : "")
             : ""
         }
         confirmLabel={

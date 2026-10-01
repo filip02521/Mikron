@@ -1,6 +1,12 @@
 "use client";
 
+import {
+  buildTeethMarkPlan,
+  type TeethMarkPlan,
+  type TeethMarkScope,
+} from "@/lib/teeth/teeth-queue-view-model";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { cn } from "@/lib/cn";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTeethProductInfo } from "@/components/layout/TeethExemptContext";
@@ -112,6 +118,8 @@ export function TeethPanelClient({
   const [markAnalysis, setMarkAnalysis] = useState<TeethMarkOrderedAnalysis | null>(null);
   const [markSelections, setMarkSelections] = useState<TeethPositionSelection[]>([]);
   const [markSupplierName, setMarkSupplierName] = useState<string | null>(null);
+  const [markPlan, setMarkPlan] = useState<TeethMarkPlan | null>(null);
+  const [markScope, setMarkScope] = useState<TeethMarkScope>("selection");
   const [historyGroupsForFilters, setHistoryGroupsForFilters] = useState<TeethQueueGroup[]>([]);
   const [quickOrderOpen, setQuickOrderOpen] = useState(false);
 
@@ -253,14 +261,26 @@ export function TeethPanelClient({
   }, []);
 
   const requestMarkPositionsOrdered = useCallback(
-    (selections: TeethPositionSelection[], supplierName?: string | null) => {
+    (
+      selections: TeethPositionSelection[],
+      supplierName?: string | null,
+      scope: TeethMarkScope = "selection",
+    ) => {
       if (selections.length === 0) return;
       const orderIds = selections.map((s) => s.orderId);
-      const positionCount = selections.reduce((sum, s) => sum + s.positions.length, 0);
       const analysis = analyzeTeethMarkOrdered(orderIds, ordersById, readinessCtx);
-      analysis.selectedPositionCount = positionCount;
+      // Liczymy tylko zęby, które serwer faktycznie oznaczy (gotowe prośby, niezamówione pozycje).
+      const plan = buildTeethMarkPlan(
+        selections,
+        ordersById,
+        new Set(analysis.withSpecIds),
+        readinessCtx,
+      );
+      analysis.selectedPositionCount = plan.markCount;
       setMarkSelections(selections);
       setMarkAnalysis(analysis);
+      setMarkPlan(plan);
+      setMarkScope(scope);
       setMarkSupplierName(supplierName ?? null);
       setMarkConfirmOpen(true);
     },
@@ -296,6 +316,7 @@ export function TeethPanelClient({
     } finally {
       setPending(false);
       setMarkAnalysis(null);
+      setMarkPlan(null);
       setMarkSelections([]);
       setMarkSupplierName(null);
     }
@@ -409,13 +430,13 @@ export function TeethPanelClient({
               suppliers={filterOptions.suppliers}
               salesPeople={filterOptions.salesPeople}
               trailing={
-                <label className="flex items-center gap-2 text-sm text-slate-500">
+                <label className="flex w-full min-w-0 items-center gap-2 text-sm text-slate-500 sm:w-auto">
                   <span className="hidden sm:inline">Sortuj</span>
                   <select
                     aria-label="Sortowanie"
                     value={sortKey}
                     onChange={(e) => setSortKey(e.target.value as TeethSortKey)}
-                    className={teethToolbarSelectClass}
+                    className={cn(teethToolbarSelectClass, "w-full min-w-0 sm:w-auto")}
                   >
                     {Object.entries(TEETH_SORT_LABELS).map(([key, label]) => (
                       <option key={key} value={key}>{label}</option>
@@ -512,12 +533,15 @@ export function TeethPanelClient({
       <TeethPanelMarkOrderedDialog
         open={markConfirmOpen}
         analysis={markAnalysis}
+        plan={markPlan}
+        scope={markScope}
         supplierName={markSupplierName}
         pending={pending}
         onConfirm={() => void handleConfirmMarkOrdered()}
         onCancel={() => {
           setMarkConfirmOpen(false);
           setMarkAnalysis(null);
+          setMarkPlan(null);
           setMarkSelections([]);
           setMarkSupplierName(null);
         }}

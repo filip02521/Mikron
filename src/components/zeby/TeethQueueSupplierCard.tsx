@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/Button";
 import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
 import { formatPlDate, vacationNoteLabel } from "@/lib/display-labels";
+import { warsawTodayDateKey } from "@/lib/warehouse/delivery-receipts-shared";
 import { plProsba } from "@/lib/ui/polish-plurals";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import {
@@ -24,10 +25,16 @@ import type {
 } from "@/lib/data/teeth-queue-shared";
 import type { TeethPanelReadinessContext } from "@/lib/teeth/teeth-panel-order-readiness";
 import {
+  groupTeethQueueByProductLine,
   teethOrderQueueState,
   teethOrderStateNeedsFix,
   teethOrderUnorderedPositions,
 } from "@/lib/teeth/teeth-queue-view-model";
+import {
+  TeethProductLineChips,
+  TeethProductLineSectionHeader,
+  teethLineSectionDomId,
+} from "@/components/zeby/TeethProductLineSectionHeader";
 
 type StepTone = "done" | "todo" | "warn" | "idle";
 
@@ -86,6 +93,7 @@ export function TeethQueueSupplierCard({
   onFileChanged,
   onTogglePositions,
   onToggleAll,
+  selectedTeethCount,
   onMarkGroup,
   onMarkSchedule,
   onEditSaved,
@@ -100,6 +108,8 @@ export function TeethQueueSupplierCard({
   onFileChanged: (hasFile: boolean) => void;
   onTogglePositions: (orderId: string, positions: number[], select: boolean) => void;
   onToggleAll: () => void;
+  /** Zaznaczone (niezamówione) zęby u tego dostawcy — przycisk oznacza wtedy tylko je. */
+  selectedTeethCount: number;
   onMarkGroup: () => void;
   onMarkSchedule: () => void;
   onEditSaved?: (message?: string) => void;
@@ -111,6 +121,12 @@ export function TeethQueueSupplierCard({
       items.map((item) => ({ item, state: teethOrderQueueState(item, readinessCtx) })),
     [items, readinessCtx],
   );
+  const stateById = useMemo(() => new Map(rows.map((r) => [r.item.id, r.state])), [rows]);
+  const sections = useMemo(
+    () => groupTeethQueueByProductLine(items, readinessCtx),
+    [items, readinessCtx],
+  );
+  const sectionDomId = (key: string) => teethLineSectionDomId("kolejka", group.supplierId, key);
   const needsFixCount = rows.filter((r) => teethOrderStateNeedsFix(r.state)).length;
   const readyCount = rows.filter((r) => r.state === "ready").length;
   const openTeeth = items.reduce((sum, item) => sum + teethOrderUnorderedPositions(item).length, 0);
@@ -124,10 +140,15 @@ export function TeethQueueSupplierCard({
     });
 
   const schedule = group.dueSchedule ?? null;
+  // Kolejka pokazuje tylko cykle przypadające dziś lub wcześniej — wcześniej = zaległy.
+  const scheduleOverdue = Boolean(
+    schedule?.computed_next_date && schedule.computed_next_date < warsawTodayDateKey(),
+  );
   const scheduleOnly = items.length === 0 && Boolean(schedule);
   const locked = items.length > 0 && items.every((i) => i.status !== "Nowe" && i.status !== "Weryfikacja");
   const fileOwnerId = (items.find((i) => i.teeth_order_file_path?.trim()) ?? items[0])?.id ?? null;
 
+  const partialSelection = selectedTeethCount > 0 && selectedTeethCount < openTeeth;
   const listTone: StepTone = needsFixCount > 0 ? "warn" : "done";
   const fileTone: StepTone = hasFile ? "done" : "todo";
   const markTone: StepTone = hasFile && readyCount > 0 ? "todo" : "idle";
@@ -152,14 +173,25 @@ export function TeethQueueSupplierCard({
               )}
               {eta ? <> · {eta}</> : null}
             </p>
+            <TeethProductLineChips
+              sections={sections.map((sec) => ({ ...sec, count: sec.items.length }))}
+              sectionDomId={sectionDomId}
+            />
           </div>
           {schedule?.computed_next_date ? (
             <span
-              className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-800 ring-1 ring-inset ring-sky-200"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset",
+                scheduleOverdue
+                  ? "bg-amber-50 text-amber-900 ring-amber-300"
+                  : "bg-sky-50 text-sky-800 ring-sky-200",
+              )}
               title="Stały cykl zamówień z harmonogramu dostawcy"
             >
               <IconCalendar size={13} />
-              Cykl: {formatPlDate(schedule.computed_next_date)}
+              {scheduleOverdue
+                ? `Cykl zaległy od ${formatPlDate(schedule.computed_next_date)}`
+                : "Cykl: zamów dziś"}
               {schedule.vacation_note ? ` · ${vacationNoteLabel(schedule.vacation_note)}` : ""}
             </span>
           ) : null}
@@ -176,8 +208,10 @@ export function TeethQueueSupplierCard({
         ) : scheduleOnly ? (
           <div className="flex flex-col gap-3 rounded-lg bg-sky-50/60 p-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-sky-900">
-              Dziś przypada zamówienie z harmonogramu. Złóż je u dostawcy i oznacz — termin
-              przesunie się na kolejny cykl.
+              {scheduleOverdue
+                ? "Zamówienie z harmonogramu jest zaległe."
+                : "Dziś przypada zamówienie z harmonogramu."}{" "}
+              Złóż je u dostawcy i oznacz — termin przesunie się na kolejny cykl.
             </p>
             <Button size="sm" className="min-h-9 shrink-0" disabled={pending} onClick={onMarkSchedule}>
               <IconTruck size={15} />
@@ -214,6 +248,7 @@ export function TeethQueueSupplierCard({
             <Step index={3} tone={markTone} title="Po złożeniu u dostawcy">
               <Button
                 size="sm"
+                variant={partialSelection ? "primary" : "secondary"}
                 className="min-h-9 w-full sm:w-auto"
                 disabled={pending || !hasFile || readyCount === 0}
                 onClick={onMarkGroup}
@@ -222,16 +257,30 @@ export function TeethQueueSupplierCard({
                     ? "Najpierw wgraj plik zamówienia"
                     : readyCount === 0
                       ? "Żadna prośba nie ma kompletnej listy"
-                      : "Oznacz wszystkie kompletne prośby jako zamówione"
+                      : partialSelection
+                        ? "Oznacz tylko zaznaczone zęby — reszta zostanie w kolejce"
+                        : "Oznacz wszystkie zęby z kompletnych próśb u tego dostawcy"
                 }
               >
                 <IconTruck size={15} />
-                Oznacz jako zamówione
+                {partialSelection
+                  ? `Oznacz zaznaczone (${selectedTeethCount})`
+                  : `Oznacz wszystkie (${openTeeth})`}
               </Button>
               {!hasFile ? (
                 <p className="mt-1 text-[11px] text-slate-500">Odblokuje się po wgraniu pliku.</p>
               ) : readyCount === 0 ? (
                 <p className="mt-1 text-[11px] text-amber-700">Najpierw uzupełnij listy.</p>
+              ) : partialSelection ? (
+                <p className="mt-1 text-[11px] text-slate-600">
+                  Tylko zaznaczone — {openTeeth - selectedTeethCount}{" "}
+                  {polishPluralWord(openTeeth - selectedTeethCount, "ząb zostanie", "zęby zostaną", "zębów zostanie")} w
+                  kolejce.
+                </p>
+              ) : selectedTeethCount === 0 ? (
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Chcesz tylko część? Zaznacz zęby poniżej.
+                </p>
               ) : null}
             </Step>
           </div>
@@ -273,30 +322,103 @@ export function TeethQueueSupplierCard({
           </div>
 
           {summaryOpen && group.supplierId ? (
-            <TeethQueueOrderSummary supplierName={group.supplierName} items={items} />
+            <TeethQueueOrderSummary
+              supplierName={group.supplierName}
+              items={items}
+              readinessCtx={readinessCtx}
+            />
           ) : null}
 
-          <ul className="divide-y divide-slate-100">
-            {rows.map(({ item, state }) => (
-              <TeethQueueOrderRow
-                key={item.id}
-                item={item}
-                state={state}
-                selected={positionSelection.get(item.id)}
-                onToggleOrder={() => {
-                  const open = teethOrderUnorderedPositions(item);
-                  const sel = positionSelection.get(item.id);
-                  const all = open.length > 0 && open.every((p) => sel?.has(p));
-                  onTogglePositions(item.id, open, !all);
-                }}
-                onTogglePositions={(positions, select) =>
-                  onTogglePositions(item.id, positions, select)
-                }
-                onEditSaved={onEditSaved}
-                selectable={Boolean(group.supplierId)}
-              />
-            ))}
-          </ul>
+          <div className="divide-y divide-slate-200">
+            {sections.map((section) => {
+              const sectionOpen = section.items.flatMap((item) =>
+                teethOrderUnorderedPositions(item).map((p) => [item.id, p] as const),
+              );
+              const sectionTeeth = sectionOpen.length;
+              const sectionAllSelected =
+                sectionTeeth > 0 &&
+                sectionOpen.every(([id, p]) => positionSelection.get(id)?.has(p));
+              const sectionSomeSelected =
+                !sectionAllSelected &&
+                sectionOpen.some(([id, p]) => positionSelection.get(id)?.has(p));
+              const sectionNeedsFix = section.items.filter((item) => {
+                const state = stateById.get(item.id);
+                return state ? teethOrderStateNeedsFix(state) : false;
+              }).length;
+              return (
+                <section
+                  key={section.key}
+                  id={sectionDomId(section.key)}
+                  aria-label={`Linia ${section.label}`}
+                  className="scroll-mt-24"
+                >
+                  <TeethProductLineSectionHeader
+                    productLine={section.productLine}
+                    label={section.label}
+                    leading={
+                      group.supplierId ? (
+                        <input
+                          type="checkbox"
+                          checked={sectionAllSelected}
+                          ref={(el) => {
+                            if (el) el.indeterminate = sectionSomeSelected;
+                          }}
+                          disabled={sectionTeeth === 0}
+                          onChange={() => {
+                            for (const item of section.items) {
+                              const open = teethOrderUnorderedPositions(item);
+                              if (open.length > 0) onTogglePositions(item.id, open, !sectionAllSelected);
+                            }
+                          }}
+                          className={cn(checkboxBrandClass, "size-[18px]")}
+                          aria-label={`Zaznacz całą linię ${section.label}`}
+                        />
+                      ) : null
+                    }
+                    meta={
+                      <>
+                        {section.items.length} {plProsba(section.items.length)}
+                        {sectionTeeth > 0
+                          ? ` · ${sectionTeeth} ${polishPluralWord(sectionTeeth, "ząb", "zęby", "zębów")}`
+                          : null}
+                      </>
+                    }
+                    trailing={
+                      sectionNeedsFix > 0 ? (
+                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-inset ring-amber-200">
+                          {sectionNeedsFix} do uzupełnienia
+                        </span>
+                      ) : null
+                    }
+                  />
+                  <ul className="divide-y divide-slate-100">
+                    {section.items.map((item) => {
+                      const state = stateById.get(item.id) ?? teethOrderQueueState(item, readinessCtx);
+                      return (
+                        <TeethQueueOrderRow
+                          key={item.id}
+                          item={item}
+                          state={state}
+                          selected={positionSelection.get(item.id)}
+                          onToggleOrder={() => {
+                            const open = teethOrderUnorderedPositions(item);
+                            const sel = positionSelection.get(item.id);
+                            const all = open.length > 0 && open.every((p) => sel?.has(p));
+                            onTogglePositions(item.id, open, !all);
+                          }}
+                          onTogglePositions={(positions, select) =>
+                            onTogglePositions(item.id, positions, select)
+                          }
+                          onEditSaved={onEditSaved}
+                          selectable={Boolean(group.supplierId)}
+                        />
+                      );
+                    })}
+                  </ul>
+                </section>
+              );
+            })}
+          </div>
 
           {schedule && !scheduleOnly ? (
             <p className="flex items-center gap-2 border-t border-slate-100 px-4 py-2 text-[11px] text-slate-500 sm:px-5">

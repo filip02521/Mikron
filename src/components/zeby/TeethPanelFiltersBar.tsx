@@ -26,13 +26,13 @@ function ToggleChip({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "inline-flex h-9 shrink-0 items-center rounded-lg border px-3 text-sm font-medium transition-colors",
+        "inline-flex h-9 w-full min-w-0 items-center justify-center rounded-lg border px-3 text-sm font-medium transition-colors sm:w-auto sm:shrink-0",
         active
           ? "border-amber-300 bg-amber-50 text-amber-900"
           : "border-slate-200 bg-white text-slate-600 shadow-sm hover:border-slate-300 hover:text-slate-900",
       )}
     >
-      {label}
+      <span className="truncate">{label}</span>
     </button>
   );
 }
@@ -109,7 +109,9 @@ export function TeethPanelFiltersBar({
           Wyczyść filtry
         </button>
       ) : null}
-      {trailing ? <div className="flex items-center justify-end gap-2 sm:ml-auto">{trailing}</div> : null}
+      {trailing ? (
+        <div className="flex min-w-0 items-center justify-end gap-2 sm:ml-auto">{trailing}</div>
+      ) : null}
     </div>
   );
 }

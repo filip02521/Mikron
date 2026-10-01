@@ -1,6 +1,13 @@
 "use client";
 
+import { groupTeethQueueByProductLine } from "@/lib/teeth/teeth-queue-view-model";
+import {
+  TeethProductLineChips,
+  TeethProductLineSectionHeader,
+  teethLineSectionDomId,
+} from "@/components/zeby/TeethProductLineSectionHeader";
 import { useCallback, useEffect, useState } from "react";
+import { cn } from "@/lib/cn";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ModalShell } from "@/components/ui/ModalShell";
@@ -11,9 +18,11 @@ import Link from "next/link";
 import { TeethPanelEmpty, TeethPanelListSkeleton } from "@/components/zeby/TeethPanelSection";
 import {
   TeethPanelHistoryOrderEntry,
+  TEETH_HISTORY_STATE_META,
   teethHistoryState,
   type TeethHistoryState,
 } from "@/components/zeby/TeethPanelHistoryOrderEntry";
+import { IconChevronDown } from "@/components/icons/StrokeIcons";
 import { polishPluralWord } from "@/lib/email/polish-plural";
 import type { TeethPanelReadinessContext } from "@/lib/teeth/teeth-panel-order-readiness";
 import {
@@ -41,6 +50,45 @@ import { IconCircleCheck, IconAlertCircle, IconSearch, IconCalendar } from "@/co
 import { TEETH_PANEL_TOAST, type ToastNotice, toastFromUnknown } from "@/lib/ui/notice-copy";
 
 const plZamowienie = (n: number) => polishPluralWord(n, "zamówienie", "zamówienia", "zamówień");
+
+const SUMMARY_STATES: TeethHistoryState[] = ["late", "partial", "in_transit", "done", "cancelled"];
+
+function historyStateCounts(items: TeethQueueItem[]): Map<TeethHistoryState, number> {
+  const counts = new Map<TeethHistoryState, number>();
+  for (const item of items) {
+    const state = teethHistoryState(item);
+    counts.set(state, (counts.get(state) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/** Zwięzłe podsumowanie stanów — widoczne także gdy lista jest zwinięta. */
+function HistoryStateSummary({ items }: { items: TeethQueueItem[] }) {
+  const counts = historyStateCounts(items);
+  return (
+    <span className="flex flex-wrap items-center gap-1">
+      {SUMMARY_STATES.filter((state) => (counts.get(state) ?? 0) > 0).map((state) => (
+        <span
+          key={state}
+          className={cn(
+            "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ring-1 ring-inset",
+            TEETH_HISTORY_STATE_META[state].badge,
+          )}
+        >
+          {TEETH_HISTORY_STATE_META[state].label} {counts.get(state)}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** Lista „aktywna” (coś jeszcze w drodze / opóźnione / częściowo) — domyślnie rozwinięta. */
+function hasActiveHistoryItems(items: TeethQueueItem[]): boolean {
+  return items.some((item) => {
+    const state = teethHistoryState(item);
+    return state === "late" || state === "partial" || state === "in_transit";
+  });
+}
 
 export function TeethPanelHistoriaView({
   groups,
@@ -71,6 +119,8 @@ export function TeethPanelHistoriaView({
   const [bulkSelectedIds, setBulkSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDateValue, setBulkDateValue] = useState("");
   const [bulkDatePending, setBulkDatePending] = useState(false);
+  /** Ręcznie rozwinięte/zwinięte listy (dostawca / linia); reszta wg domyślnej reguły. */
+  const [expandOverrides, setExpandOverrides] = useState<Map<string, boolean>>(new Map());
 
   const historyQuery = useCallback(
     () => ({
@@ -286,6 +336,26 @@ export function TeethPanelHistoriaView({
   const countByState = (state: TeethHistoryState) =>
     allHistoryItems.filter((i) => teethHistoryState(i) === state).length;
 
+  // Szukanie, zaznaczanie kilku dat lub jeden dostawca — wszystko rozwinięte, żeby nic nie umknęło.
+  const forceOpen = searchSpec.trim() !== "" || bulkDateMode || displayGroups.length === 1;
+  const hasLateItems = (items: TeethQueueItem[]) =>
+    items.some((item) => teethHistoryState(item) === "late");
+  const isExpanded = (key: string, fallback: boolean) => expandOverrides.get(key) ?? fallback;
+  const setExpanded = (key: string, open: boolean) =>
+    setExpandOverrides((prev) => new Map(prev).set(key, open));
+  const setAllExpanded = (open: boolean) => {
+    const next = new Map<string, boolean>();
+    for (const group of displayGroups) {
+      const items = group.items.filter((i): i is TeethQueueItem => !isScheduledItem(i));
+      const supplierKey = `s:${group.supplierId ?? "__no_supplier"}`;
+      next.set(supplierKey, open);
+      for (const section of groupTeethQueueByProductLine(items, readinessCtx)) {
+        next.set(`${supplierKey}|${section.key}`, open);
+      }
+    }
+    setExpandOverrides(next);
+  };
+
   return (
     <>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -347,48 +417,130 @@ export function TeethPanelHistoriaView({
         </div>
       ) : null}
 
+      <div className="flex flex-wrap items-center justify-between gap-2">
       <p className="text-xs text-slate-500">
         W drodze: <strong className="text-slate-700">{countByState("in_transit")}</strong>
         {" · "}Opóźnione: <strong className="text-slate-700">{countByState("late")}</strong>
         {" · "}Częściowo: <strong className="text-slate-700">{countByState("partial")}</strong>
         {" · "}Dostarczone: <strong className="text-slate-700">{countByState("done")}</strong>
       </p>
+        <div className="flex items-center gap-1 text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => setAllExpanded(true)}
+            className="rounded-md px-2 py-1 text-indigo-700 hover:bg-indigo-50"
+          >
+            Rozwiń wszystko
+          </button>
+          <button
+            type="button"
+            onClick={() => setAllExpanded(false)}
+            className="rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100"
+          >
+            Zwiń wszystko
+          </button>
+        </div>
+      </div>
 
       {displayGroups.map((group) => {
         const items = group.items.filter((i): i is TeethQueueItem => !isScheduledItem(i));
+        const sections = groupTeethQueueByProductLine(items, readinessCtx);
+        const supplierKey = `s:${group.supplierId ?? "__no_supplier"}`;
+        const sectionDomId = (key: string) =>
+          teethLineSectionDomId("historia", group.supplierId, key);
+        const supplierOpen = isExpanded(supplierKey, forceOpen || hasLateItems(items));
+        const bodyId = `teeth-historia-body-${(group.supplierId ?? "none").replace(/[^a-z0-9-]/gi, "")}`;
         return (
           <section
-            key={group.supplierId ?? "__no_supplier"}
+            key={supplierKey}
             aria-label={`Dostawca ${group.supplierName}`}
             className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
           >
-            <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-100 px-4 py-3 sm:px-5">
-              <h2 className="text-base font-semibold text-slate-900">{group.supplierName}</h2>
-              <span className="text-xs text-slate-500">
-                {items.length} {plZamowienie(items.length)}
-              </span>
-            </header>
-            <ul className="divide-y divide-slate-100">
-              {items.map((item) => (
-                <TeethPanelHistoryOrderEntry
-                  key={item.id}
-                  item={item}
-                  selectable={bulkDateMode}
-                  selected={bulkSelectedIds.has(item.id)}
-                  onToggleSelected={() => toggleBulkSelect(item.id)}
-                  onEditDate={
-                    bulkDateMode || item.status === "Zrealizowane" || item.status === "Anulowane"
-                      ? undefined
-                      : () => openDateEditor(item)
-                  }
-                  onUnmark={
-                    !bulkDateMode && item.status === "Zamowione"
-                      ? () => setUnmarkId(item.id)
-                      : undefined
-                  }
+            <header className={cn("px-4 py-3 sm:px-5", supplierOpen && "border-b border-slate-100")}>
+              <button
+                type="button"
+                onClick={() => setExpanded(supplierKey, !supplierOpen)}
+                aria-expanded={supplierOpen}
+                aria-controls={bodyId}
+                className="-mx-1 flex w-full flex-wrap items-center gap-x-3 gap-y-1.5 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-slate-50"
+              >
+                <IconChevronDown
+                  size={16}
+                  className={cn("shrink-0 text-slate-400 transition-transform", !supplierOpen && "-rotate-90")}
+                  aria-hidden
                 />
-              ))}
-            </ul>
+                <h2 className="text-base font-semibold text-slate-900">{group.supplierName}</h2>
+                <span className="text-xs text-slate-500">
+                  {items.length} {plZamowienie(items.length)}
+                  {sections.length > 1 ? ` · ${sections.length} linie` : ""}
+                </span>
+                <span className="ml-auto">
+                  <HistoryStateSummary items={items} />
+                </span>
+              </button>
+              <TeethProductLineChips
+                sections={sections.map((sec) => ({ ...sec, count: sec.items.length }))}
+                sectionDomId={sectionDomId}
+                onSelect={(key) => {
+                  setExpandOverrides((prev) =>
+                    new Map(prev).set(supplierKey, true).set(`${supplierKey}|${key}`, true),
+                  );
+                }}
+              />
+            </header>
+            {supplierOpen ? (
+              <div id={bodyId}>
+                {sections.map((section) => {
+                  const lineKey = `${supplierKey}|${section.key}`;
+                  const lineOpen = isExpanded(
+                    lineKey,
+                    forceOpen || sections.length === 1 || hasActiveHistoryItems(section.items),
+                  );
+                  const listId = `${sectionDomId(section.key)}-list`;
+                  return (
+                    <section
+                      key={section.key}
+                      id={sectionDomId(section.key)}
+                      aria-label={`Linia ${section.label}`}
+                      className="scroll-mt-24 border-b border-slate-200 last:border-b-0"
+                    >
+                      <TeethProductLineSectionHeader
+                        productLine={section.productLine}
+                        label={section.label}
+                        meta={`${section.items.length} ${plZamowienie(section.items.length)}`}
+                        expanded={lineOpen}
+                        onToggle={() => setExpanded(lineKey, !lineOpen)}
+                        controlsId={listId}
+                        trailing={lineOpen ? null : <HistoryStateSummary items={section.items} />}
+                      />
+                      {lineOpen ? (
+                        <ul id={listId} className="divide-y divide-slate-100">
+                          {section.items.map((item) => (
+                            <TeethPanelHistoryOrderEntry
+                              key={item.id}
+                              item={item}
+                              selectable={bulkDateMode}
+                              selected={bulkSelectedIds.has(item.id)}
+                              onToggleSelected={() => toggleBulkSelect(item.id)}
+                              onEditDate={
+                                bulkDateMode || item.status === "Zrealizowane" || item.status === "Anulowane"
+                                  ? undefined
+                                  : () => openDateEditor(item)
+                              }
+                              onUnmark={
+                                !bulkDateMode && item.status === "Zamowione"
+                                  ? () => setUnmarkId(item.id)
+                                  : undefined
+                              }
+                            />
+                          ))}
+                        </ul>
+                      ) : null}
+                    </section>
+                  );
+                })}
+              </div>
+            ) : null}
           </section>
         );
       })}
