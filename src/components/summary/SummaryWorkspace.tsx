@@ -1,5 +1,6 @@
 "use client";
 
+import type { SupplierSubiektScopeInfo } from "@/lib/orders/zd-estimate-supplier-scope";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
@@ -77,6 +78,7 @@ export function SummaryWorkspace({
   supplierStatsMode = {},
   verificationOrders = [],
   teethLaneBySupplierId = {},
+  subiektScopeBySupplierId = {},
   canPrepareZd = false,
   etaUseP50 = false,
   etaQuantilesBySupplierId = {},
@@ -89,6 +91,8 @@ export function SummaryWorkspace({
   supplierStatsMode?: Record<string, StatsMode>;
   verificationOrders?: IndividualOrder[];
   teethLaneBySupplierId?: Record<string, TeethSupplierLaneSnapshot>;
+  /** Dostawca → grupa/cecha Subiekta (mapowanie z kreatora ZD). */
+  subiektScopeBySupplierId?: Record<string, SupplierSubiektScopeInfo>;
   /** Przygotuj ZD w drawerze — Kreator ZD (operacje dostaw). */
   canPrepareZd?: boolean;
   etaUseP50?: boolean;
@@ -533,6 +537,7 @@ export function SummaryWorkspace({
           drawerId ? workspace.suppliersOnVacationNow[drawerId] ?? null : null
         }
         teethLane={drawerId ? teethLaneBySupplierId[drawerId] ?? null : null}
+        subiektScope={drawerId ? subiektScopeBySupplierId[drawerId] ?? null : null}
         deliveryStats={drawerId ? statsBySupplierId[drawerId] ?? null : null}
         statsMode={
           drawerId

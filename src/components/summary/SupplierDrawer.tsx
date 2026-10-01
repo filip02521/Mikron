@@ -1,5 +1,6 @@
 "use client";
 
+import type { SupplierSubiektScopeInfo } from "@/lib/orders/zd-estimate-supplier-scope";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -71,10 +72,45 @@ const supplierHistoryCache = new Map<
   { at: number; rows: HistoryRow[] }
 >();
 
+/** Grupa / cecha Subiekta przypisana dostawcy — zakres towarów przy „Przygotuj ZD”. */
+function SupplierSubiektScopeRow({ scope }: { scope: SupplierSubiektScopeInfo | null }) {
+  const kind = scope ? (scope.mode === "cecha" ? "Cecha" : "Grupa") : null;
+  return (
+    <div className="mb-3 flex items-start gap-2.5 rounded-lg border border-slate-200/70 bg-slate-50/50 px-3.5 py-3">
+      <span
+        className={cn(
+          "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
+          scope ? "bg-indigo-100 text-indigo-700" : "bg-slate-200 text-slate-500"
+        )}
+      >
+        {scope ? <IconLink size={14} /> : <IconLinkOff size={14} />}
+      </span>
+      <div className="min-w-0 flex-1 text-sm">
+        {scope ? (
+          <p className="font-medium text-indigo-900">
+            {kind} w Subiekcie: <span className="font-semibold">{scope.label || "bez nazwy"}</span>
+            <span className="ml-1 text-xs font-normal text-indigo-600">
+              {scope.mode === "cecha" ? "ctw_Id" : "grt_Id"} {scope.id}
+            </span>
+          </p>
+        ) : (
+          <p className="text-slate-600">Brak powiązania z grupą ani cechą</p>
+        )}
+        <p className="mt-0.5 text-xs text-slate-400">
+          {scope
+            ? `„Przygotuj ZD” liczy towary z tej ${scope.mode === "cecha" ? "cechy" : "grupy"}`
+            : "„Przygotuj ZD” spróbuje dopasować grupę lub cechę po nazwie dostawcy"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function SupplierDrawer({
   supplier,
   vacationWindow = null,
   teethLane,
+  subiektScope = null,
   deliveryStats,
   statsMode = "LACZNIE",
   leadTimeDisplay,
@@ -89,6 +125,8 @@ export function SupplierDrawer({
   /** Aktywne okno urlopu obejmujące dziś (kalendarz) — z datami. */
   vacationWindow?: SupplierOnVacationWindow | null;
   teethLane?: TeethSupplierLaneSnapshot | null;
+  /** Powiązanie z grupą albo cechą Subiekta (null = brak mapowania). */
+  subiektScope?: SupplierSubiektScopeInfo | null;
   /** Statystyki z `delivery_stats` — średni czas dostawy (SSR panelu). */
   deliveryStats?: DeliveryStats | null;
   statsMode?: StatsMode;
@@ -430,6 +468,7 @@ export function SupplierDrawer({
                 </Button>
               </Link>
             </div>
+            <SupplierSubiektScopeRow scope={subiektScope} />
             <SupplierContactActions
               notes={supplier.notes}
               mails={supplier.mails}

@@ -12,6 +12,11 @@ import { PanelDailyRouteLoadingSkeleton } from "@/components/layout/PanelRouteLo
 import { panelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { IndividualOrder } from "@/types/database";
+import { listZdEstimateSupplierScopes } from "@/lib/data/zd-estimate-supplier-scopes";
+import {
+  supplierSubiektScopeInfoFromRow,
+  type SupplierSubiektScopeInfo,
+} from "@/lib/orders/zd-estimate-supplier-scope";
 
 import type { Metadata } from "next";
 import { pageMetadataFor } from "@/lib/ui/page-metadata";
@@ -45,14 +50,21 @@ export default async function PodsumowaniePage() {
   let etaQuantilesBySupplierId: Awaited<
     ReturnType<typeof fetchSummaryWorkspace>
   >["etaQuantilesBySupplierId"] = {};
+  const subiektScopeBySupplierId: Record<string, SupplierSubiektScopeInfo> = {};
   let verificationOrders: IndividualOrder[] = [];
   let error: string | null = null;
 
   try {
-    const [data, verification] = await Promise.all([
+    const [data, verification, scopeRows] = await Promise.all([
       fetchSummaryWorkspace(),
       fetchVerificationOrders(),
+      // Powiązania dostawca → grupa/cecha Subiekta; brak tabeli/błąd nie blokuje panelu.
+      listZdEstimateSupplierScopes().catch(() => []),
     ]);
+    for (const row of scopeRows) {
+      const info = supplierSubiektScopeInfoFromRow(row);
+      if (info) subiektScopeBySupplierId[row.supplierId] = info;
+    }
     verificationOrders = verification;
     workspace = data.workspace;
     suppliers = data.suppliers;
@@ -85,6 +97,7 @@ export default async function PodsumowaniePage() {
           supplierStatsMode={supplierStatsMode}
           verificationOrders={verificationOrders}
           teethLaneBySupplierId={teethLaneBySupplierId}
+          subiektScopeBySupplierId={subiektScopeBySupplierId}
           canPrepareZd={canPrepareZd}
           etaUseP50={etaUseP50}
           etaQuantilesBySupplierId={etaQuantilesBySupplierId}
