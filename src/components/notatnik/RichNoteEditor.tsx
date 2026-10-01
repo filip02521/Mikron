@@ -497,7 +497,7 @@ function RichNoteEditorToolbar({ editable, activeFormats }: { editable: boolean;
   return (
     <div
       className={cn(
-        "pointer-events-none absolute -top-8 right-4 flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white/95 px-1 py-1 shadow-md shadow-slate-900/8 backdrop-blur-sm transition-opacity duration-150 z-10",
+        "pointer-events-none absolute -top-8 right-4 flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white/95 px-1 py-1 shadow-md backdrop-blur-sm transition-opacity duration-150 z-10",
         "opacity-0",
         editable && "group-hover/sticky:pointer-events-auto group-hover/sticky:opacity-100 group-focus-within/sticky:pointer-events-auto group-focus-within/sticky:opacity-100"
       )}

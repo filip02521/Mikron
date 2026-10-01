@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { Card } from "@/components/ui/Card";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
 import { TeethPanelContentFooter } from "@/components/zeby/TeethPanelContentFooter";
-import { TeethFlowNav } from "@/components/zeby/TeethFlowNav";
 import { cn } from "@/lib/cn";
 import { TEETH_KOLEJKA_ICON_TILE } from "@/lib/teeth/teeth-panel-shell";
 
@@ -53,7 +52,6 @@ export function TeethPanelWorkspaceCard({
         {headerAside ? <div className="flex shrink-0 items-center gap-2">{headerAside}</div> : null}
       </header>
 
-      <TeethFlowNav />
 
       {bare ? (
         <div id="teeth-panel-main" className="space-y-4">

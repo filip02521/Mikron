@@ -22,8 +22,8 @@ describe("individualHistoryStatusBadgeVariant", () => {
 });
 
 describe("individualHistoryRowClass", () => {
-  it("zwraca delikatny akcent zamiast pełnego tła", () => {
-    expect(individualHistoryRowClass("Zamowione")).toContain("border-l-indigo");
+  it("bez kolorowego paska; anulowane wyszarzone", () => {
+    expect(individualHistoryRowClass("Zamowione")).not.toContain("border-l-");
     expect(individualHistoryRowClass("Anulowane")).toContain("opacity-70");
   });
 });

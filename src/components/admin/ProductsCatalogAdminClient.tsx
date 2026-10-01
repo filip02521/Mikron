@@ -1336,7 +1336,7 @@ export function ProductsCatalogAdminClient({
                 stopTickLoop();
                 setImportSupplierId(e.target.value);
               }}
-              className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100/90 sm:max-w-[26rem]"
+              className="h-9 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100/90 sm:max-w-[26rem]"
             >
               {suppliers.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -1568,7 +1568,7 @@ export function ProductsCatalogAdminClient({
               key={r.subiektTwId}
               className={cn(
                 "px-4 py-2.5 transition-colors hover:bg-slate-50/60 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_minmax(220px,1fr)_minmax(140px,180px)] lg:items-center lg:gap-3",
-                isSelected && "bg-indigo-50/40 ring-1 ring-inset ring-indigo-200/70"
+                isSelected && "bg-indigo-50/40 ring-1 ring-inset ring-neutral-200"
               )}
             >
               <div className="mb-2 flex items-center gap-2 lg:mb-0 lg:w-9 lg:justify-center">

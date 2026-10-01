@@ -69,7 +69,7 @@ export function MyOrderExpandedDeliveryTiming({
         isOverdue
           ? "border-amber-200/70 bg-amber-50/45"
           : isZd
-            ? "border-indigo-200/55 bg-indigo-50/30"
+            ? "border-neutral-200 bg-indigo-50/30"
             : "border-slate-200/70 bg-slate-50/45",
         className
       )}

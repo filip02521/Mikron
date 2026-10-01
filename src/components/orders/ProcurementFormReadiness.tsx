@@ -136,7 +136,7 @@ export function ProcurementFormReadiness({
         </ul>
 
         {resolvingSupplier ? (
-          <p className="mt-2 flex items-center gap-2 text-xs text-indigo-800">
+          <p className="mt-2 flex items-center gap-2 text-xs text-neutral-800">
             <Spinner size="sm" />
             Sprawdzam dostawcę w bazie…
           </p>

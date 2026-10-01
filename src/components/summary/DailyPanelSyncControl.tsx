@@ -38,7 +38,7 @@ export function DailyPanelSyncControl({ embedded = false }: { embedded?: boolean
             <button
               type="button"
               onClick={ctx.refreshNow}
-              className="min-h-9 rounded-sm font-semibold text-indigo-700 underline decoration-indigo-300/80 underline-offset-2 hover:text-indigo-900 sm:min-h-0"
+              className="min-h-9 rounded-sm font-semibold text-neutral-700 underline decoration-indigo-300/80 underline-offset-2 hover:text-neutral-900 sm:min-h-0"
             >
               odśwież teraz
             </button>

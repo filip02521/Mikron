@@ -317,7 +317,7 @@ export function LocationScheduleClient({
                           className={cn(
                             "flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sm font-bold ring-1 ring-inset",
                             row.is_active
-                              ? "bg-indigo-50 text-indigo-700 ring-indigo-100/60"
+                              ? "bg-indigo-50 text-indigo-700 ring-neutral-100"
                               : "bg-slate-100 text-slate-400 ring-slate-200/60"
                           )}
                           aria-hidden
@@ -339,7 +339,7 @@ export function LocationScheduleClient({
                           ) : null}
                           <Link
                             href={cardHref(cardsBasePath, row.name)}
-                            className="mt-1 flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-900 hover:underline"
+                            className="mt-1 flex items-center gap-1 text-xs font-medium text-neutral-700 hover:text-neutral-900 hover:underline"
                           >
                             Karta dostawcy
                             <LinkChevron size={13} tone="sky" />

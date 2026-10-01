@@ -227,7 +227,7 @@ export function ZdEstimateBulkPackagingDialog({
           className={cn(
             "flex cursor-pointer gap-2 rounded-lg border px-3 py-2.5",
             effectiveMode === "packages"
-              ? "border-indigo-200 bg-indigo-50/60"
+              ? "border-neutral-200 bg-indigo-50/60"
               : "border-slate-200 bg-white"
           )}
         >
@@ -252,7 +252,7 @@ export function ZdEstimateBulkPackagingDialog({
               ? "cursor-not-allowed border-slate-200 bg-slate-50 opacity-70"
               : "cursor-pointer",
             !pairPackBlocksPiecesMode && effectiveMode === "pieces_multiple"
-              ? "border-indigo-200 bg-indigo-50/60"
+              ? "border-neutral-200 bg-indigo-50/60"
               : !pairPackBlocksPiecesMode
                 ? "border-slate-200 bg-white"
                 : null
@@ -336,7 +336,7 @@ export function ZdEstimateBulkPackagingDialog({
             className={cn(
               "flex cursor-pointer gap-2.5 rounded-lg border px-3 py-2.5",
               orderMultipleEnabled
-                ? "border-indigo-200 bg-indigo-50/50"
+                ? "border-neutral-200 bg-indigo-50/50"
                 : "border-slate-200 bg-white"
             )}
           >

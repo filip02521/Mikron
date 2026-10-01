@@ -134,7 +134,7 @@ export function HistoriaBrowseSheet({
           sideSheetWidePanelClass
         )}
       >
-        <header className="shrink-0 border-b border-indigo-100/70 bg-indigo-50/20 px-4 py-4 sm:px-5">
+        <header className="shrink-0 border-b border-neutral-100 bg-indigo-50/20 px-4 py-4 sm:px-5">
           <div className="flex items-start justify-between gap-3">
             <div className="flex min-w-0 items-start gap-3">
               <SectionHeadingIcon

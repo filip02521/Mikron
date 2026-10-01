@@ -11,7 +11,7 @@ import { cn } from "@/lib/cn";
 import { TeethPanelSection } from "@/components/zeby/TeethPanelSection";
 import { IconClipboardPen } from "@/components/icons/StrokeIcons";
 
-const AUDIT_SECTION_TILE = "bg-sky-100 text-sky-800";
+const AUDIT_SECTION_TILE = "bg-neutral-100 text-neutral-800";
 
 export function TeethPanelAuditLog({
   supplierId,

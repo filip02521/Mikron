@@ -126,12 +126,12 @@ export function SupplierSubiektLinkField({
         Powiązanie z Subiektem
       </p>
       {subiektKhId != null ? (
-        <div className="flex items-center gap-2 rounded-lg bg-indigo-50/60 px-3 py-2 ring-1 ring-inset ring-indigo-100/40">
-          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-100 text-indigo-700">
+        <div className="flex items-center gap-2 rounded-lg bg-neutral-50 px-3 py-2 ring-1 ring-inset ring-neutral-100">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-neutral-700">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.07 0l1.41-1.41a5 5 0 00-7.07-7.07L10 5.93" /><path d="M14 11a5 5 0 00-7.07 0L5.51 12.41a5 5 0 007.07 7.07L14 18.07" /></svg>
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-indigo-900">
+            <p className="text-sm font-medium text-neutral-900">
               {kontrahentDisplayName(linkedLabel, subiektKhId)}
             </p>
             <p className="text-[11px] text-indigo-600/80">
@@ -243,7 +243,7 @@ export function SupplierSubiektLinkField({
                       Ustaw jako główne
                     </Button>
                   ) : (
-                    <span className="self-center px-2 text-[11px] font-medium text-indigo-700">Główne</span>
+                    <span className="self-center px-2 text-[11px] font-medium text-neutral-700">Główne</span>
                   )}
                   {!isAlias && !isPrimary ? (
                     <Button

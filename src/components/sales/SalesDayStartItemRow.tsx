@@ -21,22 +21,22 @@ export function salesDayStartSourceRowAccent(source: SalesDayStartItem["source"]
   switch (source) {
     case "pickup":
     case "zk_warehouse":
-      return "border-l-emerald-500 hover:bg-emerald-50/35";
+      return "hover:bg-emerald-50/35";
     case "teeth_handover":
-      return "border-l-violet-500 hover:bg-violet-50/40";
+      return "hover:bg-neutral-50";
     case "cancel_ack":
-      return "border-l-amber-500 hover:bg-amber-50/50";
+      return "hover:bg-amber-50/50";
     case "note_from_procurement":
-      return "border-l-indigo-500 hover:bg-indigo-50/35";
+      return "hover:bg-neutral-50";
     case "informacja_ready":
-      return "border-l-violet-400 hover:bg-violet-50/40";
+      return "hover:bg-neutral-50";
     case "zk_follow_up":
     case "note_follow_up":
-      return "border-l-violet-500 hover:bg-violet-50/40";
+      return "hover:bg-neutral-50";
     case "board_answer":
-      return "border-l-sky-500 hover:bg-sky-50/35";
+      return "hover:bg-neutral-50";
     case "board_announcement":
-      return "border-l-sky-600 hover:bg-sky-50/40";
+      return "hover:bg-neutral-50";
     default:
       return "";
   }
@@ -47,22 +47,22 @@ function salesDayStartSourceTagClass(source: SalesDayStartItem["source"]): strin
     case "pickup":
       return "bg-emerald-50 text-emerald-800 ring-emerald-100";
     case "teeth_handover":
-      return "bg-violet-50 text-violet-800 ring-violet-100";
+      return "bg-neutral-50 text-neutral-800 ring-neutral-100";
     case "zk_warehouse":
       return "bg-emerald-50 text-emerald-900 ring-emerald-100";
     case "cancel_ack":
       return "bg-amber-50 text-amber-900 ring-amber-100";
     case "note_from_procurement":
-      return "bg-indigo-50 text-indigo-800 ring-indigo-100";
+      return "bg-neutral-50 text-neutral-800 ring-neutral-100";
     case "informacja_ready":
-      return "bg-violet-50 text-violet-800 ring-violet-100";
+      return "bg-neutral-50 text-neutral-800 ring-neutral-100";
     case "zk_follow_up":
     case "note_follow_up":
-      return "bg-violet-50 text-violet-900 ring-violet-100";
+      return "bg-neutral-50 text-neutral-900 ring-neutral-100";
     case "board_answer":
-      return "bg-sky-50 text-sky-900 ring-sky-100";
+      return "bg-neutral-50 text-neutral-900 ring-neutral-100";
     case "board_announcement":
-      return "bg-sky-50 text-sky-950 ring-sky-200/80";
+      return "bg-neutral-50 text-neutral-900 ring-neutral-200";
     default:
       return "";
   }
@@ -121,7 +121,7 @@ export function SalesDayStartItemRow({
         onClick={handleClick}
         className={cn(
           mojeQueueRowLayoutClass,
-          "w-full border-l-[3px] bg-white px-3 py-2.5 text-left transition-colors duration-150 sm:px-4 sm:py-3",
+          "w-full bg-white px-3 py-2.5 text-left transition-colors duration-150 sm:px-4 sm:py-3",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-indigo-500/40",
           salesDayStartSourceRowAccent(item.source)
         )}

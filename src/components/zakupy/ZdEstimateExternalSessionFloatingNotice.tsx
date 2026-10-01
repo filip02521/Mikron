@@ -96,10 +96,10 @@ function FloatingNoticePanel({
         className={cn(
           "pointer-events-auto flex overflow-hidden origin-right",
           "rounded-l-xl border border-r-0 bg-white/95 backdrop-blur-md",
-          "shadow-[0_8px_28px_rgba(15,23,42,0.12)]",
+          "",
           "transition-[width] duration-200 ease-out will-change-[width]",
           controlFocusClass,
-          urgent ? "border-amber-200/90" : "border-indigo-200/90"
+          urgent ? "border-amber-200/90" : "border-neutral-200"
         )}
         style={{
           width: expanded ? EXPANDED_W : COLLAPSED_W,
@@ -111,7 +111,7 @@ function FloatingNoticePanel({
             "flex h-full w-12 shrink-0 flex-col items-center justify-center gap-2 px-1 py-2",
             urgent ? "bg-amber-50/95" : "bg-indigo-50/95",
             "border-r",
-            urgent ? "border-amber-100" : "border-indigo-100"
+            urgent ? "border-amber-100" : "border-neutral-100"
           )}
           aria-hidden
         >
@@ -186,7 +186,7 @@ function FloatingNoticePanel({
               "flex flex-col gap-1.5 border-t px-3 py-2.5",
               urgent
                 ? "border-amber-100/90 bg-amber-50/40"
-                : "border-indigo-100/90 bg-indigo-50/30"
+                : "border-neutral-100 bg-indigo-50/30"
             )}
           >
             <Link

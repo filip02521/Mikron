@@ -72,9 +72,9 @@ const SECTION_LABELS: Record<EntryTier, string> = {
 
 const tierCardClass: Record<EntryTier, string> = {
   highlight:
-    "rounded-md border border-indigo-200/70 bg-gradient-to-b from-indigo-50/40 to-white px-5 py-4 shadow-sm shadow-indigo-100/30",
+    "rounded-md border border-neutral-200 bg-white px-5 py-4",
   normal:
-    "rounded-md border border-slate-200/80 bg-white px-4 py-3 shadow-[var(--shadow-card)]",
+    "rounded-md border border-slate-200/80 bg-white px-4 py-3",
   minor:
     "rounded-md border border-slate-200/50 bg-slate-50/40 px-3.5 py-2.5",
 };
@@ -99,11 +99,11 @@ const tierBadgeClass: Record<EntryTier, string> = {
 
 const tierLinkClass: Record<EntryTier, string> = {
   highlight:
-    "inline-flex items-center gap-1 text-sm font-medium text-indigo-700 transition-colors hover:text-indigo-900 hover:underline underline-offset-2",
+    "inline-flex items-center gap-1 text-sm font-medium text-indigo-700 transition-colors hover:text-neutral-900 hover:underline underline-offset-2",
   normal:
-    "inline-flex items-center gap-1 text-xs font-medium text-indigo-700 transition-colors hover:text-indigo-900 hover:underline underline-offset-2",
+    "inline-flex items-center gap-1 text-xs font-medium text-indigo-700 transition-colors hover:text-neutral-900 hover:underline underline-offset-2",
   minor:
-    "inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 transition-colors hover:text-indigo-800",
+    "inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 transition-colors hover:text-neutral-800",
 };
 
 const tierGapClass: Record<EntryTier, string> = {
@@ -188,9 +188,9 @@ export function ChangelogModal({
       }
     >
       {/* Branded header */}
-      <header className="shrink-0 border-b border-indigo-100/80 bg-gradient-to-b from-indigo-50/50 to-white px-5 py-5 sm:px-6">
+      <header className="shrink-0 border-b border-neutral-100 bg-white px-5 py-5 sm:px-6">
         <div className="flex items-start gap-3.5">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-indigo-600 text-white ring-1 ring-sky-500/30">
             <IconSparkles className="h-5.5 w-5.5" />
           </div>
           <div className="min-w-0 flex-1">
@@ -215,7 +215,7 @@ export function ChangelogModal({
           <>
             {highlights.length > 0 && (
               <section className="space-y-2.5">
-                <h4 className="text-[11px] font-semibold uppercase tracking-wide text-indigo-700">
+                <h4 className="text-[11px] font-semibold uppercase tracking-wide text-neutral-700">
                   {SECTION_LABELS.highlight}
                 </h4>
                 {highlights.map((entry) => (

@@ -19,9 +19,9 @@ export function MyOrderLineCountMeta({
   return (
     <span
       className={cn(
-        "inline-flex max-w-full items-center gap-1 rounded-md bg-indigo-50 px-1.5 py-0.5",
-        "text-[10px] font-semibold leading-none text-indigo-800",
-        "ring-1 ring-inset ring-indigo-200/75",
+        "inline-flex max-w-full items-center gap-1 rounded-md bg-neutral-50 px-1.5 py-0.5",
+        "text-[10px] font-semibold leading-none text-neutral-800",
+        "ring-1 ring-inset ring-neutral-200",
         className
       )}
       title={expandHint ?? label}

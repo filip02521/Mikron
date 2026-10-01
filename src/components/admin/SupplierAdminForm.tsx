@@ -216,10 +216,10 @@ export function SupplierAdminForm({
         </Field>
       </SupplierFormSection>
 
-      <div className={teethLane ? "rounded-lg border border-slate-200 bg-slate-50/50 p-4 opacity-60 sm:col-span-2" : "rounded-lg border border-indigo-200/50 bg-indigo-50/30 p-4 sm:col-span-2"}>
+      <div className={teethLane ? "rounded-lg border border-slate-200 bg-slate-50/50 p-4 opacity-60 sm:col-span-2" : "rounded-lg border border-neutral-200 bg-indigo-50/30 p-4 sm:col-span-2"}>
         <div className="mb-3.5 flex flex-wrap items-start justify-between gap-2">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
+            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-700">
               Cykl zamówień
             </p>
             <p className="mt-0.5 text-xs leading-relaxed text-indigo-600/80">
@@ -306,7 +306,7 @@ export function SupplierAdminForm({
             </Select>
           </Field>
         </div>
-        <label className={teethLane ? "mt-4 flex cursor-not-allowed items-start gap-2.5 rounded-lg bg-white/60 p-2.5 ring-1 ring-inset ring-indigo-100/50 sm:col-span-2" : "mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg bg-white/60 p-2.5 ring-1 ring-inset ring-indigo-100/50 transition hover:bg-white"}>
+        <label className={teethLane ? "mt-4 flex cursor-not-allowed items-start gap-2.5 rounded-lg bg-white/60 p-2.5 ring-1 ring-inset ring-neutral-100 sm:col-span-2" : "mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg bg-white/60 p-2.5 ring-1 ring-inset ring-neutral-100 transition hover:bg-white"}>
           <input
             type="checkbox"
             className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-indigo-600"

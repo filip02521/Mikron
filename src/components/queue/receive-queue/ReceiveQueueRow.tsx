@@ -193,7 +193,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
         isInfo && "bg-sky-50/40",
         salesCancelRow && "bg-amber-50/50",
         stockAvailable != null && stockAvailable > 0 && !isInfo && !salesCancelRow && "bg-emerald-50/30",
-        selected && "ring-1 ring-inset ring-violet-300/80"
+        selected && "ring-1 ring-inset ring-neutral-200"
       )}
     >
       <td
@@ -320,7 +320,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
             {showProductGroupLink ? (
               <button
                 type="button"
-                className="mt-0.5 text-[11px] font-medium text-sky-700 underline-offset-2 hover:underline"
+                className="mt-0.5 text-[11px] font-medium text-neutral-700 underline-offset-2 hover:underline"
                 disabled={pending}
                 onClick={() => onToggleProductGroup(!productGroupAllSelected)}
               >
@@ -367,7 +367,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
             }
             className={cn(
               "inline-flex items-center justify-center gap-1 rounded-lg border px-2 py-1.5 text-xs font-semibold transition",
-              "border-sky-200 bg-sky-50 text-sky-900 hover:border-sky-300 hover:bg-sky-100",
+              "border-neutral-200 bg-neutral-50 text-neutral-900 hover:border-neutral-300 hover:bg-neutral-100",
               "disabled:opacity-50"
             )}
           >
@@ -416,7 +416,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
                   className={cn(
                     "inline-flex size-10 items-center justify-center rounded-xl border transition sm:size-8",
                     canSave
-                      ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700 hover:shadow-sm hover:shadow-violet-200/50"
+                      ? "border-neutral-200 bg-violet-600 text-white hover:bg-violet-700 hover:shadow-sm"
                       : "border-slate-200 bg-slate-50 text-slate-300"
                   )}
                 >
@@ -500,7 +500,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
               className={cn(
                 "ml-0.5 inline-flex size-10 items-center justify-center rounded-xl border transition sm:size-8",
                 canSave
-                  ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700 hover:shadow-sm hover:shadow-violet-200/50"
+                  ? "border-neutral-200 bg-violet-600 text-white hover:bg-violet-700 hover:shadow-sm"
                   : "border-slate-200 bg-slate-50 text-slate-300"
               )}
             >

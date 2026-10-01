@@ -115,7 +115,7 @@ export function SalesBugReportTrigger({ className }: { className?: string }) {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Np. przycisk nie reaguje, zły status zamówienia…"
-                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                 disabled={pending}
               />
             </Field>

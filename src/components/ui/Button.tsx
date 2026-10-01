@@ -7,10 +7,10 @@ export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "outl
 const variants: Record<ButtonVariant, string> = {
   primary: buttonPrimaryClass,
   secondary:
-    "border border-[var(--card-border)] bg-[var(--card)] text-slate-700 shadow-sm hover:bg-slate-50",
+    "border border-neutral-200 bg-[var(--card)] text-neutral-800 hover:bg-neutral-50",
   outline:
-    "border border-indigo-200/90 bg-[var(--primary-muted)]/60 text-indigo-800 hover:bg-[var(--primary-muted)]",
-  ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+    "border border-neutral-200 bg-transparent text-neutral-800 hover:bg-neutral-50",
+  ghost: "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900",
   danger: "bg-red-600 text-white hover:bg-red-700",
 };
 

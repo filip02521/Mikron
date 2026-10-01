@@ -178,7 +178,7 @@ export function resolveMyOrderPartialStockRowVisual(
 ): { borderAccent: string; collapsedBg: string } | null {
   if (!isMyOrderPartialStockRow(row)) return null;
   return {
-    borderAccent: "border-l-sky-500",
+    borderAccent: "",
     collapsedBg: "bg-sky-50/35",
   };
 }
@@ -190,12 +190,12 @@ export function deliveryUrgencyRowVisual(
   switch (urgency) {
     case "overdue":
       return {
-        borderAccent: "border-l-amber-500",
+        borderAccent: "",
         collapsedBg: "bg-amber-50/35",
       };
     case "today":
       return {
-        borderAccent: "border-l-indigo-300",
+        borderAccent: "",
         collapsedBg: null,
       };
     default:

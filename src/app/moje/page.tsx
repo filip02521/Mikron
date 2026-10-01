@@ -248,7 +248,7 @@ export default async function MojePage({
         <div className="flex justify-end pb-1">
           <Link
             href="/ustawienia"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/80 bg-white/60 px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm transition-all hover:border-slate-300 hover:bg-white hover:text-slate-700 hover:shadow"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/80 bg-white/60 px-3 py-1.5 text-xs font-medium text-slate-500 transition-all hover:border-slate-300 hover:bg-white hover:text-slate-700 hover:shadow"
           >
             <IconSettings size={14} className="shrink-0 text-slate-400" />
             Ustawienia

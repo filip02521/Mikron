@@ -76,7 +76,7 @@ export function ZdUnmappedKhPanel({
             k. → sp. z o.o.). Po zaakceptowaniu uruchom ponowne indeksowanie ZD. Powiązania ręczne:{" "}
             <Link
               href={supplierCardsHref("admin", { subiekt: "unlinked" })}
-              className="font-medium text-indigo-700 underline"
+              className="font-medium text-neutral-700 underline"
             >
               Dostawcy
             </Link>
@@ -119,7 +119,7 @@ export function ZdUnmappedKhPanel({
             {suggestionCount > 0 ? (
               <>
                 {" "}
-                · <span className="font-semibold text-indigo-800">{suggestionCount}</span>{" "}
+                · <span className="font-semibold text-neutral-800">{suggestionCount}</span>{" "}
                 {suggestionCount === 1 ? "propozycja" : "propozycje"} połączenia
               </>
             ) : null}
@@ -163,7 +163,7 @@ export function ZdUnmappedKhPanel({
                         {s ? (
                           <div className="space-y-1.5">
                             <div>
-                              <span className="font-medium text-indigo-900">{s.supplierName}</span>
+                              <span className="font-medium text-neutral-900">{s.supplierName}</span>
                               <span
                                 className={cn(
                                   "ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",

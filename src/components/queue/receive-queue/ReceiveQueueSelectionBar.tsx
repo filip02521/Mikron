@@ -28,14 +28,14 @@ export function ReceiveQueueSelectionBar({
   return (
     <div
       className={cn(
-        "sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-violet-200/70",
-        "bg-violet-50/95 px-3 py-2.5 backdrop-blur-md sm:px-4",
-        "shadow-[0_1px_3px_rgba(0,0,0,0.04)]",
+        "sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-neutral-200",
+        "bg-neutral-50 px-3 py-2.5 backdrop-blur-md sm:px-4",
+        "",
       )}
       role="status"
     >
-      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-violet-950">
-        <span className="flex size-5 items-center justify-center rounded-full bg-violet-200/80 text-[10px] font-bold text-violet-800" aria-hidden>
+      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-neutral-900">
+        <span className="flex size-5 items-center justify-center rounded-full bg-violet-200/80 text-[10px] font-bold text-neutral-800" aria-hidden>
           {total}
         </span>
         zaznaczono

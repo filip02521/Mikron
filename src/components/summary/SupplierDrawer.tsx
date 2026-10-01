@@ -382,11 +382,11 @@ export function SupplierDrawer({
           {teethLane ? <TeethDualLaneNotice lane={teethLane} /> : null}
 
           {supplier.order_on_demand ? (
-            <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-violet-200/70 bg-violet-50/50 px-3.5 py-3 text-sm text-violet-900">
+            <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-neutral-200 bg-neutral-50 px-3.5 py-3 text-sm text-neutral-900">
               <IconPackageCheck size={16} className="mt-0.5 shrink-0 text-violet-600" />
               <div>
                 <span className="font-semibold">Tylko w razie potrzeby</span>
-                <p className="mt-0.5 text-xs leading-relaxed text-violet-700">
+                <p className="mt-0.5 text-xs leading-relaxed text-neutral-700">
                   Bez stałego terminu w planie tygodnia. Zamówienie z listy w panelu dziennym.
                 </p>
               </div>
@@ -407,7 +407,7 @@ export function SupplierDrawer({
               </span>
               <div className="min-w-0 flex-1 text-sm">
                 {supplier.subiekt_kh_id != null ? (
-                  <p className="font-medium text-indigo-900">
+                  <p className="font-medium text-neutral-900">
                     Powiązany z Subiektem
                     <span className="ml-1 text-xs font-normal text-indigo-600">
                       kh_Id {supplier.subiekt_kh_id}
@@ -499,7 +499,7 @@ export function SupplierDrawer({
                 })}
                 title="Historia indywidualna — prośby handlowców u tego dostawcy"
                 className={cn(
-                  "inline-flex items-center justify-center gap-1.5 rounded-md border border-[var(--card-border)] bg-[var(--card)] px-2.5 py-1.5 text-xs font-medium leading-none text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+                  "inline-flex items-center justify-center gap-1.5 rounded-md border border-[var(--card-border)] bg-[var(--card)] px-2.5 py-1.5 text-xs font-medium leading-none text-slate-700 transition-colors hover:bg-slate-50"
                 )}
               >
                 <IconClipboardList size={13} className="shrink-0 text-slate-500" />
@@ -512,7 +512,7 @@ export function SupplierDrawer({
                 })}
                 title="Historia standardowa — zamówienia z panelu dziennego"
                 className={cn(
-                  "inline-flex items-center justify-center gap-1.5 rounded-md border border-[var(--card-border)] bg-[var(--card)] px-2.5 py-1.5 text-xs font-medium leading-none text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
+                  "inline-flex items-center justify-center gap-1.5 rounded-md border border-[var(--card-border)] bg-[var(--card)] px-2.5 py-1.5 text-xs font-medium leading-none text-slate-700 transition-colors hover:bg-slate-50"
                 )}
               >
                 <IconArchive size={13} className="shrink-0 text-slate-500" />
@@ -562,7 +562,7 @@ function DateCard({
       className={cn(
         "rounded-lg border px-3 py-2.5 transition-colors",
         emphasize
-          ? "border-indigo-200/70 bg-indigo-50/40"
+          ? "border-neutral-200 bg-indigo-50/40"
           : "border-slate-200/70 bg-white"
       )}
     >

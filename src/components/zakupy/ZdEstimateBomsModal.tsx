@@ -335,9 +335,9 @@ export function ZdEstimateBomsModal({
       </div>
 
       {fromSeed && seed && seedParent ? (
-        <div className="space-y-3 rounded-lg border border-violet-200/80 bg-violet-50/40 p-3">
+        <div className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
           <div>
-            <p className="text-xs font-medium text-violet-950">
+            <p className="text-xs font-medium text-neutral-900">
               {ZD_BOM_UI.seedHeading}
             </p>
             <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">
@@ -354,7 +354,7 @@ export function ZdEstimateBomsModal({
                   className={cn(
                     "flex flex-col overflow-hidden rounded-lg border bg-white transition",
                     isParent
-                      ? "border-violet-400 shadow-sm ring-2 ring-violet-200"
+                      ? "border-violet-400 shadow-sm ring-2 ring-neutral-200"
                       : "border-slate-200/80"
                   )}
                 >
@@ -378,7 +378,7 @@ export function ZdEstimateBomsModal({
                     </p>
                   </button>
                   {isParent ? (
-                    <p className="border-t border-violet-100 bg-violet-50/50 px-3 py-2 text-[11px] text-violet-900/80">
+                    <p className="border-t border-neutral-100 bg-neutral-50 px-3 py-2 text-[11px] text-neutral-900">
                       {ZD_BOM_UI.seedParentQtyHint}
                     </p>
                   ) : (
@@ -415,7 +415,7 @@ export function ZdEstimateBomsModal({
           </div>
 
           <fieldset className="space-y-2">
-            <legend className="text-xs font-medium text-violet-950">
+            <legend className="text-xs font-medium text-neutral-900">
               {ZD_BOM_UI.presetLegend}
             </legend>
             {(
@@ -436,7 +436,7 @@ export function ZdEstimateBomsModal({
             ).map(([id, title, hint]) => (
               <label
                 key={id}
-                className="flex cursor-pointer items-start gap-2 rounded-lg border border-violet-100/80 bg-white/80 px-2.5 py-2 text-xs text-slate-700"
+                className="flex cursor-pointer items-start gap-2 rounded-lg border border-neutral-100 bg-white/80 px-2.5 py-2 text-xs text-slate-700"
               >
                 <input
                   type="radio"
@@ -715,7 +715,7 @@ export function ZdEstimateBomsModal({
                 <p className="text-sm font-semibold text-slate-900">
                   {bom.parentSymbol || `id. ${bom.parentTwId}`}
                   {bom.label ? (
-                    <span className="ml-2 text-xs font-medium text-violet-800">
+                    <span className="ml-2 text-xs font-medium text-neutral-800">
                       {bom.label}
                     </span>
                   ) : null}
@@ -752,7 +752,7 @@ export function ZdEstimateBomsModal({
                   type="button"
                   disabled={pending}
                   onClick={() => loadBomIntoForm(bom)}
-                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-violet-800 hover:bg-violet-50"
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-neutral-800 hover:bg-neutral-50"
                   title="Wczytaj do formularza (edycja)"
                 >
                   Edytuj

@@ -46,7 +46,7 @@ export function VerificationInformacjaPathPanel({
     const borderTone =
       ui.path === "stock_out"
         ? "border-amber-300/90 bg-amber-50/90 text-amber-950"
-        : "border-indigo-300/90 bg-indigo-50/90 text-indigo-950";
+        : "border-neutral-200 bg-indigo-50/90 text-indigo-950";
 
     return (
       <ProsbaFormSection
@@ -54,7 +54,7 @@ export function VerificationInformacjaPathPanel({
         hint="Wybrana przez handlowca — nie zmienia się przy uzupełnianiu."
         accent="violet"
         icon={<IconAvailability size={17} />}
-        tileClassName="bg-violet-100 text-violet-800"
+        tileClassName="bg-neutral-100 text-neutral-800"
       >
         <div className={cn("rounded-md border px-3 py-3 text-sm leading-relaxed", borderTone)}>
           <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -76,7 +76,7 @@ export function VerificationInformacjaPathPanel({
       hint={INFORMACJA_FLOW_PICKER_SECTION_DAILY.hint}
       accent="violet"
       icon={<IconAvailability size={17} />}
-      tileClassName="bg-violet-100 text-violet-800"
+      tileClassName="bg-neutral-100 text-neutral-800"
     >
       <InformacjaFlowPicker
         path={path}

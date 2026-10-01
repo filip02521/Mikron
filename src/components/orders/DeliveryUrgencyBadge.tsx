@@ -8,7 +8,7 @@ import { salesTypography } from "@/lib/ui/ontime-theme";
 
 const urgencyBadgeClass: Record<"overdue" | "today", string> = {
   overdue: "bg-amber-50 text-amber-900 ring-amber-200/90",
-  today: "bg-indigo-50 text-indigo-900 ring-indigo-200/80",
+  today: "bg-indigo-50 text-indigo-900 ring-neutral-200",
 };
 
 export function DeliveryUrgencyBadge({

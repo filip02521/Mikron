@@ -155,7 +155,7 @@ function VacationRowsTable({
               id={`vacation-row-${v.id}`}
               className={cn(
                 "px-3 py-3 sm:px-4 lg:px-5",
-                isEditing && "bg-indigo-50/80 ring-1 ring-inset ring-indigo-200"
+                isEditing && "bg-indigo-50/80 ring-1 ring-inset ring-neutral-200"
               )}
             >
               <div className="flex items-start gap-2 md:grid md:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(88px,120px))_minmax(88px,100px)_minmax(88px,120px)] md:items-center md:gap-3">
@@ -164,7 +164,7 @@ function VacationRowsTable({
                   onClick={() => onEdit(v)}
                   className="min-w-0 flex-1 text-left md:contents"
                 >
-                  <span className="block font-medium text-slate-900 hover:text-indigo-800 hover:underline md:truncate">
+                  <span className="block font-medium text-slate-900 hover:text-neutral-800 hover:underline md:truncate">
                     {name}
                     {isEditing ? (
                       <Badge variant="info" className="ml-2 text-[10px]">
@@ -614,7 +614,7 @@ export function VacationsAdminClient({
       ) : null}
 
       {pastRows.length ? (
-        <details className="group overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm open:shadow-md">
+        <details className="group overflow-hidden rounded-md border border-slate-200/90 bg-white open:shadow-md">
           <summary className="cursor-pointer list-none px-3 py-3 text-sm font-semibold text-slate-900 marker:content-none sm:px-4 [&::-webkit-details-marker]:hidden">
             <span className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-2">

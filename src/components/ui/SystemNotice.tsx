@@ -51,14 +51,14 @@ export function SystemNotice({
       href.startsWith("/") ? (
         <Link
           href={href}
-          className="shrink-0 text-sm font-medium text-indigo-700 transition hover:text-indigo-950 hover:underline"
+          className="shrink-0 text-sm font-medium text-neutral-700 transition hover:text-neutral-900 hover:underline"
         >
           {actionLabel ?? "Zobacz"}
         </Link>
       ) : (
         <a
           href={href}
-          className="shrink-0 text-sm font-medium text-indigo-700 transition hover:text-indigo-950 hover:underline"
+          className="shrink-0 text-sm font-medium text-neutral-700 transition hover:text-neutral-900 hover:underline"
         >
           {actionLabel ?? "Zobacz"}
         </a>
@@ -81,7 +81,7 @@ export function SystemNotice({
       )}
     >
       <div className="flex min-w-0 items-start gap-2">
-        {icon ? <span className="mt-0.5 shrink-0 text-indigo-500">{icon}</span> : null}
+        {icon ? <span className="mt-0.5 shrink-0 text-neutral-500">{icon}</span> : null}
         <div className="min-w-0">
           <p
             className={cn(

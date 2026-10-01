@@ -9,11 +9,11 @@ import { urgentCardClassName } from "@/components/summary/urgent-card-styles";
 describe("dailyPanelQueueShellClass", () => {
   it("uses tone tints without left accent stripes", () => {
     expect(dailyPanelQueueShellClass("overdue")).toContain("border-amber");
-    expect(dailyPanelQueueShellClass("prosby")).toContain("border-indigo");
-    expect(dailyPanelQueueShellClass("today")).toContain("border-sky");
+    expect(dailyPanelQueueShellClass("prosby")).toContain("border-neutral-200");
+    expect(dailyPanelQueueShellClass("today")).toContain("border-neutral-200");
     expect(dailyPanelQueueShellClass("cancel")).toContain("bg-amber-50");
-    expect(dailyPanelQueueShellClass("plan")).toContain("bg-indigo-50");
-    expect(dailyPanelQueueShellClass("informacja")).toContain("bg-sky-50");
+    expect(dailyPanelQueueShellClass("plan")).not.toContain("indigo");
+    expect(dailyPanelQueueShellClass("informacja")).not.toContain("sky");
     expect(dailyPanelQueueShellClass("stockOut")).toContain("border-amber");
 
     for (const tone of [

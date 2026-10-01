@@ -351,13 +351,13 @@ export function procurementFlagChipClass(color: ProcurementFlagColor): string {
     case "amber":
       return "bg-amber-50/95 text-amber-900 ring-amber-200/90";
     case "sky":
-      return "bg-sky-50/95 text-sky-800 ring-sky-200/90";
+      return "bg-neutral-50 text-neutral-800 ring-neutral-200";
     case "fuchsia":
-      return "bg-fuchsia-50/95 text-fuchsia-900 ring-fuchsia-200/80";
+      return "bg-neutral-50 text-neutral-900 ring-neutral-200";
     case "emerald":
       return "bg-emerald-50/95 text-emerald-900 ring-emerald-200/80";
     case "violet":
-      return "bg-violet-50/95 text-violet-900 ring-violet-200/80";
+      return "bg-neutral-50 text-neutral-900 ring-neutral-200";
     case "slate":
     default:
       return "bg-slate-100/95 text-slate-700 ring-slate-200/90";
@@ -401,20 +401,20 @@ export function procurementFlagModalChipSelectedClass(
 ): string {
   switch (color) {
     case "rose":
-      return "border-rose-400/90 bg-gradient-to-b from-rose-50 to-white text-rose-950 ring-1 ring-rose-200/60";
+      return "border-rose-400/90 bg-rose-50 text-rose-950 ring-1 ring-rose-200/60";
     case "amber":
-      return "border-amber-400/90 bg-gradient-to-b from-amber-50 to-white text-amber-950 ring-1 ring-amber-200/60";
+      return "border-amber-400/90 bg-amber-50 text-amber-950 ring-1 ring-amber-200/60";
     case "sky":
-      return "border-sky-400/90 bg-gradient-to-b from-sky-50 to-white text-sky-950 ring-1 ring-sky-200/60";
+      return "border-sky-400/90 bg-white text-sky-950 ring-1 ring-neutral-200";
     case "fuchsia":
-      return "border-fuchsia-400/90 bg-gradient-to-b from-fuchsia-50 to-white text-fuchsia-950 ring-1 ring-fuchsia-200/60";
+      return "border-fuchsia-400/90 bg-white text-fuchsia-950 ring-1 ring-neutral-200";
     case "emerald":
-      return "border-emerald-400/90 bg-gradient-to-b from-emerald-50 to-white text-emerald-950 ring-1 ring-emerald-200/60";
+      return "border-emerald-400/90 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-200/60";
     case "violet":
-      return "border-violet-400/90 bg-gradient-to-b from-violet-50 to-white text-violet-950 ring-1 ring-violet-200/60";
+      return "border-violet-400/90 bg-white text-violet-950 ring-1 ring-neutral-200";
     case "slate":
     default:
-      return "border-slate-400/90 bg-gradient-to-b from-slate-50 to-white text-slate-900 ring-1 ring-slate-200/60";
+      return "border-slate-400/90 bg-white text-slate-900 ring-1 ring-slate-200/60";
   }
 }
 

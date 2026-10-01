@@ -643,7 +643,7 @@ export function ZdEstimateSupplierScopesModal({
       ) : null}
 
       {adding ? (
-        <div className="space-y-3 rounded-lg border border-indigo-200/80 bg-indigo-50/35 px-4 py-4 sm:px-5">
+        <div className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-4 sm:px-5">
           <div>
             <p className="text-sm font-semibold text-slate-900">
               {ZD_ESTIMATE_UI.supplierScopesAddCta}
@@ -778,7 +778,7 @@ export function ZdEstimateSupplierScopesModal({
                 className={cn(
                   "overflow-hidden rounded-lg border bg-white transition",
                   editing
-                    ? "border-indigo-200/90 shadow-sm shadow-indigo-900/[0.04]"
+                    ? "border-neutral-200 shadow-sm"
                     : "border-slate-200/90"
                 )}
               >
@@ -833,7 +833,7 @@ export function ZdEstimateSupplierScopesModal({
                 </div>
 
                 {editing ? (
-                  <div className="space-y-3 border-t border-indigo-100/80 bg-indigo-50/25 px-4 py-3.5 sm:px-4">
+                  <div className="space-y-3 border-t border-neutral-100 bg-neutral-50 px-4 py-3.5 sm:px-4">
                     <p className="text-xs text-slate-600">
                       Wyszukaj i wybierz nową{" "}
                       {editDraft.mode === "grupa" ? "grupę" : "cechę"} —

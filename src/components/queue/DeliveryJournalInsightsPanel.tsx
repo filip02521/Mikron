@@ -235,7 +235,7 @@ export function DeliveryJournalInsightsPanel({
           </div>
         </div>
 
-        <div className="rounded-md border border-emerald-100/70 bg-white p-3 shadow-sm">
+        <div className="rounded-md border border-emerald-100/70 bg-white p-3">
           <div className="flex flex-wrap items-end justify-between gap-2">
             <div className="min-w-0 flex-1">
               <span className={queueToolbarFieldLabelClass}>Zakres dat</span>
@@ -324,7 +324,7 @@ export function DeliveryJournalInsightsPanel({
             <SummaryStat label="Dostawcy" value={summary.supplierCount} />
           </div>
           {summary.byCarrier.length > 0 ? (
-            <div className="overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-md border border-slate-200 bg-white">
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-slate-100 bg-slate-50/80 text-xs text-slate-600">
                   <tr>

@@ -270,7 +270,7 @@ export function TeethQuickOrderModal({
       }
     >
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
-        <div className="rounded-lg border border-indigo-100 bg-indigo-50/60 px-3 py-2.5 text-sm text-indigo-900">
+        <div className="rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2.5 text-sm text-neutral-900">
           <p className="flex items-start gap-2 font-medium">
             <IconTooth size={16} className="mt-0.5 shrink-0" aria-hidden />
             {TEETH_QUICK_ORDER_COPY.banner}
@@ -282,7 +282,7 @@ export function TeethQuickOrderModal({
           hint={TEETH_QUICK_ORDER_COPY.delegateHint}
           accent="indigo"
           icon={<IconUserGroup size={17} />}
-          tileClassName="bg-indigo-100 text-indigo-800"
+          tileClassName="bg-neutral-100 text-neutral-800"
         >
           <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
             <Field

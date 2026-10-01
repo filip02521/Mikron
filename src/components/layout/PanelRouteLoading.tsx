@@ -75,7 +75,7 @@ export function PanelSalesRouteLoadingSkeleton({
         <PulseBlock className="h-9 w-24" />
         <PulseBlock className="h-9 w-9 rounded-md" />
       </div>
-      <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]">
+      <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white">
         <PanelCardSkeletonHeader titleClassName="h-5 w-48" />
         <div className="border-b border-slate-100 px-3 py-3 sm:px-4">
           <PulseBlock className="h-11 rounded-md" />
@@ -107,7 +107,7 @@ export function PanelWarehouseRouteLoadingSkeleton({
       aria-label={label}
       role="status"
     >
-      <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]">
+      <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white">
         <PanelCardSkeletonHeader titleClassName="h-5 w-44" />
         <div className="flex gap-2 border-b border-slate-100 px-3 py-2.5 sm:px-4">
           <PulseBlock className="h-8 w-24 rounded-md bg-slate-200" />
@@ -147,7 +147,7 @@ export function PanelFormRouteLoadingSkeleton({
       aria-label={label}
       role="status"
     >
-      <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]">
+      <div className="overflow-hidden rounded-md border border-slate-200/80 bg-white">
         <PanelCardSkeletonHeader titleClassName="h-5 w-36" />
         <div className="space-y-4 px-3 py-5 sm:px-4">
           <PulseBlock className="h-10 rounded-md" />
@@ -179,7 +179,7 @@ export function PanelAdminRouteLoadingSkeleton({
         {[0, 1, 2, 3].map((card) => (
           <div
             key={card}
-            className="rounded-lg border border-slate-200/80 bg-white p-5 shadow-[var(--shadow-card)]"
+            className="rounded-lg border border-slate-200/80 bg-white p-5"
           >
             <PulseBlock className="h-5 w-32 rounded bg-slate-200" />
             <PulseBlock className="mt-3 h-3 w-full" />

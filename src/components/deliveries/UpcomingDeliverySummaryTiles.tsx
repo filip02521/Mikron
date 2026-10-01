@@ -68,7 +68,7 @@ export function UpcomingDeliverySummaryTiles({
         <div
           key={tile.label}
           className={cn(
-            "rounded-lg border border-slate-200/90 bg-white px-3 py-2.5 text-left shadow-[var(--shadow-card)] ring-1 ring-inset transition hover:shadow-sm",
+            "rounded-lg border border-slate-200/90 bg-white px-3 py-2.5 text-left ring-1 ring-inset transition hover:shadow-sm",
             tile.highlight
               ? "ring-emerald-200/50 bg-emerald-50/20"
               : "ring-slate-100/50"

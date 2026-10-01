@@ -20,10 +20,10 @@ const REASON_CHIP: Record<
 > = {
   no_subiekt: "bg-slate-100 text-slate-800 ring-slate-200/80",
   fetch_failed: "bg-amber-50 text-amber-950 ring-amber-200/80",
-  bom_parent: "bg-indigo-50 text-indigo-950 ring-indigo-200/80",
+  bom_parent: "bg-indigo-50 text-indigo-950 ring-neutral-200",
   bom_component_not_purchased: "bg-rose-50 text-rose-950 ring-rose-200/80",
   bom_explode_incomplete: "bg-amber-50 text-amber-950 ring-amber-200/80",
-  teeth: "bg-sky-50 text-sky-950 ring-sky-200/80",
+  teeth: "bg-sky-50 text-sky-950 ring-neutral-200",
   excluded: "bg-amber-100/90 text-amber-950 ring-amber-300/60",
 };
 
@@ -72,7 +72,7 @@ export function ZdEstimateIndividualServicesSection({
     <section
       id={ZD_ESTIMATE_SERVICES_FOCUS_ID}
       className={cn(
-        "scroll-mt-4 bg-gradient-to-b from-amber-50/70 to-amber-50/35 p-2 ring-1 ring-amber-200/65",
+        "scroll-mt-4 bg-amber-50 p-2 ring-1 ring-amber-200/65",
         zdEstimateRadiusSurfaceClass,
         className
       )}

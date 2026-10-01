@@ -95,7 +95,7 @@ export function TransactionalEmailListClient({
             className={cn(
               "rounded-md border px-2.5 py-1 text-xs",
               kind === k
-                ? "border-indigo-300 bg-indigo-50 text-indigo-900"
+                ? "border-neutral-200 bg-indigo-50 text-indigo-900"
                 : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             )}
           >
@@ -119,7 +119,7 @@ export function TransactionalEmailListClient({
             className={cn(
               "rounded-md border px-2.5 py-1 text-xs",
               status === value
-                ? "border-indigo-300 bg-indigo-50 text-indigo-900"
+                ? "border-neutral-200 bg-indigo-50 text-indigo-900"
                 : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
             )}
           >
@@ -179,7 +179,7 @@ export function TransactionalEmailListClient({
                     <td>
                       <Link
                         href={`/admin/wysylki/${row.id}`}
-                        className="text-xs font-medium text-indigo-700 hover:underline"
+                        className="text-xs font-medium text-neutral-700 hover:underline"
                       >
                         Podgląd
                       </Link>

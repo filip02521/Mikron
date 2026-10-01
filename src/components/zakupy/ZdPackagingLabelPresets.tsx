@@ -43,7 +43,7 @@ export function ZdPackagingLabelPresets({
             className={cn(
               "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium ring-1 transition",
               active
-                ? "bg-indigo-50 text-indigo-950 ring-indigo-200"
+                ? "bg-indigo-50 text-indigo-950 ring-neutral-200"
                 : "bg-white text-slate-600 ring-slate-200 hover:bg-slate-50",
               disabled && "cursor-not-allowed opacity-50"
             )}

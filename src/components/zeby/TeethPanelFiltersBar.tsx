@@ -9,7 +9,7 @@ import {
 } from "@/lib/teeth/teeth-panel-filters";
 
 export const teethToolbarSelectClass =
-  "h-9 min-w-0 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800 shadow-sm outline-none transition-colors hover:border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30";
+  "h-9 min-w-0 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800 outline-none transition-colors hover:border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30";
 
 function ToggleChip({
   label,
@@ -104,7 +104,7 @@ export function TeethPanelFiltersBar({
         <button
           type="button"
           onClick={() => onChange(EMPTY_TEETH_PANEL_FILTERS)}
-          className="h-9 px-1 text-sm font-medium text-indigo-700 hover:text-indigo-900"
+          className="h-9 px-1 text-sm font-medium text-indigo-700 hover:text-neutral-900"
         >
           Wyczyść filtry
         </button>

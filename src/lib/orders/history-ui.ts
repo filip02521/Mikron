@@ -38,20 +38,9 @@ export function individualHistoryStatusBadgeVariant(
   }
 }
 
-/** Delikatny akcent wiersza — bez pełnego tła w starym stylu arkusza. */
+/** Wiersz historii — bez kolorowych akcentów; anulowane wyszarzone. */
 export function individualHistoryRowClass(status: string): string {
-  switch (status) {
-    case "Zamowione":
-      return "border-l-2 border-l-indigo-200/90";
-    case "Czesciowo_zrealizowane":
-      return "border-l-2 border-l-amber-300/90";
-    case "Zrealizowane":
-      return "border-l-2 border-l-emerald-200/80";
-    case "Anulowane":
-      return "opacity-70";
-    default:
-      return "border-l-2 border-l-slate-200/80";
-  }
+  return status === "Anulowane" ? "opacity-70" : "";
 }
 
 export function normalHistoryActionPresentation(action: string): {

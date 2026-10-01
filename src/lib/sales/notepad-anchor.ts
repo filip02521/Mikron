@@ -6,7 +6,7 @@ export const NOTEPAD_ANCHOR_FLASH_CLASSES = [
   "ring-inset",
   "ring-indigo-400/80",
   "rounded-md",
-  "bg-indigo-50/80",
+  "bg-neutral-50",
 ] as const;
 
 export function parseNotepadHashAnchor(hash: string): string | null {

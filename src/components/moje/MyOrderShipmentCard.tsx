@@ -955,7 +955,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           archiveAccent,
         }),
         expanded && needsExpand && mojeShipmentExpandedRowShellClass,
-        highlighted && "z-[2] ring-2 ring-inset ring-indigo-300/80"
+        highlighted && "z-[2] ring-2 ring-inset ring-neutral-200"
       )}
     >
       {showHeadlineBanner ? (
@@ -982,7 +982,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           }
           className={cn(
             "flex h-11 w-11 shrink-0 items-center justify-center text-slate-500 sm:h-8 sm:w-8",
-            needsExpand && "hover:bg-slate-100 hover:text-indigo-700"
+            needsExpand && "hover:bg-slate-100 hover:text-neutral-700"
           )}
         >
           {needsExpand ? <ChevronIcon open={expanded} /> : null}
@@ -1027,8 +1027,8 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                       className={cn(
                         "shrink-0 inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-medium leading-none ring-1 ring-inset",
                         showUnreadRequestNoteChrome
-                          ? "bg-indigo-100 text-indigo-800 ring-indigo-300/80"
-                          : "bg-indigo-50 text-indigo-500 ring-indigo-200/70"
+                          ? "bg-indigo-100 text-indigo-800 ring-neutral-200"
+                          : "bg-indigo-50 text-indigo-500 ring-neutral-200"
                       )}
                       title={
                         showUnreadRequestNoteChrome
@@ -1095,7 +1095,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
 
       {showSharedUnreadRequestNote && sharedRequestNote ? (
         <div
-          className="border-t border-indigo-100/80 bg-gradient-to-r from-indigo-50/60 via-white to-sky-50/30 px-3 py-2.5 sm:px-4"
+          className="border-t border-neutral-100 bg-white px-3 py-2.5 sm:px-4"
           onClick={(event) => event.stopPropagation()}
           onMouseDown={(event) => event.stopPropagation()}
         >
@@ -1309,7 +1309,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
             </div>
             {expandedOrderTypeLabel ? (
               <p className="flex flex-wrap items-baseline gap-x-1.5 px-0.5 text-[11px] leading-snug text-slate-500">
-                <span className="font-medium text-indigo-400">Typ</span>
+                <span className="font-medium text-neutral-400">Typ</span>
                 <span className="text-slate-600">{expandedOrderTypeLabel}</span>
               </p>
             ) : null}

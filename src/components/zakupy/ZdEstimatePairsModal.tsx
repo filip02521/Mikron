@@ -257,8 +257,8 @@ export function ZdEstimatePairsModal({
       </div>
 
       {fromSeed && seed && seedPack && seedPiece ? (
-        <div className="space-y-3 rounded-lg border border-indigo-200/80 bg-indigo-50/40 p-3">
-          <p className="text-xs font-medium text-indigo-950">
+        <div className="space-y-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+          <p className="text-xs font-medium text-neutral-900">
             Zaznaczone towary — wybierz role
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -274,7 +274,7 @@ export function ZdEstimatePairsModal({
                   className={cn(
                     "rounded-lg border px-3 py-3 text-left transition",
                     isPack
-                      ? "border-indigo-400 bg-white shadow-sm ring-2 ring-indigo-200"
+                      ? "border-indigo-400 bg-white shadow-sm ring-2 ring-neutral-200"
                       : "border-slate-200/80 bg-white/70 hover:border-slate-300"
                   )}
                 >
@@ -287,7 +287,7 @@ export function ZdEstimatePairsModal({
                   <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">
                     {p.nazwa || `tw_Id ${p.twId}`}
                   </p>
-                  <p className="mt-2 text-[11px] text-indigo-800">
+                  <p className="mt-2 text-[11px] text-neutral-800">
                     {isPack
                       ? "Kliknij drugi towar, żeby zamienić role"
                       : "Kliknij, żeby ustawić jako paczkę"}

@@ -26,7 +26,7 @@ function PreviewRow({
     <div
       className={cn(
         "flex items-center justify-between gap-2 border-b border-slate-100 bg-white px-2.5 py-2 last:border-b-0",
-        "border-l-[3px]",
+        "",
         accent
       )}
     >
@@ -44,7 +44,7 @@ function PreviewRow({
         </div>
       </div>
       {action ? (
-        <span className="shrink-0 rounded-md border border-indigo-200 bg-white px-2 py-1 text-[10px] font-semibold text-indigo-800 shadow-sm">
+        <span className="shrink-0 rounded-md border border-neutral-200 bg-white px-2 py-1 text-[10px] font-semibold text-neutral-800">
           {action}
         </span>
       ) : null}
@@ -63,11 +63,11 @@ function WelcomeChannelChip({
 }) {
   const toneClass =
     tone === "indigo"
-      ? "border-indigo-200 bg-indigo-50/80 text-indigo-950"
+      ? "border-neutral-200 bg-indigo-50/80 text-indigo-950"
       : tone === "sky"
-        ? "border-sky-200 bg-sky-50/80 text-sky-950"
+        ? "border-neutral-200 bg-sky-50/80 text-sky-950"
         : tone === "violet"
-          ? "border-violet-200 bg-violet-50/80 text-violet-950"
+          ? "border-neutral-200 bg-violet-50/80 text-violet-950"
           : "border-slate-200 bg-slate-50/80 text-slate-800";
 
   return (
@@ -115,11 +115,11 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
               tone="violet"
             />
           </div>
-          <div className="rounded-md border border-violet-100 bg-violet-50/60 px-2.5 py-2 text-left">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-800">
+          <div className="rounded-md border border-neutral-100 bg-neutral-50 px-2.5 py-2 text-left">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-neutral-800">
               Informacja o towarze — dwa warianty
             </p>
-            <p className="mt-1 text-[10px] leading-relaxed text-violet-950/90">
+            <p className="mt-1 text-[10px] leading-relaxed text-neutral-900">
               <span className="font-medium">{INFORMACJA_FLOW_DIRECT.label}</span> → e-mail + wpis
               w „Moje zamówienia”.{" "}
               <span className="font-medium">{INFORMACJA_FLOW_STOCK_OUT.label}</span> → tylko sygnał
@@ -131,7 +131,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
     case "moje":
       return (
         <div className="space-y-2">
-          <div className="overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-md border border-slate-200/90 bg-white">
             <div className="border-b border-slate-100 px-2.5 py-2 text-[10px] font-semibold text-slate-700">
               Start dnia · pilne sprawy na dziś
             </div>
@@ -140,14 +140,14 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
               badge="Gotowe"
               badgeClass="bg-emerald-50 text-emerald-800 ring-1 ring-emerald-100"
               action="Przejdź"
-              accent="border-l-emerald-500"
+              accent=""
             />
             <PreviewRow
               title="Potwierdź informacje o dotarciu (1)"
               badge="Do potwierdzenia"
-              badgeClass="bg-violet-50 text-violet-800 ring-1 ring-violet-100"
+              badgeClass="bg-neutral-50 text-neutral-800 ring-1 ring-neutral-100"
               action="Przejdź"
-              accent="border-l-violet-400"
+              accent=""
             />
           </div>
           <div className="rounded-md border border-slate-200/90 bg-slate-50 px-2.5 py-2 text-[10px] text-slate-600">
@@ -159,14 +159,14 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
       return (
         <div className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-md border-2 border-indigo-400 bg-indigo-50 px-2 py-2 text-center text-[11px] font-semibold text-indigo-900">
+            <div className="rounded-md border-2 border-indigo-400 bg-neutral-50 px-2 py-2 text-center text-[11px] font-semibold text-neutral-900">
               Zamówienie u dostawcy
             </div>
             <div className="rounded-md border border-slate-200 bg-white px-2 py-2 text-center text-[11px] font-medium text-slate-600">
               Informacja o towarze
             </div>
           </div>
-          <div className="rounded-md border border-violet-100 bg-violet-50/70 px-2 py-1.5 text-[10px] text-violet-900">
+          <div className="rounded-md border border-neutral-100 bg-neutral-50 px-2 py-1.5 text-[10px] text-neutral-900">
             {INFORMACJA_FLOW_DIRECT.label} · e-mail + Moje
           </div>
           <div className="space-y-1.5">
@@ -176,7 +176,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
                 <FlowChevron size={10} className="text-slate-300" />
                 Straumann
               </span>
-              <p className="mt-1 text-[10px] text-indigo-800/90">Klient: Klinika Smile</p>
+              <p className="mt-1 text-[10px] text-neutral-800">Klient: Klinika Smile</p>
             </div>
             <div className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-700">
               <span className="font-medium text-slate-900">Ivoclar · cement</span>
@@ -184,10 +184,10 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
                 <FlowChevron size={10} className="text-slate-300" />
                 Ivoclar
               </span>
-              <p className="mt-1 text-[10px] text-indigo-800/90">Klient: Gabinet Dr Kowalski</p>
+              <p className="mt-1 text-[10px] text-neutral-800">Klient: Gabinet Dr Kowalski</p>
             </div>
           </div>
-          <p className="text-center text-[10px] font-medium text-indigo-700">+ Kolejny produkt</p>
+          <p className="text-center text-[10px] font-medium text-neutral-700">+ Kolejny produkt</p>
         </div>
       );
     case "plan":
@@ -205,7 +205,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
               <span className="text-indigo-600">rozwiń</span>
             </div>
           ))}
-          <div className="rounded-md border border-sky-100 bg-sky-50/70 px-2.5 py-1.5 text-[10px] text-sky-900">
+          <div className="rounded-md border border-neutral-100 bg-neutral-50 px-2.5 py-1.5 text-[10px] text-neutral-900">
             Plan działu dostaw · pn.–pt. · kiedy składamy zamówienia u dostawców
           </div>
         </div>
@@ -213,7 +213,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
     case "tablica":
       return (
         <div className="space-y-2">
-          <div className="rounded-md border border-indigo-200 bg-indigo-50/80 px-2.5 py-1.5 text-[11px] font-semibold text-indigo-900">
+          <div className="rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-[11px] font-semibold text-neutral-900">
             Zadaj pytanie
           </div>
           <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[11px] text-slate-800">
@@ -229,14 +229,14 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
       return (
         <div className="space-y-2">
           <div className="flex gap-2">
-            <div className="flex-1 rounded-md border-2 border-indigo-400 bg-indigo-50 px-2 py-1.5 text-center text-[10px] font-semibold text-indigo-900">
+            <div className="flex-1 rounded-md border-2 border-indigo-400 bg-neutral-50 px-2 py-1.5 text-center text-[10px] font-semibold text-neutral-900">
               ZK
             </div>
             <div className="flex-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-center text-[10px] font-medium text-slate-600">
               Archiwum
             </div>
           </div>
-          <div className="rounded-md border border-violet-200 bg-violet-50/80 px-2.5 py-1.5 text-[10px] text-violet-900">
+          <div className="rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-[10px] text-neutral-900">
             Do zrobienia dziś · przypomnienie ZK
           </div>
           <div className="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-950">
@@ -252,14 +252,14 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
       return (
         <div className="space-y-2">
           <div className="flex gap-2">
-            <div className="flex-1 rounded-md border-2 border-indigo-400 bg-indigo-50 px-2 py-1.5 text-center text-[10px] font-semibold text-indigo-900">
+            <div className="flex-1 rounded-md border-2 border-indigo-400 bg-neutral-50 px-2 py-1.5 text-center text-[10px] font-semibold text-neutral-900">
               Notatki
             </div>
             <div className="flex-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-center text-[10px] font-medium text-slate-600">
               Archiwum
             </div>
           </div>
-          <div className="rounded-md border border-violet-200 bg-violet-50/80 px-2.5 py-1.5 text-[10px] text-violet-900">
+          <div className="rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-[10px] text-neutral-900">
             Do zrobienia dziś · notatka z przypomnieniem
           </div>
           <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[11px] text-slate-700">
@@ -275,7 +275,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
             (row) => (
               <div
                 key={row}
-                className="rounded-md border border-indigo-100 bg-indigo-50/50 px-2.5 py-1.5 text-[11px] font-medium text-slate-800"
+                className="rounded-md border border-neutral-100 bg-neutral-50 px-2.5 py-1.5 text-[11px] font-medium text-slate-800"
               >
                 {row}
               </div>
@@ -286,7 +286,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
     case "finish":
       return (
         <div className="flex flex-col items-center gap-2 py-3 text-center">
-          <p className="text-sm font-semibold text-indigo-900">Wszystko jasne?</p>
+          <p className="text-sm font-semibold text-neutral-900">Wszystko jasne?</p>
           <p className="text-xs text-slate-500">
             Kliknij „Zakończ tour”, aby wejść do panelu ze swoimi danymi.
           </p>
@@ -318,8 +318,8 @@ export function SalesOnboardingStepHeader({
         <NavIcon navKey={step.navKey} size={compact ? 18 : 22} />
       </div>
       <div className="min-w-0">
-        <p className="text-[11px] font-medium text-indigo-700/80 md:text-xs">Zakładka</p>
-        <p className="truncate text-xs font-semibold text-indigo-950 md:text-sm">{label}</p>
+        <p className="text-[11px] font-medium text-neutral-700 md:text-xs">Zakładka</p>
+        <p className="truncate text-xs font-semibold text-neutral-900 md:text-sm">{label}</p>
       </div>
     </div>
   );

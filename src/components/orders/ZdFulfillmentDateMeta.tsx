@@ -213,7 +213,7 @@ export function ZdFulfillmentDateMeta({
         <p
           key={hint}
           className={cn(
-            "max-w-full text-right text-[10px] font-medium leading-snug text-indigo-900/85",
+            "max-w-full text-right text-[10px] font-medium leading-snug text-neutral-900",
             salesTypography.rowMeta
           )}
         >

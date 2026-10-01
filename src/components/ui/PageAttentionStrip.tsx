@@ -9,7 +9,7 @@ export type PageAttentionStripDensity = "comfortable" | "compact";
 
 const TONE_SHELL: Record<PageAttentionStripTone, string> = {
   amber: "border-amber-200/70 bg-amber-50/80",
-  violet: "border-violet-200/60 bg-violet-50/80",
+  violet: "border-neutral-200 bg-violet-50/80",
 };
 
 const TONE_ICON: Record<PageAttentionStripTone, string> = {
@@ -26,7 +26,7 @@ const TONE_CTA: Record<PageAttentionStripTone, string> = {
   amber:
     "border-amber-200/80 bg-white/90 text-amber-950 hover:bg-amber-50/90",
   violet:
-    "border-violet-200/80 bg-white/90 text-violet-950 hover:bg-violet-50/90",
+    "border-neutral-200 bg-white/90 text-violet-950 hover:bg-neutral-50",
 };
 
 /**

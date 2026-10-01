@@ -44,7 +44,7 @@ export default async function WyborHandlowcaPage() {
         </Alert>
       ) : null}
 
-      <ul className="divide-y divide-slate-100 overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]">
+      <ul className="divide-y divide-slate-100 overflow-hidden rounded-md border border-slate-200/80 bg-white">
         {people.map((person) => (
           <li key={person.id}>
             <SalesPersonPreviewLink

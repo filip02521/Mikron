@@ -87,9 +87,9 @@ export function TeethBuilderStepFlow({ steps }: { steps: TeethBuilderStep[] }) {
             onClick={() => handleStepClick(step.stepKey)}
             className={cn(
               "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium leading-none transition",
-              "hover:ring-2 hover:ring-indigo-200/50",
+              "hover:ring-2 hover:ring-neutral-300",
               step.done
-                ? "bg-indigo-50 text-indigo-800 ring-1 ring-indigo-200/70"
+                ? "bg-indigo-50 text-indigo-800 ring-1 ring-neutral-200"
                 : "text-slate-400 hover:text-slate-600",
             )}
           >
@@ -127,12 +127,12 @@ export function TeethBuilderEmptyList({
         "rounded-lg border border-dashed px-3 text-center",
         compact ? "py-2.5" : "py-3",
         variant === "accent"
-          ? "border-indigo-200/70 bg-indigo-50/30"
+          ? "border-neutral-200 bg-indigo-50/30"
           : "border-slate-200/80 bg-slate-50/40",
       )}
     >
       <div className="flex flex-col items-center gap-1.5">
-        <IconPlusCircle size={20} className="text-indigo-400" />
+        <IconPlusCircle size={20} className="text-neutral-400" />
         <p className="text-[11px] font-medium text-slate-600">{TEETH_BUILDER_EMPTY_LIST_TITLE}</p>
         <p className="text-[10px] leading-snug text-slate-500">
           {teethBuilderEmptyListExample(kind, productLine)}
@@ -195,7 +195,7 @@ export function TeethBuilderGroupList({
       </div>
       <ul
         className={cn(
-          "divide-y divide-indigo-100/50 overflow-y-auto rounded-lg ring-1 ring-indigo-100/80",
+          "divide-y divide-neutral-100 overflow-y-auto rounded-lg ring-1 ring-neutral-100",
           dense ? "max-h-36" : "max-h-44",
         )}
       >
@@ -264,8 +264,8 @@ export function TeethBuilderGroupList({
           disabled={disabled}
           onClick={onAddNew}
           className={cn(
-            "flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-indigo-300/70 bg-indigo-50/30 px-3 py-2 text-xs font-semibold text-indigo-700 transition",
-            "hover:border-indigo-400 hover:bg-indigo-50/60",
+            "flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-neutral-200 bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-700 transition",
+            "hover:border-indigo-400 hover:bg-neutral-50",
             "disabled:cursor-not-allowed disabled:opacity-40",
           )}
         >
@@ -298,7 +298,7 @@ function ListActionButton({
         "disabled:cursor-not-allowed disabled:opacity-40",
         tone === "danger"
           ? "text-rose-600 hover:bg-rose-50"
-          : "text-indigo-700 hover:bg-indigo-50",
+          : "text-indigo-700 hover:bg-neutral-50",
       )}
     >
       {label}
@@ -326,7 +326,7 @@ export function TeethBuilderQuantityRow({
   onCancelEdit?: () => void;
 }) {
   return (
-    <div className="space-y-1.5 border-t border-indigo-100/60 pt-2.5">
+    <div className="space-y-1.5 border-t border-neutral-100 pt-2.5">
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
@@ -381,7 +381,7 @@ export function TeethBuilderQuantityRow({
         </div>
       </div>
       {jawModeBoth ? (
-        <p className="text-[10px] leading-snug text-indigo-700/90" role="status">
+        <p className="text-[10px] leading-snug text-neutral-700" role="status">
           {TEETH_BUILDER_BOTH_JAW_HINT}
         </p>
       ) : null}
@@ -410,7 +410,7 @@ export function TeethBuilderFormShell({
       className={cn(
         "space-y-2.5 rounded-lg border p-3 transition-colors",
         isNew
-          ? "border-indigo-200/70 bg-indigo-50/30"
+          ? "border-neutral-200 bg-indigo-50/30"
           : "border-amber-200/70 bg-amber-50/30",
       )}
       onKeyDown={onKeyDown}

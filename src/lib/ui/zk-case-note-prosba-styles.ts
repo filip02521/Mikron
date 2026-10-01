@@ -18,14 +18,14 @@ export const zkCaseNoteProsbaModalChipClass = cn(
 
 const TONE_CHIP: Record<ZkCaseNoteProsbaStatusCopy["tone"], string> = {
   slate: "bg-slate-100 text-slate-700 ring-slate-200/80",
-  indigo: "bg-indigo-50 text-indigo-800 ring-indigo-200/80",
+  indigo: "bg-indigo-50 text-indigo-800 ring-neutral-200",
   amber: "bg-amber-50 text-amber-900 ring-amber-200/80",
   emerald: "bg-emerald-50 text-emerald-800 ring-emerald-200/80",
 };
 
 const TONE_CALLOUT: Record<ZkCaseNoteProsbaStatusCopy["tone"], string> = {
   slate: "border-slate-200/90 bg-slate-50/60",
-  indigo: "border-indigo-200/80 bg-indigo-50/40",
+  indigo: "border-neutral-200 bg-indigo-50/40",
   amber: "border-amber-200/80 bg-amber-50/45",
   emerald: "border-emerald-200/80 bg-emerald-50/40",
 };

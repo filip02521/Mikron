@@ -38,15 +38,15 @@ describe("procurement request card zone classes", () => {
       "cursor-pointer"
     );
     expect(procurementRequestRowClassName({ variant: "prosby", expandable: true })).toContain(
-      "hover:border-indigo-300/80"
+      "hover:border-neutral-300"
     );
     expect(procurementRequestOrderBodyInteractiveClass("prosby")).toContain(
-      "group-hover/panelRow:bg-indigo-50/55"
+      "group-hover/panelRow:bg-neutral-50"
     );
     expect(procurementRequestProductTitleClass("stockOut")).toContain(
       "group-hover/panelRow:text-amber-950"
     );
-    expect(procurementSupplierNameLinkClass("prosby")).toContain("hover:text-indigo-700");
+    expect(procurementSupplierNameLinkClass("prosby")).toContain("hover:text-neutral-700");
     expect(procurementSupplierNameLinkClass("stockOut")).toContain("hover:text-amber-800");
   });
 

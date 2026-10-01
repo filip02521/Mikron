@@ -28,7 +28,7 @@ export function ZdEstimateFavoriteGroupChip({
       className={cn(
         "group/chip inline-flex max-w-full items-stretch overflow-hidden rounded-md border transition",
         active
-          ? "border-indigo-300 bg-indigo-50 text-indigo-950 shadow-sm shadow-indigo-900/5"
+          ? "border-neutral-200 bg-indigo-50 text-indigo-950 shadow-sm"
           : "border-slate-200/90 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
       )}
     >
@@ -72,7 +72,7 @@ export function ZdEstimateFavoriteGroupChip({
           "opacity-80 sm:opacity-0 sm:group-hover/chip:opacity-100 sm:group-focus-within/chip:opacity-100",
           "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/60",
           "disabled:cursor-not-allowed disabled:opacity-40",
-          active && "border-indigo-200/80"
+          active && "border-neutral-200"
         )}
       >
         <IconX size={14} strokeWidth={2} />
@@ -101,7 +101,7 @@ export function ZdEstimateFavoriteCechaChip({
       className={cn(
         "group/chip inline-flex max-w-full items-stretch overflow-hidden rounded-md border transition",
         active
-          ? "border-indigo-300 bg-indigo-50 text-indigo-950 shadow-sm shadow-indigo-900/5"
+          ? "border-neutral-200 bg-indigo-50 text-indigo-950 shadow-sm"
           : "border-slate-200/90 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
       )}
     >
@@ -145,7 +145,7 @@ export function ZdEstimateFavoriteCechaChip({
           "opacity-80 sm:opacity-0 sm:group-hover/chip:opacity-100 sm:group-focus-within/chip:opacity-100",
           "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/60",
           "disabled:cursor-not-allowed disabled:opacity-40",
-          active && "border-indigo-200/80"
+          active && "border-neutral-200"
         )}
       >
         <IconX size={14} strokeWidth={2} />

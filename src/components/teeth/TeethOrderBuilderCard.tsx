@@ -182,7 +182,7 @@ export function TeethOrderBuilderCard({
             className={cn(
               "h-auto shrink-0 px-3 py-1.5 text-xs font-semibold",
               complete
-                ? "text-violet-800 hover:bg-violet-50"
+                ? "text-violet-800 hover:bg-neutral-50"
                 : "text-amber-900 hover:bg-amber-50",
             )}
             onClick={onOpenModal}

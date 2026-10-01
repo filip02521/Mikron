@@ -37,7 +37,7 @@ export function VerificationModal({
       footer={
         <Link
           href="/weryfikacja"
-          className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+          className="text-sm font-medium text-indigo-600 hover:text-neutral-800"
           onClick={onClose}
         >
           Otwórz pełny widok weryfikacji

@@ -7,7 +7,7 @@
  */
 
 export const TEETH_BRAND_ICON_TILE =
-  "bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-indigo-500/30";
+  "text-neutral-500";
 
 export const TEETH_KOLEJKA_ICON_TILE = TEETH_BRAND_ICON_TILE;
 export const TEETH_WERYFIKACJA_ICON_TILE = TEETH_BRAND_ICON_TILE;

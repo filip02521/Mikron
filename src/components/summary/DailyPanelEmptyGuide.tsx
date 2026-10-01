@@ -54,7 +54,7 @@ export function DailyPanelEmptyGuide({ onOpenWeek }: { onOpenWeek: () => void })
           </GuideStep>
           <GuideStep
             icon={<IconLayoutPanel size={15} />}
-            tileClassName="bg-sky-100 text-sky-800"
+            tileClassName="bg-neutral-100 text-neutral-800"
             title="2. Harmonogram na dziś"
           >
             Po złożeniu zamówienia u dostawcy zaznacz Zamówione.

@@ -21,7 +21,7 @@ export function BrandMomentCard({
   return (
     <div className={cn("relative mx-auto w-full max-w-lg", className)}>
       {showLogo ? <AuthBrandHeader className="mb-5 sm:mb-6" /> : null}
-      <div className="relative overflow-hidden rounded-lg border border-slate-200/80 bg-white/95 p-6 text-center shadow-[var(--shadow-card-elevated)] backdrop-blur-sm sm:p-8">
+      <div className="relative overflow-hidden rounded-lg border border-slate-200/80 bg-white/95 p-6 text-center backdrop-blur-sm sm:p-8">
         <BrandCardAccent className="absolute -right-8 -top-8 h-32 w-40" />
         <div className="relative z-[1]">
           <h1 className="text-lg font-semibold tracking-tight text-slate-900 sm:text-xl">
@@ -52,7 +52,7 @@ export function BrandMomentLayout({
   return (
     <div
       className={cn(
-        "relative isolate flex min-h-dvh flex-col overflow-x-hidden bg-gradient-to-br from-indigo-50/40 via-white to-sky-50/50 px-4 py-10 sm:px-6",
+        "relative isolate flex min-h-dvh flex-col overflow-x-hidden bg-white px-4 py-10 sm:px-6",
         className
       )}
     >
@@ -93,7 +93,7 @@ export function BrandMomentHomeActions({
         href={secondaryHref}
         className={cn(
           controlFocusClass,
-          "inline-flex min-h-11 items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+          "inline-flex min-h-11 items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
         )}
       >
         {secondaryLabel}

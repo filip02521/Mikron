@@ -74,7 +74,7 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
         title="Auto-odświeżanie"
         description="Automatyczne odświeżanie listy po wykryciu zmian."
         leading={
-          <SectionHeadingIcon tileClassName="bg-indigo-100 text-indigo-800">
+          <SectionHeadingIcon tileClassName="bg-neutral-100 text-neutral-800">
             <IconClock size={20} />
           </SectionHeadingIcon>
         }
@@ -85,7 +85,7 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
             className={cn(
               "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-all",
               salesValue
-                ? "border-indigo-200/80 bg-indigo-50/40"
+                ? "border-neutral-200 bg-indigo-50/40"
                 : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
             )}
           >
@@ -115,7 +115,7 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
             className={cn(
               "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-all",
               opsValue
-                ? "border-indigo-200/80 bg-indigo-50/40"
+                ? "border-neutral-200 bg-indigo-50/40"
                 : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
             )}
           >
@@ -145,7 +145,7 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
             className={cn(
               "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-all",
               teethValue
-                ? "border-indigo-200/80 bg-indigo-50/40"
+                ? "border-neutral-200 bg-indigo-50/40"
                 : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
             )}
           >

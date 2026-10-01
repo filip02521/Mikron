@@ -93,10 +93,10 @@ export function MobileNavOverflowSheet({
               onClick={() => setOpen(false)}
             />
             <div
-              className="absolute inset-x-0 bottom-0 max-h-[min(70vh,28rem)] overflow-y-auto rounded-t-xl border border-slate-200/90 bg-[var(--card)] shadow-[var(--shadow-card-elevated)] pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
+              className="absolute inset-x-0 bottom-0 max-h-[min(70vh,28rem)] overflow-y-auto rounded-t-xl border border-slate-200/90 bg-[var(--card)] pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
               {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
             >
-              <div className="sticky top-0 z-[1] border-b border-indigo-100/70 bg-indigo-50/30 px-4 py-3">
+              <div className="sticky top-0 z-[1] border-b border-neutral-100 bg-neutral-50 px-4 py-3">
                 <p className={panelTypography.rowTitle}>Więcej</p>
                 <p className={cn(panelTypography.caption, "mt-0.5")}>
                   Pozostałe sekcje i narzędzia
@@ -132,7 +132,7 @@ export function MobileNavOverflowSheet({
                             : attentionIdle
                               ? sidebarNavAttentionIdleClass
                               : monthlyIdle
-                                ? "border border-violet-200/70 bg-violet-50/80 text-slate-800"
+                                ? "border border-neutral-200 bg-violet-50/80 text-slate-800"
                                 : navLinkIdleClass,
                           locked && "pointer-events-none opacity-40"
                         )}

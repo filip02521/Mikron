@@ -25,12 +25,12 @@ export function ProsbaLineFieldMessages({
           return (
             <div
               key={`resolving-${i}`}
-              className="flex items-start gap-2.5 rounded-md border border-indigo-200/90 bg-indigo-50/70 px-3 py-2.5"
+              className="flex items-start gap-2.5 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5"
             >
               <Spinner size="sm" className="mt-0.5 shrink-0" />
-              <div className="min-w-0 text-xs leading-relaxed text-indigo-900">
-                <p className="font-semibold text-indigo-950">Sprawdzam dostawcę</p>
-                <p className="mt-0.5 text-indigo-800/90">Szukam dopasowania w bazie powiązań produkt–dostawca…</p>
+              <div className="min-w-0 text-xs leading-relaxed text-neutral-900">
+                <p className="font-semibold text-neutral-900">Sprawdzam dostawcę</p>
+                <p className="mt-0.5 text-neutral-800">Szukam dopasowania w bazie powiązań produkt–dostawca…</p>
               </div>
             </div>
           );
@@ -38,7 +38,7 @@ export function ProsbaLineFieldMessages({
         return (
           <div
             key={`fb-${i}`}
-            className="rounded-md border border-slate-200/90 bg-white px-3 py-2.5 shadow-sm"
+            className="rounded-md border border-slate-200/90 bg-white px-3 py-2.5"
           >
             {item.fieldLabel ? (
               <p className="mb-1.5 text-[11px] font-medium text-slate-500">{item.fieldLabel}</p>

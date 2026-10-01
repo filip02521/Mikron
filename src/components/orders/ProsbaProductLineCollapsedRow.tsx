@@ -114,7 +114,7 @@ export function ProsbaProductLineCollapsedRow({
           </span>
           <p className="min-w-0 font-medium text-slate-900">{summary.title}</p>
           {teethKindLabel ? (
-            <span className="shrink-0 text-xs font-medium text-violet-800/90">
+            <span className="shrink-0 text-xs font-medium text-neutral-800">
               {teethKindLabel}
             </span>
           ) : null}
@@ -128,7 +128,7 @@ export function ProsbaProductLineCollapsedRow({
               Szkic listy
             </span>
           ) : isTeethProduct && teethComplete ? (
-            <span className="shrink-0 rounded-full bg-violet-100 px-1.5 py-0.5 text-[11px] font-semibold text-violet-800 ring-1 ring-violet-200/80">
+            <span className="shrink-0 rounded-full bg-neutral-100 px-1.5 py-0.5 text-[11px] font-semibold text-neutral-800 ring-1 ring-neutral-200">
               Lista gotowa
             </span>
           ) : stockView ? (
@@ -146,7 +146,7 @@ export function ProsbaProductLineCollapsedRow({
           <p className="mt-0.5 truncate text-xs text-slate-500">{summary.meta}</p>
         ) : null}
         {summary.clientName ? (
-          <p className="mt-0.5 truncate text-xs text-indigo-800/90">
+          <p className="mt-0.5 truncate text-xs text-neutral-800">
             Klient: {summary.clientName}
           </p>
         ) : null}

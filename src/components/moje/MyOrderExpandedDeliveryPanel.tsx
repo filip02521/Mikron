@@ -23,7 +23,7 @@ export type MyOrderExpandedDeliveryPanelProps = {
 
 const fallbackShellClass = "rounded-md border border-slate-200/70 bg-slate-50/45 px-2.5 py-1.5";
 const fallbackZdShellClass =
-  "rounded-md border border-indigo-200/55 bg-indigo-50/30 px-2.5 py-1.5";
+  "rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1.5";
 
 /**
  * Termin dostawy w rozwiniętej prośbie — osobny pasek tuż nad listą produktów.

@@ -719,7 +719,7 @@ export function ReceiveQueueTable({
     <div className="border-b border-slate-100 px-3 py-3 sm:px-4 lg:px-6">
       <div className="space-y-3">
         {showInformacjaAutoHint ? (
-          <p className="rounded-lg border border-sky-100 bg-sky-50/80 px-3 py-2 text-xs leading-relaxed text-sky-900">
+          <p className="rounded-lg border border-neutral-100 bg-neutral-50 px-3 py-2 text-xs leading-relaxed text-neutral-900">
             {INFORMACJA_AUTO_STOCK_QUEUE_HINT}
           </p>
         ) : null}
@@ -735,7 +735,7 @@ export function ReceiveQueueTable({
               <IconSearch size={15} className="shrink-0 text-slate-400" />
               <span>Wyszukiwanie</span>
               {hasActiveFilters ? (
-                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-100 px-1 text-[10px] font-bold text-indigo-700">
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-neutral-100 px-1 text-[10px] font-bold text-neutral-700">
                   {productSearchActive ? 1 : 0}
                   {zdFilter ? (productSearchActive ? 1 : 1) : 0}
                 </span>
@@ -1038,7 +1038,7 @@ export function ReceiveQueueTable({
             <thead
               className={cn(
                 "sticky top-0 z-[1] bg-slate-50/95 backdrop-blur-sm",
-                queueVirtualEnabled && "shadow-[0_1px_3px_rgba(0,0,0,0.04)]",
+                queueVirtualEnabled && "",
               )}
             >
               <tr className="border-b border-slate-200/80">

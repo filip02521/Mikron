@@ -28,11 +28,11 @@ export type ZkTeethPreviewTone = ZkTeethPreviewRow["statusTone"];
 
 export const ZK_TEETH_TONE_BADGE_CLASS: Record<ZkTeethPreviewTone, string> = {
   pending: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200/80",
-  ordered: "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200/70",
-  delivered: "bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200/70",
+  ordered: "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-neutral-200",
+  delivered: "bg-violet-50 text-violet-700 ring-1 ring-inset ring-neutral-200",
   acknowledged: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/70",
   draft: "bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-300/80",
-  draftReady: "bg-sky-50 text-sky-800 ring-1 ring-inset ring-sky-200/80",
+  draftReady: "bg-sky-50 text-sky-800 ring-1 ring-inset ring-neutral-200",
 };
 
 function resolveTeethStatus(

@@ -169,7 +169,7 @@ function ProcurementProcessLinesModalForm({
             <button
               type="button"
               className={cn(
-                "font-medium text-indigo-700 transition hover:text-indigo-950 hover:underline",
+                "font-medium text-neutral-700 transition hover:text-neutral-900 hover:underline",
                 "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:no-underline"
               )}
               disabled={pending || allSelected}
@@ -200,7 +200,7 @@ function ProcurementProcessLinesModalForm({
                     className={cn(
                       "flex cursor-pointer items-start gap-2 rounded-md px-1.5 py-1.5 text-xs text-slate-800",
                       "hover:bg-slate-50",
-                      checked && "bg-white shadow-[inset_0_0_0_1px_rgba(199,210,254,0.7)]"
+                      checked && "bg-white"
                     )}
                   >
                     <input

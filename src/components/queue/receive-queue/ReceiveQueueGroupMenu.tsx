@@ -102,7 +102,7 @@ export function ReceiveQueueGroupMenu({
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 top-full z-20 mt-1.5 min-w-[12rem] rounded-xl border border-slate-200 bg-white py-1 shadow-lg shadow-slate-200/50"
+          className="absolute right-0 top-full z-20 mt-1.5 min-w-[12rem] rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
         >
           {items.map((item) => (
             <button
@@ -114,7 +114,7 @@ export function ReceiveQueueGroupMenu({
               className={cn(
                 "block w-full px-3 py-2 text-left text-xs font-medium transition",
                 "hover:bg-slate-50",
-                item.tone === "sky" ? "text-sky-800 hover:bg-sky-50" : "text-slate-700",
+                item.tone === "sky" ? "text-sky-800 hover:bg-neutral-50" : "text-slate-700",
               )}
             >
               {item.label}

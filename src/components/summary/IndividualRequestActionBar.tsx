@@ -58,7 +58,7 @@ const nestedOutlineSegmentClass = cn(
 function nestedShellClass(tone: DailyPanelUnseenVariant) {
   return cn(
     panelActionBarFooterShellClass,
-    tone === "stockOut" ? "border-amber-200/70" : "border-indigo-200/70"
+    tone === "stockOut" ? "border-amber-200/70" : "border-neutral-200"
   );
 }
 

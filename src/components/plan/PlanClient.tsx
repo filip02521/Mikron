@@ -291,7 +291,7 @@ function SupplierPlanSearchCard({
   return (
     <li
       className={cn(
-        "rounded-md border border-indigo-200/80 bg-gradient-to-br from-indigo-50/90 to-white shadow-sm",
+        "rounded-md border border-neutral-200 bg-white",
         compact ? "p-3" : "p-4"
       )}
     >
@@ -309,7 +309,7 @@ function SupplierPlanSearchCard({
           {openOrderCount && openOrderCount > 0 ? (
             <Link
               href="/moje"
-              className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 underline"
+              className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-neutral-700 underline"
             >
               <span>{salesPlanYouHaveOpenRequests(openOrderCount)}</span>
               <LinkChevron size={13} tone="brand" />

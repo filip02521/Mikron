@@ -1,22 +1,22 @@
 /** Tokeny wizualne panelu zębów (/zeby) — neutralna paleta, jeden akcent na akcje primary. */
 
 export const teethPanelSupplierCardClass =
-  "overflow-hidden rounded-md border border-slate-200/80 bg-[var(--card)] shadow-sm";
+  "overflow-hidden rounded-md border border-slate-200/80 bg-[var(--card)]";
 
 export const teethPanelSupplierHeaderClass =
   "flex flex-col gap-2 border-b border-slate-200/80 bg-white py-2.5 sm:flex-row sm:items-center sm:justify-between";
 
 export const teethPanelOrderRowIssueClass =
-  "border-l-2 border-l-amber-400/90 bg-amber-50/20 hover:bg-amber-50/35";
+  "bg-amber-50/20 hover:bg-amber-50/35";
 
 export const teethPanelOrderRowReadyClass =
-  "border-l-2 border-l-emerald-400/75 bg-emerald-50/10 hover:bg-emerald-50/20";
+  "bg-emerald-50/10 hover:bg-emerald-50/20";
 
 export const teethPanelOrderRowOrderedClass =
-  "border-l-2 border-l-sky-400/75 bg-sky-50/10 hover:bg-sky-50/20";
+  "bg-neutral-50 hover:bg-neutral-50";
 
 export const teethPanelOrderRowDoneClass =
-  "border-l-2 border-l-slate-300/80 bg-slate-50/30 hover:bg-slate-50/50";
+  " bg-slate-50/30 hover:bg-slate-50/50";
 
 export const teethPanelOrderRowClass =
   "group/panelRow border-b border-slate-100 px-3 py-3 transition-colors last:border-b-0 hover:bg-slate-50/50 sm:px-4 lg:px-5";
@@ -93,15 +93,15 @@ export const teethReceiveSalesPersonBannerClass =
   "relative flex items-center gap-3 px-4 py-3 sm:px-5";
 
 export const teethReceiveSaveButtonClass =
-  "rounded-md bg-gradient-to-b from-indigo-600 to-indigo-700 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm shadow-indigo-600/15 transition hover:to-indigo-800 disabled:opacity-50";
+  "rounded-md bg-indigo-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition disabled:opacity-50";
 
 export const teethReceiveSectionOutlineButtonClass =
-  "rounded-md border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50";
+  "rounded-md border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50";
 
 export const teethReceiveDataRowClass =
   "border-b border-slate-100/90 transition-colors hover:bg-slate-50/60";
 
-export const teethReceiveDataRowActiveClass = "bg-indigo-50/35 hover:bg-indigo-50/45";
+export const teethReceiveDataRowActiveClass = "bg-indigo-50/35 hover:bg-neutral-50";
 
 export const teethReceiveDataRowDoneClass = "bg-emerald-50/40 hover:bg-emerald-50/50";
 
@@ -110,10 +110,10 @@ export const teethReceiveDataRowPartialClass = "bg-amber-50/20 hover:bg-amber-50
 export const teethReceiveDataRowClosedClass = "bg-slate-50/40 text-slate-500 hover:bg-slate-50/50";
 
 export const teethReceiveQtyInputClass =
-  "w-12 rounded-md border border-slate-200 bg-white px-1.5 py-1.5 text-center text-xs font-semibold tabular-nums shadow-sm";
+  "w-12 rounded-md border border-slate-200 bg-white px-1.5 py-1.5 text-center text-xs font-semibold tabular-nums";
 
 export const teethReceiveQtyInputFilledClass =
-  "border-indigo-300 bg-indigo-50/80 text-indigo-950";
+  "border-neutral-200 bg-neutral-50 text-neutral-900";
 
 export const teethReceiveQtyInputDoneClass =
   "border-emerald-300 bg-emerald-50/80 text-emerald-950";
@@ -137,12 +137,12 @@ export const teethPanelHistoryOrdersListClass =
 
 /** Karta pojedynczego zamówienia w historii — wyraźnie odseparowana od sąsiednich. */
 export const teethPanelHistoryOrderCardClass =
-  "overflow-hidden rounded-md border border-slate-200 bg-[var(--card)] p-2 shadow-sm ring-1 ring-slate-200/60 sm:p-2.5";
+  "overflow-hidden rounded-md border border-slate-200 bg-[var(--card)] p-2 ring-1 ring-slate-200/60 sm:p-2.5";
 
-export const teethPanelHistoryOrderCardOrderedClass = "border-l-4 border-l-sky-500";
+export const teethPanelHistoryOrderCardOrderedClass = "";
 
-export const teethPanelHistoryOrderCardPartialClass = "border-l-4 border-l-amber-500";
+export const teethPanelHistoryOrderCardPartialClass = "";
 
-export const teethPanelHistoryOrderCardDoneClass = "border-l-4 border-l-slate-400";
+export const teethPanelHistoryOrderCardDoneClass = "";
 
-export const teethPanelHistoryOrderCardCancelledClass = "border-l-4 border-l-red-400";
+export const teethPanelHistoryOrderCardCancelledClass = "";

@@ -61,7 +61,7 @@ function DeliveryWeekDayColumn({
       <header
         className={cn(
           "flex items-center justify-between gap-2 border-b px-3 py-2.5",
-          day.isToday ? "border-sky-200/80 bg-sky-100/50" : "border-slate-100"
+          day.isToday ? "border-neutral-200 bg-sky-100/50" : "border-slate-100"
         )}
       >
         <div className="min-w-0">
@@ -80,7 +80,7 @@ function DeliveryWeekDayColumn({
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {day.isToday ? (
-            <span className="rounded-full bg-sky-200/80 px-2 py-0.5 text-[10px] font-semibold uppercase text-sky-800">
+            <span className="rounded-full bg-sky-200/80 px-2 py-0.5 text-[10px] font-semibold uppercase text-neutral-800">
               Dziś
             </span>
           ) : null}
@@ -97,7 +97,7 @@ function DeliveryWeekDayColumn({
                 </span>
               ) : null}
               {pendingCount > 0 ? (
-                <span className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-sky-700">
+                <span className="rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-neutral-700">
                   {pendingCount}
                 </span>
               ) : null}

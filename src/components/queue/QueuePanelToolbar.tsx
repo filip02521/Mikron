@@ -76,7 +76,7 @@ export function QueuePanelToolbar({
           label="Dziennik"
           hint={journalCount > 0 ? "przyjęte dostawy dziś" : "brak wpisów dziś"}
           icon={<IconClipboardList size={14} />}
-          tileClassName="bg-sky-100 text-sky-800"
+          tileClassName="bg-neutral-100 text-neutral-800"
           title="Kurier, paczki, palety"
           onClick={() => onViewChange("journal")}
         />

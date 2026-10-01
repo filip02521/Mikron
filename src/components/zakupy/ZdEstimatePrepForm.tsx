@@ -243,7 +243,7 @@ export function ZdEstimatePrepForm({
         <section className="min-w-0 space-y-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className={sectionLabelClass}>
-              <span className="mr-1 text-indigo-500/70">1</span>Zakres
+              <span className="mr-1 text-neutral-500">1</span>Zakres
             </p>
             <SegmentedControl
               ariaLabel="Tryb zakresu szacunku"
@@ -349,7 +349,7 @@ export function ZdEstimatePrepForm({
                     type="button"
                     disabled={!configured}
                     onClick={onBrowseCatalog}
-                    className="text-sm font-medium text-indigo-700 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                    className="text-sm font-medium text-neutral-700 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {ZD_ESTIMATE_UI.prepBrowseCatalogCta}
                   </button>
@@ -386,7 +386,7 @@ export function ZdEstimatePrepForm({
                           type="button"
                           className={cn(
                             "flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-3 py-2 text-left text-sm transition hover:bg-slate-100/70",
-                            selected && "bg-indigo-50 ring-1 ring-inset ring-indigo-200/60"
+                            selected && "bg-indigo-50 ring-1 ring-inset ring-neutral-200"
                           )}
                           onClick={() => onSelectGroupHit(g)}
                         >
@@ -497,7 +497,7 @@ export function ZdEstimatePrepForm({
                     type="button"
                     disabled={!configured}
                     onClick={onBrowseCatalog}
-                    className="text-sm font-medium text-indigo-700 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                    className="text-sm font-medium text-neutral-700 underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {ZD_ESTIMATE_UI.prepBrowseCatalogCta}
                   </button>
@@ -534,7 +534,7 @@ export function ZdEstimatePrepForm({
                           type="button"
                           className={cn(
                             "flex min-h-11 min-w-0 flex-1 items-center justify-between gap-3 px-3 py-2 text-left text-sm transition hover:bg-slate-100/70",
-                            selected && "bg-indigo-50 ring-1 ring-inset ring-indigo-200/60"
+                            selected && "bg-indigo-50 ring-1 ring-inset ring-neutral-200"
                           )}
                           onClick={() => onSelectCechaHit(c)}
                         >
@@ -572,7 +572,7 @@ export function ZdEstimatePrepForm({
               className={cn(
                 "flex flex-wrap items-center gap-x-2 gap-y-1.5 border px-3 py-2.5",
                 supplierFromMappingNotice
-                  ? "border-indigo-200/80 bg-indigo-50/70"
+                  ? "border-neutral-200 bg-indigo-50/70"
                   : "border-emerald-200/80 bg-emerald-50/60",
                 zdEstimateRadiusNestedClass
               )}
@@ -857,7 +857,7 @@ export function ZdEstimatePrepForm({
               showAdvanced && "rotate-180"
             )}
           />
-          <span className="mr-0.5 text-indigo-500/70">3</span>
+          <span className="mr-0.5 text-neutral-500">3</span>
           {showAdvanced
             ? ZD_ESTIMATE_UI.prepOverridesHide
             : ZD_ESTIMATE_UI.prepOverridesShow}
@@ -895,7 +895,7 @@ export function ZdEstimatePrepForm({
                 zdEstimatePrepPrimaryButtonClass,
                 canPolicz &&
                   !estimating &&
-                  "shadow-md shadow-indigo-500/20 ring-2 ring-indigo-500/25"
+                  "shadow-md ring-2 ring-indigo-500/25"
               )}
             >
               {estimating ? (

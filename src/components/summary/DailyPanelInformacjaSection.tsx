@@ -75,13 +75,13 @@ export function DailyPanelInformacjaSection({
           );
         })}
       </ul>
-      <div className="border-t border-sky-100/80 px-2.5 py-2 sm:px-3">
+      <div className="border-t border-neutral-100 px-2.5 py-2 sm:px-3">
         <Link
           href="/kolejka#kolejka-przyjecie"
-          className="inline-flex items-center gap-1 text-xs font-medium text-sky-700 transition-colors hover:text-sky-900"
+          className="inline-flex items-center gap-1 text-xs font-medium text-neutral-700 transition-colors hover:text-neutral-900"
         >
           <span>Kolejka magazynu</span>
-          <FlowChevron size={12} className="text-sky-400" />
+          <FlowChevron size={12} className="text-neutral-400" />
           <span>Informacja</span>
           <LinkChevron size={13} tone="sky" className="ml-0.5" />
         </Link>

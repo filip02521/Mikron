@@ -4,7 +4,7 @@ import { cn } from "@/lib/cn";
 const accentClass = {
   default: {
     done: "bg-indigo-600 text-white",
-    current: "bg-indigo-600 text-white ring-1 ring-indigo-200",
+    current: "bg-indigo-600 text-white ring-1 ring-neutral-200",
     upcoming: "bg-slate-200 text-slate-500",
     cancelled: "bg-red-100 text-red-500 ring-1 ring-red-200",
     connectorDone: "bg-indigo-300",
@@ -17,7 +17,7 @@ const accentClass = {
   },
   informacja: {
     done: "bg-violet-600 text-white",
-    current: "bg-violet-600 text-white ring-1 ring-violet-200",
+    current: "bg-violet-600 text-white ring-1 ring-neutral-200",
     upcoming: "bg-violet-100 text-violet-400",
     cancelled: "bg-red-100 text-red-500 ring-1 ring-red-200",
     connectorDone: "bg-violet-300",

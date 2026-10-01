@@ -6,7 +6,7 @@ export const BOARD_PROCUREMENT_AUTHOR_LABEL = "Dział zakupów";
 
 /** Lista wątków pytań — zebra na zwiniętych wierszach zamiast divide-y. */
 export const boardQuestionListClass =
-  "overflow-hidden rounded-xl border border-slate-200/80 bg-slate-50/25 shadow-sm ring-1 ring-slate-900/[0.03]";
+  "overflow-hidden rounded-xl border border-slate-200/80 bg-slate-50/25 ring-1 ring-slate-900/[0.03]";
 
 /** Lista ogłoszeń — ten sam kontener co pytania. */
 export const boardAnnouncementListClass = boardQuestionListClass;
@@ -18,15 +18,15 @@ export function boardAnnouncementRowClass(opts: {
   return cn(
     "bg-white px-3 py-3.5 transition-[background-color,box-shadow] duration-200 sm:px-4 sm:py-4",
     opts.unread
-      ? "bg-indigo-50/40 ring-1 ring-inset ring-indigo-200/55"
+      ? "bg-indigo-50/40 ring-1 ring-inset ring-neutral-200"
       : opts.pinned
-        ? "bg-indigo-50/20 hover:bg-indigo-50/30"
+        ? "bg-indigo-50/20 hover:bg-neutral-50"
         : "hover:bg-slate-50/70"
   );
 }
 
 export function boardAnnouncementRoleBadgeClass(): string {
-  return "inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide leading-none text-indigo-900";
+  return "inline-flex rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide leading-none text-neutral-900";
 }
 
 export function boardAnnouncementAvatarClass(opts: {
@@ -36,9 +36,9 @@ export function boardAnnouncementAvatarClass(opts: {
   return cn(
     "flex size-9 shrink-0 items-center justify-center rounded-full ring-1",
     opts.unread
-      ? "bg-indigo-100 text-indigo-800 ring-indigo-200/80"
+      ? "bg-indigo-100 text-indigo-800 ring-neutral-200"
       : opts.pinned
-        ? "bg-indigo-100 text-indigo-800 ring-indigo-200/80"
+        ? "bg-indigo-100 text-indigo-800 ring-neutral-200"
         : "bg-slate-100 text-slate-600 ring-slate-200/80"
   );
 }
@@ -57,33 +57,23 @@ export function boardQuestionRowClass(opts: {
 
   if (opts.expanded) {
     return cn(
-      "relative z-[1] border-l-2 border-l-indigo-400/80 bg-white shadow-md ring-1 ring-indigo-200/70",
+      "relative z-[1] bg-white shadow-md ring-1 ring-neutral-200",
       "transition-[background-color,box-shadow,ring-color,border-color] duration-300 ease-out motion-reduce:transition-none"
     );
   }
 
-  const accent = opts.unseen
-    ? "border-l-2 border-l-indigo-500/85"
-    : opts.open
-      ? "border-l-2 border-l-amber-400/80"
-      : stale
-        ? "border-l-2 border-l-slate-200/60"
-        : "border-l-2 border-l-indigo-300/50";
-
   if (opts.unseen) {
     return cn(
-      accent,
       "transition-[background-color,box-shadow,ring-color,border-color] duration-200 ease-out motion-reduce:transition-none",
       alt
-        ? "bg-indigo-50/35 hover:bg-indigo-50/45"
-        : "bg-indigo-50/18 hover:bg-indigo-50/30",
-      "ring-1 ring-inset ring-indigo-200/50"
+        ? "bg-indigo-50/35 hover:bg-neutral-50"
+        : "bg-indigo-50/18 hover:bg-neutral-50",
+      "ring-1 ring-inset ring-neutral-200"
     );
   }
 
   if (opts.open) {
     return cn(
-      accent,
       "transition-[background-color,box-shadow,ring-color,border-color] duration-200 ease-out motion-reduce:transition-none",
       alt
         ? "bg-amber-50/28 hover:bg-amber-50/38"
@@ -93,7 +83,6 @@ export function boardQuestionRowClass(opts: {
 
   if (stale) {
     return cn(
-      accent,
       "transition-[background-color,box-shadow,ring-color,border-color] duration-200 ease-out motion-reduce:transition-none",
       alt
         ? "bg-slate-50/40 hover:bg-slate-100/50"
@@ -103,7 +92,6 @@ export function boardQuestionRowClass(opts: {
   }
 
   return cn(
-    accent,
     "transition-[background-color,box-shadow,ring-color,border-color] duration-200 ease-out motion-reduce:transition-none",
     alt
       ? "bg-slate-100/45 hover:bg-slate-100/65"
@@ -112,7 +100,7 @@ export function boardQuestionRowClass(opts: {
 }
 
 export const boardQuestionRowHeaderExpandedClass =
-  "border-b border-indigo-100/70 bg-gradient-to-r from-indigo-50/35 via-white to-white";
+  "border-b border-neutral-100 bg-white";
 
 export const boardQuestionUnseenDotClass = "h-2 w-2 shrink-0 rounded-full bg-indigo-500";
 
@@ -125,7 +113,7 @@ export function boardQuestionStatusBadgeClass(opts: {
     opts.open
       ? "bg-amber-100 text-amber-900 ring-1 ring-amber-200/70"
       : opts.unseen
-        ? "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/70"
+        ? "bg-indigo-100 text-indigo-900 ring-1 ring-neutral-200"
         : "bg-slate-100 text-slate-600 ring-1 ring-slate-200/70"
   );
 }
@@ -138,7 +126,7 @@ export const boardQuestionPreviewClass = cn(
 export const boardQuestionCollapsedMetaClass = "text-slate-600/95";
 
 /** Imię autora pytania — zwykły tekst w kolorze marki. */
-export const boardQuestionAuthorNameClass = "font-semibold text-indigo-700";
+export const boardQuestionAuthorNameClass = "font-semibold text-neutral-700";
 
 export function boardThreadAuthorNameClass(tone: BoardThreadMessageTone): string {
   return cn(
@@ -155,29 +143,29 @@ export const boardQuestionProductChipClass =
   "inline-flex max-w-full items-center gap-1.5 rounded-md border border-slate-200/90 bg-slate-100/80 px-2 py-0.5 text-[11px] font-semibold text-slate-700";
 
 export const boardQuestionProductContextClass =
-  "overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)] ring-1 ring-slate-900/[0.02]";
+  "overflow-hidden rounded-xl border border-slate-200/90 bg-white ring-1 ring-slate-900/[0.02]";
 
 export const boardQuestionProductContextBodyClass =
-  "bg-gradient-to-br from-slate-50/90 via-white to-white px-3 py-2.5";
+  "bg-white px-3 py-2.5";
 
 export const boardQuestionQuickProsbaStripClass =
-  "flex flex-col gap-2 border-t border-indigo-100/80 bg-gradient-to-r from-indigo-50/55 via-indigo-50/25 to-white px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3";
+  "flex flex-col gap-2 border-t border-neutral-100 bg-white px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3";
 
 export const boardQuestionQuickProsbaHintClass =
   "min-w-0 text-[11px] leading-snug text-slate-600 sm:text-xs";
 
 export const boardQuestionQuickProsbaCtaClass =
-  "shrink-0 gap-1.5 border-indigo-200/80 bg-white/90 text-indigo-800 shadow-sm shadow-indigo-900/[0.03] hover:border-indigo-300 hover:bg-indigo-50/80";
+  "shrink-0 gap-1.5 border-neutral-200 bg-white/90 text-indigo-800 shadow-sm hover:border-neutral-300 hover:bg-neutral-50";
 
 export type BoardThreadMessageTone = "question" | "procurement" | "sales";
 
 export function boardThreadMessageShellClass(tone: BoardThreadMessageTone): string {
   return cn(
-    "rounded-xl border px-3.5 py-3 shadow-sm transition-shadow duration-200",
+    "rounded-xl border px-3.5 py-3 transition-shadow duration-200",
     tone === "question"
-      ? "border-amber-200/70 bg-gradient-to-br from-amber-50/80 via-white to-white"
+      ? "border-amber-200/70 bg-amber-50"
       : tone === "procurement"
-        ? "border-indigo-200/75 bg-gradient-to-br from-indigo-50/90 via-indigo-50/35 to-white"
+        ? "border-neutral-200 bg-white"
         : "border-slate-200/80 bg-slate-50/70"
   );
 }
@@ -188,7 +176,7 @@ export function boardThreadAvatarClass(tone: BoardThreadMessageTone): string {
     tone === "question"
       ? "bg-amber-100 text-amber-800 ring-amber-200/80"
       : tone === "procurement"
-        ? "bg-indigo-100 text-indigo-800 ring-indigo-200/80"
+        ? "bg-indigo-100 text-indigo-800 ring-neutral-200"
         : "bg-slate-100 text-slate-600 ring-slate-200/80"
   );
 }
@@ -205,7 +193,7 @@ export function boardThreadRoleBadgeClass(tone: BoardThreadMessageTone): string 
 }
 
 export const boardReplyFormShellClass =
-  "space-y-2 rounded-xl border border-indigo-200/70 bg-indigo-50/25 px-3.5 py-3 shadow-sm";
+  "space-y-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3.5 py-3";
 
 export const boardAwaitingReplyClass = cn(
   salesTypography.rowMeta,
@@ -227,7 +215,7 @@ export function boardChipCountBadgeClass(opts: {
     return "inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-amber-100 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-amber-900";
   }
   if (opts.emphasis === "action") {
-    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-indigo-100 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-indigo-900";
+    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-neutral-100 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-neutral-900";
   }
   return "inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-slate-100 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-slate-600";
 }

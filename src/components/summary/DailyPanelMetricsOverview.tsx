@@ -132,7 +132,7 @@ export function DailyPanelMetricsOverview({
             : undefined
         }
         icon={<IconCalendar size={15} />}
-        tileClassName="bg-sky-100 text-sky-800"
+        tileClassName="bg-neutral-100 text-neutral-800"
       />
       <MetricTile
         value={summary.forSomeoneGroupCount}
@@ -179,7 +179,7 @@ export function DailyPanelMetricsOverview({
           hint="na żądanie"
           onClick={onOpenOnDemand}
           icon={<IconTruck size={15} />}
-          tileClassName="bg-violet-100 text-violet-800"
+          tileClassName="bg-neutral-100 text-neutral-800"
         />
       ) : null}
       {summary.hiddenScheduleCount > 0 ? (
@@ -189,7 +189,7 @@ export function DailyPanelMetricsOverview({
           hint="brak danych"
           href="/podsumowanie?view=wyjatki#poza-harmonogramem"
           icon={<DailySectionIcon kind="hidden" size={15} />}
-          tileClassName="bg-indigo-100/70 text-indigo-800/90"
+          tileClassName="bg-neutral-100 text-neutral-800"
         />
       ) : null}
     </>
@@ -233,7 +233,7 @@ export function DailyPanelMetricsOverview({
 
   if (hideQueueMetrics && !grid && vacationBanner) {
     return (
-      <div className={cn("border-t border-indigo-100/70", panelSectionInsetClass)}>
+      <div className={cn("border-t border-neutral-100", panelSectionInsetClass)}>
         {vacationBanner}
       </div>
     );
@@ -251,7 +251,7 @@ export function DailyPanelMetricsOverview({
     : mobileSummary;
 
   return (
-    <div className={cn("border-t border-indigo-100/70", panelSectionInsetClass)}>
+    <div className={cn("border-t border-neutral-100", panelSectionInsetClass)}>
       {/* Mobile: zwijany przegląd */}
       <details className="group sm:hidden">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 marker:content-none [&::-webkit-details-marker]:hidden">

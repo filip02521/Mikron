@@ -45,7 +45,7 @@ export function SupplierCardsHelpButton({ context }: { context: SupplierHubConte
             Otwórz{" "}
             <Link
               href={teethCardsHref}
-              className="font-medium text-indigo-800 underline underline-offset-2"
+              className="font-medium text-neutral-800 underline underline-offset-2"
             >
               kartę dostawcy
             </Link>{" "}
@@ -75,7 +75,7 @@ export function SupplierCardsHelpButton({ context }: { context: SupplierHubConte
             Codzienna edycja bez usuwania rekordów —{" "}
             <Link
               href={zakupyPaths.cards}
-              className="font-medium text-indigo-800 underline underline-offset-2"
+              className="font-medium text-neutral-800 underline underline-offset-2"
             >
               karty w sekcji Dostawcy (zakupy)
             </Link>
@@ -88,7 +88,7 @@ export function SupplierCardsHelpButton({ context }: { context: SupplierHubConte
             Wersja z trwałym usuwaniem rekordów —{" "}
             <Link
               href={adminPaths.cards}
-              className="font-medium text-indigo-800 underline underline-offset-2"
+              className="font-medium text-neutral-800 underline underline-offset-2"
             >
               karty w administracji
             </Link>

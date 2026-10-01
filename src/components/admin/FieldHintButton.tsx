@@ -25,7 +25,7 @@ export function FieldHintButton({
       align={align}
       icon={<IconHelpCircle size={15} strokeWidth={2} className="text-indigo-600" />}
       className={cn("align-middle", className)}
-      buttonClassName="h-6 min-h-6 w-6 justify-center gap-0 border-transparent bg-transparent px-0 py-0 shadow-none hover:border-indigo-200 hover:bg-indigo-50/80"
+      buttonClassName="h-6 min-h-6 w-6 justify-center gap-0 border-transparent bg-transparent px-0 py-0 shadow-none hover:border-neutral-300 hover:bg-neutral-50"
     >
       {children}
     </HelpPopover>

@@ -83,7 +83,7 @@ export function ProcurementRequestLaneNav({
         {onManageClick ? (
           <button
             type="button"
-            className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-indigo-700/90 transition-colors hover:bg-indigo-50 hover:text-indigo-950"
+            className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-neutral-700 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
             onClick={onManageClick}
           >
             {PROCUREMENT_REQUEST_LANE_COPY.manageFlags}

@@ -132,16 +132,16 @@ export const INFORMACJA_FLOW_CARD_STYLES: Record<
   },
   indigo: {
     active: "border-indigo-400 bg-indigo-50/90 shadow-sm ring-2 ring-indigo-400/25",
-    idle: "border-slate-200 bg-white hover:border-indigo-200/80 hover:bg-indigo-50/30",
+    idle: "border-slate-200 bg-white hover:border-neutral-300 hover:bg-neutral-50",
     iconActive: "bg-indigo-200/90 text-indigo-950",
     iconIdle: "bg-slate-100 text-slate-600",
-    summary: "border-indigo-200/90 bg-indigo-50/50",
+    summary: "border-neutral-200 bg-indigo-50/50",
   },
   violet: {
     active: "border-violet-400 bg-violet-50/90 shadow-sm ring-2 ring-violet-400/25",
-    idle: "border-slate-200 bg-white hover:border-violet-200/80 hover:bg-violet-50/30",
+    idle: "border-slate-200 bg-white hover:border-neutral-300 hover:bg-neutral-50",
     iconActive: "bg-violet-200/90 text-violet-950",
     iconIdle: "bg-slate-100 text-slate-600",
-    summary: "border-violet-200/90 bg-violet-50/50",
+    summary: "border-neutral-200 bg-violet-50/50",
   },
 };

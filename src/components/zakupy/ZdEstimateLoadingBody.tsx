@@ -110,7 +110,7 @@ export function ZdEstimateLoadingBody({
                 "bg-emerald-50 text-emerald-700 ring-emerald-100/90",
               tone === "warning" &&
                 "bg-amber-50 text-amber-800 ring-amber-100/90",
-              tone === "busy" && "bg-indigo-50 ring-indigo-100/90"
+              tone === "busy" && "bg-indigo-50 ring-neutral-100"
             )}
           >
             {tone === "complete" ? (
@@ -120,7 +120,7 @@ export function ZdEstimateLoadingBody({
             ) : (
               <Spinner
                 size="sm"
-                className="border-indigo-200 border-t-indigo-600"
+                className="border-neutral-200 border-t-indigo-600"
               />
             )}
           </span>
@@ -206,7 +206,7 @@ export function ZdEstimateLoadingBody({
                   failed && "bg-amber-600 text-white",
                   done && "bg-emerald-100 text-emerald-700",
                   active &&
-                    "bg-indigo-600 text-white shadow-[0_0_0_3px_rgba(99,102,241,0.18)]",
+                    "bg-indigo-600 text-white",
                   pending && "bg-slate-100 text-slate-500"
                 )}
                 aria-hidden
@@ -247,7 +247,7 @@ export function ZdEstimateLoadingBody({
         })}
       </ol>
 
-      <div className="border-t border-slate-100/90 bg-gradient-to-b from-slate-50/80 to-slate-50/40 px-5 py-3 sm:px-6 sm:py-3.5">
+      <div className="border-t border-slate-100/90 bg-white px-5 py-3 sm:px-6 sm:py-3.5">
         {footerMeta ? (
           <div className="mb-2 flex items-center justify-between gap-3 text-[11px] leading-snug text-slate-500">
             <span className="min-w-0">{footerMeta}</span>

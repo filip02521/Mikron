@@ -95,7 +95,7 @@ export function ZdEstimatePageIntro({
           <span
             title={contextLabel}
             className={cn(
-              "inline-flex max-w-[12rem] items-center truncate rounded-md bg-indigo-50/90 px-2 text-[11px] font-medium leading-none text-indigo-900/90 ring-1 ring-inset ring-indigo-100/90 sm:max-w-[16rem]",
+              "inline-flex max-w-[12rem] items-center truncate rounded-md bg-neutral-50 px-2 text-[11px] font-medium leading-none text-neutral-900 ring-1 ring-inset ring-neutral-100 sm:max-w-[16rem]",
               zdEstimateChromeControlHeightClass
             )}
           >

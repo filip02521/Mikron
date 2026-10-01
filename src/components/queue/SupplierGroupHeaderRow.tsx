@@ -130,7 +130,7 @@ export function SupplierGroupHeaderRow({
                       "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold transition",
                       scheduleOverdue
                         ? "bg-rose-100 text-rose-700 ring-1 ring-inset ring-rose-200/60"
-                        : "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200/50",
+                        : "bg-sky-50 text-sky-700 ring-1 ring-inset ring-neutral-200",
                     )}
                     title={scheduleOverdue ? "Planowany dzień zamówienia minął — sprawdź opóźnienie" : "Najbliższy planowany dzień zamówienia"}
                   >

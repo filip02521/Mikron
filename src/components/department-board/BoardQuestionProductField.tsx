@@ -85,7 +85,7 @@ function BoardQuestionProductSelectedCard({
         "flex items-start justify-between gap-3 rounded-md border px-3 py-2.5",
         linked
           ? "border-emerald-200/90 bg-emerald-50/70"
-          : "border-indigo-200/90 bg-indigo-50/70"
+          : "border-neutral-200 bg-indigo-50/70"
       )}
       role="status"
       aria-live="polite"
@@ -133,7 +133,7 @@ function BoardQuestionProductSelectedCard({
           variant="ghost"
           className={cn(
             "h-8",
-            linked ? "text-emerald-800 hover:bg-emerald-100/80" : "text-indigo-800 hover:bg-indigo-100/80"
+            linked ? "text-emerald-800 hover:bg-emerald-100/80" : "text-indigo-800 hover:bg-neutral-100"
           )}
           disabled={disabled}
           onClick={onChangeProduct}
@@ -146,7 +146,7 @@ function BoardQuestionProductSelectedCard({
           variant="ghost"
           className={cn(
             "h-8",
-            linked ? "text-emerald-800 hover:bg-emerald-100/80" : "text-indigo-800 hover:bg-indigo-100/80"
+            linked ? "text-emerald-800 hover:bg-emerald-100/80" : "text-indigo-800 hover:bg-neutral-100"
           )}
           disabled={disabled}
           onClick={onRemove}

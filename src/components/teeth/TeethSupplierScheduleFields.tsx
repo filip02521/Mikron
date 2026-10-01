@@ -384,11 +384,11 @@ export function TeethSupplierScheduleFields({
         }
       >
         <div className="space-y-4">
-          <div className="flex items-start gap-3 rounded-xl border border-sky-100 bg-sky-50/60 px-3.5 py-3">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-600">
+          <div className="flex items-start gap-3 rounded-xl border border-neutral-100 bg-neutral-50 px-3.5 py-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-100 text-sky-600">
               <IconCalendar size={16} />
             </span>
-            <p className="text-xs leading-relaxed text-sky-900">
+            <p className="text-xs leading-relaxed text-neutral-900">
               Wybierz datę, na którą chcesz jednorazowo przesunąć następne zamówienie u{" "}
               <strong>{supplierName}</strong>. Po tym terminie cykl wróci do automatycznego wyliczenia.
             </p>

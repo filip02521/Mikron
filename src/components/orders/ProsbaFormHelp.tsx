@@ -30,7 +30,7 @@ export function ProsbaFormHelp({
         <p>
           Formalne zgłoszenie do działu zakupów — zamówienie u dostawcy albo informacja o
           towarze (np. powiadomienie, gdy pojawi się na magazynie). Ogólne pytanie bez zamawiania zadaj na{" "}
-          <Link href="/tablica" className="font-medium text-indigo-700 hover:underline">
+          <Link href="/tablica" className="font-medium text-neutral-700 hover:underline">
             Tablicy
           </Link>
           .
@@ -63,7 +63,7 @@ export function ProsbaFormHelp({
       <HelpBlock title="Po wysłaniu">
         <p>
           Status zawsze w{" "}
-          <Link href={mojeHref} className="font-medium text-indigo-700 hover:underline">
+          <Link href={mojeHref} className="font-medium text-neutral-700 hover:underline">
             {mojeLabel}
           </Link>
           . O ważnych zdarzeniach (np. towar na magazynie) dostaniesz też e-mail.

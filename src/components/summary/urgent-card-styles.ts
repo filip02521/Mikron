@@ -16,10 +16,10 @@ export function urgentCardClassName(tone: UrgentCardTone | boolean = "today") {
   const isOverdue = tone === true || tone === "overdue";
   return cn(
     surfaceCardClass,
-    "shadow-[var(--shadow-card)] transition-[border-color,box-shadow,background-color]",
+    "transition-[border-color,box-shadow,background-color]",
     isOverdue
-      ? "border-amber-200/85 bg-amber-50/25 hover:border-amber-200/95 hover:shadow-[var(--shadow-card-elevated)]"
-      : "border-sky-200/75 bg-sky-50/15 hover:border-sky-200/90 hover:shadow-[var(--shadow-card-elevated)]"
+      ? "border-amber-200/85 bg-amber-50/25 hover:border-amber-200/95"
+      : "border-neutral-200 bg-sky-50/15 hover:border-neutral-300"
   );
 }
 
@@ -29,7 +29,7 @@ export function urgentSupplierNameLinkClass(tone: UrgentCardTone = "today") {
     "text-left font-semibold tracking-tight transition-colors duration-150",
     tone === "overdue"
       ? "text-amber-950 hover:text-amber-800"
-      : "text-sky-950 hover:text-sky-800"
+      : "text-sky-950 hover:text-neutral-800"
   );
 }
 
@@ -37,7 +37,7 @@ export function urgentSupplierNameLinkClass(tone: UrgentCardTone = "today") {
 export function urgentFooterShellClass(tone: UrgentCardTone = "today") {
   return cn(
     "inline-flex h-7 min-h-7 w-full max-w-full items-stretch overflow-hidden rounded-md border bg-white sm:w-full",
-    tone === "overdue" ? "border-amber-200/75" : "border-sky-200/75"
+    tone === "overdue" ? "border-amber-200/75" : "border-neutral-200"
   );
 }
 

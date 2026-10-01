@@ -173,9 +173,9 @@ export function VerificationQueuePicker({
   return (
     <section
       aria-label="Kolejka do weryfikacji"
-      className="mx-3 my-3 overflow-hidden rounded-lg border border-amber-200/90 bg-white shadow-sm ring-1 ring-amber-100/50 sm:mx-4"
+      className="mx-3 my-3 overflow-hidden rounded-lg border border-amber-200/90 bg-white ring-1 ring-amber-100/50 sm:mx-4"
     >
-      <div className="relative border-b border-amber-200/80 bg-gradient-to-b from-amber-50 to-amber-50/30">
+      <div className="relative border-b border-amber-200/80 bg-amber-50">
         <div className={items.length > 1 ? "pr-[7.5rem] sm:pr-[8rem]" : undefined}>
           <SectionListLabel
             domain="panel"
@@ -258,12 +258,12 @@ function VerificationQueueRow({
         }
         onClick={onSelect}
         className={cn(
-          "group relative w-full border-l-[3px] text-left transition",
+          "group relative w-full text-left transition",
           density === "compact" ? "px-3 py-3 sm:px-4" : "px-4 py-3.5",
           active
-            ? "border-l-amber-500 bg-amber-50/90 shadow-[inset_0_1px_0_0_rgba(251,191,36,0.15)]"
+            ? "bg-amber-50/90"
             : "border-l-transparent bg-white hover:bg-amber-50/50",
-          pathUi?.path === "stock_out" && !active && "border-l-amber-300/80"
+          pathUi?.path === "stock_out" && !active && ""
         )}
       >
         <div className="flex items-start gap-2.5">

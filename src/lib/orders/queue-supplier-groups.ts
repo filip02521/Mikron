@@ -56,17 +56,17 @@ export function supplierGroupIndexByOrderId(
 }
 
 const DELIVERY_GROUP_STYLES = [
-  { headerBg: "bg-slate-100/90", itemBg: "bg-white", border: "border-l-violet-500" },
+  { headerBg: "bg-slate-100/90", itemBg: "bg-white", border: "" },
   { headerBg: "bg-slate-100/80", itemBg: "bg-slate-50/40", border: "border-l-slate-500" },
-  { headerBg: "bg-violet-100/70", itemBg: "bg-violet-50/30", border: "border-l-violet-400" },
-  { headerBg: "bg-indigo-100/60", itemBg: "bg-indigo-50/25", border: "border-l-indigo-400" },
+  { headerBg: "bg-violet-100/70", itemBg: "bg-violet-50/30", border: "" },
+  { headerBg: "bg-indigo-100/60", itemBg: "bg-indigo-50/25", border: "" },
 ] as const;
 
 const INFORMACJA_GROUP_STYLES = [
-  { headerBg: "bg-slate-100/90", itemBg: "bg-white", border: "border-l-sky-500" },
-  { headerBg: "bg-sky-100/70", itemBg: "bg-sky-50/30", border: "border-l-sky-400" },
+  { headerBg: "bg-slate-100/90", itemBg: "bg-white", border: "" },
+  { headerBg: "bg-sky-100/70", itemBg: "bg-sky-50/30", border: "" },
   { headerBg: "bg-slate-100/80", itemBg: "bg-slate-50/40", border: "border-l-slate-400" },
-  { headerBg: "bg-cyan-100/50", itemBg: "bg-cyan-50/25", border: "border-l-cyan-500" },
+  { headerBg: "bg-cyan-100/50", itemBg: "bg-cyan-50/25", border: "" },
 ] as const;
 
 type QueueTableVariant = "delivery" | "informacja";
@@ -109,5 +109,5 @@ export function queueSupplierLeadingCellClass(
   const variant = options?.variant ?? "delivery";
   const palette = supplierGroupPalette(options?.stripeIndex ?? groupIndex, variant);
   const isHeader = options?.isHeader ?? false;
-  return cn(isHeader ? "border-l-[3px]" : "border-l-2", palette.border);
+  return cn(isHeader ? "" : "", palette.border);
 }

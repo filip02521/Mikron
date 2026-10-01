@@ -27,7 +27,7 @@ export function TeethPanelSection({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-md border border-slate-200/80 bg-[var(--card)] shadow-sm",
+        "overflow-hidden rounded-md border border-slate-200/80 bg-[var(--card)]",
         className,
       )}
     >
@@ -95,7 +95,7 @@ export function TeethPanelEmpty({
           : "bg-indigo-50 text-indigo-700";
 
   return (
-    <div className="overflow-hidden rounded-md border border-slate-200/80 bg-[var(--card)] shadow-sm">
+    <div className="overflow-hidden rounded-md border border-slate-200/80 bg-[var(--card)]">
       <div className={cn("py-8 text-center", panelSectionInsetClass)}>
         <div
           className={cn(
@@ -121,7 +121,7 @@ export function TeethPanelListSkeleton({ groups = 3 }: { groups?: number }) {
       {Array.from({ length: groups }).map((_, index) => (
         <div
           key={index}
-          className="overflow-hidden rounded-md border border-slate-200/80 bg-[var(--card)] shadow-sm motion-safe:animate-pulse"
+          className="overflow-hidden rounded-md border border-slate-200/80 bg-[var(--card)] motion-safe:animate-pulse"
         >
           <div className="border-b border-slate-100 px-4 py-3">
             <div className="h-4 w-40 rounded bg-slate-200" />

@@ -124,7 +124,7 @@ export function CarrierPhonesPageClient({
           <button
             type="button"
             onClick={allExpanded ? collapseAll : expandAll}
-            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+            className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
           >
             {allExpanded ? "Zwiń wszystkie" : "Rozwiń wszystkie"}
           </button>
@@ -235,7 +235,7 @@ export function CarrierPhonesPageClient({
                               </div>
                               <a
                                 href={`tel:${phone.phone.replace(/[\s()-]/g, "")}`}
-                                className="flex shrink-0 items-center gap-1.5 rounded-lg bg-indigo-50 px-3.5 py-2 text-[12px] font-bold text-indigo-600 transition-all hover:bg-indigo-100 hover:text-indigo-700 active:scale-[0.97]"
+                                className="flex shrink-0 items-center gap-1.5 rounded-lg bg-neutral-50 px-3.5 py-2 text-[12px] font-bold text-indigo-600 transition-all hover:bg-neutral-100 hover:text-neutral-700 active:scale-[0.97]"
                               >
                                 <IconPhone size={13} aria-hidden />
                                 Zadzwoń

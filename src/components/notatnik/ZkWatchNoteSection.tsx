@@ -279,7 +279,7 @@ export function ZkWatchNoteSection({
       </div>
 
       {noteOpen && canEdit ? (
-        <div className="space-y-2 rounded-lg border border-indigo-200/80 bg-indigo-50/35 p-3">
+        <div className="space-y-2 rounded-lg border border-neutral-200 bg-neutral-50 p-3">
           <textarea
             rows={3}
             value={noteDraft}
@@ -312,7 +312,7 @@ export function ZkWatchNoteSection({
           </div>
         </div>
       ) : hasSavedNote ? (
-        <div className="rounded-lg border border-slate-200/90 bg-white px-3 py-2.5 shadow-[var(--shadow-card)]">
+        <div className="rounded-lg border border-slate-200/90 bg-white px-3 py-2.5">
           <p className="text-sm leading-relaxed text-slate-700">{savedNote}</p>
           {canEdit ? (
             <Button
@@ -327,9 +327,9 @@ export function ZkWatchNoteSection({
           ) : null}
         </div>
       ) : canEdit ? (
-        <div className="rounded-lg border border-dashed border-indigo-200/90 bg-indigo-50/25 px-3 py-3 sm:px-4 sm:py-3.5">
+        <div className="rounded-lg border border-dashed border-neutral-200 bg-neutral-50 px-3 py-3 sm:px-4 sm:py-3.5">
           <div className="flex items-start gap-3">
-            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200/80">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-700 ring-1 ring-neutral-200">
               <IconNotepad size={16} aria-hidden />
             </span>
             <div className="min-w-0 flex-1">

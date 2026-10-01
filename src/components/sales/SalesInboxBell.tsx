@@ -48,7 +48,7 @@ export function SalesInboxBellTrigger({
       aria-controls={SALES_INBOX_PANEL_ID}
       onClick={() => setOpen(!open)}
       className={cn(
-        "relative inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full border border-slate-200/90 bg-white text-slate-700 shadow-sm hover:border-indigo-200 hover:bg-indigo-50/40 hover:text-indigo-800",
+        "relative inline-flex shrink-0 cursor-pointer items-center justify-center rounded-full border border-slate-200/90 bg-white text-slate-700 hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-800",
         !ringing && "transition",
         buttonSize,
         controlFocusClass,

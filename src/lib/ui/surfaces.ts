@@ -2,7 +2,7 @@
 
 export const surface = {
   /** Główna karta strony (Card). */
-  panel: "rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)]",
+  panel: "rounded-md border border-slate-200/80 bg-white",
   /** Karta / wiersz wewnątrz sekcji. */
   nested: "rounded-md border border-slate-200 bg-white",
   /** Delikatne tło pod listą / metrykami. */
@@ -36,31 +36,31 @@ export const sidePanelContentClass =
   "flex-1 overflow-y-auto px-5 py-5";
 
 export const modalPanelClass =
-  "relative flex flex-col overflow-hidden rounded-md border border-slate-200/80 bg-white shadow-[var(--shadow-card-elevated)] ring-1 ring-slate-900/5";
+  "relative flex flex-col overflow-hidden rounded-md border border-slate-200/80 bg-white ring-1 ring-slate-900/5";
 
 /** Prawy panel z tabelą — szerokość jak ModalShell xl / karty dostawców. */
 export const sideSheetWidePanelClass =
-  "flex w-full max-w-none flex-col border-l border-slate-200/90 bg-[var(--card)] shadow-[var(--shadow-card-elevated)] sm:w-[min(calc(100%-0.75rem),72rem)]";
+  "flex w-full max-w-none flex-col border-l border-slate-200/90 bg-[var(--card)] sm:w-[min(calc(100%-0.75rem),72rem)]";
 
 export const choiceChipClass = {
   order:
     "flex cursor-pointer items-center gap-2 rounded-md border border-slate-200 text-sm transition has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50",
   informacja:
-    "flex cursor-pointer items-center gap-2 rounded-md border border-sky-200 text-sm transition has-[:checked]:border-sky-500 has-[:checked]:bg-sky-50",
+    "flex cursor-pointer items-center gap-2 rounded-md border border-neutral-200 text-sm transition has-[:checked]:border-sky-500 has-[:checked]:bg-sky-50",
   paddingMd: "px-4 py-3",
   paddingSm: "px-3 py-2",
 } as const;
 
 export const buttonGroupShellClass =
-  "inline-flex items-stretch overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm";
+  "inline-flex items-stretch overflow-hidden rounded-md border border-slate-200 bg-white";
 
 /** Grupa akcji w wierszu panelu dziennego — wysokość obudowy; segmenty wypełniają przez h-full. */
 export const panelActionBarShellClass =
-  "inline-flex h-9 min-h-9 w-full items-stretch overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm sm:h-7 sm:min-h-7 sm:w-auto";
+  "inline-flex h-9 min-h-9 w-full items-stretch overflow-hidden rounded-md border border-slate-200 bg-white sm:h-7 sm:min-h-7 sm:w-auto";
 
 /** Grupa akcji w wierszu /moje — ta sama wysokość co toolbar karty (h-10). */
 export const mojeActionBarShellClass =
-  "inline-flex h-10 min-h-10 w-full items-stretch overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm sm:w-auto";
+  "inline-flex h-10 min-h-10 w-full items-stretch overflow-hidden rounded-md border border-slate-200/90 bg-white sm:w-auto";
 
 export const buttonGroupItemClass = "border-0 shadow-none";
 

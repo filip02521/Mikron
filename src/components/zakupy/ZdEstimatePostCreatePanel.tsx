@@ -830,7 +830,7 @@ export function ZdEstimatePostCreatePanel({
                         {ZD_ESTIMATE_UI.postCreateNoContact}{" "}
                         <Link
                           href={cardsHref}
-                          className="font-medium text-indigo-700 underline-offset-2 hover:underline"
+                          className="font-medium text-neutral-700 underline-offset-2 hover:underline"
                         >
                           {ZD_ESTIMATE_UI.postCreateCardsLink}
                         </Link>
@@ -1057,7 +1057,7 @@ function NextStep({
           "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
           done
             ? "bg-emerald-100 text-emerald-800"
-            : "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
+            : "bg-indigo-50 text-indigo-700 ring-1 ring-neutral-200"
         )}
         aria-hidden
       >

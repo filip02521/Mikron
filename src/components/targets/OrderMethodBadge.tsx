@@ -12,9 +12,9 @@ import {
 } from "@/components/icons/StrokeIcons";
 
 const STYLES: Record<OrderMethodKind, string> = {
-  mail: "bg-sky-50 text-sky-800 border-sky-200",
+  mail: "bg-sky-50 text-sky-800 border-neutral-200",
   phone: "bg-amber-50 text-amber-900 border-amber-200",
-  web: "bg-violet-50 text-violet-800 border-violet-200",
+  web: "bg-violet-50 text-violet-800 border-neutral-200",
   other: "bg-slate-50 text-slate-600 border-slate-200",
 };
 

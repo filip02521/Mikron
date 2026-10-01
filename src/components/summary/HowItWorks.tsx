@@ -87,7 +87,7 @@ export function HowItWorksContent() {
 /** Zachowane dla ewentualnego użycia poza panelem dziennym. */
 export function HowItWorks() {
   return (
-    <details className="group rounded-lg border border-slate-200/90 bg-white shadow-sm open:shadow-md">
+    <details className="group rounded-lg border border-slate-200/90 bg-white open:shadow-md">
       <summary className="cursor-pointer list-none px-6 py-4 text-sm font-semibold text-slate-900 marker:content-none [&::-webkit-details-marker]:hidden">
         <span className="flex items-center justify-between gap-2">
           Jak działa panel dzienny?

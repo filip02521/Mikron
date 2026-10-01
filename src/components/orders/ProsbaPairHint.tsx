@@ -49,7 +49,7 @@ export function ProsbaPairHint({
 
   if (!text) return null;
   return (
-    <p className="mt-1.5 text-[11px] leading-snug text-indigo-800/90">
+    <p className="mt-1.5 text-[11px] leading-snug text-neutral-800">
       {text}
     </p>
   );

@@ -17,7 +17,7 @@ export function InformacjaViaPanelProcurementCallout({ className }: { className?
   return (
     <div
       className={cn(
-        "border-b border-indigo-100/90 bg-indigo-50/45 px-3 py-2.5 sm:px-4",
+        "border-b border-neutral-100 bg-neutral-50 px-3 py-2.5 sm:px-4",
         className
       )}
     >
@@ -25,7 +25,7 @@ export function InformacjaViaPanelProcurementCallout({ className }: { className?
         <Badge variant="default" className="shrink-0 text-[10px]">
           {INFORMACJA_VIA_PANEL_BADGE}
         </Badge>
-        <p className="min-w-0 flex-1 text-xs leading-relaxed text-indigo-950">
+        <p className="min-w-0 flex-1 text-xs leading-relaxed text-neutral-900">
           {INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER}
         </p>
       </div>
@@ -38,14 +38,14 @@ export function InformacjaDirectQueueIntro({ className }: { className?: string }
   return (
     <div
       className={cn(
-        "border-b border-violet-100/90 bg-violet-50/40 px-3 py-2.5 sm:px-4",
+        "border-b border-neutral-100 bg-neutral-50 px-3 py-2.5 sm:px-4",
         className
       )}
     >
-      <p className="text-xs leading-relaxed text-violet-950">
-        <strong className="font-semibold text-violet-950">Tylko dostępność</strong> — handlowiec
+      <p className="text-xs leading-relaxed text-neutral-900">
+        <strong className="font-semibold text-neutral-900">Tylko dostępność</strong> — handlowiec
         czeka na e-mail z magazynu po przyjęciu towaru.{" "}
-        <span className="text-violet-900/85">
+        <span className="text-neutral-900">
           Zamówienia u dostawcy obsługujesz w Prośbach handlowców (badge{" "}
           <span className="font-medium">{INFORMACJA_VIA_PANEL_BADGE}</span>).
         </span>
@@ -83,8 +83,8 @@ function FlowCard({ flow }: { flow: InformacjaFlowUiDef }) {
     flow.tone === "amber"
       ? "border-amber-200 bg-amber-50/90"
       : flow.tone === "indigo"
-        ? "border-indigo-200 bg-indigo-50/90"
-        : "border-violet-200 bg-violet-50/90";
+        ? "border-neutral-200 bg-indigo-50/90"
+        : "border-neutral-200 bg-violet-50/90";
 
   return (
     <div className={cn("rounded-md border px-2.5 py-2", borderTone)}>
@@ -104,7 +104,7 @@ export function InformacjaFlowLegendDetailed({ className }: { className?: string
   return (
     <div className={cn("space-y-2", className)}>
       <InformacjaFlowLegend variant="full" />
-      <div className="rounded-md border border-indigo-200 bg-indigo-50/90 px-2.5 py-2 text-[11px] leading-relaxed text-slate-700">
+      <div className="rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-[11px] leading-relaxed text-slate-700">
         <p className="font-medium text-slate-900">{INFORMACJA_VIA_PANEL_UI.label}</p>
         <p className="mt-0.5 text-slate-600">{INFORMACJA_VIA_PANEL_UI.short}</p>
         <ol className="mt-1.5 list-decimal space-y-0.5 pl-4 text-slate-600">

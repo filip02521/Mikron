@@ -15,7 +15,7 @@ export function DeliveryTodaySection({
   const totalCount = zdSuppliers.length + scheduledSuppliers.length;
 
   return (
-    <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/30 shadow-sm">
+    <div className="rounded-xl border border-emerald-200/70 bg-emerald-50/30">
       <div className="flex items-center gap-3 border-b border-emerald-100/80 px-4 py-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
           <IconCalendarRange size={18} />

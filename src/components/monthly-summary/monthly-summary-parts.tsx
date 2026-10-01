@@ -11,7 +11,7 @@ const TONE_STYLES: Record<
   indigo: {
     bg: "bg-indigo-50/80",
     text: "text-indigo-700",
-    ring: "ring-indigo-200/70",
+    ring: "ring-neutral-200",
     bar: "bg-indigo-500",
   },
   emerald: {
@@ -29,13 +29,13 @@ const TONE_STYLES: Record<
   sky: {
     bg: "bg-sky-50/80",
     text: "text-sky-700",
-    ring: "ring-sky-200/70",
+    ring: "ring-neutral-200",
     bar: "bg-sky-500",
   },
   violet: {
     bg: "bg-violet-50/80",
     text: "text-violet-700",
-    ring: "ring-violet-200/70",
+    ring: "ring-neutral-200",
     bar: "bg-violet-500",
   },
   slate: {

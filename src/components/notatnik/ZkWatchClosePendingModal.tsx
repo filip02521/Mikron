@@ -33,7 +33,7 @@ function polishCountLabel(
 const PENDING_ACK_BADGE_CLASS: Record<ZkWatchPendingAckKind, string> = {
   pickup: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/80",
   teeth_handover: "bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200/80",
-  availability: "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200/80",
+  availability: "bg-sky-50 text-sky-700 ring-1 ring-inset ring-neutral-200",
   cancel_notice: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200/80",
   cancelled: "bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200/80",
   zd_deadline: "bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200/80",

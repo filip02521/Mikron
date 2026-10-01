@@ -54,7 +54,7 @@ function SummaryChip({
 
 function ReservationZkCard({ row }: { row: ZdEstimateReservedZkRow }) {
   return (
-    <li className="rounded-lg border border-slate-200/90 bg-white px-3.5 py-3 shadow-sm shadow-slate-900/[0.02] sm:px-4">
+    <li className="rounded-lg border border-slate-200/90 bg-white px-3.5 py-3 sm:px-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">

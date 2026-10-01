@@ -38,7 +38,7 @@ function StepIcon({ state }: { state: ProsbaReadinessStepState }) {
   }
   if (state === "handoff") {
     return (
-      <span className="flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-indigo-300 bg-indigo-50 text-indigo-700">
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-neutral-200 bg-indigo-50 text-indigo-700">
         <IconChevronRight size={13} strokeWidth={2.5} aria-hidden />
       </span>
     );
@@ -55,19 +55,19 @@ function toneStyles(tone: ProsbaFormReadinessView["tone"]) {
   switch (tone) {
     case "ready":
       return {
-        shell: "border-emerald-200 bg-gradient-to-br from-emerald-50/90 to-white",
+        shell: "border-emerald-200 bg-emerald-50",
         headline: "text-emerald-950",
         subline: "text-emerald-800/90",
       };
     case "blocked":
       return {
-        shell: "border-amber-200 bg-gradient-to-br from-amber-50/80 to-white",
+        shell: "border-amber-200 bg-amber-50",
         headline: "text-amber-950",
         subline: "text-amber-900/85",
       };
     case "handoff":
       return {
-        shell: "border-indigo-200 bg-gradient-to-br from-indigo-50/70 to-white",
+        shell: "border-neutral-200 bg-white",
         headline: "text-indigo-950",
         subline: "text-indigo-800/90",
       };
@@ -212,7 +212,7 @@ export function ProsbaFormReadiness({
 
   return (
     <div
-      className={cn("overflow-hidden rounded-md border shadow-sm", styles.shell, className)}
+      className={cn("overflow-hidden rounded-md border", styles.shell, className)}
       aria-live="polite"
     >
       {formMessage ? (

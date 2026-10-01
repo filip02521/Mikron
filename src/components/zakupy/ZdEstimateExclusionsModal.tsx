@@ -77,8 +77,8 @@ function ExclusionRow({
   return (
     <li
       className={cn(
-        "rounded-lg border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm shadow-slate-900/[0.02]",
-        editing && "border-indigo-200/80 ring-1 ring-indigo-100"
+        "rounded-lg border border-slate-200/90 bg-white px-4 py-3.5",
+        editing && "border-neutral-200 ring-1 ring-neutral-100"
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">

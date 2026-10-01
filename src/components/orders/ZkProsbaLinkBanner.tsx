@@ -65,12 +65,12 @@ export function ZkProsbaLinkBanner({
         chipTone: "amber",
       }
     : {
-        shell: "border-violet-200/90 bg-violet-50/95",
+        shell: "border-neutral-200 bg-violet-50/95",
         accent: "bg-violet-500",
         title: "text-violet-950",
         meta: "text-violet-900/80",
         body: "text-violet-950/90",
-        note: "border-violet-200/80 bg-white/70 text-violet-950",
+        note: "border-neutral-200 bg-white/70 text-violet-950",
         badge: "purple",
         chipTone: "violet",
       };
@@ -89,7 +89,7 @@ export function ZkProsbaLinkBanner({
     <div
       className={cn(
         "sticky top-0 z-20 border-b backdrop-blur-sm",
-        "shadow-[0_6px_16px_-14px_rgba(15,23,42,0.35)]",
+        "",
         tone.shell
       )}
       role="status"

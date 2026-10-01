@@ -22,11 +22,11 @@ import {
 } from "@/lib/teeth/teeth-queue-view-model";
 
 const STATE_BADGE: Record<TeethOrderQueueState, string> = {
-  ready: "bg-indigo-50 text-indigo-700 ring-indigo-200",
+  ready: "bg-indigo-50 text-indigo-700 ring-neutral-200",
   missing_list: "bg-amber-50 text-amber-800 ring-amber-300",
   incomplete: "bg-amber-50 text-amber-800 ring-amber-300",
   needs_header: "bg-amber-50 text-amber-800 ring-amber-300",
-  informacja: "bg-sky-50 text-sky-700 ring-sky-200",
+  informacja: "bg-sky-50 text-sky-700 ring-neutral-200",
 };
 
 const STATE_FIX_HINT: Partial<Record<TeethOrderQueueState, string>> = {
@@ -193,7 +193,7 @@ export function TeethQueueOrderRow({
                           ? "cursor-default bg-white text-slate-700 ring-slate-200"
                         : lineSelected
                           ? "bg-indigo-600 text-white ring-indigo-600"
-                          : "bg-white text-slate-800 ring-slate-200 hover:ring-indigo-300",
+                          : "bg-white text-slate-800 ring-slate-200 hover:ring-neutral-300",
                     )}
                   >
                     <span>{label}</span>

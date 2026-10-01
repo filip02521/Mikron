@@ -31,11 +31,11 @@ export function DepartmentBoardProcurementGuide() {
       <HelpBlock title="Gdzie indziej">
         <p>
           Notatki wewnętrzne działu — w{" "}
-          <Link href="/notatki" className="font-medium text-indigo-800 hover:underline">
+          <Link href="/notatki" className="font-medium text-neutral-800 hover:underline">
             Notatki
           </Link>
           . Prośby o towar — w{" "}
-          <Link href="/podsumowanie" className="font-medium text-indigo-800 hover:underline">
+          <Link href="/podsumowanie" className="font-medium text-neutral-800 hover:underline">
             panelu dziennym
           </Link>
           .

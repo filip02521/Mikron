@@ -16,7 +16,7 @@ export function ProsbaSupplierVacationNotice({
   return (
     <div
       className={cn(
-        "rounded-lg border-2 border-amber-300/90 px-3 py-2.5 shadow-sm ring-1 ring-amber-200/70 sm:px-3.5",
+        "rounded-lg border-2 border-amber-300/90 px-3 py-2.5 ring-1 ring-amber-200/70 sm:px-3.5",
         noticeToneShellClass.warning,
         className
       )}

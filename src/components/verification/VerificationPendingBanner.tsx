@@ -28,22 +28,14 @@ export function VerificationPendingBanner({
     <div
       role="alert"
       className={cn(
-        "relative overflow-hidden rounded-lg border border-amber-300/90 bg-gradient-to-br from-amber-50 via-white to-amber-50/50 shadow-[var(--shadow-card-elevated)] ring-1 ring-amber-200/80",
+        "relative overflow-hidden rounded-lg border border-amber-300/90 bg-amber-50 ring-1 ring-amber-200/80",
         className
       )}
     >
-      <div
-        className="pointer-events-none absolute -right-8 -top-10 h-32 w-32 rounded-full bg-amber-200/35 blur-2xl"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute bottom-0 left-0 h-1 w-full bg-gradient-to-r from-amber-400 via-amber-300 to-amber-200"
-        aria-hidden
-      />
 
       <div className="relative flex flex-col gap-4 p-4 sm:flex-row sm:items-stretch sm:gap-5 sm:p-5">
         <SectionHeadingIcon
-          tileClassName="h-14 w-14 rounded-md bg-amber-100 text-amber-800 shadow-inner shadow-amber-900/5"
+          tileClassName="h-14 w-14 rounded-md bg-amber-100 text-amber-800"
           className="self-start sm:self-center"
         >
           <IconClipboardPen size={28} />

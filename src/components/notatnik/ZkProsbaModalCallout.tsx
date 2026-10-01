@@ -18,12 +18,12 @@ export type ZkProsbaModalCalloutTone =
 
 const TONE_CLASS: Record<ZkProsbaModalCalloutTone, string> = {
   info: "border-slate-200/80 bg-slate-50/80 text-slate-700",
-  sky: "border-sky-200/70 bg-sky-50/60 text-sky-900",
+  sky: "border-neutral-200 bg-sky-50/60 text-sky-900",
   amber: "border-amber-200/80 bg-amber-50/70 text-amber-950",
   emerald: "border-emerald-200/70 bg-emerald-50/50 text-emerald-900",
   rose: "border-rose-200/80 bg-rose-50/70 text-rose-800",
   neutral: "border-slate-200/80 bg-white text-slate-700",
-  indigo: "border-indigo-200/70 bg-indigo-50/50 text-indigo-950",
+  indigo: "border-neutral-200 bg-indigo-50/50 text-indigo-950",
 };
 
 const ICON_CLASS: Record<ZkProsbaModalCalloutTone, string> = {
@@ -67,7 +67,7 @@ export function ZkProsbaModalCallout({
               size="sm"
               className={cn(
                 "mt-0.5 shrink-0",
-                tone === "sky" && "border-sky-200 border-t-sky-600"
+                tone === "sky" && "border-neutral-200 border-t-sky-600"
               )}
             />
           )

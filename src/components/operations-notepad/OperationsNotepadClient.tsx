@@ -415,7 +415,7 @@ export function OperationsNotepadClient({
             description={`Tablica działu ${deptLabel} — zespół może edytować, archiwizować i przestawiać te notatki.`}
             count={publicNotes.length || undefined}
             icon={<IconUsers size={17} />}
-            tileClassName="bg-sky-100 text-sky-800"
+            tileClassName="bg-neutral-100 text-neutral-800"
             className="overflow-visible"
             bodyClassName="overflow-visible"
           >

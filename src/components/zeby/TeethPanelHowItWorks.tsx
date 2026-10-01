@@ -35,7 +35,7 @@ export function TeethPanelHowItWorksContent() {
           </li>
           <li>
             <strong className="font-medium text-slate-800">Cykl zębów</strong> — ustawiasz w{" "}
-            <Link href={teethSupplierCardsHref()} className="font-medium text-indigo-700 underline">
+            <Link href={teethSupplierCardsHref()} className="font-medium text-neutral-700 underline">
               kartach dostawców
             </Link>
             .

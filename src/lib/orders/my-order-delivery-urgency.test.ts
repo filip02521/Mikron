@@ -162,8 +162,8 @@ describe("sortOrderedProgressByDelivery", () => {
 describe("deliveryUrgencyRowVisual", () => {
   it("zwraca akcent tylko dla po terminie i dziś", () => {
     expect(deliveryUrgencyRowVisual("tomorrow")).toBeNull();
-    expect(deliveryUrgencyRowVisual("overdue")?.borderAccent).toContain("amber");
-    expect(deliveryUrgencyRowVisual("today")?.borderAccent).toContain("indigo");
+    expect(deliveryUrgencyRowVisual("overdue")?.collapsedBg).toContain("amber");
+    expect(deliveryUrgencyRowVisual("today")?.borderAccent).not.toContain("border-l-");
     expect(deliveryUrgencyRowVisual("later")).toBeNull();
   });
 
@@ -176,12 +176,12 @@ describe("deliveryUrgencyRowVisual", () => {
     ).toBeNull();
   });
 
-  it("akcentuje częściową dostawę na niebiesko", () => {
+  it("częściowa dostawa — bez kolorowego paska", () => {
     const partial = presentMyOrders([partialOrder], []).zamowienia[0]!;
     const visual = resolveMyOrderDeliveryRowVisual(partial, at);
-    expect(visual?.borderAccent).toContain("sky");
-    expect(visual?.collapsedBg).toContain("sky");
-    expect(resolveMyOrderPartialStockRowVisual(partial)?.borderAccent).toContain("sky");
+    expect(visual).not.toBeNull();
+    expect(visual?.borderAccent).not.toContain("border-l-");
+    expect(resolveMyOrderPartialStockRowVisual(partial)?.borderAccent ?? "").not.toContain("border-l-");
   });
 });
 

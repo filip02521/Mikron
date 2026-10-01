@@ -38,9 +38,9 @@ describe("queue supplier groups", () => {
     expect(groups[0]!.orders).toHaveLength(2);
   });
 
-  it("pasek koloru jest na pierwszej komórce, nie na tr", () => {
+  it("bez kolorowych pasków po lewej", () => {
     expect(queueSupplierRowClass(0)).not.toContain("border-l-");
-    expect(queueSupplierLeadingCellClass(0)).toContain("border-l-");
-    expect(queueSupplierLeadingCellClass(1, { variant: "informacja" })).toContain("border-l-sky");
+    expect(queueSupplierLeadingCellClass(0)).not.toContain("border-l-");
+    expect(queueSupplierLeadingCellClass(1, { variant: "informacja" })).not.toContain("border-l-");
   });
 });

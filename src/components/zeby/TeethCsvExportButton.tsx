@@ -43,7 +43,7 @@ export function TeethCsvExportButton({
       type="button"
       disabled={pending}
       onClick={handleExport}
-      className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50"
+      className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50"
       aria-label="Eksportuj CSV"
     >
       {pending ? <Spinner size="sm" /> : <IconTruck size={14} strokeWidth={2} />}

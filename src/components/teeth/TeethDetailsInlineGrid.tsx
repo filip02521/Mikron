@@ -107,7 +107,7 @@ export function TeethDetailsInlineGrid({
 
   if (safeQty === 1 && allSame) {
     return (
-      <div className="rounded-md border border-slate-200/80 bg-slate-50/30 p-3 shadow-sm" role="status" aria-live="polite">
+      <div className="rounded-md border border-slate-200/80 bg-slate-50/30 p-3" role="status" aria-live="polite">
         <div className="mb-2 flex items-center gap-2">
           <span className={cn(panelTypography.rowTitle, "text-sm")}>Ząb — {label}</span>
           <Badge variant="purple" className="text-[10px]">{label}</Badge>
@@ -135,7 +135,7 @@ export function TeethDetailsInlineGrid({
   }
 
   return (
-    <div className="rounded-md border border-slate-200/80 bg-slate-50/30 p-3 shadow-sm" role="status" aria-live="polite">
+    <div className="rounded-md border border-slate-200/80 bg-slate-50/30 p-3" role="status" aria-live="polite">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className={cn(panelTypography.rowTitle, "text-sm")}>
@@ -147,7 +147,7 @@ export function TeethDetailsInlineGrid({
           {!allSame ? (
             <button
               type="button"
-              className="text-xs font-medium text-indigo-700 hover:text-indigo-900"
+              className="text-xs font-medium text-neutral-700 hover:text-neutral-900"
               onClick={copyToAll}
               disabled={disabled}
             >

@@ -39,7 +39,7 @@ export function NotatnikArchiveCrossLink({
           Zarchiwizowane notatki są w{" "}
           <Link
             href={otherHref}
-            className="font-medium text-indigo-700 underline decoration-indigo-300/80 underline-offset-2 hover:text-indigo-900"
+            className="font-medium text-neutral-700 underline decoration-indigo-300/80 underline-offset-2 hover:text-neutral-900"
           >
             Notatniku → Archiwum
           </Link>
@@ -50,7 +50,7 @@ export function NotatnikArchiveCrossLink({
           Zamknięte sprawy ZK są w{" "}
           <Link
             href={otherHref}
-            className="font-medium text-indigo-700 underline decoration-indigo-300/80 underline-offset-2 hover:text-indigo-900"
+            className="font-medium text-neutral-700 underline decoration-indigo-300/80 underline-offset-2 hover:text-neutral-900"
           >
             ZK czekające → Archiwum
           </Link>

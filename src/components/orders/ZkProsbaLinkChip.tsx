@@ -18,7 +18,7 @@ const chipToneStyles = {
     number: salesZkNumberClass,
     pending: "text-violet-800",
     spinner: "border-slate-200 border-t-violet-600",
-    linkHover: "hover:text-violet-800",
+    linkHover: "hover:text-neutral-800",
   },
   amber: {
     label:

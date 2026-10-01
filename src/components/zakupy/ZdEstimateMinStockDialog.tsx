@@ -252,7 +252,7 @@ function MinStockDialogForm({
             className={cn(
               "rounded-lg border px-4 py-3",
               minAktywny
-                ? "border-indigo-200/80 bg-indigo-50/40"
+                ? "border-neutral-200 bg-indigo-50/40"
                 : "border-slate-200/70 bg-slate-50/50"
             )}
           >
@@ -287,7 +287,7 @@ function MinStockDialogForm({
               />
             </div>
             {minAktywny ? (
-              <p className="mt-2 text-[11px] leading-snug text-indigo-700/80">
+              <p className="mt-2 text-[11px] leading-snug text-neutral-700">
                 {roznica > 0
                   ? `Minimum podbija cel o ${Math.round(celZMin - celBazowy)} szt — zamówienie rośnie o ${roznica} szt.`
                   : `Minimum podbija cel, ale stan/ZD już pokrywają zapotrzebowanie.`}

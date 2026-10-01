@@ -26,7 +26,7 @@ function shipmentFormLabel(value: string): string {
 function statusBadgeClass(status: IndividualOrderStatus): string {
   switch (status) {
     case "Zamowione":
-      return "bg-sky-50 text-sky-700 ring-1 ring-sky-200/80";
+      return "bg-neutral-50 text-neutral-700 ring-1 ring-neutral-200";
     case "Czesciowo_zrealizowane":
       return "bg-amber-50 text-amber-700 ring-1 ring-amber-200/80";
     case "Zrealizowane":
@@ -52,7 +52,7 @@ function statusLabel(status: IndividualOrderStatus): string {
 function MiniStat({ label, value, compact = false }: { label: string; value: string | number; compact?: boolean }) {
   return (
     <div className={cn(
-      "rounded-lg border border-slate-200/70 bg-slate-50/80 text-left shadow-[var(--shadow-card)]",
+      "rounded-lg border border-slate-200/70 bg-slate-50/80 text-left",
       compact ? "px-2 py-1.5" : "px-2.5 py-2"
     )}>
       <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
@@ -76,7 +76,7 @@ function statusBadge(status: DeliveryStatus): { label: string; className: string
     case "partial":
       return { label: "Częściowo", className: "bg-amber-100 text-amber-700 ring-1 ring-amber-200/80" };
     default:
-      return { label: "Oczekuje", className: "bg-sky-100 text-sky-700 ring-1 ring-sky-200/80" };
+      return { label: "Oczekuje", className: "bg-sky-100 text-sky-700 ring-1 ring-neutral-200" };
   }
 }
 
@@ -98,7 +98,7 @@ function statusIconColor(status: DeliveryStatus): string {
     case "partial":
       return "bg-amber-100 text-amber-700";
     default:
-      return "bg-sky-100 text-sky-700";
+      return "bg-neutral-100 text-neutral-700";
   }
 }
 
@@ -120,7 +120,7 @@ function statusProgressTrack(status: DeliveryStatus): string {
     case "partial":
       return "bg-amber-100";
     default:
-      return "bg-sky-100";
+      return "bg-neutral-100";
   }
 }
 
@@ -159,7 +159,7 @@ export function UpcomingDeliverySupplierCard({
 
   return (
     <div className={cn(
-      "rounded-lg border shadow-sm transition hover:shadow-md",
+      "rounded-lg border transition hover:shadow-md",
       cardBorder(deliveryStatus)
     )}>
       <button

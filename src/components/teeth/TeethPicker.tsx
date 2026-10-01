@@ -206,9 +206,9 @@ function KlapkaWizard({
                 className={cn(
                   "flex size-6 items-center justify-center rounded text-[11px] font-bold tabular-nums transition-colors",
                   isActive
-                    ? "bg-violet-600 text-white ring-2 ring-violet-300"
+                    ? "bg-violet-600 text-white ring-2 ring-neutral-200"
                     : complete
-                      ? "bg-violet-100 text-violet-700 hover:bg-violet-200"
+                      ? "bg-violet-100 text-violet-700 hover:bg-neutral-100"
                       : "bg-slate-100 text-slate-400 hover:bg-slate-200",
                   disabled && "cursor-not-allowed opacity-50",
                 )}
@@ -272,7 +272,7 @@ function KlapkaWizard({
             Następna →
           </button>
         ) : (
-          <span className="rounded-md bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700">
+          <span className="rounded-md bg-neutral-50 px-3 py-1.5 text-xs font-medium text-neutral-700">
             Ostatnia klapka
           </span>
         )}

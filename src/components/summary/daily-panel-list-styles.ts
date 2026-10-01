@@ -18,9 +18,9 @@ export function dailyPanelFlatListClass(tone: DailyPanelListDivideTone = "neutra
     case "amber":
       return "divide-y divide-amber-100/80";
     case "indigo":
-      return "divide-y divide-indigo-100/70";
+      return "divide-y divide-neutral-100";
     case "sky":
-      return "divide-y divide-sky-100/80";
+      return "divide-y divide-neutral-100";
     default:
       return "divide-y divide-slate-100/90";
   }
@@ -32,13 +32,13 @@ export type DailyPanelCardAccent = "neutral" | "amber" | "sky" | "indigo";
 export function dailyPanelCardRowClass(accent: DailyPanelCardAccent = "neutral"): string {
   switch (accent) {
     case "amber":
-      return "rounded-md border border-amber-200/85 bg-amber-50/20 shadow-sm";
+      return "rounded-md border border-amber-200/85 bg-amber-50/20";
     case "sky":
-      return "rounded-md border border-sky-200/80 bg-sky-50/15 shadow-sm";
+      return "rounded-md border border-neutral-200 bg-neutral-50";
     case "indigo":
-      return "rounded-md border border-indigo-200/75 bg-indigo-50/10 shadow-sm";
+      return "rounded-md border border-neutral-200 bg-neutral-50";
     default:
-      return cn(surfaceCardClass, "shadow-[var(--shadow-card)]");
+      return cn(surfaceCardClass, "");
   }
 }
 
@@ -48,8 +48,8 @@ export function dailyPanelCardRowInteractiveClass(accent: DailyPanelCardAccent =
     dailyPanelCardRowClass(accent),
     "transition-shadow hover:shadow-md",
     accent === "amber" && "hover:border-amber-200/90",
-    accent === "sky" && "hover:border-sky-200/90",
-    accent === "indigo" && "hover:border-indigo-200/85",
-    accent === "neutral" && "hover:border-slate-300/85 hover:shadow-[var(--shadow-card-elevated)]"
+    accent === "sky" && "hover:border-neutral-300",
+    accent === "indigo" && "hover:border-neutral-300",
+    accent === "neutral" && "hover:border-slate-300/85"
   );
 }

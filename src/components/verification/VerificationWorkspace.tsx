@@ -671,7 +671,7 @@ export function VerificationWorkspace({
                 hint={PROSBA_FORM_SECTION_COPY.delegateProcurement.hint}
                 accent="indigo"
                 icon={<IconUserGroup size={17} />}
-                tileClassName="bg-indigo-100 text-indigo-800"
+                tileClassName="bg-neutral-100 text-neutral-800"
               >
                 <div
                   className={cn(
@@ -795,7 +795,7 @@ export function VerificationWorkspace({
                 "flex flex-wrap items-center gap-2 border-t border-slate-200 bg-white px-3 py-3 sm:px-4 lg:px-5",
                 !inModal &&
                   cn(
-                    "sticky z-10 bg-white/95 shadow-[0_-4px_16px_-8px_rgba(15,23,42,0.12)] backdrop-blur-sm",
+                    "sticky z-10 bg-white/95 backdrop-blur-sm",
                     stickyAboveMobileChromeClass
                   )
               )}

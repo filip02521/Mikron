@@ -65,16 +65,16 @@ export function ZkWatchAddSection({
         ref={panelRef}
         className={notatnikAddPanelShellClass}
       >
-        <div className="flex items-start justify-between gap-2 border-b border-indigo-100/80 px-3 py-2.5 sm:px-3.5">
+        <div className="flex items-start justify-between gap-2 border-b border-neutral-100 px-3 py-2.5 sm:px-3.5">
           <div className="flex min-w-0 items-start gap-2.5">
-            <SectionHeadingIcon tileClassName="bg-indigo-100 text-indigo-800" className="mt-0.5 h-8 w-8">
+            <SectionHeadingIcon tileClassName="bg-neutral-100 text-neutral-800" className="mt-0.5 h-8 w-8">
               <IconPlusCircle size={17} strokeWidth={2.25} />
             </SectionHeadingIcon>
             <div className="min-w-0">
-              <p className={cn(salesTypography.sectionLabel, "normal-case text-indigo-950")}>
+              <p className={cn(salesTypography.sectionLabel, "normal-case text-neutral-900")}>
                 {ZK_PAGE_SECTION_COPY.addTitle}
               </p>
-              <p className={cn("mt-0.5", salesTypography.sectionHint, "text-indigo-950/75")}>
+              <p className={cn("mt-0.5", salesTypography.sectionHint, "text-neutral-900")}>
                 {ZK_PAGE_SECTION_COPY.addDescription}
               </p>
             </div>
@@ -84,7 +84,7 @@ export function ZkWatchAddSection({
               type="button"
               variant="ghost"
               size="sm"
-              className="min-h-9 shrink-0 text-indigo-800 hover:bg-indigo-100/80"
+              className="min-h-9 shrink-0 text-neutral-800 hover:bg-neutral-100"
               onClick={collapse}
             >
               Zwiń

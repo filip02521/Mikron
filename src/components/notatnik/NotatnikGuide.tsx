@@ -35,7 +35,7 @@ export function NotatnikGuide({ surface }: { surface: NotatnikSurface }) {
             <p>
               Z pozycji ZK możesz złożyć prośbę do zakupów. Gdy towar dotrze, status zmieni się na
               magazynie — śledzisz to tutaj i w{" "}
-              <Link href={previewHref("/moje")} className="font-medium text-indigo-800 hover:underline">
+              <Link href={previewHref("/moje")} className="font-medium text-neutral-800 hover:underline">
                 Moje zamówienia
               </Link>
               .
@@ -64,7 +64,7 @@ export function NotatnikGuide({ surface }: { surface: NotatnikSurface }) {
           <HelpBlock title="ZK vs notatnik">
             <p>
               Zamówienia klientów (ZK) są w zakładce{" "}
-              <Link href={previewHref("/zk")} className="font-medium text-indigo-800 hover:underline">
+              <Link href={previewHref("/zk")} className="font-medium text-neutral-800 hover:underline">
                 ZK czekające
               </Link>
               . Notatnik to osobna lista przypomnień.

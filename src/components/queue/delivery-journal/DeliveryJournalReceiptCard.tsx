@@ -79,7 +79,7 @@ export function DeliveryJournalReceiptCard({
   };
 
   return (
-    <li className="rounded-md border border-slate-200/90 bg-white px-4 py-3 shadow-sm shadow-slate-900/[0.02]">
+    <li className="rounded-md border border-slate-200/90 bg-white px-4 py-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           {showDate ? (
@@ -124,7 +124,7 @@ export function DeliveryJournalReceiptCard({
             <button
               type="button"
               onClick={goToReceiveQueue}
-              className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-sky-600 transition hover:text-sky-800 hover:underline"
+              className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-sky-600 transition hover:text-neutral-800 hover:underline"
             >
               Przejdź do przyjęcia →
             </button>

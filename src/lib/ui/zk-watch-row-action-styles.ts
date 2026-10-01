@@ -32,7 +32,7 @@ export const zkWatchRowActionSecondaryClass = cn(
 /** CTA odbioru z regału (Odbierz w Moje) — lekko wyróżnione względem Otwórz prośbę. */
 export const zkWatchRowActionPickupClass = cn(
   zkWatchRowActionTextBaseClass,
-  "border border-violet-200/90 bg-violet-50 text-violet-800 shadow-sm hover:border-violet-300 hover:bg-violet-100/80 hover:text-violet-900"
+  "border border-neutral-200 bg-neutral-50 text-neutral-800 shadow-sm hover:border-neutral-300 hover:bg-neutral-100 hover:text-neutral-900"
 );
 
 /** Status pokrycia prośby (Obsłużone, Na regale itd.) — ten sam kształt co przyciski. */
@@ -64,12 +64,12 @@ export function zkWatchRowFollowUpIconClass({
       "border-dashed border-slate-200/90 bg-slate-50/50 text-slate-400 shadow-none hover:border-slate-300 hover:bg-slate-100/70 hover:text-slate-600",
     hasFollowUp &&
       !followUpDue &&
-      "border-violet-200/90 bg-violet-50 text-violet-700 hover:border-violet-300 hover:bg-violet-100/80 hover:text-violet-800",
+      "border-neutral-200 bg-violet-50 text-violet-700 hover:border-neutral-300 hover:bg-neutral-100 hover:text-neutral-800",
     followUpDue &&
       "border-amber-300/90 bg-amber-50 text-amber-800 hover:border-amber-400 hover:bg-amber-100/80 hover:text-amber-900",
     open &&
       (hasFollowUp
-        ? "ring-2 ring-indigo-100/90 ring-offset-1"
-        : "border-indigo-300 bg-indigo-50 text-indigo-700")
+        ? "ring-2 ring-neutral-100 ring-offset-1"
+        : "border-neutral-200 bg-indigo-50 text-indigo-700")
   );
 }

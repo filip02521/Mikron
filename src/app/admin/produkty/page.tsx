@@ -33,7 +33,7 @@ export default async function AdminProduktyPage() {
       action={
         <Link
           href="/admin/produkty/zeby"
-          className="inline-flex min-h-9 items-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+          className="inline-flex min-h-9 items-center rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           Produkty zębne
         </Link>

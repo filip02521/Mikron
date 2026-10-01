@@ -891,7 +891,7 @@ export function ZkWatchSection({
                   embedded={false}
                   open={statusGuideOpen}
                   onOpenChange={setStatusGuideOpen}
-                  className="rounded-md border border-indigo-100/80 bg-indigo-50/30"
+                  className="rounded-md border border-neutral-100 bg-neutral-50"
                 />
               ) : null}
 

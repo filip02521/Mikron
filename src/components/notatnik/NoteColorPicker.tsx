@@ -42,7 +42,7 @@ export function NoteColorPicker({
               sm ? "h-[1.125rem] w-[1.125rem]" : "h-6 w-6",
               NOTE_COLOR_SWATCH[color],
               selected
-                ? "border-slate-700 shadow-[0_0_0_1px_rgba(255,255,255,0.9)]"
+                ? "border-slate-700"
                 : "border-white/80 hover:border-slate-400"
             )}
           />

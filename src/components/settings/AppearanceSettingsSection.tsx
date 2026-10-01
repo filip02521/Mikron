@@ -64,7 +64,7 @@ export function AppearanceSettingsSection({
         title="Wygląd"
         description="Personalizacja interfejsu."
         leading={
-          <SectionHeadingIcon tileClassName="bg-sky-100 text-sky-800">
+          <SectionHeadingIcon tileClassName="bg-neutral-100 text-neutral-800">
             <IconGlobe size={20} />
           </SectionHeadingIcon>
         }
@@ -74,7 +74,7 @@ export function AppearanceSettingsSection({
           className={cn(
             "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-all",
             optimisticBg
-              ? "border-sky-200/80 bg-sky-50/40"
+              ? "border-neutral-200 bg-sky-50/40"
               : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
           )}
         >
@@ -119,7 +119,7 @@ export function AppearanceSettingsSection({
                   className={cn(
                     "min-h-9 rounded-md border px-2 py-1.5 text-center text-xs font-medium transition-all",
                     selected
-                      ? "border-sky-300 bg-sky-50 text-sky-900 shadow-sm"
+                      ? "border-neutral-200 bg-sky-50 text-sky-900 shadow-sm"
                       : "border-slate-200/70 bg-white text-slate-600 hover:border-slate-300/80 hover:bg-slate-50/40"
                   )}
                 >

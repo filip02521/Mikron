@@ -51,7 +51,7 @@ export function SalesPanelSyncControl({
           <button
             type="button"
             onClick={ctx.refreshNow}
-            className="font-medium text-indigo-600 underline decoration-indigo-300/60 underline-offset-2 hover:text-indigo-800"
+            className="font-medium text-indigo-600 underline decoration-indigo-300/60 underline-offset-2 hover:text-neutral-800"
           >
             odśwież
           </button>
