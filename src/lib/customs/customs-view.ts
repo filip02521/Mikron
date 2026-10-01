@@ -54,6 +54,11 @@ export type CustomsClearanceView = {
   status: "draft" | "sent";
   sentAt: string | null;
   sentEmailText: string | null;
+  hasInvoiceFile: boolean;
+  /** Adres agencji, na który wysłano mail z aplikacji (null = oznaczone ręcznie). */
+  agencyEmail: string | null;
+  /** Podpowiedź adresu agencji: ten z odprawy albo ostatnio użyty. */
+  defaultAgencyEmail: string | null;
   lines: CustomsLineView[];
   documents: CustomsSupplierDocumentView[];
   attachments: CustomsDocumentRef[];
