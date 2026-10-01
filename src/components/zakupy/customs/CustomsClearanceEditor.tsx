@@ -15,6 +15,10 @@ import {
   actionUploadCustomsInvoice,
 } from "@/app/actions/customs-clearance";
 import { actionGetCustomsDocumentUrl } from "@/app/actions/supplier-customs-documents";
+import {
+  actionExtractDocumentArticlesWithAi,
+  actionProposeCustomsLinesWithAi,
+} from "@/app/actions/customs-ai";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -145,7 +149,11 @@ function CustomsLineRow({
       <div className="min-w-0 space-y-1.5">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold tabular-nums text-slate-400">{line.position}.</span>
-          <Badge variant={STATE_BADGE[line.state]}>{CUSTOMS_LINE_STATE_LABEL[line.state]}</Badge>
+          <Badge variant={STATE_BADGE[line.state]}>
+            {line.state === "proposal" && line.card?.source === "ai"
+              ? "Propozycja AI"
+              : CUSTOMS_LINE_STATE_LABEL[line.state]}
+          </Badge>
         </div>
         <p className="text-sm leading-snug text-slate-900">{line.supplierName || "—"}</p>
         <p className="text-xs text-slate-500">
@@ -258,16 +266,32 @@ function CustomsLineRow({
 function SupplierDocumentArticles({
   doc,
   clearanceId,
+  aiEnabled,
   onNotice,
 }: {
   doc: CustomsSupplierDocumentView;
   clearanceId: string;
+  aiEnabled: boolean;
   onNotice: (n: Notice) => void;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(doc.articleCodes.join("\n"));
   const [pending, startTransition] = useTransition();
+  const [aiReading, setAiReading] = useState(false);
+
+  async function readWithAi() {
+    setAiReading(true);
+    const res = await actionExtractDocumentArticlesWithAi(doc.id);
+    setAiReading(false);
+    if (!res.ok) {
+      onNotice({ tone: "error", text: res.error });
+      return;
+    }
+    setText(res.text);
+    setOpen(true);
+    onNotice({ tone: "warning", text: `AI znalazło ${res.count} kodów w ${doc.fileName}. Sprawdź listę i kliknij „Zapisz listę”.` });
+  }
 
   function save() {
     startTransition(async () => {
@@ -298,6 +322,11 @@ function SupplierDocumentArticles({
         <span className="ml-auto text-xs text-slate-500">
           {doc.articleCodes.length ? `${doc.articleCodes.length} artykułów` : "brak listy artykułów"}
         </span>
+        {aiEnabled ? (
+          <Button variant="outline" size="sm" onClick={() => void readWithAi()} disabled={aiReading || pending}>
+            {aiReading ? "AI czyta…" : "Odczytaj kody (AI)"}
+          </Button>
+        ) : null}
         <Button variant="ghost" size="sm" onClick={() => setOpen((o) => !o)}>
           {open ? "Zwiń" : "Lista artykułów"}
         </Button>
@@ -321,7 +350,13 @@ function SupplierDocumentArticles({
   );
 }
 
-export function CustomsClearanceEditor({ view }: { view: CustomsClearanceView }) {
+export function CustomsClearanceEditor({
+  view,
+  aiEnabled,
+}: {
+  view: CustomsClearanceView;
+  aiEnabled: boolean;
+}) {
   const router = useRouter();
   const readOnly = view.status === "sent";
   const [notice, setNotice] = useState<Notice>(null);
@@ -343,6 +378,7 @@ export function CustomsClearanceEditor({ view }: { view: CustomsClearanceView })
     { confirmed: 0, confirmed_changed: 0, proposal: 0, missing: 0 }
   );
   const emailText = readOnly && view.sentEmailText ? view.sentEmailText : view.emailText;
+  const aiProposals = view.lines.filter((l) => l.state === "proposal" && l.card?.source === "ai").length;
 
   function run(task: () => Promise<Notice | void>) {
     startTransition(async () => {
@@ -509,6 +545,26 @@ export function CustomsClearanceEditor({ view }: { view: CustomsClearanceView })
                 {CUSTOMS_LINE_STATE_LABEL[s]}: {counts[s]}
               </Badge>
             ))}
+          {aiEnabled && !readOnly && (counts.missing > 0 || aiProposals > 0) ? (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pending}
+              onClick={() =>
+                run(async () => {
+                  const res = await actionProposeCustomsLinesWithAi(view.id);
+                  return res.ok
+                    ? {
+                        tone: "success",
+                        text: `AI zaproponowało opisy dla ${res.proposed} pozycji — sprawdź i zatwierdź.`,
+                      }
+                    : { tone: "error", text: res.error };
+                })
+              }
+            >
+              {pending ? "Pracuję…" : "Zaproponuj opisy (AI)"}
+            </Button>
+          ) : null}
           {!readOnly && counts.proposal > 0 ? (
             <Button
               size="sm"
@@ -560,7 +616,13 @@ export function CustomsClearanceEditor({ view }: { view: CustomsClearanceView })
         {view.documents.length ? (
           <ul className="divide-y divide-slate-100">
             {view.documents.map((doc) => (
-              <SupplierDocumentArticles key={doc.id} doc={doc} clearanceId={view.id} onNotice={setNotice} />
+              <SupplierDocumentArticles
+                key={doc.id}
+                doc={doc}
+                clearanceId={view.id}
+                aiEnabled={aiEnabled && !readOnly}
+                onNotice={setNotice}
+              />
             ))}
           </ul>
         ) : (

@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { actionExtractInvoiceWithAi } from "@/app/actions/customs-ai";
 import {
   actionCreateCustomsClearance,
+  actionUploadCustomsInvoice,
   actionListSupplierRecentZd,
   type CustomsClearanceListItem,
   type CustomsSupplierOption,
@@ -22,12 +24,16 @@ function formatDate(value: string | null): string {
   return `${d}.${m}.${y}`;
 }
 
+type AiInvoiceMeta = { total: number | null; hsCode: string | null; countryOfOrigin: string | null };
+
 export function CustomsClearanceListClient({
   suppliers,
   clearances,
+  aiEnabled,
 }: {
   suppliers: CustomsSupplierOption[];
   clearances: CustomsClearanceListItem[];
+  aiEnabled: boolean;
 }) {
   const router = useRouter();
   const [creating, setCreating] = useState(clearances.length === 0);
@@ -43,6 +49,34 @@ export function CustomsClearanceListClient({
   const [pastedLines, setPastedLines] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
+  const [aiMeta, setAiMeta] = useState<AiInvoiceMeta | null>(null);
+  const [aiReading, setAiReading] = useState(false);
+  const [aiNote, setAiNote] = useState<string | null>(null);
+
+  async function readInvoiceWithAi(file: File) {
+    setError(null);
+    setAiNote(null);
+    setAiReading(true);
+    const fd = new FormData();
+    fd.set("file", file);
+    const res = await actionExtractInvoiceWithAi(fd);
+    setAiReading(false);
+    if (!res.ok) {
+      setError(res.error);
+      return;
+    }
+    setInvoiceFile(file);
+    const inv = res.invoice;
+    if (inv.invoiceNumber) setInvoiceNumber(inv.invoiceNumber);
+    if (inv.invoiceDate) setInvoiceDate(inv.invoiceDate);
+    if (inv.currency) setCurrency(inv.currency);
+    setPastedLines(res.pasteText);
+    setAiMeta({ total: inv.total, hsCode: inv.hsCode, countryOfOrigin: inv.countryOfOrigin });
+    setAiNote(
+      `AI odczytało ${inv.lines.length} pozycji${inv.total != null ? `, suma ${inv.total.toLocaleString("pl-PL")} ${inv.currency ?? ""}` : ""}. Sprawdź pozycje poniżej przed utworzeniem.`
+    );
+  }
 
   async function onSupplierChange(id: string) {
     setSupplierId(id);
@@ -72,10 +106,18 @@ export function CustomsClearanceListClient({
         shipmentDescription,
         zdId: zdId ? Number(zdId) : null,
         pastedLines,
+        invoiceTotal: aiMeta?.total ?? null,
+        invoiceHsCode: aiMeta?.hsCode ?? null,
+        countryOfOrigin: aiMeta?.countryOfOrigin ?? null,
       });
       if (!res.ok) {
         setError(res.error);
         return;
+      }
+      if (invoiceFile) {
+        const fd = new FormData();
+        fd.set("file", invoiceFile);
+        await actionUploadCustomsInvoice(res.id, fd);
       }
       router.push(`/zakupy/odprawy/${res.id}`);
     });
@@ -138,6 +180,29 @@ export function CustomsClearanceListClient({
                 placeholder="przyrządy używane w protetyce stomatologicznej"
               />
             </Field>
+            {aiEnabled ? (
+              <Field
+                label="Faktura PDF / skan — odczyt AI"
+                hint={
+                  aiReading
+                    ? "AI czyta fakturę… (do 2 minut)"
+                    : (aiNote ?? "Uzupełni numer, datę, walutę i pozycje. Plik trafi do odprawy.")
+                }
+                state={aiNote ? "success" : "default"}
+                className="sm:col-span-2"
+              >
+                <input
+                  type="file"
+                  accept="application/pdf,image/*"
+                  disabled={aiReading || pending}
+                  className="block w-full pt-1 text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void readInvoiceWithAi(file);
+                  }}
+                />
+              </Field>
+            ) : null}
             <Field
               label="Pozycje z faktury (opcjonalnie)"
               hint="Skopiuj z Excela / PDF: kod ⇥ nazwa ⇥ ilość ⇥ cena — jedna pozycja na wiersz. Gdy puste, pozycje bierzemy z ZD."
@@ -162,7 +227,7 @@ export function CustomsClearanceListClient({
                 Anuluj
               </Button>
             ) : null}
-            <Button onClick={submit} disabled={!canSubmit || pending}>
+            <Button onClick={submit} disabled={!canSubmit || pending || aiReading}>
               {pending ? "Tworzę…" : "Utwórz odprawę"}
             </Button>
           </div>
