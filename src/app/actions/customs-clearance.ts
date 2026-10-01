@@ -47,6 +47,14 @@ function fail(error: string): { ok: false; error: string } {
   return { ok: false, error };
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Identyfikator z klienta — przycięty i sprawdzony jako UUID (inaczej null). */
+function cleanUuid(value: string | null | undefined): string | null {
+  const v = (value ?? "").trim();
+  return UUID_RE.test(v) ? v : null;
+}
+
 function errorText(e: unknown, fallback: string): string {
   return e instanceof Error && e.message ? e.message : fallback;
 }
@@ -218,12 +226,14 @@ export async function actionCreateCustomsClearance(
 ): Promise<Result<{ id: string; warnings: string[] }>> {
   const user = await requireOperations("mutate");
   if (!hasSupabaseConfig()) return fail("Brak konfiguracji bazy.");
+  const supplierId = cleanUuid(input.supplierId);
+  if (!supplierId) return fail("Wybierz dostawcę.");
   const supabase = createAdminClient();
 
   const { data: supplier } = await supabase
     .from("suppliers")
     .select("id, location, subiekt_kh_id")
-    .eq("id", input.supplierId)
+    .eq("id", supplierId)
     .single();
   if (!supplier) return fail("Wybierz dostawcę.");
   if ((supplier as { location: string }).location !== "IMPORT") {
@@ -241,7 +251,7 @@ export async function actionCreateCustomsClearance(
       const khIds = new Set<number>();
       const primary = Number((supplier as { subiekt_kh_id?: number | null }).subiekt_kh_id);
       if (Number.isFinite(primary) && primary > 0) khIds.add(primary);
-      for (const alias of await fetchSupplierSubiektKhAliases(input.supplierId)) khIds.add(alias.subiektKhId);
+      for (const alias of await fetchSupplierSubiektKhAliases(supplierId)) khIds.add(alias.subiektKhId);
       if (khIds.size && !extractDocKhIds(doc).some((id) => khIds.has(id))) {
         return fail(`${doc.dok_NrPelny ?? "To ZD"} nie należy do wybranego dostawcy.`);
       }
@@ -267,12 +277,12 @@ export async function actionCreateCustomsClearance(
   }
 
   const shipmentDescription =
-    input.shipmentDescription.trim() || (await lastShipmentDescription(supabase, input.supplierId));
+    input.shipmentDescription.trim() || (await lastShipmentDescription(supabase, supplierId));
 
   const { data: created, error } = await supabase
     .from("customs_clearances")
     .insert({
-      supplier_id: input.supplierId,
+      supplier_id: supplierId,
       subiekt_zd_id: input.zdId,
       zd_number: zdNumber,
       invoice_number: input.invoiceNumber.trim().slice(0, 120),
@@ -476,11 +486,14 @@ async function upsertCard(
   }
 ): Promise<{ id: string } | { error: string }> {
   const now = new Date().toISOString();
+  const supplierId = cleanUuid(input.supplierId);
+  const code = normalizeArticleCode(input.code);
+  if (!supplierId || !code) return { error: "Brak dostawcy lub kodu artykułu." };
   const { data: existing } = await supabase
     .from("customs_product_cards")
     .select("id, description_pl, material, cn_code, is_medical_device, vat_rate, vat_basis_document_id, status")
-    .eq("supplier_id", input.supplierId)
-    .eq("supplier_article_code", input.code)
+    .eq("supplier_id", supplierId)
+    .eq("supplier_article_code", code)
     .maybeSingle();
 
   const before = existing as (CardWrite & { id: string; status: string }) | null;
@@ -491,8 +504,8 @@ async function upsertCard(
   const status = input.confirm ? "confirmed" : unchanged && before ? before.status : "proposed";
 
   const row = {
-    supplier_id: input.supplierId,
-    supplier_article_code: input.code,
+    supplier_id: supplierId,
+    supplier_article_code: code,
     supplier_name: input.supplierName.slice(0, 500),
     subiekt_tw_id: input.subiektTwId,
     ...input.values,
@@ -527,12 +540,14 @@ async function upsertCard(
 
 export async function actionSaveCustomsLine(input: SaveCustomsLineInput): Promise<Result> {
   const user = await requireOperations("mutate");
+  const lineId = cleanUuid(input.lineId);
+  if (!lineId) return fail("Pozycja nie istnieje.");
   const supabase = createAdminClient();
 
   const { data: line } = await supabase
     .from("customs_clearance_lines")
     .select("id, clearance_id, supplier_article_code, supplier_name, subiekt_tw_id")
-    .eq("id", input.lineId)
+    .eq("id", lineId)
     .single();
   if (!line) return fail("Pozycja nie istnieje.");
   const l = line as {
