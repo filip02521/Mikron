@@ -425,7 +425,7 @@ export function QuickOrderModal({
           hint={PROSBA_FORM_SECTION_COPY.delegateProcurement.hint}
           accent="indigo"
           icon={<IconUserGroup size={17} />}
-          tileClassName="bg-neutral-100 text-neutral-800"
+          tileClassName="bg-indigo-100 text-indigo-800"
         >
           <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
             <Field

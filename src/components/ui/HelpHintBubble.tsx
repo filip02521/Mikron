@@ -16,19 +16,19 @@ export type HelpHintTone =
 
 const toneButtonClass: Record<HelpHintTone, string> = {
   warning: "text-amber-700 hover:bg-amber-100/80 focus-visible:ring-amber-300",
-  sky: "text-sky-700 hover:bg-neutral-100 focus-visible:ring-sky-300",
-  indigo: "text-indigo-700 hover:bg-neutral-100 focus-visible:ring-indigo-300",
+  sky: "text-sky-700 hover:bg-sky-100/80 focus-visible:ring-sky-300",
+  indigo: "text-indigo-700 hover:bg-indigo-100/80 focus-visible:ring-indigo-300",
   emerald: "text-emerald-700 hover:bg-emerald-100/80 focus-visible:ring-emerald-300",
-  violet: "text-violet-700 hover:bg-neutral-100 focus-visible:ring-violet-300",
+  violet: "text-violet-700 hover:bg-violet-100/80 focus-visible:ring-violet-300",
   slate: "text-slate-600 hover:bg-slate-200/80 focus-visible:ring-slate-300",
 };
 
 const tonePanelClass: Record<HelpHintTone, string> = {
   warning: "border-amber-200/90 bg-amber-50 text-amber-950",
-  sky: "border-neutral-200 bg-sky-50 text-sky-950",
-  indigo: "border-neutral-200 bg-indigo-50 text-indigo-950",
+  sky: "border-sky-200/90 bg-sky-50 text-sky-950",
+  indigo: "border-indigo-200/90 bg-indigo-50 text-indigo-950",
   emerald: "border-emerald-200/90 bg-emerald-50 text-emerald-950",
-  violet: "border-neutral-200 bg-violet-50 text-violet-950",
+  violet: "border-violet-200/90 bg-violet-50 text-violet-950",
   slate: "border-slate-200/90 bg-slate-50 text-slate-800",
 };
 
@@ -157,7 +157,7 @@ export function HelpHintBubble({
                 transform: panelPos.transform,
               }}
               className={cn(
-                "pointer-events-none rounded-md border px-2.5 py-2 text-xs leading-relaxed",
+                "pointer-events-none rounded-md border px-2.5 py-2 text-xs leading-relaxed shadow-md",
                 tonePanelClass[tone]
               )}
             >

@@ -79,7 +79,7 @@ export function MonthlySummaryNotice() {
             type="button"
             onClick={() => markMonthlySummarySeen(monthKey)}
             aria-label="Zamknij powiadomienie"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-neutral-200 bg-white/90 text-violet-500 transition hover:bg-neutral-50 hover:text-neutral-800"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-violet-200/80 bg-white/90 text-violet-500 transition hover:bg-violet-50 hover:text-violet-800"
           >
             <DismissIcon />
           </button>

@@ -597,7 +597,7 @@ export function TeethReceiveLinesPanel({
             />
             <span className="text-xs font-semibold text-slate-700">Filtry i wyszukiwanie</span>
             {productSearchActive || productLineFilter ? (
-              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-neutral-100 px-1 text-[10px] font-bold tabular-nums text-neutral-700">
+              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-100 px-1 text-[10px] font-bold tabular-nums text-indigo-700">
                 {[productSearchActive, Boolean(productLineFilter)].filter(Boolean).length}
               </span>
             ) : null}
@@ -616,7 +616,7 @@ export function TeethReceiveLinesPanel({
                   setProductLineFilter("");
                   clearProductSearch();
                 }}
-                className="text-[10px] font-medium text-neutral-700 transition hover:text-neutral-900"
+                className="text-[10px] font-medium text-indigo-700 transition hover:text-indigo-900"
               >
                 Wyczyść
               </button>

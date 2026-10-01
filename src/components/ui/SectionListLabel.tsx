@@ -18,10 +18,10 @@ const ACCENT_SHELL: Record<SectionListAccent, string> = {
   emerald:
     "flex items-start justify-between gap-2 border-b border-emerald-100 bg-emerald-50/60 px-3 py-2 sm:px-4",
   indigo:
-    "flex items-start justify-between gap-2 border-b border-neutral-100 bg-white px-3 py-2 sm:px-4",
-  sky: "flex items-start justify-between gap-2 border-b border-neutral-100 bg-sky-50/50 px-3 py-2 sm:px-4",
+    "flex items-start justify-between gap-2 border-b border-indigo-100/90 bg-gradient-to-r from-indigo-50/70 to-sky-50/40 px-3 py-2 sm:px-4",
+  sky: "flex items-start justify-between gap-2 border-b border-sky-100 bg-sky-50/50 px-3 py-2 sm:px-4",
   violet:
-    "flex items-start justify-between gap-2 border-b border-neutral-100 bg-violet-50/55 px-3 py-2 sm:px-4",
+    "flex items-start justify-between gap-2 border-b border-violet-100 bg-violet-50/55 px-3 py-2 sm:px-4",
   slate:
     "flex items-start justify-between gap-2 border-b border-slate-200/90 bg-slate-50/70 px-3 py-2 sm:px-4",
   neutral:

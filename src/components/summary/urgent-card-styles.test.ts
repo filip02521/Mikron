@@ -21,10 +21,10 @@ describe("urgent-card-styles", () => {
     expect(urgentFooterPrimaryClass("overdue")).toContain("amber-600");
   });
 
-  it("ton today — neutralna karta, kolor tylko na przycisku", () => {
-    expect(urgentCardClassName("today")).toContain("border-neutral-200");
+  it("ton today — sky / indigo", () => {
+    expect(urgentCardClassName("today")).toContain("sky");
     expect(urgentSupplierNameLinkClass("today")).toContain("sky");
-    expect(urgentFooterShellClass("today")).toContain("border-neutral-200");
+    expect(urgentFooterShellClass("today")).toContain("sky");
     expect(urgentFooterPrimaryClass("today")).toContain("indigo-600");
   });
 

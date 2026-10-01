@@ -197,7 +197,7 @@ function SupplierRow({
     <>
       <tr
         className={cn(
-          "cursor-pointer transition hover:bg-neutral-50",
+          "cursor-pointer transition hover:bg-indigo-50/30",
           expanded && "bg-indigo-50/20"
         )}
         onClick={onToggle}

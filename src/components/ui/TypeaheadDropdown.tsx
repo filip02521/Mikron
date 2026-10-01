@@ -54,8 +54,8 @@ function typeaheadPanelClassName(
 ) {
   return cn(
     portalled
-      ? "z-[90] overflow-auto rounded-lg border border-neutral-200 bg-white py-1 shadow-xl ring-1 ring-neutral-100"
-      : "absolute left-0 right-0 top-full z-[80] mt-1 w-full overflow-auto rounded-lg border border-neutral-200 bg-white py-1 shadow-xl ring-1 ring-neutral-100",
+      ? "z-[90] overflow-auto rounded-lg border border-indigo-200/80 bg-white py-1 shadow-xl shadow-indigo-900/10 ring-1 ring-indigo-100"
+      : "absolute left-0 right-0 top-full z-[80] mt-1 w-full overflow-auto rounded-lg border border-indigo-200/80 bg-white py-1 shadow-xl shadow-indigo-900/10 ring-1 ring-indigo-100",
     size === "comfortable"
       ? "max-h-[min(22rem,52dvh)]"
       : "max-h-[min(18rem,45dvh)] sm:max-h-72",
@@ -305,8 +305,8 @@ export function TypeaheadOption({
           "flex w-full cursor-pointer flex-col gap-0.5 text-left text-sm transition-colors",
           size === "comfortable" ? "px-3.5 py-3" : "px-3 py-2.5",
           highlighted
-            ? "bg-indigo-100 text-indigo-950 ring-1 ring-inset ring-neutral-200"
-            : "text-slate-900 hover:bg-neutral-50 focus:bg-indigo-50/80 focus:outline-none"
+            ? "bg-indigo-100 text-indigo-950 ring-1 ring-inset ring-indigo-200"
+            : "text-slate-900 hover:bg-indigo-50/80 focus:bg-indigo-50/80 focus:outline-none"
         )}
         onMouseDown={(e) => e.preventDefault()}
         onMouseEnter={onHighlight}
@@ -315,7 +315,7 @@ export function TypeaheadOption({
         <span className="flex items-start justify-between gap-2">
           <span className="font-medium">{title}</span>
           {badge ? (
-            <span className="shrink-0 rounded-md bg-neutral-50 px-1.5 py-0.5 text-[10px] font-semibold text-neutral-800">
+            <span className="shrink-0 rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-800">
               {badge}
             </span>
           ) : null}

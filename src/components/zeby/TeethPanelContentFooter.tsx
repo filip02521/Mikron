@@ -55,7 +55,7 @@ export function TeethPanelContentFooter() {
                 <button
                   type="button"
                   onClick={ctx.refreshNow}
-                  className="font-medium text-neutral-700 underline decoration-indigo-300/80 underline-offset-2 hover:text-neutral-900"
+                  className="font-medium text-indigo-700 underline decoration-indigo-300/80 underline-offset-2 hover:text-indigo-900"
                 >
                   odśwież widok
                 </button>

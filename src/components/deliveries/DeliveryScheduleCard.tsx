@@ -18,7 +18,7 @@ export function DeliveryScheduleCard({
   return (
     <div
       className={cn(
-        "rounded-lg border bg-white transition hover:shadow-md",
+        "rounded-lg border bg-white shadow-sm transition hover:shadow-md",
         supplier.isOverduePlan
           ? "border-rose-200/70 bg-rose-50/20"
           : "border-slate-200/80",
@@ -31,7 +31,7 @@ export function DeliveryScheduleCard({
             "flex shrink-0 items-center justify-center rounded-md text-xs font-bold ring-1 ring-inset",
             supplier.isOverduePlan
               ? "bg-rose-100 text-rose-600 ring-rose-200/60"
-              : "bg-indigo-50 text-indigo-700 ring-neutral-100",
+              : "bg-indigo-50 text-indigo-700 ring-indigo-100/60",
             compact ? "h-7 w-7" : "h-8 w-8"
           )}
           aria-hidden

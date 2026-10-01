@@ -350,7 +350,7 @@ export function WarehouseInventorySection({
             isPartial: row.kind === "pickup_partial",
             isFirstInSupplierGroup: false,
           }),
-          row.waitingLevel === "expired" && "ring-1 ring-inset ring-neutral-200",
+          row.waitingLevel === "expired" && "ring-1 ring-inset ring-purple-200/80",
           row.waitingLevel === "critical" && "ring-1 ring-inset ring-rose-200/80",
           row.waitingLevel === "warn" && "ring-1 ring-inset ring-amber-100"
         )}
@@ -511,7 +511,7 @@ export function WarehouseInventorySection({
             label="≥ 21 dni"
             hint="zaraz auto-ack"
             icon={<IconAlertCircle size={14} />}
-            tileClassName="bg-neutral-100 text-neutral-800"
+            tileClassName="bg-purple-100 text-purple-800"
             title="Pozycje czekające co najmniej 21 dni roboczych — zaraz automatycznie potwierdzone"
             onClick={() => setInventoryFilter("expired")}
             disabled={summary.staleExpired === 0}
@@ -522,7 +522,7 @@ export function WarehouseInventorySection({
             label="Bez regału"
             hint="brak lokalizacji"
             icon={<IconWarehouse size={14} />}
-            tileClassName="bg-neutral-100 text-neutral-800"
+            tileClassName="bg-sky-100 text-sky-800"
             title="Pozycje bez przypisanego regału"
             onClick={() => setInventoryFilter("unassigned")}
             disabled={summary.unassignedShelf === 0}

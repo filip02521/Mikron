@@ -122,14 +122,14 @@ export function navIconTileClassForTone(tone: NavTone): string {
     case "emerald":
       return "bg-emerald-100 text-emerald-800";
     case "sky":
-      return "bg-neutral-100 text-neutral-800";
+      return "bg-sky-100 text-sky-800";
     case "slate":
       return "bg-slate-100 text-slate-700";
     case "violet":
-      return "bg-neutral-100 text-neutral-800";
+      return "bg-violet-100 text-violet-800";
     case "indigo":
     default:
-      return "bg-neutral-100 text-neutral-800";
+      return "bg-indigo-100 text-indigo-800";
   }
 }
 
@@ -137,20 +137,20 @@ export function navIconTileClassForTone(tone: NavTone): string {
 export function navIconTileActiveClassForTone(tone: NavTone): string {
   switch (tone) {
     case "amber":
-      return "bg-amber-100 text-amber-900 ring-1 ring-amber-200/80 shadow-sm";
+      return "bg-amber-100 text-amber-900 ring-1 ring-amber-200/80 shadow-sm shadow-amber-900/5";
     case "orange":
-      return "bg-orange-100 text-orange-950 ring-1 ring-orange-200/80 shadow-sm";
+      return "bg-orange-100 text-orange-950 ring-1 ring-orange-200/80 shadow-sm shadow-orange-900/5";
     case "emerald":
-      return "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200/80 shadow-sm";
+      return "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200/80 shadow-sm shadow-emerald-900/5";
     case "sky":
-      return "bg-sky-100 text-sky-900 ring-1 ring-neutral-200 shadow-sm";
+      return "bg-sky-100 text-sky-900 ring-1 ring-sky-200/80 shadow-sm shadow-sky-900/5";
     case "slate":
       return "bg-slate-100 text-slate-800 ring-1 ring-slate-200/80";
     case "violet":
-      return "bg-violet-100 text-violet-900 ring-1 ring-neutral-200 shadow-sm";
+      return "bg-violet-100 text-violet-900 ring-1 ring-violet-200/80 shadow-sm shadow-violet-900/5";
     case "indigo":
     default:
-      return "bg-indigo-100 text-indigo-900 ring-1 ring-neutral-200 shadow-sm";
+      return "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/70 shadow-sm shadow-indigo-900/5";
   }
 }
 

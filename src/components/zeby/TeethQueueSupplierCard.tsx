@@ -136,7 +136,7 @@ export function TeethQueueSupplierCard({
   return (
     <section
       aria-label={`Dostawca ${group.supplierName}`}
-      className="overflow-hidden rounded-xl border border-slate-200 bg-white"
+      className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
     >
       <header className="space-y-4 border-b border-slate-100 px-4 py-4 sm:px-5">
         <div className="flex flex-wrap items-start justify-between gap-2">
@@ -155,7 +155,7 @@ export function TeethQueueSupplierCard({
           </div>
           {schedule?.computed_next_date ? (
             <span
-              className="inline-flex items-center gap-1.5 rounded-full bg-neutral-50 px-2.5 py-1 text-[11px] font-semibold text-neutral-800 ring-1 ring-inset ring-neutral-200"
+              className="inline-flex items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-800 ring-1 ring-inset ring-sky-200"
               title="Stały cykl zamówień z harmonogramu dostawcy"
             >
               <IconCalendar size={13} />
@@ -174,8 +174,8 @@ export function TeethQueueSupplierCard({
             </p>
           </div>
         ) : scheduleOnly ? (
-          <div className="flex flex-col gap-3 rounded-lg bg-neutral-50 p-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-neutral-900">
+          <div className="flex flex-col gap-3 rounded-lg bg-sky-50/60 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-sky-900">
               Dziś przypada zamówienie z harmonogramu. Złóż je u dostawcy i oznacz — termin
               przesunie się na kolejny cykl.
             </p>
@@ -185,7 +185,7 @@ export function TeethQueueSupplierCard({
             </Button>
           </div>
         ) : (
-          <div className="grid gap-4 rounded-lg bg-white p-3 ring-1 ring-inset ring-neutral-100 sm:grid-cols-3 sm:gap-3">
+          <div className="grid gap-4 rounded-lg bg-gradient-to-r from-indigo-50/70 to-sky-50/50 p-3 ring-1 ring-inset ring-indigo-100 sm:grid-cols-3 sm:gap-3">
             <Step index={1} tone={listTone} title="Lista zębów">
               {needsFixCount > 0 ? (
                 <p className="text-sm font-medium text-amber-800">
@@ -260,7 +260,7 @@ export function TeethQueueSupplierCard({
               type="button"
               aria-expanded={summaryOpen}
               onClick={() => setSummaryOpen((v) => !v)}
-              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-neutral-700 transition-colors hover:bg-neutral-50"
+              className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-indigo-700 transition-colors hover:bg-indigo-50"
             >
               <IconClipboardList size={14} />
               Zestawienie do zamówienia

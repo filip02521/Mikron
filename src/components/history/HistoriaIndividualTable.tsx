@@ -74,7 +74,7 @@ export function HistoriaIndividualTable({
                 <td className="font-medium text-slate-900">
                   <div className="flex items-center gap-2">
                     <span
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-neutral-50 text-xs font-bold text-neutral-700 ring-1 ring-inset ring-neutral-100"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-xs font-bold text-indigo-700 ring-1 ring-inset ring-indigo-100/60"
                       aria-hidden
                     >
                       {(o.supplier?.name ?? "?").charAt(0).toUpperCase()}

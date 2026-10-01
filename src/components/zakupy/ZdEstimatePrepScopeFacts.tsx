@@ -75,7 +75,7 @@ export function ZdEstimatePrepScopeFacts({
         title={short ? [parts.primary, parts.supplier].filter(Boolean).join(" · ") : parts.summaryTitle}
       >
         <span className={zdEstimateScopeFactPrimaryClass}>
-          <span className="mr-1.5 shrink-0 font-medium text-neutral-700">
+          <span className="mr-1.5 shrink-0 font-medium text-indigo-700/70">
             {zdEstimateScopeKindLabel(scopeMode)}
           </span>
           <span className="min-w-0 truncate">{parts.primary}</span>

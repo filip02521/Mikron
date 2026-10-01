@@ -79,7 +79,7 @@ export function ProcurementRequestOrderBody({
           flat &&
           (tone === "stockOut"
             ? "rounded-md border border-transparent px-1.5 py-1 group-hover/panelRow:border-amber-200/90 group-hover/panelRow:bg-amber-50/70"
-            : "rounded-md border border-transparent px-1.5 py-1 group-hover/panelRow:border-neutral-300 group-hover/panelRow:bg-neutral-50"),
+            : "rounded-md border border-transparent px-1.5 py-1 group-hover/panelRow:border-indigo-200/80 group-hover/panelRow:bg-indigo-50/55"),
         className
       )}
     >

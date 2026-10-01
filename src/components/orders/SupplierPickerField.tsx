@@ -337,7 +337,7 @@ export function SupplierPickerField({
       </div>
 
       {selected && !open ? (
-        <p className="text-xs text-neutral-700">
+        <p className="text-xs text-indigo-700">
           Wybrano: <span className="font-medium">{selected.name}</span>
           {allowEmpty ? (
             <button

@@ -144,7 +144,7 @@ export function MyOrderPickupShelfNoticeDialog({
           <div
             className={cn(
               "mb-4 flex w-full flex-col items-center rounded-xl border border-emerald-100/90",
-              "bg-emerald-50 px-4 pb-3 pt-4"
+              "bg-gradient-to-b from-emerald-50/90 to-white px-4 pb-3 pt-4"
             )}
           >
             <span className="mb-3 inline-flex items-center rounded-full bg-emerald-600/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-emerald-800 ring-1 ring-inset ring-emerald-200/70">

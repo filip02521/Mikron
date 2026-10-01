@@ -36,14 +36,14 @@ export function TeethQueueOrderSummary({
 
   if (lines.length === 0) {
     return (
-      <p className="border-b border-slate-100 bg-neutral-50 px-4 py-3 text-xs text-slate-500 sm:px-5">
+      <p className="border-b border-slate-100 bg-indigo-50/30 px-4 py-3 text-xs text-slate-500 sm:px-5">
         Brak zębów do zamówienia — prośby nie mają jeszcze listy.
       </p>
     );
   }
 
   return (
-    <div className="border-b border-slate-100 bg-neutral-50 px-4 py-3 sm:px-5">
+    <div className="border-b border-slate-100 bg-indigo-50/30 px-4 py-3 sm:px-5">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs text-slate-600">
           Wszystkie niezamówione zęby u tego dostawcy, zsumowane. Skopiuj i wklej do zamówienia.

@@ -81,7 +81,7 @@ export function zkWatchLineUiStateMeta(state: ZkWatchLineUiState): ZkWatchLineUi
       return {
         label: "Pozycja jest już w aktywnej prośbie",
         shortLabel: "W prośbie",
-        badgeClass: "bg-indigo-100 text-indigo-900 ring-1 ring-neutral-200",
+        badgeClass: "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/70",
         rowTintClass: "bg-indigo-50/35",
         icon: "clock",
       };
@@ -89,7 +89,7 @@ export function zkWatchLineUiStateMeta(state: ZkWatchLineUiState): ZkWatchLineUi
       return {
         label: "Część ilości została już dostarczona",
         shortLabel: "Częściowo",
-        badgeClass: "bg-sky-100 text-sky-900 ring-1 ring-neutral-200",
+        badgeClass: "bg-sky-100 text-sky-900 ring-1 ring-sky-200/70",
         rowTintClass: "bg-sky-50/40",
         icon: "truck",
       };
@@ -98,7 +98,7 @@ export function zkWatchLineUiStateMeta(state: ZkWatchLineUiState): ZkWatchLineUi
         label:
           "Magazyn potwierdził dostępność — pozycja jest automatycznie zaznaczona na liście",
         shortLabel: "Dostępne",
-        badgeClass: "bg-sky-100 text-sky-950 ring-1 ring-neutral-200",
+        badgeClass: "bg-sky-100 text-sky-950 ring-1 ring-sky-200/80",
         rowTintClass: "bg-sky-50/45",
         icon: "warehouse",
       };
@@ -107,7 +107,7 @@ export function zkWatchLineUiStateMeta(state: ZkWatchLineUiState): ZkWatchLineUi
         label:
           "Towar na regale — pozycja jest automatycznie zaznaczona na liście",
         shortLabel: "Na regale",
-        badgeClass: "bg-violet-100 text-violet-900 ring-1 ring-neutral-200",
+        badgeClass: "bg-violet-100 text-violet-900 ring-1 ring-violet-200/70",
         rowTintClass: "bg-violet-50/40",
         icon: "package",
       };

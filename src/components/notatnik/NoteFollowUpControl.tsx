@@ -63,7 +63,7 @@ export function NoteFollowUpControl({
             type="button"
             disabled={saving}
             onClick={() => void commit(editDraft.trim() || null)}
-            className="rounded px-1 py-0.5 text-[11px] font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+            className="rounded px-1 py-0.5 text-[11px] font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
           >
             OK
           </button>
@@ -98,7 +98,7 @@ export function NoteFollowUpControl({
       className={cn(
         "inline-flex max-w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-[11px] font-medium transition disabled:opacity-50",
         due
-          ? "bg-violet-50 text-violet-800 hover:bg-neutral-100"
+          ? "bg-violet-50 text-violet-800 hover:bg-violet-100"
           : "text-slate-500 hover:bg-slate-100/80 hover:text-slate-700"
       )}
     >

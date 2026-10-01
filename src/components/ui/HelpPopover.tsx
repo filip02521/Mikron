@@ -152,9 +152,9 @@ export function HelpPopover({
         title={label}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium transition",
+          "inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium shadow-sm transition",
           open
-            ? "border-neutral-200 bg-indigo-50 text-indigo-800"
+            ? "border-indigo-300 bg-indigo-50 text-indigo-800"
             : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50",
           buttonClassName
         )}

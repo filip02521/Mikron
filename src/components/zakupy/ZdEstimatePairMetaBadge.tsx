@@ -25,7 +25,7 @@ export function renderZdEstimateWzSalesSubline(
   const wzSub = formatWzSalesSubline(wzNiepowiazane, formatQty);
   if (!wzSub) return null;
   return (
-    <span className="zd-est-metric-subline zd-est-metric-subline--wz text-[10px] font-medium leading-tight text-neutral-700">
+    <span className="zd-est-metric-subline zd-est-metric-subline--wz text-[10px] font-medium leading-tight text-sky-700/90">
       {wzSub}
     </span>
   );

@@ -21,7 +21,7 @@ export function SalesAdminHelpPanel({
         "group",
         embedded
           ? "border-t border-slate-100"
-          : "overflow-hidden rounded-md border border-slate-200/90 bg-white open:shadow-md"
+          : "overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm open:shadow-md"
       )}
     >
       <summary

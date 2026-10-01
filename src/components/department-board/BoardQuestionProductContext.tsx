@@ -75,7 +75,7 @@ export function BoardQuestionProductContext({
           <p className={cn(boardQuestionQuickProsbaHintClass, "flex gap-2")}>
             <IconInfoCircle
               size={14}
-              className="mt-0.5 shrink-0 text-neutral-500"
+              className="mt-0.5 shrink-0 text-indigo-500/90"
               aria-hidden
             />
             <span>{DEPARTMENT_BOARD_QUESTIONS_FORM.quickProsbaHint}</span>

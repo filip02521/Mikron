@@ -22,13 +22,13 @@ export function TeethReceiveSummaryBand({
         className,
       )}
     >
-      <div className="flex min-w-[8rem] flex-1 items-center gap-3 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-neutral-700">
+      <div className="flex min-w-[8rem] flex-1 items-center gap-3 rounded-md border border-indigo-200/80 bg-indigo-50/50 px-3 py-2">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-indigo-100 text-indigo-700">
           <span className="text-sm font-bold tabular-nums">{summary.activeCount}</span>
         </div>
         <div className="min-w-0">
-          <p className={cn(panelTypography.sectionLabel, "text-neutral-800")}>Czeka na dostawę</p>
-          <p className={cn(panelTypography.caption, "truncate text-neutral-900")}>
+          <p className={cn(panelTypography.sectionLabel, "text-indigo-800/90")}>Czeka na dostawę</p>
+          <p className={cn(panelTypography.caption, "truncate text-indigo-900/75")}>
             {queueCount === 0
               ? "Nic nie jest w drodze"
               : `${queueCount} ${plPozycja(queueCount)} do przyjęcia`}

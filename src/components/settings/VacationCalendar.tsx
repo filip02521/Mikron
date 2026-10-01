@@ -684,7 +684,7 @@ export function VacationCalendar({
 
                   <div className="space-y-2">
                     <div className="flex items-center gap-1.5">
-                      <IconUsers size={14} className="text-neutral-500" />
+                      <IconUsers size={14} className="text-indigo-500" />
                       <span className="text-xs font-medium text-slate-600">Zastępca</span>
                     </div>
                     {delegation && !assigningDelegate ? (
@@ -783,7 +783,7 @@ export function VacationCalendar({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="flex-1 justify-center gap-1.5 text-indigo-600 hover:text-neutral-700 hover:bg-neutral-50"
+                          className="flex-1 justify-center gap-1.5 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50/60"
                           onClick={startEdit}
                         >
                           <IconPencil size={14} className="shrink-0" />
@@ -849,9 +849,9 @@ export function VacationCalendar({
       </div>
 
       {vacationFormOpen && canEdit ? (
-        <div className="mb-3 space-y-3 rounded-lg border border-slate-200/80 bg-slate-50/40 p-3.5">
+        <div className="mb-3 space-y-3 rounded-lg border border-slate-200/80 bg-slate-50/40 p-3.5 shadow-sm shadow-slate-200/40">
           {editableSalesPersonId ? (
-            <div className="flex items-center gap-2 rounded-md bg-neutral-50 px-3 py-2 text-xs font-medium text-neutral-700 ring-1 ring-neutral-100">
+            <div className="flex items-center gap-2 rounded-md bg-indigo-50/70 px-3 py-2 text-xs font-medium text-indigo-700 ring-1 ring-indigo-100/60">
               <IconSun size={14} className="shrink-0" />
               Dodajesz urlop dla siebie. Pozostali członkowie grupy widzą go w kalendarzu.
             </div>
@@ -962,7 +962,7 @@ export function VacationCalendar({
             const bgClasses = cn(
               !cell.isCurrentMonth && "bg-slate-50/20",
               cell.isWeekend && cell.isCurrentMonth && "bg-slate-100/50",
-              cell.isToday && "bg-sky-50/40 ring-1 ring-inset ring-neutral-200"
+              cell.isToday && "bg-sky-50/40 ring-1 ring-inset ring-sky-200/40"
             );
 
             return (
@@ -1001,7 +1001,7 @@ export function VacationCalendar({
                             key={p.period.id + "-" + idx}
                             type="button"
                             className={cn(
-                              "flex w-full items-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium truncate cursor-pointer transition hover:ring-1 hover:ring-slate-300/50 border border-white/80",
+                              "flex w-full items-center gap-1 rounded px-1.5 py-1 text-[10px] font-medium truncate cursor-pointer transition hover:ring-1 hover:ring-slate-300/50 border border-white/80 shadow-sm",
                               isOwn && "ring-1 ring-slate-400/40 font-semibold",
                               c.bg,
                               c.text

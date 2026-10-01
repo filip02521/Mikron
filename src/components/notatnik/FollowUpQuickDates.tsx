@@ -27,7 +27,7 @@ export function FollowUpQuickDates({
           className={cn(
             "rounded-md border px-1.5 py-0.5 text-[10px] font-medium transition disabled:opacity-50",
             value === opt.value
-              ? "border-neutral-200 bg-indigo-50 text-indigo-800"
+              ? "border-indigo-300 bg-indigo-50 text-indigo-800"
               : "border-slate-200/80 bg-white/80 text-slate-600 hover:border-slate-300 hover:bg-white"
           )}
         >

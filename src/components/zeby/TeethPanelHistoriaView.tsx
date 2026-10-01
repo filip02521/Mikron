@@ -296,7 +296,7 @@ export function TeethPanelHistoriaView({
             value={searchSpec}
             onChange={(e) => setSearchSpec(e.target.value)}
             placeholder="Szukaj: kolor, fason, produkt, handlowiec…"
-            className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30"
+            className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-9 pr-3 text-sm text-slate-800 shadow-sm outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30"
             aria-label="Szukaj w historii zamówień"
           />
         </div>
@@ -314,8 +314,8 @@ export function TeethPanelHistoriaView({
       </div>
 
       {bulkDateMode ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3">
-          <span className="text-sm font-medium text-neutral-900">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50/70 px-4 py-3">
+          <span className="text-sm font-medium text-indigo-900">
             Zaznacz zamówienia poniżej · wybrano {bulkSelectedIds.size}
           </span>
           <Input
@@ -360,7 +360,7 @@ export function TeethPanelHistoriaView({
           <section
             key={group.supplierId ?? "__no_supplier"}
             aria-label={`Dostawca ${group.supplierName}`}
-            className="overflow-hidden rounded-xl border border-slate-200 bg-white"
+            className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
           >
             <header className="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-100 px-4 py-3 sm:px-5">
               <h2 className="text-base font-semibold text-slate-900">{group.supplierName}</h2>

@@ -333,7 +333,7 @@ export function DepartmentBoardQuestionFilters({
           <button
             type="button"
             disabled={disabled}
-            className="shrink-0 text-xs font-semibold text-neutral-800 underline-offset-2 hover:underline disabled:opacity-60"
+            className="shrink-0 text-xs font-semibold text-indigo-800 underline-offset-2 hover:underline disabled:opacity-60"
             onClick={() => onChange("all")}
           >
             {DEPARTMENT_BOARD_QUESTIONS_FILTERS.ownUnseenClearLabel}

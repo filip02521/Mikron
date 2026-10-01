@@ -134,7 +134,7 @@ export function SupplierFilterChips({
       : "bg-emerald-100/80 text-emerald-900";
   const clearFilterClass =
     accentVariant === "indigo"
-      ? "text-[10px] font-medium text-indigo-700 transition hover:text-neutral-900"
+      ? "text-[10px] font-medium text-indigo-700 transition hover:text-indigo-900"
       : "text-[10px] font-medium text-emerald-700 transition hover:text-emerald-900";
 
   if (chips.length === 0) return null;

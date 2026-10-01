@@ -221,9 +221,9 @@ function SupplierEditModalInner({
             ))}
           </Select>
         </Field>
-        <div className="rounded-md border border-neutral-100 bg-neutral-50 p-3 sm:col-span-2">
+        <div className="rounded-md border border-indigo-100 bg-indigo-50/40 p-3 sm:col-span-2">
           <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-900">
+            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-900">
               Cykl zamówień
             </p>
             <FieldHintButton label="Pomoc: cykl zamówień" title="Jak ustawić cykl?">

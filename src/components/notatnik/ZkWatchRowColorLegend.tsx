@@ -17,7 +17,7 @@ function LegendSwatch({ id }: { id: ZkWatchRowColorLegendItemId }) {
           aria-hidden
         >
           <span className="w-[38%] bg-violet-500" />
-          <span className="flex-1 bg-neutral-50" />
+          <span className="flex-1 bg-violet-50/90" />
         </span>
       );
     case "ready_to_close":

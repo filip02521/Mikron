@@ -109,7 +109,7 @@ export function VacationSavePreview({
             ) : (
               <>
                 <span className="text-slate-500">Po zapisie:</span>{" "}
-                <span className="font-medium tabular-nums text-neutral-900">
+                <span className="font-medium tabular-nums text-indigo-900">
                   {previewLine(preview.after)}
                 </span>
               </>

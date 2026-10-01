@@ -387,7 +387,7 @@ export function ZkWatchLinesPanel({
         type="button"
         variant="ghost"
         size="sm"
-        className="h-7 px-2 text-[0.68rem] font-semibold text-neutral-800 hover:bg-neutral-50"
+        className="h-7 px-2 text-[0.68rem] font-semibold text-indigo-800 hover:bg-indigo-50/80"
         onClick={() => setShowAllZkLines((value) => !value)}
       >
         {showAllZkLines
@@ -623,7 +623,7 @@ export function ZkWatchLinesPanel({
                 className={cn(
                   "rounded-full px-2 py-0.5 text-[0.68rem] font-semibold transition",
                   filter === chip.id
-                    ? "bg-indigo-100 text-indigo-900 ring-1 ring-neutral-200"
+                    ? "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/80"
                     : "bg-white text-slate-600 ring-1 ring-slate-200/90 hover:bg-slate-50",
                   chip.count === 0 && chip.id !== "all" && "opacity-40"
                 )}

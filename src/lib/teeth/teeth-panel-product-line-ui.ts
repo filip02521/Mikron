@@ -6,10 +6,10 @@ export function teethProductLineBadgeClass(productLine: TeethProductLine | null)
     return "bg-slate-100 text-slate-700 ring-1 ring-slate-200/80";
   }
   if (productLine === "wiedent_estetic_vita") {
-    return "bg-neutral-100 text-neutral-900 ring-1 ring-neutral-200";
+    return "bg-sky-100 text-sky-900 ring-1 ring-sky-200/80";
   }
   if (productLine === "dentex_amberlux_v") {
-    return "bg-neutral-100 text-neutral-900 ring-1 ring-neutral-200";
+    return "bg-sky-100 text-sky-900 ring-1 ring-sky-200/80";
   }
   if (productLine === "wiedent_estetic_om") {
     return "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80";
@@ -21,10 +21,10 @@ export function teethProductLineBadgeClass(productLine: TeethProductLine | null)
     return "bg-rose-100 text-rose-900 ring-1 ring-rose-200/80";
   }
   if (productLine.startsWith("ivoclar")) {
-    return "bg-neutral-100 text-neutral-900 ring-1 ring-neutral-200";
+    return "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/80";
   }
   if (productLine.startsWith("major") || productLine.startsWith("dentex")) {
-    return "bg-neutral-100 text-neutral-900 ring-1 ring-neutral-200";
+    return "bg-violet-100 text-violet-900 ring-1 ring-violet-200/80";
   }
   return "bg-slate-100 text-slate-800 ring-1 ring-slate-200/80";
 }

@@ -113,7 +113,7 @@ export function TeethPanelWeryfikacjaView({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-900">
             {allOrderIds.length} {plProsba(allOrderIds.length)} czeka na sprawdzenie
@@ -163,7 +163,7 @@ export function TeethPanelWeryfikacjaView({
           <section
             key={group.supplierId ?? "__no_supplier"}
             aria-label={`Dostawca ${group.supplierName}`}
-            className="rounded-xl border border-slate-200 bg-white"
+            className="rounded-xl border border-slate-200 bg-white shadow-sm"
           >
             <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 sm:px-5">
               <div className="min-w-0">

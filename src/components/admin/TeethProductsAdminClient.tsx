@@ -275,7 +275,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
           </p>
         </Alert>
 
-        <section className="rounded-md border border-slate-200/90 bg-white p-4 sm:p-5">
+        <section className="rounded-md border border-slate-200/90 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 className={panelTypography.rowTitle}>Dodaj z Subiekta</h2>
@@ -344,7 +344,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                           className={cn(
                             "w-full rounded-md border px-3 py-2 text-left text-sm transition",
                             active
-                              ? "border-neutral-200 bg-violet-50/80 text-violet-950"
+                              ? "border-violet-300 bg-violet-50/80 text-violet-950"
                               : "border-transparent bg-white hover:border-slate-200 hover:bg-white"
                           )}
                         >
@@ -363,7 +363,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
           </div>
 
           {selectedHit ? (
-            <div className="mt-4 rounded-md border border-neutral-200 bg-violet-50/35 p-4">
+            <div className="mt-4 rounded-md border border-violet-200/80 bg-violet-50/35 p-4">
               <p className="text-sm font-semibold text-violet-950">{productLabel(selectedHit)}</p>
               <p className="mt-1 text-xs text-violet-900/80">
                 Zostanie dodany jako produkt z wyłączoną kontrolą stanu magazynowego.
@@ -428,7 +428,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
           ) : null}
         </section>
 
-        <section className="rounded-md border border-slate-200/90 bg-white">
+        <section className="rounded-md border border-slate-200/90 bg-white shadow-sm">
           <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <div>
               <h2 className={panelTypography.rowTitle}>Lista produktów zębnych</h2>

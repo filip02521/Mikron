@@ -102,7 +102,7 @@ function ToggleGroup<T extends string>({
     <div
       role="group"
       aria-label={ariaLabel}
-      className="inline-flex rounded-md border border-slate-200 bg-white p-0.5 text-xs"
+      className="inline-flex rounded-md border border-slate-200 bg-white p-0.5 text-xs shadow-sm"
     >
       {options.map((opt) => {
         const active = value === opt.value;
@@ -141,7 +141,7 @@ function DayColumn({
     <section
       className={cn(
         "flex min-h-[6.5rem] flex-col rounded-md border border-slate-200 bg-white",
-        day.isToday && "border-neutral-200 bg-sky-50/40"
+        day.isToday && "border-sky-200 bg-sky-50/40"
       )}
     >
       <header className="border-b border-slate-100 px-2 py-1.5">

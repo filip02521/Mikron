@@ -563,7 +563,7 @@ export function SuppliersAdminClient({
                         "hover:border-slate-200 hover:shadow-sm",
                         !isActive && "opacity-70",
                         s.subiekt_kh_id == null && "border-amber-100/60 bg-amber-50/20",
-                        isEditing && "border-neutral-200 bg-indigo-50/60 ring-1 ring-inset ring-neutral-200 shadow-sm"
+                        isEditing && "border-indigo-200 bg-indigo-50/60 ring-1 ring-inset ring-indigo-200 shadow-sm"
                       )}
                     >
                       <div
@@ -609,7 +609,7 @@ export function SuppliersAdminClient({
                           {!teethLane ? (
                           <Link
                             href={scheduleHref(s.location, s.name)}
-                            className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-neutral-700 hover:text-neutral-900 hover:underline md:mt-0 md:text-sm"
+                            className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-900 hover:underline md:mt-0 md:text-sm"
                           >
                             Terminy
                             <LinkChevron size={12} tone="sky" className="md:hidden" />
@@ -708,11 +708,11 @@ export function SuppliersAdminClient({
                         onClick={() => addSupplierToTeeth(s.id)}
                         className={cn(
                           "group flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-white px-3.5 py-3 text-left transition-all",
-                          "hover:border-neutral-300 hover:bg-neutral-50 hover:shadow-sm",
+                          "hover:border-indigo-200 hover:bg-indigo-50/40 hover:shadow-sm",
                           "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-100 disabled:hover:bg-white disabled:hover:shadow-none"
                         )}
                       >
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition-colors group-hover:bg-neutral-100 group-hover:text-indigo-600">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-500 transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-600">
                           <IconMapPin size={16} />
                         </span>
                         <div className="min-w-0 flex-1">
@@ -723,7 +723,7 @@ export function SuppliersAdminClient({
                             {formatSupplierListMeta(s)}
                           </p>
                         </div>
-                        <span className="flex shrink-0 items-center gap-1 rounded-lg bg-neutral-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-600 opacity-0 transition-opacity group-hover:opacity-100">
+                        <span className="flex shrink-0 items-center gap-1 rounded-lg bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-600 opacity-0 transition-opacity group-hover:opacity-100">
                           <IconPlusCircle size={14} />
                           Dodaj
                         </span>

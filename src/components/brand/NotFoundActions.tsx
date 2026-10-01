@@ -72,7 +72,7 @@ export function NotFoundActions({
         onClick={handleBack}
         className={cn(
           controlFocusClass,
-          "inline-flex min-h-11 items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+          "inline-flex min-h-11 items-center justify-center rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
         )}
       >
         Wstecz
@@ -82,7 +82,7 @@ export function NotFoundActions({
           href={secondaryHref}
           className={cn(
             controlFocusClass,
-            "inline-flex min-h-11 items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50 hover:text-neutral-900 sm:basis-full"
+            "inline-flex min-h-11 items-center justify-center rounded-md px-4 py-2.5 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-50 hover:text-indigo-900 sm:basis-full"
           )}
         >
           {secondaryLabel}

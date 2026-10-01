@@ -52,7 +52,7 @@ function QueueStepChip({
     <a
       href={href}
       className={cn(
-        "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md border border-slate-200/80 bg-white px-2.5 py-2 text-slate-800 transition-colors",
+        "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md border border-slate-200/80 bg-white px-2.5 py-2 text-slate-800 shadow-[var(--shadow-card)] transition-colors",
         "hover:border-slate-300/85 hover:bg-slate-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300/80",
         "sm:min-h-0 sm:py-1.5",
         panelTypography.tab

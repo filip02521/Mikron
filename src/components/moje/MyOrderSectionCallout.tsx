@@ -7,8 +7,8 @@ import { cn } from "@/lib/cn";
 
 const toneClass: Record<MyOrderSectionCalloutTone, string> = {
   warning: "border-amber-100/90 bg-amber-50/50 text-amber-950",
-  sky: "border-neutral-100 bg-sky-50/50 text-sky-950",
-  indigo: "border-neutral-100 bg-indigo-50/45 text-indigo-950",
+  sky: "border-sky-100/90 bg-sky-50/50 text-sky-950",
+  indigo: "border-indigo-100/90 bg-indigo-50/45 text-indigo-950",
 };
 
 const detailClass: Record<MyOrderSectionCalloutTone, string> = {

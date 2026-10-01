@@ -37,10 +37,10 @@ function dailyPanelSubsectionBarShellClass(tone: DailyPanelSubsectionTone): stri
       return "border-b border-amber-100/90 bg-amber-50/40";
     case "today":
     case "informacja":
-      return "border-b border-neutral-100 bg-neutral-50";
+      return "border-b border-sky-100/90 bg-sky-50/35";
     case "prosby":
     case "plan":
-      return "border-b border-neutral-100 bg-neutral-50";
+      return "border-b border-indigo-100/90 bg-indigo-50/35";
     default:
       return "border-b border-slate-100 bg-slate-50/50";
   }
@@ -63,7 +63,7 @@ export function formatDailyPanelCount(n: number, unit: DailyPanelCountUnit): str
 
 /** Obudowa bloku kolejki — ton sekcji przez delikatne tło i obwódkę (bez lewego paska). */
 export function dailyPanelQueueShellClass(tone?: DailyPanelSubsectionTone): string {
-  const base = "overflow-hidden rounded-md border";
+  const base = "overflow-hidden rounded-md border shadow-sm";
   switch (tone) {
     case "stockOut":
       return `${base} border-amber-200/85 bg-amber-50/20`;
@@ -72,10 +72,10 @@ export function dailyPanelQueueShellClass(tone?: DailyPanelSubsectionTone): stri
       return `${base} border-amber-200/80 bg-amber-50/15`;
     case "today":
     case "informacja":
-      return `${base} border-neutral-200 bg-neutral-50`;
+      return `${base} border-sky-200/75 bg-sky-50/15`;
     case "prosby":
     case "plan":
-      return `${base} border-neutral-200 bg-neutral-50`;
+      return `${base} border-indigo-200/75 bg-indigo-50/10`;
     default:
       return cn(surfaceCardClass, "overflow-hidden");
   }

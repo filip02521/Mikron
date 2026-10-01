@@ -11,7 +11,7 @@ import { ONTIME_LOGO_SHAPE } from "@/lib/ui/ontime-brand";
 
 export const brandMarkOnDarkClass = cn(
   ONTIME_LOGO_SHAPE,
-  "bg-white/15 text-white shadow-lg ring-1 ring-white/20"
+  "bg-white/15 text-white shadow-lg shadow-black/20 ring-1 ring-white/20"
 );
 
 /** Logo OnTime na jasnym tle (sidebar, mobile). */

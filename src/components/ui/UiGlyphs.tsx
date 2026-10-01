@@ -138,7 +138,7 @@ export function PinGlyph({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-full bg-neutral-100 p-1 text-neutral-700 shadow-sm ring-1 ring-neutral-200",
+        "inline-flex shrink-0 items-center justify-center rounded-full bg-indigo-100 p-1 text-indigo-700 shadow-sm ring-1 ring-indigo-200/80",
         className
       )}
       aria-hidden

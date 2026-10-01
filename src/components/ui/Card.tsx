@@ -13,8 +13,8 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-lg border border-neutral-200 bg-[var(--card)]",
-        padding && "p-6 sm:p-8",
+        "rounded-md border border-slate-200/80 bg-[var(--card)] shadow-[var(--shadow-card-elevated)]",
+        padding && "p-6 sm:p-7",
         className
       )}
     >
@@ -104,7 +104,7 @@ export function CardHeader({
 
   if (stackAction) {
     return (
-      <div className={cn("border-b border-neutral-200", paddingClass, className)}>
+      <div className={cn("border-b border-slate-100", paddingClass, className)}>
         <div className="flex w-full min-w-0 items-start gap-3">
           {leading ? <div className="shrink-0 pt-0.5">{leading}</div> : null}
           <div className="min-w-0 flex-1">
@@ -118,7 +118,7 @@ export function CardHeader({
   }
 
   return (
-    <div className={cn("border-b border-neutral-200", paddingClass, className)}>
+    <div className={cn("border-b border-slate-100", paddingClass, className)}>
       <div className="flex w-full min-w-0 items-start gap-3">
         {leading ? <div className="shrink-0 pt-0.5">{leading}</div> : null}
         <div className="min-w-0 flex-1">

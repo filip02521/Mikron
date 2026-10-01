@@ -489,7 +489,7 @@ export function ZdEstimateCreateZdDialog({
               "flex items-start gap-2.5 rounded-lg px-3.5 py-2.5 text-sm ring-1",
               ordersIsLive
                 ? "bg-rose-50/80 text-rose-950 ring-rose-200"
-                : "bg-sky-50/80 text-sky-950 ring-neutral-200"
+                : "bg-sky-50/80 text-sky-950 ring-sky-200"
             )}
           >
             <IconAlertCircle

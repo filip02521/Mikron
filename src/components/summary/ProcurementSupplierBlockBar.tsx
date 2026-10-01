@@ -160,10 +160,10 @@ export function ProcurementSupplierBlockBar({
           collapsed
             ? isStockOut
               ? "hover:bg-amber-50/55"
-              : "hover:bg-neutral-50"
+              : "hover:bg-indigo-50/45"
             : isStockOut
               ? "hover:bg-amber-50/35"
-              : "hover:bg-neutral-50"
+              : "hover:bg-indigo-50/30"
         )}
         title={headerActionTitle}
         onClick={(e) => {
@@ -189,7 +189,7 @@ export function ProcurementSupplierBlockBar({
               collapsed
                 ? isStockOut
                   ? "group-hover/blockHeader:ring-amber-300/80 group-hover/blockHeader:text-amber-800"
-                  : "group-hover/blockHeader:ring-indigo-300/80 group-hover/blockHeader:text-neutral-700"
+                  : "group-hover/blockHeader:ring-indigo-300/80 group-hover/blockHeader:text-indigo-700"
                 : isStockOut
                   ? "group-hover/blockHeader:ring-amber-300/70 group-hover/blockHeader:text-amber-700"
                   : "group-hover/blockHeader:ring-indigo-300/70 group-hover/blockHeader:text-indigo-600"
@@ -219,7 +219,7 @@ export function ProcurementSupplierBlockBar({
                       "px-1.5 py-0 text-[10px] font-medium ring-1 ring-inset",
                       isStockOut
                         ? "bg-amber-100/90 text-amber-900 ring-amber-200/80"
-                        : "bg-indigo-100/80 text-indigo-900 ring-neutral-200"
+                        : "bg-indigo-100/80 text-indigo-900 ring-indigo-200/70"
                     )}
                   >
                     {groupCountBadge}

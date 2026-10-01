@@ -12,7 +12,7 @@ export function MyOrderSubmissionGroupCallout({
   return (
     <div
       className={cn(
-        "flex items-start gap-2 rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-2 text-xs leading-snug text-neutral-900",
+        "flex items-start gap-2 rounded-md border border-sky-200/90 bg-sky-50/80 px-2.5 py-2 text-xs leading-snug text-sky-950",
         className
       )}
       role="note"

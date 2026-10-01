@@ -98,8 +98,8 @@ function MojeAnnouncementCompactRow({
     <li
       id={`announcement-${thread.id}`}
       className={cn(
-        "border-b border-slate-100 last:border-b-0",
-        unread ? "bg-sky-50/25" : "border-l-slate-200 bg-white"
+        "border-l-[3px] border-b border-slate-100 last:border-b-0",
+        unread ? "border-l-sky-500 bg-sky-50/25" : "border-l-slate-200 bg-white"
       )}
     >
       <button
@@ -111,12 +111,12 @@ function MojeAnnouncementCompactRow({
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
             {unread ? (
-              <span className="shrink-0 rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-800">
+              <span className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-800">
                 Nowe
               </span>
             ) : null}
             {thread.pinned ? (
-              <IconPin size={12} className="shrink-0 text-neutral-500" aria-label="Przypięte" />
+              <IconPin size={12} className="shrink-0 text-indigo-500" aria-label="Przypięte" />
             ) : null}
             <span
               className={cn(
@@ -241,7 +241,7 @@ export function MojeAnnouncementsSection({
       <div id={MOJE_ANNOUNCEMENTS_SECTION_ID} className="scroll-mt-24">
         <div className={mojeShipmentSectionShellClass}>
           <div className="flex w-full items-center gap-2.5 border-b border-slate-100 bg-slate-50/60 px-3 py-2.5 sm:px-4">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-neutral-800">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sky-100 text-sky-800">
               <IconInbox size={16} />
             </span>
             <span className="min-w-0 flex-1">
@@ -286,7 +286,7 @@ export function MojeAnnouncementsSection({
           }
           aria-expanded={sectionExpanded}
         >
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-neutral-800">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-sky-100 text-sky-800">
             <IconInbox size={16} />
           </span>
           <span className="min-w-0 flex-1">

@@ -476,15 +476,15 @@ export function mojeSectionIconTileClass(kind: MojeSectionIconKind): string {
     case "action":
       return "bg-emerald-100 text-emerald-800";
     case "mixed-pickup":
-      return "bg-neutral-100 text-neutral-800";
+      return "bg-indigo-100 text-indigo-800";
     case "teeth":
-      return "bg-neutral-100 text-neutral-800";
+      return "bg-violet-100 text-violet-800";
     case "zamowienie":
       return "bg-slate-100 text-slate-700";
     case "before_order":
-      return "bg-neutral-50 text-neutral-800";
+      return "bg-indigo-50 text-indigo-800";
     case "informacja":
-      return "bg-neutral-100 text-neutral-800";
+      return "bg-violet-100 text-violet-800";
     case "archive":
       return "bg-slate-200/80 text-slate-600";
     case "dismiss":
@@ -521,7 +521,7 @@ export function planSectionIconTileClass(kind: PlanSectionIconKind): string {
     case "prosby":
       return sectionIconTileBrandClass;
     case "search":
-      return "bg-neutral-100 text-neutral-800";
+      return "bg-violet-100 text-violet-800";
   }
 }
 
@@ -658,7 +658,7 @@ export function dailySectionIconTileClass(kind: DailySectionIconKind): string {
     case "plan":
       return sectionIconTileBrandSoftClass;
     case "hidden":
-      return "bg-neutral-100 text-neutral-800";
+      return "bg-indigo-100/70 text-indigo-800/90";
   }
 }
 

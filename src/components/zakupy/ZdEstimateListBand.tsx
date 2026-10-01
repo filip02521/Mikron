@@ -86,7 +86,7 @@ function ColumnToggleRow({
           className={cn(
             "inline-flex size-5 items-center justify-center rounded text-slate-400 transition",
             canUp
-              ? "hover:bg-neutral-50 hover:text-neutral-800"
+              ? "hover:bg-indigo-50 hover:text-indigo-800"
               : "cursor-not-allowed opacity-30"
           )}
           disabled={!canUp}
@@ -110,7 +110,7 @@ function ColumnToggleRow({
           className={cn(
             "inline-flex size-5 items-center justify-center rounded text-slate-400 transition",
             canDown
-              ? "hover:bg-neutral-50 hover:text-neutral-800"
+              ? "hover:bg-indigo-50 hover:text-indigo-800"
               : "cursor-not-allowed opacity-30"
           )}
           disabled={!canDown}
@@ -325,7 +325,7 @@ export function ZdEstimateListBand({
             {searchTrimmed ? (
               <button
                 type="button"
-                className="absolute right-1 top-1/2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 transition hover:bg-neutral-50 hover:text-neutral-900"
+                className="absolute right-1 top-1/2 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 transition hover:bg-indigo-50/80 hover:text-indigo-900"
                 onClick={() => onListSearchChange("")}
                 aria-label="Wyczyść szukanie"
                 title="Wyczyść szukanie"

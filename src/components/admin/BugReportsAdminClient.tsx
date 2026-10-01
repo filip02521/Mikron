@@ -54,7 +54,7 @@ function ReportNote({
   return (
     <article
       className={cn(
-        "relative border-2 border-dashed border-neutral-800 bg-[#fff9bf] p-4",
+        "relative border-2 border-dashed border-neutral-800 bg-[#fff9bf] p-4 shadow-[4px_4px_0_#1f2937]",
         "font-mono text-[13px] leading-relaxed text-neutral-900",
         report.status === "closed" && "opacity-75"
       )}

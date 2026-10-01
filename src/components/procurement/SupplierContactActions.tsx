@@ -80,7 +80,7 @@ export function SupplierContactActions({
             <button
               type="button"
               onClick={copyEmail}
-              className="font-medium text-neutral-700 transition-colors hover:text-neutral-900"
+              className="font-medium text-indigo-700/85 transition-colors hover:text-indigo-950"
               title={mailCopyTitle}
             >
               {copyFeedbackLabel ?? emailToCopy}
@@ -105,7 +105,7 @@ export function SupplierContactActions({
             <button
               type="button"
               onClick={copyContact}
-              className="font-medium text-neutral-700 transition-colors hover:text-neutral-900"
+              className="font-medium text-indigo-700/85 transition-colors hover:text-indigo-950"
               title={ui.copyText}
             >
               {copyFeedbackLabel ?? "Kopiuj kontakt"}
@@ -140,7 +140,7 @@ export function SupplierContactActions({
           className={cn(
             panelContactLinkClass,
             "cursor-pointer rounded-md px-0.5 text-left",
-            "hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40",
+            "hover:bg-sky-50/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40",
             copied && "text-emerald-700"
           )}
           title={mailCopyTitle}

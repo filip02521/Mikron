@@ -277,8 +277,8 @@ export function ZdEstimatePackagingModal({
               <li
                 key={row.subiektTwId}
                 className={cn(
-                  "rounded-lg border border-slate-200/90 bg-white px-4 py-3.5",
-                  editing && "border-neutral-200 ring-1 ring-neutral-100"
+                  "rounded-lg border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm shadow-slate-900/[0.02]",
+                  editing && "border-indigo-200/80 ring-1 ring-indigo-100"
                 )}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -287,7 +287,7 @@ export function ZdEstimatePackagingModal({
                       <p className="font-semibold tabular-nums text-slate-900">
                         {row.twSymbol ?? `tw_Id ${row.subiektTwId}`}
                       </p>
-                      <span className="max-w-full rounded bg-neutral-50 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-neutral-900 ring-1 ring-neutral-100 break-words">
+                      <span className="max-w-full rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-indigo-900 ring-1 ring-indigo-100 break-words">
                         {row.documentUnitMode === "pieces_multiple"
                           ? `dobij ×${row.unitsPerPackage}`
                           : row.orderMultiple != null

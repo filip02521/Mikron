@@ -167,7 +167,7 @@ export function ZkWatchFollowUpButton({
               "absolute -bottom-0.5 -right-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-md px-0.5 text-[9px] font-bold leading-none ring-1 ring-inset",
               followUpDue
                 ? "bg-amber-100 text-amber-900 ring-amber-200/80"
-                : "bg-violet-100 text-violet-900 ring-neutral-200"
+                : "bg-violet-100 text-violet-900 ring-violet-200/80"
             )}
           >
             {Number(followUpDay)}
@@ -219,7 +219,7 @@ export function ZkWatchFollowUpButton({
                     type="button"
                     disabled={saving}
                     onClick={() => void saveFollowUp()}
-                    className="rounded px-2 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+                    className="rounded px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
                   >
                     {saving ? "Zapis…" : "Zapisz"}
                   </button>

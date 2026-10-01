@@ -70,7 +70,7 @@ const TAB_META: Record<
     icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
     accent: "text-indigo-600",
     accentSoft: "bg-indigo-50",
-    accentRing: "ring-neutral-200",
+    accentRing: "ring-indigo-200",
   },
   dostawy: {
     label: "Dostawy",
@@ -94,7 +94,7 @@ const TAB_META: Record<
     icon: "M12 3c2.5 2 4 4.5 4 7.5S14 17 12 21c-2-4-4-7-4-10.5S9.5 5 12 3z",
     accent: "text-violet-600",
     accentSoft: "bg-violet-50",
-    accentRing: "ring-neutral-200",
+    accentRing: "ring-violet-200",
   },
 };
 
@@ -501,14 +501,14 @@ function SalesTab({
         <HighlightCard
           eyebrow="Lider miesiąca"
           title={top.salesPersonName}
-          gradientClass="bg-white"
-          ringClass="ring-neutral-200"
-          iconBgClass="bg-amber-400"
+          gradientClass="bg-gradient-to-br from-indigo-50 to-violet-50"
+          ringClass="ring-indigo-200/60"
+          iconBgClass="bg-gradient-to-br from-amber-400 to-amber-600 shadow-amber-500/20"
           iconPath="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"
         >
           <span>{formatZlozoneProsby(top.requestsCreated)}</span>
           <span className="text-emerald-700">{formatZrealizowaneProsby(top.requestsCompleted)}</span>
-          <span className="text-neutral-700">{formatZamknieteZk(top.zkClosed)}</span>
+          <span className="text-violet-700">{formatZamknieteZk(top.zkClosed)}</span>
         </HighlightCard>
       ) : null}
 
@@ -593,7 +593,7 @@ function SalesTab({
                       </div>
                       <ShareBar
                         sharePct={share}
-                        barClassName="bg-indigo-400"
+                        barClassName="bg-gradient-to-r from-indigo-400 to-violet-500"
                         showLabel={false}
                       />
                       <p className="mt-1 text-[11px] text-slate-500">
@@ -612,12 +612,12 @@ function SalesTab({
                           anulowanych
                         </span>
                         <span>
-                          <strong className="tabular-nums text-neutral-700">{s.zkClosed}</strong>
+                          <strong className="tabular-nums text-violet-700">{s.zkClosed}</strong>
                           {" "}
                           ZK zamkniętych
                         </span>
                         <span>
-                          <strong className="tabular-nums text-neutral-700">{s.zkOpen}</strong>
+                          <strong className="tabular-nums text-sky-700">{s.zkOpen}</strong>
                           {" "}
                           ZK otwartych EOM
                         </span>
@@ -698,8 +698,8 @@ function SalesTab({
                       <td className="px-4 py-3 text-right tabular-nums text-amber-700">
                         {s.requestsCancelled}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-neutral-700">{s.zkClosed}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-neutral-700">{s.zkOpen}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-violet-700">{s.zkClosed}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-sky-700">{s.zkOpen}</td>
                     </tr>
                   );
                 })}
@@ -771,9 +771,9 @@ function DeliveryTab({
         <HighlightCard
           eyebrow="Kurier z największą liczbą przyjęć"
           title={warehouseCarrierLabel(topCarrier.carrier)}
-          gradientClass="bg-emerald-50"
+          gradientClass="bg-gradient-to-br from-emerald-50 to-sky-50"
           ringClass="ring-emerald-200/60"
-          iconBgClass="bg-emerald-500"
+          iconBgClass="bg-gradient-to-br from-emerald-500 to-sky-600 shadow-emerald-500/20"
           iconPath="M3 7h11v10H3zM14 10h4l3 3v4h-7"
         >
           <span>
@@ -782,7 +782,7 @@ function DeliveryTab({
             {unitPrzyjecia(topCarrier.count)}
           </span>
           <span>
-            <strong className="tabular-nums text-neutral-700">{topCarrier.packages}</strong>
+            <strong className="tabular-nums text-sky-700">{topCarrier.packages}</strong>
             {" "}
             {unitPaczki(topCarrier.packages)}
           </span>
@@ -815,7 +815,7 @@ function DeliveryTab({
                   </div>
                   <ShareBar
                     sharePct={share}
-                    barClassName="bg-sky-400"
+                    barClassName="bg-gradient-to-r from-sky-400 to-emerald-500"
                     showLabel={false}
                   />
                   <p className="mt-1 text-[11px] text-slate-500">{share}% przyjęć</p>
@@ -852,7 +852,7 @@ function DeliveryTab({
                     </div>
                     <ShareBar
                       sharePct={share}
-                      barClassName="bg-emerald-400"
+                      barClassName="bg-gradient-to-r from-emerald-400 to-sky-500"
                       showLabel={false}
                     />
                     <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-slate-500">
@@ -935,7 +935,7 @@ function SupplierRanking({
                 </div>
                 <ShareBar
                   sharePct={share}
-                  barClassName="bg-amber-400"
+                  barClassName="bg-gradient-to-r from-amber-400 to-indigo-500"
                   showLabel={false}
                 />
                 <div className="mt-1 text-[11px] text-slate-500">
@@ -1049,9 +1049,9 @@ function ProcurementTab({
         <HighlightCard
           eyebrow="Najbardziej aktywny dostawca"
           title={topSupplier.supplierName}
-          gradientClass="bg-amber-50"
+          gradientClass="bg-gradient-to-br from-amber-50 to-indigo-50"
           ringClass="ring-amber-200/60"
-          iconBgClass="bg-amber-500"
+          iconBgClass="bg-gradient-to-br from-amber-500 to-indigo-600 shadow-amber-500/20"
           iconPath="M3 3h2l2.4 12.5a2 2 0 002 1.5h7.7a2 2 0 002-1.6L21 8H6"
         >
           <span>
@@ -1174,9 +1174,9 @@ function TeethTab({
         <HighlightCard
           eyebrow="Najbardziej aktywny dostawca zębów"
           title={topSupplier.supplierName}
-          gradientClass="bg-white"
-          ringClass="ring-neutral-200"
-          iconBgClass="bg-violet-500"
+          gradientClass="bg-gradient-to-br from-violet-50 to-indigo-50"
+          ringClass="ring-violet-200/60"
+          iconBgClass="bg-gradient-to-br from-violet-500 to-indigo-600 shadow-violet-500/20"
           iconPath="M12 3c2.5 2 4 4.5 4 7.5S14 17 12 21c-2-4-4-7-4-10.5S9.5 5 12 3z"
         >
           <span>
@@ -1270,7 +1270,7 @@ export function MonthlySummaryClient({
           <div className="relative space-y-3.5">
             <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
               <div className="flex min-w-0 items-center gap-2.5">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-md shadow-indigo-600/15">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <path d="M3 3v18h18" />
                     <path d="M7 14l4-4 3 3 5-5" />
@@ -1310,7 +1310,7 @@ export function MonthlySummaryClient({
           Sticky musi mieć rodzica obejmującego także treść działu —
           bez overflow:hidden na przodkach (Card / sticky chrome).
         */}
-        <div className="bg-white">
+        <div className="bg-gradient-to-b from-slate-50/80 to-white">
           <div className="px-5 pt-4">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               Wybierz dział

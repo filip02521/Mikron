@@ -69,7 +69,7 @@ function managerGroupToggleClass(active: boolean): string {
   return cn(
     "rounded-md border px-2 py-0.5 text-[11px] font-medium leading-tight transition-colors",
     active
-      ? "border-neutral-200 bg-indigo-50/80 text-indigo-700"
+      ? "border-indigo-200/70 bg-indigo-50/80 text-indigo-700"
       : "border-slate-200/70 bg-slate-50/50 text-slate-500 hover:border-slate-300 hover:bg-slate-100/70"
   );
 }
@@ -1317,7 +1317,7 @@ export function UsersAdminClient({
                                   .map((g) => (
                                     <span
                                       key={g.id}
-                                      className="rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[11px] font-medium text-neutral-700"
+                                      className="rounded-full border border-indigo-200/70 bg-indigo-50/60 px-2 py-0.5 text-[11px] font-medium text-indigo-700"
                                     >
                                       {g.name}
                                     </span>
@@ -1342,7 +1342,7 @@ export function UsersAdminClient({
                                       return (
                                         <span
                                           key={workspace}
-                                          className="rounded-full border border-neutral-200 bg-indigo-50/60 px-2 py-0.5 text-[11px] font-medium text-indigo-700"
+                                          className="rounded-full border border-indigo-200/70 bg-indigo-50/60 px-2 py-0.5 text-[11px] font-medium text-indigo-700"
                                         >
                                           {option?.label ?? workspace}
                                         </span>

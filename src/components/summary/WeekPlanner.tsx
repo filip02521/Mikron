@@ -534,7 +534,7 @@ function DayColumn({
         className={cn(
           "flex items-start justify-between gap-2 border-b border-slate-100",
           density === "compact" ? "px-2 py-2" : "px-3 py-2.5",
-          day.isToday && "border-neutral-200 bg-sky-50/55"
+          day.isToday && "border-sky-200/80 bg-sky-50/55"
         )}
       >
         <div>
@@ -734,7 +734,7 @@ function PlannerCard({
         className={cn(
           panelRowGroupClass("text-sm transition"),
           urgentCardClassName(isOverdue && !isMoved),
-          isMoved && "border-slate-200 bg-white",
+          isMoved && "border-slate-200 border-l-2 border-l-amber-400 bg-white",
           isDragging && "opacity-50",
           rowPending && rowPendingRingClass
         )}

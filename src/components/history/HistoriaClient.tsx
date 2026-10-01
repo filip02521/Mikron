@@ -59,8 +59,8 @@ function HistorySummaryStrip({
         "py-3"
       )}
     >
-      <div className="flex items-center gap-3 rounded-md border border-neutral-100 bg-white px-3 py-2.5">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-neutral-700">
+      <div className="flex items-center gap-3 rounded-md border border-indigo-100/80 bg-white px-3 py-2.5 shadow-sm">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-indigo-100 text-indigo-700">
           <IconClipboardList size={16} />
         </div>
         <div className="min-w-0">
@@ -77,7 +77,7 @@ function HistorySummaryStrip({
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-3 rounded-md border border-slate-200/80 bg-white px-3 py-2.5">
+      <div className="flex items-center gap-3 rounded-md border border-slate-200/80 bg-white px-3 py-2.5 shadow-sm">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600">
           <IconArchive size={16} />
         </div>
@@ -292,7 +292,7 @@ export function HistoriaClient({
           hintMode="tooltip"
           count={individual.length}
           icon={<IconClipboardList size={17} />}
-          tileClassName="bg-neutral-100 text-neutral-800"
+          tileClassName="bg-indigo-100 text-indigo-800"
         />
         {!individual.length ? (
           <div className={panelChromeInsetClass}>
