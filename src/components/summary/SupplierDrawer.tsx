@@ -35,7 +35,15 @@ import {
   IconMail,
   IconClipboardList,
   IconArchive,
+  IconChevronRight,
+  IconPencil,
 } from "@/components/icons/StrokeIcons";
+import { warsawTodayDateKey } from "@/lib/warehouse/delivery-receipts-shared";
+import {
+  formatSupplierMinOrder,
+  supplierDueInfo,
+  type SupplierDueTone,
+} from "@/lib/orders/supplier-drawer-view";
 import { useSupplierHubContext } from "@/components/layout/AppRoleContext";
 import { supplierCardsHref } from "@/lib/supplier-hub";
 import { TeethDualLaneNotice } from "@/components/teeth/TeethDualLaneNotice";
@@ -71,40 +79,6 @@ const supplierHistoryCache = new Map<
   string,
   { at: number; rows: HistoryRow[] }
 >();
-
-/** Grupa / cecha Subiekta przypisana dostawcy — zakres towarów przy „Przygotuj ZD”. */
-function SupplierSubiektScopeRow({ scope }: { scope: SupplierSubiektScopeInfo | null }) {
-  const kind = scope ? (scope.mode === "cecha" ? "Cecha" : "Grupa") : null;
-  return (
-    <div className="mb-3 flex items-start gap-2.5 rounded-lg border border-slate-200/70 bg-slate-50/50 px-3.5 py-3">
-      <span
-        className={cn(
-          "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
-          scope ? "bg-indigo-100 text-indigo-700" : "bg-slate-200 text-slate-500"
-        )}
-      >
-        {scope ? <IconLink size={14} /> : <IconLinkOff size={14} />}
-      </span>
-      <div className="min-w-0 flex-1 text-sm">
-        {scope ? (
-          <p className="font-medium text-indigo-900">
-            {kind} w Subiekcie: <span className="font-semibold">{scope.label || "bez nazwy"}</span>
-            <span className="ml-1 text-xs font-normal text-indigo-600">
-              {scope.mode === "cecha" ? "ctw_Id" : "grt_Id"} {scope.id}
-            </span>
-          </p>
-        ) : (
-          <p className="text-slate-600">Brak powiązania z grupą ani cechą</p>
-        )}
-        <p className="mt-0.5 text-xs text-slate-400">
-          {scope
-            ? `„Przygotuj ZD” liczy towary z tej ${scope.mode === "cecha" ? "cechy" : "grupy"}`
-            : "„Przygotuj ZD” spróbuje dopasować grupę lub cechę po nazwie dostawcy"}
-        </p>
-      </div>
-    </div>
-  );
-}
 
 export function SupplierDrawer({
   supplier,
@@ -150,6 +124,8 @@ export function SupplierDrawer({
     rows: HistoryRow[];
     loading: boolean;
   }>({ supplierId: null, rows: [], loading: false });
+  /** Rozwinięta pełna historia — per dostawca, zmiana dostawcy zwija. */
+  const [historyExpandedFor, setHistoryExpandedFor] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supplierId) return;
@@ -236,6 +212,12 @@ export function SupplierDrawer({
     );
   };
 
+  const due = supplierDueInfo(supplier.computed_next_date, warsawTodayDateKey());
+  const minOrder = formatSupplierMinOrder(supplier.min_order_value, supplier.min_order_currency);
+  const hasPickup = supplier.pickup_mikran || supplier.pickup_pallet;
+  const historyExpanded = historyExpandedFor === supplier.id;
+  const shownHistory = historyExpanded ? history : history.slice(0, HISTORY_PREVIEW);
+
   return (
     <>
       <ConfirmDialog
@@ -265,40 +247,40 @@ export function SupplierDrawer({
         aria-labelledby="supplier-drawer-title"
       >
         <header className={sidePanelHeaderClass}>
+          {/* Tożsamość + stan dostawcy */}
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                <IconBuilding size={13} className="shrink-0 text-slate-400" />
-                {locationLabel(supplier.location)}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Chip tone="neutral" icon={<IconBuilding size={12} />}>
+                  {locationLabel(supplier.location)}
+                </Chip>
+                {supplier.order_on_demand ? (
+                  <Chip tone="violet" icon={<IconPackageCheck size={12} />} title="Bez stałego terminu w planie tygodnia">
+                    Na żądanie
+                  </Chip>
+                ) : null}
+                {vacationWindow ? (
+                  <Chip
+                    tone="amber"
+                    icon={<IconSun size={12} />}
+                    title={`Urlop ${formatSupplierVacationRangeTitle(vacationWindow)}`}
+                  >
+                    Urlop {formatSupplierVacationRangeCompact(vacationWindow)}
+                  </Chip>
+                ) : null}
+                {supplier.vacation_note ? (
+                  <Chip tone="neutral" icon={<IconCalendar size={12} />}>
+                    {vacationNoteLabel(supplier.vacation_note)}
+                  </Chip>
+                ) : null}
               </div>
               <h2
                 id="supplier-drawer-title"
-                className="mt-1 truncate text-lg font-semibold text-slate-900"
+                className="mt-1.5 truncate text-lg font-semibold text-slate-900"
+                title={supplier.name}
               >
                 {supplier.name}
               </h2>
-              {vacationWindow || supplier.vacation_note ? (
-                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                  {vacationWindow ? (
-                    <div
-                      className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900 ring-1 ring-inset ring-amber-200/70"
-                      title={`Urlop ${formatSupplierVacationRangeTitle(vacationWindow)}`}
-                    >
-                      <IconSun size={12} className="shrink-0 text-amber-600" />
-                      <span>Na urlopie</span>
-                      <span className="tabular-nums text-amber-800/80">
-                        {formatSupplierVacationRangeCompact(vacationWindow)}
-                      </span>
-                    </div>
-                  ) : null}
-                  {supplier.vacation_note ? (
-                    <div className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-200/80">
-                      <IconCalendar size={12} className="shrink-0 text-slate-400" />
-                      {vacationNoteLabel(supplier.vacation_note)}
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
             </div>
             <button
               type="button"
@@ -315,190 +297,222 @@ export function SupplierDrawer({
             </button>
           </div>
 
-          <div className="mt-4 space-y-2.5">
+          {/* Najważniejsze: kiedy zamówić */}
+          <div
+            className={cn(
+              "mt-3 flex items-center justify-between gap-3 rounded-lg px-3 py-2.5 ring-1 ring-inset",
+              DUE_TONE_CLASS[due.tone],
+            )}
+          >
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium uppercase tracking-wide opacity-75">
+                {supplier.order_on_demand ? "Zamówienie na żądanie" : "Następne zamówienie"}
+              </p>
+              <p className="mt-0.5 text-base font-semibold tabular-nums">
+                {supplier.computed_next_date ? formatPlDate(supplier.computed_next_date) : "—"}
+                {due.relative ? (
+                  <span className="ml-2 text-sm font-medium opacity-80">· {due.relative}</span>
+                ) : null}
+              </p>
+            </div>
+            {supplier.shift_date ? (
+              <span
+                className="shrink-0 rounded-md bg-white/70 px-2 py-1 text-[11px] font-medium text-slate-600 ring-1 ring-inset ring-slate-200"
+                title="Termin przesunięty ręcznie"
+              >
+                przesunięte ręcznie
+              </span>
+            ) : null}
+          </div>
+
+          {/* Akcje: główne duże, pomocnicze mniejsze */}
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
             <Button
               variant="primary"
               size="sm"
               disabled={rowPending}
               aria-busy={rowPending}
-              className="w-full justify-center"
+              className={cn("w-full justify-center", !canPrepareZd && "sm:col-span-2")}
               onClick={() => setMarkConfirmForId(supplier.id)}
+              title="Skrót klawiszowy: Z"
             >
-              <IconCircleCheck
-                size={15}
-                className={cn("shrink-0", rowPending && "animate-pulse")}
-              />
+              <IconCircleCheck size={15} className={cn("shrink-0", rowPending && "animate-pulse")} />
               {rowPending ? DAILY_PANEL_MARK_ORDERED_PENDING : DAILY_PANEL_MARK_ORDERED_LABEL}
+              {!rowPending ? (
+                <kbd className="ml-1 hidden rounded border border-white/30 px-1 text-[10px] font-semibold leading-4 sm:inline">
+                  Z
+                </kbd>
+              ) : null}
             </Button>
             {canPrepareZd ? (
               <Link
                 href={`/zakupy/szacunek?from=daily&supplierId=${encodeURIComponent(supplier.id)}&autorun=1`}
                 className="block w-full"
               >
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="w-full justify-center"
-                >
+                <Button variant="secondary" size="sm" className="w-full justify-center">
                   <IconClipboardList size={15} className="shrink-0" />
                   Przygotuj ZD
                 </Button>
               </Link>
             ) : null}
-            <div className="flex flex-wrap gap-2">
-              <ShiftMenu
-                disabled={rowPending}
-                onShiftWeeks={(w) =>
-                  run(
-                    () => actionShiftOrder(supplier.id, w, null),
-                    `Przesunięto o ${w} ${w === 1 ? "tydzień" : "tygodnie"}`,
-                    `Przesuwanie terminu…`,
-                    scope
-                  )
-                }
-                onShiftDate={(iso) =>
-                  run(
-                    () => actionShiftOrder(supplier.id, null, iso),
-                    "Ustawiono datę przesunięcia",
-                    "Zapisywanie daty…",
-                    scope
-                  )
-                }
-              />
-              <Button variant="secondary" size="sm" disabled={rowPending} onClick={onVacation}>
-                Urlop
-              </Button>
-              <Button variant="secondary" size="sm" disabled={rowPending} onClick={onEdit}>
-                Edytuj
-              </Button>
-              <Link href={scheduleHref} className="ml-auto">
-                <Button variant="ghost" size="sm">
-                  Terminy
-                </Button>
-              </Link>
-            </div>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <ShiftMenu
+              disabled={rowPending}
+              onShiftWeeks={(w) =>
+                run(
+                  () => actionShiftOrder(supplier.id, w, null),
+                  `Przesunięto o ${w} ${w === 1 ? "tydzień" : "tygodnie"}`,
+                  `Przesuwanie terminu…`,
+                  scope
+                )
+              }
+              onShiftDate={(iso) =>
+                run(
+                  () => actionShiftOrder(supplier.id, null, iso),
+                  "Ustawiono datę przesunięcia",
+                  "Zapisywanie daty…",
+                  scope
+                )
+              }
+            />
+            <Button variant="ghost" size="sm" disabled={rowPending} onClick={onVacation}>
+              <IconSun size={14} className="shrink-0" />
+              Urlop
+            </Button>
+            <Button variant="ghost" size="sm" disabled={rowPending} onClick={onEdit}>
+              <IconPencil size={14} className="shrink-0" />
+              Edytuj dane
+            </Button>
           </div>
         </header>
 
         <div
-          className={sidePanelContentClass}
+          className={cn(sidePanelContentClass, "space-y-6")}
           {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
         >
-          <p className="mb-2.5 text-[11px] font-medium uppercase tracking-wide text-slate-400">
-            {TEETH_DUAL_LANE_COPY.dailyPanelScheduleCaption}
-          </p>
-          <div className="grid gap-2.5 sm:grid-cols-2">
-            <DateCard
-              icon={<IconCalendar size={15} />}
-              label="Ostatnie zamówienie"
-              value={formatPlDate(supplier.order_date)}
-            />
-            <DateCard
-              icon={<IconClock size={15} />}
-              label="Planowane zamówienie"
-              value={formatPlDate(supplier.computed_next_date)}
-              emphasize
-            />
-          </div>
-
-          <SupplierDrawerLeadTime
-            className="mt-3"
-            stats={deliveryStats}
-            statsMode={supplier.stats_mode ?? statsMode}
-            leadTimeDisplay={leadTimeDisplay}
-          />
-
-          {supplier.shift_date ? (
-            <div className="mt-3 inline-flex items-center gap-2 rounded-lg bg-slate-100/70 px-3 py-1.5 text-xs text-slate-600">
-              <span className="text-slate-400">Ręczne przesunięcie:</span>
-              <span className="font-semibold tabular-nums text-slate-800">
-                {formatPlDate(supplier.shift_date)}
-              </span>
-            </div>
-          ) : null}
-
-          {teethLane ? <TeethDualLaneNotice lane={teethLane} /> : null}
-
-          {supplier.order_on_demand ? (
-            <div className="mt-4 flex items-start gap-2.5 rounded-lg border border-violet-200/70 bg-violet-50/50 px-3.5 py-3 text-sm text-violet-900">
-              <IconPackageCheck size={16} className="mt-0.5 shrink-0 text-violet-600" />
-              <div>
-                <span className="font-semibold">Tylko w razie potrzeby</span>
-                <p className="mt-0.5 text-xs leading-relaxed text-violet-700">
-                  Bez stałego terminu w planie tygodnia. Zamówienie z listy w panelu dziennym.
-                </p>
-              </div>
-            </div>
-          ) : null}
-
-          <DrawerBlock title="Kontakt i zamówienia" icon={<IconMail size={13} />} className="mt-7">
-            <div className="mb-3 flex flex-wrap items-center gap-2.5 rounded-lg border border-slate-200/70 bg-slate-50/50 px-3.5 py-3">
-              <span
-                className={cn(
-                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
-                  supplier.subiekt_kh_id != null
-                    ? "bg-indigo-100 text-indigo-700"
-                    : "bg-slate-200 text-slate-500"
-                )}
-              >
-                {supplier.subiekt_kh_id != null ? <IconLink size={14} /> : <IconLinkOff size={14} />}
-              </span>
-              <div className="min-w-0 flex-1 text-sm">
-                {supplier.subiekt_kh_id != null ? (
-                  <p className="font-medium text-indigo-900">
-                    Powiązany z Subiektem
-                    <span className="ml-1 text-xs font-normal text-indigo-600">
-                      kh_Id {supplier.subiekt_kh_id}
-                    </span>
-                  </p>
-                ) : (
-                  <p className="text-slate-600">
-                    Brak powiązania z Subiektem
-                  </p>
-                )}
-                <p className="mt-0.5 text-xs text-slate-400">
-                  {supplier.subiekt_kh_id != null
-                    ? "Auto-dostawca z ZD trafia poprawnie"
-                    : "Auto-dostawca z ZD może nie trafić"}
-                </p>
-              </div>
-              <Link href={cardsHref}>
-                <Button variant="secondary" size="sm">
-                  {supplier.subiekt_kh_id != null ? "Zmień" : "Powiąż"}
-                </Button>
-              </Link>
-            </div>
-            <SupplierSubiektScopeRow scope={subiektScope} />
+          <DrawerSection
+            title="Jak zamówić"
+            hint="Kontakt, sposób składania i warunki"
+            icon={<IconMail size={14} />}
+          >
             <SupplierContactActions
               notes={supplier.notes}
               mails={supplier.mails}
               extraInfo={supplier.extra_info}
             />
-            {supplier.extra_info?.trim() && supplier.mails?.trim() ? (
-              <p className="mt-3 text-sm text-slate-600">
-                <span className="text-slate-500">Uwagi: </span>
-                {supplier.extra_info}
-              </p>
-            ) : null}
-          </DrawerBlock>
-
-          <DrawerBlock title="Harmonogram dostaw" icon={<IconCalendar size={13} />} className="mt-7">
-            <dl className="grid grid-cols-2 gap-3">
-              <Field
-                label="Częstotliwość"
-                value={formatSupplierInterval(
-                  supplier.interval_raw,
-                  supplier.interval_weeks
-                )}
-              />
-              <Field
-                label="Zapas (okres)"
-                value={formatStockPeriod(supplier.stock_raw, supplier.stock)}
-              />
+            <dl className="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200/70">
+              <Row label="Minimum zamówienia" value={minOrder ?? "brak"} muted={!minOrder} />
+              {supplier.extra_info?.trim() && supplier.mails?.trim() ? (
+                <Row label="Uwagi" value={supplier.extra_info} multiline />
+              ) : null}
             </dl>
-          </DrawerBlock>
+          </DrawerSection>
 
-          <DrawerBlock title="Ostatnie akcje" icon={<IconClock size={13} />} className="mt-7">
+          <DrawerSection
+            title="Terminy i rytm"
+            hint={TEETH_DUAL_LANE_COPY.dailyPanelScheduleCaption}
+            icon={<IconCalendar size={14} />}
+            action={
+              <Link href={scheduleHref} className={sectionLinkClass}>
+                Plan terminów
+                <IconChevronRight size={13} />
+              </Link>
+            }
+          >
+            <dl className="divide-y divide-slate-100 rounded-lg border border-slate-200/70">
+              <Row label="Ostatnie zamówienie" value={formatPlDate(supplier.order_date)} />
+              <Row
+                label="Następne zamówienie"
+                value={supplier.computed_next_date ? formatPlDate(supplier.computed_next_date) : "—"}
+                strong
+              />
+              {supplier.shift_date ? (
+                <Row label="Ręczne przesunięcie" value={formatPlDate(supplier.shift_date)} />
+              ) : null}
+              <Row
+                label="Częstotliwość"
+                value={
+                  supplier.order_on_demand
+                    ? "na żądanie"
+                    : formatSupplierInterval(supplier.interval_raw, supplier.interval_weeks)
+                }
+              />
+              <Row label="Zapas" value={formatStockPeriod(supplier.stock_raw, supplier.stock)} />
+            </dl>
+            <SupplierDrawerLeadTime
+              className="mt-2.5"
+              stats={deliveryStats}
+              statsMode={supplier.stats_mode ?? statsMode}
+              leadTimeDisplay={leadTimeDisplay}
+            />
+            {teethLane ? <TeethDualLaneNotice lane={teethLane} /> : null}
+          </DrawerSection>
+
+          <DrawerSection title="Odbiór towaru" hint="Kto odbiera dostawę" icon={<IconTruck size={14} />}>
+            {hasPickup ? (
+              <div className="flex flex-wrap gap-2">
+                {supplier.pickup_mikran ? (
+                  <Chip tone="indigo" icon={<IconTruck size={12} />}>
+                    Kierowca Mikran
+                  </Chip>
+                ) : null}
+                {supplier.pickup_pallet ? (
+                  <Chip tone="indigo" icon={<IconPackageCheck size={12} />}>
+                    Zlecenie odbioru palety
+                  </Chip>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">Dostawca wysyła sam — bez zlecanego odbioru.</p>
+            )}
+          </DrawerSection>
+
+          <DrawerSection
+            title="Powiązania z Subiektem"
+            hint="Od tego zależy auto-dostawca i zakres „Przygotuj ZD”"
+            icon={<IconLink size={14} />}
+          >
+            <div className="divide-y divide-slate-100 rounded-lg border border-slate-200/70">
+              <LinkRow
+                ok={supplier.subiekt_kh_id != null}
+                label="Kontrahent"
+                value={
+                  supplier.subiekt_kh_id != null ? `powiązany · kh_Id ${supplier.subiekt_kh_id}` : "brak powiązania"
+                }
+                hint={
+                  supplier.subiekt_kh_id != null
+                    ? "Auto-dostawca na ZD trafia poprawnie."
+                    : "Auto-dostawca na ZD może nie trafić."
+                }
+                action={
+                  <Link href={cardsHref} className={sectionLinkClass}>
+                    {supplier.subiekt_kh_id != null ? "Zmień" : "Powiąż"}
+                  </Link>
+                }
+              />
+              <LinkRow
+                ok={Boolean(subiektScope)}
+                label={subiektScope ? (subiektScope.mode === "cecha" ? "Cecha towarów" : "Grupa towarów") : "Grupa / cecha"}
+                value={
+                  subiektScope
+                    ? `${subiektScope.label || "bez nazwy"} · ${subiektScope.mode === "cecha" ? "ctw_Id" : "grt_Id"} ${subiektScope.id}`
+                    : "brak powiązania"
+                }
+                hint={
+                  subiektScope
+                    ? `„Przygotuj ZD” liczy towary z tej ${subiektScope.mode === "cecha" ? "cechy" : "grupy"}.`
+                    : "„Przygotuj ZD” spróbuje dopasować po nazwie dostawcy."
+                }
+              />
+            </div>
+          </DrawerSection>
+
+          <DrawerSection
+            title="Historia"
+            hint="Ostatnie akcje w panelu dziennym"
+            icon={<IconClock size={14} />}
+          >
             {historyLoading ? (
               <div className="flex items-center gap-2 text-sm text-slate-400">
                 <span className="h-3 w-3 animate-pulse rounded-full bg-slate-300" />
@@ -507,153 +521,206 @@ export function SupplierDrawer({
             ) : history.length === 0 ? (
               <p className="text-sm text-slate-400">Brak zapisów w historii.</p>
             ) : (
-              <ol className="relative space-y-3 pl-4 before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-px before:bg-slate-200">
-                {history.map((h, i) => (
-                  <li
-                    key={`${h.action_at}-${i}`}
-                    className="relative"
+              <>
+                <ol className="relative space-y-3 pl-4 before:absolute before:bottom-2 before:left-[5px] before:top-2 before:w-px before:bg-slate-200">
+                  {shownHistory.map((h, i) => (
+                    <li key={`${h.action_at}-${i}`} className="relative">
+                      <span className="absolute -left-4 top-1.5 h-2.5 w-2.5 rounded-full bg-indigo-400 ring-2 ring-white" />
+                      <p className="text-sm font-medium text-slate-800">
+                        {h.action}
+                        {h.next_date ? (
+                          <span className="font-normal text-slate-500">
+                            {" "}→ następne {formatPlDate(h.next_date)}
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        <span className="tabular-nums">{formatPlDate(h.action_at.slice(0, 10))}</span>
+                        <span className="text-slate-300"> · </span>
+                        {h.user_email}
+                      </p>
+                    </li>
+                  ))}
+                </ol>
+                {history.length > HISTORY_PREVIEW ? (
+                  <button
+                    type="button"
+                    onClick={() => setHistoryExpandedFor(historyExpanded ? null : supplier.id)}
+                    className={cn(sectionLinkClass, "mt-2")}
                   >
-                    <span className="absolute -left-4 top-1.5 h-2.5 w-2.5 rounded-full bg-indigo-400 ring-2 ring-white" />
-                    <p className="text-sm font-medium text-slate-800">{h.action}</p>
-                    <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-slate-500">
-                      <span className="tabular-nums">{formatPlDate(h.action_at.slice(0, 10))}</span>
-                      <span className="text-slate-300">·</span>
-                      <span>{h.user_email}</span>
-                      {h.next_date ? (
-                        <>
-                          <span className="text-slate-300">→</span>
-                          <span className="tabular-nums">{formatPlDate(h.next_date)}</span>
-                        </>
-                      ) : null}
-                    </p>
-                  </li>
-                ))}
-              </ol>
+                    {historyExpanded ? "Pokaż mniej" : `Pokaż wszystkie (${history.length})`}
+                  </button>
+                ) : null}
+              </>
             )}
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <Link
-                href={supplierHistoriaHref("individual", {
-                  id: supplier.id,
-                  name: supplier.name,
-                })}
-                title="Historia indywidualna — prośby handlowców u tego dostawcy"
-                className={cn(
-                  "inline-flex items-center justify-center gap-1.5 rounded-md border border-[var(--card-border)] bg-[var(--card)] px-2.5 py-1.5 text-xs font-medium leading-none text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
-                )}
+                href={supplierHistoriaHref("normal", { id: supplier.id, name: supplier.name })}
+                title="Zamówienia z panelu dziennego u tego dostawcy"
+                className={historyLinkClass}
               >
-                <IconClipboardList size={13} className="shrink-0 text-slate-500" />
-                Historia indywidualna
+                <IconArchive size={14} className="shrink-0 text-slate-500" />
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-slate-800">Zamówienia standardowe</span>
+                  <span className="block text-[11px] text-slate-500">z panelu dziennego</span>
+                </span>
               </Link>
               <Link
-                href={supplierHistoriaHref("normal", {
-                  id: supplier.id,
-                  name: supplier.name,
-                })}
-                title="Historia standardowa — zamówienia z panelu dziennego"
-                className={cn(
-                  "inline-flex items-center justify-center gap-1.5 rounded-md border border-[var(--card-border)] bg-[var(--card)] px-2.5 py-1.5 text-xs font-medium leading-none text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
-                )}
+                href={supplierHistoriaHref("individual", { id: supplier.id, name: supplier.name })}
+                title="Prośby handlowców u tego dostawcy"
+                className={historyLinkClass}
               >
-                <IconArchive size={13} className="shrink-0 text-slate-500" />
-                Historia standardowa
+                <IconClipboardList size={14} className="shrink-0 text-slate-500" />
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-slate-800">Prośby indywidualne</span>
+                  <span className="block text-[11px] text-slate-500">od handlowców</span>
+                </span>
               </Link>
             </div>
-          </DrawerBlock>
-
-          <DrawerBlock title="Odbiór towaru" icon={<IconTruck size={13} />} className="mt-7">
-            <ul className="space-y-2 text-sm">
-              {supplier.pickup_mikran ? (
-                <li className="flex items-center gap-2.5 rounded-lg bg-slate-50/70 px-3 py-2 text-slate-700">
-                  <IconTruck size={15} className="shrink-0 text-slate-400" />
-                  Kierowca Mikran
-                </li>
-              ) : null}
-              {supplier.pickup_pallet ? (
-                <li className="flex items-center gap-2.5 rounded-lg bg-slate-50/70 px-3 py-2 text-slate-700">
-                  <IconPackageCheck size={15} className="shrink-0 text-slate-400" />
-                  Zlecenie odbioru palety
-                </li>
-              ) : null}
-              {!supplier.pickup_mikran && !supplier.pickup_pallet ? (
-                <li className="text-sm text-slate-400">Brak zleconego odbioru</li>
-              ) : null}
-            </ul>
-          </DrawerBlock>
+          </DrawerSection>
         </div>
       </aside>
     </>
   );
 }
 
-function DateCard({
+const HISTORY_PREVIEW = 4;
+
+const DUE_TONE_CLASS: Record<SupplierDueTone, string> = {
+  overdue: "bg-red-50 text-red-900 ring-red-200",
+  today: "bg-indigo-50 text-indigo-900 ring-indigo-200",
+  soon: "bg-sky-50 text-sky-900 ring-sky-200",
+  later: "bg-slate-50 text-slate-800 ring-slate-200",
+  none: "bg-slate-50 text-slate-700 ring-slate-200",
+};
+
+const sectionLinkClass =
+  "inline-flex items-center gap-0.5 rounded-md px-1.5 py-1 text-xs font-semibold text-indigo-700 transition-colors hover:bg-indigo-50 hover:text-indigo-900";
+
+const historyLinkClass =
+  "flex items-center gap-2.5 rounded-lg border border-slate-200/80 bg-white px-3 py-2 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50";
+
+const CHIP_TONE: Record<"neutral" | "amber" | "violet" | "indigo", string> = {
+  neutral: "bg-slate-50 text-slate-700 ring-slate-200/80",
+  amber: "bg-amber-50 text-amber-900 ring-amber-200/80",
+  violet: "bg-violet-50 text-violet-900 ring-violet-200/80",
+  indigo: "bg-indigo-50 text-indigo-900 ring-indigo-200/80",
+};
+
+function Chip({
+  tone,
   icon,
-  label,
-  value,
-  emphasize,
+  title,
+  children,
 }: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  emphasize?: boolean;
+  tone: keyof typeof CHIP_TONE;
+  icon?: ReactNode;
+  title?: string;
+  children: ReactNode;
 }) {
   return (
-    <div
+    <span
+      title={title}
       className={cn(
-        "rounded-lg border px-3 py-2.5 transition-colors",
-        emphasize
-          ? "border-indigo-200/70 bg-indigo-50/40"
-          : "border-slate-200/70 bg-white"
+        "inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
+        CHIP_TONE[tone],
       )}
     >
-      <div className="flex items-center gap-1.5">
-        <span className={cn("shrink-0", emphasize ? "text-indigo-500" : "text-slate-400")}>
-          {icon}
-        </span>
-        <p className={cn("text-xs", emphasize ? "text-indigo-600" : "text-slate-500")}>{label}</p>
-      </div>
-      <p
-        className={cn(
-          "mt-1 tabular-nums",
-          emphasize
-            ? "text-base font-semibold text-slate-900"
-            : "text-sm font-medium text-slate-700"
-        )}
-      >
-        {value}
-      </p>
-    </div>
+      {icon ? <span className="shrink-0 opacity-70">{icon}</span> : null}
+      <span className="truncate">{children}</span>
+    </span>
   );
 }
 
-function DrawerBlock({
+function DrawerSection({
   title,
+  hint,
   icon,
+  action,
   children,
-  className,
 }: {
   title: string;
+  hint?: string;
   icon?: ReactNode;
+  action?: ReactNode;
   children: ReactNode;
-  className?: string;
 }) {
   return (
-    <section className={className}>
-      <div className="mb-3 flex items-center gap-1.5">
-        {icon ? <span className="text-slate-400">{icon}</span> : null}
-        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-          {title}
-        </h3>
+    <section aria-label={title}>
+      <div className="mb-2.5 flex items-end justify-between gap-2">
+        <div className="min-w-0">
+          <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-900">
+            {icon ? <span className="text-slate-400">{icon}</span> : null}
+            {title}
+          </h3>
+          {hint ? <p className="mt-0.5 text-xs text-slate-500">{hint}</p> : null}
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
       </div>
       {children}
     </section>
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Row({
+  label,
+  value,
+  strong,
+  muted,
+  multiline,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+  muted?: boolean;
+  multiline?: boolean;
+}) {
   return (
-    <div className="rounded-lg bg-slate-50/60 px-3 py-2.5">
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="mt-0.5 text-sm font-semibold text-slate-900">{value}</dd>
+    <div className={cn("flex gap-3 px-3 py-2", multiline ? "flex-col gap-0.5" : "items-baseline justify-between")}>
+      <dt className="shrink-0 text-xs text-slate-500">{label}</dt>
+      <dd
+        className={cn(
+          "text-sm",
+          multiline ? "whitespace-pre-line text-slate-700" : "text-right tabular-nums",
+          strong ? "font-semibold text-slate-900" : muted ? "text-slate-400" : "font-medium text-slate-800",
+        )}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function LinkRow({
+  ok,
+  label,
+  value,
+  hint,
+  action,
+}: {
+  ok: boolean;
+  label: string;
+  value: string;
+  hint: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-2.5 px-3 py-2.5">
+      <span
+        className={cn(
+          "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md",
+          ok ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700",
+        )}
+        aria-hidden
+      >
+        {ok ? <IconLink size={13} /> : <IconLinkOff size={13} />}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-slate-500">{label}</p>
+        <p className={cn("text-sm font-medium", ok ? "text-slate-900" : "text-amber-800")}>{value}</p>
+        <p className="mt-0.5 text-[11px] text-slate-400">{hint}</p>
+      </div>
+      {action ? <div className="shrink-0">{action}</div> : null}
     </div>
   );
 }
