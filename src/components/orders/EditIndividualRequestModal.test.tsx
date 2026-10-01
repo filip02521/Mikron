@@ -6,9 +6,10 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { EditIndividualRequestModal } from "./EditIndividualRequestModal";
 import { newProductLine } from "./request-product-lines";
 import { actionUpdateMyIndividualRequest } from "@/app/actions/my-orders";
+import { actionUpdateIndividualRequest } from "@/app/actions/admin";
 
 vi.mock("@/app/actions/admin", () => ({
-  actionUpdateIndividualRequest: vi.fn(),
+  actionUpdateIndividualRequest: vi.fn().mockResolvedValue({ noteNotifyOrderIds: [] }),
 }));
 
 vi.mock("@/app/actions/my-orders", () => ({
@@ -196,6 +197,58 @@ describe("EditIndividualRequestModal", () => {
             id: "ord-1",
             requestNote: "pilne — termin piątek",
           }),
+        ],
+      })
+    );
+  });
+
+  it("zakupy: zapisuje dostawcę per pozycja — produkty różnych dostawców nie trafiają do jednego", () => {
+    render(
+      <EditIndividualRequestModal
+        open
+        onClose={vi.fn()}
+        mode="procurement"
+        orderIds={["ord-1", "ord-2"]}
+        initial={{
+          ...initial,
+          supplierId: "sup-a",
+          requestKind: "zamowienie",
+          informacjaPath: undefined,
+          lines: [
+            {
+              ...newProductLine(),
+              id: "ord-1",
+              product: "Hyramic",
+              symbol: "HYR",
+              quantity: "1",
+              supplierId: "sup-a",
+            },
+            {
+              ...newProductLine(),
+              id: "ord-2",
+              product: "Magnes",
+              symbol: "MAG",
+              quantity: "1",
+              supplierId: "sup-b",
+            },
+          ],
+        }}
+        suppliers={[
+          { id: "sup-a", name: "Dostawca A" },
+          { id: "sup-b", name: "Dostawca B" },
+        ] as never}
+        salesPeople={[{ id: "sp1", name: "Iza" }]}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Zapisz zmiany/i }));
+
+    expect(actionUpdateIndividualRequest).toHaveBeenCalledWith(
+      ["ord-1", "ord-2"],
+      expect.objectContaining({
+        lines: [
+          expect.objectContaining({ id: "ord-1", supplierId: "sup-a" }),
+          expect.objectContaining({ id: "ord-2", supplierId: "sup-b" }),
         ],
       })
     );
