@@ -22,7 +22,7 @@ export function ZkWatchAddInlineStrip({
   return (
     <div
       className={cn(
-        "rounded-md border border-slate-200/90 bg-white px-3 py-2.5",
+        "rounded-md border border-slate-200/90 bg-white px-3 py-2.5 shadow-[var(--shadow-card)]",
         className
       )}
     >

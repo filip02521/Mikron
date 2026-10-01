@@ -86,17 +86,17 @@ export function ProsbaZkQuantityHint({
     <div
       role="status"
       className={cn(
-        "flex items-start gap-2.5 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5",
+        "flex items-start gap-2.5 rounded-md border border-indigo-200/90 bg-indigo-50/70 px-3 py-2.5",
         className
       )}
     >
       <IconPackage
         size={18}
         strokeWidth={2.25}
-        className="mt-0.5 shrink-0 text-neutral-700"
+        className="mt-0.5 shrink-0 text-indigo-700"
         aria-hidden
       />
-      <p className="text-xs leading-relaxed text-neutral-900">{hint}</p>
+      <p className="text-xs leading-relaxed text-indigo-950">{hint}</p>
     </div>
   );
 }
@@ -117,21 +117,21 @@ export function ProsbaTeethExemptHint({
     <div
       role="status"
       className={cn(
-        "flex items-start gap-2.5 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5",
+        "flex items-start gap-2.5 rounded-md border border-violet-200/90 bg-violet-50/70 px-3 py-2.5",
         className
       )}
     >
       <IconWarehouse
         size={18}
         strokeWidth={2.25}
-        className="mt-0.5 shrink-0 text-neutral-700"
+        className="mt-0.5 shrink-0 text-violet-700"
         aria-hidden
       />
       <div className="min-w-0">
-        <p className="text-xs font-semibold leading-snug text-neutral-900">
+        <p className="text-xs font-semibold leading-snug text-violet-950">
           Produkt z listy zębów
         </p>
-        <p className="mt-0.5 text-xs leading-relaxed text-neutral-900">
+        <p className="mt-0.5 text-xs leading-relaxed text-violet-900/90">
           Stan magazynowy nie jest weryfikowany — prośba przejdzie bez ostrzeżeń o dostępności.
         </p>
       </div>

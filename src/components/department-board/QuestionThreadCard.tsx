@@ -270,7 +270,7 @@ export function QuestionThreadCard({
               alternate: rowAlternate,
               stale,
             })
-          : "rounded-md border border-slate-200/90 bg-white"
+          : "rounded-md border border-slate-200/90 bg-white shadow-sm"
       )}
     >
       <div
@@ -355,7 +355,7 @@ export function QuestionThreadCard({
       {showInlineReplyForm ? (
         <div className={boardQuestionInlineReplyShellClass}>
           <label
-            className={cn(salesTypography.rowMeta, "block font-medium text-neutral-700")}
+            className={cn(salesTypography.rowMeta, "block font-medium text-indigo-700")}
             htmlFor={`inline-reply-${question.id}`}
           >
             {replyLabel}
@@ -429,7 +429,7 @@ export function QuestionThreadCard({
         {canReply && !isClosed ? (
           <div className={boardReplyFormShellClass}>
             <label
-              className={cn(salesTypography.rowMeta, "block font-medium text-neutral-700")}
+              className={cn(salesTypography.rowMeta, "block font-medium text-indigo-700")}
               htmlFor={`reply-${question.id}`}
             >
               {replyLabel}

@@ -204,7 +204,7 @@ export function ZkWatchLinesModal({
                 ) : null}
               </div>
               {checkboxSummary.total > 0 || allScopeExcluded ? (
-                <span className={cn(salesTypography.statValue, "text-neutral-900")}>
+                <span className={cn(salesTypography.statValue, "text-indigo-900")}>
                   {allScopeExcluded ? "100%" : `${progressPct}%`}
                 </span>
               ) : null}

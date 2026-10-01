@@ -90,7 +90,7 @@ function CronJobRow({
     <>
       <tr
         className={cn(
-          "cursor-pointer transition hover:bg-neutral-50",
+          "cursor-pointer transition hover:bg-indigo-50/30",
           expanded && "bg-indigo-50/20"
         )}
         onClick={onToggle}
@@ -277,7 +277,7 @@ export function AdminCronStatusPanel({
               className={cn(
                 "flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-all",
                 informacjaStockAutoEnabled
-                  ? "border-neutral-200 bg-indigo-50/40"
+                  ? "border-indigo-200/80 bg-indigo-50/40"
                   : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40",
                 togglePending && "opacity-70"
               )}

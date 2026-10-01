@@ -284,7 +284,7 @@ export function ZdEstimateSnapshotsModal({
                       className={cn(
                         "w-full rounded-lg px-2.5 py-2.5 text-left transition",
                         active
-                          ? "bg-indigo-50 ring-1 ring-neutral-200"
+                          ? "bg-indigo-50 ring-1 ring-indigo-200/90"
                           : "hover:bg-slate-50",
                         !s.eligibleForHistory && !active && "opacity-70"
                       )}

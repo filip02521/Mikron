@@ -147,7 +147,7 @@ export function ZdEstimateOrderPreviewTable({
                   <span className="whitespace-normal break-words">{l.nazwa}</span>
                   <span className="mt-0.5 flex flex-wrap gap-1">
                     {l.bomOrPairLabel ? (
-                      <span className="text-[11px] font-medium uppercase tracking-wide text-neutral-800">
+                      <span className="text-[11px] font-medium uppercase tracking-wide text-indigo-800">
                         {l.bomOrPairLabel}
                       </span>
                     ) : null}

@@ -151,7 +151,7 @@ function GroupedMouldSections({
   onSelectOther: () => void;
 }) {
   return (
-    <div className="rounded-lg bg-white ring-1 ring-neutral-100">
+    <div className="rounded-lg bg-white ring-1 ring-indigo-100/80">
       <div
         className={cn(
           "flex gap-1.5 overflow-x-auto p-1.5",
@@ -161,7 +161,7 @@ function GroupedMouldSections({
         {groups.map((group) => (
           <section
             key={`${group.shapeId}-${group.label}`}
-            className="flex min-w-[4.5rem] flex-1 flex-col rounded-md ring-1 ring-neutral-100 overflow-hidden"
+            className="flex min-w-[4.5rem] flex-1 flex-col rounded-md ring-1 ring-indigo-100/50 overflow-hidden"
             aria-label={group.label}
           >
             <ShapeSectionHeader group={group} compact={compact} />
@@ -181,7 +181,7 @@ function GroupedMouldSections({
         ))}
       </div>
       {allowOther ? (
-        <div className="flex flex-wrap gap-1 border-t border-neutral-100 bg-slate-50/30 p-1.5">
+        <div className="flex flex-wrap gap-1 border-t border-indigo-100/60 bg-slate-50/30 p-1.5">
           <MouldChip
             label={TEETH_CHIP_OTHER}
             selected={customMouldActive}
@@ -207,12 +207,12 @@ function ShapeSectionHeader({
   return (
     <div
       className={cn(
-        "flex shrink-0 flex-col items-center gap-0.5 border-b border-neutral-100 bg-indigo-50/25 px-1 text-center",
+        "flex shrink-0 flex-col items-center gap-0.5 border-b border-indigo-100/50 bg-indigo-50/25 px-1 text-center",
         compact ? "py-1" : "py-1.5",
       )}
     >
       {showIcon ? (
-        <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-white text-slate-500 ring-1 ring-neutral-100">
+        <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-white text-slate-500 ring-1 ring-indigo-100/80">
           <TeethMouldShapeIcon
             shapeId={group.shapeId as Exclude<TeethMouldShapeId, "all">}
             className="size-3.5"

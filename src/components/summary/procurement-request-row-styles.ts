@@ -36,15 +36,15 @@ export function procurementRequestRowClassName({
             expandable
               ? isStockOut
                 ? "hover:bg-amber-50/80"
-                : "hover:bg-neutral-50"
+                : "hover:bg-indigo-50/50"
               : "hover:bg-white/70"
           )
         : cn(
-            "rounded-md border border-slate-200 bg-white transition-[border-color,box-shadow,background-color]",
+            "rounded-md border border-slate-200 bg-white shadow-sm transition-[border-color,box-shadow,background-color]",
             expandable
               ? isStockOut
                 ? "hover:border-amber-300/90 hover:bg-amber-50/35 hover:shadow-md"
-                : "hover:border-neutral-300 hover:bg-neutral-50 hover:shadow-md"
+                : "hover:border-indigo-300/80 hover:bg-indigo-50/25 hover:shadow-md"
               : cn(
                   "hover:border-slate-300/90",
                   isStockOut && "hover:border-amber-200/80"
@@ -71,7 +71,7 @@ export function procurementSupplierNameLinkClass(
     "text-left font-semibold tracking-tight transition-colors duration-150",
     isStockOut
       ? "text-amber-950 hover:text-amber-800"
-      : "text-indigo-950 hover:text-neutral-700"
+      : "text-indigo-950 hover:text-indigo-700"
   );
 }
 
@@ -84,7 +84,7 @@ export function procurementRequestOrderBodyInteractiveClass(
     "transition-[background-color,border-color,box-shadow] duration-150",
     isStockOut
       ? "group-hover/panelRow:border-amber-200/90 group-hover/panelRow:bg-amber-50/70 group-hover/panelRow:shadow-sm"
-      : "group-hover/panelRow:border-neutral-300 group-hover/panelRow:bg-neutral-50 group-hover/panelRow:shadow-sm"
+      : "group-hover/panelRow:border-indigo-200/80 group-hover/panelRow:bg-indigo-50/55 group-hover/panelRow:shadow-sm"
   );
 }
 
@@ -97,7 +97,7 @@ export function procurementRequestProductTitleClass(
     "text-xs font-medium leading-snug text-slate-800 transition-colors duration-150",
     isStockOut
       ? "group-hover/panelRow:text-amber-950"
-      : "group-hover/panelRow:text-neutral-900"
+      : "group-hover/panelRow:text-indigo-950"
   );
 }
 

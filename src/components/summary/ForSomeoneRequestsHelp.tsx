@@ -151,7 +151,7 @@ export function ForSomeoneRequestsSectionHelp() {
           <li>
             Tory są <strong className="font-medium text-slate-800">domyślnie zwinięte</strong>. W
             zwiniętym torze widać tylko prośby jeszcze nieprzeczytane na serwerze (badge{" "}
-            <strong className="font-medium text-neutral-800">Nowa</strong>) — licznik pokazuje np.{" "}
+            <strong className="font-medium text-violet-800">Nowa</strong>) — licznik pokazuje np.{" "}
             <em>1/5</em>. Rozwiń nagłówek toru albo kliknij tor w pasku „Tory”, by zobaczyć
             wszystkie prośby w tej sekcji.
           </li>
@@ -166,7 +166,7 @@ export function ForSomeoneRequestsSectionHelp() {
             systemowych (Do rozdzielenia / Do zamówienia / Urlop / Magazyn→info).
           </li>
           <li>
-            Badge <strong className="font-medium text-neutral-800">Nowa</strong> znika po najechaniu —
+            Badge <strong className="font-medium text-violet-800">Nowa</strong> znika po najechaniu —
             to nie przenosi od razu z „Do rozdzielenia” (dopiero po odświeżeniu danych z serwera).
             Karta zostaje w podglądzie zwiniętego toru do odświeżenia; po odświeżeniu znika z peeka
             (zostaje w pełnym torze po rozwinięciu, jeśli nadal jest w kolejce).
@@ -187,7 +187,7 @@ export function ForSomeoneRequestsSectionHelp() {
             sygnałów: Nowa → Urlop → flaga.
           </li>
           <li>
-            Badge <strong className="font-medium text-neutral-800">{INFORMACJA_VIA_PANEL_BADGE}</strong>{" "}
+            Badge <strong className="font-medium text-indigo-800">{INFORMACJA_VIA_PANEL_BADGE}</strong>{" "}
             — po prawej tylko przy wyjątku Informacji przez panel; w torze „Magazyn → info” gdy bez
             silniejszej flagi.
           </li>

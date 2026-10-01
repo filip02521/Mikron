@@ -9,7 +9,7 @@ import {
 } from "@/lib/teeth/teeth-panel-filters";
 
 export const teethToolbarSelectClass =
-  "h-9 min-w-0 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800 outline-none transition-colors hover:border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30";
+  "h-9 min-w-0 rounded-lg border border-slate-200 bg-white px-2.5 text-sm text-slate-800 shadow-sm outline-none transition-colors hover:border-slate-300 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/30";
 
 function ToggleChip({
   label,
@@ -26,13 +26,13 @@ function ToggleChip({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        "inline-flex h-9 shrink-0 items-center rounded-lg border px-3 text-sm font-medium transition-colors",
+        "inline-flex h-9 w-full min-w-0 items-center justify-center rounded-lg border px-3 text-sm font-medium transition-colors sm:w-auto sm:shrink-0",
         active
           ? "border-amber-300 bg-amber-50 text-amber-900"
           : "border-slate-200 bg-white text-slate-600 shadow-sm hover:border-slate-300 hover:text-slate-900",
       )}
     >
-      {label}
+      <span className="truncate">{label}</span>
     </button>
   );
 }
@@ -104,12 +104,14 @@ export function TeethPanelFiltersBar({
         <button
           type="button"
           onClick={() => onChange(EMPTY_TEETH_PANEL_FILTERS)}
-          className="h-9 px-1 text-sm font-medium text-indigo-700 hover:text-neutral-900"
+          className="h-9 px-1 text-sm font-medium text-indigo-700 hover:text-indigo-900"
         >
           Wyczyść filtry
         </button>
       ) : null}
-      {trailing ? <div className="flex items-center justify-end gap-2 sm:ml-auto">{trailing}</div> : null}
+      {trailing ? (
+        <div className="flex min-w-0 items-center justify-end gap-2 sm:ml-auto">{trailing}</div>
+      ) : null}
     </div>
   );
 }

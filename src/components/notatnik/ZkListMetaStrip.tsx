@@ -27,7 +27,7 @@ function ZkListStats({
         <span className={salesTypography.statValue}>{filteredWatchCount}</span>
         {" z "}
         <span className={salesTypography.statValue}>{watchCount}</span>
-        <span className="ml-2 inline-flex rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-semibold text-neutral-900">
+        <span className="ml-2 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
           szukaj
         </span>
       </p>
@@ -51,7 +51,7 @@ function ZkListStats({
         <>
           <span className="hidden h-3.5 w-px bg-slate-200 sm:block" aria-hidden />
           <div className="inline-flex items-baseline gap-1.5">
-            <span className={cn(salesTypography.statValue, "text-neutral-800")}>
+            <span className={cn(salesTypography.statValue, "text-sky-800")}>
               {informacjaReadyLineCount}
             </span>
             <span className={salesTypography.statLabel}>dostępne</span>
@@ -62,7 +62,7 @@ function ZkListStats({
         <>
           <span className="hidden h-3.5 w-px bg-slate-200 sm:block" aria-hidden />
           <div className="inline-flex items-baseline gap-1.5">
-            <span className={cn(salesTypography.statValue, "text-neutral-800")}>
+            <span className={cn(salesTypography.statValue, "text-violet-800")}>
               {regalLineCount}
             </span>
             <span className={salesTypography.statLabel}>na regale</span>

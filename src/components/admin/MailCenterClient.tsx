@@ -92,7 +92,7 @@ export function MailCenterClient({
               href={runnerUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium text-neutral-700 hover:underline"
+              className="font-medium text-indigo-700 hover:underline"
             >
               {runnerUrl}
             </a>
@@ -140,7 +140,7 @@ export function MailCenterClient({
         {runnerStatus.ok &&
         runnerStatus.runnerStateStatus === "sending" &&
         !runnerStatus.crashSticky ? (
-          <p className="mt-2 rounded border border-neutral-200 bg-neutral-50 px-2 py-1.5 text-sm text-neutral-900">
+          <p className="mt-2 rounded border border-sky-200 bg-sky-50 px-2 py-1.5 text-sm text-sky-950">
             Runner jest w trakcie wysyłki…
           </p>
         ) : null}
@@ -206,7 +206,7 @@ export function MailCenterClient({
                 <div className="flex flex-wrap items-center gap-2">
                   <Link
                     href={`/admin/mail/${job.id}`}
-                    className="font-medium text-slate-900 hover:text-neutral-700"
+                    className="font-medium text-slate-900 hover:text-indigo-700"
                   >
                     {job.label}
                   </Link>
@@ -275,7 +275,7 @@ export function MailCenterClient({
                     <td>
                       <Link
                         href={`/admin/mail/log/${log.id}`}
-                        className="text-sm text-neutral-700 hover:underline"
+                        className="text-sm text-indigo-700 hover:underline"
                       >
                         Szczegóły
                       </Link>

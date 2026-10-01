@@ -22,18 +22,18 @@ export function TeethDualLaneNotice({
   return (
     <div
       className={cn(
-        "mt-4 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-3 text-sm text-neutral-900",
+        "mt-4 rounded-md border border-violet-200 bg-violet-50/80 px-3 py-3 text-sm text-violet-950",
         className
       )}
       role="note"
     >
-      <p className="font-semibold text-neutral-900">{TEETH_DUAL_LANE_COPY.dailyPanelNoticeTitle}</p>
-      <p className="mt-1 text-[13px] leading-snug text-neutral-900">
+      <p className="font-semibold text-violet-900">{TEETH_DUAL_LANE_COPY.dailyPanelNoticeTitle}</p>
+      <p className="mt-1 text-[13px] leading-snug text-violet-900/90">
         {TEETH_DUAL_LANE_COPY.dailyPanelNoticeBody}
       </p>
-      <p className="mt-2 font-medium text-neutral-900">{copy.primary}</p>
+      <p className="mt-2 font-medium text-violet-950">{copy.primary}</p>
       {copy.secondary ? (
-        <p className="mt-0.5 text-xs text-neutral-800">{copy.secondary}</p>
+        <p className="mt-0.5 text-xs text-violet-800/90">{copy.secondary}</p>
       ) : null}
       <p className="mt-2 text-xs">
         <Link href={teethSupplierCardsHref()} className={brandLinkClass}>

@@ -57,7 +57,7 @@ export function AdminDataShortcuts() {
             href={item.href}
             className={cn(
               "group flex min-h-[5.5rem] flex-col justify-between rounded-md border border-slate-200/90",
-              "bg-white p-3 transition hover:border-neutral-300 hover:bg-neutral-50"
+              "bg-white p-3 transition hover:border-indigo-200/90 hover:bg-indigo-50/20"
             )}
           >
             <div className="min-w-0">

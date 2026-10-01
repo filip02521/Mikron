@@ -123,7 +123,7 @@ export function MyOrderArchiveSection({
 
   return (
     <div id="moje-ostatnio-zakonczone" className="mt-6 border-t border-slate-200/70 pt-5">
-    <Card padding={false} className="border-slate-200/80 bg-white/70 shadow-sm">
+    <Card padding={false} className="border-slate-200/80 bg-white/70 shadow-sm shadow-slate-200/30">
       <CardHeader
         inset
         density="compact"

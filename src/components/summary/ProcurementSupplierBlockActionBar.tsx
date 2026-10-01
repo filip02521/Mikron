@@ -45,7 +45,7 @@ function ActionCount({
           ? "bg-white/25 text-white ring-1 ring-inset ring-white/35"
           : isStockOut
             ? "bg-amber-600/15 text-amber-950 ring-1 ring-inset ring-amber-300/40"
-            : "bg-indigo-600/15 text-indigo-900 ring-1 ring-inset ring-neutral-200"
+            : "bg-indigo-600/15 text-indigo-900 ring-1 ring-inset ring-indigo-300/40"
       )}
     >
       {n}

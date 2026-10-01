@@ -12,10 +12,13 @@ import { TeethOcrImage } from "@/components/zeby/TeethOcrImage";
 import { IconScanLine, IconCircleCheck, IconAlertCircle } from "@/components/icons/StrokeIcons";
 import Link from "next/link";
 import { useTeethProductInfo } from "@/components/layout/TeethExemptContext";
+import { teethPanelReadinessContextFromMaps } from "@/lib/teeth/teeth-panel-order-readiness";
+import { groupTeethQueueByProductLine } from "@/lib/teeth/teeth-queue-view-model";
 import {
-  teethPanelReadinessContextFromMaps,
-  distinctTeethProductLineLabelsForOrders,
-} from "@/lib/teeth/teeth-panel-order-readiness";
+  TeethProductLineChips,
+  TeethProductLineSectionHeader,
+  teethLineSectionDomId,
+} from "@/components/zeby/TeethProductLineSectionHeader";
 import {
   isScheduledItem,
   type TeethQueueGroup,
@@ -113,7 +116,7 @@ export function TeethPanelWeryfikacjaView({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-slate-900">
             {allOrderIds.length} {plProsba(allOrderIds.length)} czeka na sprawdzenie
@@ -157,21 +160,26 @@ export function TeethPanelWeryfikacjaView({
               .filter((p): p is string => Boolean(p)),
           ),
         );
-        const productLineLabels = distinctTeethProductLineLabelsForOrders(realItems, readinessCtx);
+        const sections = groupTeethQueueByProductLine(realItems, readinessCtx);
+        const sectionDomId = (key: string) =>
+          teethLineSectionDomId("weryfikacja", group.supplierId, key);
 
         return (
           <section
             key={group.supplierId ?? "__no_supplier"}
             aria-label={`Dostawca ${group.supplierName}`}
-            className="rounded-xl border border-slate-200 bg-white"
+            className="rounded-xl border border-slate-200 bg-white shadow-sm"
           >
             <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 sm:px-5">
               <div className="min-w-0">
                 <h2 className="text-base font-semibold text-slate-900">{group.supplierName}</h2>
                 <p className="text-xs text-slate-500">
                   {orderIds.length} {plProsba(orderIds.length)}
-                  {productLineLabels.length > 0 ? ` · ${productLineLabels.join(" · ")}` : ""}
                 </p>
+                <TeethProductLineChips
+                  sections={sections.map((sec) => ({ ...sec, count: sec.items.length }))}
+                  sectionDomId={sectionDomId}
+                />
               </div>
               {orderIds.length > 1 ? (
                 <Button
@@ -188,12 +196,27 @@ export function TeethPanelWeryfikacjaView({
               ) : null}
             </header>
             <div className="flex flex-col gap-3 px-4 py-3 sm:px-5 lg:flex-row">
-              <div className="min-w-0 flex-1">
-                <TeethVerificationInlineList
-                  items={realItems}
-                  onSaved={() => onEditSaved?.()}
-                  onApproveOrder={(orderId) => void handleApprove([orderId])}
-                />
+              <div className="min-w-0 flex-1 space-y-3">
+                {sections.map((section) => (
+                  <div
+                    key={section.key}
+                    id={sectionDomId(section.key)}
+                    className="scroll-mt-24 overflow-hidden rounded-lg border border-slate-200"
+                  >
+                    <TeethProductLineSectionHeader
+                      productLine={section.productLine}
+                      label={section.label}
+                      meta={`${section.items.length} ${plProsba(section.items.length)}`}
+                    />
+                    <div className="p-2 sm:p-3">
+                      <TeethVerificationInlineList
+                        items={section.items}
+                        onSaved={() => onEditSaved?.()}
+                        onApproveOrder={(orderId) => void handleApprove([orderId])}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
               {ocrImagePaths.length > 0 ? (
                 <div className="shrink-0 lg:w-[400px] xl:w-[460px]">

@@ -11,8 +11,8 @@ const variantStyles: Record<
   default: "bg-white/95 text-slate-600 ring-slate-200/90",
   success: "bg-white/95 text-emerald-800 ring-emerald-200/90",
   warning: "bg-white/95 text-amber-900 ring-amber-200/90",
-  info: "bg-white/95 text-indigo-800 ring-neutral-200",
-  purple: "bg-white/95 text-violet-800 ring-neutral-200",
+  info: "bg-white/95 text-indigo-800 ring-indigo-200/90",
+  purple: "bg-white/95 text-violet-800 ring-violet-200/90",
   danger: "bg-white/95 text-red-800 ring-red-200/90",
 };
 

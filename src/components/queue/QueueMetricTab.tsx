@@ -38,14 +38,14 @@ export function QueueMetricTab({
   const activeRing =
     accent === "emerald"
       ? "border-emerald-300/90 ring-2 ring-emerald-500/20"
-      : "border-neutral-200 ring-2 ring-indigo-500/15";
+      : "border-indigo-300/90 ring-2 ring-indigo-500/15";
 
   const className = cn(
     panelMetricTileClass,
     "px-2.5 py-2 text-left transition sm:px-3 sm:py-2.5",
     onClick && !disabled && panelMetricTileInteractiveClass,
     active
-      ? cn("bg-white", activeRing)
+      ? cn("bg-white shadow-[var(--shadow-card-elevated)]", activeRing)
       : onClick && !disabled
         ? "opacity-90 hover:opacity-100"
         : "border-slate-200/90 bg-white/80",

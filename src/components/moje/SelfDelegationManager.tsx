@@ -128,7 +128,7 @@ export function SelfDelegationManager({
         title="Zastępstwa urlopowe"
         description="Wyznacz osobę, która zastąpi Cię podczas urlopu. Zastępca zyska dostęp do Twojego panelu (odczyt + potwierdzenie odbioru + zamykanie ZK)."
         leading={
-          <SectionHeadingIcon tileClassName="bg-neutral-100 text-neutral-800">
+          <SectionHeadingIcon tileClassName="bg-indigo-100 text-indigo-800">
             <IconUsers size={20} />
           </SectionHeadingIcon>
         }

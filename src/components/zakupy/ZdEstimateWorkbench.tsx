@@ -8931,7 +8931,7 @@ export function ZdEstimateWorkbench({
                   className={cn(
                     "flex items-start gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] leading-snug",
                     stickyCreateGateCaption.tone === "loading"
-                      ? "border-neutral-200 bg-indigo-50/70 text-indigo-900"
+                      ? "border-indigo-200/80 bg-indigo-50/70 text-indigo-900"
                       : stickyCreateGateCaption.tone === "error"
                         ? "border-red-200/80 bg-red-50/70 text-red-900"
                         : "border-amber-200/80 bg-amber-50/70 text-amber-900"
@@ -8940,7 +8940,7 @@ export function ZdEstimateWorkbench({
                   {stickyCreateGateCaption.tone === "loading" ? (
                     <Spinner
                       size="sm"
-                      className="mt-px h-3 w-3 border-[1.5px] border-neutral-200 border-t-indigo-600"
+                      className="mt-px h-3 w-3 border-[1.5px] border-indigo-200 border-t-indigo-600"
                     />
                   ) : stickyCreateGateCaption.tone === "error" ? (
                     <IconAlertCircle

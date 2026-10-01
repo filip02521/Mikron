@@ -32,7 +32,7 @@ const ROLE_HELP: { role: UserRole; description: string }[] = [
 /** Zwijany opis ról — spójny z panelem narzędzi administracyjnych. */
 export function UsersRoleHelpPanel() {
   return (
-    <details className="group overflow-hidden rounded-md border border-slate-200/90 bg-white open:shadow-md">
+    <details className="group overflow-hidden rounded-md border border-slate-200/90 bg-white shadow-sm open:shadow-md">
       <summary className="cursor-pointer list-none px-3 py-3 text-sm font-semibold text-slate-900 marker:content-none sm:px-4 [&::-webkit-details-marker]:hidden">
         <span className="flex items-center justify-between gap-2">
           <span className="flex items-center gap-2">

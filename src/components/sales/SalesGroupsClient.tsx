@@ -141,7 +141,7 @@ export function SalesGroupsClient({
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
               <div className="flex min-w-0 items-center gap-2.5">
                 <span
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-neutral-50 text-neutral-700 ring-1 ring-inset ring-neutral-100"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-100/60"
                   aria-hidden
                 >
                   <IconUsers size={15} />

@@ -351,14 +351,14 @@ function TeethDualKindOrderBuilderModal({
             </Button>
             <span className="group relative inline-flex">
               <span
-                className="cursor-help rounded bg-neutral-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-neutral-400 transition-colors group-hover:bg-neutral-100"
+                className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-indigo-400 transition-colors group-hover:bg-indigo-100"
                 aria-label="Funkcja testowa — sczytywanie zębów ze zdjęcia za pomocą AI"
               >
                 Beta
               </span>
               <span
                 role="tooltip"
-                className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-[11px] font-medium leading-relaxed text-neutral-900 shadow-md group-hover:block group-focus-within:block"
+                className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-indigo-200/90 bg-indigo-50/95 px-2.5 py-1.5 text-[11px] font-medium leading-relaxed text-indigo-900 shadow-md group-hover:block group-focus-within:block"
               >
                 To funkcja testowa — sczytywanie listy zębów ze zdjęcia za pomocą AI. Może jeszcze nie działać prawidłowo we wszystkich przypadkach. Wynik zawsze sprawdź przed zapisaniem.
               </span>
@@ -378,15 +378,15 @@ function TeethDualKindOrderBuilderModal({
             />
             <div className="ml-auto flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 tabular-nums">
               <span>
-                {TEETH_DUAL_KIND_LABELS.anterior}: <span className="text-neutral-700">{anteriorCount}</span>
+                {TEETH_DUAL_KIND_LABELS.anterior}: <span className="text-indigo-700">{anteriorCount}</span>
               </span>
               <span className="text-slate-300">·</span>
               <span>
-                {TEETH_DUAL_KIND_LABELS.posterior}: <span className="text-neutral-700">{posteriorCount}</span>
+                {TEETH_DUAL_KIND_LABELS.posterior}: <span className="text-indigo-700">{posteriorCount}</span>
               </span>
               <span className="text-slate-300">·</span>
               <span>
-                Razem: <span className="text-neutral-700">{totalCount}</span> szt.
+                Razem: <span className="text-indigo-700">{totalCount}</span> szt.
               </span>
             </div>
           </div>
@@ -430,7 +430,7 @@ function TeethDualKindOrderBuilderModal({
             <p className="text-xs font-semibold text-slate-800">
               {TEETH_DUAL_KIND_LABELS[activeKind]}
             </p>
-            <span className="text-[10px] font-medium tabular-nums text-neutral-700">
+            <span className="text-[10px] font-medium tabular-nums text-indigo-700">
               {activeCount} szt. na liście
             </span>
           </div>
@@ -508,7 +508,7 @@ function TeethDualKindToggle({
             {saveBlockReason}
           </span>
         ) : anteriorCount > 0 || posteriorCount > 0 ? (
-          <span className="inline-flex items-center gap-1 rounded-md border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[11px] font-medium text-neutral-700" role="status">
+          <span className="inline-flex items-center gap-1 rounded-md border border-indigo-200/80 bg-indigo-50/80 px-2 py-0.5 text-[11px] font-medium text-indigo-700" role="status">
             <IconCircleCheck size={12} />
             Gotowe do zapisu
           </span>
@@ -734,14 +734,14 @@ function TeethSingleKindOrderBuilderModal({
             </Button>
             <span className="group relative inline-flex">
               <span
-                className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-indigo-400 transition-colors group-hover:bg-neutral-100"
+                className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-indigo-400 transition-colors group-hover:bg-indigo-100"
                 aria-label="Funkcja testowa — sczytywanie zębów ze zdjęcia za pomocą AI"
               >
                 Beta
               </span>
               <span
                 role="tooltip"
-                className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-neutral-200 bg-indigo-50/95 px-2.5 py-1.5 text-[11px] font-medium leading-relaxed text-indigo-900 shadow-md group-hover:block group-focus-within:block"
+                className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-indigo-200/90 bg-indigo-50/95 px-2.5 py-1.5 text-[11px] font-medium leading-relaxed text-indigo-900 shadow-md group-hover:block group-focus-within:block"
               >
                 To funkcja testowa — sczytywanie listy zębów ze zdjęcia za pomocą AI. Może jeszcze nie działać prawidłowo we wszystkich przypadkach. Wynik zawsze sprawdź przed zapisaniem.
               </span>
@@ -759,7 +759,7 @@ function TeethSingleKindOrderBuilderModal({
             <div className="ml-auto flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 tabular-nums">
               {kindBreakdown.anterior > 0 ? (
                 <span>
-                  <span className="text-neutral-700">{kindBreakdown.anterior}</span> prz.
+                  <span className="text-indigo-700">{kindBreakdown.anterior}</span> prz.
                 </span>
               ) : null}
               {kindBreakdown.anterior > 0 && kindBreakdown.posterior > 0 ? (
@@ -767,14 +767,14 @@ function TeethSingleKindOrderBuilderModal({
               ) : null}
               {kindBreakdown.posterior > 0 ? (
                 <span>
-                  <span className="text-neutral-700">{kindBreakdown.posterior}</span> bocz.
+                  <span className="text-indigo-700">{kindBreakdown.posterior}</span> bocz.
                 </span>
               ) : null}
               {(kindBreakdown.anterior > 0 || kindBreakdown.posterior > 0) ? (
                 <span className="text-slate-300">·</span>
               ) : null}
               <span>
-                Razem: <span className="text-neutral-700">{totalCount || 0}</span> szt.
+                Razem: <span className="text-indigo-700">{totalCount || 0}</span> szt.
               </span>
             </div>
           </div>

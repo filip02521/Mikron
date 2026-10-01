@@ -191,7 +191,7 @@ function SalesSupplierRow({
       className={cn(
         "border-b border-slate-100/90 transition-[background-color] duration-150 last:border-b-0",
         expanded
-          ? "z-[1] bg-indigo-50/60 ring-1 ring-inset ring-neutral-200"
+          ? "z-[1] bg-indigo-50/60 ring-1 ring-inset ring-indigo-200/70"
           : "hover:bg-slate-50/80"
       )}
     >
@@ -313,7 +313,7 @@ function SalesSupplierRow({
         role="region"
         aria-labelledby={titleId}
         hidden={!expanded}
-        className="border-t border-neutral-200 bg-white/70 px-3 pb-3 pt-2 sm:px-4"
+        className="border-t border-indigo-200/40 bg-white/70 px-3 pb-3 pt-2 sm:px-4"
       >
         {expanded ? (
           <div className="space-y-2.5 rounded-md border border-slate-200/90 bg-white px-3 py-2.5">
@@ -447,7 +447,7 @@ function SalesSupplierRow({
                 <a
                   href={`mailto:${insight.contactEmail}`}
                   className={cn(
-                    "mt-0.5 inline-block font-medium text-neutral-700 hover:underline",
+                    "mt-0.5 inline-block font-medium text-indigo-700 hover:underline",
                     salesTypography.rowBody
                   )}
                 >
@@ -754,7 +754,7 @@ function SalesPlanViewContent({
               <button
                 type="button"
                 onClick={() => setQuery("")}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-neutral-700 hover:text-neutral-900"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-700 hover:text-indigo-900"
               >
                 <BackChevron className="text-indigo-600" />
                 {C.searchBackToList}
@@ -824,7 +824,7 @@ function SalesPlanViewContent({
                 {C.footerDefaultPrefix}
                 <Link
                   href={previewHref("/moje")}
-                  className="font-medium text-neutral-700 hover:underline"
+                  className="font-medium text-indigo-700 hover:underline"
                 >
                   {C.ctaMyOrders}
                 </Link>

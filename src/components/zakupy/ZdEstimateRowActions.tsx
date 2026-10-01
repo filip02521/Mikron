@@ -97,7 +97,7 @@ export function ZdEstimateRowActions({
       align="end"
       iconOnly
       disabled={disabled || pending}
-      triggerClassName="h-8 w-8 border-slate-200/90 bg-white shadow-sm hover:border-slate-300 hover:bg-slate-50"
+      triggerClassName="h-8 w-8 border-slate-200/90 bg-white shadow-sm shadow-slate-900/[0.03] hover:border-slate-300 hover:bg-slate-50"
       menuClassName="min-w-[15.5rem]"
     >
       <OverflowMenuLabel>{symbol}</OverflowMenuLabel>

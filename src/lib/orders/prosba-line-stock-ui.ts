@@ -20,7 +20,7 @@ export type ProsbaLineStockStatusView = {
 
 const TONE_BADGE: Record<ProsbaLineStockTone, string> = {
   amber: "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80",
-  sky: "bg-sky-100 text-sky-900 ring-1 ring-neutral-200",
+  sky: "bg-sky-100 text-sky-900 ring-1 ring-sky-200/70",
   slate: "bg-slate-100 text-slate-700 ring-1 ring-slate-200/80",
 };
 
@@ -32,7 +32,7 @@ const TONE_ROW: Record<ProsbaLineStockTone, string> = {
 
 const TONE_SHELL: Record<ProsbaLineStockTone, string> = {
   amber: "border-amber-200/90 bg-amber-50/70",
-  sky: "border-neutral-200 bg-sky-50/65",
+  sky: "border-sky-200/90 bg-sky-50/65",
   slate: "border-slate-200/90 bg-slate-50/80",
 };
 

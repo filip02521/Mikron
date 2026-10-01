@@ -26,8 +26,8 @@ export function OperationsTodayTasksSection({
   }
 
   const shellClass = embedded
-    ? "border-b border-neutral-100 bg-violet-50/60 px-3 py-3 sm:px-4"
-    : "rounded-md border border-neutral-200 bg-violet-50/40 p-3 sm:p-4";
+    ? "border-b border-violet-100 bg-violet-50/60 px-3 py-3 sm:px-4"
+    : "rounded-md border border-violet-200/80 bg-violet-50/40 p-3 sm:p-4";
 
   return (
     <section className={shellClass}>
@@ -44,7 +44,7 @@ export function OperationsTodayTasksSection({
             <button
               type="button"
               onClick={() => navigate(note.id)}
-              className="flex w-full items-center justify-between gap-2 rounded-md border border-white/80 bg-white/90 px-3 py-2 text-left transition hover:border-neutral-300 hover:bg-white"
+              className="flex w-full items-center justify-between gap-2 rounded-md border border-white/80 bg-white/90 px-3 py-2 text-left shadow-sm transition hover:border-violet-200 hover:bg-white"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">

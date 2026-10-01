@@ -169,7 +169,7 @@ export function MyOrderAckButton({
         title={title}
         aria-label={accessibleName}
         onClick={onClick}
-        className={cn(mojeSecondaryControlClass, "text-neutral-800", className)}
+        className={cn(mojeSecondaryControlClass, "text-violet-800", className)}
       >
         {children}
       </button>

@@ -107,7 +107,7 @@ function ZdReceiveCandidateList({
                 aria-selected={resolving}
                 disabled={resolvingDokId != null}
                 onClick={() => onPick(candidate)}
-                className="flex w-full flex-col rounded-lg border border-white/80 bg-white px-2.5 py-2 text-left transition hover:border-emerald-200 hover:bg-emerald-50/40 disabled:opacity-60"
+                className="flex w-full flex-col rounded-lg border border-white/80 bg-white px-2.5 py-2 text-left shadow-sm transition hover:border-emerald-200 hover:bg-emerald-50/40 disabled:opacity-60"
               >
                 <span className="text-sm font-semibold text-slate-900">
                   {formatZdDocNumberLabel(candidate.docNumber)}

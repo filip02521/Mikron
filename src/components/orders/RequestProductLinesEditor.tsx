@@ -358,7 +358,7 @@ export function RequestProductLinesEditor({
                 return (
                   <div
                     key={line.id}
-                    className="overflow-hidden rounded-md border border-slate-200 bg-white"
+                    className="overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm"
                   >
                     <ProsbaProductLineCollapsedRow
                       index={index}
@@ -435,7 +435,7 @@ export function RequestProductLinesEditor({
             className={cn(
               wrapLine
                 ? prosba
-                  ? "rounded-md border border-slate-200 bg-white p-3 sm:p-4"
+                  ? "rounded-md border border-slate-200 bg-white p-3 shadow-sm sm:p-4"
                   : "rounded-md border border-dashed border-slate-200 bg-slate-50/50 p-3"
                 : "space-y-3"
             )}
@@ -654,7 +654,7 @@ export function RequestProductLinesEditor({
           type="button"
           variant="ghost"
           size="sm"
-          className="h-auto px-0 py-1 text-xs font-medium text-neutral-700 hover:bg-transparent hover:text-neutral-900"
+          className="h-auto px-0 py-1 text-xs font-medium text-indigo-700 hover:bg-transparent hover:text-indigo-900"
           onClick={() => onChange(copyNoteLines)}
         >
           {PROSBA_OPTIONAL_SECTION_COPY.lineNote.copyToAllLines}

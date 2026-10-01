@@ -263,7 +263,7 @@ export function ZkWatchProsbaScopeModal({
           <div className="flex items-center gap-2 text-xs text-slate-500">
             {orderCount > 0 ? (
               <>
-                <span className="inline-flex size-5 items-center justify-center rounded-full bg-neutral-100 text-[10px] font-bold text-neutral-700">
+                <span className="inline-flex size-5 items-center justify-center rounded-full bg-indigo-100 text-[10px] font-bold text-indigo-700">
                   {orderCount}
                 </span>
                 <span className="font-medium text-slate-700">
@@ -308,14 +308,14 @@ export function ZkWatchProsbaScopeModal({
         </div>
       }
     >
-      <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white px-3.5 py-2.5">
+      <div className="overflow-hidden rounded-lg border border-indigo-200/60 bg-gradient-to-br from-indigo-50/80 via-indigo-50/40 to-sky-50/30 px-3.5 py-2.5">
         <div className="flex items-start gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-neutral-100 text-indigo-600">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-indigo-100/80 text-indigo-600">
             <IconClipboardList size={16} strokeWidth={2} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-neutral-900">Zaznacz pozycje do zamówienia</p>
-            <p className="mt-0.5 text-xs leading-relaxed text-neutral-900">
+            <p className="text-sm font-semibold text-indigo-950">Zaznacz pozycje do zamówienia</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-indigo-900/70">
               Zaznaczone trafią do prośby u zakupów. Odznacz towar na stanie w Subiekcie
               (uwzględniamy rezerwacje z tego ZK). Status &bdquo;na magazynie&rdquo; pojawi się po
               dostawie z prośby.
@@ -358,7 +358,7 @@ export function ZkWatchProsbaScopeModal({
         </div>
         <ul
           className={cn(
-            "divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200/80 bg-white",
+            "divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm",
             awaitingAutoMark && "pointer-events-none opacity-60"
           )}
           aria-busy={awaitingAutoMark || undefined}
@@ -413,7 +413,7 @@ export function ZkWatchProsbaScopeModal({
                     <span className={cn(salesTypography.rowTitle, "block text-slate-900")}>
                       {line.product}
                       {twId != null && teethExemptTwIds.has(twId) ? (
-                        <span className="ml-1.5 inline-flex rounded-md bg-neutral-50 px-1.5 py-0.5 text-[10px] font-medium text-neutral-800 ring-1 ring-inset ring-neutral-200">
+                        <span className="ml-1.5 inline-flex rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-800 ring-1 ring-inset ring-violet-200/70">
                           Zęby
                         </span>
                       ) : null}
@@ -465,7 +465,7 @@ export function ZkWatchProsbaScopeModal({
           className={cn(
             "space-y-2.5 rounded-lg border px-3.5 py-2.5",
             autoProsbaActive
-              ? "border-neutral-200 bg-indigo-50/40"
+              ? "border-indigo-200/70 bg-indigo-50/40"
               : "border-slate-200/80 bg-slate-50/50"
           )}
         >

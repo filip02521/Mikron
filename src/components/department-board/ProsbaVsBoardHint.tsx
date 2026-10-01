@@ -25,7 +25,7 @@ export function ProsbaVsBoardHint() {
     >
       <div className="flex items-center gap-2 sm:gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-2.5">
-          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-neutral-700">
+          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-700">
             <IconInfoCircle size={15} strokeWidth={2} />
           </span>
           {/* Bez nowrap: długie zdanie nachodziło na „Ukryj” i wypychało ikonę poza kartę. */}

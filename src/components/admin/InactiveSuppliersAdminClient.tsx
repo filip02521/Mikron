@@ -58,7 +58,7 @@ function parseSubiektFilter(raw: string | null): SupplierSubiektFilter {
 }
 
 function inactiveRowClass(isEditing: boolean): string {
-  return cn("bg-slate-50/80", isEditing && "bg-indigo-50/80 ring-1 ring-inset ring-neutral-200");
+  return cn("bg-slate-50/80", isEditing && "bg-indigo-50/80 ring-1 ring-inset ring-indigo-200");
 }
 
 export function InactiveSuppliersAdminClient({
@@ -384,7 +384,7 @@ export function InactiveSuppliersAdminClient({
                           </p>
                           <Link
                             href={scheduleHref(s.location, s.name)}
-                            className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-neutral-700 hover:text-neutral-900 hover:underline md:mt-0 md:text-sm"
+                            className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:text-sky-900 hover:underline md:mt-0 md:text-sm"
                           >
                             Terminy
                             <LinkChevron size={12} tone="sky" className="md:hidden" />

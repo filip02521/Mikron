@@ -54,7 +54,7 @@ export function MyOrderCollapsedRowZones({
           className={cn("truncate", salesTypography.rowTitle)}
         />
         {showInlineLineCountBadge && row.lineCount > 1 ? (
-          <span className="shrink-0 rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-neutral-700">
+          <span className="shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-indigo-700">
             +{row.lineCount - 1}
           </span>
         ) : null}

@@ -3,7 +3,7 @@ import { salesTypography } from "@/lib/ui/ontime-theme";
 
 /** Jedna sekcja listy (nagłówek + wiersze) — zaokrąglenie tylko na zewnątrz. */
 export const mojeShipmentSectionShellClass =
-  "overflow-hidden rounded-lg border border-slate-200/80 bg-white";
+  "overflow-hidden rounded-lg border border-slate-200/80 bg-white shadow-sm shadow-slate-200/40";
 
 /** Układ wiersza — treść nad akcjami na wąskim ekranie. */
 export const mojeQueueRowLayoutClass =
@@ -61,39 +61,39 @@ export function mojeShipmentRowClass({
   if (visualTone === "archive") {
     const accent =
       archiveAccent === "cancelled"
-        ? ""
+        ? "border-l-red-300"
         : archiveAccent === "informacja"
-          ? ""
+          ? "border-l-violet-300"
           : archiveAccent === "completed"
-            ? ""
+            ? "border-l-emerald-300"
             : "border-l-slate-200/70";
     return cn(
-      "transition-all duration-150",
+      "border-l-[3px] transition-all duration-150",
       accent,
       expanded ? "bg-slate-50/70" : "bg-slate-50/45 hover:bg-slate-50/65"
     );
   }
 
   const accent = isAction
-    ? ""
+    ? "border-l-emerald-500"
     : isInformacjaAck
-      ? ""
+      ? "border-l-violet-500"
       : isDismiss
-        ? ""
+        ? "border-l-rose-400"
         : isCancelAck
-          ? ""
+          ? "border-l-amber-500"
           : isUrgent
-            ? ""
+            ? "border-l-amber-500"
             : deliveryBorderAccent
               ? deliveryBorderAccent
               : isStock
-                ? ""
+                ? "border-l-sky-500"
                 : isInformacja
-                  ? ""
+                  ? "border-l-violet-400"
                   : "border-l-slate-200";
 
   return cn(
-    "transition-all duration-150",
+    "border-l-[3px] transition-all duration-150",
     accent,
     isAction && !expanded && "bg-emerald-50/35",
     isInformacjaAck && !expanded && "bg-violet-50/40",
@@ -106,7 +106,7 @@ export function mojeShipmentRowClass({
       : isAction
         ? "hover:bg-emerald-50/50"
         : isInformacjaAck
-          ? "hover:bg-neutral-50"
+          ? "hover:bg-violet-50/55"
           : isDismiss
             ? "hover:bg-rose-50/45"
             : isCancelAck
@@ -124,7 +124,7 @@ export const mojeShipmentExpandedMetaShellClass =
   "px-0 py-0";
 
 export const mojeShipmentExpandedPanelClass =
-  "space-y-2 rounded-lg border border-slate-200/70 bg-white px-3 py-3 sm:px-4 sm:py-3.5";
+  "space-y-2 rounded-lg border border-slate-200/70 bg-white shadow-sm shadow-slate-200/30 px-3 py-3 sm:px-4 sm:py-3.5";
 
 export const mojeShipmentExpandedInfoBlockClass =
   "space-y-1.5 px-3 py-2";
@@ -169,7 +169,7 @@ export const mojeLineCancelMenuTriggerClass = cn(
 
 /** Stopka zbiorczego potwierdzenia pod listą produktów. */
 export const mojeShipmentBulkPickupFooterClass =
-  "border-t border-emerald-100/90 bg-emerald-50 px-3 py-3 sm:px-4";
+  "border-t border-emerald-100/90 bg-gradient-to-b from-emerald-50/50 via-emerald-50/20 to-white px-3 py-3 sm:px-4";
 
 export const mojeShipmentExpandedActionsClass =
   "flex justify-end border-t border-slate-100 bg-slate-50/60 px-3 py-2.5";

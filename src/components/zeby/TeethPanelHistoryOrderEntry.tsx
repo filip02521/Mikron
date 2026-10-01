@@ -20,11 +20,11 @@ export function teethHistoryState(item: TeethQueueItem, today = formatDateString
   return "in_transit";
 }
 
-const STATE_META: Record<TeethHistoryState, { label: string; badge: string; bar: string }> = {
-  in_transit: { label: "W drodze", badge: "bg-sky-50 text-sky-800 ring-neutral-200", bar: "bg-sky-500" },
+export const TEETH_HISTORY_STATE_META: Record<TeethHistoryState, { label: string; badge: string; bar: string }> = {
+  in_transit: { label: "W drodze", badge: "bg-sky-50 text-sky-800 ring-sky-200", bar: "bg-sky-500" },
   late: { label: "Opóźnione", badge: "bg-red-50 text-red-700 ring-red-200", bar: "bg-red-500" },
   partial: { label: "Częściowo", badge: "bg-amber-50 text-amber-800 ring-amber-200", bar: "bg-amber-400" },
-  done: { label: "Dostarczone", badge: "bg-indigo-50 text-indigo-700 ring-neutral-200", bar: "bg-indigo-300" },
+  done: { label: "Dostarczone", badge: "bg-indigo-50 text-indigo-700 ring-indigo-200", bar: "bg-indigo-300" },
   cancelled: { label: "Anulowane", badge: "bg-slate-50 text-slate-400 ring-slate-200", bar: "bg-slate-200" },
 };
 
@@ -45,7 +45,7 @@ export function TeethPanelHistoryOrderEntry({
   onToggleSelected?: () => void;
 }) {
   const state = teethHistoryState(item);
-  const meta = STATE_META[state];
+  const meta = TEETH_HISTORY_STATE_META[state];
   const lines = teethOrderSpecLines(item);
   const who = item.sales_person_name?.trim() || "Bez handlowca";
   const context = [item.sales_client_name?.trim(), item.source_zk_number?.trim()]

@@ -195,10 +195,10 @@ export function UserSettingsMenu({
             key={d.id}
             href={`/moje?dla=${d.salesPersonId}`}
             role="menuitem"
-            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-neutral-50 hover:text-neutral-900"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-indigo-50/80 hover:text-indigo-950"
             onClick={() => setOpen(false)}
           >
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-[10px] font-semibold text-neutral-700" aria-hidden>
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[10px] font-semibold text-violet-700" aria-hidden>
               {initialsFromName(d.salesPersonName)}
             </span>
             <span className="min-w-0 flex-1">
@@ -239,7 +239,7 @@ export function UserSettingsMenu({
                 )}
               >
                 <span
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-[10px] font-semibold text-neutral-700"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-100 text-[10px] font-semibold text-violet-700"
                   aria-hidden
                 >
                   {initialsFromName(d.salesPersonName)}

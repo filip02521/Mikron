@@ -109,7 +109,7 @@ function stockBadge(status: MyOrderLineStockStatus): { label: string; className:
     case "partial":
       return {
         label: "Częściowo",
-        className: "bg-sky-50 text-sky-900 ring-neutral-200",
+        className: "bg-sky-50 text-sky-900 ring-sky-200/90",
       };
     case "waiting":
       return {
@@ -357,7 +357,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
           deliveredQuantity={line.deliveredQuantity}
           triggerSize="sm"
           triggerVariant="ghost"
-          triggerClassName="text-[10px] font-medium text-neutral-700 hover:text-neutral-900"
+          triggerClassName="text-[10px] font-medium text-indigo-700 hover:text-indigo-900"
         />
       ) : null}
       {line.teethOrderFileName ? (
@@ -393,16 +393,16 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
         "group/line",
         compact ? mojeShipmentLineRowClass : "py-1.5 px-0.5",
         compact && useActionColumn && showLinePickupAck && "bg-emerald-50/20",
-        !compact && emphasizeStock && onStock && "border-emerald-500 pl-2",
-        !compact && emphasizeStock && partial && "border-sky-400 pl-2",
+        !compact && emphasizeStock && onStock && "border-l-2 border-emerald-500 pl-2",
+        !compact && emphasizeStock && partial && "border-l-2 border-sky-400 pl-2",
         compact &&
           emphasizeStock &&
           onStock &&
-          "bg-emerald-50/20",
+          "border-l-[3px] border-l-emerald-400 bg-emerald-50/20",
         compact &&
           emphasizeStock &&
           partial &&
-          "bg-sky-50/20"
+          "border-l-[3px] border-l-sky-400 bg-sky-50/20"
       )}
     >
       <div
@@ -455,7 +455,7 @@ export const MyOrderLineItem = memo(function MyOrderLineItem({
                 text={`PLU ${line.mikranCode.trim()}`}
                 copyValue={line.mikranCode.trim()}
                 title="Kod Mikran (PLU)"
-                className="bg-neutral-50 text-neutral-800 ring-1 ring-neutral-200"
+                className="bg-violet-50 text-violet-800 ring-1 ring-violet-200/80"
                 searchQuery={searchQuery}
               />
             ) : null}

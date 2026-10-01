@@ -167,7 +167,7 @@ export function ZdEstimateListToolsBar({
     >
       <div className={zdEstimateListToolsRowClass}>
         <div className={zdEstimateListToolsMetaClass}>
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-neutral-900">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-indigo-950">
             <span className="sr-only">{selectionLabel}</span>
             <span
               className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-xs font-bold tabular-nums text-white"
@@ -178,7 +178,7 @@ export function ZdEstimateListToolsBar({
             <span aria-hidden>{selectionLabel.replace(/^\d+\s+/, "")}</span>
             {visibleSelectedCount > 0 &&
             visibleSelectedCount !== selectedCount ? (
-              <span className="text-[11px] font-medium text-neutral-800">
+              <span className="text-[11px] font-medium text-indigo-800/80">
                 ({visibleSelectedCount} na tej stronie listy)
               </span>
             ) : null}

@@ -59,7 +59,7 @@ function StepTitle({
     >
       {step.id === "welcome" && displayName ? (
         <>
-          Witaj, <span className="text-neutral-700">{displayName}</span>
+          Witaj, <span className="text-indigo-700">{displayName}</span>
         </>
       ) : (
         step.title
@@ -91,7 +91,7 @@ function TourStepContent({
             <span className="line-clamp-2">{step.bullets[0]}</span>
           </p>
         ) : null}
-        <p className="text-[11px] font-medium text-neutral-700">
+        <p className="text-[11px] font-medium text-indigo-700">
           Rozwiń, aby zobaczyć {step.bullets.length}{" "}
           {step.bullets.length === 1
             ? "punkt"
@@ -120,7 +120,7 @@ function TourStepContent({
       </ul>
 
       {step.tip ? (
-        <p className="rounded-md border border-neutral-100 bg-neutral-50 px-2.5 py-2 text-[11px] leading-relaxed text-neutral-900">
+        <p className="rounded-md border border-indigo-100 bg-indigo-50/60 px-2.5 py-2 text-[11px] leading-relaxed text-indigo-950">
           <strong className="font-semibold">Wskazówka:</strong> {step.tip}
         </p>
       ) : null}
@@ -258,7 +258,7 @@ export function SalesOnboardingWizard() {
         aria-modal="true"
         aria-labelledby="sales-onboarding-title"
       >
-        <div className="relative flex max-h-[min(100dvh,920px)] w-full max-w-2xl flex-col overflow-hidden rounded-t-lg border border-slate-200/90 bg-white shadow-2xl sm:rounded-lg">
+        <div className="relative flex max-h-[min(100dvh,920px)] w-full max-w-2xl flex-col overflow-hidden rounded-t-lg border border-slate-200/90 bg-gradient-to-br from-white via-white to-indigo-50/40 shadow-2xl sm:rounded-lg">
           <BrandCardAccent className="absolute -right-10 -top-10 h-40 w-48 opacity-80" />
 
           <div className="relative z-[1] border-b border-slate-100 bg-white/80 px-4 py-4 sm:px-6">
@@ -320,9 +320,9 @@ export function SalesOnboardingWizard() {
   return (
     <div
       className={cn(
-        "fixed z-[110] flex flex-col border bg-white shadow-xl transition-shadow duration-500",
+        "fixed z-[110] flex flex-col border bg-gradient-to-br from-white via-white to-indigo-50/30 shadow-xl transition-shadow duration-500",
         coachHighlight
-          ? "border-indigo-400"
+          ? "border-indigo-400 shadow-[0_0_0_3px_rgba(99,102,241,0.35),0_12px_40px_rgba(15,23,42,0.18)]"
           : "border-slate-200/90",
         showFullDetails && !isDesktop
           ? "inset-x-2 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px)+var(--admin-preview-dock,0px)+0.5rem)] max-h-[min(58dvh,24rem)] rounded-lg"
@@ -377,7 +377,7 @@ export function SalesOnboardingWizard() {
         {!isDesktop ? (
           <button
             type="button"
-            className="w-full text-left text-xs font-medium text-neutral-700 hover:text-neutral-900"
+            className="w-full text-left text-xs font-medium text-indigo-700 hover:text-indigo-900"
             onClick={() => setMobileDetailsOpen((open) => !open)}
             aria-expanded={mobileDetailsOpen}
           >

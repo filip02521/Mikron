@@ -20,15 +20,16 @@ describe("boardQuestionRowClass", () => {
     expect(row).not.toContain("bg-slate-100");
   });
 
-  it("nie dodaje lewego paska na zwiniętym wierszu", () => {
+  it("dodaje lewy akcent kolorystyczny na zwiniętym wierszu", () => {
     const row = boardQuestionRowClass({ unseen: false, open: false, expanded: false });
-    expect(row).not.toContain("border-l-");
+    expect(row).toContain("border-l-2");
+    expect(row).toContain("border-l-indigo-300");
   });
 });
 
 describe("boardQuestionAuthorNameClass", () => {
   it("używa zwykłego koloru bez badge", () => {
-    expect(boardQuestionAuthorNameClass).toContain("text-neutral-700");
+    expect(boardQuestionAuthorNameClass).toContain("text-indigo-700");
     expect(boardQuestionAuthorNameClass).not.toContain("rounded");
     expect(boardQuestionAuthorNameClass).not.toContain("ring");
   });

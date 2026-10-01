@@ -103,13 +103,13 @@ export function AnnouncementCard({
         aria-hidden
       />
       {thread.pinned ? (
-        <span className="inline-flex items-center gap-0.5 rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-900">
+        <span className="inline-flex items-center gap-0.5 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-900">
           <IconPin size={10} strokeWidth={2.5} aria-hidden />
           Przypięte
         </span>
       ) : null}
       {showUnread ? (
-        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-neutral-800">
+        <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-800">
           Nowe
         </span>
       ) : null}
@@ -170,10 +170,10 @@ export function AnnouncementCard({
         ref={articleRef}
         id={`announcement-${thread.id}`}
         className={cn(
-          "relative rounded-xl border p-4",
+          "relative rounded-xl border p-4 shadow-sm",
           cardTone,
-          thread.pinned && "ring-1 ring-neutral-200",
-          showUnread && "ring-2 ring-neutral-200 ring-offset-1"
+          thread.pinned && "ring-1 ring-indigo-200/80",
+          showUnread && "ring-2 ring-indigo-300/70 ring-offset-1"
         )}
       >
         <header className="space-y-1.5 pr-8">

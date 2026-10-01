@@ -118,7 +118,7 @@ function GadkiSection({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-md border border-slate-200/80 bg-[var(--card)]",
+        "overflow-hidden rounded-md border border-slate-200/80 bg-[var(--card)] shadow-sm",
         className
       )}
     >
@@ -387,7 +387,7 @@ export function MagazynGadkiClient({
         title="Powiązane ZK"
         hint="Stałe dokumenty ZK z Subiekta przypięte do magazynu Gądki (max 10)."
         icon={<IconLink size={16} />}
-        iconTileClassName="bg-neutral-100 text-neutral-800"
+        iconTileClassName="bg-sky-100 text-sky-800"
         headerAside={
           links.length > 0 ? (
             <button
@@ -551,9 +551,9 @@ export function MagazynGadkiClient({
                   <article
                     key={link.id}
                     id={`zk-${link.id}`}
-                    className="scroll-mt-24 overflow-hidden rounded-lg border border-emerald-100/80 bg-white"
+                    className="scroll-mt-24 overflow-hidden rounded-lg border border-emerald-100/80 bg-white shadow-sm shadow-emerald-950/[0.03]"
                   >
-                    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-emerald-50 bg-emerald-50 px-3.5 py-3 sm:px-4">
+                    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-emerald-50 bg-gradient-to-r from-emerald-50/70 via-white to-sky-50/30 px-3.5 py-3 sm:px-4">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-sm font-semibold tracking-tight text-slate-900">
@@ -635,10 +635,10 @@ export function MagazynGadkiClient({
                                   {group.lines.length}{" "}
                                   {group.lines.length === 1 ? "wiersz" : "wiersze"}
                                 </span>
-                                <div className="h-px flex-1 bg-neutral-200" />
+                                <div className="h-px flex-1 bg-gradient-to-r from-slate-200/80 to-transparent" />
                               </div>
                             ) : null}
-                            <ul className="overflow-hidden rounded-lg border border-slate-200/80 bg-white divide-y divide-slate-100/90">
+                            <ul className="overflow-hidden rounded-lg border border-slate-200/80 bg-white divide-y divide-slate-100/90 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8)]">
                               {group.lines.map((line) => (
                                 <LineRow
                                   key={`${link.id}-${line.rowKey}`}
@@ -694,7 +694,7 @@ export function MagazynGadkiClient({
                       })}
 
                       {orphanVisible.length > 0 ? (
-                        <div className="space-y-2.5 rounded-lg border border-amber-200/90 bg-amber-50 p-3.5">
+                        <div className="space-y-2.5 rounded-lg border border-amber-200/90 bg-gradient-to-b from-amber-50/90 to-amber-50/40 p-3.5">
                           <div className="flex items-center gap-2">
                             <span className="inline-flex items-center rounded-md bg-amber-100/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-900 ring-1 ring-inset ring-amber-200/80">
                               Usunięte z ZK
@@ -799,7 +799,7 @@ export function MagazynGadkiClient({
         title="Notatki"
         hint="Notatki magazynu lub przypięte do konkretnego ZK."
         icon={<IconNotepad size={16} />}
-        iconTileClassName="bg-neutral-100 text-neutral-800"
+        iconTileClassName="bg-violet-100 text-violet-800"
         headerAside={
           notes.length > 0 ? (
             <select
@@ -1076,7 +1076,7 @@ export function MagazynGadkiClient({
                                   "bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200/70",
                                 (row.kind === "zk_linked" ||
                                   row.kind === "zk_unlinked") &&
-                                  "bg-sky-50 text-sky-900 ring-1 ring-inset ring-neutral-200",
+                                  "bg-sky-50 text-sky-900 ring-1 ring-inset ring-sky-200/70",
                                 !isZk &&
                                   "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200/80"
                               )}
@@ -1168,7 +1168,7 @@ function RenamePalletForm({
 
   return (
     <form
-      className="flex flex-wrap items-center gap-1.5 rounded-lg border border-emerald-100/90 bg-white/90 px-2 py-1.5 text-xs"
+      className="flex flex-wrap items-center gap-1.5 rounded-lg border border-emerald-100/90 bg-white/90 px-2 py-1.5 text-xs shadow-sm shadow-emerald-950/[0.02]"
       onSubmit={(e) => {
         e.preventDefault();
         if (!from || !to.trim()) return;
@@ -1232,7 +1232,7 @@ function LineStatusChip({
         tone === "emerald" && "bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200/70",
         tone === "amber" && "bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200/80",
         tone === "slate" && "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200/80",
-        tone === "neutral" && "bg-sky-50 text-sky-900 ring-1 ring-inset ring-neutral-200"
+        tone === "neutral" && "bg-sky-50 text-sky-900 ring-1 ring-inset ring-sky-200/70"
       )}
     >
       {children}
@@ -1340,7 +1340,7 @@ function LineRow({
             canMutate && canEditLineNote ? (
               <button
                 type="button"
-                className="mt-1 line-clamp-2 max-w-full text-left text-xs leading-snug text-slate-400 transition-colors hover:text-neutral-800"
+                className="mt-1 line-clamp-2 max-w-full text-left text-xs leading-snug text-slate-400 transition-colors hover:text-sky-800"
                 disabled={disabled}
                 onClick={() => openNoteEditor("line")}
               >
@@ -1550,7 +1550,7 @@ function LineRow({
 
       {noteOpen && canMutate ? (
         <form
-          className="mt-3 flex flex-col gap-2 rounded-lg border border-neutral-100 bg-neutral-50 p-2.5 sm:flex-row sm:items-center"
+          className="mt-3 flex flex-col gap-2 rounded-lg border border-sky-100 bg-sky-50/40 p-2.5 sm:flex-row sm:items-center"
           onSubmit={(e) => {
             e.preventDefault();
             onNote(noteDraft.trim() || null, noteTarget);
@@ -1562,7 +1562,7 @@ function LineRow({
             onChange={(e) => setNoteDraft(e.target.value)}
             className={cn(
               fieldControlClass("default"),
-              "flex-1 border-neutral-100 bg-white text-sm"
+              "flex-1 border-sky-100 bg-white text-sm"
             )}
             placeholder={
               noteTarget === "share"
@@ -1673,7 +1673,7 @@ function SplitSharesEditor({
   const listId = `gadki-pallets-${line.rowKey}`;
 
   return (
-    <div className="mt-3 space-y-3 rounded-lg border border-emerald-100 bg-emerald-50 p-3">
+    <div className="mt-3 space-y-3 rounded-lg border border-emerald-100 bg-gradient-to-b from-emerald-50/50 to-white p-3 shadow-sm shadow-emerald-950/[0.03]">
       <div className="space-y-1">
         <p className="text-xs font-semibold text-emerald-950">
           Rozbicie na palety
@@ -1698,7 +1698,7 @@ function SplitSharesEditor({
         {rows.map((row, idx) => (
           <li
             key={row.id}
-            className="space-y-1.5 rounded-lg border border-emerald-100/80 bg-white p-2.5"
+            className="space-y-1.5 rounded-lg border border-emerald-100/80 bg-white p-2.5 shadow-sm shadow-slate-950/[0.02]"
           >
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-50 text-[10px] font-bold tabular-nums text-emerald-800 ring-1 ring-inset ring-emerald-200/70">

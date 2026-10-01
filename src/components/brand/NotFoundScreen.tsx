@@ -35,6 +35,9 @@ export function NotFoundScreen({
     >
       {/* Atmosfera — subtelne orby w tonacji marki, bez osobnej „kartkowej” scenografii */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute -left-16 top-8 h-48 w-48 rounded-full bg-indigo-200/25 blur-3xl motion-safe:animate-auth-float" />
+        <div className="absolute -right-10 bottom-16 h-40 w-40 rounded-full bg-sky-200/30 blur-3xl motion-safe:animate-auth-float-slow" />
+        <div className="absolute left-1/2 top-1/3 h-56 w-56 -translate-x-1/2 rounded-full bg-indigo-100/20 blur-3xl motion-safe:animate-auth-float-center" />
       </div>
 
       <div className="auth-enter relative z-[1]">
@@ -47,7 +50,7 @@ export function NotFoundScreen({
         <div
           className={cn(
             "auth-card-enter relative overflow-hidden rounded-lg border border-slate-200/80",
-            "bg-white/95 p-6 text-center backdrop-blur-sm sm:p-8"
+            "bg-white/95 p-6 text-center shadow-[var(--shadow-card-elevated)] backdrop-blur-sm sm:p-8"
           )}
         >
           <BrandCardAccent className="absolute -right-6 -top-6 h-36 w-44 text-indigo-600" />
@@ -61,7 +64,7 @@ export function NotFoundScreen({
           </span>
 
           <div className="relative z-[1]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-neutral-700">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700/90">
               Strona niedostępna
             </p>
 

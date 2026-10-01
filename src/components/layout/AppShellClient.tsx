@@ -54,6 +54,7 @@ import { canAccessOperations, canAccessTeethPanel, canAccessWarehouse, isSalesAc
 import { MobileOperationsNav } from "./MobileOperationsNav";
 import { MobileOperationsHeader } from "./MobileOperationsHeader";
 import { useAppShellMetrics } from "./AppShellMetricsContext";
+import { AppWorkspaceBackdrop } from "./AppWorkspaceBackdrop";
 import { FontScaleSync } from "./FontScaleSync";
 import { TeethExemptProvider } from "@/components/layout/TeethExemptContext";
 import { TeethShortagesProvider } from "@/components/layout/TeethShortagesContext";
@@ -97,11 +98,13 @@ function OperationsGlobalPinnedStrip({
 function AppShellMain({
   children,
   mobileChrome,
+  uniformBackground,
   topNotices,
   adminPreviewDock = false,
 }: {
   children: React.ReactNode;
   mobileChrome: boolean;
+  uniformBackground: boolean;
   topNotices?: React.ReactNode;
   /** Extra bottom padding when admin preview dock is visible. */
   adminPreviewDock?: boolean;
@@ -122,6 +125,7 @@ function AppShellMain({
         coachPadding
       )}
     >
+      <AppWorkspaceBackdrop uniformBackground={uniformBackground} />
       <div className={cn(appMainInsetClass, "relative z-[1]")}>
         {topNotices}
         <SalesOnboardingTourBanner />
@@ -150,6 +154,7 @@ export function AppShellClient({
   activeTeethShortages = [],
   assignedWorkspaces = [],
   activeDelegations = [],
+  uniformBackground = false,
   fontScale = "default",
 }: {
   children: React.ReactNode;
@@ -337,6 +342,7 @@ export function AppShellClient({
         ) : null}
         <AppShellMain
           mobileChrome={mobileChrome}
+          uniformBackground={uniformBackground}
           adminPreviewDock={Boolean(adminPanelPreview)}
           topNotices={
             adminPanelPreview ? (

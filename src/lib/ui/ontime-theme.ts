@@ -19,13 +19,13 @@ export const appMainInsetClass = "mx-auto w-full px-3 py-5 sm:px-4 sm:py-6 lg:px
 
 /** Sidebar — biała powierzchnia, obwódka i cień jak karty panelu dziennego */
 export const sidebarShellClass =
-  "border-r border-neutral-100 bg-[var(--card)] text-slate-900";
+  "border-r border-indigo-100/75 bg-[var(--card)] text-slate-900 shadow-[var(--shadow-card)]";
 
 export const sidebarHeaderClass =
-  "shrink-0 border-b border-neutral-100 px-4 pb-4 pt-5";
+  "shrink-0 border-b border-indigo-100/70 px-4 pb-4 pt-5";
 
 export const sidebarFooterClass =
-  "shrink-0 border-t border-neutral-100 bg-neutral-50 px-3 py-3";
+  "shrink-0 border-t border-indigo-100/70 bg-indigo-50/25 px-3 py-3";
 
 export const sidebarNavScrollClass = "flex-1 overflow-y-auto px-2.5 pb-3 pt-4";
 
@@ -33,26 +33,26 @@ export const sidebarNavScrollClass = "flex-1 overflow-y-auto px-2.5 pb-3 pt-4";
 export function sidebarNavToneActiveClass(tone: NavTone): string {
   switch (tone) {
     case "amber":
-      return "border border-transparent bg-amber-100/60 text-slate-900 shadow-sm";
+      return "border border-transparent bg-amber-100/60 text-slate-900 shadow-sm shadow-amber-900/5";
     case "orange":
-      return "border border-transparent bg-orange-100/65 text-slate-900 shadow-sm";
+      return "border border-transparent bg-orange-100/65 text-slate-900 shadow-sm shadow-orange-900/5";
     case "emerald":
-      return "border border-transparent bg-emerald-100/60 text-slate-900 shadow-sm";
+      return "border border-transparent bg-emerald-100/60 text-slate-900 shadow-sm shadow-emerald-900/5";
     case "sky":
-      return "border border-transparent bg-sky-100/55 text-slate-900 shadow-sm";
+      return "border border-transparent bg-sky-100/55 text-slate-900 shadow-sm shadow-sky-900/5";
     case "slate":
       return "border border-transparent bg-slate-200/55 text-slate-900 shadow-sm";
     case "violet":
-      return "border border-transparent bg-violet-100/60 text-slate-900 shadow-sm";
+      return "border border-transparent bg-violet-100/60 text-slate-900 shadow-sm shadow-violet-900/5";
     case "indigo":
     default:
-      return "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm";
+      return "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm shadow-indigo-900/5";
   }
 }
 
 /** @deprecated Użyj {@link sidebarNavToneActiveClass} z tonem pozycji. */
 export const navLinkActiveClass =
-  "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm";
+  "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm shadow-indigo-900/5";
 
 /** Ogranicza :hover do precyzyjnego wskaźnika (mysz) — mniej artefaktów w Chrome przy szybkim ruchu. */
 const navFineHover =
@@ -93,14 +93,14 @@ export function navToneSurfaceIdleClass(tone: NavTone): string {
     case "emerald":
       return "bg-emerald-50/35";
     case "sky":
-      return "bg-neutral-50";
+      return "bg-sky-50/35";
     case "violet":
-      return "bg-neutral-50";
+      return "bg-violet-50/35";
     case "slate":
       return "bg-slate-50/45";
     case "indigo":
     default:
-      return "bg-neutral-50";
+      return "bg-indigo-50/30";
   }
 }
 
@@ -164,11 +164,11 @@ export function sidebarNavBadgeClassForTone(tone: NavTone, active: boolean): str
     case "emerald":
       return "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200/80";
     case "indigo":
-      return "bg-neutral-100 text-neutral-800 ring-1 ring-neutral-200";
+      return "bg-indigo-100 text-indigo-800 ring-1 ring-indigo-200/70";
     case "sky":
-      return "bg-neutral-100 text-neutral-900 ring-1 ring-neutral-200";
+      return "bg-sky-100 text-sky-900 ring-1 ring-sky-200/70";
     case "violet":
-      return "bg-neutral-100 text-neutral-900 ring-1 ring-neutral-200";
+      return "bg-violet-100 text-violet-900 ring-1 ring-violet-200/70";
     default:
       return "bg-slate-100 text-slate-700 ring-1 ring-slate-200/70";
   }
@@ -183,17 +183,17 @@ export const sidebarNavBadgeWarningClass =
 
 /** Logo w aplikacji — gradient jak na logowaniu */
 export const brandMarkAppClass =
-  "bg-indigo-600 text-white ring-1 ring-sky-500/30";
+  "bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30";
 
 /** Plakietka roli — delikatny ton bez lewego paska. */
 export function roleBadgeClass(role: string): string {
   const tint: Record<string, string> = {
-    admin: "border-neutral-200 bg-violet-50/90 text-violet-800",
+    admin: "border-violet-200/80 bg-violet-50/90 text-violet-800",
     zakupy: "border-amber-200/80 bg-amber-50/90 text-amber-900",
     zakupy_zeby: "border-emerald-200/80 bg-emerald-50/90 text-emerald-800",
     magazyn: "border-emerald-200/80 bg-emerald-50/90 text-emerald-800",
-    sales: "border-neutral-200 bg-indigo-50/90 text-indigo-800",
-    sales_manager: "border-neutral-200 bg-indigo-50/80 text-indigo-800",
+    sales: "border-indigo-200/80 bg-indigo-50/90 text-indigo-800",
+    sales_manager: "border-indigo-200/70 bg-indigo-50/80 text-indigo-800",
   };
   return [
     "inline-flex max-w-full items-center rounded-md border px-2.5 py-1 text-[10px] font-semibold leading-tight",
@@ -203,33 +203,33 @@ export function roleBadgeClass(role: string): string {
 
 /** Karty treści — cień zbliżony do karty na logowaniu */
 export const surfaceCardClass =
-  "rounded-lg border border-neutral-200 bg-[var(--card)]";
+  "rounded-md border border-slate-200/80 bg-[var(--card)] shadow-[var(--shadow-card-elevated)]";
 
 /** Przycisk primary — ledwo zauważalny gradient */
 export const buttonPrimaryClass =
-  "bg-indigo-600 text-white hover:bg-indigo-700 active:bg-indigo-800";
+  "bg-gradient-to-b from-indigo-600 to-indigo-700 text-white shadow-sm shadow-indigo-600/15 hover:from-[var(--primary-hover)] hover:to-indigo-800 active:from-indigo-800 active:to-indigo-900";
 
 /** Wspólna wysokość kontrolek w pasku akcji nagłówka (checkbox, CTA, pomoc). */
 export const pageToolbarSizingClass = "h-10 min-h-10 shrink-0 px-3 py-0 text-xs leading-none";
 
 /** Ramka pomocnicza — toggle / drugorzędny przycisk w toolbarze. */
 export const pageToolbarSurfaceClass =
-  "inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white font-medium text-slate-700";
+  "inline-flex items-center justify-center gap-2 rounded-md border border-slate-200 bg-white font-medium text-slate-700 shadow-sm";
 
 /** Ikona nagłówka panelu / sekcji marki */
 export const brandIconTileClass =
-  "bg-indigo-600 text-white ring-1 ring-sky-500/30";
+  "bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30";
 
 /** Sticky chrome (np. wyszukiwanie dostawcy na panelu dziennym). */
 export const panelStickyChromeClass =
-  "sticky top-0 z-20 border-b border-neutral-100 bg-[var(--card)]/95 backdrop-blur-sm";
+  "sticky top-0 z-20 border-b border-indigo-100/75 bg-[var(--card)]/95 shadow-[var(--shadow-card-elevated)] backdrop-blur-sm";
 
 /** @deprecated Alias — użyj {@link panelStickyChromeClass}. */
 export const panelStickyTabsClass = panelStickyChromeClass;
 
 /** Zakładki / status pod sticky wyszukiwaniem — scrollują z treścią. */
 export const panelTabsChromeClass =
-  "border-b border-neutral-100 bg-[var(--card)]";
+  "border-b border-indigo-100/75 bg-[var(--card)]";
 
 /** Panel dzienny / operacje zakupów — wąska kolumna; lekko szersza tylko na 2xl+. */
 export const panelWorkspaceShellClass = "relative mx-auto w-full max-w-3xl 2xl:max-w-4xl";
@@ -280,10 +280,10 @@ export const zdEstimateRecountOverlayPlaceClass =
 
 /** Estetyczne okno loadingu (tytuł + checklista). */
 export const zdEstimateLoadingWindowClass =
-  "zd-est-loading-window relative w-full max-w-[24.5rem] overflow-hidden rounded-lg border border-slate-200/85 bg-white ring-1 ring-slate-900/[0.035] sm:max-w-[26rem]";
+  "zd-est-loading-window relative w-full max-w-[24.5rem] overflow-hidden rounded-lg border border-slate-200/85 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_22px_48px_-18px_rgba(15,23,42,0.2)] ring-1 ring-slate-900/[0.035] sm:max-w-[26rem]";
 
 export const zdEstimateLoadingWindowHeaderClass =
-  "border-b border-slate-100/90 bg-white px-5 py-3.5 sm:px-6 sm:py-4";
+  "border-b border-slate-100/90 bg-gradient-to-b from-slate-50/95 via-white to-white px-5 py-3.5 sm:px-6 sm:py-4";
 
 /** Pionowy rytm workbencha fill (micro → prep → lista → sticky). */
 export const zdEstimateWorkbenchStackClass =
@@ -312,10 +312,10 @@ export const zdEstimateRadiusSurfaceClass = "rounded-lg";
 export const zdEstimateRadiusControlClass = "rounded-md";
 export const zdEstimateRadiusNestedClass = "rounded-md";
 export const zdEstimateShadowSurfaceClass =
-  "";
+  "shadow-[var(--shadow-card-elevated)]";
 export const zdEstimateShadowControlClass = "shadow-sm";
 export const zdEstimateShadowDockClass =
-  "";
+  "shadow-[0_-6px_18px_-10px_rgba(15,23,42,0.16)]";
 export const zdEstimateBorderSurfaceClass = "border border-slate-200/80";
 /** Karta / panel powierzchniowy (prep, lista, nested well). */
 export const zdEstimateCardSurfaceClass = cn(
@@ -376,18 +376,18 @@ export const zdEstimateScopeFactChipClass =
   "inline-flex h-7 items-center rounded-md bg-slate-50/90 px-2.5 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-200/70";
 
 export const zdEstimateScopeFactChipAccentClass =
-  "inline-flex h-7 items-center rounded-md bg-indigo-50/80 px-2.5 text-xs font-semibold text-indigo-950 ring-1 ring-inset ring-neutral-200";
+  "inline-flex h-7 items-center rounded-md bg-indigo-50/80 px-2.5 text-xs font-semibold text-indigo-950 ring-1 ring-inset ring-indigo-200/70";
 
 /** Densy chipy w top barze — wysokość zbliżona do kontrolek h-8. */
 export const zdEstimateScopeFactChipToolbarClass =
   "inline-flex h-6 max-w-full items-center truncate rounded-md bg-white/90 px-2 text-[11px] font-medium tabular-nums text-slate-700 ring-1 ring-inset ring-slate-200/65";
 
 export const zdEstimateScopeFactChipToolbarAccentClass =
-  "inline-flex h-6 max-w-full items-center truncate rounded-md bg-indigo-50/90 px-2 text-[11px] font-semibold text-indigo-950 ring-1 ring-inset ring-neutral-200";
+  "inline-flex h-6 max-w-full items-center truncate rounded-md bg-indigo-50/90 px-2 text-[11px] font-semibold text-indigo-950 ring-1 ring-inset ring-indigo-200/65";
 
 /** Primary zakresu w top barze — h-8 jak kontrolki chrome; może się kurczyć. */
 export const zdEstimateScopeFactPrimaryClass = cn(
-  "inline-flex min-w-0 max-w-full shrink items-center truncate rounded-md bg-indigo-50/95 px-2 text-[11px] font-semibold leading-none tracking-tight text-indigo-950 ring-1 ring-inset ring-neutral-200 sm:max-w-[18rem] sm:px-2.5 sm:text-[12px] xl:max-w-[22rem]",
+  "inline-flex min-w-0 max-w-full shrink items-center truncate rounded-md bg-indigo-50/95 px-2 text-[11px] font-semibold leading-none tracking-tight text-indigo-950 ring-1 ring-inset ring-indigo-200/70 sm:max-w-[18rem] sm:px-2.5 sm:text-[12px] xl:max-w-[22rem]",
   zdEstimateChromeControlHeightClass
 );
 
@@ -411,7 +411,7 @@ export const zdEstimateChromeSurfaceClass = cn(
  * Top bar Kreatora — flush z kartą listy (bez osobnej „wyspy”).
  */
 export const zdEstimatePageIntroClass = cn(
-  "shrink-0 border-b border-slate-200/70 bg-white",
+  "shrink-0 border-b border-slate-200/70 bg-gradient-to-b from-white to-slate-50/80",
   zdEstimateChromeInsetXClass,
   "py-1.5"
 );
@@ -433,7 +433,7 @@ export const zdEstimateToolbarActionClass = cn(
   "inline-flex shrink-0 cursor-pointer items-center justify-center gap-1 border border-slate-200/80 bg-white px-2 text-[11px] font-medium leading-none text-slate-700 transition sm:gap-1.5 sm:px-2.5 sm:text-xs",
   zdEstimateRadiusControlClass,
   zdEstimateShadowControlClass,
-  "hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900",
+  "hover:border-indigo-200/80 hover:bg-indigo-50/50 hover:text-indigo-950",
   "disabled:cursor-not-allowed disabled:opacity-50",
   zdEstimateChromeControlHeightClass,
   "py-0"
@@ -441,10 +441,10 @@ export const zdEstimateToolbarActionClass = cn(
 
 /** Menu Dostawcy / Reguły — ten sam box co CTA, akcent indigo. */
 export const zdEstimateToolbarMenuClass = cn(
-  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-1 border border-neutral-100 bg-white px-2 text-[11px] font-medium leading-none text-neutral-800 transition sm:gap-1.5 sm:px-2.5 sm:text-xs",
+  "inline-flex shrink-0 cursor-pointer items-center justify-center gap-1 border border-indigo-100/80 bg-white px-2 text-[11px] font-medium leading-none text-indigo-800/90 transition sm:gap-1.5 sm:px-2.5 sm:text-xs",
   zdEstimateRadiusControlClass,
   zdEstimateShadowControlClass,
-  "hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900",
+  "hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950",
   "disabled:cursor-not-allowed disabled:opacity-50",
   zdEstimateChromeControlHeightClass,
   "py-0"
@@ -464,10 +464,10 @@ export const zdEstimateHostBadgeClass = cn(
 
 /** Ikona-only w belce (Więcej). */
 export const zdEstimateToolbarIconClass = cn(
-  "inline-flex shrink-0 cursor-pointer items-center justify-center border border-slate-200/80 bg-white text-neutral-800 transition",
+  "inline-flex shrink-0 cursor-pointer items-center justify-center border border-slate-200/80 bg-white text-indigo-800/85 transition",
   zdEstimateRadiusControlClass,
   zdEstimateShadowControlClass,
-  "hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900",
+  "hover:border-indigo-200/80 hover:bg-indigo-50/50 hover:text-indigo-950",
   "disabled:cursor-not-allowed disabled:opacity-50",
   "h-8 w-8 p-0"
 );
@@ -486,7 +486,7 @@ export const zdEstimateToolbarSearchClass = cn(
  * Jedna belka filtrów/szukania nad TableScroll.
  */
 export const zdEstimateListBandClass = cn(
-  "z-10 w-full min-w-0 shrink-0 border-b border-slate-200/70 bg-white backdrop-blur-md",
+  "z-10 w-full min-w-0 shrink-0 border-b border-slate-200/70 bg-gradient-to-b from-slate-50/95 to-slate-50/70 backdrop-blur-md",
   zdEstimateChromeInsetXClass,
   zdEstimateChromeInsetYClass
 );
@@ -558,7 +558,7 @@ export const zdEstimatePrepPrimaryButtonClass = cn(
 export const zdEstimateSelectionBarClass = cn(
   zdEstimateRadiusSurfaceClass,
   zdEstimateShadowControlClass,
-  "w-full min-w-0 border border-neutral-200 bg-neutral-50 p-3 sm:p-3.5"
+  "w-full min-w-0 border border-indigo-200/75 bg-indigo-50/60 p-3 sm:p-3.5 shadow-indigo-900/5"
 );
 
 /** Treść wewnątrz karty huba administracji / dostawców. */
@@ -578,7 +578,7 @@ export const mojeControlHeightClass = "min-h-11 sm:h-10 sm:min-h-10";
 
 /** Drugorzędny przycisk / chip akcji na /moje. */
 export const mojeSecondaryControlClass = cn(
-  "inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition",
+  "inline-flex items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition",
   "hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500",
   "disabled:cursor-not-allowed disabled:opacity-50",
   mojeControlHeightClass
@@ -586,7 +586,7 @@ export const mojeSecondaryControlClass = cn(
 
 /** Potwierdzenie odbioru / akcja wymagająca reakcji — outline (spójne z resztą panelu). */
 export const mojePickupControlClass = cn(
-  "inline-flex min-w-[4.75rem] items-center justify-center rounded-md border border-emerald-200/90 bg-emerald-50/90 px-2.5 py-0 text-center text-xs font-semibold leading-none text-emerald-800 transition sm:min-w-[4.5rem]",
+  "inline-flex min-w-[4.75rem] items-center justify-center rounded-md border border-emerald-200/90 bg-emerald-50/90 px-2.5 py-0 text-center text-xs font-semibold leading-none text-emerald-800 shadow-sm transition sm:min-w-[4.5rem]",
   "hover:border-emerald-300 hover:bg-emerald-100 active:bg-emerald-100/90 disabled:cursor-not-allowed disabled:opacity-50",
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500/40",
   mojeControlHeightClass
@@ -594,7 +594,7 @@ export const mojePickupControlClass = cn(
 
 /** Potwierdzenie pojedynczej pozycji w rozwiniętej liście — pełna szerokość kolumny akcji. */
 export const mojeLinePickupAckClass = cn(
-  "inline-flex w-full min-w-0 items-center justify-center rounded-md border border-emerald-200/90 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-snug text-emerald-800 transition sm:text-xs",
+  "inline-flex w-full min-w-0 items-center justify-center rounded-md border border-emerald-200/90 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-snug text-emerald-800 shadow-sm transition sm:text-xs",
   "hover:border-emerald-300 hover:bg-emerald-50 active:bg-emerald-100/90 disabled:cursor-not-allowed disabled:opacity-50",
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500/40",
   "min-h-9 sm:min-h-10"
@@ -602,22 +602,22 @@ export const mojeLinePickupAckClass = cn(
 
 /** Zbiorcze potwierdzenie pod listą produktów. */
 export const mojeBulkPickupAckClass = cn(
-  "inline-flex w-full min-h-10 items-center justify-center rounded-md border border-emerald-600 bg-emerald-600 px-4 text-center text-xs font-semibold leading-none text-white transition",
+  "inline-flex w-full min-h-10 items-center justify-center rounded-md border border-emerald-600 bg-emerald-600 px-4 text-center text-xs font-semibold leading-none text-white shadow-sm transition",
   "hover:border-emerald-700 hover:bg-emerald-700 active:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50",
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500/50 sm:w-auto sm:min-w-[10.5rem]"
 );
 
 /** Potwierdzenie powiadomienia informacyjnego od magazynu. */
 export const mojeInformacjaAckControlClass = cn(
-  "inline-flex items-center justify-center gap-0.5 rounded-md border border-neutral-200 bg-neutral-50 px-3 text-xs font-semibold text-neutral-800 transition",
-  "hover:border-neutral-300 hover:bg-neutral-100 active:bg-violet-100/90 disabled:cursor-not-allowed disabled:opacity-50",
+  "inline-flex items-center justify-center gap-0.5 rounded-md border border-violet-200/90 bg-violet-50/90 px-3 text-xs font-semibold text-violet-800 shadow-sm transition",
+  "hover:border-violet-300 hover:bg-violet-100 active:bg-violet-100/90 disabled:cursor-not-allowed disabled:opacity-50",
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-500/40",
   mojeControlHeightClass
 );
 
 /** Ukrycie anulowania / informacji o rezygnacji. */
 export const mojeCancelAckControlClass = cn(
-  "inline-flex items-center justify-center gap-0.5 rounded-md border border-amber-200/90 bg-amber-50/90 px-3 text-xs font-semibold text-amber-900 transition",
+  "inline-flex items-center justify-center gap-0.5 rounded-md border border-amber-200/90 bg-amber-50/90 px-3 text-xs font-semibold text-amber-900 shadow-sm transition",
   "hover:border-amber-300 hover:bg-amber-100 active:bg-amber-100/90 disabled:cursor-not-allowed disabled:opacity-50",
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500/40",
   mojeControlHeightClass
@@ -625,14 +625,14 @@ export const mojeCancelAckControlClass = cn(
 
 /** Nawigacja z panelu Start dnia (Tablica, Notatnik). */
 export const mojeBrandOutlineControlClass = cn(
-  "inline-flex items-center justify-center gap-0.5 rounded-md border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-800 transition",
-  "hover:bg-neutral-50",
+  "inline-flex items-center justify-center gap-0.5 rounded-md border border-indigo-200 bg-white px-3 text-xs font-semibold text-indigo-800 shadow-sm transition",
+  "hover:bg-indigo-50",
   mojeControlHeightClass
 );
 
 /** Destrukcyjna akcja wtórna — anulowanie pojedynczej pozycji (outline, spójne z mojeSecondary). */
 export const mojeDestructiveOutlineControlClass = cn(
-  "inline-flex items-center justify-center gap-1.5 rounded-md border border-red-200 bg-white px-3 text-xs font-semibold text-red-800 transition",
+  "inline-flex items-center justify-center gap-1.5 rounded-md border border-red-200 bg-white px-3 text-xs font-semibold text-red-800 shadow-sm transition",
   "hover:border-red-300 hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400",
   "disabled:cursor-not-allowed disabled:opacity-50",
   mojeControlHeightClass
@@ -647,7 +647,7 @@ export const mojeDestructiveSubtleControlClass = cn(
 
 /** Anulowanie pojedynczej pozycji w rozwiniętej liście — pełna szerokość kolumny akcji. */
 export const mojeLineCancelControlClass = cn(
-  "inline-flex w-full min-w-0 items-center justify-center rounded-md border border-red-200/90 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-snug text-red-800 transition sm:text-xs",
+  "inline-flex w-full min-w-0 items-center justify-center rounded-md border border-red-200/90 bg-white px-2 py-2 text-center text-[11px] font-semibold leading-snug text-red-800 shadow-sm transition sm:text-xs",
   "hover:border-red-300 hover:bg-red-50 active:bg-red-100/90 disabled:cursor-not-allowed disabled:opacity-50",
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400/50",
   "min-h-9 sm:min-h-10"
@@ -676,7 +676,7 @@ export const salesTypography = {
 
 /** Etykieta „Uwagi” przy notatce handlowca — spójna w /moje i panelu dziennym. */
 export const salesRequestNoteLabelClass =
-  "inline-flex items-center rounded-md bg-neutral-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-neutral-500 ring-1 ring-inset ring-neutral-200";
+  "inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-indigo-500 ring-1 ring-inset ring-indigo-200/70";
 
 /** Etykieta wiadomości od zakupów przy anulowaniu — widoczna u handlowca. */
 export const procurementCancelNoteLabelClass =
@@ -684,15 +684,15 @@ export const procurementCancelNoteLabelClass =
 
 /** Etykieta klienta końcowego — ten sam układ co „Uwagi”, ton indigo. */
 export const salesClientLabelClass =
-  "inline-flex items-center rounded-md bg-neutral-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-neutral-500 ring-1 ring-inset ring-neutral-200";
+  "inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-indigo-500 ring-1 ring-inset ring-indigo-200/70";
 
-export const salesClientNameClass = "font-medium text-neutral-900";
+export const salesClientNameClass = "font-medium text-indigo-900";
 
 /** Etykieta powiązania ZK — fiolet jak w notatniku, ten sam układ co „Klient”. */
 export const salesZkLabelClass =
-  "inline-flex items-center rounded-md bg-neutral-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-violet-600 ring-1 ring-inset ring-neutral-200";
+  "inline-flex items-center rounded-md bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-violet-600 ring-1 ring-inset ring-violet-200/70";
 
-export const salesZkNumberClass = "text-[11px] font-medium leading-none text-neutral-900";
+export const salesZkNumberClass = "text-[11px] font-medium leading-none text-violet-900";
 
 /** Wewnętrzny padding sekcji panelu. */
 export const panelSectionInsetClass = "px-3 py-3 sm:px-4 sm:py-4 lg:px-5 lg:py-4";
@@ -730,7 +730,7 @@ export const deliveryMetaTypography = {
   dateBadge:
     "max-w-full whitespace-normal rounded-md bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-700 ring-1 ring-inset ring-slate-200/80 tabular-nums",
   dateBadgeAvailable:
-    "max-w-full whitespace-normal rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-sky-800 ring-1 ring-inset ring-neutral-200 tabular-nums",
+    "max-w-full whitespace-normal rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-sky-800 ring-1 ring-inset ring-sky-200/80 tabular-nums",
   dateBadgeOverdue:
     "max-w-full whitespace-normal rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-amber-800 ring-1 ring-inset ring-amber-200/80 tabular-nums",
   statusBadge:
@@ -740,20 +740,20 @@ export const deliveryMetaTypography = {
 } as const;
 
 /** Wypełnienie paska postępu */
-export const progressFillUrgentClass = "bg-sky-400";
-export const progressFillForSomeoneClass = "bg-indigo-500";
+export const progressFillUrgentClass = "bg-gradient-to-r from-sky-400 to-sky-600";
+export const progressFillForSomeoneClass = "bg-gradient-to-r from-indigo-500 to-indigo-700";
 
 export const brandGradientTextClass =
-  "text-indigo-600";
+  "bg-gradient-to-br from-indigo-600 to-sky-600 bg-clip-text text-transparent";
 
 export const legendDotUrgentClass = "h-2 w-2 rounded-full bg-sky-500";
 export const legendDotForSomeoneClass = "h-2 w-2 rounded-full bg-indigo-500";
 
 /** Linki akcentu marki */
 export const brandLinkClass =
-  "font-medium text-neutral-700 underline-offset-2 hover:text-neutral-900 hover:underline";
+  "font-medium text-indigo-700 underline-offset-2 hover:text-indigo-900 hover:underline";
 
-export const brandLinkSubtleClass = "font-medium text-indigo-600 hover:text-neutral-800";
+export const brandLinkSubtleClass = "font-medium text-indigo-600 hover:text-indigo-800";
 
 /** Pola i checkboxy */
 export const controlFocusClass =
@@ -766,11 +766,11 @@ export const checkboxBrandClass =
   "size-4 shrink-0 rounded border-slate-300 text-indigo-600 accent-indigo-600 focus:ring-2 focus:ring-indigo-500/25 focus-visible:ring-2 focus-visible:ring-indigo-500/40";
 
 /** Kafelki ikon sekcji */
-export const sectionIconTileBrandClass = "bg-neutral-100 text-neutral-800";
-export const sectionIconTileBrandSoftClass = "bg-neutral-50 text-neutral-800";
+export const sectionIconTileBrandClass = "bg-indigo-100 text-indigo-800";
+export const sectionIconTileBrandSoftClass = "bg-indigo-50 text-indigo-800";
 
 /** Wiersz / karta w trakcie akcji */
-export const rowPendingRingClass = "ring-2 ring-inset ring-neutral-200";
+export const rowPendingRingClass = "ring-2 ring-inset ring-indigo-200/80";
 
 /** Zakładki panelu */
 export const tabSelectedClass =
@@ -780,44 +780,44 @@ export const tabBadgeSelectedClass = "bg-slate-200/90 text-slate-800";
 
 /** Plan tygodnia — tryb planowania */
 export const plannerModeBannerClass =
-  "border-b border-neutral-200 bg-neutral-50 px-4 py-3 sm:px-5";
+  "border-b border-indigo-200/80 bg-indigo-50/60 px-4 py-3 sm:px-5";
 
-export const plannerModeTextClass = "text-sm text-neutral-900";
+export const plannerModeTextClass = "text-sm text-indigo-950";
 
-export const plannerHintMutedClass = "text-xs text-neutral-800";
+export const plannerHintMutedClass = "text-xs text-indigo-800/80";
 
-export const plannerHintMutedFaintClass = "text-xs text-neutral-800";
+export const plannerHintMutedFaintClass = "text-xs text-indigo-800/60";
 
 export const plannerDropActiveClass =
-  "bg-indigo-50/80 ring-2 ring-inset ring-neutral-200";
+  "bg-indigo-50/80 ring-2 ring-inset ring-indigo-300/50";
 
 export const plannerDropHintClass =
-  "rounded-md border border-dashed border-neutral-200 text-neutral-400";
+  "rounded-md border border-dashed border-indigo-200 text-indigo-400";
 
 /** Moje zamówienia — banery i karty */
-export const mojeHeadlineInfoWrapClass = "bg-neutral-50 text-neutral-900";
-export const mojeHeadlineInfoTitleClass = "text-neutral-900";
-export const mojeHeadlineInfoSubClass = "text-neutral-800";
+export const mojeHeadlineInfoWrapClass = "bg-indigo-50 text-indigo-950";
+export const mojeHeadlineInfoTitleClass = "text-indigo-900";
+export const mojeHeadlineInfoSubClass = "text-indigo-800";
 
 export const mojeCardHighlightClass =
-  "z-[1] my-1 rounded-md border border-neutral-200 bg-indigo-50/90 shadow-md ring-1 ring-neutral-200";
+  "z-[1] my-1 rounded-md border border-indigo-300/90 bg-indigo-50/90 shadow-md shadow-indigo-100/30 ring-1 ring-indigo-200/70";
 
 /** Sekcja informacja (magazyn) — sky pozostaje semantyczny */
 export const informacjaSurfaceClass =
-  "rounded-md border border-neutral-200 bg-[var(--card)]";
+  "rounded-md border border-sky-200/90 bg-[var(--card)] shadow-[var(--shadow-card-elevated)]";
 
 /** Mobile — widok handlowca */
 export const mobileSalesHeaderClass =
-  "relative sticky top-0 z-30 flex shrink-0 min-h-14 items-center justify-between gap-3 border-b border-slate-200/80 bg-[var(--card)]/95 px-4 backdrop-blur-md md:hidden pt-[max(0.75rem,env(safe-area-inset-top,0px))]";
+  "relative sticky top-0 z-30 flex shrink-0 min-h-14 items-center justify-between gap-3 border-b border-slate-200/80 bg-[var(--card)]/95 px-4 shadow-[var(--shadow-card-elevated)] backdrop-blur-md md:hidden pt-[max(0.75rem,env(safe-area-inset-top,0px))]";
 
 export const mobileSalesNavClass =
-  "fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/80 bg-[var(--card)]/95 backdrop-blur-md md:hidden";
+  "fixed inset-x-0 bottom-0 z-50 border-t border-slate-200/80 bg-[var(--card)]/95 shadow-[var(--shadow-card-elevated)] backdrop-blur-md md:hidden";
 
 export const mobileNavLinkBaseClass =
   "relative mx-0.5 flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-md px-1.5 py-2 text-[11px] font-semibold lg:text-xs";
 
 export const mobileNavLinkActiveClass =
-  "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm";
+  "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm shadow-indigo-900/5";
 
 export const mobileNavLinkIdleClass = cn(
   "text-slate-500",
@@ -836,19 +836,19 @@ export const systemNoticeShellClass = cn(
 /** Przypięte ogłoszenie — neutralna karta, bez gradientu. */
 export const systemNoticePinnedClass = cn(
   systemNoticeShellClass,
-  "mb-3 rounded-md border border-neutral-100 bg-white px-3 py-2 sm:px-3.5"
+  "mb-3 rounded-md border border-indigo-100/80 bg-white px-3 py-2 shadow-[var(--shadow-card)] sm:px-3.5"
 );
 
 /** Komunikat z akcją (nowe ogłoszenia, odpowiedzi, odświeżenie). */
 export const systemNoticeActionClass = cn(
   systemNoticeShellClass,
-  "rounded-md border border-slate-200/90 bg-white px-3 py-3 text-slate-900 sm:px-4"
+  "rounded-md border border-slate-200/90 bg-white px-3 py-3 text-slate-900 shadow-[var(--shadow-card)] sm:px-4"
 );
 
 /** Tour onboarding — jedyny mocny akcent indigo w warstwie notice. */
 export const systemNoticeTourClass = cn(
   systemNoticeShellClass,
-  "mb-4 rounded-md border border-neutral-200 bg-indigo-600 px-3 py-3 text-white sm:px-4"
+  "mb-4 rounded-md border border-indigo-300/90 bg-indigo-600 px-3 py-3 text-white shadow-md sm:px-4"
 );
 
 /** Sticky pasek odświeżenia w panelu dziennym. */
@@ -859,7 +859,7 @@ export const systemNoticePanelStripClass = cn(
 
 /** Toast / banner cofania — spójny z SystemNotice i panelem dziennym. */
 export const systemNoticeUndoClass = cn(
-  "relative overflow-hidden rounded-md border border-slate-200/90 bg-white text-slate-900"
+  "relative overflow-hidden rounded-md border border-slate-200/90 bg-white text-slate-900 shadow-[var(--shadow-card)]"
 );
 
 export const undoNoticeIconTileClass = cn(
@@ -876,9 +876,9 @@ export const toastIconTileClass = cn(
   brandIconTileClass,
   "flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
 );
-export const toastIconTileSuccessClass = "bg-emerald-600 ring-emerald-500/30";
-export const toastIconTileWarningClass = "bg-amber-500 ring-amber-500/30";
-export const toastIconTileErrorClass = "bg-red-600 ring-red-500/30";
+export const toastIconTileSuccessClass = "from-emerald-600 to-emerald-700 ring-emerald-500/30";
+export const toastIconTileWarningClass = "from-amber-500 to-amber-600 ring-amber-500/30";
+export const toastIconTileErrorClass = "from-red-600 to-red-700 ring-red-500/30";
 
 /** Toast — pasek postępu auto-znikania. */
 export const toastProgressTrackClass = "absolute inset-x-0 top-0 h-0.5 bg-slate-100";
@@ -901,7 +901,7 @@ export const salesPinnedNoticeClass = systemNoticePinnedClass;
 
 /** Obudowa menu kontekstowego w panelu dzennym. */
 export const panelDropdownShellClass =
-  "rounded-md border border-neutral-100 bg-white py-1 shadow-lg ring-1 ring-neutral-100";
+  "rounded-md border border-indigo-100/85 bg-white py-1 shadow-lg shadow-indigo-950/5 ring-1 ring-sky-100/35";
 
 export const panelQueueStepsShellClass = cn(
   "flex flex-nowrap items-center gap-2 overflow-x-auto rounded-md border border-slate-200/80 bg-slate-50/40 px-2 py-2 sm:px-2.5 sm:py-2",
@@ -914,7 +914,7 @@ export const panelQueueStatButtonClass =
 
 /** Podświetlenie świeżo zsynchronizowanych, nieprzeczytanych prośb. */
 export const dailyPanelFreshHighlightClass =
-  "ring-2 ring-inset ring-violet-500/55 shadow-md";
+  "ring-2 ring-inset ring-violet-500/55 shadow-md shadow-violet-200/50";
 
 export type DailyPanelUnseenVariant = "prosby" | "stockOut";
 
@@ -928,8 +928,8 @@ export function dailyPanelUnseenRequestRowClass(
     if (nested) return "bg-amber-50/70 hover:bg-amber-50/85";
     return "border-amber-200/75 bg-amber-50/55 shadow-sm ring-1 ring-inset ring-amber-100/80";
   }
-  if (nested) return "bg-neutral-50 hover:bg-neutral-50";
-  return "border-neutral-200 bg-neutral-50 shadow-sm ring-1 ring-inset ring-neutral-100";
+  if (nested) return "bg-violet-50/70 hover:bg-violet-50/85";
+  return "border-violet-200/75 bg-violet-50/55 shadow-sm ring-1 ring-inset ring-violet-100/80";
 }
 
 /** Badge „Nowa” / licznik nieprzeczytanych — kontrastowy, dobrze widoczny na liście. */
@@ -947,58 +947,58 @@ export function procurementSupplierBlockHeaderClass(
   if (variant === "stockOut") {
     return "border-b border-amber-100/80 bg-amber-50/55";
   }
-  return "border-b border-neutral-100 bg-neutral-50";
+  return "border-b border-indigo-100/60 bg-indigo-50/40";
 }
 
 export const panelMetricTileClass =
-  "rounded-md border border-neutral-100 bg-white px-3 py-2.5 text-left transition";
+  "rounded-md border border-indigo-100/70 bg-white px-3 py-2.5 text-left shadow-[var(--shadow-card)] transition";
 
 export const panelMetricTileInteractiveClass =
-  "cursor-pointer hover:border-neutral-300 hover:bg-neutral-50";
+  "cursor-pointer hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:shadow-[var(--shadow-card-elevated)]";
 
 export const panelTabIdleClass =
   "border-slate-200/90 bg-white text-slate-700 hover:border-slate-300/90 hover:bg-slate-50/80";
 
 /** Klikalna nazwa dostawcy — wygląd jak nagłówek, nie jak odwiedzony link */
 export const panelNameLinkClass =
-  "text-left font-medium text-slate-900 transition-colors hover:text-neutral-900";
+  "text-left font-medium text-slate-900 transition-colors hover:text-indigo-950";
 
 /** Drobna akcja tekstowa w panelu (np. pełna lista, Terminy) */
 export const panelTextLinkClass =
-  "font-medium text-neutral-700 transition-colors hover:text-neutral-900";
+  "font-medium text-indigo-700/85 transition-colors hover:text-indigo-900";
 
 /** E-mail lub kontakt do dostawcy — bez podkreślenia */
 export const panelContactLinkClass =
-  "max-w-[min(100%,18rem)] truncate text-xs font-medium text-neutral-700 transition-colors hover:text-neutral-900";
+  "max-w-[min(100%,18rem)] truncate text-xs font-medium text-indigo-700/80 transition-colors hover:text-indigo-950";
 
 export const panelChoiceChipClass =
   "rounded-md border px-3 py-2 text-left text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/15";
 
 export const panelChoiceChipIdleClass =
-  "border-neutral-100 bg-white text-slate-700 hover:border-neutral-300 hover:bg-neutral-50";
+  "border-indigo-100/80 bg-white text-slate-700 hover:border-indigo-200/80 hover:bg-indigo-50/50";
 
 export const panelChoiceChipSelectedClass =
-  "border-indigo-400/90 bg-white text-indigo-950 ring-1 ring-neutral-200";
+  "border-indigo-400/90 bg-gradient-to-b from-indigo-50 to-white text-indigo-950 ring-1 ring-indigo-200/60";
 
 export const panelChoiceChipSuccessSelectedClass =
-  "border-emerald-400/90 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-200/50";
+  "border-emerald-400/90 bg-gradient-to-b from-emerald-50 to-white text-emerald-950 ring-1 ring-emerald-200/50";
 
 export const panelDashedActionClass =
-  "w-full rounded-md border border-dashed border-neutral-200 bg-neutral-50 px-4 py-3 text-sm font-medium text-neutral-800 transition hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900";
+  "w-full rounded-md border border-dashed border-indigo-200/70 bg-indigo-50/30 px-4 py-3 text-sm font-medium text-indigo-800 transition hover:border-indigo-300/90 hover:bg-indigo-50/60 hover:text-indigo-950";
 
 /** Główna akcja dodawania w notatniku (ZK, karteczki). */
 export const notatnikPrimaryAddButtonClass =
-  "min-h-11 w-full justify-center border-neutral-200 bg-indigo-50/50 text-indigo-950 hover:bg-neutral-100 sm:w-auto";
+  "min-h-11 w-full justify-center border-indigo-200/80 bg-indigo-50/50 text-indigo-950 hover:bg-indigo-100/70 sm:w-auto";
 
 /** Obudowa rozwiniętego formularza dodawania w notatniku. */
 export const notatnikAddPanelShellClass =
-  "overflow-hidden rounded-md border border-neutral-200 bg-neutral-50";
+  "overflow-hidden rounded-md border border-indigo-200/90 bg-indigo-50/45 shadow-sm";
 
 export const panelMutedToggleClass =
-  "text-sm font-medium text-neutral-700 transition hover:text-neutral-900";
+  "text-sm font-medium text-indigo-700/80 transition hover:text-indigo-900";
 
 export const panelMenuItemClass =
-  "block w-full cursor-pointer px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-neutral-50 hover:text-neutral-900";
+  "block w-full cursor-pointer px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-indigo-50/80 hover:text-indigo-950";
 
 /** Segmenty w grupie akcji panelu — h-full wypełnia obudowę (bez białego paska). */
 export const panelSegmentPrimaryClass =
@@ -1009,7 +1009,7 @@ export const panelSegmentControlClass =
 
 /** Outline (Uzupełniające) — ten sam layout co panelSegmentControlClass. */
 export const panelSegmentOutlineClass =
-  "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 border-l border-neutral-200 bg-[var(--primary-muted)]/60 px-2 text-xs font-semibold leading-none text-neutral-800 shadow-none transition-colors duration-150 hover:bg-[var(--primary-muted)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-2.5";
+  "flex h-full min-h-0 shrink-0 items-center justify-center rounded-none border-0 border-l border-indigo-200/90 bg-[var(--primary-muted)]/60 px-2 text-xs font-semibold leading-none text-indigo-800 shadow-none transition-colors duration-150 hover:bg-[var(--primary-muted)] disabled:cursor-not-allowed disabled:opacity-50 sm:px-2.5";
 
 export const panelSegmentFirstClass = "rounded-l-md";
 
@@ -1033,7 +1033,7 @@ export const mojeAckSegmentPrimaryClass = cn(
 
 export const mojeAckSegmentInformacjaClass = cn(
   mojeAckToolbarSegmentClass,
-  "rounded-none border-0 bg-neutral-50 text-neutral-800 shadow-none transition-colors duration-150 hover:bg-neutral-100 active:bg-violet-100/90 disabled:cursor-not-allowed disabled:opacity-50"
+  "rounded-none border-0 bg-violet-50/95 text-violet-800 shadow-none transition-colors duration-150 hover:bg-violet-100 active:bg-violet-100/90 disabled:cursor-not-allowed disabled:opacity-50"
 );
 
 export const mojeAckSegmentCancelClass = cn(
@@ -1055,7 +1055,7 @@ export const mojeActionOverflowSegmentClass = cn(
 export const panelSegmentControlOpenClass = "bg-slate-50 text-slate-900";
 
 export const panelCardHitAreaClass =
-  "w-full cursor-pointer rounded-md text-left transition hover:bg-neutral-50";
+  "w-full cursor-pointer rounded-md text-left transition hover:bg-indigo-50/35";
 
 export const panelNoticeTriggerBaseClass =
   "flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-left text-sm transition";
@@ -1064,11 +1064,11 @@ export const panelNoticeTriggerUrgentClass =
   "border-amber-200/90 bg-amber-50/50 hover:border-amber-300 hover:bg-amber-50";
 
 export const panelNoticeTriggerDefaultClass =
-  "border-neutral-100 bg-neutral-50 hover:border-neutral-300 hover:bg-neutral-50";
+  "border-indigo-100/85 bg-indigo-50/35 hover:border-indigo-200/75 hover:bg-indigo-50/55";
 
 /** Pasek akcji w nagłówku panelu dziennego (wyszukiwarka + przyciski) */
 export const panelToolbarShellClass =
-  "flex w-full min-w-0 items-center rounded-md border border-neutral-100 bg-white p-2";
+  "flex w-full min-w-0 items-center rounded-md border border-indigo-100/75 bg-gradient-to-b from-indigo-50/35 via-white to-white p-2 shadow-sm";
 
 export const panelToolbarRowClass =
   "flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center";
@@ -1077,16 +1077,16 @@ export const panelToolbarSearchWrapClass =
   "flex min-w-0 flex-1 items-center px-0.5 md:min-w-[12rem]";
 
 export const panelToolbarSearchInputClass =
-  "h-9 w-full rounded-md border border-neutral-100 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100/90";
+  "h-9 w-full rounded-md border border-indigo-100/80 bg-white px-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-100/90";
 
 export const panelToolbarActionsClass =
-  "flex shrink-0 flex-wrap items-center justify-stretch gap-1.5 md:justify-end md:border-l md:border-neutral-100 md:pl-2.5";
+  "flex shrink-0 flex-wrap items-center justify-stretch gap-1.5 md:justify-end md:border-l md:border-indigo-100/75 md:pl-2.5";
 
 export const panelToolbarTextButtonClass =
-  "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-neutral-100 bg-white px-2.5 text-xs font-medium text-neutral-800 transition hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900";
+  "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md border border-indigo-100/80 bg-white px-2.5 text-xs font-medium text-indigo-800/85 shadow-sm transition hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950";
 
 export const panelToolbarIconButtonClass =
-  "inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md border border-neutral-100 bg-white text-neutral-800 transition hover:border-neutral-300 hover:bg-neutral-50 hover:text-neutral-900 disabled:cursor-not-allowed disabled:opacity-50";
+  "inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md border border-indigo-100/80 bg-white text-indigo-800/85 shadow-sm transition hover:border-indigo-200/80 hover:bg-indigo-50/45 hover:text-indigo-950 disabled:cursor-not-allowed disabled:opacity-50";
 
 /**
  * Pasek narzędzi listy kreatora ZD — wariant spokojny (0 zaznaczonych)
@@ -1099,10 +1099,10 @@ export const zdEstimateListToolsShellClass = cn(
 );
 
 export const zdEstimateListToolsShellQuietClass =
-  "border-slate-200/70 bg-white/95";
+  "border-slate-200/70 bg-white/95 shadow-slate-900/[0.03]";
 
 export const zdEstimateListToolsShellActiveClass =
-  "border-neutral-200 bg-indigo-50/60";
+  "border-indigo-200/75 bg-indigo-50/60 shadow-indigo-900/5";
 
 export const zdEstimateListToolsRowClass =
   "flex w-full min-w-0 flex-col gap-2.5 sm:gap-3";
@@ -1118,7 +1118,7 @@ export const zdEstimateSelectionGroupClass =
   "flex min-w-0 flex-col gap-1 sm:px-2.5 first:sm:pl-0 last:sm:pr-0";
 
 export const zdEstimateSelectionGroupLabelClass =
-  "text-[11px] font-semibold uppercase tracking-[0.06em] text-neutral-800";
+  "text-[11px] font-semibold uppercase tracking-[0.06em] text-indigo-800/70";
 
 export const zdEstimateSelectionGroupButtonsClass =
   "flex flex-wrap items-center gap-1.5";
@@ -1134,11 +1134,11 @@ export const zdEstimateListToolsLinkClass =
 
 /** Stopka treści panelu dziennego — pod listami Dziś / Tydzień / Wyjątki. */
 export const panelContentFooterClass = cn(
-  "border-t border-neutral-100 bg-neutral-50",
+  "border-t border-indigo-100/70 bg-indigo-50/20",
   panelChromeInsetClass,
   "py-4 sm:py-5"
 );
 
 /** Linki w stopce panelu dziennego. */
 export const panelContentFooterLinkClass =
-  "text-xs font-medium text-neutral-700 underline-offset-2 transition hover:text-neutral-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500";
+  "text-xs font-medium text-indigo-700 underline-offset-2 transition hover:text-indigo-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500";

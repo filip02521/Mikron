@@ -115,7 +115,7 @@ export function TeethOrderFileUpload({
             type="button"
             disabled={pending}
             onClick={handleDownload}
-            className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-md border border-neutral-200 bg-white px-2 py-1 text-[11px] font-medium text-neutral-800 transition-colors hover:bg-neutral-50 disabled:opacity-50"
+            className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-md border border-indigo-200 bg-white px-2 py-1 text-[11px] font-medium text-indigo-800 shadow-sm transition-colors hover:bg-indigo-50 disabled:opacity-50"
             title={`Pobierz: ${fileName}`}
           >
             {pending ? (
@@ -130,7 +130,7 @@ export function TeethOrderFileUpload({
               type="button"
               disabled={pending}
               onClick={handleRemove}
-              className="inline-flex shrink-0 items-center rounded-md border border-slate-200 bg-white p-1 text-slate-500 transition-colors hover:bg-slate-50 hover:text-red-600 disabled:opacity-50"
+              className="inline-flex shrink-0 items-center rounded-md border border-slate-200 bg-white p-1 text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-red-600 disabled:opacity-50"
               title="Usuń plik z całej grupy dostawcy"
             >
               <IconTrash2 size={13} strokeWidth={2} />
@@ -167,9 +167,9 @@ export function TeethOrderFileUpload({
         disabled={pending}
         onClick={() => inputRef.current?.click()}
         className={cn(
-          "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors disabled:opacity-50",
+          "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium shadow-sm transition-colors disabled:opacity-50",
           required
-            ? "border-neutral-200 bg-indigo-600 text-white hover:bg-indigo-700"
+            ? "border-indigo-300 bg-indigo-600 text-white shadow-indigo-600/20 hover:bg-indigo-700"
             : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
         )}
         title="Załącz jeden plik zamówienia (Excel, PDF lub XML) na grupę dostawcy — wymagany przed oznaczeniem"

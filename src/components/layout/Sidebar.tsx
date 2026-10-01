@@ -136,8 +136,8 @@ function NavLink({
         ? sidebarNavAttentionIdleClass
         : monthlyIdle
           ? cn(
-              "border border-neutral-200 bg-neutral-50 text-slate-800 shadow-sm",
-              "hover:border-neutral-300 hover:bg-neutral-50"
+              "border border-violet-200/70 bg-violet-50/80 text-slate-800 shadow-sm",
+              "hover:border-violet-300/80 hover:bg-violet-50"
             )
           : showHighlight
             ? cn(
@@ -643,7 +643,7 @@ export function Sidebar({
               <ChangelogTriggerIconButton />
               <Link
                 href="/ustawienia"
-                className="flex min-h-10 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+                className="flex min-h-10 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
                 aria-label="Ustawienia"
               >
                 <IconSettings size={16} />
@@ -651,7 +651,7 @@ export function Sidebar({
               <button
                 type="button"
                 onClick={() => void signOut()}
-                className="min-h-10 flex-1 rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+                className="min-h-10 flex-1 rounded-md border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
               >
                 Wyloguj
               </button>

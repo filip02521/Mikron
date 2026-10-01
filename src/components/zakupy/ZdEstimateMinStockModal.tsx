@@ -171,11 +171,11 @@ function MinStockRow({
   return (
     <li
       className={cn(
-        "rounded-lg border bg-white px-4 py-3.5 transition",
+        "rounded-lg border bg-white px-4 py-3.5 shadow-sm shadow-slate-900/[0.02] transition",
         editing
-          ? "border-neutral-200 ring-1 ring-neutral-100"
+          ? "border-indigo-200/80 ring-1 ring-indigo-100"
           : selected
-            ? "border-neutral-200 bg-indigo-50/30"
+            ? "border-indigo-200/60 bg-indigo-50/30"
             : "border-slate-200/90"
       )}
     >
@@ -716,7 +716,7 @@ export function ZdEstimateMinStockModal({
       </div>
 
       {/* Add product section */}
-      <div className="rounded-lg border border-neutral-100 bg-neutral-50 px-4 py-3.5">
+      <div className="rounded-lg border border-indigo-100/80 bg-indigo-50/30 px-4 py-3.5">
         <div className="flex items-center gap-2">
           <IconPlusCircle
             size={15}
@@ -724,7 +724,7 @@ export function ZdEstimateMinStockModal({
             className="shrink-0 text-indigo-600"
             aria-hidden
           />
-          <p className="text-xs font-semibold uppercase tracking-wide text-neutral-900">
+          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-900/80">
             {ZD_ESTIMATE_UI.minStockAddSectionTitle}
           </p>
         </div>

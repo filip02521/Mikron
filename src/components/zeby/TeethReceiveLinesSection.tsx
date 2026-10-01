@@ -254,7 +254,7 @@ function SalesPersonDivider({
                 type="button"
                 disabled={pending}
                 onClick={onFillAll}
-                className="ml-auto shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900 disabled:opacity-50 sm:ml-0"
+                className="ml-auto shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700 hover:bg-indigo-50 hover:text-indigo-900 disabled:opacity-50 sm:ml-0"
               >
                 Całość
               </button>
@@ -653,7 +653,7 @@ export function TeethReceiveLinesSection({
                               queueSupplierLeadingCellClass(0, {
                                 stripeIndex: row.stripeIndex,
                               }),
-                              "",
+                              "border-l-[3px]",
                               isCancelled && "border-amber-300/80",
                             )}
                           >
@@ -729,7 +729,7 @@ export function TeethReceiveLinesSection({
                         <>
                           <td
                             colSpan={4}
-                            className={cn(teethReceiveTdClass, queueSupplierLeadingCellClass(0, { stripeIndex: row.stripeIndex }), "")}
+                            className={cn(teethReceiveTdClass, queueSupplierLeadingCellClass(0, { stripeIndex: row.stripeIndex }), "border-l-[3px]")}
                           >
                             <div className={teethReceiveManualCellClass}>
                               <p className="font-medium text-slate-900">{row.productLabel}</p>

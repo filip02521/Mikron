@@ -321,7 +321,7 @@ function SupplierDocumentArticles({
   return (
     <li className="space-y-2 px-5 py-3.5">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <button type="button" onClick={() => void download()} className="text-sm font-medium text-neutral-700 hover:underline">
+        <button type="button" onClick={() => void download()} className="text-sm font-medium text-indigo-700 hover:underline">
           {doc.fileName}
         </button>
         {doc.description ? <span className="text-xs text-slate-500">{doc.description}</span> : null}
@@ -481,7 +481,7 @@ export function CustomsClearanceEditor({
             {view.invoiceFileName ? (
               <button
                 type="button"
-                className="block truncate pt-2 text-left text-sm font-medium text-neutral-700 hover:underline"
+                className="block truncate pt-2 text-left text-sm font-medium text-indigo-700 hover:underline"
                 onClick={async () => {
                   const res = await actionGetCustomsInvoiceUrl(view.id);
                   if (res.ok) window.open(res.url, "_blank", "noopener");
@@ -637,7 +637,7 @@ export function CustomsClearanceEditor({
         ) : (
           <p className="px-5 py-4 text-sm text-slate-500">
             Brak dokumentów w karcie dostawcy — dodaj deklaracje zgodności w{" "}
-            <Link href="/zakupy/dostawcy" className="font-medium text-neutral-700 hover:underline">
+            <Link href="/zakupy/dostawcy" className="font-medium text-indigo-700 hover:underline">
               kartach dostawców
             </Link>
             .

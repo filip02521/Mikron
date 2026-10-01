@@ -162,7 +162,7 @@ export function MailJobAdminClient({
                     <td>
                       <Link
                         href={`/admin/mail/log/${log.id}`}
-                        className="text-sm text-neutral-700 hover:underline"
+                        className="text-sm text-indigo-700 hover:underline"
                       >
                         Szczegóły
                       </Link>

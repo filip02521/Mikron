@@ -131,7 +131,7 @@ export function ZkWatchAddBar({
                     type="button"
                     disabled={loading}
                     onClick={() => onPickCandidate(candidate)}
-                    className="flex w-full flex-col rounded-md border border-white/80 bg-white px-2.5 py-2 text-left transition hover:border-neutral-300 hover:bg-neutral-50 disabled:opacity-60"
+                    className="flex w-full flex-col rounded-md border border-white/80 bg-white px-2.5 py-2 text-left shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50/40 disabled:opacity-60"
                   >
                     <span className="text-sm font-semibold text-slate-900">
                       {candidate.zkNumber.replace(/^ZK\s*/i, "")}
@@ -151,7 +151,7 @@ export function ZkWatchAddBar({
           </ul>
           <button
             type="button"
-            className="mt-2 text-xs font-medium text-neutral-700 hover:text-neutral-900"
+            className="mt-2 text-xs font-medium text-indigo-700 hover:text-indigo-900"
             onClick={onClearChoose}
           >
             Anuluj wybór

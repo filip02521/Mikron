@@ -455,7 +455,7 @@ export function TeethOcrWizard({
                 aria-busy={step === "uploading"}
               >
                 {step === "uploading" ? (
-                  <Spinner size="sm" className="border-neutral-200 border-t-indigo-600" />
+                  <Spinner size="sm" className="border-indigo-200 border-t-indigo-600" />
                 ) : (
                   <IconCamera size={16} />
                 )}
@@ -463,13 +463,13 @@ export function TeethOcrWizard({
               </Button>
               <span className="group relative inline-flex">
                 <span
-                  className="cursor-help rounded bg-neutral-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-neutral-400 transition-colors group-hover:bg-neutral-100"
+                  className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-indigo-400 transition-colors group-hover:bg-indigo-100"
                 >
                   Beta
                 </span>
                 <span
                   role="tooltip"
-                  className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-[11px] font-medium leading-relaxed text-neutral-900 shadow-md group-hover:block group-focus-within:block"
+                  className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-indigo-200/90 bg-indigo-50/95 px-2.5 py-1.5 text-[11px] font-medium leading-relaxed text-indigo-900 shadow-md group-hover:block group-focus-within:block"
                 >
                   To funkcja testowa — sczytywanie listy zębów ze zdjęcia za pomocą AI. Wynik zawsze sprawdź przed zapisaniem.
                 </span>
@@ -509,7 +509,7 @@ export function TeethOcrWizard({
                 {detectedLines.map((line) => (
                   <label
                     key={line.productLine}
-                    className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 transition-colors hover:border-neutral-300 hover:bg-neutral-50"
+                    className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
                   >
                     <input
                       type="checkbox"
@@ -547,7 +547,7 @@ export function TeethOcrWizard({
                 <button
                   type="button"
                   onClick={() => setShowAddLine(true)}
-                  className="text-xs font-medium text-indigo-600 hover:text-neutral-700"
+                  className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
                 >
                   + Dodaj linię ręcznie
                 </button>

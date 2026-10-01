@@ -14,7 +14,7 @@ export function DepartmentBoardGuide() {
     >
       <HelpBlock title="Nowa prośba">
         <p>
-          <Link href="/prosba" className="font-medium text-neutral-800 hover:underline">
+          <Link href="/prosba" className="font-medium text-indigo-800 hover:underline">
             Zgłoś prośbę
           </Link>{" "}
           — gdy chcesz zamówić towar u dostawcy albo sprawdzić dostępność w procesie. Status
@@ -25,7 +25,7 @@ export function DepartmentBoardGuide() {
       <HelpBlock title="Ogłoszenia od zakupów">
         <p>
           Komunikaty jednokierunkowe od działu zakupów znajdziesz w{" "}
-          <Link href="/moje" className="font-medium text-neutral-800 hover:underline">
+          <Link href="/moje" className="font-medium text-indigo-800 hover:underline">
             Moje zamówienia
           </Link>
           , pod Startem dnia.

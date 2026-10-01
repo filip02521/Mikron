@@ -250,7 +250,7 @@ export function ShiftMenu({
               : cn(panelSegmentControlClass, open && panelSegmentControlOpenClass)),
           grouped &&
             compact &&
-            "h-7 min-h-7 w-full !rounded-md border border-slate-200/90 px-2 text-xs font-medium text-slate-700 shadow-none hover:bg-neutral-50",
+            "h-7 min-h-7 w-full !rounded-md border border-slate-200/90 px-2 text-xs font-medium text-slate-700 shadow-none hover:bg-indigo-50/60",
           fill && "w-full",
           className
         )}

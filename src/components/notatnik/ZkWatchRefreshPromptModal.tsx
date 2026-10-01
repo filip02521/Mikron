@@ -480,7 +480,7 @@ export function ZkWatchRefreshPromptModal({
         ) : null}
         <ul
           className={cn(
-            "divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200/80 bg-white",
+            "divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm",
             selectionBusy && "pointer-events-none opacity-60"
           )}
           aria-busy={selectionBusy || undefined}

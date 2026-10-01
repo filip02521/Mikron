@@ -76,7 +76,7 @@ function GroupFilterChip({
 }
 
 function groupBadgeClass(): string {
-  return "inline-flex max-w-full items-center rounded-full border border-neutral-200 bg-neutral-50 px-2.5 py-0.5 text-xs font-medium text-neutral-800";
+  return "inline-flex max-w-full items-center rounded-full border border-indigo-200/80 bg-indigo-50/90 px-2.5 py-0.5 text-xs font-medium text-indigo-800";
 }
 
 export function SalesAdminClient({
@@ -441,7 +441,7 @@ export function SalesAdminClient({
                             className={cn(
                               "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium",
                               brandLinkClass,
-                              "no-underline hover:bg-neutral-50"
+                              "no-underline hover:bg-indigo-50/80"
                             )}
                           >
                             <IconUserCog size={13} className="shrink-0" />

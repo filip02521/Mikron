@@ -27,11 +27,11 @@ export const NOTE_COLOR_SWATCH: Record<SalesNoteColor, string> = {
 
 /** Pastel karteczki — te same tony co {@link NOTE_COLOR_CARD}, delikatny gradient. */
 export const NOTE_STICKY_PAPER: Record<SalesNoteColor, string> = {
-  default: "bg-amber-50 border-amber-200/80",
-  yellow: "bg-yellow-50 border-yellow-200/75",
-  green: "bg-emerald-50 border-emerald-200/70",
-  blue: "bg-sky-50 border-sky-200/70",
-  pink: "bg-pink-50 border-pink-200/70",
+  default: "from-amber-50 to-amber-100/75 border-amber-200/80",
+  yellow: "from-yellow-50 to-yellow-100/70 border-yellow-200/75",
+  green: "from-emerald-50 to-emerald-100/65 border-emerald-200/70",
+  blue: "from-sky-50 to-sky-100/65 border-sky-200/70",
+  pink: "from-pink-50 to-pink-100/60 border-pink-200/70",
 };
 
 /** Zachowane dla innych modułów (tablica, operacje). */
@@ -69,20 +69,20 @@ export function noteStickyPaperClass(
 ): string {
   return cn(
     "relative flex w-full flex-col overflow-visible rounded-md border bg-gradient-to-br",
-    "shadow-sm",
+    "shadow-sm shadow-slate-900/10",
     "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-3 before:rounded-t-md before:bg-gradient-to-b before:from-white/40 before:to-transparent",
     NOTE_STICKY_PAPER[color],
     options?.placeholder &&
-      "border-dashed border-neutral-200 bg-white shadow-none",
+      "border-dashed border-indigo-200/80 from-indigo-50/50 to-white/90 shadow-none",
     options?.archived && "opacity-85 saturate-[0.9]",
-    options?.pinned && !options?.editing && "shadow-md",
+    options?.pinned && !options?.editing && "shadow-md shadow-slate-900/12",
     options?.followUpDue &&
       !options?.editing &&
       "ring-2 ring-violet-400/40 ring-offset-1 ring-offset-indigo-50/50",
-    options?.focused && "shadow-md ring-2 ring-indigo-300/50",
+    options?.focused && "shadow-md shadow-indigo-900/10 ring-2 ring-indigo-300/50",
     options?.dragOver && "ring-2 ring-indigo-400/45",
-    options?.isDragging && "opacity-80 shadow-lg",
-    options?.editing && "shadow-md ring-1 ring-indigo-200/60"
+    options?.isDragging && "opacity-80 shadow-lg shadow-slate-900/15",
+    options?.editing && "shadow-md shadow-slate-900/12 ring-1 ring-indigo-200/60"
   );
 }
 

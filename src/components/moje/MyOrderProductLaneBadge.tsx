@@ -6,7 +6,7 @@ import { cn } from "@/lib/cn";
 const laneBadgeClass: Record<Exclude<MyOrderProductLaneKind, "none">, string> = {
   teeth: "bg-emerald-50 text-emerald-700 ring-emerald-200/80",
   regular: "bg-slate-50 text-slate-600 ring-slate-200/80",
-  mixed: "bg-violet-50 text-violet-700 ring-neutral-200",
+  mixed: "bg-violet-50 text-violet-700 ring-violet-200/70",
 };
 
 const laneBadgeLabel: Record<Exclude<MyOrderProductLaneKind, "none">, string> = {

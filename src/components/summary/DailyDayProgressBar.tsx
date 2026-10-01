@@ -96,7 +96,7 @@ export function DailyDayProgressBar({
   return (
     <div
       className={cn(
-        "rounded-md border border-slate-200/80 bg-white px-4 py-3.5 sm:px-5",
+        "rounded-md border border-slate-200/80 bg-white px-4 py-3.5 shadow-[var(--shadow-card-elevated)] sm:px-5",
         combined.complete && "border-emerald-200 bg-emerald-50/40",
         className
       )}

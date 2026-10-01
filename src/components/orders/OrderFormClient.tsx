@@ -1629,7 +1629,7 @@ export function OrderFormClient({
 
           {zkQuantityFormBanner ? (
             <div
-              className="border-b border-neutral-200 bg-neutral-50 px-3 py-2.5 text-xs leading-relaxed text-neutral-900 sm:px-4"
+              className="border-b border-indigo-200/80 bg-indigo-50/70 px-3 py-2.5 text-xs leading-relaxed text-indigo-950 sm:px-4"
               role="status"
             >
               {zkQuantityFormBanner}
@@ -1638,16 +1638,16 @@ export function OrderFormClient({
 
           {scheduleSupplier && !tourDemo ? (
             <div
-              className="border-b border-neutral-100 bg-neutral-50 px-3 py-2.5 text-sm text-neutral-900 sm:px-4"
+              className="border-b border-indigo-100 bg-indigo-50/90 px-3 py-2.5 text-sm text-indigo-950 sm:px-4"
               role="status"
             >
               <p className="leading-snug">
                 <span className="font-medium">Dostawca z harmonogramu:</span>{" "}
-                <span className="font-semibold text-neutral-900">
+                <span className="font-semibold text-indigo-900">
                   {scheduleSupplier.name}
                 </span>
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-neutral-800">
+              <p className="mt-1 text-xs leading-relaxed text-indigo-800/85">
                 Prośba trafi do tego dostawcy. Jeśli wybierzesz produkt z Subiekta
                 przypisany do innego dostawcy, dopasowanie zaktualizuje się
                 automatycznie.
@@ -1682,7 +1682,7 @@ export function OrderFormClient({
                 hint={PROSBA_FORM_SECTION_COPY.delegate.hint}
                 accent="indigo"
                 icon={<IconUserCog size={17} />}
-                tileClassName="bg-neutral-100 text-neutral-800"
+                tileClassName="bg-indigo-100 text-indigo-800"
               >
                 <Field labelClassName="inline-flex min-h-6 items-center" label="Handlowiec">
                   <Select
@@ -1885,7 +1885,7 @@ export function OrderFormClient({
         <CardHeader
           inset
           leading={
-            <SectionHeadingIcon tileClassName="bg-neutral-100 text-neutral-800">
+            <SectionHeadingIcon tileClassName="bg-violet-100 text-violet-800">
               <IconLayers size={20} />
             </SectionHeadingIcon>
           }
@@ -1976,7 +1976,7 @@ export function OrderFormClient({
                   }
                   accent="indigo"
                   icon={<IconUserCog size={17} />}
-                  tileClassName="bg-neutral-100 text-neutral-800"
+                  tileClassName="bg-indigo-100 text-indigo-800"
                 >
                   <p className="text-sm font-medium text-slate-900">{lockedSalesPerson.name}</p>
                 </ProsbaFormSection>
@@ -1987,7 +1987,7 @@ export function OrderFormClient({
                   hint={PROSBA_FORM_SECTION_COPY.delegateProcurement.hint}
                   accent="indigo"
                   icon={<IconUserGroup size={17} />}
-                  tileClassName="bg-neutral-100 text-neutral-800"
+                  tileClassName="bg-indigo-100 text-indigo-800"
                   className="sm:col-span-2"
                 >
                   <div className="grid gap-3 sm:grid-cols-2 sm:items-start">

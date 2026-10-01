@@ -90,7 +90,7 @@ export function ZkWatchProsbaSection({
       <li
         key={entry.order.id}
         className={cn(
-          "rounded-lg border px-3 py-2.5",
+          "rounded-lg border px-3 py-2.5 shadow-[var(--shadow-card)]",
           entry.isOpen
             ? "border-slate-200/90 bg-white"
             : "border-slate-200/70 bg-slate-50/80"

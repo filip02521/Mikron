@@ -98,7 +98,7 @@ export function NoteFormatToolbar({
 
 /** Obramowanie pola tekstowego z wbudowanym paskiem formatowania. */
 export const NOTE_COMPOSE_TEXTAREA_SHELL_CLASS = cn(
-  "overflow-hidden rounded-md border border-slate-200 bg-white",
+  "overflow-hidden rounded-md border border-slate-200 bg-white shadow-sm",
   "focus-within:border-indigo-500 focus-within:outline-none focus-within:ring-1 focus-within:ring-sky-500/15"
 );
 

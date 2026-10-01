@@ -202,7 +202,7 @@ export function ZdEstimateLinkZdDialog({
           disabled={busy}
           placeholder="np. ZD 123/2026"
           className={cn(
-            "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900",
+            "w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 shadow-sm",
             controlFocusClass
           )}
         />
@@ -232,7 +232,7 @@ export function ZdEstimateLinkZdDialog({
                     className={cn(
                       "flex w-full items-baseline justify-between gap-2 rounded-md px-2.5 py-2 text-left text-sm",
                       selected
-                        ? "bg-indigo-50 text-indigo-950 ring-1 ring-neutral-200"
+                        ? "bg-indigo-50 text-indigo-950 ring-1 ring-indigo-200"
                         : "hover:bg-white"
                     )}
                   >
