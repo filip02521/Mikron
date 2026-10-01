@@ -104,6 +104,7 @@ export type MultiRecipientEmailParams = {
   to: string[];
   cc?: string[];
   bcc?: string[];
+  replyTo?: string;
   subject: string;
   html: string;
   attachments?: EmailAttachmentInput[];
@@ -168,6 +169,7 @@ export async function sendHtmlEmailWithAttachments(
       to,
       cc: cc.length ? cc : undefined,
       bcc: bcc.length ? bcc : undefined,
+      replyTo: params.replyTo,
       subject,
       html: params.html,
       attachments: attachments.length ? attachments : undefined,

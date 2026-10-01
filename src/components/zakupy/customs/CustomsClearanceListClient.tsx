@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { actionExtractInvoiceWithAi } from "@/app/actions/customs-ai";
 import {
   actionCreateCustomsClearance,
@@ -53,6 +53,22 @@ export function CustomsClearanceListClient({
   const [aiMeta, setAiMeta] = useState<AiInvoiceMeta | null>(null);
   const [aiReading, setAiReading] = useState(false);
   const [aiNote, setAiNote] = useState<string | null>(null);
+  const [filterSupplier, setFilterSupplier] = useState("");
+  const [filterStatus, setFilterStatus] = useState<"" | "draft" | "sent">("");
+  const [filterText, setFilterText] = useState("");
+  const supplierNames = useMemo(
+    () => [...new Set(clearances.map((c) => c.supplierName))].sort((a, b) => a.localeCompare(b, "pl")),
+    [clearances]
+  );
+  const visible = useMemo(() => {
+    const q = filterText.trim().toLowerCase();
+    return clearances.filter(
+      (c) =>
+        (!filterSupplier || c.supplierName === filterSupplier) &&
+        (!filterStatus || c.status === filterStatus) &&
+        (!q || `${c.invoiceNumber} ${c.zdNumber ?? ""}`.toLowerCase().includes(q))
+    );
+  }, [clearances, filterSupplier, filterStatus, filterText]);
 
   async function readInvoiceWithAi(file: File) {
     setError(null);
@@ -209,7 +225,7 @@ export function CustomsClearanceListClient({
               className="sm:col-span-2"
             >
               <textarea
-                className={fieldControlClass("default", "min-h-32 font-mono text-xs")}
+                className={fieldControlClass("default", "min-h-32 sm:min-h-32 font-mono text-xs")}
                 value={pastedLines}
                 onChange={(e) => setPastedLines(e.target.value)}
                 placeholder={"DE-1196\tPlaster knife large\t10\t4,50\nDE-1698\tScalpel handle No.3\t20\t2,10"}
@@ -238,10 +254,41 @@ export function CustomsClearanceListClient({
         </div>
       )}
 
+      {clearances.length > 3 ? (
+        <div className="grid gap-2 sm:grid-cols-3">
+          <Select value={filterSupplier} onChange={(e) => setFilterSupplier(e.target.value)} aria-label="Dostawca">
+            <option value="">Wszyscy dostawcy</option>
+            {supplierNames.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </Select>
+          <Select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as "" | "draft" | "sent")}
+            aria-label="Status"
+          >
+            <option value="">Wszystkie statusy</option>
+            <option value="draft">W przygotowaniu</option>
+            <option value="sent">Wysłane</option>
+          </Select>
+          <Input
+            value={filterText}
+            onChange={(e) => setFilterText(e.target.value)}
+            placeholder="Szukaj: nr faktury lub ZD"
+            aria-label="Szukaj"
+          />
+        </div>
+      ) : null}
+
       {clearances.length ? (
         <Card padding={false}>
+          {!visible.length ? (
+            <p className="px-5 py-4 text-sm text-slate-500">Brak odpraw dla wybranych filtrów.</p>
+          ) : null}
           <ul className="divide-y divide-slate-100">
-            {clearances.map((c) => (
+            {visible.map((c) => (
               <li key={c.id}>
                 <Link
                   href={`/zakupy/odprawy/${c.id}`}

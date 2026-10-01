@@ -26,7 +26,21 @@ import {
 } from "@/lib/customs/customs-lines";
 import { isLineComplete, type CustomsClearanceView } from "@/lib/customs/customs-view";
 import { buildCustomsClearanceWorkbook } from "@/lib/customs/customs-excel";
-import { cleanUuid, loadClearanceView, upsertCard, type Db } from "@/lib/customs/customs-data";
+import {
+  CUSTOMS_EMAIL_MAX_ATTACHMENTS_BYTES,
+  customsEmailHtml,
+  customsEmailSubject,
+  parseEmailList,
+} from "@/lib/customs/customs-email";
+import { sendHtmlEmailWithAttachments, type EmailAttachmentInput } from "@/lib/services/email";
+import { readStorageObject } from "@/lib/storage/local";
+import {
+  cleanUuid,
+  loadClearanceView,
+  markClearanceSent,
+  upsertCard,
+  type Db,
+} from "@/lib/customs/customs-data";
 
 const STORAGE_BUCKET = "customs-documents";
 const MAX_INVOICE_SIZE = 20 * 1024 * 1024;
@@ -567,29 +581,106 @@ export async function actionMarkCustomsClearanceSent(clearanceId: string): Promi
   if (view.incompleteCount > 0) {
     return fail(`Uzupełnij opis PL i kod CN w ${view.incompleteCount} pozycjach przed wysyłką.`);
   }
-  const now = new Date().toISOString();
-  for (const line of view.lines) {
-    await supabase
-      .from("customs_clearance_lines")
-      .update({
-        sent_snapshot: {
-          descriptionPl: line.card?.descriptionPl,
-          material: line.card?.material,
-          cnCode: line.card?.cnCode,
-          isMedicalDevice: line.vat.isMedicalDevice,
-          vatRate: line.vat.rate,
-          basisDocumentId: line.vat.basisDocument?.id ?? null,
-        },
-      })
-      .eq("id", line.id);
-  }
-  const { error } = await supabase
-    .from("customs_clearances")
-    .update({ status: "sent", sent_at: now, email_text: view.emailText, updated_at: now })
-    .eq("id", clearanceId);
-  if (error) return fail(error.message);
+  const error = await markClearanceSent(supabase, view, {});
+  if (error) return fail(error);
   revalidateClearance(clearanceId);
   return { ok: true };
+}
+
+function invoiceMimeFromName(name: string | null): string {
+  const ext = (name ?? "").toLowerCase().split(".").pop();
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  return "application/pdf";
+}
+
+export type SendCustomsEmailInput = {
+  to: string;
+  copyToMe: boolean;
+  includeExcel: boolean;
+};
+
+/**
+ * Wysyła mail do agencji celnej (treść jak w podglądzie) z fakturą, dokumentami podstawy VAT 8%
+ * i opcjonalnie Excelem; po udanej wysyłce zamyka odprawę jako wysłaną.
+ */
+export async function actionSendCustomsClearanceEmail(
+  clearanceId: string,
+  input: SendCustomsEmailInput
+): Promise<Result<{ deliveredTo: string[] }>> {
+  const user = await requireOperations("mutate");
+  const id = cleanUuid(clearanceId);
+  if (!id) return fail("Odprawa nie istnieje.");
+  const { emails: to, invalid } = parseEmailList(input.to);
+  if (invalid.length) return fail(`Nieprawidłowy adres: ${invalid.join(", ")}`);
+  if (!to.length) return fail("Podaj adres agencji celnej.");
+
+  const supabase = createAdminClient();
+  const view = await loadClearanceView(supabase, id);
+  if (!view) return fail("Odprawa nie istnieje.");
+  if (view.status === "sent") return fail("Ta odprawa jest już wysłana.");
+  if (view.incompleteCount > 0) {
+    return fail(`Uzupełnij opis PL i kod CN w ${view.incompleteCount} pozycjach przed wysyłką.`);
+  }
+  if (!view.hasInvoiceFile) return fail("Wgraj plik faktury — agencja potrzebuje go w załączniku.");
+
+  const attachments: EmailAttachmentInput[] = [];
+  let totalBytes = 0;
+  try {
+    const { data: c } = await supabase
+      .from("customs_clearances")
+      .select("invoice_storage_path, invoice_file_name")
+      .eq("id", id)
+      .single();
+    const inv = c as { invoice_storage_path: string; invoice_file_name: string | null };
+    const invoiceBytes = await readStorageObject(inv.invoice_storage_path);
+    totalBytes += invoiceBytes.length;
+    attachments.push({
+      filename: inv.invoice_file_name || "faktura.pdf",
+      content: invoiceBytes.toString("base64"),
+      contentType: invoiceMimeFromName(inv.invoice_file_name),
+    });
+
+    if (view.attachments.length) {
+      const { data: docs } = await supabase
+        .from("supplier_customs_documents")
+        .select("id, storage_path, file_name, mime_type")
+        .in("id", view.attachments.map((a) => a.id));
+      for (const d of (docs ?? []) as Array<{ storage_path: string; file_name: string; mime_type: string }>) {
+        const bytes = await readStorageObject(d.storage_path);
+        totalBytes += bytes.length;
+        attachments.push({ filename: d.file_name, content: bytes.toString("base64"), contentType: d.mime_type });
+      }
+    }
+    if (input.includeExcel) {
+      const xlsx = await buildCustomsClearanceWorkbook(view);
+      totalBytes += xlsx.length;
+      const safe = (view.invoiceNumber || view.id.slice(0, 8)).replace(/[^\p{L}\p{N}._-]+/gu, "_");
+      attachments.push({ filename: `odprawa_${safe}.xlsx`, content: xlsx.toString("base64") });
+    }
+  } catch (e) {
+    return fail(`Nie udało się przygotować załączników: ${errorText(e, "brak pliku")}`);
+  }
+  if (totalBytes > CUSTOMS_EMAIL_MAX_ATTACHMENTS_BYTES) {
+    return fail("Załączniki przekraczają 18 MB — wyślij mail ręcznie z poczty.");
+  }
+
+  const res = await sendHtmlEmailWithAttachments({
+    to,
+    cc: input.copyToMe && user.email ? [user.email] : [],
+    replyTo: user.email || undefined,
+    subject: customsEmailSubject(view),
+    html: customsEmailHtml(view.emailText),
+    attachments,
+    kind: "attachments",
+  });
+  if (!res.ok) return fail(`Wysyłka nie powiodła się: ${res.error}`);
+
+  const error = await markClearanceSent(supabase, view, { agencyEmail: to.join(", "), messageId: res.id });
+  if (error) return fail(`Mail wysłany, ale nie zapisano statusu: ${error}`);
+  revalidateClearance(id);
+  return { ok: true, deliveredTo: res.deliveredTo };
 }
 
 export async function actionDeleteCustomsClearance(clearanceId: string): Promise<Result> {

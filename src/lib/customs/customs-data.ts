@@ -63,7 +63,7 @@ export async function loadClearanceView(supabase: Db, id: string): Promise<Custo
   const { data: c } = await supabase
     .from("customs_clearances")
     .select(
-      "id, supplier_id, zd_number, invoice_number, invoice_date, currency, shipment_description, invoice_file_name, status, sent_at, email_text"
+      "id, supplier_id, zd_number, invoice_number, invoice_date, currency, shipment_description, invoice_file_name, invoice_storage_path, status, sent_at, email_text, agency_email"
     )
     .eq("id", id)
     .maybeSingle();
@@ -80,9 +80,11 @@ export async function loadClearanceView(supabase: Db, id: string): Promise<Custo
     status: "draft" | "sent";
     sent_at: string | null;
     email_text: string | null;
+    invoice_storage_path: string | null;
+    agency_email: string | null;
   };
 
-  const [{ data: supplier }, { data: lineRows }, docs] = await Promise.all([
+  const [{ data: supplier }, { data: lineRows }, docs, { data: lastAgency }] = await Promise.all([
     supabase.from("suppliers").select("name").eq("id", clearance.supplier_id).single(),
     supabase
       .from("customs_clearance_lines")
@@ -90,6 +92,14 @@ export async function loadClearanceView(supabase: Db, id: string): Promise<Custo
       .eq("clearance_id", id)
       .order("position", { ascending: true }),
     loadSupplierDocuments(supabase, clearance.supplier_id),
+    // Domyślny adres agencji = ostatnio użyty przy dowolnej odprawie.
+    supabase
+      .from("customs_clearances")
+      .select("agency_email")
+      .eq("status", "sent")
+      .neq("agency_email", "")
+      .order("sent_at", { ascending: false })
+      .limit(1),
   ]);
 
   const lines = (lineRows ?? []) as CustomsLineRow[];
@@ -120,6 +130,11 @@ export async function loadClearanceView(supabase: Db, id: string): Promise<Custo
     status: clearance.status,
     sentAt: clearance.sent_at,
     sentEmailText: clearance.email_text,
+    hasInvoiceFile: Boolean(clearance.invoice_storage_path),
+    agencyEmail: clearance.agency_email,
+    defaultAgencyEmail:
+      clearance.agency_email ??
+      (((lastAgency ?? [])[0] as { agency_email?: string | null } | undefined)?.agency_email ?? null),
     lines: lineViews,
     documents: docs.documents,
     ...buildCustomsClearanceSummary({ lines: lineViews, shipmentDescription: clearance.shipment_description }),
@@ -202,4 +217,44 @@ export async function upsertCard(
     });
   }
   return { id: cardId };
+}
+
+/**
+ * Zamyka odprawę jako wysłaną: migawka wartości każdej pozycji (historia nie zmienia się
+ * po późniejszej edycji kart) + treść maila. Zwraca komunikat błędu albo null.
+ */
+export async function markClearanceSent(
+  supabase: Db,
+  view: CustomsClearanceView,
+  extra: { agencyEmail?: string | null; messageId?: string | null }
+): Promise<string | null> {
+  const now = new Date().toISOString();
+  for (const line of view.lines) {
+    const { error } = await supabase
+      .from("customs_clearance_lines")
+      .update({
+        sent_snapshot: {
+          descriptionPl: line.card?.descriptionPl,
+          material: line.card?.material,
+          cnCode: line.card?.cnCode,
+          isMedicalDevice: line.vat.isMedicalDevice,
+          vatRate: line.vat.rate,
+          basisDocumentId: line.vat.basisDocument?.id ?? null,
+        },
+      })
+      .eq("id", line.id);
+    if (error) return error.message;
+  }
+  const { error } = await supabase
+    .from("customs_clearances")
+    .update({
+      status: "sent",
+      sent_at: now,
+      email_text: view.emailText,
+      agency_email: extra.agencyEmail ?? null,
+      sent_message_id: extra.messageId ?? null,
+      updated_at: now,
+    })
+    .eq("id", view.id);
+  return error ? error.message : null;
 }

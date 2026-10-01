@@ -42,7 +42,12 @@ używamy (przykład: Aswad, faktura AI/3177/26), plus Excel i edycja w aplikacji
    - „Zaproponuj opisy (AI)”: opis PL / materiał / CN dla nowych pozycji, z przykładami zatwierdzonych
      kart dostawcy jako wzorcem. Karta dostaje status „Propozycja AI”; VAT nadal wynika z dokumentów.
      Karty ręczne i zatwierdzone są pomijane. AI nigdy nie zatwierdza — tylko proponuje.
-4. **Dopracowanie**: wysyłka maila z aplikacji, historia odpraw dostawcy, raporty.
+4. **Dopracowanie** ✅ (migracja `159_customs_clearance_agency_email.sql`):
+   - „Wyślij do agencji” — mail z treścią z podglądu, załączniki: faktura, dokumenty podstawy VAT 8%,
+     opcjonalnie Excel; kopia i odpowiedzi do osoby wysyłającej; adres agencji zapamiętany z ostatniej
+     wysyłki. Po wysyłce odprawa zamyka się jako wysłana (adres i Message-ID w historii).
+   - „Wysłałem ręcznie” — zamknięcie bez wysyłki z aplikacji.
+   - Historia: filtr listy po dostawcy, statusie i numerze faktury/ZD; data zatwierdzenia przy pozycji.
 
 ## Do sprawdzenia w Subiekt API (lokalnie, w sieci firmowej / VPN)
 

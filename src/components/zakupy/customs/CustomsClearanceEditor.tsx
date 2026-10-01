@@ -9,6 +9,7 @@ import {
   actionExportCustomsExcel,
   actionGetCustomsInvoiceUrl,
   actionMarkCustomsClearanceSent,
+  actionSendCustomsClearanceEmail,
   actionSaveCustomsLine,
   actionSetCustomsDocumentArticles,
   actionUpdateCustomsClearanceHeader,
@@ -155,6 +156,11 @@ function CustomsLineRow({
               : CUSTOMS_LINE_STATE_LABEL[line.state]}
           </Badge>
         </div>
+        {line.card?.status === "confirmed" && line.card.confirmedAt ? (
+          <p className="text-[11px] text-emerald-700">
+            zatwierdzone {new Date(line.card.confirmedAt).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw" })}
+          </p>
+        ) : null}
         <p className="text-sm leading-snug text-slate-900">{line.supplierName || "—"}</p>
         <p className="text-xs text-slate-500">
           {formatQty(line.quantity)} {line.unit}
@@ -334,7 +340,7 @@ function SupplierDocumentArticles({
       {open ? (
         <div className="space-y-2">
           <textarea
-            className={fieldControlClass("default", "min-h-40 font-mono text-xs")}
+            className={fieldControlClass("default", "min-h-40 sm:min-h-40 font-mono text-xs")}
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={"Kody artykułów z dokumentu (np. Annex A deklaracji) — jeden na wiersz:\nDE-1411\nDE-1412"}
@@ -360,6 +366,9 @@ export function CustomsClearanceEditor({
   const router = useRouter();
   const readOnly = view.status === "sent";
   const [notice, setNotice] = useState<Notice>(null);
+  const [agencyEmail, setAgencyEmail] = useState(view.defaultAgencyEmail ?? "");
+  const [copyToMe, setCopyToMe] = useState(true);
+  const [sendExcel, setSendExcel] = useState(false);
   const [header, setHeader] = useState({
     invoiceNumber: view.invoiceNumber,
     invoiceDate: view.invoiceDate ?? "",
@@ -645,14 +654,45 @@ export function CustomsClearanceEditor({
         ) : null}
         <textarea
           readOnly
-          className={fieldControlClass("default", "min-h-72 font-mono text-xs")}
+          className={fieldControlClass("default", "min-h-72 sm:min-h-72 font-mono text-xs")}
           value={emailText}
         />
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="mr-auto text-xs text-slate-500">
-            Załączniki: faktura
-            {view.attachments.length ? `, ${view.attachments.map((a) => a.fileName).join(", ")}` : ""}
-          </span>
+        <p className="mt-3 text-xs text-slate-500">
+          Załączniki: {view.hasInvoiceFile ? (view.invoiceFileName ?? "faktura") : "brak faktury (wgraj wyżej)"}
+          {view.attachments.length ? `, ${view.attachments.map((a) => a.fileName).join(", ")}` : ""}
+          {sendExcel && !readOnly ? ", Excel" : ""}
+        </p>
+        {readOnly ? (
+          <p className="mt-2 text-sm text-slate-700">
+            {view.agencyEmail
+              ? `Wysłano z aplikacji do: ${view.agencyEmail}`
+              : "Oznaczono jako wysłane (mail wysłany poza aplikacją)."}
+            {view.sentAt ? ` · ${new Date(view.sentAt).toLocaleString("pl-PL", { timeZone: "Europe/Warsaw" })}` : ""}
+          </p>
+        ) : (
+          <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+            <Field label="Adres agencji celnej" hint="Kilka adresów rozdziel przecinkiem. Odpowiedzi agencji trafią do Ciebie.">
+              <Input
+                type="text"
+                inputMode="email"
+                value={agencyEmail}
+                onChange={(e) => setAgencyEmail(e.target.value)}
+                placeholder="odprawy@agencja.pl"
+              />
+            </Field>
+            <div className="flex flex-wrap items-center gap-3 pb-1 text-sm text-slate-700 sm:pb-7">
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={copyToMe} onChange={(e) => setCopyToMe(e.target.checked)} />
+                Kopia do mnie
+              </label>
+              <label className="flex items-center gap-2">
+                <input type="checkbox" checked={sendExcel} onChange={(e) => setSendExcel(e.target.checked)} />
+                Dołącz Excel
+              </label>
+            </div>
+          </div>
+        )}
+        <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
           <Button
             variant="secondary"
             onClick={() =>
@@ -664,19 +704,41 @@ export function CustomsClearanceEditor({
             Kopiuj treść
           </Button>
           {!readOnly ? (
-            <Button
-              disabled={pending || view.incompleteCount > 0}
-              onClick={() =>
-                run(async () => {
-                  const res = await actionMarkCustomsClearanceSent(view.id);
-                  return res.ok
-                    ? { tone: "success", text: "Oznaczono jako wysłane — dane zapisane w historii." }
-                    : { tone: "error", text: res.error };
-                })
-              }
-            >
-              Oznacz jako wysłane
-            </Button>
+            <>
+              <Button
+                variant="ghost"
+                disabled={pending || view.incompleteCount > 0}
+                onClick={() => {
+                  if (!window.confirm("Oznaczyć jako wysłane bez wysyłki z aplikacji (mail wysłany ręcznie)?")) return;
+                  run(async () => {
+                    const res = await actionMarkCustomsClearanceSent(view.id);
+                    return res.ok
+                      ? { tone: "success", text: "Oznaczono jako wysłane — dane zapisane w historii." }
+                      : { tone: "error", text: res.error };
+                  });
+                }}
+              >
+                Wysłałem ręcznie
+              </Button>
+              <Button
+                disabled={pending || view.incompleteCount > 0 || !view.hasInvoiceFile || !agencyEmail.trim()}
+                onClick={() => {
+                  if (!window.confirm(`Wysłać mail z załącznikami do: ${agencyEmail.trim()}?`)) return;
+                  run(async () => {
+                    const res = await actionSendCustomsClearanceEmail(view.id, {
+                      to: agencyEmail,
+                      copyToMe,
+                      includeExcel: sendExcel,
+                    });
+                    return res.ok
+                      ? { tone: "success", text: `Wysłano do: ${res.deliveredTo.join(", ")}.` }
+                      : { tone: "error", text: res.error };
+                  });
+                }}
+              >
+                {pending ? "Wysyłam…" : "Wyślij do agencji"}
+              </Button>
+            </>
           ) : null}
         </div>
       </Card>
