@@ -497,6 +497,14 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
         iconTone: "emerald",
         ...compact,
       },
+      {
+        href: "/zakupy/odprawy",
+        label: "Odprawy celne",
+        description: "Opis PL, CN i VAT dla agencji",
+        icon: "truck",
+        tone: "sky",
+        ...compact,
+      },
     ];
   }
 
@@ -533,6 +541,14 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
       icon: "magazynGadki",
       tone: "sky",
       iconTone: "emerald",
+      ...compact,
+    },
+    {
+      href: "/zakupy/odprawy",
+      label: "Odprawy celne",
+      description: "Opis PL, CN i VAT dla agencji",
+      icon: "truck",
+      tone: "sky",
       ...compact,
     },
   ];
@@ -1055,6 +1071,7 @@ export function pageTitle(pathname: string): string {
     return "Urlopy dostawców";
   }
   if (pathname.startsWith("/zakupy/gadki")) return "Magazyn Gądki";
+  if (pathname.startsWith("/zakupy/odprawy")) return "Odprawy celne";
   if (pathname.startsWith("/zakupy/szacunek")) return "Kreator ZD";
   if (pathname.startsWith("/zakupy/raporty-ivoclar")) return "Raporty Ivoclar (przeniesione)";
   if (pathname === "/urlopy" || pathname.startsWith("/urlopy/")) {

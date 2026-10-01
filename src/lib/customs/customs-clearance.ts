@@ -38,6 +38,8 @@ export type CustomsProductCard = {
   vatRate: CustomsVatRate | null;
   vatBasisDocumentId: string | null;
   status: "proposed" | "confirmed";
+  /** Skąd wartości: ręcznie wpisane wygrywają z dokumentami, propozycje AI — nie. */
+  source?: "manual" | "ai" | "copied";
 };
 
 /**
@@ -80,9 +82,10 @@ export type ResolvedLineVat = {
 
 /**
  * Stawka VAT pozycji:
- * - zatwierdzona karta wygrywa (użytkownik już zdecydował), ale rozbieżność z dokumentami
- *   dostawcy daje ostrzeżenie,
- * - bez zatwierdzonej karty: artykuł w dokumencie dostawcy → 8% (wyrób medyczny), inaczej 23%.
+ * - karta zatwierdzona lub wpisana ręcznie wygrywa (użytkownik zdecydował), ale rozbieżność
+ *   z dokumentami dostawcy daje ostrzeżenie,
+ * - inaczej (brak karty / propozycja AI): artykuł w dokumencie dostawcy → 8% (wyrób medyczny),
+ *   w pozostałych przypadkach 23%.
  * Stawka 8% zawsze wymaga dokumentu do załączenia — bez niego ostrzeżenie.
  */
 export function resolveLineVat(input: {
@@ -94,7 +97,8 @@ export function resolveLineVat(input: {
   const docs = code ? input.documentIndex.get(code) ?? [] : [];
   const card = input.card;
 
-  if (card?.status === "confirmed" && card.vatRate != null) {
+  const userDecided = card != null && (card.status === "confirmed" || card.source === "manual");
+  if (card && userDecided && card.vatRate != null) {
     if (card.vatRate === CUSTOMS_MEDICAL_VAT_RATE) {
       const basis =
         docs.find((d) => d.id === card.vatBasisDocumentId) ?? docs[0] ?? null;

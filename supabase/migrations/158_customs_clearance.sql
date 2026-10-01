@@ -102,6 +102,8 @@ CREATE TABLE IF NOT EXISTS public.customs_clearances (
   invoice_total numeric(14, 2),
   invoice_hs_code text,
   country_of_origin text,
+  -- „Przesyłka zawiera …” w mailu do agencji (np. „przyrządy używane w protetyce stomatologicznej”).
+  shipment_description text NOT NULL DEFAULT '',
   invoice_storage_path text,
   invoice_file_name text,
   status text NOT NULL DEFAULT 'draft',

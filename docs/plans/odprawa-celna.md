@@ -28,10 +28,13 @@ używamy (przykład: Aswad, faktura AI/3177/26), plus Excel i edycja w aplikacji
 
 ## Etapy
 
-1. **Fundament** (ten PR): migracja `158_customs_clearance.sql`, logika w `src/lib/customs/`
+1. **Fundament** ✅: migracja `158_customs_clearance.sql`, logika w `src/lib/customs/`
    (normalizacja kodów, reguła VAT, stany, mail w formacie Mikranu z zakresami „8-9.”, lista załączników), testy na Aswad.
-2. **Widok odprawy**: wybór dostawcy (IMPORT) i ZD z Subiekta → wgranie faktury PDF → tabela pozycji
-   z edycją i zatwierdzaniem kart → podgląd maila + załączniki → eksport Excel (`exceljs`).
+2. **Widok odprawy** ✅ — `/zakupy/odprawy` (menu: Dostawcy → Odprawy celne): wybór dostawcy (IMPORT)
+   i ZD z Subiekta (ostatnie 120 dni) lub wklejenie pozycji faktury z Excela/PDF → pozycje z edycją
+   i zatwierdzaniem kart („Jak poz. N” kopiuje opis z poprzedniej) → lista artykułów z deklaracji
+   (wklejana per dokument) → mail + załączniki → Excel → „Oznacz jako wysłane” (migawka w historii).
+   Kod artykułu z ZD: `tw_DostSymbol` (symbol u dostawcy), gdy API go zwraca, inaczej `tw_Symbol`.
 3. **AI (Gemini)**: OCR faktury (skany bez warstwy tekstu), wyciąganie listy artykułów z deklaracji
    do `customs_document_articles` (z akceptacją człowieka), propozycje opisu PL / materiału / CN
    na podstawie nazwy, ZD i dokumentów dostawcy. AI nigdy nie zatwierdza — tylko proponuje.

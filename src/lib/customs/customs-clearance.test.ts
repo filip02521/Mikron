@@ -87,13 +87,23 @@ describe("resolveLineVat", () => {
     expect(vat.warning).toMatch(/bez dokumentu/);
   });
 
-  it("niezatwierdzona propozycja nie nadpisuje dokumentów", () => {
+  it("propozycja AI nie nadpisuje dokumentów", () => {
     const vat = resolveLineVat({
       articleCode: "DE-1411",
-      card: card({ supplierArticleCode: "DE-1411", vatRate: 23, status: "proposed" }),
+      card: card({ supplierArticleCode: "DE-1411", vatRate: 23, status: "proposed", source: "ai" }),
       documentIndex: aswadIndex,
     });
     expect(vat.rate).toBe(8);
+  });
+
+  it("ręcznie zapisana propozycja wygrywa z ostrzeżeniem", () => {
+    const vat = resolveLineVat({
+      articleCode: "DE-1411",
+      card: card({ supplierArticleCode: "DE-1411", vatRate: 23, status: "proposed", source: "manual" }),
+      documentIndex: aswadIndex,
+    });
+    expect(vat.rate).toBe(23);
+    expect(vat.warning).toContain("deklaracja.pdf");
   });
 });
 
