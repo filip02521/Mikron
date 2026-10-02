@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { useZdEstimateNoticeTray } from "@/components/zakupy/ZdEstimateNoticeTray";
 import { cn } from "@/lib/cn";
 import type { NoticeTone } from "@/lib/ui/notice-content";
 import {
@@ -32,6 +34,8 @@ function ToneIcon({ tone, className }: { tone: NoticeTone; className?: string })
  * - `error` — domyślnie rozwinięty, bez zamykania (blokada musi być widoczna).
  * - `warning` / `info` — domyślnie zwinięty, z „×”. Zamknięcie trwa, dopóki
  *   komunikat nie zniknie i nie pojawi się ponownie (remount).
+ * - `tray` — komunikat idzie do paska „Uwagi” ({@link ZdEstimateNoticeTrayBar}) zamiast
+ *   stać nad tabelą; w panelu jest rozwinięty. Bez paska zostaje w miejscu.
  */
 export function ZdEstimateNotice({
   tone = "info",
@@ -39,6 +43,7 @@ export function ZdEstimateNotice({
   children,
   defaultExpanded,
   dismissible,
+  tray = false,
   className,
 }: {
   tone?: NoticeTone;
@@ -46,20 +51,24 @@ export function ZdEstimateNotice({
   children?: ReactNode;
   defaultExpanded?: boolean;
   dismissible?: boolean;
+  /** Do paska „Uwagi” zamiast nad tabelę (gdy pasek jest na ekranie). */
+  tray?: boolean;
   className?: string;
 }) {
-  const canDismiss = dismissible ?? tone !== "error";
-  const [expanded, setExpanded] = useState(defaultExpanded ?? tone === "error");
+  const id = useId();
   const [dismissed, setDismissed] = useState(false);
+  const heading = title ?? (typeof children === "string" ? children : "Uwaga");
+  const { inTray, panel } = useZdEstimateNoticeTray(tray && !dismissed, id, tone, heading);
+  const canDismiss = dismissible ?? tone !== "error";
+  const [expanded, setExpanded] = useState(defaultExpanded ?? (tone === "error" || inTray));
   if (dismissed) return null;
 
   const hasBody = children != null && children !== false && children !== "";
-  const heading = title ?? (typeof children === "string" ? children : "Uwaga");
   // Bez tytułu: tekst idzie do nagłówka, inna treść zawsze widoczna pod nim.
   const showBody = hasBody && (title ? expanded : typeof children !== "string");
   const t = TONE[tone];
 
-  return (
+  const notice = (
     <div
       role={tone === "error" ? "alert" : "status"}
       className={cn("relative overflow-hidden rounded-md border text-sm", t.shell, className)}
@@ -105,4 +114,5 @@ export function ZdEstimateNotice({
       ) : null}
     </div>
   );
+  return inTray && panel ? createPortal(notice, panel) : notice;
 }

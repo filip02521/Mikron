@@ -291,9 +291,11 @@ import {
 import { ZdEstimateListToolsBar } from "@/components/zakupy/ZdEstimateListToolsBar";
 import { ZdEstimateSelectionToolsReveal } from "@/components/zakupy/ZdEstimateSelectionToolsReveal";
 import { ZdEstimateListBand } from "@/components/zakupy/ZdEstimateListBand";
-import { ZdEstimateAlertBucket } from "@/components/zakupy/ZdEstimateAlertBucket";
-import { ZdEstimatePinnedAlertStack } from "@/components/zakupy/ZdEstimatePinnedAlertStack";
 import { ZdEstimateNotice } from "@/components/zakupy/ZdEstimateNotice";
+import {
+  ZdEstimateNoticeTrayBar,
+  ZdEstimateNoticeTrayProvider,
+} from "@/components/zakupy/ZdEstimateNoticeTray";
 import { ZdEstimateDepartmentSettingsMenu } from "@/components/zakupy/ZdEstimateDepartmentSettingsMenu";
 import { ZdEstimateSuppliersMenu } from "@/components/zakupy/ZdEstimateSuppliersMenu";
 import { ZdEstimateSnapshotsModal } from "@/components/zakupy/ZdEstimateSnapshotsModal";
@@ -432,7 +434,6 @@ import {
   zdEstimateDockButtonClass,
   zdEstimateListBodyInsetClass,
   zdEstimateListBodyPadClass,
-  zdEstimateSoftStatusStripClass,
   zdEstimateStickyBarClass,
   zdEstimateStickyClearanceClass,
   zdEstimateStickyClearanceTallClass,
@@ -6569,6 +6570,7 @@ export function ZdEstimateWorkbench({
   };
 
   return (
+    <ZdEstimateNoticeTrayProvider>
     <div
       className={cn(
         zdEstimateWorkbenchStackClass,
@@ -6830,15 +6832,18 @@ export function ZdEstimateWorkbench({
         />
       ) : null}
 
+      <ZdEstimateNoticeTrayBar />
+
       <div className="flex shrink-0 flex-col gap-1.5">
       {externalSessionExpiredAlert ? (
-        <ZdEstimateNotice tone="warning" title={zdEstimateExternalSessionExpiredAlertTitle}>
+        <ZdEstimateNotice tray tone="warning" title={zdEstimateExternalSessionExpiredAlertTitle}>
           {zdEstimateExternalSessionExpiredAlertBody}
         </ZdEstimateNotice>
       ) : null}
 
       {externalSessionRestoreFailedAlert ? (
         <ZdEstimateNotice
+          tray
           tone="warning"
           title={zdEstimateExternalSessionRestoreFailedAlertTitle}
         >
@@ -6848,6 +6853,7 @@ export function ZdEstimateWorkbench({
 
       {externalSessionPersistFailedAlert && lines ? (
         <ZdEstimateNotice
+          tray
           tone="warning"
           title={zdEstimateExternalSessionPersistFailedAlertTitle}
         >
@@ -7006,7 +7012,7 @@ export function ZdEstimateWorkbench({
       ) : null}
 
       {pendingIndividualsError ? (
-        <ZdEstimateNotice tone="error" title="Nie wczytano próśb">
+        <ZdEstimateNotice tray tone="error" title="Nie wczytano próśb">
           <span className="block">{pendingIndividualsError}</span>
           <span className="mt-1 block text-sm">
             {ZD_ESTIMATE_UI.createGatePendingIndividualsError}
@@ -7026,7 +7032,7 @@ export function ZdEstimateWorkbench({
       ) : null}
 
       {pendingIndividualsTruncated ? (
-        <ZdEstimateNotice tone="warning" title="Limit 500 próśb">
+        <ZdEstimateNotice tray tone="warning" title="Limit 500 próśb">
           Wczytano pierwsze 500 próśb Nowe — możliwe, że część nie weszła do
           szacunku. {ZD_ESTIMATE_UI.createGatePendingIndividualsTruncated}
         </ZdEstimateNotice>
@@ -7034,6 +7040,7 @@ export function ZdEstimateWorkbench({
 
       {createDoneDokNr && lines && lines.length > 0 && !postCreate ? (
         <ZdEstimateNotice
+          tray
           tone={
             createUnlockedAfterDone && createZdGate.ok
               ? "success"
@@ -7145,8 +7152,8 @@ export function ZdEstimateWorkbench({
       ) : null}
       </div>
 
-      <ZdEstimatePinnedAlertStack
-        items={[
+      {/* Blokery z akcjami idą do paska „Uwagi”; nad tabelą zostaje tylko błąd ostatniej akcji. */}
+      <>{[
           exclusionsError ||
           onRequestsError ||
           packagingError ||
@@ -7156,6 +7163,7 @@ export function ZdEstimateWorkbench({
           teethProductsError ? (
           <ZdEstimateSettingsTrustBanner
             key="settings-trust"
+            tray
             parts={{
               exclusions: exclusionsError,
               onRequest: onRequestsError,
@@ -7180,6 +7188,7 @@ export function ZdEstimateWorkbench({
           ) : null,
           boostNeedsRecount && lines ? (
             <ZdEstimateNotice
+              tray
               key="boost-recount"
               tone="warning"
               title={ZD_ESTIMATE_UI.boostNeedsRecountTitle}
@@ -7205,6 +7214,7 @@ export function ZdEstimateWorkbench({
           ) : null,
           historyNeedsRecount && lines ? (
             <ZdEstimateNotice
+              tray
               key="history-recount"
               tone="warning"
               title={ZD_ESTIMATE_UI.historyNeedsRecountTitle}
@@ -7230,6 +7240,7 @@ export function ZdEstimateWorkbench({
           ) : null,
           historyFetchFailed && lines ? (
             <ZdEstimateNotice
+              tray
               key="history-fetch-failed"
               tone="error"
               title={ZD_ESTIMATE_UI.historyFetchFailedTitle}
@@ -7255,6 +7266,7 @@ export function ZdEstimateWorkbench({
           ) : null,
           packagingPairConflicts.length > 0 ? (
             <ZdEstimateNotice
+              tray
               key="packaging-pair"
               tone="warning"
               title={ZD_ESTIMATE_UI.packagingPairConflictTitle}
@@ -7309,6 +7321,7 @@ export function ZdEstimateWorkbench({
           ) : null,
           explodeBomIncomplete ? (
             <ZdEstimateNotice
+              tray
               key="explode-bom"
               tone="warning"
               title={ZD_BOM_UI.alertExplodeIncompleteTitle}
@@ -7329,8 +7342,7 @@ export function ZdEstimateWorkbench({
               </ZdEstimateNotice>
             </div>
           ) : null,
-        ]}
-      />
+        ]}</>
 
         </>
       ) : null}
@@ -7452,30 +7464,17 @@ export function ZdEstimateWorkbench({
       (Boolean(lines) &&
         excludedWithIndividualCount > 0 &&
         excludedRoutedToServicesCount === 0) ? (
-      <div className={zdEstimateSoftStatusStripClass}>
+      <>
       {kitOnlyBlockedAlertCount > 0 ? (
-        <ZdEstimateNotice tone="warning" title={ZD_BOM_UI.alertKitOnlySalesTitle}>
+        <ZdEstimateNotice tray tone="warning" title={ZD_BOM_UI.alertKitOnlySalesTitle}>
           <p className="text-sm leading-snug">
             {ZD_BOM_UI.alertKitOnlySalesBody(kitOnlyBlockedAlertCount)}
           </p>
         </ZdEstimateNotice>
       ) : null}
-      <ZdEstimateAlertBucket
-        key={[
-          pairPartnerMissingCount,
-          bomMissingCount > 0 && !explodeBomIncomplete ? bomMissingCount : 0,
-          lines &&
-          excludedWithIndividualCount > 0 &&
-          excludedRoutedToServicesCount === 0
-            ? excludedWithIndividualCount
-            : 0,
-        ].join(":")}
-        title="Inne uwagi"
-        // Zwinięte — nie zabierają miejsca tabeli; licznik w nagłówku wystarcza.
-        defaultOpen={false}
-        items={[
+      {[
           pairPartnerMissingCount > 0 ? (
-            <ZdEstimateNotice tone="warning" title="Brak partnera pary w szacunku">
+            <ZdEstimateNotice tray tone="warning" title="Brak partnera pary w szacunku">
               <p className="text-sm leading-snug">
                 Nie udało się dociągnąć {pairPartnerMissingCount}{" "}
                 {pairPartnerMissingCount === 1 ? "towaru" : "towarów"} z pary —
@@ -7516,7 +7515,7 @@ export function ZdEstimateWorkbench({
           ) : null,
           /* Soft only — blocking explode incomplete jest pełnym alertem powyżej. */
           bomMissingCount > 0 && !explodeBomIncomplete ? (
-            <ZdEstimateNotice tone="warning" title={ZD_BOM_UI.alertMissingTitle}>
+            <ZdEstimateNotice tray tone="warning" title={ZD_BOM_UI.alertMissingTitle}>
               <p className="text-sm leading-snug">
                 {ZD_BOM_UI.alertMissingBody(bomMissingCount)}
               </p>
@@ -7555,7 +7554,7 @@ export function ZdEstimateWorkbench({
           lines &&
           excludedWithIndividualCount > 0 &&
           excludedRoutedToServicesCount === 0 ? (
-            <ZdEstimateNotice tone="warning" title="Prośby na wykluczonych pozycjach">
+            <ZdEstimateNotice tray tone="warning" title="Prośby na wykluczonych pozycjach">
               {excludedWithIndividualCount}{" "}
               {zdEstimateProsbaWord(excludedWithIndividualCount)}{" "}
               {excludedWithIndividualCount === 1
@@ -7565,8 +7564,7 @@ export function ZdEstimateWorkbench({
             </ZdEstimateNotice>
           ) : null,
         ]}
-      />
-      </div>
+      </>
       ) : null}
 
       <div
@@ -9727,6 +9725,7 @@ export function ZdEstimateWorkbench({
         />
       ) : null}
     </div>
+    </ZdEstimateNoticeTrayProvider>
   );
 }
 

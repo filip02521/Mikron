@@ -1,5 +1,39 @@
 @import "tailwindcss";
 
+/* Menu boczne: pełne 16rem albo wąski pasek z ikonami (html[data-sidebar="collapsed"]). */
+:root {
+  --app-sidebar-w: 16rem;
+}
+html[data-sidebar="collapsed"] {
+  --app-sidebar-w: 4.25rem;
+}
+html[data-sidebar="collapsed"] .sb-full {
+  display: none !important;
+}
+html:not([data-sidebar="collapsed"]) .sb-rail {
+  display: none !important;
+}
+/* Wąski pasek: wszystkie pozycje widoczne (także z sekcji zwiniętych), same ikony na środku. */
+html[data-sidebar="collapsed"] .sb-rail-show {
+  display: block !important;
+}
+html[data-sidebar="collapsed"] .sb-nav {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+html[data-sidebar="collapsed"] .sb-link {
+  position: relative;
+  margin-left: 0 !important;
+  padding-left: 0;
+  padding-right: 0;
+}
+html[data-sidebar="collapsed"] .sb-link > span {
+  justify-content: center;
+}
+html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
+  margin-top: 0;
+}
+
 :root {
   /* Marka OnTime — spójna z ekranem logowania (indigo + sky) */
   --brand-indigo: #4f46e5;

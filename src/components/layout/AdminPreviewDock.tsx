@@ -82,7 +82,7 @@ export function AdminPreviewDock({
         className={cn(
           "fixed z-[60] flex flex-col",
           "inset-x-2 bottom-[var(--mobile-bottom-chrome,0px)]",
-          "md:inset-x-auto md:bottom-3 md:left-[calc(16rem+1rem)] md:right-auto md:w-full md:max-w-md"
+          "md:inset-x-auto md:bottom-3 md:left-[calc(var(--app-sidebar-w)+1rem)] md:right-auto md:w-full md:max-w-md"
         )}
       >
         {expanded ? (
