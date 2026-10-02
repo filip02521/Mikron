@@ -130,6 +130,23 @@ describe("groupOrdersForMyView", () => {
     expect(groups[0]).toHaveLength(10);
   });
 
+  it("splits submission group per supplier (dostawca per pozycja)", () => {
+    const gid = "55555555-5555-5555-5555-555555555555";
+    const motyl = order({ id: "1", status: "Nowe", ordered_at: null, supplier_id: "motyl", submission_group_id: gid });
+    const motyl2 = order({ id: "2", status: "Nowe", ordered_at: null, supplier_id: "motyl", submission_group_id: gid });
+    const songYoung = order({ id: "3", status: "Nowe", ordered_at: null, supplier_id: "song-young", submission_group_id: gid });
+    const groups = groupOrdersForMyView([motyl, motyl2, songYoung]);
+    expect(groups).toHaveLength(2);
+    expect(groups.map((g) => g.map((o) => o.id).sort())).toEqual(expect.arrayContaining([["1", "2"], ["3"]]));
+  });
+
+  it("keeps unassigned verification lines of one submission together", () => {
+    const gid = "66666666-6666-6666-6666-666666666666";
+    const a = order({ id: "1", status: "Weryfikacja", ordered_at: null, supplier_id: null, submission_group_id: gid });
+    const b = order({ id: "2", status: "Weryfikacja", ordered_at: null, supplier_id: null, submission_group_id: gid });
+    expect(myOrderGroupKey(a)).toBe(myOrderGroupKey(b));
+  });
+
   it("splits submission group when lines have mixed open statuses", () => {
     const gid = "44444444-4444-4444-4444-444444444444";
     const verification = order({

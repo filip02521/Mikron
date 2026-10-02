@@ -79,7 +79,7 @@ export function splitPickupPendingIds(orders: IndividualOrder[]): {
 }
 
 export const MY_ORDER_SUBMISSION_SPLIT_HINT =
-  "Inna część tej samej prośby jest na osobnej karcie (inny status lub tor realizacji).";
+  "Inna część tej samej prośby jest na osobnej karcie (inny dostawca, status lub tor realizacji).";
 
 /** Liczba kart w /moje dla tego samego submission_group_id. */
 export function countSubmissionGroupCards(
