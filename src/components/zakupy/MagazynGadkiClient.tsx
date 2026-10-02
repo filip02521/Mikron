@@ -2,7 +2,9 @@
 
 import {
   useDeferredValue,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
   type FormEvent,
@@ -14,11 +16,13 @@ import {
 } from "@/lib/ui/user-facing-error";
 import {
   actionAddGadkiSiteNote,
+  actionAutoSyncGadki,
   actionDeleteGadkiSiteNote,
   actionLinkGadkiZk,
   actionPurgeGadkiOrphanMeta,
   actionRefreshGadkiZk,
   actionRenameGadkiPallet,
+  actionReplaceGadkiZk,
   actionSearchGadkiZk,
   actionSetGadkiLineNote,
   actionSetGadkiLinePallet,
@@ -35,6 +39,7 @@ import { MAX_EXTERNAL_WAREHOUSE_PALLET_SHARES_PER_LINE } from "@/lib/external-wa
 import type { ExternalWarehouseLineDto } from "@/lib/external-warehouse/lines";
 import { groupByPallet } from "@/lib/external-warehouse/group-by-pallet";
 import { isGadkiZkContentLogKind } from "@/lib/external-warehouse/change-log-copy";
+import { summarizeSyncResults } from "@/lib/external-warehouse/copy";
 import type { ZkSearchCandidate } from "@/lib/subiekt/resolve-zk-document";
 import { formatWarsawDateTime } from "@/lib/time/warsaw";
 import { Alert } from "@/components/ui/Alert";
@@ -140,6 +145,141 @@ function GadkiSection({
   );
 }
 
+/** Odstęp cichego syncu przy otwartej stronie (serwer i tak trzyma 45 s debounce). */
+const AUTO_SYNC_INTERVAL_MS = 60_000;
+
+/** Stan ZK względem Subiektu: brak dokumentu, zrealizowane, palety do sprawdzenia. */
+function ZkLinkStatusBadges({ link }: { link: GadkiZkLinkView }) {
+  const badges: { key: string; variant: "warning" | "success" | "info"; text: string; title?: string }[] = [];
+  if (link.syncError) {
+    badges.push({
+      key: "error",
+      variant: "warning",
+      text: "Nieaktualne — błąd synchronizacji",
+      title: link.syncErrorAt ? `Od ${formatWarsawDateTime(link.syncErrorAt)}` : undefined,
+    });
+  }
+  if (link.realized) {
+    badges.push({ key: "realized", variant: "success", text: "Zrealizowane w Subiekcie" });
+  }
+  if (link.overAllocatedCount > 0) {
+    badges.push({
+      key: "over",
+      variant: "warning",
+      text:
+        link.overAllocatedCount === 1
+          ? "1 pozycja: palety ponad ilość ZK"
+          : `${link.overAllocatedCount} poz.: palety ponad ilość ZK`,
+    });
+  }
+  if (!badges.length) return null;
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1.5">
+      {badges.map((b) => (
+        <span key={b.key} title={b.title}>
+          <Badge variant={b.variant}>{b.text}</Badge>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Podpięcie innego dokumentu ZK w miejsce starego (np. ZK usunięte i wystawione ponownie).
+ * Palety, rozbicia i notatki przechodzą na nowe pozycje po towarze.
+ */
+function ReplaceZkForm({
+  link,
+  onDone,
+  onCancel,
+}: {
+  link: GadkiZkLinkView;
+  onDone: (message: string | null) => void;
+  onCancel: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [candidates, setCandidates] = useState<ZkSearchCandidate[]>([]);
+
+  async function replaceWith(dokId: number) {
+    const res = await actionReplaceGadkiZk({ linkId: link.id, subiektDokId: dokId });
+    if (!res.ok) {
+      setMessage(res.message);
+      return;
+    }
+    onDone(
+      res.result.status === "synced" || res.result.status === "unchanged"
+        ? `${link.zkNumber} → ${res.result.zkNumber}: pozycje zaktualizowane, palety przeniesione po towarze.`
+        : `${link.zkNumber} → ${res.result.zkNumber}: podpięto, ale synchronizacja nie powiodła się (${res.result.error ?? res.result.status}).`
+    );
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setMessage(null);
+    try {
+      const found = await actionSearchGadkiZk(query);
+      if (found.kind === "error") setMessage(found.message);
+      else if (found.kind === "choose") {
+        setCandidates(found.candidates);
+        setMessage(found.hint);
+      } else await replaceWith(found.dokId);
+    } catch (err) {
+      setMessage(userFacingErrorText(err, "Nie udało się podmienić ZK"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={(e) => void submit(e)} className="mt-2 max-w-xl space-y-2 rounded-md border border-slate-200 bg-slate-50 p-2.5">
+      <p className="text-xs text-slate-600">
+        Numer nowego ZK z Subiektu — palety i notatki przejdą na pozycje z tym samym towarem.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="np. 115600/M/08/2026"
+          className={cn(fieldControlClass("default"), "min-w-0 flex-1")}
+          disabled={busy}
+          autoFocus
+        />
+        <Button type="submit" size="sm" disabled={busy || !query.trim()}>
+          {busy ? <Spinner size="sm" /> : null}
+          Podmień
+        </Button>
+        <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={onCancel}>
+          Anuluj
+        </Button>
+      </div>
+      {candidates.length ? (
+        <ul className="space-y-1">
+          {candidates.map((c) => (
+            <li key={c.subiektDokId}>
+              <button
+                type="button"
+                disabled={busy}
+                className="text-left text-sm font-medium text-indigo-700 hover:underline"
+                onClick={() => {
+                  setBusy(true);
+                  void replaceWith(c.subiektDokId).finally(() => setBusy(false));
+                }}
+              >
+                {c.zkNumber}
+                {c.clientLabel ? ` · ${c.clientLabel}` : ""}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {message ? <p className="text-xs text-amber-800">{message}</p> : null}
+    </form>
+  );
+}
+
 export function MagazynGadkiClient({
   siteName,
   links,
@@ -170,6 +310,46 @@ export function MagazynGadkiClient({
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingNoteBody, setEditingNoteBody] = useState("");
   const [unlinkTarget, setUnlinkTarget] = useState<GadkiZkLinkView | null>(null);
+  const [syncNotice, setSyncNotice] = useState<ReturnType<typeof summarizeSyncResults> | null>(null);
+  const [replaceTarget, setReplaceTarget] = useState<string | null>(null);
+  const autoSyncBusy = useRef(false);
+
+  // Samoczynna aktualizacja z Subiekta przy otwartej stronie: co minutę (gdy karta jest widoczna)
+  // i po powrocie do karty. Serwer i tak pilnuje 45 s odstępu między syncami.
+  useEffect(() => {
+    if (!canMutate || links.length === 0) return;
+    let cancelled = false;
+    async function tick() {
+      if (cancelled || autoSyncBusy.current || document.visibilityState !== "visible") return;
+      autoSyncBusy.current = true;
+      try {
+        const res = await actionAutoSyncGadki();
+        // Nie przeładowuj widoku pod ręką osoby, która właśnie coś wpisuje.
+        const active = document.activeElement;
+        const typing =
+          active instanceof HTMLInputElement ||
+          active instanceof HTMLTextAreaElement ||
+          active instanceof HTMLSelectElement;
+        if (!cancelled && res.changed && !typing) router.refresh();
+      } catch {
+        // Cichy sync — błąd pokaże się przy ZK po następnym udanym odświeżeniu.
+      } finally {
+        autoSyncBusy.current = false;
+      }
+    }
+    const interval = window.setInterval(() => void tick(), AUTO_SYNC_INTERVAL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void tick();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [canMutate, links.length, router]);
 
   const canAddZk = canMutate && subiektReachable;
   /** Pusta lista zawsze rozwinięta (CTA dodawania); inaczej honoruj przełącznik. */
@@ -288,7 +468,7 @@ export function MagazynGadkiClient({
           }
           title={siteName}
           description="Stałe ZK magazynu zewnętrznego — palety, notatki i zmiany z Subiekta."
-          hint="Pozycje synchronizują się przy wejściu (co 45 s) oraz po „Odśwież teraz”. Koszty pakowania/dostawy są ukryte."
+          hint="Pozycje aktualizują się same z Subiekta (przy wejściu i co minutę przy otwartej stronie) oraz po „Odśwież teraz”. Gdy ilość w ZK spadnie, palety dopasowują się od ostatniej. Koszty pakowania/dostawy są ukryte."
           actionAlign="inline"
           action={
             canMutate ? (
@@ -298,7 +478,8 @@ export function MagazynGadkiClient({
                 disabled={pending || links.length === 0}
                 onClick={() =>
                   run(async () => {
-                    await actionRefreshGadkiZk();
+                    const res = await actionRefreshGadkiZk();
+                    setSyncNotice(summarizeSyncResults(res.results));
                   })
                 }
                 className="gap-1.5"
@@ -374,6 +555,23 @@ export function MagazynGadkiClient({
               </li>
             ))}
           </ul>
+        </Alert>
+      ) : null}
+
+      {syncNotice ? (
+        <Alert tone={syncNotice.tone} title={syncNotice.title}>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm">
+            {syncNotice.items.map((item) => (
+              <li key={item}>{userFacingErrorTextFromMessage(item, item)}</li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            className="mt-1.5 text-xs font-medium text-slate-600 underline-offset-2 hover:underline"
+            onClick={() => setSyncNotice(null)}
+          >
+            Ukryj
+          </button>
         </Alert>
       ) : null}
 
@@ -465,12 +663,40 @@ export function MagazynGadkiClient({
                           {link.label ? ` · ${link.label}` : ""}
                         </p>
                         <p className="mt-1 text-[11px] tabular-nums text-slate-400">
-                          {link.lines.length} poz.
+                          {new Set(link.lines.map((l) => l.key)).size} poz.
                           {link.lastSyncedAt
-                            ? ` · ${formatWarsawDateTime(link.lastSyncedAt)}`
+                            ? ` · ${link.syncError ? "stan z" : "aktualne na"} ${formatWarsawDateTime(link.lastSyncedAt)}`
                             : ""}
                         </p>
+                        <ZkLinkStatusBadges link={link} />
+                        {link.syncError ? (
+                          <p className="mt-1 max-w-xl text-xs leading-snug text-amber-800">
+                            {link.syncError}
+                          </p>
+                        ) : null}
+                        {replaceTarget === link.id ? (
+                          <ReplaceZkForm
+                            link={link}
+                            onDone={(message) => {
+                              setReplaceTarget(null);
+                              if (message) setSyncNotice({ tone: "info", title: "Podmieniono ZK", items: [message] });
+                              router.refresh();
+                            }}
+                            onCancel={() => setReplaceTarget(null)}
+                          />
+                        ) : null}
                       </div>
+                      {canMutate && link.syncError && replaceTarget !== link.id ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={pending || !subiektReachable}
+                          onClick={() => setReplaceTarget(link.id)}
+                        >
+                          Podmień ZK
+                        </Button>
+                      ) : null}
                       {canMutate ? (
                         <Button
                           type="button"
@@ -577,6 +803,7 @@ export function MagazynGadkiClient({
                         <p className="mt-1 truncate text-xs text-slate-500">
                           {link.clientLabel || "—"}
                         </p>
+                        <ZkLinkStatusBadges link={link} />
                       </div>
                       {canMutate && link.palletLabels.length > 0 ? (
                         <RenamePalletForm
