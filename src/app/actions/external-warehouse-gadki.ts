@@ -279,6 +279,128 @@ export async function actionRefreshGadkiZk(options?: {
   return { results };
 }
 
+export type GadkiAutoSyncResult = {
+  /** Coś się zmieniło (pozycje, palety, status, błąd) — klient odświeża widok. */
+  changed: boolean;
+  results: SyncLinkResult[];
+};
+
+/**
+ * Cichy sync z otwartej strony (co kilkadziesiąt sekund i po powrocie do karty).
+ * Bez force — szanuje debounce, więc kilka otwartych kart nie zasypuje Subiekta.
+ */
+export async function actionAutoSyncGadki(): Promise<GadkiAutoSyncResult> {
+  let user;
+  try {
+    user = await requireOperations("mutate");
+  } catch {
+    // Podgląd panelu / brak uprawnień do zapisu — tylko odczyt, bez syncu.
+    return { changed: false, results: [] };
+  }
+  const site = await requireGadkiSite();
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("external_warehouse_zk_links")
+    .select("*")
+    .eq("site_id", site.id);
+  if (error || !data?.length) return { changed: false, results: [] };
+
+  const { syncExternalWarehouseZkLinks } = await import("@/lib/external-warehouse/sync");
+  const results = await syncExternalWarehouseZkLinks(data, { force: false, actorUserId: user.id });
+  const changed = results.some(
+    (r) =>
+      Boolean(r.diff) ||
+      Boolean(r.rebalanced) ||
+      Boolean(r.replacedDokId) ||
+      r.status === "missing" ||
+      r.status === "error"
+  );
+  if (changed) revalidateGadki();
+  return { changed, results };
+}
+
+/**
+ * Podmiana ZK na inny dokument Subiekta (np. stare ZK usunięte i wystawione na nowo).
+ * Palety, rozbicia i notatki przechodzą na nowe pozycje po towarze (rematch przy syncu);
+ * pozycje bez odpowiednika zostają w „Usunięte z ZK” do ręcznego przeniesienia.
+ */
+export async function actionReplaceGadkiZk(input: {
+  linkId: string;
+  subiektDokId: number;
+}): Promise<{ ok: true; result: SyncLinkResult } | { ok: false; message: string }> {
+  const user = await requireOperations("mutate");
+  const site = await requireGadkiSite();
+  const link = await requireSiteScopedLink(input.linkId, site.id);
+
+  const dokId = Math.trunc(Number(input.subiektDokId));
+  if (!Number.isFinite(dokId) || dokId <= 0) {
+    return { ok: false, message: "Nieprawidłowy identyfikator dokumentu ZK" };
+  }
+  if (dokId === link.subiekt_dok_id) {
+    return { ok: false, message: "To jest to samo ZK — użyj „Odśwież teraz”." };
+  }
+  if (!(await isSubiektReachable())) {
+    return { ok: false, message: "System magazynowy niedostępny — spróbuj ponownie później." };
+  }
+
+  let resolved;
+  try {
+    resolved = await resolveZkBySubiektDokId(dokId);
+  } catch (e) {
+    return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać ZK") };
+  }
+
+  const supabase = createAdminClient();
+  const { data: taken } = await supabase
+    .from("external_warehouse_zk_links")
+    .select("id")
+    .eq("site_id", site.id)
+    .eq("subiekt_dok_id", resolved.subiektDokId)
+    .maybeSingle();
+  if (taken) return { ok: false, message: `${resolved.zkNumber} jest już powiązane z magazynem.` };
+
+  // last_snapshot zostaje — sync porówna stare pozycje z nowymi i przeniesie palety po towarze.
+  const { error } = await supabase
+    .from("external_warehouse_zk_links")
+    .update({
+      subiekt_dok_id: resolved.subiektDokId,
+      zk_number: resolved.zkNumber,
+      client_label: resolved.clientLabel,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", link.id)
+    .eq("site_id", site.id);
+  if (error) {
+    if (error.code === "23505" || error.message.includes("external_warehouse_zk_links_site_dok_uid")) {
+      return { ok: false, message: `${resolved.zkNumber} jest już powiązane z magazynem.` };
+    }
+    return { ok: false, message: error.message };
+  }
+
+  const entry = {
+    site_id: site.id,
+    zk_link_id: link.id,
+    summary: `${link.zk_number}: podmieniono na ${resolved.zkNumber} — palety i notatki przeniesione po towarze`,
+    meta: { from_dok_id: link.subiekt_dok_id, to_dok_id: resolved.subiektDokId },
+    actor_user_id: user.id,
+  };
+  const { error: logError } = await supabase
+    .from("external_warehouse_change_log")
+    .insert({ ...entry, kind: "zk_replaced" });
+  if (logError) {
+    // Przed migracją 161 CHECK nie zna „zk_replaced”.
+    await supabase.from("external_warehouse_change_log").insert({ ...entry, kind: "zk_linked" });
+  }
+
+  const fresh = await fetchZkLinkForSite(link.id, site.id);
+  const result = fresh
+    ? await syncExternalWarehouseZkLink(fresh, { force: true, actorUserId: user.id })
+    : ({ linkId: link.id, zkNumber: resolved.zkNumber, status: "error", diff: null, error: "Brak ZK" } as SyncLinkResult);
+
+  revalidateGadki();
+  return { ok: true, result };
+}
+
 export async function actionSetGadkiLinePallet(input: {
   linkId: string;
   lineKey: string;

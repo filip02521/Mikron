@@ -1,5 +1,6 @@
 import { getSubiektZk } from "@/lib/subiekt/api";
-import { mapZkDocument } from "@/lib/subiekt/resolve-zk-document";
+import { SubiektRequestError } from "@/lib/subiekt/errors";
+import { mapZkDocument, searchZkForAdd, type ResolvedZkDocument } from "@/lib/subiekt/resolve-zk-document";
 import { getSubiektAvailability } from "@/lib/subiekt/availability";
 import { feedbackFromException } from "@/lib/subiekt/feedback";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -23,6 +24,10 @@ import {
 } from "@/lib/external-warehouse/diff";
 import { rematchMetaAfterZkDiff } from "@/lib/external-warehouse/apply-line-key-rematch";
 import { buildZkDiffChangeLogEntries } from "@/lib/external-warehouse/change-log-copy";
+import {
+  describeShareRebalance,
+  planShareRebalance,
+} from "@/lib/external-warehouse/share-rebalance";
 import type { ExternalWarehouseZkLink } from "@/types/database";
 
 export type SyncLinkResult = {
@@ -35,10 +40,16 @@ export type SyncLinkResult = {
     | "locked"
     | "unavailable"
     | "cas_conflict"
+    /** ZK nie ma już w Subiekcie (usunięte / zastąpione) i nie znaleziono następcy po numerze. */
+    | "missing"
     | "error";
   diff: ExternalWarehouseRefreshDiff | null;
   error?: string;
   lastSyncedAt?: string | null;
+  /** ZK podmienione automatycznie na nowy dokument Subiekta o tym samym numerze. */
+  replacedDokId?: number;
+  /** Pozycje, w których palety skorygowano do nowej ilości ZK. */
+  rebalanced?: number;
 };
 
 export type SyncableZkLink = Pick<
@@ -51,7 +62,8 @@ export type SyncableZkLink = Pick<
   | "last_snapshot"
   | "snapshot_hash"
   | "last_synced_at"
->;
+> &
+  Partial<Pick<ExternalWarehouseZkLink, "last_sync_attempt_at">>;
 
 function shouldSkipDebounce(
   lastSyncedAt: string | null | undefined,
@@ -87,6 +99,16 @@ async function casUpdateZkLink(input: {
   return Boolean(data?.id);
 }
 
+/**
+ * Nowe rodzaje wpisów (migracja 161) mają odpowiednik sprzed migracji — gdy CHECK w bazie
+ * jeszcze ich nie zna, wpis i tak trafia do dziennika.
+ */
+const CHANGE_LOG_KIND_FALLBACK: Record<string, string> = {
+  line_changed: "qty_changed",
+  zk_replaced: "zk_linked",
+  shares_rebalanced: "pallet_shares_changed",
+};
+
 async function appendChangeLog(
   entries: {
     siteId: string;
@@ -109,9 +131,140 @@ async function appendChangeLog(
       actor_user_id: e.actorUserId ?? null,
     }))
   );
-  if (error) {
-    console.error("[external-warehouse] change_log", error.message);
+  if (!error) return;
+  if (entries.some((e) => CHANGE_LOG_KIND_FALLBACK[e.kind])) {
+    const { error: retryError } = await supabase.from("external_warehouse_change_log").insert(
+      entries.map((e) => ({
+        site_id: e.siteId,
+        zk_link_id: e.zkLinkId,
+        kind: CHANGE_LOG_KIND_FALLBACK[e.kind] ?? e.kind,
+        summary: e.summary,
+        meta: e.meta ?? {},
+        actor_user_id: e.actorUserId ?? null,
+      }))
+    );
+    if (!retryError) return;
   }
+  console.error("[external-warehouse] change_log", error.message);
+}
+
+/**
+ * Stan synchronizacji w UI (migracja 161). Zapis osobno i bez wywracania syncu —
+ * przed migracją kolumn nie ma, a pozycje i tak muszą się aktualizować.
+ */
+async function recordSyncStatus(
+  linkId: string,
+  status: { error: string | null; at: string }
+): Promise<void> {
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("external_warehouse_zk_links")
+    .update({
+      last_sync_attempt_at: status.at,
+      last_sync_error: status.error ? status.error.slice(0, 500) : null,
+      last_sync_error_at: status.error ? status.at : null,
+    })
+    .eq("id", linkId);
+  if (error && !/last_sync_(error|attempt)/.test(error.message)) {
+    console.error("[external-warehouse] sync status", error.message);
+  }
+}
+
+function isZkNotFound(e: unknown): boolean {
+  return e instanceof SubiektRequestError && e.status === 404;
+}
+
+/**
+ * ZK zniknęło z Subiektu pod starym dok_Id (usunięte i wystawione ponownie, scalone itp.).
+ * Szukamy dokumentu o tym samym numerze — gdy jest dokładnie jeden i nie jest już podpięty
+ * do magazynu, przełączamy link (palety i notatki przeniesie rematch po towarze).
+ */
+async function findReplacementZk(link: SyncableZkLink): Promise<ResolvedZkDocument | null> {
+  const found = await searchZkForAdd(link.zk_number);
+  if (found.kind !== "single") return null;
+  const resolved = found.resolved;
+  if (resolved.subiektDokId === link.subiekt_dok_id) return null;
+  const supabase = createAdminClient();
+  const { data: taken } = await supabase
+    .from("external_warehouse_zk_links")
+    .select("id")
+    .eq("site_id", link.site_id)
+    .eq("subiekt_dok_id", resolved.subiektDokId)
+    .maybeSingle();
+  return taken ? null : resolved;
+}
+
+/**
+ * Palety rozbite na udziały muszą mieścić się w ilości z ZK. Po zmniejszeniu ilości
+ * w Subiekcie (np. 1008 → 504) nadmiar zdejmujemy od ostatniej palety i zapisujemy w dzienniku.
+ * Działa przy każdym syncu, więc naprawia też starsze rozjazdy.
+ */
+async function rebalanceOverAllocatedShares(input: {
+  link: SyncableZkLink;
+  zkNumber: string;
+  snapshot: ExternalWarehousePrunedSnapshot;
+  actorUserId?: string | null;
+}): Promise<number> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("external_warehouse_line_pallet_shares")
+    .select("line_key, pallet_label, qty, note")
+    .eq("zk_link_id", input.link.id);
+  if (error || !data?.length) return 0;
+
+  const byKey = new Map<string, { pallet_label: string; qty: number; note: string | null }[]>();
+  for (const row of data as { line_key: string; pallet_label: string; qty: number | string; note: string | null }[]) {
+    const bucket = byKey.get(row.line_key) ?? [];
+    bucket.push({ pallet_label: row.pallet_label, qty: Number(row.qty), note: row.note ?? null });
+    byKey.set(row.line_key, bucket);
+  }
+
+  let rebalanced = 0;
+  for (const line of input.snapshot.lines) {
+    const shares = byKey.get(line.key);
+    if (!shares) continue;
+    const plan = planShareRebalance(shares, line.ob_Ilosc);
+    if (!plan) continue;
+
+    // Ten sam lock co edycja palet w UI — nie nadpisujemy równoległej zmiany użytkownika.
+    const lockKey = `gadki-line-pallet:${input.link.id}:${line.key}`;
+    if (!(await tryAcquireLock(lockKey, 15, "gadki-line-pallet"))) continue;
+    try {
+      const { error: rpcError } = await supabase.rpc("replace_external_warehouse_line_pallet_shares", {
+        p_zk_link_id: input.link.id,
+        p_line_key: line.key,
+        p_shares: plan.keep.map((s) => ({ pallet_label: s.pallet_label, qty: s.qty, note: s.note })),
+        p_updated_by: input.actorUserId ?? null,
+        p_max_qty: line.ob_Ilosc,
+      });
+      if (rpcError) {
+        console.error("[external-warehouse] rebalance", rpcError.message);
+        continue;
+      }
+    } finally {
+      await releaseLock(lockKey);
+    }
+
+    rebalanced += 1;
+    const name = (line.tw_Nazwa ?? line.tw_Symbol ?? line.key).trim();
+    await appendChangeLog([
+      {
+        siteId: input.link.site_id,
+        zkLinkId: input.link.id,
+        kind: "shares_rebalanced",
+        summary: `${input.zkNumber}: „${name}” — w ZK ${line.ob_Ilosc} szt., ${describeShareRebalance(plan)}`,
+        meta: {
+          line_key: line.key,
+          line_qty: line.ob_Ilosc,
+          removed: plan.removed,
+          reduced: plan.reduced,
+          keep: plan.keep,
+        },
+        actorUserId: input.actorUserId,
+      },
+    ]);
+  }
+  return rebalanced;
 }
 
 function changeLogEntriesForDiff(input: {
@@ -154,7 +307,12 @@ export async function syncExternalWarehouseZkLink(
   const nowMs = options.nowMs ?? Date.now();
   const zkNumber = link.zk_number;
 
-  if (shouldSkipDebounce(link.last_synced_at, force, nowMs)) {
+  // Nieudana próba też liczy się do debounce — inaczej ZK usunięte w Subiekcie
+  // odpytywałoby Subiekta przy każdym renderze strony i każdym ticku auto-syncu.
+  const lastTouched = [link.last_synced_at, link.last_sync_attempt_at]
+    .filter((t): t is string => Boolean(t))
+    .sort((a, b) => Date.parse(b) - Date.parse(a))[0];
+  if (shouldSkipDebounce(lastTouched, force, nowMs)) {
     return {
       linkId: link.id,
       zkNumber,
@@ -197,29 +355,55 @@ export async function syncExternalWarehouseZkLink(
     let lineSummary: string | null;
     let zkNumberFresh: string;
     let clientLabel: string | null;
+    let replacement: ResolvedZkDocument | null = null;
+    const attemptAt = new Date(nowMs).toISOString();
     try {
-      const doc = await getSubiektZk(link.subiekt_dok_id);
-      const mapped = mapZkDocument(doc);
+      let mapped: ResolvedZkDocument;
+      try {
+        mapped = mapZkDocument(await getSubiektZk(link.subiekt_dok_id));
+      } catch (e) {
+        if (!isZkNotFound(e)) throw e;
+        replacement = await findReplacementZk(link).catch(() => null);
+        if (!replacement) {
+          // ≤ 160 znaków — dłuższe komunikaty UI przycina.
+          const message =
+            "ZK usunięte z Subiektu lub wystawione pod innym numerem. Pokazano ostatni zapisany stan — podmień ZK albo je odłącz.";
+          await recordSyncStatus(link.id, { error: message, at: attemptAt });
+          return {
+            linkId: link.id,
+            zkNumber,
+            status: "missing",
+            diff: null,
+            error: message,
+            lastSyncedAt: link.last_synced_at,
+          };
+        }
+        mapped = replacement;
+      }
       pruned = pruneSubiektZkSnapshot(mapped.snapshot);
       lineSummary = mapped.lineSummary;
       zkNumberFresh = mapped.zkNumber;
       clientLabel = mapped.clientLabel;
     } catch (e) {
+      const message = feedbackFromException(e).message;
+      await recordSyncStatus(link.id, { error: message, at: attemptAt });
       return {
         linkId: link.id,
         zkNumber,
         status: "error",
         diff: null,
-        error: feedbackFromException(e).message,
+        error: message,
         lastSyncedAt: link.last_synced_at,
       };
     }
 
-    const nextHash = hashExternalWarehouseLines(pruned.lines);
+    // Status dokumentu (np. „Zrealizowane”) też jest częścią stanu — zmiana statusu zapisuje snapshot.
+    const nextHash = `${hashExternalWarehouseLines(pruned.lines)}:s${pruned.dok_Status ?? ""}`;
     const syncedAt = new Date(nowMs).toISOString();
     const prevSyncedAt = link.last_synced_at;
+    const dokPatch = replacement ? { subiekt_dok_id: replacement.subiektDokId } : {};
 
-    if (link.snapshot_hash && link.snapshot_hash === nextHash) {
+    if (!replacement && link.snapshot_hash && link.snapshot_hash === nextHash) {
       const ok = await casUpdateZkLink({
         linkId: link.id,
         prevSyncedAt,
@@ -231,12 +415,23 @@ export async function syncExternalWarehouseZkLink(
           client_label: clientLabel,
         },
       });
+      let rebalanced = 0;
+      if (ok) {
+        await recordSyncStatus(link.id, { error: null, at: attemptAt });
+        rebalanced = await rebalanceOverAllocatedShares({
+          link,
+          zkNumber: zkNumberFresh,
+          snapshot: pruned,
+          actorUserId: options.actorUserId,
+        });
+      }
       return {
         linkId: link.id,
         zkNumber: zkNumberFresh,
         status: ok ? "unchanged" : "cas_conflict",
         diff: null,
         lastSyncedAt: ok ? syncedAt : link.last_synced_at,
+        rebalanced: rebalanced || undefined,
       };
     }
 
@@ -247,6 +442,7 @@ export async function syncExternalWarehouseZkLink(
       linkId: link.id,
       prevSyncedAt,
       patch: {
+        ...dokPatch,
         last_snapshot: pruned,
         snapshot_hash: nextHash,
         last_synced_at: syncedAt,
@@ -265,6 +461,20 @@ export async function syncExternalWarehouseZkLink(
         diff: null,
         lastSyncedAt: link.last_synced_at,
       };
+    }
+    await recordSyncStatus(link.id, { error: null, at: attemptAt });
+
+    if (replacement) {
+      await appendChangeLog([
+        {
+          siteId: link.site_id,
+          zkLinkId: link.id,
+          kind: "zk_replaced",
+          summary: `${zkNumberFresh}: stary dokument zniknął z Subiektu — podpięto ZK o tym samym numerze (nowe ID ${replacement.subiektDokId}), palety przeniesiono po towarze`,
+          meta: { from_dok_id: link.subiekt_dok_id, to_dok_id: replacement.subiektDokId },
+          actorUserId: options.actorUserId,
+        },
+      ]);
     }
 
     // Meta / udziały palet są trwałe względem snapshotu.
@@ -313,6 +523,7 @@ export async function syncExternalWarehouseZkLink(
             addedLineKeys: [],
             removedLineKeys: [],
             quantityChanged: [],
+            productChanged: [],
           }
         : diff;
 
@@ -330,12 +541,22 @@ export async function syncExternalWarehouseZkLink(
       );
     }
 
+    // Po rematchu kluczy: palety muszą mieścić się w nowych ilościach.
+    const rebalanced = await rebalanceOverAllocatedShares({
+      link,
+      zkNumber: zkNumberFresh,
+      snapshot: pruned,
+      actorUserId: options.actorUserId,
+    });
+
     return {
       linkId: link.id,
       zkNumber: zkNumberFresh,
       status: "synced",
       diff: hasExternalWarehouseRefreshDiff(diff) ? diff : null,
       lastSyncedAt: syncedAt,
+      replacedDokId: replacement?.subiektDokId,
+      rebalanced: rebalanced || undefined,
     };
   } finally {
     await releaseLock(lockKey);
