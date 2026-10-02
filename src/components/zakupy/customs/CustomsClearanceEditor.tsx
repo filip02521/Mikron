@@ -273,11 +273,13 @@ function SupplierDocumentArticles({
   doc,
   clearanceId,
   aiEnabled,
+  readOnly,
   onNotice,
 }: {
   doc: CustomsSupplierDocumentView;
   clearanceId: string;
   aiEnabled: boolean;
+  readOnly: boolean;
   onNotice: (n: Notice) => void;
 }) {
   const router = useRouter();
@@ -285,6 +287,8 @@ function SupplierDocumentArticles({
   const [text, setText] = useState(doc.articleCodes.join("\n"));
   const [pending, startTransition] = useTransition();
   const [aiReading, setAiReading] = useState(false);
+  const isSheetDoc = /\.(xlsx|csv|xls)$/i.test(doc.fileName);
+  const canReadCodes = !readOnly && (isSheetDoc || aiEnabled);
 
   async function readWithAi() {
     setAiReading(true);
@@ -296,7 +300,10 @@ function SupplierDocumentArticles({
     }
     setText(res.text);
     setOpen(true);
-    onNotice({ tone: "warning", text: `AI znalazło ${res.count} kodów w ${doc.fileName}. Sprawdź listę i kliknij „Zapisz listę”.` });
+    onNotice({
+      tone: "warning",
+      text: `Znaleziono ${res.count} kodów w ${doc.fileName}. Sprawdź listę i kliknij „Zapisz listę”.`,
+    });
   }
 
   function save() {
@@ -328,9 +335,9 @@ function SupplierDocumentArticles({
         <span className="ml-auto text-xs text-slate-500">
           {doc.articleCodes.length ? `${doc.articleCodes.length} artykułów` : "brak listy artykułów"}
         </span>
-        {aiEnabled ? (
+        {canReadCodes ? (
           <Button variant="outline" size="sm" onClick={() => void readWithAi()} disabled={aiReading || pending}>
-            {aiReading ? "AI czyta…" : "Odczytaj kody (AI)"}
+            {aiReading ? "Czytam…" : isSheetDoc ? "Odczytaj kody (Excel)" : "Odczytaj kody (AI)"}
           </Button>
         ) : null}
         <Button variant="ghost" size="sm" onClick={() => setOpen((o) => !o)}>
@@ -629,7 +636,8 @@ export function CustomsClearanceEditor({
                 key={doc.id}
                 doc={doc}
                 clearanceId={view.id}
-                aiEnabled={aiEnabled && !readOnly}
+                aiEnabled={aiEnabled}
+                readOnly={readOnly}
                 onNotice={setNotice}
               />
             ))}

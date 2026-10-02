@@ -26,11 +26,115 @@ import {
   type ProposalRequestLine,
 } from "@/lib/customs/customs-ai";
 import { cleanUuid, loadClearanceView, upsertCard } from "@/lib/customs/customs-data";
+import {
+  isLegacyXls,
+  isSpreadsheetFile,
+  parseArticleCodesSheet,
+  parseInvoiceWorkbook,
+  readSpreadsheetSheets,
+  sheetRowsToCsv,
+  type SheetRows,
+} from "@/lib/customs/customs-spreadsheet";
 
 const AI_MIME = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
 /** Limit inline danych w zapytaniu Gemini (~20 MB z narzutem base64). */
 const MAX_AI_FILE_SIZE = 14 * 1024 * 1024;
 const MAX_PROPOSAL_LINES = 80;
+const MAX_SHEET_FILE_SIZE = 20 * 1024 * 1024;
+const LEGACY_XLS_MESSAGE =
+  "Stary format .xls nie jest obsługiwany — otwórz plik w Excelu i zapisz jako .xlsx (albo CSV).";
+
+function emptyInvoice(lines: InvoiceExtraction["lines"]): InvoiceExtraction {
+  return { invoiceNumber: "", invoiceDate: null, currency: null, total: null, hsCode: null, countryOfOrigin: null, lines };
+}
+
+/** Arkusz jako tekst dla AI — gdy układu kolumn nie da się rozpoznać regułami. */
+async function invoiceFromSheetWithAi(sheets: SheetRows[]): Promise<InvoiceExtraction> {
+  const csv = sheets.map((rows, i) => `--- Arkusz ${i + 1} ---\n${sheetRowsToCsv(rows)}`).join("\n");
+  const raw = await callCustomsGemini(
+    [{ text: `${INVOICE_EXTRACTION_PROMPT}\n\nFaktura jako arkusz (CSV, separator ;):\n${csv.slice(0, 120_000)}` }],
+    INVOICE_EXTRACTION_SCHEMA
+  );
+  return parseInvoiceExtraction(raw);
+}
+
+export type ReadInvoiceFileResult = Result<{
+  invoice: InvoiceExtraction;
+  pasteText: string;
+  /** Jak odczytano: kolumny arkusza, AI z arkusza albo AI z PDF/skanu. */
+  method: "sheet" | "sheet_ai" | "ai";
+  /** Opis rozpoznanych kolumn (dla arkusza) — do pokazania użytkownikowi. */
+  note: string | null;
+}>;
+
+/**
+ * Odczyt faktury / packing listy do formularza nowej odprawy:
+ * - Excel (.xlsx) i CSV — kolumny rozpoznane po nagłówkach (PL/EN/DE), bez AI;
+ *   gdy układ jest nietypowy, a AI jest włączone — AI czyta arkusz jako tekst,
+ * - PDF i skany — AI (Gemini).
+ */
+export async function actionReadInvoiceFile(formData: FormData): Promise<ReadInvoiceFileResult> {
+  await requireOperations("mutate");
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return fail("Wybierz plik faktury.");
+  const mime = file.type || "application/octet-stream";
+  if (isLegacyXls(file.name, mime)) return fail(LEGACY_XLS_MESSAGE);
+
+  if (isSpreadsheetFile(file.name, mime)) {
+    if (file.size > MAX_SHEET_FILE_SIZE) return fail("Plik przekracza 20 MB.");
+    let sheets: SheetRows[];
+    try {
+      sheets = await readSpreadsheetSheets(Buffer.from(await file.arrayBuffer()), file.name);
+    } catch (e) {
+      console.error("[customs] sheet read:", e instanceof Error ? e.message : e);
+      return fail("Nie udało się otworzyć arkusza — sprawdź, czy plik nie jest uszkodzony lub zabezpieczony hasłem.");
+    }
+    const parsed = parseInvoiceWorkbook(sheets);
+    if (parsed && parsed.lines.length) {
+      const h = parsed.headers;
+      const note = [
+        `Kolumny: kod „${h.code ?? "— (z nazwy)"}”`,
+        `nazwa „${h.name ?? "—"}”`,
+        `ilość „${h.qty}”`,
+        `cena „${h.price ?? "—"}”`,
+      ].join(", ");
+      const skipped = parsed.skipped ? ` Pominięto ${parsed.skipped} wierszy bez ilości.` : "";
+      return {
+        ok: true,
+        method: "sheet",
+        invoice: emptyInvoice(parsed.lines),
+        pasteText: invoiceLinesToPasteText(parsed.lines),
+        note: `${note}.${skipped}`,
+      };
+    }
+    if (!isCustomsAiConfigured()) {
+      return fail(
+        "Nie rozpoznano kolumn arkusza (szukam nagłówków typu kod / nazwa / ilość / cena). Skopiuj pozycje z Excela do pola poniżej."
+      );
+    }
+    try {
+      const invoice = await invoiceFromSheetWithAi(sheets);
+      if (!invoice.lines.length) return fail("Nie znaleziono pozycji w arkuszu — wklej je ręcznie.");
+      return {
+        ok: true,
+        method: "sheet_ai",
+        invoice,
+        pasteText: invoiceLinesToPasteText(invoice.lines),
+        note: "Nietypowy układ arkusza — pozycje odczytało AI.",
+      };
+    } catch (e) {
+      console.error("[customs-ai] sheet invoice:", e instanceof Error ? e.message : e);
+      return fail(userFacingCustomsAiError(e));
+    }
+  }
+
+  if (!AI_MIME.has(mime)) return fail("Obsługiwane pliki: Excel (.xlsx), CSV, PDF i zdjęcia.");
+  if (!isCustomsAiConfigured()) {
+    return fail("Odczyt PDF / skanów wymaga AI (GOOGLE_AI_API_KEY). Wgraj Excel / CSV albo wklej pozycje.");
+  }
+  const res = await actionExtractInvoiceWithAi(formData);
+  return res.ok ? { ...res, method: "ai", note: null } : res;
+}
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -78,12 +182,25 @@ export async function actionExtractDocumentArticlesWithAi(
   const supabase = createAdminClient();
   const { data: doc } = await supabase
     .from("supplier_customs_documents")
-    .select("storage_path, mime_type, byte_size")
+    .select("storage_path, mime_type, byte_size, file_name")
     .eq("id", id)
     .maybeSingle();
   if (!doc) return fail("Dokument nie istnieje.");
-  const row = doc as { storage_path: string; mime_type: string; byte_size: number | null };
-  if (!AI_MIME.has(row.mime_type)) return fail("AI czyta tylko PDF i zdjęcia.");
+  const row = doc as { storage_path: string; mime_type: string; byte_size: number | null; file_name: string };
+  if (isLegacyXls(row.file_name, row.mime_type)) return fail(LEGACY_XLS_MESSAGE);
+  if (isSpreadsheetFile(row.file_name, row.mime_type)) {
+    try {
+      const sheets = await readSpreadsheetSheets(await readStorageObject(row.storage_path), row.file_name);
+      const articles = sheets.map(parseArticleCodesSheet).sort((a, b) => b.length - a.length)[0] ?? [];
+      if (!articles.length) return fail("Nie znaleziono kodów artykułów w arkuszu.");
+      return { ok: true, text: documentArticlesToPasteText(articles), count: articles.length };
+    } catch (e) {
+      console.error("[customs] document sheet:", e instanceof Error ? e.message : e);
+      return fail("Nie udało się otworzyć arkusza dokumentu.");
+    }
+  }
+  if (!AI_MIME.has(row.mime_type)) return fail("Kody czytam z Excela / CSV, a przez AI — z PDF i zdjęć.");
+  if (!isCustomsAiConfigured()) return fail("Odczyt PDF / zdjęć wymaga AI (GOOGLE_AI_API_KEY).");
   if ((row.byte_size ?? 0) > MAX_AI_FILE_SIZE) return fail("Plik za duży dla AI (maks. 14 MB).");
   try {
     const bytes = await readStorageObject(row.storage_path);
