@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert } from "@/components/ui/Alert";
+import { ZdEstimateNotice } from "@/components/zakupy/ZdEstimateNotice";
 import { Button } from "@/components/ui/Button";
 import { ZD_BOM_UI } from "@/lib/orders/zd-estimate-bom-copy";
 
@@ -31,9 +31,12 @@ export function ZdEstimateSettingsTrustBanner({
   mutating,
   onRetryAll,
   onRetryPart,
+  tray = false,
 }: {
   parts: Partial<Record<ZdEstimateSettingsPartKey, string | null | undefined>>;
   mutating?: boolean;
+  /** Do paska „Uwagi” kreatora (zamiast nad tabelę). */
+  tray?: boolean;
   onRetryAll: () => void;
   onRetryPart: (key: ZdEstimateSettingsPartKey) => void;
 }) {
@@ -44,7 +47,7 @@ export function ZdEstimateSettingsTrustBanner({
   if (failed.length === 0) return null;
 
   return (
-    <Alert tone="error" title="Ustawienia działu niedostępne">
+    <ZdEstimateNotice tray={tray} tone="error" title="Ustawienia działu niedostępne">
       <p className="text-sm leading-snug">
         Bez pełnych ustawień nie pokażemy bezpiecznej listy „Do ZD” ani nie
         pozwolimy utworzyć ZD / skopiować TSV. Wczytaj brakujące części:
@@ -80,6 +83,6 @@ export function ZdEstimateSettingsTrustBanner({
       >
         {mutating ? "Wczytuję…" : "Wczytaj wszystko"}
       </Button>
-    </Alert>
+    </ZdEstimateNotice>
   );
 }

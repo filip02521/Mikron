@@ -15,7 +15,7 @@ export function AppWorkspaceBackdrop({ uniformBackground }: { uniformBackground:
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-0 overflow-hidden md:left-64"
+      className="pointer-events-none fixed inset-0 z-0 overflow-hidden md:left-[var(--app-sidebar-w)]"
       aria-hidden
     >
       <div className="pointer-events-none absolute -right-20 top-[6%] h-56 w-56 rounded-full bg-indigo-200/30 blur-3xl" />

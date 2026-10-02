@@ -6,7 +6,7 @@ import type {
   ZdEstimateGroupOption,
   ZdEstimateSupplierOption,
 } from "@/app/actions/zd-estimate";
-import { Alert } from "@/components/ui/Alert";
+import { ZdEstimateNotice } from "@/components/zakupy/ZdEstimateNotice";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input, Select } from "@/components/ui/Field";
@@ -692,7 +692,7 @@ export function ZdEstimatePrepForm({
             </div>
           </div>
 
-          <div className="flex min-w-0 flex-[1_1_12rem] flex-col gap-1">
+          <div className="flex min-w-[min(100%,18.5rem)] flex-[1_1_18.5rem] flex-col gap-1">
             <span className={stripLabelClass}>
               {ZD_ESTIMATE_UI.prepParamBoostLabel}
             </span>
@@ -711,7 +711,7 @@ export function ZdEstimatePrepForm({
             />
           </div>
 
-          <div className="flex min-w-0 flex-col gap-1">
+          <div className="flex shrink-0 flex-col gap-1">
             <span className={stripLabelClass}>
               {ZD_ESTIMATE_UI.prepParamExtrasLabel}
             </span>
@@ -739,10 +739,10 @@ export function ZdEstimatePrepForm({
         </section>
 
         {selectedSupplier && selectedSupplier.dniZapasu == null ? (
-          <Alert tone="warning" title="Dostawca bez liczbowego zapasu">
+          <ZdEstimateNotice tone="warning" title="Dostawca bez liczbowego zapasu — ustaw dni ręcznie" dismissible={false}>
             „{selectedSupplier.name}”: {selectedSupplier.stockLabel}. Ustaw dni
             zapasu ręcznie w polu Zapas.
-          </Alert>
+          </ZdEstimateNotice>
         ) : null}
 
         {showDatesEditor ? (

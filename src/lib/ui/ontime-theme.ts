@@ -330,9 +330,6 @@ export const zdEstimateNestedWellClass = cn(
   "border border-slate-200/80 bg-slate-50/60"
 );
 
-/** Soft status strip — wewnętrzny scroll, nie rozpycha viewportu. */
-export const zdEstimateSoftStatusStripClass =
-  "shrink-0 max-h-[5rem] space-y-1.5 overflow-y-auto overscroll-contain px-0.5 sm:max-h-[7rem] sm:space-y-2";
 
 /**
  * Karta zakresu (start i Zmień zakres): naturalna wysokość, bez max-height 12rem.
