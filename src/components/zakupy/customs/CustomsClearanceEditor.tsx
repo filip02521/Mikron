@@ -8,6 +8,7 @@ import {
   actionDeleteCustomsClearance,
   actionExportCustomsExcel,
   actionGetCustomsInvoiceUrl,
+  actionImportCustomsEmailDescriptions,
   actionMarkCustomsClearanceSent,
   actionSendCustomsClearanceEmail,
   actionSaveCustomsLine,
@@ -171,13 +172,26 @@ function CustomsLineRow({
             <span className="ml-1 font-medium text-amber-700">· w ZD {formatQty(line.zdQuantity!)}</span>
           ) : null}
         </p>
+        {line.invoiceHsCode ? (
+          <p className="text-xs text-slate-500" title="Kod nadawcy z faktury — tylko podpowiedź, agencji podajemy własny kod CN">
+            HS na fakturze: <span className="font-mono">{line.invoiceHsCode}</span>
+          </p>
+        ) : null}
         {line.vat.warning ? <p className="text-xs leading-snug text-amber-800">{line.vat.warning}</p> : null}
+        {line.cnDescription ? (
+          <p className="text-xs leading-snug text-slate-500">
+            <span className="font-medium text-slate-600">CN {line.card?.cnCode}:</span> {line.cnDescription}
+          </p>
+        ) : null}
+        {line.cnWarning ? <p className="text-xs leading-snug text-amber-800">{line.cnWarning}</p> : null}
       </div>
 
       <div className="grid min-w-0 gap-2.5 sm:grid-cols-6">
         <Field label="Kod dostawcy" className="sm:col-span-1">
           <Input
             value={draft.supplierArticleCode}
+            // Bez kodu na fakturze kluczem jest nazwa — pełna wartość w podpowiedzi.
+            title={draft.supplierArticleCode}
             onChange={(e) => set("supplierArticleCode", e.target.value)}
             disabled={readOnly}
           />
@@ -198,11 +212,16 @@ function CustomsLineRow({
             disabled={readOnly}
           />
         </Field>
-        <Field label="Kod CN" className="sm:col-span-1">
+        <Field
+          label="Kod CN"
+          className="sm:col-span-1"
+          state={line.cnInvalid && draft.cnCode === (line.card?.cnCode ?? "") ? "warning" : "default"}
+        >
           <Input
             value={draft.cnCode}
+            title={line.cnDescription ?? undefined}
             onChange={(e) => set("cnCode", e.target.value)}
-            placeholder="90184900"
+            placeholder="90184990"
             inputMode="numeric"
             disabled={readOnly}
           />
@@ -266,6 +285,65 @@ function CustomsLineRow({
         ) : null}
       </div>
     </li>
+  );
+}
+
+/** Opisy z wcześniejszego maila do agencji (wklejonego z poczty) → propozycje po numerach pozycji. */
+function ImportEmailDescriptions({
+  clearanceId,
+  lineCount,
+  onNotice,
+  onClose,
+}: {
+  clearanceId: string;
+  lineCount: number;
+  onNotice: (n: Notice) => void;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const [text, setText] = useState("");
+  const [pending, startTransition] = useTransition();
+
+  function submit() {
+    startTransition(async () => {
+      const res = await actionImportCustomsEmailDescriptions(clearanceId, text);
+      if (!res.ok) {
+        onNotice({ tone: "error", text: res.error });
+        return;
+      }
+      const parts = [
+        `Wczytano opisy dla ${res.imported} pozycji jako propozycje — sprawdź i zatwierdź.`,
+        res.skippedConfirmed ? `${res.skippedConfirmed} pozycji było już zatwierdzonych.` : "",
+        ...res.warnings,
+      ].filter(Boolean);
+      onNotice({ tone: res.warnings.length ? "warning" : "success", text: parts.join(" ") });
+      onClose();
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="space-y-2 border-b border-slate-100 bg-slate-50/60 px-5 py-4">
+      <p className="text-sm text-slate-700">
+        Wklej wcześniejszy mail do agencji z tą samą fakturą. Opisy przypiszę po numerach pozycji
+        (1–{lineCount}), np. „9-10. Podkładka” albo „1-4. Prostnice … - kod CN 90184990”. „Stawka VAT 23%”
+        bez numeru dotyczy wszystkich pozycji.
+      </p>
+      <textarea
+        className={fieldControlClass("default", "min-h-48 sm:min-h-48 font-mono text-xs")}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={"Przesyłka zawiera:\n1-4. Prostnice do mikrosilnika - kod CN 90184990\n5. Podkładka\n6. Zacisk wiertła\n…\nStawka VAT 23%"}
+      />
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={onClose} disabled={pending}>
+          Anuluj
+        </Button>
+        <Button size="sm" onClick={submit} disabled={pending || !text.trim()}>
+          {pending ? "Wczytuję…" : "Wczytaj opisy"}
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -383,6 +461,7 @@ export function CustomsClearanceEditor({
     shipmentDescription: view.shipmentDescription,
   });
   const [pending, startTransition] = useTransition();
+  const [importOpen, setImportOpen] = useState(false);
   const headerDirty =
     header.invoiceNumber !== view.invoiceNumber ||
     header.invoiceDate !== (view.invoiceDate ?? "") ||
@@ -513,7 +592,7 @@ export function CustomsClearanceEditor({
             <Field label={view.invoiceFileName ? "Podmień fakturę" : "Wgraj fakturę"}>
               <input
                 type="file"
-                accept="application/pdf,image/*"
+                accept="application/pdf,image/*,.tif,.tiff"
                 className="block w-full pt-2 text-xs text-slate-600"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
@@ -561,7 +640,12 @@ export function CustomsClearanceEditor({
                 {CUSTOMS_LINE_STATE_LABEL[s]}: {counts[s]}
               </Badge>
             ))}
-          {aiEnabled && !readOnly && (counts.missing > 0 || aiProposals > 0) ? (
+          {!readOnly && counts.confirmed < view.lines.length ? (
+            <Button size="sm" variant="ghost" disabled={pending} onClick={() => setImportOpen((o) => !o)}>
+              Opisy z wcześniejszego maila
+            </Button>
+          ) : null}
+          {aiEnabled && !readOnly && (counts.missing > 0 || aiProposals > 0 || view.incompleteCount > 0) ? (
             <Button
               size="sm"
               variant="outline"
@@ -569,12 +653,11 @@ export function CustomsClearanceEditor({
               onClick={() =>
                 run(async () => {
                   const res = await actionProposeCustomsLinesWithAi(view.id);
-                  return res.ok
-                    ? {
-                        tone: "success",
-                        text: `AI zaproponowało opisy dla ${res.proposed} pozycji — sprawdź i zatwierdź.`,
-                      }
-                    : { tone: "error", text: res.error };
+                  if (!res.ok) return { tone: "error", text: res.error };
+                  const parts = [`AI zaproponowało opisy dla ${res.proposed} pozycji — sprawdź i zatwierdź.`];
+                  if (res.uncertain.length) parts.push(`Kod CN do sprawdzenia: ${res.uncertain.join("; ")}.`);
+                  if (res.remaining) parts.push(`Zostało ${res.remaining} pozycji — uruchom ponownie.`);
+                  return { tone: res.uncertain.length || res.remaining ? "warning" : "success", text: parts.join(" ") };
                 })
               }
             >
@@ -599,18 +682,20 @@ export function CustomsClearanceEditor({
             </Button>
           ) : null}
         </div>
+        {importOpen && !readOnly ? (
+          <ImportEmailDescriptions
+            clearanceId={view.id}
+            lineCount={view.lines.length}
+            onNotice={setNotice}
+            onClose={() => setImportOpen(false)}
+          />
+        ) : null}
         <ul className="divide-y divide-slate-100">
           {view.lines.map((line, i) => (
             <CustomsLineRow
-              // Nowy klucz = świeży formularz, gdy serwer zmienił wartości (karta, VAT z dokumentów).
-              key={[
-                line.id,
-                line.card?.id,
-                line.card?.status,
-                line.supplierArticleCode,
-                line.vat.rate,
-                line.vat.basisDocument?.id,
-              ].join(":")}
+              // Nowy klucz = świeży formularz, gdy serwer zmienił wartości (karta, propozycja AI,
+              // opisy z maila, VAT z dokumentów) — inaczej pola pokazywałyby stary szkic.
+              key={[line.id, line.card?.id, line.card?.status, JSON.stringify(draftFromLine(line))].join(":")}
               line={line}
               previous={i > 0 ? view.lines[i - 1]! : null}
               documents={view.documents}
@@ -657,7 +742,7 @@ export function CustomsClearanceEditor({
         <CardHeader title="Mail do agencji celnej" density="compact" />
         {view.incompleteCount > 0 && !readOnly ? (
           <Alert tone="warning" className="mb-3">
-            {`${view.incompleteCount} pozycji bez opisu PL lub kodu CN — nie ma ich jeszcze w mailu.`}
+            {`${view.incompleteCount} pozycji bez opisu PL albo z brakującym lub nieistniejącym kodem CN — nie ma ich jeszcze w mailu.`}
           </Alert>
         ) : null}
         <textarea
