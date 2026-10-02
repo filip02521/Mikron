@@ -6,7 +6,7 @@
 
 import ExcelJS from "exceljs";
 import { normalizeArticleCode } from "./customs-clearance";
-import { parseLooseNumber, type CustomsInputLine } from "./customs-lines";
+import { isInvoiceChargeName, parseLooseNumber, type CustomsInputLine } from "./customs-lines";
 
 export type SheetCell = string | number | null;
 export type SheetRows = SheetCell[][];
@@ -217,6 +217,11 @@ export function parseInvoiceSheet(rows: SheetRows): ParsedInvoiceSheet | null {
       const split = splitCodeFromName(name);
       code = split.code;
       name = split.name;
+    }
+    // „Shipping fee”, „Freight” — koszt, nie towar do odprawy.
+    if (!code && isInvoiceChargeName(name)) {
+      skipped++;
+      continue;
     }
     lines.push({
       supplierArticleCode: normalizeArticleCode(code),

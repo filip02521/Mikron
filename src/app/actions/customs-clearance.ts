@@ -14,7 +14,7 @@ import {
   type SubiektZdListItem,
 } from "@/lib/subiekt/zd-document-kh";
 import {
-  normalizeArticleCode,
+  customsArticleKey,
   normalizeCnCode,
   type CustomsVatRate,
 } from "@/lib/customs/customs-clearance";
@@ -24,6 +24,9 @@ import {
   parseInvoiceLinesPaste,
   type CustomsInputLine,
 } from "@/lib/customs/customs-lines";
+import { CUSTOMS_AI_MIME, customsFileMime } from "@/lib/customs/customs-ai-input";
+import { createCnLookup, formatCnCode } from "@/lib/customs/cn-nomenclature";
+import { parseCustomsEmailText } from "@/lib/customs/customs-email-import";
 import { isLineComplete, type CustomsClearanceView } from "@/lib/customs/customs-view";
 import { buildCustomsClearanceWorkbook } from "@/lib/customs/customs-excel";
 import {
@@ -269,9 +272,11 @@ export async function actionCreateCustomsClearance(
   }
   if (!lines.length) return fail("Brak pozycji — wybierz ZD albo wklej pozycje faktury.");
 
+  // Klucz karty: kod z faktury, a bez kodu — nazwa (UP3D, PioCreat, Saeshin „105L(BL):COLLET CHUCK”).
+  const keyOf = (l: CustomsInputLine) => customsArticleKey(l.supplierArticleCode, l.supplierName);
   const zdQtyByCode = new Map<string, number>();
   for (const l of zdLines) {
-    zdQtyByCode.set(l.supplierArticleCode, (zdQtyByCode.get(l.supplierArticleCode) ?? 0) + l.quantity);
+    zdQtyByCode.set(keyOf(l), (zdQtyByCode.get(keyOf(l)) ?? 0) + l.quantity);
   }
 
   const shipmentDescription =
@@ -301,13 +306,15 @@ export async function actionCreateCustomsClearance(
     lines.map((l, i) => ({
       clearance_id: clearanceId,
       position: i + 1,
-      supplier_article_code: l.supplierArticleCode,
+      supplier_article_code: keyOf(l),
       supplier_name: l.supplierName.slice(0, 500),
       quantity: l.quantity,
       unit_price: l.unitPrice,
       amount: l.unitPrice != null ? Math.round(l.unitPrice * l.quantity * 100) / 100 : null,
       subiekt_tw_id: l.subiektTwId,
-      zd_quantity: input.zdId ? zdQtyByCode.get(l.supplierArticleCode) ?? 0 : null,
+      // Kolumna z migracji 160 — wysyłana tylko, gdy faktura ma HS przy pozycjach.
+      ...(l.invoiceHsCode ? { invoice_hs_code: l.invoiceHsCode } : {}),
+      zd_quantity: input.zdId ? zdQtyByCode.get(keyOf(l)) ?? 0 : null,
     }))
   );
   if (linesError) {
@@ -389,13 +396,20 @@ export async function actionSaveCustomsLine(input: SaveCustomsLineInput): Promis
   if (!clearance) return fail("Odprawa nie istnieje.");
   const c = clearance as { supplier_id: string; status: string };
 
-  const code = normalizeArticleCode(input.supplierArticleCode) || normalizeArticleCode(l.supplier_name).slice(0, 120);
+  const code = customsArticleKey(input.supplierArticleCode, l.supplier_name);
   if (!code) return fail("Podaj kod artykułu dostawcy.");
   const cnRaw = input.cnCode.trim();
   const cn = normalizeCnCode(cnRaw);
-  if (cnRaw && !cn) return fail("Kod CN musi mieć 8 cyfr (np. 90184900).");
+  if (cnRaw && !cn) return fail("Kod CN musi mieć 8 cyfr (np. 9018 49 90).");
   if (input.confirm && (!input.descriptionPl.trim() || !cn)) {
     return fail("Do zatwierdzenia potrzebny jest opis PL i kod CN.");
+  }
+  const cnDictionary = createCnLookup();
+  if (input.confirm && cn && cnDictionary.strict && !cnDictionary.describe(cn)) {
+    const near = cnDictionary.siblings(cn).map(formatCnCode);
+    return fail(
+      `Kodu ${formatCnCode(cn)} nie ma w CN ${cnDictionary.year}.${near.length ? ` Istniejące w tej grupie: ${near.join(", ")}.` : ""}`
+    );
   }
   if (!VAT_RATES.has(input.vatRate)) return fail("Nieprawidłowa stawka VAT.");
 
@@ -438,8 +452,15 @@ export async function actionConfirmAllCustomsLines(clearanceId: string): Promise
   const view = await loadClearanceView(supabase, clearanceId);
   if (!view) return fail("Odprawa nie istnieje.");
   let confirmed = 0;
+  const done = new Set<string>();
   for (const line of view.lines) {
     if (!line.card || line.card.status === "confirmed" || !isLineComplete(line)) continue;
+    // Kilka pozycji tego samego artykułu ma jedną kartę — zatwierdzamy ją raz, liczymy każdą pozycję.
+    if (done.has(line.card.id)) {
+      confirmed++;
+      continue;
+    }
+    done.add(line.card.id);
     const res = await upsertCard(supabase, {
       supplierId: view.supplierId,
       code: line.supplierArticleCode,
@@ -462,6 +483,107 @@ export async function actionConfirmAllCustomsLines(clearanceId: string): Promise
   }
   revalidateClearance(clearanceId);
   return { ok: true, confirmed };
+}
+
+export type ImportCustomsEmailResult = Result<{
+  imported: number;
+  /** Pozycje z zatwierdzoną kartą — nie nadpisujemy, tylko zgłaszamy różnice. */
+  skippedConfirmed: number;
+  warnings: string[];
+}>;
+
+/**
+ * Opisy z wcześniejszego maila do agencji (np. odprawa Saeshin wysłana z poczty) → propozycje kart
+ * dla pozycji o tych samych numerach. Zatwierdzone karty zostają; propozycje trzeba zatwierdzić.
+ */
+export async function actionImportCustomsEmailDescriptions(
+  clearanceId: string,
+  text: string
+): Promise<ImportCustomsEmailResult> {
+  const user = await requireOperations("mutate");
+  const id = cleanUuid(clearanceId);
+  if (!id) return fail("Odprawa nie istnieje.");
+  if (!text.trim()) return fail("Wklej treść maila z numerowanymi pozycjami.");
+  const parsed = parseCustomsEmailText(text.slice(0, 100_000));
+  if (!parsed.byPosition.size) {
+    return fail("Nie znaleziono numerowanych pozycji (np. „5. Podkładka” albo „9-10. Podkładka”).");
+  }
+
+  const supabase = createAdminClient();
+  const view = await loadClearanceView(supabase, id);
+  if (!view) return fail("Odprawa nie istnieje.");
+  if (view.status === "sent") return fail("Odprawa jest już wysłana.");
+
+  let imported = 0;
+  let skippedConfirmed = 0;
+  const differing: number[] = [];
+  for (const line of view.lines) {
+    const entry = parsed.byPosition.get(line.position);
+    if (!entry) continue;
+    if (line.card?.status === "confirmed") {
+      skippedConfirmed++;
+      if (line.card.descriptionPl.trim().toLowerCase() !== entry.descriptionPl.toLowerCase()) differing.push(line.position);
+      continue;
+    }
+    const vatRate = entry.vatRate ?? parsed.sharedVatRate ?? line.vat.rate;
+    const saved = await upsertCard(supabase, {
+      supplierId: view.supplierId,
+      code: line.supplierArticleCode,
+      supplierName: line.supplierName,
+      subiektTwId: null,
+      clearanceId: id,
+      userId: user.id,
+      confirm: false,
+      source: "copied",
+      values: {
+        description_pl: entry.descriptionPl,
+        // Mail bez materiału / kodu nie kasuje tego, co już zaproponowano (AI, poprzedni import).
+        material: entry.material || line.card?.material || "",
+        cn_code: entry.cnCode ?? parsed.sharedCnCode ?? line.card?.cnCode ?? null,
+        is_medical_device: entry.isMedicalDevice || vatRate === 8,
+        vat_rate: vatRate,
+        vat_basis_document_id: vatRate === 8 ? (line.vat.basisDocument?.id ?? null) : null,
+      },
+    });
+    if ("error" in saved) return fail(`Poz. ${line.position}: ${saved.error}`);
+    await supabase.from("customs_clearance_lines").update({ card_id: saved.id }).eq("id", line.id);
+    imported++;
+  }
+
+  if (parsed.shipmentDescription && !view.shipmentDescription.trim()) {
+    await supabase
+      .from("customs_clearances")
+      .update({ shipment_description: parsed.shipmentDescription, updated_at: new Date().toISOString() })
+      .eq("id", id);
+  }
+
+  const warnings: string[] = [];
+  if (parsed.maxPosition !== view.lines.length) {
+    warnings.push(
+      `Mail ma ${parsed.maxPosition} pozycji, a faktura ${view.lines.length} — sprawdź, czy numeracja się zgadza (opisy przypisano po numerach).`
+    );
+  }
+  const missing = view.lines.filter((l) => !parsed.byPosition.has(l.position)).map((l) => l.position);
+  if (missing.length && missing.length < view.lines.length) {
+    warnings.push(`Brak opisu w mailu dla poz. ${missing.slice(0, 15).join(", ")}${missing.length > 15 ? "…" : ""}.`);
+  }
+  const noCn = view.lines.filter((l) => {
+    const e = parsed.byPosition.get(l.position);
+    return e && l.card?.status !== "confirmed" && !e.cnCode && !parsed.sharedCnCode && !l.card?.cnCode;
+  }).length;
+  if (noCn) {
+    warnings.push(
+      `${noCn} pozycji bez kodu CN w mailu — uzupełnij kod albo użyj „Zaproponuj opisy (AI)” (opisy z maila zostaną).`
+    );
+  }
+  if (differing.length) {
+    warnings.push(
+      `Zatwierdzone wcześniej opisy różnią się od maila (poz. ${differing.slice(0, 15).join(", ")}) — zostawiono zatwierdzone.`
+    );
+  }
+
+  revalidateClearance(id);
+  return { ok: true, imported, skippedConfirmed, warnings };
 }
 
 /** Lista artykułów z dokumentu dostawcy (np. Annex A deklaracji) — zastępuje wpisy ręczne. */
@@ -509,9 +631,9 @@ export async function actionUploadCustomsInvoice(clearanceId: string, formData: 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return fail("Wybierz plik faktury.");
   if (file.size > MAX_INVOICE_SIZE) return fail("Plik przekracza 20 MB.");
-  const mime = file.type || "application/octet-stream";
-  if (!["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(mime)) {
-    return fail("Faktura musi być PDF albo zdjęciem.");
+  const mime = customsFileMime(file.name, file.type);
+  if (!CUSTOMS_AI_MIME.has(mime)) {
+    return fail("Faktura musi być PDF albo zdjęciem (JPG, PNG, TIF).");
   }
   const supabase = createAdminClient();
   const { data: c } = await supabase
@@ -579,7 +701,7 @@ export async function actionMarkCustomsClearanceSent(clearanceId: string): Promi
   const view = await loadClearanceView(supabase, clearanceId);
   if (!view) return fail("Odprawa nie istnieje.");
   if (view.incompleteCount > 0) {
-    return fail(`Uzupełnij opis PL i kod CN w ${view.incompleteCount} pozycjach przed wysyłką.`);
+    return fail(`Uzupełnij opis PL i poprawny kod CN w ${view.incompleteCount} pozycjach przed wysyłką.`);
   }
   const error = await markClearanceSent(supabase, view, {});
   if (error) return fail(error);
@@ -592,6 +714,7 @@ function invoiceMimeFromName(name: string | null): string {
   if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
   if (ext === "png") return "image/png";
   if (ext === "webp") return "image/webp";
+  if (ext === "tif" || ext === "tiff") return "image/tiff";
   return "application/pdf";
 }
 
@@ -621,7 +744,7 @@ export async function actionSendCustomsClearanceEmail(
   if (!view) return fail("Odprawa nie istnieje.");
   if (view.status === "sent") return fail("Ta odprawa jest już wysłana.");
   if (view.incompleteCount > 0) {
-    return fail(`Uzupełnij opis PL i kod CN w ${view.incompleteCount} pozycjach przed wysyłką.`);
+    return fail(`Uzupełnij opis PL i poprawny kod CN w ${view.incompleteCount} pozycjach przed wysyłką.`);
   }
   if (!view.hasInvoiceFile) return fail("Wgraj plik faktury — agencja potrzebuje go w załączniku.");
 

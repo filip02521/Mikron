@@ -53,6 +53,7 @@ export function CustomsClearanceListClient({
   const [aiMeta, setAiMeta] = useState<AiInvoiceMeta | null>(null);
   const [aiReading, setAiReading] = useState(false);
   const [aiNote, setAiNote] = useState<string | null>(null);
+  const [readWarnings, setReadWarnings] = useState<string[]>([]);
   const [filterSupplier, setFilterSupplier] = useState("");
   const [filterStatus, setFilterStatus] = useState<"" | "draft" | "sent">("");
   const [filterText, setFilterText] = useState("");
@@ -73,6 +74,7 @@ export function CustomsClearanceListClient({
   async function readInvoiceFile(file: File) {
     setError(null);
     setAiNote(null);
+    setReadWarnings([]);
     setAiReading(true);
     const fd = new FormData();
     fd.set("file", file);
@@ -90,6 +92,7 @@ export function CustomsClearanceListClient({
     if (inv.currency) setCurrency(inv.currency);
     setPastedLines(res.pasteText);
     setAiMeta({ total: inv.total, hsCode: inv.hsCode, countryOfOrigin: inv.countryOfOrigin });
+    setReadWarnings(res.warnings);
     const who = res.method === "sheet" ? "Odczytano z arkusza" : "AI odczytało";
     const total = inv.total != null ? `, suma ${inv.total.toLocaleString("pl-PL")} ${inv.currency ?? ""}` : "";
     setAiNote(
@@ -216,7 +219,7 @@ export function CustomsClearanceListClient({
                 type="file"
                 accept={
                   aiEnabled
-                    ? ".xlsx,.csv,.xls,application/pdf,image/*"
+                    ? ".xlsx,.csv,.xls,.tif,.tiff,application/pdf,image/*"
                     : ".xlsx,.csv,.xls"
                 }
                 disabled={aiReading || pending}
@@ -241,6 +244,11 @@ export function CustomsClearanceListClient({
               />
             </Field>
           </div>
+          {readWarnings.length ? (
+            <Alert tone="warning" className="mt-4">
+              {readWarnings.join(" ")}
+            </Alert>
+          ) : null}
           {error ? (
             <Alert tone="error" className="mt-4">
               {error}
