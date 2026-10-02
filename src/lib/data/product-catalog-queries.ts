@@ -6,6 +6,10 @@ import {
   type ProductCatalogPage,
   type ProductCatalogRow,
 } from "@/lib/data/product-catalog-shared";
+import {
+  buildQuotedIlikeContainsPattern,
+  escapeIlikePattern,
+} from "@/lib/security/ilike-pattern";
 
 export type {
   ProductCatalogCoverageStats,
@@ -23,10 +27,6 @@ const SUPABASE_PAGE = 1000;
 type SubiektTwIdRow = {
   subiekt_tw_id: number | string;
 };
-
-function buildIlikePattern(q: string): string {
-  return `%${q.replaceAll("%", "\\%").replaceAll("_", "\\_")}%`;
-}
 
 function parseTwIdQuery(q: string): number | null {
   if (!/^\d+$/.test(q)) return null;
@@ -51,7 +51,7 @@ async function fetchSupplierLinkTwIdPage(options: {
     if ("twId" in options.productFilter) {
       query = query.eq("subiekt_tw_id", options.productFilter.twId);
     } else {
-      const pattern = buildIlikePattern(options.productFilter.textQuery);
+      const pattern = buildQuotedIlikeContainsPattern(options.productFilter.textQuery);
       query = query.or(
         `symbol.ilike.${pattern},name.ilike.${pattern},plu.ilike.${pattern},note.ilike.${pattern}`,
         { foreignTable: "subiekt_products" }
@@ -75,7 +75,7 @@ async function fetchSupplierLinkTwIdPage(options: {
 /** Wszystkie tw_Id pasujące do pól produktu (bez paginacji wyniku). */
 async function listAllTwIdsFromProductTextSearch(q: string): Promise<number[]> {
   const supabase = createAdminClient();
-  const pattern = buildIlikePattern(q);
+  const pattern = buildQuotedIlikeContainsPattern(q);
   const ids: number[] = [];
   let offset = 0;
 
@@ -102,7 +102,7 @@ async function listAllTwIdsFromProductTextSearch(q: string): Promise<number[]> {
 /** Produkty powiązane z dostawcą, którego nazwa pasuje do zapytania. */
 async function listTwIdsBySupplierNameMatch(q: string): Promise<number[]> {
   const supabase = createAdminClient();
-  const pattern = buildIlikePattern(q);
+  const pattern = `%${escapeIlikePattern(q)}%`;
   const ids: number[] = [];
   let offset = 0;
 
@@ -465,7 +465,7 @@ export async function searchProductCatalogPage(options: {
     return { rows, total, offset, limit };
   }
 
-  const pattern = buildIlikePattern(q);
+  const pattern = buildQuotedIlikeContainsPattern(q);
   const supplierNameTwIds = await listTwIdsBySupplierNameMatch(q);
   if (!supplierNameTwIds.length) {
     const query = supabase
