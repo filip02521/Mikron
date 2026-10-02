@@ -42,7 +42,15 @@ import type { UserRole, Workspace } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { signOutToLogin } from "@/lib/auth/sign-out-client";
 import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from "@/components/icons/NavIcon";
-import { IconSettings, IconChevronRight } from "@/components/icons/StrokeIcons";
+import {
+  IconChevronRight,
+  IconLogOut,
+  IconSettings,
+  IconSidebarCollapse,
+  IconSidebarExpand,
+} from "@/components/icons/StrokeIcons";
+import { AppBrandMark } from "@/components/ui/AppBrandMark";
+import { useSidebarCollapsed, useSidebarCollapseShortcut } from "@/lib/ui/sidebar-collapse";
 import type { VacationDelegationRow } from "@/lib/data/vacation-delegations";
 import { useSalesNavLocked } from "@/components/sales/SalesOnboardingContext";
 import { AdminPanelContextSwitcher } from "@/components/layout/AdminPanelContextSwitcher";
@@ -113,6 +121,7 @@ function NavLink({
   href: string;
   monthlyAttention?: boolean;
 }) {
+  const [railCollapsed] = useSidebarCollapsed();
   const compact = item.tier === "compact";
   const indented = Boolean(item.indent);
   const hasBadge = item.badge != null && item.badge > 0;
@@ -126,7 +135,7 @@ function NavLink({
     (item.tier === "primary" || Boolean(item.highlight));
 
   const className = cn(
-    "group block rounded-md",
+    "sb-link group block rounded-md",
     compact ? sidebarNavCompactPaddingClass : "px-2.5 py-2",
     indented && "ml-5",
     controlFocusClass,
@@ -154,9 +163,9 @@ function NavLink({
     <span className={cn("flex items-start justify-between gap-2", compact && "items-center")}>
       <span className={cn("flex min-w-0 flex-1", compact ? "items-center gap-2" : "items-start gap-2.5")}>
         {indented ? (
-          <span className={cn("relative flex shrink-0 items-center", !compact && "mt-0.5")}>
-            <span className="absolute -left-3 top-1/2 h-px w-3 bg-slate-300" />
-            <span className="absolute -left-3 -top-2 bottom-1/2 w-px bg-slate-200" />
+          <span className={cn("sb-link-icon relative flex shrink-0 items-center", !compact && "mt-0.5")}>
+            <span className="sb-full absolute -left-3 top-1/2 h-px w-3 bg-slate-300" />
+            <span className="sb-full absolute -left-3 -top-2 bottom-1/2 w-px bg-slate-200" />
             <span
               className={cn(
                 "flex h-6 w-6 items-center justify-center rounded-md",
@@ -171,7 +180,7 @@ function NavLink({
         ) : (
           <span
             className={cn(
-              "flex shrink-0 items-center justify-center rounded-md",
+              "sb-link-icon flex shrink-0 items-center justify-center rounded-md",
               !compact && "mt-0.5",
               compact ? "h-7 w-7" : "h-8 w-8",
               active
@@ -182,7 +191,7 @@ function NavLink({
             <NavIcon navKey={item.icon} size={item.icon === "teeth" ? 19 : compact ? 16 : 17} />
           </span>
         )}
-        <span className="min-w-0 flex-1">
+        <span className="sb-full min-w-0 flex-1">
           <span
             className={cn(
               compact ? "text-[13px] font-medium leading-snug" : panelTypography.rowTitle,
@@ -204,7 +213,17 @@ function NavLink({
           ) : null}
         </span>
       </span>
-      <span className="flex shrink-0 items-center gap-1.5 pt-0.5">
+      {hasBadge || showDot ? (
+        // Wąski pasek: licznik / nowości jako kropka na ikonie (liczba w dymku).
+        <span
+          className={cn(
+            "sb-rail absolute right-1.5 top-1 h-2 w-2 rounded-full ring-2 ring-white",
+            monthlyIdle ? "bg-violet-500" : hasBadge ? "bg-indigo-500" : "bg-amber-400"
+          )}
+          aria-hidden
+        />
+      ) : null}
+      <span className="sb-full flex shrink-0 items-center gap-1.5 pt-0.5">
         {showDot ? (
           <span
             className={cn(
@@ -240,10 +259,13 @@ function NavLink({
       title={
         isLockedItem
           ? "Dokończ wprowadzenie — użyj „Dalej” w panelu touru"
-          : compact && item.description
-            ? item.description
-            : undefined
+          : railCollapsed
+            ? `${item.label}${hasBadge ? ` (${item.badge! > 99 ? "99+" : item.badge})` : ""}`
+            : compact && item.description
+              ? item.description
+              : undefined
       }
+      aria-label={railCollapsed ? item.label : undefined}
       onClick={isLockedItem ? (e) => e.preventDefault() : undefined}
     >
       {content}
@@ -318,7 +340,7 @@ function CollapsibleNavSection({
         type="button"
         onClick={toggle}
         className={cn(
-          "group/section flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-all",
+          "sb-full group/section flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-all",
           controlFocusClass,
           collapsed
             ? "hover:bg-slate-50/70"
@@ -365,8 +387,9 @@ function CollapsibleNavSection({
           </span>
         ) : null}
       </button>
-      {collapsed ? null : (
-        <ul className="mt-1 space-y-0.5">
+      {/* Zwinięta sekcja: ukryta w pełnym menu, ale w wąskim pasku pozycje są zawsze dostępne. */}
+      {(
+        <ul className={cn("mt-1 space-y-0.5", collapsed && "hidden sb-rail-show")}>
           {group.items.map((item) => {
             const active = isNavItemActive(pathname, item.href, allHrefs, activeSearch);
             const monthlyAttention = item.href === MONTHLY_SUMMARY_HREF && monthlyNeedsAttention;
@@ -437,11 +460,11 @@ function NavSection({
 
   return (
     <section className={cn(!isFirst && sidebarNavSectionDividerClass)}>
-      <div className="flex items-center gap-2 px-2.5 pb-1.5 pt-2">
+      <div className="sb-full flex items-center gap-2 px-2.5 pb-1.5 pt-2">
         <span className="h-5 w-5 shrink-0" aria-hidden />
         <h2 className={cn(sidebarNavSectionTitleClass, "flex-1 text-slate-500")}>{group.title}</h2>
       </div>
-      <div className="mx-2.5 mb-1 h-px bg-slate-200/60" aria-hidden />
+      <div className="sb-full mx-2.5 mb-1 h-px bg-slate-200/60" aria-hidden />
       <ul className="space-y-0.5">
         {group.items.map((item) => {
           const active = isNavItemActive(pathname, item.href, allHrefs, activeSearch);
@@ -542,6 +565,9 @@ export function Sidebar({
       : filterNavGroupsByAccess(navForRole(role, navBadges), role, assignedWorkspaces, procurementWorkspace, adminModules)
     : [];
   const workspaceSubtitle = subtitleForProcurementWorkspace(procurementWorkspace);
+  const [railCollapsed, toggleRail] = useSidebarCollapsed();
+  useSidebarCollapseShortcut();
+  const toggleLabel = railCollapsed ? "Rozwiń menu ( [ )" : "Zwiń menu ( [ )";
 
   async function signOut() {
     if (realRole && isAdmin(realRole)) {
@@ -553,11 +579,24 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-40 flex h-screen w-64 flex-col",
+        "fixed inset-y-0 left-0 z-40 flex h-screen w-[var(--app-sidebar-w)] flex-col md:transition-[width] md:duration-200 md:ease-out motion-reduce:transition-none",
         brandSidebarShell
       )}
+      data-collapsed={railCollapsed ? "true" : undefined}
     >
-      <header className={sidebarHeaderClass}>
+      <header className={cn(sidebarHeaderClass, "sb-full relative")}>
+        <button
+          type="button"
+          onClick={toggleRail}
+          title={toggleLabel}
+          aria-label="Zwiń menu boczne"
+          className={cn(
+            "absolute right-2 top-2 rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700",
+            controlFocusClass
+          )}
+        >
+          <IconSidebarCollapse size={16} />
+        </button>
         <SidebarBrandBlock
           role={realRole && isAdmin(realRole) ? realRole : role}
           workspaceSubtitle={workspaceSubtitle}
@@ -567,10 +606,27 @@ export function Sidebar({
           activeDelegations={activeDelegations}
         />
       </header>
+      <header className="sb-rail flex shrink-0 flex-col items-center gap-2 border-b border-indigo-100/70 px-2 pb-3 pt-4">
+        <Link href="/" aria-label="Strona główna" title="OnTime">
+          <AppBrandMark size="sm" />
+        </Link>
+        <button
+          type="button"
+          onClick={toggleRail}
+          title={toggleLabel}
+          aria-label="Rozwiń menu boczne"
+          className={cn(
+            "rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700",
+            controlFocusClass
+          )}
+        >
+          <IconSidebarExpand size={16} />
+        </button>
+      </header>
 
       {procurementWorkspace ? (
         <div className={cn(
-          "mx-3 mt-3 mb-1 flex items-center gap-2 rounded-lg bg-slate-50/80 px-2.5 py-1.5 ring-1 ring-inset ring-slate-200/60",
+          "sb-full mx-3 mt-3 mb-1 flex items-center gap-2 rounded-lg bg-slate-50/80 px-2.5 py-1.5 ring-1 ring-inset ring-slate-200/60",
         )}>
           <span
             className={cn(
@@ -602,7 +658,7 @@ export function Sidebar({
         </div>
       ) : null}
 
-      <nav className={cn(brandSidebarNavScroll, navLocked && "opacity-80")}>
+      <nav className={cn(brandSidebarNavScroll, "sb-nav", navLocked && "opacity-80")}>
         {groups.map((g, index) => (
           <NavSection
             key={g.title}
@@ -615,7 +671,31 @@ export function Sidebar({
         ))}
       </nav>
 
-      <div className={brandSidebarFooter}>
+      <div className={cn(brandSidebarFooter, "sb-rail")}>
+        <div className="flex flex-col items-center gap-2">
+          <ChangelogTriggerIconButton />
+          <Link
+            href="/ustawienia"
+            className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+            aria-label="Ustawienia"
+            title="Ustawienia"
+          >
+            <IconSettings size={16} />
+          </Link>
+          {showLoginLink ? null : (
+            <button
+              type="button"
+              onClick={() => void signOut()}
+              className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700"
+              aria-label="Wyloguj"
+              title="Wyloguj"
+            >
+              <IconLogOut size={16} />
+            </button>
+          )}
+        </div>
+      </div>
+      <div className={cn(brandSidebarFooter, "sb-full")}>
         {realRole && isAdmin(realRole) ? (
           <AdminPanelContextSwitcher current={adminPanelContext} />
         ) : null}

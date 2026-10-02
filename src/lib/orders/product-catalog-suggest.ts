@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AppSupplierRef } from "@/lib/subiekt/match-supplier";
+import { buildQuotedIlikeContainsPattern } from "@/lib/security/ilike-pattern";
 
 export type ProductCatalogSuggestion = {
   subiektTwId: number;
@@ -9,10 +10,6 @@ export type ProductCatalogSuggestion = {
   /** Ostatnio używany dostawca dla tego produktu w naszej bazie. */
   topSupplier: AppSupplierRef & { lastActionAt: string | null } | null;
 };
-
-function buildIlikePattern(q: string): string {
-  return `%${q.replaceAll("%", "\\%").replaceAll("_", "\\_")}%`;
-}
 
 function normalizeQuery(q: string): string {
   return q.trim();
@@ -28,7 +25,7 @@ export async function searchProductCatalogSuggestions(
   if (!q) return [];
 
   const supabase = createAdminClient();
-  const pattern = buildIlikePattern(q);
+  const pattern = buildQuotedIlikeContainsPattern(q);
 
   const { data: rows, error } = await supabase
     .from("subiekt_products")

@@ -11,6 +11,11 @@ import {
   actionUndoZdEstimateDailyPanelChange,
 } from "@/app/actions/zd-estimate";
 import { ZdEstimateCreateRequestsPreview } from "@/components/zakupy/ZdEstimateCreateRequestsPreview";
+import { SupplierDrawer } from "@/components/summary/SupplierDrawer";
+import {
+  actionGetSupplierPreview,
+  type SupplierPreviewData,
+} from "@/app/actions/supplier-preview";
 import {
   orderPreviewRowsFromSnap,
   ZdEstimateOrderPreviewTable,
@@ -43,6 +48,7 @@ import { copyTextToClipboard } from "@/lib/ui/copy-text-to-clipboard";
 import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
 import {
   IconAlertCircle,
+  IconBuilding,
   IconCircleCheck,
   IconMail,
 } from "@/components/icons/StrokeIcons";
@@ -112,6 +118,40 @@ export function ZdEstimatePostCreatePanel({
     title: string;
   } | null>(null);
   const [undoBusy, setUndoBusy] = useState(false);
+  const [supplierPreviewOpen, setSupplierPreviewOpen] = useState(false);
+  const [supplierPreview, setSupplierPreview] = useState<{
+    supplierId: string;
+    data: SupplierPreviewData | null;
+    error: string | null;
+  } | null>(null);
+
+  // Podgląd dostawcy wczytany w tle od razu — otwiera się bez czekania. Po zapisaniu planu
+  // tygodnia (nowy termin) odświeżamy, żeby podgląd pokazywał aktualne daty.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const res = await actionGetSupplierPreview(session.supplierId).catch(() => null);
+      if (cancelled) return;
+      setSupplierPreview({
+        supplierId: session.supplierId,
+        data: res?.ok ? res.data : null,
+        error: res?.ok
+          ? null
+          : userFacingErrorTextFromMessage(
+              res?.message ?? null,
+              "Nie udało się wczytać podglądu dostawcy."
+            ),
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session.supplierId, session.scheduleDone]);
+
+  const previewForSession =
+    supplierPreview?.supplierId === session.supplierId ? supplierPreview : null;
+  const previewLoading = !previewForSession;
+  const previewError = previewForSession?.error ?? null;
 
   const glowneIds = pendingGlowneOrderIds(session.markFreeze);
   const glownePreview = pendingGlownePreviewLists(session.markFreeze);
@@ -537,6 +577,14 @@ export function ZdEstimatePostCreatePanel({
                   {candidatesHint}
                 </p>
               ) : null}
+              <div className="pt-1.5">
+                <SupplierPreviewButton
+                  loading={previewLoading}
+                  error={previewError}
+                  label={`Podgląd: ${session.supplierName}`}
+                  onOpen={() => setSupplierPreviewOpen(true)}
+                />
+              </div>
             </div>
           </section>
         ) : (
@@ -562,22 +610,34 @@ export function ZdEstimatePostCreatePanel({
                 >
                   {dokLabel}
                 </p>
-                <p className="truncate text-sm text-slate-600">
-                  {session.supplierName} · {session.lineCount} poz.
+                <p className="flex min-w-0 items-center gap-1 text-sm text-slate-600">
+                  <SupplierNameButton
+                    name={session.supplierName}
+                    disabled={!previewForSession?.data}
+                    onOpen={() => setSupplierPreviewOpen(true)}
+                  />
+                  <span className="shrink-0">· {session.lineCount} poz.</span>
                 </p>
               </div>
             </div>
-            {session.dokNrPelny?.trim() ? (
-              <Button
-                type="button"
-                variant="secondary"
-                className="min-h-10 w-full shrink-0 sm:w-auto"
-                onClick={() => void copyDokNr()}
-                aria-live="polite"
-              >
-                {dokCopied ? "Skopiowano numer" : "Kopiuj numer ZD"}
-              </Button>
-            ) : null}
+            <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
+              <SupplierPreviewButton
+                loading={previewLoading}
+                error={previewError}
+                onOpen={() => setSupplierPreviewOpen(true)}
+              />
+              {session.dokNrPelny?.trim() ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="min-h-10 w-full sm:w-auto"
+                  onClick={() => void copyDokNr()}
+                  aria-live="polite"
+                >
+                  {dokCopied ? "Skopiowano numer" : "Kopiuj numer ZD"}
+                </Button>
+              ) : null}
+            </div>
           </section>
         )}
 
@@ -885,6 +945,18 @@ export function ZdEstimatePostCreatePanel({
         />
       </ModalShell>
 
+      <SupplierDrawer
+        mode="preview"
+        supplier={supplierPreviewOpen ? (previewForSession?.data?.supplier ?? null) : null}
+        vacationWindow={previewForSession?.data?.vacationWindow ?? null}
+        teethLane={previewForSession?.data?.teethLane ?? null}
+        subiektScope={previewForSession?.data?.subiektScope ?? null}
+        deliveryStats={previewForSession?.data?.deliveryStats ?? null}
+        statsMode={previewForSession?.data?.statsMode ?? "LACZNIE"}
+        leadTimeDisplay={previewForSession?.data?.leadTimeDisplay}
+        onClose={() => setSupplierPreviewOpen(false)}
+      />
+
       {undo ? (
         <UndoToast
           placement="floating"
@@ -984,6 +1056,65 @@ export function ZdEstimatePostCreatePanel({
         </ModalShell>
       ) : null}
     </>
+  );
+}
+
+/** Nazwa dostawcy w nagłówku — klik otwiera podgląd (jak w panelu dziennym). */
+function SupplierNameButton({
+  name,
+  disabled,
+  onOpen,
+}: {
+  name: string;
+  disabled: boolean;
+  onOpen: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      disabled={disabled}
+      title={disabled ? undefined : "Podgląd dostawcy"}
+      className={cn(
+        controlFocusClass,
+        "inline-flex min-w-0 items-center rounded font-medium text-slate-700 underline-offset-2 transition",
+        "enabled:hover:text-indigo-700 enabled:hover:underline disabled:cursor-default"
+      )}
+    >
+      <span className="truncate">{name}</span>
+    </button>
+  );
+}
+
+/** „Podgląd dostawcy” — kontakt, terminy, minimum, odbiór, Subiekt i historia bez wychodzenia z okna. */
+function SupplierPreviewButton({
+  loading,
+  error,
+  label = "Podgląd dostawcy",
+  onOpen,
+}: {
+  loading: boolean;
+  error: string | null;
+  label?: string;
+  onOpen: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      className="min-h-10 w-full sm:w-auto"
+      disabled={loading || Boolean(error)}
+      title={error ?? "Kontakt, terminy, minimum zamówienia, odbiór i historia dostawcy"}
+      onClick={onOpen}
+      aria-busy={loading}
+    >
+      {loading ? (
+        <Spinner className="size-4" />
+      ) : (
+        <IconBuilding size={15} className="shrink-0" aria-hidden />
+      )}
+      <span className="truncate">{error ? "Podgląd niedostępny" : label}</span>
+    </Button>
   );
 }
 

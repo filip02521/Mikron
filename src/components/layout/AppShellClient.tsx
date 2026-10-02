@@ -115,11 +115,11 @@ function AppShellMain({
     <main
       className={cn(
         appMainClass,
-        "relative isolate",
+        "relative isolate md:transition-[margin-left] md:duration-200 md:ease-out motion-reduce:transition-none",
         mobileChrome
-          ? "ml-0 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px)+var(--admin-preview-dock,0px))] md:ml-64 md:pb-[var(--admin-preview-clearance,0px)]"
+          ? "ml-0 pb-[calc(3.5rem+env(safe-area-inset-bottom,0px)+var(--admin-preview-dock,0px))] md:ml-[var(--app-sidebar-w)] md:pb-[var(--admin-preview-clearance,0px)]"
           : cn(
-              "ml-0 md:ml-64",
+              "ml-0 md:ml-[var(--app-sidebar-w)]",
               adminPreviewDock && "pb-[var(--admin-preview-clearance,0px)]"
             ),
         coachPadding
