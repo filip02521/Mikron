@@ -49,6 +49,18 @@ używamy (przykład: Aswad, faktura AI/3177/26), plus Excel i edycja w aplikacji
    - „Wysłałem ręcznie” — zamknięcie bez wysyłki z aplikacji.
    - Historia: filtr listy po dostawcy, statusie i numerze faktury/ZD; data zatwierdzenia przy pozycji.
 
+## Pliki faktur (Excel / CSV / PDF)
+
+- **Excel (.xlsx) i CSV** — bez AI. Kolumny rozpoznawane po nagłówkach PL / EN / DE (kod / nr
+  katalogowy / SKU / Artikel-Nr., nazwa / description / Bezeichnung, ilość / qty / Menge,
+  cena jedn. / unit price / Einzelpreis); kolumny HS / EAN / wartość są pomijane. Obsługa: nagłówek
+  niżej w arkuszu lub w dwóch wierszach, kilka arkuszy (wybierany ten z pozycjami), wiersz sumy
+  kończy tabelę, kod na początku nazwy, ilości „10 pcs” / „1.000” / „1,000”, CSV w UTF-8 lub
+  Windows-1250. Użytkownik widzi, które kolumny rozpoznano.
+- Nietypowy układ arkusza + włączone AI — arkusz trafia do Gemini jako tekst.
+- **PDF / skany** — AI. Stary **.xls** — komunikat: zapisz jako .xlsx / CSV.
+- To samo dla list artykułów w dokumentach dostawcy (Annex A w Excelu — „Odczytaj kody (Excel)”).
+
 ## Do sprawdzenia w Subiekt API (lokalnie, w sieci firmowej / VPN)
 
 Chmura nie widzi `192.168.0.140`, więc te zapytania trzeba uruchomić u siebie:

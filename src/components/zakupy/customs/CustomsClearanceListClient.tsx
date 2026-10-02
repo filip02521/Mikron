@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { actionExtractInvoiceWithAi } from "@/app/actions/customs-ai";
+import { actionReadInvoiceFile } from "@/app/actions/customs-ai";
 import {
   actionCreateCustomsClearance,
   actionUploadCustomsInvoice,
@@ -70,27 +70,30 @@ export function CustomsClearanceListClient({
     );
   }, [clearances, filterSupplier, filterStatus, filterText]);
 
-  async function readInvoiceWithAi(file: File) {
+  async function readInvoiceFile(file: File) {
     setError(null);
     setAiNote(null);
     setAiReading(true);
     const fd = new FormData();
     fd.set("file", file);
-    const res = await actionExtractInvoiceWithAi(fd);
+    const res = await actionReadInvoiceFile(fd);
     setAiReading(false);
     if (!res.ok) {
       setError(res.error);
       return;
     }
-    setInvoiceFile(file);
+    // Do odprawy dołączamy tylko PDF / zdjęcie faktury (to idzie do agencji).
+    setInvoiceFile(res.method === "ai" ? file : null);
     const inv = res.invoice;
     if (inv.invoiceNumber) setInvoiceNumber(inv.invoiceNumber);
     if (inv.invoiceDate) setInvoiceDate(inv.invoiceDate);
     if (inv.currency) setCurrency(inv.currency);
     setPastedLines(res.pasteText);
     setAiMeta({ total: inv.total, hsCode: inv.hsCode, countryOfOrigin: inv.countryOfOrigin });
+    const who = res.method === "sheet" ? "Odczytano z arkusza" : "AI odczytało";
+    const total = inv.total != null ? `, suma ${inv.total.toLocaleString("pl-PL")} ${inv.currency ?? ""}` : "";
     setAiNote(
-      `AI odczytało ${inv.lines.length} pozycji${inv.total != null ? `, suma ${inv.total.toLocaleString("pl-PL")} ${inv.currency ?? ""}` : ""}. Sprawdź pozycje poniżej przed utworzeniem.`
+      `${who} ${inv.lines.length} pozycji${total}. ${res.note ? `${res.note} ` : ""}Sprawdź pozycje poniżej przed utworzeniem.`
     );
   }
 
@@ -196,29 +199,35 @@ export function CustomsClearanceListClient({
                 placeholder="przyrządy używane w protetyce stomatologicznej"
               />
             </Field>
-            {aiEnabled ? (
-              <Field
-                label="Faktura PDF / skan — odczyt AI"
-                hint={
-                  aiReading
-                    ? "AI czyta fakturę… (do 2 minut)"
-                    : (aiNote ?? "Uzupełni numer, datę, walutę i pozycje. Plik trafi do odprawy.")
+            <Field
+              label={aiEnabled ? "Plik faktury — Excel, CSV, PDF lub skan" : "Plik faktury — Excel lub CSV"}
+              hint={
+                aiReading
+                  ? "Czytam plik… (PDF / skan przez AI do 2 minut)"
+                  : (aiNote ??
+                    (aiEnabled
+                      ? "Excel / CSV: kolumny rozpoznam po nagłówkach; PDF i skany czyta AI. Pozycje trafią do pola poniżej."
+                      : "Kolumny rozpoznam po nagłówkach (kod / nazwa / ilość / cena). PDF wymaga włączenia AI."))
+              }
+              state={aiNote ? "success" : "default"}
+              className="sm:col-span-2"
+            >
+              <input
+                type="file"
+                accept={
+                  aiEnabled
+                    ? ".xlsx,.csv,.xls,application/pdf,image/*"
+                    : ".xlsx,.csv,.xls"
                 }
-                state={aiNote ? "success" : "default"}
-                className="sm:col-span-2"
-              >
-                <input
-                  type="file"
-                  accept="application/pdf,image/*"
-                  disabled={aiReading || pending}
-                  className="block w-full pt-1 text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) void readInvoiceWithAi(file);
-                  }}
-                />
-              </Field>
-            ) : null}
+                disabled={aiReading || pending}
+                className="block w-full pt-1 text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void readInvoiceFile(file);
+                  e.target.value = "";
+                }}
+              />
+            </Field>
             <Field
               label="Pozycje z faktury (opcjonalnie)"
               hint="Skopiuj z Excela / PDF: kod ⇥ nazwa ⇥ ilość ⇥ cena — jedna pozycja na wiersz. Gdy puste, pozycje bierzemy z ZD."
