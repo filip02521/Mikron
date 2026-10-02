@@ -19,16 +19,16 @@ export function AuthSplitBridge() {
       <svg viewBox="0 0 280 280" className="h-full w-full overflow-visible">
         <defs>
           <linearGradient id="auth-bridge-fade" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#312e81" stopOpacity="0.18" />
-            <stop offset="45%" stopColor="#6366f1" stopOpacity="0.08" />
+            <stop offset="0%" stopColor="#113e45" stopOpacity="0.18" />
+            <stop offset="45%" stopColor="#188995" stopOpacity="0.08" />
             <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
           </linearGradient>
           <linearGradient id="auth-bridge-hand-dark" x1="0" y1="0" x2="0" y2="-1">
-            <stop offset="0%" stopColor="#e0e7ff" stopOpacity="0.85" />
+            <stop offset="0%" stopColor="#d4edef" stopOpacity="0.85" />
             <stop offset="100%" stopColor="#bae6fd" stopOpacity="0.45" />
           </linearGradient>
           <linearGradient id="auth-bridge-hand-light" x1="0" y1="0" x2="0" y2="-1">
-            <stop offset="0%" stopColor="#6366f1" stopOpacity="0.35" />
+            <stop offset="0%" stopColor="#188995" stopOpacity="0.35" />
             <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0.18" />
           </linearGradient>
           <clipPath id="auth-bridge-left-half">
@@ -45,13 +45,13 @@ export function AuthSplitBridge() {
         {/* Fala na styku paneli */}
         <path
           d="M 146 8 C 112 78, 172 142, 138 212 C 104 282, 158 272, 146 8"
-          fill="#312e81"
+          fill="#113e45"
           fillOpacity="0.06"
         />
         <path
           d="M 146 24 C 118 92, 160 148, 138 212 C 116 276, 152 256, 146 24"
           fill="none"
-          stroke="#6366f1"
+          stroke="#188995"
           strokeOpacity="0.14"
           strokeWidth="1.25"
         />
@@ -102,7 +102,7 @@ export function AuthSplitBridge() {
             cy={cy}
             r="125"
             fill="none"
-            stroke="#6366f1"
+            stroke="#188995"
             strokeOpacity="0.12"
             strokeWidth="1.25"
           />
@@ -122,7 +122,7 @@ export function AuthSplitBridge() {
               y1={tick.y1}
               x2={tick.x2}
               y2={tick.y2}
-              stroke="#6366f1"
+              stroke="#188995"
               strokeOpacity={tick.major ? 0.16 : 0.08}
               strokeWidth={tick.major ? 1.5 : 1}
               strokeLinecap="round"
@@ -134,7 +134,7 @@ export function AuthSplitBridge() {
           </g>
         </g>
 
-        <circle cx={cx} cy={cy} r="4" fill="#6366f1" fillOpacity="0.2" />
+        <circle cx={cx} cy={cy} r="4" fill="#188995" fillOpacity="0.2" />
       </svg>
     </div>
   );

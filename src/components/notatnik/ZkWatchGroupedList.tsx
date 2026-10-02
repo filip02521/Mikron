@@ -141,6 +141,7 @@ export function ZkWatchGroupedList({
   unseenWatchIds,
   newLineKeysByWatchId,
   newlyAddedWatchIds,
+  searchQuery = null,
   onWarehouseArrivalSeen,
   onNewZkLinesSeen,
   onNewlyAddedZkWatchSeen,
@@ -158,6 +159,8 @@ export function ZkWatchGroupedList({
   unseenWatchIds?: Set<string>;
   newLineKeysByWatchId?: Record<string, string[]>;
   newlyAddedWatchIds?: Set<string>;
+  /** Fraza wyszukiwania listy — zaznaczana w kartach ZK. */
+  searchQuery?: string | null;
   onWarehouseArrivalSeen?: (watchId: string) => void;
   onNewZkLinesSeen?: (watchId: string) => void;
   onNewlyAddedZkWatchSeen?: (watchId: string) => void;
@@ -411,6 +414,7 @@ export function ZkWatchGroupedList({
               hasNewZkLines={(newLineKeysByWatchId?.[watch.id]?.length ?? 0) > 0}
               isNewlyAdded={newlyAddedWatchIds?.has(watch.id) ?? false}
               newLineKeys={newLineKeysByWatchId?.[watch.id]}
+              searchQuery={searchQuery}
               onProsbaScopeRequested={onProsbaScopeRequested}
               onTeethDraftRequested={onTeethDraftRequested}
               teethRegistry={teethRegistry}

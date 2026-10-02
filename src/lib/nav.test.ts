@@ -18,6 +18,9 @@ import {
   NAV_SECTION_ZK,
   NAV_SECTION_INFO,
   NAV_SECTION_CARRIERS,
+  NAV_SECTION_ORDERING,
+  NAV_SECTION_LOGISTICS,
+  NAV_SECTION_ADMIN,
   navForAppContext,
   teethNavGroups,
   pageTitle,
@@ -133,58 +136,91 @@ describe("navForRole admin dostawcy", () => {
     expect(suppliers?.items[2]?.href).toBe("/admin/urlopy");
   });
 
-  it("rozdziela dawny hub admina od narzędzi konfiguracyjnych", () => {
-    const groups = navForRole("admin");
-    const system = groups.find((g) => g.title === NAV_SECTION_SYSTEM);
-    const config = groups.find((g) => g.title === NAV_SECTION_ADMIN_TOOLS);
+  it("admin: ludzie i dostęp (z licznikiem zgłoszeń) osobno od katalogu i poczty", () => {
+    const groups = navForRole("admin", { adminBugReports: 3 });
+    const admin = groups.find((g) => g.title === NAV_SECTION_ADMIN);
+    const catalog = groups.find((g) => g.title === NAV_SECTION_ADMIN_TOOLS);
 
-    expect(system?.items.map((item) => item.href)).toEqual([
+    expect(admin?.items.map((item) => item.href)).toEqual([
       "/admin",
       "/admin/uzytkownicy",
       "/admin/handlowcy",
+      "/zespol/grupy",
+      "/admin/zgloszenia",
+    ]);
+    expect(admin?.defaultCollapsed).toBeFalsy();
+    expect(admin?.items.find((i) => i.href === "/admin/zgloszenia")?.badge).toBe(3);
+    expect(catalog?.items.map((item) => item.href)).toEqual([
+      "/admin/produkty",
+      "/admin/produkty/zeby",
       "/admin/wysylki",
       "/admin/mail",
     ]);
-    expect(config?.items.map((item) => item.href)).toEqual([
-      "/admin/zgloszenia",
-      "/admin/produkty",
-      "/admin/produkty/zeby",
-      "/zespol/grupy",
-    ]);
+    expect(catalog?.defaultCollapsed).toBe(true);
+  });
+
+  it("admin: każda pozycja administracji i poczty ma rozróżnialną ikonę", () => {
+    const groups = navForRole("admin");
+    const icons = groups
+      .filter((g) => g.title === NAV_SECTION_ADMIN || g.title === NAV_SECTION_ADMIN_TOOLS)
+      .flatMap((g) => g.items)
+      .filter((i) => i.href !== "/admin/produkty/zeby")
+      .map((i) => [i.href, i.icon]);
+    expect(Object.fromEntries(icons)).toMatchObject({
+      "/admin": "admin",
+      "/admin/wysylki": "mail",
+      "/admin/mail": "mail",
+    });
   });
 });
 
 describe("navForRole struktura zakupów", () => {
-  it("grupuje workflow w sekcji Dziś, Zespół, Dostawcy, Archiwum i Kurierzy", () => {
-    const groups = navForRole("zakupy");
-    expect(groups.map((g) => g.title)).toEqual([
+  it("od pracy dziennej do konfiguracji: Dziś → Zamawianie → Zespół → Dostawcy → Import i logistyka", () => {
+    expect(navForRole("zakupy").map((g) => g.title)).toEqual([
       NAV_SECTION_TODAY,
-      "Zespół",
+      NAV_SECTION_ORDERING,
+      NAV_SECTION_TEAM,
       NAV_SECTION_SUPPLIERS,
-      NAV_SECTION_TOOLS,
-      NAV_SECTION_CARRIERS,
-      NAV_SECTION_SYSTEM,
+      NAV_SECTION_LOGISTICS,
+      NAV_SECTION_ADMIN_TOOLS,
+    ]);
+    expect(navForRole("admin").map((g) => g.title)).toEqual([
+      NAV_SECTION_TODAY,
+      NAV_SECTION_ORDERING,
+      NAV_SECTION_TEAM,
+      NAV_SECTION_SUPPLIERS,
+      NAV_SECTION_LOGISTICS,
+      NAV_SECTION_ADMIN,
+      NAV_SECTION_ADMIN_TOOLS,
     ]);
   });
 
-  it("sekcje od Dostawców są zwijane", () => {
-    const groups = navForRole("zakupy");
-    const collapsibleSections = groups.filter((g) => g.collapsible);
-    expect(collapsibleSections.map((g) => g.title)).toEqual([
-      NAV_SECTION_SUPPLIERS,
-      NAV_SECTION_TOOLS,
-      NAV_SECTION_CARRIERS,
-      NAV_SECTION_SYSTEM,
+  it("codzienne sekcje stałe, od Dostawców zwijane; katalog i poczta domyślnie zwinięte", () => {
+    const groups = navForRole("admin");
+    expect(groups.filter((g) => !g.collapsible).map((g) => g.title)).toEqual([
+      NAV_SECTION_TODAY,
+      NAV_SECTION_ORDERING,
+      NAV_SECTION_TEAM,
+    ]);
+    expect(groups.filter((g) => g.defaultCollapsed).map((g) => g.title)).toEqual([
+      NAV_SECTION_ADMIN_TOOLS,
     ]);
   });
 
-  it("sekcje Archiwum i System są domyślnie zwinięte", () => {
-    const groups = navForRole("zakupy");
-    const defaultCollapsed = groups.filter((g) => g.defaultCollapsed);
-    expect(defaultCollapsed.map((g) => g.title)).toEqual([
-      NAV_SECTION_TOOLS,
-      NAV_SECTION_SYSTEM,
-    ]);
+  it("brak sekcji z jedną pozycją-sierotą (dawne Kurierzy / Archiwum)", () => {
+    for (const role of ["admin", "zakupy"] as const) {
+      const titles = navForRole(role).map((g) => g.title);
+      expect(titles).not.toContain(NAV_SECTION_CARRIERS);
+      expect(titles).not.toContain(NAV_SECTION_TOOLS);
+      expect(titles).not.toContain(NAV_SECTION_SYSTEM);
+    }
+  });
+
+  it("każda pozycja występuje w menu tylko raz", () => {
+    for (const role of ["admin", "zakupy"] as const) {
+      const hrefs = navForRole(role).flatMap((g) => g.items.map((i) => i.href));
+      expect(new Set(hrefs).size).toBe(hrefs.length);
+    }
   });
 
   it("mobile primary zawiera panel, weryfikację, magazyn i tablicę", () => {
@@ -198,41 +234,56 @@ describe("navForRole struktura zakupów", () => {
     ]);
   });
 
-  it("sekcja Dziś ma rozróżnialne tony semanticzne", () => {
+  it("sekcja Dziś ma rozróżnialne tony semantyczne", () => {
     const today = navForRole("zakupy").find((g) => g.title === NAV_SECTION_TODAY);
     expect(today?.items.map((item) => [item.label, item.tone])).toEqual([
       ["Panel dzienny", "indigo"],
       ["Weryfikacja", "amber"],
       ["Przyjęcie towaru", "emerald"],
-      ["Kreator ZD", "violet"],
     ]);
   });
 
-  it("admin i zakupy — Kreator ZD w sekcji Dziś (nie w Dostawcach)", () => {
+  it("admin i zakupy — Kreator ZD na czele Zamawiania, z własną ikoną", () => {
     for (const role of ["admin", "zakupy"] as const) {
-      const today = navForRole(role).find((g) => g.title === NAV_SECTION_TODAY);
-      expect(today?.items.map((item) => item.href)).toEqual([
-        "/podsumowanie",
-        "/weryfikacja",
-        "/kolejka",
+      const ordering = navForRole(role).find((g) => g.title === NAV_SECTION_ORDERING);
+      expect(ordering?.items.map((item) => item.href)).toEqual([
         "/zakupy/szacunek",
+        "/zamowienia/nowe",
+        "/historia",
       ]);
-      expect(today?.items.find((i) => i.href === "/zakupy/szacunek")?.tone).toBe(
-        "violet"
-      );
-      expect(today?.items.some((i) => i.href === "/zakupy/raporty-ivoclar")).toBe(false);
+      const kreator = ordering?.items[0];
+      expect(kreator?.tier).toBe("primary");
+      expect(kreator?.icon).toBe("zdCreator");
+      expect(kreator?.icon).not.toBe(ordering?.items[1]?.icon);
+      expect(ordering?.items.some((i) => i.href === "/zakupy/raporty-ivoclar")).toBe(false);
     }
   });
 
-  it("mobile overflow zawiera notatki, narzędzia i numery kurierów", () => {
+  it("Dostawcy — tylko karty, terminy i urlopy; logistyka osobno", () => {
+    const suppliers = navForRole("zakupy").find((g) => g.title === NAV_SECTION_SUPPLIERS);
+    expect(suppliers?.items.map((i) => i.href)).toEqual([
+      "/zakupy/dostawcy",
+      "/lokalizacje/POLSKA",
+      "/zakupy/urlopy",
+    ]);
+    const logistics = navForRole("zakupy").find((g) => g.title === NAV_SECTION_LOGISTICS);
+    expect(logistics?.items.map((i) => [i.href, i.icon])).toEqual([
+      ["/zakupy/odprawy", "customs"],
+      ["/zakupy/gadki", "magazynGadki"],
+      ["/kurierzy", "phone"],
+    ]);
+  });
+
+  it("mobile overflow zawiera notatki, zamawianie, logistykę", () => {
     const groups = navForRole("zakupy");
     const labels = navMobileOverflowItems(groups).map((item) => item.label);
     expect(labels).toContain("Notatki");
     expect(labels).not.toContain("Panel zębów");
-    expect(labels).toContain("Historia");
+    expect(labels).toContain("Historia zamówień");
     expect(labels).toContain("Zamówienie grupowe");
     expect(labels).toContain("Numery kurierów");
     expect(labels).toContain("Kreator ZD");
+    expect(labels).toContain("Odprawy celne");
     expect(labels).not.toContain("Raporty Ivoclar");
   });
 });
@@ -383,9 +434,9 @@ describe("navForAppContext", () => {
       procurementWorkspace: "dostawy",
     });
     expect(groups[0]?.items[0]?.href).toBe("/podsumowanie");
-    const today = groups.find((g) => g.title === NAV_SECTION_TODAY);
-    expect(today?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
-    expect(today?.items.some((i) => i.href === "/zakupy/raporty-ivoclar")).toBe(false);
+    const ordering = groups.find((g) => g.title === NAV_SECTION_ORDERING);
+    expect(ordering?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
+    expect(ordering?.items.some((i) => i.href === "/zakupy/raporty-ivoclar")).toBe(false);
   });
 });
 
@@ -405,22 +456,16 @@ describe("navForRole zakupy_zeby", () => {
     expect(allHrefs.some((href) => href.startsWith("/zeby"))).toBe(false);
   });
 
-  it("zakupy ma Magazyn Gądki i Kreator ZD w Dziś; zęby/magazyn — bez obu", () => {
-    const suppliers = navForRole("zakupy").find((g) => g.title === NAV_SECTION_SUPPLIERS);
-    const gadki = suppliers?.items.find((i) => i.href === "/zakupy/gadki");
-    expect(gadki?.icon).toBe("magazynGadki");
-    expect(gadki?.iconTone).toBe("emerald");
-    expect(suppliers?.items.some((i) => i.href === "/zakupy/gadki")).toBe(true);
-    expect(suppliers?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(false);
-    const zakupyToday = navForRole("zakupy").find((g) => g.title === NAV_SECTION_TODAY);
-    expect(zakupyToday?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
-    expect(zakupyToday?.items.some((i) => i.href === "/zakupy/raporty-ivoclar")).toBe(false);
-    const adminToday = navForRole("admin").find((g) => g.title === NAV_SECTION_TODAY);
-    expect(adminToday?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
-    expect(adminToday?.items.some((i) => i.href === "/zakupy/raporty-ivoclar")).toBe(false);
-    const adminSuppliers = navForRole("admin").find((g) => g.title === NAV_SECTION_SUPPLIERS);
-    expect(adminSuppliers?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(false);
-    expect(adminSuppliers?.items.some((i) => i.href === "/zakupy/raporty-ivoclar")).toBe(false);
+  it("zakupy i admin mają Magazyn Gądki (logistyka) i Kreator ZD (zamawianie); zęby/magazyn — bez obu", () => {
+    for (const role of ["admin", "zakupy"] as const) {
+      const groups = navForRole(role);
+      const logistics = groups.find((g) => g.title === NAV_SECTION_LOGISTICS);
+      expect(logistics?.items.some((i) => i.href === "/zakupy/gadki")).toBe(true);
+      const ordering = groups.find((g) => g.title === NAV_SECTION_ORDERING);
+      expect(ordering?.items.some((i) => i.href === "/zakupy/szacunek")).toBe(true);
+      const hrefs = groups.flatMap((g) => g.items.map((i) => i.href));
+      expect(hrefs.includes("/zakupy/raporty-ivoclar")).toBe(false);
+    }
     const teethHrefs = navForRole("zakupy_zeby").flatMap((g) => g.items.map((i) => i.href));
     expect(teethHrefs.includes("/zakupy/gadki")).toBe(false);
     expect(teethHrefs.includes("/zakupy/szacunek")).toBe(false);

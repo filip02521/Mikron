@@ -116,6 +116,10 @@ export type ZdEstimatePrepFormProps = {
   zapasMin: string;
   onZapasMinChange: (value: string) => void;
   onPolicz: () => void;
+  /** Lista już policzona — przycisk to „Przelicz listę”. */
+  hasList?: boolean;
+  /** Parametry zmienione po policzeniu (podbicie / historia) — lista nieaktualna. */
+  recountNeeded?: boolean;
   showAssignAndRun: boolean;
   showRemapAndRun: boolean;
   onAssignAndRun: () => void;
@@ -190,6 +194,8 @@ export function ZdEstimatePrepForm({
   zapasMin,
   onZapasMinChange,
   onPolicz,
+  hasList = false,
+  recountNeeded = false,
   showAssignAndRun,
   showRemapAndRun,
   onAssignAndRun,
@@ -873,7 +879,12 @@ export function ZdEstimatePrepForm({
               {footerStatus.text}
             </p>
           ) : null}
-          <div className="flex w-full flex-col gap-1.5 sm:flex-row sm:justify-end">
+          <div className="flex w-full flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-end">
+            {recountNeeded && !estimating ? (
+              <p className="text-xs font-medium text-amber-800 sm:mr-auto" role="status">
+                Parametry zmienione — lista jest nieaktualna, przelicz przed utworzeniem ZD.
+              </p>
+            ) : null}
             <Button
               type="button"
               onClick={onPolicz}
@@ -895,7 +906,9 @@ export function ZdEstimatePrepForm({
                 zdEstimatePrepPrimaryButtonClass,
                 canPolicz &&
                   !estimating &&
-                  "shadow-md shadow-indigo-500/20 ring-2 ring-indigo-500/25"
+                  (recountNeeded
+                    ? "shadow-md shadow-amber-500/20 ring-2 ring-amber-400/70"
+                    : "shadow-md shadow-indigo-500/20 ring-2 ring-indigo-500/25")
               )}
             >
               {estimating ? (
@@ -903,6 +916,8 @@ export function ZdEstimatePrepForm({
                   <Spinner className="size-3.5" />{" "}
                   {zdEstimateCountingButtonLabel()}
                 </span>
+              ) : hasList ? (
+                "Przelicz listę"
               ) : (
                 "Policz listę"
               )}

@@ -228,7 +228,7 @@ export function ZdEstimateDoZdCell({
             title={confidenceUi.title || undefined}
             aria-label={confidenceUi.acceptAriaLabel}
           >
-            OK
+            Akceptuj
           </button>
         ) : confidenceUi.needsReview ? (
           <span className="zd-est-dozd-confidence__dot" aria-hidden />
@@ -253,7 +253,7 @@ export function ZdEstimateDoZdCell({
           title={confidenceUi.title || undefined}
           aria-label={confidenceUi.acceptAriaLabel}
         >
-          OK
+          Akceptuj
         </button>
       </span>
     ) : null;

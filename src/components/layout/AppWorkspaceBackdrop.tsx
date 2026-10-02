@@ -29,7 +29,7 @@ export function AppWorkspaceBackdrop({ uniformBackground }: { uniformBackground:
       >
         <defs>
           <radialGradient id="app-bg-glow" cx="50%" cy="35%" r="60%">
-            <stop offset="0%" stopColor="#e0e7ff" stopOpacity="0.18" />
+            <stop offset="0%" stopColor="#d4edef" stopOpacity="0.18" />
             <stop offset="55%" stopColor="#f0f9ff" stopOpacity="0.07" />
             <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
           </radialGradient>
@@ -42,7 +42,7 @@ export function AppWorkspaceBackdrop({ uniformBackground }: { uniformBackground:
           cy={topRightCy}
           r="220"
           fill="none"
-          stroke="#6366f1"
+          stroke="#188995"
           strokeOpacity="0.10"
           strokeWidth="1.25"
         />
@@ -64,7 +64,7 @@ export function AppWorkspaceBackdrop({ uniformBackground }: { uniformBackground:
               y1={tick.y1}
               x2={tick.x2}
               y2={tick.y2}
-              stroke="#6366f1"
+              stroke="#188995"
               strokeOpacity="0.13"
               strokeWidth="1.25"
               strokeLinecap="round"
@@ -86,7 +86,7 @@ export function AppWorkspaceBackdrop({ uniformBackground }: { uniformBackground:
           cy={bottomLeftCy}
           r="140"
           fill="none"
-          stroke="#6366f1"
+          stroke="#188995"
           strokeOpacity="0.06"
           strokeWidth="1"
         />
@@ -110,7 +110,7 @@ export function AppWorkspaceBackdrop({ uniformBackground }: { uniformBackground:
         <path
           d="M 120 100 Q 400 50 680 90"
           fill="none"
-          stroke="#6366f1"
+          stroke="#188995"
           strokeOpacity="0.05"
           strokeWidth="1"
         />

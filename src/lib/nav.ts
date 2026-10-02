@@ -32,7 +32,10 @@ export type NavIconKey =
   | "teeth"
   | "chartTrend"
   | "phone"
-  | "truck";
+  | "truck"
+  | "zdCreator"
+  | "customs"
+  | "mail";
 
 export type NavTone = "indigo" | "amber" | "orange" | "emerald" | "sky" | "slate" | "violet";
 
@@ -69,13 +72,20 @@ export type NavGroup = {
 };
 
 export const NAV_SECTION_TODAY = "Dziś";
+/** Zakupy / admin: przygotowanie i złożenie zamówień (Kreator ZD, grupowe, historia). */
+export const NAV_SECTION_ORDERING = "Zamawianie";
+/** Zakupy / admin: import i logistyka (odprawy, magazyn zewnętrzny, kurierzy). */
+export const NAV_SECTION_LOGISTICS = "Import i logistyka";
+/** Admin: ludzie i dostęp (hub, konta, handlowcy, grupy, zgłoszenia). */
+export const NAV_SECTION_ADMIN = "Administracja";
 export const NAV_SECTION_TEAM = "Zespół";
 export const NAV_SECTION_SUPPLIERS = "Dostawcy";
 export const NAV_SECTION_TOOLS = "Archiwum i narzędzia";
 /** Sekcja narzędzi w menu działu zębów — opcjonalne (np. podsumowanie miesiąca). */
 export const NAV_SECTION_TEETH_TOOLS = "Narzędzia";
 export const NAV_SECTION_SYSTEM = "System";
-export const NAV_SECTION_ADMIN_TOOLS = "Konfiguracja";
+/** Admin: katalog produktów i monitoring wysyłek (moduł poczty także dla non-admin). */
+export const NAV_SECTION_ADMIN_TOOLS = "Katalog i poczta";
 export const NAV_SECTION_DAILY = "Codziennie";
 export const NAV_SECTION_ZK = "ZK i terminy";
 export const NAV_SECTION_INFO = "Informacje";
@@ -337,10 +347,9 @@ export function teethNavGroups(badges: NavBadges = {}): NavGroup[] {
 }
 
 function operationsTodayItems(
-  badges: Pick<NavBadges, "nowe" | "weryfikacja" | "realizacja">,
-  role: UserRole
+  badges: Pick<NavBadges, "nowe" | "weryfikacja" | "realizacja">
 ): NavItem[] {
-  const items: NavItem[] = [
+  return [
     {
       href: "/podsumowanie",
       label: "Panel dzienny",
@@ -376,22 +385,45 @@ function operationsTodayItems(
       badge: badges.realizacja,
     },
   ];
+}
 
-  // Kreator ZD — operacje dostaw (admin + zakupy); w „Dziś” obok panelu.
+/** Zamawianie: Kreator ZD (admin + zakupy), formularz grupowy i archiwum zamówień. */
+function operationsOrderingItems(role: UserRole): NavItem[] {
+  const items: NavItem[] = [];
   if (role === "admin" || role === "zakupy") {
     items.push({
       href: "/zakupy/szacunek",
       label: "Kreator ZD",
       mobileLabel: "Kreator",
       description: "Lista do zamówienia z grupy",
-      icon: "groupOrder",
+      icon: "zdCreator",
       tone: "violet",
-      iconTone: "violet",
-      tier: "compact",
+      tier: "primary",
       mobileSlot: "overflow",
     });
   }
-
+  items.push(
+    {
+      href: "/zamowienia/nowe",
+      label: "Zamówienie grupowe",
+      mobileLabel: "Grupowe",
+      description: "Formularz zbiorczy",
+      icon: "groupOrder",
+      tone: "slate",
+      tier: "compact",
+      mobileSlot: "overflow",
+    },
+    {
+      href: "/historia",
+      label: "Historia zamówień",
+      mobileLabel: "Historia",
+      description: "Archiwum zamówień",
+      icon: "history",
+      tone: "slate",
+      tier: "compact",
+      mobileSlot: "overflow",
+    }
+  );
   return items;
 }
 
@@ -426,12 +458,13 @@ function operationsTeamItems(badges: {
       href: "/urlopy",
       label: "Urlopy działu",
       mobileLabel: "Urlopy",
-      description: "Urlopy działu — kto jest niedostępny",
+      description: "Kto z działu jest niedostępny",
       icon: "vacation",
       tone: "indigo",
       tier: "compact",
       mobileSlot: "overflow",
     },
+    ...(monthlySummaryNavItem() ? [monthlySummaryNavItem()!] : []),
   ];
 }
 
@@ -462,56 +495,11 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
     ];
   }
 
-  if (role !== "admin") {
-    return [
-      {
-        href: "/zakupy/dostawcy",
-        label: "Karty dostawców",
-        description: "Kontakt, zapas, cykl",
-        icon: "suppliers",
-        tone: "sky",
-        ...compact,
-      },
-      {
-        href: "/lokalizacje/POLSKA",
-        label: "Terminy zamówień",
-        description: "PL / ZA / Import",
-        icon: "schedule",
-        tone: "sky",
-        ...compact,
-      },
-      {
-        href: "/zakupy/urlopy",
-        label: "Urlopy dostawców",
-        description: "Niedostępność dostawcy",
-        icon: "vacation",
-        tone: "sky",
-        ...compact,
-      },
-      {
-        href: "/zakupy/gadki",
-        label: "Magazyn Gądki",
-        description: "ZK magazynu zewnętrznego",
-        icon: "magazynGadki",
-        tone: "sky",
-        iconTone: "emerald",
-        ...compact,
-      },
-      {
-        href: "/zakupy/odprawy",
-        label: "Odprawy celne",
-        description: "Opis PL, CN i VAT dla agencji",
-        icon: "truck",
-        tone: "sky",
-        ...compact,
-      },
-    ];
-  }
-
-  const paths = supplierHubPaths("admin");
+  // Admin ma własne ścieżki hubu dostawców (/admin/dostawcy…), zakupy — /zakupy/…
+  const paths = role === "admin" ? supplierHubPaths("admin") : null;
   return [
     {
-      href: paths.cards,
+      href: paths?.cards ?? "/zakupy/dostawcy",
       label: "Karty dostawców",
       description: "Kontakt, zapas, cykl",
       icon: "suppliers",
@@ -519,7 +507,7 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
       ...compact,
     },
     {
-      href: paths.schedule("POLSKA"),
+      href: paths?.schedule("POLSKA") ?? "/lokalizacje/POLSKA",
       label: "Terminy zamówień",
       description: "PL / ZA / Import",
       icon: "schedule",
@@ -527,50 +515,45 @@ function supplierHubItemsForRole(role: UserRole): NavItem[] {
       ...compact,
     },
     {
-      href: paths.vacations,
+      href: paths?.vacations ?? "/zakupy/urlopy",
       label: "Urlopy dostawców",
       description: "Niedostępność dostawcy",
       icon: "vacation",
       tone: "sky",
       ...compact,
     },
-    {
-      href: "/zakupy/gadki",
-      label: "Magazyn Gądki",
-      description: "ZK magazynu zewnętrznego",
-      icon: "magazynGadki",
-      tone: "sky",
-      iconTone: "emerald",
-      ...compact,
-    },
-    {
-      href: "/zakupy/odprawy",
-      label: "Odprawy celne",
-      description: "Opis PL, CN i VAT dla agencji",
-      icon: "truck",
-      tone: "sky",
-      ...compact,
-    },
   ];
 }
 
-const archiveToolItems: NavItem[] = [
+/** Import i logistyka: odprawy importu, magazyn zewnętrzny i kontakty do kurierów. */
+const logisticsItems: NavItem[] = [
   {
-    href: "/historia",
-    label: "Historia",
-    mobileLabel: "Historia",
-    description: "Archiwum zamówień",
-    icon: "history",
-    tone: "slate",
+    href: "/zakupy/odprawy",
+    label: "Odprawy celne",
+    mobileLabel: "Odprawy",
+    description: "Opis PL, CN i VAT dla agencji",
+    icon: "customs",
+    tone: "emerald",
     tier: "compact",
     mobileSlot: "overflow",
   },
   {
-    href: "/zamowienia/nowe",
-    label: "Zamówienie grupowe",
-    description: "Formularz zbiorczy",
-    icon: "groupOrder",
-    tone: "slate",
+    href: "/zakupy/gadki",
+    label: "Magazyn Gądki",
+    mobileLabel: "Gądki",
+    description: "ZK magazynu zewnętrznego",
+    icon: "magazynGadki",
+    tone: "emerald",
+    tier: "compact",
+    mobileSlot: "overflow",
+  },
+  {
+    href: "/kurierzy",
+    label: "Numery kurierów",
+    mobileLabel: "Kurierzy",
+    description: "Telefony i kontakty do kurierów",
+    icon: "phone",
+    tone: "emerald",
     tier: "compact",
     mobileSlot: "overflow",
   },
@@ -593,13 +576,14 @@ const adminMailCenterNavItem: NavItem = {
   href: "/admin/mail",
   label: "Wysyłki Ivoclar",
   description: "Status i historia wysyłek Ivoclar (odczyt — bez sterowania z OnTime).",
-  icon: "admin",
+  icon: "mail",
   tone: "violet",
   tier: "compact",
   mobileSlot: "overflow",
 };
 
-function adminSystemItems(): NavItem[] {
+/** Administracja: ludzie i dostęp + zgłoszenia od handlowców (licznik widoczny od razu). */
+function adminPeopleItems(badges: { adminBugReports?: number }): NavItem[] {
   const compact = {
     tier: "compact" as const,
     mobileSlot: "overflow" as const,
@@ -608,8 +592,8 @@ function adminSystemItems(): NavItem[] {
   return [
     {
       href: "/admin",
-      label: "Administracja",
-      description: "System, konta, handlowcy",
+      label: "Panel admina",
+      description: "System, ustawienia i stan usług",
       icon: "admin",
       tone: "violet",
       ...compact,
@@ -617,7 +601,7 @@ function adminSystemItems(): NavItem[] {
     {
       href: "/admin/uzytkownicy",
       label: "Konta",
-      description: "Logowanie, role i zarządzanie modułami",
+      description: "Logowanie, role i moduły",
       icon: "teamAccounts",
       tone: "violet",
       ...compact,
@@ -631,31 +615,13 @@ function adminSystemItems(): NavItem[] {
       ...compact,
     },
     {
-      href: "/admin/wysylki",
-      label: "Wysyłki OnTime",
-      description: "Podgląd maili transakcyjnych (dostawy, informacja, OTP)",
-      icon: "admin",
+      href: "/zespol/grupy",
+      label: "Grupy",
+      description: "Sklep, Biuro — kolejność",
+      icon: "teamGroups",
       tone: "violet",
       ...compact,
     },
-    {
-      href: "/admin/mail",
-      label: "Wysyłki Ivoclar",
-      description: "Status i historia wysyłek Ivoclar (odczyt — bez sterowania z OnTime).",
-      icon: "admin",
-      tone: "violet",
-      ...compact,
-    },
-  ];
-}
-
-function adminConfigurationItems(badges: { adminBugReports?: number }): NavItem[] {
-  const compact = {
-    tier: "compact" as const,
-    mobileSlot: "overflow" as const,
-  };
-
-  return [
     {
       href: "/admin/zgloszenia",
       label: "Zgłoszenia",
@@ -665,6 +631,17 @@ function adminConfigurationItems(badges: { adminBugReports?: number }): NavItem[
       badge: badges.adminBugReports,
       ...compact,
     },
+  ];
+}
+
+/** Katalog i poczta: dane towarów oraz podgląd wysyłek maili. */
+function adminCatalogMailItems(): NavItem[] {
+  const compact = {
+    tier: "compact" as const,
+    mobileSlot: "overflow" as const,
+  };
+
+  return [
     {
       href: "/admin/produkty",
       label: "Katalog produktów",
@@ -682,19 +659,26 @@ function adminConfigurationItems(badges: { adminBugReports?: number }): NavItem[
       ...compact,
     },
     {
-      href: "/zespol/grupy",
-      label: "Grupy",
-      description: "Sklep, Biuro — kolejność",
-      icon: "teamGroups",
+      href: "/admin/wysylki",
+      label: "Wysyłki OnTime",
+      description: "Maile transakcyjne (dostawy, informacja, OTP)",
+      icon: "mail",
       tone: "violet",
       ...compact,
     },
+    adminMailCenterNavItem,
   ];
 }
 
+/**
+ * Menu zakupów i admina — od codziennej pracy do konfiguracji:
+ * Dziś → Zamawianie → Zespół → Dostawcy → Import i logistyka → (admin) Administracja → Katalog i poczta.
+ * Codzienne sekcje stałe, rzadziej używane — zwijane.
+ */
 function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
   const groups: NavGroup[] = [
-    { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges, role) },
+    { title: NAV_SECTION_TODAY, items: operationsTodayItems(badges) },
+    { title: NAV_SECTION_ORDERING, items: operationsOrderingItems(role) },
     { title: NAV_SECTION_TEAM, items: operationsTeamItems(badges) },
     {
       title: NAV_SECTION_SUPPLIERS,
@@ -702,38 +686,28 @@ function operationsNavGroups(role: UserRole, badges: NavBadges): NavGroup[] {
       collapsible: true,
     },
     {
-      title: NAV_SECTION_TOOLS,
-      items: [
-        ...(monthlySummaryNavItem() ? [monthlySummaryNavItem()!] : []),
-        ...archiveToolItems,
-      ],
-      collapsible: true,
-      defaultCollapsed: true,
-    },
-    {
-      title: NAV_SECTION_CARRIERS,
-      items: carrierContactItems,
+      title: NAV_SECTION_LOGISTICS,
+      items: logisticsItems,
       collapsible: true,
     },
   ];
 
   if (role === "admin") {
     groups.push({
-      title: NAV_SECTION_SYSTEM,
-      items: adminSystemItems(),
+      title: NAV_SECTION_ADMIN,
+      items: adminPeopleItems(badges),
       collapsible: true,
     });
     groups.push({
       title: NAV_SECTION_ADMIN_TOOLS,
-      items: adminConfigurationItems(badges),
+      items: adminCatalogMailItems(),
       collapsible: true,
       defaultCollapsed: true,
     });
   } else {
-    // Dla modułowych userów panel admina ma być osiągalny z menu tylko w ograniczonym zakresie.
-    // Pełna filtracja (czy /admin/mail ma się pojawić) odbywa się w `filterNavGroupsByAccess`.
+    // Non-admin: tylko moduł poczty (Wysyłki Ivoclar), gdy przyznany — filtruje `filterNavGroupsByAccess`.
     groups.push({
-      title: NAV_SECTION_SYSTEM,
+      title: NAV_SECTION_ADMIN_TOOLS,
       items: [adminMailCenterNavItem],
       collapsible: true,
       defaultCollapsed: true,

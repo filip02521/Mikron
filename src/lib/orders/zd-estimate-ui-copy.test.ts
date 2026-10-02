@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   ZD_ESTIMATE_PAGE_FLOW_DESCRIPTION,
   ZD_ESTIMATE_UI,
+  formatZdCreateStaleListWarning,
+  formatZdEstimateOrderableStatusNote,
   buildImplicitPieceSnapshotNotice,
   formatImplicitPieceSnapshotHint,
   zdEstimateCreateConfirmLabel,
@@ -471,6 +473,24 @@ describe("zd-estimate-ui-copy", () => {
     );
     expect(ZD_ESTIMATE_UI.createPendingReviewWarn(5)).toMatch(
       /5 pozycji nadal mają /
+    );
+  });
+});
+
+describe("formatZdCreateStaleListWarning", () => {
+  it("formats minutes, hours and days", () => {
+    expect(formatZdCreateStaleListWarning(42)).toContain("Lista policzona 42 min temu");
+    expect(formatZdCreateStaleListWarning(150)).toContain("3 godz. temu");
+    expect(formatZdCreateStaleListWarning(60 * 24)).toContain("1 dzień temu");
+    expect(formatZdCreateStaleListWarning(60 * 24 * 3)).toContain("3 dni temu");
+  });
+});
+
+describe("formatZdEstimateOrderableStatusNote", () => {
+  it("shows hidden orderable count only when filter hides some", () => {
+    expect(formatZdEstimateOrderableStatusNote({ orderable: 12, hiddenOrderable: 0 })).toBe("12 do ZD");
+    expect(formatZdEstimateOrderableStatusNote({ orderable: 12, hiddenOrderable: 4 })).toBe(
+      "12 do ZD · 4 ukryte filtrem lub wyszukiwaniem"
     );
   });
 });

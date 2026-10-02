@@ -41,7 +41,7 @@ export function AuthAsideBackdrop() {
 
       <defs>
         <linearGradient id="auth-aside-hand" x1="0" y1="0" x2="0" y2="-1">
-          <stop offset="0%" stopColor="#e0e7ff" stopOpacity="0.9" />
+          <stop offset="0%" stopColor="#d4edef" stopOpacity="0.9" />
           <stop offset="100%" stopColor="#bae6fd" stopOpacity="0.5" />
         </linearGradient>
       </defs>
@@ -131,12 +131,12 @@ export function AuthMainBackdropRich() {
       >
         <defs>
           <radialGradient id="auth-main-glow" cx="50%" cy="45%" r="55%">
-            <stop offset="0%" stopColor="#e0e7ff" stopOpacity="0.35" />
+            <stop offset="0%" stopColor="#d4edef" stopOpacity="0.35" />
             <stop offset="55%" stopColor="#f0f9ff" stopOpacity="0.12" />
             <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
           </radialGradient>
           <linearGradient id="auth-main-hand" x1="0" y1="0" x2="0" y2="-1">
-            <stop offset="0%" stopColor="#6366f1" stopOpacity="0.22" />
+            <stop offset="0%" stopColor="#188995" stopOpacity="0.22" />
             <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0.12" />
           </linearGradient>
         </defs>
@@ -149,7 +149,7 @@ export function AuthMainBackdropRich() {
           cy={centerCy}
           r="195"
           fill="none"
-          stroke="#6366f1"
+          stroke="#188995"
           strokeOpacity="0.09"
           strokeWidth="1.25"
         />
@@ -169,7 +169,7 @@ export function AuthMainBackdropRich() {
             y1={tick.y1}
             x2={tick.x2}
             y2={tick.y2}
-            stroke="#6366f1"
+            stroke="#188995"
             strokeOpacity={tick.major ? 0.14 : 0.07}
             strokeWidth={tick.major ? 1.5 : 1}
             strokeLinecap="round"
@@ -182,7 +182,7 @@ export function AuthMainBackdropRich() {
         >
           <line x1="0" y1="0" x2="0" y2="-72" strokeWidth="2.5" transform="rotate(-60)" />
           <line x1="0" y1="0" x2="0" y2="-105" strokeWidth="1.75" transform="rotate(30)" />
-          <circle r="4" fill="#6366f1" fillOpacity="0.12" />
+          <circle r="4" fill="#188995" fillOpacity="0.12" />
         </g>
 
         {/* Prawy górny róg */}
@@ -191,7 +191,7 @@ export function AuthMainBackdropRich() {
           cy={topRightCy}
           r="280"
           fill="none"
-          stroke="#6366f1"
+          stroke="#188995"
           strokeOpacity="0.08"
           strokeWidth="1.25"
         />
@@ -211,7 +211,7 @@ export function AuthMainBackdropRich() {
             y1={tick.y1}
             x2={tick.x2}
             y2={tick.y2}
-            stroke="#6366f1"
+            stroke="#188995"
             strokeOpacity={tick.major ? 0.12 : 0.06}
             strokeWidth={tick.major ? 1.5 : 1}
             strokeLinecap="round"
@@ -246,7 +246,7 @@ export function AuthMainBackdropRich() {
         <path
           d="M 120 120 Q 400 40 680 100"
           fill="none"
-          stroke="#6366f1"
+          stroke="#188995"
           strokeOpacity="0.05"
           strokeWidth="1"
         />
@@ -266,7 +266,7 @@ export function AuthMainBackdropRich() {
               cx={48 + col * 92}
               cy={48 + row * 140}
               r="1.25"
-              fill="#6366f1"
+              fill="#188995"
               fillOpacity={0.045 + (col % 2) * 0.015}
             />
           ))
@@ -308,7 +308,7 @@ export function AuthMainBackdropGeometric() {
         cy={topRightCy}
         r="240"
         fill="none"
-        stroke="#6366f1"
+        stroke="#188995"
         strokeOpacity="0.08"
         strokeWidth="1"
       />
@@ -321,7 +321,7 @@ export function AuthMainBackdropGeometric() {
             y1={tick.y1}
             x2={tick.x2}
             y2={tick.y2}
-            stroke="#6366f1"
+            stroke="#188995"
             strokeOpacity="0.11"
             strokeWidth="1.25"
             strokeLinecap="round"
