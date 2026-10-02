@@ -1,5 +1,5 @@
 /**
- * Wspólne tokeny UI aplikacji — paleta OnTime (indigo + sky), nawiązanie do logowania.
+ * Wspólne tokeny UI aplikacji — paleta OnTime: grafit (`slate-*`) + petrol (`indigo-*`, podmienione w globals.css).
  * Gradient tła i akcentów jest subtelny; ciemny panel zostaje na ekranach auth.
  */
 
@@ -17,15 +17,15 @@ export const appMainClass =
 /** Padding main — bez max-width; szerokość ustawia shell każdej strony. */
 export const appMainInsetClass = "mx-auto w-full px-3 py-5 sm:px-4 sm:py-6 lg:px-5";
 
-/** Sidebar — biała powierzchnia, obwódka i cień jak karty panelu dziennego */
+/** Sidebar — białe menu, szary pas nagłówka/stopki (`app-sidebar` w globals.css). */
 export const sidebarShellClass =
-  "border-r border-indigo-100/75 bg-[var(--card)] text-slate-900 shadow-[var(--shadow-card)]";
+  "app-sidebar border-r border-slate-200 bg-white text-slate-900";
 
 export const sidebarHeaderClass =
-  "shrink-0 border-b border-indigo-100/70 px-4 pb-4 pt-5";
+  "shrink-0 border-b border-slate-200 bg-slate-50 px-4 pb-4 pt-5";
 
 export const sidebarFooterClass =
-  "shrink-0 border-t border-indigo-100/70 bg-indigo-50/25 px-3 py-3";
+  "shrink-0 border-t border-slate-200 bg-slate-50 px-3 py-3";
 
 export const sidebarNavScrollClass = "flex-1 overflow-y-auto px-2.5 pb-3 pt-4";
 
@@ -73,7 +73,7 @@ export const navLinkIdleClass = cn(
 
 /** Sidebar — nagłówek grupy nawigacji. */
 export const sidebarNavSectionTitleClass =
-  "px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400";
+  "px-3 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500";
 
 /** Sidebar — separator między grupami (subtelny). */
 export const sidebarNavSectionDividerClass = "mt-2.5 pt-2.5";
@@ -205,9 +205,9 @@ export function roleBadgeClass(role: string): string {
 export const surfaceCardClass =
   "rounded-md border border-slate-200/80 bg-[var(--card)] shadow-[var(--shadow-card-elevated)]";
 
-/** Przycisk primary — ledwo zauważalny gradient */
+/** Przycisk primary — pełny petrol, ciemniejszy przy hover/active. */
 export const buttonPrimaryClass =
-  "bg-gradient-to-b from-indigo-600 to-indigo-700 text-white shadow-sm shadow-indigo-600/15 hover:from-[var(--primary-hover)] hover:to-indigo-800 active:from-indigo-800 active:to-indigo-900";
+  "bg-indigo-600 text-white shadow-sm shadow-indigo-950/15 hover:bg-indigo-700 active:bg-indigo-800";
 
 /** Wspólna wysokość kontrolek w pasku akcji nagłówka (checkbox, CTA, pomoc). */
 export const pageToolbarSizingClass = "h-10 min-h-10 shrink-0 px-3 py-0 text-xs leading-none";

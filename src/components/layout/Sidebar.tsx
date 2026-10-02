@@ -140,7 +140,7 @@ function NavLink({
     indented && "ml-5",
     controlFocusClass,
     active
-      ? sidebarNavToneActiveClass(item.tone)
+      ? cn(sidebarNavToneActiveClass(item.tone), "sb-link-active")
       : attentionIdle
         ? sidebarNavAttentionIdleClass
         : monthlyIdle
@@ -606,7 +606,7 @@ export function Sidebar({
           activeDelegations={activeDelegations}
         />
       </header>
-      <header className="sb-rail flex shrink-0 flex-col items-center gap-2 border-b border-indigo-100/70 px-2 pb-3 pt-4">
+      <header className="sb-rail flex shrink-0 flex-col items-center gap-2 border-b border-slate-200 bg-slate-50 px-2 pb-3 pt-4">
         <Link href="/" aria-label="Strona główna" title="OnTime">
           <AppBrandMark size="sm" />
         </Link>

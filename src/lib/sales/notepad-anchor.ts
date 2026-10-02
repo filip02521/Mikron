@@ -1,4 +1,7 @@
-/** Wewnętrzna obwódka — nie wychodzi poza element (rodzice mają overflow-hidden). */
+/**
+ * Wewnętrzna obwódka — nie wychodzi poza element (rodzice mają overflow-hidden).
+ * Statyczne wyróżnienie (np. archiwum notatek); przewinięcie z podświetleniem → {@link flashNotepadAnchor}.
+ */
 export const NOTEPAD_ANCHOR_FLASH_CLASSES = [
   "relative",
   "z-10",
@@ -8,6 +11,9 @@ export const NOTEPAD_ANCHOR_FLASH_CLASSES = [
   "rounded-md",
   "bg-indigo-50/80",
 ] as const;
+
+/** Atrybut podświetlenia kotwicy — styl i animacja w globals.css (`[data-notepad-flash]`). */
+export const NOTEPAD_FLASH_ATTR = "data-notepad-flash";
 
 export function parseNotepadHashAnchor(hash: string): string | null {
   const anchor = hash.replace(/^#/, "").trim();
@@ -58,9 +64,15 @@ export function flashNotepadAnchor(
       onAnnounce(options?.announce ?? "Przewinięto do wskazanej pozycji w notatniku.");
     }
     el.scrollIntoView({ behavior: "smooth", block: "center" });
-    el.classList.add(...NOTEPAD_ANCHOR_FLASH_CLASSES);
+    // Nakładka ::after (globals.css) — nad treścią karty. Klasy tła / obwódki na kontenerze
+    // były zasłaniane przez nieprzezroczyste tło wiersza (np. ZK: bg-white) i nic nie było widać.
+    el.removeAttribute(NOTEPAD_FLASH_ATTR);
+    void el.offsetWidth; // restart animacji przy ponownym podświetleniu tego samego elementu
+    el.style.setProperty("--notepad-flash-ms", `${durationMs}ms`);
+    el.setAttribute(NOTEPAD_FLASH_ATTR, "");
     window.setTimeout(() => {
-      el.classList.remove(...NOTEPAD_ANCHOR_FLASH_CLASSES);
+      el.removeAttribute(NOTEPAD_FLASH_ATTR);
+      el.style.removeProperty("--notepad-flash-ms");
     }, durationMs);
   }
 

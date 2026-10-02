@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import {
   Fragment,
   useCallback,
@@ -9,6 +10,7 @@ import {
   useRef,
   useState,
   useTransition,
+  type ReactNode,
 } from "react";
 import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
 import {
@@ -149,6 +151,7 @@ import {
   zdEstimateRecountOverlayMessage,
   zdEstimateRunPhaseStatusHint,
   zdEstimateTruncatedListStatusNote,
+  formatZdEstimateOrderableStatusNote,
   buildImplicitPieceSnapshotNotice,
   zdEstimateExternalSessionCancelButtonLabel,
   zdEstimateExternalSessionCancelConfirmTitle,
@@ -298,7 +301,6 @@ import {
 } from "@/components/zakupy/ZdEstimateNoticeTray";
 import { ZdEstimateDepartmentSettingsMenu } from "@/components/zakupy/ZdEstimateDepartmentSettingsMenu";
 import { ZdEstimateSuppliersMenu } from "@/components/zakupy/ZdEstimateSuppliersMenu";
-import { ZdEstimateSnapshotsModal } from "@/components/zakupy/ZdEstimateSnapshotsModal";
 import { ZdEstimateSettingsTrustBanner } from "@/components/zakupy/ZdEstimateSettingsTrustBanner";
 import { UndoToast } from "@/components/ui/UndoToast";
 import { Toast } from "@/components/ui/Toast";
@@ -325,24 +327,13 @@ import { ZdEstimateIndividualServicesSection } from "@/components/zakupy/ZdEstim
 import { ZdEstimateBulkExcludeDialog } from "@/components/zakupy/ZdEstimateBulkExcludeDialog";
 import { ZdEstimateBulkPackagingDialog } from "@/components/zakupy/ZdEstimateBulkPackagingDialog";
 import { ZdEstimateExcludeDialog } from "@/components/zakupy/ZdEstimateExcludeDialog";
-import { ZdEstimateExclusionsModal } from "@/components/zakupy/ZdEstimateExclusionsModal";
-import { ZdEstimateOnRequestModal } from "@/components/zakupy/ZdEstimateOnRequestModal";
-import { ZdEstimateSupplierScopesModal } from "@/components/zakupy/ZdEstimateSupplierScopesModal";
 import { ZdEstimateLinkZdDialog } from "@/components/zakupy/ZdEstimateLinkZdDialog";
 import { ZdEstimateCreateZdDialog } from "@/components/zakupy/ZdEstimateCreateZdDialog";
 import { ZdEstimatePostCreatePanel } from "@/components/zakupy/ZdEstimatePostCreatePanel";
 import { ZdEstimatePackagingDialog } from "@/components/zakupy/ZdEstimatePackagingDialog";
-import { ZdEstimatePackagingModal } from "@/components/zakupy/ZdEstimatePackagingModal";
-import { ZdEstimateMinStockModal } from "@/components/zakupy/ZdEstimateMinStockModal";
 import { ZdEstimateMinStockDialog } from "@/components/zakupy/ZdEstimateMinStockDialog";
-import {
-  ZdEstimatePairsModal,
-  type ZdPairSeedProduct,
-} from "@/components/zakupy/ZdEstimatePairsModal";
-import {
-  ZdEstimateBomsModal,
-  type ZdBomSeedProduct,
-} from "@/components/zakupy/ZdEstimateBomsModal";
+import type { ZdPairSeedProduct } from "@/components/zakupy/ZdEstimatePairsModal";
+import type { ZdBomSeedProduct } from "@/components/zakupy/ZdEstimateBomsModal";
 import { ZdEstimateRowActions } from "@/components/zakupy/ZdEstimateRowActions";
 import {
   ZdEstimateLaunchProgressPanel,
@@ -567,6 +558,47 @@ type ListFilter = ZdEstimateListFilter;
 const ZD_ESTIMATE_EXTERNAL_SESSION_PERSIST_DEBOUNCE_MS = 600;
 
 import { deleteZdEstimateExternalSessionRecord } from "@/lib/orders/zd-estimate-external-session-actions";
+
+/** Renderuje dzieci dopiero od pierwszego `open` i trzyma je potem zamontowane (stan okna przetrwa zamknięcie). */
+function MountAfterOpen({ open, children }: { open: boolean; children: ReactNode }) {
+  const [mounted, setMounted] = useState(open);
+  if (open && !mounted) setMounted(true);
+  return mounted ? children : null;
+}
+
+/** Okna ustawień (setki linii każde) ładowane dopiero przy pierwszym otwarciu — lżejszy start kreatora. */
+const ZdEstimatePackagingModal = dynamic(
+  () => import("@/components/zakupy/ZdEstimatePackagingModal").then((mod) => ({ default: mod.ZdEstimatePackagingModal })),
+  { ssr: false }
+);
+const ZdEstimateMinStockModal = dynamic(
+  () => import("@/components/zakupy/ZdEstimateMinStockModal").then((mod) => ({ default: mod.ZdEstimateMinStockModal })),
+  { ssr: false }
+);
+const ZdEstimatePairsModal = dynamic(
+  () => import("@/components/zakupy/ZdEstimatePairsModal").then((mod) => ({ default: mod.ZdEstimatePairsModal })),
+  { ssr: false }
+);
+const ZdEstimateBomsModal = dynamic(
+  () => import("@/components/zakupy/ZdEstimateBomsModal").then((mod) => ({ default: mod.ZdEstimateBomsModal })),
+  { ssr: false }
+);
+const ZdEstimateExclusionsModal = dynamic(
+  () => import("@/components/zakupy/ZdEstimateExclusionsModal").then((mod) => ({ default: mod.ZdEstimateExclusionsModal })),
+  { ssr: false }
+);
+const ZdEstimateOnRequestModal = dynamic(
+  () => import("@/components/zakupy/ZdEstimateOnRequestModal").then((mod) => ({ default: mod.ZdEstimateOnRequestModal })),
+  { ssr: false }
+);
+const ZdEstimateSupplierScopesModal = dynamic(
+  () => import("@/components/zakupy/ZdEstimateSupplierScopesModal").then((mod) => ({ default: mod.ZdEstimateSupplierScopesModal })),
+  { ssr: false }
+);
+const ZdEstimateSnapshotsModal = dynamic(
+  () => import("@/components/zakupy/ZdEstimateSnapshotsModal").then((mod) => ({ default: mod.ZdEstimateSnapshotsModal })),
+  { ssr: false }
+);
 
 function resolveWindowForGroup(
   group: ZdEstimateGroupOption,
@@ -1220,10 +1252,6 @@ export function ZdEstimateWorkbench({
     () => resolveZdEstimateScrollableColumnOrder(columns, columnOrder),
     [columns, columnOrder]
   );
-  const optionalColumnSectionStarts = useMemo(
-    () => resolveZdEstimateColumnSectionStarts(visibleOptionalColumns),
-    [visibleOptionalColumns]
-  );
   const flowColumnClass = (col: ZdEstimateOptionalColumn) =>
     col === "available" ||
     col === "sales" ||
@@ -1293,6 +1321,10 @@ export function ZdEstimateWorkbench({
   );
   const [paramInfo, setParamInfo] = useState<Record<string, unknown> | null>(null);
   const [meta, setMeta] = useState<RunMeta | null>(null);
+  /** Kiedy policzono bieżącą listę (Policz albo createdAt wznowionej sesji) — ostrzeżenie o starej liście. */
+  const [listComputedAtMs, setListComputedAtMs] = useState<number | null>(null);
+  /** Wiek listy w chwili otwarcia okna tworzenia ZD (minuty). */
+  const [createListAgeMinutes, setCreateListAgeMinutes] = useState<number | null>(null);
   const [copyOk, setCopyOk] = useState(false);
   const [postCreate, setPostCreate] = useState<ZdPostCreateSession | null>(
     null
@@ -3333,6 +3365,10 @@ export function ZdEstimateWorkbench({
 
       setParamInfo(payload.paramInfo ?? {});
       if (payload.meta) setMeta(payload.meta);
+      {
+        const computedAt = Date.parse(payload.createdAt ?? "");
+        setListComputedAtMs(Number.isFinite(computedAt) && computedAt > 0 ? computedAt : null);
+      }
 
       const restoredBoostNeedsRecount = payload.boostPreset
         ? Boolean(payload.boostNeedsRecount) ||
@@ -4384,6 +4420,7 @@ export function ZdEstimateWorkbench({
         resetSelectionQuiet();
         setListSearch("");
         setParamInfo(res.result.parametry as Record<string, unknown>);
+        setListComputedAtMs(Date.now());
         setMeta({
           pagesFetched: res.meta.pagesFetched,
           totalCountApi: res.meta.totalCountApi,
@@ -4831,8 +4868,11 @@ export function ZdEstimateWorkbench({
   const openCreateZdModal = useCallback(() => {
     setLinkZdOpen(false);
     setLinkNrPrefill(null);
+    setCreateListAgeMinutes(
+      listComputedAtMs != null ? (Date.now() - listComputedAtMs) / 60_000 : null
+    );
     setCreateZdOpen(true);
-  }, []);
+  }, [listComputedAtMs]);
   const clearCreateZdCapture = useCallback(() => {
     setCreatingZd(false);
     createPreviewCaptureRef.current = null;
@@ -5131,34 +5171,21 @@ export function ZdEstimateWorkbench({
   const showListRecountOverlay = Boolean(estimating && lines);
 
   /** Blokery z pełnym Alertem nad listą — nie powtarzaj reason w sticky. */
-  const createGateShownAsFullAlert =
-    Boolean(boostNeedsRecount && lines) ||
-    Boolean(historyNeedsRecount && lines) ||
-    Boolean(historyFetchFailed && lines) ||
-    Boolean(pendingIndividualsError) ||
-    Boolean(pendingIndividualsTruncated) ||
-    packagingPairConflicts.length > 0 ||
-    explodeBomIncomplete ||
-    !settingsTrusted ||
-    Boolean(
-      createDoneDokNr &&
-        lines &&
-        lines.length > 0 &&
-        !postCreate &&
-        !createUnlockedAfterDone
-    );
-
   const servicesOnlyBlockerVisible =
     individualBundle.serviceLines.length > 0 && orderableLines.length === 0;
 
-  /** Caption sticky — bez `estimating` (info jest na blurze listy). */
+  /**
+   * Caption sticky — bez `estimating` (info jest na blurze listy). Pokazywany także przy
+   * blokadach z komunikatem: komunikaty siedzą w zwiniętym pasku „Uwagi”, więc bez tego
+   * wyłączony „Utwórz ZD” nie mówiłby dlaczego.
+   */
   const stickyCreateGateCaption =
-    !createZdGate.ok &&
-    !createGateShownAsFullAlert &&
-    !servicesOnlyBlockerVisible &&
-    !estimating
+    !createZdGate.ok && !servicesOnlyBlockerVisible && !estimating
       ? createZdGate
       : null;
+  /** Blokada usuwana przeliczeniem — przycisk „Przelicz” od razu przy powodzie w pasku akcji. */
+  const stickyCreateGateRecount =
+    Boolean(lines) && (boostNeedsRecount || historyNeedsRecount || historyFetchFailed);
 
   /** Caption w Alert odblokowania, gdy po odblokowaniu zostają inne gate'y. */
   const createZdGateCaption = !createZdGate.ok
@@ -5482,13 +5509,65 @@ export function ZdEstimateWorkbench({
     minStockByTwIdForRefresh,
   ]);
 
+  /** Pozycje na ZD z ręcznie zmienioną ilością (podsumowanie w oknie tworzenia). */
+  const manualOverrideOrderableCount = useMemo(
+    () => orderableLines.filter((l) => qtyOverrideByTwId[l.tw_Id] != null).length,
+    [orderableLines, qtyOverrideByTwId]
+  );
+
+  /** Pozycje „Do ZD” ukryte filtrem listy albo wyszukiwaniem — trafią na ZD, choć ich nie widać. */
+  const hiddenOrderableCount = useMemo(() => {
+    if (!orderableLines.length) return 0;
+    const visibleIds = new Set(visibleLines.map((l) => l.tw_Id));
+    return orderableLines.filter((l) => !visibleIds.has(l.tw_Id)).length;
+  }, [orderableLines, visibleLines]);
+
+  /**
+   * Kolumna „Status” tylko gdy którakolwiek widoczna pozycja ma oznaczenie (prośba, para, BOM,
+   * minimum, wykluczenie, na żądanie…). Inaczej pokazywała same „—” i zabierała miejsce nazwie.
+   */
+  const statusColumnHasContent = useMemo(
+    () =>
+      visibleLines.some(
+        (l) =>
+          Boolean(l.pair) ||
+          Boolean(l.bom) ||
+          individualBundle.byTwId.has(l.tw_Id) ||
+          (minStockByTwIdForRefresh.get(l.tw_Id) ?? 0) > 0 ||
+          orderExcludedTwIds.has(l.tw_Id) ||
+          Boolean(sessionIncludeTwIds[l.tw_Id]) ||
+          nameAutoByTwId.has(l.tw_Id) ||
+          onRequestTwIds.has(retargetTwIdToPackIfPiece(l.tw_Id, productPairs).twId)
+      ),
+    [
+      visibleLines,
+      individualBundle,
+      minStockByTwIdForRefresh,
+      orderExcludedTwIds,
+      sessionIncludeTwIds,
+      nameAutoByTwId,
+      onRequestTwIds,
+      productPairs,
+    ]
+  );
+  const tableOptionalColumns = useMemo(
+    () =>
+      statusColumnHasContent
+        ? visibleOptionalColumns
+        : visibleOptionalColumns.filter((col) => col !== "status"),
+    [statusColumnHasContent, visibleOptionalColumns]
+  );
+  const tableColumnSectionStarts = useMemo(
+    () => resolveZdEstimateColumnSectionStarts(tableOptionalColumns),
+    [tableOptionalColumns]
+  );
   const tableColSpan = useMemo(
     () =>
       countZdEstimateTableColumns({
         showPackagingColumn,
-        visibleOptionalColumns,
+        visibleOptionalColumns: tableOptionalColumns,
       }),
-    [showPackagingColumn, visibleOptionalColumns]
+    [showPackagingColumn, tableOptionalColumns]
   );
 
   const tableVirtualLayoutKey = `${visibleLines.length}\0${listFilter}\0${listSearch}\0${sortKey}\0${sortDir}\0${tableColSpan}\0${showPackagingColumn}`;
@@ -5545,18 +5624,38 @@ export function ZdEstimateWorkbench({
       });
     };
     const onViewportMode = () => runAll();
-    const t0 = window.setTimeout(runAll, 0);
-    const t1 = window.setTimeout(runAll, 120);
-    const t2 = window.setTimeout(runAll, 320);
-    const tableEl = document.getElementById(ZD_ESTIMATE_TABLE_SCROLL_ID);
-    const tableNode = document.querySelector(
-      "table.data-table.zd-estimate-table"
-    );
+    // Tabela potrafi zamontować się później niż ten efekt (wznowienie sesji, panel postępu) —
+    // obserwatory podpinamy przy każdym przebiegu, bez dublowania. Obserwujemy też nagłówek
+    // Nazwy: jego szerokość wyznacza sticky left Opak. / Do ZD (nieaktualna = kolumny nachodzą).
+    const observed = new WeakSet<Element>();
+    const attachObservers = () => {
+      if (!ro) return;
+      const nodes = [
+        document.getElementById(ZD_ESTIMATE_TABLE_SCROLL_ID),
+        document.querySelector("table.data-table.zd-estimate-table"),
+        document.querySelector("table.data-table.zd-estimate-table thead th.zd-estimate-product-name-col"),
+      ];
+      for (const node of nodes) {
+        if (node && !observed.has(node)) {
+          observed.add(node);
+          ro.observe(node);
+        }
+      }
+    };
     if (typeof ResizeObserver !== "undefined") {
-      ro = new ResizeObserver(() => runTableOnly());
-      if (tableEl) ro.observe(tableEl);
-      if (tableNode) ro.observe(tableNode);
+      ro = new ResizeObserver(() => {
+        attachObservers();
+        runTableOnly();
+      });
     }
+    const runAndAttach = () => {
+      attachObservers();
+      runAll();
+    };
+    const t0 = window.setTimeout(runAndAttach, 0);
+    const t1 = window.setTimeout(runAndAttach, 120);
+    const t2 = window.setTimeout(runAndAttach, 320);
+    window.addEventListener("resize", onViewportMode);
     // Przejście desktop ↔ compact sticky — natychmiastowy re-sync offsetów.
     if (typeof window.matchMedia === "function") {
       mql = window.matchMedia("(max-width: 767px)");
@@ -5572,6 +5671,7 @@ export function ZdEstimateWorkbench({
       window.clearTimeout(t2);
       if (raf) cancelAnimationFrame(raf);
       ro?.disconnect();
+      window.removeEventListener("resize", onViewportMode);
       if (mql) {
         if (typeof mql.removeEventListener === "function") {
           mql.removeEventListener("change", onViewportMode);
@@ -5580,7 +5680,7 @@ export function ZdEstimateWorkbench({
         }
       }
     };
-  }, [listFilter, listSearch, lines, visibleLines.length]);
+  }, [listFilter, listSearch, lines, visibleLines.length, statusColumnHasContent]);
 
   const handleSort = useCallback(
     (field: ZdEstimateListSortKey) => {
@@ -7420,6 +7520,8 @@ export function ZdEstimateWorkbench({
           zapasMin={zapasMin}
           onZapasMinChange={setZapasMin}
           onPolicz={() => runEstimate()}
+          hasList={Boolean(lines)}
+          recountNeeded={Boolean(lines) && (boostNeedsRecount || historyNeedsRecount)}
           showAssignAndRun={Boolean(assignHint && launch?.supplierId)}
           showRemapAndRun={Boolean(
             scopeRemapActive && !assignHint && launch?.supplierId
@@ -7652,8 +7754,11 @@ export function ZdEstimateWorkbench({
             statusNote={
               meta?.truncated
                 ? zdEstimateTruncatedListStatusNote()
-                : visibleLines.length > 0
-                  ? `${orderableLines.length} do ZD · ${visibleLines.length} widoczne`
+                : visibleLines.length > 0 || orderableLines.length > 0
+                  ? formatZdEstimateOrderableStatusNote({
+                      orderable: orderableLines.length,
+                      hiddenOrderable: hiddenOrderableCount,
+                    })
                   : null
             }
             columns={columns}
@@ -7880,7 +7985,8 @@ export function ZdEstimateWorkbench({
                     "zd-estimate-table",
                     showPackagingColumn && "zd-estimate-table--pack",
                     showStockDetail && "zd-estimate-table--detail",
-                    showZkColumn && "zd-estimate-table--zk"
+                    showZkColumn && "zd-estimate-table--zk",
+                    !statusColumnHasContent && "zd-estimate-table--no-status"
                   )}
                 >
                   <thead>
@@ -7944,8 +8050,8 @@ export function ZdEstimateWorkbench({
                         align="center"
                         hint={ZD_ESTIMATE_UI.doZdColumnHint}
                       />
-                      {visibleOptionalColumns.map((col) => {
-                        const sectionCls = optionalColumnSectionStarts.has(col)
+                      {tableOptionalColumns.map((col) => {
+                        const sectionCls = tableColumnSectionStarts.has(col)
                           ? "zd-estimate-col--section"
                           : null;
                         const flowCls = flowColumnClass(col);
@@ -8367,8 +8473,8 @@ export function ZdEstimateWorkbench({
                               }
                             />
                           </td>
-                          {visibleOptionalColumns.map((col) => {
-                            const sectionCls = optionalColumnSectionStarts.has(
+                          {tableOptionalColumns.map((col) => {
+                            const sectionCls = tableColumnSectionStarts.has(
                               col
                             )
                               ? "zd-estimate-col--section"
@@ -8860,28 +8966,6 @@ export function ZdEstimateWorkbench({
                 >
                   Utwórz ZD
                 </Button>
-                {showExternalSessionActiveStatus ? (
-                  <ZdEstimateExternalSessionActiveChip />
-                ) : null}
-                {canCancelExternalSession ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    className={zdEstimateDockButtonClass}
-                    onClick={() => {
-                      const token = externalSessionTokenState;
-                      if (!token) return;
-                      cancelExternalSessionSessionIdRef.current =
-                        token.sessionId;
-                      setCancelExternalSessionOpen(true);
-                    }}
-                    disabled={busy}
-                    title="Anuluj zapis sesji kreatora ZD (przestanie działać przycisk „Wróć do kreatora”)."
-                  >
-                    {zdEstimateExternalSessionCancelButtonLabel}
-                  </Button>
-                ) : null}
                 <Button
                   type="button"
                   size="sm"
@@ -8916,6 +9000,33 @@ export function ZdEstimateWorkbench({
                 >
                   Powiąż ZD
                 </Button>
+                {/* Sesja kreatora — z dala od „Utwórz ZD” (anulowanie jest nieodwracalne). */}
+                {showExternalSessionActiveStatus || canCancelExternalSession ? (
+                  <div className="ml-auto flex min-w-0 flex-wrap items-center gap-1.5">
+                  {showExternalSessionActiveStatus ? (
+                    <ZdEstimateExternalSessionActiveChip />
+                  ) : null}
+                  {canCancelExternalSession ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className={cn(zdEstimateDockButtonClass, "text-slate-500 hover:text-red-700")}
+                      onClick={() => {
+                        const token = externalSessionTokenState;
+                        if (!token) return;
+                        cancelExternalSessionSessionIdRef.current =
+                          token.sessionId;
+                        setCancelExternalSessionOpen(true);
+                      }}
+                      disabled={busy}
+                      title="Anuluj zapis sesji kreatora ZD (przestanie działać przycisk „Wróć do kreatora”)."
+                    >
+                      {zdEstimateExternalSessionCancelButtonLabel}
+                    </Button>
+                  ) : null}
+                  </div>
+                ) : null}
               </div>
               {stickyCreateGateCaption ? (
                 <div
@@ -8953,6 +9064,20 @@ export function ZdEstimateWorkbench({
                   <span className="min-w-0 flex-1">
                     {stickyCreateGateCaption.reason}
                   </span>
+                  {stickyCreateGateRecount ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="-my-1 h-6 shrink-0 px-2 text-[11px]"
+                      disabled={
+                        busy || !bootstrap.configured || !scopeSelected || !settingsTrusted
+                      }
+                      onClick={() => runEstimate()}
+                    >
+                      Przelicz
+                    </Button>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -9235,55 +9360,63 @@ export function ZdEstimateWorkbench({
         onClear={clearMinStock}
       />
 
-      <ZdEstimatePackagingModal
-        open={packagingOpen}
-        onClose={() => setPackagingOpen(false)}
-        packaging={packaging}
-        packPairTwIds={packPairTwIds}
-        onPackagingChange={applyPackagingLive}
-        onError={reportError}
-      />
+      <MountAfterOpen open={packagingOpen}>
+        <ZdEstimatePackagingModal
+          open={packagingOpen}
+          onClose={() => setPackagingOpen(false)}
+          packaging={packaging}
+          packPairTwIds={packPairTwIds}
+          onPackagingChange={applyPackagingLive}
+          onError={reportError}
+        />
+      </MountAfterOpen>
 
-      <ZdEstimateMinStockModal
-        open={minStockOpen}
-        onClose={() => setMinStockOpen(false)}
-        minStock={minStock}
-        onMinStockChange={applyMinStockLive}
-        onError={reportError}
-      />
+      <MountAfterOpen open={minStockOpen}>
+        <ZdEstimateMinStockModal
+          open={minStockOpen}
+          onClose={() => setMinStockOpen(false)}
+          minStock={minStock}
+          onMinStockChange={applyMinStockLive}
+          onError={reportError}
+        />
+      </MountAfterOpen>
 
-      <ZdEstimatePairsModal
-        open={pairsOpen}
-        onClose={() => {
-          setPairsOpen(false);
-          setPairSeed(null);
-        }}
-        pairs={productPairs}
-        seed={pairSeed}
-        onSeedConsumed={() => {
-          setPairSeed(null);
-          clearSelection();
-        }}
-        onPairsChange={applyPairsMutation}
-        onError={reportError}
-      />
+      <MountAfterOpen open={pairsOpen}>
+        <ZdEstimatePairsModal
+          open={pairsOpen}
+          onClose={() => {
+            setPairsOpen(false);
+            setPairSeed(null);
+          }}
+          pairs={productPairs}
+          seed={pairSeed}
+          onSeedConsumed={() => {
+            setPairSeed(null);
+            clearSelection();
+          }}
+          onPairsChange={applyPairsMutation}
+          onError={reportError}
+        />
+      </MountAfterOpen>
 
-      <ZdEstimateBomsModal
-        open={bomsOpen}
-        onClose={() => {
-          setBomsOpen(false);
-          setBomSeed(null);
-        }}
-        boms={productBoms}
-        pairs={productPairs}
-        seed={bomSeed}
-        onSeedConsumed={() => {
-          setBomSeed(null);
-          clearSelection();
-        }}
-        onBomsChange={applyBomsMutation}
-        onError={reportError}
-      />
+      <MountAfterOpen open={bomsOpen}>
+        <ZdEstimateBomsModal
+          open={bomsOpen}
+          onClose={() => {
+            setBomsOpen(false);
+            setBomSeed(null);
+          }}
+          boms={productBoms}
+          pairs={productPairs}
+          seed={bomSeed}
+          onSeedConsumed={() => {
+            setBomSeed(null);
+            clearSelection();
+          }}
+          onBomsChange={applyBomsMutation}
+          onError={reportError}
+        />
+      </MountAfterOpen>
 
       <ZdEstimateExcludeDialog
         open={excludeCandidate != null}
@@ -9295,42 +9428,50 @@ export function ZdEstimateWorkbench({
         onConfirm={confirmExclude}
       />
 
-      <ZdEstimateExclusionsModal
-        open={exclusionsOpen}
-        onClose={() => setExclusionsOpen(false)}
-        exclusions={exclusions}
-        onExclusionsChange={applyExclusionsLive}
-        onError={reportError}
-      />
+      <MountAfterOpen open={exclusionsOpen}>
+        <ZdEstimateExclusionsModal
+          open={exclusionsOpen}
+          onClose={() => setExclusionsOpen(false)}
+          exclusions={exclusions}
+          onExclusionsChange={applyExclusionsLive}
+          onError={reportError}
+        />
+      </MountAfterOpen>
 
-      <ZdEstimateOnRequestModal
-        open={onRequestPanelOpen}
-        onClose={() => setOnRequestPanelOpen(false)}
-        onRequests={onRequests}
-        onOnRequestsChange={applyOnRequestsLive}
-        onError={reportError}
-      />
+      <MountAfterOpen open={onRequestPanelOpen}>
+        <ZdEstimateOnRequestModal
+          open={onRequestPanelOpen}
+          onClose={() => setOnRequestPanelOpen(false)}
+          onRequests={onRequests}
+          onOnRequestsChange={applyOnRequestsLive}
+          onError={reportError}
+        />
+      </MountAfterOpen>
 
-      <ZdEstimateSupplierScopesModal
-        open={scopesPanelOpen}
-        onClose={() => setScopesPanelOpen(false)}
-        suppliers={bootstrap.suppliers}
-        configured={bootstrap.configured}
-        onError={reportError}
-        todayCoverage={todayCoverage}
-        onScopesChange={handleSupplierScopesChange}
-      />
+      <MountAfterOpen open={scopesPanelOpen}>
+        <ZdEstimateSupplierScopesModal
+          open={scopesPanelOpen}
+          onClose={() => setScopesPanelOpen(false)}
+          suppliers={bootstrap.suppliers}
+          configured={bootstrap.configured}
+          onError={reportError}
+          todayCoverage={todayCoverage}
+          onScopesChange={handleSupplierScopesChange}
+        />
+      </MountAfterOpen>
 
-      <ZdEstimateSnapshotsModal
-        open={snapshotsPanelOpen}
-        onClose={() => setSnapshotsPanelOpen(false)}
-        onError={reportError}
-        onHistoryEligibilityChanged={() => {
-          if (lines && lines.length > 0) {
-            setHistoryNeedsRecount(true);
-          }
-        }}
-      />
+      <MountAfterOpen open={snapshotsPanelOpen}>
+        <ZdEstimateSnapshotsModal
+          open={snapshotsPanelOpen}
+          onClose={() => setSnapshotsPanelOpen(false)}
+          onError={reportError}
+          onHistoryEligibilityChanged={() => {
+            if (lines && lines.length > 0) {
+              setHistoryNeedsRecount(true);
+            }
+          }}
+        />
+      </MountAfterOpen>
 
       <ZdEstimateLinkZdDialog
         open={linkZdOpen}
@@ -9479,6 +9620,12 @@ export function ZdEstimateWorkbench({
       {supplierId && createKhResolution?.ok && (createZdOpen || createZdPreview.lineCount > 0) ? (
         <ZdEstimateCreateZdDialog
           open={createZdOpen}
+          listAgeMinutes={createListAgeMinutes}
+          manualOverrideCount={manualOverrideOrderableCount}
+          onRecountRequest={() => {
+            setCreateZdOpen(false);
+            runEstimate();
+          }}
           supplierId={supplierId}
           supplierName={
             createKhResolution.supplierName ||

@@ -502,6 +502,35 @@ export function zdEstimateRecountOverlayHint(
   return `${host}. Edycja i „Utwórz ZD” są wstrzymane — ilości mogą się zmienić.`;
 }
 
+/** Lista starsza niż próg — stany, rezerwacje i sprzedaż w Subiekcie mogły się zmienić. */
+export const ZD_CREATE_STALE_LIST_MINUTES = 30;
+
+export function formatZdCreateStaleListWarning(ageMinutes: number): string {
+  const days = Math.round(ageMinutes / (60 * 24));
+  const age =
+    ageMinutes < 90
+      ? `${Math.round(ageMinutes)} min`
+      : ageMinutes < 60 * 24
+        ? `${Math.round(ageMinutes / 60)} godz.`
+        : days === 1
+          ? "1 dzień"
+          : `${days} dni`;
+  return `Lista policzona ${age} temu — stany, rezerwacje i sprzedaż mogły się zmienić. Przelicz przed utworzeniem ZD.`;
+}
+
+/**
+ * Licznik nad listą: ile pozycji trafi na ZD i ile z nich jest ukrytych filtrem / wyszukiwaniem
+ * (żeby nikt nie tworzył ZD w przekonaniu, że widzi wszystkie pozycje).
+ */
+export function formatZdEstimateOrderableStatusNote(input: {
+  orderable: number;
+  hiddenOrderable: number;
+}): string {
+  const base = `${input.orderable} do ZD`;
+  if (input.hiddenOrderable <= 0) return base;
+  return `${base} · ${input.hiddenOrderable} ukryte filtrem lub wyszukiwaniem`;
+}
+
 export function zdEstimateTruncatedListStatusNote(): string {
   return "lista niepełna — limit stron Subiekta; Create może pominąć SKU";
 }
