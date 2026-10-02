@@ -5,6 +5,10 @@ import { useCallback, useEffect, useRef, useState, useTransition, useSyncExterna
 import { useRouter } from "next/navigation";
 import { actionUndoDailyPanelChange } from "@/app/actions/admin";
 import type { DailyPanelActionResult } from "@/lib/orders/daily-panel-undo";
+import {
+  unwrapActionResult,
+  type ActionErrorResult,
+} from "@/lib/actions/action-error";
 import type { DailyPanelUndoPayload } from "@/lib/orders/daily-panel-undo";
 import {
   isUndoPayloadExpired,
@@ -43,7 +47,8 @@ export type DailyPanelRunOptions = {
 };
 
 export type DailyPanelRunFn = (
-  action: () => Promise<DailyPanelActionResult>,
+  /** Może zwrócić ActionErrorResult (błąd przez wartość) — run rzuca go jako ActionError. */
+  action: () => Promise<DailyPanelActionResult | ActionErrorResult>,
   successMessage: string,
   pendingMessage?: string,
   options?: DailyPanelRunOptions
@@ -131,7 +136,7 @@ export function useDailyPanelRunner() {
 
       start(async () => {
         try {
-          const result = await action();
+          const result = await unwrapActionResult(action());
           if (result.undo) {
             undoPayloadRef.current = result.undo;
             setFlash(null);

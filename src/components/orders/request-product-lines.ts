@@ -45,6 +45,8 @@ export type ProductLineDraft = {
   teethOcrPending?: boolean;
   /** Ścieżka zdjęcia OCR w Supabase Storage — do wyświetlenia w weryfikacji. */
   teethOcrImagePath?: string | null;
+  /** Dostawca tej pozycji (dopasowanie z Subiekta / istniejąca prośba). */
+  supplierId?: string;
 };
 
 export function newProductLine(): ProductLineDraft {

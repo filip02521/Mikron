@@ -100,7 +100,7 @@ describe("SubiektProductLineFields", () => {
     );
 
     expect(screen.getByText("Produkt — symbol lub nazwa")).toBeTruthy();
-    expect(screen.getByPlaceholderText("896")).toBeTruthy();
+    expect(screen.getByPlaceholderText("np. 896")).toBeTruthy();
     expect(screen.queryByLabelText(/^Symbol$/i)).toBeNull();
   });
 
@@ -330,7 +330,7 @@ describe("SubiektProductLineFields", () => {
       })
     );
 
-    const mikranInput = screen.getByPlaceholderText("896") as HTMLInputElement;
+    const mikranInput = screen.getByPlaceholderText("np. 896") as HTMLInputElement;
     expect(mikranInput.value).toBe("789");
     expect(mikranInput.readOnly).toBe(true);
   });

@@ -181,23 +181,24 @@ function OrderRows({
                 {isChecked ? (
                   <IconCircleCheck size={13} className="shrink-0 text-emerald-500" />
                 ) : null}
-                <span className="text-[11px] font-semibold text-slate-700">
+                <span className="text-sm font-semibold text-slate-900">
                   {salesName}
                 </span>
                 {submittedLabel ? (
-                  <span className="text-[10px] font-medium text-slate-500">{submittedLabel}</span>
+                  <span className="text-xs text-slate-500">{submittedLabel}</span>
                 ) : null}
               </div>
               <div className="flex items-center gap-1">
                 {!hasNoLine && onApproveOrder ? (
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     onClick={() => onApproveOrder(order.orderId)}
-                    className="px-1.5"
+                    className="min-h-8"
                   >
                     <IconCircleCheck size={14} />
+                    Zatwierdź
                   </Button>
                 ) : null}
                 {hasNoLine ? (

@@ -274,3 +274,22 @@ export function parseZdEstimateLaunchQuery(
     cechaId: Number.isFinite(cechaId) && cechaId > 0 ? cechaId : null,
   };
 }
+
+/** Powiązanie dostawcy z grupą albo cechą Subiekta — do wyświetlenia (np. szuflada dostawcy). */
+export type SupplierSubiektScopeInfo = {
+  mode: ZdEstimateRunMode;
+  /** grt_Id (grupa) albo ctw_Id (cecha). */
+  id: number;
+  label: string;
+};
+
+export function supplierSubiektScopeInfoFromRow(row: {
+  mode: ZdEstimateRunMode;
+  grupaId: number | null;
+  cechaId: number | null;
+  label: string;
+}): SupplierSubiektScopeInfo | null {
+  const id = row.mode === "cecha" ? row.cechaId : row.grupaId;
+  if (id == null || !(id > 0)) return null;
+  return { mode: row.mode, id, label: row.label.trim() };
+}

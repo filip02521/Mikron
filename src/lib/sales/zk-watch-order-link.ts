@@ -238,6 +238,25 @@ function normalizeProductToken(value: string | null | undefined): string {
   return normalizeMyOrderSearchText(value ?? "");
 }
 
+/**
+ * Symbol do porównań — bez placeholderów. Prośba bez symbolu ma w bazie „-”
+ * (normalizeDraftProducts); `"fuji-2".includes("-")` dopasowywało ją do KAŻDEJ
+ * pozycji ZK z myślnikiem w symbolu → pozycje fałszywie „W prośbie”.
+ */
+function meaningfulSymbolToken(value: string | null | undefined): string {
+  const token = normalizeProductToken(value);
+  if (!token || /^[\s\-–—_.\/]*$/.test(token)) return "";
+  return token;
+}
+
+/** Luźne „zawiera” tylko dla sensownie długich fragmentów. */
+function looseTokenOverlap(a: string, b: string, minLen: number): boolean {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const [shorter, longer] = a.length <= b.length ? [a, b] : [b, a];
+  return shorter.length >= minLen && longer.includes(shorter);
+}
+
 export function productMatchesZkLine(
   order: ZkLinkableOrder,
   line: ZkWatchLineView
@@ -247,13 +266,13 @@ export function productMatchesZkLine(
     return line.subiektTwId === orderTw;
   }
 
-  const sym = normalizeProductToken(order.symbol);
-  const lineSym = normalizeProductToken(line.symbol);
+  const sym = meaningfulSymbolToken(order.symbol);
+  const lineSym = meaningfulSymbolToken(line.symbol);
   if (sym && lineSym && sym === lineSym) {
     return true;
   }
 
-  const orderMikran = normalizeProductToken(order.mikran_code);
+  const orderMikran = meaningfulSymbolToken(order.mikran_code);
   if (orderMikran && lineSym && orderMikran === lineSym) {
     return true;
   }
@@ -274,18 +293,18 @@ export function productMatchesZkLineForCoverage(
   if (!orderExplicitlyLinkedToZkWatch(order, watch) || !isOpenProsbaOrder(order)) {
     return false;
   }
+  // Oba mają tw_Id i są różne → na pewno inny towar (luźne dopasowanie tylko
+  // dla legacy / ręcznych opisów bez tw_Id).
+  const orderTw = normalizeSalesClientKhId(order.subiekt_tw_id);
+  if (line.subiektTwId != null && orderTw != null) return false;
 
-  const sym = normalizeProductToken(order.symbol);
-  const lineSym = normalizeProductToken(line.symbol);
-  if (sym && lineSym && (sym === lineSym || sym.includes(lineSym) || lineSym.includes(sym))) {
-    return true;
-  }
+  const sym = meaningfulSymbolToken(order.symbol);
+  const lineSym = meaningfulSymbolToken(line.symbol);
+  if (looseTokenOverlap(sym, lineSym, 3)) return true;
 
   const orderName = normalizeProductToken(order.products);
   const lineName = normalizeProductToken(line.product);
-  if (!orderName || !lineName) return false;
-  if (orderName === lineName) return true;
-  return orderName.includes(lineName) || lineName.includes(orderName);
+  return looseTokenOverlap(orderName, lineName, 4);
 }
 
 export function isDeliveredOrderStatus(status: string): boolean {

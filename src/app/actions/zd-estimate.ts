@@ -1,5 +1,6 @@
 "use server";
 
+import type { SupplierLocation } from "@/types/database";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja requireZdEstimateAdmin() (operacje dostaw); service role z pełnym scope po warstwie aplikacji.
 import { getSessionUser, requireZdEstimateAdmin } from "@/lib/auth";
@@ -4971,6 +4972,8 @@ export type ZdEstimateSupplierContactResult =
       notes: string;
       mails: string;
       extra_info: string;
+      /** Polska → treść maila po polsku, zagranica/import → po angielsku. */
+      location: SupplierLocation;
     }
   | { ok: false; message: string };
 
@@ -5000,6 +5003,7 @@ export async function actionGetSupplierContact(
       notes: String(row.notes ?? ""),
       mails: String(row.mails ?? ""),
       extra_info: String(row.extra_info ?? ""),
+      location: (row.location as SupplierLocation | null) ?? "POLSKA",
     };
   } catch (e) {
     return {

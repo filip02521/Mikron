@@ -10,11 +10,10 @@ export const ADMIN_PREVIEW_DOCK_HEIGHT = "2.75rem";
  * `--admin-preview-dock` — wysokość paska (toasty).
  * `--admin-preview-clearance` — clearance treści (desktop = pasek + bottom-3).
  */
-export const adminPreviewDockShellVarsClass = [
-  `[--admin-preview-dock:${ADMIN_PREVIEW_DOCK_HEIGHT}]`,
-  `[--admin-preview-clearance:${ADMIN_PREVIEW_DOCK_HEIGHT}]`,
-  "md:[--admin-preview-clearance:calc(var(--admin-preview-dock)+0.75rem)]",
-].join(" ");
+// Klasy muszą być literałami — Tailwind nie wygeneruje CSS z `${…}` w template stringu.
+// Wartość = ADMIN_PREVIEW_DOCK_HEIGHT (2.75rem).
+export const adminPreviewDockShellVarsClass =
+  "[--admin-preview-dock:2.75rem] [--admin-preview-clearance:2.75rem] md:[--admin-preview-clearance:calc(var(--admin-preview-dock)+0.75rem)]";
 
 /** Toast / undo bar position — clears mobile bottom nav + admin preview dock. */
 export const floatingToastBottomClass =

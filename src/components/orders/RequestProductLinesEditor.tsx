@@ -103,13 +103,17 @@ export function RequestProductLinesEditor({
   /** Układ handlowca (/prosba) — zwijanie linii, checklista; używany też w modalach panelu dziennego. */
   appearance?: "default" | "prosba";
   suppliers?: AppSupplierRef[];
-  onSupplierResolved?: (result: {
-    supplierId: string;
-    supplierName: string;
-    documentNumber: string | null;
-  }) => void;
+  /** `lineId` — id pozycji, której dotyczy dopasowanie dostawcy. */
+  onSupplierResolved?: (
+    result: {
+      supplierId: string;
+      supplierName: string;
+      documentNumber: string | null;
+    },
+    lineId: string
+  ) => void;
   onSupplierResolveFeedback?: (feedback: SubiektFeedback | null) => void;
-  onSupplierMappingMissing?: () => void;
+  onSupplierMappingMissing?: (lineId: string) => void;
   unifiedFeedback?: boolean;
   onProductFeedbackChange?: (feedback: SubiektFeedback | null) => void;
   onConfigFeedbackChange?: (feedback: SubiektFeedback | null) => void;
@@ -503,12 +507,16 @@ export function RequestProductLinesEditor({
                           )
                         );
                       }
-                      onSupplierResolved(result);
+                      onSupplierResolved(result, line.id);
                     }
                   : undefined
               }
               onSupplierResolveFeedback={onSupplierResolveFeedback}
-              onSupplierMappingMissing={onSupplierMappingMissing}
+              onSupplierMappingMissing={
+                onSupplierMappingMissing
+                  ? () => onSupplierMappingMissing(line.id)
+                  : undefined
+              }
               delegateAlerts={unifiedFeedback}
               onProductFeedbackChange={
                 isActive ? onProductFeedbackChange : undefined

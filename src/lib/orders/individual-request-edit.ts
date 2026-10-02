@@ -44,6 +44,8 @@ type EditLineDraft = {
   teethDetails?: TeethLineDetail[] | undefined;
   teethOcrPending?: boolean;
   teethOcrImagePath?: string | null;
+  /** Dostawca tej pozycji (np. z dopasowania Subiekta) — pierwszeństwo przed dostawcą grupy. */
+  supplierId?: string;
 };
 
 /**
@@ -90,6 +92,7 @@ export function toIndividualRequestEditLinePayload(
     teethDetails: line.teethDetails ?? null,
     teethOcrPending: line.teethOcrPending,
     teethOcrImagePath: line.teethOcrImagePath ?? null,
+    supplierId: line.supplierId?.trim() || undefined,
   };
 }
 
@@ -112,6 +115,11 @@ export type IndividualRequestEditLineInput = {
   teethDetails?: TeethLineDetail[] | null;
   teethOcrPending?: boolean;
   teethOcrImagePath?: string | null;
+  /**
+   * Dostawca tej pozycji — pierwszeństwo przed `payload.supplierId`.
+   * Pozwala zapisać w jednej prośbie produkty różnych dostawców.
+   */
+  supplierId?: string;
 };
 
 /** @deprecated Używaj `requestNote` na każdej linii w `lines`. */
@@ -217,5 +225,6 @@ export function ordersToEditLines(orders: IndividualOrder[]): IndividualRequestE
     teethDetails: mapOrderTeethDetailsToEdit(o.teeth_details) ?? null,
     teethOcrPending: o.teeth_ocr_pending ?? undefined,
     teethOcrImagePath: o.teeth_ocr_image_path ?? null,
+    supplierId: o.supplier_id ?? undefined,
   }));
 }

@@ -53,7 +53,10 @@ export function ZkWatchProsbaActions({
   teethCatalogUnavailable = false,
   canEditTeethDrafts = true,
   onTeethDraftRequested,
+  ctaWatchId,
 }: {
+  /** data-zk-prosba-cta — modal ZK wywołuje tę samą akcję co karta. */
+  ctaWatchId?: string;
   archived?: boolean;
   pending?: boolean;
   prosbaCardAction: ZkWatchProsbaCardAction;
@@ -135,6 +138,7 @@ export function ZkWatchProsbaActions({
         disabled={pending}
         title="Najpierw uzupełnij listę zębów dla pozycji ZK"
         onClick={() => onTeethDraftRequested?.()}
+        data-zk-prosba-cta={ctaWatchId}
       >
         Uzupełnij listę zębów
       </button>
@@ -166,6 +170,7 @@ export function ZkWatchProsbaActions({
         title={title}
         className={zkWatchRowActionPrimaryClass}
         aria-disabled={pending || undefined}
+        data-zk-prosba-cta={ctaWatchId}
       >
         <IconPackageCheck size={13} className="shrink-0" strokeWidth={2.25} />
         {label}

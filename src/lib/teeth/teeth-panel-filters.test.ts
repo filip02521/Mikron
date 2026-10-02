@@ -108,6 +108,25 @@ describe("filterTeethQueueGroups", () => {
     expect(headerOnly[0]?.items).toHaveLength(1);
     expect((headerOnly[0]?.items[0] as { id: string }).id).toBe("o2");
   });
+
+  it("„do uzupełnienia” obejmuje kompletną listę bez dostawcy, pomija informację", () => {
+    const [complete] = sampleGroup.items as Array<Record<string, unknown>>;
+    const group: TeethQueueGroup = {
+      ...sampleGroup,
+      items: [
+        { ...complete, id: "no-supplier", supplier_id: null },
+        { ...complete, id: "info", supplier_id: null, request_kind: "informacja", teeth_details: null },
+        complete,
+      ] as TeethQueueGroup["items"],
+    };
+    const result = filterTeethQueueGroups([group], {
+      supplierId: null,
+      salesPersonId: null,
+      missingSpecOnly: true,
+      verificationOnly: false,
+    });
+    expect(result[0]?.items.map((i) => (i as { id: string }).id)).toEqual(["no-supplier"]);
+  });
 });
 
 describe("filterTeethHistoryGroups", () => {

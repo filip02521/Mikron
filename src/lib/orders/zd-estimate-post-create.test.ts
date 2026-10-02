@@ -8,6 +8,7 @@ import {
   buildZdPostCreateSessionFromCreate,
   buildZdPostCreateSessionFromLink,
   buildZdPostCreateSessionFromTimeout,
+  buildZdSupplierMailBody,
   buildZdSupplierMailto,
   clearSalesTrackQtyReviewMeta,
   confirmedPostCreateConsumedOrderIds,
@@ -215,19 +216,33 @@ describe("zd-estimate-post-create", () => {
         email: "",
         dokNr: "ZD/1",
         supplierName: "D",
-        lineCount: 2,
-        dateKey: "2026-08-13",
       })
     ).toBeNull();
     const m = buildZdSupplierMailto({
       email: "a@b.pl",
       dokNr: "ZD/1",
       supplierName: "D",
-      lineCount: 2,
-      dateKey: "2026-08-13",
     });
     expect(m?.href).toMatch(/^mailto:/);
     expect(m?.subject).toContain("ZD/1");
+    expect(m?.body).toBe(
+      "Dzień dobry,\n\nPrzesyłam zamówienie w załączniku, uprzejmie proszę o realizację.\n\nDziękuję,"
+    );
+  });
+
+  it("mailto do zagranicy — treść po angielsku", () => {
+    const m = buildZdSupplierMailto({
+      email: "a@b.de",
+      dokNr: "ZD/1",
+      supplierName: "D",
+      location: "ZAGRANICA",
+    });
+    expect(m?.subject).toBe("New order ZD/1");
+    expect(m?.body).toBe(
+      "Dear Sir or Madam,\n\nPlease find attached our new order.\n\nThank you,"
+    );
+    expect(buildZdSupplierMailBody("IMPORT")).toBe(m?.body);
+    expect(buildZdSupplierMailBody("POLSKA")).toContain("Dzień dobry,");
   });
 
   it("TSV ze snapshota", () => {

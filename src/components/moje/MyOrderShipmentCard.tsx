@@ -1078,7 +1078,10 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           />
         ) : null}
         </div>
+        </div>
 
+        {/* Akcje obok (desktop) / pod treścią (telefon) — nie w tym samym wierszu flex co tytuł,
+            bo `w-full` na telefonie ściskało tytuł i status do zera. */}
         <div
           className={cn(
             useCompactActionsLayout ? mojeQueueRowActionsInlineClass : mojeQueueRowActionsClass
@@ -1087,7 +1090,6 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
           onMouseDown={(event) => event.stopPropagation()}
         >
           {toolbar}
-        </div>
         </div>
       </div>
 

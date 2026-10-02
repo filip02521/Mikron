@@ -231,16 +231,26 @@ export async function requireReceiveNotificationFlush(): Promise<{
   const user = await requireLoggedInUser();
   assertPasswordChangeCompleted(user);
 
-  const warehouse = canAccessWarehouse(user.role, user.assignedWorkspaces);
-  const teeth = canAccessTeethPanel(user.role, user.assignedWorkspaces);
-  if (!warehouse && !teeth) {
+  const canWarehouse = canAccessWarehouse(user.role, user.assignedWorkspaces);
+  const canTeeth = canAccessTeethPanel(user.role, user.assignedWorkspaces);
+  if (!canWarehouse && !canTeeth) {
     throw new Error("Brak uprawnień do powiadomień o przyjęciu");
   }
-  if (warehouse) {
-    await assertAdminPanelAllowsWarehouseMutations(user);
-  }
-  if (teeth) {
+  // Admin w podglądzie panelu (np. „Podgląd: Zęby”) — zawężamy zakres do tego,
+  // co wolno mutować w tym kontekście, zamiast odrzucać cały bezpiecznik.
+  const allowed = async (assert: () => Promise<void>) =>
+    assert().then(
+      () => true,
+      () => false,
+    );
+  const warehouse =
+    canWarehouse && (await allowed(() => assertAdminPanelAllowsWarehouseMutations(user)));
+  const teeth =
+    canTeeth && (await allowed(() => assertAdminPanelAllowsOperationsMutations(user)));
+  if (!warehouse && !teeth) {
+    // Ten sam komunikat co pozostałe blokady podglądu.
     await assertAdminPanelAllowsOperationsMutations(user);
+    await assertAdminPanelAllowsWarehouseMutations(user);
   }
 
   const scope = warehouse && teeth ? "all" : warehouse ? "warehouse" : "teeth";

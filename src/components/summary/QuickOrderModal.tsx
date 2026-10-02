@@ -57,6 +57,7 @@ import {
 import { useTeethExemptTwIds } from "@/components/layout/TeethExemptContext";
 import { prosbaLinesIncludeTeethProduct } from "@/lib/orders/teeth-stock-exempt";
 import type { AddIndividualOrdersEntry } from "@/lib/orders/individual-request-edit";
+import { unwrapActionResult } from "@/lib/actions/action-error";
 
 export function QuickOrderModal({
   open,
@@ -284,10 +285,10 @@ export function QuickOrderModal({
     pendingSafetyRef.current = window.setTimeout(() => setPendingMessage(null), ACTION_PENDING_SAFETY_FORM_MS);
     start(async () => {
       try {
-        const r = await actionAddIndividualOrders({
+        const r = await unwrapActionResult(actionAddIndividualOrders({
           entries,
           acknowledgeSufficientStock: options?.acknowledgeSufficientStock,
-        });
+        }));
         const lanes = classifyProsbaLinesByLane(entries, teethExemptTwIds);
         setFormNotice({
           text:

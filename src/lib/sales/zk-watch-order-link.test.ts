@@ -1137,3 +1137,50 @@ function buildLineFromWatch(w: SalesZkWatch) {
     completed_manually: false,
   };
 }
+
+describe("pokrycie pozycji ZK — prośba bez symbolu („-”)", () => {
+  const w = watch({
+    id: "w-dash",
+    subiekt_snapshot: {
+      dok_Pozycja: [
+        { ob_Id: 1, ob_TowId: 501, tw_Symbol: "PH-BL4", tw_Nazwa: "Zęby BL4 Phonares", ob_Ilosc: 1 },
+        { ob_Id: 2, ob_TowId: 503, tw_Symbol: "FUJI-2", tw_Nazwa: "Gips Fujirock 2kg", ob_Ilosc: 3 },
+      ],
+    },
+  });
+  const linked = (partial: Partial<ZkLinkableOrder> & Pick<ZkLinkableOrder, "id">) =>
+    linkOrder({ source_zk_watch_id: "w-dash", status: "Nowe", delivered_quantity: undefined, ...partial });
+
+  it("prośba na inny tw_Id nie pokrywa pozycji z myślnikiem w symbolu", () => {
+    const hints = computeZkWatchOrderHints(w, [
+      linked({ id: "o1", subiekt_tw_id: 501, symbol: "-", products: "Zęby BL4 Phonares" }),
+    ]);
+    expect(hints.lineCoverageByKey["ob:1"]).toBe("open");
+    expect(hints.lineCoverageByKey["ob:2"]).toBe("uncovered");
+  });
+
+  it("prośba bez tw_Id i z symbolem „-” nie pokrywa wszystkich pozycji", () => {
+    const hints = computeZkWatchOrderHints(w, [
+      linked({ id: "o2", subiekt_tw_id: null, symbol: "-", products: "Do uzupełnienia" }),
+    ]);
+    expect(hints.lineCoverageByKey["ob:1"]).toBe("uncovered");
+    expect(hints.lineCoverageByKey["ob:2"]).toBe("uncovered");
+  });
+
+  it("legacy: prośba bez tw_Id z opisem nadal pasuje po nazwie", () => {
+    const hints = computeZkWatchOrderHints(w, [
+      linked({ id: "o3", subiekt_tw_id: null, symbol: "-", products: "Gips Fujirock" }),
+    ]);
+    expect(hints.lineCoverageByKey["ob:2"]).toBe("open");
+    expect(hints.lineCoverageByKey["ob:1"]).toBe("uncovered");
+  });
+
+  it("strict: placeholder „-” po obu stronach nie jest dopasowaniem", () => {
+    expect(
+      productMatchesZkLine(
+        linkOrder({ id: "o4", subiekt_tw_id: null, symbol: "-", products: "A" }),
+        { ...buildLineFromWatch(w), symbol: "-", subiektTwId: null, product: "B" }
+      )
+    ).toBe(false);
+  });
+});

@@ -40,7 +40,8 @@ export function ZkWatchLinesMetaSection({
   const canEdit = !readOnly && !tourPreview && !archived;
   const clientContact = extractZkWatchClientContact(watch);
   const issued = formatShortDate(watch.zk_issued_at);
-  const subtitle = zkWatchSubtitle(watch, { omitLineSummary: true });
+  // Data wystawienia ma własny kafelek — bez powtórki w podpisie.
+  const subtitle = zkWatchSubtitle(watch, { omitLineSummary: true, omitIssued: true });
 
   const hasContact = Boolean(clientContact.phone || clientContact.email);
   const hasFacts = hasContact || issued || watch.amount_gross != null || Boolean(subtitle);

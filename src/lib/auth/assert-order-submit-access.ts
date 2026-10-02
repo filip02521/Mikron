@@ -1,7 +1,7 @@
 import type { SessionUser } from "@/lib/auth";
 import {
   assertAdminNotInReadOnlyPanelPreview,
-  assertAdminPanelAllowsProcurementBoardMutations,
+  assertAdminPanelAllowsOperationsMutations,
 } from "@/lib/auth/guard-admin-panel-preview";
 import { canAccessSalesPerson } from "@/lib/data/sales-group-access";
 import { canAccessOperations, canAccessTeethPanel, isAdmin, isSales, isSalesManager } from "@/lib/auth-roles";
@@ -25,7 +25,10 @@ export async function assertCanSubmitIndividualOrders(
   if (isSales(user.role) || isSalesManager(user.role)) {
     await assertAdminNotInReadOnlyPanelPreview(user);
   } else if (isAdmin(user.role)) {
-    await assertAdminPanelAllowsProcurementBoardMutations(user);
+    // Prośba to praca operacyjna: admin / zakupy / zakupy_zeby. Wcześniej guard
+    // Tablicy (tylko admin / zakupy) — prośba zębowa z panelu zębów zawsze
+    // padała na „Tryb podglądu panelu”, a w produkcji jako „Nie udało się wysłać”.
+    await assertAdminPanelAllowsOperationsMutations(user);
   }
 
   if (isSalesManager(user.role)) {

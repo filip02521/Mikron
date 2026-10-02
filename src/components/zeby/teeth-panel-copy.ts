@@ -5,7 +5,7 @@ export const TEETH_PANEL_TITLE = "Panel zębów";
 
 export const TEETH_PRZYJECIE_PAGE_TITLE = "Przyjęcie";
 export const TEETH_PRZYJECIE_PAGE_HINT =
-  "Porównaj dostawę z zamówieniem u dostawcy — wpisz co dotarło, a czego brakuje. Bez e-maila i regału.";
+  "Porównaj dostawę z zamówieniem — wpisz, co dotarło, a czego brakuje. Handlowiec zobaczy to od razu.";
 
 export const TEETH_BRAKI_PAGE_TITLE = "Braki u dostawców";
 export const TEETH_BRAKI_PAGE_HINT =
@@ -23,8 +23,8 @@ export const TEETH_BRAKI_ADD_COPY = {
   emptyAction: "Dodaj pierwszy brak",
 } as const;
 export const TEETH_TAB_PAGE_TITLES: Record<Tab, string> = {
-  kolejka: "Kolejka",
-  weryfikacja: "Weryfikacja zębów",
+  kolejka: "Do zamówienia",
+  weryfikacja: "Weryfikacja list",
   historia: "Historia",
 };
 
@@ -45,16 +45,12 @@ export const TEETH_SCHEDULE_ORDER_LABEL = TEETH_MARK_ORDERED_LABEL;
 export const TEETH_SCHEDULE_ORDER_TITLE = TEETH_MARK_ORDERED_TITLE;
 
 export const TEETH_TAB_HINTS: Record<Tab, string> = {
-
   kolejka:
-
-    "Prośby pogrupowane wg dostawcy. Wrzuć jeden plik zamówienia (Excel/PDF/XML) na grupę — np. 4 prośby Ivoclar = jeden plik. Dopiero wtedy możesz oznaczyć je jako zamówione. Handlowiec pobierze ten plik w Moje.",
-
+    "Prośby handlowców pogrupowane wg dostawcy. Uzupełnij listy, wgraj plik zamówienia i oznacz jako zamówione.",
   weryfikacja:
-    "Prośby z listą zębów wczytaną ze zdjęcia. Zweryfikuj pozycje i zatwierdź, lub popraw przed zamówieniem.",
-
+    "Listy zębów odczytane ze zdjęć. Sprawdź pozycje ze zdjęciem i zatwierdź — trafią do zamówienia.",
   historia:
-    "Zamówienia pogrupowane wg dostawcy. Korekta daty dostawy, cofnięcie błędnego oznaczenia i dziennik operacji.",
+    "Zamówione u dostawców. Popraw datę dostawy, cofnij błędne oznaczenie, zobacz dziennik.",
 };
 
 export const TEETH_QUICK_ORDER_COPY = {

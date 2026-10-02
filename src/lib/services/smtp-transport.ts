@@ -24,6 +24,8 @@ export type SmtpSendParams = {
   to: string | string[];
   cc?: string[];
   bcc?: string[];
+  /** Odpowiedzi trafiają tu zamiast na adres systemowy (np. do osoby wysyłającej). */
+  replyTo?: string;
   subject: string;
   html: string;
   attachments?: SmtpAttachment[];
@@ -71,6 +73,7 @@ export async function sendMailRaw(
     to: params.to,
     cc: params.cc?.length ? params.cc : undefined,
     bcc: params.bcc?.length ? params.bcc : undefined,
+    replyTo: params.replyTo || undefined,
     subject: params.subject,
     html: params.html,
     attachments: params.attachments?.map((a) => ({

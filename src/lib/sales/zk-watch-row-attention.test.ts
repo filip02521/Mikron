@@ -286,11 +286,23 @@ describe("buildZkWatchCardMetaSummary", () => {
     const summary = buildZkWatchCardMetaSummary({
       prosbaScopeSummary: "Wybierz pozycje do zamówienia",
       prosbaRowMeta: null,
-      lineStatusSummary: "1 do zamówienia",
+      lineStatusSummary: "1 bez prośby",
       secondaryMeta: [],
       primaryAttention: null,
     });
-    expect(summary).toBe("Wybierz pozycje do zamówienia · 1 do zamówienia");
+    expect(summary).toBe("Wybierz pozycje do zamówienia · 1 bez prośby");
     expect(summary).not.toMatch(/Prośba:/);
+  });
+
+  it("nie powtarza tych samych fragmentów z zakresu i statusu", () => {
+    expect(
+      buildZkWatchCardMetaSummary({
+        prosbaScopeSummary: "1 do zamówienia · 1 pominięte",
+        prosbaRowMeta: null,
+        lineStatusSummary: "1 bez prośby · 1 pominięte",
+        secondaryMeta: [],
+        primaryAttention: null,
+      })
+    ).toBe("1 do zamówienia · 1 pominięte · 1 bez prośby");
   });
 });

@@ -48,4 +48,20 @@ describe("assertCanSubmitIndividualOrders", () => {
       assertCanSubmitIndividualOrders(adminUser, [{ salesPersonId: "sp-1" }])
     ).resolves.toBeUndefined();
   });
+
+  it("zezwala adminowi w panelu zębów (prośba zębowa dla handlowca)", async () => {
+    cookiesMock.mockReturnValue({ get: () => ({ value: "zakupy_zeby" }) });
+
+    await expect(
+      assertCanSubmitIndividualOrders(adminUser, [{ salesPersonId: "sp-1" }])
+    ).resolves.toBeUndefined();
+  });
+
+  it("nadal blokuje admina w podglądzie magazynu", async () => {
+    cookiesMock.mockReturnValue({ get: () => ({ value: "magazyn" }) });
+
+    await expect(
+      assertCanSubmitIndividualOrders(adminUser, [{ salesPersonId: "sp-1" }])
+    ).rejects.toThrow(ADMIN_PANEL_PREVIEW_MUTATION_BLOCKED);
+  });
 });

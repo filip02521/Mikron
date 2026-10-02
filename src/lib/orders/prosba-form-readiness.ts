@@ -19,6 +19,7 @@ import {
 } from "@/lib/teeth/teeth-procurement-flow-copy";
 import { prosbaLinesViolateZkCatalog } from "@/lib/orders/zk-prosba-catalog-guard";
 import { ZK_PROSBA_LINK_BANNER_COPY } from "@/lib/orders/zk-prosba-link-banner-copy";
+import { polishPlural } from "@/lib/email/polish-plural";
 
 export type ProsbaReadinessStepState = "empty" | "done" | "action" | "handoff";
 
@@ -124,7 +125,7 @@ export function buildProsbaFormReadiness(
       : productDone
         ? filled.length === 1
           ? "Symbol, kod lub opis"
-          : `${filled.length} pozycje`
+          : polishPlural(filled.length, "pozycja", "pozycje", "pozycji")
         : "Symbol, kod Mikran lub nazwa",
   };
 

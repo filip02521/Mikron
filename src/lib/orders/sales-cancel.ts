@@ -8,6 +8,7 @@ import {
 } from "@/lib/orders/individual";
 import type { IndividualOrder, IndividualOrderStatus } from "@/types/database";
 import { undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
+import { polishPlural } from "@/lib/email/polish-plural";
 
 export type SalesCancelPhase = "before_order" | "in_transit" | "on_stock";
 
@@ -171,7 +172,7 @@ export function salesCancelLineRemainderLabel(remainder?: number): string {
 export function salesCancelLineRemainderAriaLabel(remainder: number): string {
   const n = Math.max(1, Math.trunc(remainder));
   return n > 1
-    ? `Rezygnuj z reszty u dostawcy: ${n} sztuki`
+    ? `Rezygnuj z reszty u dostawcy: ${polishPlural(n, "sztuka", "sztuki", "sztuk")}`
     : "Rezygnuj z reszty u dostawcy";
 }
 

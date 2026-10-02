@@ -49,6 +49,7 @@ export function editInitialFromForSomeoneGroup(
       source: null,
       requestNote: normalizeSalesRequestNote(l.requestNote) ?? "",
       teethDetails: l.teethDetails ?? undefined,
+      supplierId: g.supplierId || undefined,
     })),
   };
 }
@@ -99,6 +100,7 @@ export function editInitialFromOrders(orders: IndividualOrder[]): EditIndividual
       teethDetails: l.teethDetails ?? undefined,
       teethOcrPending: l.teethOcrPending,
       teethOcrImagePath: l.teethOcrImagePath ?? null,
+      supplierId: l.supplierId,
     })),
   };
 }

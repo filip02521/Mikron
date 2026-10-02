@@ -726,6 +726,7 @@ export function ZkWatchCard({
               teethCatalogUnavailable={teethRegistry?.catalogAvailable === false}
               canEditTeethDrafts={canEdit}
               onTeethDraftRequested={() => onTeethDraftRequested?.(watch.id)}
+              ctaWatchId={watch.id}
             />
 
             {!archived ? (

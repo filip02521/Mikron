@@ -356,5 +356,18 @@ export function buildZkWatchCardMetaSummary(parts: {
     ...parts.secondaryMeta,
   ].filter((segment): segment is string => Boolean(segment?.trim()));
 
-  return segments.length ? segments.join(" · ") : null;
+  // Te same fragmenty z różnych źródeł („1 pominięte” w zakresie i w statusie)
+  // pokazuj raz.
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const segment of segments) {
+    for (const piece of segment.split(" · ")) {
+      const key = piece.trim();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      unique.push(key);
+    }
+  }
+
+  return unique.length ? unique.join(" · ") : null;
 }

@@ -17,6 +17,7 @@ import { collectPartialLineKeysFromCoverage } from "@/lib/sales/zk-watch-order-l
 import { deriveZkWatchProsbaCardAction } from "@/lib/sales/zk-watch-line-ui-state";
 import { buildZkWatchLineViews } from "@/lib/sales/zk-watch-lines";
 import { salesTypography } from "@/lib/ui/ontime-theme";
+import { Button } from "@/components/ui/Button";
 import { ZK_MODAL_PROSBA_COPY, ZK_MODAL_SECTION_HINTS, ZK_MODAL_SECTION_TITLES } from "@/lib/sales/zk-modal-section-copy";
 import type { SalesZkWatch } from "@/types/database";
 import { ZkWatchProsbaCoveredPanel } from "./ZkWatchProsbaCoveredPanel";
@@ -30,7 +31,10 @@ export function ZkWatchProsbaSection({
   tourPreview = false,
   archived,
   newLineKeys = [],
+  onRequestProsba,
 }: {
+  /** Zamyka modal i uruchamia akcję prośby z karty ZK (ta sama logika). */
+  onRequestProsba?: () => void;
   watch: SalesZkWatch;
   linkableOrders?: ZkLinkableOrder[];
   orderHints?: ZkWatchOrderHints;
@@ -155,11 +159,24 @@ export function ZkWatchProsbaSection({
           <p className={cn(salesTypography.rowBody, "font-medium text-slate-800")}>
             {ZK_MODAL_PROSBA_COPY.emptyTitle}
           </p>
-          <p className={cn("mt-1", salesTypography.rowMeta, "text-slate-600")}>
-            {ZK_MODAL_PROSBA_COPY.emptyHintPrefix}{" "}
-            <span className="font-medium">{ZK_MODAL_PROSBA_COPY.createProsbaAction}</span> lub{" "}
-            <span className="font-medium">{ZK_MODAL_PROSBA_COPY.supplementAction}</span>.
-          </p>
+          {onRequestProsba &&
+          (prosbaCardAction.kind === "new_prosba" ||
+            prosbaCardAction.kind === "supplement") ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <Button type="button" size="sm" onClick={onRequestProsba}>
+                {prosbaCardAction.label}
+              </Button>
+              <span className={cn(salesTypography.rowMeta, "text-slate-500")}>
+                Otworzy prośbę z pozycjami tego ZK.
+              </span>
+            </div>
+          ) : (
+            <p className={cn("mt-1", salesTypography.rowMeta, "text-slate-600")}>
+              {ZK_MODAL_PROSBA_COPY.emptyHintPrefix}{" "}
+              <span className="font-medium">{ZK_MODAL_PROSBA_COPY.createProsbaAction}</span> lub{" "}
+              <span className="font-medium">{ZK_MODAL_PROSBA_COPY.supplementAction}</span>.
+            </p>
+          )}
         </div>
       ) : (
         <p className={cn(salesTypography.rowMeta, "text-slate-500")}>

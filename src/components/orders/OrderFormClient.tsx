@@ -113,6 +113,7 @@ import {
   buildZkProsbaSuccessFlash,
   stashProsbaSuccessFlash,
 } from "@/lib/orders/prosba-success-flash";
+import { unwrapActionResult } from "@/lib/actions/action-error";
 
 interface Entry {
   id: string;
@@ -828,7 +829,7 @@ export function OrderFormClient({
       let redirectingToZk = false;
       try {
         assertProsbaLinesBelongToZk(entries, zkCtx?.allowedTwIds);
-        const r = await actionAddIndividualOrders({
+        const r = await unwrapActionResult(actionAddIndividualOrders({
           entries: entries.map((e) => ({
             supplierId: e.supplierId || undefined,
             salesPersonId: e.salesPersonId,
@@ -856,7 +857,7 @@ export function OrderFormClient({
             teethOcrImagePath: e.teethOcrImagePath ?? undefined,
           })),
           acknowledgeSufficientStock: options?.acknowledgeSufficientStock,
-        });
+        }));
         const defaultSuccessText =
           singleGroup && lockedSalesPerson
             ? requestKind === "informacja" && informacjaFlags.informacjaStockOutReorder
@@ -1595,17 +1596,13 @@ export function OrderFormClient({
               submitForOther
                 ? `Zgłaszasz w imieniu: ${lockedSalesPerson.name}. Po wysłaniu prośba pojawi się w jego liście „Moje zamówienia”.`
                 : zkProsbaLinkContext && !tourDemo
-                  ? [
-                      zkProsbaLinkContext.mode === "supplement"
-                        ? ZK_PROSBA_LINK_BANNER_COPY.titleSupplement
-                        : ZK_PROSBA_LINK_BANNER_COPY.titleFull,
-                      `· ZK ${zkProsbaLinkContext.zkNumber.trim()}`,
-                      zkProsbaLinkContext.clientLabel?.trim()
-                        ? `· ${zkProsbaLinkContext.clientLabel.trim()}`
-                        : null,
+                  ? // Tytuł „Tworzysz prośbę…” jest w banerze poniżej — tu tylko ZK i klient.
+                    [
+                      `ZK ${zkProsbaLinkContext.zkNumber.trim().replace(/^zk\s*/i, "")}`,
+                      zkProsbaLinkContext.clientLabel?.trim() || null,
                     ]
                       .filter(Boolean)
-                      .join(" ")
+                      .join(" · ")
                   : undefined
             }
           />

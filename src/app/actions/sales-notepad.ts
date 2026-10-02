@@ -85,7 +85,10 @@ import { buildMojeClientLink } from "@/lib/sales/notepad-follow-up";
 import { appendMojeFocusOrderIds } from "@/lib/orders/moje-order-focus";
 import { fetchProsbaLineStock } from "@/lib/orders/fetch-prosba-line-stock";
 import { collectProsbaLineTwIdsMissingStock } from "@/lib/orders/prosba-stock-check";
-import { ProsbaSufficientStockError } from "@/lib/orders/prosba-stock-server";
+import {
+  PROSBA_STOCK_ACK_REQUIRED_CODE,
+  ProsbaSufficientStockError,
+} from "@/lib/orders/prosba-stock-server";
 import { assertCanSubmitIndividualOrders } from "@/lib/auth/assert-order-submit-access";
 import { shouldIncludeZkCaseNoteInPrefill } from "@/lib/sales/zk-watch-case-note-prosba";
 import { actionAddIndividualOrders } from "@/app/actions/admin";
@@ -99,6 +102,7 @@ import {
 import { resolveZkProsbaPrefillSalesPersonAccess } from "@/lib/sales/zk-prosba-prefill-access";
 import type { SalesNote, SalesNoteColor, SalesZkWatch } from "@/types/database";
 import type { SupabaseClient } from "@/lib/db/admin";
+import { ActionError, unwrapActionResult } from "@/lib/actions/action-error";
 
 async function salesPersonIdForAction(delegateFor?: string): Promise<string> {
   const user = await getSessionUser();
@@ -1834,11 +1838,11 @@ export async function actionAutoCreateProsbaFromZkWatch(
   }
 
   try {
-    const result = await actionAddIndividualOrders({
+    const result = await unwrapActionResult(actionAddIndividualOrders({
       entries: lines,
       acknowledgeSufficientStock: options?.acknowledgeSufficientStock,
       stockByTwId,
-    });
+    }));
 
     const code = resolveAutoProsbaResultCodeAfterSubmit({
       hints,
@@ -1872,8 +1876,15 @@ export async function actionAutoCreateProsbaFromZkWatch(
       actionHref,
     });
   } catch (e) {
-    if (e instanceof ProsbaSufficientStockError) {
-      return toastForAutoProsbaBlockedCode("error_stock_ack_required", e.message);
+    // actionAddIndividualOrders zwraca błąd przez wartość → tu ActionError z kodem.
+    if (
+      e instanceof ProsbaSufficientStockError ||
+      (e instanceof ActionError && e.code === PROSBA_STOCK_ACK_REQUIRED_CODE)
+    ) {
+      return toastForAutoProsbaBlockedCode(
+        "error_stock_ack_required",
+        (e as Error).message
+      );
     }
     const message = userFacingErrorText(e, "Nie udało się utworzyć prośby.");
     if (message.includes("Trwa inna operacja")) {

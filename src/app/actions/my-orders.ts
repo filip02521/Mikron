@@ -1,5 +1,7 @@
 "use server";
 
+import { runActionSafely } from "@/lib/actions/action-error";
+
 // @user-jwt-ok — autoryzacja require*() + RLS individual_orders (071) dla mutacji handlowca.
 
 import { revalidatePath } from "next/cache";
@@ -196,121 +198,124 @@ export async function actionSalesCancelOrders(
   orderIds: string[],
   options?: { quantityById?: Record<string, number> }
 ) {
-  if (!orderIds.length) throw new Error("Brak pozycji do anulowania.");
-  const salesPersonId = await salesPersonIdForAction();
-  const supabase = await salesOrderSupabase();
-  const caps = await getSalesCancelDbCaps(supabase);
-  const now = new Date().toISOString();
-  const quantityById = options?.quantityById ?? {};
+  // Błędy przez wartość zwracaną — w produkcji Next ukrywa treść throw.
+  return runActionSafely(async () => {
+    if (!orderIds.length) throw new Error("Brak pozycji do anulowania.");
+    const salesPersonId = await salesPersonIdForAction();
+    const supabase = await salesOrderSupabase();
+    const caps = await getSalesCancelDbCaps(supabase);
+    const now = new Date().toISOString();
+    const quantityById = options?.quantityById ?? {};
 
-  const { data: rowsRaw, error: fetchError } = await supabase
-    .from("individual_orders")
-    .select(salesCancelOrderSelect(caps))
-    .in("id", orderIds);
+    const { data: rowsRaw, error: fetchError } = await supabase
+      .from("individual_orders")
+      .select(salesCancelOrderSelect(caps))
+      .in("id", orderIds);
 
-  if (fetchError) {
-    if (fetchError.message?.includes("sales_cancelled_at")) {
-      throw new Error(SALES_CANCEL_MIGRATION_HINT);
-    }
-    if (fetchError.message?.includes("sales_cancelled_quantity")) {
-      throw new Error(SALES_CANCEL_QUANTITY_MIGRATION_HINT);
-    }
-    throw new Error(fetchError.message);
-  }
-  const rows = (rowsRaw ?? []) as unknown as IndividualOrder[];
-  if (!rows.length) throw new Error("Nie znaleziono pozycji.");
-
-  const toCancel: {
-    id: string;
-    phase: NonNullable<ReturnType<typeof resolveSalesCancelPhase>>;
-    quantityPlan?: ReturnType<typeof planSalesCancelQuantity>;
-  }[] = [];
-
-  for (const row of rows) {
-    if (row.sales_person_id !== salesPersonId) {
-      throw new Error("Brak uprawnień do tej pozycji.");
-    }
-    if (row.sales_acknowledged_at) {
-      throw new Error("Ta pozycja jest już zamknięta.");
-    }
-
-    const phase = resolveSalesCancelPhase(row as IndividualOrder);
-    if (!phase) {
-      if (caps.hasCancelledAt && row.sales_cancelled_at) {
-        continue;
+    if (fetchError) {
+      if (fetchError.message?.includes("sales_cancelled_at")) {
+        throw new Error(SALES_CANCEL_MIGRATION_HINT);
       }
-      throw new Error("Tej prośby nie można już wycofać.");
-    }
-    if (!caps.hasCancelledAt && phase !== "before_order") {
-      throw new Error(SALES_CANCEL_MIGRATION_HINT);
-    }
-
-    let quantityPlan: ReturnType<typeof planSalesCancelQuantity> | undefined;
-    const requestedQty = quantityById[row.id];
-    if (requestedQty != null || caps.hasCancelledQuantity) {
-      if (!caps.hasCancelledQuantity && requestedQty != null) {
+      if (fetchError.message?.includes("sales_cancelled_quantity")) {
         throw new Error(SALES_CANCEL_QUANTITY_MIGRATION_HINT);
       }
-      if (caps.hasCancelledQuantity) {
-        quantityPlan = planSalesCancelQuantity(row as IndividualOrder, requestedQty);
+      throw new Error(fetchError.message);
+    }
+    const rows = (rowsRaw ?? []) as unknown as IndividualOrder[];
+    if (!rows.length) throw new Error("Nie znaleziono pozycji.");
+
+    const toCancel: {
+      id: string;
+      phase: NonNullable<ReturnType<typeof resolveSalesCancelPhase>>;
+      quantityPlan?: ReturnType<typeof planSalesCancelQuantity>;
+    }[] = [];
+
+    for (const row of rows) {
+      if (row.sales_person_id !== salesPersonId) {
+        throw new Error("Brak uprawnień do tej pozycji.");
       }
+      if (row.sales_acknowledged_at) {
+        throw new Error("Ta pozycja jest już zamknięta.");
+      }
+
+      const phase = resolveSalesCancelPhase(row as IndividualOrder);
+      if (!phase) {
+        if (caps.hasCancelledAt && row.sales_cancelled_at) {
+          continue;
+        }
+        throw new Error("Tej prośby nie można już wycofać.");
+      }
+      if (!caps.hasCancelledAt && phase !== "before_order") {
+        throw new Error(SALES_CANCEL_MIGRATION_HINT);
+      }
+
+      let quantityPlan: ReturnType<typeof planSalesCancelQuantity> | undefined;
+      const requestedQty = quantityById[row.id];
+      if (requestedQty != null || caps.hasCancelledQuantity) {
+        if (!caps.hasCancelledQuantity && requestedQty != null) {
+          throw new Error(SALES_CANCEL_QUANTITY_MIGRATION_HINT);
+        }
+        if (caps.hasCancelledQuantity) {
+          quantityPlan = planSalesCancelQuantity(row as IndividualOrder, requestedQty);
+        }
+      }
+
+      toCancel.push({ id: row.id, phase, quantityPlan });
     }
 
-    toCancel.push({ id: row.id, phase, quantityPlan });
-  }
-
-  if (!toCancel.length) {
-    throw new Error("Wybrane pozycje są już wycofane lub zamknięte.");
-  }
-
-  for (const { id, phase, quantityPlan } of toCancel) {
-    const row = rows.find((r) => r.id === id)!;
-    const update = buildSalesCancelUpdate(caps, phase, now, quantityPlan);
-    if (!update) {
-      throw new Error(SALES_CANCEL_MIGRATION_HINT);
-    }
-    mergeSalesCancelUserAutoAck(update, row as IndividualOrder, caps, now);
-    const isFullCancellation = !quantityPlan?.keepLineActiveForSales;
-    if (isFullCancellation) {
-      mergeAutoFulfillCancelDisposition(update, phase, now);
+    if (!toCancel.length) {
+      throw new Error("Wybrane pozycje są już wycofane lub zamknięte.");
     }
 
-    const q = supabase
-      .from("individual_orders")
-      .update(update)
-      .eq("id", id)
-      .eq("sales_person_id", salesPersonId)
-      .is("sales_acknowledged_at", null);
+    for (const { id, phase, quantityPlan } of toCancel) {
+      const row = rows.find((r) => r.id === id)!;
+      const update = buildSalesCancelUpdate(caps, phase, now, quantityPlan);
+      if (!update) {
+        throw new Error(SALES_CANCEL_MIGRATION_HINT);
+      }
+      mergeSalesCancelUserAutoAck(update, row as IndividualOrder, caps, now);
+      const isFullCancellation = !quantityPlan?.keepLineActiveForSales;
+      if (isFullCancellation) {
+        mergeAutoFulfillCancelDisposition(update, phase, now);
+      }
 
-    const { data: updated, error } = await q.select("id");
+      const q = supabase
+        .from("individual_orders")
+        .update(update)
+        .eq("id", id)
+        .eq("sales_person_id", salesPersonId)
+        .is("sales_acknowledged_at", null);
 
-    if (error) {
-      if (
-        error.message?.includes("sales_cancelled_at") ||
-        error.message?.includes("sales_cancel_phase") ||
-        error.message?.includes("sales_cancelled_quantity")
-      ) {
-        throw new Error(
+      const { data: updated, error } = await q.select("id");
+
+      if (error) {
+        if (
+          error.message?.includes("sales_cancelled_at") ||
+          error.message?.includes("sales_cancel_phase") ||
           error.message?.includes("sales_cancelled_quantity")
-            ? SALES_CANCEL_QUANTITY_MIGRATION_HINT
-            : SALES_CANCEL_MIGRATION_HINT
-        );
+        ) {
+          throw new Error(
+            error.message?.includes("sales_cancelled_quantity")
+              ? SALES_CANCEL_QUANTITY_MIGRATION_HINT
+              : SALES_CANCEL_MIGRATION_HINT
+          );
+        }
+        throw new Error(error.message);
       }
-      throw new Error(error.message);
+      if (!updated?.length) {
+        throw new Error("Nie udało się wycofać pozycji — odśwież listę i spróbuj ponownie.");
+      }
     }
-    if (!updated?.length) {
-      throw new Error("Nie udało się wycofać pozycji — odśwież listę i spróbuj ponownie.");
-    }
-  }
 
-  revalidatePath("/moje");
-  revalidatePath("/podsumowanie");
-  revalidatePath("/kolejka");
-  return {
-    success: true,
-    count: toCancel.length,
-    phases: [...new Set(toCancel.map((t) => t.phase))],
-  };
+    revalidatePath("/moje");
+    revalidatePath("/podsumowanie");
+    revalidatePath("/kolejka");
+    return {
+      success: true,
+      count: toCancel.length,
+      phases: [...new Set(toCancel.map((t) => t.phase))],
+    };
+  });
 }
 
 /** Wycofanie konkretnych grup zębów przez handlowca. */
