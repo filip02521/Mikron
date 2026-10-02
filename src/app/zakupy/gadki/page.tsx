@@ -6,7 +6,7 @@ import {
   fetchGadkiPageData,
 } from "@/lib/data/external-warehouse-gadki";
 import { syncExternalWarehouseZkLinks } from "@/lib/external-warehouse/sync";
-import { formatSyncDiffBanner } from "@/lib/external-warehouse/copy";
+import { formatSyncDiffBanner, isSyncResultError } from "@/lib/external-warehouse/copy";
 import {
   getSubiektAvailability,
   isSubiektAvailableForZdSync,
@@ -81,10 +81,9 @@ export default async function MagazynGadkiPage() {
           results.map((r) => ({
             zkNumber: r.zkNumber,
             diff: r.diff,
-            error:
-              r.status === "error" || r.status === "unavailable"
-                ? r.error ?? r.status
-                : null,
+            error: isSyncResultError(r) ? r.error ?? r.status : null,
+            rebalanced: r.rebalanced,
+            replacedDokId: r.replacedDokId,
           }))
         );
         const locked = results.some((r) => r.status === "locked");

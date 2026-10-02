@@ -306,6 +306,10 @@ export interface ExternalWarehouseZkLink {
   line_summary: string | null;
   snapshot_hash: string | null;
   last_synced_at: string | null;
+  /** Migracja 161 — ostatni błąd synchronizacji z Subiektem (null = OK). */
+  last_sync_error?: string | null;
+  last_sync_error_at?: string | null;
+  last_sync_attempt_at?: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -349,12 +353,15 @@ export interface ExternalWarehouseNote {
 export type ExternalWarehouseChangeKind =
   | "zk_linked"
   | "zk_unlinked"
+  | "zk_replaced"
   | "lines_added"
   | "lines_removed"
   | "qty_changed"
+  | "line_changed"
   | "pallet_changed"
   | "pallet_renamed"
   | "pallet_shares_changed"
+  | "shares_rebalanced"
   | "line_note"
   | "site_note";
 
