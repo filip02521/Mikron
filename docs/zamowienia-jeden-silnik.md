@@ -88,7 +88,7 @@ Dostawca „na żądanie” — tylko sygnał „Pilne”, bez planowych.
 | 1. Jeden silnik | Wydzielenie obliczeń kreatora do modułu serwerowego używanego przez Kreator i nocny przebieg; panel Braki pokazuje „Do ZD” z tego silnika; usunięcie szkiców i tworzenia ZD z panelu; „Przygotuj ZD” = otwarcie Kreatora | Dla 5 dostawców liczba w panelu = „Do ZD” w Kreatorze (ten sam dzień danych) |
 | 2. Porządek w zakresach ✅ | Tylko w obrębie przypisanych grup/cech. Indeks towar → grupa/cechy z Subiekta (nocą lub „Odśwież teraz”); podpowiedzi zakresów z historii ZD (pokrycie + czystość); kilka zakresów na dostawcę (Kreator i noc łączą w jedną listę); wspólne zakresy — przypisanie towaru do dostawcy; „Ostatnie ZD: …” w Kreatorze | Okno Zakresy pokazuje pokrycie i podpowiedzi; Kreator dla dostawcy wspólnego zakresu liczy właściwego dostawcę |
 | 3. Czas dostawy i harmonogram ✅ | Opcja „Do kolejnej dostawy” w Kreatorze (domyślnie wyłączona, przełącznik w formularzu i w pasku listy, pamiętana w sesji); sygnały „przed dostawą” / „przed kolejną dostawą” w panelu Braki; baner „Zamów dziś poza planem” w panelu dziennym | Horyzont zgodny z ręcznym wyliczeniem (testy); bez opcji ilości bez zmian |
-| 4. Gotowa lista w Kreatorze | Kreator otwiera się z listą z nocy + znacznik wieku danych; „Przelicz” na żywo | Otwarcie Ivoclar < 3 s zamiast minut |
+| 4. Gotowa lista w Kreatorze — rezygnacja | Decyzja 2026-10-03: niepotrzebne — ZD powstaje świadomie z „Przygotuj ZD”, które liczy listę na żywo | — |
 
 ## 5. Decyzje do potwierdzenia
 
