@@ -1,5 +1,7 @@
 "use client";
 
+import { SupplierOrderFormList } from "@/components/summary/SupplierOrderFormList";
+import { findSupplierFormTemplate } from "@/lib/supplier-forms/templates";
 import {
   buildZdEstimateLaunchHref,
   type SupplierSubiektScopeInfo,
@@ -31,6 +33,7 @@ import {
   IconCalendar,
   IconClock,
   IconTruck,
+  IconDownload,
   IconPackageCheck,
   IconLink,
   IconLinkOff,
@@ -474,6 +477,16 @@ export function SupplierDrawer({
               ) : null}
             </dl>
           </DrawerSection>
+
+          {findSupplierFormTemplate(supplier.name) ? (
+            <DrawerSection
+              title="Formularz zamówienia"
+              hint="Formularz dostawcy (PDF) wypełniony pozycjami z ZD — gotowy do wysłania"
+              icon={<IconDownload size={14} />}
+            >
+              <SupplierOrderFormList supplierId={supplier.id} />
+            </DrawerSection>
+          ) : null}
 
           <DrawerSection
             title="Terminy i rytm"

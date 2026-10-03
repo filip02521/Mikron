@@ -1,5 +1,6 @@
 "use client";
 
+import { findSupplierFormTemplate } from "@/lib/supplier-forms/templates";
 import { useEffect, useId, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -51,6 +52,7 @@ import {
   IconBuilding,
   IconCircleCheck,
   IconMail,
+  IconDownload,
 } from "@/components/icons/StrokeIcons";
 import {
   buttonPrimaryClass,
@@ -636,6 +638,17 @@ export function ZdEstimatePostCreatePanel({
                 >
                   {dokCopied ? "Skopiowano numer" : "Kopiuj numer ZD"}
                 </Button>
+              ) : null}
+              {canAct && findSupplierFormTemplate(session.supplierName) ? (
+                <a
+                  href={`/api/operations/supplier-forms/zd/${session.dokId}?supplierId=${encodeURIComponent(session.supplierId)}`}
+                  download
+                  className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800 hover:bg-slate-50 sm:w-auto"
+                  title="Formularz zamówienia dostawcy wypełniony pozycjami z tego ZD"
+                >
+                  <IconDownload size={15} className="shrink-0" />
+                  Formularz (PDF)
+                </a>
               ) : null}
             </div>
           </section>
