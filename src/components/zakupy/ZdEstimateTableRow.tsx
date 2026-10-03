@@ -105,6 +105,8 @@ export type ZdEstimateTableRowProps = {
     computedZdUnits: number
   ) => void;
   onAcceptReview: (twId: number) => void;
+  /** Ostatnie ZD na ten towar było u innego dostawcy (nazwa) — tylko podpowiedź. */
+  otherSupplierHint?: string | null;
 };
 
 /**
@@ -154,6 +156,7 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
   onSessionInclude,
   onOverrideChange,
   onAcceptReview,
+  otherSupplierHint,
 }: ZdEstimateTableRowProps) {
   const hidePairOrBomHardActions = bomRowHidesHardExclude(l);
   const hideOnRequestAction = bomRowHidesOnRequest(l);
@@ -294,6 +297,14 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
         title={l.tw_Nazwa}
       >
         <span className="zd-est-product-name">{l.tw_Nazwa}</span>
+        {otherSupplierHint ? (
+          <span
+            className="mt-0.5 block truncate text-[11px] font-medium text-amber-700"
+            title={`Ostatnie ZD na ten towar: ${otherSupplierHint}. Jeśli zamawiasz go tam, przypisz go w Dostawcy → Zakresy (wspólne zakresy) albo wyklucz.`}
+          >
+            Ostatnie ZD: {otherSupplierHint}
+          </span>
+        ) : null}
       </td>
       {showPackagingColumn ? (
         <td className="zd-estimate-pack-col whitespace-nowrap">

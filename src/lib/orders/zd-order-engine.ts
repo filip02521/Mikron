@@ -62,6 +62,11 @@ import {
   type ZdEstimateHistoryScope,
 } from "@/lib/data/zd-estimate-order-snapshots";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { listZdEstimateSupplierScopesFor } from "@/lib/data/zd-estimate-supplier-scopes";
+import {
+  loadLastZdSupplierByTwIds,
+  loadZdProductAssignments,
+} from "@/lib/data/zd-scope-order";
 import {
   fetchSubiektZdEstimateAll,
   fetchSubiektZdEstimateZkPage,
@@ -401,8 +406,23 @@ export type ZdOrderEngineInput = {
   onProgress?: (patch: ZdOrderEngineProgressPatch) => void;
 };
 
+export type ZdOrderScopeIncluded = { mode: "grupa" | "cecha"; id: number; label: string };
+
+export type ZdOrderAssignedElsewhere = {
+  twId: number;
+  twSymbol: string | null;
+  twNazwa: string;
+  supplierId: string;
+};
+
 export type ZdOrderEngineOutput = {
   result: ManualZdEstimateResult;
+  /** Zakresy w tym wyliczeniu: główny + pozostałe zakresy dostawcy. */
+  scopesIncluded: ZdOrderScopeIncluded[];
+  /** Towary ukryte, bo przypisane innemu dostawcy (wspólny zakres). */
+  assignedElsewhere: ZdOrderAssignedElsewhere[];
+  /** tw → nazwa dostawcy z ostatniego ZD, gdy inny niż liczony. */
+  otherSupplierHintByTwId: Record<number, string>;
   fetch: { pagesFetched: number; totalCountApi: number; truncated: boolean };
   historyByTwId: Map<number, { lastOrderedQty: number; linkedAt: string }> | null;
   historyFetchFailed: boolean;
@@ -465,7 +485,7 @@ export async function runZdOrderEngine(
     totalCountApi: 0,
     linesSoFar: 0,
   };
-  const fetched = await fetchSubiektZdEstimateAll(
+  const primaryFetched = await fetchSubiektZdEstimateAll(
     {
       ...(scope.mode === "grupa"
         ? { grupaId: scope.grupaId }
@@ -501,6 +521,63 @@ export async function runZdOrderEngine(
       },
     }
   );
+  // Pozostałe zakresy dostawcy (gdy liczymy jego zakres) — jedna lista „Do ZD”.
+  const supplierScopes = input.supplierId
+    ? await listZdEstimateSupplierScopesFor(input.supplierId)
+    : [];
+  const scopeIdOf = (s: { mode: string; grupaId: number | null; cechaId: number | null }) =>
+    (s.mode === "cecha" ? s.cechaId : s.grupaId) ?? 0;
+  const requestedScopeId = scopeIdOf(scope);
+  const isSupplierScope = supplierScopes.some(
+    (s) => s.mode === scope.mode && scopeIdOf(s) === requestedScopeId
+  );
+  const extraScopes = isSupplierScope
+    ? supplierScopes.filter((s) => !(s.mode === scope.mode && scopeIdOf(s) === requestedScopeId))
+    : [];
+  const scopesIncluded: ZdOrderScopeIncluded[] = [
+    {
+      mode: scope.mode,
+      id: requestedScopeId,
+      label: supplierScopes.find((s) => s.mode === scope.mode && scopeIdOf(s) === requestedScopeId)
+        ?.label ?? "",
+    },
+    ...extraScopes.map((s) => ({ mode: s.mode, id: scopeIdOf(s), label: s.label })),
+  ];
+  let fetched = primaryFetched;
+  for (const extra of extraScopes) {
+    const extraId = scopeIdOf(extra);
+    const more = await fetchSubiektZdEstimateAll(
+      {
+        ...(extra.mode === "grupa" ? { grupaId: extraId } : { cechaId: extraId }),
+        dniZapasu,
+        dataOd,
+        dataDo,
+        zapasMin: zapasMin > 0 ? zapasMin : undefined,
+        tylkoBraki: false,
+      },
+      {
+        validateFirstPage: ({ parametry }) =>
+          assertZdEstimateFilterEcho({
+            mode: extra.mode,
+            expectedGrupaId: extra.mode === "grupa" ? extraId : null,
+            expectedCechaId: extra.mode === "cecha" ? extraId : null,
+            parametry,
+          }),
+      }
+    );
+    const seen = new Set(fetched.pozycje.map((p) => Math.trunc(Number(p.tw_Id) || 0)));
+    fetched = {
+      ...fetched,
+      pozycje: [
+        ...fetched.pozycje,
+        ...more.pozycje.filter((p) => !seen.has(Math.trunc(Number(p.tw_Id) || 0))),
+      ],
+      pagesFetched: fetched.pagesFetched + more.pagesFetched,
+      totalCountApi: fetched.totalCountApi + more.totalCountApi,
+      truncated: fetched.truncated || more.truncated,
+    };
+  }
+
   touchProgress({
     phase: "settings",
     pagesCommitted: Math.max(lastFetchProgress.pagesCommitted, fetched.pagesFetched),
@@ -513,15 +590,21 @@ export async function runZdOrderEngine(
   let historyFetchFailed = false;
   const khResolve = await resolveSupplierKhIdsForHistory(input.supplierId);
   const supplierKhIds = khResolve.ok ? khResolve.khIds : [];
-  const historyScope = historyScopeFromRun(scope);
   const hostKind = requireZdEstimateSnapshotHostKind(input.ordersBaseUrl);
+  // Historia ze wszystkich zakresów dostawcy — ZD zapisuje się pod zakresem głównym
+  // uruchomienia, więc towar z drugiego zakresu ma historię pod pierwszym.
+  const historyScopes = scopesIncluded
+    .map((s) =>
+      historyScopeFromRun(
+        s.mode === "grupa"
+          ? { mode: "grupa", grupaId: s.id }
+          : { mode: "cecha", cechaId: s.id }
+      )
+    )
+    .filter((s): s is ZdEstimateHistoryScope => s != null);
   const historyFilters =
-    supplierKhIds.length > 0 && historyScope
-      ? {
-          supplierKhIds,
-          scope: historyScope,
-          hostKind,
-        }
+    supplierKhIds.length > 0 && historyScopes.length > 0
+      ? { supplierKhIds, scopes: historyScopes, hostKind }
       : null;
   // Historię ładujemy raz — po dociągnięciu partnerów/BOM/próśb (patrz niżej).
 
@@ -771,12 +854,21 @@ export async function runZdOrderEngine(
           mergedPozycje.map((p) => Math.trunc(Number(p.tw_Id) || 0)).filter((id) => id > 0)
         ),
       ];
-      const snapLines = await fetchLatestSnapshotHistoryByTwIds(historyTwIds, historyFilters);
-      for (const [twId, row] of snapLines) {
-        historyByTwId.set(twId, {
-          lastOrderedQty: row.qty,
-          linkedAt: row.linkedAt,
+      for (const historyScope of historyFilters.scopes) {
+        const snapLines = await fetchLatestSnapshotHistoryByTwIds(historyTwIds, {
+          supplierKhIds: historyFilters.supplierKhIds,
+          scope: historyScope,
+          hostKind: historyFilters.hostKind,
         });
+        for (const [twId, row] of snapLines) {
+          const prev = historyByTwId.get(twId);
+          // Kilka zakresów: wygrywa najnowsze ZD.
+          if (prev && Date.parse(prev.linkedAt) >= Date.parse(row.linkedAt)) continue;
+          historyByTwId.set(twId, {
+            lastOrderedQty: row.qty,
+            linkedAt: row.linkedAt,
+          });
+        }
       }
     } catch {
       // Historia opcjonalna dla samego wyliczenia — bez snapshotów lista działa.
@@ -830,6 +922,54 @@ export async function runZdOrderEngine(
     salesTrackPolicy,
     minStockByTwId,
   });
+
+  // Towary ze wspólnego zakresu przypisane innemu dostawcy znikają z listy.
+  // Para znika tylko w całości (obie strony przypisane gdzie indziej) — inaczej
+  // przeliczenie paczka/sztuka straciłoby partnera. Zostają komplety (BOM)
+  // i towary z prośbą tego dostawcy.
+  const assignedElsewhere: ZdOrderAssignedElsewhere[] = [];
+  if (input.supplierId) {
+    const assignments = await loadZdProductAssignments(
+      result.pozycje.flatMap((p) => (p.pair ? [p.tw_Id, p.pair.twinTwId] : [p.tw_Id]))
+    );
+    const prosbaTwIds = new Set(
+      (pendingIndividuals ?? []).map((o) => o.subiektTwId).filter((t): t is number => t != null)
+    );
+    const hidden = new Set<number>();
+    for (const line of result.pozycje) {
+      const a = assignments.get(line.tw_Id);
+      if (!a || a.supplierId === input.supplierId) continue;
+      if (line.bom || prosbaTwIds.has(line.tw_Id)) continue;
+      if (line.pair) {
+        const twin = assignments.get(line.pair.twinTwId);
+        if (!twin || twin.supplierId === input.supplierId) continue;
+      }
+      hidden.add(line.tw_Id);
+      assignedElsewhere.push({
+        twId: line.tw_Id,
+        twSymbol: line.tw_Symbol || null,
+        twNazwa: line.tw_Nazwa,
+        supplierId: a.supplierId,
+      });
+    }
+    if (hidden.size) {
+      result.pozycje = result.pozycje.filter((p) => !hidden.has(p.tw_Id));
+      result.pozycjeBase = result.pozycjeBase.filter((p) => !hidden.has(p.tw_Id));
+    }
+  }
+
+  // Podpowiedź: ostatnie ZD na ten towar było u innego dostawcy.
+  const otherSupplierHintByTwId: Record<number, string> = {};
+  if (input.supplierId) {
+    try {
+      const last = await loadLastZdSupplierByTwIds(result.pozycje.map((p) => p.tw_Id));
+      for (const [tw, hit] of last) {
+        if (hit.supplierId !== input.supplierId) otherSupplierHintByTwId[tw] = hit.supplierName;
+      }
+    } catch {
+      // Tylko podpowiedź — bez niej lista działa.
+    }
+  }
 
   const hardBase = mergeZdEstimateExcludedTwIds(
     result.pozycje,
@@ -946,6 +1086,9 @@ export async function runZdOrderEngine(
   return {
     ok: true,
     result,
+    scopesIncluded,
+    assignedElsewhere,
+    otherSupplierHintByTwId,
     fetch: {
       pagesFetched: fetched.pagesFetched,
       totalCountApi: fetched.totalCountApi,

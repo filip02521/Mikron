@@ -84,6 +84,16 @@ describe("resolveSupplierForScopeSelection", () => {
     expect(r.source).toBeNull();
     expect(r.mappingUnresolved).toBe(true);
   });
+
+  it("wspólny zakres: po nazwie tylko wśród dostawców z tym zakresem", () => {
+    const r = resolveSupplierForScopeSelection({
+      scopeName: "Falcon",
+      suppliers,
+      mappedSupplierId: null,
+      nameMatchSupplierIds: ["other-id"],
+    });
+    expect(r.supplier).toBeNull();
+  });
 });
 
 describe("applyGroupStockWindow", () => {

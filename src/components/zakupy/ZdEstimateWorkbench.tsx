@@ -176,10 +176,13 @@ import {
 import { shouldUseZdEstimateProgressShell } from "@/lib/orders/zd-estimate-progress-shell";
 import { applyGroupStockWindow, resolveSupplierForScopeSelection } from "@/lib/orders/zd-estimate-group-stock";
 import {
-  findUniqueSupplierIdForCecha,
-  findUniqueSupplierIdForGrupa,
+  resolveZdScopeSupplierMapping,
 } from "@/lib/orders/zd-estimate-supplier-scope";
 import type { ZdEstimateSupplierScopeRow } from "@/lib/data/zd-estimate-supplier-scopes";
+import type {
+  ZdOrderAssignedElsewhere,
+  ZdOrderScopeIncluded,
+} from "@/lib/orders/zd-order-engine";
 import {
   resolveZdEstimateActiveScopeLabel,
   resolveZdEstimateActiveSupplierName,
@@ -664,11 +667,14 @@ function enrichLaunchGroupOption(
 ): ZdEstimateGroupOption | null {
   if (launch.mode !== "grupa" || !launch.grupaId) return null;
   const label = launch.label?.trim() || `Grupa ${launch.grupaId}`;
-  const mappedId = findUniqueSupplierIdForGrupa(scopes, launch.grupaId);
+  // Wspólny zakres: dostawca z linku wygrywa (Polkard BIS ≠ Polkard).
+  const mapping = resolveZdScopeSupplierMapping(scopes, "grupa", launch.grupaId, launch.supplierId);
+  const mappedId = mapping.mappedSupplierId;
   const resolved = resolveSupplierForScopeSelection({
     scopeName: label,
     suppliers,
     mappedSupplierId: mappedId,
+    nameMatchSupplierIds: mapping.candidateSupplierIds,
   });
   if (resolved.supplier) {
     return {
@@ -724,11 +730,14 @@ function enrichLaunchCechaOption(
 ): ZdEstimateCechaOption | null {
   if (launch.mode !== "cecha" || !launch.cechaId) return null;
   const label = launch.label?.trim() || `Cecha ${launch.cechaId}`;
-  const mappedId = findUniqueSupplierIdForCecha(scopes, launch.cechaId);
+  // Wspólny zakres: dostawca z linku wygrywa (Polkard BIS ≠ Polkard).
+  const mapping = resolveZdScopeSupplierMapping(scopes, "cecha", launch.cechaId, launch.supplierId);
+  const mappedId = mapping.mappedSupplierId;
   const resolved = resolveSupplierForScopeSelection({
     scopeName: label,
     suppliers,
     mappedSupplierId: mappedId,
+    nameMatchSupplierIds: mapping.candidateSupplierIds,
   });
   if (resolved.supplier) {
     return {
@@ -1073,6 +1082,12 @@ export function ZdEstimateWorkbench({
   const [historyNeedsRecount, setHistoryNeedsRecount] = useState(false);
   /** Fetch historii przy Policz rzucił — cięcia mogły nie wejść. */
   const [historyFetchFailed, setHistoryFetchFailed] = useState(false);
+  /** Z ostatniego Policz: zakresy dostawcy, towary przypisane innym, podpowiedzi ZD. */
+  const [policzScopeInfo, setPoliczScopeInfo] = useState<{
+    scopesIncluded: ZdOrderScopeIncluded[];
+    assignedElsewhere: ZdOrderAssignedElsewhere[];
+    otherSupplierHintByTwId: Record<number, string>;
+  } | null>(null);
   const [extrasPolicy, setExtrasPolicy] = useState<ZdEstimateExtrasPolicy>(
     () =>
       !launch && prepFormSession?.extrasPolicy
@@ -2894,6 +2909,7 @@ export function ZdEstimateWorkbench({
       setLines(payload.lines);
       setHistoryByTwId(historyMapFromEntries(payload.historyByTwId));
       setHistoryFetchFailed(Boolean(payload.historyFetchFailed));
+      setPoliczScopeInfo(null);
 
       setPendingIndividualsLoading(false);
       setPendingIndividuals(payload.pendingIndividuals ?? []);
@@ -3131,6 +3147,7 @@ export function ZdEstimateWorkbench({
     setBoostNeedsRecount(false);
     setHistoryNeedsRecount(false);
     setHistoryFetchFailed(false);
+    setPoliczScopeInfo(null);
     setAppliedBoostPreset(boostPreset);
     setAppliedBoostPolicy(policyForBoostPreset(boostPreset));
     if (opts?.fromScopeChange) {
@@ -3347,10 +3364,10 @@ export function ZdEstimateWorkbench({
           resolveSupplierForScopeSelection({
             scopeName: selectedGroup.grt_Nazwa,
             suppliers: bootstrap.suppliers,
-            mappedSupplierId: findUniqueSupplierIdForGrupa(
-              scopes,
-              selectedGroup.grt_Id
-            ),
+            ...(() => {
+              const m = resolveZdScopeSupplierMapping(scopes, "grupa", selectedGroup.grt_Id, supplierId);
+              return { mappedSupplierId: m.mappedSupplierId, nameMatchSupplierIds: m.candidateSupplierIds };
+            })(),
           })
         );
         setSelectedGroup(next);
@@ -3384,10 +3401,10 @@ export function ZdEstimateWorkbench({
           resolveSupplierForScopeSelection({
             scopeName: selectedCecha.ctw_Nazwa,
             suppliers: bootstrap.suppliers,
-            mappedSupplierId: findUniqueSupplierIdForCecha(
-              scopes,
-              selectedCecha.ctw_Id
-            ),
+            ...(() => {
+              const m = resolveZdScopeSupplierMapping(scopes, "cecha", selectedCecha.ctw_Id, supplierId);
+              return { mappedSupplierId: m.mappedSupplierId, nameMatchSupplierIds: m.candidateSupplierIds };
+            })(),
           })
         );
         setSelectedCecha(next);
@@ -3841,6 +3858,7 @@ export function ZdEstimateWorkbench({
         setBoostNeedsRecount(false);
         setHistoryNeedsRecount(false);
         setHistoryFetchFailed(false);
+        setPoliczScopeInfo(null);
         setPendingIndividualsLoading(false);
         setAppliedBoostPreset(boostPreset);
         setAppliedBoostPolicy(policyForBoostPreset(boostPreset));
@@ -3879,6 +3897,11 @@ export function ZdEstimateWorkbench({
           )
         );
         setLines(res.result.pozycje);
+        setPoliczScopeInfo({
+          scopesIncluded: res.scopesIncluded ?? [],
+          assignedElsewhere: res.assignedElsewhere ?? [],
+          otherSupplierHintByTwId: res.otherSupplierHintByTwId ?? {},
+        });
         const histMap = new Map<
           number,
           { lastOrderedQty: number; linkedAt: string }
@@ -6622,6 +6645,39 @@ export function ZdEstimateWorkbench({
               </Button>
             </ZdEstimateNotice>
           ) : null,
+          lines &&
+          policzScopeInfo &&
+          (policzScopeInfo.scopesIncluded.length > 1 ||
+            policzScopeInfo.assignedElsewhere.length > 0) ? (
+            <ZdEstimateNotice
+              tray
+              key="policz-scope-info"
+              tone="info"
+              title="Zakresy dostawcy w tej liście"
+            >
+              {policzScopeInfo.scopesIncluded.length > 1 ? (
+                <p className="text-sm leading-snug">
+                  Lista łączy {policzScopeInfo.scopesIncluded.length} zakresy:{" "}
+                  {policzScopeInfo.scopesIncluded
+                    .map((s) => `${s.mode === "cecha" ? "cecha" : "grupa"} ${s.label || `#${s.id}`}`)
+                    .join(", ")}
+                  .
+                </p>
+              ) : null}
+              {policzScopeInfo.assignedElsewhere.length > 0 ? (
+                <p className="mt-1 text-sm leading-snug">
+                  Ukryto {policzScopeInfo.assignedElsewhere.length}{" "}
+                  {policzScopeInfo.assignedElsewhere.length === 1 ? "towar" : "towarów"} przypisanych
+                  innym dostawcom (wspólny zakres):{" "}
+                  {policzScopeInfo.assignedElsewhere
+                    .slice(0, 6)
+                    .map((a) => a.twSymbol ?? a.twNazwa)
+                    .join(", ")}
+                  {policzScopeInfo.assignedElsewhere.length > 6 ? "…" : ""}. Zmiana: Dostawcy → Zakresy.
+                </p>
+              ) : null}
+            </ZdEstimateNotice>
+          ) : null,
           historyFetchFailed && lines ? (
             <ZdEstimateNotice
               tray
@@ -7569,6 +7625,7 @@ export function ZdEstimateWorkbench({
                           onSessionInclude={handleRowSessionInclude}
                           onOverrideChange={handleRowOverrideChange}
                           onAcceptReview={handleRowAcceptReview}
+                          otherSupplierHint={policzScopeInfo?.otherSupplierHintByTwId[l.tw_Id] ?? null}
                         />
                       );
                     })}

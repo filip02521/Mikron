@@ -550,8 +550,8 @@ export async function listStockWatchSupplierOrders(): Promise<StockWatchSupplier
 /** Aktywni dostawcy z / bez zakresu w kreatorze ZD — tylko zmapowani wchodzą do analizy. */
 export async function getSupplierScopeCoverage(): Promise<{ active: number; mapped: number }> {
   const res = await query<{ active: string; mapped: string }>(
-    `SELECT count(*)::text AS active,
-            count(z.supplier_id)::text AS mapped
+    `SELECT count(DISTINCT s.id)::text AS active,
+            count(DISTINCT z.supplier_id)::text AS mapped
        FROM suppliers s
        LEFT JOIN zd_estimate_supplier_scopes z ON z.supplier_id = s.id
       WHERE COALESCE(s.is_active, true)`

@@ -112,8 +112,7 @@ import {
 } from "@/lib/services/daily-panel-undo";
 import { resolveSupplierForScopeSelection } from "@/lib/orders/zd-estimate-group-stock";
 import {
-  findUniqueSupplierIdForCecha,
-  findUniqueSupplierIdForGrupa,
+  resolveZdScopeSupplierMapping,
   type ZdEstimateScopeMappingRef,
 } from "@/lib/orders/zd-estimate-supplier-scope";
 import {
@@ -335,6 +334,12 @@ export type ZdEstimateRunResult =
        * false/undefined = nie udało się — Workbench powinien dociągnąć sam.
        */
       prosbaOverlapResolved?: boolean;
+      /** Zakresy w tym Policz: główny + pozostałe zakresy dostawcy. */
+      scopesIncluded?: import("@/lib/orders/zd-order-engine").ZdOrderScopeIncluded[];
+      /** Towary ze wspólnego zakresu przypisane innemu dostawcy (ukryte). */
+      assignedElsewhere?: import("@/lib/orders/zd-order-engine").ZdOrderAssignedElsewhere[];
+      /** tw → dostawca ostatniego ZD, gdy inny niż liczony (podpowiedź). */
+      otherSupplierHintByTwId?: Record<number, string>;
       meta: {
         pagesFetched: number;
         totalCountApi: number;
@@ -475,12 +480,13 @@ function enrichGroup(
   suppliers: ZdEstimateSupplierOption[],
   scopes: readonly ZdEstimateScopeMappingRef[] = []
 ): ZdEstimateGroupOption {
-  const mappedSupplierId = findUniqueSupplierIdForGrupa(scopes, group.grt_Id);
+  const mapping = resolveZdScopeSupplierMapping(scopes, "grupa", group.grt_Id);
   const { supplier: matched, source, mappingUnresolved } =
     resolveSupplierForScopeSelection({
       scopeName: group.grt_Nazwa,
       suppliers,
-      mappedSupplierId,
+      mappedSupplierId: mapping.mappedSupplierId,
+      nameMatchSupplierIds: mapping.candidateSupplierIds,
     });
   return {
     grt_Id: group.grt_Id,
@@ -501,12 +507,13 @@ function enrichCecha(
   suppliers: ZdEstimateSupplierOption[],
   scopes: readonly ZdEstimateScopeMappingRef[] = []
 ): ZdEstimateCechaOption {
-  const mappedSupplierId = findUniqueSupplierIdForCecha(scopes, cecha.ctw_Id);
+  const mapping = resolveZdScopeSupplierMapping(scopes, "cecha", cecha.ctw_Id);
   const { supplier: matched, source, mappingUnresolved } =
     resolveSupplierForScopeSelection({
       scopeName: cecha.ctw_Nazwa,
       suppliers,
-      mappedSupplierId,
+      mappedSupplierId: mapping.mappedSupplierId,
+      nameMatchSupplierIds: mapping.candidateSupplierIds,
     });
   return {
     ctw_Id: cecha.ctw_Id,
@@ -1429,6 +1436,9 @@ export async function actionRunZdEstimateManual(
       prosbaReservedByTwId: prosbaReservedByTwIdDto,
       prosbaOverlapCandidateTwIds,
       prosbaOverlapResolved,
+      scopesIncluded: engine.scopesIncluded,
+      assignedElsewhere: engine.assignedElsewhere,
+      otherSupplierHintByTwId: engine.otherSupplierHintByTwId,
       exclusions,
       onRequests,
       packaging,
@@ -4416,6 +4426,8 @@ export async function actionResolveZdEstimateScopeForSupplier(
 }
 
 export async function actionUpsertZdEstimateSupplierScope(input: {
+  /** Zmiana istniejącego zakresu; bez — dodanie kolejnego zakresu dostawcy. */
+  scopeId?: string | null;
   supplierId: string;
   mode: "grupa" | "cecha";
   grupaId?: number | null;
@@ -4500,11 +4512,11 @@ export async function actionListZdEstimateSupplierScopes(): Promise<
 }
 
 export async function actionDeleteZdEstimateSupplierScope(input: {
-  supplierId: string;
+  scopeId: string;
 }): Promise<{ ok: true } | { ok: false; message: string }> {
   await requireZdEstimateAdmin("mutate");
   try {
-    await deleteZdEstimateSupplierScope(input.supplierId);
+    await deleteZdEstimateSupplierScope(input.scopeId);
     return { ok: true };
   } catch (e) {
     return {

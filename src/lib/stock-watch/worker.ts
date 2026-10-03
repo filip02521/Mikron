@@ -12,7 +12,10 @@
 
 import { getPool } from "@/lib/db/pool";
 import { fetchSuppliersWithSchedules } from "@/lib/data/queries";
-import { listZdEstimateSupplierScopes } from "@/lib/data/zd-estimate-supplier-scopes";
+import {
+  groupZdEstimateScopesBySupplier,
+  listZdEstimateSupplierScopes,
+} from "@/lib/data/zd-estimate-supplier-scopes";
 import { fetchSubiektOrdersLatestFsDateKey } from "@/lib/subiekt/api";
 import { resolveSubiektOrdersConfig } from "@/lib/subiekt/config";
 import {
@@ -43,6 +46,7 @@ import {
   type StockWatchScopeFailure,
 } from "@/lib/stock-watch/data";
 import { harvestZdPurchasePrices } from "@/lib/stock-watch/price-harvest";
+import { getScopeIndexSyncedAt, syncSubiektScopeIndex } from "@/lib/orders/zd-scope-index";
 
 /** Budżet jednego wywołania crona (route ma maxDuration 900 s). */
 export const STOCK_WATCH_CRON_BUDGET_MS = 12 * 60 * 1000;
@@ -55,6 +59,24 @@ const SCOPE_SAFETY_MS = 90_000;
 
 /** Wyniki dostawców bez zakresu znikają z panelu po tylu dniach. */
 const STALE_ITEM_DAYS = 7;
+
+/** Indeks grup/cech (podpowiedzi zakresów) — przebudowa raz na dobę, ok. 2 min. */
+const SCOPE_INDEX_MAX_AGE_MS = 20 * 60 * 60 * 1000;
+const SCOPE_INDEX_MIN_TIME_MS = 4 * 60 * 1000;
+
+/** Po dostawcach, jeśli zostało czasu — nie zabiera budżetu listom „Do ZD”. */
+async function maybeSyncScopeIndex(deadlineMs: number): Promise<string | null> {
+  try {
+    const syncedAt = await getScopeIndexSyncedAt();
+    if (syncedAt && Date.now() - Date.parse(syncedAt) < SCOPE_INDEX_MAX_AGE_MS) return null;
+    if (deadlineMs - Date.now() < SCOPE_INDEX_MIN_TIME_MS) return "skipped_no_time";
+    const res = await syncSubiektScopeIndex({ deadlineMs: deadlineMs - 30_000 });
+    return res.ok ? "ok" : `failed: ${res.error ?? ""}`.slice(0, 200);
+  } catch (e) {
+    console.error("[stock-watch] scope index", e);
+    return "failed";
+  }
+}
 
 /** Okno nocne (Warszawa) — po synchronizacji katalogu (1:00–4:59). */
 export function isWarsawStockWatchWindow(date = new Date()): boolean {
@@ -122,13 +144,18 @@ export async function runStockWatchWorker(input: {
       fetchSuppliersWithSchedules(undefined, { activeOnly: true }),
     ]);
     const supplierById = new Map(suppliers.map((s) => [s.id, s]));
-    const activeScopes = scopes.filter((s) => supplierById.has(s.supplierId));
+    // Jeden przebieg na dostawcę: zakres główny, silnik dołącza pozostałe zakresy.
+    const activeScopes = [...groupZdEstimateScopesBySupplier(scopes).values()]
+      .map((list) => list[0]!)
+      .filter((s) => supplierById.has(s.supplierId));
 
     let run = await getLatestStockWatchRun(todayKey);
     const pendingIn = (r: StockWatchRun) =>
       activeScopes.filter((s) => !r.scopesDone.includes(s.supplierId));
 
     if (run && !input.force && run.status !== "running" && pendingIn(run).length === 0) {
+      // Kolejny slot crona: dostawcy policzeni — ewentualnie indeks podpowiedzi.
+      await maybeSyncScopeIndex(deadlineMs);
       return { ok: true, skipped: true, reason: "already_done_today", runId: run.id };
     }
     if (!run || input.force) {
@@ -208,6 +235,7 @@ export async function runStockWatchWorker(input: {
     }
 
     await pruneStaleStockWatchItems(STALE_ITEM_DAYS);
+    const scopeIndex = timedOut ? null : await maybeSyncScopeIndex(deadlineMs);
 
     const status: StockWatchRun["status"] = timedOut
       ? "partial"
@@ -226,6 +254,7 @@ export async function runStockWatchWorker(input: {
         lastInvocationMs: Date.now() - startedMs,
         timedOut,
         priceDocsLastInvocation: priceDocs,
+        ...(scopeIndex ? { scopeIndexLastInvocation: scopeIndex } : {}),
       },
     });
 
