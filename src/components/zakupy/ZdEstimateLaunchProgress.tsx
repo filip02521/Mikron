@@ -87,7 +87,9 @@ export function ZdEstimateLaunchProgressPanel({
   const statusHint = forceComplete
     ? zdEstimateLaunchProgressCompleteHint()
     : runProgress
-      ? zdEstimateRunPhaseStatusHint({
+      ? runProgress.phase !== "error" && runProgress.message?.trim()
+        ? runProgress.message.trim()
+        : zdEstimateRunPhaseStatusHint({
           phase: runProgress.phase,
           isLive: ordersIsLive,
           pagesLabel,

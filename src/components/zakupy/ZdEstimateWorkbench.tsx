@@ -382,6 +382,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ZdEstimateSupplierPicker } from "@/components/zakupy/ZdEstimateSupplierPicker";
 import { DataTable, TableScroll } from "@/components/ui/DataTable";
 import { useZdEstimateTableVirtualizer } from "@/hooks/useZdEstimateTableVirtualizer";
 import {
@@ -405,6 +406,7 @@ import {
   IconTarget,
 } from "@/components/icons/StrokeIcons";
 import { plPozycja } from "@/lib/ui/polish-plurals";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
 import {
@@ -512,6 +514,8 @@ type Bootstrap = {
   extrasPolicy?: ZdEstimateExtrasPolicy;
   todayScopeCoverage?: ZdEstimateScopeCoverage;
   supplierScopes?: import("@/lib/data/zd-estimate-supplier-scopes").ZdEstimateSupplierScopeRow[];
+  /** Nocna analiza Braki per dostawca — podpowiedzi w wyborze dostawcy. */
+  stockSignalBySupplierId?: Record<string, import("@/lib/stock-watch/data").StockWatchSupplierSignal>;
 };
 
 type RunMeta = {
@@ -804,6 +808,19 @@ function applyScopeSupplierFields<
   };
 }
 
+function formatDateKeyPl(key: string): string {
+  const [y, m, d] = String(key ?? "").split("-");
+  return y && m && d ? `${d}.${m}.${y}` : key;
+}
+
+function zdEstimateListScopeKey(
+  mode: ZdEstimateRunMode,
+  scopeId: number | null | undefined,
+  supplierId: string | null | undefined
+): string {
+  return `${mode}:${scopeId ?? ""}:${supplierId ?? ""}`;
+}
+
 export function ZdEstimateWorkbench({
   bootstrap,
   launch = null,
@@ -1068,7 +1085,14 @@ export function ZdEstimateWorkbench({
    * Opcja „Uwzględnij czas dostawy” — domyślnie wyłączona: bez niej Kreator
    * liczy dokładnie jak wcześniej (dni zapasu z karty).
    */
-  /** tw → cena netto za sztukę z ostatniego ZD (kolumna „Wartość”, suma ZD). */
+  /** Wybór dostawcy na starcie: tylko z przypisanym zakresem (bez niego nie ma czego liczyć). */
+  const pickerSuppliers = useMemo(() => {
+    const mapped = new Set((bootstrap.supplierScopes ?? []).map((sc) => sc.supplierId));
+    return bootstrap.suppliers
+      .filter((sup) => mapped.has(sup.id))
+      .map((sup) => ({ id: sup.id, name: sup.name, stockLabel: sup.stockLabel }));
+  }, [bootstrap.supplierScopes, bootstrap.suppliers]);
+    /** tw → cena netto za sztukę z ostatniego ZD (kolumna „Wartość”, suma ZD). */
   const [unitPriceByTwId, setUnitPriceByTwId] = useState<Record<number, number>>({});
   const [leadTimeHorizon, setLeadTimeHorizon] = useState(() =>
     Boolean(launch?.leadTimeHorizon)
@@ -1437,6 +1461,11 @@ export function ZdEstimateWorkbench({
   const bomMissingCount = missingBomTwIds.length;
   const [qtyOverrideByTwId, setQtyOverrideByTwId] = useState<Record<number, number>>({});
   const [sessionIncludeTwIds, setSessionIncludeTwIds] = useState<Record<number, true>>({});
+  /**
+   * Zakres + dostawca, z którego pochodzi obecna lista. Przeliczenie tego samego
+   * (zmiana opcji, „Policz ponownie”) zachowuje ręczne zmiany ilości i akceptacje.
+   */
+  const listScopeKeyRef = useRef<string | null>(null);
   const [packagingOpen, setPackagingOpen] = useState(false);
   const [minStockCandidate, setMinStockCandidate] =
     useState<ManualZdEstimateLine | null>(null);
@@ -2962,6 +2991,11 @@ export function ZdEstimateWorkbench({
       setMissingBomTwIds(payload.missingBomTwIds ?? []);
 
       setQtyOverrideByTwId(payload.qtyOverrideByTwId ?? {});
+      listScopeKeyRef.current = zdEstimateListScopeKey(
+        payload.scopeMode,
+        payload.scopeMode === "grupa" ? payload.selectedGroup?.grt_Id : payload.selectedCecha?.ctw_Id,
+        payload.supplierId ?? null
+      );
       setAcceptedReviewTwIds(payload.acceptedReviewTwIds ?? {});
       setSessionIncludeTwIds(payload.sessionIncludeTwIds ?? {});
 
@@ -3777,6 +3811,16 @@ export function ZdEstimateWorkbench({
       (mode === "cecha" ? selectedCecha?.ctw_Id : undefined);
     // Trzymaj UI scope w sync z faktycznym Policz (autorun / override opts).
     if (mode !== scopeMode) setScopeMode(mode);
+    // Ten sam zakres i dostawca co obecna lista → ręczna praca przeżywa przeliczenie.
+    const runScopeKey = zdEstimateListScopeKey(mode, mode === "grupa" ? grupaId : cechaId, supplierId);
+    const editsToKeep =
+      lines != null && listScopeKeyRef.current === runScopeKey
+        ? {
+            overrides: qtyOverrideByTwId,
+            accepted: acceptedReviewTwIds,
+            include: sessionIncludeTwIds,
+          }
+        : null;
     const useProgressShell = shouldUseZdEstimateProgressShell({
       hasLines: lines != null,
     });
@@ -4019,9 +4063,19 @@ export function ZdEstimateWorkbench({
         setTeethProductsError(null);
         setMissingPartnerTwIds(res.meta.pairMissingTwIds ?? []);
         setMissingBomTwIds(res.meta.bomMissingTwIds ?? []);
-        setQtyOverrideByTwId({});
-        setAcceptedReviewTwIds({});
-        setSessionIncludeTwIds({});
+        const presentTw = new Set<number>();
+        for (const l of res.result.pozycjeBase) presentTw.add(l.tw_Id);
+        for (const l of res.result.pozycje) presentTw.add(l.tw_Id);
+        const keepPresent = <T,>(rec: Record<number, T> | undefined) =>
+          Object.fromEntries(
+            Object.entries(rec ?? {}).filter(([tw]) => presentTw.has(Number(tw)))
+          ) as Record<number, T>;
+        const keptOverrides = editsToKeep ? keepPresent(editsToKeep.overrides) : {};
+        const keptOverrideCount = Object.keys(keptOverrides).length;
+        setQtyOverrideByTwId(keptOverrides);
+        setAcceptedReviewTwIds(editsToKeep ? keepPresent(editsToKeep.accepted) : {});
+        setSessionIncludeTwIds(editsToKeep ? keepPresent(editsToKeep.include) : {});
+        listScopeKeyRef.current = runScopeKey;
         setFeedback(null);
         setErrorMessage(null);
         setLastEstimateFailed(false);
@@ -4059,13 +4113,17 @@ export function ZdEstimateWorkbench({
             doZamowieniaCount: res.meta.doZamowieniaCount,
             durationMs: res.meta.durationMs,
           });
+          const kept =
+            keptOverrideCount > 0
+              ? ` Zachowano Twoje zmiany ilości: ${keptOverrideCount} ${polishPluralWord(keptOverrideCount, "pozycja", "pozycje", "pozycji")}.`
+              : "";
           setRecountStatusMessage(
             closed
               ? `${zdEstimateRecountClosedPreviousSessionPrefix({
                   supplierChanged: closed.supplierChanged,
                   nextSupplierName: closed.nextSupplierName,
-                })}${recount}`
-              : recount
+                })}${recount}${kept}`
+              : `${recount}${kept}`
           );
         }
       };
@@ -6940,6 +6998,13 @@ export function ZdEstimateWorkbench({
           supplierFromMappingNotice={supplierFromMappingNotice}
           zapasMin={zapasMin}
           onZapasMinChange={setZapasMin}
+          supplierPicker={
+            <ZdEstimateSupplierPicker
+              suppliers={pickerSuppliers}
+              signals={bootstrap.stockSignalBySupplierId ?? {}}
+              disabled={busy || !bootstrap.configured}
+            />
+          }
           leadTimeHorizon={leadTimeHorizon}
           onLeadTimeHorizonChange={(next) => {
             setLeadTimeHorizon(next);
@@ -8578,6 +8643,13 @@ export function ZdEstimateWorkbench({
           dateKey={bootstrap.todayKey}
           preview={createDialogPreview}
           scopeMode={scopeMode}
+          unitPriceByTwId={unitPriceByTwId}
+          calcNotes={[
+            `zapas ${dniZapasu} d`,
+            `sprzedaż ${formatDateKeyPl(dataOd)}–${formatDateKeyPl(dataDo)}`,
+            ...(leadTimeHorizon ? ["do kolejnej dostawy"] : []),
+            ...(salesSmoothing ? ["wygładzone skoki"] : []),
+          ]}
           grtId={selectedGroup?.grt_Id ?? null}
           cechaId={selectedCecha?.ctw_Id ?? null}
           lineMeta={

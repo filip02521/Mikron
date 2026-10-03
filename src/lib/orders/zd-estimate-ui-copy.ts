@@ -557,6 +557,8 @@ export function zdEstimateRunPhaseStatusHint(input: {
       return "Wczytuję wykluczenia, opakowania, pary i BOM…";
     case "enrich":
       return "Dociągam braki partnerów, BOM i prośby handlowców…";
+    case "profile":
+      return "Liczę sprzedaż z ostatnich 12 miesięcy dla tego zakresu (pierwszy raz — może potrwać do minuty)…";
     case "compose":
       return "Składam pozycje „Do ZD”…";
     case "done":

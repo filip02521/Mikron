@@ -652,6 +652,8 @@ export async function actionZdEstimateBootstrap(): Promise<{
   todayScopeCoverage: import("@/lib/orders/zd-estimate-scope-coverage").ZdEstimateScopeCoverage;
   /** Mapowania dostawca → grupa/cecha — do auto-przypisania przy wyborze zakresu. */
   supplierScopes: import("@/lib/data/zd-estimate-supplier-scopes").ZdEstimateSupplierScopeRow[];
+  /** Nocna analiza Braki per dostawca — podpowiedzi przy wyborze dostawcy. */
+  stockSignalBySupplierId: Record<string, import("@/lib/stock-watch/data").StockWatchSupplierSignal>;
 }> {
   await requireZdEstimateAdmin("read");
 
@@ -864,6 +866,9 @@ export async function actionZdEstimateBootstrap(): Promise<{
     extrasPolicy,
     todayScopeCoverage,
     supplierScopes,
+    stockSignalBySupplierId: await import("@/lib/stock-watch/data")
+      .then((m) => m.listStockWatchSupplierSignals())
+      .catch(() => ({})),
   };
 }
 

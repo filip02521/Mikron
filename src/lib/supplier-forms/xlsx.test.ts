@@ -16,7 +16,7 @@ describe("Ivoclar — własny arkusz z Jm", () => {
       new Map([[8098, "op."]])
     );
     const wb = new ExcelJS.Workbook();
-    await wb.xlsx.load(Buffer.from(bytes));
+    await wb.xlsx.load(bytes.buffer as ArrayBuffer);
     const ws = wb.worksheets[0]!;
     const rows = [1, 2, 3, 4].map((r) => [1, 2, 3, 4, 5].map((c) => ws.getRow(r).getCell(c).value));
     expect(rows).toEqual([

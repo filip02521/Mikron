@@ -165,6 +165,14 @@ export function ZdEstimatePostCreatePanel({
     session.kind !== "timeout_recovery" &&
     session.dokId != null &&
     session.dokId > 0;
+  // Dostawcy z własnym formularzem (Wiedent, Sirona…) — plik do maila w kroku „Wyślij”.
+  const orderFormTemplate = canAct ? findSupplierFormTemplate(session.supplierName) : null;
+  const orderForm = orderFormTemplate
+    ? {
+        kind: orderFormTemplate.kind,
+        href: `/api/operations/supplier-forms/zd/${session.dokId}?supplierId=${encodeURIComponent(session.supplierId)}`,
+      }
+    : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -639,19 +647,6 @@ export function ZdEstimatePostCreatePanel({
                   {dokCopied ? "Skopiowano numer" : "Kopiuj numer ZD"}
                 </Button>
               ) : null}
-              {canAct && findSupplierFormTemplate(session.supplierName) ? (
-                <a
-                  href={`/api/operations/supplier-forms/zd/${session.dokId}?supplierId=${encodeURIComponent(session.supplierId)}`}
-                  download
-                  className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800 hover:bg-slate-50 sm:w-auto"
-                  title="Formularz zamówienia dostawcy wypełniony pozycjami z tego ZD"
-                >
-                  <IconDownload size={15} className="shrink-0" />
-                  {findSupplierFormTemplate(session.supplierName)!.kind !== "pdf"
-                    ? "Formularz (Excel)"
-                    : "Formularz (PDF)"}
-                </a>
-              ) : null}
             </div>
           </section>
         )}
@@ -861,6 +856,26 @@ export function ZdEstimatePostCreatePanel({
                   <p className="text-sm text-amber-900">{contactError}</p>
                 ) : (
                   <div className="space-y-2">
+                    {orderForm ? (
+                      <div className="flex flex-col gap-2 rounded-md bg-slate-50 px-3 py-2.5 ring-1 ring-slate-200/80 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm text-slate-700">
+                          {session.supplierName} przyjmuje zamówienia na swoim{" "}
+                          {orderForm.kind === "pdf" ? "formularzu PDF" : "arkuszu Excel"} — pobierz go
+                          wypełnionego tym ZD i dołącz do maila.
+                        </p>
+                        <a
+                          href={orderForm.href}
+                          download
+                          className={cn(
+                            buttonPrimaryClass,
+                            "inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium"
+                          )}
+                        >
+                          <IconDownload size={16} aria-hidden />
+                          {orderForm.kind === "pdf" ? "Pobierz formularz (PDF)" : "Pobierz formularz (Excel)"}
+                        </a>
+                      </div>
+                    ) : null}
                     <Button
                       type="button"
                       variant="secondary"

@@ -90,6 +90,8 @@ export type ZdEstimatePrepFormProps = {
   cechaHits: ZdEstimateCechaOption[];
   onClearCechaHits: () => void;
   scopeSelected: boolean;
+  /** Start od dostawcy (nad wyborem grupy / cechy). */
+  supplierPicker?: React.ReactNode;
   settingsTrusted: boolean;
   scopeNeedsRecount: boolean;
   canPolicz: boolean;
@@ -174,6 +176,7 @@ export function ZdEstimatePrepForm({
   cechaHits,
   onClearCechaHits,
   scopeSelected,
+  supplierPicker,
   settingsTrusted,
   scopeNeedsRecount,
   canPolicz,
@@ -254,11 +257,28 @@ export function ZdEstimatePrepForm({
       />
 
       <div className={zdEstimatePrepIdleBodyClass}>
+        {/* Strefa 0 — start od dostawcy */}
+        {supplierPicker ? (
+          <section className="min-w-0 space-y-1.5" aria-label="Dostawca">
+            <p className={sectionLabelClass}>Dostawca</p>
+            {supplierPicker}
+            <p className="text-xs text-slate-500">
+              Zakresy, dni zapasu i okno sprzedaży ustawią się z karty dostawcy.
+            </p>
+          </section>
+        ) : null}
+
         {/* Strefa 1 — wybór zakresu */}
         <section className="min-w-0 space-y-2.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className={sectionLabelClass}>
-              <span className="mr-1 text-indigo-500/70">1</span>Zakres
+              {supplierPicker ? (
+                "Albo zakres Subiekta"
+              ) : (
+                <>
+                  <span className="mr-1 text-indigo-500/70">1</span>Zakres
+                </>
+              )}
             </p>
             <SegmentedControl
               ariaLabel="Tryb zakresu szacunku"
@@ -653,7 +673,8 @@ export function ZdEstimatePrepForm({
           )
         ) : null}
 
-        {/* Strefa 2 — parametry biegu */}
+        {/* Strefa 2 — parametry biegu (po wyborze zakresu — wcześniej to tylko szare pola) */}
+        {scopeSelected ? (
         <section
           className={zdEstimatePrepParamsStripClass}
           aria-label="Parametry biegu"
@@ -798,6 +819,7 @@ export function ZdEstimatePrepForm({
             />
           </div>
         </section>
+        ) : null}
 
         {selectedSupplier && selectedSupplier.dniZapasu == null ? (
           <ZdEstimateNotice tone="warning" title="Dostawca bez liczbowego zapasu — ustaw dni ręcznie" dismissible={false}>
@@ -935,6 +957,13 @@ export function ZdEstimatePrepForm({
             </p>
           ) : null}
           <div className="flex w-full flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-end">
+            {!scopeSelected && configured ? (
+              <p className="text-xs text-slate-500 sm:mr-auto" role="status">
+                {supplierPicker
+                  ? "Wybierz dostawcę albo zakres Subiekta, żeby policzyć listę."
+                  : "Wybierz grupę albo cechę, żeby policzyć listę."}
+              </p>
+            ) : null}
             {recountNeeded && !estimating ? (
               <p className="text-xs font-medium text-amber-800 sm:mr-auto" role="status">
                 Parametry zmienione — lista jest nieaktualna, przelicz przed utworzeniem ZD.
@@ -952,7 +981,7 @@ export function ZdEstimatePrepForm({
                   : !configured
                     ? "Brak połączenia z Subiektem"
                     : !scopeSelected
-                      ? "Wybierz grupę lub cechę"
+                      ? "Wybierz dostawcę albo zakres"
                       : estimating
                         ? zdEstimateCountingButtonLabel()
                         : "Policz listę do ZD z Subiekta"

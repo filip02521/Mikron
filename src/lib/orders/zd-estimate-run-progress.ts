@@ -11,6 +11,8 @@ export type ZdEstimateRunPhase =
   | "fetch"
   | "settings"
   | "enrich"
+  /** Czekamy na profil sprzedaży 12 mies. (pierwsze liczenie zakresu — do minuty). */
+  | "profile"
   | "compose"
   | "done"
   | "error";
@@ -201,6 +203,7 @@ export function launchProgressStepFromRunPhase(
       return Math.min(1, last);
     case "settings":
     case "enrich":
+    case "profile":
       return Math.min(2, last);
     case "compose":
     case "done":
@@ -233,6 +236,7 @@ export function launchProgressPctFromRun(
   }
   if (snapshot.phase === "settings") return 74;
   if (snapshot.phase === "enrich") return 86;
+  if (snapshot.phase === "profile") return 90;
   if (snapshot.phase === "compose") return 94;
   return 50;
 }

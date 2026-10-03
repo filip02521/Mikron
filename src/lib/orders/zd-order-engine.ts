@@ -399,7 +399,7 @@ export async function resolveIndividualExtrasWithReservationOverlap(input: {
 export type ZdOrderEngineProgressPatch = Partial<
   Pick<
     ZdEstimateRunProgressSnapshot,
-    "phase" | "pagesCommitted" | "totalPages" | "totalCountApi" | "linesSoFar"
+    "phase" | "pagesCommitted" | "totalPages" | "totalCountApi" | "linesSoFar" | "message"
   >
 >;
 
@@ -582,8 +582,13 @@ export async function runZdOrderEngine(
   ];
   const extraProfiles = profileOf(extraScopes.map((s) => ({ mode: s.mode, id: scopeIdOf(s) })));
   let fetched = primaryFetched;
-  for (const extra of extraScopes) {
+  for (const [extraIndex, extra] of extraScopes.entries()) {
     const extraId = scopeIdOf(extra);
+    // Dostawca z kilkoma zakresami — bez tego pasek stał na „pobieram” bez postępu.
+    touchProgress({
+      phase: "fetch",
+      message: `Kolejny zakres dostawcy (${extraIndex + 2} z ${extraScopes.length + 1}): ${extra.label || `#${extraId}`}`,
+    });
     const more = await fetchSubiektZdEstimateAll(
       {
         ...(extra.mode === "grupa" ? { grupaId: extraId } : { cechaId: extraId }),
@@ -618,6 +623,7 @@ export async function runZdOrderEngine(
 
   touchProgress({
     phase: "settings",
+    message: null,
     pagesCommitted: Math.max(lastFetchProgress.pagesCommitted, fetched.pagesFetched),
     totalPages: Math.max(lastFetchProgress.totalPages, fetched.pagesFetched, 1),
     totalCountApi: lastFetchProgress.totalCountApi || fetched.totalCountApi,
@@ -968,7 +974,14 @@ export async function runZdOrderEngine(
   // Prośby odejmujemy tylko bez opakowań (prośba w sztukach, sprzedaż w jednostkach karty).
   let salesSmoothing: ZdSalesSmoothingSummary | null = null;
   {
-    const [p1, p2] = await Promise.all([primaryProfiles, extraProfiles]);
+    const profilesReady = Promise.all([primaryProfiles, extraProfiles]);
+    // Profil z bazy jest gotowy od razu — etap „profil” tylko, gdy naprawdę liczymy.
+    const readyFast = await Promise.race([
+      profilesReady.then(() => true),
+      new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 300)),
+    ]);
+    if (!readyFast) touchProgress({ phase: "profile", message: null });
+    const [p1, p2] = await profilesReady;
     // Błąd któregokolwiek zakresu = komunikat (część listy byłaby bez wygładzenia).
     const anyFailed = p1 == null || (extraScopes.length > 0 && p2 == null);
     if (!p1 && !p2) {
