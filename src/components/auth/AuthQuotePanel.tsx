@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AUTH_QUOTES, type AuthQuote } from "@/lib/auth-quotes";
 import { AuthCompactQuoteBackdrop } from "@/components/auth/AuthBackgroundArt";
+import { AppBrandMark } from "@/components/ui/AppBrandMark";
 import { isAuthVisualVariant } from "@/components/auth/auth-visual-variant";
 import {
   ONTIME_APP_NAME,
@@ -100,6 +101,8 @@ export function AuthQuotePanel({
   return (
     <div className={cn("flex flex-col justify-between", className)}>
       <div>
+        {/* Znak marki na ciemnym panelu — półprzezroczysty kafel, białe wskazówki. */}
+        <AppBrandMark size="lg" variant="dark" className="mb-6 ring-1 ring-white/20" />
         <p className="text-xs font-semibold text-indigo-200/90">
           {ONTIME_COMPANY}
         </p>
