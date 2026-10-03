@@ -102,7 +102,7 @@ export function MobileSalesNav({
                 {attentionBadge > 0 && !active ? (
                   <span
                     className={cn(
-                      "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-md px-0.5 tabular-nums text-[9px] font-bold lg:text-[10px]",
+                      "absolute -right-1.5 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 leading-none tabular-nums text-[9px] font-bold ring-2 ring-white lg:text-[10px]",
                       sidebarNavBadgeClassForTone(displayTone, false)
                     )}
                   >
