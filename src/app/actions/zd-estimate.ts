@@ -423,6 +423,20 @@ function normalizeDateKey(value: string | null | undefined): string | null {
   return v;
 }
 
+/** Przewidywany termin dostawy do podsumowania tworzenia ZD (czasy realizacji dostawcy). */
+export async function actionZdEstimateSupplierEta(
+  supplierId: string
+): Promise<{ ok: true; eta: import("@/lib/orders/zd-create-eta").ZdCreateEta | null } | { ok: false }> {
+  await requireZdEstimateAdmin("read");
+  try {
+    const { estimateZdCreateEta } = await import("@/lib/orders/zd-create-eta");
+    return { ok: true, eta: await estimateZdCreateEta(String(supplierId ?? ""), warsawNowParts().dateKey) };
+  } catch (e) {
+    console.warn("[zd-estimate] supplier eta", e instanceof Error ? e.message : e);
+    return { ok: false };
+  }
+}
+
 export async function actionFetchZdEstimatePendingIndividuals(
   supplierId: string
 ): Promise<

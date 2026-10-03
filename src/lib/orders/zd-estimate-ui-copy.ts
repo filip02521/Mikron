@@ -1155,7 +1155,7 @@ export const ZD_ESTIMATE_UI = {
   postCreateLinkHistoryCta: "Powiąż historię",
   postCreateLinkTimeoutCta: "Sprawdź świeże ZD",
   postCreateCopyTsvCta: "Skopiuj TSV",
-  postCreateDismissCta: "Zamknij panel po utworzeniu",
+  postCreateDismissCta: "Zamknij panel",
   postCreateDismissHint:
     "Zamyka tylko ten panel - tworzenie ZD pozostaje zablokowane do odblokowania albo do „Policz listę”.",
   postCreateNoContact: "Brak kontaktu na karcie dostawcy",

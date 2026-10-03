@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
-import { actionCreateZdFromEstimate } from "@/app/actions/zd-estimate";
+import { actionCreateZdFromEstimate, actionZdEstimateSupplierEta } from "@/app/actions/zd-estimate";
 import type { ZdEstimateLinkLineMeta } from "@/app/actions/zd-estimate";
 import { ZdEstimateCreateZdProgressPanel } from "@/components/zakupy/ZdEstimateCreateZdProgress";
 import { ZdEstimateCreateRequestsPreview } from "@/components/zakupy/ZdEstimateCreateRequestsPreview";
@@ -14,6 +14,7 @@ import {
   defaultZdCreateUwagi,
   ZD_CREATE_MAX_UWAGI_LEN,
   ZD_CREATE_SOFT_WARN_LINES,
+  zdCreateEtaTile,
   type ZdCreatePreview,
 } from "@/lib/orders/zd-estimate-create-zd";
 import {
@@ -91,6 +92,7 @@ export function ZdEstimateCreateZdDialog({
   ordersHostLabel = null,
   host = null,
   extrasPolicy = "sum",
+  previewOnly = false,
 }: {
   open: boolean;
   supplierId: string;
@@ -163,10 +165,39 @@ export function ZdEstimateCreateZdDialog({
   /** Belka hosta na loadingu create — ten sam model co Policz. */
   host?: ZdEstimateHostStrip | null;
   extrasPolicy?: "sum" | "max";
+  /** Harness UI (e2e-lab): okno do oglądania — „Utwórz ZD” nigdy nie wywołuje akcji. */
+  previewOnly?: boolean;
 }) {
   const uwagiId = useId();
   const confirmId = useId();
   const [uwagi, setUwagi] = useState("");
+  // Przewidywana dostawa z czasów realizacji dostawcy (OnTime) — tylko do podsumowania.
+  const [etaResult, setEtaResult] = useState<{
+    supplierId: string;
+    dateKey: string | null;
+    businessDays: number | null;
+  } | null>(null);
+  useEffect(() => {
+    if (!open || !supplierId) return;
+    let cancelled = false;
+    void actionZdEstimateSupplierEta(supplierId)
+      .then((res) => {
+        if (cancelled) return;
+        const value = res.ok ? res.eta : null;
+        setEtaResult({ supplierId, dateKey: value?.dateKey ?? null, businessDays: value?.businessDays ?? null });
+      })
+      .catch(() => {
+        if (!cancelled) setEtaResult({ supplierId, dateKey: null, businessDays: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, supplierId]);
+  const eta =
+    etaResult && etaResult.supplierId === supplierId
+      ? { status: "done" as const, dateKey: etaResult.dateKey, businessDays: etaResult.businessDays }
+      : { status: "loading" as const, dateKey: null, businessDays: null };
+  const etaTile = zdCreateEtaTile(eta);
   const [confirmed, setConfirmed] = useState(false);
   const [pending, startPending] = useTransition();
   const [progressStartedAtMs, setProgressStartedAtMs] = useState<number | null>(
@@ -343,7 +374,7 @@ export function ZdEstimateCreateZdDialog({
   if (!open) return null;
 
   const submit = () => {
-    if (!confirmed || pending) return;
+    if (!confirmed || pending || previewOnly) return;
     const catalogIds = [...(individualCatalogOrderIds ?? [])];
     const serviceIdsForSubmit = [...liveIncludedServiceIds];
     const consumed = [...(consumedOrderIds ?? [])];
@@ -566,25 +597,23 @@ export function ZdEstimateCreateZdDialog({
             </p>
           </div>
 
-          <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {/* 1. Podsumowanie: kto, co, za ile, kiedy. */}
+          <dl className="grid grid-cols-2 gap-2 lg:grid-cols-4">
             <SummaryTile
               label="Dostawca"
               value={supplierName}
-              sub={`kontrahent ${khId}${usedAlias ? " (alias)" : ""}`}
-              className="col-span-2 sm:col-span-1"
+              sub={`${scopeMode === "cecha" ? "Cecha" : scopeMode === "grupa" ? "Grupa" : "Zakres"} ${
+                scopeLabel?.trim() || "-"
+              } · kh ${khId}${usedAlias ? " (alias)" : ""}`}
             />
             <SummaryTile
-              label="Pozycji"
-              value={String(preview.lineCount)}
-            />
-            <SummaryTile
-              label="Suma do ZD"
-              value={formatQty(preview.zdUnitsSuma)}
+              label="Zamówienie"
+              value={`${preview.lineCount} ${preview.lineCount === 1 ? "pozycja" : preview.lineCount < 5 ? "pozycje" : "pozycji"}`}
               sub={
                 preview.piecesArrivingSuma > 0 &&
                 preview.piecesArrivingSuma !== preview.zdUnitsSuma
-                  ? `przyjdzie ${formatQty(preview.piecesArrivingSuma)} szt`
-                  : "jedn. dokumentu"
+                  ? `${formatQty(preview.zdUnitsSuma)} jedn. · przyjdzie ${formatQty(preview.piecesArrivingSuma)} szt`
+                  : `${formatQty(preview.zdUnitsSuma)} jedn. dokumentu`
               }
             />
             <SummaryTile
@@ -592,84 +621,77 @@ export function ZdEstimateCreateZdDialog({
               value={orderValue.value > 0 ? `ok. ${plnFormatter.format(Math.round(orderValue.value))} zł` : "-"}
               sub={
                 orderValue.unpriced > 0
-                  ? `${orderValue.unpriced} bez ceny`
-                  : "ceny z ostatnich ZD, netto"
+                  ? `netto · ${orderValue.unpriced} bez ceny`
+                  : "netto, ceny z ostatnich ZD"
               }
-              className="col-span-2 sm:col-span-1"
+            />
+            <SummaryTile
+              label="Przewidywana dostawa"
+              value={etaTile.value}
+              sub={etaTile.sub}
             />
           </dl>
-
-          <p className="text-xs leading-relaxed text-slate-500">
-            <span className="font-medium text-slate-700">
-              {scopeMode === "cecha" ? "Cecha" : scopeMode === "grupa" ? "Grupa" : "Zakres"}:{" "}
-              {scopeLabel?.trim() || "-"}
-            </span>
-            {calcNotes.map((note) => (
-              <span key={note}> · {note}</span>
-            ))}
-          </p>
-
-          {warnings.length > 0 ? (
-            <ul
-              className="space-y-1.5 rounded-lg bg-amber-50/80 px-3.5 py-2.5 text-sm text-amber-950 ring-1 ring-amber-200"
-              aria-label="Do sprawdzenia przed utworzeniem"
-            >
-              {warnings.map((w) => (
-                <li key={w.key} className="flex items-start gap-2 leading-snug">
-                  <IconAlertCircle
-                    size={16}
-                    className="mt-0.5 shrink-0 text-amber-600"
-                    aria-hidden
-                  />
-                  <span className="min-w-0 flex-1">{w.text}</span>
-                  {w.action ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      className="-my-0.5 shrink-0"
-                      onClick={w.action.onClick}
-                    >
-                      {w.action.label}
-                    </Button>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
+          {calcNotes.length ? (
+            <p className="-mt-1 text-xs leading-relaxed text-slate-500">
+              Lista liczona: {calcNotes.join(", ")}
+            </p>
           ) : null}
 
-          <div className="rounded-lg bg-slate-50/80 px-3.5 py-2.5 ring-1 ring-slate-200/80">
-            <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-              <IconInfoCircle size={14} aria-hidden /> Po utworzeniu
-            </p>
-            <ul className="mt-1.5 list-disc space-y-1 pl-5 text-xs leading-relaxed text-slate-600 marker:text-slate-300">
-              <li className={glowneCount > 0 ? "text-emerald-900" : undefined}>
-                {glowneCount > 0 ? (
-                  <>
-                    Zdecydujesz, czy oznaczyć{" "}
-                    <span className="font-semibold">
-                      {glowneCount} {zdEstimateProsbaWord(glowneCount)}
-                    </span>{" "}
-                    jako Główne
-                    {catalogGlowneCount > 0 && liveGlowneServiceCount > 0
-                      ? ` (${catalogGlowneCount} na pozycjach, ${liveGlowneServiceCount} w uwagach)`
-                      : liveGlowneServiceCount > 0
-                        ? " (usługi w uwagach)"
-                        : ""}{" "}
-                    i czy oznaczyć plan jako złożony.
-                  </>
-                ) : (
-                  ZD_ESTIMATE_UI.createAfterSuccessDecideNoGlowne
-                )}
-              </li>
-              <li>{ZD_ESTIMATE_UI.createQtyBumpNote}</li>
-              {teethOrderIds.size > 0 ? (
-                <li>{ZD_ESTIMATE_UI.createTeethNote}</li>
-              ) : null}
-            </ul>
-          </div>
+          {/* 2. Ryzyka przed utworzeniem. */}
+          {warnings.length > 0 ? (
+            <section
+              className="rounded-lg bg-amber-50/70 px-3.5 py-3 ring-1 ring-amber-200"
+              aria-label="Do sprawdzenia przed utworzeniem"
+            >
+              <p className="flex items-center gap-1.5 text-sm font-semibold text-amber-950">
+                <IconAlertCircle size={16} className="shrink-0 text-amber-600" aria-hidden />
+                Do sprawdzenia ({warnings.length})
+              </p>
+              <ul className="mt-2 space-y-1.5 pl-[22px] text-sm leading-snug text-amber-950">
+                {warnings.map((w) => (
+                  <li key={w.key} className="flex items-start justify-between gap-3">
+                    <span className="min-w-0 flex-1">{w.text}</span>
+                    {w.action ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        className="-my-0.5 shrink-0"
+                        onClick={w.action.onClick}
+                      >
+                        {w.action.label}
+                      </Button>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
 
-          <div className="space-y-2">
+          {/* 3. Co trafi na dokument. */}
+          <ZdEstimateOrderPreviewTable
+            lines={preview.lines}
+            extrasPolicy={extrasPolicy}
+          />
+
+          <ZdEstimateCreateRequestsPreview
+            catalogRequests={catalogRequests}
+            serviceLines={serviceLinesPreview}
+            glowneCatalogCount={catalogGlowneCount}
+            glowneServiceCount={liveGlowneServiceCount}
+            constrainHeight={false}
+          />
+
+          {implicitPieceSnapshotNotice ? (
+            <ZdEstimateImplicitPieceNotice
+              notice={implicitPieceSnapshotNotice}
+              onOpenPackaging={onOpenPackaging}
+              onOpenPairs={onOpenPairs}
+            />
+          ) : null}
+
+          {/* 4. Uwagi na dokumencie. */}
+          <div className="space-y-1.5">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <label
                 htmlFor={uwagiId}
@@ -696,7 +718,7 @@ export function ZdEstimateCreateZdDialog({
               id={uwagiId}
               value={uwagi}
               onChange={(e) => setUwagi(e.target.value.slice(0, baseMax))}
-              rows={3}
+              rows={2}
               maxLength={baseMax}
               className={cn(
                 controlFocusClass,
@@ -704,34 +726,41 @@ export function ZdEstimateCreateZdDialog({
               )}
             />
             {serviceUwagiPreview ? (
-              <p className="rounded-md border border-emerald-200/80 bg-emerald-50/70 px-2.5 py-2 text-xs text-emerald-950">
-                Serwer dołoży do uwag:{" "}
-                <span className="font-medium">{serviceUwagiPreview}</span>
+              <p className="text-xs leading-relaxed text-slate-600">
+                Serwer dopisze: <span className="font-medium text-slate-800">{serviceUwagiPreview}</span>
               </p>
             ) : null}
           </div>
 
-          <ZdEstimateOrderPreviewTable
-            lines={preview.lines}
-            extrasPolicy={extrasPolicy}
-          />
-
-          <ZdEstimateCreateRequestsPreview
-            catalogRequests={catalogRequests}
-            serviceLines={serviceLinesPreview}
-            glowneCatalogCount={catalogGlowneCount}
-            glowneServiceCount={liveGlowneServiceCount}
-            constrainHeight={false}
-          />
-
-          {implicitPieceSnapshotNotice ? (
-            <ZdEstimateImplicitPieceNotice
-              notice={implicitPieceSnapshotNotice}
-              onOpenPackaging={onOpenPackaging}
-              onOpenPairs={onOpenPairs}
-            />
-          ) : null}
-
+          {/* 5. Co dalej — tuż przed potwierdzeniem. */}
+          <div className="border-t border-slate-100 pt-3 text-xs leading-relaxed text-slate-600">
+            <p className="flex items-center gap-1.5 font-semibold text-slate-700">
+              <IconInfoCircle size={14} aria-hidden /> Po utworzeniu
+            </p>
+            <ul className="mt-1 list-disc space-y-0.5 pl-5 marker:text-slate-300">
+              <li>
+                {glowneCount > 0 ? (
+                  <>
+                    Zdecydujesz, czy oznaczyć{" "}
+                    <span className="font-semibold text-slate-800">
+                      {glowneCount} {zdEstimateProsbaWord(glowneCount)}
+                    </span>{" "}
+                    jako Główne
+                    {catalogGlowneCount > 0 && liveGlowneServiceCount > 0
+                      ? ` (${catalogGlowneCount} na pozycjach, ${liveGlowneServiceCount} w uwagach)`
+                      : liveGlowneServiceCount > 0
+                        ? " (usługi w uwagach)"
+                        : ""}{" "}
+                    i czy oznaczyć plan jako złożony.
+                  </>
+                ) : (
+                  ZD_ESTIMATE_UI.createAfterSuccessDecideNoGlowne
+                )}
+              </li>
+              <li>{ZD_ESTIMATE_UI.createQtyBumpNote}</li>
+              {teethOrderIds.size > 0 ? <li>{ZD_ESTIMATE_UI.createTeethNote}</li> : null}
+            </ul>
+          </div>
         </>
       )}
     </ModalShell>
@@ -766,10 +795,11 @@ function SummaryTile({
         {value}
       </dd>
       {sub ? (
-        <dd className="truncate text-xs text-slate-500" title={sub}>
+        <dd className="line-clamp-2 text-xs leading-snug text-slate-500" title={sub}>
           {sub}
         </dd>
       ) : null}
     </div>
   );
 }
+
