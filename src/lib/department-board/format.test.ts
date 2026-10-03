@@ -4,6 +4,7 @@ import {
   boardReplyCountLabel,
   isOperationsAuthorRole,
   questionAuthorLabel,
+  formatBoardShortDate,
 } from "@/lib/department-board/format";
 
 describe("department-board format", () => {
@@ -46,5 +47,21 @@ describe("department-board format", () => {
     expect(boardReplyCountLabel(1)).toBe("1 odpowiedź");
     expect(boardReplyCountLabel(2)).toBe("2 odpowiedzi");
     expect(boardReplyCountLabel(5)).toBe("5 odpowiedzi");
+  });
+});
+
+describe("formatBoardShortDate", () => {
+  const now = new Date("2026-10-03T19:00:00Z"); // 21:00 w Warszawie
+
+  it("dziś → godzina, wczoraj → „wczoraj”", () => {
+    expect(formatBoardShortDate("2026-10-03T12:05:00Z", now)).toBe("14:05");
+    expect(formatBoardShortDate("2026-10-02T08:00:00Z", now)).toBe("wczoraj");
+  });
+
+  it("ten rok → dzień i miesiąc; starsze → z rokiem; granica doby wg Warszawy", () => {
+    expect(formatBoardShortDate("2026-09-03T10:00:00Z", now)).toBe("3 wrz");
+    expect(formatBoardShortDate("2025-12-24T10:00:00Z", now)).toBe("24 gru 2025");
+    // 22:30 UTC 2 paź = 00:30 3 paź w Warszawie → dziś
+    expect(formatBoardShortDate("2026-10-02T22:30:00Z", now)).toBe("00:30");
   });
 });

@@ -38,7 +38,10 @@ export function BoardQuestionProductContext({
   if (!boardQuestionHasProduct(product)) return null;
 
   const label = boardQuestionProductLabel(product);
-  const meta = boardQuestionProductMetaLines(product);
+  // Symbol jest już w nazwie („302801 - …”) — nie powtarzamy go pod spodem.
+  const meta = boardQuestionProductMetaLines(product).filter(
+    (line) => !(line.startsWith("Symbol: ") && label.includes(line.slice("Symbol: ".length)))
+  );
   const href = showQuickProsba ? prosbaHref({ fromBoard: true }) : null;
 
   function persistPrefill() {

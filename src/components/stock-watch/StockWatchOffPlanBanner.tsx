@@ -6,8 +6,8 @@ import { cn } from "@/lib/cn";
 import { buildZdEstimateLaunchHref } from "@/lib/orders/zd-estimate-supplier-scope";
 import type { StockWatchOffPlanSupplier } from "@/lib/stock-watch/data";
 
-function shortDate(key: string | null): string {
-  if (!key) return "na żądanie";
+function planLabel(key: string | null, onDemand: boolean): string {
+  if (!key) return onDemand ? "na żądanie" : "brak terminu planu";
   const [, m, d] = key.split("-");
   return m && d ? `plan ${d}.${m}` : key;
 }
@@ -61,7 +61,7 @@ export function StockWatchOffPlanBanner({
           >
             <span className="font-medium text-slate-900">{s.supplierName}</span>
             <span className="tabular-nums text-red-700">{s.count} tow.</span>
-            <span className="text-slate-500">{shortDate(s.nextOrderDate)}</span>
+            <span className="text-slate-500">{planLabel(s.nextOrderDate, s.onDemand)}</span>
             {canPrepareZd ? (
               <Link
                 href={buildZdEstimateLaunchHref(s.supplierId)}

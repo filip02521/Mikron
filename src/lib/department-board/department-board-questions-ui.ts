@@ -3,8 +3,8 @@ import { salesTypography } from "@/lib/ui/ontime-theme";
 
 export const boardQuestionsSectionClass = "space-y-4";
 
-export const boardQuestionsToolbarShellClass =
-  "space-y-3 rounded-xl border border-slate-200/80 bg-slate-50/90 px-3 py-3 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8)] sm:px-3.5";
+/** Wyszukiwarka i filtry bez własnej ramki — lista poniżej jest jedynym kontenerem. */
+export const boardQuestionsToolbarShellClass = "space-y-3";
 
 /** Tor segmentów statusu (Aktywne / Czekają / …). */
 export const boardQuestionsStatusTrackClass =

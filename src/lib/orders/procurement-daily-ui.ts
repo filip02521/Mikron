@@ -201,7 +201,12 @@ export function enrichUrgentItem(
 
 export function enrichStockOutSignalGroup(
   group: SummaryForSomeoneEnriched,
-  at: Date = todayInWarsaw()
+  at: Date = todayInWarsaw(),
+  options?: {
+    supplierMeta?: Pick<SupplierSummaryMeta, "computed_next_date" | "order_on_demand"> | null;
+    todayDateKey?: string;
+    weekDays?: WeekDayPlan[];
+  }
 ): ProcurementRequestUi {
   const count = group.lines.length;
   const countLabel =
@@ -226,7 +231,12 @@ export function enrichStockOutSignalGroup(
     submittedTitle: `Zgłoszono ${submittedLabel}`,
     isUnseen: group.hasUnseen,
     unseenCount: group.unseenCount,
-    plannedOrderDate: null,
+    // Jak w prośbach: kiedy i tak zamawiamy u tego dostawcy (decyzja: dorzucić czy zamówić osobno).
+    plannedOrderDate: plannedOrderDateForSupplier(options?.supplierMeta, {
+      todayDateKey: options?.todayDateKey,
+      weekDays: options?.weekDays,
+      supplierId: group.supplierId,
+    }),
   };
 }
 

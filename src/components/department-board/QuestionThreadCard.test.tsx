@@ -100,9 +100,13 @@ describe("QuestionThreadCard", () => {
     });
   });
 
-  it("pokazuje chip produktu w wierszu tytułu", () => {
+  it("zwinięty wiersz: kod produktu (gdy nie ma go w tytule), autor i ostatnia wiadomość", () => {
     render(<QuestionThreadCard question={testQuestion()} embedded defaultExpanded={false} />);
-    expect(screen.getAllByText("606402 - Implant testowy").length).toBeGreaterThan(0);
+    expect(screen.getByText("606402")).toBeTruthy();
+    expect(screen.getByText("Zakupy:")).toBeTruthy();
+    expect(screen.getByText(/Jutro potwierdzimy\./)).toBeTruthy();
+    // Odpowiedziane i przeczytane — bez etykiety statusu w wierszu.
+    expect(screen.queryByText("Bez odpowiedzi")).toBeNull();
   });
 
   it("pokazuje kontekst produktu po rozwinięciu", () => {
@@ -240,7 +244,7 @@ describe("QuestionThreadCard", () => {
       },
     ];
     render(<QuestionThreadCard question={question} embedded />);
-    expect(screen.getByText("Ostatnia odpowiedź: [zdjęcie]")).toBeTruthy();
+    expect(screen.getByText(/\[zdjęcie\]/)).toBeTruthy();
     expect(screen.getByTitle("W wątku: zdjęcie")).toBeTruthy();
   });
 
