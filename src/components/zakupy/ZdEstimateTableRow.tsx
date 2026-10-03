@@ -19,13 +19,14 @@ import {
   packagingDocumentMode,
   resolveOrderQtyForLine,
   type PackagingLookup,
+  piecesArrivingForZdUnitsFromQty,
 } from "@/lib/orders/zd-estimate-packaging";
+import { zdEstimateDaysOfCover } from "@/lib/orders/zd-estimate-sort";
 import {
   ZdEstimatePairPackStockCell,
   ZdEstimatePairPiecesCell,
   ZdEstimatePairSalesCell,
   ZdEstimatePiecesMetricCell,
-  renderZdEstimateWzSalesSubline,
 } from "@/components/zakupy/ZdEstimatePairMetaBadge";
 import { ZdEstimateDoZdCell } from "@/components/zakupy/ZdEstimateDoZdCell";
 import { ZdEstimatePackagingCell } from "@/components/zakupy/ZdEstimatePackagingCell";
@@ -37,6 +38,42 @@ import { cn } from "@/lib/cn";
 import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
 
 /** Kolumny przepływu (Dost. → Sprzed. → Cel → Otwarte) — wspólne dla nagłówka i wierszy. */
+/** „Starczy na” — dni do wyczerpania (dostępne / sprzedaż dziennie). */
+function ZdEstimateCoverCell({
+  line,
+}: {
+  line: Pick<ManualZdEstimateLine, "dostepne" | "sprzedazDziennie">;
+}) {
+  const days = zdEstimateDaysOfCover(line);
+  if (days == null) {
+    return (
+      <span className="zd-est-cover zd-est-cover--none" title="Brak sprzedaży w oknie — nie kończy się">
+        —
+      </span>
+    );
+  }
+  const tone = days <= 0 ? "out" : days <= 2 ? "critical" : days <= 14 ? "low" : "ok";
+  const label = days <= 0 ? "brak" : days < 10 ? `${days.toFixed(1).replace(".", ",")} d` : `${Math.round(days)} d`;
+  return (
+    <span
+      className={cn("zd-est-cover", `zd-est-cover--${tone}`)}
+      title={
+        days <= 0
+          ? "Brak towaru dostępnego (stan − rezerwacje ≤ 0), a towar się sprzedaje"
+          : `Przy obecnej sprzedaży (${formatQty(line.sprzedazDziennie)} szt/dzień) dostępny stan wystarczy na ok. ${label}`
+      }
+    >
+      {label}
+    </span>
+  );
+}
+
+const plnFormatter = new Intl.NumberFormat("pl-PL", {
+  style: "currency",
+  currency: "PLN",
+  maximumFractionDigits: 0,
+});
+
 export function zdEstimateFlowColumnClass(col: ZdEstimateOptionalColumn) {
   return col === "available" ||
     col === "sales" ||
@@ -107,6 +144,8 @@ export type ZdEstimateTableRowProps = {
   onAcceptReview: (twId: number) => void;
   /** Ostatnie ZD na ten towar było u innego dostawcy (nazwa) — tylko podpowiedź. */
   otherSupplierHint?: string | null;
+  /** Cena netto za sztukę z ostatniego ZD (null = brak ceny). */
+  unitPriceNet?: number | null;
 };
 
 /**
@@ -157,6 +196,7 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
   onOverrideChange,
   onAcceptReview,
   otherSupplierHint,
+  unitPriceNet,
 }: ZdEstimateTableRowProps) {
   const hidePairOrBomHardActions = bomRowHidesHardExclude(l);
   const hideOnRequestAction = bomRowHidesOnRequest(l);
@@ -297,6 +337,23 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
         title={l.tw_Nazwa}
       >
         <span className="zd-est-product-name">{l.tw_Nazwa}</span>
+        <span className="zd-est-name-meta">
+          <ZdEstimateNameMetaStack
+            pairMeta={pairMeta}
+            packagingConflict={packagingConflict}
+            bomMeta={bomMeta}
+            individualExtra={individualExtra}
+            extrasPolicy={extrasPolicy}
+            doZdSuppressed={doZdSuppressed}
+            excluded={excluded}
+            sessionIncluded={sessionIncluded}
+            nameHit={nameHit}
+            softOnRequest={softOnRequest}
+            liftedExtraOnly={liftedExtraOnly}
+            minStockSzt={minStockSzt ?? null}
+            hideEmpty
+          />
+        </span>
         {otherSupplierHint ? (
           <span
             className="mt-0.5 block truncate text-[11px] font-medium text-amber-700"
@@ -356,70 +413,44 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
         switch (col) {
           case "packaging":
             return null;
-          case "status":
+          case "cover":
             return (
               <td
                 key={col}
-                className={cn("zd-estimate-status-col", sectionCls)}
+                className={cn("zd-estimate-num-col zd-estimate-cover-col whitespace-nowrap", sectionCls)}
               >
-                <ZdEstimateNameMetaStack
-                  pairMeta={pairMeta}
-                  packagingConflict={packagingConflict}
-                  bomMeta={bomMeta}
-                  individualExtra={individualExtra}
-                  extrasPolicy={extrasPolicy}
-                  doZdSuppressed={doZdSuppressed}
-                  excluded={excluded}
-                  sessionIncluded={sessionIncluded}
-                  nameHit={nameHit}
-                  softOnRequest={softOnRequest}
-                  liftedExtraOnly={liftedExtraOnly}
-                  minStockSzt={minStockSzt ?? null}
-                />
+                <ZdEstimateCoverCell line={l} />
               </td>
             );
-          case "stock":
+          case "value": {
+            const pieces =
+              displayZdUnits > 0 && !excluded
+                ? piecesArrivingForZdUnitsFromQty(displayZdUnits, qty)
+                : 0;
+            const value =
+              unitPriceNet != null && unitPriceNet > 0 && pieces > 0
+                ? pieces * unitPriceNet
+                : null;
             return (
-              <Fragment key={col}>
-                <td
-                  className={cn(
-                    "zd-estimate-num-col whitespace-nowrap",
-                    sectionCls
-                  )}
-                >
-                  {pairMeta?.role === "pack" ? (
-                    <ZdEstimatePairPackStockCell value={l.tw_Stan} tier="d" />
-                  ) : (
-                    <ZdEstimateQtyValue value={l.tw_Stan} tier="d" unit="szt" />
-                  )}
-                </td>
-                <td className="zd-estimate-num-col whitespace-nowrap">
-                  <ZdEstimateReservationsCell
-                    twId={l.tw_Id}
-                    symbol={l.tw_Symbol}
-                    name={l.tw_Nazwa}
-                    reservedQty={l.tw_StanRez}
-                  >
-                    {pairMeta?.role === "pack" ? (
-                      <ZdEstimatePairPackStockCell
-                        value={l.tw_StanRez}
-                        tier="d"
-                        tone={l.tw_StanRez > 0 ? "warn" : "muted"}
-                        zeroAsDash
-                      />
-                    ) : (
-                      <ZdEstimateQtyValue
-                        value={l.tw_StanRez}
-                        tier="d"
-                        unit="szt"
-                        zeroAsDash
-                        tone={l.tw_StanRez > 0 ? "warn" : "muted"}
-                      />
-                    )}
-                  </ZdEstimateReservationsCell>
-                </td>
-              </Fragment>
+              <td
+                key={col}
+                className={cn("zd-estimate-num-col zd-estimate-value-col whitespace-nowrap", sectionCls)}
+                title={
+                  unitPriceNet != null && unitPriceNet > 0
+                    ? `${formatQty(pieces)} szt × ${unitPriceNet.toFixed(2).replace(".", ",")} zł/szt (ostatnia cena z ZD)`
+                    : "Brak ceny z ZD dla tego towaru"
+                }
+              >
+                {value != null ? (
+                  <span className="zd-est-value">{plnFormatter.format(value)}</span>
+                ) : (
+                  <span className="zd-est-value zd-est-value--none">
+                    {pieces > 0 ? "bez ceny" : "—"}
+                  </span>
+                )}
+              </td>
             );
+          }
           case "available":
             return (
               <td
@@ -430,20 +461,35 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
                   sectionCls
                 )}
               >
-                {pairMeta?.role === "pack" ? (
-                  <ZdEstimatePairPackStockCell
-                    value={l.dostepne}
-                    tier="b"
-                    tone={l.dostepne <= 0 ? "warn" : "default"}
-                  />
-                ) : (
-                  <ZdEstimateQtyValue
-                    value={l.dostepne}
-                    tier="b"
-                    unit="szt"
-                    tone={l.dostepne <= 0 ? "warn" : "default"}
-                  />
-                )}
+                <span
+                  className="zd-est-available"
+                  title={`Stan ${formatQty(l.tw_Stan)} − rezerwacje ${formatQty(l.tw_StanRez)} = dostępne ${formatQty(l.dostepne)}`}
+                >
+                  {pairMeta?.role === "pack" ? (
+                    <ZdEstimatePairPackStockCell
+                      value={l.dostepne}
+                      tier="b"
+                      tone={l.dostepne <= 0 ? "warn" : "default"}
+                    />
+                  ) : (
+                    <ZdEstimateQtyValue
+                      value={l.dostepne}
+                      tier="b"
+                      unit="szt"
+                      tone={l.dostepne <= 0 ? "warn" : "default"}
+                    />
+                  )}
+                  {l.tw_StanRez > 0 ? (
+                    <ZdEstimateReservationsCell
+                      twId={l.tw_Id}
+                      symbol={l.tw_Symbol}
+                      name={l.tw_Nazwa}
+                      reservedQty={l.tw_StanRez}
+                    >
+                      <span className="zd-est-available__rez">rez. {formatQty(l.tw_StanRez)}</span>
+                    </ZdEstimateReservationsCell>
+                  ) : null}
+                </span>
               </td>
             );
           case "sales":
@@ -491,9 +537,6 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
                               formatQty,
                             })
                     }
-                    subline={renderZdEstimateWzSalesSubline(
-                      l.wzNiepowiazaneOkres
-                    )}
                   />
                 )}
               </td>
@@ -521,7 +564,6 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
                     unitsPerPack={metricPackUnits}
                     tier="b"
                     title={salesTrackTitle}
-                    subline={salesTrackSubline}
                   />
                 )}
               </td>

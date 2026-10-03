@@ -844,12 +844,12 @@ export const ZD_ESTIMATE_UI = {
     "Symbol, Nazwa, Do ZD i Akcje są zawsze widoczne; Opak. jest przed Do ZD",
   listColumnLabels: {
     packaging: "Opakowanie",
-    status: "Status",
-    stock: "Stan / rezerwacje",
-    available: "Dostępne",
+    cover: "Starczy na",
+    available: "Dostępne (stan, rezerwacje)",
+    openZd: "W drodze (otwarte ZD)",
     sales: "Sprzedaż",
     target: "Cel zapasu",
-    openZd: "Otwarte ZD",
+    value: "Wartość (cena z ZD)",
     zk: "ZK / Subiekt",
   } satisfies Record<
     import("@/lib/orders/zd-estimate-prefs").ZdEstimateOptionalColumn,

@@ -210,6 +210,8 @@ import {
 import {
   filterOrderableLinesWithPackaging,
   individualExtraPiecesForTw,
+  piecesArrivingForZdUnitsFromQty,
+  resolveOrderQtyForLine,
   orderableLinesToTsv,
   pruneZdDocumentUnitOverrides,
 } from "@/lib/orders/zd-estimate-packaging";
@@ -1061,6 +1063,8 @@ export function ZdEstimateWorkbench({
    * Opcja „Uwzględnij czas dostawy” — domyślnie wyłączona: bez niej Kreator
    * liczy dokładnie jak wcześniej (dni zapasu z karty).
    */
+  /** tw → cena netto za sztukę z ostatniego ZD (kolumna „Wartość”, suma ZD). */
+  const [unitPriceByTwId, setUnitPriceByTwId] = useState<Record<number, number>>({});
   const [leadTimeHorizon, setLeadTimeHorizon] = useState(() =>
     Boolean(launch?.leadTimeHorizon)
   );
@@ -1227,7 +1231,6 @@ export function ZdEstimateWorkbench({
   const [columnOrder, setColumnOrder] = useState<ZdEstimateOptionalColumn[]>(
     () => [...uiPrefs.columnOrder]
   );
-  const showStockDetail = columns.stock;
   const showZkColumn = columns.zk;
   const showPackagingColumn = columns.packaging;
   const visibleOptionalColumns = useMemo(
@@ -2181,6 +2184,48 @@ export function ZdEstimateWorkbench({
     minStockByTwIdForRefresh,
   ]);
 
+  /** Podsumowanie listy „Do ZD” (z nadpisaniami): pozycje, sztuki, wartość z cen ZD. */
+  const orderSummary = useMemo(() => {
+    let count = 0;
+    let pieces = 0;
+    let value = 0;
+    let unpriced = 0;
+    for (const l of orderableLines) {
+      const qty = resolveOrderQtyForLine(
+        l,
+        packagingLookup.get(l.tw_Id) ?? null,
+        individualExtraPiecesForTw(l.tw_Id, individualExtraByTwId),
+        extraOnlyTwIds.has(l.tw_Id),
+        extrasPolicy,
+        individualExtraPiecesForTw(l.tw_Id, stockNeedReliefByTwId),
+        individualExtraPiecesForTw(l.tw_Id, extraOverlapByTwId),
+        individualExtraPiecesForTw(l.tw_Id, minStockByTwIdForRefresh)
+      );
+      const override = qtyOverrideMap.get(l.tw_Id);
+      const units =
+        override != null && Number.isFinite(override) ? Math.trunc(override) : qty.zdUnits;
+      if (units <= 0) continue;
+      count += 1;
+      const linePieces = piecesArrivingForZdUnitsFromQty(units, qty);
+      pieces += linePieces;
+      const price = unitPriceByTwId[l.tw_Id];
+      if (price != null && price > 0) value += linePieces * price;
+      else unpriced += 1;
+    }
+    return { count, pieces, value, unpriced };
+  }, [
+    orderableLines,
+    packagingLookup,
+    individualExtraByTwId,
+    extraOnlyTwIds,
+    extrasPolicy,
+    stockNeedReliefByTwId,
+    extraOverlapByTwId,
+    minStockByTwIdForRefresh,
+    qtyOverrideMap,
+    unitPriceByTwId,
+  ]);
+
   const segmentFilteredLines = useMemo(() => {
     if (!lines) return [];
     if (!settingsTrusted) {
@@ -2618,6 +2663,7 @@ export function ZdEstimateWorkbench({
         appliedBoostPreset,
         leadTimeHorizon,
         horizon: policzScopeInfo?.horizon ?? null,
+        unitPriceByTwId,
         boostNeedsRecount,
         scopeMode,
         selectedGroup,
@@ -2663,6 +2709,7 @@ export function ZdEstimateWorkbench({
       appliedBoostPreset,
       leadTimeHorizon,
       policzScopeInfo,
+      unitPriceByTwId,
       boostPreset,
       boostNeedsRecount,
       scopeMode,
@@ -2921,6 +2968,7 @@ export function ZdEstimateWorkbench({
 
       // Opcja czasu dostawy z sesji — lista była liczona z tym horyzontem.
       setLeadTimeHorizon(Boolean(payload.leadTimeHorizon));
+      setUnitPriceByTwId(payload.unitPriceByTwId ?? {});
       setHorizonNeedsRecount(false);
 
       const restoredBoostNeedsRecount = payload.boostPreset
@@ -3879,6 +3927,7 @@ export function ZdEstimateWorkbench({
           otherSupplierHintByTwId: res.otherSupplierHintByTwId ?? {},
           horizon: res.horizon ?? null,
         });
+        setUnitPriceByTwId(res.unitPriceByTwId ?? {});
         setHorizonNeedsRecount(false);
         const histMap = new Map<
           number,
@@ -4568,6 +4617,7 @@ export function ZdEstimateWorkbench({
     appliedBoostPreset,
     leadTimeHorizon,
     policzScopeInfo,
+    unitPriceByTwId,
     boostNeedsRecount,
     scopeMode,
     selectedGroup,
@@ -4926,41 +4976,7 @@ export function ZdEstimateWorkbench({
     return orderableLines.filter((l) => !visibleIds.has(l.tw_Id)).length;
   }, [orderableLines, visibleLines]);
 
-  /**
-   * Kolumna „Status” tylko gdy którakolwiek widoczna pozycja ma oznaczenie (prośba, para, BOM,
-   * minimum, wykluczenie, na żądanie…). Inaczej pokazywała same „—” i zabierała miejsce nazwie.
-   */
-  const statusColumnHasContent = useMemo(
-    () =>
-      visibleLines.some(
-        (l) =>
-          Boolean(l.pair) ||
-          Boolean(l.bom) ||
-          individualBundle.byTwId.has(l.tw_Id) ||
-          (minStockByTwIdForRefresh.get(l.tw_Id) ?? 0) > 0 ||
-          orderExcludedTwIds.has(l.tw_Id) ||
-          Boolean(sessionIncludeTwIds[l.tw_Id]) ||
-          nameAutoByTwId.has(l.tw_Id) ||
-          onRequestTwIds.has(retargetTwIdToPackIfPiece(l.tw_Id, productPairs).twId)
-      ),
-    [
-      visibleLines,
-      individualBundle,
-      minStockByTwIdForRefresh,
-      orderExcludedTwIds,
-      sessionIncludeTwIds,
-      nameAutoByTwId,
-      onRequestTwIds,
-      productPairs,
-    ]
-  );
-  const tableOptionalColumns = useMemo(
-    () =>
-      statusColumnHasContent
-        ? visibleOptionalColumns
-        : visibleOptionalColumns.filter((col) => col !== "status"),
-    [statusColumnHasContent, visibleOptionalColumns]
-  );
+  const tableOptionalColumns = visibleOptionalColumns;
   const tableColumnSectionStarts = useMemo(
     () => resolveZdEstimateColumnSectionStarts(tableOptionalColumns),
     [tableOptionalColumns]
@@ -5084,7 +5100,7 @@ export function ZdEstimateWorkbench({
         }
       }
     };
-  }, [listFilter, listSearch, lines, visibleLines.length, statusColumnHasContent]);
+  }, [listFilter, listSearch, lines, visibleLines.length]);
 
   const handleSort = useCallback(
     (field: ZdEstimateListSortKey) => {
@@ -6932,7 +6948,7 @@ export function ZdEstimateWorkbench({
       ) : null}
       {[
           pairPartnerMissingCount > 0 ? (
-            <ZdEstimateNotice tray tone="warning" title="Brak partnera pary w szacunku">
+            <ZdEstimateNotice key="pair-partner-missing" tray tone="warning" title="Brak partnera pary w szacunku">
               <p className="text-sm leading-snug">
                 Nie udało się dociągnąć {pairPartnerMissingCount}{" "}
                 {pairPartnerMissingCount === 1 ? "towaru" : "towarów"} z pary —
@@ -6973,7 +6989,7 @@ export function ZdEstimateWorkbench({
           ) : null,
           /* Soft only — blocking explode incomplete jest pełnym alertem powyżej. */
           bomMissingCount > 0 && !explodeBomIncomplete ? (
-            <ZdEstimateNotice tray tone="warning" title={ZD_BOM_UI.alertMissingTitle}>
+            <ZdEstimateNotice key="bom-missing" tray tone="warning" title={ZD_BOM_UI.alertMissingTitle}>
               <p className="text-sm leading-snug">
                 {ZD_BOM_UI.alertMissingBody(bomMissingCount)}
               </p>
@@ -7012,7 +7028,7 @@ export function ZdEstimateWorkbench({
           lines &&
           excludedWithIndividualCount > 0 &&
           excludedRoutedToServicesCount === 0 ? (
-            <ZdEstimateNotice tray tone="warning" title="Prośby na wykluczonych pozycjach">
+            <ZdEstimateNotice key="excluded-requests" tray tone="warning" title="Prośby na wykluczonych pozycjach">
               {excludedWithIndividualCount}{" "}
               {zdEstimateProsbaWord(excludedWithIndividualCount)}{" "}
               {excludedWithIndividualCount === 1
@@ -7349,9 +7365,9 @@ export function ZdEstimateWorkbench({
                   className={cn(
                     "zd-estimate-table",
                     showPackagingColumn && "zd-estimate-table--pack",
-                    showStockDetail && "zd-estimate-table--detail",
                     showZkColumn && "zd-estimate-table--zk",
-                    !statusColumnHasContent && "zd-estimate-table--no-status"
+                    // Kolumna Status wycofana — jej miejsce zawsze dostaje Nazwa (znaczniki pod nazwą).
+                    "zd-estimate-table--no-status"
                   )}
                 >
                   <thead>
@@ -7423,38 +7439,31 @@ export function ZdEstimateWorkbench({
                         switch (col) {
                           case "packaging":
                             return null;
-                          case "status":
+                          case "cover":
+                            return (
+                              <ZdEstimateSortableTh
+                                key={col}
+                                label="Starczy"
+                                field="cover"
+                                sortKey={sortKey}
+                                sortDir={sortDir}
+                                onSort={handleSort}
+                                className={cn("zd-estimate-num-col zd-estimate-cover-col", sectionCls)}
+                                align="right"
+                                hint="Dni do wyczerpania: dostępne ÷ sprzedaż dziennie. Sortowanie rosnąco = najpilniejsze."
+                                density="compact"
+                              />
+                            );
+                          case "value":
                             return (
                               <th
                                 key={col}
-                                className={cn(
-                                  "zd-estimate-status-col",
-                                  sectionCls
-                                )}
+                                className={cn("zd-estimate-num-col zd-estimate-value-col", sectionCls)}
                                 scope="col"
-                                title={ZD_ESTIMATE_UI.listStatusColumnHint}
+                                title="Wartość pozycji: sztuki po dostawie × ostatnia cena z ZD (netto)."
                               >
-                                Status
+                                Wartość
                               </th>
-                            );
-                          case "stock":
-                            return (
-                              <Fragment key={col}>
-                                <th
-                                  className={cn(
-                                    "zd-estimate-num-col",
-                                    sectionCls
-                                  )}
-                                >
-                                  Stan
-                                </th>
-                                <th
-                                  className="zd-estimate-num-col"
-                                  title={ZD_ESTIMATE_UI.reservationsCellTitle}
-                                >
-                                  Rez.
-                                </th>
-                              </Fragment>
                             );
                           case "available":
                             return (
@@ -7465,7 +7474,7 @@ export function ZdEstimateWorkbench({
                                   flowCls,
                                   sectionCls
                                 )}
-                                title="Dostępne w sztukach (stan − rezerwacje). Przy SKU paczki z pary — jednostki karty (op.)."
+                                title="Dostępne w sztukach (stan − rezerwacje); rezerwacje pod liczbą — klik pokazuje ZK. Przy SKU paczki z pary — jednostki karty (op.)."
                               >
                                 Dost.
                               </th>
@@ -7525,9 +7534,9 @@ export function ZdEstimateWorkbench({
                                   flowCls,
                                   sectionCls
                                 )}
-                                title="Otwarte ZD — jednostki dokumentu (przy paczkach: przeliczenie na sztuki w podpowiedzi)."
+                                title="W drodze — otwarte ZD w jednostkach dokumentu (przy paczkach: przeliczenie na sztuki w podpowiedzi)."
                               >
-                                Otwarte
+                                W drodze
                               </th>
                             );
                           case "zk":
@@ -7651,6 +7660,7 @@ export function ZdEstimateWorkbench({
                           onOverrideChange={handleRowOverrideChange}
                           onAcceptReview={handleRowAcceptReview}
                           otherSupplierHint={policzScopeInfo?.otherSupplierHintByTwId[l.tw_Id] ?? null}
+                          unitPriceNet={unitPriceByTwId[l.tw_Id] ?? null}
                         />
                       );
                     })}
@@ -7837,6 +7847,29 @@ export function ZdEstimateWorkbench({
                 >
                   Powiąż ZD
                 </Button>
+                {orderSummary.count > 0 ? (
+                  <span
+                    className="ml-1 inline-flex min-w-0 items-center gap-1 whitespace-nowrap text-[12px] tabular-nums text-slate-600"
+                    title="Suma pozycji „Do ZD” z Twoimi zmianami ilości; wartość = sztuki po dostawie × ostatnia cena z ZD (netto)"
+                    role="status"
+                  >
+                    <strong className="font-semibold text-slate-900">{orderSummary.count}</strong>
+                    {orderSummary.count === 1 ? "pozycja" : orderSummary.count < 5 ? "pozycje" : "pozycji"}
+                    <span aria-hidden>·</span>
+                    {orderSummary.pieces.toLocaleString("pl-PL")} szt
+                    {orderSummary.value > 0 ? (
+                      <>
+                        <span aria-hidden>·</span>
+                        <strong className="font-semibold text-slate-900">
+                          ok. {Math.round(orderSummary.value).toLocaleString("pl-PL")} zł
+                        </strong>
+                      </>
+                    ) : null}
+                    {orderSummary.unpriced > 0 ? (
+                      <span className="text-slate-400">· {orderSummary.unpriced} bez ceny</span>
+                    ) : null}
+                  </span>
+                ) : null}
                 {/* Sesja kreatora — z dala od „Utwórz ZD” (anulowanie jest nieodwracalne). */}
                 {showExternalSessionActiveStatus || canCancelExternalSession ? (
                   <div className="ml-auto flex min-w-0 flex-wrap items-center gap-1.5">

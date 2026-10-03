@@ -78,6 +78,8 @@ export type ZdEstimateUiSessionSnapshot = {
   /** Opcja „Do kolejnej dostawy” przy ostatnim Policz (starsze snapshoty: brak = wyłączona). */
   leadTimeHorizon?: boolean;
   horizon?: import("@/lib/orders/zd-order-horizon").ZdOrderHorizon | null;
+  /** Ceny za sztukę z ostatnich ZD (kolumna „Wartość”); starsze snapshoty: brak. */
+  unitPriceByTwId?: Record<number, number>;
 
   scopeMode: ZdEstimateRunMode;
   selectedGroup: ZdEstimateGroupOption | null;

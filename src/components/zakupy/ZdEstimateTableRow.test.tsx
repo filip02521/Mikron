@@ -50,8 +50,8 @@ function line(twId: number): ManualZdEstimateLine {
 }
 
 const LINES = [line(1), line(2), line(3)];
-const COLUMNS: ZdEstimateOptionalColumn[] = ["status", "stock", "sales", "target"];
-const SECTION_STARTS = new Set<ZdEstimateOptionalColumn>(["stock"]);
+const COLUMNS: ZdEstimateOptionalColumn[] = ["cover", "available", "sales", "target", "value"];
+const SECTION_STARTS = new Set<ZdEstimateOptionalColumn>(["available"]);
 
 /** Uproszczony rodzic jak w kreatorze: per-wiersz wartości + stabilne handlery. */
 function Harness() {

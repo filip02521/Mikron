@@ -130,6 +130,8 @@ import {
   runZdOrderEngine,
 } from "@/lib/orders/zd-order-engine";
 import { loadZdOrderHorizons } from "@/lib/orders/zd-order-horizon-load";
+import { loadProductPurchasePrices } from "@/lib/stock-watch/data";
+import { unitPricePerPiece } from "@/lib/stock-watch/analysis";
 import {
   assertOrderMultiple,
   assertPackagingUnits,
@@ -350,6 +352,8 @@ export type ZdEstimateRunResult =
       otherSupplierHintByTwId?: Record<number, string>;
       /** Rozbicie horyzontu, gdy opcja czasu dostawy była zaznaczona. */
       horizon?: import("@/lib/orders/zd-order-horizon").ZdOrderHorizon | null;
+      /** tw → cena netto za sztukę z ostatniego ZD (kolumna „Wartość”). */
+      unitPriceByTwId?: Record<number, number>;
       meta: {
         pagesFetched: number;
         totalCountApi: number;
@@ -1403,6 +1407,20 @@ export async function actionRunZdEstimateManual(
 
     const historyDto = historyMapToDto(historyByTwId);
 
+    // Ceny z ostatnich ZD (nocny zbiór) — za sztukę, wg opakowań z tego Policz.
+    const unitPriceByTwId: Record<number, number> = {};
+    try {
+      const prices = await loadProductPurchasePrices();
+      for (const line of result.pozycje) {
+        const price = prices.get(line.tw_Id);
+        if (!price) continue;
+        const perPiece = unitPricePerPiece(price.priceNet, engine.packagingLookup.get(line.tw_Id) ?? null);
+        if (perPiece != null) unitPriceByTwId[line.tw_Id] = perPiece;
+      }
+    } catch {
+      // Tylko kolumna „Wartość” — bez cen lista działa.
+    }
+
     // Sesja UI na serwerze — bez drugiego uploadu snapshotu z przeglądarki
     // (duże cechy, np. Ivoclar ~1590 SKU, potrafiły wyłożyć osobny create).
     let uiSessionId: string | null = null;
@@ -1435,6 +1453,7 @@ export async function actionRunZdEstimateManual(
         teethTwIds,
         boostPreset,
         horizon,
+        unitPriceByTwId,
         seed: input.uiSessionSeed ?? null,
       });
       const persisted = await persistZdEstimateUiSessionSnapshot({
@@ -1471,6 +1490,7 @@ export async function actionRunZdEstimateManual(
       assignedElsewhere: engine.assignedElsewhere,
       otherSupplierHintByTwId: engine.otherSupplierHintByTwId,
       horizon,
+      unitPriceByTwId,
       exclusions,
       onRequests,
       packaging,
