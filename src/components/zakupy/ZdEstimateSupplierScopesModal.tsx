@@ -273,6 +273,15 @@ export function ZdEstimateSupplierScopesModal({
   const [pending, start] = useTransition();
   const [loading, setLoading] = useState(false);
   const [scopes, setScopes] = useState<ZdEstimateSupplierScopeRow[]>([]);
+  // Najnowsza lista dla handlerów async — callbacki rodzica wołamy poza updaterem
+  // setState (updater działa w renderze → setState rodzica w trakcie renderu).
+  const scopesRef = useRef(scopes);
+  const commitScopes = (next: ZdEstimateSupplierScopeRow[]) => {
+    scopesRef.current = next;
+    setScopes(next);
+    onScopesChange?.(next, { reason: "mutate" });
+    onMappedSupplierIdsChange?.(next.map((s) => s.supplierId));
+  };
   const [query, setQuery] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<ScopeDraft>(emptyDraft);
@@ -308,6 +317,7 @@ export function ZdEstimateSupplierScopesModal({
           onError(res.message);
           return;
         }
+        scopesRef.current = res.scopes;
         setScopes(res.scopes);
         onScopesChange?.(res.scopes, { reason: "load" });
         onMappedSupplierIdsChange?.(res.scopes.map((s) => s.supplierId));
@@ -447,13 +457,10 @@ export function ZdEstimateSupplierScopesModal({
         onError(res.message);
         return;
       }
-      setScopes((prev) => {
-        const next = prev.filter((s) => s.supplierId !== supplierId);
-        const merged = [res.scope, ...next];
-        onScopesChange?.(merged, { reason: "mutate" });
-        onMappedSupplierIdsChange?.(merged.map((s) => s.supplierId));
-        return merged;
-      });
+      commitScopes([
+        res.scope,
+        ...scopesRef.current.filter((s) => s.supplierId !== supplierId),
+      ]);
       onDone();
     });
   };
@@ -472,12 +479,7 @@ export function ZdEstimateSupplierScopesModal({
         onError(res.message);
         return;
       }
-      setScopes((prev) => {
-        const next = prev.filter((s) => s.supplierId !== supplierId);
-        onScopesChange?.(next, { reason: "mutate" });
-        onMappedSupplierIdsChange?.(next.map((s) => s.supplierId));
-        return next;
-      });
+      commitScopes(scopesRef.current.filter((s) => s.supplierId !== supplierId));
       if (editingId === supplierId) cancelEdit();
     });
   };
