@@ -780,6 +780,7 @@ function MojeOrdersViewContent({
             hintAriaLabel="O liście prośb"
             description={cardDescription}
             action={cardHeaderAction}
+            actionAlign="inline"
             leading={
               <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
                 <IconClipboardList size={20} />
@@ -850,6 +851,7 @@ function MojeOrdersViewContent({
           hintAriaLabel="O liście prośb"
           description={cardDescription}
           action={cardHeaderAction}
+          actionAlign="inline"
           leading={
             <SectionHeadingIcon tileClassName={sectionIconTileBrandClass}>
               <IconClipboardList size={20} />
