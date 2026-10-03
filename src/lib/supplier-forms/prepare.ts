@@ -54,6 +54,7 @@ export async function prepareSupplierFormForZd(input: {
     symbol: p.tw_Symbol ?? null,
     name: String(p.tw_Nazwa ?? "").trim(),
     qty: Number(p.ob_Ilosc) || 0,
+    twId: Number(p.ob_TowId) || undefined,
   }));
   return {
     ok: true,

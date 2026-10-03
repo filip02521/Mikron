@@ -1,3 +1,4 @@
+import { fetchZdEstimatePackaging } from "@/lib/data/zd-estimate-packaging";
 import { fillSupplierPdfForm } from "@/lib/supplier-forms/pdf";
 import type { PreparedSupplierForm } from "@/lib/supplier-forms/prepare";
 import { buildSupplierFormFill, matchLinesToCodeRows, type SupplierFormLine } from "@/lib/supplier-forms/templates";
@@ -6,6 +7,16 @@ import { buildSupplierXlsxList, fillSupplierXlsxForm, xlsxTemplateCodeRows } fro
 const XLSX_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
 type Ready = Extract<PreparedSupplierForm, { ok: true }>;
+
+/** Towary zamawiane w opakowaniach (Kreator → Opak.) → etykieta jednostki, np. „op.”. */
+async function packageUnitByTwId(): Promise<Map<number, string>> {
+  const rows = await fetchZdEstimatePackaging().catch(() => []);
+  return new Map(
+    rows
+      .filter((r) => r.documentUnitMode === "packages")
+      .map((r) => [r.subiektTwId, r.packageLabel.trim() || "op."] as const)
+  );
+}
 
 function pdfDate(date: Date) {
   return { day: date.getDate(), month: date.getMonth() + 1, year: date.getFullYear() };
@@ -38,7 +49,12 @@ export async function renderSupplierForm(
     return { bytes, contentType: "application/pdf", fileName: `${base}.pdf` };
   }
   if (p.template.kind === "xlsx-list") {
-    return { bytes: await buildSupplierXlsxList(p.template, p.lines), contentType: XLSX_TYPE, fileName: `${base}.xlsx` };
+    const units = p.template.unitColumn ? await packageUnitByTwId() : undefined;
+    return {
+      bytes: await buildSupplierXlsxList(p.template, p.lines, units),
+      contentType: XLSX_TYPE,
+      fileName: `${base}.xlsx`,
+    };
   }
   // exceljs zapisuje daty w UTC — północ czasu lokalnego dałaby w Excelu dzień wcześniej.
   const excelDate = new Date(Date.UTC(p.date.getFullYear(), p.date.getMonth(), p.date.getDate()));

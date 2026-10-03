@@ -57,7 +57,8 @@ export async function fillSupplierXlsxForm(
 /** Własny arkusz: Lp | Symbol | Nazwa | Ilość, pozycje posortowane jak w Excelu po nazwie. */
 export async function buildSupplierXlsxList(
   template: SupplierXlsxListTemplate,
-  lines: readonly SupplierFormLine[]
+  lines: readonly SupplierFormLine[],
+  unitByTwId: ReadonlyMap<number, string> = new Map()
 ): Promise<Uint8Array> {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet(template.sheetName);
@@ -66,10 +67,19 @@ export async function buildSupplierXlsxList(
     { header: "Symbol", key: "symbol", width: template.columns.symbol },
     { header: "Nazwa", key: "name", width: template.columns.name },
     { header: "Ilość", key: "qty", width: template.columns.qty },
+    ...(template.unitColumn
+      ? [{ header: template.unitColumn.header, key: "unit", width: template.unitColumn.width }]
+      : []),
   ];
   const sorted = lines.filter((l) => l.qty > 0).sort((a, b) => compareExcelText(a.name, b.name));
   sorted.forEach((l, i) =>
-    ws.addRow({ lp: i + 1, symbol: excelSymbolValue(l.symbol), name: l.name, qty: l.qty })
+    ws.addRow({
+      lp: i + 1,
+      symbol: excelSymbolValue(l.symbol),
+      name: l.name,
+      qty: l.qty,
+      ...(template.unitColumn ? { unit: (l.twId && unitByTwId.get(l.twId)) || "szt." } : {}),
+    })
   );
   for (const col of ["A", "B", "C"]) ws.getColumn(col).alignment = { horizontal: "left" };
   const buffer = await wb.xlsx.writeBuffer();

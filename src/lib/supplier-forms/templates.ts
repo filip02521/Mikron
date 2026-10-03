@@ -157,6 +157,11 @@ export type SupplierXlsxListTemplate = {
   sheetName: string;
   /** Kolumny Lp / Symbol / Nazwa / Ilość — szerokości jak w ręcznie tworzonym pliku. */
   columns: { lp: number; symbol: number; name: number; qty?: number };
+  /**
+   * Kolumna jednostki (np. Ivoclar „Jm”): „op.” / etykieta opakowania, gdy towar ma
+   * w Kreatorze ustawione zamawianie w opakowaniach; inaczej „szt.”.
+   */
+  unitColumn?: { header: string; width: number };
 };
 
 export type SupplierFormTemplate =
@@ -177,6 +182,24 @@ const RENFERT_LIST: SupplierXlsxListTemplate = {
   fileName: ({ date }) => `Renfert ${dayMonth(date)}`,
   sheetName: "Arkusz1",
   columns: { lp: 9.140625, symbol: 15.5703125, name: 51.5703125 },
+};
+
+/**
+ * Ivoclar Vivadent — własny arkusz: Lp | Symbol | Nazwa | Ilość | Jm, wszystkie
+ * pozycje ZD posortowane jak w Excelu. Porównane z „ivoclar 1.10” (ZD 11/M/10/2026):
+ * pozycje, nazwy, symbole i kolejność zgodne; w pliku ręcznie doklejono na końcu
+ * pozycje dopisane później do ZD — tu trafiają na swoje miejsce alfabetycznie.
+ */
+const IVOCLAR_LIST: SupplierXlsxListTemplate = {
+  kind: "xlsx-list",
+  id: "ivoclar-lista",
+  label: "Ivoclar — lista pozycji (Excel)",
+  supplierName: /^ivoclar\b/i,
+  fileName: ({ date }) =>
+    `ivoclar ${date.getDate()}.${String(date.getMonth() + 1).padStart(2, "0")}`,
+  sheetName: "Arkusz1",
+  columns: { lp: 3, symbol: 9.140625, name: 46.85546875, qty: 5.28515625 },
+  unitColumn: { header: "Jm", width: 4 },
 };
 
 /**
@@ -216,6 +239,7 @@ export const SUPPLIER_FORM_TEMPLATES: readonly SupplierFormTemplate[] = [
   WIEDENT_WYROBY_POMOCNICZE,
   DENTSPLY_SIRONA_ORDER_FORM,
   RENFERT_LIST,
+  IVOCLAR_LIST,
 ];
 
 export function findSupplierFormTemplate(supplierName: string | null | undefined): SupplierFormTemplate | null {
@@ -258,7 +282,7 @@ export function matchLinesToCodeRows(
   return { qtyByRow, mapped, unmapped };
 }
 
-export type SupplierFormLine = { symbol: string | null; name: string; qty: number };
+export type SupplierFormLine = { symbol: string | null; name: string; qty: number; twId?: number };
 
 export type SupplierFormFill = {
   values: Record<string, string>;
