@@ -21,7 +21,6 @@ import {
 } from "@/lib/orders/sales-cancel";
 import type { SalesClientAssignment } from "@/lib/orders/sales-client-label";
 import { MyOrderShipmentCard } from "@/components/moje/MyOrderShipmentCard";
-import { Button } from "@/components/ui/Button";
 import {
   mojeShipmentListClass,
   mojeShipmentSectionShellClass,
@@ -48,7 +47,6 @@ import {
   markPickupShelfNoticeSeen,
 } from "@/lib/orders/my-order-pickup-shelf-notice";
 import { cn } from "@/lib/cn";
-import { mojeControlHeightClass } from "@/lib/ui/ontime-theme";
 import {
   MOJE_SHIPMENT_VIRTUAL_THRESHOLD,
 } from "@/lib/ui/virtual-list-config";
@@ -670,16 +668,14 @@ export function MyOrderShipmentList({
         />
       ) : null}
       {sortedRows.length > 1 ? (
-        <div className="flex justify-end border-b border-slate-100 px-3 py-1.5 sm:px-4">
-          <Button
+        <div className="flex justify-end px-3 pt-1 sm:px-4">
+          <button
             type="button"
-            variant="ghost"
-            size="sm"
-            className={cn(mojeControlHeightClass, "px-3 text-xs font-semibold")}
+            className="rounded px-1 py-0.5 text-[11px] font-medium text-slate-500 underline-offset-2 transition-colors hover:text-slate-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/30"
             onClick={() => (allExpanded ? collapseAll() : expandAll())}
           >
             {allExpanded ? "Zwiń wszystkie" : "Rozwiń wszystkie"}
-          </Button>
+          </button>
         </div>
       ) : null}
       <VirtualList

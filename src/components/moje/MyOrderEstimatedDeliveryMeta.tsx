@@ -39,7 +39,7 @@ export function MyOrderEstimatedDeliveryMeta({
     <DeliveryTimingMeta
       className={className}
       caption={MY_ORDER_HISTORY_ESTIMATE_CAPTION}
-      captionTone={parsed.overdue ? "overdue" : "default"}
+      captionTone="default"
       title={title}
       inline={inline}
     >
