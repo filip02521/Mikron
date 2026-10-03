@@ -4,7 +4,7 @@ import { getSupplierFormTemplate, type SupplierXlsxListTemplate } from "@/lib/su
 import { buildSupplierXlsxList } from "@/lib/supplier-forms/xlsx";
 
 describe("Ivoclar — własny arkusz z Jm", () => {
-  it("sortuje po nazwie, Jm z opakowań (op.) albo szt.", async () => {
+  it("sortuje po nazwie, Jm zawsze szt.", async () => {
     const template = getSupplierFormTemplate("ivoclar-lista") as SupplierXlsxListTemplate;
     const bytes = await buildSupplierXlsxList(
       template,
@@ -12,8 +12,7 @@ describe("Ivoclar — własny arkusz z Jm", () => {
         { symbol: "605329", name: "IPS e.max CAD CEREC/inLab LT A2 C14/5", qty: 15, twId: 8098 },
         { symbol: "529479", name: "Chromascop", qty: 4, twId: 1 },
         { symbol: "540308 / SZAFKA", name: "Szafka na zęby Ivoclar z 6 szufladami", qty: 2, twId: 2 },
-      ],
-      new Map([[8098, "op."]])
+      ]
     );
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(bytes.buffer as ArrayBuffer);
@@ -22,7 +21,7 @@ describe("Ivoclar — własny arkusz z Jm", () => {
     expect(rows).toEqual([
       ["Lp", "Symbol", "Nazwa", "Ilość", "Jm"],
       [1, 529479, "Chromascop", 4, "szt."],
-      [2, 605329, "IPS e.max CAD CEREC/inLab LT A2 C14/5", 15, "op."],
+      [2, 605329, "IPS e.max CAD CEREC/inLab LT A2 C14/5", 15, "szt."],
       [3, "540308 / SZAFKA", "Szafka na zęby Ivoclar z 6 szufladami", 2, "szt."],
     ]);
   });

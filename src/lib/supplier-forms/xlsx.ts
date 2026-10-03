@@ -57,8 +57,7 @@ export async function fillSupplierXlsxForm(
 /** Własny arkusz: Lp | Symbol | Nazwa | Ilość, pozycje posortowane jak w Excelu po nazwie. */
 export async function buildSupplierXlsxList(
   template: SupplierXlsxListTemplate,
-  lines: readonly SupplierFormLine[],
-  unitByTwId: ReadonlyMap<number, string> = new Map()
+  lines: readonly SupplierFormLine[]
 ): Promise<Uint8Array> {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet(template.sheetName);
@@ -78,7 +77,7 @@ export async function buildSupplierXlsxList(
       symbol: excelSymbolValue(l.symbol),
       name: l.name,
       qty: l.qty,
-      ...(template.unitColumn ? { unit: (l.twId && unitByTwId.get(l.twId)) || "szt." } : {}),
+      ...(template.unitColumn ? { unit: "szt." } : {}),
     })
   );
   for (const col of ["A", "B", "C"]) ws.getColumn(col).alignment = { horizontal: "left" };
