@@ -96,7 +96,7 @@ async function fetchDocsWindow(
   const byId = new Map<number, DocRow>();
   let seen = 0;
   let page = 1;
-  let totalPages = 1;
+  let totalPages: number;
   let totalCount: number | null = null;
   do {
     const res = await searchSubiektOrdersDocuments({ typ, dataOd, dataDo, page, pageSize: PAGE_SIZE });
