@@ -20,6 +20,8 @@ export type DeliveryStatsOrderInput = {
   is_teeth?: boolean | null;
   sales_cancelled_at?: string | null;
   procurement_cancel_disposition?: string | null;
+  /** „Już zamówione” — ordered_at to klik w panelu, nie realne złożenie zamówienia. */
+  already_ordered?: boolean | null;
 };
 
 export type AggregatedDeliveryStats = {
@@ -107,6 +109,12 @@ export function isCancelDispositionStatsPoison(
   return Boolean(row.sales_cancelled_at && row.procurement_cancel_disposition);
 }
 
+export function isAlreadyOrderedStatsPoison(
+  row: Pick<DeliveryStatsOrderInput, "already_ordered">
+): boolean {
+  return row.already_ordered === true;
+}
+
 export function isTeethStatsPoison(
   row: Pick<DeliveryStatsOrderInput, "is_teeth">
 ): boolean {
@@ -187,6 +195,10 @@ export function aggregateDeliveryStatsFromOrders(orders: DeliveryStatsOrderInput
         supplierId: row.supplier_id,
         reason: "cancel-disposition",
       });
+      continue;
+    }
+    if (isAlreadyOrderedStatsPoison(row)) {
+      skipped.push({ orderId: row.id, supplierId: row.supplier_id, reason: "już zamówione" });
       continue;
     }
     if (isMissingProduct(row.products)) {
@@ -295,7 +307,13 @@ export function hasSiblingDeliveryStatsSample(
     if (row.id === order.id) return false;
     if (row.status !== DELIVERY_STATS_COMPLETED_STATUS) return false;
     if (row.supplier_id !== order.supplier_id) return false;
-    if (isTeethStatsPoison(row) || isCancelDispositionStatsPoison(row)) return false;
+    if (
+      isTeethStatsPoison(row) ||
+      isCancelDispositionStatsPoison(row) ||
+      isAlreadyOrderedStatsPoison(row)
+    ) {
+      return false;
+    }
     if (isMissingProduct(row.products)) return false;
     const siblingDate = placementDateFromOrder(row);
     if (!siblingDate) return false;
@@ -314,6 +332,7 @@ export function businessDaysForDeliveryStatsSample(
   if (order.request_kind === "informacja") return null;
   if (isTeethStatsPoison(order)) return null;
   if (isCancelDispositionStatsPoison(order)) return null;
+  if (isAlreadyOrderedStatsPoison(order)) return null;
   if (isMissingProduct(order.products)) return null;
   if (!order.supplier_id || !order.order_type || order.order_type === "None") return null;
 

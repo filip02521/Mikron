@@ -1,6 +1,7 @@
 import { PROCUREMENT_PROCESS_LINES_COPY } from "@/lib/orders/procurement-process-lines-copy";
 
-export type ProcurementProcessAction = "GLOWNE" | "POBOCZNE";
+/** JUZ_ZAMOWIONE — prośba na towar zamówiony wcześniej; bez próbki czasu dostawy. */
+export type ProcurementProcessAction = "GLOWNE" | "POBOCZNE" | "JUZ_ZAMOWIONE";
 
 /** Modal wyboru linii tylko gdy w grupie jest więcej niż jedna pozycja. */
 export function shouldPickLinesBeforeProcess(lineCount: number): boolean {
@@ -30,9 +31,15 @@ export function filterProcessLineIds(
 }
 
 export function processLinesModalTitle(action: ProcurementProcessAction): string {
-  return action === "GLOWNE"
-    ? PROCUREMENT_PROCESS_LINES_COPY.titleGlowne
-    : PROCUREMENT_PROCESS_LINES_COPY.titlePoboczne;
+  if (action === "GLOWNE") return PROCUREMENT_PROCESS_LINES_COPY.titleGlowne;
+  if (action === "JUZ_ZAMOWIONE") return PROCUREMENT_PROCESS_LINES_COPY.titleJuzZamowione;
+  return PROCUREMENT_PROCESS_LINES_COPY.titlePoboczne;
+}
+
+export function processLinesPendingLabel(action: ProcurementProcessAction): string {
+  if (action === "GLOWNE") return "Oznaczanie jako główne…";
+  if (action === "JUZ_ZAMOWIONE") return "Oznaczanie jako już zamówione…";
+  return "Oznaczanie jako uzupełniające…";
 }
 
 /** CTA: wszystkie → „Oznacz wszystkie (M)”; część → „Oznacz N z M”. */
@@ -64,6 +71,9 @@ export function processLinesScheduleAlert(input: {
   selectedCount: number;
   totalCount: number;
 }): string | null {
+  if (input.action === "JUZ_ZAMOWIONE") {
+    return PROCUREMENT_PROCESS_LINES_COPY.alreadyOrderedHint;
+  }
   if (input.action !== "GLOWNE") return null;
   if (input.supplierOrderOnDemand) {
     return PROCUREMENT_PROCESS_LINES_COPY.scheduleAlertOnDemand;
@@ -95,6 +105,12 @@ export function processLinesSuccessToast(input: {
     return onDemand
       ? "Oznaczono jako główne (bez terminu planowego)"
       : "Oznaczono jako zamówienie główne";
+  }
+
+  if (action === "JUZ_ZAMOWIONE") {
+    return partial
+      ? `Oznaczono ${selectedCount} z ${totalCount} pozycji jako już zamówione (bez wpływu na czasy dostaw)`
+      : "Oznaczono jako już zamówione (bez wpływu na czasy dostaw)";
   }
 
   if (partial) {

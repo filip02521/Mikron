@@ -56,6 +56,17 @@ describe("aggregateDeliveryStatsFromOrders", () => {
     expect(skipped.some((s) => s.reason === "cancel-disposition")).toBe(true);
   });
 
+  it("pomija „Już zamówione” — w agregacji i w próbce przy przyjęciu", () => {
+    const already = order({ id: "already", order_type: "Poboczne", already_ordered: true });
+    const { samples, skipped } = aggregateDeliveryStatsFromOrders([
+      already,
+      order({ id: "ok", order_type: "Poboczne", delivery_at: "2026-03-12T10:00:00.000Z" }),
+    ]);
+    expect(samples.map((s) => s.orderId)).toEqual(["ok"]);
+    expect(skipped.some((s) => s.reason === "już zamówione")).toBe(true);
+    expect(businessDaysForDeliveryStatsSample(already, "2026-03-12T10:00:00.000Z")).toBeNull();
+  });
+
   it("same-day → 0 dni roboczych (próbka OK)", () => {
     const days = businessDaysForDeliveryStatsSample(
       order({

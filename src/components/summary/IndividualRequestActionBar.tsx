@@ -170,6 +170,9 @@ export function IndividualRequestActionBar({
         )}
         onEdit={onEdit}
         onCancel={onCancel}
+        onAlreadyOrdered={
+          supplierId ? () => onRequestProcess("JUZ_ZAMOWIONE") : undefined
+        }
         onOpenSupplierDetails={onOpenSupplierDetails}
         onSetFlag={onSetFlag}
         hasFlag={hasFlag}

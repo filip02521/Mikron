@@ -31,7 +31,7 @@ export async function fetchDeliveryStatsDiagnostics(): Promise<DeliveryStatsDiag
     supabase
       .from("individual_orders")
       .select(
-        "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition"
+        "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition, already_ordered"
       )
       .eq("request_kind", "zamowienie")
       .eq("status", DELIVERY_STATS_COMPLETED_STATUS)

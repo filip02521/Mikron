@@ -7,6 +7,7 @@ import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja require*(); service role z pełnym scope po warstwie aplikacji.
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { revalidateAfterInformacjaArrived } from "@/lib/orders/informacja-arrived-revalidate";
 import {
   requireAdmin,
@@ -281,7 +282,7 @@ export async function actionBatchShiftOrder(
 
 export async function actionProcessIndividual(
   orderIds: string[],
-  action: "GLOWNE" | "POBOCZNE" | "ANULOWANO",
+  action: "GLOWNE" | "POBOCZNE" | "JUZ_ZAMOWIONE" | "ANULOWANO",
   procurementCancelNote?: string | null
 ): Promise<DailyPanelActionResult | ActionErrorResult> {
   // Błędy przez wartość zwracaną — w produkcji Next ukrywa treść throw.
@@ -1417,6 +1418,41 @@ export async function actionFetchDeliveryStatsDiagnostics() {
     return { error: "Brak konfiguracji bazy danych" };
   }
   return { success: true, data };
+}
+
+export async function actionFetchSubiektLeadTimesReport() {
+  await requireOperations();
+  const { fetchSubiektLeadTimesReport } = await import("@/lib/data/subiekt-lead-times-report");
+  return { success: true as const, data: await fetchSubiektLeadTimesReport() };
+}
+
+/** ZD → FZ z Subiekta: pobranie dokumentów i przeliczenie czasów dostaw. */
+export async function actionSyncSubiektLeadTimes(mode: "full" | "incremental") {
+  await requireOperations("mutate");
+  if (mode !== "full" && mode !== "incremental") return { error: "Nieznany tryb synchronizacji." };
+  const { isSubiektLeadTimesSyncRunning, runSubiektLeadTimesSync } = await import(
+    "@/lib/data/subiekt-lead-times-sync"
+  );
+  if (await isSubiektLeadTimesSyncRunning()) {
+    return { error: "Synchronizacja już trwa - poczekaj na jej koniec." };
+  }
+  if (mode === "full") {
+    // ~5 min — dłużej niż timeout proxy (300 s); panel odpytuje stan do końca.
+    after(async () => {
+      try {
+        // Strony z ETA są dynamiczne — revalidate poza żądaniem niepotrzebny.
+        await runSubiektLeadTimesSync("full");
+      } catch (e) {
+        console.error("[subiekt-lead-times] full sync", e);
+      }
+    });
+    return { success: true as const, started: true as const };
+  }
+  const result = await runSubiektLeadTimesSync(mode);
+  if ("skipped" in result) return { error: "Synchronizacja już trwa - poczekaj na jej koniec." };
+  revalidateAll();
+  if (!result.ok) return { error: result.error ?? "Synchronizacja nie powiodła się." };
+  return { success: true as const, count: result.samplesAssigned };
 }
 
 export type UpsertSupplierForm = {

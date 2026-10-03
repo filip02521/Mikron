@@ -28,6 +28,7 @@ export function RequestGroupOverflowMenu({
   onEdit,
   onCancel,
   onOpenSupplierDetails,
+  onAlreadyOrdered,
   onSetFlag,
   hasFlag = false,
   currentFlagId = null,
@@ -48,6 +49,8 @@ export function RequestGroupOverflowMenu({
   onCancel: () => void;
   /** Panel szczegółów dostawcy (drawer) — jak „Szczegóły” w harmonogramie. */
   onOpenSupplierDetails?: () => void;
+  /** „Już zamówione” — zamyka prośbę bez wpływu na czasy dostaw i harmonogram. */
+  onAlreadyOrdered?: () => void;
   onSetFlag?: () => void;
   /** Gdy grupa ma już flagę — etykiety „zmień / usuń”. */
   hasFlag?: boolean;
@@ -79,6 +82,20 @@ export function RequestGroupOverflowMenu({
       menuClassName="min-w-[15rem]"
     >
       <OverflowMenuLabel>{PROCUREMENT_REQUEST_FLAG_COPY.overflowSectionRequest}</OverflowMenuLabel>
+      {onAlreadyOrdered ? (
+        <OverflowMenuItem
+          disabled={disabled}
+          onClick={onAlreadyOrdered}
+          title="Towar był zamówiony wcześniej - prośba przejdzie do zamówionych bez wpływu na czasy dostaw i harmonogram"
+        >
+          <span className="flex min-w-0 flex-col items-start">
+            <span>Już zamówione</span>
+            <span className="text-[11px] font-normal text-slate-500">
+              Bez wpływu na czasy dostaw
+            </span>
+          </span>
+        </OverflowMenuItem>
+      ) : null}
       <OverflowMenuItem disabled={disabled} onClick={onEdit}>
         {PROCUREMENT_REQUEST_FLAG_COPY.overflowEdit}
       </OverflowMenuItem>

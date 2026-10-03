@@ -53,6 +53,21 @@ export const DEPARTMENT_BOARD_QUESTIONS_FORM = {
     "Uzupełniono produkt z pytania na Tablicy. Podaj ilość i dokończ prośbę.",
 };
 
+/** Formularz odpowiedzi w wątku (zakupy ↔ handlowiec). */
+export const DEPARTMENT_BOARD_REPLY_COMPOSER = {
+  placeholder: "Treść wiadomości…",
+  placeholderWithImages: "Dodaj opis do zdjęcia (opcjonalnie)…",
+  attach: "Zdjęcie",
+  attachAriaLabel: "Dodaj zdjęcie do odpowiedzi",
+  hint: "Wklej zrzut (Ctrl+V) lub przeciągnij zdjęcie",
+  dropHere: "Upuść, aby dołączyć zdjęcie",
+  compressing: "Przygotowuję zdjęcie…",
+  send: "Wyślij",
+  sending: "Wysyłanie…",
+  sendingImages: "Wysyłanie zdjęć…",
+  shortcut: "Ctrl+Enter wysyła",
+};
+
 export const DEPARTMENT_BOARD_QUESTIONS_FILTERS = {
   focusDisabledHint:
     "Filtry są tymczasowo zablokowane - otworzyłeś konkretny wątek z linku.",

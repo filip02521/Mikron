@@ -24,6 +24,7 @@ import {
   DELIVERY_STATS_COMPLETED_STATUS,
   deliveryDateKeyFromIso,
   hasSiblingDeliveryStatsSample,
+  isAlreadyOrderedStatsPoison,
   isCancelDispositionStatsPoison,
   isTeethStatsPoison,
   placementDateFromOrder,
@@ -1182,7 +1183,7 @@ async function assertGlowneSuppliersHaveInterval(supplierIds: Set<string>): Prom
 
 export async function processIndividualFromSummary(
   orderIds: string[],
-  action: "GLOWNE" | "POBOCZNE" | "ANULOWANO",
+  action: "GLOWNE" | "POBOCZNE" | "JUZ_ZAMOWIONE" | "ANULOWANO",
   userEmail: string,
   procurementCancelNote?: string | null,
   opts?: { skipSupplierSchedule?: boolean },
@@ -1254,7 +1255,15 @@ export async function processIndividualFromSummary(
     );
   }
 
+  // „Już zamówione” = uzupełniające bez próbki czasu dostawy (flaga already_ordered).
   const orderType: OrderType = action === "GLOWNE" ? "Glowne" : "Poboczne";
+  // Kolumnę dotykamy tylko gdy zmienia wartość — Główne/Uzupełniające działają bez migracji 167.
+  const alreadyOrderedPatchFor = (order: IndividualOrder) =>
+    action === "JUZ_ZAMOWIONE"
+      ? { already_ordered: true }
+      : order.already_ordered
+        ? { already_ordered: false }
+        : {};
   const batchOrderedAt = new Date().toISOString();
   const placementGroupId = crypto.randomUUID();
 
@@ -1332,6 +1341,7 @@ export async function processIndividualFromSummary(
           order_type: orderType,
           ordered_at: batchOrderedAt,
           placement_group_id: placementGroupId,
+          ...alreadyOrderedPatchFor(order),
           ...seenPatch,
         })
         .eq("id", id);
@@ -1348,6 +1358,7 @@ export async function processIndividualFromSummary(
         order_type: orderType,
         ordered_at: batchOrderedAt,
         placement_group_id: placementGroupId,
+        ...alreadyOrderedPatchFor(order),
         ...seenPatch,
       })
       .eq("id", id);
@@ -2022,7 +2033,7 @@ async function fetchSupplierCompletedOrdersForStats(
   const { data } = await supabase
     .from("individual_orders")
     .select(
-      "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition"
+      "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition, already_ordered"
     )
     .eq("supplier_id", supplierId)
     .eq("request_kind", "zamowienie")
@@ -2048,6 +2059,7 @@ function toDeliveryStatsCandidate(
     is_teeth: order.is_teeth === true,
     sales_cancelled_at: order.sales_cancelled_at ?? null,
     procurement_cancel_disposition: order.procurement_cancel_disposition ?? null,
+    already_ordered: order.already_ordered === true,
   };
 }
 
@@ -2073,6 +2085,14 @@ async function tryIncrementDeliveryStatsFromOrder(
       orderId: order.id,
       supplierId: order.supplier_id,
       reason: "cancel-disposition",
+    });
+    return false;
+  }
+  if (isAlreadyOrderedStatsPoison(candidate)) {
+    await recordDeliveryStatsSkipEvent({
+      orderId: order.id,
+      supplierId: order.supplier_id,
+      reason: "już zamówione",
     });
     return false;
   }
@@ -2351,7 +2371,7 @@ export async function recalculateAllStats() {
   const { data: history } = await supabase
     .from("individual_orders")
     .select(
-      "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition"
+      "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition, already_ordered"
     )
     .eq("request_kind", "zamowienie")
     .eq("status", DELIVERY_STATS_COMPLETED_STATUS)

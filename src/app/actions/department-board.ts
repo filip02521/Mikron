@@ -20,6 +20,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import type { SalesNoteColor } from "@/types/database";
 import {
   BOARD_IMAGE_BUCKET,
+  DEPARTMENT_BOARD_ATTACHMENT_SELECT,
+  type BoardThreadAttachmentRow,
   boardImageStoragePrefix,
   isBoardImageStoragePath,
   looksLikeBoardImageBytes,
@@ -208,13 +210,7 @@ export async function actionCreateQuestion(
   if (!trimmedTitle) throw new Error("Podaj temat pytania.");
   if (!trimmedBody) throw new Error("Treść pytania nie może być pusta.");
 
-  const imageFiles = (images ?? []).filter(Boolean);
-  const batchError = validateBoardImageBatch(imageFiles.length);
-  if (batchError) throw new Error(batchError);
-  for (const file of imageFiles) {
-    const fileError = validateBoardImageFile(file);
-    if (fileError) throw new Error(fileError);
-  }
+  const imageFiles = validateBoardImages(images);
 
   const productFields = normalizeBoardQuestionProductInput(product);
 
@@ -262,7 +258,9 @@ export async function actionCreateQuestion(
       files: imageFiles,
     });
     attachmentsUploaded = upload.uploaded;
-    attachmentError = upload.error;
+    attachmentError = upload.error
+      ? "Pytanie zapisano, ale nie udało się dodać zdjęć. Spróbuj ponownie w nowym pytaniu."
+      : undefined;
   }
 
   revalidateDepartmentBoard();
@@ -273,16 +271,30 @@ export async function actionCreateQuestion(
   };
 }
 
+function validateBoardImages(images: File[] | null | undefined): File[] {
+  const imageFiles = (images ?? []).filter(Boolean);
+  const batchError = validateBoardImageBatch(imageFiles.length);
+  if (batchError) throw new Error(batchError);
+  for (const file of imageFiles) {
+    const fileError = validateBoardImageFile(file);
+    if (fileError) throw new Error(fileError);
+  }
+  return imageFiles;
+}
+
 async function uploadBoardQuestionImages(input: {
   supabase: ReturnType<typeof createAdminClient>;
   threadId: string;
   userId: string;
   files: File[];
+  /** Ustawione = zdjęcia odpowiedzi; brak = zdjęcia samego pytania. */
+  postId?: string;
 }): Promise<{ uploaded: number; error?: string }> {
   const { randomUUID } = await import("crypto");
   const uploadedPaths: string[] = [];
   const rows: Array<{
     thread_id: string;
+    post_id?: string;
     created_by: string;
     storage_path: string;
     file_name: string;
@@ -321,6 +333,7 @@ async function uploadBoardQuestionImages(input: {
       uploadedPaths.push(storagePath);
       rows.push({
         thread_id: input.threadId,
+        ...(input.postId ? { post_id: input.postId } : {}),
         created_by: input.userId,
         storage_path: storagePath,
         file_name: file.name.slice(0, 200) || `zdjecie-${i + 1}.${ext}`,
@@ -347,11 +360,7 @@ async function uploadBoardQuestionImages(input: {
     const message =
       e instanceof Error ? e.message.replace(/\n|\r/g, "") : "upload failed";
     console.error("[board-images] upload failed", message);
-    return {
-      uploaded: 0,
-      error:
-        "Pytanie zapisano, ale nie udało się dodać zdjęć. Spróbuj ponownie w nowym pytaniu.",
-    };
+    return { uploaded: 0, error: message };
   }
 }
 
@@ -394,7 +403,11 @@ export async function actionGetBoardQuestionImageUrl(
   return { url: signed.signedUrl };
 }
 
-export async function actionReplyToQuestion(threadId: string, body: string) {
+export async function actionReplyToQuestion(
+  threadId: string,
+  body: string,
+  images?: File[] | null
+) {
   const user = await getSessionUser();
   if (!user?.id) throw new Error("Zaloguj się ponownie.");
 
@@ -419,7 +432,10 @@ export async function actionReplyToQuestion(threadId: string, body: string) {
   }
 
   const trimmedBody = trimBody(body);
-  if (!trimmedBody) throw new Error("Wiadomość nie może być pusta.");
+  const imageFiles = validateBoardImages(images);
+  if (!trimmedBody && !imageFiles.length) {
+    throw new Error("Napisz wiadomość albo dodaj zdjęcie.");
+  }
 
   const thread = await fetchThread(threadId);
   if (thread.kind !== "question") {
@@ -447,6 +463,35 @@ export async function actionReplyToQuestion(threadId: string, body: string) {
     .single();
 
   if (postError) throw new Error(postError.message);
+
+  let attachments: BoardThreadAttachmentRow[] = [];
+  if (imageFiles.length) {
+    const failReply = async (message: string): Promise<never> => {
+      // Bez zdjęć odpowiedź jest niepełna — cofamy wpis, szkic zostaje w formularzu.
+      await supabase.from("department_board_posts").delete().eq("id", post.id);
+      throw new Error(message);
+    };
+    const { hasSupabaseConfig } = await import("@/lib/supabase/admin");
+    if (!hasSupabaseConfig()) {
+      await failReply("Brak konfiguracji przechowywania plików - nie można wysłać zdjęć.");
+    }
+    const upload = await uploadBoardQuestionImages({
+      supabase,
+      threadId,
+      userId: user.id,
+      files: imageFiles,
+      postId: post.id,
+    });
+    if (upload.error) {
+      await failReply("Nie udało się wysłać zdjęć. Spróbuj ponownie.");
+    }
+    const { data: attachmentRows } = await supabase
+      .from("department_board_thread_attachments")
+      .select(DEPARTMENT_BOARD_ATTACHMENT_SELECT)
+      .eq("post_id", post.id)
+      .order("sort_order", { ascending: true });
+    attachments = (attachmentRows ?? []) as unknown as BoardThreadAttachmentRow[];
+  }
 
   // Procurement reply → answered; Sales reply (doprecyzowanie) → open
   // Przy podwójnej roli (handlowiec + zakupy) doprecyzowanie własnego pytania
@@ -482,7 +527,7 @@ export async function actionReplyToQuestion(threadId: string, body: string) {
         questionBody: thread.body,
         productSymbol: thread.product_symbol,
         productName: thread.product_name,
-        replyBody: trimmedBody,
+        replyBody: boardReplyEmailBody(trimmedBody, imageFiles.length),
       });
       if (!result.emailSent) {
         console.warn(
@@ -504,7 +549,17 @@ export async function actionReplyToQuestion(threadId: string, body: string) {
   }
 
   revalidateDepartmentBoard();
-  return { post };
+  return { post: { ...post, attachments } };
+}
+
+/** Mail nie niesie zdjęć — informujemy, że czekają w wątku. */
+function boardReplyEmailBody(body: string, imageCount: number): string {
+  if (!imageCount) return body;
+  const note =
+    imageCount === 1
+      ? "Dołączono zdjęcie - zobacz je w wątku na Tablicy."
+      : `Dołączono zdjęcia (${imageCount}) - zobacz je w wątku na Tablicy.`;
+  return body ? `${body}\n\n${note}` : note;
 }
 
 export async function actionArchiveQuestion(threadId: string) {

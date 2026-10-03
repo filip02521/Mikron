@@ -216,4 +216,42 @@ describe("QuestionThreadCard", () => {
     expect(screen.getByRole("button", { name: "Usuń" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Otwórz ponownie" })).toBeTruthy();
   });
+
+  it("odpowiedź z samym zdjęciem: podgląd i licznik zdjęć w zwiniętym wierszu", () => {
+    const question = testQuestion();
+    question.posts = [
+      {
+        ...question.posts[0]!,
+        body: "",
+        attachments: [
+          {
+            id: "a1",
+            thread_id: "q1",
+            post_id: "p1",
+            created_by: "u2",
+            storage_path: "board/q1/a1.jpg",
+            file_name: "etykieta.jpg",
+            mime_type: "image/jpeg",
+            byte_size: 1000,
+            sort_order: 0,
+            created_at: "2026-01-02T10:00:00Z",
+          },
+        ],
+      },
+    ];
+    render(<QuestionThreadCard question={question} embedded />);
+    expect(screen.getByText("Ostatnia odpowiedź: [zdjęcie]")).toBeTruthy();
+    expect(screen.getByTitle("W wątku: zdjęcie")).toBeTruthy();
+  });
+
+  it("formularz odpowiedzi ma przycisk zdjęcia; wysyłka zablokowana bez treści", () => {
+    render(<QuestionThreadCard question={testQuestion()} embedded defaultExpanded canReply />);
+    expect(screen.getByRole("button", { name: "Dodaj zdjęcie do odpowiedzi" })).toBeTruthy();
+    const send = screen.getByRole("button", { name: "Wyślij" }) as HTMLButtonElement;
+    expect(send.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("Doprecyzowanie"), {
+      target: { value: "Jest na stanie" },
+    });
+    expect(send.disabled).toBe(false);
+  });
 });

@@ -275,7 +275,7 @@ export async function supplierIdsFromIndividualOrders(
 /** Stan harmonogramu po akcji — do podglądu w toastcie cofania. */
 export async function buildProcessIndividualFeedback(
   orderIds: string[],
-  action: "GLOWNE" | "POBOCZNE",
+  action: "GLOWNE" | "POBOCZNE" | "JUZ_ZAMOWIONE",
   glowneSupplierIdsBeforeAction: string[] = []
 ): Promise<string[]> {
   const supplierIds = await supplierIdsFromIndividualOrders(orderIds);

@@ -15,7 +15,8 @@ export type CronJobId =
   | "zd_eta_sync"
   | "informacja_stock_sync"
   | "scheduled_mails"
-  | "stock_watch";
+  | "stock_watch"
+  | "subiekt_lead_times";
 
 export const CRON_JOB_IDS: CronJobId[] = [
   "morning_routine",
@@ -24,6 +25,7 @@ export const CRON_JOB_IDS: CronJobId[] = [
   "informacja_stock_sync",
   "catalog_zd_sync",
   "stock_watch",
+  "subiekt_lead_times",
   "scheduled_mails",
   "morning_sync",
 ];

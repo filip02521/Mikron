@@ -141,6 +141,7 @@ export function looksLikeBoardImageBytes(
 export type BoardThreadAttachmentRow = {
   id: string;
   thread_id: string;
+  post_id?: string | null;
   created_by: string;
   storage_path: string;
   file_name: string;
@@ -150,5 +151,8 @@ export type BoardThreadAttachmentRow = {
   created_at: string;
 };
 
-export const DEPARTMENT_BOARD_ATTACHMENT_SELECT =
+/** Bez post_id — fallback, gdy migracja 166 nie jest jeszcze zastosowana. */
+export const DEPARTMENT_BOARD_ATTACHMENT_SELECT_LEGACY =
   "id, thread_id, created_by, storage_path, file_name, mime_type, byte_size, sort_order, created_at";
+
+export const DEPARTMENT_BOARD_ATTACHMENT_SELECT = `${DEPARTMENT_BOARD_ATTACHMENT_SELECT_LEGACY}, post_id`;

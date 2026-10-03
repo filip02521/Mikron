@@ -46,6 +46,7 @@ import { IndividualRequestActionBar } from "@/components/summary/IndividualReque
 import { ProcurementProcessLinesModal } from "@/components/summary/ProcurementProcessLinesModal";
 import {
   filterProcessLineIds,
+  processLinesPendingLabel,
   processLinesSuccessToast,
   shouldPickLinesBeforeProcess,
   type ProcurementProcessAction,
@@ -1162,9 +1163,7 @@ export function ForSomeoneRequests({
               totalCount: group.orderIds.length,
               supplierOrderOnDemand: group.supplierOrderOnDemand,
             }),
-            action === "GLOWNE"
-              ? "Oznaczanie jako główne…"
-              : "Oznaczanie jako uzupełniające…",
+            processLinesPendingLabel(action),
             { scope: key }
           );
           return;
@@ -1173,29 +1172,15 @@ export function ForSomeoneRequests({
         return;
       }
 
-      if (action === "GLOWNE") {
-        run(
-          () => actionProcessIndividual(group.orderIds, "GLOWNE"),
-          processLinesSuccessToast({
-            action: "GLOWNE",
-            selectedCount: group.orderIds.length,
-            totalCount: group.orderIds.length,
-            supplierOrderOnDemand: group.supplierOrderOnDemand,
-          }),
-          "Oznaczanie jako główne…",
-          { scope: key }
-        );
-        return;
-      }
-
       run(
-        () => actionProcessIndividual(group.orderIds, "POBOCZNE"),
+        () => actionProcessIndividual(group.orderIds, action),
         processLinesSuccessToast({
-          action: "POBOCZNE",
+          action,
           selectedCount: group.orderIds.length,
           totalCount: group.orderIds.length,
+          supplierOrderOnDemand: group.supplierOrderOnDemand,
         }),
-        "Oznaczanie jako uzupełniające…",
+        processLinesPendingLabel(action),
         { scope: key }
       );
     },
@@ -1448,9 +1433,7 @@ export function ForSomeoneRequests({
               totalCount: total,
               supplierOrderOnDemand: processGroup.supplierOrderOnDemand,
             }),
-            action === "GLOWNE"
-              ? "Oznaczanie jako główne…"
-              : "Oznaczanie jako uzupełniające…",
+            processLinesPendingLabel(action),
             {
               scope: key,
               onSuccess: () => setProcessTarget(null),

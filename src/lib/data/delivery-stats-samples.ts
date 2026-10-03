@@ -1,9 +1,11 @@
 import { createAdminClient, hasSupabaseConfig } from "@/lib/supabase/admin";
+import { query } from "@/lib/db/pool";
 import {
   aggregateDeliveryStatsFromSampleRows,
   importProtectedStatsFromSampleRows,
   mergeAggregatedPreferLive,
   sampleRowsToDeliveryStatsPayload,
+  selectSamplesForStats,
   type DeliveryStatsSampleRow,
 } from "@/lib/orders/delivery-stats-samples";
 import {
@@ -12,6 +14,7 @@ import {
   businessDaysForDeliveryStatsSample,
   DELIVERY_STATS_COMPLETED_STATUS,
   deliveryDateKeyFromIso,
+  isAlreadyOrderedStatsPoison,
   isCancelDispositionStatsPoison,
   isTeethStatsPoison,
   placementDateFromOrder,
@@ -20,29 +23,36 @@ import {
 import { fetchDeliveryStatsFromSamplesEnabled } from "@/lib/data/delivery-stats-flags";
 import type { OrderType } from "@/types/database";
 
-const SAMPLE_SELECT =
-  "id, supplier_id, order_id, placement_date, delivery_date, first_delivery_date, business_days_full, business_days_first, order_type, is_teeth, source, deleted_at, created_at";
-
+/**
+ * Aktywne próbki. Domyślnie już przefiltrowane do statystyk ({@link selectSamplesForStats});
+ * `raw: true` — wszystkie (diagnostyka).
+ */
 export async function fetchActiveDeliveryStatsSamples(
-  supplierId?: string | string[]
+  supplierId?: string | string[],
+  options?: { raw?: boolean }
 ): Promise<DeliveryStatsSampleRow[]> {
   if (!hasSupabaseConfig()) return [];
-  const supabase = createAdminClient();
-  let q = supabase
-    .from("delivery_stats_samples")
-    .select(SAMPLE_SELECT)
-    .is("deleted_at", null);
-  if (typeof supplierId === "string") {
-    q = q.eq("supplier_id", supplierId);
-  } else if (Array.isArray(supplierId) && supplierId.length > 0) {
-    q = q.in("supplier_id", supplierId);
-  }
-  const { data, error } = await q;
-  if (error) {
-    console.error("fetchActiveDeliveryStatsSamples:", error.message);
+  const ids =
+    typeof supplierId === "string" ? [supplierId] : Array.isArray(supplierId) ? supplierId : null;
+  if (ids && !ids.length) return [];
+  // Bezpośrednio przez pg: builder ma domyślny LIMIT 1000, a historia z Subiekta to ~20 tys. wierszy.
+  try {
+    const { rows } = await query<DeliveryStatsSampleRow>(
+      `SELECT id, supplier_id, order_id,
+              to_char(placement_date, 'YYYY-MM-DD') AS placement_date,
+              to_char(delivery_date, 'YYYY-MM-DD') AS delivery_date,
+              to_char(first_delivery_date, 'YYYY-MM-DD') AS first_delivery_date,
+              business_days_full, business_days_first, order_type, is_teeth, source,
+              deleted_at, created_at
+       FROM delivery_stats_samples
+       WHERE deleted_at IS NULL ${ids ? "AND supplier_id = ANY($1::uuid[])" : ""}`,
+      ids ? [ids] : []
+    );
+    return options?.raw ? rows : selectSamplesForStats(rows);
+  } catch (e) {
+    console.error("fetchActiveDeliveryStatsSamples:", e instanceof Error ? e.message : e);
     return [];
   }
-  return (data ?? []) as DeliveryStatsSampleRow[];
 }
 
 export async function recordDeliveryStatsSkipEvent(input: {
@@ -269,7 +279,13 @@ export function buildSampleInputFromOrder(
   businessDaysFull: number;
   orderType: "Glowne" | "Poboczne";
 } | null {
-  if (isTeethStatsPoison(order) || isCancelDispositionStatsPoison(order)) return null;
+  if (
+    isTeethStatsPoison(order) ||
+    isCancelDispositionStatsPoison(order) ||
+    isAlreadyOrderedStatsPoison(order)
+  ) {
+    return null;
+  }
   const days = businessDaysForDeliveryStatsSample(order, deliveryAtIso);
   if (days == null) return null;
   const placementDate = placementDateFromOrder(order);
@@ -303,7 +319,7 @@ export async function backfillDeliveryStatsSamples(options?: {
     let q = supabase
       .from("individual_orders")
       .select(
-        "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition, first_delivery_at"
+        "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition, already_ordered, first_delivery_at"
       )
       .eq("request_kind", "zamowienie")
       .eq("status", DELIVERY_STATS_COMPLETED_STATUS)
@@ -335,7 +351,11 @@ export async function backfillDeliveryStatsSamples(options?: {
         skipped++;
         continue;
       }
-      if (isTeethStatsPoison(row) || isCancelDispositionStatsPoison(row)) {
+      if (
+        isTeethStatsPoison(row) ||
+        isCancelDispositionStatsPoison(row) ||
+        isAlreadyOrderedStatsPoison(row)
+      ) {
         skipped++;
         continue;
       }
