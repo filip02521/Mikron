@@ -435,14 +435,16 @@ export function ForSomeoneRequests({
     [todayDateKey]
   );
   const enrichGroup = useCallback(
-    (group: SummaryForSomeoneEnriched) =>
-      isStockOutSection
-        ? enrichStockOutSignalGroup(group)
-        : enrichForSomeoneGroup(group, enrichAt, {
-            supplierMeta: supplierMeta[group.supplierId] ?? null,
-            todayDateKey,
-            weekDays,
-          }),
+    (group: SummaryForSomeoneEnriched) => {
+      const options = {
+        supplierMeta: supplierMeta[group.supplierId] ?? null,
+        todayDateKey,
+        weekDays,
+      };
+      return isStockOutSection
+        ? enrichStockOutSignalGroup(group, enrichAt, options)
+        : enrichForSomeoneGroup(group, enrichAt, options);
+    },
     [enrichAt, isStockOutSection, supplierMeta, todayDateKey, weekDays]
   );
   const unseenVariant: DailyPanelUnseenVariant = isStockOutSection ? "stockOut" : "prosby";
@@ -1579,7 +1581,7 @@ export function ForSomeoneRequests({
                     const blockScopeKey = procurementSupplierBlockScopeKey(block.supplierId);
                     const blockPending = isScopePending(blockScopeKey);
                     const blockPlannedOrderDate =
-                      showSupplierHeader && !isStockOutSection
+                      showSupplierHeader
                         ? plannedOrderDateForSupplier(supplierMeta[block.supplierId] ?? null, {
                             todayDateKey,
                             weekDays,
