@@ -51,7 +51,3 @@ export async function GET(request: NextRequest) {
     status: result.ok ? 200 : 503,
   });
 }
-
-export async function POST(request: NextRequest) {
-  return GET(request);
-}
