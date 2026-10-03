@@ -7984,7 +7984,7 @@ export function ZdEstimateWorkbench({
                 </Button>
                 {orderSummary.count > 0 ? (
                   <span
-                    className="ml-1 inline-flex min-w-0 items-center gap-1 whitespace-nowrap text-[12px] tabular-nums text-slate-600"
+                    className="ml-1 inline-flex min-w-0 items-center gap-1 whitespace-nowrap border-l border-slate-200 pl-2.5 text-[12px] tabular-nums text-slate-600"
                     title="Suma pozycji „Do ZD” z Twoimi zmianami ilości; wartość = sztuki po dostawie × ostatnia cena z ZD (netto)"
                     role="status"
                   >
