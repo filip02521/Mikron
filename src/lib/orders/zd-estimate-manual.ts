@@ -28,6 +28,7 @@ import {
   type SalesTrackReason,
 } from "@/lib/orders/zd-estimate-sales-track";
 import { applyZdEstimateHistoryCuts } from "@/lib/orders/zd-estimate-history-track";
+import type { ZdSalesProfileLineMeta } from "@/lib/orders/zd-sales-profile";
 import {
   isPackagingPackagesMode,
   normalizeOrderMultiple,
@@ -72,6 +73,8 @@ export const ZD_ESTIMATE_PAGE_FETCH_CONCURRENCY = 4;
 export const ZD_ESTIMATE_MISSING_SKU_FETCH_CONCURRENCY = 4;
 
 export type ManualZdEstimateLine = {
+  /** Profil sprzedaży 12 × 30 dni (znacznik skok / rzadki, wygładzenie). */
+  salesProfile?: ZdSalesProfileLineMeta;
   tw_Id: number;
   tw_Symbol: string;
   tw_Nazwa: string;
@@ -286,6 +289,15 @@ export function mapZdEstimateLineToManual(
       ? Number(options.dniOkresu)
       : null;
 
+  const salesProfile = (line as { salesProfile?: ZdSalesProfileLineMeta }).salesProfile;
+  // Rzadka sprzedaż przy wygładzeniu: bez podbicia za wyprzedanie (stan 0 to norma przy zakupie pod klienta).
+  const salesTrackPolicy =
+    salesProfile?.smoothing && salesProfile.kind === "rare"
+      ? ({ ...(options?.salesTrackPolicy ?? {}), maxTotalBoostRatio: 0 } as unknown as NonNullable<
+          MapZdEstimateLineOptions["salesTrackPolicy"]
+        >)
+      : options?.salesTrackPolicy ?? undefined;
+
   const track = computeSalesTrackedCel({
     celZapasu,
     sprzedazOkres,
@@ -296,7 +308,7 @@ export function mapZdEstimateLineToManual(
     dniOkresu,
     enabled: options?.salesTrack !== false,
     cutsEnabled: options?.salesTrackCuts !== false,
-    policy: options?.salesTrackPolicy ?? undefined,
+    policy: salesTrackPolicy,
   });
 
   let celTracked = track.celTracked;
@@ -331,6 +343,8 @@ export function mapZdEstimateLineToManual(
       dniOkresu,
       lastOrderedQty: hist.lastOrderedQty,
       linkedAt: hist.linkedAt,
+      // Profil 12 miesięcy ocenia skok lepiej niż porównanie z ostatnim ZD (ilość netto).
+      skipSpike: salesProfile?.smoothing === true,
     });
     if (histAdj.reasons.length > 0) {
       celTracked = histAdj.celTracked;
@@ -342,7 +356,7 @@ export function mapZdEstimateLineToManual(
         coverStock: coverForQty,
         confidence: salesTrackConfidence,
         reasons: salesTrackReasons,
-        policy: options?.salesTrackPolicy ?? undefined,
+        policy: salesTrackPolicy,
       });
       salesTrackReasons = reconciled.salesTrackReasons;
       salesTrackQtyReview = reconciled.salesTrackQtyReview;
@@ -389,6 +403,7 @@ export function mapZdEstimateLineToManual(
     doZamowieniaApi,
     doZamowieniaReczne,
     wkladZk: Math.max(0, doZamowieniaApi - doZamowieniaReczne),
+    ...(salesProfile ? { salesProfile } : {}),
   };
 }
 

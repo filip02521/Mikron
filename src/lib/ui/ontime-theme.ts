@@ -232,7 +232,7 @@ export const panelTabsChromeClass =
   "border-b border-indigo-100/75 bg-[var(--card)]";
 
 /** Panel dzienny / operacje zakupów — wąska kolumna; lekko szersza tylko na 2xl+. */
-export const panelWorkspaceShellClass = "relative mx-auto w-full max-w-3xl 2xl:max-w-4xl";
+export const panelWorkspaceShellClass = "relative mx-auto w-full max-w-3xl xl:max-w-4xl 2xl:max-w-5xl";
 
 /** Strony operacji z odstępem między blokami (toast, karta, alert). */
 export const panelPageShellClass = cn(panelWorkspaceShellClass, "space-y-4");
@@ -408,7 +408,7 @@ export const zdEstimateChromeSurfaceClass = cn(
  * Top bar Kreatora — flush z kartą listy (bez osobnej „wyspy”).
  */
 export const zdEstimatePageIntroClass = cn(
-  "shrink-0 border-b border-slate-200/70 bg-gradient-to-b from-white to-slate-50/80",
+  "shrink-0 border-b border-slate-200/70 bg-white",
   zdEstimateChromeInsetXClass,
   "py-1.5"
 );
@@ -483,7 +483,7 @@ export const zdEstimateToolbarSearchClass = cn(
  * Jedna belka filtrów/szukania nad TableScroll.
  */
 export const zdEstimateListBandClass = cn(
-  "z-10 w-full min-w-0 shrink-0 border-b border-slate-200/70 bg-gradient-to-b from-slate-50/95 to-slate-50/70 backdrop-blur-md",
+  "z-10 w-full min-w-0 shrink-0 border-b border-slate-200/70 bg-slate-50/90 backdrop-blur-md",
   zdEstimateChromeInsetXClass,
   zdEstimateChromeInsetYClass
 );
@@ -527,7 +527,7 @@ export const zdEstimateDockButtonClass = cn(
   "inline-flex shrink-0 items-center justify-center gap-1 px-2.5 text-[11px] font-medium leading-none sm:gap-1.5 sm:px-3 sm:text-xs",
   zdEstimateRadiusControlClass,
   zdEstimateDockControlHeightClass,
-  "py-0"
+  "py-0 active:translate-y-px motion-reduce:active:translate-y-0"
 );
 
 /**

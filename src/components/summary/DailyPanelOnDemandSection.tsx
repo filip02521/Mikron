@@ -1,5 +1,6 @@
 "use client";
 
+import { SupplierStockSignal } from "@/components/summary/SupplierStockSignal";
 import type { OnDemandSupplierRow } from "@/lib/orders/summary-workspace";
 import { actionMarkOrdered } from "@/app/actions/admin";
 import { SupplierContactActions } from "@/components/procurement/SupplierContactActions";
@@ -87,6 +88,7 @@ export function DailyPanelOnDemandSection({
                     {row.locationLabel}
                     {row.stockLabel ? ` · ${row.stockLabel}` : ""}
                   </p>
+                  <SupplierStockSignal supplierId={row.supplierId} className="mt-0.5" />
                 </div>
               <PanelRowActionsInlineEnd
                 forceVisible={rowPending}

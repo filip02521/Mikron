@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildZdEstimateLaunchHref,
   classifySupplierBrand,
   findUniqueSupplierIdForCecha,
   findUniqueSupplierIdForGrupa,
   parseZdEstimateLaunchQuery,
+  resolveZdScopeSupplierMapping,
   pickUniqueScopeByName,
   resolveZdEstimateSupplierScopeFromSources,
 } from "@/lib/orders/zd-estimate-supplier-scope";
@@ -173,7 +175,15 @@ describe("parseZdEstimateLaunchQuery", () => {
       mode: null,
       grupaId: null,
       cechaId: null,
+      leadTimeHorizon: false,
     });
+  });
+
+  it("horizon=1 → start z opcją „Do kolejnej dostawy”", () => {
+    expect(
+      parseZdEstimateLaunchQuery({ from: "daily", supplierId: "abc-1", autorun: "1", horizon: "1" })
+        .leadTimeHorizon
+    ).toBe(true);
   });
 
   it("parses mode + ids", () => {
@@ -188,6 +198,51 @@ describe("parseZdEstimateLaunchQuery", () => {
       mode: "cecha",
       cechaId: 2738,
       grupaId: null,
+    });
+  });
+});
+
+describe("buildZdEstimateLaunchHref", () => {
+  it("opcja czasu dostawy dokłada horizon=1", () => {
+    expect(buildZdEstimateLaunchHref("s 1")).toBe(
+      "/zakupy/szacunek?from=daily&supplierId=s%201&autorun=1"
+    );
+    expect(buildZdEstimateLaunchHref("s1", { leadTimeHorizon: true })).toBe(
+      "/zakupy/szacunek?from=daily&supplierId=s1&autorun=1&horizon=1"
+    );
+  });
+});
+
+describe("resolveZdScopeSupplierMapping", () => {
+  const scopes = [
+    { supplierId: "polkard", mode: "cecha" as const, grupaId: null, cechaId: 2717 },
+    { supplierId: "polkard-bis", mode: "cecha" as const, grupaId: null, cechaId: 2717 },
+    { supplierId: "falcon", mode: "grupa" as const, grupaId: 17, cechaId: null },
+    // Drugi zakres tego samego dostawcy — nadal jeden dostawca dla grupy 17.
+    { supplierId: "falcon", mode: "cecha" as const, grupaId: null, cechaId: 900 },
+  ];
+
+  it("wspólny zakres: dostawca z linku wygrywa", () => {
+    expect(resolveZdScopeSupplierMapping(scopes, "cecha", 2717, "polkard-bis")).toEqual({
+      mappedSupplierId: "polkard-bis",
+      candidateSupplierIds: null,
+    });
+  });
+
+  it("wspólny zakres bez preferencji: kandydaci do dopasowania po nazwie", () => {
+    expect(resolveZdScopeSupplierMapping(scopes, "cecha", 2717, null)).toEqual({
+      mappedSupplierId: null,
+      candidateSupplierIds: ["polkard", "polkard-bis"],
+    });
+    // Preferowany spoza zakresu nie wygrywa.
+    expect(resolveZdScopeSupplierMapping(scopes, "cecha", 2717, "falcon").mappedSupplierId).toBeNull();
+  });
+
+  it("zakres jednego dostawcy", () => {
+    expect(resolveZdScopeSupplierMapping(scopes, "grupa", 17).mappedSupplierId).toBe("falcon");
+    expect(resolveZdScopeSupplierMapping(scopes, "grupa", 99)).toEqual({
+      mappedSupplierId: null,
+      candidateSupplierIds: null,
     });
   });
 });

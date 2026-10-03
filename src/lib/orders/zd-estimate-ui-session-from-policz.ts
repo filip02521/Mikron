@@ -107,6 +107,11 @@ export function buildZdEstimateUiSessionSnapshotFromPolicz(input: {
   productBoms: ZdProductBomRow[];
   teethTwIds: number[];
   boostPreset: ZdBoostPowerPreset;
+  /** Horyzont z opcji „Do kolejnej dostawy” (null = opcja wyłączona). */
+  horizon?: import("@/lib/orders/zd-order-horizon").ZdOrderHorizon | null;
+  salesSmoothingEnabled?: boolean;
+  salesSmoothing?: import("@/lib/orders/zd-order-engine").ZdSalesSmoothingSummary | null;
+  unitPriceByTwId?: Record<number, number>;
   seed?: ZdEstimateUiSessionPoliczSeed | null;
 }): ZdEstimateUiSessionSnapshot {
   const seed = input.seed ?? {};
@@ -198,6 +203,11 @@ export function buildZdEstimateUiSessionSnapshotFromPolicz(input: {
     boostPreset: input.boostPreset,
     appliedBoostPreset: input.boostPreset,
     boostNeedsRecount: false,
+    leadTimeHorizon: Boolean(input.horizon),
+    horizon: input.horizon ?? null,
+    salesSmoothingEnabled: input.salesSmoothingEnabled === true,
+    salesSmoothing: input.salesSmoothing ?? null,
+    unitPriceByTwId: input.unitPriceByTwId ?? {},
     scopeMode: input.mode,
     selectedGroup,
     selectedCecha,

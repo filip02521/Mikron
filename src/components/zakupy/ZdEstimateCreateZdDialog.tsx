@@ -51,6 +51,8 @@ export type ZdCreateSubmitFreezeSnap = {
   consumedOrderIds: string[];
 };
 
+const plnFormatter = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
+
 export function ZdEstimateCreateZdDialog({
   open,
   supplierId,
@@ -61,6 +63,8 @@ export function ZdEstimateCreateZdDialog({
   dateKey,
   preview,
   scopeMode,
+  unitPriceByTwId = {},
+  calcNotes = [],
   grtId,
   cechaId,
   lineMeta,
@@ -97,6 +101,10 @@ export function ZdEstimateCreateZdDialog({
   dateKey: string;
   preview: ZdCreatePreview;
   scopeMode: ZdEstimateRunMode;
+  /** Ceny za sztukę z ostatnich ZD — wartość zamówienia przed utworzeniem. */
+  unitPriceByTwId?: Record<number, number>;
+  /** Z czym liczono listę (okno, opcje) — widoczne przed utworzeniem dokumentu. */
+  calcNotes?: readonly string[];
   grtId?: number | null;
   cechaId?: number | null;
   lineMeta?: ZdEstimateLinkLineMeta[] | null;
@@ -413,6 +421,16 @@ export function ZdEstimateCreateZdDialog({
 
   const showProgress = pending && progressStartedAtMs != null;
 
+  // Wartość jak na pasku pod tabelą: sztuki po dostawie × cena za sztukę z ostatniego ZD.
+  const orderValue = preview.lines.reduce(
+    (acc, l) => {
+      const price = unitPriceByTwId[l.twId];
+      if (price == null) return { ...acc, unpriced: acc.unpriced + 1 };
+      return { ...acc, value: acc.value + (l.piecesArriving ?? l.ilosc) * price };
+    },
+    { value: 0, unpriced: 0 }
+  );
+
   return (
     <ModalShell
       open
@@ -570,17 +588,26 @@ export function ZdEstimateCreateZdDialog({
               }
             />
             <SummaryTile
-              label={
-                scopeMode === "cecha"
-                  ? "Cecha"
-                  : scopeMode === "grupa"
-                    ? "Grupa"
-                    : "Zakres"
+              label="Wartość"
+              value={orderValue.value > 0 ? `ok. ${plnFormatter.format(Math.round(orderValue.value))} zł` : "—"}
+              sub={
+                orderValue.unpriced > 0
+                  ? `${orderValue.unpriced} bez ceny`
+                  : "ceny z ostatnich ZD, netto"
               }
-              value={scopeLabel?.trim() || "—"}
               className="col-span-2 sm:col-span-1"
             />
           </dl>
+
+          <p className="text-xs leading-relaxed text-slate-500">
+            <span className="font-medium text-slate-700">
+              {scopeMode === "cecha" ? "Cecha" : scopeMode === "grupa" ? "Grupa" : "Zakres"}:{" "}
+              {scopeLabel?.trim() || "—"}
+            </span>
+            {calcNotes.map((note) => (
+              <span key={note}> · {note}</span>
+            ))}
+          </p>
 
           {warnings.length > 0 ? (
             <ul

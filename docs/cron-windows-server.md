@@ -8,7 +8,7 @@ Harmonogram zadań Windows wywołuje lokalne endpointy aplikacji (`http://127.0.
 2. **`.env.local`** w katalogu projektu z silnym `CRON_SECRET` (nie `change-me-in-production` ani `dev-local-cron-secret`).
 3. **Strefa czasowa serwera:** `(UTC+01:00) Sarajewo, Warszawa, Skopje` (Panel sterowania → Data i godzina → Strefa czasowa). Harmonogram w skryptach zakłada **Europe/Warsaw** (czas lokalny Windows, nie `CRON_TZ`).
 4. **curl.exe** w PATH (domyślnie w Windows 10 / Server 2016+).
-5. **Subiekt API** w LAN — wymagane dla `catalog-zd-sync` i `informacja-stock-sync` (oraz częściowo `zd-eta-sync`).
+5. **Subiekt API** w LAN — wymagane dla `catalog-zd-sync`, `stock-watch` i `informacja-stock-sync` (oraz częściowo `zd-eta-sync`).
 6. **Konto SYSTEM** musi czytać `.env.local` (zadania cron biegną jako SYSTEM). Przy restrykcyjnych ACL: `icacls .env.local /grant "NT AUTHORITY\SYSTEM:(R)"`.
 
 Opcjonalnie: `INFORMACJA_STOCK_AUTO_ENABLED=1` w `.env.local`, aby włączyć automatyczne powiadomienia ze stanu magazynu (domyślnie włączone, gdy zmienna nie jest ustawiona — patrz `src/lib/env/informacja-stock-auto.ts`).
@@ -22,6 +22,7 @@ Opcjonalnie: `INFORMACJA_STOCK_AUTO_ENABLED=1` w `.env.local`, aby włączyć au
 | `informacja-stock-sync` | `/api/cron/informacja-stock-sync` | **08:00–18:00 co godz.** | Auto-powiadomienia „Powiadom, gdy będzie na magazynie” |
 | `zd-eta-sync` | `/api/cron/zd-eta-sync` | **08:00–18:00 co 2 h** | Backup sync terminów ZD na prośbach |
 | `catalog-zd-sync` | `/api/cron/catalog-zd-sync` | **codziennie 02:00–04:40 co 20 min** | Indeks ZD + import katalogu (noc) |
+| `stock-watch` | `/api/cron/stock-watch` | **codziennie 05:30–06:30 co 20 min** | Braki i zamówienia: ceny z ZD + lista „Do ZD” silnikiem Kreatora per dostawca (panel `/zakupy/braki`) |
 | `morning-sync` | `/api/cron/morning-sync` | **ręcznie** | Tylko przeliczenie harmonogramów (serwis / test) |
 
 Ivoclar weekly: **OnTime Raporty** (nie instalować `scheduled-mails` na OT). Endpoint `/api/cron/scheduled-mails` w OT to legacy no-op; stare SchTasks `OnTime Cron Scheduled Mails *` są usuwane przy `-Install` (lista legacy). Logi: `/admin/mail`. Zob. `docs/CUTOVER-IVOCLAR.md`.

@@ -177,3 +177,16 @@ describe("launchProgressPctFromRun", () => {
     ).toBe(94);
   });
 });
+
+describe("faza profilu sprzedaży", () => {
+  it("liczenie profilu to krok „Sprzedaż, zapas i prośby”, między enrich a compose", async () => {
+    const { launchProgressStepFromRunPhase, launchProgressPctFromRun } = await import(
+      "@/lib/orders/zd-estimate-run-progress"
+    );
+    expect(launchProgressStepFromRunPhase("profile")).toBe(2);
+    const pct = (phase: "enrich" | "profile" | "compose") =>
+      launchProgressPctFromRun({ phase, pagesCommitted: 0, totalPages: 0 });
+    expect(pct("enrich")).toBeLessThan(pct("profile"));
+    expect(pct("profile")).toBeLessThan(pct("compose"));
+  });
+});

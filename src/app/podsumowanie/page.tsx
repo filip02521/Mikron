@@ -14,6 +14,14 @@ import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers"
 import type { IndividualOrder } from "@/types/database";
 import { listZdEstimateSupplierScopes } from "@/lib/data/zd-estimate-supplier-scopes";
 import {
+  listStockWatchOffPlanSuppliers,
+  listStockWatchSupplierSignals,
+  type StockWatchOffPlanSupplier,
+  type StockWatchSupplierSignal,
+} from "@/lib/stock-watch/data";
+import { StockWatchOffPlanBanner } from "@/components/stock-watch/StockWatchOffPlanBanner";
+import { warsawNowParts } from "@/lib/time/warsaw";
+import {
   supplierSubiektScopeInfoFromRow,
   type SupplierSubiektScopeInfo,
 } from "@/lib/orders/zd-estimate-supplier-scope";
@@ -53,15 +61,28 @@ export default async function PodsumowaniePage() {
   const subiektScopeBySupplierId: Record<string, SupplierSubiektScopeInfo> = {};
   let verificationOrders: IndividualOrder[] = [];
   let error: string | null = null;
+  let offPlanSuppliers: StockWatchOffPlanSupplier[] = [];
+  let stockSignalBySupplierId: Record<string, StockWatchSupplierSignal> = {};
 
   try {
-    const [data, verification, scopeRows] = await Promise.all([
+    const [data, verification, scopeRows, offPlan, stockSignals] = await Promise.all([
       fetchSummaryWorkspace(),
       fetchVerificationOrders(),
       // Powiązania dostawca → grupa/cecha Subiekta; brak tabeli/błąd nie blokuje panelu.
       listZdEstimateSupplierScopes().catch(() => []),
+      // Panel Braki (nocna analiza): brak tabeli / błąd nie blokuje panelu dziennego.
+      listStockWatchOffPlanSuppliers(warsawNowParts().dateKey).catch(() => []),
+      listStockWatchSupplierSignals().catch(() => ({})),
     ]);
+    offPlanSuppliers = offPlan;
+    stockSignalBySupplierId = stockSignals;
     for (const row of scopeRows) {
+      // Kilka zakresów na dostawcę — główny (pierwszy) + etykiety kolejnych.
+      const primary = subiektScopeBySupplierId[row.supplierId];
+      if (primary) {
+        primary.extraLabels = [...(primary.extraLabels ?? []), row.label || `#${row.grupaId ?? row.cechaId}`];
+        continue;
+      }
       const info = supplierSubiektScopeInfoFromRow(row);
       if (info) subiektScopeBySupplierId[row.supplierId] = info;
     }
@@ -87,9 +108,16 @@ export default async function PodsumowaniePage() {
         </Alert>
       ) : null}
 
+      {offPlanSuppliers.length > 0 ? (
+        <div className={panelWorkspaceShellClass}>
+          <StockWatchOffPlanBanner suppliers={offPlanSuppliers} canPrepareZd={canPrepareZd} />
+        </div>
+      ) : null}
+
       <Suspense fallback={<PanelDailyRouteLoadingSkeleton />}>
         <SummaryWorkspace
           workspace={workspace}
+          stockSignalBySupplierId={stockSignalBySupplierId}
           suppliers={suppliers}
           supplierDirectory={supplierDirectory}
           salesPeople={salesPeople}

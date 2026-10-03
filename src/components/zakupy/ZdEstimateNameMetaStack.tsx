@@ -133,6 +133,7 @@ export function ZdEstimateNameMetaStack({
   softOnRequest,
   liftedExtraOnly,
   minStockSzt,
+  hideEmpty = false,
 }: {
   pairMeta?: ZdEstimatePairMeta | null;
   packagingConflict?: boolean;
@@ -146,6 +147,8 @@ export function ZdEstimateNameMetaStack({
   softOnRequest: boolean;
   liftedExtraOnly: boolean;
   minStockSzt?: number | null;
+  /** Pod nazwą towaru: bez „—”, gdy nie ma oznaczeń. */
+  hideEmpty?: boolean;
 }) {
   const items: StackItem[] = [];
 
@@ -235,6 +238,7 @@ export function ZdEstimateNameMetaStack({
   }
 
   if (items.length === 0) {
+    if (hideEmpty) return null;
     return (
       <div className="zd-est-status" title="Brak oznaczeń statusu">
         <span className="zd-est-status-empty" aria-hidden>

@@ -77,6 +77,8 @@ export function resolveSupplierForScopeSelection<
   scopeName: string;
   suppliers: readonly T[];
   mappedSupplierId?: string | null;
+  /** Wspólny zakres: dopasowanie po nazwie tylko wśród dostawców z tym zakresem. */
+  nameMatchSupplierIds?: readonly string[] | null;
 }): {
   supplier: T | null;
   source: ZdEstimateSupplierMatchSource | null;
@@ -89,7 +91,10 @@ export function resolveSupplierForScopeSelection<
     if (fromMap) return { supplier: fromMap, source: "mapping" };
     return { supplier: null, source: null, mappingUnresolved: true };
   }
-  const byName = matchSupplierForGroupName(input.scopeName, input.suppliers);
+  const pool = input.nameMatchSupplierIds?.length
+    ? input.suppliers.filter((s) => input.nameMatchSupplierIds!.includes(s.id))
+    : input.suppliers;
+  const byName = matchSupplierForGroupName(input.scopeName, pool);
   if (byName) return { supplier: byName, source: "name" };
   return { supplier: null, source: null };
 }
