@@ -3316,26 +3316,6 @@ input[type="checkbox"].toggle-switch.toggle-sky:checked {
 /* ── Kreator ZD: gęstszy układ (2026-10) ───────────────────────────────────
  * Do ZD w jednym rzędzie (liczba + podpowiedź obok, nie pod), znaczniki pod
  * nazwą zamiast kolumny Status, nowe kolumny Starczy na / Wartość.        */
-.data-table.zd-estimate-table .zd-est-dozd {
-  flex-direction: row;
-  flex-wrap: nowrap;
-  gap: 0.3rem;
-}
-
-/* „szt” obok pola, nie pod nim — pole się zwęża, wiersz nie rośnie. */
-.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-value {
-  flex: 1 1 auto;
-  flex-wrap: nowrap;
-}
-
-.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-hint-row {
-  flex-shrink: 0;
-  /* Dwa dopiski (np. ↑ +1 i 74%) — jeden pod drugim, pole nie jest ściskane. */
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.1rem;
-}
-
 /* Przyklejony nagłówek musi być nieprzezroczysty — inaczej przewijane wiersze prześwitują. */
 .data-table.zd-estimate-table thead th.zd-estimate-metric-col--sales {
   background-color: color-mix(in srgb, rgb(224 242 254) 72%, white);
@@ -3349,20 +3329,6 @@ input[type="checkbox"].toggle-switch.toggle-sky:checked {
 .data-table.zd-estimate-table thead th {
   font-size: 0.6875rem;
   letter-spacing: 0.04em;
-}
-
-/* Dopiski przy Do ZD — 9px było nieczytelne; 10px to minimum w tabeli. */
-.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-hint,
-.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-reset,
-.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-confidence,
-.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-confidence__accept {
-  font-size: 0.625rem;
-}
-
-.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-input {
-  flex: 1 1 0;
-  width: auto;
-  min-width: 2.75rem;
 }
 
 /* Opak.: liczba i ×N w jednej linii, dopisek (dobicie) pod spodem. */
@@ -3382,21 +3348,6 @@ input[type="checkbox"].toggle-switch.toggle-sky:checked {
 .data-table.zd-estimate-table td.zd-estimate-actions-col button[aria-haspopup="menu"] {
   height: 1.75rem;
   width: 1.75rem;
-}
-
-@media (min-width: 768px) {
-  .data-table.zd-estimate-table {
-    --zd-est-dozd-w: 8.5rem;
-  }
-  .data-table.zd-estimate-table.zd-estimate-table--zk {
-    --zd-est-dozd-w: 8rem;
-  }
-}
-
-@media (min-width: 1600px) {
-  .data-table.zd-estimate-table {
-    --zd-est-dozd-w: 9rem;
-  }
 }
 
 /* Znaczniki (prośba, para, komplet, minimum, wykluczenie) pod nazwą, w rzędzie. */
@@ -3500,4 +3451,202 @@ input[type="checkbox"].toggle-switch.toggle-sky:checked {
   font-weight: 600;
   color: var(--color-slate-500);
   white-space: nowrap;
+}
+
+/* ── Kreator ZD: komórka Do ZD (2026-10) ──────────────────────────────────
+ * Stała siatka: [pole][jednostka][dopiski]. Pole ma zawsze tę samą szerokość
+ * i pozycję w każdym wierszu (skan pionowy), dopiski zawsze w trzeciej kolumnie.
+ * Kolory dopisków wg semantyki: sky = informacja (zaokrąglenie do paczki),
+ * indigo = Twoja zmiana, amber = do weryfikacji, emerald = zaakceptowane.     */
+.data-table.zd-estimate-table {
+  --zd-est-dozd-field-w: 3rem;
+  --zd-est-dozd-unit-w: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .data-table.zd-estimate-table,
+  .data-table.zd-estimate-table.zd-estimate-table--zk {
+    --zd-est-dozd-w: 9.5rem;
+  }
+}
+
+@media (min-width: 1600px) {
+  .data-table.zd-estimate-table {
+    --zd-est-dozd-w: 10rem;
+  }
+}
+
+.data-table.zd-estimate-table .zd-est-dozd {
+  display: grid;
+  grid-template-columns: var(--zd-est-dozd-field-w) var(--zd-est-dozd-unit-w) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.25rem;
+  row-gap: 0.15rem;
+  width: 100%;
+  margin: 0;
+}
+
+/* Pole + jednostka wchodzą bezpośrednio w siatkę. */
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-value {
+  display: contents;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-input {
+  grid-column: 1;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  height: 1.75rem;
+  border-radius: 0.375rem;
+  padding: 0 0.25rem;
+  font-size: 0.9375rem;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-readonly {
+  grid-column: 1;
+  text-align: center;
+  font-size: 0.9375rem;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-unit {
+  grid-column: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-hint-row {
+  grid-column: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-order-mult-warn {
+  grid-column: 1 / -1;
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+/* Wspólny kształt dopisków: 18px, rounded-md, 10px tekst. */
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-hint,
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-reset,
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-confidence {
+  display: inline-flex;
+  max-width: 100%;
+  height: 1.125rem;
+  align-items: center;
+  gap: 0.2rem;
+  border-radius: 0.375rem;
+  padding: 0 0.3rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-pieces {
+  font-size: 0.6875rem;
+  text-align: left;
+}
+
+/* Zaokrąglenie do paczki — informacja. */
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-hint {
+  background: var(--color-sky-50);
+  color: var(--color-sky-800);
+  box-shadow: inset 0 0 0 1px var(--color-sky-200);
+}
+
+/* Twoja zmiana ilości — indigo (marka/akcja), nie ostrzeżenie. */
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-reset {
+  background: var(--color-indigo-50);
+  color: var(--color-indigo-700);
+  box-shadow: inset 0 0 0 1px var(--color-indigo-200);
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-reset:hover:not(:disabled) {
+  background: var(--color-indigo-100);
+  color: var(--color-indigo-800);
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-reset:focus-visible {
+  outline: 2px solid var(--color-indigo-400);
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-input--override {
+  border-color: var(--color-indigo-300);
+  background: var(--color-indigo-50);
+  color: var(--color-indigo-900);
+  box-shadow: none;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-input--override:focus {
+  border-color: var(--color-indigo-500);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-indigo-500) 20%, transparent);
+}
+
+/* Do weryfikacji — amber (ostrzeżenie), przycisk ✓ jako mały kwadrat. */
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-confidence--review {
+  padding-right: 0.125rem;
+  background: var(--color-amber-50);
+  color: var(--color-amber-800);
+  box-shadow: inset 0 0 0 1px var(--color-amber-200);
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-confidence--accepted {
+  background: var(--color-emerald-50);
+  color: var(--color-emerald-700);
+  box-shadow: inset 0 0 0 1px var(--color-emerald-200);
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-confidence__accept {
+  display: inline-grid;
+  place-items: center;
+  width: 0.875rem;
+  height: 0.875rem;
+  padding: 0;
+  border-radius: 0.25rem;
+  font-size: 0.5625rem;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+/* Kolumna: spokojniejsze tło przy najechaniu (wcześniej mocny żółty/zielony). */
+.data-table.zd-estimate-table tbody tr:hover td.zd-estimate-dozd-col,
+.data-table.zd-estimate-table
+  tbody
+  tr[data-zebra="even"]:not([class*="bg-"]):hover
+  td.zd-estimate-dozd-col {
+  background-color: color-mix(in srgb, var(--color-emerald-100) 70%, #fff);
+}
+
+.data-table.zd-estimate-table tbody tr:hover td.zd-estimate-dozd-col.zd-estimate-dozd-col--review,
+.data-table.zd-estimate-table
+  tbody
+  tr[data-zebra="even"]:not([class*="bg-"]):hover
+  td.zd-estimate-dozd-col.zd-estimate-dozd-col--review {
+  background-color: color-mix(in srgb, var(--color-amber-100) 80%, #fff);
+}
+
+/* Telefon: wąska kolumna — dopiski pod polem, wyśrodkowane. */
+@media (max-width: 767px) {
+  .data-table.zd-estimate-table .zd-est-dozd {
+    grid-template-columns: var(--zd-est-dozd-field-w) var(--zd-est-dozd-unit-w);
+    justify-content: center;
+  }
+
+  .data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-hint-row {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    justify-content: center;
+  }
 }
