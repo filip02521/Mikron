@@ -91,7 +91,7 @@ import {
   dailyPanelQueueShellClass,
 } from "@/components/summary/DailyPanelSubsectionBar";
 import { cn } from "@/lib/cn";
-import { panelRowClearFocusOnLeave } from "@/lib/ui/panel-row-actions-reveal";
+import { isTextSelectionInside, panelRowClearFocusOnLeave } from "@/lib/ui/panel-row-actions-reveal";
 import {
   ProcurementRequestCardHeader,
   ProcurementRequestContextBlock,
@@ -1886,6 +1886,7 @@ export function ForSomeoneRequests({
                                       ) {
                                         return;
                                       }
+                                      if (isTextSelectionInside(e.currentTarget)) return;
                                       scheduleMarkSeen(g);
                                       setFocusedGroupKey(key);
                                       if (hasMultiLine) {

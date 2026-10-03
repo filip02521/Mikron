@@ -27,16 +27,12 @@ import {
   sidebarHeaderClass,
   sidebarNavSectionDividerClass,
   sidebarNavSectionTitleClass,
-  sidebarNavCompactPaddingClass,
   sidebarNavAttentionIdleClass,
   sidebarNavBadgeClassForTone,
   sidebarNavToneActiveClass,
   sidebarNavToneHighlightIdleClass,
-  controlFocusClass,
-  panelTypography,
   buttonPrimaryClass,
 } from "@/lib/ui/ontime-theme";
-import { ONTIME_AUTH_FOOTER } from "@/lib/ui/ontime-brand";
 import type { UserRole, Workspace } from "@/types/database";
 import { cn } from "@/lib/cn";
 import { signOutToLogin } from "@/lib/auth/sign-out-client";
@@ -62,9 +58,6 @@ import {
   subtitleForProcurementWorkspace,
   labelForProcurementWorkspace,
   grantedProcurementFunctions,
-  workspaceToneText,
-  workspaceToneIconBg,
-  workspaceToneAccent,
 } from "@/lib/auth/procurement-workspace";
 import { isAdmin } from "@/lib/auth-roles";
 import { hrefWithAdminSalesPreview, shouldPreserveSalesPreviewInNav } from "@/lib/nav/sales-preview-href";
@@ -105,6 +98,10 @@ function useLocalStorageCollapsed(
   return [collapsed, setCollapsed, true];
 }
 
+/** Fokus tylko z klawiatury: klik myszą nie zostawia ramki na pozycji menu. */
+const sidebarFocusClass =
+  "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40";
+
 function NavLink({
   item,
   active,
@@ -121,7 +118,6 @@ function NavLink({
   monthlyAttention?: boolean;
 }) {
   const [railCollapsed] = useSidebarCollapsed();
-  const compact = item.tier === "compact";
   const indented = Boolean(item.indent);
   const hasBadge = item.badge != null && item.badge > 0;
   const displayTone = navItemDisplayTone(item, active);
@@ -134,9 +130,9 @@ function NavLink({
 
   const className = cn(
     "sb-link group block rounded-md",
-    compact ? sidebarNavCompactPaddingClass : "px-2.5 py-2",
+    "px-2.5 py-1.5",
     indented && "ml-5",
-    controlFocusClass,
+    sidebarFocusClass,
     active
       ? cn(sidebarNavToneActiveClass(item.tone), "sb-link-active")
       : attentionIdle
@@ -158,18 +154,16 @@ function NavLink({
   );
 
   const content = (
-    <span className={cn("flex items-start justify-between gap-2", compact && "items-center")}>
-      <span className={cn("flex min-w-0 flex-1", compact ? "items-center gap-2" : "items-start gap-2.5")}>
+    <span className="flex items-center justify-between gap-2">
+      <span className="flex min-w-0 flex-1 items-center gap-2.5">
         {indented ? (
-          <span className={cn("sb-link-icon relative flex shrink-0 items-center", !compact && "mt-0.5")}>
+          <span className="sb-link-icon relative flex shrink-0 items-center">
             <span className="sb-full absolute -left-3 top-1/2 h-px w-3 bg-slate-300" />
             <span className="sb-full absolute -left-3 -top-2 bottom-1/2 w-px bg-slate-200" />
             <span
               className={cn(
-                "flex h-6 w-6 items-center justify-center rounded-md",
-                active
-                  ? "bg-slate-100 text-slate-700 ring-1 ring-slate-200/80"
-                  : "text-slate-400 group-hover:text-slate-600"
+                "flex h-6 w-6 items-center justify-center",
+                active ? "text-indigo-700" : "text-slate-400 group-hover:text-slate-600"
               )}
             >
               <NavIcon navKey={item.icon} size={item.icon === "teeth" ? 18 : 15} />
@@ -178,22 +172,20 @@ function NavLink({
         ) : (
           <span
             className={cn(
-              "sb-link-icon flex shrink-0 items-center justify-center rounded-md",
-              !compact && "mt-0.5",
-              compact ? "h-7 w-7" : "h-8 w-8",
+              "sb-link-icon flex h-6 w-6 shrink-0 items-center justify-center",
               active
                 ? navIconTileActiveClassForTone(item.iconTone ?? item.tone)
                 : navIconTileClassForTone(item.iconTone ?? displayTone)
             )}
           >
-            <NavIcon navKey={item.icon} size={item.icon === "teeth" ? 19 : compact ? 16 : 17} />
+            <NavIcon navKey={item.icon} size={item.icon === "teeth" ? 18 : 16} />
           </span>
         )}
         <span className="sb-full min-w-0 flex-1">
           <span
             className={cn(
-              compact ? "text-[13px] font-medium leading-snug" : panelTypography.rowTitle,
-              active ? "font-semibold text-slate-900" : "text-slate-800"
+              "block truncate text-[13px] leading-6",
+              active ? "font-semibold text-slate-900" : "font-medium text-slate-700"
             )}
           >
             {item.label}
@@ -210,7 +202,7 @@ function NavLink({
           aria-hidden
         />
       ) : null}
-      <span className="sb-full flex shrink-0 items-center gap-1.5 pt-0.5">
+      <span className="sb-full flex shrink-0 items-center gap-1.5">
         {showDot ? (
           <span
             className={cn(
@@ -327,39 +319,12 @@ function CollapsibleNavSection({
         type="button"
         onClick={toggle}
         className={cn(
-          "sb-full group/section flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-all",
-          controlFocusClass,
-          collapsed
-            ? "hover:bg-slate-50/70"
-            : "bg-slate-50/40 hover:bg-slate-50/70",
-          hasActiveItem && !collapsed && "bg-slate-50/60",
-          hasMonthlyAttention && collapsed && "bg-violet-50/50"
+          "sb-full group/section flex w-full items-center gap-1.5 rounded-md px-2.5 py-1 text-left transition-colors hover:bg-slate-50",
+          sidebarFocusClass
         )}
         aria-expanded={!collapsed}
       >
-        <span
-          className={cn(
-            "flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-all duration-200",
-            collapsed
-              ? "text-slate-300 group-hover/section:text-slate-400"
-              : "text-slate-500 group-hover/section:text-slate-600"
-          )}
-        >
-          <span
-            className={cn(
-              "transition-transform duration-200",
-              collapsed ? "rotate-0" : "rotate-90"
-            )}
-          >
-            <IconChevronRight size={13} aria-hidden />
-          </span>
-        </span>
-        <h2
-          className={cn(
-            "flex-1 text-[10px] font-bold",
-            collapsed ? "text-slate-400" : "text-slate-500"
-          )}
-        >
+        <h2 className={cn(sidebarNavSectionTitleClass, "flex-1 px-0 text-slate-500")}>
           {group.title}
         </h2>
         {hasMonthlyAttention && collapsed ? (
@@ -369,10 +334,19 @@ function CollapsibleNavSection({
           />
         ) : null}
         {totalBadge > 0 ? (
-          <span className="shrink-0 rounded-md bg-slate-200/80 px-1.5 py-0.5 text-[9px] font-bold tabular-nums text-slate-600">
+          <span className="shrink-0 text-[10px] font-semibold tabular-nums text-slate-500">
             {totalBadge > 99 ? "99+" : totalBadge}
           </span>
         ) : null}
+        <span
+          className={cn(
+            "shrink-0 text-slate-400 transition-transform duration-200 group-hover/section:text-slate-600 motion-reduce:transition-none",
+            collapsed ? "rotate-0" : "rotate-90"
+          )}
+          aria-hidden
+        >
+          <IconChevronRight size={12} />
+        </span>
       </button>
       {/* Zwinięta sekcja: ukryta w pełnym menu, ale w wąskim pasku pozycje są zawsze dostępne. */}
       {(
@@ -447,11 +421,9 @@ function NavSection({
 
   return (
     <section className={cn(!isFirst && sidebarNavSectionDividerClass)}>
-      <div className="sb-full flex items-center gap-2 px-2.5 pb-1.5 pt-2">
-        <span className="h-5 w-5 shrink-0" aria-hidden />
-        <h2 className={cn(sidebarNavSectionTitleClass, "flex-1 text-slate-500")}>{group.title}</h2>
+      <div className="sb-full px-2.5 pb-1 pt-1">
+        <h2 className={cn(sidebarNavSectionTitleClass, "px-0 text-slate-500")}>{group.title}</h2>
       </div>
-      <div className="sb-full mx-2.5 mb-1 h-px bg-slate-200/60" aria-hidden />
       <ul className="space-y-0.5">
         {group.items.map((item) => {
           const active = isNavItemActive(pathname, item.href, allHrefs, activeSearch);
@@ -579,7 +551,7 @@ export function Sidebar({
           aria-label="Zwiń menu boczne"
           className={cn(
             "absolute right-2 top-2 rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700",
-            controlFocusClass
+            sidebarFocusClass
           )}
         >
           <IconSidebarCollapse size={16} />
@@ -604,7 +576,7 @@ export function Sidebar({
           aria-label="Rozwiń menu boczne"
           className={cn(
             "rounded-md p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700",
-            controlFocusClass
+            sidebarFocusClass
           )}
         >
           <IconSidebarExpand size={16} />
@@ -613,12 +585,11 @@ export function Sidebar({
 
       {procurementWorkspace ? (
         <div className={cn(
-          "sb-full mx-3 mt-3 mb-1 flex items-center gap-2 rounded-lg bg-slate-50/80 px-2.5 py-1.5 ring-1 ring-inset ring-slate-200/60",
+          "sb-full mx-2.5 mt-3 mb-1 flex items-center gap-2.5 rounded-md border border-slate-200 px-2.5 py-1.5",
         )}>
           <span
             className={cn(
-              "flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
-              workspaceToneIconBg(procurementWorkspace),
+              "flex h-6 w-6 shrink-0 items-center justify-center text-slate-500",
             )}
             aria-hidden
           >
@@ -628,20 +599,13 @@ export function Sidebar({
             />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[9px] font-semibold text-slate-400">
+            <p className="text-[11px] leading-tight text-slate-500">
               Obszar pracy
             </p>
-            <p className={cn("truncate text-[12px] font-bold leading-tight", workspaceToneText(procurementWorkspace))}>
+            <p className="truncate text-[13px] font-semibold leading-tight text-slate-900">
               {labelForProcurementWorkspace(procurementWorkspace)}
             </p>
           </div>
-          <span
-            className={cn(
-              "shrink-0 h-1.5 w-1.5 rounded-full bg-current",
-              workspaceToneAccent(procurementWorkspace),
-            )}
-            aria-hidden
-          />
         </div>
       ) : null}
 
@@ -723,9 +687,6 @@ export function Sidebar({
                 Wyloguj
               </button>
             </div>
-            <p className="mt-2.5 text-center text-[10px] font-medium text-slate-400">
-              {ONTIME_AUTH_FOOTER}
-            </p>
           </>
         )}
       </div>

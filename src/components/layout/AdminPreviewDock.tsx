@@ -79,6 +79,7 @@ export function AdminPreviewDock({
       ) : null}
 
       <div
+        data-admin-preview-dock
         className={cn(
           "fixed z-[60] flex flex-col",
           "inset-x-2 bottom-[var(--mobile-bottom-chrome,0px)]",

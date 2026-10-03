@@ -85,19 +85,11 @@ export function DelegateModeBackground({
 
   return (
     <>
-      {/* Pływający badge z imieniem — prawy górny róg */}
-      <div
-        className="delegate-preview-badge"
-        style={{
-          opacity: applied && label ? 1 : 0,
-          transition: "opacity 1.2s ease-in-out 0.3s",
-        }}
-        role="status"
-        aria-live="polite"
-      >
-        <span className="delegate-preview-badge-dot" aria-hidden />
-        {label ? `Podgląd: ${label}` : "Podgląd"}
-      </div>
+      {applied && label ? (
+        <div className="delegate-preview-badge" role="status" aria-live="polite">
+          Podgląd: {label}
+        </div>
+      ) : null}
 
       <div className={className}>
         {children}

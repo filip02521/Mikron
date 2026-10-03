@@ -1,4 +1,3 @@
-import type { UserRole } from "@/types/database";
 import { cn } from "@/lib/cn";
 
 /** Lista kont — mieści się w widoku razem z hasłem, błędem i przyciskiem. */
@@ -10,15 +9,6 @@ export const LOGIN_ACCOUNT_LIST_WRAPPER_CLASS =
 
 /** Wyszukiwarka pojawia się wcześniej — na mobile lista szybciej rośnie. */
 export const LOGIN_ACCOUNT_SEARCH_THRESHOLD = 4;
-
-const LOGIN_ACCOUNT_ROLE_DOT_CLASS: Record<UserRole, string> = {
-  admin: "bg-violet-500",
-  zakupy: "bg-amber-500",
-  zakupy_zeby: "bg-teal-500",
-  magazyn: "bg-emerald-500",
-  sales: "bg-indigo-500",
-  sales_manager: "bg-indigo-400",
-};
 
 export function loginAccountInitials(displayName: string): string {
   const parts = displayName.trim().split(/\s+/).filter(Boolean);
@@ -32,10 +22,6 @@ export function loginAccountCountLabel(count: number): string {
   if (count === 1) return "1 konto";
   if (count >= 2 && count <= 4) return `${count} konta`;
   return `${count} kont`;
-}
-
-export function loginAccountRoleDotClass(role: UserRole): string {
-  return LOGIN_ACCOUNT_ROLE_DOT_CLASS[role];
 }
 
 export function loginAccountRowClass({

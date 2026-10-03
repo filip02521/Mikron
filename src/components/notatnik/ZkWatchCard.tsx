@@ -71,6 +71,7 @@ import {
 } from "@/lib/sales/zk-watch-prosba-scope";
 import { zkWatchLineViewToProsbaScopeLine } from "@/lib/orders/prosba-stock-check";
 import { useZkProsbaLineKeysStockFilter } from "@/hooks/useZkProsbaLineKeysStockFilter";
+import { isTextSelectionInside } from "@/lib/ui/panel-row-actions-reveal";
 
 export function ZkWatchCard({
   watch,
@@ -502,6 +503,7 @@ export function ZkWatchCard({
 
   function handleRowClick(event: MouseEvent<HTMLElement>) {
     if ((event.target as HTMLElement).closest("[data-zk-row-action]")) return;
+    if (isTextSelectionInside(event.currentTarget)) return;
     openLinesModal(false);
   }
 

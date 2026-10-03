@@ -88,8 +88,9 @@ export function navToneSurfaceIdleClass(tone: NavTone): string {
 
 /** Sidebar — trwałe wyróżnienie uwagi (przypomnienia Notatnik / ZK) w spoczynku. */
 export const sidebarNavAttentionIdleClass = cn(
-  "border border-amber-200/45 bg-amber-50/55 text-slate-800",
-  `${navFineHover}bg-amber-50/75`,
+  // Przypomnienia sygnalizuje sam licznik (amber), bez obramowanego tła wiersza.
+  "border border-transparent text-slate-700",
+  `${navFineHover}bg-slate-50/70`,
   `${navFineHover}text-slate-900`
 );
 
@@ -112,9 +113,6 @@ export function sidebarNavBadgeClassForTone(tone: NavTone, active: boolean): str
   if (active) return "text-indigo-700";
   return tone === "amber" || tone === "orange" ? "text-amber-700" : "text-slate-500";
 }
-
-/** Sidebar — kompaktowy wiersz (archiwum, dostawcy, system). */
-export const sidebarNavCompactPaddingClass = "px-2 py-1.5";
 
 /** Logo w aplikacji — gradient jak na logowaniu */
 export const brandMarkAppClass =
