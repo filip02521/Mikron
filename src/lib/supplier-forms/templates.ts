@@ -1,15 +1,24 @@
 /**
  * Formularze zamówień dostawców — szablon na dostawcę:
  *  - "pdf"  — PDF z polami (np. Wiedent), towar → pole przez mapę symboli,
- *  - "xlsx" — arkusz z katalogiem (np. Dentsply Sirona), towar → wiersz po kodzie.
+ *  - "xlsx" — arkusz z katalogiem (np. Dentsply Sirona), towar → wiersz po kodzie,
+ *  - "xlsx-list" — własny arkusz z pozycjami ZD (np. Renfert), bez szablonu dostawcy.
  * Kolejny dostawca = kolejny wpis w SUPPLIER_FORM_TEMPLATES.
  */
 
 export type SupplierFormDate = { day: number; month: number; year: number };
 
+/** Nazwa pliku jak przy ręcznym wysyłaniu (bez rozszerzenia), np. „Renfert 29.09”. */
+type FileNameFn = (ctx: { dokNr: string; date: Date; supplierName: string }) => string;
+
+function dayMonth(date: Date): string {
+  return `${String(date.getDate()).padStart(2, "0")}.${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export type SupplierPdfFormTemplate = {
   kind: "pdf";
   id: string;
+  fileName?: FileNameFn;
   /** Nazwa w UI i w nazwie pliku. */
   label: string;
   /** Dostawca w aplikacji (nazwa). */
@@ -43,6 +52,7 @@ const WIEDENT_WYROBY_POMOCNICZE: SupplierPdfFormTemplate = {
   label: "Wiedent — wyroby pomocnicze",
   supplierName: /^wiedent\b/i,
   file: "wiedent-wyroby-pomocnicze.pdf",
+  fileName: ({ date }) => `Wiedent ${dayMonth(date)}`,
   fixed: {
     "firma lub imię i nazwisko": "Mikran sp. z o.o.",
     adres: "Wojskowa 3/L4 60-072",
@@ -127,6 +137,7 @@ const WIEDENT_WYROBY_POMOCNICZE: SupplierPdfFormTemplate = {
 export type SupplierXlsxFormTemplate = {
   kind: "xlsx";
   id: string;
+  fileName?: FileNameFn;
   label: string;
   supplierName: RegExp;
   /** Arkusz dostawcy z wyczyszczonymi ilościami w `data/supplier-forms/`. */
@@ -137,7 +148,52 @@ export type SupplierXlsxFormTemplate = {
   items: { firstRow: number; lastRow: number; codeColumn: string; qtyColumn: string };
 };
 
-export type SupplierFormTemplate = SupplierPdfFormTemplate | SupplierXlsxFormTemplate;
+export type SupplierXlsxListTemplate = {
+  kind: "xlsx-list";
+  id: string;
+  label: string;
+  supplierName: RegExp;
+  fileName?: FileNameFn;
+  sheetName: string;
+  /** Kolumny Lp / Symbol / Nazwa / Ilość — szerokości jak w ręcznie tworzonym pliku. */
+  columns: { lp: number; symbol: number; name: number; qty?: number };
+};
+
+export type SupplierFormTemplate =
+  | SupplierPdfFormTemplate
+  | SupplierXlsxFormTemplate
+  | SupplierXlsxListTemplate;
+
+/**
+ * Renfert — własny arkusz (tak przyjmują zamówienia): Lp | Symbol | Nazwa | Ilość,
+ * wszystkie pozycje ZD, kolejność jak „Sortuj A→Z” w Excelu po nazwie.
+ * Sprawdzone na ZD 260/M/09/2026 (118 pozycji) z plikiem „Renfert 29.09”.
+ */
+const RENFERT_LIST: SupplierXlsxListTemplate = {
+  kind: "xlsx-list",
+  id: "renfert-lista",
+  label: "Renfert — lista pozycji (Excel)",
+  supplierName: /^renfert\b/i,
+  fileName: ({ date }) => `Renfert ${dayMonth(date)}`,
+  sheetName: "Arkusz1",
+  columns: { lp: 9.140625, symbol: 15.5703125, name: 51.5703125 },
+};
+
+/**
+ * Sortowanie jak „Sortuj A→Z” w Excelu: bez wielkości liter, myślniki i apostrofy
+ * pomijane („O-ring” za „Opal”), spacje liczą się („farb Stain” przed „farbek”).
+ */
+const excelCollator = new Intl.Collator("pl", { sensitivity: "base" });
+export function compareExcelText(a: string, b: string): number {
+  const strip = (s: string) => s.trim().replace(/[-'’]/g, "");
+  return excelCollator.compare(strip(a), strip(b));
+}
+
+/** Symbol z samych cyfr (bez zera na początku) → liczba, jak wpisany w Excelu. */
+export function excelSymbolValue(symbol: string | null | undefined): string | number {
+  const s = String(symbol ?? "").trim();
+  return /^[1-9]\d{0,14}$/.test(s) ? Number(s) : s;
+}
 
 /**
  * Dentsply Sirona — „Sales Order Form” (arkusz klienta 200151062, ceny z cennika).
@@ -151,6 +207,7 @@ const DENTSPLY_SIRONA_ORDER_FORM: SupplierXlsxFormTemplate = {
   label: "Dentsply Sirona — Sales Order Form",
   supplierName: /dentsply\s+sirona/i,
   file: "dentsply-sirona-order-form.xlsx",
+  fileName: ({ date }) => `Mikran Sp.Z O.O ${dayMonth(date)} Sirona`,
   header: ({ dokNr, date }) => ({ B8: dokNr, B10: date }),
   items: { firstRow: 13, lastRow: 196, codeColumn: "B", qtyColumn: "E" },
 };
@@ -158,6 +215,7 @@ const DENTSPLY_SIRONA_ORDER_FORM: SupplierXlsxFormTemplate = {
 export const SUPPLIER_FORM_TEMPLATES: readonly SupplierFormTemplate[] = [
   WIEDENT_WYROBY_POMOCNICZE,
   DENTSPLY_SIRONA_ORDER_FORM,
+  RENFERT_LIST,
 ];
 
 export function findSupplierFormTemplate(supplierName: string | null | undefined): SupplierFormTemplate | null {

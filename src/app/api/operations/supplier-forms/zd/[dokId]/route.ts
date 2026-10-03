@@ -22,8 +22,7 @@ export async function GET(
   try {
     const prepared = await prepareSupplierFormForZd({ dokId, supplierId });
     if (!prepared.ok) return NextResponse.json({ error: prepared.message }, { status: 422 });
-    const { bytes, contentType, extension } = await renderSupplierForm(prepared);
-    const fileName = `${prepared.supplierName} ${prepared.dokNr.replace(/[\\/]+/g, "-")}.${extension}`;
+    const { bytes, contentType, fileName } = await renderSupplierForm(prepared);
     return new NextResponse(Buffer.from(bytes), {
       headers: {
         "Content-Type": contentType,

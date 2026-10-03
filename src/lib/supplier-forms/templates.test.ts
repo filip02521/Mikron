@@ -3,6 +3,8 @@ import {
   buildSupplierFormFill,
   findSupplierFormTemplate,
   getSupplierFormTemplate,
+  compareExcelText,
+  excelSymbolValue,
   matchLinesToCodeRows,
   type SupplierPdfFormTemplate,
 } from "@/lib/supplier-forms/templates";
@@ -80,5 +82,36 @@ describe("formularz Dentsply Sirona (dopasowanie po kodzie)", () => {
 
   it("rozpoznaje dostawcę", () => {
     expect(findSupplierFormTemplate("Dentsply Sirona (dawny Zhermack)")?.kind).toBe("xlsx");
+  });
+});
+
+describe("Renfert — własny arkusz", () => {
+  it("sortuje jak Excel: bez myślników, ze spacjami, bez wielkości liter", () => {
+    const names = [
+      "Renfert-O-ring DIN 3771 82x4 NBR 55",
+      "Renfert-Paleta do farbek lay:art color",
+      "Renfert-Obcinarka do gipsu MT3 + Klettfix",
+      "Renfert-Opal L pasta polerska do kompozytu 35g",
+      "Renfert-Paleta do farb Stain-Mix-pok. czarna",
+      "Renfert-occlutec - kalka spray ZIELONA Promocja",
+    ];
+    expect([...names].sort(compareExcelText)).toEqual([
+      "Renfert-Obcinarka do gipsu MT3 + Klettfix",
+      "Renfert-occlutec - kalka spray ZIELONA Promocja",
+      "Renfert-Opal L pasta polerska do kompozytu 35g",
+      "Renfert-O-ring DIN 3771 82x4 NBR 55",
+      "Renfert-Paleta do farb Stain-Mix-pok. czarna",
+      "Renfert-Paleta do farbek lay:art color",
+    ]);
+  });
+
+  it("symbol z cyfr jako liczba, reszta jako tekst (zero na początku zostaje)", () => {
+    expect(excelSymbolValue("18600400")).toBe(18600400);
+    expect(excelSymbolValue("7661100 100 SZT.")).toBe("7661100 100 SZT.");
+    expect(excelSymbolValue("0562520")).toBe("0562520");
+  });
+
+  it("rozpoznaje dostawcę „Renfert - EXCEL”", () => {
+    expect(findSupplierFormTemplate("Renfert - EXCEL")?.kind).toBe("xlsx-list");
   });
 });

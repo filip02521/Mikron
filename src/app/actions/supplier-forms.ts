@@ -5,6 +5,7 @@ import { query } from "@/lib/db/pool";
 import { fetchSuppliersWithSchedules } from "@/lib/data/queries";
 import { resolveSupplierKhIdsForHistory } from "@/lib/orders/zd-order-engine";
 import { searchSubiektOrdersZd } from "@/lib/subiekt/api";
+import { SubiektRequestError } from "@/lib/subiekt/errors";
 import { zdListItemMatchesSupplierKhIds } from "@/lib/subiekt/zd-document-kh";
 import { prepareSupplierFormForZd } from "@/lib/supplier-forms/prepare";
 import { previewSupplierForm } from "@/lib/supplier-forms/render";
@@ -73,19 +74,33 @@ export async function actionListSupplierFormZds(
     }
     const recent = [...byId.values()]
       .sort((a, b) => (b.dataWyst ?? "").localeCompare(a.dataWyst ?? "") || b.dokId - a.dokId)
-      .slice(0, 5);
+      // Zapas na ZD usunięte w Subiekcie (pomijane niżej) — pokazujemy do 5.
+      .slice(0, 7);
 
-    const documents = await Promise.all(
-      recent.map(async (d): Promise<SupplierFormZd> => {
-        const prepared = await prepareSupplierFormForZd({ dokId: d.dokId, supplierId }).catch(
-          (e: unknown) => ({ ok: false as const, message: userFacingErrorText(e, "Błąd odczytu ZD.") })
-        );
-        if (!prepared.ok) return { ...d, mappedCount: 0, unmapped: [], error: prepared.message };
-        const preview = await previewSupplierForm(prepared);
-        return { ...d, ...preview, error: null };
-      })
-    );
-    return { ok: true, templateLabel: template.label, fileKind: template.kind, documents };
+    const documents = (
+      await Promise.all(
+        recent.map(async (d): Promise<SupplierFormZd | null> => {
+          const prepared = await prepareSupplierFormForZd({ dokId: d.dokId, supplierId }).catch((e: unknown) =>
+            // ZD usunięte w Subiekcie, a jeszcze w indeksie — pomijamy na liście.
+            e instanceof SubiektRequestError && e.status === 404
+              ? null
+              : { ok: false as const, message: userFacingErrorText(e, "Błąd odczytu ZD.") }
+          );
+          if (prepared === null) return null;
+          if (!prepared.ok) return { ...d, mappedCount: 0, unmapped: [], error: prepared.message };
+          const preview = await previewSupplierForm(prepared);
+          return { ...d, ...preview, error: null };
+        })
+      )
+    )
+      .filter((d): d is SupplierFormZd => d !== null)
+      .slice(0, 5);
+    return {
+      ok: true,
+      templateLabel: template.label,
+      fileKind: template.kind === "pdf" ? "pdf" : "xlsx",
+      documents,
+    };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać ZD z Subiektu.") };
   }

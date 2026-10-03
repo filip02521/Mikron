@@ -1,10 +1,13 @@
 import path from "node:path";
 import ExcelJS from "exceljs";
 import {
+  compareExcelText,
+  excelSymbolValue,
   matchLinesToCodeRows,
   normalizeFormSymbol,
   type SupplierFormLine,
   type SupplierXlsxFormTemplate,
+  type SupplierXlsxListTemplate,
 } from "@/lib/supplier-forms/templates";
 
 const FORMS_DIR = path.join(process.cwd(), "data", "supplier-forms");
@@ -49,4 +52,26 @@ export async function fillSupplierXlsxForm(
   wb.calcProperties.fullCalcOnLoad = true;
   const buffer = await wb.xlsx.writeBuffer();
   return { bytes: new Uint8Array(buffer as ArrayBuffer), mapped, unmapped };
+}
+
+/** Własny arkusz: Lp | Symbol | Nazwa | Ilość, pozycje posortowane jak w Excelu po nazwie. */
+export async function buildSupplierXlsxList(
+  template: SupplierXlsxListTemplate,
+  lines: readonly SupplierFormLine[]
+): Promise<Uint8Array> {
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet(template.sheetName);
+  ws.columns = [
+    { header: "Lp", key: "lp", width: template.columns.lp },
+    { header: "Symbol", key: "symbol", width: template.columns.symbol },
+    { header: "Nazwa", key: "name", width: template.columns.name },
+    { header: "Ilość", key: "qty", width: template.columns.qty },
+  ];
+  const sorted = lines.filter((l) => l.qty > 0).sort((a, b) => compareExcelText(a.name, b.name));
+  sorted.forEach((l, i) =>
+    ws.addRow({ lp: i + 1, symbol: excelSymbolValue(l.symbol), name: l.name, qty: l.qty })
+  );
+  for (const col of ["A", "B", "C"]) ws.getColumn(col).alignment = { horizontal: "left" };
+  const buffer = await wb.xlsx.writeBuffer();
+  return new Uint8Array(buffer as ArrayBuffer);
 }
