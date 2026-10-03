@@ -335,6 +335,8 @@ export function defaultZdCreateUwagi(input: {
   /** Nazwa grupy lub cechy (bez prefiksu „Grupa”/„Cecha”). */
   scopeLabel: string | null;
   dateKey: string;
+  /** Przewidywana dostawa (yyyy-mm-dd) z czasów realizacji dostawcy — gdy znana. */
+  etaDateKey?: string | null;
 }): string {
   const label = input.scopeLabel?.trim() || null;
   const scopePart = label
@@ -342,10 +344,15 @@ export function defaultZdCreateUwagi(input: {
       ? `Cecha ${label}`
       : `Grupa ${label}`
     : null;
+  const eta = input.etaDateKey?.trim();
+  const etaPart = /^\d{4}-\d{2}-\d{2}$/.test(eta ?? "")
+    ? `Przewidywana dostawa ok. ${eta!.split("-").reverse().join(".")}`
+    : null;
   const parts = [
     "OnTime kreator",
     scopePart,
     input.dateKey.trim() || null,
+    etaPart,
   ].filter(Boolean);
   return parts.join(" · ").slice(0, ZD_CREATE_MAX_UWAGI_LEN);
 }

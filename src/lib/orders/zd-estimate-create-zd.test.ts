@@ -1076,3 +1076,22 @@ describe("buildZdEstimateSnapshotLinesFromDoc", () => {
     ]);
   });
 });
+
+describe("defaultZdCreateUwagi - przewidywana dostawa", () => {
+  it("dopisuje termin z czasów realizacji, gdy znany", () => {
+    expect(
+      defaultZdCreateUwagi({
+        scopeMode: "cecha",
+        scopeLabel: "Polkard",
+        dateKey: "2026-10-03",
+        etaDateKey: "2026-10-07",
+      })
+    ).toBe("OnTime kreator · Cecha Polkard · 2026-10-03 · Przewidywana dostawa ok. 07.10.2026");
+  });
+
+  it("bez terminu (brak historii dostaw) — opis jak dotąd", () => {
+    expect(
+      defaultZdCreateUwagi({ scopeMode: "grupa", scopeLabel: "Frezy", dateKey: "2026-10-03", etaDateKey: null })
+    ).toBe("OnTime kreator · Grupa Frezy · 2026-10-03");
+  });
+});
