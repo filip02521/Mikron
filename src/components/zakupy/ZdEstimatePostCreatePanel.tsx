@@ -647,7 +647,9 @@ export function ZdEstimatePostCreatePanel({
                   title="Formularz zamówienia dostawcy wypełniony pozycjami z tego ZD"
                 >
                   <IconDownload size={15} className="shrink-0" />
-                  Formularz (PDF)
+                  {findSupplierFormTemplate(session.supplierName)!.kind === "xlsx"
+                    ? "Formularz (Excel)"
+                    : "Formularz (PDF)"}
                 </a>
               ) : null}
             </div>

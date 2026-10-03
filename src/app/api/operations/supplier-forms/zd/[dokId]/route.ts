@@ -1,11 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { canAccessOperations } from "@/lib/auth-roles";
-import { fillSupplierPdfForm } from "@/lib/supplier-forms/pdf";
 import { prepareSupplierFormForZd } from "@/lib/supplier-forms/prepare";
+import { renderSupplierForm } from "@/lib/supplier-forms/render";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 
-/** Formularz zamówienia dostawcy (PDF) wypełniony pozycjami z ZD. */
+/** Formularz zamówienia dostawcy (PDF / Excel) wypełniony pozycjami z ZD. */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ dokId: string }> }
@@ -22,11 +22,11 @@ export async function GET(
   try {
     const prepared = await prepareSupplierFormForZd({ dokId, supplierId });
     if (!prepared.ok) return NextResponse.json({ error: prepared.message }, { status: 422 });
-    const { bytes } = await fillSupplierPdfForm(prepared.template, prepared.fill.values);
-    const fileName = `${prepared.supplierName} ${prepared.dokNr.replace(/[\\/]+/g, "-")}.pdf`;
+    const { bytes, contentType, extension } = await renderSupplierForm(prepared);
+    const fileName = `${prepared.supplierName} ${prepared.dokNr.replace(/[\\/]+/g, "-")}.${extension}`;
     return new NextResponse(Buffer.from(bytes), {
       headers: {
-        "Content-Type": "application/pdf",
+        "Content-Type": contentType,
         "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
         "Cache-Control": "no-store",
       },

@@ -1,11 +1,14 @@
 /**
- * Formularze zamówień dostawców (PDF z polami) — szablon na dostawcę.
+ * Formularze zamówień dostawców — szablon na dostawcę:
+ *  - "pdf"  — PDF z polami (np. Wiedent), towar → pole przez mapę symboli,
+ *  - "xlsx" — arkusz z katalogiem (np. Dentsply Sirona), towar → wiersz po kodzie.
  * Kolejny dostawca = kolejny wpis w SUPPLIER_FORM_TEMPLATES.
  */
 
 export type SupplierFormDate = { day: number; month: number; year: number };
 
 export type SupplierPdfFormTemplate = {
+  kind: "pdf";
   id: string;
   /** Nazwa w UI i w nazwie pliku. */
   label: string;
@@ -35,6 +38,7 @@ export function normalizeFormSymbol(symbol: string | null | undefined): string {
  * Uwaga na Estetic Ort: „EO m” = proszek, „EO p” = płyn (sprawdzone na wydruku pól).
  */
 const WIEDENT_WYROBY_POMOCNICZE: SupplierPdfFormTemplate = {
+  kind: "pdf",
   id: "wiedent-wyroby-pomocnicze",
   label: "Wiedent — wyroby pomocnicze",
   supplierName: /^wiedent\b/i,
@@ -120,16 +124,80 @@ const WIEDENT_WYROBY_POMOCNICZE: SupplierPdfFormTemplate = {
   },
 };
 
-export const SUPPLIER_FORM_TEMPLATES: readonly SupplierPdfFormTemplate[] = [WIEDENT_WYROBY_POMOCNICZE];
+export type SupplierXlsxFormTemplate = {
+  kind: "xlsx";
+  id: string;
+  label: string;
+  supplierName: RegExp;
+  /** Arkusz dostawcy z wyczyszczonymi ilościami w `data/supplier-forms/`. */
+  file: string;
+  /** Komórki nagłówka (pierwszy arkusz). */
+  header: (ctx: { dokNr: string; date: Date }) => Record<string, string | Date>;
+  /** Tabela produktów: kod w `codeColumn`, ilość wpisujemy w `qtyColumn`. */
+  items: { firstRow: number; lastRow: number; codeColumn: string; qtyColumn: string };
+};
 
-export function findSupplierFormTemplate(supplierName: string | null | undefined): SupplierPdfFormTemplate | null {
+export type SupplierFormTemplate = SupplierPdfFormTemplate | SupplierXlsxFormTemplate;
+
+/**
+ * Dentsply Sirona — „Sales Order Form” (arkusz klienta 200151062, ceny z cennika).
+ * PO = numer ZD (walidacja: do 20 znaków), data zamówienia = data ZD; ilości w E,
+ * ceny i sumy liczą formuły arkusza (przeliczenie przy otwarciu).
+ * Symbol w Subiekcie = kod Dentsply (czasem z dopiskiem: „C202085 48SZT”).
+ */
+const DENTSPLY_SIRONA_ORDER_FORM: SupplierXlsxFormTemplate = {
+  kind: "xlsx",
+  id: "dentsply-sirona-order-form",
+  label: "Dentsply Sirona — Sales Order Form",
+  supplierName: /dentsply\s+sirona/i,
+  file: "dentsply-sirona-order-form.xlsx",
+  header: ({ dokNr, date }) => ({ B8: dokNr, B10: date }),
+  items: { firstRow: 13, lastRow: 196, codeColumn: "B", qtyColumn: "E" },
+};
+
+export const SUPPLIER_FORM_TEMPLATES: readonly SupplierFormTemplate[] = [
+  WIEDENT_WYROBY_POMOCNICZE,
+  DENTSPLY_SIRONA_ORDER_FORM,
+];
+
+export function findSupplierFormTemplate(supplierName: string | null | undefined): SupplierFormTemplate | null {
   const name = String(supplierName ?? "").trim();
   if (!name) return null;
   return SUPPLIER_FORM_TEMPLATES.find((t) => t.supplierName.test(name)) ?? null;
 }
 
-export function getSupplierFormTemplate(id: string): SupplierPdfFormTemplate | null {
+export function getSupplierFormTemplate(id: string): SupplierFormTemplate | null {
   return SUPPLIER_FORM_TEMPLATES.find((t) => t.id === id) ?? null;
+}
+
+/** Kod produktu z symbolu Subiekta: pierwsze słowo („C202085 48SZT” → „C202085”). */
+export function productCodeFromSymbol(symbol: string | null | undefined): string {
+  return normalizeFormSymbol(symbol).split(" ")[0] ?? "";
+}
+
+/**
+ * Pozycje ZD → wiersze arkusza po kodzie. Ten sam kod kilka razy w ZD = suma.
+ * `codeRows`: kod (normalizowany) → numer wiersza w arkuszu.
+ */
+export function matchLinesToCodeRows(
+  codeRows: ReadonlyMap<string, number>,
+  lines: readonly SupplierFormLine[]
+): { qtyByRow: Map<number, number>; mapped: Array<SupplierFormLine & { field: string }>; unmapped: SupplierFormLine[] } {
+  const qtyByRow = new Map<number, number>();
+  const mapped: Array<SupplierFormLine & { field: string }> = [];
+  const unmapped: SupplierFormLine[] = [];
+  for (const line of lines) {
+    if (!(line.qty > 0)) continue;
+    const code = productCodeFromSymbol(line.symbol);
+    const row = code ? codeRows.get(code) : undefined;
+    if (row == null) {
+      unmapped.push(line);
+      continue;
+    }
+    qtyByRow.set(row, (qtyByRow.get(row) ?? 0) + line.qty);
+    mapped.push({ ...line, field: code });
+  }
+  return { qtyByRow, mapped, unmapped };
 }
 
 export type SupplierFormLine = { symbol: string | null; name: string; qty: number };

@@ -13,9 +13,10 @@ function shortDate(key: string | null): string {
   return d && m && y ? `${d}.${m}.${y}` : key;
 }
 
-/** Ostatnie ZD dostawcy → formularz zamówienia (PDF) do pobrania. */
+/** Ostatnie ZD dostawcy → formularz zamówienia (PDF / Excel) do pobrania. */
 export function SupplierOrderFormList({ supplierId }: { supplierId: string }) {
   const [documents, setDocuments] = useState<SupplierFormZd[] | null>(null);
+  const [fileKind, setFileKind] = useState<"pdf" | "xlsx">("pdf");
   const [error, setError] = useState<string | null>(null);
   const [loading, startLoading] = useTransition();
 
@@ -23,8 +24,10 @@ export function SupplierOrderFormList({ supplierId }: { supplierId: string }) {
     startLoading(async () => {
       setError(null);
       const res = await actionListSupplierFormZds(supplierId);
-      if (res.ok) setDocuments(res.documents);
-      else setError(res.message);
+      if (res.ok) {
+        setFileKind(res.fileKind);
+        setDocuments(res.documents);
+      } else setError(res.message);
     });
 
   if (documents == null) {
@@ -60,7 +63,9 @@ export function SupplierOrderFormList({ supplierId }: { supplierId: string }) {
             )}
             {d.unmapped.length > 0 ? (
               <p className="mt-0.5 text-xs text-amber-800">
-                Poza formularzem (wpisane w uwagi — sprawdź przed wysłaniem):{" "}
+                {fileKind === "xlsx"
+                  ? "Brak w arkuszu dostawcy — nie ma ich w pliku, dopisz ręcznie lub zamów osobno: "
+                  : "Poza formularzem (wpisane w uwagi — sprawdź przed wysłaniem): "}
                 {d.unmapped.map((l) => `${l.name} × ${l.qty}`).join(", ")}
               </p>
             ) : null}
@@ -74,7 +79,7 @@ export function SupplierOrderFormList({ supplierId }: { supplierId: string }) {
               )}
             >
               <IconDownload size={14} className="shrink-0" />
-              Pobierz PDF
+              {fileKind === "xlsx" ? "Pobierz Excel" : "Pobierz PDF"}
             </a>
           ) : null}
         </li>

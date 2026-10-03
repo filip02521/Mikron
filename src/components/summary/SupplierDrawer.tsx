@@ -481,7 +481,7 @@ export function SupplierDrawer({
           {findSupplierFormTemplate(supplier.name) ? (
             <DrawerSection
               title="Formularz zamówienia"
-              hint="Formularz dostawcy (PDF) wypełniony pozycjami z ZD — gotowy do wysłania"
+              hint={`${findSupplierFormTemplate(supplier.name)!.kind === "xlsx" ? "Arkusz Excel" : "Formularz PDF"} dostawcy wypełniony pozycjami z ZD — gotowy do wysłania`}
               icon={<IconDownload size={14} />}
             >
               <SupplierOrderFormList supplierId={supplier.id} />

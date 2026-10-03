@@ -7,6 +7,7 @@ import { resolveSupplierKhIdsForHistory } from "@/lib/orders/zd-order-engine";
 import { searchSubiektOrdersZd } from "@/lib/subiekt/api";
 import { zdListItemMatchesSupplierKhIds } from "@/lib/subiekt/zd-document-kh";
 import { prepareSupplierFormForZd } from "@/lib/supplier-forms/prepare";
+import { previewSupplierForm } from "@/lib/supplier-forms/render";
 import { findSupplierFormTemplate, type SupplierFormLine } from "@/lib/supplier-forms/templates";
 import { warsawNowParts } from "@/lib/time/warsaw";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
@@ -24,7 +25,10 @@ export type SupplierFormZd = {
 /** Ostatnie ZD dostawcy (także świeżo utworzone) z podglądem formularza. */
 export async function actionListSupplierFormZds(
   supplierId: string
-): Promise<{ ok: true; templateLabel: string; documents: SupplierFormZd[] } | { ok: false; message: string }> {
+): Promise<
+  | { ok: true; templateLabel: string; fileKind: "pdf" | "xlsx"; documents: SupplierFormZd[] }
+  | { ok: false; message: string }
+> {
   await requireOperations("read");
   try {
     const [supplier] = await fetchSuppliersWithSchedules(undefined, {
@@ -76,12 +80,12 @@ export async function actionListSupplierFormZds(
         const prepared = await prepareSupplierFormForZd({ dokId: d.dokId, supplierId }).catch(
           (e: unknown) => ({ ok: false as const, message: userFacingErrorText(e, "Błąd odczytu ZD.") })
         );
-        return prepared.ok
-          ? { ...d, mappedCount: prepared.fill.mapped.length, unmapped: prepared.fill.unmapped, error: null }
-          : { ...d, mappedCount: 0, unmapped: [], error: prepared.message };
+        if (!prepared.ok) return { ...d, mappedCount: 0, unmapped: [], error: prepared.message };
+        const preview = await previewSupplierForm(prepared);
+        return { ...d, ...preview, error: null };
       })
     );
-    return { ok: true, templateLabel: template.label, documents };
+    return { ok: true, templateLabel: template.label, fileKind: template.kind, documents };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się pobrać ZD z Subiektu.") };
   }

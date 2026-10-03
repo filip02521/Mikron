@@ -3,9 +3,11 @@ import {
   buildSupplierFormFill,
   findSupplierFormTemplate,
   getSupplierFormTemplate,
+  matchLinesToCodeRows,
+  type SupplierPdfFormTemplate,
 } from "@/lib/supplier-forms/templates";
 
-const wiedent = getSupplierFormTemplate("wiedent-wyroby-pomocnicze")!;
+const wiedent = getSupplierFormTemplate("wiedent-wyroby-pomocnicze") as SupplierPdfFormTemplate;
 
 describe("formularz Wiedent", () => {
   it("ZD 42/M/08/2026 daje to samo co ręcznie wypełniony wzór z 10.08", () => {
@@ -54,5 +56,29 @@ describe("formularz Wiedent", () => {
   it("rozpoznaje dostawcę po nazwie", () => {
     expect(findSupplierFormTemplate("Wiedent")?.id).toBe("wiedent-wyroby-pomocnicze");
     expect(findSupplierFormTemplate("Everall7")).toBeNull();
+  });
+});
+
+describe("formularz Dentsply Sirona (dopasowanie po kodzie)", () => {
+  it("symbol z dopiskiem trafia w kod, suma powtórzeń, brak kodu = poza arkuszem", () => {
+    const codeRows = new Map([
+      ["C202085", 32],
+      ["C400798", 109],
+    ]);
+    const m = matchLinesToCodeRows(codeRows, [
+      { symbol: "C202085 48SZT", name: "Końcówki mieszające Small 48szt", qty: 10 },
+      { symbol: "c400798", name: "Zetalabor 5kg + 2x Indurent", qty: 20 },
+      { symbol: "C400798", name: "Zetalabor 5kg + 2x Indurent", qty: 4 },
+      { symbol: "XYZ-1", name: "Spoza cennika", qty: 2 },
+    ]);
+    expect([...m.qtyByRow]).toEqual([
+      [32, 10],
+      [109, 24],
+    ]);
+    expect(m.unmapped.map((l) => l.symbol)).toEqual(["XYZ-1"]);
+  });
+
+  it("rozpoznaje dostawcę", () => {
+    expect(findSupplierFormTemplate("Dentsply Sirona (dawny Zhermack)")?.kind).toBe("xlsx");
   });
 });
