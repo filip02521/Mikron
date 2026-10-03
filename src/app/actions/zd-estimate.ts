@@ -154,6 +154,7 @@ import {
   deleteZdEstimateSupplierScope,
   fetchZdEstimateSupplierScope,
   listZdEstimateSupplierScopes,
+  setPrimaryZdEstimateSupplierScope,
   upsertZdEstimateSupplierScope,
 } from "@/lib/data/zd-estimate-supplier-scopes";
 import {
@@ -4507,6 +4508,23 @@ export async function actionListZdEstimateSupplierScopes(): Promise<
         e,
         "Nie udało się wczytać mapowań zakresów dostawców."
       ),
+    };
+  }
+}
+
+export async function actionSetPrimaryZdEstimateSupplierScope(input: {
+  scopeId: string;
+}): Promise<
+  | { ok: true; scopes: Awaited<ReturnType<typeof setPrimaryZdEstimateSupplierScope>> }
+  | { ok: false; message: string }
+> {
+  await requireZdEstimateAdmin("mutate");
+  try {
+    return { ok: true, scopes: await setPrimaryZdEstimateSupplierScope(input.scopeId) };
+  } catch (e) {
+    return {
+      ok: false,
+      message: userFacingErrorText(e, "Nie udało się ustawić zakresu głównego."),
     };
   }
 }

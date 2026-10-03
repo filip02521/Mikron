@@ -83,7 +83,9 @@ describe("buildStockWatchDashboard", () => {
     item({ subiektTwId: 3, status: "warning", supplierId: "s2", supplierName: "Dostawca 2", daysOfCover: 6, ...inOrder(2, 200) }),
     item({ subiektTwId: 4, status: "out_of_stock", rule: "excluded", velocityDaily: 9, ...inOrder(3, 30) }),
     // Prośba na „Na prośbę” — w liście Kreatora (extraOnly), więc w propozycji.
-    item({ subiektTwId: 5, status: "out_of_stock", rule: "on_request", velocityDaily: 0.5, ...inOrder(1, 7) }),
+    item({ subiektTwId: 5, status: "out_of_stock", rule: "on_request", velocityDaily: 0.5, ...inOrder(1, 7), orderIndividualPieces: 1 }),
+    // „Na prośbę” oznaczone po nocnym przebiegu, bez prośby — Kreator by go zdjął.
+    item({ subiektTwId: 7, status: "warning", rule: "on_request", ...inOrder(5, 100) }),
     item({ subiektTwId: 6, status: "ok" }),
     // Ten sam towar u drugiego dostawcy (wspólny zakres) — jeden wiersz w sygnałach.
     item({ subiektTwId: 6, status: "ok", supplierId: "s2", supplierName: "Dostawca 2" }),
@@ -114,7 +116,7 @@ describe("buildStockWatchDashboard", () => {
     );
     expect(d.proposals[1]).toEqual(expect.objectContaining({ lineCount: 1, orderValue: 200 }));
     expect(d.totals).toEqual(
-      expect.objectContaining({ proposalValue: 257, proposalLines: 4, itemCount: 6, supplierCount: 2 })
+      expect.objectContaining({ proposalValue: 257, proposalLines: 4, itemCount: 7, supplierCount: 2 })
     );
   });
 
@@ -126,7 +128,7 @@ describe("buildStockWatchDashboard", () => {
   it("top rotacji bez wykluczonych; flagi osobno", () => {
     expect(d.topVelocity[0]?.subiektTwId).toBe(2);
     expect(d.topVelocity.some((r) => r.rule === "excluded")).toBe(false);
-    expect(d.flagged.map((f) => f.subiektTwId).sort()).toEqual([4, 5]);
+    expect(d.flagged.map((f) => f.subiektTwId).sort()).toEqual([4, 5, 7]);
   });
 
   it("zdrowie liczone tylko ze Standard z rotacją, towar raz", () => {

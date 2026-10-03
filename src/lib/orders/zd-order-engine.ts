@@ -59,6 +59,7 @@ import { mergeZdEstimateExcludedTwIds } from "@/lib/orders/zd-estimate-name-excl
 import { fetchTeethProductTwIdSet } from "@/lib/data/teeth-products";
 import {
   fetchLatestSnapshotHistoryByTwIds,
+  listSnapshotHistoryScopesForKh,
   type ZdEstimateHistoryScope,
 } from "@/lib/data/zd-estimate-order-snapshots";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -602,6 +603,22 @@ export async function runZdOrderEngine(
       )
     )
     .filter((s): s is ZdEstimateHistoryScope => s != null);
+  // Dawne zakresy dostawcy (zmienione / usunięte) — historia ZD nie może zniknąć
+  // tylko dlatego, że ktoś poprawił mapowanie.
+  if (isSupplierScope && supplierKhIds.length > 0) {
+    try {
+      const seen = new Set(historyScopes.map((h) => (h.mode === "grupa" ? `g${h.grtId}` : `c${h.cechaId}`)));
+      for (const h of await listSnapshotHistoryScopesForKh(supplierKhIds, hostKind)) {
+        const key = h.mode === "grupa" ? `g${h.grtId}` : `c${h.cechaId}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          historyScopes.push(h);
+        }
+      }
+    } catch {
+      // Bez dawnych zakresów — historia z obecnych nadal działa.
+    }
+  }
   const historyFilters =
     supplierKhIds.length > 0 && historyScopes.length > 0
       ? { supplierKhIds, scopes: historyScopes, hostKind }

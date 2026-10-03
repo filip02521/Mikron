@@ -166,3 +166,31 @@ export async function upsertZdEstimateSupplierScope(input: {
   );
   return mapZdEstimateSupplierScopeRow(res.rows[0]!);
 }
+
+/**
+ * Ustawia zakres jako główny dostawcy (od niego startuje Kreator i pod nim
+ * zapisuje się historia ZD). Pozostałe zachowują kolejność. Zwraca nową listę.
+ */
+export async function setPrimaryZdEstimateSupplierScope(
+  scopeId: string
+): Promise<ZdEstimateSupplierScopeRow[]> {
+  const id = scopeId.trim();
+  if (!id) throw new Error("Brak identyfikatora zakresu.");
+  const res = await query<{ supplier_id: string }>(
+    `UPDATE zd_estimate_supplier_scopes s
+        SET sort_order = r.rn
+       FROM (
+         SELECT id, (row_number() OVER (
+                  ORDER BY (id = $1) DESC, sort_order, created_at, id
+                ) - 1)::int AS rn
+           FROM zd_estimate_supplier_scopes
+          WHERE supplier_id = (SELECT supplier_id FROM zd_estimate_supplier_scopes WHERE id = $1)
+       ) r
+      WHERE s.id = r.id
+      RETURNING s.supplier_id`,
+    [id]
+  );
+  const supplierId = res.rows[0]?.supplier_id;
+  if (!supplierId) throw new Error("Nie znaleziono zakresu.");
+  return listZdEstimateSupplierScopesFor(supplierId);
+}

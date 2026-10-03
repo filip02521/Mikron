@@ -125,9 +125,9 @@ function proposalWarnings(order: StockWatchSupplierOrder): string[] {
 }
 
 /**
- * Model panelu. Propozycje = lista „Do ZD” z silnika (jak Kreator). Reguła
- * „Wyklucz” działa od razu (pozycja znika z propozycji); pozostałe zmiany
- * reguł wchodzą przy kolejnym przeliczeniu — albo od razu w Kreatorze.
+ * Model panelu. Propozycje = lista „Do ZD” z silnika (jak Kreator). Reguły
+ * „Wyklucz” / „Na prośbę” działają od razu; zdjęcie reguły (powrót do Standard)
+ * dokłada towar dopiero przy kolejnym przeliczeniu — albo od razu w Kreatorze.
  */
 export function buildStockWatchDashboard(
   items: readonly StockWatchItem[],
@@ -159,8 +159,13 @@ export function buildStockWatchDashboard(
 
   const proposals: StockWatchSupplierProposal[] = [];
   for (const order of supplierOrders) {
+    // Reguły na żywo jak w Kreatorze: wykluczone wypadają, „na prośbę” zostaje
+    // tylko z ilością z prośby handlowca.
     const lines = (itemsBySupplier.get(order.supplierId) ?? []).filter(
-      (i) => i.inOrder && i.rule !== "excluded"
+      (i) =>
+        i.inOrder &&
+        i.rule !== "excluded" &&
+        (i.rule !== "on_request" || i.orderIndividualPieces > 0)
     );
     const warnings = proposalWarnings(order);
     if (lines.length === 0 && warnings.length === 0) continue;

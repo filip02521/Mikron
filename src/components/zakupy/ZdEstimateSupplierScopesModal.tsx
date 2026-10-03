@@ -6,6 +6,7 @@ import {
   actionListZdEstimateSupplierScopes,
   actionSearchZdEstimateCechy,
   actionSearchZdEstimateGroups,
+  actionSetPrimaryZdEstimateSupplierScope,
   actionUpsertZdEstimateSupplierScope,
   type ZdEstimateCechaOption,
   type ZdEstimateGroupOption,
@@ -773,6 +774,20 @@ export function ZdEstimateSupplierScopesModal({
     });
   };
 
+  const makePrimary = (row: ZdEstimateSupplierScopeRow) => {
+    start(async () => {
+      const res = await actionSetPrimaryZdEstimateSupplierScope({ scopeId: row.id });
+      if (!res.ok) {
+        onError(res.message);
+        return;
+      }
+      commitScopes([
+        ...scopesRef.current.filter((s) => s.supplierId !== row.supplierId),
+        ...res.scopes,
+      ]);
+    });
+  };
+
   const startIndexSync = () => {
     start(async () => {
       const res = await actionStartZdScopeIndexSync();
@@ -1203,6 +1218,18 @@ export function ZdEstimateSupplierScopesModal({
                             </span>
                           </div>
                           <div className="flex shrink-0 gap-1.5">
+                            {card.rows.length > 1 && idx > 0 ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                disabled={pending}
+                                onClick={() => makePrimary(row)}
+                                title="Od zakresu głównego startuje Kreator; pod nim zapisuje się historia ZD"
+                              >
+                                Ustaw jako główny
+                              </Button>
+                            ) : null}
                             <Button
                               type="button"
                               size="sm"

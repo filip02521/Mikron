@@ -562,12 +562,18 @@ export function SupplierDrawer({
                 label={subiektScope ? (subiektScope.mode === "cecha" ? "Cecha towarów" : "Grupa towarów") : "Grupa / cecha"}
                 value={
                   subiektScope
-                    ? `${subiektScope.label || "bez nazwy"} · ${subiektScope.mode === "cecha" ? "ctw_Id" : "grt_Id"} ${subiektScope.id}`
+                    ? `${subiektScope.label || "bez nazwy"} · ${subiektScope.mode === "cecha" ? "ctw_Id" : "grt_Id"} ${subiektScope.id}${
+                        subiektScope.extraLabels?.length
+                          ? ` + ${subiektScope.extraLabels.join(", ")}`
+                          : ""
+                      }`
                     : "brak powiązania"
                 }
                 hint={
                   subiektScope
-                    ? `„Przygotuj ZD” liczy towary z tej ${subiektScope.mode === "cecha" ? "cechy" : "grupy"}.`
+                    ? subiektScope.extraLabels?.length
+                      ? `„Przygotuj ZD” liczy razem ${subiektScope.extraLabels.length + 1} zakresy dostawcy.`
+                      : `„Przygotuj ZD” liczy towary z tej ${subiektScope.mode === "cecha" ? "cechy" : "grupy"}.`
                     : "„Przygotuj ZD” spróbuje dopasować po nazwie dostawcy."
                 }
               />

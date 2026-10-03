@@ -62,8 +62,12 @@ export default async function PodsumowaniePage() {
       listZdEstimateSupplierScopes().catch(() => []),
     ]);
     for (const row of scopeRows) {
-      // Kilka zakresów na dostawcę — pokazujemy główny (pierwszy na liście).
-      if (subiektScopeBySupplierId[row.supplierId]) continue;
+      // Kilka zakresów na dostawcę — główny (pierwszy) + etykiety kolejnych.
+      const primary = subiektScopeBySupplierId[row.supplierId];
+      if (primary) {
+        primary.extraLabels = [...(primary.extraLabels ?? []), row.label || `#${row.grupaId ?? row.cechaId}`];
+        continue;
+      }
       const info = supplierSubiektScopeInfoFromRow(row);
       if (info) subiektScopeBySupplierId[row.supplierId] = info;
     }

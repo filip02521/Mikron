@@ -6,7 +6,7 @@ import { requireOperations } from "@/lib/auth";
 import { hasSupabaseConfig } from "@/lib/supabase/admin";
 import { fetchDeliveryStats, fetchSuppliersOnVacationNow, fetchSuppliersWithSchedules } from "@/lib/data/queries";
 import { fetchTeethSupplierLaneIndex } from "@/lib/data/teeth-schedule";
-import { fetchZdEstimateSupplierScope } from "@/lib/data/zd-estimate-supplier-scopes";
+import { listZdEstimateSupplierScopesFor } from "@/lib/data/zd-estimate-supplier-scopes";
 import { buildSummaryWorkspace, type SupplierSummaryMeta } from "@/lib/orders/summary-workspace";
 import {
   supplierSubiektScopeInfoFromRow,
@@ -44,10 +44,10 @@ export async function actionGetSupplierPreview(
   if (!UUID_RE.test(id)) return { ok: false, message: "Nieprawidłowy dostawca." };
   if (!hasSupabaseConfig()) return { ok: false, message: "Brak konfiguracji bazy." };
 
-  const [schedules, onVacation, scopeRow, statsRows, teethIndex, quantiles] = await Promise.all([
+  const [schedules, onVacation, scopeRows, statsRows, teethIndex, quantiles] = await Promise.all([
     fetchSuppliersWithSchedules(undefined, { activeOnly: false, supplierIds: [id] }),
     fetchSuppliersOnVacationNow().catch(() => ({}) as Record<string, SupplierOnVacationWindow>),
-    fetchZdEstimateSupplierScope(id).catch(() => null),
+    listZdEstimateSupplierScopesFor(id).catch(() => []),
     fetchDeliveryStats().catch(() => []),
     fetchTeethSupplierLaneIndex().catch(() => new Map<string, TeethSupplierLaneSnapshot>()),
     import("@/lib/orders/delivery-eta-quantiles-load")
@@ -69,7 +69,14 @@ export async function actionGetSupplierPreview(
       supplier,
       vacationWindow,
       teethLane: teethIndex.get(id) ?? null,
-      subiektScope: scopeRow ? supplierSubiektScopeInfoFromRow(scopeRow) : null,
+      subiektScope: scopeRows[0]
+        ? (() => {
+            const info = supplierSubiektScopeInfoFromRow(scopeRows[0]);
+            return info
+              ? { ...info, extraLabels: scopeRows.slice(1).map((r) => r.label || `#${r.grupaId ?? r.cechaId}`) }
+              : null;
+          })()
+        : null,
       deliveryStats,
       statsMode: supplier.stats_mode ?? "LACZNIE",
       leadTimeDisplay: leadTimeDisplayFromQuantiles(

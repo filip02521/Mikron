@@ -441,30 +441,6 @@ function launchHasRunnableScope(launch: ZdEstimateLaunchProps | null | undefined
   return launch.cechaId != null && launch.cechaId > 0;
 }
 
-/** Autorun z /podsumowanie zastąpi sesję — nie wchodź w gate restore/resume. */
-function willReplaceExternalSessionOnDailyAutorun(input: {
-  launch: ZdEstimateLaunchProps | null | undefined;
-  bootstrapConfigured: boolean;
-}): boolean {
-  const launch = input.launch;
-  if (typeof window === "undefined") return false;
-  const token = peekZdEstimateExternalSessionToken();
-  if (!token) return false;
-  return (
-    decideZdEstimateAutorunVsExternalSession({
-      hasActiveToken: true,
-      tokenSupplierId: token.supplierId,
-      fromDaily: Boolean(launch?.fromDaily),
-      autorun: Boolean(launch?.autorun),
-      needsAssign: Boolean(launch?.needsAssign),
-      supplierId: launch?.supplierId,
-      hasRunnableScope: launchHasRunnableScope(launch),
-      hasLaunchKey: Boolean(launch?.launchKey),
-      bootstrapConfigured: input.bootstrapConfigured,
-    }).action === "replace_and_autorun"
-  );
-}
-
 function settingsTrustFailMessage(input: {
   exclusionsError: string | null;
   onRequestsError: string | null;
@@ -1501,49 +1477,14 @@ export function ZdEstimateWorkbench({
   const sessionResumeRevealTimerRef = useRef<number | null>(null);
   const pendingRestoredToastRef = useRef<string | null>(null);
   /** Blokuje formularz zakresu do czasu restore (także cichego refreshu z tokenem). */
-  const [sessionRestorePending, setSessionRestorePending] = useState(() => {
-    if (typeof window === "undefined") return false;
-    if (
-      willReplaceExternalSessionOnDailyAutorun({
-        launch,
-        bootstrapConfigured: bootstrap.configured,
-      })
-    ) {
-      return false;
-    }
-    return Boolean(peekZdEstimateExternalSessionToken());
-  });
-  const [sessionResumeBlocking, setSessionResumeBlocking] = useState(() => {
-    if (typeof window === "undefined") return false;
-    if (
-      willReplaceExternalSessionOnDailyAutorun({
-        launch,
-        bootstrapConfigured: bootstrap.configured,
-      })
-    ) {
-      return false;
-    }
-    const token = peekZdEstimateExternalSessionToken();
-    if (!token) return false;
-    return shouldShowZdEstimateSessionResumeLoading({ token });
-  });
+  // Start zawsze false (jak SSR) — token z localStorage czyta useLayoutEffect
+  // (restoreExternalSession) przed paint; inaczej hydracja się rozjeżdża.
+  const [sessionRestorePending, setSessionRestorePending] = useState(false);
+  const [sessionResumeBlocking, setSessionResumeBlocking] = useState(false);
   const [sessionResumeForceComplete, setSessionResumeForceComplete] =
     useState(false);
   const [sessionResumeReturningFromAway, setSessionResumeReturningFromAway] =
-    useState(() => {
-      if (typeof window === "undefined") return false;
-      if (
-        willReplaceExternalSessionOnDailyAutorun({
-          launch,
-          bootstrapConfigured: bootstrap.configured,
-        })
-      ) {
-        return false;
-      }
-      return isZdEstimateExternalSessionReturnNavigation(
-        peekZdEstimateExternalSessionToken()
-      );
-    });
+    useState(false);
   const busy = estimating || searching || mutating || rematting;
 
   const reportError = useCallback(

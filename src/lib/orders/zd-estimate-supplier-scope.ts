@@ -323,6 +323,8 @@ export type SupplierSubiektScopeInfo = {
   /** grt_Id (grupa) albo ctw_Id (cecha). */
   id: number;
   label: string;
+  /** Kolejne zakresy dostawcy (Kreator liczy je razem z głównym). */
+  extraLabels?: string[];
 };
 
 export function supplierSubiektScopeInfoFromRow(row: {
