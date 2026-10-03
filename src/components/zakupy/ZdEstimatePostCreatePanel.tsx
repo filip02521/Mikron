@@ -10,7 +10,9 @@ import {
   actionMarkZdEstimateIndividualsGlowne,
   actionMarkZdEstimateSupplierOrdered,
   actionUndoZdEstimateDailyPanelChange,
+  actionZdEstimateSupplierEta,
 } from "@/app/actions/zd-estimate";
+import { zdCreateEtaTile } from "@/lib/orders/zd-estimate-create-zd";
 import { ZdEstimateCreateRequestsPreview } from "@/components/zakupy/ZdEstimateCreateRequestsPreview";
 import { SupplierDrawer } from "@/components/summary/SupplierDrawer";
 import {
@@ -72,8 +74,11 @@ export function ZdEstimatePostCreatePanel({
   onGlowneMarked,
   onScheduleMarked,
   onUndoMark,
+  previewOnly = false,
 }: {
   session: ZdPostCreateSession;
+  /** Harness UI (e2e-lab): bez zapisów — Główne / plan / cofnij nic nie wysyłają. */
+  previewOnly?: boolean;
   /** Nieużywane od czasu stałej treści maila — zostawione dla zgodności wywołań. */
   dateKey?: string;
   /** Create nadal zablokowany — pokaż CTA w panelu (bez osobnego banera). */
@@ -121,6 +126,34 @@ export function ZdEstimatePostCreatePanel({
   } | null>(null);
   const [undoBusy, setUndoBusy] = useState(false);
   const [supplierPreviewOpen, setSupplierPreviewOpen] = useState(false);
+  const [eta, setEta] = useState<{
+    supplierId: string;
+    dateKey: string | null;
+    businessDays: number | null;
+  } | null>(null);
+  useEffect(() => {
+    if (session.kind === "timeout_recovery") return;
+    let cancelled = false;
+    void actionZdEstimateSupplierEta(session.supplierId)
+      .then((res) => {
+        if (!cancelled) {
+          setEta({
+            supplierId: session.supplierId,
+            dateKey: res.ok ? (res.eta?.dateKey ?? null) : null,
+            businessDays: res.ok ? (res.eta?.businessDays ?? null) : null,
+          });
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [session.kind, session.supplierId]);
+  const etaTile = zdCreateEtaTile(
+    eta && eta.supplierId === session.supplierId
+      ? { status: "done", dateKey: eta.dateKey, businessDays: eta.businessDays }
+      : { status: "loading", dateKey: null, businessDays: null }
+  );
   const [supplierPreview, setSupplierPreview] = useState<{
     supplierId: string;
     data: SupplierPreviewData | null;
@@ -346,7 +379,7 @@ export function ZdEstimatePostCreatePanel({
       : null;
 
   const markGlowne = () => {
-    if (!canAct || session.glowneDone || !glowneIds.length || glownePending) {
+    if (previewOnly || !canAct || session.glowneDone || !glowneIds.length || glownePending) {
       return;
     }
     setGlowneError(null);
@@ -387,7 +420,7 @@ export function ZdEstimatePostCreatePanel({
   };
 
   const markSchedule = () => {
-    if (!canAct || session.scheduleDone || !scheduleCanMark || schedulePending) {
+    if (previewOnly || !canAct || session.scheduleDone || !scheduleCanMark || schedulePending) {
       return;
     }
     setScheduleError(null);
@@ -414,7 +447,7 @@ export function ZdEstimatePostCreatePanel({
   };
 
   const undoMark = () => {
-    if (!undo || undoBusy) return;
+    if (previewOnly || !undo || undoBusy) return;
     const current = undo;
     setUndoBusy(true);
     void (async () => {
@@ -542,7 +575,7 @@ export function ZdEstimatePostCreatePanel({
               ) : null}
               <Button
                 type="button"
-                variant={session.kind === "timeout_recovery" ? "secondary" : "primary"}
+                variant="secondary"
                 className="min-h-11 w-full sm:w-auto"
                 onClick={openDzis}
               >
@@ -628,9 +661,34 @@ export function ZdEstimatePostCreatePanel({
                   />
                   <span className="shrink-0">· {session.lineCount} poz.</span>
                 </p>
+                {/* Fakty o dokumencie; decyzje (Główne, plan) są w „Co dalej”. */}
+                <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs" aria-label="Status dokumentu">
+                  {statusItems
+                    .filter((item) => item.key === "subiekt" || item.key === "history")
+                    .map((item) => (
+                      <li
+                        key={item.key}
+                        className={cn(
+                          "inline-flex items-center gap-1.5",
+                          item.ok ? "text-emerald-900" : "font-medium text-amber-900"
+                        )}
+                      >
+                        <StatusDot ok={item.ok} unsure={item.unsure} soft={item.soft} className="mt-0" />
+                        {item.label}
+                      </li>
+                    ))}
+                </ul>
               </div>
             </div>
-            <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:flex-row">
+            <div
+              className="shrink-0 rounded-lg bg-white/80 px-3.5 py-2 ring-1 ring-emerald-200/80 sm:text-right"
+              title="Dziś + typowy czas realizacji dostawcy w OnTime (z historii ZD → FZ)"
+            >
+              <p className="text-xs font-semibold text-emerald-800">Przewidywana dostawa</p>
+              <p className="text-lg font-semibold tabular-nums tracking-tight text-slate-900">{etaTile.value}</p>
+              <p className="text-xs text-slate-600">{etaTile.sub}</p>
+            </div>
+            <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto">
               <SupplierPreviewButton
                 loading={previewLoading}
                 error={previewError}
@@ -663,63 +721,6 @@ export function ZdEstimatePostCreatePanel({
           </p>
         ) : null}
 
-        <ul className="flex flex-wrap gap-2" aria-label="Status">
-          {statusItems.map((item) => (
-            <li
-              key={item.key}
-              className={cn(
-                "inline-flex max-w-full items-center gap-2 rounded-md px-3 py-1 text-xs font-medium ring-1",
-                item.unsure
-                  ? "bg-amber-50 text-amber-950 ring-amber-200"
-                  : item.ok
-                    ? "bg-emerald-50 text-emerald-900 ring-emerald-200"
-                    : item.soft
-                      ? "bg-slate-50 text-slate-700 ring-slate-200"
-                      : "bg-amber-50 text-amber-950 ring-amber-200"
-              )}
-            >
-              <StatusDot
-                ok={item.ok}
-                unsure={item.unsure}
-                soft={item.soft}
-                className="mt-0"
-              />
-              <span className="min-w-0 truncate" title={item.label}>
-                {item.label}
-              </span>
-            </li>
-          ))}
-        </ul>
-
-        {session.bumped.length > 0 ||
-        session.markFreeze.omittedServiceCount > 0 ||
-        session.markFreeze.teethServiceCount > 0 ? (
-          <ul className="space-y-1 text-xs leading-relaxed">
-            {session.bumped.length > 0 ? (
-              <li className="text-amber-950">
-                Serwer podbił ilość na {session.bumped.length}{" "}
-                {session.bumped.length === 1 ? "pozycji" : "pozycjach"} do
-                pokrycia próśb
-                {session.bumped.slice(0, 6).map((b) => (
-                  <span key={b.twId} className="ml-1 tabular-nums">
-                    ({b.from}→{b.to})
-                  </span>
-                ))}
-                .
-              </li>
-            ) : null}
-            {session.markFreeze.omittedServiceCount > 0 ? (
-              <li className="text-amber-950">
-                {session.markFreeze.omittedServiceCount} usług nie zmieściło się w
-                uwagach - nie wejdą na listę Główne.
-              </li>
-            ) : null}
-            {session.markFreeze.teethServiceCount > 0 ? (
-              <li className="text-slate-600">{ZD_ESTIMATE_UI.createTeethNote}</li>
-            ) : null}
-          </ul>
-        ) : null}
-
         <div
           className={cn(
             "grid gap-4 lg:items-start",
@@ -747,104 +748,8 @@ export function ZdEstimatePostCreatePanel({
               </p>
             ) : null}
             <ol className="mt-3 space-y-3">
-              {canAct && (glowneIds.length > 0 || session.glowneDone) ? (
-                <NextStep
-                  n={1}
-                  done={session.glowneDone}
-                  doneLabel={
-                    glowneDoneViaSkip
-                      ? glowneInfo || ZD_ESTIMATE_UI.postCreateStatusGlowneClearedSkipped
-                      : ZD_ESTIMATE_UI.postCreateStatusGlowneDone
-                  }
-                  title="Prośby jako Główne"
-                  hint={ZD_ESTIMATE_UI.postCreateMarkGlowneHint}
-                >
-                  <Button
-                    type="button"
-                    variant={session.glowneDone ? "ghost" : "secondary"}
-                    className="min-h-10 w-full sm:w-auto"
-                    disabled={session.glowneDone || !glowneIds.length || glownePending}
-                    onClick={markGlowne}
-                    aria-busy={glownePending}
-                  >
-                    {glownePending ? (
-                      <span className="inline-flex items-center gap-2">
-                        <Spinner className="size-4" /> Odznaczam…
-                      </span>
-                    ) : session.glowneDone ? (
-                      glowneDoneViaSkip
-                        ? ZD_ESTIMATE_UI.postCreateStatusGlowneClearedSkipped
-                        : ZD_ESTIMATE_UI.postCreateStatusGlowneDone
-                    ) : (
-                      `${ZD_ESTIMATE_UI.postCreateMarkGlowneCta}${
-                        glowneIds.length ? ` (${glowneIds.length})` : ""
-                      }`
-                    )}
-                  </Button>
-                  {glowneInfo ? (
-                    <p className="text-sm text-slate-700">{glowneInfo}</p>
-                  ) : null}
-                  {glowneError ? (
-                    <p className="text-sm text-rose-800" role="alert">
-                      {glowneError}
-                    </p>
-                  ) : null}
-                </NextStep>
-              ) : null}
-
-              {canAct ? (
-                <NextStep
-                  n={glowneIds.length > 0 || session.glowneDone ? 2 : 1}
-                  done={session.scheduleDone}
-                  doneLabel={ZD_ESTIMATE_UI.postCreateStatusScheduleDone}
-                  title="Plan tygodnia"
-                  hint={ZD_ESTIMATE_UI.postCreateMarkScheduleHint}
-                  warning={
-                    session.scheduleDone || scheduleCanMark
-                      ? ZD_ESTIMATE_UI.postCreateMarkDzisWarning
-                      : null
-                  }
-                >
-                  <Button
-                    type="button"
-                    variant={session.scheduleDone ? "ghost" : "secondary"}
-                    className="min-h-10 w-full sm:w-auto"
-                    disabled={
-                      session.scheduleDone || !scheduleCanMark || schedulePending
-                    }
-                    onClick={markSchedule}
-                    title={scheduleHint ?? undefined}
-                    aria-busy={schedulePending}
-                  >
-                    {schedulePending ? (
-                      <span className="inline-flex items-center gap-2">
-                        <Spinner className="size-4" /> Zapisuję plan…
-                      </span>
-                    ) : session.scheduleDone ? (
-                      ZD_ESTIMATE_UI.postCreateStatusScheduleDone
-                    ) : (
-                      ZD_ESTIMATE_UI.postCreateMarkScheduleCta
-                    )}
-                  </Button>
-                  {scheduleError ? (
-                    <p className="text-sm text-rose-800" role="alert">
-                      {scheduleError}
-                    </p>
-                  ) : null}
-                  {!scheduleCanMark && scheduleHint && !session.scheduleDone ? (
-                    <p className="text-xs text-slate-600">{scheduleHint}</p>
-                  ) : null}
-                </NextStep>
-              ) : null}
-
               <NextStep
-                n={
-                  !canAct
-                    ? 1
-                    : glowneIds.length > 0 || session.glowneDone
-                      ? 3
-                      : 2
-                }
+                n={1}
                 done={false}
                 title="Wyślij zamówienie do dostawcy"
               >
@@ -929,6 +834,96 @@ export function ZdEstimatePostCreatePanel({
                   </div>
                 )}
               </NextStep>
+              {canAct && (glowneIds.length > 0 || session.glowneDone) ? (
+                <NextStep
+                  n={2}
+                  done={session.glowneDone}
+                  doneLabel={
+                    glowneDoneViaSkip
+                      ? glowneInfo || ZD_ESTIMATE_UI.postCreateStatusGlowneClearedSkipped
+                      : ZD_ESTIMATE_UI.postCreateStatusGlowneDone
+                  }
+                  title="Prośby jako Główne"
+                  hint={ZD_ESTIMATE_UI.postCreateMarkGlowneHint}
+                >
+                  <Button
+                    type="button"
+                    variant={session.glowneDone ? "ghost" : "secondary"}
+                    className="min-h-10 w-full sm:w-auto"
+                    disabled={session.glowneDone || !glowneIds.length || glownePending}
+                    onClick={markGlowne}
+                    aria-busy={glownePending}
+                  >
+                    {glownePending ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Spinner className="size-4" /> Odznaczam…
+                      </span>
+                    ) : session.glowneDone ? (
+                      glowneDoneViaSkip
+                        ? ZD_ESTIMATE_UI.postCreateStatusGlowneClearedSkipped
+                        : ZD_ESTIMATE_UI.postCreateStatusGlowneDone
+                    ) : (
+                      `${ZD_ESTIMATE_UI.postCreateMarkGlowneCta}${
+                        glowneIds.length ? ` (${glowneIds.length})` : ""
+                      }`
+                    )}
+                  </Button>
+                  {glowneInfo ? (
+                    <p className="text-sm text-slate-700">{glowneInfo}</p>
+                  ) : null}
+                  {glowneError ? (
+                    <p className="text-sm text-rose-800" role="alert">
+                      {glowneError}
+                    </p>
+                  ) : null}
+                </NextStep>
+              ) : null}
+
+              {canAct ? (
+                <NextStep
+                  n={glowneIds.length > 0 || session.glowneDone ? 3 : 2}
+                  done={session.scheduleDone}
+                  doneLabel={ZD_ESTIMATE_UI.postCreateStatusScheduleDone}
+                  title="Plan tygodnia"
+                  hint={ZD_ESTIMATE_UI.postCreateMarkScheduleHint}
+                  warning={
+                    session.scheduleDone || scheduleCanMark
+                      ? ZD_ESTIMATE_UI.postCreateMarkDzisWarning
+                      : null
+                  }
+                >
+                  <Button
+                    type="button"
+                    variant={session.scheduleDone ? "ghost" : "secondary"}
+                    className="min-h-10 w-full sm:w-auto"
+                    disabled={
+                      session.scheduleDone || !scheduleCanMark || schedulePending
+                    }
+                    onClick={markSchedule}
+                    title={scheduleHint ?? undefined}
+                    aria-busy={schedulePending}
+                  >
+                    {schedulePending ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Spinner className="size-4" /> Zapisuję plan…
+                      </span>
+                    ) : session.scheduleDone ? (
+                      ZD_ESTIMATE_UI.postCreateStatusScheduleDone
+                    ) : (
+                      ZD_ESTIMATE_UI.postCreateMarkScheduleCta
+                    )}
+                  </Button>
+                  {scheduleError ? (
+                    <p className="text-sm text-rose-800" role="alert">
+                      {scheduleError}
+                    </p>
+                  ) : null}
+                  {!scheduleCanMark && scheduleHint && !session.scheduleDone ? (
+                    <p className="text-xs text-slate-600">{scheduleHint}</p>
+                  ) : null}
+                </NextStep>
+              ) : null}
+
             </ol>
           </section>
 
@@ -968,6 +963,35 @@ export function ZdEstimatePostCreatePanel({
             </div>
           )}
         </div>
+
+        {session.bumped.length > 0 ||
+        session.markFreeze.omittedServiceCount > 0 ||
+        session.markFreeze.teethServiceCount > 0 ? (
+          <ul className="space-y-1 text-xs leading-relaxed">
+            {session.bumped.length > 0 ? (
+              <li className="text-amber-950">
+                Serwer podbił ilość na {session.bumped.length}{" "}
+                {session.bumped.length === 1 ? "pozycji" : "pozycjach"} do
+                pokrycia próśb
+                {session.bumped.slice(0, 6).map((b) => (
+                  <span key={b.twId} className="ml-1 tabular-nums">
+                    ({b.from}→{b.to})
+                  </span>
+                ))}
+                .
+              </li>
+            ) : null}
+            {session.markFreeze.omittedServiceCount > 0 ? (
+              <li className="text-amber-950">
+                {session.markFreeze.omittedServiceCount} usług nie zmieściło się w
+                uwagach - nie wejdą na listę Główne.
+              </li>
+            ) : null}
+            {session.markFreeze.teethServiceCount > 0 ? (
+              <li className="text-slate-600">{ZD_ESTIMATE_UI.createTeethNote}</li>
+            ) : null}
+          </ul>
+        ) : null}
 
         <ZdEstimateOrderPreviewTable
           lines={orderPreviewRowsFromSnap(session.linesSnapshot)}

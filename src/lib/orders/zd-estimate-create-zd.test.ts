@@ -6,6 +6,7 @@ import {
   buildZdCreatePreviewFromOrderable,
   canCreateZdFromEstimateState,
   defaultZdCreateUwagi,
+  zdCreateEtaTile,
   ensureZdCreateLinesCoverIndividualExtras,
   minZdUnitsForExtraPieces,
   normalizeZdCreateUwagi,
@@ -1074,5 +1075,25 @@ describe("buildZdEstimateSnapshotLinesFromDoc", () => {
         ratioAtLink: 1,
       },
     ]);
+  });
+});
+
+describe("zdCreateEtaTile", () => {
+  it("data, dzień tygodnia i liczba dni roboczych", () => {
+    expect(zdCreateEtaTile({ status: "done", dateKey: "2026-10-06", businessDays: 2 })).toEqual({
+      value: "ok. 06.10.2026",
+      sub: "wtorek · ~2 dni rob.",
+    });
+    expect(zdCreateEtaTile({ status: "done", dateKey: "2026-10-05", businessDays: 1 }).sub).toBe(
+      "poniedziałek · ~1 dzień rob."
+    );
+  });
+
+  it("w trakcie liczenia i bez historii dostaw", () => {
+    expect(zdCreateEtaTile({ status: "loading", dateKey: null, businessDays: null }).value).toBe("…");
+    expect(zdCreateEtaTile({ status: "done", dateKey: null, businessDays: null })).toEqual({
+      value: "-",
+      sub: "brak historii dostaw",
+    });
   });
 });
