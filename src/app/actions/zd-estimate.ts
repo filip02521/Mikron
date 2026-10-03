@@ -1,5 +1,6 @@
 "use server";
 
+import { refreshStockWatchAfterOrder } from "@/lib/stock-watch/refresh-after-order";
 import type { SupplierLocation } from "@/types/database";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 // @service-role-ok — autoryzacja requireZdEstimateAdmin() (operacje dostaw); service role z pełnym scope po warstwie aplikacji.
@@ -2728,6 +2729,7 @@ export async function actionLinkZdEstimateSnapshot(input: {
       ilosc,
     }));
 
+    refreshStockWatchAfterOrder([input.supplierId]);
     return { ok: true, snapshot, lineCount, dokNrPelny, createdLines };
   } catch (e) {
     return {
@@ -3292,6 +3294,8 @@ export async function actionCreateZdFromEstimate(input: {
   const tCreate = performance.now();
   try {
     createdDoc = await createSubiektOrdersZd(body);
+    // ZD jest już w Subiekcie (otwarte ZD) — analiza Braki tego dostawcy po odpowiedzi.
+    refreshStockWatchAfterOrder([input.supplierId]);
     msSferaCreate = Math.round(performance.now() - tCreate);
     dokId = Math.trunc(Number(createdDoc.dok_Id));
     if (!(dokId > 0)) {

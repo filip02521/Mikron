@@ -6,6 +6,7 @@ import {
   countDeliveryQueue,
   countInformacjaQueue,
 } from "@/lib/data/queries";
+import { query } from "@/lib/db/pool";
 import { countOpenDepartmentBoardQuestions } from "@/lib/data/department-board";
 import { fetchSalesPeopleForPicker } from "@/lib/data/sales-people-admin";
 import {
@@ -50,6 +51,8 @@ export function computeOperationsDailyPanelVersion(params: {
   workspace: SummaryWorkspaceData;
   verificationCount: number;
   openBoardQuestionsCount?: number;
+  /** Ostatnie przeliczenie analizy Braki (karty „Do ZD”) — po zamówieniu odświeża panel. */
+  stockWatchComputedAt?: string | null;
 }): string {
   const inbox = summarizeDailyInbox(params.workspace);
   const navBadge = countDailyPanelNavBadge(params.workspace);
@@ -74,6 +77,7 @@ export function computeOperationsDailyPanelVersion(params: {
     params.workspace.salesCancelledNotices.length,
     maxCancelledAt(params.workspace.salesCancelledNotices),
     maxProsbyAt,
+    params.stockWatchComputedAt ?? "",
   ].join("|");
 }
 
@@ -94,6 +98,13 @@ async function fetchOperationsDailyPanelWorkspace(): Promise<SummaryWorkspaceDat
   );
 }
 
+async function fetchStockWatchComputedAt(): Promise<string | null> {
+  const { rows } = await query<{ at: string | null }>(
+    `SELECT max(computed_at)::text AS at FROM stock_watch_supplier_orders`
+  );
+  return rows[0]?.at ?? null;
+}
+
 /** Jedno pobranie workspace + wersji (AppShell, polling API). */
 export async function fetchOperationsDailyPanelMetrics(
   options?: {
@@ -101,7 +112,7 @@ export async function fetchOperationsDailyPanelMetrics(
     departments?: import("@/types/database").OperationsDepartment[];
   }
 ): Promise<OperationsDailyPanelMetrics> {
-  const [workspace, verificationCount, openBoardQuestionsCount, deliveryCount, informacjaCount, operationsNotatkiCount] = await Promise.all([
+  const [workspace, verificationCount, openBoardQuestionsCount, deliveryCount, informacjaCount, operationsNotatkiCount, stockWatchComputedAt] = await Promise.all([
     fetchOperationsDailyPanelWorkspace(),
     countVerificationOrders(),
     countOpenDepartmentBoardQuestions().catch(() => 0),
@@ -112,6 +123,7 @@ export async function fetchOperationsDailyPanelMetrics(
           m.countOperationsNotepadBadge(options.userId!, options.departments!).catch(() => 0)
         )
       : Promise.resolve(0),
+    fetchStockWatchComputedAt().catch(() => null),
   ]);
 
   const realizacjaCount = deliveryCount + informacjaCount;
@@ -121,6 +133,7 @@ export async function fetchOperationsDailyPanelMetrics(
       workspace,
       verificationCount,
       openBoardQuestionsCount,
+      stockWatchComputedAt,
     }),
     navBadge: countDailyPanelNavBadge(workspace),
     verificationCount,

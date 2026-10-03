@@ -232,7 +232,8 @@ export async function runStockWatchWorker(input: {
         const outcome = await computeSupplierOrder({
           scope,
           supplier,
-          run,
+          runId: run.id,
+          salesEndDate: run.salesEndDate,
           ordersBaseUrl: orders.config.baseUrl,
           prices,
           horizon: horizons.get(supplier.id) ?? null,
@@ -316,19 +317,20 @@ export async function runStockWatchWorker(input: {
 async function computeSupplierOrder(input: {
   scope: Awaited<ReturnType<typeof listZdEstimateSupplierScopes>>[number];
   supplier: { id: string; name: string; stock_raw: string | null; stock: unknown };
-  run: StockWatchRun;
+  runId: string;
+  salesEndDate: string;
   ordersBaseUrl: string;
   prices: ReadonlyMap<number, ProductPurchasePrice>;
   horizon: ZdOrderHorizon | null;
 }): Promise<{ itemsWritten: number; message: string | null }> {
-  const { scope, supplier, run, prices, horizon } = input;
+  const { scope, supplier, runId, salesEndDate, prices, horizon } = input;
   const scopeId = (scope.mode === "grupa" ? scope.grupaId : scope.cechaId) ?? 0;
   if (!(scopeId > 0)) {
     return { itemsWritten: 0, message: "Zakres dostawcy bez grupy / cechy." };
   }
   // Te same dni zapasu i okno co Kreator po wyborze dostawcy.
   const dniZapasu = supplierStockDays(supplier);
-  const window = salesWindowFromDniZapasu(dniZapasu, run.salesEndDate);
+  const window = salesWindowFromDniZapasu(dniZapasu, salesEndDate);
 
   const engine = await runZdOrderEngine({
     scope:
@@ -383,7 +385,7 @@ async function computeSupplierOrder(input: {
       targetQty: num(line.celZapasuTracked),
       minStockQty: minStock,
       unitPriceNet: unitPrice,
-      salesEndDate: run.salesEndDate,
+      salesEndDate,
     });
     const order = orderByTw.get(tw) ?? null;
     const velocity = Math.max(0, num(line.sprzedazDziennie));
@@ -406,7 +408,7 @@ async function computeSupplierOrder(input: {
     return {
       subiektTwId: tw,
       supplierId: supplier.id,
-      runId: run.id,
+      runId,
       twSymbol: line.tw_Symbol || null,
       twNazwa: String(line.tw_Nazwa ?? "").trim(),
       grtNazwa: line.grt_Nazwa || null,
@@ -443,10 +445,10 @@ async function computeSupplierOrder(input: {
     };
   });
 
-  const itemsWritten = await replaceSupplierStockWatchItems(supplier.id, run.id, rows);
+  const itemsWritten = await replaceSupplierStockWatchItems(supplier.id, runId, rows);
   await upsertStockWatchSupplierOrder({
     supplierId: supplier.id,
-    runId: run.id,
+    runId,
     scopeMode: scope.mode,
     scopeId,
     dniZapasu,
@@ -473,4 +475,69 @@ async function computeSupplierOrder(input: {
       ? "Lista z Subiekta niepełna (limit stron) — część towarów pominięta."
       : null,
   };
+}
+
+/** Jedno przeliczenie dostawcy naraz; wywołanie w trakcie = jedno ponowienie po nim. */
+const supplierRefresh = new Map<string, { running: Promise<void>; again: boolean }>();
+
+/**
+ * Po złożeniu zamówienia (Zamówione, ZD z Kreatora): przelicz analizę Braki jednego
+ * dostawcy — karty panelu i Braki od razu aktualne, bez czekania na nocny przebieg.
+ * Bez zakresu / bez żadnego przebiegu nocnego — nic nie robi. Błędy tylko w logu.
+ */
+export function refreshStockWatchSupplier(supplierId: string): Promise<void> {
+  const current = supplierRefresh.get(supplierId);
+  if (current) {
+    current.again = true;
+    return current.running;
+  }
+  const entry = { running: Promise.resolve(), again: false };
+  entry.running = (async () => {
+    try {
+      do {
+        entry.again = false;
+        await computeSingleSupplier(supplierId);
+      } while (entry.again);
+    } catch (e) {
+      console.error("[stock-watch] odświeżenie dostawcy", supplierId, e);
+    } finally {
+      supplierRefresh.delete(supplierId);
+    }
+  })();
+  supplierRefresh.set(supplierId, entry);
+  return entry.running;
+}
+
+async function computeSingleSupplier(supplierId: string): Promise<void> {
+  const orders = resolveSubiektOrdersConfig();
+  if (!orders.ok) return;
+  const scope = groupZdEstimateScopesBySupplier(await listZdEstimateSupplierScopes())
+    .get(supplierId)?.[0];
+  if (!scope) return;
+  const [supplier] = await fetchSuppliersWithSchedules(undefined, {
+    activeOnly: false,
+    supplierIds: [supplierId],
+  });
+  // Wiersze należą do przebiegu — bez żadnego nocnego przebiegu panel i tak nic nie pokazuje.
+  const run = await getLatestStockWatchRun();
+  if (!supplier || !run) return;
+  const todayKey = warsawNowParts().dateKey;
+  const [salesEndDate, prices, horizons] = await Promise.all([
+    resolveSalesEndDate(todayKey),
+    loadProductPurchasePrices(),
+    loadZdOrderHorizons({
+      suppliers: [supplier],
+      stockDaysBySupplierId: new Map([[supplier.id, supplierStockDays(supplier)]]),
+      todayKey,
+    }).catch(() => new Map<string, ZdOrderHorizon>()),
+  ]);
+  await computeSupplierOrder({
+    scope,
+    supplier,
+    runId: run.id,
+    salesEndDate,
+    ordersBaseUrl: orders.config.baseUrl,
+    prices,
+    horizon: horizons.get(supplier.id) ?? null,
+  });
 }
