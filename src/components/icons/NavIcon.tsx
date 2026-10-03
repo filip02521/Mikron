@@ -1,4 +1,5 @@
 import {
+  IconAlertCircle,
   IconArchive,
   IconBuilding,
   IconCalendar,
@@ -63,6 +64,7 @@ const NAV_ICON_BY_KEY: Record<
   phone: IconPhone,
   truck: IconTruck,
   zdCreator: IconFilePlus,
+  stockWatch: IconAlertCircle,
   customs: IconGlobe,
   mail: IconMail,
 };
@@ -74,6 +76,7 @@ const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
   "/kolejka": "warehouse",
   "/zakupy/gadki": "magazynGadki",
   "/zakupy/szacunek": "zdCreator",
+  "/zakupy/braki": "stockWatch",
   "/zakupy/odprawy": "customs",
   "/admin/wysylki": "mail",
   "/admin/mail": "mail",

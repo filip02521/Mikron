@@ -73,6 +73,15 @@ export const CRON_JOB_DEFINITIONS: CronJobDefinition[] = [
     description: "Indeks ZD, import linii do katalogu, auto-przypisanie dostawców. Szczegóły na /admin/produkty.",
   },
   {
+    id: "stock_watch",
+    label: "Braki i zamówienia",
+    schedule: "codziennie 5:30-6:30 co 20 min",
+    endpoint: "/api/cron/stock-watch",
+    scheduled: true,
+    description:
+      "Lista „Do ZD” per dostawca tym samym silnikiem co Kreator ZD, czas do wyczerpania, alerty. Panel: /zakupy/braki.",
+  },
+  {
     id: "morning_sync",
     label: "Tylko harmonogramy",
     schedule: "ręcznie (test)",
@@ -253,6 +262,24 @@ function summarizeRunDetail(
       if (detail.subiektOffline === true) lines.push("Subiekt offline");
       break;
     }
+    case "stock_watch": {
+      if (typeof detail.scopesDone === "number" && typeof detail.scopesTotal === "number") {
+        lines.push(`Dostawcy: ${detail.scopesDone}/${detail.scopesTotal}`);
+      }
+      if (typeof detail.scopesFailed === "number" && detail.scopesFailed > 0) {
+        lines.push(`Błędy zakresów: ${detail.scopesFailed}`);
+      }
+      if (typeof detail.itemsWritten === "number") {
+        lines.push(`Towary: ${detail.itemsWritten}`);
+      }
+      if (typeof detail.pricesUpdated === "number" && detail.pricesUpdated > 0) {
+        lines.push(`Nowe ceny z ZD: ${detail.pricesUpdated}`);
+      }
+      if (detail.timedOut === true) {
+        lines.push("Limit czasu - kontynuacja w kolejnym slocie nocnym");
+      }
+      break;
+    }
     case "morning_sync": {
       if (typeof detail.schedulesProcessed === "number") {
         lines.push(`Harmonogramy: ${detail.schedulesProcessed}`);
@@ -321,6 +348,17 @@ function isCatalogTimedOutContinuation(run: CronRunPayload): boolean {
     detail?.subiektOffline !== true &&
     !run.error
   );
+}
+
+/** Nocny job: po `afterHour` (Warszawa) bez wpisu z dzisiejszego dnia = zaległe. */
+function isNightlyJobStale(run: CronRunPayload | null, now: Date, afterHour: number): boolean {
+  const { hour, dateKey } = warsawNowParts(now);
+  if (hour < afterHour) return false;
+  if (!run) return true;
+  const detail = run.detail as { warsawDateKey?: unknown } | undefined;
+  const runDay =
+    typeof detail?.warsawDateKey === "string" ? detail.warsawDateKey : warsawDateKeyFromIso(run.at);
+  return runDay !== dateKey;
 }
 
 function isCatalogSyncStale(
@@ -421,7 +459,9 @@ export function evaluateCronJob(
           ? isWorkHoursJobStale(run, now, 2.5)
           : job.id === "zd_eta_sync"
             ? isWorkHoursJobStale(run, now, 3.5)
-            : job.id === "scheduled_mails"
+            : job.id === "stock_watch"
+              ? isNightlyJobStale(run, now, 8)
+              : job.id === "scheduled_mails"
               ? isScheduledMailsStale(run, now, context?.scheduledMailSentLog)
               : false
     : false;

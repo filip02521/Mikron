@@ -205,8 +205,10 @@ export function ZdEstimateDoZdCell({
     </span>
   ) : null;
 
+  // Pewność widoczna tylko, gdy wymaga weryfikacji — „ok” / zaakceptowana są w podpowiedzi
+  // (wcześniej chip pod każdą liczbą podwajał wysokość wiersza).
   const confidenceWhisper =
-    confidenceUi.hasSignal && hintKind === "confidence" ? (
+    confidenceUi.hasSignal && hintKind === "confidence" && confidenceUi.needsReview ? (
       <span
         className={cn(
           "zd-est-dozd-confidence",
@@ -228,7 +230,7 @@ export function ZdEstimateDoZdCell({
             title={confidenceUi.title || undefined}
             aria-label={confidenceUi.acceptAriaLabel}
           >
-            Akceptuj
+            ✓
           </button>
         ) : confidenceUi.needsReview ? (
           <span className="zd-est-dozd-confidence__dot" aria-hidden />
@@ -253,7 +255,7 @@ export function ZdEstimateDoZdCell({
           title={confidenceUi.title || undefined}
           aria-label={confidenceUi.acceptAriaLabel}
         >
-          Akceptuj
+          ✓
         </button>
       </span>
     ) : null;

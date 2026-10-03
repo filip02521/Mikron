@@ -557,6 +557,8 @@ export function zdEstimateRunPhaseStatusHint(input: {
       return "Wczytuję wykluczenia, opakowania, pary i BOM…";
     case "enrich":
       return "Dociągam braki partnerów, BOM i prośby handlowców…";
+    case "profile":
+      return "Liczę sprzedaż z ostatnich 12 miesięcy dla tego zakresu (pierwszy raz - może potrwać do minuty)…";
     case "compose":
       return "Składam pozycje „Do ZD”…";
     case "done":
@@ -844,12 +846,12 @@ export const ZD_ESTIMATE_UI = {
     "Symbol, Nazwa, Do ZD i Akcje są zawsze widoczne; Opak. jest przed Do ZD",
   listColumnLabels: {
     packaging: "Opakowanie",
-    status: "Status",
-    stock: "Stan / rezerwacje",
-    available: "Dostępne",
+    cover: "Starczy na",
+    available: "Dostępne (stan, rezerwacje)",
+    openZd: "W drodze (otwarte ZD)",
     sales: "Sprzedaż",
     target: "Cel zapasu",
-    openZd: "Otwarte ZD",
+    value: "Wartość (cena z ZD)",
     zk: "ZK / Subiekt",
   } satisfies Record<
     import("@/lib/orders/zd-estimate-prefs").ZdEstimateOptionalColumn,
@@ -1003,27 +1005,27 @@ export const ZD_ESTIMATE_UI = {
     "Dodaj pary ręcznie albo zaznacz 2 towary na liście wyniku i wybierz „Para”. Automatyczny sync kompletów z Subiekta jest niedostępny, dopóki host ORDERS nie udostępni endpointu kompletów.",
   supplierScopesPanelTitle: "Zakresy dostawców",
   supplierScopesPanelHint:
-    "Każdy dostawca może mieć jedną przypisaną grupę albo cechę Subiekta. Mapowanie jest wspólne dla działu: z kolejki Dziś kreator otwiera od razu ten zakres, a skróty w formularzu działają spójnie dla wszystkich.",
-  supplierScopesIntroTitle: "Jedno mapowanie na dostawcę",
+    "Dostawca może mieć kilka grup lub cech Subiekta - Kreator i panel Braki liczą je razem jako jedną listę. Pierwszy zakres jest główny (od niego startuje Kreator). Mapowanie jest wspólne dla działu.",
+  supplierScopesIntroTitle: "Tylko przypisane zakresy",
   supplierScopesIntroBody:
-    "Gdy handlowiec lub zakupy wchodzą z Dziś przy dostawcy, OnTime wie, którą grupę lub cechę policzyć. Zmiana tutaj obowiązuje cały dział - nie ustawiaj „na próbę” bez uzgodnienia.",
-  supplierScopesAddCta: "Dodaj mapowanie",
+    "Kreator i panel Braki pokazują wyłącznie towary z grup i cech przypisanych tutaj. Podpowiedzi liczone są z historii ZD - sprawdzają, czy zakresy obejmują towary, które faktycznie zamawiasz. Zmiana obowiązuje cały dział.",
+  supplierScopesAddCta: "Dodaj zakres",
   supplierScopesAddHint:
-    "Wybierz dostawcę bez mapowania, potem wyszukaj i wskaż grupę lub cechę Subiekta.",
-  supplierScopesSaveCta: "Zapisz mapowanie",
+    "Wybierz dostawcę, potem kliknij podpowiedź albo wyszukaj grupę lub cechę Subiekta. Dostawca z zakresem dostanie kolejny.",
+  supplierScopesSaveCta: "Zapisz zakres",
   supplierScopesCancelCta: "Anuluj",
   supplierScopesEditCta: "Edytuj",
   supplierScopesRemoveCta: "Usuń",
   supplierScopesSearchPlaceholder: "Szukaj dostawcy, etykiety, id…",
   supplierScopesEmptyTitle: "Brak mapowań",
   supplierScopesEmptyDescription:
-    "Dodaj mapowanie albo zapisz zakres przy pierwszym wejściu z Dziś - wtedy kolejne wejścia otworzą właściwą grupę lub cechę automatycznie.",
+    "Dodaj zakres albo zapisz go przy pierwszym wejściu z Dziś - wtedy kolejne wejścia otworzą właściwą grupę lub cechę automatycznie.",
   supplierScopesFilterEmptyTitle: "Brak wyników",
   supplierScopesFilterEmptyDescription:
     "Żadne mapowanie nie pasuje do filtra - wyczyść wyszukiwanie.",
   supplierScopesLoading: "Wczytuję mapowania…",
   supplierScopesPickSupplier: "- wybierz dostawcę -",
-  supplierScopesAllMappedTitle: "Wszyscy dostawcy mają już mapowanie",
+  supplierScopesAllMappedTitle: "Brak dostawców",
   supplierScopesSearchGroupPlaceholder: "Szukaj grupy…",
   supplierScopesSearchCechaPlaceholder: "Szukaj cechy…",
   supplierScopesSearchCta: "Szukaj",

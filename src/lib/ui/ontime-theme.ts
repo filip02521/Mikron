@@ -165,7 +165,7 @@ export const panelTabsChromeClass =
   "border-b border-indigo-100/75 bg-[var(--card)]";
 
 /** Panel dzienny / operacje zakupów — wąska kolumna; lekko szersza tylko na 2xl+. */
-export const panelWorkspaceShellClass = "relative mx-auto w-full max-w-3xl 2xl:max-w-4xl";
+export const panelWorkspaceShellClass = "relative mx-auto w-full max-w-3xl xl:max-w-4xl 2xl:max-w-5xl";
 
 /** Panel dzienny: szersza kolumna na dużych ekranach (lista dostawców nie zostawia pustej połowy). */
 export const dailyPanelWorkspaceShellClass = "relative mx-auto w-full max-w-3xl xl:max-w-5xl 2xl:max-w-6xl";
@@ -419,7 +419,7 @@ export const zdEstimateToolbarSearchClass = cn(
  * Jedna belka filtrów/szukania nad TableScroll.
  */
 export const zdEstimateListBandClass = cn(
-  "z-10 w-full min-w-0 shrink-0 border-b border-slate-200/70 bg-slate-50/95 backdrop-blur-md",
+  "z-10 w-full min-w-0 shrink-0 border-b border-slate-200/70 bg-slate-50/90 backdrop-blur-md",
   zdEstimateChromeInsetXClass,
   zdEstimateChromeInsetYClass
 );
@@ -463,7 +463,7 @@ export const zdEstimateDockButtonClass = cn(
   "inline-flex shrink-0 items-center justify-center gap-1 px-2.5 text-[11px] font-medium leading-none sm:gap-1.5 sm:px-3 sm:text-xs",
   zdEstimateRadiusControlClass,
   zdEstimateDockControlHeightClass,
-  "py-0"
+  "py-0 active:translate-y-px motion-reduce:active:translate-y-0"
 );
 
 /**

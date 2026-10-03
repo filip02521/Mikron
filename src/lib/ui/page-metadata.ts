@@ -44,6 +44,7 @@ export const PAGE_TITLES = {
   procurementVacations: "Urlopy",
   magazynGadki: "Magazyn Gądki",
   zdEstimate: "Kreator ZD",
+  stockWatch: "Braki i zamówienia",
   customsClearance: "Odprawy celne",
   ivoclarReport: "Raporty Ivoclar (przeniesione)",
   inactiveSuppliers: "Nieaktywni dostawcy",
@@ -72,6 +73,8 @@ export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>
   magazynGadki: "Podgląd stałych ZK magazynu zewnętrznego Gądki",
   customsClearance:
     "Dane do odprawy celnej importu - opis PL, kod CN, VAT i deklaracje do maila dla agencji",
+  stockWatch:
+    "Proaktywne braki: czas do wyczerpania i lista „Do ZD” po dostawcach - liczona jak w Kreatorze ZD",
   zdEstimate:
     "Lista produktów do zamówienia u dostawcy - jak proces ręczny (sprzedaż, stan, otwarte ZD)",
   ivoclarReport:

@@ -1,5 +1,6 @@
 "use client";
 
+import { SupplierStockSignal } from "@/components/summary/SupplierStockSignal";
 import { useMemo, useState } from "react";
 import type { SummaryStandardItem } from "@/lib/orders/summary";
 import { formatDateString } from "@/lib/orders/dates";
@@ -21,6 +22,7 @@ import type { SupplierSummaryMeta } from "@/lib/orders/summary-workspace";
 import { cn } from "@/lib/cn";
 import {
   checkboxBrandClass,
+  panelDashedActionClass,
   panelTypography,
   rowPendingRingClass,
 } from "@/lib/ui/ontime-theme";
@@ -213,6 +215,7 @@ function UrgentCard({
               }
             />
             <ProcurementRequestContextBlock chips={chips} meta={meta} />
+            <SupplierStockSignal supplierId={item.supplierId} className="mt-0.5" />
             {detailText ? (
               <p
                 className={cn(
@@ -249,6 +252,9 @@ function UrgentCard({
   );
 }
 
+/** Kart widocznych od razu w grupie zaległych / na dziś. */
+const URGENT_GROUP_PREVIEW = 15;
+
 function UrgentGroup({
   title,
   items,
@@ -280,9 +286,13 @@ function UrgentGroup({
   run: DailyPanelRunFn;
   todayDateKey?: string;
 }) {
+  const [expanded, setExpanded] = useState(false);
   if (!items.length) return null;
 
   const isOverdue = variant === "overdue";
+  // Długa lista (np. po urlopie) spychała prośby handlowców kilka ekranów niżej.
+  const collapsible = items.length > URGENT_GROUP_PREVIEW + 5;
+  const shown = collapsible && !expanded ? items.slice(0, URGENT_GROUP_PREVIEW) : items;
 
   return (
     <section
@@ -297,7 +307,7 @@ function UrgentGroup({
         </div>
       ) : null}
       <ul className="divide-y divide-slate-100">
-        {items.map((item) => (
+        {shown.map((item) => (
           <li key={item.supplierId}>
             <UrgentCard
               item={item}
@@ -314,6 +324,18 @@ function UrgentGroup({
           </li>
         ))}
       </ul>
+      {collapsible ? (
+        <button
+          type="button"
+          className={cn("min-h-10 w-full sm:min-h-9", panelDashedActionClass)}
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+        >
+          {expanded
+            ? "Zwiń listę"
+            : `Pokaż wszystkie (${items.length}) - jeszcze ${items.length - URGENT_GROUP_PREVIEW}`}
+        </button>
+      ) : null}
     </section>
   );
 }

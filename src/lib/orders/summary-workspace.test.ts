@@ -194,3 +194,26 @@ describe("buildSummaryWorkspace - Ten tydzień", () => {
     expect(ws.supplierMeta.a?.computed_next_date).toBe(todayStr);
   });
 });
+
+describe("buildSummaryWorkspace - weekend", () => {
+  it("w sobotę widok Tydzień zaczyna od najbliższego poniedziałku", () => {
+    const saturday = new Date(2026, 9, 3); // sobota 03.10.2026
+    const ws = buildSummaryWorkspace(
+      [supplier("a", "Renfert", "2026-10-05"), supplier("b", "Ugin", "2026-10-13")],
+      [],
+      saturday
+    );
+    expect(ws.weekViewStartsNextWeek).toBe(true);
+    // thisWeekDays bez zmian (plan handlowca): miniony pon–pt.
+    expect(ws.thisWeekDays[0]?.dateKey).toBe("2026-09-28");
+    expect(ws.nextWeekDays.find((d) => d.dateKey === "2026-10-05")?.items).toHaveLength(1);
+    expect(ws.weekAfterNextDays[0]?.dateKey).toBe("2026-10-12");
+    expect(ws.weekAfterNextDays.find((d) => d.dateKey === "2026-10-13")?.items).toHaveLength(1);
+  });
+
+  it("w piątek bez zmian", () => {
+    const ws = buildSummaryWorkspace([], [], new Date(2026, 9, 2));
+    expect(ws.weekViewStartsNextWeek).toBe(false);
+    expect(ws.weekAfterNextDays).toEqual([]);
+  });
+});

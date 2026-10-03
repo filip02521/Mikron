@@ -248,6 +248,7 @@ describe("navForRole struktura zakupów", () => {
       const ordering = navForRole(role).find((g) => g.title === NAV_SECTION_ORDERING);
       expect(ordering?.items.map((item) => item.href)).toEqual([
         "/zakupy/szacunek",
+        "/zakupy/braki",
         "/zamowienia/nowe",
         "/historia",
       ]);
@@ -255,6 +256,7 @@ describe("navForRole struktura zakupów", () => {
       expect(kreator?.tier).toBe("primary");
       expect(kreator?.icon).toBe("zdCreator");
       expect(kreator?.icon).not.toBe(ordering?.items[1]?.icon);
+      expect(ordering?.items[1]?.icon).toBe("stockWatch");
       expect(ordering?.items.some((i) => i.href === "/zakupy/raporty-ivoclar")).toBe(false);
     }
   });

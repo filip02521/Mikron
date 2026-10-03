@@ -33,6 +33,12 @@ $script:CronJobDefinitions = @(
     Schedule = "codziennie 02:00–04:40 co 20 min"
   },
   @{
+    Id = "stock-watch"
+    Path = "/api/cron/stock-watch"
+    Label = "Braki i zamówienia: rotacja, czas do wyczerpania, propozycje (noc, Subiekt w LAN)"
+    Schedule = "codziennie 05:30–06:30 co 20 min"
+  },
+  @{
     Id = "morning-sync"
     Path = "/api/cron/morning-sync"
     Label = "Tylko przeliczenie harmonogramów (test / serwis)"

@@ -1,5 +1,6 @@
 "use client";
 
+import { findSupplierFormTemplate } from "@/lib/supplier-forms/templates";
 import { useEffect, useId, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -51,6 +52,7 @@ import {
   IconBuilding,
   IconCircleCheck,
   IconMail,
+  IconDownload,
 } from "@/components/icons/StrokeIcons";
 import {
   buttonPrimaryClass,
@@ -163,6 +165,14 @@ export function ZdEstimatePostCreatePanel({
     session.kind !== "timeout_recovery" &&
     session.dokId != null &&
     session.dokId > 0;
+  // Dostawcy z własnym formularzem (Wiedent, Sirona…) — plik do maila w kroku „Wyślij”.
+  const orderFormTemplate = canAct ? findSupplierFormTemplate(session.supplierName) : null;
+  const orderForm = orderFormTemplate
+    ? {
+        kind: orderFormTemplate.kind,
+        href: `/api/operations/supplier-forms/zd/${session.dokId}?supplierId=${encodeURIComponent(session.supplierId)}`,
+      }
+    : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -846,6 +856,26 @@ export function ZdEstimatePostCreatePanel({
                   <p className="text-sm text-amber-900">{contactError}</p>
                 ) : (
                   <div className="space-y-2">
+                    {orderForm ? (
+                      <div className="flex flex-col gap-2 rounded-md bg-slate-50 px-3 py-2.5 ring-1 ring-slate-200/80 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm text-slate-700">
+                          {session.supplierName} przyjmuje zamówienia na swoim{" "}
+                          {orderForm.kind === "pdf" ? "formularzu PDF" : "arkuszu Excel"} - pobierz go
+                          wypełnionego tym ZD i dołącz do maila.
+                        </p>
+                        <a
+                          href={orderForm.href}
+                          download
+                          className={cn(
+                            buttonPrimaryClass,
+                            "inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium"
+                          )}
+                        >
+                          <IconDownload size={16} aria-hidden />
+                          {orderForm.kind === "pdf" ? "Pobierz formularz (PDF)" : "Pobierz formularz (Excel)"}
+                        </a>
+                      </div>
+                    ) : null}
                     <Button
                       type="button"
                       variant="secondary"

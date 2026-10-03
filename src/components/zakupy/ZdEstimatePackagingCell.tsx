@@ -90,15 +90,17 @@ export function ZdEstimatePackagingCell({
         conflict && "ring-1 ring-amber-400/80 bg-amber-50/70"
       )}
     >
-      <span
-        className={cn(
-          "zd-est-qty--c tabular-nums leading-none",
-          !qty.hasPackaging && "zd-est-qty--dash zd-est-qty--muted",
-          conflict && "zd-est-qty--warn"
-        )}
-      >
-        {primary}
-      </span>
+      {/* Bez opakowania: pusta komórka — „ustaw” dopiero po najechaniu na wiersz. */}
+      {qty.hasPackaging ? (
+        <span
+          className={cn(
+            "zd-est-qty--c tabular-nums leading-none",
+            conflict && "zd-est-qty--warn"
+          )}
+        >
+          {primary}
+        </span>
+      ) : null}
       {ratio ? (
         <span className="zd-est-unit zd-est-pack-ratio whitespace-nowrap">
           {ratio}

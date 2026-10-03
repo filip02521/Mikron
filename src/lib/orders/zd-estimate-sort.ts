@@ -9,7 +9,9 @@ export type ZdEstimateListSortKey =
   | "name"
   | "doZd"
   | "confidence"
-  | "minStock";
+  | "minStock"
+  /** Dni do wyczerpania (dostępne / sprzedaż dziennie) — rosnąco = najpilniejsze. */
+  | "cover";
 export type ZdEstimateListSortDir = "asc" | "desc";
 
 export type ZdEstimateSortPackaging = {
@@ -17,6 +19,26 @@ export type ZdEstimateSortPackaging = {
   packageLabel?: string;
   documentUnitMode?: import("@/lib/orders/zd-estimate-units").ZdPackagingDocumentUnitMode | null;
 };
+
+/**
+ * Dni do wyczerpania: dostępne / sprzedaż dziennie. Brak dostępnego = 0,
+ * brak sprzedaży = null (nie kończy się).
+ */
+export function zdEstimateDaysOfCover(
+  line: Pick<ManualZdEstimateLine, "dostepne" | "sprzedazDziennie">
+): number | null {
+  const available = Number(line.dostepne) || 0;
+  const daily = Number(line.sprzedazDziennie) || 0;
+  if (available <= 0) return daily > 0 ? 0 : null;
+  if (daily <= 0) return null;
+  return available / daily;
+}
+
+function zdEstimateDaysOfCoverSortValue(
+  line: Pick<ManualZdEstimateLine, "dostepne" | "sprzedazDziennie">
+): number {
+  return zdEstimateDaysOfCover(line) ?? Number.POSITIVE_INFINITY;
+}
 
 function compareText(a: string, b: string): number {
   return a.localeCompare(b, "pl", { numeric: true, sensitivity: "base" });
@@ -52,6 +74,11 @@ export function sortZdEstimateLines(
       cmp =
         (Number(a.salesTrackConfidence) || 0) -
         (Number(b.salesTrackConfidence) || 0);
+    } else if (sortKey === "cover") {
+      const ca = zdEstimateDaysOfCoverSortValue(a);
+      const cb = zdEstimateDaysOfCoverSortValue(b);
+      // Oba „nie kończy się” (Infinity) — remis, nie NaN.
+      cmp = ca === cb ? 0 : ca < cb ? -1 : 1;
     } else if (sortKey === "minStock") {
       const ma = minStockByTwId?.get(a.tw_Id) ?? 0;
       const mb = minStockByTwId?.get(b.tw_Id) ?? 0;

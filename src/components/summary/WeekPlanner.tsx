@@ -430,7 +430,7 @@ function WeekPlanEmptyCalendar({
         <EmptyState
           brandAccent
           icon={<DailySectionIcon kind="plan" size={28} />}
-          title="Brak zaplanowanych zamówień w tym tygodniu"
+          title="Brak zaplanowanych zamówień w tych dniach"
           description={
             [
               "Harmonogram na najbliższe dni robocze jest pusty. Gdy coś się pojawi, zobaczysz to na kartach dostawców poniżej.",

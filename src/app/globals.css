@@ -596,7 +596,7 @@ select:disabled,
   --zd-num-color-quiet: var(--color-slate-500);
   --zd-num-color-dash: var(--color-slate-300);
   --zd-num-color-unit: var(--color-slate-400);
-  --zd-num-color-decision: #065f46;
+  --zd-num-color-decision: var(--color-indigo-900);
   --zd-num-color-warn: #92400e;
   width: 100%;
   /* Bez sztywnego min-width — laptop + sidebar (~1000px treści) bez H-scrolla.
@@ -806,78 +806,6 @@ select:disabled,
   text-align: center;
 }
 
-/*
- * Sprzed. vs Cel — dwa sąsiednie sygnały planu, świadomie rozróżnione:
- *   Sprzed. = fakt / tempo (chłodny sky) → Cel = cel zapasu (indigo).
- * Para czyta się jako „było → cel”, bez konkurencji z Do ZD (emerald).
- */
-.data-table.zd-estimate-table th.zd-estimate-metric-col--sales,
-.data-table.zd-estimate-table td.zd-estimate-metric-col--sales {
-  background-color: color-mix(in srgb, rgb(240 249 255) 55%, #fff);
-  box-shadow: inset 0 2px 0 0 rgb(125 211 252 / 0.7);
-}
-
-.data-table.zd-estimate-table th.zd-estimate-metric-col--target,
-.data-table.zd-estimate-table td.zd-estimate-metric-col--target {
-  background-color: color-mix(in srgb, var(--color-indigo-50) 55%, #fff);
-  box-shadow:
-    inset 1px 0 0 color-mix(in srgb, var(--color-indigo-200) 95%, transparent),
-    inset 0 2px 0 0 color-mix(in srgb, var(--color-indigo-300) 65%, transparent);
-}
-
-.data-table.zd-estimate-table
-  th.zd-estimate-metric-col--sales.zd-estimate-col--section,
-.data-table.zd-estimate-table
-  td.zd-estimate-metric-col--sales.zd-estimate-col--section {
-  box-shadow:
-    inset 1px 0 0 var(--zd-est-section-rule),
-    inset 0 2px 0 0 rgb(125 211 252 / 0.7);
-}
-
-.data-table.zd-estimate-table
-  th.zd-estimate-metric-col--target.zd-estimate-col--section,
-.data-table.zd-estimate-table
-  td.zd-estimate-metric-col--target.zd-estimate-col--section {
-  box-shadow:
-    inset 1px 0 0 var(--zd-est-section-rule),
-    inset 0 2px 0 0 color-mix(in srgb, var(--color-indigo-300) 65%, transparent);
-}
-
-.data-table.zd-estimate-table thead th.zd-estimate-metric-col--sales {
-  background-color: rgb(224 242 254 / 0.72);
-  color: #0369a1;
-  box-shadow:
-    inset 0 2px 0 0 rgb(56 189 248 / 0.75),
-    0 1px 0 var(--color-slate-200);
-}
-
-.data-table.zd-estimate-table thead th.zd-estimate-metric-col--target {
-  background-color: color-mix(in srgb, var(--color-indigo-100) 72%, transparent);
-  color: var(--color-indigo-700);
-  box-shadow:
-    inset 1px 0 0 color-mix(in srgb, var(--color-indigo-300) 90%, transparent),
-    inset 0 2px 0 0 color-mix(in srgb, var(--color-indigo-400) 70%, transparent),
-    0 1px 0 var(--color-slate-200);
-}
-
-.data-table.zd-estimate-table
-  thead
-  th.zd-estimate-metric-col--sales.zd-estimate-col--section {
-  box-shadow:
-    inset 1px 0 0 var(--zd-est-section-rule),
-    inset 0 2px 0 0 rgb(56 189 248 / 0.75),
-    0 1px 0 var(--color-slate-200);
-}
-
-.data-table.zd-estimate-table
-  thead
-  th.zd-estimate-metric-col--target.zd-estimate-col--section {
-  box-shadow:
-    inset 1px 0 0 var(--zd-est-section-rule),
-    inset 0 2px 0 0 color-mix(in srgb, var(--color-indigo-400) 70%, transparent),
-    0 1px 0 var(--color-slate-200);
-}
-
 .data-table.zd-estimate-table .zd-est-metric-th {
   display: inline-flex;
   max-width: 100%;
@@ -893,11 +821,11 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table .zd-est-metric-th__icon--sales {
-  color: #0284c7;
+  color: var(--color-indigo-400);
 }
 
 .data-table.zd-estimate-table .zd-est-metric-th__icon--target {
-  color: var(--color-indigo-600);
+  color: var(--color-indigo-500);
 }
 
 .data-table.zd-estimate-table .zd-est-metric-th__label {
@@ -937,13 +865,13 @@ select:disabled,
 .data-table.zd-estimate-table
   td.zd-estimate-metric-col--target
   .zd-est-qty--b {
-  color: var(--color-indigo-900);
+  color: var(--color-indigo-800);
 }
 
 .data-table.zd-estimate-table
   td.zd-estimate-metric-col--target
   .zd-est-unit {
-  color: var(--color-indigo-500);
+  color: var(--color-slate-500);
 }
 
 .data-table.zd-estimate-table td.zd-estimate-metric-col .zd-estimate-metric-stack {
@@ -1192,25 +1120,19 @@ select:disabled,
   padding-right: var(--zd-est-dozd-pad-x);
   text-align: center;
   /* Kolumna sticky — tło musi być nieprzezroczyste, inaczej przewijane liczby prześwitują. */
-  background-color: color-mix(in srgb, rgb(236 253 245) 42%, #fff);
-  box-shadow: inset 3px 0 0 0 #34d399, 1px 0 0 rgb(167 243 208 / 0.85);
+  background-color: color-mix(in srgb, var(--color-indigo-50) 55%, #fff);
+  box-shadow: inset 2px 0 0 0 var(--color-indigo-500), 1px 0 0 var(--color-indigo-100);
   overflow: hidden;
   vertical-align: middle;
 }
 
-.data-table.zd-estimate-table td.zd-estimate-dozd-col.zd-estimate-dozd-col--idle {
-  background-color: color-mix(in srgb, var(--color-slate-50) 92%, #fff);
-  box-shadow: inset 3px 0 0 0 var(--color-slate-300), 1px 0 0 var(--color-slate-200);
-}
-
 .data-table.zd-estimate-table td.zd-estimate-dozd-col.zd-estimate-dozd-col--review {
-  background-color: color-mix(in srgb, rgb(255 251 235) 72%, #fff);
-  box-shadow: inset 3px 0 0 0 #f59e0b, 1px 0 0 rgb(253 230 138 / 0.9);
+  box-shadow: inset 2px 0 0 0 var(--color-amber-400), 1px 0 0 var(--color-indigo-100);
 }
 
 .data-table.zd-estimate-table thead th.zd-estimate-dozd-col {
-  background-color: #ecfdf5;
-  color: #047857;
+  background-color: var(--color-indigo-50);
+  color: var(--color-indigo-700);
   letter-spacing: 0.06em;
 }
 
@@ -1250,7 +1172,7 @@ select:disabled,
   max-width: var(--zd-est-dozd-input-max);
   min-width: var(--zd-est-dozd-input-min);
   border-radius: 0.45rem;
-  border: 1px solid rgb(167 243 208 / 0.95);
+  border: 1px solid var(--color-indigo-200);
   background: #fff;
   padding: 0 var(--zd-est-dozd-pad-x);
   font-size: var(--zd-num-decision);
@@ -1260,7 +1182,7 @@ select:disabled,
   letter-spacing: -0.02em;
   color: var(--zd-num-color-decision);
   text-align: center;
-  box-shadow: 0 1px 0 rgb(6 95 70 / 0.04);
+  box-shadow: 0 1px 0 rgb(15 23 42 / 0.04);
   transition:
     border-color 120ms ease,
     background-color 120ms ease,
@@ -1274,17 +1196,15 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-input:hover:not(:disabled) {
-  border-color: #6ee7b7;
-  background: #f0fdf4;
+  border-color: var(--color-indigo-400);
+  background: #fff;
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-input:focus {
-  border-color: #34d399;
+  border-color: var(--color-indigo-500);
   background: #fff;
   outline: none;
-  box-shadow:
-    0 0 0 3px rgb(52 211 153 / 0.22),
-    0 1px 0 rgb(6 95 70 / 0.04);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-indigo-500) 20%, transparent);
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-input--idle {
@@ -1480,13 +1400,15 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-confidence--review {
-  background: rgb(254 243 199 / 0.9);
-  color: #92400e;
+  background: var(--color-slate-100);
+  color: var(--color-slate-700);
+  box-shadow: none;
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-confidence--accepted {
-  background: rgb(209 250 229 / 0.85);
-  color: #047857;
+  background: transparent;
+  color: var(--color-emerald-700);
+  box-shadow: none;
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-confidence__pct {
@@ -1515,19 +1437,20 @@ select:disabled,
   font-weight: 700;
   line-height: 1.3;
   letter-spacing: 0.03em;
-  color: #92400e;
-  box-shadow: inset 0 0 0 1px rgb(251 191 36 / 0.7);
+  color: var(--color-slate-700);
+  box-shadow: inset 0 0 0 1px var(--color-slate-300);
   cursor: pointer;
   transition: background-color 120ms ease, box-shadow 120ms ease;
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-confidence__accept:hover {
-  background: #fef3c7;
-  box-shadow: inset 0 0 0 1px #f59e0b;
+  background: var(--color-indigo-50);
+  color: var(--color-indigo-700);
+  box-shadow: inset 0 0 0 1px var(--color-indigo-300);
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-confidence__accept:focus-visible {
-  outline: 2px solid rgb(245 158 11 / 0.55);
+  outline: 2px solid var(--color-indigo-400);
   outline-offset: 1px;
 }
 
@@ -1597,7 +1520,7 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table thead th.zd-estimate-dozd-col {
-  box-shadow: inset 3px 0 0 0 #34d399, 1px 0 0 rgb(167 243 208 / 0.85), 0 1px 0 var(--color-slate-200);
+  box-shadow: inset 2px 0 0 0 var(--color-indigo-500), 1px 0 0 var(--color-indigo-100), 0 1px 0 var(--color-slate-200);
 }
 
 .data-table.zd-estimate-table thead th.zd-estimate-actions-col {
@@ -1611,15 +1534,7 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table tbody tr[data-zebra="even"]:not([class*="bg-"]) td.zd-estimate-dozd-col {
-  background-color: color-mix(in srgb, rgb(220 252 231) 55%, #fff);
-}
-
-.data-table.zd-estimate-table tbody tr[data-zebra="even"]:not([class*="bg-"]) td.zd-estimate-dozd-col.zd-estimate-dozd-col--idle {
-  background-color: color-mix(in srgb, var(--color-slate-100) 95%, #fff);
-}
-
-.data-table.zd-estimate-table tbody tr[data-zebra="even"]:not([class*="bg-"]) td.zd-estimate-dozd-col.zd-estimate-dozd-col--review {
-  background-color: color-mix(in srgb, rgb(254 243 199) 70%, #fff);
+  background-color: color-mix(in srgb, var(--color-indigo-50) 80%, #fff);
 }
 
 /* Wiersz dobijany do minimum stanów — subtelny emerald akcent po lewej */
@@ -1627,28 +1542,6 @@ select:disabled,
 .data-table.zd-estimate-table tbody tr.zd-estimate-row-min-stock td.zd-estimate-symbol-col,
 .data-table.zd-estimate-table tbody tr.zd-estimate-row-min-stock td.zd-estimate-product-name-col {
   box-shadow: inset 2px 0 0 0 rgb(16 185 129 / 0.55);
-}
-
-.data-table.zd-estimate-table tbody tr.zd-estimate-row-min-stock:not([data-zebra="even"]) td:not(.zd-estimate-dozd-col):not(.zd-estimate-actions-col) {
-  background-color: color-mix(in srgb, rgb(236 253 245) 35%, #fff);
-}
-
-.data-table.zd-estimate-table tbody tr.zd-estimate-row-min-stock[data-zebra="even"]:not([class*="bg-"]) td:not(.zd-estimate-dozd-col):not(.zd-estimate-actions-col) {
-  background-color: color-mix(in srgb, rgb(220 252 231) 30%, #fff);
-}
-
-.data-table.zd-estimate-table
-  tbody
-  tr[data-zebra="even"]:not([class*="bg-"])
-  td.zd-estimate-metric-col--sales {
-  background-color: color-mix(in srgb, rgb(224 242 254) 58%, #fff);
-}
-
-.data-table.zd-estimate-table
-  tbody
-  tr[data-zebra="even"]:not([class*="bg-"])
-  td.zd-estimate-metric-col--target {
-  background-color: color-mix(in srgb, var(--color-indigo-100) 55%, #fff);
 }
 
 .data-table.zd-estimate-table tbody tr[data-zebra="even"]:not([class*="bg-"]) td.zd-estimate-check-col,
@@ -1695,45 +1588,7 @@ select:disabled,
   tbody
   tr[data-zebra="even"]:not([class*="bg-"]):hover
   td.zd-estimate-dozd-col {
-  background-color: #d1fae5;
-}
-
-.data-table.zd-estimate-table tbody tr:hover td.zd-estimate-metric-col--sales,
-.data-table.zd-estimate-table
-  tbody
-  tr[data-zebra="even"]:not([class*="bg-"]):hover
-  td.zd-estimate-metric-col--sales {
-  background-color: color-mix(in srgb, rgb(186 230 253) 62%, #fff);
-}
-
-.data-table.zd-estimate-table tbody tr:hover td.zd-estimate-metric-col--target,
-.data-table.zd-estimate-table
-  tbody
-  tr[data-zebra="even"]:not([class*="bg-"]):hover
-  td.zd-estimate-metric-col--target {
-  background-color: color-mix(in srgb, var(--color-indigo-200) 62%, #fff);
-}
-
-.data-table.zd-estimate-table
-  tbody
-  tr:hover
-  td.zd-estimate-dozd-col.zd-estimate-dozd-col--idle,
-.data-table.zd-estimate-table
-  tbody
-  tr[data-zebra="even"]:not([class*="bg-"]):hover
-  td.zd-estimate-dozd-col.zd-estimate-dozd-col--idle {
-  background-color: var(--color-slate-200);
-}
-
-.data-table.zd-estimate-table
-  tbody
-  tr:hover
-  td.zd-estimate-dozd-col.zd-estimate-dozd-col--review,
-.data-table.zd-estimate-table
-  tbody
-  tr[data-zebra="even"]:not([class*="bg-"]):hover
-  td.zd-estimate-dozd-col.zd-estimate-dozd-col--review {
-  background-color: #fde68a;
+  background-color: var(--color-indigo-100);
 }
 
 .data-table.zd-estimate-table tbody tr:hover td.zd-estimate-check-col,
@@ -1773,22 +1628,7 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table tbody tr[class*="bg-slate"] td.zd-estimate-dozd-col {
-  background-color: color-mix(in srgb, var(--color-slate-200) 95%, #fff);
-}
-
-.data-table.zd-estimate-table tbody tr[class*="bg-slate"] td.zd-estimate-dozd-col.zd-estimate-dozd-col--idle {
-  background-color: color-mix(in srgb, var(--color-slate-200) 95%, #fff);
-}
-
-.data-table.zd-estimate-table
-  tbody
-  tr[class*="bg-slate"]
-  td.zd-estimate-metric-col--sales,
-.data-table.zd-estimate-table
-  tbody
-  tr[class*="bg-slate"]
-  td.zd-estimate-metric-col--target {
-  background-color: color-mix(in srgb, var(--color-slate-100) 95%, #fff);
+  background-color: var(--color-indigo-50);
 }
 
 .data-table.zd-estimate-table tbody tr[class*="bg-indigo"] td.zd-estimate-check-col,
@@ -1800,33 +1640,12 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table tbody tr[class*="bg-indigo"] td.zd-estimate-dozd-col {
-  background-color: #d1fae5;
+  background-color: var(--color-indigo-50);
 }
 
 /* Zaznaczenie wiersza — data-attr (nie zależymy od Tailwind bg-* / opacity). */
 .data-table.zd-estimate-table tbody tr[data-selected="true"] td {
   background-color: var(--color-indigo-100) !important;
-}
-
-/* Przy zaznaczeniu zachowaj czytelny podział Sprzed. (sky) vs Cel (indigo). */
-.data-table.zd-estimate-table
-  tbody
-  tr[data-selected="true"]
-  td.zd-estimate-metric-col--sales {
-  background-color: #bae6fd !important;
-  box-shadow:
-    inset 1px 0 0 transparent,
-    inset 0 2px 0 0 rgb(14 165 233 / 0.55);
-}
-
-.data-table.zd-estimate-table
-  tbody
-  tr[data-selected="true"]
-  td.zd-estimate-metric-col--target {
-  background-color: var(--color-indigo-200) !important;
-  box-shadow:
-    inset 1px 0 0 color-mix(in srgb, var(--color-indigo-500) 45%, transparent),
-    inset 0 2px 0 0 color-mix(in srgb, var(--color-indigo-600) 50%, transparent);
 }
 
 .data-table.zd-estimate-table tbody tr[data-selected="true"] td.zd-estimate-check-col,
@@ -1846,20 +1665,6 @@ select:disabled,
 
 .data-table.zd-estimate-table tbody tr[data-selected="true"]:hover td {
   background-color: var(--color-indigo-200) !important;
-}
-
-.data-table.zd-estimate-table
-  tbody
-  tr[data-selected="true"]:hover
-  td.zd-estimate-metric-col--sales {
-  background-color: #7dd3fc !important;
-}
-
-.data-table.zd-estimate-table
-  tbody
-  tr[data-selected="true"]:hover
-  td.zd-estimate-metric-col--target {
-  background-color: var(--color-indigo-300) !important;
 }
 
 .data-table.zd-estimate-table tbody tr[data-selected="true"]:hover td.zd-estimate-dozd-col {
@@ -1966,17 +1771,20 @@ select:disabled,
 
 .data-table.zd-estimate-table .zd-est-status-badge--indigo {
   background: var(--color-indigo-50);
-  color: var(--color-indigo-900);
+  color: var(--color-indigo-800);
+  box-shadow: none;
 }
 
 .data-table.zd-estimate-table .zd-est-status-badge--sky {
-  background: #f0f9ff;
-  color: #0c4a6e;
+  background: var(--color-indigo-50);
+  color: var(--color-indigo-800);
+  box-shadow: none;
 }
 
 .data-table.zd-estimate-table .zd-est-status-badge--emerald {
-  background: #ecfdf5;
-  color: #064e3b;
+  background: var(--color-indigo-50);
+  color: var(--color-indigo-800);
+  box-shadow: none;
 }
 
 .data-table.zd-estimate-table .zd-est-status-badge--amber {
@@ -1992,6 +1800,7 @@ select:disabled,
 .data-table.zd-estimate-table .zd-est-status-badge--slate {
   background: var(--color-slate-100);
   color: var(--color-slate-700);
+  box-shadow: none;
 }
 
 .data-table.zd-estimate-table .zd-est-status-more {
@@ -3316,4 +3125,367 @@ input[type="checkbox"].toggle-switch.toggle-sky:checked {
   .supplier-drawer-backdrop-enter {
     animation: none;
   }
+}
+
+/* Nagłówki: 11px uppercase jak etykiety sekcji (design-system). */
+.data-table.zd-estimate-table thead th {
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+}
+
+/* Opak.: liczba i ×N w jednej linii, dopisek (dobicie) pod spodem. */
+.data-table.zd-estimate-table .zd-estimate-pack-cell {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: 0.2rem;
+  row-gap: 0.15rem;
+  padding-block: 0.15rem;
+}
+
+.data-table.zd-estimate-table .zd-estimate-pack-cell .zd-est-pack-cell-sub {
+  flex-basis: 100%;
+}
+
+.data-table.zd-estimate-table td.zd-estimate-actions-col button[aria-haspopup="menu"] {
+  height: 1.75rem;
+  width: 1.75rem;
+}
+
+/* Znaczniki (prośba, para, komplet, minimum, wykluczenie) pod nazwą, w rzędzie. */
+.data-table.zd-estimate-table .zd-est-name-meta {
+  display: flex;
+  min-width: 0;
+  margin-top: 0.2rem;
+}
+
+.data-table.zd-estimate-table .zd-est-name-meta:empty {
+  display: none;
+}
+
+.data-table.zd-estimate-table .zd-est-name-meta .zd-est-status {
+  justify-content: flex-start;
+  gap: 0.25rem;
+}
+
+.data-table.zd-estimate-table .zd-est-name-meta .zd-est-status-badge {
+  height: 1.125rem;
+  padding: 0 0.3rem;
+  font-size: 0.625rem;
+}
+
+/* Starczy na — kolor wg pilności (jak panel Braki). */
+.data-table.zd-estimate-table .zd-est-cover {
+  display: inline-block;
+  min-width: 2.75rem;
+  border-radius: 0.3rem;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table.zd-estimate-table .zd-est-cover--out,
+.data-table.zd-estimate-table .zd-est-cover--critical {
+  color: var(--color-red-700);
+}
+
+.data-table.zd-estimate-table .zd-est-cover--low {
+  color: var(--color-amber-700);
+}
+
+.data-table.zd-estimate-table .zd-est-cover--ok {
+  color: var(--color-slate-600);
+}
+
+.data-table.zd-estimate-table .zd-est-cover--none {
+  color: var(--zd-num-color-dash);
+  font-weight: 500;
+}
+
+/* Wartość pozycji (cena z ZD). */
+.data-table.zd-estimate-table td.zd-estimate-value-col,
+.data-table.zd-estimate-table th.zd-estimate-value-col {
+  width: 5.75rem;
+  min-width: 5.75rem;
+  max-width: 5.75rem;
+  text-align: center;
+}
+
+.data-table.zd-estimate-table .zd-est-value {
+  font-size: var(--zd-num);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--zd-num-color);
+}
+
+.data-table.zd-estimate-table .zd-est-value--none {
+  font-size: 0.6875rem;
+  color: var(--zd-num-color-dash);
+}
+
+.data-table.zd-estimate-table .zd-est-value--unpriced {
+  color: var(--color-slate-500);
+}
+
+.data-table.zd-estimate-table td.zd-estimate-cover-col,
+.data-table.zd-estimate-table th.zd-estimate-cover-col {
+  width: 4.75rem;
+  min-width: 4.75rem;
+  max-width: 4.75rem;
+  text-align: center;
+}
+
+/* Dostępne + rezerwacje (zamiast osobnych kolumn Stan / Rez.). */
+.data-table.zd-estimate-table .zd-est-available {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.15;
+}
+
+.data-table.zd-estimate-table .zd-est-available__rez {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--color-slate-500);
+  white-space: nowrap;
+}
+
+/* ── Kreator ZD: komórka Do ZD (2026-10) ──────────────────────────────────
+ * Stała siatka: [pole][jednostka][dopiski]. Pole ma zawsze tę samą szerokość
+ * i pozycję w każdym wierszu (skan pionowy), dopiski zawsze w trzeciej kolumnie.
+ * Kolory dopisków wg semantyki: sky = informacja (zaokrąglenie do paczki),
+ * indigo = Twoja zmiana, amber = do weryfikacji, emerald = zaakceptowane.     */
+.data-table.zd-estimate-table {
+  --zd-est-dozd-field-w: 3rem;
+  --zd-est-dozd-unit-w: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .data-table.zd-estimate-table,
+  .data-table.zd-estimate-table.zd-estimate-table--zk {
+    --zd-est-dozd-w: 9.5rem;
+  }
+}
+
+@media (min-width: 1600px) {
+  .data-table.zd-estimate-table {
+    --zd-est-dozd-w: 10rem;
+  }
+}
+
+.data-table.zd-estimate-table .zd-est-dozd {
+  display: grid;
+  grid-template-columns: var(--zd-est-dozd-field-w) var(--zd-est-dozd-unit-w) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.25rem;
+  row-gap: 0.15rem;
+  width: 100%;
+  margin: 0;
+}
+
+/* Pole + jednostka wchodzą bezpośrednio w siatkę. */
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-value {
+  display: contents;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-input {
+  grid-column: 1;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  height: 1.75rem;
+  border-radius: 0.375rem;
+  padding: 0 0.25rem;
+  font-size: 0.9375rem;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-readonly {
+  grid-column: 1;
+  text-align: center;
+  font-size: 0.9375rem;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-unit {
+  grid-column: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-hint-row {
+  grid-column: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-order-mult-warn {
+  grid-column: 1 / -1;
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+/* Wspólny kształt dopisków: 18px, rounded-md, 10px tekst. */
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-hint,
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-reset,
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-confidence {
+  display: inline-flex;
+  max-width: 100%;
+  height: 1.125rem;
+  align-items: center;
+  gap: 0.2rem;
+  border-radius: 0.375rem;
+  padding: 0 0.3rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-pieces {
+  font-size: 0.6875rem;
+  text-align: left;
+}
+
+/* Zaokrąglenie do paczki — informacja. */
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-hint {
+  background: var(--color-indigo-50);
+  color: var(--color-indigo-800);
+  box-shadow: none;
+}
+
+/* Twoja zmiana ilości — indigo (marka/akcja), nie ostrzeżenie. */
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-reset {
+  background: transparent;
+  color: var(--color-indigo-700);
+  box-shadow: inset 0 0 0 1px var(--color-slate-200);
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-reset:hover:not(:disabled) {
+  background: var(--color-indigo-100);
+  color: var(--color-indigo-800);
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-reset:focus-visible {
+  outline: 2px solid var(--color-indigo-400);
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-input--override {
+  border-color: var(--color-indigo-300);
+  background: var(--color-indigo-50);
+  color: var(--color-indigo-900);
+  box-shadow: none;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-input--override:focus {
+  border-color: var(--color-indigo-500);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-indigo-500) 20%, transparent);
+}
+
+/* Do weryfikacji — amber (ostrzeżenie), przycisk ✓ jako mały kwadrat. */
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-confidence--review {
+  padding-right: 0.125rem;
+  background: var(--color-slate-100);
+  color: var(--color-slate-700);
+  box-shadow: none;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-confidence--accepted {
+  background: transparent;
+  color: var(--color-emerald-700);
+  box-shadow: none;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-confidence__accept {
+  display: inline-grid;
+  place-items: center;
+  width: 0.875rem;
+  height: 0.875rem;
+  padding: 0;
+  border-radius: 0.25rem;
+  font-size: 0.5625rem;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+/* Kolumna: spokojniejsze tło przy najechaniu (wcześniej mocny żółty/zielony). */
+.data-table.zd-estimate-table tbody tr:hover td.zd-estimate-dozd-col,
+.data-table.zd-estimate-table
+  tbody
+  tr[data-zebra="even"]:not([class*="bg-"]):hover
+  td.zd-estimate-dozd-col {
+  background-color: var(--color-indigo-100);
+}
+
+/* Telefon: wąska kolumna — dopiski pod polem, wyśrodkowane. */
+@media (max-width: 767px) {
+  .data-table.zd-estimate-table .zd-est-dozd {
+    grid-template-columns: var(--zd-est-dozd-field-w) var(--zd-est-dozd-unit-w);
+    justify-content: center;
+  }
+
+  .data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-hint-row {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    justify-content: center;
+  }
+}
+
+/* ── Kreator ZD: znaczniki profilu sprzedaży pod nazwą (2026-10) ─────────── */
+.data-table.zd-estimate-table .zd-est-name-meta {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.data-table.zd-estimate-table .zd-est-profile-badge {
+  display: inline-flex;
+  height: 1.125rem;
+  align-items: center;
+  border: 0;
+  border-radius: 0.375rem;
+  padding: 0 0.35rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Skok — ostrzeżenie (ilość może być zawyżona). */
+.data-table.zd-estimate-table .zd-est-profile-badge--spike {
+  background: var(--color-indigo-50);
+  color: var(--color-indigo-800);
+  box-shadow: none;
+}
+
+/* Rzadka sprzedaż — podpowiedź („Tylko na prośbę?”). */
+.data-table.zd-estimate-table .zd-est-profile-badge--rare {
+  background: var(--color-indigo-50);
+  color: var(--color-indigo-800);
+  box-shadow: none;
+}
+
+.data-table.zd-estimate-table button.zd-est-profile-badge--rare {
+  cursor: pointer;
+}
+
+.data-table.zd-estimate-table button.zd-est-profile-badge--rare:hover {
+  background: var(--color-indigo-100);
+}
+
+.data-table.zd-estimate-table button.zd-est-profile-badge:focus-visible {
+  outline: 2px solid var(--color-indigo-400);
+  outline-offset: 1px;
 }

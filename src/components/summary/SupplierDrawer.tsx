@@ -1,6 +1,11 @@
 "use client";
 
-import type { SupplierSubiektScopeInfo } from "@/lib/orders/zd-estimate-supplier-scope";
+import { SupplierOrderFormList } from "@/components/summary/SupplierOrderFormList";
+import { findSupplierFormTemplate } from "@/lib/supplier-forms/templates";
+import {
+  buildZdEstimateLaunchHref,
+  type SupplierSubiektScopeInfo,
+} from "@/lib/orders/zd-estimate-supplier-scope";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -28,6 +33,7 @@ import {
   IconCalendar,
   IconClock,
   IconTruck,
+  IconDownload,
   IconPackageCheck,
   IconLink,
   IconLinkOff,
@@ -407,7 +413,7 @@ export function SupplierDrawer({
               </Button>
               {canPrepareZd ? (
                 <Link
-                  href={`/zakupy/szacunek?from=daily&supplierId=${encodeURIComponent(supplier.id)}&autorun=1`}
+                  href={buildZdEstimateLaunchHref(supplier.id)}
                   className="block w-full"
                 >
                   <Button variant="secondary" size="sm" className="w-full justify-center">
@@ -471,6 +477,16 @@ export function SupplierDrawer({
               ) : null}
             </dl>
           </DrawerSection>
+
+          {findSupplierFormTemplate(supplier.name) ? (
+            <DrawerSection
+              title="Formularz zamówienia"
+              hint={`${findSupplierFormTemplate(supplier.name)!.kind !== "pdf" ? "Arkusz Excel" : "Formularz PDF"} dostawcy wypełniony pozycjami z ZD - gotowy do wysłania`}
+              icon={<IconDownload size={14} />}
+            >
+              <SupplierOrderFormList supplierId={supplier.id} />
+            </DrawerSection>
+          ) : null}
 
           <DrawerSection
             title="Terminy i rytm"
@@ -559,12 +575,18 @@ export function SupplierDrawer({
                 label={subiektScope ? (subiektScope.mode === "cecha" ? "Cecha towarów" : "Grupa towarów") : "Grupa / cecha"}
                 value={
                   subiektScope
-                    ? `${subiektScope.label || "bez nazwy"} · ${subiektScope.mode === "cecha" ? "ctw_Id" : "grt_Id"} ${subiektScope.id}`
+                    ? `${subiektScope.label || "bez nazwy"} · ${subiektScope.mode === "cecha" ? "ctw_Id" : "grt_Id"} ${subiektScope.id}${
+                        subiektScope.extraLabels?.length
+                          ? ` + ${subiektScope.extraLabels.join(", ")}`
+                          : ""
+                      }`
                     : "brak powiązania"
                 }
                 hint={
                   subiektScope
-                    ? `„Przygotuj ZD” liczy towary z tej ${subiektScope.mode === "cecha" ? "cechy" : "grupy"}.`
+                    ? subiektScope.extraLabels?.length
+                      ? `„Przygotuj ZD” liczy razem ${subiektScope.extraLabels.length + 1} zakresy dostawcy.`
+                      : `„Przygotuj ZD” liczy towary z tej ${subiektScope.mode === "cecha" ? "cechy" : "grupy"}.`
                     : "„Przygotuj ZD” spróbuje dopasować po nazwie dostawcy."
                 }
               />
