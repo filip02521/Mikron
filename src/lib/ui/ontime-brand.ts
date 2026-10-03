@@ -10,13 +10,15 @@ export const ONTIME_TAGLINE_SHORT = "Od prośby do odbioru";
 
 export const ONTIME_COMPANY = "Mikran";
 
+/** Monogram w mailach (klienci poczty nie pokazują SVG). */
 export const ONTIME_LOGO_MONOGRAM = "OT";
 
 /** Nazwa wyświetlana w skrzynce odbiorczej (From: …). */
 export const ONTIME_EMAIL_FROM_NAME = "OnTime";
 
 /** Ten sam kształt marki na logowaniu i w aplikacji. */
-export const ONTIME_LOGO_SHAPE = "rounded-full";
+/** Kafel znaku — promień 15/64 jak w ikonie aplikacji. */
+export const ONTIME_LOGO_SHAPE = "rounded-[23%]";
 
 export const ONTIME_APP_DESCRIPTION =
   "Prośby handlowców, harmonogram zakupów i realizacja dostaw - OnTime · Mikran";
