@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildZdEstimateLaunchHref,
   classifySupplierBrand,
   findUniqueSupplierIdForCecha,
   findUniqueSupplierIdForGrupa,
@@ -174,7 +175,15 @@ describe("parseZdEstimateLaunchQuery", () => {
       mode: null,
       grupaId: null,
       cechaId: null,
+      leadTimeHorizon: false,
     });
+  });
+
+  it("horizon=1 → start z opcją „Do kolejnej dostawy”", () => {
+    expect(
+      parseZdEstimateLaunchQuery({ from: "daily", supplierId: "abc-1", autorun: "1", horizon: "1" })
+        .leadTimeHorizon
+    ).toBe(true);
   });
 
   it("parses mode + ids", () => {
@@ -190,6 +199,17 @@ describe("parseZdEstimateLaunchQuery", () => {
       cechaId: 2738,
       grupaId: null,
     });
+  });
+});
+
+describe("buildZdEstimateLaunchHref", () => {
+  it("opcja czasu dostawy dokłada horizon=1", () => {
+    expect(buildZdEstimateLaunchHref("s 1")).toBe(
+      "/zakupy/szacunek?from=daily&supplierId=s%201&autorun=1"
+    );
+    expect(buildZdEstimateLaunchHref("s1", { leadTimeHorizon: true })).toBe(
+      "/zakupy/szacunek?from=daily&supplierId=s1&autorun=1&horizon=1"
+    );
   });
 });
 

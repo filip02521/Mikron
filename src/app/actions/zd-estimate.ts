@@ -129,6 +129,7 @@ import {
   resolveSupplierKhIdsForHistory,
   runZdOrderEngine,
 } from "@/lib/orders/zd-order-engine";
+import { loadZdOrderHorizons } from "@/lib/orders/zd-order-horizon-load";
 import {
   assertOrderMultiple,
   assertPackagingUnits,
@@ -304,6 +305,12 @@ export type ZdEstimateRunInput = {
    * Optional — without it Policz works as before.
    */
   progressId?: string | null;
+  /**
+   * Opcja „Uwzględnij czas dostawy i harmonogram” (domyślnie wyłączona):
+   * cel liczony na max(dni zapasu, dni do kolejnego zamówienia + czas dostawy).
+   * Okno sprzedaży (rotacja) bez zmian.
+   */
+  leadTimeHorizon?: boolean;
 };
 
 export type ZdEstimateRunResult =
@@ -341,6 +348,8 @@ export type ZdEstimateRunResult =
       assignedElsewhere?: import("@/lib/orders/zd-order-engine").ZdOrderAssignedElsewhere[];
       /** tw → dostawca ostatniego ZD, gdy inny niż liczony (podpowiedź). */
       otherSupplierHintByTwId?: Record<number, string>;
+      /** Rozbicie horyzontu, gdy opcja czasu dostawy była zaznaczona. */
+      horizon?: import("@/lib/orders/zd-order-horizon").ZdOrderHorizon | null;
       meta: {
         pagesFetched: number;
         totalCountApi: number;
@@ -1309,10 +1318,30 @@ export async function actionRunZdEstimateManual(
   const started = Date.now();
 
   try {
+    // Opcja czasu dostawy: dłuższy horyzont celu, to samo okno sprzedaży.
+    let horizon: import("@/lib/orders/zd-order-horizon").ZdOrderHorizon | null = null;
+    const horizonSupplierId = String(input.supplierId ?? "").trim();
+    if (input.leadTimeHorizon === true && horizonSupplierId) {
+      const [supplier] = await fetchSuppliersWithSchedules(undefined, {
+        activeOnly: false,
+        supplierIds: [horizonSupplierId],
+      });
+      if (supplier) {
+        horizon =
+          (
+            await loadZdOrderHorizons({
+              suppliers: [supplier],
+              stockDaysBySupplierId: new Map([[supplier.id, dniZapasu]]),
+              todayKey,
+            })
+          ).get(supplier.id) ?? null;
+      }
+    }
+
     const engine = await runZdOrderEngine({
       scope,
       supplierId: String(input.supplierId ?? "").trim() || null,
-      dniZapasu,
+      dniZapasu: horizon ? horizon.horizonDays : dniZapasu,
       dataOd,
       dataDo,
       zapasMin,
@@ -1405,6 +1434,7 @@ export async function actionRunZdEstimateManual(
         productBoms,
         teethTwIds,
         boostPreset,
+        horizon,
         seed: input.uiSessionSeed ?? null,
       });
       const persisted = await persistZdEstimateUiSessionSnapshot({
@@ -1440,6 +1470,7 @@ export async function actionRunZdEstimateManual(
       scopesIncluded: engine.scopesIncluded,
       assignedElsewhere: engine.assignedElsewhere,
       otherSupplierHintByTwId: engine.otherSupplierHintByTwId,
+      horizon,
       exclusions,
       onRequests,
       packaging,

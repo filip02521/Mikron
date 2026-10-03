@@ -272,6 +272,8 @@ export type ZdEstimateLaunchQuery = {
   mode?: string | null;
   grupaId?: string | null;
   cechaId?: string | null;
+  /** „1” = start z opcją „Do kolejnej dostawy”. */
+  horizon?: string | null;
 };
 
 export type ZdEstimateLaunchParsed = {
@@ -281,6 +283,7 @@ export type ZdEstimateLaunchParsed = {
   mode: ZdEstimateRunMode | null;
   grupaId: number | null;
   cechaId: number | null;
+  leadTimeHorizon: boolean;
 };
 
 export function parseZdEstimateLaunchQuery(
@@ -306,6 +309,7 @@ export function parseZdEstimateLaunchQuery(
     mode,
     grupaId: Number.isFinite(grupaId) && grupaId > 0 ? grupaId : null,
     cechaId: Number.isFinite(cechaId) && cechaId > 0 ? cechaId : null,
+    leadTimeHorizon: String(q.horizon ?? "").trim() === "1",
   };
 }
 
@@ -313,8 +317,13 @@ export function parseZdEstimateLaunchQuery(
  * „Przygotuj ZD” — Kreator z dostawcą i od razu Policz (jak w panelu dziennym).
  * Jedyna droga do utworzenia ZD z panelu dziennego i panelu Braki.
  */
-export function buildZdEstimateLaunchHref(supplierId: string): string {
-  return `/zakupy/szacunek?from=daily&supplierId=${encodeURIComponent(supplierId)}&autorun=1`;
+export function buildZdEstimateLaunchHref(
+  supplierId: string,
+  opts?: { leadTimeHorizon?: boolean }
+): string {
+  const base = `/zakupy/szacunek?from=daily&supplierId=${encodeURIComponent(supplierId)}&autorun=1`;
+  // Kreator startuje z zaznaczoną opcją „Do kolejnej dostawy”.
+  return opts?.leadTimeHorizon ? `${base}&horizon=1` : base;
 }
 
 /** Powiązanie dostawcy z grupą albo cechą Subiekta — do wyświetlenia (np. szuflada dostawcy). */

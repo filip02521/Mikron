@@ -80,13 +80,18 @@ CREATE TABLE IF NOT EXISTS public.stock_watch_items (
   order_value numeric NULL,
   unit_price_net numeric NULL,
   daily_value numeric NULL,
+  -- Sygnał z czasu dostawy (bez wpływu na ilość): skończy się przed dostawą
+  -- zamówienia złożonego dziś / przed dostawą z kolejnego planowego zamówienia.
+  delivery_risk text NULL,
   status text NOT NULL DEFAULT 'ok',
   computed_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (supplier_id, subiekt_tw_id),
   CONSTRAINT stock_watch_items_status_check
     CHECK (status IN ('out_of_stock', 'critical', 'warning', 'ok', 'no_sales')),
   CONSTRAINT stock_watch_items_scope_mode_check
-    CHECK (scope_mode IS NULL OR scope_mode IN ('grupa', 'cecha'))
+    CHECK (scope_mode IS NULL OR scope_mode IN ('grupa', 'cecha')),
+  CONSTRAINT stock_watch_items_delivery_risk_check
+    CHECK (delivery_risk IS NULL OR delivery_risk IN ('before_delivery', 'before_next_delivery'))
 );
 
 CREATE INDEX IF NOT EXISTS stock_watch_items_tw_idx
@@ -114,6 +119,12 @@ CREATE TABLE IF NOT EXISTS public.stock_watch_supplier_orders (
   history_fetch_failed boolean NOT NULL DEFAULT false,
   pending_individuals_error text NULL,
   truncated boolean NOT NULL DEFAULT false,
+  -- Czas dostawy (dni kalendarzowe) i kolejne planowe zamówienie — do sygnałów.
+  lead_days integer NULL,
+  lead_source text NULL,
+  lead_samples integer NULL,
+  next_order_date date NULL,
+  next_order_days integer NULL,
   computed_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT stock_watch_supplier_orders_scope_mode_check
     CHECK (scope_mode IN ('grupa', 'cecha'))

@@ -364,7 +364,12 @@ export function useZdEstimateRulesLiveApply({
           applied: false,
         };
       }
-      const dni = Math.round(Number(dniZapasu));
+      // Dni zapasu, z którymi liczył serwer (opcja czasu dostawy może je wydłużyć) —
+      // inaczej przeliczenie po zmianie reguły wróciłoby do wartości z formularza.
+      const serverDni = Number(paramInfo?.dniZapasu);
+      const dni = Math.round(
+        Number.isFinite(serverDni) && serverDni >= 1 ? serverDni : Number(dniZapasu)
+      );
       const dniOkresuRaw = paramInfo?.dniOkresu;
       const dniOkresu =
         dniOkresuRaw != null && Number.isFinite(Number(dniOkresuRaw))
@@ -416,7 +421,12 @@ export function useZdEstimateRulesLiveApply({
   const recountEstimateLinesWithExcluded = useCallback(
     (excludedTwIds: ReadonlySet<number>) => {
       if (!linesBase?.length) return;
-      const dni = Math.round(Number(dniZapasu));
+      // Dni zapasu, z którymi liczył serwer (opcja czasu dostawy może je wydłużyć) —
+      // inaczej przeliczenie po zmianie reguły wróciłoby do wartości z formularza.
+      const serverDni = Number(paramInfo?.dniZapasu);
+      const dni = Math.round(
+        Number.isFinite(serverDni) && serverDni >= 1 ? serverDni : Number(dniZapasu)
+      );
       const dniOkresuRaw = paramInfo?.dniOkresu;
       const dniOkresu =
         dniOkresuRaw != null && Number.isFinite(Number(dniOkresuRaw))

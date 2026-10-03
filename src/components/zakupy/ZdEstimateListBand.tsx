@@ -154,6 +154,8 @@ export function ZdEstimateListBand({
   selectedCount,
   onSelectAllVisible,
   disabled,
+  leadTimeHorizon,
+  onLeadTimeHorizonToggle,
 }: {
   listFilter: ZdEstimateListFilter;
   onListFilterChange: (v: ZdEstimateListFilter) => void;
@@ -186,6 +188,9 @@ export function ZdEstimateListBand({
   selectedCount: number;
   onSelectAllVisible: () => void;
   disabled?: boolean;
+  /** Opcja „Do kolejnej dostawy” — przełączenie od razu przelicza listę. */
+  leadTimeHorizon?: boolean;
+  onLeadTimeHorizonToggle?: (next: boolean) => void;
 }) {
   const searchTrimmed = listSearch.trim().length > 0;
   const showSearchCounts =
@@ -291,6 +296,29 @@ export function ZdEstimateListBand({
             zdEstimateChromeGapClass
           )}
         >
+          {onLeadTimeHorizonToggle ? (
+            <label
+              className={cn(
+                "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md border px-2 text-[12px] font-medium",
+                leadTimeHorizon
+                  ? "border-indigo-300 bg-indigo-50 text-indigo-900"
+                  : "border-slate-200 bg-white text-slate-600",
+                disabled && "cursor-not-allowed opacity-50"
+              )}
+              title="Zamówienie do przyjazdu kolejnej dostawy (harmonogram + czas dostawy z historii). Zmiana przelicza listę; odznacz, żeby liczyć jak dotąd."
+            >
+              <input
+                type="checkbox"
+                className="size-3.5 accent-indigo-600"
+                aria-label="Do kolejnej dostawy — uwzględnij czas dostawy i harmonogram"
+                checked={Boolean(leadTimeHorizon)}
+                disabled={disabled}
+                onChange={(e) => onLeadTimeHorizonToggle(e.target.checked)}
+              />
+              <span className="hidden lg:inline">Do kolejnej dostawy</span>
+              <span className="lg:hidden">Do dostawy</span>
+            </label>
+          ) : null}
           <div className="relative min-w-0 flex-1 sm:w-[14rem] sm:flex-none md:w-[15rem] lg:w-[16rem]">
             <IconSearch
               size={14}

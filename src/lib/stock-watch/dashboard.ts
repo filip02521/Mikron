@@ -30,6 +30,7 @@ export type StockWatchRowView = Pick<
   | "orderPieces"
   | "unitPriceNet"
   | "dailyValue"
+  | "deliveryRisk"
   | "status"
   | "rule"
   | "ruleNote"
@@ -53,13 +54,34 @@ export type StockWatchSupplierProposal = {
   dataOd: string;
   dataDo: string;
   computedAt: string;
+  /** Czas dostawy (dni) i kolejne planowe zamówienie — z nocnego przebiegu. */
+  leadDays: number | null;
+  leadSource: string | null;
+  nextOrderDate: string | null;
+  nextOrderDays: number | null;
+  /** Towary (Standard), które skończą się przed dostawą zamówienia złożonego dziś. */
+  beforeDeliveryCount: number;
+  /** …przed dostawą z kolejnego planowego zamówienia. */
+  beforeNextDeliveryCount: number;
   /** Kreator pokaże pustą listę albo zablokuje „Utwórz ZD” — wymaga uwagi w Kreatorze. */
   warnings: string[];
 };
 
 export type StockWatchDashboard = {
   health: { score: number; active: number; ok: number };
-  counts: { outOfStock: number; critical: number; warning: number; ok: number; noSales: number };
+  counts: {
+    outOfStock: number;
+    critical: number;
+    warning: number;
+    ok: number;
+    noSales: number;
+    /**
+     * Skończy się przed dostawą zamówienia złożonego dziś — poza brakami i ≤ 48 h
+     * (sygnał, bez wpływu na ilość).
+     */
+    beforeDelivery: number;
+    beforeNextDelivery: number;
+  };
   alerts: StockWatchRowView[];
   proposals: StockWatchSupplierProposal[];
   topVelocity: StockWatchRowView[];
@@ -95,6 +117,7 @@ export function toStockWatchRowView(item: StockWatchItem): StockWatchRowView {
     orderPieces: item.orderPieces,
     unitPriceNet: item.unitPriceNet,
     dailyValue: item.dailyValue,
+    deliveryRisk: item.deliveryRisk,
     status: item.status,
     rule: item.rule,
     ruleNote: item.ruleNote,
@@ -134,7 +157,15 @@ export function buildStockWatchDashboard(
   supplierOrders: readonly StockWatchSupplierOrder[]
 ): StockWatchDashboard {
   const products = uniqueByProduct(items);
-  const counts = { outOfStock: 0, critical: 0, warning: 0, ok: 0, noSales: 0 };
+  const counts = {
+    outOfStock: 0,
+    critical: 0,
+    warning: 0,
+    ok: 0,
+    noSales: 0,
+    beforeDelivery: 0,
+    beforeNextDelivery: 0,
+  };
   const standard = products.filter((i) => i.rule === "standard");
   for (const item of standard) {
     if (item.status === "out_of_stock") counts.outOfStock += 1;
@@ -142,13 +173,28 @@ export function buildStockWatchDashboard(
     else if (item.status === "warning") counts.warning += 1;
     else if (item.status === "ok") counts.ok += 1;
     else counts.noSales += 1;
+    // Bez dublowania z „brak” i „≤ 48 h” — te są już wyżej w liczbach.
+    if (
+      item.deliveryRisk === "before_delivery" &&
+      item.status !== "out_of_stock" &&
+      item.status !== "critical"
+    ) {
+      counts.beforeDelivery += 1;
+    }
+    else if (item.deliveryRisk === "before_next_delivery") counts.beforeNextDelivery += 1;
   }
 
-  const alerts = standard
-    .filter((i) => i.status === "out_of_stock" || i.status === "critical")
-    .sort(compareStockWatchAlerts)
-    .slice(0, STOCK_WATCH_ALERT_LIMIT)
-    .map(toStockWatchRowView);
+  // Czerwona strefa: brak i ≤ 48 h (limit) + osobno „przed dostawą” (własny limit) —
+  // inaczej przy setkach braków sygnał czasu dostawy nigdy by się nie zmieścił.
+  const isOutOrCritical = (i: StockWatchItem) =>
+    i.status === "out_of_stock" || i.status === "critical";
+  const alerts = [
+    ...standard.filter(isOutOrCritical).sort(compareStockWatchAlerts).slice(0, STOCK_WATCH_ALERT_LIMIT),
+    ...standard
+      .filter((i) => !isOutOrCritical(i) && i.deliveryRisk === "before_delivery")
+      .sort(compareStockWatchAlerts)
+      .slice(0, STOCK_WATCH_ALERT_LIMIT),
+  ].map(toStockWatchRowView);
 
   const itemsBySupplier = new Map<string, StockWatchItem[]>();
   for (const item of items) {
@@ -168,7 +214,10 @@ export function buildStockWatchDashboard(
         (i.rule !== "on_request" || i.orderIndividualPieces > 0)
     );
     const warnings = proposalWarnings(order);
-    if (lines.length === 0 && warnings.length === 0) continue;
+    const hasRisk = (itemsBySupplier.get(order.supplierId) ?? []).some(
+      (i) => i.rule === "standard" && i.deliveryRisk === "before_delivery"
+    );
+    if (lines.length === 0 && warnings.length === 0 && !hasRisk) continue;
     let orderValue = 0;
     let unpricedCount = 0;
     let zdUnitsSum = 0;
@@ -189,6 +238,13 @@ export function buildStockWatchDashboard(
         mostUrgent = { twSymbol: line.twSymbol, twNazwa: line.twNazwa, daysOfCover: cover };
       }
     }
+    let beforeDeliveryCount = 0;
+    let beforeNextDeliveryCount = 0;
+    for (const i of itemsBySupplier.get(order.supplierId) ?? []) {
+      if (i.rule !== "standard") continue;
+      if (i.deliveryRisk === "before_delivery") beforeDeliveryCount += 1;
+      else if (i.deliveryRisk === "before_next_delivery") beforeNextDeliveryCount += 1;
+    }
     proposals.push({
       supplierId: order.supplierId,
       supplierName: order.supplierName ?? "Dostawca",
@@ -203,12 +259,19 @@ export function buildStockWatchDashboard(
       dataOd: order.dataOd,
       dataDo: order.dataDo,
       computedAt: order.computedAt,
+      leadDays: order.leadDays,
+      leadSource: order.leadSource,
+      nextOrderDate: order.nextOrderDate,
+      nextOrderDays: order.nextOrderDays,
+      beforeDeliveryCount,
+      beforeNextDeliveryCount,
       warnings,
     });
   }
   proposals.sort(
     (a, b) =>
       b.outOfStockCount + b.criticalCount - (a.outOfStockCount + a.criticalCount) ||
+      b.beforeDeliveryCount - a.beforeDeliveryCount ||
       (a.mostUrgent?.daysOfCover ?? Infinity) - (b.mostUrgent?.daysOfCover ?? Infinity) ||
       b.orderValue - a.orderValue
   );

@@ -26,6 +26,8 @@ import {
 import { ZD_ESTIMATE_UI_PREFS_DEFAULTS } from "@/lib/orders/zd-estimate-prefs";
 import { zdDocumentUnitsToPieces } from "@/lib/orders/zd-estimate-units";
 import { runZdOrderEngine } from "@/lib/orders/zd-order-engine";
+import { zdDeliveryRisk, type ZdOrderHorizon } from "@/lib/orders/zd-order-horizon";
+import { loadZdOrderHorizons } from "@/lib/orders/zd-order-horizon-load";
 import { buildZdOrderList } from "@/lib/orders/zd-order-list";
 import { warsawNowParts } from "@/lib/time/warsaw";
 import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
@@ -110,6 +112,15 @@ function round(value: number, digits: number): number {
   return Math.round(value * p) / p;
 }
 
+/** Dni zapasu jak w Kreatorze po wyborze dostawcy (karta, inaczej domyślne). */
+function supplierStockDays(supplier: { stock_raw: string | null; stock: unknown }): number {
+  const rawDni = stockPeriodToDniZapasu(
+    supplier.stock_raw,
+    supplier.stock != null ? Number(supplier.stock) : null
+  );
+  return rawDni != null && rawDni > 0 ? rawDni : DEFAULT_DNI_ZAPASU;
+}
+
 /** Koniec okna sprzedaży jak w Kreatorze: ostatnia FS w Subiekcie, inaczej dziś. */
 async function resolveSalesEndDate(todayKey: string): Promise<string> {
   try {
@@ -189,6 +200,21 @@ export async function runStockWatchWorker(input: {
 
     // 2) Wycena listy — raz na wywołanie (reguły czyta silnik per dostawca, jak Kreator).
     const prices = await loadProductPurchasePrices();
+    // Czas dostawy + kolejne zamówienie per dostawca — tylko do sygnałów
+    // („skończy się przed dostawą”), ilości liczone jak w Kreatorze bez opcji.
+    const horizons = await loadZdOrderHorizons({
+      suppliers: activeScopes.map((s) => supplierById.get(s.supplierId)!),
+      stockDaysBySupplierId: new Map(
+        activeScopes.map((s) => {
+          const sup = supplierById.get(s.supplierId)!;
+          return [sup.id, supplierStockDays(sup)];
+        })
+      ),
+      todayKey,
+    }).catch((e) => {
+      console.error("[stock-watch] horizons", e);
+      return new Map<string, ZdOrderHorizon>();
+    });
 
     // 3) Zakresy dostawców.
     const scopesDone = [...run.scopesDone];
@@ -209,6 +235,7 @@ export async function runStockWatchWorker(input: {
           run,
           ordersBaseUrl: orders.config.baseUrl,
           prices,
+          horizon: horizons.get(supplier.id) ?? null,
         });
         itemsWritten += outcome.itemsWritten;
         if (outcome.message) {
@@ -292,18 +319,15 @@ async function computeSupplierOrder(input: {
   run: StockWatchRun;
   ordersBaseUrl: string;
   prices: ReadonlyMap<number, ProductPurchasePrice>;
+  horizon: ZdOrderHorizon | null;
 }): Promise<{ itemsWritten: number; message: string | null }> {
-  const { scope, supplier, run, prices } = input;
+  const { scope, supplier, run, prices, horizon } = input;
   const scopeId = (scope.mode === "grupa" ? scope.grupaId : scope.cechaId) ?? 0;
   if (!(scopeId > 0)) {
     return { itemsWritten: 0, message: "Zakres dostawcy bez grupy / cechy." };
   }
   // Te same dni zapasu i okno co Kreator po wyborze dostawcy.
-  const rawDni = stockPeriodToDniZapasu(
-    supplier.stock_raw,
-    supplier.stock != null ? Number(supplier.stock) : null
-  );
-  const dniZapasu = rawDni != null && rawDni > 0 ? rawDni : DEFAULT_DNI_ZAPASU;
+  const dniZapasu = supplierStockDays(supplier);
   const window = salesWindowFromDniZapasu(dniZapasu, run.salesEndDate);
 
   const engine = await runZdOrderEngine({
@@ -362,6 +386,14 @@ async function computeSupplierOrder(input: {
       salesEndDate: run.salesEndDate,
     });
     const order = orderByTw.get(tw) ?? null;
+    const velocity = Math.max(0, num(line.sprzedazDziennie));
+    const deliveryRisk =
+      horizon && velocity > 0
+        ? zdDeliveryRisk({
+            daysOfCoverWithIncoming: (Math.max(0, num(line.dostepne)) + openZdQty) / velocity,
+            horizon,
+          })
+        : null;
     const lineValue =
       order && order.zdUnits > 0 && unitPrice != null
         ? round(order.piecesArriving * unitPrice, 2)
@@ -406,6 +438,7 @@ async function computeSupplierOrder(input: {
       orderValue: lineValue,
       unitPriceNet: unitPrice,
       dailyValue: signal.dailyValue,
+      deliveryRisk,
       status: signal.status,
     };
   });
@@ -427,6 +460,11 @@ async function computeSupplierOrder(input: {
     historyFetchFailed: engine.historyFetchFailed,
     pendingIndividualsError: engine.pendingIndividualsError,
     truncated: engine.fetch.truncated,
+    leadDays: horizon?.leadDays ?? null,
+    leadSource: horizon?.leadSource ?? null,
+    leadSamples: horizon?.leadSampleCount ?? null,
+    nextOrderDate: horizon?.nextOrderDate ?? null,
+    nextOrderDays: horizon ? horizon.nextOrderDays : null,
   });
 
   return {

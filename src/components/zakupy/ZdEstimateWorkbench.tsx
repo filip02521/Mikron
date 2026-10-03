@@ -183,6 +183,7 @@ import type {
   ZdOrderAssignedElsewhere,
   ZdOrderScopeIncluded,
 } from "@/lib/orders/zd-order-engine";
+import { formatZdHorizonBreakdown, type ZdOrderHorizon } from "@/lib/orders/zd-order-horizon";
 import {
   resolveZdEstimateActiveScopeLabel,
   resolveZdEstimateActiveSupplierName,
@@ -431,6 +432,8 @@ export type ZdEstimateLaunchProps = {
   resolveMessage: string | null;
   /** Jednorazowy token SSR — chroni przed podwójnym autorun (Strict Mode). */
   launchKey: string | null;
+  /** Start z zaznaczoną opcją „Do kolejnej dostawy” (link z panelu Braki). */
+  leadTimeHorizon?: boolean;
 };
 
 function launchHasRunnableScope(launch: ZdEstimateLaunchProps | null | undefined) {
@@ -1054,6 +1057,14 @@ export function ZdEstimateWorkbench({
   const [scopeNeedsRecount, setScopeNeedsRecount] = useState(false);
   /** Moc boosta zmieniona po Policz — lista Do ZD nieaktualna. */
   const [boostNeedsRecount, setBoostNeedsRecount] = useState(false);
+  /**
+   * Opcja „Uwzględnij czas dostawy” — domyślnie wyłączona: bez niej Kreator
+   * liczy dokładnie jak wcześniej (dni zapasu z karty).
+   */
+  const [leadTimeHorizon, setLeadTimeHorizon] = useState(() =>
+    Boolean(launch?.leadTimeHorizon)
+  );
+  const [horizonNeedsRecount, setHorizonNeedsRecount] = useState(false);
   /** Kwalifikacja snapshotów do history cut zmieniona — lista Do ZD nieaktualna. */
   const [historyNeedsRecount, setHistoryNeedsRecount] = useState(false);
   /** Fetch historii przy Policz rzucił — cięcia mogły nie wejść. */
@@ -1063,6 +1074,8 @@ export function ZdEstimateWorkbench({
     scopesIncluded: ZdOrderScopeIncluded[];
     assignedElsewhere: ZdOrderAssignedElsewhere[];
     otherSupplierHintByTwId: Record<number, string>;
+    /** Rozbicie horyzontu, gdy Policz liczył z czasem dostawy. */
+    horizon: ZdOrderHorizon | null;
   } | null>(null);
   const [extrasPolicy, setExtrasPolicy] = useState<ZdEstimateExtrasPolicy>(
     () =>
@@ -2603,6 +2616,8 @@ export function ZdEstimateWorkbench({
         teethTwIds,
         boostPreset,
         appliedBoostPreset,
+        leadTimeHorizon,
+        horizon: policzScopeInfo?.horizon ?? null,
         boostNeedsRecount,
         scopeMode,
         selectedGroup,
@@ -2646,6 +2661,8 @@ export function ZdEstimateWorkbench({
       productBoms,
       teethTwIds,
       appliedBoostPreset,
+      leadTimeHorizon,
+      policzScopeInfo,
       boostPreset,
       boostNeedsRecount,
       scopeMode,
@@ -2850,7 +2867,17 @@ export function ZdEstimateWorkbench({
       setLines(payload.lines);
       setHistoryByTwId(historyMapFromEntries(payload.historyByTwId));
       setHistoryFetchFailed(Boolean(payload.historyFetchFailed));
-      setPoliczScopeInfo(null);
+      // Z sesji: tylko horyzont (zakresy / podpowiedzi ZD wrócą przy kolejnym Policz).
+      setPoliczScopeInfo(
+        payload.horizon
+          ? {
+              scopesIncluded: [],
+              assignedElsewhere: [],
+              otherSupplierHintByTwId: {},
+              horizon: payload.horizon,
+            }
+          : null
+      );
 
       setPendingIndividualsLoading(false);
       setPendingIndividuals(payload.pendingIndividuals ?? []);
@@ -2891,6 +2918,10 @@ export function ZdEstimateWorkbench({
         const computedAt = Date.parse(payload.createdAt ?? "");
         setListComputedAtMs(Number.isFinite(computedAt) && computedAt > 0 ? computedAt : null);
       }
+
+      // Opcja czasu dostawy z sesji — lista była liczona z tym horyzontem.
+      setLeadTimeHorizon(Boolean(payload.leadTimeHorizon));
+      setHorizonNeedsRecount(false);
 
       const restoredBoostNeedsRecount = payload.boostPreset
         ? Boolean(payload.boostNeedsRecount) ||
@@ -3660,7 +3691,10 @@ export function ZdEstimateWorkbench({
     mode?: ZdEstimateRunMode;
     grupaId?: number;
     cechaId?: number;
+    /** Przełączenie opcji czasu dostawy z komunikatu (stan jeszcze nieustawiony). */
+    leadTimeHorizon?: boolean;
   }) => {
+    const useLeadTimeHorizon = opts?.leadTimeHorizon ?? leadTimeHorizon;
     externalSessionRestoreGenRef.current += 1;
     setExternalSessionExpiredAlert(false);
     setExternalSessionRestoreFailedAlert(false);
@@ -3747,6 +3781,7 @@ export function ZdEstimateWorkbench({
         dataDo,
         zapasMin: Number(zapasMin) || 0,
         progressId,
+        leadTimeHorizon: useLeadTimeHorizon,
         uiSessionSeed: {
           selectedGroup: mode === "grupa" ? selectedGroup : null,
           selectedCecha: mode === "cecha" ? selectedCecha : null,
@@ -3842,7 +3877,9 @@ export function ZdEstimateWorkbench({
           scopesIncluded: res.scopesIncluded ?? [],
           assignedElsewhere: res.assignedElsewhere ?? [],
           otherSupplierHintByTwId: res.otherSupplierHintByTwId ?? {},
+          horizon: res.horizon ?? null,
         });
+        setHorizonNeedsRecount(false);
         const histMap = new Map<
           number,
           { lastOrderedQty: number; linkedAt: string }
@@ -4529,6 +4566,8 @@ export function ZdEstimateWorkbench({
     teethTwIds,
     boostPreset,
     appliedBoostPreset,
+    leadTimeHorizon,
+    policzScopeInfo,
     boostNeedsRecount,
     scopeMode,
     selectedGroup,
@@ -6586,6 +6625,35 @@ export function ZdEstimateWorkbench({
               </Button>
             </ZdEstimateNotice>
           ) : null,
+          lines && policzScopeInfo?.horizon ? (
+            <ZdEstimateNotice
+              tray
+              key="policz-horizon"
+              tone={policzScopeInfo.horizon.extendedByDays > 0 ? "warning" : "info"}
+              title={
+                policzScopeInfo.horizon.extendedByDays > 0
+                  ? `Liczone z czasem dostawy: ${policzScopeInfo.horizon.horizonDays} dni zamiast ${policzScopeInfo.horizon.stockDays}`
+                  : "Czas dostawy uwzględniony — zapas z karty wystarcza"
+              }
+            >
+              <p className="text-sm leading-snug">
+                {formatZdHorizonBreakdown(policzScopeInfo.horizon)}
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="mt-3"
+                disabled={busy || !scopeSelected || !settingsTrusted}
+                onClick={() => {
+                  setLeadTimeHorizon(false);
+                  runEstimate({ leadTimeHorizon: false });
+                }}
+              >
+                Przelicz bez czasu dostawy
+              </Button>
+            </ZdEstimateNotice>
+          ) : null,
           lines &&
           policzScopeInfo &&
           (policzScopeInfo.scopesIncluded.length > 1 ||
@@ -6800,9 +6868,16 @@ export function ZdEstimateWorkbench({
           supplierFromMappingNotice={supplierFromMappingNotice}
           zapasMin={zapasMin}
           onZapasMinChange={setZapasMin}
+          leadTimeHorizon={leadTimeHorizon}
+          onLeadTimeHorizonChange={(next) => {
+            setLeadTimeHorizon(next);
+            if (lines) setHorizonNeedsRecount(true);
+          }}
           onPolicz={() => runEstimate()}
           hasList={Boolean(lines)}
-          recountNeeded={Boolean(lines) && (boostNeedsRecount || historyNeedsRecount)}
+          recountNeeded={
+            Boolean(lines) && (boostNeedsRecount || historyNeedsRecount || horizonNeedsRecount)
+          }
           showAssignAndRun={Boolean(assignHint && launch?.supplierId)}
           showRemapAndRun={Boolean(
             scopeRemapActive && !assignHint && launch?.supplierId
@@ -7063,6 +7138,15 @@ export function ZdEstimateWorkbench({
             selectedCount={selectedCount}
             onSelectAllVisible={selectAllVisible}
             disabled={busy}
+            leadTimeHorizon={leadTimeHorizon}
+            onLeadTimeHorizonToggle={
+              scopeSelected && settingsTrusted
+                ? (next) => {
+                    setLeadTimeHorizon(next);
+                    runEstimate({ leadTimeHorizon: next });
+                  }
+                : undefined
+            }
           />
 
           <div className={zdEstimateListBodyInsetClass}>

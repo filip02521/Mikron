@@ -4,6 +4,7 @@ import type {
   StockWatchRule,
   StockWatchStatus,
 } from "@/lib/stock-watch/analysis";
+import type { ZdDeliveryRisk } from "@/lib/orders/zd-order-horizon";
 
 /** pg zwraca `numeric` jako string — normalizacja w jednym miejscu. */
 function num(value: unknown): number {
@@ -224,6 +225,8 @@ export type StockWatchItemWrite = {
   orderValue: number | null;
   unitPriceNet: number | null;
   dailyValue: number | null;
+  /** Sygnał z czasu dostawy — bez wpływu na ilość. */
+  deliveryRisk: ZdDeliveryRisk | null;
   status: StockWatchStatus;
 };
 
@@ -258,6 +261,7 @@ const ITEM_COLUMNS = [
   "order_value",
   "unit_price_net",
   "daily_value",
+  "delivery_risk",
   "status",
 ] as const;
 
@@ -293,6 +297,7 @@ function itemValues(item: StockWatchItemWrite): unknown[] {
     item.orderValue,
     item.unitPriceNet,
     item.dailyValue,
+    item.deliveryRisk,
     item.status,
   ];
 }
@@ -401,6 +406,10 @@ function mapItem(row: ItemRow): StockWatchItem {
     orderValue: numOrNull(row.order_value),
     unitPriceNet: numOrNull(row.unit_price_net),
     dailyValue: numOrNull(row.daily_value),
+    deliveryRisk:
+      row.delivery_risk === "before_delivery" || row.delivery_risk === "before_next_delivery"
+        ? row.delivery_risk
+        : null,
     status: row.status as StockWatchStatus,
     computedAt: iso(row.computed_at) ?? "",
     supplierName: (row.supplier_name as string | null) ?? null,
@@ -472,6 +481,12 @@ export type StockWatchSupplierOrder = {
   historyFetchFailed: boolean;
   pendingIndividualsError: string | null;
   truncated: boolean;
+  /** Czas dostawy (dni kalendarzowe) i kolejne planowe zamówienie. */
+  leadDays: number | null;
+  leadSource: string | null;
+  leadSamples: number | null;
+  nextOrderDate: string | null;
+  nextOrderDays: number | null;
   computedAt: string;
 };
 
@@ -482,8 +497,10 @@ export async function upsertStockWatchSupplierOrder(
     `INSERT INTO stock_watch_supplier_orders
        (supplier_id, run_id, scope_mode, scope_id, dni_zapasu, data_od, data_do,
         line_count, zd_units_sum, order_value, unpriced_count, explode_bom_incomplete,
-        history_fetch_failed, pending_individuals_error, truncated, computed_at)
-     VALUES ($1, $2, $3, $4, $5, $6::date, $7::date, $8, $9, $10, $11, $12, $13, $14, $15, now())
+        history_fetch_failed, pending_individuals_error, truncated,
+        lead_days, lead_source, lead_samples, next_order_date, next_order_days, computed_at)
+     VALUES ($1, $2, $3, $4, $5, $6::date, $7::date, $8, $9, $10, $11, $12, $13, $14, $15,
+             $16, $17, $18, $19::date, $20, now())
      ON CONFLICT (supplier_id) DO UPDATE SET
        run_id = EXCLUDED.run_id,
        scope_mode = EXCLUDED.scope_mode,
@@ -499,6 +516,11 @@ export async function upsertStockWatchSupplierOrder(
        history_fetch_failed = EXCLUDED.history_fetch_failed,
        pending_individuals_error = EXCLUDED.pending_individuals_error,
        truncated = EXCLUDED.truncated,
+       lead_days = EXCLUDED.lead_days,
+       lead_source = EXCLUDED.lead_source,
+       lead_samples = EXCLUDED.lead_samples,
+       next_order_date = EXCLUDED.next_order_date,
+       next_order_days = EXCLUDED.next_order_days,
        computed_at = now()`,
     [
       row.supplierId,
@@ -516,6 +538,11 @@ export async function upsertStockWatchSupplierOrder(
       row.historyFetchFailed,
       row.pendingIndividualsError?.slice(0, 500) ?? null,
       row.truncated,
+      row.leadDays,
+      row.leadSource,
+      row.leadSamples,
+      row.nextOrderDate,
+      row.nextOrderDays,
     ]
   );
 }
@@ -543,6 +570,11 @@ export async function listStockWatchSupplierOrders(): Promise<StockWatchSupplier
     historyFetchFailed: row.history_fetch_failed === true,
     pendingIndividualsError: (row.pending_individuals_error as string | null) ?? null,
     truncated: row.truncated === true,
+    leadDays: numOrNull(row.lead_days),
+    leadSource: (row.lead_source as string | null) ?? null,
+    leadSamples: numOrNull(row.lead_samples),
+    nextOrderDate: dateKey(row.next_order_date),
+    nextOrderDays: numOrNull(row.next_order_days),
     computedAt: iso(row.computed_at) ?? "",
   }));
 }
@@ -658,4 +690,50 @@ export async function countZdIndexPendingPriceHarvest(): Promise<number> {
     `SELECT count(*)::text AS n FROM subiekt_zd_index WHERE price_harvested_at IS NULL`
   );
   return num(res.rows[0]?.n);
+}
+
+export type StockWatchOffPlanSupplier = {
+  supplierId: string;
+  supplierName: string;
+  /** Towary (Standard), które skończą się przed dostawą zamówienia złożonego dziś. */
+  count: number;
+  nextOrderDate: string | null;
+};
+
+/**
+ * „Zamów dziś poza planem” (panel dzienny): dostawcy bez planowego zamówienia
+ * na dziś, u których coś skończy się przed dostawą zamówienia złożonego dziś.
+ * Reguły „Wyklucz” / „Na prośbę” na żywo; wyniki starsze niż 2 dni pomijane.
+ */
+export async function listStockWatchOffPlanSuppliers(
+  todayKey: string
+): Promise<StockWatchOffPlanSupplier[]> {
+  const res = await query<{
+    supplier_id: string;
+    name: string;
+    n: string;
+    next_date: unknown;
+  }>(
+    `SELECT i.supplier_id, s.name, count(*)::text AS n, ss.computed_next_date AS next_date
+       FROM stock_watch_items i
+       JOIN suppliers s ON s.id = i.supplier_id
+       LEFT JOIN supplier_schedules ss ON ss.supplier_id = i.supplier_id
+       LEFT JOIN zd_estimate_exclusions e ON e.subiekt_tw_id = i.subiekt_tw_id
+       LEFT JOIN zd_estimate_on_request r ON r.subiekt_tw_id = i.subiekt_tw_id
+      WHERE i.delivery_risk = 'before_delivery'
+        AND e.subiekt_tw_id IS NULL
+        AND r.subiekt_tw_id IS NULL
+        AND i.computed_at > now() - interval '2 days'
+        AND COALESCE(s.is_active, true)
+        AND (ss.computed_next_date IS NULL OR ss.computed_next_date > $1::date)
+      GROUP BY i.supplier_id, s.name, ss.computed_next_date
+      ORDER BY count(*) DESC, s.name`,
+    [todayKey]
+  );
+  return res.rows.map((r) => ({
+    supplierId: r.supplier_id,
+    supplierName: r.name,
+    count: num(r.n),
+    nextOrderDate: dateKey(r.next_date),
+  }));
 }

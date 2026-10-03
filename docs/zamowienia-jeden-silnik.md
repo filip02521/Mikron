@@ -1,6 +1,6 @@
 # Zamówienia do dostawców — jeden silnik, jedno miejsce decyzji
 
-Status: zaakceptowany 2026-10-03. Etapy 1–2 wdrożone w PR #140 (silnik `src/lib/orders/zd-order-engine.ts` + `zd-order-list.ts`). Zastępuje kierunek „osobne szkice w panelu Braki”.
+Status: zaakceptowany 2026-10-03. Etapy 1–3 wdrożone w PR #140 (silnik `src/lib/orders/zd-order-engine.ts` + `zd-order-list.ts`). Zastępuje kierunek „osobne szkice w panelu Braki”.
 
 ## 1. Cel
 
@@ -40,23 +40,21 @@ bo w Subiekcie są tysiące starych, niezamawianych już towarów.
 - Historia ZD (`product_supplier_links`) może służyć tylko jako **podpowiedź** w obrębie przypisanych zakresów
   (np. „ten towar z Twojej grupy kupujesz od innego dostawcy”) — nigdy nie dokłada towarów spoza zakresów.
 
-### 3.3 Ile zamówić — horyzont pokrycia
+### 3.3 Ile zamówić — horyzont pokrycia (opcja „Do kolejnej dostawy”)
 
-Dla dostawcy:
+**Decyzja (2026-10-03):** horyzont to **opcja w Kreatorze, domyślnie wyłączona**. Bez niej Kreator liczy
+dokładnie jak wcześniej (dni zapasu z karty). Zaznaczenie przelicza listę; odznaczenie wraca do starego wzoru.
+Nocny przebieg i panel Braki liczą ilości bez opcji (zgodność z Kreatorem); czas dostawy służy tam tylko do sygnałów.
 
-- `L` — czas dostawy: 80. percentyl z `delivery_stats_samples` (zamówienia Główne, ostatnie 6 mies.), dni robocze przeliczone na kalendarzowe; brak próbek → wartość z karty dostawcy, a gdy jej brak → 7 dni.
-- `N` — dni do kolejnego planowego zamówienia (`computed_next_date`); dostawca „na żądanie” → 0.
-- `Z` — zapas z karty dostawcy (`stock_raw`, jak dziś).
+- `L` — czas dostawy: p90 z dostaw „Główne” (od 5 dostaw), inaczej p50, bez historii 7 dni; dni robocze → kalendarzowe
+  (weekendy, polskie święta). Te same kwantyle co w panelu dziennym.
+- `N` — dni do kolejnego planowego zamówienia **po dzisiejszym** (`computed_next_date`; gdy plan wypada dziś
+  lub jest zaległy — z interwału). Dostawca „na żądanie” → 0.
+- `Z` — zapas z karty dostawcy (minimum).
 
-**Horyzont `H = max(Z, N + L)`** — zamówienie musi wystarczyć co najmniej do przyjazdu kolejnej dostawy; polityka „zapasu” zostaje jako minimum.
-
-Dla towaru (sztuki):
-
-- `cel = rotacja × H + zapas bezpieczeństwa`, gdzie zapas bezpieczeństwa = `rotacja × (L80 − Lśr)` (niepewność czasu dostawy);
-- dalej **bez zmian względem kreatora**: korekta boost/cięcia, historia ostatniego ZD, minimum stanów, prośby handlowców, pary (paczka/sztuka), komplety BOM, wykluczenia, „na prośbę”;
-- `Do ZD = cel − dostępne − otwarte ZD` (ZK bez rezerwacji tylko informacyjnie), przeliczone na opakowania.
-
-Rotacja: jak w kreatorze (okno sprzedaży = dni zapasu), z dodatkowym wskaźnikiem trendu 30/60 dni tylko do podglądu.
+**`H = max(Z, N + L)`** — cel = rotacja × H; okno sprzedaży bez zmian. p90 już zawiera margines na wolniejsze
+dostawy, więc bez osobnego zapasu bezpieczeństwa (żeby nie liczyć niepewności dwa razy).
+Lokalnie opcja zmienia ilości u 5 z 52 dostawców (np. Amadar: dostawa ~26 d, kolejne zamówienie za 23 d → 3 → 14 pozycji).
 
 ### 3.4 Kiedy zamówić — sygnały radaru
 
@@ -89,7 +87,7 @@ Dostawca „na żądanie” — tylko sygnał „Pilne”, bez planowych.
 |---|---|---|
 | 1. Jeden silnik | Wydzielenie obliczeń kreatora do modułu serwerowego używanego przez Kreator i nocny przebieg; panel Braki pokazuje „Do ZD” z tego silnika; usunięcie szkiców i tworzenia ZD z panelu; „Przygotuj ZD” = otwarcie Kreatora | Dla 5 dostawców liczba w panelu = „Do ZD” w Kreatorze (ten sam dzień danych) |
 | 2. Porządek w zakresach ✅ | Tylko w obrębie przypisanych grup/cech. Indeks towar → grupa/cechy z Subiekta (nocą lub „Odśwież teraz”); podpowiedzi zakresów z historii ZD (pokrycie + czystość); kilka zakresów na dostawcę (Kreator i noc łączą w jedną listę); wspólne zakresy — przypisanie towaru do dostawcy; „Ostatnie ZD: …” w Kreatorze | Okno Zakresy pokazuje pokrycie i podpowiedzi; Kreator dla dostawcy wspólnego zakresu liczy właściwego dostawcę |
-| 3. Czas dostawy i harmonogram | `L`, `N`, horyzont `H`, zapas bezpieczeństwa; sygnały „Pilne” i „Przed kolejną dostawą”; sekcja w panelu dziennym | Dla dostawcy z próbkami H i sygnały zgodne z ręcznym wyliczeniem |
+| 3. Czas dostawy i harmonogram ✅ | Opcja „Do kolejnej dostawy” w Kreatorze (domyślnie wyłączona, przełącznik w formularzu i w pasku listy, pamiętana w sesji); sygnały „przed dostawą” / „przed kolejną dostawą” w panelu Braki; baner „Zamów dziś poza planem” w panelu dziennym | Horyzont zgodny z ręcznym wyliczeniem (testy); bez opcji ilości bez zmian |
 | 4. Gotowa lista w Kreatorze | Kreator otwiera się z listą z nocy + znacznik wieku danych; „Przelicz” na żywo | Otwarcie Ivoclar < 3 s zamiast minut |
 
 ## 5. Decyzje do potwierdzenia

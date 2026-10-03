@@ -34,6 +34,7 @@ function item(over: Partial<StockWatchItem>): StockWatchItem {
     orderValue: null,
     unitPriceNet: null,
     dailyValue: null,
+    deliveryRisk: null,
     status: "ok",
     computedAt: "2026-10-03T05:30:00Z",
     supplierName: "Dostawca 1",
@@ -63,6 +64,11 @@ function order(over: Partial<StockWatchSupplierOrder>): StockWatchSupplierOrder 
     historyFetchFailed: false,
     pendingIndividualsError: null,
     truncated: false,
+    leadDays: 7,
+    leadSource: "p90",
+    leadSamples: 6,
+    nextOrderDate: "2026-10-20",
+    nextOrderDays: 17,
     computedAt: "2026-10-03T05:30:00Z",
     ...over,
   };
@@ -133,6 +139,54 @@ describe("buildStockWatchDashboard", () => {
 
   it("zdrowie liczone tylko ze Standard z rotacją, towar raz", () => {
     expect(d.health).toEqual({ score: 25, active: 4, ok: 1 });
-    expect(d.counts).toEqual({ outOfStock: 1, critical: 1, warning: 1, ok: 1, noSales: 0 });
+    expect(d.counts).toEqual({
+      outOfStock: 1,
+      critical: 1,
+      warning: 1,
+      ok: 1,
+      noSales: 0,
+      beforeDelivery: 0,
+      beforeNextDelivery: 0,
+    });
+  });
+});
+
+describe("buildStockWatchDashboard — czas dostawy", () => {
+  const items = [
+    // W normie wg celu, ale skończy się przed dostawą zamówienia złożonego dziś.
+    item({ subiektTwId: 1, status: "ok", deliveryRisk: "before_delivery", daysOfCover: 5 }),
+    item({ subiektTwId: 2, status: "ok", deliveryRisk: "before_next_delivery", daysOfCover: 20 }),
+    item({ subiektTwId: 3, status: "ok", rule: "excluded", deliveryRisk: "before_delivery" }),
+  ];
+  const d = buildStockWatchDashboard(items, [order({ supplierId: "s1" })]);
+
+  it("sygnał przed dostawą trafia do alertów i liczników (tylko Standard)", () => {
+    expect(d.alerts.map((a) => a.subiektTwId)).toEqual([1]);
+    expect(d.counts).toEqual(expect.objectContaining({ beforeDelivery: 1, beforeNextDelivery: 1 }));
+  });
+
+  it("dostawca z ryzykiem widoczny mimo pustej listy Do ZD, z danymi dostawy", () => {
+    expect(d.proposals[0]).toEqual(
+      expect.objectContaining({
+        supplierId: "s1",
+        lineCount: 0,
+        beforeDeliveryCount: 1,
+        beforeNextDeliveryCount: 1,
+        leadDays: 7,
+        nextOrderDays: 17,
+      })
+    );
+  });
+});
+
+describe("buildStockWatchDashboard — limit czerwonej strefy", () => {
+  it("„przed dostawą” ma własny limit — nie wypierają go setki braków", () => {
+    const outs = Array.from({ length: 61 }, (_, i) =>
+      item({ subiektTwId: 100 + i, status: "out_of_stock", daysOfCover: 0 })
+    );
+    const risk = item({ subiektTwId: 999, status: "ok", deliveryRisk: "before_delivery", daysOfCover: 3 });
+    const d = buildStockWatchDashboard([...outs, risk], []);
+    expect(d.alerts).toHaveLength(61);
+    expect(d.alerts.some((a) => a.subiektTwId === 999)).toBe(true);
   });
 });

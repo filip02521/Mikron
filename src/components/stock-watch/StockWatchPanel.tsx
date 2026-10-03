@@ -66,6 +66,11 @@ const dateTimeFormatter = new Intl.DateTimeFormat("pl-PL", {
   timeZone: "Europe/Warsaw",
 });
 
+function formatShortDate(key: string): string {
+  const [, m, d] = key.split("-");
+  return m && d ? `${d}.${m}` : key;
+}
+
 function formatWhen(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -118,7 +123,7 @@ export function StockWatchPanel({
     {
       id: "alerts",
       label: "Krytyczne",
-      count: dashboard.counts.outOfStock + dashboard.counts.critical,
+      count: dashboard.alerts.length,
       tone: "danger",
     },
     { id: "suppliers", label: "Do ZD po dostawcach", count: dashboard.proposals.length },
@@ -306,7 +311,7 @@ function OverviewBand({
         <div className="flex shrink-0 justify-center md:w-48 md:border-r md:border-slate-100 md:pr-5">
           <StockHealthGauge score={health.score} active={health.active} ok={health.ok} />
         </div>
-        <div className="grid flex-1 grid-cols-2 gap-2.5 lg:grid-cols-4">
+        <div className="grid flex-1 grid-cols-2 gap-2.5 lg:grid-cols-5">
           <PanelSummaryMetric
             label="Brak towaru"
             value={counts.outOfStock}
@@ -319,6 +324,13 @@ function OverviewBand({
             value={counts.critical}
             hint="Przy obecnym tempie sprzedaży"
             tone={counts.critical > 0 ? "danger" : "success"}
+            onClick={() => onJump("alerts")}
+          />
+          <PanelSummaryMetric
+            label="Przed dostawą"
+            value={counts.beforeDelivery}
+            hint="Jeszcze jest, ale skończy się, zanim przyjedzie zamówienie złożone dziś"
+            tone={counts.beforeDelivery > 0 ? "danger" : "success"}
             onClick={() => onJump("alerts")}
           />
           <PanelSummaryMetric
@@ -394,7 +406,11 @@ function ProductCell({ row }: { row: Pick<StockWatchRowView, "twSymbol" | "twNaz
   );
 }
 
-function CoverChip({ row }: { row: Pick<StockWatchRowView, "daysOfCover" | "status" | "runOutDate"> }) {
+function CoverChip({
+  row,
+}: {
+  row: Pick<StockWatchRowView, "daysOfCover" | "status" | "runOutDate" | "deliveryRisk">;
+}) {
   const meta = STOCK_WATCH_STATUS_META[row.status];
   const runOut = formatRunOutDate(row.runOutDate);
   return (
@@ -405,7 +421,26 @@ function CoverChip({ row }: { row: Pick<StockWatchRowView, "daysOfCover" | "stat
       {runOut && row.status !== "out_of_stock" ? (
         <span className="text-[11px] text-slate-500">koniec ok. {runOut}</span>
       ) : null}
+      {row.deliveryRisk ? <DeliveryRiskTag risk={row.deliveryRisk} /> : null}
     </div>
+  );
+}
+
+function DeliveryRiskTag({ risk }: { risk: NonNullable<StockWatchRowView["deliveryRisk"]> }) {
+  return risk === "before_delivery" ? (
+    <span
+      className="rounded bg-red-50 px-1.5 text-[10px] font-semibold text-red-700 ring-1 ring-red-200"
+      title="Przy obecnym tempie sprzedaży (z towarem w drodze) skończy się, zanim przyjedzie zamówienie złożone dziś."
+    >
+      przed dostawą
+    </span>
+  ) : (
+    <span
+      className="rounded bg-amber-50 px-1.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200"
+      title="Skończy się przed dostawą z kolejnego planowego zamówienia — warto zamówić wcześniej."
+    >
+      przed kolejną dostawą
+    </span>
   );
 }
 
@@ -455,15 +490,21 @@ function AlertsSection({
   canMutate: boolean;
   onError: (message: string) => void;
 }) {
-  const [filter, setFilter] = useState<"all" | "out_of_stock" | "critical">("all");
-  const visible = rows.filter((r) => filter === "all" || r.status === filter);
+  const [filter, setFilter] = useState<"all" | "out_of_stock" | "critical" | "before_delivery">("all");
+  const visible = rows.filter((r) =>
+    filter === "all"
+      ? true
+      : filter === "before_delivery"
+        ? r.deliveryRisk === "before_delivery"
+        : r.status === filter
+  );
   if (rows.length === 0) {
     return (
       <Card>
         <EmptyState
           icon={<IconAlertCircle size={26} strokeWidth={1.75} />}
           title="Brak krytycznych braków"
-          description="Żaden aktywny towar nie skończy się w ciągu 48 h. Towary poniżej celu zapasu znajdziesz w zakładce „Do ZD po dostawcach”."
+          description="Żaden aktywny towar nie skończy się w ciągu 48 h ani przed dostawą zamówienia złożonego dziś. Towary poniżej celu zapasu znajdziesz w zakładce „Do ZD po dostawcach”."
         />
       </Card>
     );
@@ -478,7 +519,7 @@ function AlertsSection({
           <div>
             <h2 className="text-sm font-semibold text-red-950">Czerwona strefa</h2>
             <p className="text-xs text-red-900/70">
-              Najpierw brak, potem ≤ 48 h — w kolejności dziennej wartości sprzedaży.
+              Brak, ≤ 48 h i „przed dostawą” (skończy się, zanim przyjedzie zamówienie złożone dziś).
             </p>
           </div>
         </div>
@@ -491,6 +532,7 @@ function AlertsSection({
             { value: "all", label: `Wszystkie (${rows.length})` },
             { value: "out_of_stock", label: "Brak" },
             { value: "critical", label: "≤ 48 h" },
+            { value: "before_delivery", label: "Przed dostawą" },
           ]}
         />
       </div>
@@ -633,6 +675,11 @@ function SupplierProposalCard({
   canMutate: boolean;
 }) {
   const urgent = p.outOfStockCount + p.criticalCount;
+  // Opcja „Do kolejnej dostawy” zmienia ilości tylko, gdy dni do kolejnego
+  // zamówienia + dostawa przekraczają zapas z karty (inaczej lista już wystarcza).
+  const horizonExtends =
+    p.leadDays != null && p.nextOrderDays != null && p.nextOrderDays + p.leadDays > p.dniZapasu;
+  const hasDeliveryRisk = p.beforeDeliveryCount > 0 || p.beforeNextDeliveryCount > 0;
   return (
     <Card
       padding={false}
@@ -665,6 +712,28 @@ function SupplierProposalCard({
       <p className="mt-0.5 text-[11px] text-slate-500">
         Zapas {p.dniZapasu} dni · sprzedaż {p.dataOd} – {p.dataDo} · policzono {formatWhen(p.computedAt)}
       </p>
+      {p.leadDays != null ? (
+        <p className="mt-0.5 text-[11px] text-slate-500" title="Czas dostawy z historii dostaw (9 na 10 dostaw), kolejne zamówienie z harmonogramu">
+          Dostawa ~{p.leadDays} d
+          {p.leadSource === "default" ? " (założenie)" : ""} ·{" "}
+          {p.nextOrderDate
+            ? `kolejne zamówienie ${formatShortDate(p.nextOrderDate)} (za ${p.nextOrderDays} d)`
+            : "na żądanie"}
+        </p>
+      ) : null}
+      {p.beforeDeliveryCount > 0 || p.beforeNextDeliveryCount > 0 ? (
+        <p className="mt-1.5 rounded-md bg-red-50/70 px-2 py-1 text-[11px] leading-snug text-red-900">
+          {p.beforeDeliveryCount > 0 ? (
+            <strong>{p.beforeDeliveryCount} skończy się przed dostawą zamówienia złożonego dziś. </strong>
+          ) : null}
+          {p.beforeNextDeliveryCount > 0
+            ? `${p.beforeNextDeliveryCount} przed dostawą z kolejnego zamówienia. `
+            : ""}
+          {horizonExtends
+            ? `Zapas ${p.dniZapasu} d nie wystarczy do kolejnej dostawy (${(p.nextOrderDays ?? 0) + (p.leadDays ?? 0)} d) — w Kreatorze zaznacz „Do kolejnej dostawy”.`
+            : "Zapas z karty wystarcza do kolejnej dostawy — zamów dziś, nie czekaj na termin z planu."}
+        </p>
+      ) : null}
       {p.unpricedCount > 0 ? (
         <p className="mt-0.5 text-[11px] text-slate-500">
           {p.unpricedCount} {p.unpricedCount === 1 ? "pozycja" : "pozycji"} bez ceny z ZD — poza wartością
@@ -691,14 +760,25 @@ function SupplierProposalCard({
         </ul>
       ) : null}
 
-      <div className="mt-auto pt-4">
+      <div className="mt-auto space-y-1.5 pt-4">
         {canMutate ? (
-          <Link
-            href={buildZdEstimateLaunchHref(p.supplierId)}
-            className="inline-flex h-10 w-full items-center justify-center rounded-md bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-          >
-            Przygotuj ZD
-          </Link>
+          <>
+            <Link
+              href={buildZdEstimateLaunchHref(p.supplierId)}
+              className="inline-flex h-10 w-full items-center justify-center rounded-md bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+            >
+              Przygotuj ZD
+            </Link>
+            {hasDeliveryRisk && horizonExtends ? (
+              <Link
+                href={buildZdEstimateLaunchHref(p.supplierId, { leadTimeHorizon: true })}
+                className="inline-flex h-9 w-full items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-[13px] font-medium text-slate-800 transition-colors hover:bg-slate-50"
+                title="Otwiera Kreator z zaznaczoną opcją „Do kolejnej dostawy” — możesz ją odznaczyć"
+              >
+                Przygotuj ZD do kolejnej dostawy
+              </Link>
+            ) : null}
+          </>
         ) : null}
       </div>
     </Card>
