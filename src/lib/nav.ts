@@ -34,6 +34,7 @@ export type NavIconKey =
   | "phone"
   | "truck"
   | "zdCreator"
+  | "stockWatch"
   | "customs"
   | "mail";
 
@@ -398,6 +399,16 @@ function operationsOrderingItems(role: UserRole): NavItem[] {
       description: "Lista do zamówienia z grupy",
       icon: "zdCreator",
       tone: "violet",
+      tier: "primary",
+      mobileSlot: "overflow",
+    });
+    items.push({
+      href: "/zakupy/braki",
+      label: "Braki i zamówienia",
+      mobileLabel: "Braki",
+      description: "Rotacja, alerty i propozycje",
+      icon: "stockWatch",
+      tone: "orange",
       tier: "primary",
       mobileSlot: "overflow",
     });
@@ -1047,6 +1058,8 @@ export function pageTitle(pathname: string): string {
   if (pathname.startsWith("/zakupy/gadki")) return "Magazyn Gądki";
   if (pathname.startsWith("/zakupy/odprawy")) return "Odprawy celne";
   if (pathname.startsWith("/zakupy/szacunek")) return "Kreator ZD";
+  if (pathname.startsWith("/zakupy/braki/szkic")) return "Szkic zamówienia";
+  if (pathname.startsWith("/zakupy/braki")) return "Braki i zamówienia";
   if (pathname.startsWith("/zakupy/raporty-ivoclar")) return "Raporty Ivoclar (przeniesione)";
   if (pathname === "/urlopy" || pathname.startsWith("/urlopy/")) {
     return "Urlopy działu";
