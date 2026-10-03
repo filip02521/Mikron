@@ -16,7 +16,7 @@ export const INFORMACJA_FLOW_PICKER_SECTION = {
 /** Panel dzienny → Nowa prośba — dodatkowa ścieżka „najpierw zamówienie u dostawcy”. */
 export const INFORMACJA_FLOW_PICKER_SECTION_DAILY = {
   title: INFORMACJA_FLOW_PICKER_SECTION.title,
-  hint: "Stan na naszym magazynie, zamówienie u dostawcy albo sygnał o braku na stanie — wybierz jedną opcję.",
+  hint: "Stan na naszym magazynie, zamówienie u dostawcy albo sygnał o braku na stanie - wybierz jedną opcję.",
 } as const;
 
 export type InformacjaFlowUiTone = "amber" | "indigo" | "violet";
@@ -77,11 +77,11 @@ export function informacjaFlowUiForPath(path: InformacjaFlowPath): InformacjaFlo
 export function informacjaProductsFormHint(path: InformacjaFlowPath): string {
   switch (path) {
     case "stock_out":
-      return "Wystarczy nazwa lub symbol — bez ilości. Sygnał trafi do panelu Dziś (Prośby handlowców), bez wpisu w „Moje zamówienia”.";
+      return "Wystarczy nazwa lub symbol - bez ilości. Sygnał trafi do panelu Dziś (Prośby handlowców), bez wpisu w „Moje zamówienia”.";
     case "via_panel":
-      return "Wystarczy nazwa lub symbol — bez ilości. Najpierw zamówienie u dostawcy, potem magazyn wyśle e-mail po przyjęciu towaru.";
+      return "Wystarczy nazwa lub symbol - bez ilości. Najpierw zamówienie u dostawcy, potem magazyn wyśle e-mail po przyjęciu towaru.";
     default:
-      return "Wystarczy nazwa lub symbol — bez ilości. To nie zapytanie u dostawcy: obserwujemy stan magazynowy i powiadomimy e-mailem, gdy towar się pojawi.";
+      return "Wystarczy nazwa lub symbol - bez ilości. To nie zapytanie u dostawcy: obserwujemy stan magazynowy i powiadomimy e-mailem, gdy towar się pojawi.";
   }
 }
 
@@ -92,31 +92,31 @@ export function informacjaReadinessSubline(
   if (bannerKind === "complete") {
     switch (path) {
       case "stock_out":
-        return "Kompletne — sygnał trafi do panelu Dziś (Prośby handlowców). Nie zobaczysz go w „Moje zamówienia”.";
+        return "Kompletne - sygnał trafi do panelu Dziś (Prośby handlowców). Nie zobaczysz go w „Moje zamówienia”.";
       case "via_panel":
-        return "Kompletne — najpierw Prośby handlowców, potem magazyn.";
+        return "Kompletne - najpierw Prośby handlowców, potem magazyn.";
       default:
-        return "Kompletne — trafi do kolejki magazynu (powiadomienie, gdy towar pojawi się na stanie).";
+        return "Kompletne - trafi do kolejki magazynu (powiadomienie, gdy towar pojawi się na stanie).";
     }
   }
   switch (path) {
     case "stock_out":
-      return "Po wysłaniu sygnał trafi wyłącznie do działu zakupów w panelu Dziś — bez wpisu w „Moje zamówienia”.";
+      return "Po wysłaniu sygnał trafi wyłącznie do działu zakupów w panelu Dziś - bez wpisu w „Moje zamówienia”.";
     case "via_panel":
       return "Po wysłaniu najpierw Prośby handlowców (Główne/Uzupełniające), potem magazyn.";
     default:
-      return "Po wysłaniu obserwujemy stan magazynowy — e-mail, gdy towar się pojawi (bez zapytania u dostawcy).";
+      return "Po wysłaniu obserwujemy stan magazynowy - e-mail, gdy towar się pojawi (bez zapytania u dostawcy).";
   }
 }
 
 export function informacjaSalesFooterNote(path: InformacjaFlowPath): string {
   if (path === "stock_out") {
-    return "Sygnał trafia wyłącznie do działu zakupów — bez wpisu w „Moje zamówienia”.";
+    return "Sygnał trafia wyłącznie do działu zakupów - bez wpisu w „Moje zamówienia”.";
   }
   if (path === "via_panel") {
-    return "Najpierw zamówienie u dostawcy — e-mail po sprawdzeniu na magazynie.";
+    return "Najpierw zamówienie u dostawcy - e-mail po sprawdzeniu na magazynie.";
   }
-  return "Powiadomimy e-mailem, gdy towar pojawi się na magazynie — bez zapytania u dostawcy.";
+  return "Powiadomimy e-mailem, gdy towar pojawi się na magazynie - bez zapytania u dostawcy.";
 }
 
 export const INFORMACJA_FLOW_CARD_STYLES: Record<

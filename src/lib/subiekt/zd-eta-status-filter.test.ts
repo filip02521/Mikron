@@ -55,12 +55,12 @@ describe("ZD ETA status filter", () => {
     expect(shouldSkipZdListItemForEta({ dok_Status: 8 })).toBe(true);
   });
 
-  it("bez statusu w liście API — nie pomija (weryfikacja po pełnym dokumencie)", () => {
+  it("bez statusu w liście API - nie pomija (weryfikacja po pełnym dokumencie)", () => {
     expect(shouldSkipZdListItemForEta({ dok_Status: null })).toBe(false);
     expect(shouldSkipZdListItemForEta({ dok_Status: undefined })).toBe(false);
   });
 
-  it("bez statusu w dokumencie — wymaga terminu ≥ dziś", () => {
+  it("bez statusu w dokumencie - wymaga terminu ≥ dziś", () => {
     expect(
       isActiveZdFulfillmentDocument({ dok_TerminRealizacji: "2026-07-15" }, at)
     ).toBe(true);

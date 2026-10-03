@@ -19,7 +19,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input, Select, fieldControlClass } from "@/components/ui/Field";
 
 function formatDate(value: string | null): string {
-  if (!value) return "—";
+  if (!value) return "-";
   const [y, m, d] = value.slice(0, 10).split("-");
   return `${d}.${m}.${y}`;
 }
@@ -158,7 +158,7 @@ export function CustomsClearanceListClient({
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Dostawca (import)">
               <Select value={supplierId} onChange={(e) => void onSupplierChange(e.target.value)}>
-                <option value="">— wybierz —</option>
+                <option value="">- wybierz -</option>
                 {suppliers.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -172,7 +172,7 @@ export function CustomsClearanceListClient({
               state={zdMessage && !zds.length ? "warning" : "default"}
             >
               <Select value={zdId} onChange={(e) => setZdId(e.target.value)} disabled={!zds.length}>
-                <option value="">— bez ZD —</option>
+                <option value="">- bez ZD -</option>
                 {zds.map((z) => (
                   <option key={z.id} value={z.id}>
                     {z.number} · {formatDate(z.date)}
@@ -203,7 +203,7 @@ export function CustomsClearanceListClient({
               />
             </Field>
             <Field
-              label={aiEnabled ? "Plik faktury — Excel, CSV, PDF lub skan" : "Plik faktury — Excel lub CSV"}
+              label={aiEnabled ? "Plik faktury - Excel, CSV, PDF lub skan" : "Plik faktury - Excel lub CSV"}
               hint={
                 aiReading
                   ? "Czytam plik… (PDF / skan przez AI do 2 minut)"
@@ -233,7 +233,7 @@ export function CustomsClearanceListClient({
             </Field>
             <Field
               label="Pozycje z faktury (opcjonalnie)"
-              hint="Skopiuj z Excela / PDF: kod ⇥ nazwa ⇥ ilość ⇥ cena — jedna pozycja na wiersz. Gdy puste, pozycje bierzemy z ZD."
+              hint="Skopiuj z Excela / PDF: kod ⇥ nazwa ⇥ ilość ⇥ cena - jedna pozycja na wiersz. Gdy puste, pozycje bierzemy z ZD."
               className="sm:col-span-2"
             >
               <textarea

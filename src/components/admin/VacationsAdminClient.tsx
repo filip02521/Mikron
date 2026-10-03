@@ -59,7 +59,7 @@ function buildVacationSuccessToast(result: Awaited<ReturnType<typeof actionUpser
   const parts: string[] = [];
   if (result.active) {
     parts.push(
-      `Urlop zapisany — przeliczono harmonogram${result.processed === 1 ? "" : "y"} (${result.processed} dostawc${result.processed === 1 ? "y" : "ów"}).`
+      `Urlop zapisany - przeliczono harmonogram${result.processed === 1 ? "" : "y"} (${result.processed} dostawc${result.processed === 1 ? "y" : "ów"}).`
     );
     if (result.nextDate) {
       parts.push(
@@ -71,7 +71,7 @@ function buildVacationSuccessToast(result: Awaited<ReturnType<typeof actionUpser
     }
   } else {
     parts.push(
-      `Urlop wyłączony — przeliczono harmonogram${result.processed === 1 ? "" : "y"} (${result.processed} dostawc${result.processed === 1 ? "y" : "ów"}).`
+      `Urlop wyłączony - przeliczono harmonogram${result.processed === 1 ? "" : "y"} (${result.processed} dostawc${result.processed === 1 ? "y" : "ów"}).`
     );
   }
   if (result.syncErrors.length) {
@@ -131,7 +131,7 @@ function VacationRowsTable({
   return (
     <>
       <div
-        className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(88px,120px))_minmax(88px,100px)_minmax(88px,120px)] md:gap-3 lg:px-5"
+        className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold text-slate-500 md:grid md:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(88px,120px))_minmax(88px,100px)_minmax(88px,120px)] md:gap-3 lg:px-5"
         aria-hidden
       >
         <span>Dostawca</span>
@@ -144,7 +144,7 @@ function VacationRowsTable({
       <ul className="divide-y divide-slate-100">
         {rows.map((v) => {
           const isEditing = formOpen && form.id === v.id;
-          const name = v.suppliers?.name ?? "—";
+          const name = v.suppliers?.name ?? "-";
           const canDelete =
             allowDelete &&
             onDelete &&
@@ -439,7 +439,7 @@ export function VacationsAdminClient({
         <ActionLoadingOverlay
           variant="viewport"
           message={pendingMessage}
-          hint="Zapis w bazie i przeliczanie terminów — panel dzienny i zamówienia uwzględnią urlop automatycznie"
+          hint="Zapis w bazie i przeliczanie terminów - panel dzienny i zamówienia uwzględnią urlop automatycznie"
         />
       ) : null}
 
@@ -450,7 +450,7 @@ export function VacationsAdminClient({
         title="Usunąć wpis urlopu?"
         message={
           deleteTarget
-            ? `Trwale usuniesz nieaktywny urlop ${deleteTarget.suppliers?.name ?? ""} (${formatPlDate(deleteTarget.start_date)} – ${formatPlDate(deleteTarget.end_date)}). Harmonogram dostawcy zostanie przeliczony.`
+            ? `Trwale usuniesz nieaktywny urlop ${deleteTarget.suppliers?.name ?? ""} (${formatPlDate(deleteTarget.start_date)} - ${formatPlDate(deleteTarget.end_date)}). Harmonogram dostawcy zostanie przeliczony.`
             : ""
         }
         confirmLabel="Usuń"
@@ -531,7 +531,7 @@ export function VacationsAdminClient({
           title={`Aktywne urlopy (${activeRows.length})`}
           description="Kliknij wiersz lub Edytuj, aby zmienić okres. Po zapisie system przelicza terminy."
           action={
-            <Field label="Sortuj" labelClassName="text-[10px] uppercase tracking-wide text-slate-500">
+            <Field label="Sortuj" labelClassName="text-[10px] text-slate-500">
               <Select
                 value={`${sortState.field}-${sortState.direction}`}
                 onChange={(e) => {
@@ -573,9 +573,9 @@ export function VacationsAdminClient({
             inset
             density="compact"
             title={`Wyłączone (przyszłe) (${scheduledRows.length})`}
-            description="Zapisane okresy bez wpływu na harmonogram — można je ponownie włączyć."
+            description="Zapisane okresy bez wpływu na harmonogram - można je ponownie włączyć."
             action={
-              <Field label="Sortuj" labelClassName="text-[10px] uppercase tracking-wide text-slate-500">
+              <Field label="Sortuj" labelClassName="text-[10px] text-slate-500">
                 <Select
                   value={`${sortState.field}-${sortState.direction}`}
                   onChange={(e) => {
@@ -635,7 +635,7 @@ export function VacationsAdminClient({
             <p className="pb-2 text-xs text-slate-500">
               Zakończone wpisy można edytować albo trwale usunąć, żeby uporządkować listę.
             </p>
-            <Field label="Sortuj" labelClassName="text-[10px] uppercase tracking-wide text-slate-500">
+            <Field label="Sortuj" labelClassName="text-[10px] text-slate-500">
               <Select
                 value={`${sortState.field}-${sortState.direction}`}
                 onChange={(e) => {

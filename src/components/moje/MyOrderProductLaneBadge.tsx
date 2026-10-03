@@ -56,7 +56,7 @@ export function MyOrderProductLaneBadge({
         laneKind === "mixed"
           ? "Prośba zawiera zęby syntetyczne i inny towar"
           : laneKind === "teeth"
-            ? "Pozycja zębowa — panel zębów"
+            ? "Pozycja zębowa - panel zębów"
             : undefined
       }
     >

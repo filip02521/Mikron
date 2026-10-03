@@ -72,7 +72,7 @@ const SECTION_LABELS: Record<EntryTier, string> = {
 
 const tierCardClass: Record<EntryTier, string> = {
   highlight:
-    "rounded-md border border-indigo-200/70 bg-gradient-to-b from-indigo-50/40 to-white px-5 py-4 shadow-sm shadow-indigo-100/30",
+    "rounded-md border border-indigo-200/70 bg-indigo-50/40 px-5 py-4 shadow-sm ",
   normal:
     "rounded-md border border-slate-200/80 bg-white px-4 py-3 shadow-[var(--shadow-card)]",
   minor:
@@ -92,9 +92,9 @@ const tierDescClass: Record<EntryTier, string> = {
 };
 
 const tierBadgeClass: Record<EntryTier, string> = {
-  highlight: "rounded-full px-2.5 py-0.5 text-xs font-semibold",
-  normal: "rounded-full px-2 py-0.5 text-[11px] font-semibold",
-  minor: "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+  highlight: "rounded-md px-2.5 py-0.5 text-xs font-semibold",
+  normal: "rounded-md px-2 py-0.5 text-[11px] font-semibold",
+  minor: "rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
 };
 
 const tierLinkClass: Record<EntryTier, string> = {
@@ -188,9 +188,9 @@ export function ChangelogModal({
       }
     >
       {/* Branded header */}
-      <header className="shrink-0 border-b border-indigo-100/80 bg-gradient-to-b from-indigo-50/50 to-white px-5 py-5 sm:px-6">
+      <header className="shrink-0 border-b border-indigo-100/80 bg-indigo-50/50 px-5 py-5 sm:px-6">
         <div className="flex items-start gap-3.5">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-indigo-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30">
             <IconSparkles className="h-5.5 w-5.5" />
           </div>
           <div className="min-w-0 flex-1">
@@ -215,7 +215,7 @@ export function ChangelogModal({
           <>
             {highlights.length > 0 && (
               <section className="space-y-2.5">
-                <h4 className="text-[11px] font-semibold uppercase tracking-wide text-indigo-700">
+                <h4 className="text-[11px] font-semibold text-indigo-700">
                   {SECTION_LABELS.highlight}
                 </h4>
                 {highlights.map((entry) => (
@@ -236,7 +236,7 @@ export function ChangelogModal({
                 {highlights.length > 0 && (
                   <div className="border-t border-slate-100" />
                 )}
-                <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                <h4 className="text-[11px] font-semibold text-slate-600">
                   {SECTION_LABELS.normal}
                 </h4>
                 <div className="space-y-2">
@@ -259,7 +259,7 @@ export function ChangelogModal({
                 {(highlights.length > 0 || normals.length > 0) && (
                   <div className="border-t border-slate-100" />
                 )}
-                <h4 className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                <h4 className="text-[11px] font-semibold text-slate-400">
                   {SECTION_LABELS.minor}
                 </h4>
                 <div className="space-y-1.5">

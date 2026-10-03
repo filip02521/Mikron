@@ -27,7 +27,7 @@ describe("buildProsbaLineStockStatusView", () => {
     ).toBeNull();
   });
 
-  it("wystarczający stan — ton amber", () => {
+  it("wystarczający stan - ton amber", () => {
     const view = buildProsbaLineStockStatusView(
       line({
         stockSource: "subiekt",
@@ -43,7 +43,7 @@ describe("buildProsbaLineStockStatusView", () => {
     expect(view?.shortLabel).toContain("10 szt.");
   });
 
-  it("częściowy stan — ton sky", () => {
+  it("częściowy stan - ton sky", () => {
     const view = buildProsbaLineStockStatusView(
       line({
         stockSource: "subiekt",
@@ -59,7 +59,7 @@ describe("buildProsbaLineStockStatusView", () => {
     expect(view?.title).toContain("Częściowy");
   });
 
-  it("brak stanu — ton slate", () => {
+  it("brak stanu - ton slate", () => {
     const view = buildProsbaLineStockStatusView(
       line({
         stockSource: "subiekt",
@@ -74,7 +74,7 @@ describe("buildProsbaLineStockStatusView", () => {
     expect(view?.tone).toBe("slate");
   });
 
-  it("wystarczający stan z rezerwacją — pokazuje rezerwację w detail i shortLabel", () => {
+  it("wystarczający stan z rezerwacją - pokazuje rezerwację w detail i shortLabel", () => {
     const view = buildProsbaLineStockStatusView(
       line({
         stockSource: "subiekt",
@@ -91,7 +91,7 @@ describe("buildProsbaLineStockStatusView", () => {
     expect(view?.shortLabel).toContain("−3 rez.");
   });
 
-  it("częściowy stan z rezerwacją — pokazuje rezerwację w detail i shortLabel", () => {
+  it("częściowy stan z rezerwacją - pokazuje rezerwację w detail i shortLabel", () => {
     const view = buildProsbaLineStockStatusView(
       line({
         stockSource: "subiekt",

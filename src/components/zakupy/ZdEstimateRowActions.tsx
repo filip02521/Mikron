@@ -135,7 +135,7 @@ export function ZdEstimateRowActions({
                 Dołącz mimo auto
               </span>
               <span className="mt-0.5 block text-[11px] font-normal leading-snug text-slate-400">
-                Tylko ta sesja / lista — znika po Policz
+                Tylko ta sesja / lista - znika po Policz
               </span>
             </OverflowMenuItem>
           ) : null}

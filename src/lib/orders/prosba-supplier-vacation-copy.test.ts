@@ -69,7 +69,7 @@ describe("buildProsbaSupplierVacationNoticeModel", () => {
     ]);
     expect(model?.title).toBe(PROSBA_SUPPLIER_VACATION_COPY.titleOne);
     expect(model?.description).toContain("Alpha");
-    expect(model?.description).toContain("1.08–15.08");
+    expect(model?.description).toContain("1.08-15.08");
     expect(model?.description).toContain(
       PROSBA_SUPPLIER_VACATION_COPY.canStillSubmit
     );
@@ -82,7 +82,7 @@ describe("buildProsbaSupplierVacationNoticeModel", () => {
     ]);
     expect(model?.title).toBe(PROSBA_SUPPLIER_VACATION_COPY.titleMany);
     expect(model?.description).toContain("Alpha i Beta");
-    expect(model?.description).toContain("1.08–15.08");
+    expect(model?.description).toContain("1.08-15.08");
   });
 
   it("wielu z różnymi okresami", () => {

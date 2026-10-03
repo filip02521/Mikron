@@ -28,7 +28,7 @@ export function VerificationPendingBanner({
     <div
       role="alert"
       className={cn(
-        "relative overflow-hidden rounded-lg border border-amber-300/90 bg-gradient-to-br from-amber-50 via-white to-amber-50/50 shadow-[var(--shadow-card-elevated)] ring-1 ring-amber-200/80",
+        "relative overflow-hidden rounded-lg border border-amber-300/90 bg-amber-50 shadow-[var(--shadow-card-elevated)] ring-1 ring-amber-200/80",
         className
       )}
     >
@@ -37,13 +37,13 @@ export function VerificationPendingBanner({
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute bottom-0 left-0 h-1 w-full bg-gradient-to-r from-amber-400 via-amber-300 to-amber-200"
+        className="pointer-events-none absolute bottom-0 left-0 h-1 w-full bg-amber-400"
         aria-hidden
       />
 
       <div className="relative flex flex-col gap-4 p-4 sm:flex-row sm:items-stretch sm:gap-5 sm:p-5">
         <SectionHeadingIcon
-          tileClassName="h-14 w-14 rounded-md bg-amber-100 text-amber-800 shadow-inner shadow-amber-900/5"
+          tileClassName="h-14 w-14 rounded-md bg-amber-100 text-amber-800 shadow-inner "
           className="self-start sm:self-center"
         >
           <IconClipboardPen size={28} />
@@ -52,7 +52,7 @@ export function VerificationPendingBanner({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <span
-              className="inline-flex min-w-[2rem] items-center justify-center rounded-full bg-amber-500 px-2.5 py-0.5 text-sm font-bold tabular-nums text-white shadow-sm"
+              className="inline-flex min-w-[2rem] items-center justify-center rounded-md bg-amber-500 px-2.5 py-0.5 text-sm font-bold tabular-nums text-white shadow-sm"
               aria-hidden
             >
               {count}
@@ -62,7 +62,7 @@ export function VerificationPendingBanner({
             </p>
           </div>
           <p className="mt-2 text-sm leading-relaxed text-amber-900/90">
-            Handlowiec przekazał niekompletne prośby — brakuje m.in. dostawcy, opisu lub ilości.
+            Handlowiec przekazał niekompletne prośby - brakuje m.in. dostawcy, opisu lub ilości.
             Uzupełnij i zapisz tutaj (lub anuluj, jeśli nie da się zrealizować). Dopiero potem
             obsłużysz je w panelu jako{" "}
             <span className="font-medium text-amber-950">Główne</span> /{" "}
@@ -72,7 +72,7 @@ export function VerificationPendingBanner({
             {MISSING_FIELDS.map((label) => (
               <li
                 key={label}
-                className="rounded-md border border-amber-200/90 bg-white/90 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-900/85"
+                className="rounded-md border border-amber-200/90 bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-amber-900/85"
               >
                 {label}
               </li>

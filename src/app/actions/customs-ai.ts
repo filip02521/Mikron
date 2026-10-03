@@ -50,7 +50,7 @@ const MAX_AI_FILE_SIZE = 14 * 1024 * 1024;
 const MAX_PROPOSAL_LINES = 80;
 const MAX_SHEET_FILE_SIZE = 20 * 1024 * 1024;
 const LEGACY_XLS_MESSAGE =
-  "Stary format .xls nie jest obsługiwany — otwórz plik w Excelu i zapisz jako .xlsx (albo CSV).";
+  "Stary format .xls nie jest obsługiwany - otwórz plik w Excelu i zapisz jako .xlsx (albo CSV).";
 
 function emptyInvoice(lines: InvoiceExtraction["lines"]): InvoiceExtraction {
   return { invoiceNumber: "", invoiceDate: null, currency: null, total: null, hsCode: null, countryOfOrigin: null, lines };
@@ -97,16 +97,16 @@ export async function actionReadInvoiceFile(formData: FormData): Promise<ReadInv
       sheets = await readSpreadsheetSheets(Buffer.from(await file.arrayBuffer()), file.name);
     } catch (e) {
       console.error("[customs] sheet read:", e instanceof Error ? e.message : e);
-      return fail("Nie udało się otworzyć arkusza — sprawdź, czy plik nie jest uszkodzony lub zabezpieczony hasłem.");
+      return fail("Nie udało się otworzyć arkusza - sprawdź, czy plik nie jest uszkodzony lub zabezpieczony hasłem.");
     }
     const parsed = parseInvoiceWorkbook(sheets);
     if (parsed && parsed.lines.length) {
       const h = parsed.headers;
       const note = [
-        `Kolumny: kod „${h.code ?? "— (z nazwy)"}”`,
-        `nazwa „${h.name ?? "—"}”`,
+        `Kolumny: kod „${h.code ?? "- (z nazwy)"}”`,
+        `nazwa „${h.name ?? "-"}”`,
         `ilość „${h.qty}”`,
-        `cena „${h.price ?? "—"}”`,
+        `cena „${h.price ?? "-"}”`,
       ].join(", ");
       const skipped = parsed.skipped ? ` Pominięto ${parsed.skipped} wierszy bez ilości.` : "";
       return {
@@ -125,13 +125,13 @@ export async function actionReadInvoiceFile(formData: FormData): Promise<ReadInv
     }
     try {
       const invoice = await invoiceFromSheetWithAi(sheets);
-      if (!invoice.lines.length) return fail("Nie znaleziono pozycji w arkuszu — wklej je ręcznie.");
+      if (!invoice.lines.length) return fail("Nie znaleziono pozycji w arkuszu - wklej je ręcznie.");
       return {
         ok: true,
         method: "sheet_ai",
         invoice,
         pasteText: invoiceLinesToPasteText(invoice.lines),
-        note: "Nietypowy układ arkusza — pozycje odczytało AI.",
+        note: "Nietypowy układ arkusza - pozycje odczytało AI.",
         warnings: invoiceReadWarnings(invoice),
       };
     } catch (e) {
@@ -178,7 +178,7 @@ export async function actionExtractInvoiceWithAi(
       INVOICE_EXTRACTION_SCHEMA
     );
     const invoice = parseInvoiceExtraction(raw);
-    if (!invoice.lines.length) return fail("AI nie znalazło pozycji na fakturze — wklej je ręcznie.");
+    if (!invoice.lines.length) return fail("AI nie znalazło pozycji na fakturze - wklej je ręcznie.");
     return { ok: true, invoice, pasteText: invoiceLinesToPasteText(invoice.lines) };
   } catch (e) {
     console.error("[customs-ai] invoice:", e instanceof Error ? e.message : e);
@@ -213,7 +213,7 @@ export async function actionExtractDocumentArticlesWithAi(
       return fail("Nie udało się otworzyć arkusza dokumentu.");
     }
   }
-  if (!AI_MIME.has(row.mime_type)) return fail("Kody czytam z Excela / CSV, a przez AI — z PDF i zdjęć.");
+  if (!AI_MIME.has(row.mime_type)) return fail("Kody czytam z Excela / CSV, a przez AI - z PDF i zdjęć.");
   if (!isCustomsAiConfigured()) return fail("Odczyt PDF / zdjęć wymaga AI (GOOGLE_AI_API_KEY).");
   if ((row.byte_size ?? 0) > MAX_AI_FILE_SIZE) return fail("Plik za duży dla AI (maks. 14 MB).");
   try {
@@ -283,7 +283,7 @@ async function verifyCnCodes(
       ...p,
       cnCode,
       cnCertain: Boolean(cnCode) && p.cnCertain !== false && (v ? v.cnCertain : true),
-      cnReason: v?.cnReason || p.cnReason || (cnCode ? undefined : "Brak pasującego kodu w CN — uzupełnij ręcznie."),
+      cnReason: v?.cnReason || p.cnReason || (cnCode ? undefined : "Brak pasującego kodu w CN - uzupełnij ręcznie."),
     };
   });
 }
@@ -315,7 +315,7 @@ export async function actionProposeCustomsLinesWithAi(
     .filter((l, i, all) => all.findIndex((o) => o.supplierArticleCode === l.supplierArticleCode) === i);
   const remaining = Math.max(0, targets.length - MAX_PROPOSAL_LINES);
   targets.splice(MAX_PROPOSAL_LINES);
-  if (!targets.length) return fail("Wszystkie pozycje mają już opis i kod CN — nic do zaproponowania.");
+  if (!targets.length) return fail("Wszystkie pozycje mają już opis i kod CN - nic do zaproponowania.");
 
   const { data: confirmed } = await supabase
     .from("customs_product_cards")

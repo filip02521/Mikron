@@ -68,7 +68,7 @@ export async function actionUpsertTeethShortage(
     return {
       ok: false,
       error:
-        "Nie znaleziono dostawcy dla tej marki w kartach dostawców — dopisz dostawcę o nazwie producenta.",
+        "Nie znaleziono dostawcy dla tej marki w kartach dostawców - dopisz dostawcę o nazwie producenta.",
     };
   }
 

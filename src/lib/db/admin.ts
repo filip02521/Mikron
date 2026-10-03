@@ -66,7 +66,7 @@ export function createAuthAdminStub(): AuthStub {
 }
 
 const STORAGE_MIGRATION_HINT =
-  "Storage nie jest częścią lokalnej bazy — pliki wymagają osobnego backendu.";
+  "Storage nie jest częścią lokalnej bazy - pliki wymagają osobnego backendu.";
 
 function storageError(method: string): { data: null; error: { message: string } } {
   return {

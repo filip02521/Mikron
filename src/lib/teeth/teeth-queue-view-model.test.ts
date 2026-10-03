@@ -94,8 +94,8 @@ describe("aggregateTeethSupplierOrder", () => {
       "Ivoclar",
       aggregateTeethSupplierOrder([item("a", [detail(1), detail(2)])]),
     );
-    expect(text).toContain("Zamówienie zębów — Ivoclar");
-    expect(text).toContain("A2\tN5U\t—\tboczne\t2 szt.");
+    expect(text).toContain("Zamówienie zębów - Ivoclar");
+    expect(text).toContain("A2\tN5U\t-\tboczne\t2 szt.");
     expect(text).toContain("Razem: 2 szt.");
   });
 });

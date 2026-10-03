@@ -71,7 +71,7 @@ export function ProcurementRequestLaneNav({
     >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <div className="flex min-w-0 items-baseline gap-2">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-400">
+          <p className="text-[10px] font-semibold text-slate-400">
             {PROCUREMENT_REQUEST_LANE_COPY.navLabel}
           </p>
           {visible.length > 0 ? (

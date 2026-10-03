@@ -4,7 +4,7 @@ import { classifyUserFacingError } from "@/lib/ui/user-facing-error";
 
 describe("session errors → login redirect classification", () => {
   it("mapuje Brak sesji", () => {
-    expect(classifyUserFacingError("Brak sesji — zaloguj się ponownie.").kind).toBe(
+    expect(classifyUserFacingError("Brak sesji - zaloguj się ponownie.").kind).toBe(
       "session"
     );
   });

@@ -80,7 +80,7 @@ export function MojeClientKhFilterBanner({
             </>
           ) : (
             <>
-              Filtr aktywny — licznik wyników przy polu szukaj poniżej
+              Filtr aktywny - licznik wyników przy polu szukaj poniżej
             </>
           )}
         </p>

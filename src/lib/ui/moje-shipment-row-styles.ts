@@ -169,7 +169,7 @@ export const mojeLineCancelMenuTriggerClass = cn(
 
 /** Stopka zbiorczego potwierdzenia pod listą produktów. */
 export const mojeShipmentBulkPickupFooterClass =
-  "border-t border-emerald-100/90 bg-gradient-to-b from-emerald-50/50 via-emerald-50/20 to-white px-3 py-3 sm:px-4";
+  "border-t border-emerald-100/90 bg-emerald-50/50 px-3 py-3 sm:px-4";
 
 export const mojeShipmentExpandedActionsClass =
   "flex justify-end border-t border-slate-100 bg-slate-50/60 px-3 py-2.5";

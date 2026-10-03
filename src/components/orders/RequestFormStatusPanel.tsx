@@ -74,7 +74,7 @@ export function RequestFormStatusPanel({
       aria-live="polite"
       aria-relevant="additions text"
     >
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+      <p className="text-[11px] font-semibold text-slate-500">
         Status formularza
       </p>
 

@@ -14,7 +14,7 @@ import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { cn } from "@/lib/cn";
 
 function formatIssuedAt(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const day = iso.slice(0, 10);
   return formatPlDate(day) || day;
 }
@@ -37,7 +37,7 @@ function SummaryChip({
           : "border-slate-200/90 bg-white"
       )}
     >
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+      <div className="text-[10px] font-semibold text-slate-500">
         {label}
       </div>
       <div
@@ -62,7 +62,7 @@ function ReservationZkCard({ row }: { row: ZdEstimateReservedZkRow }) {
               {row.zkNumber}
             </h3>
             <span
-              className="inline-flex shrink-0 items-center rounded-md border border-amber-200/90 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900"
+              className="inline-flex shrink-0 items-center rounded-md border border-amber-200/90 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900"
               title={row.statusDescription ?? undefined}
             >
               {row.statusLabel}
@@ -84,7 +84,7 @@ function ReservationZkCard({ row }: { row: ZdEstimateReservedZkRow }) {
           <div className="text-lg font-semibold tabular-nums leading-none text-slate-900">
             {formatZdEstimateTableQty(row.quantity)}
           </div>
-          <div className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+          <div className="mt-0.5 text-[10px] font-medium text-slate-400">
             szt.
           </div>
           <div className="mt-2 text-xs tabular-nums text-slate-500">
@@ -193,7 +193,7 @@ export function ZdEstimateReservationsModal({
     >
       <div className="rounded-lg border border-slate-200/90 bg-slate-50/80 px-3.5 py-3 sm:px-4">
         {productSymbol ? (
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="text-xs font-semibold text-slate-500">
             {productSymbol}
           </div>
         ) : null}

@@ -15,7 +15,7 @@ export function InviteLinkDialog({
   const hint =
     invite.mode === "invite"
       ? "Wyślij ten link handlowcowi (e-mail, Teams, SMS). Po otwarciu ustawi hasło i od razu będzie powiązany ze swoją kartą."
-      : "Konto z tym adresem już istnieje — link służy do ustawienia hasła i potwierdzenia powiązania z kartą handlowca.";
+      : "Konto z tym adresem już istnieje - link służy do ustawienia hasła i potwierdzenia powiązania z kartą handlowca.";
 
   return (
     <ModalShell
@@ -51,7 +51,7 @@ export function InviteLinkDialog({
       </p>
       <p className="mt-3 text-sm text-slate-500">{hint}</p>
       <p className="mt-2 text-sm text-slate-500">
-        Link jest jednorazowy i wygasa po ok. 24 godzinach. Skopiuj cały adres URL —
+        Link jest jednorazowy i wygasa po ok. 24 godzinach. Skopiuj cały adres URL -
         po otwarciu użytkownik trafi na stronę ustawiania hasła.
       </p>
       <div className="mt-4">

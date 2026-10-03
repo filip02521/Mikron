@@ -34,7 +34,7 @@ export const CRON_JOB_DEFINITIONS: CronJobDefinition[] = [
   {
     id: "morning_routine",
     label: "Poranna rutyna",
-    schedule: "pn–pt 6:00 (Warszawa)",
+    schedule: "pn-pt 6:00 (Warszawa)",
     endpoint: "/api/cron/morning",
     scheduled: true,
     description: "Harmonogramy dostawców, domknięcie dostaw w kolejce, retencja historii.",
@@ -42,23 +42,23 @@ export const CRON_JOB_DEFINITIONS: CronJobDefinition[] = [
   {
     id: "process_deliveries",
     label: "Domykanie dostaw",
-    schedule: "pn–pt co godz. 8:00–18:00",
+    schedule: "pn-pt co godz. 8:00-18:00",
     endpoint: "/api/cron/process-deliveries",
     scheduled: true,
-    description: "Backup — pozycje z wpisaną ilością dostarczoną → status i e-mail do handlowca.",
+    description: "Backup - pozycje z wpisaną ilością dostarczoną → status i e-mail do handlowca.",
   },
   {
     id: "zd_eta_sync",
     label: "Terminy ZD (prośby)",
-    schedule: "pn–pt co 2 h 8:00–18:00",
+    schedule: "pn-pt co 2 h 8:00-18:00",
     endpoint: "/api/cron/zd-eta-sync",
     scheduled: true,
     description: "Synchronizacja terminów ZD z Subiekta na aktywnych prośbach handlowców.",
   },
   {
     id: "informacja_stock_sync",
-    label: "Informacja — stan Subiekta",
-    schedule: "pn–pt co godz. 8:00–18:00",
+    label: "Informacja - stan Subiekta",
+    schedule: "pn-pt co godz. 8:00-18:00",
     endpoint: "/api/cron/informacja-stock-sync",
     scheduled: true,
     description:
@@ -67,7 +67,7 @@ export const CRON_JOB_DEFINITIONS: CronJobDefinition[] = [
   {
     id: "catalog_zd_sync",
     label: "Katalog z ZD",
-    schedule: "codziennie 2:00–4:40 co 20 min",
+    schedule: "codziennie 2:00-4:40 co 20 min",
     endpoint: "/api/cron/catalog-zd-sync",
     scheduled: true,
     description: "Indeks ZD, import linii do katalogu, auto-przypisanie dostawców. Szczegóły na /admin/produkty.",
@@ -75,7 +75,7 @@ export const CRON_JOB_DEFINITIONS: CronJobDefinition[] = [
   {
     id: "stock_watch",
     label: "Braki i zamówienia",
-    schedule: "codziennie 5:30–6:30 co 20 min",
+    schedule: "codziennie 5:30-6:30 co 20 min",
     endpoint: "/api/cron/stock-watch",
     scheduled: true,
     description:
@@ -87,12 +87,12 @@ export const CRON_JOB_DEFINITIONS: CronJobDefinition[] = [
     schedule: "ręcznie (test)",
     endpoint: "/api/cron/morning-sync",
     scheduled: false,
-    description: "Przeliczenie terminów dostawców bez dostaw i retencji — do testów serwisowych.",
+    description: "Przeliczenie terminów dostawców bez dostaw i retencji - do testów serwisowych.",
   },
   {
     id: "scheduled_mails",
     label: "Ivoclar (OnTime Raporty)",
-    schedule: "pn — runner Raporty",
+    schedule: "pn - runner Raporty",
     endpoint: "/api/cron/scheduled-mails",
     scheduled: true,
     description:
@@ -205,7 +205,7 @@ function summarizeRunDetail(
         lines.push(`Kolejka undo: ${detail.queueFlushSent}`);
       }
       if (typeof detail.queueFlushError === "string") {
-        lines.push(`Kolejka undo — błąd: ${detail.queueFlushError}`);
+        lines.push(`Kolejka undo - błąd: ${detail.queueFlushError}`);
       }
       if (detail.emailNotConfigured === true) {
         lines.push("E-mail nie skonfigurowany");
@@ -218,7 +218,7 @@ function summarizeRunDetail(
         lines.push(`Wyczyszczono: ${detail.cleared}`);
       }
       if (typeof detail.processed === "number") lines.push(`Sprawdzono: ${detail.processed}`);
-      if (detail.timedOut === true) lines.push("Limit czasu — kontynuacja przy następnym wywołaniu");
+      if (detail.timedOut === true) lines.push("Limit czasu - kontynuacja przy następnym wywołaniu");
       if (detail.subiektOffline === true) lines.push("Subiekt offline");
       break;
     }
@@ -242,7 +242,7 @@ function summarizeRunDetail(
         lines.push("E-mail nie skonfigurowany");
       }
       if (detail.timedOut === true) {
-        lines.push("Limit czasu — kontynuacja przy następnym wywołaniu");
+        lines.push("Limit czasu - kontynuacja przy następnym wywołaniu");
       }
       if (detail.subiektOffline === true) lines.push("Subiekt offline");
       break;
@@ -257,7 +257,7 @@ function summarizeRunDetail(
         lines.push(`Kolejka importu: ${detail.importPending}`);
       }
       if (detail.timedOut === true) {
-        lines.push("Limit czasu — stan zapisany, kontynuacja w kolejnym slocie nocnym");
+        lines.push("Limit czasu - stan zapisany, kontynuacja w kolejnym slocie nocnym");
       }
       if (detail.subiektOffline === true) lines.push("Subiekt offline");
       break;
@@ -276,7 +276,7 @@ function summarizeRunDetail(
         lines.push(`Nowe ceny z ZD: ${detail.pricesUpdated}`);
       }
       if (detail.timedOut === true) {
-        lines.push("Limit czasu — kontynuacja w kolejnym slocie nocnym");
+        lines.push("Limit czasu - kontynuacja w kolejnym slocie nocnym");
       }
       break;
     }
@@ -412,14 +412,14 @@ function evaluateCatalogCronStatus(
   }
 
   if (catalogState?.status === "done" && catalogState.runId === dateKey) {
-    return { tone: "success", statusLabel: "OK — zakończono dziś" };
+    return { tone: "success", statusLabel: "OK - zakończono dziś" };
   }
 
   if (run && isCatalogTimedOutContinuation(run)) {
     if (stale) {
       return {
         tone: "warning",
-        statusLabel: "Nie dokończono w nocy — kontynuuj na /admin/produkty",
+        statusLabel: "Nie dokończono w nocy - kontynuuj na /admin/produkty",
       };
     }
     return { tone: "neutral", statusLabel: "Kontynuacja nocna (limit czasu)" };
@@ -428,7 +428,7 @@ function evaluateCatalogCronStatus(
   if (catalogState?.status === "running") {
     return {
       tone: stale ? "warning" : "neutral",
-      statusLabel: stale ? "Import w toku — wymaga uwagi" : "W toku",
+      statusLabel: stale ? "Import w toku - wymaga uwagi" : "W toku",
     };
   }
 
@@ -472,7 +472,7 @@ export function evaluateCronJob(
   if (job.id === "catalog_zd_sync") {
     if (!run && !context?.catalogState) {
       tone = stale ? "warning" : "neutral";
-      statusLabel = stale ? "Brak danych — zaległe" : "Brak zapisanego stanu";
+      statusLabel = stale ? "Brak danych - zaległe" : "Brak zapisanego stanu";
     } else {
       const catalogStatus = evaluateCatalogCronStatus(run, stale, context?.catalogState, now);
       tone = catalogStatus.tone;
@@ -481,19 +481,19 @@ export function evaluateCronJob(
   } else if (job.id === "scheduled_mails" && context?.scheduledMailSentLog?.status === "sent" && !stale) {
     tone = context.scheduledMailSentLog.had_warnings ? "warning" : "success";
     statusLabel = context.scheduledMailSentLog.had_warnings
-      ? "OK — wysłano z ostrzeżeniami"
-      : "OK — wysłano";
+      ? "OK - wysłano z ostrzeżeniami"
+      : "OK - wysłano";
   } else if (job.id === "scheduled_mails" && skipped && skipReason(run) === "moved_to_ontime_raporty") {
     tone = stale ? "warning" : "neutral";
     statusLabel = stale
       ? "Brak wysyłki w mail_send_log (runner)"
-      : "OT no-op OK — status z runnera";
+      : "OT no-op OK - status z runnera";
   } else if (!run) {
     tone = job.scheduled ? "warning" : "neutral";
     statusLabel = job.scheduled ? "Nigdy nie uruchomiono" : "Tylko ręcznie";
   } else if (skipped) {
     tone = stale ? "warning" : "neutral";
-    statusLabel = stale ? "Pominięto — sprawdź harmonogram" : "Pominięto (okno czasowe)";
+    statusLabel = stale ? "Pominięto - sprawdź harmonogram" : "Pominięto (okno czasowe)";
   } else if (!run.ok) {
     tone = stale ? "danger" : "warning";
     statusLabel = "Błąd lub ostrzeżenie";
@@ -515,7 +515,7 @@ export function evaluateCronJob(
     tone,
     statusLabel,
     lastAt: run?.at ?? null,
-    lastAtFormatted: run?.at ? formatWarsawDateTime(run.at) : "—",
+    lastAtFormatted: run?.at ? formatWarsawDateTime(run.at) : "-",
     stale,
     skipped,
     skipReason: skipReason(run),

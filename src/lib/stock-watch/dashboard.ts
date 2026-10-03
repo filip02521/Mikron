@@ -140,8 +140,8 @@ function uniqueByProduct(items: readonly StockWatchItem[]): StockWatchItem[] {
 
 function proposalWarnings(order: StockWatchSupplierOrder): string[] {
   const out: string[] = [];
-  if (order.explodeBomIncomplete) out.push("Brakuje danych kompletów (BOM) — Kreator pokaże pustą listę.");
-  if (order.historyFetchFailed) out.push("Nie wczytano historii ZD — cięcia historyczne mogły nie wejść.");
+  if (order.explodeBomIncomplete) out.push("Brakuje danych kompletów (BOM) - Kreator pokaże pustą listę.");
+  if (order.historyFetchFailed) out.push("Nie wczytano historii ZD - cięcia historyczne mogły nie wejść.");
   if (order.pendingIndividualsError) out.push("Nie wczytano próśb handlowców.");
   if (order.truncated) out.push("Lista z Subiekta niepełna (limit stron).");
   return out;

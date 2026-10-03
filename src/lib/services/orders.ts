@@ -461,17 +461,17 @@ export async function batchAddIndividualOrders(
       const msg = formatDbError(error);
       if (msg.includes("source_zk")) {
         throw new Error(
-          `${msg} — uruchom migrację supabase/migrations/055_individual_orders_source_zk.sql w bazie.`
+          `${msg} - uruchom migrację supabase/migrations/055_individual_orders_source_zk.sql w bazie.`
         );
       }
       if (msg.includes("mikran_code")) {
         throw new Error(
-          `${msg} — uruchom migrację supabase/migrations/031_mikran_code.sql w bazie.`
+          `${msg} - uruchom migrację supabase/migrations/031_mikran_code.sql w bazie.`
         );
       }
       if (msg.includes("sales_request_note")) {
         throw new Error(
-          `${msg} — uruchom migrację supabase/migrations/058_individual_orders_sales_request_note.sql w bazie.`
+          `${msg} - uruchom migrację supabase/migrations/058_individual_orders_sales_request_note.sql w bazie.`
         );
       }
       throw new Error(msg);
@@ -604,7 +604,7 @@ export async function completeVerificationOrder(
 
   if (priorErr) throw new Error(priorErr.message);
   if (!priorRow) {
-    throw new Error("Prośba została już przetworzona — odśwież listę.");
+    throw new Error("Prośba została już przetworzona - odśwież listę.");
   }
 
   const informacjaFlags = resolveVerificationInformacjaFlags({
@@ -680,7 +680,7 @@ export async function completeVerificationOrder(
 
   if (error) throw new Error(error.message);
   if (!updated) {
-    throw new Error("Prośba została już przetworzona — odśwież listę.");
+    throw new Error("Prośba została już przetworzona - odśwież listę.");
   }
 
   const isTeeth =
@@ -813,7 +813,7 @@ export async function updateIndividualRequestGroup(
 
   if (!canEditIndividualRequestGroup(existing)) {
     throw new Error(
-      "Tej prośby nie można już edytować — została zamówiona u dostawcy lub anulowana."
+      "Tej prośby nie można już edytować - została zamówiona u dostawcy lub anulowana."
     );
   }
 
@@ -1240,8 +1240,8 @@ export async function processIndividualFromSummary(
       : "dostawca, produkt i ilość";
     throw new Error(
       incomplete.length === 1
-        ? `Ta pozycja nie ma kompletnych danych (${fieldsHint}) — użyj edycji prośby lub uzupełnij w widoku Weryfikacja.`
-        : `${incomplete.length} pozycji nie ma kompletnych danych (${fieldsHint}) — użyj edycji lub widoku Weryfikacja przed oznaczeniem jako Główne/Uzupełniające.`
+        ? `Ta pozycja nie ma kompletnych danych (${fieldsHint}) - użyj edycji prośby lub uzupełnij w widoku Weryfikacja.`
+        : `${incomplete.length} pozycji nie ma kompletnych danych (${fieldsHint}) - użyj edycji lub widoku Weryfikacja przed oznaczeniem jako Główne/Uzupełniające.`
     );
   }
 
@@ -1250,7 +1250,7 @@ export async function processIndividualFromSummary(
 
   if (!allowedIds.size) {
     throw new Error(
-      "Brak prośb do obsłużenia — wszystkie są już zamknięte lub nie kwalifikują się do Główne/Uzupełniające."
+      "Brak prośb do obsłużenia - wszystkie są już zamknięte lub nie kwalifikują się do Główne/Uzupełniające."
     );
   }
 
@@ -1461,13 +1461,13 @@ export async function notifyProcurementCancelForOrders(
       emailError = `${mailResult.failures[0].to}: ${mailResult.failures[0].error}`;
     }
   } else if (loaded > 0) {
-    emailError = "Brak adresu e-mail handlowca — zapisano bez powiadomienia";
+    emailError = "Brak adresu e-mail handlowca - zapisano bez powiadomienia";
   }
   if (notifySkipped.length) {
     const skipNote =
       notifySkipped.length === 1
-        ? `${notifySkipped[0]}: brak e-maila — zapisano bez powiadomienia`
-        : `${notifySkipped.length} handlowców bez e-maila — zapisano bez powiadomienia`;
+        ? `${notifySkipped[0]}: brak e-maila - zapisano bez powiadomienia`
+        : `${notifySkipped.length} handlowców bez e-maila - zapisano bez powiadomienia`;
     emailError = emailError ? `${emailError}; ${skipNote}` : skipNote;
   }
 
@@ -1533,13 +1533,13 @@ export async function notifySalesRequestNoteUpdatedForOrders(
       emailError = `${mailResult.failures[0].to}: ${mailResult.failures[0].error}`;
     }
   } else if (loaded > 0) {
-    emailError = "Brak adresu e-mail handlowca — zapisano bez powiadomienia";
+    emailError = "Brak adresu e-mail handlowca - zapisano bez powiadomienia";
   }
   if (notifySkipped.length) {
     const skipNote =
       notifySkipped.length === 1
-        ? `${notifySkipped[0]}: brak e-maila — zapisano bez powiadomienia`
-        : `${notifySkipped.length} handlowców bez e-maila — zapisano bez powiadomienia`;
+        ? `${notifySkipped[0]}: brak e-maila - zapisano bez powiadomienia`
+        : `${notifySkipped.length} handlowców bez e-maila - zapisano bez powiadomienia`;
     emailError = emailError ? `${emailError}; ${skipNote}` : skipNote;
   }
 
@@ -1652,13 +1652,13 @@ export async function markInformacjaArrived(
       emailError = `${mailResult.failures[0].to}: ${mailResult.failures[0].error}`;
     }
   } else if (updated > 0) {
-    emailError = "Brak adresu e-mail handlowca — zapisano bez powiadomienia";
+    emailError = "Brak adresu e-mail handlowca - zapisano bez powiadomienia";
   }
   if (notifySkipped.length) {
     const skipNote =
       notifySkipped.length === 1
-        ? `${notifySkipped[0]}: brak e-maila — zapisano bez powiadomienia`
-        : `${notifySkipped.length} handlowców bez e-maila — zapisano bez powiadomienia`;
+        ? `${notifySkipped[0]}: brak e-maila - zapisano bez powiadomienia`
+        : `${notifySkipped.length} handlowców bez e-maila - zapisano bez powiadomienia`;
     emailError = emailError ? `${emailError}; ${skipNote}` : skipNote;
   }
 
@@ -1685,7 +1685,7 @@ export async function cancelIndividualOrder(
   }
   if (!data?.length) {
     throw new Error(
-      "Nie można anulować tej prośby — sprawdź status (tylko Nowe lub Weryfikacja, bez rezygnacji handlowca)."
+      "Nie można anulować tej prośby - sprawdź status (tylko Nowe lub Weryfikacja, bez rezygnacji handlowca)."
     );
   }
   scheduleHistoryRetentionPurge();
@@ -1902,7 +1902,7 @@ export async function updateDeliveredQuantity(
   if (result.notifySkipped) {
     return {
       emailQueued: false,
-      emailError: `Brak e-maila handlowca (${result.notifySkipped}) — zapisano bez powiadomienia`,
+      emailError: `Brak e-maila handlowca (${result.notifySkipped}) - zapisano bez powiadomienia`,
     };
   }
 
@@ -1988,7 +1988,7 @@ export async function batchUpdateDeliveredQuantities(
         queueEntries.push(result.queueEntry);
       } else if (result.notifySkipped) {
         errors.push(
-          `${result.notifySkipped}: brak e-maila — zapisano bez powiadomienia`
+          `${result.notifySkipped}: brak e-maila - zapisano bez powiadomienia`
         );
       }
     } catch (e) {

@@ -127,7 +127,7 @@ export function DailyPanelTabs({
             {count !== undefined && count > 0 ? (
               <span
                 className={cn(
-                  "rounded-full px-2 py-0.5 tabular-nums",
+                  "rounded-md px-2 py-0.5 tabular-nums",
                   panelTypography.tabBadge,
                   selected ? tabBadgeSelectedClass : "bg-slate-100 text-slate-700"
                 )}
@@ -138,7 +138,7 @@ export function DailyPanelTabs({
             {verificationBadge > 0 ? (
               <span
                 className={cn(
-                  "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+                  "rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
                   selected ? "bg-amber-200 text-amber-950" : "bg-amber-100 text-amber-900"
                 )}
                 title="Zgłoszenia do uzupełnienia w weryfikacji"

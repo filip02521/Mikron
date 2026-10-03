@@ -133,7 +133,7 @@ describe("Do ZD end-to-end: prośba z własnym ZK", () => {
       tw_Symbol: "S50",
       tw_Nazwa: "X",
       tw_IdGrupa: null,
-      grt_Nazwa: "—",
+      grt_Nazwa: "-",
       tw_Stan: 10,
       tw_StanRez: 3,
       dostepne: 7,

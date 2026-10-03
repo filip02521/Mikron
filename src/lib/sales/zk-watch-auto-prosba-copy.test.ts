@@ -56,12 +56,12 @@ describe("formatAddedPozycjeCount", () => {
 
 describe("formatZkScopeSavedToast", () => {
   it("N=1 bez plPozycja", () => {
-    expect(formatZkScopeSavedToast(1)).toBe("Zapisano zakres — 1 pozycja do zamówienia.");
+    expect(formatZkScopeSavedToast(1)).toBe("Zapisano zakres - 1 pozycja do zamówienia.");
   });
 
   it("N>1 z plPozycja", () => {
-    expect(formatZkScopeSavedToast(3)).toBe("Zapisano zakres — 3 pozycje do zamówienia.");
-    expect(formatZkScopeSavedToast(5)).toBe("Zapisano zakres — 5 pozycji do zamówienia.");
+    expect(formatZkScopeSavedToast(3)).toBe("Zapisano zakres - 3 pozycje do zamówienia.");
+    expect(formatZkScopeSavedToast(5)).toBe("Zapisano zakres - 5 pozycji do zamówienia.");
   });
 });
 
@@ -70,11 +70,11 @@ describe("formatAutoProsbaSkippedLinesMessage", () => {
     expect(
       formatAutoProsbaSkippedLinesMessage({ effectiveCount: 2, selectedCount: 3 })
     ).toBe(
-      "Dodano 2 z 3 zaznaczonych pozycji — 1 pozycja jest już w prośbie lub czeka na informację o dostępności."
+      "Dodano 2 z 3 zaznaczonych pozycji - 1 pozycja jest już w prośbie lub czeka na informację o dostępności."
     );
   });
 
-  it("wiele pominiętych — liczba mnoga", () => {
+  it("wiele pominiętych - liczba mnoga", () => {
     expect(
       formatAutoProsbaSkippedLinesMessage({ effectiveCount: 1, selectedCount: 4 })
     ).toContain("3 pozycje są już w prośbie");
@@ -90,19 +90,19 @@ describe("toastForAutoProsbaBlockedCode", () => {
     expect(["success", "warning", "error"]).toContain(toast.tone);
   });
 
-  it("redirect_open_prosba — actionLabel Otwórz prośbę", () => {
+  it("redirect_open_prosba - actionLabel Otwórz prośbę", () => {
     expect(toastForAutoProsbaBlockedCode("redirect_open_prosba").actionLabel).toBe(
       "Otwórz prośbę"
     );
   });
 
-  it("skipped_already_covered — actionLabel Prośby tego klienta", () => {
+  it("skipped_already_covered - actionLabel Prośby tego klienta", () => {
     expect(toastForAutoProsbaBlockedCode("skipped_already_covered").actionLabel).toBe(
       "Prośby tego klienta"
     );
   });
 
-  it("error_generic — dokleja detail przed zakresem", () => {
+  it("error_generic - dokleja detail przed zakresem", () => {
     const toast = toastForAutoProsbaBlockedCode("error_generic", "Błąd sieci.");
     expect(toast.message).toContain("Błąd sieci.");
     expect(toast.message).toContain("Zakres pozostaje zapisany");
@@ -139,7 +139,7 @@ describe("toastForTeethSkippedAfterScope", () => {
 describe("toastForScopeSavedProsbaFailed", () => {
   it("usuwa duplikat „Zakres pozostaje zapisany”", () => {
     const toast = toastForScopeSavedProsbaFailed(
-      "Błąd sieci. Zakres pozostaje zapisany — spróbuj ponownie z karty ZK."
+      "Błąd sieci. Zakres pozostaje zapisany - spróbuj ponownie z karty ZK."
     );
     expect(toast.title).toBe("Zakres zapisany");
     expect(toast.message).toContain("Błąd sieci");
@@ -158,7 +158,7 @@ describe("buildAutoProsbaSuccessToast", () => {
     actionHref: "/moje?client=1",
   };
 
-  it("created — tytuł Prośba zapisana", () => {
+  it("created - tytuł Prośba zapisana", () => {
     const toast = buildAutoProsbaSuccessToast({ ...base, code: "created" });
     expect(toast.title).toBe("Prośba zapisana");
     expect(toast.message).toContain("Moje zamówienia");
@@ -166,12 +166,12 @@ describe("buildAutoProsbaSuccessToast", () => {
     expect(toast.actionLabel).toBe("Prośby tego klienta");
   });
 
-  it("created_supplement — istniejąca prośba", () => {
+  it("created_supplement - istniejąca prośba", () => {
     const toast = buildAutoProsbaSuccessToast({ ...base, code: "created_supplement", count: 1 });
     expect(toast.message).toContain("do istniejącej prośby dla Klinika Smile");
   });
 
-  it("created_partial_verification — formatSubmitResult", () => {
+  it("created_partial_verification - formatSubmitResult", () => {
     const toast = buildAutoProsbaSuccessToast({
       ...base,
       code: "created_partial_verification",
@@ -182,7 +182,7 @@ describe("buildAutoProsbaSuccessToast", () => {
     expect(toast.message).toContain("weryfikacji");
   });
 
-  it("created_with_skipped_lines — M z N", () => {
+  it("created_with_skipped_lines - M z N", () => {
     const toast = buildAutoProsbaSuccessToast({
       ...base,
       code: "created_with_skipped_lines",
@@ -264,13 +264,13 @@ describe("shouldPassThroughAutoProsbaToastAfterScopeSaved", () => {
 });
 
 describe("normalizeAutoProsbaToastAfterScopeSaved", () => {
-  it("redirect/skipped — kontekst zapisanego zakresu", () => {
+  it("redirect/skipped - kontekst zapisanego zakresu", () => {
     const normalized = normalizeAutoProsbaToastAfterScopeSaved(
       toastForAutoProsbaBlockedCode("redirect_open_prosba"),
       { selectedScopeCount: 2 }
     );
     expect(normalized.title).toBe("Zakres zapisany");
-    expect(normalized.message).toContain("Zapisano zakres — 2 pozycje");
+    expect(normalized.message).toContain("Zapisano zakres - 2 pozycje");
     expect(normalized.message).toContain("już w otwartej prośbie");
   });
   it("blocked_teeth_incomplete → toast zębów", () => {
@@ -281,9 +281,9 @@ describe("normalizeAutoProsbaToastAfterScopeSaved", () => {
     expect(normalized.message).toContain("listę zębów");
   });
 
-  it("error_stock_ack_required — przekazuje szczegóły serwera", () => {
+  it("error_stock_ack_required - przekazuje szczegóły serwera", () => {
     const serverDetail =
-      "Część pozycji ma wystarczający stan magazynowy w Subiekcie:\n\n• Filtr — 2 szt.";
+      "Część pozycji ma wystarczający stan magazynowy w Subiekcie:\n\n• Filtr - 2 szt.";
     const toast = toastForAutoProsbaBlockedCode("error_stock_ack_required", serverDetail);
     expect(toast.message).toContain("Filtr");
 
@@ -293,7 +293,7 @@ describe("normalizeAutoProsbaToastAfterScopeSaved", () => {
     expect(normalized.message).toContain("Filtr");
   });
 
-  it("skipped_already_covered — kontekst zakresu z liczbą pozycji", () => {
+  it("skipped_already_covered - kontekst zakresu z liczbą pozycji", () => {
     const normalized = normalizeAutoProsbaToastAfterScopeSaved(
       toastForAutoProsbaBlockedCode("skipped_already_covered"),
       { selectedScopeCount: 4 }
@@ -303,7 +303,7 @@ describe("normalizeAutoProsbaToastAfterScopeSaved", () => {
     expect(normalized.message).toContain("pokryte prośbą");
   });
 
-  it("sukces created — bez zmian", () => {
+  it("sukces created - bez zmian", () => {
     const success = buildAutoProsbaSuccessToast({
       watch,
       code: "created",
@@ -329,7 +329,7 @@ describe("buildAutoProsbaClientBlockedToast", () => {
   const mojeHref = "/moje?client=1";
   const mojeHrefWithFocus = (ids: string[]) => `/moje?focus=${ids.join(",")}`;
 
-  it("redirect — link z focusem", () => {
+  it("redirect - link z focusem", () => {
     const toast = buildAutoProsbaClientBlockedToast({
       watch,
       hints: { matchingOpenRequestIds: ["o1", "o2"] },
@@ -341,7 +341,7 @@ describe("buildAutoProsbaClientBlockedToast", () => {
     expect(toast.actionHref).toBe("/moje?focus=o1,o2");
   });
 
-  it("skipped — link bez focus", () => {
+  it("skipped - link bez focus", () => {
     const toast = buildAutoProsbaClientBlockedToast({
       watch,
       hints: { matchingOpenRequestIds: [] },
@@ -352,7 +352,7 @@ describe("buildAutoProsbaClientBlockedToast", () => {
     expect(toast.actionHref).toBe(mojeHref);
   });
 
-  it("teeth_incomplete — dedykowany toast", () => {
+  it("teeth_incomplete - dedykowany toast", () => {
     const toast = buildAutoProsbaClientBlockedToast({
       watch,
       hints: { matchingOpenRequestIds: [] },

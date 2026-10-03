@@ -6,14 +6,14 @@ import { HelpBlock } from "@/components/ui/HelpBlock";
 export function VerificationHelp() {
   return (
     <HelpPopover
-      label="Pomoc — weryfikacja prośb"
+      label="Pomoc - weryfikacja prośb"
       title="Weryfikacja zgłoszeń"
       shortLabel="Pomoc"
       icon={<GuideIcon />}
     >
       <HelpBlock title="Co tu jest">
         <p>
-          Niekompletne prośby handlowców — brakuje dostawcy, produktu albo ilości. Weryfikację
+          Niekompletne prośby handlowców - brakuje dostawcy, produktu albo ilości. Weryfikację
           możesz też otworzyć z banera w panelu Dziś.
         </p>
       </HelpBlock>
@@ -25,18 +25,18 @@ export function VerificationHelp() {
       <HelpBlock title="Prośby informacyjne">
         <p>
           Przy zwykłej informacji o dostępności wybierz ścieżkę przed zapisem. Przy „Brak na
-          stanie” ścieżka jest ustalona — po zatwierdzeniu prośba trafi do panelu Dziś, nie do
+          stanie” ścieżka jest ustalona - po zatwierdzeniu prośba trafi do panelu Dziś, nie do
           magazynu ani listy handlowca.
         </p>
       </HelpBlock>
 
       <HelpBlock title="Anulowanie">
-        <p>Usuwa prośbę z systemu — używaj tylko wtedy, gdy zgłoszenie było błędne.</p>
+        <p>Usuwa prośbę z systemu - używaj tylko wtedy, gdy zgłoszenie było błędne.</p>
       </HelpBlock>
 
       <HelpBlock title="Prośby na zęby">
         <p>
-          Zamówień zębowych nie uzupełniasz tutaj — trafiają do{" "}
+          Zamówień zębowych nie uzupełniasz tutaj - trafiają do{" "}
           <strong className="font-medium text-slate-800">panelu zębów</strong> (/zeby), gdzie
           uzupełnia się listę zębów i oznacza zamówienie u dostawcy.
         </p>

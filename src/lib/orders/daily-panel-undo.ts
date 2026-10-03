@@ -92,7 +92,7 @@ export function undoWindowLongLabel(): string {
 export function undoWindowBannerDescription(hint?: string): string {
   const windowLabel = undoWindowLongLabel();
   if (hint?.trim()) {
-    return `${hint.trim()} — masz ${windowLabel} na cofnięcie.`;
+    return `${hint.trim()} - masz ${windowLabel} na cofnięcie.`;
   }
   return `Masz ${windowLabel} na cofnięcie.`;
 }

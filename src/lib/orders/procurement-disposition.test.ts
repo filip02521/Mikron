@@ -27,7 +27,7 @@ describe("procurement-disposition", () => {
   it("procurementDispositionSummary łączy etykietę i notatkę", () => {
     expect(
       procurementDispositionSummary("to_stock", "Regał B3")
-    ).toBe("Na stan magazynu — Regał B3");
+    ).toBe("Na stan magazynu - Regał B3");
   });
 
   it("procurementDispositionQueueLabel ma prefix Zakupy", () => {
@@ -39,13 +39,13 @@ describe("procurement-disposition", () => {
     expect(label).toContain("zwrot");
   });
 
-  it("procurementDispositionSaveSummary — jedna i wiele pozycji", () => {
+  it("procurementDispositionSaveSummary - jedna i wiele pozycji", () => {
     expect(
       procurementDispositionSaveSummary(
         [{ orderId: "a", disposition: "to_stock" }],
         "Jan"
       )
-    ).toBe("Rezygnacja Jan — na stan magazynu");
+    ).toBe("Rezygnacja Jan - na stan magazynu");
     expect(
       procurementDispositionSaveSummary(
         [
@@ -55,7 +55,7 @@ describe("procurement-disposition", () => {
         ],
         "Jan"
       )
-    ).toBe("Rezygnacja Jan — 2 na stan, 1 do zwrotu");
+    ).toBe("Rezygnacja Jan - 2 na stan, 1 do zwrotu");
   });
 
   it("countPendingDispositionChoices", () => {

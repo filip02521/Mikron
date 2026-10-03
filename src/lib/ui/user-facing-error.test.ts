@@ -82,7 +82,7 @@ describe("classifyUserFacingError", () => {
   });
 
   it("mapuje sesję", () => {
-    const c = classifyUserFacingError("Brak sesji — zaloguj się ponownie.");
+    const c = classifyUserFacingError("Brak sesji - zaloguj się ponownie.");
     expect(c.kind).toBe("session");
     expect(c.title).toBe("Sesja wygasła");
   });
@@ -189,7 +189,7 @@ describe("extractRawErrorMessage / userFacingErrorFromUnknown", () => {
     const text = userFacingErrorText(
       new Error("Brak uprawnień do numerów kurierów")
     );
-    expect(text).toMatch(/^Brak uprawnień —/);
+    expect(text).toMatch(/^Brak uprawnień -/);
     expect(text).toMatch(/kurierów/i);
   });
 });

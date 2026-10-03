@@ -122,7 +122,7 @@ export function ZkWatchTeethPreviewSection({
       hint={ZK_MODAL_SECTION_HINTS.teeth}
     >
       <div className="overflow-x-auto rounded-md border border-slate-200/90">
-        <table className="w-full text-sm" aria-label="Zęby powiązane z ZK — szkice i status zamówienia">
+        <table className="w-full text-sm" aria-label="Zęby powiązane z ZK - szkice i status zamówienia">
           <thead>
             <tr className="border-b border-slate-200/90 bg-slate-50/80 text-left text-xs font-medium text-slate-600">
               <th className="px-2.5 py-1.5">Kolor</th>
@@ -141,22 +141,22 @@ export function ZkWatchTeethPreviewSection({
                 className="border-b border-slate-100 transition-colors last:border-0 hover:bg-slate-50/50"
               >
                 <td className={cn(salesTypography.rowTitle, "px-2.5 py-1.5 text-slate-800")}>
-                  {row.color || "—"}
+                  {row.color || "-"}
                 </td>
                 <td className={cn(salesTypography.rowBody, "px-2.5 py-1.5 text-slate-700")}>
-                  {row.mould ?? "—"}
+                  {row.mould ?? "-"}
                 </td>
                 <td className={cn(salesTypography.rowBody, "px-2.5 py-1.5 text-slate-700")}>
-                  {row.size ?? "—"}
+                  {row.size ?? "-"}
                 </td>
                 <td className={cn(salesTypography.rowBody, "px-2.5 py-1.5 text-slate-700")}>
-                  {row.jaw ? JAW_LABELS[row.jaw] ?? row.jaw : "—"}
+                  {row.jaw ? JAW_LABELS[row.jaw] ?? row.jaw : "-"}
                 </td>
                 <td className={cn(salesTypography.rowBody, "px-2.5 py-1.5 text-slate-700")}>
-                  {row.kind ? KIND_LABELS[row.kind] ?? row.kind : "—"}
+                  {row.kind ? KIND_LABELS[row.kind] ?? row.kind : "-"}
                 </td>
                 <td className={cn(salesTypography.rowMeta, "whitespace-nowrap px-2.5 py-1.5 text-slate-600")}>
-                  {formatShortDate(row.teethDeliveryDate) ?? "—"}
+                  {formatShortDate(row.teethDeliveryDate) ?? "-"}
                 </td>
                 <td className="px-2.5 py-1.5">
                   <span

@@ -113,14 +113,14 @@ export function completenessUserHint(
         requestKind === "informacja"
           ? options?.audience === "procurement"
             ? isStockOut
-              ? "Po zatwierdzeniu: sekcja „Brak na stanie” w panelu Dziś — bez e-maila do handlowca."
+              ? "Po zatwierdzeniu: sekcja „Brak na stanie” w panelu Dziś - bez e-maila do handlowca."
               : isViaPanel
                 ? "Po zatwierdzeniu: Prośby handlowców (Główne), potem magazyn i e-mail."
                 : "Po zatwierdzeniu: Wyjątki → kolejka magazynu (e-mail po przyjęciu)."
             : "Trafia do działu zakupów bez dodatkowej weryfikacji."
           : options?.audience === "procurement"
-            ? "Dostawca, produkt i ilość są podane — można zapisać do listy na dziś."
-            : "Dostawca, produkt i ilość są podane — trafia od razu do realizacji.",
+            ? "Dostawca, produkt i ilość są podane - można zapisać do listy na dziś."
+            : "Dostawca, produkt i ilość są podane - trafia od razu do realizacji.",
     };
   }
   const dashAsZamowienie =
@@ -132,7 +132,7 @@ export function completenessUserHint(
       tone: "warning",
       title: "Uzupełnij przed zapisem",
       detail: dashAsZamowienie
-        ? "Ilość „-” oznacza prośbę informacyjną — wybierz typ „Informacja” zamiast zamówienia u dostawcy."
+        ? "Ilość „-” oznacza prośbę informacyjną - wybierz typ „Informacja” zamiast zamówienia u dostawcy."
         : procurementMissingDetail(missing),
     };
   }
@@ -140,7 +140,7 @@ export function completenessUserHint(
     tone: "warning",
     title: "Wymaga weryfikacji przez dział zakupów",
     detail: dashAsZamowienie
-      ? "Ilość „-” to prośba informacyjna — wybierz typ „Informacja” (bez zamawiania u dostawcy)."
+      ? "Ilość „-” to prośba informacyjna - wybierz typ „Informacja” (bez zamawiania u dostawcy)."
       : defaultMissingDetail(missing),
   };
 }

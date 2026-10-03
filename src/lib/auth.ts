@@ -23,7 +23,7 @@ type AuthIntent = "read" | "mutate";
 import type { FontScale } from "./auth/profile";
 
 /** Stały komunikat — klasyfikowany jako session → redirect na /login. */
-export const SESSION_REQUIRED_ERROR = "Brak sesji — zaloguj się ponownie.";
+export const SESSION_REQUIRED_ERROR = "Brak sesji - zaloguj się ponownie.";
 
 export interface SessionUser {
   id: string;

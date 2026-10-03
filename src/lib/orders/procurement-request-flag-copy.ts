@@ -11,7 +11,7 @@ export const PROCUREMENT_REQUEST_FLAG_COPY = {
   overflowChange: "Edytuj z opisem…",
   modalTitle: "Flaga prośby (zakupy)",
   modalTitleMulti: "Flaga dla wybranych pozycji",
-  modalHint: "Widoczna tylko w panelu dziennym — handlowiec jej nie widzi.",
+  modalHint: "Widoczna tylko w panelu dziennym - handlowiec jej nie widzi.",
   noteLabel: "Opis (opcjonalnie)",
   notePlaceholder: "Np. czekamy na potwierdzenie KH, brak stocku u dostawcy…",
   save: "Zapisz",
@@ -36,7 +36,7 @@ export const PROCUREMENT_REQUEST_FLAG_COPY = {
   manageMoveDown: "W dół",
   manageInactiveSection: "Nieaktywne",
   manageInactiveCurrent:
-    "Ta flaga jest nieaktywna — możesz zmienić opis albo wybrać aktywną.",
+    "Ta flaga jest nieaktywna - możesz zmienić opis albo wybrać aktywną.",
   orphanChipLabel: "Nieznana flaga",
   emptyFilterVacation: "Brak próśb u dostawców na urlopie.",
   vacationChip: "Urlop dostawcy",

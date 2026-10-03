@@ -15,9 +15,9 @@ export function formatOrderQuantityLabel(
   quantity?: string | null,
   requestKind?: IndividualRequestKind | null
 ): string {
-  if (requestKind === "informacja") return "—";
+  if (requestKind === "informacja") return "-";
   const t = quantity?.trim();
-  if (!t || t === INFORMACJA_NO_QUANTITY) return "—";
+  if (!t || t === INFORMACJA_NO_QUANTITY) return "-";
   return t;
 }
 
@@ -57,7 +57,7 @@ export function getDeliveryProgress(
       ordered: null,
       delivered,
       remaining: null,
-      fractionLabel: delivered > 0 ? `${delivered} dost.` : "—",
+      fractionLabel: delivered > 0 ? `${delivered} dost.` : "-",
       hasNumericQty: false,
     };
   }

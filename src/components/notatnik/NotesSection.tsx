@@ -757,7 +757,7 @@ export function NotesSection({
               searchLabel="Szukaj w notatkach"
               showIdleHint={false}
               showActiveDetail={false}
-              emptyMatchHint="Brak dopasowań — sprawdź tytuł lub treść notatki."
+              emptyMatchHint="Brak dopasowań - sprawdź tytuł lub treść notatki."
             />
           ) : null}
 
@@ -765,7 +765,7 @@ export function NotesSection({
             <p className="inline-flex flex-wrap items-center gap-1 text-[10px] text-slate-400">
               Przeciągnij karteczkę (
               <DragHandleGlyph />
-              ) w sekcji przypiętych lub zwykłych — między sekcjami nie da się przenieść.
+              ) w sekcji przypiętych lub zwykłych - między sekcjami nie da się przenieść.
             </p>
           ) : null}
 

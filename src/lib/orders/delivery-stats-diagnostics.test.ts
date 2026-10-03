@@ -40,7 +40,7 @@ describe("aggregateDeliveryStatsFromOrders", () => {
     expect(bySupplier.get("s1")?.side_count).toBe(1);
   });
 
-  it("ten sam typ tego samego dnia — jedna próbka (duplikat)", () => {
+  it("ten sam typ tego samego dnia - jedna próbka (duplikat)", () => {
     const orders = [
       {
         ...baseOrder,
@@ -171,7 +171,7 @@ describe("buildDeliveryStatsDiagnostics", () => {
     expect(diag.summary.suppliersMismatch).toBe(1);
   });
 
-  it("oznacza niską pewność przy 1–2 próbkach", () => {
+  it("oznacza niską pewność przy 1-2 próbkach", () => {
     const diag = buildDeliveryStatsDiagnostics({
       suppliers: [
         {

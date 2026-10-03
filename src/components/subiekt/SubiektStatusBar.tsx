@@ -60,7 +60,7 @@ export function SubiektStatusBar({
               reachable: false,
               shortLabel: "System magazynowy: niedostępny",
               message:
-                "Nie udało się sprawdzić połączenia — szacunki terminów pochodzą z historii dostaw.",
+                "Nie udało się sprawdzić połączenia - szacunki terminów pochodzą z historii dostaw.",
               checkedAt: Date.now(),
             }
           : base;

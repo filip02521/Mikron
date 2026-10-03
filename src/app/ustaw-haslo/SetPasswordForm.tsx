@@ -159,7 +159,7 @@ export function SetPasswordForm() {
     return (
       <div className="space-y-4">
         <Alert tone="info">
-          Otwórz pełny link zaproszenia lub resetu hasła od administratora — skopiuj cały
+          Otwórz pełny link zaproszenia lub resetu hasła od administratora - skopiuj cały
           adres URL z wiadomości.
         </Alert>
         <p className="text-sm leading-relaxed text-slate-600">
@@ -173,7 +173,7 @@ export function SetPasswordForm() {
             "inline-flex w-full min-h-11 items-center justify-center font-medium text-slate-700"
           )}
         >
-          Mam już konto — zaloguj się
+          Mam już konto - zaloguj się
         </Link>
       </div>
     );
@@ -191,7 +191,7 @@ export function SetPasswordForm() {
         intro={
           forcedChange ? (
             <Alert tone="info">
-              Ostatni krok bezpieczeństwa — ustaw hasło, którego będziesz używać na co dzień
+              Ostatni krok bezpieczeństwa - ustaw hasło, którego będziesz używać na co dzień
               zamiast hasła tymczasowego.
             </Alert>
           ) : otpReset ? (

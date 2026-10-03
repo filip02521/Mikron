@@ -77,7 +77,7 @@ describe("buildZdScopeInsights", () => {
     expect(s1.suggestions).toEqual([]);
   });
 
-  it("dostawca z zakresem, ale bez historii ZD — widoczny z zerowym pokryciem", () => {
+  it("dostawca z zakresem, ale bez historii ZD - widoczny z zerowym pokryciem", () => {
     const res = buildZdScopeInsights({
       rows: [],
       currentScopes: new Map([["s9", [{ mode: "cecha", id: 10 }]]]),
@@ -93,7 +93,7 @@ describe("buildZdScopeInsights", () => {
   });
 });
 
-describe("buildZdScopeInsights — błędne mapowanie", () => {
+describe("buildZdScopeInsights - błędne mapowanie", () => {
   it("zakres bez żadnego towaru z ZD dostawcy ma 0 trafień (np. Polkard BIS na cesze Polkard)", () => {
     const rows = [
       row("polkard", 1, null, [2717]),

@@ -523,18 +523,18 @@ export function useZdEstimateRulesLiveApply({
       const missing = missingPartnerTwIds.length + missingBomTwIds.length;
       if (missing > 0 && canAutoRecount) {
         flashSettingsLive(
-          "Para zapisana — dociągam brakujących towarów z Subiekta…"
+          "Para zapisana - dociągam brakujących towarów z Subiekta…"
         );
         queueMicrotask(() => runEstimateRef.current());
         return;
       }
       if (missing > 0) {
         flashSettingsLive(
-          "Para zapisana, ale towar spoza listy — kliknij „Policz listę”, żeby dociągnąć."
+          "Para zapisana, ale towar spoza listy - kliknij „Policz listę”, żeby dociągnąć."
         );
         return;
       }
-      flashSettingsLive("Pary zaktualizowane — oznaczenia i Do ZD przeliczone.");
+      flashSettingsLive("Pary zaktualizowane - oznaczenia i Do ZD przeliczone.");
     },
     [
       linesBase,
@@ -644,7 +644,7 @@ export function useZdEstimateRulesLiveApply({
           rows.map((r) => r.subiektTwId)
         );
         recountEstimateLinesWithExcluded(excludedNow);
-        flashSettingsLive("Wykluczenia zaktualizowane — lista przeliczona.");
+        flashSettingsLive("Wykluczenia zaktualizowane - lista przeliczona.");
       }
     },
     [
@@ -673,7 +673,7 @@ export function useZdEstimateRulesLiveApply({
         );
         recountEstimateLinesWithExcluded(excludedNow);
         flashSettingsLive(
-          "„Tylko na prośbę” zaktualizowane — lista przeliczona."
+          "„Tylko na prośbę” zaktualizowane - lista przeliczona."
         );
       } else {
         flashSettingsLive("Zapisano „tylko na prośbę”.");

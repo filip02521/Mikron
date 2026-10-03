@@ -116,7 +116,7 @@ export function MojeOrdersSearchBar({
           ) : null}
           {activeListEmpty && archiveMatchCount > 0 ? (
             <span className="mt-1 block text-slate-500">
-              W aktywnych prośbach brak wyników — sprawdź sekcję „Ostatnio zakończone” poniżej.
+              W aktywnych prośbach brak wyników - sprawdź sekcję „Ostatnio zakończone” poniżej.
             </span>
           ) : (
             <span className="mt-1 block text-slate-500">

@@ -247,7 +247,7 @@ export function ZdEstimateLoadingBody({
         })}
       </ol>
 
-      <div className="border-t border-slate-100/90 bg-gradient-to-b from-slate-50/80 to-slate-50/40 px-5 py-3 sm:px-6 sm:py-3.5">
+      <div className="border-t border-slate-100/90 bg-slate-50/80 px-5 py-3 sm:px-6 sm:py-3.5">
         {footerMeta ? (
           <div className="mb-2 flex items-center justify-between gap-3 text-[11px] leading-snug text-slate-500">
             <span className="min-w-0">{footerMeta}</span>

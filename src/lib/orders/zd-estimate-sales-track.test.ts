@@ -58,7 +58,7 @@ describe("soldNormalizedToZapas / confidence helpers", () => {
 });
 
 describe("computeSalesTrackedCel", () => {
-  it("martwy SKU ze stanem < cel — passthrough", () => {
+  it("martwy SKU ze stanem < cel - passthrough", () => {
     const adj = computeSalesTrackedCel({
       celZapasu: 40,
       sprzedazOkres: 0,
@@ -72,7 +72,7 @@ describe("computeSalesTrackedCel", () => {
     expect(adj.qtyReview).toBe(false);
   });
 
-  it("martwy SKU ze stanem ≥ cel — dead_stock → cel 0", () => {
+  it("martwy SKU ze stanem ≥ cel - dead_stock → cel 0", () => {
     const adj = computeSalesTrackedCel({
       celZapasu: 40,
       sprzedazOkres: 0,
@@ -86,7 +86,7 @@ describe("computeSalesTrackedCel", () => {
     expect(adj.deltaPieces).toBe(-40);
   });
 
-  it("cover w deadbandzie + umiarkowany ST — bez korekty cover", () => {
+  it("cover w deadbandzie + umiarkowany ST - bez korekty cover", () => {
     const adj = computeSalesTrackedCel({
       celZapasu: 30,
       sprzedazOkres: 15,
@@ -98,7 +98,7 @@ describe("computeSalesTrackedCel", () => {
     expect(adj.reasons).not.toContain("fat_cover");
   });
 
-  it("cienkie pokrycie — dokładamy część brakujących dni × tempo", () => {
+  it("cienkie pokrycie - dokładamy część brakujących dni × tempo", () => {
     const adj = computeSalesTrackedCel({
       celZapasu: 60,
       sprzedazOkres: 50,
@@ -120,7 +120,7 @@ describe("computeSalesTrackedCel", () => {
     expect(adj.reasons).not.toContain("boost_held");
   });
 
-  it("wysoki sell-through przy cover w deadbandzie — lekki % boost", () => {
+  it("wysoki sell-through przy cover w deadbandzie - lekki % boost", () => {
     const adj = computeSalesTrackedCel({
       celZapasu: 100,
       sprzedazOkres: 90,
@@ -138,7 +138,7 @@ describe("computeSalesTrackedCel", () => {
     );
   });
 
-  it("niski sell-through przy dostepne < cel — cut obniża cel", () => {
+  it("niski sell-through przy dostepne < cel - cut obniża cel", () => {
     const adj = computeSalesTrackedCel({
       celZapasu: 100,
       sprzedazOkres: 8,
@@ -157,7 +157,7 @@ describe("computeSalesTrackedCel", () => {
     expect(adj.reasons).not.toContain("boost_held");
   });
 
-  it("cutsEnabled:false — bez cięcia przy grubym stanie", () => {
+  it("cutsEnabled:false - bez cięcia przy grubym stanie", () => {
     const adj = computeSalesTrackedCel({
       celZapasu: 100,
       sprzedazOkres: 8,
@@ -171,7 +171,7 @@ describe("computeSalesTrackedCel", () => {
     expect(adj.reasons).not.toContain("low_sell_through");
   });
 
-  it("enabled:false — passthrough", () => {
+  it("enabled:false - passthrough", () => {
     const adj = computeSalesTrackedCel({
       celZapasu: 60,
       sprzedazOkres: 50,
@@ -184,7 +184,7 @@ describe("computeSalesTrackedCel", () => {
     expect(adj.celTracked).toBe(60);
   });
 
-  it("cel=0 + cienkie pokrycie — bez applied", () => {
+  it("cel=0 + cienkie pokrycie - bez applied", () => {
     const adj = computeSalesTrackedCel({
       celZapasu: 0,
       sprzedazOkres: 50,
@@ -198,7 +198,7 @@ describe("computeSalesTrackedCel", () => {
     expect(adj.reasons).toEqual([]);
   });
 
-  it("brak sprzedazDziennie — tempo z okres/dniOkresu włącza thin_cover", () => {
+  it("brak sprzedazDziennie - tempo z okres/dniOkresu włącza thin_cover", () => {
     const adj = computeSalesTrackedCel({
       celZapasu: 60,
       sprzedazOkres: 60,
@@ -245,7 +245,7 @@ describe("computeSalesTrackedCel", () => {
     expect(adj.reasons).toContain("low_sell_through");
   });
 
-  it("hold przy boost+cut — cięcie zostaje (nie wraca do celBase)", () => {
+  it("hold przy boost+cut - cięcie zostaje (nie wraca do celBase)", () => {
     const cover = 50;
     const adj = computeSalesTrackedCel({
       celZapasu: 100,
@@ -268,7 +268,7 @@ describe("computeSalesTrackedCel", () => {
     expect(qty).toBeLessThan(qtyBase);
   });
 
-  it("sold=1 cover=0 zapas=30 — boost_held, Do ZD 1", () => {
+  it("sold=1 cover=0 zapas=30 - boost_held, Do ZD 1", () => {
     const adj = computeSalesTrackedCel({
       celZapasu: 1,
       sprzedazOkres: 1,
@@ -286,7 +286,7 @@ describe("computeSalesTrackedCel", () => {
     expect(orderQtyFromCel(adj.celTracked, 0)).toBe(1);
   });
 
-  it("sold=1 zapas=14 — hold (skalowanie Zapasu)", () => {
+  it("sold=1 zapas=14 - hold (skalowanie Zapasu)", () => {
     const adj = computeSalesTrackedCel({
       celZapasu: 1,
       sprzedazOkres: 1,
@@ -299,7 +299,7 @@ describe("computeSalesTrackedCel", () => {
     expect(orderQtyFromCel(adj.celTracked, 0)).toBe(1);
   });
 
-  it("sold=3 cover=0 — hold (conf<min)", () => {
+  it("sold=3 cover=0 - hold (conf<min)", () => {
     const adj = computeSalesTrackedCel({
       celZapasu: 3,
       sprzedazOkres: 3,
@@ -313,7 +313,7 @@ describe("computeSalesTrackedCel", () => {
     expect(orderQtyFromCel(adj.celTracked, 0)).toBe(3);
   });
 
-  it("sold=4 cover=0 — partial allow (boost_scaled), delta=allowed", () => {
+  it("sold=4 cover=0 - partial allow (boost_scaled), delta=allowed", () => {
     const adj = computeSalesTrackedCel({
       celZapasu: 4,
       sprzedazOkres: 4,
@@ -332,7 +332,7 @@ describe("computeSalesTrackedCel", () => {
     expect(orderQtyFromCel(adj.celTracked, 0)).toBe(5);
   });
 
-  it("sold=15 cover=0 — full scale, nie tylko +1", () => {
+  it("sold=15 cover=0 - full scale, nie tylko +1", () => {
     const adj = computeSalesTrackedCel({
       celZapasu: 15,
       sprzedazOkres: 15,
@@ -352,7 +352,7 @@ describe("computeSalesTrackedCel", () => {
     expect(adj.deltaPieces).toBe(adj.allowedExtraQty);
   });
 
-  it("sold=100 cover=0 — full scale setki", () => {
+  it("sold=100 cover=0 - full scale setki", () => {
     const adj = computeSalesTrackedCel({
       celZapasu: 100,
       sprzedazOkres: 100,
@@ -367,7 +367,7 @@ describe("computeSalesTrackedCel", () => {
     expect(adj.deltaPieces).toBe(35);
   });
 
-  it("cover=1 cel=1 ST boost — hold, Do ZD 0", () => {
+  it("cover=1 cel=1 ST boost - hold, Do ZD 0", () => {
     const adj = computeSalesTrackedCel({
       celZapasu: 1,
       sprzedazOkres: 1,
@@ -380,7 +380,7 @@ describe("computeSalesTrackedCel", () => {
     expect(orderQtyFromCel(adj.celTracked, 1)).toBe(0);
   });
 
-  it("ułamkowy boost bez wzrostu Do ZD — cel bez phantom +delta", () => {
+  it("ułamkowy boost bez wzrostu Do ZD - cel bez phantom +delta", () => {
     const adj = computeSalesTrackedCel({
       celZapasu: 1,
       sprzedazOkres: 1,
@@ -415,7 +415,7 @@ describe("computeSalesTrackedCel", () => {
     }
   });
 
-  it("niezmiennik: cover ułamkowy — qty = ceil(celBase-cover) + allowed", () => {
+  it("niezmiennik: cover ułamkowy - qty = ceil(celBase-cover) + allowed", () => {
     for (const cover of [0.1, 0.4, 0.9, 1.5, 3.2]) {
       for (const sold of [1, 4, 10, 40]) {
         const adj = computeSalesTrackedCel({
@@ -505,7 +505,7 @@ describe("formatSalesTrackHint", () => {
     expect(hint).toMatch(/niska pewność 0%/);
   });
 
-  it("boost_held + cut (delta<0) — pokazuje cut i wstrzymany boost", () => {
+  it("boost_held + cut (delta<0) - pokazuje cut i wstrzymany boost", () => {
     const hint = formatSalesTrackHint({
       applied: true,
       deltaPieces: -9.3,

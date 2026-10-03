@@ -209,7 +209,7 @@ export function DepartmentBoardProcurementClient({
 
       {focusThreadMissing ? (
         <Alert tone="warning">
-          Nie znaleziono wskazanego wpisu — mógł zostać zarchiwizowany lub usunięty.
+          Nie znaleziono wskazanego wpisu - mógł zostać zarchiwizowany lub usunięty.
         </Alert>
       ) : null}
 
@@ -323,7 +323,7 @@ export function DepartmentBoardProcurementClient({
                   searchLabel={DEPARTMENT_BOARD_ANNOUNCEMENTS_SEARCH.label}
                   showIdleHint={false}
                   showActiveDetail={false}
-                  emptyMatchHint="Brak dopasowań — sprawdź tytuł lub treść ogłoszenia."
+                  emptyMatchHint="Brak dopasowań - sprawdź tytuł lub treść ogłoszenia."
                 />
               ) : null}
               {announcementSearchNeedle && filteredAnnouncements.length === 0 ? (

@@ -39,22 +39,22 @@ export const MICROCOPY = {
     },
   },
   errors: {
-    generic: "Coś poszło nie tak — spróbuj ponownie za chwilę.",
+    generic: "Coś poszło nie tak - spróbuj ponownie za chwilę.",
     loadFailed: "Nie udało się załadować danych. Odśwież stronę.",
     saveFailed: "Nie udało się zapisać zmian. Sprawdź połączenie i spróbuj jeszcze raz.",
     unauthorized: "Brak uprawnień do tej operacji.",
-    sessionExpired: "Sesja wygasła — zaloguj się ponownie.",
+    sessionExpired: "Sesja wygasła - zaloguj się ponownie.",
   },
   notices: {
     boardHint:
-      "Komunikat od zakupów — nie prośba o towar. Status zamówień sprawdzasz w Moje zamówienia.",
+      "Komunikat od zakupów - nie prośba o towar. Status zamówień sprawdzasz w Moje zamówienia.",
     updatesAvailable:
-      "Status, termin lub dostawa mogły się zmienić — odśwież widok, aby zobaczyć aktualny stan.",
+      "Status, termin lub dostawa mogły się zmienić - odśwież widok, aby zobaczyć aktualny stan.",
     operationsUpdates:
-      "Handlowiec mógł dodać prośbę albo zmienić się kolejka — odśwież widok, aby zobaczyć aktualny stan.",
+      "Handlowiec mógł dodać prośbę albo zmienić się kolejka - odśwież widok, aby zobaczyć aktualny stan.",
     operationsQueueChanged:
-      "Wykryto zmiany w kolejce — odświeżamy panel. Jeśli lista nadal stara, kliknij Odśwież.",
+      "Wykryto zmiany w kolejce - odświeżamy panel. Jeśli lista nadal stara, kliknij Odśwież.",
     teethUpdates:
-      "Kolejka zamówień na zęby uległa zmianie — odśwież widok, aby zobaczyć aktualny stan.",
+      "Kolejka zamówień na zęby uległa zmianie - odśwież widok, aby zobaczyć aktualny stan.",
   },
 } as const;

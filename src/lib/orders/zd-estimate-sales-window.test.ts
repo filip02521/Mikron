@@ -6,14 +6,14 @@ import {
 } from "./zd-estimate-sales-window";
 
 describe("shouldApplyStockSalesWindow", () => {
-  it("stock — tak, manual — nie", () => {
+  it("stock - tak, manual - nie", () => {
     expect(shouldApplyStockSalesWindow("stock")).toBe(true);
     expect(shouldApplyStockSalesWindow("manual")).toBe(false);
   });
 });
 
 describe("nextDataOdAfterDataDoChange", () => {
-  it("manual — nie rusza Data od przy zmianie Data do", () => {
+  it("manual - nie rusza Data od przy zmianie Data do", () => {
     expect(
       nextDataOdAfterDataDoChange({
         source: "manual",
@@ -24,7 +24,7 @@ describe("nextDataOdAfterDataDoChange", () => {
     ).toBe("2026-01-01");
   });
 
-  it("stock — przesuwa Data od wg dniZapasu", () => {
+  it("stock - przesuwa Data od wg dniZapasu", () => {
     expect(
       nextDataOdAfterDataDoChange({
         source: "stock",

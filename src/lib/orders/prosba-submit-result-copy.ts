@@ -19,7 +19,7 @@ export function formatSubmitResult(
   const { complete, verification } = r;
   if (forSales) {
     if (verification > 0 && complete === 0) {
-      return "Prośba zapisana — dział zakupów dopracuje szczegóły. Śledź status w „Moje zamówienia”.";
+      return "Prośba zapisana - dział zakupów dopracuje szczegóły. Śledź status w „Moje zamówienia”.";
     }
     if (verification > 0 && complete > 0) {
       return `Zapisano prośbę (${complete} od razu do realizacji, ${verification} do weryfikacji). Sprawdź „Moje zamówienia”.`;
@@ -32,7 +32,7 @@ export function formatSubmitResult(
     return `Zapisano ${complete} kompletnych i ${verification} do weryfikacji przez ${PROCUREMENT_TEAM_LABEL}.`;
   }
   if (verification > 0) {
-    return `Przekazano ${verification} pozycji do weryfikacji — ${PROCUREMENT_TEAM_LABEL} uzupełni brakujące dane (dostawca, opis).`;
+    return `Przekazano ${verification} pozycji do weryfikacji - ${PROCUREMENT_TEAM_LABEL} uzupełni brakujące dane (dostawca, opis).`;
   }
   if (requestKind === "informacja") {
     return `Dodano ${complete} prośb(y) informacyjn(e). ${PROCUREMENT_TEAM_LABEL_TITLE} powiadomi Cię e-mailem, gdy towar będzie na magazynie.`;

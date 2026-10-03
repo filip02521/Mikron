@@ -508,7 +508,7 @@ export function ZkWatchSection({
     collapseAddPanel();
     onWatchAlreadyOnList?.(watch);
     onLiveAnnounce?.(
-      `${watch.zk_number} jest już na liście — pokazuję kartę.`
+      `${watch.zk_number} jest już na liście - pokazuję kartę.`
     );
     inputRef.current?.focus();
   }

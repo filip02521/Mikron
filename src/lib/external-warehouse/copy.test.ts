@@ -4,11 +4,11 @@ import { summarizeSyncResults } from "./copy";
 const noDiff = { addedLineKeys: [], removedLineKeys: [], quantityChanged: [] };
 
 describe("summarizeSyncResults", () => {
-  it("brak zmian — potwierdzenie, że wszystko aktualne", () => {
+  it("brak zmian - potwierdzenie, że wszystko aktualne", () => {
     expect(summarizeSyncResults([{ zkNumber: "ZK 1", status: "unchanged", diff: null }])).toEqual({
       tone: "success",
       title: "Wszystkie ZK są aktualne",
-      items: ["Sprawdzono 1 ZK — bez zmian w Subiekcie."],
+      items: ["Sprawdzono 1 ZK - bez zmian w Subiekcie."],
     });
   });
 
@@ -37,7 +37,7 @@ describe("summarizeSyncResults", () => {
     expect(out.tone).toBe("warning");
     expect(out.items).toEqual([
       "ZK 115523: Tego ZK nie ma już w Subiekcie",
-      "1 ZK odświeża się w innym oknie — wynik pojawi się za chwilę.",
+      "1 ZK odświeża się w innym oknie - wynik pojawi się za chwilę.",
     ]);
   });
 });

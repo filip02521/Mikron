@@ -36,7 +36,7 @@ import { formatWarsawDateTime } from "@/lib/time/warsaw";
 type HealthFilter = "all" | DeliveryStatsHealth | "issues";
 
 function formatTimestamp(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return formatWarsawDateTime(iso);
 }
 
@@ -56,7 +56,7 @@ function healthBadgeVariant(
 }
 
 function avgCell(avg: number | null, count: number | null): string {
-  if (!count) return "—";
+  if (!count) return "-";
   return `${avg ?? "?"} d · n=${count}`;
 }
 
@@ -70,7 +70,7 @@ function ComparisonRow({
   recomputed: string;
   mismatch?: boolean;
 }) {
-  const mismatch = stored !== recomputed && stored !== "—" && recomputed !== "—";
+  const mismatch = stored !== recomputed && stored !== "-" && recomputed !== "-";
   return (
     <tr className={cn(mismatch && "bg-red-50/60")}>
       <td className="px-2 py-1.5 text-xs font-medium text-slate-600">{label}</td>
@@ -107,7 +107,7 @@ function SupplierDetailPanel({ row }: { row: DeliveryStatsSupplierDiagnostic }) 
       <div className="overflow-x-auto rounded-md border border-slate-200/80 bg-white">
         <table className="min-w-full text-left">
           <thead>
-            <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] uppercase tracking-wide text-slate-500">
+            <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] text-slate-500">
               <th className="px-2 py-2 font-semibold">Pole</th>
               <th className="px-2 py-2 font-semibold">W bazie (delivery_stats)</th>
               <th className="px-2 py-2 font-semibold">Z historii (przeliczone)</th>
@@ -119,7 +119,7 @@ function SupplierDetailPanel({ row }: { row: DeliveryStatsSupplierDiagnostic }) 
             <ComparisonRow
               label="Ostatnia aktualizacja"
               stored={formatTimestamp(row.storedUpdatedAt)}
-              recomputed="—"
+              recomputed="-"
             />
           </tbody>
         </table>
@@ -129,7 +129,7 @@ function SupplierDetailPanel({ row }: { row: DeliveryStatsSupplierDiagnostic }) 
         <div className="overflow-x-auto rounded-md border border-slate-200/80 bg-white">
           <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2">
             <p className="text-xs font-semibold text-slate-800">
-              Próbki ({row.samples.length}) — jedna na dzień zamówienia
+              Próbki ({row.samples.length}) - jedna na dzień zamówienia
             </p>
             {row.samples.length > 8 ? (
               <Button
@@ -144,7 +144,7 @@ function SupplierDetailPanel({ row }: { row: DeliveryStatsSupplierDiagnostic }) 
           </div>
           <table className="min-w-full text-left">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] uppercase tracking-wide text-slate-500">
+              <tr className="border-b border-slate-100 bg-slate-50/80 text-[11px] text-slate-500">
                 <th className="px-2 py-2 font-semibold">Zamówienie</th>
                 <th className="px-2 py-2 font-semibold">Data zam.</th>
                 <th className="px-2 py-2 font-semibold">Dostawa</th>
@@ -232,7 +232,7 @@ function SupplierRow({
           {avgCell(row.sideAvg, row.recomputed.side_count)}
         </td>
         <td className="px-2 py-2.5 text-xs tabular-nums text-slate-800 sm:px-3">
-          {row.combinedAvg != null ? `~${row.combinedAvg} d` : "—"}
+          {row.combinedAvg != null ? `~${row.combinedAvg} d` : "-"}
         </td>
         <td className="hidden px-2 py-2.5 text-xs tabular-nums text-slate-700 sm:table-cell sm:px-3">
           {row.totalSamples}
@@ -323,10 +323,10 @@ export function DeliveryStatsDiagnosticsPanel({
           inset
           density="compact"
           title="Czasy realizacji dostawców"
-          description="Diagnostyka zbierania statystyk ETA — wymaga połączenia z bazą."
+          description="Diagnostyka zbierania statystyk ETA - wymaga połączenia z bazą."
         />
         <div className="px-3 pb-4 sm:px-4 lg:px-5">
-          <p className="text-sm text-slate-600">Brak danych — sprawdź konfigurację Supabase.</p>
+          <p className="text-sm text-slate-600">Brak danych - sprawdź konfigurację Supabase.</p>
         </div>
       </Card>
     );
@@ -346,7 +346,7 @@ export function DeliveryStatsDiagnosticsPanel({
           description="Podgląd statystyk ETA: co jest w bazie, skąd pochodzą próbki i czy dane są spójne z historią zamówień."
           action={
             <HelpPopover
-              label="Pomoc — statystyki czasu realizacji"
+              label="Pomoc - statystyki czasu realizacji"
               title="Statystyki czasu realizacji"
               shortLabel="Pomoc"
             >
@@ -451,16 +451,16 @@ export function DeliveryStatsDiagnosticsPanel({
           {issueCount > 0 ? (
             <div className="rounded-md border border-red-200/80 bg-red-50/50 px-3 py-2.5 text-sm text-red-900">
               <span className="font-medium">{issueCount} dostawców</span> ma rozjazd między bazą a
-              historią lub brak wiersza mimo próbek — użyj „Przelicz statystyki ETA”.
+              historią lub brak wiersza mimo próbek - użyj „Przelicz statystyki ETA”.
             </div>
           ) : summary.suppliersWithSamples > 0 ? (
             <div className="rounded-md border border-emerald-200/80 bg-emerald-50/40 px-3 py-2.5 text-sm text-emerald-900">
-              Dane wyglądają spójnie — system zbiera próbki i zapisuje je w{" "}
+              Dane wyglądają spójnie - system zbiera próbki i zapisuje je w{" "}
               <code className="rounded bg-white/80 px-1 text-xs">delivery_stats</code>.
             </div>
           ) : (
             <div className="rounded-md border border-amber-200/80 bg-amber-50/40 px-3 py-2.5 text-sm text-amber-900">
-              Brak próbek w historii — ETA pojawi się po pierwszych zrealizowanych dostawach.
+              Brak próbek w historii - ETA pojawi się po pierwszych zrealizowanych dostawach.
             </div>
           )}
 
@@ -468,7 +468,7 @@ export function DeliveryStatsDiagnosticsPanel({
             <div className="min-w-[200px] flex-1">
               <label
                 htmlFor="delivery-stats-search"
-                className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500"
+                className="mb-1.5 block text-xs font-semibold text-slate-500"
               >
                 Szukaj dostawcy
               </label>
@@ -539,7 +539,7 @@ export function DeliveryStatsDiagnosticsPanel({
           <div className="overflow-x-auto rounded-md border border-slate-200/90">
             <table className="min-w-full text-left">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/90 text-[11px] uppercase tracking-wide text-slate-500">
+                <tr className="border-b border-slate-200 bg-slate-50/90 text-[11px] text-slate-500">
                   <th className="px-2 py-2.5 font-semibold sm:px-3">Dostawca</th>
                   <th className="px-2 py-2.5 font-semibold sm:px-3">Status</th>
                   <th className="hidden px-2 py-2.5 font-semibold md:table-cell sm:px-3">Tryb</th>

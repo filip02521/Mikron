@@ -22,7 +22,7 @@ export function DeliveryTodaySection({
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-slate-900">
-            Dziś — <span className="font-normal text-slate-600">{todayDay.dateLabel}</span>
+            Dziś - <span className="font-normal text-slate-600">{todayDay.dateLabel}</span>
           </p>
           <p className="text-[11px] text-slate-500">
             {totalCount > 0
@@ -35,7 +35,7 @@ export function DeliveryTodaySection({
           </p>
         </div>
         {totalCount > 0 ? (
-          <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-emerald-800">
+          <span className="shrink-0 rounded-md bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold tabular-nums text-emerald-800">
             {totalCount}
           </span>
         ) : null}

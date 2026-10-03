@@ -103,9 +103,9 @@ export function buildCollapsedZdMultiSlotHint(
     extraSlots === 1 ? "1 późniejszy termin" : `${extraSlots} późniejsze terminy`;
 
   if (primaryNames) {
-    return `Najszybsza dostawa: ${primaryNames} — rozwiń po ${extraLabel}`;
+    return `Najszybsza dostawa: ${primaryNames} - rozwiń po ${extraLabel}`;
   }
-  return `${slots.length} terminy u dostawcy — rozwiń po szczegóły`;
+  return `${slots.length} terminy u dostawcy - rozwiń po szczegóły`;
 }
 
 type LineZdTermState = Pick<
@@ -141,9 +141,9 @@ export function buildCollapsedZdMixedNoMatchHint(lines: LineZdTermState[]): stri
     return buildCollapsedZdPendingOnlyHint(withoutZd.length);
   }
   if (withHistory.length) {
-    return `${countLabel} bez terminu u dostawcy — rozwiń po szacunek z historii`;
+    return `${countLabel} bez terminu u dostawcy - rozwiń po szacunek z historii`;
   }
-  return `${countLabel} bez terminu u dostawcy — rozwiń po szczegóły`;
+  return `${countLabel} bez terminu u dostawcy - rozwiń po szczegóły`;
 }
 
 /** Zwinięty wiersz / subline — tylko najwcześniejszy termin ZD. */

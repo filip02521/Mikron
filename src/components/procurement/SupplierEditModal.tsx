@@ -140,7 +140,7 @@ function SupplierEditModalInner({
         const result = await actionUpsertSupplier(snapshot);
         if (!result.success) throw new Error(result.error);
         const baseMsg = !snapshot.is_active
-          ? "Dostawca oznaczony jako nieaktywny — zniknie z cyklu w panelu dziennym."
+          ? "Dostawca oznaczony jako nieaktywny - zniknie z cyklu w panelu dziennym."
           : isNew
             ? `Dodano dostawcę „${snapshot.name.trim()}”.`
             : "Zapisano zmiany dostawcy.";
@@ -161,7 +161,7 @@ function SupplierEditModalInner({
     <ModalShell
       open
       onClose={onClose}
-      title={isNew ? "Nowy dostawca" : `Edycja — ${supplier?.name ?? ""}`}
+      title={isNew ? "Nowy dostawca" : `Edycja - ${supplier?.name ?? ""}`}
       size="lg"
       tier="raised"
       loadingMessage={pendingMessage}
@@ -170,7 +170,7 @@ function SupplierEditModalInner({
       description={
         isNew
           ? undefined
-          : "Przewijaj pola w oknie — nagłówek i przyciski Zapisz / Anuluj pozostają na miejscu."
+          : "Przewijaj pola w oknie - nagłówek i przyciski Zapisz / Anuluj pozostają na miejscu."
       }
       footer={
         <>
@@ -223,7 +223,7 @@ function SupplierEditModalInner({
         </Field>
         <div className="rounded-md border border-indigo-100 bg-indigo-50/40 p-3 sm:col-span-2">
           <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-900">
+            <p className="text-xs font-semibold text-indigo-900">
               Cykl zamówień
             </p>
             <FieldHintButton label="Pomoc: cykl zamówień" title="Jak ustawić cykl?">
@@ -256,10 +256,10 @@ function SupplierEditModalInner({
               key={`stock-${form.id ?? "new"}`}
               label="Zapas (okres)"
               hintLabel="Co oznacza zapas"
-              hintTitle="Zapas — okres zamówienia"
+              hintTitle="Zapas - okres zamówienia"
               hintContent={
                 <p className="text-xs leading-relaxed">
-                  Na jaki horyzont planujesz większe zamówienie — nie data, tylko skala.
+                  Na jaki horyzont planujesz większe zamówienie - nie data, tylko skala.
                 </p>
               }
               value={form.stock_raw}
@@ -276,7 +276,7 @@ function SupplierEditModalInner({
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
           >
-            <option value="">—</option>
+            <option value="">-</option>
             <option value="MAILOWO">Mail</option>
             <option value="TELEFONICZNIE">Telefon</option>
             <option value="PRZEZ INTERNET">Internet</option>
@@ -285,7 +285,7 @@ function SupplierEditModalInner({
         <Field
           label="Kontakt (e-mail, telefon, strona)"
           className="sm:col-span-2"
-          hint="Musi pasować do sposobu zamówienia — przy „Telefon” wpisz numer (min. 9 cyfr)."
+          hint="Musi pasować do sposobu zamówienia - przy „Telefon” wpisz numer (min. 9 cyfr)."
         >
           <Input
             disabled={pending}
@@ -297,7 +297,7 @@ function SupplierEditModalInner({
         <Field
           label="Minimalna wartość zamówienia"
           className="sm:col-span-2"
-          hint="Opcjonalnie — kwota, poniżej której dostawca nie realizuje zamówienia. Puste = brak minimum."
+          hint="Opcjonalnie - kwota, poniżej której dostawca nie realizuje zamówienia. Puste = brak minimum."
         >
           <div className="flex gap-2">
             <Input
@@ -332,7 +332,7 @@ function SupplierEditModalInner({
               }
               className="w-40 shrink-0"
             >
-              <option value="">—</option>
+              <option value="">-</option>
               {MIN_ORDER_CURRENCY_OPTIONS.map((c) => (
                 <option key={c.value} value={c.value}>
                   {c.label}
@@ -370,7 +370,7 @@ function SupplierEditModalInner({
           <span className="text-sm text-slate-700">
             <span className="font-medium text-slate-900">Tylko w razie potrzeby</span>
             <span className="mt-0.5 block text-slate-500">
-              Bez stałego terminu w planie tygodnia — lista w panelu dziennym.
+              Bez stałego terminu w planie tygodnia - lista w panelu dziennym.
             </span>
           </span>
         </label>

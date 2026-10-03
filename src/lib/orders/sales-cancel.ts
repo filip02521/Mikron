@@ -233,7 +233,7 @@ export function planSalesCancelQuantity(
 
   const ordered = parseOrderQuantity(order.quantity);
   if (ordered == null) {
-    throw new Error("Brak ilości liczbowej — możliwa tylko pełna rezygnacja.");
+    throw new Error("Brak ilości liczbowej - możliwa tylko pełna rezygnacja.");
   }
 
   const totalCancelledQty = existingCancelled + cancelQty;
@@ -584,7 +584,7 @@ export function salesCancelConfirmForLines(lines: SalesCancelLineContext[]): {
   const products = formatProductList(valid.map((l) => l.product));
   return {
     title: "Wycofać wybrane pozycje?",
-    message: `Pozycje ${products} zostaną wycofane — skutek zależy od etapu każdej z nich (część może być już u dostawcy lub na magazynie). ${salesCancelUndoHint()}`,
+    message: `Pozycje ${products} zostaną wycofane - skutek zależy od etapu każdej z nich (część może być już u dostawcy lub na magazynie). ${salesCancelUndoHint()}`,
     confirmLabel: "Wycofaj wybrane",
   };
 }
@@ -682,12 +682,12 @@ export function salesCancelArchiveDetail(
   switch (phase) {
     case "in_transit":
       return {
-        statusTitle: "Rezygnacja — towar w drodze",
+        statusTitle: "Rezygnacja - towar w drodze",
         statusDetail: `${when}${partialNote} Towar trafi na stan magazynu po dostawie.`,
       };
     case "on_stock":
       return {
-        statusTitle: "Rezygnacja — towar na magazynie",
+        statusTitle: "Rezygnacja - towar na magazynie",
         statusDetail: `${when}${partialNote} Towar trafi na stan magazynu, poza rezerwacją handlowca.`,
       };
     default:
@@ -709,13 +709,13 @@ export function salesCancelQueueBanner(order: IndividualOrder): string {
 
   if (disposition === "to_stock") {
     return note
-      ? `Rezygnacja ${person} — na stan magazynu — ${note}`
-      : `Rezygnacja ${person} — na stan magazynu, poza rezerwacją handlowca.`;
+      ? `Rezygnacja ${person} - na stan magazynu - ${note}`
+      : `Rezygnacja ${person} - na stan magazynu, poza rezerwacją handlowca.`;
   }
   if (disposition === "return") {
     return note
-      ? `Rezygnacja ${person} — zwrot do dostawcy — ${note}`
-      : `Rezygnacja ${person} — zwrot do dostawcy.`;
+      ? `Rezygnacja ${person} - zwrot do dostawcy - ${note}`
+      : `Rezygnacja ${person} - zwrot do dostawcy.`;
   }
 
   const phase =
@@ -724,9 +724,9 @@ export function salesCancelQueueBanner(order: IndividualOrder): string {
     "in_transit";
 
   if (phase === "on_stock") {
-    return `Rezygnacja ${person} — wybierz: na stan magazynu lub zwrot do dostawcy.`;
+    return `Rezygnacja ${person} - wybierz: na stan magazynu lub zwrot do dostawcy.`;
   }
-  return `Rezygnacja ${person} — towar może jeszcze dotrzeć. Po dostawie wybierz: na stan albo zwrot.`;
+  return `Rezygnacja ${person} - towar może jeszcze dotrzeć. Po dostawie wybierz: na stan albo zwrot.`;
 }
 
 /** Cofnięcie wycofania prośby w oknie undo — przywraca aktywną pozycję na liście. */

@@ -13,7 +13,7 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/ui/page-metadata";
 
-export const metadata: Metadata = pageMetadata("Urlopy — zespół", "Kalendarz urlopów zespołu");
+export const metadata: Metadata = pageMetadata("Urlopy - zespół", "Kalendarz urlopów zespołu");
 
 export default async function StaffUrlopyPage() {
   const user = await getSessionUser();
@@ -44,7 +44,7 @@ export default async function StaffUrlopyPage() {
             <NavIcon navKey="vacation" size={20} />
           </SectionHeadingIcon>
         }
-        title="Urlopy — zespół"
+        title="Urlopy - zespół"
         description="Sprawdź kto z zespołu jest na urlopie i zaplanuj swój. Cały zespół widzi urlopy na wzajem."
       />
       <div className={salesCardBodyClass}>

@@ -92,7 +92,7 @@ function SplitStat({
 }) {
   return (
     <div className="rounded-md bg-slate-50/70 px-2.5 py-1.5">
-      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+      <p className="text-[10px] font-medium text-slate-400">
         {label}
       </p>
       {part ? (

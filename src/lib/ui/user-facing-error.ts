@@ -305,7 +305,7 @@ export function userFacingErrorText(
     });
   }
   if (copy.kind === "unauthorized" || copy.kind === "session") {
-    return `${copy.title} — ${copy.description}`;
+    return `${copy.title} - ${copy.description}`;
   }
   return copy.description;
 }

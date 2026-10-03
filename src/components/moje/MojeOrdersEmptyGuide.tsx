@@ -63,7 +63,7 @@ function GuideContent({ showActions = true }: { showActions?: boolean }) {
           tileClassName="bg-slate-100 text-slate-600"
           title="E-mail"
         >
-          O ważnych zmianach dostaniesz też wiadomość e-mail — na co dzień sprawdzaj listę w
+          O ważnych zmianach dostaniesz też wiadomość e-mail - na co dzień sprawdzaj listę w
           aplikacji.
         </GuidePoint>
       </ul>

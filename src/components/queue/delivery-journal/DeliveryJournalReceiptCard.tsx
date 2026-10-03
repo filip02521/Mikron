@@ -64,7 +64,7 @@ export function DeliveryJournalReceiptCard({
 
   const goToReceiveQueue = () => {
     const supplierName =
-      receipt.supplierName && receipt.supplierName !== "—"
+      receipt.supplierName && receipt.supplierName !== "-"
         ? receipt.supplierName
         : null;
     if (onGoToReceive) {
@@ -93,8 +93,8 @@ export function DeliveryJournalReceiptCard({
               <button
                 type="button"
                 onClick={goToReceiveQueue}
-                className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-amber-200/80 transition hover:bg-amber-100 hover:text-amber-900"
-                title={`${pendingCount} oczekujących próśb — przejdź do przyjęcia`}
+                className="inline-flex shrink-0 items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 ring-1 ring-amber-200/80 transition hover:bg-amber-100 hover:text-amber-900"
+                title={`${pendingCount} oczekujących próśb - przejdź do przyjęcia`}
               >
                 <IconClipboardList size={11} className="shrink-0" aria-hidden />
                 {pendingCount} oczekuje

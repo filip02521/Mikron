@@ -12,7 +12,7 @@ const SELECT_COLS =
 
 /** Jawny komunikat gdy migracja 114 nie jest zastosowana — nie ukrywamy jako „pusta lista”. */
 export const TEETH_SHORTAGES_TABLE_MISSING_MESSAGE =
-  "Brak tabeli braków zębowych w bazie — uruchom migrację 114_teeth_supplier_shortages (npm run db:migrate:teeth-shortages).";
+  "Brak tabeli braków zębowych w bazie - uruchom migrację 114_teeth_supplier_shortages (npm run db:migrate:teeth-shortages).";
 
 function isMissingShortagesTable(error: { message?: string; code?: string }): boolean {
   const message = error.message ?? "";
@@ -200,7 +200,7 @@ function mapShortageWriteError(
     message.toLowerCase().includes("duplicate")
   ) {
     if (context === "activate") {
-      return "Nie można przywrócić — ten wariant jest już aktywny na innym wpisie. Dezaktywuj konflikt albo zmień wariant.";
+      return "Nie można przywrócić - ten wariant jest już aktywny na innym wpisie. Dezaktywuj konflikt albo zmień wariant.";
     }
     return "Ten wariant (dostawca + linia + kolor + fason) jest już na liście aktywnych braków.";
   }

@@ -29,7 +29,7 @@ describe("queue-product-groups", () => {
     expect(informacjaProductKey(list[0]!)).not.toBe(informacjaProductKey(list[2]!));
   });
 
-  it("sortInformacjaQueueByProduct — ten sam towar obok siebie", () => {
+  it("sortInformacjaQueueByProduct - ten sam towar obok siebie", () => {
     const sorted = sortInformacjaQueueByProduct([
       order({ id: "b", sales_person_id: "sp2", action_at: "2026-01-02T10:00:00Z" }),
       order({ id: "a", sales_person_id: "sp1", action_at: "2026-01-01T10:00:00Z" }),

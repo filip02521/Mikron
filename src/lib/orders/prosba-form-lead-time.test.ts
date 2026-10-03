@@ -21,7 +21,7 @@ describe("buildProsbaFormLeadTimeMeta", () => {
     expect(buildProsbaFormLeadTimeMeta(null, "LACZNIE")).toBeNull();
   });
 
-  it("LACZNIE — brief + liczba dostaw", () => {
+  it("LACZNIE - brief + liczba dostaw", () => {
     const m = buildProsbaFormLeadTimeMeta(stats, "LACZNIE");
     expect(m).toEqual({
       primaryText: "~8 dni rob.",
@@ -31,13 +31,13 @@ describe("buildProsbaFormLeadTimeMeta", () => {
     });
   });
 
-  it("OSOBNO — gł./pob. z lowConfidence przy n<5", () => {
+  it("OSOBNO - gł./pob. z lowConfidence przy n<5", () => {
     const m = buildProsbaFormLeadTimeMeta(stats, "OSOBNO");
     expect(m?.primaryText).toBe("gł. ~10 d · pob. ~5 d");
     expect(m?.lowConfidence).toBe(true);
   });
 
-  it("lowConfidence przy <5 próbach — bez „szacunek” w primaryText", () => {
+  it("lowConfidence przy <5 próbach - bez „szacunek” w primaryText", () => {
     const thin: DeliveryStats = {
       supplier_id: "x",
       main_sum: 10,

@@ -22,7 +22,7 @@ function renfertLine(): ManualZdEstimateLine {
     tw_Symbol: "65000550",
     tw_Nazwa: "Renfert-Cleaning pins",
     tw_IdGrupa: null,
-    grt_Nazwa: "—",
+    grt_Nazwa: "-",
     tw_Stan: 0,
     tw_StanRez: 3,
     dostepne: -3,
@@ -199,7 +199,7 @@ describe("Screen regresja: Z PROŚBY + rez. 3 + Do ZD", () => {
     ).toBe(1);
   });
 
-  it("nadpisanie Do ZD=0 (Zeruj) nadal blokuje — to nie bug overlap", () => {
+  it("nadpisanie Do ZD=0 (Zeruj) nadal blokuje - to nie bug overlap", () => {
     const gate = canCreateZdFromEstimateState({
       configured: true,
       settingsTrusted: true,

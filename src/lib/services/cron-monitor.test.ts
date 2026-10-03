@@ -70,7 +70,7 @@ describe("evaluateCronJob", () => {
         lastError: null,
       },
     });
-    expect(row.statusLabel).toBe("OK — zakończono dziś");
+    expect(row.statusLabel).toBe("OK - zakończono dziś");
     expect(row.tone).toBe("success");
   });
 
@@ -107,7 +107,7 @@ describe("evaluateCronJob", () => {
     const row = evaluateCronJob(scheduledDef, run, now, { scheduledMailSentLog: sentLog });
     expect(row.stale).toBe(false);
     expect(row.tone).toBe("success");
-    expect(row.statusLabel).toBe("OK — wysłano");
+    expect(row.statusLabel).toBe("OK - wysłano");
   });
 });
 
@@ -224,7 +224,7 @@ describe("buildCronMonitorSnapshot", () => {
     };
     const row = evaluateCronJob(scheduledDef, run, now);
     expect(row.stale).toBe(false);
-    expect(row.statusLabel).toBe("OT no-op OK — status z runnera");
+    expect(row.statusLabel).toBe("OT no-op OK - status z runnera");
     expect(row.tone).toBe("neutral");
   });
 

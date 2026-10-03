@@ -261,13 +261,13 @@ export default async function MojePage({
           variant="action"
           className="mb-4"
           title="Widok wszystkich prośb"
-          description="To lista operacyjna — nie panel pojedynczego handlowca. Aby zobaczyć konto handlowca, użyj podglądu."
+          description="To lista operacyjna - nie panel pojedynczego handlowca. Aby zobaczyć konto handlowca, użyj podglądu."
           href="/admin/wybor-handlowca"
           actionLabel="Wybierz handlowca"
         />
       ) : role && canAccessOperations(role, workspaces) && !salesPersonId ? (
         <Alert tone="warning" className="mb-4">
-          Tryb operacyjny — widzisz wszystkie zamówienia we wszystkich kontach handlowców.
+          Tryb operacyjny - widzisz wszystkie zamówienia we wszystkich kontach handlowców.
         </Alert>
       ) : null}
 
@@ -277,9 +277,9 @@ export default async function MojePage({
         pageTitle={isTeamPreview ? `Prośby: ${salesPersonName}` : isDelegatePreview ? `Zastępujesz: ${salesPersonName}` : "Moje zamówienia"}
         pageDescription={
           isTeamPreview
-            ? "Podgląd prośb wybranego handlowca — statusy i odbiór."
+            ? "Podgląd prośb wybranego handlowca - statusy i odbiór."
             : isDelegatePreview
-              ? "Tryb zastępstwa — potwierdzenie odbioru i zamknięcie ZK aktywne. Edycja i anulowanie są wyłączone."
+              ? "Tryb zastępstwa - potwierdzenie odbioru i zamknięcie ZK aktywne. Edycja i anulowanie są wyłączone."
               : undefined
         }
         headerActions={salesHeaderActions}

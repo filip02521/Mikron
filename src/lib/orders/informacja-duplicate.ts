@@ -119,7 +119,7 @@ export function informacjaDuplicateProductLabel(
 ): string {
   const symbol = order.symbol?.trim();
   const product = order.product?.trim();
-  if (symbol && product && symbol !== "-") return `${symbol} — ${product}`;
+  if (symbol && product && symbol !== "-") return `${symbol} - ${product}`;
   return product || symbol || order.mikranCode?.trim() || "ten produkt";
 }
 
@@ -131,7 +131,7 @@ export function formatInformacjaDuplicateMessage(
   const clientName = normalizeSalesClientName(existing.clientName);
   const clientPart = clientName ? ` dla klienta „${clientName}”` : "";
   const scope = options?.inBatch ? " w tej samej prośbie" : " już na liście";
-  return `Taka prośba informacyjna${clientPart} jest${scope}: ${productLabel}. Aktywna prośba o ten sam produkt już istnieje — nie dodawaj duplikatu.`;
+  return `Taka prośba informacyjna${clientPart} jest${scope}: ${productLabel}. Aktywna prośba o ten sam produkt już istnieje - nie dodawaj duplikatu.`;
 }
 
 export function findInformacjaDuplicate(

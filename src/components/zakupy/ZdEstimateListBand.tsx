@@ -314,7 +314,7 @@ export function ZdEstimateListBand({
               <input
                 type="checkbox"
                 className="size-3.5 accent-indigo-600"
-                aria-label="Do kolejnej dostawy — uwzględnij czas dostawy i harmonogram"
+                aria-label="Do kolejnej dostawy - uwzględnij czas dostawy i harmonogram"
                 checked={Boolean(leadTimeHorizon)}
                 disabled={disabled}
                 onChange={(e) => onLeadTimeHorizonToggle(e.target.checked)}
@@ -337,7 +337,7 @@ export function ZdEstimateListBand({
               <input
                 type="checkbox"
                 className="size-3.5 accent-indigo-600"
-                aria-label="Wygładź nietypową sprzedaż — skoki, rzadka sprzedaż, prośby"
+                aria-label="Wygładź nietypową sprzedaż - skoki, rzadka sprzedaż, prośby"
                 checked={Boolean(salesSmoothing)}
                 disabled={disabled}
                 onChange={(e) => onSalesSmoothingToggle(e.target.checked)}

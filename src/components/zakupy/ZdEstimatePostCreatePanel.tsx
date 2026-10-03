@@ -609,7 +609,7 @@ export function ZdEstimatePostCreatePanel({
                 aria-hidden
               />
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+                <p className="text-xs font-semibold text-emerald-800">
                   {session.kind === "linked"
                     ? "Powiązano z dokumentem"
                     : "Utworzono w Subiekcie"}
@@ -653,7 +653,7 @@ export function ZdEstimatePostCreatePanel({
 
         {createLocked && session.kind !== "timeout_recovery" ? (
           <p className="rounded-md bg-amber-50/90 px-3 py-2 text-sm text-amber-950 ring-1 ring-amber-200/90">
-            Tworzenie ZD zablokowane dla tej listy — odblokuj świadomie, powiąż ZD
+            Tworzenie ZD zablokowane dla tej listy - odblokuj świadomie, powiąż ZD
             albo przelicz listę.
           </p>
         ) : null}
@@ -668,7 +668,7 @@ export function ZdEstimatePostCreatePanel({
             <li
               key={item.key}
               className={cn(
-                "inline-flex max-w-full items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ring-1",
+                "inline-flex max-w-full items-center gap-2 rounded-md px-3 py-1 text-xs font-medium ring-1",
                 item.unsure
                   ? "bg-amber-50 text-amber-950 ring-amber-200"
                   : item.ok
@@ -711,7 +711,7 @@ export function ZdEstimatePostCreatePanel({
             {session.markFreeze.omittedServiceCount > 0 ? (
               <li className="text-amber-950">
                 {session.markFreeze.omittedServiceCount} usług nie zmieściło się w
-                uwagach — nie wejdą na listę Główne.
+                uwagach - nie wejdą na listę Główne.
               </li>
             ) : null}
             {session.markFreeze.teethServiceCount > 0 ? (
@@ -860,7 +860,7 @@ export function ZdEstimatePostCreatePanel({
                       <div className="flex flex-col gap-2 rounded-md bg-slate-50 px-3 py-2.5 ring-1 ring-slate-200/80 sm:flex-row sm:items-center sm:justify-between">
                         <p className="text-sm text-slate-700">
                           {session.supplierName} przyjmuje zamówienia na swoim{" "}
-                          {orderForm.kind === "pdf" ? "formularzu PDF" : "arkuszu Excel"} — pobierz go
+                          {orderForm.kind === "pdf" ? "formularzu PDF" : "arkuszu Excel"} - pobierz go
                           wypełnionego tym ZD i dołącz do maila.
                         </p>
                         <a
@@ -1043,7 +1043,7 @@ export function ZdEstimatePostCreatePanel({
           }
         >
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+            <p className="text-xs font-medium text-slate-500">
               {ZD_ESTIMATE_UI.postCreateMailComposeTo}
             </p>
             <p className="mt-1 text-sm font-medium text-slate-900">{email}</p>
@@ -1051,7 +1051,7 @@ export function ZdEstimatePostCreatePanel({
           <div>
             <label
               htmlFor={subjectId}
-              className="text-xs font-medium uppercase tracking-wide text-slate-500"
+              className="text-xs font-medium text-slate-500"
             >
               {ZD_ESTIMATE_UI.postCreateMailComposeSubject}
             </label>
@@ -1068,7 +1068,7 @@ export function ZdEstimatePostCreatePanel({
           <div>
             <label
               htmlFor={bodyId}
-              className="text-xs font-medium uppercase tracking-wide text-slate-500"
+              className="text-xs font-medium text-slate-500"
             >
               {ZD_ESTIMATE_UI.postCreateMailComposeBody}
             </label>

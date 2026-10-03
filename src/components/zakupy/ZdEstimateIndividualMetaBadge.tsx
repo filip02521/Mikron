@@ -21,8 +21,8 @@ export function ZdEstimateIndividualMetaBadge({
   const people = formatIndividualSalesPeopleShort(extra.requests);
   const policyBit =
     extrasPolicy === "max"
-      ? "Polityka: max(niedobór, prośba) — bez dublowania gdy prośba pokrywa niedobór."
-      : "Polityka: suma (niedobór + prośba) — rezerwa na wierzchu.";
+      ? "Polityka: max(niedobór, prośba) - bez dublowania gdy prośba pokrywa niedobór."
+      : "Polityka: suma (niedobór + prośba) - rezerwa na wierzchu.";
   const inclusionBit = doZdSuppressed
     ? "Rezerwa NIE jest w aktualnym „Do ZD” (nadpisanie albo wykluczenie)."
     : `Rezerwa ${formatQty(extra.extraPieces)} szt jest już wliczona w kolumnę „Do ZD” (przed zaokrągleniem opakowania).`;

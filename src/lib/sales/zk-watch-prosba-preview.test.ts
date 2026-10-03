@@ -265,13 +265,13 @@ describe("formatZkProsbaPreviewMetaLine", () => {
     });
 
     expect(formatZkProsbaPreviewMetaLine({
-      quantityLabel: "—",
+      quantityLabel: "-",
       progressLabel: null,
       requestKind: "informacja",
       ...delivery,
-    })).toBe("Prośba informacyjna — bez terminu dostawy");
+    })).toBe("Prośba informacyjna - bez terminu dostawy");
     expect(formatZkProsbaPreviewMetaLine({
-      quantityLabel: "—",
+      quantityLabel: "-",
       progressLabel: null,
       requestKind: "informacja",
       ...delivery,
@@ -294,7 +294,7 @@ describe("formatZkProsbaPreviewMetaLine", () => {
     expect(delivery.deliveryDisplay?.detailLabel).toContain("15.07");
     expect(
       formatZkProsbaPreviewMetaLine({
-        quantityLabel: "—",
+        quantityLabel: "-",
         progressLabel: null,
         requestKind: "informacja",
         ...delivery,

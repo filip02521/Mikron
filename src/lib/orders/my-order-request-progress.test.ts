@@ -18,7 +18,7 @@ function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
 }
 
 describe("my-order-request-progress", () => {
-  it("zamówienie — kroki Prośba → Zamówienie → Dostawa → Odbiór", () => {
+  it("zamówienie - kroki Prośba → Zamówienie → Dostawa → Odbiór", () => {
     const track = deriveMyOrderRequestProgress(row({ statusTitle: "Przed zamówieniem" }));
     expect(track?.steps.map((s) => s.label)).toEqual([
       "Prośba",
@@ -29,20 +29,20 @@ describe("my-order-request-progress", () => {
     expect(track?.steps.find((s) => s.id === "request")?.state).toBe("current");
   });
 
-  it("zamówienie — aktualny krok Zamówienie", () => {
+  it("zamówienie - aktualny krok Zamówienie", () => {
     const track = deriveMyOrderRequestProgress(row({ statusTitle: "Zamówione" }));
     expect(track?.steps.find((s) => s.id === "order")?.state).toBe("current");
     expect(track?.steps.find((s) => s.id === "request")?.state).toBe("done");
   });
 
-  it("zamówienie — częściowa dostawa na kroku Dostawa", () => {
+  it("zamówienie - częściowa dostawa na kroku Dostawa", () => {
     const track = deriveMyOrderRequestProgress(
       row({ statusTitle: "Częściowo na magazynie", headlineTone: "stock" })
     );
     expect(track?.steps.find((s) => s.id === "delivery")?.state).toBe("current");
   });
 
-  it("zamówienie — odbiór jako ostatni krok", () => {
+  it("zamówienie - odbiór jako ostatni krok", () => {
     const track = deriveMyOrderRequestProgress(
       row({
         statusTitle: "Do odbioru",
@@ -54,7 +54,7 @@ describe("my-order-request-progress", () => {
     expect(track?.steps.find((s) => s.id === "pickup")?.state).toBe("current");
   });
 
-  it("informacja — ścieżka bezpośrednia", () => {
+  it("informacja - ścieżka bezpośrednia", () => {
     const track = deriveMyOrderRequestProgress(
       row({
         kind: "informacja",
@@ -66,7 +66,7 @@ describe("my-order-request-progress", () => {
     expect(track?.steps.find((s) => s.id === "warehouse")?.state).toBe("current");
   });
 
-  it("informacja — czeka na zamówienie u dostawcy", () => {
+  it("informacja - czeka na zamówienie u dostawcy", () => {
     const track = deriveMyOrderRequestProgress(
       row({
         kind: "informacja",
@@ -77,7 +77,7 @@ describe("my-order-request-progress", () => {
     expect(track?.steps.find((s) => s.id === "order")?.state).toBe("current");
   });
 
-  it("informacja — czeka na magazyn po zamówieniu", () => {
+  it("informacja - czeka na magazyn po zamówieniu", () => {
     const track = deriveMyOrderRequestProgress(
       row({
         kind: "informacja",
@@ -88,7 +88,7 @@ describe("my-order-request-progress", () => {
     expect(track?.steps.find((s) => s.id === "warehouse")?.state).toBe("current");
   });
 
-  it("informacja — brak na stanie", () => {
+  it("informacja - brak na stanie", () => {
     const track = deriveMyOrderRequestProgress(
       row({
         kind: "informacja",
@@ -100,7 +100,7 @@ describe("my-order-request-progress", () => {
     expect(track?.steps[0]?.state).toBe("current");
   });
 
-  it("informacja — brak na stanie, już zamówione", () => {
+  it("informacja - brak na stanie, już zamówione", () => {
     const track = deriveMyOrderRequestProgress(
       row({
         kind: "informacja",

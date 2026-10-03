@@ -53,7 +53,7 @@ export function ivoclarVivodentDclMouldShapeGroups(kind: TeethKind): TeethMouldS
     {
       shapeId: "square",
       label: "Kwadratowe",
-      hint: "Górne · A4–A6*",
+      hint: "Górne · A4-A6*",
       moulds: VIVODENT_DCL_UPPER_SQUARE,
     },
     {
@@ -65,7 +65,7 @@ export function ivoclarVivodentDclMouldShapeGroups(kind: TeethKind): TeethMouldS
     {
       shapeId: "lower",
       label: "Dolne",
-      hint: "A3–A10",
+      hint: "A3-A10",
       moulds: VIVODENT_DCL_LOWER_ANTERIOR,
     },
   ];

@@ -31,7 +31,7 @@ describe("describeVerificationGaps", () => {
     expect(text).not.toContain("Brakuje:");
   });
 
-  it("tylko dostawca — krótszy komunikat", () => {
+  it("tylko dostawca - krótszy komunikat", () => {
     const text = describeVerificationGaps({
       ...base,
       symbol: "ABC",

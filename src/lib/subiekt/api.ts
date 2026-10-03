@@ -510,7 +510,7 @@ export async function fetchSubiektZdEstimateAll(
 
   const data = first.data;
   if (!data || !Array.isArray(data.pozycje)) {
-    throw new Error("Niepoprawna odpowiedź /orders/zd/estimate — brak pozycji.");
+    throw new Error("Niepoprawna odpowiedź /orders/zd/estimate - brak pozycji.");
   }
 
   const pozycje: SubiektZdEstimateLine[] = [...data.pozycje];

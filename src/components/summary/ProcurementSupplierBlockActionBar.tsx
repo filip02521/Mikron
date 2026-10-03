@@ -167,10 +167,10 @@ export function ProcurementSupplierBlockActionBar({
       <div
         className={cn(pending && "opacity-60")}
         role="group"
-        aria-label={`Zamów razem u ${block.supplierName} — ${groupCount} ${groupCount === 1 ? "osoba" : groupCount < 5 ? "osoby" : "osób"}`}
+        aria-label={`Zamów razem u ${block.supplierName} - ${groupCount} ${groupCount === 1 ? "osoba" : groupCount < 5 ? "osoby" : "osób"}`}
       >
         <ButtonGroup
-          ariaLabel={`Główne lub uzupełniające — wszystkie grupy, ${block.supplierName}`}
+          ariaLabel={`Główne lub uzupełniające - wszystkie grupy, ${block.supplierName}`}
           className={panelActionBarFooterShellClass}
           allowOverflow
         >

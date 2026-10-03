@@ -32,6 +32,7 @@ import {
   type DailyPanelUnseenVariant,
 } from "@/lib/ui/ontime-theme";
 import {
+  isTextSelectionInside,
   panelRowClearFocusOnLeave,
   panelRowGroupClass,
 } from "@/lib/ui/panel-row-actions-reveal";
@@ -175,6 +176,7 @@ export function ProcurementSupplierBlockBar({
           ) {
             return;
           }
+          if (isTextSelectionInside(e.currentTarget)) return;
           onToggleCollapse();
         }}
       >

@@ -92,7 +92,7 @@ export function shouldShowOrderStatusDetail(row: MyOrderRow): boolean {
   if (
     isInformacjaAvailabilityPendingStatusTitle(row.statusTitle) ||
     row.statusTitle === "Czekamy na zamówienie u dostawcy" ||
-    row.statusTitle === "Zamówione — czekamy na magazyn"
+    row.statusTitle === "Zamówione - czekamy na magazyn"
   ) {
     return false;
   }

@@ -2,7 +2,7 @@ import type { IndividualOrder } from "@/types/database";
 import { MAX_PROCUREMENT_CANCEL_NOTE_LEN } from "@/lib/security/text-limits";
 
 export const PROCUREMENT_CANCEL_NOTE_MIGRATION_HINT =
-  "Brak kolumny procurement_cancel_note — uruchom supabase/migrations/063_procurement_cancel_note.sql";
+  "Brak kolumny procurement_cancel_note - uruchom supabase/migrations/063_procurement_cancel_note.sql";
 
 export function isProcurementCancelNoteColumnMissing(message: string | undefined): boolean {
   return Boolean(message?.includes("procurement_cancel_note"));

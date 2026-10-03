@@ -55,7 +55,7 @@ function MiniStat({ label, value, compact = false }: { label: string; value: str
       "rounded-lg border border-slate-200/70 bg-slate-50/80 text-left shadow-[var(--shadow-card)]",
       compact ? "px-2 py-1.5" : "px-2.5 py-2"
     )}>
-      <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-[10px] font-medium text-slate-500">{label}</p>
       <p className="mt-0.5 text-sm font-semibold tabular-nums text-slate-900">{value}</p>
     </div>
   );
@@ -184,17 +184,17 @@ export function UpcomingDeliverySupplierCard({
           <div className="flex items-center gap-1.5">
             <p className={cn(panelTypography.rowTitle, "min-w-0 truncate", compact && "text-xs", deliveryStatus === "received" && "text-slate-500 line-through decoration-slate-400/60")}>{supplier.supplierName}</p>
             {supplier.isOverdueDeadline ? (
-              <span className="shrink-0 rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-800 ring-1 ring-rose-200/80">
+              <span className="shrink-0 rounded-md bg-rose-100 px-1.5 py-0.5 text-[10px] font-semibold text-rose-800 ring-1 ring-rose-200/80">
                 Po terminie
               </span>
             ) : null}
-            <span className={cn("shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold", badge.className)}>
+            <span className={cn("shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold", badge.className)}>
               {badge.label}
             </span>
           </div>
           <div className={cn("mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-0.5", compact && "mt-0.5")}>
             {supplier.zdDocNumber ? (
-              <span className="shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-600 ring-1 ring-inset ring-slate-200/50">
+              <span className="shrink-0 rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] font-medium text-slate-600 ring-1 ring-inset ring-slate-200/50">
                 {supplier.zdDocNumber}
               </span>
             ) : null}
@@ -251,12 +251,12 @@ export function UpcomingDeliverySupplierCard({
             <MiniStat label="Sztuki" value={supplier.totalQuantity} compact={compact} />
             <MiniStat
               label="Paczki"
-              value={supplier.carrierHint?.typicalPackageCount ?? "—"}
+              value={supplier.carrierHint?.typicalPackageCount ?? "-"}
               compact={compact}
             />
             <MiniStat
               label="Palety"
-              value={supplier.carrierHint?.typicalPalletCount ?? "—"}
+              value={supplier.carrierHint?.typicalPalletCount ?? "-"}
               compact={compact}
             />
           </div>
@@ -280,7 +280,7 @@ export function UpcomingDeliverySupplierCard({
           ) : null}
           {(supplier.zdOnlyDocNumbers?.length ?? 0) > 0 ? (
             <div className="mb-2 rounded-md bg-slate-50 px-2.5 py-2">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+              <p className="text-[10px] font-medium text-slate-500">
                 ZD z Subiekta (bez dopasowanego zamówienia)
               </p>
               <div className="mt-1 flex flex-wrap gap-1.5">
@@ -313,11 +313,11 @@ export function UpcomingDeliverySupplierCard({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className={cn("font-mono text-[11px] font-medium", orderComplete ? "text-slate-500 line-through" : "text-slate-700")}>
-                        {order.symbol || "—"}
+                        {order.symbol || "-"}
                       </span>
                       <span
                         className={cn(
-                          "rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+                          "rounded-md px-1.5 py-0.5 text-[10px] font-semibold",
                           orderComplete
                             ? "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200/80"
                             : orderPartial

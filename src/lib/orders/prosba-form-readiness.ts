@@ -150,7 +150,7 @@ export function buildProsbaFormReadiness(
     id: "supplier",
     label: "Dostawca",
     state: "empty",
-    detail: "Po wysłaniu — dopasowanie lub zakupy",
+    detail: "Po wysłaniu - dopasowanie lub zakupy",
   };
 
   if (!plan || !productDone) {
@@ -172,8 +172,8 @@ export function buildProsbaFormReadiness(
       detail: teethOnlyPanel
         ? TEETH_READINESS_SUPPLIER_DETAIL
         : mixedLanes
-          ? "Wybrany — część trafi do panelu zębów, część do dziennego"
-          : "Wybrany — trafia do panelu dziennego",
+          ? "Wybrany - część trafi do panelu zębów, część do dziennego"
+          : "Wybrany - trafia do panelu dziennego",
     };
   } else {
     supplierStep = {
@@ -251,7 +251,7 @@ export function buildProsbaFormReadiness(
           ? MIXED_PROCUREMENT_READINESS_SUBLINE
           : teethOnlyPanel
             ? TEETH_READINESS_READY_SUBLINE
-            : "Kompletne — trafi od razu do realizacji."
+            : "Kompletne - trafi od razu do realizacji."
         : informacjaReadinessSubline(informacjaPath, "complete"),
       tone: "ready",
       steps,
@@ -268,7 +268,7 @@ export function buildProsbaFormReadiness(
     subline: isZamowienie
       ? mixedLanes
         ? MIXED_PROCUREMENT_READINESS_SUBLINE
-        : "Dział dostaw dopracuje dostawcę — śledź postęp w „Moje zamówienia”."
+        : "Dział dostaw dopracuje dostawcę - śledź postęp w „Moje zamówienia”."
       : informacjaReadinessSubline(informacjaPath, "incomplete"),
     tone: "handoff",
     steps,

@@ -151,7 +151,7 @@ describe("buildStockWatchDashboard", () => {
   });
 });
 
-describe("buildStockWatchDashboard — czas dostawy", () => {
+describe("buildStockWatchDashboard - czas dostawy", () => {
   const items = [
     // W normie wg celu, ale skończy się przed dostawą zamówienia złożonego dziś.
     item({ subiektTwId: 1, status: "ok", deliveryRisk: "before_delivery", daysOfCover: 5 }),
@@ -179,8 +179,8 @@ describe("buildStockWatchDashboard — czas dostawy", () => {
   });
 });
 
-describe("buildStockWatchDashboard — limit czerwonej strefy", () => {
-  it("„przed dostawą” ma własny limit — nie wypierają go setki braków", () => {
+describe("buildStockWatchDashboard - limit czerwonej strefy", () => {
+  it("„przed dostawą” ma własny limit - nie wypierają go setki braków", () => {
     const outs = Array.from({ length: 61 }, (_, i) =>
       item({ subiektTwId: 100 + i, status: "out_of_stock", daysOfCover: 0 })
     );

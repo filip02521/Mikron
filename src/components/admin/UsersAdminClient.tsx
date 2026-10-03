@@ -48,17 +48,17 @@ function salesPersonLabel(
   salesPersonId: string | null,
   salesPersonName: string | null
 ): string {
-  if (!salesPersonId) return "—";
+  if (!salesPersonId) return "-";
   return (
     salesPeople.find((p) => p.id === salesPersonId)?.name ??
     salesPersonName ??
-    "—"
+    "-"
   );
 }
 
 function roleFilterChipClass(active: boolean): string {
   return cn(
-    "rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
+    "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
     active
       ? "bg-slate-900 text-white"
       : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -270,7 +270,7 @@ export function UsersAdminClient({
       });
     } else if (salesPersonId && !email) {
       setToast({
-        text: "Brak e-maila u tego handlowca — uzupełnij go w Admin → Handlowcy.",
+        text: "Brak e-maila u tego handlowca - uzupełnij go w Admin → Handlowcy.",
         tone: "error",
       });
     }
@@ -333,7 +333,7 @@ export function UsersAdminClient({
         u.id,
         savedRole,
         savedSalesPersonId,
-        spName === "—" ? null : spName,
+        spName === "-" ? null : spName,
         edit.assignedWorkspaces
       );
       setUsers(nextUsers);
@@ -437,7 +437,7 @@ export function UsersAdminClient({
           accessModalEdit.salesPersonId || accessModalUser.salesPersonId,
           accessModalUser.salesPersonName
         )
-      : "—";
+      : "-";
   const accessModalIsDirty =
     accessModalUser && accessModalEdit
       ? userRowHasUnsavedChanges(
@@ -497,7 +497,7 @@ export function UsersAdminClient({
           <div className="space-y-5">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-xl border border-slate-200/70 bg-slate-50/70 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                <p className="text-[11px] font-semibold text-slate-500">
                   Rola
                 </p>
                 <div className="mt-2">
@@ -515,7 +515,7 @@ export function UsersAdminClient({
                 </div>
               </div>
               <div className="rounded-xl border border-slate-200/70 bg-slate-50/70 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                <p className="text-[11px] font-semibold text-slate-500">
                   Powiązanie
                 </p>
                 <p className="mt-2 text-sm font-medium text-slate-900">
@@ -523,7 +523,7 @@ export function UsersAdminClient({
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200/70 bg-slate-50/70 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                <p className="text-[11px] font-semibold text-slate-500">
                   Moduły
                 </p>
                 <p className="mt-2 text-sm font-medium text-slate-900">
@@ -531,7 +531,7 @@ export function UsersAdminClient({
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200/70 bg-slate-50/70 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                <p className="text-[11px] font-semibold text-slate-500">
                   Ostatnie logowanie
                 </p>
                 <p className="mt-2 text-sm font-medium text-slate-900">
@@ -546,7 +546,7 @@ export function UsersAdminClient({
               <div className="space-y-4">
                 <section className="space-y-4 rounded-xl border border-slate-200/70 bg-white/70 p-4">
                   <div className="space-y-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                    <p className="text-[11px] font-semibold text-slate-500">
                       Dostęp
                     </p>
                     <p className="text-sm text-slate-600">
@@ -591,7 +591,7 @@ export function UsersAdminClient({
 
                 <section className="space-y-4 rounded-xl border border-slate-200/70 bg-white/70 p-4">
                   <div className="space-y-1">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                    <p className="text-[11px] font-semibold text-slate-500">
                       Powiązania i przypisania
                     </p>
                     <p className="text-sm text-slate-600">
@@ -612,7 +612,7 @@ export function UsersAdminClient({
                           })
                         }
                       >
-                        <option value="">—</option>
+                        <option value="">-</option>
                         {salesPeople.map((p) => {
                           const taken =
                             users.some(
@@ -781,7 +781,7 @@ export function UsersAdminClient({
                 </div>
 
                 <div className="rounded-lg border border-slate-200/70 bg-white/80 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                  <p className="text-[11px] font-semibold text-slate-500">
                     Stan konta
                   </p>
                   <div className="mt-2 space-y-2 text-sm text-slate-700">
@@ -817,7 +817,7 @@ export function UsersAdminClient({
                       <span className="font-medium text-slate-900">
                         {accessModalRole === "zakupy"
                           ? workspaceSummaryLabel(accessModalAssignedWorkspaces)
-                          : "—"}
+                          : "-"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-3">
@@ -825,7 +825,7 @@ export function UsersAdminClient({
                       <span className="font-medium text-slate-900">
                         {accessModalRole === "sales_manager"
                           ? `${accessModalManagerGroups.length}`
-                          : "—"}
+                          : "-"}
                       </span>
                     </div>
                   </div>
@@ -882,7 +882,7 @@ export function UsersAdminClient({
                   </p>
                   <p className="mt-1 text-xs leading-relaxed text-slate-500">
                     Dostęp do `/admin/mail` w trybie odczytu (status i logi). Wysyłkę prowadzi OnTime
-                    Raporty — w OnTime nie ma już akcji generate/send ani edycji odbiorców.
+                    Raporty - w OnTime nie ma już akcji generate/send ani edycji odbiorców.
                   </p>
                 </div>
 
@@ -893,7 +893,7 @@ export function UsersAdminClient({
                     disabled={pending || moduleModalUser.role === "admin"}
                     onChange={(e) => setModuleDraftMailCenterEnabled(e.target.checked)}
                     className="h-4 w-4 accent-indigo-600"
-                    aria-label="Wysyłki Ivoclar — włączone/wyłączone"
+                    aria-label="Wysyłki Ivoclar - włączone/wyłączone"
                   />
                   <span className="text-xs text-slate-700">Włączone</span>
                 </label>
@@ -1024,13 +1024,13 @@ export function UsersAdminClient({
                 createForm.salesPersonId &&
                 createForm.email ? (
                   <p className="mt-1 text-xs text-slate-500">
-                    Wzięty z karty handlowca — możesz poprawić przed zapisem.
+                    Wzięty z karty handlowca - możesz poprawić przed zapisem.
                   </p>
                 ) : null}
               </Field>
               <Field
                 label="Hasło startowe"
-                hint="Min. 8 znaków, litera i cyfra — użytkownik może zmienić po zalogowaniu."
+                hint="Min. 8 znaków, litera i cyfra - użytkownik może zmienić po zalogowaniu."
               >
                 <Input
                   type="password"
@@ -1254,7 +1254,7 @@ export function UsersAdminClient({
                             edit?.salesPersonId || u.salesPersonId,
                             u.salesPersonName
                           )
-                        : "—";
+                        : "-";
                     return (
                       <tr
                         key={u.id}
@@ -1301,7 +1301,7 @@ export function UsersAdminClient({
                           </div>
                         </td>
                         <td className="align-top">
-                          <span className={linkedSalesPersonName === "—" ? "text-slate-400" : "text-slate-700"}>
+                          <span className={linkedSalesPersonName === "-" ? "text-slate-400" : "text-slate-700"}>
                             {linkedSalesPersonName}
                           </span>
                         </td>
@@ -1317,7 +1317,7 @@ export function UsersAdminClient({
                                   .map((g) => (
                                     <span
                                       key={g.id}
-                                      className="rounded-full border border-indigo-200/70 bg-indigo-50/60 px-2 py-0.5 text-[11px] font-medium text-indigo-700"
+                                      className="rounded-md border border-indigo-200/70 bg-indigo-50/60 px-2 py-0.5 text-[11px] font-medium text-indigo-700"
                                     >
                                       {g.name}
                                     </span>
@@ -1342,7 +1342,7 @@ export function UsersAdminClient({
                                       return (
                                         <span
                                           key={workspace}
-                                          className="rounded-full border border-indigo-200/70 bg-indigo-50/60 px-2 py-0.5 text-[11px] font-medium text-indigo-700"
+                                          className="rounded-md border border-indigo-200/70 bg-indigo-50/60 px-2 py-0.5 text-[11px] font-medium text-indigo-700"
                                         >
                                           {option?.label ?? workspace}
                                         </span>
@@ -1357,7 +1357,7 @@ export function UsersAdminClient({
                           ) : displayRole === "sales_manager" ? (
                             <span className="text-xs text-amber-700">Brak grup w systemie</span>
                           ) : (
-                            <span className="text-slate-400">—</span>
+                            <span className="text-slate-400">-</span>
                           )}
                         </td>
                         <td className="align-top whitespace-nowrap text-sm text-slate-600 tabular-nums">

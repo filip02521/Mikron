@@ -57,28 +57,28 @@ export const PAGE_TITLES = {
 } as const;
 
 export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>> = {
-  moje: "Status Twoich prośb i odbiór dostaw — OnTime · Mikran",
+  moje: "Status Twoich prośb i odbiór dostaw - OnTime · Mikran",
   prosba: "Zgłoś prośbę o zamówienie lub informację o braku na stanie",
   tablica: ONTIME_APP_DESCRIPTION,
   podsumowanie: "Kolejka dnia, prośby handlowców i harmonogram dostawców",
   kolejka: "Przyjęcie towaru i kolejka realizacji magazynu",
-  zeby: "Prośby handlowców na zęby syntetyczne — kolejka zamówień u dostawcy",
-  dostawy: "Nadchodzące dostawy — terminy ZD i prognoza paczek",
+  zeby: "Prośby handlowców na zęby syntetyczne - kolejka zamówień u dostawcy",
+  dostawy: "Nadchodzące dostawy - terminy ZD i prognoza paczek",
   admin: "Konfiguracja systemu, użytkownicy i narzędzia serwisowe",
-  adminMail: "Status i historia wysyłek Ivoclar (odczyt — bez sterowania z OnTime)",
+  adminMail: "Status i historia wysyłek Ivoclar (odczyt - bez sterowania z OnTime)",
   adminWysylki:
-    "Podgląd transakcyjnych maili OnTime — dostawy, informacja o stanie, OTP, tablica",
-  monthlySummary: "Statystyki miesięczne — handlowcy, dostawy i zakupy",
-  carriers: "Numery telefonów i kontakty do kurierów — szybki dostęp z dziennika dostaw",
+    "Podgląd transakcyjnych maili OnTime - dostawy, informacja o stanie, OTP, tablica",
+  monthlySummary: "Statystyki miesięczne - handlowcy, dostawy i zakupy",
+  carriers: "Numery telefonów i kontakty do kurierów - szybki dostęp z dziennika dostaw",
   magazynGadki: "Podgląd stałych ZK magazynu zewnętrznego Gądki",
   customsClearance:
-    "Dane do odprawy celnej importu — opis PL, kod CN, VAT i deklaracje do maila dla agencji",
+    "Dane do odprawy celnej importu - opis PL, kod CN, VAT i deklaracje do maila dla agencji",
   stockWatch:
-    "Proaktywne braki: czas do wyczerpania i lista „Do ZD” po dostawcach — liczona jak w Kreatorze ZD",
+    "Proaktywne braki: czas do wyczerpania i lista „Do ZD” po dostawcach - liczona jak w Kreatorze ZD",
   zdEstimate:
-    "Lista produktów do zamówienia u dostawcy — jak proces ręczny (sprzedaż, stan, otwarte ZD)",
+    "Lista produktów do zamówienia u dostawcy - jak proces ręczny (sprzedaż, stan, otwarte ZD)",
   ivoclarReport:
-    "Status wysyłek Ivoclar przeniesiony do Centrum maili — generowanie w OnTime Raporty",
+    "Status wysyłek Ivoclar przeniesiony do Centrum maili - generowanie w OnTime Raporty",
   adminTeethProducts:
     "Lista towarów z wyłączoną kontrolą stanu magazynowego przy prośbach o zamówienie",
 };

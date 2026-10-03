@@ -172,7 +172,7 @@ export async function captureProcurementFlagSnapshots(
 
   const missing = orderIds.filter((id) => !byId.has(id));
   if (missing.length) {
-    throw new Error("Nie znaleziono pozycji — odśwież listę i spróbuj ponownie.");
+    throw new Error("Nie znaleziono pozycji - odśwież listę i spróbuj ponownie.");
   }
 
   return orderIds.map((id) => byId.get(id)!);

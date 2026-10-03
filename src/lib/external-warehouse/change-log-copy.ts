@@ -110,7 +110,7 @@ export function buildZkDiffChangeLogEntries(input: {
       summary:
         n === 1
           ? `${zk}: usunięto z ZK ${details[0]}`
-          : `${zk}: usunięto z ZK ${n} poz. — ${joinDetails(details)}`,
+          : `${zk}: usunięto z ZK ${n} poz. - ${joinDetails(details)}`,
       meta: {
         keys: input.diff.removedLineKeys.slice(0, 40),
         details: details.slice(0, 40),
@@ -135,7 +135,7 @@ export function buildZkDiffChangeLogEntries(input: {
       summary:
         n === 1
           ? `${zk}: dodano do ZK ${details[0]}`
-          : `${zk}: dodano do ZK ${n} poz. — ${joinDetails(details)}`,
+          : `${zk}: dodano do ZK ${n} poz. - ${joinDetails(details)}`,
       meta: {
         keys: input.diff.addedLineKeys.slice(0, 40),
         details: details.slice(0, 40),
@@ -157,7 +157,7 @@ export function buildZkDiffChangeLogEntries(input: {
       summary:
         n === 1
           ? `${zk}: zmiana ilości ${details[0]}`
-          : `${zk}: zmiana ilości (${n}) — ${joinDetails(details)}`,
+          : `${zk}: zmiana ilości (${n}) - ${joinDetails(details)}`,
       meta: {
         changes: input.diff.quantityChanged.slice(0, 40),
         details: details.slice(0, 40),
@@ -179,7 +179,7 @@ export function buildZkDiffChangeLogEntries(input: {
       summary:
         n === 1
           ? `${zk}: zmiana towaru w pozycji ${details[0]}`
-          : `${zk}: zmiana towaru w ${n} poz. — ${joinDetails(details)}`,
+          : `${zk}: zmiana towaru w ${n} poz. - ${joinDetails(details)}`,
       meta: {
         changes: productChanged.slice(0, 40),
       },

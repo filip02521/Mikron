@@ -16,6 +16,6 @@ describe("zk-page-copy", () => {
   it("rozróżnia badge nieodczytanych ZK od licznika pozycji na regale", () => {
     expect(formatZkUnseenRegalBadge(1)).toContain("ZK");
     expect(formatZkUnseenRegalBadge(1)).toContain("nowy towar");
-    expect(formatZkUnseenRegalBadge(3)).toBe("3 ZK — nowy towar na regale");
+    expect(formatZkUnseenRegalBadge(3)).toBe("3 ZK - nowy towar na regale");
   });
 });

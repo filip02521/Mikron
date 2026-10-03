@@ -46,7 +46,7 @@ describe("NotesSection", () => {
 
   it("pokazuje wyraźny przycisk dodawania karteczki", () => {
     render(<NotesSection embedded notes={[]} />);
-    expect(screen.queryByText(/Brak notatek — przypnij pierwszą karteczkę powyżej/i)).toBeNull();
+    expect(screen.queryByText(/Brak notatek - przypnij pierwszą karteczkę powyżej/i)).toBeNull();
     expect(screen.getByRole("button", { name: /Przypnij nową karteczkę/i })).toBeTruthy();
   });
 

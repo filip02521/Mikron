@@ -19,7 +19,7 @@ describe("BoardQuestionProductContext", () => {
     );
 
     expect(screen.getByText("Produkt")).toBeTruthy();
-    expect(screen.getByText("606402 — Implant Straumann")).toBeTruthy();
+    expect(screen.getByText("606402 - Implant Straumann")).toBeTruthy();
     expect(screen.getByText(/Symbol: 606402/)).toBeTruthy();
     expect(screen.getByText(/Kod Mikran: 180805/)).toBeTruthy();
   });

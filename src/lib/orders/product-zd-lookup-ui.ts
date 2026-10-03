@@ -4,13 +4,13 @@ export const PRODUCT_ZD_LOOKUP_TRIGGER_LABEL =
 export const PRODUCT_ZD_LOOKUP_MODAL = {
   title: "Sprawdź termin dostawy",
   description:
-    "Wyszukaj towar w Subiekcie — sprawdzimy otwarte ZD u dostawcy i pokażemy planowany termin realizacji.",
+    "Wyszukaj towar w Subiekcie - sprawdzimy otwarte ZD u dostawcy i pokażemy planowany termin realizacji.",
   titleHint:
     "Wynik dotyczy zamówień u dostawcy (ZD), nie stanu magazynowego ani Twoich prośb w systemie.",
   searchLabel: "Szukaj produktu",
   searchPlaceholder: "Symbol, nazwa lub kod Mikran…",
   searchHint:
-    "Wpisz symbol lub nazwę (min. 2 znaki) albo sam kod Mikran — same cyfry, nawet 1 znak.",
+    "Wpisz symbol lub nazwę (min. 2 znaki) albo sam kod Mikran - same cyfry, nawet 1 znak.",
   introSteps: [
     { title: "Wybierz towar", detail: "Z kartoteki Subiekta" },
     { title: "Dostawca z bazy", detail: "Albo wybierz ręcznie" },
@@ -21,9 +21,9 @@ export const PRODUCT_ZD_LOOKUP_MODAL = {
   resultHintFound: "Znaleźliśmy otwarte ZD z planowanym terminem realizacji.",
   resultHintNoMatch: "Brak otwartego ZD u dostawcy.",
   resultHintNeedsSupplier:
-    "Nie mamy dostawcy tego towaru w bazie — wybierz go, żeby przeszukać ZD.",
+    "Nie mamy dostawcy tego towaru w bazie - wybierz go, żeby przeszukać ZD.",
   resultHintSupplierUnmapped:
-    "Dostawca nie jest powiązany z Subiektem — uzupełnij kh_Id w panelu admina.",
+    "Dostawca nie jest powiązany z Subiektem - uzupełnij kh_Id w panelu admina.",
   resultHintError: "Sprawdź połączenie z Subiektem i spróbuj ponownie.",
   stockOutCta: "Zgłoś brak na stanie",
   stockOutHint: "Prośba trafi do panelu Dziś (zakupy).",

@@ -15,7 +15,7 @@ export function QueueSupplierDirectoryField({
   onChange,
   disabled,
   placeholder = "Szukaj dostawcy…",
-  emptyOptionLabel = "— inny / wpisz poniżej —",
+  emptyOptionLabel = "- inny / wpisz poniżej -",
   includeAllOption = false,
   allOptionLabel = "Wszyscy",
 }: {

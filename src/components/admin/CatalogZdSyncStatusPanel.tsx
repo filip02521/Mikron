@@ -82,7 +82,7 @@ export function CatalogZdSyncStatusPanel({
       ? "Import linii"
       : state?.phase === "index"
         ? "Indeks ZD"
-        : "—";
+        : "-";
 
   return (
     <Card padding={false} className="overflow-hidden">
@@ -90,11 +90,11 @@ export function CatalogZdSyncStatusPanel({
         inset
         density="compact"
         title="Synchronizacja nocna (cron)"
-        description="Indeks ZD (90 dni) + import linii do katalogu — harmonogram na serwerze w firmie."
+        description="Indeks ZD (90 dni) + import linii do katalogu - harmonogram na serwerze w firmie."
         action={
           <div className="flex flex-wrap items-center justify-end gap-2">
             <HelpPopover
-              label="Pomoc — synchronizacja katalogu ZD"
+              label="Pomoc - synchronizacja katalogu ZD"
               title="Nocna synchronizacja katalogu"
               shortLabel="Pomoc"
             >
@@ -102,19 +102,19 @@ export function CatalogZdSyncStatusPanel({
                 <p>
                   Cron wywołuje <code className="text-[0.85em]">/api/cron/catalog-zd-sync</code>{" "}
                   {CATALOG_ZD_SYNC_CRON_SCHEDULE_LABEL.toLowerCase()}. Jedno wywołanie ma do ok. 14
-                  minut — kolejne sloty kontynuują przerwany import.
+                  minut - kolejne sloty kontynuują przerwany import.
                 </p>
               </HelpBlock>
               <HelpBlock title="Okno nocne">
                 <p>
-                  Domyślnie 1:00–4:59 Warszawa. Test ręczny poza oknem: parametr{" "}
+                  Domyślnie 1:00-4:59 Warszawa. Test ręczny poza oknem: parametr{" "}
                   <code className="text-[0.85em]">?force=1</code>. Kolejne wywołanie w tej samej
                   nocy kontynuuje przerwany przebieg.
                 </p>
               </HelpBlock>
               <HelpBlock title="Monitorowanie">
                 <p className="text-xs text-slate-500">
-                  Status wszystkich zadań cron — na stronie{" "}
+                  Status wszystkich zadań cron - na stronie{" "}
                   <Link href="/admin" className={panelTextLinkClass}>
                     Administracja
                   </Link>
@@ -123,7 +123,7 @@ export function CatalogZdSyncStatusPanel({
               </HelpBlock>
             </HelpPopover>
             <Badge variant={statusBadgeVariant(summary.statusTone)}>
-              {isRunning ? "W toku" : summary.headline.split("—")[0].trim()}
+              {isRunning ? "W toku" : summary.headline.split(" - ")[0].trim()}
             </Badge>
           </div>
         }
@@ -133,7 +133,7 @@ export function CatalogZdSyncStatusPanel({
         <div className="grid gap-3 sm:grid-cols-3">
           <PanelSummaryMetric
             label="Postęp"
-            value={summary.progressPercent != null ? `${summary.progressPercent}%` : "—"}
+            value={summary.progressPercent != null ? `${summary.progressPercent}%` : "-"}
             hint={phaseLabel}
             tone={
               summary.progressPercent === 100
@@ -145,7 +145,7 @@ export function CatalogZdSyncStatusPanel({
           />
           <PanelSummaryMetric
             label="Ostatnia aktualizacja"
-            value={lastCronAt ? formatWarsawDateTime(lastCronAt).slice(0, 16) : "—"}
+            value={lastCronAt ? formatWarsawDateTime(lastCronAt).slice(0, 16) : "-"}
             hint={
               catalogSync?.lastCron?.ok === false && !catalogSync.lastCron.detail?.timedOut
                 ? "Ostatni cron z błędem"
@@ -163,7 +163,7 @@ export function CatalogZdSyncStatusPanel({
             hint={
               summary.needsContinue
                 ? isRunning
-                  ? "Cron w toku — kolejny slot lub przycisk poniżej"
+                  ? "Cron w toku - kolejny slot lub przycisk poniżej"
                   : "Uruchom kontynuację lub poczekaj na kolejny slot nocny"
                 : "Przebieg domknięty lub bezczynny"
             }
@@ -193,7 +193,7 @@ export function CatalogZdSyncStatusPanel({
 
         {summary.progressPercent != null ? (
           <div>
-            <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
               <span>Postęp szacunkowy</span>
               <span className="tabular-nums text-slate-800">{summary.progressPercent}%</span>
             </div>
@@ -212,7 +212,7 @@ export function CatalogZdSyncStatusPanel({
 
         {isRunning ? (
           <p className={cn(panelTypography.chrome, "font-medium text-amber-900")}>
-            Synchronizacja w toku — odśwież status za chwilę lub poczekaj na koniec przebiegu
+            Synchronizacja w toku - odśwież status za chwilę lub poczekaj na koniec przebiegu
             crona.
           </p>
         ) : null}
@@ -254,7 +254,7 @@ export function CatalogZdSyncStatusPanel({
         </div>
 
         <p className={cn(panelTypography.caption, "text-slate-500")}>
-          Podgląd wszystkich zadań w tle —{" "}
+          Podgląd wszystkich zadań w tle -{" "}
           <Link href="/admin" className={panelTextLinkClass}>
             Administracja → Zadania cron
           </Link>

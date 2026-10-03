@@ -189,11 +189,11 @@ export function AdminCronStatusPanel({
         inset
         density="compact"
         title="Zadania cron"
-        description="Ostatnie uruchomienia zapisane w bazie — harmonogram na serwerze w firmie (Windows / Linux)."
+        description="Ostatnie uruchomienia zapisane w bazie - harmonogram na serwerze w firmie (Windows / Linux)."
         action={
           <div className="flex flex-wrap items-center justify-end gap-2">
             <HelpPopover
-              label="Pomoc — zadania cron"
+              label="Pomoc - zadania cron"
               title="Zadania w tle"
               shortLabel="Pomoc"
             >
@@ -331,7 +331,7 @@ export function AdminCronStatusPanel({
         <div className="overflow-hidden rounded-md border border-slate-200/90">
           <table className="w-full min-w-[32rem] border-collapse text-left">
             <thead>
-              <tr className="border-b border-slate-200/90 bg-slate-50/80 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <tr className="border-b border-slate-200/90 bg-slate-50/80 text-[11px] font-semibold text-slate-500">
                 <th className="px-2 py-2 sm:px-3">Zadanie</th>
                 <th className="px-2 py-2 sm:px-3">Status</th>
                 <th className="hidden px-2 py-2 md:table-cell sm:px-3">Harmonogram</th>
@@ -365,7 +365,7 @@ export function AdminCronStatusPanel({
         </div>
 
         <p className={cn(panelTypography.caption, "text-slate-500")}>
-          Nocna synchronizacja katalogu ZD — pełny postęp i kontynuacja na stronie{" "}
+          Nocna synchronizacja katalogu ZD - pełny postęp i kontynuacja na stronie{" "}
           <Link href="/admin/produkty" className={panelTextLinkClass}>
             Katalog produktów
           </Link>

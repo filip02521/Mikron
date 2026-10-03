@@ -61,7 +61,7 @@ export function ZdEstimateDoZdCell({
   if (excluded) {
     return (
       <span className="zd-est-dozd" aria-hidden>
-        <span className="zd-est-dozd-readonly zd-est-dozd-readonly--idle">—</span>
+        <span className="zd-est-dozd-readonly zd-est-dozd-readonly--idle">-</span>
       </span>
     );
   }
@@ -305,7 +305,7 @@ export function ZdEstimateDoZdCell({
         aria-invalid={orderMultipleWarn ? true : undefined}
         aria-describedby={[orderMultipleWarn ? warnId : null, unitLabel ? unitId : null].filter(Boolean).join(" ") || undefined}
         aria-label={[
-          "Do ZD — nadpisanie",
+          "Do ZD - nadpisanie",
           showPackUnit ? `jednostka: ${fullPackLabel}` : null,
           qty.hasPackaging ? overrideHint : null,
         ]

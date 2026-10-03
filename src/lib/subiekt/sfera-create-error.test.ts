@@ -7,7 +7,7 @@ import {
 describe("humanizeSferaCreateError", () => {
   it("mapuje 0x800413D5 na limit licencji (nie SQL)", () => {
     const raw =
-      "[ZD / krok: Uruchom] HRESULT=0x800413D5 — nieznany kod InsERT/COM | COM: 0x800413D5: 0x800413D5 | Wskazówka: Sprawdź: login/hasło SQL, operator + hasło, czy…";
+      "[ZD / krok: Uruchom] HRESULT=0x800413D5 - nieznany kod InsERT/COM | COM: 0x800413D5: 0x800413D5 | Wskazówka: Sprawdź: login/hasło SQL, operator + hasło, czy…";
     const h = humanizeSferaCreateError(raw);
     expect(h?.kind).toBe("license_limit");
     expect(h?.title).toMatch(/Zajęta licencja/i);
@@ -25,7 +25,7 @@ describe("humanizeSferaCreateError", () => {
 
   it("mapuje tekst o przekroczonym limicie licencji bez hex", () => {
     const h = humanizeSferaCreateError(
-      "INS_E_PRZEKROCZONY_LIMIT_LICENCJI — przekroczony limit wykupionych licencji"
+      "INS_E_PRZEKROCZONY_LIMIT_LICENCJI - przekroczony limit wykupionych licencji"
     );
     expect(h?.kind).toBe("license_limit");
   });
@@ -74,7 +74,7 @@ describe("humanizeSferaCreateError", () => {
 describe("formatZdCreateSferaUserMessage", () => {
   it("dla 0x800413D5 daje czytelny tytuł i treść", () => {
     const msg = formatZdCreateSferaUserMessage(
-      "[ZD / krok: Uruchom] HRESULT=0x800413D5 — nieznany kod | Wskazówka: Sprawdź: login/hasło SQL, operator"
+      "[ZD / krok: Uruchom] HRESULT=0x800413D5 - nieznany kod | Wskazówka: Sprawdź: login/hasło SQL, operator"
     );
     expect(msg.title).toMatch(/Zajęta licencja/i);
     expect(msg.message).toMatch(/Sfery są zajęte/i);
@@ -83,7 +83,7 @@ describe("formatZdCreateSferaUserMessage", () => {
 
   it("obcina mylącą wskazówkę SQL przy nieznanym HRESULT", () => {
     const msg = formatZdCreateSferaUserMessage(
-      "[ZD / krok: Uruchom] HRESULT=0x8004ABCD — nieznany kod | Wskazówka: Sprawdź: login/hasło SQL, operator + hasło"
+      "[ZD / krok: Uruchom] HRESULT=0x8004ABCD - nieznany kod | Wskazówka: Sprawdź: login/hasło SQL, operator + hasło"
     );
     expect(msg.title).toMatch(/Błąd Sfery/i);
     expect(msg.message).toContain("0x8004ABCD");

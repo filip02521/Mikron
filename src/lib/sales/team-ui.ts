@@ -35,14 +35,14 @@ export function salesTeamPageCopy(
       return {
         title: "Podgląd zespołu",
         description:
-          "Handlowcy w grupach — podgląd prośb i ZK. Zarządzanie w panelu administracji.",
+          "Handlowcy w grupach - podgląd prośb i ZK. Zarządzanie w panelu administracji.",
       };
     }
     if (ctx.isAdmin) {
       return {
         title: "Podgląd zespołu",
         description:
-          "Handlowcy w grupach — podgląd prośb, ZK i notatnika (składanie prośb tylko przez kierownika).",
+          "Handlowcy w grupach - podgląd prośb, ZK i notatnika (składanie prośb tylko przez kierownika).",
       };
     }
     if (!ctx.hasTeamScope) {
@@ -54,7 +54,7 @@ export function salesTeamPageCopy(
     }
     return {
       title: "Podgląd zespołu",
-      description: `Handlowcy z grup: ${ctx.groupNamesLabel} — podgląd i prośby w ich imieniu.`,
+      description: `Handlowcy z grup: ${ctx.groupNamesLabel} - podgląd i prośby w ich imieniu.`,
     };
   }
 
@@ -62,7 +62,7 @@ export function salesTeamPageCopy(
     if (ctx.readOnlyPreview) {
       return {
         title: "Handlowcy",
-        description: "Podgląd kart handlowców — dodawanie i edycja w panelu administracji.",
+        description: "Podgląd kart handlowców - dodawanie i edycja w panelu administracji.",
       };
     }
     if (ctx.isAdmin) {
@@ -90,7 +90,7 @@ export function salesTeamPageCopy(
       return {
         title: "Grupy",
         description:
-          "Podgląd grup handlowców — tworzenie i edycja w panelu administracji.",
+          "Podgląd grup handlowców - tworzenie i edycja w panelu administracji.",
       };
     }
     return {
@@ -103,7 +103,7 @@ export function salesTeamPageCopy(
     return {
       title: "Grupy",
       description:
-        "Nie masz przypisanych grup — poproś administratora o zaznaczenie ich przy Twoim koncie (rola kierownika).",
+        "Nie masz przypisanych grup - poproś administratora o zaznaczenie ich przy Twoim koncie (rola kierownika).",
     };
   }
   return {

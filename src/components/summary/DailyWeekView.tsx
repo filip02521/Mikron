@@ -66,7 +66,7 @@ export function DailyWeekView({
         >
           <DailyPanelSubsectionBar
             title="Dostawcy na żądanie"
-            description="Bez stałego terminu w harmonogramie — zamów, gdy coś jest potrzebne."
+            description="Bez stałego terminu w harmonogramie - zamów, gdy coś jest potrzebne."
             tone="default"
             count={onDemandCount}
             countUnit={{ one: "dostawca", few: "dostawcy", many: "dostawców" }}
@@ -87,7 +87,7 @@ export function DailyWeekView({
         chrome="dailyPanel"
         sectionId={DAILY_PANEL_WEEK_SECTION.thisWeek}
         title={workspace.weekViewStartsNextWeek ? "Najbliższy tydzień" : "Ten tydzień"}
-        description="Poniedziałek–piątek · zamówione z wyprzedzeniem lub szczegóły dostawcy"
+        description="Poniedziałek-piątek · zamówione z wyprzedzeniem lub szczegóły dostawcy"
         days={firstWeekDays}
         todayDateKey={workspace.todayDateKey}
         density="compact"

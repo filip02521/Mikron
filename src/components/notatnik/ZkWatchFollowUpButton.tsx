@@ -146,12 +146,12 @@ export function ZkWatchFollowUpButton({
         aria-haspopup="dialog"
         aria-label={
           followUpLabel
-            ? `Przypomnienie: ${followUpLabel}${followUpDue ? " — do działania" : ""}`
+            ? `Przypomnienie: ${followUpLabel}${followUpDue ? " - do działania" : ""}`
             : "Ustaw przypomnienie"
         }
         title={
           followUpLabel
-            ? `Przyp. ${followUpLabel}${followUpDue ? " — do działania" : ""}`
+            ? `Przyp. ${followUpLabel}${followUpDue ? " - do działania" : ""}`
             : "Przypomnienie"
         }
         className={zkWatchRowFollowUpIconClass({
@@ -188,7 +188,7 @@ export function ZkWatchFollowUpButton({
               style={{ top: pos.top, left: pos.left, maxHeight: pos.maxHeight }}
               onClick={(event) => event.stopPropagation()}
             >
-              <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-wide text-slate-500">
+              <p className="mb-2 text-[0.68rem] font-semibold text-slate-500">
                 Przypomnienie
               </p>
               <FollowUpQuickDates

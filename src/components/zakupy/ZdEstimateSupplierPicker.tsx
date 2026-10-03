@@ -90,7 +90,7 @@ export function ZdEstimateSupplierPicker({
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={open && options[active] ? `${listId}-${active}` : undefined}
-          aria-label="Dostawca — zacznij od dostawcy"
+          aria-label="Dostawca - zacznij od dostawcy"
           placeholder="Wpisz dostawcę, np. Everall7…"
           disabled={disabled}
           value={query}
@@ -131,13 +131,13 @@ export function ZdEstimateSupplierPicker({
           className="absolute z-30 mt-1 max-h-80 w-full overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg"
         >
           {!query.trim() && options.length > 0 ? (
-            <li className="px-3 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500" aria-hidden>
+            <li className="px-3 pb-1 pt-1.5 text-[11px] font-semibold text-slate-500" aria-hidden>
               Najpilniejsi wg nocnej analizy
             </li>
           ) : null}
           {options.length === 0 ? (
             <li className="px-3 py-2 text-sm text-slate-500">
-              Brak dostawcy z przypisanym zakresem o tej nazwie — przypisz w „Dostawcy → Zakresy”.
+              Brak dostawcy z przypisanym zakresem o tej nazwie - przypisz w „Dostawcy → Zakresy”.
             </li>
           ) : (
             options.map((o, i) => {

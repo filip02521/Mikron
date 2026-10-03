@@ -49,7 +49,7 @@ export function formatZdEstimateZkStatusLabel(
   if (status === 7) return "Zarezerwowany";
   if (status === 6 || status === 5) return "Bez rezerwacji";
   if (status != null) return `Status ${status}`;
-  return "—";
+  return "-";
 }
 
 /** ZK ze statusem 7 albo jawnym `bezRezerwacji === false`. */
@@ -82,7 +82,7 @@ export function mapZdEstimateZkLineToReservedRow(
   const statusLabel = formatZdEstimateZkStatusLabel(line.dok_StatusNazwa, status);
   const statusDescription = String(line.dok_StatusOpis ?? "").trim() || null;
   const lineIdRaw = Math.trunc(Number(line.ob_Id));
-  const clientLabel = clientFromName || clientFromSymbol || "—";
+  const clientLabel = clientFromName || clientFromSymbol || "-";
   const clientSymbol =
     clientFromSymbol &&
     clientFromName &&

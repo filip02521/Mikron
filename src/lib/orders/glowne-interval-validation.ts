@@ -23,7 +23,7 @@ export function supplierNamesWithoutOrderInterval(
 
 export function formatGlowneMissingIntervalError(supplierNames: string[]): string {
   if (supplierNames.length === 1) {
-    return `Brak interwału u dostawcy ${supplierNames[0]} — uzupełnij częstotliwość zamówień przed oznaczeniem jako Główne.`;
+    return `Brak interwału u dostawcy ${supplierNames[0]} - uzupełnij częstotliwość zamówień przed oznaczeniem jako Główne.`;
   }
-  return `Brak interwału u dostawców: ${supplierNames.join(", ")} — uzupełnij częstotliwość przed Główne.`;
+  return `Brak interwału u dostawców: ${supplierNames.join(", ")} - uzupełnij częstotliwość przed Główne.`;
 }

@@ -69,7 +69,7 @@ export function formatProcurementGroupSubmittedLabel(
       / \d{1,2}:\d{2}$/,
       ""
     );
-    return `${dayPart} ${formatWarsawTime(earliestIso)}–${formatWarsawTime(latestIso)}`;
+    return `${dayPart} ${formatWarsawTime(earliestIso)}-${formatWarsawTime(latestIso)}`;
   }
 
   return `od ${formatProcurementSubmittedLabel(earliestIso, at)} do ${formatProcurementSubmittedLabel(latestIso, at)}`;

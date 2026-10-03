@@ -32,29 +32,29 @@ describe("avgDaysForOrderType LACZNIE", () => {
 });
 
 describe("formatSupplierLeadTimeBrief", () => {
-  it("LACZNIE — jedna krótka linia", () => {
+  it("LACZNIE - jedna krótka linia", () => {
     expect(formatSupplierLeadTimeBrief(stats, "LACZNIE", { useP50: false })).toBe(
       "~8 dni rob. · szacunek"
     );
   });
 
-  it("OSOBNO — główne i poboczne", () => {
+  it("OSOBNO - główne i poboczne", () => {
     expect(formatSupplierLeadTimeBrief(stats, "OSOBNO", { useP50: false })).toBe(
       "gł. ~10 d · pob. ~5 d · szacunek"
     );
   });
 
-  it("brak historii — null", () => {
+  it("brak historii - null", () => {
     expect(formatSupplierLeadTimeBrief(null, "LACZNIE")).toBeNull();
   });
 });
 
 describe("orderTypesForLeadTimeHints", () => {
-  it("LACZNIE — jeden szacunek", () => {
+  it("LACZNIE - jeden szacunek", () => {
     expect(orderTypesForLeadTimeHints(stats, "LACZNIE")).toEqual(["Glowne"]);
   });
 
-  it("OSOBNO — dwa warianty gdy są obie średnie", () => {
+  it("OSOBNO - dwa warianty gdy są obie średnie", () => {
     expect(orderTypesForLeadTimeHints(stats, "OSOBNO")).toEqual(["Glowne", "Poboczne"]);
   });
 });
@@ -65,7 +65,7 @@ describe("buildSupplierDrawerLeadTime", () => {
     expect(m.kind).toBe("empty");
   });
 
-  it("LACZNIE — combined z ważoną średnią", () => {
+  it("LACZNIE - combined z ważoną średnią", () => {
     const m = buildSupplierDrawerLeadTime(stats, "LACZNIE", { useP50: false });
     expect(m.kind).toBe("combined");
     if (m.kind !== "combined") return;
@@ -75,7 +75,7 @@ describe("buildSupplierDrawerLeadTime", () => {
     expect(m.sampleLabel).toContain("4 dostawy");
   });
 
-  it("LACZNIE — lowConfidence przy <5 próbach", () => {
+  it("LACZNIE - lowConfidence przy <5 próbach", () => {
     const thin: DeliveryStats = {
       supplier_id: "x",
       main_sum: 10,
@@ -109,7 +109,7 @@ describe("buildSupplierDrawerLeadTime", () => {
     expect(m.footnote).toBeNull();
   });
 
-  it("OSOBNO — split gł./pob.", () => {
+  it("OSOBNO - split gł./pob.", () => {
     const m = buildSupplierDrawerLeadTime(stats, "OSOBNO", { useP50: false });
     expect(m.kind).toBe("split");
     if (m.kind !== "split") return;
@@ -118,7 +118,7 @@ describe("buildSupplierDrawerLeadTime", () => {
     expect(m.modeLabel).toBe("osobno");
   });
 
-  it("LACZNIE + p50 — primary z mediany", () => {
+  it("LACZNIE + p50 - primary z mediany", () => {
     const m = buildSupplierDrawerLeadTime(stats, "LACZNIE", {
       useP50: true,
       p50Combined: 4,

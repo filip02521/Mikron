@@ -171,7 +171,7 @@ describe("resolveZdFulfillmentFromOrder", () => {
   });
 });
 
-describe("przeterminowany termin ZD w bazie — łańcuch UI", () => {
+describe("przeterminowany termin ZD w bazie - łańcuch UI", () => {
   const at = new Date("2026-06-18T12:00:00+02:00");
 
   function expiredZdOrder(overrides: Partial<IndividualOrder> = {}): IndividualOrder {

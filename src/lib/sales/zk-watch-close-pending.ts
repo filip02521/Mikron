@@ -36,9 +36,9 @@ export type ZkWatchPendingAckItem = {
 const STATUS_LABELS: Record<ZkWatchPendingAckKind, string> = {
   pickup: "Gotowe do odbioru z magazynu",
   teeth_handover: "Gotowe do odbioru zębów od magazynu",
-  availability: "Informacja — towar na magazynie",
+  availability: "Informacja - towar na magazynie",
   cancel_notice: "Rezygnacja do potwierdzenia",
-  cancelled: "Anulowane — do ukrycia z listy",
+  cancelled: "Anulowane - do ukrycia z listy",
   zd_deadline: "Zmiana terminu dostawy",
 };
 
@@ -85,9 +85,9 @@ function formatOrderProductLabel(order: ZkLinkableOrder): string {
 }
 
 function formatOrderQuantityLabel(order: ZkLinkableOrder): string {
-  if (isInformacjaRequest(asIndividualOrder(order))) return "—";
+  if (isInformacjaRequest(asIndividualOrder(order))) return "-";
   const qty = order.quantity?.trim();
-  if (!qty || qty === "-") return "—";
+  if (!qty || qty === "-") return "-";
   return qty.includes("szt") ? qty : `${qty} szt.`;
 }
 

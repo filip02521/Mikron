@@ -53,7 +53,7 @@ describe("zk-watch-prosba-scope", () => {
     expect(getZkWatchProsbaScopeLineKeys(watch, lines)).toEqual(["ob:1"]);
   });
 
-  it("nowe linie bez needs_prosba nie zerują zakresu — wybrane zostają", () => {
+  it("nowe linie bez needs_prosba nie zerują zakresu - wybrane zostają", () => {
     const watch = {
       line_checks: [
         { key: "ob:1", arrived: false, needs_prosba: true },
@@ -258,7 +258,7 @@ describe("deriveZkProsbaScopeAutoProsbaGate", () => {
     expect(gate.hint).toContain("Nie udało się sprawdzić");
   });
 
-  it("nie blokuje przy niekompletnych zębach — tylko hint", () => {
+  it("nie blokuje przy niekompletnych zębach - tylko hint", () => {
     const gate = deriveZkProsbaScopeAutoProsbaGate({
       ...ready,
       teethIncomplete: true,

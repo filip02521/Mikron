@@ -41,7 +41,7 @@ export function formatSalesPersonAccountStatus(
   const activity = formatAccountDate(row.linkedUserLastActivityAt);
   if (activity) return `Aktyw. ${activity}`;
   if (row.linkedUserLastSignInAt) {
-    return `Log. ${formatAccountDate(row.linkedUserLastSignInAt) ?? "—"}`;
+    return `Log. ${formatAccountDate(row.linkedUserLastSignInAt) ?? "-"}`;
   }
   return "Brak aktywności";
 }
@@ -63,8 +63,8 @@ export function formatSalesPersonAccountStatusTitle(
 
   if (!activity && !signIn) {
     return created
-      ? `Konto od ${created} — brak zarejestrowanej aktywności`
-      : "Konto aktywne — brak zarejestrowanej aktywności";
+      ? `Konto od ${created} - brak zarejestrowanej aktywności`
+      : "Konto aktywne - brak zarejestrowanej aktywności";
   }
 
   const parts: string[] = [];

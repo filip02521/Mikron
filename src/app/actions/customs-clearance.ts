@@ -104,7 +104,7 @@ export async function actionListSupplierRecentZd(
     if (Number.isFinite(primary) && primary > 0) khIds.add(primary);
     for (const alias of await fetchSupplierSubiektKhAliases(supplierId)) khIds.add(alias.subiektKhId);
     if (!khIds.size) {
-      return fail("Dostawca nie ma przypisanego kontrahenta z Subiekta — wybierz ZD ręcznie (numer ID) albo wklej pozycje faktury.");
+      return fail("Dostawca nie ma przypisanego kontrahenta z Subiekta - wybierz ZD ręcznie (numer ID) albo wklej pozycje faktury.");
     }
 
     const zds: CustomsZdOption[] = [];
@@ -184,7 +184,7 @@ export async function actionListCustomsClearances(): Promise<CustomsClearanceLis
 
   return rows.map((r) => ({
     id: r.id,
-    supplierName: names.get(r.supplier_id) ?? "—",
+    supplierName: names.get(r.supplier_id) ?? "-",
     invoiceNumber: r.invoice_number,
     invoiceDate: r.invoice_date,
     zdNumber: r.zd_number,
@@ -270,7 +270,7 @@ export async function actionCreateCustomsClearance(
   } else {
     lines = zdLines;
   }
-  if (!lines.length) return fail("Brak pozycji — wybierz ZD albo wklej pozycje faktury.");
+  if (!lines.length) return fail("Brak pozycji - wybierz ZD albo wklej pozycje faktury.");
 
   // Klucz karty: kod z faktury, a bez kodu — nazwa (UP3D, PioCreat, Saeshin „105L(BL):COLLET CHUCK”).
   const keyOf = (l: CustomsInputLine) => customsArticleKey(l.supplierArticleCode, l.supplierName);
@@ -560,7 +560,7 @@ export async function actionImportCustomsEmailDescriptions(
   const warnings: string[] = [];
   if (parsed.maxPosition !== view.lines.length) {
     warnings.push(
-      `Mail ma ${parsed.maxPosition} pozycji, a faktura ${view.lines.length} — sprawdź, czy numeracja się zgadza (opisy przypisano po numerach).`
+      `Mail ma ${parsed.maxPosition} pozycji, a faktura ${view.lines.length} - sprawdź, czy numeracja się zgadza (opisy przypisano po numerach).`
     );
   }
   const missing = view.lines.filter((l) => !parsed.byPosition.has(l.position)).map((l) => l.position);
@@ -573,12 +573,12 @@ export async function actionImportCustomsEmailDescriptions(
   }).length;
   if (noCn) {
     warnings.push(
-      `${noCn} pozycji bez kodu CN w mailu — uzupełnij kod albo użyj „Zaproponuj opisy (AI)” (opisy z maila zostaną).`
+      `${noCn} pozycji bez kodu CN w mailu - uzupełnij kod albo użyj „Zaproponuj opisy (AI)” (opisy z maila zostaną).`
     );
   }
   if (differing.length) {
     warnings.push(
-      `Zatwierdzone wcześniej opisy różnią się od maila (poz. ${differing.slice(0, 15).join(", ")}) — zostawiono zatwierdzone.`
+      `Zatwierdzone wcześniej opisy różnią się od maila (poz. ${differing.slice(0, 15).join(", ")}) - zostawiono zatwierdzone.`
     );
   }
 
@@ -746,7 +746,7 @@ export async function actionSendCustomsClearanceEmail(
   if (view.incompleteCount > 0) {
     return fail(`Uzupełnij opis PL i poprawny kod CN w ${view.incompleteCount} pozycjach przed wysyłką.`);
   }
-  if (!view.hasInvoiceFile) return fail("Wgraj plik faktury — agencja potrzebuje go w załączniku.");
+  if (!view.hasInvoiceFile) return fail("Wgraj plik faktury - agencja potrzebuje go w załączniku.");
 
   const attachments: EmailAttachmentInput[] = [];
   let totalBytes = 0;
@@ -786,7 +786,7 @@ export async function actionSendCustomsClearanceEmail(
     return fail(`Nie udało się przygotować załączników: ${errorText(e, "brak pliku")}`);
   }
   if (totalBytes > CUSTOMS_EMAIL_MAX_ATTACHMENTS_BYTES) {
-    return fail("Załączniki przekraczają 18 MB — wyślij mail ręcznie z poczty.");
+    return fail("Załączniki przekraczają 18 MB - wyślij mail ręcznie z poczty.");
   }
 
   const res = await sendHtmlEmailWithAttachments({

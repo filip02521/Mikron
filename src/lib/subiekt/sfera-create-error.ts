@@ -104,7 +104,7 @@ export function humanizeSferaCreateError(
       kind: "license_limit",
       title: "Zajęta licencja Subiekta",
       message:
-        "Nie udało się utworzyć ZD — wszystkie stanowiska z licencją Sfery są zajęte. " +
+        "Nie udało się utworzyć ZD - wszystkie stanowiska z licencją Sfery są zajęte. " +
         "Zamknij zbędne okna Subiekta i inne programy korzystające ze Sfery, poczekaj chwilę i spróbuj ponownie. " +
         "Jeśli problem wraca, IT: Program Serwisowy → zajęte stanowiska Sfery (identyfikator 31).",
     };
@@ -119,7 +119,7 @@ export function humanizeSferaCreateError(
       message:
         "Przekroczono czas oczekiwania na Subiekta (to nie jest problem z licencją). " +
         "Spróbuj ponownie albo zawęź zakres. Przy tworzeniu ZD najpierw sprawdź w Subiekcie, " +
-        "czy dokument już powstał — nie twórz go drugi raz w ciemno.",
+        "czy dokument już powstał - nie twórz go drugi raz w ciemno.",
     };
   }
 
@@ -143,7 +143,7 @@ export function humanizeSferaCreateError(
       title: "Sfera nie skonfigurowana",
       message:
         "Sfera Subiekta nie jest skonfigurowana na serwerze ORDERS. " +
-        "Zgłoś do IT — bez Sfery kreator nie może utworzyć ZD w Subiekcie.",
+        "Zgłoś do IT - bez Sfery kreator nie może utworzyć ZD w Subiekcie.",
     };
   }
 
@@ -160,7 +160,7 @@ export function humanizeSferaCreateError(
       title: "Sfera zajęta",
       message:
         "Sfera Subiekta jest chwilowo zajęta lub niedostępna. Spróbuj ponownie za chwilę. " +
-        "Nie twórz tego samego ZD drugi raz „w ciemno” — najpierw sprawdź w Subiekcie, czy dokument już powstał.",
+        "Nie twórz tego samego ZD drugi raz „w ciemno” - najpierw sprawdź w Subiekcie, czy dokument już powstał.",
     };
   }
 

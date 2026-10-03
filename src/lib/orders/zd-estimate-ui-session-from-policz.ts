@@ -181,7 +181,7 @@ export function buildZdEstimateUiSessionSnapshotFromPolicz(input: {
     pendingIndividualsError: pendingOk
       ? null
       : input.pendingIndividualsError?.trim() ||
-        "Nie wczytano próśb przy Policz — użyj „Wczytaj ponownie” albo policz listę jeszcze raz.",
+        "Nie wczytano próśb przy Policz - użyj „Wczytaj ponownie” albo policz listę jeszcze raz.",
     meta: {
       pagesFetched: input.meta.pagesFetched,
       totalCountApi: input.meta.totalCountApi,

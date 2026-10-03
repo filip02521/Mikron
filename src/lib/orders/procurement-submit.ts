@@ -34,7 +34,7 @@ export function assertProcurementEntryComplete(
     (draft.informacjaQueueViaDailyPanel || draft.informacjaStockOutReorder)
   ) {
     if (!draft.supplierId?.trim()) {
-      throw new Error(`${prefix}wybierz dostawcę — ta ścieżka wymaga dostawcy w panelu Dziś.`);
+      throw new Error(`${prefix}wybierz dostawcę - ta ścieżka wymaga dostawcy w panelu Dziś.`);
     }
   }
   if (assessRequestCompleteness({ ...draft, requestKind: kind }) !== "complete") {

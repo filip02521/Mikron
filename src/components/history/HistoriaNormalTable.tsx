@@ -60,7 +60,7 @@ export function HistoriaNormalTable({
                         {h.suppliers.name.charAt(0).toUpperCase()}
                       </span>
                     ) : null}
-                    <span className="truncate">{h.suppliers?.name ?? "—"}</span>
+                    <span className="truncate">{h.suppliers?.name ?? "-"}</span>
                   </div>
                 </td>
                 <td className="max-w-[280px]">

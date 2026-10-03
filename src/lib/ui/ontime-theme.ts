@@ -31,38 +31,20 @@ export const sidebarNavScrollClass = "flex-1 overflow-y-auto px-2.5 pb-3 pt-4";
 
 /** Sidebar — aktywny link: mocniejsze tło w tonie, bez obramowania. */
 export function sidebarNavToneActiveClass(tone: NavTone): string {
-  switch (tone) {
-    case "amber":
-      return "border border-transparent bg-amber-100/60 text-slate-900 shadow-sm shadow-amber-900/5";
-    case "orange":
-      return "border border-transparent bg-orange-100/65 text-slate-900 shadow-sm shadow-orange-900/5";
-    case "emerald":
-      return "border border-transparent bg-emerald-100/60 text-slate-900 shadow-sm shadow-emerald-900/5";
-    case "sky":
-      return "border border-transparent bg-sky-100/55 text-slate-900 shadow-sm shadow-sky-900/5";
-    case "slate":
-      return "border border-transparent bg-slate-200/55 text-slate-900 shadow-sm";
-    case "violet":
-      return "border border-transparent bg-violet-100/60 text-slate-900 shadow-sm shadow-violet-900/5";
-    case "indigo":
-    default:
-      return "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm shadow-indigo-900/5";
-  }
+  // Jeden wygląd aktywnej pozycji (petrol z .sb-link-active); ton nie barwi tła.
+  void tone;
+  return "border border-transparent text-slate-900";
 }
 
 /** @deprecated Użyj {@link sidebarNavToneActiveClass} z tonem pozycji. */
 export const navLinkActiveClass =
-  "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm shadow-indigo-900/5";
+  "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm ";
 
 /** Ogranicza :hover do precyzyjnego wskaźnika (mysz) — mniej artefaktów w Chrome przy szybkim ruchu. */
 const navFineHover =
   "[@media(hover:hover)_and_(pointer:fine)]:hover:" as const;
 
-const navFineGroupHover =
-  "[@media(hover:hover)_and_(pointer:fine)]:group-hover:" as const;
 
-/** Opis pod pozycją menu — tylko przy hover myszą. */
-export const navLinkDescriptionHoverClass = `${navFineGroupHover}text-slate-500`;
 
 /** Sidebar — link w stanie spoczynku (bez obramowania). */
 export const navLinkIdleClass = cn(
@@ -106,8 +88,9 @@ export function navToneSurfaceIdleClass(tone: NavTone): string {
 
 /** Sidebar — trwałe wyróżnienie uwagi (przypomnienia Notatnik / ZK) w spoczynku. */
 export const sidebarNavAttentionIdleClass = cn(
-  "border border-amber-200/45 bg-amber-50/55 text-slate-800",
-  `${navFineHover}bg-amber-50/75`,
+  // Przypomnienia sygnalizuje sam licznik (amber), bez obramowanego tła wiersza.
+  "border border-transparent text-slate-700",
+  `${navFineHover}bg-slate-50/70`,
   `${navFineHover}text-slate-900`
 );
 
@@ -120,70 +103,20 @@ export const mobileNavAttentionIdleClass = cn(
 
 /** Sidebar — delikatne tło wiersza primary wg tonu semantycznego (Dziś). Tylko na hover. */
 export function sidebarNavToneHighlightIdleClass(tone: NavTone): string | undefined {
-  switch (tone) {
-    case "indigo":
-      return cn(`${navFineHover}bg-indigo-50/45`, `${navFineHover}text-slate-900`);
-    case "amber":
-      return cn(`${navFineHover}bg-amber-50/55`, `${navFineHover}text-slate-900`);
-    case "orange":
-      return cn(`${navFineHover}bg-orange-50/55`, `${navFineHover}text-slate-900`);
-    case "emerald":
-      return cn(`${navFineHover}bg-emerald-50/50`, `${navFineHover}text-slate-900`);
-    case "violet":
-      return cn(`${navFineHover}bg-violet-50/50`, `${navFineHover}text-slate-900`);
-    default:
-      return undefined;
-  }
+  void tone;
+  return undefined;
 }
 
 /** Sidebar — badge licznika dopasowany do tonu pozycji. */
 export function sidebarNavBadgeClassForTone(tone: NavTone, active: boolean): string {
-  if (active) {
-    switch (tone) {
-      case "amber":
-        return "bg-amber-500 text-white";
-      case "orange":
-        return "bg-orange-500 text-white";
-      case "emerald":
-        return "bg-emerald-600 text-white";
-      case "indigo":
-        return "bg-indigo-600 text-white";
-      case "sky":
-        return "bg-sky-600 text-white";
-      case "violet":
-        return "bg-violet-600 text-white";
-      default:
-        return "bg-slate-600 text-white";
-    }
-  }
-  switch (tone) {
-    case "amber":
-      return sidebarNavBadgeWarningClass;
-    case "orange":
-      return "bg-orange-100 text-orange-950 ring-1 ring-orange-200/80";
-    case "emerald":
-      return "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200/80";
-    case "indigo":
-      return "bg-indigo-100 text-indigo-800 ring-1 ring-indigo-200/70";
-    case "sky":
-      return "bg-sky-100 text-sky-900 ring-1 ring-sky-200/70";
-    case "violet":
-      return "bg-violet-100 text-violet-900 ring-1 ring-violet-200/70";
-    default:
-      return "bg-slate-100 text-slate-700 ring-1 ring-slate-200/70";
-  }
+  // Licznik bez pigułki: liczba w tonie neutralnym, amber tylko gdy wymaga działania.
+  if (active) return "text-indigo-700";
+  return tone === "amber" || tone === "orange" ? "text-amber-700" : "text-slate-500";
 }
-
-/** Sidebar — kompaktowy wiersz (archiwum, dostawcy, system). */
-export const sidebarNavCompactPaddingClass = "px-2 py-1.5";
-
-/** Sidebar — badge wymagający uwagi (weryfikacja). */
-export const sidebarNavBadgeWarningClass =
-  "bg-amber-100 text-amber-900 ring-1 ring-amber-200/80";
 
 /** Logo w aplikacji — gradient jak na logowaniu */
 export const brandMarkAppClass =
-  "bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30";
+  "bg-indigo-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30";
 
 /** Plakietka roli — delikatny ton bez lewego paska. */
 export function roleBadgeClass(role: string): string {
@@ -207,7 +140,7 @@ export const surfaceCardClass =
 
 /** Przycisk primary — pełny petrol, ciemniejszy przy hover/active. */
 export const buttonPrimaryClass =
-  "bg-indigo-600 text-white shadow-sm shadow-indigo-950/15 hover:bg-indigo-700 active:bg-indigo-800";
+  "bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 active:bg-indigo-800";
 
 /** Wspólna wysokość kontrolek w pasku akcji nagłówka (checkbox, CTA, pomoc). */
 export const pageToolbarSizingClass = "h-10 min-h-10 shrink-0 px-3 py-0 text-xs leading-none";
@@ -218,7 +151,7 @@ export const pageToolbarSurfaceClass =
 
 /** Ikona nagłówka panelu / sekcji marki */
 export const brandIconTileClass =
-  "bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30";
+  "bg-indigo-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30";
 
 /** Sticky chrome (np. wyszukiwanie dostawcy na panelu dziennym). */
 export const panelStickyChromeClass =
@@ -233,6 +166,9 @@ export const panelTabsChromeClass =
 
 /** Panel dzienny / operacje zakupów — wąska kolumna; lekko szersza tylko na 2xl+. */
 export const panelWorkspaceShellClass = "relative mx-auto w-full max-w-3xl xl:max-w-4xl 2xl:max-w-5xl";
+
+/** Panel dzienny: szersza kolumna na dużych ekranach (lista dostawców nie zostawia pustej połowy). */
+export const dailyPanelWorkspaceShellClass = "relative mx-auto w-full max-w-3xl xl:max-w-5xl 2xl:max-w-6xl";
 
 /** Strony operacji z odstępem między blokami (toast, karta, alert). */
 export const panelPageShellClass = cn(panelWorkspaceShellClass, "space-y-4");
@@ -283,7 +219,7 @@ export const zdEstimateLoadingWindowClass =
   "zd-est-loading-window relative w-full max-w-[24.5rem] overflow-hidden rounded-lg border border-slate-200/85 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_22px_48px_-18px_rgba(15,23,42,0.2)] ring-1 ring-slate-900/[0.035] sm:max-w-[26rem]";
 
 export const zdEstimateLoadingWindowHeaderClass =
-  "border-b border-slate-100/90 bg-gradient-to-b from-slate-50/95 via-white to-white px-5 py-3.5 sm:px-6 sm:py-4";
+  "border-b border-slate-100/90 bg-slate-50/95 px-5 py-3.5 sm:px-6 sm:py-4";
 
 /** Pionowy rytm workbencha fill (micro → prep → lista → sticky). */
 export const zdEstimateWorkbenchStackClass =
@@ -455,7 +391,7 @@ export const zdEstimateToolbarActionsClusterClass = cn(
 
 /** LIVE / host badge w top barze — h-8, wyśrodkowany. */
 export const zdEstimateHostBadgeClass = cn(
-  "inline-flex items-center rounded-md px-1.5 py-0 text-[10px] font-semibold uppercase leading-none tracking-wider tabular-nums",
+  "inline-flex items-center rounded-md px-1.5 py-0 text-[10px] font-semibold leading-none tabular-nums",
   zdEstimateChromeControlHeightClass
 );
 
@@ -555,7 +491,7 @@ export const zdEstimatePrepPrimaryButtonClass = cn(
 export const zdEstimateSelectionBarClass = cn(
   zdEstimateRadiusSurfaceClass,
   zdEstimateShadowControlClass,
-  "w-full min-w-0 border border-indigo-200/75 bg-indigo-50/60 p-3 sm:p-3.5 shadow-indigo-900/5"
+  "w-full min-w-0 border border-indigo-200/75 bg-indigo-50/60 p-3 sm:p-3.5 "
 );
 
 /** Treść wewnątrz karty huba administracji / dostawców. */
@@ -658,8 +594,8 @@ export const salesTypography = {
   pageTitle: "text-base font-semibold tracking-tight text-slate-900",
   pageDesc: "text-xs leading-relaxed text-slate-500",
   blockTitle: "text-sm font-semibold text-slate-900",
-  sectionLabel: "text-[11px] font-semibold uppercase tracking-wide text-slate-600",
-  sectionLabelAccent: "text-[11px] font-semibold uppercase tracking-wide text-emerald-900",
+  sectionLabel: "text-[11px] font-semibold text-slate-600",
+  sectionLabelAccent: "text-[11px] font-semibold text-emerald-900",
   sectionHint: "text-xs leading-relaxed text-slate-500",
   rowTitle: "text-sm font-semibold leading-snug text-slate-900",
   rowBody: "text-xs font-medium leading-snug text-slate-600",
@@ -667,7 +603,7 @@ export const salesTypography = {
   chrome: "text-xs leading-snug text-slate-600",
   statValue: "text-sm font-semibold tabular-nums text-slate-900",
   statLabel: "text-xs text-slate-500",
-  kindTag: "text-[10px] font-semibold uppercase tracking-wide",
+  kindTag: "text-[10px] font-semibold",
   pill: "text-[11px] font-semibold leading-snug",
 } as const;
 
@@ -705,7 +641,7 @@ export const panelSubsectionInsetClass = "px-3 sm:px-4 lg:px-5";
  */
 export const panelTypography = {
   sectionTitle: "text-sm font-semibold text-slate-900",
-  sectionLabel: "text-[11px] font-semibold uppercase tracking-wide text-slate-600",
+  sectionLabel: "text-[11px] font-semibold text-slate-600",
   rowTitle: "text-sm font-semibold leading-snug text-slate-900",
   rowMeta: "text-xs leading-snug text-slate-500",
   caption: "text-[11px] leading-snug text-slate-500",
@@ -719,10 +655,10 @@ export const panelTypography = {
 /** Meta terminów dostawy / ZD na /moje — spokojna hierarchia jak PlannedOrderDateMeta. */
 export const deliveryMetaTypography = {
   caption:
-    "text-[11px] font-medium uppercase tracking-wide text-slate-400",
-  captionZd: "text-[11px] font-medium uppercase tracking-wide text-indigo-600/75",
-  captionAvailable: "text-[11px] font-medium uppercase tracking-wide text-sky-700/85",
-  captionOverdue: "text-[11px] font-medium uppercase tracking-wide text-amber-800/85",
+    "text-[11px] font-medium text-slate-400",
+  captionZd: "text-[11px] font-medium text-indigo-600/75",
+  captionAvailable: "text-[11px] font-medium text-sky-700/85",
+  captionOverdue: "text-[11px] font-medium text-amber-800/85",
   captionPending: "text-[11px] font-medium text-slate-500 normal-case tracking-normal",
   dateBadge:
     "max-w-full whitespace-normal rounded-md bg-slate-50 px-1.5 py-0.5 text-[10px] font-medium leading-none text-slate-700 ring-1 ring-inset ring-slate-200/80 tabular-nums",
@@ -737,11 +673,11 @@ export const deliveryMetaTypography = {
 } as const;
 
 /** Wypełnienie paska postępu */
-export const progressFillUrgentClass = "bg-gradient-to-r from-sky-400 to-sky-600";
-export const progressFillForSomeoneClass = "bg-gradient-to-r from-indigo-500 to-indigo-700";
+export const progressFillUrgentClass = "bg-sky-400";
+export const progressFillForSomeoneClass = "bg-indigo-500";
 
 export const brandGradientTextClass =
-  "bg-gradient-to-br from-indigo-600 to-sky-600 bg-clip-text text-transparent";
+  "text-indigo-700";
 
 export const legendDotUrgentClass = "h-2 w-2 rounded-full bg-sky-500";
 export const legendDotForSomeoneClass = "h-2 w-2 rounded-full bg-indigo-500";
@@ -797,7 +733,7 @@ export const mojeHeadlineInfoTitleClass = "text-indigo-900";
 export const mojeHeadlineInfoSubClass = "text-indigo-800";
 
 export const mojeCardHighlightClass =
-  "z-[1] my-1 rounded-md border border-indigo-300/90 bg-indigo-50/90 shadow-md shadow-indigo-100/30 ring-1 ring-indigo-200/70";
+  "z-[1] my-1 rounded-md border border-indigo-300/90 bg-indigo-50/90 shadow-md ring-1 ring-indigo-200/70";
 
 /** Sekcja informacja (magazyn) — sky pozostaje semantyczny */
 export const informacjaSurfaceClass =
@@ -814,7 +750,7 @@ export const mobileNavLinkBaseClass =
   "relative mx-0.5 flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 rounded-md px-1.5 py-2 text-[11px] font-semibold lg:text-xs";
 
 export const mobileNavLinkActiveClass =
-  "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm shadow-indigo-900/5";
+  "border border-transparent bg-indigo-100/55 text-slate-900 shadow-sm ";
 
 export const mobileNavLinkIdleClass = cn(
   "text-slate-500",
@@ -873,9 +809,9 @@ export const toastIconTileClass = cn(
   brandIconTileClass,
   "flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
 );
-export const toastIconTileSuccessClass = "from-emerald-600 to-emerald-700 ring-emerald-500/30";
-export const toastIconTileWarningClass = "from-amber-500 to-amber-600 ring-amber-500/30";
-export const toastIconTileErrorClass = "from-red-600 to-red-700 ring-red-500/30";
+export const toastIconTileSuccessClass = "bg-emerald-600 ring-emerald-500/30";
+export const toastIconTileWarningClass = "bg-amber-500 ring-amber-500/30";
+export const toastIconTileErrorClass = "bg-red-600 ring-red-500/30";
 
 /** Toast — pasek postępu auto-znikania. */
 export const toastProgressTrackClass = "absolute inset-x-0 top-0 h-0.5 bg-slate-100";
@@ -898,7 +834,7 @@ export const salesPinnedNoticeClass = systemNoticePinnedClass;
 
 /** Obudowa menu kontekstowego w panelu dzennym. */
 export const panelDropdownShellClass =
-  "rounded-md border border-indigo-100/85 bg-white py-1 shadow-lg shadow-indigo-950/5 ring-1 ring-sky-100/35";
+  "rounded-md border border-indigo-100/85 bg-white py-1 shadow-lg ring-1 ring-sky-100/35";
 
 export const panelQueueStepsShellClass = cn(
   "flex flex-nowrap items-center gap-2 overflow-x-auto rounded-md border border-slate-200/80 bg-slate-50/40 px-2 py-2 sm:px-2.5 sm:py-2",
@@ -911,7 +847,7 @@ export const panelQueueStatButtonClass =
 
 /** Podświetlenie świeżo zsynchronizowanych, nieprzeczytanych prośb. */
 export const dailyPanelFreshHighlightClass =
-  "ring-2 ring-inset ring-violet-500/55 shadow-md shadow-violet-200/50";
+  "ring-2 ring-inset ring-violet-500/55 shadow-md ";
 
 export type DailyPanelUnseenVariant = "prosby" | "stockOut";
 
@@ -975,10 +911,10 @@ export const panelChoiceChipIdleClass =
   "border-indigo-100/80 bg-white text-slate-700 hover:border-indigo-200/80 hover:bg-indigo-50/50";
 
 export const panelChoiceChipSelectedClass =
-  "border-indigo-400/90 bg-gradient-to-b from-indigo-50 to-white text-indigo-950 ring-1 ring-indigo-200/60";
+  "border-indigo-400/90 bg-indigo-50 text-indigo-950 ring-1 ring-indigo-200/60";
 
 export const panelChoiceChipSuccessSelectedClass =
-  "border-emerald-400/90 bg-gradient-to-b from-emerald-50 to-white text-emerald-950 ring-1 ring-emerald-200/50";
+  "border-emerald-400/90 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-200/50";
 
 export const panelDashedActionClass =
   "w-full rounded-md border border-dashed border-indigo-200/70 bg-indigo-50/30 px-4 py-3 text-sm font-medium text-indigo-800 transition hover:border-indigo-300/90 hover:bg-indigo-50/60 hover:text-indigo-950";
@@ -1065,7 +1001,7 @@ export const panelNoticeTriggerDefaultClass =
 
 /** Pasek akcji w nagłówku panelu dziennego (wyszukiwarka + przyciski) */
 export const panelToolbarShellClass =
-  "flex w-full min-w-0 items-center rounded-md border border-indigo-100/75 bg-gradient-to-b from-indigo-50/35 via-white to-white p-2 shadow-sm";
+  "flex w-full min-w-0 items-center rounded-md border border-indigo-100/75 bg-indigo-50/35 p-2 shadow-sm";
 
 export const panelToolbarRowClass =
   "flex w-full min-w-0 flex-col gap-2 md:flex-row md:items-center";
@@ -1099,7 +1035,7 @@ export const zdEstimateListToolsShellQuietClass =
   "border-slate-200/70 bg-white/95 shadow-slate-900/[0.03]";
 
 export const zdEstimateListToolsShellActiveClass =
-  "border-indigo-200/75 bg-indigo-50/60 shadow-indigo-900/5";
+  "border-indigo-200/75 bg-indigo-50/60 ";
 
 export const zdEstimateListToolsRowClass =
   "flex w-full min-w-0 flex-col gap-2.5 sm:gap-3";
@@ -1115,7 +1051,7 @@ export const zdEstimateSelectionGroupClass =
   "flex min-w-0 flex-col gap-1 sm:px-2.5 first:sm:pl-0 last:sm:pr-0";
 
 export const zdEstimateSelectionGroupLabelClass =
-  "text-[11px] font-semibold uppercase tracking-[0.06em] text-indigo-800/70";
+  "text-[11px] font-semibold text-indigo-800/70";
 
 export const zdEstimateSelectionGroupButtonsClass =
   "flex flex-wrap items-center gap-1.5";

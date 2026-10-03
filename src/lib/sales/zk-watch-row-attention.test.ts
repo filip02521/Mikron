@@ -28,7 +28,7 @@ function baseInput(
 }
 
 describe("deriveZkWatchRowAttention", () => {
-  it("archived — brak badge'a", () => {
+  it("archived - brak badge'a", () => {
     expect(
       deriveZkWatchRowAttention(
         baseInput({ archived: true, hasNewWarehouseArrival: true })
@@ -48,7 +48,7 @@ describe("deriveZkWatchRowAttention", () => {
     ).toMatchObject({ kind: "regal_new", label: "Nowy na regale" });
   });
 
-  it("regal odczytany — czeka na odbiór", () => {
+  it("regal odczytany - czeka na odbiór", () => {
     expect(
       deriveZkWatchRowAttention(
         baseInput({ hasRegalWaiting: true, regalWaitingCount: 2 })
@@ -88,7 +88,7 @@ describe("deriveZkWatchRowAttention", () => {
 });
 
 describe("deriveZkWatchRowChrome", () => {
-  it("regal + readyToClose — rail regalu, bez isAction", () => {
+  it("regal + readyToClose - rail regalu, bez isAction", () => {
     const chrome = deriveZkWatchRowChrome(
       baseInput({
         readyToClose: true,
@@ -100,7 +100,7 @@ describe("deriveZkWatchRowChrome", () => {
     expect(chrome.railKind).toBe("regal_waiting");
   });
 
-  it("regal_new — rail i mocniejsza obudowa", () => {
+  it("regal_new - rail i mocniejsza obudowa", () => {
     expect(
       deriveZkWatchRowChrome(
         baseInput({ hasNewWarehouseArrival: true, hasRegalWaiting: true, regalWaitingCount: 1 })
@@ -108,13 +108,13 @@ describe("deriveZkWatchRowChrome", () => {
     ).toBe("regal_new");
   });
 
-  it("informacja bez regalu — accent informacja", () => {
+  it("informacja bez regalu - accent informacja", () => {
     expect(
       deriveZkWatchRowChrome(baseInput({ hasInformacjaReady: true }))
     ).toMatchObject({ accentKind: "informacja" });
   });
 
-  it("przypomnienie jako primary — accent follow_up", () => {
+  it("przypomnienie jako primary - accent follow_up", () => {
     expect(
       deriveZkWatchRowAttention(
         baseInput({ followUpDue: true, followUpLabel: "24.08" })
@@ -128,7 +128,7 @@ describe("deriveZkWatchRowChrome", () => {
     ).toMatchObject({ accentKind: "follow_up", isUrgent: true });
   });
 
-  it("gotowe + przypomnienie — zielony rail, bez urgent overlay", () => {
+  it("gotowe + przypomnienie - zielony rail, bez urgent overlay", () => {
     expect(
       deriveZkWatchRowChrome(
         baseInput({
@@ -157,20 +157,20 @@ describe("deriveZkWatchRowChrome", () => {
     ).toMatchObject({ kind: "regal_waiting" });
   });
 
-  it("nowe pozycje — accent new_lines", () => {
+  it("nowe pozycje - accent new_lines", () => {
     expect(
       deriveZkWatchRowChrome(baseInput({ hasNewZkLines: true }))
     ).toMatchObject({ accentKind: "new_lines" });
   });
 
-  it("gotowe do zamknięcia bez regalu — rail zamknięcia", () => {
+  it("gotowe do zamknięcia bez regalu - rail zamknięcia", () => {
     expect(deriveZkWatchRowChrome(baseInput({ readyToClose: true }))).toMatchObject({
       isAction: true,
       railKind: "ready_to_close",
     });
   });
 
-  it("przypomnienie — isUrgent niezależnie od regalu", () => {
+  it("przypomnienie - isUrgent niezależnie od regalu", () => {
     expect(
       deriveZkWatchRowChrome(
         baseInput({
@@ -282,7 +282,7 @@ describe("buildZkWatchCardMetaSummary", () => {
     expect(summary).toBe("Prośba: bez otwartej · 1 zakończone");
   });
 
-  it("scope unconfigured — bez prosbaRowMeta covered", () => {
+  it("scope unconfigured - bez prosbaRowMeta covered", () => {
     const summary = buildZkWatchCardMetaSummary({
       prosbaScopeSummary: "Wybierz pozycje do zamówienia",
       prosbaRowMeta: null,

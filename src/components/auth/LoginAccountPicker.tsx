@@ -194,7 +194,7 @@ export function LoginAccountPicker({
           {awaitingSearch ? (
             <p className="px-4 py-6 text-center text-sm text-slate-500">
               Wpisz co najmniej {minQueryLength} znaki imienia lub nazwiska, aby wyszukać konto w
-              firmie. Możesz też zalogować się adresem e-mail — link poniżej listy.
+              firmie. Możesz też zalogować się adresem e-mail - link poniżej listy.
             </p>
           ) : queryTooShort ? (
             <p className="px-4 py-6 text-center text-sm text-slate-500">

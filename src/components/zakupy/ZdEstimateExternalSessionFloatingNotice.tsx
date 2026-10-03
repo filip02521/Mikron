@@ -123,12 +123,6 @@ function FloatingNoticePanel({
           >
             <span
               className={cn(
-                "absolute inline-flex h-full w-full animate-ping rounded-full opacity-50",
-                urgent ? "bg-amber-400" : "bg-indigo-400"
-              )}
-            />
-            <span
-              className={cn(
                 "relative inline-flex h-2 w-2 rounded-full",
                 urgent ? "bg-amber-500" : "bg-indigo-500"
               )}
@@ -145,7 +139,7 @@ function FloatingNoticePanel({
           </span>
           <span
             className={cn(
-              "text-[9px] font-semibold uppercase tracking-[0.14em]",
+              "text-[9px] font-semibold",
               "[writing-mode:vertical-rl] rotate-180",
               urgent ? "text-amber-700/90" : "text-indigo-700/90"
             )}

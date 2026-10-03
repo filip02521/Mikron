@@ -60,7 +60,7 @@ describe("formatTeethReceiveOrderTimingLine", () => {
 });
 
 describe("formatTeethReceiveBlockTimingLine", () => {
-  it("gdy daty wspólne — bez „od”", () => {
+  it("gdy daty wspólne - bez „od”", () => {
     expect(
       formatTeethReceiveBlockTimingLine([
         {
@@ -79,7 +79,7 @@ describe("formatTeethReceiveBlockTimingLine", () => {
     ).toBe("Prośba 10.03.2026 · Zamówiono 18.03.2026");
   });
 
-  it("gdy daty różne — „od” najstarszej", () => {
+  it("gdy daty różne - „od” najstarszej", () => {
     expect(
       formatTeethReceiveBlockTimingLine([
         {

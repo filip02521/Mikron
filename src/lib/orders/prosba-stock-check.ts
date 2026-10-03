@@ -205,21 +205,21 @@ export { formatProsbaStockLineHint } from "./prosba-line-stock-ui";
 export function formatProsbaSufficientStockBanner(count: number): string {
   const summary = buildProsbaSufficientStockSummary(count);
   if (!summary) return "";
-  return `${summary.title} — ${summary.detail}`;
+  return `${summary.title} - ${summary.detail}`;
 }
 
 /** Podpowiedź w modalu ZK po auto-zaznaczeniu pozycji do zamówienia. */
 export function formatZkProsbaAutoMarkedHint(count: number): string {
   if (count <= 0) return "";
   if (count === 1) {
-    return "1 pozycja wymaga zamówienia — zaznaczono do prośby. Odznacz, jeśli macie ją na stanie.";
+    return "1 pozycja wymaga zamówienia - zaznaczono do prośby. Odznacz, jeśli macie ją na stanie.";
   }
   const mod10 = count % 10;
   const mod100 = count % 100;
   const few = mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14);
   const noun = few ? "pozycje" : "pozycji";
   const verb = few ? "wymagają" : "wymaga";
-  return `${count} ${noun} ${verb} zamówienia — zaznaczono do prośby. Odznacz pozycje, które macie na stanie.`;
+  return `${count} ${noun} ${verb} zamówienia - zaznaczono do prośby. Odznacz pozycje, które macie na stanie.`;
 }
 
 /** Krótka etykieta statusu w modalu zakresu ZK. */
@@ -604,13 +604,13 @@ export function formatProsbaSubmitStockConfirmMessage(
     const qty = line.quantity.trim();
     const avail = line.available;
     const pairHint = line.pairStockCover
-      ? " — cover pary (sztuki + paczki po demontażu)"
+      ? " - cover pary (sztuki + paczki po demontażu)"
       : "";
     const availPart =
       avail != null
         ? ` (stan: ${avail} szt.${pairHint})`
         : "";
-    return `• ${name} — ${qty} szt.${availPart}`;
+    return `• ${name} - ${qty} szt.${availPart}`;
   });
   const closing =
     options?.intent === "create"
@@ -740,11 +740,11 @@ function formatProsbaZkQuantityConfirmBullet(
   const name = formatProsbaLineName(line);
   switch (assessment.kind) {
     case "partial_stock":
-      return `• ${name} — ZK: ${assessment.zkQuantity} szt., prośba: ${assessment.orderQuantity} szt., ze stanu: ${assessment.stockGap} szt. (dostępne: ${assessment.available} szt.)`;
+      return `• ${name} - ZK: ${assessment.zkQuantity} szt., prośba: ${assessment.orderQuantity} szt., ze stanu: ${assessment.stockGap} szt. (dostępne: ${assessment.available} szt.)`;
     case "under_zk_no_stock":
-      return `• ${name} — ZK: ${assessment.zkQuantity} szt., prośba: ${assessment.orderQuantity} szt. (brak potwierdzonego stanu na brakujące ${assessment.stockGap} szt.)`;
+      return `• ${name} - ZK: ${assessment.zkQuantity} szt., prośba: ${assessment.orderQuantity} szt. (brak potwierdzonego stanu na brakujące ${assessment.stockGap} szt.)`;
     case "under_zk_insufficient_stock":
-      return `• ${name} — ZK: ${assessment.zkQuantity} szt., prośba: ${assessment.orderQuantity} szt., brakuje ${assessment.stockGap} szt. względem ZK, na stanie: ${assessment.available} szt.`;
+      return `• ${name} - ZK: ${assessment.zkQuantity} szt., prośba: ${assessment.orderQuantity} szt., brakuje ${assessment.stockGap} szt. względem ZK, na stanie: ${assessment.available} szt.`;
   }
 }
 
@@ -776,7 +776,7 @@ export function buildProsbaSubmitZkQuantityConfirm(
   if (hasPartialStock && items.every((item) => item.assessment.kind === "partial_stock")) {
     return {
       title: "Częściowy stan magazynowy",
-      message: `Ilość w prośbie jest mniejsza niż w ZK — reszta powinna być już na stanie:\n\n${bullets.join("\n")}\n\nCzy potwierdzasz podział i wysyłasz prośbę?`,
+      message: `Ilość w prośbie jest mniejsza niż w ZK - reszta powinna być już na stanie:\n\n${bullets.join("\n")}\n\nCzy potwierdzasz podział i wysyłasz prośbę?`,
       confirmLabel: "Potwierdzam i wysyłam",
     };
   }
@@ -798,11 +798,11 @@ export function formatProsbaZkQuantityInlineHint(
 
   switch (assessment.kind) {
     case "partial_stock":
-      return `W ZK jest ${assessment.zkQuantity} szt. — ${assessment.stockGap} szt. ze stanu (dostępne: ${assessment.available}), reszta w prośbie.`;
+      return `W ZK jest ${assessment.zkQuantity} szt. - ${assessment.stockGap} szt. ze stanu (dostępne: ${assessment.available}), reszta w prośbie.`;
     case "under_zk_no_stock":
-      return `W ZK jest ${assessment.zkQuantity} szt. — prośba na ${assessment.orderQuantity} szt. (brak potwierdzonego stanu na brakujące ${assessment.stockGap} szt.).`;
+      return `W ZK jest ${assessment.zkQuantity} szt. - prośba na ${assessment.orderQuantity} szt. (brak potwierdzonego stanu na brakujące ${assessment.stockGap} szt.).`;
     case "under_zk_insufficient_stock":
-      return `W ZK jest ${assessment.zkQuantity} szt. — brakuje ${assessment.stockGap} szt. względem ZK, na stanie tylko ${assessment.available} szt.`;
+      return `W ZK jest ${assessment.zkQuantity} szt. - brakuje ${assessment.stockGap} szt. względem ZK, na stanie tylko ${assessment.available} szt.`;
   }
 }
 

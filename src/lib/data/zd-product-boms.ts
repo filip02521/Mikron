@@ -80,7 +80,7 @@ function mapComponent(row: CompDbRow): ZdProductBomComponentRow {
     // Zepsute/historyczne 0 lub NaN → 1, żeby explode i edycja miały sensowną sztukę.
     qtyPerParent: normalizeZdBomComponentQty(row.qty_per_parent),
     componentSymbol: row.component_symbol?.trim() || null,
-    componentNazwa: (row.component_nazwa ?? "").trim() || "—",
+    componentNazwa: (row.component_nazwa ?? "").trim() || "-",
   };
 }
 
@@ -103,7 +103,7 @@ function mapBom(
     source: "manual",
     note: (row.note ?? "").trim(),
     parentSymbol: row.parent_symbol?.trim() || null,
-    parentNazwa: (row.parent_nazwa ?? "").trim() || "—",
+    parentNazwa: (row.parent_nazwa ?? "").trim() || "-",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     createdBy: row.created_by,
@@ -256,7 +256,7 @@ export async function upsertZdProductBom(
         parent_nazwa:
           (input.parentNazwa ?? "").trim() ||
           (existing as BomDbRow).parent_nazwa ||
-          "—",
+          "-",
         updated_at: now,
       })
       .eq("id", (existing as BomDbRow).id)
@@ -282,7 +282,7 @@ export async function upsertZdProductBom(
         source: "manual",
         note: (input.note ?? "").trim().slice(0, 500),
         parent_symbol: input.parentSymbol?.trim() || null,
-        parent_nazwa: (input.parentNazwa ?? "").trim() || "—",
+        parent_nazwa: (input.parentNazwa ?? "").trim() || "-",
         created_by: input.createdBy ?? null,
         created_at: now,
         updated_at: now,
@@ -301,7 +301,7 @@ export async function upsertZdProductBom(
         component_tw_id: c.componentTwId,
         qty_per_parent: c.qtyPerParent,
         component_symbol: c.componentSymbol?.trim() || null,
-        component_nazwa: (c.componentNazwa ?? "").trim() || "—",
+        component_nazwa: (c.componentNazwa ?? "").trim() || "-",
       }))
     );
   if (insErr) throw new Error(insErr.message);

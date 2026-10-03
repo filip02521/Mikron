@@ -45,7 +45,7 @@ export function SalesAdminHelpPanel({
           <>
             <p>
               Dodajesz handlowca ze swojego zakresu grup. System tworzy kartę i konto z hasłem
-              jednorazowym — przekaż je osobiście. Przy pierwszym logowaniu użytkownik ustawi własne
+              jednorazowym - przekaż je osobiście. Przy pierwszym logowaniu użytkownik ustawi własne
               hasło.
             </p>
             <p>
@@ -60,7 +60,7 @@ export function SalesAdminHelpPanel({
               <strong className="font-medium text-slate-800">Karta handlowca</strong> to osoba w
               systemie (powiadomienia, Moje zamówienia).{" "}
               <strong className="font-medium text-slate-800">Konto logowania</strong> zakładasz osobno
-              — najwygodniej linkiem zaproszenia.
+ - najwygodniej linkiem zaproszenia.
             </p>
             <ol className="list-inside list-decimal space-y-1.5 pl-0.5">
               <li>
@@ -72,7 +72,7 @@ export function SalesAdminHelpPanel({
               </li>
               <li>Dodaj handlowca i przypisz grupę.</li>
               <li>
-                Wygeneruj <strong className="font-medium text-slate-800">link zaproszenia</strong> —
+                Wygeneruj <strong className="font-medium text-slate-800">link zaproszenia</strong> -
                 hasło i powiązanie ustawią się automatycznie.
               </li>
             </ol>

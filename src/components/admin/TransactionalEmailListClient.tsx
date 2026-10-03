@@ -67,7 +67,7 @@ export function TransactionalEmailListClient({
   return (
     <AdminHubShell activeTab="wysylki">
       <p className={cn(panelTypography.sectionDesc, "mb-3")}>
-        Każda wysyłka SES z OnTime jest zapisywana z treścią HTML (pełny HTML —
+        Każda wysyłka SES z OnTime jest zapisywana z treścią HTML (pełny HTML -
         bez automatycznej retencji; przy dużej objętości rozważ okresowe czyszczenie
         starszych wierszy w <code>transactional_email_log</code>). Kody OTP w
         podglądzie są zredagowane (<code>••••••</code>). Lista pokazuje ostatnie
@@ -150,7 +150,7 @@ export function TransactionalEmailListClient({
                       ? "Brak danych do wyświetlenia (błąd wczytywania powyżej)."
                       : kind !== "all" || status !== "all"
                         ? "Brak wpisów dla wybranego filtra."
-                        : "Brak wysyłek w logu — po pierwszej transakcyjnej wiadomości SES pojawi się tutaj."}
+                        : "Brak wysyłek w logu - po pierwszej transakcyjnej wiadomości SES pojawi się tutaj."}
                   </td>
                 </tr>
               ) : (
@@ -168,13 +168,13 @@ export function TransactionalEmailListClient({
                       </Badge>
                     </td>
                     <td className="max-w-[12rem] truncate text-xs font-mono">
-                      {(row.to_addresses ?? []).join(", ") || "—"}
+                      {(row.to_addresses ?? []).join(", ") || "-"}
                       {row.override_to ? (
                         <span className="ml-1 text-amber-700">(override)</span>
                       ) : null}
                     </td>
                     <td className="max-w-[18rem] truncate text-sm">
-                      {row.subject || "—"}
+                      {row.subject || "-"}
                     </td>
                     <td>
                       <Link

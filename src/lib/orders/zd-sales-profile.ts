@@ -210,7 +210,7 @@ export function formatZdSalesSmoothingSummary(s: ZdSalesSmoothingSummary): strin
     s.prosba > 0 ? `${s.prosba} ${polishPluralWord(s.prosba, "towar ze sprzedażą pod prośby", "towary ze sprzedażą pod prośby", "towarów ze sprzedażą pod prośby")}` : null,
   ].filter(Boolean);
   if (parts.length === 0) {
-    return s.failed ? "" : "W tym zakresie nie ma nietypowej sprzedaży — ilości bez zmian.";
+    return s.failed ? "" : "W tym zakresie nie ma nietypowej sprzedaży - ilości bez zmian.";
   }
   return `Liczone z typowego miesiąca zamiast bieżącego okna: ${parts.join(", ")}. Szczegóły w podpowiedzi przy sprzedaży (znacznik pod nazwą).`;
 }
@@ -240,9 +240,9 @@ export function formatZdSalesProfileHint(meta: ZdSalesProfileLineMeta): string {
     meta.kind === "spike"
       ? `Jednorazowy skok: ${fmt(meta.currentMonthly)} szt / 30 d, zwykle ~${fmt(meta.typicalMonthly)}.`
       : meta.kind === "rare"
-        ? `Rzadka sprzedaż: w ${meta.activeWindows} z ${meta.windows.length} miesięcy — może kupowany pod zamówienie.`
+        ? `Rzadka sprzedaż: w ${meta.activeWindows} z ${meta.windows.length} miesięcy - może kupowany pod zamówienie.`
         : meta.kind === "new"
-          ? "Nowość — sprzedaż dopiero od ostatnich miesięcy."
+          ? "Nowość - sprzedaż dopiero od ostatnich miesięcy."
           : meta.kind === "rising"
             ? `Wzrost sprzedaży: ${fmt(meta.currentMonthly)} szt / 30 d, wcześniej ~${fmt(meta.typicalMonthly)}.`
             : `Sprzedaż regularna (${meta.activeWindows} z ${meta.windows.length} miesięcy).`;

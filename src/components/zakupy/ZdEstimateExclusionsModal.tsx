@@ -88,7 +88,7 @@ function ExclusionRow({
               {row.twSymbol ?? `tw_Id ${row.subiektTwId}`}
             </p>
             {row.grtNazwa ? (
-              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
                 {row.grtNazwa}
               </span>
             ) : null}
@@ -403,7 +403,7 @@ export function ZdEstimateExclusionsModal({
         <EmptyState
           icon={<IconClipboardList size={28} strokeWidth={1.75} />}
           title="Brak wykluczeń"
-          description="Na liście szacunku otwórz menu ⋮ przy produkcie i wybierz „Wyklucz” — zapamiętamy go na kolejne zamówienia."
+          description="Na liście szacunku otwórz menu ⋮ przy produkcie i wybierz „Wyklucz” - zapamiętamy go na kolejne zamówienia."
         />
       ) : filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/70 px-4 py-8 text-center">

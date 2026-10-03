@@ -14,7 +14,7 @@ export function NotFoundAttemptedPath() {
 
   return (
     <p className="mt-4 rounded-md bg-slate-50 px-3 py-2 text-left ring-1 ring-inset ring-slate-200/80">
-      <span className="block text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+      <span className="block text-[10px] font-semibold text-slate-400">
         Szukany adres
       </span>
       <code className="mt-0.5 block truncate font-mono text-xs text-slate-600">{pathname}</code>

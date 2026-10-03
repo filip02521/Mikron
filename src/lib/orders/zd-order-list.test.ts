@@ -91,7 +91,7 @@ describe("buildZdOrderList", () => {
     expect(hit).toEqual(expect.objectContaining({ zdUnits: 4, individualExtraPieces: 4 }));
   });
 
-  it("prośby nieczytelne (null) — bez extraOnly, jak Kreator z błędem próśb", () => {
+  it("prośby nieczytelne (null) - bez extraOnly, jak Kreator z błędem próśb", () => {
     const res = build({ onRequestTwIds: new Set([3]), pendingIndividuals: null });
     expect(res.extraOnlyTwIds.size).toBe(0);
     expect(res.lines.some((l) => l.line.tw_Id === 3)).toBe(false);

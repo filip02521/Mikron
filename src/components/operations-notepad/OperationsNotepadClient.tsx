@@ -347,7 +347,7 @@ export function OperationsNotepadClient({
                   {deptCount > 0 ? (
                     <span
                       className={cn(
-                        "ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums",
+                        "ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-md px-1 text-[10px] font-bold tabular-nums",
                         d === department
                           ? "bg-indigo-600 text-white"
                           : "bg-indigo-100 text-indigo-700",
@@ -382,7 +382,7 @@ export function OperationsNotepadClient({
           <NotatnikPanel
             domain="panel"
             title="Prywatne"
-            description="Widzisz tylko Ty — karteczki nie są widoczne dla zespołu."
+            description="Widzisz tylko Ty - karteczki nie są widoczne dla zespołu."
             count={privateNotes.length || undefined}
             icon={<IconClipboardPen size={17} />}
             className="overflow-visible"
@@ -412,7 +412,7 @@ export function OperationsNotepadClient({
           <NotatnikPanel
             domain="panel"
             title="Wspólne"
-            description={`Tablica działu ${deptLabel} — zespół może edytować, archiwizować i przestawiać te notatki.`}
+            description={`Tablica działu ${deptLabel} - zespół może edytować, archiwizować i przestawiać te notatki.`}
             count={publicNotes.length || undefined}
             icon={<IconUsers size={17} />}
             tileClassName="bg-sky-100 text-sky-800"
@@ -444,7 +444,7 @@ export function OperationsNotepadClient({
             <NotatnikCollapsible
               domain="panel"
               title="Archiwum"
-              description="Zarchiwizowane notatki — możesz je przywrócić."
+              description="Zarchiwizowane notatki - możesz je przywrócić."
               count={archivedNotes.length}
               open={showArchive}
               onToggle={() => setShowArchive((v) => !v)}

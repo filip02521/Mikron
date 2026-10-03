@@ -71,7 +71,7 @@ export function mapZdEstimatePackagingRow(row: DbRow): ZdEstimatePackagingRow {
   return {
     subiektTwId: Number(row.subiekt_tw_id),
     twSymbol: row.tw_symbol?.trim() || null,
-    twNazwa: (row.tw_nazwa ?? "").trim() || "—",
+    twNazwa: (row.tw_nazwa ?? "").trim() || "-",
     grtId: row.grt_id != null ? Number(row.grt_id) : null,
     grtNazwa: row.grt_nazwa?.trim() || null,
     unitsPerPackage: Math.trunc(Number(row.units_per_package)),

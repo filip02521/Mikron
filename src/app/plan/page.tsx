@@ -198,7 +198,7 @@ export default async function PlanPage({
       {!salesMode ? (
         <PageHeader
           title="Harmonogram"
-          description="Podgląd harmonogramu zamówień u dostawców — bez panelu zakupowego."
+          description="Podgląd harmonogramu zamówień u dostawców - bez panelu zakupowego."
         />
       ) : null}
       {salesMode ? (

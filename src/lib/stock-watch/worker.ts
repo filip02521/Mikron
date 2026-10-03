@@ -472,7 +472,7 @@ async function computeSupplierOrder(input: {
   return {
     itemsWritten,
     message: engine.fetch.truncated
-      ? "Lista z Subiekta niepełna (limit stron) — część towarów pominięta."
+      ? "Lista z Subiekta niepełna (limit stron) - część towarów pominięta."
       : null,
   };
 }

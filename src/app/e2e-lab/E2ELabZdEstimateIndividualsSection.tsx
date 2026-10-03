@@ -22,7 +22,7 @@ export function E2ELabZdEstimateIndividualsSection() {
       tw_Symbol: "SOLO",
       tw_Nazwa: "Solo",
       tw_IdGrupa: null,
-      grt_Nazwa: "—",
+      grt_Nazwa: "-",
       tw_Stan: 0,
       tw_StanRez: 0,
       dostepne: 0,
@@ -152,7 +152,7 @@ export function E2ELabZdEstimateIndividualsSection() {
   return (
     <section className="space-y-2 rounded-md border border-slate-200 p-3">
       <h2 className="text-sm font-semibold text-slate-900">
-        ZD estimate — prośby (kontrakty)
+        ZD estimate - prośby (kontrakty)
       </h2>
       <p data-testid="zd-individuals-ok" className="text-sm text-slate-800">
         {report.ok ? "pass" : "fail"}

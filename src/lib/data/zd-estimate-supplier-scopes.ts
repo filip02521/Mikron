@@ -146,7 +146,7 @@ export async function upsertZdEstimateSupplierScope(input: {
       [scopeId, supplierId, mode, grupaId, cechaId, label, updatedBy]
     ).catch((e: unknown) => {
       if ((e as { code?: string }).code === "23505") {
-        throw new Error("Ten dostawca ma już ten zakres — usuń duplikat zamiast zmieniać.");
+        throw new Error("Ten dostawca ma już ten zakres - usuń duplikat zamiast zmieniać.");
       }
       throw e;
     });

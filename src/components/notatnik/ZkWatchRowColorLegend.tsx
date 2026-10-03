@@ -126,7 +126,7 @@ export function ZkWatchRowColorLegendGuide({ className }: { className?: string }
           </span>
           <span>
             <strong className="font-medium text-slate-800">{item.title}</strong>
-            {" — "}
+            {" - "}
             {item.detail}
           </span>
         </li>

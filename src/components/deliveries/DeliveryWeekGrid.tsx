@@ -67,7 +67,7 @@ function DeliveryWeekDayColumn({
         <div className="min-w-0">
           <p
             className={cn(
-              "flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider",
+              "flex items-center gap-1 text-[10px] font-semibold",
               day.isToday ? "text-sky-800" : "text-slate-500"
             )}
           >
@@ -80,30 +80,30 @@ function DeliveryWeekDayColumn({
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {day.isToday ? (
-            <span className="rounded-full bg-sky-200/80 px-2 py-0.5 text-[10px] font-semibold uppercase text-sky-800">
+            <span className="rounded-md bg-sky-200/80 px-2 py-0.5 text-[10px] font-semibold uppercase text-sky-800">
               Dziś
             </span>
           ) : null}
           {totalCount > 0 ? (
             <div className="flex items-center gap-1">
               {receivedCount > 0 ? (
-                <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-emerald-700">
+                <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-emerald-700">
                   ✓{receivedCount}
                 </span>
               ) : null}
               {partialCount > 0 ? (
-                <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-amber-700">
+                <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-amber-700">
                   {partialCount}
                 </span>
               ) : null}
               {pendingCount > 0 ? (
-                <span className="rounded-full bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-sky-700">
+                <span className="rounded-md bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-sky-700">
                   {pendingCount}
                 </span>
               ) : null}
             </div>
           ) : (
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-slate-400">
+            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-slate-400">
               0
             </span>
           )}

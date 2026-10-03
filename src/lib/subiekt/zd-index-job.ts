@@ -94,12 +94,12 @@ export async function tickZdIndexJob(options?: { maxDocs?: number }): Promise<Zd
   if (!acquired) {
     const current = await readZdIndexJobState();
     if (current) return current;
-    throw new Error("Brak stanu joba — uruchom Start.");
+    throw new Error("Brak stanu joba - uruchom Start.");
   }
 
   try {
     const current = await readZdIndexJobState();
-    if (!current) throw new Error("Brak stanu joba — uruchom Start.");
+    if (!current) throw new Error("Brak stanu joba - uruchom Start.");
     if (current.status !== "running") return current;
 
     if (!(await isSubiektReachable())) {

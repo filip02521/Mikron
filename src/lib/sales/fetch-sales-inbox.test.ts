@@ -35,7 +35,7 @@ describe("inboxNavBadgesFromLoadedData", () => {
     expect(inboxNavBadgesFromLoadedData(data).boardNavBadge).toBe(2);
   });
 
-  it("gdy brak uwagi tablicy — badge Tablicy = 0", () => {
+  it("gdy brak uwagi tablicy - badge Tablicy = 0", () => {
     const data: SalesInboxLoadedData = {
       orders: [],
       statsRows: [],

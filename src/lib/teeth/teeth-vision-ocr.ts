@@ -198,7 +198,7 @@ export async function analyzeTeethImage(
 
   if (validDetails.length === 0) {
     if (rejectedCount > 0) {
-      console.warn(`[teeth-vision-ocr] All ${rejectedCount} items rejected — no valid details.`);
+      console.warn(`[teeth-vision-ocr] All ${rejectedCount} items rejected - no valid details.`);
     }
     return {
       ok: false,
@@ -350,7 +350,7 @@ export async function analyzeTeethImageForLine(
 
   if (validDetails.length === 0) {
     if (rejectedCount > 0) {
-      console.warn(`[teeth-vision-ocr] (per-line: ${productLine}) All ${rejectedCount} items rejected — no valid details.`);
+      console.warn(`[teeth-vision-ocr] (per-line: ${productLine}) All ${rejectedCount} items rejected - no valid details.`);
     }
     return {
       ok: false,

@@ -26,7 +26,7 @@ export const TEETH_PROCUREMENT_FLOW_STAGES = [
     stage: "Przyjęcie",
     actor: "Zakupy zęby",
     where: "Panel zębów → Przyjęcie",
-    detail: "Co dotarło od dostawcy — bez maila",
+    detail: "Co dotarło od dostawcy - bez maila",
   },
   {
     stage: "Odbiór",
@@ -44,22 +44,22 @@ export const TEETH_PROCUREMENT_FLOW_STAGES = [
 
 export const TEETH_PROCUREMENT_PANEL_LABEL = "panel zębów";
 export const TEETH_PROCUREMENT_PANEL_HINT =
-  "Trafia do panelu zębów — nie do panelu dziennego.";
+  "Trafia do panelu zębów - nie do panelu dziennego.";
 
 export const TEETH_EDIT_REQUEST_TITLE = "Edycja prośby zębowej";
 export const TEETH_EDIT_REQUEST_BANNER =
-  "To prośba na zęby syntetyczne — realizuje ją panel zębów (/zeby), nie panel dzienny.";
+  "To prośba na zęby syntetyczne - realizuje ją panel zębów (/zeby), nie panel dzienny.";
 
-export const TEETH_READINESS_SUPPLIER_DETAIL = "Wybrany — trafia do panelu zębów";
+export const TEETH_READINESS_SUPPLIER_DETAIL = "Wybrany - trafia do panelu zębów";
 export const TEETH_READINESS_READY_SUBLINE =
-  "Kompletne — trafi do kolejki panelu zębów.";
+  "Kompletne - trafi do kolejki panelu zębów.";
 
 export const MIXED_PROCUREMENT_READINESS_SUBLINE =
-  "Kompletne — zęby trafią do panelu zębów, pozostałe pozycje do panelu dziennego.";
+  "Kompletne - zęby trafią do panelu zębów, pozostałe pozycje do panelu dziennego.";
 
 export const MIXED_PROCUREMENT_REQUEST_BANNER_TITLE = "Prośba na dwa tory realizacji";
 export const MIXED_PROCUREMENT_REQUEST_BANNER =
-  "Ta prośba zawiera zęby syntetyczne i inny towar. Zęby realizuje panel /zeby, resztę panel dzienny — postęp śledź w obu miejscach lub w rozwinięciu karty poniżej.";
+  "Ta prośba zawiera zęby syntetyczne i inny towar. Zęby realizuje panel /zeby, resztę panel dzienny - postęp śledź w obu miejscach lub w rozwinięciu karty poniżej.";
 
 export const MIXED_PROCUREMENT_EDIT_BANNER_TITLE = "Edycja prośby mieszanej";
 export const MIXED_PROCUREMENT_EDIT_BANNER =
@@ -120,7 +120,7 @@ export function procurementZamowienieSubmitSuccessMessage(
     return `Dodano ${n} ${word} do panelu zębów. ${TEETH_PROCUREMENT_PANEL_HINT}`;
   }
   if (lanes.hasTeeth && lanes.hasRegular) {
-    return `Dodano ${n} ${word} — część trafi do panelu zębów, część do panelu dziennego.`;
+    return `Dodano ${n} ${word} - część trafi do panelu zębów, część do panelu dziennego.`;
   }
   return `Dodano ${n} pozycji do panelu dziennego.`;
 }
@@ -134,13 +134,13 @@ export function procurementInformacjaSubmitSuccessMessage(
 ): string | null {
   const n = Math.max(0, Math.trunc(count));
   if (options.stockOutReorder) {
-    return `Dodano ${n} sygnał(ów) „brak na stanie” — w panelu Dziś (Prośby handlowców).`;
+    return `Dodano ${n} sygnał(ów) „brak na stanie” - w panelu Dziś (Prośby handlowców).`;
   }
   if (options.viaDailyPanel) {
-    return `Dodano ${n} prośb(y) informacyjn(e) — najpierw kolejka Dziś (Główne/Uzupełniające).`;
+    return `Dodano ${n} prośb(y) informacyjn(e) - najpierw kolejka Dziś (Główne/Uzupełniające).`;
   }
   if (n > 0) {
-    return `Dodano ${n} prośb(y) informacyjn(e) — od razu do kolejki magazynu.`;
+    return `Dodano ${n} prośb(y) informacyjn(e) - od razu do kolejki magazynu.`;
   }
   return null;
 }
@@ -180,7 +180,7 @@ export function teethSalesOrderedStatusDetail(
     parts.push(`Planowana dostawa: ${formatPlDate(deliveryEta)}${lead}`);
   }
   if (parts.length === 0) {
-    return "Dostawca przygotowuje zamówienie — termin dostawy pojawi się po ustaleniu.";
+    return "Dostawca przygotowuje zamówienie - termin dostawy pojawi się po ustaleniu.";
   }
   return parts.join(" · ");
 }

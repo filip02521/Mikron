@@ -10,7 +10,7 @@ export function MixedProcurementRequestBanner({ className }: { className?: strin
   return (
     <div
       className={cn(
-        "rounded-md border border-indigo-200/90 bg-gradient-to-br from-violet-50/90 via-white to-indigo-50/80 px-3 py-3 text-sm text-slate-800 shadow-sm",
+        "rounded-md border border-indigo-200/90 bg-violet-50/90 px-3 py-3 text-sm text-slate-800 shadow-sm",
         className
       )}
       role="note"

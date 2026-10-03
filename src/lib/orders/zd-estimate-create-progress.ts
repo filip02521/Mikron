@@ -36,7 +36,7 @@ export const ZD_CREATE_PROGRESS_STEPS: readonly ZdCreateProgressStepDef[] = [
   {
     id: "sfera",
     title: "Tworzenie w Subiekcie",
-    activeHint: "Sfera buduje dokument ZD — to zwykle najdłuższy krok…",
+    activeHint: "Sfera buduje dokument ZD - to zwykle najdłuższy krok…",
     doneHint: "Dokument utworzony",
   },
   {
@@ -109,10 +109,10 @@ export function createZdProgressPercent(
 export function createZdProgressDurationHint(lineCount: number): string {
   const n = Number.isFinite(lineCount) ? Math.max(0, Math.trunc(lineCount)) : 0;
   if (n > ZD_CREATE_PROGRESS_LARGE_LINES) {
-    return "Duża lista pozycji — zwykle 1–3 minuty (limit ok. 3 min).";
+    return "Duża lista pozycji - zwykle 1-3 minuty (limit ok. 3 min).";
   }
   if (n > 80) {
-    return "Średnia lista — zwykle poniżej 2 minut (limit ok. 3 min).";
+    return "Średnia lista - zwykle poniżej 2 minut (limit ok. 3 min).";
   }
   return "Zwykle poniżej minuty; maksymalnie ok. 3 minuty.";
 }

@@ -37,7 +37,7 @@ describe("teeth-draft-jaw", () => {
     expect(rows[1]).toMatchObject({ jaw: "lower", mould: "NL6" });
   });
 
-  it("bok Oba bez pary — ten sam fason ×2", () => {
+  it("bok Oba bez pary - ten sam fason ×2", () => {
     const rows = expandDraftToJawGroups(
       {
         color: "A1",

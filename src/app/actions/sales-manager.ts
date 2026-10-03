@@ -189,7 +189,7 @@ export async function actionResetSalesTeamUserPassword(
 
   if (profileError) return { error: profileError.message };
   if (!profile) {
-    return { error: "Ten handlowiec nie ma konta — użyj „Link zaproszenia” lub dodaj od nowa." };
+    return { error: "Ten handlowiec nie ma konta - użyj „Link zaproszenia” lub dodaj od nowa." };
   }
   if (profile.role !== "sales") {
     return { error: "Reset hasła dotyczy tylko kont handlowców." };
@@ -197,7 +197,7 @@ export async function actionResetSalesTeamUserPassword(
   if (profile.id === current.id) {
     return {
       error:
-        "Nie możesz zresetować własnego hasła tą opcją — poproś administratora lub zmień hasło w ustawieniach.",
+        "Nie możesz zresetować własnego hasła tą opcją - poproś administratora lub zmień hasło w ustawieniach.",
     };
   }
 
@@ -329,6 +329,6 @@ export async function actionClearMustChangePassword(): Promise<
   { success: true; redirectTo: string } | { error: string }
 > {
   return {
-    error: "Ustaw hasło przez formularz — osobne czyszczenie flagi nie jest dozwolone.",
+    error: "Ustaw hasło przez formularz - osobne czyszczenie flagi nie jest dozwolone.",
   };
 }

@@ -34,13 +34,13 @@ function createTestScheduler(onFlush: (queueIds: string[]) => void, now: () => n
 }
 
 describe("delivery-notification-flush-scheduler", () => {
-  it("computeNotificationFlushDelay — minimum 250 ms po expiresAt", () => {
+  it("computeNotificationFlushDelay - minimum 250 ms po expiresAt", () => {
     expect(computeNotificationFlushDelay(10_000, 10_000)).toBe(250);
     expect(computeNotificationFlushDelay(10_000, 9_000)).toBe(1_250);
     expect(computeNotificationFlushDelay(5_000, 10_000)).toBe(250);
   });
 
-  it("schedule — uruchamia flush z całą grupą queueIds w jednym wywołaniu", () => {
+  it("schedule - uruchamia flush z całą grupą queueIds w jednym wywołaniu", () => {
     let clock = 1_000;
     const flushed: string[][] = [];
     const { scheduler, fireDueTimers } = createTestScheduler(
@@ -56,7 +56,7 @@ describe("delivery-notification-flush-scheduler", () => {
     expect(flushed).toEqual([["q1", "q2"]]);
   });
 
-  it("schedule — ponowne planowanie tego samego queueId resetuje timer", () => {
+  it("schedule - ponowne planowanie tego samego queueId resetuje timer", () => {
     let clock = 1_000;
     const flushed: string[][] = [];
     const { scheduler, fireDueTimers } = createTestScheduler(
@@ -77,7 +77,7 @@ describe("delivery-notification-flush-scheduler", () => {
     expect(flushed).toEqual([["q1"]]);
   });
 
-  it("cancel — anuluje queueId z grupy, reszta wysyłana razem", () => {
+  it("cancel - anuluje queueId z grupy, reszta wysyłana razem", () => {
     let clock = 0;
     const flushed: string[][] = [];
     const { scheduler, fireDueTimers } = createTestScheduler(
@@ -92,7 +92,7 @@ describe("delivery-notification-flush-scheduler", () => {
     expect(flushed).toEqual([["q2"]]);
   });
 
-  it("brak cancel po zamknięciu undo — timer nadal wysyła mail", () => {
+  it("brak cancel po zamknięciu undo - timer nadal wysyła mail", () => {
     let clock = 0;
     const flushed: string[][] = [];
     const { scheduler, fireDueTimers } = createTestScheduler(
@@ -106,7 +106,7 @@ describe("delivery-notification-flush-scheduler", () => {
     expect(flushed).toEqual([["batch-a"]]);
   });
 
-  it("schedule — dwie grupy z różnym expiresAt wysyłane osobno", () => {
+  it("schedule - dwie grupy z różnym expiresAt wysyłane osobno", () => {
     let clock = 0;
     const flushed: string[][] = [];
     const { scheduler, fireDueTimers } = createTestScheduler(
@@ -126,7 +126,7 @@ describe("delivery-notification-flush-scheduler", () => {
     expect(flushed).toEqual([["a1", "a2"], ["b1", "b2"]]);
   });
 
-  it("schedule — re-schedule queueId do nowej grupy usuwa ze starej", () => {
+  it("schedule - re-schedule queueId do nowej grupy usuwa ze starej", () => {
     let clock = 0;
     const flushed: string[][] = [];
     const { scheduler, fireDueTimers } = createTestScheduler(

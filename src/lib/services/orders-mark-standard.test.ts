@@ -94,7 +94,7 @@ describe("markStandardOrdered", () => {
     expect(recalcMock).toHaveBeenCalledWith("sup-1");
   });
 
-  it("nie przesuwa order_date na poniedziałek w weekend — spójnie z replay historii", async () => {
+  it("nie przesuwa order_date na poniedziałek w weekend - spójnie z replay historii", async () => {
     todayMock.mockReturnValue(parseDateOnly("2026-06-13")!);
 
     await markStandardOrdered("sup-1", "user@example.com");

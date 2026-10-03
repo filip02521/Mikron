@@ -122,11 +122,11 @@ export const CATALOG_ADMIN_TOAST = {
   noPausedImport: toastError("Import ZD", "Brak wstrzymanego importu do wznowienia."),
   importPausedUseContinue: toastError(
     "Import ZD",
-    "Import jest wstrzymany — użyj Kontynuuj, żeby nie stracić postępu.",
+    "Import jest wstrzymany - użyj Kontynuuj, żeby nie stracić postępu.",
   ),
   importPausedFromSupplierRow: toastError(
     "Import ZD",
-    "Import wstrzymany — użyj Kontynuuj w sekcji importu.",
+    "Import wstrzymany - użyj Kontynuuj w sekcji importu.",
   ),
   resumeImportSupplier: toastSuccess(
     "Import ZD",
@@ -134,36 +134,36 @@ export const CATALOG_ADMIN_TOAST = {
   ),
   startImportSupplier: toastSuccess(
     "Import ZD",
-    "Start importu z ZD — uruchamiam przetwarzanie…",
+    "Start importu z ZD - uruchamiam przetwarzanie…",
   ),
   importStopped: toastSuccess(
     "Import ZD",
-    "Import wstrzymany — jutro użyj Kontynuuj (postęp zostaje w bazie).",
+    "Import wstrzymany - jutro użyj Kontynuuj (postęp zostaje w bazie).",
   ),
   noPausedIndex: toastError("Indeks ZD", "Brak wstrzymanego indeksowania do wznowienia."),
   indexPausedUseContinue: toastError(
     "Indeks ZD",
-    "Indeksowanie jest wstrzymane — użyj Kontynuuj, żeby nie stracić postępu.",
+    "Indeksowanie jest wstrzymane - użyj Kontynuuj, żeby nie stracić postępu.",
   ),
-  startIndex: toastSuccess("Indeks ZD", "Start indeksowania ZD — uruchamiam…"),
+  startIndex: toastSuccess("Indeks ZD", "Start indeksowania ZD - uruchamiam…"),
   indexStopped: toastSuccess(
     "Indeks ZD",
-    "Indeksowanie wstrzymane — użyj Kontynuuj, żeby wznowić od bieżącej strony.",
+    "Indeksowanie wstrzymane - użyj Kontynuuj, żeby wznowić od bieżącej strony.",
   ),
   noPausedAutopilot: toastError("Autopilot ZD", "Brak wstrzymanego autopilota do wznowienia."),
   autopilotPausedUseContinue: toastError(
     "Autopilot ZD",
-    "Autopilot jest wstrzymany — użyj Kontynuuj, żeby nie stracić postępu.",
+    "Autopilot jest wstrzymany - użyj Kontynuuj, żeby nie stracić postępu.",
   ),
   startAutopilot: toastSuccess("Autopilot ZD", "Autopilot: start importu po dostawcach…"),
   autopilotStopped: toastSuccess(
     "Autopilot ZD",
-    "Autopilot wstrzymany — jutro użyj Kontynuuj (postęp zostaje w bazie).",
+    "Autopilot wstrzymany - jutro użyj Kontynuuj (postęp zostaje w bazie).",
   ),
   savedNote: toastSuccess("Zapisano", "Notatka produktu została zaktualizowana."),
   subiektOfflineBackfill: toastError(
     "Subiekt niedostępny",
-    "Subiekt offline lub poza LAN — nie da się teraz uzupełnić po symbolu.",
+    "Subiekt offline lub poza LAN - nie da się teraz uzupełnić po symbolu.",
   ),
   nightlySyncAlreadyDone: toastSuccess(
     "Synchronizacja nocna",
@@ -395,7 +395,7 @@ export const TEETH_RECEIVE_TOAST = {
 export const UNDO_TOAST = {
   expired: toastError(
     "Czas minął",
-    `Nie można już cofnąć tej akcji — masz ${undoWindowLongLabel()} od wykonania operacji.`,
+    `Nie można już cofnąć tej akcji - masz ${undoWindowLongLabel()} od wykonania operacji.`,
   ),
   success: toastSuccess("Cofnięto", "Ostatnia operacja została wycofana."),
   failed: toastError("Nie udało się cofnąć", "Ostatnia operacja nie została wycofana."),
@@ -432,7 +432,7 @@ export const HISTORY_TOAST = {
 export const DAILY_PANEL_TOAST = {
   undoExpired: toastError(
     "Czas minął",
-    "Nie można już cofnąć tej akcji — odśwież panel.",
+    "Nie można już cofnąć tej akcji - odśwież panel.",
   ),
   undoSuccess: toastSuccess("Cofnięto", "Ostatnia akcja została cofnięta."),
   undoFailed: toastError("Nie udało się cofnąć", "Ostatnia akcja nie została wycofana."),
@@ -448,7 +448,7 @@ export const MY_ORDERS_TOAST = {
   undoSuccess: UNDO_TOAST.success,
   undoExpired: toastError(
     "Czas minął",
-    "Nie można już cofnąć — odśwież listę zamówień.",
+    "Nie można już cofnąć - odśwież listę zamówień.",
   ),
   undoPickupFailed: toastError(
     "Nie udało się cofnąć odbioru",
@@ -503,7 +503,7 @@ export const REQUEST_EDIT_FORM = {
     "Każda pozycja zamówienia musi mieć liczbę sztuk (np. 1).",
   ),
   teethListIncomplete: (() => {
-    const dash = TEETH_LIST_INCOMPLETE_MESSAGE.indexOf(" — ");
+    const dash = TEETH_LIST_INCOMPLETE_MESSAGE.indexOf(" - ");
     if (dash >= 0) {
       return formError(
         TEETH_LIST_INCOMPLETE_MESSAGE.slice(0, dash).trim(),
@@ -639,7 +639,7 @@ export const TEETH_PANEL_TOAST = {
   ),
   unmarkSuccess: toastSuccess(
     "Cofnięto",
-    "Oznaczenie zamówienia zostało wycofane — pozycja wróciła do kolejki.",
+    "Oznaczenie zamówienia zostało wycofane - pozycja wróciła do kolejki.",
   ),
   unmarkError: toastError("Nie udało się cofnąć", "Oznaczenie zamówienia nie zostało wycofane."),
 } as const;

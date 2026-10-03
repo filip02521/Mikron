@@ -14,9 +14,9 @@ describe("parseEmailList", () => {
 describe("customsEmailSubject", () => {
   it("składa temat z dostawcy, faktury i ZD", () => {
     expect(customsEmailSubject({ supplierName: "Aswad", invoiceNumber: "AI/3177/26", zdNumber: "ZD 12/M/04/2026" })).toBe(
-      "Odprawa celna — Aswad — faktura AI/3177/26 — ZD 12/M/04/2026"
+      "Odprawa celna - Aswad - faktura AI/3177/26 - ZD 12/M/04/2026"
     );
-    expect(customsEmailSubject({ supplierName: "Aswad", invoiceNumber: "", zdNumber: null })).toBe("Odprawa celna — Aswad");
+    expect(customsEmailSubject({ supplierName: "Aswad", invoiceNumber: "", zdNumber: null })).toBe("Odprawa celna - Aswad");
   });
 });
 

@@ -491,7 +491,7 @@ export function ZkWatchLinesPanel({
   const listBody = !displayViews.length ? (
     <p className={cn("px-3 py-4 text-center", salesTypography.sectionHint)}>
       {views.length > 0 && hasTrackedScope && !showAllZkLines
-        ? "Brak wybranych pozycji do wyświetlenia — rozwiń pełne ZK z Subiekta."
+        ? "Brak wybranych pozycji do wyświetlenia - rozwiń pełne ZK z Subiekta."
         : emptyMessage}
     </p>
   ) : (
@@ -621,7 +621,7 @@ export function ZkWatchLinesPanel({
                 disabled={chip.count === 0 && chip.id !== "all"}
                 onClick={() => setFilter(chip.id)}
                 className={cn(
-                  "rounded-full px-2 py-0.5 text-[0.68rem] font-semibold transition",
+                  "rounded-md px-2 py-0.5 text-[0.68rem] font-semibold transition",
                   filter === chip.id
                     ? "bg-indigo-100 text-indigo-900 ring-1 ring-indigo-200/80"
                     : "bg-white text-slate-600 ring-1 ring-slate-200/90 hover:bg-slate-50",

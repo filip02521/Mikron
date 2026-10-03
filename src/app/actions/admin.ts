@@ -326,8 +326,8 @@ export async function actionProcessIndividual(
           ...(processResult.skippedTeethCount > 0
             ? [
                 processResult.skippedTeethCount === 1
-                  ? "1 pozycja zębowa realizowana jest w panelu /zeby — pominięto w panelu dziennym."
-                  : `${polishPlural(processResult.skippedTeethCount, "pozycja zębowa", "pozycje zębowe", "pozycji zębowych")} — realizacja w panelu /zeby, pominięto w panelu dziennym.`,
+                  ? "1 pozycja zębowa realizowana jest w panelu /zeby - pominięto w panelu dziennym."
+                  : `${polishPlural(processResult.skippedTeethCount, "pozycja zębowa", "pozycje zębowe", "pozycji zębowych")} - realizacja w panelu /zeby, pominięto w panelu dziennym.`,
               ]
             : []),
         ];
@@ -422,7 +422,7 @@ export async function actionAddIndividualOrders(
       const resolved = await resolveSalesPersonForUser(user);
       if (!resolved) {
         throw new Error(
-          "Konto nie jest powiązane z handlowcem — poproś administratora o ustawienie profilu lub e-mail zgodny z kartą handlowca."
+          "Konto nie jest powiązane z handlowcem - poproś administratora o ustawienie profilu lub e-mail zgodny z kartą handlowca."
         );
       }
       salesPersonIdForSales = resolved.id;
@@ -457,7 +457,7 @@ export async function actionAddIndividualOrders(
         .maybeSingle();
       if (watchError) throw new Error(watchError.message);
       if (!watchRow) {
-        throw new Error("ZK niedostępne — odśwież notatnik i spróbuj ponownie.");
+        throw new Error("ZK niedostępne - odśwież notatnik i spróbuj ponownie.");
       }
       const watch = watchRow as import("@/types/database").SalesZkWatch;
       assertZkWatchOpenForProsba(watch);
@@ -580,7 +580,7 @@ export async function actionCancelVerification(
     throw new Error(error.message);
   }
   if (!data?.length) {
-    throw new Error("Nie znaleziono prośby do anulowania — odśwież listę i spróbuj ponownie.");
+    throw new Error("Nie znaleziono prośby do anulowania - odśwież listę i spróbuj ponownie.");
   }
   const emailResult = await notifyProcurementCancelForOrders([orderId]);
   revalidateAll();
@@ -631,7 +631,7 @@ export async function actionUpdateProcurementCancelNote(
     throw new Error(error.message);
   }
   if (!data?.length) {
-    throw new Error("Nie znaleziono pozycji — odśwież listę i spróbuj ponownie.");
+    throw new Error("Nie znaleziono pozycji - odśwież listę i spróbuj ponownie.");
   }
 
   if (!noteChanged) {
@@ -687,7 +687,7 @@ export async function actionSetProcurementRequestFlags(
       throw new Error(defError.message);
     }
     if (!def) {
-      throw new Error("Flaga nie istnieje — odśwież panel i spróbuj ponownie.");
+      throw new Error("Flaga nie istnieje - odśwież panel i spróbuj ponownie.");
     }
     if (!def.is_active) {
       // Pozwól na update notatki / zachowanie tej samej nieaktywnej flagi —
@@ -707,7 +707,7 @@ export async function actionSetProcurementRequestFlags(
       );
       if (!allKeepSame || (rows ?? []).length !== ids.length) {
         throw new Error(
-          "Ta flaga jest nieaktywna — wybierz aktywną albo przywróć ją w zarządzaniu."
+          "Ta flaga jest nieaktywna - wybierz aktywną albo przywróć ją w zarządzaniu."
         );
       }
     }
@@ -732,11 +732,11 @@ export async function actionSetProcurementRequestFlags(
     throw new Error(error.message);
   }
   if (!data?.length) {
-    throw new Error("Nie znaleziono pozycji — odśwież listę i spróbuj ponownie.");
+    throw new Error("Nie znaleziono pozycji - odśwież listę i spróbuj ponownie.");
   }
   if (data.length !== ids.length) {
     throw new Error(
-      `Zaktualizowano ${data.length} z ${ids.length} pozycji — odśwież listę i spróbuj ponownie.`
+      `Zaktualizowano ${data.length} z ${ids.length} pozycji - odśwież listę i spróbuj ponownie.`
     );
   }
 
@@ -772,7 +772,7 @@ export async function actionAcknowledgeProcurementSalesCancel(
   if (error) {
     if (error.message?.includes("procurement_sales_cancel_ack_at")) {
       throw new Error(
-        "Brak kolumny procurement_sales_cancel_ack_at — uruchom supabase/migrations/019_procurement_sales_cancel_ack.sql"
+        "Brak kolumny procurement_sales_cancel_ack_at - uruchom supabase/migrations/019_procurement_sales_cancel_ack.sql"
       );
     }
     throw new Error(error.message);
@@ -818,7 +818,7 @@ export async function actionMarkProcurementRequestsSeen(
   if (error) {
     if (error.message?.includes("procurement_seen_at")) {
       throw new Error(
-        "Brak kolumny procurement_seen_at — uruchom supabase/migrations/053_procurement_seen_at.sql"
+        "Brak kolumny procurement_seen_at - uruchom supabase/migrations/053_procurement_seen_at.sql"
       );
     }
     throw new Error(error.message);
@@ -844,7 +844,7 @@ export async function actionMarkProcurementRequestsSeen(
 }
 
 const DISPOSITION_MIGRATION_HINT =
-  "Brak kolumn rozliczenia rezygnacji — uruchom supabase/migrations/021_procurement_cancel_disposition.sql";
+  "Brak kolumn rozliczenia rezygnacji - uruchom supabase/migrations/021_procurement_cancel_disposition.sql";
 
 /** Zakupy: decyzja po rezygnacji handlowca (stan vs zwrot) — osobno per pozycja. */
 export async function actionSetProcurementCancelDisposition(
@@ -914,7 +914,7 @@ export async function actionSetProcurementCancelDisposition(
         throw new Error(updErr.message);
       }
       if (!updated?.length) {
-        throw new Error("Nie udało się zapisać decyzji — odśwież panel i spróbuj ponownie.");
+        throw new Error("Nie udało się zapisać decyzji - odśwież panel i spróbuj ponownie.");
       }
     }
   }
@@ -929,7 +929,7 @@ export async function actionSetProcurementCancelDisposition(
     if (ackFetchErr) {
       if (ackFetchErr.message?.includes("procurement_sales_cancel_ack_at")) {
         throw new Error(
-          "Brak kolumny procurement_sales_cancel_ack_at — uruchom supabase/migrations/019_procurement_sales_cancel_ack.sql"
+          "Brak kolumny procurement_sales_cancel_ack_at - uruchom supabase/migrations/019_procurement_sales_cancel_ack.sql"
         );
       }
       throw new Error(ackFetchErr.message);
@@ -998,7 +998,7 @@ export async function actionUpdateDelivered(
 }
 
 const WAREHOUSE_CANCEL_FULFILLED_MIGRATION_HINT =
-  "Brak kolumny warehouse_cancel_fulfilled_at — uruchom supabase/migrations/062_warehouse_cancel_fulfilled.sql";
+  "Brak kolumny warehouse_cancel_fulfilled_at - uruchom supabase/migrations/062_warehouse_cancel_fulfilled.sql";
 
 /** Magazyn: rozliczenie rezygnacji (na stan / zwrot / zdjęcie z regału) — pozycja znika z kolejki. */
 export async function actionAcknowledgeWarehouseCancelDisposition(
@@ -1033,7 +1033,7 @@ export async function actionAcknowledgeWarehouseCancelDisposition(
     canAcknowledgeWarehouseCancelDisposition(row as import("@/types/database").IndividualOrder)
   );
   if (!toAck.length) {
-    throw new Error("Brak pozycji do rozliczenia — przyjmij towar lub sprawdź status rezygnacji.");
+    throw new Error("Brak pozycji do rozliczenia - przyjmij towar lub sprawdź status rezygnacji.");
   }
 
   const { error: updErr } = await supabase
@@ -1068,7 +1068,7 @@ export async function actionSetWarehouseShelf(orderId: string, shelf: string) {
   if (error) {
     if (error.message?.includes("warehouse_shelf")) {
       throw new Error(
-        "Brak kolumny warehouse_shelf — zastosuj migracje 023 i 024 w Supabase."
+        "Brak kolumny warehouse_shelf - zastosuj migracje 023 i 024 w Supabase."
       );
     }
     throw new Error(error.message);
@@ -1078,7 +1078,7 @@ export async function actionSetWarehouseShelf(orderId: string, shelf: string) {
 }
 
 const WAREHOUSE_CLEARED_MIGRATION_HINT =
-  "Brak kolumny warehouse_cleared_at — uruchom supabase/migrations/100_warehouse_cleared_at.sql";
+  "Brak kolumny warehouse_cleared_at - uruchom supabase/migrations/100_warehouse_cleared_at.sql";
 
 export async function actionClearFromShelf(orderIds: string[]): Promise<{
   success: true;
@@ -1188,13 +1188,13 @@ export async function actionRevertToPending(
 
     // Tylko zamówienia zrealizowane / częściowo zrealizowane można cofnąć
     if (currentStatus !== "Zrealizowane" && currentStatus !== "Czesciowo_zrealizowane") {
-      errors.push(`${orderId}: status "${currentStatus}" — można cofnąć tylko zrealizowane`);
+      errors.push(`${orderId}: status "${currentStatus}" - można cofnąć tylko zrealizowane`);
       continue;
     }
 
     // Nie cofaj zamówień z aktywną rezygnacją handlowca
     if (salesCancelledAt) {
-      errors.push(`${orderId}: zamówienie ma rezygnację — nie można cofnąć`);
+      errors.push(`${orderId}: zamówienie ma rezygnację - nie można cofnąć`);
       continue;
     }
 
@@ -1390,7 +1390,7 @@ export async function actionProcessDeliveries() {
   const result = await processMarkedDeliveries({ lockedBy: "ops-ui" });
   if (result.skipped) {
     return {
-      error: "Przetwarzanie dostaw jest już w toku — poczekaj chwilę i spróbuj ponownie.",
+      error: "Przetwarzanie dostaw jest już w toku - poczekaj chwilę i spróbuj ponownie.",
     };
   }
 
@@ -1478,7 +1478,7 @@ function isMissingMinOrderColumnError(
 }
 
 const MIN_ORDER_MIGRATION_WARNING =
-  "Zapisano bez minimalnej wartości zamówienia — baza nie ma jeszcze kolumn z migracji 157_supplier_min_order_value.sql (Admin → Migracje).";
+  "Zapisano bez minimalnej wartości zamówienia - baza nie ma jeszcze kolumn z migracji 157_supplier_min_order_value.sql (Admin → Migracje).";
 
 /** Wywoływane tylko z actionUpsertSupplier — po requireSupplierManagement. */
 async function upsertSupplier(form: UpsertSupplierForm): Promise<UpsertSupplierResult> {
@@ -1547,7 +1547,7 @@ async function upsertSupplier(form: UpsertSupplierForm): Promise<UpsertSupplierR
     const hadValue = payload.min_order_value != null;
     for (const col of SUPPLIER_MIN_ORDER_COLUMNS) delete payload[col];
     if (hadValue) warning = MIN_ORDER_MIGRATION_WARNING;
-    console.warn("[actionUpsertSupplier] brak kolumn min_order_* — zapis bez nich");
+    console.warn("[actionUpsertSupplier] brak kolumn min_order_* - zapis bez nich");
   };
 
   if (supplierId) {
@@ -1566,7 +1566,7 @@ async function upsertSupplier(form: UpsertSupplierForm): Promise<UpsertSupplierR
     }
     if (error) throw new Error(supplierSaveErrorMessage(error));
     if (!updated?.length) {
-      throw new Error("Nie znaleziono dostawcy — odśwież listę i spróbuj ponownie.");
+      throw new Error("Nie znaleziono dostawcy - odśwież listę i spróbuj ponownie.");
     }
     if (payload.is_active) {
       await recalcSingleSupplierSchedule(supplierId);
@@ -1603,7 +1603,7 @@ async function upsertSupplier(form: UpsertSupplierForm): Promise<UpsertSupplierR
 
 function supplierSaveErrorMessage(error: { code?: string; message?: string }): string {
   if (error.code === "23505") {
-    return "Dostawca o takiej nazwie już istnieje — użyj innej nazwy albo edytuj istniejącą kartę (sprawdź też zakładkę Nieaktywni).";
+    return "Dostawca o takiej nazwie już istnieje - użyj innej nazwy albo edytuj istniejącą kartę (sprawdź też zakładkę Nieaktywni).";
   }
   return error.message || "Nie udało się zapisać dostawcy.";
 }
@@ -1646,7 +1646,7 @@ export async function actionDeleteSupplier(
 
   if ((orderCount ?? 0) > 0) {
     return {
-      error: `Nie można usunąć „${supplier.name}" — ma ${orderCount} zamówień w historii.`,
+      error: `Nie można usunąć „${supplier.name}" - ma ${orderCount} zamówień w historii.`,
     };
   }
 
@@ -1959,7 +1959,7 @@ export async function actionUpsertSalesPerson(form: {
     if (!isAdmin(actor.role)) {
       return {
         error:
-          "Kierownik nie może tworzyć samych kart handlowca — użyj formularza w sekcji Handlowcy (konto zakładane automatycznie).",
+          "Kierownik nie może tworzyć samych kart handlowca - użyj formularza w sekcji Handlowcy (konto zakładane automatycznie).",
       };
     }
 
@@ -2007,7 +2007,7 @@ export async function actionDeleteSalesPerson(
 
   if ((orderCount ?? 0) > 0) {
     return {
-      error: `Nie można usunąć „${person.name}" — ma ${orderCount} zamówień w systemie. Zostaw kartę handlowca w bazie.`,
+      error: `Nie można usunąć „${person.name}" - ma ${orderCount} zamówień w systemie. Zostaw kartę handlowca w bazie.`,
     };
   }
 
@@ -2113,7 +2113,7 @@ export async function actionGetSystemStatus() {
   const { isEmailConfigured } = await import("@/lib/env/email-config");
   if (!isEmailConfigured()) {
     issues.push(
-      "Brak konfiguracji SMTP — e-maile wyłączone (ustaw SMTP_HOST/USER/PASS oraz EMAIL_FROM lub EMAIL_DOMAIN i zrestartuj)"
+      "Brak konfiguracji SMTP - e-maile wyłączone (ustaw SMTP_HOST/USER/PASS oraz EMAIL_FROM lub EMAIL_DOMAIN i zrestartuj)"
     );
   }
 
@@ -2126,7 +2126,7 @@ export async function actionGetSystemStatus() {
     .select("name, email");
   for (const p of allSalesPeople ?? []) {
     if (!p.email?.trim()) {
-      issues.push(`Handlowiec „${p.name}" bez e-maila — uzupełnij w Admin → Handlowcy`);
+      issues.push(`Handlowiec „${p.name}" bez e-maila - uzupełnij w Admin → Handlowcy`);
     }
   }
 

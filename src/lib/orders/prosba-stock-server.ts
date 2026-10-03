@@ -41,13 +41,13 @@ export function formatProsbaServerStockRejectMessage(lines: ProsbaStockServerLin
     const qty = line.quantity?.trim() || "?";
     const avail = line.available;
     const pairHint = line.pairStockCover
-      ? " — cover pary (sztuki + paczki; wystarczy po demontażu)"
+      ? " - cover pary (sztuki + paczki; wystarczy po demontażu)"
       : "";
     const availPart =
       avail != null && Number.isFinite(avail)
         ? ` (stan: ${avail} szt.${pairHint})`
         : "";
-    return `• ${name} — ${qty} szt.${availPart}`;
+    return `• ${name} - ${qty} szt.${availPart}`;
   });
   return `Część pozycji ma wystarczający stan magazynowy w Subiekcie:\n\n${names.join("\n")}\n\n${PROSBA_STOCK_ACK_REQUIRED_HINT} lub odśwież dane magazynowe.`;
 }

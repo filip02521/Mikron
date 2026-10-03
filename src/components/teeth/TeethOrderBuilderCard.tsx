@@ -127,7 +127,7 @@ export function TeethOrderBuilderCard({
     "Brakuje parametrów w co najmniej jednej pozycji listy."
   ) : (
     <>
-      {dualKindMode ? TEETH_DUAL_CARD_HINT : "Wpisz pozycje z kartki klienta — ilość zamówienia ustawi się sama."}
+      {dualKindMode ? TEETH_DUAL_CARD_HINT : "Wpisz pozycje z kartki klienta - ilość zamówienia ustawi się sama."}
       {!dualKindMode && defaultKind ? (
         <>
           {" "}

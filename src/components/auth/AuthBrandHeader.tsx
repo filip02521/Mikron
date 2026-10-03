@@ -16,12 +16,12 @@ export function AuthBrandHeader({
         size="lg"
         variant="light"
         className={cn(
-          "mx-auto mb-3 bg-gradient-to-br from-indigo-600 to-sky-600 shadow-sky-700/25 ring-sky-500/35 sm:mb-4",
+          "mx-auto mb-3 bg-indigo-600 ring-sky-500/35 sm:mb-4",
           "motion-safe:transition-transform motion-safe:hover:scale-[1.02]",
           markClassName
         )}
       />
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-700/90">
+      <p className="text-xs font-semibold text-sky-700/90">
         {ONTIME_COMPANY}
       </p>
       <p

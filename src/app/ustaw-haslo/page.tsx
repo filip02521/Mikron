@@ -13,7 +13,7 @@ export default function UstawHasloPage() {
   return (
     <AuthScreenLayout
       title="Ustaw hasło"
-      subtitle="Wybierz bezpieczne hasło — po zapisaniu od razu przejdziesz do aplikacji OnTime"
+      subtitle="Wybierz bezpieczne hasło - po zapisaniu od razu przejdziesz do aplikacji OnTime"
     >
       <Suspense fallback={<p className="text-sm text-slate-500">Ładowanie…</p>}>
         <SetPasswordForm />

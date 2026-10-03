@@ -136,7 +136,7 @@ function normalizeUpsertLines(input: UpsertZdEstimateOrderSnapshotInput["lines"]
     .map((l) => ({
       twId: Math.trunc(l.twId),
       twSymbol: l.twSymbol?.trim() || null,
-      twNazwa: (l.twNazwa ?? "").trim() || "—",
+      twNazwa: (l.twNazwa ?? "").trim() || "-",
       qty: Math.max(0, asNum(l.qty)),
       celAtLink:
         l.celAtLink != null && Number.isFinite(Number(l.celAtLink))
@@ -203,7 +203,7 @@ export async function upsertZdEstimateOrderSnapshot(
   const scopeMode = input.scopeMode ?? null;
   if (scopeMode !== "grupa" && scopeMode !== "cecha") {
     throw new Error(
-      "Zapis historii wymaga scope_mode (grupa|cecha) — legacy NULL tylko przy odczycie."
+      "Zapis historii wymaga scope_mode (grupa|cecha) - legacy NULL tylko przy odczycie."
     );
   }
 
@@ -247,7 +247,7 @@ export async function upsertZdEstimateOrderSnapshot(
       (existingLines ?? []).map((r) => ({
         twId: Math.trunc(Number(r.tw_id)),
         twSymbol: null,
-        twNazwa: "—",
+        twNazwa: "-",
         qty: asNum(r.qty),
         celAtLink: null,
         deltaAtLink: null,
@@ -501,7 +501,7 @@ export async function fetchLatestSnapshotHistoryByTwIds(
         snapshotId: row.snapshot_id,
         twId: Number(row.tw_id),
         twSymbol: row.tw_symbol?.trim() || null,
-        twNazwa: (row.tw_nazwa ?? "").trim() || "—",
+        twNazwa: (row.tw_nazwa ?? "").trim() || "-",
         qty: asNum(row.qty),
         celAtLink: finiteOrNull(row.cel_at_link),
         deltaAtLink: finiteOrNull(row.delta_at_link),
@@ -613,7 +613,7 @@ export async function fetchZdEstimateOrderSnapshotLines(
       snapshotId: r.snapshot_id,
       twId: Number(r.tw_id),
       twSymbol: r.tw_symbol?.trim() || null,
-      twNazwa: (r.tw_nazwa ?? "").trim() || "—",
+      twNazwa: (r.tw_nazwa ?? "").trim() || "-",
       qty: asNum(r.qty),
       celAtLink: finiteOrNull(r.cel_at_link),
       deltaAtLink: finiteOrNull(r.delta_at_link),

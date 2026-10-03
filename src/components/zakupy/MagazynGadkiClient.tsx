@@ -155,7 +155,7 @@ function ZkLinkStatusBadges({ link }: { link: GadkiZkLinkView }) {
     badges.push({
       key: "error",
       variant: "warning",
-      text: "Nieaktualne — błąd synchronizacji",
+      text: "Nieaktualne - błąd synchronizacji",
       title: link.syncErrorAt ? `Od ${formatWarsawDateTime(link.syncErrorAt)}` : undefined,
     });
   }
@@ -236,7 +236,7 @@ function ReplaceZkForm({
   return (
     <form onSubmit={(e) => void submit(e)} className="mt-2 max-w-xl space-y-2 rounded-md border border-slate-200 bg-slate-50 p-2.5">
       <p className="text-xs text-slate-600">
-        Numer nowego ZK z Subiektu — palety i notatki przejdą na pozycje z tym samym towarem.
+        Numer nowego ZK z Subiektu - palety i notatki przejdą na pozycje z tym samym towarem.
       </p>
       <div className="flex flex-wrap gap-2">
         <input
@@ -467,7 +467,7 @@ export function MagazynGadkiClient({
             </SectionHeadingIcon>
           }
           title={siteName}
-          description="Stałe ZK magazynu zewnętrznego — palety, notatki i zmiany z Subiekta."
+          description="Stałe ZK magazynu zewnętrznego - palety, notatki i zmiany z Subiekta."
           hint="Pozycje aktualizują się same z Subiekta (przy wejściu i co minutę przy otwartej stronie) oraz po „Odśwież teraz”. Gdy ilość w ZK spadnie, palety dopasowują się od ostatniej. Koszty pakowania/dostawy są ukryte."
           actionAlign="inline"
           action={
@@ -522,14 +522,14 @@ export function MagazynGadkiClient({
       </Card>
 
       {!canMutate ? (
-        <Alert tone="warning" title="Podgląd — bez sync">
+        <Alert tone="warning" title="Podgląd - bez sync">
           Tryb tylko do odczytu. Synchronizacja i zmiany są zablokowane.
         </Alert>
       ) : null}
 
       {syncBanner?.locked ? (
         <Alert tone="info" title="Trwa synchronizacja">
-          Inne żądanie odświeża ZK — pokazano ostatni zapisany snapshot.
+          Inne żądanie odświeża ZK - pokazano ostatni zapisany snapshot.
         </Alert>
       ) : null}
 
@@ -659,7 +659,7 @@ export function MagazynGadkiClient({
                           {link.zkNumber}
                         </a>
                         <p className="mt-0.5 truncate text-sm text-slate-600">
-                          {link.clientLabel || "—"}
+                          {link.clientLabel || "-"}
                           {link.label ? ` · ${link.label}` : ""}
                         </p>
                         <p className="mt-1 text-[11px] tabular-nums text-slate-400">
@@ -777,9 +777,9 @@ export function MagazynGadkiClient({
                   <article
                     key={link.id}
                     id={`zk-${link.id}`}
-                    className="scroll-mt-24 overflow-hidden rounded-lg border border-emerald-100/80 bg-white shadow-sm shadow-emerald-950/[0.03]"
+                    className="scroll-mt-24 overflow-hidden rounded-lg border border-emerald-100/80 bg-white shadow-sm "
                   >
-                    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-emerald-50 bg-gradient-to-r from-emerald-50/70 via-white to-sky-50/30 px-3.5 py-3 sm:px-4">
+                    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-emerald-50 bg-emerald-50/70 px-3.5 py-3 sm:px-4">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="text-sm font-semibold tracking-tight text-slate-900">
@@ -801,7 +801,7 @@ export function MagazynGadkiClient({
                           ) : null}
                         </div>
                         <p className="mt-1 truncate text-xs text-slate-500">
-                          {link.clientLabel || "—"}
+                          {link.clientLabel || "-"}
                         </p>
                         <ZkLinkStatusBadges link={link} />
                       </div>
@@ -862,7 +862,7 @@ export function MagazynGadkiClient({
                                   {group.lines.length}{" "}
                                   {group.lines.length === 1 ? "wiersz" : "wiersze"}
                                 </span>
-                                <div className="h-px flex-1 bg-gradient-to-r from-slate-200/80 to-transparent" />
+                                <div className="h-px flex-1 bg-slate-200/80" />
                               </div>
                             ) : null}
                             <ul className="overflow-hidden rounded-lg border border-slate-200/80 bg-white divide-y divide-slate-100/90 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.8)]">
@@ -921,13 +921,13 @@ export function MagazynGadkiClient({
                       })}
 
                       {orphanVisible.length > 0 ? (
-                        <div className="space-y-2.5 rounded-lg border border-amber-200/90 bg-gradient-to-b from-amber-50/90 to-amber-50/40 p-3.5">
+                        <div className="space-y-2.5 rounded-lg border border-amber-200/90 bg-amber-50/90 p-3.5">
                           <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center rounded-md bg-amber-100/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-900 ring-1 ring-inset ring-amber-200/80">
+                            <span className="inline-flex items-center rounded-md bg-amber-100/90 px-2 py-0.5 text-[10px] font-bold text-amber-900 ring-1 ring-inset ring-amber-200/80">
                               Usunięte z ZK
                             </span>
                             <span className="text-[11px] text-amber-800/80">
-                              Meta zachowana — możesz usunąć ręcznie
+                              Meta zachowana - możesz usunąć ręcznie
                             </span>
                           </div>
                           <ul className="space-y-1.5">
@@ -1294,7 +1294,7 @@ export function MagazynGadkiClient({
                           <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
                             <span
                               className={cn(
-                                "inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                                "inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold",
                                 row.kind === "qty_changed" &&
                                   "bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200/80",
                                 row.kind === "lines_removed" &&
@@ -1395,7 +1395,7 @@ function RenamePalletForm({
 
   return (
     <form
-      className="flex flex-wrap items-center gap-1.5 rounded-lg border border-emerald-100/90 bg-white/90 px-2 py-1.5 text-xs shadow-sm shadow-emerald-950/[0.02]"
+      className="flex flex-wrap items-center gap-1.5 rounded-lg border border-emerald-100/90 bg-white/90 px-2 py-1.5 text-xs shadow-sm "
       onSubmit={(e) => {
         e.preventDefault();
         if (!from || !to.trim()) return;
@@ -1455,7 +1455,7 @@ function LineStatusChip({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+        "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold",
         tone === "emerald" && "bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200/70",
         tone === "amber" && "bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200/80",
         tone === "slate" && "bg-slate-100 text-slate-600 ring-1 ring-inset ring-slate-200/80",
@@ -1595,7 +1595,7 @@ function LineRow({
                 ? line.quantity === Math.trunc(line.quantity)
                   ? Math.trunc(line.quantity)
                   : line.quantity
-                : "—"}
+                : "-"}
             </span>
             {line.quantity != null ? (
               <span className="ml-1 text-[11px] font-medium text-slate-400">
@@ -1900,7 +1900,7 @@ function SplitSharesEditor({
   const listId = `gadki-pallets-${line.rowKey}`;
 
   return (
-    <div className="mt-3 space-y-3 rounded-lg border border-emerald-100 bg-gradient-to-b from-emerald-50/50 to-white p-3 shadow-sm shadow-emerald-950/[0.03]">
+    <div className="mt-3 space-y-3 rounded-lg border border-emerald-100 bg-emerald-50/50 p-3 shadow-sm ">
       <div className="space-y-1">
         <p className="text-xs font-semibold text-emerald-950">
           Rozbicie na palety
@@ -1917,7 +1917,7 @@ function SplitSharesEditor({
       </div>
       {line.overAllocated ? (
         <p className="rounded-md border border-amber-200/80 bg-amber-50 px-2.5 py-1.5 text-[11px] font-medium text-amber-900">
-          Ilość w ZK jest mniejsza niż suma udziałów — wpisy zachowane; popraw
+          Ilość w ZK jest mniejsza niż suma udziałów - wpisy zachowane; popraw
           ilości albo wyczyść rozbicie.
         </p>
       ) : null}

@@ -80,7 +80,7 @@ export function MailCenterClient({
     <AdminHubShell activeTab="mail" visibleTabs={visibleTabs}>
       <p className={cn(panelTypography.sectionDesc, "mb-3")}>
         Centrum maili Ivoclar jest <strong>tylko do odczytu</strong>. Generowanie i wysyłkę
-        prowadzi OnTime Raporty — stąd nie ma przycisków Wyślij / Włącz / edycji odbiorców.
+        prowadzi OnTime Raporty - stąd nie ma przycisków Wyślij / Włącz / edycji odbiorców.
         Status <strong>SEND</strong> pochodzi na żywo z runnera (
         <code>IVOCLAR_SEND_ENABLED</code>
         ).
@@ -133,7 +133,7 @@ export function MailCenterClient({
             {runnerStatus.runnerStateError
               ? ` (${runnerStatus.runnerStateError})`
               : ""}
-            . Nie generuj ponownie z OnTime — dokończ w OnTime Raporty (Wymuś
+            . Nie generuj ponownie z OnTime - dokończ w OnTime Raporty (Wymuś
             wysyłkę + potwierdzenie).
           </p>
         ) : null}
@@ -152,7 +152,7 @@ export function MailCenterClient({
                 Ostatni wysłany raport
               </p>
               <p className="text-sm font-semibold text-slate-900">
-                {runnerStatus.lastSentLabel ?? "—"}
+                {runnerStatus.lastSentLabel ?? "-"}
               </p>
               {runnerStatus.lastSentAtLabel ? (
                 <p className={cn(panelTypography.caption, "text-emerald-800")}>
@@ -165,7 +165,7 @@ export function MailCenterClient({
                 Kolejny tydzień
               </p>
               <p className="text-sm font-semibold text-slate-900">
-                {runnerStatus.nextWeekLabel ?? "—"}
+                {runnerStatus.nextWeekLabel ?? "-"}
               </p>
               <p
                 className={cn(
@@ -174,9 +174,9 @@ export function MailCenterClient({
                 )}
               >
                 {runnerStatus.nextWeekReady
-                  ? "Możesz przejść dalej — w Raportach kliknij „Licz kolejny tydzień”"
+                  ? "Możesz przejść dalej - w Raportach kliknij „Licz kolejny tydzień”"
                   : runnerStatus.testRangeSent && !runnerStatus.productionRangeSent
-                    ? "Wysłano tylko test (override) — produkcja nadal otwarta"
+                    ? "Wysłano tylko test (override) - produkcja nadal otwarta"
                     : "Najpierw wyślij raport produkcyjny za wybrany okres w OnTime Raporty"}
               </p>
             </div>
@@ -190,7 +190,7 @@ export function MailCenterClient({
         <PanelSummaryMetric label="Problemy (ostatnie)" value={String(problemRecent)} />
       </div>
       <p className={cn(panelTypography.caption, "mt-1 text-slate-500")}>
-        Joby w bazie (metadane OT): {jobsInDb} — flaga DB <code>enabled</code> nie steruje już
+        Joby w bazie (metadane OT): {jobsInDb} - flaga DB <code>enabled</code> nie steruje już
         wyświetlanym SEND.
       </p>
 
@@ -217,7 +217,7 @@ export function MailCenterClient({
                 </div>
                 <p className={cn(panelTypography.caption, "text-slate-600")}>{job.description}</p>
                 <p className={cn(panelTypography.caption, "text-slate-500")}>
-                  Harmonogram (Raporty): {job.schedule_label || "—"}
+                  Harmonogram (Raporty): {job.schedule_label || "-"}
                   {lastLog?.finished_at
                     ? ` · Ostatnia: ${formatWarsawDateTime(lastLog.finished_at)}`
                     : ""}
@@ -265,12 +265,12 @@ export function MailCenterClient({
                     <td>
                       <Badge variant={statusBadgeVariant(log.status)}>{log.status}</Badge>
                       {log.had_warnings ? (
-                        <span className="ml-1 text-xs text-amber-700">⚠</span>
+                        <span className="ml-1 text-xs text-amber-700">z ostrzeżeniami</span>
                       ) : null}
                     </td>
                     <td>{log.attempt_no}</td>
                     <td className="text-xs text-slate-600">
-                      {log.finished_at ? formatWarsawDateTime(log.finished_at) : "—"}
+                      {log.finished_at ? formatWarsawDateTime(log.finished_at) : "-"}
                     </td>
                     <td>
                       <Link

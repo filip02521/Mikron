@@ -47,7 +47,7 @@ export function SalesPanelSyncControl({
       />
       {ctx.hasUpdates ? (
         <span aria-live="polite" className="text-slate-500">
-          Nowe informacje —{" "}
+          Nowe informacje -{" "}
           <button
             type="button"
             onClick={ctx.refreshNow}

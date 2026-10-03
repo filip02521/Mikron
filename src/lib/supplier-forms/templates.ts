@@ -49,7 +49,7 @@ export function normalizeFormSymbol(symbol: string | null | undefined): string {
 const WIEDENT_WYROBY_POMOCNICZE: SupplierPdfFormTemplate = {
   kind: "pdf",
   id: "wiedent-wyroby-pomocnicze",
-  label: "Wiedent — wyroby pomocnicze",
+  label: "Wiedent - wyroby pomocnicze",
   supplierName: /^wiedent\b/i,
   file: "wiedent-wyroby-pomocnicze.pdf",
   fileName: ({ date }) => `Wiedent ${dayMonth(date)}`,
@@ -177,7 +177,7 @@ export type SupplierFormTemplate =
 const RENFERT_LIST: SupplierXlsxListTemplate = {
   kind: "xlsx-list",
   id: "renfert-lista",
-  label: "Renfert — lista pozycji (Excel)",
+  label: "Renfert - lista pozycji (Excel)",
   supplierName: /^renfert\b/i,
   fileName: ({ date }) => `Renfert ${dayMonth(date)}`,
   sheetName: "Arkusz1",
@@ -193,7 +193,7 @@ const RENFERT_LIST: SupplierXlsxListTemplate = {
 const IVOCLAR_LIST: SupplierXlsxListTemplate = {
   kind: "xlsx-list",
   id: "ivoclar-lista",
-  label: "Ivoclar — lista pozycji (Excel)",
+  label: "Ivoclar - lista pozycji (Excel)",
   supplierName: /^ivoclar\b/i,
   fileName: ({ date }) =>
     `ivoclar ${date.getDate()}.${String(date.getMonth() + 1).padStart(2, "0")}`,
@@ -227,7 +227,7 @@ export function excelSymbolValue(symbol: string | null | undefined): string | nu
 const DENTSPLY_SIRONA_ORDER_FORM: SupplierXlsxFormTemplate = {
   kind: "xlsx",
   id: "dentsply-sirona-order-form",
-  label: "Dentsply Sirona — Sales Order Form",
+  label: "Dentsply Sirona - Sales Order Form",
   supplierName: /dentsply\s+sirona/i,
   file: "dentsply-sirona-order-form.xlsx",
   fileName: ({ date }) => `Mikran Sp.Z O.O ${dayMonth(date)} Sirona`,
@@ -321,7 +321,7 @@ export function buildSupplierFormFill(
   for (const [field, qty] of byField) values[field] = formatQty(qty);
   if (unmapped.length > 0) {
     values[template.notesField] = unmapped
-      .map((l) => `${l.name}${l.symbol ? ` (${l.symbol})` : ""} — ${formatQty(l.qty)}`)
+      .map((l) => `${l.name}${l.symbol ? ` (${l.symbol})` : ""} - ${formatQty(l.qty)}`)
       .join("; ");
   }
   return { values, mapped, unmapped };

@@ -11,11 +11,11 @@ import { cn } from "@/lib/cn";
 
 const BADGE_VARIANT: Record<
   VerificationInformacjaUi["badgeTone"],
-  "warning" | "info" | "purple" | "default"
+  "warning" | "info" | "info" | "default"
 > = {
   warning: "warning",
   info: "info",
-  violet: "purple",
+  violet: "info",
   neutral: "default",
 };
 
@@ -51,7 +51,7 @@ export function VerificationInformacjaPathPanel({
     return (
       <ProsbaFormSection
         title="Ścieżka informacji"
-        hint="Wybrana przez handlowca — nie zmienia się przy uzupełnianiu."
+        hint="Wybrana przez handlowca - nie zmienia się przy uzupełnianiu."
         accent="violet"
         icon={<IconAvailability size={17} />}
         tileClassName="bg-violet-100 text-violet-800"
@@ -59,7 +59,7 @@ export function VerificationInformacjaPathPanel({
         <div className={cn("rounded-md border px-3 py-3 text-sm leading-relaxed", borderTone)}>
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <VerificationPathBadge ui={ui} />
-            <span className="text-xs font-medium uppercase tracking-wide opacity-70">
+            <span className="text-xs font-medium opacity-70">
               Zablokowana
             </span>
           </div>

@@ -4,7 +4,7 @@
  */
 
 export function formatZdEstimateTableQty(n: number): string {
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "-";
   const abs = Math.abs(n);
   if (Number.isInteger(n)) {
     if (abs >= 1000) {

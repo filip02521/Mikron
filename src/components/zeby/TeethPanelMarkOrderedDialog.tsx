@@ -38,9 +38,9 @@ function MarkPlanPreview({ plan, scope }: { plan: TeethMarkPlan; scope: TeethMar
             {zebow(plan.leftInQueue)} u tego dostawcy zostaną w kolejce.
           </>
         ) : scope === "all" ? (
-          <>Wszystkie niezamówione zęby z kompletnych próśb u dostawcy — {plan.markCount} {zebow(plan.markCount)}.</>
+          <>Wszystkie niezamówione zęby z kompletnych próśb u dostawcy - {plan.markCount} {zebow(plan.markCount)}.</>
         ) : (
-          <>Zaznaczone zęby — {plan.markCount} {zebow(plan.markCount)}.</>
+          <>Zaznaczone zęby - {plan.markCount} {zebow(plan.markCount)}.</>
         )}
       </p>
       <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 text-xs">

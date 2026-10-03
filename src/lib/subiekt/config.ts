@@ -216,7 +216,7 @@ export function resolveSubiektOrdersConfig(): SubiektOrdersConfigStatus {
       ok: false,
       reason: "missing_orders_url",
       message:
-        "Brak SUBIEKT_API_ORDERS_BASE_URL — ustaw host kreatora ZD (:5080 live / :5082 test).",
+        "Brak SUBIEKT_API_ORDERS_BASE_URL - ustaw host kreatora ZD (:5080 live / :5082 test).",
       ordersBaseUrl: null,
       liveBaseUrl,
     };
@@ -238,7 +238,7 @@ export function resolveSubiektOrdersConfig(): SubiektOrdersConfigStatus {
     return {
       ok: false,
       reason: "not_allowed_port",
-      message: `Kreator ZD wymaga portu :${SUBIEKT_ORDERS_LIVE_PORT} (live) lub :${SUBIEKT_ORDERS_TEST_PORT} (test) — teraz: ${
+      message: `Kreator ZD wymaga portu :${SUBIEKT_ORDERS_LIVE_PORT} (live) lub :${SUBIEKT_ORDERS_TEST_PORT} (test) - teraz: ${
         port != null ? `:${port}` : baseUrl
       }.`,
       ordersBaseUrl: baseUrl,

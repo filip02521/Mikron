@@ -44,8 +44,8 @@ function quantityLabel(
 ): string | null {
   if (ordered != null && delivered != null) {
     const remaining = Math.max(0, ordered - delivered);
-    if (remaining === 0) return `${delivered} / ${ordered} szt. — komplet`;
-    return `${delivered} / ${ordered} szt. — brakuje ${remaining} szt.`;
+    if (remaining === 0) return `${delivered} / ${ordered} szt. - komplet`;
+    return `${delivered} / ${ordered} szt. - brakuje ${remaining} szt.`;
   }
   if (delivered != null && delivered > 0) return `${delivered} szt. dostarczono`;
   if (ordered != null) return `Zamówiono: ${ordered} szt.`;
@@ -94,7 +94,7 @@ function renderDeliveryItem(
       "Co dalej",
       isPartial
         ? "Odbierz dostarczoną ilość. Pozostała część zamówienia nadal oczekuje na odbiór na regale."
-        : "Towar czeka na odbiór na regale — możesz go odebrać i potwierdzić w aplikacji."
+        : "Towar czeka na odbiór na regale - możesz go odebrać i potwierdzić w aplikacji."
     )
   );
 
@@ -116,7 +116,7 @@ function renderInformacjaItem(
   rows.push(
     emailDataRow(
       "Rodzaj prośby",
-      "Informacja o dostępności — bez zamówienia u dostawcy"
+      "Informacja o dostępności - bez zamówienia u dostawcy"
     )
   );
   if (isAuto) {
@@ -184,7 +184,7 @@ function subjectForItems(
   items: { supplierName: string }[]
 ): string {
   if (items.length === 1) {
-    return `${prefix} — ${truncateSubjectPart(items[0]!.supplierName)}`;
+    return `${prefix} - ${truncateSubjectPart(items[0]!.supplierName)}`;
   }
   return `${prefix} ${polishPozycjeSubjectSuffix(items.length)}`;
 }
@@ -204,15 +204,15 @@ export function renderDeliveryArrivedEmail(params: {
 
   const leadFixed =
     count === 1
-      ? "Zarejestrowaliśmy dostawę Twojego zamówienia indywidualnego — towar czeka na odbiór na regale."
-      : `Zarejestrowaliśmy dostawę — towar czeka na odbiór na regale: <strong>${polishPozycjeLabel(count)}</strong>.`;
+      ? "Zarejestrowaliśmy dostawę Twojego zamówienia indywidualnego - towar czeka na odbiór na regale."
+      : `Zarejestrowaliśmy dostawę - towar czeka na odbiór na regale: <strong>${polishPozycjeLabel(count)}</strong>.`;
 
   const bodyParts = [
     emailGreeting(firstName(params.recipientName)),
     emailParagraph(leadFixed),
     suppliers > 1
       ? emailMutedParagraph(
-          `Poniżej ${polishPozycjeLabel(count)} od <strong>${suppliers}</strong> dostawców — każda karta ma nazwę dostawcy, klienta i produkt.`
+          `Poniżej ${polishPozycjeLabel(count)} od <strong>${suppliers}</strong> dostawców - każda karta ma nazwę dostawcy, klienta i produkt.`
         )
       : "",
     emailMutedParagraph(
@@ -225,7 +225,7 @@ export function renderDeliveryArrivedEmail(params: {
   if (anyPartial) {
     bodyParts.push(
       emailMutedParagraph(
-        "Przy częściowej dostawie resztę zamówienia zobaczysz w aplikacji — kolejna partia wygeneruje osobne powiadomienie po przyjęciu na magazyn."
+        "Przy częściowej dostawie resztę zamówienia zobaczysz w aplikacji - kolejna partia wygeneruje osobne powiadomienie po przyjęciu na magazyn."
       )
     );
   }
@@ -238,7 +238,7 @@ export function renderDeliveryArrivedEmail(params: {
 
   const preheader =
     count === 1
-      ? `${sorted[0]!.supplierName} — ${anyPartial ? "częściowa dostawa" : "gotowe do odbioru"}`
+      ? `${sorted[0]!.supplierName} - ${anyPartial ? "częściowa dostawa" : "gotowe do odbioru"}`
       : suppliers > 1
         ? `${polishPozycjeLabel(count)} · ${suppliers} dostawców`
         : `${polishPozycjeLabel(count)} na regale`;
@@ -273,24 +273,24 @@ export function renderInformacjaArrivedEmail(params: {
       : `Na regale są już <strong>${polishPozycjeLabel(count)}</strong> z prośby informacyjnej.`;
 
   const confirmParagraph = allAuto
-    ? "Dostępność wykryto automatycznie na podstawie stanu magazynowego w Subiekcie — możesz poinformować klienta lub odebrać towar."
+    ? "Dostępność wykryto automatycznie na podstawie stanu magazynowego w Subiekcie - możesz poinformować klienta lub odebrać towar."
     : anyAuto
-      ? "Część pozycji potwierdzono ręcznie na magazynie, część wykryto automatycznie w Subiekcie — możesz poinformować klienta lub odebrać towar."
-      : "To nie było zamówienie u dostawcy — magazyn potwierdza dostępność towaru, a Ty możesz poinformować klienta lub odebrać towar.";
+      ? "Część pozycji potwierdzono ręcznie na magazynie, część wykryto automatycznie w Subiekcie - możesz poinformować klienta lub odebrać towar."
+      : "To nie było zamówienie u dostawcy - magazyn potwierdza dostępność towaru, a Ty możesz poinformować klienta lub odebrać towar.";
 
   const body = [
     emailGreeting(firstName(params.recipientName)),
     emailParagraph(leadFixed),
     suppliers > 1
       ? emailMutedParagraph(
-          `Poniżej ${polishPozycjeLabel(count)} od <strong>${suppliers}</strong> dostawców — każda karta opisuje osobny towar.`
+          `Poniżej ${polishPozycjeLabel(count)} od <strong>${suppliers}</strong> dostawców - każda karta opisuje osobny towar.`
         )
       : "",
     emailMutedParagraph(confirmParagraph),
     renderInformacjaItems(sorted),
     emailButton(mojeUrl(), "Otwórz Moje zamówienia"),
     emailMutedParagraph(
-      "Po zapoznaniu się z powiadomieniem potwierdź to w aplikacji — wpis zniknie z aktywnej listy."
+      "Po zapoznaniu się z powiadomieniem potwierdź to w aplikacji - wpis zniknie z aktywnej listy."
     ),
     emailMutedParagraph(
       "To automatyczna wiadomość z systemu OnTime (Mikran). Nie odpowiadaj na ten e-mail."
@@ -299,16 +299,16 @@ export function renderInformacjaArrivedEmail(params: {
 
   const preheader =
     count === 1
-      ? `Informacja: ${sorted[0]!.supplierName} — towar na stanie`
+      ? `Informacja: ${sorted[0]!.supplierName} - towar na stanie`
       : suppliers > 1
         ? `${polishPozycjeLabel(count)} · ${suppliers} dostawców`
         : allAuto
-          ? `${polishPozycjeLabel(count)} informacyjne — stan Subiekta`
+          ? `${polishPozycjeLabel(count)} informacyjne - stan Subiekta`
           : `${polishPozycjeLabel(count)} informacyjne na regale`;
 
   return {
     subject: subjectForItems(
-      allAuto ? "OnTime · Informacja — na stanie" : "OnTime · Informacja — na regale",
+      allAuto ? "OnTime · Informacja - na stanie" : "OnTime · Informacja - na regale",
       sorted
     ),
     html: emailDocument({
@@ -334,7 +334,7 @@ function renderProcurementCancelItem(
   rows.push(
     emailDataRow(
       "Co dalej",
-      "Prośba została anulowana przez dział dostaw. Potwierdź anulowanie w sekcji Moje zamówienia — wpis zniknie z listy."
+      "Prośba została anulowana przez dział dostaw. Potwierdź anulowanie w sekcji Moje zamówienia - wpis zniknie z listy."
     )
   );
 
@@ -405,7 +405,7 @@ export function renderProcurementCancelEmail(params: {
 
   const preheader =
     count === 1
-      ? `${sorted[0]!.supplierName} — anulowano`
+      ? `${sorted[0]!.supplierName} - anulowano`
       : `${polishPozycjeLabel(count)} anulowane`;
 
   return {
@@ -477,7 +477,7 @@ export function renderRequestNoteUpdateEmail(params: {
         )
       : "",
     emailMutedParagraph(
-      "Treść uwag jest przy konkretnej prośbie w Moje zamówienia — po przeczytaniu potwierdź „Widziałem”, żeby sygnał zniknął ze Startu dnia."
+      "Treść uwag jest przy konkretnej prośbie w Moje zamówienia - po przeczytaniu potwierdź „Widziałem”, żeby sygnał zniknął ze Startu dnia."
     ),
     renderRequestNoteUpdateItems(sorted),
     emailButton(mojeUrl(), "Otwórz Moje zamówienia"),
@@ -488,7 +488,7 @@ export function renderRequestNoteUpdateEmail(params: {
 
   const preheader =
     count === 1
-      ? `${sorted[0]!.supplierName} — zaktualizowano uwagi`
+      ? `${sorted[0]!.supplierName} - zaktualizowano uwagi`
       : `${polishPozycjeLabel(count)} z uwagami od zakupów`;
 
   return {
@@ -600,7 +600,7 @@ export function renderBoardQuestionReplyEmail(params: {
 
   const subjectTitle = truncateSubjectPart(title, 52);
   return {
-    subject: `OnTime · Tablica: odpowiedź — ${subjectTitle}`,
+    subject: `OnTime · Tablica: odpowiedź - ${subjectTitle}`,
     html: emailDocument({
       preheader: `Tablica · odpowiedź: ${truncateSubjectPart(reply || title, 80)}`,
       headerTitle: "Wiadomość z Tablicy",

@@ -65,7 +65,7 @@ export function ProcurementRequestFlagChip({
       ? procurementFlagMixedChipLabel(mixedCount)
       : baseLabel,
     def && !def.isActive ? "Nieaktywna" : null,
-    isOrphan ? "Brak definicji — odśwież lub wyczyść flagę" : null,
+    isOrphan ? "Brak definicji - odśwież lub wyczyść flagę" : null,
     hasNote ? noteRaw : null,
     onClick && !disabled ? "Kliknij, aby zmienić" : null,
   ].filter(Boolean);
@@ -132,7 +132,7 @@ export function ProcurementRequestFlagChip({
           type="button"
           data-flag-note-toggle
           className={cn(
-            "ml-0.5 inline-flex shrink-0 items-center gap-0.5 rounded px-0.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide opacity-70",
+            "ml-0.5 inline-flex shrink-0 items-center gap-0.5 rounded px-0.5 py-0.5 text-[9px] font-semibold opacity-70",
             "hover:bg-black/5 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400/40"
           )}
           aria-expanded={showFullNote}
@@ -175,7 +175,7 @@ export function ProcurementRequestFlagChip({
         role="button"
         tabIndex={0}
         className={shellClass}
-        title={titleParts.join(" — ") || PROCUREMENT_REQUEST_FLAG_COPY.emptyChipTitle}
+        title={titleParts.join(" - ") || PROCUREMENT_REQUEST_FLAG_COPY.emptyChipTitle}
         onClick={onShellClick}
         onKeyDown={onShellKeyDown}
       >
@@ -185,7 +185,7 @@ export function ProcurementRequestFlagChip({
   }
 
   return (
-    <div className={shellClass} title={titleParts.join(" — ") || undefined}>
+    <div className={shellClass} title={titleParts.join(" - ") || undefined}>
       {body}
     </div>
   );

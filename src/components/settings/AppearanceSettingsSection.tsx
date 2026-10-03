@@ -81,14 +81,14 @@ export function AppearanceSettingsSection({
           <span className="flex flex-col gap-0.5">
             <span className="text-sm font-medium text-slate-800">Jednolite tło</span>
             <span className="text-[11px] leading-snug text-slate-400">
-              Ukrywa okręgi w tle aplikacji — czyste, jednolite tło
+              Ukrywa okręgi w tle aplikacji - czyste, jednolite tło
             </span>
           </span>
           <input
             type="checkbox"
             role="switch"
             aria-checked={optimisticBg}
-            aria-label="Jednolite tło — ukrywa okręgi w tle aplikacji"
+            aria-label="Jednolite tło - ukrywa okręgi w tle aplikacji"
             checked={optimisticBg}
             onChange={(e) => toggleBackground(e.target.checked)}
             className="toggle-switch toggle-sky"

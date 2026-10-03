@@ -184,7 +184,7 @@ export async function POST(req: NextRequest) {
   const result = await analyzeTeethImage(base64, imageFile.type, catalog);
 
   if (!result.ok) {
-    console.warn(`[teeth-vision-ocr] Result: error — ${result.error}`);
+    console.warn(`[teeth-vision-ocr] Result: error - ${result.error}`);
     return NextResponse.json(result, { status: 422 });
   }
 
@@ -213,7 +213,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  console.debug(`[teeth-vision-ocr] Result: ok — ${result.groups.length} groups, lines: ${result.detectedProductLines.join(", ")}, image: ${imagePath ?? "not uploaded"}`);
+  console.debug(`[teeth-vision-ocr] Result: ok - ${result.groups.length} groups, lines: ${result.detectedProductLines.join(", ")}, image: ${imagePath ?? "not uploaded"}`);
   return NextResponse.json({
     ok: true,
     groups: result.groups,

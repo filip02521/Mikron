@@ -30,7 +30,7 @@ function line(
   return {
     tw_Nazwa: partial.tw_Nazwa ?? partial.tw_Symbol,
     tw_IdGrupa: null,
-    grt_Nazwa: "—",
+    grt_Nazwa: "-",
     tw_Stan: partial.dostepne ?? 0,
     tw_StanRez: 0,
     dostepne: 0,

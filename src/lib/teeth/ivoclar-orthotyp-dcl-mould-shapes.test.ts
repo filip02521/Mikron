@@ -22,7 +22,7 @@ describe("ivoclar-orthotyp-dcl-mould-shapes", () => {
     expect(inferIvoclarOrthotypDclShapeId("N3")).toBe("upper");
   });
 
-  it("posterior palette obejmuje Orthotyp, Lingual i legacy N3–N6", () => {
+  it("posterior palette obejmuje Orthotyp, Lingual i legacy N3-N6", () => {
     expect(ORTHOTYP_DCL_POSTERIOR).toContain("N3U");
     expect(ORTHOTYP_DCL_POSTERIOR).toContain("LL6");
     expect(ORTHOTYP_DCL_POSTERIOR).toContain("N4");

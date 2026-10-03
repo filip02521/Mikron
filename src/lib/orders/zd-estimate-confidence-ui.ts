@@ -77,9 +77,9 @@ export function buildZdEstimateConfidenceUi(input: {
 
   if (input.detailHint) {
     const compact = input.detailHint
-      .replace(/\s*·?\s*pewność\s+\d+%\s*—\s*sprawdź/gi, "")
+      .replace(/\s*·?\s*pewność\s+\d+%\s*[—-]\s*sprawdź/gi, "")
       .replace(/\s*pewność\s+\d+%/gi, "")
-      .replace(/\s*—\s*sprawdź/gi, "")
+      .replace(/\s*[—-]\s*sprawdź/gi, "")
       .replace(/\s{2,}/g, " ")
       .replace(/^[·\s]+|[·\s]+$/g, "")
       .trim();

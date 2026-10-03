@@ -91,7 +91,7 @@ export function resolveSupplierInterval(
 }
 
 export function formatIntervalLabel(interval: OrderInterval | null): string {
-  if (!interval) return "—";
+  if (!interval) return "-";
   if (interval.unit === "weeks") {
     return interval.value === 1 ? "1 tydzień" : `${interval.value} tyg.`;
   }

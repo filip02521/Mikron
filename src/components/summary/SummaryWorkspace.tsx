@@ -57,7 +57,7 @@ import {
   panelChromeInsetClass,
   panelSectionInsetClass,
   panelStickyChromeClass,
-  panelWorkspaceShellClass,
+  dailyPanelWorkspaceShellClass,
 } from "@/lib/ui/ontime-theme";
 import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 import { useClientHydrated } from "@/lib/client/use-client-hydrated";
@@ -371,7 +371,7 @@ export function SummaryWorkspace({
 
   return (
     <SupplierStockSignalsProvider signals={stockSignalBySupplierId} canPrepareZd={canPrepareZd}>
-    <div className={panelWorkspaceShellClass}>
+    <div className={dailyPanelWorkspaceShellClass}>
       {pendingMessage ? (
         <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
       ) : null}

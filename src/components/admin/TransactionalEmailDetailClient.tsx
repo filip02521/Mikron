@@ -54,22 +54,22 @@ export function TransactionalEmailDetailClient({
           </div>
           <div>
             <dt className="text-slate-500">From</dt>
-            <dd className="font-mono text-xs">{log.from_address || "—"}</dd>
+            <dd className="font-mono text-xs">{log.from_address || "-"}</dd>
           </div>
           <div>
             <dt className="text-slate-500">Message-ID</dt>
-            <dd className="break-all font-mono text-xs">{log.message_id || "—"}</dd>
+            <dd className="break-all font-mono text-xs">{log.message_id || "-"}</dd>
           </div>
           <div className="sm:col-span-2">
             <dt className="text-slate-500">To (faktycznie wysłane)</dt>
             <dd className="font-mono text-xs">
-              {(log.to_addresses ?? []).join(", ") || "—"}
+              {(log.to_addresses ?? []).join(", ") || "-"}
             </dd>
           </div>
           <div className="sm:col-span-2">
             <dt className="text-slate-500">Intended To</dt>
             <dd className="font-mono text-xs">
-              {(log.intended_to ?? []).join(", ") || "—"}
+              {(log.intended_to ?? []).join(", ") || "-"}
               {log.override_to ? (
                 <span className="ml-2 text-amber-700">
                   override → {log.override_to}
@@ -91,7 +91,7 @@ export function TransactionalEmailDetailClient({
           ) : null}
           <div className="sm:col-span-2">
             <dt className="text-slate-500">Temat</dt>
-            <dd>{log.subject || "—"}</dd>
+            <dd>{log.subject || "-"}</dd>
           </div>
           {log.error_message ? (
             <div className="sm:col-span-2">

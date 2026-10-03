@@ -38,7 +38,7 @@ export function SupplierAdminNameCell({
           </span>
           {trailingBadge}
           {!teethLane && isSupplierOrderOnDemand(s) ? (
-            <Badge variant="purple" className="text-[10px]">
+            <Badge variant="info" className="text-[10px]">
               Na żądanie
             </Badge>
           ) : null}

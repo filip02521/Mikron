@@ -180,7 +180,7 @@ export async function assignProductSupplierLinkAdmin(input: {
     .eq("subiekt_tw_id", subiektTwId)
     .maybeSingle();
   if (prodErr) throw new Error(prodErr.message);
-  if (!product) throw new Error("Produkt nie istnieje w katalogu — najpierw zapisz go z prośby lub importu ZD.");
+  if (!product) throw new Error("Produkt nie istnieje w katalogu - najpierw zapisz go z prośby lub importu ZD.");
 
   const { data: supplier, error: supErr } = await supabase
     .from("suppliers")

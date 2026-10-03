@@ -12,7 +12,7 @@ describe("suggestSupplierForUnmappedRow", () => {
   it("proponuje dodatkowy alias przy podobnej nazwie", () => {
     const row: ZdUnmappedKhRow = {
       subiektKhId: 999,
-      kontrahentLabel: "REN — Renfert Polska sp. z o.o.",
+      kontrahentLabel: "REN - Renfert Polska sp. z o.o.",
       zdCount: 3,
       sampleDocNumbers: ["ZD/1"],
       lastDocDate: "2026-01-01",

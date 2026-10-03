@@ -43,7 +43,7 @@ export function AdminSystemStatus({
           <PanelSummaryMetric
             label="Baza danych"
             value={dbIssue ? "Błąd" : "Połączono"}
-            hint="Supabase — tabele operacyjne"
+            hint="Supabase - tabele operacyjne"
             tone={dbIssue ? "danger" : isHealthy ? "success" : "default"}
           />
         </div>
@@ -58,7 +58,7 @@ export function AdminSystemStatus({
         >
           <p className="font-medium">
             {isHealthy
-              ? "System gotowy do pracy — panel dzienny i cron mogą działać normalnie."
+              ? "System gotowy do pracy - panel dzienny i cron mogą działać normalnie."
               : "Sprawdź poniższe problemy przed ręcznym przeliczaniem lub wysyłką maili."}
           </p>
           {issues.length > 0 ? (

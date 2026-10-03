@@ -66,7 +66,7 @@ export function splitNoticeText(text: string): NoticeCopy {
   const trimmed = text.trim();
   if (!trimmed) return { title: "" };
 
-  const emDash = trimmed.indexOf(" — ");
+  const emDash = trimmed.indexOf(" - ");
   if (emDash >= 8 && emDash <= 72) {
     const title = trimmed.slice(0, emDash).trim();
     const description = trimmed.slice(emDash + 3).trim();

@@ -10,7 +10,7 @@ import { salesPageShellClass } from "@/lib/ui/ontime-theme";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Wybór handlowca — podgląd",
+  title: "Wybór handlowca - podgląd",
 };
 
 export default async function WyborHandlowcaPage() {
@@ -29,7 +29,7 @@ export default async function WyborHandlowcaPage() {
     <div className={salesPageShellClass}>
       <PageHeader
         title="Podgląd panelu handlowca"
-        description="Wybierz osobę, aby zobaczyć jej zamówienia, harmonogram i notatnik — bez możliwości edycji."
+        description="Wybierz osobę, aby zobaczyć jej zamówienia, harmonogram i notatnik - bez możliwości edycji."
       />
 
       {loadError ? <Alert tone="error">{loadError}</Alert> : null}

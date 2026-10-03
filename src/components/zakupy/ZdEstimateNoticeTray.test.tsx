@@ -11,7 +11,7 @@ function Workbench({ showRecount = true }: { showRecount?: boolean }) {
     <ZdEstimateNoticeTrayProvider>
       <ZdEstimateNoticeTrayBar />
       <main>
-        <ZdEstimateNotice tray tone="warning" title="Przelicz listę — zmienione podbicie">
+        <ZdEstimateNotice tray tone="warning" title="Przelicz listę - zmienione podbicie">
           <button type="button">Przelicz</button>
         </ZdEstimateNotice>
         {showRecount ? (
@@ -35,7 +35,7 @@ describe("ZdEstimateNoticeTray", () => {
     render(<Workbench />);
     const bar = screen.getByRole("button", { name: /Uwagi \(2\)/ });
     // Najpierw najpoważniejsze (błąd), potem ostrzeżenia.
-    expect(bar.textContent).toContain("Ustawienia działu niedostępne · Przelicz listę — zmienione podbicie");
+    expect(bar.textContent).toContain("Ustawienia działu niedostępne · Przelicz listę - zmienione podbicie");
     const panel = screen.getByRole("region", { name: "Uwagi kreatora ZD", hidden: true });
     expect(panel.className).toContain("hidden");
     // Komunikat bez `tray` jest w treści strony, nie w panelu.

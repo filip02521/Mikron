@@ -330,7 +330,7 @@ export function SalesTeamOverview({
                   {title}
                 </h2>
                 {sectionFollowUpDue > 0 ? (
-                  <Badge variant="purple" className="text-[10px]">
+                  <Badge variant="info" className="text-[10px]">
                     {formatPrzypomnienieCount(sectionFollowUpDue)}
                   </Badge>
                 ) : sectionPending > 0 ? (

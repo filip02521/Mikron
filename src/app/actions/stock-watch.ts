@@ -34,7 +34,7 @@ export async function actionStartStockWatchRun(): Promise<
   const latest = await getLatestStockWatchRun();
   const heartbeatAge = latest ? Date.now() - Date.parse(latest.heartbeatAt) : Infinity;
   if (latest?.status === "running" && heartbeatAge < 5 * 60 * 1000) {
-    return { ok: false, message: "Analiza już trwa — poczekaj na jej koniec." };
+    return { ok: false, message: "Analiza już trwa - poczekaj na jej koniec." };
   }
   after(async () => {
     try {

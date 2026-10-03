@@ -52,7 +52,7 @@ export function BrandMomentLayout({
   return (
     <div
       className={cn(
-        "relative isolate flex min-h-dvh flex-col overflow-x-hidden bg-gradient-to-br from-indigo-50/40 via-white to-sky-50/50 px-4 py-10 sm:px-6",
+        "relative isolate flex min-h-dvh flex-col overflow-x-hidden bg-indigo-50/40 px-4 py-10 sm:px-6",
         className
       )}
     >

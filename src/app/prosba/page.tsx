@@ -125,7 +125,7 @@ export default async function ProsbaPage({
         <div className={salesPageShellClass}>
           <PageHeader
             title="Nowa prośba"
-            hint="Podgląd formularza handlowca — składanie prośb jest wyłączone dla administratora."
+            hint="Podgląd formularza handlowca - składanie prośb jest wyłączone dla administratora."
             hintAriaLabel="O podglądzie prośby"
           />
           <Alert tone="info">
@@ -219,7 +219,7 @@ export default async function ProsbaPage({
       {managerNeedsOwnCardHint ? (
         <Alert tone="warning">
           Aby składać prośby w swoim imieniu, administrator musi przypisać Ci kartę handlowca.
-          Możesz złożyć prośbę w imieniu osoby z zespołu — wybierz handlowca poniżej.
+          Możesz złożyć prośbę w imieniu osoby z zespołu - wybierz handlowca poniżej.
         </Alert>
       ) : null}
       <Suspense fallback={<ProsbaFormSuspenseFallback />}>

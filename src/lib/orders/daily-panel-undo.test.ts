@@ -18,7 +18,7 @@ describe("undo window", () => {
     expect(undoWindowLongLabel()).toBe("10 sekund");
     expect(undoWindowBannerDescription()).toBe("Masz 10 sekund na cofnięcie.");
     expect(undoWindowBannerDescription("Sprawdź terminy poniżej")).toBe(
-      "Sprawdź terminy poniżej — masz 10 sekund na cofnięcie."
+      "Sprawdź terminy poniżej - masz 10 sekund na cofnięcie."
     );
     expect(undoExpiredServerMessage()).toContain("10 s");
     expect(undoExpiredServerMessage("przy cofaniu odbioru")).toContain(

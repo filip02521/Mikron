@@ -687,8 +687,9 @@ export type TransactionalEmailLog = {
   created_at: string;
 };
 
+/** Prefiks nazwy dostawcy wg lokalizacji — pusty: lokalizację pokazuje osobna etykieta (bez emoji). */
 export const LOCATION_FLAGS: Record<SupplierLocation, string> = {
-  POLSKA: "🇵🇱 ",
-  ZAGRANICA: "🌍 ",
-  IMPORT: "🚢 ",
+  POLSKA: "",
+  ZAGRANICA: "",
+  IMPORT: "",
 };

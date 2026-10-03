@@ -43,7 +43,7 @@ export function InformacjaDirectQueueIntro({ className }: { className?: string }
       )}
     >
       <p className="text-xs leading-relaxed text-violet-950">
-        <strong className="font-semibold text-violet-950">Tylko dostępność</strong> — handlowiec
+        <strong className="font-semibold text-violet-950">Tylko dostępność</strong> - handlowiec
         czeka na e-mail z magazynu po przyjęciu towaru.{" "}
         <span className="text-violet-900/85">
           Zamówienia u dostawcy obsługujesz w Prośbach handlowców (badge{" "}
@@ -114,7 +114,7 @@ export function InformacjaFlowLegendDetailed({ className }: { className?: string
         </ol>
       </div>
       <p className="text-[11px] text-slate-500">
-        {INFORMACJA_FLOW_DIRECT.label} — domyślna ścieżka w formularzu handlowca (stan magazynowy, bez zapytania u dostawcy).
+        {INFORMACJA_FLOW_DIRECT.label} - domyślna ścieżka w formularzu handlowca (stan magazynowy, bez zapytania u dostawcy).
       </p>
     </div>
   );

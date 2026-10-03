@@ -115,7 +115,7 @@ export async function resolveSalesNotepadPageAccess(input: {
               }
             } catch {}
           } else {
-            linkError = "Możesz przeglądać tylko własne dane handlowca — parametr ?dla= został zignorowany.";
+            linkError = "Możesz przeglądać tylko własne dane handlowca - parametr ?dla= został zignorowany.";
           }
         }
       }
@@ -126,7 +126,7 @@ export async function resolveSalesNotepadPageAccess(input: {
       }
       if (!ownSalesPersonId && user.role === "sales_manager") {
         linkError =
-          "Twoje konto kierownika nie jest przypisane do profilu handlowca — poproś administratora o przypisanie w sekcji Użytkownicy.";
+          "Twoje konto kierownika nie jest przypisane do profilu handlowca - poproś administratora o przypisanie w sekcji Użytkownicy.";
       }
     }
   } catch (error) {

@@ -1,32 +1,32 @@
 /** Podpowiedzi nagłówków kart — dymek ? przy tytule. */
 export const SALES_PAGE_HEADER_HINTS = {
-  moje: "Tu śledzisz swoje prośby — co jest do odbioru, co czeka u dostawcy i co obserwujemy na magazynie.",
-  plan: "Pokazuje, kiedy dział zakupów zamawia u dostawcy i kiedy towar zwykle trafia na magazyn — przy Twoich otwartych prośbach oraz w wyszukiwarce.",
+  moje: "Tu śledzisz swoje prośby - co jest do odbioru, co czeka u dostawcy i co obserwujemy na magazynie.",
+  plan: "Pokazuje, kiedy dział zakupów zamawia u dostawcy i kiedy towar zwykle trafia na magazyn - przy Twoich otwartych prośbach oraz w wyszukiwarce.",
   planProcurement:
-    "Pełny harmonogram zakupów na ten tydzień — podgląd terminów u wszystkich dostawców.",
+    "Pełny harmonogram zakupów na ten tydzień - podgląd terminów u wszystkich dostawców.",
   tablica:
-    "Ogłoszenia zespołu i pytania do działu zakupów. Notatki z notatnika są prywatne — nie pojawiają się tutaj.",
+    "Ogłoszenia zespołu i pytania do działu zakupów. Notatki z notatnika są prywatne - nie pojawiają się tutaj.",
   teamOverview:
-    "Karty handlowców z Twoich grup — prośby, ZK czekające na towar i prywatny notatnik w jednym miejscu.",
+    "Karty handlowców z Twoich grup - prośby, ZK czekające na towar i prywatny notatnik w jednym miejscu.",
   teamHandlowcy:
     "Dodawanie osób, przypisanie do grupy, konta logowania, hasła startowe i linki zaproszenia.",
   teamGroups: "Grupy sortują listę handlowców w podglądzie kierownika.",
   operationsNotepad:
-    "Notatki działu — prywatne tylko dla Ciebie; wspólne może edytować, archiwizować i przestawiać cały zespół w tym dziale.",
+    "Notatki działu - prywatne tylko dla Ciebie; wspólne może edytować, archiwizować i przestawiać cały zespół w tym dziale.",
   dailyPanel:
-    "Kolejka zakupów — prośby handlowców na dziś, plan tygodnia i wyjątki poza harmonogramem.",
+    "Kolejka zakupów - prośby handlowców na dziś, plan tygodnia i wyjątki poza harmonogramem.",
   verification:
-    "Niekompletne prośby handlowców — uzupełnij dostawcę i produkt. Po zatwierdzeniu trafiają do panelu dziennego; ścieżka informacji jest zachowana.",
+    "Niekompletne prośby handlowców - uzupełnij dostawcę i produkt. Po zatwierdzeniu trafiają do panelu dziennego; ścieżka informacji jest zachowana.",
   queue:
-    "Jedna lista przyjęcia: zamówienia i informacje u tego samego dostawcy — kolejka, dziennik i inwentaryzacja regału.",
-  prosba: "Zgłoś prośbę do działu zakupów — pojedynczą lub grupową, z opcjonalnymi notatkami i klientem.",
+    "Jedna lista przyjęcia: zamówienia i informacje u tego samego dostawcy - kolejka, dziennik i inwentaryzacja regału.",
+  prosba: "Zgłoś prośbę do działu zakupów - pojedynczą lub grupową, z opcjonalnymi notatkami i klientem.",
   accountLink:
     "Aby korzystać z aplikacji jako handlowiec, konto musi być przypisane do Twojego profilu w systemie.",
-  zk: "Zamówienia klientów (ZK) z Subiekta — prośby do zakupów, magazyn i przypomnienia. Zamknięte sprawy są w zakładce Archiwum.",
+  zk: "Zamówienia klientów (ZK) z Subiekta - prośby do zakupów, magazyn i przypomnienia. Zamknięte sprawy są w zakładce Archiwum.",
 } as const;
 
 export function salesHistoriaHeaderHint(months: number, previewCount: number): string {
-  return `Audyt zamówień z ostatnich ${months} miesięcy. Na liście — ${previewCount} najnowszych wpisów w każdej sekcji; resztę otworzysz z wyszukiwaniem.`;
+  return `Audyt zamówień z ostatnich ${months} miesięcy. Na liście - ${previewCount} najnowszych wpisów w każdej sekcji; resztę otworzysz z wyszukiwaniem.`;
 }
 
 export const SALES_SEARCH_COPY = {

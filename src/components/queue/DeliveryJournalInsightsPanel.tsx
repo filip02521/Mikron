@@ -194,12 +194,12 @@ export function DeliveryJournalInsightsPanel({
   const dateRangeLabel =
     dateFrom === dateTo
       ? formatDateLabel(dateFrom)
-      : `${formatDateLabel(dateFrom)} – ${formatDateLabel(dateTo)}`;
+      : `${formatDateLabel(dateFrom)} - ${formatDateLabel(dateTo)}`;
 
   return (
     <div className="px-4 py-5 sm:px-6">
       <p className={panelTypography.sectionDesc}>
-        Sprawdź, czy paczka dotarła — po numerze listu, dostawcy lub kurierze. Edycja wpisów tylko w
+        Sprawdź, czy paczka dotarła - po numerze listu, dostawcy lub kurierze. Edycja wpisów tylko w
         zakładce <strong className="font-medium text-slate-700">Dzień</strong> (dziś).
       </p>
 
@@ -389,7 +389,7 @@ export function DeliveryJournalInsightsPanel({
               description={
                 hasQuery
                   ? "Nie znaleziono dostawy z tą frazą. Spróbuj innego numeru listu, poszerz zakres (np. 90 dni) albo usuń filtr kuriera."
-                  : "Brak wpisów w wybranym zakresie — zmień daty lub filtry."
+                  : "Brak wpisów w wybranym zakresie - zmień daty lub filtry."
               }
             />
           ) : null}

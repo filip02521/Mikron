@@ -24,7 +24,7 @@ describe("zdEstimateScopeCoverage", () => {
     expect(cov.unmapped.map((s) => s.supplierId)).toEqual(["b"]);
   });
 
-  it("pomija w razie potrzeby — jak kolejka Dziś", () => {
+  it("pomija w razie potrzeby - jak kolejka Dziś", () => {
     const today = collectTodayScheduleSuppliers({
       todayKey: "2026-08-14",
       suppliers: [

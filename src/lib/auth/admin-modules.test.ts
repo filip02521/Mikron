@@ -79,7 +79,7 @@ describe("requireMailCenterForMutation", () => {
     vi.clearAllMocks();
   });
 
-  it("zawsze 403 — nawet dla admina", async () => {
+  it("zawsze 403 - nawet dla admina", async () => {
     const user = sessionUser({ role: "admin" });
     mockGetSessionUser.mockResolvedValue(user);
 
@@ -89,7 +89,7 @@ describe("requireMailCenterForMutation", () => {
     });
   });
 
-  it("zawsze 403 — non-admin z modułem", async () => {
+  it("zawsze 403 - non-admin z modułem", async () => {
     const user = sessionUser({ role: "sales" });
     mockGetSessionUser.mockResolvedValue(user);
     mockHasMailCenterModuleForUserId.mockResolvedValue(true);

@@ -7,10 +7,10 @@ import {
 import { PROCUREMENT_REQUEST_FLAG_COPY } from "@/lib/orders/procurement-request-flag-copy";
 
 export const PROCUREMENT_FLAG_MIGRATION_HINT =
-  "Brak kolumny/tabeli flag zakupów — uruchom supabase/migrations/122_procurement_flag_definitions.sql";
+  "Brak kolumny/tabeli flag zakupów - uruchom supabase/migrations/122_procurement_flag_definitions.sql";
 
 export const PROCUREMENT_FLAG_DEFS_MIGRATION_HINT =
-  "Brak tabeli procurement_flag_definitions — uruchom supabase/migrations/122_procurement_flag_definitions.sql";
+  "Brak tabeli procurement_flag_definitions - uruchom supabase/migrations/122_procurement_flag_definitions.sql";
 
 /** Stałe UUID seed z migracji 122 + 125. */
 export const PROCUREMENT_FLAG_SEED = {
@@ -401,20 +401,20 @@ export function procurementFlagModalChipSelectedClass(
 ): string {
   switch (color) {
     case "rose":
-      return "border-rose-400/90 bg-gradient-to-b from-rose-50 to-white text-rose-950 ring-1 ring-rose-200/60";
+      return "border-rose-400/90 bg-rose-50 text-rose-950 ring-1 ring-rose-200/60";
     case "amber":
-      return "border-amber-400/90 bg-gradient-to-b from-amber-50 to-white text-amber-950 ring-1 ring-amber-200/60";
+      return "border-amber-400/90 bg-amber-50 text-amber-950 ring-1 ring-amber-200/60";
     case "sky":
-      return "border-sky-400/90 bg-gradient-to-b from-sky-50 to-white text-sky-950 ring-1 ring-sky-200/60";
+      return "border-sky-400/90 bg-sky-50 text-sky-950 ring-1 ring-sky-200/60";
     case "fuchsia":
-      return "border-fuchsia-400/90 bg-gradient-to-b from-fuchsia-50 to-white text-fuchsia-950 ring-1 ring-fuchsia-200/60";
+      return "border-fuchsia-400/90 bg-fuchsia-50 text-fuchsia-950 ring-1 ring-fuchsia-200/60";
     case "emerald":
-      return "border-emerald-400/90 bg-gradient-to-b from-emerald-50 to-white text-emerald-950 ring-1 ring-emerald-200/60";
+      return "border-emerald-400/90 bg-emerald-50 text-emerald-950 ring-1 ring-emerald-200/60";
     case "violet":
-      return "border-violet-400/90 bg-gradient-to-b from-violet-50 to-white text-violet-950 ring-1 ring-violet-200/60";
+      return "border-violet-400/90 bg-violet-50 text-violet-950 ring-1 ring-violet-200/60";
     case "slate":
     default:
-      return "border-slate-400/90 bg-gradient-to-b from-slate-50 to-white text-slate-900 ring-1 ring-slate-200/60";
+      return "border-slate-400/90 bg-slate-50 text-slate-900 ring-1 ring-slate-200/60";
   }
 }
 

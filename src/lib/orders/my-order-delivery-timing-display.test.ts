@@ -51,7 +51,7 @@ function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
     salesPersonId: "sp",
     requestKind: "zamowienie",
     canEditBySales: false,
-    headline: "Zamówione — czekamy na dostawę",
+    headline: "Zamówione - czekamy na dostawę",
     headlineTone: "info",
     subline: null,
     requestNote: null,
@@ -138,7 +138,7 @@ describe("my-order-delivery-timing-display", () => {
     expect(display?.detail).toContain(MY_ORDER_HISTORY_ESTIMATE_ZD_PENDING_REPLACE_DETAIL.slice(0, 20));
   });
 
-  it("pending z przeterminowanym szacunkiem — brak informacji o dostawie", () => {
+  it("pending z przeterminowanym szacunkiem - brak informacji o dostawie", () => {
     const display = buildMyOrderDeliveryTimingDisplay(
       row({
         timingLabel: "ok. 10.05.2026 (~5 dni rob.) · po terminie",
@@ -163,7 +163,7 @@ describe("my-order-delivery-timing-display", () => {
     );
   });
 
-  it("nie pokazuje badge pilności dla jutra — tylko neutralne meta ZD", () => {
+  it("nie pokazuje badge pilności dla jutra - tylko neutralne meta ZD", () => {
     const tomorrowKey = formatDateString(addDays(todayInWarsaw(), 1));
     const tomorrowPl = formatDateString(addDays(todayInWarsaw(), 1), "dd.MM.yyyy");
     const display = buildMyOrderDeliveryTimingDisplay(
@@ -203,7 +203,7 @@ describe("my-order-delivery-timing-display", () => {
     expect(display?.detail ?? "").not.toContain("zaktualizowano");
   });
 
-  it("dokNr w estimate — bez powtórzenia w detail", () => {
+  it("dokNr w estimate - bez powtórzenia w detail", () => {
     const deadlineKey = formatDateString(addDays(todayInWarsaw(), 5));
     const deadlinePl = formatDateString(addDays(todayInWarsaw(), 5), "dd.MM.yyyy");
     const syncedKey = formatDateString(addDays(todayInWarsaw(), -1));
@@ -224,7 +224,7 @@ describe("my-order-delivery-timing-display", () => {
     expect(display?.detail ?? "").not.toContain("zaktualizowano");
   });
 
-  it("grupa mieszana — callout ZD z podpowiedzią o szacunku przy produktach", () => {
+  it("grupa mieszana - callout ZD z podpowiedzią o szacunku przy produktach", () => {
     const deadlineKey = formatDateString(addDays(todayInWarsaw(), 5));
     const deadlinePl = formatDateString(addDays(todayInWarsaw(), 5), "dd.MM.yyyy");
     const syncedKey = formatDateString(addDays(todayInWarsaw(), -2));

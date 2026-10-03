@@ -270,7 +270,7 @@ export function buildSupplierLeadTimeHint(
 
   if (!stats || sampleCount === 0) {
     return {
-      lines: ["Brak historii realizacji u tego dostawcy — termin ustalimy po pierwszych dostawach."],
+      lines: ["Brak historii realizacji u tego dostawcy - termin ustalimy po pierwszych dostawach."],
       lowConfidence: true,
       hasData: false,
     };
@@ -307,7 +307,7 @@ export function buildSupplierLeadTimeHint(
       );
     }
     if (!lines.length) {
-      lines.push("Brak osobnych średnich dla głównych / pobocznych — sprawdź statystyki dostawcy.");
+      lines.push("Brak osobnych średnich dla głównych / pobocznych - sprawdź statystyki dostawcy.");
     }
   }
 
@@ -332,7 +332,7 @@ export function buildSupplierLeadTimeHint(
   }
 
   if (lowConfidence) {
-    lines.push("Szacunek z małą liczbą dostaw w historii — może się zmieniać.");
+    lines.push("Szacunek z małą liczbą dostaw w historii - może się zmieniać.");
   }
 
   return { lines, lowConfidence, hasData: true };
@@ -473,14 +473,14 @@ export function buildSupplierDrawerLeadTime(
     hasRecentSample: display?.hasRecentSample,
   });
   let footnote = lowConfidence
-    ? "Mało dostaw w historii — szacunek może się zmieniać."
+    ? "Mało dostaw w historii - szacunek może się zmieniać."
     : null;
 
   if (!stats || totalSampleCount(stats) === 0) {
     return {
       kind: "empty",
       title,
-      detail: "Brak historii — średnia pojawi się po pierwszych dostawach.",
+      detail: "Brak historii - średnia pojawi się po pierwszych dostawach.",
     };
   }
 

@@ -99,7 +99,7 @@ export function ZdEstimateQtyValue({
                     : "zd-est-qty--d"
             )}
           >
-            —
+            -
           </span>
         ) : (
           <>

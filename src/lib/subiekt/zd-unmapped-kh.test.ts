@@ -17,7 +17,7 @@ describe("aggregateZdUnmappedByKh", () => {
     expect(rows[0]?.reason).toBe("no_supplier_kh");
   });
 
-  it("gdy dostawca ma ten kh_Id — podpowiedź o reindeksie", () => {
+  it("gdy dostawca ma ten kh_Id - podpowiedź o reindeksie", () => {
     const supplierByKh = new Map([[688, "Renfert"]]);
     const rows = aggregateZdUnmappedByKh(
       [{ subiekt_kh_id: 688, dok_nr_pelny: "ZD/9", dok_data_wyst: "2026-03-01" }],

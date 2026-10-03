@@ -31,7 +31,7 @@ export function ProsbaPairHint({
         const p = res.pair;
         if (res.role === "piece") {
           setText(
-            `Para z paczką ${p.packSymbol ?? `tw ${p.packTwId}`} (${p.unitsPerPack} szt/pacz.). Zamawiasz sztuki — ZD zwykle idzie na paczki.`
+            `Para z paczką ${p.packSymbol ?? `tw ${p.packTwId}`} (${p.unitsPerPack} szt/pacz.). Zamawiasz sztuki - ZD zwykle idzie na paczki.`
           );
         } else {
           setText(

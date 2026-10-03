@@ -252,7 +252,7 @@ export async function actionCreateQuestion(
         thread,
         attachmentsUploaded: 0,
         attachmentError:
-          "Pytanie zapisano, ale brak konfiguracji Storage — zdjęcia nie zostały dodane.",
+          "Pytanie zapisano, ale brak konfiguracji Storage - zdjęcia nie zostały dodane.",
       };
     }
     const upload = await uploadBoardQuestionImages({

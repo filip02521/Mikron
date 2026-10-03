@@ -31,7 +31,7 @@ export function SupplierHubFilterLabel({
   return (
     <p
       className={cn(
-        "mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500",
+        "mb-2 text-xs font-semibold text-slate-500",
         className
       )}
     >

@@ -256,7 +256,7 @@ export function ZdEstimateScopeCatalogDialog({
     >
       {favoriteChips.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+          <p className="text-[11px] font-medium text-slate-500">
             {ZD_ESTIMATE_UI.scopeCatalogFavoritesHeading}
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -290,7 +290,7 @@ export function ZdEstimateScopeCatalogDialog({
       ) : null}
 
       <div className="space-y-2">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+        <p className="text-[11px] font-medium text-slate-500">
           {ZD_ESTIMATE_UI.scopeCatalogResultsHeading}
         </p>
         <div className="relative">

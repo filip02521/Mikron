@@ -350,11 +350,11 @@ export function SupplierDrawer({
             )}
           >
             <div className="min-w-0">
-              <p className="text-[11px] font-medium uppercase tracking-wide opacity-75">
+              <p className="text-[11px] font-medium opacity-75">
                 {supplier.order_on_demand ? "Zamówienie na żądanie" : "Następne zamówienie"}
               </p>
               <p className="mt-0.5 text-base font-semibold tabular-nums">
-                {supplier.computed_next_date ? formatPlDate(supplier.computed_next_date) : "—"}
+                {supplier.computed_next_date ? formatPlDate(supplier.computed_next_date) : "-"}
                 {due.relative ? (
                   <span className="ml-2 text-sm font-medium opacity-80">· {due.relative}</span>
                 ) : null}
@@ -481,7 +481,7 @@ export function SupplierDrawer({
           {findSupplierFormTemplate(supplier.name) ? (
             <DrawerSection
               title="Formularz zamówienia"
-              hint={`${findSupplierFormTemplate(supplier.name)!.kind !== "pdf" ? "Arkusz Excel" : "Formularz PDF"} dostawcy wypełniony pozycjami z ZD — gotowy do wysłania`}
+              hint={`${findSupplierFormTemplate(supplier.name)!.kind !== "pdf" ? "Arkusz Excel" : "Formularz PDF"} dostawcy wypełniony pozycjami z ZD - gotowy do wysłania`}
               icon={<IconDownload size={14} />}
             >
               <SupplierOrderFormList supplierId={supplier.id} />
@@ -503,7 +503,7 @@ export function SupplierDrawer({
               <Row label="Ostatnie zamówienie" value={formatPlDate(supplier.order_date)} />
               <Row
                 label="Następne zamówienie"
-                value={supplier.computed_next_date ? formatPlDate(supplier.computed_next_date) : "—"}
+                value={supplier.computed_next_date ? formatPlDate(supplier.computed_next_date) : "-"}
                 strong
               />
               {supplier.shift_date ? (
@@ -543,7 +543,7 @@ export function SupplierDrawer({
                 ) : null}
               </div>
             ) : (
-              <p className="text-sm text-slate-500">Dostawca wysyła sam — bez zlecanego odbioru.</p>
+              <p className="text-sm text-slate-500">Dostawca wysyła sam - bez zlecanego odbioru.</p>
             )}
           </DrawerSection>
 
@@ -710,7 +710,7 @@ function Chip({
     <span
       title={title}
       className={cn(
-        "inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
+        "inline-flex max-w-full items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
         CHIP_TONE[tone],
       )}
     >

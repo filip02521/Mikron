@@ -9,7 +9,7 @@ import { MOJE_COPY_NOTES_ACK_BUTTON } from "@/lib/orders/my-order-moje-copy";
 export function SalesDayStartHelp() {
   return (
     <HelpPopover
-      label="Pomoc — Start dnia"
+      label="Pomoc - Start dnia"
       title="Start dnia"
       shortLabel="Start dnia"
       icon={<GuideIcon />}
@@ -18,7 +18,7 @@ export function SalesDayStartHelp() {
       <HelpBlock title="Co tu jest">
         <p>
           Jedna kolejka na rano: gotowy towar, uwagi od zakupów przy prośbach, przypomnienia ZK i
-          nowości z tablicy — bez skakania między zakładkami.
+          nowości z tablicy - bez skakania między zakładkami.
         </p>
       </HelpBlock>
 
@@ -34,7 +34,7 @@ export function SalesDayStartHelp() {
 
       <HelpBlock title="Kolejność">
         <ol className="list-decimal space-y-1.5 pl-4 text-sm">
-          <li>Gotowe do odbioru z regału — najpilniejsze</li>
+          <li>Gotowe do odbioru z regału - najpilniejsze</li>
           <li>Anulowania i informacje do potwierdzenia</li>
           <li>Uwagi zaktualizowane przez zakupy</li>
           <li>Przypomnienia ZK i notatek</li>

@@ -74,7 +74,7 @@ export function wiedentEsteticMouldShapeGroups(kind: TeethKind): TeethMouldShape
     {
       shapeId: "lower",
       label: "Dolne",
-      hint: "Szczęka dolna · kody 00–011",
+      hint: "Szczęka dolna · kody 00-011",
       moulds: WIEDENT_ESTETIC_LOWER_ANTERIOR,
     },
   ];

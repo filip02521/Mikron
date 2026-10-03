@@ -123,7 +123,7 @@ export async function loadClearanceView(supabase: Db, id: string): Promise<Custo
   return {
     id: clearance.id,
     supplierId: clearance.supplier_id,
-    supplierName: (supplier as { name?: string } | null)?.name ?? "—",
+    supplierName: (supplier as { name?: string } | null)?.name ?? "-",
     zdNumber: clearance.zd_number,
     invoiceNumber: clearance.invoice_number,
     invoiceDate: clearance.invoice_date,

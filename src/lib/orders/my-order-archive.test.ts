@@ -66,7 +66,7 @@ describe("presentArchivedMyOrders", () => {
     expect(oldAck).toBeTruthy();
   });
 
-  it("archiwum — anulowanie przez zakupy ma właściwy tytuł", () => {
+  it("archiwum - anulowanie przez zakupy ma właściwy tytuł", () => {
     const since = warsawDateKeyDaysAgo(ARCHIVE_RECENT_DAYS);
     const rows = presentArchivedMyOrders(
       [

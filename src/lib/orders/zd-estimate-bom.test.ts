@@ -56,7 +56,7 @@ function line(
   return {
     tw_Nazwa: partial.tw_Nazwa ?? partial.tw_Symbol,
     tw_IdGrupa: null,
-    grt_Nazwa: "—",
+    grt_Nazwa: "-",
     tw_Stan: partial.dostepne ?? 0,
     tw_StanRez: 0,
     dostepne: 0,
@@ -207,7 +207,7 @@ describe("Castorit BOM + pary", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("para bez BOM — regresja (sprzedaż szt = 10+1*40)", () => {
+  it("para bez BOM - regresja (sprzedaż szt = 10+1*40)", () => {
     const lines = [
       line({ tw_Id: MASA, tw_Symbol: "MASA", sprzedazOkres: 10 }),
       line({ tw_Id: KARTON, tw_Symbol: "KARTON", sprzedazOkres: 1 }),
@@ -412,7 +412,7 @@ describe("Castorit BOM + pary", () => {
     expect(plyn.bom?.contributionCover).toBe(3);
   });
 
-  it("dwa BOM na płyn — suma wkładów", () => {
+  it("dwa BOM na płyn - suma wkładów", () => {
     const lines = [
       line({ tw_Id: PLYN, tw_Symbol: "PLYN", sprzedazOkres: 1 }),
       line({ tw_Id: 10, tw_Symbol: "P1", sprzedazOkres: 2 }),
@@ -442,7 +442,7 @@ describe("Castorit BOM + pary", () => {
     expect(plyn.bom?.parentTwIds).toEqual(expect.arrayContaining([10, 11]));
   });
 
-  it("płyn w 3 składach — sprzedaż×qty i cover×qty sumują się; doZd z rematerialize", () => {
+  it("płyn w 3 składach - sprzedaż×qty i cover×qty sumują się; doZd z rematerialize", () => {
     // Solo płyn: 5 szt. sprzedaży, stan 1.
     // Zestaw A: sprzedaż 4, stan 2, cover ON, płyn ×1 → sales+4, cover+(2)*1
     // Zestaw B: sprzedaż 3, stan 1, cover ON, płyn ×2 → sales+6, cover+(1)*2
@@ -527,7 +527,7 @@ describe("Castorit BOM + pary", () => {
     ]);
   });
 
-  it("shared składnik — 2× expand z linesBase nie duplikuje wkładów", () => {
+  it("shared składnik - 2× expand z linesBase nie duplikuje wkładów", () => {
     const lines = [
       line({ tw_Id: PLYN, tw_Symbol: "PLYN", sprzedazOkres: 1, dostepne: 0 }),
       line({ tw_Id: 10, tw_Symbol: "P1", sprzedazOkres: 2, dostepne: 0 }),
@@ -567,7 +567,7 @@ describe("Castorit BOM + pary", () => {
     expect(p1.doZamowieniaReczne).toBe(p2.doZamowieniaReczne);
   });
 
-  it("nested BOM (zestaw jako składnik) — wkład schodzi na liście składników, rola zestawu zostaje", () => {
+  it("nested BOM (zestaw jako składnik) - wkład schodzi na liście składników, rola zestawu zostaje", () => {
     // K (sprzedaż 10) = zestaw A×1; P (sprzedaż 5) = zestaw z K×1.
     // Oczekiwane: A dostaje 10 + 5 = 15; K i P doZd=0 jako assembled_parent.
     const lines = [
@@ -876,7 +876,7 @@ describe("Castorit BOM + pary", () => {
     expect(kit.doZamowieniaReczne).toBe(12);
   });
 
-  it("P4c kit_from_components: qtyPerParent>1 — sales/qty", () => {
+  it("P4c kit_from_components: qtyPerParent>1 - sales/qty", () => {
     const MIX = 992;
     const after = applyBomPurchaseTargetFinalize(
       applyZdEstimateBoms(

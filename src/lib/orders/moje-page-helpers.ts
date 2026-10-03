@@ -103,7 +103,7 @@ export async function resolveMojePageContext(
             isDelegatePreview = true;
           } else {
             linkError =
-              "Możesz przeglądać tylko własne dane handlowca — parametr ?dla= został zignorowany.";
+              "Możesz przeglądać tylko własne dane handlowca - parametr ?dla= został zignorowany.";
           }
         }
       }
@@ -114,7 +114,7 @@ export async function resolveMojePageContext(
       }
       if (!ownSalesPersonId && user.role === "sales_manager") {
         linkError =
-          "Twoje konto kierownika nie jest przypisane do profilu handlowca — poproś administratora o przypisanie w sekcji Użytkownicy.";
+          "Twoje konto kierownika nie jest przypisane do profilu handlowca - poproś administratora o przypisanie w sekcji Użytkownicy.";
       }
     } else {
       salesPersonId = user?.salesPersonId ?? null;

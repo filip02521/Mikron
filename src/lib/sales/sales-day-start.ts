@@ -171,7 +171,7 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       source: "pickup",
       priority: PRIORITY.pickup,
       title: `Potwierdź odbiór z regału (${pickupLineCount})`,
-      subtitle: "Produkty czekają na regale — potwierdź odbiór",
+      subtitle: "Produkty czekają na regale - potwierdź odbiór",
       href: `/moje#${MOJE_ACTION_SECTION}`,
       scrollTarget: MOJE_ACTION_SECTION,
       count: pickupLineCount,
@@ -184,7 +184,7 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       source: "pickup",
       priority: PRIORITY.pickup,
       title: group.supplierName,
-      subtitle: "1 pozycja na regale — potwierdź odbiór",
+      subtitle: "1 pozycja na regale - potwierdź odbiór",
       href: `/moje#${MOJE_ACTION_SECTION}`,
       scrollTarget: MOJE_ACTION_SECTION,
       count: 1,
@@ -201,7 +201,7 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       source: "teeth_handover",
       priority: PRIORITY.teeth_handover,
       title: `Potwierdź odbiór zębów (${teethLineCount})`,
-      subtitle: "Doręczenie osobiste od magazynu — nie na regał",
+      subtitle: "Doręczenie osobiste od magazynu - nie na regał",
       href: `/moje#${MOJE_TEETH_ACTION_SECTION_ID}`,
       scrollTarget: MOJE_TEETH_ACTION_SECTION_ID,
       count: teethLineCount,
@@ -214,7 +214,7 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       source: "teeth_handover",
       priority: PRIORITY.teeth_handover,
       title: group.supplierName,
-      subtitle: "Zęby gotowe — potwierdź osobisty odbiór",
+      subtitle: "Zęby gotowe - potwierdź osobisty odbiór",
       href: `/moje#${MOJE_TEETH_ACTION_SECTION_ID}`,
       scrollTarget: MOJE_TEETH_ACTION_SECTION_ID,
       count: 1,
@@ -231,7 +231,7 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       source: "mixed_pickup",
       priority: PRIORITY.mixed_pickup,
       title: `Potwierdź odbiór zębów i towaru (${mixedLineCount})`,
-      subtitle: "Każdy typ potwierdzasz osobno — inny przepływ magazynowy",
+      subtitle: "Każdy typ potwierdzasz osobno - inny przepływ magazynowy",
       href: `/moje#${MOJE_MIXED_ACTION_SECTION_ID}`,
       scrollTarget: MOJE_MIXED_ACTION_SECTION_ID,
       count: mixedLineCount,
@@ -244,7 +244,7 @@ function buildOrderActionItems(rows: MyOrderRow[]): SalesDayStartItem[] {
       source: "mixed_pickup",
       priority: PRIORITY.mixed_pickup,
       title: group.supplierName,
-      subtitle: "Zęby i towar gotowe — potwierdź osobno",
+      subtitle: "Zęby i towar gotowe - potwierdź osobno",
       href: `/moje#${MOJE_MIXED_ACTION_SECTION_ID}`,
       scrollTarget: MOJE_MIXED_ACTION_SECTION_ID,
       count: group.lineCount,
@@ -393,10 +393,10 @@ function buildNoteFromProcurementItems(rows: MyOrderRow[]): SalesDayStartItem[] 
     const rawNote = row.requestNote ?? "";
     const isAggregate = isRequestNotesAggregateSummary(rawNote);
     const subtitle = isAggregate
-      ? "Zakupy zaktualizowały uwagi — sprawdź przy pozycji"
+      ? "Zakupy zaktualizowały uwagi - sprawdź przy pozycji"
       : rawNote
         ? rawNote.slice(0, 120)
-        : "Zakupy zaktualizowały uwagi — sprawdź przy pozycji";
+        : "Zakupy zaktualizowały uwagi - sprawdź przy pozycji";
     const focusId = row.unreadRequestNoteOrderIds?.[0] ?? row.orderIds[0];
     const href = appendMojeFocusOrderIds("/moje", [focusId].filter(Boolean));
     return [
@@ -497,9 +497,9 @@ export function salesDayStartSourceLabel(source: SalesDayStartSource): string {
 /** Opis nagłówka panelu Start dnia — wszystkie typy zadań, nie tylko odbiór z regału. */
 export function salesDayStartPanelDescription(totalActionCount: number): string {
   if (totalActionCount === 1) {
-    return "1 pilna sprawa — od najważniejszych. Kliknij wiersz, aby przejść do listy lub modułu.";
+    return "1 pilna sprawa - od najważniejszych. Kliknij wiersz, aby przejść do listy lub modułu.";
   }
-  return `${totalActionCount} pilnych spraw — od najważniejszych. Kliknij wiersz, aby przejść dalej.`;
+  return `${totalActionCount} pilnych spraw - od najważniejszych. Kliknij wiersz, aby przejść dalej.`;
 }
 
 /** Suma pozycji do zrobienia — uwzględnia agregację linii (np. „Potwierdź odbiór zębów (3)”). */

@@ -27,7 +27,7 @@ function ZkListStats({
         <span className={salesTypography.statValue}>{filteredWatchCount}</span>
         {" z "}
         <span className={salesTypography.statValue}>{watchCount}</span>
-        <span className="ml-2 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
+        <span className="ml-2 inline-flex rounded-md bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
           szukaj
         </span>
       </p>
@@ -108,7 +108,7 @@ function ZkListMetaActions({
             </Badge>
           ) : null}
           {unseenRegalWatchCount > 0 ? (
-            <Badge variant="purple" className="text-[10px]">
+            <Badge variant="info" className="text-[10px]">
               {formatZkUnseenRegalBadge(unseenRegalWatchCount)}
             </Badge>
           ) : null}

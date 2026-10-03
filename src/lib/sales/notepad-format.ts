@@ -12,9 +12,9 @@ import {
 } from "@/lib/sales/zk-watch-lines";
 
 export function formatPln(value: number | string | null | undefined): string {
-  if (value == null || value === "") return "—";
+  if (value == null || value === "") return "-";
   const n = typeof value === "string" ? Number(value) : value;
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "-";
   return new Intl.NumberFormat("pl-PL", {
     style: "currency",
     currency: "PLN",

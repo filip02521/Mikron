@@ -286,7 +286,7 @@ export function TeethPanelOrderEntry({
             <>
               {!hasList ? (
                 <p className="text-xs text-amber-800" role="status">
-                  Brak listy zębów — uzupełnij przed zamówieniem u dostawcy.
+                  Brak listy zębów - uzupełnij przed zamówieniem u dostawcy.
                 </p>
               ) : null}
               {showInlineSpecInBatch ? (

@@ -66,7 +66,7 @@ function PreviewBlockerCase({
 export function E2ELabPreviewBlockerSection() {
   return (
     <section data-testid="e2e-preview-blocker" className="space-y-4">
-      <h2 className="text-base font-semibold text-slate-900">Podgląd panelu — mutacje</h2>
+      <h2 className="text-base font-semibold text-slate-900">Podgląd panelu - mutacje</h2>
       <PreviewBlockerCase
         panelContext="sales"
         testIdPrefix="preview-sales"

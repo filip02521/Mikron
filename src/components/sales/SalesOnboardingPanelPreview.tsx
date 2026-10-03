@@ -34,7 +34,7 @@ function PreviewRow({
         <div className="flex flex-wrap items-center gap-1.5">
           <span
             className={cn(
-              "inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+              "inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold",
               badgeClass
             )}
           >
@@ -106,18 +106,18 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
             />
             <WelcomeChannelChip
               label="ZK czekające"
-              hint="ZK z Subiekta — prośby i magazyn"
+              hint="ZK z Subiekta - prośby i magazyn"
               tone="violet"
             />
             <WelcomeChannelChip
               label="Notatnik"
-              hint="Prywatne przypomnienia — nie do zakupów"
+              hint="Prywatne przypomnienia - nie do zakupów"
               tone="violet"
             />
           </div>
           <div className="rounded-md border border-violet-100 bg-violet-50/60 px-2.5 py-2 text-left">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-800">
-              Informacja o towarze — dwa warianty
+            <p className="text-[10px] font-semibold text-violet-800">
+              Informacja o towarze - dwa warianty
             </p>
             <p className="mt-1 text-[10px] leading-relaxed text-violet-950/90">
               <span className="font-medium">{INFORMACJA_FLOW_DIRECT.label}</span> → e-mail + wpis
@@ -206,7 +206,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
             </div>
           ))}
           <div className="rounded-md border border-sky-100 bg-sky-50/70 px-2.5 py-1.5 text-[10px] text-sky-900">
-            Plan działu dostaw · pn.–pt. · kiedy składamy zamówienia u dostawców
+            Plan działu dostaw · pn.-pt. · kiedy składamy zamówienia u dostawców
           </div>
         </div>
       );
@@ -263,7 +263,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
             Do zrobienia dziś · notatka z przypomnieniem
           </div>
           <div className="rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[11px] text-slate-700">
-            Oddzwonić do gabinetu — potwierdzić termin
+            Oddzwonić do gabinetu - potwierdzić termin
           </div>
         </div>
       );

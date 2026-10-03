@@ -48,8 +48,8 @@ function ZdEstimateCoverCell({
   const days = zdEstimateDaysOfCover(line);
   if (days == null) {
     return (
-      <span className="zd-est-cover zd-est-cover--none" title="Brak sprzedaży w oknie — nie kończy się">
-        —
+      <span className="zd-est-cover zd-est-cover--none" title="Brak sprzedaży w oknie - nie kończy się">
+        -
       </span>
     );
   }
@@ -105,7 +105,7 @@ function ZdEstimateSalesProfileBadge({
       onClick={() => {
         if (
           window.confirm(
-            "Dodać ten towar do „Tylko na prośbę”?\n\nZniknie z listy „Do ZD” — będzie zamawiany tylko pod aktywną prośbę handlowca. Cofniesz to w menu wiersza."
+            "Dodać ten towar do „Tylko na prośbę”?\n\nZniknie z listy „Do ZD” - będzie zamawiany tylko pod aktywną prośbę handlowca. Cofniesz to w menu wiersza."
           )
         ) {
           onMarkOnRequest();
@@ -510,7 +510,7 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
                       pieces > 0 && "zd-est-value--unpriced"
                     )}
                   >
-                    {pieces > 0 ? "bez ceny" : "—"}
+                    {pieces > 0 ? "bez ceny" : "-"}
                   </span>
                 )}
               </td>
@@ -579,7 +579,7 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
                       bomMeta?.role === "assembled_parent" &&
                       (bomMeta.relocatedSales ?? 0) > 0
                         ? [
-                            `Sprzedaż zestawu ${formatQty(bomMeta.relocatedSales ?? 0)} szt przeniesiona do składników (wkład BOM) — tu 0, żeby nie dublować sumy.`,
+                            `Sprzedaż zestawu ${formatQty(bomMeta.relocatedSales ?? 0)} szt przeniesiona do składników (wkład BOM) - tu 0, żeby nie dublować sumy.`,
                             formatWzSalesTitle({
                               sprzedazOkres: 0,
                               wzNiepowiazaneOkres: 0,
@@ -731,7 +731,7 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
             onExclude={() => {
               if (individualExtra) {
                 const ok = window.confirm(
-                  "Ta pozycja ma prośbę handlowca.\n\nPo wykluczeniu prośba trafi do sekcji „Usługi” i do uwag ZD (bez ilości towaru) — nie zniknie z panelu Dziś do utworzenia ZD.\n\nKontynuować?"
+                  "Ta pozycja ma prośbę handlowca.\n\nPo wykluczeniu prośba trafi do sekcji „Usługi” i do uwag ZD (bez ilości towaru) - nie zniknie z panelu Dziś do utworzenia ZD.\n\nKontynuować?"
                 );
                 if (!ok) return;
               }

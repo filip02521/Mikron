@@ -7,7 +7,7 @@ export function HowItWorksContent() {
       <HelpBlock title="Zakładki">
         <ul className="list-disc space-y-1.5 pl-4">
           <li>
-            <strong className="font-medium text-slate-800">Dziś</strong> — kolejka:{" "}
+            <strong className="font-medium text-slate-800">Dziś</strong> - kolejka:{" "}
             <FlowSteps
               steps={["zaległe", "prośby", "na dziś"]}
               chevronClassName="text-indigo-300"
@@ -15,11 +15,11 @@ export function HowItWorksContent() {
             . Pasek postępu sumuje harmonogram i prośby.
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Tydzień</strong> — plan pon.–pt. z
+            <strong className="font-medium text-slate-800">Tydzień</strong> - plan pon.-pt. z
             kartami dostawców.
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Wyjątki</strong> — rezygnacje
+            <strong className="font-medium text-slate-800">Wyjątki</strong> - rezygnacje
             handlowców, prośby informacyjne, dostawcy na żądanie i poza harmonogramem.
           </li>
         </ul>
@@ -32,11 +32,11 @@ export function HowItWorksContent() {
             <strong className="font-medium text-slate-800">Zamówione</strong>.
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Przesuń</strong> — zmiana daty u
+            <strong className="font-medium text-slate-800">Przesuń</strong> - zmiana daty u
             dostawcy.
           </li>
           <li>
-            Menu <HelpMenuGlyph className="align-[-2px]" /> — urlop i edycja karty dostawcy.
+            Menu <HelpMenuGlyph className="align-[-2px]" /> - urlop i edycja karty dostawcy.
           </li>
         </ul>
       </HelpBlock>
@@ -44,16 +44,16 @@ export function HowItWorksContent() {
       <HelpBlock title="Prośby handlowców">
         <p>
           Oznacz prośbę jako <strong className="font-medium text-slate-800">Główne</strong> albo{" "}
-          <strong className="font-medium text-slate-800">Uzupełniające</strong> — potem trafi do
+          <strong className="font-medium text-slate-800">Uzupełniające</strong> - potem trafi do
           magazynu lub kolejki informacji.
         </p>
       </HelpBlock>
 
       <HelpBlock title="Plan tygodnia">
         <ul className="list-disc space-y-1.5 pl-4">
-          <li>Te same akcje co na zakładce Dziś — na kartach z przyszłymi terminami.</li>
+          <li>Te same akcje co na zakładce Dziś - na kartach z przyszłymi terminami.</li>
           <li>
-            <strong className="font-medium text-slate-800">Tryb planowania</strong> — przeciągnij
+            <strong className="font-medium text-slate-800">Tryb planowania</strong> - przeciągnij
             karty między dniami, potem <strong className="font-medium text-slate-800">Zatwierdź plan</strong>.
           </li>
         </ul>
@@ -66,7 +66,7 @@ export function HowItWorksContent() {
             /
           </kbd>
           , nowa prośba i menu <HelpMenuGlyph className="align-[-2px]" /> są u góry karty. Pełna
-          lista skrótów — przycisk Skróty przy tytule.
+          lista skrótów - przycisk Skróty przy tytule.
         </p>
       </HelpBlock>
 

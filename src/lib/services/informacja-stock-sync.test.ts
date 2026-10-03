@@ -106,7 +106,7 @@ describe("runInformacjaStockAutoArrive", () => {
     expect(tryAcquireMock).not.toHaveBeenCalled();
   });
 
-  it("subiekt_not_configured — skip bez subiektOffline", async () => {
+  it("subiekt_not_configured - skip bez subiektOffline", async () => {
     isConfiguredMock.mockReturnValue(false);
     const result = await runInformacjaStockAutoArrive();
     expect(result.skipped).toBe(true);
@@ -157,7 +157,7 @@ describe("runInformacjaStockAutoArrive", () => {
     expect(revalidateMock).toHaveBeenCalled();
   });
 
-  it("TOCTOU — pomija gdy stan zniknie przed zapisem", async () => {
+  it("TOCTOU - pomija gdy stan zniknie przed zapisem", async () => {
     fetchQueueMock.mockResolvedValue([informacjaRow("o1", 100)]);
     fetchStockMock
       .mockResolvedValueOnce({
@@ -176,7 +176,7 @@ describe("runInformacjaStockAutoArrive", () => {
     expect(fetchStockMock).toHaveBeenCalledTimes(2);
   });
 
-  it("chunkowanie — osobny fetch stanu per batch mark", async () => {
+  it("chunkowanie - osobny fetch stanu per batch mark", async () => {
     const orders = Array.from({ length: 31 }, (_, i) =>
       informacjaRow(`o-${i}`, 100 + i)
     );

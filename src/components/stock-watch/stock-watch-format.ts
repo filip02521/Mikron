@@ -13,12 +13,12 @@ const rateFormatter = new Intl.NumberFormat("pl-PL", {
 });
 
 export function formatPln(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) return "—";
+  if (value == null || !Number.isFinite(value)) return "-";
   return plnFormatter.format(value);
 }
 
 export function formatQtyPl(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) return "—";
+  if (value == null || !Number.isFinite(value)) return "-";
   return qtyFormatter.format(value);
 }
 
@@ -63,16 +63,16 @@ export const STOCK_WATCH_RULE_META: Record<
   standard: {
     label: "Standard",
     short: "Standard",
-    description: "Pełny automat — alerty i propozycje zapasu.",
+    description: "Pełny automat - alerty i propozycje zapasu.",
   },
   on_request: {
     label: "Na prośbę",
     short: "Na prośbę",
-    description: "Zamawiamy tylko pod klienta — bez zapasu i bez alertów.",
+    description: "Zamawiamy tylko pod klienta - bez zapasu i bez alertów.",
   },
   excluded: {
     label: "Wykluczone",
     short: "Wyklucz",
-    description: "Ignorowane — nie krzyczy, że brakuje.",
+    description: "Ignorowane - nie krzyczy, że brakuje.",
   },
 };

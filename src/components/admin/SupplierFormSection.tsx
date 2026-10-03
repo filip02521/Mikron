@@ -31,7 +31,7 @@ export function SupplierFormSection({
       <summary className="cursor-pointer list-none px-4 py-3 marker:content-none transition-colors hover:bg-slate-50/80">
         <span className="flex items-center justify-between gap-2">
           <span>
-            <span className="block text-xs font-semibold uppercase tracking-wide text-slate-600">
+            <span className="block text-xs font-semibold text-slate-600">
               {title}
             </span>
             {description ? (

@@ -230,7 +230,7 @@ describe("zd-estimate-post-create", () => {
     );
   });
 
-  it("mailto do zagranicy — treść po angielsku", () => {
+  it("mailto do zagranicy - treść po angielsku", () => {
     const m = buildZdSupplierMailto({
       email: "a@b.de",
       dokNr: "ZD/1",
@@ -524,7 +524,7 @@ describe("zd-estimate-post-create", () => {
     ).toEqual({ omittedServiceCount: 2, teethServiceCount: 1 });
   });
 
-  it("applyGlowneProcessedToPostCreateSession — partial nie zamyka CTA", () => {
+  it("applyGlowneProcessedToPostCreateSession - partial nie zamyka CTA", () => {
     const freeze = buildZdPostCreateMarkFreeze({
       catalogOrderIds: ["c1", "c2"],
       includedServiceOrderIds: ["svc1"],

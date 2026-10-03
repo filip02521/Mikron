@@ -5,7 +5,7 @@ import {
 } from "@/lib/data/teeth-products";
 
 export const TEETH_CATALOG_UNAVAILABLE_MESSAGE =
-  "Katalog zębów jest chwilowo niedostępny — spróbuj ponownie.";
+  "Katalog zębów jest chwilowo niedostępny - spróbuj ponownie.";
 
 /** Fail-closed load katalogu zębów do walidacji zamówień. */
 export async function loadTeethCatalogForValidation(): Promise<{

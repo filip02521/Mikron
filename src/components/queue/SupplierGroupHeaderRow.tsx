@@ -127,12 +127,12 @@ export function SupplierGroupHeaderRow({
                 {scheduleDate ? (
                   <span
                     className={cn(
-                      "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold transition",
+                      "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold transition",
                       scheduleOverdue
                         ? "bg-rose-100 text-rose-700 ring-1 ring-inset ring-rose-200/60"
                         : "bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200/50",
                     )}
-                    title={scheduleOverdue ? "Planowany dzień zamówienia minął — sprawdź opóźnienie" : "Najbliższy planowany dzień zamówienia"}
+                    title={scheduleOverdue ? "Planowany dzień zamówienia minął - sprawdź opóźnienie" : "Najbliższy planowany dzień zamówienia"}
                   >
                     <CalendarIcon className="size-3 shrink-0" />
                     {scheduleOverdue ? "po planie" : "plan"}
@@ -143,7 +143,7 @@ export function SupplierGroupHeaderRow({
                 {maxWaitingDays != null && maxWaitingDays > 0 ? (
                   <span
                     className={cn(
-                      "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums transition",
+                      "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold tabular-nums transition",
                       isStale
                         ? "bg-rose-100/90 text-rose-700 ring-1 ring-inset ring-rose-200/50"
                         : "bg-slate-100/80 text-slate-600 ring-1 ring-inset ring-slate-200/40",

@@ -128,7 +128,7 @@ export async function tickZdImportForSupplier(input: {
   maxDocs?: number;
 }): Promise<ZdImportSupplierJobState> {
   const current = await readZdImportSupplierJobState(input.supplierId);
-  if (!current) throw new Error("Brak stanu joba — uruchom Start.");
+  if (!current) throw new Error("Brak stanu joba - uruchom Start.");
   if (current.status !== "running") return current;
 
   const lockKey = zdImportSupplierLockKey(input.supplierId);
