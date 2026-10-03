@@ -152,6 +152,7 @@ import {
   revertDailyPanelChange,
   supplierIdsForGlownePlacement,
   buildProcessIndividualFeedback,
+  supplierIdsFromIndividualOrders,
   buildMarkOrderedFeedback,
   buildScheduleFeedback,
 } from "@/lib/services/daily-panel-undo";
@@ -303,6 +304,12 @@ export async function actionProcessIndividual(
       procurementCancelNote,
     );
     revalidateAll();
+    if (action !== "ANULOWANO" && processResult.processedIds.length) {
+      // Jak po „Zamówione”: Braki / „Zamów dziś poza planem” bez czekania na noc.
+      refreshStockWatchAfterOrder(
+        await supplierIdsFromIndividualOrders(processResult.processedIds).catch(() => [])
+      );
+    }
 
     const token =
       scheduleBefore.length > 0
@@ -403,6 +410,12 @@ export async function actionUndoDailyPanelChange(payload: DailyPanelUndoPayload)
   }
   await revertDailyPanelChange(payload.token);
   revalidateAll();
+  // Cofnięty termin zmienia horyzont „Do ZD” — Braki muszą wrócić do stanu sprzed akcji.
+  const token = payload.token;
+  if (token.kind === "schedules" || token.kind === "combined") {
+    const schedules = token.kind === "schedules" ? token.snapshots : token.schedules;
+    refreshStockWatchAfterOrder(schedules.map((snap) => snap.supplierId));
+  }
   return { success: true };
 }
 
