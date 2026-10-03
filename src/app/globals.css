@@ -3207,7 +3207,7 @@ input[type="checkbox"].toggle-switch.toggle-sky:checked {
   width: 5.75rem;
   min-width: 5.75rem;
   max-width: 5.75rem;
-  text-align: right;
+  text-align: center;
 }
 
 .data-table.zd-estimate-table .zd-est-value {
