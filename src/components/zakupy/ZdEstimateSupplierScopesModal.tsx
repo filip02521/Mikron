@@ -322,6 +322,11 @@ function SharedScopeSplitter({
   const [products, setProducts] = useState<ZdSharedScopeProduct[] | null>(null);
   const [draft, setDraft] = useState<Record<number, string>>({});
   const [saved, setSaved] = useState(false);
+  // Nowa tożsamość onError nie może przeładować listy (skasowałaby niezapisane wybory).
+  const onErrorRef = useRef(onError);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
 
   useEffect(() => {
     let cancelled = false;
@@ -332,7 +337,7 @@ function SharedScopeSplitter({
       });
       if (cancelled) return;
       if (!res.ok) {
-        onError(res.message);
+        onErrorRef.current(res.message);
         return;
       }
       setProducts(res.products);
@@ -343,7 +348,7 @@ function SharedScopeSplitter({
     return () => {
       cancelled = true;
     };
-  }, [scope.mode, scope.scopeId, onError]);
+  }, [scope.mode, scope.scopeId]);
 
   const changed = (products ?? []).filter(
     (p) => (draft[p.subiektTwId] ?? "") !== (p.assignedSupplierId ?? "")
@@ -631,8 +636,18 @@ export function ZdEstimateSupplierScopesModal({
     [todayCoverage, mappedIds]
   );
 
-  const liveUnmapped = liveCoverage?.unmapped ?? [];
   const hasActiveFilter = query.trim().length > 0;
+  // Filtr obejmuje wszystkie sekcje — inaczej „Dziś bez mapowania” zasłania wyniki.
+  const filterText = query.trim().toLowerCase();
+  const liveUnmapped = (liveCoverage?.unmapped ?? []).filter(
+    (s) => !filterText || s.supplierName.toLowerCase().includes(filterText)
+  );
+  const sharedScopes = (order?.sharedScopes ?? []).filter(
+    (sh) =>
+      !filterText ||
+      sh.label.toLowerCase().includes(filterText) ||
+      sh.supplierIds.some((sid) => supplierLabel(suppliers, sid).toLowerCase().includes(filterText))
+  );
 
   const insightFor = (supplierId: string) => order?.insights.get(supplierId);
 
@@ -948,7 +963,7 @@ export function ZdEstimateSupplierScopesModal({
             })}
           </ul>
         </div>
-      ) : !loading && liveCoverage && liveCoverage.todayCount > 0 ? (
+      ) : !loading && !hasActiveFilter && liveCoverage && liveCoverage.todayCount > 0 ? (
         <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/60 px-3.5 py-2.5">
           <p className="text-xs font-medium text-emerald-900">{ZD_ESTIMATE_UI.todayScopeCoverageEmpty}</p>
         </div>
@@ -1056,7 +1071,7 @@ export function ZdEstimateSupplierScopesModal({
         </div>
       ) : null}
 
-      {!loading && order && order.sharedScopes.length > 0 ? (
+      {!loading && sharedScopes.length > 0 ? (
         <div className="overflow-hidden rounded-lg border border-violet-200/80 bg-violet-50/30">
           <div className="border-b border-violet-200/60 px-4 py-3">
             <p className="text-sm font-semibold text-violet-950">Wspólne zakresy</p>
@@ -1066,7 +1081,7 @@ export function ZdEstimateSupplierScopesModal({
             </p>
           </div>
           <ul className="divide-y divide-violet-100">
-            {order.sharedScopes.map((sh) => {
+            {sharedScopes.map((sh) => {
               const key = `${sh.mode}:${sh.scopeId}`;
               const isOpen = splitKey === key;
               return (

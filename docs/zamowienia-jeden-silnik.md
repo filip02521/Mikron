@@ -1,6 +1,6 @@
 # Zamówienia do dostawców — jeden silnik, jedno miejsce decyzji
 
-Status: zaakceptowany 2026-10-03. Etap 1 wdrożony w PR #140 (silnik `src/lib/orders/zd-order-engine.ts` + `zd-order-list.ts`). Zastępuje kierunek „osobne szkice w panelu Braki”.
+Status: zaakceptowany 2026-10-03. Etapy 1–2 wdrożone w PR #140 (silnik `src/lib/orders/zd-order-engine.ts` + `zd-order-list.ts`). Zastępuje kierunek „osobne szkice w panelu Braki”.
 
 ## 1. Cel
 
@@ -88,7 +88,7 @@ Dostawca „na żądanie” — tylko sygnał „Pilne”, bez planowych.
 | Etap | Zakres | Kryterium odbioru |
 |---|---|---|
 | 1. Jeden silnik | Wydzielenie obliczeń kreatora do modułu serwerowego używanego przez Kreator i nocny przebieg; panel Braki pokazuje „Do ZD” z tego silnika; usunięcie szkiców i tworzenia ZD z panelu; „Przygotuj ZD” = otwarcie Kreatora | Dla 5 dostawców liczba w panelu = „Do ZD” w Kreatorze (ten sam dzień danych) |
-| 2. Porządek w zakresach (do ustalenia) | Tylko w obrębie przypisanych grup/cech — bez całego katalogu. Kandydaci: kilka zakresów na dostawcę, rozstrzyganie zakresów wspólnych, podpowiedzi z historii ZD | Do ustalenia z użytkownikiem |
+| 2. Porządek w zakresach ✅ | Tylko w obrębie przypisanych grup/cech. Indeks towar → grupa/cechy z Subiekta (nocą lub „Odśwież teraz”); podpowiedzi zakresów z historii ZD (pokrycie + czystość); kilka zakresów na dostawcę (Kreator i noc łączą w jedną listę); wspólne zakresy — przypisanie towaru do dostawcy; „Ostatnie ZD: …” w Kreatorze | Okno Zakresy pokazuje pokrycie i podpowiedzi; Kreator dla dostawcy wspólnego zakresu liczy właściwego dostawcę |
 | 3. Czas dostawy i harmonogram | `L`, `N`, horyzont `H`, zapas bezpieczeństwa; sygnały „Pilne” i „Przed kolejną dostawą”; sekcja w panelu dziennym | Dla dostawcy z próbkami H i sygnały zgodne z ręcznym wyliczeniem |
 | 4. Gotowa lista w Kreatorze | Kreator otwiera się z listą z nocy + znacznik wieku danych; „Przelicz” na żywo | Otwarcie Ivoclar < 3 s zamiast minut |
 

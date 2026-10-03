@@ -144,7 +144,12 @@ export async function upsertZdEstimateSupplierScope(input: {
         WHERE id = $1 AND supplier_id = $2
         RETURNING ${SELECT_COLS}`,
       [scopeId, supplierId, mode, grupaId, cechaId, label, updatedBy]
-    );
+    ).catch((e: unknown) => {
+      if ((e as { code?: string }).code === "23505") {
+        throw new Error("Ten dostawca ma już ten zakres — usuń duplikat zamiast zmieniać.");
+      }
+      throw e;
+    });
     if (!res.rows[0]) throw new Error("Nie znaleziono zakresu do zmiany.");
     return mapZdEstimateSupplierScopeRow(res.rows[0]);
   }
