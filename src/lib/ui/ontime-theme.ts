@@ -232,7 +232,7 @@ export const panelTabsChromeClass =
   "border-b border-indigo-100/75 bg-[var(--card)]";
 
 /** Panel dzienny / operacje zakupów — wąska kolumna; lekko szersza tylko na 2xl+. */
-export const panelWorkspaceShellClass = "relative mx-auto w-full max-w-3xl 2xl:max-w-4xl";
+export const panelWorkspaceShellClass = "relative mx-auto w-full max-w-3xl xl:max-w-4xl 2xl:max-w-5xl";
 
 /** Strony operacji z odstępem między blokami (toast, karta, alert). */
 export const panelPageShellClass = cn(panelWorkspaceShellClass, "space-y-4");

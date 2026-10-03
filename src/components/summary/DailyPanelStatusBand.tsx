@@ -167,43 +167,48 @@ function StatusBandBody({
     <>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-          <Stat
-            value={summary.overdueCount}
-            label={unitLabel(summary.overdueCount, "zaległe", "zaległe", "zaległych")}
-            dotTone="overdue"
-            sectionKey="overdue"
-          />
-          {summary.stockOutGroupCount > 0 ? (
+          {/* Z paskiem „Kolejka” liczniki sekcji są w krokach — tu tylko suma (bez powtórki). */}
+          {!showQueueSteps ? (
             <>
+              <Stat
+                value={summary.overdueCount}
+                label={unitLabel(summary.overdueCount, "zaległe", "zaległe", "zaległych")}
+                dotTone="overdue"
+                sectionKey="overdue"
+              />
+              {summary.stockOutGroupCount > 0 ? (
+                <>
+                  <StatDivider />
+                  <Stat
+                    value={summary.stockOutGroupCount}
+                    label={unitLabel(
+                      summary.stockOutGroupCount,
+                      "brak stanu",
+                      "braki stanu",
+                      "braków stanu"
+                    )}
+                    dotTone="stockOut"
+                    sectionKey="stockOut"
+                  />
+                </>
+              ) : null}
               <StatDivider />
               <Stat
-                value={summary.stockOutGroupCount}
-                label={unitLabel(
-                  summary.stockOutGroupCount,
-                  "brak stanu",
-                  "braki stanu",
-                  "braków stanu"
-                )}
-                dotTone="stockOut"
-                sectionKey="stockOut"
+                value={summary.forSomeoneGroupCount}
+                label={unitLabel(summary.forSomeoneGroupCount, "grupa prośb", "grupy prośb", "grup prośb")}
+                dotTone="prosby"
+                sectionKey="prosby"
               />
+              <StatDivider />
+              <Stat
+                value={summary.todayCount}
+                label={unitLabel(summary.todayCount, "na dziś", "na dziś", "na dziś")}
+                dotTone="today"
+                sectionKey="today"
+              />
+              <StatDivider />
             </>
           ) : null}
-          <StatDivider />
-          <Stat
-            value={summary.forSomeoneGroupCount}
-            label={unitLabel(summary.forSomeoneGroupCount, "grupa prośb", "grupy prośb", "grup prośb")}
-            dotTone="prosby"
-            sectionKey="prosby"
-          />
-          <StatDivider />
-          <Stat
-            value={summary.todayCount}
-            label={unitLabel(summary.todayCount, "na dziś", "na dziś", "na dziś")}
-            dotTone="today"
-            sectionKey="today"
-          />
-          <StatDivider />
           <span className="inline-flex items-baseline gap-1">
             <span className="text-sm font-semibold tabular-nums text-slate-900">{queueTotal}</span>
             <span className={panelTypography.caption}>w kolejce</span>

@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import { cn } from "@/lib/cn";
 import { buildZdEstimateLaunchHref } from "@/lib/orders/zd-estimate-supplier-scope";
 import type { StockWatchOffPlanSupplier } from "@/lib/stock-watch/data";
 
@@ -16,6 +20,8 @@ export function StockWatchOffPlanBanner({
   suppliers: StockWatchOffPlanSupplier[];
   canPrepareZd: boolean;
 }) {
+  // Telefon: zwinięty do nagłówka (lista zajmowała pół ekranu nad kolejką dnia).
+  const [mobileOpen, setMobileOpen] = useState(false);
   if (suppliers.length === 0) return null;
   const shown = suppliers.slice(0, 6);
   return (
@@ -28,10 +34,21 @@ export function StockWatchOffPlanBanner({
           Zamów dziś poza planem — {suppliers.length}{" "}
           {suppliers.length === 1 ? "dostawca" : "dostawców"}
         </p>
-        <Link href="/zakupy/braki" className="text-xs font-medium text-red-800 hover:text-red-950">
-          Panel Braki →
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            className="min-h-9 text-xs font-semibold text-red-800 hover:text-red-950 sm:hidden"
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen((v) => !v)}
+          >
+            {mobileOpen ? "Zwiń" : "Pokaż"}
+          </button>
+          <Link href="/zakupy/braki" className="text-xs font-medium text-red-800 hover:text-red-950">
+            Panel Braki →
+          </Link>
+        </div>
       </div>
+      <div className={cn(!mobileOpen && "max-sm:hidden")}>
       <p className="mt-0.5 text-[11px] text-red-900/75">
         Towary skończą się, zanim przyjedzie zamówienie złożone dziś — a planowe zamówienie jest później.
       </p>
@@ -60,6 +77,7 @@ export function StockWatchOffPlanBanner({
           </li>
         ) : null}
       </ul>
+      </div>
     </section>
   );
 }

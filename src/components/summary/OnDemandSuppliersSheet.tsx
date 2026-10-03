@@ -1,5 +1,6 @@
 "use client";
 
+import { SupplierStockSignal } from "@/components/summary/SupplierStockSignal";
 import type { OnDemandSupplierRow } from "@/lib/orders/summary-workspace";
 import { actionMarkOrdered } from "@/app/actions/admin";
 import { SupplierContactActions } from "@/components/procurement/SupplierContactActions";
@@ -113,6 +114,7 @@ export function OnDemandSuppliersSheet({
                             ? ` · ${row.intervalLabel}`
                             : ""}
                         </p>
+                        <SupplierStockSignal supplierId={row.supplierId} className="mt-1" />
                         <SupplierContactActions
                           notes={row.notes}
                           mails={row.mails}

@@ -579,6 +579,48 @@ export async function listStockWatchSupplierOrders(): Promise<StockWatchSupplier
   }));
 }
 
+/** Skrót analizy per dostawca — karty panelu dziennego (czy jest co zamawiać). */
+export type StockWatchSupplierSignal = {
+  /** Pozycje „Do ZD” — to samo co Kreator (bez opcji). */
+  lineCount: number;
+  orderValue: number;
+  unpricedCount: number;
+  /** Brak towaru + krytyczne (zgodnie z regułami towarów). */
+  criticalCount: number;
+  /** Dzień danych analizy (koniec okna sprzedaży). */
+  dataDo: string;
+};
+
+export async function listStockWatchSupplierSignals(): Promise<
+  Record<string, StockWatchSupplierSignal>
+> {
+  const res = await query<{
+    supplier_id: string;
+    line_count: unknown;
+    order_value: unknown;
+    unpriced_count: unknown;
+    data_do: unknown;
+    critical: unknown;
+  }>(
+    `SELECT o.supplier_id, o.line_count, o.order_value, o.unpriced_count, o.data_do,
+            (SELECT count(*) FROM stock_watch_items i
+              WHERE i.supplier_id = o.supplier_id
+                AND i.status IN ('out_of_stock', 'critical')) AS critical
+       FROM stock_watch_supplier_orders o`
+  );
+  const out: Record<string, StockWatchSupplierSignal> = {};
+  for (const row of res.rows) {
+    out[String(row.supplier_id)] = {
+      lineCount: num(row.line_count),
+      orderValue: num(row.order_value),
+      unpricedCount: num(row.unpriced_count),
+      criticalCount: num(row.critical),
+      dataDo: dateKey(row.data_do) ?? "",
+    };
+  }
+  return out;
+}
+
 /** Aktywni dostawcy z / bez zakresu w kreatorze ZD — tylko zmapowani wchodzą do analizy. */
 export async function getSupplierScopeCoverage(): Promise<{ active: number; mapped: number }> {
   const res = await query<{ active: string; mapped: string }>(
