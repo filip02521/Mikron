@@ -7,25 +7,25 @@ import {
 } from "@/lib/ui/notice-content";
 
 describe("notice-content", () => {
-  it("splitNoticeText — myślnik", () => {
-    expect(splitNoticeText("Zapisano dostawę — 3 pozycje trafiły do magazynu.")).toEqual({
+  it("splitNoticeText - myślnik", () => {
+    expect(splitNoticeText("Zapisano dostawę - 3 pozycje trafiły do magazynu.")).toEqual({
       title: "Zapisano dostawę",
       description: "3 pozycje trafiły do magazynu.",
     });
   });
 
-  it("splitNoticeText — zdanie", () => {
+  it("splitNoticeText - zdanie", () => {
     expect(splitNoticeText("Operacja zakończona. Sprawdź listę pozycji.")).toEqual({
       title: "Operacja zakończona.",
       description: "Sprawdź listę pozycji.",
     });
   });
 
-  it("splitNoticeText — krótki tekst bez podziału", () => {
+  it("splitNoticeText - krótki tekst bez podziału", () => {
     expect(splitNoticeText("Zapisano.")).toEqual({ title: "Zapisano." });
   });
 
-  it("resolveNoticeCopy — jawny tytuł", () => {
+  it("resolveNoticeCopy - jawny tytuł", () => {
     expect(
       resolveNoticeCopy({
         title: "Błąd zapisu",
@@ -50,7 +50,7 @@ describe("notice-content", () => {
     });
   });
 
-  it("noticeToastProps — string", () => {
+  it("noticeToastProps - string", () => {
     expect(noticeToastProps("Zapisano zmiany.", "success")).toEqual({
       title: "Zapisano zmiany.",
       description: undefined,
@@ -59,7 +59,7 @@ describe("notice-content", () => {
     });
   });
 
-  it("noticeToastProps — obiekt z tytułem", () => {
+  it("noticeToastProps - obiekt z tytułem", () => {
     expect(
       noticeToastProps({
         title: "Dodano pozycje zębowe",

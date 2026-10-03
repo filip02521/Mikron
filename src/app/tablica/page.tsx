@@ -183,7 +183,7 @@ export default async function SalesBoardPage({
       pageTitle={pageTitle}
       previewHint={
         readOnlyPreview && !previewProfileMissing
-          ? "Podgląd — wysyłanie pytań i oznaczanie odczytów są wyłączone."
+          ? "Podgląd - wysyłanie pytań i oznaczanie odczytów są wyłączone."
           : undefined
       }
       currentSalesPersonId={salesPersonId}
@@ -208,7 +208,7 @@ export default async function SalesBoardPage({
       {previewProfileMissing ? (
         <Alert tone="warning" className="mb-4">
           Handlowiec <strong>{salesPersonName}</strong> nie ma powiązanego konta użytkownika.
-          Pokazujemy ogólną tablicę działu — stan odczytów i powiadomień dotyczy Twojego konta,
+          Pokazujemy ogólną tablicę działu - stan odczytów i powiadomień dotyczy Twojego konta,
           nie tego handlowca.
         </Alert>
       ) : null}

@@ -14,7 +14,7 @@ export function NotatnikListFilterBar({
   placeholder = "Szukaj po kliencie, numerze ZK lub produkcie…",
   idleHint = "Filtruj listę ZK po kliencie, numerze lub skrócie produktu.",
   activeHint = "Wyniki z aktywnej listy ZK.",
-  emptyMatchHint = "Brak dopasowań — sprawdź numer ZK, nazwę klienta lub fragment produktu.",
+  emptyMatchHint = "Brak dopasowań - sprawdź numer ZK, nazwę klienta lub fragment produktu.",
   searchLabel = "Szukaj na liście ZK",
   visibleLabel,
   enableShortcut = true,

@@ -33,7 +33,7 @@ export type WarehouseInventorySummary = {
 export const WAREHOUSE_SHELF_DEFAULT = "Odbiór";
 
 /** Pozycje bez wpisanego regału (po normalizacji i tak wyświetlane jako Odbiór). */
-export const WAREHOUSE_SHELF_UNASSIGNED = "— Nie przypisano";
+export const WAREHOUSE_SHELF_UNASSIGNED = "- Nie przypisano";
 
 export function normalizeShelfLabel(raw: string | null | undefined): string {
   const s = raw?.trim();
@@ -98,7 +98,7 @@ function quantityLabels(order: IndividualOrder, kind: WarehouseInventoryKind): {
     order.delivered_quantity && order.delivered_quantity !== "-"
       ? order.delivered_quantity
       : "0";
-  const ordered = order.quantity && order.quantity !== "-" ? order.quantity : "—";
+  const ordered = order.quantity && order.quantity !== "-" ? order.quantity : "-";
 
   if (kind === "pickup_partial") {
     const progress = getDeliveryProgress(order.quantity, delivered);
@@ -109,12 +109,12 @@ function quantityLabels(order: IndividualOrder, kind: WarehouseInventoryKind): {
   }
 
   if (kind === "informacja_ready") {
-    return { onShelf: "—", label: "Informacja — bez ilości" };
+    return { onShelf: "-", label: "Informacja - bez ilości" };
   }
 
   return {
     onShelf: delivered !== "0" ? delivered : ordered,
-    label: ordered !== "—" ? `${ordered} szt.` : delivered,
+    label: ordered !== "-" ? `${ordered} szt.` : delivered,
   };
 }
 
@@ -198,7 +198,7 @@ export function kindLabel(kind: WarehouseInventoryKind): string {
 }
 
 export function waitingLabel(row: WarehouseInventoryRow): string {
-  const since = row.waitingSince ? formatPlDate(row.waitingSince.slice(0, 10)) : "—";
+  const since = row.waitingSince ? formatPlDate(row.waitingSince.slice(0, 10)) : "-";
   const days =
     row.waitingDays === 0
       ? "dziś"

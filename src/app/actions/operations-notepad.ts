@@ -259,7 +259,7 @@ export async function actionReorderOperationsNotes(
 
   if (countError) throw new Error(countError.message);
   if (activeCount !== uniqueIds.length) {
-    throw new Error("Niekompletna lista notatek — odśwież stronę i spróbuj ponownie.");
+    throw new Error("Niekompletna lista notatek - odśwież stronę i spróbuj ponownie.");
   }
 
   const now = new Date().toISOString();

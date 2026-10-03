@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildSupplierContactUi } from "./supplier-contact";
 
 describe("buildSupplierContactUi", () => {
-  it("mail — adres + email do kopiowania z badge", () => {
+  it("mail - adres + email do kopiowania z badge", () => {
     const ui = buildSupplierContactUi("MAILOWO", "zamowienia@dostawca.pl");
     expect(ui.contactLink).toEqual({
       kind: "mailto",
@@ -12,13 +12,13 @@ describe("buildSupplierContactUi", () => {
     expect(ui.email).toBe("zamowienia@dostawca.pl");
   });
 
-  it("telefon — link tel:", () => {
+  it("telefon - link tel:", () => {
     const ui = buildSupplierContactUi("TELEFONICZNIE", "+48 22 123 45 67");
     expect(ui.contactLink?.kind).toBe("tel");
     expect(ui.contactLink?.href).toMatch(/^tel:/);
   });
 
-  it("internet — link www", () => {
+  it("internet - link www", () => {
     const ui = buildSupplierContactUi("PRZEZ INTERNET", "https://sklep.example.com");
     expect(ui.contactLink).toMatchObject({
       kind: "url",
@@ -26,7 +26,7 @@ describe("buildSupplierContactUi", () => {
     });
   });
 
-  it("internet — www bez protokołu", () => {
+  it("internet - www bez protokołu", () => {
     const ui = buildSupplierContactUi("PRZEZ INTERNET", "www.sklep.example.com");
     expect(ui.contactLink).toMatchObject({
       kind: "url",
@@ -35,7 +35,7 @@ describe("buildSupplierContactUi", () => {
     });
   });
 
-  it("internet — domena bez www", () => {
+  it("internet - domena bez www", () => {
     const ui = buildSupplierContactUi("PRZEZ INTERNET", "sklep.example.com/zamowienia");
     expect(ui.contactLink?.kind).toBe("url");
     expect(ui.contactLink?.href).toContain("sklep.example.com");
@@ -48,7 +48,7 @@ describe("buildSupplierContactUi", () => {
     expect(ui.copyText).toBeNull();
   });
 
-  it("MAILOWO + URL — nie linkuje strony przy odznace mail", () => {
+  it("MAILOWO + URL - nie linkuje strony przy odznace mail", () => {
     const ui = buildSupplierContactUi("MAILOWO", "https://sklep.example.com");
     expect(ui.contactLink).toBeNull();
     expect(ui.copyText).toBe("https://sklep.example.com");

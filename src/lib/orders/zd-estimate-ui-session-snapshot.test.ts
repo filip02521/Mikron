@@ -112,7 +112,7 @@ describe("zd-estimate-ui-session-snapshot", () => {
     ).toBeNull();
   });
 
-  it("akceptuje pusty ordersBaseUrl (fallback) — nie kasuje sesji przy restore", () => {
+  it("akceptuje pusty ordersBaseUrl (fallback) - nie kasuje sesji przy restore", () => {
     const snapshot = buildZdEstimateUiSessionSnapshot({
       linesBase: [],
       lines: [],

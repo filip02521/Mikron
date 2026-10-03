@@ -46,7 +46,7 @@ export function SupplierCycleField({
 
   const fieldHint =
     isCustom && value.trim() && !parseOk
-      ? "Nie rozpoznano formatu — użyj np. 6, 6 tyg., 4 miesiące."
+      ? "Nie rozpoznano formatu - użyj np. 6, 6 tyg., 4 miesiące."
       : numericOnly
         ? "Sama liczba oznacza tygodnie. Dla miesięcy dopisz „miesiące”, np. 4 miesiące."
         : undefined;

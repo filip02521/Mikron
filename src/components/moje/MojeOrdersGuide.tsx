@@ -26,7 +26,7 @@ export function MojeOrdersHelp() {
 
   return (
     <HelpPopover
-      label="Pomoc — jak czytać listę Moje zamówienia"
+      label="Pomoc - jak czytać listę Moje zamówienia"
       title="Moje zamówienia"
       shortLabel="Lista"
       icon={<GuideIcon />}
@@ -34,7 +34,7 @@ export function MojeOrdersHelp() {
     >
       <HelpBlock title="Co tu jest">
         <p>
-          U góry strony <strong className="font-medium text-slate-800">Start dnia</strong> — jedna
+          U góry strony <strong className="font-medium text-slate-800">Start dnia</strong> - jedna
           kolejka: gotowy towar, przypomnienia ZK i tablica. Poniżej pełna lista prośb u
           dostawców.
         </p>
@@ -55,49 +55,49 @@ export function MojeOrdersHelp() {
         <ul className="list-disc space-y-1.5 pl-4">
           <li>
             <strong className="font-medium text-slate-800">Ikona ?</strong> przy nagłówku sekcji
-            lub przy wierszu — najedź lub kliknij, aby zobaczyć wyjaśnienie
+            lub przy wierszu - najedź lub kliknij, aby zobaczyć wyjaśnienie
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Pierwsza linia</strong> — zawsze nazwa
+            <strong className="font-medium text-slate-800">Pierwsza linia</strong> - zawsze nazwa
             towaru (produkt)
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Druga linia</strong> — dostawca i
+            <strong className="font-medium text-slate-800">Druga linia</strong> - dostawca i
             ewentualnie klient
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Status</strong> — co się dzieje z
+            <strong className="font-medium text-slate-800">Status</strong> - co się dzieje z
             prośbą (pod produktem lub po prawej)
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Zielony przycisk</strong> — potwierdź
+            <strong className="font-medium text-slate-800">Zielony przycisk</strong> - potwierdź
             odbiór, informację od magazynu albo anulowanie
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Anuluj</strong> — dyskretny link po
+            <strong className="font-medium text-slate-800">Anuluj</strong> - dyskretny link po
             prawej przy linii; wycofuje całą pozycję
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Rezygnuj z reszty</strong> — przy
+            <strong className="font-medium text-slate-800">Rezygnuj z reszty</strong> - przy
             częściowej dostawie wycofuje sztuki jeszcze u dostawcy (to, co nie dotarło na magazyn)
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Zmień ilość</strong> — wybierz dowolną
+            <strong className="font-medium text-slate-800">Zmień ilość</strong> - wybierz dowolną
             liczbę sztuk do wycofania; przy jednym produkcie także w menu{" "}
             <HelpMenuGlyph className="align-[-2px]" />
           </li>
           <li>
             <strong className="font-medium text-slate-800">Menu</strong>{" "}
-            <HelpMenuGlyph className="align-[-2px]" /> — klient, edycja prośby, anulowanie całej
+            <HelpMenuGlyph className="align-[-2px]" /> - klient, edycja prośby, anulowanie całej
             grupy lub zmiana ilości (jedna pozycja)
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Cofnij</strong> — po anulowaniu,
+            <strong className="font-medium text-slate-800">Cofnij</strong> - po anulowaniu,
             odbiorze lub usunięciu z listy masz kilka sekund na cofnięcie (komunikat u dołu ekranu
             lub skrót klawiszowy)
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Rozwiń</strong> — produkty i dodatkowe
+            <strong className="font-medium text-slate-800">Rozwiń</strong> - produkty i dodatkowe
             szczegóły
           </li>
         </ul>
@@ -106,14 +106,14 @@ export function MojeOrdersHelp() {
       <HelpBlock title="Rodzaje prośb">
         <ul className="list-disc space-y-1.5 pl-4">
           <li>
-            <strong className="font-medium text-slate-800">Zamówienie u dostawcy</strong> — zwykły
+            <strong className="font-medium text-slate-800">Zamówienie u dostawcy</strong> - zwykły
             wiersz, bez dodatkowego oznaczenia.
           </li>
           <li>
-            <strong className="font-medium text-slate-800">{INFORMACJA_FLOW_DIRECT.label}</strong> —
+            <strong className="font-medium text-slate-800">{INFORMACJA_FLOW_DIRECT.label}</strong> -
             badge <strong className="font-medium text-violet-900">Informacyjna</strong>, fioletowa
             krawędź wiersza; magazyn czeka na towar i wysyła e-mail po przyjęciu. Prośby „Brak na
-            stanie” nie trafiają tutaj — obsługuje je dział zakupów.
+            stanie” nie trafiają tutaj - obsługuje je dział zakupów.
           </li>
         </ul>
       </HelpBlock>

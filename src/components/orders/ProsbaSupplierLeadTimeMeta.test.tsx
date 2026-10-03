@@ -57,7 +57,7 @@ describe("ProsbaSupplierLeadTimeMeta", () => {
     expect(screen.queryByText("Średni czas")).toBeNull();
   });
 
-  it("wariant underLink — subtelna linia pod powiązaniem produktu", () => {
+  it("wariant underLink - subtelna linia pod powiązaniem produktu", () => {
     render(
       <ProsbaSupplierLeadTimeMeta
         variant="underLink"

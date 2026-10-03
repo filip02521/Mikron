@@ -41,7 +41,7 @@ const INCLUDE_HINT: Record<ZkCaseNoteProsbaStatus, string | null> = {
   planned:
     "Przy zapisie notatki treść trafi do nowej lub uzupełnianej prośby.",
   planned_pending_attach:
-    "Masz otwartą prośbę — możesz dodać lub zaktualizować notatkę od razu.",
+    "Masz otwartą prośbę - możesz dodać lub zaktualizować notatkę od razu.",
   in_prosba:
     "Notatka jest już w prośbie. Edycja zaktualizuje uwagi tam, gdzie to bezpieczne.",
 };
@@ -194,12 +194,12 @@ export function ZkWatchNoteSection({
             ? result.syncedOpenProsbaCount > 0 && result.pendingOpenProsbaCount === 0
               ? `Włączono i uzupełniono uwagi w prośbie (${polishPozycjeLabel(result.syncedOpenProsbaCount)}). Zakupy widzą notatkę.`
               : result.syncedOpenProsbaCount > 0
-                ? "Włączono i uzupełniono puste uwagi. Pozostały pozycje z inną treścią — możesz je zaktualizować."
+                ? "Włączono i uzupełniono puste uwagi. Pozostały pozycje z inną treścią - możesz je zaktualizować."
                 : noteProsbaState.openOrders.length > 0 &&
                     noteProsbaState.withoutNote.length > 0
                   ? "Włączono dołączanie. Możesz od razu dodać / zaktualizować notatkę w otwartej prośbie."
-                  : "Włączono — notatka trafi do nowej / uzupełnianej prośby. Zmiany notatki zaktualizują też otwarte prośby."
-            : "Wyłączono — notatka zostaje tylko u Ciebie. Treść już w otwartych prośbach zostaje (zakupy nadal ją widzą), dopóki jej nie zmienisz / nie usuniesz."
+                  : "Włączono - notatka trafi do nowej / uzupełnianej prośby. Zmiany notatki zaktualizują też otwarte prośby."
+            : "Wyłączono - notatka zostaje tylko u Ciebie. Treść już w otwartych prośbach zostaje (zakupy nadal ją widzą), dopóki jej nie zmienisz / nie usuniesz."
         );
       } catch (e) {
         setError(
@@ -291,7 +291,7 @@ export function ZkWatchNoteSection({
           />
           {includeInProsba && noteProsbaState.openOrders.length > 0 ? (
             <p className={cn(salesTypography.rowMeta, "text-amber-900/90")}>
-              Masz włączone „Dołącz do prośby” — zapis zaktualizuje uwagi w otwartej
+              Masz włączone „Dołącz do prośby” - zapis zaktualizuje uwagi w otwartej
               prośbie (tam, gdzie była poprzednia treść ze sprawy ZK albo brak uwag).
             </p>
           ) : null}

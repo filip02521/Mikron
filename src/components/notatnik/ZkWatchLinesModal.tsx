@@ -187,7 +187,7 @@ export function ZkWatchLinesModal({
                   </span>
                 ) : allScopeExcluded ? (
                   <span className={cn(salesTypography.rowBody, "font-medium text-slate-700")}>
-                    Wszystkie pozycje pominięte — bez prośby
+                    Wszystkie pozycje pominięte - bez prośby
                   </span>
                 ) : (
                   <span className={salesTypography.rowMeta}>Brak szczegółowej listy towaru</span>
@@ -256,7 +256,7 @@ export function ZkWatchLinesModal({
                 </p>
                 <p className="mt-1 text-xs leading-relaxed text-amber-900/85">
                   {hiddenNewLineCount > 0 && newLineCount === 0
-                    ? "Nowe pozycje są poza wybranym zakresem — rozwiń pełne ZK w sekcji „Lista towaru”, aby je zobaczyć i ewentualnie dodać do prośby."
+                    ? "Nowe pozycje są poza wybranym zakresem - rozwiń pełne ZK w sekcji „Lista towaru”, aby je zobaczyć i ewentualnie dodać do prośby."
                     : "Pozycje oznaczone „Nowa” nie są jeszcze w prośbie. Użyj przycisku na karcie ZK, aby wysłać uzupełniającą prośbę tylko dla brakujących pozycji."}
                 </p>
               </div>

@@ -104,7 +104,7 @@ function formatRangeLabel(startDate: string, endDate: string): string {
     const months = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"];
     return `${day} ${months[m - 1]} ${y}`;
   };
-  return startDate === endDate ? fmt(startDate) : `${fmt(startDate)} – ${fmt(endDate)}`;
+  return startDate === endDate ? fmt(startDate) : `${fmt(startDate)} - ${fmt(endDate)}`;
 }
 
 function vacationDuration(startDate: string, endDate: string): number {
@@ -675,7 +675,7 @@ export function VacationCalendar({
 
                   {period.note ? (
                     <div className="rounded-md border border-slate-100 bg-white px-2.5 py-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Notatka</p>
+                      <p className="text-[10px] font-semibold text-slate-400">Notatka</p>
                       <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{period.note}</p>
                     </div>
                   ) : null}
@@ -728,7 +728,7 @@ export function VacationCalendar({
                           value={selectedDelegateId}
                           onChange={(e) => setSelectedDelegateId(e.target.value)}
                         >
-                          <option value="">— wybierz zastępcę —</option>
+                          <option value="">- wybierz zastępcę -</option>
                           {delegateOptions
                             .filter((d) => d.id !== sp.linkedUserId)
                             .map((d) => (
@@ -865,7 +865,7 @@ export function VacationCalendar({
                   setVacationForm({ ...vacationForm, salesPersonId: e.target.value })
                 }
               >
-                <option value="">— wybierz handlowca —</option>
+                <option value="">- wybierz handlowca -</option>
                 {salesPeople.map((sp) => (
                   <option key={sp.id} value={sp.id}>
                     {sp.name}
@@ -933,7 +933,7 @@ export function VacationCalendar({
           <div
             key={label}
             className={cn(
-              "border-b border-r border-slate-100 px-1.5 py-2.5 text-center font-semibold uppercase tracking-wider text-[10px]",
+              "border-b border-r border-slate-100 px-1.5 py-2.5 text-center font-semibold text-[10px]",
               idx >= 5 ? "bg-slate-100/60 text-slate-400" : "text-slate-400"
             )}
           >
@@ -1007,7 +1007,7 @@ export function VacationCalendar({
                               c.text
                             )}
                             onClick={(e) => onBarClick(e, p.period.id, p.salesPersonId)}
-                            title={`${p.salesPersonName} — ${staffVacationCategoryShort(p.period.category)}`}
+                            title={`${p.salesPersonName} - ${staffVacationCategoryShort(p.period.category)}`}
                           >
                             <span className="truncate">
                               {p.salesPersonName}
@@ -1053,7 +1053,7 @@ export function VacationCalendar({
                               c.dot
                             )}
                             onClick={(e) => onBarClick(e, p.period.id, p.salesPersonId)}
-                            title={`${p.salesPersonName} — ${staffVacationCategoryShort(p.period.category)}`}
+                            title={`${p.salesPersonName} - ${staffVacationCategoryShort(p.period.category)}`}
                           />
                         );
                       })}

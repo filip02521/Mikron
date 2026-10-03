@@ -386,7 +386,7 @@ export function OrderFormClient({
       if (!prefill.lines.length) {
         setFormNotice({
           title: "Brak pozycji z ZK",
-          text: "To ZK nie ma pozycji do prośby — wróć do notatnika albo odśwież kartę ZK.",
+          text: "To ZK nie ma pozycji do prośby - wróć do notatnika albo odśwież kartę ZK.",
           tone: "warning",
         });
         zkPrefillAppliedRef.current = true;
@@ -409,7 +409,7 @@ export function OrderFormClient({
           if (!fromWatch) {
             setFormNotice({
               title: "Nie udało się wczytać ZK",
-              text: "ZK jest zamknięte, niedostępne albo wygasło — wróć do notatnika.",
+              text: "ZK jest zamknięte, niedostępne albo wygasło - wróć do notatnika.",
               tone: "warning",
             });
             zkPrefillAppliedRef.current = true;
@@ -552,7 +552,7 @@ export function OrderFormClient({
                 }
                 setFormNotice({
                   title: "Nie udało się wczytać ZK",
-                  text: "ZK jest zamknięte, niedostępne albo wygasło — wróć do notatnika.",
+                  text: "ZK jest zamknięte, niedostępne albo wygasło - wróć do notatnika.",
                   tone: "warning",
                 });
                 zkPrefillAppliedRef.current = true;
@@ -572,7 +572,7 @@ export function OrderFormClient({
             clearZkProsbaPrefill();
             setFormNotice({
               title: "Nie udało się wczytać ZK",
-              text: "Brak powiązania z kartą ZK — wróć do notatnika i utwórz prośbę ponownie.",
+              text: "Brak powiązania z kartą ZK - wróć do notatnika i utwórz prośbę ponownie.",
               tone: "warning",
             });
             zkPrefillAppliedRef.current = true;
@@ -608,7 +608,7 @@ export function OrderFormClient({
                 title: "Nie udało się wczytać ZK",
                 text: zkLineKeys?.length
                   ? "Uzupełnij prośbę ręcznie lub wróć do notatnika."
-                  : "ZK jest zamknięte, niedostępne albo wygasło — wróć do notatnika.",
+                  : "ZK jest zamknięte, niedostępne albo wygasło - wróć do notatnika.",
                 tone: "warning",
               });
               zkPrefillAppliedRef.current = true;
@@ -624,7 +624,7 @@ export function OrderFormClient({
             if (!cancelled) {
               setFormNotice({
                 title: "Nie udało się wczytać ZK",
-                text: "ZK jest zamknięte, niedostępne albo wygasło — wróć do notatnika.",
+                text: "ZK jest zamknięte, niedostępne albo wygasło - wróć do notatnika.",
                 tone: "warning",
               });
               zkPrefillAppliedRef.current = true;
@@ -861,9 +861,9 @@ export function OrderFormClient({
         const defaultSuccessText =
           singleGroup && lockedSalesPerson
             ? requestKind === "informacja" && informacjaFlags.informacjaStockOutReorder
-              ? "Prośba zapisana — sygnał „brak na stanie” trafi do zakupów w panelu Dziś (Prośby handlowców)."
+              ? "Prośba zapisana - sygnał „brak na stanie” trafi do zakupów w panelu Dziś (Prośby handlowców)."
               : requestKind === "informacja" && informacjaFlags.informacjaQueueViaDailyPanel
-                ? "Prośba zapisana — zakupy najpierw zamówią u dostawcy, potem magazyn wyśle informację e-mailem."
+                ? "Prośba zapisana - zakupy najpierw zamówią u dostawcy, potem magazyn wyśle informację e-mailem."
                 : formatSubmitResult(r, requestKind, true)
             : procurementSubmitSuccessMessage({
                 count: r.count,
@@ -936,7 +936,7 @@ export function OrderFormClient({
             }) ?? "/zk";
           redirectingToZk = true;
           setSubmitLocked(true);
-          setPendingMessage("Prośba zapisana — wracam do ZK…");
+          setPendingMessage("Prośba zapisana - wracam do ZK…");
           // Po udanym zapisie blokujemy ponowną wysyłkę do unmountu.
           // Jeśli nawigacja się wywali / zawiesi — po safety pokaż sukces lokalnie i odblokuj UI
           // (bez możliwości cichego double-submit: grupy zostaną wyczyszczone jak niżej w recovery).
@@ -1107,7 +1107,7 @@ export function OrderFormClient({
     if (tourDemo) {
       setFormNotice({
         title: "Tryb podglądu",
-        text: "Formularz nie wysyła prośby — to tylko demonstracja.",
+        text: "Formularz nie wysyła prośby - to tylko demonstracja.",
         tone: "warning",
       });
       return;
@@ -1609,7 +1609,7 @@ export function OrderFormClient({
 
           {tourDemo ? (
             <div className="border-b border-amber-200/90 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-950 sm:px-4">
-              Podgląd formularza z przykładowymi pozycjami — edycja i wysyłka są wyłączone.
+              Podgląd formularza z przykładowymi pozycjami - edycja i wysyłka są wyłączone.
             </div>
           ) : null}
 
@@ -1851,7 +1851,7 @@ export function OrderFormClient({
               className="w-full shrink-0 sm:w-auto sm:min-w-[10rem]"
             >
               {tourDemo
-                ? "Podgląd — bez wysyłki"
+                ? "Podgląd - bez wysyłki"
                 : pending || submitLocked
                   ? pendingMessage?.startsWith("Prośba zapisana")
                     ? "Wraca do ZK…"
@@ -1972,7 +1972,7 @@ export function OrderFormClient({
                   hint={
                     submitForOther
                       ? PROSBA_FORM_SECTION_COPY.delegate.hint
-                      : "Prośba powiązana z Twoim kontem — nie trzeba wybierać z listy."
+                      : "Prośba powiązana z Twoim kontem - nie trzeba wybierać z listy."
                   }
                   accent="indigo"
                   icon={<IconUserCog size={17} />}
@@ -2190,7 +2190,7 @@ export function OrderFormClient({
               ? informacjaFlags.informacjaStockOutReorder
                 ? "Sygnały „brak na stanie” trafią do Prośb handlowców w panelu Dziś."
                 : informacjaFlags.informacjaQueueViaDailyPanel
-                  ? "Informacja przez panel Dziś — najpierw Główne/Uzupełniające, potem magazyn."
+                  ? "Informacja przez panel Dziś - najpierw Główne/Uzupełniające, potem magazyn."
                   : "Powiadomienie o stanie magazynowym trafi od razu do kolejki magazynu."
               : "Zamówienia trafiają do panelu dziennego po zapisie kompletnych danych (dostawca, produkt z Subiekta lub ręcznie, ilość)."}
           </p>

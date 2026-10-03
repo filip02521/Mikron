@@ -428,7 +428,7 @@ export function ZkWatchCard({
         watchId: watch.id,
         message: teethDraftsIncomplete
           ? "Najpierw uzupełnij listę zębów dla pozycji ZK."
-          : "Brak pozycji do dodania do prośby — odśwież ZK z Subiekta.",
+          : "Brak pozycji do dodania do prośby - odśwież ZK z Subiekta.",
       });
     }
   }
@@ -446,7 +446,7 @@ export function ZkWatchCard({
       event.preventDefault();
       setError({
         watchId: watch.id,
-        message: "Brak pozycji do dodania do prośby — odśwież ZK z Subiekta.",
+        message: "Brak pozycji do dodania do prośby - odśwież ZK z Subiekta.",
       });
     }
   }
@@ -498,7 +498,7 @@ export function ZkWatchCard({
     "pokaż szczegóły ZK",
   ]
     .filter(Boolean)
-    .join(" — ");
+    .join(" - ");
 
   function handleRowClick(event: MouseEvent<HTMLElement>) {
     if ((event.target as HTMLElement).closest("[data-zk-row-action]")) return;
@@ -644,7 +644,7 @@ export function ZkWatchCard({
                 className={cn("mt-0.5 truncate", salesTypography.rowMeta, "text-slate-600")}
                 title={
                   hasTrackedScope && hiddenOutsideScope > 0
-                    ? `${productPreview} — w podglądzie widać wybrane pozycje; +${hiddenOutsideScope} poz. spoza zakresu`
+                    ? `${productPreview} - w podglądzie widać wybrane pozycje; +${hiddenOutsideScope} poz. spoza zakresu`
                     : productPreview
                 }
               >
@@ -747,7 +747,7 @@ export function ZkWatchCard({
             ) : null}
 
             <ZkWatchOverflowMenu
-              label={`Opcje — ${watch.zk_number}`}
+              label={`Opcje - ${watch.zk_number}`}
               disabled={pending}
               archived={archived}
               readOnly={readOnly || tourPreview}

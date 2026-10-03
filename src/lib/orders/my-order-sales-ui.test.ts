@@ -46,7 +46,7 @@ const baseOrder: IndividualOrder = {
 };
 
 describe("enrichMyOrderSalesUi", () => {
-  it("po oznaczeniu z plikiem zamówienia — handlowiec dostaje nazwę do pobrania", () => {
+  it("po oznaczeniu z plikiem zamówienia - handlowiec dostaje nazwę do pobrania", () => {
     const { zamowienia } = presentMyOrders(
       [
         {
@@ -64,7 +64,7 @@ describe("enrichMyOrderSalesUi", () => {
     expect(line?.teethOrderFileName).toBe("ivoclar-order.xlsx");
   });
 
-  it("zęby Zamowione z teeth_delivery_date — timingLabel z datą i ~N dni rob.", () => {
+  it("zęby Zamowione z teeth_delivery_date - timingLabel z datą i ~N dni rob.", () => {
     const { zamowienia } = presentMyOrders(
       [
         {
@@ -84,7 +84,7 @@ describe("enrichMyOrderSalesUi", () => {
     expect(row?.statusDetail).toMatch(/Planowana dostawa: 08\.05\.2026/);
   });
 
-  it("zęby po terminie — badge danger (nie tylko timingLabel)", () => {
+  it("zęby po terminie - badge danger (nie tylko timingLabel)", () => {
     const { zamowienia } = presentMyOrders(
       [
         {
@@ -102,7 +102,7 @@ describe("enrichMyOrderSalesUi", () => {
     expect(zamowienia[0]?.badgeVariant).toBe("danger");
   });
 
-  it("zęby ze stałym ETA — teethEtaSource fixed", () => {
+  it("zęby ze stałym ETA - teethEtaSource fixed", () => {
     const { zamowienia } = presentMyOrders(
       [
         {
@@ -121,7 +121,7 @@ describe("enrichMyOrderSalesUi", () => {
     expect(zamowienia[0]?.teethEtaSource).toBe("fixed");
   });
 
-  it("zęby z ręcznym override przy stałym ETA — teethEtaSource manual", () => {
+  it("zęby z ręcznym override przy stałym ETA - teethEtaSource manual", () => {
     const { zamowienia } = presentMyOrders(
       [
         {
@@ -194,7 +194,7 @@ describe("enrichMyOrderSalesUi", () => {
     expect(ui.subline).toBeNull();
   });
 
-  it("odbiór części grupy — tylko liczba pozostałych, bez subline X/Y", () => {
+  it("odbiór części grupy - tylko liczba pozostałych, bez subline X/Y", () => {
     const row = presentMyOrders(
       [{ ...baseOrder, status: "Zrealizowane" }],
       []
@@ -220,7 +220,7 @@ describe("enrichMyOrderSalesUi", () => {
     expect(ui.sortPriority).toBe(1);
   });
 
-  it("zęby zamówione — bez języka planowej dostawy", () => {
+  it("zęby zamówione - bez języka planowej dostawy", () => {
     const row = presentMyOrder(
       {
         ...baseOrder,
@@ -238,7 +238,7 @@ describe("enrichMyOrderSalesUi", () => {
     expect(row.statusDetail).not.toContain("planowej dostawie");
   });
 
-  it("zęby przed zamówieniem — neutralny copy", () => {
+  it("zęby przed zamówieniem - neutralny copy", () => {
     const row = presentMyOrder(
       {
         ...baseOrder,
@@ -253,7 +253,7 @@ describe("enrichMyOrderSalesUi", () => {
     expect(row.statusDetail).toContain("działu dostaw");
   });
 
-  it("zęby w Weryfikacji — neutralny copy jak zwykłe produkty", () => {
+  it("zęby w Weryfikacji - neutralny copy jak zwykłe produkty", () => {
     const row = presentMyOrder(
       {
         ...baseOrder,
@@ -302,7 +302,7 @@ describe("enrichMyOrderSalesUi", () => {
     expect(ui.sortPriority).toBe(10);
   });
 
-  it("informacja stock_auto — subline o Subiekcie, nie magazynie", () => {
+  it("informacja stock_auto - subline o Subiekcie, nie magazynie", () => {
     const row = presentMyOrders(
       [
         {
@@ -406,7 +406,7 @@ describe("summarizeMyOrdersInbox", () => {
   });
 });
 
-describe("enrichMyOrderSalesUi — termin", () => {
+describe("enrichMyOrderSalesUi - termin", () => {
   it("nie powtarza komunikatu o braku terminu, gdy jest szacunek", () => {
     const row = presentMyOrders([baseOrder], [
       {
@@ -430,9 +430,9 @@ describe("verificationSublineFromDetail", () => {
   it("skraca komunikat weryfikacji do jednej linii", () => {
     expect(
       verificationSublineFromDetail(
-        "Dział dostaw dopasuje dostawcę. Prośba jest zapisana — nie musisz nic uzupełniać."
+        "Dział dostaw dopasuje dostawcę. Prośba jest zapisana - nie musisz nic uzupełniać."
       )
-    ).toBe("Zakupy dopasują dostawcę — bez Twojej akcji");
+    ).toBe("Zakupy dopasują dostawcę - bez Twojej akcji");
     expect(verificationSublineFromDetail(null)).toContain("dopracują");
   });
 });
@@ -461,7 +461,7 @@ describe("myOrderMetaFields", () => {
 describe("parseStatusDetailMetaParts", () => {
   it("wyciąga typ i datę zamówienia z statusDetail", () => {
     const parsed = parseStatusDetailMetaParts(
-      "Osobne domówienie tylko na Twoją prośbę — poza planową dostawą · Zamówiono 06.05.2026"
+      "Osobne domówienie tylko na Twoją prośbę - poza planową dostawą · Zamówiono 06.05.2026"
     );
     expect(parsed.orderTypeLabel).toBe("Poza planem");
     expect(parsed.orderedAtLabel).toBe("06.05.2026");
@@ -470,7 +470,7 @@ describe("parseStatusDetailMetaParts", () => {
 
   it("oddziela wspólny termin od daty zamówienia", () => {
     const parsed = parseStatusDetailMetaParts(
-      "Osobne domówienie tylko na Twoją prośbę — poza planową dostawą · Zamówiono 11.06.2026 · Wspólny termin dla wszystkich pozycji."
+      "Osobne domówienie tylko na Twoją prośbę - poza planową dostawą · Zamówiono 11.06.2026 · Wspólny termin dla wszystkich pozycji."
     );
     expect(parsed.orderTypeLabel).toBe("Poza planem");
     expect(parsed.orderedAtLabel).toBe("11.06.2026");

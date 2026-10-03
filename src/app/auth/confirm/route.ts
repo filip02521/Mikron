@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
   destination.searchParams.set(
     "blad",
-    "Nieprawidłowy link — poproś administratora o nowy."
+    "Nieprawidłowy link - poproś administratora o nowy."
   );
   return NextResponse.redirect(destination);
 }

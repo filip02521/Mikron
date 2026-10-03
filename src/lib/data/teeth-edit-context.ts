@@ -67,7 +67,7 @@ export async function fetchTeethOrderEditContext(orderId: string): Promise<Teeth
   let editBlockedReason: string | null = null;
   if (!canEdit) {
     if (order.ordered_at?.trim()) {
-      editBlockedReason = "Pozycja została już zamówiona u dostawcy — użyj „Cofnij zamówienie” w historii.";
+      editBlockedReason = "Pozycja została już zamówiona u dostawcy - użyj „Cofnij zamówienie” w historii.";
     } else if (order.status === "Anulowane") {
       editBlockedReason = "Pozycja jest anulowana.";
     } else if (!isIndividualOrderEditable(order)) {

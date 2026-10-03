@@ -17,7 +17,7 @@ function mockSupabase(rows: unknown[]) {
 }
 
 describe("searchProductCatalogSuggestions", () => {
-  it("zwraca produkty z ostatnio używanym dostawcą (format PostgREST — obiekt)", async () => {
+  it("zwraca produkty z ostatnio używanym dostawcą (format PostgREST - obiekt)", async () => {
     mockSupabase([
       {
         subiekt_tw_id: 42,

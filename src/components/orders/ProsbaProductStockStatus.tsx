@@ -132,7 +132,7 @@ export function ProsbaTeethExemptHint({
           Produkt z listy zębów
         </p>
         <p className="mt-0.5 text-xs leading-relaxed text-violet-900/90">
-          Stan magazynowy nie jest weryfikowany — prośba przejdzie bez ostrzeżeń o dostępności.
+          Stan magazynowy nie jest weryfikowany - prośba przejdzie bez ostrzeżeń o dostępności.
         </p>
       </div>
     </div>

@@ -60,19 +60,19 @@ export const SUPPLIER_HUB_TAB_COPY: Record<
 > = {
   cards: {
     label: "Karty dostawców",
-    hint: "Nazwa, kontakt, zapas i częstotliwość — bez edycji dat",
+    hint: "Nazwa, kontakt, zapas i częstotliwość - bez edycji dat",
   },
   schedules: {
     label: "Terminy zamówień",
-    hint: "Ostatnie, następne i przesunięcie — tylko daty w cyklu",
+    hint: "Ostatnie, następne i przesunięcie - tylko daty w cyklu",
   },
   vacations: {
     label: "Urlopy",
-    hint: "Okresy niedostępności — wpływ na wyliczone terminy",
+    hint: "Okresy niedostępności - wpływ na wyliczone terminy",
   },
   inactive: {
     label: "Nieaktywni",
-    hint: "Ukryci w panelu dziennym — przywrócenie aktywności",
+    hint: "Ukryci w panelu dziennym - przywrócenie aktywności",
   },
 };
 
@@ -87,12 +87,12 @@ export function supplierHubShellDescription(
   switch (tab) {
     case "cards":
       return context === "admin"
-        ? "Kontakt, cykl i częstotliwość — bez dat. Terminy w zakładce obok · tutaj możliwe trwałe usuwanie."
-        : "Kontakt, cykl i częstotliwość — bez dat. Terminy w zakładce obok.";
+        ? "Kontakt, cykl i częstotliwość - bez dat. Terminy w zakładce obok · tutaj możliwe trwałe usuwanie."
+        : "Kontakt, cykl i częstotliwość - bez dat. Terminy w zakładce obok.";
     case "schedules":
-      return "Daty w harmonogramie. Ustawienia karty — w Kartach dostawców.";
+      return "Daty w harmonogramie. Ustawienia karty - w Kartach dostawców.";
     case "vacations":
-      return "Okresy niedostępności dostawców — wpływ na wyliczone terminy.";
+      return "Okresy niedostępności dostawców - wpływ na wyliczone terminy.";
     case "inactive":
       return "Ukryci w panelu dziennym. Przywróć aktywność lub edytuj terminy w harmonogramie.";
   }

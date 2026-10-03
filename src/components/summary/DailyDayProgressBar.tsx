@@ -83,7 +83,7 @@ export function DailyDayProgressBar({
           className
         )}
       >
-        Brak pozycji do domknięcia dziś — sprawdź plan tygodnia poniżej.
+        Brak pozycji do domknięcia dziś - sprawdź plan tygodnia poniżej.
       </div>
     );
   }
@@ -129,7 +129,7 @@ export function DailyDayProgressBar({
         aria-valuenow={combined.percent}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label="Postęp dnia — harmonogram i prośby handlowców"
+        aria-label="Postęp dnia - harmonogram i prośby handlowców"
       >
         {urgentDoneWidth > 0 ? (
           <div

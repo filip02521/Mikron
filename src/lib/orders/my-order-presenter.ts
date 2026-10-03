@@ -224,7 +224,7 @@ type MyOrderRowCore = {
   statusTitle: string;
   statusDetail: string | null;
   timingLabel: string | null;
-  badgeVariant: "info" | "warning" | "success" | "default" | "purple" | "danger";
+  badgeVariant: "info" | "warning" | "success" | "default" | "info" | "danger";
   rowColor: string;
   /** Czy pozycja jest „zęby" (denormalizowane z individual_orders). */
   isTeeth?: boolean;
@@ -537,7 +537,7 @@ function groupProductSummary(lines: MyOrderLine[]): string {
   if (lines.length === 1) return lines[0].product;
   const n = lines.length;
   const word = n === 1 ? "produkt" : n < 5 ? "produkty" : "produktów";
-  return `${n} ${word} — jedna dostawa u dostawcy`;
+  return `${n} ${word} - jedna dostawa u dostawcy`;
 }
 
 function appendGroupDetail(detail: string | null, lineCount: number): string | null {
@@ -578,7 +578,7 @@ function orderTypeHintForSales(orderType: OrderType): string | null {
     return "W planowej dostawie do tego dostawcy (wspólne zamówienie z innymi towarami)";
   }
   if (orderType === "Poboczne") {
-    return "Osobne domówienie tylko na Twoją prośbę — poza planową dostawą";
+    return "Osobne domówienie tylko na Twoją prośbę - poza planową dostawą";
   }
   return null;
 }
@@ -620,7 +620,7 @@ function teethHandoverStatusDetail(
   progress: DeliveryProgress
 ): string {
   if (!progress.hasNumericQty || progress.ordered == null) {
-    return "Dostawa jest doręczana osobiście — nie trafia na regał. Potwierdź odbiór po otrzymaniu od magazynu.";
+    return "Dostawa jest doręczana osobiście - nie trafia na regał. Potwierdź odbiór po otrzymaniu od magazynu.";
   }
   const q = progress.ordered;
   const d = progress.delivered;
@@ -629,9 +629,9 @@ function teethHandoverStatusDetail(
       progress.remaining != null && progress.remaining > 0
         ? ` Reszta (${progress.remaining} szt.) czeka u dostawcy.`
         : "";
-    return `Magazyn przyjął ${d} z ${q} szt.${remaining} Odbiór osobisty — potwierdź, gdy otrzymasz od magazynu.`;
+    return `Magazyn przyjął ${d} z ${q} szt.${remaining} Odbiór osobisty - potwierdź, gdy otrzymasz od magazynu.`;
   }
-  return `Magazyn przyjął ${d} z ${q} szt. Odbierz osobiście — nie trafia na regał. Potwierdź odbiór po doręczeniu.`;
+  return `Magazyn przyjął ${d} z ${q} szt. Odbierz osobiście - nie trafia na regał. Potwierdź odbiór po doręczeniu.`;
 }
 
 function presentInformacja(
@@ -685,10 +685,10 @@ function presentInformacja(
     orderedAtLabel: order.ordered_at?.trim()
       ? formatPlDate(order.ordered_at.slice(0, 10))
       : null,
-    supplierName: order.supplier?.name ?? "—",
+    supplierName: order.supplier?.name ?? "-",
     product: order.products,
     symbol: order.symbol && order.symbol !== "-" ? order.symbol : null,
-    quantityLabel: "—",
+    quantityLabel: "-",
     progressLabel: null,
     rowColor: SUMMARY_COLORS.informacja,
     isTeeth: Boolean(order.is_teeth),
@@ -752,7 +752,7 @@ function presentInformacja(
         statusTitle: INFORMACJA_FLOW_SALES_DIRECT.statusTitle,
         statusDetail: INFORMACJA_FLOW_SALES_DIRECT.statusDetail,
         timingLabel: zdTimingLabel,
-        badgeVariant: "purple",
+        badgeVariant: "info",
       });
     case "Zrealizowane":
       return finalize({
@@ -838,7 +838,7 @@ function presentZamowienie(
     orderedAtLabel: order.ordered_at?.trim()
       ? formatPlDate(order.ordered_at.slice(0, 10))
       : null,
-    supplierName: order.supplier?.name ?? "—",
+    supplierName: order.supplier?.name ?? "-",
     product: order.products,
     symbol: order.symbol && order.symbol !== "-" ? order.symbol : null,
     quantityLabel:
@@ -992,7 +992,7 @@ function presentZamowienie(
           statusTitle: TEETH_SALES_STATUS_VERIFICATION_TITLE,
           statusDetail: TEETH_SALES_STATUS_VERIFICATION_DETAIL,
           timingLabel,
-          badgeVariant: "purple",
+          badgeVariant: "info",
           rowColor: SUMMARY_COLORS.historyNew,
         });
       }
@@ -1007,7 +1007,7 @@ function presentZamowienie(
           statusTitle: TEETH_SALES_STATUS_NEW_TITLE,
           statusDetail: TEETH_SALES_STATUS_NEW_DETAIL,
           timingLabel,
-          badgeVariant: "purple",
+          badgeVariant: "info",
           rowColor: SUMMARY_COLORS.historyNew,
         });
       }
@@ -1019,7 +1019,7 @@ function presentZamowienie(
             .filter(Boolean)
             .join(" "),
         timingLabel,
-        badgeVariant: "purple",
+        badgeVariant: "info",
         rowColor: SUMMARY_COLORS.historyNew,
       });
     case "Zamowione":
@@ -1086,7 +1086,7 @@ function presentZamowienie(
             ? teethHandoverStatusDetail(order, progress)
             : [
                 orderTypeHintForSales(order.order_type),
-                "Całość jest na magazynie. Potwierdź odbiór — wtedy wpis zniknie z listy.",
+                "Całość jest na magazynie. Potwierdź odbiór - wtedy wpis zniknie z listy.",
               ]
                 .filter(Boolean)
                 .join(" · "),

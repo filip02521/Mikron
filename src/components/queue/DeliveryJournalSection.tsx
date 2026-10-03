@@ -682,7 +682,7 @@ export function DeliveryJournalSection({
               <p className={cn(panelTypography.sectionDesc, "mt-0.5")}>
                 {isViewingToday ? (
                   <>
-                    {formatTodayLabel(journal.date)} — {summaryLine}.
+                    {formatTodayLabel(journal.date)} - {summaryLine}.
                     {canEditTodayEntries ? (
                       <>
                         {" "}
@@ -697,19 +697,19 @@ export function DeliveryJournalSection({
                         .
                       </>
                     ) : (
-                      <> Podgląd — nie masz uprawnień do dodawania wpisów.</>
+                      <> Podgląd - nie masz uprawnień do dodawania wpisów.</>
                     )}
                   </>
                 ) : (
                   <>
-                    Podgląd {formatTodayLabel(journal.date)} — {summaryLine}. Edycja tylko na
+                    Podgląd {formatTodayLabel(journal.date)} - {summaryLine}. Edycja tylko na
                     dzisiejszym dniu.
                   </>
                 )}
               </p>
             ) : (
               <p className={cn(panelTypography.sectionDesc, "mt-0.5")}>
-                Wyszukiwanie paczek, filtry i podsumowania — bez edycji wpisów.
+                Wyszukiwanie paczek, filtry i podsumowania - bez edycji wpisów.
               </p>
             )}
           </div>
@@ -853,7 +853,7 @@ export function DeliveryJournalSection({
                 <Button variant="primary" size="sm" disabled={pending} onClick={submitNew}>
                   Zapisz i kolejna
                 </Button>
-                <span className="text-[11px] text-slate-500">Ctrl+Enter — zapisz bez myszy</span>
+                <span className="text-[11px] text-slate-500">Ctrl+Enter - zapisz bez myszy</span>
               </div>
             </div>
           ) : null}

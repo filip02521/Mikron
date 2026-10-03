@@ -546,7 +546,7 @@ export function TeethReceiveLinesPanel({
                 manualQty,
                 canPickSpec,
               ).length > 0
-                ? "\n\nUwaga: w tej sekcji są wpisane ilości częściowe — „Całość” je pominie i przyjmie pełne ilości. Jeśli dotarła tylko część, anuluj i użyj „Zapisz wprowadzone”."
+                ? "\n\nUwaga: w tej sekcji są wpisane ilości częściowe - „Całość” je pominie i przyjmie pełne ilości. Jeśli dotarła tylko część, anuluj i użyj „Zapisz wprowadzone”."
                 : "")
             : ""
         }
@@ -574,8 +574,8 @@ export function TeethReceiveLinesPanel({
           title="Są nowe pozycje w kolejce przyjęcia"
           description={
             hasUnsavedInput
-              ? "Odśwież po zapisaniu wpisanych ilości — inaczej formularz zostanie wyczyszczony."
-              : "Ktoś mógł oznaczyć zamówienia w kolejce — odśwież, żeby zobaczyć aktualną listę."
+              ? "Odśwież po zapisaniu wpisanych ilości - inaczej formularz zostanie wyczyszczony."
+              : "Ktoś mógł oznaczyć zamówienia w kolejce - odśwież, żeby zobaczyć aktualną listę."
           }
           action={
             <Button
@@ -606,7 +606,7 @@ export function TeethReceiveLinesPanel({
             />
             <span className="text-xs font-semibold text-slate-700">Filtry i wyszukiwanie</span>
             {productSearchActive || productLineFilter ? (
-              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-100 px-1 text-[10px] font-bold tabular-nums text-indigo-700">
+              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-md bg-indigo-100 px-1 text-[10px] font-bold tabular-nums text-indigo-700">
                 {[productSearchActive, Boolean(productLineFilter)].filter(Boolean).length}
               </span>
             ) : null}

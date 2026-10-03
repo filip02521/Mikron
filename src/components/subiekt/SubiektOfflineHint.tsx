@@ -12,7 +12,7 @@ function badgeLabel(count: number): string {
 
 const FOOTER: Record<"prosba" | "moje", string> = {
   prosba: "Możesz wpisać dane ręcznie i wysłać prośbę bez Subiekta.",
-  moje: "Lista prośb działa normalnie — szacunki terminów z historii dostaw.",
+  moje: "Lista prośb działa normalnie - szacunki terminów z historii dostaw.",
 };
 
 /** Dyskretna informacja: Subiekt niedostępny — szczegóły po najechaniu / fokusie. */
@@ -39,7 +39,7 @@ export function SubiektOfflineHint({
       <button
         type="button"
         aria-label={`${label}: ${feedback.title}`}
-        className="inline-flex cursor-help items-center gap-1.5 rounded-full border border-amber-200/90 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-900 shadow-sm transition hover:border-amber-300 hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
+        className="inline-flex cursor-help items-center gap-1.5 rounded-md border border-amber-200/90 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-900 shadow-sm transition hover:border-amber-300 hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/60"
       >
         <span
           className="flex size-5 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700"

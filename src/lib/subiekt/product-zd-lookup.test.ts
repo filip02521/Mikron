@@ -120,7 +120,7 @@ describe("product-zd-lookup", () => {
     expect(estimate?.estimateLabel).toContain("dni rob.");
   });
 
-  it("resolveProductZdLookupAppOrderHint — tylko przy otwartej prośbie", async () => {
+  it("resolveProductZdLookupAppOrderHint - tylko przy otwartej prośbie", async () => {
     const hint = await resolveProductZdLookupAppOrderHint(
       {
         placementAt: "2026-05-12",

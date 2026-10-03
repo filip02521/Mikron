@@ -27,7 +27,7 @@ import {
 import { panelRowClearFocusOnLeave, panelRowGroupClass } from "@/lib/ui/panel-row-actions-reveal";
 import {
   urgentCardBodyClass,
-  urgentCardClassName,
+  urgentListRowClassName,
   urgentCardFooterClass,
   urgentCardTone,
   urgentGroupDividerClassName,
@@ -58,20 +58,20 @@ const QUEUE_SECTION_ID: Record<Exclude<UrgentQueuePart, "full">, string> = {
 
 function SectionHelp() {
   return (
-    <HelpPopover label="Pomoc — zaległe i na dziś" title="Zaległe i na dziś" shortLabel="Pomoc">
+    <HelpPopover label="Pomoc - zaległe i na dziś" title="Zaległe i na dziś" shortLabel="Pomoc">
       <HelpBlock title="Co oznaczają sekcje">
         <ul className="list-disc space-y-1.5 pl-4">
           <li className="inline-flex flex-wrap items-center gap-1.5">
             <PanelQueueStatDot tone="overdue" />
             <span>
-              <strong className="font-medium text-slate-800">Zaległe</strong> — minął planowany
+              <strong className="font-medium text-slate-800">Zaległe</strong> - minął planowany
               termin zamówienia.
             </span>
           </li>
           <li className="inline-flex flex-wrap items-center gap-1.5">
             <PanelQueueStatDot tone="today" />
             <span>
-              <strong className="font-medium text-slate-800">Na dziś</strong> — harmonogram na
+              <strong className="font-medium text-slate-800">Na dziś</strong> - harmonogram na
               bieżący dzień.
             </span>
           </li>
@@ -85,18 +85,18 @@ function SectionHelp() {
             <strong className="font-medium text-slate-800">Zamówione</strong>.
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Przesuń</strong> — zmiana daty u
+            <strong className="font-medium text-slate-800">Przesuń</strong> - zmiana daty u
             dostawcy.
           </li>
           <li>
-            Menu <HelpMenuGlyph className="align-[-2px]" /> — urlop i edycja karty dostawcy.
+            Menu <HelpMenuGlyph className="align-[-2px]" /> - urlop i edycja karty dostawcy.
           </li>
         </ul>
       </HelpBlock>
 
       <HelpBlock title="Komputer i mobile">
         <p>
-          Na komputerze pasek akcji (Zamówione / Przesuń) wysuwa się po chwili na karcie — jak w
+          Na komputerze pasek akcji (Zamówione / Przesuń) wysuwa się po chwili na karcie - jak w
           prośbach. Na tablecie i telefonie jest widoczny cały czas.
         </p>
       </HelpBlock>
@@ -177,7 +177,7 @@ function UrgentCard({
   return (
     <article
       className={cn(
-        panelRowGroupClass(urgentCardClassName(tone)),
+        panelRowGroupClass(urgentListRowClassName),
         rowPending && rowPendingRingClass
       )}
       aria-busy={rowPending}
@@ -296,7 +296,7 @@ function UrgentGroup({
           <div className={urgentGroupDividerClassName(isOverdue)} aria-hidden />
         </div>
       ) : null}
-      <ul className="space-y-1.5">
+      <ul className="divide-y divide-slate-100">
         {items.map((item) => (
           <li key={item.supplierId}>
             <UrgentCard
@@ -390,9 +390,9 @@ export function UrgentOrdersSection({
   if (visibleCount === 0) return null;
 
   const titles: Record<UrgentQueuePart, string> = {
-    full: "Harmonogram — zaległe i na dziś",
+    full: "Harmonogram - zaległe i na dziś",
     overdue: "Zaległe",
-    today: "Na dziś — harmonogram",
+    today: "Na dziś - harmonogram",
   };
 
   const descriptions: Record<UrgentQueuePart, string | undefined> = {

@@ -167,18 +167,18 @@ export function customsCnWarnings(
     if (dictionary && !dictionary.describe(cn)) {
       const near = dictionary.siblings(cn);
       notes.push(
-        `Kodu ${formatCn(cn)} nie ma w CN ${dictionary.year}${near.length ? ` — istniejące w tej grupie: ${near.map(formatCn).join(", ")}` : ""}.`
+        `Kodu ${formatCn(cn)} nie ma w CN ${dictionary.year}${near.length ? ` - istniejące w tej grupie: ${near.map(formatCn).join(", ")}` : ""}.`
       );
     }
     const text = `${l.card!.descriptionPl.trim().toLowerCase()}|${l.card!.material.trim().toLowerCase()}`;
     const others = (byText.get(text) ?? []).filter((o) => o.cn !== cn);
     if (others.length) {
       notes.push(
-        `Ten sam opis ma inny kod CN w poz. ${others.map((o) => `${o.position} (${formatCn(o.cn)})`).join(", ")} — ujednolić albo doprecyzować opis.`
+        `Ten sam opis ma inny kod CN w poz. ${others.map((o) => `${o.position} (${formatCn(o.cn)})`).join(", ")} - ujednolić albo doprecyzować opis.`
       );
     }
     if (l.invoiceHsCode && l.invoiceHsCode.slice(0, 4) !== cn.slice(0, 4)) {
-      notes.push(`Dostawca podał HS ${l.invoiceHsCode} (pozycja ${l.invoiceHsCode.slice(0, 4)}), a CN to ${formatCn(cn)} — sprawdź.`);
+      notes.push(`Dostawca podał HS ${l.invoiceHsCode} (pozycja ${l.invoiceHsCode.slice(0, 4)}), a CN to ${formatCn(cn)} - sprawdź.`);
     }
     if (notes.length) out.set(l.position, notes.join(" "));
   }

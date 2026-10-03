@@ -252,7 +252,7 @@ async function rebalanceOverAllocatedShares(input: {
         siteId: input.link.site_id,
         zkLinkId: input.link.id,
         kind: "shares_rebalanced",
-        summary: `${input.zkNumber}: „${name}” — w ZK ${line.ob_Ilosc} szt., ${describeShareRebalance(plan)}`,
+        summary: `${input.zkNumber}: „${name}” - w ZK ${line.ob_Ilosc} szt., ${describeShareRebalance(plan)}`,
         meta: {
           line_key: line.key,
           line_qty: line.ob_Ilosc,
@@ -367,7 +367,7 @@ export async function syncExternalWarehouseZkLink(
         if (!replacement) {
           // ≤ 160 znaków — dłuższe komunikaty UI przycina.
           const message =
-            "ZK usunięte z Subiektu lub wystawione pod innym numerem. Pokazano ostatni zapisany stan — podmień ZK albo je odłącz.";
+            "ZK usunięte z Subiektu lub wystawione pod innym numerem. Pokazano ostatni zapisany stan - podmień ZK albo je odłącz.";
           await recordSyncStatus(link.id, { error: message, at: attemptAt });
           return {
             linkId: link.id,
@@ -470,7 +470,7 @@ export async function syncExternalWarehouseZkLink(
           siteId: link.site_id,
           zkLinkId: link.id,
           kind: "zk_replaced",
-          summary: `${zkNumberFresh}: stary dokument zniknął z Subiektu — podpięto ZK o tym samym numerze (nowe ID ${replacement.subiektDokId}), palety przeniesiono po towarze`,
+          summary: `${zkNumberFresh}: stary dokument zniknął z Subiektu - podpięto ZK o tym samym numerze (nowe ID ${replacement.subiektDokId}), palety przeniesiono po towarze`,
           meta: { from_dok_id: link.subiekt_dok_id, to_dok_id: replacement.subiektDokId },
           actorUserId: options.actorUserId,
         },

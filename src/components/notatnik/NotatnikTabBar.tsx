@@ -112,7 +112,7 @@ export function NotatnikTabBar({
               {count > 0 ? (
                 <span
                   className={cn(
-                    "inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+                    "inline-flex min-w-[1.25rem] items-center justify-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
                     active ? tabBadgeSelectedClass : "bg-slate-200/90 text-slate-700"
                   )}
                 >
@@ -125,7 +125,7 @@ export function NotatnikTabBar({
       </div>
       <p className="sr-only" role="status" aria-live="polite">
         Aktywna sekcja: {activeMeta.label}
-        {activeMeta.title !== activeMeta.label ? ` — ${activeMeta.title}` : ""}
+        {activeMeta.title !== activeMeta.label ? ` - ${activeMeta.title}` : ""}
       </p>
     </>
   );

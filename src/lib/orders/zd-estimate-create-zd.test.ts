@@ -972,7 +972,7 @@ describe("applyCreatedZdUnitsToOtwarteZd", () => {
     expect(next[0]?.otwarteZd).toBe(7);
   });
 
-  it("Mode B: otwarteZd w sztukach — bez × N przy przeliczeniu doZamowienia", () => {
+  it("Mode B: otwarteZd w sztukach - bez × N przy przeliczeniu doZamowienia", () => {
     const lines = [
       baseLine({
         tw_Id: 1,

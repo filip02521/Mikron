@@ -47,7 +47,7 @@ describe("shouldShowProsbaLineFieldValidation", () => {
     ).toBe(true);
   });
 
-  it("liveValidation — po wpisaniu produktu bez ilości", () => {
+  it("liveValidation - po wpisaniu produktu bez ilości", () => {
     expect(
       shouldShowProsbaLineFieldValidation(
         { ...baseLine, product: "Wkręt", subiektTwId: 1 },

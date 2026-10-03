@@ -4,7 +4,7 @@ const MAP: [RegExp | string, string][] = [
   ["Invalid login credentials", "Nieprawidłowy e-mail lub hasło"],
   ["Email not confirmed", "Nieprawidłowy e-mail lub hasło"],
   ["User not found", "Nieprawidłowy e-mail lub hasło"],
-  ["Too many requests", "Zbyt wiele prób — spróbuj za chwilę"],
+  ["Too many requests", "Zbyt wiele prób - spróbuj za chwilę"],
 ];
 
 export function translateAuthError(message: string): string {

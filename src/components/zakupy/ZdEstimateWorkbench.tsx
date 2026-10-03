@@ -2277,18 +2277,18 @@ export function ZdEstimateWorkbench({
       const missing = missingPartnerTwIds.length + missingBomTwIds.length;
       if (missing > 0 && canAutoRecount) {
         flashSettingsLive(
-          "Para zapisana — dociągam brakujących towarów z Subiekta…"
+          "Para zapisana - dociągam brakujących towarów z Subiekta…"
         );
         queueMicrotask(() => runEstimateRef.current());
         return;
       }
       if (missing > 0) {
         flashSettingsLive(
-          "Para zapisana, ale towar spoza listy — kliknij „Policz listę”, żeby dociągnąć."
+          "Para zapisana, ale towar spoza listy - kliknij „Policz listę”, żeby dociągnąć."
         );
         return;
       }
-      flashSettingsLive("Pary zaktualizowane — oznaczenia i Do ZD przeliczone.");
+      flashSettingsLive("Pary zaktualizowane - oznaczenia i Do ZD przeliczone.");
     },
     [linesBase, reapplyPairsToLines, canAutoRecount, flashSettingsLive]
   );
@@ -2385,7 +2385,7 @@ export function ZdEstimateWorkbench({
           rows.map((r) => r.subiektTwId)
         );
         recountEstimateLinesWithExcluded(excludedNow);
-        flashSettingsLive("Wykluczenia zaktualizowane — lista przeliczona.");
+        flashSettingsLive("Wykluczenia zaktualizowane - lista przeliczona.");
       }
     },
     [
@@ -2414,7 +2414,7 @@ export function ZdEstimateWorkbench({
         );
         recountEstimateLinesWithExcluded(excludedNow);
         flashSettingsLive(
-          "„Tylko na prośbę” zaktualizowane — lista przeliczona."
+          "„Tylko na prośbę” zaktualizowane - lista przeliczona."
         );
       } else {
         flashSettingsLive("Zapisano „tylko na prośbę”.");
@@ -3197,7 +3197,7 @@ export function ZdEstimateWorkbench({
         ) {
           if (created.ok) {
             console.warn(
-              "Sesja UI kreatora: usuwam recreate — ID już nieaktualne.",
+              "Sesja UI kreatora: usuwam recreate - ID już nieaktualne.",
               created.sessionId
             );
             void deleteZdEstimateExternalSessionRecord(created.sessionId);
@@ -4272,7 +4272,7 @@ export function ZdEstimateWorkbench({
           res.uiSessionId.trim()
         ) {
           console.warn(
-            "Sesja UI kreatora: usuwam sesję serwerową — Policz unieważniony przed apply (estimateGen).",
+            "Sesja UI kreatora: usuwam sesję serwerową - Policz unieważniony przed apply (estimateGen).",
             res.uiSessionId
           );
           void deleteZdEstimateExternalSessionRecord(res.uiSessionId.trim());
@@ -4387,7 +4387,7 @@ export function ZdEstimateWorkbench({
           setPendingIndividualsTruncated(false);
           setPendingIndividualsError(
             res.pendingIndividualsError?.trim() ||
-              "Nie wczytano próśb przy Policz — użyj „Wczytaj ponownie” albo policz listę jeszcze raz."
+              "Nie wczytano próśb przy Policz - użyj „Wczytaj ponownie” albo policz listę jeszcze raz."
           );
         }
         {
@@ -4615,7 +4615,7 @@ export function ZdEstimateWorkbench({
             pendingIndividualsError: pendingIndividualsOk
               ? null
               : res.pendingIndividualsError?.trim() ||
-                "Nie wczytano próśb przy Policz — użyj „Wczytaj ponownie” albo policz listę jeszcze raz.",
+                "Nie wczytano próśb przy Policz - użyj „Wczytaj ponownie” albo policz listę jeszcze raz.",
             meta: {
               pagesFetched: res.meta.pagesFetched,
               totalCountApi: res.meta.totalCountApi,
@@ -4674,7 +4674,7 @@ export function ZdEstimateWorkbench({
           if (estimateGen !== estimateGenRef.current) {
             if (persist.ok) {
               console.warn(
-                "Sesja UI kreatora: usuwam świeżo utworzoną sesję — Policz unieważniony (estimateGen).",
+                "Sesja UI kreatora: usuwam świeżo utworzoną sesję - Policz unieważniony (estimateGen).",
                 persist.sessionId
               );
               void deleteZdEstimateExternalSessionRecord(persist.sessionId);
@@ -4696,7 +4696,7 @@ export function ZdEstimateWorkbench({
           createdAt = snapshotPayload.createdAt;
         } else if (estimateGen !== estimateGenRef.current) {
           console.warn(
-            "Sesja UI kreatora: usuwam świeżo utworzoną sesję serwerową — Policz unieważniony (estimateGen).",
+            "Sesja UI kreatora: usuwam świeżo utworzoną sesję serwerową - Policz unieważniony (estimateGen).",
             sessionId
           );
           void deleteZdEstimateExternalSessionRecord(sessionId);
@@ -5191,7 +5191,7 @@ export function ZdEstimateWorkbench({
   const createZdGateCaption = !createZdGate.ok
     ? individualBundle.serviceLines.length > 0 &&
       orderableLines.length === 0
-      ? `${createZdGate.reason} Masz ${individualBundle.serviceLines.length} usług z próśb — potrzebna ≥1 pozycja katalogowa.`
+      ? `${createZdGate.reason} Masz ${individualBundle.serviceLines.length} usług z próśb - potrzebna ≥1 pozycja katalogowa.`
       : createZdGate.reason
     : null;
 
@@ -5307,7 +5307,7 @@ export function ZdEstimateWorkbench({
 
   const confirmAssignAndRun = () => {
     if (!launch?.supplierId) {
-      setErrorMessage("Brak dostawcy z panelu — wybierz zakres i kliknij Policz.");
+      setErrorMessage("Brak dostawcy z panelu - wybierz zakres i kliknij Policz.");
       return;
     }
     if (scopeMode === "grupa" && !selectedGroup?.grt_Id) {
@@ -5383,8 +5383,8 @@ export function ZdEstimateWorkbench({
       setExtrasPolicy(res.policy);
       flashSettingsLive(
         res.policy === "max"
-          ? "Prośby: maksimum względem niedoboru — Do ZD na bieżąco."
-          : "Prośby: suma niedoboru i rezerwy — Do ZD na bieżąco."
+          ? "Prośby: maksimum względem niedoboru - Do ZD na bieżąco."
+          : "Prośby: suma niedoboru i rezerwy - Do ZD na bieżąco."
       );
     });
   };
@@ -5968,7 +5968,7 @@ export function ZdEstimateWorkbench({
     }
     if (truncated) {
       parts.push(
-        `Limit ${ZD_ESTIMATE_BULK_MAX} na jedną akcję — pozostałe zaznaczenie zostawione; uruchom ponownie dla reszty.`
+        `Limit ${ZD_ESTIMATE_BULK_MAX} na jedną akcję - pozostałe zaznaczenie zostawione; uruchom ponownie dla reszty.`
       );
     }
     if (failed.length || truncated) {
@@ -6157,7 +6157,7 @@ export function ZdEstimateWorkbench({
             )
           );
           flashSettingsLive(
-            "„Tylko na prośbę” zaktualizowane — lista przeliczona."
+            "„Tylko na prośbę” zaktualizowane - lista przeliczona."
           );
         } else {
           flashSettingsLive("Zapisano „tylko na prośbę”.");
@@ -6225,7 +6225,7 @@ export function ZdEstimateWorkbench({
           )
         );
         flashSettingsLive(
-          "„Tylko na prośbę” zaktualizowane — lista przeliczona."
+          "„Tylko na prośbę” zaktualizowane - lista przeliczona."
         );
       }
     });
@@ -7133,7 +7133,7 @@ export function ZdEstimateWorkbench({
 
       {pendingIndividualsTruncated ? (
         <ZdEstimateNotice tray tone="warning" title="Limit 500 próśb">
-          Wczytano pierwsze 500 próśb Nowe — możliwe, że część nie weszła do
+          Wczytano pierwsze 500 próśb Nowe - możliwe, że część nie weszła do
           szacunku. {ZD_ESTIMATE_UI.createGatePendingIndividualsTruncated}
         </ZdEstimateNotice>
       ) : null}
@@ -7153,7 +7153,7 @@ export function ZdEstimateWorkbench({
                 : "Tworzenie ZD zablokowane"
               : createZdGate.ok
                 ? "Tworzenie ZD odblokowane świadomie"
-                : "Tworzenie ZD odblokowane — inne blokady"
+                : "Tworzenie ZD odblokowane - inne blokady"
           }
         >
           {createUnconfirmedAttempt && !createUnlockedAfterDone
@@ -7163,7 +7163,7 @@ export function ZdEstimateWorkbench({
                 {!createUnlockedAfterDone
                   ? "Przelicz listę, użyj „Powiąż ZD” albo odblokuj świadomie."
                   : createZdGate.ok
-                    ? "Możesz utworzyć kolejne ZD — uważaj na duplikaty w Subiekcie."
+                    ? "Możesz utworzyć kolejne ZD - uważaj na duplikaty w Subiekcie."
                     : createZdGateCaption ?? createZdGate.reason}
               </>}
           {!createUnlockedAfterDone && !createUndoVisible ? (
@@ -7182,7 +7182,7 @@ export function ZdEstimateWorkbench({
               }}
             >
               {createUnconfirmedAttempt
-                ? "Sprawdziłem Subiekt — odblokuj Create"
+                ? "Sprawdziłem Subiekt - odblokuj Create"
                 : "Odblokuj tworzenie ZD (świadomie)"}
             </Button>
           ) : null}
@@ -7205,13 +7205,13 @@ export function ZdEstimateWorkbench({
             ) : pendingIndividuals.length > 0 ? (
               <span className="mt-1 block text-sm">
                 Wczytano {pendingIndividuals.length}{" "}
-                {zdEstimateProsbaWordAccusative(pendingIndividuals.length)} —
+                {zdEstimateProsbaWordAccusative(pendingIndividuals.length)} -
                 wejdą
                 do kreatora po Policz.
               </span>
             ) : pendingIndividualsError ? (
               <span className="mt-1 block text-sm text-amber-900">
-                Prośby nie wczytane — użyj „Wczytaj ponownie” powyżej.
+                Prośby nie wczytane - użyj „Wczytaj ponownie” powyżej.
               </span>
             ) : null}
           </ZdEstimateNotice>
@@ -7579,7 +7579,7 @@ export function ZdEstimateWorkbench({
             <ZdEstimateNotice tray tone="warning" title="Brak partnera pary w szacunku">
               <p className="text-sm leading-snug">
                 Nie udało się dociągnąć {pairPartnerMissingCount}{" "}
-                {pairPartnerMissingCount === 1 ? "towaru" : "towarów"} z pary —
+                {pairPartnerMissingCount === 1 ? "towaru" : "towarów"} z pary -
                 linie tych paczek mają ilość 0 (albo tylko prośbę). Reszta listy
                 nadal może iść na ZD.
               </p>
@@ -7662,7 +7662,7 @@ export function ZdEstimateWorkbench({
               {excludedWithIndividualCount === 1
                 ? "nadal na wykluczonej pozycji"
                 : "nadal na wykluczonych pozycjach"}{" "}
-              — sprawdź listę.
+              - sprawdź listę.
             </ZdEstimateNotice>
           ) : null,
         ]}
@@ -7820,11 +7820,11 @@ export function ZdEstimateWorkbench({
                         ? "Tu widać tylko auto-wykluczenia (outlet / wycofane / zęby). Wczytaj wykluczenia i „tylko na prośbę”, żeby dołączyć pozycje z bazy."
                         : listFilter === "order" &&
                             individualBundle.serviceLines.length > 0
-                          ? "Powyżej są usługi z próśb (uwagi ZD). Do utworzenia ZD potrzebna jest ≥1 pozycja katalogowa — albo obsłuż prośby w panelu Dziś."
+                          ? "Powyżej są usługi z próśb (uwagi ZD). Do utworzenia ZD potrzebna jest ≥1 pozycja katalogowa - albo obsłuż prośby w panelu Dziś."
                           : listFilter === "order"
                             ? "Przy tych parametrach ilość = 0 albo wszystkie braki są na liście wykluczeń. Przełącz filtr, żeby zobaczyć pełny zakres."
                             : listFilter === "review"
-                              ? "Żadna pozycja nie ma wstrzymanego ani częściowego podbicia Do ZD — pewność sprzedaży jest wystarczająca albo brak boostu."
+                              ? "Żadna pozycja nie ma wstrzymanego ani częściowego podbicia Do ZD - pewność sprzedaży jest wystarczająca albo brak boostu."
                               : listFilter === "excluded"
                                 ? ZD_ESTIMATE_UI.emptyExcludedDescription
                                 : "Subiekt nie zwrócił pozycji dla tego zakresu."
@@ -8100,7 +8100,7 @@ export function ZdEstimateWorkbench({
                                   flowCls,
                                   sectionCls
                                 )}
-                                title="Dostępne w sztukach (stan − rezerwacje). Przy SKU paczki z pary — jednostki karty (op.)."
+                                title="Dostępne w sztukach (stan − rezerwacje). Przy SKU paczki z pary - jednostki karty (op.)."
                               >
                                 Dost.
                               </th>
@@ -8114,7 +8114,7 @@ export function ZdEstimateWorkbench({
                                   flowCls,
                                   sectionCls
                                 )}
-                                title="Sprzedaż w oknie (FS + PA + WZ niepowiązane) — sztuki. Breakdown WZ w dopisku pod liczbą, gdy > 0. Przybliżenie w opakowaniach — w podpowiedzi (hover)."
+                                title="Sprzedaż w oknie (FS + PA + WZ niepowiązane) - sztuki. Breakdown WZ w dopisku pod liczbą, gdy > 0. Przybliżenie w opakowaniach - w podpowiedzi (hover)."
                               >
                                 <span className="zd-est-metric-th">
                                   <IconChartTrend
@@ -8137,7 +8137,7 @@ export function ZdEstimateWorkbench({
                                   flowCls,
                                   sectionCls
                                 )}
-                                title="Cel zapasu — planowana ilość na stanie (sztuki). Przybliżenie w opakowaniach — w podpowiedzi (hover)."
+                                title="Cel zapasu - planowana ilość na stanie (sztuki). Przybliżenie w opakowaniach - w podpowiedzi (hover)."
                               >
                                 <span className="zd-est-metric-th">
                                   <IconTarget
@@ -8160,7 +8160,7 @@ export function ZdEstimateWorkbench({
                                   flowCls,
                                   sectionCls
                                 )}
-                                title="Otwarte ZD — jednostki dokumentu (przy paczkach: przeliczenie na sztuki w podpowiedzi)."
+                                title="Otwarte ZD - jednostki dokumentu (przy paczkach: przeliczenie na sztuki w podpowiedzi)."
                               >
                                 Otwarte
                               </th>
@@ -8622,7 +8622,7 @@ export function ZdEstimateWorkbench({
                                           bomMeta?.role === "assembled_parent" &&
                                           (bomMeta.relocatedSales ?? 0) > 0
                                             ? [
-                                                `Sprzedaż zestawu ${formatQty(bomMeta.relocatedSales ?? 0)} szt przeniesiona do składników (wkład BOM) — tu 0, żeby nie dublować sumy.`,
+                                                `Sprzedaż zestawu ${formatQty(bomMeta.relocatedSales ?? 0)} szt przeniesiona do składników (wkład BOM) - tu 0, żeby nie dublować sumy.`,
                                                 formatWzSalesTitle({
                                                   sprzedazOkres: 0,
                                                   wzNiepowiazaneOkres: 0,
@@ -8787,7 +8787,7 @@ export function ZdEstimateWorkbench({
                                 onExclude={() => {
                                   if (individualExtra) {
                                     const ok = window.confirm(
-                                      "Ta pozycja ma prośbę handlowca.\n\nPo wykluczeniu prośba trafi do sekcji „Usługi” i do uwag ZD (bez ilości towaru) — nie zniknie z panelu Dziś do utworzenia ZD.\n\nKontynuować?"
+                                      "Ta pozycja ma prośbę handlowca.\n\nPo wykluczeniu prośba trafi do sekcji „Usługi” i do uwag ZD (bez ilości towaru) - nie zniknie z panelu Dziś do utworzenia ZD.\n\nKontynuować?"
                                     );
                                     if (!ok) return;
                                   }
@@ -8873,7 +8873,7 @@ export function ZdEstimateWorkbench({
                 );
                 if (withProsba.length) {
                   const ok = window.confirm(
-                    `${withProsba.length} z zaznaczonych pozycji ma prośbę handlowca.\n\nPo wykluczeniu prośba trafi do sekcji „Usługi” i do uwag ZD (bez ilości towaru) — nie zniknie z panelu Dziś do momentu utworzenia ZD.\n\nKontynuować?`
+                    `${withProsba.length} z zaznaczonych pozycji ma prośbę handlowca.\n\nPo wykluczeniu prośba trafi do sekcji „Usługi” i do uwag ZD (bez ilości towaru) - nie zniknie z panelu Dziś do momentu utworzenia ZD.\n\nKontynuować?`
                   );
                   if (!ok) return;
                 }
@@ -8994,8 +8994,8 @@ export function ZdEstimateWorkbench({
                     !bootstrap.configured
                       ? "Wymaga połączenia z Subiektem"
                       : !supplierId
-                        ? "Wybierz dostawcę — historia jest per kontrahent"
-                        : "Gdy ZD powstało poza OnTime — zapisz powiązanie w historii"
+                        ? "Wybierz dostawcę - historia jest per kontrahent"
+                        : "Gdy ZD powstało poza OnTime - zapisz powiązanie w historii"
                   }
                 >
                   Powiąż ZD
@@ -9110,17 +9110,17 @@ export function ZdEstimateWorkbench({
           }
           title={
             createUnconfirmedAttempt
-              ? "Timeout tworzenia — sprawdź Subiekt"
+              ? "Timeout tworzenia - sprawdź Subiekt"
               : `Utworzono ${createDoneDokNr}`
           }
           description={
             createUnconfirmedAttempt
               ? "Tworzenie ZD zablokowane na wypadek, że dokument już powstał. Odblokuj świadomie albo powiąż ZD."
-              : "Odblokuj tworzenie ZD świadomie — dokument w Subiekcie zostaje (to nie anuluje ZD)."
+              : "Odblokuj tworzenie ZD świadomie - dokument w Subiekcie zostaje (to nie anuluje ZD)."
           }
           undoLabel={
             createUnconfirmedAttempt
-              ? "Sprawdziłem Subiekt — odblokuj"
+              ? "Sprawdziłem Subiekt - odblokuj"
               : "Odblokuj tworzenie ZD"
           }
           onUndo={() => {
@@ -9222,7 +9222,7 @@ export function ZdEstimateWorkbench({
         title={`Przywróć ${Math.min(restoreEligibleLines.length, ZD_ESTIMATE_BULK_MAX)}${restoreEligibleLines.length > ZD_ESTIMATE_BULK_MAX ? ` z ${restoreEligibleLines.length}` : ""}?`}
         message={
           restoreEligibleLines.length > ZD_ESTIMATE_BULK_MAX
-            ? `Zaznaczone wrócą na listę „Do ZD”. Limit ${ZD_ESTIMATE_BULK_MAX} na akcję — pierwsze ${ZD_ESTIMATE_BULK_MAX} zostaną przywrócone, reszta zostanie zaznaczona.`
+            ? `Zaznaczone wrócą na listę „Do ZD”. Limit ${ZD_ESTIMATE_BULK_MAX} na akcję - pierwsze ${ZD_ESTIMATE_BULK_MAX} zostaną przywrócone, reszta zostanie zaznaczona.`
             : `Przywrócić ${restoreEligibleLines.length} ${
                 restoreEligibleLines.length === 1
                   ? "produkt"
@@ -9902,7 +9902,7 @@ function ZdEstimateSortHeaderButton({
       className={cn(
         "inline-flex max-w-full items-center gap-0.5 text-left transition-colors hover:text-slate-900",
         density === "compact"
-          ? "text-[10px] font-semibold uppercase tracking-wide leading-none"
+          ? "text-[10px] font-semibold leading-none"
           : "text-sm font-semibold",
         isActive ? "text-slate-900" : "text-slate-600"
       )}
@@ -9910,9 +9910,9 @@ function ZdEstimateSortHeaderButton({
         isActive
           ? `Sortowanie po „${label}”: ${
               sortDir === "asc" ? "rosnąco" : "malejąco"
-            } — kliknij, aby odwrócić`
+            } - kliknij, aby odwrócić`
           : hint
-            ? `${hint} — kliknij, aby sortować`
+            ? `${hint} - kliknij, aby sortować`
             : `Sortuj po: ${label}`
       }
     >

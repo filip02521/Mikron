@@ -469,7 +469,7 @@ export function RequestProductLinesEditor({
               if (showLineLabel) {
                 return (
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <span className="text-xs font-semibold text-slate-500">
                       {prosba ? `Produkt ${index + 1}` : `Pozycja ${index + 1}`}
                     </span>
                     <div className="flex items-center gap-1">

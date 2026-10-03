@@ -19,7 +19,7 @@ describe("salesDayStartNavCount", () => {
     expect(salesDayStartNavCount(inbox, 3, 2)).toBe(9);
   });
 
-  it("nie liczy osobnych badge ZK/Notatnik — tylko agregat Start dnia", () => {
+  it("nie liczy osobnych badge ZK/Notatnik - tylko agregat Start dnia", () => {
     expect(salesDayStartNavCount(inbox, 0, 0)).toBe(4);
   });
 });

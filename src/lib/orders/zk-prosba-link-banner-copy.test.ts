@@ -12,7 +12,7 @@ describe("ZK_PROSBA_LINK_BANNER_COPY", () => {
     expect(ZK_PROSBA_LINK_BANNER_COPY.titleSupplement).toMatch(/Uzupełniająca/i);
   });
 
-  it("formatZkProsbaSupplementDetail — odmiana i katalog", () => {
+  it("formatZkProsbaSupplementDetail - odmiana i katalog", () => {
     expect(formatZkProsbaSupplementDetail(1, true)).toBe(
       "1 nowa pozycja z ZK. Wcześniejsze pozycje są już w zamówieniu. Możesz dodać tylko produkty z tego ZK."
     );

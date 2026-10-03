@@ -100,7 +100,7 @@ describe("presentMyOrders group ZD", () => {
     expect(row.timingLabel).toMatch(/^ok\./);
   });
 
-  it("nie duplikuje Marrodent — Zamowione i częściowa dostawa w jednej karcie", () => {
+  it("nie duplikuje Marrodent - Zamowione i częściowa dostawa w jednej karcie", () => {
     const rows = presentMyOrders(
       [
         marrodentOrder("a", "H364RNF 103 015", "Komet węglik H364RNF 103 015", {

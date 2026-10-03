@@ -85,7 +85,7 @@ function formatRangeLabel(startDate: string, endDate: string): string {
     const months = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"];
     return `${day} ${months[m - 1]} ${y}`;
   };
-  return startDate === endDate ? fmt(startDate) : `${fmt(startDate)} – ${fmt(endDate)}`;
+  return startDate === endDate ? fmt(startDate) : `${fmt(startDate)} - ${fmt(endDate)}`;
 }
 
 function vacationDuration(startDate: string, endDate: string): number {
@@ -473,7 +473,7 @@ export function StaffVacationCalendar({
                   {member.name}
                 </span>
                 {isOwn ? (
-                  <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-600">Ty</span>
+                  <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-600">Ty</span>
                 ) : null}
               </div>
 
@@ -544,7 +544,7 @@ export function StaffVacationCalendar({
 
                   {period.note ? (
                     <div className="rounded-md border border-slate-100 bg-white px-2.5 py-2">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Notatka</p>
+                      <p className="text-[10px] font-semibold text-slate-400">Notatka</p>
                       <p className="mt-0.5 text-xs leading-relaxed text-slate-600">{period.note}</p>
                     </div>
                   ) : null}
@@ -678,7 +678,7 @@ export function StaffVacationCalendar({
           <div
             key={label}
             className={cn(
-              "border-b border-r border-slate-100 px-1.5 py-2.5 text-center font-semibold uppercase tracking-wider text-[10px]",
+              "border-b border-r border-slate-100 px-1.5 py-2.5 text-center font-semibold text-[10px]",
               idx >= 5 ? "bg-slate-100/60 text-slate-400" : "text-slate-400"
             )}
           >
@@ -751,7 +751,7 @@ export function StaffVacationCalendar({
                               c.bg, c.text,
                             )}
                             onClick={(e) => onBarClick(e, p.period.id, p.userId)}
-                            title={`${p.userName} — ${staffVacationCategoryShort(p.period.category)}`}
+                            title={`${p.userName} - ${staffVacationCategoryShort(p.period.category)}`}
                           >
                             <span className="truncate">{p.userName}</span>
                             {p.period.category !== "urlop" ? (
@@ -781,7 +781,7 @@ export function StaffVacationCalendar({
                               c.dot,
                             )}
                             onClick={(e) => onBarClick(e, p.period.id, p.userId)}
-                            title={`${p.userName} — ${staffVacationCategoryShort(p.period.category)}`}
+                            title={`${p.userName} - ${staffVacationCategoryShort(p.period.category)}`}
                           />
                         );
                       })}
@@ -799,7 +799,7 @@ export function StaffVacationCalendar({
 
       {activeStaff.length > 0 ? (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-slate-100 bg-slate-50/40 px-3.5 py-2.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Legenda</span>
+          <span className="text-[10px] font-semibold text-slate-400">Legenda</span>
           {activeStaff.map((s) => {
             const c = colorMap.get(s.id);
             if (!c) return null;

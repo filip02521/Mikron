@@ -79,7 +79,7 @@ function BulkExcludeDialogForm({
             className="min-h-11 w-full sm:w-auto"
             onClick={() => onConfirm("")}
             disabled={pending}
-            title="Bez notatki — szybciej przy oczywistych wykluczeniach"
+            title="Bez notatki - szybciej przy oczywistych wykluczeniach"
           >
             Wyklucz bez notatki
           </Button>
@@ -117,7 +117,7 @@ function BulkExcludeDialogForm({
             ) : null}
             {overLimit ? (
               <p className="mt-1.5 text-[11px] font-medium text-amber-800">
-                Limit {ZD_ESTIMATE_BULK_MAX} na jedną akcję — zapiszę pierwsze{" "}
+                Limit {ZD_ESTIMATE_BULK_MAX} na jedną akcję - zapiszę pierwsze{" "}
                 {ZD_ESTIMATE_BULK_MAX} z {lines.length}. Reszta zostanie
                 zaznaczona; uruchom ponownie.
               </p>

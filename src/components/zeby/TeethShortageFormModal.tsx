@@ -87,7 +87,7 @@ function Section({
   return (
     <section className="space-y-3 rounded-md border border-slate-200/80 bg-slate-50/40 p-3 sm:p-3.5">
       <header className="space-y-0.5">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <h3 className="text-[11px] font-semibold text-slate-500">
           {title}
         </h3>
         {hint ? <p className="text-[11px] leading-snug text-slate-500">{hint}</p> : null}
@@ -145,7 +145,7 @@ function clientValidate(
       suppliers,
     );
   if (!supplierId) {
-    return "Nie znaleziono dostawcy dla tej marki w kartach dostawców — dopisz dostawcę o nazwie producenta.";
+    return "Nie znaleziono dostawcy dla tej marki w kartach dostawców - dopisz dostawcę o nazwie producenta.";
   }
   if (!form.color.trim()) return "Wybierz kolor z katalogu.";
   if (form.color.trim() === TEETH_CHIP_OTHER) return "Wybierz kolor z katalogu (bez „inny”).";
@@ -300,7 +300,7 @@ export function TeethShortageFormModal({
     ? "Nieustalona"
     : form.availableFrom
       ? teethShortageAvailabilityBadgeLabel(form.availableFrom, todayKey)
-      : "—";
+      : "-";
 
   function patch(p: Partial<TeethShortageFormState>) {
     onChange((prev) => ({ ...prev, ...p }));
@@ -365,7 +365,7 @@ export function TeethShortageFormModal({
       open={open}
       onClose={resetAndClose}
       title={form.id ? "Edytuj brak" : "Dodaj brak"}
-      titleHint="Wpis dotyczy konkretnego wariantu (linia + kolor + fason). Handlowiec zobaczy ostrzeżenie przy prośbie — bez blokady wysyłki."
+      titleHint="Wpis dotyczy konkretnego wariantu (linia + kolor + fason). Handlowiec zobaczy ostrzeżenie przy prośbie - bez blokady wysyłki."
       description="Wybierz linię katalogową i wariant. Dostawca dopasuje się automatycznie do marki."
       size="lg"
       loadingMessage={pending ? "Zapisywanie…" : null}
@@ -402,7 +402,7 @@ export function TeethShortageFormModal({
 
       <Section
         title="Linia produktu"
-        hint="Marka w liście odpowiada dostawcy — dopasuje się sam."
+        hint="Marka w liście odpowiada dostawcy - dopasuje się sam."
       >
         <Field
           label={
@@ -460,7 +460,7 @@ export function TeethShortageFormModal({
       {catalog ? (
         <Section
           title="Wariant"
-          hint="Kolor i fason jak na kartce klienta — bez opcji „inny”."
+          hint="Kolor i fason jak na kartce klienta - bez opcji „inny”."
         >
           {showKindPicker ? (
             <div className="space-y-1.5">
@@ -468,7 +468,7 @@ export function TeethShortageFormModal({
                 Typ
                 {dualKind && hasAnyMoulds ? (
                   <span className="ml-1 font-normal text-slate-400">
-                    — „Bez rozróżnienia” = brak dla obu typów (bez fasonu)
+                    - „Bez rozróżnienia” = brak dla obu typów (bez fasonu)
                   </span>
                 ) : null}
               </p>
@@ -564,7 +564,7 @@ export function TeethShortageFormModal({
           {showOptionalMouldInput ? (
             <Field
               label="Fason (opcjonalnie)"
-              hint="Ta linia nie wymaga fasonu — możesz zostawić puste."
+              hint="Ta linia nie wymaga fasonu - możesz zostawić puste."
             >
               <Input
                 value={form.mould}
@@ -577,7 +577,7 @@ export function TeethShortageFormModal({
 
           {!showMouldPicker && !showOptionalMouldInput && showKindPicker && form.kind === "" ? (
             <p className="rounded-md border border-dashed border-slate-200 bg-white/70 px-2.5 py-2 text-[11px] leading-snug text-slate-500">
-              Bez rozróżnienia typu — wpis obejmuje przednie i boczne tej samej linii/koloru.
+              Bez rozróżnienia typu - wpis obejmuje przednie i boczne tej samej linii/koloru.
               Aby wskazać konkretny fason, wybierz typ.
             </p>
           ) : null}
@@ -599,7 +599,7 @@ export function TeethShortageFormModal({
         aria-live="polite"
       >
         <div className="min-w-0 flex-1 space-y-0.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-900/70">
+          <p className="text-[10px] font-semibold text-amber-900/70">
             Podgląd wpisu
           </p>
           <p
@@ -618,7 +618,7 @@ export function TeethShortageFormModal({
 
       <Section
         title="Dostępność"
-        hint="Null w bazie = termin nieustalony — handlowiec zobaczy osobne copy, nie pustą datę."
+        hint="Null w bazie = termin nieustalony - handlowiec zobaczy osobne copy, nie pustą datę."
       >
         <div className="flex flex-wrap gap-1.5">
           <ChoiceChip

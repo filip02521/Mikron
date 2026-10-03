@@ -23,7 +23,7 @@ const PHASE_LABEL: Record<CatalogZdSyncState["phase"], string> = {
 };
 
 function formatWarsawShort(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return formatWarsawDateTime(iso).slice(0, 16);
 }
 
@@ -77,7 +77,7 @@ export function summarizeCatalogZdSync(
   }
 
   const headlineParts = [statusLabel, phaseLabel];
-  if (needsContinue && state.status !== "running") headlineParts.push("— wymaga kontynuacji");
+  if (needsContinue && state.status !== "running") headlineParts.push("- wymaga kontynuacji");
   const headline = headlineParts.join(" · ");
 
   const detailLines: string[] = [

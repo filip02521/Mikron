@@ -109,7 +109,7 @@ export function ZkWatchClosePendingModal({
       loadingMessage={
         refreshing ? "Odświeżam listę…" : confirming ? "Potwierdzanie pozycji…" : null
       }
-      title={`${displayNumber} — zamykanie`}
+      title={`${displayNumber} - zamykanie`}
       description={watch.client_label}
       bodyClassName="space-y-3 px-5 py-4 sm:px-6"
       footer={
@@ -157,8 +157,8 @@ export function ZkWatchClosePendingModal({
           {phase === "confirming"
             ? `Potwierdzam ${polishCountLabel(uniqueCount, ["prośbę", "prośby", "prośb"])} i zamykam ZK…`
             : phase === "done"
-              ? `Potwierdzono ${polishCountLabel(uniqueCount, ["prośbę", "prośby", "prośb"])} — ZK zostało zamknięte.`
-              : "Wystąpił błąd — sprawdź szczegóły poniżej."}
+              ? `Potwierdzono ${polishCountLabel(uniqueCount, ["prośbę", "prośby", "prośb"])} - ZK zostało zamknięte.`
+              : "Wystąpił błąd - sprawdź szczegóły poniżej."}
         </span>
       </div>
 
@@ -170,7 +170,7 @@ export function ZkWatchClosePendingModal({
 
       {/* Items list */}
       <div>
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+        <p className="mb-2 text-xs font-medium text-slate-400">
           Pozycje ({items.length})
         </p>
         <ul

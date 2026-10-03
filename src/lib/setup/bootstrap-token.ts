@@ -25,5 +25,5 @@ export function setupTokenRequiredMessage(): string | null {
   if (isSetupTokenConfigured()) {
     return "Do utworzenia konta administratora potrzebny jest token z konfiguracji serwera (SETUP_TOKEN).";
   }
-  return "Brak SETUP_TOKEN w konfiguracji serwera — ustaw losowy sekret przed pierwszym uruchomieniem.";
+  return "Brak SETUP_TOKEN w konfiguracji serwera - ustaw losowy sekret przed pierwszym uruchomieniem.";
 }

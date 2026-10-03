@@ -30,7 +30,7 @@ export default async function AdminZgloszeniaPage() {
   return (
     <AdminSecondaryShell
       title="Zgłoszenia handlowców"
-      description="Karteczki zgłoszeń — celowo inny układ niż reszta panelu."
+      description="Karteczki zgłoszeń - celowo inny układ niż reszta panelu."
       iconKey="notepad"
     >
       {loadError ? <Alert tone="error">{loadError}</Alert> : null}

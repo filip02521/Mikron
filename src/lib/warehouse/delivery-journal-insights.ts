@@ -31,7 +31,7 @@ function mapSearchRow(row: Record<string, unknown>): WarehouseDeliveryReceipt {
   const supplierName =
     suppliers?.name != null
       ? String(suppliers.name)
-      : String(row.supplier_label ?? "").trim() || "—";
+      : String(row.supplier_label ?? "").trim() || "-";
 
   const shipmentForm = String(row.shipment_form) as WarehouseDeliveryReceipt["shipmentForm"];
   const counts = normalizeShipmentCounts(

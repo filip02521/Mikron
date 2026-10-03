@@ -30,7 +30,7 @@ const STATE_BADGE: Record<TeethOrderQueueState, string> = {
 };
 
 const STATE_FIX_HINT: Partial<Record<TeethOrderQueueState, string>> = {
-  missing_list: "Handlowiec nie dodał listy zębów — uzupełnij ją przed zamówieniem.",
+  missing_list: "Handlowiec nie dodał listy zębów - uzupełnij ją przed zamówieniem.",
   incomplete: "Na liście brakuje koloru, fasonu, szczęki lub typu.",
 };
 
@@ -132,7 +132,7 @@ export function TeethQueueOrderRow({
             {waitDays != null ? (
               <span
                 className={cn(
-                  "rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums ring-1 ring-inset",
+                  "rounded-md px-2 py-0.5 text-[11px] font-medium tabular-nums ring-1 ring-inset",
                   waitToneClass(waitDays),
                 )}
                 title={enteredAt ? `W kolejce od ${formatPlDate(enteredAt.slice(0, 10))}` : undefined}
@@ -142,7 +142,7 @@ export function TeethQueueOrderRow({
             ) : null}
             <span
               className={cn(
-                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset",
+                "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold ring-1 ring-inset",
                 STATE_BADGE[state],
               )}
             >

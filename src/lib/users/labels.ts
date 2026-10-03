@@ -3,7 +3,7 @@ import type { UserRole } from "@/types/database";
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: "Administrator",
   zakupy: "Dział zakupów",
-  zakupy_zeby: "Dział zakupów — Zęby",
+  zakupy_zeby: "Dział zakupów - Zęby",
   magazyn: "Dział dostaw",
   sales: "Handlowiec",
   sales_manager: "Kierownictwo",

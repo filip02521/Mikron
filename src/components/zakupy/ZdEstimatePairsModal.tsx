@@ -219,7 +219,7 @@ export function ZdEstimatePairsModal({
               type="button"
               variant="secondary"
               disabled
-              title="Wymaga GET /products/komplety na hoście ORDERS — endpoint niedostępny. Dodaj pary ręcznie albo zaznacz 2 towary na liście i wybierz „Para”."
+              title="Wymaga GET /products/komplety na hoście ORDERS - endpoint niedostępny. Dodaj pary ręcznie albo zaznacz 2 towary na liście i wybierz „Para”."
             >
               Sync (niedostępny)
             </Button>
@@ -259,7 +259,7 @@ export function ZdEstimatePairsModal({
       {fromSeed && seed && seedPack && seedPiece ? (
         <div className="space-y-3 rounded-lg border border-indigo-200/80 bg-indigo-50/40 p-3">
           <p className="text-xs font-medium text-indigo-950">
-            Zaznaczone towary — wybierz role
+            Zaznaczone towary - wybierz role
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
             {([0, 1] as const).map((idx) => {
@@ -278,7 +278,7 @@ export function ZdEstimatePairsModal({
                       : "border-slate-200/80 bg-white/70 hover:border-slate-300"
                   )}
                 >
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <p className="text-[11px] font-semibold text-slate-500">
                     {isPack ? "Paczka (ZD)" : "Sztuki"}
                   </p>
                   <p className="mt-1 truncate text-sm font-semibold text-slate-900">

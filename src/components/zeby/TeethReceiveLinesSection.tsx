@@ -113,7 +113,7 @@ function WaitingDaysBadge({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+        "inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
         days >= 3
           ? "bg-rose-100/90 text-rose-700 ring-1 ring-inset ring-rose-200/50"
           : "bg-slate-100/80 text-slate-600 ring-1 ring-inset ring-slate-200/40",
@@ -658,26 +658,26 @@ export function TeethReceiveLinesSection({
                             )}
                           >
                             <span className={cn(isCancelled && "text-slate-500 line-through")}>
-                              {row.group.color || "—"}
+                              {row.group.color || "-"}
                             </span>
                             {isCancelled ? (
-                              <span className="ml-1.5 inline-flex rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-800">
+                              <span className="ml-1.5 inline-flex rounded bg-amber-100 px-1.5 py-0.5 text-[9px] font-semibold text-amber-800">
                                 Anulowane
                               </span>
                             ) : null}
                           </td>
                           <td className={cn(teethReceiveTdClass, "font-medium text-slate-800")}>
-                            {row.group.mould?.trim() || "—"}
+                            {row.group.mould?.trim() || "-"}
                           </td>
                           <td className={cn(teethReceiveTdClass, "text-slate-700")}>
                             {row.group.jaw === "upper"
                               ? JAW_LABELS.upper
                               : row.group.jaw === "lower"
                                 ? JAW_LABELS.lower
-                                : "—"}
+                                : "-"}
                           </td>
                           <td className={cn(teethReceiveTdClass, "text-slate-700")}>
-                            {row.group.kind ? TEETH_KIND_LABELS[row.group.kind] : "—"}
+                            {row.group.kind ? TEETH_KIND_LABELS[row.group.kind] : "-"}
                           </td>
                           <td
                             className={cn(
@@ -735,8 +735,8 @@ export function TeethReceiveLinesSection({
                               <p className="font-medium text-slate-900">{row.productLabel}</p>
                               <p className="mt-0.5 text-[10px] leading-relaxed text-amber-900/90">
                                 {row.incompleteSpec
-                                  ? "Lista niekompletna — wpisz łączną ilość w tej sesji"
-                                  : "Brak listy zębów — wpisz łączną ilość w tej sesji"}
+                                  ? "Lista niekompletna - wpisz łączną ilość w tej sesji"
+                                  : "Brak listy zębów - wpisz łączną ilość w tej sesji"}
                               </p>
                             </div>
                           </td>

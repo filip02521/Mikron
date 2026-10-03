@@ -59,7 +59,7 @@ function QueueNav({
         <IconChevronLeft size={16} />
       </Button>
       <span className="min-w-[3.25rem] text-center text-xs font-medium tabular-nums text-slate-600">
-        {activeIndex >= 0 ? activeIndex + 1 : "—"}/{items.length}
+        {activeIndex >= 0 ? activeIndex + 1 : "-"}/{items.length}
       </span>
       <Button
         type="button"
@@ -131,7 +131,7 @@ export function VerificationQueuePicker({
             <SectionListLabel
               domain="panel"
               title="Kolejka"
-              hint="Wybierz prośbę — uzupełnisz ją obok"
+              hint="Wybierz prośbę - uzupełnisz ją obok"
               hintMode="tooltip"
               count={items.length}
               icon={<IconClipboardList size={17} />}
@@ -175,15 +175,15 @@ export function VerificationQueuePicker({
       aria-label="Kolejka do weryfikacji"
       className="mx-3 my-3 overflow-hidden rounded-lg border border-amber-200/90 bg-white shadow-sm ring-1 ring-amber-100/50 sm:mx-4"
     >
-      <div className="relative border-b border-amber-200/80 bg-gradient-to-b from-amber-50 to-amber-50/30">
+      <div className="relative border-b border-amber-200/80 bg-amber-50">
         <div className={items.length > 1 ? "pr-[7.5rem] sm:pr-[8rem]" : undefined}>
           <SectionListLabel
             domain="panel"
             title="Kolejka do weryfikacji"
             hint={
               items.length === 1
-                ? "Jedna prośba — uzupełnij formularz poniżej"
-                : "Kliknij wpis — formularz pod kolejką"
+                ? "Jedna prośba - uzupełnij formularz poniżej"
+                : "Kliknij wpis - formularz pod kolejką"
             }
             hintMode="tooltip"
             count={items.length}
@@ -292,11 +292,11 @@ function VerificationQueueRow({
               </p>
               {pathUi ? <VerificationPathBadge ui={pathUi} className="text-[10px]" /> : null}
               {ready ? (
-                <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+                <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
                   Gotowe
                 </span>
               ) : missing.length ? (
-                <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
                   Brakuje {missing.length}
                 </span>
               ) : null}

@@ -38,7 +38,7 @@ export function DailyPanelContentFooter() {
           Tablica
         </Link>
         <HelpPopover
-          label="Pomoc — panel dzienny"
+          label="Pomoc - panel dzienny"
           title="Panel dzienny"
           shortLabel="Pomoc"
           icon={<GuideIcon />}

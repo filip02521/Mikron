@@ -725,10 +725,10 @@ export function VerificationWorkspace({
                 showShortageLookup={lineLooksLikeTeethProduct(form, teethExemptTwIds)}
                 hint={
                   form.subiektTwId
-                    ? "Towar z Subiekta — wyszukaj inną pozycję: nazwa lub symbol w dużym polu, kod Mikran obok."
+                    ? "Towar z Subiekta - wyszukaj inną pozycję: nazwa lub symbol w dużym polu, kod Mikran obok."
                     : form.requestKind === "informacja"
                       ? (informacjaUi?.productSectionHint ??
-                        "Wystarczy nazwa lub symbol produktu — bez ilości.")
+                        "Wystarczy nazwa lub symbol produktu - bez ilości.")
                       : PROSBA_FORM_SECTION_COPY.products.orderHint
                 }
               >

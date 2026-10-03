@@ -232,7 +232,7 @@ export function CarrierPhonesModal({
         open={open}
         onClose={onClose}
         title="Telefony kurierów"
-        description="Numery telefonów przypisane do kurierów — szybki dostęp z dziennika dostaw."
+        description="Numery telefonów przypisane do kurierów - szybki dostęp z dziennika dostaw."
         size="lg"
         loadingMessage={pending && !loadingList ? "Zapisywanie…" : loadingList ? "Wczytywanie numerów…" : null}
         footer={

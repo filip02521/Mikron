@@ -47,7 +47,7 @@ function line(twId: number): ManualZdEstimateLine {
     tw_Symbol: twId === 50 ? "SYM-ONREQ" : `S${twId}`,
     tw_Nazwa: "X",
     tw_IdGrupa: null,
-    grt_Nazwa: "—",
+    grt_Nazwa: "-",
     tw_Stan: 10,
     tw_StanRez: 0,
     dostepne: 10,

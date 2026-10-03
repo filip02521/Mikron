@@ -143,7 +143,7 @@ export function ProsbaFormProductsSection({
       {showShortageLookup && !isInformacja ? (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200/70 bg-amber-50/40 px-2.5 py-2">
           <p className="min-w-0 text-[11px] leading-snug text-amber-900/85">
-            Zanim wyślesz prośbę o zęby — sprawdź, czy wariant nie jest na liście braków.
+            Zanim wyślesz prośbę o zęby - sprawdź, czy wariant nie jest na liście braków.
           </p>
           <TeethShortageLookupButton className="shrink-0" />
         </div>

@@ -45,7 +45,7 @@ const supplier: SupplierSummaryMeta = {
   min_order_currency: "EUR",
 };
 
-describe("SupplierDrawer — tryb podglądu (okno po utworzeniu ZD)", () => {
+describe("SupplierDrawer - tryb podglądu (okno po utworzeniu ZD)", () => {
   afterEach(() => cleanup());
 
   it("pokazuje dane dostawcy bez akcji zmieniających termin, z przejściem do panelu dziennego", () => {
@@ -61,7 +61,7 @@ describe("SupplierDrawer — tryb podglądu (okno po utworzeniu ZD)", () => {
     expect(screen.getByRole("link", { name: /Karta dostawcy/ })).toBeTruthy();
   });
 
-  it("Escape zamyka tylko podgląd — nie dochodzi do okna pod spodem", () => {
+  it("Escape zamyka tylko podgląd - nie dochodzi do okna pod spodem", () => {
     const onClose = vi.fn();
     const modalEscape = vi.fn();
     window.addEventListener("keydown", modalEscape);

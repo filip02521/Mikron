@@ -4,7 +4,7 @@ import { supplierKey } from "@/lib/orders/queue-supplier-groups";
 export type WarehouseInventorySortMode = "shelf" | "supplier" | "sales";
 
 function salesName(row: WarehouseInventoryRow): string {
-  return row.order.sales_person?.name?.trim() || "—";
+  return row.order.sales_person?.name?.trim() || "-";
 }
 
 /** Sortowanie wierszy inwentaryzacji (po zbudowaniu WarehouseInventoryRow). */

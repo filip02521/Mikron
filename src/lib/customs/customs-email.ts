@@ -20,10 +20,10 @@ export function customsEmailSubject(input: {
   invoiceNumber: string;
   zdNumber: string | null;
 }): string {
-  const parts = [`Odprawa celna — ${input.supplierName}`];
+  const parts = [`Odprawa celna - ${input.supplierName}`];
   if (input.invoiceNumber) parts.push(`faktura ${input.invoiceNumber}`);
   if (input.zdNumber) parts.push(input.zdNumber);
-  return parts.join(" — ");
+  return parts.join(" - ");
 }
 
 function escapeHtml(s: string): string {

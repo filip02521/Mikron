@@ -21,7 +21,7 @@ import { PROCUREMENT_PROCESS_LINES_COPY } from "@/lib/orders/procurement-process
 function linePrimaryLabel(line: ForSomeoneLine): string {
   const sym = line.symbol?.trim() && line.symbol !== "-" ? line.symbol : null;
   const prod = line.products?.trim() || "Pozycja";
-  return sym ? `${sym} — ${prod}` : prod;
+  return sym ? `${sym} - ${prod}` : prod;
 }
 
 export function ProcurementProcessLinesModal({
@@ -224,12 +224,12 @@ function ProcurementProcessLinesModalForm({
                       {(line.informacjaViaPanel || line.informacjaStockOut) && (
                         <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[10px] text-slate-500">
                           {line.informacjaViaPanel ? (
-                            <span className="rounded bg-slate-100 px-1 py-0.5 font-semibold uppercase tracking-wide text-slate-500">
+                            <span className="rounded bg-slate-100 px-1 py-0.5 font-semibold text-slate-500">
                               {PROCUREMENT_PROCESS_LINES_COPY.badgeInfo}
                             </span>
                           ) : null}
                           {line.informacjaStockOut ? (
-                            <span className="rounded bg-amber-100 px-1 py-0.5 font-semibold uppercase tracking-wide text-amber-800">
+                            <span className="rounded bg-amber-100 px-1 py-0.5 font-semibold text-amber-800">
                               {PROCUREMENT_PROCESS_LINES_COPY.badgeStockOut}
                             </span>
                           ) : null}

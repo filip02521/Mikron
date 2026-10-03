@@ -11,28 +11,12 @@ import { isAuthVisualVariant } from "@/components/auth/auth-visual-variant";
 import { ONTIME_AUTH_FOOTER } from "@/lib/ui/ontime-brand";
 import { cn } from "@/lib/cn";
 
-function AuthAsideBlurOrbs() {
-  return (
-    <>
-      <div
-        className="absolute -left-24 top-1/4 h-72 w-72 rounded-full bg-sky-400/25 blur-3xl motion-safe:animate-auth-float"
-        aria-hidden
-      />
-      <div
-        className="absolute -right-16 bottom-1/4 h-56 w-56 rounded-full bg-indigo-400/20 blur-3xl motion-safe:animate-auth-float motion-safe:[animation-delay:1.2s]"
-        aria-hidden
-      />
-    </>
-  );
-}
-
 function AuthAsidePanel() {
   if (isAuthVisualVariant('bridge')) {
     return (
       <>
         <div className="auth-aside-bg pointer-events-none absolute inset-0 overflow-hidden">
           <AuthAsideBackdrop />
-          <AuthAsideBlurOrbs />
         </div>
         <AuthSplitBridge />
       </>
@@ -43,7 +27,6 @@ function AuthAsidePanel() {
     return (
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <AuthAsideBackdrop />
-        <AuthAsideBlurOrbs />
       </div>
     );
   }
@@ -75,7 +58,7 @@ export function AuthScreenLayout({
     <div className={cn("flex min-h-dvh w-full max-w-full overflow-x-hidden", className)}>
       <aside
         className={cn(
-          "relative hidden overflow-hidden bg-gradient-to-br from-indigo-800 via-sky-900 to-slate-950 lg:flex lg:w-[min(42%,28rem)] lg:flex-col lg:px-12 lg:py-14 xl:px-16",
+          "relative hidden overflow-hidden bg-indigo-800 lg:flex lg:w-[min(42%,28rem)] lg:flex-col lg:px-12 lg:py-14 xl:px-16",
           isAuthVisualVariant('bridge') && "overflow-visible"
         )}
       >
@@ -89,7 +72,7 @@ export function AuthScreenLayout({
           "scroll-smooth [scroll-padding-top:max(0.75rem,env(safe-area-inset-top))] [scroll-padding-bottom:max(1rem,env(safe-area-inset-bottom))]",
           minimal
             ? "bg-white"
-            : "bg-gradient-to-br from-indigo-50/40 via-white to-sky-50/50"
+            : "bg-indigo-50/40"
         )}
       >
         <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>

@@ -286,12 +286,12 @@ export function SupplierCustomsDocuments({
                   onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 />
                 <p className="mt-1 text-xs text-slate-400">
-                  PDF, JPG, PNG, WebP, DOCX, XLSX — max 20 MB
+                  PDF, JPG, PNG, WebP, DOCX, XLSX - max 20 MB
                 </p>
               </div>
               <textarea
                 className={cn(fieldControlClass(), "min-h-[60px] resize-y")}
-                placeholder="Opis / komentarz do dokumentu (np. Deklaracja celna SAD — dostawa 09/2026)"
+                placeholder="Opis / komentarz do dokumentu (np. Deklaracja celna SAD - dostawa 09/2026)"
                 value={description}
                 maxLength={1000}
                 disabled={busy}

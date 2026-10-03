@@ -59,14 +59,14 @@ import {
 
 function PlanSectionHelp({ planning }: { planning: boolean }) {
   return (
-    <HelpPopover label="Pomoc — plan tygodnia" title="Plan tygodnia" shortLabel="Pomoc">
+    <HelpPopover label="Pomoc - plan tygodnia" title="Plan tygodnia" shortLabel="Pomoc">
       {planning ? (
         <HelpBlock title="Tryb planowania">
           <ul className="list-disc space-y-1.5 pl-4">
             <li>Przeciągnij karty między dniami tygodnia.</li>
             <li>
               <strong className="font-medium text-slate-800">Zatwierdź plan</strong> zapisuje
-              przesunięcia w harmonogramie — z uwzględnieniem urlopów i przeliczenia terminów.
+              przesunięcia w harmonogramie - z uwzględnieniem urlopów i przeliczenia terminów.
             </li>
           </ul>
         </HelpBlock>
@@ -180,7 +180,7 @@ export function WeekPlanner({
     }));
     run(
       () => actionBatchShiftOrder(payload),
-      `Plan zatwierdzony — ${pendingChanges.length} ${
+      `Plan zatwierdzony - ${pendingChanges.length} ${
         pendingChanges.length === 1 ? "przesunięcie" : "przesunięć"
       }`,
       "Zapisywanie planu tygodnia…",
@@ -334,7 +334,7 @@ export function WeekPlanner({
     chrome === "dailyPanel" ? (
       <DailyPanelSubsectionBar
         title={title}
-        description={description ?? "Poniedziałek–piątek · zamówienia z wyprzedzeniem"}
+        description={description ?? "Poniedziałek-piątek · zamówienia z wyprzedzeniem"}
         tone="plan"
         count={total > 0 ? total : undefined}
         countUnit={{ one: "pozycja", few: "pozycje", many: "pozycji" }}
@@ -395,7 +395,7 @@ function WeekPlanEmptyCalendar({
     onDemandCount > 0
       ? `${onDemandCount} ${
           onDemandCount === 1 ? "dostawca na żądanie" : "dostawców na żądanie"
-        } — bez stałego terminu w harmonogramie.`
+        } - bez stałego terminu w harmonogramie.`
       : null;
 
   return (
@@ -408,7 +408,7 @@ function WeekPlanEmptyCalendar({
           >
             <p
               className={cn(
-                "font-semibold uppercase tracking-wider",
+                "font-semibold",
                 density === "compact" ? "text-[10px]" : "text-[10px]",
                 day.isToday ? "text-slate-800" : "text-slate-500"
               )}
@@ -540,7 +540,7 @@ function DayColumn({
         <div>
           <p
             className={cn(
-              "font-semibold uppercase tracking-wider",
+              "font-semibold",
               density === "compact" ? "text-[10px]" : "text-xs",
               day.isToday ? "text-slate-800" : "text-slate-500"
             )}
@@ -562,7 +562,7 @@ function DayColumn({
           ) : null}
           <span
             className={cn(
-              "rounded-full px-2 py-0.5 text-[10px] font-semibold tabular-nums",
+              "rounded-md px-2 py-0.5 text-[10px] font-semibold tabular-nums",
               day.items.length > 0
                 ? "bg-slate-200/80 text-slate-700"
                 : "text-slate-400"

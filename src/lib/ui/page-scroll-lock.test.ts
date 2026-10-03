@@ -75,7 +75,7 @@ describe("page-scroll-lock", () => {
     vi.useRealTimers();
   });
 
-  it("unlock czyści inline overflow — CSS fill-viewport (:has) znów steruje main", () => {
+  it("unlock czyści inline overflow - CSS fill-viewport (:has) znów steruje main", () => {
     const main = document.createElement("main");
     main.style.overflow = "";
     const viewport = document.createElement("div");

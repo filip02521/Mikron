@@ -14,7 +14,7 @@ type BannerTone = {
   meta: string;
   body: string;
   note: string;
-  badge: "warning" | "purple";
+  badge: "warning" | "info";
   chipTone: "amber" | "violet";
 };
 
@@ -71,7 +71,7 @@ export function ZkProsbaLinkBanner({
         meta: "text-violet-900/80",
         body: "text-violet-950/90",
         note: "border-violet-200/80 bg-white/70 text-violet-950",
-        badge: "purple",
+        badge: "info",
         chipTone: "violet",
       };
 

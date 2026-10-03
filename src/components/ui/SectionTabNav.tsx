@@ -40,7 +40,7 @@ export function SectionTabNav<T extends string>({
       aria-label={ariaLabel}
     >
       <div>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <p className="mb-2 text-xs font-semibold text-slate-500">
           {sectionLabel}
         </p>
         <div
@@ -68,7 +68,7 @@ export function SectionTabNav<T extends string>({
               >
                 {item.label}
                 {item.badgeCount != null && item.badgeCount > 0 ? (
-                  <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-slate-700">
+                  <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-md bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-slate-700">
                     {item.badgeCount}
                   </span>
                 ) : null}

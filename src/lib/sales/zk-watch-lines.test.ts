@@ -76,7 +76,7 @@ describe("zk-watch-lines", () => {
     ]);
   });
 
-  it("scala stan po odświeżeniu — zachowuje needs_prosba", () => {
+  it("scala stan po odświeżeniu - zachowuje needs_prosba", () => {
     const merged = mergeLineChecksAfterRefresh(
       [
         { key: "ob:10", arrived: true, needs_prosba: false },

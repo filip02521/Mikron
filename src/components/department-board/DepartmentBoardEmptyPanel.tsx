@@ -13,7 +13,7 @@ export function DepartmentBoardAnnouncementsEmpty({
 }) {
   const panelDescription =
     questionsCount > 0
-      ? `Opublikuj ogłoszenie powyżej, aby poinformować cały dział handlowy. Handlowcy mogą też publikować wątki w zakładce Pytania (${questionsCount}) — sprawdź, czy szukany wpis nie jest tam.`
+      ? `Opublikuj ogłoszenie powyżej, aby poinformować cały dział handlowy. Handlowcy mogą też publikować wątki w zakładce Pytania (${questionsCount}) - sprawdź, czy szukany wpis nie jest tam.`
       : "Opublikuj ogłoszenie powyżej, aby poinformować cały dział handlowy.";
 
   return (
@@ -64,22 +64,22 @@ export function DepartmentBoardQuestionsEmpty({
   const description =
     filter === "open"
       ? domain === "sales"
-        ? "Wszystkie pytania zespołu mają już odpowiedź zakupów — albo nikt jeszcze nic nie zapytał."
-        : "Handlowcy nie czekają obecnie na odpowiedź — sprawdź filtr \u201eAktywne\u201d."
+        ? "Wszystkie pytania zespołu mają już odpowiedź zakupów - albo nikt jeszcze nic nie zapytał."
+        : "Handlowcy nie czekają obecnie na odpowiedź - sprawdź filtr \u201eAktywne\u201d."
       : filter === "answered"
         ? "Gdy zakupy odpowiedzą na pytanie, wątek trafi tutaj po wybraniu tego filtra."
         : filter === "closed"
           ? "Zakończone wątki pojawią się tutaj, gdy handlowiec lub zakupy zamkną pytanie."
           : filter === "unseen"
-            ? "Przejrzałeś już wszystkie nowe odpowiedzi zakupów — świetnie!"
+            ? "Przejrzałeś już wszystkie nowe odpowiedzi zakupów - świetnie!"
             : filter === "own_unseen"
-              ? "Przejrzałeś już odpowiedzi na swoje pytania — możesz wrócić do pełnej listy."
+              ? "Przejrzałeś już odpowiedzi na swoje pytania - możesz wrócić do pełnej listy."
               : filter === "mine"
               ? domain === "sales"
                 ? "Kliknij «Zadaj pytanie» powyżej lub użyj przycisku na dole ekranu na telefonie."
                 : "Pytania handlowców pojawią się tutaj automatycznie."
               : domain === "sales"
-                ? "Kliknij «Zadaj pytanie» powyżej — odpowiedź zobaczy cały dział."
+                ? "Kliknij «Zadaj pytanie» powyżej - odpowiedź zobaczy cały dział."
                 : "Pytania handlowców pojawią się tutaj automatycznie.";
 
   return (

@@ -29,7 +29,7 @@ function line(
 }
 
 describe("resolveExpandedLineQuantityDisplay", () => {
-  it("przy zębach w compact — zostawia tylko chipy (bez szt. w nagłówku i progress)", () => {
+  it("przy zębach w compact - zostawia tylko chipy (bez szt. w nagłówku i progress)", () => {
     const result = resolveExpandedLineQuantityDisplay(line(), {
       compact: true,
       showProgress: true,
@@ -38,7 +38,7 @@ describe("resolveExpandedLineQuantityDisplay", () => {
     expect(result.progressInDetail).toBeNull();
   });
 
-  it("przy częściowym wycofaniu — zostawia adnotację, bez progress", () => {
+  it("przy częściowym wycofaniu - zostawia adnotację, bez progress", () => {
     const result = resolveExpandedLineQuantityDisplay(
       line({
         quantityLabel: "3 szt. (z 6 · 3 wycofane)",
@@ -56,7 +56,7 @@ describe("resolveExpandedLineQuantityDisplay", () => {
     expect(result.progressInDetail).toBeNull();
   });
 
-  it("poza compact — bez zmian", () => {
+  it("poza compact - bez zmian", () => {
     const result = resolveExpandedLineQuantityDisplay(line(), {
       compact: false,
       showProgress: true,
@@ -65,7 +65,7 @@ describe("resolveExpandedLineQuantityDisplay", () => {
     expect(result.progressInDetail).toBe("wszystkie 4 szt.");
   });
 
-  it("zwykły produkt — ukrywa progress powtarzający quantityLabel", () => {
+  it("zwykły produkt - ukrywa progress powtarzający quantityLabel", () => {
     const result = resolveExpandedLineQuantityDisplay(
       line({ teethDetails: undefined, progressLabel: "wszystkie 4 szt." }),
       { compact: true, showProgress: true }
@@ -74,7 +74,7 @@ describe("resolveExpandedLineQuantityDisplay", () => {
     expect(result.progressInDetail).toBeNull();
   });
 
-  it("magazyn grupy — ukrywa „0 z 3 szt.” przy pozycji", () => {
+  it("magazyn grupy - ukrywa „0 z 3 szt.” przy pozycji", () => {
     const result = resolveExpandedLineQuantityDisplay(
       line({ teethDetails: undefined, progressLabel: "0 z 3 szt." }),
       { compact: true, showProgress: true, hideWarehouseProgress: true }

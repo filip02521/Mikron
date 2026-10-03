@@ -30,7 +30,7 @@ export function ProsbaVsBoardHint() {
           </span>
           {/* Bez nowrap: długie zdanie nachodziło na „Ukryj” i wypychało ikonę poza kartę. */}
           <p className="min-w-0 text-xs leading-snug text-slate-600">
-            To formularz <strong className="font-semibold text-slate-800">prośby o towar</strong> — trafia
+            To formularz <strong className="font-semibold text-slate-800">prośby o towar</strong> - trafia
             do procesu zamówień. Ogólne pytanie do działu zakupów (bez zamawiania) zadaj na{" "}
             <Link href="/tablica" className={cn(brandLinkClass, "font-medium")}>
               Tablicy

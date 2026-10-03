@@ -383,7 +383,7 @@ export function LocationScheduleClient({
                           {vacationNoteLabel(row.vacation_note)}
                         </Badge>
                       ) : (
-                        "—"
+                        "-"
                       )}
                     </td>
                   </tr>

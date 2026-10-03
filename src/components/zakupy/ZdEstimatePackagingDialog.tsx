@@ -206,7 +206,7 @@ function PackagingDialogForm({
             <p className="text-sm leading-snug text-slate-600">{line.tw_Nazwa}</p>
             {extraOnly ? (
               <p className="text-[11px] font-semibold text-amber-800">
-                Tylko prośba — bez celu zapasu
+                Tylko prośba - bez celu zapasu
               </p>
             ) : individualExtraPieces > 0 ? (
               <p className="text-[11px] font-semibold text-emerald-700">
@@ -451,8 +451,8 @@ function PackagingDialogForm({
         <div className="rounded-lg border border-slate-200/80 bg-slate-50/60 px-3 py-2.5">
           <p className="text-xs font-medium text-slate-700">
             {packagesMode
-              ? `1 ${label.trim() || "op."} = ${unitsNum} szt — przy braku niedoboru Do ZD będzie 0.`
-              : `Wielokrotność ${unitsNum} szt — przy braku niedoboru Do ZD będzie 0.`}
+              ? `1 ${label.trim() || "op."} = ${unitsNum} szt - przy braku niedoboru Do ZD będzie 0.`
+              : `Wielokrotność ${unitsNum} szt - przy braku niedoboru Do ZD będzie 0.`}
           </p>
         </div>
       ) : showUnitsError ? (
@@ -475,7 +475,7 @@ function PackagingDialogForm({
           rows={2}
           maxLength={500}
           disabled={pending}
-          placeholder="np. Falcon — karton 10 szt"
+          placeholder="np. Falcon - karton 10 szt"
           className={cn(
             "mt-1.5 w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400",
             controlFocusClass

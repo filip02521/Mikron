@@ -29,7 +29,7 @@ export function SalesOnboardingTourBanner() {
           <span className="mt-1 hidden md:block">
             Przechodź tour w{" "}
             <strong className="font-semibold text-white">panelu po prawej</strong>. Używaj „Dalej”
-            i „Wstecz”. Menu boczne jest na razie wyłączone — strona służy tylko do podglądu.
+            i „Wstecz”. Menu boczne jest na razie wyłączone - strona służy tylko do podglądu.
           </span>
           <span className="mt-1 md:hidden">
             Przechodź tour w{" "}

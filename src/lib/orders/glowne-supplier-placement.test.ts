@@ -6,7 +6,7 @@ import {
 } from "./glowne-supplier-placement";
 
 describe("glowneScheduleSupplierIds", () => {
-  it("Główne — zamówienie i stock_out przesuwają harmonogram, via_panel nie", () => {
+  it("Główne - zamówienie i stock_out przesuwają harmonogram, via_panel nie", () => {
     const ids = glowneScheduleSupplierIds(
       [
         {
@@ -31,7 +31,7 @@ describe("glowneScheduleSupplierIds", () => {
     expect([...ids].sort()).toEqual(["s1", "s3"]);
   });
 
-  it("Uzupełniające i Anulowano — bez przesunięcia harmonogramu", () => {
+  it("Uzupełniające i Anulowano - bez przesunięcia harmonogramu", () => {
     const row = {
       supplier_id: "s1",
       request_kind: "zamowienie" as const,
@@ -43,7 +43,7 @@ describe("glowneScheduleSupplierIds", () => {
 });
 
 describe("glowneSchedulableSupplierIds", () => {
-  it("pomija dostawców na żądanie — Główne bez przesunięcia harmonogramu", () => {
+  it("pomija dostawców na żądanie - Główne bez przesunięcia harmonogramu", () => {
     const candidates = new Set(["s-cycle", "s-demand-flag", "s-demand-text"]);
     const schedulable = glowneSchedulableSupplierIds(candidates, [
       { id: "s-cycle", order_on_demand: false, interval_raw: "co 2 tygodnie" },
@@ -57,7 +57,7 @@ describe("glowneSchedulableSupplierIds", () => {
     expect([...schedulable]).toEqual(["s-cycle"]);
   });
 
-  it("pomija nieznanych dostawców — brak wymuszenia interwału przy braku rekordu", () => {
+  it("pomija nieznanych dostawców - brak wymuszenia interwału przy braku rekordu", () => {
     const schedulable = glowneSchedulableSupplierIds(
       new Set(["missing", "s-cycle"]),
       [{ id: "s-cycle", order_on_demand: false, interval_raw: "co 2 tygodnie" }]

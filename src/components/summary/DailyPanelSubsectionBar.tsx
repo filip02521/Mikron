@@ -30,20 +30,9 @@ const TONE_DOT: Record<DailyPanelSubsectionTone, string> = {
 };
 
 function dailyPanelSubsectionBarShellClass(tone: DailyPanelSubsectionTone): string {
-  switch (tone) {
-    case "stockOut":
-    case "cancel":
-    case "overdue":
-      return "border-b border-amber-100/90 bg-amber-50/40";
-    case "today":
-    case "informacja":
-      return "border-b border-sky-100/90 bg-sky-50/35";
-    case "prosby":
-    case "plan":
-      return "border-b border-indigo-100/90 bg-indigo-50/35";
-    default:
-      return "border-b border-slate-100 bg-slate-50/50";
-  }
+  // Jeden neutralny nagłówek dla wszystkich grup; ton nie barwi tła.
+  void tone;
+  return "border-b border-slate-100 bg-slate-50/60";
 }
 
 /** Kropka koloru sekcji — ten sam token co w nagłówkach kolejki Dziś. */
@@ -63,22 +52,9 @@ export function formatDailyPanelCount(n: number, unit: DailyPanelCountUnit): str
 
 /** Obudowa bloku kolejki — ton sekcji przez delikatne tło i obwódkę (bez lewego paska). */
 export function dailyPanelQueueShellClass(tone?: DailyPanelSubsectionTone): string {
-  const base = "overflow-hidden rounded-md border shadow-sm";
-  switch (tone) {
-    case "stockOut":
-      return `${base} border-amber-200/85 bg-amber-50/20`;
-    case "cancel":
-    case "overdue":
-      return `${base} border-amber-200/80 bg-amber-50/15`;
-    case "today":
-    case "informacja":
-      return `${base} border-sky-200/75 bg-sky-50/15`;
-    case "prosby":
-    case "plan":
-      return `${base} border-indigo-200/75 bg-indigo-50/10`;
-    default:
-      return cn(surfaceCardClass, "overflow-hidden");
-  }
+  // Wszystkie grupy kolejki na tej samej, neutralnej powierzchni.
+  void tone;
+  return cn(surfaceCardClass, "overflow-hidden");
 }
 
 /** Nagłówek podsekcji wewnątrz karty panelu dziennego. */
@@ -116,18 +92,6 @@ export function DailyPanelSubsectionBar({
   return (
     <div className={cn("flex flex-wrap items-center justify-between gap-2 py-2 sm:py-2.5", dailyPanelSubsectionBarShellClass(tone), panelSubsectionInsetClass)}>
       <div className="flex min-w-0 items-center gap-2">
-        {step != null ? (
-          <span
-            className="shrink-0 rounded-md bg-slate-200/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600"
-            title={`Krok ${step} w kolejce dnia`}
-          >
-            Krok {step}
-          </span>
-        ) : null}
-        <span
-          className={cn("h-1.5 w-1.5 shrink-0 rounded-full", TONE_DOT[tone])}
-          aria-hidden
-        />
         <div className="min-w-0">
           <div
             className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5"

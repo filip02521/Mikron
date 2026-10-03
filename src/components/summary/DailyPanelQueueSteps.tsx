@@ -4,10 +4,6 @@ import { FlowChevron } from "@/components/ui/UiGlyphs";
 import { cn } from "@/lib/cn";
 import { dailyPanelSectionHref } from "@/lib/orders/daily-panel-section-anchors";
 import {
-  dailyPanelToneDotClass,
-  type DailyPanelSubsectionTone,
-} from "@/components/summary/DailyPanelSubsectionBar";
-import {
   panelQueueStepsShellClass,
   panelTypography,
 } from "@/lib/ui/ontime-theme";
@@ -22,13 +18,6 @@ const STEP_ORDER: DailyPanelQueueStepKind[] = [
   "today",
 ];
 
-const STEP_TONE: Record<DailyPanelQueueStepKind, DailyPanelSubsectionTone> = {
-  overdue: "overdue",
-  stockOut: "stockOut",
-  prosby: "prosby",
-  today: "today",
-};
-
 const STEP_META: Record<DailyPanelQueueStepKind, { label: string }> = {
   overdue: { label: "Zaległe" },
   stockOut: { label: "Brak na stanie" },
@@ -37,11 +26,9 @@ const STEP_META: Record<DailyPanelQueueStepKind, { label: string }> = {
 };
 
 function QueueStepChip({
-  step,
   kind,
   count,
 }: {
-  step: number;
   kind: DailyPanelQueueStepKind;
   count: number;
 }) {
@@ -58,15 +45,6 @@ function QueueStepChip({
         panelTypography.tab
       )}
     >
-      <span
-        className={cn(
-          "flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold tabular-nums text-white",
-          dailyPanelToneDotClass(STEP_TONE[kind])
-        )}
-        aria-hidden
-      >
-        {step}
-      </span>
       <span className="truncate">
         {label}
         <span className="ml-1 font-semibold tabular-nums text-slate-600">({count})</span>
@@ -114,7 +92,7 @@ export function DailyPanelQueueSteps({
       {steps.map((item, index) => (
         <span key={item.kind} className="inline-flex shrink-0 items-center gap-2">
           {index > 0 ? <FlowChevron className="text-slate-300" /> : null}
-          <QueueStepChip step={index + 1} kind={item.kind} count={item.count} />
+          <QueueStepChip kind={item.kind} count={item.count} />
         </span>
       ))}
     </nav>

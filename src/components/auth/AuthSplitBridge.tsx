@@ -144,7 +144,7 @@ export function AuthSplitBridge() {
 export function AuthMainBridgeFade() {
   return (
     <div
-      className="pointer-events-none absolute inset-y-0 left-0 z-[1] hidden w-40 bg-gradient-to-r from-indigo-200/25 via-indigo-100/10 to-transparent lg:block xl:w-48"
+      className="pointer-events-none absolute inset-y-0 left-0 z-[1] hidden w-40 bg-indigo-200/25 lg:block xl:w-48"
       aria-hidden
     />
   );

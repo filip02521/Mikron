@@ -50,7 +50,7 @@ export function DailyPanelEmptyGuide({ onOpenWeek }: { onOpenWeek: () => void })
             tileClassName="bg-amber-100 text-amber-800"
             title="1. Prośby handlowców"
           >
-            Oznacz Główne albo Uzupełniające — prośba trafi do magazynu lub kolejki informacji.
+            Oznacz Główne albo Uzupełniające - prośba trafi do magazynu lub kolejki informacji.
           </GuideStep>
           <GuideStep
             icon={<IconLayoutPanel size={15} />}
@@ -64,7 +64,7 @@ export function DailyPanelEmptyGuide({ onOpenWeek }: { onOpenWeek: () => void })
             tileClassName={sectionIconTileBrandClass}
             title="3. Plan tygodnia"
           >
-            Sprawdź terminy z wyprzedzeniem — w zakładce Tydzień albo w Terminach zamówień.
+            Sprawdź terminy z wyprzedzeniem - w zakładce Tydzień albo w Terminach zamówień.
           </GuideStep>
         </ol>
         <div className="mt-4 flex flex-wrap gap-2">

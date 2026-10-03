@@ -438,7 +438,7 @@ describe("słownik CN 2026 i weryfikacja kodów", () => {
     });
     expect(views[0]!.cnInvalid).toBe(true);
     expect(isLineComplete(views[0]!)).toBe(false);
-    expect(views[0]!.cnWarning).toMatch(/Kodu 9018 49 00 nie ma w CN 2026 — istniejące w tej grupie: 9018 49 10, 9018 49 90/);
+    expect(views[0]!.cnWarning).toMatch(/Kodu 9018 49 00 nie ma w CN 2026 - istniejące w tej grupie: 9018 49 10, 9018 49 90/);
     // Słownik z poprzedniego roku tylko ostrzega.
     const next = buildCustomsLineViews({
       lines: [{ id: "l1", position: 1, supplier_article_code: "DE-1196", supplier_name: "Knife", quantity: 1, unit: "szt.", unit_price: 1, amount: 1, zd_quantity: null }],

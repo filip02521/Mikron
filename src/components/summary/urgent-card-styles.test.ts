@@ -14,26 +14,18 @@ describe("urgent-card-styles", () => {
     expect(urgentCardTone(false)).toBe("today");
   });
 
-  it("ton overdue — amber w karcie, linku i footerze", () => {
-    expect(urgentCardClassName("overdue")).toContain("amber");
-    expect(urgentSupplierNameLinkClass("overdue")).toContain("amber");
-    expect(urgentFooterShellClass("overdue")).toContain("amber");
-    expect(urgentFooterPrimaryClass("overdue")).toContain("amber-600");
+  it("karta, link i footer są neutralne; primary zawsze w akcencie marki", () => {
+    for (const tone of ["overdue", "today", true, false] as const) {
+      expect(urgentCardClassName(tone)).not.toMatch(/amber|sky/);
+    }
+    for (const tone of ["overdue", "today"] as const) {
+      expect(urgentSupplierNameLinkClass(tone)).not.toMatch(/amber|sky/);
+      expect(urgentFooterShellClass(tone)).not.toMatch(/amber|sky/);
+      expect(urgentFooterPrimaryClass(tone)).toContain("indigo-600");
+    }
   });
 
-  it("ton today — sky / indigo", () => {
-    expect(urgentCardClassName("today")).toContain("sky");
-    expect(urgentSupplierNameLinkClass("today")).toContain("sky");
-    expect(urgentFooterShellClass("today")).toContain("sky");
-    expect(urgentFooterPrimaryClass("today")).toContain("indigo-600");
-  });
-
-  it("akceptuje legacy boolean w urgentCardClassName", () => {
-    expect(urgentCardClassName(true)).toContain("amber");
-    expect(urgentCardClassName(false)).toContain("sky");
-  });
-
-  it("trailing meta — Dziś zamiast badge Na dziś", () => {
+  it("trailing meta - Dziś zamiast badge Na dziś", () => {
     const today = buildUrgentScheduleDateMeta({
       tone: "today",
       dateLabel: "25.08",
@@ -44,7 +36,7 @@ describe("urgent-card-styles", () => {
     expect(today.labelClass).toContain("sky");
   });
 
-  it("trailing meta — zaległe pokazuje datę", () => {
+  it("trailing meta - zaległe pokazuje datę", () => {
     const overdue = buildUrgentScheduleDateMeta({
       tone: "overdue",
       dateLabel: "12.03",

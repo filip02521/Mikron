@@ -151,7 +151,7 @@ function contextualizeSubiektMessage(message: string): string {
     .replace(/z Subiekta/g, "z systemu")
     .replace(
       /terminy bez danych z systemu, zostają szacunki z historii dostaw\./g,
-      "automatyczne wczytywanie danych ZK może być niedostępne — wpisz numer ręcznie."
+      "automatyczne wczytywanie danych ZK może być niedostępne - wpisz numer ręcznie."
     )
     .replace(
       /terminy z dokumentów ZD nie są pobierane, zostają szacunki z historii dostaw\./g,
@@ -456,7 +456,7 @@ export function NotatnikClient({
     );
     if (result.kind === "missing") {
       setFocusWatchError(
-        "Nie znaleziono tej ZK — sprawdź, czy sprawa nie została zamknięta lub usunięta."
+        "Nie znaleziono tej ZK - sprawdź, czy sprawa nie została zamknięta lub usunięta."
       );
       return false;
     }
@@ -872,7 +872,7 @@ export function NotatnikClient({
         setUnseenWatchIds(new Set(unseen));
         setWarehouseToast(
           unseen.length === 1
-            ? "Towar z prośby czeka na regale — sprawdź Moje zamówienia."
+            ? "Towar z prośby czeka na regale - sprawdź Moje zamówienia."
             : `${unseen.length} spraw ZK ma towar na regale.`
         );
       }
@@ -900,7 +900,7 @@ export function NotatnikClient({
     const n = unseen.length;
     setWarehouseToast(
       n === 1
-        ? "Towar z prośby czeka na regale — sprawdź Moje zamówienia."
+        ? "Towar z prośby czeka na regale - sprawdź Moje zamówienia."
         : `${n} spraw ZK ma towar na regale.`
     );
   }
@@ -1306,7 +1306,7 @@ export function NotatnikClient({
             Powiązanie ZK z prośbami wymaga migracji bazy:{" "}
             <code className="text-[0.85em]">052_individual_orders_sales_client_kh_id</code>,{" "}
             <code className="text-[0.85em]">055_individual_orders_source_zk</code>.
-            Uruchom migracje Supabase — bez nich podpowiedzi i badge „Prośba w toku” mogą nie działać.
+            Uruchom migracje Supabase - bez nich podpowiedzi i badge „Prośba w toku” mogą nie działać.
           </Alert>
         ) : null}
 

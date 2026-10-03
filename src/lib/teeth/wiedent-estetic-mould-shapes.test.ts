@@ -22,7 +22,7 @@ describe("wiedent-estetic-mould-shapes", () => {
     expect(inferWiedentEsteticShapeId("011")).toBe("lower");
   });
 
-  it("boki — jedna paleta", () => {
+  it("boki - jedna paleta", () => {
     const groups = wiedentEsteticMouldShapeGroups("posterior");
     expect(groups).toHaveLength(1);
     expect(groups[0]!.moulds).toContain("72");

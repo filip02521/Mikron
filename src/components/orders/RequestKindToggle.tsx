@@ -47,7 +47,7 @@ export function RequestKindToggle({
         <span className="min-w-0 pt-0.5">
           <span className="block text-sm font-semibold text-slate-900">Zamówienie u dostawcy</span>
           <span className="mt-0.5 block text-xs leading-relaxed text-slate-600">
-            Składamy zamówienie — podajesz ilość i śledzisz dostawę.
+            Składamy zamówienie - podajesz ilość i śledzisz dostawę.
           </span>
         </span>
       </button>
@@ -80,7 +80,7 @@ export function RequestKindToggle({
             Informacja o towarze
           </span>
           <span className="mt-0.5 block text-xs leading-relaxed text-slate-600">
-            Wybierz ścieżkę poniżej — powiadomienie o stanie magazynowym albo brak na stanie.
+            Wybierz ścieżkę poniżej - powiadomienie o stanie magazynowym albo brak na stanie.
           </span>
         </span>
       </button>

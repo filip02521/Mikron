@@ -108,7 +108,7 @@ export function TeethProgressBadge({
         <p className={teethProsbaIncompleteTitleClass}>Uzupełnij listy zębów</p>
         <p className={teethProsbaDetailClass}>
           {incompleteCount}{" "}
-          {incompleteCount === 1 ? "pozycja ze szkicem" : "pozycje ze szkicem"} — rozwiń i uzupełnij listę.
+          {incompleteCount === 1 ? "pozycja ze szkicem" : "pozycje ze szkicem"} - rozwiń i uzupełnij listę.
         </p>
       </div>
     </div>

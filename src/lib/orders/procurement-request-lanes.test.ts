@@ -185,7 +185,7 @@ describe("assignProcurementRequestLane", () => {
     ).toBe("magazyn_info");
   });
 
-  it("via_panel w stockOut nie tworzy magazyn_info — idzie do zamówienia/triage", () => {
+  it("via_panel w stockOut nie tworzy magazyn_info - idzie do zamówienia/triage", () => {
     expect(
       assignProcurementRequestLane(
         group({

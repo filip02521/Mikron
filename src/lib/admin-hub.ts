@@ -27,7 +27,7 @@ export const ADMIN_HUB_TAB_COPY: Record<
   },
   mail: {
     label: "Ivoclar",
-    hint: "Status i historia wysyłek Ivoclar (odczyt — wysyłka w OnTime Raporty)",
+    hint: "Status i historia wysyłek Ivoclar (odczyt - wysyłka w OnTime Raporty)",
   },
   wysylki: {
     label: "Wysyłki OT",
@@ -63,7 +63,7 @@ export function activeAdminHubTab(pathname: string): AdminHubTab {
 export function adminHubHint(tab: AdminHubTab): string {
   switch (tab) {
     case "system":
-      return "Sprawdź status bazy, uruchom przeliczenie po importach lub gdy terminy się rozjechały. Na co dzień wystarczy automatyczny cron — przyciski poniżej to awaryjna obsługa.";
+      return "Sprawdź status bazy, uruchom przeliczenie po importach lub gdy terminy się rozjechały. Na co dzień wystarczy automatyczny cron - przyciski poniżej to awaryjna obsługa.";
     case "users":
       return "Konto logowania ≠ karta handlowca: handlowiec musi być na liście Handlowcy, potem tworzysz konto z rolą „handlowiec” i powiązaniem. Zaproszenia generujesz z zakładki Handlowcy.";
     case "sales":

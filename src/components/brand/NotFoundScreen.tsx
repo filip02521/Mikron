@@ -33,13 +33,6 @@ export function NotFoundScreen({
         "px-1 py-6 sm:py-10"
       )}
     >
-      {/* Atmosfera — subtelne orby w tonacji marki, bez osobnej „kartkowej” scenografii */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-        <div className="absolute -left-16 top-8 h-48 w-48 rounded-full bg-indigo-200/25 blur-3xl motion-safe:animate-auth-float" />
-        <div className="absolute -right-10 bottom-16 h-40 w-40 rounded-full bg-sky-200/30 blur-3xl motion-safe:animate-auth-float-slow" />
-        <div className="absolute left-1/2 top-1/3 h-56 w-56 -translate-x-1/2 rounded-full bg-indigo-100/20 blur-3xl motion-safe:animate-auth-float-center" />
-      </div>
-
       <div className="auth-enter relative z-[1]">
         <AuthBrandHeader className="mb-5 sm:mb-6" />
 
@@ -64,7 +57,7 @@ export function NotFoundScreen({
           </span>
 
           <div className="relative z-[1]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700/90">
+            <p className="text-[11px] font-semibold text-sky-700/90">
               Strona niedostępna
             </p>
 

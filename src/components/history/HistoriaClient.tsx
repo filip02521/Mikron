@@ -288,7 +288,7 @@ export function HistoriaClient({
           domain="panel"
           accent="indigo"
           title="Historia indywidualna"
-          hint="Zrealizowane i zarchiwizowane prośby handlowców — bez pozycji informacyjnych"
+          hint="Zrealizowane i zarchiwizowane prośby handlowców - bez pozycji informacyjnych"
           hintMode="tooltip"
           count={individual.length}
           icon={<IconClipboardList size={17} />}

@@ -87,7 +87,7 @@ export function PageAttentionStrip({
         >
           <span className={cn("font-semibold", TONE_TITLE[tone])}>{title}</span>
           {hint != null && hint !== "" ? (
-            <span className="text-slate-600"> — {hint}</span>
+            <span className="text-slate-600"> - {hint}</span>
           ) : null}
         </p>
       </div>

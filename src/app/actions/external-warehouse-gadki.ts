@@ -66,7 +66,7 @@ export async function actionSearchGadkiZk(query: string): Promise<
   if (!(await isSubiektReachable())) {
     return {
       kind: "error",
-      message: "System magazynowy niedostępny — spróbuj ponownie później.",
+      message: "System magazynowy niedostępny - spróbuj ponownie później.",
     };
   }
 
@@ -102,7 +102,7 @@ export async function actionLinkGadkiZk(input: {
   if (!(await isSubiektReachable())) {
     return {
       ok: false,
-      message: "System magazynowy niedostępny — spróbuj ponownie później.",
+      message: "System magazynowy niedostępny - spróbuj ponownie później.",
     };
   }
 
@@ -129,7 +129,7 @@ export async function actionLinkGadkiZk(input: {
   if (!locked) {
     return {
       ok: false,
-      message: "Trwa inne powiązanie ZK — spróbuj ponownie za chwilę.",
+      message: "Trwa inne powiązanie ZK - spróbuj ponownie za chwilę.",
     };
   }
 
@@ -337,10 +337,10 @@ export async function actionReplaceGadkiZk(input: {
     return { ok: false, message: "Nieprawidłowy identyfikator dokumentu ZK" };
   }
   if (dokId === link.subiekt_dok_id) {
-    return { ok: false, message: "To jest to samo ZK — użyj „Odśwież teraz”." };
+    return { ok: false, message: "To jest to samo ZK - użyj „Odśwież teraz”." };
   }
   if (!(await isSubiektReachable())) {
-    return { ok: false, message: "System magazynowy niedostępny — spróbuj ponownie później." };
+    return { ok: false, message: "System magazynowy niedostępny - spróbuj ponownie później." };
   }
 
   let resolved;
@@ -380,7 +380,7 @@ export async function actionReplaceGadkiZk(input: {
   const entry = {
     site_id: site.id,
     zk_link_id: link.id,
-    summary: `${link.zk_number}: podmieniono na ${resolved.zkNumber} — palety i notatki przeniesione po towarze`,
+    summary: `${link.zk_number}: podmieniono na ${resolved.zkNumber} - palety i notatki przeniesione po towarze`,
     meta: { from_dok_id: link.subiekt_dok_id, to_dok_id: resolved.subiektDokId },
     actor_user_id: user.id,
   };
@@ -423,7 +423,7 @@ export async function actionSetGadkiLinePallet(input: {
   if (!locked) {
     return {
       ok: false,
-      message: "Trwa inna zmiana tej pozycji — spróbuj ponownie za chwilę.",
+      message: "Trwa inna zmiana tej pozycji - spróbuj ponownie za chwilę.",
     };
   }
 
@@ -525,7 +525,7 @@ export async function actionSetGadkiLinePalletShares(input: {
   if (!locked) {
     return {
       ok: false,
-      message: "Trwa inna zmiana tej pozycji — spróbuj ponownie za chwilę.",
+      message: "Trwa inna zmiana tej pozycji - spróbuj ponownie za chwilę.",
     };
   }
 

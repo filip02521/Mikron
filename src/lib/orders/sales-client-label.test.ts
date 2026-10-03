@@ -52,7 +52,7 @@ describe("sales-client-label", () => {
         { supplier: { name: "D" }, products: "P", symbol: "-", sales_client_name: null },
         "OK"
       )
-    ).toBe("D: P — OK");
+    ).toBe("D: P - OK");
   });
 
   it("clientNamesSummary", () => {

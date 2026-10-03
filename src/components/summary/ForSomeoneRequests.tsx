@@ -1361,7 +1361,7 @@ export function ForSomeoneRequests({
 
   const subsectionHeader = (
     <DailyPanelSubsectionBar
-      title={isStockOutSection ? "Brak na stanie — do zamówienia" : "Prośby handlowców"}
+      title={isStockOutSection ? "Brak na stanie - do zamówienia" : "Prośby handlowców"}
       description={
         isStockOutSection ? INFORMACJA_STOCK_OUT_PROCUREMENT_SECTION_HINT : undefined
       }

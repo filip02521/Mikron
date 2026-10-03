@@ -9,7 +9,7 @@ import {
 } from "./monthly-summary-pl";
 
 describe("polishPlural", () => {
-  it("odmienia 1 / 2–4 / 5+ oraz 12–14", () => {
+  it("odmienia 1 / 2-4 / 5+ oraz 12-14", () => {
     expect(polishPlural(1, "prośba", "prośby", "próśb")).toBe("prośba");
     expect(polishPlural(2, "prośba", "prośby", "próśb")).toBe("prośby");
     expect(polishPlural(4, "prośba", "prośby", "próśb")).toBe("prośby");

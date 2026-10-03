@@ -109,8 +109,8 @@ export function flattenTeethReceiveQueueGroups(groups: SupplierOrderGroup[]): In
 
 export const TEETH_RECEIVE_PANEL_COPY = {
   title: "Przyjęcie zębów",
-  hint: "Porównaj dostawę z zamówieniem u dostawcy — wpisz co dotarło, a co nie.",
+  hint: "Porównaj dostawę z zamówieniem u dostawcy - wpisz co dotarło, a co nie.",
   emptyTitle: "Kolejka przyjęcia jest pusta",
   emptyDescription:
-    "Tu trafiają zęby po oznaczeniu zamówienia w kolejce. Wpisz przyjętą ilość — handlowiec zobaczy to w Moje zamówienia i potwierdzi odbiór osobisty.",
+    "Tu trafiają zęby po oznaczeniu zamówienia w kolejce. Wpisz przyjętą ilość - handlowiec zobaczy to w Moje zamówienia i potwierdzi odbiór osobisty.",
 } as const;

@@ -108,7 +108,7 @@ export function SupplierAdminForm({
         label="Lokalizacja"
         hint={
           form.id && form.location !== "IMPORT"
-            ? "Dokumenty odprawy celnej są widoczne tylko dla dostawców typu Import. Zmiana lokalizacji nie usuwa wgranych dokumentów — wrócą po ponownym ustawieniu Import."
+            ? "Dokumenty odprawy celnej są widoczne tylko dla dostawców typu Import. Zmiana lokalizacji nie usuwa wgranych dokumentów - wrócą po ponownym ustawieniu Import."
             : undefined
         }
       >
@@ -138,7 +138,7 @@ export function SupplierAdminForm({
             value={form.notes}
             onChange={(e) => onChange({ ...form, notes: e.target.value })}
           >
-            <option value="">— wybierz —</option>
+            <option value="">- wybierz -</option>
             <option value="MAILOWO">Mail</option>
             <option value="TELEFONICZNIE">Telefon</option>
             <option value="PRZEZ INTERNET">Internet / portal</option>
@@ -147,7 +147,7 @@ export function SupplierAdminForm({
         <Field
           label="Kontakt (e-mail, telefon, strona)"
           className="sm:col-span-2"
-          hint="Musi pasować do sposobu zamówienia — przy „Telefon” numer (min. 9 cyfr), przy „Mail” adres e-mail."
+          hint="Musi pasować do sposobu zamówienia - przy „Telefon” numer (min. 9 cyfr), przy „Mail” adres e-mail."
         >
           <Input
             disabled={fieldDisabled}
@@ -170,7 +170,7 @@ export function SupplierAdminForm({
         <Field
           label="Minimalna wartość zamówienia"
           className="sm:col-span-2"
-          hint="Opcjonalnie — kwota, poniżej której dostawca nie realizuje zamówienia. Puste = brak minimum."
+          hint="Opcjonalnie - kwota, poniżej której dostawca nie realizuje zamówienia. Puste = brak minimum."
         >
           <div className="flex gap-2">
             <Input
@@ -205,7 +205,7 @@ export function SupplierAdminForm({
               }
               className="w-40 shrink-0"
             >
-              <option value="">—</option>
+              <option value="">-</option>
               {MIN_ORDER_CURRENCY_OPTIONS.map((c) => (
                 <option key={c.value} value={c.value}>
                   {c.label}
@@ -219,7 +219,7 @@ export function SupplierAdminForm({
       <div className={teethLane ? "rounded-lg border border-slate-200 bg-slate-50/50 p-4 opacity-60 sm:col-span-2" : "rounded-lg border border-indigo-200/50 bg-indigo-50/30 p-4 sm:col-span-2"}>
         <div className="mb-3.5 flex flex-wrap items-start justify-between gap-2">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
+            <p className="text-xs font-semibold text-indigo-700">
               Cykl zamówień
             </p>
             <p className="mt-0.5 text-xs leading-relaxed text-indigo-600/80">
@@ -230,11 +230,11 @@ export function SupplierAdminForm({
           <FieldHintButton label="Pomoc: cykl zamówień" title="Jak ustawić cykl?">
             <ul className="list-disc space-y-2 pl-4 text-xs leading-relaxed">
               <li>
-                <strong>Częstotliwość</strong> — jak często zamawiasz u dostawcy (np. co 6 tyg.).
+                <strong>Częstotliwość</strong> - jak często zamawiasz u dostawcy (np. co 6 tyg.).
                 System na tej podstawie liczy kolejne terminy.
               </li>
               <li>
-                <strong>Zapas</strong> — na jaki okres robisz jednorazowo większe zamówienie (np.
+                <strong>Zapas</strong> - na jaki okres robisz jednorazowo większe zamówienie (np.
                 2 miesiące). Opisuje skalę zamówienia, nie datę.
               </li>
               <li>
@@ -268,11 +268,11 @@ export function SupplierAdminForm({
             key={`stock-${form.id ?? "new"}`}
             label="Zapas (okres zamówienia)"
             hintLabel="Co oznacza zapas"
-            hintTitle="Zapas — okres zamówienia"
+            hintTitle="Zapas - okres zamówienia"
             hintContent={
               <p className="text-xs leading-relaxed">
                 Na jaki horyzont czasu planujesz większe zamówienie (np. zapas na 2 miesiące).
-                To nie jest data — tylko opis skali zamówienia w Twoim procesie.
+                To nie jest data - tylko opis skali zamówienia w Twoim procesie.
               </p>
             }
             value={form.stock_raw}
@@ -287,7 +287,7 @@ export function SupplierAdminForm({
                 Statystyki dostaw
                 <FieldHintButton label="Statystyki dostaw" title="Łącznie vs osobno">
                   <p className="text-xs leading-relaxed">
-                    Łącznie — jedna statystyka dla wszystkich produktów u dostawcy. Osobno —
+                    Łącznie - jedna statystyka dla wszystkich produktów u dostawcy. Osobno -
                     liczniki per produkt (rzadziej).
                   </p>
                 </FieldHintButton>
@@ -315,7 +315,7 @@ export function SupplierAdminForm({
             onChange={(e) => onChange({ ...form, order_on_demand: e.target.checked })}
           />
           <span className="text-sm text-slate-700">
-            Tylko w razie potrzeby — bez stałego terminu w panelu dziennym
+            Tylko w razie potrzeby - bez stałego terminu w panelu dziennym
           </span>
         </label>
       </div>
@@ -330,13 +330,13 @@ export function SupplierAdminForm({
         />
         <span className="text-sm text-slate-700">
           <span className="font-medium text-slate-900">Aktywny dostawca</span>
-          {" — "}
+          {" - "}
           widoczny w panelu dziennym. Odznacz, aby przenieść na listę Nieaktywni.
         </span>
       </label>
 
       <SupplierFormSection
-        title="Magazyn — domyślny kurier"
+        title="Magazyn - domyślny kurier"
         description="Opcjonalnie; puste = system uczy się z wpisów magazynu"
         defaultOpen={!teethLane}
       >
@@ -348,7 +348,7 @@ export function SupplierAdminForm({
               onChange({ ...form, default_delivery_carrier: e.target.value })
             }
           >
-            <option value="">— z historii wpisów —</option>
+            <option value="">- z historii wpisów -</option>
             {carriers.map((carrier) => (
               <option key={carrier.slug} value={carrier.slug}>
                 {carrier.label}
@@ -364,7 +364,7 @@ export function SupplierAdminForm({
               onChange({ ...form, default_delivery_shipment_form: e.target.value })
             }
           >
-            <option value="">— z historii —</option>
+            <option value="">- z historii -</option>
             {WAREHOUSE_SHIPMENT_FORMS.map((f) => (
               <option key={f.value} value={f.value}>
                 {f.label}

@@ -64,15 +64,15 @@ function calloutForPattern(
         pattern,
         count,
         tone: "warning",
-        title: `Po przewidywanym terminie — ${label}`,
-        detail: "Termin u dostawcy minął — czekamy na dostawę.",
+        title: `Po przewidywanym terminie - ${label}`,
+        detail: "Termin u dostawcy minął - czekamy na dostawę.",
       };
     case "partial_ready":
       return {
         pattern,
         count,
         tone: "sky",
-        title: `Częściowa dostawa — ${label}`,
+        title: `Częściowa dostawa - ${label}`,
         detail: "Część towaru jest na magazynie, reszta w drodze od dostawcy.",
       };
     case "verification":
@@ -80,7 +80,7 @@ function calloutForPattern(
         pattern,
         count,
         tone: "indigo",
-        title: `Zakupy sprawdzają szczegóły — ${label}`,
+        title: `Zakupy sprawdzają szczegóły - ${label}`,
         detail: "Dział zakupów uzupełnia dane przed zamówieniem u dostawcy.",
       };
   }
@@ -91,7 +91,7 @@ const CALLOUT_ORDER: MyOrderSectionPatternId[] = ACTIVE_SECTION_CALLOUT_PATTERNS
 function singleHintMessage(pattern: MyOrderSectionPatternId): string {
   switch (pattern) {
     case "overdue":
-      return "Termin u dostawcy minął — czekamy na dostawę.";
+      return "Termin u dostawcy minął - czekamy na dostawę.";
     case "partial_ready":
       return "Część towaru jest na magazynie, reszta w drodze od dostawcy.";
     case "verification":

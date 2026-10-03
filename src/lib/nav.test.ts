@@ -243,7 +243,7 @@ describe("navForRole struktura zakupów", () => {
     ]);
   });
 
-  it("admin i zakupy — Kreator ZD na czele Zamawiania, z własną ikoną", () => {
+  it("admin i zakupy - Kreator ZD na czele Zamawiania, z własną ikoną", () => {
     for (const role of ["admin", "zakupy"] as const) {
       const ordering = navForRole(role).find((g) => g.title === NAV_SECTION_ORDERING);
       expect(ordering?.items.map((item) => item.href)).toEqual([
@@ -259,7 +259,7 @@ describe("navForRole struktura zakupów", () => {
     }
   });
 
-  it("Dostawcy — tylko karty, terminy i urlopy; logistyka osobno", () => {
+  it("Dostawcy - tylko karty, terminy i urlopy; logistyka osobno", () => {
     const suppliers = navForRole("zakupy").find((g) => g.title === NAV_SECTION_SUPPLIERS);
     expect(suppliers?.items.map((i) => i.href)).toEqual([
       "/zakupy/dostawcy",
@@ -348,7 +348,7 @@ describe("teethNavGroups", () => {
     expect(systemGroup?.defaultCollapsed).toBe(true);
   });
 
-  it("sekcja Dziś — pipeline: kolejka → weryfikacja → przyjęcie → historia", () => {
+  it("sekcja Dziś - pipeline: kolejka → weryfikacja → przyjęcie → historia", () => {
     const today = teethNavGroups().find((g) => g.title === NAV_SECTION_TODAY);
     expect(today?.items.map((item) => item.href)).toEqual([
       "/zeby/kolejka",
@@ -358,7 +358,7 @@ describe("teethNavGroups", () => {
     ]);
   });
 
-  it("sekcja Dostawcy — braki i karty (bez tablicy/urlopów/kurierów)", () => {
+  it("sekcja Dostawcy - braki i karty (bez tablicy/urlopów/kurierów)", () => {
     const suppliers = teethNavGroups().find((g) => g.title === NAV_SECTION_SUPPLIERS);
     expect(suppliers?.items.map((item) => item.href)).toEqual([
       "/zeby/braki",
@@ -366,7 +366,7 @@ describe("teethNavGroups", () => {
     ]);
   });
 
-  it("sekcja Zespół — tylko notatki", () => {
+  it("sekcja Zespół - tylko notatki", () => {
     const team = teethNavGroups().find((g) => g.title === NAV_SECTION_TEAM);
     expect(team?.items.map((item) => item.href)).toEqual(["/notatki"]);
   });
@@ -378,7 +378,7 @@ describe("teethNavGroups", () => {
     expect(hrefs).not.toContain("/kurierzy");
   });
 
-  it("sekcja Dziś ma semantyke jak Dostawy — bez osobnych iconTone", () => {
+  it("sekcja Dziś ma semantyke jak Dostawy - bez osobnych iconTone", () => {
     const today = teethNavGroups().find((g) => g.title === NAV_SECTION_TODAY);
     expect(today?.items.map((item) => [item.label, item.tone, item.iconTone, item.tier, item.highlight])).toEqual([
       ["Do zamówienia", "indigo", undefined, "primary", true],
@@ -394,7 +394,7 @@ describe("teethNavGroups", () => {
     expect(cards?.tone).toBe("slate");
   });
 
-  it("mobile primary — cztery codzienne ekrany workflow", () => {
+  it("mobile primary - cztery codzienne ekrany workflow", () => {
     const primary = navMobilePrimaryItems(teethNavGroups());
     expect(primary.map((item) => item.mobileLabel ?? item.label)).toEqual([
       "Zamów",
@@ -404,7 +404,7 @@ describe("teethNavGroups", () => {
     ]);
   });
 
-  it("overflow — braki, karty, notatki (bez tablicy/urlopów/kurierów)", () => {
+  it("overflow - braki, karty, notatki (bez tablicy/urlopów/kurierów)", () => {
     const overflow = navMobileOverflowItems(teethNavGroups());
     const expectedLabels = ["Braki", "Karty dostawców", "Notatki"];
     if (new Date().getDate() <= 7) {
@@ -456,7 +456,7 @@ describe("navForRole zakupy_zeby", () => {
     expect(allHrefs.some((href) => href.startsWith("/zeby"))).toBe(false);
   });
 
-  it("zakupy i admin mają Magazyn Gądki (logistyka) i Kreator ZD (zamawianie); zęby/magazyn — bez obu", () => {
+  it("zakupy i admin mają Magazyn Gądki (logistyka) i Kreator ZD (zamawianie); zęby/magazyn - bez obu", () => {
     for (const role of ["admin", "zakupy"] as const) {
       const groups = navForRole(role);
       const logistics = groups.find((g) => g.title === NAV_SECTION_LOGISTICS);
@@ -508,7 +508,7 @@ describe("navForRole magazyn", () => {
     ]);
   });
 
-  it("mobile primary — Przyjęcie towaru, Plan dostaw, Notatki", () => {
+  it("mobile primary - Przyjęcie towaru, Plan dostaw, Notatki", () => {
     const primary = navMobilePrimaryItems(navForRole("magazyn"));
     expect(primary.map((item) => item.mobileLabel ?? item.label)).toEqual([
       "Magazyn",

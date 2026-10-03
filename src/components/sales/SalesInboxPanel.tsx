@@ -125,7 +125,7 @@ export function SalesInboxPanel({
                 <h2 className="text-lg font-semibold text-slate-900">Pilne sprawy</h2>
                 <p className={cn("mt-0.5 text-sm leading-relaxed", salesTypography.sectionHint)}>
                   {cleared
-                    ? "Brak pilnych spraw — możesz wrócić do pracy."
+                    ? "Brak pilnych spraw - możesz wrócić do pracy."
                     : salesDayStartPanelDescription(count)}
                 </p>
               </div>
@@ -150,7 +150,7 @@ export function SalesInboxPanel({
               brandAccent
               icon={<IconBell size={28} strokeWidth={1.75} />}
               title="Wszystko ogarnięte"
-              description="Gdy pojawi się odbiór, informacja, przypomnienie ZK lub odpowiedź zakupów na Twoje pytanie — zobaczysz to tutaj."
+              description="Gdy pojawi się odbiór, informacja, przypomnienie ZK lub odpowiedź zakupów na Twoje pytanie - zobaczysz to tutaj."
             />
           ) : (
             <>

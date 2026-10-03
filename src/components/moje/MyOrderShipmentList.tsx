@@ -283,8 +283,8 @@ export function MyOrderShipmentList({
             kind: "dismiss",
             title:
               n === 1
-                ? "Anulowanie potwierdzone — ukryto z listy"
-                : `Potwierdzono ${n} pozycji — usunięto z listy`,
+                ? "Anulowanie potwierdzone - ukryto z listy"
+                : `Potwierdzono ${n} pozycji - usunięto z listy`,
           });
           router.refresh();
         } catch (e) {
@@ -314,8 +314,8 @@ export function MyOrderShipmentList({
             kind: "dismiss",
             title:
               n === 1
-                ? "Rezygnacja potwierdzona — ukryto z listy"
-                : `Potwierdzono ${n} pozycji — usunięto z listy`,
+                ? "Rezygnacja potwierdzona - ukryto z listy"
+                : `Potwierdzono ${n} pozycji - usunięto z listy`,
           });
           router.refresh();
         } catch (e) {

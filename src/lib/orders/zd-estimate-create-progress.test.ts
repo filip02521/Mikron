@@ -70,7 +70,7 @@ describe("createZdProgressPercent", () => {
 
 describe("hints / labels", () => {
   it("mentions longer wait for large lists", () => {
-    expect(createZdProgressDurationHint(250)).toMatch(/1–3/);
+    expect(createZdProgressDurationHint(250)).toMatch(/1-3/);
     expect(createZdProgressDurationHint(10)).toMatch(/poniżej minuty/);
   });
 

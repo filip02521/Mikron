@@ -6,7 +6,7 @@ import {
 
 describe("kontrahentDisplayName", () => {
   it("używa nazwy z Subiekta", () => {
-    expect(kontrahentDisplayName("REN — Renfert GmbH", 688)).toBe("REN — Renfert GmbH");
+    expect(kontrahentDisplayName("REN - Renfert GmbH", 688)).toBe("REN - Renfert GmbH");
   });
 
   it("fallback gdy brak nazwy", () => {

@@ -59,7 +59,7 @@ describe("request-form-supplier-loaders audit", () => {
     expect(orderFormSuppliersHaveSubiektRefs(rows)).toBe(true);
   });
 
-  it("strip { id, name } psuje dopasowanie Subiekt — brak klucza subiekt_kh_id", () => {
+  it("strip { id, name } psuje dopasowanie Subiekt - brak klucza subiekt_kh_id", () => {
     const stripped = [{ id: "x", name: "X" }];
     expect(orderFormSuppliersHaveSubiektRefs(stripped)).toBe(false);
   });

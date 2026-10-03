@@ -14,7 +14,7 @@ export function normalizeSalesPeopleForPicker(
     if (!id || byId.has(id)) continue;
     byId.set(id, {
       id,
-      name: row.name?.trim() || "—",
+      name: row.name?.trim() || "-",
       email: row.email?.trim() || null,
     });
   }

@@ -284,14 +284,14 @@ export function ZdEstimateCreateZdDialog({
       key: "manual",
       text:
         manualOverrideCount === 1
-          ? "1 pozycja ma ręcznie zmienioną ilość „Do ZD” (oznaczona w liście) — sprawdź, czy nadal aktualna."
-          : `${manualOverrideCount} pozycji ma ręcznie zmienioną ilość „Do ZD” (oznaczone w liście) — sprawdź, czy nadal aktualne.`,
+          ? "1 pozycja ma ręcznie zmienioną ilość „Do ZD” (oznaczona w liście) - sprawdź, czy nadal aktualna."
+          : `${manualOverrideCount} pozycji ma ręcznie zmienioną ilość „Do ZD” (oznaczone w liście) - sprawdź, czy nadal aktualne.`,
     });
   }
   if (usedAlias) {
     warnings.push({
       key: "alias",
-      text: `Kontrahent ${khId} to alias dostawcy — ustaw go jako główny kh na karcie dostawcy.`,
+      text: `Kontrahent ${khId} to alias dostawcy - ustaw go jako główny kh na karcie dostawcy.`,
     });
   }
   if (pendingReviewCount > 0) {
@@ -305,7 +305,7 @@ export function ZdEstimateCreateZdDialog({
       key: "omitted",
       text: `${liveOmittedServiceCount} ${
         liveOmittedServiceCount === 1 ? "usługa nie zmieści się" : "usług nie zmieści się"
-      } w limicie uwag — te prośby nie wejdą na listę Główne. ${ZD_ESTIMATE_UI.createOmittedServicesHint}`,
+      } w limicie uwag - te prośby nie wejdą na listę Główne. ${ZD_ESTIMATE_UI.createOmittedServicesHint}`,
     });
   }
   if (excludedWithIndividualCount > 0) {
@@ -319,7 +319,7 @@ export function ZdEstimateCreateZdDialog({
   if (preview.softWarnOverLimit) {
     warnings.push({
       key: "size",
-      text: `Dużo pozycji (>${ZD_CREATE_SOFT_WARN_LINES}) — Subiekt może długo pracować; limit czasu to ok. 3 minuty.`,
+      text: `Dużo pozycji (>${ZD_CREATE_SOFT_WARN_LINES}) - Subiekt może długo pracować; limit czasu to ok. 3 minuty.`,
     });
   }
 
@@ -543,7 +543,7 @@ export function ZdEstimateCreateZdDialog({
               {ordersHostLabel?.trim() ? (
                 <span className="opacity-75"> · {ordersHostLabel.trim()}</span>
               ) : null}
-              {" — "}
+              {" - "}
               dokumentu nie da się cofnąć z OnTime.
             </p>
           </div>
@@ -577,7 +577,7 @@ export function ZdEstimateCreateZdDialog({
                     ? "Grupa"
                     : "Zakres"
               }
-              value={scopeLabel?.trim() || "—"}
+              value={scopeLabel?.trim() || "-"}
               className="col-span-2 sm:col-span-1"
             />
           </dl>
@@ -612,7 +612,7 @@ export function ZdEstimateCreateZdDialog({
           ) : null}
 
           <div className="rounded-lg bg-slate-50/80 px-3.5 py-2.5 ring-1 ring-slate-200/80">
-            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
               <IconInfoCircle size={14} aria-hidden /> Po utworzeniu
             </p>
             <ul className="mt-1.5 list-disc space-y-1 pl-5 text-xs leading-relaxed text-slate-600 marker:text-slate-300">
@@ -729,7 +729,7 @@ function SummaryTile({
         className
       )}
     >
-      <dt className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+      <dt className="text-[11px] font-semibold text-slate-500">
         {label}
       </dt>
       <dd

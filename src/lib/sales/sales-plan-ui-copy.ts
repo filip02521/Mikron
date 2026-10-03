@@ -6,30 +6,30 @@
 export const SALES_PLAN_COPY = {
   pageTitle: "Harmonogram",
   headerHint:
-    "Pokazuje, kiedy dział zakupów zamawia u dostawcy i kiedy towar zwykle trafia na magazyn — przy Twoich otwartych prośbach oraz w wyszukiwarce.",
+    "Pokazuje, kiedy dział zakupów zamawia u dostawcy i kiedy towar zwykle trafia na magazyn - przy Twoich otwartych prośbach oraz w wyszukiwarce.",
   headerHintAria: "O harmonogramie",
 
-  helpLabel: "Pomoc — Harmonogram",
+  helpLabel: "Pomoc - Harmonogram",
   helpTitle: "Harmonogram",
   helpShort: "Pomoc",
   helpTwoDatesTitle: "Dwie daty",
   helpTwoDatesBody:
-    "„Zamówienie” to dzień, w którym dział zakupów składa zamówienie u dostawcy. „Na magazynie” to orientacyjny termin z historii dostaw (dni robocze) — nie gwarancja odbioru.",
+    "„Zamówienie” to dzień, w którym dział zakupów składa zamówienie u dostawcy. „Na magazynie” to orientacyjny termin z historii dostaw (dni robocze) - nie gwarancja odbioru.",
   helpOpenTitle: "Dostawcy z otwartymi prośbami",
   helpOpenBody:
     "Lista dostawców, u których masz aktywne prośby w „Moje zamówienia”. Rozwiń wiersz, aby zobaczyć terminy, urlop dostawcy i kontakt.",
   helpSearchTitle: "Wyszukiwarka",
   helpSearchBody:
-    "Szukasz wśród wszystkich aktywnych dostawców po fragmencie nazwy — także tych, którzy już są na liście z prośbami.",
+    "Szukasz wśród wszystkich aktywnych dostawców po fragmencie nazwy - także tych, którzy już są na liście z prośbami.",
   helpWeekTitle: "Kalendarz działu zakupów",
   helpWeekBody:
-    "Poniedziałek–piątek: dni składania zamówień u dostawców. Domyślnie widać Twoich dostawców; możesz przełączyć na wszystkich albo na następny tydzień. To nie jest kalendarz urlopów handlowców.",
+    "Poniedziałek-piątek: dni składania zamówień u dostawców. Domyślnie widać Twoich dostawców; możesz przełączyć na wszystkich albo na następny tydzień. To nie jest kalendarz urlopów handlowców.",
 
   searchVisibleLabel: "Szukaj dostawcy",
   searchAriaLabel: "Szukaj dostawcy w harmonogramie",
   searchPlaceholder: "Wpisz fragment nazwy dostawcy",
   searchEmptyHint:
-    "Nie ma dostawcy o takiej nazwie — sprawdź pisownię albo wyczyść filtr.",
+    "Nie ma dostawcy o takiej nazwie - sprawdź pisownię albo wyczyść filtr.",
   searchSectionTitle: "Wyniki wyszukiwania",
   searchSectionHint: (q: string) => `Dla zapytania „${q}”`,
   searchLimitNote: (shown: number, total: number) =>
@@ -55,12 +55,12 @@ export const SALES_PLAN_COPY = {
   labelNoDate: "Brak terminu",
   labelShifted: "Przesunięty termin",
   labelVacationShort: "Urlop",
-  mobileWarehouseEmpty: "magazyn —",
+  mobileWarehouseEmpty: "magazyn -",
 
   tipOnDemand:
-    "Bez stałego dnia zamówienia — szacunek terminu pojawi się po złożeniu zamówienia",
+    "Bez stałego dnia zamówienia - szacunek terminu pojawi się po złożeniu zamówienia",
   tipNoOrderDate: "Brak terminu zamówienia u dostawcy",
-  tipNoHistory: "Brak historii dostaw — nie da się oszacować terminu na magazynie",
+  tipNoHistory: "Brak historii dostaw - nie da się oszacować terminu na magazynie",
 
   expandOrderTitle: "Zamówienie u dostawcy",
   expandWarehouseTitle: "Na magazynie",
@@ -72,7 +72,7 @@ export const SALES_PLAN_COPY = {
   expandActiveShift: "Termin zamówienia został przesunięty w harmonogramie zakupów.",
   expandCycleNote: (note: string) => `Korekta harmonogramu: ${note}`,
   expandOnDemandWarehouse:
-    "Bez stałego dnia zamówienia — szacunek terminu po złożeniu zamówienia",
+    "Bez stałego dnia zamówienia - szacunek terminu po złożeniu zamówienia",
   expandNoHistory: "Brak historii dostaw do wyliczenia szacunku.",
   expandTeethNext: (date: string) => `Kolejne zamówienie zębów: ${date}`,
   expandTeethEta: (eta: string) => ` · szacunek na magazynie: ${eta}`,
@@ -80,17 +80,17 @@ export const SALES_PLAN_COPY = {
 
   ctaMyRequests: (count: number) => `Moje prośby (${count})`,
   ctaNewForSupplier: "Zgłoś prośbę dla tego dostawcy",
-  ctaNewForSupplierTitle: (name: string) => `Nowa prośba — ${name}`,
+  ctaNewForSupplierTitle: (name: string) => `Nowa prośba - ${name}`,
   ctaNewRequest: "Nowa prośba",
   ctaMyOrders: "Moje zamówienia",
 
-  footerAdmin: "Podgląd administratora — nie możesz zgłaszać stąd nowych próśb.",
+  footerAdmin: "Podgląd administratora - nie możesz zgłaszać stąd nowych próśb.",
   footerDefaultPrefix: "Zgłoś nową prośbę albo sprawdź status w ",
   footerDefaultSuffix: ".",
 
   weekTitle: "Kiedy dział zakupów zamawia",
   weekHint:
-    "To dzień złożenia zamówienia u dostawcy — nie dzień, w którym towar trafi na magazyn.",
+    "To dzień złożenia zamówienia u dostawcy - nie dzień, w którym towar trafi na magazyn.",
   weekScopeAria: "Zakres dostawców na kalendarzu",
   weekWhichAria: "Wybór tygodnia",
   weekMine: "Moi dostawcy",

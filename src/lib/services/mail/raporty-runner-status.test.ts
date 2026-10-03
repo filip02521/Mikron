@@ -72,7 +72,7 @@ describe("fetchRaportyRunnerStatus", () => {
         sendEnabled: false,
         overrideTo: null,
         productionSent: false,
-        period: { periodKey: "2026-W33", periodLabel: "10–16 (2026-W33)" },
+        period: { periodKey: "2026-W33", periodLabel: "10-16 (2026-W33)" },
       }),
     });
 

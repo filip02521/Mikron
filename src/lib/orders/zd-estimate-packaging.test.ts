@@ -135,7 +135,7 @@ describe("computeZdPackOrderQty", () => {
     });
   });
 
-  it("orderMultiple M=10, N=48: niedobór 2–3 op. → 10; exact 10; 11→20; need 0→0", () => {
+  it("orderMultiple M=10, N=48: niedobór 2-3 op. → 10; exact 10; 11→20; need 0→0", () => {
     // 144 szt = 3 op. → ceil do 10
     expect(computeZdPackOrderQty(144, 48, "op.", "packages", 10)).toMatchObject({
       zdUnits: 10,
@@ -199,7 +199,7 @@ describe("assertPackagingUnits + format helpers", () => {
     });
   });
 
-  it("piecesArrivingForZdUnits: A × N, B identity — bez M", () => {
+  it("piecesArrivingForZdUnits: A × N, B identity - bez M", () => {
     expect(piecesArrivingForZdUnits(2, 10)).toBe(20);
     expect(piecesArrivingForZdUnits(2, 10, "packages")).toBe(20);
     expect(piecesArrivingForZdUnits(2, 48)).toBe(96);
@@ -311,14 +311,14 @@ describe("assertPackagingUnits + format helpers", () => {
 });
 
 describe("resolveOrderQtyForLine + para", () => {
-  it("używa doZamowieniaReczne i ratio pary — bez podwójnego × packaging", () => {
+  it("używa doZamowieniaReczne i ratio pary - bez podwójnego × packaging", () => {
     const q = resolveOrderQtyForLine(
       {
         tw_Id: 10,
         tw_Symbol: "P",
         tw_Nazwa: "P",
         tw_IdGrupa: null,
-        grt_Nazwa: "—",
+        grt_Nazwa: "-",
         tw_Stan: 0,
         tw_StanRez: 0,
         dostepne: 0,
@@ -362,14 +362,14 @@ describe("resolveOrderQtyForLine + para", () => {
     expect(q.piecesArriving).toBe(100);
   });
 
-  it("para pack + orderMultiple M — dobija paczki", () => {
+  it("para pack + orderMultiple M - dobija paczki", () => {
     const q = resolveOrderQtyForLine(
       {
         tw_Id: 10,
         tw_Symbol: "P",
         tw_Nazwa: "P",
         tw_IdGrupa: null,
-        grt_Nazwa: "—",
+        grt_Nazwa: "-",
         tw_Stan: 0,
         tw_StanRez: 0,
         dostepne: 0,
@@ -422,7 +422,7 @@ describe("resolveOrderQtyForLine + para", () => {
       tw_Symbol: "PC",
       tw_Nazwa: "PC",
       tw_IdGrupa: null,
-      grt_Nazwa: "—",
+      grt_Nazwa: "-",
       tw_Stan: 0,
       tw_StanRez: 0,
       dostepne: 0,
@@ -467,7 +467,7 @@ describe("resolveOrderQtyForLine + para", () => {
       tw_Symbol: "PC",
       tw_Nazwa: "PC",
       tw_IdGrupa: null,
-      grt_Nazwa: "—",
+      grt_Nazwa: "-",
       tw_Stan: 0,
       tw_StanRez: 0,
       dostepne: 0,
@@ -676,7 +676,7 @@ describe("resolveOrderQtyForLine + individualExtra", () => {
         tw_Symbol: "P",
         tw_Nazwa: "P",
         tw_IdGrupa: null,
-        grt_Nazwa: "—",
+        grt_Nazwa: "-",
         tw_Stan: 0,
         tw_StanRez: 0,
         dostepne: 0,
@@ -728,7 +728,7 @@ describe("resolveOrderQtyForLine + individualExtra", () => {
         tw_Symbol: "PC",
         tw_Nazwa: "PC",
         tw_IdGrupa: null,
-        grt_Nazwa: "—",
+        grt_Nazwa: "-",
         tw_Stan: 0,
         tw_StanRez: 0,
         dostepne: 0,
@@ -778,7 +778,7 @@ describe("resolveOrderQtyForLine + BOM parent", () => {
       tw_Symbol: "PROMO",
       tw_Nazwa: "Promo",
       tw_IdGrupa: null,
-      grt_Nazwa: "—",
+      grt_Nazwa: "-",
       tw_Stan: 0,
       tw_StanRez: 0,
       dostepne: 0,
@@ -811,7 +811,7 @@ describe("effectiveZdDocumentUnits + override w summary/filter", () => {
     tw_Symbol: "X",
     tw_Nazwa: "X",
     tw_IdGrupa: null,
-    grt_Nazwa: "—",
+    grt_Nazwa: "-",
     tw_Stan: 0,
     tw_StanRez: 0,
     dostepne: 0,
@@ -871,13 +871,13 @@ describe("effectiveZdDocumentUnits + override w summary/filter", () => {
 });
 
 describe("resolveOrderQtyForLine extra_only", () => {
-  it("extra_only: ignoruje cel/stan — tylko sztuki prośby + ceil opakowania", () => {
+  it("extra_only: ignoruje cel/stan - tylko sztuki prośby + ceil opakowania", () => {
     const line = {
       tw_Id: 7,
       tw_Symbol: "X",
       tw_Nazwa: "X",
       tw_IdGrupa: null,
-      grt_Nazwa: "—",
+      grt_Nazwa: "-",
       tw_Stan: 0,
       tw_StanRez: 0,
       dostepne: 0,
@@ -916,7 +916,7 @@ describe("resolveOrderQtyForLine extra_only", () => {
       tw_Symbol: "PACK",
       tw_Nazwa: "P",
       tw_IdGrupa: null,
-      grt_Nazwa: "—",
+      grt_Nazwa: "-",
       tw_Stan: 0,
       tw_StanRez: 0,
       dostepne: 0,
@@ -971,7 +971,7 @@ describe("resolveOrderQtyForLine extra_only", () => {
       tw_Symbol: "PACK",
       tw_Nazwa: "P",
       tw_IdGrupa: null,
-      grt_Nazwa: "—",
+      grt_Nazwa: "-",
       tw_Stan: 0,
       tw_StanRez: 0,
       dostepne: 0,
@@ -1020,7 +1020,7 @@ describe("pruneZdDocumentUnitOverrides + extraOnly", () => {
     tw_Symbol: "X",
     tw_Nazwa: "X",
     tw_IdGrupa: null,
-    grt_Nazwa: "—",
+    grt_Nazwa: "-",
     tw_Stan: 0,
     tw_StanRez: 0,
     dostepne: 0,
@@ -1082,7 +1082,7 @@ describe("filterOrderableLinesWithPackaging + extraOnly", () => {
       tw_Symbol: "S",
       tw_Nazwa: "soft",
       tw_IdGrupa: null,
-      grt_Nazwa: "—",
+      grt_Nazwa: "-",
       tw_Stan: 0,
       tw_StanRez: 0,
       dostepne: 0,

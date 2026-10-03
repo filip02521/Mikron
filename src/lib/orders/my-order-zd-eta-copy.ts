@@ -18,7 +18,7 @@ export const ZD_ETA_NO_MATCH_PRIMARY_LABEL = "Brak terminu u dostawcy";
 export const ZD_ETA_NO_MATCH_DETAIL_LABEL = "u dostawcy";
 
 export const ZD_ETA_NO_MATCH_TITLE =
-  "Sprawdziliśmy dokumenty ZD u dostawcy — brak terminu realizacji dla tej pozycji.";
+  "Sprawdziliśmy dokumenty ZD u dostawcy - brak terminu realizacji dla tej pozycji.";
 
 /** Nagłówek rozwiniętej karty — sync w toku. */
 export const ZD_ETA_TIMING_TITLE_PENDING = "Sprawdzamy termin u dostawcy";
@@ -43,7 +43,7 @@ export const ZD_ETA_OVERDUE_PENDING_SUBLINE = "Sprawdzamy termin w ZD u dostawcy
 
 /** Subline nagłówka karty — po terminie, brak ZD. */
 export const ZD_ETA_OVERDUE_NO_MATCH_SUBLINE =
-  "Brak terminu w ZD — szacujemy z historii dostaw.";
+  "Brak terminu w ZD - szacujemy z historii dostaw.";
 
 /** Etykieta wiersza produktu — oczekiwanie na sync. */
 export const ZD_ETA_LINE_PENDING_LABEL = "Sprawdzamy termin u dostawcy…";
@@ -53,9 +53,9 @@ export const ZD_ETA_LINE_NO_MATCH_LABEL = "Brak terminu u dostawcy";
 
 /** Podpowiedź na zwiniętej karcie grupy — tylko pozycje oczekujące. */
 export function buildCollapsedZdPendingOnlyHint(count: number): string {
-  if (count === 1) return "1 pozycja czeka na termin u dostawcy — rozwiń po szczegóły";
+  if (count === 1) return "1 pozycja czeka na termin u dostawcy - rozwiń po szczegóły";
   if (count >= 2 && count <= 4) {
-    return `${count} pozycje czekają na termin u dostawcy — rozwiń po szczegóły`;
+    return `${count} pozycje czekają na termin u dostawcy - rozwiń po szczegóły`;
   }
-  return `${count} pozycji czeka na termin u dostawcy — rozwiń po szczegóły`;
+  return `${count} pozycji czeka na termin u dostawcy - rozwiń po szczegóły`;
 }

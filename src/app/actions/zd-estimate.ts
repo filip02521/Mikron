@@ -1594,7 +1594,7 @@ export async function actionRunZdEstimateManual(
     failProgress("Niepoprawny zapas");
     const feedback = getSubiektFeedback("empty_query", {
       title: "Niepoprawny zapas",
-      message: "Okres zapasu (dni) musi być w zakresie 1–730.",
+      message: "Okres zapasu (dni) musi być w zakresie 1-730.",
     });
     return { ok: false, message: feedback.message, feedback };
   }
@@ -1733,7 +1733,7 @@ export async function actionRunZdEstimateManual(
       );
       const feedback = getSubiektFeedback("empty_query", {
         title: "Wykluczenia niedostępne",
-        message: `Lista nie została pokazana — bez wykluczeń mogłaby zawierać produkty celowo pomijane. ${message}`,
+        message: `Lista nie została pokazana - bez wykluczeń mogłaby zawierać produkty celowo pomijane. ${message}`,
         hint: "Odśwież stronę lub spróbuj ponownie za chwilę.",
       });
       failProgress(feedback.message);
@@ -1748,7 +1748,7 @@ export async function actionRunZdEstimateManual(
       );
       const feedback = getSubiektFeedback("empty_query", {
         title: "Lista „tylko na prośbę” niedostępna",
-        message: `Lista nie została pokazana — bez flagi mogłyby wejść produkty zamawiane wyłącznie na prośbę. ${message}`,
+        message: `Lista nie została pokazana - bez flagi mogłyby wejść produkty zamawiane wyłącznie na prośbę. ${message}`,
         hint: "Odśwież stronę lub spróbuj ponownie za chwilę.",
       });
       failProgress(feedback.message);
@@ -1763,7 +1763,7 @@ export async function actionRunZdEstimateManual(
       );
       const feedback = getSubiektFeedback("empty_query", {
         title: "Opakowania niedostępne",
-        message: `Lista nie została pokazana — bez opakowań qty ZD mogłoby być w sztukach zamiast paczek. ${message}`,
+        message: `Lista nie została pokazana - bez opakowań qty ZD mogłoby być w sztukach zamiast paczek. ${message}`,
         hint: "Odśwież stronę lub spróbuj ponownie za chwilę.",
       });
       failProgress(feedback.message);
@@ -1782,7 +1782,7 @@ export async function actionRunZdEstimateManual(
       );
       const feedback = getSubiektFeedback("empty_query", {
         title: "Pary kompletów niedostępne",
-        message: `Lista nie została pokazana — bez mapy par pack i piece mogłyby dostać niezależne qty (podwójne zamówienie). ${message}`,
+        message: `Lista nie została pokazana - bez mapy par pack i piece mogłyby dostać niezależne qty (podwójne zamówienie). ${message}`,
         hint: "Odśwież stronę lub spróbuj ponownie za chwilę.",
       });
       failProgress(feedback.message);
@@ -1812,7 +1812,7 @@ export async function actionRunZdEstimateManual(
       );
       const feedback = getSubiektFeedback("empty_query", {
         title: "Produkty zębowe niedostępne",
-        message: `Lista nie została pokazana — bez katalogu zębów pozycje zębowe mogłyby trafić na ZD. ${message}`,
+        message: `Lista nie została pokazana - bez katalogu zębów pozycje zębowe mogłyby trafić na ZD. ${message}`,
         hint: "Odśwież stronę lub sprawdź tabelę produktów zębowych w adminie.",
       });
       failProgress(feedback.message);
@@ -2297,7 +2297,7 @@ export async function actionRunZdEstimateManual(
           title: "Subiekt nie policzył zakresu",
           message:
             "Usługa ORDERS zwróciła błąd wewnętrzny przy szacunku. " +
-            "Duże cechy (np. Ivoclar) często przeciążają zapytanie SQL — to nie jest baza Postgres OnTime.",
+            "Duże cechy (np. Ivoclar) często przeciążają zapytanie SQL - to nie jest baza Postgres OnTime.",
           hint: [
             snippet
               ? `Odpowiedź API (HTTP ${e.status}): ${snippet}`
@@ -2797,7 +2797,7 @@ export async function actionUpsertZdEstimatePackaging(input: {
         return {
           ok: false,
           message:
-            "Tryb „dobicie w sztukach” nie działa na paczce z pary montaż/demontaż — użyj trybu opakowań (1 na ZD = N szt) albo usuń parę.",
+            "Tryb „dobicie w sztukach” nie działa na paczce z pary montaż/demontaż - użyj trybu opakowań (1 na ZD = N szt) albo usuń parę.",
         };
       }
     } catch (e) {
@@ -2867,7 +2867,7 @@ export async function actionUpsertZdEstimateMinStock(input: {
   if (!Number.isFinite(minStockSzt) || minStockSzt > 1_000_000) {
     return {
       ok: false,
-      message: "Minimum stanów musi być liczbą całkowitą 0–1 000 000.",
+      message: "Minimum stanów musi być liczbą całkowitą 0-1 000 000.",
     };
   }
   try {
@@ -3098,7 +3098,7 @@ export async function actionUpsertZdEstimatePackagingBulk(input: {
           subiektTwId: p.subiektTwId,
           twSymbol: p.twSymbol,
           error:
-            "Tryb „dobicie w sztukach” koliduje z parą (paczka) — pominięto.",
+            "Tryb „dobicie w sztukach” koliduje z parą (paczka) - pominięto.",
         });
         continue;
       }
@@ -3277,7 +3277,7 @@ export async function actionLinkZdEstimateSnapshot(input: {
   if (!shouldPersistZdEstimateOrderSnapshots(orders.config.baseUrl)) {
     return {
       ok: false,
-      message: "Brak konfiguracji hosta ORDERS — nie można zapisać historii.",
+      message: "Brak konfiguracji hosta ORDERS - nie można zapisać historii.",
     };
   }
 
@@ -3328,7 +3328,7 @@ export async function actionLinkZdEstimateSnapshot(input: {
         } else {
           return {
             ok: false,
-            message: `Znaleziono ${hits.length} dokumentów pasujących do „${nrQuery}” — wybierz ZD z listy albo podaj pełny numer.`,
+            message: `Znaleziono ${hits.length} dokumentów pasujących do „${nrQuery}” - wybierz ZD z listy albo podaj pełny numer.`,
           };
         }
       } else if (/^\d+$/.test(nrQuery)) {
@@ -3522,7 +3522,7 @@ function mapZdCreateSubiektError(e: unknown): {
       code: "timeout",
       title: "Timeout Sfery",
       message:
-        "Timeout przy tworzeniu ZD (Sfera). Sprawdź w Subiekcie, czy dokument powstał — nie twórz ponownie w ciemno.",
+        "Timeout przy tworzeniu ZD (Sfera). Sprawdź w Subiekcie, czy dokument powstał - nie twórz ponownie w ciemno.",
     };
   }
   if (e instanceof SubiektRequestError) {
@@ -3592,7 +3592,7 @@ function mapZdCreateSubiektError(e: unknown): {
         code: "timeout",
         title: "Timeout Sfery",
         message:
-          "Timeout przy tworzeniu ZD (Sfera). Sprawdź w Subiekcie, czy dokument powstał — nie twórz ponownie w ciemno.",
+          "Timeout przy tworzeniu ZD (Sfera). Sprawdź w Subiekcie, czy dokument powstał - nie twórz ponownie w ciemno.",
       };
     }
 
@@ -4166,7 +4166,7 @@ export async function actionCreateZdFromEstimate(input: {
         dokNrPelny,
         lineCount: createLines.length,
         snapshotOk: false,
-        snapshotMessage: "Brak konfiguracji hosta — historia nie zapisana.",
+        snapshotMessage: "Brak konfiguracji hosta - historia nie zapisana.",
       });
     }
 
@@ -4231,7 +4231,7 @@ export async function actionCreateZdFromEstimate(input: {
         lineCount: createLines.length,
         snapshotOk: false,
         snapshotMessage:
-          "ZD utworzone, ale nie udało się odczytać pozycji do historii — użyj „Powiąż ZD”.",
+          "ZD utworzone, ale nie udało się odczytać pozycji do historii - użyj „Powiąż ZD”.",
       });
     }
 
@@ -4282,7 +4282,7 @@ export async function actionCreateZdFromEstimate(input: {
         snapshotMessage:
           snapErr instanceof Error
             ? `ZD utworzone (${dokNrPelny}), snapshot nie zapisany: ${snapErr.message}`
-            : `ZD utworzone (${dokNrPelny}), snapshot nie zapisany — użyj „Powiąż ZD”.`,
+            : `ZD utworzone (${dokNrPelny}), snapshot nie zapisany - użyj „Powiąż ZD”.`,
       });
     }
   } catch (e) {
@@ -4302,7 +4302,7 @@ export async function actionCreateZdFromEstimate(input: {
       snapshotMessage:
         e instanceof Error
           ? `ZD utworzone (dok_Id ${dokId}), odczyt/snapshot: ${e.message}`
-          : `ZD utworzone (dok_Id ${dokId}) — użyj „Powiąż ZD”.`,
+          : `ZD utworzone (dok_Id ${dokId}) - użyj „Powiąż ZD”.`,
     });
   }
 }
@@ -4357,7 +4357,7 @@ export async function actionGetZdEstimateScheduleMarkContext(
       canMark: false,
       reason: "on_demand",
       orderDate: null,
-      message: "Dostawca na żądanie — bez cyklicznego planu do oznaczenia.",
+      message: "Dostawca na żądanie - bez cyklicznego planu do oznaczenia.",
     };
   }
   const interval = resolveSupplierInterval(
@@ -4370,7 +4370,7 @@ export async function actionGetZdEstimateScheduleMarkContext(
       canMark: false,
       reason: "no_interval",
       orderDate: null,
-      message: "Brak interwału u dostawcy — nie da się oznaczyć planu.",
+      message: "Brak interwału u dostawcy - nie da się oznaczyć planu.",
     };
   }
   const { data: schedule } = await supabase
@@ -4502,8 +4502,8 @@ export async function actionMarkZdEstimateIndividualsGlowne(input: {
         ok: false,
         message:
           incompleteIds.length === 1
-            ? "Prośba nie ma kompletnych danych — uzupełnij przed Główne."
-            : `${incompleteIds.length} próśb nie ma kompletnych danych — uzupełnij przed Główne.`,
+            ? "Prośba nie ma kompletnych danych - uzupełnij przed Główne."
+            : `${incompleteIds.length} próśb nie ma kompletnych danych - uzupełnij przed Główne.`,
         incompleteIds,
         skippedIds: [],
       };
@@ -4952,13 +4952,13 @@ export async function actionSyncZdProductPairsFromSubiekt(): Promise<
         ok: false,
         pairs,
         message:
-          userFacingErrorText(e, "Sync kompletów niedostępny — dodaj pary ręcznie lub wdróż GET /products/komplety na hoście ORDERS."),
+          userFacingErrorText(e, "Sync kompletów niedostępny - dodaj pary ręcznie lub wdróż GET /products/komplety na hoście ORDERS."),
       };
     } catch {
       return {
         ok: false,
         message:
-          userFacingErrorText(e, "Sync kompletów niedostępny — dodaj pary ręcznie lub wdróż GET /products/komplety na hoście ORDERS."),
+          userFacingErrorText(e, "Sync kompletów niedostępny - dodaj pary ręcznie lub wdróż GET /products/komplety na hoście ORDERS."),
       };
     }
   }
@@ -5189,8 +5189,8 @@ export async function actionResolveZdEstimateScopeForSupplier(
   if (!resolved.ok) {
     const message =
       resolved.reason === "ambiguous"
-        ? "Wiele możliwych zakresów Subiekta — wybierz grupę lub cechę ręcznie."
-        : "Nie udało się dobrać grupy ani cechy po nazwie dostawcy — przypisz zakres.";
+        ? "Wiele możliwych zakresów Subiekta - wybierz grupę lub cechę ręcznie."
+        : "Nie udało się dobrać grupy ani cechy po nazwie dostawcy - przypisz zakres.";
     return {
       ok: false,
       supplierId: id,
@@ -5599,7 +5599,7 @@ export async function actionUpsertZdEstimateUiSessionSnapshot(input: {
     // (inaczej stary in-flight upsert kasowałby nowszą sesję po „Policz”).
     return {
       ok: false,
-      message: "Nie udało się zaktualizować sesji — wygasła lub nie istnieje.",
+      message: "Nie udało się zaktualizować sesji - wygasła lub nie istnieje.",
       reason: "not_found",
     };
   }

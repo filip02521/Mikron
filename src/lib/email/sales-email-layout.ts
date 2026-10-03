@@ -44,13 +44,12 @@ export function emailDocument(params: {
   footerNote?: string;
 }): string {
   const accent = params.accentColor ?? EMAIL_THEME.primary;
-  const accentEnd = params.accentEndColor ?? EMAIL_THEME.primaryHover;
   const preheader = escapeHtml(params.preheader);
   const title = escapeHtml(params.headerTitle);
   const subtitle = escapeHtml(params.headerSubtitle);
   const footer = escapeHtml(
     params.footerNote ??
-      `${ONTIME_COMPANY} · ${ONTIME_APP_NAME} — ${ONTIME_TAGLINE_SHORT}`
+      `${ONTIME_COMPANY} · ${ONTIME_APP_NAME} - ${ONTIME_TAGLINE_SHORT}`
   );
 
   return `<!DOCTYPE html>
@@ -68,7 +67,7 @@ export function emailDocument(params: {
       <td align="center">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
           <tr>
-            <td bgcolor="${accent}" style="background-color:${accent};background:linear-gradient(135deg, ${accent} 0%, ${accentEnd} 100%);border-radius:12px 12px 0 0;padding:24px 28px;">
+            <td bgcolor="${accent}" style="background-color:${accent};border-radius:12px 12px 0 0;padding:24px 28px;">
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td width="48" valign="middle">

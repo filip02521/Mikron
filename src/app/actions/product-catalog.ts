@@ -714,7 +714,7 @@ export async function actionReadCatalogZdSyncStatus(): Promise<{
 export async function actionContinueCatalogZdSync() {
   await requireAdminForMutation();
   if (!(await isSubiektReachable())) {
-    throw new Error("Subiekt niedostępny — synchronizacja wymaga LAN.");
+    throw new Error("Subiekt niedostępny - synchronizacja wymaga LAN.");
   }
   const result = await runCatalogZdSync({
     force: true,
@@ -728,7 +728,7 @@ export async function actionContinueCatalogZdSync() {
 export async function actionRunCatalogZdSyncNow(options?: { reset?: boolean }) {
   await requireAdminForMutation();
   if (!(await isSubiektReachable())) {
-    throw new Error("Subiekt niedostępny — synchronizacja wymaga LAN.");
+    throw new Error("Subiekt niedostępny - synchronizacja wymaga LAN.");
   }
   const result = await runCatalogZdSync({
     force: true,

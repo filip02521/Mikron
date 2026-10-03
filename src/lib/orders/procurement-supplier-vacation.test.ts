@@ -133,6 +133,6 @@ describe("formatSupplierVacationRangeCompact", () => {
         startDate: "2026-08-01",
         endDate: "2026-08-15",
       })
-    ).toBe("1.08–15.08");
+    ).toBe("1.08-15.08");
   });
 });

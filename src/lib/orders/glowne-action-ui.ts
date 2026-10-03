@@ -1,6 +1,6 @@
 /** Pełny opis — atrybut title / pomoc w modalu. */
 export const PROCUREMENT_GLOWNE_ON_DEMAND_HINT =
-  "Dostawca na żądanie — Główne oznacza prośbę bez przesunięcia terminu w planie tygodnia.";
+  "Dostawca na żądanie - Główne oznacza prośbę bez przesunięcia terminu w planie tygodnia.";
 
 export function procurementGlowneButtonLabel({
   hasInfoViaPanel = false,

@@ -26,7 +26,7 @@ function order(partial: Partial<IndividualOrder>): IndividualOrder {
 }
 
 describe("verification-informacja-ui", () => {
-  it("stock_out — badge i zablokowana ścieżka", () => {
+  it("stock_out - badge i zablokowana ścieżka", () => {
     const ui = verificationInformacjaUiForOrder(
       order({ informacja_stock_out_reorder: true })
     );
@@ -35,7 +35,7 @@ describe("verification-informacja-ui", () => {
     expect(ui?.completeSuccessMessage).toContain("Brak na stanie");
   });
 
-  it("direct — picker dostępny", () => {
+  it("direct - picker dostępny", () => {
     const row = order({
       informacja_stock_out_reorder: false,
       informacja_queue_via_daily_panel: false,
@@ -55,7 +55,7 @@ describe("verification-informacja-ui", () => {
     expect(flags.informacjaQueueViaDailyPanel).toBe(false);
   });
 
-  it("resolveVerificationInformacjaFlags — zmiana ścieżki gdy nie zablokowana", () => {
+  it("resolveVerificationInformacjaFlags - zmiana ścieżki gdy nie zablokowana", () => {
     const prior = order({
       informacja_stock_out_reorder: false,
       informacja_queue_via_daily_panel: false,

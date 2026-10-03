@@ -130,9 +130,9 @@ function formatWindowShort(dataOd: string, dataDo: string): string {
 }
 
 const stripLabelClass =
-  "text-xs font-semibold uppercase tracking-wide text-slate-600";
+  "text-xs font-semibold text-slate-600";
 const sectionLabelClass =
-  "text-xs font-semibold uppercase tracking-wide text-slate-700";
+  "text-xs font-semibold text-slate-700";
 
 /**
  * Karta przygotowania Kreatora ZD: zakres → parametry biegu → nadpisania → Policz.
@@ -591,7 +591,7 @@ export function ZdEstimatePrepForm({
             >
               <span
                 className={cn(
-                  "inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-[11px] font-semibold uppercase tracking-wide",
+                  "inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-[11px] font-semibold",
                   supplierFromMappingNotice
                     ? "bg-indigo-100 text-indigo-800"
                     : "bg-emerald-100 text-emerald-900"
@@ -612,7 +612,7 @@ export function ZdEstimatePrepForm({
                 {selectedSupplier.name}
               </p>
               {selectedSupplier.stockLabel &&
-              selectedSupplier.stockLabel !== "—" ? (
+              selectedSupplier.stockLabel !== "-" ? (
                 <span
                   className={cn(
                     "shrink-0 text-xs tabular-nums",
@@ -745,7 +745,7 @@ export function ZdEstimatePrepForm({
         </section>
 
         {selectedSupplier && selectedSupplier.dniZapasu == null ? (
-          <ZdEstimateNotice tone="warning" title="Dostawca bez liczbowego zapasu — ustaw dni ręcznie" dismissible={false}>
+          <ZdEstimateNotice tone="warning" title="Dostawca bez liczbowego zapasu - ustaw dni ręcznie" dismissible={false}>
             „{selectedSupplier.name}”: {selectedSupplier.stockLabel}. Ustaw dni
             zapasu ręcznie w polu Zapas.
           </ZdEstimateNotice>
@@ -812,14 +812,14 @@ export function ZdEstimatePrepForm({
                   className={zdEstimatePrepControlClass}
                 >
                   <option value="">
-                    {scopeMode === "cecha" ? "— z cechy —" : "— z grupy —"}
+                    {scopeMode === "cecha" ? "- z cechy -" : "- z grupy -"}
                   </option>
                   {suppliers.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
                       {s.dniZapasu != null
                         ? ` · ${s.stockLabel} (${s.dniZapasu} d)`
-                        : s.stockLabel !== "—"
+                        : s.stockLabel !== "-"
                           ? ` · ${s.stockLabel}`
                           : ""}
                     </option>
@@ -882,7 +882,7 @@ export function ZdEstimatePrepForm({
           <div className="flex w-full flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-end">
             {recountNeeded && !estimating ? (
               <p className="text-xs font-medium text-amber-800 sm:mr-auto" role="status">
-                Parametry zmienione — lista jest nieaktualna, przelicz przed utworzeniem ZD.
+                Parametry zmienione - lista jest nieaktualna, przelicz przed utworzeniem ZD.
               </p>
             ) : null}
             <Button
@@ -907,8 +907,8 @@ export function ZdEstimatePrepForm({
                 canPolicz &&
                   !estimating &&
                   (recountNeeded
-                    ? "shadow-md shadow-amber-500/20 ring-2 ring-amber-400/70"
-                    : "shadow-md shadow-indigo-500/20 ring-2 ring-indigo-500/25")
+                    ? "shadow-md ring-2 ring-amber-400/70"
+                    : "shadow-md ring-2 ring-indigo-500/25")
               )}
             >
               {estimating ? (

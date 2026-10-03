@@ -33,15 +33,15 @@ const AUTH_LABELS: Record<SubiektAuthMode, string> = {
 };
 
 function formatProduct(p: SubiektProduct): string {
-  const sym = p.tw_Symbol ?? "—";
+  const sym = p.tw_Symbol ?? "-";
   const name = p.tw_Nazwa ?? "";
-  return `${sym}${name ? ` — ${name}` : ""}`;
+  return `${sym}${name ? ` - ${name}` : ""}`;
 }
 
 function formatSupplier(k: SubiektKontrahent): string {
-  const sym = k.kh_Symbol ?? "—";
+  const sym = k.kh_Symbol ?? "-";
   const name = k.adr_NazwaPelna ?? k.adr_Nazwa ?? "";
-  return `${sym}${name ? ` — ${name}` : ""}`;
+  return `${sym}${name ? ` - ${name}` : ""}`;
 }
 
 function LookupResults({
@@ -55,7 +55,7 @@ function LookupResults({
 
   return (
     <div className="overflow-hidden rounded-md border border-slate-200/90 bg-white">
-      <p className="border-b border-slate-100 bg-slate-50/80 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+      <p className="border-b border-slate-100 bg-slate-50/80 px-3 py-2 text-[11px] font-semibold text-slate-500">
         {title}
       </p>
       <ul className="divide-y divide-slate-100">
@@ -70,7 +70,7 @@ function LookupResults({
 }
 
 function shortApiHost(url: string | null): string {
-  if (!url) return "—";
+  if (!url) return "-";
   try {
     return new URL(url).host;
   } catch {
@@ -175,23 +175,23 @@ export function SubiektIntegrationPanel({
         inset
         density="compact"
         title="Integracja Subiekt"
-        description="REST API v1 w sieci LAN — odczyt towarów, dostawców i ZD dla katalogu."
+        description="REST API v1 w sieci LAN - odczyt towarów, dostawców i ZD dla katalogu."
         action={
           <div className="flex flex-wrap items-center justify-end gap-2">
             <HelpPopover
-              label="Pomoc — integracja Subiekt"
-              title="Subiekt GT — REST API"
+              label="Pomoc - integracja Subiekt"
+              title="Subiekt GT - REST API"
               shortLabel="Pomoc"
             >
               <HelpBlock title="Konfiguracja">
                 <p>
                   Adres API i uwierzytelnianie ustawiasz w zmiennych środowiskowych serwera. System
-                  łączy się tylko odczytem — zapis realizacji odbywa się w panelu OnTime.
+                  łączy się tylko odczytem - zapis realizacji odbywa się w panelu OnTime.
                 </p>
               </HelpBlock>
               <HelpBlock title="Test odczytu">
                 <p>
-                  Po udanym teście połączenia możesz wyszukać towar lub dostawcę — to szybka
+                  Po udanym teście połączenia możesz wyszukać towar lub dostawcę - to szybka
                   diagnostyka sieci LAN, nie pełny import katalogu.
                 </p>
               </HelpBlock>
@@ -208,11 +208,11 @@ export function SubiektIntegrationPanel({
             <PanelSummaryMetric
               label="Adres API"
               value={shortApiHost(baseUrl)}
-              hint={baseUrl ?? "—"}
+              hint={baseUrl ?? "-"}
             />
             <PanelSummaryMetric
               label="Uwierzytelnianie"
-              value={authMode ? AUTH_LABELS[authMode].split("(")[0].trim() : "—"}
+              value={authMode ? AUTH_LABELS[authMode].split("(")[0].trim() : "-"}
               hint={authMode ? AUTH_LABELS[authMode] : "Nie ustawiono"}
               tone={authMode ? "success" : "warning"}
             />
@@ -246,14 +246,14 @@ export function SubiektIntegrationPanel({
             <div>
               <p className={panelTypography.sectionLabel}>Szybki test odczytu</p>
               <p className={cn(panelTypography.sectionDesc, "mt-1")}>
-                Wyszukiwanie po symbolu, nazwie lub NIP — wyniki z API Subiekta w LAN.
+                Wyszukiwanie po symbolu, nazwie lub NIP - wyniki z API Subiekta w LAN.
               </p>
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <div className="min-w-0 flex-1">
                 <label
-                  className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500"
+                  className="mb-1.5 block text-[11px] font-semibold text-slate-500"
                   htmlFor="subiekt-product-q"
                 >
                   Symbol / towar
@@ -279,7 +279,7 @@ export function SubiektIntegrationPanel({
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
               <div className="min-w-0 flex-1">
                 <label
-                  className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-slate-500"
+                  className="mb-1.5 block text-[11px] font-semibold text-slate-500"
                   htmlFor="subiekt-supplier-q"
                 >
                   Dostawca

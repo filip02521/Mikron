@@ -48,7 +48,7 @@ function QuoteText({
             animClass
           )}
         >
-          — {quote.attribution}
+          - {quote.attribution}
         </p>
       ) : null}
     </>
@@ -84,7 +84,7 @@ export function AuthQuotePanel({
     return (
       <div
         className={cn(
-          "relative overflow-hidden rounded-lg bg-gradient-to-br from-indigo-700 via-sky-800 to-slate-900 px-4 py-4 shadow-lg shadow-indigo-900/20",
+          "relative overflow-hidden rounded-lg bg-indigo-700 px-4 py-4 shadow-lg ",
           className
         )}
       >
@@ -95,7 +95,7 @@ export function AuthQuotePanel({
             aria-hidden
           />
         ) : null}
-        <p className="relative text-[10px] font-semibold uppercase tracking-[0.2em] text-indigo-200/80">
+        <p className="relative text-[10px] font-semibold text-indigo-200/80">
           {ONTIME_COMPANY} · {ONTIME_APP_NAME}
         </p>
         <p className="relative mt-0.5 text-xs font-medium text-sky-100/95">{ONTIME_TAGLINE}</p>
@@ -110,7 +110,7 @@ export function AuthQuotePanel({
   return (
     <div className={cn("flex flex-col justify-between", className)}>
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-200/90">
+        <p className="text-xs font-semibold text-indigo-200/90">
           {ONTIME_COMPANY}
         </p>
         <p

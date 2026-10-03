@@ -30,7 +30,7 @@ export function PanelSummaryMetric({
 
   const body = (
     <>
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+      <p className="text-[11px] font-semibold text-slate-500">
         {label}
       </p>
       <p className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">

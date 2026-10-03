@@ -81,7 +81,7 @@ export const teethReceiveSupplierHeaderClass = teethPanelSupplierHeaderClass;
 export const teethReceiveTableWrapClass = "overflow-x-auto";
 
 export const teethReceiveThClass =
-  "sticky top-0 z-[1] whitespace-nowrap bg-slate-50/95 px-2.5 py-2.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 backdrop-blur-sm first:pl-4 last:pr-4";
+  "sticky top-0 z-[1] whitespace-nowrap bg-slate-50/95 px-2.5 py-2.5 text-[10px] font-semibold text-slate-500 backdrop-blur-sm first:pl-4 last:pr-4";
 
 export const teethReceiveTdClass = "px-2.5 py-2.5 align-middle first:pl-4 last:pr-4";
 
@@ -93,7 +93,7 @@ export const teethReceiveSalesPersonBannerClass =
   "relative flex items-center gap-3 px-4 py-3 sm:px-5";
 
 export const teethReceiveSaveButtonClass =
-  "rounded-md bg-gradient-to-b from-indigo-600 to-indigo-700 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm shadow-indigo-600/15 transition hover:to-indigo-800 disabled:opacity-50";
+  "rounded-md bg-indigo-600 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm transition disabled:opacity-50";
 
 export const teethReceiveSectionOutlineButtonClass =
   "rounded-md border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50";

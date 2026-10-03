@@ -451,8 +451,8 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     : row.cancelledAckOrderIds;
   const dismissAckLabel = MOJE_COPY_DISMISS_ACK_BUTTON;
   const dismissAckTitle = needsCancelNoticeAck
-    ? "Potwierdzam zapoznanie się z rezygnacją — usuń z listy"
-    : "Potwierdzam anulowanie — usuń z listy";
+    ? "Potwierdzam zapoznanie się z rezygnacją - usuń z listy"
+    : "Potwierdzam anulowanie - usuń z listy";
   const onAcknowledgeDismiss = needsCancelNoticeAck
     ? onAcknowledgeCancelNotice!
     : onAcknowledgeCancelled!;
@@ -472,7 +472,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
     ? myOrderPickupAckLabel(row.pickupPendingIds.length, "pickup", { compact: compactPickup })
     : myOrderPickupAckLabel(row.pickupPendingIds.length, ackMode, { compact: compactPickup });
   const pickupAckTitle = isMixedPickup
-    ? "Potwierdź odbiór zębów i towaru z regału — osobno dla każdego typu"
+    ? "Potwierdź odbiór zębów i towaru z regału - osobno dla każdego typu"
     : myOrderPickupAckTitle(row.pickupPendingIds.length, ackMode);
   const shelfPickup = row.acknowledgeMode === "pickup";
 
@@ -928,8 +928,8 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
       ? "informacja"
       : row.statusTitle === "Anulowane" ||
           row.statusTitle === "Częściowo wycofane" ||
-          row.statusTitle === "Rezygnacja — towar w drodze" ||
-          row.statusTitle === "Rezygnacja — towar na magazynie" ||
+          row.statusTitle === "Rezygnacja - towar w drodze" ||
+          row.statusTitle === "Rezygnacja - towar na magazynie" ||
           row.statusTitle === "Anulowano"
         ? "cancelled"
         : "completed"
@@ -1095,7 +1095,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
 
       {showSharedUnreadRequestNote && sharedRequestNote ? (
         <div
-          className="border-t border-indigo-100/80 bg-gradient-to-r from-indigo-50/60 via-white to-sky-50/30 px-3 py-2.5 sm:px-4"
+          className="border-t border-indigo-100/80 bg-indigo-50/60 px-3 py-2.5 sm:px-4"
           onClick={(event) => event.stopPropagation()}
           onMouseDown={(event) => event.stopPropagation()}
         >
@@ -1237,7 +1237,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                             {row.pickupPendingIds.length}{" "}
                             {row.pickupPendingIds.length < 5 ? "pozycje" : "pozycji"}
                           </span>{" "}
-                          czeka na potwierdzenie — pojedynczo po prawej lub wszystkie naraz.
+                          czeka na potwierdzenie - pojedynczo po prawej lub wszystkie naraz.
                         </>
                       )}
                     </p>

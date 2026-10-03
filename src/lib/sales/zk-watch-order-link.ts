@@ -437,7 +437,7 @@ export function buildZkLineProsbaQuantityMeta(
   if (fromStockScope && orderedQty === 0 && zkQty != null) {
     return {
       displayLabel: `${zkLabel} · ze stanu magazynowego`,
-      title: `W ZK jest ${zkQty} szt. — pozycja oznaczona jako dostępna na stanie, bez prośby o zamówienie.`,
+      title: `W ZK jest ${zkQty} szt. - pozycja oznaczona jako dostępna na stanie, bez prośby o zamówienie.`,
     };
   }
 

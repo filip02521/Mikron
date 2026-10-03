@@ -255,7 +255,7 @@ export function ZkWatchProsbaScopeModal({
       onClose={handleClose}
       disableBackdropClose={required}
       size="md"
-      title={`${displayNumber} — co zamawiamy?`}
+      title={`${displayNumber} - co zamawiamy?`}
       description={watch.client_label}
       bodyClassName={ZK_PROSBA_MODAL_BODY_CLASS}
       footer={
@@ -301,14 +301,14 @@ export function ZkWatchProsbaScopeModal({
                   : autoProsbaActive && orderCount > 0
                     ? `Zapisz i utwórz prośbę (${orderCount})`
                     : orderCount === 0
-                      ? "Zapisz — bez prośby"
+                      ? "Zapisz - bez prośby"
                       : `Zapisz (${orderCount})`}
             </Button>
           </div>
         </div>
       }
     >
-      <div className="overflow-hidden rounded-lg border border-indigo-200/60 bg-gradient-to-br from-indigo-50/80 via-indigo-50/40 to-sky-50/30 px-3.5 py-2.5">
+      <div className="overflow-hidden rounded-lg border border-indigo-200/60 bg-indigo-50/80 px-3.5 py-2.5">
         <div className="flex items-start gap-2.5">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-indigo-100/80 text-indigo-600">
             <IconClipboardList size={16} strokeWidth={2} />
@@ -332,14 +332,14 @@ export function ZkWatchProsbaScopeModal({
 
       {stockFetchTimedOut ? (
         <ZkProsbaModalCallout tone="amber" role="status">
-          Sprawdzanie stanu trwa zbyt długo — zaznacz pozycje ręcznie lub zapisz bez
+          Sprawdzanie stanu trwa zbyt długo - zaznacz pozycje ręcznie lub zapisz bez
           automatycznego podpowiadania.
         </ZkProsbaModalCallout>
       ) : null}
 
       {stockUnavailable && !stockFetchTimedOut ? (
         <ZkProsbaModalCallout tone="amber" role="status">
-          Nie udało się pobrać stanu z Subiekta — zaznacz ręcznie pozycje do zamówienia.
+          Nie udało się pobrać stanu z Subiekta - zaznacz ręcznie pozycje do zamówienia.
         </ZkProsbaModalCallout>
       ) : null}
 
@@ -404,8 +404,8 @@ export function ZkWatchProsbaScopeModal({
                     onChange={() => toggleLine(line.key)}
                     aria-label={
                       markedForOrder
-                        ? `${line.product} — do zamówienia, odznacz aby pominąć`
-                        : `${line.product} — pominięte, zaznacz aby zamówić`
+                        ? `${line.product} - do zamówienia, odznacz aby pominąć`
+                        : `${line.product} - pominięte, zaznacz aby zamówić`
                     }
                     className="mt-0.5 size-4 shrink-0 rounded-md border-slate-300 text-indigo-600 transition-colors focus:ring-2 focus:ring-indigo-500/40 focus:ring-offset-0"
                   />
@@ -432,7 +432,7 @@ export function ZkWatchProsbaScopeModal({
                   <span
                     className={cn(
                       salesTypography.kindTag,
-                      "shrink-0 rounded-full px-2 py-0.5 leading-none",
+                      "shrink-0 rounded-md px-2 py-0.5 leading-none",
                       sufficient && !markedForOrder
                         ? "bg-emerald-100 text-emerald-950 ring-1 ring-emerald-200/80"
                         : "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80"
@@ -450,12 +450,12 @@ export function ZkWatchProsbaScopeModal({
       {noneMarkedForOrder && !stockLoading ? (
         allLinesSufficient ? (
           <ZkProsbaModalCallout tone="emerald">
-            Wszystkie pozycje są na stanie i zarezerwowane w tym ZK — zapisz, jeśli nic nie trzeba
+            Wszystkie pozycje są na stanie i zarezerwowane w tym ZK - zapisz, jeśli nic nie trzeba
             zamawiać u dostawcy.
           </ZkProsbaModalCallout>
         ) : (
           <ZkProsbaModalCallout tone="amber">
-            Nic nie zaznaczono do zamówienia — zaznacz pozycje, które chcesz wysłać w prośbie.
+            Nic nie zaznaczono do zamówienia - zaznacz pozycje, które chcesz wysłać w prośbie.
           </ZkProsbaModalCallout>
         )
       ) : null}

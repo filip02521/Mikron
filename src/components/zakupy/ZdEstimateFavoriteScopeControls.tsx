@@ -28,7 +28,7 @@ export function ZdEstimateFavoriteGroupChip({
       className={cn(
         "group/chip inline-flex max-w-full items-stretch overflow-hidden rounded-md border transition",
         active
-          ? "border-indigo-300 bg-indigo-50 text-indigo-950 shadow-sm shadow-indigo-900/5"
+          ? "border-indigo-300 bg-indigo-50 text-indigo-950 shadow-sm "
           : "border-slate-200/90 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
       )}
     >
@@ -40,7 +40,7 @@ export function ZdEstimateFavoriteGroupChip({
         title={
           group.dniZapasu != null
             ? `${group.supplierName ?? "dostawca"} · zapas ${group.stockLabel} (${group.dniZapasu} d)`
-            : "Brak zapasu na karcie — 30 dni"
+            : "Brak zapasu na karcie - 30 dni"
         }
         className={cn(
           "inline-flex min-h-10 min-w-0 items-center gap-1.5 px-2.5 py-1.5 text-left text-sm transition",
@@ -101,7 +101,7 @@ export function ZdEstimateFavoriteCechaChip({
       className={cn(
         "group/chip inline-flex max-w-full items-stretch overflow-hidden rounded-md border transition",
         active
-          ? "border-indigo-300 bg-indigo-50 text-indigo-950 shadow-sm shadow-indigo-900/5"
+          ? "border-indigo-300 bg-indigo-50 text-indigo-950 shadow-sm "
           : "border-slate-200/90 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
       )}
     >
@@ -113,7 +113,7 @@ export function ZdEstimateFavoriteCechaChip({
         title={
           cecha.dniZapasu != null
             ? `${cecha.supplierName ?? "dostawca"} · zapas ${cecha.stockLabel} (${cecha.dniZapasu} d)`
-            : "Brak zapasu na karcie — 30 dni"
+            : "Brak zapasu na karcie - 30 dni"
         }
         className={cn(
           "inline-flex min-h-10 min-w-0 items-center gap-1.5 px-2.5 py-1.5 text-left text-sm transition",

@@ -360,15 +360,15 @@ export function mapZdEstimateLineToManual(
 
   return {
     tw_Id: asFiniteNumber(line.tw_Id),
-    tw_Symbol: String(line.tw_Symbol ?? "").trim() || "—",
-    tw_Nazwa: String(line.tw_Nazwa ?? "").trim() || "—",
+    tw_Symbol: String(line.tw_Symbol ?? "").trim() || "-",
+    tw_Nazwa: String(line.tw_Nazwa ?? "").trim() || "-",
     tw_PLU: (() => {
       const raw = line.tw_PLU ?? (line as { Tw_PLU?: unknown }).Tw_PLU;
       const s = String(raw ?? "").trim();
       return s && s !== "-" ? s : null;
     })(),
     tw_IdGrupa: asOptionalInt(line.tw_IdGrupa),
-    grt_Nazwa: String(line.grt_Nazwa ?? "").trim() || "—",
+    grt_Nazwa: String(line.grt_Nazwa ?? "").trim() || "-",
     tw_Stan,
     tw_StanRez,
     dostepne,
@@ -738,7 +738,7 @@ function formatDateKey(d: Date): string {
 }
 
 export function formatQty(n: number): string {
-  if (!Number.isFinite(n)) return "—";
+  if (!Number.isFinite(n)) return "-";
   if (Number.isInteger(n)) return String(n);
   return n.toLocaleString("pl-PL", {
     maximumFractionDigits: 2,

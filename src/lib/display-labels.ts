@@ -24,7 +24,7 @@ export function locationLabel(location: string): string {
 }
 
 export function vacationNoteLabel(note: string | null | undefined): string {
-  if (!note) return "—";
+  if (!note) return "-";
   return VACATION_LABELS[note as VacationNote] ?? note;
 }
 
@@ -35,7 +35,7 @@ export function formatSupplierInterval(
   const resolved = resolveSupplierInterval(intervalRaw, intervalWeeks);
   if (resolved) return formatIntervalLabel(resolved);
   if (intervalRaw?.trim()) return intervalRaw.trim();
-  return "—";
+  return "-";
 }
 
 /** Widok handlowca — „3 tyg.” jako „raz na 3 tyg.” (co ile składamy zamówienie u dostawcy). */
@@ -53,7 +53,7 @@ export function formatSupplierIntervalForSales(
     return `raz na ${resolved.value} mies.`;
   }
   if (intervalRaw?.trim()) return intervalRaw.trim();
-  return "—";
+  return "-";
 }
 
 export function orderTypeLabel(type: OrderType): string {
@@ -63,7 +63,7 @@ export function orderTypeLabel(type: OrderType): string {
     case "Poboczne":
       return "Uzupełniające";
     default:
-      return "—";
+      return "-";
   }
 }
 
@@ -72,7 +72,7 @@ export function orderMethodLabel(notes: string): string {
   if (u.includes("MAIL")) return "Mail";
   if (u.includes("TELEFON")) return "Telefon";
   if (u.includes("INTERNET")) return "Internet";
-  return notes || "—";
+  return notes || "-";
 }
 
 export type OrderMethodKind = "mail" | "phone" | "web" | "other";
@@ -91,7 +91,7 @@ export function formatStockPeriod(
   stockWeeks: number | null | undefined
 ): string {
   const compact = formatStockPeriodCompact(stockRaw, stockWeeks);
-  if (compact === "—") return compact;
+  if (compact === "-") return compact;
   if (/w razie potrzeby/i.test(compact)) return "W razie potrzeby";
   const resolved = resolveSupplierInterval(stockRaw, stockWeeks);
   if (resolved || (stockWeeks != null && stockWeeks > 0 && !stockRaw?.trim())) {
@@ -110,7 +110,7 @@ export function formatStockPeriodCompact(
     if (stockWeeks != null && stockWeeks > 0) {
       return formatIntervalLabel({ unit: "weeks", value: Math.round(stockWeeks) });
     }
-    return "—";
+    return "-";
   }
   if (/w razie potrzeby/i.test(v)) return "w razie potrzeby";
   const resolved = resolveSupplierInterval(v, stockWeeks);
@@ -120,7 +120,7 @@ export function formatStockPeriodCompact(
 
 /** ISO yyyy-mm-dd lub pełny timestamp → dd.MM.yyyy (kalendarz Europe/Warsaw dla timestampów). */
 export function formatPlDate(iso: string | null | undefined): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const normalized =
     iso.includes("T") || iso.includes(" ") ? warsawDateKeyFromIso(iso) : iso;
   const parsed = parseDateOnly(normalized);

@@ -74,45 +74,45 @@ export const zkWatchInformacjaRowRingClass = "ring-1 ring-inset ring-sky-300/70"
 /** Obudowa wiersza gotowego do zamknięcia — flex + gradient, bez border-l. */
 export const zkWatchReadyToCloseRowShellClass = cn(
   "flex min-h-[2.625rem] border-l-0 transition-all duration-150",
-  "bg-gradient-to-r from-emerald-50/95 via-emerald-50/30 to-white",
+  "bg-emerald-50/95",
   "ring-1 ring-inset ring-emerald-200/50",
-  "hover:from-emerald-50 hover:via-emerald-50/40"
+  "hover:bg-emerald-50"
 );
 
 /** Obudowa wiersza z towarem na regale (odczytany). */
 export const zkWatchRegalWaitingRowShellClass = cn(
   "flex min-h-[2.625rem] border-l-0 transition-all duration-150",
-  "bg-gradient-to-r from-violet-50/95 via-violet-50/28 to-white",
+  "bg-violet-50/95",
   "ring-1 ring-inset ring-violet-200/55",
-  "hover:from-violet-50 hover:via-violet-50/38"
+  "hover:bg-violet-50"
 );
 
 /** Obudowa wiersza z nowym przybyciem na regale (nieodczytany). */
 export const zkWatchRegalNewRowShellClass = cn(
   "flex min-h-[2.625rem] border-l-0 transition-all duration-150",
-  "bg-gradient-to-r from-violet-100/90 via-violet-50/35 to-white",
+  "bg-violet-100/90",
   "ring-1 ring-inset ring-violet-300/60",
-  "hover:from-violet-100/95 hover:via-violet-50/45"
+  "hover:bg-violet-100/95"
 );
 
 /** Lewy rail — gotowe do zamknięcia. */
 export const zkWatchReadyToCloseRailClass = cn(
   "flex w-5 shrink-0 items-center justify-center self-stretch sm:w-6",
-  "bg-gradient-to-b from-emerald-500 to-emerald-600 text-white",
+  "bg-emerald-500 text-white",
   "shadow-[inset_-1px_0_0_rgba(255,255,255,0.22)]"
 );
 
 /** Lewy rail — czeka na odbiór z regału. */
 export const zkWatchRegalWaitingRailClass = cn(
   "flex w-5 shrink-0 items-center justify-center self-stretch sm:w-6",
-  "bg-gradient-to-b from-violet-500 to-violet-600 text-white",
+  "bg-violet-500 text-white",
   "shadow-[inset_-1px_0_0_rgba(255,255,255,0.22)]"
 );
 
 /** Lewy rail — nowy towar na regale. */
 export const zkWatchRegalNewRailClass = cn(
   "flex w-5 shrink-0 items-center justify-center self-stretch sm:w-6",
-  "bg-gradient-to-b from-violet-600 to-violet-700 text-white",
+  "bg-violet-600 text-white",
   "shadow-[inset_-1px_0_0_rgba(255,255,255,0.25)]"
 );
 
@@ -166,37 +166,37 @@ export const zkWatchScopeOverflowAccentRailClass = cn(
 
 export const zkWatchInformacjaRowShellClass = cn(
   "flex min-h-[2.625rem] border-l-0 transition-all duration-150",
-  "bg-gradient-to-r from-sky-50/85 via-sky-50/22 to-white",
+  "bg-sky-50/85",
   "ring-1 ring-inset ring-sky-200/45",
-  "hover:from-sky-50/95 hover:via-sky-50/32"
+  "hover:bg-sky-50/95"
 );
 
 export const zkWatchNewLinesRowShellClass = cn(
   "flex min-h-[2.625rem] border-l-0 transition-all duration-150",
-  "bg-gradient-to-r from-amber-50/85 via-amber-50/22 to-white",
+  "bg-amber-50/85",
   "ring-1 ring-inset ring-amber-200/45",
-  "hover:from-amber-50/95 hover:via-amber-50/32"
+  "hover:bg-amber-50/95"
 );
 
 export const zkWatchNewlyAddedRowShellClass = cn(
   "flex min-h-[2.625rem] border-l-0 transition-all duration-150",
-  "bg-gradient-to-r from-indigo-50/80 via-indigo-50/20 to-white",
+  "bg-indigo-50/80",
   "ring-1 ring-inset ring-indigo-200/45",
-  "hover:from-indigo-50/90 hover:via-indigo-50/30"
+  "hover:bg-indigo-50/90"
 );
 
 export const zkWatchFollowUpRowShellClass = cn(
   "flex min-h-[2.625rem] border-l-0 transition-all duration-150",
-  "bg-gradient-to-r from-amber-50/90 via-amber-50/28 to-white",
+  "bg-amber-50/90",
   "ring-1 ring-inset ring-amber-200/55",
-  "hover:from-amber-50 hover:via-amber-50/38"
+  "hover:bg-amber-50"
 );
 
 export const zkWatchScopeOverflowRowShellClass = cn(
   "flex min-h-[2.625rem] border-l-0 transition-all duration-150",
-  "bg-gradient-to-r from-slate-50/90 via-slate-50/25 to-white",
+  "bg-slate-50/90",
   "ring-1 ring-inset ring-slate-200/50",
-  "hover:from-slate-50 hover:via-slate-50/35"
+  "hover:bg-slate-50"
 );
 
 const ROW_SHELL_BY_RAIL: Record<ZkWatchRowRailKind, string> = {

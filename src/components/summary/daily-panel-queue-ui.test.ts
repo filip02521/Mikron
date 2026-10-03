@@ -7,14 +7,9 @@ import { dailyPanelCardRowClass } from "@/components/summary/daily-panel-list-st
 import { urgentCardClassName } from "@/components/summary/urgent-card-styles";
 
 describe("dailyPanelQueueShellClass", () => {
-  it("uses tone tints without left accent stripes", () => {
-    expect(dailyPanelQueueShellClass("overdue")).toContain("border-amber");
-    expect(dailyPanelQueueShellClass("prosby")).toContain("border-indigo");
-    expect(dailyPanelQueueShellClass("today")).toContain("border-sky");
-    expect(dailyPanelQueueShellClass("cancel")).toContain("bg-amber-50");
-    expect(dailyPanelQueueShellClass("plan")).toContain("bg-indigo-50");
-    expect(dailyPanelQueueShellClass("informacja")).toContain("bg-sky-50");
-    expect(dailyPanelQueueShellClass("stockOut")).toContain("border-amber");
+  it("uses one neutral surface for every tone, without left accent stripes", () => {
+    expect(dailyPanelQueueShellClass("overdue")).toBe(dailyPanelQueueShellClass("prosby"));
+    expect(dailyPanelQueueShellClass("overdue")).not.toMatch(/amber|indigo|sky/);
 
     for (const tone of [
       "overdue",

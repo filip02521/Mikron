@@ -14,10 +14,9 @@ export function TeethShortageEmptyGraphic({ className }: { className?: string })
       )}
       aria-hidden
     >
-      <span className="absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-100 via-indigo-50 to-sky-50 ring-1 ring-indigo-200/70" />
-      <span className="absolute -right-1 -top-1 size-8 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 opacity-30 blur-md" />
+      <span className="absolute inset-0 rounded-2xl bg-indigo-100 ring-1 ring-indigo-200/70" />
       <span className="absolute -bottom-1 -left-1 size-7 rounded-full bg-sky-300/40 blur-md" />
-      <span className="relative flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-indigo-400/40">
+      <span className="relative flex size-12 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-indigo-400/40">
         <IconToothShortage size={26} strokeWidth={1.75} />
       </span>
       <span className="absolute -bottom-0.5 -right-0.5 flex size-7 items-center justify-center rounded-full bg-white text-indigo-700 shadow-sm ring-1 ring-indigo-200">
@@ -46,7 +45,7 @@ export function TeethShortageAddCta({
       disabled={disabled}
       className={cn(
         "group relative inline-flex items-center overflow-hidden rounded-md text-left",
-        "bg-gradient-to-br from-indigo-600 to-sky-600 text-white",
+        "bg-indigo-600 text-white",
         "shadow-[var(--shadow-brand)] ring-1 ring-indigo-400/35",
         "transition-[filter,transform] hover:brightness-[1.03] active:scale-[0.98]",
         "disabled:pointer-events-none disabled:opacity-50",

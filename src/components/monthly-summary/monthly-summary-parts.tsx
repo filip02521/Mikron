@@ -151,7 +151,7 @@ export function KpiCard({
         t.ring
       )}
     >
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-[10px] font-semibold text-slate-500">{label}</p>
       <p className={cn("mt-1.5 text-2xl font-bold tabular-nums leading-none", t.text)}>{value}</p>
       {mom && previousLabel ? (
         <div className="mt-2">

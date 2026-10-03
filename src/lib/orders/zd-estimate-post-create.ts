@@ -773,8 +773,8 @@ export function buildZdSupplierMailto(input: {
       ? `New order ${dok}`
       : "New order"
     : dok
-      ? `ZD ${dok} — ${name}`
-      : `Zamówienie ZD — ${name}`;
+      ? `ZD ${dok} - ${name}`
+      : `Zamówienie ZD - ${name}`;
   const body = buildZdSupplierMailBody(input.location);
   const href = buildMailtoHref({ email, subject, body });
   if (!href) return null;

@@ -71,7 +71,7 @@ describe("expectedSalesFromLastOrder", () => {
 });
 
 describe("applySalesSpikeCut", () => {
-  it("normalna sprzedaż ≈ last order — bez cut", () => {
+  it("normalna sprzedaż ≈ last order - bez cut", () => {
     const adj = applySalesSpikeCut({
       celTracked: 100,
       celBase: 100,
@@ -87,7 +87,7 @@ describe("applySalesSpikeCut", () => {
     expect(adj.reason).toBeNull();
   });
 
-  it("skok 3× względem ostatniego ZD — obniża cel", () => {
+  it("skok 3× względem ostatniego ZD - obniża cel", () => {
     // expected = 100; sprzedaz = 300 → ratio 3 ≥ 1.75
     const adj = applySalesSpikeCut({
       celTracked: 300,
@@ -150,7 +150,7 @@ describe("applyZdEstimateHistoryCuts", () => {
 });
 
 describe("applyHistorySlowCut", () => {
-  it("bez historii / za wcześnie — bez cut", () => {
+  it("bez historii / za wcześnie - bez cut", () => {
     const recent = new Date(NOW_MS - 2 * 24 * 60 * 60 * 1000).toISOString();
     const adj = applyHistorySlowCut({
       celTracked: 80,
@@ -167,7 +167,7 @@ describe("applyHistorySlowCut", () => {
     expect(adj.deltaPieces).toBe(0);
   });
 
-  it("wolna sprzedaż vs zamówione — obniża cel", () => {
+  it("wolna sprzedaż vs zamówione - obniża cel", () => {
     const adj = applyHistorySlowCut({
       celTracked: 100,
       celBase: 100,
@@ -205,7 +205,7 @@ describe("applyHistorySlowCut", () => {
     expect(adj.reason).toBe("history_slow");
   });
 
-  it("cienki stan — nie tnie (nie zagładzać)", () => {
+  it("cienki stan - nie tnie (nie zagładzać)", () => {
     const adj = applyHistorySlowCut({
       celTracked: 100,
       celBase: 100,

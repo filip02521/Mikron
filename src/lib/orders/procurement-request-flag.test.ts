@@ -109,7 +109,7 @@ describe("summarizeGroupProcurementFlags", () => {
     }
   });
 
-  it("mixed gdy różne — najwyższa wg sort_order", () => {
+  it("mixed gdy różne - najwyższa wg sort_order", () => {
     const s = summarizeGroupProcurementFlags(
       [
         {
@@ -253,7 +253,7 @@ describe("buildProcurementListFilterCounts", () => {
 });
 
 describe("shortProcurementFlagLabel", () => {
-  it("skraca tylko długie etykiety (pasek filtrów — chip wiersza pokazuje pełną nazwę)", () => {
+  it("skraca tylko długie etykiety (pasek filtrów - chip wiersza pokazuje pełną nazwę)", () => {
     expect(shortProcurementFlagLabel("Pilne")).toBe("Pilne");
     expect(shortProcurementFlagLabel("Bardzo długa nazwa flagi zakupów", 14)).toBe(
       "Bardzo długa …"

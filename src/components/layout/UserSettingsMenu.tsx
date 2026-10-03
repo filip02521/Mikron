@@ -186,7 +186,7 @@ export function UserSettingsMenu({
       >
         <div className="flex items-center gap-2 px-3 pb-1 pt-2">
           <IconSun size={14} className="shrink-0 text-amber-500" />
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400" role="presentation">
+          <p className="text-[10px] font-semibold text-slate-400" role="presentation">
             Wybierz panel ({delegations.length})
           </p>
         </div>

@@ -24,7 +24,7 @@ export function SupplierLocationFilters({
 }) {
   return (
     <div className={className}>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <p className="mb-2 text-xs font-semibold text-slate-500">
         Lokalizacja
       </p>
       <SegmentedControl

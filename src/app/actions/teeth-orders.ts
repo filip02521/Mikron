@@ -434,7 +434,7 @@ export async function actionUpdateTeethSpecGroup(
 
     const { data: existing } = await q;
     if (existing?.some((r) => r.ordered_at != null)) {
-      return { success: false, error: "Nie można zmienić ilości — pozycje już zamówione" };
+      return { success: false, error: "Nie można zmienić ilości - pozycje już zamówione" };
     }
   }
 
@@ -481,7 +481,7 @@ export async function actionAcknowledgeTeethCancellation(
   );
 
   if (!toAck.length) {
-    throw new Error("Brak pozycji do rozliczenia — pozycje mogą być już rozliczone lub nieanulowane.");
+    throw new Error("Brak pozycji do rozliczenia - pozycje mogą być już rozliczone lub nieanulowane.");
   }
 
   const now = new Date().toISOString();

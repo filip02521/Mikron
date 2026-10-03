@@ -23,7 +23,7 @@ describe("zdListItemMatchesSupplierKhIds", () => {
     ).toBe(false);
   });
 
-  it("extractListItemKhIds — kh__Kontrahent_*", () => {
+  it("extractListItemKhIds - kh__Kontrahent_*", () => {
     expect(
       extractListItemKhIds({
         dok_Id: 3,

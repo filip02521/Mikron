@@ -2,7 +2,7 @@
 export const PROSBA_FORM_SECTION_COPY = {
   delegate: {
     title: "W czyim imieniu?",
-    hint: "Kierownik składa prośbę za wybranego handlowca — po wysłaniu trafi do jego listy „Moje zamówienia”.",
+    hint: "Kierownik składa prośbę za wybranego handlowca - po wysłaniu trafi do jego listy „Moje zamówienia”.",
   },
   requestKind: {
     title: "Co chcesz zgłosić?",
@@ -11,7 +11,7 @@ export const PROSBA_FORM_SECTION_COPY = {
   products: {
     title: "Produkty",
     orderHint:
-      "Nazwa, symbol lub kod z Subiekta oraz ilość. Dostawcę dopasujemy automatycznie — notatkę możesz dodać przy każdej pozycji.",
+      "Nazwa, symbol lub kod z Subiekta oraz ilość. Dostawcę dopasujemy automatycznie - notatkę możesz dodać przy każdej pozycji.",
     /** Edycja prośby handlowca — bez osobnego akapitu o dostawcy. */
     salesEditHint:
       "Symbol, kod Mikran lub opis oraz ilość. Dostawcę dopasujemy z Subiekta po zapisie albo uzupełni dział zakupów.",
@@ -20,6 +20,6 @@ export const PROSBA_FORM_SECTION_COPY = {
   },
   delegateProcurement: {
     title: "Dla kogo i u kogo?",
-    hint: "Handlowiec, którego dotyczy prośba, oraz dostawca — widoczne w panelu dziennym i przy zamówieniu.",
+    hint: "Handlowiec, którego dotyczy prośba, oraz dostawca - widoczne w panelu dziennym i przy zamówieniu.",
   },
 } as const;

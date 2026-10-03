@@ -7,18 +7,18 @@ export const TEETH_SECTION_LABELS = TEETH_KIND_LABELS;
 export const TEETH_DUAL_KIND_LABELS = TEETH_KIND_LABELS;
 
 export const TEETH_SINGLE_MODAL_TITLE_HINT_DEFAULT =
-  "Uzupełnij listę z kartki klienta. U przodów fason koduje szczękę (np. dolne kody 00–011); u boków wybierz szczękę — „Oba” tworzy dwie pozycje.";
+  "Uzupełnij listę z kartki klienta. U przodów fason koduje szczękę (np. dolne kody 00-011); u boków wybierz szczękę - „Oba” tworzy dwie pozycje.";
 
 /** Podpowiedź w nagłówku modala listy — zależna od linii produktowej. */
 export function teethSingleModalTitleHint(productLine?: TeethProductLine | null): string {
   if (productLine === "ivoclar_phonares_ii") {
-    return "Phonares II: przody Soft (S*) / Bold (B*) / dolne L* — bez wyboru szczęki. Boki Typ (NU/NL) lub Lingual (LU/LL) — szczęka z litery w fasonie.";
+    return "Phonares II: przody Soft (S*) / Bold (B*) / dolne L* - bez wyboru szczęki. Boki Typ (NU/NL) lub Lingual (LU/LL) - szczęka z litery w fasonie.";
   }
   if (productLine === "ivoclar_vivodent_dcl") {
-    return "Vivodent S DCL: przody trójkątne / owalne / kwadratowe lub dolne A3–A10 — bez pola szczęki. W trybie dual uzupełnij też boki Orthotyp (N*U/N*L — szczęka z fasonu).";
+    return "Vivodent S DCL: przody trójkątne / owalne / kwadratowe lub dolne A3-A10 - bez pola szczęki. W trybie dual uzupełnij też boki Orthotyp (N*U/N*L - szczęka z fasonu).";
   }
   if (productLine === "ivoclar_orthotyp_dcl") {
-    return "Orthotyp S DCL: boki Orthotyp (N*U = góra, N*L = dół) lub Lingual (LU*/LL*) — szczęka wynika z fasonu, bez osobnego wyboru.";
+    return "Orthotyp S DCL: boki Orthotyp (N*U = góra, N*L = dół) lub Lingual (LU*/LL*) - szczęka wynika z fasonu, bez osobnego wyboru.";
   }
   return TEETH_SINGLE_MODAL_TITLE_HINT_DEFAULT;
 }
@@ -27,13 +27,13 @@ export function teethSingleModalTitleHint(productLine?: TeethProductLine | null)
 export const TEETH_SINGLE_MODAL_TITLE_HINT = TEETH_SINGLE_MODAL_TITLE_HINT_DEFAULT;
 
 export const TEETH_DUAL_CARD_HINT =
-  "W jednym oknie uzupełnisz przednie i boczne — przełącz typ w modalu listy. Pozycje w prośbie powstaną automatycznie.";
+  "W jednym oknie uzupełnisz przednie i boczne - przełącz typ w modalu listy. Pozycje w prośbie powstaną automatycznie.";
 
 export const TEETH_DUAL_EMPTY_SECTIONS =
-  "Dodaj co najmniej jedną pozycję — wybierz typ Przednie lub Boczne i uzupełnij listę.";
+  "Dodaj co najmniej jedną pozycję - wybierz typ Przednie lub Boczne i uzupełnij listę.";
 
 export const TEETH_DUAL_MODAL_TITLE_HINT =
-  "Przełącz typ i uzupełnij listy z kartki — u przodów bez pola szczęki; u Orthotyp/Phonares szczęka jest w fasonie (U/L).";
+  "Przełącz typ i uzupełnij listy z kartki - u przodów bez pola szczęki; u Orthotyp/Phonares szczęka jest w fasonie (U/L).";
 
 export const TEETH_BUILDER_BOTH_JAW_HINT =
   "„Oba” doda dwie pozycje na liście (góra i dół) z tą samą ilością.";
@@ -45,36 +45,36 @@ export function teethBuilderEmptyListExample(
   productLine?: TeethProductLine | null,
 ): string {
   if (productLine === "wiedent_estetic" && kind === "anterior") {
-    return "Dodaj pierwszą pozycję — np. A2 · 32 × 4 szt.";
+    return "Dodaj pierwszą pozycję - np. A2 · 32 × 4 szt.";
   }
   if (productLine === "wiedent_classic" && kind === "anterior") {
-    return "Dodaj pierwszą pozycję — np. A2 · 402 × 4 szt.";
+    return "Dodaj pierwszą pozycję - np. A2 · 402 × 4 szt.";
   }
   if (productLine === "wiedent_almamiss" && kind === "anterior") {
-    return "Dodaj pierwszą pozycję — np. A2 · 210 × 4 szt.";
+    return "Dodaj pierwszą pozycję - np. A2 · 210 × 4 szt.";
   }
   if (productLine === "dentex_amberlux" && kind === "anterior") {
-    return "Dodaj pierwszą pozycję — np. A2 · 3 × 4 szt.";
+    return "Dodaj pierwszą pozycję - np. A2 · 3 × 4 szt.";
   }
   if (productLine === "major_super_lux" && kind === "anterior") {
-    return "Dodaj pierwszą pozycję — np. A2 · 50 × 4 szt.";
+    return "Dodaj pierwszą pozycję - np. A2 · 50 × 4 szt.";
   }
   if (productLine === "ivoclar_phonares_ii" && kind === "anterior") {
-    return "Dodaj pierwszą pozycję — np. A2 · S61 × 4 szt. (Soft) lub L50 (dolne).";
+    return "Dodaj pierwszą pozycję - np. A2 · S61 × 4 szt. (Soft) lub L50 (dolne).";
   }
   if (productLine === "ivoclar_phonares_ii" && kind === "posterior") {
-    return "Dodaj pierwszą pozycję — np. A2 · NU5 × 2 szt. (Typ, U=góra) lub LU5 (Lingual).";
+    return "Dodaj pierwszą pozycję - np. A2 · NU5 × 2 szt. (Typ, U=góra) lub LU5 (Lingual).";
   }
   if (productLine === "ivoclar_vivodent_dcl" && kind === "anterior") {
-    return "Dodaj pierwszą pozycję — np. A2 · A25 × 4 szt. (owalne) lub A7 (dolne).";
+    return "Dodaj pierwszą pozycję - np. A2 · A25 × 4 szt. (owalne) lub A7 (dolne).";
   }
   if (productLine === "ivoclar_orthotyp_dcl" && kind === "posterior") {
-    return "Dodaj pierwszą pozycję — np. A2 · N5U × 2 szt. (góra) lub N5L (dół) / LU5 (Lingual).";
+    return "Dodaj pierwszą pozycję - np. A2 · N5U × 2 szt. (góra) lub N5L (dół) / LU5 (Lingual).";
   }
   if (kind === "anterior") {
-    return "Dodaj pierwszą pozycję — np. A2 · S61 × 4 szt.";
+    return "Dodaj pierwszą pozycję - np. A2 · S61 × 4 szt.";
   }
-  return "Dodaj pierwszą pozycję — np. A2 · 60 · góra × 2 szt.";
+  return "Dodaj pierwszą pozycję - np. A2 · 60 · góra × 2 szt.";
 }
 
 export type TeethDualSectionStatus = { hasItems: boolean; complete: boolean };
@@ -179,7 +179,7 @@ export function teethDualMissingRegistryProductMessage(
 }
 
 export const TEETH_DUAL_LINE_LIMIT_MESSAGE =
-  "Nie można dodać drugiej pozycji — osiągnięto limit pozycji w jednej prośbie.";
+  "Nie można dodać drugiej pozycji - osiągnięto limit pozycji w jednej prośbie.";
 
 export function teethDualSavePreviewMessage(
   anteriorCount: number,

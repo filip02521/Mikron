@@ -113,7 +113,7 @@ export function ProcurementRequestListFilterBar({
       aria-label="Filtr flag i urlopu dostawcy"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+        <p className="text-[10px] font-semibold text-slate-400">
           {PROCUREMENT_REQUEST_FLAG_COPY.filterBarLabel}
         </p>
         {onManageClick ? (

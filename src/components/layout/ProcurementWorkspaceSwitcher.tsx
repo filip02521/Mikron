@@ -40,7 +40,7 @@ export function ProcurementWorkspaceSwitcher({
 
   return (
     <div className="mb-3">
-      <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+      <p className="mb-1.5 px-3 text-[10px] font-semibold text-slate-400">
         Przełącz obszar
       </p>
       {error ? (

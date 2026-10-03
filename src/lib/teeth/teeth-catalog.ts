@@ -423,7 +423,7 @@ export function formatTeethGroupLabel(
     }
   }
   if (group.kind) parts.push(TEETH_KIND_LABELS[group.kind].toLowerCase());
-  const spec = parts.length > 0 ? parts.join(" · ") : "—";
+  const spec = parts.length > 0 ? parts.join(" · ") : "-";
   if (!includeCount) return spec;
   const n = Math.max(1, group.count);
   return `${spec} × ${n} szt.`;

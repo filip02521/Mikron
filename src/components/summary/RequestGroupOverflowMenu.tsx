@@ -70,7 +70,7 @@ export function RequestGroupOverflowMenu({
 
   return (
     <OverflowMenu
-      label={`Więcej — ${headline}`}
+      label={`Więcej - ${headline}`}
       disabled={disabled}
       align="end"
       variant={variant}
@@ -118,7 +118,7 @@ export function RequestGroupOverflowMenu({
                       />
                       <span className="min-w-0 flex-1 truncate">{opt.label}</span>
                       {isCurrent ? (
-                        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-indigo-500/90">
+                        <span className="shrink-0 text-[10px] font-semibold text-indigo-500/90">
                           {PROCUREMENT_REQUEST_FLAG_COPY.overflowFlagActive}
                         </span>
                       ) : null}

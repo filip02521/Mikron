@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
         success: false,
         ...detail,
         warning:
-          "E-mail nie skonfigurowany — statusy zaktualizowane, powiadomienia nie wysłane",
+          "E-mail nie skonfigurowany - statusy zaktualizowane, powiadomienia nie wysłane",
       });
     }
 
@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
       success: result.ok && !result.emailError,
       ...detail,
       warning: result.emailError
-        ? "Statusy zaktualizowane — część e-maili nie wyszła"
+        ? "Statusy zaktualizowane - część e-maili nie wyszła"
         : undefined,
     });
   } catch (e) {

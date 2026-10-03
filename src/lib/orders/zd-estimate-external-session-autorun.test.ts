@@ -160,7 +160,7 @@ describe("launch ready toast z zamkniętą sesją", () => {
       previousSessionSupplierChanged: true,
       nextSupplierName: "Ivoclar",
     });
-    expect(text.startsWith("Zamknięto poprzednią sesję — lista dla Ivoclar.")).toBe(
+    expect(text.startsWith("Zamknięto poprzednią sesję - lista dla Ivoclar.")).toBe(
       true
     );
     expect(text).toContain("3 pozycje do ZD");

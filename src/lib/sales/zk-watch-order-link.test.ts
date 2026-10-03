@@ -490,7 +490,7 @@ describe("computeZkWatchOrderHints", () => {
     expect(hints.openProsbaCoveredLineKeys).toContain("ob:1");
   });
 
-  it("informacja Zrealizowane — Dostępne (nie Na regale) i auto shelf_marked", () => {
+  it("informacja Zrealizowane - Dostępne (nie Na regale) i auto shelf_marked", () => {
     const w = watch({
       id: "w-info",
       line_checks: [{ key: "ob:1", arrived: false, needs_prosba: false }],
@@ -513,7 +513,7 @@ describe("computeZkWatchOrderHints", () => {
     expect(checks.find((c) => c.key === "ob:1")?.shelf_marked).toBe(true);
   });
 
-  it("informacja po potwierdzeniu w Moje — Zakończone, nie Odebrane z regału", () => {
+  it("informacja po potwierdzeniu w Moje - Zakończone, nie Odebrane z regału", () => {
     const w = watch({
       id: "w-info-ack",
       line_checks: [{ key: "ob:1", arrived: false, needs_prosba: false }],
@@ -534,7 +534,7 @@ describe("computeZkWatchOrderHints", () => {
     expect(hints.regalWaitingLineKeys).not.toContain("ob:1");
   });
 
-  it("legacy informacja bez request_kind — nie traktuj jako Na regale", () => {
+  it("legacy informacja bez request_kind - nie traktuj jako Na regale", () => {
     const w = watch({ id: "w-legacy" });
     const order = linkOrder({
       id: "legacy-info",
@@ -624,7 +624,7 @@ describe("computeZkWatchOrderHints", () => {
     expect(hints.uncoveredLineKeys).toEqual(["ob:1", "ob:3"]);
   });
 
-  it("częściowa dostawa po odbiorze z regału — prośba nadal otwarta, nie Komplet", () => {
+  it("częściowa dostawa po odbiorze z regału - prośba nadal otwarta, nie Komplet", () => {
     const w = watch({ id: "w-partial-ack" });
     const order = linkOrder({
       id: "partial-ack",
@@ -661,7 +661,7 @@ describe("filterZkWatchesByClientQuery", () => {
   });
 });
 
-describe("mergeZkLineChecksFromDeliveredOrders — izolacja ZK", () => {
+describe("mergeZkLineChecksFromDeliveredOrders - izolacja ZK", () => {
   it("nie odhacza innego ZK tego klienta gdy prośba ma source_zk_watch_id", () => {
     const watchA = watch({ id: "w-a", zk_number: "234/M/03/2026" });
     const watchB = watch({ id: "w-b", zk_number: "235/M/03/2026" });
@@ -735,7 +735,7 @@ describe("resolveZkWatchIdsForOrderSync", () => {
     expect(resolveZkWatchIdsForOrderSync(delivered, [oldWatch, newWatch])).toEqual(["w-old"]);
   });
 
-  it("nonExplicitHistoricalOrderOverlapsWatch — kotwica zk_issued_at vs created_at", () => {
+  it("nonExplicitHistoricalOrderOverlapsWatch - kotwica zk_issued_at vs created_at", () => {
     expect(
       nonExplicitHistoricalOrderOverlapsWatch(
         linkOrder({
@@ -891,7 +891,7 @@ describe("isZkLineFullyDeliveredByOrders", () => {
     ).toBe(true);
   });
 
-  it("prośba na mniejszą ilość niż ZK — komplet po dostawie zamówionej ilości", () => {
+  it("prośba na mniejszą ilość niż ZK - komplet po dostawie zamówionej ilości", () => {
     const w = watch({
       id: "w-less",
       subiekt_snapshot: {
@@ -1138,7 +1138,7 @@ function buildLineFromWatch(w: SalesZkWatch) {
   };
 }
 
-describe("pokrycie pozycji ZK — prośba bez symbolu („-”)", () => {
+describe("pokrycie pozycji ZK - prośba bez symbolu („-”)", () => {
   const w = watch({
     id: "w-dash",
     subiekt_snapshot: {

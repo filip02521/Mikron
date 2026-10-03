@@ -64,7 +64,7 @@ describe("resolveSupplierForScopeSelection", () => {
     expect(r.supplier?.id).toBe("dg");
   });
 
-  it("bez mapowania — heurystyka nazwy", () => {
+  it("bez mapowania - heurystyka nazwy", () => {
     const r = resolveSupplierForScopeSelection({
       scopeName: "Falcon",
       suppliers,
@@ -74,7 +74,7 @@ describe("resolveSupplierForScopeSelection", () => {
     expect(r.supplier?.id).toBe("f");
   });
 
-  it("mapowanie na nieaktywnego dostawcę — bez fallbacku po nazwie", () => {
+  it("mapowanie na nieaktywnego dostawcę - bez fallbacku po nazwie", () => {
     const r = resolveSupplierForScopeSelection({
       scopeName: "Falcon",
       suppliers,

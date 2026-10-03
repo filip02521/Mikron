@@ -75,7 +75,7 @@ function DispositionLineRow({
 }) {
   const isInformacja = line.requestKind === "informacja";
   const qtyLabel =
-    !isInformacja && line.quantity && line.quantity !== "-" && line.quantity !== "—"
+    !isInformacja && line.quantity && line.quantity !== "-" && line.quantity !== "-"
       ? line.quantity
       : null;
 
@@ -141,8 +141,8 @@ export function SalesCancelDispositionForm({
 
   const phaseHint =
     phase === "on_stock"
-      ? "Po rezygnacji handlowca towar jest na magazynie — wybierz, co z każdą pozycją."
-      : "Handlowiec zrezygnował — towar może jeszcze dotrzeć. Wybierz, co z każdą pozycją.";
+      ? "Po rezygnacji handlowca towar jest na magazynie - wybierz, co z każdą pozycją."
+      : "Handlowiec zrezygnował - towar może jeszcze dotrzeć. Wybierz, co z każdą pozycją.";
 
   const { chosen, total } = countPendingDispositionChoices(dispositionLineIds, choices);
   const allChosen = total === 0 || chosen === total;
@@ -216,7 +216,7 @@ export function SalesCancelDispositionForm({
       {dispositionLines.length ? (
         <fieldset className="space-y-2" disabled={busy}>
           <legend className="text-xs font-medium text-slate-800">
-            Rezygnacja — co z towarem?
+            Rezygnacja - co z towarem?
           </legend>
           <ul className="space-y-2">
             {dispositionLines.map((line) => (
@@ -243,7 +243,7 @@ export function SalesCancelDispositionForm({
             {infoLines.map((line) => (
               <li key={line.id}>
                 <span className="font-medium text-slate-800">{line.symbol}</span>
-                {" — "}
+                {" - "}
                 {line.products}
               </li>
             ))}
@@ -277,7 +277,7 @@ export function SalesCancelDispositionForm({
               : `Decyzja dla każdej pozycji: ${chosen} z ${total}`}
           </p>
         ) : (
-          <p className={panelTypography.caption}>Do zapoznania — bez decyzji o towarze</p>
+          <p className={panelTypography.caption}>Do zapoznania - bez decyzji o towarze</p>
         )}
         <Button
           size="sm"
@@ -290,7 +290,7 @@ export function SalesCancelDispositionForm({
               ? total === 1
                 ? "Zapisz decyzję"
                 : "Zapisz decyzje"
-              : "Zapoznałem się — ukryj"}
+              : "Zapoznałem się - ukryj"}
         </Button>
       </div>
     </div>

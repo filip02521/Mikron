@@ -167,7 +167,7 @@ function ScopeEditorForm({
 
       {pickedLabel ? (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50/70 px-3 py-2">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-emerald-800/80">
+          <span className="text-[11px] font-medium text-emerald-800/80">
             {ZD_ESTIMATE_UI.supplierScopesPickedPrefix}
           </span>
           <ModeBadge mode={draft.mode} />
@@ -778,7 +778,7 @@ export function ZdEstimateSupplierScopesModal({
                 className={cn(
                   "overflow-hidden rounded-lg border bg-white transition",
                   editing
-                    ? "border-indigo-200/90 shadow-sm shadow-indigo-900/[0.04]"
+                    ? "border-indigo-200/90 shadow-sm "
                     : "border-slate-200/90"
                 )}
               >
@@ -836,10 +836,10 @@ export function ZdEstimateSupplierScopesModal({
                   <div className="space-y-3 border-t border-indigo-100/80 bg-indigo-50/25 px-4 py-3.5 sm:px-4">
                     <p className="text-xs text-slate-600">
                       Wyszukaj i wybierz nową{" "}
-                      {editDraft.mode === "grupa" ? "grupę" : "cechę"} —
+                      {editDraft.mode === "grupa" ? "grupę" : "cechę"} -
                       obecna:{" "}
                       <span className="font-medium text-slate-800">
-                        {row.label || "—"}
+                        {row.label || "-"}
                       </span>
                     </p>
                     <ScopeEditorForm

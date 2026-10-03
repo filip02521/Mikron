@@ -9,7 +9,7 @@ import { SummaryWorkspace } from "@/components/summary/SummaryWorkspace";
 import { Alert } from "@/components/ui/Alert";
 import { buildSummaryWorkspace } from "@/lib/orders/summary-workspace";
 import { PanelDailyRouteLoadingSkeleton } from "@/components/layout/PanelRouteLoading";
-import { panelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
+import { dailyPanelWorkspaceShellClass } from "@/lib/ui/ontime-theme";
 import type { OrderFormSupplierOption } from "@/lib/orders/order-form-suppliers";
 import type { IndividualOrder } from "@/types/database";
 import { listZdEstimateSupplierScopes } from "@/lib/data/zd-estimate-supplier-scopes";
@@ -82,7 +82,7 @@ export default async function PodsumowaniePage() {
   return (
     <>
       {error ? (
-        <Alert tone="warning" className={cn(panelWorkspaceShellClass, "mb-4")}>
+        <Alert tone="warning" className={cn(dailyPanelWorkspaceShellClass, "mb-4")}>
           {error}
         </Alert>
       ) : null}

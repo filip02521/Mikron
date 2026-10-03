@@ -1043,7 +1043,7 @@ export async function lookupProductZdDelivery(
   if (!Number.isFinite(twId) || twId <= 0) {
     return {
       status: "invalid_product",
-      message: "Wybierz produkt z listy Subiekta — potrzebujemy poprawnego ID towaru.",
+      message: "Wybierz produkt z listy Subiekta - potrzebujemy poprawnego ID towaru.",
     };
   }
 
@@ -1052,7 +1052,7 @@ export async function lookupProductZdDelivery(
     return {
       status: "offline",
       message:
-        "Subiekt jest teraz niedostępny — nie możemy sprawdzić ZD. Spróbuj ponownie, gdy połączenie wróci.",
+        "Subiekt jest teraz niedostępny - nie możemy sprawdzić ZD. Spróbuj ponownie, gdy połączenie wróci.",
     };
   }
 
@@ -1094,7 +1094,7 @@ export async function lookupProductZdDelivery(
         supplierId: supplier.supplierId,
         supplierName: supplier.supplierName,
         message:
-          "Wybrany dostawca nie ma powiązania z kontrahentem w Subiekcie — nie możemy przeszukać ZD.",
+          "Wybrany dostawca nie ma powiązania z kontrahentem w Subiekcie - nie możemy przeszukać ZD.",
       };
     }
 
@@ -1133,7 +1133,7 @@ export async function lookupProductZdDelivery(
       return {
         status: "offline",
         message:
-          "Subiekt jest teraz niedostępny — nie możemy sprawdzić ZD. Spróbuj ponownie, gdy połączenie wróci.",
+          "Subiekt jest teraz niedostępny - nie możemy sprawdzić ZD. Spróbuj ponownie, gdy połączenie wróci.",
       };
     }
     throw error;

@@ -18,7 +18,6 @@ import {
   panelTextLinkClass,
   panelTypography,
 } from "@/lib/ui/ontime-theme";
-import { PanelQueueStatDot } from "@/components/ui/UiGlyphs";
 import { IconChevronDown, IconClipboardPen } from "@/components/icons/StrokeIcons";
 import {
   scrollToDailyPanelSection,
@@ -36,17 +35,14 @@ function unitLabel(n: number, one: string, few: string, many: string): string {
 function Stat({
   value,
   label,
-  dotTone,
   sectionKey,
 }: {
   value: number;
   label: string;
-  dotTone?: "overdue" | "prosby" | "stockOut" | "today";
   sectionKey?: DailyPanelQueueSectionKey;
 }) {
   const content = (
     <>
-      {dotTone ? <PanelQueueStatDot tone={dotTone} /> : null}
       <span className="text-sm font-semibold tabular-nums text-slate-900">{value}</span>
       <span className={panelTypography.caption}>{label}</span>
     </>
@@ -170,7 +166,6 @@ function StatusBandBody({
           <Stat
             value={summary.overdueCount}
             label={unitLabel(summary.overdueCount, "zaległe", "zaległe", "zaległych")}
-            dotTone="overdue"
             sectionKey="overdue"
           />
           {summary.stockOutGroupCount > 0 ? (
@@ -184,7 +179,6 @@ function StatusBandBody({
                   "braki stanu",
                   "braków stanu"
                 )}
-                dotTone="stockOut"
                 sectionKey="stockOut"
               />
             </>
@@ -193,14 +187,12 @@ function StatusBandBody({
           <Stat
             value={summary.forSomeoneGroupCount}
             label={unitLabel(summary.forSomeoneGroupCount, "grupa prośb", "grupy prośb", "grup prośb")}
-            dotTone="prosby"
             sectionKey="prosby"
           />
           <StatDivider />
           <Stat
             value={summary.todayCount}
             label={unitLabel(summary.todayCount, "na dziś", "na dziś", "na dziś")}
-            dotTone="today"
             sectionKey="today"
           />
           <StatDivider />
@@ -214,7 +206,7 @@ function StatusBandBody({
           {showVerification && verificationCount > 0 ? (
             <Link
               href="/weryfikacja"
-              className="inline-flex min-h-9 items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-semibold text-amber-950 hover:bg-amber-200/90 sm:min-h-0 sm:px-2 sm:py-0.5"
+              className="inline-flex min-h-9 items-center gap-1 rounded-md bg-amber-100 px-2.5 py-1 text-[10px] font-semibold text-amber-950 hover:bg-amber-200/90 sm:min-h-0 sm:px-2 sm:py-0.5"
             >
               <IconClipboardPen size={12} strokeWidth={2.25} aria-hidden />
               <span className="tabular-nums">{verificationCount}</span>

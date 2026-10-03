@@ -18,28 +18,28 @@ import { mojeSectionDomId } from "@/lib/orders/moje-section-focus";
 /** Sekcja u góry listy — wymaga kliknięcia handlowca. */
 export const MY_ORDER_ACTION_SECTION_COPY = {
   title: "Potwierdź odbiór z regału",
-  hint: "Towar gotowy do odbioru albo sprawa do zamknięcia — potwierdź jednym kliknięciem.",
+  hint: "Towar gotowy do odbioru albo sprawa do zamknięcia - potwierdź jednym kliknięciem.",
   icon: "action" as const,
   accent: "emerald" as const satisfies MyOrderSectionAccent,
 };
 
 export const MY_ORDER_TEETH_ACTION_SECTION_COPY = {
   title: "Potwierdź odbiór zębów",
-  hint: "Magazyn przyjął zęby i doręczy je osobiście — potwierdź, że je otrzymałeś/aś (nie na regał).",
+  hint: "Magazyn przyjął zęby i doręczy je osobiście - potwierdź, że je otrzymałeś/aś (nie na regał).",
   icon: "teeth" as const,
   accent: "violet" as const satisfies MyOrderSectionAccent,
 };
 
 export const MY_ORDER_MIXED_ACTION_SECTION_COPY = {
   title: "Potwierdź odbiór (zęby i towar)",
-  hint: "W tej prośbie są zęby i towar z regału — każdy typ potwierdzasz osobno.",
+  hint: "W tej prośbie są zęby i towar z regału - każdy typ potwierdzasz osobno.",
   icon: "mixed-pickup" as const,
   accent: "indigo" as const satisfies MyOrderSectionAccent,
 };
 
 export const MY_ORDER_DISMISS_SECTION_COPY = {
   title: "Anulowania do potwierdzenia",
-  hint: "Anulowania i rezygnacje — potwierdź, aby usunąć wpis z listy.",
+  hint: "Anulowania i rezygnacje - potwierdź, aby usunąć wpis z listy.",
   icon: "dismiss" as const,
   accent: "slate" as const satisfies MyOrderSectionAccent,
 };
@@ -49,7 +49,7 @@ export const MOJE_MIXED_ACTION_SECTION_ID = mojeSectionDomId("mixed-pickup");
 
 export const MY_ORDER_INFORMACJA_SECTION_COPY = {
   title: "Sprawdzamy dostępność",
-  hint: "Prośby informacyjne — bez zamówienia u dostawcy. Czekasz na odpowiedź z magazynu.",
+  hint: "Prośby informacyjne - bez zamówienia u dostawcy. Czekasz na odpowiedź z magazynu.",
   icon: "informacja" as const,
   accent: "violet" as const satisfies MyOrderSectionAccent,
 };
@@ -60,7 +60,7 @@ export const MY_ORDER_PROGRESS_SECTION_COPY: Record<
 > = {
   ordered_progress: {
     title: "Czekamy na dostawę",
-    hint: "Zamówienia już złożone u dostawcy. U góry najbliższy termin — rozwiń wiersz, aby zobaczyć termin u dostawcy.",
+    hint: "Zamówienia już złożone u dostawcy. U góry najbliższy termin - rozwiń wiersz, aby zobaczyć termin u dostawcy.",
     icon: "zamowienie",
     accent: "slate",
   },
@@ -74,7 +74,7 @@ export const MY_ORDER_PROGRESS_SECTION_COPY: Record<
 
 export const MY_ORDER_PROGRESS_SECTION_EMPTY: Record<MyOrderProgressSectionId, string> = {
   ordered_progress:
-    "Obecnie nie masz zamówień u dostawcy — wszystkie prośby są na wcześniejszym etapie.",
+    "Obecnie nie masz zamówień u dostawcy - wszystkie prośby są na wcześniejszym etapie.",
   before_order: "Obecnie nie masz prośb przed zamówieniem u dostawcy.",
 };
 

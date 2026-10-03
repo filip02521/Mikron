@@ -66,7 +66,7 @@ export function createTestMyOrderRow(overrides: Partial<MyOrderRow> = {}): MyOrd
     salesPersonId: "sp",
     requestKind: "zamowienie",
     canEditBySales: false,
-    headline: "Zamówione — czekamy na dostawę",
+    headline: "Zamówione - czekamy na dostawę",
     headlineTone: "info",
     subline: null,
     requestNote: null,

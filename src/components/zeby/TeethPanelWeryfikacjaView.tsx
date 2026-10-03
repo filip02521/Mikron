@@ -52,7 +52,7 @@ export function TeethPanelWeryfikacjaView({
     try {
       const result = await actionApproveTeethOcr(orderIds);
       onApproveDone(
-        `Zatwierdzono ${result.updated} ${plProsba(result.updated)} — są teraz w „Do zamówienia”.`,
+        `Zatwierdzono ${result.updated} ${plProsba(result.updated)} - są teraz w „Do zamówienia”.`,
         "success",
       );
     } catch (e) {
@@ -122,7 +122,7 @@ export function TeethPanelWeryfikacjaView({
             {allOrderIds.length} {plProsba(allOrderIds.length)} czeka na sprawdzenie
           </p>
           <p className="text-xs text-slate-500">
-            Porównaj listę ze zdjęciem, popraw pomyłki odczytu i zatwierdź — prośba trafi do
+            Porównaj listę ze zdjęciem, popraw pomyłki odczytu i zatwierdź - prośba trafi do
             zamówienia.
           </p>
         </div>
@@ -143,7 +143,7 @@ export function TeethPanelWeryfikacjaView({
           <IconAlertCircle size={18} className="shrink-0 text-amber-600" />
           <span>
             <strong>{missingDataCount}</strong> {plProsba(missingDataCount)} bez koloru lub typu przy
-            którymś zębie — uzupełnij przed zatwierdzeniem.
+            którymś zębie - uzupełnij przed zatwierdzeniem.
           </span>
         </div>
       ) : null}
@@ -297,7 +297,7 @@ export function TeethPanelWeryfikacjaView({
           </div>
           <div className="space-y-1">
             <p className="text-sm font-medium text-slate-900">
-              Zatwierdzić {approveTarget?.orderIds.length ?? 0} {plProsba(approveTarget?.orderIds.length ?? 0)} — {approveTarget?.label}?
+              Zatwierdzić {approveTarget?.orderIds.length ?? 0} {plProsba(approveTarget?.orderIds.length ?? 0)} - {approveTarget?.label}?
             </p>
             <p className="text-xs text-slate-500">
               Prośby przejdą do „Do zamówienia”. Późniejsze poprawki zrobisz tam przyciskiem „Edytuj”.

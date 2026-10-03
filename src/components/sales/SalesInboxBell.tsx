@@ -62,7 +62,7 @@ export function SalesInboxBellTrigger({
         <span
           key={ringing ? `badge-pulse-${ringToken}` : "badge-idle"}
           className={cn(
-            "absolute -right-1 -top-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white",
+            "absolute -right-1 -top-1 flex min-h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-md bg-indigo-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white",
             ringing && "sales-inbox-badge-pulse"
           )}
         >

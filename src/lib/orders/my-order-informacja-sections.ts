@@ -23,15 +23,15 @@ const PHASE_META: Record<
     hint: "Dział zakupów złoży zamówienie u dostawcy. Gdy towar dotrze na magazyn, dostaniesz e-mail.",
   },
   ordered_awaiting_warehouse: {
-    title: "Zamówione u dostawcy — czekamy na magazyn",
+    title: "Zamówione u dostawcy - czekamy na magazyn",
     hint: "Zamówienie u dostawcy jest złożone. Powiadomimy e-mailem, gdy towar pojawi się na magazynie.",
   },
   direct_monitoring: {
     title: "Informacja o dostępności",
-    hint: "Magazyn obserwuje dostępność — powiadomimy e-mailem po dotarciu towaru na magazyn.",
+    hint: "Magazyn obserwuje dostępność - powiadomimy e-mailem po dotarciu towaru na magazyn.",
   },
   other: {
-    title: "Informacje — inne statusy",
+    title: "Informacje - inne statusy",
     hint: "Np. weryfikacja danych lub status poza standardową ścieżką.",
   },
 };
@@ -48,7 +48,7 @@ export function informacjaProgressPhase(row: MyOrderRow): InformacjaProgressPhas
   switch (row.statusTitle) {
     case "Czekamy na zamówienie u dostawcy":
       return "awaiting_procurement";
-    case "Zamówione — czekamy na magazyn":
+    case "Zamówione - czekamy na magazyn":
       return "ordered_awaiting_warehouse";
     default:
       if (isInformacjaAvailabilityPendingStatusTitle(row.statusTitle)) {

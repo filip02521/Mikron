@@ -74,7 +74,7 @@ export function ZkWatchAddBar({
             }
             title={
               canAdd
-                ? "Krótki numer (min. 2 znaki) — najpierw 30 dni, potem do 90 dni. Pełny format — tylko dany miesiąc."
+                ? "Krótki numer (min. 2 znaki) - najpierw 30 dni, potem do 90 dni. Pełny format - tylko dany miesiąc."
                 : undefined
             }
             value={query}
@@ -89,7 +89,7 @@ export function ZkWatchAddBar({
           />
           {!inline ? (
             <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
-              Krótki numer (min. 2 znaki) — najpierw 30 dni, potem do 90 dni. Pełny format — tylko dany miesiąc.
+              Krótki numer (min. 2 znaki) - najpierw 30 dni, potem do 90 dni. Pełny format - tylko dany miesiąc.
             </p>
           ) : null}
         </div>
@@ -103,7 +103,7 @@ export function ZkWatchAddBar({
           disabled={loading || !query.trim() || !canAdd}
           title={
             !canAdd
-              ? "Brak połączenia z systemem magazynowym — dodawanie ZK jest niedostępne"
+              ? "Brak połączenia z systemem magazynowym - dodawanie ZK jest niedostępne"
               : undefined
           }
         >
@@ -115,7 +115,7 @@ export function ZkWatchAddBar({
       {!canAdd ? (
         <p className="text-xs leading-relaxed text-amber-900/90">
           {subiektBlockedHint ??
-            "Dodawanie ZK wymaga połączenia z systemem magazynowym — poczekaj na przywrócenie połączenia."}
+            "Dodawanie ZK wymaga połączenia z systemem magazynowym - poczekaj na przywrócenie połączenia."}
         </p>
       ) : null}
 

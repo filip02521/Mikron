@@ -162,7 +162,7 @@ function CustomsLineRow({
             zatwierdzone {new Date(line.card.confirmedAt).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw" })}
           </p>
         ) : null}
-        <p className="text-sm leading-snug text-slate-900">{line.supplierName || "—"}</p>
+        <p className="text-sm leading-snug text-slate-900">{line.supplierName || "-"}</p>
         <p className="text-xs text-slate-500">
           {formatQty(line.quantity)} {line.unit}
           {line.unitPrice != null
@@ -173,7 +173,7 @@ function CustomsLineRow({
           ) : null}
         </p>
         {line.invoiceHsCode ? (
-          <p className="text-xs text-slate-500" title="Kod nadawcy z faktury — tylko podpowiedź, agencji podajemy własny kod CN">
+          <p className="text-xs text-slate-500" title="Kod nadawcy z faktury - tylko podpowiedź, agencji podajemy własny kod CN">
             HS na fakturze: <span className="font-mono">{line.invoiceHsCode}</span>
           </p>
         ) : null}
@@ -247,7 +247,7 @@ function CustomsLineRow({
             onChange={(e) => set("vatBasisDocumentId", e.target.value || null)}
             disabled={readOnly || draft.vatRate !== 8}
           >
-            <option value="">{draft.vatRate === 8 ? "— brak dokumentu —" : "nie dotyczy"}</option>
+            <option value="">{draft.vatRate === 8 ? "- brak dokumentu -" : "nie dotyczy"}</option>
             {documents.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.fileName}
@@ -312,7 +312,7 @@ function ImportEmailDescriptions({
         return;
       }
       const parts = [
-        `Wczytano opisy dla ${res.imported} pozycji jako propozycje — sprawdź i zatwierdź.`,
+        `Wczytano opisy dla ${res.imported} pozycji jako propozycje - sprawdź i zatwierdź.`,
         res.skippedConfirmed ? `${res.skippedConfirmed} pozycji było już zatwierdzonych.` : "",
         ...res.warnings,
       ].filter(Boolean);
@@ -326,7 +326,7 @@ function ImportEmailDescriptions({
     <div className="space-y-2 border-b border-slate-100 bg-slate-50/60 px-5 py-4">
       <p className="text-sm text-slate-700">
         Wklej wcześniejszy mail do agencji z tą samą fakturą. Opisy przypiszę po numerach pozycji
-        (1–{lineCount}), np. „9-10. Podkładka” albo „1-4. Prostnice … - kod CN 90184990”. „Stawka VAT 23%”
+        (1-{lineCount}), np. „9-10. Podkładka” albo „1-4. Prostnice … - kod CN 90184990”. „Stawka VAT 23%”
         bez numeru dotyczy wszystkich pozycji.
       </p>
       <textarea
@@ -428,7 +428,7 @@ function SupplierDocumentArticles({
             className={fieldControlClass("default", "min-h-40 sm:min-h-40 font-mono text-xs")}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={"Kody artykułów z dokumentu (np. Annex A deklaracji) — jeden na wiersz:\nDE-1411\nDE-1412"}
+            placeholder={"Kody artykułów z dokumentu (np. Annex A deklaracji) - jeden na wiersz:\nDE-1411\nDE-1412"}
           />
           <div className="flex justify-end">
             <Button size="sm" onClick={save} disabled={pending}>
@@ -654,9 +654,9 @@ export function CustomsClearanceEditor({
                 run(async () => {
                   const res = await actionProposeCustomsLinesWithAi(view.id);
                   if (!res.ok) return { tone: "error", text: res.error };
-                  const parts = [`AI zaproponowało opisy dla ${res.proposed} pozycji — sprawdź i zatwierdź.`];
+                  const parts = [`AI zaproponowało opisy dla ${res.proposed} pozycji - sprawdź i zatwierdź.`];
                   if (res.uncertain.length) parts.push(`Kod CN do sprawdzenia: ${res.uncertain.join("; ")}.`);
-                  if (res.remaining) parts.push(`Zostało ${res.remaining} pozycji — uruchom ponownie.`);
+                  if (res.remaining) parts.push(`Zostało ${res.remaining} pozycji - uruchom ponownie.`);
                   return { tone: res.uncertain.length || res.remaining ? "warning" : "success", text: parts.join(" ") };
                 })
               }
@@ -729,7 +729,7 @@ export function CustomsClearanceEditor({
           </ul>
         ) : (
           <p className="px-5 py-4 text-sm text-slate-500">
-            Brak dokumentów w karcie dostawcy — dodaj deklaracje zgodności w{" "}
+            Brak dokumentów w karcie dostawcy - dodaj deklaracje zgodności w{" "}
             <Link href="/zakupy/dostawcy" className="font-medium text-indigo-700 hover:underline">
               kartach dostawców
             </Link>
@@ -742,7 +742,7 @@ export function CustomsClearanceEditor({
         <CardHeader title="Mail do agencji celnej" density="compact" />
         {view.incompleteCount > 0 && !readOnly ? (
           <Alert tone="warning" className="mb-3">
-            {`${view.incompleteCount} pozycji bez opisu PL albo z brakującym lub nieistniejącym kodem CN — nie ma ich jeszcze w mailu.`}
+            {`${view.incompleteCount} pozycji bez opisu PL albo z brakującym lub nieistniejącym kodem CN - nie ma ich jeszcze w mailu.`}
           </Alert>
         ) : null}
         <textarea
@@ -806,7 +806,7 @@ export function CustomsClearanceEditor({
                   run(async () => {
                     const res = await actionMarkCustomsClearanceSent(view.id);
                     return res.ok
-                      ? { tone: "success", text: "Oznaczono jako wysłane — dane zapisane w historii." }
+                      ? { tone: "success", text: "Oznaczono jako wysłane - dane zapisane w historii." }
                       : { tone: "error", text: res.error };
                   });
                 }}

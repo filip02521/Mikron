@@ -81,8 +81,8 @@ function CopyBadge({
         copied
           ? "Skopiowano!"
           : failed
-            ? "Nie udało się skopiować — spróbuj ponownie"
-            : `${title} — kliknij, aby skopiować`
+            ? "Nie udało się skopiować - spróbuj ponownie"
+            : `${title} - kliknij, aby skopiować`
       }
       className={cn(
         "shrink-0 cursor-pointer rounded px-1 py-0.5 font-mono text-[10px] font-semibold transition-colors",

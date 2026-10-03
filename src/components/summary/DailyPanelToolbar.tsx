@@ -37,7 +37,7 @@ export function DailyPanelToolbar({
           {exceptionsCount > 0
             ? `${exceptionsCount} ${
                 exceptionsCount === 1 ? "pozycja poza" : "pozycji poza"
-              } główną kolejką — informacja, na żądanie, braki w harmonogramie.`
+              } główną kolejką - informacja, na żądanie, braki w harmonogramie.`
             : "Brak pozycji poza główną kolejką."}
           {summary.onDemandCount > 0 && onOpenOnDemand ? (
             <>

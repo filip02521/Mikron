@@ -51,7 +51,7 @@ function typeaheadSectionLabel(
       : searchField === "symbol"
         ? "symbol"
         : "nazwa";
-  return `Subiekt — ${mode} · ${countLabel}`;
+  return `Subiekt - ${mode} · ${countLabel}`;
 }
 
 function BoardQuestionProductSelectedCard({

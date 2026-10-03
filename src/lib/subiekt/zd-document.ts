@@ -80,9 +80,9 @@ export function formatZdDocNumberLabel(docNumber: string): string {
 export function zdReceiveSearchChooseHint(query: string, count: number): string {
   const label = query.trim() || "wpisany kod";
   if (count === 1) {
-    return `Kod „${label}” pasuje do jednego ZD — potwierdź wybór z listy.`;
+    return `Kod „${label}” pasuje do jednego ZD - potwierdź wybór z listy.`;
   }
-  return `Kod „${label}” pasuje do ${count} dokumentów ZD — wybierz właściwy z listy.`;
+  return `Kod „${label}” pasuje do ${count} dokumentów ZD - wybierz właściwy z listy.`;
 }
 
 /** Najświeższe ZD na górze listy wyboru. */

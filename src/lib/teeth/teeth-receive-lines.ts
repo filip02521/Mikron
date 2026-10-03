@@ -86,7 +86,7 @@ export function buildTeethReceiveFlatRows(
     const salesPersonKey = teethReceiveSalesPersonKey(order);
     if (!stripeKeys.includes(salesPersonKey)) stripeKeys.push(salesPersonKey);
     const stripeIndex = stripeKeys.indexOf(salesPersonKey);
-    const salesPersonName = order.sales_person?.name?.trim() || "—";
+    const salesPersonName = order.sales_person?.name?.trim() || "-";
 
     if (canPickSpec(order) && orderHasTeethList(order)) {
       const groups = teethReceiveGroupsFromOrder(toLineDetails(order.teeth_details));
@@ -117,7 +117,7 @@ export function buildTeethReceiveFlatRows(
       salesPersonName,
       salesPersonKey,
       stripeIndex,
-      productLabel: order.products?.trim() || "—",
+      productLabel: order.products?.trim() || "-",
       incompleteSpec,
     });
   }
@@ -234,7 +234,7 @@ export function groupTeethReceiveByProductLine(
     const productLine = resolveTeethProductLineForPanelOrder(order, ctx);
     const label = teethPanelProductLineLabelForOrder(order, ctx) ?? "Inna linia";
     const key = label;
-    const supplierName = order.supplier?.name?.trim() || "—";
+    const supplierName = order.supplier?.name?.trim() || "-";
     const existing = buckets.get(key);
     if (existing) {
       existing.orders.push(order);

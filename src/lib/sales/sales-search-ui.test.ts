@@ -3,7 +3,7 @@ import { salesSearchPlaceholder } from "./sales-search-ui";
 
 describe("salesSearchPlaceholder", () => {
   it("dodaje skrót / domyślnie", () => {
-    expect(salesSearchPlaceholder("Szukaj po nazwie")).toBe("Szukaj po nazwie — skrót /");
+    expect(salesSearchPlaceholder("Szukaj po nazwie")).toBe("Szukaj po nazwie - skrót /");
   });
 
   it("pomija skrót gdy withShortcut=false", () => {
@@ -11,6 +11,6 @@ describe("salesSearchPlaceholder", () => {
   });
 
   it("nie duplikuje skrótu w tekście", () => {
-    expect(salesSearchPlaceholder("Szukaj — skrót /")).toBe("Szukaj — skrót /");
+    expect(salesSearchPlaceholder("Szukaj - skrót /")).toBe("Szukaj - skrót /");
   });
 });

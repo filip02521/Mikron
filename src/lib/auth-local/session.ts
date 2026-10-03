@@ -30,7 +30,7 @@ function sessionSecret(): string {
     );
   }
   throw new Error(
-    `Brak SESSION_SECRET (min. ${MIN_SECRET_LENGTH} znaków) — ustaw w .env.local (patrz .env.example).`
+    `Brak SESSION_SECRET (min. ${MIN_SECRET_LENGTH} znaków) - ustaw w .env.local (patrz .env.example).`
   );
 }
 

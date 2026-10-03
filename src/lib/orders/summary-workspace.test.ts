@@ -34,7 +34,7 @@ function supplier(
   } as SupplierWithSchedule;
 }
 
-describe("buildSummaryWorkspace — Ten tydzień", () => {
+describe("buildSummaryWorkspace - Ten tydzień", () => {
   it("pokazuje zamówienia na dziś w kolumnie dnia i na liście zaległych", () => {
     const today = new Date(2026, 4, 15); // piątek 15.05.2026
     const todayStr = "2026-05-15";

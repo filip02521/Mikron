@@ -317,7 +317,7 @@ export async function diagnoseZdEtaForOrder(
       browseStoppedEarly ||
       docsFetched >= maxDocsPerPhase * 3,
     note: staleIndex
-      ? "indeks ZD starszy niż zamówienie — browse lub nocny catalog-zd-sync"
+      ? "indeks ZD starszy niż zamówienie - browse lub nocny catalog-zd-sync"
       : indexExhausted
         ? "sprawdzono indeks, brak dopasowania"
         : undefined,

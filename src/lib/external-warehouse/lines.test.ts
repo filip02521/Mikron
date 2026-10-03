@@ -80,7 +80,7 @@ describe("external-warehouse lines", () => {
     expect(a).not.toBe(swapped);
   });
 
-  it("DTO linii bez raw snapshot — orphan z meta", () => {
+  it("DTO linii bez raw snapshot - orphan z meta", () => {
     const pruned = pruneSubiektZkSnapshot(
       doc([{ ob_Id: 1, tw_Nazwa: "A", ob_Ilosc: 1 }])
     );

@@ -142,11 +142,11 @@ export function formatUrgentVacationHint(item: SummaryStandardItem): string | nu
   const dateLabel = formatDateString(item.nextDate, "dd.MM");
   switch (item.vacationNote) {
     case "PRZESUNIETE_PO":
-      return `Termin na liście (${dateLabel}) jest po urlopie dostawcy — kolejne zamówienie wypada już po przerwie.`;
+      return `Termin na liście (${dateLabel}) jest po urlopie dostawcy - kolejne zamówienie wypada już po przerwie.`;
     case "PRZYSPIESZONE_PRZED":
-      return `Zamówienie na ${dateLabel} jest przed urlopem — wcześniejszy termin niż zwykle.`;
+      return `Zamówienie na ${dateLabel} jest przed urlopem - wcześniejszy termin niż zwykle.`;
     case "OSTATNIE_ZAMOWIENIE":
-      return `Ostatnie zamówienie przed urlopem (plan: ${dateLabel}) — potem dostawca ma przerwę w harmonogramie.`;
+      return `Ostatnie zamówienie przed urlopem (plan: ${dateLabel}) - potem dostawca ma przerwę w harmonogramie.`;
     default:
       return vacationNoteLabel(item.vacationNote);
   }

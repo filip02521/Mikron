@@ -234,6 +234,6 @@ describe("informacja-duplicate", () => {
         symbol: "SYM-1",
         product: "Implant",
       })
-    ).toContain("SYM-1 — Implant");
+    ).toContain("SYM-1 - Implant");
   });
 });

@@ -12,7 +12,7 @@ type PreviewSnapshot = NonNullable<PreviewResponse["preview"]>["before"];
 
 function previewLine(snapshot: PreviewSnapshot) {
   const datePart = snapshot.nextDate ? formatPlDate(snapshot.nextDate) : "brak terminu";
-  const notePart = snapshot.vacationNote ? ` — ${vacationNoteLabel(snapshot.vacationNote)}` : "";
+  const notePart = snapshot.vacationNote ? ` - ${vacationNoteLabel(snapshot.vacationNote)}` : "";
   return `${datePart}${notePart}`;
 }
 

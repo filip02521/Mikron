@@ -151,7 +151,7 @@ function QuestionFormFields({
           onClick={() => void onSubmit()}
         >
           {tourDemo
-            ? "Podgląd — bez wysyłki"
+            ? "Podgląd - bez wysyłki"
             : imagesCompressing
               ? DEPARTMENT_BOARD_QUESTIONS_FORM.imagesCompressing
               : saving
@@ -268,7 +268,7 @@ export function DepartmentBoardQuestionForm({
             ) : null}
             {!embedded && hasQuestions && !expanded ? (
               <span className={salesTypography.sectionHint}>
-                — {DEPARTMENT_BOARD_QUESTIONS_FORM.expandHint}
+                - {DEPARTMENT_BOARD_QUESTIONS_FORM.expandHint}
               </span>
             ) : null}
           </span>

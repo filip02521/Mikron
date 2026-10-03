@@ -8,7 +8,7 @@ export const NOTATNIK_PAGE_CLASS = salesPageShellClass;
 /** Wewnętrzna tablica karteczek — spójna z panelem Notatnik (indigo / slate). */
 export const NOTATNIK_NOTES_WALL_CLASS = cn(
   "overflow-visible rounded-md border border-indigo-100/70",
-  "bg-indigo-50/25 bg-[radial-gradient(circle_at_1px_1px,rgba(148,163,184,0.1)_1px,transparent_0)]",
+  "bg-indigo-50/25",
   "bg-[length:18px_18px]",
   "shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)]",
   "px-3 py-4 sm:px-4 sm:py-5"

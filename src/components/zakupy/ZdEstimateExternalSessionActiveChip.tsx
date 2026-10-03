@@ -27,7 +27,6 @@ export function ZdEstimateExternalSessionActiveChip({
       )}
     >
       <span className="relative flex h-1.5 w-1.5 shrink-0" aria-hidden>
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/50" />
         <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
       </span>
       <span className="truncate text-xs font-medium leading-none">

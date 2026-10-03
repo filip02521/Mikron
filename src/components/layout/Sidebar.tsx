@@ -32,7 +32,6 @@ import {
   sidebarNavBadgeClassForTone,
   sidebarNavToneActiveClass,
   sidebarNavToneHighlightIdleClass,
-  navLinkDescriptionHoverClass,
   controlFocusClass,
   panelTypography,
   buttonPrimaryClass,
@@ -125,7 +124,6 @@ function NavLink({
   const compact = item.tier === "compact";
   const indented = Boolean(item.indent);
   const hasBadge = item.badge != null && item.badge > 0;
-  const showDescription = Boolean(item.description) && !compact;
   const displayTone = navItemDisplayTone(item, active);
   const attentionIdle = navItemHasDueReminders(item) && !active;
   const isMonthlyHref = item.href === MONTHLY_SUMMARY_HREF || href.split("?")[0] === MONTHLY_SUMMARY_HREF;
@@ -200,17 +198,6 @@ function NavLink({
           >
             {item.label}
           </span>
-          {showDescription ? (
-            <span
-              className={cn(
-                panelTypography.caption,
-                "mt-0.5 block",
-                active ? "text-slate-600" : cn("text-slate-400", navLinkDescriptionHoverClass)
-              )}
-            >
-              {item.description}
-            </span>
-          ) : null}
         </span>
       </span>
       {hasBadge || showDot ? (
@@ -258,10 +245,10 @@ function NavLink({
       tabIndex={isLockedItem ? -1 : undefined}
       title={
         isLockedItem
-          ? "Dokończ wprowadzenie — użyj „Dalej” w panelu touru"
+          ? "Dokończ wprowadzenie - użyj „Dalej” w panelu touru"
           : railCollapsed
             ? `${item.label}${hasBadge ? ` (${item.badge! > 99 ? "99+" : item.badge})` : ""}`
-            : compact && item.description
+            : item.description
               ? item.description
               : undefined
       }
@@ -369,7 +356,7 @@ function CollapsibleNavSection({
         </span>
         <h2
           className={cn(
-            "flex-1 text-[10px] font-bold uppercase tracking-[0.12em]",
+            "flex-1 text-[10px] font-bold",
             collapsed ? "text-slate-400" : "text-slate-500"
           )}
         >
@@ -641,7 +628,7 @@ export function Sidebar({
             />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">
+            <p className="text-[9px] font-semibold text-slate-400">
               Obszar pracy
             </p>
             <p className={cn("truncate text-[12px] font-bold leading-tight", workspaceToneText(procurementWorkspace))}>
@@ -736,7 +723,7 @@ export function Sidebar({
                 Wyloguj
               </button>
             </div>
-            <p className="mt-2.5 text-center text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400">
+            <p className="mt-2.5 text-center text-[10px] font-medium text-slate-400">
               {ONTIME_AUTH_FOOTER}
             </p>
           </>

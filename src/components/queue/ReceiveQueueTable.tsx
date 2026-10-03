@@ -342,7 +342,7 @@ export function ReceiveQueueTable({
     queueMicrotask(() => {
       if (cancelled) return;
       const name = receiveFocus.supplierName?.trim();
-      if (name && name !== "—") {
+      if (name && name !== "-") {
         setSupplierFilter(name);
         setSearchCollapsed(false);
         setZdFilter(null);
@@ -413,7 +413,7 @@ export function ReceiveQueueTable({
       const ordersForSupplier = receiveQueue.filter((o) => o.supplier_id === next.supplierId);
       const supplierName =
         ordersForSupplier[0]?.supplier?.name?.trim() ||
-        receiveQueue.find((o) => (o.supplier?.name?.trim() || "—") === next.supplierName)
+        receiveQueue.find((o) => (o.supplier?.name?.trim() || "-") === next.supplierName)
           ?.supplier?.name?.trim() ||
         next.supplierName;
       setZdFilter({ ...next, supplierName });
@@ -735,7 +735,7 @@ export function ReceiveQueueTable({
               <IconSearch size={15} className="shrink-0 text-slate-400" />
               <span>Wyszukiwanie</span>
               {hasActiveFilters ? (
-                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-100 px-1 text-[10px] font-bold text-indigo-700">
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-md bg-indigo-100 px-1 text-[10px] font-bold text-indigo-700">
                   {productSearchActive ? 1 : 0}
                   {zdFilter ? (productSearchActive ? 1 : 1) : 0}
                 </span>
@@ -846,7 +846,7 @@ export function ReceiveQueueTable({
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.5l3 3 7-7" />
             </svg>
             <span>
-              {availableCount} {availableCount === 1 ? "pozycja jest na stanie" : availableCount <= 4 ? "pozycje są na stanie" : "pozycji jest na stanie"} Subiekta — oznacz przyjęcie i przygotuj na regale.
+              {availableCount} {availableCount === 1 ? "pozycja jest na stanie" : availableCount <= 4 ? "pozycje są na stanie" : "pozycji jest na stanie"} Subiekta - oznacz przyjęcie i przygotuj na regale.
             </span>
             {!stockAvailableOnly ? (
               <button
@@ -921,7 +921,7 @@ export function ReceiveQueueTable({
       : MICROCOPY.empty.queue.filterTitle;
 
   const emptyFilteredDescription = productSearchActive
-    ? "Spróbuj innego symbolu, nazwy lub kodu Mikron — albo wyczyść wyszukiwanie."
+    ? "Spróbuj innego symbolu, nazwy lub kodu Mikron - albo wyczyść wyszukiwanie."
     : zdFilter
       ? `Żadna pozycja w kolejce nie pasuje do ${zdFilter.docNumber}. Sprawdź inny dokument lub wyczyść filtr ZD.`
       : MICROCOPY.empty.queue.filterDescription;
@@ -1052,9 +1052,9 @@ export function ReceiveQueueTable({
                   onChange={(e) => toggleAll(e.target.checked)}
                 />
               </th>
-              <th className="bg-slate-50/95 px-2 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">Handlowiec</th>
-              <th className="bg-slate-50/95 px-2 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-slate-500">Produkt</th>
-              <th className="w-[9.5rem] bg-slate-50/95 px-2 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide text-slate-500">Realizacja</th>
+              <th className="bg-slate-50/95 px-2 py-2.5 text-left text-[11px] font-semibold text-slate-500">Handlowiec</th>
+              <th className="bg-slate-50/95 px-2 py-2.5 text-left text-[11px] font-semibold text-slate-500">Produkt</th>
+              <th className="w-[9.5rem] bg-slate-50/95 px-2 py-2.5 text-right text-[11px] font-semibold text-slate-500">Realizacja</th>
             </tr>
           </thead>
           <ReceiveQueueVirtualTbody

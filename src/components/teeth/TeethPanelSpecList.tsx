@@ -20,15 +20,15 @@ function jawLabel(
   kind: TeethGroupedDetail["kind"],
   mould?: string | null,
 ): string {
-  if (!kind || !jawRequiredForKind(kind)) return "—";
-  if (mouldEncodesExplicitJaw(mould)) return "—";
+  if (!kind || !jawRequiredForKind(kind)) return "-";
+  if (mouldEncodesExplicitJaw(mould)) return "-";
   if (jaw === "upper") return JAW_LABELS.upper;
   if (jaw === "lower") return JAW_LABELS.lower;
-  return "—";
+  return "-";
 }
 
 function kindLabel(kind: TeethGroupedDetail["kind"]): string {
-  if (!kind) return "—";
+  if (!kind) return "-";
   return TEETH_KIND_LABELS[kind];
 }
 
@@ -88,7 +88,7 @@ export function TeethPanelSpecList({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[16rem] text-left text-xs">
           <thead>
-            <tr className="border-b border-slate-200/80 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            <tr className="border-b border-slate-200/80 text-[10px] font-semibold text-slate-500">
               <th className={compact ? "py-0.5 pr-2" : "py-1 pr-2"}>Kolor</th>
               <th className={compact ? "py-0.5 pr-2" : "py-1 pr-2"}>Fason</th>
               <th className={compact ? "py-0.5 pr-2" : "py-1 pr-2"}>Szczęka</th>
@@ -103,10 +103,10 @@ export function TeethPanelSpecList({
                 className="border-b border-slate-100/90 last:border-b-0"
               >
                 <td className={cn("pr-2 font-semibold text-slate-900", compact ? "py-0.5" : "py-1.5")}>
-                  {g.color || "—"}
+                  {g.color || "-"}
                 </td>
                 <td className={cn("pr-2 font-medium text-slate-800", compact ? "py-0.5" : "py-1.5")}>
-                  {g.mould?.trim() || "—"}
+                  {g.mould?.trim() || "-"}
                 </td>
                 <td className={cn("pr-2 text-slate-700", compact ? "py-0.5" : "py-1.5")}>
                   {jawLabel(g.jaw, g.kind, g.mould)}

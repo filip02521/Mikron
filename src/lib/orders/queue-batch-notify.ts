@@ -34,11 +34,11 @@ export function batchNotifyButtonLabel(
   if (n <= 1) return prefix;
   if (people <= 1) {
     return unit === "osoba"
-      ? `${prefix} — ${countLabel} · mail do handlowca`
+      ? `${prefix} - ${countLabel} · mail do handlowca`
       : `${prefix} (${n}) · mail do handlowca`;
   }
   return unit === "osoba"
-    ? `${prefix} — ${countLabel} · ${handlowiecLabel(people)}`
+    ? `${prefix} - ${countLabel} · ${handlowiecLabel(people)}`
     : `${prefix} (${n}) · ${handlowiecLabel(people)}`;
 }
 
@@ -63,8 +63,8 @@ export function batchDeliveryConfirmMessage(
   const emailPart = opts?.teethHandover
     ? "Handlowiec zobaczy przyjętą ilość w Moje zamówienia (bez e-maila) i potwierdzi osobisty odbiór zębów."
     : people <= 1
-      ? "Handlowiec dostanie e-mail o przyjęciu towaru (z 10-sekundowym opóźnieniem — możliwym do cofnięcia)."
-      : `${people} handlowców dostanie osobne e-maile o przyjęciu towaru (z 10-sekundowym opóźnieniem — możliwym do cofnięcia).`;
+      ? "Handlowiec dostanie e-mail o przyjęciu towaru (z 10-sekundowym opóźnieniem - możliwym do cofnięcia)."
+      : `${people} handlowców dostanie osobne e-maile o przyjęciu towaru (z 10-sekundowym opóźnieniem - możliwym do cofnięcia).`;
   const qtyPart = opts?.fullQuantity
     ? opts?.teethHandover
       ? "Dla każdej pozycji zostanie uzupełniona pełna brakująca ilość (Całość sekcji)."
@@ -75,7 +75,7 @@ export function batchDeliveryConfirmMessage(
   const checkPart = opts?.teethHandover
     ? "Sprawdź wpisane ilości"
     : "Sprawdź zaznaczenie";
-  return `Zapiszesz dostawę dla ${polishPozycjeLabel(n)}. ${qtyPart} ${emailPart} ${checkPart} — błędny zapis utrudni późniejszą korektę.`;
+  return `Zapiszesz dostawę dla ${polishPozycjeLabel(n)}. ${qtyPart} ${emailPart} ${checkPart} - błędny zapis utrudni późniejszą korektę.`;
 }
 
 /** Treść modala przed zbiorczym powiadomieniem informacyjnym. */
@@ -89,7 +89,7 @@ export function batchInformacjaConfirmMessage(
     people <= 1
       ? "Handlowiec dostanie e-mail, że towar jest na magazynie."
       : `${people} handlowców dostanie osobne e-maile, że towar jest na magazynie.`;
-  return `Wyślesz powiadomienie dla ${polishPozycjeLabel(n)}. ${emailPart} Sprawdź listę — po wysłaniu trzeba będzie ręcznie wyjaśniać ewentualne pomyłki.`;
+  return `Wyślesz powiadomienie dla ${polishPozycjeLabel(n)}. ${emailPart} Sprawdź listę - po wysłaniu trzeba będzie ręcznie wyjaśniać ewentualne pomyłki.`;
 }
 
 export type BatchOperationToast = {

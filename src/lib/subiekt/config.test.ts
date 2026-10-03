@@ -95,7 +95,7 @@ describe("subiekt config", () => {
     expect(summary.ordersPort).toBe(5082);
   });
 
-  it("pozwala ORDERS na live :5080 (aktualna baza) — host_kind=live", () => {
+  it("pozwala ORDERS na live :5080 (aktualna baza) - host_kind=live", () => {
     process.env.SUBIEKT_API_BASE_URL = "http://192.168.0.140:5080/api/v1";
     process.env.SUBIEKT_API_ORDERS_BASE_URL = "http://192.168.0.140:5080/api/v1";
     process.env.SUBIEKT_API_AUTH_MODE = "none";

@@ -56,7 +56,7 @@ const PRIORITY: ZkWatchRowAttentionKind[] = [
 function regalWaitingLabel(count: number): Pick<ZkWatchRowAttention, "label" | "title"> {
   const label =
     count === 1 ? "Czeka na odbiór" : `Czeka na odbiór (${count})`;
-  const title = `${count} ${count === 1 ? "pozycja czeka" : "pozycje czekają"} na odbiór z regału — Moje zamówienia`;
+  const title = `${count} ${count === 1 ? "pozycja czeka" : "pozycje czekają"} na odbiór z regału - Moje zamówienia`;
   return { label, title };
 }
 
@@ -74,7 +74,7 @@ function followUpDueAttention(input: ZkWatchRowAttentionInput): ZkWatchRowAttent
     kind: "follow_up_due",
     label: input.followUpLabel ? `Przypomnienie · ${input.followUpLabel}` : "Przypomnienie",
     title: input.followUpLabel
-      ? `Termin przypomnienia minął (${input.followUpLabel}) — ustaw nowy termin lub zamknij sprawę`
+      ? `Termin przypomnienia minął (${input.followUpLabel}) - ustaw nowy termin lub zamknij sprawę`
       : "Termin przypomnienia minął",
   };
 }
@@ -89,7 +89,7 @@ function attentionForKind(
       return {
         kind,
         label: "Nowy na regale",
-        title: "Nowy towar czeka na odbiór z regału — potwierdź w Moje zamówienia",
+        title: "Nowy towar czeka na odbiór z regału - potwierdź w Moje zamówienia",
       };
     case "regal_waiting":
       if (
@@ -120,7 +120,7 @@ function attentionForKind(
       return {
         kind,
         label: "Dostępne",
-        title: "Magazyn potwierdził dostępność — prośba informacyjna",
+        title: "Magazyn potwierdził dostępność - prośba informacyjna",
       };
     case "new_lines":
       if (input.archived || !input.hasNewZkLines) return null;
@@ -148,14 +148,14 @@ function attentionForKind(
       return {
         kind,
         label: "Do zamknięcia",
-        title: "Wszystkie pozycje odhaczone — możesz zamknąć sprawę ZK",
+        title: "Wszystkie pozycje odhaczone - możesz zamknąć sprawę ZK",
       };
     case "scope_overflow":
       if (input.archived || input.hiddenOutsideScope <= 0) return null;
       return {
         kind,
         label: `+${input.hiddenOutsideScope} poz. ZK`,
-        title: `${input.hiddenOutsideScope} poz. spoza wybranego zakresu — pełną listę zobaczysz w podglądzie ZK`,
+        title: `${input.hiddenOutsideScope} poz. spoza wybranego zakresu - pełną listę zobaczysz w podglądzie ZK`,
       };
     default:
       return null;

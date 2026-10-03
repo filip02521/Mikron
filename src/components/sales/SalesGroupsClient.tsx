@@ -103,7 +103,7 @@ export function SalesGroupsClient({
       description={
         embeddedInTeamWorkspace
           ? canCreateGroups
-            ? "Kolejność sortowania — mniejsza liczba wyżej w podglądzie zespołu."
+            ? "Kolejność sortowania - mniejsza liczba wyżej w podglądzie zespołu."
             : "Możesz edytować nazwę i kolejność przypisanych grup."
           : undefined
       }
@@ -126,7 +126,7 @@ export function SalesGroupsClient({
     !groups.length && canCreateGroups ? (
       <EmptyState
         title="Brak grup"
-        description="Dodaj Sklep, Biuro lub własne działy — potem przypisz handlowców."
+        description="Dodaj Sklep, Biuro lub własne działy - potem przypisz handlowców."
       />
     ) : (
       <ul className="space-y-1.5 p-2 sm:p-3 lg:p-4">
@@ -205,7 +205,7 @@ export function SalesGroupsClient({
         inset
         density="compact"
         title={form.id ? "Edytuj grupę" : "Nowa grupa"}
-        description="Kolejność sortowania — mniejsza liczba wyżej na liście podglądu."
+        description="Kolejność sortowania - mniejsza liczba wyżej na liście podglądu."
       />
       <form
         className={cn(
@@ -280,7 +280,7 @@ export function SalesGroupsClient({
         message={
           deleteTarget
             ? deleteTarget.memberCount > 0
-              ? `Grupa „${deleteTarget.name}" ma ${deleteTarget.memberCount} handlowców — najpierw przypisz ich do innej grupy.`
+              ? `Grupa „${deleteTarget.name}" ma ${deleteTarget.memberCount} handlowców - najpierw przypisz ich do innej grupy.`
               : `Czy na pewno usunąć grupę „${deleteTarget.name}"?`
             : ""
         }
@@ -313,7 +313,7 @@ export function SalesGroupsClient({
           <p className="text-sm text-slate-600">
             {canCreateGroups
               ? "Grupy porządkują podgląd zespołu (np. Sklep i Biuro). Przypisanie handlowca ustawiasz w Handlowcy. Kierowników grup przypisujesz w Admin → Użytkownicy."
-              : "Widzisz tylko grupy przypisane do Twojego konta — możesz zmienić nazwę i kolejność. Nowe grupy zakłada administrator."}
+              : "Widzisz tylko grupy przypisane do Twojego konta - możesz zmienić nazwę i kolejność. Nowe grupy zakłada administrator."}
           </p>
         ) : null}
 

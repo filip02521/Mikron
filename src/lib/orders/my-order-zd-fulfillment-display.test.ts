@@ -161,7 +161,7 @@ describe("buildCollapsedZdMultiSlotHint", () => {
       },
     ]);
     expect(hint).toBe(
-      "Najszybsza dostawa: Produkt A — rozwiń po 1 późniejszy termin"
+      "Najszybsza dostawa: Produkt A - rozwiń po 1 późniejszy termin"
     );
   });
 });
@@ -173,16 +173,16 @@ describe("buildCollapsedZdMixedNoMatchHint", () => {
       { zdEtaNoMatch: true, historyEstimateLabel: "ok. 22.06.2026 (~5 dni rob.)" },
       { zdFulfillment: { deadline: "2026-06-24", dokNr: "ZD/1", syncedAt: null, source: "zd" } },
     ]);
-    expect(hint).toBe("2 pozycje bez terminu u dostawcy — rozwiń po szacunek z historii");
+    expect(hint).toBe("2 pozycje bez terminu u dostawcy - rozwiń po szacunek z historii");
   });
 
-  it("gdy wszystkie bez ZD czekają na sync — poprawna odmiana", () => {
+  it("gdy wszystkie bez ZD czekają na sync - poprawna odmiana", () => {
     const hint = buildCollapsedZdMixedNoMatchHint([
       { zdEtaPending: true },
       { zdEtaPending: true },
       { zdFulfillment: { deadline: "2026-06-24", dokNr: "ZD/1", syncedAt: null, source: "zd" } },
     ]);
-    expect(hint).toBe("2 pozycje czekają na termin u dostawcy — rozwiń po szczegóły");
+    expect(hint).toBe("2 pozycje czekają na termin u dostawcy - rozwiń po szczegóły");
   });
 });
 
@@ -273,7 +273,7 @@ describe("isLineZdDetailRedundantWithExpandedGroupTiming", () => {
     expect(isLineZdDetailRedundantWithExpandedGroupTiming(row, line, true)).toBe(false);
   });
 
-  it("grupa mieszana ZD — zostawia historię przy produkcie", () => {
+  it("grupa mieszana ZD - zostawia historię przy produkcie", () => {
     const zd = {
       deadline: "2026-07-15",
       dokNr: "ZD/1",

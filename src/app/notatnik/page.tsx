@@ -113,7 +113,7 @@ export default async function NotatnikPage({
           access.isTeamPreview
             ? "Podgląd notatek i archiwum wybranego handlowca. Edycja tylko we własnym Notatniku."
             : access.isDelegatePreview
-              ? "Tryb zastępstwa — notatki tylko do odczytu. ZK można zamykać w zakładce ZK."
+              ? "Tryb zastępstwa - notatki tylko do odczytu. ZK można zamykać w zakładce ZK."
               : undefined
         }
         linkError={

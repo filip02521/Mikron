@@ -74,7 +74,7 @@ export function MyOrderShipmentOverflowMenu({
 
   return (
     <OverflowMenu
-      label={`Opcje — ${supplierName}`}
+      label={`Opcje - ${supplierName}`}
       disabled={disabled}
       align="end"
       iconOnly

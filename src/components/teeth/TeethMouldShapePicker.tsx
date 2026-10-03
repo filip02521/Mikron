@@ -70,7 +70,7 @@ export function TeethMouldShapePicker({
 
   return (
     <div className={cn("space-y-1.5", compact && "space-y-1")}>
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+      <p className="text-[10px] font-semibold text-slate-500">
         Fason
         {required && !mould?.trim() ? <span className="ml-0.5 text-rose-500">*</span> : null}
       </p>
@@ -219,7 +219,7 @@ function ShapeSectionHeader({
           />
         </span>
       ) : null}
-      <p className="text-[9px] font-semibold uppercase leading-tight tracking-wide text-slate-600">
+      <p className="text-[9px] font-semibold leading-tight text-slate-600">
         {group.label}
       </p>
       {group.hint ? (

@@ -159,7 +159,7 @@ export function collectImplicitPieceSnapshotLines(
     out.push({
       twId,
       symbol: line.symbol.trim() || `tw_Id ${twId}`,
-      nazwa: line.nazwa.trim() || "—",
+      nazwa: line.nazwa.trim() || "-",
     });
   }
   return out;
@@ -270,7 +270,7 @@ export function buildZdEstimateSnapshotLinesFromDocChecked(
       missingPack.length > 8 ? ` (+${missingPack.length - 8})` : "";
     return {
       ok: false,
-      message: `Brak opakowania (lub ratio pary) dla: ${sample}${more}. Uzupełnij opakowania w panelu „Opakowania” albo dodaj parę kompletów — bez cichego ×1 dla pozycji spoza szacunku.`,
+      message: `Brak opakowania (lub ratio pary) dla: ${sample}${more}. Uzupełnij opakowania w panelu „Opakowania” albo dodaj parę kompletów - bez cichego ×1 dla pozycji spoza szacunku.`,
     };
   }
 

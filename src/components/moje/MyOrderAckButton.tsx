@@ -58,7 +58,7 @@ export function MyOrderAckButton({
   );
 
   if (preview) {
-    const previewTitle = title ?? "Podgląd w tourze — po wprowadzeniu potwierdzisz odbiór tutaj";
+    const previewTitle = title ?? "Podgląd w tourze - po wprowadzeniu potwierdzisz odbiór tutaj";
     if (variant === "banner") {
       return (
         <span

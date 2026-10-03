@@ -20,7 +20,7 @@ export function DailyUrgentProgressBar({
           className
         )}
       >
-        Brak zamówień harmonogramu na dziś — sprawdź prośby handlowców lub plan tygodnia.
+        Brak zamówień harmonogramu na dziś - sprawdź prośby handlowców lub plan tygodnia.
       </div>
     );
   }

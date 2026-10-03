@@ -5,7 +5,7 @@ import {
 } from "./zk-prosba-prefill-access";
 
 describe("resolveZkProsbaPrefillSalesPersonAccess", () => {
-  it("sales — własna karta OK (nawet gdy canAccessRequested=false)", () => {
+  it("sales - własna karta OK (nawet gdy canAccessRequested=false)", () => {
     expect(
       resolveZkProsbaPrefillSalesPersonAccess({
         role: "sales",
@@ -16,7 +16,7 @@ describe("resolveZkProsbaPrefillSalesPersonAccess", () => {
     ).toEqual({ ok: true });
   });
 
-  it("sales — cudza karta zablokowana", () => {
+  it("sales - cudza karta zablokowana", () => {
     expect(
       resolveZkProsbaPrefillSalesPersonAccess({
         role: "sales",
@@ -27,7 +27,7 @@ describe("resolveZkProsbaPrefillSalesPersonAccess", () => {
     ).toEqual({ ok: false, message: ZK_PROSBA_PREFILL_OWN_REQUIRED });
   });
 
-  it("sales_manager — cudza karta gdy canAccessRequested", () => {
+  it("sales_manager - cudza karta gdy canAccessRequested", () => {
     expect(
       resolveZkProsbaPrefillSalesPersonAccess({
         role: "sales_manager",
@@ -38,7 +38,7 @@ describe("resolveZkProsbaPrefillSalesPersonAccess", () => {
     ).toEqual({ ok: true });
   });
 
-  it("sales_manager — cudza karta bez dostępu", () => {
+  it("sales_manager - cudza karta bez dostępu", () => {
     expect(
       resolveZkProsbaPrefillSalesPersonAccess({
         role: "sales_manager",

@@ -33,15 +33,15 @@ function pathUi(path: InformacjaFlowPath, pathLocked: boolean): VerificationInfo
         path,
         badgeLabel: "Brak na stanie",
         badgeTone: "warning",
-        queueHint: "Sygnał magazynowy — sekcja „Brak na stanie” w panelu Dziś",
+        queueHint: "Sygnał magazynowy - sekcja „Brak na stanie” w panelu Dziś",
         pathLocked: pathLocked,
         lockedReason: pathLocked
-          ? "Handlowiec zgłosił brak na stanie. Po zatwierdzeniu trafi wyłącznie do sekcji „Brak na stanie” — nie do magazynu ani „Moje zamówienia” handlowca."
+          ? "Handlowiec zgłosił brak na stanie. Po zatwierdzeniu trafi wyłącznie do sekcji „Brak na stanie” - nie do magazynu ani „Moje zamówienia” handlowca."
           : null,
         completeSuccessMessage:
-          "Uzupełniono — sygnał trafi do sekcji „Brak na stanie” w panelu Dziś (Prośby handlowców).",
+          "Uzupełniono - sygnał trafi do sekcji „Brak na stanie” w panelu Dziś (Prośby handlowców).",
         productSectionHint:
-          "Wystarczy nazwa lub symbol — bez ilości. Po Główne pozycja znika z listy (sygnał obsłużony).",
+          "Wystarczy nazwa lub symbol - bez ilości. Po Główne pozycja znika z listy (sygnał obsłużony).",
         destinationSummary: INFORMACJA_STOCK_OUT_PROCUREMENT_SECTION_HINT,
       };
     case "via_panel":
@@ -52,12 +52,12 @@ function pathUi(path: InformacjaFlowPath, pathLocked: boolean): VerificationInfo
         queueHint: "Najpierw zamówienie u dostawcy, potem e-mail z magazynu",
         pathLocked: pathLocked,
         lockedReason: pathLocked
-          ? "Ścieżka „najpierw zamówienie u dostawcy” — po zatwierdzeniu trafi do Prośb handlowców, nie od razu do magazynu."
+          ? "Ścieżka „najpierw zamówienie u dostawcy” - po zatwierdzeniu trafi do Prośb handlowców, nie od razu do magazynu."
           : null,
         completeSuccessMessage:
-          "Uzupełniono — prośba trafi do Prośb handlowców w panelu Dziś (najpierw Główne, potem magazyn).",
+          "Uzupełniono - prośba trafi do Prośb handlowców w panelu Dziś (najpierw Główne, potem magazyn).",
         productSectionHint:
-          "Wystarczy nazwa lub symbol — bez ilości. Magazyn wyśle e-mail po zamówieniu u dostawcy.",
+          "Wystarczy nazwa lub symbol - bez ilości. Magazyn wyśle e-mail po zamówieniu u dostawcy.",
         destinationSummary: INFORMACJA_FLOW_VIA_PANEL.short,
       };
     default:
@@ -65,13 +65,13 @@ function pathUi(path: InformacjaFlowPath, pathLocked: boolean): VerificationInfo
         path: "direct",
         badgeLabel: INFORMACJA_FLOW_DIRECT.badgeLabel,
         badgeTone: "violet",
-        queueHint: "Od razu kolejka magazynu — e-mail po przyjęciu towaru",
+        queueHint: "Od razu kolejka magazynu - e-mail po przyjęciu towaru",
         pathLocked: false,
         lockedReason: null,
         completeSuccessMessage:
-          "Uzupełniono — trafi do Wyjątków w panelu Dziś (kolejka informacji magazynu).",
+          "Uzupełniono - trafi do Wyjątków w panelu Dziś (kolejka informacji magazynu).",
         productSectionHint:
-          "Wystarczy nazwa lub symbol — bez ilości. Magazyn obserwuje dostępność i wyśle e-mail.",
+          "Wystarczy nazwa lub symbol - bez ilości. Magazyn obserwuje dostępność i wyśle e-mail.",
         destinationSummary: INFORMACJA_FLOW_DIRECT.short,
       };
   }

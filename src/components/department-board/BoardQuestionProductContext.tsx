@@ -55,7 +55,7 @@ export function BoardQuestionProductContext({
             <IconPackage size={14} aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <p className="text-[11px] font-semibold text-slate-500">
               {DEPARTMENT_BOARD_QUESTIONS_FORM.productContextLabel}
             </p>
             <p className="mt-0.5 text-sm font-medium leading-snug text-slate-900">

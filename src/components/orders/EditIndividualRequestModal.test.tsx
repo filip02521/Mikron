@@ -184,7 +184,7 @@ describe("EditIndividualRequestModal", () => {
     fireEvent.change(
       screen.getByPlaceholderText(/klient czeka na potwierdzenie terminu/i),
       {
-        target: { value: "pilne — termin piątek" },
+        target: { value: "pilne - termin piątek" },
       }
     );
     fireEvent.click(screen.getByRole("button", { name: /Zapisz zmiany/i }));
@@ -195,14 +195,14 @@ describe("EditIndividualRequestModal", () => {
         lines: [
           expect.objectContaining({
             id: "ord-1",
-            requestNote: "pilne — termin piątek",
+            requestNote: "pilne - termin piątek",
           }),
         ],
       })
     );
   });
 
-  it("zakupy: zapisuje dostawcę per pozycja — produkty różnych dostawców nie trafiają do jednego", () => {
+  it("zakupy: zapisuje dostawcę per pozycja - produkty różnych dostawców nie trafiają do jednego", () => {
     render(
       <EditIndividualRequestModal
         open

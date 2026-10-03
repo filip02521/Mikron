@@ -157,7 +157,7 @@ describe("my-order-card-ui", () => {
     ).toBe(false);
   });
 
-  it("ukrywa badge przy informacyjnych — wystarczy badge Informacyjna i nagłówek", () => {
+  it("ukrywa badge przy informacyjnych - wystarczy badge Informacyjna i nagłówek", () => {
     expect(
       shouldShowOrderStatusBadge(
         row({
@@ -166,7 +166,7 @@ describe("my-order-card-ui", () => {
           statusTitle: "Informacja o dostępności",
           headline: "Powiadomimy, gdy towar przyjedzie",
           headlineTone: "neutral",
-          badgeVariant: "purple",
+          badgeVariant: "info",
         })
       )
     ).toBe(false);
@@ -249,7 +249,7 @@ describe("my-order-card-ui", () => {
     ).toBe(true);
   });
 
-  it("shouldHideLineRequestNote — ukrywa per-line gdy jest wspólna notatka grupy", () => {
+  it("shouldHideLineRequestNote - ukrywa per-line gdy jest wspólna notatka grupy", () => {
     expect(shouldHideLineRequestNote(null)).toBe(false);
     expect(shouldHideLineRequestNote("  ")).toBe(false);
     expect(shouldHideLineRequestNote("pilne")).toBe(true);

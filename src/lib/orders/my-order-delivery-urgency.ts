@@ -99,7 +99,7 @@ export function classifyDeliveryUrgency(
       urgency: "this_week",
       expectedDate: target,
       shortLabel: "Ten tydzień",
-      detailLabel: `Za ${diff} dni — w tym tygodniu`,
+      detailLabel: `Za ${diff} dni - w tym tygodniu`,
     };
   }
   return {

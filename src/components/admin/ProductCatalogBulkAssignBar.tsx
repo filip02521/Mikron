@@ -33,7 +33,7 @@ export function ProductCatalogBulkAssignBar({
     <div
       className={cn(
         "mb-3 rounded-lg border border-indigo-200/80 bg-indigo-50/75 px-3 py-2.5",
-        "shadow-sm shadow-indigo-900/5"
+        "shadow-sm "
       )}
       role="region"
       aria-label="Grupowe przypisanie dostawcy"
@@ -82,7 +82,7 @@ export function ProductCatalogBulkAssignBar({
               disabled={disabled}
               className="h-9 w-full text-sm"
             >
-              <option value="">— wybierz dostawcę —</option>
+              <option value="">- wybierz dostawcę -</option>
               {suppliers.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}

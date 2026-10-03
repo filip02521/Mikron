@@ -43,9 +43,9 @@ export function procurementSalesCancelPhaseLabel(phase: SalesCancelPhase): strin
     case "before_order":
       return "Wycofane zamówienie dla klienta";
     case "in_transit":
-      return "Rezygnacja — towar może nadal przyjechać";
+      return "Rezygnacja - towar może nadal przyjechać";
     case "on_stock":
-      return "Rezygnacja — towar na magazynie";
+      return "Rezygnacja - towar na magazynie";
   }
 }
 
@@ -108,10 +108,10 @@ export function buildSalesCancelledNotices(
       id: key,
       supplierId: first.supplier_id ?? "",
       salesPersonId: first.sales_person_id,
-      supplierName: first.supplier?.name ?? "—",
+      supplierName: first.supplier?.name ?? "-",
       location: first.supplier?.location ?? "POLSKA",
       person:
-        first.sales_person?.name ?? salesById.get(first.sales_person_id) ?? "—",
+        first.sales_person?.name ?? salesById.get(first.sales_person_id) ?? "-",
       clientName,
       cancelledLabel: formatPlDate(ackAt.slice(0, 10)),
       phase,

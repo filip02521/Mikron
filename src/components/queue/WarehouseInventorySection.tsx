@@ -309,7 +309,7 @@ export function WarehouseInventorySection({
         try {
           const result = await actionRevertToPending([orderId]);
           if (result.count > 0) {
-            setToast({ text: "Przyjęcie cofnięte — pozycja wróciła do kolejki oczekujących", tone: "success" });
+            setToast({ text: "Przyjęcie cofnięte - pozycja wróciła do kolejki oczekujących", tone: "success" });
           } else if (result.errors.length > 0) {
             setToast({ text: result.errors[0], tone: "error" });
           }
@@ -389,7 +389,7 @@ export function WarehouseInventorySection({
         </td>
         <td className="align-top min-w-[6rem] max-w-[10rem]">
           <p className="truncate font-medium text-slate-900" title={person?.name ?? undefined}>
-            {person?.name ?? "—"}
+            {person?.name ?? "-"}
           </p>
           {o.sales_client_name?.trim() ? (
             <p
@@ -406,7 +406,7 @@ export function WarehouseInventorySection({
             <WaitingBadge row={row} />
             <span
               className={cn(
-                "inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                "inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold",
                 row.kind === "pickup_full"
                   ? "bg-emerald-100 text-emerald-900"
                   : row.kind === "pickup_partial"
@@ -426,7 +426,7 @@ export function WarehouseInventorySection({
                 disabled={pending || clearPending || revertPending}
                 onClick={() => setRevertConfirmId(o.id)}
                 className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-medium text-amber-700 hover:bg-amber-50 disabled:opacity-40"
-                title="Cofnij przyjęcie — wróci do kolejki oczekujących"
+                title="Cofnij przyjęcie - wróci do kolejki oczekujących"
               >
                 <IconUndoLeft size={13} />
                 <span className="hidden sm:inline">Cofnij</span>
@@ -455,7 +455,7 @@ export function WarehouseInventorySection({
       <SectionListLabel
         domain="panel"
         title="Inwentaryzacja regału"
-        hint="Co czeka na odbiór — grupy po dostawcy, regale lub handlowcu"
+        hint="Co czeka na odbiór - grupy po dostawcy, regale lub handlowcu"
         hintMode="tooltip"
         count={rows.length}
         accent="emerald"
@@ -512,7 +512,7 @@ export function WarehouseInventorySection({
             hint="zaraz auto-ack"
             icon={<IconAlertCircle size={14} />}
             tileClassName="bg-purple-100 text-purple-800"
-            title="Pozycje czekające co najmniej 21 dni roboczych — zaraz automatycznie potwierdzone"
+            title="Pozycje czekające co najmniej 21 dni roboczych - zaraz automatycznie potwierdzone"
             onClick={() => setInventoryFilter("expired")}
             disabled={summary.staleExpired === 0}
           />
@@ -581,7 +581,7 @@ export function WarehouseInventorySection({
 
       {!filtered.length ? (
         <EmptyState
-          title={rows.length ? "Brak pozycji dla filtra" : "Magazyn pusty — brak oczekujących odbiorów"}
+          title={rows.length ? "Brak pozycji dla filtra" : "Magazyn pusty - brak oczekujących odbiorów"}
           description={
             rows.length
               ? "Zmień filtr, dostawcę lub wyszukiwanie."

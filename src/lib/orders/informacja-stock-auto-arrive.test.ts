@@ -104,7 +104,7 @@ describe("isInformacjaStockAutoArriveEligible", () => {
     ).toBe(false);
   });
 
-  it("kompozycja z isInformacjaWarehouseQueueOrder — drift", () => {
+  it("kompozycja z isInformacjaWarehouseQueueOrder - drift", () => {
     const o = row({ status: "Nowe", subiekt_tw_id: 50 });
     expect(isInformacjaWarehouseQueueOrder(o)).toBe(true);
     expect(isInformacjaStockAutoArriveEligible(o)).toBe(true);

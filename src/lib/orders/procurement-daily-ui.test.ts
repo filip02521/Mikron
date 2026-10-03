@@ -387,7 +387,7 @@ describe("procurement-daily-ui", () => {
     expect(sorted[0]?.person).toBe("Jan");
   });
 
-  it("sortForSomeoneGroups: po unseen — pilne przed resztą", () => {
+  it("sortForSomeoneGroups: po unseen - pilne przed resztą", () => {
     const plain = testForSomeoneGroup({
       supplierId: "a",
       salesPersonId: "sp1",

@@ -30,7 +30,7 @@ export function buildPlannedOrderDateDisplay(input: {
       caption: "Planowe zamówienie",
       label: "Na żądanie",
       badgeVariant: "default",
-      title: "Dostawca zamawiany na żądanie — bez stałego terminu w kalendarzu.",
+      title: "Dostawca zamawiany na żądanie - bez stałego terminu w kalendarzu.",
     };
   }
 

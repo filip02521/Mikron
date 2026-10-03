@@ -59,7 +59,7 @@ function StatTile({
         tone === "slate" && "border-slate-200",
       )}
     >
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-[11px] font-semibold text-slate-500">{label}</p>
       <p
         className={cn(
           "mt-0.5 text-xl font-semibold tabular-nums sm:text-2xl",
@@ -218,7 +218,7 @@ export function TeethPanelKolejkaView({
             <div className="min-w-0 flex-1">
               <p className="font-semibold">Możliwe duplikaty: {duplicates.length}</p>
               <p className="text-xs text-amber-800">
-                Ten sam handlowiec prosi o te same zęby w kilku prośbach — sprawdź przed zamówieniem.
+                Ten sam handlowiec prosi o te same zęby w kilku prośbach - sprawdź przed zamówieniem.
               </p>
             </div>
             <button
@@ -241,7 +241,7 @@ export function TeethPanelKolejkaView({
                     jaw: parseTeethJaw(d.jaw),
                     kind: parseTeethKind(d.kind),
                   })}{" "}
-                  — w {d.orderIds.length} {plProsba(d.orderIds.length)}
+                  - w {d.orderIds.length} {plProsba(d.orderIds.length)}
                 </li>
               ))}
             </ul>

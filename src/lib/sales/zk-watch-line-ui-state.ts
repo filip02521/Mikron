@@ -71,7 +71,7 @@ export function zkWatchLineUiStateMeta(state: ZkWatchLineUiState): ZkWatchLineUi
   switch (state) {
     case "new":
       return {
-        label: "Nowa pozycja w ZK — jeszcze nie ma prośby",
+        label: "Nowa pozycja w ZK - jeszcze nie ma prośby",
         shortLabel: "Nowa",
         badgeClass: "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80",
         rowTintClass: "bg-amber-50/60",
@@ -96,7 +96,7 @@ export function zkWatchLineUiStateMeta(state: ZkWatchLineUiState): ZkWatchLineUi
     case "informacja_ready":
       return {
         label:
-          "Magazyn potwierdził dostępność — pozycja jest automatycznie zaznaczona na liście",
+          "Magazyn potwierdził dostępność - pozycja jest automatycznie zaznaczona na liście",
         shortLabel: "Dostępne",
         badgeClass: "bg-sky-100 text-sky-950 ring-1 ring-sky-200/80",
         rowTintClass: "bg-sky-50/45",
@@ -105,7 +105,7 @@ export function zkWatchLineUiStateMeta(state: ZkWatchLineUiState): ZkWatchLineUi
     case "delivered":
       return {
         label:
-          "Towar na regale — pozycja jest automatycznie zaznaczona na liście",
+          "Towar na regale - pozycja jest automatycznie zaznaczona na liście",
         shortLabel: "Na regale",
         badgeClass: "bg-violet-100 text-violet-900 ring-1 ring-violet-200/70",
         rowTintClass: "bg-violet-50/40",
@@ -113,7 +113,7 @@ export function zkWatchLineUiStateMeta(state: ZkWatchLineUiState): ZkWatchLineUi
       };
     case "arrived":
       return {
-        label: "Sprawa z pozycją zamknięta — przekazano klientowi lub zakończono ręcznie",
+        label: "Sprawa z pozycją zamknięta - przekazano klientowi lub zakończono ręcznie",
         shortLabel: "Zakończone",
         badgeClass: "bg-emerald-100 text-emerald-900 ring-1 ring-emerald-200/70",
         rowTintClass: "bg-emerald-50/35",
@@ -121,7 +121,7 @@ export function zkWatchLineUiStateMeta(state: ZkWatchLineUiState): ZkWatchLineUi
       };
     case "in_stock":
       return {
-        label: "Odebrano z regału — potwierdzone w Moje zamówienia",
+        label: "Odebrano z regału - potwierdzone w Moje zamówienia",
         shortLabel: "Odebrane z regału",
         badgeClass: "bg-teal-100 text-teal-950 ring-1 ring-teal-200/80",
         rowTintClass: "bg-teal-50/50",
@@ -129,7 +129,7 @@ export function zkWatchLineUiStateMeta(state: ZkWatchLineUiState): ZkWatchLineUi
       };
     case "scope_excluded":
       return {
-        label: "Pominięte przy wyborze zakresu — nie wymaga zamówienia (nie mylić z „Odebrane z regału”)",
+        label: "Pominięte przy wyborze zakresu - nie wymaga zamówienia (nie mylić z „Odebrane z regału”)",
         shortLabel: "Pominięte",
         badgeClass: "bg-slate-100 text-slate-700 ring-1 ring-slate-200/80",
         rowTintClass: "bg-slate-50/70",
@@ -138,7 +138,7 @@ export function zkWatchLineUiStateMeta(state: ZkWatchLineUiState): ZkWatchLineUi
     case "uncovered":
     default:
       return {
-        label: "Brak prośby — możesz dodać do nowej lub uzupełniającej",
+        label: "Brak prośby - możesz dodać do nowej lub uzupełniającej",
         shortLabel: "Do prośby",
         badgeClass: "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80",
         rowTintClass: "bg-amber-50/45",
@@ -517,13 +517,13 @@ export const ZK_WATCH_LINE_STATUS_LEGEND: {
   state: ZkWatchLineUiState;
   hint: string;
 }[] = [
-  { state: "new", hint: "Nowa pozycja — uzupełnij prośbę" },
-  { state: "uncovered", hint: "Brak prośby — zamów z karty ZK" },
-  { state: "in_request", hint: "W aktywnej prośbie — czekasz na dostawę" },
+  { state: "new", hint: "Nowa pozycja - uzupełnij prośbę" },
+  { state: "uncovered", hint: "Brak prośby - zamów z karty ZK" },
+  { state: "in_request", hint: "W aktywnej prośbie - czekasz na dostawę" },
   { state: "partial", hint: "Część ilości już dotarła" },
   { state: "informacja_ready", hint: "Towar dostępny (informacja)" },
-  { state: "delivered", hint: "Na regale — automatycznie zaznaczone na liście" },
-  { state: "in_stock", hint: "Odebrane z regału — checkbox = zakończone ręcznie" },
+  { state: "delivered", hint: "Na regale - automatycznie zaznaczone na liście" },
+  { state: "in_stock", hint: "Odebrane z regału - checkbox = zakończone ręcznie" },
   { state: "arrived", hint: "Zakończone ręcznie" },
 ];
 
@@ -534,31 +534,31 @@ export const ZK_WATCH_STATUS_GUIDE_ITEMS: {
 }[] = [
   {
     state: "new",
-    hint: "Nowa pozycja od ostatniego odświeżenia — wyślij uzupełniającą prośbę.",
+    hint: "Nowa pozycja od ostatniego odświeżenia - wyślij uzupełniającą prośbę.",
   },
   {
     state: "uncovered",
-    hint: "Brak prośby — użyj „Zgłoś prośbę” na karcie ZK, aby zamówić towar.",
+    hint: "Brak prośby - użyj „Zgłoś prośbę” na karcie ZK, aby zamówić towar.",
   },
   {
     state: "scope_excluded",
-    hint: "Pominięte przy wyborze zakresu — nie zamawiasz tej pozycji u zakupów.",
+    hint: "Pominięte przy wyborze zakresu - nie zamawiasz tej pozycji u zakupów.",
   },
   {
     state: "in_request",
-    hint: "Pozycja jest w aktywnej prośbie u zakupów — czekasz na dostawę.",
+    hint: "Pozycja jest w aktywnej prośbie u zakupów - czekasz na dostawę.",
   },
   {
     state: "partial",
-    hint: "Część ilości z prośby już dotarła — reszta w drodze.",
+    hint: "Część ilości z prośby już dotarła - reszta w drodze.",
   },
   {
     state: "informacja_ready",
-    hint: "Prośba informacyjna — towar dostępny (potwierdzenie magazynu lub automatyczne ze stanu Subiekta).",
+    hint: "Prośba informacyjna - towar dostępny (potwierdzenie magazynu lub automatyczne ze stanu Subiekta).",
   },
   {
     state: "delivered",
-    hint: "Towar na regale — pozycja jest automatycznie zaznaczona na liście.",
+    hint: "Towar na regale - pozycja jest automatycznie zaznaczona na liście.",
   },
   {
     state: "in_stock",
@@ -566,7 +566,7 @@ export const ZK_WATCH_STATUS_GUIDE_ITEMS: {
   },
   {
     state: "arrived",
-    hint: "Sprawa zamknięta — pozycja zrealizowana z Twojej strony.",
+    hint: "Sprawa zamknięta - pozycja zrealizowana z Twojej strony.",
   },
 ];
 
@@ -731,27 +731,27 @@ export function zkWatchLineCheckboxAriaLabel(input: {
   switch (uiState) {
     case "in_stock":
       return completedManually
-        ? `Zakończone — kliknij aby cofnąć: ${product}`
-        : `Odebrane z regału — kliknij aby oznaczyć jako zakończone: ${product}`;
+        ? `Zakończone - kliknij aby cofnąć: ${product}`
+        : `Odebrane z regału - kliknij aby oznaczyć jako zakończone: ${product}`;
     case "delivered":
-      return `Na regale — zaznaczone automatycznie: ${product}`;
+      return `Na regale - zaznaczone automatycznie: ${product}`;
     case "informacja_ready":
-      return `Dostępne (informacja) — zaznaczone automatycznie: ${product}`;
+      return `Dostępne (informacja) - zaznaczone automatycznie: ${product}`;
     case "partial":
       return checked
-        ? `Częściowo na regale — odznacz na liście: ${product}`
-        : `Częściowa dostawa — zaznacz gdy odnotowujesz na liście: ${product}`;
+        ? `Częściowo na regale - odznacz na liście: ${product}`
+        : `Częściowa dostawa - zaznacz gdy odnotowujesz na liście: ${product}`;
     case "arrived":
       return checked
-        ? `Zakończone — odznacz aby cofnąć: ${product}`
+        ? `Zakończone - odznacz aby cofnąć: ${product}`
         : `Oznacz jako zakończone: ${product}`;
     case "uncovered":
     case "new":
-      return `Brak dostawy — checkbox gdy towar będzie na regale: ${product}`;
+      return `Brak dostawy - checkbox gdy towar będzie na regale: ${product}`;
     case "in_request":
-      return `Pozycja w prośbie — checkbox gdy towar będzie na regale: ${product}`;
+      return `Pozycja w prośbie - checkbox gdy towar będzie na regale: ${product}`;
     case "scope_excluded":
-      return `Pominięte przy wyborze zakresu — checkbox po odbiorze z regału w Moje: ${product}`;
+      return `Pominięte przy wyborze zakresu - checkbox po odbiorze z regału w Moje: ${product}`;
     default:
       return `Checkbox niedostępny w tym stanie: ${product}`;
   }

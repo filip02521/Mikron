@@ -25,7 +25,7 @@ function order(partial: Partial<IndividualOrder> & { id: string }): IndividualOr
 }
 
 describe("my-order-lane-meta", () => {
-  it("resolveLinePickupAckMode — zęby vs regał", () => {
+  it("resolveLinePickupAckMode - zęby vs regał", () => {
     expect(
       resolveLinePickupAckMode(
         order({ id: "t", is_teeth: true, status: "Zrealizowane" })
@@ -38,7 +38,7 @@ describe("my-order-lane-meta", () => {
     ).toBe("pickup");
   });
 
-  it("resolveGroupAcknowledgeMode — mixed_pickup", () => {
+  it("resolveGroupAcknowledgeMode - mixed_pickup", () => {
     expect(
       resolveGroupAcknowledgeMode([
         order({ id: "t", is_teeth: true, status: "Zrealizowane" }),
@@ -47,7 +47,7 @@ describe("my-order-lane-meta", () => {
     ).toBe("mixed_pickup");
   });
 
-  it("splitPickupPendingIds — rozdziela zęby i regał", () => {
+  it("splitPickupPendingIds - rozdziela zęby i regał", () => {
     const split = splitPickupPendingIds([
       order({ id: "t", is_teeth: true, status: "Zrealizowane" }),
       order({ id: "r", is_teeth: false, status: "Zrealizowane" }),
@@ -56,7 +56,7 @@ describe("my-order-lane-meta", () => {
     expect(split.shelfIds).toEqual(["r"]);
   });
 
-  it("classifyMyOrderProductLanes — mixed", () => {
+  it("classifyMyOrderProductLanes - mixed", () => {
     expect(
       classifyMyOrderProductLanes([
         { isTeeth: true },
@@ -65,7 +65,7 @@ describe("my-order-lane-meta", () => {
     ).toBe("mixed");
   });
 
-  it("resolveGroupAcknowledgeMode — odbiór ma pierwszeństwo przed rezygnacją", () => {
+  it("resolveGroupAcknowledgeMode - odbiór ma pierwszeństwo przed rezygnacją", () => {
     expect(
       resolveGroupAcknowledgeMode([
         order({
@@ -83,7 +83,7 @@ describe("my-order-lane-meta", () => {
     ).toBe("pickup");
   });
 
-  it("displayProductLaneKind — mieszany tylko przy mixed_pickup", () => {
+  it("displayProductLaneKind - mieszany tylko przy mixed_pickup", () => {
     expect(displayProductLaneKind("mixed", "mixed_pickup")).toBe("mixed");
     expect(displayProductLaneKind("mixed", "teeth_handover")).toBe("teeth");
     expect(displayProductLaneKind("mixed", "pickup")).toBe("regular");

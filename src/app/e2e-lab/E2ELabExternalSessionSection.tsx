@@ -83,7 +83,7 @@ export function E2ELabExternalSessionSection() {
       className="space-y-3 rounded-md border border-slate-200 p-3"
     >
       <h2 className="text-sm font-semibold text-slate-900">
-        ZD estimate — sesja zewnętrzna (kontrakt)
+        ZD estimate - sesja zewnętrzna (kontrakt)
       </h2>
 
       <div className="flex flex-wrap gap-2">

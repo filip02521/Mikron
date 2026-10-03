@@ -194,7 +194,7 @@ export async function actionUpdateAppUser(form: {
       .select("id", { count: "exact", head: true })
       .eq("role", "admin");
     if ((count ?? 0) <= 1) {
-      return { error: "Nie możesz odebrać sobie roli administratora — jesteś ostatnim adminem." };
+      return { error: "Nie możesz odebrać sobie roli administratora - jesteś ostatnim adminem." };
     }
   }
 
@@ -272,7 +272,7 @@ export async function actionSaveAppUserPermissions(form: {
       .select("id", { count: "exact", head: true })
       .eq("role", "admin");
     if ((count ?? 0) <= 1) {
-      return { error: "Nie możesz odebrać sobie roli administratora — jesteś ostatnim adminem." };
+      return { error: "Nie możesz odebrać sobie roli administratora - jesteś ostatnim adminem." };
     }
   }
 

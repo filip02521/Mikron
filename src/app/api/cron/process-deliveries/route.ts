@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
         emailFailures: marked.emailFailures,
         queueFlushSent: queueFlush.sent,
         queueFlushError: queueFlush.error,
-        warning: "Statusy zaktualizowane — część e-maili nie wyszła",
+        warning: "Statusy zaktualizowane - część e-maili nie wyszła",
       });
     }
 
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
         processed: marked.processed,
         emailSent: marked.emailSent,
         queueFlushSent: queueFlush.sent,
-        warning: "E-mail nie skonfigurowany — statusy zaktualizowane, powiadomienia nie wysłane",
+        warning: "E-mail nie skonfigurowany - statusy zaktualizowane, powiadomienia nie wysłane",
       });
     }
 

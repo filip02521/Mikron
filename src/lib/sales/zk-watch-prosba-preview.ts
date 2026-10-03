@@ -34,7 +34,7 @@ export type ZkProsbaPreviewStatusBadgeVariant =
   | "success"
   | "warning"
   | "info"
-  | "purple"
+  | "info"
   | "danger";
 
 export function resolveZkProsbaPreviewStatusBadgeVariant(
@@ -128,7 +128,7 @@ export function formatZkProsbaPreviewMetaLine(
       parts.push(`${entry.deliveryCaption}: ${entry.deliveryDisplay.primaryLabel}`);
     } else {
       const dateLabel = entry.deliveryDisplay.detailLabel
-        ? `${entry.deliveryDisplay.primaryLabel} — ${entry.deliveryDisplay.detailLabel}`
+        ? `${entry.deliveryDisplay.primaryLabel} - ${entry.deliveryDisplay.detailLabel}`
         : entry.deliveryDisplay.primaryLabel;
       parts.push(`${entry.deliveryCaption}: ${dateLabel}`);
     }
@@ -217,7 +217,7 @@ export function resolveZkProsbaPreviewDelivery(
       deliveryCaption: "Termin dostawy",
       deliveryTone: "pending",
       deliveryDisplay: null,
-      deliveryEmptyLabel: "Prośba informacyjna — bez terminu dostawy",
+      deliveryEmptyLabel: "Prośba informacyjna - bez terminu dostawy",
     };
   }
 
@@ -225,7 +225,7 @@ export function resolveZkProsbaPreviewDelivery(
     deliveryCaption: "Termin dostawy",
     deliveryTone: "pending",
     deliveryDisplay: null,
-    deliveryEmptyLabel: "Jeszcze nie ustalono — dział dostaw poda datę w kolejnych krokach.",
+    deliveryEmptyLabel: "Jeszcze nie ustalono - dział dostaw poda datę w kolejnych krokach.",
   };
 }
 

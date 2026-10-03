@@ -158,7 +158,7 @@ export function resolveZdCreateKhId(input: {
   return {
     ok: false,
     message:
-      "Dostawca ma kilka dodatkowych identyfikatorów kontrahenta bez głównego — ustaw główny w Administracji.",
+      "Dostawca ma kilka dodatkowych identyfikatorów kontrahenta bez głównego - ustaw główny w Administracji.",
   };
 }
 
@@ -364,7 +364,7 @@ export function validateZdCreateClientLines(
   if (lines.length > ZD_CREATE_MAX_LINES) {
     return {
       ok: false,
-      message: `Za dużo pozycji (${lines.length}). Maks. ${ZD_CREATE_MAX_LINES} — zawęź zakres lub wyklucz towary.`,
+      message: `Za dużo pozycji (${lines.length}). Maks. ${ZD_CREATE_MAX_LINES} - zawęź zakres lub wyklucz towary.`,
     };
   }
   const seen = new Set<number>();
@@ -663,8 +663,8 @@ export function canCreateZdFromEstimateState(
       ok: false,
       tone: "warning",
       reason: state.createUnconfirmedAttempt
-        ? "Ostatnie tworzenie ZD zakończyło się timeoutem — sprawdź Subiekt / powiąż dokument, przelicz listę albo odblokuj świadomie."
-        : "ZD już utworzone z tej listy — powiąż inne ZD ręcznie, przelicz listę albo odblokuj świadomie.",
+        ? "Ostatnie tworzenie ZD zakończyło się timeoutem - sprawdź Subiekt / powiąż dokument, przelicz listę albo odblokuj świadomie."
+        : "ZD już utworzone z tej listy - powiąż inne ZD ręcznie, przelicz listę albo odblokuj świadomie.",
     };
   }
   if (
@@ -674,7 +674,7 @@ export function canCreateZdFromEstimateState(
     return {
       ok: false,
       tone: "warning",
-      reason: `Konflikt opakowanie ↔ para (${state.packagingPairConflictCount}) — ujednolić przed utworzeniem ZD.`,
+      reason: `Konflikt opakowanie ↔ para (${state.packagingPairConflictCount}) - ujednolić przed utworzeniem ZD.`,
     };
   }
   if (!(state.orderableCount > 0)) {

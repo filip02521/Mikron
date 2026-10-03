@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { toastFromError, toastFromUnknown } from "./notice-copy";
 
-describe("toastFromError — user-facing", () => {
+describe("toastFromError - user-facing", () => {
   it("uprawnienia → tytuł Brak uprawnień, bez stacka", () => {
     const toast = toastFromError(
       "Error: Brak uprawnień do operacji zakupowych\n    at requireOperations (auth.ts:1:1)"

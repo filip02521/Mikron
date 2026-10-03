@@ -99,7 +99,7 @@ export function MyOrderAssignedClient({
         : copyState === "error"
           ? "Brak NIP w Subiekcie dla tego klienta"
           : copyState === "copy_failed"
-            ? "Nie udało się skopiować NIP — spróbuj ponownie"
+            ? "Nie udało się skopiować NIP - spróbuj ponownie"
             : "Kliknij, aby skopiować NIP klienta";
 
   return (

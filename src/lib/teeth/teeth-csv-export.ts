@@ -68,20 +68,20 @@ export function teethOrderSpecsToCsv(summary: TeethSupplierBatchSummary): string
   for (const order of summary.byOrder) {
     if (order.groups.length === 0) {
       rows.push([
-        order.salesPersonName ?? "—",
+        order.salesPersonName ?? "-",
         order.product,
         order.symbol ?? "",
-        "—",
-        "—",
-        "—",
-        "—",
+        "-",
+        "-",
+        "-",
+        "-",
         order.quantity,
       ].map(csvEscape).join(","));
       continue;
     }
     for (const group of order.groups) {
       rows.push([
-        order.salesPersonName ?? "—",
+        order.salesPersonName ?? "-",
         order.product,
         order.symbol ?? "",
         group.color,
@@ -97,13 +97,13 @@ export function teethOrderSpecsToCsv(summary: TeethSupplierBatchSummary): string
 }
 
 function jawLabel(jaw: string | null, kind: string | null, mould?: string | null): string {
-  if (!kind || !jawRequiredForKind(kind as never)) return "—";
+  if (!kind || !jawRequiredForKind(kind as never)) return "-";
   // CSV: pokaż szczękę z jaw lub z fasonu (N5U → Góra), nie ukrywaj.
   const resolved = resolveTeethJaw(mould, (jaw as "upper" | "lower" | null) ?? null);
-  return JAW_LABELS[resolved ?? ""] ?? "—";
+  return JAW_LABELS[resolved ?? ""] ?? "-";
 }
 
 function kindLabel(kind: string | null): string {
-  if (!kind) return "—";
-  return TEETH_KIND_LABELS[kind as keyof typeof TEETH_KIND_LABELS] ?? "—";
+  if (!kind) return "-";
+  return TEETH_KIND_LABELS[kind as keyof typeof TEETH_KIND_LABELS] ?? "-";
 }

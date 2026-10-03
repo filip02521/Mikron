@@ -36,7 +36,7 @@ export function DailyPanelExceptionsView({
       <EmptyState
         brandAccent
         title="Brak wyjątków"
-        description="Wszystko jest w harmonogramie lub kolejce Dziś. Gdy pojawi się coś poza planem — zobaczysz to tutaj."
+        description="Wszystko jest w harmonogramie lub kolejce Dziś. Gdy pojawi się coś poza planem - zobaczysz to tutaj."
         icon={<DailySectionIcon kind="hidden" size={28} />}
         action={
           <Button variant="secondary" size="sm" className="inline-flex items-center gap-1.5" onClick={onGoToday}>

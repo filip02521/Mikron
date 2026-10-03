@@ -61,7 +61,7 @@ export function OnDemandSuppliersSheet({
                 W razie potrzeby
               </h2>
               <p className="mt-1 text-sm leading-relaxed text-slate-500">
-                Dostawcy bez stałego terminu w harmonogramie — zamów, gdy coś jest
+                Dostawcy bez stałego terminu w harmonogramie - zamów, gdy coś jest
                 potrzebne.
               </p>
             </div>
@@ -108,8 +108,8 @@ export function OnDemandSuppliersSheet({
                         </button>
                         <p className="mt-0.5 text-xs text-slate-500">
                           {row.locationLabel}
-                          {row.stockLabel !== "—" ? ` · ${row.stockLabel}` : ""}
-                          {row.intervalLabel && row.intervalLabel !== "—"
+                          {row.stockLabel !== "-" ? ` · ${row.stockLabel}` : ""}
+                          {row.intervalLabel && row.intervalLabel !== "-"
                             ? ` · ${row.intervalLabel}`
                             : ""}
                         </p>

@@ -128,7 +128,7 @@ export function procurementRequestLaneCountPillClass(
   tone: ProcurementRequestLaneTone
 ): string {
   return cn(
-    "inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold tabular-nums ring-1 ring-inset",
+    "inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-md px-1.5 text-[10px] font-semibold tabular-nums ring-1 ring-inset",
     LANE_COUNT_PILL[tone]
   );
 }

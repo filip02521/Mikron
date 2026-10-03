@@ -62,7 +62,7 @@ export function formatTeethSpecLabel(line: Pick<TeethSpecLine, "color" | "mould"
     teethJawLabel(line.jaw, line.kind, line.mould),
     teethKindLabel(line.kind),
   ].filter((p): p is string => Boolean(p));
-  return parts.length > 0 ? parts.join(" · ") : "—";
+  return parts.length > 0 ? parts.join(" · ") : "-";
 }
 
 function specKeyOf(color: string, mould: string | null, jaw: TeethJaw | null, kind: TeethKind | null) {
@@ -184,16 +184,16 @@ export function formatTeethAggregateForClipboard(
   const total = lines.reduce((sum, l) => sum + l.quantity, 0);
   const rows = lines.map((l) => {
     const cols = [
-      l.color || "—",
-      l.mould?.trim() || "—",
-      teethJawLabel(l.jaw, l.kind, l.mould) ?? "—",
-      teethKindLabel(l.kind) ?? "—",
+      l.color || "-",
+      l.mould?.trim() || "-",
+      teethJawLabel(l.jaw, l.kind, l.mould) ?? "-",
+      teethKindLabel(l.kind) ?? "-",
       `${l.quantity} szt.`,
     ];
     return cols.join("\t");
   });
   return [
-    `Zamówienie zębów — ${supplierName}`,
+    `Zamówienie zębów - ${supplierName}`,
     ["Kolor", "Fason", "Szczęka", "Typ", "Ilość"].join("\t"),
     ...rows,
     `Razem: ${total} szt.`,
@@ -278,17 +278,17 @@ export function formatTeethAggregateSectionsForClipboard(
   const blocks = sections.map((s) => {
     const rows = s.lines.map((l) =>
       [
-        l.color || "—",
-        l.mould?.trim() || "—",
-        teethJawLabel(l.jaw, l.kind, l.mould) ?? "—",
-        teethKindLabel(l.kind) ?? "—",
+        l.color || "-",
+        l.mould?.trim() || "-",
+        teethJawLabel(l.jaw, l.kind, l.mould) ?? "-",
+        teethKindLabel(l.kind) ?? "-",
         `${l.quantity} szt.`,
       ].join("\t"),
     );
     return [`${s.label} (${s.total} szt.)`, ...rows].join("\n");
   });
   return [
-    `Zamówienie zębów — ${supplierName}`,
+    `Zamówienie zębów - ${supplierName}`,
     ["Kolor", "Fason", "Szczęka", "Typ", "Ilość"].join("\t"),
     ...blocks.flatMap((b, i) => (i === 0 ? [b] : ["", b])),
     `Razem: ${total} szt.`,

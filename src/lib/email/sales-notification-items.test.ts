@@ -6,7 +6,7 @@ import {
 } from "@/lib/email/sales-notification-items";
 
 describe("sales notification items", () => {
-  it("buildDeliveryNotificationItem — pełna dostawa", () => {
+  it("buildDeliveryNotificationItem - pełna dostawa", () => {
     const item = buildDeliveryNotificationItem(
       {
         supplier: { name: "Dostawca X" },
@@ -25,7 +25,7 @@ describe("sales notification items", () => {
     expect(item.clientName).toBe("Kowalski");
   });
 
-  it("buildDeliveryNotificationItem — częściowa", () => {
+  it("buildDeliveryNotificationItem - częściowa", () => {
     const item = buildDeliveryNotificationItem({
       supplier: { name: "D" },
       products: "P",
@@ -63,7 +63,7 @@ describe("sales notification items", () => {
       delivered_quantity: "1",
       status: "Zrealizowane",
     });
-    expect(item.products).toBe("—");
+    expect(item.products).toBe("-");
   });
 
   it("buildProcurementCancelNotificationItem", () => {

@@ -151,7 +151,7 @@ export function VacationDelegationManager({
                 value={form.delegateProfileId}
                 onChange={(e) => setForm({ ...form, delegateProfileId: e.target.value })}
               >
-                <option value="">— wybierz —</option>
+                <option value="">- wybierz -</option>
                 {delegates.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name} {d.email ? `(${d.email})` : ""}
