@@ -77,14 +77,14 @@ export function SidebarBrandBlock({
 }) {
   return (
     <div>
-      <div className="flex items-center gap-2.5">
-        <AppBrandMark size="sm" variant="light" className="shrink-0" />
+      {/* Pełne logo poziome (jak docs/brand/ontime-logo.svg): znak + OnTime + hasło. */}
+      <div className="flex items-center gap-3" title={`${ONTIME_APP_NAME} · ${ONTIME_COMPANY}`}>
+        <AppBrandMark size="md" variant="light" className="shrink-0" />
         <div className="min-w-0 flex-1">
-          <OnTimeWordmark />
-          <p className="mt-0.5 truncate text-[11px] leading-snug text-slate-500">
+          <OnTimeWordmark className="pr-7 text-[22px] font-bold leading-none tracking-[-0.03em]" />
+          <p className="mt-1.5 whitespace-nowrap text-[9px] font-semibold uppercase leading-none tracking-[0.1em] text-slate-500">
             {ONTIME_TAGLINE_SHORT}
           </p>
-          <p className="truncate text-[10px] font-medium text-slate-400">{ONTIME_COMPANY}</p>
         </div>
       </div>
       <SidebarUserRow
