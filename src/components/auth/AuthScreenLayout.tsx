@@ -8,7 +8,6 @@ import {
 } from "@/components/auth/AuthBackgroundArt";
 import { AuthMainBridgeFade, AuthSplitBridge } from "@/components/auth/AuthSplitBridge";
 import { isAuthVisualVariant } from "@/components/auth/auth-visual-variant";
-import { ONTIME_AUTH_FOOTER } from "@/lib/ui/ontime-brand";
 import { cn } from "@/lib/cn";
 
 function AuthAsidePanel() {
@@ -70,9 +69,7 @@ export function AuthScreenLayout({
         className={cn(
           "relative isolate flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain",
           "scroll-smooth [scroll-padding-top:max(0.75rem,env(safe-area-inset-top))] [scroll-padding-bottom:max(1rem,env(safe-area-inset-bottom))]",
-          minimal
-            ? "bg-white"
-            : "bg-indigo-50/40"
+          minimal ? "bg-white" : "bg-slate-50"
         )}
       >
         <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
@@ -81,7 +78,8 @@ export function AuthScreenLayout({
         </div>
         <div
           className={cn(
-            "relative z-[1] mx-auto flex w-full min-w-0 max-w-md flex-1 flex-col",
+            // Bardzo szeroki ekran: formularz bliżej panelu marki, nie w środku pustej połowy.
+            "relative z-[1] mx-auto flex w-full min-w-0 max-w-md flex-1 flex-col 2xl:ml-[14%] 2xl:mr-auto",
             "px-4 py-5",
             "pt-[max(0.75rem,env(safe-area-inset-top))]",
             "pb-[max(1rem,env(safe-area-inset-bottom))]",
@@ -90,9 +88,9 @@ export function AuthScreenLayout({
         >
           <div className="auth-enter relative z-[1] my-auto w-full min-h-0 min-w-0 max-w-full">
             <header className="mb-4 sm:mb-5 lg:mb-8">
-              <AuthBrandHeader className="mb-4 sm:mb-5" />
+              <AuthBrandHeader className="mb-4 sm:mb-5 lg:hidden" />
               <div className="text-center">
-                <h1 className="text-lg font-semibold tracking-tight text-slate-900 sm:text-xl">
+                <h1 className="text-lg font-semibold tracking-tight text-slate-900 sm:text-xl lg:text-2xl">
                   {title}
                 </h1>
                 {subtitle ? (
@@ -103,17 +101,14 @@ export function AuthScreenLayout({
               </div>
             </header>
 
-            {hideCompactQuote ? null : (
-              <AuthQuotePanel compact className="mb-3 max-sm:mb-2.5 lg:hidden" />
-            )}
-
-            <div className="auth-card-enter min-h-0 min-w-0 max-w-full rounded-lg border border-slate-200/80 bg-white/95 p-4 shadow-xl shadow-slate-200/40 backdrop-blur-sm sm:p-6">
+            <div className="auth-card-enter min-h-0 min-w-0 max-w-full rounded-lg border border-slate-200 bg-white p-4 shadow-[var(--shadow-card-elevated)] sm:p-6">
               {children}
             </div>
 
-            <p className="mt-4 text-center text-xs leading-relaxed text-slate-400 sm:mt-5 lg:hidden">
-              {ONTIME_AUTH_FOOTER}
-            </p>
+            {hideCompactQuote ? null : (
+              <AuthQuotePanel compact className="mt-3 lg:hidden" />
+            )}
+
           </div>
         </div>
       </main>

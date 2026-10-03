@@ -33,18 +33,39 @@ export function AuthAsideBackdrop() {
         />
       ))}
 
-      <g transform={`translate(${cx} ${cy})`} stroke="url(#auth-aside-hand)" strokeLinecap="round">
-        <line x1="0" y1="0" x2="0" y2="-115" strokeWidth="3" opacity="0.35" transform="rotate(-60)" />
-        <line x1="0" y1="0" x2="0" y2="-165" strokeWidth="2" opacity="0.28" transform="rotate(30)" />
-        <circle r="5" fill="white" fillOpacity="0.2" />
+      <g transform={`translate(${cx} ${cy})`}>
+        {/* Smuga sekundnika: krótki łuk na obwodzie, obiega tarczę raz na 40 s. */}
+        <circle
+          className="auth-dial-sweep"
+          r="260"
+          fill="none"
+          stroke="#aadbe0"
+          strokeOpacity="0.45"
+          strokeWidth="2"
+          strokeDasharray="72 1562"
+          strokeLinecap="round"
+        />
+        <circle
+          className="auth-dial-orbit"
+          r="290"
+          fill="none"
+          stroke="white"
+          strokeOpacity="0.16"
+          strokeWidth="1"
+          strokeDasharray="2 14"
+          strokeLinecap="round"
+        />
+        <g stroke="#d4edef" strokeLinecap="round">
+          <g className="auth-dial-hand auth-dial-hand--hour">
+            <line x1="0" y1="0" x2="0" y2="-115" strokeWidth="3" opacity="0.45" transform="rotate(-60)" />
+          </g>
+          <g className="auth-dial-hand auth-dial-hand--minute">
+            <line x1="0" y1="0" x2="0" y2="-165" strokeWidth="2" opacity="0.38" transform="rotate(30)" />
+          </g>
+          <circle r="5" fill="white" fillOpacity="0.2" />
+        </g>
       </g>
 
-      <defs>
-        <linearGradient id="auth-aside-hand" x1="0" y1="0" x2="0" y2="-1">
-          <stop offset="0%" stopColor="#d4edef" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#bae6fd" stopOpacity="0.5" />
-        </linearGradient>
-      </defs>
 
       <path
         d="M 380 -20 A 180 180 0 0 0 520 120"
@@ -104,9 +125,6 @@ export function AuthMainBackdropRich() {
   const bottomLeftCy = 820;
   const bottomLeftTicks = authTickLines(bottomLeftCx, bottomLeftCy, 160, 0.88);
 
-  const centerCx = 420;
-  const centerCy = 460;
-  const centerTicks = authTickLines(centerCx, centerCy, 180, 0.9, 4);
 
   return (
     <>
@@ -117,61 +135,6 @@ export function AuthMainBackdropRich() {
         viewBox="0 0 800 900"
         preserveAspectRatio="xMidYMid slice"
       >
-        <defs>
-          <radialGradient id="auth-main-glow" cx="50%" cy="45%" r="55%">
-            <stop offset="0%" stopColor="#d4edef" stopOpacity="0.35" />
-            <stop offset="55%" stopColor="#f0f9ff" stopOpacity="0.12" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
-          </radialGradient>
-          <linearGradient id="auth-main-hand" x1="0" y1="0" x2="0" y2="-1">
-            <stop offset="0%" stopColor="#188995" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0.12" />
-          </linearGradient>
-        </defs>
-
-        <rect width="800" height="900" fill="url(#auth-main-glow)" />
-
-        {/* Tarcza za formularzem — centrum ekranu */}
-        <circle
-          cx={centerCx}
-          cy={centerCy}
-          r="195"
-          fill="none"
-          stroke="#188995"
-          strokeOpacity="0.09"
-          strokeWidth="1.25"
-        />
-        <circle
-          cx={centerCx}
-          cy={centerCy}
-          r="145"
-          fill="none"
-          stroke="#0284c7"
-          strokeOpacity="0.07"
-          strokeWidth="1"
-        />
-        {centerTicks.map((tick, i) => (
-          <line
-            key={`c-${i}`}
-            x1={tick.x1}
-            y1={tick.y1}
-            x2={tick.x2}
-            y2={tick.y2}
-            stroke="#188995"
-            strokeOpacity={tick.major ? 0.14 : 0.07}
-            strokeWidth={tick.major ? 1.5 : 1}
-            strokeLinecap="round"
-          />
-        ))}
-        <g
-          transform={`translate(${centerCx} ${centerCy})`}
-          stroke="url(#auth-main-hand)"
-          strokeLinecap="round"
-        >
-          <line x1="0" y1="0" x2="0" y2="-72" strokeWidth="2.5" transform="rotate(-60)" />
-          <line x1="0" y1="0" x2="0" y2="-105" strokeWidth="1.75" transform="rotate(30)" />
-          <circle r="4" fill="#188995" fillOpacity="0.12" />
-        </g>
 
         {/* Prawy górny róg */}
         <circle
@@ -192,6 +155,17 @@ export function AuthMainBackdropRich() {
           strokeOpacity="0.06"
           strokeWidth="1"
         />
+        <g transform={`translate(${topRightCx} ${topRightCy})`}>
+          <circle
+            r="245"
+            fill="none"
+            stroke="#188995"
+            strokeOpacity="0.12"
+            strokeWidth="1"
+            strokeDasharray="2 16"
+            strokeLinecap="round"
+          />
+        </g>
         {topRightTicks.map((tick, i) => (
           <line
             key={`tr-${i}`}
@@ -230,35 +204,6 @@ export function AuthMainBackdropRich() {
           />
         ))}
 
-        {/* Delikatne łuki łączące kompozycję */}
-        <path
-          d="M 120 120 Q 400 40 680 100"
-          fill="none"
-          stroke="#188995"
-          strokeOpacity="0.05"
-          strokeWidth="1"
-        />
-        <path
-          d="M 40 680 Q 320 820 760 760"
-          fill="none"
-          stroke="#0284c7"
-          strokeOpacity="0.05"
-          strokeWidth="1"
-        />
-
-        {/* Siatka punktów */}
-        {Array.from({ length: 6 }).map((_, row) =>
-          Array.from({ length: 8 }).map((__, col) => (
-            <circle
-              key={`${row}-${col}`}
-              cx={48 + col * 92}
-              cy={48 + row * 140}
-              r="1.25"
-              fill="#188995"
-              fillOpacity={0.045 + (col % 2) * 0.015}
-            />
-          ))
-        )}
       </svg>
     </>
   );

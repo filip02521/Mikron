@@ -2515,6 +2515,44 @@ main:has([data-zd-estimate-viewport]) [data-zd-estimate-viewport] {
   }
 }
 
+/* Tło logowania: tarcza OnTime „chodzi” — wskazówki i przerywany pierścień obracają się
+   bardzo wolno wokół środka tarczy (grupy są przesunięte translate() na środek, więc
+   origin 0 0 = oś zegara). Ruch ciągły = linear; tylko transform. */
+.auth-dial-hand,
+.auth-dial-orbit,
+.auth-dial-sweep {
+  transform-box: view-box;
+  transform-origin: 0 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .auth-dial-hand--minute {
+    animation: auth-dial-spin 90s linear infinite;
+  }
+  .auth-dial-hand--hour {
+    animation: auth-dial-spin 1080s linear infinite;
+  }
+  .auth-dial-orbit {
+    animation: auth-dial-spin 160s linear infinite;
+  }
+  .auth-dial-sweep {
+    animation: auth-dial-spin 40s linear infinite;
+  }
+}
+
+/* Bez ruchu: smuga sekundnika znika, tarcza zostaje statyczna. */
+@media (prefers-reduced-motion: reduce) {
+  .auth-dial-sweep {
+    display: none;
+  }
+}
+
+@keyframes auth-dial-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .auth-enter {
   animation: auth-enter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
