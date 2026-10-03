@@ -25,7 +25,6 @@ import { hrefWithSalesPreviewFromUrl } from "@/lib/nav/sales-preview-href";
 import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
 import { SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
 import {
-  mojeQueueRowLayoutClass,
   mojeShipmentListClass,
   mojeShipmentSectionShellClass,
 } from "@/lib/ui/moje-shipment-row-styles";
@@ -104,7 +103,7 @@ function MojeAnnouncementCompactRow({
     >
       <button
         type="button"
-        className={cn(mojeQueueRowLayoutClass, "w-full px-3 py-2.5 text-left sm:px-4")}
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-left sm:px-4"
         onClick={onToggle}
         aria-expanded={expanded}
       >
