@@ -77,7 +77,7 @@ export function SupplierStockSignal({
       title={`${asOf} Liczba pozycji i wartość jak w Kreatorze ZD (ostatnie ceny z ZD).`}
     >
       {s.criticalCount > 0 ? (
-        <span className="rounded-md bg-red-50 px-1.5 font-semibold text-red-700 ring-1 ring-red-200">
+        <span className="rounded-md bg-red-50 px-1.5 font-medium text-red-800">
           {s.criticalCount} {polishPluralWord(s.criticalCount, "brak", "braki", "braków")}
         </span>
       ) : null}

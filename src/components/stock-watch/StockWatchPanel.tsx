@@ -209,7 +209,7 @@ export function StockWatchPanel({
           <nav
             role="tablist"
             aria-label="Sekcje panelu braków"
-            className="sticky top-0 z-10 -mx-1 flex gap-1 overflow-x-auto rounded-md border border-slate-200/80 bg-white/90 p-1 shadow-sm backdrop-blur"
+            className="sticky top-0 z-10 -mx-1 flex gap-1 overflow-x-auto rounded-md border border-slate-200/80 bg-white p-1"
           >
             {tabs.map((t) => {
               const active = t.id === tab;
@@ -224,22 +224,20 @@ export function StockWatchPanel({
                   className={cn(
                     "inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                     active
-                      ? "bg-slate-900 text-white shadow-sm"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      ? "bg-indigo-50 text-indigo-900"
+                      : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                   )}
                 >
                   {t.label}
                   {t.count ? (
                     <span
                       className={cn(
-                        "min-w-5 rounded-md px-1.5 text-center text-[11px] font-semibold tabular-nums",
-                        active
-                          ? "bg-white/20 text-white"
-                          : t.tone === "danger"
-                            ? "bg-red-100 text-red-800"
-                            : t.tone === "warning"
-                              ? "bg-amber-100 text-amber-900"
-                              : "bg-slate-100 text-slate-700"
+                        "text-[12px] font-semibold tabular-nums",
+                        t.tone === "danger"
+                          ? "text-red-700"
+                          : t.tone === "warning"
+                            ? "text-amber-700"
+                            : "text-slate-500"
                       )}
                     >
                       {t.count}
@@ -271,14 +269,13 @@ function RunStatusChip({ run }: { run: StockWatchRunSummary | null }) {
   if (!run) {
     return <span className="text-xs text-slate-500">Analiza jeszcze nie działała</span>;
   }
+  // Udana analiza to stan normalny: szary tekst. Kolor tylko dla częściowej / nieudanej.
   const tone =
-    run.status === "ok"
-      ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
-      : run.status === "running"
-        ? "bg-indigo-50 text-indigo-800 ring-indigo-200"
-        : run.status === "partial"
-          ? "bg-amber-50 text-amber-900 ring-amber-200"
-          : "bg-red-50 text-red-800 ring-red-200";
+    run.status === "partial"
+      ? "text-amber-800"
+      : run.status === "ok" || run.status === "running"
+        ? "text-slate-500"
+        : "text-red-700";
   const label =
     run.status === "running"
       ? `Liczę: ${run.scopesDone}/${run.scopesTotal} dostawców`
@@ -286,12 +283,14 @@ function RunStatusChip({ run }: { run: StockWatchRunSummary | null }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium ring-1 ring-inset",
+        "inline-flex items-center gap-1.5 text-xs font-medium tabular-nums",
         tone
       )}
       title={`Sprzedaż do ${run.salesEndDate} · dostawcy ${run.scopesDone}/${run.scopesTotal}`}
     >
-      <span className={cn("size-1.5 rounded-full", run.status === "running" ? "animate-pulse bg-indigo-500" : "bg-current opacity-70")} />
+      {run.status === "running" ? (
+        <span className="size-1.5 rounded-full bg-indigo-500 motion-safe:animate-pulse" aria-hidden />
+      ) : null}
       {label}
     </span>
   );
@@ -308,8 +307,13 @@ function OverviewBand({
   return (
     <Card padding={false} className="p-4 sm:p-5">
       <div className="flex flex-col gap-5 md:flex-row md:items-center">
-        <div className="flex shrink-0 justify-center md:w-48 md:border-r md:border-slate-100 md:pr-5">
+        <div className="shrink-0 md:w-40 md:border-r md:border-slate-100 md:pr-5">
           <StockHealthGauge score={health.score} active={health.active} ok={health.ok} />
+          {counts.noSales > 0 ? (
+            <p className="mt-1 text-[11px] tabular-nums text-slate-500">
+              Bez sprzedaży: {counts.noSales}
+            </p>
+          ) : null}
         </div>
         <div className="grid flex-1 grid-cols-2 gap-2.5 lg:grid-cols-5">
           <PanelSummaryMetric
@@ -348,48 +352,7 @@ function OverviewBand({
           />
         </div>
       </div>
-      <StatusDistribution counts={counts} />
     </Card>
-  );
-}
-
-/** Pasek rozkładu statusów aktywnych SKU (Standard). */
-function StatusDistribution({ counts }: { counts: StockWatchDashboard["counts"] }) {
-  const parts = [
-    { key: "out_of_stock" as const, n: counts.outOfStock },
-    { key: "critical" as const, n: counts.critical },
-    { key: "warning" as const, n: counts.warning },
-    { key: "ok" as const, n: counts.ok },
-  ];
-  const total = parts.reduce((s, p) => s + p.n, 0);
-  if (total === 0) return null;
-  return (
-    <div className="mt-4 border-t border-slate-100 pt-3">
-      <div className="flex h-2 w-full overflow-hidden rounded-full bg-slate-100" aria-hidden>
-        {parts.map((p) =>
-          p.n > 0 ? (
-            <div
-              key={p.key}
-              className={STOCK_WATCH_STATUS_META[p.key].bar}
-              style={{ width: `${(p.n / total) * 100}%` }}
-            />
-          ) : null
-        )}
-      </div>
-      <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-600">
-        {parts.map((p) => (
-          <li key={p.key} className="inline-flex items-center gap-1.5">
-            <span className={cn("size-2 rounded-full", STOCK_WATCH_STATUS_META[p.key].dot)} />
-            {STOCK_WATCH_STATUS_META[p.key].label}
-            <span className="font-semibold tabular-nums text-slate-800">{p.n}</span>
-          </li>
-        ))}
-        <li className="inline-flex items-center gap-1.5 text-slate-500">
-          <span className="size-2 rounded-full bg-slate-300" />
-          Bez sprzedaży {counts.noSales}
-        </li>
-      </ul>
-    </div>
   );
 }
 
@@ -429,14 +392,14 @@ function CoverChip({
 function DeliveryRiskTag({ risk }: { risk: NonNullable<StockWatchRowView["deliveryRisk"]> }) {
   return risk === "before_delivery" ? (
     <span
-      className="whitespace-nowrap rounded bg-red-50 px-1.5 text-[11px] font-semibold text-red-700 ring-1 ring-red-200"
+      className="whitespace-nowrap rounded-md bg-red-50 px-1.5 text-[11px] font-medium text-red-800"
       title="Przy obecnym tempie sprzedaży (z towarem w drodze) skończy się, zanim przyjedzie zamówienie złożone dziś."
     >
       przed dostawą
     </span>
   ) : (
     <span
-      className="whitespace-nowrap rounded bg-amber-50 px-1.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200"
+      className="whitespace-nowrap rounded-md bg-amber-50 px-1.5 text-[11px] font-medium text-amber-900"
       title="Skończy się przed dostawą z kolejnego planowego zamówienia - warto zamówić wcześniej."
     >
       przed kolejną dostawą
@@ -510,15 +473,15 @@ function AlertsSection({
     );
   }
   return (
-    <Card padding={false} className="overflow-hidden border-red-200/70">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-red-100 bg-red-50/60 px-4 py-3 sm:px-5">
-        <div className="flex items-center gap-2">
-          <span className="grid size-8 place-items-center rounded-md bg-red-600 text-white">
-            <IconAlertCircle size={18} strokeWidth={2} />
+    <Card padding={false} className="overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
+        <div className="flex items-start gap-2">
+          <span className="mt-0.5 text-red-600" aria-hidden>
+            <IconAlertCircle size={16} strokeWidth={2} />
           </span>
           <div>
-            <h2 className="text-sm font-semibold text-red-950">Czerwona strefa</h2>
-            <p className="text-xs text-red-900/70">
+            <h2 className="text-sm font-semibold text-slate-900">Czerwona strefa</h2>
+            <p className="text-xs text-slate-500">
               Brak, ≤ 48 h i „przed dostawą” (skończy się, zanim przyjedzie zamówienie złożone dziś).
             </p>
           </div>
@@ -537,7 +500,7 @@ function AlertsSection({
         />
       </div>
       {/* Telefon: karty zamiast szerokiej tabeli. */}
-      <ul className="divide-y divide-red-100 sm:hidden">
+      <ul className="divide-y divide-slate-100 sm:hidden">
         {visible.map((row) => (
           <li key={row.subiektTwId} className="flex gap-3 px-4 py-3">
             <div className="min-w-0 flex-1">
@@ -586,7 +549,7 @@ function AlertsSection({
           </thead>
           <tbody>
             {visible.map((row) => (
-              <tr key={row.subiektTwId} className={row.status === "out_of_stock" ? "bg-red-50/40" : undefined}>
+              <tr key={row.subiektTwId}>
                 <td>
                   <ProductCell row={row} />
                   <p className="max-w-[16rem] truncate text-[11px] font-medium text-slate-600">{row.supplierName ?? "-"}</p>
@@ -684,8 +647,7 @@ function SupplierProposalCard({
     <Card
       padding={false}
       className={cn(
-        "flex flex-col p-4 transition-shadow hover:shadow-md",
-        urgent > 0 && "border-red-200/80"
+        "flex flex-col p-4 transition-colors hover:border-slate-300"
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -722,7 +684,7 @@ function SupplierProposalCard({
         </p>
       ) : null}
       {p.beforeDeliveryCount > 0 || p.beforeNextDeliveryCount > 0 ? (
-        <p className="mt-1.5 rounded-md bg-red-50/70 px-2 py-1 text-[11px] leading-snug text-red-900">
+        <p className="mt-1.5 text-[11px] leading-snug text-red-800">
           {p.beforeDeliveryCount > 0 ? (
             <strong>{p.beforeDeliveryCount} skończy się przed dostawą zamówienia złożonego dziś. </strong>
           ) : null}
@@ -765,7 +727,7 @@ function SupplierProposalCard({
           <>
             <Link
               href={buildZdEstimateLaunchHref(p.supplierId)}
-              className="inline-flex h-10 w-full items-center justify-center rounded-md bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+              className="inline-flex h-9 w-full items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-semibold text-indigo-700 transition-colors hover:border-indigo-200 hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
             >
               Przygotuj ZD
             </Link>
