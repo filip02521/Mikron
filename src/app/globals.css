@@ -95,11 +95,6 @@ html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
     0 1px 2px rgba(21, 25, 32, 0.05), 0 6px 20px -8px rgba(21, 25, 32, 0.12);
   --shadow-elevated: 0 4px 14px -4px rgba(21, 25, 32, 0.1);
   --shadow-brand: 0 4px 14px -6px rgba(15, 115, 128, 0.25);
-
-  /* Logo — wskazówki (dyskretny akcent petrol → sky) */
-  --brand-clock-hand-from: #d4edef;
-  --brand-clock-hand-to: #e0f2fe;
-  --brand-clock-tick: rgba(255, 255, 255, 0.16);
 }
 
 @theme inline {

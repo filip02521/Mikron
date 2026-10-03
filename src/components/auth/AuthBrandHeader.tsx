@@ -16,7 +16,7 @@ export function AuthBrandHeader({
         size="lg"
         variant="light"
         className={cn(
-          "mx-auto mb-3 bg-indigo-600 ring-sky-500/35 sm:mb-4",
+          "mx-auto mb-3 sm:mb-4",
           "motion-safe:transition-transform motion-safe:hover:scale-[1.02]",
           markClassName
         )}

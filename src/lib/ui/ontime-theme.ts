@@ -114,10 +114,6 @@ export function sidebarNavBadgeClassForTone(tone: NavTone, active: boolean): str
   return tone === "amber" || tone === "orange" ? "text-amber-700" : "text-slate-500";
 }
 
-/** Logo w aplikacji — gradient jak na logowaniu */
-export const brandMarkAppClass =
-  "bg-indigo-600 text-white shadow-[var(--shadow-brand)] ring-1 ring-sky-500/30";
-
 /** Plakietka roli — delikatny ton bez lewego paska. */
 export function roleBadgeClass(role: string): string {
   const tint: Record<string, string> = {
