@@ -1359,6 +1359,7 @@ export async function actionRunZdEstimateManual(
       zapasMin,
       ordersBaseUrl: orders.config.baseUrl,
       salesSmoothing: input.salesSmoothing === true,
+      salesProfileRefresh: "background",
       onProgress: touchProgress,
     });
     if (!engine.ok) {

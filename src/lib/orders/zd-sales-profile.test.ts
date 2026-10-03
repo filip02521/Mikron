@@ -27,6 +27,11 @@ describe("classifyZdSalesProfile", () => {
     expect(classify(Array(12).fill(0))).toBe("none");
   });
 
+  it("jedna sprzedaż po roku ciszy to rzadki, nie nowość", () => {
+    expect(classify([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 20])).toBe("rare");
+    expect(classify([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0])).toBe("rare");
+  });
+
   it("okno 60 dni pomija dwa ostatnie okna przy liczeniu typowego miesiąca", () => {
     const c = classifyZdSalesProfile({ windows: TP045, currentSales: 46, currentDays: 60 });
     expect(c.currentMonthly).toBe(23);
@@ -129,5 +134,14 @@ describe("wiersz Kreatora z profilem", () => {
     const after = mapZdEstimateLineToManual(applyZdSalesProfileToLine(spikeLine, meta, 0), { ...opts, history });
     expect(after.salesTrackReasons).not.toContain("sales_spike");
     expect(after.celZapasu).toBe(5);
+  });
+
+  it("przy wygładzeniu stary skok pomijany też dla regularnych (profil rozstrzyga)", () => {
+    const history = { lastOrderedQty: 2, linkedAt: new Date(Date.now() - 20 * 86_400_000).toISOString() };
+    const steadyLine = { ...apiLine, dostepne: 10, sprzedazOkres: 11, sprzedazDziennie: 11 / 30, celZapasu: 11 };
+    const off = resolveZdSalesProfile({ windows: STEADY, sprzedazOkres: 11, dniOkresu: 30, prosbaPieces: 0, smoothing: false });
+    const on = resolveZdSalesProfile({ windows: STEADY, sprzedazOkres: 11, dniOkresu: 30, prosbaPieces: 0, smoothing: true });
+    expect(mapZdEstimateLineToManual(applyZdSalesProfileToLine(steadyLine, off, 0), { ...opts, history }).salesTrackReasons).toContain("sales_spike");
+    expect(mapZdEstimateLineToManual(applyZdSalesProfileToLine(steadyLine, on, 0), { ...opts, history }).salesTrackReasons).not.toContain("sales_spike");
   });
 });

@@ -13,21 +13,36 @@ export type ZdSalesProfileScope = { mode: "grupa" | "cecha"; id: number };
 
 /** Profil zakresu uznajemy za świeży, gdy kończy się najwyżej tyle dni przed końcem okna. */
 const FRESH_DAYS = 3;
+/**
+ * Kreator: profil do tylu dni używamy od razu (okna przesunięte o kilka dni nie zmieniają
+ * klasyfikacji), a odświeżamy w tle — duże zakresy liczą się nawet minutę.
+ */
+const USABLE_DAYS = 14;
 
 function shiftDateKey(key: string, days: number): string {
   const ms = Date.parse(`${key}T00:00:00Z`) + days * 24 * 60 * 60 * 1000;
   return new Date(ms).toISOString().slice(0, 10);
 }
 
-async function scopeIsFresh(scope: ZdSalesProfileScope, endDate: string): Promise<boolean> {
+/** fresh = do 3 dni, usable = do 14 dni, none = brak / starszy / z przyszłości względem okna. */
+async function latestEndDate(scope: ZdSalesProfileScope): Promise<string | null> {
   const { rows } = await query<{ end_date: string | null }>(
     `SELECT max(end_date)::text AS end_date
        FROM zd_sales_profiles
       WHERE scope_mode = $1 AND scope_id = $2`,
     [scope.mode, scope.id]
   );
-  const latest = rows[0]?.end_date;
-  return latest != null && latest >= shiftDateKey(endDate, -FRESH_DAYS) && latest <= endDate;
+  return rows[0]?.end_date ?? null;
+}
+
+async function scopeAge(
+  scope: ZdSalesProfileScope,
+  endDate: string
+): Promise<"fresh" | "usable" | "none"> {
+  const latest = await latestEndDate(scope);
+  if (latest == null || latest > endDate) return "none";
+  if (latest >= shiftDateKey(endDate, -FRESH_DAYS)) return "fresh";
+  return latest >= shiftDateKey(endDate, -USABLE_DAYS) ? "usable" : "none";
 }
 
 /** Okna naraz — 12 równolegle dawało timeouty SQL Subiekta przy nocnym przebiegu. */
@@ -76,17 +91,43 @@ async function saveScopeProfiles(
     tw.push(id);
     series.push(`{${w.join(",")}}`);
   }
-  await query(`DELETE FROM zd_sales_profiles WHERE scope_mode = $1 AND scope_id = $2`, [
-    scope.mode,
-    scope.id,
-  ]);
-  if (tw.length === 0) return;
+  // Profil dla starszego okna (Kreator na dawnych datach) nie nadpisuje nowszego.
+  const latest = await latestEndDate(scope);
+  if (latest != null && latest > endDate) return;
+  // Upsert, potem usunięcie towarów spoza zakresu — bez okna z pustym profilem
+  // i bez konfliktu klucza, gdy Kreator i nocny przebieg liczą ten sam zakres.
+  if (tw.length > 0) {
+    await query(
+      `INSERT INTO zd_sales_profiles (scope_mode, scope_id, subiekt_tw_id, windows, end_date)
+       SELECT $1, $2, t.tw, t.w::numeric[], $5::date
+         FROM unnest($3::int[], $4::text[]) AS t(tw, w)
+       ON CONFLICT (scope_mode, scope_id, subiekt_tw_id) DO UPDATE
+         SET windows = EXCLUDED.windows, end_date = EXCLUDED.end_date, computed_at = now()`,
+      [scope.mode, scope.id, tw, series, endDate]
+    );
+  }
   await query(
-    `INSERT INTO zd_sales_profiles (scope_mode, scope_id, subiekt_tw_id, windows, end_date)
-     SELECT $1, $2, t.tw, t.w::numeric[], $5::date
-       FROM unnest($3::int[], $4::text[]) AS t(tw, w)`,
-    [scope.mode, scope.id, tw, series, endDate]
+    `DELETE FROM zd_sales_profiles
+      WHERE scope_mode = $1 AND scope_id = $2 AND NOT (subiekt_tw_id = ANY($3::int[]))`,
+    [scope.mode, scope.id, tw]
   );
+}
+
+/** Jedno liczenie zakresu naraz w procesie (Kreator + nocny przebieg, dwa Policz). */
+const inFlight = new Map<string, Promise<Map<number, number[]>>>();
+
+function refreshScope(scope: ZdSalesProfileScope, endDate: string): Promise<Map<number, number[]>> {
+  const key = `${scope.mode}:${scope.id}:${endDate}`;
+  const running = inFlight.get(key);
+  if (running) return running;
+  const job = computeScopeProfiles(scope, endDate)
+    .then(async (computed) => {
+      await saveScopeProfiles(scope, endDate, computed);
+      return computed;
+    })
+    .finally(() => inFlight.delete(key));
+  inFlight.set(key, job);
+  return job;
 }
 
 async function loadScopeProfiles(scope: ZdSalesProfileScope): Promise<Map<number, number[]>> {
@@ -98,19 +139,27 @@ async function loadScopeProfiles(scope: ZdSalesProfileScope): Promise<Map<number
 }
 
 /**
- * Profile dla zakresów: świeże z bazy, przeterminowane liczone z Subiekta i zapisywane.
+ * Profile dla zakresów: świeże z bazy, brakujące liczone z Subiekta i zapisywane.
+ * `refresh: "background"` (Kreator) — profil do 14 dni od razu, odświeżenie w tle.
+ * `refresh: "sync"` (nocny przebieg) — nieświeży liczony od razu.
  * Pierwszy zakres wygrywa przy towarze w kilku zakresach.
  */
 export async function ensureZdSalesProfiles(input: {
   scopes: readonly ZdSalesProfileScope[];
   endDate: string;
+  refresh?: "sync" | "background";
 }): Promise<Map<number, number[]>> {
   const perScope = await Promise.all(
     input.scopes.map(async (scope) => {
-      if (await scopeIsFresh(scope, input.endDate)) return loadScopeProfiles(scope);
-      const computed = await computeScopeProfiles(scope, input.endDate);
-      await saveScopeProfiles(scope, input.endDate, computed);
-      return computed;
+      const age = await scopeAge(scope, input.endDate);
+      if (age === "fresh") return loadScopeProfiles(scope);
+      if (age === "usable" && input.refresh === "background") {
+        void refreshScope(scope, input.endDate).catch((e: unknown) =>
+          console.warn("[zd-sales-profile] odświeżenie w tle", scope, e)
+        );
+        return loadScopeProfiles(scope);
+      }
+      return refreshScope(scope, input.endDate);
     })
   );
   const out = new Map<number, number[]>();
@@ -121,8 +170,16 @@ export async function ensureZdSalesProfiles(input: {
 }
 
 /**
- * Sztuki z próśb zrealizowanych (dostawa w oknie sprzedaży) — ta sprzedaż była
- * pod klienta i nie powinna budować zapasu.
+ * Sprzedaż pod klienta zwykle idzie kilka dni po dostawie prośby — liczymy dostawy
+ * od 14 dni przed oknem do 3 dni przed jego końcem (dostarczone na końcu okna
+ * najczęściej sprzedają się już po nim, więc nie ma ich w sprzedaży okna).
+ */
+const PROSBA_DELIVERY_LEAD_DAYS = 14;
+const PROSBA_DELIVERY_TAIL_DAYS = 3;
+
+/**
+ * Sztuki z próśb zrealizowanych — ta sprzedaż była pod klienta i nie powinna budować
+ * zapasu (odejmowana przy wygładzeniu, z limitem do sprzedaży w oknie).
  */
 export async function loadDeliveredProsbaPiecesByTwId(input: {
   twIds: readonly number[];
@@ -143,7 +200,11 @@ export async function loadDeliveredProsbaPiecesByTwId(input: {
         AND status IN ('Zrealizowane', 'Czesciowo_zrealizowane')
         AND delivery_at IS NOT NULL
         AND (delivery_at AT TIME ZONE 'Europe/Warsaw')::date BETWEEN $2::date AND $3::date`,
-    [input.twIds, input.dataOd, input.dataDo]
+    [
+      input.twIds,
+      shiftDateKey(input.dataOd, -PROSBA_DELIVERY_LEAD_DAYS),
+      shiftDateKey(input.dataDo, -PROSBA_DELIVERY_TAIL_DAYS),
+    ]
   );
   for (const r of rows) {
     const delivered =

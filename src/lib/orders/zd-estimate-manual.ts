@@ -290,9 +290,9 @@ export function mapZdEstimateLineToManual(
       : null;
 
   const salesProfile = (line as { salesProfile?: ZdSalesProfileLineMeta }).salesProfile;
-  // Rzadka sprzedaż wygładzona: bez podbicia za wyprzedanie (stan 0 to norma przy zakupie pod klienta).
+  // Rzadka sprzedaż przy wygładzeniu: bez podbicia za wyprzedanie (stan 0 to norma przy zakupie pod klienta).
   const salesTrackPolicy =
-    salesProfile?.applied && salesProfile.kind === "rare"
+    salesProfile?.smoothing && salesProfile.kind === "rare"
       ? ({ ...(options?.salesTrackPolicy ?? {}), maxTotalBoostRatio: 0 } as unknown as NonNullable<
           MapZdEstimateLineOptions["salesTrackPolicy"]
         >)
@@ -343,7 +343,8 @@ export function mapZdEstimateLineToManual(
       dniOkresu,
       lastOrderedQty: hist.lastOrderedQty,
       linkedAt: hist.linkedAt,
-      skipSpike: salesProfile?.applied === true,
+      // Profil 12 miesięcy ocenia skok lepiej niż porównanie z ostatnim ZD (ilość netto).
+      skipSpike: salesProfile?.smoothing === true,
     });
     if (histAdj.reasons.length > 0) {
       celTracked = histAdj.celTracked;

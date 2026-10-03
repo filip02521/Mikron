@@ -61,16 +61,23 @@ Lokalnie opcja zmienia ilości u 5 z 52 dostawców (np. Amadar: dostawa ~26 d, k
 Bazowy cel z Subiekta to sprzedaż w oknie ÷ dni okna × dni zapasu, więc jedna duża faktura
 albo sprzedaż pod klienta trafia w cel i Kreator dokupuje na stan. Ten sam endpoint
 `/orders/zd/estimate` zwraca sprzedaż dla dowolnego okna, więc profil to 12 okien po 30 dni
-(`zd_sales_profiles`, migracja 164), liczony przy Policz / nocnym przebiegu, gdy profil zakresu
-ma ponad 3 dni.
+(`zd_sales_profiles`, migracja 164). Nocny przebieg odświeża go, gdy ma ponad 3 dni; Kreator
+używa profilu do 14 dni od razu i odświeża go w tle (liczy synchronicznie tylko, gdy brak).
+Zapis: upsert + usunięcie towarów spoza zakresu, jedno liczenie zakresu naraz, profil starszego
+okna nie nadpisuje nowszego.
 
 - Klasyfikacja: **skok** (okno ≥ 3× typowego miesiąca, ≥ 5 szt), **rzadki** (sprzedaż w ≤ 3 z 12
-  okien), **nowość** i **wzrost** (bez zmian), **regularny**. Znaczniki pod nazwą zawsze;
+  okien; też pojedyncza sprzedaż po roku ciszy), **nowość** (sprzedaż w ≥ 2 z ostatnich 3 okien)
+  i **wzrost** (bez zmian), **regularny**. Znaczniki pod nazwą zawsze;
   „pod zamówienie?” dodaje towar do „Tylko na prośbę” (z potwierdzeniem).
 - Opcja (domyślnie wyłączona) tylko obniża: skok → max(mediana, p75) poprzednich okien, rzadki →
-  średnia z 12 okien, sprzedaż pod zrealizowane prośby (dostawa w oknie) odjęta. Rzadki bez
-  podbicia za wyprzedanie; wygładzony towar pomija stary „skok” liczony z ostatniego ZD.
-- Pary i komplety: tylko znacznik (popyt łączony). Prośby odejmowane tylko bez opakowań.
+  średnia z 12 okien, sprzedaż pod zrealizowane prośby odjęta (dostawy od 14 dni przed oknem do
+  3 dni przed jego końcem — sprzedaż idzie kilka dni po dostawie). Przy włączonej opcji rzadki
+  nie dostaje podbicia za wyprzedanie, a stary „skok” (vs ostatnie ZD) jest pomijany dla towarów
+  z profilem. Wzór celu z API sprawdzony na 320/320 towarach (cel = sprzedaż ÷ dni okna × dni
+  zapasu + zapas min.).
+- Pary i komplety: bez profilu (popyt łączony ze składnikami / wkładem kompletów). Prośby
+  odejmowane tylko bez opakowań (prośba w sztukach).
 
 ### 3.4 Kiedy zamówić — sygnały radaru
 

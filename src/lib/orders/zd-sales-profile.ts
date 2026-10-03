@@ -48,12 +48,12 @@ export type ZdSalesProfileLineMeta = {
   rawSprzedazOkres: number;
   /** Sztuki z zrealizowanych próśb w oknie (odjęte, gdy wygładzenie włączone). */
   prosbaPieces: number;
+  /** Opcja wygładzenia była włączona przy tym Policz (profil zastępuje stary „skok”). */
+  smoothing: boolean;
   /** Wygładzenie faktycznie zmieniło sprzedaż w oknie. */
   applied: boolean;
   /** Sprzedaż w oknie po wygładzeniu ÷ przed (1 = bez zmian). */
   factor: number;
-  /** Opcja włączona, ale towar z pary / kompletu — popyt łączony, bez wygładzenia. */
-  skippedComposite?: boolean;
 };
 
 function median(values: readonly number[]): number {
@@ -97,8 +97,12 @@ export function classifyZdSalesProfile(input: {
   const base = { activeWindows, typicalMonthly, robustMonthly, meanMonthly, currentMonthly };
 
   if (activeWindows === 0 && currentMonthly <= 0) return { kind: "none", ...base };
+  // Nowość = sprzedaż powtarza się w ostatnich oknach. Jedna sprzedaż po roku ciszy
+  // to raczej zakup pod klienta (rzadki), nie nowy towar.
   const firstActive = w.findIndex((x) => x > 0);
-  if (firstActive >= w.length - p.newWithinWindows) return { kind: "new", ...base };
+  if (firstActive >= w.length - p.newWithinWindows && activeWindows >= 2) {
+    return { kind: "new", ...base };
+  }
   if (activeWindows <= p.rareMaxActiveWindows) return { kind: "rare", ...base };
 
   const floor = Math.max(1, typicalMonthly);
@@ -143,6 +147,7 @@ export function resolveZdSalesProfile(input: {
     currentMonthly: c.currentMonthly,
     rawSprzedazOkres: raw,
     prosbaPieces: prosba,
+    smoothing: input.smoothing,
     applied: factor < 1 - 1e-9,
     factor,
   };
@@ -205,7 +210,7 @@ export function formatZdSalesSmoothingSummary(s: ZdSalesSmoothingSummary): strin
     s.prosba > 0 ? `${s.prosba} ${polishPluralWord(s.prosba, "towar ze sprzedażą pod prośby", "towary ze sprzedażą pod prośby", "towarów ze sprzedażą pod prośby")}` : null,
   ].filter(Boolean);
   if (parts.length === 0) {
-    return "W tym zakresie nie ma nietypowej sprzedaży — ilości bez zmian.";
+    return s.failed ? "" : "W tym zakresie nie ma nietypowej sprzedaży — ilości bez zmian.";
   }
   return `Liczone z typowego miesiąca zamiast bieżącego okna: ${parts.join(", ")}. Szczegóły w podpowiedzi przy sprzedaży (znacznik pod nazwą).`;
 }
@@ -245,8 +250,6 @@ export function formatZdSalesProfileHint(meta: ZdSalesProfileLineMeta): string {
     meta.prosbaPieces > 0 ? ` W oknie ${fmt(meta.prosbaPieces)} szt z zrealizowanych próśb.` : "";
   const applied = meta.applied
     ? ` Wygładzono: sprzedaż w oknie ${fmt(meta.rawSprzedazOkres)} → ${fmt(meta.rawSprzedazOkres * meta.factor)} szt.`
-    : meta.skippedComposite
-      ? " Bez wygładzenia: towar z pary lub kompletu (popyt liczony razem)."
-      : "";
+    : "";
   return `${head}${prosba}${applied} Ostatnie 12 × 30 dni: ${series}.`;
 }

@@ -420,6 +420,8 @@ export type ZdOrderEngineInput = {
    * Profil (znaczniki) liczy się zawsze — wygładzenie tylko przy tej opcji.
    */
   salesSmoothing?: boolean;
+  /** Kreator: "background" (nie czeka na odświeżenie profilu do 14 dni). Nocny przebieg: "sync". */
+  salesProfileRefresh?: "sync" | "background";
   onProgress?: (patch: ZdOrderEngineProgressPatch) => void;
 };
 
@@ -503,7 +505,11 @@ export async function runZdOrderEngine(
   const profileOf = (scopes: ZdSalesProfileScope[]) =>
     scopes.length === 0
       ? Promise.resolve(new Map<number, number[]>())
-      : ensureZdSalesProfiles({ scopes, endDate: dataDo }).catch((e: unknown) => {
+      : ensureZdSalesProfiles({
+          scopes,
+          endDate: dataDo,
+          refresh: input.salesProfileRefresh ?? "sync",
+        }).catch((e: unknown) => {
           console.warn("[zd-sales-profile]", e);
           return null;
         });
@@ -957,11 +963,14 @@ export async function runZdOrderEngine(
   const salesTrackPolicy = policyForBoostPreset(boostPreset);
 
   // Profil sprzedaży: znaczniki zawsze, wygładzenie przy opcji. Profil jest w jednostkach
-  // karty jak sprzedaż. Pary i komplety łączą kilka towarów — dostają tylko znacznik.
+  // karty jak sprzedaż. Pary i komplety liczą popyt łącznie (składnik + wkład kompletów),
+  // a profil zna tylko własną sprzedaż towaru — bez profilu, żeby znacznik nie przeczył liczbom.
   // Prośby odejmujemy tylko bez opakowań (prośba w sztukach, sprzedaż w jednostkach karty).
   let salesSmoothing: ZdSalesSmoothingSummary | null = null;
   {
     const [p1, p2] = await Promise.all([primaryProfiles, extraProfiles]);
+    // Błąd któregokolwiek zakresu = komunikat (część listy byłaby bez wygładzenia).
+    const anyFailed = p1 == null || (extraScopes.length > 0 && p2 == null);
     if (!p1 && !p2) {
       salesSmoothing = { spike: 0, rare: 0, prosba: 0, failed: true };
     } else {
@@ -975,10 +984,12 @@ export async function runZdOrderEngine(
         compositeTwIds.add(bom.parentTwId);
         for (const c of bom.components) compositeTwIds.add(c.componentTwId);
       }
-      const smoothable = (tw: number) => input.salesSmoothing === true && !compositeTwIds.has(tw);
+      const smoothing = input.salesSmoothing === true;
       const prosbaInPieces = (tw: number) =>
-        smoothable(tw) && !((packagingByTwId.get(tw)?.unitsPerPackage ?? 1) > 1);
-      const prosbaPieces = input.salesSmoothing
+        smoothing &&
+        !compositeTwIds.has(tw) &&
+        !((packagingByTwId.get(tw)?.unitsPerPackage ?? 1) > 1);
+      const prosbaPieces = smoothing
         ? await loadDeliveredProsbaPiecesByTwId({
             twIds: mergedPozycje.map((p) => Math.trunc(Number(p.tw_Id) || 0)).filter(prosbaInPieces),
             dataOd,
@@ -989,20 +1000,19 @@ export async function runZdOrderEngine(
         Number(fetched.parametry.dniOkresu) > 0
           ? Number(fetched.parametry.dniOkresu)
           : Math.round((Date.parse(dataDo) - Date.parse(dataOd)) / 86_400_000) + 1;
-      salesSmoothing = { spike: 0, rare: 0, prosba: 0, failed: false };
+      salesSmoothing = { spike: 0, rare: 0, prosba: 0, failed: anyFailed };
       for (let i = 0; i < mergedPozycje.length; i += 1) {
         const line = mergedPozycje[i]!;
         const tw = Math.trunc(Number(line.tw_Id) || 0);
         const windows = profiles.get(tw);
-        if (!windows) continue;
+        if (!windows || compositeTwIds.has(tw)) continue;
         const meta = resolveZdSalesProfile({
           windows,
           sprzedazOkres: Number(line.sprzedazOkres) || 0,
           dniOkresu,
           prosbaPieces: prosbaPieces.get(tw) ?? 0,
-          smoothing: smoothable(tw),
+          smoothing,
         });
-        if (input.salesSmoothing && compositeTwIds.has(tw)) meta.skippedComposite = true;
         mergedPozycje[i] = applyZdSalesProfileToLine(line, meta, zapasMin);
         if (meta.applied) {
           if (meta.kind === "spike") salesSmoothing.spike += 1;

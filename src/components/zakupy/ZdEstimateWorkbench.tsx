@@ -6696,15 +6696,21 @@ export function ZdEstimateWorkbench({
               tone={policzScopeInfo.salesSmoothing.failed ? "warning" : "info"}
               title={
                 policzScopeInfo.salesSmoothing.failed
-                  ? "Wygładzenie niedostępne — brak profilu sprzedaży"
+                  ? "Profil sprzedaży niepełny"
                   : "Nietypowa sprzedaż wygładzona"
               }
             >
-              <p className="text-sm leading-snug">
-                {policzScopeInfo.salesSmoothing.failed
-                  ? "Nie udało się pobrać sprzedaży z 12 miesięcy — lista liczona jak dotąd. Spróbuj przeliczyć ponownie."
-                  : formatZdSalesSmoothingSummary(policzScopeInfo.salesSmoothing)}
-              </p>
+              {policzScopeInfo.salesSmoothing.failed ? (
+                <p className="text-sm leading-snug">
+                  Nie udało się pobrać sprzedaży z 12 miesięcy dla całego zakresu lub jego części — te
+                  pozycje liczone jak dotąd. Przelicz ponownie za chwilę.
+                </p>
+              ) : null}
+              {formatZdSalesSmoothingSummary(policzScopeInfo.salesSmoothing) ? (
+                <p className="text-sm leading-snug">
+                  {formatZdSalesSmoothingSummary(policzScopeInfo.salesSmoothing)}
+                </p>
+              ) : null}
               <Button
                 type="button"
                 size="sm"
