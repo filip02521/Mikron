@@ -37,7 +37,6 @@ import {
   actionRunZdEstimateManual,
   actionPollZdEstimateRunProgress,
   actionFetchZdEstimatePendingIndividuals,
-  actionZdEstimateSupplierEta,
   actionFetchZdEstimateProsbaReservationOverlap,
   actionGetZdBoostPowerPreset,
   actionSetZdBoostPowerPreset,
@@ -2471,26 +2470,6 @@ export function ZdEstimateWorkbench({
       prosbaReservedByTwId === null,
   });
 
-  // Przewidywany termin dostawy do opisu ZD (czasy realizacji dostawcy w OnTime).
-  const [supplierEta, setSupplierEta] = useState<{ supplierId: string; dateKey: string | null } | null>(null);
-  useEffect(() => {
-    if (!supplierId) return;
-    let cancelled = false;
-    void actionZdEstimateSupplierEta(supplierId)
-      .then((res) => {
-        if (cancelled) return;
-        setSupplierEta({ supplierId, dateKey: res.ok ? (res.eta?.dateKey ?? null) : null });
-      })
-      .catch(() => {
-        /* opis bez terminu — nie blokuje ZD */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [supplierId]);
-  const createEtaDateKey =
-    supplierEta && supplierEta.supplierId === supplierId ? supplierEta.dateKey : null;
-
   const createBaseUwagi = useMemo(() => {
     const label =
       scopeMode === "grupa"
@@ -2500,14 +2479,12 @@ export function ZdEstimateWorkbench({
       scopeMode,
       scopeLabel: label,
       dateKey: bootstrap.todayKey,
-      etaDateKey: createEtaDateKey,
     });
   }, [
     scopeMode,
     selectedGroup?.grt_Nazwa,
     selectedCecha?.ctw_Nazwa,
     bootstrap.todayKey,
-    createEtaDateKey,
   ]);
 
   const createUwagiWithServices = useMemo(

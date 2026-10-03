@@ -6,6 +6,7 @@ import {
   buildZdCreatePreviewFromOrderable,
   canCreateZdFromEstimateState,
   defaultZdCreateUwagi,
+  zdCreateEtaTile,
   ensureZdCreateLinesCoverIndividualExtras,
   minZdUnitsForExtraPieces,
   normalizeZdCreateUwagi,
@@ -1077,21 +1078,22 @@ describe("buildZdEstimateSnapshotLinesFromDoc", () => {
   });
 });
 
-describe("defaultZdCreateUwagi - przewidywana dostawa", () => {
-  it("dopisuje termin z czasów realizacji, gdy znany", () => {
-    expect(
-      defaultZdCreateUwagi({
-        scopeMode: "cecha",
-        scopeLabel: "Polkard",
-        dateKey: "2026-10-03",
-        etaDateKey: "2026-10-07",
-      })
-    ).toBe("OnTime kreator · Cecha Polkard · 2026-10-03 · Przewidywana dostawa ok. 07.10.2026");
+describe("zdCreateEtaTile", () => {
+  it("data, dzień tygodnia i liczba dni roboczych", () => {
+    expect(zdCreateEtaTile({ status: "done", dateKey: "2026-10-06", businessDays: 2 })).toEqual({
+      value: "ok. 06.10.2026",
+      sub: "wtorek · ~2 dni rob.",
+    });
+    expect(zdCreateEtaTile({ status: "done", dateKey: "2026-10-05", businessDays: 1 }).sub).toBe(
+      "poniedziałek · ~1 dzień rob."
+    );
   });
 
-  it("bez terminu (brak historii dostaw) — opis jak dotąd", () => {
-    expect(
-      defaultZdCreateUwagi({ scopeMode: "grupa", scopeLabel: "Frezy", dateKey: "2026-10-03", etaDateKey: null })
-    ).toBe("OnTime kreator · Grupa Frezy · 2026-10-03");
+  it("w trakcie liczenia i bez historii dostaw", () => {
+    expect(zdCreateEtaTile({ status: "loading", dateKey: null, businessDays: null }).value).toBe("…");
+    expect(zdCreateEtaTile({ status: "done", dateKey: null, businessDays: null })).toEqual({
+      value: "-",
+      sub: "brak historii dostaw",
+    });
   });
 });

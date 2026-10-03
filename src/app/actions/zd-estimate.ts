@@ -423,7 +423,7 @@ function normalizeDateKey(value: string | null | undefined): string | null {
   return v;
 }
 
-/** Przewidywany termin dostawy do domyślnego opisu ZD (czasy realizacji dostawcy). */
+/** Przewidywany termin dostawy do podsumowania tworzenia ZD (czasy realizacji dostawcy). */
 export async function actionZdEstimateSupplierEta(
   supplierId: string
 ): Promise<{ ok: true; eta: import("@/lib/orders/zd-create-eta").ZdCreateEta | null } | { ok: false }> {
@@ -3282,15 +3282,9 @@ export async function actionCreateZdFromEstimate(input: {
     });
   }
 
-  const fallbackEta = (input.uwagi ?? "").trim()
-    ? null
-    : await import("@/lib/orders/zd-create-eta")
-        .then((m) => m.estimateZdCreateEta(input.supplierId ?? "", warsawNowParts().dateKey))
-        .catch(() => null);
   const baseUwagi =
     (input.uwagi ?? "").trim() ||
     defaultZdCreateUwagi({
-      etaDateKey: fallbackEta?.dateKey ?? null,
       scopeMode: scopeRes.scopeMode,
       scopeLabel:
         scopeRes.scopeMode === "grupa"

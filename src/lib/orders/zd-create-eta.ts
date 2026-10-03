@@ -1,5 +1,5 @@
 /**
- * Przewidywany termin dostawy do opisu nowego ZD — ten sam silnik co ETA w aplikacji:
+ * Przewidywany termin dostawy w podsumowaniu tworzenia ZD — ten sam silnik co ETA w aplikacji:
  * dziś + typowy czas realizacji dostawcy (delivery_stats / kwantyle próbek, dni robocze).
  */
 import { createAdminClient } from "@/lib/supabase/admin";

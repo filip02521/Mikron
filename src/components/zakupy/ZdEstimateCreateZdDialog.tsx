@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
-import { actionCreateZdFromEstimate } from "@/app/actions/zd-estimate";
+import { actionCreateZdFromEstimate, actionZdEstimateSupplierEta } from "@/app/actions/zd-estimate";
 import type { ZdEstimateLinkLineMeta } from "@/app/actions/zd-estimate";
 import { ZdEstimateCreateZdProgressPanel } from "@/components/zakupy/ZdEstimateCreateZdProgress";
 import { ZdEstimateCreateRequestsPreview } from "@/components/zakupy/ZdEstimateCreateRequestsPreview";
@@ -14,6 +14,7 @@ import {
   defaultZdCreateUwagi,
   ZD_CREATE_MAX_UWAGI_LEN,
   ZD_CREATE_SOFT_WARN_LINES,
+  zdCreateEtaTile,
   type ZdCreatePreview,
 } from "@/lib/orders/zd-estimate-create-zd";
 import {
@@ -167,6 +168,33 @@ export function ZdEstimateCreateZdDialog({
   const uwagiId = useId();
   const confirmId = useId();
   const [uwagi, setUwagi] = useState("");
+  // Przewidywana dostawa z czasów realizacji dostawcy (OnTime) — tylko do podsumowania.
+  const [etaResult, setEtaResult] = useState<{
+    supplierId: string;
+    dateKey: string | null;
+    businessDays: number | null;
+  } | null>(null);
+  useEffect(() => {
+    if (!open || !supplierId) return;
+    let cancelled = false;
+    void actionZdEstimateSupplierEta(supplierId)
+      .then((res) => {
+        if (cancelled) return;
+        const value = res.ok ? res.eta : null;
+        setEtaResult({ supplierId, dateKey: value?.dateKey ?? null, businessDays: value?.businessDays ?? null });
+      })
+      .catch(() => {
+        if (!cancelled) setEtaResult({ supplierId, dateKey: null, businessDays: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, supplierId]);
+  const eta =
+    etaResult && etaResult.supplierId === supplierId
+      ? { status: "done" as const, dateKey: etaResult.dateKey, businessDays: etaResult.businessDays }
+      : { status: "loading" as const, dateKey: null, businessDays: null };
+  const etaTile = zdCreateEtaTile(eta);
   const [confirmed, setConfirmed] = useState(false);
   const [pending, startPending] = useTransition();
   const [progressStartedAtMs, setProgressStartedAtMs] = useState<number | null>(
@@ -566,7 +594,7 @@ export function ZdEstimateCreateZdDialog({
             </p>
           </div>
 
-          <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <dl className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             <SummaryTile
               label="Dostawca"
               value={supplierName}
@@ -595,6 +623,12 @@ export function ZdEstimateCreateZdDialog({
                   ? `${orderValue.unpriced} bez ceny`
                   : "ceny z ostatnich ZD, netto"
               }
+              className="col-span-2 sm:col-span-1"
+            />
+            <SummaryTile
+              label="Przewidywana dostawa"
+              value={etaTile.value}
+              sub={etaTile.sub}
               className="col-span-2 sm:col-span-1"
             />
           </dl>
@@ -773,3 +807,4 @@ function SummaryTile({
     </div>
   );
 }
+
