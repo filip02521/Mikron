@@ -90,7 +90,8 @@ describe("buildHistoryEstimateDateMetaDisplay", () => {
     const display = buildHistoryEstimateDateMetaDisplay(parseDateOnly("2026-06-10")!, {
       todayDateKey: "2026-06-18",
     });
-    expect(display.primaryLabel).toBe(MY_ORDER_HISTORY_ESTIMATE_OVERDUE_LABEL);
+    expect(display.primaryLabel).toBe("Brak terminu");
+    expect(display.title).toContain(MY_ORDER_HISTORY_ESTIMATE_OVERDUE_LABEL);
     expect(display.detailLabel).toBeNull();
     expect(display.overdue).toBe(true);
   });
