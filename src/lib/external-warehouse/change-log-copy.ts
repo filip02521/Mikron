@@ -53,8 +53,11 @@ export const GADKI_ZK_CONTENT_LOG_KINDS = new Set([
   "lines_added",
   "lines_removed",
   "qty_changed",
+  "line_changed",
   "zk_linked",
   "zk_unlinked",
+  "zk_replaced",
+  "shares_rebalanced",
 ]);
 
 export function isGadkiZkContentLogKind(kind: string): boolean {
@@ -158,6 +161,27 @@ export function buildZkDiffChangeLogEntries(input: {
       meta: {
         changes: input.diff.quantityChanged.slice(0, 40),
         details: details.slice(0, 40),
+      },
+      actorUserId: input.actorUserId,
+    });
+  }
+
+  const productChanged = input.diff.productChanged ?? [];
+  if (productChanged.length) {
+    const details = productChanged.map((c) =>
+      c.productSwapped ? `„${c.from}” zamieniono na „${c.to}”` : `„${c.from}” → „${c.to}”`
+    );
+    const n = productChanged.length;
+    out.push({
+      siteId: input.siteId,
+      zkLinkId: input.linkId,
+      kind: "line_changed",
+      summary:
+        n === 1
+          ? `${zk}: zmiana towaru w pozycji ${details[0]}`
+          : `${zk}: zmiana towaru w ${n} poz. — ${joinDetails(details)}`,
+      meta: {
+        changes: productChanged.slice(0, 40),
       },
       actorUserId: input.actorUserId,
     });

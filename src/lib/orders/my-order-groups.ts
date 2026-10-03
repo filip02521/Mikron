@@ -20,7 +20,7 @@ function supplierDeliveryGroupStatus(status: IndividualOrderStatus): IndividualO
  * Domyślnie: ten sam dostawca + ten sam status = jedna karta (wiele produktów w `lines`).
  * `Czesciowo_zrealizowane` i `Zamowione` u tego dostawcy — jedna karta (reszta u dostawcy).
  * Wyjątek: otwarte zgłoszenie z jednego formularza (`submission_group_id`) — jedna grupa
- * nawet przy mieszanych statusach w teorii; w praktyce formularz ma jeden status.
+ * per dostawca i status (pozycje formularza mogą trafić do różnych dostawców).
  */
 export function myOrderGroupKey(order: IndividualOrder): string {
   const kind = isInformacjaRequest(order) ? "inf" : "zam";
@@ -29,7 +29,9 @@ export function myOrderGroupKey(order: IndividualOrder): string {
   const status = supplierDeliveryGroupStatus(order.status);
 
   if (order.submission_group_id && isOpenStatus(order.status)) {
-    return `${kind}-sub|${order.submission_group_id}|${status}`;
+    // Dostawca w kluczu: pozycje jednego formularza mogą mieć różnych dostawców
+    // (edycja „dostawca per pozycja”) — karta pokazuje jednego dostawcę, jak panel zakupów.
+    return `${kind}-sub|${order.submission_group_id}|${supplier}|${status}`;
   }
 
   return `${kind}|${supplier}|${person}|${status}`;

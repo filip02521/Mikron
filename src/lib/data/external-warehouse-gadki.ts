@@ -10,6 +10,10 @@ import {
   type ExternalWarehouseLineDto,
 } from "@/lib/external-warehouse/lines";
 import { collectPalletLabels } from "@/lib/external-warehouse/group-by-pallet";
+import { zkDocumentStatusLabel } from "@/lib/subiekt/zk-document";
+
+/** dok_Status ZK w Subiekcie: 8 = Zrealizowane (6 = Oferta, 7 = Aktywne). */
+const ZK_STATUS_REALIZED = 8;
 import type {
   ExternalWarehouseChangeLog,
   ExternalWarehouseLineMeta,
@@ -27,6 +31,15 @@ export type GadkiZkLinkView = {
   label: string | null;
   lineSummary: string | null;
   lastSyncedAt: string | null;
+  /** Ostatni błąd synchronizacji (np. ZK usunięte w Subiekcie) — null = OK. */
+  syncError: string | null;
+  syncErrorAt: string | null;
+  /** Status dokumentu w Subiekcie („Aktywne”, „Zrealizowane”). */
+  subiektStatusLabel: string | null;
+  /** ZK zrealizowane w Subiekcie — towar zwykle już wydany. */
+  realized: boolean;
+  /** Pozycje, w których suma palet przekracza ilość ZK (do sprawdzenia). */
+  overAllocatedCount: number;
   sortOrder: number;
   lines: ExternalWarehouseLineDto[];
   orphanLines: ExternalWarehouseLineDto[];
@@ -66,6 +79,7 @@ export type GadkiPageData = {
     | "last_snapshot"
     | "snapshot_hash"
     | "last_synced_at"
+    | "last_sync_attempt_at"
   >[];
 };
 
@@ -222,6 +236,11 @@ export async function fetchGadkiPageData(
       label: link.label,
       lineSummary: link.line_summary,
       lastSyncedAt: link.last_synced_at,
+      syncError: link.last_sync_error ?? null,
+      syncErrorAt: link.last_sync_error_at ?? null,
+      subiektStatusLabel: zkDocumentStatusLabel(snapshot?.dok_Status ?? null),
+      realized: snapshot?.dok_Status === ZK_STATUS_REALIZED,
+      overAllocatedCount: new Set(lineDtos.filter((l) => l.overAllocated).map((l) => l.key)).size,
       sortOrder: link.sort_order,
       lines: lineDtos,
       orphanLines: orphans,
@@ -266,6 +285,7 @@ export async function fetchGadkiPageData(
       last_snapshot: l.last_snapshot,
       snapshot_hash: l.snapshot_hash,
       last_synced_at: l.last_synced_at,
+      last_sync_attempt_at: l.last_sync_attempt_at ?? null,
     })),
   };
 }

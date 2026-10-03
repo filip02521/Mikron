@@ -17,7 +17,8 @@ export function formatZdEstimateTableQty(n: number): string {
   }
   return n.toLocaleString("pl-PL", {
     useGrouping: abs >= 1000,
-    maximumFractionDigits: 2,
+    // Tabela: 1 miejsce wystarczy do skanowania; dokładna wartość w podpowiedzi.
+    maximumFractionDigits: 1,
     minimumFractionDigits: 0,
   });
 }

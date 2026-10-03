@@ -57,6 +57,40 @@ export function findUniqueSupplierIdForCecha(
   return supplierId || null;
 }
 
+/**
+ * Dostawca dla zakresu z mapowań. Zakres bywa wspólny dla kilku dostawców
+ * (np. Polkard i Polkard BIS) — wtedy wygrywa preferowany (dostawca z linku
+ * „Przygotuj ZD” / aktualnie wybrany), jeśli ma ten zakres. Bez preferencji
+ * zwracamy kandydatów, żeby dopasowanie po nazwie nie wyszło poza nich.
+ */
+export function resolveZdScopeSupplierMapping(
+  scopes: readonly ZdEstimateScopeMappingRef[],
+  mode: ZdEstimateRunMode,
+  scopeId: number,
+  preferredSupplierId?: string | null
+): { mappedSupplierId: string | null; candidateSupplierIds: string[] | null } {
+  const id = Math.trunc(Number(scopeId));
+  if (!(id > 0)) return { mappedSupplierId: null, candidateSupplierIds: null };
+  const hits = [
+    ...new Set(
+      scopes
+        .filter((s) =>
+          mode === "grupa"
+            ? s.mode === "grupa" && s.grupaId != null && Math.trunc(s.grupaId) === id
+            : s.mode === "cecha" && s.cechaId != null && Math.trunc(s.cechaId) === id
+        )
+        .map((s) => s.supplierId.trim())
+        .filter(Boolean)
+    ),
+  ];
+  const preferred = preferredSupplierId?.trim() || null;
+  if (preferred && hits.includes(preferred)) {
+    return { mappedSupplierId: preferred, candidateSupplierIds: null };
+  }
+  if (hits.length === 1) return { mappedSupplierId: hits[0]!, candidateSupplierIds: null };
+  return { mappedSupplierId: null, candidateSupplierIds: hits.length > 1 ? hits : null };
+}
+
 export type ZdEstimateSupplierScopeResolved =
   | {
       ok: true;
@@ -238,6 +272,8 @@ export type ZdEstimateLaunchQuery = {
   mode?: string | null;
   grupaId?: string | null;
   cechaId?: string | null;
+  /** „1” = start z opcją „Do kolejnej dostawy”. */
+  horizon?: string | null;
 };
 
 export type ZdEstimateLaunchParsed = {
@@ -247,6 +283,7 @@ export type ZdEstimateLaunchParsed = {
   mode: ZdEstimateRunMode | null;
   grupaId: number | null;
   cechaId: number | null;
+  leadTimeHorizon: boolean;
 };
 
 export function parseZdEstimateLaunchQuery(
@@ -272,7 +309,21 @@ export function parseZdEstimateLaunchQuery(
     mode,
     grupaId: Number.isFinite(grupaId) && grupaId > 0 ? grupaId : null,
     cechaId: Number.isFinite(cechaId) && cechaId > 0 ? cechaId : null,
+    leadTimeHorizon: String(q.horizon ?? "").trim() === "1",
   };
+}
+
+/**
+ * „Przygotuj ZD” — Kreator z dostawcą i od razu Policz (jak w panelu dziennym).
+ * Jedyna droga do utworzenia ZD z panelu dziennego i panelu Braki.
+ */
+export function buildZdEstimateLaunchHref(
+  supplierId: string,
+  opts?: { leadTimeHorizon?: boolean }
+): string {
+  const base = `/zakupy/szacunek?from=daily&supplierId=${encodeURIComponent(supplierId)}&autorun=1`;
+  // Kreator startuje z zaznaczoną opcją „Do kolejnej dostawy”.
+  return opts?.leadTimeHorizon ? `${base}&horizon=1` : base;
 }
 
 /** Powiązanie dostawcy z grupą albo cechą Subiekta — do wyświetlenia (np. szuflada dostawcy). */
@@ -281,6 +332,8 @@ export type SupplierSubiektScopeInfo = {
   /** grt_Id (grupa) albo ctw_Id (cecha). */
   id: number;
   label: string;
+  /** Kolejne zakresy dostawcy (Kreator liczy je razem z głównym). */
+  extraLabels?: string[];
 };
 
 export function supplierSubiektScopeInfoFromRow(row: {

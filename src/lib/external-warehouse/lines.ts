@@ -263,12 +263,18 @@ export function parsePrunedSnapshot(
   };
 }
 
-/** Hash linii (key+qty) po filtrze shipping — do CAS / skip change_log. */
+/**
+ * Hash pozycji po filtrze shipping — do CAS / skip change_log.
+ * Obejmuje ilość i dane towaru (symbol, nazwa, ob_TowId): zmiana nazwy albo podmiana towaru
+ * w pozycji ZK też musi trafić do snapshotu, inaczej magazyn pokazywałby stare dane.
+ */
 export function hashExternalWarehouseLines(
-  lines: Pick<ExternalWarehousePrunedLine, "key" | "ob_Ilosc">[]
+  lines: Pick<ExternalWarehousePrunedLine, "key" | "ob_Ilosc" | "tw_Symbol" | "tw_Nazwa" | "ob_TowId">[]
 ): string {
   const payload = [...lines]
-    .map((l) => `${l.key}:${l.ob_Ilosc ?? ""}`)
+    .map((l) =>
+      [l.key, l.ob_Ilosc ?? "", l.ob_TowId ?? "", l.tw_Symbol ?? "", l.tw_Nazwa ?? ""].join(":")
+    )
     .sort()
     .join("|");
   return createHash("sha256").update(payload).digest("hex");

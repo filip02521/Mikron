@@ -38,10 +38,14 @@ describe("parseInvoiceExtraction", () => {
     });
   });
 
-  it("odrzuca złe daty i waluty, znosi brak danych", () => {
+  it("poprawia zapisy dat i walut, odrzuca nieczytelne", () => {
     const inv = parseInvoiceExtraction({ invoiceDate: "20/04/2026", currency: "euro" });
-    expect(inv.invoiceDate).toBeNull();
-    expect(inv.currency).toBeNull();
+    expect(inv.invoiceDate).toBe("2026-04-20");
+    expect(inv.currency).toBe("EUR");
+    expect(parseInvoiceExtraction({ invoiceDate: "kiedyś", currency: "złotówki" })).toMatchObject({
+      invoiceDate: null,
+      currency: null,
+    });
     expect(inv.lines).toEqual([]);
     expect(parseInvoiceExtraction(null).invoiceNumber).toBe("");
   });
@@ -89,14 +93,16 @@ describe("parseLineProposals", () => {
           { ref: "l1", descriptionPl: "duplikat", material: "", cnCode: "" },
           { ref: "l2", descriptionPl: "", material: "x", cnCode: "90184900" },
           { ref: "obcy", descriptionPl: "X", material: "", cnCode: "90184900" },
-          { ref: "l3", descriptionPl: "Pęseta", material: "stal", cnCode: "9018" },
+          { ref: "l3", descriptionPl: "Pęseta", material: "Stal", cnCode: "9018" },
+          { ref: "l4", descriptionPl: "Płyta główna", material: "", cnCode: "85389099", cnCertain: false, cnReason: "PCB — zależy od urządzenia" },
         ],
       },
-      new Set(["l1", "l2", "l3"])
+      new Set(["l1", "l2", "l3", "l4"])
     );
     expect(out).toEqual([
       { ref: "l1", descriptionPl: "Nożyk do wosku", material: "stal nierdzewna", cnCode: "90184900" },
       { ref: "l3", descriptionPl: "Pęseta", material: "stal", cnCode: null },
+      { ref: "l4", descriptionPl: "Płyta główna", material: "", cnCode: "85389099", cnCertain: false, cnReason: "PCB — zależy od urządzenia" },
     ]);
   });
 });

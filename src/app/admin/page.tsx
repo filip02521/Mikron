@@ -58,6 +58,7 @@ export default async function AdminPage() {
       zd_eta_sync: null,
       informacja_stock_sync: null,
       scheduled_mails: null,
+      stock_watch: null,
     } satisfies Record<CronJobId, null>),
     informacjaStockAutoEnabled: true,
   };

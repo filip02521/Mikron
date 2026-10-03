@@ -206,7 +206,7 @@ export function ZdEstimateLoadingBody({
                   failed && "bg-amber-600 text-white",
                   done && "bg-emerald-100 text-emerald-700",
                   active &&
-                    "bg-indigo-600 text-white shadow-[0_0_0_3px_rgba(99,102,241,0.18)]",
+                    "bg-indigo-600 text-white shadow-[0_0_0_3px_rgba(24, 137, 149,0.18)]",
                   pending && "bg-slate-100 text-slate-500"
                 )}
                 aria-hidden

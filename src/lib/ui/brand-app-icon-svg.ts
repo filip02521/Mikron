@@ -24,7 +24,7 @@ export function buildBrandAppIconSvg(): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="OnTime">
   <defs>
     <linearGradient id="ontime-bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#4f46e5"/>
+      <stop offset="0%" stop-color="#0f7380"/>
       <stop offset="100%" stop-color="#0284c7"/>
     </linearGradient>
     <linearGradient id="ontime-hand" gradientUnits="userSpaceOnUse" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}">

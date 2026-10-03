@@ -1,7 +1,13 @@
 "use client";
 
-import type { SupplierSubiektScopeInfo } from "@/lib/orders/zd-estimate-supplier-scope";
-import { useEffect, useState } from "react";
+import { SupplierOrderFormList } from "@/components/summary/SupplierOrderFormList";
+import { findSupplierFormTemplate } from "@/lib/supplier-forms/templates";
+import {
+  buildZdEstimateLaunchHref,
+  type SupplierSubiektScopeInfo,
+} from "@/lib/orders/zd-estimate-supplier-scope";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { SupplierSummaryMeta } from "@/lib/orders/summary-workspace";
@@ -27,6 +33,7 @@ import {
   IconCalendar,
   IconClock,
   IconTruck,
+  IconDownload,
   IconPackageCheck,
   IconLink,
   IconLinkOff,
@@ -94,6 +101,7 @@ export function SupplierDrawer({
   onVacation,
   onEdit,
   canPrepareZd = false,
+  mode = "panel",
 }: {
   supplier: SupplierSummaryMeta | null;
   /** Aktywne okno urlopu obejmujące dziś (kalendarz) — z datami. */
@@ -106,13 +114,21 @@ export function SupplierDrawer({
   statsMode?: StatsMode;
   leadTimeDisplay?: import("@/lib/orders/delivery-eta").LeadTimeDisplayOptions;
   onClose: () => void;
-  isScopePending: (supplierId: string) => boolean;
-  run: DailyPanelRunFn;
-  onVacation: () => void;
-  onEdit: () => void;
+  /** Wymagane w trybie „panel” (akcje panelu dziennego). */
+  isScopePending?: (supplierId: string) => boolean;
+  run?: DailyPanelRunFn;
+  onVacation?: () => void;
+  onEdit?: () => void;
   /** Przygotuj ZD / kreator ZD — operacje dostaw (admin + zakupy). */
   canPrepareZd?: boolean;
+  /**
+   * „panel” — szuflada panelu dziennego z akcjami (Zamówione, Przesuń, Urlop…).
+   * „preview” — sam podgląd nad innym oknem (np. podsumowanie ZD): bez akcji zmieniających
+   * termin, z przejściem do panelu dziennego; warstwa nad modalem, Escape zamyka tylko podgląd.
+   */
+  mode?: "panel" | "preview";
 }) {
+  const preview = mode === "preview";
   const hubContext = useSupplierHubContext();
   useBodyScrollLock(Boolean(supplier));
   const supplierId = supplier?.id ?? null;
@@ -126,6 +142,32 @@ export function SupplierDrawer({
   }>({ supplierId: null, rows: [], loading: false });
   /** Rozwinięta pełna historia — per dostawca, zmiana dostawcy zwija. */
   const [historyExpandedFor, setHistoryExpandedFor] = useState<string | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  // Podgląd nad modalem: Escape zamyka tylko podgląd, a Tab nie trafia do pułapki fokusu
+  // modalu pod spodem (listenery w fazie przechwytywania, przed modalem).
+  useEffect(() => {
+    if (!preview || !supplierId) return;
+    const raf = requestAnimationFrame(() => closeButtonRef.current?.focus());
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        onCloseRef.current();
+      } else if (e.key === "Tab") {
+        e.stopImmediatePropagation();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("keydown", onKey, true);
+    };
+  }, [preview, supplierId]);
 
   useEffect(() => {
     if (!supplierId) return;
@@ -163,7 +205,7 @@ export function SupplierDrawer({
   }, [supplierId]);
 
   useEffect(() => {
-    if (!supplier) return;
+    if (!supplier || preview || !isScopePending) return;
 
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -178,14 +220,14 @@ export function SupplierDrawer({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [supplier, markConfirmOpen, isScopePending]);
+  }, [supplier, markConfirmOpen, isScopePending, preview]);
 
   if (!supplier) return null;
 
   const history = historyState.supplierId === supplier.id ? historyState.rows : [];
   const historyLoading = historyState.supplierId === supplier.id && historyState.loading;
 
-  const rowPending = isScopePending(supplier.id);
+  const rowPending = isScopePending?.(supplier.id) ?? false;
   const scope = { scope: supplier.id };
   const scheduleHref = `/lokalizacje/${supplier.location}?q=${encodeURIComponent(supplier.name)}`;
   const cardsHref = supplierCardsHref(hubContext, {
@@ -194,7 +236,7 @@ export function SupplierDrawer({
   });
 
   const confirmMarkOrdered = () => {
-    if (rowPending) return;
+    if (rowPending || !run) return;
     run(
       () => actionMarkOrdered(supplier.id),
       dailyPanelMarkOrderedToastTitle(supplier.name),
@@ -218,10 +260,10 @@ export function SupplierDrawer({
   const historyExpanded = historyExpandedFor === supplier.id;
   const shownHistory = historyExpanded ? history : history.slice(0, HISTORY_PREVIEW);
 
-  return (
+  const drawer = (
     <>
       <ConfirmDialog
-        open={markConfirmOpen}
+        open={markConfirmOpen && !preview}
         title={dailyPanelMarkOrderedConfirmTitle()}
         message={dailyPanelMarkOrderedConfirmMessage(supplier.name)}
         confirmLabel={dailyPanelMarkOrderedConfirmLabel()}
@@ -235,7 +277,7 @@ export function SupplierDrawer({
       />
       <button
         type="button"
-        className={cn(sidePanelBackdropClass, "panel-slide-backdrop-enter")}
+        className={cn(sidePanelBackdropClass, "panel-slide-backdrop-enter", preview && "z-[70]")}
         aria-label="Zamknij panel"
         onClick={() => {
           if (markConfirmOpen || rowPending) return;
@@ -243,8 +285,10 @@ export function SupplierDrawer({
         }}
       />
       <aside
-        className={cn(sidePanelShellClass, "panel-slide-enter")}
+        className={cn(sidePanelShellClass, "panel-slide-enter", preview && "z-[71]")}
         aria-labelledby="supplier-drawer-title"
+        role={preview ? "dialog" : undefined}
+        aria-modal={preview ? true : undefined}
       >
         <header className={sidePanelHeaderClass}>
           {/* Tożsamość + stan dostawcy */}
@@ -283,6 +327,7 @@ export function SupplierDrawer({
               </h2>
             </div>
             <button
+              ref={closeButtonRef}
               type="button"
               className={sidePanelCloseButtonClass}
               onClick={() => {
@@ -325,66 +370,90 @@ export function SupplierDrawer({
             ) : null}
           </div>
 
-          {/* Akcje: główne duże, pomocnicze mniejsze */}
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <Button
-              variant="primary"
-              size="sm"
-              disabled={rowPending}
-              aria-busy={rowPending}
-              className={cn("w-full justify-center", !canPrepareZd && "sm:col-span-2")}
-              onClick={() => setMarkConfirmForId(supplier.id)}
-              title="Skrót klawiszowy: Z"
-            >
-              <IconCircleCheck size={15} className={cn("shrink-0", rowPending && "animate-pulse")} />
-              {rowPending ? DAILY_PANEL_MARK_ORDERED_PENDING : DAILY_PANEL_MARK_ORDERED_LABEL}
-              {!rowPending ? (
-                <kbd className="ml-1 hidden rounded border border-white/30 px-1 text-[10px] font-semibold leading-4 sm:inline">
-                  Z
-                </kbd>
-              ) : null}
-            </Button>
-            {canPrepareZd ? (
+          {preview ? (
+            // Podgląd: termin i plan zmienia się w krokach okna, z którego otwarto podgląd —
+            // tu tylko przejścia do pełnych widoków.
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <Link
-                href={`/zakupy/szacunek?from=daily&supplierId=${encodeURIComponent(supplier.id)}&autorun=1`}
+                href={`/podsumowanie?view=dzis&supplierId=${encodeURIComponent(supplier.id)}`}
                 className="block w-full"
               >
                 <Button variant="secondary" size="sm" className="w-full justify-center">
-                  <IconClipboardList size={15} className="shrink-0" />
-                  Przygotuj ZD
+                  <IconCalendar size={15} className="shrink-0" />
+                  Otwórz w panelu dziennym
                 </Button>
               </Link>
-            ) : null}
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <ShiftMenu
-              disabled={rowPending}
-              onShiftWeeks={(w) =>
-                run(
-                  () => actionShiftOrder(supplier.id, w, null),
-                  `Przesunięto o ${w} ${w === 1 ? "tydzień" : "tygodnie"}`,
-                  `Przesuwanie terminu…`,
-                  scope
-                )
-              }
-              onShiftDate={(iso) =>
-                run(
-                  () => actionShiftOrder(supplier.id, null, iso),
-                  "Ustawiono datę przesunięcia",
-                  "Zapisywanie daty…",
-                  scope
-                )
-              }
-            />
-            <Button variant="ghost" size="sm" disabled={rowPending} onClick={onVacation}>
-              <IconSun size={14} className="shrink-0" />
-              Urlop
-            </Button>
-            <Button variant="ghost" size="sm" disabled={rowPending} onClick={onEdit}>
-              <IconPencil size={14} className="shrink-0" />
-              Edytuj dane
-            </Button>
-          </div>
+              <Link href={cardsHref} className="block w-full">
+                <Button variant="ghost" size="sm" className="w-full justify-center">
+                  <IconPencil size={15} className="shrink-0" />
+                  Karta dostawcy
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <>
+          {/* Akcje: główne duże, pomocnicze mniejsze */}
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={rowPending}
+                aria-busy={rowPending}
+                className={cn("w-full justify-center", !canPrepareZd && "sm:col-span-2")}
+                onClick={() => setMarkConfirmForId(supplier.id)}
+                title="Skrót klawiszowy: Z"
+              >
+                <IconCircleCheck size={15} className={cn("shrink-0", rowPending && "animate-pulse")} />
+                {rowPending ? DAILY_PANEL_MARK_ORDERED_PENDING : DAILY_PANEL_MARK_ORDERED_LABEL}
+                {!rowPending ? (
+                  <kbd className="ml-1 hidden rounded border border-white/30 px-1 text-[10px] font-semibold leading-4 sm:inline">
+                    Z
+                  </kbd>
+                ) : null}
+              </Button>
+              {canPrepareZd ? (
+                <Link
+                  href={buildZdEstimateLaunchHref(supplier.id)}
+                  className="block w-full"
+                >
+                  <Button variant="secondary" size="sm" className="w-full justify-center">
+                    <IconClipboardList size={15} className="shrink-0" />
+                    Przygotuj ZD
+                  </Button>
+                </Link>
+              ) : null}
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <ShiftMenu
+                disabled={rowPending}
+                onShiftWeeks={(w) =>
+                  run?.(
+                    () => actionShiftOrder(supplier.id, w, null),
+                    `Przesunięto o ${w} ${w === 1 ? "tydzień" : "tygodnie"}`,
+                    `Przesuwanie terminu…`,
+                    scope
+                  )
+                }
+                onShiftDate={(iso) =>
+                  run?.(
+                    () => actionShiftOrder(supplier.id, null, iso),
+                    "Ustawiono datę przesunięcia",
+                    "Zapisywanie daty…",
+                    scope
+                  )
+                }
+              />
+              <Button variant="ghost" size="sm" disabled={rowPending} onClick={onVacation}>
+                <IconSun size={14} className="shrink-0" />
+                Urlop
+              </Button>
+              <Button variant="ghost" size="sm" disabled={rowPending} onClick={onEdit}>
+                <IconPencil size={14} className="shrink-0" />
+                Edytuj dane
+              </Button>
+            </div>
+            </>
+          )}
         </header>
 
         <div
@@ -408,6 +477,16 @@ export function SupplierDrawer({
               ) : null}
             </dl>
           </DrawerSection>
+
+          {findSupplierFormTemplate(supplier.name) ? (
+            <DrawerSection
+              title="Formularz zamówienia"
+              hint={`${findSupplierFormTemplate(supplier.name)!.kind !== "pdf" ? "Arkusz Excel" : "Formularz PDF"} dostawcy wypełniony pozycjami z ZD — gotowy do wysłania`}
+              icon={<IconDownload size={14} />}
+            >
+              <SupplierOrderFormList supplierId={supplier.id} />
+            </DrawerSection>
+          ) : null}
 
           <DrawerSection
             title="Terminy i rytm"
@@ -496,12 +575,18 @@ export function SupplierDrawer({
                 label={subiektScope ? (subiektScope.mode === "cecha" ? "Cecha towarów" : "Grupa towarów") : "Grupa / cecha"}
                 value={
                   subiektScope
-                    ? `${subiektScope.label || "bez nazwy"} · ${subiektScope.mode === "cecha" ? "ctw_Id" : "grt_Id"} ${subiektScope.id}`
+                    ? `${subiektScope.label || "bez nazwy"} · ${subiektScope.mode === "cecha" ? "ctw_Id" : "grt_Id"} ${subiektScope.id}${
+                        subiektScope.extraLabels?.length
+                          ? ` + ${subiektScope.extraLabels.join(", ")}`
+                          : ""
+                      }`
                     : "brak powiązania"
                 }
                 hint={
                   subiektScope
-                    ? `„Przygotuj ZD” liczy towary z tej ${subiektScope.mode === "cecha" ? "cechy" : "grupy"}.`
+                    ? subiektScope.extraLabels?.length
+                      ? `„Przygotuj ZD” liczy razem ${subiektScope.extraLabels.length + 1} zakresy dostawcy.`
+                      : `„Przygotuj ZD” liczy towary z tej ${subiektScope.mode === "cecha" ? "cechy" : "grupy"}.`
                     : "„Przygotuj ZD” spróbuje dopasować po nazwie dostawcy."
                 }
               />
@@ -582,6 +667,9 @@ export function SupplierDrawer({
       </aside>
     </>
   );
+  // Podgląd nad modalem: portal do <body> — <main> ma własny kontekst warstw (isolate),
+  // w którym szuflada zostałaby pod oknem renderowanym portalem.
+  return preview ? createPortal(drawer, document.body) : drawer;
 }
 
 const HISTORY_PREVIEW = 4;

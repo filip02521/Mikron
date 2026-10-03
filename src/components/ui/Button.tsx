@@ -7,7 +7,7 @@ export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "outl
 const variants: Record<ButtonVariant, string> = {
   primary: buttonPrimaryClass,
   secondary:
-    "border border-[var(--card-border)] bg-[var(--card)] text-slate-700 shadow-sm hover:bg-slate-50",
+    "border border-[var(--card-border)] bg-[var(--card)] text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900",
   outline:
     "border border-indigo-200/90 bg-[var(--primary-muted)]/60 text-indigo-800 hover:bg-[var(--primary-muted)]",
   ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
@@ -33,7 +33,7 @@ export const Button = forwardRef<
     <button
       ref={ref}
       className={cn(
-        "inline-flex cursor-pointer items-center justify-center gap-2 font-medium transition-colors disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex cursor-pointer items-center justify-center gap-2 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:pointer-events-none disabled:opacity-50",
         variants[variant],
         sizes[size],
         className

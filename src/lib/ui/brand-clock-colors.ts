@@ -1,6 +1,6 @@
 /** Kolory wskazówek — dyskretny akcent za monogramem OT. */
 export const BRAND_CLOCK_HAND_GRADIENT = {
-  from: "#e0e7ff",
+  from: "#d4edef",
   fromOpacity: 0.28,
   to: "#e0f2fe",
   toOpacity: 0.22,

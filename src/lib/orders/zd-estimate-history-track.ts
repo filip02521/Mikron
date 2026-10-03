@@ -61,6 +61,8 @@ export type HistoryTrackInput = {
   lastOrderedQty: number;
   linkedAt: string;
   nowMs?: number;
+  /** Sprzedaż już wygładzona profilem 12 miesięcy — stary „skok” (vs ostatnie ZD) pomijamy. */
+  skipSpike?: boolean;
 };
 
 export type HistoryTrackAdjustment = {
@@ -271,8 +273,8 @@ export function applyZdEstimateHistoryCuts(input: HistoryTrackInput): {
   > = [];
   let celTracked = input.celTracked;
 
-  const spike = applySalesSpikeCut({ ...input, celTracked });
-  if (spike.reason) {
+  const spike = input.skipSpike ? null : applySalesSpikeCut({ ...input, celTracked });
+  if (spike?.reason) {
     celTracked = spike.celTracked;
     reasons.push(spike.reason);
   }

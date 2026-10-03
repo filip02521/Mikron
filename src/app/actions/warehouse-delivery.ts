@@ -36,6 +36,7 @@ import {
   type ZdReceiveSearchCandidate,
   type ZdSearchCandidate,
 } from "@/lib/subiekt/zd-document";
+import { buildQuotedIlikeContainsPattern } from "@/lib/security/ilike-pattern";
 import { parseSubiektDocDate } from "@/lib/subiekt/zk-document";
 import {
   assertJournalDateReadable,
@@ -328,7 +329,7 @@ async function findZdCandidatesByNumber(
   query: string
 ): Promise<{ candidates: ZdSearchCandidate[]; subiektOffline: boolean }> {
   const supabase = createAdminClient();
-  const safeQuery = query.replace(/[%_,]/g, " ").trim();
+  const safeQuery = query.replace(/[%_]/g, " ").trim();
   const compactKey = normalizeZdNumberKey(safeQuery);
   const dataOd = defaultZdSearchDataOd(zdReceiveSearchMonthsBack(safeQuery));
 
@@ -337,7 +338,9 @@ async function findZdCandidatesByNumber(
     .select("dok_id, dok_nr_pelny, dok_data_wyst")
     .eq("verified", true)
     .gte("dok_data_wyst", dataOd)
-    .or(`dok_nr_pelny.ilike.%${safeQuery}%,dok_nr_pelny.ilike.%${compactKey}%`)
+    .or(
+      `dok_nr_pelny.ilike.${buildQuotedIlikeContainsPattern(safeQuery)},dok_nr_pelny.ilike.${buildQuotedIlikeContainsPattern(compactKey)}`
+    )
     .order("dok_data_wyst", { ascending: false })
     .limit(24);
 

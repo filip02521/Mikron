@@ -12,7 +12,7 @@ export function countZdEstimateTableColumns(input: {
   if (input.showPackagingColumn) n += 1;
   for (const col of input.visibleOptionalColumns) {
     if (col === "packaging") continue;
-    if (col === "stock" || col === "zk") n += 2;
+    if (col === "zk") n += 2;
     else n += 1;
   }
   return n;

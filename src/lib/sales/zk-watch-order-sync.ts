@@ -15,7 +15,10 @@ import { orderExplicitlyLinkedToZkWatch } from "@/lib/orders/zk-prosba-source";
 import { normalizeSalesClientKhId } from "@/lib/orders/sales-client-match";
 import { searchQueryTokens } from "@/lib/orders/my-order-search";
 import { extractZkSerial } from "@/lib/subiekt/zk-document";
-import { escapeIlikePattern } from "@/lib/security/ilike-pattern";
+import {
+  buildQuotedIlikeContainsPattern,
+  escapeIlikePattern,
+} from "@/lib/security/ilike-pattern";
 import type { IndividualOrder, SalesZkWatch } from "@/types/database";
 
 const MAX_PERSIST_ATTEMPTS = 6;
@@ -94,7 +97,10 @@ export function buildClientLabelIlikeOrFilter(
   const tokens = searchQueryTokens(clientName ?? "");
   if (!tokens.length) return null;
   return tokens
-    .map((token) => `client_label.ilike.%${escapeIlikePattern(token)}%`)
+    .map(
+      (token) =>
+        `client_label.ilike.${buildQuotedIlikeContainsPattern(token)}`
+    )
     .join(",");
 }
 

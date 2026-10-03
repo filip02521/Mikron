@@ -10,17 +10,17 @@ export function Badge({
   className?: string;
 }) {
   const styles = {
-    default: "bg-slate-100 text-slate-700",
-    success: "bg-emerald-100 text-emerald-800",
-    warning: "bg-amber-100 text-amber-800",
-    info: "bg-indigo-100 text-indigo-800",
-    purple: "bg-violet-100 text-violet-800",
-    danger: "bg-red-100 text-red-800",
+    default: "bg-slate-100 text-slate-700 ring-slate-200",
+    success: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+    warning: "bg-amber-50 text-amber-900 ring-amber-200",
+    info: "bg-indigo-50 text-indigo-800 ring-indigo-200",
+    purple: "bg-violet-50 text-violet-800 ring-violet-200",
+    danger: "bg-red-50 text-red-800 ring-red-200",
   };
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium",
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset",
         styles[variant],
         className
       )}

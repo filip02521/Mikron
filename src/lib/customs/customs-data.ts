@@ -1,6 +1,7 @@
 // @service-role-ok — wywoływane wyłącznie z akcji po requireOperations().
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createCnLookup } from "./cn-nomenclature";
 import {
   buildDocumentArticleIndex,
   normalizeArticleCode,
@@ -9,6 +10,7 @@ import {
 import {
   buildCustomsClearanceSummary,
   buildCustomsLineViews,
+  lineArticleKey,
   type CustomsCardRow,
   type CustomsClearanceView,
   type CustomsLineRow,
@@ -88,7 +90,8 @@ export async function loadClearanceView(supabase: Db, id: string): Promise<Custo
     supabase.from("suppliers").select("name").eq("id", clearance.supplier_id).single(),
     supabase
       .from("customs_clearance_lines")
-      .select("id, position, supplier_article_code, supplier_name, quantity, unit, unit_price, amount, zd_quantity")
+      // „*” zamiast listy: invoice_hs_code (migracja 160) nie wywraca widoku przed migracją.
+      .select("*")
       .eq("clearance_id", id)
       .order("position", { ascending: true }),
     loadSupplierDocuments(supabase, clearance.supplier_id),
@@ -103,7 +106,7 @@ export async function loadClearanceView(supabase: Db, id: string): Promise<Custo
   ]);
 
   const lines = (lineRows ?? []) as CustomsLineRow[];
-  const codes = [...new Set(lines.map((l) => normalizeArticleCode(l.supplier_article_code)).filter(Boolean))];
+  const codes = [...new Set(lines.map(lineArticleKey).filter(Boolean))];
   const cardsByCode = new Map<string, CustomsCardRow>();
   if (codes.length) {
     const { data: cards } = await supabase
@@ -116,7 +119,7 @@ export async function loadClearanceView(supabase: Db, id: string): Promise<Custo
     for (const card of (cards ?? []) as CustomsCardRow[]) cardsByCode.set(card.supplier_article_code, card);
   }
 
-  const lineViews = buildCustomsLineViews({ lines, cardsByCode, documentIndex: docs.index });
+  const lineViews = buildCustomsLineViews({ lines, cardsByCode, documentIndex: docs.index, cn: createCnLookup() });
   return {
     id: clearance.id,
     supplierId: clearance.supplier_id,
@@ -161,8 +164,11 @@ export async function upsertCard(
     userId: string;
     values: CardWrite;
     confirm: boolean;
-    /** „ai” = propozycja AI (nie nadpisuje stawki z dokumentów), domyślnie ręcznie. */
-    source?: "manual" | "ai";
+    /**
+     * „ai” = propozycja AI, „copied” = z wcześniejszego maila do agencji — obie nie nadpisują
+     * stawki z dokumentów dostawcy; domyślnie ręcznie.
+     */
+    source?: "manual" | "ai" | "copied";
   }
 ): Promise<{ id: string } | { error: string }> {
   const now = new Date().toISOString();

@@ -988,7 +988,9 @@ export function NotatnikClient({
 
   function handleProsbaScopeConfigured(watchId: string) {
     setProsbaScopeWatchId((current) => (current === watchId ? null : current));
-    markNewlyAddedZkWatchSeen(watchId);
+    // „Nowe ZK” zostaje po zapisaniu zakresu (okno zakresu zasłaniało wiersz zaraz po dodaniu,
+    // więc użytkownik nie widział jeszcze, gdzie trafiło) — znika po otwarciu ZK.
+    flashNotepadAnchor(`watch-${watchId}`, { delayMs: 250 });
   }
 
   function handleWatchClosed(watchId: string, closedAt: string) {

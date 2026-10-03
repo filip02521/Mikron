@@ -57,6 +57,26 @@ export function normalizeArticleCode(code: string | null | undefined): string {
     .trim();
 }
 
+/** Wartości z pustej kolumny kodu („Model: /”), które nie są numerem artykułu. */
+const CODE_PLACEHOLDER = /^[\s/\\.\-–—_*]*$|^(N\/?A|NONE|BRAK|NIL)$/i;
+
+/**
+ * Klucz artykułu do kart celnych: kod dostawcy, a gdy faktura go nie ma (UP3D, PioCreat,
+ * Saeshin „105L(BL):COLLET CHUCK "A"”) — nazwa z faktury bez interpunkcji, żeby ta sama
+ * pozycja trafiała w tę samą kartę niezależnie od tego, jak AI przepisało dwukropki i cudzysłowy.
+ */
+export function customsArticleKey(code: string | null | undefined, name: string | null | undefined): string {
+  const raw = (code ?? "").trim();
+  if (raw && !CODE_PLACEHOLDER.test(raw)) return normalizeArticleCode(raw).slice(0, 120);
+  return (name ?? "")
+    .normalize("NFKC")
+    .toUpperCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .slice(0, 120)
+    .trim();
+}
+
 export function buildDocumentArticleIndex(
   rows: readonly { supplierArticleCode: string; document: CustomsDocumentRef }[]
 ): CustomsDocumentArticleIndex {
@@ -166,16 +186,31 @@ function formatPositionRange(from: number, to: number): string {
   return from === to ? `${from}.` : `${from}-${to}.`;
 }
 
-function formatLineBody(line: CustomsEmailLine, includeCn: boolean): string {
-  const parts = [line.descriptionPl.trim(), line.material.trim()].filter(Boolean);
+function formatLineBody(line: CustomsEmailLine, includeCn: boolean, includeVat: boolean): string {
+  const description = line.descriptionPl.trim();
+  const material = line.material.trim();
+  // Opis z przecinkami („…, np. pmma”) — materiał po średniku, żeby agencja nie wzięła go za część opisu.
+  const parts = description.includes(",") && material
+    ? [`${description}; materiał: ${material}`]
+    : [description, material].filter(Boolean);
   if (line.isMedicalDevice) parts.push("wyrób medyczny");
   if (includeCn && line.cnCode) parts.push(`kod CN ${line.cnCode}`);
-  parts.push(`stawka VAT ${line.vatRate}%`);
+  if (includeVat) parts.push(`stawka VAT ${line.vatRate}%`);
   return parts.join(", ");
 }
 
+/** Wspólna stawka VAT, gdy wszystkie pozycje mają tę samą (wtedy raz pod listą, nie przy każdej). */
+export function sharedVatRate(lines: readonly CustomsEmailLine[]): CustomsVatRate | null {
+  const rates = new Set(lines.map((l) => l.vatRate));
+  return rates.size === 1 ? [...rates][0]! : null;
+}
+
 /** Pozycje do maila: kolejne identyczne pozycje łączone w zakres („8-9.”). */
-export function formatCustomsLines(lines: readonly CustomsEmailLine[], includeCn: boolean): string[] {
+export function formatCustomsLines(
+  lines: readonly CustomsEmailLine[],
+  includeCn: boolean,
+  includeVat = true
+): string[] {
   const sorted = [...lines].sort((a, b) => a.position - b.position);
   const out: string[] = [];
   let i = 0;
@@ -190,7 +225,9 @@ export function formatCustomsLines(lines: readonly CustomsEmailLine[], includeCn
     ) {
       j++;
     }
-    out.push(`${formatPositionRange(first.position, sorted[j]!.position)} ${formatLineBody(first, includeCn)}`);
+    out.push(
+      `${formatPositionRange(first.position, sorted[j]!.position)} ${formatLineBody(first, includeCn, includeVat)}`
+    );
     i = j + 1;
   }
   return out;
@@ -216,10 +253,15 @@ export function formatCustomsAgencyEmail(input: {
     ? `2) Przesyłka zawiera ${shipment}, kod taryfy celnej dla wszystkich:\n${shared}`
     : `2) Przesyłka zawiera ${shipment}:`;
 
+  // Jedna stawka dla całej przesyłki (np. Saeshin — same 23%) → raz pod listą, jak w mailach Mikranu.
+  const vat = input.lines.length > 1 ? sharedVatRate(input.lines) : null;
+  const list = [header, "", ...formatCustomsLines(input.lines, shared == null, vat == null)];
+  if (vat != null) list.push("", `Stawka VAT ${vat}% dla wszystkich pozycji`);
+
   const blocks = [
     "Dzień dobry,",
     input.invoiceDataCorrect === false ? "1) Dane na fakturze wymagają korekty" : "1) Dane na fakturze są poprawne",
-    [header, "", ...formatCustomsLines(input.lines, shared == null)].join("\n"),
+    list.join("\n"),
     [
       `3) ${CUSTOMS_IMPORTER.name}`,
       `${CUSTOMS_IMPORTER.street}, ${CUSTOMS_IMPORTER.postalCity}`,
@@ -259,9 +301,14 @@ export function customsLineState(card: CustomsProductCard | null, vat: ResolvedL
   return vat.warning ? "confirmed_changed" : "confirmed";
 }
 
-/** Czy kod CN ma poprawny format (8 cyfr, spacje/kropki ignorowane). */
+/**
+ * Kod CN w postaci 8 cyfr (spacje / kropki ignorowane) albo null. Odrzuca działy, których
+ * nie ma w Nomenklaturze Scalonej (00, 77 — zarezerwowany, 98–99 — kody krajowe / specjalne).
+ */
 export function normalizeCnCode(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const digits = raw.replace(/[\s.]/g, "");
-  return /^[0-9]{8}$/.test(digits) ? digits : null;
+  if (!/^[0-9]{8}$/.test(digits)) return null;
+  const chapter = Number(digits.slice(0, 2));
+  return chapter >= 1 && chapter <= 97 && chapter !== 77 ? digits : null;
 }

@@ -13,7 +13,7 @@ param(
   [switch]$Install,
   [switch]$Uninstall,
   [switch]$Test,
-  [ValidateSet("morning", "process-deliveries", "informacja-stock-sync", "catalog-zd-sync", "zd-eta-sync", "morning-sync")]
+  [ValidateSet("morning", "process-deliveries", "informacja-stock-sync", "catalog-zd-sync", "stock-watch", "zd-eta-sync", "morning-sync")]
   [string]$Job = "morning",
   [switch]$Force,
   [switch]$List
@@ -26,12 +26,15 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot "cron-env.ps1")
 
 $CatalogZdSyncSlots = @("0200", "0220", "0240", "0300", "0320", "0340", "0400", "0420", "0440")
+# Po nocnym deployu (05:00) i synchronizacji katalogu — ceny z ZD i zakresy dostawców.
+$StockWatchSlots = @("0530", "0550", "0610", "0630")
 $TaskNames = @(
   "OnTime Cron Morning",
   "OnTime Cron Process Deliveries",
   "OnTime Cron Informacja Stock Sync",
   "OnTime Cron ZD ETA Sync"
-) + ($CatalogZdSyncSlots | ForEach-Object { "OnTime Cron Catalog ZD Sync $_" })
+) + ($CatalogZdSyncSlots | ForEach-Object { "OnTime Cron Catalog ZD Sync $_" }) +
+  ($StockWatchSlots | ForEach-Object { "OnTime Cron Stock Watch $_" })
 $LegacyTaskNames = @(
   "OnTime Cron Catalog ZD Sync",
   "OnTime Cron Catalog ZD Sync Continue",
@@ -293,6 +296,15 @@ function Install-CronScheduledTasks {
     $slotId = $slot.Replace(":", "")
     New-SchTasksCronTask "OnTime Cron Catalog ZD Sync $slotId" @(
       "/Create", "/F", "/TN", "OnTime Cron Catalog ZD Sync $slotId", "/TR", $trSync,
+      "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY", "/ST", $slot
+    )
+  }
+
+  $trStockWatch = Get-CronInvokeCommand -Root $Root -JobName "stock-watch"
+  foreach ($slot in @("05:30", "05:50", "06:10", "06:30")) {
+    $slotId = $slot.Replace(":", "")
+    New-SchTasksCronTask "OnTime Cron Stock Watch $slotId" @(
+      "/Create", "/F", "/TN", "OnTime Cron Stock Watch $slotId", "/TR", $trStockWatch,
       "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY", "/ST", $slot
     )
   }

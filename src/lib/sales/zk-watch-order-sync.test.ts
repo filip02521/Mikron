@@ -62,9 +62,16 @@ describe("sync query helpers", () => {
 
   it("buildClientLabelIlikeOrFilter składa tokeny nazwy klienta", () => {
     expect(buildClientLabelIlikeOrFilter("Klinika Smile")).toBe(
-      "client_label.ilike.%klinika%,client_label.ilike.%smile%"
+      'client_label.ilike."%klinika%",client_label.ilike."%smile%"'
     );
     expect(buildClientLabelIlikeOrFilter("   ")).toBeNull();
+  });
+
+  it("buildClientLabelIlikeOrFilter cytuje przecinki w tokenie", () => {
+    // Bez cudzysłowów przecinek rozcina `.or()` → token "%" (QueryBuilderError).
+    expect(buildClientLabelIlikeOrFilter("Smith, John")).toBe(
+      'client_label.ilike."%smith,%",client_label.ilike."%john%"'
+    );
   });
 
   it("escapeIlikePattern chroni znaki specjalne", () => {

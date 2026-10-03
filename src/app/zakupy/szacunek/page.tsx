@@ -27,6 +27,7 @@ export default async function ZdEstimatePage({
     mode?: string;
     grupaId?: string;
     cechaId?: string;
+    horizon?: string;
   }>;
 }) {
   await requireZdEstimateAdmin("read");
@@ -50,6 +51,7 @@ export default async function ZdEstimatePage({
       label: null,
       resolveMessage: null,
       launchKey: null,
+      leadTimeHorizon: parsed.leadTimeHorizon,
     };
 
     if (parsed.supplierId) {

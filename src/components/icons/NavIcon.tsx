@@ -1,4 +1,5 @@
 import {
+  IconAlertCircle,
   IconArchive,
   IconBuilding,
   IconCalendar,
@@ -6,10 +7,13 @@ import {
   IconChartTrend,
   IconClipboardList,
   IconClipboardPen,
+  IconFilePlus,
+  IconGlobe,
   IconInbox,
   IconLayers,
   IconLayoutPanel,
   IconMagazynGadki,
+  IconMail,
   IconMessageSquare,
   IconNotepad,
   IconPackage,
@@ -59,6 +63,10 @@ const NAV_ICON_BY_KEY: Record<
   chartTrend: IconChartTrend,
   phone: IconPhone,
   truck: IconTruck,
+  zdCreator: IconFilePlus,
+  stockWatch: IconAlertCircle,
+  customs: IconGlobe,
+  mail: IconMail,
 };
 
 const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
@@ -67,6 +75,11 @@ const HREF_TO_NAV_ICON: Record<string, NavIconKey> = {
   "/weryfikacja": "verification",
   "/kolejka": "warehouse",
   "/zakupy/gadki": "magazynGadki",
+  "/zakupy/szacunek": "zdCreator",
+  "/zakupy/braki": "stockWatch",
+  "/zakupy/odprawy": "customs",
+  "/admin/wysylki": "mail",
+  "/admin/mail": "mail",
   "/dostawy": "schedule",
   "/historia": "history",
   "/zakupy/dostawcy": "suppliers",

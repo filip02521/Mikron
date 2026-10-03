@@ -731,6 +731,7 @@ export function ZkWatchSection({
         unseenWatchIds={unseenWatchIds}
         newLineKeysByWatchId={newLineKeysByWatchId}
         newlyAddedWatchIds={newlyAddedWatchIds}
+        searchQuery={searchActive ? listFilter : null}
         onWarehouseArrivalSeen={onWarehouseArrivalSeen}
         onNewZkLinesSeen={onNewZkLinesSeen}
         onNewlyAddedZkWatchSeen={onNewlyAddedZkWatchSeen}
@@ -914,9 +915,11 @@ export function ZkWatchSection({
           tourPreview={tourPreview}
           delegatePreview={delegatePreview}
           teethRegistry={teethRegistry}
-          onClose={() =>
-            setScopeDismissed({ watchId: prosbaScopeWatch.id, nonce: prosbaScopeOpenNonce })
-          }
+          onClose={() => {
+            setScopeDismissed({ watchId: prosbaScopeWatch.id, nonce: prosbaScopeOpenNonce });
+            // Okno zakresu zasłaniało listę — po zamknięciu pokaż, gdzie jest to ZK.
+            flashNotepadAnchor(`watch-${prosbaScopeWatch.id}`, { delayMs: 250 });
+          }}
           onSaved={(updated, meta) => {
             setScopeDismissed(null);
             onProsbaScopeConfigured?.(prosbaScopeWatch.id);

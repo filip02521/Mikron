@@ -1,5 +1,6 @@
 "use client";
 
+import { SearchHighlightText } from "@/components/moje/SearchHighlightText";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { useMemo, useState, type KeyboardEvent, type MouseEvent } from "react";
 import { actionRefreshZkWatchFromSubiekt, actionRestoreZkWatch, actionDeleteArchivedZkWatch } from "@/app/actions/sales-notepad";
@@ -90,6 +91,7 @@ export function ZkWatchCard({
   hasNewZkLines = false,
   isNewlyAdded = false,
   newLineKeys,
+  searchQuery = null,
   onProsbaScopeRequested,
   onTeethDraftRequested,
   teethRegistry,
@@ -121,6 +123,8 @@ export function ZkWatchCard({
   hasNewZkLines?: boolean;
   isNewlyAdded?: boolean;
   newLineKeys?: string[];
+  /** Fraza z „Szukaj na liście ZK” — dopasowanie zaznaczone w numerze, kliencie i towarach. */
+  searchQuery?: string | null;
   /** Ponowne otwarcie modala zakresu prośby (gdy jeszcze nie skonfigurowano). */
   onProsbaScopeRequested?: (watchId: string) => void;
   onTeethDraftRequested?: (watchId: string) => void;
@@ -609,7 +613,7 @@ export function ZkWatchCard({
                   compact ? "text-xs" : salesTypography.rowTitle
                 )}
               >
-                {displayNumber}
+                <SearchHighlightText text={displayNumber} searchQuery={searchQuery} />
               </span>
               <span
                 className={cn(
@@ -617,7 +621,7 @@ export function ZkWatchCard({
                   compact ? "text-xs" : salesTypography.rowTitle
                 )}
               >
-                {watch.client_label}
+                <SearchHighlightText text={watch.client_label} searchQuery={searchQuery} />
               </span>
               {primaryAttention ? (
                 <ZkWatchAttentionBadge
@@ -644,7 +648,7 @@ export function ZkWatchCard({
                     : productPreview
                 }
               >
-                {productPreview}
+                <SearchHighlightText text={productPreview} searchQuery={searchQuery} />
               </p>
             ) : null}
 

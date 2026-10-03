@@ -12,7 +12,15 @@ export type CustomsInputLine = {
   quantity: number;
   unitPrice: number | null;
   subiektTwId: number | null;
+  /** Kod HS / commodity code nadawcy przy pozycji (np. „8207909000”) — podpowiedź dla CN. */
+  invoiceHsCode?: string | null;
 };
+
+/** Kod HS z faktury: same cyfry, 6–10 znaków („8207.90.9000” → „8207909000”), inaczej null. */
+export function normalizeInvoiceHsCode(raw: string | null | undefined): string | null {
+  const digits = (raw ?? "").replace(/[\s.]/g, "");
+  return /^\d{6,10}$/.test(digits) ? digits : null;
+}
 
 /** Liczba z polskim lub angielskim zapisem („1 234,50”, „1,234.50”, „5.5”). */
 export function parseLooseNumber(raw: string | null | undefined): number | null {
@@ -31,6 +39,13 @@ export function parseLooseNumber(raw: string | null | undefined): number | null 
   return Number.isFinite(n) ? n : null;
 }
 
+/** Koszt zamiast towaru — rozpoznanie po nazwie, gdy AI nie oznaczyło `kind`. */
+export function isInvoiceChargeName(name: string): boolean {
+  return /\b(shipping|freight|delivery (fee|cost|charge)|transport|courier|postage|insurance|bank (fee|charge)s?|handling (fee|charge)|packing (fee|charge)|discount)\b|^(fracht|wysyłka|koszt(y)? (wysyłki|transportu|dostawy)|rabat)\b/i.test(
+    name.trim()
+  );
+}
+
 function splitColumns(line: string): string[] {
   if (line.includes("\t")) return line.split("\t");
   if (line.includes(";")) return line.split(";");
@@ -39,7 +54,7 @@ function splitColumns(line: string): string[] {
 
 /**
  * Wklejone pozycje faktury — jedna pozycja na wiersz:
- * `kod ⇥ nazwa ⇥ ilość ⇥ cena` (tabulator z Excela, średnik lub ≥2 spacje).
+ * `kod ⇥ nazwa ⇥ ilość ⇥ cena ⇥ HS` (tabulator z Excela, średnik lub ≥2 spacje; HS opcjonalny).
  * Wiersz nagłówka i puste wiersze są pomijane.
  */
 export function parseInvoiceLinesPaste(text: string): {
@@ -52,7 +67,7 @@ export function parseInvoiceLinesPaste(text: string): {
   rows.forEach((row, index) => {
     if (!row.trim()) return;
     const cols = splitColumns(row).map((c) => c.trim());
-    const [code = "", name = "", qtyRaw = "", priceRaw = ""] = cols;
+    const [code = "", name = "", qtyRaw = "", priceRaw = "", hsRaw = ""] = cols;
     const quantity = parseLooseNumber(qtyRaw);
     if (quantity == null) {
       // Nagłówek („Kod / Nazwa / Ilość”) albo wiersz bez ilości.
@@ -70,6 +85,7 @@ export function parseInvoiceLinesPaste(text: string): {
       quantity,
       unitPrice: parseLooseNumber(priceRaw),
       subiektTwId: null,
+      ...(normalizeInvoiceHsCode(hsRaw) ? { invoiceHsCode: normalizeInvoiceHsCode(hsRaw) } : {}),
     });
   });
   return { lines, errors };

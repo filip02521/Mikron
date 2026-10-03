@@ -52,7 +52,7 @@ export function ZdEstimatePackagingCell({
 
   const primary = qty.hasPackaging
     ? formatZdEstimateTableQty(qty.unitsPerPackage)
-    : "1:1";
+    : "—";
   const ratio = qty.hasPackaging
     ? packagesMode
       ? formatZdPackTableRatioLabel(label)
@@ -90,15 +90,17 @@ export function ZdEstimatePackagingCell({
         conflict && "ring-1 ring-amber-400/80 bg-amber-50/70"
       )}
     >
-      <span
-        className={cn(
-          "zd-est-qty--c tabular-nums leading-none",
-          !qty.hasPackaging && "zd-est-qty--dash zd-est-qty--muted",
-          conflict && "zd-est-qty--warn"
-        )}
-      >
-        {primary}
-      </span>
+      {/* Bez opakowania: pusta komórka — „ustaw” dopiero po najechaniu na wiersz. */}
+      {qty.hasPackaging ? (
+        <span
+          className={cn(
+            "zd-est-qty--c tabular-nums leading-none",
+            conflict && "zd-est-qty--warn"
+          )}
+        >
+          {primary}
+        </span>
+      ) : null}
       {ratio ? (
         <span className="zd-est-unit zd-est-pack-ratio whitespace-nowrap">
           {ratio}
@@ -107,7 +109,8 @@ export function ZdEstimatePackagingCell({
       <span
         className={cn(
           "zd-est-pack-cell-sub text-[10px] font-medium leading-none tracking-tight",
-          !qty.hasPackaging && "text-slate-400",
+          // „ustaw” przy każdym wierszu bez paczki to szum — pokazujemy go dopiero przy hover/focus.
+          !qty.hasPackaging && "zd-est-pack-cell-sub--empty text-indigo-700",
           qty.hasPackaging && conflict && "text-amber-900",
           qty.hasPackaging && !conflict && "text-slate-500"
         )}

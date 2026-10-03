@@ -5,7 +5,7 @@ describe("brand-app-icon-svg", () => {
   it("zawiera monogram OT i gradient marki", () => {
     const svg = buildBrandAppIconSvg();
     expect(svg).toContain(">OT<");
-    expect(svg).toContain("#4f46e5");
+    expect(svg).toContain("#0f7380");
     expect(svg).toContain("#0284c7");
     expect(svg).toContain('viewBox="0 0 32 32"');
   });

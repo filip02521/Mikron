@@ -76,7 +76,7 @@ export function ZdEstimatePiecesMetricCell({
             <span className={cn("min-w-0 truncate", qtyClass)}>
               {formatZdEstimateTableQty(raw)}
             </span>
-            <span className="zd-est-unit shrink-0">szt</span>
+            <span className="zd-est-unit zd-est-unit--szt shrink-0">szt</span>
           </>
         )}
       </span>

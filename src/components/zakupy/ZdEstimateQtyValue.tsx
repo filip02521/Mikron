@@ -123,7 +123,16 @@ export function ZdEstimateQtyValue({
               {formatZdEstimateTableQty(value)}
             </span>
             {unitKey ? (
-              <span className="zd-est-unit shrink-0">{UNIT_LABEL[unitKey]}</span>
+              <span
+                className={cn(
+                  "zd-est-unit shrink-0",
+                  // „szt” to domyślna jednostka kolumn liczbowych — w tabeli ukrywana CSS-em
+                  // (poza Do ZD), widać tylko jednostki, które coś mówią: op., j.dok.
+                  unitKey === "szt" && "zd-est-unit--szt"
+                )}
+              >
+                {UNIT_LABEL[unitKey]}
+              </span>
             ) : null}
           </>
         )}

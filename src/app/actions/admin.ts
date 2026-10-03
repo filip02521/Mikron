@@ -1,5 +1,6 @@
 "use server";
 
+import { refreshStockWatchAfterOrder } from "@/lib/stock-watch/refresh-after-order";
 import { runActionSafely, type ActionErrorResult } from "@/lib/actions/action-error";
 
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
@@ -209,6 +210,7 @@ export async function actionMarkOrdered(
     await markStandardOrdered(supplierId, user.email);
     const feedbackLines = await buildMarkOrderedFeedback([supplierId]);
     revalidateAll();
+    refreshStockWatchAfterOrder([supplierId]);
     return {
       success: true,
       feedbackLines,
@@ -381,6 +383,7 @@ export async function actionBulkOrdered(
   }
   const feedbackLines = await buildMarkOrderedFeedback(supplierIds);
   revalidateAll();
+  refreshStockWatchAfterOrder(supplierIds);
   return {
     success: true,
     count: supplierIds.length,

@@ -184,6 +184,12 @@ export type SummaryWorkspaceData = SummaryView & {
   onDemandSuppliers: OnDemandSupplierRow[];
   thisWeekDays: WeekDayPlan[];
   nextWeekDays: WeekDayPlan[];
+  /**
+   * Sobota / niedziela: widok Tydzień w panelu zaczyna od najbliższego tygodnia (miniony nie ma
+   * już planu) — pokazuje nextWeekDays i weekAfterNextDays. thisWeekDays bez zmian (plan handlowca).
+   */
+  weekViewStartsNextWeek: boolean;
+  weekAfterNextDays: WeekDayPlan[];
   forSomeoneLeft: SummaryForSomeoneEnriched[];
   /** Sygnały „brak na stanie” — osobna sekcja, nie mieszane z prośbami klientów. */
   stockOutLeft: SummaryForSomeoneEnriched[];
@@ -565,6 +571,13 @@ export function buildSummaryWorkspace(
 
   const thisWeekDays = buildWeekDays(allTarget, monday, today, leftSupplierIds);
   const nextWeekDays = buildWeekDays(allTarget, nextMonday, today, leftSupplierIds);
+  // Weekend: miniony pon–pt nie ma już nic do zrobienia — panel pokazuje najbliższy i kolejny.
+  const weekViewStartsNextWeek = today.getDay() === 6 || today.getDay() === 0;
+  const weekAfterNextMonday = new Date(nextMonday);
+  weekAfterNextMonday.setDate(nextMonday.getDate() + 7);
+  const weekAfterNextDays = weekViewStartsNextWeek
+    ? buildWeekDays(allTarget, weekAfterNextMonday, today, leftSupplierIds)
+    : [];
 
   const salesCancelledNotices = buildSalesCancelledNotices(
     salesCancelledOrders,
@@ -582,8 +595,11 @@ export function buildSummaryWorkspace(
     suppliersOnVacationNow: {},
     procurementFlagDefinitions: [],
     procurementLaneOrder: null,
-    onDemandSuppliers,    thisWeekDays,
+    onDemandSuppliers,
+    thisWeekDays,
     nextWeekDays,
+    weekViewStartsNextWeek,
+    weekAfterNextDays,
     forSomeoneLeft,
     stockOutLeft,
     informacjaLeft,

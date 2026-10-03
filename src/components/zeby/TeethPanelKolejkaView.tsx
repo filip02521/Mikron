@@ -300,8 +300,8 @@ export function TeethPanelKolejkaView({
               "fixed inset-x-3 z-40 mx-auto max-w-3xl",
               // Telefon: nad dolną nawigacją i paskiem podglądu admina.
               "bottom-[calc(env(safe-area-inset-bottom)+4.75rem+var(--admin-preview-dock,0px))]",
-              // Desktop: obok sidebara (16rem) i nad paskiem „Podgląd: …”.
-              "md:left-[calc(16rem+1.5rem)] md:right-6 md:bottom-[calc(1.5rem+var(--admin-preview-clearance,0px))]",
+              // Desktop: obok menu bocznego (--app-sidebar-w) i nad paskiem „Podgląd: …”.
+              "md:left-[calc(var(--app-sidebar-w)+1.5rem)] md:right-6 md:bottom-[calc(1.5rem+var(--admin-preview-clearance,0px))]",
             )}
           >
             <div className="flex flex-col gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white shadow-2xl sm:flex-row sm:items-center sm:justify-between">

@@ -1,33 +1,103 @@
 @import "tailwindcss";
 
+/* Podświetlenie kotwicy w notatniku / ZK (flashNotepadAnchor) — nakładka nad treścią karty,
+   widoczna także na wierszach z własnym tłem. */
+[data-notepad-flash] {
+  position: relative;
+}
+[data-notepad-flash]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  border-radius: 0.375rem;
+  /* multiply: barwi tło wiersza akcentem, tekst zostaje wyraźny (nie jest przykrywany). */
+  background: rgb(212 237 239);
+  mix-blend-mode: multiply;
+  box-shadow: inset 0 0 0 2px rgb(24 137 149 / 0.9);
+  animation: notepad-flash var(--notepad-flash-ms, 2200ms) ease-out forwards;
+}
+@keyframes notepad-flash {
+  0% {
+    opacity: 0;
+  }
+  8%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-notepad-flash]::after {
+    animation: none;
+  }
+}
+
+/* Menu boczne: pełne 16rem albo wąski pasek z ikonami (html[data-sidebar="collapsed"]). */
 :root {
-  /* Marka OnTime — spójna z ekranem logowania (indigo + sky) */
-  --brand-indigo: #4f46e5;
-  --brand-indigo-hover: #4338ca;
+  --app-sidebar-w: 16rem;
+}
+html[data-sidebar="collapsed"] {
+  --app-sidebar-w: 4.25rem;
+}
+html[data-sidebar="collapsed"] .sb-full {
+  display: none !important;
+}
+html:not([data-sidebar="collapsed"]) .sb-rail {
+  display: none !important;
+}
+/* Wąski pasek: wszystkie pozycje widoczne (także z sekcji zwiniętych), same ikony na środku. */
+html[data-sidebar="collapsed"] .sb-rail-show {
+  display: block !important;
+}
+html[data-sidebar="collapsed"] .sb-nav {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+html[data-sidebar="collapsed"] .sb-link {
+  position: relative;
+  margin-left: 0 !important;
+  padding-left: 0;
+  padding-right: 0;
+}
+html[data-sidebar="collapsed"] .sb-link > span {
+  justify-content: center;
+}
+html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
+  margin-top: 0;
+}
+
+:root {
+  /* Marka OnTime — grafit + petrol (teal); sky jako drugi akcent */
+  --brand-indigo: #0f7380;
+  --brand-indigo-hover: #0d5d67;
   --brand-sky: #0284c7;
   --brand-sky-muted: #e0f2fe;
-  --brand-slate-deep: #0f172a;
+  --brand-slate-deep: #151920;
 
-  --background: #f4f6f9;
-  --foreground: #0f172a;
+  --background: #f3f5f7;
+  --foreground: #151920;
   --card: #ffffff;
-  --card-border: #e2e8f0;
+  --card-border: #e1e4e9;
   --primary: var(--brand-indigo);
   --primary-hover: var(--brand-indigo-hover);
-  --primary-muted: #eef2ff;
-  --muted: #64748b;
-  --muted-foreground: #475569;
+  --primary-muted: #edf7f8;
+  --muted: #626a76;
+  --muted-foreground: #4a515c;
   --radius: 0.375rem;
   --radius-lg: 0.5rem;
-  --radius-panel: 0.5rem;
-  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --radius-panel: 0.625rem;
+  --shadow-card: 0 1px 2px rgba(21, 25, 32, 0.06);
   --shadow-card-elevated:
-    0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -8px rgba(15, 23, 42, 0.1);
-  --shadow-elevated: 0 4px 14px -4px rgba(15, 23, 42, 0.08);
-  --shadow-brand: 0 4px 14px -6px rgba(79, 70, 229, 0.12);
+    0 1px 2px rgba(21, 25, 32, 0.05), 0 6px 20px -8px rgba(21, 25, 32, 0.12);
+  --shadow-elevated: 0 4px 14px -4px rgba(21, 25, 32, 0.1);
+  --shadow-brand: 0 4px 14px -6px rgba(15, 115, 128, 0.25);
 
-  /* Logo — wskazówki (dyskretny akcent indigo → sky) */
-  --brand-clock-hand-from: #e0e7ff;
+  /* Logo — wskazówki (dyskretny akcent petrol → sky) */
+  --brand-clock-hand-from: #d4edef;
   --brand-clock-hand-to: #e0f2fe;
   --brand-clock-tick: rgba(255, 255, 255, 0.16);
 }
@@ -37,6 +107,71 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+/* ——— Motyw OnTime: chłodny grafit + petrol (teal) ———
+   Tailwind v4 generuje klasy przez zmienne `--color-*`, więc podmiana palet tutaj zmienia
+   całą aplikację spójnie: `slate-*` = grafit (neutralne powierzchnie i tekst),
+   `indigo-*` = petrol (akcent marki, aktywne stany, główne przyciski).
+   Statusy (emerald / amber / red / sky / violet) zostają w domyślnych barwach Tailwinda. */
+@theme {
+  --color-slate-50: #f6f7f9;
+  --color-slate-100: #eef0f3;
+  --color-slate-200: #e1e4e9;
+  --color-slate-300: #c9ced6;
+  --color-slate-400: #8b939f;
+  --color-slate-500: #626a76;
+  --color-slate-600: #4a515c;
+  --color-slate-700: #363c46;
+  --color-slate-800: #232830;
+  --color-slate-900: #151920;
+  --color-slate-950: #0b0e13;
+  --color-indigo-50: #edf7f8;
+  --color-indigo-100: #d4edef;
+  --color-indigo-200: #aadbe0;
+  --color-indigo-300: #74c2ca;
+  --color-indigo-400: #3ba4af;
+  --color-indigo-500: #188995;
+  --color-indigo-600: #0f7380;
+  --color-indigo-700: #0d5d67;
+  --color-indigo-800: #0f4b53;
+  --color-indigo-900: #113e45;
+  --color-indigo-950: #07272c;
+}
+
+/* ——— Menu boczne ———
+   Białe menu na szarym tle aplikacji (wyraźna granica), nagłówek i stopka na lekko szarym pasie,
+   aktywna pozycja w tonie akcentu z paskiem z lewej. */
+.app-sidebar {
+  box-shadow: 1px 0 0 var(--color-slate-200), 4px 0 16px -12px rgba(21, 25, 32, 0.18);
+}
+
+/* Hover: wyraźne, neutralne tło (półprzezroczyste slate-50 ginęło na bieli). */
+@media (hover: hover) and (pointer: fine) {
+  .app-sidebar .sb-link:not(.sb-link-active):hover {
+    background-color: var(--color-slate-100);
+  }
+}
+
+.app-sidebar .sb-link-active {
+  position: relative;
+  background-color: var(--color-indigo-50);
+  box-shadow: inset 0 0 0 1px var(--color-indigo-100);
+  color: var(--color-indigo-900);
+}
+.app-sidebar .sb-link-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--color-indigo-600);
+}
+html[data-sidebar="collapsed"] .app-sidebar .sb-link-active::before {
+  top: 0.375rem;
+  bottom: 0.375rem;
 }
 
 * {
@@ -59,9 +194,9 @@ body {
   background: var(--background);
   background-image: linear-gradient(
     145deg,
-    #f8fafc 0%,
-    var(--background) 42%,
-    #f0f9ff 100%
+    #f7f8fa 0%,
+    var(--background) 45%,
+    #edf3f4 100%
   );
   background-attachment: fixed;
   color: var(--foreground);
@@ -253,7 +388,7 @@ select:disabled,
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
-  background: #f8fafc;
+  background: var(--color-slate-50);
   border-bottom: 1px solid var(--card-border);
   white-space: nowrap;
 }
@@ -269,7 +404,7 @@ select:disabled,
 .data-table td {
   padding: 1rem 1.25rem;
   color: var(--muted-foreground);
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid var(--color-slate-100);
 }
 
 .data-table td:first-child {
@@ -285,7 +420,7 @@ select:disabled,
 }
 
 .data-table tbody tr:hover td {
-  background-color: #f8fafc;
+  background-color: var(--color-slate-50);
 }
 
 .data-table tbody tr:hover td:first-child:not([class*="border-l-"]) {
@@ -316,15 +451,15 @@ select:disabled,
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--muted);
-  background: #f8fafc;
+  background: var(--color-slate-50);
   position: sticky;
   top: 0;
   z-index: 2;
-  box-shadow: 0 1px 0 #e2e8f0;
+  box-shadow: 0 1px 0 var(--color-slate-200);
 }
 
 .data-table.queue-table tbody tr:nth-child(even):not([class*="bg-"]) td {
-  background-color: rgb(248 250 252 / 0.45);
+  background-color: color-mix(in srgb, var(--color-slate-50) 45%, transparent);
 }
 
 /* Kreator ZD — czytelne wiersze (nie queue-table) */
@@ -336,7 +471,7 @@ select:disabled,
    */
   --zd-est-check-w: 2.5rem;
   /* Bazowo pod laptop + sidebar (w-64 ≈ 256px) — suma min. kolumn ≤ ~61rem. */
-  --zd-est-symbol-w: 7.5rem;
+  --zd-est-symbol-w: 6.25rem;
   /* Preferowana / minimalna Nazwa — wolna przestrzeń ją rozciąga (sticky sync: --zd-est-name-used-w). */
   --zd-est-product-name-w: 9rem;
   --zd-est-name-used-w: var(--zd-est-product-name-w);
@@ -372,10 +507,10 @@ select:disabled,
   --zd-est-actions-w: 2.75rem;
   --zd-est-actions-scroll-pad: 0;
   --zd-est-section-pad: 0.55rem;
-  --zd-est-section-rule: #e2e8f0;
+  --zd-est-section-rule: var(--color-slate-200);
   --zd-est-symbol-fs: 0.8125rem;
   --zd-est-name-fs: 0.75rem;
-  --zd-est-dozd-input-max: 4.75rem;
+  --zd-est-dozd-input-max: 3.75rem;
   --zd-est-dozd-input-min: 2.75rem;
   --zd-est-dozd-input-h: 1.875rem;
   --zd-est-name-max-w: none;
@@ -386,12 +521,12 @@ select:disabled,
   --zd-num: 0.875rem;
   --zd-num-decision: 1.0625rem;
   --zd-num-unit: 0.625rem;
-  --zd-num-color: #334155;
-  --zd-num-color-emph: #1e293b;
-  --zd-num-color-quiet: #64748b;
-  --zd-num-color-dash: #cbd5e1;
-  --zd-num-color-unit: #94a3b8;
-  --zd-num-color-decision: #065f46;
+  --zd-num-color: var(--color-slate-700);
+  --zd-num-color-emph: var(--color-slate-800);
+  --zd-num-color-quiet: var(--color-slate-500);
+  --zd-num-color-dash: var(--color-slate-300);
+  --zd-num-color-unit: var(--color-slate-400);
+  --zd-num-color-decision: var(--color-indigo-900);
   --zd-num-color-warn: #92400e;
   width: 100%;
   /* Bez sztywnego min-width — laptop + sidebar (~1000px treści) bez H-scrolla.
@@ -601,78 +736,6 @@ select:disabled,
   text-align: center;
 }
 
-/*
- * Sprzed. vs Cel — dwa sąsiednie sygnały planu, świadomie rozróżnione:
- *   Sprzed. = fakt / tempo (chłodny sky) → Cel = cel zapasu (indigo).
- * Para czyta się jako „było → cel”, bez konkurencji z Do ZD (emerald).
- */
-.data-table.zd-estimate-table th.zd-estimate-metric-col--sales,
-.data-table.zd-estimate-table td.zd-estimate-metric-col--sales {
-  background-color: rgb(240 249 255 / 0.55);
-  box-shadow: inset 0 2px 0 0 rgb(125 211 252 / 0.7);
-}
-
-.data-table.zd-estimate-table th.zd-estimate-metric-col--target,
-.data-table.zd-estimate-table td.zd-estimate-metric-col--target {
-  background-color: rgb(238 242 255 / 0.55);
-  box-shadow:
-    inset 1px 0 0 rgb(199 210 254 / 0.95),
-    inset 0 2px 0 0 rgb(165 180 252 / 0.65);
-}
-
-.data-table.zd-estimate-table
-  th.zd-estimate-metric-col--sales.zd-estimate-col--section,
-.data-table.zd-estimate-table
-  td.zd-estimate-metric-col--sales.zd-estimate-col--section {
-  box-shadow:
-    inset 1px 0 0 var(--zd-est-section-rule),
-    inset 0 2px 0 0 rgb(125 211 252 / 0.7);
-}
-
-.data-table.zd-estimate-table
-  th.zd-estimate-metric-col--target.zd-estimate-col--section,
-.data-table.zd-estimate-table
-  td.zd-estimate-metric-col--target.zd-estimate-col--section {
-  box-shadow:
-    inset 1px 0 0 var(--zd-est-section-rule),
-    inset 0 2px 0 0 rgb(165 180 252 / 0.65);
-}
-
-.data-table.zd-estimate-table thead th.zd-estimate-metric-col--sales {
-  background-color: rgb(224 242 254 / 0.72);
-  color: #0369a1;
-  box-shadow:
-    inset 0 2px 0 0 rgb(56 189 248 / 0.75),
-    0 1px 0 #e2e8f0;
-}
-
-.data-table.zd-estimate-table thead th.zd-estimate-metric-col--target {
-  background-color: rgb(224 231 255 / 0.72);
-  color: #4338ca;
-  box-shadow:
-    inset 1px 0 0 rgb(165 180 252 / 0.9),
-    inset 0 2px 0 0 rgb(129 140 248 / 0.7),
-    0 1px 0 #e2e8f0;
-}
-
-.data-table.zd-estimate-table
-  thead
-  th.zd-estimate-metric-col--sales.zd-estimate-col--section {
-  box-shadow:
-    inset 1px 0 0 var(--zd-est-section-rule),
-    inset 0 2px 0 0 rgb(56 189 248 / 0.75),
-    0 1px 0 #e2e8f0;
-}
-
-.data-table.zd-estimate-table
-  thead
-  th.zd-estimate-metric-col--target.zd-estimate-col--section {
-  box-shadow:
-    inset 1px 0 0 var(--zd-est-section-rule),
-    inset 0 2px 0 0 rgb(129 140 248 / 0.7),
-    0 1px 0 #e2e8f0;
-}
-
 .data-table.zd-estimate-table .zd-est-metric-th {
   display: inline-flex;
   max-width: 100%;
@@ -688,11 +751,11 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table .zd-est-metric-th__icon--sales {
-  color: #0284c7;
+  color: var(--color-indigo-400);
 }
 
 .data-table.zd-estimate-table .zd-est-metric-th__icon--target {
-  color: #4f46e5;
+  color: var(--color-indigo-500);
 }
 
 .data-table.zd-estimate-table .zd-est-metric-th__label {
@@ -720,25 +783,25 @@ select:disabled,
 .data-table.zd-estimate-table
   td.zd-estimate-metric-col--sales
   .zd-est-qty--c {
-  color: #0f172a;
+  color: var(--color-slate-900);
 }
 
 .data-table.zd-estimate-table
   td.zd-estimate-metric-col--sales
   .zd-est-unit {
-  color: #64748b;
+  color: var(--color-slate-500);
 }
 
 .data-table.zd-estimate-table
   td.zd-estimate-metric-col--target
   .zd-est-qty--b {
-  color: #312e81;
+  color: var(--color-indigo-800);
 }
 
 .data-table.zd-estimate-table
   td.zd-estimate-metric-col--target
   .zd-est-unit {
-  color: #6366f1;
+  color: var(--color-slate-500);
 }
 
 .data-table.zd-estimate-table td.zd-estimate-metric-col .zd-estimate-metric-stack {
@@ -795,8 +858,8 @@ select:disabled,
   thead
   th.zd-estimate-pack-col {
   z-index: 4;
-  background: #f8fafc;
-  box-shadow: 0 1px 0 #e2e8f0;
+  background: var(--color-slate-50);
+  box-shadow: 0 1px 0 var(--color-slate-200);
 }
 
 /* Gdy Opak. sticky — cień na Nazwie wyłączamy (przechodzi na Do ZD) */
@@ -911,7 +974,7 @@ select:disabled,
 
 .data-table.zd-estimate-table .zd-est-symbol--excluded {
   text-decoration: line-through;
-  text-decoration-color: #cbd5e1;
+  text-decoration-color: var(--color-slate-300);
 }
 
 /* Nazwa — sticky za Symbolem; min sztywne, reszta wolnej przestrzeni */
@@ -928,7 +991,7 @@ select:disabled,
   padding-right: var(--zd-est-pad-x);
   background: #fff;
   /* Separacja od przewijanych kolumn (gdy brak Opak.) */
-  box-shadow: 1px 0 0 #e2e8f0;
+  box-shadow: 1px 0 0 var(--color-slate-200);
   overflow: hidden;
   white-space: normal;
   vertical-align: middle;
@@ -943,7 +1006,7 @@ select:disabled,
   font-size: var(--zd-est-name-fs);
   font-weight: 500;
   line-height: 1.3;
-  color: #475569;
+  color: var(--color-slate-600);
   word-break: break-word;
 }
 
@@ -955,7 +1018,23 @@ select:disabled,
   tr[class*="bg-slate"]
   td.zd-estimate-product-name-col
   .zd-est-product-name {
-  color: #94a3b8;
+  color: var(--color-slate-400);
+}
+
+/* „szt” przy każdej liczbie to szum — sztuki są domyślne w kolumnach liczbowych (nagłówki
+   i podpowiedzi to mówią). Zostają jednostki, które zmieniają sens: op., j.dok. — oraz
+   jednostka w Do ZD, gdzie szt / op. decyduje o zamówieniu. */
+.data-table.zd-estimate-table td:not(.zd-estimate-dozd-col) .zd-est-unit--szt {
+  display: none;
+}
+
+/* Bez kolumny Status (żadna pozycja nie ma oznaczeń) — jej miejsce dostaje Nazwa,
+   żeby długie nazwy (np. „IPS e.max CAD CEREC/inLab MT…”) nie były ucinane. */
+.data-table.zd-estimate-table.zd-estimate-table--no-status th.zd-estimate-product-name-col,
+.data-table.zd-estimate-table.zd-estimate-table--no-status td.zd-estimate-product-name-col,
+.data-table.zd-estimate-table.zd-estimate-table--no-status tbody td.zd-estimate-product-name-col {
+  width: 28%;
+  max-width: calc(var(--zd-est-name-max-w) + var(--zd-est-status-w));
 }
 
 /* Do ZD — sticky decyzja (nowoczesny, spokojny akcent) */
@@ -970,25 +1049,20 @@ select:disabled,
   padding-left: var(--zd-est-dozd-pad-x);
   padding-right: var(--zd-est-dozd-pad-x);
   text-align: center;
-  background-color: rgb(236 253 245 / 0.42);
-  box-shadow: inset 3px 0 0 0 #34d399, 1px 0 0 rgb(167 243 208 / 0.85);
+  /* Kolumna sticky — tło musi być nieprzezroczyste, inaczej przewijane liczby prześwitują. */
+  background-color: color-mix(in srgb, var(--color-indigo-50) 55%, #fff);
+  box-shadow: inset 2px 0 0 0 var(--color-indigo-500), 1px 0 0 var(--color-indigo-100);
   overflow: hidden;
   vertical-align: middle;
 }
 
-.data-table.zd-estimate-table td.zd-estimate-dozd-col.zd-estimate-dozd-col--idle {
-  background-color: rgb(248 250 252 / 0.92);
-  box-shadow: inset 3px 0 0 0 #cbd5e1, 1px 0 0 #e2e8f0;
-}
-
 .data-table.zd-estimate-table td.zd-estimate-dozd-col.zd-estimate-dozd-col--review {
-  background-color: rgb(255 251 235 / 0.72);
-  box-shadow: inset 3px 0 0 0 #f59e0b, 1px 0 0 rgb(253 230 138 / 0.9);
+  box-shadow: inset 2px 0 0 0 var(--color-amber-400), 1px 0 0 var(--color-indigo-100);
 }
 
 .data-table.zd-estimate-table thead th.zd-estimate-dozd-col {
-  background-color: #ecfdf5;
-  color: #047857;
+  background-color: var(--color-indigo-50);
+  color: var(--color-indigo-700);
   letter-spacing: 0.06em;
 }
 
@@ -1005,14 +1079,18 @@ select:disabled,
   overflow: hidden;
 }
 
+/* Liczba i jednostka w jednej linii (wcześniej jednostka pod polem = +1 linia na każdym wierszu).
+   Długa etykieta paczki zawija się pod pole zamiast rozpychać kolumnę. */
 .data-table.zd-estimate-table .zd-est-dozd-value {
   display: inline-flex;
   max-width: 100%;
   min-width: 0;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 0.12rem;
+  column-gap: 0.25rem;
+  row-gap: 0.12rem;
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-input {
@@ -1024,7 +1102,7 @@ select:disabled,
   max-width: var(--zd-est-dozd-input-max);
   min-width: var(--zd-est-dozd-input-min);
   border-radius: 0.45rem;
-  border: 1px solid rgb(167 243 208 / 0.95);
+  border: 1px solid var(--color-indigo-200);
   background: #fff;
   padding: 0 var(--zd-est-dozd-pad-x);
   font-size: var(--zd-num-decision);
@@ -1034,7 +1112,7 @@ select:disabled,
   letter-spacing: -0.02em;
   color: var(--zd-num-color-decision);
   text-align: center;
-  box-shadow: 0 1px 0 rgb(6 95 70 / 0.04);
+  box-shadow: 0 1px 0 rgb(15 23 42 / 0.04);
   transition:
     border-color 120ms ease,
     background-color 120ms ease,
@@ -1048,29 +1126,27 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-input:hover:not(:disabled) {
-  border-color: #6ee7b7;
-  background: #f0fdf4;
+  border-color: var(--color-indigo-400);
+  background: #fff;
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-input:focus {
-  border-color: #34d399;
+  border-color: var(--color-indigo-500);
   background: #fff;
   outline: none;
-  box-shadow:
-    0 0 0 3px rgb(52 211 153 / 0.22),
-    0 1px 0 rgb(6 95 70 / 0.04);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-indigo-500) 20%, transparent);
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-input--idle {
-  border-color: #e2e8f0;
-  background: #f8fafc;
+  border-color: var(--color-slate-200);
+  background: var(--color-slate-50);
   color: var(--zd-num-color-dash);
   box-shadow: none;
   font-weight: 600;
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-input--idle:hover:not(:disabled) {
-  border-color: #cbd5e1;
+  border-color: var(--color-slate-300);
   background: #fff;
 }
 
@@ -1113,7 +1189,17 @@ select:disabled,
   font-weight: 600;
   line-height: 1.1;
   letter-spacing: 0.02em;
-  color: #64748b;
+  color: var(--color-slate-500);
+}
+
+/* Opak. bez paczki: sam myślnik; „ustaw” wraca przy najechaniu na wiersz lub fokusie. */
+.data-table.zd-estimate-table .zd-est-pack-cell-sub--empty {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.data-table.zd-estimate-table tbody tr:hover .zd-est-pack-cell-sub--empty,
+.data-table.zd-estimate-table .zd-estimate-pack-cell:focus-visible .zd-est-pack-cell-sub--empty {
+  opacity: 1;
 }
 
 /* Proporcja Opak. pod liczbą — bez ellipsis (skrót etykiety w JS). */
@@ -1176,7 +1262,7 @@ select:disabled,
   font-weight: 500;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
-  color: #64748b;
+  color: var(--color-slate-500);
   text-align: center;
 }
 
@@ -1229,7 +1315,7 @@ select:disabled,
   min-width: 0;
   overflow: hidden;
   border-radius: 0.3rem;
-  background: rgb(241 245 249 / 0.9);
+  background: color-mix(in srgb, var(--color-slate-100) 90%, transparent);
   padding: 0.1rem 0.35rem;
   font-size: 0.5625rem;
   font-weight: 600;
@@ -1239,18 +1325,20 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-confidence--ok {
-  background: rgb(241 245 249 / 0.95);
-  color: #64748b;
+  background: color-mix(in srgb, var(--color-slate-100) 95%, transparent);
+  color: var(--color-slate-500);
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-confidence--review {
-  background: rgb(254 243 199 / 0.9);
-  color: #92400e;
+  background: var(--color-slate-100);
+  color: var(--color-slate-700);
+  box-shadow: none;
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-confidence--accepted {
-  background: rgb(209 250 229 / 0.85);
-  color: #047857;
+  background: transparent;
+  color: var(--color-emerald-700);
+  box-shadow: none;
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-confidence__pct {
@@ -1279,19 +1367,20 @@ select:disabled,
   font-weight: 700;
   line-height: 1.3;
   letter-spacing: 0.03em;
-  color: #92400e;
-  box-shadow: inset 0 0 0 1px rgb(251 191 36 / 0.7);
+  color: var(--color-slate-700);
+  box-shadow: inset 0 0 0 1px var(--color-slate-300);
   cursor: pointer;
   transition: background-color 120ms ease, box-shadow 120ms ease;
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-confidence__accept:hover {
-  background: #fef3c7;
-  box-shadow: inset 0 0 0 1px #f59e0b;
+  background: var(--color-indigo-50);
+  color: var(--color-indigo-700);
+  box-shadow: inset 0 0 0 1px var(--color-indigo-300);
 }
 
 .data-table.zd-estimate-table .zd-est-dozd-confidence__accept:focus-visible {
-  outline: 2px solid rgb(245 158 11 / 0.55);
+  outline: 2px solid var(--color-indigo-400);
   outline-offset: 1px;
 }
 
@@ -1304,7 +1393,7 @@ select:disabled,
   right: 0;
   z-index: 1;
   background: #fff;
-  box-shadow: -1px 0 0 #e2e8f0;
+  box-shadow: -1px 0 0 var(--color-slate-200);
   width: calc(var(--zd-est-actions-w) + var(--zd-est-actions-scroll-pad));
   min-width: calc(var(--zd-est-actions-w) + var(--zd-est-actions-scroll-pad));
   max-width: calc(var(--zd-est-actions-w) + var(--zd-est-actions-scroll-pad));
@@ -1317,14 +1406,14 @@ select:disabled,
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #64748b;
+  color: var(--color-slate-500);
   padding-top: 0.55rem;
   padding-bottom: 0.55rem;
   position: sticky;
   top: 0;
   z-index: 2;
-  box-shadow: 0 1px 0 #e2e8f0, 0 2px 4px -2px rgb(15 23 42 / 0.06);
-  background: #f8fafc;
+  box-shadow: 0 1px 0 var(--color-slate-200), 0 2px 4px -2px color-mix(in srgb, var(--color-slate-900) 6%, transparent);
+  background: var(--color-slate-50);
   white-space: nowrap;
 }
 
@@ -1336,20 +1425,20 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table thead th.zd-estimate-check-col {
-  background: #f8fafc;
-  box-shadow: 0 1px 0 #e2e8f0;
+  background: var(--color-slate-50);
+  box-shadow: 0 1px 0 var(--color-slate-200);
 }
 
 .data-table.zd-estimate-table thead th.zd-estimate-symbol-col {
-  background: #f8fafc;
-  box-shadow: 0 1px 0 #e2e8f0;
+  background: var(--color-slate-50);
+  box-shadow: 0 1px 0 var(--color-slate-200);
   white-space: nowrap;
   vertical-align: middle;
 }
 
 .data-table.zd-estimate-table thead th.zd-estimate-product-name-col {
-  background: #f8fafc;
-  box-shadow: 1px 0 0 #e2e8f0, 0 1px 0 #e2e8f0;
+  background: var(--color-slate-50);
+  box-shadow: 1px 0 0 var(--color-slate-200), 0 1px 0 var(--color-slate-200);
   white-space: nowrap;
   vertical-align: middle;
 }
@@ -1357,33 +1446,25 @@ select:disabled,
 .data-table.zd-estimate-table.zd-estimate-table--pack
   thead
   th.zd-estimate-product-name-col {
-  box-shadow: 0 1px 0 #e2e8f0;
+  box-shadow: 0 1px 0 var(--color-slate-200);
 }
 
 .data-table.zd-estimate-table thead th.zd-estimate-dozd-col {
-  box-shadow: inset 3px 0 0 0 #34d399, 1px 0 0 rgb(167 243 208 / 0.85), 0 1px 0 #e2e8f0;
+  box-shadow: inset 2px 0 0 0 var(--color-indigo-500), 1px 0 0 var(--color-indigo-100), 0 1px 0 var(--color-slate-200);
 }
 
 .data-table.zd-estimate-table thead th.zd-estimate-actions-col {
   z-index: 4;
-  background: #f8fafc;
-  box-shadow: -1px 0 0 #e2e8f0, 0 1px 0 #e2e8f0;
+  background: var(--color-slate-50);
+  box-shadow: -1px 0 0 var(--color-slate-200), 0 1px 0 var(--color-slate-200);
 }
 
 .data-table.zd-estimate-table tbody tr[data-zebra="even"]:not([class*="bg-"]) td {
-  background-color: rgb(248 250 252 / 0.7);
+  background-color: color-mix(in srgb, var(--color-slate-50) 70%, #fff);
 }
 
 .data-table.zd-estimate-table tbody tr[data-zebra="even"]:not([class*="bg-"]) td.zd-estimate-dozd-col {
-  background-color: rgb(220 252 231 / 0.55);
-}
-
-.data-table.zd-estimate-table tbody tr[data-zebra="even"]:not([class*="bg-"]) td.zd-estimate-dozd-col.zd-estimate-dozd-col--idle {
-  background-color: rgb(241 245 249 / 0.95);
-}
-
-.data-table.zd-estimate-table tbody tr[data-zebra="even"]:not([class*="bg-"]) td.zd-estimate-dozd-col.zd-estimate-dozd-col--review {
-  background-color: rgb(254 243 199 / 0.7);
+  background-color: color-mix(in srgb, var(--color-indigo-50) 80%, #fff);
 }
 
 /* Wiersz dobijany do minimum stanów — subtelny emerald akcent po lewej */
@@ -1393,48 +1474,26 @@ select:disabled,
   box-shadow: inset 2px 0 0 0 rgb(16 185 129 / 0.55);
 }
 
-.data-table.zd-estimate-table tbody tr.zd-estimate-row-min-stock:not([data-zebra="even"]) td:not(.zd-estimate-dozd-col):not(.zd-estimate-actions-col) {
-  background-color: rgb(236 253 245 / 0.35);
-}
-
-.data-table.zd-estimate-table tbody tr.zd-estimate-row-min-stock[data-zebra="even"]:not([class*="bg-"]) td:not(.zd-estimate-dozd-col):not(.zd-estimate-actions-col) {
-  background-color: rgb(220 252 231 / 0.3);
-}
-
-.data-table.zd-estimate-table
-  tbody
-  tr[data-zebra="even"]:not([class*="bg-"])
-  td.zd-estimate-metric-col--sales {
-  background-color: rgb(224 242 254 / 0.58);
-}
-
-.data-table.zd-estimate-table
-  tbody
-  tr[data-zebra="even"]:not([class*="bg-"])
-  td.zd-estimate-metric-col--target {
-  background-color: rgb(224 231 255 / 0.55);
-}
-
 .data-table.zd-estimate-table tbody tr[data-zebra="even"]:not([class*="bg-"]) td.zd-estimate-check-col,
 .data-table.zd-estimate-table tbody tr[data-zebra="even"]:not([class*="bg-"]) td.zd-estimate-symbol-col,
 .data-table.zd-estimate-table tbody tr[data-zebra="even"]:not([class*="bg-"]) td.zd-estimate-product-name-col,
 .data-table.zd-estimate-table tbody tr[data-zebra="even"]:not([class*="bg-"]) td.zd-estimate-pack-col,
 .data-table.zd-estimate-table tbody tr[data-zebra="even"]:not([class*="bg-"]) td.zd-estimate-actions-col {
-  background-color: #f8fafc;
+  background-color: var(--color-slate-50);
 }
 
 /* Zaznaczony wiersz — indigo akcent po lewej + subtelne tło */
 .data-table.zd-estimate-table tbody tr.zd-estimate-row-selected td.zd-estimate-check-col,
 .data-table.zd-estimate-table tbody tr.zd-estimate-row-selected td.zd-estimate-symbol-col {
-  box-shadow: inset 2px 0 0 0 rgb(99 102 241 / 0.6);
+  box-shadow: inset 2px 0 0 0 color-mix(in srgb, var(--color-indigo-500) 60%, transparent);
 }
 
 .data-table.zd-estimate-table tbody tr.zd-estimate-row-selected:not([data-zebra="even"]) td:not(.zd-estimate-dozd-col):not(.zd-estimate-actions-col) {
-  background-color: rgb(238 242 255 / 0.5);
+  background-color: color-mix(in srgb, var(--color-indigo-50) 50%, #fff);
 }
 
 .data-table.zd-estimate-table tbody tr.zd-estimate-row-selected[data-zebra="even"]:not([class*="bg-"]) td:not(.zd-estimate-dozd-col):not(.zd-estimate-actions-col) {
-  background-color: rgb(224 231 255 / 0.35);
+  background-color: color-mix(in srgb, var(--color-indigo-100) 35%, #fff);
 }
 
 .data-table.zd-estimate-table tbody tr:hover td,
@@ -1442,7 +1501,7 @@ select:disabled,
   tbody
   tr[data-zebra="even"]:not([class*="bg-"]):hover
   td {
-  background-color: #f1f5f9;
+  background-color: var(--color-slate-100);
 }
 
 /* Zaznaczony wiersz ma priorytet nad hover */
@@ -1451,7 +1510,7 @@ select:disabled,
   tbody
   tr.zd-estimate-row-selected[data-zebra="even"]:not([class*="bg-"]):hover
   td:not(.zd-estimate-dozd-col):not(.zd-estimate-actions-col) {
-  background-color: rgb(224 231 255 / 0.6);
+  background-color: color-mix(in srgb, var(--color-indigo-100) 60%, #fff);
 }
 
 .data-table.zd-estimate-table tbody tr:hover td.zd-estimate-dozd-col,
@@ -1459,45 +1518,7 @@ select:disabled,
   tbody
   tr[data-zebra="even"]:not([class*="bg-"]):hover
   td.zd-estimate-dozd-col {
-  background-color: #d1fae5;
-}
-
-.data-table.zd-estimate-table tbody tr:hover td.zd-estimate-metric-col--sales,
-.data-table.zd-estimate-table
-  tbody
-  tr[data-zebra="even"]:not([class*="bg-"]):hover
-  td.zd-estimate-metric-col--sales {
-  background-color: rgb(186 230 253 / 0.62);
-}
-
-.data-table.zd-estimate-table tbody tr:hover td.zd-estimate-metric-col--target,
-.data-table.zd-estimate-table
-  tbody
-  tr[data-zebra="even"]:not([class*="bg-"]):hover
-  td.zd-estimate-metric-col--target {
-  background-color: rgb(199 210 254 / 0.62);
-}
-
-.data-table.zd-estimate-table
-  tbody
-  tr:hover
-  td.zd-estimate-dozd-col.zd-estimate-dozd-col--idle,
-.data-table.zd-estimate-table
-  tbody
-  tr[data-zebra="even"]:not([class*="bg-"]):hover
-  td.zd-estimate-dozd-col.zd-estimate-dozd-col--idle {
-  background-color: #e2e8f0;
-}
-
-.data-table.zd-estimate-table
-  tbody
-  tr:hover
-  td.zd-estimate-dozd-col.zd-estimate-dozd-col--review,
-.data-table.zd-estimate-table
-  tbody
-  tr[data-zebra="even"]:not([class*="bg-"]):hover
-  td.zd-estimate-dozd-col.zd-estimate-dozd-col--review {
-  background-color: #fde68a;
+  background-color: var(--color-indigo-100);
 }
 
 .data-table.zd-estimate-table tbody tr:hover td.zd-estimate-check-col,
@@ -1525,7 +1546,7 @@ select:disabled,
   tbody
   tr[data-zebra="even"]:not([class*="bg-"]):hover
   td.zd-estimate-actions-col {
-  background-color: #f1f5f9;
+  background-color: var(--color-slate-100);
 }
 
 .data-table.zd-estimate-table tbody tr[class*="bg-slate"] td.zd-estimate-check-col,
@@ -1533,26 +1554,11 @@ select:disabled,
 .data-table.zd-estimate-table tbody tr[class*="bg-slate"] td.zd-estimate-product-name-col,
 .data-table.zd-estimate-table tbody tr[class*="bg-slate"] td.zd-estimate-pack-col,
 .data-table.zd-estimate-table tbody tr[class*="bg-slate"] td.zd-estimate-actions-col {
-  background-color: #f8fafc;
+  background-color: var(--color-slate-50);
 }
 
 .data-table.zd-estimate-table tbody tr[class*="bg-slate"] td.zd-estimate-dozd-col {
-  background-color: rgb(226 232 240 / 0.95);
-}
-
-.data-table.zd-estimate-table tbody tr[class*="bg-slate"] td.zd-estimate-dozd-col.zd-estimate-dozd-col--idle {
-  background-color: rgb(226 232 240 / 0.95);
-}
-
-.data-table.zd-estimate-table
-  tbody
-  tr[class*="bg-slate"]
-  td.zd-estimate-metric-col--sales,
-.data-table.zd-estimate-table
-  tbody
-  tr[class*="bg-slate"]
-  td.zd-estimate-metric-col--target {
-  background-color: rgb(241 245 249 / 0.95);
+  background-color: var(--color-indigo-50);
 }
 
 .data-table.zd-estimate-table tbody tr[class*="bg-indigo"] td.zd-estimate-check-col,
@@ -1560,37 +1566,16 @@ select:disabled,
 .data-table.zd-estimate-table tbody tr[class*="bg-indigo"] td.zd-estimate-product-name-col,
 .data-table.zd-estimate-table tbody tr[class*="bg-indigo"] td.zd-estimate-pack-col,
 .data-table.zd-estimate-table tbody tr[class*="bg-indigo"] td.zd-estimate-actions-col {
-  background-color: #eef2ff;
+  background-color: var(--color-indigo-50);
 }
 
 .data-table.zd-estimate-table tbody tr[class*="bg-indigo"] td.zd-estimate-dozd-col {
-  background-color: #d1fae5;
+  background-color: var(--color-indigo-50);
 }
 
 /* Zaznaczenie wiersza — data-attr (nie zależymy od Tailwind bg-* / opacity). */
 .data-table.zd-estimate-table tbody tr[data-selected="true"] td {
-  background-color: #e0e7ff !important;
-}
-
-/* Przy zaznaczeniu zachowaj czytelny podział Sprzed. (sky) vs Cel (indigo). */
-.data-table.zd-estimate-table
-  tbody
-  tr[data-selected="true"]
-  td.zd-estimate-metric-col--sales {
-  background-color: #bae6fd !important;
-  box-shadow:
-    inset 1px 0 0 transparent,
-    inset 0 2px 0 0 rgb(14 165 233 / 0.55);
-}
-
-.data-table.zd-estimate-table
-  tbody
-  tr[data-selected="true"]
-  td.zd-estimate-metric-col--target {
-  background-color: #c7d2fe !important;
-  box-shadow:
-    inset 1px 0 0 rgb(99 102 241 / 0.45),
-    inset 0 2px 0 0 rgb(79 70 229 / 0.5);
+  background-color: var(--color-indigo-100) !important;
 }
 
 .data-table.zd-estimate-table tbody tr[data-selected="true"] td.zd-estimate-check-col,
@@ -1598,36 +1583,22 @@ select:disabled,
 .data-table.zd-estimate-table tbody tr[data-selected="true"] td.zd-estimate-product-name-col,
 .data-table.zd-estimate-table tbody tr[data-selected="true"] td.zd-estimate-pack-col,
 .data-table.zd-estimate-table tbody tr[data-selected="true"] td.zd-estimate-actions-col {
-  background-color: #c7d2fe !important;
-  box-shadow: inset 3px 0 0 0 #4f46e5;
+  background-color: var(--color-indigo-200) !important;
+  box-shadow: inset 3px 0 0 0 var(--color-indigo-600);
 }
 
 .data-table.zd-estimate-table tbody tr[data-selected="true"] td.zd-estimate-dozd-col {
   /* Zaznaczenie = indigo; Do ZD zostaje w tej samej palecie (bez konkurencyjnego emerald inset). */
-  background-color: #c7d2fe !important;
-  box-shadow: inset 3px 0 0 0 #4f46e5, 1px 0 0 #c7d2fe;
+  background-color: var(--color-indigo-200) !important;
+  box-shadow: inset 3px 0 0 0 var(--color-indigo-600), 1px 0 0 var(--color-indigo-200);
 }
 
 .data-table.zd-estimate-table tbody tr[data-selected="true"]:hover td {
-  background-color: #c7d2fe !important;
-}
-
-.data-table.zd-estimate-table
-  tbody
-  tr[data-selected="true"]:hover
-  td.zd-estimate-metric-col--sales {
-  background-color: #7dd3fc !important;
-}
-
-.data-table.zd-estimate-table
-  tbody
-  tr[data-selected="true"]:hover
-  td.zd-estimate-metric-col--target {
-  background-color: #a5b4fc !important;
+  background-color: var(--color-indigo-200) !important;
 }
 
 .data-table.zd-estimate-table tbody tr[data-selected="true"]:hover td.zd-estimate-dozd-col {
-  background-color: #a5b4fc !important;
+  background-color: var(--color-indigo-300) !important;
 }
 
 .data-table.zd-estimate-table th.zd-estimate-status-col,
@@ -1695,7 +1666,7 @@ select:disabled,
   font-size: 0.625rem;
   line-height: 1;
   letter-spacing: 0.03em;
-  box-shadow: inset 0 0 0 1px rgb(15 23 42 / 0.08);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-slate-900) 8%, transparent);
 }
 
 .data-table.zd-estimate-table .zd-est-status-badge__kind {
@@ -1729,18 +1700,21 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table .zd-est-status-badge--indigo {
-  background: #eef2ff;
-  color: #312e81;
+  background: var(--color-indigo-50);
+  color: var(--color-indigo-800);
+  box-shadow: none;
 }
 
 .data-table.zd-estimate-table .zd-est-status-badge--sky {
-  background: #f0f9ff;
-  color: #0c4a6e;
+  background: var(--color-indigo-50);
+  color: var(--color-indigo-800);
+  box-shadow: none;
 }
 
 .data-table.zd-estimate-table .zd-est-status-badge--emerald {
-  background: #ecfdf5;
-  color: #064e3b;
+  background: var(--color-indigo-50);
+  color: var(--color-indigo-800);
+  box-shadow: none;
 }
 
 .data-table.zd-estimate-table .zd-est-status-badge--amber {
@@ -1754,8 +1728,9 @@ select:disabled,
 }
 
 .data-table.zd-estimate-table .zd-est-status-badge--slate {
-  background: #f1f5f9;
-  color: #334155;
+  background: var(--color-slate-100);
+  color: var(--color-slate-700);
+  box-shadow: none;
 }
 
 .data-table.zd-estimate-table .zd-est-status-more {
@@ -1765,18 +1740,25 @@ select:disabled,
   align-items: center;
   padding: 0 0.4rem;
   border-radius: 0.25rem;
-  background: #f1f5f9;
+  background: var(--color-slate-100);
   font-size: 0.625rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: #475569;
-  box-shadow: inset 0 0 0 1px rgb(15 23 42 / 0.08);
+  color: var(--color-slate-600);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-slate-900) 8%, transparent);
 }
 
 /*
  * Responsywność Kreatora ZD — NA KOŃCU sekcji tabeli (po wszystkich sticky),
  * żeby max-width override’y wygrywały z regułami position/left/box-shadow.
  */
+/* Węższe ekrany: ikona w nagłówku Sprzed./Cel ucinała etykietę („SPRZE…”) — tekst ważniejszy. */
+@media (max-width: 1365px) {
+  .data-table.zd-estimate-table .zd-est-metric-th__icon {
+    display: none;
+  }
+}
+
 @media (max-width: 1023px) {
   .data-table.zd-estimate-table {
     --zd-est-check-w: 2.25rem;
@@ -1863,8 +1845,8 @@ select:disabled,
     width: auto;
     min-width: var(--zd-est-product-name-w);
     max-width: var(--zd-est-name-max-w);
-    box-shadow: 0 1px 0 #e2e8f0;
-    background: #f8fafc;
+    box-shadow: 0 1px 0 var(--color-slate-200);
+    background: var(--color-slate-50);
   }
 
   .data-table.zd-estimate-table td.zd-estimate-product-name-col,
@@ -1891,8 +1873,8 @@ select:disabled,
     top: 0;
     left: auto;
     z-index: 2;
-    background: #f8fafc;
-    box-shadow: 0 1px 0 #e2e8f0;
+    background: var(--color-slate-50);
+    box-shadow: 0 1px 0 var(--color-slate-200);
   }
 
   .data-table.zd-estimate-table.zd-estimate-table--pack td.zd-estimate-pack-col,
@@ -1916,14 +1898,14 @@ select:disabled,
   .data-table.zd-estimate-table.zd-estimate-table--pack
     tbody
     td.zd-estimate-symbol-col {
-    box-shadow: 1px 0 0 #e2e8f0;
+    box-shadow: 1px 0 0 var(--color-slate-200);
   }
 
   .data-table.zd-estimate-table thead th.zd-estimate-symbol-col,
   .data-table.zd-estimate-table.zd-estimate-table--pack
     thead
     th.zd-estimate-symbol-col {
-    box-shadow: 1px 0 0 #e2e8f0, 0 1px 0 #e2e8f0;
+    box-shadow: 1px 0 0 var(--color-slate-200), 0 1px 0 var(--color-slate-200);
   }
 
   /* Striping Nazwy/Opak. jak zwykłe komórki (nie „płyta” sticky) */
@@ -1935,7 +1917,7 @@ select:disabled,
     tbody
     tr[data-zebra="even"]:not([class*="bg-"])
     td.zd-estimate-pack-col {
-    background-color: rgb(248 250 252 / 0.7);
+    background-color: color-mix(in srgb, var(--color-slate-50) 70%, #fff);
   }
 
   .data-table.zd-estimate-table
@@ -1951,7 +1933,7 @@ select:disabled,
     tbody
     tr[data-zebra="even"]:not([class*="bg-"]):hover
     td.zd-estimate-pack-col {
-    background-color: #f1f5f9;
+    background-color: var(--color-slate-100);
   }
 
   .data-table.zd-estimate-table .zd-est-product-name {
@@ -2064,7 +2046,7 @@ select:disabled,
 
 /* Kolejka przyjęcia — czytelniejsze wiersze */
 .data-table.receive-queue-table tbody tr:hover td {
-  background-color: #f1f5f9;
+  background-color: var(--color-slate-100);
 }
 
 .data-table.receive-queue-table tbody tr[class*="ring-violet"] td {
@@ -2330,8 +2312,8 @@ main:has([data-zd-estimate-viewport]) [data-zd-estimate-viewport] {
   border-radius: 9999px;
   background: radial-gradient(
     closest-side,
-    rgb(99 102 241 / 0.14),
-    rgb(99 102 241 / 0.04),
+    color-mix(in srgb, var(--color-indigo-500) 14%, transparent),
+    color-mix(in srgb, var(--color-indigo-500) 4%, transparent),
     transparent 72%
   );
   filter: blur(2px);
@@ -2358,7 +2340,7 @@ main:has([data-zd-estimate-viewport]) [data-zd-estimate-viewport] {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgb(99 102 241 / 0.55) 28%,
+    color-mix(in srgb, var(--color-indigo-500) 55%, transparent) 28%,
     rgb(16 185 129 / 0.45) 72%,
     transparent 100%
   );
@@ -2375,7 +2357,7 @@ main:has([data-zd-estimate-viewport]) [data-zd-estimate-viewport] {
 }
 
 .zd-est-loading-step--active {
-  box-shadow: inset 0 0 0 1px rgb(99 102 241 / 0.08);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-indigo-500) 8%, transparent);
 }
 
 .zd-est-loading-bar {
@@ -2416,10 +2398,10 @@ main:has([data-zd-estimate-viewport]) [data-zd-estimate-viewport] {
   background:
     linear-gradient(
       180deg,
-      rgb(248 250 252 / 0.55) 0%,
-      rgb(241 245 249 / 0.72) 100%
+      color-mix(in srgb, var(--color-slate-50) 55%, transparent) 0%,
+      color-mix(in srgb, var(--color-slate-100) 72%, transparent) 100%
     ),
-    rgb(15 23 42 / 0.14);
+    color-mix(in srgb, var(--color-slate-900) 14%, transparent);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
@@ -2616,7 +2598,7 @@ html.ontime-scroll-locked main {
 
 .rich-note-editor:empty::before {
   content: attr(data-placeholder);
-  color: rgb(148 163 184 / 0.7);
+  color: color-mix(in srgb, var(--color-slate-400) 70%, transparent);
   font-style: italic;
   pointer-events: none;
 }
@@ -2650,7 +2632,7 @@ html.ontime-scroll-locked main {
   height: 1rem;
   margin-top: 0.125rem;
   border-radius: 0.25rem;
-  border: 1.5px solid rgb(148 163 184);
+  border: 1.5px solid var(--color-slate-400);
   cursor: pointer;
   transition: all 0.15s ease;
   position: relative;
@@ -2658,8 +2640,8 @@ html.ontime-scroll-locked main {
 }
 
 .todo-checkbox[data-checked="true"] {
-  background: rgb(99 102 241);
-  border-color: rgb(99 102 241);
+  background: var(--color-indigo-500);
+  border-color: var(--color-indigo-500);
 }
 
 .todo-checkbox[data-checked="true"]::after {
@@ -2684,7 +2666,7 @@ html.ontime-scroll-locked main {
   cursor: pointer;
 }
 .note-body-display .todo-checkbox:hover {
-  border-color: rgb(99 102 241);
+  border-color: var(--color-indigo-500);
 }
 
 .rich-note-editor ul.todo-list > li[data-checked="true"] {
@@ -2726,13 +2708,13 @@ html.ontime-scroll-locked main {
   0%,
   100% {
     opacity: 1;
-    background-color: #4f46e5;
-    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.45);
+    background-color: var(--color-indigo-600);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-indigo-600) 45%, transparent);
   }
   50% {
     opacity: 0.92;
-    background-color: #6366f1;
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.35);
+    background-color: var(--color-indigo-500);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-indigo-500) 35%, transparent);
   }
 }
 
@@ -2969,10 +2951,10 @@ html.ontime-scroll-locked main {
 /* ——— Tablica — puls FAB „Zadaj pytanie" (mobile) ——— */
 @keyframes board-question-fab-pulse {
   0%, 100% {
-    box-shadow: 0 4px 12px -2px rgba(79, 70, 229, 0.3);
+    box-shadow: 0 4px 12px -2px color-mix(in srgb, var(--color-indigo-600) 30%, transparent);
   }
   50% {
-    box-shadow: 0 4px 16px -1px rgba(79, 70, 229, 0.45);
+    box-shadow: 0 4px 16px -1px color-mix(in srgb, var(--color-indigo-600) 45%, transparent);
   }
 }
 
@@ -3047,7 +3029,7 @@ input[type="checkbox"].toggle-switch {
   width: 2.5rem;
   height: 1.5rem;
   border-radius: 9999px;
-  background: rgb(203 213 225);
+  background: var(--color-slate-300);
   border: none;
   transition: background-color 0.2s ease;
   flex-shrink: 0;
@@ -3067,7 +3049,7 @@ input[type="checkbox"].toggle-switch::after {
 }
 
 input[type="checkbox"].toggle-switch:checked {
-  background: rgb(79 70 229);
+  background: var(--color-indigo-600);
 }
 
 input[type="checkbox"].toggle-switch:checked::after {
@@ -3084,7 +3066,7 @@ input[type="checkbox"].toggle-switch.toggle-amber:checked {
 }
 
 input[type="checkbox"].toggle-switch.toggle-indigo:checked {
-  background: rgb(79 70 229);
+  background: var(--color-indigo-600);
 }
 
 input[type="checkbox"].toggle-switch.toggle-sky:checked {
@@ -3139,4 +3121,367 @@ input[type="checkbox"].toggle-switch.toggle-sky:checked {
   .supplier-drawer-backdrop-enter {
     animation: none;
   }
+}
+
+/* Nagłówki: 11px uppercase jak etykiety sekcji (design-system). */
+.data-table.zd-estimate-table thead th {
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+}
+
+/* Opak.: liczba i ×N w jednej linii, dopisek (dobicie) pod spodem. */
+.data-table.zd-estimate-table .zd-estimate-pack-cell {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: 0.2rem;
+  row-gap: 0.15rem;
+  padding-block: 0.15rem;
+}
+
+.data-table.zd-estimate-table .zd-estimate-pack-cell .zd-est-pack-cell-sub {
+  flex-basis: 100%;
+}
+
+.data-table.zd-estimate-table td.zd-estimate-actions-col button[aria-haspopup="menu"] {
+  height: 1.75rem;
+  width: 1.75rem;
+}
+
+/* Znaczniki (prośba, para, komplet, minimum, wykluczenie) pod nazwą, w rzędzie. */
+.data-table.zd-estimate-table .zd-est-name-meta {
+  display: flex;
+  min-width: 0;
+  margin-top: 0.2rem;
+}
+
+.data-table.zd-estimate-table .zd-est-name-meta:empty {
+  display: none;
+}
+
+.data-table.zd-estimate-table .zd-est-name-meta .zd-est-status {
+  justify-content: flex-start;
+  gap: 0.25rem;
+}
+
+.data-table.zd-estimate-table .zd-est-name-meta .zd-est-status-badge {
+  height: 1.125rem;
+  padding: 0 0.3rem;
+  font-size: 0.625rem;
+}
+
+/* Starczy na — kolor wg pilności (jak panel Braki). */
+.data-table.zd-estimate-table .zd-est-cover {
+  display: inline-block;
+  min-width: 2.75rem;
+  border-radius: 0.3rem;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table.zd-estimate-table .zd-est-cover--out,
+.data-table.zd-estimate-table .zd-est-cover--critical {
+  color: var(--color-red-700);
+}
+
+.data-table.zd-estimate-table .zd-est-cover--low {
+  color: var(--color-amber-700);
+}
+
+.data-table.zd-estimate-table .zd-est-cover--ok {
+  color: var(--color-slate-600);
+}
+
+.data-table.zd-estimate-table .zd-est-cover--none {
+  color: var(--zd-num-color-dash);
+  font-weight: 500;
+}
+
+/* Wartość pozycji (cena z ZD). */
+.data-table.zd-estimate-table td.zd-estimate-value-col,
+.data-table.zd-estimate-table th.zd-estimate-value-col {
+  width: 5.75rem;
+  min-width: 5.75rem;
+  max-width: 5.75rem;
+  text-align: center;
+}
+
+.data-table.zd-estimate-table .zd-est-value {
+  font-size: var(--zd-num);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--zd-num-color);
+}
+
+.data-table.zd-estimate-table .zd-est-value--none {
+  font-size: 0.6875rem;
+  color: var(--zd-num-color-dash);
+}
+
+.data-table.zd-estimate-table .zd-est-value--unpriced {
+  color: var(--color-slate-500);
+}
+
+.data-table.zd-estimate-table td.zd-estimate-cover-col,
+.data-table.zd-estimate-table th.zd-estimate-cover-col {
+  width: 4.75rem;
+  min-width: 4.75rem;
+  max-width: 4.75rem;
+  text-align: center;
+}
+
+/* Dostępne + rezerwacje (zamiast osobnych kolumn Stan / Rez.). */
+.data-table.zd-estimate-table .zd-est-available {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.15;
+}
+
+.data-table.zd-estimate-table .zd-est-available__rez {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--color-slate-500);
+  white-space: nowrap;
+}
+
+/* ── Kreator ZD: komórka Do ZD (2026-10) ──────────────────────────────────
+ * Stała siatka: [pole][jednostka][dopiski]. Pole ma zawsze tę samą szerokość
+ * i pozycję w każdym wierszu (skan pionowy), dopiski zawsze w trzeciej kolumnie.
+ * Kolory dopisków wg semantyki: sky = informacja (zaokrąglenie do paczki),
+ * indigo = Twoja zmiana, amber = do weryfikacji, emerald = zaakceptowane.     */
+.data-table.zd-estimate-table {
+  --zd-est-dozd-field-w: 3rem;
+  --zd-est-dozd-unit-w: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .data-table.zd-estimate-table,
+  .data-table.zd-estimate-table.zd-estimate-table--zk {
+    --zd-est-dozd-w: 9.5rem;
+  }
+}
+
+@media (min-width: 1600px) {
+  .data-table.zd-estimate-table {
+    --zd-est-dozd-w: 10rem;
+  }
+}
+
+.data-table.zd-estimate-table .zd-est-dozd {
+  display: grid;
+  grid-template-columns: var(--zd-est-dozd-field-w) var(--zd-est-dozd-unit-w) minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.25rem;
+  row-gap: 0.15rem;
+  width: 100%;
+  margin: 0;
+}
+
+/* Pole + jednostka wchodzą bezpośrednio w siatkę. */
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-value {
+  display: contents;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-input {
+  grid-column: 1;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  height: 1.75rem;
+  border-radius: 0.375rem;
+  padding: 0 0.25rem;
+  font-size: 0.9375rem;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-readonly {
+  grid-column: 1;
+  text-align: center;
+  font-size: 0.9375rem;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-unit {
+  grid-column: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-hint-row {
+  grid-column: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-order-mult-warn {
+  grid-column: 1 / -1;
+  text-align: left;
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+/* Wspólny kształt dopisków: 18px, rounded-md, 10px tekst. */
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-hint,
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-reset,
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-confidence {
+  display: inline-flex;
+  max-width: 100%;
+  height: 1.125rem;
+  align-items: center;
+  gap: 0.2rem;
+  border-radius: 0.375rem;
+  padding: 0 0.3rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+  box-shadow: none;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-pieces {
+  font-size: 0.6875rem;
+  text-align: left;
+}
+
+/* Zaokrąglenie do paczki — informacja. */
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-hint {
+  background: var(--color-indigo-50);
+  color: var(--color-indigo-800);
+  box-shadow: none;
+}
+
+/* Twoja zmiana ilości — indigo (marka/akcja), nie ostrzeżenie. */
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-reset {
+  background: transparent;
+  color: var(--color-indigo-700);
+  box-shadow: inset 0 0 0 1px var(--color-slate-200);
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-reset:hover:not(:disabled) {
+  background: var(--color-indigo-100);
+  color: var(--color-indigo-800);
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-reset:focus-visible {
+  outline: 2px solid var(--color-indigo-400);
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-input--override {
+  border-color: var(--color-indigo-300);
+  background: var(--color-indigo-50);
+  color: var(--color-indigo-900);
+  box-shadow: none;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-input--override:focus {
+  border-color: var(--color-indigo-500);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-indigo-500) 20%, transparent);
+}
+
+/* Do weryfikacji — amber (ostrzeżenie), przycisk ✓ jako mały kwadrat. */
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-confidence--review {
+  padding-right: 0.125rem;
+  background: var(--color-slate-100);
+  color: var(--color-slate-700);
+  box-shadow: none;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-confidence--accepted {
+  background: transparent;
+  color: var(--color-emerald-700);
+  box-shadow: none;
+}
+
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-confidence__accept {
+  display: inline-grid;
+  place-items: center;
+  width: 0.875rem;
+  height: 0.875rem;
+  padding: 0;
+  border-radius: 0.25rem;
+  font-size: 0.5625rem;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+/* Kolumna: spokojniejsze tło przy najechaniu (wcześniej mocny żółty/zielony). */
+.data-table.zd-estimate-table tbody tr:hover td.zd-estimate-dozd-col,
+.data-table.zd-estimate-table
+  tbody
+  tr[data-zebra="even"]:not([class*="bg-"]):hover
+  td.zd-estimate-dozd-col {
+  background-color: var(--color-indigo-100);
+}
+
+/* Telefon: wąska kolumna — dopiski pod polem, wyśrodkowane. */
+@media (max-width: 767px) {
+  .data-table.zd-estimate-table .zd-est-dozd {
+    grid-template-columns: var(--zd-est-dozd-field-w) var(--zd-est-dozd-unit-w);
+    justify-content: center;
+  }
+
+  .data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-hint-row {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    justify-content: center;
+  }
+}
+
+/* ── Kreator ZD: znaczniki profilu sprzedaży pod nazwą (2026-10) ─────────── */
+.data-table.zd-estimate-table .zd-est-name-meta {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.data-table.zd-estimate-table .zd-est-profile-badge {
+  display: inline-flex;
+  height: 1.125rem;
+  align-items: center;
+  border: 0;
+  border-radius: 0.375rem;
+  padding: 0 0.35rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* Skok — ostrzeżenie (ilość może być zawyżona). */
+.data-table.zd-estimate-table .zd-est-profile-badge--spike {
+  background: var(--color-indigo-50);
+  color: var(--color-indigo-800);
+  box-shadow: none;
+}
+
+/* Rzadka sprzedaż — podpowiedź („Tylko na prośbę?”). */
+.data-table.zd-estimate-table .zd-est-profile-badge--rare {
+  background: var(--color-indigo-50);
+  color: var(--color-indigo-800);
+  box-shadow: none;
+}
+
+.data-table.zd-estimate-table button.zd-est-profile-badge--rare {
+  cursor: pointer;
+}
+
+.data-table.zd-estimate-table button.zd-est-profile-badge--rare:hover {
+  background: var(--color-indigo-100);
+}
+
+.data-table.zd-estimate-table button.zd-est-profile-badge:focus-visible {
+  outline: 2px solid var(--color-indigo-400);
+  outline-offset: 1px;
 }

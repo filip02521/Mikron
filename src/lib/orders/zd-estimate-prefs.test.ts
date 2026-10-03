@@ -68,14 +68,36 @@ describe("parseZdEstimateUiPrefs", () => {
     expect(next[ZD_ESTIMATE_PREFS_KEY]).toBeTruthy();
   });
 
-  it("migruje legacy showStockDetail / showZkColumn do columns", () => {
+  it("migruje legacy showZkColumn; showStockDetail (kolumna wycofana) ignorowany", () => {
     const parsed = parseZdEstimateUiPrefs({
       showStockDetail: true,
       showZkColumn: true,
     });
-    expect(parsed.columns.stock).toBe(true);
+    expect(parsed.showStockDetail).toBe(false);
     expect(parsed.columns.zk).toBe(true);
     expect(parsed.columns.packaging).toBe(true);
+  });
+
+  it("stare kolumny Status / Stan są pomijane; nowe wchodzą w domyślne miejsce", () => {
+    const parsed = parseZdEstimateUiPrefs({
+      columns: { status: true, stock: true, available: true },
+      columnOrder: ["packaging", "status", "stock", "available", "sales", "target", "openZd", "zk"],
+    });
+    expect(Object.keys(parsed.columns)).not.toContain("status");
+    expect(Object.keys(parsed.columns)).not.toContain("stock");
+    expect(parsed.columns.cover).toBe(true);
+    expect(parsed.columns.value).toBe(true);
+    // „Starczy na” za Opak., „Wartość” za Celem — nie na końcu listy.
+    expect(parsed.columnOrder).toEqual([
+      "packaging",
+      "cover",
+      "available",
+      "sales",
+      "target",
+      "value",
+      "openZd",
+      "zk",
+    ]);
   });
 
   it("columns nadpisuje legacy flagi", () => {
@@ -93,7 +115,6 @@ describe("parseZdEstimateUiPrefs", () => {
         openZd: true,
       },
     });
-    expect(parsed.columns.stock).toBe(false);
     expect(parsed.columns.zk).toBe(false);
     expect(parsed.columns.packaging).toBe(false);
     expect(parsed.columns.sales).toBe(false);
@@ -203,41 +224,41 @@ describe("toggleZdEstimateFavorite", () => {
 });
 
 describe("parseZdEstimateColumnOrder", () => {
-  it("uzupełnia brakujące klucze na końcu", () => {
+  it("uzupełnia brakujące klucze w domyślnym miejscu (za poprzednikiem z domyślnej kolejności)", () => {
     expect(parseZdEstimateColumnOrder(["sales", "packaging"])).toEqual([
       "sales",
-      "packaging",
-      "status",
-      "stock",
-      "available",
       "target",
-      "openZd",
+      "value",
       "zk",
+      "packaging",
+      "cover",
+      "available",
+      "openZd",
     ]);
   });
 
-  it("odrzuca duplikaty i śmieci", () => {
+  it("odrzuca duplikaty, śmieci i wycofane kolumny", () => {
     expect(
-      parseZdEstimateColumnOrder(["zk", "zk", "nope", 3, "status"])
+      parseZdEstimateColumnOrder(["zk", "zk", "nope", 3, "status", "stock"])
     ).toEqual([
-      "zk",
-      "status",
       "packaging",
-      "stock",
+      "cover",
       "available",
+      "openZd",
       "sales",
       "target",
-      "openZd",
+      "value",
+      "zk",
     ]);
   });
 
   it("move zamienia sąsiadów", () => {
     const base = [...ZD_ESTIMATE_COLUMN_ORDER_DEFAULTS];
-    const up = moveZdEstimateColumnOrder(base, "status", "up");
-    expect(up[0]).toBe("status");
+    const up = moveZdEstimateColumnOrder(base, "cover", "up");
+    expect(up[0]).toBe("cover");
     expect(up[1]).toBe("packaging");
     const down = moveZdEstimateColumnOrder(base, "packaging", "down");
-    expect(down[0]).toBe("status");
+    expect(down[0]).toBe("cover");
     expect(down[1]).toBe("packaging");
   });
 
@@ -245,49 +266,40 @@ describe("parseZdEstimateColumnOrder", () => {
     const columns = {
       ...ZD_ESTIMATE_COLUMN_VISIBILITY_DEFAULTS,
       packaging: false,
-      stock: true,
+      zk: true,
     };
-    const order = parseZdEstimateColumnOrder([
-      "sales",
-      "packaging",
-      "stock",
-      "status",
-    ]);
+    const order = parseZdEstimateColumnOrder(["sales", "packaging", "zk", "cover"]);
     expect(resolveZdEstimateVisibleColumnOrder(columns, order)).toEqual([
       "sales",
-      "stock",
-      "status",
-      "available",
       "target",
+      "value",
+      "zk",
+      "cover",
+      "available",
       "openZd",
     ]);
   });
 
-  it("section starts tylko przy zmianie grupy (flow = Dost/Sprzed/Cel/Otwarte)", () => {
+  it("section starts tylko przy zmianie grupy (flow = Dost/W drodze/Sprzed/Cel)", () => {
     const starts = resolveZdEstimateColumnSectionStarts([
-      "status",
+      "cover",
       "available",
+      "openZd",
       "sales",
       "target",
-      "openZd",
+      "value",
       "zk",
     ]);
-    expect([...starts]).toEqual(["available", "zk"]);
+    expect([...starts]).toEqual(["available", "value", "zk"]);
   });
 
   it("scrollable bez Opak. (pinowane przed Do ZD)", () => {
-    expect(
-      resolveZdEstimateScrollableColumnOrder(
-        ZD_ESTIMATE_COLUMN_VISIBILITY_DEFAULTS,
-        ZD_ESTIMATE_COLUMN_ORDER_DEFAULTS
-      )
-    ).not.toContain("packaging");
-    expect(
-      resolveZdEstimateScrollableColumnOrder(
-        ZD_ESTIMATE_COLUMN_VISIBILITY_DEFAULTS,
-        ZD_ESTIMATE_COLUMN_ORDER_DEFAULTS
-      )[0]
-    ).toBe("status");
+    const order = resolveZdEstimateScrollableColumnOrder(
+      ZD_ESTIMATE_COLUMN_VISIBILITY_DEFAULTS,
+      ZD_ESTIMATE_COLUMN_ORDER_DEFAULTS
+    );
+    expect(order).not.toContain("packaging");
+    expect(order[0]).toBe("cover");
   });
 
   it("merge zapisuje columnOrder", () => {
@@ -296,27 +308,26 @@ describe("parseZdEstimateColumnOrder", () => {
       { columnOrder: ["zk", "sales"] as ZdEstimateOptionalColumn[] }
     );
     const parsed = zdEstimateUiPrefsFromProfilePreferences(next);
-    expect(parsed.columnOrder[0]).toBe("zk");
-    expect(parsed.columnOrder[1]).toBe("sales");
-    expect(parsed.columnOrder).toHaveLength(8);
+    const o = parsed.columnOrder;
+    expect(o.indexOf("zk") + 1).toBe(o.indexOf("sales"));
+    expect(o).toHaveLength(8);
   });
 
   it("round-trip: widoczność + kolejność przeżywają zapis profilu", () => {
     const columns = {
       ...ZD_ESTIMATE_COLUMN_VISIBILITY_DEFAULTS,
-      stock: true,
       zk: true,
       sales: false,
-      status: false,
+      value: false,
     };
     const columnOrder: ZdEstimateOptionalColumn[] = [
       "zk",
-      "stock",
+      "cover",
       "target",
       "openZd",
       "available",
       "sales",
-      "status",
+      "value",
       "packaging",
     ];
     const saved = mergeZdEstimateUiPrefsIntoPreferences(
@@ -328,7 +339,7 @@ describe("parseZdEstimateColumnOrder", () => {
     expect(blob.columns).toEqual(columns);
     expect(blob.columnOrder).toEqual(columnOrder);
     expect(blob.showZkColumn).toBe(true);
-    expect(blob.showStockDetail).toBe(true);
+    expect(blob.showStockDetail).toBe(false);
 
     const reloaded = zdEstimateUiPrefsFromProfilePreferences(saved);
     expect(reloaded.columns).toEqual(columns);
@@ -337,11 +348,8 @@ describe("parseZdEstimateColumnOrder", () => {
     expect(reloaded.listFilter).toBe("all");
     expect(reloaded.sortKey).toBe("symbol");
     expect(
-      resolveZdEstimateScrollableColumnOrder(
-        reloaded.columns,
-        reloaded.columnOrder
-      )
-    ).toEqual(["zk", "stock", "target", "openZd", "available"]);
+      resolveZdEstimateScrollableColumnOrder(reloaded.columns, reloaded.columnOrder)
+    ).toEqual(["zk", "cover", "target", "openZd", "available"]);
   });
 
   it("merge samego columnOrder nie kasuje columns", () => {
@@ -361,7 +369,9 @@ describe("parseZdEstimateColumnOrder", () => {
     const parsed = zdEstimateUiPrefsFromProfilePreferences(next);
     expect(parsed.columns.packaging).toBe(false);
     expect(parsed.columns.zk).toBe(true);
-    expect(parsed.columnOrder[0]).toBe("openZd");
+    expect(parsed.columnOrder.indexOf("openZd")).toBeLessThan(
+      parsed.columnOrder.indexOf("sales")
+    );
   });
 
   it("merge samego columns nie kasuje columnOrder", () => {
@@ -372,11 +382,11 @@ describe("parseZdEstimateColumnOrder", () => {
           "zk",
           "sales",
           "packaging",
-          "status",
-          "stock",
+          "cover",
           "available",
           "target",
           "openZd",
+          "value",
         ] as ZdEstimateOptionalColumn[],
       }
     );
@@ -403,12 +413,9 @@ describe("parseZdEstimateColumnVisibility", () => {
     expect(next.packaging).toBe(true);
   });
 
-  it("puste columns → defaults z legacy", () => {
+  it("puste columns → defaults (wycofany showStockDetail ignorowany)", () => {
     expect(
       parseZdEstimateColumnVisibility(null, { showStockDetail: true })
-    ).toEqual({
-      ...ZD_ESTIMATE_COLUMN_VISIBILITY_DEFAULTS,
-      stock: true,
-    });
+    ).toEqual(ZD_ESTIMATE_COLUMN_VISIBILITY_DEFAULTS);
   });
 });

@@ -21,6 +21,10 @@ import {
   type ZdEstimateIndividualServiceLine,
 } from "@/lib/orders/zd-estimate-individual";
 import { formatQty } from "@/lib/orders/zd-estimate-manual";
+import {
+  formatZdCreateStaleListWarning,
+  ZD_CREATE_STALE_LIST_MINUTES,
+} from "@/lib/orders/zd-estimate-ui-copy";
 import type { ZdPostCreateMarkFreeze } from "@/lib/orders/zd-estimate-post-create";
 import type { ZdEstimateHostStrip } from "@/lib/orders/zd-estimate-host";
 import {
@@ -47,6 +51,8 @@ export type ZdCreateSubmitFreezeSnap = {
   consumedOrderIds: string[];
 };
 
+const plnFormatter = new Intl.NumberFormat("pl-PL", { maximumFractionDigits: 0 });
+
 export function ZdEstimateCreateZdDialog({
   open,
   supplierId,
@@ -57,6 +63,8 @@ export function ZdEstimateCreateZdDialog({
   dateKey,
   preview,
   scopeMode,
+  unitPriceByTwId = {},
+  calcNotes = [],
   grtId,
   cechaId,
   lineMeta,
@@ -68,6 +76,9 @@ export function ZdEstimateCreateZdDialog({
   markFreeze = null,
   excludedWithIndividualCount = 0,
   pendingReviewCount = 0,
+  listAgeMinutes = null,
+  manualOverrideCount = 0,
+  onRecountRequest,
   implicitPieceSnapshotNotice = null,
   onOpenPackaging,
   onOpenPairs,
@@ -90,6 +101,10 @@ export function ZdEstimateCreateZdDialog({
   dateKey: string;
   preview: ZdCreatePreview;
   scopeMode: ZdEstimateRunMode;
+  /** Ceny za sztukę z ostatnich ZD — wartość zamówienia przed utworzeniem. */
+  unitPriceByTwId?: Record<number, number>;
+  /** Z czym liczono listę (okno, opcje) — widoczne przed utworzeniem dokumentu. */
+  calcNotes?: readonly string[];
   grtId?: number | null;
   cechaId?: number | null;
   lineMeta?: ZdEstimateLinkLineMeta[] | null;
@@ -107,6 +122,12 @@ export function ZdEstimateCreateZdDialog({
   excludedWithIndividualCount?: number;
   /** Ile pozycji nadal „Do weryfikacji” (sesja) — soft warn, nie blokuje create. */
   pendingReviewCount?: number;
+  /** Ile minut temu policzono listę (null = nie wiadomo). Powyżej progu — ostrzeżenie. */
+  listAgeMinutes?: number | null;
+  /** Pozycje z ręcznie zmienioną ilością „Do ZD” — do świadomego potwierdzenia. */
+  manualOverrideCount?: number;
+  /** „Przelicz teraz” przy nieaktualnej liście (zamyka okno i liczy listę od nowa). */
+  onRecountRequest?: () => void;
   implicitPieceSnapshotNotice?: ImplicitPieceSnapshotNotice | null;
   onOpenPackaging?: () => void;
   onOpenPairs?: () => void;
@@ -254,7 +275,27 @@ export function ZdEstimateCreateZdDialog({
     return idx >= 0 ? liveCompose.uwagi.slice(idx) : null;
   }, [liveCompose.uwagi]);
 
-  const warnings: Array<{ key: string; text: string }> = [];
+  const warnings: Array<{
+    key: string;
+    text: string;
+    action?: { label: string; onClick: () => void };
+  }> = [];
+  if (listAgeMinutes != null && listAgeMinutes >= ZD_CREATE_STALE_LIST_MINUTES) {
+    warnings.push({
+      key: "stale",
+      text: formatZdCreateStaleListWarning(listAgeMinutes),
+      action: onRecountRequest ? { label: "Przelicz teraz", onClick: onRecountRequest } : undefined,
+    });
+  }
+  if (manualOverrideCount > 0) {
+    warnings.push({
+      key: "manual",
+      text:
+        manualOverrideCount === 1
+          ? "1 pozycja ma ręcznie zmienioną ilość „Do ZD” (oznaczona w liście) — sprawdź, czy nadal aktualna."
+          : `${manualOverrideCount} pozycji ma ręcznie zmienioną ilość „Do ZD” (oznaczone w liście) — sprawdź, czy nadal aktualne.`,
+    });
+  }
   if (usedAlias) {
     warnings.push({
       key: "alias",
@@ -379,6 +420,16 @@ export function ZdEstimateCreateZdDialog({
   };
 
   const showProgress = pending && progressStartedAtMs != null;
+
+  // Wartość jak na pasku pod tabelą: sztuki po dostawie × cena za sztukę z ostatniego ZD.
+  const orderValue = preview.lines.reduce(
+    (acc, l) => {
+      const price = unitPriceByTwId[l.twId];
+      if (price == null) return { ...acc, unpriced: acc.unpriced + 1 };
+      return { ...acc, value: acc.value + (l.piecesArriving ?? l.ilosc) * price };
+    },
+    { value: 0, unpriced: 0 }
+  );
 
   return (
     <ModalShell
@@ -537,17 +588,26 @@ export function ZdEstimateCreateZdDialog({
               }
             />
             <SummaryTile
-              label={
-                scopeMode === "cecha"
-                  ? "Cecha"
-                  : scopeMode === "grupa"
-                    ? "Grupa"
-                    : "Zakres"
+              label="Wartość"
+              value={orderValue.value > 0 ? `ok. ${plnFormatter.format(Math.round(orderValue.value))} zł` : "—"}
+              sub={
+                orderValue.unpriced > 0
+                  ? `${orderValue.unpriced} bez ceny`
+                  : "ceny z ostatnich ZD, netto"
               }
-              value={scopeLabel?.trim() || "—"}
               className="col-span-2 sm:col-span-1"
             />
           </dl>
+
+          <p className="text-xs leading-relaxed text-slate-500">
+            <span className="font-medium text-slate-700">
+              {scopeMode === "cecha" ? "Cecha" : scopeMode === "grupa" ? "Grupa" : "Zakres"}:{" "}
+              {scopeLabel?.trim() || "—"}
+            </span>
+            {calcNotes.map((note) => (
+              <span key={note}> · {note}</span>
+            ))}
+          </p>
 
           {warnings.length > 0 ? (
             <ul
@@ -561,7 +621,18 @@ export function ZdEstimateCreateZdDialog({
                     className="mt-0.5 shrink-0 text-amber-600"
                     aria-hidden
                   />
-                  <span>{w.text}</span>
+                  <span className="min-w-0 flex-1">{w.text}</span>
+                  {w.action ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="-my-0.5 shrink-0"
+                      onClick={w.action.onClick}
+                    >
+                      {w.action.label}
+                    </Button>
+                  ) : null}
                 </li>
               ))}
             </ul>

@@ -24,14 +24,18 @@ export const ZD_ESTIMATE_LIST_FILTERS = [
 export type ZdEstimateListFilter = (typeof ZD_ESTIMATE_LIST_FILTERS)[number];
 
 /** Opcjonalne kolumny listy (Towar / Do ZD / Akcje zawsze widoczne). */
+/**
+ * Kolumny „Status” i „Stan / Rez.” zostały wycofane (2026-10): znaczniki są pod
+ * nazwą, rezerwacje — w „Dostępne”. Stare prefs z tymi kluczami są ignorowane.
+ */
 export const ZD_ESTIMATE_OPTIONAL_COLUMNS = [
   "packaging",
-  "status",
-  "stock",
+  "cover",
   "available",
+  "openZd",
   "sales",
   "target",
-  "openZd",
+  "value",
   "zk",
 ] as const;
 
@@ -46,12 +50,12 @@ export type ZdEstimateColumnVisibility = Record<
 export const ZD_ESTIMATE_COLUMN_VISIBILITY_DEFAULTS: ZdEstimateColumnVisibility =
   {
     packaging: true,
-    status: true,
-    stock: false,
+    cover: true,
     available: true,
+    openZd: true,
     sales: true,
     target: true,
-    openZd: true,
+    value: true,
     zk: false,
   };
 
@@ -68,12 +72,12 @@ export const ZD_ESTIMATE_COLUMN_ORDER_DEFAULTS: ZdEstimateOptionalColumn[] = [
  */
 export const ZD_ESTIMATE_COLUMN_SECTIONS = {
   packaging: "pack",
-  status: "meta",
-  stock: "stock",
+  cover: "signal",
   available: "flow",
   sales: "flow",
   target: "flow",
   openZd: "flow",
+  value: "money",
   zk: "diag",
 } as const satisfies Record<ZdEstimateOptionalColumn, string>;
 
@@ -172,6 +176,7 @@ const SORT_KEYS = new Set<ZdEstimateListSortKey>([
   "doZd",
   "confidence",
   "minStock",
+  "cover",
 ]);
 
 const OPTIONAL_COLUMN_SET = new Set<string>(ZD_ESTIMATE_OPTIONAL_COLUMNS);
@@ -228,9 +233,6 @@ export function parseZdEstimateColumnVisibility(
     }
   } else {
     // Legacy: tylko showZkColumn / showStockDetail
-    if (typeof legacy?.showStockDetail === "boolean") {
-      base.stock = legacy.showStockDetail;
-    }
     if (typeof legacy?.showZkColumn === "boolean") {
       base.zk = legacy.showZkColumn;
     }
@@ -272,9 +274,21 @@ export function parseZdEstimateColumnOrder(
       }
     }
   }
-  for (const key of ZD_ESTIMATE_COLUMN_ORDER_DEFAULTS) {
-    if (!seen.has(key)) ordered.push(key);
-  }
+  // Brakujące (np. nowe kolumny) — w domyślnym miejscu: za ostatnią
+  // obecną kolumną, która w domyślnej kolejności jest przed nimi.
+  ZD_ESTIMATE_COLUMN_ORDER_DEFAULTS.forEach((key, defaultIdx) => {
+    if (seen.has(key)) return;
+    let insertAt = 0;
+    for (let i = defaultIdx - 1; i >= 0; i -= 1) {
+      const prevIdx = ordered.indexOf(ZD_ESTIMATE_COLUMN_ORDER_DEFAULTS[i]!);
+      if (prevIdx >= 0) {
+        insertAt = prevIdx + 1;
+        break;
+      }
+    }
+    ordered.splice(insertAt, 0, key);
+    seen.add(key);
+  });
   return ordered;
 }
 
@@ -414,7 +428,8 @@ export function parseZdEstimateUiPrefs(raw: unknown): ZdEstimateUiPrefs {
     zapasMin: asZapasMin(obj.zapasMin),
     showAdvanced: asBool(obj.showAdvanced, false),
     showZkColumn: columns.zk,
-    showStockDetail: columns.stock,
+    // Kolumna Stan / Rez. wycofana — rezerwacje są w „Dostępne”.
+    showStockDetail: false,
     columns,
     columnOrder,
     listFilter: asListFilter(obj.listFilter),
@@ -449,7 +464,7 @@ export function serializeZdEstimateUiPrefs(
     showAdvanced: normalized.showAdvanced,
     // Legacy mirrors — stare klienty / skrypty
     showZkColumn: normalized.columns.zk,
-    showStockDetail: normalized.columns.stock,
+    showStockDetail: false,
     columns: { ...normalized.columns },
     columnOrder: [...normalized.columnOrder],
     listFilter: normalized.listFilter,
@@ -486,9 +501,6 @@ export function mergeZdEstimateUiPrefsIntoPreferences(
   if (patch.showZkColumn != null && patch.columns == null) {
     nextColumns.zk = patch.showZkColumn;
   }
-  if (patch.showStockDetail != null && patch.columns == null) {
-    nextColumns.stock = patch.showStockDetail;
-  }
   // Kolejność: zawsze pełna permutacja (brakujące klucze dopinane na końcu).
   const nextOrder = parseZdEstimateColumnOrder(
     patch.columnOrder ?? current.columnOrder
@@ -510,7 +522,7 @@ export function mergeZdEstimateUiPrefsIntoPreferences(
     columns: nextColumns,
     columnOrder: nextOrder,
     showZkColumn: nextColumns.zk,
-    showStockDetail: nextColumns.stock,
+    showStockDetail: false,
     ...nextFavorites,
   });
   const serialized = serializeZdEstimateUiPrefs(next);

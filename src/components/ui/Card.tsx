@@ -13,7 +13,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-md border border-slate-200/80 bg-[var(--card)] shadow-[var(--shadow-card-elevated)]",
+        "rounded-[var(--radius-panel)] border border-slate-200 bg-[var(--card)] shadow-[var(--shadow-card-elevated)]",
         padding && "p-6 sm:p-7",
         className
       )}

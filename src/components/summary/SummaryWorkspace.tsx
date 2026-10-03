@@ -68,9 +68,15 @@ import {
   dailyPanelMarkOrderedToastTitle,
 } from "@/lib/orders/daily-panel-mark-ordered-copy";
 import { ZD_ESTIMATE_UI } from "@/lib/orders/zd-estimate-ui-copy";
+import type { StockWatchSupplierSignal } from "@/lib/stock-watch/data";
+import {
+  SupplierStockSignalsProvider,
+  supplierStockSignalRank,
+} from "@/components/summary/SupplierStockSignal";
 
 export function SummaryWorkspace({
-  workspace,
+  workspace: workspaceIn,
+  stockSignalBySupplierId = {},
   suppliers,
   supplierDirectory,
   salesPeople,
@@ -84,6 +90,8 @@ export function SummaryWorkspace({
   etaQuantilesBySupplierId = {},
 }: {
   workspace: SummaryWorkspaceData;
+  /** Nocna analiza Braki per dostawca (karty: Do ZD / braki / nic do zamówienia). */
+  stockSignalBySupplierId?: Record<string, StockWatchSupplierSignal>;
   suppliers: OrderFormSupplierOption[];
   supplierDirectory: SupplierDirectoryEntry[];
   salesPeople: { id: string; name: string; email: string }[];
@@ -101,6 +109,16 @@ export function SummaryWorkspace({
     import("@/lib/orders/delivery-eta-quantiles-load").DeliveryEtaSupplierQuantiles
   >;
 }) {
+  // „Na żądanie”: najpierw dostawcy z brakami / pozycjami Do ZD (analiza Braki), potem reszta jak było.
+  const workspace = useMemo(() => {
+    const ranked = workspaceIn.onDemandSuppliers.map((row, i) => ({
+      row,
+      i,
+      rank: supplierStockSignalRank(stockSignalBySupplierId[row.supplierId]),
+    }));
+    ranked.sort((a, b) => b.rank - a.rank || a.i - b.i);
+    return { ...workspaceIn, onDemandSuppliers: ranked.map((r) => r.row) };
+  }, [workspaceIn, stockSignalBySupplierId]);
   const {
     pendingMessage,
     isScopePending,
@@ -352,6 +370,7 @@ export function SummaryWorkspace({
   };
 
   return (
+    <SupplierStockSignalsProvider signals={stockSignalBySupplierId} canPrepareZd={canPrepareZd}>
     <div className={panelWorkspaceShellClass}>
       {pendingMessage ? (
         <ActionLoadingOverlay message={pendingMessage} variant="viewport" />
@@ -612,5 +631,6 @@ export function SummaryWorkspace({
         run={run}
       />
     </div>
+    </SupplierStockSignalsProvider>
   );
 }

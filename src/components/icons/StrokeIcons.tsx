@@ -372,6 +372,39 @@ export function IconChevronLeft(props: StrokeIconProps) {
   );
 }
 
+/** Zwiń menu boczne (panel z lewej + strzałka w lewo) */
+export function IconSidebarCollapse(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16" />
+      <path d="M16 10l-2 2 2 2" />
+    </Svg>
+  );
+}
+
+/** Rozwiń menu boczne */
+export function IconSidebarExpand(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16" />
+      <path d="M14 10l2 2-2 2" />
+    </Svg>
+  );
+}
+
+/** Wyloguj (drzwi + strzałka) */
+export function IconLogOut(props: StrokeIconProps) {
+  return (
+    <Svg {...props}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="M16 17l5-5-5-5" />
+      <path d="M21 12H9" />
+    </Svg>
+  );
+}
+
 /** Przypięta notatka / priorytet (pinezka) */
 export function IconPin(props: StrokeIconProps) {
   return (

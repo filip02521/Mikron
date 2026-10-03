@@ -61,21 +61,23 @@ describe("external-warehouse lines", () => {
     expect(pruned.lines[0]).not.toHaveProperty("ob_CenaNetto");
   });
 
-  it("hash zależy od key+qty", () => {
-    const a = hashExternalWarehouseLines([
-      { key: "ob:1", ob_Ilosc: 2 },
-      { key: "ob:2", ob_Ilosc: 1 },
-    ]);
-    const b = hashExternalWarehouseLines([
-      { key: "ob:2", ob_Ilosc: 1 },
-      { key: "ob:1", ob_Ilosc: 2 },
-    ]);
-    const c = hashExternalWarehouseLines([
-      { key: "ob:1", ob_Ilosc: 3 },
-      { key: "ob:2", ob_Ilosc: 1 },
-    ]);
+  it("hash zależy od key, ilości i danych towaru", () => {
+    const line = (key: string, qty: number, name = "Gips", towId = 1) => ({
+      key,
+      ob_Ilosc: qty,
+      tw_Symbol: "G1",
+      tw_Nazwa: name,
+      ob_TowId: towId,
+    });
+    const a = hashExternalWarehouseLines([line("ob:1", 2), line("ob:2", 1)]);
+    const b = hashExternalWarehouseLines([line("ob:2", 1), line("ob:1", 2)]);
+    const c = hashExternalWarehouseLines([line("ob:1", 3), line("ob:2", 1)]);
+    const renamed = hashExternalWarehouseLines([line("ob:1", 2, "Gips 25kg"), line("ob:2", 1)]);
+    const swapped = hashExternalWarehouseLines([line("ob:1", 2, "Gips", 9), line("ob:2", 1)]);
     expect(a).toBe(b);
     expect(a).not.toBe(c);
+    expect(a).not.toBe(renamed);
+    expect(a).not.toBe(swapped);
   });
 
   it("DTO linii bez raw snapshot — orphan z meta", () => {

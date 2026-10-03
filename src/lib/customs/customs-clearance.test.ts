@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildDocumentArticleIndex,
   collectVatBasisDocuments,
+  customsArticleKey,
   customsLineState,
   formatCustomsAgencyEmail,
   formatCustomsLines,
@@ -44,6 +45,17 @@ describe("normalizeArticleCode", () => {
     expect(normalizeArticleCode(" de – 1196 ")).toBe("DE-1196");
     expect(normalizeArticleCode("de-1165-3")).toBe("DE-1165-3");
     expect(normalizeArticleCode(null)).toBe("");
+  });
+});
+
+describe("formatCustomsLines — opis z przecinkami", () => {
+  it("materiał po średniku, gdy opis ma przecinki", () => {
+    const out = formatCustomsLines(
+      [line(1, "Wiertła stosowane do frezarek, do frezowania różnych materiałów, np. pmma", 23, { material: "stal, węglik", cnCode: "82077090" })],
+      false,
+      false
+    );
+    expect(out).toEqual(["1. Wiertła stosowane do frezarek, do frezowania różnych materiałów, np. pmma; materiał: stal, węglik"]);
   });
 });
 
@@ -181,14 +193,67 @@ describe("formatCustomsAgencyEmail", () => {
     expect(text).not.toContain("kod CN");
   });
 
-  it("różne kody CN → kod przy każdej pozycji", () => {
+  it("różne kody CN → kod przy każdej pozycji, wspólna stawka VAT raz pod listą", () => {
     const text = formatCustomsAgencyEmail({
       shipmentDescription: "przyrządy",
       lines: [line(1, "Nożyk", 23), line(2, "Szczotka", 23, { cnCode: "96032900", material: "nylon" })],
     });
     expect(text).toContain("2) Przesyłka zawiera przyrządy:");
-    expect(text).toContain("1. Nożyk, stal nierdzewna, kod CN 90184900, stawka VAT 23%");
-    expect(text).toContain("2. Szczotka, nylon, kod CN 96032900, stawka VAT 23%");
+    expect(text).toContain("1. Nożyk, stal nierdzewna, kod CN 90184900\n");
+    expect(text).toContain("2. Szczotka, nylon, kod CN 96032900\n\nStawka VAT 23% dla wszystkich pozycji");
+  });
+
+  it("mieszane stawki → VAT przy każdej pozycji", () => {
+    const text = formatCustomsAgencyEmail({ shipmentDescription: "przyrządy", lines: aswadLines });
+    expect(text).toContain("2. Uchwyt do skalpela nr 3, stal nierdzewna, wyrób medyczny, stawka VAT 8%");
+    expect(text).not.toContain("dla wszystkich pozycji");
+  });
+
+  it("formatowanie pozycji bez kodu CN nie wstawia pustego „kod CN”", () => {
+    const text = formatCustomsAgencyEmail({
+      shipmentDescription: "prostnice do mikrosilnika i części do prostnic",
+      lines: [
+        ...[1, 2, 3, 4].map((p) =>
+          line(p, "Prostnice do mikrosilnika używanego w pracowniach protetyki stomatologicznej", 23, {
+            material: "",
+            cnCode: "90184990",
+          })
+        ),
+        line(5, "Podkładka", 23, { material: "", cnCode: null }),
+        line(6, "Zacisk wiertła", 23, { material: "", cnCode: null }),
+      ],
+    });
+    expect(text).toContain(
+      "1-4. Prostnice do mikrosilnika używanego w pracowniach protetyki stomatologicznej, kod CN 90184990\n5. Podkładka\n6. Zacisk wiertła\n\nStawka VAT 23% dla wszystkich pozycji"
+    );
+  });
+});
+
+describe("normalizeCnCode", () => {
+  it("8 cyfr, odrzuca nieistniejące działy", () => {
+    expect(normalizeCnCode("8207 70 90")).toBe("82077090");
+    expect(normalizeCnCode("9018.49.90")).toBe("90184990");
+    expect(normalizeCnCode("77123456")).toBeNull();
+    expect(normalizeCnCode("99050000")).toBeNull();
+    expect(normalizeCnCode("00123456")).toBeNull();
+    expect(normalizeCnCode("820770")).toBeNull();
+  });
+});
+
+describe("customsArticleKey", () => {
+  it("kod z faktury wygrywa, placeholdery („/”) ignoruje", () => {
+    expect(customsArticleKey(" de – 1196 ", "Plaster knife")).toBe("DE-1196");
+    expect(customsArticleKey("04250-1", "PKT.1 GOLD")).toBe("04250-1");
+    expect(customsArticleKey("/", "T Burs Mag")).toBe("T BURS MAG");
+    expect(customsArticleKey("N/A", "printer")).toBe("PRINTER");
+  });
+
+  it("bez kodu — nazwa bez interpunkcji, stabilna między odczytami", () => {
+    const a = customsArticleKey("", '105L(BL):COLLET CHUCK "A"');
+    expect(a).toBe("105L BL COLLET CHUCK A");
+    expect(customsArticleKey(null, "105L(BL): Collet chuck A")).toBe(a);
+    expect(customsArticleKey("", "F100aIII:BALL BEARING(R188zz)")).toBe("F100AIII BALL BEARING R188ZZ");
+    expect(customsArticleKey("", "")).toBe("");
   });
 });
 

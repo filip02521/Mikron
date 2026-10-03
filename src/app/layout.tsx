@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CryptoPolyfillInit } from "@/components/CryptoPolyfillScript";
 import { FontScaleScript } from "@/components/layout/FontScaleScript";
+import { SidebarCollapseScript } from "@/components/layout/SidebarCollapseScript";
 import { AppShell } from "@/components/layout/AppShell";
 import { defaultAppMetadata } from "@/lib/ui/page-metadata";
 
@@ -33,9 +34,12 @@ export default function RootLayout({
       lang="pl"
       data-scroll-behavior="smooth"
       className={`${geistSans.variable} ${geistMono.variable}`}
+      // Skrypty w <head> ustawiają data-font-scale / data-sidebar przed hydracją (bez mignięcia).
+      suppressHydrationWarning
     >
       <head>
         <FontScaleScript />
+        <SidebarCollapseScript />
       </head>
       <body className="min-h-screen font-sans antialiased">
         <CryptoPolyfillInit />

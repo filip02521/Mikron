@@ -322,7 +322,7 @@ export function SalesOnboardingWizard() {
       className={cn(
         "fixed z-[110] flex flex-col border bg-gradient-to-br from-white via-white to-indigo-50/30 shadow-xl transition-shadow duration-500",
         coachHighlight
-          ? "border-indigo-400 shadow-[0_0_0_3px_rgba(99,102,241,0.35),0_12px_40px_rgba(15,23,42,0.18)]"
+          ? "border-indigo-400 shadow-[0_0_0_3px_rgba(24, 137, 149,0.35),0_12px_40px_rgba(15,23,42,0.18)]"
           : "border-slate-200/90",
         showFullDetails && !isDesktop
           ? "inset-x-2 bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px)+var(--admin-preview-dock,0px)+0.5rem)] max-h-[min(58dvh,24rem)] rounded-lg"

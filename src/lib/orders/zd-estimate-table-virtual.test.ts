@@ -11,13 +11,13 @@ describe("countZdEstimateTableColumns", () => {
     ).toBe(6);
   });
 
-  it("pack + stock (2) + sales", () => {
+  it("pack + cover + sales + value", () => {
     expect(
       countZdEstimateTableColumns({
         showPackagingColumn: true,
-        visibleOptionalColumns: ["stock", "sales"],
+        visibleOptionalColumns: ["cover", "sales", "value"],
       })
-    ).toBe(6 + 1 + 2 + 1);
+    ).toBe(6 + 1 + 3);
   });
 
   it("pomija packaging w optional (już w showPackagingColumn)", () => {

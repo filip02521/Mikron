@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { query } from "@/lib/db/pool";
 import type { ZdEstimateSnapshotHostKind } from "@/lib/subiekt/config";
 
 export type ZdEstimateSnapshotScopeMode = "grupa" | "cecha";
@@ -637,3 +638,32 @@ export async function updateZdEstimateSnapshotEligibleForHistory(
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Zakresy, pod którymi dostawca (kh + aliasy) ma zapisane ZD w historii.
+ * Po zmianie / usunięciu zakresu historia nie znika — Policz czyta też te zakresy.
+ */
+export async function listSnapshotHistoryScopesForKh(
+  supplierKhIds: readonly number[],
+  hostKind: ZdEstimateSnapshotHostKind
+): Promise<ZdEstimateHistoryScope[]> {
+  const khIds = [...new Set(supplierKhIds.map((k) => Math.trunc(Number(k))).filter((k) => k > 0))];
+  if (!khIds.length) return [];
+  const res = await query<{ scope_mode: string; grt_id: number | null; cecha_id: number | null }>(
+    `SELECT DISTINCT scope_mode, grt_id, cecha_id
+       FROM zd_estimate_order_snapshots
+      WHERE supplier_kh_id = ANY($1::int[])
+        AND host_kind = $2
+        AND eligible_for_history
+        AND scope_mode IN ('grupa', 'cecha')`,
+    [khIds, hostKind]
+  );
+  const out: ZdEstimateHistoryScope[] = [];
+  for (const r of res.rows) {
+    if (r.scope_mode === "grupa" && r.grt_id != null && r.grt_id > 0) {
+      out.push({ mode: "grupa", grtId: Math.trunc(r.grt_id) });
+    } else if (r.scope_mode === "cecha" && r.cecha_id != null && r.cecha_id > 0) {
+      out.push({ mode: "cecha", cechaId: Math.trunc(r.cecha_id) });
+    }
+  }
+  return out;
+}

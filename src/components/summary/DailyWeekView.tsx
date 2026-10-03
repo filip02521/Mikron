@@ -41,7 +41,14 @@ export function DailyWeekView({
   onOpenOnDemand: () => void;
 }) {
   const [showNextWeek, setShowNextWeek] = useState(false);
-  const thisWeekTotal = workspace.thisWeekDays.reduce((n, d) => n + d.items.length, 0);
+  // Weekend: najbliższy tydzień + kolejny (miniony pon–pt nie ma już planu).
+  const firstWeekDays = workspace.weekViewStartsNextWeek
+    ? workspace.nextWeekDays
+    : workspace.thisWeekDays;
+  const secondWeekDays = workspace.weekViewStartsNextWeek
+    ? workspace.weekAfterNextDays
+    : workspace.nextWeekDays;
+  const thisWeekTotal = firstWeekDays.reduce((n, d) => n + d.items.length, 0);
   const thisWeekEmpty = thisWeekTotal === 0;
   const onDemandCount = workspace.onDemandSuppliers.length;
 
@@ -79,9 +86,9 @@ export function DailyWeekView({
       <WeekPlanner
         chrome="dailyPanel"
         sectionId={DAILY_PANEL_WEEK_SECTION.thisWeek}
-        title="Ten tydzień"
+        title={workspace.weekViewStartsNextWeek ? "Najbliższy tydzień" : "Ten tydzień"}
         description="Poniedziałek–piątek · zamówione z wyprzedzeniem lub szczegóły dostawcy"
-        days={workspace.thisWeekDays}
+        days={firstWeekDays}
         todayDateKey={workspace.todayDateKey}
         density="compact"
         onOpenSupplier={onOpenSupplier}
@@ -101,9 +108,9 @@ export function DailyWeekView({
         <WeekPlanner
           chrome="dailyPanel"
           sectionId={DAILY_PANEL_WEEK_SECTION.nextWeek}
-          title="Następny tydzień"
+          title={workspace.weekViewStartsNextWeek ? "Kolejny tydzień" : "Następny tydzień"}
           description="Ten sam układ co bieżący tydzień"
-          days={workspace.nextWeekDays}
+          days={secondWeekDays}
           todayDateKey={workspace.todayDateKey}
           density="compact"
           onOpenSupplier={onOpenSupplier}
@@ -130,7 +137,7 @@ export function DailyWeekView({
           onClick={() => setShowNextWeek(true)}
           className={cn(panelDashedActionClass, "min-h-11 w-full sm:min-h-10 sm:w-auto")}
         >
-          Pokaż następny tydzień
+          {workspace.weekViewStartsNextWeek ? "Pokaż kolejny tydzień" : "Pokaż następny tydzień"}
         </button>
       )}
     </div>
