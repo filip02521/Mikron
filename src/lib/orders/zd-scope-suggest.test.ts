@@ -87,7 +87,26 @@ describe("buildZdScopeInsights", () => {
       supplierId: "s9",
       totalProducts: 0,
       coveredProducts: 0,
+      currentScopeHits: [{ mode: "cecha", id: 10, hits: 0 }],
       suggestions: [],
     });
+  });
+});
+
+describe("buildZdScopeInsights — błędne mapowanie", () => {
+  it("zakres bez żadnego towaru z ZD dostawcy ma 0 trafień (np. Polkard BIS na cesze Polkard)", () => {
+    const rows = [
+      row("polkard", 1, null, [2717]),
+      row("polkard", 2, null, [2717]),
+      row("bis", 3, null, [2718]),
+      row("bis", 4, null, [2718]),
+    ];
+    const currentScopes = new Map<string, ZdScopeRef[]>([
+      ["polkard", [{ mode: "cecha", id: 2717 }]],
+      ["bis", [{ mode: "cecha", id: 2717 }]],
+    ]);
+    const bis = buildZdScopeInsights({ rows, currentScopes, names }).get("bis")!;
+    expect(bis.currentScopeHits).toEqual([{ mode: "cecha", id: 2717, hits: 0 }]);
+    expect(bis.suggestions[0]).toEqual(expect.objectContaining({ mode: "cecha", id: 2718, newHits: 2 }));
   });
 });

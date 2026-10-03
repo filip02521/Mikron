@@ -734,6 +734,30 @@ export function ZdEstimateSupplierScopesModal({
     });
   };
 
+  /**
+   * Szybkie akcje z podpowiedzi (Przypisz / Dodaj / Zamień) zmieniają mapowanie
+   * całego działu jednym kliknięciem — zawsze z potwierdzeniem.
+   */
+  const confirmSuggestion = (
+    action: "assign" | "add" | "replace",
+    supplierId: string,
+    sg: ZdScopeSuggestion,
+    scopeId?: string
+  ) => {
+    const name = supplierLabel(suppliers, supplierId);
+    const scopeText = `${sg.mode === "cecha" ? "cechę" : "grupę"} „${sg.name}”`;
+    const text =
+      action === "replace"
+        ? `Zamienić zakres dostawcy ${name} na ${scopeText}?`
+        : action === "add"
+          ? `Dodać ${scopeText} jako kolejny zakres dostawcy ${name}?`
+          : `Przypisać ${scopeText} dostawcy ${name}?`;
+    if (!window.confirm(`${text}\n\nObejmuje ${sg.supplierHits} towarów z ZD tego dostawcy. Zmiana obowiązuje cały dział.`)) {
+      return;
+    }
+    persistScope({ supplierId, scopeId, mode: sg.mode, id: sg.id, label: sg.name });
+  };
+
   const saveDraft = (draft: ScopeDraft, scopeId: string | undefined, onDone: () => void) => {
     const supplierId = draft.supplierId.trim();
     if (!supplierId) {
@@ -958,9 +982,7 @@ export function ZdEstimateSupplierScopesModal({
                         suggestion={top}
                         disabled={pending}
                         actionLabel="Przypisz"
-                        onPick={(sg) =>
-                          persistScope({ supplierId: s.supplierId, mode: sg.mode, id: sg.id, label: sg.name })
-                        }
+                        onPick={(sg) => confirmSuggestion("assign", s.supplierId, sg)}
                       />
                     ) : null}
                     <Button
@@ -1174,8 +1196,18 @@ export function ZdEstimateSupplierScopesModal({
         <ul className="max-h-[min(32rem,60vh)] space-y-2 overflow-y-auto pr-0.5">
           {supplierCards.map((card) => {
             const insight = insightFor(card.supplierId);
+            const hitsFor = (row: ZdEstimateSupplierScopeRow) =>
+              insight?.currentScopeHits.find(
+                (h) => h.mode === row.mode && h.id === (row.mode === "cecha" ? row.cechaId : row.grupaId)
+              )?.hits;
+            // Zakres bez żadnego towaru z ZD dostawcy = najpewniej błędne mapowanie.
+            const hasHistory = (insight?.totalProducts ?? 0) > 0;
+            const hasDeadScope = hasHistory && card.rows.some((r) => hitsFor(r) === 0);
+            const topSuggestion = insight?.suggestions[0];
             const missingSuggestion =
-              insight && insight.coveredProducts < insight.totalProducts ? insight.suggestions[0] : undefined;
+              !hasDeadScope && insight && insight.coveredProducts < insight.totalProducts
+                ? topSuggestion
+                : undefined;
             return (
               <li key={card.supplierId} className="overflow-hidden rounded-lg border border-slate-200/90 bg-white">
                 <div className="flex flex-wrap items-start justify-between gap-2 px-4 pt-3">
@@ -1216,6 +1248,20 @@ export function ZdEstimateSupplierScopesModal({
                             <span className="text-[10px] text-slate-400">
                               {ZD_ESTIMATE_UI.supplierScopesUpdatedPrefix} {formatPlDate(row.updatedAt)}
                             </span>
+                            {hasHistory && hitsFor(row) != null ? (
+                              hitsFor(row) === 0 ? (
+                                <span
+                                  className="rounded bg-red-50 px-1.5 text-[10px] font-semibold text-red-700 ring-1 ring-red-200"
+                                  title="Żaden towar zamawiany u tego dostawcy (historia ZD) nie należy do tego zakresu — sprawdź, czy to właściwa grupa/cecha."
+                                >
+                                  0 towarów z ZD — sprawdź mapowanie
+                                </span>
+                              ) : (
+                                <span className="text-[10px] tabular-nums text-slate-500">
+                                  {hitsFor(row)} z ZD
+                                </span>
+                              )
+                            ) : null}
                           </div>
                           <div className="flex shrink-0 gap-1.5">
                             {card.rows.length > 1 && idx > 0 ? (
@@ -1251,6 +1297,20 @@ export function ZdEstimateSupplierScopesModal({
                             </Button>
                           </div>
                         </div>
+                        {hasHistory && hitsFor(row) === 0 && topSuggestion && !editing ? (
+                          <div className="flex flex-wrap items-center gap-2 border-t border-red-100 bg-red-50/40 px-4 py-2">
+                            <span className="text-[11px] text-red-900">Zamień na (z historii ZD):</span>
+                            {(insight?.suggestions ?? []).map((sg) => (
+                              <SuggestionChip
+                                key={`${sg.mode}:${sg.id}`}
+                                suggestion={sg}
+                                disabled={pending}
+                                actionLabel="Zamień"
+                                onPick={(pick) => confirmSuggestion("replace", card.supplierId, pick, row.id)}
+                              />
+                            ))}
+                          </div>
+                        ) : null}
                         {editing ? (
                           <div className="space-y-3 border-t border-indigo-100/80 px-4 py-3">
                             <p className="text-xs text-slate-600">
@@ -1287,9 +1347,7 @@ export function ZdEstimateSupplierScopesModal({
                       suggestion={missingSuggestion}
                       disabled={pending}
                       actionLabel="Dodaj"
-                      onPick={(sg) =>
-                        persistScope({ supplierId: card.supplierId, mode: sg.mode, id: sg.id, label: sg.name })
-                      }
+                      onPick={(sg) => confirmSuggestion("add", card.supplierId, sg)}
                     />
                   </div>
                 ) : null}

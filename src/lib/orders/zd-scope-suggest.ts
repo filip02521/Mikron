@@ -43,6 +43,8 @@ export type ZdSupplierScopeInsight = {
   totalProducts: number;
   /** Z tego objęte obecnymi zakresami. */
   coveredProducts: number;
+  /** Ile towarów dostawcy z ZD obejmuje każdy z jego zakresów (0 = podejrzane mapowanie). */
+  currentScopeHits: (ZdScopeRef & { hits: number })[];
   suggestions: ZdScopeSuggestion[];
 };
 
@@ -146,6 +148,10 @@ export function buildZdScopeInsights(input: {
       supplierId,
       totalProducts: products.size,
       coveredProducts: covered,
+      currentScopeHits: (input.currentScopes.get(supplierId) ?? []).map((ref) => ({
+        ...ref,
+        hits: supplierHits.get(zdScopeKey(ref)) ?? 0,
+      })),
       suggestions: candidates.slice(0, max).map(({ score: _score, ...s }) => s),
     });
   }
