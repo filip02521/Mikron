@@ -92,11 +92,9 @@ import type { ZdEstimateExclusionRow } from "@/lib/data/zd-estimate-exclusions";
 import type { ZdEstimateOnRequestRow } from "@/lib/data/zd-estimate-on-request";
 import type { ZdEstimatePackagingRow } from "@/lib/data/zd-estimate-packaging";
 import type { ZdEstimateMinStockRow } from "@/lib/data/zd-estimate-min-stock";
-import { minStockRowsToMap } from "@/lib/orders/zd-estimate-min-stock-lookup";
 import type { ZdProductPairRow } from "@/lib/data/zd-product-pairs";
 import type { ZdProductBomRow } from "@/lib/data/zd-product-boms";
 import {
-  buildBakeExcludedTwIds,
   buildExtraOnlyTwIds,
   buildOrderExcludedTwIds,
   filterSessionIncludeRespectingOnRequest,
@@ -189,19 +187,14 @@ import {
 import type { ManualZdEstimateLine } from "@/lib/orders/zd-estimate-manual";
 import {
   DEFAULT_DNI_ZAPASU,
-  formatQty,
   salesWindowFromDniZapasu,
 } from "@/lib/orders/zd-estimate-manual";
-import {
-  formatWzSalesTitle,
-} from "@/lib/orders/zd-estimate-wz-sales-ui";
 import {
   nextDataOdAfterDataDoChange,
   resolveLaunchDniZapasu,
   shouldApplyStockSalesWindow,
   type ZdEstimateSalesWindowSource,
 } from "@/lib/orders/zd-estimate-sales-window";
-import { formatSalesTrackHint } from "@/lib/orders/zd-estimate-sales-track";
 import { isZdEstimatePendingReview } from "@/lib/orders/zd-estimate-confidence-ui";
 import {
   mapZdNameAutoExcludedByTwId,
@@ -212,18 +205,9 @@ import {
 } from "@/lib/orders/zd-estimate-bulk";
 import {
   filterOrderableLinesWithPackaging,
-  formatZdPackUnitsPerLabelHint,
   individualExtraPiecesForTw,
-  isPackagingPackagesMode,
-  lineAllowsZdDocumentUnitOverride,
   orderableLinesToTsv,
-  packagingByTwId,
-  packagingDocumentMode,
-  packagingRowsToRefreshLookup,
   pruneZdDocumentUnitOverrides,
-  resolveOrderQtyForLine,
-  type PackagingLookup,
-  type ZdEstimatePackagingRefreshEntry,
 } from "@/lib/orders/zd-estimate-packaging";
 import {
   buildIndividualEstimateExtras,
@@ -247,7 +231,6 @@ import {
 import {
   applyCreatedZdUnitsToOtwarteZd,
   buildZdCreatePreviewFromOrderable,
-  canCreateZdFromEstimateState,
   defaultZdCreateUwagi,
   resolveZdCreateKhId,
   ZD_CREATE_MAX_UWAGI_LEN,
@@ -268,7 +251,6 @@ import {
   reconcileMarkFreezeWithAcceptedIds,
   undoStubsFromMarkFreeze,
   type ZdPostCreateMarkFreeze,
-  type ZdPostCreateSession,
 } from "@/lib/orders/zd-estimate-post-create";
 import {
   buildPairRatioByTwId,
@@ -276,7 +258,6 @@ import {
 } from "@/lib/orders/zd-estimate-snapshot-lines";
 import { refreshZdEstimateLinesWithPairs } from "@/lib/orders/zd-estimate-live-refresh";
 import { coerceZdEstimateLinesBase } from "@/lib/orders/zd-estimate-lines-base";
-import type { ZdProductPairRef } from "@/lib/orders/zd-product-pair-units";
 import {
   defaultDirForZdEstimateSortKey,
   sortZdEstimateLines,
@@ -311,18 +292,6 @@ import {
   collectZdPackagingPairConflicts,
   formatZdPackagingPairConflictHint,
 } from "@/lib/orders/zd-estimate-packaging-pair-conflict";
-import {
-  ZdEstimatePairPackStockCell,
-  ZdEstimatePairPiecesCell,
-  ZdEstimatePairSalesCell,
-  ZdEstimatePiecesMetricCell,
-  renderZdEstimateWzSalesSubline,
-} from "@/components/zakupy/ZdEstimatePairMetaBadge";
-import { ZdEstimateDoZdCell } from "@/components/zakupy/ZdEstimateDoZdCell";
-import { ZdEstimatePackagingCell } from "@/components/zakupy/ZdEstimatePackagingCell";
-import { ZdEstimateNameMetaStack } from "@/components/zakupy/ZdEstimateNameMetaStack";
-import { ZdEstimateQtyValue } from "@/components/zakupy/ZdEstimateQtyValue";
-import { ZdEstimateReservationsCell } from "@/components/zakupy/ZdEstimateReservationsCell";
 import { ZdEstimateIndividualServicesSection } from "@/components/zakupy/ZdEstimateIndividualServicesSection";
 import { ZdEstimateBulkExcludeDialog } from "@/components/zakupy/ZdEstimateBulkExcludeDialog";
 import { ZdEstimateBulkPackagingDialog } from "@/components/zakupy/ZdEstimateBulkPackagingDialog";
@@ -334,7 +303,20 @@ import { ZdEstimatePackagingDialog } from "@/components/zakupy/ZdEstimatePackagi
 import { ZdEstimateMinStockDialog } from "@/components/zakupy/ZdEstimateMinStockDialog";
 import type { ZdPairSeedProduct } from "@/components/zakupy/ZdEstimatePairsModal";
 import type { ZdBomSeedProduct } from "@/components/zakupy/ZdEstimateBomsModal";
-import { ZdEstimateRowActions } from "@/components/zakupy/ZdEstimateRowActions";
+import {
+  ZdEstimateTableRow,
+  zdEstimateFlowColumnClass,
+} from "@/components/zakupy/ZdEstimateTableRow";
+import { useStableCallback } from "@/hooks/useStableCallback";
+import { useZdEstimateSelection } from "@/hooks/useZdEstimateSelection";
+import {
+  useZdEstimateCreateZdFlow,
+  useZdEstimateCreateZdGate,
+} from "@/hooks/useZdEstimateCreateZdFlow";
+import {
+  useZdEstimateRulesData,
+  useZdEstimateRulesLiveApply,
+} from "@/hooks/useZdEstimateRules";
 import {
   ZdEstimateLaunchProgressPanel,
 } from "@/components/zakupy/ZdEstimateLaunchProgress";
@@ -369,7 +351,6 @@ import {
   shouldShowZdEstimateSessionResumeLoading,
 } from "@/lib/orders/zd-estimate-external-session-resume";
 import {
-  scrollZdEstimateAfterSelectionChange,
   scrollZdEstimateIntoView,
   scrollZdEstimateWhenReady,
   scrollZdEstimateRevealListWhenReady,
@@ -840,9 +821,6 @@ export function ZdEstimateWorkbench({
   const [searching, startSearch] = useTransition();
   const [mutating, startMutate] = useTransition();
   const [rematting, startRemat] = useTransition();
-  const exclusionsGenRef = useRef(0);
-  const packagingGenRef = useRef(0);
-  const pairsGenRef = useRef(0);
   /** Unieważnia wynik „Policz”, gdy zakres zmieni się w trakcie requestu. */
   const estimateGenRef = useRef(0);
   /** Unieważnia spóźnione odpowiedzi fetch próśb (mount vs Policz). */
@@ -1252,13 +1230,6 @@ export function ZdEstimateWorkbench({
     () => resolveZdEstimateScrollableColumnOrder(columns, columnOrder),
     [columns, columnOrder]
   );
-  const flowColumnClass = (col: ZdEstimateOptionalColumn) =>
-    col === "available" ||
-    col === "sales" ||
-    col === "target" ||
-    col === "openZd"
-      ? "zd-estimate-col--flow"
-      : null;
   const columnsAreDefault =
     zdEstimateColumnVisibilityEqual(
       columns,
@@ -1321,61 +1292,49 @@ export function ZdEstimateWorkbench({
   );
   const [paramInfo, setParamInfo] = useState<Record<string, unknown> | null>(null);
   const [meta, setMeta] = useState<RunMeta | null>(null);
-  /** Kiedy policzono bieżącą listę (Policz albo createdAt wznowionej sesji) — ostrzeżenie o starej liście. */
-  const [listComputedAtMs, setListComputedAtMs] = useState<number | null>(null);
-  /** Wiek listy w chwili otwarcia okna tworzenia ZD (minuty). */
-  const [createListAgeMinutes, setCreateListAgeMinutes] = useState<number | null>(null);
+  const {
+    setListComputedAtMs,
+    createListAgeMinutes,
+    postCreate,
+    setPostCreate,
+    createZdOpen,
+    setCreateZdOpen,
+    createDoneDokId,
+    setCreateDoneDokId,
+    createDoneDokNr,
+    setCreateDoneDokNr,
+    createUnconfirmedAttempt,
+    setCreateUnconfirmedAttempt,
+    creatingZd,
+    setCreatingZd,
+    createPreviewCaptureRef,
+    createPreviewFrozen,
+    setCreatePreviewFrozen,
+    createLineMetaCaptureRef,
+    createMarkFreezeCaptureRef,
+    timeoutRecoveryFreezeRef,
+    createMarkFreezeFrozen,
+    setCreateMarkFreezeFrozen,
+    consumedOnThisZdIds,
+    glowneRemovedForUndoRef,
+    glowneUndoOrderIdsRef,
+    rememberConsumedOrderIds,
+    linkNrPrefill,
+    setLinkNrPrefill,
+    linkZdOpen,
+    setLinkZdOpen,
+    createUnlockedAfterDone,
+    setCreateUnlockedAfterDone,
+    createTimeoutUnlockConfirmOpen,
+    setCreateTimeoutUnlockConfirmOpen,
+    createUndoVisible,
+    setCreateUndoVisible,
+    openCreateZdModal,
+    closeCreateZdModal,
+    openLinkZdModal,
+    resetCreateZdFlow,
+  } = useZdEstimateCreateZdFlow();
   const [copyOk, setCopyOk] = useState(false);
-  const [postCreate, setPostCreate] = useState<ZdPostCreateSession | null>(
-    null
-  );
-  const [createZdOpen, setCreateZdOpen] = useState(false);
-  const [createDoneDokId, setCreateDoneDokId] = useState<number | null>(null);
-  const [createDoneDokNr, setCreateDoneDokNr] = useState<string | null>(null);
-  /** Timeout create — lock bez dokId (dokument mógł powstać). */
-  const [createUnconfirmedAttempt, setCreateUnconfirmedAttempt] =
-    useState(false);
-  const [creatingZd, setCreatingZd] = useState(false);
-  /** Preview zamrożony przy starcie create — timeout / sesja / UI dialogu. */
-  const createPreviewCaptureRef = useRef<ReturnType<
-    typeof buildZdCreatePreviewFromOrderable
-  > | null>(null);
-  const [createPreviewFrozen, setCreatePreviewFrozen] = useState<ReturnType<
-    typeof buildZdCreatePreviewFromOrderable
-  > | null>(null);
-  const createLineMetaCaptureRef = useRef<
-    { twId: number; celAtLink: number; deltaAtLink: number }[] | null
-  >(null);
-  const createMarkFreezeCaptureRef = useRef<ZdPostCreateMarkFreeze | null>(
-    null
-  );
-  /**
-   * Freeze z timeout create — przeżywa dismiss panelu, aż do link / unlock / Policz.
-   * Bez tego „Powiąż ZD” po zamknięciu panelu traci submit freeze + durable consume.
-   */
-  const timeoutRecoveryFreezeRef = useRef<ZdPostCreateMarkFreeze | null>(null);
-  /** Mirror ref → state, żeby dialog nie czytał ref podczas renderu. */
-  const [createMarkFreezeFrozen, setCreateMarkFreezeFrozen] =
-    useState<ZdPostCreateMarkFreeze | null>(null);
-  const [consumedOnThisZdIds, setConsumedOnThisZdIds] = useState<string[]>(
-    []
-  );
-  const glowneRemovedForUndoRef = useRef<ZdEstimatePendingIndividualOrder[]>(
-    []
-  );
-  /** ID ostatniej paczki Główne — undo nigdy nie cofa całego glowneMarkedIds. */
-  const glowneUndoOrderIdsRef = useRef<string[]>([]);
-  const rememberConsumedOrderIds = (ids: readonly string[]) => {
-    if (!ids.length) return;
-    setConsumedOnThisZdIds((prev) => {
-      const next = new Set(prev);
-      for (const id of ids) {
-        const trimmed = String(id ?? "").trim();
-        if (trimmed) next.add(trimmed);
-      }
-      return next.size === prev.length ? prev : [...next];
-    });
-  };
   const [pendingIndividuals, setPendingIndividuals] = useState<
     ZdEstimatePendingIndividualOrder[]
   >([]);
@@ -1396,53 +1355,58 @@ export function ZdEstimateWorkbench({
    * Nie ustawiać gdy Policz nie rozwiązał overlap (resolved=false).
    */
   const skipProsbaOverlapFetchKeyRef = useRef<string | null>(null);
-  const [linkNrPrefill, setLinkNrPrefill] = useState<string | null>(null);
-  const [exclusions, setExclusions] = useState<ZdEstimateExclusionRow[]>(
-    bootstrap.exclusions
-  );
-  const [exclusionsError, setExclusionsError] = useState<string | null>(
-    bootstrap.exclusionsError
-  );
   const [exclusionsOpen, setExclusionsOpen] = useState(false);
-  const [onRequests, setOnRequests] = useState<ZdEstimateOnRequestRow[]>(
-    bootstrap.onRequests ?? []
-  );
-  const [onRequestsError, setOnRequestsError] = useState<string | null>(
-    bootstrap.onRequestsError ?? null
-  );
   const [onRequestPanelOpen, setOnRequestPanelOpen] = useState(false);
-  const [linkZdOpen, setLinkZdOpen] = useState(false);
-  const [packaging, setPackaging] = useState<ZdEstimatePackagingRow[]>(
-    bootstrap.packaging
-  );
-  const [packagingError, setPackagingError] = useState<string | null>(
-    bootstrap.packagingError
-  );
-  const [minStock, setMinStock] = useState<ZdEstimateMinStockRow[]>(
-    bootstrap.minStock ?? []
-  );
-  const [minStockError, setMinStockError] = useState<string | null>(
-    bootstrap.minStockError ?? null
-  );
   const [minStockOpen, setMinStockOpen] = useState(false);
-  const [productPairs, setProductPairs] = useState<ZdProductPairRow[]>(
-    bootstrap.productPairs
-  );
-  const [productPairsError, setProductPairsError] = useState<string | null>(
-    bootstrap.productPairsError
-  );
-  const [productBoms, setProductBoms] = useState<ZdProductBomRow[]>(
-    bootstrap.productBoms ?? []
-  );
-  const [productBomsError, setProductBomsError] = useState<string | null>(
-    bootstrap.productBomsError ?? null
-  );
-  const [teethTwIds, setTeethTwIds] = useState<number[]>(
-    bootstrap.teethTwIds ?? []
-  );
-  const [teethProductsError, setTeethProductsError] = useState<string | null>(
-    bootstrap.teethProductsError ?? null
-  );
+  const rulesState = useZdEstimateRulesData(bootstrap);
+  const {
+    exclusions,
+    setExclusions,
+    exclusionsError,
+    setExclusionsError,
+    onRequests,
+    setOnRequests,
+    onRequestsError,
+    setOnRequestsError,
+    packaging,
+    setPackaging,
+    packagingError,
+    setPackagingError,
+    minStock,
+    setMinStock,
+    minStockError,
+    setMinStockError,
+    productPairs,
+    setProductPairs,
+    productPairsError,
+    setProductPairsError,
+    productBoms,
+    setProductBoms,
+    productBomsError,
+    setProductBomsError,
+    teethTwIds,
+    setTeethTwIds,
+    teethProductsError,
+    setTeethProductsError,
+    pairsGenRef,
+    exclusionsTrusted,
+    onRequestTrusted,
+    packagingTrusted,
+    minStockTrusted,
+    pairsTrusted,
+    bomsTrusted,
+    teethTrusted,
+    settingsTrusted,
+    applyExclusionsMutation,
+    dbExcludedIds,
+    onRequestTwIds,
+    teethTwIdSet,
+    packagingByTwIdForRefresh,
+    minStockByTwIdForRefresh,
+    packagingMap,
+    packPairTwIds,
+    packagingLookup,
+  } = rulesState;
   const [pairsOpen, setPairsOpen] = useState(false);
   const [pairSeed, setPairSeed] = useState<
     readonly [ZdPairSeedProduct, ZdPairSeedProduct] | null
@@ -1455,13 +1419,8 @@ export function ZdEstimateWorkbench({
   );
   const [missingBomTwIds, setMissingBomTwIds] = useState<number[]>([]);
   const bomMissingCount = missingBomTwIds.length;
-  const [createUnlockedAfterDone, setCreateUnlockedAfterDone] = useState(false);
-  const [createTimeoutUnlockConfirmOpen, setCreateTimeoutUnlockConfirmOpen] =
-    useState(false);
   const [qtyOverrideByTwId, setQtyOverrideByTwId] = useState<Record<number, number>>({});
   const [sessionIncludeTwIds, setSessionIncludeTwIds] = useState<Record<number, true>>({});
-  const [createUndoVisible, setCreateUndoVisible] = useState(false);
-  const selectAnchorTwIdRef = useRef<number | null>(null);
   const [packagingOpen, setPackagingOpen] = useState(false);
   const [minStockCandidate, setMinStockCandidate] =
     useState<ManualZdEstimateLine | null>(null);
@@ -1470,7 +1429,6 @@ export function ZdEstimateWorkbench({
   const [excludeCandidate, setExcludeCandidate] =
     useState<ManualZdEstimateLine | null>(null);
   const [mutatingTwId, setMutatingTwId] = useState<number | null>(null);
-  const [selected, setSelected] = useState<Record<number, boolean>>({});
   const [bulkExcludeOpen, setBulkExcludeOpen] = useState(false);
   const [bulkPackagingOpen, setBulkPackagingOpen] = useState(false);
   const [bulkPackagingMode, setBulkPackagingMode] = useState<"set" | "clear">(
@@ -1571,94 +1529,7 @@ export function ZdEstimateWorkbench({
         peekZdEstimateExternalSessionToken()
       );
     });
-  const headerCheckboxRef = useRef<HTMLInputElement>(null);
-  const prevSelectedCountRef = useRef(0);
-  const selectedCountLiveRef = useRef(0);
-  const selectionScrollTwIdRef = useRef<number | null>(null);
-  /** Pomija scroll przy programmatic clear (Policz / zmiana zakresu). */
-  const skipSelectionScrollRef = useRef(false);
-
-  const resetSelectionQuiet = useCallback(() => {
-    selectionScrollTwIdRef.current = null;
-    setSelected((prev) => {
-      if (Object.keys(prev).length === 0) return prev;
-      skipSelectionScrollRef.current = true;
-      return {};
-    });
-  }, []);
-
   const busy = estimating || searching || mutating || rematting;
-  const exclusionsTrusted = exclusionsError == null;
-  const onRequestTrusted = onRequestsError == null;
-  const packagingTrusted = packagingError == null;
-  const minStockTrusted = minStockError == null;
-  const pairsTrusted = productPairsError == null;
-  const bomsTrusted = productBomsError == null;
-  const teethTrusted = teethProductsError == null;
-  // minStock jest soft-fail: brak tabeli/tymczasowy błąd nie blokuje kreatora.
-  // Retry jest dostępny w banerze, ale Policz działa z pustą listą minimum.
-  const settingsTrusted =
-    exclusionsTrusted &&
-    onRequestTrusted &&
-    packagingTrusted &&
-    pairsTrusted &&
-    bomsTrusted &&
-    teethTrusted;
-
-  /** „Odznacz” z UI — bez skoku viewportu (jak programmatic clear). */
-  const clearSelection = resetSelectionQuiet;
-  const clearSucceededFromSelection = useCallback((ids: number[]) => {
-    if (!ids.length) return;
-    setSelected((prev) => {
-      const next = { ...prev };
-      let changed = false;
-      for (const id of ids) {
-        if (next[id]) {
-          delete next[id];
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, []);
-
-  /**
-   * Po bulk „Na prośbę” succeeded może być packTwId (retarget),
-   * a zaznaczenie trzyma piece — czyść oba końce pary + oryginał.
-   */
-  const clearBulkOnRequestSelection = useCallback(
-    (succeededTwIds: number[], submittedTwIds: number[]) => {
-      const succeeded = new Set(succeededTwIds);
-      const clearIds = new Set<number>(succeededTwIds);
-      for (const twId of submittedTwIds) {
-        const packId = retargetTwIdToPackIfPiece(twId, productPairs).twId;
-        if (succeeded.has(twId) || succeeded.has(packId)) {
-          clearIds.add(twId);
-          clearIds.add(packId);
-        }
-      }
-      clearSucceededFromSelection([...clearIds]);
-    },
-    [productPairs, clearSucceededFromSelection]
-  );
-
-  const applyExclusionsMutation = useCallback(
-    (rows: ZdEstimateExclusionRow[]) => {
-      exclusionsGenRef.current += 1;
-      setExclusions(rows);
-      setExclusionsError(null);
-    },
-    []
-  );
-
-  const applyPackagingMutation = useCallback(
-    (rows: ZdEstimatePackagingRow[]) => {
-      packagingGenRef.current += 1;
-      setPackaging(rows);
-      setPackagingError(null);
-    },
-    []
-  );
 
   const reportError = useCallback(
     (message: string, opts?: { title?: string }) => {
@@ -1973,21 +1844,6 @@ export function ZdEstimateWorkbench({
     });
   }, [selectedSupplier]);
 
-  const dbExcludedIds = useMemo(
-    () => new Set(exclusions.map((e) => e.subiektTwId)),
-    [exclusions]
-  );
-
-  const onRequestTwIds = useMemo(
-    () =>
-      onRequestTrusted
-        ? onRequestTwIdSet(onRequests, productPairs)
-        : new Set<number>(),
-    [onRequests, onRequestTrusted, productPairs]
-  );
-
-  const teethTwIdSet = useMemo(() => new Set(teethTwIds), [teethTwIds]);
-
   const nameAutoByTwId = useMemo(
     () =>
       lines
@@ -2029,45 +1885,6 @@ export function ZdEstimateWorkbench({
     onRequestTwIds,
   ]);
 
-  /** Bake exclude względem linesBase + session — do re-merge par (pełne onRequest). */
-  const bakeExcludedTwIds = useMemo(() => {
-    const db = exclusionsTrusted ? [...dbExcludedIds] : [];
-    let base: Set<number>;
-    if (!linesBase) {
-      base = new Set(db);
-      if (teethTrusted) for (const id of teethTwIdSet) base.add(id);
-    } else {
-      base = mergeZdEstimateExcludedTwIds(linesBase, db, {
-        teethTwIds: teethTrusted ? teethTwIdSet : null,
-      });
-    }
-    const sessionOk = filterSessionIncludeRespectingOnRequest(
-      sessionIncludeTwIds,
-      onRequestTwIds
-    );
-    for (const id of sessionOk) base.delete(id);
-    return buildBakeExcludedTwIds(base, onRequestTwIds);
-  }, [
-    linesBase,
-    dbExcludedIds,
-    exclusionsTrusted,
-    teethTwIdSet,
-    teethTrusted,
-    sessionIncludeTwIds,
-    onRequestTwIds,
-  ]);
-
-  const excludedIdsForRefresh = bakeExcludedTwIds;
-
-  const packagingByTwIdForRefresh = useMemo(
-    () => packagingRowsToRefreshLookup(packaging),
-    [packaging]
-  );
-  const minStockByTwIdForRefresh = useMemo(
-    () => minStockRowsToMap(minStock),
-    [minStock]
-  );
-
   useEffect(() => {
     let cancelled = false;
     void actionGetZdBoostPowerPreset().then((res) => {
@@ -2088,160 +1905,39 @@ export function ZdEstimateWorkbench({
     };
   }, []);
 
-  const reapplyPairsToLines = useCallback(
-    (
-      nextPairs: readonly ZdProductPairRef[],
-      nextBoms: readonly ZdProductBomRow[] = productBoms,
-      packagingLookup:
-        | ReadonlyMap<number, ZdEstimatePackagingRefreshEntry>
-        | null
-        | undefined = packagingByTwIdForRefresh,
-      minStockLookup:
-        | ReadonlyMap<number, number>
-        | null
-        | undefined = minStockByTwIdForRefresh
-    ): {
-      missingPartnerTwIds: number[];
-      missingBomTwIds: number[];
-      applied: boolean;
-    } => {
-      if (!linesBase || linesBase.length === 0) {
-        return {
-          missingPartnerTwIds: [],
-          missingBomTwIds: [],
-          applied: false,
-        };
-      }
-      const dni = Math.round(Number(dniZapasu));
-      const dniOkresuRaw = paramInfo?.dniOkresu;
-      const dniOkresu =
-        dniOkresuRaw != null && Number.isFinite(Number(dniOkresuRaw))
-          ? Number(dniOkresuRaw)
-          : null;
-      const { lines: nextLines, missingPartnerTwIds, missingBomTwIds } =
-        refreshZdEstimateLinesWithPairs({
-          linesBase,
-          pairs: nextPairs,
-          boms: bomRowsToRefs(nextBoms),
-          options: {
-            dniZapasu:
-              Number.isFinite(dni) && dni >= 1 ? dni : DEFAULT_DNI_ZAPASU,
-            dniOkresu,
-            zapasMin: Number(zapasMin) || 0,
-            excludedTwIds: excludedIdsForRefresh,
-            packagingByTwId: packagingLookup ?? packagingByTwIdForRefresh,
-            historyByTwId:
-              historyByTwId.size > 0 ? historyByTwId : null,
-            salesTrackPolicy: appliedBoostPolicy,
-            minStockByTwId: minStockLookup ?? minStockByTwIdForRefresh,
-          },
-        });
-      startRemat(() => {
-        setLines(nextLines);
-        setMissingPartnerTwIds(missingPartnerTwIds);
-        setMissingBomTwIds(missingBomTwIds);
-      });
-      return { missingPartnerTwIds, missingBomTwIds, applied: true };
-    },
-    [
-      linesBase,
-      dniZapasu,
-      paramInfo,
-      zapasMin,
-      excludedIdsForRefresh,
-      productBoms,
-      packagingByTwIdForRefresh,
-      minStockByTwIdForRefresh,
-      historyByTwId,
-      appliedBoostPolicy,
-      startRemat,
-    ]
-  );
-
   const canAutoRecount =
     Boolean(linesBase?.length) &&
     ((scopeMode === "grupa" && selectedGroup?.grt_Id) ||
       (scopeMode === "cecha" && selectedCecha?.ctw_Id));
 
-  const recountEstimateLinesWithExcluded = useCallback(
-    (excludedTwIds: ReadonlySet<number>) => {
-      if (!linesBase?.length) return;
-      const dni = Math.round(Number(dniZapasu));
-      const dniOkresuRaw = paramInfo?.dniOkresu;
-      const dniOkresu =
-        dniOkresuRaw != null && Number.isFinite(Number(dniOkresuRaw))
-          ? Number(dniOkresuRaw)
-          : null;
-      const { lines: nextLines, missingPartnerTwIds, missingBomTwIds } =
-        refreshZdEstimateLinesWithPairs({
-          linesBase,
-          pairs: productPairs,
-          boms: bomRowsToRefs(productBoms),
-          options: {
-            dniZapasu:
-              Number.isFinite(dni) && dni >= 1 ? dni : DEFAULT_DNI_ZAPASU,
-            dniOkresu,
-            zapasMin: Number(zapasMin) || 0,
-            excludedTwIds,
-            packagingByTwId: packagingByTwIdForRefresh,
-            historyByTwId: historyByTwId.size > 0 ? historyByTwId : null,
-            salesTrackPolicy: appliedBoostPolicy,
-            minStockByTwId: minStockByTwIdForRefresh,
-          },
-        });
-      startRemat(() => {
-        setLines(nextLines);
-        setMissingPartnerTwIds(missingPartnerTwIds);
-        setMissingBomTwIds(missingBomTwIds);
-      });
-    },
-    [
-      linesBase,
-      productPairs,
-      productBoms,
-      dniZapasu,
-      paramInfo,
-      zapasMin,
-      packagingByTwIdForRefresh,
-      minStockByTwIdForRefresh,
-      historyByTwId,
-      appliedBoostPolicy,
-      startRemat,
-    ]
-  );
-
-  const buildExcludedIdsForSessionIncludes = useCallback(
-    (
-      sessionIncludes: Record<number, true>,
-      dbExcluded: Iterable<number> = exclusionsTrusted ? dbExcludedIds : [],
-      onRequestIds: ReadonlySet<number> = onRequestTwIds
-    ) => {
-      const db = [...dbExcluded];
-      let base: Set<number>;
-      if (!linesBase) {
-        base = new Set(db);
-        if (teethTrusted) for (const id of teethTwIdSet) base.add(id);
-      } else {
-        base = mergeZdEstimateExcludedTwIds(linesBase, db, {
-          teethTwIds: teethTrusted ? teethTwIdSet : null,
-        });
-      }
-      const sessionOk = filterSessionIncludeRespectingOnRequest(
-        sessionIncludes,
-        onRequestIds
-      );
-      for (const id of sessionOk) base.delete(id);
-      return buildBakeExcludedTwIds(base, onRequestIds);
-    },
-    [
-      linesBase,
-      exclusionsTrusted,
-      dbExcludedIds,
-      teethTrusted,
-      teethTwIdSet,
-      onRequestTwIds,
-    ]
-  );
+  const {
+    excludedIdsForRefresh,
+    reapplyPairsToLines,
+    recountEstimateLinesWithExcluded,
+    buildExcludedIdsForSessionIncludes,
+    applyPairsMutation,
+    applyBomsMutation,
+    applyPackagingLive,
+    applyMinStockLive,
+    applyExclusionsLive,
+    applyOnRequestsLive,
+  } = useZdEstimateRulesLiveApply({
+    rules: rulesState,
+    linesBase,
+    sessionIncludeTwIds,
+    dniZapasu,
+    paramInfo,
+    zapasMin,
+    historyByTwId,
+    appliedBoostPolicy,
+    canAutoRecount: Boolean(canAutoRecount),
+    startRemat,
+    setLines,
+    setMissingPartnerTwIds,
+    setMissingBomTwIds,
+    flashSettingsLive,
+    runEstimateRef,
+  });
 
   const setSessionIncludeTwId = useCallback(
     (twId: number, include: boolean) => {
@@ -2260,209 +1956,6 @@ export function ZdEstimateWorkbench({
     ]
   );
 
-  const applyPairsMutation = useCallback(
-    (rows: ZdProductPairRow[]) => {
-      pairsGenRef.current += 1;
-      setProductPairs(rows);
-      setProductPairsError(null);
-      if (!linesBase?.length) {
-        flashSettingsLive(
-          "Zapisano pary. Policz listę, żeby zobaczyć scalenie na towarach."
-        );
-        return;
-      }
-      const { missingPartnerTwIds, missingBomTwIds, applied } =
-        reapplyPairsToLines(rows);
-      if (!applied) return;
-      const missing = missingPartnerTwIds.length + missingBomTwIds.length;
-      if (missing > 0 && canAutoRecount) {
-        flashSettingsLive(
-          "Para zapisana — dociągam brakujących towarów z Subiekta…"
-        );
-        queueMicrotask(() => runEstimateRef.current());
-        return;
-      }
-      if (missing > 0) {
-        flashSettingsLive(
-          "Para zapisana, ale towar spoza listy — kliknij „Policz listę”, żeby dociągnąć."
-        );
-        return;
-      }
-      flashSettingsLive("Pary zaktualizowane — oznaczenia i Do ZD przeliczone.");
-    },
-    [linesBase, reapplyPairsToLines, canAutoRecount, flashSettingsLive]
-  );
-
-  const applyBomsMutation = useCallback(
-    (rows: ZdProductBomRow[]) => {
-      setProductBoms(rows);
-      setProductBomsError(null);
-      if (!linesBase?.length) {
-        flashSettingsLive(ZD_BOM_UI.flashSavedNoList);
-        return;
-      }
-      const { missingPartnerTwIds, missingBomTwIds, applied } =
-        reapplyPairsToLines(productPairs, rows);
-      if (!applied) return;
-      const missing = missingPartnerTwIds.length + missingBomTwIds.length;
-      if (missing > 0 && canAutoRecount) {
-        flashSettingsLive(ZD_BOM_UI.flashFetching);
-        queueMicrotask(() => runEstimateRef.current());
-        return;
-      }
-      if (missing > 0) {
-        flashSettingsLive(ZD_BOM_UI.flashOutsideList);
-        return;
-      }
-      flashSettingsLive(ZD_BOM_UI.flashUpdated);
-    },
-    [
-      linesBase,
-      reapplyPairsToLines,
-      productPairs,
-      canAutoRecount,
-      flashSettingsLive,
-    ]
-  );
-
-  const applyPackagingLive = useCallback(
-    (rows: ZdEstimatePackagingRow[]) => {
-      applyPackagingMutation(rows);
-      if (linesBase?.length) {
-        // setState opakowań jest asynchroniczny — przekaż świeżą mapę, nie closure.
-        reapplyPairsToLines(
-          productPairs,
-          productBoms,
-          packagingRowsToRefreshLookup(rows)
-        );
-        flashSettingsLive(ZD_ESTIMATE_UI.packagingLiveFlash);
-      } else {
-        flashSettingsLive("Opakowania zapisane.");
-      }
-    },
-    [
-      applyPackagingMutation,
-      linesBase,
-      productPairs,
-      productBoms,
-      reapplyPairsToLines,
-      flashSettingsLive,
-    ]
-  );
-
-  const applyMinStockLive = useCallback(
-    (rows: ZdEstimateMinStockRow[]) => {
-      setMinStock(rows);
-      if (linesBase?.length) {
-        // setState minStock jest asynchroniczny — przekaż świeżą mapę, nie closure.
-        reapplyPairsToLines(
-          productPairs,
-          productBoms,
-          undefined,
-          minStockRowsToMap(rows)
-        );
-        flashSettingsLive(ZD_ESTIMATE_UI.minStockLiveFlash);
-      } else {
-        flashSettingsLive("Minimum stanów zapisane.");
-      }
-    },
-    [
-      linesBase,
-      productPairs,
-      productBoms,
-      reapplyPairsToLines,
-      flashSettingsLive,
-    ]
-  );
-
-  const applyExclusionsLive = useCallback(
-    (rows: ZdEstimateExclusionRow[]) => {
-      applyExclusionsMutation(rows);
-      if (linesBase?.length) {
-        // bakeExcluded zaktualizuje się w następnym renderze — przelicz z nowym setem.
-        const excludedNow = buildExcludedIdsForSessionIncludes(
-          sessionIncludeTwIds,
-          rows.map((r) => r.subiektTwId)
-        );
-        recountEstimateLinesWithExcluded(excludedNow);
-        flashSettingsLive("Wykluczenia zaktualizowane — lista przeliczona.");
-      }
-    },
-    [
-      applyExclusionsMutation,
-      linesBase,
-      sessionIncludeTwIds,
-      buildExcludedIdsForSessionIncludes,
-      recountEstimateLinesWithExcluded,
-      flashSettingsLive,
-    ]
-  );
-
-  const applyOnRequestsLive = useCallback(
-    (
-      nextRows: ZdEstimateOnRequestRow[],
-      /** Świeże hard exclusions — unikaj stale dbExcludedIds przy łańcuchu exclude→onRequest. */
-      dbExcluded?: Iterable<number>
-    ) => {
-      setOnRequests(nextRows);
-      setOnRequestsError(null);
-      if (linesBase?.length) {
-        const excludedNow = buildExcludedIdsForSessionIncludes(
-          sessionIncludeTwIds,
-          dbExcluded ?? (exclusionsTrusted ? dbExcludedIds : []),
-          onRequestTwIdSet(nextRows, productPairs)
-        );
-        recountEstimateLinesWithExcluded(excludedNow);
-        flashSettingsLive(
-          "„Tylko na prośbę” zaktualizowane — lista przeliczona."
-        );
-      } else {
-        flashSettingsLive("Zapisano „tylko na prośbę”.");
-      }
-    },
-    [
-      linesBase,
-      sessionIncludeTwIds,
-      exclusionsTrusted,
-      dbExcludedIds,
-      productPairs,
-      buildExcludedIdsForSessionIncludes,
-      recountEstimateLinesWithExcluded,
-      flashSettingsLive,
-    ]
-  );
-
-  const packagingMap = useMemo(
-    () => packagingByTwId(packaging),
-    [packaging]
-  );
-
-  const packPairTwIds = useMemo(
-    () => new Set(productPairs.map((p) => p.packTwId)),
-    [productPairs]
-  );
-
-  const packagingLookup = useMemo(() => {
-    const map = new Map<number, PackagingLookup>();
-    for (const row of packaging) {
-      map.set(row.subiektTwId, {
-        unitsPerPackage: row.unitsPerPackage,
-        packageLabel: row.packageLabel,
-        documentUnitMode: row.documentUnitMode,
-        orderMultiple: row.orderMultiple,
-      });
-    }
-    for (const pair of productPairs) {
-      const existing = map.get(pair.packTwId);
-      map.set(pair.packTwId, {
-        unitsPerPackage: pair.unitsPerPack,
-        packageLabel: existing?.packageLabel ?? "op.",
-        documentUnitMode: "packages",
-        orderMultiple: existing?.orderMultiple ?? null,
-      });
-    }
-    return map;
-  }, [packaging, productPairs]);
 
   const extrasConsumedOrderIds = useMemo(
     () => [
@@ -2719,6 +2212,105 @@ export function ZdEstimateWorkbench({
     minStockByTwIdForRefresh,
   ]);
 
+  const segmentFilteredLines = useMemo(() => {
+    if (!lines) return [];
+    if (!settingsTrusted) {
+      // „Do ZD” wymaga DB + opakowań. Auto z nazwy można pokazać od razu.
+      if (listFilter === "order") return [];
+      if (listFilter === "excluded") {
+        return lines.filter((l) => nameAutoByTwId.has(l.tw_Id));
+      }
+      if (listFilter === "review") {
+        return lines.filter((l) =>
+          isZdEstimatePendingReview({
+            qtyReview: l.salesTrackQtyReview,
+            accepted: acceptedReviewTwIds[l.tw_Id],
+            excluded: orderExcludedTwIds.has(l.tw_Id),
+          })
+        );
+      }
+      return lines;
+    }
+    if (listFilter === "excluded") {
+      return lines.filter((l) => orderExcludedTwIds.has(l.tw_Id));
+    }
+    if (listFilter === "review") {
+      return lines.filter((l) =>
+        isZdEstimatePendingReview({
+          qtyReview: l.salesTrackQtyReview,
+          accepted: acceptedReviewTwIds[l.tw_Id],
+          excluded: orderExcludedTwIds.has(l.tw_Id),
+        })
+      );
+    }
+    if (listFilter === "all") {
+      return lines;
+    }
+    // Ten sam wynik co orderableLines — bez drugiego przebiegu filtra.
+    return orderableLines;
+  }, [
+    lines,
+    listFilter,
+    orderExcludedTwIds,
+    settingsTrusted,
+    nameAutoByTwId,
+    acceptedReviewTwIds,
+    orderableLines,
+  ]);
+
+  const visibleLines = useMemo(() => {
+    const searched = filterZdEstimateLinesBySearch(
+      segmentFilteredLines,
+      listSearch
+    );
+    return sortZdEstimateLines(
+      searched,
+      sortKey,
+      sortDir,
+      packagingLookup,
+      individualExtraByTwId,
+      qtyOverrideMap,
+      extraOnlyTwIds,
+      extrasPolicy,
+      stockNeedReliefByTwId,
+      extraOverlapByTwId,
+      minStockByTwIdForRefresh
+    );
+  }, [
+    segmentFilteredLines,
+    listSearch,
+    sortKey,
+    sortDir,
+    packagingLookup,
+    individualExtraByTwId,
+    qtyOverrideMap,
+    extraOnlyTwIds,
+    extrasPolicy,
+    stockNeedReliefByTwId,
+    extraOverlapByTwId,
+    minStockByTwIdForRefresh,
+  ]);
+
+  const {
+    selected,
+    selectAnchorTwIdRef,
+    headerCheckboxRef,
+    resetSelectionQuiet,
+    clearSucceededFromSelection,
+    clearBulkOnRequestSelection,
+    selectedLines,
+    selectedCount,
+    selectionToolsOpen,
+    selectionBarSelectedCount,
+    selectionBarVisibleSelectedCount,
+    allVisibleSelected,
+    toggleRowSelected,
+    selectAllVisible,
+    toggleSelectAllVisible,
+  } = useZdEstimateSelection({ lines, visibleLines, productPairs });
+  /** „Odznacz” z UI — bez skoku viewportu (jak programmatic clear). */
+  const clearSelection = resetSelectionQuiet;
+
   const packagingPairConflicts = useMemo(
     () =>
       lines
@@ -2801,57 +2393,30 @@ export function ZdEstimateWorkbench({
     [implicitPieceSnapshotLines]
   );
 
-  const createZdGate = useMemo(
-    () =>
-      canCreateZdFromEstimateState({
-        configured: bootstrap.configured,
-        settingsTrusted,
-        orderableCount: createZdPreview.lineCount,
-        supplierId,
-        khResolution: createKhResolution,
-        estimating: estimating || rematting,
-        mutating,
-        creating: creatingZd,
-        createDoneDokId,
-        createUnconfirmedAttempt,
-        createUnlockedAfterDone,
-        packagingPairConflictCount: packagingPairConflicts.length,
-        explodeBomIncomplete,
-        boostNeedsRecount,
-        historyNeedsRecount,
-        historyFetchFailed,
-        pendingIndividualsError,
-        pendingIndividualsTruncated,
-        pendingIndividualsLoading: Boolean(supplierId && pendingIndividualsLoading),
-        prosbaOverlapPending:
-          prosbaOverlapCandidateTwIds.length > 0 &&
-          prosbaReservedByTwId === null,
-      }),
-    [
-      bootstrap.configured,
-      settingsTrusted,
-      createZdPreview.lineCount,
-      supplierId,
-      createKhResolution,
-      estimating,
-      rematting,
-      mutating,
-      creatingZd,
-      createDoneDokId,
-      createUnconfirmedAttempt,
-      createUnlockedAfterDone,
-      packagingPairConflicts.length,
-      explodeBomIncomplete,
-      boostNeedsRecount,
-      historyNeedsRecount,
-      historyFetchFailed,
-      pendingIndividualsError,
-      pendingIndividualsTruncated,
-      pendingIndividualsLoading,
-      prosbaOverlapCandidateTwIds.length,
-      prosbaReservedByTwId,
-    ]
-  );
+  const createZdGate = useZdEstimateCreateZdGate({
+    configured: bootstrap.configured,
+    settingsTrusted,
+    orderableCount: createZdPreview.lineCount,
+    supplierId,
+    khResolution: createKhResolution,
+    estimating: estimating || rematting,
+    mutating,
+    creating: creatingZd,
+    createDoneDokId,
+    createUnconfirmedAttempt,
+    createUnlockedAfterDone,
+    packagingPairConflictCount: packagingPairConflicts.length,
+    explodeBomIncomplete,
+    boostNeedsRecount,
+    historyNeedsRecount,
+    historyFetchFailed,
+    pendingIndividualsError,
+    pendingIndividualsTruncated,
+    pendingIndividualsLoading: Boolean(supplierId && pendingIndividualsLoading),
+    prosbaOverlapPending:
+      prosbaOverlapCandidateTwIds.length > 0 &&
+      prosbaReservedByTwId === null,
+  });
 
   const createBaseUwagi = useMemo(() => {
     const label =
@@ -3385,26 +2950,7 @@ export function ZdEstimateWorkbench({
       }
 
       // Restore = snapshot roboczy, nie post-create / create-lock z bieżącego mountu.
-      setPostCreate(null);
-      setConsumedOnThisZdIds([]);
-      glowneRemovedForUndoRef.current = [];
-      glowneUndoOrderIdsRef.current = [];
-      setCreateDoneDokId(null);
-      setCreateDoneDokNr(null);
-      setCreateUnconfirmedAttempt(false);
-      setCreateTimeoutUnlockConfirmOpen(false);
-      setCreateUnlockedAfterDone(false);
-      setCreateUndoVisible(false);
-      setCreateZdOpen(false);
-      setCreatingZd(false);
-      setLinkZdOpen(false);
-      setLinkNrPrefill(null);
-      createPreviewCaptureRef.current = null;
-      setCreatePreviewFrozen(null);
-      createLineMetaCaptureRef.current = null;
-      createMarkFreezeCaptureRef.current = null;
-      setCreateMarkFreezeFrozen(null);
-      timeoutRecoveryFreezeRef.current = null;
+      resetCreateZdFlow();
       resetSelectionQuiet();
       setFeedback(null);
       setErrorMessage(null);
@@ -3417,7 +2963,25 @@ export function ZdEstimateWorkbench({
       setLaunchReadyMessage(null);
       setRecountStatusMessage(null);
     },
-    [columnOrder, columns, resetSelectionQuiet]
+    [
+      columnOrder,
+      columns,
+      resetSelectionQuiet,
+      resetCreateZdFlow,
+      setListComputedAtMs,
+      setExclusions,
+      setExclusionsError,
+      setOnRequests,
+      setOnRequestsError,
+      setPackaging,
+      setPackagingError,
+      setProductBoms,
+      setProductBomsError,
+      setProductPairs,
+      setProductPairsError,
+      setTeethProductsError,
+      setTeethTwIds,
+    ]
   );
 
   const restoreExternalSession = useCallback(
@@ -3558,28 +3122,9 @@ export function ZdEstimateWorkbench({
     setQtyOverrideByTwId({});
     setAcceptedReviewTwIds({});
     setSessionIncludeTwIds({});
-    setCreateUnlockedAfterDone(false);
-    setCreateUndoVisible(false);
+    resetCreateZdFlow();
     selectAnchorTwIdRef.current = null;
     setCopyOk(false);
-    setPostCreate(null);
-    setCreateDoneDokId(null);
-    setCreateDoneDokNr(null);
-    setCreateUnconfirmedAttempt(false);
-    setCreateTimeoutUnlockConfirmOpen(false);
-    setCreateZdOpen(false);
-    setCreatingZd(false);
-    setLinkZdOpen(false);
-    setLinkNrPrefill(null);
-    createPreviewCaptureRef.current = null;
-    setCreatePreviewFrozen(null);
-    createLineMetaCaptureRef.current = null;
-    createMarkFreezeCaptureRef.current = null;
-    setCreateMarkFreezeFrozen(null);
-    timeoutRecoveryFreezeRef.current = null;
-    setConsumedOnThisZdIds([]);
-    glowneRemovedForUndoRef.current = [];
-    glowneUndoOrderIdsRef.current = [];
     setLaunchReadyMessage(null);
     setRecountStatusMessage(null);
     // Brak listy → dirty boosta / historii nieaktualne; applied = aktualne radio.
@@ -4301,26 +3846,7 @@ export function ZdEstimateWorkbench({
         setAppliedBoostPolicy(policyForBoostPreset(boostPreset));
         setRecountStatusMessage(null);
         // Lista nieważna — zdejmij handoff/lock z poprzedniej sesji (jak przy clearEstimateResult).
-        setPostCreate(null);
-        setConsumedOnThisZdIds([]);
-        glowneRemovedForUndoRef.current = [];
-        glowneUndoOrderIdsRef.current = [];
-        setCreateDoneDokId(null);
-        setCreateDoneDokNr(null);
-        setCreateUnconfirmedAttempt(false);
-        setCreateTimeoutUnlockConfirmOpen(false);
-        setCreateUnlockedAfterDone(false);
-        setCreateUndoVisible(false);
-        setCreateZdOpen(false);
-        setCreatingZd(false);
-        setLinkZdOpen(false);
-        setLinkNrPrefill(null);
-        createPreviewCaptureRef.current = null;
-        setCreatePreviewFrozen(null);
-        createLineMetaCaptureRef.current = null;
-        createMarkFreezeCaptureRef.current = null;
-        setCreateMarkFreezeFrozen(null);
-        timeoutRecoveryFreezeRef.current = null;
+        resetCreateZdFlow();
         clearProgressBlocking();
         void endExternalSession();
         if (
@@ -4369,10 +3895,7 @@ export function ZdEstimateWorkbench({
         setHistoryFetchFailed(Boolean(res.historyFetchFailed));
         setPendingIndividualsLoading(false);
         // Nowe Policz = nowa sesja robocza; zdejmij post-create / lock z poprzedniego ZD.
-        setPostCreate(null);
-        setConsumedOnThisZdIds([]);
-        glowneRemovedForUndoRef.current = [];
-        glowneUndoOrderIdsRef.current = [];
+        resetCreateZdFlow();
         if (res.pendingIndividuals != null) {
           pendingFetchGenRef.current += 1;
           setPendingIndividuals(res.pendingIndividuals);
@@ -4401,22 +3924,6 @@ export function ZdEstimateWorkbench({
             ? (res.prosbaOverlapCandidateTwIds ?? []).join(",")
             : null;
         }
-        setCreateDoneDokId(null);
-        setCreateDoneDokNr(null);
-        setCreateUnconfirmedAttempt(false);
-        setCreateTimeoutUnlockConfirmOpen(false);
-        setCreateUnlockedAfterDone(false);
-        setCreateUndoVisible(false);
-        setCreateZdOpen(false);
-        setCreatingZd(false);
-        setLinkZdOpen(false);
-        setLinkNrPrefill(null);
-        createPreviewCaptureRef.current = null;
-        setCreatePreviewFrozen(null);
-        createLineMetaCaptureRef.current = null;
-        createMarkFreezeCaptureRef.current = null;
-        setCreateMarkFreezeFrozen(null);
-        timeoutRecoveryFreezeRef.current = null;
         resetSelectionQuiet();
         setListSearch("");
         setParamInfo(res.result.parametry as Record<string, unknown>);
@@ -4447,8 +3954,6 @@ export function ZdEstimateWorkbench({
         setQtyOverrideByTwId({});
         setAcceptedReviewTwIds({});
         setSessionIncludeTwIds({});
-        setCreateUnlockedAfterDone(false);
-        setCreateUndoVisible(false);
         setFeedback(null);
         setErrorMessage(null);
         setLastEstimateFailed(false);
@@ -4864,31 +4369,6 @@ export function ZdEstimateWorkbench({
       cancelled = true;
     };
   }, [externalSessionAutorunReplacePending, endExternalSession]);
-
-  const openCreateZdModal = useCallback(() => {
-    setLinkZdOpen(false);
-    setLinkNrPrefill(null);
-    setCreateListAgeMinutes(
-      listComputedAtMs != null ? (Date.now() - listComputedAtMs) / 60_000 : null
-    );
-    setCreateZdOpen(true);
-  }, [listComputedAtMs]);
-  const clearCreateZdCapture = useCallback(() => {
-    setCreatingZd(false);
-    createPreviewCaptureRef.current = null;
-    setCreatePreviewFrozen(null);
-    createLineMetaCaptureRef.current = null;
-    createMarkFreezeCaptureRef.current = null;
-    setCreateMarkFreezeFrozen(null);
-  }, []);
-  const closeCreateZdModal = useCallback(() => {
-    setCreateZdOpen(false);
-    clearCreateZdCapture();
-  }, [clearCreateZdCapture]);
-  const openLinkZdModal = useCallback(() => {
-    closeCreateZdModal();
-    setLinkZdOpen(true);
-  }, [closeCreateZdModal]);
 
   // Prośby przy supplierId (także needsAssign — bez czekania na Policz).
   useEffect(() => {
@@ -5430,85 +4910,6 @@ export function ZdEstimateWorkbench({
     acceptedReviewTwIds,
   ]);
 
-  const segmentFilteredLines = useMemo(() => {
-    if (!lines) return [];
-    if (!settingsTrusted) {
-      // „Do ZD” wymaga DB + opakowań. Auto z nazwy można pokazać od razu.
-      if (listFilter === "order") return [];
-      if (listFilter === "excluded") {
-        return lines.filter((l) => nameAutoByTwId.has(l.tw_Id));
-      }
-      if (listFilter === "review") {
-        return lines.filter((l) =>
-          isZdEstimatePendingReview({
-            qtyReview: l.salesTrackQtyReview,
-            accepted: acceptedReviewTwIds[l.tw_Id],
-            excluded: orderExcludedTwIds.has(l.tw_Id),
-          })
-        );
-      }
-      return lines;
-    }
-    if (listFilter === "excluded") {
-      return lines.filter((l) => orderExcludedTwIds.has(l.tw_Id));
-    }
-    if (listFilter === "review") {
-      return lines.filter((l) =>
-        isZdEstimatePendingReview({
-          qtyReview: l.salesTrackQtyReview,
-          accepted: acceptedReviewTwIds[l.tw_Id],
-          excluded: orderExcludedTwIds.has(l.tw_Id),
-        })
-      );
-    }
-    if (listFilter === "all") {
-      return lines;
-    }
-    // Ten sam wynik co orderableLines — bez drugiego przebiegu filtra.
-    return orderableLines;
-  }, [
-    lines,
-    listFilter,
-    orderExcludedTwIds,
-    settingsTrusted,
-    nameAutoByTwId,
-    acceptedReviewTwIds,
-    orderableLines,
-  ]);
-
-  const visibleLines = useMemo(() => {
-    const searched = filterZdEstimateLinesBySearch(
-      segmentFilteredLines,
-      listSearch
-    );
-    return sortZdEstimateLines(
-      searched,
-      sortKey,
-      sortDir,
-      packagingLookup,
-      individualExtraByTwId,
-      qtyOverrideMap,
-      extraOnlyTwIds,
-      extrasPolicy,
-      stockNeedReliefByTwId,
-      extraOverlapByTwId,
-      minStockByTwIdForRefresh
-    );
-  }, [
-    segmentFilteredLines,
-    listSearch,
-    sortKey,
-    sortDir,
-    packagingLookup,
-    individualExtraByTwId,
-    qtyOverrideMap,
-    extraOnlyTwIds,
-    extrasPolicy,
-    stockNeedReliefByTwId,
-    extraOverlapByTwId,
-    minStockByTwIdForRefresh,
-  ]);
-
   /** Pozycje na ZD z ręcznie zmienioną ilością (podsumowanie w oknie tworzenia). */
   const manualOverrideOrderableCount = useMemo(
     () => orderableLines.filter((l) => qtyOverrideByTwId[l.tw_Id] != null).length,
@@ -5703,13 +5104,6 @@ export function ZdEstimateWorkbench({
     }, 40);
   }, []);
 
-  const selectedLines = useMemo(() => {
-    if (!lines) return [];
-    return lines.filter((l) => selected[l.tw_Id]);
-  }, [lines, selected]);
-
-  const selectedCount = selectedLines.length;
-
   const stickyToastTallDock = Boolean(
     stickyCreateGateCaption || selectedCount > 0
   );
@@ -5719,43 +5113,6 @@ export function ZdEstimateWorkbench({
     recount: Boolean(recountStatusMessage),
     settingsLive: Boolean(settingsLiveMessage),
   });
-
-  // Live count dla cleanup scrolla (Strict Mode / rapid toggle) — layout, nie render.
-  useLayoutEffect(() => {
-    selectedCountLiveRef.current = selectedCount;
-  }, [selectedCount]);
-
-  const visibleSelectedCount = useMemo(
-    () => visibleLines.filter((l) => selected[l.tw_Id]).length,
-    [visibleLines, selected]
-  );
-  /** Ostatnie liczniki — treść paska zostaje w DOM podczas animacji exit. */
-  const [selectionExitCounts, setSelectionExitCounts] = useState({
-    selected: 0,
-    visible: 0,
-  });
-  // Sync bez useEffect — unikamy react-hooks/set-state-in-effect.
-  if (
-    selectedCount > 0 &&
-    (selectionExitCounts.selected !== selectedCount ||
-      selectionExitCounts.visible !== visibleSelectedCount)
-  ) {
-    setSelectionExitCounts({
-      selected: selectedCount,
-      visible: visibleSelectedCount,
-    });
-  }
-  const selectionToolsOpen = selectedCount > 0;
-  const selectionBarSelectedCount = selectionToolsOpen
-    ? selectedCount
-    : selectionExitCounts.selected;
-  const selectionBarVisibleSelectedCount = selectionToolsOpen
-    ? visibleSelectedCount
-    : selectionExitCounts.visible;
-  const allVisibleSelected =
-    visibleLines.length > 0 && visibleSelectedCount === visibleLines.length;
-  const someVisibleSelected =
-    visibleSelectedCount > 0 && !allVisibleSelected;
 
   const excludeEligibleLines = useMemo(
     () =>
@@ -5839,106 +5196,6 @@ export function ZdEstimateWorkbench({
       reviewEligibleLines.length,
       selectedLines.length
     ) > ZD_ESTIMATE_BULK_MAX;
-
-  useEffect(() => {
-    const el = headerCheckboxRef.current;
-    if (el) el.indeterminate = someVisibleSelected;
-  }, [someVisibleSelected]);
-
-  useEffect(() => {
-    const prev = prevSelectedCountRef.current;
-    const next = selectedCount;
-    if (prev === next) return;
-
-    if (skipSelectionScrollRef.current) {
-      skipSelectionScrollRef.current = false;
-      prevSelectedCountRef.current = next;
-      return;
-    }
-
-    const twId = selectionScrollTwIdRef.current;
-    let cancelled = false;
-    let ran = false;
-    const followUpCancel = { current: null as (() => void) | null };
-    // Delay tylko przy zaznaczeniu (animacja paska). Przy odznaczeniu scroll od razu.
-    // Strict Mode: cleanup NIE przesuwa prev, gdy count nadal = next (remount
-    // zobaczy prev≠next i przełoży scroll). Szybkie 0→1→0: live count już ≠ next
-    // → commit prev=next, żeby deselect effect miał prev=1.
-    const t = window.setTimeout(() => {
-      if (cancelled) return;
-      ran = true;
-      prevSelectedCountRef.current = next;
-      followUpCancel.current = scrollZdEstimateAfterSelectionChange({
-        prevCount: prev,
-        nextCount: next,
-        twId,
-      });
-    }, next > prev ? 50 : 0);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(t);
-      followUpCancel.current?.();
-      followUpCancel.current = null;
-      if (
-        !ran &&
-        prevSelectedCountRef.current === prev &&
-        selectedCountLiveRef.current !== next
-      ) {
-        prevSelectedCountRef.current = next;
-      }
-    };
-  }, [selectedCount]);
-
-  const toggleRowSelected = (twId: number, shiftKey = false) => {
-    selectionScrollTwIdRef.current = twId;
-    if (shiftKey && selectAnchorTwIdRef.current != null) {
-      const anchor = selectAnchorTwIdRef.current;
-      const ids = visibleLines.map((l) => l.tw_Id);
-      const a = ids.indexOf(anchor);
-      const b = ids.indexOf(twId);
-      if (a >= 0 && b >= 0) {
-        const [lo, hi] = a < b ? [a, b] : [b, a];
-        setSelected((prev) => {
-          const next = { ...prev };
-          for (let i = lo; i <= hi; i++) next[ids[i]!] = true;
-          return next;
-        });
-        selectAnchorTwIdRef.current = twId;
-        return;
-      }
-    }
-    setSelected((prev) => {
-      const next = { ...prev };
-      if (next[twId]) delete next[twId];
-      else next[twId] = true;
-      return next;
-    });
-    selectAnchorTwIdRef.current = twId;
-  };
-
-  const selectAllVisible = () => {
-    selectionScrollTwIdRef.current =
-      visibleLines[visibleLines.length - 1]?.tw_Id ?? null;
-    setSelected((prev) => {
-      const next = { ...prev };
-      for (const row of visibleLines) next[row.tw_Id] = true;
-      return next;
-    });
-  };
-
-  const toggleSelectAllVisible = () => {
-    if (allVisibleSelected) {
-      selectionScrollTwIdRef.current =
-        visibleLines[0]?.tw_Id ?? selectionScrollTwIdRef.current;
-      setSelected((prev) => {
-        const next = { ...prev };
-        for (const row of visibleLines) delete next[row.tw_Id];
-        return next;
-      });
-      return;
-    }
-    selectAllVisible();
-  };
 
   const toBulkProducts = (rows: ManualZdEstimateLine[]) =>
     rows.map((l) => ({
@@ -6490,7 +5747,7 @@ export function ZdEstimateWorkbench({
         e instanceof Error ? e.message : "Nie udało się wczytać minimum stanów."
       );
     }
-  }, []);
+  }, [setMinStock, setMinStockError]);
 
   const openMinStockPanel = () => {
     setMinStockOpen(true);
@@ -6639,6 +5896,33 @@ export function ZdEstimateWorkbench({
       }
     });
   };
+
+  // Stabilne handlery wierszy — `ZdEstimateTableRow` (memo) nie renderuje się przy niezwiązanych zmianach.
+  const handleRowToggleSelected = useStableCallback(toggleRowSelected);
+  const handleRowRestore = useStableCallback(restoreLine);
+  const handleRowMarkOnRequest = useStableCallback(markOnRequestLine);
+  const handleRowClearOnRequest = useStableCallback(clearOnRequestLine);
+  const handleRowSessionInclude = useStableCallback(setSessionIncludeTwId);
+  const handleRowOverrideChange = useCallback(
+    (twId: number, next: number | null, computedZdUnits: number) => {
+      setQtyOverrideByTwId((prev) => {
+        const copy = { ...prev };
+        if (next == null || Math.trunc(next) === computedZdUnits) {
+          delete copy[twId];
+        } else {
+          copy[twId] = Math.trunc(next);
+        }
+        return copy;
+      });
+    },
+    []
+  );
+  const handleRowAcceptReview = useCallback((twId: number) => {
+    setAcceptedReviewTwIds((prev) => ({
+      ...prev,
+      [twId]: true,
+    }));
+  }, []);
 
   const copyTsv = async () => {
     if (!settingsTrusted) {
@@ -8054,7 +7338,7 @@ export function ZdEstimateWorkbench({
                         const sectionCls = tableColumnSectionStarts.has(col)
                           ? "zd-estimate-col--section"
                           : null;
-                        const flowCls = flowColumnClass(col);
+                        const flowCls = zdEstimateFlowColumnClass(col);
                         switch (col) {
                           case "packaging":
                             return null;
@@ -8213,9 +7497,6 @@ export function ZdEstimateWorkbench({
                       : visibleLines.map((_, index) => index)
                     ).map((rowIndex) => {
                       const l = visibleLines[rowIndex]!;
-                      const nameHit = nameAutoByTwId.get(l.tw_Id);
-                      const dbExcluded =
-                        exclusionsTrusted && dbExcludedIds.has(l.tw_Id);
                       const onRequestCanonicalId = retargetTwIdToPackIfPiece(
                         l.tw_Id,
                         productPairs
@@ -8226,595 +7507,69 @@ export function ZdEstimateWorkbench({
                       const liftedExtraOnly = extraOnlyTwIds.has(
                         onRequestCanonicalId
                       );
-                      const softOnRequest =
-                        dbOnRequest &&
-                        orderExcludedTwIds.has(onRequestCanonicalId) &&
-                        !liftedExtraOnly;
-                      const excluded = orderExcludedTwIds.has(l.tw_Id);
-                      const hidePairOrBomHardActions = bomRowHidesHardExclude(l);
-                      const hideOnRequestAction = bomRowHidesOnRequest(l);
-                      const allowsDoZdOverride =
-                        !excluded && lineAllowsZdDocumentUnitOverride(l);
-                      const packRow = packagingMap.get(l.tw_Id) ?? null;
-                      const pairMeta = l.pair ?? null;
-                      const bomMeta = l.bom ?? null;
-                      const packLookup = packagingLookup.get(l.tw_Id) ?? null;
-                      const qty = resolveOrderQtyForLine(
-                        l,
-                        packLookup ??
-                          (packRow
-                            ? {
-                                unitsPerPackage: packRow.unitsPerPackage,
-                                packageLabel: packRow.packageLabel,
-                                documentUnitMode: packRow.documentUnitMode,
-                              }
-                            : null),
-                        individualExtraPiecesForTw(
-                          l.tw_Id,
-                          individualExtraByTwId
-                        ),
-                        liftedExtraOnly,
-                        extrasPolicy,
-                        individualExtraPiecesForTw(
-                          l.tw_Id,
-                          stockNeedReliefByTwId
-                        ),
-                        individualExtraPiecesForTw(
-                          l.tw_Id,
-                          extraOverlapByTwId
-                        ),
-                        minStockByTwIdForRefresh.get(l.tw_Id)
-                      );
-                      const celPieces =
-                        Math.abs(l.salesTrackDelta) > 1e-9
-                          ? l.celZapasuTracked
-                          : l.celZapasu;
-                      const lineMinStock = minStockByTwIdForRefresh.get(l.tw_Id);
-                      const minStockActive =
-                        lineMinStock != null &&
-                        lineMinStock > celPieces;
-                      const salesTrackTitle =
-                        formatSalesTrackHint({
-                          applied: Math.abs(l.salesTrackDelta) > 1e-9,
-                          deltaPieces: l.salesTrackDelta,
-                          reasons: l.salesTrackReasons,
-                          confidence: l.salesTrackConfidence,
-                          qtyReview: l.salesTrackQtyReview,
-                          heldExtraQty: l.salesTrackHeldExtraQty,
-                          allowedExtraQty: l.salesTrackAllowedExtraQty,
-                        }) ?? undefined;
-                      const salesTrackSubline =
-                        l.salesTrackDelta > 1e-9 ? (
-                          <span className="zd-est-unit tabular-nums text-slate-500">
-                            +{formatQty(l.salesTrackDelta)} szt
-                          </span>
-                        ) : l.salesTrackDelta < -1e-9 ? (
-                          <span className="zd-est-unit tabular-nums text-amber-800/80">
-                            −{formatQty(Math.abs(l.salesTrackDelta))} szt
-                          </span>
-                        ) : null;
-                      const metricPackUnits =
-                        pairMeta && !pairMeta.partnerMissing
-                          ? pairMeta.unitsPerPack
-                          : qty.hasPackaging
-                            ? qty.unitsPerPackage
-                            : null;
-                      const individualExtra =
-                        individualBundle.byTwId.get(l.tw_Id) ?? null;
-                      const packagingConflict =
-                        pairMeta?.role === "pack" &&
-                        packRow != null &&
-                        (packagingDocumentMode(packRow) === "pieces_multiple" ||
-                          (packRow.unitsPerPackage > 1 &&
-                            packRow.unitsPerPackage !== pairMeta.unitsPerPack));
-                      const isSelected = Boolean(selected[l.tw_Id]);
-                      const sessionIncluded = Boolean(
-                        sessionIncludeTwIds[l.tw_Id]
-                      );
-                      const overrideZd = allowsDoZdOverride
-                        ? qtyOverrideByTwId[l.tw_Id]
-                        : undefined;
-                      // „nie w Do ZD” tylko gdy exclude albo nadpisanie < wyliczenie
-                      // (Zeruj). Podbicie qty nadal pokrywa prośbę w Do ZD.
-                      const doZdSuppressed =
-                        excluded ||
-                        (overrideZd != null &&
-                          Number.isFinite(overrideZd) &&
-                          Math.trunc(overrideZd) < qty.zdUnits);
-                      const displayZdUnits =
-                        overrideZd != null && Number.isFinite(overrideZd)
-                          ? Math.trunc(overrideZd)
-                          : qty.zdUnits;
-                      const doZdIdle = excluded || displayZdUnits <= 0;
                       return (
-                        <tr
+                        <ZdEstimateTableRow
                           key={l.tw_Id}
-                          data-zd-estimate-tw-id={l.tw_Id}
-                          data-index={
-                            tableVirtual.enabled ? rowIndex : undefined
+                          line={l}
+                          rowIndex={rowIndex}
+                          virtualized={tableVirtual.enabled}
+                          measureElement={tableVirtual.measureElement}
+                          showPackagingColumn={showPackagingColumn}
+                          optionalColumns={tableOptionalColumns}
+                          columnSectionStarts={tableColumnSectionStarts}
+                          busy={busy}
+                          mutating={mutating}
+                          rowPending={mutatingTwId === l.tw_Id}
+                          packagingTrusted={packagingTrusted}
+                          exclusionsTrusted={exclusionsTrusted}
+                          onRequestTrusted={onRequestTrusted}
+                          isSelected={Boolean(selected[l.tw_Id])}
+                          excluded={orderExcludedTwIds.has(l.tw_Id)}
+                          dbExcluded={
+                            exclusionsTrusted && dbExcludedIds.has(l.tw_Id)
                           }
-                          data-zebra={rowIndex % 2 === 1 ? "even" : "odd"}
-                          ref={
-                            tableVirtual.enabled
-                              ? tableVirtual.measureElement
-                              : undefined
+                          dbOnRequest={dbOnRequest}
+                          softOnRequest={
+                            dbOnRequest &&
+                            orderExcludedTwIds.has(onRequestCanonicalId) &&
+                            !liftedExtraOnly
                           }
-                          data-selected={isSelected ? "true" : undefined}
-                          data-min-stock={minStockActive ? "true" : undefined}
-                          className={cn(
-                            excluded && "bg-slate-50/80",
-                            isSelected && "zd-estimate-row-selected",
-                            minStockActive && "zd-estimate-row-min-stock"
+                          liftedExtraOnly={liftedExtraOnly}
+                          sessionIncluded={Boolean(sessionIncludeTwIds[l.tw_Id])}
+                          onRequestCanonicalId={onRequestCanonicalId}
+                          nameHit={nameAutoByTwId.get(l.tw_Id)}
+                          packRow={packagingMap.get(l.tw_Id) ?? null}
+                          packLookup={packagingLookup.get(l.tw_Id) ?? null}
+                          individualExtra={
+                            individualBundle.byTwId.get(l.tw_Id) ?? null
+                          }
+                          individualExtraPieces={individualExtraPiecesForTw(
+                            l.tw_Id,
+                            individualExtraByTwId
                           )}
-                        >
-                          <td className="zd-estimate-check-col">
-                            <input
-                              type="checkbox"
-                              className={checkboxBrandClass}
-                              checked={isSelected}
-                              disabled={busy}
-                              onClick={(e) => {
-                                if (!e.shiftKey) return;
-                                // Shift+zakres — bez natywnego toggle (stan ustawia zakres).
-                                e.preventDefault();
-                                toggleRowSelected(l.tw_Id, true);
-                              }}
-                              onChange={(e) => {
-                                if (
-                                  e.nativeEvent instanceof MouseEvent &&
-                                  e.nativeEvent.shiftKey
-                                ) {
-                                  return;
-                                }
-                                toggleRowSelected(l.tw_Id, false);
-                              }}
-                              aria-label={`Zaznacz ${l.tw_Symbol}`}
-                            />
-                          </td>
-                          <td
-                            className={cn(
-                              "zd-estimate-symbol-col",
-                              excluded ? "text-slate-400" : "text-slate-900"
-                            )}
-                            title={l.tw_Symbol}
-                          >
-                            <span
-                              className={cn(
-                                "zd-est-symbol",
-                                excluded && "zd-est-symbol--excluded"
-                              )}
-                            >
-                              {l.tw_Symbol}
-                            </span>
-                          </td>
-                          <td
-                            className={cn(
-                              "zd-estimate-product-name-col",
-                              excluded ? "text-slate-400" : null
-                            )}
-                            title={l.tw_Nazwa}
-                          >
-                            <span className="zd-est-product-name">{l.tw_Nazwa}</span>
-                          </td>
-                          {showPackagingColumn ? (
-                            <td className="zd-estimate-pack-col whitespace-nowrap">
-                              <ZdEstimatePackagingCell
-                                qty={qty}
-                                conflict={packagingConflict}
-                                disabled={
-                                  busy || !packagingTrusted
-                                }
-                                pending={mutating}
-                                onEdit={() => setPackagingCandidate(l)}
-                              />
-                            </td>
-                          ) : null}
-                          <td
-                            className={cn(
-                              "zd-estimate-dozd-col text-center",
-                              isZdEstimatePendingReview({
-                                qtyReview: l.salesTrackQtyReview,
-                                accepted: acceptedReviewTwIds[l.tw_Id],
-                                excluded,
-                              })
-                                ? "zd-estimate-dozd-col--review"
-                                : doZdIdle
-                                  ? "zd-estimate-dozd-col--idle"
-                                  : null
-                            )}
-                          >
-                            <ZdEstimateDoZdCell
-                              qty={qty}
-                              excluded={excluded}
-                              individualExtraPieces={
-                                individualExtra?.extraPieces ?? 0
-                              }
-                              overrideZdUnits={
-                                allowsDoZdOverride
-                                  ? qtyOverrideByTwId[l.tw_Id] ?? null
-                                  : null
-                              }
-                              overrideDisabled={busy}
-                              onOverrideChange={
-                                allowsDoZdOverride
-                                  ? (next) => {
-                                      setQtyOverrideByTwId((prev) => {
-                                        const copy = { ...prev };
-                                        if (
-                                          next == null ||
-                                          Math.trunc(next) === qty.zdUnits
-                                        ) {
-                                          delete copy[l.tw_Id];
-                                        } else {
-                                          copy[l.tw_Id] = Math.trunc(next);
-                                        }
-                                        return copy;
-                                      });
-                                    }
-                                  : undefined
-                              }
-                              confidence={l.salesTrackConfidence}
-                              qtyReview={l.salesTrackQtyReview}
-                              reasons={l.salesTrackReasons}
-                              accepted={Boolean(acceptedReviewTwIds[l.tw_Id])}
-                              detailHint={salesTrackTitle}
-                              onAccept={
-                                isZdEstimatePendingReview({
-                                  qtyReview: l.salesTrackQtyReview,
-                                  accepted: acceptedReviewTwIds[l.tw_Id],
-                                  excluded,
-                                })
-                                  ? () =>
-                                      setAcceptedReviewTwIds((prev) => ({
-                                        ...prev,
-                                        [l.tw_Id]: true,
-                                      }))
-                                  : undefined
-                              }
-                            />
-                          </td>
-                          {tableOptionalColumns.map((col) => {
-                            const sectionCls = tableColumnSectionStarts.has(
-                              col
-                            )
-                              ? "zd-estimate-col--section"
-                              : null;
-                            const flowCls = flowColumnClass(col);
-                            switch (col) {
-                              case "packaging":
-                                return null;
-                              case "status":
-                                return (
-                                  <td
-                                    key={col}
-                                    className={cn(
-                                      "zd-estimate-status-col",
-                                      sectionCls
-                                    )}
-                                  >
-                                    <ZdEstimateNameMetaStack
-                                      pairMeta={pairMeta}
-                                      packagingConflict={packagingConflict}
-                                      bomMeta={bomMeta}
-                                      individualExtra={individualExtra}
-                                      extrasPolicy={extrasPolicy}
-                                      doZdSuppressed={doZdSuppressed}
-                                      excluded={excluded}
-                                      sessionIncluded={sessionIncluded}
-                                      nameHit={nameHit}
-                                      softOnRequest={softOnRequest}
-                                      liftedExtraOnly={liftedExtraOnly}
-                                      minStockSzt={
-                                        minStockByTwIdForRefresh.get(l.tw_Id) ??
-                                        null
-                                      }
-                                    />
-                                  </td>
-                                );
-                              case "stock":
-                                return (
-                                  <Fragment key={col}>
-                                    <td
-                                      className={cn(
-                                        "zd-estimate-num-col whitespace-nowrap",
-                                        sectionCls
-                                      )}
-                                    >
-                                      {pairMeta?.role === "pack" ? (
-                                        <ZdEstimatePairPackStockCell
-                                          value={l.tw_Stan}
-                                          tier="d"
-                                        />
-                                      ) : (
-                                        <ZdEstimateQtyValue
-                                          value={l.tw_Stan}
-                                          tier="d"
-                                          unit="szt"
-                                        />
-                                      )}
-                                    </td>
-                                    <td className="zd-estimate-num-col whitespace-nowrap">
-                                      <ZdEstimateReservationsCell
-                                        twId={l.tw_Id}
-                                        symbol={l.tw_Symbol}
-                                        name={l.tw_Nazwa}
-                                        reservedQty={l.tw_StanRez}
-                                      >
-                                        {pairMeta?.role === "pack" ? (
-                                          <ZdEstimatePairPackStockCell
-                                            value={l.tw_StanRez}
-                                            tier="d"
-                                            tone={
-                                              l.tw_StanRez > 0 ? "warn" : "muted"
-                                            }
-                                            zeroAsDash
-                                          />
-                                        ) : (
-                                          <ZdEstimateQtyValue
-                                            value={l.tw_StanRez}
-                                            tier="d"
-                                            unit="szt"
-                                            zeroAsDash
-                                            tone={
-                                              l.tw_StanRez > 0 ? "warn" : "muted"
-                                            }
-                                          />
-                                        )}
-                                      </ZdEstimateReservationsCell>
-                                    </td>
-                                  </Fragment>
-                                );
-                              case "available":
-                                return (
-                                  <td
-                                    key={col}
-                                    className={cn(
-                                      "zd-estimate-num-col whitespace-nowrap",
-                                      flowCls,
-                                      sectionCls
-                                    )}
-                                  >
-                                    {pairMeta?.role === "pack" ? (
-                                      <ZdEstimatePairPackStockCell
-                                        value={l.dostepne}
-                                        tier="b"
-                                        tone={
-                                          l.dostepne <= 0 ? "warn" : "default"
-                                        }
-                                      />
-                                    ) : (
-                                      <ZdEstimateQtyValue
-                                        value={l.dostepne}
-                                        tier="b"
-                                        unit="szt"
-                                        tone={
-                                          l.dostepne <= 0 ? "warn" : "default"
-                                        }
-                                      />
-                                    )}
-                                  </td>
-                                );
-                              case "sales":
-                                return (
-                                  <td
-                                    key={col}
-                                    className={cn(
-                                      "zd-estimate-metric-col zd-estimate-metric-col--sales",
-                                      flowCls,
-                                      sectionCls
-                                    )}
-                                  >
-                                    {pairMeta && !pairMeta.partnerMissing ? (
-                                      <ZdEstimatePairSalesCell
-                                        pair={pairMeta}
-                                      />
-                                    ) : (
-                                      <ZdEstimatePiecesMetricCell
-                                        pieces={l.sprzedazOkres}
-                                        unitsPerPack={
-                                          qty.hasPackaging
-                                            ? qty.unitsPerPackage
-                                            : null
-                                        }
-                                        tier="c"
-                                        zeroAsDash
-                                        title={
-                                          bomMeta?.role === "assembled_parent" &&
-                                          (bomMeta.relocatedSales ?? 0) > 0
-                                            ? [
-                                                `Sprzedaż zestawu ${formatQty(bomMeta.relocatedSales ?? 0)} szt przeniesiona do składników (wkład BOM) — tu 0, żeby nie dublować sumy.`,
-                                                formatWzSalesTitle({
-                                                  sprzedazOkres: 0,
-                                                  wzNiepowiazaneOkres: 0,
-                                                  formatQty,
-                                                }),
-                                              ].join(" ")
-                                            : bomMeta?.role === "component" &&
-                                                (bomMeta.contributionSales ??
-                                                  0) > 0
-                                              ? [
-                                                  formatWzSalesTitle({
-                                                    sprzedazOkres:
-                                                      l.sprzedazOkres,
-                                                    wzNiepowiazaneOkres:
-                                                      l.wzNiepowiazaneOkres,
-                                                    formatQty,
-                                                  }),
-                                                  `W tym wkład BOM: ${formatQty(bomMeta.contributionSales ?? 0)} szt.`,
-                                                ].join(" ")
-                                              : formatWzSalesTitle({
-                                                  sprzedazOkres: l.sprzedazOkres,
-                                                  wzNiepowiazaneOkres:
-                                                    l.wzNiepowiazaneOkres,
-                                                  formatQty,
-                                                })
-                                        }
-                                        subline={renderZdEstimateWzSalesSubline(
-                                          l.wzNiepowiazaneOkres
-                                        )}
-                                      />
-                                    )}
-                                  </td>
-                                );
-                              case "target":
-                                return (
-                                  <td
-                                    key={col}
-                                    className={cn(
-                                      "zd-estimate-metric-col zd-estimate-metric-col--target",
-                                      flowCls,
-                                      sectionCls
-                                    )}
-                                  >
-                                    {pairMeta && !pairMeta.partnerMissing ? (
-                                      <ZdEstimatePairPiecesCell
-                                        pieces={celPieces}
-                                        unitsPerPack={pairMeta.unitsPerPack}
-                                        role={pairMeta.role}
-                                        subline={salesTrackSubline}
-                                      />
-                                    ) : (
-                                      <ZdEstimatePiecesMetricCell
-                                        pieces={celPieces}
-                                        unitsPerPack={metricPackUnits}
-                                        tier="b"
-                                        title={salesTrackTitle}
-                                        subline={salesTrackSubline}
-                                      />
-                                    )}
-                                  </td>
-                                );
-                              case "openZd":
-                                return (
-                                  <td
-                                    key={col}
-                                    className={cn(
-                                      "zd-estimate-num-col whitespace-nowrap",
-                                      flowCls,
-                                      sectionCls
-                                    )}
-                                  >
-                                    <ZdEstimateQtyValue
-                                      value={l.otwarteZd}
-                                      tier="c"
-                                      unit={
-                                        qty.hasPackaging &&
-                                        !isPackagingPackagesMode(
-                                          qty.documentUnitMode
-                                        )
-                                          ? "szt"
-                                          : "jdok"
-                                      }
-                                      zeroAsDash
-                                      title={
-                                        qty.hasPackaging &&
-                                        l.otwarteZd > 0 &&
-                                        isPackagingPackagesMode(
-                                          qty.documentUnitMode
-                                        )
-                                          ? `${formatQty(l.otwarteZd)} j.dok. = ${formatQty(l.otwarteZd * qty.unitsPerPackage)} szt (przeliczenie z kolumny Opak.)`
-                                          : qty.hasPackaging &&
-                                              l.otwarteZd > 0 &&
-                                              !isPackagingPackagesMode(
-                                                qty.documentUnitMode
-                                              )
-                                            ? `${formatQty(l.otwarteZd)} szt (otwarte ZD)`
-                                            : `${formatQty(l.otwarteZd)} j.dok. (otwarte ZD)`
-                                      }
-                                    />
-                                  </td>
-                                );
-                              case "zk":
-                                return (
-                                  <Fragment key={col}>
-                                    <td
-                                      className={cn(
-                                        "zd-estimate-num-col whitespace-nowrap",
-                                        sectionCls
-                                      )}
-                                    >
-                                      <ZdEstimateQtyValue
-                                        value={l.otwarteZkBezRez}
-                                        tier="d"
-                                        zeroAsDash
-                                      />
-                                    </td>
-                                    <td className="zd-estimate-num-col whitespace-nowrap">
-                                      <ZdEstimateQtyValue
-                                        value={l.doZamowieniaApi}
-                                        tier="d"
-                                        zeroAsDash
-                                      />
-                                    </td>
-                                  </Fragment>
-                                );
-                              default:
-                                return null;
-                            }
-                          })}
-                          <td className="zd-estimate-spacer-col" aria-hidden />
-                          <td className="zd-estimate-actions-col text-center">
-                            <div className="inline-flex justify-center py-0.5">
-                              <ZdEstimateRowActions
-                                symbol={l.tw_Symbol}
-                                nameAutoExcluded={Boolean(nameHit)}
-                                dbExcluded={Boolean(dbExcluded)}
-                                onRequest={Boolean(dbOnRequest)}
-                                sessionIncluded={sessionIncluded}
-                                hideHardExclude={hidePairOrBomHardActions}
-                                hideOnRequest={hideOnRequestAction}
-                                packagingHint={
-                                  qty.hasPackaging
-                                    ? isPackagingPackagesMode(
-                                        qty.documentUnitMode
-                                      )
-                                      ? formatZdPackUnitsPerLabelHint(
-                                          qty.unitsPerPackage,
-                                          qty.packageLabel
-                                        )
-                                      : `dobij do ${qty.unitsPerPackage} szt`
-                                    : null
-                                }
-                                minStockHint={
-                                  minStockByTwIdForRefresh.has(l.tw_Id)
-                                    ? `min ${minStockByTwIdForRefresh.get(l.tw_Id)} szt`
-                                    : null
-                                }
-                                disabled={busy}
-                                pending={mutatingTwId === l.tw_Id}
-                                onPackaging={() => setPackagingCandidate(l)}
-                                onMinStock={() => setMinStockCandidate(l)}
-                                onExclude={() => {
-                                  if (individualExtra) {
-                                    const ok = window.confirm(
-                                      "Ta pozycja ma prośbę handlowca.\n\nPo wykluczeniu prośba trafi do sekcji „Usługi” i do uwag ZD (bez ilości towaru) — nie zniknie z panelu Dziś do utworzenia ZD.\n\nKontynuować?"
-                                    );
-                                    if (!ok) return;
-                                  }
-                                  setExcludeCandidate(l);
-                                }}
-                                onRestore={() => restoreLine(l.tw_Id)}
-                                onMarkOnRequest={
-                                  exclusionsTrusted && onRequestTrusted
-                                    ? () => markOnRequestLine(l)
-                                    : undefined
-                                }
-                                onClearOnRequest={
-                                  onRequestTrusted
-                                    ? () =>
-                                        clearOnRequestLine(onRequestCanonicalId)
-                                    : undefined
-                                }
-                                onSessionInclude={() =>
-                                  setSessionIncludeTwId(l.tw_Id, true)
-                                }
-                                onSessionIncludeClear={() =>
-                                  setSessionIncludeTwId(l.tw_Id, false)
-                                }
-                              />
-                            </div>
-                          </td>
-                        </tr>
+                          stockNeedReliefPieces={individualExtraPiecesForTw(
+                            l.tw_Id,
+                            stockNeedReliefByTwId
+                          )}
+                          extraOverlapPieces={individualExtraPiecesForTw(
+                            l.tw_Id,
+                            extraOverlapByTwId
+                          )}
+                          minStockSzt={minStockByTwIdForRefresh.get(l.tw_Id)}
+                          extrasPolicy={extrasPolicy}
+                          overrideZdUnits={qtyOverrideByTwId[l.tw_Id]}
+                          reviewAccepted={Boolean(acceptedReviewTwIds[l.tw_Id])}
+                          onToggleSelected={handleRowToggleSelected}
+                          onEditPackaging={setPackagingCandidate}
+                          onEditMinStock={setMinStockCandidate}
+                          onExclude={setExcludeCandidate}
+                          onRestore={handleRowRestore}
+                          onMarkOnRequest={handleRowMarkOnRequest}
+                          onClearOnRequest={handleRowClearOnRequest}
+                          onSessionInclude={handleRowSessionInclude}
+                          onOverrideChange={handleRowOverrideChange}
+                          onAcceptReview={handleRowAcceptReview}
+                        />
                       );
                     })}
                     {tableVirtual.enabled && tableVirtual.paddingBottom > 0 ? (
