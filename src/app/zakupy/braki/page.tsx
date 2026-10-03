@@ -7,7 +7,11 @@ import {
   StockWatchPanel,
   type StockWatchRunSummary,
 } from "@/components/stock-watch/StockWatchPanel";
-import { getLatestStockWatchRun, listStockWatchItems } from "@/lib/stock-watch/data";
+import {
+  getLatestStockWatchRun,
+  getSupplierScopeCoverage,
+  listStockWatchItems,
+} from "@/lib/stock-watch/data";
 import { listPurchaseDrafts } from "@/lib/stock-watch/drafts";
 import { buildStockWatchDashboard } from "@/lib/stock-watch/dashboard";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
@@ -27,11 +31,12 @@ async function canMutate(): Promise<boolean> {
 }
 
 async function loadPanel() {
-  const [items, run, drafts, mutate] = await Promise.all([
+  const [items, run, drafts, mutate, coverage] = await Promise.all([
     listStockWatchItems(),
     getLatestStockWatchRun(),
     listPurchaseDrafts({ statuses: ["draft", "submitted"], limit: 30 }),
     canMutate(),
+    getSupplierScopeCoverage(),
   ]);
   const openDraftBySupplier = new Map(
     drafts.filter((d) => d.status === "draft").map((d) => [d.supplierId, d.id])
@@ -57,6 +62,7 @@ async function loadPanel() {
     run: runSummary,
     drafts,
     canMutate: mutate,
+    coverage,
   };
 }
 
@@ -82,6 +88,7 @@ export default async function StockWatchPage() {
           run={panel.run}
           drafts={panel.drafts}
           canMutate={panel.canMutate}
+          coverage={panel.coverage}
         />
       ) : (
         <Alert tone="error" title="Panel braków niedostępny">

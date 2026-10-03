@@ -80,11 +80,14 @@ export function StockWatchPanel({
   run,
   drafts,
   canMutate,
+  coverage,
 }: {
   dashboard: StockWatchDashboard;
   run: StockWatchRunSummary | null;
   drafts: PurchaseDraftSummary[];
   canMutate: boolean;
+  /** Aktywni dostawcy vs z zakresem w kreatorze ZD (tylko ci są analizowani). */
+  coverage: { active: number; mapped: number };
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<TabId>(dashboard.alerts.length > 0 ? "alerts" : "suppliers");
@@ -193,6 +196,17 @@ export function StockWatchPanel({
       ) : (
         <>
           <OverviewBand dashboard={dashboard} onJump={setTab} />
+          {coverage.active > coverage.mapped ? (
+            <p className="-mt-2 px-1 text-xs text-slate-500">
+              Analiza obejmuje <strong className="text-slate-700">{coverage.mapped}</strong> z{" "}
+              {coverage.active} aktywnych dostawców.{" "}
+              {coverage.active - coverage.mapped} bez przypisanej grupy/cechy —{" "}
+              <Link href="/zakupy/szacunek" className="font-medium text-indigo-700 hover:text-indigo-900">
+                ustaw zakresy w Kreatorze ZD
+              </Link>{" "}
+              (menu Dostawcy → Zakresy), żeby ich towary trafiły do panelu.
+            </p>
+          ) : null}
 
           <nav
             role="tablist"
