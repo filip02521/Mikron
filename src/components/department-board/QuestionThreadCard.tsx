@@ -29,12 +29,14 @@ import {
   boardQuestionRowHeaderClass,
 } from "@/lib/department-board/department-board-questions-ui";
 import type { DepartmentBoardQuestion } from "@/lib/data/department-board-shared";
-import { BoardQuestionProductChip } from "@/components/department-board/BoardQuestionProductChip";
 import { BoardQuestionProductContext } from "@/components/department-board/BoardQuestionProductContext";
 import { BoardThreadMessage } from "@/components/department-board/BoardThreadMessage";
 import { BoardReplyComposer } from "@/components/department-board/BoardReplyComposer";
 import { useBoardQuestionImages } from "@/components/department-board/useBoardQuestionImages";
-import { boardQuestionHasProduct } from "@/lib/department-board/question-product";
+import {
+  boardQuestionHasProduct,
+  boardQuestionProductLabel,
+} from "@/lib/department-board/question-product";
 import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import {
@@ -144,7 +146,7 @@ export function QuestionThreadCard({
         latestActivityPost.attachments?.length ?? 0
       )}`;
     }
-    return `Pytanie: ${question.body}`;
+    return question.body;
   }, [expanded, latestActivityPost, question.body]);
 
   let procurementReplyIndex = 0;
@@ -345,16 +347,19 @@ export function QuestionThreadCard({
               )}
             />
             <span className="min-w-0 flex-1 space-y-1.5">
-              <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:flex-nowrap">
                 {showUnseen ? (
                   <span className={boardQuestionUnseenDotClass} aria-hidden />
                 ) : null}
-                <span className={cn(salesTypography.rowTitle, "min-w-0 truncate")}>
+                {/* Telefon: tytuł na całą szerokość (do 2 linii), status pod nim; desktop: jedna linia. */}
+                <span
+                  className={cn(
+                    salesTypography.rowTitle,
+                    "min-w-0 basis-full line-clamp-2 sm:basis-auto sm:line-clamp-none sm:truncate"
+                  )}
+                >
                   {question.title}
                 </span>
-                {hasProduct ? (
-                  <BoardQuestionProductChip product={question} compact className="max-w-[min(100%,14rem)]" />
-                ) : null}
                 <span
                   className={boardQuestionStatusBadgeClass({ unseen: showUnseen, open: isOpen })}
                 >
@@ -362,7 +367,7 @@ export function QuestionThreadCard({
                 </span>
                 {threadPhotoCount > 0 ? (
                   <span
-                    className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500"
+                    className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-slate-500"
                     title={`W wątku: ${photoLabel(threadPhotoCount)}`}
                   >
                     <IconCamera size={12} className="shrink-0" aria-hidden />
@@ -374,14 +379,21 @@ export function QuestionThreadCard({
               <span
                 className={cn(
                   salesTypography.rowBody,
-                  "block font-medium",
-                  expanded ? "text-slate-700" : boardQuestionCollapsedMetaClass
+                  "flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5",
+                  expanded ? "text-slate-600" : boardQuestionCollapsedMetaClass
                 )}
               >
-                Dodał/a:{" "}
                 <span className={boardQuestionAuthorNameClass}>{author}</span>
-                <span className="text-slate-400"> · </span>
-                {formatBoardDate(question.created_at)}
+                <span className="tabular-nums">{formatBoardDate(question.created_at)}</span>
+                {/* Po rozwinięciu produkt ma własną ramkę poniżej. */}
+                {hasProduct && !expanded ? (
+                  <span
+                    className="min-w-0 max-w-full truncate font-medium text-slate-500"
+                    title={boardQuestionProductLabel(question)}
+                  >
+                    {boardQuestionProductLabel(question)}
+                  </span>
+                ) : null}
               </span>
               {previewLine ? (
                 <span className={boardQuestionPreviewClass}>{previewLine}</span>
@@ -432,7 +444,9 @@ export function QuestionThreadCard({
         />
 
         {question.posts.length === 0 ? (
-          <p className={boardAwaitingReplyClass}>Dział zakupów jeszcze nie odpowiedział.</p>
+          audience === "sales" ? (
+            <p className={boardAwaitingReplyClass}>Dział zakupów jeszcze nie odpowiedział.</p>
+          ) : null
         ) : (
           <div className="space-y-3">
             {question.posts.map((post) => {

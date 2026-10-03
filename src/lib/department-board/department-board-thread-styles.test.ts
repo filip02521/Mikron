@@ -29,7 +29,7 @@ describe("boardQuestionRowClass", () => {
 
 describe("boardQuestionAuthorNameClass", () => {
   it("używa zwykłego koloru bez badge", () => {
-    expect(boardQuestionAuthorNameClass).toContain("text-indigo-700");
+    expect(boardQuestionAuthorNameClass).toContain("text-slate-800");
     expect(boardQuestionAuthorNameClass).not.toContain("rounded");
     expect(boardQuestionAuthorNameClass).not.toContain("ring");
   });
