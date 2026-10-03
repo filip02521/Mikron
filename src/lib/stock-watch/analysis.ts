@@ -1,8 +1,11 @@
 /**
- * Braki i zamówienia — czysta logika analizy (bez I/O).
+ * Braki i zamówienia — czysta logika sygnałów (bez I/O).
  *
- * Jednostki: sztuki karty Subiekta (jak `sprzedazOkres` / `tw_Stan` z /orders/zd/estimate).
- * Otwarte ZD przychodzą w jednostkach dokumentu — przeliczane na sztuki przez opakowanie.
+ * Ilość „Do ZD” NIE jest tu liczona — przychodzi z silnika zamówień
+ * (`runZdOrderEngine` + `buildZdOrderList`), tak jak w Kreatorze ZD.
+ * Tu tylko: ile dni starczy stanu, status alertu, wartość rotacji.
+ *
+ * Jednostki: sztuki karty Subiekta.
  */
 
 import { addDays } from "date-fns";
@@ -10,18 +13,11 @@ import { formatDateString, parseDateOnly } from "@/lib/orders/dates";
 import {
   isPackagingPackagesMode,
   normalizeUnitsPerPackage,
-  zdDocumentUnitsToPieces,
   type ZdPackagingDocumentUnitMode,
 } from "@/lib/orders/zd-estimate-units";
 
-/** Waga ostatnich 30 dni w rotacji (reszta = średnia z 60 dni). Szybciej łapie wzrost/spadek. */
-export const STOCK_WATCH_VELOCITY_WEIGHT_30D = 0.7;
-
 /** „Krytyczne” = stanu dostępnego starczy na ≤ 48 h. */
 export const STOCK_WATCH_CRITICAL_DAYS = 2;
-
-/** Dni zapasu, gdy dostawca nie ma ustawionego okresu („w razie potrzeby”). */
-export const STOCK_WATCH_DEFAULT_BUFFER_DAYS = 30;
 
 export type StockWatchRule = "standard" | "on_request" | "excluded";
 
@@ -38,39 +34,24 @@ export type StockWatchPackaging = {
 };
 
 export type StockWatchInput = {
-  stockQty: number;
-  reservedQty: number;
-  /** `dostepne` z API (stan − rezerwacje) — może być ujemne. */
+  /** `dostepne` (stan − rezerwacje) — może być ujemne. */
   availableQty: number;
-  /** Otwarte ZD w jednostkach dokumentu (przy opakowaniach: paczki). */
-  openZdDocUnits: number;
-  /**
-   * Otwarte ZK bez rezerwacji — tylko informacyjnie. Jak w kreatorze ZD nie
-   * wchodzi do propozycji: zalegające ZK (np. 144 szt na piec) zawyżały ilości.
-   */
-  openZkUnreservedQty: number;
-  sales30d: number;
-  sales60d: number;
-  bufferDays: number;
+  /** Otwarte ZD w sztukach. */
+  openZdQty: number;
+  /** Rotacja z Kreatora: sprzedaż w oknie / dni okna. */
+  velocityDaily: number;
+  /** Cel zapasu z Kreatora (po boost/cięciach), w sztukach. */
+  targetQty: number;
   minStockQty: number | null;
-  rule: StockWatchRule;
-  packaging: StockWatchPackaging | null;
-  /** Cena netto z ostatniej linii ZD — za jednostkę dokumentu. */
-  lastZdPriceNet: number | null;
+  /** Cena netto za sztukę (null = brak ceny z ZD). */
+  unitPriceNet: number | null;
   /** Ostatni dzień uwzględnionej sprzedaży (YYYY-MM-DD) — od niego liczymy datę wyczerpania. */
   salesEndDate: string;
 };
 
 export type StockWatchResult = {
-  openZdQty: number;
-  velocityDaily: number;
-  velocityTrend: number | null;
   daysOfCover: number | null;
   runOutDate: string | null;
-  bufferDays: number;
-  safetyStockQty: number;
-  suggestedQty: number;
-  unitPriceNet: number | null;
   dailyValue: number | null;
   status: StockWatchStatus;
 };
@@ -83,25 +64,6 @@ function finite(value: number | null | undefined): number {
 function round(value: number, digits: number): number {
   const p = 10 ** digits;
   return Math.round(value * p) / p;
-}
-
-/**
- * Średnia dzienna sprzedaż ważona: 70% ostatnie 30 dni + 30% ostatnie 60 dni.
- * Zwroty (ujemna sprzedaż) nie obniżają rotacji poniżej 0.
- */
-export function computeSalesVelocity(sales30d: number, sales60d: number): {
-  velocityDaily: number;
-  trend: number | null;
-} {
-  const v30 = Math.max(0, finite(sales30d)) / 30;
-  const v60 = Math.max(0, finite(sales60d)) / 60;
-  const velocityDaily =
-    STOCK_WATCH_VELOCITY_WEIGHT_30D * v30 +
-    (1 - STOCK_WATCH_VELOCITY_WEIGHT_30D) * v60;
-  return {
-    velocityDaily: round(velocityDaily, 4),
-    trend: v60 > 0 ? round(v30 / v60, 3) : null,
-  };
 }
 
 /** Cena za sztukę z ceny ZD (przy opakowaniach ZD cena dotyczy paczki). */
@@ -119,25 +81,12 @@ export function unitPricePerPiece(
 }
 
 export function analyzeStockWatchItem(input: StockWatchInput): StockWatchResult {
-  const bufferDays =
-    Number.isFinite(input.bufferDays) && input.bufferDays > 0
-      ? Math.round(input.bufferDays)
-      : STOCK_WATCH_DEFAULT_BUFFER_DAYS;
   const available = finite(input.availableQty);
-  const openZdQty = zdDocumentUnitsToPieces(
-    Math.max(0, finite(input.openZdDocUnits)),
-    input.packaging?.unitsPerPackage,
-    input.packaging?.documentUnitMode ?? "packages"
-  );
+  const velocityDaily = Math.max(0, finite(input.velocityDaily));
   const minStock =
     input.minStockQty != null && Number.isFinite(input.minStockQty)
       ? Math.max(0, input.minStockQty)
       : null;
-
-  const { velocityDaily, trend } = computeSalesVelocity(
-    input.sales30d,
-    input.sales60d
-  );
 
   const daysOfCover =
     velocityDaily > 0 ? round(Math.max(0, available) / velocityDaily, 1) : null;
@@ -148,16 +97,9 @@ export function analyzeStockWatchItem(input: StockWatchInput): StockWatchResult 
       ? formatDateString(addDays(end, Math.floor(daysOfCover)))
       : null;
 
-  const safetyStockQty = round(
-    Math.max(velocityDaily * bufferDays, minStock ?? 0),
-    2
-  );
-  // Co będzie na stanie po dostawach z otwartych ZD (bez ZK — jak „Do ZD” w kreatorze).
-  const projected = available + openZdQty;
-  const suggestedQty =
-    input.rule === "standard"
-      ? Math.max(0, Math.ceil(safetyStockQty - projected - 1e-9))
-      : 0;
+  // Co będzie na stanie po dostawach z otwartych ZD (bez ZK — jak „Do ZD” w Kreatorze).
+  const projected = available + Math.max(0, finite(input.openZdQty));
+  const target = Math.max(finite(input.targetQty), minStock ?? 0);
 
   let status: StockWatchStatus;
   const belowMin = minStock != null && minStock > 0 && available < minStock;
@@ -167,35 +109,22 @@ export function analyzeStockWatchItem(input: StockWatchInput): StockWatchResult 
     status = "out_of_stock";
   } else if (daysOfCover != null && daysOfCover <= STOCK_WATCH_CRITICAL_DAYS) {
     status = "critical";
-  } else if (projected < safetyStockQty) {
+  } else if (projected < target) {
     status = "warning";
   } else {
     status = "ok";
   }
 
-  const unitPriceNet = unitPricePerPiece(input.lastZdPriceNet, input.packaging);
   const dailyValue =
-    unitPriceNet != null ? round(velocityDaily * unitPriceNet, 2) : null;
+    input.unitPriceNet != null ? round(velocityDaily * input.unitPriceNet, 2) : null;
 
-  return {
-    openZdQty: round(openZdQty, 3),
-    velocityDaily,
-    velocityTrend: trend,
-    daysOfCover,
-    runOutDate,
-    bufferDays,
-    safetyStockQty,
-    suggestedQty,
-    unitPriceNet,
-    dailyValue,
-    status,
-  };
+  return { daysOfCover, runOutDate, dailyValue, status };
 }
 
 /** Kolejność alertów: najpierw brak, potem krytyczne; w grupie — największa wartość / rotacja. */
 export function compareStockWatchAlerts(
-  a: Pick<StockWatchResult, "status" | "dailyValue" | "velocityDaily" | "daysOfCover">,
-  b: Pick<StockWatchResult, "status" | "dailyValue" | "velocityDaily" | "daysOfCover">
+  a: { status: StockWatchStatus; dailyValue: number | null; velocityDaily: number; daysOfCover: number | null },
+  b: { status: StockWatchStatus; dailyValue: number | null; velocityDaily: number; daysOfCover: number | null }
 ): number {
   const rank: Record<StockWatchStatus, number> = {
     out_of_stock: 0,

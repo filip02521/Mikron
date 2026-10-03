@@ -51,7 +51,7 @@ export const STOCK_WATCH_STATUS_META: Record<
 > = {
   out_of_stock: { label: "Brak", badge: "danger", dot: "bg-red-600", bar: "bg-red-500" },
   critical: { label: "≤ 48 h", badge: "danger", dot: "bg-red-500", bar: "bg-red-400" },
-  warning: { label: "Poniżej bufora", badge: "warning", dot: "bg-amber-500", bar: "bg-amber-400" },
+  warning: { label: "Poniżej celu", badge: "warning", dot: "bg-amber-500", bar: "bg-amber-400" },
   ok: { label: "W normie", badge: "success", dot: "bg-emerald-500", bar: "bg-emerald-500" },
   no_sales: { label: "Bez sprzedaży", badge: "default", dot: "bg-slate-300", bar: "bg-slate-300" },
 };
@@ -76,23 +76,3 @@ export const STOCK_WATCH_RULE_META: Record<
     description: "Ignorowane — nie krzyczy, że brakuje.",
   },
 };
-
-/** Trend rotacji v30/v60: ↑ rośnie (> +20%), ↓ spada (< −20%). */
-export function trendMeta(trend: number | null): { symbol: string; className: string; title: string } | null {
-  if (trend == null) return null;
-  if (trend >= 1.2) {
-    return {
-      symbol: "↑",
-      className: "text-emerald-700",
-      title: `Sprzedaż przyspiesza: ostatnie 30 dni ${Math.round((trend - 1) * 100)}% powyżej średniej z 60 dni`,
-    };
-  }
-  if (trend <= 0.8) {
-    return {
-      symbol: "↓",
-      className: "text-slate-400",
-      title: `Sprzedaż zwalnia: ostatnie 30 dni ${Math.round((1 - trend) * 100)}% poniżej średniej z 60 dni`,
-    };
-  }
-  return null;
-}

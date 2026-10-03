@@ -17,22 +17,20 @@ import { Spinner } from "@/components/ui/Spinner";
 import {
   IconAlertCircle,
   IconChartTrend,
-  IconClipboardList,
   IconSearch,
   IconSettings,
   IconTruck,
 } from "@/components/icons/StrokeIcons";
 import {
-  actionOpenPurchaseDraft,
   actionSearchStockWatchItems,
   actionStartStockWatchRun,
 } from "@/app/actions/stock-watch";
+import { buildZdEstimateLaunchHref } from "@/lib/orders/zd-estimate-supplier-scope";
 import type {
   StockWatchDashboard,
   StockWatchRowView,
   StockWatchSupplierProposal,
 } from "@/lib/stock-watch/dashboard";
-import type { PurchaseDraftSummary } from "@/lib/stock-watch/drafts-shared";
 import { StockHealthGauge } from "@/components/stock-watch/StockHealthGauge";
 import { StockCoverBar } from "@/components/stock-watch/StockCoverBar";
 import { StockRuleControl, StockRuleMenu } from "@/components/stock-watch/StockRuleControl";
@@ -44,7 +42,6 @@ import {
   formatVelocity,
   STOCK_WATCH_RULE_META,
   STOCK_WATCH_STATUS_META,
-  trendMeta,
 } from "@/components/stock-watch/stock-watch-format";
 
 export type StockWatchRunSummary = {
@@ -59,7 +56,7 @@ export type StockWatchRunSummary = {
   failures: { supplierName: string; message: string }[];
 };
 
-type TabId = "alerts" | "suppliers" | "rotation" | "rules" | "drafts";
+type TabId = "alerts" | "suppliers" | "rotation" | "rules";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("pl-PL", {
   day: "2-digit",
@@ -78,13 +75,11 @@ function formatWhen(iso: string | null): string {
 export function StockWatchPanel({
   dashboard,
   run,
-  drafts,
   canMutate,
   coverage,
 }: {
   dashboard: StockWatchDashboard;
   run: StockWatchRunSummary | null;
-  drafts: PurchaseDraftSummary[];
   canMutate: boolean;
   /** Aktywni dostawcy vs z zakresem w kreatorze ZD (tylko ci są analizowani). */
   coverage: { active: number; mapped: number };
@@ -104,7 +99,6 @@ export function StockWatchPanel({
     return () => window.clearInterval(id);
   }, [running, router]);
 
-  const openDrafts = drafts.filter((d) => d.status === "draft");
   const hasData = dashboard.totals.itemCount > 0;
 
   const onStartRun = () => {
@@ -127,17 +121,16 @@ export function StockWatchPanel({
       count: dashboard.counts.outOfStock + dashboard.counts.critical,
       tone: "danger",
     },
-    { id: "suppliers", label: "Propozycje zamówień", count: dashboard.proposals.length },
+    { id: "suppliers", label: "Do ZD po dostawcach", count: dashboard.proposals.length },
     { id: "rotation", label: "Rotacja — Top 20" },
     { id: "rules", label: "Reguły", count: dashboard.flagged.length },
-    { id: "drafts", label: "Szkice", count: openDrafts.length, tone: "warning" },
   ];
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="Braki i zamówienia"
-        description="Co się kończy, zanim się skończy: rotacja z ostatnich 30/60 dni, czas do wyczerpania i gotowe propozycje zamówień po dostawcach."
+        description="Co się kończy, zanim się skończy. Lista „Do ZD” liczona co noc tym samym silnikiem co Kreator ZD — „Przygotuj ZD” otwiera Kreator z tą listą."
         actions={
           <>
             <RunStatusChip run={run} />
@@ -256,13 +249,11 @@ export function StockWatchPanel({
             {tab === "alerts" ? (
               <AlertsSection rows={dashboard.alerts} canMutate={canMutate} onError={setError} />
             ) : tab === "suppliers" ? (
-              <SuppliersSection proposals={dashboard.proposals} canMutate={canMutate} onError={setError} />
+              <SuppliersSection proposals={dashboard.proposals} canMutate={canMutate} />
             ) : tab === "rotation" ? (
               <RotationSection rows={dashboard.topVelocity} />
-            ) : tab === "rules" ? (
-              <RulesSection flagged={dashboard.flagged} canMutate={canMutate} onError={setError} />
             ) : (
-              <DraftsSection drafts={drafts} />
+              <RulesSection flagged={dashboard.flagged} canMutate={canMutate} onError={setError} />
             )}
           </section>
         </>
@@ -331,16 +322,16 @@ function OverviewBand({
             onClick={() => onJump("alerts")}
           />
           <PanelSummaryMetric
-            label="Poniżej bufora"
+            label="Poniżej celu"
             value={counts.warning}
-            hint="Z otwartymi ZD nadal za mało"
+            hint="Z otwartymi ZD nadal poniżej celu zapasu"
             tone={counts.warning > 0 ? "warning" : "success"}
             onClick={() => onJump("suppliers")}
           />
           <PanelSummaryMetric
-            label="Do zamówienia"
+            label="Do ZD"
             value={formatPln(totals.proposalValue)}
-            hint={`${totals.proposalSkus} SKU u ${dashboard.proposals.length} dostawców`}
+            hint={`${totals.proposalLines} pozycji u ${dashboard.proposals.length} dostawców`}
             onClick={() => onJump("suppliers")}
           />
         </div>
@@ -418,21 +409,40 @@ function CoverChip({ row }: { row: Pick<StockWatchRowView, "daysOfCover" | "stat
   );
 }
 
-function VelocityCell({ row }: { row: Pick<StockWatchRowView, "velocityDaily" | "velocityTrend" | "sales30d"> }) {
-  const trend = trendMeta(row.velocityTrend);
+function VelocityCell({
+  row,
+}: {
+  row: Pick<StockWatchRowView, "velocityDaily" | "salesPeriodQty" | "salesPeriodDays">;
+}) {
   return (
     <div className="whitespace-nowrap text-right tabular-nums">
       <span className="font-semibold text-slate-900">{formatVelocity(row.velocityDaily)}</span>
       <span className="text-xs text-slate-500">/d</span>
-      {trend ? (
-        <span className={cn("ml-1 text-sm font-bold", trend.className)} title={trend.title}>
-          {trend.symbol}
-        </span>
-      ) : null}
-      <p className="text-[11px] text-slate-400" title="Sprzedaż w ostatnich 30 dniach">
-        {formatQtyPl(row.sales30d)} szt / 30 d
+      <p className="text-[11px] text-slate-400" title="Sprzedaż w oknie Kreatora (dni zapasu dostawcy)">
+        {formatQtyPl(row.salesPeriodQty)} szt / {row.salesPeriodDays} d
       </p>
     </div>
+  );
+}
+
+/** „Do ZD” z silnika — ilość na dokumencie, jak w Kreatorze. */
+function OrderQty({
+  row,
+}: {
+  row: Pick<StockWatchRowView, "inOrder" | "orderZdUnits" | "orderUnitLabel" | "orderPieces">;
+}) {
+  if (!row.inOrder || row.orderZdUnits <= 0) {
+    return (
+      <span className="text-xs text-slate-400" title="Poza listą „Do ZD” — pokryte stanem / otwartymi ZD albo reguła">
+        poza ZD
+      </span>
+    );
+  }
+  const label = row.orderUnitLabel ?? "szt.";
+  return (
+    <span className="font-semibold text-slate-900" title={`${formatQtyPl(row.orderPieces)} szt po dostawie`}>
+      {formatQtyPl(row.orderZdUnits)} {label}
+    </span>
   );
 }
 
@@ -453,7 +463,7 @@ function AlertsSection({
         <EmptyState
           icon={<IconAlertCircle size={26} strokeWidth={1.75} />}
           title="Brak krytycznych braków"
-          description="Żaden aktywny towar nie skończy się w ciągu 48 h. Towary poniżej bufora znajdziesz w propozycjach zamówień."
+          description="Żaden aktywny towar nie skończy się w ciągu 48 h. Towary poniżej celu zapasu znajdziesz w zakładce „Do ZD po dostawcach”."
         />
       </Card>
     );
@@ -496,13 +506,9 @@ function AlertsSection({
                 <span className="tabular-nums">
                   {formatVelocity(row.velocityDaily)} szt/d
                 </span>
-                {row.suggestedQty > 0 ? (
-                  <span className="font-semibold tabular-nums text-slate-900">
-                    zamów {formatQtyPl(row.suggestedQty)} szt
-                  </span>
-                ) : (
-                  <span className="text-slate-400">pokryte ZD</span>
-                )}
+                <span className="tabular-nums">
+                  Do ZD: <OrderQty row={row} />
+                </span>
               </div>
             </div>
             {canMutate ? (
@@ -523,9 +529,9 @@ function AlertsSection({
             <tr>
               <th scope="col">Towar</th>
               <th scope="col">Starczy na</th>
-              <th scope="col" className="text-right" title="Średnia dzienna sprzedaż (szt/dzień), ważona 30/60 dni">Rotacja</th>
-              <th scope="col">Stan vs bufor</th>
-              <th scope="col" className="text-right">Propozycja</th>
+              <th scope="col" className="text-right" title="Średnia dzienna sprzedaż (szt/dzień) z okna Kreatora ZD">Rotacja</th>
+              <th scope="col">Stan vs cel</th>
+              <th scope="col" className="text-right" title="Ilość z listy Kreatora ZD (jednostka dokumentu)">Do ZD</th>
               <th scope="col" className="text-right" title="Rotacja × ostatnia cena zakupu z ZD">
                 Wartość / dzień
               </th>
@@ -553,7 +559,7 @@ function AlertsSection({
                   <StockCoverBar
                     available={row.availableQty}
                     incoming={row.openZdQty}
-                    safetyStock={row.safetyStockQty}
+                    safetyStock={row.targetQty}
                     status={row.status}
                   />
                   {row.openZdQty > 0 ? (
@@ -561,11 +567,7 @@ function AlertsSection({
                   ) : null}
                 </td>
                 <td className="text-right tabular-nums">
-                  {row.suggestedQty > 0 ? (
-                    <span className="font-semibold text-slate-900">{formatQtyPl(row.suggestedQty)} szt</span>
-                  ) : (
-                    <span className="text-xs text-slate-400" title="Otwarte ZD pokrywają bufor">pokryte ZD</span>
-                  )}
+                  <OrderQty row={row} />
                 </td>
                 <td className="text-right tabular-nums text-sm">
                   {row.dailyValue != null ? formatPln(row.dailyValue) : <span className="text-slate-400">brak ceny</span>}
@@ -593,11 +595,9 @@ function AlertsSection({
 function SuppliersSection({
   proposals,
   canMutate,
-  onError,
 }: {
   proposals: StockWatchSupplierProposal[];
   canMutate: boolean;
-  onError: (message: string) => void;
 }) {
   if (proposals.length === 0) {
     return (
@@ -605,16 +605,22 @@ function SuppliersSection({
         <EmptyState
           icon={<IconTruck size={26} strokeWidth={1.75} />}
           title="Nic do zamówienia"
-          description="Stany z otwartymi ZD pokrywają bufor u wszystkich dostawców."
+          description="Lista „Do ZD” jest pusta u wszystkich analizowanych dostawców."
         />
       </Card>
     );
   }
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {proposals.map((p) => (
-        <SupplierProposalCard key={p.supplierId} proposal={p} canMutate={canMutate} onError={onError} />
-      ))}
+    <div className="space-y-3">
+      <p className="px-1 text-xs text-slate-500">
+        Liczone co noc tak samo jak „Policz” w Kreatorze ZD (dni zapasu dostawcy, reguły, historia, prośby,
+        opakowania). Edycja i utworzenie ZD — tylko w Kreatorze.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {proposals.map((p) => (
+          <SupplierProposalCard key={p.supplierId} proposal={p} canMutate={canMutate} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -622,32 +628,11 @@ function SuppliersSection({
 function SupplierProposalCard({
   proposal: p,
   canMutate,
-  onError,
 }: {
   proposal: StockWatchSupplierProposal;
   canMutate: boolean;
-  onError: (message: string) => void;
 }) {
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
   const urgent = p.outOfStockCount + p.criticalCount;
-  const segments = [
-    { n: p.outOfStockCount, cls: STOCK_WATCH_STATUS_META.out_of_stock.bar, label: "brak" },
-    { n: p.criticalCount, cls: STOCK_WATCH_STATUS_META.critical.bar, label: "≤ 48 h" },
-    { n: p.warningCount, cls: STOCK_WATCH_STATUS_META.warning.bar, label: "poniżej bufora" },
-  ];
-
-  const open = () => {
-    startTransition(async () => {
-      const res = await actionOpenPurchaseDraft(p.supplierId);
-      if (!res.ok) {
-        onError(res.message);
-        return;
-      }
-      router.push(`/zakupy/braki/szkic/${res.data.draftId}`);
-    });
-  };
-
   return (
     <Card
       padding={false}
@@ -670,31 +655,21 @@ function SupplierProposalCard({
       </div>
 
       <p className="mt-2 text-sm text-slate-700">
-        Brakuje <strong className="tabular-nums">{p.skuCount} SKU</strong>
-        {p.estimatedValue > 0 ? (
+        Do ZD: <strong className="tabular-nums">{p.lineCount} {p.lineCount === 1 ? "pozycja" : "pozycji"}</strong>
+        {p.orderValue > 0 ? (
           <>
-            , szacowana wartość zamówienia:{" "}
-            <strong className="tabular-nums text-slate-900">{formatPln(p.estimatedValue)}</strong>
+            , wartość ok. <strong className="tabular-nums text-slate-900">{formatPln(p.orderValue)}</strong>
           </>
         ) : null}
       </p>
+      <p className="mt-0.5 text-[11px] text-slate-500">
+        Zapas {p.dniZapasu} dni · sprzedaż {p.dataOd} – {p.dataDo} · policzono {formatWhen(p.computedAt)}
+      </p>
       {p.unpricedCount > 0 ? (
         <p className="mt-0.5 text-[11px] text-slate-500">
-          {p.unpricedCount} {p.unpricedCount === 1 ? "pozycja" : "pozycji"} bez ceny z ZD — poza szacunkiem
+          {p.unpricedCount} {p.unpricedCount === 1 ? "pozycja" : "pozycji"} bez ceny z ZD — poza wartością
         </p>
       ) : null}
-
-      <div className="mt-3 flex h-1.5 w-full overflow-hidden rounded-full bg-slate-100" aria-hidden>
-        {segments.map((s, i) =>
-          s.n > 0 ? <div key={i} className={s.cls} style={{ width: `${(s.n / p.skuCount) * 100}%` }} /> : null
-        )}
-      </div>
-      <p className="mt-1.5 text-[11px] text-slate-500">
-        {segments
-          .filter((s) => s.n > 0)
-          .map((s) => `${s.n} ${s.label}`)
-          .join(" · ")}
-      </p>
 
       {p.mostUrgent ? (
         <p className="mt-2 truncate text-xs text-slate-600" title={p.mostUrgent.twNazwa}>
@@ -708,17 +683,22 @@ function SupplierProposalCard({
         </p>
       ) : null}
 
+      {p.warnings.length > 0 ? (
+        <ul className="mt-2 space-y-0.5 text-[11px] text-amber-800">
+          {p.warnings.map((w) => (
+            <li key={w}>{w}</li>
+          ))}
+        </ul>
+      ) : null}
+
       <div className="mt-auto pt-4">
         {canMutate ? (
-          <Button
-            className="w-full"
-            variant={p.openDraftId ? "secondary" : "primary"}
-            onClick={open}
-            disabled={pending}
+          <Link
+            href={buildZdEstimateLaunchHref(p.supplierId)}
+            className="inline-flex h-10 w-full items-center justify-center rounded-md bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
           >
-            {pending ? <Spinner size="sm" className="mr-1.5" /> : null}
-            {p.openDraftId ? "Otwórz szkic zamówienia" : "Przygotuj zamówienie"}
-          </Button>
+            Przygotuj ZD
+          </Link>
         ) : null}
       </div>
     </Card>
@@ -731,7 +711,7 @@ function RotationSection({ rows }: { rows: StockWatchRowView[] }) {
       <div className="border-b border-slate-100 px-4 py-3 sm:px-5">
         <h2 className="text-sm font-semibold text-slate-900">Top 20 najszybciej rotujących</h2>
         <p className="text-xs text-slate-500">
-          Pasek: stan dostępny względem bezpiecznego bufora (rotacja × dni zapasu dostawcy). Kreska = 100% bufora,
+          Pasek: stan dostępny względem celu zapasu z Kreatora (rotacja × dni zapasu dostawcy). Kreska = 100% celu,
           kreskowanie = towar w drodze.
         </p>
       </div>
@@ -741,8 +721,8 @@ function RotationSection({ rows }: { rows: StockWatchRowView[] }) {
             <tr>
               <th scope="col" className="w-10 text-right">#</th>
               <th scope="col">Towar</th>
-              <th scope="col" className="text-right" title="Średnia dzienna sprzedaż (szt/dzień), ważona 30/60 dni">Rotacja</th>
-              <th scope="col">Stan vs bufor ({"dni zapasu"})</th>
+              <th scope="col" className="text-right" title="Średnia dzienna sprzedaż (szt/dzień) z okna Kreatora ZD">Rotacja</th>
+              <th scope="col">Stan vs cel</th>
               <th scope="col">Starczy na</th>
               <th scope="col">Reguła</th>
             </tr>
@@ -762,10 +742,10 @@ function RotationSection({ rows }: { rows: StockWatchRowView[] }) {
                   <StockCoverBar
                     available={row.availableQty}
                     incoming={row.openZdQty}
-                    safetyStock={row.safetyStockQty}
+                    safetyStock={row.targetQty}
                     status={row.status}
                   />
-                  <p className="text-[11px] text-slate-400">bufor na {row.bufferDays} dni</p>
+                  <p className="text-[11px] text-slate-400">cel na {row.salesPeriodDays} dni</p>
                 </td>
                 <td>
                   <CoverChip row={row} />
@@ -901,7 +881,7 @@ function RuleTable({
           <tr>
             <th scope="col">Towar</th>
             <th scope="col">Dostawca</th>
-            <th scope="col" className="text-right" title="Średnia dzienna sprzedaż (szt/dzień), ważona 30/60 dni">Rotacja</th>
+            <th scope="col" className="text-right" title="Średnia dzienna sprzedaż (szt/dzień) z okna Kreatora ZD">Rotacja</th>
             <th scope="col">Starczy na</th>
             <th scope="col">Reguła</th>
           </tr>
@@ -938,69 +918,5 @@ function RuleTable({
         </tbody>
       </DataTable>
     </TableScroll>
-  );
-}
-
-function DraftsSection({ drafts }: { drafts: PurchaseDraftSummary[] }) {
-  if (drafts.length === 0) {
-    return (
-      <Card>
-        <EmptyState
-          icon={<IconClipboardList size={26} strokeWidth={1.75} />}
-          title="Brak szkiców"
-          description="„Przygotuj zamówienie” na karcie dostawcy tworzy szkic z propozycjami — edytujesz go przed utworzeniem ZD."
-        />
-      </Card>
-    );
-  }
-  return (
-    <Card padding={false} className="overflow-hidden">
-      <TableScroll className="sm:px-0 sm:pb-0">
-        <DataTable className="min-w-[640px]">
-          <thead>
-            <tr>
-              <th scope="col">Dostawca</th>
-              <th scope="col">Status</th>
-              <th scope="col" className="text-right">Pozycje</th>
-              <th scope="col" className="text-right">Wartość</th>
-              <th scope="col">Zmiana</th>
-              <th scope="col" />
-            </tr>
-          </thead>
-          <tbody>
-            {drafts.map((d) => (
-              <tr key={d.id}>
-                <td className="font-medium text-slate-900">{d.supplierName}</td>
-                <td>
-                  {d.status === "draft" ? (
-                    <Badge variant="warning">Szkic</Badge>
-                  ) : d.status === "submitted" ? (
-                    <Badge variant="success">{d.zdDokNr ?? "ZD utworzone"}</Badge>
-                  ) : (
-                    <Badge>Anulowany</Badge>
-                  )}
-                </td>
-                <td className="text-right tabular-nums">{d.lineCount}</td>
-                <td className="text-right tabular-nums">
-                  {formatPln(d.totalValue)}
-                  {d.pricedLineCount < d.lineCount ? (
-                    <p className="text-[11px] text-slate-400">{d.lineCount - d.pricedLineCount} bez ceny</p>
-                  ) : null}
-                </td>
-                <td className="text-sm text-slate-600">{formatWhen(d.updatedAt)}</td>
-                <td className="text-right">
-                  <Link
-                    href={`/zakupy/braki/szkic/${d.id}`}
-                    className="text-sm font-medium text-indigo-700 hover:text-indigo-900"
-                  >
-                    {d.status === "draft" ? "Edytuj" : "Podgląd"}
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </DataTable>
-      </TableScroll>
-    </Card>
   );
 }

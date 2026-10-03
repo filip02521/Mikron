@@ -1,6 +1,9 @@
 "use client";
 
-import type { SupplierSubiektScopeInfo } from "@/lib/orders/zd-estimate-supplier-scope";
+import {
+  buildZdEstimateLaunchHref,
+  type SupplierSubiektScopeInfo,
+} from "@/lib/orders/zd-estimate-supplier-scope";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
@@ -407,7 +410,7 @@ export function SupplierDrawer({
               </Button>
               {canPrepareZd ? (
                 <Link
-                  href={`/zakupy/szacunek?from=daily&supplierId=${encodeURIComponent(supplier.id)}&autorun=1`}
+                  href={buildZdEstimateLaunchHref(supplier.id)}
                   className="block w-full"
                 >
                   <Button variant="secondary" size="sm" className="w-full justify-center">

@@ -74,7 +74,7 @@ export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>
   customsClearance:
     "Dane do odprawy celnej importu — opis PL, kod CN, VAT i deklaracje do maila dla agencji",
   stockWatch:
-    "Proaktywne braki: rotacja sprzedaży, czas do wyczerpania i propozycje zamówień po dostawcach",
+    "Proaktywne braki: czas do wyczerpania i lista „Do ZD” po dostawcach — liczona jak w Kreatorze ZD",
   zdEstimate:
     "Lista produktów do zamówienia u dostawcy — jak proces ręczny (sprzedaż, stan, otwarte ZD)",
   ivoclarReport:

@@ -2,7 +2,7 @@ import {
   compareStockWatchAlerts,
   computeStockHealthScore,
 } from "@/lib/stock-watch/analysis";
-import type { StockWatchItem } from "@/lib/stock-watch/data";
+import type { StockWatchItem, StockWatchSupplierOrder } from "@/lib/stock-watch/data";
 
 /** Wiersz przekazywany do klienta — tylko pola używane w UI. */
 export type StockWatchRowView = Pick<
@@ -17,15 +17,17 @@ export type StockWatchRowView = Pick<
   | "reservedQty"
   | "openZdQty"
   | "openZkUnreservedQty"
-  | "sales30d"
+  | "salesPeriodQty"
+  | "salesPeriodDays"
   | "velocityDaily"
-  | "velocityTrend"
   | "daysOfCover"
   | "runOutDate"
-  | "bufferDays"
-  | "safetyStockQty"
+  | "targetQty"
   | "minStockQty"
-  | "suggestedQty"
+  | "inOrder"
+  | "orderZdUnits"
+  | "orderUnitLabel"
+  | "orderPieces"
   | "unitPriceNet"
   | "dailyValue"
   | "status"
@@ -34,18 +36,25 @@ export type StockWatchRowView = Pick<
   | "grtNazwa"
 >;
 
+/** Lista „Do ZD” dostawcy z nocnego przebiegu silnika — ta sama co w Kreatorze ZD. */
 export type StockWatchSupplierProposal = {
   supplierId: string;
   supplierName: string;
-  skuCount: number;
+  /** Pozycje na liście „Do ZD” (jak licznik w Kreatorze). */
+  lineCount: number;
+  zdUnitsSum: number;
+  /** Szacunek tylko z pozycji z ceną z ZD. */
+  orderValue: number;
+  unpricedCount: number;
   outOfStockCount: number;
   criticalCount: number;
-  warningCount: number;
-  /** Szacunek tylko z pozycji z ceną z ZD. */
-  estimatedValue: number;
-  unpricedCount: number;
   mostUrgent: { twSymbol: string | null; twNazwa: string; daysOfCover: number | null } | null;
-  openDraftId: string | null;
+  dniZapasu: number;
+  dataOd: string;
+  dataDo: string;
+  computedAt: string;
+  /** Kreator pokaże pustą listę albo zablokuje „Utwórz ZD” — wymaga uwagi w Kreatorze. */
+  warnings: string[];
 };
 
 export type StockWatchDashboard = {
@@ -55,7 +64,7 @@ export type StockWatchDashboard = {
   proposals: StockWatchSupplierProposal[];
   topVelocity: StockWatchRowView[];
   flagged: StockWatchRowView[];
-  totals: { proposalValue: number; proposalSkus: number; itemCount: number; supplierCount: number };
+  totals: { proposalValue: number; proposalLines: number; itemCount: number; supplierCount: number };
 };
 
 export const STOCK_WATCH_ALERT_LIMIT = 60;
@@ -73,15 +82,17 @@ export function toStockWatchRowView(item: StockWatchItem): StockWatchRowView {
     reservedQty: item.reservedQty,
     openZdQty: item.openZdQty,
     openZkUnreservedQty: item.openZkUnreservedQty,
-    sales30d: item.sales30d,
+    salesPeriodQty: item.salesPeriodQty,
+    salesPeriodDays: item.salesPeriodDays,
     velocityDaily: item.velocityDaily,
-    velocityTrend: item.velocityTrend,
     daysOfCover: item.daysOfCover,
     runOutDate: item.runOutDate,
-    bufferDays: item.bufferDays,
-    safetyStockQty: item.safetyStockQty,
+    targetQty: item.targetQty,
     minStockQty: item.minStockQty,
-    suggestedQty: item.suggestedQty,
+    inOrder: item.inOrder,
+    orderZdUnits: item.orderZdUnits,
+    orderUnitLabel: item.orderUnitLabel,
+    orderPieces: item.orderPieces,
     unitPriceNet: item.unitPriceNet,
     dailyValue: item.dailyValue,
     status: item.status,
@@ -92,15 +103,39 @@ export function toStockWatchRowView(item: StockWatchItem): StockWatchRowView {
 }
 
 /**
- * Model panelu z wyników analizy. Reguły („Wyklucz” / „Na prośbę”) liczone
- * na żywo z tabel kreatora — zmiana działa od razu, bez nocnego przebiegu.
+ * Jeden wiersz na towar do sygnałów (alerty, zdrowie, rotacja) — ten sam towar
+ * bywa w liście dwóch dostawców (wspólny zakres). Wygrywa wiersz z pozycją „Do ZD”.
+ */
+function uniqueByProduct(items: readonly StockWatchItem[]): StockWatchItem[] {
+  const byTw = new Map<number, StockWatchItem>();
+  for (const item of items) {
+    const prev = byTw.get(item.subiektTwId);
+    if (!prev || (!prev.inOrder && item.inOrder)) byTw.set(item.subiektTwId, item);
+  }
+  return [...byTw.values()];
+}
+
+function proposalWarnings(order: StockWatchSupplierOrder): string[] {
+  const out: string[] = [];
+  if (order.explodeBomIncomplete) out.push("Brakuje danych kompletów (BOM) — Kreator pokaże pustą listę.");
+  if (order.historyFetchFailed) out.push("Nie wczytano historii ZD — cięcia historyczne mogły nie wejść.");
+  if (order.pendingIndividualsError) out.push("Nie wczytano próśb handlowców.");
+  if (order.truncated) out.push("Lista z Subiekta niepełna (limit stron).");
+  return out;
+}
+
+/**
+ * Model panelu. Propozycje = lista „Do ZD” z silnika (jak Kreator). Reguła
+ * „Wyklucz” działa od razu (pozycja znika z propozycji); pozostałe zmiany
+ * reguł wchodzą przy kolejnym przeliczeniu — albo od razu w Kreatorze.
  */
 export function buildStockWatchDashboard(
   items: readonly StockWatchItem[],
-  openDraftBySupplier: ReadonlyMap<string, string>
+  supplierOrders: readonly StockWatchSupplierOrder[]
 ): StockWatchDashboard {
+  const products = uniqueByProduct(items);
   const counts = { outOfStock: 0, critical: 0, warning: 0, ok: 0, noSales: 0 };
-  const standard = items.filter((i) => i.rule === "standard");
+  const standard = products.filter((i) => i.rule === "standard");
   for (const item of standard) {
     if (item.status === "out_of_stock") counts.outOfStock += 1;
     else if (item.status === "critical") counts.critical += 1;
@@ -115,62 +150,77 @@ export function buildStockWatchDashboard(
     .slice(0, STOCK_WATCH_ALERT_LIMIT)
     .map(toStockWatchRowView);
 
-  const bySupplier = new Map<string, StockWatchSupplierProposal>();
-  for (const item of standard) {
-    if (item.suggestedQty <= 0 || !item.supplierId) continue;
-    let p = bySupplier.get(item.supplierId);
-    if (!p) {
-      p = {
-        supplierId: item.supplierId,
-        supplierName: item.supplierName ?? "Dostawca",
-        skuCount: 0,
-        outOfStockCount: 0,
-        criticalCount: 0,
-        warningCount: 0,
-        estimatedValue: 0,
-        unpricedCount: 0,
-        mostUrgent: null,
-        openDraftId: openDraftBySupplier.get(item.supplierId) ?? null,
-      };
-      bySupplier.set(item.supplierId, p);
-    }
-    p.skuCount += 1;
-    if (item.status === "out_of_stock") p.outOfStockCount += 1;
-    else if (item.status === "critical") p.criticalCount += 1;
-    else if (item.status === "warning") p.warningCount += 1;
-    if (item.unitPriceNet != null) p.estimatedValue += item.suggestedQty * item.unitPriceNet;
-    else p.unpricedCount += 1;
-    const cover = item.daysOfCover;
-    const best = p.mostUrgent?.daysOfCover;
-    if (
-      p.mostUrgent == null ||
-      (cover != null && (best == null || cover < best))
-    ) {
-      p.mostUrgent = { twSymbol: item.twSymbol, twNazwa: item.twNazwa, daysOfCover: cover };
-    }
+  const itemsBySupplier = new Map<string, StockWatchItem[]>();
+  for (const item of items) {
+    const list = itemsBySupplier.get(item.supplierId) ?? [];
+    list.push(item);
+    itemsBySupplier.set(item.supplierId, list);
   }
-  const proposals = [...bySupplier.values()]
-    .map((p) => ({ ...p, estimatedValue: Math.round(p.estimatedValue * 100) / 100 }))
-    .sort(
-      (a, b) =>
-        b.outOfStockCount + b.criticalCount - (a.outOfStockCount + a.criticalCount) ||
-        (a.mostUrgent?.daysOfCover ?? Infinity) - (b.mostUrgent?.daysOfCover ?? Infinity) ||
-        b.estimatedValue - a.estimatedValue
-    );
 
-  const topVelocity = items
+  const proposals: StockWatchSupplierProposal[] = [];
+  for (const order of supplierOrders) {
+    const lines = (itemsBySupplier.get(order.supplierId) ?? []).filter(
+      (i) => i.inOrder && i.rule !== "excluded"
+    );
+    const warnings = proposalWarnings(order);
+    if (lines.length === 0 && warnings.length === 0) continue;
+    let orderValue = 0;
+    let unpricedCount = 0;
+    let zdUnitsSum = 0;
+    let outOfStockCount = 0;
+    let criticalCount = 0;
+    let mostUrgent: StockWatchSupplierProposal["mostUrgent"] = null;
+    for (const line of lines) {
+      zdUnitsSum += line.orderZdUnits;
+      if (line.orderZdUnits > 0) {
+        if (line.orderValue != null) orderValue += line.orderValue;
+        else unpricedCount += 1;
+      }
+      if (line.status === "out_of_stock") outOfStockCount += 1;
+      else if (line.status === "critical") criticalCount += 1;
+      const cover = line.daysOfCover;
+      const best = mostUrgent?.daysOfCover;
+      if (mostUrgent == null || (cover != null && (best == null || cover < best))) {
+        mostUrgent = { twSymbol: line.twSymbol, twNazwa: line.twNazwa, daysOfCover: cover };
+      }
+    }
+    proposals.push({
+      supplierId: order.supplierId,
+      supplierName: order.supplierName ?? "Dostawca",
+      lineCount: lines.length,
+      zdUnitsSum,
+      orderValue: Math.round(orderValue * 100) / 100,
+      unpricedCount,
+      outOfStockCount,
+      criticalCount,
+      mostUrgent,
+      dniZapasu: order.dniZapasu,
+      dataOd: order.dataOd,
+      dataDo: order.dataDo,
+      computedAt: order.computedAt,
+      warnings,
+    });
+  }
+  proposals.sort(
+    (a, b) =>
+      b.outOfStockCount + b.criticalCount - (a.outOfStockCount + a.criticalCount) ||
+      (a.mostUrgent?.daysOfCover ?? Infinity) - (b.mostUrgent?.daysOfCover ?? Infinity) ||
+      b.orderValue - a.orderValue
+  );
+
+  const topVelocity = products
     .filter((i) => i.rule !== "excluded" && i.velocityDaily > 0)
     .sort((a, b) => b.velocityDaily - a.velocityDaily)
     .slice(0, STOCK_WATCH_TOP_VELOCITY)
     .map(toStockWatchRowView);
 
-  const flagged = items
+  const flagged = products
     .filter((i) => i.rule !== "standard")
     .sort((a, b) => (a.twSymbol ?? "").localeCompare(b.twSymbol ?? "", "pl"))
     .map(toStockWatchRowView);
 
   return {
-    health: computeStockHealthScore(items),
+    health: computeStockHealthScore(products),
     counts,
     alerts,
     proposals,
@@ -178,9 +228,9 @@ export function buildStockWatchDashboard(
     flagged,
     totals: {
       proposalValue:
-        Math.round(proposals.reduce((s, p) => s + p.estimatedValue, 0) * 100) / 100,
-      proposalSkus: proposals.reduce((s, p) => s + p.skuCount, 0),
-      itemCount: items.length,
+        Math.round(proposals.reduce((s, p) => s + p.orderValue, 0) * 100) / 100,
+      proposalLines: proposals.reduce((s, p) => s + p.lineCount, 0),
+      itemCount: products.length,
       supplierCount: new Set(items.map((i) => i.supplierId)).size,
     },
   };

@@ -190,7 +190,7 @@ export async function releaseStockWatchAdvisoryLock(client: PoolClient): Promise
 }
 
 // ---------------------------------------------------------------------------
-// Wynik analizy per towar
+// Wynik per (dostawca, towar) — lista „Do ZD” z silnika + sygnały
 // ---------------------------------------------------------------------------
 
 export type StockWatchItemWrite = {
@@ -207,16 +207,21 @@ export type StockWatchItemWrite = {
   availableQty: number;
   openZdQty: number;
   openZkUnreservedQty: number;
-  sales30d: number;
-  sales60d: number;
+  salesPeriodQty: number;
+  salesPeriodDays: number;
   velocityDaily: number;
   velocityTrend: number | null;
   daysOfCover: number | null;
   runOutDate: string | null;
   bufferDays: number;
-  safetyStockQty: number;
+  targetQty: number;
   minStockQty: number | null;
-  suggestedQty: number;
+  inOrder: boolean;
+  orderZdUnits: number;
+  orderUnitLabel: string | null;
+  orderPieces: number;
+  orderIndividualPieces: number;
+  orderValue: number | null;
   unitPriceNet: number | null;
   dailyValue: number | null;
   status: StockWatchStatus;
@@ -236,16 +241,21 @@ const ITEM_COLUMNS = [
   "available_qty",
   "open_zd_qty",
   "open_zk_unreserved_qty",
-  "sales_30d",
-  "sales_60d",
+  "sales_period_qty",
+  "sales_period_days",
   "velocity_daily",
   "velocity_trend",
   "days_of_cover",
   "run_out_date",
   "buffer_days",
-  "safety_stock_qty",
+  "target_qty",
   "min_stock_qty",
-  "suggested_qty",
+  "in_order",
+  "order_zd_units",
+  "order_unit_label",
+  "order_pieces",
+  "order_individual_pieces",
+  "order_value",
   "unit_price_net",
   "daily_value",
   "status",
@@ -266,16 +276,21 @@ function itemValues(item: StockWatchItemWrite): unknown[] {
     item.availableQty,
     item.openZdQty,
     item.openZkUnreservedQty,
-    item.sales30d,
-    item.sales60d,
+    item.salesPeriodQty,
+    item.salesPeriodDays,
     item.velocityDaily,
     item.velocityTrend,
     item.daysOfCover,
     item.runOutDate,
     item.bufferDays,
-    item.safetyStockQty,
+    item.targetQty,
     item.minStockQty,
-    item.suggestedQty,
+    item.inOrder,
+    item.orderZdUnits,
+    item.orderUnitLabel,
+    item.orderPieces,
+    item.orderIndividualPieces,
+    item.orderValue,
     item.unitPriceNet,
     item.dailyValue,
     item.status,
@@ -283,38 +298,43 @@ function itemValues(item: StockWatchItemWrite): unknown[] {
 }
 
 /**
- * Upsert wyników zakresu. Towar w kilku zakresach (grupa i cecha) — pierwszy
- * zakres w danym przebiegu wygrywa (`run_id` już bieżący = bez nadpisania).
+ * Zastępuje wynik dostawcy: upsert bieżącej listy, usunięcie towarów,
+ * których w tym przebiegu już nie ma (lista = to, co policzył silnik).
  */
-export async function upsertStockWatchItems(
+export async function replaceSupplierStockWatchItems(
+  supplierId: string,
+  runId: string,
   items: readonly StockWatchItemWrite[]
 ): Promise<number> {
   let written = 0;
   const chunkSize = 200;
+  const updates = ITEM_COLUMNS.filter((c) => c !== "subiekt_tw_id" && c !== "supplier_id")
+    .map((c) => `${c} = EXCLUDED.${c}`)
+    .concat("computed_at = now()")
+    .join(", ");
   for (let start = 0; start < items.length; start += chunkSize) {
     const chunk = items.slice(start, start + chunkSize);
     const params: unknown[] = [];
     const tuples = chunk.map((item) => {
-      const vals = itemValues(item);
-      const placeholders = vals.map((v) => {
+      const placeholders = itemValues(item).map((v) => {
         params.push(v);
         return `$${params.length}`;
       });
       return `(${placeholders.join(", ")}, now())`;
     });
-    const updates = ITEM_COLUMNS.filter((c) => c !== "subiekt_tw_id")
-      .map((c) => `${c} = EXCLUDED.${c}`)
-      .concat("computed_at = now()")
-      .join(", ");
     const res = await query(
       `INSERT INTO stock_watch_items (${ITEM_COLUMNS.join(", ")}, computed_at)
        VALUES ${tuples.join(", ")}
-       ON CONFLICT (subiekt_tw_id) DO UPDATE SET ${updates}
-       WHERE stock_watch_items.run_id IS DISTINCT FROM EXCLUDED.run_id`,
+       ON CONFLICT (supplier_id, subiekt_tw_id) DO UPDATE SET ${updates}`,
       params
     );
     written += res.rowCount ?? 0;
   }
+  await query(
+    `DELETE FROM stock_watch_items
+      WHERE supplier_id = $1 AND run_id IS DISTINCT FROM $2`,
+    [supplierId, runId]
+  );
   return written;
 }
 
@@ -322,6 +342,11 @@ export async function upsertStockWatchItems(
 export async function pruneStaleStockWatchItems(olderThanDays: number): Promise<number> {
   const res = await query(
     `DELETE FROM stock_watch_items
+      WHERE computed_at < now() - ($1::int * interval '1 day')`,
+    [olderThanDays]
+  );
+  await query(
+    `DELETE FROM stock_watch_supplier_orders
       WHERE computed_at < now() - ($1::int * interval '1 day')`,
     [olderThanDays]
   );
@@ -359,16 +384,21 @@ function mapItem(row: ItemRow): StockWatchItem {
     availableQty: num(row.available_qty),
     openZdQty: num(row.open_zd_qty),
     openZkUnreservedQty: num(row.open_zk_unreserved_qty),
-    sales30d: num(row.sales_30d),
-    sales60d: num(row.sales_60d),
+    salesPeriodQty: num(row.sales_period_qty),
+    salesPeriodDays: num(row.sales_period_days),
     velocityDaily: num(row.velocity_daily),
     velocityTrend: numOrNull(row.velocity_trend),
     daysOfCover: numOrNull(row.days_of_cover),
     runOutDate: dateKey(row.run_out_date),
     bufferDays: num(row.buffer_days),
-    safetyStockQty: num(row.safety_stock_qty),
+    targetQty: num(row.target_qty),
     minStockQty: numOrNull(row.min_stock_qty),
-    suggestedQty: num(row.suggested_qty),
+    inOrder: row.in_order === true,
+    orderZdUnits: num(row.order_zd_units),
+    orderUnitLabel: (row.order_unit_label as string | null) ?? null,
+    orderPieces: num(row.order_pieces),
+    orderIndividualPieces: num(row.order_individual_pieces),
+    orderValue: numOrNull(row.order_value),
     unitPriceNet: numOrNull(row.unit_price_net),
     dailyValue: numOrNull(row.daily_value),
     status: row.status as StockWatchStatus,
@@ -383,13 +413,7 @@ function mapItem(row: ItemRow): StockWatchItem {
   };
 }
 
-/**
- * Wszystkie wyniki z regułą liczoną na żywo — oznaczenie „Wyklucz” / „Na prośbę”
- * działa w panelu od razu, bez czekania na nocny przebieg.
- */
-export async function listStockWatchItems(): Promise<StockWatchItem[]> {
-  const res = await query<ItemRow>(
-    `SELECT i.*,
+const ITEM_SELECT = `SELECT i.*,
             s.name AS supplier_name,
             (e.subiekt_tw_id IS NOT NULL) AS excluded,
             e.note AS excluded_note,
@@ -401,8 +425,14 @@ export async function listStockWatchItems(): Promise<StockWatchItem[]> {
        LEFT JOIN suppliers s ON s.id = i.supplier_id
        LEFT JOIN zd_estimate_exclusions e ON e.subiekt_tw_id = i.subiekt_tw_id
        LEFT JOIN zd_estimate_on_request r ON r.subiekt_tw_id = i.subiekt_tw_id
-       LEFT JOIN product_purchase_prices p ON p.subiekt_tw_id = i.subiekt_tw_id`
-  );
+       LEFT JOIN product_purchase_prices p ON p.subiekt_tw_id = i.subiekt_tw_id`;
+
+/**
+ * Wszystkie wyniki z regułą liczoną na żywo — oznaczenie „Wyklucz” / „Na prośbę”
+ * działa w panelu od razu, bez czekania na nocny przebieg.
+ */
+export async function listStockWatchItems(): Promise<StockWatchItem[]> {
+  const res = await query<ItemRow>(ITEM_SELECT);
   return res.rows.map(mapItem);
 }
 
@@ -410,27 +440,111 @@ export async function listStockWatchItems(): Promise<StockWatchItem[]> {
 export async function searchStockWatchItems(term: string): Promise<StockWatchItem[]> {
   const q = term.trim();
   if (q.length < 2) return [];
-  const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  const escaped = q.replace(/[\\%_]/g, (c) => `\\${c}`);
   const res = await query<ItemRow>(
-    `SELECT i.*,
-            s.name AS supplier_name,
-            (e.subiekt_tw_id IS NOT NULL) AS excluded,
-            e.note AS excluded_note,
-            (r.subiekt_tw_id IS NOT NULL) AS on_request,
-            r.note AS on_request_note,
-            p.dok_nr AS price_dok_nr,
-            p.dok_date AS price_dok_date
-       FROM stock_watch_items i
-       LEFT JOIN suppliers s ON s.id = i.supplier_id
-       LEFT JOIN zd_estimate_exclusions e ON e.subiekt_tw_id = i.subiekt_tw_id
-       LEFT JOIN zd_estimate_on_request r ON r.subiekt_tw_id = i.subiekt_tw_id
-       LEFT JOIN product_purchase_prices p ON p.subiekt_tw_id = i.subiekt_tw_id
+    `${ITEM_SELECT}
       WHERE i.tw_symbol ILIKE $1 OR i.tw_nazwa ILIKE $1
       ORDER BY (i.tw_symbol ILIKE $2) DESC, i.velocity_daily DESC, i.tw_symbol
       LIMIT 50`,
-    [like, q.replace(/[\\%_]/g, (c) => `\\${c}`) + "%"]
+    [`%${escaped}%`, `${escaped}%`]
   );
   return res.rows.map(mapItem);
+}
+
+// ---------------------------------------------------------------------------
+// Podsumowanie „Do ZD” per dostawca
+// ---------------------------------------------------------------------------
+
+export type StockWatchSupplierOrder = {
+  supplierId: string;
+  supplierName: string | null;
+  runId: string | null;
+  scopeMode: "grupa" | "cecha";
+  scopeId: number;
+  dniZapasu: number;
+  dataOd: string;
+  dataDo: string;
+  lineCount: number;
+  zdUnitsSum: number;
+  orderValue: number;
+  unpricedCount: number;
+  explodeBomIncomplete: boolean;
+  historyFetchFailed: boolean;
+  pendingIndividualsError: string | null;
+  truncated: boolean;
+  computedAt: string;
+};
+
+export async function upsertStockWatchSupplierOrder(
+  row: Omit<StockWatchSupplierOrder, "supplierName" | "computedAt">
+): Promise<void> {
+  await query(
+    `INSERT INTO stock_watch_supplier_orders
+       (supplier_id, run_id, scope_mode, scope_id, dni_zapasu, data_od, data_do,
+        line_count, zd_units_sum, order_value, unpriced_count, explode_bom_incomplete,
+        history_fetch_failed, pending_individuals_error, truncated, computed_at)
+     VALUES ($1, $2, $3, $4, $5, $6::date, $7::date, $8, $9, $10, $11, $12, $13, $14, $15, now())
+     ON CONFLICT (supplier_id) DO UPDATE SET
+       run_id = EXCLUDED.run_id,
+       scope_mode = EXCLUDED.scope_mode,
+       scope_id = EXCLUDED.scope_id,
+       dni_zapasu = EXCLUDED.dni_zapasu,
+       data_od = EXCLUDED.data_od,
+       data_do = EXCLUDED.data_do,
+       line_count = EXCLUDED.line_count,
+       zd_units_sum = EXCLUDED.zd_units_sum,
+       order_value = EXCLUDED.order_value,
+       unpriced_count = EXCLUDED.unpriced_count,
+       explode_bom_incomplete = EXCLUDED.explode_bom_incomplete,
+       history_fetch_failed = EXCLUDED.history_fetch_failed,
+       pending_individuals_error = EXCLUDED.pending_individuals_error,
+       truncated = EXCLUDED.truncated,
+       computed_at = now()`,
+    [
+      row.supplierId,
+      row.runId,
+      row.scopeMode,
+      row.scopeId,
+      row.dniZapasu,
+      row.dataOd,
+      row.dataDo,
+      row.lineCount,
+      row.zdUnitsSum,
+      row.orderValue,
+      row.unpricedCount,
+      row.explodeBomIncomplete,
+      row.historyFetchFailed,
+      row.pendingIndividualsError?.slice(0, 500) ?? null,
+      row.truncated,
+    ]
+  );
+}
+
+export async function listStockWatchSupplierOrders(): Promise<StockWatchSupplierOrder[]> {
+  const res = await query<ItemRow>(
+    `SELECT o.*, s.name AS supplier_name
+       FROM stock_watch_supplier_orders o
+       LEFT JOIN suppliers s ON s.id = o.supplier_id`
+  );
+  return res.rows.map((row) => ({
+    supplierId: String(row.supplier_id),
+    supplierName: (row.supplier_name as string | null) ?? null,
+    runId: (row.run_id as string | null) ?? null,
+    scopeMode: row.scope_mode === "cecha" ? "cecha" : "grupa",
+    scopeId: num(row.scope_id),
+    dniZapasu: num(row.dni_zapasu),
+    dataOd: dateKey(row.data_od) ?? "",
+    dataDo: dateKey(row.data_do) ?? "",
+    lineCount: num(row.line_count),
+    zdUnitsSum: num(row.zd_units_sum),
+    orderValue: num(row.order_value),
+    unpricedCount: num(row.unpriced_count),
+    explodeBomIncomplete: row.explode_bom_incomplete === true,
+    historyFetchFailed: row.history_fetch_failed === true,
+    pendingIndividualsError: (row.pending_individuals_error as string | null) ?? null,
+    truncated: row.truncated === true,
+    computedAt: iso(row.computed_at) ?? "",
+  }));
 }
 
 /** Aktywni dostawcy z / bez zakresu w kreatorze ZD — tylko zmapowani wchodzą do analizy. */

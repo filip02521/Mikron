@@ -79,7 +79,7 @@ export const CRON_JOB_DEFINITIONS: CronJobDefinition[] = [
     endpoint: "/api/cron/stock-watch",
     scheduled: true,
     description:
-      "Rotacja sprzedaży (30/60 dni), czas do wyczerpania i propozycje zamówień po dostawcach. Panel: /zakupy/braki.",
+      "Lista „Do ZD” per dostawca tym samym silnikiem co Kreator ZD, czas do wyczerpania, alerty. Panel: /zakupy/braki.",
   },
   {
     id: "morning_sync",

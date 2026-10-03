@@ -2,48 +2,42 @@
  * Nocny worker „Braki i zamówienia”.
  *
  * 1. Ceny zakupu z ZD (lokalny indeks z synchronizacji katalogu) — porcja na noc.
- * 2. Dla każdego zakresu dostawcy (grupa / cecha z kreatora ZD) dwa odczyty
- *    GET /orders/zd/estimate: sprzedaż 30 i 60 dni (+ stany, rezerwacje, otwarte ZD/ZK).
- * 3. Analiza (rotacja, dni do wyczerpania, bufor, propozycja) → stock_watch_items.
+ * 2. Dla każdego dostawcy z zakresem (grupa / cecha) — silnik zamówień ZD,
+ *    dokładnie jak „Policz” w Kreatorze (te same dni zapasu, okno sprzedaży, reguły,
+ *    historia, prośby) → lista „Do ZD” + sygnały stanów → stock_watch_items.
  *
  * Tylko odczyt z Subiekta. Limit czasu: niedokończone zakresy przechodzą
  * do kolejnego wywołania crona tego samego dnia.
  */
 
-import { subDays } from "date-fns";
 import { getPool } from "@/lib/db/pool";
 import { fetchSuppliersWithSchedules } from "@/lib/data/queries";
 import { listZdEstimateSupplierScopes } from "@/lib/data/zd-estimate-supplier-scopes";
-import { fetchZdEstimatePackaging } from "@/lib/data/zd-estimate-packaging";
-import { fetchZdEstimateMinStock } from "@/lib/data/zd-estimate-min-stock";
-import { fetchZdEstimateExclusions } from "@/lib/data/zd-estimate-exclusions";
-import { fetchZdEstimateOnRequests } from "@/lib/data/zd-estimate-on-request";
-import {
-  fetchSubiektOrdersLatestFsDateKey,
-  fetchSubiektZdEstimateAll,
-} from "@/lib/subiekt/api";
+import { fetchSubiektOrdersLatestFsDateKey } from "@/lib/subiekt/api";
 import { resolveSubiektOrdersConfig } from "@/lib/subiekt/config";
-import { assertZdEstimateFilterEcho } from "@/lib/orders/zd-estimate-scope";
-import { stockPeriodToDniZapasu } from "@/lib/orders/zd-estimate-manual";
-import { formatDateString, parseDateOnly } from "@/lib/orders/dates";
+import {
+  DEFAULT_DNI_ZAPASU,
+  salesWindowFromDniZapasu,
+  stockPeriodToDniZapasu,
+} from "@/lib/orders/zd-estimate-manual";
+import { ZD_ESTIMATE_UI_PREFS_DEFAULTS } from "@/lib/orders/zd-estimate-prefs";
+import { zdDocumentUnitsToPieces } from "@/lib/orders/zd-estimate-units";
+import { runZdOrderEngine } from "@/lib/orders/zd-order-engine";
+import { buildZdOrderList } from "@/lib/orders/zd-order-list";
 import { warsawNowParts } from "@/lib/time/warsaw";
 import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
-import type { SubiektZdEstimateLine } from "@/lib/subiekt/types";
-import {
-  analyzeStockWatchItem,
-  STOCK_WATCH_DEFAULT_BUFFER_DAYS,
-  type StockWatchPackaging,
-  type StockWatchRule,
-} from "@/lib/stock-watch/analysis";
+import { analyzeStockWatchItem, unitPricePerPiece } from "@/lib/stock-watch/analysis";
 import {
   createStockWatchRun,
   getLatestStockWatchRun,
   loadProductPurchasePrices,
   pruneStaleStockWatchItems,
   releaseStockWatchAdvisoryLock,
+  replaceSupplierStockWatchItems,
   tryStockWatchAdvisoryLock,
   updateStockWatchRun,
-  upsertStockWatchItems,
+  upsertStockWatchSupplierOrder,
+  type ProductPurchasePrice,
   type StockWatchItemWrite,
   type StockWatchRun,
   type StockWatchScopeFailure,
@@ -84,53 +78,23 @@ export type StockWatchWorkerResult = {
   error?: string;
 };
 
-type MergedLine = {
-  base: SubiektZdEstimateLine;
-  sales30d: number;
-  sales60d: number;
-};
-
 function num(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
 }
 
-/** 30 dni daje stany i ruch; 60 dni tylko sprzedaż do średniej ważonej. */
-export function mergeEstimateWindows(
-  lines30: readonly SubiektZdEstimateLine[],
-  lines60: readonly SubiektZdEstimateLine[]
-): MergedLine[] {
-  const byTw = new Map<number, MergedLine>();
-  for (const line of lines30) {
-    const tw = Math.trunc(Number(line.tw_Id));
-    if (!(tw > 0) || byTw.has(tw)) continue;
-    byTw.set(tw, { base: line, sales30d: num(line.sprzedazOkres), sales60d: 0 });
-  }
-  for (const line of lines60) {
-    const tw = Math.trunc(Number(line.tw_Id));
-    if (!(tw > 0)) continue;
-    const hit = byTw.get(tw);
-    if (hit) {
-      hit.sales60d = num(line.sprzedazOkres);
-    } else {
-      // Brak w oknie 30 dni (rzadkie) — stany z okna 60 dni, sprzedaż 30 = 0.
-      byTw.set(tw, { base: line, sales30d: 0, sales60d: num(line.sprzedazOkres) });
-    }
-  }
-  return [...byTw.values()];
+function round(value: number, digits: number): number {
+  const p = 10 ** digits;
+  return Math.round(value * p) / p;
 }
 
+/** Koniec okna sprzedaży jak w Kreatorze: ostatnia FS w Subiekcie, inaczej dziś. */
 async function resolveSalesEndDate(todayKey: string): Promise<string> {
-  const today = parseDateOnly(todayKey)!;
-  const yesterday = formatDateString(subDays(today, 1));
   try {
-    const latestFs = await fetchSubiektOrdersLatestFsDateKey();
-    // Kopia bazy bywa starsza niż „wczoraj” — nie licz dni bez danych jako zerowej sprzedaży.
-    if (latestFs && latestFs < yesterday) return latestFs;
+    return (await fetchSubiektOrdersLatestFsDateKey()) ?? todayKey;
   } catch {
-    /* fallback: wczoraj */
+    return todayKey;
   }
-  return yesterday;
 }
 
 export async function runStockWatchWorker(input: {
@@ -196,36 +160,8 @@ export async function runStockWatchWorker(input: {
       console.error("[stock-watch] price harvest", e);
     }
 
-    // 2) Reguły i ustawienia — raz na wywołanie.
-    const [packagingRows, minStockRows, exclusions, onRequests, prices] =
-      await Promise.all([
-        fetchZdEstimatePackaging(),
-        fetchZdEstimateMinStock(),
-        fetchZdEstimateExclusions(),
-        fetchZdEstimateOnRequests(),
-        loadProductPurchasePrices(),
-      ]);
-    const packagingByTw = new Map<number, StockWatchPackaging>(
-      packagingRows.map((p) => [
-        p.subiektTwId,
-        { unitsPerPackage: p.unitsPerPackage, documentUnitMode: p.documentUnitMode },
-      ])
-    );
-    const minStockByTw = new Map(minStockRows.map((m) => [m.subiektTwId, m.minStockSzt]));
-    const excluded = new Set(exclusions.map((e) => e.subiektTwId));
-    const onRequest = new Set(onRequests.map((r) => r.subiektTwId));
-    const ruleFor = (tw: number): StockWatchRule =>
-      excluded.has(tw) ? "excluded" : onRequest.has(tw) ? "on_request" : "standard";
-
-    const salesEnd = parseDateOnly(run.salesEndDate)!;
-    const window30 = {
-      dataOd: formatDateString(subDays(salesEnd, 29)),
-      dataDo: run.salesEndDate,
-    };
-    const window60 = {
-      dataOd: formatDateString(subDays(salesEnd, 59)),
-      dataDo: run.salesEndDate,
-    };
+    // 2) Wycena listy — raz na wywołanie (reguły czyta silnik per dostawca, jak Kreator).
+    const prices = await loadProductPurchasePrices();
 
     // 3) Zakresy dostawców.
     const scopesDone = [...run.scopesDone];
@@ -239,96 +175,20 @@ export async function runStockWatchWorker(input: {
         break;
       }
       const supplier = supplierById.get(scope.supplierId)!;
-      const bufferDays =
-        stockPeriodToDniZapasu(
-          supplier.stock_raw,
-          supplier.stock != null ? Number(supplier.stock) : null
-        ) ?? STOCK_WATCH_DEFAULT_BUFFER_DAYS;
-      const filter =
-        scope.mode === "grupa"
-          ? { grupaId: scope.grupaId ?? undefined }
-          : { cechaId: scope.cechaId ?? undefined };
-      const validateFirstPage = ({
-        parametry,
-      }: {
-        parametry: { grupaId?: unknown; cechaId?: unknown };
-      }) =>
-        assertZdEstimateFilterEcho({
-          mode: scope.mode,
-          expectedGrupaId: scope.grupaId,
-          expectedCechaId: scope.cechaId,
-          parametry,
-        });
-
       try {
-        const est30 = await fetchSubiektZdEstimateAll(
-          { ...filter, ...window30, dniZapasu: bufferDays, tylkoBraki: false },
-          { validateFirstPage }
-        );
-        const est60 = await fetchSubiektZdEstimateAll(
-          { ...filter, ...window60, dniZapasu: bufferDays, tylkoBraki: false },
-          { validateFirstPage }
-        );
-
-        const rows: StockWatchItemWrite[] = mergeEstimateWindows(
-          est30.pozycje,
-          est60.pozycje
-        ).map(({ base, sales30d, sales60d }) => {
-          const tw = Math.trunc(Number(base.tw_Id));
-          const packaging = packagingByTw.get(tw) ?? null;
-          const minStock = minStockByTw.get(tw) ?? null;
-          const rule = ruleFor(tw);
-          const result = analyzeStockWatchItem({
-            stockQty: num(base.tw_Stan),
-            reservedQty: num(base.tw_StanRez),
-            availableQty: num(base.dostepne),
-            openZdDocUnits: num(base.otwarteZd),
-            openZkUnreservedQty: num(base.otwarteZkBezRez),
-            sales30d,
-            sales60d,
-            bufferDays,
-            minStockQty: minStock,
-            rule,
-            packaging,
-            lastZdPriceNet: prices.get(tw)?.priceNet ?? null,
-            salesEndDate: run!.salesEndDate,
-          });
-          return {
-            subiektTwId: tw,
-            supplierId: scope.supplierId,
-            runId: run!.id,
-            twSymbol: base.tw_Symbol ?? null,
-            twNazwa: String(base.tw_Nazwa ?? "").trim(),
-            grtNazwa: base.grt_Nazwa ?? null,
-            scopeMode: scope.mode,
-            scopeId: (scope.mode === "grupa" ? scope.grupaId : scope.cechaId) ?? 0,
-            stockQty: num(base.tw_Stan),
-            reservedQty: num(base.tw_StanRez),
-            availableQty: num(base.dostepne),
-            openZdQty: result.openZdQty,
-            openZkUnreservedQty: num(base.otwarteZkBezRez),
-            sales30d,
-            sales60d,
-            velocityDaily: result.velocityDaily,
-            velocityTrend: result.velocityTrend,
-            daysOfCover: result.daysOfCover,
-            runOutDate: result.runOutDate,
-            bufferDays: result.bufferDays,
-            safetyStockQty: result.safetyStockQty,
-            minStockQty: minStock,
-            suggestedQty: result.suggestedQty,
-            unitPriceNet: result.unitPriceNet,
-            dailyValue: result.dailyValue,
-            status: result.status,
-          };
+        const outcome = await computeSupplierOrder({
+          scope,
+          supplier,
+          run,
+          ordersBaseUrl: orders.config.baseUrl,
+          prices,
         });
-
-        itemsWritten += await upsertStockWatchItems(rows);
-        if (est30.truncated || est60.truncated) {
+        itemsWritten += outcome.itemsWritten;
+        if (outcome.message) {
           scopesFailed.push({
             supplierId: scope.supplierId,
             supplierName: supplier.name,
-            message: "Lista z Subiekta niepełna (limit stron) — część towarów pominięta.",
+            message: outcome.message,
           });
         }
       } catch (e) {
@@ -391,4 +251,159 @@ export async function runStockWatchWorker(input: {
     }
     client.release();
   }
+}
+
+/**
+ * Jeden dostawca: silnik (jak „Policz”) → lista „Do ZD” (jak tabela Kreatora)
+ * → zapis pozycji i podsumowania. `message` = częściowy problem do pokazania w panelu.
+ */
+async function computeSupplierOrder(input: {
+  scope: Awaited<ReturnType<typeof listZdEstimateSupplierScopes>>[number];
+  supplier: { id: string; name: string; stock_raw: string | null; stock: unknown };
+  run: StockWatchRun;
+  ordersBaseUrl: string;
+  prices: ReadonlyMap<number, ProductPurchasePrice>;
+}): Promise<{ itemsWritten: number; message: string | null }> {
+  const { scope, supplier, run, prices } = input;
+  const scopeId = (scope.mode === "grupa" ? scope.grupaId : scope.cechaId) ?? 0;
+  if (!(scopeId > 0)) {
+    return { itemsWritten: 0, message: "Zakres dostawcy bez grupy / cechy." };
+  }
+  // Te same dni zapasu i okno co Kreator po wyborze dostawcy.
+  const rawDni = stockPeriodToDniZapasu(
+    supplier.stock_raw,
+    supplier.stock != null ? Number(supplier.stock) : null
+  );
+  const dniZapasu = rawDni != null && rawDni > 0 ? rawDni : DEFAULT_DNI_ZAPASU;
+  const window = salesWindowFromDniZapasu(dniZapasu, run.salesEndDate);
+
+  const engine = await runZdOrderEngine({
+    scope:
+      scope.mode === "grupa"
+        ? { mode: "grupa", grupaId: scopeId, cechaId: null }
+        : { mode: "cecha", grupaId: null, cechaId: scopeId },
+    supplierId: supplier.id,
+    dniZapasu,
+    dataOd: window.dataOd,
+    dataDo: window.dataDo,
+    zapasMin: ZD_ESTIMATE_UI_PREFS_DEFAULTS.zapasMin,
+    ordersBaseUrl: input.ordersBaseUrl,
+  });
+  if (!engine.ok) {
+    return { itemsWritten: 0, message: engine.feedback.message };
+  }
+
+  const list = buildZdOrderList({
+    lines: engine.result.pozycje,
+    packagingLookup: engine.packagingLookup,
+    hardExcludedTwIds: engine.hardExcludedTwIds,
+    onRequestTwIds: engine.onRequestTwIds,
+    productPairs: engine.productPairs,
+    bomRefs: engine.bomRefs,
+    missingBomTwIds: engine.missingBomTwIds,
+    teethTwIds: engine.teethTwIds,
+    pendingIndividuals: engine.pendingIndividuals,
+    // Jak Workbench po Policz: brak resolve = pusta mapa (bez korekty overlap).
+    prosbaReservedByTwId: engine.prosbaReservedByTwId ?? new Map(),
+    extrasPolicy: engine.extrasPolicy,
+    minStockByTwId: engine.minStockByTwId,
+  });
+  const orderByTw = new Map(list.lines.map((l) => [l.line.tw_Id, l]));
+
+  let orderValue = 0;
+  let unpricedCount = 0;
+  let zdUnitsSum = 0;
+  const rows: StockWatchItemWrite[] = engine.result.pozycje.map((line) => {
+    const tw = line.tw_Id;
+    const pack = engine.packagingLookup.get(tw) ?? null;
+    const unitPrice = unitPricePerPiece(prices.get(tw)?.priceNet ?? null, pack);
+    const minStock = engine.minStockByTwId.get(tw) ?? null;
+    const openZdQty = zdDocumentUnitsToPieces(
+      Math.max(0, num(line.otwarteZd)),
+      pack?.unitsPerPackage,
+      pack?.documentUnitMode ?? "packages"
+    );
+    const signal = analyzeStockWatchItem({
+      availableQty: num(line.dostepne),
+      openZdQty,
+      velocityDaily: num(line.sprzedazDziennie),
+      targetQty: num(line.celZapasuTracked),
+      minStockQty: minStock,
+      unitPriceNet: unitPrice,
+      salesEndDate: run.salesEndDate,
+    });
+    const order = orderByTw.get(tw) ?? null;
+    const lineValue =
+      order && order.zdUnits > 0 && unitPrice != null
+        ? round(order.piecesArriving * unitPrice, 2)
+        : null;
+    if (order && order.zdUnits > 0) {
+      zdUnitsSum += order.zdUnits;
+      if (lineValue != null) orderValue += lineValue;
+      else unpricedCount += 1;
+    }
+    return {
+      subiektTwId: tw,
+      supplierId: supplier.id,
+      runId: run.id,
+      twSymbol: line.tw_Symbol || null,
+      twNazwa: String(line.tw_Nazwa ?? "").trim(),
+      grtNazwa: line.grt_Nazwa || null,
+      scopeMode: scope.mode,
+      scopeId,
+      stockQty: num(line.tw_Stan),
+      reservedQty: num(line.tw_StanRez),
+      availableQty: num(line.dostepne),
+      openZdQty: round(openZdQty, 3),
+      openZkUnreservedQty: num(line.otwarteZkBezRez),
+      salesPeriodQty: num(line.sprzedazOkres),
+      salesPeriodDays: dniZapasu,
+      velocityDaily: round(Math.max(0, num(line.sprzedazDziennie)), 4),
+      velocityTrend: null,
+      daysOfCover: signal.daysOfCover,
+      runOutDate: signal.runOutDate,
+      bufferDays: dniZapasu,
+      targetQty: round(num(line.celZapasuTracked), 2),
+      minStockQty: minStock,
+      inOrder: order != null,
+      orderZdUnits: order?.zdUnits ?? 0,
+      orderUnitLabel: order
+        ? order.packagesMode
+          ? order.packageLabel || "op."
+          : "szt."
+        : null,
+      orderPieces: order?.piecesArriving ?? 0,
+      orderIndividualPieces: order?.individualExtraPieces ?? 0,
+      orderValue: lineValue,
+      unitPriceNet: unitPrice,
+      dailyValue: signal.dailyValue,
+      status: signal.status,
+    };
+  });
+
+  const itemsWritten = await replaceSupplierStockWatchItems(supplier.id, run.id, rows);
+  await upsertStockWatchSupplierOrder({
+    supplierId: supplier.id,
+    runId: run.id,
+    scopeMode: scope.mode,
+    scopeId,
+    dniZapasu,
+    dataOd: window.dataOd,
+    dataDo: window.dataDo,
+    lineCount: list.lines.length,
+    zdUnitsSum,
+    orderValue: round(orderValue, 2),
+    unpricedCount,
+    explodeBomIncomplete: list.explodeBomIncomplete,
+    historyFetchFailed: engine.historyFetchFailed,
+    pendingIndividualsError: engine.pendingIndividualsError,
+    truncated: engine.fetch.truncated,
+  });
+
+  return {
+    itemsWritten,
+    message: engine.fetch.truncated
+      ? "Lista z Subiekta niepełna (limit stron) — część towarów pominięta."
+      : null,
+  };
 }

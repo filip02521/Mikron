@@ -275,6 +275,14 @@ export function parseZdEstimateLaunchQuery(
   };
 }
 
+/**
+ * „Przygotuj ZD” — Kreator z dostawcą i od razu Policz (jak w panelu dziennym).
+ * Jedyna droga do utworzenia ZD z panelu dziennego i panelu Braki.
+ */
+export function buildZdEstimateLaunchHref(supplierId: string): string {
+  return `/zakupy/szacunek?from=daily&supplierId=${encodeURIComponent(supplierId)}&autorun=1`;
+}
+
 /** Powiązanie dostawcy z grupą albo cechą Subiekta — do wyświetlenia (np. szuflada dostawcy). */
 export type SupplierSubiektScopeInfo = {
   mode: ZdEstimateRunMode;

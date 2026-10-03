@@ -3,7 +3,7 @@ import type { StockWatchStatus } from "@/lib/stock-watch/analysis";
 import { formatQtyPl, STOCK_WATCH_STATUS_META } from "@/components/stock-watch/stock-watch-format";
 
 /**
- * Stan dostępny względem bezpiecznego bufora. Kreska = 100% bufora;
+ * Stan dostępny względem celu zapasu z Kreatora. Kreska = 100% celu;
  * szary odcinek = towar w drodze (otwarte ZD).
  */
 export function StockCoverBar({
@@ -19,7 +19,7 @@ export function StockCoverBar({
   status: StockWatchStatus;
   className?: string;
 }) {
-  // Skala do 150% bufora — nadwyżka nie rozpycha paska.
+  // Skala do 150% celu — nadwyżka nie rozpycha paska.
   const scale = Math.max(safetyStock * 1.5, available + incoming, 1);
   const availPct = Math.max(0, Math.min(100, (Math.max(0, available) / scale) * 100));
   const incomingPct = Math.max(
@@ -35,7 +35,7 @@ export function StockCoverBar({
       <div
         className="relative h-2.5 w-full overflow-hidden rounded-full bg-slate-100"
         role="img"
-        aria-label={`Dostępne ${formatQtyPl(available)} szt, w drodze ${formatQtyPl(incoming)} szt, bufor ${formatQtyPl(safetyStock)} szt`}
+        aria-label={`Dostępne ${formatQtyPl(available)} szt, w drodze ${formatQtyPl(incoming)} szt, cel ${formatQtyPl(safetyStock)} szt`}
       >
         <div
           className={cn("absolute inset-y-0 left-0 rounded-full", STOCK_WATCH_STATUS_META[status].bar)}
