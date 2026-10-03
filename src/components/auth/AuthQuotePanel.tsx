@@ -36,7 +36,7 @@ function QuoteText({
           animClass
         )}
       >
-        „{quote.text}&quot;
+        „{quote.text}”
       </blockquote>
       {quote.attribution ? (
         <p
@@ -68,6 +68,8 @@ export function AuthQuotePanel({
 
   useEffect(() => {
     const rotateId = window.setInterval(() => {
+      // Nie zmieniaj cytatu, gdy ktoś wpisuje dane w formularzu (ruch obok pola rozprasza).
+      if (document.activeElement?.closest("form")) return;
       setAnimClass("auth-quote-exit");
       window.setTimeout(() => {
         setIndex((i) => (i + 1) % AUTH_QUOTES.length);
@@ -84,25 +86,13 @@ export function AuthQuotePanel({
     return (
       <div
         className={cn(
-          "relative overflow-hidden rounded-lg bg-indigo-700 px-4 py-4 shadow-lg ",
+          "relative overflow-hidden rounded-lg bg-indigo-800 px-4 py-4",
           className
         )}
       >
         {!isAuthVisualVariant("minimal") ? <AuthCompactQuoteBackdrop /> : null}
-        {!isAuthVisualVariant("minimal") ? (
-          <div
-            className="pointer-events-none absolute -right-8 top-0 h-24 w-24 rounded-full bg-indigo-400/20 blur-2xl"
-            aria-hidden
-          />
-        ) : null}
-        <p className="relative text-[10px] font-semibold text-indigo-200/80">
-          {ONTIME_COMPANY} · {ONTIME_APP_NAME}
-        </p>
-        <p className="relative mt-0.5 text-xs font-medium text-sky-100/95">{ONTIME_TAGLINE}</p>
+        <p className="relative text-xs font-medium text-sky-100/95">{ONTIME_TAGLINE}</p>
         <QuoteText quote={quote} animClass={animClass} compact />
-        <p className="relative mt-3 text-[10px] tabular-nums text-indigo-200/50">
-          {index + 1} / {AUTH_QUOTES.length}
-        </p>
       </div>
     );
   }
@@ -123,9 +113,6 @@ export function AuthQuotePanel({
         <p className="mt-2 text-sm font-medium text-sky-100/95">{ONTIME_TAGLINE}</p>
         <QuoteText quote={quote} animClass={animClass} compact={false} />
       </div>
-      <p className="text-xs text-indigo-200/50">
-        {index + 1} / {AUTH_QUOTES.length}
-      </p>
     </div>
   );
 }
