@@ -30,15 +30,15 @@ Lista ma uwzględniać nie tylko sprzedaż i zapas, ale też **kiedy towar fakty
 2. **Kreator ZD** — jedyne miejsce decyzji: lista, edycja ilości, prośby, „Utwórz ZD”, post-create (harmonogram, prośby, historia).
 3. **Radar** (panel dzienny + panel Braki) — mówi *kiedy* i *u kogo* zamówić; przycisk „Przygotuj ZD” otwiera Kreator z gotową listą. Panel Braki **nie tworzy ZD i nie ma własnych szkiców**.
 
-### 3.2 Kto dostarcza towar
+### 3.2 Kto dostarcza towar — tylko przypisane grupy i cechy
 
-Przypisanie towar → dostawca z **historii ZD** (`product_supplier_links`), a nie z grupy:
+**Decyzja (2026-10-03):** źródłem prawdy są **ręcznie przypisane grupy/cechy** dostawców (na produkcji 83 mapowania).
+Panel i Kreator pokazują wyłącznie towary z aktywnych mapowań — nigdy całego katalogu Subiekta,
+bo w Subiekcie są tysiące starych, niezamawianych już towarów.
 
-- główny dostawca = ten z ostatniego ZD (przy remisie: więcej zamówień),
-- ręczna zmiana w karcie towaru / w Kreatorze (nadpisuje historię),
-- towar bez historii ZD → dostawca z zakresu grupy/cechy (jak dziś) albo „bez dostawcy” do przypisania.
-
-Grupy/cechy zostają tylko jako **sposób pobrania danych** z Subiekta (`/orders/zd/estimate` filtruje po grupie/cesze). Nocny przebieg idzie po wszystkich grupach, więc pokrywa cały katalog.
+- Nowy dostawca / nowa linia produktów pojawia się dopiero po przypisaniu grupy lub cechy (świadoma decyzja).
+- Historia ZD (`product_supplier_links`) może służyć tylko jako **podpowiedź** w obrębie przypisanych zakresów
+  (np. „ten towar z Twojej grupy kupujesz od innego dostawcy”) — nigdy nie dokłada towarów spoza zakresów.
 
 ### 3.3 Ile zamówić — horyzont pokrycia
 
@@ -88,7 +88,7 @@ Dostawca „na żądanie” — tylko sygnał „Pilne”, bez planowych.
 | Etap | Zakres | Kryterium odbioru |
 |---|---|---|
 | 1. Jeden silnik | Wydzielenie obliczeń kreatora do modułu serwerowego używanego przez Kreator i nocny przebieg; panel Braki pokazuje „Do ZD” z tego silnika; usunięcie szkiców i tworzenia ZD z panelu; „Przygotuj ZD” = otwarcie Kreatora | Dla 5 dostawców liczba w panelu = „Do ZD” w Kreatorze (ten sam dzień danych) |
-| 2. Dostawca z historii ZD | Przypisanie towar → dostawca z `product_supplier_links` + ręczna zmiana; nocny przebieg po wszystkich grupach; Kreator domyślnie filtruje do towarów dostawcy | Panel obejmuje wszystkich dostawców z historią ZD; 0 towarów pod złym dostawcą |
+| 2. Porządek w zakresach (do ustalenia) | Tylko w obrębie przypisanych grup/cech — bez całego katalogu. Kandydaci: kilka zakresów na dostawcę, rozstrzyganie zakresów wspólnych, podpowiedzi z historii ZD | Do ustalenia z użytkownikiem |
 | 3. Czas dostawy i harmonogram | `L`, `N`, horyzont `H`, zapas bezpieczeństwa; sygnały „Pilne” i „Przed kolejną dostawą”; sekcja w panelu dziennym | Dla dostawcy z próbkami H i sygnały zgodne z ręcznym wyliczeniem |
 | 4. Gotowa lista w Kreatorze | Kreator otwiera się z listą z nocy + znacznik wieku danych; „Przelicz” na żywo | Otwarcie Ivoclar < 3 s zamiast minut |
 
