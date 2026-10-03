@@ -247,7 +247,7 @@ function ProcurementProcessLinesModalForm({
           <p
             className={cn(
               "rounded-md border px-3 py-2.5 text-xs leading-relaxed",
-              supplierOrderOnDemand
+              supplierOrderOnDemand || action === "JUZ_ZAMOWIONE"
                 ? "border-slate-200/90 bg-slate-50 text-slate-700"
                 : "border-amber-200/80 bg-amber-50/90 text-amber-950"
             )}

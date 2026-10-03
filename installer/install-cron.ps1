@@ -13,7 +13,7 @@ param(
   [switch]$Install,
   [switch]$Uninstall,
   [switch]$Test,
-  [ValidateSet("morning", "process-deliveries", "informacja-stock-sync", "catalog-zd-sync", "stock-watch", "zd-eta-sync", "morning-sync")]
+  [ValidateSet("morning", "process-deliveries", "informacja-stock-sync", "catalog-zd-sync", "stock-watch", "subiekt-lead-times", "zd-eta-sync", "morning-sync")]
   [string]$Job = "morning",
   [switch]$Force,
   [switch]$List
@@ -32,7 +32,8 @@ $TaskNames = @(
   "OnTime Cron Morning",
   "OnTime Cron Process Deliveries",
   "OnTime Cron Informacja Stock Sync",
-  "OnTime Cron ZD ETA Sync"
+  "OnTime Cron ZD ETA Sync",
+  "OnTime Cron Subiekt Lead Times"
 ) + ($CatalogZdSyncSlots | ForEach-Object { "OnTime Cron Catalog ZD Sync $_" }) +
   ($StockWatchSlots | ForEach-Object { "OnTime Cron Stock Watch $_" })
 $LegacyTaskNames = @(
@@ -299,6 +300,13 @@ function Install-CronScheduledTasks {
       "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY", "/ST", $slot
     )
   }
+
+  # Czasy dostaw ZD → FZ — przed oknem katalogu (02:00), ~1 min.
+  $trLeadTimes = Get-CronInvokeCommand -Root $Root -JobName "subiekt-lead-times"
+  New-SchTasksCronTask "OnTime Cron Subiekt Lead Times" @(
+    "/Create", "/F", "/TN", "OnTime Cron Subiekt Lead Times", "/TR", $trLeadTimes,
+    "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "DAILY", "/ST", "01:30"
+  )
 
   $trStockWatch = Get-CronInvokeCommand -Root $Root -JobName "stock-watch"
   foreach ($slot in @("05:30", "05:50", "06:10", "06:30")) {

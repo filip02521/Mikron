@@ -82,6 +82,15 @@ export const CRON_JOB_DEFINITIONS: CronJobDefinition[] = [
       "Lista „Do ZD” per dostawca tym samym silnikiem co Kreator ZD, czas do wyczerpania, alerty. Panel: /zakupy/braki.",
   },
   {
+    id: "subiekt_lead_times",
+    label: "Czasy dostaw z Subiekta",
+    schedule: "codziennie 1:30",
+    endpoint: "/api/cron/subiekt-lead-times",
+    scheduled: true,
+    description:
+      "ZD → FZ z ostatnich 18 mies.: domyka zamówienia z brakami i przelicza ETA dostawców. Panel: /admin (Czasy dostaw z Subiekta).",
+  },
+  {
     id: "morning_sync",
     label: "Tylko harmonogramy",
     schedule: "ręcznie (test)",
@@ -280,6 +289,12 @@ function summarizeRunDetail(
       }
       break;
     }
+    case "subiekt_lead_times": {
+      if (typeof detail.samplesAssigned === "number") lines.push(`Zamówienia: ${detail.samplesAssigned}`);
+      if (typeof detail.docsFetched === "number") lines.push(`Pobrane dokumenty: ${detail.docsFetched}`);
+      if (detail.subiektOffline === true) lines.push("Subiekt offline");
+      break;
+    }
     case "morning_sync": {
       if (typeof detail.schedulesProcessed === "number") {
         lines.push(`Harmonogramy: ${detail.schedulesProcessed}`);
@@ -461,6 +476,8 @@ export function evaluateCronJob(
             ? isWorkHoursJobStale(run, now, 3.5)
             : job.id === "stock_watch"
               ? isNightlyJobStale(run, now, 8)
+              : job.id === "subiekt_lead_times"
+              ? isNightlyJobStale(run, now, 3)
               : job.id === "scheduled_mails"
               ? isScheduledMailsStale(run, now, context?.scheduledMailSentLog)
               : false

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   COMPRESS_IMAGE_MAX_INPUT_BYTES,
   compressImageFile,
@@ -25,6 +25,14 @@ export function useBoardQuestionImages() {
   const [imagesError, setImagesError] = useState<string | null>(null);
   const [compressing, setCompressing] = useState(false);
   const imagesRef = useLatest(images);
+
+  // Zamknięcie formularza / karty — zwolnij podglądy (blob URL).
+  useEffect(
+    () => () => {
+      for (const img of imagesRef.current) URL.revokeObjectURL(img.previewUrl);
+    },
+    [imagesRef]
+  );
 
   const clearImages = useCallback(() => {
     for (const img of imagesRef.current) {

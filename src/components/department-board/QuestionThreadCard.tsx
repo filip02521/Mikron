@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { Button } from "@/components/ui/Button";
-import { IconChevronDown } from "@/components/icons/StrokeIcons";
+import { IconCamera, IconChevronDown } from "@/components/icons/StrokeIcons";
 import {
   authorLabelFromProfile,
   boardReplyCountLabel,
@@ -29,11 +29,11 @@ import {
   boardQuestionRowHeaderClass,
 } from "@/lib/department-board/department-board-questions-ui";
 import type { DepartmentBoardQuestion } from "@/lib/data/department-board-shared";
-import { NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
 import { BoardQuestionProductChip } from "@/components/department-board/BoardQuestionProductChip";
 import { BoardQuestionProductContext } from "@/components/department-board/BoardQuestionProductContext";
 import { BoardThreadMessage } from "@/components/department-board/BoardThreadMessage";
-import { BoardQuestionAttachmentsGallery } from "@/components/department-board/BoardQuestionAttachmentsGallery";
+import { BoardReplyComposer } from "@/components/department-board/BoardReplyComposer";
+import { useBoardQuestionImages } from "@/components/department-board/useBoardQuestionImages";
 import { boardQuestionHasProduct } from "@/lib/department-board/question-product";
 import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
@@ -46,6 +46,18 @@ import {
   actionReplyToQuestion,
 } from "@/app/actions/department-board";
 import { isStaleAnsweredQuestion } from "@/lib/department-board/attention";
+
+function photoLabel(count: number): string {
+  return count === 1 ? "zdjęcie" : count < 5 ? `${count} zdjęcia` : `${count} zdjęć`;
+}
+
+/** Podgląd treści wpisu w zwiniętym wierszu — samo zdjęcie też coś mówi. */
+function postPreviewText(body: string, photoCount: number): string {
+  const text = body.trim();
+  if (!photoCount) return text;
+  const photos = `[${photoLabel(photoCount)}]`;
+  return text ? `${photos} ${text}` : photos;
+}
 
 function procurementReplyLabel(indexAmongProcurement: number): string {
   return indexAmongProcurement === 0 ? "Odpowiedź" : "Doprecyzowanie";
@@ -87,6 +99,15 @@ export function QuestionThreadCard({
   const [locallySeen, setLocallySeen] = useState(!unseenReply);
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
+  const {
+    images: replyImages,
+    imagesError: replyImagesError,
+    compressing: replyCompressing,
+    addFiles: addReplyImages,
+    removeImage: removeReplyImage,
+    clearImages: clearReplyImages,
+    imageFiles: replyImageFiles,
+  } = useBoardQuestionImages();
   const [error, setError] = useState<string | null>(null);
   const expandedByUserRef = useRef(false);
   const markSeenRequestedRef = useRef(false);
@@ -102,6 +123,9 @@ export function QuestionThreadCard({
   const showUnseen = unseenReply && !locallySeen;
   const hasProduct = boardQuestionHasProduct(question);
   const stale = isStaleAnsweredQuestion(question);
+  const threadPhotoCount =
+    (question.attachments?.length ?? 0) +
+    question.posts.reduce((sum, post) => sum + (post.attachments?.length ?? 0), 0);
 
   const latestActivityPost = useMemo(() => {
     if (question.posts.length === 0) return null;
@@ -115,7 +139,10 @@ export function QuestionThreadCard({
     if (latestActivityPost) {
       const fromOps = isOperationsAuthorRole(latestActivityPost.author?.role ?? null);
       const prefix = fromOps ? "Ostatnia odpowiedź:" : "Ostatnia wiadomość:";
-      return `${prefix} ${latestActivityPost.body}`;
+      return `${prefix} ${postPreviewText(
+        latestActivityPost.body,
+        latestActivityPost.attachments?.length ?? 0
+      )}`;
     }
     return `Pytanie: ${question.body}`;
   }, [expanded, latestActivityPost, question.body]);
@@ -167,8 +194,9 @@ export function QuestionThreadCard({
     setBusy(true);
     setError(null);
     try {
-      await actionReplyToQuestion(question.id, reply);
+      await actionReplyToQuestion(question.id, reply, replyImageFiles);
       setReply("");
+      clearReplyImages();
       setInlineReply(false);
       onChanged?.();
     } catch (e) {
@@ -255,6 +283,23 @@ export function QuestionThreadCard({
       : "Doprecyzowanie";
 
   const showInlineReplyForm = inlineReply && !expanded && canReply;
+
+  const replyComposer = (id: string) => (
+    <BoardReplyComposer
+      id={id}
+      label={replyLabel}
+      value={reply}
+      onChange={setReply}
+      images={replyImages}
+      imagesError={replyImagesError}
+      compressing={replyCompressing}
+      onAddFiles={addReplyImages}
+      onRemoveImage={removeReplyImage}
+      busy={busy}
+      onSubmit={() => void submitReply()}
+      error={error}
+    />
+  );
   const expandLabel = `Pytanie: ${question.title}`;
 
   return (
@@ -315,6 +360,16 @@ export function QuestionThreadCard({
                 >
                   {statusLabel}
                 </span>
+                {threadPhotoCount > 0 ? (
+                  <span
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500"
+                    title={`W wątku: ${photoLabel(threadPhotoCount)}`}
+                  >
+                    <IconCamera size={12} className="shrink-0" aria-hidden />
+                    <span className="tabular-nums">{threadPhotoCount}</span>
+                    <span className="sr-only">zdjęć w wątku</span>
+                  </span>
+                ) : null}
               </span>
               <span
                 className={cn(
@@ -354,24 +409,7 @@ export function QuestionThreadCard({
 
       {showInlineReplyForm ? (
         <div className={boardQuestionInlineReplyShellClass}>
-          <label
-            className={cn(salesTypography.rowMeta, "block font-medium text-indigo-700")}
-            htmlFor={`inline-reply-${question.id}`}
-          >
-            {replyLabel}
-          </label>
-          <textarea
-            id={`inline-reply-${question.id}`}
-            rows={3}
-            value={reply}
-            onChange={(e) => setReply(e.target.value)}
-            placeholder="Treść wiadomości…"
-            className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-sm")}
-          />
-          <Button size="sm" disabled={busy || !reply.trim()} onClick={() => void submitReply()}>
-            {busy ? "Wysyłanie…" : "Wyślij"}
-          </Button>
-          {error ? <p className="text-xs text-red-600">{error}</p> : null}
+          {replyComposer(`inline-reply-${question.id}`)}
         </div>
       ) : null}
 
@@ -390,11 +428,8 @@ export function QuestionThreadCard({
           authorLabel={author}
           body={question.body}
           createdAt={question.created_at}
+          attachments={question.attachments}
         />
-
-        {question.attachments?.length ? (
-          <BoardQuestionAttachmentsGallery attachments={question.attachments} />
-        ) : null}
 
         {question.posts.length === 0 ? (
           <p className={boardAwaitingReplyClass}>Dział zakupów jeszcze nie odpowiedział.</p>
@@ -420,6 +455,7 @@ export function QuestionThreadCard({
                   body={post.body}
                   createdAt={post.created_at}
                   replyKind={replyKind}
+                  attachments={post.attachments}
                 />
               );
             })}
@@ -427,28 +463,10 @@ export function QuestionThreadCard({
         )}
 
         {canReply && !isClosed ? (
-          <div className={boardReplyFormShellClass}>
-            <label
-              className={cn(salesTypography.rowMeta, "block font-medium text-indigo-700")}
-              htmlFor={`reply-${question.id}`}
-            >
-              {replyLabel}
-            </label>
-            <textarea
-              id={`reply-${question.id}`}
-              rows={3}
-              value={reply}
-              onChange={(e) => setReply(e.target.value)}
-              placeholder="Treść wiadomości…"
-              className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-sm")}
-            />
-            <Button size="sm" disabled={busy || !reply.trim()} onClick={() => void submitReply()}>
-              {busy ? "Wysyłanie…" : "Wyślij"}
-            </Button>
-          </div>
+          <div className={boardReplyFormShellClass}>{replyComposer(`reply-${question.id}`)}</div>
         ) : null}
 
-        {error && !showInlineReplyForm ? (
+        {error && !showInlineReplyForm && !(canReply && !isClosed) ? (
           <p className="text-xs text-red-600">{error}</p>
         ) : null}
 

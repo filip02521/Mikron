@@ -127,10 +127,11 @@ describe("buildCronMonitorSnapshot", () => {
         informacja_stock_sync: null,
         scheduled_mails: null,
         stock_watch: null,
+        subiekt_lead_times: null,
       },
       new Date("2026-06-18T06:30:00.000Z")
     );
-    expect(snapshot.jobs.length).toBe(8);
+    expect(snapshot.jobs.length).toBe(9);
     expect(snapshot.issueCount).toBeGreaterThan(0);
   });
 
@@ -154,6 +155,7 @@ describe("buildCronMonitorSnapshot", () => {
         informacja_stock_sync: null,
         scheduled_mails: null,
         stock_watch: null,
+        subiekt_lead_times: null,
       },
       new Date("2026-06-23T00:30:00.000Z"),
       {
@@ -197,6 +199,7 @@ describe("buildCronMonitorSnapshot", () => {
         catalog_zd_sync: null,
         informacja_stock_sync: null,
         stock_watch: null,
+        subiekt_lead_times: null,
         scheduled_mails: {
           ok: true,
           at: "2026-08-17T06:00:00.000Z",

@@ -14,6 +14,7 @@ export type DailyPanelScheduleOutcome = {
 export type DailyPanelScheduleFeedbackAction =
   | "GLOWNE"
   | "POBOCZNE"
+  | "JUZ_ZAMOWIONE"
   | "ZAMOWIONE"
   | "PRZESUNIETE";
 
@@ -49,6 +50,10 @@ export function formatScheduleOutcomeLines(
 
     if (action === "GLOWNE" && o.scheduleAdjusted) {
       return `${o.supplierName}: oznaczono główne · harmonogram przeliczony. ${datePart} ${intervalPart}${vac}`;
+    }
+
+    if (action === "JUZ_ZAMOWIONE") {
+      return `${o.supplierName}: już zamówione (harmonogram i czasy dostaw bez zmian). ${datePart} ${intervalPart}${vac}`;
     }
 
     if (action === "POBOCZNE") {

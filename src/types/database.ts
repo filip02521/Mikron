@@ -132,6 +132,8 @@ export interface IndividualOrder {
   teeth_queue_entered_at?: string | null;
   /** Moment oznaczenia Główne/Uzupełniające — start liczenia czasu realizacji. */
   ordered_at: string | null;
+  /** „Już zamówione” w panelu — towar zamówiony wcześniej; poza statystykami czasu dostaw. */
+  already_ordered?: boolean;
   /** Wspólne ID pozycji z jednego formularza / jednego zapisu. */
   submission_group_id?: string | null;
   /** Wspólne ID pozycji zamówionych jedną akcją w panelu dziennym. */
@@ -439,6 +441,8 @@ export interface DepartmentBoardRead {
 export interface DepartmentBoardThreadAttachment {
   id: string;
   thread_id: string;
+  /** NULL = zdjęcie pytania; ustawione = zdjęcie w odpowiedzi. */
+  post_id?: string | null;
   created_by: string;
   storage_path: string;
   file_name: string;

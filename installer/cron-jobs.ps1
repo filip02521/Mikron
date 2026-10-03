@@ -39,6 +39,12 @@ $script:CronJobDefinitions = @(
     Schedule = "codziennie 05:30–06:30 co 20 min"
   },
   @{
+    Id = "subiekt-lead-times"
+    Path = "/api/cron/subiekt-lead-times"
+    Label = "Czasy dostaw ZD → FZ z Subiekta (18 mies.) + przeliczenie ETA"
+    Schedule = "codziennie 01:30"
+  },
+  @{
     Id = "morning-sync"
     Path = "/api/cron/morning-sync"
     Label = "Tylko przeliczenie harmonogramów (test / serwis)"
