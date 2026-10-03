@@ -85,9 +85,7 @@ export function boardQuestionRowClass(opts: {
     return cn(
       accent,
       "transition-[background-color,box-shadow,ring-color,border-color] duration-200 ease-out motion-reduce:transition-none",
-      alt
-        ? "bg-amber-50/28 hover:bg-amber-50/38"
-        : "bg-amber-50/14 hover:bg-amber-50/26"
+      alt ? "bg-slate-50/60 hover:bg-slate-100/60" : "bg-white hover:bg-slate-50/90"
     );
   }
 
@@ -138,16 +136,12 @@ export const boardQuestionPreviewClass = cn(
 export const boardQuestionCollapsedMetaClass = "text-slate-600/95";
 
 /** Imię autora pytania — zwykły tekst w kolorze marki. */
-export const boardQuestionAuthorNameClass = "font-semibold text-indigo-700";
+export const boardQuestionAuthorNameClass = "font-semibold text-slate-800";
 
 export function boardThreadAuthorNameClass(tone: BoardThreadMessageTone): string {
   return cn(
     "text-xs font-semibold",
-    tone === "question"
-      ? "text-amber-800"
-      : tone === "procurement"
-        ? "text-indigo-800"
-        : "text-slate-700"
+    tone === "procurement" ? "text-indigo-800" : "text-slate-800"
   );
 }
 
@@ -173,11 +167,11 @@ export type BoardThreadMessageTone = "question" | "procurement" | "sales";
 
 export function boardThreadMessageShellClass(tone: BoardThreadMessageTone): string {
   return cn(
-    "rounded-xl border px-3.5 py-3 shadow-sm transition-shadow duration-200",
+    "rounded-xl border px-3.5 py-3",
     tone === "question"
-      ? "border-amber-200/70 bg-amber-50/80"
+      ? "border-slate-200/90 bg-white"
       : tone === "procurement"
-        ? "border-indigo-200/75 bg-indigo-50/90"
+        ? "border-indigo-200/75 bg-indigo-50/70"
         : "border-slate-200/80 bg-slate-50/70"
   );
 }
@@ -186,7 +180,7 @@ export function boardThreadAvatarClass(tone: BoardThreadMessageTone): string {
   return cn(
     "flex size-9 shrink-0 items-center justify-center rounded-full ring-1",
     tone === "question"
-      ? "bg-amber-100 text-amber-800 ring-amber-200/80"
+      ? "bg-slate-100 text-slate-600 ring-slate-200/80"
       : tone === "procurement"
         ? "bg-indigo-100 text-indigo-800 ring-indigo-200/80"
         : "bg-slate-100 text-slate-600 ring-slate-200/80"
@@ -196,11 +190,7 @@ export function boardThreadAvatarClass(tone: BoardThreadMessageTone): string {
 export function boardThreadRoleBadgeClass(tone: BoardThreadMessageTone): string {
   return cn(
     "inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold leading-none",
-    tone === "question"
-      ? "bg-amber-100 text-amber-900"
-      : tone === "procurement"
-        ? "bg-indigo-100 text-indigo-900"
-        : "bg-slate-200/80 text-slate-700"
+    tone === "procurement" ? "bg-indigo-100 text-indigo-900" : "bg-slate-100 text-slate-700"
   );
 }
 

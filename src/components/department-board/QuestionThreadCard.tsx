@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/Button";
 import { IconCamera, IconChevronDown } from "@/components/icons/StrokeIcons";
 import {
   authorLabelFromProfile,
-  boardReplyCountLabel,
   formatBoardDate,
+  formatBoardShortDate,
   isOperationsAuthorRole,
   questionAuthorLabel,
 } from "@/lib/department-board/format";
@@ -16,7 +16,6 @@ import {
   boardAwaitingReplyClass,
   boardQuestionPreviewClass,
   boardQuestionAuthorNameClass,
-  boardQuestionCollapsedMetaClass,
   boardQuestionRowClass,
   boardQuestionRowHeaderExpandedClass,
   boardQuestionStatusBadgeClass,
@@ -29,12 +28,13 @@ import {
   boardQuestionRowHeaderClass,
 } from "@/lib/department-board/department-board-questions-ui";
 import type { DepartmentBoardQuestion } from "@/lib/data/department-board-shared";
-import { BoardQuestionProductChip } from "@/components/department-board/BoardQuestionProductChip";
 import { BoardQuestionProductContext } from "@/components/department-board/BoardQuestionProductContext";
 import { BoardThreadMessage } from "@/components/department-board/BoardThreadMessage";
 import { BoardReplyComposer } from "@/components/department-board/BoardReplyComposer";
 import { useBoardQuestionImages } from "@/components/department-board/useBoardQuestionImages";
-import { boardQuestionHasProduct } from "@/lib/department-board/question-product";
+import {
+  boardQuestionHasProduct,
+} from "@/lib/department-board/question-product";
 import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import {
@@ -116,7 +116,6 @@ export function QuestionThreadCard({
   const author = questionAuthorLabel(question.sales_person, question.author);
   const isOpen = question.status === "open";
   const isClosed = question.archived_at != null;
-  const replyCount = question.posts.length;
   const closedByLabel = question.closed_by_profile
     ? authorLabelFromProfile(question.closed_by_profile)
     : null;
@@ -134,18 +133,32 @@ export function QuestionThreadCard({
     );
   }, [question.posts]);
 
-  const previewLine = useMemo(() => {
-    if (expanded) return null;
+  /** Druga linia wiersza jak w czacie: kto napisał ostatni i co. */
+  const preview = useMemo(() => {
     if (latestActivityPost) {
       const fromOps = isOperationsAuthorRole(latestActivityPost.author?.role ?? null);
-      const prefix = fromOps ? "Ostatnia odpowiedź:" : "Ostatnia wiadomość:";
-      return `${prefix} ${postPreviewText(
-        latestActivityPost.body,
-        latestActivityPost.attachments?.length ?? 0
-      )}`;
+      return {
+        who: fromOps
+          ? "Zakupy"
+          : questionAuthorLabel(
+              latestActivityPost.author?.sales_person ?? question.sales_person,
+              latestActivityPost.author
+            ),
+        text: postPreviewText(
+          latestActivityPost.body,
+          latestActivityPost.attachments?.length ?? 0
+        ),
+      };
     }
-    return `Pytanie: ${question.body}`;
-  }, [expanded, latestActivityPost, question.body]);
+    // Bez odpowiedzi: autor jest już w pierwszej linii — sama treść.
+    return { who: null, text: question.body };
+  }, [latestActivityPost, question.body, question.sales_person]);
+  const lastActivityAt = latestActivityPost?.created_at ?? question.created_at;
+  /** Produkt w wierszu tylko gdy nie ma go już w tytule. */
+  const productSymbolHint =
+    hasProduct && question.product_symbol?.trim() && !question.title.includes(question.product_symbol.trim())
+      ? question.product_symbol.trim()
+      : null;
 
   let procurementReplyIndex = 0;
 
@@ -266,15 +279,8 @@ export function QuestionThreadCard({
     }
   }
 
-  const statusLabel = isClosed
-    ? "Zakończone"
-    : isOpen
-      ? "Bez odpowiedzi"
-      : showUnseen
-        ? "Nowa odpowiedź"
-        : replyCount > 0
-          ? boardReplyCountLabel(replyCount)
-          : "Odpowiedziano";
+  // Status w wierszu tylko gdy wymaga uwagi; resztę mówi filtr i pasek po lewej.
+  const statusLabel = isClosed ? null : isOpen ? "Bez odpowiedzi" : showUnseen ? "Nowa odpowiedź" : null;
 
   const replyLabel = audience === "sales"
     ? "Twoja wiadomość"
@@ -307,6 +313,7 @@ export function QuestionThreadCard({
       ref={cardRef}
       id={`question-${question.id}`}
       className={cn(
+        "group",
         embedded
           ? boardQuestionRowClass({
               unseen: showUnseen,
@@ -344,25 +351,24 @@ export function QuestionThreadCard({
                 expanded && "text-indigo-500"
               )}
             />
-            <span className="min-w-0 flex-1 space-y-1.5">
-              <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="min-w-0 flex-1 space-y-1">
+              <span className="flex min-w-0 items-center gap-2">
                 {showUnseen ? (
                   <span className={boardQuestionUnseenDotClass} aria-hidden />
                 ) : null}
-                <span className={cn(salesTypography.rowTitle, "min-w-0 truncate")}>
+                <span className={cn(salesTypography.rowTitle, "min-w-0 flex-1 truncate")}>
                   {question.title}
                 </span>
-                {hasProduct ? (
-                  <BoardQuestionProductChip product={question} compact className="max-w-[min(100%,14rem)]" />
+                {statusLabel ? (
+                  <span
+                    className={boardQuestionStatusBadgeClass({ unseen: showUnseen, open: isOpen })}
+                  >
+                    {statusLabel}
+                  </span>
                 ) : null}
-                <span
-                  className={boardQuestionStatusBadgeClass({ unseen: showUnseen, open: isOpen })}
-                >
-                  {statusLabel}
-                </span>
                 {threadPhotoCount > 0 ? (
                   <span
-                    className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500"
+                    className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-slate-500"
                     title={`W wątku: ${photoLabel(threadPhotoCount)}`}
                   >
                     <IconCamera size={12} className="shrink-0" aria-hidden />
@@ -370,32 +376,56 @@ export function QuestionThreadCard({
                     <span className="sr-only">zdjęć w wątku</span>
                   </span>
                 ) : null}
+                {!expanded ? (
+                  <span className="hidden max-w-[9rem] shrink-0 truncate text-xs font-medium text-slate-600 sm:inline">
+                    {author}
+                  </span>
+                ) : null}
+                <span
+                  className="shrink-0 text-[11px] tabular-nums text-slate-500"
+                  title={`Ostatnia aktywność: ${formatBoardDate(lastActivityAt)}`}
+                >
+                  {formatBoardShortDate(lastActivityAt)}
+                </span>
               </span>
-              <span
-                className={cn(
-                  salesTypography.rowBody,
-                  "block font-medium",
-                  expanded ? "text-slate-700" : boardQuestionCollapsedMetaClass
-                )}
-              >
-                Dodał/a:{" "}
-                <span className={boardQuestionAuthorNameClass}>{author}</span>
-                <span className="text-slate-400"> · </span>
-                {formatBoardDate(question.created_at)}
-              </span>
-              {previewLine ? (
-                <span className={boardQuestionPreviewClass}>{previewLine}</span>
-              ) : null}
+              {expanded ? (
+                <span className={cn(salesTypography.rowBody, "block text-slate-600")}>
+                  <span className={boardQuestionAuthorNameClass}>{author}</span>
+                  <span className="ml-2 tabular-nums">{formatBoardDate(question.created_at)}</span>
+                </span>
+              ) : (
+                <span className={boardQuestionPreviewClass}>
+                  {productSymbolHint ? (
+                    <span className="mr-2 rounded border border-slate-200 bg-slate-50 px-1 py-px font-mono text-[10.5px] text-slate-600">
+                      {productSymbolHint}
+                    </span>
+                  ) : null}
+                  {/* Telefon: autor tylko tu (w 1. linii brak miejsca). */}
+                  {preview.who ? (
+                    <>
+                      <span className="font-semibold text-slate-700">{preview.who}:</span>{" "}
+                    </>
+                  ) : (
+                    <span className="font-semibold text-slate-700 sm:hidden">{author}: </span>
+                  )}
+                  {preview.text}
+                </span>
+              )}
             </span>
           </span>
         </button>
 
         {canReply && !expanded && !isClosed ? (
+          // Szybka odpowiedź: na komputerze po najechaniu / fokusie; na telefonie — po rozwinięciu.
           <Button
             type="button"
             size="sm"
             variant="secondary"
-            className="mt-3 shrink-0 sm:mt-3.5"
+            className={cn(
+              "mt-3 hidden shrink-0 sm:mt-3.5 sm:inline-flex",
+              !inlineReply &&
+                "sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+            )}
             disabled={busy}
             onClick={() => {
               setInlineReply((v) => !v);
@@ -432,7 +462,9 @@ export function QuestionThreadCard({
         />
 
         {question.posts.length === 0 ? (
-          <p className={boardAwaitingReplyClass}>Dział zakupów jeszcze nie odpowiedział.</p>
+          audience === "sales" ? (
+            <p className={boardAwaitingReplyClass}>Dział zakupów jeszcze nie odpowiedział.</p>
+          ) : null
         ) : (
           <div className="space-y-3">
             {question.posts.map((post) => {

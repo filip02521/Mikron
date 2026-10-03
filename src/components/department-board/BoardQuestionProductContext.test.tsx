@@ -20,7 +20,8 @@ describe("BoardQuestionProductContext", () => {
 
     expect(screen.getByText("Produkt")).toBeTruthy();
     expect(screen.getByText("606402 - Implant Straumann")).toBeTruthy();
-    expect(screen.getByText(/Symbol: 606402/)).toBeTruthy();
+    // Symbol jest już w nazwie — bez powtórzenia w linii meta.
+    expect(screen.queryByText(/Symbol: 606402/)).toBeNull();
     expect(screen.getByText(/Kod Mikran: 180805/)).toBeTruthy();
   });
 

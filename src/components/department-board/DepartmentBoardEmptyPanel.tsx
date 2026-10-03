@@ -18,7 +18,6 @@ export function DepartmentBoardAnnouncementsEmpty({
 
   return (
     <EmptyState
-      brandAccent
       icon={<IconInbox size={28} strokeWidth={1.75} />}
       title="Brak aktywnych ogłoszeń"
       description={panelDescription}
@@ -67,7 +66,7 @@ export function DepartmentBoardQuestionsEmpty({
         ? "Wszystkie pytania zespołu mają już odpowiedź zakupów - albo nikt jeszcze nic nie zapytał."
         : "Handlowcy nie czekają obecnie na odpowiedź - sprawdź filtr \u201eAktywne\u201d."
       : filter === "answered"
-        ? "Gdy zakupy odpowiedzą na pytanie, wątek trafi tutaj po wybraniu tego filtra."
+        ? "Tu pojawią się pytania, na które dział zakupów już odpowiedział."
         : filter === "closed"
           ? "Zakończone wątki pojawią się tutaj, gdy handlowiec lub zakupy zamkną pytanie."
           : filter === "unseen"
@@ -84,7 +83,6 @@ export function DepartmentBoardQuestionsEmpty({
 
   return (
     <EmptyState
-      brandAccent
       icon={<IconClipboardPen size={28} strokeWidth={1.75} />}
       title={title}
       description={description}

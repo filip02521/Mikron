@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
-import { IconClipboardPen, IconInbox } from "@/components/icons/StrokeIcons";
+import { IconInbox } from "@/components/icons/StrokeIcons";
 import { NoteColorPicker } from "@/components/notatnik/NoteColorPicker";
 import { NotatnikPanel } from "@/components/notatnik/NotatnikPanel";
 import { NOTATNIK_INPUT_CLASS, NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
@@ -30,7 +30,6 @@ import {
   DEPARTMENT_BOARD_NOTES_DISTINCTION_PROCUREMENT,
   DEPARTMENT_BOARD_PROCUREMENT_PAGE_DESC,
   DEPARTMENT_BOARD_PROCUREMENT_PAGE_TITLE,
-  DEPARTMENT_BOARD_QUESTIONS_EXPLAINER,
   DEPARTMENT_BOARD_QUESTIONS_FILTERS,
 } from "@/lib/department-board/copy";
 import {
@@ -354,61 +353,51 @@ export function DepartmentBoardProcurementClient({
           </div>
         ) : null}
 
+        {/* Zakładka „Pytania” nazywa sekcję — bez drugiego panelu z tym samym nagłówkiem i licznikiem. */}
         {activeTab === "questions" ? (
           <div className={cn(boardQuestionsSectionClass, "p-3 sm:p-4")}>
-            <NotatnikPanel
+            <DepartmentBoardQuestionToolbar
               domain="panel"
-              title="Pytania handlowców"
-              description={`${DEPARTMENT_BOARD_QUESTIONS_EXPLAINER.body} Odpowiedzi widzą wszyscy handlowcy.`}
-              count={initial.questions.length || undefined}
-              icon={<IconClipboardPen size={17} />}
-              accent="indigo"
-              flushBody
-              bodyClassName="space-y-4 p-3 sm:p-4"
-            >
-              <DepartmentBoardQuestionToolbar
-                domain="panel"
-                filter={activeQuestionFilter}
-                onFilterChange={setQuestionFilter}
-                filtersDisabled={filtersLockedByFocus}
-                filtersDisabledReason={filtersDisabledReason}
-                search={questionSearch}
-                onSearchChange={setQuestionSearch}
-                matchCount={filteredQuestions.length}
-                totalCount={statusFilteredQuestions.length}
-                showSearch={allQuestions.length > 0}
-                filterCounts={questionFilterCounts}
-                searchLabel="Szukaj w pytaniach handlowców"
-                searchActive={Boolean(questionSearchNeedle)}
-              />
+              filter={activeQuestionFilter}
+              onFilterChange={setQuestionFilter}
+              filtersDisabled={filtersLockedByFocus}
+              filtersDisabledReason={filtersDisabledReason}
+              search={questionSearch}
+              onSearchChange={setQuestionSearch}
+              matchCount={filteredQuestions.length}
+              totalCount={statusFilteredQuestions.length}
+              showSearch={allQuestions.length > 0}
+              filterCounts={questionFilterCounts}
+              searchLabel="Szukaj w pytaniach handlowców"
+              searchActive={Boolean(questionSearchNeedle)}
+            />
 
-              {questionSearchNeedle && filteredQuestions.length === 0 && statusFilteredQuestions.length > 0 ? (
-                <SalesListFilterEmptyHint
-                  query={questionSearchNeedle}
-                  onClear={() => setQuestionSearch("")}
-                  entityLabel="pytań"
-                />
-              ) : filteredQuestions.length === 0 ? (
-                <DepartmentBoardQuestionsEmpty domain="panel" filter={activeQuestionFilter} />
-              ) : (
-                <div className={cn(boardQuestionListClass, "-mx-1 sm:-mx-0")}>
-                  {filteredQuestions.map((question, index) => (
-                    <QuestionThreadCard
-                      key={question.id}
-                      question={question}
-                      embedded
-                      rowAlternate={index % 2 === 1}
-                      canReply={!readOnly}
-                      canArchive={!readOnly}
-                      canReopen={!readOnly}
-                      canDeleteClosed={canDeleteClosed && !readOnly}
-                      defaultExpanded={focusQuestionId === question.id}
-                      onChanged={refresh}
-                    />
-                  ))}
-                </div>
-              )}
-            </NotatnikPanel>
+            {questionSearchNeedle && filteredQuestions.length === 0 && statusFilteredQuestions.length > 0 ? (
+              <SalesListFilterEmptyHint
+                query={questionSearchNeedle}
+                onClear={() => setQuestionSearch("")}
+                entityLabel="pytań"
+              />
+            ) : filteredQuestions.length === 0 ? (
+              <DepartmentBoardQuestionsEmpty domain="panel" filter={activeQuestionFilter} />
+            ) : (
+              <div className={cn(boardQuestionListClass, "-mx-1 sm:-mx-0")}>
+                {filteredQuestions.map((question, index) => (
+                  <QuestionThreadCard
+                    key={question.id}
+                    question={question}
+                    embedded
+                    rowAlternate={index % 2 === 1}
+                    canReply={!readOnly}
+                    canArchive={!readOnly}
+                    canReopen={!readOnly}
+                    canDeleteClosed={canDeleteClosed && !readOnly}
+                    defaultExpanded={focusQuestionId === question.id}
+                    onChanged={refresh}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         ) : null}
       </Card>
