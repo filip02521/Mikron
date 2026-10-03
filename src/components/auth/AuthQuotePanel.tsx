@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AUTH_QUOTES, type AuthQuote } from "@/lib/auth-quotes";
 import { AuthCompactQuoteBackdrop } from "@/components/auth/AuthBackgroundArt";
+import { AppBrandMark } from "@/components/ui/AppBrandMark";
 import { isAuthVisualVariant } from "@/components/auth/auth-visual-variant";
 import {
   ONTIME_APP_NAME,
@@ -100,17 +101,21 @@ export function AuthQuotePanel({
   return (
     <div className={cn("flex flex-col justify-between", className)}>
       <div>
-        <p className="text-xs font-semibold text-indigo-200/90">
-          {ONTIME_COMPANY}
-        </p>
-        <p
-          className="mt-2 text-4xl font-semibold tracking-tight text-white xl:text-[2.75rem]"
-          aria-label={ONTIME_APP_NAME}
-        >
-          <span>On</span>
-          <span className="text-sky-200">Time</span>
-        </p>
-        <p className="mt-2 text-sm font-medium text-sky-100/95">{ONTIME_TAGLINE}</p>
+        {/* Logo poziome (znak + nazwa) jak w menu bocznym, wariant na ciemne tło. */}
+        <div className="flex items-center gap-4">
+          <AppBrandMark size="lg" variant="dark" className="ring-1 ring-white/20" />
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-indigo-200/90">{ONTIME_COMPANY}</p>
+            <p
+              className="text-4xl font-semibold leading-none tracking-tight text-white xl:text-[2.75rem]"
+              aria-label={ONTIME_APP_NAME}
+            >
+              <span>On</span>
+              <span className="text-sky-200">Time</span>
+            </p>
+          </div>
+        </div>
+        <p className="mt-3 text-sm font-medium text-sky-100/95">{ONTIME_TAGLINE}</p>
         <QuoteText quote={quote} animClass={animClass} compact={false} />
       </div>
     </div>
