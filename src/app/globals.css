@@ -3332,6 +3332,20 @@ input[type="checkbox"].toggle-switch.toggle-sky:checked {
   flex-shrink: 0;
 }
 
+/* Nagłówki: 11px uppercase jak etykiety sekcji (design-system). */
+.data-table.zd-estimate-table thead th {
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+}
+
+/* Dopiski przy Do ZD — 9px było nieczytelne; 10px to minimum w tabeli. */
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-hint,
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-reset,
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-confidence,
+.data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-confidence__accept {
+  font-size: 0.625rem;
+}
+
 .data-table.zd-estimate-table .zd-est-dozd .zd-est-dozd-input {
   flex: 1 1 0;
   width: auto;
@@ -3448,6 +3462,10 @@ input[type="checkbox"].toggle-switch.toggle-sky:checked {
   color: var(--zd-num-color-dash);
 }
 
+.data-table.zd-estimate-table .zd-est-value--unpriced {
+  color: var(--color-slate-500);
+}
+
 .data-table.zd-estimate-table td.zd-estimate-cover-col,
 .data-table.zd-estimate-table th.zd-estimate-cover-col {
   width: 4.75rem;
@@ -3467,6 +3485,6 @@ input[type="checkbox"].toggle-switch.toggle-sky:checked {
 .data-table.zd-estimate-table .zd-est-available__rez {
   font-size: 0.625rem;
   font-weight: 600;
-  color: #92400e;
+  color: var(--color-slate-500);
   white-space: nowrap;
 }

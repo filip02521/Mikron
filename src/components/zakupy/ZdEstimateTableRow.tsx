@@ -53,7 +53,7 @@ function ZdEstimateCoverCell({
     );
   }
   const tone = days <= 0 ? "out" : days <= 2 ? "critical" : days <= 14 ? "low" : "ok";
-  const label = days <= 0 ? "brak" : days < 10 ? `${days.toFixed(1).replace(".", ",")} d` : `${Math.round(days)} d`;
+  const label = days <= 0 ? "brak" : days < 10 ? `${days.toLocaleString("pl-PL", { maximumFractionDigits: 1 })} d` : `${Math.round(days)} d`;
   return (
     <span
       className={cn("zd-est-cover", `zd-est-cover--${tone}`)}
@@ -444,7 +444,12 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
                 {value != null ? (
                   <span className="zd-est-value">{plnFormatter.format(value)}</span>
                 ) : (
-                  <span className="zd-est-value zd-est-value--none">
+                  <span
+                    className={cn(
+                      "zd-est-value zd-est-value--none",
+                      pieces > 0 && "zd-est-value--unpriced"
+                    )}
+                  >
                     {pieces > 0 ? "bez ceny" : "—"}
                   </span>
                 )}

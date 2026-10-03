@@ -379,7 +379,7 @@ export function ZdEstimateListBand({
             }
           >
             <OverflowMenuLabel>{ZD_ESTIMATE_UI.listColumnMenuLabel}</OverflowMenuLabel>
-            <p className="px-3 pb-1 text-[10px] leading-snug text-slate-400">
+            <p className="px-3 pb-1 text-[11px] leading-snug text-slate-500">
               {ZD_ESTIMATE_UI.listColumnAlwaysVisibleHint}.{" "}
               {ZD_ESTIMATE_UI.listColumnOrderHint}.
             </p>

@@ -21,7 +21,7 @@ export function StockWatchOffPlanBanner({
   return (
     <section
       aria-label="Zamów dziś poza planem"
-      className="mb-4 rounded-lg border border-red-200/80 bg-red-50/50 px-4 py-3"
+      className="mb-4 rounded-md border border-red-200/80 bg-red-50/50 px-4 py-3"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-sm font-semibold text-red-950">
@@ -43,7 +43,7 @@ export function StockWatchOffPlanBanner({
           >
             <span className="font-medium text-slate-900">{s.supplierName}</span>
             <span className="tabular-nums text-red-700">{s.count} tow.</span>
-            <span className="text-slate-400">{shortDate(s.nextOrderDate)}</span>
+            <span className="text-slate-500">{shortDate(s.nextOrderDate)}</span>
             {canPrepareZd ? (
               <Link
                 href={buildZdEstimateLaunchHref(s.supplierId)}

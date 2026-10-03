@@ -175,7 +175,7 @@ function ScopeEditorForm({
       </div>
 
       {pickedLabel ? (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-emerald-200/80 bg-emerald-50/70 px-3 py-2">
+        <div className="flex flex-wrap items-center gap-2 rounded-md border border-emerald-200/80 bg-emerald-50/70 px-3 py-2">
           <span className="text-[11px] font-medium uppercase tracking-wide text-emerald-800/80">
             {ZD_ESTIMATE_UI.supplierScopesPickedPrefix}
           </span>
@@ -193,7 +193,7 @@ function ScopeEditorForm({
 
       {hits.length > 0 ? (
         <ul
-          className="max-h-40 overflow-y-auto rounded-lg border border-slate-200/90 bg-white divide-y divide-slate-100"
+          className="max-h-40 overflow-y-auto rounded-md border border-slate-200/90 bg-white divide-y divide-slate-100"
           role="listbox"
           aria-label={
             draft.mode === "grupa" ? "Wyniki grup" : "Wyniki cech"
@@ -388,7 +388,7 @@ function SharedScopeSplitter({
   };
 
   return (
-    <div className="space-y-3 border-t border-violet-100 bg-violet-50/30 px-4 py-3.5">
+    <div className="space-y-3 border-t border-sky-100 bg-sky-50/30 px-4 py-3.5">
       <p className="text-xs leading-relaxed text-slate-600">
         Towar przypisany do dostawcy znika z listy „Do ZD” pozostałych dostawców tego zakresu.
         Bez przypisania — widzą go wszyscy. Para paczka/sztuka znika dopiero, gdy obie strony
@@ -402,7 +402,7 @@ function SharedScopeSplitter({
       ) : products.length === 0 ? (
         <p className="py-2 text-sm text-slate-500">Brak towarów z historią ZD w tym zakresie.</p>
       ) : (
-        <ul className="max-h-72 divide-y divide-slate-100 overflow-y-auto rounded-lg border border-slate-200 bg-white">
+        <ul className="max-h-72 divide-y divide-slate-100 overflow-y-auto rounded-md border border-slate-200 bg-white">
           {products.map((p) => (
             <li key={p.subiektTwId} className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
@@ -412,7 +412,7 @@ function SharedScopeSplitter({
                 <p className="truncate text-[11px] text-slate-500" title={p.twNazwa}>
                   {p.twNazwa}
                 </p>
-                <p className="text-[10px] text-slate-400">
+                <p className="text-[11px] text-slate-500">
                   ZD:{" "}
                   {Object.entries(p.orderCountBySupplier)
                     .map(([sid, n]) => `${supplierLabel(suppliers, sid)} ${n}×`)
@@ -869,7 +869,7 @@ export function ZdEstimateSupplierScopesModal({
         </div>
       }
     >
-      <div className="rounded-lg border border-slate-200/80 bg-slate-50/60 px-4 py-3">
+      <div className="rounded-md border border-slate-200/80 bg-slate-50/60 px-4 py-3">
         <div className="flex gap-3">
           <IconTruck size={18} strokeWidth={1.75} className="mt-0.5 shrink-0 text-slate-500" aria-hidden />
           <div className="min-w-0">
@@ -951,7 +951,7 @@ export function ZdEstimateSupplierScopesModal({
       </div>
 
       {!loading && todayCoverage && liveUnmapped.length > 0 ? (
-        <div className="overflow-hidden rounded-lg border border-amber-200/80 bg-amber-50/50">
+        <div className="overflow-hidden rounded-md border border-amber-200/80 bg-amber-50/50">
           <div className="flex flex-wrap items-start justify-between gap-2 border-b border-amber-200/60 px-4 py-3">
             <div className="min-w-0">
               <p className="text-sm font-semibold text-amber-950">{ZD_ESTIMATE_UI.todayScopeCoverageTitle}</p>
@@ -1001,13 +1001,13 @@ export function ZdEstimateSupplierScopesModal({
           </ul>
         </div>
       ) : !loading && !hasActiveFilter && liveCoverage && liveCoverage.todayCount > 0 ? (
-        <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/60 px-3.5 py-2.5">
+        <div className="rounded-md border border-emerald-200/80 bg-emerald-50/60 px-3.5 py-2.5">
           <p className="text-xs font-medium text-emerald-900">{ZD_ESTIMATE_UI.todayScopeCoverageEmpty}</p>
         </div>
       ) : null}
 
       {adding ? (
-        <div className="space-y-3 rounded-lg border border-indigo-200/80 bg-indigo-50/35 px-4 py-4 sm:px-5">
+        <div className="space-y-3 rounded-md border border-indigo-200/80 bg-indigo-50/35 px-4 py-4 sm:px-5">
           <div>
             <p className="text-sm font-semibold text-slate-900">{ZD_ESTIMATE_UI.supplierScopesAddCta}</p>
             <p className="mt-1 text-xs leading-relaxed text-slate-600">{ZD_ESTIMATE_UI.supplierScopesAddHint}</p>
@@ -1109,15 +1109,15 @@ export function ZdEstimateSupplierScopesModal({
       ) : null}
 
       {!loading && sharedScopes.length > 0 ? (
-        <div className="overflow-hidden rounded-lg border border-violet-200/80 bg-violet-50/30">
-          <div className="border-b border-violet-200/60 px-4 py-3">
-            <p className="text-sm font-semibold text-violet-950">Wspólne zakresy</p>
-            <p className="mt-0.5 text-[11px] leading-relaxed text-violet-900/75">
+        <div className="overflow-hidden rounded-md border border-sky-200/80 bg-sky-50/30">
+          <div className="border-b border-sky-200/60 px-4 py-3">
+            <p className="text-sm font-semibold text-sky-950">Wspólne zakresy</p>
+            <p className="mt-0.5 text-[11px] leading-relaxed text-sky-900/75">
               Ten sam zakres ma kilku dostawców — jego towary pokazują się u każdego z nich.
               Wskaż, u kogo zamawiasz dany towar.
             </p>
           </div>
-          <ul className="divide-y divide-violet-100">
+          <ul className="divide-y divide-sky-100">
             {sharedScopes.map((sh) => {
               const key = `${sh.mode}:${sh.scopeId}`;
               const isOpen = splitKey === key;
@@ -1209,7 +1209,7 @@ export function ZdEstimateSupplierScopesModal({
                 ? topSuggestion
                 : undefined;
             return (
-              <li key={card.supplierId} className="overflow-hidden rounded-lg border border-slate-200/90 bg-white">
+              <li key={card.supplierId} className="overflow-hidden rounded-md border border-slate-200/90 bg-white">
                 <div className="flex flex-wrap items-start justify-between gap-2 px-4 pt-3">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold tracking-tight text-slate-900">{card.name}</p>
@@ -1245,13 +1245,13 @@ export function ZdEstimateSupplierScopesModal({
                                 główny
                               </span>
                             ) : null}
-                            <span className="text-[10px] text-slate-400">
+                            <span className="text-[11px] text-slate-500">
                               {ZD_ESTIMATE_UI.supplierScopesUpdatedPrefix} {formatPlDate(row.updatedAt)}
                             </span>
                             {hasHistory && hitsFor(row) != null ? (
                               hitsFor(row) === 0 ? (
                                 <span
-                                  className="rounded bg-red-50 px-1.5 text-[10px] font-semibold text-red-700 ring-1 ring-red-200"
+                                  className="rounded bg-red-50 px-1.5 text-[11px] font-semibold text-red-700 ring-1 ring-red-200"
                                   title="Żaden towar zamawiany u tego dostawcy (historia ZD) nie należy do tego zakresu — sprawdź, czy to właściwa grupa/cecha."
                                 >
                                   0 towarów z ZD — sprawdź mapowanie

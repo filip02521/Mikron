@@ -209,7 +209,7 @@ export function StockWatchPanel({
           <nav
             role="tablist"
             aria-label="Sekcje panelu braków"
-            className="sticky top-0 z-10 -mx-1 flex gap-1 overflow-x-auto rounded-lg border border-slate-200/80 bg-white/90 p-1 shadow-sm backdrop-blur"
+            className="sticky top-0 z-10 -mx-1 flex gap-1 overflow-x-auto rounded-md border border-slate-200/80 bg-white/90 p-1 shadow-sm backdrop-blur"
           >
             {tabs.map((t) => {
               const active = t.id === tab;
@@ -384,7 +384,7 @@ function StatusDistribution({ counts }: { counts: StockWatchDashboard["counts"] 
             <span className="font-semibold tabular-nums text-slate-800">{p.n}</span>
           </li>
         ))}
-        <li className="inline-flex items-center gap-1.5 text-slate-400">
+        <li className="inline-flex items-center gap-1.5 text-slate-500">
           <span className="size-2 rounded-full bg-slate-300" />
           Bez sprzedaży {counts.noSales}
         </li>
@@ -395,7 +395,7 @@ function StatusDistribution({ counts }: { counts: StockWatchDashboard["counts"] 
 
 function ProductCell({ row }: { row: Pick<StockWatchRowView, "twSymbol" | "twNazwa" | "grtNazwa"> }) {
   return (
-    <div className="min-w-0 max-w-[16rem] xl:max-w-[22rem]">
+    <div className="min-w-0 max-w-[16rem]">
       <p className="truncate font-mono text-[13px] font-semibold text-slate-900" title={row.twSymbol ?? undefined}>
         {row.twSymbol ?? "—"}
       </p>
@@ -429,14 +429,14 @@ function CoverChip({
 function DeliveryRiskTag({ risk }: { risk: NonNullable<StockWatchRowView["deliveryRisk"]> }) {
   return risk === "before_delivery" ? (
     <span
-      className="rounded bg-red-50 px-1.5 text-[10px] font-semibold text-red-700 ring-1 ring-red-200"
+      className="whitespace-nowrap rounded bg-red-50 px-1.5 text-[11px] font-semibold text-red-700 ring-1 ring-red-200"
       title="Przy obecnym tempie sprzedaży (z towarem w drodze) skończy się, zanim przyjedzie zamówienie złożone dziś."
     >
       przed dostawą
     </span>
   ) : (
     <span
-      className="rounded bg-amber-50 px-1.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200"
+      className="whitespace-nowrap rounded bg-amber-50 px-1.5 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-200"
       title="Skończy się przed dostawą z kolejnego planowego zamówienia — warto zamówić wcześniej."
     >
       przed kolejną dostawą
@@ -453,7 +453,7 @@ function VelocityCell({
     <div className="whitespace-nowrap text-right tabular-nums">
       <span className="font-semibold text-slate-900">{formatVelocity(row.velocityDaily)}</span>
       <span className="text-xs text-slate-500">/d</span>
-      <p className="text-[11px] text-slate-400" title="Sprzedaż w oknie Kreatora (dni zapasu dostawcy)">
+      <p className="text-[11px] text-slate-500" title="Sprzedaż w oknie Kreatora (dni zapasu dostawcy)">
         {formatQtyPl(row.salesPeriodQty)} szt / {row.salesPeriodDays} d
       </p>
     </div>
@@ -468,7 +468,7 @@ function OrderQty({
 }) {
   if (!row.inOrder || row.orderZdUnits <= 0) {
     return (
-      <span className="text-xs text-slate-400" title="Poza listą „Do ZD” — pokryte stanem / otwartymi ZD albo reguła">
+      <span className="whitespace-nowrap text-xs text-slate-500" title="Poza listą „Do ZD” — pokryte stanem / otwartymi ZD albo reguła">
         poza ZD
       </span>
     );
@@ -511,9 +511,9 @@ function AlertsSection({
   }
   return (
     <Card padding={false} className="overflow-hidden border-red-200/70">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-red-100 bg-gradient-to-r from-red-50 to-white px-4 py-3 sm:px-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-red-100 bg-red-50/60 px-4 py-3 sm:px-5">
         <div className="flex items-center gap-2">
-          <span className="grid size-8 place-items-center rounded-lg bg-red-600 text-white">
+          <span className="grid size-8 place-items-center rounded-md bg-red-600 text-white">
             <IconAlertCircle size={18} strokeWidth={2} />
           </span>
           <div>
@@ -574,8 +574,8 @@ function AlertsSection({
               <th scope="col" className="text-right" title="Średnia dzienna sprzedaż (szt/dzień) z okna Kreatora ZD">Rotacja</th>
               <th scope="col">Stan vs cel</th>
               <th scope="col" className="text-right" title="Ilość z listy Kreatora ZD (jednostka dokumentu)">Do ZD</th>
-              <th scope="col" className="text-right" title="Rotacja × ostatnia cena zakupu z ZD">
-                Wartość / dzień
+              <th scope="col" className="text-right" title="Wartość dziennej sprzedaży: rotacja × ostatnia cena zakupu z ZD">
+                Zł / dzień
               </th>
               {canMutate ? (
                 <th scope="col">
@@ -589,7 +589,7 @@ function AlertsSection({
               <tr key={row.subiektTwId} className={row.status === "out_of_stock" ? "bg-red-50/40" : undefined}>
                 <td>
                   <ProductCell row={row} />
-                  <p className="truncate text-[11px] font-medium text-slate-600">{row.supplierName ?? "—"}</p>
+                  <p className="max-w-[16rem] truncate text-[11px] font-medium text-slate-600">{row.supplierName ?? "—"}</p>
                 </td>
                 <td>
                   <CoverChip row={row} />
@@ -612,7 +612,7 @@ function AlertsSection({
                   <OrderQty row={row} />
                 </td>
                 <td className="text-right tabular-nums text-sm">
-                  {row.dailyValue != null ? formatPln(row.dailyValue) : <span className="text-slate-400">brak ceny</span>}
+                  {row.dailyValue != null ? formatPln(row.dailyValue) : <span className="text-slate-500">brak ceny</span>}
                 </td>
                 {canMutate ? (
                   <td className="text-right">
@@ -813,7 +813,7 @@ function RotationSection({ rows }: { rows: StockWatchRowView[] }) {
                 <td className="text-right text-xs font-semibold tabular-nums text-slate-400">{i + 1}</td>
                 <td>
                   <ProductCell row={row} />
-                  <p className="truncate text-[11px] text-slate-400">{row.supplierName}</p>
+                  <p className="truncate text-[11px] text-slate-500">{row.supplierName}</p>
                 </td>
                 <td>
                   <VelocityCell row={row} />
@@ -825,13 +825,13 @@ function RotationSection({ rows }: { rows: StockWatchRowView[] }) {
                     safetyStock={row.targetQty}
                     status={row.status}
                   />
-                  <p className="text-[11px] text-slate-400">cel na {row.salesPeriodDays} dni</p>
+                  <p className="text-[11px] text-slate-500">cel na {row.salesPeriodDays} dni</p>
                 </td>
                 <td>
                   <CoverChip row={row} />
                 </td>
                 <td>
-                  <span className={cn("text-xs", row.rule === "standard" ? "text-slate-500" : "font-medium text-violet-800")}>
+                  <span className={cn("text-xs", row.rule === "standard" ? "text-slate-500" : "font-medium text-indigo-800")}>
                     {STOCK_WATCH_RULE_META[row.rule].label}
                   </span>
                 </td>
@@ -971,7 +971,7 @@ function RuleTable({
             <tr key={row.subiektTwId}>
               <td>
                 <ProductCell row={row} />
-                {row.ruleNote ? <p className="truncate text-[11px] italic text-slate-400">„{row.ruleNote}”</p> : null}
+                {row.ruleNote ? <p className="max-w-[16rem] truncate text-[11px] italic text-slate-500">„{row.ruleNote}”</p> : null}
               </td>
               <td className="max-w-[10rem] truncate text-sm text-slate-700">{row.supplierName ?? "—"}</td>
               <td>

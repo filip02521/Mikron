@@ -400,6 +400,7 @@ import {
   IconLayers,
   IconTarget,
 } from "@/components/icons/StrokeIcons";
+import { plPozycja } from "@/lib/ui/polish-plurals";
 import { cn } from "@/lib/cn";
 import { formatPlDate } from "@/lib/display-labels";
 import {
@@ -7565,7 +7566,7 @@ export function ZdEstimateWorkbench({
                       })}
                       <th className="zd-estimate-spacer-col" aria-hidden />
                       <th className="zd-estimate-actions-col text-center" scope="col">
-                        Akcje
+                        <span className="sr-only">Akcje</span>
                       </th>
                     </tr>
                   </thead>
@@ -7854,7 +7855,7 @@ export function ZdEstimateWorkbench({
                     role="status"
                   >
                     <strong className="font-semibold text-slate-900">{orderSummary.count}</strong>
-                    {orderSummary.count === 1 ? "pozycja" : orderSummary.count < 5 ? "pozycje" : "pozycji"}
+                    {plPozycja(orderSummary.count)}
                     <span aria-hidden>·</span>
                     {orderSummary.pieces.toLocaleString("pl-PL")} szt
                     {orderSummary.value > 0 ? (
@@ -7866,7 +7867,7 @@ export function ZdEstimateWorkbench({
                       </>
                     ) : null}
                     {orderSummary.unpriced > 0 ? (
-                      <span className="text-slate-400">· {orderSummary.unpriced} bez ceny</span>
+                      <span className="text-slate-500">· {orderSummary.unpriced} bez ceny</span>
                     ) : null}
                   </span>
                 ) : null}
