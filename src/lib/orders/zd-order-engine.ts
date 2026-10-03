@@ -85,6 +85,16 @@ import {
   type ZdEstimateProsbaOverlapContribution,
   type ZdEstimateReservedOverlapSlice,
 } from "@/lib/orders/zd-estimate-prosba-reservation-overlap";
+import {
+  applyZdSalesProfileToLine,
+  resolveZdSalesProfile,
+  type ZdSalesSmoothingSummary,
+} from "@/lib/orders/zd-sales-profile";
+import {
+  ensureZdSalesProfiles,
+  loadDeliveredProsbaPiecesByTwId,
+  type ZdSalesProfileScope,
+} from "@/lib/orders/zd-sales-profile-load";
 
 const ZD_ESTIMATE_PENDING_INDIVIDUALS_LIMIT = 500;
 
@@ -404,8 +414,16 @@ export type ZdOrderEngineInput = {
   dataDo: string;
   zapasMin: number;
   ordersBaseUrl: string;
+  /**
+   * Opcja Kreatora (domyślnie wyłączona): jednorazowe skoki i rzadka sprzedaż liczone
+   * z profilu 12 miesięcy, sprzedaż pod zrealizowane prośby poza tempem.
+   * Profil (znaczniki) liczy się zawsze — wygładzenie tylko przy tej opcji.
+   */
+  salesSmoothing?: boolean;
   onProgress?: (patch: ZdOrderEngineProgressPatch) => void;
 };
+
+export type { ZdSalesSmoothingSummary };
 
 export type ZdOrderScopeIncluded = { mode: "grupa" | "cecha"; id: number; label: string };
 
@@ -430,6 +448,7 @@ export type ZdOrderEngineOutput = {
   pendingIndividuals: ZdEstimatePendingIndividualOrder[] | null;
   pendingIndividualsTruncated: boolean;
   pendingIndividualsError: string | null;
+  salesSmoothing: ZdSalesSmoothingSummary | null;
   prosbaReservedByTwId: Map<number, ZdEstimateReservedOverlapSlice[]> | null;
   prosbaOverlapCandidateTwIds: number[] | undefined;
   prosbaOverlapResolved: boolean;
@@ -480,6 +499,17 @@ export async function runZdOrderEngine(
   // Pełna lista towarów zakresu z Subiekta (nie tylko braki API / nie nasza baza).
   // Echo filtra zaraz po 1. stronie — bez tego stary API mógłby dociągnąć cały katalog.
   touchProgress({ phase: "fetch" });
+  // Profil sprzedaży zakresu — równolegle z pobieraniem listy (świeży z bazy albo 12 okien z API).
+  const profileOf = (scopes: ZdSalesProfileScope[]) =>
+    scopes.length === 0
+      ? Promise.resolve(new Map<number, number[]>())
+      : ensureZdSalesProfiles({ scopes, endDate: dataDo }).catch((e: unknown) => {
+          console.warn("[zd-sales-profile]", e);
+          return null;
+        });
+  const primaryProfiles = profileOf([
+    { mode: scope.mode, id: (scope.mode === "cecha" ? scope.cechaId : scope.grupaId) ?? 0 },
+  ]);
   let lastFetchProgress = {
     pagesCommitted: 0,
     totalPages: 0,
@@ -544,6 +574,7 @@ export async function runZdOrderEngine(
     },
     ...extraScopes.map((s) => ({ mode: s.mode, id: scopeIdOf(s), label: s.label })),
   ];
+  const extraProfiles = profileOf(extraScopes.map((s) => ({ mode: s.mode, id: scopeIdOf(s) })));
   let fetched = primaryFetched;
   for (const extra of extraScopes) {
     const extraId = scopeIdOf(extra);
@@ -925,6 +956,63 @@ export async function runZdOrderEngine(
   ]);
   const salesTrackPolicy = policyForBoostPreset(boostPreset);
 
+  // Profil sprzedaży: znaczniki zawsze, wygładzenie przy opcji. Profil jest w jednostkach
+  // karty jak sprzedaż. Pary i komplety łączą kilka towarów — dostają tylko znacznik.
+  // Prośby odejmujemy tylko bez opakowań (prośba w sztukach, sprzedaż w jednostkach karty).
+  let salesSmoothing: ZdSalesSmoothingSummary | null = null;
+  {
+    const [p1, p2] = await Promise.all([primaryProfiles, extraProfiles]);
+    if (!p1 && !p2) {
+      salesSmoothing = { spike: 0, rare: 0, prosba: 0, failed: true };
+    } else {
+      const profiles = new Map([...(p2 ?? []), ...(p1 ?? [])]);
+      const compositeTwIds = new Set<number>();
+      for (const pair of productPairs) {
+        compositeTwIds.add(pair.packTwId);
+        compositeTwIds.add(pair.pieceTwId);
+      }
+      for (const bom of bomRefs) {
+        compositeTwIds.add(bom.parentTwId);
+        for (const c of bom.components) compositeTwIds.add(c.componentTwId);
+      }
+      const smoothable = (tw: number) => input.salesSmoothing === true && !compositeTwIds.has(tw);
+      const prosbaInPieces = (tw: number) =>
+        smoothable(tw) && !((packagingByTwId.get(tw)?.unitsPerPackage ?? 1) > 1);
+      const prosbaPieces = input.salesSmoothing
+        ? await loadDeliveredProsbaPiecesByTwId({
+            twIds: mergedPozycje.map((p) => Math.trunc(Number(p.tw_Id) || 0)).filter(prosbaInPieces),
+            dataOd,
+            dataDo,
+          }).catch(() => new Map<number, number>())
+        : new Map<number, number>();
+      const dniOkresu =
+        Number(fetched.parametry.dniOkresu) > 0
+          ? Number(fetched.parametry.dniOkresu)
+          : Math.round((Date.parse(dataDo) - Date.parse(dataOd)) / 86_400_000) + 1;
+      salesSmoothing = { spike: 0, rare: 0, prosba: 0, failed: false };
+      for (let i = 0; i < mergedPozycje.length; i += 1) {
+        const line = mergedPozycje[i]!;
+        const tw = Math.trunc(Number(line.tw_Id) || 0);
+        const windows = profiles.get(tw);
+        if (!windows) continue;
+        const meta = resolveZdSalesProfile({
+          windows,
+          sprzedazOkres: Number(line.sprzedazOkres) || 0,
+          dniOkresu,
+          prosbaPieces: prosbaPieces.get(tw) ?? 0,
+          smoothing: smoothable(tw),
+        });
+        if (input.salesSmoothing && compositeTwIds.has(tw)) meta.skippedComposite = true;
+        mergedPozycje[i] = applyZdSalesProfileToLine(line, meta, zapasMin);
+        if (meta.applied) {
+          if (meta.kind === "spike") salesSmoothing.spike += 1;
+          else if (meta.kind === "rare") salesSmoothing.rare += 1;
+          if (meta.prosbaPieces > 0) salesSmoothing.prosba += 1;
+        }
+      }
+    }
+  }
+
   touchProgress({ phase: "compose" });
   const result = buildManualZdEstimateResult(fetched.parametry, mergedPozycje, {
     onlyManualBraki: false,
@@ -1116,6 +1204,7 @@ export async function runZdOrderEngine(
     pendingIndividuals,
     pendingIndividualsTruncated,
     pendingIndividualsError,
+    salesSmoothing,
     prosbaReservedByTwId,
     prosbaOverlapCandidateTwIds,
     prosbaOverlapResolved,

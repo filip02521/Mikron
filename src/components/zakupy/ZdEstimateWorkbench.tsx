@@ -185,6 +185,10 @@ import type {
 } from "@/lib/orders/zd-order-engine";
 import { formatZdHorizonBreakdown, type ZdOrderHorizon } from "@/lib/orders/zd-order-horizon";
 import {
+  formatZdSalesSmoothingSummary,
+  type ZdSalesSmoothingSummary,
+} from "@/lib/orders/zd-sales-profile";
+import {
   resolveZdEstimateActiveScopeLabel,
   resolveZdEstimateActiveSupplierName,
 } from "@/lib/orders/zd-estimate-active-scope";
@@ -1070,6 +1074,8 @@ export function ZdEstimateWorkbench({
     Boolean(launch?.leadTimeHorizon)
   );
   const [horizonNeedsRecount, setHorizonNeedsRecount] = useState(false);
+  /** Opcja „Wygładź skoki” (domyślnie wyłączona) — jak czas dostawy: zmiana = przeliczenie. */
+  const [salesSmoothing, setSalesSmoothing] = useState(false);
   /** Kwalifikacja snapshotów do history cut zmieniona — lista Do ZD nieaktualna. */
   const [historyNeedsRecount, setHistoryNeedsRecount] = useState(false);
   /** Fetch historii przy Policz rzucił — cięcia mogły nie wejść. */
@@ -1081,6 +1087,8 @@ export function ZdEstimateWorkbench({
     otherSupplierHintByTwId: Record<number, string>;
     /** Rozbicie horyzontu, gdy Policz liczył z czasem dostawy. */
     horizon: ZdOrderHorizon | null;
+    /** Ile pozycji zmieniło wygładzenie (null = opcja wyłączona). */
+    salesSmoothing?: ZdSalesSmoothingSummary | null;
   } | null>(null);
   const [extrasPolicy, setExtrasPolicy] = useState<ZdEstimateExtrasPolicy>(
     () =>
@@ -2664,6 +2672,8 @@ export function ZdEstimateWorkbench({
         appliedBoostPreset,
         leadTimeHorizon,
         horizon: policzScopeInfo?.horizon ?? null,
+        salesSmoothingEnabled: salesSmoothing,
+        salesSmoothing: policzScopeInfo?.salesSmoothing ?? null,
         unitPriceByTwId,
         boostNeedsRecount,
         scopeMode,
@@ -2709,6 +2719,7 @@ export function ZdEstimateWorkbench({
       teethTwIds,
       appliedBoostPreset,
       leadTimeHorizon,
+      salesSmoothing,
       policzScopeInfo,
       unitPriceByTwId,
       boostPreset,
@@ -2917,12 +2928,13 @@ export function ZdEstimateWorkbench({
       setHistoryFetchFailed(Boolean(payload.historyFetchFailed));
       // Z sesji: tylko horyzont (zakresy / podpowiedzi ZD wrócą przy kolejnym Policz).
       setPoliczScopeInfo(
-        payload.horizon
+        payload.horizon || payload.salesSmoothing
           ? {
               scopesIncluded: [],
               assignedElsewhere: [],
               otherSupplierHintByTwId: {},
-              horizon: payload.horizon,
+              horizon: payload.horizon ?? null,
+              salesSmoothing: payload.salesSmoothingEnabled ? payload.salesSmoothing ?? null : null,
             }
           : null
       );
@@ -2969,6 +2981,7 @@ export function ZdEstimateWorkbench({
 
       // Opcja czasu dostawy z sesji — lista była liczona z tym horyzontem.
       setLeadTimeHorizon(Boolean(payload.leadTimeHorizon));
+      setSalesSmoothing(Boolean(payload.salesSmoothingEnabled));
       setUnitPriceByTwId(payload.unitPriceByTwId ?? {});
       setHorizonNeedsRecount(false);
 
@@ -3742,8 +3755,10 @@ export function ZdEstimateWorkbench({
     cechaId?: number;
     /** Przełączenie opcji czasu dostawy z komunikatu (stan jeszcze nieustawiony). */
     leadTimeHorizon?: boolean;
+    salesSmoothing?: boolean;
   }) => {
     const useLeadTimeHorizon = opts?.leadTimeHorizon ?? leadTimeHorizon;
+    const useSalesSmoothing = opts?.salesSmoothing ?? salesSmoothing;
     externalSessionRestoreGenRef.current += 1;
     setExternalSessionExpiredAlert(false);
     setExternalSessionRestoreFailedAlert(false);
@@ -3831,6 +3846,7 @@ export function ZdEstimateWorkbench({
         zapasMin: Number(zapasMin) || 0,
         progressId,
         leadTimeHorizon: useLeadTimeHorizon,
+        salesSmoothing: useSalesSmoothing,
         uiSessionSeed: {
           selectedGroup: mode === "grupa" ? selectedGroup : null,
           selectedCecha: mode === "cecha" ? selectedCecha : null,
@@ -3927,6 +3943,7 @@ export function ZdEstimateWorkbench({
           assignedElsewhere: res.assignedElsewhere ?? [],
           otherSupplierHintByTwId: res.otherSupplierHintByTwId ?? {},
           horizon: res.horizon ?? null,
+          salesSmoothing: res.salesSmoothingEnabled ? res.salesSmoothing ?? null : null,
         });
         setUnitPriceByTwId(res.unitPriceByTwId ?? {});
         setHorizonNeedsRecount(false);
@@ -4617,6 +4634,7 @@ export function ZdEstimateWorkbench({
     boostPreset,
     appliedBoostPreset,
     leadTimeHorizon,
+    salesSmoothing,
     policzScopeInfo,
     unitPriceByTwId,
     boostNeedsRecount,
@@ -6671,6 +6689,37 @@ export function ZdEstimateWorkbench({
               </Button>
             </ZdEstimateNotice>
           ) : null,
+          lines && policzScopeInfo?.salesSmoothing ? (
+            <ZdEstimateNotice
+              tray
+              key="policz-sales-smoothing"
+              tone={policzScopeInfo.salesSmoothing.failed ? "warning" : "info"}
+              title={
+                policzScopeInfo.salesSmoothing.failed
+                  ? "Wygładzenie niedostępne — brak profilu sprzedaży"
+                  : "Nietypowa sprzedaż wygładzona"
+              }
+            >
+              <p className="text-sm leading-snug">
+                {policzScopeInfo.salesSmoothing.failed
+                  ? "Nie udało się pobrać sprzedaży z 12 miesięcy — lista liczona jak dotąd. Spróbuj przeliczyć ponownie."
+                  : formatZdSalesSmoothingSummary(policzScopeInfo.salesSmoothing)}
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="mt-3"
+                disabled={busy || !scopeSelected || !settingsTrusted}
+                onClick={() => {
+                  setSalesSmoothing(false);
+                  runEstimate({ salesSmoothing: false });
+                }}
+              >
+                Przelicz bez wygładzenia
+              </Button>
+            </ZdEstimateNotice>
+          ) : null,
           lines &&
           policzScopeInfo &&
           (policzScopeInfo.scopesIncluded.length > 1 ||
@@ -6888,6 +6937,11 @@ export function ZdEstimateWorkbench({
           leadTimeHorizon={leadTimeHorizon}
           onLeadTimeHorizonChange={(next) => {
             setLeadTimeHorizon(next);
+            if (lines) setHorizonNeedsRecount(true);
+          }}
+          salesSmoothing={salesSmoothing}
+          onSalesSmoothingChange={(next) => {
+            setSalesSmoothing(next);
             if (lines) setHorizonNeedsRecount(true);
           }}
           onPolicz={() => runEstimate()}
@@ -7161,6 +7215,15 @@ export function ZdEstimateWorkbench({
                 ? (next) => {
                     setLeadTimeHorizon(next);
                     runEstimate({ leadTimeHorizon: next });
+                  }
+                : undefined
+            }
+            salesSmoothing={salesSmoothing}
+            onSalesSmoothingToggle={
+              scopeSelected && settingsTrusted
+                ? (next) => {
+                    setSalesSmoothing(next);
+                    runEstimate({ salesSmoothing: next });
                   }
                 : undefined
             }

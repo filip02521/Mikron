@@ -35,6 +35,7 @@ import { ZdEstimateQtyValue } from "@/components/zakupy/ZdEstimateQtyValue";
 import { ZdEstimateReservationsCell } from "@/components/zakupy/ZdEstimateReservationsCell";
 import { ZdEstimateRowActions } from "@/components/zakupy/ZdEstimateRowActions";
 import { cn } from "@/lib/cn";
+import { formatZdSalesProfileHint } from "@/lib/orders/zd-sales-profile";
 import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
 
 /** Kolumny przepływu (Dost. → Sprzed. → Cel → Otwarte) — wspólne dla nagłówka i wierszy. */
@@ -65,6 +66,54 @@ function ZdEstimateCoverCell({
     >
       {label}
     </span>
+  );
+}
+
+/** Znacznik profilu sprzedaży pod nazwą: jednorazowy skok / rzadka sprzedaż. */
+function ZdEstimateSalesProfileBadge({
+  profile,
+  onRequest,
+  onMarkOnRequest,
+}: {
+  profile: ManualZdEstimateLine["salesProfile"];
+  onRequest: boolean;
+  onMarkOnRequest?: () => void;
+}) {
+  if (!profile || (profile.kind !== "spike" && profile.kind !== "rare")) return null;
+  const hint = formatZdSalesProfileHint(profile);
+  if (profile.kind === "spike") {
+    return (
+      <span className="zd-est-profile-badge zd-est-profile-badge--spike" title={hint}>
+        {profile.applied ? "skok · wygładzony" : "jednorazowy skok?"}
+      </span>
+    );
+  }
+  if (onRequest) return null;
+  const label = profile.applied ? "rzadka · wygładzona" : "pod zamówienie?";
+  if (!onMarkOnRequest) {
+    return (
+      <span className="zd-est-profile-badge zd-est-profile-badge--rare" title={hint}>
+        {label}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className="zd-est-profile-badge zd-est-profile-badge--rare"
+      title={`${hint} Kliknij, żeby dodać do „Tylko na prośbę”.`}
+      onClick={() => {
+        if (
+          window.confirm(
+            "Dodać ten towar do „Tylko na prośbę”?\n\nZniknie z listy „Do ZD” — będzie zamawiany tylko pod aktywną prośbę handlowca. Cofniesz to w menu wiersza."
+          )
+        ) {
+          onMarkOnRequest();
+        }
+      }}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -353,6 +402,17 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
             minStockSzt={minStockSzt ?? null}
             hideEmpty
           />
+          {!excluded ? (
+            <ZdEstimateSalesProfileBadge
+              profile={l.salesProfile}
+              onRequest={dbOnRequest || softOnRequest}
+              onMarkOnRequest={
+                exclusionsTrusted && onRequestTrusted && !hideOnRequestAction && !busy
+                  ? () => onMarkOnRequest(l)
+                  : undefined
+              }
+            />
+          ) : null}
         </span>
         {otherSupplierHint ? (
           <span
@@ -536,11 +596,16 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
                               }),
                               `W tym wkład BOM: ${formatQty(bomMeta.contributionSales ?? 0)} szt.`,
                             ].join(" ")
-                          : formatWzSalesTitle({
-                              sprzedazOkres: l.sprzedazOkres,
-                              wzNiepowiazaneOkres: l.wzNiepowiazaneOkres,
-                              formatQty,
-                            })
+                          : [
+                              formatWzSalesTitle({
+                                sprzedazOkres: l.sprzedazOkres,
+                                wzNiepowiazaneOkres: l.wzNiepowiazaneOkres,
+                                formatQty,
+                              }),
+                              l.salesProfile ? formatZdSalesProfileHint(l.salesProfile) : null,
+                            ]
+                              .filter(Boolean)
+                              .join(" ")
                     }
                   />
                 )}

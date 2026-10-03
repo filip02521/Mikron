@@ -56,6 +56,22 @@ Nocny przebieg i panel Braki liczą ilości bez opcji (zgodność z Kreatorem); 
 dostawy, więc bez osobnego zapasu bezpieczeństwa (żeby nie liczyć niepewności dwa razy).
 Lokalnie opcja zmienia ilości u 5 z 52 dostawców (np. Amadar: dostawa ~26 d, kolejne zamówienie za 23 d → 3 → 14 pozycji).
 
+### 3.3a Nietypowa sprzedaż — profil 12 miesięcy (opcja „Wygładź skoki”)
+
+Bazowy cel z Subiekta to sprzedaż w oknie ÷ dni okna × dni zapasu, więc jedna duża faktura
+albo sprzedaż pod klienta trafia w cel i Kreator dokupuje na stan. Ten sam endpoint
+`/orders/zd/estimate` zwraca sprzedaż dla dowolnego okna, więc profil to 12 okien po 30 dni
+(`zd_sales_profiles`, migracja 164), liczony przy Policz / nocnym przebiegu, gdy profil zakresu
+ma ponad 3 dni.
+
+- Klasyfikacja: **skok** (okno ≥ 3× typowego miesiąca, ≥ 5 szt), **rzadki** (sprzedaż w ≤ 3 z 12
+  okien), **nowość** i **wzrost** (bez zmian), **regularny**. Znaczniki pod nazwą zawsze;
+  „pod zamówienie?” dodaje towar do „Tylko na prośbę” (z potwierdzeniem).
+- Opcja (domyślnie wyłączona) tylko obniża: skok → max(mediana, p75) poprzednich okien, rzadki →
+  średnia z 12 okien, sprzedaż pod zrealizowane prośby (dostawa w oknie) odjęta. Rzadki bez
+  podbicia za wyprzedanie; wygładzony towar pomija stary „skok” liczony z ostatniego ZD.
+- Pary i komplety: tylko znacznik (popyt łączony). Prośby odejmowane tylko bez opakowań.
+
 ### 3.4 Kiedy zamówić — sygnały radaru
 
 Dla każdego towaru dostawcy liczymy `dni do wyczerpania = dostępne / rotacja` i porównujemy z kalendarzem:

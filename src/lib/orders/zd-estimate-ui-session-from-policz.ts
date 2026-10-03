@@ -109,6 +109,8 @@ export function buildZdEstimateUiSessionSnapshotFromPolicz(input: {
   boostPreset: ZdBoostPowerPreset;
   /** Horyzont z opcji „Do kolejnej dostawy” (null = opcja wyłączona). */
   horizon?: import("@/lib/orders/zd-order-horizon").ZdOrderHorizon | null;
+  salesSmoothingEnabled?: boolean;
+  salesSmoothing?: import("@/lib/orders/zd-order-engine").ZdSalesSmoothingSummary | null;
   unitPriceByTwId?: Record<number, number>;
   seed?: ZdEstimateUiSessionPoliczSeed | null;
 }): ZdEstimateUiSessionSnapshot {
@@ -203,6 +205,8 @@ export function buildZdEstimateUiSessionSnapshotFromPolicz(input: {
     boostNeedsRecount: false,
     leadTimeHorizon: Boolean(input.horizon),
     horizon: input.horizon ?? null,
+    salesSmoothingEnabled: input.salesSmoothingEnabled === true,
+    salesSmoothing: input.salesSmoothing ?? null,
     unitPriceByTwId: input.unitPriceByTwId ?? {},
     scopeMode: input.mode,
     selectedGroup,

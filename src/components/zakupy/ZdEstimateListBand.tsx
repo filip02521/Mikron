@@ -156,6 +156,8 @@ export function ZdEstimateListBand({
   disabled,
   leadTimeHorizon,
   onLeadTimeHorizonToggle,
+  salesSmoothing,
+  onSalesSmoothingToggle,
 }: {
   listFilter: ZdEstimateListFilter;
   onListFilterChange: (v: ZdEstimateListFilter) => void;
@@ -191,6 +193,8 @@ export function ZdEstimateListBand({
   /** Opcja „Do kolejnej dostawy” — przełączenie od razu przelicza listę. */
   leadTimeHorizon?: boolean;
   onLeadTimeHorizonToggle?: (next: boolean) => void;
+  salesSmoothing?: boolean;
+  onSalesSmoothingToggle?: (next: boolean) => void;
 }) {
   const searchTrimmed = listSearch.trim().length > 0;
   const showSearchCounts =
@@ -317,6 +321,29 @@ export function ZdEstimateListBand({
               />
               <span className="hidden lg:inline">Do kolejnej dostawy</span>
               <span className="lg:hidden">Do dostawy</span>
+            </label>
+          ) : null}
+          {onSalesSmoothingToggle ? (
+            <label
+              className={cn(
+                "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md border px-2 text-[12px] font-medium",
+                salesSmoothing
+                  ? "border-indigo-300 bg-indigo-50 text-indigo-900"
+                  : "border-slate-200 bg-white text-slate-600",
+                disabled && "cursor-not-allowed opacity-50"
+              )}
+              title="Jednorazowe skoki i rzadka sprzedaż liczone z typowego miesiąca (profil 12 miesięcy), sprzedaż pod zrealizowane prośby poza tempem. Tylko obniża ilości. Zmiana przelicza listę; odznacz, żeby liczyć jak dotąd."
+            >
+              <input
+                type="checkbox"
+                className="size-3.5 accent-indigo-600"
+                aria-label="Wygładź nietypową sprzedaż — skoki, rzadka sprzedaż, prośby"
+                checked={Boolean(salesSmoothing)}
+                disabled={disabled}
+                onChange={(e) => onSalesSmoothingToggle(e.target.checked)}
+              />
+              <span className="hidden lg:inline">Wygładź skoki</span>
+              <span className="lg:hidden">Wygładź</span>
             </label>
           ) : null}
           <div className="relative min-w-0 flex-1 sm:w-[14rem] sm:flex-none md:w-[15rem] lg:w-[16rem]">

@@ -118,6 +118,8 @@ export type ZdEstimatePrepFormProps = {
   /** Opcja: cel do przyjazdu kolejnej dostawy (domyślnie wyłączona). */
   leadTimeHorizon: boolean;
   onLeadTimeHorizonChange: (value: boolean) => void;
+  salesSmoothing: boolean;
+  onSalesSmoothingChange: (value: boolean) => void;
   onPolicz: () => void;
   /** Lista już policzona — przycisk to „Przelicz listę”. */
   hasList?: boolean;
@@ -198,6 +200,8 @@ export function ZdEstimatePrepForm({
   onZapasMinChange,
   leadTimeHorizon,
   onLeadTimeHorizonChange,
+  salesSmoothing,
+  onSalesSmoothingChange,
   onPolicz,
   hasList = false,
   recountNeeded = false,
@@ -691,6 +695,29 @@ export function ZdEstimatePrepForm({
                 onChange={(e) => onLeadTimeHorizonChange(e.target.checked)}
               />
               Do kolejnej dostawy
+            </label>
+          </div>
+
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className={stripLabelClass}>Nietypowa sprzedaż</span>
+            <label
+              className={cn(
+                "inline-flex cursor-pointer items-center gap-2 rounded-md border bg-white px-2.5 text-[13px] text-slate-800",
+                zdEstimatePrepControlClass,
+                salesSmoothing ? "border-indigo-300 bg-indigo-50/60" : "border-slate-200/90",
+                paramsDisabled && "cursor-not-allowed opacity-50"
+              )}
+              title="Jednorazowe skoki i rzadka sprzedaż liczone z typowego miesiąca (profil 12 miesięcy), sprzedaż pod zrealizowane prośby poza tempem. Tylko obniża ilości. Zmiana przelicza listę; odznacz, żeby liczyć jak dotąd."
+            >
+              <input
+                type="checkbox"
+                className="size-4 accent-indigo-600"
+                aria-label="Wygładź nietypową sprzedaż — skoki, rzadka sprzedaż, prośby"
+                checked={salesSmoothing}
+                disabled={paramsDisabled}
+                onChange={(e) => onSalesSmoothingChange(e.target.checked)}
+              />
+              Wygładź skoki
             </label>
           </div>
 

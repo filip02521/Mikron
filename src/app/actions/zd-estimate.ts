@@ -313,6 +313,11 @@ export type ZdEstimateRunInput = {
    * Okno sprzedaży (rotacja) bez zmian.
    */
   leadTimeHorizon?: boolean;
+  /**
+   * Opcja „Wygładź nietypową sprzedaż” (domyślnie wyłączona): jednorazowe skoki i rzadka
+   * sprzedaż liczone z profilu 12 miesięcy, sprzedaż pod zrealizowane prośby poza tempem.
+   */
+  salesSmoothing?: boolean;
 };
 
 export type ZdEstimateRunResult =
@@ -352,6 +357,9 @@ export type ZdEstimateRunResult =
       otherSupplierHintByTwId?: Record<number, string>;
       /** Rozbicie horyzontu, gdy opcja czasu dostawy była zaznaczona. */
       horizon?: import("@/lib/orders/zd-order-horizon").ZdOrderHorizon | null;
+      /** Opcja wygładzenia przy tym Policz + ile pozycji zmieniła (null = profil niedostępny). */
+      salesSmoothingEnabled?: boolean;
+      salesSmoothing?: import("@/lib/orders/zd-order-engine").ZdSalesSmoothingSummary | null;
       /** tw → cena netto za sztukę z ostatniego ZD (kolumna „Wartość”). */
       unitPriceByTwId?: Record<number, number>;
       meta: {
@@ -1350,6 +1358,7 @@ export async function actionRunZdEstimateManual(
       dataDo,
       zapasMin,
       ordersBaseUrl: orders.config.baseUrl,
+      salesSmoothing: input.salesSmoothing === true,
       onProgress: touchProgress,
     });
     if (!engine.ok) {
@@ -1453,6 +1462,8 @@ export async function actionRunZdEstimateManual(
         teethTwIds,
         boostPreset,
         horizon,
+        salesSmoothingEnabled: input.salesSmoothing === true,
+        salesSmoothing: engine.salesSmoothing,
         unitPriceByTwId,
         seed: input.uiSessionSeed ?? null,
       });
@@ -1490,6 +1501,8 @@ export async function actionRunZdEstimateManual(
       assignedElsewhere: engine.assignedElsewhere,
       otherSupplierHintByTwId: engine.otherSupplierHintByTwId,
       horizon,
+      salesSmoothingEnabled: input.salesSmoothing === true,
+      salesSmoothing: engine.salesSmoothing,
       unitPriceByTwId,
       exclusions,
       onRequests,
