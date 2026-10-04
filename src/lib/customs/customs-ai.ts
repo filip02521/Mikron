@@ -27,6 +27,15 @@ import {
 /** Poniżej maxDuration stron odpraw (300 s). */
 export const CUSTOMS_GEMINI_TIMEOUT_MS = 180_000;
 
+/**
+ * Limit odpowiedzi dla odpraw — faktura Upcera ma 100–500 pozycji, a w modelach 2.5 do limitu
+ * wlicza się też „myślenie”; wspólne 16k z odczytu zębów ucinało JSON w połowie.
+ * Starsze modele (2.0) mają sufit 8192.
+ */
+export function customsMaxOutputTokens(model: string): number {
+  return model.includes("2.5") ? 65_536 : 8_192;
+}
+
 export type GeminiPart = { text: string } | { inlineData: { data: string; mimeType: string } };
 
 export class CustomsAiUnavailableError extends Error {
@@ -52,7 +61,7 @@ export async function callCustomsGemini(parts: GeminiPart[], responseSchema: obj
         genAI.models.generateContent({
           model,
           contents: [{ role: "user", parts }],
-          config: geminiGenerateConfig(model, responseSchema),
+          config: { ...geminiGenerateConfig(model, responseSchema), maxOutputTokens: customsMaxOutputTokens(model) },
         }),
         CUSTOMS_GEMINI_TIMEOUT_MS
       );
