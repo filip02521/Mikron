@@ -5,6 +5,7 @@
  */
 
 import ExcelJS from "exceljs";
+import * as XLSX from "xlsx";
 import { normalizeArticleCode } from "./customs-clearance";
 import { isInvoiceChargeName, parseLooseNumber, type CustomsInputLine } from "./customs-lines";
 
@@ -13,6 +14,7 @@ export type SheetRows = SheetCell[][];
 
 export const SPREADSHEET_MIME = new Set([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
   "text/csv",
   "application/csv",
   "text/plain",
@@ -20,11 +22,24 @@ export const SPREADSHEET_MIME = new Set([
 
 export function isSpreadsheetFile(name: string, mime: string): boolean {
   const ext = name.toLowerCase().split(".").pop() ?? "";
-  return ext === "xlsx" || ext === "csv" || (SPREADSHEET_MIME.has(mime) && ext !== "txt");
+  return ext === "xlsx" || ext === "xls" || ext === "csv" || (SPREADSHEET_MIME.has(mime) && ext !== "txt");
 }
 
+/** Stary Excel 97–2003 (BIFF) — packing listy z Chin często tak przychodzą. */
 export function isLegacyXls(name: string, mime: string): boolean {
   return name.toLowerCase().endsWith(".xls") || mime === "application/vnd.ms-excel";
+}
+
+/** .xls przez SheetJS (exceljs czyta tylko .xlsx); komórki scalone mają wartość tylko w pierwszej. */
+function readLegacyXlsSheets(bytes: Buffer): SheetRows[] {
+  const wb = XLSX.read(bytes, { type: "buffer", cellDates: false, cellFormula: false, cellHTML: false });
+  return wb.SheetNames.map((name) =>
+    XLSX.utils
+      .sheet_to_json<unknown[]>(wb.Sheets[name]!, { header: 1, raw: true, defval: null, blankrows: true })
+      .map((row) => row.map((c): SheetCell => (typeof c === "number" ? c : c == null ? null : String(c))))
+  )
+    .filter((rows) => rows.length > 0)
+    .sort((a, b) => b.length - a.length);
 }
 
 /** Tekst nagłówka bez ogonków, kropek i nadmiarowych spacji. */
@@ -47,7 +62,7 @@ type Column = "code" | "name" | "qty" | "price";
 const HEADER_PATTERNS: Record<Column, { exact: RegExp; contains: RegExp; exclude?: RegExp }> = {
   code: {
     exact:
-      /^(kod|code|symbol|sku|ref|ref no|reference|art|art ?nr|art ?no|artikel ?nr|artikelnummer|artikel|bestell ?nr|bestellnummer|item|item ?(no|nr|code|#|number)|part ?(no|nr|number)|cat ?no|catalog(ue)? ?(no|number)|nr ?kat(alogowy)?|numer ?katalogowy|nr ?art|indeks|index|product ?(code|no|number)|article ?(no|number|code)|model|order ?(code|no))$/,
+      /^(kod|code|symbol|sku|ref|ref no|reference|art|art ?nr|art ?no|artikel ?nr|artikelnummer|artikel|bestell ?nr|bestellnummer|item|item ?(no|nr|code|#|number)|part ?(no|nr|number)|p ?n|cat ?no|catalog(ue)? ?(no|number)|nr ?kat(alogowy)?|numer ?katalogowy|nr ?art|indeks|index|product ?(code|no|number)|article ?(no|number|code)|model|order ?(code|no))$/,
     contains:
       /\b(item|article|artikel|part|catalog(ue)?|katalog|product|order|bestell|ref)\b ?(no|nr|number|code|#|nummer)\b|\b(sku|indeks|kod towaru|nr katalogowy|artikelnummer|bestellnummer)\b/,
     exclude: /\b(hs|cn|taric|customs|celn|tariff|ean|barcode|lot|batch|serial|invoice|order date)\b/,
@@ -188,6 +203,24 @@ export type ParsedInvoiceSheet = {
 };
 
 /** Pozycje faktury z arkusza. `null` — nie rozpoznano kolumn. */
+/** Kolumna nazwy wypełniona w mniej niż połowie wierszy z ilością, a kod w każdym — to scalona grupa. */
+function isMergedGroupColumn(rows: SheetRows, cols: { header: number; code: number | null; name: number | null; qty: number }): boolean {
+  if (cols.code == null || cols.name == null) return false;
+  let withQty = 0;
+  let withName = 0;
+  let withCode = 0;
+  for (const row of rows.slice(cols.header + 1)) {
+    if (row.slice(0, 4).some((c) => TOTAL_ROW.test(String(c ?? "").trim()))) break;
+    const q = parseQuantity(row[cols.qty] ?? null);
+    if (q == null || q <= 0) continue;
+    withQty++;
+    if (String(row[cols.name] ?? "").trim()) withName++;
+    if (String(row[cols.code] ?? "").trim()) withCode++;
+  }
+  // Kod prawie w każdym wierszu (sumy częściowe bywają bez kodu), nazwa w mniej niż połowie.
+  return withQty >= 4 && withCode >= withQty * 0.9 && withName * 2 < withQty;
+}
+
 export function parseInvoiceSheet(rows: SheetRows): ParsedInvoiceSheet | null {
   const cols = detectInvoiceColumns(rows);
   if (!cols) return null;
@@ -196,11 +229,19 @@ export function parseInvoiceSheet(rows: SheetRows): ParsedInvoiceSheet | null {
   const lines: CustomsInputLine[] = [];
   let skipped = 0;
   let emptyRun = 0;
+  // Opis w scalonej komórce (Upcera: „Dental Zirconia Ceramic” tylko w pierwszym wierszu grupy, model w P/N)
+  // — to grupa, nie nazwa: przenosimy ją w dół, a nazwą pozycji zostaje kod.
+  const nameIsGroup = isMergedGroupColumn(rows, cols);
+  let group = "";
   for (let r = cols.header + 1; r < rows.length; r++) {
     const row = rows[r]!;
     const text = (i: number | null) => (i == null ? "" : String(row[i] ?? "").trim());
     let code = text(cols.code);
     let name = text(cols.name);
+    if (nameIsGroup) {
+      if (name) group = name;
+      name = "";
+    }
     if (!row.some((c) => String(c ?? "").trim())) {
       // Kilka pustych wierszy z rzędu = koniec tabeli (dalej zwykle stopka).
       if (++emptyRun >= 3 && lines.length) break;
@@ -229,6 +270,7 @@ export function parseInvoiceSheet(rows: SheetRows): ParsedInvoiceSheet | null {
       quantity,
       unitPrice: cols.price == null ? null : parseLooseNumber(String(row[cols.price] ?? "")),
       subiektTwId: null,
+      ...(nameIsGroup && group ? { invoiceGroup: group.slice(0, 200) } : {}),
     });
   }
   return {
@@ -347,6 +389,7 @@ export async function readSpreadsheetSheets(bytes: Buffer, fileName: string): Pr
   if (fileName.toLowerCase().endsWith(".csv")) {
     return [parseCsv(decodeCsvBytes(bytes))];
   }
+  if (isLegacyXls(fileName, "")) return readLegacyXlsSheets(bytes);
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer);
   return [...wb.worksheets]
