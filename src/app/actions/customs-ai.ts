@@ -407,9 +407,11 @@ export async function actionProposeCustomsLinesWithAi(
         description_pl: kept?.descriptionPl || p.descriptionPl,
         material: kept?.material || p.material,
         cn_code: p.cnCode,
-        is_medical_device: line.vat.isMedicalDevice,
-        vat_rate: line.vat.rate,
-        vat_basis_document_id: line.vat.basisDocument?.id ?? null,
+        // Karta człowieka zachowuje swoją stawkę (albo jej brak) — nie utrwalamy stawki wyliczonej
+        // z dokumentów, bo „copied” / „manual” wygrywa potem z deklaracją dostawcy.
+        is_medical_device: kept ? kept.isMedicalDevice : line.vat.isMedicalDevice,
+        vat_rate: kept ? kept.vatRate : line.vat.rate,
+        vat_basis_document_id: kept ? kept.vatBasisDocumentId : (line.vat.basisDocument?.id ?? null),
       },
     });
     if ("error" in saved) return fail(saved.error);
