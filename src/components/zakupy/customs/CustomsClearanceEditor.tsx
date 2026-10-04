@@ -172,6 +172,11 @@ function CustomsLineRow({
             <span className="ml-1 font-medium text-amber-700">· w ZD {formatQty(line.zdQuantity!)}</span>
           ) : null}
         </p>
+        {line.invoiceGroup ? (
+          <p className="text-xs text-slate-500" title="Opis grupy produktów z faktury (scalona komórka nad kilkoma pozycjami)">
+            Grupa na fakturze: {line.invoiceGroup}
+          </p>
+        ) : null}
         {line.invoiceHsCode ? (
           <p className="text-xs text-slate-500" title="Kod nadawcy z faktury - tylko podpowiedź, agencji podajemy własny kod CN">
             HS na fakturze: <span className="font-mono">{line.invoiceHsCode}</span>

@@ -314,6 +314,7 @@ export async function actionCreateCustomsClearance(
       subiekt_tw_id: l.subiektTwId,
       // Kolumna z migracji 160 — wysyłana tylko, gdy faktura ma HS przy pozycjach.
       ...(l.invoiceHsCode ? { invoice_hs_code: l.invoiceHsCode } : {}),
+      ...(l.invoiceGroup ? { invoice_group: l.invoiceGroup } : {}),
       zd_quantity: input.zdId ? zdQtyByCode.get(keyOf(l)) ?? 0 : null,
     }))
   );

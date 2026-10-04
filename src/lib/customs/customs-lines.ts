@@ -14,6 +14,8 @@ export type CustomsInputLine = {
   subiektTwId: number | null;
   /** Kod HS / commodity code nadawcy przy pozycji (np. „8207909000”) — podpowiedź dla CN. */
   invoiceHsCode?: string | null;
+  /** Opis grupy z faktury (scalona komórka, np. „Dental Lithium Disilicate Glass Ceramic”) — kontekst, nie klucz. */
+  invoiceGroup?: string | null;
 };
 
 /** Kod HS z faktury: same cyfry, 6–10 znaków („8207.90.9000” → „8207909000”), inaczej null. */
@@ -67,7 +69,7 @@ export function parseInvoiceLinesPaste(text: string): {
   rows.forEach((row, index) => {
     if (!row.trim()) return;
     const cols = splitColumns(row).map((c) => c.trim());
-    const [code = "", name = "", qtyRaw = "", priceRaw = "", hsRaw = ""] = cols;
+    const [code = "", name = "", qtyRaw = "", priceRaw = "", hsRaw = "", groupRaw = ""] = cols;
     const quantity = parseLooseNumber(qtyRaw);
     if (quantity == null) {
       // Nagłówek („Kod / Nazwa / Ilość”) albo wiersz bez ilości.
@@ -86,6 +88,7 @@ export function parseInvoiceLinesPaste(text: string): {
       unitPrice: parseLooseNumber(priceRaw),
       subiektTwId: null,
       ...(normalizeInvoiceHsCode(hsRaw) ? { invoiceHsCode: normalizeInvoiceHsCode(hsRaw) } : {}),
+      ...(groupRaw ? { invoiceGroup: groupRaw.slice(0, 200) } : {}),
     });
   });
   return { lines, errors };
