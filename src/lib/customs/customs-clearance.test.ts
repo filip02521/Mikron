@@ -84,6 +84,18 @@ describe("resolveLineVat", () => {
     expect(ai).toMatchObject({ rate: 23, source: "default" });
   });
 
+  it("podstawa 8% wybrana ręcznie w karcie działa, choć dokument nie ma listy artykułów (Upcera)", () => {
+    const upceraMdr = { id: "doc-mdr", fileName: "Upcera - MDR.pdf", description: "" };
+    const vat = resolveLineVat({
+      articleCode: "EXPLORE ML A1 D98 16 E",
+      card: card({ supplierArticleCode: "EXPLORE ML A1 D98 16 E", status: "confirmed", vatRate: 8, vatBasisDocumentId: "doc-mdr" }),
+      documentIndex: buildDocumentArticleIndex([]),
+      documents: [upceraMdr],
+    });
+    expect(vat).toMatchObject({ rate: 8, warning: null });
+    expect(vat.basisDocument?.id).toBe("doc-mdr");
+  });
+
   it("artykuł z Annex A → 8% z deklaracją do załączenia", () => {
     const vat = resolveLineVat({ articleCode: "de-1411", card: null, documentIndex: aswadIndex });
     expect(vat).toMatchObject({ rate: 8, isMedicalDevice: true, source: "document" });

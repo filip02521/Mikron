@@ -36,6 +36,7 @@ import { polishPozycjeLabel, polishPluralWord } from "@/lib/email/polish-plural"
 /** Biernik: „1 pozycję”, „4 pozycje”, „5 pozycji”. */
 const pozycjeAcc = (n: number) => `${n} ${polishPluralWord(n, "pozycję", "pozycje", "pozycji")}`;
 import { formatCnCode } from "@/lib/customs/customs-clearance";
+import { articleCodesText } from "@/lib/customs/customs-lines";
 import { CustomsShipmentCard } from "./CustomsShipmentCard";
 import type { CustomsLineState } from "@/lib/customs/customs-clearance";
 import {
@@ -480,7 +481,7 @@ function SupplierDocumentArticles({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [text, setText] = useState(doc.articleCodes.join("\n"));
+  const [text, setText] = useState(articleCodesText(doc.articleCodes));
   const [pending, startTransition] = useTransition();
   const [aiReading, setAiReading] = useState(false);
   const isSheetDoc = /\.(xlsx|csv|xls)$/i.test(doc.fileName);
@@ -546,7 +547,7 @@ function SupplierDocumentArticles({
             className={fieldControlClass("default", "min-h-40 sm:min-h-40 font-mono text-xs")}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={"Kody artykułów z dokumentu (np. Annex A deklaracji) - jeden na wiersz:\nDE-1411\nDE-1412"}
+            placeholder={"Kody artykułów z dokumentu (np. Annex A deklaracji) - jeden na wiersz:\nDE-1411\nDE-1412\nDostawca bez kodów: nazwa z karty, tabulator, opis"}
           />
           <div className="flex justify-end">
             <Button size="sm" onClick={save} disabled={pending}>

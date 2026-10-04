@@ -119,7 +119,13 @@ export async function loadClearanceView(supabase: Db, id: string): Promise<Custo
     for (const card of (cards ?? []) as CustomsCardRow[]) cardsByCode.set(card.supplier_article_code, card);
   }
 
-  const lineViews = buildCustomsLineViews({ lines, cardsByCode, documentIndex: docs.index, cn: createCnLookup() });
+  const lineViews = buildCustomsLineViews({
+    lines,
+    cardsByCode,
+    documentIndex: docs.index,
+    documents: docs.documents,
+    cn: createCnLookup(),
+  });
   return {
     id: clearance.id,
     supplierId: clearance.supplier_id,
