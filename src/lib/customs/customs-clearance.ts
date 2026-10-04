@@ -102,7 +102,8 @@ export type ResolvedLineVat = {
 
 /**
  * Stawka VAT pozycji:
- * - karta zatwierdzona lub wpisana ręcznie wygrywa (użytkownik zdecydował), ale rozbieżność
+ * - karta zatwierdzona, wpisana ręcznie albo przeniesiona z maila / historii („copied”) ze stawką
+ *   wygrywa (zdecydował człowiek), ale rozbieżność
  *   z dokumentami dostawcy daje ostrzeżenie,
  * - inaczej (brak karty / propozycja AI): artykuł w dokumencie dostawcy → 8% (wyrób medyczny),
  *   w pozostałych przypadkach 23%.
@@ -117,7 +118,10 @@ export function resolveLineVat(input: {
   const docs = code ? input.documentIndex.get(code) ?? [] : [];
   const card = input.card;
 
-  const userDecided = card != null && (card.status === "confirmed" || card.source === "manual");
+  // Stawka od człowieka: zatwierdzona, wpisana ręcznie albo przeniesiona z wcześniejszego maila / historii
+  // odpraw („copied”). Tylko propozycja AI nie decyduje o VAT — wtedy dokumenty albo 23%.
+  const userDecided =
+    card != null && (card.status === "confirmed" || card.source === "manual" || card.source === "copied");
   if (card && userDecided && card.vatRate != null) {
     if (card.vatRate === CUSTOMS_MEDICAL_VAT_RATE) {
       const basis =
@@ -305,6 +309,11 @@ export function customsLineState(card: CustomsProductCard | null, vat: ResolvedL
  * Kod CN w postaci 8 cyfr (spacje / kropki ignorowane) albo null. Odrzuca działy, których
  * nie ma w Nomenklaturze Scalonej (00, 77 — zarezerwowany, 98–99 — kody krajowe / specjalne).
  */
+/** Kod w zapisie taryfy: „8482 10 10” (8 cyfr; inne wartości bez zmian). */
+export function formatCnCode(code: string): string {
+  return /^\d{8}$/.test(code) ? `${code.slice(0, 4)} ${code.slice(4, 6)} ${code.slice(6)}` : code;
+}
+
 export function normalizeCnCode(raw: string | null | undefined): string | null {
   if (!raw) return null;
   const digits = raw.replace(/[\s.]/g, "");

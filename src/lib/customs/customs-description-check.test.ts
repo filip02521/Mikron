@@ -11,6 +11,11 @@ describe("customsDescriptionWarning — błędy z historycznych tłumaczeń", ()
     expect(w).toMatch(/listę kilku pozycji/);
   });
 
+  it("wymiary z jednostkami to nie lista pozycji", () => {
+    expect(customsDescriptionWarning("Krążki cyrkonowe: 98 mm średnicy, 14 mm grubości", "Explore ML A1 D98-14")).toBeNull();
+    expect(customsDescriptionWarning("Wiertła, 20 szt. w opakowaniu, 3 szt. zapasowe", "T Burs Mag")).toBeNull();
+  });
+
   it("inny rozmiar niż na fakturze (Aswad Beebe)", () => {
     expect(customsDescriptionWarning("Nożyczki do koron BeeBee 120mm wygięte", "Beebe Saw.edge.Curved 110mm")).toMatch(
       /Rozmiar w opisie \(120 mm\) inny niż na fakturze \(110 mm\)/

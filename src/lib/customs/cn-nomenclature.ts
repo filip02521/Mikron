@@ -52,7 +52,4 @@ export function createCnLookup(now = new Date()): CnLookup {
   };
 }
 
-/** Kod w zapisie taryfy: „8482 10 10”. */
-export function formatCnCode(code: string): string {
-  return `${code.slice(0, 4)} ${code.slice(4, 6)} ${code.slice(6)}`;
-}
+export { formatCnCode } from "./customs-clearance";

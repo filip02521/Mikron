@@ -67,9 +67,12 @@ export function addDays(iso: string, days: number): string {
   return fromDay(toDay(iso) + days);
 }
 
-/** Ostatni dzień bez opłat za składowanie (dzień przybycia się wlicza). */
+/**
+ * Ostatni dzień bez opłat za składowanie (dzień przybycia się wlicza).
+ * 0 dni = składowe od dnia przybycia, więc „ostatni darmowy” to dzień wcześniej.
+ */
 export function lastFreeStorageDay(s: CustomsShipment): string | null {
-  return s.arrivedAt ? addDays(s.arrivedAt, Math.max(1, s.freeStorageDays) - 1) : null;
+  return s.arrivedAt ? addDays(s.arrivedAt, Math.max(0, s.freeStorageDays) - 1) : null;
 }
 
 export function formatShortDate(iso: string): string {
@@ -93,8 +96,9 @@ export function shipmentAlerts(s: CustomsShipment, documentsSent: boolean, today
   const out: ShipmentAlert[] = [];
   const t = toDay(today);
 
-  if (stage === "at_terminal" || stage === "duties_due") {
-    const free = lastFreeStorageDay(s)!;
+  // Należności bywają znane przed wpisaniem daty przyjęcia — bez daty nie ma czego liczyć.
+  const free = lastFreeStorageDay(s);
+  if ((stage === "at_terminal" || stage === "duties_due") && s.arrivedAt && free) {
     const left = toDay(free) - t;
     if (left < 0) {
       out.push({ tone: "danger", text: `Składowe naliczane od ${formatShortDate(addDays(free, 1))}`, urgency: left });
@@ -108,7 +112,7 @@ export function shipmentAlerts(s: CustomsShipment, documentsSent: boolean, today
       });
     }
     if (!documentsSent) {
-      const returnDay = addDays(s.arrivedAt!, RETURN_AFTER_DAYS);
+      const returnDay = addDays(s.arrivedAt, RETURN_AFTER_DAYS);
       const toReturn = toDay(returnDay) - t;
       out.push({
         tone: toReturn <= 3 ? "danger" : "warning",
@@ -116,7 +120,8 @@ export function shipmentAlerts(s: CustomsShipment, documentsSent: boolean, today
           toReturn <= 3
             ? `Dokumenty nie wysłane - zwrot do nadawcy ${formatShortDate(returnDay)}`
             : "Dokumenty do odprawy nie wysłane do agencji",
-        urgency: Math.min(left, toReturn) - 0.5,
+        // Tuż za terminem składowania tego samego dnia — składowe kosztuje od razu, zwrot grozi później.
+        urgency: Math.min(left, toReturn) + 0.5,
       });
     }
   }
