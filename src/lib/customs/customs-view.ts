@@ -4,6 +4,8 @@
  */
 
 import type { CnLookup } from "./cn-nomenclature";
+import { customsDescriptionWarning } from "./customs-description-check";
+import type { CustomsShipment } from "./customs-shipment";
 import {
   collectVatBasisDocuments,
   customsArticleKey,
@@ -37,6 +39,8 @@ export type CustomsLineView = {
   zdQuantity: number | null;
   /** Kod HS nadawcy z faktury — podpowiedź dla CN. */
   invoiceHsCode: string | null;
+  /** Opis grupy z faktury (scalona komórka) — np. „Dental Lithium Disilicate Glass Ceramic”. */
+  invoiceGroup: string | null;
   card: CustomsCardView | null;
   vat: ResolvedLineVat;
   state: CustomsLineState;
@@ -70,6 +74,7 @@ export type CustomsClearanceView = {
   defaultAgencyEmail: string | null;
   lines: CustomsLineView[];
   documents: CustomsSupplierDocumentView[];
+  shipment: CustomsShipment;
   attachments: CustomsDocumentRef[];
   emailText: string;
   /** Pozycje bez opisu PL / kodu CN — nie ma ich w mailu, wysyłka zablokowana. */
@@ -88,6 +93,7 @@ export type CustomsLineRow = {
   amount: number | string | null;
   zd_quantity: number | string | null;
   invoice_hs_code?: string | null;
+  invoice_group?: string | null;
 };
 
 export type CustomsCardRow = {
@@ -210,6 +216,7 @@ export function buildCustomsLineViews(input: {
         amount: num(row.amount),
         zdQuantity: num(row.zd_quantity),
         invoiceHsCode: row.invoice_hs_code ?? null,
+        invoiceGroup: row.invoice_group ?? null,
         card,
         vat,
         state: customsLineState(card, vat),
@@ -219,7 +226,11 @@ export function buildCustomsLineViews(input: {
       };
     });
   const cnWarnings = customsCnWarnings(views, input.cn);
-  for (const v of views) v.cnWarning = cnWarnings.get(v.position) ?? null;
+  for (const v of views) {
+    const invoiceName = [v.invoiceGroup, v.supplierName].filter(Boolean).join(" ");
+    const description = v.card ? customsDescriptionWarning(v.card.descriptionPl, invoiceName) : null;
+    v.cnWarning = [cnWarnings.get(v.position), description].filter(Boolean).join(" ") || null;
+  }
   return views;
 }
 

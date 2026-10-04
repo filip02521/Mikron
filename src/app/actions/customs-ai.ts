@@ -361,6 +361,7 @@ export async function actionProposeCustomsLinesWithAi(
     supplierName: t.supplierName,
     documentDescription: docDescription.get(t.supplierArticleCode),
     invoiceHsCode: t.invoiceHsCode,
+    invoiceGroup: t.invoiceGroup,
     knownDescriptionPl: t.card && t.card.source !== "ai" ? t.card.descriptionPl || undefined : undefined,
   }));
 

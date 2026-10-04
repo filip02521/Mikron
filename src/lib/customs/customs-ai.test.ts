@@ -132,6 +132,47 @@ describe("userFacingCustomsAiError", () => {
   });
 });
 
+describe("opis grupy z faktury (scalona komórka)", () => {
+  it("grupa w osobnym polu, nazwa bez doklejonej grupy — klucz karty się nie zmienia", () => {
+    const inv = parseInvoiceExtraction({
+      invoiceNumber: "upc260650-1",
+      lines: [
+        { code: "", name: "LT VBL2-R(18-15-13)", quantity: 100, group: "Dental Lithium Disilicate Glass Ceramic", kind: "goods" },
+        {
+          code: "",
+          name: "Dental Lithium Disilicate Glass Ceramic LT VD2-R(18-15-13)",
+          quantity: 25,
+          group: "Dental Lithium Disilicate Glass Ceramic",
+          kind: "goods",
+        },
+        { code: "", name: "D98-25 A3", quantity: 5, group: "", kind: "goods" },
+      ],
+    });
+    expect(inv.lines.map((l) => [l.supplierName, l.invoiceGroup ?? null])).toEqual([
+      ["LT VBL2-R(18-15-13)", "Dental Lithium Disilicate Glass Ceramic"],
+      ["LT VD2-R(18-15-13)", "Dental Lithium Disilicate Glass Ceramic"],
+      ["D98-25 A3", null],
+    ]);
+  });
+
+  it("przechodzi przez pole „wklej z faktury” w szóstej kolumnie", () => {
+    const text = invoiceLinesToPasteText([
+      { supplierArticleCode: "", supplierName: "LT VBL2-R(18-15-13)", quantity: 100, unitPrice: 4, subiektTwId: null, invoiceGroup: "PMMA Block" },
+    ]);
+    expect(parseInvoiceLinesPaste(text).lines[0]).toMatchObject({ supplierName: "LT VBL2-R(18-15-13)", invoiceGroup: "PMMA Block" });
+  });
+
+  it("trafia do promptu propozycji AI", () => {
+    const prompt = buildLineProposalsPrompt({
+      supplierName: "Upcera",
+      shipmentDescription: "",
+      lines: [{ ref: "a", code: "", supplierName: "LT VBL2-R(18-15-13)", invoiceGroup: "Dental Lithium Disilicate Glass Ceramic" }],
+      examples: [],
+    });
+    expect(prompt).toContain('grupa na fakturze: "Dental Lithium Disilicate Glass Ceramic"');
+  });
+});
+
 describe("customsMaxOutputTokens", () => {
   it("daje 2.5 limit na fakturę z setkami pozycji, starszym modelom ich sufit", () => {
     expect(customsMaxOutputTokens("gemini-2.5-flash")).toBe(65_536);

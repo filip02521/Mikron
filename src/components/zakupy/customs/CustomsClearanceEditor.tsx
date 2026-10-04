@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input, fieldControlClass } from "@/components/ui/Field";
 import { cn } from "@/lib/cn";
+import { CustomsShipmentCard } from "./CustomsShipmentCard";
 import type { CustomsLineState } from "@/lib/customs/customs-clearance";
 import {
   CUSTOMS_LINE_STATE_LABEL,
@@ -172,6 +173,11 @@ function CustomsLineRow({
             <span className="ml-1 font-medium text-amber-700">· w ZD {formatQty(line.zdQuantity!)}</span>
           ) : null}
         </p>
+        {line.invoiceGroup ? (
+          <p className="text-xs text-slate-500" title="Opis grupy produktów z faktury (scalona komórka nad kilkoma pozycjami)">
+            Grupa na fakturze: {line.invoiceGroup}
+          </p>
+        ) : null}
         {line.invoiceHsCode ? (
           <p className="text-xs text-slate-500" title="Kod nadawcy z faktury - tylko podpowiedź, agencji podajemy własny kod CN">
             HS na fakturze: <span className="font-mono">{line.invoiceHsCode}</span>
@@ -536,6 +542,13 @@ export function CustomsClearanceEditor({
       </div>
 
       {notice ? <Alert tone={notice.tone}>{notice.text}</Alert> : null}
+
+      <CustomsShipmentCard
+        key={JSON.stringify(view.shipment)}
+        clearanceId={view.id}
+        shipment={view.shipment}
+        documentsSent={readOnly}
+      />
 
       <Card>
         <CardHeader title="Faktura" density="compact" />
