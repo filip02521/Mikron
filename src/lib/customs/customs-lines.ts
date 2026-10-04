@@ -136,7 +136,11 @@ export function parseArticleCodesPaste(text: string): { code: string; descriptio
   for (const row of rows) {
     const trimmed = row.trim();
     if (!trimmed) continue;
-    const match = trimmed.match(/^(\S+)(?:[\t ]+(.*))?$/);
+    // Tabulator oddziela klucz od opisu — klucz może mieć spacje: dostawca bez kodów (Upcera) ma kluczem nazwę z karty.
+    // Końcowy tabulator zostaje — „klucz ze spacjami<TAB>” bez opisu (tak lista wraca do edycji).
+    const line = row.trimStart();
+    const tab = line.indexOf("\t");
+    const match = tab > 0 ? [line, line.slice(0, tab), line.slice(tab + 1)] : trimmed.match(/^(\S+)(?:[\t ]+(.*))?$/);
     if (!match) continue;
     const code = normalizeArticleCode(match[1]);
     if (!code || seen.has(code)) continue;
@@ -144,4 +148,9 @@ export function parseArticleCodesPaste(text: string): { code: string; descriptio
     out.push({ code, description: (match[2] ?? "").trim().slice(0, 300) });
   }
   return out;
+}
+
+/** Zapisana lista z powrotem do edycji — klucz ze spacjami z tabulatorem, żeby ponowny zapis go nie uciął. */
+export function articleCodesText(codes: readonly string[]): string {
+  return codes.map((c) => (/\s/.test(c) ? `${c}\t` : c)).join("\n");
 }
