@@ -17,6 +17,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input, Select, fieldControlClass } from "@/components/ui/Field";
+import { SHIPMENT_STAGE_LABEL, shipmentAlerts, shipmentStage, todayInWarsaw } from "@/lib/customs/customs-shipment";
+import { ALERT_BADGE, STAGE_BADGE } from "./CustomsShipmentCard";
 
 function formatDate(value: string | null): string {
   if (!value) return "-";
@@ -63,12 +65,17 @@ export function CustomsClearanceListClient({
   );
   const visible = useMemo(() => {
     const q = filterText.trim().toLowerCase();
-    return clearances.filter(
-      (c) =>
-        (!filterSupplier || c.supplierName === filterSupplier) &&
-        (!filterStatus || c.status === filterStatus) &&
-        (!q || `${c.invoiceNumber} ${c.zdNumber ?? ""}`.toLowerCase().includes(q))
-    );
+    const today = todayInWarsaw();
+    return clearances
+      .filter(
+        (c) =>
+          (!filterSupplier || c.supplierName === filterSupplier) &&
+          (!filterStatus || c.status === filterStatus) &&
+          (!q || `${c.invoiceNumber} ${c.zdNumber ?? ""} ${c.shipment.transportRef}`.toLowerCase().includes(q))
+      )
+      .map((c) => ({ ...c, alerts: shipmentAlerts(c.shipment, c.status === "sent", today) }))
+      // Najpierw przesyłki z terminem (najpilniejsze u góry), potem reszta jak dotąd — od najnowszych.
+      .sort((a, b) => (a.alerts[0]?.urgency ?? Infinity) - (b.alerts[0]?.urgency ?? Infinity));
   }, [clearances, filterSupplier, filterStatus, filterText]);
 
   async function readInvoiceFile(file: File) {
@@ -318,8 +325,16 @@ export function CustomsClearanceListClient({
                     <span className="block text-xs text-slate-500">
                       Faktura {formatDate(c.invoiceDate)}
                       {c.zdNumber ? ` · ${c.zdNumber}` : ""} · {c.lineCount} poz.
+                      {c.shipment.forwarder ? ` · ${c.shipment.forwarder}` : ""}
+                      {c.shipment.transportRef ? ` ${c.shipment.transportRef}` : ""}
                     </span>
                   </span>
+                  {c.alerts[0] ? <Badge variant={ALERT_BADGE[c.alerts[0].tone]}>{c.alerts[0].text}</Badge> : null}
+                  {shipmentStage(c.shipment) !== "none" ? (
+                    <Badge variant={STAGE_BADGE[shipmentStage(c.shipment)]}>
+                      {SHIPMENT_STAGE_LABEL[shipmentStage(c.shipment)]}
+                    </Badge>
+                  ) : null}
                   {c.status === "sent" ? (
                     <Badge variant="success">Wysłane {formatDate(c.sentAt)}</Badge>
                   ) : (

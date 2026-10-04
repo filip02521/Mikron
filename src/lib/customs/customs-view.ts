@@ -5,6 +5,7 @@
 
 import type { CnLookup } from "./cn-nomenclature";
 import { customsDescriptionWarning } from "./customs-description-check";
+import type { CustomsShipment } from "./customs-shipment";
 import {
   collectVatBasisDocuments,
   customsArticleKey,
@@ -73,6 +74,7 @@ export type CustomsClearanceView = {
   defaultAgencyEmail: string | null;
   lines: CustomsLineView[];
   documents: CustomsSupplierDocumentView[];
+  shipment: CustomsShipment;
   attachments: CustomsDocumentRef[];
   emailText: string;
   /** Pozycje bez opisu PL / kodu CN — nie ma ich w mailu, wysyłka zablokowana. */

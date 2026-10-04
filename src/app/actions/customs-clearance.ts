@@ -28,6 +28,7 @@ import { CUSTOMS_AI_MIME, customsFileMime } from "@/lib/customs/customs-ai-input
 import { createCnLookup, formatCnCode } from "@/lib/customs/cn-nomenclature";
 import { emailRangeConflicts, parseCustomsEmailText } from "@/lib/customs/customs-email-import";
 import { isLineComplete, type CustomsClearanceView } from "@/lib/customs/customs-view";
+import { shipmentFromRow, type CustomsShipment, type CustomsShipmentRow } from "@/lib/customs/customs-shipment";
 import { buildCustomsClearanceWorkbook } from "@/lib/customs/customs-excel";
 import {
   CUSTOMS_EMAIL_MAX_ATTACHMENTS_BYTES,
@@ -145,6 +146,7 @@ export type CustomsClearanceListItem = {
   createdAt: string;
   sentAt: string | null;
   lineCount: number;
+  shipment: CustomsShipment;
 };
 
 export async function actionListCustomsClearances(): Promise<CustomsClearanceListItem[]> {
@@ -153,11 +155,12 @@ export async function actionListCustomsClearances(): Promise<CustomsClearanceLis
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("customs_clearances")
-    .select("id, supplier_id, invoice_number, invoice_date, zd_number, status, created_at, sent_at")
+    // „*”: kolumny przesyłki (migracja 171) nie wywracają listy przed migracją.
+    .select("*")
     .order("created_at", { ascending: false })
     .limit(100);
   if (error) throw new Error(error.message);
-  const rows = (data ?? []) as Array<{
+  const rows = (data ?? []) as Array<CustomsShipmentRow & {
     id: string;
     supplier_id: string;
     invoice_number: string;
@@ -192,6 +195,7 @@ export async function actionListCustomsClearances(): Promise<CustomsClearanceLis
     createdAt: r.created_at,
     sentAt: r.sent_at,
     lineCount: counts.get(r.id) ?? 0,
+    shipment: shipmentFromRow(r),
   }));
 }
 
@@ -355,6 +359,50 @@ export async function actionUpdateCustomsClearanceHeader(
     .eq("id", id);
   if (error) return fail(error.message);
   revalidateClearance(id);
+  return { ok: true };
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function dateOrNull(raw: string | null | undefined): string | null | undefined {
+  const v = (raw ?? "").trim();
+  if (!v) return null;
+  return ISO_DATE.test(v) && !Number.isNaN(Date.parse(v)) ? v : undefined;
+}
+
+/** Dane przesyłki (spedytor, terminy, należności) — etap i alarmy liczy aplikacja z tych pól. */
+export async function actionUpdateCustomsShipment(id: string, input: CustomsShipment): Promise<Result> {
+  await requireOperations("mutate");
+  const clearanceId = cleanUuid(id);
+  if (!clearanceId) return fail("Odprawa nie istnieje.");
+  const dates = {
+    eta: dateOrNull(input.eta),
+    arrived_at: dateOrNull(input.arrivedAt),
+    duties_paid_at: dateOrNull(input.dutiesPaidAt),
+    delivered_at: dateOrNull(input.deliveredAt),
+  };
+  if (Object.values(dates).some((d) => d === undefined)) return fail("Nieprawidłowa data (format RRRR-MM-DD).");
+  const freeDays = Math.round(Number(input.freeStorageDays));
+  if (!Number.isFinite(freeDays) || freeDays < 0 || freeDays > 60) return fail("Dni bez składowego: 0–60.");
+  const duties = input.dutiesAmount == null ? null : Number(input.dutiesAmount);
+  if (duties != null && (!Number.isFinite(duties) || duties < 0)) return fail("Należności muszą być kwotą ≥ 0.");
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("customs_clearances")
+    .update({
+      forwarder: input.forwarder.trim().slice(0, 120),
+      transport_ref: input.transportRef.trim().slice(0, 120),
+      ...dates,
+      free_storage_days: freeDays,
+      duties_amount: duties == null ? null : Math.round(duties * 100) / 100,
+      mrn: input.mrn.trim().toUpperCase().slice(0, 40),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", clearanceId);
+  if (error) return fail(error.message);
+  revalidateClearance(clearanceId);
+  revalidatePath("/zakupy/odprawy");
   return { ok: true };
 }
 

@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input, fieldControlClass } from "@/components/ui/Field";
 import { cn } from "@/lib/cn";
+import { CustomsShipmentCard } from "./CustomsShipmentCard";
 import type { CustomsLineState } from "@/lib/customs/customs-clearance";
 import {
   CUSTOMS_LINE_STATE_LABEL,
@@ -541,6 +542,13 @@ export function CustomsClearanceEditor({
       </div>
 
       {notice ? <Alert tone={notice.tone}>{notice.text}</Alert> : null}
+
+      <CustomsShipmentCard
+        key={JSON.stringify(view.shipment)}
+        clearanceId={view.id}
+        shipment={view.shipment}
+        documentsSent={readOnly}
+      />
 
       <Card>
         <CardHeader title="Faktura" density="compact" />
