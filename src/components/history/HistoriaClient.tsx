@@ -44,6 +44,7 @@ import {
 } from "@/lib/ui/ontime-theme";
 import { useAdminPanelPreview } from "@/components/layout/AdminPanelPreviewContext";
 import { salesHistoriaHeaderHint } from "@/lib/sales/sales-page-ui-copy";
+import { askConfirm } from "@/components/ui/ConfirmHost";
 
 function HistorySummaryStrip({
   individualTotal,
@@ -174,8 +175,16 @@ export function HistoriaClient({
     [individual, normal.length]
   );
 
-  const removeIndividual = (id: string) => {
-    if (!confirm("Usunąć ten wpis z historii indywidualnej?")) return;
+  const removeIndividual = async (id: string) => {
+    if (
+      !(await askConfirm({
+        title: "Usunąć wpis?",
+        message: "Wpis zniknie z historii indywidualnej.",
+        confirmLabel: "Usuń",
+        danger: true,
+      }))
+    )
+      return;
     start(async () => {
       try {
         await actionDeleteIndividualHistory(id);
@@ -187,8 +196,16 @@ export function HistoriaClient({
     });
   };
 
-  const removeNormal = (id: string) => {
-    if (!confirm("Usunąć ten wpis z historii standardowej?")) return;
+  const removeNormal = async (id: string) => {
+    if (
+      !(await askConfirm({
+        title: "Usunąć wpis?",
+        message: "Wpis zniknie z historii standardowej.",
+        confirmLabel: "Usuń",
+        danger: true,
+      }))
+    )
+      return;
     start(async () => {
       try {
         await actionDeleteNormalHistory(id);

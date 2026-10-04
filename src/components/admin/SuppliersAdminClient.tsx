@@ -559,7 +559,7 @@ export function SuppliersAdminClient({
                       key={s.id}
                       id={`supplier-row-${s.id}`}
                       className={cn(
-                        "rounded-lg border border-slate-100 bg-white px-3 py-3 transition-all sm:px-4 lg:px-5",
+                        "rounded-lg border border-slate-100 bg-white px-3 py-3 transition sm:px-4 lg:px-5",
                         "hover:border-slate-200 hover:shadow-sm",
                         !isActive && "opacity-70",
                         s.subiekt_kh_id == null && "border-amber-100/60 bg-amber-50/20",
@@ -707,7 +707,7 @@ export function SuppliersAdminClient({
                         disabled={pending}
                         onClick={() => addSupplierToTeeth(s.id)}
                         className={cn(
-                          "group flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-white px-3.5 py-3 text-left transition-all",
+                          "group flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-white px-3.5 py-3 text-left transition",
                           "hover:border-indigo-200 hover:bg-indigo-50/40 hover:shadow-sm",
                           "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-100 disabled:hover:bg-white disabled:hover:shadow-none"
                         )}

@@ -43,6 +43,7 @@ import {
   IconAlertCircle,
   IconInfoCircle,
 } from "@/components/icons/StrokeIcons";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export type ZdCreateSubmitFreezeSnap = {
   includedServiceOrderIds: string[];
@@ -608,7 +609,7 @@ export function ZdEstimateCreateZdDialog({
             />
             <SummaryTile
               label="Zamówienie"
-              value={`${preview.lineCount} ${preview.lineCount === 1 ? "pozycja" : preview.lineCount < 5 ? "pozycje" : "pozycji"}`}
+              value={`${preview.lineCount} ${polishPluralWord(preview.lineCount, "pozycja", "pozycje", "pozycji")}`}
               sub={
                 preview.piecesArrivingSuma > 0 &&
                 preview.piecesArrivingSuma !== preview.zdUnitsSuma

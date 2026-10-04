@@ -125,6 +125,7 @@ import {
   resolveLinePickupAckMode,
   splitPickupPendingIds,
 } from "@/lib/orders/my-order-lane-meta";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 function weryfikacjaPresentation(order: IndividualOrder) {
   return {
@@ -536,7 +537,7 @@ function aggregateProgressLabel(orders: IndividualOrder[]): string | null {
 function groupProductSummary(lines: MyOrderLine[]): string {
   if (lines.length === 1) return lines[0].product;
   const n = lines.length;
-  const word = n === 1 ? "produkt" : n < 5 ? "produkty" : "produktów";
+  const word = polishPluralWord(n, "produkt", "produkty", "produktów");
   return `${n} ${word} - jedna dostawa u dostawcy`;
 }
 

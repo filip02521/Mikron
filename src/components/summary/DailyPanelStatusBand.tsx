@@ -189,7 +189,7 @@ function StatusBandBody({
               <StatDivider />
               <Stat
                 value={summary.forSomeoneGroupCount}
-                label={unitLabel(summary.forSomeoneGroupCount, "grupa prośb", "grupy prośb", "grup prośb")}
+                label={unitLabel(summary.forSomeoneGroupCount, "grupa próśb", "grupy próśb", "grup próśb")}
                 sectionKey="prosby"
               />
               <StatDivider />

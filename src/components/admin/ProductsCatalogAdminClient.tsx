@@ -64,6 +64,7 @@ import type {
 } from "@/lib/subiekt/zd-job-shared";
 import type { CronRunPayload } from "@/lib/services/cron-run-shared";
 import type { CatalogZdSyncState } from "@/lib/subiekt/catalog-zd-sync-shared";
+import { askConfirm } from "@/components/ui/ConfirmHost";
 
 type CatalogListMode = "all" | "noSupplier";
 
@@ -569,7 +570,7 @@ export function ProductsCatalogAdminClient({
     });
   };
 
-  const startImport = () => {
+  const startImport = async () => {
     if (!importSupplierId) return;
     if (importJobResumable && importState?.status === "paused") {
       setToast(CATALOG_ADMIN_TOAST.importPausedUseContinue);
@@ -578,9 +579,7 @@ export function ProductsCatalogAdminClient({
     if (
       importJobResumable &&
       importState?.status === "failed" &&
-      !confirm(
-        "Jest niedokończony import. Start od nowa go nadpisze - na pewno zacząć od początku?"
-      )
+      !(await askConfirm({ title: "Zacząć import od nowa?", message: "Jest niedokończony import. Start od nowa go nadpisze.", confirmLabel: "Zacznij od nowa" }))
     ) {
       return;
     }
@@ -614,12 +613,10 @@ export function ProductsCatalogAdminClient({
     });
   };
 
-  const cleanupImport = () => {
+  const cleanupImport = async () => {
     if (!importSupplierId) return;
     if (
-      !confirm(
-        "Usunąć mapowania z importu ZD dla tego dostawcy i zresetować flagi dokumentów? Potem uruchom Start - zaimportuje tylko ZD jeszcze niezaimportowane."
-      )
+      !(await askConfirm({ title: "Wyczyścić import ZD?", message: "Usunie mapowania z importu ZD dla tego dostawcy i zresetuje flagi dokumentów. Potem uruchom Start - zaimportuje tylko ZD jeszcze niezaimportowane.", confirmLabel: "Wyczyść", danger: true }))
     ) {
       return;
     }
@@ -688,7 +685,7 @@ export function ProductsCatalogAdminClient({
     });
   };
 
-  const startIndex = () => {
+  const startIndex = async () => {
     if (indexJobResumable && indexState?.status === "paused") {
       setToast(CATALOG_ADMIN_TOAST.indexPausedUseContinue);
       return;
@@ -696,9 +693,7 @@ export function ProductsCatalogAdminClient({
     if (
       indexJobResumable &&
       indexState?.status === "failed" &&
-      !confirm(
-        "Jest niedokończone indeksowanie. Start od nowa nadpisze postęp - na pewno zacząć od strony 1?"
-      )
+      !(await askConfirm({ title: "Indeksować od nowa?", message: "Jest niedokończone indeksowanie. Start od nowa nadpisze postęp i zacznie od strony 1.", confirmLabel: "Zacznij od nowa" }))
     ) {
       return;
     }
@@ -775,7 +770,7 @@ export function ProductsCatalogAdminClient({
     });
   };
 
-  const startAll = () => {
+  const startAll = async () => {
     if (allJobResumable && allState?.status === "paused") {
       setToast(CATALOG_ADMIN_TOAST.autopilotPausedUseContinue);
       return;
@@ -783,9 +778,7 @@ export function ProductsCatalogAdminClient({
     if (
       allJobResumable &&
       allState?.status === "failed" &&
-      !confirm(
-        "Jest niedokończony import. Start od nowa go nadpisze - na pewno zacząć od pierwszego dostawcy?"
-      )
+      !(await askConfirm({ title: "Zacząć import od nowa?", message: "Jest niedokończony import. Start od nowa go nadpisze i zacznie od pierwszego dostawcy.", confirmLabel: "Zacznij od nowa" }))
     ) {
       return;
     }
@@ -842,8 +835,15 @@ export function ProductsCatalogAdminClient({
     tickAllRef.current = tickAll;
   });
 
-  const rebuild = () => {
-    if (!confirm("Odbudować bazę produktów z historii individual_orders?")) return;
+  const rebuild = async () => {
+    if (
+      !(await askConfirm({
+        title: "Odbudować bazę produktów?",
+        message: "Na podstawie historii individual_orders.",
+        confirmLabel: "Odbuduj",
+      }))
+    )
+      return;
     start(async () => {
       try {
         const res = await actionRebuildProductCatalogFromOrders({ limit: 5000 });
@@ -862,11 +862,9 @@ export function ProductsCatalogAdminClient({
     });
   };
 
-  const backfillFromSymbol = () => {
+  const backfillFromSymbol = async () => {
     if (
-      !confirm(
-        "Uzupełnić tw_Id w individual_orders po symbolu z Subiekta i dopisać mapowania? (Wymaga dostępu do Subiekta w LAN)"
-      )
+      !(await askConfirm({ title: "Uzupełnić tw_Id po symbolu?", message: "Uzupełni tw_Id w individual_orders po symbolu z Subiekta i dopisze mapowania. Wymaga dostępu do Subiekta w LAN.", confirmLabel: "Uzupełnij" }))
     ) {
       return;
     }
@@ -910,7 +908,7 @@ export function ProductsCatalogAdminClient({
         refreshCoverage();
         const extra =
           autoAssign.updated > 0
-            ? ` · uzupełniono ${autoAssign.updated} prośb w weryfikacji`
+            ? ` · uzupełniono ${autoAssign.updated} próśb w weryfikacji`
             : "";
         const filterNote = leftFilteredView
           ? " · usunięto z aktualnego filtra (główny dostawca się zmienił)"
@@ -960,7 +958,7 @@ export function ProductsCatalogAdminClient({
           assignSuppliers.find((s) => s.id === bulkSupplierId)?.name ?? "dostawca";
         const extra =
           result.autoAssign.updated > 0
-            ? ` · uzupełniono ${result.autoAssign.updated} prośb w weryfikacji`
+            ? ` · uzupełniono ${result.autoAssign.updated} próśb w weryfikacji`
             : "";
         const partial =
           result.failed.length > 0
@@ -1177,9 +1175,7 @@ export function ProductsCatalogAdminClient({
                               }
                               if (
                                 existing?.status === "failed" &&
-                                !confirm(
-                                  "Jest niedokończony import dla tego dostawcy. Start od nowa go nadpisze - kontynuować?"
-                                )
+                                !(await askConfirm({ title: "Zacząć import od nowa?", message: "Jest niedokończony import dla tego dostawcy. Start od nowa go nadpisze.", confirmLabel: "Zacznij od nowa" }))
                               ) {
                                 setImportState(existing);
                                 return;

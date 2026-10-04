@@ -31,7 +31,7 @@ export type InformacjaFlowUiDef = {
   lineBadge?: string;
 };
 
-/** Opcje widoczne w formularzu — tylko direct i stock_out (via_panel zostaje dla starych prośb). */
+/** Opcje widoczne w formularzu — tylko direct i stock_out (via_panel zostaje dla starych próśb). */
 export const INFORMACJA_FLOW_UI: InformacjaFlowUiDef[] = [
   {
     path: "direct",

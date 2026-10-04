@@ -39,7 +39,7 @@ export function NoteStickyFrame({
   return (
     <div
       className={cn(
-        "group/sticky relative isolate pt-2 transition-[transform,z-index] duration-200 ease-out will-change-transform",
+        "group/sticky relative isolate pt-2 transition-[transform,z-index] duration-200 ease-out",
         straight
           ? "z-30 [transform:rotate(0deg)]"
           : cn(

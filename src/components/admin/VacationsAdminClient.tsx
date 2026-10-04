@@ -35,6 +35,7 @@ import {
 } from "@/lib/orders/vacation-status";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { usePreviewMutationBlocker } from "@/components/layout/usePreviewMutationBlocker";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 type VacationRow = {
   id: string;
@@ -516,7 +517,7 @@ export function VacationsAdminClient({
         </div>
         {searchQuery ? (
           <span className="shrink-0 text-xs text-slate-500">
-            {totalCount} {totalCount === 1 ? "wynik" : totalCount >= 2 && totalCount <= 4 ? "wyniki" : "wyników"}
+            {totalCount} {polishPluralWord(totalCount, "wynik", "wyniki", "wyników")}
           </span>
         ) : null}
       </div>

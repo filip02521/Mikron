@@ -155,9 +155,9 @@ export function ZkWatchClosePendingModal({
         ) : null}
         <span>
           {phase === "confirming"
-            ? `Potwierdzam ${polishCountLabel(uniqueCount, ["prośbę", "prośby", "prośb"])} i zamykam ZK…`
+            ? `Potwierdzam ${polishCountLabel(uniqueCount, ["prośbę", "prośby", "próśb"])} i zamykam ZK…`
             : phase === "done"
-              ? `Potwierdzono ${polishCountLabel(uniqueCount, ["prośbę", "prośby", "prośb"])} - ZK zostało zamknięte.`
+              ? `Potwierdzono ${polishCountLabel(uniqueCount, ["prośbę", "prośby", "próśb"])} - ZK zostało zamknięte.`
               : "Wystąpił błąd - sprawdź szczegóły poniżej."}
         </span>
       </div>

@@ -32,7 +32,7 @@ function Svg({
   );
 }
 
-/** Lista prośb — Moje zamówienia */
+/** Lista próśb — Moje zamówienia */
 export function IconClipboardList(props: StrokeIconProps) {
   return (
     <Svg {...props}>
@@ -205,7 +205,7 @@ export function IconPackageCheck(props: StrokeIconProps) {
   );
 }
 
-/** Weryfikacja prośb */
+/** Weryfikacja próśb */
 export function IconClipboardPen(props: StrokeIconProps) {
   return (
     <Svg {...props}>

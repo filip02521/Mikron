@@ -101,7 +101,7 @@ describe("buildZkWatchProsbaPreviewEntries", () => {
     expect(entries.map((entry) => entry.order.id)).toEqual(["open", "closed"]);
   });
 
-  it("nie pokazuje prośb innego klienta ani innego towaru", () => {
+  it("nie pokazuje próśb innego klienta ani innego towaru", () => {
     const orders = [
       { id: "mine", ...baseOrder },
       {

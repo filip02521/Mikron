@@ -3,6 +3,7 @@ import {
   totalSampleCount,
 } from "@/lib/orders/delivery-eta";
 import type { DeliveryStats, StatsMode } from "@/types/database";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 /** Tooltip przy meta średniego czasu na formularzu prośby. */
 export const PROSBA_FORM_LEAD_TIME_TOOLTIP =
@@ -27,9 +28,7 @@ export type ProsbaFormLeadTimeMeta = {
 };
 
 function sampleCountLabel(n: number): string {
-  if (n === 1) return "1 dostawa";
-  if (n >= 2 && n <= 4) return `${n} dostawy`;
-  return `${n} dostaw`;
+  return `${n} ${polishPluralWord(n, "dostawa", "dostawy", "dostaw")}`;
 }
 
 /**

@@ -275,7 +275,7 @@ export function AdminCronStatusPanel({
             </div>
             <label
               className={cn(
-                "flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-all",
+                "flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition",
                 informacjaStockAutoEnabled
                   ? "border-indigo-200/80 bg-indigo-50/40"
                   : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40",

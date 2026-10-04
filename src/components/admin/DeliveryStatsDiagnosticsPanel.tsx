@@ -326,7 +326,7 @@ export function DeliveryStatsDiagnosticsPanel({
           description="Diagnostyka zbierania statystyk ETA - wymaga połączenia z bazą."
         />
         <div className="px-3 pb-4 sm:px-4 lg:px-5">
-          <p className="text-sm text-slate-600">Brak danych - sprawdź konfigurację Supabase.</p>
+          <p className="text-sm text-slate-600">Brak danych - sprawdź połączenie z bazą danych (DATABASE_URL).</p>
         </div>
       </Card>
     );

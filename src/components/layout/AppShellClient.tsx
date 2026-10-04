@@ -63,6 +63,7 @@ import { ChangelogAutoOpen } from "@/components/changelog/ChangelogAutoOpen";
 import { MonthlySummaryNotice } from "@/components/monthly-summary/MonthlySummaryNotice";
 import { AuthSessionGuard } from "@/components/auth/AuthSessionGuard";
 import { ZdEstimateExternalSessionFloatingNotice } from "@/components/zakupy/ZdEstimateExternalSessionFloatingNotice";
+import { ConfirmHost } from "@/components/ui/ConfirmHost";
 
 function SalesGlobalPinnedStrip({
   attention,
@@ -276,6 +277,7 @@ export function AppShellClient({
       <ChangelogProvider role={role}>
       <ChangelogAutoOpen />
       <FontScaleSync fontScale={fontScale} />
+      <ConfirmHost />
       <LegacyProcurementRouteRedirect />
       <div
         className={cn(

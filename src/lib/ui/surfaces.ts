@@ -81,7 +81,7 @@ export const panelQueueRowActionsClass =
  * (footer ma już border-t; unikamy podwójnego chrome).
  */
 export const panelActionBarFooterShellClass =
-  "inline-flex h-7 min-h-7 w-full max-w-full items-stretch overflow-hidden rounded-md border border-slate-200/90 bg-white sm:w-full";
+  "inline-flex h-9 min-h-9 w-full max-w-full items-stretch overflow-hidden rounded-md border border-slate-200/90 bg-white sm:h-7 sm:min-h-7 sm:w-full";
 
 /** Karta w kolumnie planu tygodnia — zawsze pionowo (kolumny są wąskie niezależnie od viewportu). */
 export const weekPlannerCardLayoutClass = "flex flex-col gap-1.5";

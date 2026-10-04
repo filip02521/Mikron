@@ -1,5 +1,6 @@
 import type { SubiektDocument, SubiektDocumentLine } from "@/lib/subiekt/types";
 import type { SalesZkWatch } from "@/types/database";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export type ZkWatchLineCheckStored = {
   key: string;
@@ -197,7 +198,7 @@ export function formatZkLinesProgress(
   const { total, arrived } = summarizeZkWatchLines(views);
   if (!total) return null;
   if (arrived === 0) {
-    return `${total} ${total === 1 ? "pozycja" : total < 5 ? "pozycje" : "pozycji"}`;
+    return `${total} ${polishPluralWord(total, "pozycja", "pozycje", "pozycji")}`;
   }
 
   const inStockSet = new Set(options?.inStockLineKeys ?? []);
