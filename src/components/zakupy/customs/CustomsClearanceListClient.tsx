@@ -152,7 +152,14 @@ export function CustomsClearanceListClient({
     });
   }
 
-  const canSubmit = Boolean(supplierId && invoiceNumber.trim() && (zdId || pastedLines.trim()));
+  const submitBlocker = !supplierId
+    ? "Wybierz dostawcę."
+    : !invoiceNumber.trim()
+      ? "Wpisz numer faktury."
+      : !(zdId || pastedLines.trim())
+        ? "Wgraj plik faktury, wklej pozycje albo wybierz ZD."
+        : null;
+  const canSubmit = !submitBlocker;
 
   return (
     <div className="space-y-4">
@@ -160,9 +167,38 @@ export function CustomsClearanceListClient({
         <Card>
           <CardHeader
             title="Nowa odprawa"
-            description="Wybierz dostawcę i ZD z Subiekta albo wklej pozycje z faktury. Zatwierdzone wcześniej artykuły uzupełnią się same."
+            description="Wgraj fakturę, wybierz dostawcę (i ZD z Subiekta, jeśli jest). Zatwierdzone wcześniej artykuły uzupełnią się same."
           />
           <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label={aiEnabled ? "Plik faktury – Excel, CSV, PDF lub skan" : "Plik faktury – Excel lub CSV"}
+              hint={
+                aiReading
+                  ? "Czytam plik… (PDF / skan przez AI do 2 minut)"
+                  : (aiNote ??
+                    (aiEnabled
+                      ? "Zacznij od pliku: wypełni numer, datę, walutę i pozycje. Excel / CSV czytam po nagłówkach, PDF i skany przez AI."
+                      : "Kolumny rozpoznam po nagłówkach (kod / nazwa / ilość / cena). PDF wymaga włączenia AI."))
+              }
+              state={aiNote ? "success" : "default"}
+              className="sm:col-span-2"
+            >
+              <input
+                type="file"
+                accept={
+                  aiEnabled
+                    ? ".xlsx,.csv,.xls,.tif,.tiff,application/pdf,image/*"
+                    : ".xlsx,.csv,.xls"
+                }
+                disabled={aiReading || pending}
+                className="block w-full min-w-0 pt-1 text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void readInvoiceFile(file);
+                  e.target.value = "";
+                }}
+              />
+            </Field>
             <Field label="Dostawca (import)">
               <Select value={supplierId} onChange={(e) => void onSupplierChange(e.target.value)}>
                 <option value="">- wybierz -</option>
@@ -190,12 +226,18 @@ export function CustomsClearanceListClient({
             <Field label="Numer faktury">
               <Input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="np. AI/3177/26" />
             </Field>
-            <div className="grid grid-cols-[1fr_6rem] gap-3">
-              <Field label="Data faktury">
+            <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-3">
+              <Field label="Data faktury" className="min-w-0">
                 <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
               </Field>
-              <Field label="Waluta">
-                <Input value={currency} onChange={(e) => setCurrency(e.target.value)} maxLength={3} />
+              <Field label="Waluta" className="min-w-0">
+                <Select className="min-w-0" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                  {[...new Set([currency, "EUR", "USD", "GBP", "CNY", "CHF", "JPY", "PLN"])].map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </Select>
               </Field>
             </div>
             <Field
@@ -207,35 +249,6 @@ export function CustomsClearanceListClient({
                 value={shipmentDescription}
                 onChange={(e) => setShipmentDescription(e.target.value)}
                 placeholder="przyrządy używane w protetyce stomatologicznej"
-              />
-            </Field>
-            <Field
-              label={aiEnabled ? "Plik faktury - Excel, CSV, PDF lub skan" : "Plik faktury - Excel lub CSV"}
-              hint={
-                aiReading
-                  ? "Czytam plik… (PDF / skan przez AI do 2 minut)"
-                  : (aiNote ??
-                    (aiEnabled
-                      ? "Excel / CSV: kolumny rozpoznam po nagłówkach; PDF i skany czyta AI. Pozycje trafią do pola poniżej."
-                      : "Kolumny rozpoznam po nagłówkach (kod / nazwa / ilość / cena). PDF wymaga włączenia AI."))
-              }
-              state={aiNote ? "success" : "default"}
-              className="sm:col-span-2"
-            >
-              <input
-                type="file"
-                accept={
-                  aiEnabled
-                    ? ".xlsx,.csv,.xls,.tif,.tiff,application/pdf,image/*"
-                    : ".xlsx,.csv,.xls"
-                }
-                disabled={aiReading || pending}
-                className="block w-full pt-1 text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void readInvoiceFile(file);
-                  e.target.value = "";
-                }}
               />
             </Field>
             <Field
@@ -261,7 +274,10 @@ export function CustomsClearanceListClient({
               {error}
             </Alert>
           ) : null}
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+            {submitBlocker && !pending && !aiReading ? (
+              <p className="mr-auto text-sm text-slate-600">{submitBlocker}</p>
+            ) : null}
             {clearances.length ? (
               <Button variant="ghost" onClick={() => setCreating(false)} disabled={pending}>
                 Anuluj
@@ -294,8 +310,8 @@ export function CustomsClearanceListClient({
             aria-label="Status"
           >
             <option value="">Wszystkie statusy</option>
-            <option value="draft">W przygotowaniu</option>
-            <option value="sent">Wysłane</option>
+            <option value="draft">Mail w przygotowaniu</option>
+            <option value="sent">Mail wysłany</option>
           </Select>
           <Input
             value={filterText}
@@ -335,11 +351,9 @@ export function CustomsClearanceListClient({
                       {SHIPMENT_STAGE_LABEL[shipmentStage(c.shipment)]}
                     </Badge>
                   ) : null}
-                  {c.status === "sent" ? (
-                    <Badge variant="success">Wysłane {formatDate(c.sentAt)}</Badge>
-                  ) : (
-                    <Badge variant="warning">W przygotowaniu</Badge>
-                  )}
+                  <span className="text-xs text-slate-500">
+                    {c.status === "sent" ? `Mail wysłany ${formatDate(c.sentAt)}` : "Mail w przygotowaniu"}
+                  </span>
                 </Link>
               </li>
             ))}

@@ -58,19 +58,46 @@ function fromDraft(d: Draft): CustomsShipment {
 }
 
 /** Przesyłka przy odprawie: etap, terminy składowania i należności — edytowalna także po wysłaniu maila. */
+function dutiesNoteForPayment(s: CustomsShipment, title: string): string {
+  const amount = s.dutiesAmount!.toLocaleString("pl-PL", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return [
+    `Należności celne do zapłaty: ${amount} zł`,
+    title,
+    s.forwarder ? `Agencja / spedytor: ${s.forwarder}` : "",
+    s.transportRef ? `Przesyłka (AWB / B/L): ${s.transportRef}` : "",
+    "Po zapłacie prześlij proszę potwierdzenie przelewu do agencji - od tego zależy zwolnienie towaru.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function Group({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <fieldset className="min-w-0 space-y-3 rounded-lg border border-slate-100 p-3">
+      <legend className="px-1 text-xs font-semibold text-slate-600">{title}</legend>
+      {children}
+    </fieldset>
+  );
+}
+
 export function CustomsShipmentCard({
   clearanceId,
   shipment,
   documentsSent,
+  title,
 }: {
   clearanceId: string;
   shipment: CustomsShipment;
   documentsSent: boolean;
+  /** „Dostawca · faktura” — do notatki dla osoby płacącej należności. */
+  title: string;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState(() => toDraft(shipment));
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [open, setOpen] = useState(shipmentStage(shipment) !== "none");
+  const [copied, setCopied] = useState(false);
   const dirty = JSON.stringify(draft) !== JSON.stringify(toDraft(shipment));
   const current = fromDraft(draft);
   const stage = shipmentStage(current);
@@ -84,6 +111,22 @@ export function CustomsShipmentCard({
       setError(res.ok ? null : res.error);
       if (res.ok) router.refresh();
     });
+  }
+
+  if (!open) {
+    return (
+      <Card>
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="text-base font-semibold text-slate-900">Przesyłka</h2>
+          <p className="mr-auto text-sm text-slate-500">
+            Gdy towar wyjedzie, wpisz spedytora, AWB i ETA - przypomnę o składowaniu i należnościach.
+          </p>
+          <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+            Dodaj dane przesyłki
+          </Button>
+        </div>
+      </Card>
+    );
   }
 
   return (
@@ -102,40 +145,72 @@ export function CustomsShipmentCard({
           ))}
         </ul>
       ) : null}
-      <div className="grid gap-3 sm:grid-cols-4">
-        <Field label="Spedytor / agencja">
-          <Input value={draft.forwarder} onChange={(e) => set("forwarder", e.target.value)} placeholder="DHL, Fracht, hartrodt…" />
-        </Field>
-        <Field label="Nr AWB / B/L">
-          <Input value={draft.transportRef} onChange={(e) => set("transportRef", e.target.value)} placeholder="784-85993040" />
-        </Field>
-        <Field label="ETA">
-          <Input type="date" value={draft.eta ?? ""} onChange={(e) => set("eta", e.target.value)} />
-        </Field>
-        <Field label="Na terminalu od" hint={freeUntil ? `Bez składowego do ${freeUntil.split("-").reverse().join(".")}` : undefined}>
-          <Input type="date" value={draft.arrivedAt ?? ""} onChange={(e) => set("arrivedAt", e.target.value)} />
-        </Field>
-        <Field label="Dni bez składowego" hint="Z dniem przybycia (DHL: 3)">
-          <Input
-            type="number"
-            min={0}
-            max={60}
-            value={draft.freeStorageDays}
-            onChange={(e) => set("freeStorageDays", e.target.value)}
-          />
-        </Field>
-        <Field label="Należności (PLN)" hint="Cło + VAT z wyliczenia agencji">
-          <Input inputMode="decimal" value={draft.dutiesAmount} onChange={(e) => set("dutiesAmount", e.target.value)} />
-        </Field>
-        <Field label="Opłacone">
-          <Input type="date" value={draft.dutiesPaidAt ?? ""} onChange={(e) => set("dutiesPaidAt", e.target.value)} />
-        </Field>
-        <Field label="MRN (z ZC429)">
-          <Input value={draft.mrn} onChange={(e) => set("mrn", e.target.value)} placeholder="26PL44302D00…" />
-        </Field>
-        <Field label="Dostarczono">
-          <Input type="date" value={draft.deliveredAt ?? ""} onChange={(e) => set("deliveredAt", e.target.value)} />
-        </Field>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <Group title="Transport">
+          <Field label="Spedytor / agencja">
+            <Input value={draft.forwarder} onChange={(e) => set("forwarder", e.target.value)} placeholder="DHL, Fracht, hartrodt…" />
+          </Field>
+          <Field label="Nr AWB / B/L">
+            <Input
+              value={draft.transportRef}
+              className="font-mono"
+              onChange={(e) => set("transportRef", e.target.value)}
+              placeholder="784-85993040"
+            />
+          </Field>
+          <Field label="ETA">
+            <Input type="date" value={draft.eta ?? ""} onChange={(e) => set("eta", e.target.value)} />
+          </Field>
+        </Group>
+        <Group title="Terminal">
+          <Field
+            label="Na terminalu od"
+            hint={freeUntil ? `Bez składowego do ${freeUntil.split("-").reverse().join(".")}` : "Dzień przyjęcia u agencji"}
+          >
+            <Input type="date" value={draft.arrivedAt ?? ""} onChange={(e) => set("arrivedAt", e.target.value)} />
+          </Field>
+          <Field label="Dni bez składowego" hint="Z dniem przybycia (DHL: 3)">
+            <Input
+              type="number"
+              min={0}
+              max={60}
+              value={draft.freeStorageDays}
+              onChange={(e) => set("freeStorageDays", e.target.value)}
+            />
+          </Field>
+        </Group>
+        <Group title="Należności i zakończenie">
+          <div className="grid gap-3">
+            <Field label="Należności (PLN)" hint="Cło + VAT z wyliczenia agencji">
+              <Input
+                inputMode="decimal"
+                className="tabular-nums"
+                value={draft.dutiesAmount}
+                onChange={(e) => set("dutiesAmount", e.target.value)}
+              />
+            </Field>
+            <Field label="Opłacone">
+              <Input type="date" value={draft.dutiesPaidAt ?? ""} onChange={(e) => set("dutiesPaidAt", e.target.value)} />
+            </Field>
+          </div>
+          <Field label="MRN (z ZC429)">
+            <Input value={draft.mrn} className="font-mono" onChange={(e) => set("mrn", e.target.value)} placeholder="26PL44302D00…" />
+          </Field>
+          <Field label="Dostarczono">
+            <Input type="date" value={draft.deliveredAt ?? ""} onChange={(e) => set("deliveredAt", e.target.value)} />
+          </Field>
+          {current.dutiesAmount != null && current.dutiesAmount > 0 && !current.dutiesPaidAt && !dirty ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() =>
+                void navigator.clipboard.writeText(dutiesNoteForPayment(current, title)).then(() => setCopied(true))
+              }
+            >
+              {copied ? "Skopiowano - wklej Darii" : "Kopiuj dla Darii"}
+            </Button>
+          ) : null}
+        </Group>
       </div>
       {error ? (
         <Alert tone="error" className="mt-3">

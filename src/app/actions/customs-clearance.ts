@@ -362,6 +362,18 @@ export async function actionUpdateCustomsClearanceHeader(
   return { ok: true };
 }
 
+/** Opis kodu CN ze słownika — sprawdzenie w trakcie wpisywania (słownik ~1,6 MB zostaje na serwerze). */
+export async function actionDescribeCnCode(
+  raw: string
+): Promise<{ ok: true; code: string; description: string | null; siblings: string[]; year: number } | { ok: false; error: string }> {
+  await requireOperations("read");
+  const code = String(raw ?? "").replace(/[\s.]/g, "");
+  if (!/^\d{8}$/.test(code)) return fail("Kod CN to 8 cyfr.");
+  const cn = createCnLookup();
+  const description = cn.describe(code);
+  return { ok: true, code, description, siblings: description ? [] : cn.siblings(code), year: cn.year };
+}
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function dateOrNull(raw: string | null | undefined): string | null | undefined {
