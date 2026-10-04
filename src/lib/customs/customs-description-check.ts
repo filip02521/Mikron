@@ -19,7 +19,8 @@ const MATERIALS: readonly { invoice: RegExp; pl: RegExp; label: string }[] = [
 ];
 
 /** „5 podkładka; 6 zacisk” / „9-10 podkładka” — numer pozycji wewnątrz opisu. */
-const INNER_ITEM_RE = /(?:^|[:;,]\s*)\d{1,3}(?:\s*-\s*\d{1,3})?\s+\p{Ll}/gu;
+// Jednostki („98 mm, 14 mm”, „20 szt.”) to wymiary, nie numery pozycji.
+const INNER_ITEM_RE = /(?:^|[:;,]\s*)\d{1,3}(?:\s*-\s*\d{1,3})?\s+(?!(?:mm|cm|m|kg|g|ml|l|szt|sztuk|op|opak|pcs)\b)\p{Ll}/gu;
 const SIZE_RE = /(\d+(?:[.,]\d+)?)\s*(mm|cm)\b/gi;
 
 function sizes(text: string): Set<string> {

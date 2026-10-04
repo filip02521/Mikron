@@ -73,7 +73,13 @@ export function CustomsClearanceListClient({
           (!filterStatus || c.status === filterStatus) &&
           (!q || `${c.invoiceNumber} ${c.zdNumber ?? ""} ${c.shipment.transportRef}`.toLowerCase().includes(q))
       )
-      .map((c) => ({ ...c, alerts: shipmentAlerts(c.shipment, c.status === "sent", today) }))
+      .map((c) => ({
+        ...c,
+        // „Należności do zapłaty” mówi już odznaka etapu — na liście nie powtarzamy.
+        alerts: shipmentAlerts(c.shipment, c.status === "sent", today).filter(
+          (a) => !(shipmentStage(c.shipment) === "duties_due" && a.text.startsWith("Należności"))
+        ),
+      }))
       // Najpierw przesyłki z terminem (najpilniejsze u góry), potem reszta jak dotąd — od najnowszych.
       .sort((a, b) => (a.alerts[0]?.urgency ?? Infinity) - (b.alerts[0]?.urgency ?? Infinity));
   }, [clearances, filterSupplier, filterStatus, filterText]);
@@ -332,27 +338,31 @@ export function CustomsClearanceListClient({
               <li key={c.id}>
                 <Link
                   href={`/zakupy/odprawy/${c.id}`}
-                  className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3.5 hover:bg-slate-50"
+                  className="flex flex-col gap-1.5 px-5 py-3.5 hover:bg-slate-50 sm:flex-row sm:items-center sm:gap-4"
                 >
-                  <span className="min-w-0 flex-1">
+                  <span className="min-w-0 flex-1 space-y-0.5">
                     <span className="block truncate text-sm font-semibold text-slate-900">
                       {c.supplierName} · {c.invoiceNumber || "bez numeru"}
                     </span>
                     <span className="block text-xs text-slate-500">
-                      Faktura {formatDate(c.invoiceDate)}
-                      {c.zdNumber ? ` · ${c.zdNumber}` : ""} · {c.lineCount} poz.
-                      {c.shipment.forwarder ? ` · ${c.shipment.forwarder}` : ""}
-                      {c.shipment.transportRef ? ` ${c.shipment.transportRef}` : ""}
+                      {[
+                        c.invoiceDate ? `Faktura ${formatDate(c.invoiceDate)}` : null,
+                        c.zdNumber,
+                        `${c.lineCount} poz.`,
+                        [c.shipment.forwarder, c.shipment.transportRef].filter(Boolean).join(" ") || null,
+                        c.status === "sent" ? `mail wysłany ${formatDate(c.sentAt)}` : "mail w przygotowaniu",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </span>
                   </span>
-                  {c.alerts[0] ? <Badge variant={ALERT_BADGE[c.alerts[0].tone]}>{c.alerts[0].text}</Badge> : null}
-                  {shipmentStage(c.shipment) !== "none" ? (
-                    <Badge variant={STAGE_BADGE[shipmentStage(c.shipment)]}>
-                      {SHIPMENT_STAGE_LABEL[shipmentStage(c.shipment)]}
-                    </Badge>
-                  ) : null}
-                  <span className="text-xs text-slate-500">
-                    {c.status === "sent" ? `Mail wysłany ${formatDate(c.sentAt)}` : "Mail w przygotowaniu"}
+                  <span className="flex flex-wrap items-center gap-1.5 sm:max-w-[55%] sm:justify-end">
+                    {c.alerts[0] ? <Badge variant={ALERT_BADGE[c.alerts[0].tone]}>{c.alerts[0].text}</Badge> : null}
+                    {shipmentStage(c.shipment) !== "none" ? (
+                      <Badge variant={STAGE_BADGE[shipmentStage(c.shipment)]}>
+                        {SHIPMENT_STAGE_LABEL[shipmentStage(c.shipment)]}
+                      </Badge>
+                    ) : null}
                   </span>
                 </Link>
               </li>

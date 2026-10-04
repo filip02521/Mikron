@@ -30,10 +30,17 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { Field, Input, Select, fieldControlClass } from "@/components/ui/Field";
 import { cn } from "@/lib/cn";
+import { copyTextToClipboard } from "@/lib/ui/copy-text-to-clipboard";
+import { polishPozycjeLabel, polishPluralWord } from "@/lib/email/polish-plural";
+
+/** Biernik: „1 pozycję”, „4 pozycje”, „5 pozycji”. */
+const pozycjeAcc = (n: number) => `${n} ${polishPluralWord(n, "pozycję", "pozycje", "pozycji")}`;
+import { formatCnCode } from "@/lib/customs/customs-clearance";
 import { CustomsShipmentCard } from "./CustomsShipmentCard";
 import type { CustomsLineState } from "@/lib/customs/customs-clearance";
 import {
   CUSTOMS_LINE_STATE_LABEL,
+  isLineComplete,
   type CustomsClearanceView,
   type CustomsLineView,
   type CustomsSupplierDocumentView,
@@ -54,7 +61,7 @@ type PendingConfirm = "delete" | "markSent" | "send" | "confirmAll" | null;
 
 /** Pierwszy brakujący warunek wysyłki — wyłączony przycisk musi mówić, czego brakuje. */
 function sendBlocker(input: { incomplete: number; hasInvoice: boolean; email: string }): string | null {
-  if (input.incomplete > 0) return `Uzupełnij ${input.incomplete} pozycji (opis PL i poprawny kod CN).`;
+  if (input.incomplete > 0) return `Uzupełnij ${pozycjeAcc(input.incomplete)} (opis PL i poprawny kod CN).`;
   if (!input.hasInvoice) return "Wgraj plik faktury w sekcji Faktura.";
   if (!input.email.trim()) return "Wpisz adres agencji celnej.";
   return null;
@@ -103,9 +110,6 @@ function draftFromLine(line: CustomsLineView): LineDraft {
 
 type CnCheck = { code: string; description: string | null; siblings: string[]; year: number } | null;
 
-function formatCn(code: string): string {
-  return code.length === 8 ? `${code.slice(0, 4)} ${code.slice(4, 6)} ${code.slice(6)}` : code;
-}
 
 /** Sprawdza wpisywany kod CN w słowniku (z opóźnieniem) — opis i ostrzeżenie dla tego, co jest w polu. */
 function useCnCheck(code: string, savedCode: string, savedDescription: string | null): CnCheck {
@@ -166,6 +170,7 @@ function CustomsLineRow({
 
   function copyFromPrevious() {
     if (!previous?.card) return;
+    setError(null);
     setDraft((d) => ({
       ...d,
       descriptionPl: previous.card!.descriptionPl,
@@ -201,14 +206,17 @@ function CustomsLineRow({
           {line.card?.descriptionPl || line.supplierName}
           <span className="ml-2 text-xs text-slate-500">{line.supplierName}</span>
         </span>
-        <span className="font-mono text-xs tabular-nums text-slate-600">{formatCn(line.card?.cnCode ?? "")}</span>
+        <span className="font-mono text-xs tabular-nums text-slate-600">{formatCnCode(line.card?.cnCode ?? "")}</span>
         <span className="text-xs tabular-nums text-slate-600">VAT {line.vat.rate}%</span>
-        {line.cnWarning ? <Badge variant="warning">Do sprawdzenia</Badge> : null}
-        {!readOnly ? (
-          <Button variant="ghost" size="sm" onClick={() => setExpanded(true)} aria-label={`Edytuj pozycję ${line.position}`}>
-            Edytuj
-          </Button>
-        ) : null}
+        {line.cnWarning || line.descriptionWarning ? <Badge variant="warning">Do sprawdzenia</Badge> : null}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setExpanded(true)}
+          aria-label={readOnly ? `Szczegóły pozycji ${line.position}` : `Edytuj pozycję ${line.position}`}
+        >
+          {readOnly ? "Szczegóły" : "Edytuj"}
+        </Button>
       </li>
     );
   }
@@ -256,6 +264,7 @@ function CustomsLineRow({
         ) : null}
         {line.vat.warning ? <p className="text-xs leading-snug text-amber-800">{line.vat.warning}</p> : null}
         {line.cnWarning ? <p className="text-xs leading-snug text-amber-800">{line.cnWarning}</p> : null}
+        {line.descriptionWarning ? <p className="text-xs leading-snug text-amber-800">{line.descriptionWarning}</p> : null}
       </div>
 
       <div className="grid min-w-0 gap-2.5 sm:grid-cols-6">
@@ -314,7 +323,11 @@ function CustomsLineRow({
             label="Podstawa 8% (deklaracja zgodności)"
             className="min-w-0 sm:col-span-6"
             state={!draft.vatBasisDocumentId ? "warning" : "default"}
-            hint={!draft.vatBasisDocumentId ? "Bez dokumentu agencja nie przyjmie 8% - dodaj deklarację w karcie dostawcy." : undefined}
+            hint={
+              !draft.vatBasisDocumentId && !line.vat.warning
+                ? "Bez dokumentu agencja nie przyjmie 8% - dodaj deklarację w karcie dostawcy."
+                : undefined
+            }
           >
             <select
               className={fieldControlClass(!draft.vatBasisDocumentId ? "warning" : "default")}
@@ -335,13 +348,13 @@ function CustomsLineRow({
           {cnFormatError ? <p className="text-xs text-amber-800">{cnFormatError}</p> : null}
           {cnMissing ? (
             <p className="text-xs text-amber-800">
-              Kodu {formatCn(cnDigits)} nie ma w CN {cnCheck!.year}
-              {cnCheck!.siblings.length ? ` - istniejące w tej grupie: ${cnCheck!.siblings.map(formatCn).join(", ")}` : ""}.
+              Kodu {formatCnCode(cnDigits)} nie ma w CN {cnCheck!.year}
+              {cnCheck!.siblings.length ? ` - istniejące w tej grupie: ${cnCheck!.siblings.map(formatCnCode).join(", ")}` : ""}.
             </p>
           ) : null}
           {cnCheck?.description ? (
             <p className="line-clamp-2 text-xs leading-snug text-slate-500" title={cnCheck.description}>
-              <span className="font-medium text-slate-600">CN {formatCn(cnCheck.code)}:</span> {cnCheck.description}
+              <span className="font-medium text-slate-600">CN {formatCnCode(cnCheck.code)}:</span> {cnCheck.description}
             </p>
           ) : null}
         </div>
@@ -356,16 +369,16 @@ function CustomsLineRow({
             />
             Wyrób medyczny
           </label>
+          {line.state === "confirmed" && !dirty ? (
+            <Button variant="ghost" size="sm" onClick={() => setExpanded(false)}>
+              Zwiń
+            </Button>
+          ) : null}
           {!readOnly ? (
             <>
               {previous?.card && !draft.descriptionPl ? (
                 <Button variant="ghost" size="sm" onClick={copyFromPrevious} disabled={pending}>
                   Jak poz. {previous.position}
-                </Button>
-              ) : null}
-              {line.state === "confirmed" && !dirty ? (
-                <Button variant="ghost" size="sm" onClick={() => setExpanded(false)}>
-                  Zwiń
                 </Button>
               ) : null}
               {dirty ? (
@@ -415,8 +428,10 @@ function ImportEmailDescriptions({
         return;
       }
       const parts = [
-        `Wczytano opisy dla ${res.imported} pozycji jako propozycje - sprawdź i zatwierdź.`,
-        res.skippedConfirmed ? `${res.skippedConfirmed} pozycji było już zatwierdzonych.` : "",
+        res.imported
+          ? `Wczytano opisy dla ${res.imported} pozycji jako propozycje - sprawdź i zatwierdź.`
+          : "Nie wczytano nowych opisów.",
+        res.skippedConfirmed ? `Już zatwierdzone wcześniej (bez zmian): ${res.skippedConfirmed}.` : "",
         ...res.warnings,
       ].filter(Boolean);
       onNotice({ tone: res.warnings.length ? "warning" : "success", text: parts.join(" ") });
@@ -579,6 +594,10 @@ export function CustomsClearanceEditor({
   const emailText = readOnly && view.sentEmailText ? view.sentEmailText : view.emailText;
   const aiProposals = view.lines.filter((l) => l.state === "proposal" && l.card?.source === "ai").length;
   const todoCount = view.lines.length - counts.confirmed;
+  // Jak w actionConfirmAllCustomsLines: karta niezatwierdzona, opis PL i istniejący kod CN.
+  const completeProposals = view.lines.filter(
+    (l) => l.card && l.card.status !== "confirmed" && isLineComplete(l)
+  ).length;
   const [lineFilter, setLineFilter] = useState<LineFilter>(todoCount > 0 ? "todo" : "all");
   const visibleLines = useMemo(
     () =>
@@ -614,7 +633,8 @@ export function CustomsClearanceEditor({
             {view.supplierName} · {view.invoiceNumber || "bez numeru faktury"}
           </h1>
           <p className="text-sm text-slate-600">
-            {view.lines.length} pozycji{view.zdNumber ? ` · ${view.zdNumber}` : ""} ·{" "}
+            {polishPozycjeLabel(view.lines.length)}
+            {view.zdNumber ? ` · ${view.zdNumber}` : ""} ·{" "}
             {readOnly ? (
               <Badge variant="success">Mail wysłany</Badge>
             ) : (
@@ -704,7 +724,7 @@ export function CustomsClearanceEditor({
                 {view.invoiceFileName}
               </button>
             ) : (
-              <span className="block pt-2 text-sm text-slate-500">brak - wgraj obok</span>
+              <span className="block pt-2 text-sm text-slate-500">brak - wgraj plik faktury</span>
             )}
           </Field>
           <Field label="Przesyłka zawiera" className="min-w-0 sm:col-span-3">
@@ -799,7 +819,7 @@ export function CustomsClearanceEditor({
             value={lineFilter}
             onChange={setLineFilter}
             options={[
-              { value: "todo", label: `Do zrobienia (${todoCount})`, title: "Bez opisu, propozycje i zmienione po zatwierdzeniu" },
+              { value: "todo", label: `Do zrobienia (${todoCount})` },
               { value: "confirmed", label: `Zatwierdzone (${counts.confirmed})` },
               { value: "all", label: `Wszystkie (${view.lines.length})` },
             ]}
@@ -820,7 +840,7 @@ export function CustomsClearanceEditor({
                   if (!res.ok) return { tone: "error", text: res.error };
                   const parts = [`AI zaproponowało opisy dla ${res.proposed} pozycji - sprawdź i zatwierdź.`];
                   if (res.uncertain.length) parts.push(`Kod CN do sprawdzenia: ${res.uncertain.join("; ")}.`);
-                  if (res.remaining) parts.push(`Zostało ${res.remaining} pozycji - uruchom ponownie.`);
+                  if (res.remaining) parts.push(`Pozostało do zaproponowania: ${res.remaining} - uruchom ponownie.`);
                   return { tone: res.uncertain.length || res.remaining ? "warning" : "success", text: parts.join(" ") };
                 })
               }
@@ -828,14 +848,14 @@ export function CustomsClearanceEditor({
               {pending ? "Pracuję…" : "Zaproponuj opisy (AI)"}
             </Button>
           ) : null}
-          {!readOnly && counts.proposal > 0 ? (
+          {!readOnly && completeProposals > 0 ? (
             <Button
               size="sm"
               variant="outline"
               disabled={pending}
               onClick={() => setConfirming("confirmAll")}
             >
-              Zatwierdź kompletne propozycje ({counts.proposal})
+              Zatwierdź kompletne propozycje ({completeProposals})
             </Button>
           ) : null}
         </div>
@@ -874,7 +894,7 @@ export function CustomsClearanceEditor({
         <CardHeader title="Mail do agencji celnej" density="compact" />
         {view.incompleteCount > 0 && !readOnly ? (
           <Alert tone="warning" className="mb-3">
-            {`${view.incompleteCount} pozycji bez opisu PL albo z brakującym lub nieistniejącym kodem CN - nie ma ich jeszcze w mailu.`}
+            {`Bez opisu PL albo z brakującym lub nieistniejącym kodem CN: ${polishPozycjeLabel(view.incompleteCount)} - nie ma ich jeszcze w mailu.`}
           </Alert>
         ) : null}
         <textarea
@@ -923,9 +943,13 @@ export function CustomsClearanceEditor({
           <Button
             variant="secondary"
             onClick={() =>
-              void navigator.clipboard
-                .writeText(emailText)
-                .then(() => setNotice({ tone: "success", text: "Skopiowano treść maila." }))
+              void copyTextToClipboard(emailText).then((ok) =>
+                setNotice(
+                  ok
+                    ? { tone: "success", text: "Skopiowano treść maila." }
+                    : { tone: "error", text: "Nie udało się skopiować - zaznacz treść maila i skopiuj ręcznie (Ctrl+C)." }
+                )
+              )
             }
           >
             Kopiuj treść
@@ -969,7 +993,7 @@ export function CustomsClearanceEditor({
       />
       <ConfirmDialog
         open={confirming === "confirmAll"}
-        title={`Zatwierdzić ${counts.proposal} propozycji?`}
+        title={`Zatwierdzić ${completeProposals} ${polishPluralWord(completeProposals, "propozycję", "propozycje", "propozycji")}?`}
         message="Zatwierdzone zostaną tylko kompletne propozycje (opis PL i istniejący kod CN). Karty zapamiętają opis, kod i VAT na kolejne faktury - każdą można potem edytować."
         confirmLabel="Zatwierdź"
         pending={pending}
@@ -978,7 +1002,7 @@ export function CustomsClearanceEditor({
           run(async () => {
             const res = await actionConfirmAllCustomsLines(view.id);
             return res.ok
-              ? { tone: "success", text: `Zatwierdzono ${res.confirmed} pozycji.` }
+              ? { tone: "success", text: `Zatwierdzono ${pozycjeAcc(res.confirmed)}.` }
               : { tone: "error", text: res.error };
           })
         }

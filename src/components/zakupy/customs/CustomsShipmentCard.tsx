@@ -7,8 +7,11 @@ import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Field, Input } from "@/components/ui/Field";
+import { Field, Input, fieldControlClass } from "@/components/ui/Field";
+import { copyTextToClipboard } from "@/lib/ui/copy-text-to-clipboard";
+import { cn } from "@/lib/cn";
 import {
+  EMPTY_SHIPMENT,
   SHIPMENT_STAGE_LABEL,
   lastFreeStorageDay,
   shipmentAlerts,
@@ -71,9 +74,9 @@ function dutiesNoteForPayment(s: CustomsShipment, title: string): string {
     .join("\n");
 }
 
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
+function Group({ title, className, children }: { title: string; className?: string; children: React.ReactNode }) {
   return (
-    <fieldset className="min-w-0 space-y-3 rounded-lg border border-slate-100 p-3">
+    <fieldset className={cn("min-w-0 space-y-3 rounded-lg border border-slate-100 p-3", className)}>
       <legend className="px-1 text-xs font-semibold text-slate-600">{title}</legend>
       {children}
     </fieldset>
@@ -96,8 +99,9 @@ export function CustomsShipmentCard({
   const [draft, setDraft] = useState(() => toDraft(shipment));
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [open, setOpen] = useState(shipmentStage(shipment) !== "none");
-  const [copied, setCopied] = useState(false);
+  // Po zapisie karta montuje się od nowa — otwarta, gdy cokolwiek odbiega od pustej przesyłki.
+  const [open, setOpen] = useState(JSON.stringify(shipment) !== JSON.stringify(EMPTY_SHIPMENT));
+  const [copied, setCopied] = useState<boolean | null>(null);
   const dirty = JSON.stringify(draft) !== JSON.stringify(toDraft(shipment));
   const current = fromDraft(draft);
   const stage = shipmentStage(current);
@@ -165,7 +169,13 @@ export function CustomsShipmentCard({
         <Group title="Terminal">
           <Field
             label="Na terminalu od"
-            hint={freeUntil ? `Bez składowego do ${freeUntil.split("-").reverse().join(".")}` : "Dzień przyjęcia u agencji"}
+            hint={
+              !freeUntil
+                ? "Dzień przyjęcia u agencji"
+                : current.freeStorageDays === 0
+                  ? "Składowe od dnia przybycia"
+                  : `Bez składowego do ${freeUntil.split("-").reverse().join(".")}`
+            }
           >
             <Input type="date" value={draft.arrivedAt ?? ""} onChange={(e) => set("arrivedAt", e.target.value)} />
           </Field>
@@ -179,8 +189,8 @@ export function CustomsShipmentCard({
             />
           </Field>
         </Group>
-        <Group title="Należności i zakończenie">
-          <div className="grid gap-3">
+        <Group title="Należności i zakończenie" className="md:col-span-2 xl:col-span-1">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-1">
             <Field label="Należności (PLN)" hint="Cło + VAT z wyliczenia agencji">
               <Input
                 inputMode="decimal"
@@ -200,15 +210,27 @@ export function CustomsShipmentCard({
             <Input type="date" value={draft.deliveredAt ?? ""} onChange={(e) => set("deliveredAt", e.target.value)} />
           </Field>
           {current.dutiesAmount != null && current.dutiesAmount > 0 && !current.dutiesPaidAt && !dirty ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() =>
-                void navigator.clipboard.writeText(dutiesNoteForPayment(current, title)).then(() => setCopied(true))
-              }
-            >
-              {copied ? "Skopiowano - wklej Darii" : "Kopiuj dla Darii"}
-            </Button>
+            <div className="space-y-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => void copyTextToClipboard(dutiesNoteForPayment(current, title)).then(setCopied)}
+              >
+                {copied ? "Skopiowano - wklej Darii" : "Kopiuj dla Darii"}
+              </Button>
+              {copied === false ? (
+                <>
+                  <p className="text-xs text-amber-800">Przeglądarka zablokowała schowek - zaznacz tekst poniżej i skopiuj (Ctrl+C).</p>
+                  <textarea
+                    readOnly
+                    aria-label="Notatka o należnościach dla Darii"
+                    className={fieldControlClass("default", "min-h-28 bg-slate-50 text-xs")}
+                    value={dutiesNoteForPayment(current, title)}
+                    onFocus={(e) => e.currentTarget.select()}
+                  />
+                </>
+              ) : null}
+            </div>
           ) : null}
         </Group>
       </div>

@@ -131,7 +131,8 @@ describe("stary Excel .xls (BIFF) i grupy w scalonych komórkach", () => {
     [null, 2, "L2260730006-284", "S-B1 D98-12", 2, 0.58],
     ["Dental Lithium Disilicate Glass Ceramic", 3, "L1", "LT VBL2-R(18-15-13)", 100, 3.1],
     [null, null, "L2", "HT VA1-R(18-15-13)", 50, 1.6],
-    ["TOTAL:", "ONLY 3 CARTONS", null, null, 181, 21.8],
+    ["Color palette", 4, "/", "/", 20, 8.3],
+    ["TOTAL:", "ONLY 4 CARTONS", null, null, 201, 30.1],
   ];
 
   it("czyta .xls i rozpoznaje P/N jako kod, a DESCRIPTION jako grupę przenoszoną w dół", async () => {
@@ -146,6 +147,8 @@ describe("stary Excel .xls (BIFF) i grupy w scalonych komórkach", () => {
       ["S-B1 D98-12", "S-B1 D98-12", 2, "Dental Zirconia Ceramic"],
       ["LT VBL2-R(18-15-13)", "LT VBL2-R(18-15-13)", 100, "Dental Lithium Disilicate Glass Ceramic"],
       ["HT VA1-R(18-15-13)", "HT VA1-R(18-15-13)", 50, "Dental Lithium Disilicate Glass Ceramic"],
+      // Kod zastępczy „/” — nazwą zostaje grupa, inaczej karta nie miałaby klucza.
+      ["", "Color palette", 20, "Color palette"],
     ]);
   });
 

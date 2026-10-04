@@ -19,6 +19,7 @@ import {
   type CustomsProductCard,
   type CustomsVatRate,
   type ResolvedLineVat,
+  formatCnCode,
 } from "./customs-clearance";
 
 export type CustomsCardView = CustomsProductCard & {
@@ -46,6 +47,8 @@ export type CustomsLineView = {
   state: CustomsLineState;
   /** Rozbieżność kodu CN do sprawdzenia (HS nadawcy, inny kod przy tym samym opisie, kod spoza CN). */
   cnWarning: string | null;
+  /** Opis PL niezgodny z fakturą (lista kilku pozycji, rozmiar, materiał) — tylko ostrzeżenie. */
+  descriptionWarning: string | null;
   /** Oficjalny opis kodu CN ze słownika (null = brak kodu albo kodu nie ma w CN). */
   cnDescription: string | null;
   /** Kod CN nie istnieje w aktualnej CN — pozycja nie trafia do maila, dopóki się go nie poprawi. */
@@ -145,9 +148,6 @@ export function lineArticleKey(row: Pick<CustomsLineRow, "supplier_article_code"
   return customsArticleKey(row.supplier_article_code, row.supplier_name);
 }
 
-function formatCn(cn: string): string {
-  return `${cn.slice(0, 4)} ${cn.slice(4, 6)} ${cn.slice(6)}`;
-}
 
 /**
  * Kontrole kodu CN pozycji (tylko ostrzeżenia — decyzja należy do człowieka):
@@ -173,18 +173,18 @@ export function customsCnWarnings(
     if (dictionary && !dictionary.describe(cn)) {
       const near = dictionary.siblings(cn);
       notes.push(
-        `Kodu ${formatCn(cn)} nie ma w CN ${dictionary.year}${near.length ? ` - istniejące w tej grupie: ${near.map(formatCn).join(", ")}` : ""}.`
+        `Kodu ${formatCnCode(cn)} nie ma w CN ${dictionary.year}${near.length ? ` - istniejące w tej grupie: ${near.map(formatCnCode).join(", ")}` : ""}.`
       );
     }
     const text = `${l.card!.descriptionPl.trim().toLowerCase()}|${l.card!.material.trim().toLowerCase()}`;
     const others = (byText.get(text) ?? []).filter((o) => o.cn !== cn);
     if (others.length) {
       notes.push(
-        `Ten sam opis ma inny kod CN w poz. ${others.map((o) => `${o.position} (${formatCn(o.cn)})`).join(", ")} - ujednolić albo doprecyzować opis.`
+        `Ten sam opis ma inny kod CN w poz. ${others.map((o) => `${o.position} (${formatCnCode(o.cn)})`).join(", ")} - ujednolić albo doprecyzować opis.`
       );
     }
     if (l.invoiceHsCode && l.invoiceHsCode.slice(0, 4) !== cn.slice(0, 4)) {
-      notes.push(`Dostawca podał HS ${l.invoiceHsCode} (pozycja ${l.invoiceHsCode.slice(0, 4)}), a CN to ${formatCn(cn)} - sprawdź.`);
+      notes.push(`Dostawca podał HS ${l.invoiceHsCode} (pozycja ${l.invoiceHsCode.slice(0, 4)}), a CN to ${formatCnCode(cn)} - sprawdź.`);
     }
     if (notes.length) out.set(l.position, notes.join(" "));
   }
@@ -221,6 +221,7 @@ export function buildCustomsLineViews(input: {
         vat,
         state: customsLineState(card, vat),
         cnWarning: null as string | null,
+        descriptionWarning: null as string | null,
         cnDescription: (card?.cnCode && input.cn?.describe(card.cnCode)) || null,
         cnInvalid: Boolean(card?.cnCode && input.cn?.strict && !input.cn.describe(card.cnCode)),
       };
@@ -229,7 +230,8 @@ export function buildCustomsLineViews(input: {
   for (const v of views) {
     const invoiceName = [v.invoiceGroup, v.supplierName].filter(Boolean).join(" ");
     const description = v.card ? customsDescriptionWarning(v.card.descriptionPl, invoiceName) : null;
-    v.cnWarning = [cnWarnings.get(v.position), description].filter(Boolean).join(" ") || null;
+    v.cnWarning = cnWarnings.get(v.position) ?? null;
+    v.descriptionWarning = description;
   }
   return views;
 }

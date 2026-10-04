@@ -67,6 +67,23 @@ describe("normalizeCnCode", () => {
 });
 
 describe("resolveLineVat", () => {
+  it("VAT z wcześniejszego maila / historii (copied) jest decyzją człowieka, propozycja AI — nie", () => {
+    const empty = buildDocumentArticleIndex([]);
+    const copied = resolveLineVat({
+      articleCode: "DE-1370",
+      card: card({ supplierArticleCode: "DE-1370", status: "proposed", source: "copied", vatRate: 8, isMedicalDevice: true }),
+      documentIndex: empty,
+    });
+    expect(copied).toMatchObject({ rate: 8, isMedicalDevice: true, source: "card" });
+    expect(copied.warning).toMatch(/bez dokumentu dostawcy/);
+    const ai = resolveLineVat({
+      articleCode: "DE-1370",
+      card: card({ supplierArticleCode: "DE-1370", status: "proposed", source: "ai", vatRate: 8 }),
+      documentIndex: empty,
+    });
+    expect(ai).toMatchObject({ rate: 23, source: "default" });
+  });
+
   it("artykuł z Annex A → 8% z deklaracją do załączenia", () => {
     const vat = resolveLineVat({ articleCode: "de-1411", card: null, documentIndex: aswadIndex });
     expect(vat).toMatchObject({ rate: 8, isMedicalDevice: true, source: "document" });

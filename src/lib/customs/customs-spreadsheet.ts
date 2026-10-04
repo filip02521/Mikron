@@ -6,7 +6,7 @@
 
 import ExcelJS from "exceljs";
 import * as XLSX from "xlsx";
-import { normalizeArticleCode } from "./customs-clearance";
+import { customsArticleKey, normalizeArticleCode } from "./customs-clearance";
 import { isInvoiceChargeName, parseLooseNumber, type CustomsInputLine } from "./customs-lines";
 
 export type SheetCell = string | number | null;
@@ -234,10 +234,10 @@ function isMergedGroupColumn(rows: SheetRows, cols: { header: number; code: numb
     if (q == null || q <= 0) continue;
     withQty++;
     if (String(row[cols.name] ?? "").trim()) withName++;
-    if (String(row[cols.code] ?? "").trim()) withCode++;
+    if (customsArticleKey(String(row[cols.code] ?? ""), "")) withCode++;
   }
-  // Kod prawie w każdym wierszu (sumy częściowe bywają bez kodu), nazwa w mniej niż połowie.
-  return withQty >= 4 && withCode >= withQty * 0.9 && withName * 2 < withQty;
+  // Kod w prawie każdym wierszu (bywa „/” albo suma bez kodu), nazwa najwyżej w połowie.
+  return withQty >= 4 && withCode >= withQty * 0.8 && withName * 2 <= withQty;
 }
 
 export function parseInvoiceSheet(rows: SheetRows): ParsedInvoiceSheet | null {
@@ -259,7 +259,10 @@ export function parseInvoiceSheet(rows: SheetRows): ParsedInvoiceSheet | null {
     let name = text(cols.name);
     if (nameIsGroup) {
       if (name) group = name;
-      name = "";
+      // Kod zastępczy („/”, „-”) — pozycja bez modelu, np. „Color palette | / | For Realism”: nazwą jest grupa.
+      name = customsArticleKey(code, "") ? "" : group;
+      if (!name) code = code.trim();
+      else code = "";
     }
     if (!row.some((c) => String(c ?? "").trim())) {
       // Kilka pustych wierszy z rzędu = koniec tabeli (dalej zwykle stopka).
