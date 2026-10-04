@@ -195,6 +195,7 @@ export function buildCustomsLineViews(input: {
   lines: readonly CustomsLineRow[];
   cardsByCode: ReadonlyMap<string, CustomsCardRow>;
   documentIndex: CustomsDocumentArticleIndex;
+  documents?: readonly CustomsDocumentRef[];
   /** Słownik CN (tylko serwer) — bez niego nie sprawdzamy istnienia kodów. */
   cn?: CnLookup;
 }): CustomsLineView[] {
@@ -204,7 +205,7 @@ export function buildCustomsLineViews(input: {
       const code = lineArticleKey(row);
       const cardRow = code ? input.cardsByCode.get(code) : undefined;
       const card = cardRow ? cardFromRow(cardRow) : null;
-      const vat = resolveLineVat({ articleCode: code, card, documentIndex: input.documentIndex });
+      const vat = resolveLineVat({ articleCode: code, card, documentIndex: input.documentIndex, documents: input.documents });
       return {
         id: row.id,
         position: row.position,

@@ -113,6 +113,8 @@ export function resolveLineVat(input: {
   articleCode: string;
   card: CustomsProductCard | null;
   documentIndex: CustomsDocumentArticleIndex;
+  /** Wszystkie dokumenty dostawcy — podstawa 8% wybrana ręcznie nie musi mieć artykułu na liście. */
+  documents?: readonly CustomsDocumentRef[];
 }): ResolvedLineVat {
   const code = normalizeArticleCode(input.articleCode);
   const docs = code ? input.documentIndex.get(code) ?? [] : [];
@@ -125,7 +127,10 @@ export function resolveLineVat(input: {
   if (card && userDecided && card.vatRate != null) {
     if (card.vatRate === CUSTOMS_MEDICAL_VAT_RATE) {
       const basis =
-        docs.find((d) => d.id === card.vatBasisDocumentId) ?? docs[0] ?? null;
+        docs.find((d) => d.id === card.vatBasisDocumentId) ??
+        input.documents?.find((d) => d.id === card.vatBasisDocumentId) ??
+        docs[0] ??
+        null;
       return {
         rate: card.vatRate,
         isMedicalDevice: card.isMedicalDevice,
