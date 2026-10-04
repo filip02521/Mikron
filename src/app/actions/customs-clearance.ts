@@ -26,7 +26,7 @@ import {
 } from "@/lib/customs/customs-lines";
 import { CUSTOMS_AI_MIME, customsFileMime } from "@/lib/customs/customs-ai-input";
 import { createCnLookup, formatCnCode } from "@/lib/customs/cn-nomenclature";
-import { parseCustomsEmailText } from "@/lib/customs/customs-email-import";
+import { emailRangeConflicts, parseCustomsEmailText } from "@/lib/customs/customs-email-import";
 import { isLineComplete, type CustomsClearanceView } from "@/lib/customs/customs-view";
 import { buildCustomsClearanceWorkbook } from "@/lib/customs/customs-excel";
 import {
@@ -557,7 +557,7 @@ export async function actionImportCustomsEmailDescriptions(
       .eq("id", id);
   }
 
-  const warnings: string[] = [];
+  const warnings: string[] = emailRangeConflicts(parsed.ranges, view.lines);
   if (parsed.maxPosition !== view.lines.length) {
     warnings.push(
       `Mail ma ${parsed.maxPosition} pozycji, a faktura ${view.lines.length} - sprawdź, czy numeracja się zgadza (opisy przypisano po numerach).`

@@ -4,6 +4,7 @@
  */
 
 import type { CnLookup } from "./cn-nomenclature";
+import { customsDescriptionWarning } from "./customs-description-check";
 import {
   collectVatBasisDocuments,
   customsArticleKey,
@@ -219,7 +220,10 @@ export function buildCustomsLineViews(input: {
       };
     });
   const cnWarnings = customsCnWarnings(views, input.cn);
-  for (const v of views) v.cnWarning = cnWarnings.get(v.position) ?? null;
+  for (const v of views) {
+    const description = v.card ? customsDescriptionWarning(v.card.descriptionPl, v.supplierName) : null;
+    v.cnWarning = [cnWarnings.get(v.position), description].filter(Boolean).join(" ") || null;
+  }
   return views;
 }
 
