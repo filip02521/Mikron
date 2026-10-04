@@ -731,3 +731,19 @@ export function applyCreatedZdUnitsToOtwarteZd(
     return { ...cleared, otwarteZd, doZamowieniaReczne, wkladZk };
   });
 }
+
+/** Kafelek „Przewidywana dostawa” w podsumowaniu tworzenia ZD. */
+export function zdCreateEtaTile(
+  eta: { status: "loading" | "done"; dateKey: string | null; businessDays: number | null }
+): { value: string; sub: string } {
+  if (eta.status === "loading") return { value: "…", sub: "liczę z historii dostaw" };
+  if (!eta.dateKey) return { value: "-", sub: "brak historii dostaw" };
+  const weekday = new Intl.DateTimeFormat("pl-PL", { weekday: "long", timeZone: "UTC" }).format(
+    new Date(`${eta.dateKey}T12:00:00Z`)
+  );
+  const days =
+    eta.businessDays == null
+      ? ""
+      : ` · ~${eta.businessDays} ${eta.businessDays === 1 ? "dzień rob." : "dni rob."}`;
+  return { value: `ok. ${eta.dateKey.split("-").reverse().join(".")}`, sub: `${weekday}${days}` };
+}

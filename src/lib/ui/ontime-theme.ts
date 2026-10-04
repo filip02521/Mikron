@@ -107,11 +107,16 @@ export function sidebarNavToneHighlightIdleClass(tone: NavTone): string | undefi
   return undefined;
 }
 
-/** Sidebar — badge licznika dopasowany do tonu pozycji. */
+/**
+ * Sidebar / dolne menu — licznik jako pigułka, dwa poziomy:
+ * wymaga działania (ton amber/orange) = pełny petrol; informacyjny = jasnoszary.
+ */
 export function sidebarNavBadgeClassForTone(tone: NavTone, active: boolean): string {
-  // Licznik bez pigułki: liczba w tonie neutralnym, amber tylko gdy wymaga działania.
-  if (active) return "text-indigo-700";
-  return tone === "amber" || tone === "orange" ? "text-amber-700" : "text-slate-500";
+  const needsAction = tone === "amber" || tone === "orange";
+  if (needsAction) return "bg-indigo-600 text-white";
+  return active
+    ? "bg-white text-indigo-700 ring-1 ring-inset ring-indigo-200"
+    : "bg-slate-100 text-slate-700";
 }
 
 /** Plakietka roli — delikatny ton bez lewego paska. */

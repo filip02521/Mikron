@@ -172,7 +172,7 @@ export function MobileNavOverflowSheet({
                         {hasBadge ? (
                           <span
                             className={cn(
-                              "min-w-[1.25rem] rounded-md px-1.5 py-0.5 text-center text-[10px] font-semibold tabular-nums",
+                              "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold leading-none tabular-nums",
                               sidebarNavBadgeClassForTone(displayTone, active)
                             )}
                           >
