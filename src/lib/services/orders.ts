@@ -1251,7 +1251,7 @@ export async function processIndividualFromSummary(
 
   if (!allowedIds.size) {
     throw new Error(
-      "Brak prośb do obsłużenia - wszystkie są już zamknięte lub nie kwalifikują się do Główne/Uzupełniające."
+      "Brak próśb do obsłużenia - wszystkie są już zamknięte lub nie kwalifikują się do Główne/Uzupełniające."
     );
   }
 

@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { IconUsers, IconClipboardList, IconNotebook, IconFilePlus, IconEye, IconMail, IconCircleCheck } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 function TeamCardActionLink({
   href,
@@ -341,7 +342,7 @@ export function SalesTeamOverview({
               </div>
               <span className={salesTypography.rowMeta}>
                 {section.rows.length}{" "}
-                {section.rows.length === 1 ? "osoba" : section.rows.length < 5 ? "osoby" : "osób"}
+                {polishPluralWord(section.rows.length, "osoba", "osoby", "osób")}
               </span>
             </div>
             {section.rows.length ? (

@@ -3,7 +3,7 @@
 import type React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { NavIcon, navIconTileActiveClassForTone, navIconTileClassForTone } from "@/components/icons/NavIcon";
 import { IconMoreVertical } from "@/components/icons/StrokeIcons";
@@ -66,14 +66,26 @@ export function MobileNavOverflowSheet({
 
   useBodyScrollLock(open);
 
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const backdropRef = useRef<HTMLButtonElement | null>(null);
+  const close = useCallback((velocity = 0) => {
+    const panel = panelRef.current;
+    if (!panel || prefersReducedMotion()) {
+      setOpen(false);
+      return;
+    }
+    animateSheetTo(panel, backdropRef.current, panel.offsetHeight, velocity, () => setOpen(false));
+  }, []);
+  const drag = useSheetDrag(panelRef, backdropRef, close);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") close();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  }, [open, close]);
 
   if (items.length === 0 && !switcher) return null;
 
@@ -87,16 +99,23 @@ export function MobileNavOverflowSheet({
             aria-label="Więcej w menu"
           >
             <button
+              ref={backdropRef}
               type="button"
-              className="absolute inset-0 bg-slate-900/30 backdrop-blur-[1px]"
+              className="modal-backdrop-enter absolute inset-0 bg-slate-900/30 backdrop-blur-[1px]"
               aria-label="Zamknij menu"
-              onClick={() => setOpen(false)}
+              onClick={() => close()}
             />
             <div
-              className="absolute inset-x-0 bottom-0 max-h-[min(70vh,28rem)] overflow-y-auto rounded-t-xl border border-slate-200/90 bg-[var(--card)] shadow-[var(--shadow-card-elevated)] pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
+              ref={panelRef}
+              className="sheet-enter absolute inset-x-0 bottom-0 max-h-[min(70vh,28rem)] overflow-y-auto rounded-t-xl border border-slate-200/90 bg-[var(--card)] shadow-[var(--shadow-card-elevated)] pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
               {...{ [SCROLL_LOCK_ALLOW_ATTR]: "" }}
             >
-              <div className="sticky top-0 z-[1] border-b border-indigo-100/70 bg-indigo-50/30 px-4 py-3">
+              {/* Nagłówek = uchwyt: przeciągnij w dół, żeby zamknąć. Pełne tło — lista przewija się pod nim. */}
+              <div
+                className="sticky top-0 z-[1] touch-none select-none border-b border-slate-100 bg-[var(--card)] px-4 pb-3 pt-2"
+                {...drag}
+              >
+                <span aria-hidden className="mx-auto mb-2 block h-1 w-9 rounded-full bg-slate-300" />
                 <p className={panelTypography.rowTitle}>Więcej</p>
                 <p className={cn(panelTypography.caption, "mt-0.5")}>
                   Pozostałe sekcje i narzędzia
@@ -229,4 +248,125 @@ export function MobileNavOverflowSheet({
       {sheet}
     </>
   );
+}
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** Bieżące przesunięcie panelu na ekranie (także w trakcie animacji) — start kolejnego ruchu bez skoku. */
+function currentTranslateY(el: HTMLElement): number {
+  const t = getComputedStyle(el).transform;
+  return t && t !== "none" ? new DOMMatrixReadOnly(t).m42 : 0;
+}
+
+/**
+ * Dojazd panelu do `targetY` z prędkością palca (px/s) — bez szwu między gestem a animacją.
+ * ponytail: krzywa ease-out o czasie z prędkości zamiast sprężyny; biblioteka sprężyn, gdy arkuszy przybędzie.
+ */
+function animateSheetTo(
+  panel: HTMLElement,
+  backdrop: HTMLElement | null,
+  targetY: number,
+  velocity: number,
+  onDone?: () => void
+) {
+  const fromY = currentTranslateY(panel);
+  panel.getAnimations().forEach((a) => a.cancel());
+  const distance = Math.abs(targetY - fromY);
+  const speed = Math.max(Math.abs(velocity), 900);
+  const duration = Math.min(320, Math.max(140, (distance / speed) * 1000 * 1.6));
+  const easing = "cubic-bezier(0.22, 1, 0.36, 1)";
+  panel.style.transform = `translateY(${targetY}px)`;
+  const anim = panel.animate(
+    [{ transform: `translateY(${fromY}px)` }, { transform: `translateY(${targetY}px)` }],
+    { duration, easing }
+  );
+  if (backdrop) {
+    const h = panel.offsetHeight || 1;
+    const opacity = (y: number) => String(1 - Math.min(1, Math.max(0, y / h)));
+    backdrop.getAnimations().forEach((a) => a.cancel());
+    backdrop.style.opacity = opacity(targetY);
+    backdrop.animate([{ opacity: opacity(fromY) }, { opacity: opacity(targetY) }], { duration, easing });
+  }
+  let settled = false;
+  const finish = () => {
+    if (settled) return;
+    settled = true;
+    if (targetY === 0) panel.style.transform = "";
+    onDone?.();
+  };
+  anim.onfinish = finish;
+  // Przerwane (złapane palcem) — bez domknięcia; karta w tle — domknij mimo wstrzymanej animacji.
+  anim.oncancel = () => {
+    settled = true;
+  };
+  window.setTimeout(finish, duration + 150);
+}
+
+/** Rzut pędu jak przy przewijaniu (Apple, „Designing Fluid Interfaces”). */
+function projectMomentum(velocity: number, decelerationRate = 0.998): number {
+  return ((velocity / 1000) * decelerationRate) / (1 - decelerationRate);
+}
+
+/** Opór przy ciągnięciu w górę (poza krawędź) — miękka granica zamiast twardego stopu. */
+function rubberband(overshoot: number, dimension: number, constant = 0.55): number {
+  return (overshoot * dimension * constant) / (dimension + constant * Math.abs(overshoot));
+}
+
+/** Przeciąganie arkusza 1:1 z palcem; puszczenie decyduje kierunek z prędkości i rzutu pędu. */
+function useSheetDrag(
+  panelRef: React.RefObject<HTMLDivElement | null>,
+  backdropRef: React.RefObject<HTMLButtonElement | null>,
+  close: (velocity?: number) => void
+) {
+  const state = useRef<{ startY: number; baseY: number; samples: { y: number; t: number }[] } | null>(null);
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const panel = panelRef.current;
+    if (!panel || (e.pointerType === "mouse" && e.button !== 0)) return;
+    // Złap panel tam, gdzie jest teraz (także w trakcie wjazdu) — bez skoku.
+    const baseY = currentTranslateY(panel);
+    panel.getAnimations().forEach((a) => a.cancel());
+    backdropRef.current?.getAnimations().forEach((a) => a.cancel());
+    panel.style.transform = `translateY(${baseY}px)`;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    state.current = { startY: e.clientY, baseY, samples: [{ y: e.clientY, t: e.timeStamp }] };
+  };
+
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const s = state.current;
+    const panel = panelRef.current;
+    if (!s || !panel) return;
+    const raw = s.baseY + e.clientY - s.startY;
+    const y = raw < 0 ? rubberband(raw, panel.offsetHeight) : raw;
+    panel.style.transform = `translateY(${y}px)`;
+    if (backdropRef.current) {
+      backdropRef.current.style.opacity = String(1 - Math.min(1, Math.max(0, y / panel.offsetHeight)));
+    }
+    s.samples.push({ y: e.clientY, t: e.timeStamp });
+    if (s.samples.length > 5) s.samples.shift();
+  };
+
+  const onPointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    const s = state.current;
+    const panel = panelRef.current;
+    state.current = null;
+    if (!s || !panel) return;
+    // Prędkość z ostatnich ~100 ms — pauza przed puszczeniem to brak pędu.
+    const first = s.samples.find((p) => e.timeStamp - p.t <= 100);
+    const dt = first ? e.timeStamp - first.t : 0;
+    const velocity = first && dt > 0 ? ((e.clientY - first.y) / dt) * 1000 : 0;
+    const y = currentTranslateY(panel);
+    // Tap w uchwyt (bez ruchu) nic nie robi.
+    if (Math.abs(e.clientY - s.startY) < 4) {
+      animateSheetTo(panel, backdropRef.current, 0, 0);
+      return;
+    }
+    const projected = y + projectMomentum(velocity);
+    if (projected > panel.offsetHeight / 2) close(velocity);
+    else animateSheetTo(panel, backdropRef.current, 0, velocity);
+  };
+
+  return { onPointerDown, onPointerMove, onPointerUp: onPointerEnd, onPointerCancel: onPointerEnd };
 }

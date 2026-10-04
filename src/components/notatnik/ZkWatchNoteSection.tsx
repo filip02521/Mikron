@@ -33,6 +33,7 @@ import type { SalesZkWatch } from "@/types/database";
 import { ZkCaseNoteProsbaChip } from "./ZkCaseNoteProsbaChip";
 import { NOTATNIK_TEXTAREA_CLASS } from "./notatnik-layout";
 import { ZkWatchModalSection } from "./ZkWatchModalSection";
+import { askConfirm } from "@/components/ui/ConfirmHost";
 
 const INCLUDE_HINT: Record<ZkCaseNoteProsbaStatus, string | null> = {
   none: null,
@@ -209,14 +210,17 @@ export function ZkWatchNoteSection({
     });
   }
 
-  function attachToOpenProsba() {
+  async function attachToOpenProsba() {
     if (!canEdit || pendingFlag) return;
     if (pendingKind === "stale" || pendingKind === "mixed") {
-      const ok = window.confirm(
-        pendingKind === "stale"
-          ? "Na otwartych pozycjach jest inna treść uwag (mogła pochodzić od zakupów). Nadpisać ją notatką ze sprawy ZK?"
-          : "Część otwartych pozycji ma inną treść uwag. Nadpisać je notatką ze sprawy ZK?"
-      );
+      const ok = await askConfirm({
+        title: "Nadpisać uwagi?",
+        message:
+          pendingKind === "stale"
+            ? "Na otwartych pozycjach jest inna treść uwag (mogła pochodzić od zakupów). Nadpisać ją notatką ze sprawy ZK?"
+            : "Część otwartych pozycji ma inną treść uwag. Nadpisać je notatką ze sprawy ZK?",
+        confirmLabel: "Nadpisz",
+      });
       if (!ok) return;
     }
     setError(null);

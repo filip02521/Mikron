@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/cn";
 import { userFacingErrorFromUnknown } from "@/lib/ui/user-facing-error";
 import { redirectToLoginIfSessionError } from "@/lib/auth/session-login-redirect";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export function CarrierPhonesPageClient({
   carriers,
@@ -110,12 +111,9 @@ export function CarrierPhonesPageClient({
           <div>
             <h1 className="text-[15px] font-bold tracking-tight text-slate-900">Kurierzy</h1>
             <p className="mt-0.5 text-[12px] text-slate-500">
-              {totalPhones}{" "}
-              {totalPhones === 1
-                ? "numer"
-                : totalPhones >= 2 && totalPhones <= 4
-                  ? "numery"
-                  : "numerów"}{" "}
+              {pending && phones.length === 0
+                ? "Wczytywanie numerów…"
+                : `${totalPhones} ${polishPluralWord(totalPhones, "numer", "numery", "numerów")}`}{" "}
               · {activeCarriers} aktywnych
             </p>
           </div>
@@ -171,7 +169,7 @@ export function CarrierPhonesPageClient({
               <div
                 key={carrier.slug}
                 className={cn(
-                  "overflow-hidden rounded-xl border transition-all duration-200",
+                  "overflow-hidden rounded-xl border transition duration-200",
                   isExpanded
                     ? "border-slate-300 bg-white shadow-sm"
                     : "border-slate-200/80 bg-white hover:border-slate-300",
@@ -184,7 +182,7 @@ export function CarrierPhonesPageClient({
                 >
                   <span
                     className={cn(
-                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-200",
+                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition duration-200",
                       isExpanded
                         ? "bg-emerald-100 text-emerald-700"
                         : "bg-slate-100 text-slate-400 group-hover:text-slate-500",
@@ -200,7 +198,7 @@ export function CarrierPhonesPageClient({
                     </p>
                     <p className="mt-0.5 text-[11px] text-slate-400">
                       {hasPhones
-                        ? `${carrierPhones.length} ${carrierPhones.length === 1 ? "numer" : carrierPhones.length >= 2 && carrierPhones.length <= 4 ? "numery" : "numerów"}`
+                        ? `${carrierPhones.length} ${polishPluralWord(carrierPhones.length, "numer", "numery", "numerów")}`
                         : "Brak numerów"}
                     </p>
                   </div>
@@ -235,7 +233,7 @@ export function CarrierPhonesPageClient({
                               </div>
                               <a
                                 href={`tel:${phone.phone.replace(/[\s()-]/g, "")}`}
-                                className="flex shrink-0 items-center gap-1.5 rounded-lg bg-indigo-50 px-3.5 py-2 text-[12px] font-bold text-indigo-600 transition-all hover:bg-indigo-100 hover:text-indigo-700 active:scale-[0.97]"
+                                className="flex shrink-0 items-center gap-1.5 rounded-lg bg-indigo-50 px-3.5 py-2 text-[12px] font-bold text-indigo-600 transition hover:bg-indigo-100 hover:text-indigo-700 active:scale-[0.97]"
                               >
                                 <IconPhone size={13} aria-hidden />
                                 Zadzwoń

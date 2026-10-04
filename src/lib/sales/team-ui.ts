@@ -35,14 +35,14 @@ export function salesTeamPageCopy(
       return {
         title: "Podgląd zespołu",
         description:
-          "Handlowcy w grupach - podgląd prośb i ZK. Zarządzanie w panelu administracji.",
+          "Handlowcy w grupach - podgląd próśb i ZK. Zarządzanie w panelu administracji.",
       };
     }
     if (ctx.isAdmin) {
       return {
         title: "Podgląd zespołu",
         description:
-          "Handlowcy w grupach - podgląd prośb, ZK i notatnika (składanie prośb tylko przez kierownika).",
+          "Handlowcy w grupach - podgląd próśb, ZK i notatnika (składanie próśb tylko przez kierownika).",
       };
     }
     if (!ctx.hasTeamScope) {

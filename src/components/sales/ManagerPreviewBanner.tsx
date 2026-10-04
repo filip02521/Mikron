@@ -11,7 +11,7 @@ import { IconChevronLeft, IconSun } from "@/components/icons/StrokeIcons";
 export type ManagerPreviewScope = "orders" | "notatnik" | "zk" | "plan" | "tablica" | "prosba";
 
 const SCOPE_LABEL: Record<ManagerPreviewScope, string> = {
-  orders: "prośb handlowca",
+  orders: "próśb handlowca",
   notatnik: "notatnika",
   zk: "ZK czekających",
   plan: "harmonogramu",
@@ -32,7 +32,7 @@ export function ManagerPreviewBanner({
   salesPersonName: string;
   salesPersonId: string;
   scope?: ManagerPreviewScope;
-  /** Administrator — tylko podgląd, bez składania prośb. */
+  /** Administrator — tylko podgląd, bez składania próśb. */
   readOnly?: boolean;
   isDelegate?: boolean;
   startDate?: string | null;
@@ -63,12 +63,12 @@ export function ManagerPreviewBanner({
           : "Tryb zastępstwa - ograniczone uprawnienia."
     : readOnly
     ? scope === "zk"
-      ? "Tryb administratora - tylko odczyt. Edycja ZK i składanie prośb są wyłączone."
+      ? "Tryb administratora - tylko odczyt. Edycja ZK i składanie próśb są wyłączone."
       : scope === "notatnik"
         ? "Tryb administratora - tylko odczyt. Edycja notatek jest wyłączona."
         : scope === "orders"
           ? "W podglądzie widać aktywne prośby, archiwum i zapisane terminy ZD - bez odświeżania z Subiekta i bez potwierdzania odbioru."
-          : "Tryb administratora - tylko odczyt. Składanie prośb i edycja danych są wyłączone."
+          : "Tryb administratora - tylko odczyt. Składanie próśb i edycja danych są wyłączone."
     : scope === "zk"
       ? "Tryb podglądu - edycja ZK tylko we własnej zakładce ZK czekające."
       : scope === "notatnik"

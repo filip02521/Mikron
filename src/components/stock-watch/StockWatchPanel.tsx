@@ -491,6 +491,7 @@ function AlertsSection({
           onChange={setFilter}
           ariaLabel="Filtr alertów"
           density="compact"
+          className="w-full sm:w-auto"
           options={[
             { value: "all", label: `Wszystkie (${rows.length})` },
             { value: "out_of_stock", label: "Brak" },

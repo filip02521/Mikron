@@ -9,6 +9,7 @@ import {
 } from "./dates";
 import { getVacationMessage } from "./colors";
 import { todayInWarsaw } from "@/lib/time/warsaw";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export interface SummaryStandardItem {
   kind: "standard";
@@ -117,7 +118,7 @@ export function buildSummary(
     const loc = schedules.find((s) => s.name === g.supplier)?.location ?? "POLSKA";
     const count = g.items.length;
     const countLabel =
-      count === 1 ? "produkt" : count > 1 && count < 5 ? "produkty" : "produktów";
+      polishPluralWord(count, "produkt", "produkty", "produktów");
     const hoverNote = g.items
       .slice(0, 10)
       .map((item) => {

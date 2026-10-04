@@ -3,16 +3,17 @@
 import { IconAlertCircle } from "@/components/icons/StrokeIcons";
 import type { SubiektFeedback } from "@/lib/subiekt/feedback";
 import { cn } from "@/lib/cn";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 function badgeLabel(count: number): string {
   if (count <= 1) return "Tryb ręczny";
-  const word = count < 5 ? "informacje" : "informacji";
+  const word = polishPluralWord(count, "informacja", "informacje", "informacji");
   return `${count} ${word}`;
 }
 
 const FOOTER: Record<"prosba" | "moje", string> = {
   prosba: "Możesz wpisać dane ręcznie i wysłać prośbę bez Subiekta.",
-  moje: "Lista prośb działa normalnie - szacunki terminów z historii dostaw.",
+  moje: "Lista próśb działa normalnie - szacunki terminów z historii dostaw.",
 };
 
 /** Dyskretna informacja: Subiekt niedostępny — szczegóły po najechaniu / fokusie. */

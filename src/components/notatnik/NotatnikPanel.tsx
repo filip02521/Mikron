@@ -29,7 +29,7 @@ export function NotatnikPanel({
   children: ReactNode;
   className?: string;
   bodyClassName?: string;
-  /** Lista przy krawędzi sekcji — jak wiersze prośb w /moje. */
+  /** Lista przy krawędzi sekcji — jak wiersze próśb w /moje. */
   flushBody?: boolean;
 }) {
   return (

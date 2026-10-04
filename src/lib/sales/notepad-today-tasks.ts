@@ -1,6 +1,7 @@
 import type { SalesNote, SalesZkWatch } from "@/types/database";
 import { isFollowUpDue, formatFollowUpLabel } from "@/lib/sales/notepad-follow-up";
 import { countRegalWaitingZkLines } from "@/lib/sales/zk-watch-warehouse-notify";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export type NotepadTodayTaskKind =
   | "zk-follow-up"
@@ -54,7 +55,7 @@ export function collectNotepadTodayTasks(
         id: watch.id,
         anchor: `watch-${watch.id}`,
         title: watch.zk_number,
-        subtitle: `${watch.client_label} · ${inStock} ${inStock === 1 ? "pozycja" : inStock < 5 ? "pozycje" : "pozycji"} na regale`,
+        subtitle: `${watch.client_label} · ${inStock} ${polishPluralWord(inStock, "pozycja", "pozycje", "pozycji")} na regale`,
         priority: taskPriority("zk-warehouse-arrival"),
       });
     }

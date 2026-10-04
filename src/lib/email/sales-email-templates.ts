@@ -376,10 +376,10 @@ export function renderProcurementCancelEmail(params: {
   const leadFixed = noteUpdated
     ? count === 1
       ? "Dział dostaw zaktualizował wiadomość do anulowanej prośby."
-      : `Dział dostaw zaktualizował wiadomości do <strong>${polishPozycjeLabel(count)}</strong> anulowanych prośb.`
+      : `Dział dostaw zaktualizował wiadomości do <strong>${polishPozycjeLabel(count)}</strong> anulowanych próśb.`
     : count === 1
       ? "Dział dostaw anulował Twoją prośbę indywidualną."
-      : `Dział dostaw anulował <strong>${polishPozycjeLabel(count)}</strong> z Twoich prośb.`;
+      : `Dział dostaw anulował <strong>${polishPozycjeLabel(count)}</strong> z Twoich próśb.`;
 
   const body = [
     emailGreeting(firstName(params.recipientName)),

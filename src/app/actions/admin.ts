@@ -372,7 +372,7 @@ export async function actionMarkInformacjaArrived(
   try {
     const result = await markInformacjaArrived(orderIds);
     if (result.updated === 0) {
-      return { error: "Nie znaleziono oczekujących prośb informacyjnych." };
+      return { error: "Nie znaleziono oczekujących próśb informacyjnych." };
     }
     revalidateAll();
     return { success: true, ...result };

@@ -40,7 +40,7 @@ export function SegmentedControl<T extends string>({
       aria-disabled={disabled || undefined}
       className={cn(
         "inline-flex max-w-full rounded-md border border-slate-200/90 bg-slate-50/90 p-0.5",
-        compact && "h-8 items-stretch rounded-md border-slate-200/80 bg-white/70",
+        compact && "h-10 items-stretch rounded-md border-slate-200/80 bg-white/70 sm:h-8",
         dock && "h-9 min-h-9 items-stretch rounded-md border-slate-200/80 bg-white/70",
         disabled && "opacity-60",
         className
@@ -57,9 +57,9 @@ export function SegmentedControl<T extends string>({
             disabled={disabled}
             onClick={() => onChange(opt.value)}
             className={cn(
-              "min-w-0 truncate rounded-[5px] font-medium transition",
+              "min-w-0 truncate rounded-[5px] font-medium transition active:bg-white/90 active:text-slate-900",
               compact &&
-                "flex-1 px-1.5 text-[10px] leading-none sm:flex-none sm:px-2.5 sm:text-[11px]",
+                "flex-auto px-1.5 text-xs leading-none sm:flex-none sm:px-2.5 sm:text-[11px]",
               dock &&
                 "flex-1 px-2 text-sm leading-none sm:flex-none sm:px-2.5",
               !tight && "px-2.5 py-1.5 text-xs sm:px-3 sm:text-sm",

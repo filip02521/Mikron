@@ -116,13 +116,13 @@ export type ZkWatchRowAccentKind =
 
 /** Domyślny wiersz bez sygnału uwagi. */
 export const zkWatchDefaultRowShellClass = cn(
-  "flex min-h-[2.625rem] transition-all duration-150",
+  "flex min-h-[2.625rem] transition duration-150",
   "bg-white hover:bg-slate-50/55"
 );
 
 /** Wiersz w archiwum. */
 export const zkWatchArchivedRowShellClass = cn(
-  "flex min-h-[2.625rem] border-l-[3px] border-l-slate-200/70 transition-all duration-150",
+  "flex min-h-[2.625rem] border-l-[3px] border-l-slate-200/70 transition duration-150",
   "bg-slate-50/45 hover:bg-slate-50/65"
 );
 

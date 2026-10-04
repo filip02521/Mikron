@@ -14,6 +14,7 @@ import {
   teethPanelIncompleteShellClass,
   teethPanelIncompleteTitleClass,
 } from "@/lib/teeth/teeth-panel-ui";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 /** Zbiorcza specyfikacja do zamówienia u dostawcy (wiersze poniżej = kto prosi). */
 export function TeethSupplierBatchSummary({
@@ -48,7 +49,7 @@ export function TeethSupplierBatchSummary({
           {batch.totalPieces > 0 ? (
             <span className={cn(panelTypography.caption, "text-slate-600")}>
               {batch.totalPieces} {plPozycja(batch.totalPieces)} · {batch.orderCount}{" "}
-              {batch.orderCount === 1 ? "prośba" : batch.orderCount < 5 ? "prośby" : "prośb"}
+              {polishPluralWord(batch.orderCount, "prośba", "prośby", "próśb")}
             </span>
           ) : null}
           {batch.ordersMissingSpec > 0 ? (
@@ -85,7 +86,7 @@ export function TeethSupplierBatchSummary({
           <div className={cn(teethPanelIncompleteShellClass, "px-2.5 py-2")}>
             <p className={teethPanelIncompleteTitleClass}>Brak specyfikacji do scalenia</p>
             <p className={teethPanelIncompleteDetailClass}>
-              Żadna z {batch.orderCount} prośb nie ma uzupełnionej listy zębów.
+              Żadna z {batch.orderCount} próśb nie ma uzupełnionej listy zębów.
             </p>
           </div>
         )}

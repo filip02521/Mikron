@@ -45,6 +45,7 @@ import {
   buildDailyPanelHiddenReport,
   type DailyPanelHiddenReport,
 } from "@/lib/orders/daily-panel-hidden";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 function computeForSomeoneGroupMeta(items: IndividualOrder[]) {
   const sorted = [...items].sort((a, b) =>
@@ -454,7 +455,7 @@ export function buildSummaryWorkspace(
     const personName = g.person?.trim() || "Handlowiec nieprzypisany";
     const count = g.items.length;
     const countLabel =
-      count === 1 ? "produkt" : count > 1 && count < 5 ? "produkty" : "produktów";
+      polishPluralWord(count, "produkt", "produkty", "produktów");
     const lines = g.items.map((item) => mapOrderToForSomeoneLine(item));
     const hoverNote = lines
       .map((l) => {

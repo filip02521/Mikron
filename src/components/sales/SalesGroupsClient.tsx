@@ -134,7 +134,7 @@ export function SalesGroupsClient({
           <li
             key={g.id}
             className={cn(
-              "rounded-lg border border-slate-100 bg-white px-3 py-3 transition-all sm:px-4 lg:px-5",
+              "rounded-lg border border-slate-100 bg-white px-3 py-3 transition sm:px-4 lg:px-5",
               "hover:border-slate-200 hover:shadow-sm"
             )}
           >

@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 /** Lista kont — mieści się w widoku razem z hasłem, błędem i przyciskiem. */
 export const LOGIN_ACCOUNT_LISTBOX_CLASS =
@@ -19,9 +20,7 @@ export function loginAccountInitials(displayName: string): string {
 }
 
 export function loginAccountCountLabel(count: number): string {
-  if (count === 1) return "1 konto";
-  if (count >= 2 && count <= 4) return `${count} konta`;
-  return `${count} kont`;
+  return `${count} ${polishPluralWord(count, "konto", "konta", "kont")}`;
 }
 
 export function loginAccountRowClass({

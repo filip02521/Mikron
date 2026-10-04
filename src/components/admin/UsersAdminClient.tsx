@@ -38,6 +38,7 @@ import {
   usersAdminListSignature,
   usersManagerGroupsSignature,
 } from "@/lib/users/users-admin-sync";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 type SalesPerson = { id: string; name: string; email: string };
 type SalesGroupOption = { id: string; name: string };
@@ -76,7 +77,7 @@ function managerGroupToggleClass(active: boolean): string {
 
 function workspaceSummaryLabel(workspaces: Workspace[]): string {
   if (!workspaces.length) return "Brak grup";
-  return `${workspaces.length} ${workspaces.length === 1 ? "grupa" : workspaces.length < 5 ? "grupy" : "grup"}`;
+  return `${workspaces.length} ${polishPluralWord(workspaces.length, "grupa", "grupy", "grup")}`;
 }
 
 export function UsersAdminClient({

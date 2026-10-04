@@ -25,7 +25,7 @@ export function SalesTeamSubnav() {
   const pathname = usePathname();
 
   const items = [
-    { href: "/zespol", label: "Podgląd zespołu", title: "Karty handlowców i skróty do prośb oraz ZK", icon: "team" as const },
+    { href: "/zespol", label: "Podgląd zespołu", title: "Karty handlowców i skróty do próśb oraz ZK", icon: "team" as const },
     { href: "/zespol/handlowcy", label: "Handlowcy", title: "Lista osób, konta i przypisanie do grup", icon: "teamAccounts" as const },
     { href: "/zespol/grupy", label: "Grupy", title: "Nazwy i kolejność grup w podglądzie", icon: "teamGroups" as const },
     { href: "/zespol/urlopy", label: "Urlopy", title: "Zastępstwa urlopowe handlowców", icon: "vacation" as const },

@@ -1,5 +1,6 @@
 import type { IndividualOrder } from "@/types/database";
 import { polishPozycjeLabel } from "@/lib/email/polish-plural";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 /** Ile unikalnych handlowców jest w podanych pozycjach. */
 export function countSalesPeopleInOrders(
@@ -30,7 +31,7 @@ export function batchNotifyButtonLabel(
   const n = orderIds.length;
   const people = countSalesPeopleInOrders(orders, orderIds);
   const countLabel =
-    unit === "osoba" ? `${n} ${n === 1 ? "osoba" : n < 5 ? "osoby" : "osób"}` : `${n}`;
+    unit === "osoba" ? `${n} ${polishPluralWord(n, "osoba", "osoby", "osób")}` : `${n}`;
   if (n <= 1) return prefix;
   if (people <= 1) {
     return unit === "osoba"

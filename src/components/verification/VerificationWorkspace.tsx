@@ -83,6 +83,7 @@ import { ProcurementCancelDialog } from "@/components/procurement/ProcurementCan
 import { cn } from "@/lib/cn";
 import { SALES_PAGE_HEADER_HINTS } from "@/lib/sales/sales-page-ui-copy";
 import { unwrapActionResult } from "@/lib/actions/action-error";
+import { askConfirm } from "@/components/ui/ConfirmHost";
 
 export function VerificationWorkspace({
   orders,
@@ -288,7 +289,7 @@ export function VerificationWorkspace({
   }, [supplierSubiektFeedback]);
 
   const setVerificationRequestKind = useCallback(
-    (requestKind: IndividualRequestKind) => {
+    async (requestKind: IndividualRequestKind) => {
       if (
         requestKind === "zamowienie" &&
         active &&
@@ -297,9 +298,11 @@ export function VerificationWorkspace({
         const label =
           verificationInformacjaUiForOrder(active)?.badgeLabel ?? "informacja";
         if (
-          !confirm(
-            `Handlowiec zgłosił „${label}”. Zmiana na zamówienie u dostawcy usunie tę ścieżkę. Kontynuować?`
-          )
+          !(await askConfirm({
+            title: "Zmienić na zamówienie?",
+            message: `Handlowiec zgłosił „${label}”. Zmiana na zamówienie u dostawcy usunie tę ścieżkę.`,
+            confirmLabel: "Zmień",
+          }))
         ) {
           return;
         }

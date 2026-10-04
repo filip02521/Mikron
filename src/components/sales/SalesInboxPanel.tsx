@@ -28,6 +28,8 @@ import {
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
 import { sidePanelBackdropClass, sidePanelCloseButtonClass, sidePanelHeaderClass } from "@/lib/ui/surfaces";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useAnimatedClose } from "@/lib/ui/use-animated-close";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export const SALES_INBOX_PANEL_ID = "sales-inbox-panel";
 
@@ -56,15 +58,16 @@ export function SalesInboxPanel({
     setItemsExpanded(false);
     onClose();
   }, [onClose]);
+  const { panelRef: exitPanelRef, backdropRef, requestClose } = useAnimatedClose(handleClose);
 
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") handleClose();
+      if (event.key === "Escape") requestClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [handleClose, open]);
+  }, [requestClose, open]);
 
   const previewHref = useCallback(
     (href: string) => hrefWithSalesPreviewFromUrl(href, previewDla),
@@ -100,11 +103,17 @@ export function SalesInboxPanel({
       <button
         type="button"
         aria-label="Zamknij powiadomienia"
+        ref={(el) => {
+          backdropRef.current = el;
+        }}
         className={cn(sidePanelBackdropClass, "z-[58]", "panel-slide-backdrop-enter")}
-        onClick={handleClose}
+        onClick={requestClose}
       />
       <aside
-        ref={panelRef}
+        ref={(el) => {
+          panelRef.current = el;
+          exitPanelRef.current = el;
+        }}
         id={SALES_INBOX_PANEL_ID}
         role="dialog"
         aria-modal="true"
@@ -133,7 +142,7 @@ export function SalesInboxPanel({
             <button
               type="button"
               className={sidePanelCloseButtonClass}
-              onClick={handleClose}
+              onClick={requestClose}
               aria-label="Zamknij"
             >
               <IconX size={18} />
@@ -172,7 +181,7 @@ export function SalesInboxPanel({
                   className={cn("mt-2.5 px-1 text-xs font-semibold", brandLinkClass)}
                 >
                   Pokaż jeszcze {hiddenCount}{" "}
-                  {hiddenCount === 1 ? "sprawę" : hiddenCount < 5 ? "sprawy" : "spraw"}
+                  {polishPluralWord(hiddenCount, "sprawę", "sprawy", "spraw")}
                 </button>
               ) : null}
             </>
