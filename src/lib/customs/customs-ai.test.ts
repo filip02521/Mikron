@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildLineProposalsPrompt,
+  customsMaxOutputTokens,
   documentArticlesToPasteText,
   invoiceLinesToPasteText,
   parseDocumentArticlesExtraction,
@@ -169,5 +170,12 @@ describe("opis grupy z faktury (scalona komórka)", () => {
       examples: [],
     });
     expect(prompt).toContain('grupa na fakturze: "Dental Lithium Disilicate Glass Ceramic"');
+  });
+});
+
+describe("customsMaxOutputTokens", () => {
+  it("daje 2.5 limit na fakturę z setkami pozycji, starszym modelom ich sufit", () => {
+    expect(customsMaxOutputTokens("gemini-2.5-flash")).toBe(65_536);
+    expect(customsMaxOutputTokens("gemini-2.0-flash")).toBe(8_192);
   });
 });
