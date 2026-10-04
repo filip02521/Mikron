@@ -76,7 +76,7 @@ function formatChipLabel(
   if (g.mould) segments.push(g.mould);
   if (jawLabel) segments.push(jawLabel);
   if (kindLabel) segments.push(kindLabel);
-  const spec = segments.join(" · ") || "—";
+  const spec = segments.join(" · ") || "-";
   const count = Math.max(1, g.count);
   if (count <= 1) return spec;
   return (

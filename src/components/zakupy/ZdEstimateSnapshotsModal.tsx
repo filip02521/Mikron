@@ -89,7 +89,7 @@ function formatDelta(value: number | null): {
   text: string;
   tone: "neutral" | "up" | "down";
 } {
-  if (value == null) return { text: "—", tone: "neutral" };
+  if (value == null) return { text: "-", tone: "neutral" };
   const text = formatQty(value);
   if (value > 0) return { text: `+${text}`, tone: "up" };
   if (value < 0) return { text, tone: "down" };
@@ -220,7 +220,7 @@ export function ZdEstimateSnapshotsModal({
             {listLoading
               ? ZD_ESTIMATE_UI.snapshotsLoadingList
               : loadError
-                ? "—"
+                ? "-"
                 : snapshots.length === 0
                   ? ZD_ESTIMATE_UI.snapshotsModalEmptyTitle
                   : zdEstimateSnapshotsFooterCount(snapshots.length)}
@@ -265,7 +265,7 @@ export function ZdEstimateSnapshotsModal({
             className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-slate-200/90 bg-white"
           >
             <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-3 py-2.5">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <p className="text-xs font-semibold text-slate-500">
                 {ZD_ESTIMATE_UI.snapshotsModalListHeading}
               </p>
               <span className="text-[11px] tabular-nums text-slate-400">
@@ -382,7 +382,7 @@ export function ZdEstimateSnapshotsModal({
                       <div className="max-h-[min(22rem,46vh)] overflow-auto sm:max-h-[min(26rem,50vh)]">
                         <table className="w-full min-w-[28rem] border-collapse text-left text-[12px]">
                           <thead className="sticky top-0 z-[1] bg-slate-50/95 backdrop-blur-sm">
-                            <tr className="border-b border-slate-200 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            <tr className="border-b border-slate-200 text-[11px] font-semibold text-slate-500">
                               <th className="px-4 py-2.5 sm:px-5">
                                 {ZD_ESTIMATE_UI.snapshotsColSymbol}
                               </th>
@@ -409,7 +409,7 @@ export function ZdEstimateSnapshotsModal({
                                   className="border-b border-slate-100 last:border-b-0"
                                 >
                                   <td className="whitespace-nowrap px-4 py-2 font-medium text-slate-900 sm:px-5">
-                                    {l.twSymbol?.trim() || "—"}
+                                    {l.twSymbol?.trim() || "-"}
                                   </td>
                                   <td className="max-w-[14rem] truncate px-2 py-2 text-slate-600">
                                     {l.twNazwa}
@@ -420,7 +420,7 @@ export function ZdEstimateSnapshotsModal({
                                   <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums text-slate-600">
                                     {l.celAtLink != null
                                       ? formatQty(l.celAtLink)
-                                      : "—"}
+                                      : "-"}
                                   </td>
                                   <td
                                     className={cn(

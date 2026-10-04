@@ -64,7 +64,7 @@ export function DepartmentBoardQuestionToolbar({
           searchLabel={searchLabel}
           showIdleHint={false}
           showActiveDetail={false}
-          emptyMatchHint="Brak dopasowań — sprawdź temat, treść, autora lub odpowiedź."
+          emptyMatchHint="Brak dopasowań - sprawdź temat, treść, autora lub odpowiedź."
         />
       ) : null}
 

@@ -72,7 +72,7 @@ export function ZdEstimateIndividualServicesSection({
     <section
       id={ZD_ESTIMATE_SERVICES_FOCUS_ID}
       className={cn(
-        "scroll-mt-4 bg-gradient-to-b from-amber-50/70 to-amber-50/35 p-2 ring-1 ring-amber-200/65",
+        "scroll-mt-4 bg-amber-50/70 p-2 ring-1 ring-amber-200/65",
         zdEstimateRadiusSurfaceClass,
         className
       )}
@@ -104,7 +104,7 @@ export function ZdEstimateIndividualServicesSection({
                   <span
                     key={reason}
                     className={cn(
-                      "rounded-md px-1.5 py-px text-[11px] font-semibold uppercase tracking-wide ring-1 ring-inset",
+                      "rounded-md px-1.5 py-px text-[11px] font-semibold ring-1 ring-inset",
                       REASON_CHIP[reason]
                     )}
                   >
@@ -128,7 +128,7 @@ export function ZdEstimateIndividualServicesSection({
               {excludedRoutedCount === 1
                 ? "z wykluczonej pozycji"
                 : "z wykluczonych pozycji"}{" "}
-              — bez ilości towaru, tylko w uwagach.
+              - bez ilości towaru, tylko w uwagach.
             </p>
           ) : null}
         </div>
@@ -149,7 +149,7 @@ export function ZdEstimateIndividualServicesSection({
 
       {catalogOrderableCount <= 0 ? (
         <p className="mt-1.5 rounded-md bg-amber-100/85 px-2.5 py-1.5 text-[11px] leading-snug text-amber-950 ring-1 ring-inset ring-amber-300/50">
-          Samymi usługami nie utworzysz ZD w OnTime — potrzebna jest choć jedna
+          Samymi usługami nie utworzysz ZD w OnTime - potrzebna jest choć jedna
           pozycja katalogowa. Skopiuj listę albo obsłuż prośby w panelu Dziś.
         </p>
       ) : null}
@@ -171,7 +171,7 @@ export function ZdEstimateIndividualServicesSection({
                   </span>
                   <span
                     className={cn(
-                      "rounded-md px-1.5 py-px text-[11px] font-semibold uppercase tracking-wide ring-1 ring-inset",
+                      "rounded-md px-1.5 py-px text-[11px] font-semibold ring-1 ring-inset",
                       REASON_CHIP[line.reason]
                     )}
                   >

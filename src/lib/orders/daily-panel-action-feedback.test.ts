@@ -29,13 +29,13 @@ describe("formatScheduleOutcomeLines", () => {
     expect(lines[0]).toContain("15.06.2026");
   });
 
-  it("Przesunięcie — nowy termin planowy", () => {
+  it("Przesunięcie - nowy termin planowy", () => {
     const lines = formatScheduleOutcomeLines([{ ...base, scheduleAdjusted: true }], "PRZESUNIETE");
     expect(lines[0]).toContain("termin przesunięty");
     expect(lines[0]).toContain("15.06.2026");
   });
 
-  it("Zamówione — kolejna data planowa", () => {
+  it("Zamówione - kolejna data planowa", () => {
     const lines = formatScheduleOutcomeLines(
       [{ ...base, scheduleAdjusted: true }],
       "ZAMOWIONE"
@@ -51,7 +51,7 @@ describe("formatScheduleOutcomeLines", () => {
         {
           ...base,
           hasInterval: false,
-          intervalLabel: "—",
+          intervalLabel: "-",
           nextOrderDate: null,
           scheduleAdjusted: false,
         },

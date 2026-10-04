@@ -7,7 +7,7 @@ import {
 describe("myOrderFriendlyStatusLabel", () => {
   it("tłumaczy statusy techniczne", () => {
     expect(myOrderFriendlyStatusLabel("W dziale dostaw")).toBe("Sprawdzamy Twoją prośbę");
-    expect(myOrderFriendlyStatusLabel("Zamówione")).toBe("Zamówione — czekamy na dostawę");
+    expect(myOrderFriendlyStatusLabel("Zamówione")).toBe("Zamówione - czekamy na dostawę");
   });
 
   it("zostawia nieznane bez zmian", () => {

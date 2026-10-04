@@ -4,18 +4,18 @@ const FRIENDLY_STATUS: Record<string, string> = {
   "Dopasowujemy dostawcę": "Szukamy właściwego dostawcy",
   "Uzupełnianie danych": "Uzupełniamy brakujące dane",
   "Przed zamówieniem": "Czeka, aż zamówimy u dostawcy",
-  Zamówione: "Zamówione — czekamy na dostawę",
-  "Częściowo na magazynie": "Część dotarła — reszta w drodze",
+  Zamówione: "Zamówione - czekamy na dostawę",
+  "Częściowo na magazynie": "Część dotarła - reszta w drodze",
   "Do odbioru": "Gotowe do odbioru z magazynu",
   "Informacja o dostępności": "Magazyn sprawdza dostępność",
   "Oczekuje na magazyn": "Magazyn sprawdza dostępność",
   "Czekamy na zamówienie u dostawcy": "Zamówimy u dostawcy, gdy będzie potrzeba",
-  "Zamówione — czekamy na magazyn": "Zamówione u dostawcy — czekamy na magazyn",
+  "Zamówione - czekamy na magazyn": "Zamówione u dostawcy - czekamy na magazyn",
   Dostępne: "Towar dostępny u dostawcy",
   Anulowano: "Prośba anulowana",
   Anulowane: "Prośba anulowana",
-  "Rezygnacja — towar w drodze": "Rezygnacja — towar w drodze od dostawcy",
-  "Rezygnacja — towar na magazynie": "Rezygnacja — towar czeka na magazynie",
+  "Rezygnacja - towar w drodze": "Rezygnacja - towar w drodze od dostawcy",
+  "Rezygnacja - towar na magazynie": "Rezygnacja - towar czeka na magazynie",
 };
 
 export function myOrderFriendlyStatusLabel(statusTitle: string): string {
@@ -27,7 +27,7 @@ export function myOrderFriendlyStatusHint(statusTitle: string): string | null {
     case "W dziale dostaw":
     case "Dopasowujemy dostawcę":
     case "Uzupełnianie danych":
-      return "Nie musisz nic robić — damy znać, gdy będzie postęp.";
+      return "Nie musisz nic robić - damy znać, gdy będzie postęp.";
     case "Przed zamówieniem":
       return "Dział dostaw złoży zamówienie u dostawcy.";
     case "Zamówione":

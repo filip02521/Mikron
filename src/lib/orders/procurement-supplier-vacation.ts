@@ -60,8 +60,8 @@ export function formatSupplierVacationRangeCompact(
 ): string {
   const start = parseDateOnly(window.startDate);
   const end = parseDateOnly(window.endDate);
-  if (!start || !end) return `${window.startDate}–${window.endDate}`;
-  return `${formatDateString(start, "d.MM")}–${formatDateString(end, "d.MM")}`;
+  if (!start || !end) return `${window.startDate}-${window.endDate}`;
+  return `${formatDateString(start, "d.MM")}-${formatDateString(end, "d.MM")}`;
 }
 
 /** Tooltip: pełny zakres. */
@@ -70,6 +70,6 @@ export function formatSupplierVacationRangeTitle(
 ): string {
   const start = parseDateOnly(window.startDate);
   const end = parseDateOnly(window.endDate);
-  if (!start || !end) return `${window.startDate}–${window.endDate}`;
-  return `${formatDateString(start, "dd.MM.yyyy")}–${formatDateString(end, "dd.MM.yyyy")}`;
+  if (!start || !end) return `${window.startDate}-${window.endDate}`;
+  return `${formatDateString(start, "dd.MM.yyyy")}-${formatDateString(end, "dd.MM.yyyy")}`;
 }

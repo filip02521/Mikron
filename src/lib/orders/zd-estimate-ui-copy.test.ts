@@ -131,7 +131,7 @@ describe("zd-estimate-ui-copy", () => {
     expect(ZD_ESTIMATE_UI.createGatePendingIndividualsTruncated).toMatch(/500/);
   });
 
-  it("sort Symbol / Nazwa — osobne hinty, Status bez sortu po nazwie", () => {
+  it("sort Symbol / Nazwa - osobne hinty, Status bez sortu po nazwie", () => {
     expect(ZD_ESTIMATE_UI.listSortSymbolHint).toMatch(/symbol/i);
     expect(ZD_ESTIMATE_UI.listSortNameHint).toMatch(/nazw/i);
     expect(ZD_ESTIMATE_UI.listStatusColumnHint).toMatch(/chip/i);
@@ -139,7 +139,7 @@ describe("zd-estimate-ui-copy", () => {
     expect(ZD_ESTIMATE_UI.listStatusColumnHint).not.toMatch(/Nazwa/);
   });
 
-  it("belka listy — skrócone filtry i zaznaczenie w menu", () => {
+  it("belka listy - skrócone filtry i zaznaczenie w menu", () => {
     expect(ZD_ESTIMATE_UI.listFilterReviewShort).toBe("Weryfikacja");
     expect(ZD_ESTIMATE_UI.listFilterExcludedShort).toBe("Wykluczone");
     expect(ZD_ESTIMATE_UI.listSelectVisible(27)).toMatch(/widoczne \(27\)/);
@@ -173,7 +173,7 @@ describe("zd-estimate-ui-copy", () => {
     }
   });
 
-  it("launch ready toast — odmiana pozycji i krótki follow-up", () => {
+  it("launch ready toast - odmiana pozycji i krótki follow-up", () => {
     expect(zdEstimateLaunchReadyToastTitle()).toBe("Lista gotowa");
     expect(
       zdEstimateLaunchReadyToastDescription({
@@ -364,11 +364,11 @@ describe("zd-estimate-ui-copy", () => {
     expect(ZD_ESTIMATE_UI.packagingLiveFlash).toMatch(/Do ZD/);
   });
 
-  it("formatImplicitPieceSnapshotHint — null gdy brak linii", () => {
+  it("formatImplicitPieceSnapshotHint - null gdy brak linii", () => {
     expect(formatImplicitPieceSnapshotHint([])).toBeNull();
   });
 
-  it("formatImplicitPieceSnapshotHint — sample z tw_Id", () => {
+  it("formatImplicitPieceSnapshotHint - sample z tw_Id", () => {
     const hint = formatImplicitPieceSnapshotHint([
       { symbol: "ABC", twId: 1028 },
       { symbol: "DEF", twId: 4914 },
@@ -378,7 +378,7 @@ describe("zd-estimate-ui-copy", () => {
     expect(hint).toMatch(/sztuki 1:1/);
   });
 
-  it("buildImplicitPieceSnapshotNotice — struktura pod alert UI", () => {
+  it("buildImplicitPieceSnapshotNotice - struktura pod alert UI", () => {
     const notice = buildImplicitPieceSnapshotNotice(
       [
         { symbol: "G2B25", twId: 2382 },
@@ -441,7 +441,7 @@ describe("zd-estimate-ui-copy", () => {
     expect(zdEstimateSuppliersScopesItemSuffix(1)).toMatch(/bez mapowania/);
   });
 
-  it("scope hit supplier meta — preview w wynikach, bez pustego stocku", () => {
+  it("scope hit supplier meta - preview w wynikach, bez pustego stocku", () => {
     expect(zdEstimateScopeHitSupplierMeta({})).toBeNull();
     expect(
       zdEstimateScopeHitSupplierMeta({
@@ -454,7 +454,7 @@ describe("zd-estimate-ui-copy", () => {
       zdEstimateScopeHitSupplierMeta({
         supplierName: "Ivoclar Vivadent - EXCEL",
         supplierMatchSource: "name",
-        stockLabel: "—",
+        stockLabel: "-",
       })
     ).toBe("Ivoclar Vivadent - EXCEL");
   });

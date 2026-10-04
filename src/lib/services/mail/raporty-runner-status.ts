@@ -169,7 +169,7 @@ export function raportyRunnerStatusLabel(
   if (!status.ok) {
     switch (status.reason) {
       case "missing_url":
-        return "Brak adresu RAPORTY_RUNNER_URL — nie można odczytać statusu wysyłki";
+        return "Brak adresu RAPORTY_RUNNER_URL - nie można odczytać statusu wysyłki";
       case "missing_secret":
         return "Brak CRON_SECRET / RAPORTY_CRON_SECRET do odczytu statusu runnera";
       case "unauthorized":
@@ -183,7 +183,7 @@ export function raportyRunnerStatusLabel(
     }
   }
   if (status.crashSticky) {
-    return "Uwaga: runner w stanie unknown_after_crash — sprawdź OnTime Raporty";
+    return "Uwaga: runner w stanie unknown_after_crash - sprawdź OnTime Raporty";
   }
   if (status.runnerStateStatus === "sending") {
     return "Runner w trakcie wysyłki…";

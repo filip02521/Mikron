@@ -8,7 +8,7 @@ import {
 describe("informacja-import-rules", () => {
   it("traktuje „-” i puste jako marker informacji", () => {
     expect(isInformacjaQuantityMarker("-")).toBe(true);
-    expect(isInformacjaQuantityMarker("–")).toBe(true);
+    expect(isInformacjaQuantityMarker("-")).toBe(true);
     expect(isInformacjaQuantityMarker("")).toBe(true);
     expect(isInformacjaQuantityMarker("2")).toBe(false);
   });

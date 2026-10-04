@@ -7,7 +7,7 @@ export const TEETH_DUAL_LANE_COPY = {
   dailyPanelScheduleCaption: "Harmonogram panelu dziennego (towar ogólny)",
   dailyPanelNoticeTitle: "Osobny cykl zamówień zębów",
   dailyPanelNoticeBody:
-    "Ten dostawca ma niezależny harmonogram w panelu zębów. Daty poniżej dotyczą tylko panelu dziennego — nie mieszają się z cyklem zębów.",
+    "Ten dostawca ma niezależny harmonogram w panelu zębów. Daty poniżej dotyczą tylko panelu dziennego - nie mieszają się z cyklem zębów.",
   harmonogramBannerTitle: "Tylko cykl zębów",
   harmonogramBannerBody:
     "Harmonogramy tutaj nie wpływają na terminy w panelu dziennym i odwrotnie. Każdy tor ma własne „oznacz zamówione” i własną historię.",

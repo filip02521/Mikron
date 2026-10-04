@@ -72,7 +72,7 @@ export function AppearanceSettingsSection({
       <div className={cn(salesChromeInsetClass, "space-y-2.5 py-3.5")}>
         <label
           className={cn(
-            "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-all",
+            "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-colors",
             optimisticBg
               ? "border-sky-200/80 bg-sky-50/40"
               : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
@@ -81,17 +81,17 @@ export function AppearanceSettingsSection({
           <span className="flex flex-col gap-0.5">
             <span className="text-sm font-medium text-slate-800">Jednolite tło</span>
             <span className="text-[11px] leading-snug text-slate-400">
-              Ukrywa okręgi w tle aplikacji — czyste, jednolite tło
+              Ukrywa okręgi w tle aplikacji - czyste, jednolite tło
             </span>
           </span>
           <input
             type="checkbox"
             role="switch"
             aria-checked={optimisticBg}
-            aria-label="Jednolite tło — ukrywa okręgi w tle aplikacji"
+            aria-label="Jednolite tło - ukrywa okręgi w tle aplikacji"
             checked={optimisticBg}
             onChange={(e) => toggleBackground(e.target.checked)}
-            className="toggle-switch toggle-sky"
+            className="toggle-switch toggle-indigo"
           />
         </label>
 
@@ -117,7 +117,7 @@ export function AppearanceSettingsSection({
                   aria-checked={selected}
                   onClick={() => changeFontScale(scale)}
                   className={cn(
-                    "min-h-9 rounded-md border px-2 py-1.5 text-center text-xs font-medium transition-all",
+                    "min-h-9 rounded-md border px-2 py-1.5 text-center text-xs font-medium transition",
                     selected
                       ? "border-sky-300 bg-sky-50 text-sky-900 shadow-sm"
                       : "border-slate-200/70 bg-white text-slate-600 hover:border-slate-300/80 hover:bg-slate-50/40"

@@ -49,7 +49,7 @@ export function TeethShortageWarningBanner({
             return (
               <li key={hit.shortage.id}>
                 <span className="font-medium">{formatTeethShortageHitLabel(hit)}</span>
-                {" — "}
+                {" - "}
                 {hit.message}
                 {note ? (
                   <span className="mt-0.5 block text-[11px] leading-snug text-amber-900/90">
@@ -61,7 +61,7 @@ export function TeethShortageWarningBanner({
           })}
         </ul>
         <p className="mt-1 text-[11px] leading-relaxed text-amber-800/80">
-          Możesz wysłać prośbę mimo braku — to tylko ostrzeżenie.
+          Możesz wysłać prośbę mimo braku - to tylko ostrzeżenie.
         </p>
       </div>
     </div>

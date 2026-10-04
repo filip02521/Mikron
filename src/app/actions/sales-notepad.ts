@@ -172,7 +172,7 @@ function isDuplicateKeyError(error: { code?: string } | null): boolean {
 async function assertSubiektReachableForZk(): Promise<void> {
   if (!(await isSubiektReachable())) {
     throw new Error(
-      "Brak połączenia z systemem magazynowym — nie można wczytać danych ZK. Poczekaj na przywrócenie połączenia i użyj „Sprawdź ponownie” u góry strony."
+      "Brak połączenia z systemem magazynowym - nie można wczytać danych ZK. Poczekaj na przywrócenie połączenia i użyj „Sprawdź ponownie” u góry strony."
     );
   }
 }
@@ -373,7 +373,7 @@ export async function actionFindActiveZkWatchByQuery(
     zkNumbersEquivalent(String(row.zk_number ?? ""), validated.normalized)
   );
   if (!match) {
-    throw new Error("Nie znaleziono aktywnego ZK na liście — odśwież stronę i sprawdź listę.");
+    throw new Error("Nie znaleziono aktywnego ZK na liście - odśwież stronę i sprawdź listę.");
   }
 
   return { watch: match as SalesZkWatch };
@@ -500,7 +500,7 @@ export async function actionRefreshZkWatchFromSubiekt(watchId: string) {
     throw new Error("Brak uprawnień do tego wpisu.");
   }
   if (row.closed_at || row.archived_at) {
-    throw new Error("Nie można odświeżyć zamkniętego ZK — przywróć go na listę.");
+    throw new Error("Nie można odświeżyć zamkniętego ZK - przywróć go na listę.");
   }
 
   const doc = await getSubiektZk(row.subiekt_dok_id);
@@ -550,14 +550,14 @@ export async function actionRefreshZkWatchFromSubiekt(watchId: string) {
   if (error) {
     if (error.message?.includes("teeth_drafts")) {
       throw new Error(
-        "Brak kolumny teeth_drafts — uruchom migrację supabase/migrations/138_zk_watch_teeth_drafts.sql"
+        "Brak kolumny teeth_drafts - uruchom migrację supabase/migrations/138_zk_watch_teeth_drafts.sql"
       );
     }
     throw new Error(error.message);
   }
   if (!data) {
     throw new Error(
-      "ZK został zaktualizowany w tle — odśwież listę i spróbuj ponownie."
+      "ZK został zaktualizowany w tle - odśwież listę i spróbuj ponownie."
     );
   }
   scheduleNotepadRevalidation();
@@ -631,7 +631,7 @@ export async function actionUpdateZkWatchNote(watchId: string, note: string) {
   if (error) {
     if (error.message?.includes("include_note_in_prosba")) {
       throw new Error(
-        "Brak kolumny include_note_in_prosba — uruchom migrację supabase/migrations/137_zk_watch_include_note_in_prosba.sql"
+        "Brak kolumny include_note_in_prosba - uruchom migrację supabase/migrations/137_zk_watch_include_note_in_prosba.sql"
       );
     }
     throw new Error(error.message);
@@ -677,13 +677,13 @@ export async function actionUpdateZkWatchNote(watchId: string, note: string) {
       : remaining.filter((o) => Boolean(normalizeZkCaseNote(o.sales_request_note))).length;
     if (syncedOpenProsbaCount > 0 && pendingOpenProsbaCount === 0) {
       syncMessage = nextNote
-        ? `Zapisano. Zaktualizowano uwagi w prośbie (${polishPozycjeLabel(syncedOpenProsbaCount)}) — zakupy widzą nową treść.`
+        ? `Zapisano. Zaktualizowano uwagi w prośbie (${polishPozycjeLabel(syncedOpenProsbaCount)}) - zakupy widzą nową treść.`
         : `Zapisano. Usunięto notatkę ze sprawy ZK z prośby (${polishPozycjeLabel(syncedOpenProsbaCount)}).`;
     } else if (syncedOpenProsbaCount > 0) {
-      syncMessage = `Zapisano. Zaktualizowano ${polishPozycjeLabel(syncedOpenProsbaCount)}. Pozostały pozycje z inną notatką — możesz je nadpisać.`;
+      syncMessage = `Zapisano. Zaktualizowano ${polishPozycjeLabel(syncedOpenProsbaCount)}. Pozostały pozycje z inną notatką - możesz je nadpisać.`;
     } else if (pendingOpenProsbaCount > 0 && nextNote && Boolean(row.include_note_in_prosba)) {
       syncMessage =
-        "Zapisano. W otwartej prośbie jest inna treść — użyj „Zaktualizuj w otwartej prośbie”, żeby zakupy widziały nową notatkę.";
+        "Zapisano. W otwartej prośbie jest inna treść - użyj „Zaktualizuj w otwartej prośbie”, żeby zakupy widziały nową notatkę.";
     }
   }
 
@@ -743,7 +743,7 @@ export async function actionUpdateZkWatchIncludeNoteInProsba(
   if (error) {
     if (error.message?.includes("include_note_in_prosba")) {
       throw new Error(
-        "Brak kolumny include_note_in_prosba — uruchom migrację supabase/migrations/137_zk_watch_include_note_in_prosba.sql"
+        "Brak kolumny include_note_in_prosba - uruchom migrację supabase/migrations/137_zk_watch_include_note_in_prosba.sql"
       );
     }
     throw new Error(error.message);
@@ -814,7 +814,7 @@ export async function actionAttachZkWatchNoteToOpenProsba(watchId: string) {
   const watch = row as SalesZkWatch;
   const caseNote = normalizeZkCaseNote(watch.note);
   if (!caseNote) {
-    throw new Error("Brak notatki do sprawy — najpierw ją zapisz.");
+    throw new Error("Brak notatki do sprawy - najpierw ją zapisz.");
   }
 
   const linked = await fetchAllZkLinkableOrdersForSalesPerson(supabase, salesPersonId);
@@ -874,11 +874,11 @@ export async function actionAttachZkWatchNoteToOpenProsba(watchId: string) {
     message:
       ids.length === 1
         ? hadStale
-          ? "Zaktualizowano notatkę w otwartej prośbie — zakupy widzą nową treść."
-          : "Dodano notatkę do otwartej prośby — zakupy ją zobaczą."
+          ? "Zaktualizowano notatkę w otwartej prośbie - zakupy widzą nową treść."
+          : "Dodano notatkę do otwartej prośby - zakupy ją zobaczą."
         : hadStale
-          ? `Zaktualizowano notatkę w ${polishPozycjeLabel(ids.length)} — zakupy widzą nową treść.`
-          : `Dodano notatkę do ${polishPozycjeLabel(ids.length)} — zakupy ją zobaczą.`,
+          ? `Zaktualizowano notatkę w ${polishPozycjeLabel(ids.length)} - zakupy widzą nową treść.`
+          : `Dodano notatkę do ${polishPozycjeLabel(ids.length)} - zakupy ją zobaczą.`,
   };
 }
 
@@ -941,7 +941,7 @@ export async function actionUpdateZkWatchLineChecks(
   if (error) {
     if (error.message?.includes("line_checks")) {
       throw new Error(
-        "Brak kolumny line_checks — uruchom migrację supabase/migrations/051_zk_watch_line_checks.sql"
+        "Brak kolumny line_checks - uruchom migrację supabase/migrations/051_zk_watch_line_checks.sql"
       );
     }
     throw new Error(error.message);
@@ -1261,7 +1261,7 @@ export async function actionReorderSalesNotes(
 
   if (countError) throw new Error(countError.message);
   if (activeCount !== uniqueIds.length) {
-    throw new Error("Niekompletna lista notatek — odśwież stronę i spróbuj ponownie.");
+    throw new Error("Niekompletna lista notatek - odśwież stronę i spróbuj ponownie.");
   }
 
   for (let i = 0; i < uniqueIds.length; i++) {
@@ -1450,7 +1450,7 @@ export async function actionSaveZkWatchTeethDrafts(
 
   const teethInfo = await fetchTeethProductInfo().catch(() => null);
   if (!teethInfo) {
-    throw new Error("Katalog zębów jest chwilowo niedostępny — spróbuj ponownie.");
+    throw new Error("Katalog zębów jest chwilowo niedostępny - spróbuj ponownie.");
   }
   const registryIndex = buildTeethRegistryIndex(
     teethInfo.map((row) => ({
@@ -1484,7 +1484,7 @@ export async function actionSaveZkWatchTeethDrafts(
     );
     if (!resolved) {
       throw new Error(
-        "Brak towaru w katalogu zębów dla wybranej linii i typu (przednie/boczne) — uzupełnij wpis w adminie."
+        "Brak towaru w katalogu zębów dla wybranej linii i typu (przednie/boczne) - uzupełnij wpis w adminie."
       );
     }
     const twId = resolved.twId;
@@ -1549,14 +1549,14 @@ export async function actionSaveZkWatchTeethDrafts(
   if (error) {
     if (error.message?.includes("teeth_drafts")) {
       throw new Error(
-        "Brak kolumny teeth_drafts — uruchom migrację supabase/migrations/138_zk_watch_teeth_drafts.sql"
+        "Brak kolumny teeth_drafts - uruchom migrację supabase/migrations/138_zk_watch_teeth_drafts.sql"
       );
     }
     throw new Error(error.message);
   }
   if (!data) {
     throw new Error(
-      "ZK został zaktualizowany w tle — odśwież kartę i zapisz listy zębów ponownie."
+      "ZK został zaktualizowany w tle - odśwież kartę i zapisz listy zębów ponownie."
     );
   }
 
@@ -1614,7 +1614,7 @@ export async function actionClearZkWatchTeethDrafts(
   if (error) throw new Error(error.message);
   if (!data) {
     throw new Error(
-      "ZK został zaktualizowany w tle — odśwież kartę i spróbuj ponownie."
+      "ZK został zaktualizowany w tle - odśwież kartę i spróbuj ponownie."
     );
   }
   scheduleNotepadRevalidation();

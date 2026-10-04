@@ -34,7 +34,7 @@ export function DailyPanelSyncControl({ embedded = false }: { embedded?: boolean
         />
         {ctx.hasUpdates ? (
           <span aria-live="polite" className="text-slate-700">
-            Wykryto zmiany — odświeżamy panel…{" "}
+            Wykryto zmiany - odświeżamy panel…{" "}
             <button
               type="button"
               onClick={ctx.refreshNow}

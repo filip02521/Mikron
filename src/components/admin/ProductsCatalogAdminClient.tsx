@@ -64,6 +64,7 @@ import type {
 } from "@/lib/subiekt/zd-job-shared";
 import type { CronRunPayload } from "@/lib/services/cron-run-shared";
 import type { CatalogZdSyncState } from "@/lib/subiekt/catalog-zd-sync-shared";
+import { askConfirm } from "@/components/ui/ConfirmHost";
 
 type CatalogListMode = "all" | "noSupplier";
 
@@ -245,8 +246,8 @@ export function ProductsCatalogAdminClient({
           setToast(
             catalogAdminNotice(
               result.timedOut
-                ? `${label} (limit czasu) — indeks: ${s.indexProcessed}, import ZD: ${s.importProcessedDocs}, auto-przypisanie: ${s.autoAssignUpdated}`
-                : `${label}: ${s.status} — indeks: ${s.indexProcessed}, import: ${s.importProcessedDocs}, auto-przypisanie: ${s.autoAssignUpdated}`,
+                ? `${label} (limit czasu) - indeks: ${s.indexProcessed}, import ZD: ${s.importProcessedDocs}, auto-przypisanie: ${s.autoAssignUpdated}`
+                : `${label}: ${s.status} - indeks: ${s.indexProcessed}, import: ${s.importProcessedDocs}, auto-przypisanie: ${s.autoAssignUpdated}`,
               result.ok ? "success" : "error",
             ),
           );
@@ -569,7 +570,7 @@ export function ProductsCatalogAdminClient({
     });
   };
 
-  const startImport = () => {
+  const startImport = async () => {
     if (!importSupplierId) return;
     if (importJobResumable && importState?.status === "paused") {
       setToast(CATALOG_ADMIN_TOAST.importPausedUseContinue);
@@ -578,9 +579,7 @@ export function ProductsCatalogAdminClient({
     if (
       importJobResumable &&
       importState?.status === "failed" &&
-      !confirm(
-        "Jest niedokończony import. Start od nowa go nadpisze — na pewno zacząć od początku?"
-      )
+      !(await askConfirm({ title: "Zacząć import od nowa?", message: "Jest niedokończony import. Start od nowa go nadpisze.", confirmLabel: "Zacznij od nowa" }))
     ) {
       return;
     }
@@ -614,12 +613,10 @@ export function ProductsCatalogAdminClient({
     });
   };
 
-  const cleanupImport = () => {
+  const cleanupImport = async () => {
     if (!importSupplierId) return;
     if (
-      !confirm(
-        "Usunąć mapowania z importu ZD dla tego dostawcy i zresetować flagi dokumentów? Potem uruchom Start — zaimportuje tylko ZD jeszcze niezaimportowane."
-      )
+      !(await askConfirm({ title: "Wyczyścić import ZD?", message: "Usunie mapowania z importu ZD dla tego dostawcy i zresetuje flagi dokumentów. Potem uruchom Start - zaimportuje tylko ZD jeszcze niezaimportowane.", confirmLabel: "Wyczyść", danger: true }))
     ) {
       return;
     }
@@ -632,7 +629,7 @@ export function ProductsCatalogAdminClient({
         setImportState(null);
         setToast(
           catalogAdminNotice(
-            `Usunięto ${res.removedLinks} mapowań i zresetowano ${res.resetZdFlags} flag ZD — możesz uruchomić import od nowa.`,
+            `Usunięto ${res.removedLinks} mapowań i zresetowano ${res.resetZdFlags} flag ZD - możesz uruchomić import od nowa.`,
             "success",
           ),
         );
@@ -688,7 +685,7 @@ export function ProductsCatalogAdminClient({
     });
   };
 
-  const startIndex = () => {
+  const startIndex = async () => {
     if (indexJobResumable && indexState?.status === "paused") {
       setToast(CATALOG_ADMIN_TOAST.indexPausedUseContinue);
       return;
@@ -696,9 +693,7 @@ export function ProductsCatalogAdminClient({
     if (
       indexJobResumable &&
       indexState?.status === "failed" &&
-      !confirm(
-        "Jest niedokończone indeksowanie. Start od nowa nadpisze postęp — na pewno zacząć od strony 1?"
-      )
+      !(await askConfirm({ title: "Indeksować od nowa?", message: "Jest niedokończone indeksowanie. Start od nowa nadpisze postęp i zacznie od strony 1.", confirmLabel: "Zacznij od nowa" }))
     ) {
       return;
     }
@@ -775,7 +770,7 @@ export function ProductsCatalogAdminClient({
     });
   };
 
-  const startAll = () => {
+  const startAll = async () => {
     if (allJobResumable && allState?.status === "paused") {
       setToast(CATALOG_ADMIN_TOAST.autopilotPausedUseContinue);
       return;
@@ -783,9 +778,7 @@ export function ProductsCatalogAdminClient({
     if (
       allJobResumable &&
       allState?.status === "failed" &&
-      !confirm(
-        "Jest niedokończony import. Start od nowa go nadpisze — na pewno zacząć od pierwszego dostawcy?"
-      )
+      !(await askConfirm({ title: "Zacząć import od nowa?", message: "Jest niedokończony import. Start od nowa go nadpisze i zacznie od pierwszego dostawcy.", confirmLabel: "Zacznij od nowa" }))
     ) {
       return;
     }
@@ -842,8 +835,15 @@ export function ProductsCatalogAdminClient({
     tickAllRef.current = tickAll;
   });
 
-  const rebuild = () => {
-    if (!confirm("Odbudować bazę produktów z historii individual_orders?")) return;
+  const rebuild = async () => {
+    if (
+      !(await askConfirm({
+        title: "Odbudować bazę produktów?",
+        message: "Na podstawie historii individual_orders.",
+        confirmLabel: "Odbuduj",
+      }))
+    )
+      return;
     start(async () => {
       try {
         const res = await actionRebuildProductCatalogFromOrders({ limit: 5000 });
@@ -862,11 +862,9 @@ export function ProductsCatalogAdminClient({
     });
   };
 
-  const backfillFromSymbol = () => {
+  const backfillFromSymbol = async () => {
     if (
-      !confirm(
-        "Uzupełnić tw_Id w individual_orders po symbolu z Subiekta i dopisać mapowania? (Wymaga dostępu do Subiekta w LAN)"
-      )
+      !(await askConfirm({ title: "Uzupełnić tw_Id po symbolu?", message: "Uzupełni tw_Id w individual_orders po symbolu z Subiekta i dopisze mapowania. Wymaga dostępu do Subiekta w LAN.", confirmLabel: "Uzupełnij" }))
     ) {
       return;
     }
@@ -910,14 +908,14 @@ export function ProductsCatalogAdminClient({
         refreshCoverage();
         const extra =
           autoAssign.updated > 0
-            ? ` · uzupełniono ${autoAssign.updated} prośb w weryfikacji`
+            ? ` · uzupełniono ${autoAssign.updated} próśb w weryfikacji`
             : "";
         const filterNote = leftFilteredView
           ? " · usunięto z aktualnego filtra (główny dostawca się zmienił)"
           : "";
         setToast(
           catalogAdminNotice(
-            `Przypisano dostawcę: ${row.topSupplier?.name ?? "—"}${extra}${filterNote}.`,
+            `Przypisano dostawcę: ${row.topSupplier?.name ?? "-"}${extra}${filterNote}.`,
             "success",
           ),
         );
@@ -960,7 +958,7 @@ export function ProductsCatalogAdminClient({
           assignSuppliers.find((s) => s.id === bulkSupplierId)?.name ?? "dostawca";
         const extra =
           result.autoAssign.updated > 0
-            ? ` · uzupełniono ${result.autoAssign.updated} prośb w weryfikacji`
+            ? ` · uzupełniono ${result.autoAssign.updated} próśb w weryfikacji`
             : "";
         const partial =
           result.failed.length > 0
@@ -1032,7 +1030,7 @@ export function ProductsCatalogAdminClient({
           </p>
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <div className="min-w-[10rem]">
-              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <label className="text-[11px] font-semibold text-slate-500">
                 Zakres (mies. wstecz)
               </label>
               <Select
@@ -1087,28 +1085,28 @@ export function ProductsCatalogAdminClient({
 
           <div className="mt-3 text-xs text-slate-700">
             <div className="flex flex-wrap gap-2">
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
-                Status: <span className="font-semibold">{indexState?.status ?? "—"}</span>
+              <span className="rounded-md bg-slate-100 px-2 py-0.5">
+                Status: <span className="font-semibold">{indexState?.status ?? "-"}</span>
               </span>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+              <span className="rounded-md bg-slate-100 px-2 py-0.5">
                 Strona:{" "}
                 <span className="font-semibold tabular-nums">
-                  {indexState?.page ?? "—"}/{indexState?.totalPages ?? "?"}
+                  {indexState?.page ?? "-"}/{indexState?.totalPages ?? "?"}
                 </span>
               </span>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+              <span className="rounded-md bg-slate-100 px-2 py-0.5">
                 Przetw.: <span className="font-semibold tabular-nums">{indexState?.processed ?? 0}</span>
               </span>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+              <span className="rounded-md bg-slate-100 px-2 py-0.5">
                 Dopas.: <span className="font-semibold tabular-nums">{indexState?.mapped ?? 0}</span>
               </span>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+              <span className="rounded-md bg-slate-100 px-2 py-0.5">
                 Brak dost.: <span className="font-semibold tabular-nums">{indexState?.unmapped ?? 0}</span>
               </span>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+              <span className="rounded-md bg-slate-100 px-2 py-0.5">
                 Niezweryf.: <span className="font-semibold tabular-nums">{indexState?.unverifiable ?? 0}</span>
               </span>
-              <span className={cn("rounded-full px-2 py-0.5", indexRunning ? "bg-indigo-50 text-indigo-900" : "bg-slate-100")}>
+              <span className={cn("rounded-md px-2 py-0.5", indexRunning ? "bg-indigo-50 text-indigo-900" : "bg-slate-100")}>
                 Pętla: <span className="font-semibold">{indexRunning ? "ON" : "OFF"}</span>
               </span>
             </div>
@@ -1147,7 +1145,7 @@ export function ProductsCatalogAdminClient({
                 Kliknij <span className="font-medium">Sprawdź teraz</span>, żeby policzyć dostawców bez mapowań.
               </p>
             ) : (supplierStats ?? []).filter((s) => (s.linksTotal ?? 0) === 0).length === 0 ? (
-              <p className="text-xs text-slate-600">Brak — każdy dostawca ma już jakieś mapowania.</p>
+              <p className="text-xs text-slate-600">Brak - każdy dostawca ma już jakieś mapowania.</p>
             ) : (
               (supplierStats ?? [])
                 .filter((s) => (s.linksTotal ?? 0) === 0)
@@ -1177,9 +1175,7 @@ export function ProductsCatalogAdminClient({
                               }
                               if (
                                 existing?.status === "failed" &&
-                                !confirm(
-                                  "Jest niedokończony import dla tego dostawcy. Start od nowa go nadpisze — kontynuować?"
-                                )
+                                !(await askConfirm({ title: "Zacząć import od nowa?", message: "Jest niedokończony import dla tego dostawcy. Start od nowa go nadpisze.", confirmLabel: "Zacznij od nowa" }))
                               ) {
                                 setImportState(existing);
                                 return;
@@ -1216,7 +1212,7 @@ export function ProductsCatalogAdminClient({
           </p>
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <div className="min-w-[10rem]">
-              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <label className="text-[11px] font-semibold text-slate-500">
                 Zakres (mies. wstecz)
               </label>
               <Select
@@ -1265,31 +1261,31 @@ export function ProductsCatalogAdminClient({
           </div>
           <div className="mt-3 text-xs text-slate-700">
             <div className="flex flex-wrap gap-2">
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
-                Status: <span className="font-semibold">{allState?.status ?? "—"}</span>
+              <span className="rounded-md bg-slate-100 px-2 py-0.5">
+                Status: <span className="font-semibold">{allState?.status ?? "-"}</span>
               </span>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+              <span className="rounded-md bg-slate-100 px-2 py-0.5">
                 Dostawca:{" "}
                 <span className="font-semibold">
-                  {allState?.supplierName ?? "—"}
+                  {allState?.supplierName ?? "-"}
                 </span>
               </span>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+              <span className="rounded-md bg-slate-100 px-2 py-0.5">
                 Dostawcy:{" "}
                 <span className="font-semibold tabular-nums">
                   {allState?.processedSuppliers ?? 0}/{allState?.supplierIds?.length ?? "?"}
                 </span>
               </span>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+              <span className="rounded-md bg-slate-100 px-2 py-0.5">
                 Offset:{" "}
                 <span className="font-semibold tabular-nums">
                   {allState?.indexOffset ?? 0}/{allState?.indexTotalDocs ?? "?"}
                 </span>
               </span>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+              <span className="rounded-md bg-slate-100 px-2 py-0.5">
                 ZD: <span className="font-semibold tabular-nums">{allState?.processedDocs ?? 0}</span>
               </span>
-              <span className={cn("rounded-full px-2 py-0.5", allRunning ? "bg-indigo-50 text-indigo-900" : "bg-slate-100")}>
+              <span className={cn("rounded-md px-2 py-0.5", allRunning ? "bg-indigo-50 text-indigo-900" : "bg-slate-100")}>
                 Pętla: <span className="font-semibold">{allRunning ? "ON" : "OFF"}</span>
               </span>
             </div>
@@ -1308,12 +1304,12 @@ export function ProductsCatalogAdminClient({
 
           <p className="text-sm font-semibold text-slate-900">Import z ZD (per dostawca)</p>
           <p className="mt-0.5 text-xs text-slate-600">
-            Importuje tylko ZD bez flagi `catalog_imported_at` — ponowny Start nie podwaja liczników. Zakres jak w autopilocie.
+            Importuje tylko ZD bez flagi `catalog_imported_at` - ponowny Start nie podwaja liczników. Zakres jak w autopilocie.
           </p>
 
           <div className="mt-2 flex flex-wrap items-end gap-2">
             <div className="min-w-[10rem]">
-              <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <label className="text-[11px] font-semibold text-slate-500">
                 Zakres (mies. wstecz)
               </label>
               <Select
@@ -1386,10 +1382,10 @@ export function ProductsCatalogAdminClient({
 
           <div className="mt-3 text-xs text-slate-700">
             <div className="flex flex-wrap gap-2">
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
-                Status: <span className="font-semibold">{importState?.status ?? "—"}</span>
+              <span className="rounded-md bg-slate-100 px-2 py-0.5">
+                Status: <span className="font-semibold">{importState?.status ?? "-"}</span>
               </span>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+              <span className="rounded-md bg-slate-100 px-2 py-0.5">
                 Pozostało:{" "}
                 <span className="font-semibold tabular-nums">
                   {importState?.indexTotalDocs != null
@@ -1397,26 +1393,26 @@ export function ProductsCatalogAdminClient({
                     : "?"}
                 </span>
               </span>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+              <span className="rounded-md bg-slate-100 px-2 py-0.5">
                 ZD: <span className="font-semibold tabular-nums">{importState?.processedDocs ?? 0}</span>
               </span>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+              <span className="rounded-md bg-slate-100 px-2 py-0.5">
                 Offset:{" "}
                 <span className="font-semibold tabular-nums">
                   {importState?.indexOffset ?? 0}/{importState?.indexTotalDocs ?? "?"}
                 </span>
               </span>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+              <span className="rounded-md bg-slate-100 px-2 py-0.5">
                 Linie: <span className="font-semibold tabular-nums">{importState?.processedLines ?? 0}</span>
               </span>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+              <span className="rounded-md bg-slate-100 px-2 py-0.5">
                 Produkty (unikalne):{" "}
                 <span className="font-semibold tabular-nums">{importState?.uniqueProductsSeen ?? 0}</span>
               </span>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5">
+              <span className="rounded-md bg-slate-100 px-2 py-0.5">
                 Linki: <span className="font-semibold tabular-nums">{importState?.linksUpserted ?? 0}</span>
               </span>
-              <span className={cn("rounded-full px-2 py-0.5", importRunning ? "bg-indigo-50 text-indigo-900" : "bg-slate-100")}>
+              <span className={cn("rounded-md px-2 py-0.5", importRunning ? "bg-indigo-50 text-indigo-900" : "bg-slate-100")}>
                 Pętla: <span className="font-semibold">{importRunning ? "ON" : "OFF"}</span>
               </span>
             </div>
@@ -1440,7 +1436,7 @@ export function ProductsCatalogAdminClient({
               type="button"
               onClick={() => switchListMode("all")}
               className={cn(
-                "rounded-full px-3 py-1 text-xs font-semibold transition",
+                "rounded-md px-3 py-1 text-xs font-semibold transition",
                 listMode === "all"
                   ? "bg-indigo-600 text-white"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -1452,7 +1448,7 @@ export function ProductsCatalogAdminClient({
               type="button"
               onClick={() => switchListMode("noSupplier")}
               className={cn(
-                "rounded-full px-3 py-1 text-xs font-semibold transition",
+                "rounded-md px-3 py-1 text-xs font-semibold transition",
                 listMode === "noSupplier"
                   ? "bg-amber-600 text-white"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -1468,14 +1464,14 @@ export function ProductsCatalogAdminClient({
         {listMode === "noSupplier" ? (
           <p className="mb-2 text-xs text-amber-900/90">
             Produkty w katalogu bez wpisu w{" "}
-            <span className="font-mono">product_supplier_links</span> — uzupełnij importem ZD lub
+            <span className="font-mono">product_supplier_links</span> - uzupełnij importem ZD lub
             przypisaniem przy weryfikacji prośby lub ręcznie poniżej (lista dostawców).
           </p>
         ) : null}
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
           {listMode === "all" ? (
             <div className="sm:w-64">
-              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <label className="mb-1 block text-[11px] font-semibold text-slate-500">
                 Dostawca
               </label>
               <Select
@@ -1494,7 +1490,7 @@ export function ProductsCatalogAdminClient({
           ) : null}
           <div className="min-w-0 flex-1">
             {listMode === "all" ? (
-              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <label className="mb-1 block text-[11px] font-semibold text-slate-500">
                 Szukaj
               </label>
             ) : null}
@@ -1542,7 +1538,7 @@ export function ProductsCatalogAdminClient({
 
       <div className="border-t border-slate-100">
         <div
-          className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_minmax(220px,1fr)_minmax(140px,180px)] lg:items-center lg:gap-3"
+          className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold text-slate-500 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_minmax(220px,1fr)_minmax(140px,180px)] lg:items-center lg:gap-3"
           aria-hidden
         >
           <span className="flex w-9 justify-center">
@@ -1588,7 +1584,7 @@ export function ProductsCatalogAdminClient({
                     className="min-w-0 truncate text-sm font-medium text-slate-900"
                     title={r.name ?? undefined}
                   >
-                    {r.name || "—"}
+                    {r.name || "-"}
                   </p>
                   <span className="shrink-0 font-mono text-[11px] tabular-nums text-slate-500">
                     {r.subiektTwId}

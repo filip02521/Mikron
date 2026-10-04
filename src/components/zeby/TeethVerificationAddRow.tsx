@@ -136,7 +136,7 @@ export function TeethVerificationAddRow({
     <div ref={containerRef} className="border-t border-slate-100 px-2 py-2">
       <div className="flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-0.5">
-          <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Kolor</span>
+          <span className="text-[9px] font-semibold text-slate-400">Kolor</span>
           <select
             ref={colorRef}
             value={color}
@@ -149,7 +149,7 @@ export function TeethVerificationAddRow({
           </select>
         </label>
         <label className="flex flex-col gap-0.5">
-          <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Fason</span>
+          <span className="text-[9px] font-semibold text-slate-400">Fason</span>
           <select
             value={mould}
             onChange={(e) => handleMouldChange(e.target.value)}
@@ -164,7 +164,7 @@ export function TeethVerificationAddRow({
         </label>
         {showJawField ? (
           <label className="flex flex-col gap-0.5">
-            <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Szczęka</span>
+            <span className="text-[9px] font-semibold text-slate-400">Szczęka</span>
             <select
               value={jaw}
               onChange={(e) => setJaw(e.target.value)}
@@ -180,7 +180,7 @@ export function TeethVerificationAddRow({
           </label>
         ) : null}
         <label className="flex flex-col gap-0.5">
-          <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Typ</span>
+          <span className="text-[9px] font-semibold text-slate-400">Typ</span>
           <select
             value={kind}
             onChange={(e) => handleKindChange(e.target.value)}
@@ -192,7 +192,7 @@ export function TeethVerificationAddRow({
           </select>
         </label>
         <label className="flex flex-col gap-0.5">
-          <span className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">Szt.</span>
+          <span className="text-[9px] font-semibold text-slate-400">Szt.</span>
           <input
             type="number"
             min={1}

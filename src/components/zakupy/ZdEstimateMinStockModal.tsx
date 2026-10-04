@@ -199,7 +199,7 @@ function MinStockRow({
                 min {row.minStockSzt} szt
               </span>
               {row.grtNazwa ? (
-                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
                   {row.grtNazwa}
                 </span>
               ) : null}
@@ -724,7 +724,7 @@ export function ZdEstimateMinStockModal({
             className="shrink-0 text-indigo-600"
             aria-hidden
           />
-          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-900/80">
+          <p className="text-xs font-semibold text-indigo-900/80">
             {ZD_ESTIMATE_UI.minStockAddSectionTitle}
           </p>
         </div>
@@ -983,7 +983,7 @@ export function ZdEstimateMinStockModal({
       {minStock.length > 0 ? (
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
           <div className="flex items-center gap-1">
-            <span className="mr-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            <span className="mr-1 text-[10px] font-semibold text-slate-400">
               Sortuj:
             </span>
             <SortButton

@@ -90,7 +90,7 @@ export function myOrderCollapsedSubline(row: MyOrderRow): string | null {
 function isInformacjaFlowSublineExpandedOnly(statusTitle: string): boolean {
   return (
     statusTitle === "Czekamy na zamówienie u dostawcy" ||
-    statusTitle === "Zamówione — czekamy na magazyn" ||
+    statusTitle === "Zamówione - czekamy na magazyn" ||
     isInformacjaAvailabilityPendingStatusTitle(statusTitle)
   );
 }
@@ -110,7 +110,7 @@ export function myOrderExpandedNotes(row: MyOrderRow): string | null {
       row.statusTitle === "Przed zamówieniem" ||
       isInformacjaAvailabilityPendingStatusTitle(row.statusTitle) ||
       row.statusTitle === "Czekamy na zamówienie u dostawcy" ||
-      row.statusTitle === "Zamówione — czekamy na magazyn" ||
+      row.statusTitle === "Zamówione - czekamy na magazyn" ||
       row.statusTitle === "Zamówione" ||
       isProsbaHandoffStatus(row.statusTitle) ||
       row.kind === "informacja";
@@ -212,8 +212,8 @@ export function myOrderExpandHint(row: MyOrderRow, ctx: MyOrderExpandContext): s
   ) {
     const n = zdFulfillmentSlots(row.zdFulfillment).length;
     return n === 2
-      ? "Rozwiń — 2 terminy"
-      : `Rozwiń — ${n} ${pluralTerminy(n)}`;
+      ? "Rozwiń - 2 terminy"
+      : `Rozwiń - ${n} ${pluralTerminy(n)}`;
   }
   const withoutZd = linesWithoutZdTerm(row.lines);
   if (row.zdFulfillment && withoutZd.length) {

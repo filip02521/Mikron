@@ -23,7 +23,7 @@ describe("resolveInformacjaArrivedSourceMix", () => {
 });
 
 describe("informacjaReadyAckSubline", () => {
-  it("auto — Subiekt, nie magazyn", () => {
+  it("auto - Subiekt, nie magazyn", () => {
     expect(
       informacjaReadyAckSubline({ sourceMix: "stock_auto", informacjaPath: "direct" })
     ).toContain("Subiekcie");
@@ -32,13 +32,13 @@ describe("informacjaReadyAckSubline", () => {
     ).not.toContain("magazynu");
   });
 
-  it("manual direct — neutralne powiadomienie", () => {
+  it("manual direct - neutralne powiadomienie", () => {
     expect(
       informacjaReadyAckSubline({ sourceMix: "manual", informacjaPath: "direct" })
     ).toBe("Potwierdź, że widziałeś/aś powiadomienie o dostępności");
   });
 
-  it("manual via_panel — magazyn potwierdził", () => {
+  it("manual via_panel - magazyn potwierdził", () => {
     expect(
       informacjaReadyAckSubline({ sourceMix: "manual", informacjaPath: "via_panel" })
     ).toContain("Magazyn potwierdził");
@@ -46,7 +46,7 @@ describe("informacjaReadyAckSubline", () => {
 });
 
 describe("informacjaReadyDayStartSubtitle", () => {
-  it("auto — stan Subiekta", () => {
+  it("auto - stan Subiekta", () => {
     expect(
       informacjaReadyDayStartSubtitle([
         { informacjaArrivedSourceMix: "stock_auto", informacjaPath: "direct" },
@@ -54,7 +54,7 @@ describe("informacjaReadyDayStartSubtitle", () => {
     ).toContain("Subiekcie");
   });
 
-  it("manual direct — nie zakupy", () => {
+  it("manual direct - nie zakupy", () => {
     expect(
       informacjaReadyDayStartSubtitle([
         { informacjaArrivedSourceMix: "manual", informacjaPath: "direct" },

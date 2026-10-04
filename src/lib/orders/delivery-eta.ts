@@ -16,6 +16,7 @@ import type { DeliveryStats, OrderType, StatsMode } from "@/types/database";
 import { MY_ORDER_HISTORY_ESTIMATE_LOW_CONFIDENCE_SUFFIX } from "@/lib/orders/my-order-history-estimate-copy";
 import { todayInWarsaw, warsawDateKeyFromIso } from "@/lib/time/warsaw";
 import { isDeliveryEtaUseP50EnabledSync } from "@/lib/env/delivery-stats-flags";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export function avgDaysForOrderType(
   stats: DeliveryStats | null | undefined,
@@ -270,7 +271,7 @@ export function buildSupplierLeadTimeHint(
 
   if (!stats || sampleCount === 0) {
     return {
-      lines: ["Brak historii realizacji u tego dostawcy — termin ustalimy po pierwszych dostawach."],
+      lines: ["Brak historii realizacji u tego dostawcy - termin ustalimy po pierwszych dostawach."],
       lowConfidence: true,
       hasData: false,
     };
@@ -307,7 +308,7 @@ export function buildSupplierLeadTimeHint(
       );
     }
     if (!lines.length) {
-      lines.push("Brak osobnych średnich dla głównych / pobocznych — sprawdź statystyki dostawcy.");
+      lines.push("Brak osobnych średnich dla głównych / pobocznych - sprawdź statystyki dostawcy.");
     }
   }
 
@@ -332,7 +333,7 @@ export function buildSupplierLeadTimeHint(
   }
 
   if (lowConfidence) {
-    lines.push("Szacunek z małą liczbą dostaw w historii — może się zmieniać.");
+    lines.push("Szacunek z małą liczbą dostaw w historii - może się zmieniać.");
   }
 
   return { lines, lowConfidence, hasData: true };
@@ -401,9 +402,7 @@ function daysLabel(n: number): string {
 
 function daysLabelShort(n: number): string {
   if (n === 0) return "tego samego dnia";
-  if (n === 1) return "dzień roboczy";
-  if (n >= 2 && n <= 4) return "dni robocze";
-  return "dni roboczych";
+  return polishPluralWord(n, "dzień roboczy", "dni robocze", "dni roboczych");
 }
 
 function deliveriesLabel(n: number): string {
@@ -413,9 +412,7 @@ function deliveriesLabel(n: number): string {
 }
 
 function deliveriesCountLabel(n: number): string {
-  if (n === 1) return "1 dostawa";
-  if (n >= 2 && n <= 4) return `${n} dostawy`;
-  return `${n} dostaw`;
+  return `${n} ${polishPluralWord(n, "dostawa", "dostawy", "dostaw")}`;
 }
 
 export type SupplierDrawerLeadTimePart = {
@@ -473,14 +470,14 @@ export function buildSupplierDrawerLeadTime(
     hasRecentSample: display?.hasRecentSample,
   });
   let footnote = lowConfidence
-    ? "Mało dostaw w historii — szacunek może się zmieniać."
+    ? "Mało dostaw w historii - szacunek może się zmieniać."
     : null;
 
   if (!stats || totalSampleCount(stats) === 0) {
     return {
       kind: "empty",
       title,
-      detail: "Brak historii — średnia pojawi się po pierwszych dostawach.",
+      detail: "Brak historii - średnia pojawi się po pierwszych dostawach.",
     };
   }
 

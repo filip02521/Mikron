@@ -12,7 +12,7 @@ describe("businessToCalendarDays", () => {
   it("5 dni roboczych od poniedziałku = 7 dni kalendarzowych", () => {
     expect(businessToCalendarDays(MONDAY, 5)).toBe(7);
   });
-  it("uwzględnia święta (11.11 — wtorek)", () => {
+  it("uwzględnia święta (11.11 - wtorek)", () => {
     // pon 10.11 + 2 dni robocze: 11.11 święto → 12.11, 13.11 = 3 dni kalendarzowe.
     expect(businessToCalendarDays("2026-11-10", 2)).toBe(3);
   });
@@ -43,7 +43,7 @@ describe("resolveZdOrderHorizon", () => {
     );
   });
 
-  it("zapas z karty jest minimum — krótka dostawa nie skraca zamówienia", () => {
+  it("zapas z karty jest minimum - krótka dostawa nie skraca zamówienia", () => {
     const h = resolveZdOrderHorizon({
       ...base,
       stockDays: 60,

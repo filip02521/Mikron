@@ -33,14 +33,14 @@ describe("queue-batch-notify", () => {
     expect(countSalesPeopleInOrders(orders, ["1", "2"])).toBe(1);
   });
 
-  it("etykieta grupy — jeden vs wielu handlowców", () => {
+  it("etykieta grupy - jeden vs wielu handlowców", () => {
     const multi = [o("1", "p1", "A"), o("2", "p2", "B")];
     const single = [o("1", "p1", "A"), o("2", "p1", "A")];
     expect(batchNotifyButtonLabel(multi, ["1", "2"])).toContain("2 handlowców");
     expect(batchNotifyButtonLabel(single, ["1", "2"])).toContain("mail do handlowca");
   });
 
-  it("formatDeliveryBatchToast — wiele maili", () => {
+  it("formatDeliveryBatchToast - wiele maili", () => {
     const t = formatDeliveryBatchToast({
       saved: 5,
       emailQueued: 2,
@@ -53,7 +53,7 @@ describe("queue-batch-notify", () => {
     expect(t.durationMs).toBeUndefined();
   });
 
-  it("formatDeliveryBatchToast — błąd e-maila wydłuża toast", () => {
+  it("formatDeliveryBatchToast - błąd e-maila wydłuża toast", () => {
     const t = formatDeliveryBatchToast({
       saved: 1,
       emailSent: 0,
@@ -70,13 +70,13 @@ describe("queue-batch-notify", () => {
     expect(selectedSaveButtonLabel(3)).toBe("Zapisz zaznaczone (3)");
   });
 
-  it("requiresQueueBatchConfirm — tylko grupowe akcje", () => {
+  it("requiresQueueBatchConfirm - tylko grupowe akcje", () => {
     expect(requiresQueueBatchConfirm([])).toBe(false);
     expect(requiresQueueBatchConfirm(["a"])).toBe(false);
     expect(requiresQueueBatchConfirm(["a", "b"])).toBe(true);
   });
 
-  it("batchDeliveryConfirmMessage — pełna dostawa grupy", () => {
+  it("batchDeliveryConfirmMessage - pełna dostawa grupy", () => {
     const orders = [o("1", "p1", "A"), o("2", "p2", "A")];
     const msg = batchDeliveryConfirmMessage(orders, ["1", "2"], { fullQuantity: true });
     expect(msg).toContain("2 pozycje");
@@ -84,7 +84,7 @@ describe("queue-batch-notify", () => {
     expect(msg).toContain("2 handlowców");
   });
 
-  it("batchDeliveryConfirmMessage — zęby, wpisane ilości", () => {
+  it("batchDeliveryConfirmMessage - zęby, wpisane ilości", () => {
     const orders = [o("1", "p1", "A"), o("2", "p2", "A")];
     const msg = batchDeliveryConfirmMessage(orders, ["1", "2"], { teethHandover: true });
     expect(msg).toContain("wpisana w tabeli linii");
@@ -92,7 +92,7 @@ describe("queue-batch-notify", () => {
     expect(msg).toContain("bez e-maila");
   });
 
-  it("batchInformacjaConfirmMessage — wiele osób", () => {
+  it("batchInformacjaConfirmMessage - wiele osób", () => {
     const orders = [o("1", "p1", "A"), o("2", "p2", "A")];
     const msg = batchInformacjaConfirmMessage(orders, ["1", "2"]);
     expect(msg).toContain("2 pozycje");

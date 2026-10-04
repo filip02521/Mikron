@@ -15,7 +15,7 @@ export function NotatnikGuide({ surface }: { surface: NotatnikSurface }) {
 
   return (
     <HelpPopover
-      label={isZk ? "Pomoc — ZK czekające" : "Pomoc — notatnik"}
+      label={isZk ? "Pomoc - ZK czekające" : "Pomoc - notatnik"}
       title={isZk ? "ZK czekające" : "Notatnik"}
       shortLabel="Pomoc"
       icon={<GuideIcon />}
@@ -28,13 +28,13 @@ export function NotatnikGuide({ surface }: { surface: NotatnikSurface }) {
               <strong className="font-medium text-slate-800">Szukaj na swojej liście</strong>{" "}
               filtruje już dodane ZK (klient, numer, produkt).{" "}
               <strong className="font-medium text-slate-800">Dodaj nowe ZK</strong> pobiera
-              dokument z Subiekta — to osobna akcja, nie filtr.
+              dokument z Subiekta - to osobna akcja, nie filtr.
             </p>
           </HelpBlock>
           <HelpBlock title="Prośby i magazyn">
             <p>
               Z pozycji ZK możesz złożyć prośbę do zakupów. Gdy towar dotrze, status zmieni się na
-              magazynie — śledzisz to tutaj i w{" "}
+              magazynie - śledzisz to tutaj i w{" "}
               <Link href={previewHref("/moje")} className="font-medium text-indigo-800 hover:underline">
                 Moje zamówienia
               </Link>
@@ -44,9 +44,9 @@ export function NotatnikGuide({ surface }: { surface: NotatnikSurface }) {
           <HelpBlock title="Stany pozycji (regal → Moje → klient)">
             <p className="mb-2">
               <strong className="font-medium text-slate-800">Na regale</strong> (fiolet) to
-              towar czekający na odbiór w Moje — wymaga działania.{" "}
+              towar czekający na odbiór w Moje - wymaga działania.{" "}
               <strong className="font-medium text-slate-800">Prośba: bez otwartej</strong> (szary
-              tekst w wierszu) oznacza, że nie ma aktywnej prośby — to informacja, nie akcja.{" "}
+              tekst w wierszu) oznacza, że nie ma aktywnej prośby - to informacja, nie akcja.{" "}
               <strong className="font-medium text-slate-800">Zakończone</strong> to ręczne
               odhaczenie po odbiorze u klienta.
             </p>
@@ -57,7 +57,7 @@ export function NotatnikGuide({ surface }: { surface: NotatnikSurface }) {
         <>
           <HelpBlock title="Notatki prywatne">
             <p>
-              Notatnik służy tylko Tobie — wpisy nie trafiają do działu zakupów. Możesz przypiąć
+              Notatnik służy tylko Tobie - wpisy nie trafiają do działu zakupów. Możesz przypiąć
               ważne karteczki i ustawić przypomnienie.
             </p>
           </HelpBlock>

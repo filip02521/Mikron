@@ -209,7 +209,7 @@ export function InactiveSuppliersAdminClient({
           if (snapshot.is_active) {
             setRows((list) => list.filter((x) => x.id !== snapshot.id));
             setToast({
-              text: `„${snapshot.name}” przywrócony — pojawi się w panelu dziennym.`,
+              text: `„${snapshot.name}” przywrócony - pojawi się w panelu dziennym.`,
               tone: "success",
             });
           } else {
@@ -238,7 +238,7 @@ export function InactiveSuppliersAdminClient({
         setRows((list) => list.filter((x) => x.id !== s.id));
         if (form.id === s.id) resetForm();
         setToast({
-          text: `„${s.name}” jest znowu aktywny — pojawi się w panelu dziennym.`,
+          text: `„${s.name}” jest znowu aktywny - pojawi się w panelu dziennym.`,
           tone: "success",
         });
       } catch (e) {
@@ -330,7 +330,7 @@ export function InactiveSuppliersAdminClient({
           ) : (
             <>
               <div
-                className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 md:grid md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(100px,120px)_minmax(88px,100px)_minmax(120px,160px)] md:gap-3 lg:px-5"
+                className="hidden border-b border-slate-100 bg-slate-50/90 px-4 py-2 text-[11px] font-semibold text-slate-500 md:grid md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(100px,120px)_minmax(88px,100px)_minmax(120px,160px)] md:gap-3 lg:px-5"
                 aria-hidden
               >
                 <span>Dostawca</span>
@@ -349,7 +349,7 @@ export function InactiveSuppliersAdminClient({
                       key={s.id}
                       id={`inactive-supplier-row-${s.id}`}
                       className={cn(
-                        "rounded-lg border border-slate-100 bg-white px-3 py-3 transition-all sm:px-4 lg:px-5",
+                        "rounded-lg border border-slate-100 bg-white px-3 py-3 transition sm:px-4 lg:px-5",
                         "hover:border-slate-200 hover:shadow-sm",
                         inactiveRowClass(isEditing),
                         s.subiekt_kh_id == null && "border-amber-100/60 bg-amber-50/20"

@@ -71,6 +71,8 @@ import {
 } from "@/lib/sales/zk-watch-prosba-scope";
 import { zkWatchLineViewToProsbaScopeLine } from "@/lib/orders/prosba-stock-check";
 import { useZkProsbaLineKeysStockFilter } from "@/hooks/useZkProsbaLineKeysStockFilter";
+import { isTextSelectionInside } from "@/lib/ui/panel-row-actions-reveal";
+import { askConfirm } from "@/components/ui/ConfirmHost";
 
 export function ZkWatchCard({
   watch,
@@ -428,7 +430,7 @@ export function ZkWatchCard({
         watchId: watch.id,
         message: teethDraftsIncomplete
           ? "Najpierw uzupełnij listę zębów dla pozycji ZK."
-          : "Brak pozycji do dodania do prośby — odśwież ZK z Subiekta.",
+          : "Brak pozycji do dodania do prośby - odśwież ZK z Subiekta.",
       });
     }
   }
@@ -446,7 +448,7 @@ export function ZkWatchCard({
       event.preventDefault();
       setError({
         watchId: watch.id,
-        message: "Brak pozycji do dodania do prośby — odśwież ZK z Subiekta.",
+        message: "Brak pozycji do dodania do prośby - odśwież ZK z Subiekta.",
       });
     }
   }
@@ -498,10 +500,11 @@ export function ZkWatchCard({
     "pokaż szczegóły ZK",
   ]
     .filter(Boolean)
-    .join(" — ");
+    .join(" - ");
 
   function handleRowClick(event: MouseEvent<HTMLElement>) {
     if ((event.target as HTMLElement).closest("[data-zk-row-action]")) return;
+    if (isTextSelectionInside(event.currentTarget)) return;
     openLinesModal(false);
   }
 
@@ -553,7 +556,14 @@ export function ZkWatchCard({
 
   async function removeFromArchive() {
     if (readOnly || tourPreview || deleting || !archived) return;
-    if (!window.confirm("Usunąć ten ZK z archiwum na stałe? Tej operacji nie można cofnąć.")) {
+    if (
+      !(await askConfirm({
+        title: "Usunąć ZK z archiwum?",
+        message: "Usunięcie jest trwałe — tej operacji nie można cofnąć.",
+        confirmLabel: "Usuń na stałe",
+        danger: true,
+      }))
+    ) {
       return;
     }
     setDeleting(true);
@@ -644,7 +654,7 @@ export function ZkWatchCard({
                 className={cn("mt-0.5 truncate", salesTypography.rowMeta, "text-slate-600")}
                 title={
                   hasTrackedScope && hiddenOutsideScope > 0
-                    ? `${productPreview} — w podglądzie widać wybrane pozycje; +${hiddenOutsideScope} poz. spoza zakresu`
+                    ? `${productPreview} - w podglądzie widać wybrane pozycje; +${hiddenOutsideScope} poz. spoza zakresu`
                     : productPreview
                 }
               >
@@ -747,7 +757,7 @@ export function ZkWatchCard({
             ) : null}
 
             <ZkWatchOverflowMenu
-              label={`Opcje — ${watch.zk_number}`}
+              label={`Opcje - ${watch.zk_number}`}
               disabled={pending}
               archived={archived}
               readOnly={readOnly || tourPreview}

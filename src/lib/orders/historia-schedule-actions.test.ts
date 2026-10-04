@@ -48,7 +48,7 @@ describe("replayHistoriaScheduleState", () => {
     expect(formatDateString(state.orderDate!)).toBe("2026-06-11");
   });
 
-  it("zachowuje sobotę jako order_date — jak live markStandardOrdered", () => {
+  it("zachowuje sobotę jako order_date - jak live markStandardOrdered", () => {
     const state = replayHistoriaScheduleState([
       {
         actionAt: new Date("2026-06-13T10:00:00.000+02:00"),
@@ -59,7 +59,7 @@ describe("replayHistoriaScheduleState", () => {
     expect(formatDateString(state.orderDate!)).toBe("2026-06-13");
   });
 
-  it("supplierOrderDatesFromHistoria — tylko akcje Zamówione", () => {
+  it("supplierOrderDatesFromHistoria - tylko akcje Zamówione", () => {
     expect(
       supplierOrderDatesFromHistoria([
         { action_at: "2026-04-14T08:00:00+02:00", action: "Zamówione" },

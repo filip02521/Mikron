@@ -129,7 +129,7 @@ describe("zdSearchPlansForOrderInput", () => {
     expect(plans.every((p) => p.dataOd === zdContractorInitialDataOd())).toBe(true);
   });
 
-  it("stare zgłoszenie — dataOd planu sięga okresu zamówienia", () => {
+  it("stare zgłoszenie - dataOd planu sięga okresu zamówienia", () => {
     const placementAt = "2026-02-10";
     const window = zdPlacementListWindowForApi(placementAt);
     const plans = zdSearchPlansForOrderInput({
@@ -147,7 +147,7 @@ describe("zdSearchPlansForOrderInput", () => {
     expect(window.dataOd < zdContractorInitialDataOd()).toBe(true);
   });
 
-  it("niedawne zgłoszenie — placementAt zawęża okno miesięczne (dataDo)", () => {
+  it("niedawne zgłoszenie - placementAt zawęża okno miesięczne (dataDo)", () => {
     const placementAt = "2026-05-12";
     const window = zdPlacementListWindowForApi(placementAt);
     const plans = zdSearchPlansForOrderInput({

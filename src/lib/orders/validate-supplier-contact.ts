@@ -46,14 +46,14 @@ export function validateSupplierContactFields(
   if (ui.contactLink) return null;
 
   if (kind === "mail") {
-    return "Przy sposobie „Mail” podaj poprawny adres e-mail (np. zamowienia@dostawca.pl). Sam telefon lub strona nie wystarczy — albo zmień sposób zamówienia.";
+    return "Przy sposobie „Mail” podaj poprawny adres e-mail (np. zamowienia@dostawca.pl). Sam telefon lub strona nie wystarczy - albo zmień sposób zamówienia.";
   }
   if (kind === "phone") {
-    return "Przy sposobie „Telefon” podaj numer (min. 9 cyfr) w polu kontaktu lub w uwagach — sam e-mail / strona nie wystarczy.";
+    return "Przy sposobie „Telefon” podaj numer (min. 9 cyfr) w polu kontaktu lub w uwagach - sam e-mail / strona nie wystarczy.";
   }
   if (kind === "web") {
-    return "Przy sposobie „Internet” podaj adres strony (np. www.sklep.pl lub https://…). Sam e-mail nie wystarczy — albo zmień sposób zamówienia.";
+    return "Przy sposobie „Internet” podaj adres strony (np. www.sklep.pl lub https://…). Sam e-mail nie wystarczy - albo zmień sposób zamówienia.";
   }
 
-  return "Nie udało się rozpoznać kontaktu — sprawdź format.";
+  return "Nie udało się rozpoznać kontaktu - sprawdź format.";
 }

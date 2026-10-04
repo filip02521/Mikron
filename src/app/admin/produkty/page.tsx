@@ -28,7 +28,7 @@ export default async function AdminProduktyPage() {
   return (
     <AdminSecondaryShell
       title="Katalog produktów"
-      description="Własna baza powiązań produkt → dostawca (Subiekt tw_Id). Źródła: historia prośb, weryfikacja zakupów, import z ZD."
+      description="Własna baza powiązań produkt → dostawca (Subiekt tw_Id). Źródła: historia próśb, weryfikacja zakupów, import z ZD."
       iconKey="groupOrder"
       action={
         <Link

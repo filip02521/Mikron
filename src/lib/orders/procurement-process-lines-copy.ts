@@ -1,7 +1,8 @@
 /** Copy PL — modal wyboru linii przy Główne / Uzupełniające. */
 export const PROCUREMENT_PROCESS_LINES_COPY = {
-  titleGlowne: "Główne — wybierz pozycje",
-  titlePoboczne: "Uzupełniające — wybierz pozycje",
+  titleGlowne: "Główne - wybierz pozycje",
+  titlePoboczne: "Uzupełniające - wybierz pozycje",
+  titleJuzZamowione: "Już zamówione - wybierz pozycje",
   modalHint:
     "Odznacz pozycje, których nie zamawiasz teraz. Reszta zostanie na panelu.",
   selectLines: "Pozycje w prośbie",
@@ -20,6 +21,8 @@ export const PROCUREMENT_PROCESS_LINES_COPY = {
   scheduleAlertPartial:
     "Pozostałe pozycje zostaną na panelu; termin dostawcy i tak może się przesunąć.",
   scheduleAlertOnDemand:
-    "Dostawca na żądanie — Główne nie przesuwa terminu w planie tygodnia.",
+    "Dostawca na żądanie - Główne nie przesuwa terminu w planie tygodnia.",
   loading: "Oznaczanie…",
+  alreadyOrderedHint:
+    "Towar był zamówiony wcześniej - pozycja przejdzie jak uzupełniające, ale nie wpłynie na czasy dostaw ani harmonogram.",
 } as const;

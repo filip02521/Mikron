@@ -14,7 +14,7 @@ export function myOrderMixedPickupBulkHint(teethCount: number, shelfCount: numbe
   const teeth = Math.max(0, Math.trunc(teethCount));
   const shelf = Math.max(0, Math.trunc(shelfCount));
   if (teeth > 0 && shelf > 0) {
-    return `${teeth} ${teeth === 1 ? "pozycja zębowa" : "pozycje zębowe"} i ${shelf} ${shelf === 1 ? "towar z regału" : "towary z regału"} — potwierdź każdy typ osobno poniżej.`;
+    return `${teeth} ${teeth === 1 ? "pozycja zębowa" : "pozycje zębowe"} i ${shelf} ${shelf === 1 ? "towar z regału" : "towary z regału"} - potwierdź każdy typ osobno poniżej.`;
   }
   return "Potwierdź odbiór każdej pozycji osobno.";
 }
@@ -81,11 +81,11 @@ export function myOrderPickupAckTitle(
   if (mode === "teeth_handover") {
     const base = "Potwierdzam, że odebrałem/am zęby od magazynu";
     const n = Math.max(0, Math.trunc(pendingCount));
-    if (n > 1) return `${base} — ${n} pozycji`;
+    if (n > 1) return `${base} - ${n} pozycji`;
     return base;
   }
   const base = "Potwierdzam odbiór towaru z magazynu";
   const n = Math.max(0, Math.trunc(pendingCount));
-  if (n > 1) return `${base} — ${n} pozycji`;
+  if (n > 1) return `${base} - ${n} pozycji`;
   return base;
 }

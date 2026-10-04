@@ -7,7 +7,7 @@ import { HelpBlock } from "@/components/ui/HelpBlock";
 export function DepartmentBoardGuide() {
   return (
     <HelpPopover
-      label="Pomoc — komunikacja z działem zakupów"
+      label="Pomoc - komunikacja z działem zakupów"
       title="Pytania zespołu"
       shortLabel="Pomoc"
       icon={<GuideIcon />}
@@ -17,7 +17,7 @@ export function DepartmentBoardGuide() {
           <Link href="/prosba" className="font-medium text-indigo-800 hover:underline">
             Zgłoś prośbę
           </Link>{" "}
-          — gdy chcesz zamówić towar u dostawcy albo sprawdzić dostępność w procesie. Status
+          - gdy chcesz zamówić towar u dostawcy albo sprawdzić dostępność w procesie. Status
           śledzisz w Moje zamówienia.
         </p>
       </HelpBlock>
@@ -34,7 +34,7 @@ export function DepartmentBoardGuide() {
 
       <HelpBlock title="Pytania zespołu">
         <p>
-          Ogólne pytanie do zakupów — odpowiedź widzą wszyscy handlowcy, żeby nie powtarzać tego
+          Ogólne pytanie do zakupów - odpowiedź widzą wszyscy handlowcy, żeby nie powtarzać tego
           samego w mailu.
         </p>
       </HelpBlock>

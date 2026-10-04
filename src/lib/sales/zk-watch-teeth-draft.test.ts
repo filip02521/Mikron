@@ -96,7 +96,7 @@ function completeAnteriorDraft(
 }
 
 describe("zk-watch-teeth-draft", () => {
-  it("collectZkTeethLineCandidates — tylko needs_prosba i twId z rejestru", () => {
+  it("collectZkTeethLineCandidates - tylko needs_prosba i twId z rejestru", () => {
     const watch = watchWithLines(
       [
         { ob_Id: 1, ob_TowId: 101, tw_Nazwa: "Phonares przednie", ob_Ilosc: 2 },
@@ -133,7 +133,7 @@ describe("zk-watch-teeth-draft", () => {
     expect(candidates.find((c) => c.lineKey === "ob:2")?.subiektTwId).toBe(102);
   });
 
-  it("zkWatchTeethDraftsReady — incomplete bez draftu; ready po kompletnym", () => {
+  it("zkWatchTeethDraftsReady - incomplete bez draftu; ready po kompletnym", () => {
     const watch = watchWithLines(
       [{ ob_Id: 1, ob_TowId: 101, tw_Nazwa: "Phonares przednie", ob_Ilosc: 2 }],
       [{ key: "ob:1", arrived: false, needs_prosba: true }]

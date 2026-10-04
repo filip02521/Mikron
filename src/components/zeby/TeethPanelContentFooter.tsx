@@ -32,7 +32,7 @@ export function TeethPanelContentFooter() {
           Karty dostawców
         </Link>
         <HelpPopover
-          label="Pomoc — panel zębów"
+          label="Pomoc - panel zębów"
           title="Panel zębów"
           shortLabel="Pomoc"
           icon={<GuideIcon />}

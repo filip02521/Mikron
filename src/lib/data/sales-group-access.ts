@@ -117,7 +117,7 @@ export async function assertManagerHasTeamScope(
   if (scope === null) return;
   if (!scope.length) {
     throw new Error(
-      "Brak przypisanych grup zespołu — poproś administratora o zaznaczenie ich przy Twoim koncie."
+      "Brak przypisanych grup zespołu - poproś administratora o zaznaczenie ich przy Twoim koncie."
     );
   }
 }

@@ -21,7 +21,7 @@ export function VerificationModal({
 }) {
   const description = `${orders.length} ${
     orders.length === 1 ? "pozycja wymaga" : "pozycji wymaga"
-  } uzupełnienia — po zatwierdzeniu trafią do „Prośby handlowców”.`;
+  } uzupełnienia - po zatwierdzeniu trafią do „Prośby handlowców”.`;
 
   return (
     <ModalShell

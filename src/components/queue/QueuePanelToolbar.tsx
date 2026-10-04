@@ -89,7 +89,7 @@ export function QueuePanelToolbar({
           hint={inventoryHint}
           icon={<IconPackageCheck size={14} />}
           tileClassName="bg-emerald-100 text-emerald-800"
-          title="Inwentaryzacja — co czeka na odbiór"
+          title="Inwentaryzacja - co czeka na odbiór"
           onClick={() => onViewChange("inventory")}
         />
       </div>

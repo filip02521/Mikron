@@ -285,12 +285,12 @@ function KindSectionHeader({ label, hasJaw }: { label: string; hasJaw: boolean }
     <>
       <tr className="border-b border-slate-100 bg-slate-50/40">
         <td className="py-0.5 px-1" colSpan={hasJaw ? 4 : 3}>
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          <span className="text-[10px] font-semibold text-slate-500">
             {label}
           </span>
         </td>
       </tr>
-      <tr className="border-b border-slate-200/60 text-[9px] font-medium uppercase tracking-wide text-slate-400">
+      <tr className="border-b border-slate-200/60 text-[9px] font-medium text-slate-400">
         <th className="py-0.5 px-1 font-medium">Kolor</th>
         <th className="py-0.5 px-1 font-medium">Fason</th>
         {hasJaw ? <th className="py-0.5 px-1 font-medium">Szczęka</th> : null}

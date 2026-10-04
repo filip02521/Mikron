@@ -40,7 +40,7 @@ describe("piecesAsPackUnitsExact / formatPairPiecesUiHint", () => {
     expect(hint.title.toLowerCase()).toContain("nie kartony");
   });
 
-  it("bez ratio — tylko sztuki", () => {
+  it("bez ratio - tylko sztuki", () => {
     const hint = formatPairPiecesUiHint(60, 1, fmt);
     expect(hint.piecesLabel).toBe("60 szt");
     expect(hint.packsApproxLabel).toBeNull();

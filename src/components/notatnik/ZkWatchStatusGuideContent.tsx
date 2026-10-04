@@ -46,7 +46,7 @@ export function ZkWatchStatusGuideContent({
           zkWatchLineUiStateMeta("in_stock").shortLabel,
           zkWatchLineUiStateMeta("arrived").shortLabel,
         ].join(" → ")}
-        . Na regale pozycje są zaznaczone automatycznie; odbiór fizyczny — w{" "}
+        . Na regale pozycje są zaznaczone automatycznie; odbiór fizyczny - w{" "}
         <strong className="font-medium text-slate-700">Moje zamówienia</strong>.
       </p>
     </div>

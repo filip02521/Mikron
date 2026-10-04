@@ -31,6 +31,8 @@ export type ImportedCustomsEmail = {
   /** Z „Przesyłka zawiera …” (bez wspólnego kodu CN). */
   shipmentDescription: string | null;
   maxPosition: number;
+  /** Zakresy „29-31. …” jak w mailu — do sprawdzenia, czy jeden opis pasuje do wszystkich pozycji. */
+  ranges: { from: number; to: number; descriptionPl: string }[];
 };
 
 const VAT_RATES = new Set([0, 5, 8, 23]);
@@ -83,6 +85,7 @@ export function parseCustomsEmailText(text: string): ImportedCustomsEmail {
   let sharedVatRate: CustomsVatRate | null = null;
   let shipmentDescription: string | null = null;
   let maxPosition = 0;
+  const ranges: ImportedCustomsEmail["ranges"] = [];
   let expectSharedCn = false;
   /** Pozycje od ostatniego wiersza „Kod taryfy celnej: …” — ten wiersz dotyczy ich. */
   let sinceLastCn: number[] = [];
@@ -116,6 +119,7 @@ export function parseCustomsEmailText(text: string): ImportedCustomsEmail {
         sinceLastCn.push(p);
       }
       maxPosition = Math.max(maxPosition, to);
+      if (to > from) ranges.push({ from, to, descriptionPl: parsed.descriptionPl });
       continue;
     }
 
@@ -155,5 +159,37 @@ export function parseCustomsEmailText(text: string): ImportedCustomsEmail {
     if (/kod\w*\s+taryf\w*.*wszystkich\s*:?\s*$/i.test(line)) expectSharedCn = true;
   }
 
-  return { byPosition, sharedCnCode, sharedVatRate, shipmentDescription, maxPosition };
+  return { byPosition, sharedCnCode, sharedVatRate, shipmentDescription, maxPosition, ranges };
+}
+
+/** Oznaczenie modelu / artykułu w tekście: „DE-1179”, „F100aIII”, „UP-50H”. */
+const MODEL_TOKEN_RE = /\b[A-Z]{1,5}[- ]?\d{2,}[A-Z0-9]*\b/gi;
+
+/**
+ * Zakres z maila („29-31. Nożyk … Zahle DE-1179 nr 10”), którego opis wskazuje konkretny artykuł,
+ * a obejmuje też pozycje z innymi kodami — opis jednej pozycji trafiłby do kart pozostałych.
+ */
+export function emailRangeConflicts(
+  ranges: ImportedCustomsEmail["ranges"],
+  lines: readonly { position: number; supplierArticleCode: string; supplierName: string }[]
+): string[] {
+  const out: string[] = [];
+  for (const r of ranges) {
+    const inRange = lines.filter((l) => l.position >= r.from && l.position <= r.to);
+    if (new Set(inRange.map((l) => l.supplierArticleCode)).size < 2) continue;
+    const tokens = [...r.descriptionPl.matchAll(MODEL_TOKEN_RE)].map((m) => m[0].toUpperCase().replace(/\s+/g, "-"));
+    if (!tokens.length) continue;
+    const matches = (l: (typeof inRange)[number]) => {
+      const hay = `${l.supplierArticleCode} ${l.supplierName}`.toUpperCase().replace(/\s+/g, "-");
+      return tokens.some((t) => hay.includes(t));
+    };
+    const hit = inRange.filter(matches);
+    const miss = inRange.filter((l) => !matches(l));
+    if (!hit.length || !miss.length) continue;
+    out.push(
+      `Poz. ${r.from}-${r.to}: opis „${r.descriptionPl.slice(0, 60)}” wskazuje poz. ${hit.map((l) => l.position).join(", ")}, ` +
+        `a obejmuje też ${miss.map((l) => `${l.position} (${l.supplierArticleCode || l.supplierName})`).join(", ")} - rozdziel opis.`
+    );
+  }
+  return out;
 }

@@ -30,7 +30,7 @@ describe("my-order-pickup-shelf-notice", () => {
     expect(shouldShowPickupShelfNotice()).toBe(false);
   });
 
-  it("gdy sessionStorage rzuca wyjątek — traktuj jak brak flagi (pokazuj komunikat)", () => {
+  it("gdy sessionStorage rzuca wyjątek - traktuj jak brak flagi (pokazuj komunikat)", () => {
     vi.stubGlobal("sessionStorage", {
       getItem: () => {
         throw new Error("blocked");

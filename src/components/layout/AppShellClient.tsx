@@ -54,7 +54,6 @@ import { canAccessOperations, canAccessTeethPanel, canAccessWarehouse, isSalesAc
 import { MobileOperationsNav } from "./MobileOperationsNav";
 import { MobileOperationsHeader } from "./MobileOperationsHeader";
 import { useAppShellMetrics } from "./AppShellMetricsContext";
-import { AppWorkspaceBackdrop } from "./AppWorkspaceBackdrop";
 import { FontScaleSync } from "./FontScaleSync";
 import { TeethExemptProvider } from "@/components/layout/TeethExemptContext";
 import { TeethShortagesProvider } from "@/components/layout/TeethShortagesContext";
@@ -64,6 +63,7 @@ import { ChangelogAutoOpen } from "@/components/changelog/ChangelogAutoOpen";
 import { MonthlySummaryNotice } from "@/components/monthly-summary/MonthlySummaryNotice";
 import { AuthSessionGuard } from "@/components/auth/AuthSessionGuard";
 import { ZdEstimateExternalSessionFloatingNotice } from "@/components/zakupy/ZdEstimateExternalSessionFloatingNotice";
+import { ConfirmHost } from "@/components/ui/ConfirmHost";
 
 function SalesGlobalPinnedStrip({
   attention,
@@ -98,7 +98,7 @@ function OperationsGlobalPinnedStrip({
 function AppShellMain({
   children,
   mobileChrome,
-  uniformBackground,
+  uniformBackground: _uniformBackground,
   topNotices,
   adminPreviewDock = false,
 }: {
@@ -125,7 +125,6 @@ function AppShellMain({
         coachPadding
       )}
     >
-      <AppWorkspaceBackdrop uniformBackground={uniformBackground} />
       <div className={cn(appMainInsetClass, "relative z-[1]")}>
         {topNotices}
         <SalesOnboardingTourBanner />
@@ -278,6 +277,7 @@ export function AppShellClient({
       <ChangelogProvider role={role}>
       <ChangelogAutoOpen />
       <FontScaleSync fontScale={fontScale} />
+      <ConfirmHost />
       <LegacyProcurementRouteRedirect />
       <div
         className={cn(

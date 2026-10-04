@@ -25,7 +25,6 @@ import { hrefWithSalesPreviewFromUrl } from "@/lib/nav/sales-preview-href";
 import { salesSearchPlaceholder } from "@/lib/sales/sales-search-ui";
 import { SALES_SEARCH_COPY } from "@/lib/sales/sales-page-ui-copy";
 import {
-  mojeQueueRowLayoutClass,
   mojeShipmentListClass,
   mojeShipmentSectionShellClass,
 } from "@/lib/ui/moje-shipment-row-styles";
@@ -104,14 +103,14 @@ function MojeAnnouncementCompactRow({
     >
       <button
         type="button"
-        className={cn(mojeQueueRowLayoutClass, "w-full px-3 py-2.5 text-left sm:px-4")}
+        className="flex w-full items-center gap-2 px-3 py-2.5 text-left sm:px-4"
         onClick={onToggle}
         aria-expanded={expanded}
       >
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
             {unread ? (
-              <span className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-800">
+              <span className="shrink-0 rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800">
                 Nowe
               </span>
             ) : null}
@@ -305,7 +304,7 @@ export function MojeAnnouncementsSection({
             {focusAnnouncementMissing ? (
               <div className="border-b border-slate-100 px-3 py-2 sm:px-4">
                 <Alert tone="warning">
-                  Nie znaleziono wskazanego ogłoszenia — mogło wygasnąć lub zostać usunięte.
+                  Nie znaleziono wskazanego ogłoszenia - mogło wygasnąć lub zostać usunięte.
                 </Alert>
               </div>
             ) : null}
@@ -324,7 +323,7 @@ export function MojeAnnouncementsSection({
                   searchLabel={DEPARTMENT_BOARD_ANNOUNCEMENTS_SEARCH.label}
                   showIdleHint={false}
                   showActiveDetail={false}
-                  emptyMatchHint="Brak dopasowań — sprawdź tytuł lub treść ogłoszenia."
+                  emptyMatchHint="Brak dopasowań - sprawdź tytuł lub treść ogłoszenia."
                 />
               </div>
             ) : null}

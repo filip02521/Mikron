@@ -21,7 +21,7 @@ function answerBannerDetail(
     if (others > 0) {
       return `„${title}”. Na liście jest też ${others} ${others === 1 ? "inna nowa odpowiedź" : "inne nowe odpowiedzi"} w zespole.`;
     }
-    return `„${title}” — odpowiedź widoczna dla całego działu.`;
+    return `„${title}” - odpowiedź widoczna dla całego działu.`;
   }
 
   if (title && others > 0) {
@@ -29,7 +29,7 @@ function answerBannerDetail(
   }
 
   if (title) {
-    return `„${title}” — odpowiedź widoczna dla całego działu.`;
+    return `„${title}” - odpowiedź widoczna dla całego działu.`;
   }
 
   return "Sprawdź listę pytań na Tablicy.";
@@ -53,7 +53,7 @@ export function DepartmentBoardAnswersBanner({
 
   const label = preview?.isOwnQuestion
     ? count > 1
-      ? "Zakupy odpowiedziały — także na inne pytania"
+      ? "Zakupy odpowiedziały - także na inne pytania"
       : "Zakupy odpowiedziały na Twoje pytanie"
     : count === 1
       ? "1 nowa odpowiedź zakupów w zespole"

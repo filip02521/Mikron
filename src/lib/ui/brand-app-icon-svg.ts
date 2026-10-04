@@ -1,52 +1,35 @@
-import {
-  BRAND_CLOCK_GRADIENT_COORDS,
-  BRAND_CLOCK_HAND_GRADIENT,
-  BRAND_CLOCK_TICK_FILL,
-} from "@/lib/ui/brand-clock-colors";
-import {
-  BRAND_CLOCK_HOUR_OUTER_RADIUS,
-  BRAND_CLOCK_INNER_RADIUS,
-  BRAND_CLOCK_INTRO_ANGLES,
-  BRAND_CLOCK_MINUTE_OUTER_RADIUS,
-} from "@/lib/ui/brand-clock-geometry";
-import { BRAND_CLOCK_TICK_MARKS, BRAND_CLOCK_TICK_RADIUS } from "@/lib/ui/brand-clock-svg";
-import { ONTIME_LOGO_MONOGRAM } from "@/lib/ui/ontime-brand";
+/**
+ * Znak OnTime: wskazówki zegara układają się w ptaszek — „na czas, załatwione”.
+ * Jedno źródło dla AppBrandMark (aplikacja), app/icon.svg i apple-icon.
+ * Siatka 64×64, kafel o promieniu 15 (≈ 23%).
+ */
 
-/** Statyczna ikona aplikacji — ten sam układ co AppBrandMark (gradient, tarcza, OT). */
-export function buildBrandAppIconSvg(): string {
-  const { from, fromOpacity, to, toOpacity } = BRAND_CLOCK_HAND_GRADIENT;
-  const { x1, y1, x2, y2 } = BRAND_CLOCK_GRADIENT_COORDS;
-  const ticks = BRAND_CLOCK_TICK_MARKS.map(
-    (angle) =>
-      `<circle cx="0" cy="${-BRAND_CLOCK_TICK_RADIUS}" r="0.42" fill="${BRAND_CLOCK_TICK_FILL}" transform="rotate(${angle})"/>`
-  ).join("");
+export const BRAND_MARK_COLOR = "#0f7380";
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="OnTime">
-  <defs>
-    <linearGradient id="ontime-bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f7380"/>
-      <stop offset="100%" stop-color="#0284c7"/>
-    </linearGradient>
-    <linearGradient id="ontime-hand" gradientUnits="userSpaceOnUse" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}">
-      <stop offset="0%" stop-color="${from}" stop-opacity="${fromOpacity}"/>
-      <stop offset="100%" stop-color="${to}" stop-opacity="${toOpacity}"/>
-    </linearGradient>
-  </defs>
-  <circle cx="16" cy="16" r="16" fill="url(#ontime-bg)"/>
-  <g transform="translate(16 16)" stroke-linecap="round" opacity="0.68">
-    ${ticks}
-    <g transform="rotate(${BRAND_CLOCK_INTRO_ANGLES.minute})">
-      <line x1="0" y1="${-BRAND_CLOCK_INNER_RADIUS}" x2="0" y2="${-BRAND_CLOCK_MINUTE_OUTER_RADIUS}" stroke="url(#ontime-hand)" stroke-width="1.7"/>
-    </g>
-    <g transform="rotate(${BRAND_CLOCK_INTRO_ANGLES.hour})">
-      <line x1="0" y1="${-BRAND_CLOCK_INNER_RADIUS}" x2="0" y2="${-BRAND_CLOCK_HOUR_OUTER_RADIUS}" stroke="url(#ontime-hand)" stroke-width="1.55"/>
-    </g>
-  </g>
-  <circle cx="16" cy="16" r="13.5" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1"/>
-  <text x="16" y="20.5" text-anchor="middle" fill="#ffffff" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10.5" font-weight="700" letter-spacing="-0.04em">${ONTIME_LOGO_MONOGRAM}</text>
-</svg>`;
+/** Rysunek znaku bez tła (biały na kaflu). */
+export function brandMarkGlyphSvg(tileColor: string = BRAND_MARK_COLOR): string {
+  return [
+    '<circle cx="32" cy="32" r="21" fill="none" stroke="#fff" stroke-width="3.6"/>',
+    // Kreski 12 / 3 / 6 / 9
+    '<g stroke="#fff" stroke-opacity=".5" stroke-width="2.2" stroke-linecap="round">',
+    '<line x1="32" y1="17.8" x2="32" y2="15.6"/><line x1="46.2" y1="32" x2="48.4" y2="32"/>',
+    '<line x1="32" y1="46.2" x2="32" y2="48.4"/><line x1="17.8" y1="32" x2="15.6" y2="32"/>',
+    "</g>",
+    // Krótka i długa wskazówka = ptaszek; oś w wierzchołku
+    '<path d="M22.6 30.4 L29.6 37.4 L43.6 21.4" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>',
+    `<circle cx="29.6" cy="37.4" r="1.5" fill="${tileColor}"/>`,
+  ].join("");
 }
 
-export function brandAppIconDataUri(): string {
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(buildBrandAppIconSvg())}`;
+/**
+ * Ikona aplikacji (kafel + znak). `fullBleed` — kwadrat bez zaokrągleń dla iOS,
+ * który sam nakłada maskę (przezroczyste rogi wypełniłby na czarno).
+ */
+export function buildBrandAppIconSvg(options?: { fullBleed?: boolean }): string {
+  const rx = options?.fullBleed ? 0 : 15;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="OnTime"><rect width="64" height="64" rx="${rx}" fill="${BRAND_MARK_COLOR}"/>${brandMarkGlyphSvg()}</svg>\n`;
+}
+
+export function brandAppIconDataUri(options?: { fullBleed?: boolean }): string {
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(buildBrandAppIconSvg(options))}`;
 }

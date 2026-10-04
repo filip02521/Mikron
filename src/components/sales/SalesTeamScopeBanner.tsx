@@ -8,7 +8,7 @@ export function SalesTeamScopeBanner() {
       role="alert"
       className="mb-0"
       title="Brak przypisanych grup zespołu"
-      description="Listy handlowców i grup będą puste, dopóki administrator nie przypisze Ci grup (np. Sklep, Biuro) przy koncie z rolą Kierownictwo — w panelu użytkowników, przy zapisie uprawnień."
+      description="Listy handlowców i grup będą puste, dopóki administrator nie przypisze Ci grup (np. Sklep, Biuro) przy koncie z rolą Kierownictwo - w panelu użytkowników, przy zapisie uprawnień."
     />
   );
 }

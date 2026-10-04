@@ -295,7 +295,7 @@ export function TeethShortageLookupModal({
       open={open}
       onClose={onClose}
       title="Braki zębowe u dostawców"
-      titleHint="Lista aktywnych braków z działu zębów. Przy składaniu prośby zobaczysz też ostrzeżenie, jeśli wybierzesz taki wariant — wysyłka nie jest blokowana."
+      titleHint="Lista aktywnych braków z działu zębów. Przy składaniu prośby zobaczysz też ostrzeżenie, jeśli wybierzesz taki wariant - wysyłka nie jest blokowana."
       titleId="teeth-shortage-lookup-title"
       size="lg"
       tier="stack"
@@ -303,7 +303,7 @@ export function TeethShortageLookupModal({
       footer={
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[11px] leading-snug text-slate-500">
-            To tylko informacja — możesz wysłać prośbę mimo braku.
+            To tylko informacja - możesz wysłać prośbę mimo braku.
           </p>
           <Button variant="secondary" onClick={onClose} className="self-end sm:self-auto">
             Zamknij
@@ -326,7 +326,7 @@ export function TeethShortageLookupModal({
                 : `${filterCounts.all} aktywnych braków u dostawców`}
             </p>
             <p className="mt-0.5 text-[11px] leading-snug text-amber-900/85">
-              Sprawdź kolor i fason przed wysłaniem — albo użyj wyszukiwarki poniżej.
+              Sprawdź kolor i fason przed wysłaniem - albo użyj wyszukiwarki poniżej.
             </p>
           </div>
         </div>
@@ -408,7 +408,7 @@ export function TeethShortageLookupModal({
         <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/70 px-4 py-8 text-center">
           <p className="text-sm font-medium text-slate-700">Nic nie pasuje do filtrów</p>
           <p className="mt-1 text-xs leading-snug text-slate-500">
-            Spróbuj innego hasła albo wyczyść filtry — lista pokazuje tylko aktywne braki.
+            Spróbuj innego hasła albo wyczyść filtry - lista pokazuje tylko aktywne braki.
           </p>
           {hasActiveFilters ? (
             <Button

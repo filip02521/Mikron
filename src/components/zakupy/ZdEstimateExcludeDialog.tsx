@@ -77,8 +77,8 @@ function ExcludeDialogForm({
               <p className="font-semibold tabular-nums tracking-tight text-slate-900">
                 {line.tw_Symbol}
               </p>
-              {line.grt_Nazwa && line.grt_Nazwa !== "—" ? (
-                <span className="rounded bg-slate-200/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-600">
+              {line.grt_Nazwa && line.grt_Nazwa !== "-" ? (
+                <span className="rounded bg-slate-200/70 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
                   {line.grt_Nazwa}
                 </span>
               ) : null}

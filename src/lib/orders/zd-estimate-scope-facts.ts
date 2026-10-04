@@ -35,7 +35,7 @@ export function buildZdEstimateScopeFactParts(input: {
   const stock = input.stockLabel
     ? `${input.stockLabel} · ${input.dniZapasu} d`
     : `${input.dniZapasu} d zapasu`;
-  const window = `${formatPlDate(input.dataOd)} – ${formatPlDate(input.dataDo)}`;
+  const window = `${formatPlDate(input.dataOd)} - ${formatPlDate(input.dataDo)}`;
 
   let primary = scope;
   let supplier: string | null = rawSupplier;

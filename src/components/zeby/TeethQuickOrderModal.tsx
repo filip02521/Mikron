@@ -304,7 +304,7 @@ export function TeethQuickOrderModal({
                 disabled={pending || salesPeople.length === 0}
                 onChange={(e) => setSalesPersonId(e.target.value)}
               >
-                <option value="">— wybierz handlowca —</option>
+                <option value="">- wybierz handlowca -</option>
                 {salesPeople.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
@@ -330,7 +330,7 @@ export function TeethQuickOrderModal({
         <ProsbaFormProductsSection
           requestKind={requestKind}
           informacjaPath="direct"
-          hint="Szukaj wyłącznie w katalogu zębów — po wyborze uzupełnij listę zębów."
+          hint="Szukaj wyłącznie w katalogu zębów - po wyborze uzupełnij listę zębów."
         >
           <div className="space-y-3">
             <RequestProductLinesEditor

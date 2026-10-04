@@ -38,7 +38,7 @@ describe("product source", () => {
       quantity: "-",
       request_kind: "informacja",
     });
-    expect(line.quantity).toBe("—");
+    expect(line.quantity).toBe("-");
     expect(line.requestKind).toBe("informacja");
   });
 

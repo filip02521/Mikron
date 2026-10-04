@@ -14,7 +14,7 @@ export function StickyPushpin({ className }: { className?: string }) {
       aria-hidden
     >
       <span className="relative block h-3 w-3">
-        <span className="absolute inset-0 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 shadow-sm shadow-indigo-900/25 ring-1 ring-indigo-300/50" />
+        <span className="absolute inset-0 rounded-full bg-indigo-500 shadow-sm ring-1 ring-indigo-300/50" />
         <span className="absolute left-1/2 top-[68%] h-1.5 w-px -translate-x-1/2 bg-slate-400/60" />
       </span>
     </span>
@@ -39,7 +39,7 @@ export function NoteStickyFrame({
   return (
     <div
       className={cn(
-        "group/sticky relative isolate pt-2 transition-[transform,z-index] duration-200 ease-out will-change-transform",
+        "group/sticky relative isolate pt-2 transition-[transform,z-index] duration-200 ease-out",
         straight
           ? "z-30 [transform:rotate(0deg)]"
           : cn(

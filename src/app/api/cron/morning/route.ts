@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     const notes: string[] = [];
     if (result.deliveries.skipped) {
       notes.push(
-        `Dostawy pominięte (${result.deliveries.skipReason ?? "lock_held"}) — przejmie cron godzinowy`
+        `Dostawy pominięte (${result.deliveries.skipReason ?? "lock_held"}) - przejmie cron godzinowy`
       );
     }
     const issues = [...blockingIssues, ...notes];

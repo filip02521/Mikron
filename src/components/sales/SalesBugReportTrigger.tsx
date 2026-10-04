@@ -103,7 +103,7 @@ export function SalesBugReportTrigger({ className }: { className?: string }) {
         }
       >
         {sent ? (
-          <p className="text-sm text-emerald-800">Dzięki — wiadomość poszła do administracji.</p>
+          <p className="text-sm text-emerald-800">Dzięki - wiadomość poszła do administracji.</p>
         ) : (
           <div className="space-y-3">
             <p className="text-xs leading-relaxed text-slate-500">

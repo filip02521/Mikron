@@ -24,6 +24,7 @@ import {
   DELIVERY_STATS_COMPLETED_STATUS,
   deliveryDateKeyFromIso,
   hasSiblingDeliveryStatsSample,
+  isAlreadyOrderedStatsPoison,
   isCancelDispositionStatsPoison,
   isTeethStatsPoison,
   placementDateFromOrder,
@@ -461,17 +462,17 @@ export async function batchAddIndividualOrders(
       const msg = formatDbError(error);
       if (msg.includes("source_zk")) {
         throw new Error(
-          `${msg} — uruchom migrację supabase/migrations/055_individual_orders_source_zk.sql w bazie.`
+          `${msg} - uruchom migrację supabase/migrations/055_individual_orders_source_zk.sql w bazie.`
         );
       }
       if (msg.includes("mikran_code")) {
         throw new Error(
-          `${msg} — uruchom migrację supabase/migrations/031_mikran_code.sql w bazie.`
+          `${msg} - uruchom migrację supabase/migrations/031_mikran_code.sql w bazie.`
         );
       }
       if (msg.includes("sales_request_note")) {
         throw new Error(
-          `${msg} — uruchom migrację supabase/migrations/058_individual_orders_sales_request_note.sql w bazie.`
+          `${msg} - uruchom migrację supabase/migrations/058_individual_orders_sales_request_note.sql w bazie.`
         );
       }
       throw new Error(msg);
@@ -604,7 +605,7 @@ export async function completeVerificationOrder(
 
   if (priorErr) throw new Error(priorErr.message);
   if (!priorRow) {
-    throw new Error("Prośba została już przetworzona — odśwież listę.");
+    throw new Error("Prośba została już przetworzona - odśwież listę.");
   }
 
   const informacjaFlags = resolveVerificationInformacjaFlags({
@@ -680,7 +681,7 @@ export async function completeVerificationOrder(
 
   if (error) throw new Error(error.message);
   if (!updated) {
-    throw new Error("Prośba została już przetworzona — odśwież listę.");
+    throw new Error("Prośba została już przetworzona - odśwież listę.");
   }
 
   const isTeeth =
@@ -813,7 +814,7 @@ export async function updateIndividualRequestGroup(
 
   if (!canEditIndividualRequestGroup(existing)) {
     throw new Error(
-      "Tej prośby nie można już edytować — została zamówiona u dostawcy lub anulowana."
+      "Tej prośby nie można już edytować - została zamówiona u dostawcy lub anulowana."
     );
   }
 
@@ -1182,7 +1183,7 @@ async function assertGlowneSuppliersHaveInterval(supplierIds: Set<string>): Prom
 
 export async function processIndividualFromSummary(
   orderIds: string[],
-  action: "GLOWNE" | "POBOCZNE" | "ANULOWANO",
+  action: "GLOWNE" | "POBOCZNE" | "JUZ_ZAMOWIONE" | "ANULOWANO",
   userEmail: string,
   procurementCancelNote?: string | null,
   opts?: { skipSupplierSchedule?: boolean },
@@ -1240,8 +1241,8 @@ export async function processIndividualFromSummary(
       : "dostawca, produkt i ilość";
     throw new Error(
       incomplete.length === 1
-        ? `Ta pozycja nie ma kompletnych danych (${fieldsHint}) — użyj edycji prośby lub uzupełnij w widoku Weryfikacja.`
-        : `${incomplete.length} pozycji nie ma kompletnych danych (${fieldsHint}) — użyj edycji lub widoku Weryfikacja przed oznaczeniem jako Główne/Uzupełniające.`
+        ? `Ta pozycja nie ma kompletnych danych (${fieldsHint}) - użyj edycji prośby lub uzupełnij w widoku Weryfikacja.`
+        : `${incomplete.length} pozycji nie ma kompletnych danych (${fieldsHint}) - użyj edycji lub widoku Weryfikacja przed oznaczeniem jako Główne/Uzupełniające.`
     );
   }
 
@@ -1250,11 +1251,19 @@ export async function processIndividualFromSummary(
 
   if (!allowedIds.size) {
     throw new Error(
-      "Brak prośb do obsłużenia — wszystkie są już zamknięte lub nie kwalifikują się do Główne/Uzupełniające."
+      "Brak próśb do obsłużenia - wszystkie są już zamknięte lub nie kwalifikują się do Główne/Uzupełniające."
     );
   }
 
+  // „Już zamówione” = uzupełniające bez próbki czasu dostawy (flaga already_ordered).
   const orderType: OrderType = action === "GLOWNE" ? "Glowne" : "Poboczne";
+  // Kolumnę dotykamy tylko gdy zmienia wartość — Główne/Uzupełniające działają bez migracji 167.
+  const alreadyOrderedPatchFor = (order: IndividualOrder) =>
+    action === "JUZ_ZAMOWIONE"
+      ? { already_ordered: true }
+      : order.already_ordered
+        ? { already_ordered: false }
+        : {};
   const batchOrderedAt = new Date().toISOString();
   const placementGroupId = crypto.randomUUID();
 
@@ -1332,6 +1341,7 @@ export async function processIndividualFromSummary(
           order_type: orderType,
           ordered_at: batchOrderedAt,
           placement_group_id: placementGroupId,
+          ...alreadyOrderedPatchFor(order),
           ...seenPatch,
         })
         .eq("id", id);
@@ -1348,6 +1358,7 @@ export async function processIndividualFromSummary(
         order_type: orderType,
         ordered_at: batchOrderedAt,
         placement_group_id: placementGroupId,
+        ...alreadyOrderedPatchFor(order),
         ...seenPatch,
       })
       .eq("id", id);
@@ -1461,13 +1472,13 @@ export async function notifyProcurementCancelForOrders(
       emailError = `${mailResult.failures[0].to}: ${mailResult.failures[0].error}`;
     }
   } else if (loaded > 0) {
-    emailError = "Brak adresu e-mail handlowca — zapisano bez powiadomienia";
+    emailError = "Brak adresu e-mail handlowca - zapisano bez powiadomienia";
   }
   if (notifySkipped.length) {
     const skipNote =
       notifySkipped.length === 1
-        ? `${notifySkipped[0]}: brak e-maila — zapisano bez powiadomienia`
-        : `${notifySkipped.length} handlowców bez e-maila — zapisano bez powiadomienia`;
+        ? `${notifySkipped[0]}: brak e-maila - zapisano bez powiadomienia`
+        : `${notifySkipped.length} handlowców bez e-maila - zapisano bez powiadomienia`;
     emailError = emailError ? `${emailError}; ${skipNote}` : skipNote;
   }
 
@@ -1533,13 +1544,13 @@ export async function notifySalesRequestNoteUpdatedForOrders(
       emailError = `${mailResult.failures[0].to}: ${mailResult.failures[0].error}`;
     }
   } else if (loaded > 0) {
-    emailError = "Brak adresu e-mail handlowca — zapisano bez powiadomienia";
+    emailError = "Brak adresu e-mail handlowca - zapisano bez powiadomienia";
   }
   if (notifySkipped.length) {
     const skipNote =
       notifySkipped.length === 1
-        ? `${notifySkipped[0]}: brak e-maila — zapisano bez powiadomienia`
-        : `${notifySkipped.length} handlowców bez e-maila — zapisano bez powiadomienia`;
+        ? `${notifySkipped[0]}: brak e-maila - zapisano bez powiadomienia`
+        : `${notifySkipped.length} handlowców bez e-maila - zapisano bez powiadomienia`;
     emailError = emailError ? `${emailError}; ${skipNote}` : skipNote;
   }
 
@@ -1652,13 +1663,13 @@ export async function markInformacjaArrived(
       emailError = `${mailResult.failures[0].to}: ${mailResult.failures[0].error}`;
     }
   } else if (updated > 0) {
-    emailError = "Brak adresu e-mail handlowca — zapisano bez powiadomienia";
+    emailError = "Brak adresu e-mail handlowca - zapisano bez powiadomienia";
   }
   if (notifySkipped.length) {
     const skipNote =
       notifySkipped.length === 1
-        ? `${notifySkipped[0]}: brak e-maila — zapisano bez powiadomienia`
-        : `${notifySkipped.length} handlowców bez e-maila — zapisano bez powiadomienia`;
+        ? `${notifySkipped[0]}: brak e-maila - zapisano bez powiadomienia`
+        : `${notifySkipped.length} handlowców bez e-maila - zapisano bez powiadomienia`;
     emailError = emailError ? `${emailError}; ${skipNote}` : skipNote;
   }
 
@@ -1685,7 +1696,7 @@ export async function cancelIndividualOrder(
   }
   if (!data?.length) {
     throw new Error(
-      "Nie można anulować tej prośby — sprawdź status (tylko Nowe lub Weryfikacja, bez rezygnacji handlowca)."
+      "Nie można anulować tej prośby - sprawdź status (tylko Nowe lub Weryfikacja, bez rezygnacji handlowca)."
     );
   }
   scheduleHistoryRetentionPurge();
@@ -1902,7 +1913,7 @@ export async function updateDeliveredQuantity(
   if (result.notifySkipped) {
     return {
       emailQueued: false,
-      emailError: `Brak e-maila handlowca (${result.notifySkipped}) — zapisano bez powiadomienia`,
+      emailError: `Brak e-maila handlowca (${result.notifySkipped}) - zapisano bez powiadomienia`,
     };
   }
 
@@ -1988,7 +1999,7 @@ export async function batchUpdateDeliveredQuantities(
         queueEntries.push(result.queueEntry);
       } else if (result.notifySkipped) {
         errors.push(
-          `${result.notifySkipped}: brak e-maila — zapisano bez powiadomienia`
+          `${result.notifySkipped}: brak e-maila - zapisano bez powiadomienia`
         );
       }
     } catch (e) {
@@ -2022,7 +2033,7 @@ async function fetchSupplierCompletedOrdersForStats(
   const { data } = await supabase
     .from("individual_orders")
     .select(
-      "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition"
+      "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition, already_ordered"
     )
     .eq("supplier_id", supplierId)
     .eq("request_kind", "zamowienie")
@@ -2048,6 +2059,7 @@ function toDeliveryStatsCandidate(
     is_teeth: order.is_teeth === true,
     sales_cancelled_at: order.sales_cancelled_at ?? null,
     procurement_cancel_disposition: order.procurement_cancel_disposition ?? null,
+    already_ordered: order.already_ordered === true,
   };
 }
 
@@ -2073,6 +2085,14 @@ async function tryIncrementDeliveryStatsFromOrder(
       orderId: order.id,
       supplierId: order.supplier_id,
       reason: "cancel-disposition",
+    });
+    return false;
+  }
+  if (isAlreadyOrderedStatsPoison(candidate)) {
+    await recordDeliveryStatsSkipEvent({
+      orderId: order.id,
+      supplierId: order.supplier_id,
+      reason: "już zamówione",
     });
     return false;
   }
@@ -2351,7 +2371,7 @@ export async function recalculateAllStats() {
   const { data: history } = await supabase
     .from("individual_orders")
     .select(
-      "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition"
+      "id, supplier_id, request_kind, status, ordered_at, action_at, delivery_at, order_type, products, is_teeth, sales_cancelled_at, procurement_cancel_disposition, already_ordered"
     )
     .eq("request_kind", "zamowienie")
     .eq("status", DELIVERY_STATS_COMPLETED_STATUS)

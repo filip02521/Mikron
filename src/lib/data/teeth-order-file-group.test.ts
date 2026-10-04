@@ -119,7 +119,7 @@ describe("attachTeethOrderFileMetaFromGroupMap", () => {
 });
 
 describe("listTeethOrderFilesForReceiveSection", () => {
-  it("jeden plik na grupę dostawcy — nawet gdy kilka próśb", () => {
+  it("jeden plik na grupę dostawcy - nawet gdy kilka próśb", () => {
     const files = listTeethOrderFilesForReceiveSection([
       {
         id: "a",

@@ -440,7 +440,7 @@ export function formatZdPackDocumentLabel(
 
 export function formatZdPackHint(qty: ZdPackOrderQty): string {
   if (!qty.hasPackaging) {
-    return qty.zdUnits > 0 ? `${qty.zdUnits} szt` : "—";
+    return qty.zdUnits > 0 ? `${qty.zdUnits} szt` : "-";
   }
   const over =
     qty.roundedUp && qty.piecesNeeded > 0
@@ -450,7 +450,7 @@ export function formatZdPackHint(qty: ZdPackOrderQty): string {
     return `${qty.zdUnits} szt (paczka ${qty.unitsPerPackage})${over}`;
   }
   const doc = formatZdPackDocumentLabel(qty);
-  if (!doc) return "—";
+  if (!doc) return "-";
   const packWord = qty.packageLabel.trim() || "op.";
   const multHint =
     qty.orderMultiple >= 2 ? ` · co ${qty.orderMultiple} ${packWord}` : "";
@@ -461,7 +461,7 @@ export function formatZdPackHint(qty: ZdPackOrderQty): string {
  * Linia „Na ZD” w dialogu Opak. — A: paczki × N; B: sztuki (bez fałszywego × N).
  */
 export function formatZdPackOrderPreviewLine(qty: ZdPackOrderQty): string {
-  if (!(qty.zdUnits > 0)) return "—";
+  if (!(qty.zdUnits > 0)) return "-";
   if (!qty.hasPackaging) {
     return `${formatQty(qty.zdUnits)} szt`;
   }

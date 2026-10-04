@@ -28,6 +28,7 @@ import {
   teethProsbaTitleClass,
 } from "@/lib/teeth/teeth-prosba-ui";
 import { cn } from "@/lib/cn";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 /**
  * Jedyny blok listy zębów przy edycji pozycji — konfiguracja, podgląd i edycja.
@@ -120,14 +121,14 @@ export function TeethOrderBuilderCard({
     ) : (
       <>
         Razem <span className="font-semibold tabular-nums">{total}</span>{" "}
-        {total === 1 ? "sztuka" : total < 5 ? "sztuki" : "sztuk"}.
+        {polishPluralWord(total, "sztuka", "sztuki", "sztuk")}.
       </>
     )
   ) : hasList ? (
     "Brakuje parametrów w co najmniej jednej pozycji listy."
   ) : (
     <>
-      {dualKindMode ? TEETH_DUAL_CARD_HINT : "Wpisz pozycje z kartki klienta — ilość zamówienia ustawi się sama."}
+      {dualKindMode ? TEETH_DUAL_CARD_HINT : "Wpisz pozycje z kartki klienta - ilość zamówienia ustawi się sama."}
       {!dualKindMode && defaultKind ? (
         <>
           {" "}

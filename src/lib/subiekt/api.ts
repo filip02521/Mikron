@@ -386,6 +386,17 @@ export async function getSubiektOrdersFs(
   return res.data;
 }
 
+/** Dowolne dokumenty na hoście ORDERS (`typ`: 1 = FZ, 15 = ZD, …) — nagłówki z `dok_DoDokId`. */
+export async function searchSubiektOrdersDocuments(
+  params: SubiektListParams = {}
+): Promise<SubiektListEnvelope<SubiektDocument>> {
+  return subiektList<SubiektDocument>(
+    SUBIEKT_PATHS.documents,
+    params,
+    ordersConfigOrThrow()
+  );
+}
+
 /** Lista ZD na hoście ORDERS — do powiązania ze szacunkiem. */
 export async function searchSubiektOrdersZd(
   params: Omit<SubiektListParams, "typ"> = {}
@@ -510,7 +521,7 @@ export async function fetchSubiektZdEstimateAll(
 
   const data = first.data;
   if (!data || !Array.isArray(data.pozycje)) {
-    throw new Error("Niepoprawna odpowiedź /orders/zd/estimate — brak pozycji.");
+    throw new Error("Niepoprawna odpowiedź /orders/zd/estimate - brak pozycji.");
   }
 
   const pozycje: SubiektZdEstimateLine[] = [...data.pozycje];

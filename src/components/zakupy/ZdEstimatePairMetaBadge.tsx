@@ -70,7 +70,7 @@ export function ZdEstimatePiecesMetricCell({
     >
       <span className="inline-flex max-w-full items-baseline justify-center gap-0.5 leading-none">
         {showDash ? (
-          <span className={cn(qtyClass, "zd-est-qty--dash")}>—</span>
+          <span className={cn(qtyClass, "zd-est-qty--dash")}>-</span>
         ) : (
           <>
             <span className={cn("min-w-0 truncate", qtyClass)}>
@@ -122,11 +122,11 @@ export function ZdEstimatePairMetaBadge({
   const isPack = pair.role === "pack";
 
   const title = pair.partnerMissing
-    ? "Brak partnera w wyniku szacunku — ilość 0"
+    ? "Brak partnera w wyniku szacunku - ilość 0"
     : [
         isPack
           ? "SKU paczki: na ZD zamawiasz ten towar (op./kartony)."
-          : "SKU sztuk: sprzedaż jednostkowa — nie zamawiasz tego wiersza na ZD.",
+          : "SKU sztuk: sprzedaż jednostkowa - nie zamawiasz tego wiersza na ZD.",
         `1 op. = ${pair.unitsPerPack} szt.`,
         `Sprzedaż pary: ${sales.piecesLabel}${sales.packsApproxLabel ? ` (${sales.packsApproxLabel})` : ""}.`,
         channels.title,
@@ -226,7 +226,7 @@ export function ZdEstimatePairSalesCell({
         zeroAsDash
         title={[
           `Sprzedaż pary łącznie ${formatQty(pair.sprzedazSzt)} szt jest na wierszu paczki (Do ZD).`,
-          `Tu luzem (info): ${formatQty(pair.pieceSprzedaz)} szt — nie doliczane drugi raz.`,
+          `Tu luzem (info): ${formatQty(pair.pieceSprzedaz)} szt - nie doliczane drugi raz.`,
           channels.title,
         ].join(" ")}
       />
@@ -274,7 +274,7 @@ export function ZdEstimatePairPackStockCell({
       title={`${formatQty(value)} op. na karcie paczki (nie sztuki demontażu)`}
     >
       {showDash ? (
-        <span className={cn(qtyClass, "zd-est-qty--dash")}>—</span>
+        <span className={cn(qtyClass, "zd-est-qty--dash")}>-</span>
       ) : (
         <>
           <span

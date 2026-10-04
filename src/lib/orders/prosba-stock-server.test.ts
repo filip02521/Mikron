@@ -102,7 +102,7 @@ describe("assertProsbaSubmitStockAllowed", () => {
     expect(sufficient).toEqual([]);
   });
 
-  it("stockByTwId z klienta — bez fetchProsbaLineStock", async () => {
+  it("stockByTwId z klienta - bez fetchProsbaLineStock", async () => {
     const snapshot = {
       7: { onHand: 3, reserved: 0, available: 3, source: "subiekt" as const },
     };
@@ -116,7 +116,7 @@ describe("assertProsbaSubmitStockAllowed", () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it("pusty stockByTwId w find — nadal fetchuje Subiekt", async () => {
+  it("pusty stockByTwId w find - nadal fetchuje Subiekt", async () => {
     mockFetch.mockResolvedValue({
       3: { onHand: 1, reserved: 0, available: 1, source: "subiekt" },
     });

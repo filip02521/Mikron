@@ -16,7 +16,7 @@ export const ZD_FULFILLMENT_PLACEHOLDER_DETAIL = "Potwierdzanie terminu";
 export const ZD_FULFILLMENT_PLACEHOLDER_ZK_META = "Ustalamy termin dostawy";
 
 export const ZD_FULFILLMENT_PLACEHOLDER_TITLE =
-  "Zamówienie złożone u dostawcy — data w ZD to tymczasowy zapis z dnia złożenia. Dział dostaw zaktualizuje termin po odpowiedzi dostawcy.";
+  "Zamówienie złożone u dostawcy - data w ZD to tymczasowy zapis z dnia złożenia. Dział dostaw zaktualizuje termin po odpowiedzi dostawcy.";
 
 export const ZD_FULFILLMENT_PLACEHOLDER_BADGE = "Czekamy na termin";
 

@@ -707,7 +707,7 @@ export async function runZdOrderEngine(
     );
     const feedback = getSubiektFeedback("empty_query", {
       title: "Wykluczenia niedostępne",
-      message: `Lista nie została pokazana — bez wykluczeń mogłaby zawierać produkty celowo pomijane. ${message}`,
+      message: `Lista nie została pokazana - bez wykluczeń mogłaby zawierać produkty celowo pomijane. ${message}`,
       hint: "Odśwież stronę lub spróbuj ponownie za chwilę.",
     });
     return { ok: false, feedback };
@@ -721,7 +721,7 @@ export async function runZdOrderEngine(
     );
     const feedback = getSubiektFeedback("empty_query", {
       title: "Lista „tylko na prośbę” niedostępna",
-      message: `Lista nie została pokazana — bez flagi mogłyby wejść produkty zamawiane wyłącznie na prośbę. ${message}`,
+      message: `Lista nie została pokazana - bez flagi mogłyby wejść produkty zamawiane wyłącznie na prośbę. ${message}`,
       hint: "Odśwież stronę lub spróbuj ponownie za chwilę.",
     });
     return { ok: false, feedback };
@@ -735,7 +735,7 @@ export async function runZdOrderEngine(
     );
     const feedback = getSubiektFeedback("empty_query", {
       title: "Opakowania niedostępne",
-      message: `Lista nie została pokazana — bez opakowań qty ZD mogłoby być w sztukach zamiast paczek. ${message}`,
+      message: `Lista nie została pokazana - bez opakowań qty ZD mogłoby być w sztukach zamiast paczek. ${message}`,
       hint: "Odśwież stronę lub spróbuj ponownie za chwilę.",
     });
     return { ok: false, feedback };
@@ -753,7 +753,7 @@ export async function runZdOrderEngine(
     );
     const feedback = getSubiektFeedback("empty_query", {
       title: "Pary kompletów niedostępne",
-      message: `Lista nie została pokazana — bez mapy par pack i piece mogłyby dostać niezależne qty (podwójne zamówienie). ${message}`,
+      message: `Lista nie została pokazana - bez mapy par pack i piece mogłyby dostać niezależne qty (podwójne zamówienie). ${message}`,
       hint: "Odśwież stronę lub spróbuj ponownie za chwilę.",
     });
     return { ok: false, feedback };
@@ -781,7 +781,7 @@ export async function runZdOrderEngine(
     );
     const feedback = getSubiektFeedback("empty_query", {
       title: "Produkty zębowe niedostępne",
-      message: `Lista nie została pokazana — bez katalogu zębów pozycje zębowe mogłyby trafić na ZD. ${message}`,
+      message: `Lista nie została pokazana - bez katalogu zębów pozycje zębowe mogłyby trafić na ZD. ${message}`,
       hint: "Odśwież stronę lub sprawdź tabelę produktów zębowych w adminie.",
     });
     return { ok: false, feedback };

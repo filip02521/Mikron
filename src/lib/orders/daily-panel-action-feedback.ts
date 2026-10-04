@@ -14,6 +14,7 @@ export type DailyPanelScheduleOutcome = {
 export type DailyPanelScheduleFeedbackAction =
   | "GLOWNE"
   | "POBOCZNE"
+  | "JUZ_ZAMOWIONE"
   | "ZAMOWIONE"
   | "PRZESUNIETE";
 
@@ -28,14 +29,14 @@ export function formatScheduleOutcomeLines(
   return outcomes.map((o) => {
     const intervalPart = o.hasInterval
       ? `Interwał: ${o.intervalLabel}.`
-      : "Uwaga: brak interwału u dostawcy — sprawdź kartę w ustawieniach.";
+      : "Uwaga: brak interwału u dostawcy - sprawdź kartę w ustawieniach.";
 
     const datePart = o.nextOrderDate
       ? `Kolejne zamówienie planowe: ${formatPlDate(o.nextOrderDate)}.`
-      : "Brak daty kolejnego zamówienia — sprawdź interwał i harmonogram.";
+      : "Brak daty kolejnego zamówienia - sprawdź interwał i harmonogram.";
 
     const vac =
-      o.vacationNote && o.vacationNote !== "—"
+      o.vacationNote && o.vacationNote !== "-"
         ? ` ${vacationNoteLabel(o.vacationNote)}.`
         : "";
 
@@ -49,6 +50,10 @@ export function formatScheduleOutcomeLines(
 
     if (action === "GLOWNE" && o.scheduleAdjusted) {
       return `${o.supplierName}: oznaczono główne · harmonogram przeliczony. ${datePart} ${intervalPart}${vac}`;
+    }
+
+    if (action === "JUZ_ZAMOWIONE") {
+      return `${o.supplierName}: już zamówione (harmonogram i czasy dostaw bez zmian). ${datePart} ${intervalPart}${vac}`;
     }
 
     if (action === "POBOCZNE") {
@@ -103,7 +108,7 @@ function truncateFeedbackLines(lines: string[]): string[] {
   if (lines.length <= MAX_SCHEDULE_FEEDBACK_LINES) return lines;
   return [
     ...lines.slice(0, MAX_SCHEDULE_FEEDBACK_LINES),
-    `… i ${lines.length - MAX_SCHEDULE_FEEDBACK_LINES} kolejnych — szczegóły na liście po odświeżeniu.`,
+    `… i ${lines.length - MAX_SCHEDULE_FEEDBACK_LINES} kolejnych - szczegóły na liście po odświeżeniu.`,
   ];
 }
 

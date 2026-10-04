@@ -354,7 +354,7 @@ describe("zbiorcze akcje bloku", () => {
     expect(procurementMoreProductsLabel(0)).toBe("");
   });
 
-  it("na żądanie — dopisek bez terminu w potwierdzeniu Główne", () => {
+  it("na żądanie - dopisek bez terminu w potwierdzeniu Główne", () => {
     const block = buildProcurementSupplierBlocks([
       group({
         supplierId: "od",

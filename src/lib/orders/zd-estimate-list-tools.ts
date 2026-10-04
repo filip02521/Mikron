@@ -112,7 +112,7 @@ export function resolveZdEstimateListToolStates(input: {
       title: !packagingTrusted
         ? "Wczytaj opakowania działu"
         : packagingClearEligibleCount > 0
-          ? "Usuń opakowanie — zaznaczone wrócą do sztuk 1:1 w kolumnie Do ZD"
+          ? "Usuń opakowanie - zaznaczone wrócą do sztuk 1:1 w kolumnie Do ZD"
           : "Brak pozycji z opakowaniem w zaznaczeniu",
       accent: false,
       labelSuffix:
@@ -125,7 +125,7 @@ export function resolveZdEstimateListToolStates(input: {
       title: !exclusionsTrusted
         ? "Wczytaj wykluczenia działu, żeby wykluczać z zaznaczenia"
         : excludeEligibleCount > 0
-          ? "Wyklucz zaznaczone — nie trafią do Do ZD przy kolejnych „Policz listę”"
+          ? "Wyklucz zaznaczone - nie trafią do Do ZD przy kolejnych „Policz listę”"
           : "Brak pozycji kwalifikujących się do wykluczenia",
       accent: excludeOk && selectedCount === 1,
       labelSuffix:
@@ -138,7 +138,7 @@ export function resolveZdEstimateListToolStates(input: {
       title: !exclusionsTrusted
         ? "Wczytaj wykluczenia działu, żeby przywracać z zaznaczenia"
         : restoreEligibleCount > 0
-          ? "Przywróć zaznaczone wykluczone — wrócą na listę do zamówienia"
+          ? "Przywróć zaznaczone wykluczone - wrócą na listę do zamówienia"
           : "Brak pozycji kwalifikujących się do przywrócenia",
       accent: restoreOk && selectedCount === 1,
       labelSuffix:
@@ -151,9 +151,9 @@ export function resolveZdEstimateListToolStates(input: {
       title: !onRequestTrusted
         ? "Wczytaj listę „tylko na prośbę”"
         : !exclusionsTrusted
-          ? "Wczytaj wykluczenia — „tylko na prośbę” nie może kasować niewczytanych wykluczeń"
+          ? "Wczytaj wykluczenia - „tylko na prośbę” nie może kasować niewczytanych wykluczeń"
           : onRequestEligibleCount > 0
-            ? "Oznacz jako tylko na prośbę — poza Do ZD bez aktywnej prośby; z prośbą tylko ilość z prośby"
+            ? "Oznacz jako tylko na prośbę - poza Do ZD bez aktywnej prośby; z prośbą tylko ilość z prośby"
             : "Brak pozycji kwalifikujących się (już na liście / wykluczone)",
       accent: onRequestOk && selectedCount === 1,
       labelSuffix:
@@ -168,7 +168,7 @@ export function resolveZdEstimateListToolStates(input: {
       title: !onRequestTrusted
         ? "Wczytaj listę „tylko na prośbę”"
         : clearOnRequestEligibleCount > 0
-          ? "Usuń „tylko na prośbę” — wraca zwykłe liczenie zapasu i tempa sprzedaży"
+          ? "Usuń „tylko na prośbę” - wraca zwykłe liczenie zapasu i tempa sprzedaży"
           : "Brak pozycji „tylko na prośbę” w zaznaczeniu",
       accent: false,
       labelSuffix:
@@ -179,7 +179,7 @@ export function resolveZdEstimateListToolStates(input: {
     reviewAccept: {
       enabled: reviewOk,
       title: reviewOk
-        ? "Zdejmuje oznaczenie „Do weryfikacji” tylko w tej sesji — nie zmienia ilości Do ZD"
+        ? "Zdejmuje oznaczenie „Do weryfikacji” tylko w tej sesji - nie zmienia ilości Do ZD"
         : "Brak pozycji „Do weryfikacji” w zaznaczeniu",
       accent: false,
       labelSuffix: reviewOk ? ` (${reviewEligibleCount})` : "",

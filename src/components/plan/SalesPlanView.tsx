@@ -118,13 +118,13 @@ function warehouseSummaryLabel(insight: SalesSupplierInsight): {
   title?: string;
 } {
   if (insight.orderOnDemand) {
-    return { text: "—", empty: true, title: C.tipOnDemand };
+    return { text: "-", empty: true, title: C.tipOnDemand };
   }
   if (!insight.nextDate) {
-    return { text: "—", empty: true, title: C.tipNoOrderDate };
+    return { text: "-", empty: true, title: C.tipNoOrderDate };
   }
   if (!insight.arrivalEta) {
-    return { text: "—", empty: true, title: C.tipNoHistory };
+    return { text: "-", empty: true, title: C.tipNoHistory };
   }
   return {
     text: insight.arrivalEta.shortLabel,
@@ -364,7 +364,7 @@ function SalesSupplierRow({
                   </>
                 ) : insight.orderOnDemand ? (
                   <>
-                    <dd className="mt-0.5 font-medium text-slate-900">—</dd>
+                    <dd className="mt-0.5 font-medium text-slate-900">-</dd>
                     <dd className="mt-0.5 text-[0.7rem] text-slate-600">
                       {C.expandOnDemandWarehouse}
                       {insight.leadTimeSummary ? `: ${insight.leadTimeSummary}` : "."}
@@ -377,7 +377,7 @@ function SalesSupplierRow({
                   </>
                 ) : (
                   <>
-                    <dd className="mt-0.5 font-medium text-slate-900">—</dd>
+                    <dd className="mt-0.5 font-medium text-slate-900">-</dd>
                     {insight.leadTimeSummary ? (
                       <dd className="mt-0.5 text-[0.7rem] text-slate-600">
                         {insight.leadTimeSummary}

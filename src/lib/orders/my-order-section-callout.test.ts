@@ -50,7 +50,7 @@ const partialOrder: IndividualOrder = {
 };
 
 describe("my-order-section-callout", () => {
-  it("polishPozycjaCount — odmiana", () => {
+  it("polishPozycjaCount - odmiana", () => {
     expect(polishPozycjaCount(1)).toBe("1 pozycja");
     expect(polishPozycjaCount(2)).toBe("2 pozycje");
     expect(polishPozycjaCount(5)).toBe("5 pozycji");
@@ -120,7 +120,7 @@ describe("my-order-section-callout", () => {
     expect(myOrderRowSuppressesSharedHeadline(row(), suppressed)).toBe(false);
   });
 
-  it("resolveMyOrderRowPatternHint — tylko weryfikacja", () => {
+  it("resolveMyOrderRowPatternHint - tylko weryfikacja", () => {
     const overdue = row({
       timingLabel: "ok. 10.05 · po terminie",
       headline: "Po przewidywanym terminie",

@@ -102,7 +102,7 @@ export function ZdEstimateLinkZdDialog({
   const confirm = () => {
     if (busy) return;
     if (!supplierId?.trim()) {
-      onError("Wybierz dostawcę w workbenchu — historia jest per kontrahent.");
+      onError("Wybierz dostawcę w workbenchu - historia jest per kontrahent.");
       return;
     }
     startPending(async () => {
@@ -137,7 +137,7 @@ export function ZdEstimateLinkZdDialog({
       title="Powiąż ZD"
       titleHint={
         titleHint?.trim() ||
-        "Gdy ZD powstało poza OnTime (lub po timeout create) — zapisz snapshot. „Utwórz ZD” robi to automatycznie."
+        "Gdy ZD powstało poza OnTime (lub po timeout create) - zapisz snapshot. „Utwórz ZD” robi to automatycznie."
       }
       titleId="zd-estimate-link-zd-title"
       size="md"
@@ -240,7 +240,7 @@ export function ZdEstimateLinkZdDialog({
                       {d.dokNrPelny}
                     </span>
                     <span className="shrink-0 text-[11px] text-slate-500">
-                      {d.dataWyst ?? "—"}
+                      {d.dataWyst ?? "-"}
                     </span>
                   </button>
                 </li>

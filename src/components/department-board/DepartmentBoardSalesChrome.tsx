@@ -123,7 +123,7 @@ export function DepartmentBoardTabBar({
               emphasis={active ? "default" : tab.countEmphasis}
             />
             {tab.hint && !active ? (
-              <span className="sr-only"> — {tab.hint}</span>
+              <span className="sr-only"> - {tab.hint}</span>
             ) : null}
           </button>
         );

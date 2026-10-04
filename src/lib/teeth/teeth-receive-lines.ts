@@ -25,6 +25,7 @@ import {
   type TeethPanelReadinessContext,
 } from "@/lib/teeth/teeth-panel-order-readiness";
 import type { TeethProductLine } from "@/lib/teeth/teeth-catalog";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export function teethReceiveRowKey(orderId: string, groupKey: string): string {
   return `${orderId}\0${groupKey}`;
@@ -86,7 +87,7 @@ export function buildTeethReceiveFlatRows(
     const salesPersonKey = teethReceiveSalesPersonKey(order);
     if (!stripeKeys.includes(salesPersonKey)) stripeKeys.push(salesPersonKey);
     const stripeIndex = stripeKeys.indexOf(salesPersonKey);
-    const salesPersonName = order.sales_person?.name?.trim() || "—";
+    const salesPersonName = order.sales_person?.name?.trim() || "-";
 
     if (canPickSpec(order) && orderHasTeethList(order)) {
       const groups = teethReceiveGroupsFromOrder(toLineDetails(order.teeth_details));
@@ -117,7 +118,7 @@ export function buildTeethReceiveFlatRows(
       salesPersonName,
       salesPersonKey,
       stripeIndex,
-      productLabel: order.products?.trim() || "—",
+      productLabel: order.products?.trim() || "-",
       incompleteSpec,
     });
   }
@@ -234,7 +235,7 @@ export function groupTeethReceiveByProductLine(
     const productLine = resolveTeethProductLineForPanelOrder(order, ctx);
     const label = teethPanelProductLineLabelForOrder(order, ctx) ?? "Inna linia";
     const key = label;
-    const supplierName = order.supplier?.name?.trim() || "—";
+    const supplierName = order.supplier?.name?.trim() || "-";
     const existing = buckets.get(key);
     if (existing) {
       existing.orders.push(order);
@@ -285,7 +286,7 @@ export function formatTeethReceiveProductLineSummary(
 ): string {
   const parts = [
     `${group.orders.length} ${group.orders.length === 1 ? "zamówienie" : "zamówienia"}`,
-    `${lineCount} ${lineCount === 1 ? "linia" : lineCount < 5 ? "linie" : "linii"}`,
+    `${lineCount} ${polishPluralWord(lineCount, "linia", "linie", "linii")}`,
   ];
   if (group.supplierNames.length > 0) {
     parts.push(`dostawca: ${group.supplierNames.join(", ")}`);

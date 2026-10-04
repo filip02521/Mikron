@@ -91,7 +91,7 @@ export function jawOptions(
   productLine?: TeethProductLine | null,
 ): { value: string | null; label: string }[] {
   if (!kind || !jawRequiredForKind(kind) || productLineEncodesJawInMould(productLine)) {
-    return [{ value: null, label: "—" }];
+    return [{ value: null, label: "-" }];
   }
   return [
     { value: "upper", label: "Góra" },

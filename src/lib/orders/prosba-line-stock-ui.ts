@@ -113,7 +113,7 @@ export function buildProsbaLineStockStatusView(
       title: line.pairStockCover
         ? "Wystarczający stan (para montaż/demontaż)"
         : "Wystarczający stan magazynowy",
-      detail: `Dostępne ${availLabel}${reserveSuffix} przy zamówieniu ${requestedQty} szt.${pairSuffix} — sprawdź, czy prośba jest potrzebna.`,
+      detail: `Dostępne ${availLabel}${reserveSuffix} przy zamówieniu ${requestedQty} szt.${pairSuffix} - sprawdź, czy prośba jest potrzebna.`,
     };
   }
 
@@ -123,7 +123,7 @@ export function buildProsbaLineStockStatusView(
       tone: "sky",
       shortLabel: `Dostępne ${availLabel}${reserveShort}`,
       title: "Częściowy stan magazynowy",
-      detail: `Dostępne ${availLabel}${reserveSuffix}, zamawiasz ${requestedQty} szt. — reszta u dostawcy.`,
+      detail: `Dostępne ${availLabel}${reserveSuffix}, zamawiasz ${requestedQty} szt. - reszta u dostawcy.`,
     };
   }
 
@@ -175,7 +175,7 @@ export function formatProsbaStockLineHint(
   const avail = line.available;
   const availLabel =
     avail != null && Number.isFinite(avail) ? `${avail} szt.` : "wystarczająco";
-  return `Na stanie jest ${availLabel} — prośba może być zbędna przy zamówieniu ${qty} szt. (${name}).`;
+  return `Na stanie jest ${availLabel} - prośba może być zbędna przy zamówieniu ${qty} szt. (${name}).`;
 }
 
 /** Podsumowanie wielu pozycji z wystarczającym stanem — baner nad listą. */
@@ -196,6 +196,6 @@ export function buildProsbaSufficientStockSummary(count: number): {
     mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? "pozycje" : "pozycji";
   return {
     title: `${count} ${noun} mają wystarczający stan`,
-    detail: "Sprawdź każdą linię — przy pełnym stanie prośba może być zbędna.",
+    detail: "Sprawdź każdą linię - przy pełnym stanie prośba może być zbędna.",
   };
 }

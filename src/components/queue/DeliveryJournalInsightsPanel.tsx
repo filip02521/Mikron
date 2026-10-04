@@ -36,6 +36,7 @@ import {
   queueToolbarFieldLabelClass,
   queueToolbarShellClass,
 } from "@/lib/ui/queue-panel-styles";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 type SupplierOption = { id: string; name: string; subiektKhId: number | null };
 
@@ -194,12 +195,12 @@ export function DeliveryJournalInsightsPanel({
   const dateRangeLabel =
     dateFrom === dateTo
       ? formatDateLabel(dateFrom)
-      : `${formatDateLabel(dateFrom)} – ${formatDateLabel(dateTo)}`;
+      : `${formatDateLabel(dateFrom)} - ${formatDateLabel(dateTo)}`;
 
   return (
     <div className="px-4 py-5 sm:px-6">
       <p className={panelTypography.sectionDesc}>
-        Sprawdź, czy paczka dotarła — po numerze listu, dostawcy lub kurierze. Edycja wpisów tylko w
+        Sprawdź, czy paczka dotarła - po numerze listu, dostawcy lub kurierze. Edycja wpisów tylko w
         zakładce <strong className="font-medium text-slate-700">Dzień</strong> (dziś).
       </p>
 
@@ -360,7 +361,7 @@ export function DeliveryJournalInsightsPanel({
               {!pending ? (
                 <span className="ml-1.5 font-normal normal-case tracking-normal text-slate-500">
                   · {receipts.length}{" "}
-                  {receipts.length === 1 ? "dostawa" : receipts.length < 5 ? "dostawy" : "dostaw"}
+                  {polishPluralWord(receipts.length, "dostawa", "dostawy", "dostaw")}
                 </span>
               ) : null}
             </h3>
@@ -389,7 +390,7 @@ export function DeliveryJournalInsightsPanel({
               description={
                 hasQuery
                   ? "Nie znaleziono dostawy z tą frazą. Spróbuj innego numeru listu, poszerz zakres (np. 90 dni) albo usuń filtr kuriera."
-                  : "Brak wpisów w wybranym zakresie — zmień daty lub filtry."
+                  : "Brak wpisów w wybranym zakresie - zmień daty lub filtry."
               }
             />
           ) : null}

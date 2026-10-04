@@ -51,7 +51,7 @@ function recordToForm(record: VacationRecord): VacationForm {
 }
 
 function vacationOptionLabel(record: VacationRecord): string {
-  return `${formatPlDate(record.start_date)} – ${formatPlDate(record.end_date)}`;
+  return `${formatPlDate(record.start_date)} - ${formatPlDate(record.end_date)}`;
 }
 
 export function SupplierVacationModal({
@@ -130,7 +130,7 @@ export function SupplierVacationModal({
             : `Urlop zapisany dla ${supplierName}.`,
         ];
         if (!result.active && form.active) {
-          parts.push("Urlop nie został aktywowany — sprawdź daty okresu.");
+          parts.push("Urlop nie został aktywowany - sprawdź daty okresu.");
         }
         if (result.nextDate) {
           parts.push(`Następne zamówienie: ${formatPlDate(result.nextDate)}`);
@@ -163,10 +163,10 @@ export function SupplierVacationModal({
     <ModalShell
       open
       onClose={onClose}
-      title={`Urlop — ${supplierName}`}
+      title={`Urlop - ${supplierName}`}
       description={
         existingVacations.length > 1
-          ? `${existingVacations.length} aktywne urlopy — wybierz wpis do edycji lub dodaj nowy (okresy nie mogą się nakładać).`
+          ? `${existingVacations.length} aktywne urlopy - wybierz wpis do edycji lub dodaj nowy (okresy nie mogą się nakładać).`
           : form.id
             ? "Edytujesz aktywny urlop. Po zapisie termin przeliczy się automatycznie."
             : "Po zapisie terminy przeliczą się automatycznie w panelu dziennym."

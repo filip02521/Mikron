@@ -23,7 +23,7 @@ const hit = (overrides: Partial<TeethShortageMatchHit> = {}): TeethShortageMatch
   color: "A1",
   mould: "12",
   kind: "anterior",
-  message: "Brak u Lab Test — termin dostępności nieustalony",
+  message: "Brak u Lab Test - termin dostępności nieustalony",
   ...overrides,
 });
 

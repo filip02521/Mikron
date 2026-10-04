@@ -114,7 +114,7 @@ describe("refreshZdEstimateLinesWithPairs", () => {
     expect(lines.find((l) => l.tw_Id === 1)?.sprzedazOkres).toBe(7);
   });
 
-  it("przekazuje historyByTwId — history_slow zostaje po refresh", () => {
+  it("przekazuje historyByTwId - history_slow zostaje po refresh", () => {
     const linkedAt = new Date(Date.now() - 90 * 86400000).toISOString();
     const linesBase = [
       baseLine(100, { sprzedazOkres: 0, dostepne: 0 }),
@@ -261,7 +261,7 @@ describe("refreshZdEstimateLinesWithPairs", () => {
     expect(rightCreate.piecesNeeded).toBe(rematted.doZamowieniaReczne);
   });
 
-  it("para nadpisuje solo — zmiana N opakowania pack SKU nie psuje merge", () => {
+  it("para nadpisuje solo - zmiana N opakowania pack SKU nie psuje merge", () => {
     const withN2 = refreshZdEstimateLinesWithPairs({
       linesBase: [
         baseLine(100, { sprzedazOkres: 0, dostepne: 0 }),

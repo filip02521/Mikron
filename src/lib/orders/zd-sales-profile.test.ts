@@ -63,7 +63,7 @@ describe("resolveZdSalesProfile", () => {
     }
   });
 
-  it("prośby odejmowane przed klasyfikacją — regularny towar bez skoku", () => {
+  it("prośby odejmowane przed klasyfikacją - regularny towar bez skoku", () => {
     const m = resolveZdSalesProfile({ windows: STEADY, sprzedazOkres: 15, dniOkresu: 30, prosbaPieces: 4, smoothing: true });
     expect(m.prosbaPieces).toBe(4);
     expect(15 * m.factor).toBeCloseTo(11);

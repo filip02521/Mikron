@@ -55,7 +55,7 @@ export function TempPasswordDialog({
           {isReset ? (
             <>
               Poprzednie hasło przestało działać. Przekaż nowe dane użytkownikowi{" "}
-              <span className="font-medium text-slate-800">{salesPersonName}</span> — przy
+              <span className="font-medium text-slate-800">{salesPersonName}</span> - przy
               logowaniu ustawi własne hasło.
             </>
           ) : (
@@ -68,13 +68,13 @@ export function TempPasswordDialog({
         </p>
         <dl className="mt-4 space-y-3 rounded-md border border-amber-100 bg-amber-50/80 p-4 text-sm">
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-amber-900/70">
+            <dt className="text-xs font-medium text-amber-900/70">
               E-mail (login)
             </dt>
             <dd className="mt-1 font-mono text-slate-900">{email}</dd>
           </div>
           <div>
-            <dt className="text-xs font-medium uppercase tracking-wide text-amber-900/70">
+            <dt className="text-xs font-medium text-amber-900/70">
               Hasło jednorazowe
             </dt>
             <dd className="mt-1 font-mono text-lg font-semibold tracking-wide text-slate-900">

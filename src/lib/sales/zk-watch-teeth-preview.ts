@@ -46,7 +46,7 @@ function resolveTeethStatus(
   if (orderStatus !== "Zrealizowane")
     return { label: "Zamówione u dostawcy", tone: "ordered" };
   if (!salesAcknowledgedAt)
-    return { label: "Przyjęte — czeka na odbiór", tone: "delivered" };
+    return { label: "Przyjęte - czeka na odbiór", tone: "delivered" };
   return { label: "Odebrane", tone: "acknowledged" };
 }
 

@@ -173,7 +173,7 @@ describe("mapZdEstimateLineToManual", () => {
     doZamowienia: 469.516,
   };
 
-  it("liczy qty ręczne bez ZK — API zostaje w osobnym polu", () => {
+  it("liczy qty ręczne bez ZK - API zostaje w osobnym polu", () => {
     const m = mapZdEstimateLineToManual(base, { salesTrack: false });
     expect(m.doZamowieniaReczne).toBe(8);
     expect(m.doZamowieniaApi).toBe(469.516);
@@ -385,7 +385,7 @@ describe("mapZdEstimateLineToManual", () => {
     expect(withHist.salesTrackReasons).toContain("history_slow");
   });
 
-  it("sales_spike: sprzedaż w oknie ≫ ostatnie ZD — obniża doZamowienia", () => {
+  it("sales_spike: sprzedaż w oknie ≫ ostatnie ZD - obniża doZamowienia", () => {
     const linkedAt = new Date(
       Date.now() - 20 * 24 * 60 * 60 * 1000
     ).toISOString();

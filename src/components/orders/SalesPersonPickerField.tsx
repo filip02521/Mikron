@@ -95,11 +95,11 @@ export function SalesPersonPickerField({
         portalled
         anchorRef={anchorRef}
         emptyMessage={
-          query.trim() ? "Brak handlowca — sprawdź pisownię" : "Wpisz fragment imienia"
+          query.trim() ? "Brak handlowca - sprawdź pisownię" : "Wpisz fragment imienia"
         }
       >
         {query.trim() ? null : (
-          <TypeaheadSectionLabel>Najczęściej wybierani — wpisz, aby zawęzić</TypeaheadSectionLabel>
+          <TypeaheadSectionLabel>Najczęściej wybierani - wpisz, aby zawęzić</TypeaheadSectionLabel>
         )}
         {matches.map((p) => (
           <TypeaheadOption

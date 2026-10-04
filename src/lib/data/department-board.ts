@@ -1,5 +1,6 @@
 import {
   DEPARTMENT_BOARD_ATTACHMENT_SELECT,
+  DEPARTMENT_BOARD_ATTACHMENT_SELECT_LEGACY,
   type BoardThreadAttachmentRow,
 } from "@/lib/department-board/attachments";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -125,32 +126,44 @@ export async function fetchDepartmentBoardQuestions(): Promise<DepartmentBoardQu
 
   let posts: DepartmentBoardPostRow[] = [];
   const attachmentsByThread = new Map<string, BoardThreadAttachmentRow[]>();
+  const attachmentsByPost = new Map<string, BoardThreadAttachmentRow[]>();
   if (allIds.length) {
-    const [postsRes, attachmentsRes] = await Promise.all([
+    const fetchAttachments = (select: string) =>
+      supabase
+        .from("department_board_thread_attachments")
+        .select(select)
+        .in("thread_id", allIds)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+
+    const [postsRes, firstAttachmentsRes] = await Promise.all([
       supabase
         .from("department_board_posts")
         .select(DEPARTMENT_BOARD_POST_SELECT)
         .in("thread_id", allIds)
         .order("created_at", { ascending: true }),
-      supabase
-        .from("department_board_thread_attachments")
-        .select(DEPARTMENT_BOARD_ATTACHMENT_SELECT)
-        .in("thread_id", allIds)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: true }),
+      fetchAttachments(DEPARTMENT_BOARD_ATTACHMENT_SELECT),
     ]);
     if (postsRes.error) throw new Error(postsRes.error.message);
     posts = (postsRes.data ?? []) as unknown as DepartmentBoardPostRow[];
+
+    let attachmentsRes = firstAttachmentsRes;
+    // Migracja 166 (post_id) może jeszcze nie być na środowisku — zdjęcia pytań dalej działają.
+    if (attachmentsRes.error?.message?.includes("post_id")) {
+      attachmentsRes = await fetchAttachments(DEPARTMENT_BOARD_ATTACHMENT_SELECT_LEGACY);
+    }
     if (attachmentsRes.error) {
       // Migracja 133 może jeszcze nie być na środowisku — nie blokuj Tablicy.
       if (!attachmentsRes.error.message?.includes("department_board_thread_attachments")) {
         throw new Error(attachmentsRes.error.message);
       }
     } else {
-      for (const row of (attachmentsRes.data ?? []) as BoardThreadAttachmentRow[]) {
-        const list = attachmentsByThread.get(row.thread_id) ?? [];
+      for (const row of (attachmentsRes.data ?? []) as unknown as BoardThreadAttachmentRow[]) {
+        const target = row.post_id ? attachmentsByPost : attachmentsByThread;
+        const key = row.post_id ?? row.thread_id;
+        const list = target.get(key) ?? [];
         list.push(row);
-        attachmentsByThread.set(row.thread_id, list);
+        target.set(key, list);
       }
     }
   }
@@ -158,7 +171,7 @@ export async function fetchDepartmentBoardQuestions(): Promise<DepartmentBoardQu
   const postsByThread = new Map<string, DepartmentBoardPostRow[]>();
   for (const post of posts) {
     const list = postsByThread.get(post.thread_id) ?? [];
-    list.push(post);
+    list.push({ ...post, attachments: attachmentsByPost.get(post.id) ?? [] });
     postsByThread.set(post.thread_id, list);
   }
 

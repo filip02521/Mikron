@@ -396,7 +396,7 @@ function groupBySupplier(
   const result: UpcomingDeliverySupplier[] = [];
   const clearedIds: string[] = [];
   for (const [supplierId, supplierOrders] of bySupplier) {
-    const supplierName = supplierOrders[0]?.supplier?.name ?? "—";
+    const supplierName = supplierOrders[0]?.supplier?.name ?? "-";
     const zdDocNumber = supplierOrders.find((o) => o.zd_fulfillment_dok_nr?.trim())?.zd_fulfillment_dok_nr ?? null;
     const positionCount = supplierOrders.length;
     const totalQuantity = supplierOrders.reduce((sum, o) => sum + parseQty(o.quantity), 0);
@@ -640,7 +640,7 @@ async function mergeZdIndexDeliveries(
           clearedSupplierIdsByDate?.set(dateKey, cleared);
           continue;
         }
-        const supplierName = supplierNames.get(supplierId) ?? "—";
+        const supplierName = supplierNames.get(supplierId) ?? "-";
         const carrierHint = hintMap.get(supplierId) ?? null;
         const carrierLabel = carrierHint
           ? warehouseCarrierLabel(carrierHint.carrier, carriers)

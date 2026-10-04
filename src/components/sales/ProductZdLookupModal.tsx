@@ -115,7 +115,7 @@ function LookupSection({
 }
 
 function ProductChip({ product }: { product: SubiektProduct }) {
-  const symbol = subiektFieldText(product.tw_Symbol) || "—";
+  const symbol = subiektFieldText(product.tw_Symbol) || "-";
   const name = subiektFieldText(product.tw_Nazwa) || symbol;
   const plu = subiektFieldText(product.tw_PLU);
   const stock =
@@ -534,7 +534,7 @@ export function ProductZdLookupModal({
                     emptyMessage={visibleSuggestLoading ? "Szukam w Subiekcie…" : undefined}
                     footer={typeaheadListVisible ? TYPEAHEAD_KEYBOARD_HINT : undefined}
                   >
-                    <TypeaheadSectionLabel>Subiekt — wybierz produkt</TypeaheadSectionLabel>
+                    <TypeaheadSectionLabel>Subiekt - wybierz produkt</TypeaheadSectionLabel>
                     {typeaheadListVisible
                       ? visibleSuggestions.map((product, index) => {
                           const { title, subtitle } = formatSubiektProductOption(product);
@@ -646,7 +646,7 @@ export function ProductZdLookupModal({
                   ))}
                   {lookupResult.searchIncomplete ? (
                     <IncompleteHint>
-                      Przeszukaliśmy ograniczoną liczbę dokumentów — w Subiekcie mogą być jeszcze
+                      Przeszukaliśmy ograniczoną liczbę dokumentów - w Subiekcie mogą być jeszcze
                       inne ZD.
                     </IncompleteHint>
                   ) : null}
@@ -663,7 +663,7 @@ export function ProductZdLookupModal({
                   ) : null}
                   {lookupResult.searchIncomplete ? (
                     <p className={cn(salesTypography.rowMeta, "text-slate-600")}>
-                      Wynik może być niepełny — przeszukano limit dokumentów w Subiekcie.
+                      Wynik może być niepełny - przeszukano limit dokumentów w Subiekcie.
                     </p>
                   ) : (
                     <p className={cn(salesTypography.rowMeta, "text-slate-500")}>

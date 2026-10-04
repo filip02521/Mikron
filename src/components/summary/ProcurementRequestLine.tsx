@@ -28,7 +28,7 @@ export function ProcurementRequestClientMeta({
   if (clientLabel.includes("różnych klientów")) {
     return (
       <p className={cn(panelTypography.rowMeta, className)}>
-        <span className="inline-flex items-center rounded bg-slate-100 px-1 py-0.5 font-semibold uppercase tracking-wide text-slate-500">
+        <span className="inline-flex items-center rounded bg-slate-100 px-1 py-0.5 font-semibold text-slate-500">
           Klienci
         </span>{" "}
         <span className="font-medium text-slate-800">{clientLabel}</span>
@@ -129,7 +129,7 @@ function ProcurementRequestLineContent({
 }) {
   const hasSymbol = Boolean(line.symbol && line.symbol !== "-");
   const hasQty = Boolean(
-    line.quantity && line.quantity !== "-" && line.quantity !== "—"
+    line.quantity && line.quantity !== "-" && line.quantity !== "-"
   );
   const hasMeta = hasSymbol || hasQty;
 

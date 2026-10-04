@@ -72,7 +72,7 @@ describe("assessSalesGroupSubmittable", () => {
     expect(plan?.submittable).toBe(true);
   });
 
-  it("catalog z dostawcą w grupie — status Nowe", () => {
+  it("catalog z dostawcą w grupie - status Nowe", () => {
     const plan = assessSalesGroupSubmittable(
       [
         {
@@ -90,7 +90,7 @@ describe("assessSalesGroupSubmittable", () => {
     expect(plan?.bannerKind).toBe("complete");
   });
 
-  it("catalog bez dostawcy w grupie — status Weryfikacja", () => {
+  it("catalog bez dostawcy w grupie - status Weryfikacja", () => {
     const plan = assessSalesGroupSubmittable(
       [
         {
@@ -108,7 +108,7 @@ describe("assessSalesGroupSubmittable", () => {
     expect(plan?.bannerKind).toBe("incomplete");
   });
 
-  it("informacja z catalog i dostawcą — status Nowe", () => {
+  it("informacja z catalog i dostawcą - status Nowe", () => {
     const plan = assessSalesGroupSubmittable(
       [
         {
@@ -126,7 +126,7 @@ describe("assessSalesGroupSubmittable", () => {
     expect(plan?.bannerKind).toBe("complete");
   });
 
-  it("mieszane linie catalog + subiekt z dostawcą — complete", () => {
+  it("mieszane linie catalog + subiekt z dostawcą - complete", () => {
     const plan = assessSalesGroupSubmittable(
       [
         {
@@ -153,7 +153,7 @@ describe("assessSalesGroupSubmittable", () => {
 });
 
 describe("salesSubmitUserHint", () => {
-  it("submittable incomplete — można wysłać, info", () => {
+  it("submittable incomplete - można wysłać, info", () => {
     const plan = planSalesRequestSubmit({
       symbol: "ABC",
       product: "Test",
@@ -165,7 +165,7 @@ describe("salesSubmitUserHint", () => {
     expect(hint?.title).toContain("Możesz wysłać");
   });
 
-  it("blocked incomplete — ostrzeżenie przed wysłaniem", () => {
+  it("blocked incomplete - ostrzeżenie przed wysłaniem", () => {
     const plan = planSalesRequestSubmit({
       symbol: "ABC",
       product: "Test",

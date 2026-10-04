@@ -23,11 +23,11 @@ function previewDockDescription(
   salesName: string | null
 ): string {
   if (salesName) {
-    return `Handlowiec: ${salesName}. Tryb tylko do odczytu — zmiany w panelu administracji.`;
+    return `Handlowiec: ${salesName}. Tryb tylko do odczytu - zmiany w panelu administracji.`;
   }
   // Zakupy / Zęby: realna praca operacyjna (nie read-only w UI).
   if (panelContext === "zakupy" || panelContext === "zakupy_zeby") {
-    return "Podgląd panelu operacyjnego — możesz pracować jak w tym dziale. Wróć do administracji, gdy skończysz.";
+    return "Podgląd panelu operacyjnego - możesz pracować jak w tym dziale. Wróć do administracji, gdy skończysz.";
   }
   return "Tryb tylko do odczytu. Zmiany w systemie wykonujesz z panelu administracji.";
 }
@@ -79,6 +79,7 @@ export function AdminPreviewDock({
       ) : null}
 
       <div
+        data-admin-preview-dock
         className={cn(
           "fixed z-[60] flex flex-col",
           "inset-x-2 bottom-[var(--mobile-bottom-chrome,0px)]",

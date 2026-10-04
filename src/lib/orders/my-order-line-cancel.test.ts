@@ -43,7 +43,7 @@ describe("my-order line cancel flags", () => {
     expect(row.salesCancelOrderIds).toEqual(["line-a", "line-b"]);
   });
 
-  it("częściowa dostawa w grupie — per linia różne akcje anulowania", () => {
+  it("częściowa dostawa w grupie - per linia różne akcje anulowania", () => {
     const orders = [
       order("waiting", "Zamowione", { products: "Produkt A", quantity: "2" }),
       order("partial", "Czesciowo_zrealizowane", {

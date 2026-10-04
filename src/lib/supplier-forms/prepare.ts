@@ -44,7 +44,7 @@ export async function prepareSupplierFormForZd(input: {
   if (!kh.ok || !kh.khIds.includes(docKh)) {
     return {
       ok: false,
-      message: `${doc.dok_NrPelny ?? `ZD #${input.dokId}`} nie jest wystawione na ${supplier.name} — sprawdź wybrany dokument.`,
+      message: `${doc.dok_NrPelny ?? `ZD #${input.dokId}`} nie jest wystawione na ${supplier.name} - sprawdź wybrany dokument.`,
     };
   }
 

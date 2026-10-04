@@ -25,7 +25,7 @@ function line(twId: number): ManualZdEstimateLine {
     tw_Symbol: `S${twId}`,
     tw_Nazwa: `Towar ${twId}`,
     tw_IdGrupa: null,
-    grt_Nazwa: "—",
+    grt_Nazwa: "-",
     tw_Stan: 10,
     tw_StanRez: 0,
     dostepne: 10,

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { SubiektDocument } from "@/lib/subiekt/types";
 import {
   linesFromSubiektZd,
+  articleCodesText,
   parseArticleCodesPaste,
   parseInvoiceLinesPaste,
   parseLooseNumber,
@@ -62,5 +63,17 @@ describe("parseArticleCodesPaste", () => {
       { code: "DE-1332", description: "" },
       { code: "DE-1333", description: "" },
     ]);
+  });
+
+  it("klucz przed tabulatorem może być nazwą (dostawca bez kodów)", () => {
+    expect(parseArticleCodesPaste("avera  ML A1 D98-16\tTlenek cyrkonu\nDE-1411\tMosquito")).toEqual([
+      { code: "AVERA ML A1 D98-16", description: "Tlenek cyrkonu" },
+      { code: "DE-1411", description: "Mosquito" },
+    ]);
+  });
+
+  it("lista zapisana i otwarta ponownie nie gubi kluczy ze spacjami", () => {
+    const codes = ["AVERA ML A1 D98-16", "DE-1411"];
+    expect(parseArticleCodesPaste(articleCodesText(codes)).map((a) => a.code)).toEqual(codes);
   });
 });

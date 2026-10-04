@@ -377,7 +377,7 @@ export function TeethOcrWizard({
       open={open}
       onClose={handleClose}
       title="Odczyt zębów ze zdjęcia"
-      titleHint="Funkcja testowa — dwufazowe rozpoznawanie: najpierw linie produktów, potem szczegóły per linia."
+      titleHint="Funkcja testowa - dwufazowe rozpoznawanie: najpierw linie produktów, potem szczegóły per linia."
       size="md"
       tier="overlay"
       disableBackdropClose={isBusy}
@@ -463,7 +463,7 @@ export function TeethOcrWizard({
               </Button>
               <span className="group relative inline-flex">
                 <span
-                  className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-indigo-400 transition-colors group-hover:bg-indigo-100"
+                  className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold text-indigo-400 transition-colors group-hover:bg-indigo-100"
                 >
                   Beta
                 </span>
@@ -471,7 +471,7 @@ export function TeethOcrWizard({
                   role="tooltip"
                   className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-indigo-200/90 bg-indigo-50/95 px-2.5 py-1.5 text-[11px] font-medium leading-relaxed text-indigo-900 shadow-md group-hover:block group-focus-within:block"
                 >
-                  To funkcja testowa — sczytywanie listy zębów ze zdjęcia za pomocą AI. Wynik zawsze sprawdź przed zapisaniem.
+                  To funkcja testowa - sczytywanie listy zębów ze zdjęcia za pomocą AI. Wynik zawsze sprawdź przed zapisaniem.
                 </span>
               </span>
             </div>

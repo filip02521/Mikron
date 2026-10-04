@@ -50,7 +50,7 @@ function Stat({
           : "text-slate-900";
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+      <span className="text-[10px] font-medium text-slate-400">
         {label}
       </span>
       <span className={cn("text-sm font-semibold tabular-nums", toneClass)}>
@@ -187,7 +187,7 @@ function MinStockDialogForm({
               </span>
             )}
             {line.grt_Nazwa ? (
-              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
                 {line.grt_Nazwa}
               </span>
             ) : null}
@@ -289,13 +289,13 @@ function MinStockDialogForm({
             {minAktywny ? (
               <p className="mt-2 text-[11px] leading-snug text-indigo-700/80">
                 {roznica > 0
-                  ? `Minimum podbija cel o ${Math.round(celZMin - celBazowy)} szt — zamówienie rośnie o ${roznica} szt.`
+                  ? `Minimum podbija cel o ${Math.round(celZMin - celBazowy)} szt - zamówienie rośnie o ${roznica} szt.`
                   : `Minimum podbija cel, ale stan/ZD już pokrywają zapotrzebowanie.`}
               </p>
             ) : (
               <p className="mt-2 text-[11px] leading-snug text-slate-500">
                 Cel ze sprzedaży ({Math.round(celBazowy)} szt) jest wyższy niż
-                minimum ({draftMin} szt) — minimum nie zmienia zamówienia.
+                minimum ({draftMin} szt) - minimum nie zmienia zamówienia.
               </p>
             )}
           </div>

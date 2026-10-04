@@ -4,6 +4,7 @@ import { cn } from "@/lib/cn";
 import { formatZkUnseenRegalBadge } from "@/lib/sales/zk-page-copy";
 import { brandLinkSubtleClass, salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
 import { ZkWatchRowColorLegend } from "./ZkWatchRowColorLegend";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 function ZkListStats({
   watchCount,
@@ -27,7 +28,7 @@ function ZkListStats({
         <span className={salesTypography.statValue}>{filteredWatchCount}</span>
         {" z "}
         <span className={salesTypography.statValue}>{watchCount}</span>
-        <span className="ml-2 inline-flex rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
+        <span className="ml-2 inline-flex rounded-md bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-900">
           szukaj
         </span>
       </p>
@@ -44,7 +45,7 @@ function ZkListStats({
       <div className="inline-flex items-baseline gap-1.5">
         <span className={salesTypography.statValue}>{lineCount}</span>
         <span className={salesTypography.statLabel}>
-          {lineCount === 1 ? "pozycja" : lineCount < 5 ? "pozycje" : "pozycji"}
+          {polishPluralWord(lineCount, "pozycja", "pozycje", "pozycji")}
         </span>
       </div>
       {informacjaReadyLineCount > 0 ? (
@@ -108,18 +109,14 @@ function ZkListMetaActions({
             </Badge>
           ) : null}
           {unseenRegalWatchCount > 0 ? (
-            <Badge variant="purple" className="text-[10px]">
+            <Badge variant="info" className="text-[10px]">
               {formatZkUnseenRegalBadge(unseenRegalWatchCount)}
             </Badge>
           ) : null}
           {followUpCount > 0 ? (
             <Badge variant="warning" className="text-[10px]">
               {followUpCount}{" "}
-              {followUpCount === 1
-                ? "przypomnienie"
-                : followUpCount < 5
-                  ? "przypomnienia"
-                  : "przypomnień"}
+              {polishPluralWord(followUpCount, "przypomnienie", "przypomnienia", "przypomnień")}
             </Badge>
           ) : null}
         </div>

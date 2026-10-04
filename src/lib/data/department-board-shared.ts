@@ -22,10 +22,13 @@ export type DepartmentBoardThreadRow = DepartmentBoardThread & {
 
 export type DepartmentBoardPostRow = DepartmentBoardPost & {
   author?: DepartmentBoardAuthor | null;
+  /** Zdjęcia dołączone do tej odpowiedzi. */
+  attachments?: DepartmentBoardThreadAttachment[];
 };
 
 export type DepartmentBoardQuestion = DepartmentBoardThreadRow & {
   posts: DepartmentBoardPostRow[];
+  /** Zdjęcia samego pytania (bez zdjęć z odpowiedzi — te są w `posts[].attachments`). */
   attachments: DepartmentBoardThreadAttachment[];
 };
 

@@ -37,6 +37,6 @@ describe("procurement-request-timing", () => {
         "2026-05-28T10:30:00+02:00",
         now
       )
-    ).toBe("dziś 08:00–10:30");
+    ).toBe("dziś 08:00-10:30");
   });
 });

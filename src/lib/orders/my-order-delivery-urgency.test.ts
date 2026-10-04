@@ -180,7 +180,7 @@ describe("deliveryUrgencyRowVisual", () => {
     const partial = presentMyOrders([partialOrder], []).zamowienia[0]!;
     const visual = resolveMyOrderDeliveryRowVisual(partial, at);
     expect(visual?.borderAccent).toContain("sky");
-    expect(visual?.collapsedBg).toContain("sky");
+    expect(visual?.collapsedBg).toBeNull();
     expect(resolveMyOrderPartialStockRowVisual(partial)?.borderAccent).toContain("sky");
   });
 });

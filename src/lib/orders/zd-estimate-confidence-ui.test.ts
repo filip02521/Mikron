@@ -10,13 +10,13 @@ import {
 } from "@/lib/orders/zd-estimate-confidence-ui";
 
 describe("zd-estimate-confidence-ui", () => {
-  it("pct clamp 0–100", () => {
+  it("pct clamp 0-100", () => {
     expect(zdEstimateConfidencePct(0.624)).toBe(62);
     expect(zdEstimateConfidencePct(-1)).toBe(0);
     expect(zdEstimateConfidencePct(2)).toBe(100);
   });
 
-  it("pending review — qtyReview bez accepted/excluded", () => {
+  it("pending review - qtyReview bez accepted/excluded", () => {
     expect(
       isZdEstimatePendingReview({ qtyReview: true, accepted: false })
     ).toBe(true);
@@ -45,7 +45,7 @@ describe("zd-estimate-confidence-ui", () => {
     expect(ui.tone).toBe("idle");
   });
 
-  it("ok — sygnał bez review", () => {
+  it("ok - sygnał bez review", () => {
     const ui = buildZdEstimateConfidenceUi({
       confidence: 0.8,
       qtyReview: false,
@@ -57,7 +57,7 @@ describe("zd-estimate-confidence-ui", () => {
     expect(ui.pct).toBe(80);
   });
 
-  it("review — title + aria", () => {
+  it("review - title + aria", () => {
     const ui = buildZdEstimateConfidenceUi({
       confidence: 0.42,
       qtyReview: true,
@@ -72,7 +72,7 @@ describe("zd-estimate-confidence-ui", () => {
     expect(ui.acceptAriaLabel).toMatch(/42%/);
   });
 
-  it("accepted — emerald tone + zachowany powód", () => {
+  it("accepted - emerald tone + zachowany powód", () => {
     const ui = buildZdEstimateConfidenceUi({
       confidence: 0.42,
       qtyReview: true,
@@ -85,7 +85,7 @@ describe("zd-estimate-confidence-ui", () => {
     expect(ui.title).toContain("cienkie pokrycie");
   });
 
-  it("hintKind — override > roundup > confidence > pieces", () => {
+  it("hintKind - override > roundup > confidence > pieces", () => {
     expect(
       resolveZdEstimateDoZdHintKind({
         overridden: true,
@@ -120,7 +120,7 @@ describe("zd-estimate-confidence-ui", () => {
     ).toBe("pieces");
   });
 
-  it("excluded — bez sygnału / review", () => {
+  it("excluded - bez sygnału / review", () => {
     const ui = buildZdEstimateConfidenceUi({
       confidence: 0.4,
       qtyReview: true,
@@ -133,7 +133,7 @@ describe("zd-estimate-confidence-ui", () => {
     expect(ui.tone).toBe("idle");
   });
 
-  it("override/roundup — review nadal needsReview (OK aside w komórce)", () => {
+  it("override/roundup - review nadal needsReview (OK aside w komórce)", () => {
     const ui = buildZdEstimateConfidenceUi({
       confidence: 0.4,
       qtyReview: true,

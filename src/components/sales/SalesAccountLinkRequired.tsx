@@ -20,7 +20,7 @@ export function SalesAccountLinkRequired({
       <Alert tone="warning">
         <p className="mb-2 font-semibold">Konto nie jest jeszcze powiązane</p>
         <p className="mb-3">
-          Nie możemy pokazać Twoich prośb ani formularza zgłoszenia. Poproś administratora
+          Nie możemy pokazać Twoich próśb ani formularza zgłoszenia. Poproś administratora
           systemu o jedną z poniższych opcji:
         </p>
         <ol className="list-decimal space-y-1.5 pl-5 text-sm leading-relaxed">

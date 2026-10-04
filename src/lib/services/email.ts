@@ -16,7 +16,7 @@ import { recordTransactionalEmailLog } from "@/lib/services/transactional-email-
 import type { TransactionalEmailKind } from "@/types/database";
 
 const EMAIL_NOT_CONFIGURED_ERROR =
-  "Brak konfiguracji SMTP / EMAIL_FROM — ustaw SMTP_HOST, SMTP_USER, SMTP_PASS oraz EMAIL_FROM lub EMAIL_DOMAIN (i zrestartuj serwer)";
+  "Brak konfiguracji SMTP / EMAIL_FROM - ustaw SMTP_HOST, SMTP_USER, SMTP_PASS oraz EMAIL_FROM lub EMAIL_DOMAIN (i zrestartuj serwer)";
 
 export type EmailSendResult = {
   sent: number;

@@ -306,15 +306,15 @@ export function EditIndividualRequestModal({
             if (mode === "procurement") {
               const result = await actionUpdateIndividualRequest(orderIds, payload);
               const base = isMixedProcurementEdit
-                ? "Zapisano zmiany — zęby w panelu /zeby, pozostałe pozycje w panelu dziennym."
+                ? "Zapisano zmiany - zęby w panelu /zeby, pozostałe pozycje w panelu dziennym."
                 : isTeethOnlyEdit
-                  ? "Zapisano listę zębów — zmiany są widoczne w panelu zębów."
+                  ? "Zapisano listę zębów - zmiany są widoczne w panelu zębów."
                   : "Zapisano zmiany w prośbie.";
               const mailHint =
                 result.noteNotifyOrderIds?.length && result.emailSent
                   ? " Handlowiec dostał powiadomienie o zmianie uwag."
                   : result.noteNotifyOrderIds?.length && result.emailError
-                    ? ` Uwagi zapisane — ${result.emailError}`
+                    ? ` Uwagi zapisane - ${result.emailError}`
                     : result.noteNotifyOrderIds?.length
                       ? " Handlowiec zobaczy zmianę uwag w Moje zamówienia."
                       : "";
@@ -323,9 +323,9 @@ export function EditIndividualRequestModal({
               await actionUpdateMyIndividualRequest(orderIds, payload);
               onSaved?.(
                 isMixedProcurementEdit
-                  ? "Zapisano zmiany — zęby w panelu /zeby, pozostałe pozycje w panelu dziennym."
+                  ? "Zapisano zmiany - zęby w panelu /zeby, pozostałe pozycje w panelu dziennym."
                   : isTeethOnlyEdit
-                    ? "Zapisano listę zębów — zmiany są widoczne w panelu zębów."
+                    ? "Zapisano listę zębów - zmiany są widoczne w panelu zębów."
                     : "Zapisano zmiany w prośbie."
               );
             }
@@ -664,7 +664,7 @@ export function EditIndividualRequestModal({
                   onChange={applyGroupSupplier}
                   disabled={pending}
                   allowEmpty
-                  emptyLabel="— wybierz —"
+                  emptyLabel="- wybierz -"
                   dropdownSize="comfortable"
                   showInlineFeedback={false}
                 />

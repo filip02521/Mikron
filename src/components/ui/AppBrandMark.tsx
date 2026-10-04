@@ -1,26 +1,18 @@
 import { cn } from "@/lib/cn";
-import { brandMarkOnDarkClass, brandMarkOnLightClass } from "@/lib/ui/brand";
-import { ONTIME_LOGO_MONOGRAM, ONTIME_LOGO_SHAPE } from "@/lib/ui/ontime-brand";
-import { BrandClockHandsAnimated } from "@/components/ui/BrandClockHandsAnimated";
+import { BRAND_MARK_COLOR, brandMarkGlyphSvg } from "@/lib/ui/brand-app-icon-svg";
+import { ONTIME_LOGO_SHAPE } from "@/lib/ui/ontime-brand";
 
 const SIZE_STYLES = {
-  sm: {
-    box: "h-8 w-8",
-    text: "text-[0.65rem] tracking-tighter",
-    showTicks: false,
-  },
-  md: {
-    box: "h-10 w-10",
-    text: "text-[0.7rem] tracking-tighter",
-    showTicks: true,
-  },
-  lg: {
-    box: "h-14 w-14",
-    text: "text-lg tracking-tight",
-    showTicks: true,
-  },
+  sm: "h-8 w-8",
+  md: "h-10 w-10",
+  lg: "h-14 w-14",
 } as const;
 
+/** Statyczny rysunek — bezpieczny do wstawienia jako SVG. */
+const GLYPH_LIGHT = brandMarkGlyphSvg();
+const GLYPH_DARK = brandMarkGlyphSvg("transparent");
+
+/** Znak OnTime: wskazówki zegara układające się w ptaszek, na kaflu petrol. */
 export function AppBrandMark({
   className,
   size = "md",
@@ -28,32 +20,24 @@ export function AppBrandMark({
 }: {
   className?: string;
   size?: keyof typeof SIZE_STYLES;
-  /** light = sidebar/aplikacja, dark = panel boczny logowania */
+  /** light = sidebar/aplikacja, dark = półprzezroczysty kafel na ciemnym tle */
   variant?: "light" | "dark";
 }) {
-  const { box, text, showTicks } = SIZE_STYLES[size];
-  const toneClass = variant === "dark" ? brandMarkOnDarkClass : brandMarkOnLightClass;
-
+  const dark = variant === "dark";
   return (
     <span
       className={cn(
-        "relative flex shrink-0 items-center justify-center font-bold",
+        "relative flex shrink-0 overflow-hidden shadow-[var(--shadow-brand)]",
         ONTIME_LOGO_SHAPE,
-        box,
-        text,
-        toneClass,
+        SIZE_STYLES[size],
         className
       )}
       aria-hidden
     >
-      <BrandClockHandsAnimated showTicks={showTicks} />
-      <span
-        className="pointer-events-none absolute inset-[3px] z-[1] rounded-[inherit] border border-white/25"
-        aria-hidden
-      />
-      <span className="relative z-[2] text-white drop-shadow-[0_1px_2px_rgba(15,23,42,0.22)]">
-        {ONTIME_LOGO_MONOGRAM}
-      </span>
+      <svg viewBox="0 0 64 64" className="h-full w-full" focusable="false">
+        <rect width="64" height="64" fill={dark ? "rgba(255,255,255,0.15)" : BRAND_MARK_COLOR} />
+        <g dangerouslySetInnerHTML={{ __html: dark ? GLYPH_DARK : GLYPH_LIGHT }} />
+      </svg>
     </span>
   );
 }

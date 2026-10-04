@@ -85,7 +85,7 @@ describe("processLinesScheduleAlert", () => {
       })
     ).toBe(PROCUREMENT_PROCESS_LINES_COPY.scheduleAlert);
   });
-  it("cykl częściowe — mocniejsze ostrzeżenie", () => {
+  it("cykl częściowe - mocniejsze ostrzeżenie", () => {
     const text = processLinesScheduleAlert({
       action: "GLOWNE",
       supplierOrderOnDemand: false,

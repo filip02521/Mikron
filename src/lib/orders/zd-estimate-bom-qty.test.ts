@@ -7,7 +7,7 @@ import {
 } from "./zd-estimate-bom-qty";
 
 describe("zd-estimate-bom-qty", () => {
-  it("normalize — puste / ujemne → 1, 2× płyn → 2", () => {
+  it("normalize - puste / ujemne → 1, 2× płyn → 2", () => {
     expect(normalizeZdBomComponentQty("")).toBe(1);
     expect(normalizeZdBomComponentQty("  ")).toBe(1);
     expect(normalizeZdBomComponentQty(0)).toBe(1);
@@ -17,7 +17,7 @@ describe("zd-estimate-bom-qty", () => {
     expect(normalizeZdBomComponentQty(999_999)).toBe(100_000);
   });
 
-  it("parseOrNull — ścisła walidacja jak w upsert", () => {
+  it("parseOrNull - ścisła walidacja jak w upsert", () => {
     expect(parseZdBomComponentQtyOrNull(2)).toBe(2);
     expect(parseZdBomComponentQtyOrNull(0)).toBeNull();
     expect(parseZdBomComponentQtyOrNull("x")).toBeNull();
@@ -29,7 +29,7 @@ describe("zd-estimate-bom-qty", () => {
     expect(formatZdBomComponentQtyLabel(2)).toBe("2 szt.");
   });
 
-  it("buildZdBomSeedQtyMap — domyślnie 1, zachowuje poprawne previous", () => {
+  it("buildZdBomSeedQtyMap - domyślnie 1, zachowuje poprawne previous", () => {
     expect(buildZdBomSeedQtyMap([10, 20])).toEqual({ 10: "1", 20: "1" });
     expect(
       buildZdBomSeedQtyMap([10, 20], { 10: "2", 20: "", 30: "9" })

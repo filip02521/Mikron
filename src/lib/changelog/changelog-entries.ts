@@ -30,7 +30,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     highlight: true,
     title: "Kalendarz urlopów dla całego działu",
     description:
-      "Zastąpiliśmy prostą listę urlopów pełnym kalendarzem — taki sam jak mają handlowcy. Widzisz w nim urlopy wszystkich członków zespołu w widoku miesięcznym, możesz dodawać własne urlopy i usuwać je bezpośrednio z kalendarza. Cały zespół widzi urlopy na wzajem, co ułatwia planowanie.",
+      "Zastąpiliśmy prostą listę urlopów pełnym kalendarzem - taki sam jak mają handlowcy. Widzisz w nim urlopy wszystkich członków zespołu w widoku miesięcznym, możesz dodawać własne urlopy i usuwać je bezpośrednio z kalendarza. Cały zespół widzi urlopy na wzajem, co ułatwia planowanie.",
     link: { href: "/urlopy", label: "Przejdź do kalendarza urlopów" },
   },
   {
@@ -63,7 +63,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     minor: true,
     title: "Nowoczesne okno szczegółów urlopu",
     description:
-      "Po kliknięciu urlopu w kalendarzu pojawia się przebudowane okno z czytelnymi datami (np. „15 lip 2025 – 28 lip 2025”), liczbą dni, pełną nazwą kategorii i notatką w osobnym bloku. Spójne dla kalendarzy działu i handlowców.",
+      "Po kliknięciu urlopu w kalendarzu pojawia się przebudowane okno z czytelnymi datami (np. „15 lip 2025 - 28 lip 2025”), liczbą dni, pełną nazwą kategorii i notatką w osobnym bloku. Spójne dla kalendarzy działu i handlowców.",
   },
 
   // ═══ WAŻNE ZMIANY (highlight) ═══
@@ -100,7 +100,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     highlight: true,
     title: "Nowy obszar magazynu",
     description:
-      "Dodaliśmy dedykowany obszar dla magazynu z własną nawigacją i widokami dostosowanymi do pracy magazyniera — przyjmowanie dostaw i stan magazynu.",
+      "Dodaliśmy dedykowany obszar dla magazynu z własną nawigacją i widokami dostosowanymi do pracy magazyniera - przyjmowanie dostaw i stan magazynu.",
   },
   {
     id: "2026-07-09-sales-vacations",
@@ -111,7 +111,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     highlight: true,
     title: "Urlopy i zastępstwa handlowców",
     description:
-      "Handlowcy mogą teraz samodzielnie ustalać swoje okresy urlopów w Ustawieniach, a kierownicy zarządzają urlopami całego zespołu przez kalendarz w sekcji Zespół. Podczas urlopu system automatycznie wskazuje wyznaczonego zastępcę — zastępca widzi panel nieobecnego handlowca przez przełącznik na górze strony „Moje” i może potwierdzać odbiory oraz zamykać sprawy ZK. Edycja i anulowanie zamówień pozostają zablokowane dla zastępcy.",
+      "Handlowcy mogą teraz samodzielnie ustalać swoje okresy urlopów w Ustawieniach, a kierownicy zarządzają urlopami całego zespołu przez kalendarz w sekcji Zespół. Podczas urlopu system automatycznie wskazuje wyznaczonego zastępcę - zastępca widzi panel nieobecnego handlowca przez przełącznik na górze strony „Moje” i może potwierdzać odbiory oraz zamykać sprawy ZK. Edycja i anulowanie zamówień pozostają zablokowane dla zastępcy.",
     link: { href: "/ustawienia", label: "Przejdź do Ustawień" },
   },
   {
@@ -123,7 +123,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     highlight: true,
     title: "Globalny dzwonek z pilnymi sprawami",
     description:
-      "Na górze ekranu pojawił się dzwonek, który pokazuje liczbę pilnych spraw. Po kliknięciu otwiera się panel z listą oczekujących powiadomień — nie musisz już sprawdzać każdej zakładki osobno.",
+      "Na górze ekranu pojawił się dzwonek, który pokazuje liczbę pilnych spraw. Po kliknięciu otwiera się panel z listą oczekujących powiadomień - nie musisz już sprawdzać każdej zakładki osobno.",
   },
   {
     id: "2026-07-09-unified-toasts",
@@ -167,7 +167,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     audience: "sales",
     title: "Pasek postępu prośby na „Moje”",
     description:
-      "Przy każdej prośbie na „Moje” pokazuje się teraz pasek postępu — ile linii jest zamówionych, ile dostarczonych i ile jeszcze czeka. Na pierwszy rzut oka widać, jak daleko jest realizacja.",
+      "Przy każdej prośbie na „Moje” pokazuje się teraz pasek postępu - ile linii jest zamówionych, ile dostarczonych i ile jeszcze czeka. Na pierwszy rzut oka widać, jak daleko jest realizacja.",
   },
   {
     id: "2026-07-09-warehouse-carriers",
@@ -187,7 +187,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     audience: "operations",
     title: "Sekcja stanu magazynu",
     description:
-      "W kolejce przyjmowania dodaliśmy sekcję pokazującą aktualny stan magazynu dla poszczególnych produktów — bez konieczności przechodzenia do osobnej strony.",
+      "W kolejce przyjmowania dodaliśmy sekcję pokazującą aktualny stan magazynu dla poszczególnych produktów - bez konieczności przechodzenia do osobnej strony.",
   },
   {
     id: "2026-07-09-receive-queue-selection-bar",
@@ -197,7 +197,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     audience: "operations",
     title: "Pasek zaznaczania w kolejce przyjmowania",
     description:
-      "W kolejce przyjmowania towaru dodaliśmy pasek akcji zbiorczych — możesz zaznaczyć wiele linii i jednocześnie potwierdzić ich przyjęcie, zamiast robić to linia po linii.",
+      "W kolejce przyjmowania towaru dodaliśmy pasek akcji zbiorczych - możesz zaznaczyć wiele linii i jednocześnie potwierdzić ich przyjęcie, zamiast robić to linia po linii.",
   },
   {
     id: "2026-07-09-teeth-ocr",
@@ -247,7 +247,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     audience: "teeth",
     title: "Weryfikacja zębów w jednej linii",
     description:
-      "Dodaliśmy widok weryfikacji, w którym możesz dodawać i sprawdzać pozycje zębowe bezpośrednio w tabeli — bez otwierania osobnych okien.",
+      "Dodaliśmy widok weryfikacji, w którym możesz dodawać i sprawdzać pozycje zębowe bezpośrednio w tabeli - bez otwierania osobnych okien.",
     link: { href: "/zeby/weryfikacja", label: "Przejdź do weryfikacji" },
   },
   {
@@ -269,7 +269,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     audience: "teeth",
     title: "Status magazynu zębów",
     description:
-      "Nowa strona pokazuje aktualny stan zębów w magazynie — ile sztuk jest dostępnych i które linie wymagają uzupełnienia.",
+      "Nowa strona pokazuje aktualny stan zębów w magazynie - ile sztuk jest dostępnych i które linie wymagają uzupełnienia.",
     link: { href: "/zeby/status-magazynu", label: "Przejdź do statusu magazynu" },
   },
   {
@@ -301,7 +301,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     audience: "sales",
     title: "Szczegóły zamówienia zęba dla handlowca",
     description:
-      "Handlowcy mogą teraz kliknąć zamówienie zęba na liście, aby zobaczyć jego szczegóły w oknie — bez przechodzenia do panelu zębów. Okno pokazuje kolor, wzór, rozmiar, szczękę, typ oraz status każdej pozycji zębowej.",
+      "Handlowcy mogą teraz kliknąć zamówienie zęba na liście, aby zobaczyć jego szczegóły w oknie - bez przechodzenia do panelu zębów. Okno pokazuje kolor, wzór, rozmiar, szczękę, typ oraz status każdej pozycji zębowej.",
   },
   {
     id: "2026-07-09-moje-teeth-pickup-icons",
@@ -343,7 +343,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     highlight: true,
     title: "Odświeżony wygląd stron „Moje”",
     description:
-      "Zmodernizowaliśmy wygląd kart zamówień i próśb na stronach „Moje” — ujednolicone style odznak (zaokrąglenia, kolory, obrysy), ikony na przyciskach potwierdzenia odbioru (ikona zęba dla zamówień zębowych, ikona paczki dla towaru z regału), spójne metadane dostaw oraz czytelniejsze puste stany z ikonami. Karty mają teraz delikatne cienie, zaokrąglone rogi i efekty najechania.",
+      "Zmodernizowaliśmy wygląd kart zamówień i próśb na stronach „Moje” - ujednolicone style odznak (zaokrąglenia, kolory, obrysy), ikony na przyciskach potwierdzenia odbioru (ikona zęba dla zamówień zębowych, ikona paczki dla towaru z regału), spójne metadane dostaw oraz czytelniejsze puste stany z ikonami. Karty mają teraz delikatne cienie, zaokrąglone rogi i efekty najechania.",
     link: { href: "/moje", label: "Przejdź do Moje" },
   },
   {
@@ -354,7 +354,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     audience: "sales",
     title: "Czytelniejsze strony „Moje”",
     description:
-      "Przebudowaliśmy układ stron „Moje zamówienia” i „Moje prośby” — są teraz bardziej kompaktowe, z możliwością rozwijania i zwijania sekcji oraz płynną animacją.",
+      "Przebudowaliśmy układ stron „Moje zamówienia” i „Moje prośby” - są teraz bardziej kompaktowe, z możliwością rozwijania i zwijania sekcji oraz płynną animacją.",
     link: { href: "/moje", label: "Przejdź do Moje" },
   },
   {
@@ -410,7 +410,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     minor: true,
     title: "Strona pomocy panelu zębów",
     description:
-      "Dodaliśmy stronę z wyjaśnieniem, jak działa panel zębów — od tworzenia zamówienia po przyjmowanie dostawy.",
+      "Dodaliśmy stronę z wyjaśnieniem, jak działa panel zębów - od tworzenia zamówienia po przyjmowanie dostawy.",
     link: { href: "/zeby/pomoc", label: "Przejdź do pomocy" },
   },
   {
@@ -422,7 +422,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     minor: true,
     title: "Lepsze filtry na tablicy",
     description:
-      "Ulepszyliśmy filtry na tablicy — można teraz szybciej zawężać widok po statusie i typie zamówienia. Dodaliśmy też czytelniejsze chipy filtrów dostawców.",
+      "Ulepszyliśmy filtry na tablicy - można teraz szybciej zawężać widok po statusie i typie zamówienia. Dodaliśmy też czytelniejsze chipy filtrów dostawców.",
   },
   {
     id: "2026-07-09-panel-hidden-suppliers",
@@ -444,7 +444,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     minor: true,
     title: "Odświeżony wygląd sekcji „ZK czekające”",
     description:
-      "Zmodernizowaliśmy karty obserwowanych ZK w notatniku — ujednolicone odznaki, ikony na przyciskach akcji prośby, nowoczesne nagłówki grup miesięcznych i czytelniejsze puste stany z ikoną wyszukiwania. Podgląd zębów w ZK oraz modal zamykania sprawy otrzymały spójne style odznak.",
+      "Zmodernizowaliśmy karty obserwowanych ZK w notatniku - ujednolicone odznaki, ikony na przyciskach akcji prośby, nowoczesne nagłówki grup miesięcznych i czytelniejsze puste stany z ikoną wyszukiwania. Podgląd zębów w ZK oraz modal zamykania sprawy otrzymały spójne style odznak.",
   },
   {
     id: "2026-07-09-notatnik-zk-watch-teeth",
@@ -477,7 +477,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     minor: true,
     title: "Sortowanie kolumn w Terminach zamówień",
     description:
-      "Przywróciliśmy możliwość sortowania po kolumnach w tabeli Terminy zamówień — można ponownie sortować po dacie, statusie i innych polach.",
+      "Przywróciliśmy możliwość sortowania po kolumnach w tabeli Terminy zamówień - można ponownie sortować po dacie, statusie i innych polach.",
   },
   {
     id: "2026-07-09-delivery-email-undo",
@@ -488,7 +488,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     minor: true,
     title: "Cofanie e-maili dostawy",
     description:
-      "Naprawiliśmy problem z cofaniem wysłanych e-maili o dostawie — operacja działa teraz stabilnie i nie zostawia wiszących wiadomości.",
+      "Naprawiliśmy problem z cofaniem wysłanych e-maili o dostawie - operacja działa teraz stabilnie i nie zostawia wiszących wiadomości.",
   },
   {
     id: "2026-07-09-ivostar-recognition",
@@ -521,7 +521,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     minor: true,
     title: "Wyświetlanie linku do Subiekta przy zębach",
     description:
-      "Naprawiliśmy problem z wyświetlaniem linku do produktu w Subiekcie przy zamówieniach zawierających zęby — link pojawia się teraz poprawnie.",
+      "Naprawiliśmy problem z wyświetlaniem linku do produktu w Subiekcie przy zamówieniach zawierających zęby - link pojawia się teraz poprawnie.",
   },
   {
     id: "2026-07-09-sales-cancel-disposition",
@@ -532,7 +532,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     minor: true,
     title: "Formularz dyspozycji anulowania na panelu dziennym",
     description:
-      "Dodaliśmy formularz dyspozycji anulowania zamówienia bezpośrednio na panelu dziennym handlowca — nie trzeba przechodzić do osobnej strony.",
+      "Dodaliśmy formularz dyspozycji anulowania zamówienia bezpośrednio na panelu dziennym handlowca - nie trzeba przechodzić do osobnej strony.",
   },
   {
     id: "2026-07-09-quick-order-modal",
@@ -543,7 +543,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     minor: true,
     title: "Ulepszony modal szybkiego zamówienia",
     description:
-      "Ulepszyliśmy okno szybkiego zamówienia na panelu dziennym — czytelniejszy układ i szybsze wprowadzanie danych.",
+      "Ulepszyliśmy okno szybkiego zamówienia na panelu dziennym - czytelniejszy układ i szybsze wprowadzanie danych.",
   },
   {
     id: "2026-07-09-notatnik-rich-editor",
@@ -554,7 +554,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     minor: true,
     title: "Bogatszy edytor notatek",
     description:
-      "Ulepszyliśmy edytor notatek w notatniku handlowca — dodaliśmy pasek narzędzi formatowania i lepsze wyświetlanie treści.",
+      "Ulepszyliśmy edytor notatek w notatniku handlowca - dodaliśmy pasek narzędzi formatowania i lepsze wyświetlanie treści.",
   },
   {
     id: "2026-07-09-operations-notepad",
@@ -565,7 +565,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     minor: true,
     title: "Ulepszenia notatnika operacyjnego",
     description:
-      "Ulepszyliśmy notatnik dla działu operacji — czytelniejszy układ i lepsze zarządzanie sekcjami notatek.",
+      "Ulepszyliśmy notatnik dla działu operacji - czytelniejszy układ i lepsze zarządzanie sekcjami notatek.",
   },
   {
     id: "2026-07-09-apple-icon",
@@ -598,7 +598,7 @@ export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
     minor: true,
     title: "Ulepszona strona błędu",
     description:
-      "Ulepszyliśmy stronę błędu — pokazuje teraz czytelny komunikat zamiast białego ekranu, gdy coś pójdzie nie tak.",
+      "Ulepszyliśmy stronę błędu - pokazuje teraz czytelny komunikat zamiast białego ekranu, gdy coś pójdzie nie tak.",
   },
 ];
 

@@ -24,6 +24,7 @@ import {
   type PlannedOrderDateDisplay,
 } from "@/lib/orders/planned-order-date-label";
 import type { SupplierSummaryMeta, WeekDayPlan } from "@/lib/orders/summary-workspace";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export type ProcurementHeadlineTone = MyOrderHeadlineTone;
 
@@ -55,7 +56,7 @@ export type DailyInboxSummary = {
   hiddenScheduleCount: number;
 };
 
-/** Licznik menu: pozycje w kolejce Dziś (zaległe + harmonogram na dziś + grupy prośb + sygnały stanu + rezygnacje). */
+/** Licznik menu: pozycje w kolejce Dziś (zaległe + harmonogram na dziś + grupy próśb + sygnały stanu + rezygnacje). */
 export function countDailyPanelNavBadge(workspace: SummaryWorkspaceData): number {
   const s = summarizeDailyInbox(workspace);
   return (
@@ -142,11 +143,11 @@ export function formatUrgentVacationHint(item: SummaryStandardItem): string | nu
   const dateLabel = formatDateString(item.nextDate, "dd.MM");
   switch (item.vacationNote) {
     case "PRZESUNIETE_PO":
-      return `Termin na liście (${dateLabel}) jest po urlopie dostawcy — kolejne zamówienie wypada już po przerwie.`;
+      return `Termin na liście (${dateLabel}) jest po urlopie dostawcy - kolejne zamówienie wypada już po przerwie.`;
     case "PRZYSPIESZONE_PRZED":
-      return `Zamówienie na ${dateLabel} jest przed urlopem — wcześniejszy termin niż zwykle.`;
+      return `Zamówienie na ${dateLabel} jest przed urlopem - wcześniejszy termin niż zwykle.`;
     case "OSTATNIE_ZAMOWIENIE":
-      return `Ostatnie zamówienie przed urlopem (plan: ${dateLabel}) — potem dostawca ma przerwę w harmonogramie.`;
+      return `Ostatnie zamówienie przed urlopem (plan: ${dateLabel}) - potem dostawca ma przerwę w harmonogramie.`;
     default:
       return vacationNoteLabel(item.vacationNote);
   }
@@ -201,11 +202,16 @@ export function enrichUrgentItem(
 
 export function enrichStockOutSignalGroup(
   group: SummaryForSomeoneEnriched,
-  at: Date = todayInWarsaw()
+  at: Date = todayInWarsaw(),
+  options?: {
+    supplierMeta?: Pick<SupplierSummaryMeta, "computed_next_date" | "order_on_demand"> | null;
+    todayDateKey?: string;
+    weekDays?: WeekDayPlan[];
+  }
 ): ProcurementRequestUi {
   const count = group.lines.length;
   const countLabel =
-    count === 1 ? "1 pozycja" : count < 5 ? `${count} pozycje` : `${count} pozycji`;
+    `${count} ${polishPluralWord(count, "pozycja", "pozycje", "pozycji")}`;
   const submittedLabel = formatProcurementGroupSubmittedLabel(
     group.submittedAt,
     group.submittedAtLatest,
@@ -226,7 +232,12 @@ export function enrichStockOutSignalGroup(
     submittedTitle: `Zgłoszono ${submittedLabel}`,
     isUnseen: group.hasUnseen,
     unseenCount: group.unseenCount,
-    plannedOrderDate: null,
+    // Jak w prośbach: kiedy i tak zamawiamy u tego dostawcy (decyzja: dorzucić czy zamówić osobno).
+    plannedOrderDate: plannedOrderDateForSupplier(options?.supplierMeta, {
+      todayDateKey: options?.todayDateKey,
+      weekDays: options?.weekDays,
+      supplierId: group.supplierId,
+    }),
   };
 }
 
@@ -259,7 +270,7 @@ export function enrichForSomeoneGroup(
 ): ProcurementRequestUi {
   const count = group.lines.length;
   const countLabel =
-    count === 1 ? "1 produkt" : count < 5 ? `${count} produkty` : `${count} produktów`;
+    `${count} ${polishPluralWord(count, "produkt", "produkty", "produktów")}`;
   const infoViaPanel = group.lines.some((l) => l.informacjaViaPanel);
   const submittedLabel = formatProcurementGroupSubmittedLabel(
     group.submittedAt,
@@ -293,7 +304,7 @@ export function enrichInformacjaGroup(
 ): ProcurementRequestUi {
   const count = group.lines.length;
   const countLabel =
-    count === 1 ? "1 produkt" : count < 5 ? `${count} produkty` : `${count} produktów`;
+    `${count} ${polishPluralWord(count, "produkt", "produkty", "produktów")}`;
 
   return {
     headline: "Tylko informacja o dostępności",

@@ -66,7 +66,7 @@ export function DelegateSwitcher({
         description={
           <span>
             <span className="font-medium text-slate-700">Przełącz na innego handlowca</span>
-            <span className="mt-0.5 block">Masz kilka aktywnych zastępstw — wybierz, czyj {SURFACE_LABEL[surface]} chcesz otworzyć.</span>
+            <span className="mt-0.5 block">Masz kilka aktywnych zastępstw - wybierz, czyj {SURFACE_LABEL[surface]} chcesz otworzyć.</span>
           </span>
         }
         action={

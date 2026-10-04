@@ -44,7 +44,7 @@ export function MojeZdEtaDevRefreshButton({ className }: { className?: string })
         return;
       }
       if (body.skipped && body.reason === "lock_held") {
-        setLastResult("Sync już trwa — spróbuj za chwilę");
+        setLastResult("Sync już trwa - spróbuj za chwilę");
         return;
       }
       setLastResult(

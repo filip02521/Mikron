@@ -43,7 +43,7 @@ export async function actionBootstrapAdmin(form: {
   if (!rate.ok) {
     return {
       error: rate.unavailable
-        ? "Limit prób konfiguracji jest chwilowo niedostępny — spróbuj za chwilę."
+        ? "Limit prób konfiguracji jest chwilowo niedostępny - spróbuj za chwilę."
         : `Zbyt wiele prób konfiguracji. Spróbuj za ${rate.retryAfterSec} s.`,
     };
   }
@@ -55,7 +55,7 @@ export async function actionBootstrapAdmin(form: {
 
   const locked = await tryAcquireLock(BOOTSTRAP_LOCK_KEY, 120, "setup");
   if (!locked) {
-    return { error: "Konfiguracja jest już w toku — odśwież stronę za chwilę." };
+    return { error: "Konfiguracja jest już w toku - odśwież stronę za chwilę." };
   }
 
   try {

@@ -99,7 +99,7 @@ export function classifyDeliveryUrgency(
       urgency: "this_week",
       expectedDate: target,
       shortLabel: "Ten tydzień",
-      detailLabel: `Za ${diff} dni — w tym tygodniu`,
+      detailLabel: `Za ${diff} dni - w tym tygodniu`,
     };
   }
   return {
@@ -175,11 +175,11 @@ export function sortOrderedProgressByDelivery(
 /** Lewy akcent wiersza — częściowa dostawa z towarem na magazynie. */
 export function resolveMyOrderPartialStockRowVisual(
   row: MyOrderRow
-): { borderAccent: string; collapsedBg: string } | null {
+): { borderAccent: string; collapsedBg: string | null } | null {
   if (!isMyOrderPartialStockRow(row)) return null;
   return {
     borderAccent: "border-l-sky-500",
-    collapsedBg: "bg-sky-50/35",
+    collapsedBg: null,
   };
 }
 
@@ -191,7 +191,7 @@ export function deliveryUrgencyRowVisual(
     case "overdue":
       return {
         borderAccent: "border-l-amber-500",
-        collapsedBg: "bg-amber-50/35",
+        collapsedBg: null,
       };
     case "today":
       return {

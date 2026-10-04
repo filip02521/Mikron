@@ -1,16 +1,11 @@
+import { readFileSync } from "fs";
+import { join } from "path";
 import { describe, expect, it } from "vitest";
-import { buildBrandAppIconSvg, brandAppIconDataUri } from "./brand-app-icon-svg";
+import { buildBrandAppIconSvg } from "@/lib/ui/brand-app-icon-svg";
 
-describe("brand-app-icon-svg", () => {
-  it("zawiera monogram OT i gradient marki", () => {
-    const svg = buildBrandAppIconSvg();
-    expect(svg).toContain(">OT<");
-    expect(svg).toContain("#0f7380");
-    expect(svg).toContain("#0284c7");
-    expect(svg).toContain('viewBox="0 0 32 32"');
-  });
-
-  it("data URI jest poprawnie zakodowany", () => {
-    expect(brandAppIconDataUri()).toMatch(/^data:image\/svg\+xml;charset=utf-8,/);
+describe("ikona OnTime", () => {
+  it("app/icon.svg jest wygenerowana z tego samego źródła co znak w aplikacji", () => {
+    const file = readFileSync(join(process.cwd(), "src/app/icon.svg"), "utf8");
+    expect(file).toBe(buildBrandAppIconSvg());
   });
 });

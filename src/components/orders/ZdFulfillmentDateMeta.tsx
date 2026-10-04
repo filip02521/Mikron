@@ -125,7 +125,7 @@ export function ZdFulfillmentDateMeta({
     pendingConfirmation ? ZD_FULFILLMENT_PLACEHOLDER_TITLE : null,
     zdFulfillmentSlotsTooltip(slots),
     withoutZdCount
-      ? `${myOrderPositionCountLabel(withoutZdCount)} bez terminu w ZD — szczegóły po rozwinięciu`
+      ? `${myOrderPositionCountLabel(withoutZdCount)} bez terminu w ZD - szczegóły po rozwinięciu`
       : null,
     syncedLabel ? `Ostatnia synchronizacja: ${syncedLabel}` : null,
     deadlineChange ? `${deadlineChange.title}: ${deadlineChange.detail}` : null,

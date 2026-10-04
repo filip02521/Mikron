@@ -137,7 +137,7 @@ export function SupplierQuickActionsMenu({
               {DAILY_PANEL_MARK_ORDERED_LABEL}
             </MenuItem>
             <div className="border-t border-slate-100 px-3 py-2">
-              <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+              <p className="mb-1 text-[10px] font-semibold text-slate-400">
                 Przesuń termin
               </p>
               <ShiftMenu
@@ -219,7 +219,7 @@ export function SupplierQuickActionsMenu({
         }}
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label={`Więcej akcji — ${supplierName}`}
+        aria-label={`Więcej akcji - ${supplierName}`}
         className={cn(
           grouped &&
             !compact &&

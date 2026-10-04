@@ -35,7 +35,6 @@ import { cleanUuid, loadClearanceView, upsertCard } from "@/lib/customs/customs-
 import { CUSTOMS_AI_MIME, customsAiInlineData, customsFileMime } from "@/lib/customs/customs-ai-input";
 import { cnDescription, cnLeaves } from "@/lib/customs/cn-nomenclature";
 import {
-  isLegacyXls,
   isSpreadsheetFile,
   parseArticleCodesSheet,
   parseInvoiceWorkbook,
@@ -49,8 +48,6 @@ const AI_MIME = CUSTOMS_AI_MIME;
 const MAX_AI_FILE_SIZE = 14 * 1024 * 1024;
 const MAX_PROPOSAL_LINES = 80;
 const MAX_SHEET_FILE_SIZE = 20 * 1024 * 1024;
-const LEGACY_XLS_MESSAGE =
-  "Stary format .xls nie jest obsługiwany — otwórz plik w Excelu i zapisz jako .xlsx (albo CSV).";
 
 function emptyInvoice(lines: InvoiceExtraction["lines"]): InvoiceExtraction {
   return { invoiceNumber: "", invoiceDate: null, currency: null, total: null, hsCode: null, countryOfOrigin: null, lines };
@@ -79,7 +76,7 @@ export type ReadInvoiceFileResult = Result<{
 
 /**
  * Odczyt faktury / packing listy do formularza nowej odprawy:
- * - Excel (.xlsx) i CSV — kolumny rozpoznane po nagłówkach (PL/EN/DE), bez AI;
+ * - Excel (.xlsx / .xls) i CSV — kolumny rozpoznane po nagłówkach (PL/EN/DE), bez AI;
  *   gdy układ jest nietypowy, a AI jest włączone — AI czyta arkusz jako tekst,
  * - PDF i skany — AI (Gemini).
  */
@@ -88,7 +85,6 @@ export async function actionReadInvoiceFile(formData: FormData): Promise<ReadInv
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return fail("Wybierz plik faktury.");
   const mime = file.type || "application/octet-stream";
-  if (isLegacyXls(file.name, mime)) return fail(LEGACY_XLS_MESSAGE);
 
   if (isSpreadsheetFile(file.name, mime)) {
     if (file.size > MAX_SHEET_FILE_SIZE) return fail("Plik przekracza 20 MB.");
@@ -97,16 +93,16 @@ export async function actionReadInvoiceFile(formData: FormData): Promise<ReadInv
       sheets = await readSpreadsheetSheets(Buffer.from(await file.arrayBuffer()), file.name);
     } catch (e) {
       console.error("[customs] sheet read:", e instanceof Error ? e.message : e);
-      return fail("Nie udało się otworzyć arkusza — sprawdź, czy plik nie jest uszkodzony lub zabezpieczony hasłem.");
+      return fail("Nie udało się otworzyć arkusza - sprawdź, czy plik nie jest uszkodzony lub zabezpieczony hasłem.");
     }
     const parsed = parseInvoiceWorkbook(sheets);
     if (parsed && parsed.lines.length) {
       const h = parsed.headers;
       const note = [
-        `Kolumny: kod „${h.code ?? "— (z nazwy)"}”`,
-        `nazwa „${h.name ?? "—"}”`,
+        `Kolumny: kod „${h.code ?? "- (z nazwy)"}”`,
+        `nazwa „${h.name ?? "-"}”`,
         `ilość „${h.qty}”`,
-        `cena „${h.price ?? "—"}”`,
+        `cena „${h.price ?? "-"}”`,
       ].join(", ");
       const skipped = parsed.skipped ? ` Pominięto ${parsed.skipped} wierszy bez ilości.` : "";
       return {
@@ -125,13 +121,13 @@ export async function actionReadInvoiceFile(formData: FormData): Promise<ReadInv
     }
     try {
       const invoice = await invoiceFromSheetWithAi(sheets);
-      if (!invoice.lines.length) return fail("Nie znaleziono pozycji w arkuszu — wklej je ręcznie.");
+      if (!invoice.lines.length) return fail("Nie znaleziono pozycji w arkuszu - wklej je ręcznie.");
       return {
         ok: true,
         method: "sheet_ai",
         invoice,
         pasteText: invoiceLinesToPasteText(invoice.lines),
-        note: "Nietypowy układ arkusza — pozycje odczytało AI.",
+        note: "Nietypowy układ arkusza - pozycje odczytało AI.",
         warnings: invoiceReadWarnings(invoice),
       };
     } catch (e) {
@@ -141,7 +137,7 @@ export async function actionReadInvoiceFile(formData: FormData): Promise<ReadInv
   }
 
   if (!AI_MIME.has(customsFileMime(file.name, mime))) {
-    return fail("Obsługiwane pliki: Excel (.xlsx), CSV, PDF i zdjęcia (JPG, PNG, TIF).");
+    return fail("Obsługiwane pliki: Excel (.xlsx, .xls), CSV, PDF i zdjęcia (JPG, PNG, TIF).");
   }
   if (!isCustomsAiConfigured()) {
     return fail("Odczyt PDF / skanów wymaga AI (GOOGLE_AI_API_KEY). Wgraj Excel / CSV albo wklej pozycje.");
@@ -178,7 +174,7 @@ export async function actionExtractInvoiceWithAi(
       INVOICE_EXTRACTION_SCHEMA
     );
     const invoice = parseInvoiceExtraction(raw);
-    if (!invoice.lines.length) return fail("AI nie znalazło pozycji na fakturze — wklej je ręcznie.");
+    if (!invoice.lines.length) return fail("AI nie znalazło pozycji na fakturze - wklej je ręcznie.");
     return { ok: true, invoice, pasteText: invoiceLinesToPasteText(invoice.lines) };
   } catch (e) {
     console.error("[customs-ai] invoice:", e instanceof Error ? e.message : e);
@@ -201,7 +197,6 @@ export async function actionExtractDocumentArticlesWithAi(
     .maybeSingle();
   if (!doc) return fail("Dokument nie istnieje.");
   const row = doc as { storage_path: string; mime_type: string; byte_size: number | null; file_name: string };
-  if (isLegacyXls(row.file_name, row.mime_type)) return fail(LEGACY_XLS_MESSAGE);
   if (isSpreadsheetFile(row.file_name, row.mime_type)) {
     try {
       const sheets = await readSpreadsheetSheets(await readStorageObject(row.storage_path), row.file_name);
@@ -213,7 +208,7 @@ export async function actionExtractDocumentArticlesWithAi(
       return fail("Nie udało się otworzyć arkusza dokumentu.");
     }
   }
-  if (!AI_MIME.has(row.mime_type)) return fail("Kody czytam z Excela / CSV, a przez AI — z PDF i zdjęć.");
+  if (!AI_MIME.has(row.mime_type)) return fail("Kody czytam z Excela / CSV, a przez AI - z PDF i zdjęć.");
   if (!isCustomsAiConfigured()) return fail("Odczyt PDF / zdjęć wymaga AI (GOOGLE_AI_API_KEY).");
   if ((row.byte_size ?? 0) > MAX_AI_FILE_SIZE) return fail("Plik za duży dla AI (maks. 14 MB).");
   try {
@@ -283,7 +278,7 @@ async function verifyCnCodes(
       ...p,
       cnCode,
       cnCertain: Boolean(cnCode) && p.cnCertain !== false && (v ? v.cnCertain : true),
-      cnReason: v?.cnReason || p.cnReason || (cnCode ? undefined : "Brak pasującego kodu w CN — uzupełnij ręcznie."),
+      cnReason: v?.cnReason || p.cnReason || (cnCode ? undefined : "Brak pasującego kodu w CN - uzupełnij ręcznie."),
     };
   });
 }
@@ -315,7 +310,7 @@ export async function actionProposeCustomsLinesWithAi(
     .filter((l, i, all) => all.findIndex((o) => o.supplierArticleCode === l.supplierArticleCode) === i);
   const remaining = Math.max(0, targets.length - MAX_PROPOSAL_LINES);
   targets.splice(MAX_PROPOSAL_LINES);
-  if (!targets.length) return fail("Wszystkie pozycje mają już opis i kod CN — nic do zaproponowania.");
+  if (!targets.length) return fail("Wszystkie pozycje mają już opis i kod CN - nic do zaproponowania.");
 
   const { data: confirmed } = await supabase
     .from("customs_product_cards")
@@ -361,6 +356,7 @@ export async function actionProposeCustomsLinesWithAi(
     supplierName: t.supplierName,
     documentDescription: docDescription.get(t.supplierArticleCode),
     invoiceHsCode: t.invoiceHsCode,
+    invoiceGroup: t.invoiceGroup,
     knownDescriptionPl: t.card && t.card.source !== "ai" ? t.card.descriptionPl || undefined : undefined,
   }));
 
@@ -411,9 +407,11 @@ export async function actionProposeCustomsLinesWithAi(
         description_pl: kept?.descriptionPl || p.descriptionPl,
         material: kept?.material || p.material,
         cn_code: p.cnCode,
-        is_medical_device: line.vat.isMedicalDevice,
-        vat_rate: line.vat.rate,
-        vat_basis_document_id: line.vat.basisDocument?.id ?? null,
+        // Karta człowieka zachowuje swoją stawkę (albo jej brak) — nie utrwalamy stawki wyliczonej
+        // z dokumentów, bo „copied” / „manual” wygrywa potem z deklaracją dostawcy.
+        is_medical_device: kept ? kept.isMedicalDevice : line.vat.isMedicalDevice,
+        vat_rate: kept ? kept.vatRate : line.vat.rate,
+        vat_basis_document_id: kept ? kept.vatBasisDocumentId : (line.vat.basisDocument?.id ?? null),
       },
     });
     if ("error" in saved) return fail(saved.error);

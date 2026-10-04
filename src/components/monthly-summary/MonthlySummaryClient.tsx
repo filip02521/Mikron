@@ -10,7 +10,6 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui/Card";
-import { Alert } from "@/components/ui/Alert";
 import {
   controlFocusClass,
   buttonPrimaryClass,
@@ -90,7 +89,7 @@ const TAB_META: Record<
   },
   zeby: {
     label: "Zęby",
-    hint: "Tor zębów — prośby i dostawcy",
+    hint: "Tor zębów - prośby i dostawcy",
     icon: "M12 3c2.5 2 4 4.5 4 7.5S14 17 12 21c-2-4-4-7-4-10.5S9.5 5 12 3z",
     accent: "text-violet-600",
     accentSoft: "bg-violet-50",
@@ -107,10 +106,10 @@ const SORT_OPTIONS: { value: SalesRankingSort; label: string }[] = [
 ];
 
 const MOTIVATIONAL_QUOTES = [
-  "Dobra organizacja to połowa sukcesu — a statystyki to jej zwierciadło.",
+  "Dobra organizacja to połowa sukcesu - a statystyki to jej zwierciadło.",
   "Każde zamówienie to historia zaufania. Liczby mówią, jak dobrze ją opowiadamy.",
   "Czas to waluta. Każdy dzień realizacji to inwestycja w relację z klientem.",
-  "Najlepszy miesiąc to nie ten bez błędów — to ten, z którego najwięcej się uczymy.",
+  "Najlepszy miesiąc to nie ten bez błędów - to ten, z którego najwięcej się uczymy.",
   "Pomiar jest początkiem wiedzy. To, co mierzymy, rośnie.",
 ];
 
@@ -145,11 +144,14 @@ function syncTabInUrl(tab: MonthlySummaryTab) {
   window.history.replaceState(window.history.state, "", `${url.pathname}${qs ? `?${qs}` : ""}`);
 }
 
+/** Jeden komunikat pustego miesiąca: co jest puste + skrót do miesiąca z danymi. */
 function EmptyMonthCta({
+  message,
   availableMonths,
   currentKey,
   onSelect,
 }: {
+  message: string;
   availableMonths: { key: string; label: string }[];
   currentKey: string;
   onSelect: (key: string) => void;
@@ -157,17 +159,18 @@ function EmptyMonthCta({
   const other =
     availableMonths.find((m) => m.key !== currentKey) ??
     availableMonths.find((m) => m.key === previousMonthKeyFromMonthKey(currentKey));
-  if (!other) return null;
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 px-3 py-2.5 ring-1 ring-inset ring-slate-200/80">
-      <p className="text-sm text-slate-600">Ten miesiąc jest pusty w tym widoku.</p>
-      <button
-        type="button"
-        onClick={() => onSelect(other.key)}
-        className={cn(buttonPrimaryClass, "rounded-lg px-3 py-1.5 text-sm font-medium", controlFocusClass)}
-      >
-        Zobacz {other.label}
-      </button>
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2.5 ring-1 ring-inset ring-slate-200/80">
+      <p className="text-sm text-slate-600">{message}</p>
+      {other ? (
+        <button
+          type="button"
+          onClick={() => onSelect(other.key)}
+          className={cn(buttonPrimaryClass, "rounded-lg px-3 py-1.5 text-sm font-medium", controlFocusClass)}
+        >
+          Zobacz {other.label}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -199,7 +202,7 @@ function MonthSelector({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
           <line x1="16" y1="2" x2="16" y2="6" />
@@ -297,7 +300,7 @@ function StickyDepartmentTabs({
 
   return (
     <div className="px-5 py-3">
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+      <p className="mb-2 text-[10px] font-semibold text-slate-400">
         Działy · {stats.monthLabel}
       </p>
       <div
@@ -322,7 +325,7 @@ function StickyDepartmentTabs({
               title={meta.hint}
               onClick={() => onChange(tab)}
               className={cn(
-                "group flex flex-col items-stretch gap-1 rounded-lg px-2.5 py-2 text-left transition-all sm:flex-row sm:items-center sm:gap-2",
+                "group flex flex-col items-stretch gap-1 rounded-lg px-2.5 py-2 text-left transition sm:flex-row sm:items-center sm:gap-2",
                 controlFocusClass,
                 isActive
                   ? cn("bg-white shadow-sm ring-2", meta.accentRing, "ring-offset-1")
@@ -408,7 +411,7 @@ function HighlightCard({
           </svg>
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600/80">{eyebrow}</p>
+          <p className="text-[11px] font-semibold text-slate-600/80">{eyebrow}</p>
           <p className="mt-0.5 truncate text-lg font-bold text-slate-900">{title}</p>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">{children}</div>
         </div>
@@ -442,7 +445,7 @@ function SalesTab({
   return (
     <div className="space-y-5">
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <p className="mb-2 text-[11px] font-semibold text-slate-500">
           Kluczowe wskaźniki
         </p>
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
@@ -488,8 +491,8 @@ function SalesTab({
 
       {!hasActivity ? (
         <>
-          <Alert tone="info">Brak aktywności handlowców w tym miesiącu (bez toru zębów).</Alert>
           <EmptyMonthCta
+            message="Brak aktywności handlowców w tym miesiącu (bez toru zębów)."
             availableMonths={stats.availableMonths}
             currentKey={stats.monthKey}
             onSelect={onMonthSelect}
@@ -501,9 +504,9 @@ function SalesTab({
         <HighlightCard
           eyebrow="Lider miesiąca"
           title={top.salesPersonName}
-          gradientClass="bg-gradient-to-br from-indigo-50 to-violet-50"
+          gradientClass="bg-white"
           ringClass="ring-indigo-200/60"
-          iconBgClass="bg-gradient-to-br from-amber-400 to-amber-600 shadow-amber-500/20"
+          iconBgClass="bg-indigo-600"
           iconPath="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"
         >
           <span>{formatZlozoneProsby(top.requestsCreated)}</span>
@@ -513,7 +516,7 @@ function SalesTab({
       ) : null}
 
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <p className="mb-2 text-[11px] font-semibold text-slate-500">
           Szczegóły
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -593,7 +596,7 @@ function SalesTab({
                       </div>
                       <ShareBar
                         sharePct={share}
-                        barClassName="bg-gradient-to-r from-indigo-400 to-violet-500"
+                        barClassName="bg-indigo-400"
                         showLabel={false}
                       />
                       <p className="mt-1 text-[11px] text-slate-500">
@@ -632,7 +635,7 @@ function SalesTab({
           <div className="hidden md:block">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-100 text-left text-[11px] uppercase tracking-wide text-slate-500">
+                <tr className="border-b border-slate-100 text-left text-[11px] text-slate-500">
                   <th className="px-4 py-2.5 font-medium">Miejsce</th>
                   <th className="px-4 py-2.5 font-medium">Handlowiec</th>
                   <th className="px-4 py-2.5 text-right font-medium">Złożone</th>
@@ -728,7 +731,7 @@ function DeliveryTab({
   return (
     <div className="space-y-5">
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <p className="mb-2 text-[11px] font-semibold text-slate-500">
           Kluczowe wskaźniki
         </p>
         <div className="grid gap-2.5 sm:grid-cols-3">
@@ -758,8 +761,8 @@ function DeliveryTab({
 
       {!hasReceipts ? (
         <>
-          <Alert tone="info">Brak przyjęć towaru w tym miesiącu.</Alert>
           <EmptyMonthCta
+            message="Brak przyjęć towaru w tym miesiącu."
             availableMonths={stats.availableMonths}
             currentKey={stats.monthKey}
             onSelect={onMonthSelect}
@@ -771,9 +774,9 @@ function DeliveryTab({
         <HighlightCard
           eyebrow="Kurier z największą liczbą przyjęć"
           title={warehouseCarrierLabel(topCarrier.carrier)}
-          gradientClass="bg-gradient-to-br from-emerald-50 to-sky-50"
+          gradientClass="bg-white"
           ringClass="ring-emerald-200/60"
-          iconBgClass="bg-gradient-to-br from-emerald-500 to-sky-600 shadow-emerald-500/20"
+          iconBgClass="bg-indigo-600"
           iconPath="M3 7h11v10H3zM14 10h4l3 3v4h-7"
         >
           <span>
@@ -815,7 +818,7 @@ function DeliveryTab({
                   </div>
                   <ShareBar
                     sharePct={share}
-                    barClassName="bg-gradient-to-r from-sky-400 to-emerald-500"
+                    barClassName="bg-sky-400"
                     showLabel={false}
                   />
                   <p className="mt-1 text-[11px] text-slate-500">{share}% przyjęć</p>
@@ -852,7 +855,7 @@ function DeliveryTab({
                     </div>
                     <ShareBar
                       sharePct={share}
-                      barClassName="bg-gradient-to-r from-emerald-400 to-sky-500"
+                      barClassName="bg-emerald-400"
                       showLabel={false}
                     />
                     <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-slate-500">
@@ -935,7 +938,7 @@ function SupplierRanking({
                 </div>
                 <ShareBar
                   sharePct={share}
-                  barClassName="bg-gradient-to-r from-amber-400 to-indigo-500"
+                  barClassName="bg-amber-400"
                   showLabel={false}
                 />
                 <div className="mt-1 text-[11px] text-slate-500">
@@ -983,7 +986,7 @@ function ProcurementTab({
   return (
     <div className="space-y-5">
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <p className="mb-2 text-[11px] font-semibold text-slate-500">
           Kluczowe wskaźniki
         </p>
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
@@ -1021,7 +1024,7 @@ function ProcurementTab({
             value={
               procurement.avgDeliveryDays != null
                 ? formatDni(procurement.avgDeliveryDays)
-                : "brak danych"
+                : null
             }
             tone="violet"
             mom={mom.procurement.avgDeliveryDays ?? undefined}
@@ -1036,8 +1039,8 @@ function ProcurementTab({
 
       {!hasActivity ? (
         <>
-          <Alert tone="info">Brak zamówień w tym miesiącu (bez toru zębów).</Alert>
           <EmptyMonthCta
+            message="Brak zamówień w tym miesiącu (bez toru zębów)."
             availableMonths={stats.availableMonths}
             currentKey={stats.monthKey}
             onSelect={onMonthSelect}
@@ -1049,9 +1052,9 @@ function ProcurementTab({
         <HighlightCard
           eyebrow="Najbardziej aktywny dostawca"
           title={topSupplier.supplierName}
-          gradientClass="bg-gradient-to-br from-amber-50 to-indigo-50"
+          gradientClass="bg-white"
           ringClass="ring-amber-200/60"
-          iconBgClass="bg-gradient-to-br from-amber-500 to-indigo-600 shadow-amber-500/20"
+          iconBgClass="bg-indigo-600"
           iconPath="M3 3h2l2.4 12.5a2 2 0 002 1.5h7.7a2 2 0 002-1.6L21 8H6"
         >
           <span>
@@ -1068,7 +1071,7 @@ function ProcurementTab({
       ) : null}
 
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <p className="mb-2 text-[11px] font-semibold text-slate-500">
           Szczegóły
         </p>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -1119,7 +1122,7 @@ function TeethTab({
   return (
     <div className="space-y-5">
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <p className="mb-2 text-[11px] font-semibold text-slate-500">
           Kluczowe wskaźniki
         </p>
         <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
@@ -1151,7 +1154,7 @@ function TeethTab({
           />
           <KpiCard
             label="Średni lead time"
-            value={teeth.avgLeadDays != null ? formatDni(teeth.avgLeadDays) : "brak danych"}
+            value={teeth.avgLeadDays != null ? formatDni(teeth.avgLeadDays) : null}
             tone="sky"
             hint={leadHint}
           />
@@ -1161,8 +1164,8 @@ function TeethTab({
 
       {!hasActivity ? (
         <>
-          <Alert tone="info">Brak aktywności toru zębów w tym miesiącu.</Alert>
           <EmptyMonthCta
+            message="Brak aktywności toru zębów w tym miesiącu."
             availableMonths={stats.availableMonths}
             currentKey={stats.monthKey}
             onSelect={onMonthSelect}
@@ -1174,9 +1177,9 @@ function TeethTab({
         <HighlightCard
           eyebrow="Najbardziej aktywny dostawca zębów"
           title={topSupplier.supplierName}
-          gradientClass="bg-gradient-to-br from-violet-50 to-indigo-50"
+          gradientClass="bg-white"
           ringClass="ring-violet-200/60"
-          iconBgClass="bg-gradient-to-br from-violet-500 to-indigo-600 shadow-violet-500/20"
+          iconBgClass="bg-indigo-600"
           iconPath="M12 3c2.5 2 4 4.5 4 7.5S14 17 12 21c-2-4-4-7-4-10.5S9.5 5 12 3z"
         >
           <span>
@@ -1193,7 +1196,7 @@ function TeethTab({
       ) : null}
 
       <div>
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <p className="mb-2 text-[11px] font-semibold text-slate-500">
           Szczegóły
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -1270,7 +1273,7 @@ export function MonthlySummaryClient({
           <div className="relative space-y-3.5">
             <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
               <div className="flex min-w-0 items-center gap-2.5">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-sky-600 text-white shadow-md shadow-indigo-600/15">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-md ">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <path d="M3 3v18h18" />
                     <path d="M7 14l4-4 3 3 5-5" />
@@ -1310,13 +1313,13 @@ export function MonthlySummaryClient({
           Sticky musi mieć rodzica obejmującego także treść działu —
           bez overflow:hidden na przodkach (Card / sticky chrome).
         */}
-        <div className="bg-gradient-to-b from-slate-50/80 to-white">
+        <div className="bg-slate-50/80">
           <div className="px-5 pt-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <p className="text-[11px] font-semibold text-slate-500">
               Wybierz dział
             </p>
             <p className="mt-0.5 text-sm text-slate-600">
-              Cztery widoki miesiąca — przełącz bez przeładowania danych.
+              Cztery widoki miesiąca - przełącz bez przeładowania danych.
             </p>
           </div>
 

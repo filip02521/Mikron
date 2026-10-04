@@ -22,16 +22,16 @@ export const ZK_PROSBA_LINK_BANNER_COPY = {
   /** Nagłówek karty formularza gdy jest kontekst ZK. */
   formTitle: "Nowa prośba z ZK",
   fullLockedDetail:
-    "Pozycje pochodzą z tego zamówienia klienta. Możesz wybrać tylko produkty z ZK — po wysłaniu prośba pojawi się przy nim w notatniku.",
+    "Pozycje pochodzą z tego zamówienia klienta. Możesz wybrać tylko produkty z ZK - po wysłaniu prośba pojawi się przy nim w notatniku.",
   fullUnlockedDetail:
-    "Brak kodów produktów Subiekta na tym ZK — katalog nie jest ograniczony. Uzupełnij pozycje ręcznie.",
+    "Brak kodów produktów Subiekta na tym ZK - katalog nie jest ograniczony. Uzupełnij pozycje ręcznie.",
   supplementLockedSuffix: "Możesz dodać tylko produkty z tego ZK.",
   supplementAlreadyOrdered:
     "Wcześniejsze pozycje są już w zamówieniu.",
   caseNoteTitle: "Notatka ze sprawy ZK jest w uwagach pozycji",
   caseNoteHint: "Zakupy ją zobaczą przy realizacji.",
   typeaheadHint: "W tej prośbie widać tylko produkty z powiązanego ZK.",
-  productsSectionHint: "Tylko produkty z powiązanego ZK — wyszukaj i wybierz z listy.",
+  productsSectionHint: "Tylko produkty z powiązanego ZK - wyszukaj i wybierz z listy.",
   readinessHeadline: "Wybierz produkt z ZK",
   readinessSubline: "Każda pozycja musi pochodzić z powiązanego zamówienia klienta.",
   readinessProductDetail: "Wybierz towar z listy ZK",

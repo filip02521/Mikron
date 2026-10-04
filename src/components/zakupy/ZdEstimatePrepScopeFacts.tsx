@@ -91,7 +91,7 @@ export function ZdEstimatePrepScopeFacts({
     const warn = tone === "warn";
     const captionText =
       caption === undefined ? zdEstimateScopeLinkedCaption() : caption;
-    const title = [parts.summaryTitle, captionText].filter(Boolean).join(" — ");
+    const title = [parts.summaryTitle, captionText].filter(Boolean).join(" - ");
     return (
       <div
         className={cn(

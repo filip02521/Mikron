@@ -43,7 +43,7 @@ export function ActionLoadingOverlay({
         className
       )}
     >
-      <div className="action-loading-shimmer pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-indigo-500 to-transparent" />
+      <div className="action-loading-shimmer pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-indigo-500" />
       <div className={cn(
         "mx-4 flex max-w-sm items-center gap-3.5 rounded-lg border border-slate-200/90 bg-white px-5 py-4 shadow-xl ring-1 ring-slate-900/5",
         variant === "viewport" && "pointer-events-auto"

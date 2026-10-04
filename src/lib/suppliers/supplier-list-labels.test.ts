@@ -24,14 +24,14 @@ describe("supplier list labels", () => {
     expect(summary).not.toMatch(/zapas.*zapas/i);
   });
 
-  it("formatSupplierCycleSummary dla on-demand — badge przy nazwie, w kolumnie cykl pusto", () => {
+  it("formatSupplierCycleSummary dla on-demand - badge przy nazwie, w kolumnie cykl pusto", () => {
     expect(
       formatSupplierCycleSummary({
         ...base,
         order_on_demand: true,
         stock_raw: "W RAZIE POTRZEBY",
       })
-    ).toBe("—");
+    ).toBe("-");
   });
 
   it("formatSupplierCycleSummary gdy brak danych", () => {

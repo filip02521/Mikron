@@ -16,7 +16,7 @@ export type GlowneScheduleOrderRow = Pick<
  */
 export function glowneScheduleSupplierIds(
   orders: GlowneScheduleOrderRow[],
-  action: "GLOWNE" | "POBOCZNE" | "ANULOWANO"
+  action: "GLOWNE" | "POBOCZNE" | "JUZ_ZAMOWIONE" | "ANULOWANO"
 ): Set<string> {
   const ids = new Set<string>();
   if (action !== "GLOWNE") return ids;
@@ -40,7 +40,7 @@ export type GlowneSchedulableSupplierRow = { id: string } & OrderOnDemandFields;
  * Dostawcy na żądanie pomijamy — prośba może być Główne bez cyklicznego harmonogramu.
  */
 export function glowneShouldTouchSupplierSchedule(
-  action: "GLOWNE" | "POBOCZNE" | "ANULOWANO",
+  action: "GLOWNE" | "POBOCZNE" | "JUZ_ZAMOWIONE" | "ANULOWANO",
   opts?: { skipSupplierSchedule?: boolean }
 ): boolean {
   return action === "GLOWNE" && opts?.skipSupplierSchedule !== true;

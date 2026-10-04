@@ -30,7 +30,7 @@ describe("filterZdIndexRowsForPlacement", () => {
     expect(filtered.map((r) => r.dok_id)).toEqual([1, 2]);
   });
 
-  it("filterZdIndexRowsForPlacements — suma okien wielu dat", () => {
+  it("filterZdIndexRowsForPlacements - suma okien wielu dat", () => {
     const at = new Date("2026-06-15T12:00:00");
     const filtered = filterZdIndexRowsForPlacements(rows, ["2026-02-10", "2026-06-15"], at);
     expect(filtered.map((r) => r.dok_id)).toEqual([1, 2, 3]);

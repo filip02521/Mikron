@@ -225,7 +225,7 @@ describe("procurement-daily-ui", () => {
     expect(ws.informacjaLeft.length).toBe(0);
   });
 
-  it("countDailyPanelNavBadge nie liczy samych prośb informacyjnych", () => {
+  it("countDailyPanelNavBadge nie liczy samych próśb informacyjnych", () => {
     const today = new Date(2026, 4, 15);
     const ws = buildSummaryWorkspace(
       [],
@@ -387,7 +387,7 @@ describe("procurement-daily-ui", () => {
     expect(sorted[0]?.person).toBe("Jan");
   });
 
-  it("sortForSomeoneGroups: po unseen — pilne przed resztą", () => {
+  it("sortForSomeoneGroups: po unseen - pilne przed resztą", () => {
     const plain = testForSomeoneGroup({
       supplierId: "a",
       salesPersonId: "sp1",
@@ -474,6 +474,13 @@ describe("procurement-daily-ui", () => {
     expect(stockUi.headline).toBe("Towar");
     expect(stockUi.subline).toBe("zgłosił Jan");
     expect(stockUi.subline).not.toContain(" · A");
+    expect(stockUi.plannedOrderDate).toBeNull();
+    // Brak na stanie też pokazuje planowe zamówienie u dostawcy.
+    const withPlan = enrichStockOutSignalGroup(ws.stockOutLeft[0]!, today, {
+      supplierMeta: { computed_next_date: "2026-10-12", order_on_demand: false },
+      todayDateKey: "2026-10-03",
+    });
+    expect(withPlan.plannedOrderDate).not.toBeNull();
   });
 
   it("forSomeoneLeft oznacza dostawcę na żądanie z joinu supplier, nawet bez wpisu w schedules", () => {

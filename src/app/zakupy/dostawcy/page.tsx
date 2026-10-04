@@ -57,10 +57,10 @@ export default async function ZakupyDostawcyPage({
 
   return (
     <SuppliersHubShell
-      title={teethLane ? "Karty dostawców — zęby" : "Karty dostawców"}
+      title={teethLane ? "Karty dostawców - zęby" : "Karty dostawców"}
       description={
         teethLane
-          ? "Wszystkie karty labów — cykl zębów ustawiasz w edycji karty."
+          ? "Wszystkie karty labów - cykl zębów ustawiasz w edycji karty."
           : supplierHubShellDescription("cards", "zakupy")
       }
       activeTab="cards"

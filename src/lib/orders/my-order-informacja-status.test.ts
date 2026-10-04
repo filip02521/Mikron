@@ -27,7 +27,7 @@ function informacjaOrder(
 }
 
 describe("informacja status copy", () => {
-  it("via panel przed Główne — czeka na zakupy", () => {
+  it("via panel przed Główne - czeka na zakupy", () => {
     const row = presentMyOrders(
       [informacjaOrder({ informacja_queue_via_daily_panel: true })],
       []
@@ -35,7 +35,7 @@ describe("informacja status copy", () => {
     expect(row.statusTitle).toBe("Czekamy na zamówienie u dostawcy");
   });
 
-  it("via panel po Główne — czeka na magazyn", () => {
+  it("via panel po Główne - czeka na magazyn", () => {
     const row = presentMyOrders(
       [
         informacjaOrder({
@@ -45,15 +45,15 @@ describe("informacja status copy", () => {
       ],
       []
     ).informacje[0]!;
-    expect(row.statusTitle).toBe("Zamówione — czekamy na magazyn");
+    expect(row.statusTitle).toBe("Zamówione - czekamy na magazyn");
   });
 
-  it("bez panelu — informacja o dostępności", () => {
+  it("bez panelu - informacja o dostępności", () => {
     const row = presentMyOrders([informacjaOrder()], []).informacje[0]!;
     expect(row.statusTitle).toBe("Informacja o dostępności");
   });
 
-  it("brak na stanie — ukryte przed handlowcem w Moje zamówienia", () => {
+  it("brak na stanie - ukryte przed handlowcem w Moje zamówienia", () => {
     const result = presentMyOrders(
       [
         informacjaOrder({
@@ -69,7 +69,7 @@ describe("informacja status copy", () => {
     expect(result.productLineCount).toBe(0);
   });
 
-  it("Zrealizowane stock_auto — copy o Subiekcie", () => {
+  it("Zrealizowane stock_auto - copy o Subiekcie", () => {
     const row = presentMyOrders(
       [
         informacjaOrder({

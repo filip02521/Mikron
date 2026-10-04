@@ -45,6 +45,7 @@ import {
   zdEstimateScopeCoverage,
   type ZdEstimateScopeCoverage,
 } from "@/lib/orders/zd-estimate-scope-coverage";
+import { askConfirm } from "@/components/ui/ConfirmHost";
 
 function supplierLabel(
   suppliers: readonly ZdEstimateSupplierOption[],
@@ -176,7 +177,7 @@ function ScopeEditorForm({
 
       {pickedLabel ? (
         <div className="flex flex-wrap items-center gap-2 rounded-md border border-emerald-200/80 bg-emerald-50/70 px-3 py-2">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-emerald-800/80">
+          <span className="text-[11px] font-medium text-emerald-800/80">
             {ZD_ESTIMATE_UI.supplierScopesPickedPrefix}
           </span>
           <ModeBadge mode={draft.mode} />
@@ -391,7 +392,7 @@ function SharedScopeSplitter({
     <div className="space-y-3 border-t border-sky-100 bg-sky-50/30 px-4 py-3.5">
       <p className="text-xs leading-relaxed text-slate-600">
         Towar przypisany do dostawcy znika z listy „Do ZD” pozostałych dostawców tego zakresu.
-        Bez przypisania — widzą go wszyscy. Para paczka/sztuka znika dopiero, gdy obie strony
+        Bez przypisania - widzą go wszyscy. Para paczka/sztuka znika dopiero, gdy obie strony
         mają tego samego dostawcę. Lista obejmuje tylko towary, które kupowaliśmy od tych
         dostawców (historia ZD).
       </p>
@@ -416,7 +417,7 @@ function SharedScopeSplitter({
                   ZD:{" "}
                   {Object.entries(p.orderCountBySupplier)
                     .map(([sid, n]) => `${supplierLabel(suppliers, sid)} ${n}×`)
-                    .join(" · ") || "—"}
+                    .join(" · ") || "-"}
                 </p>
               </div>
               <Select
@@ -432,7 +433,7 @@ function SharedScopeSplitter({
                 {scope.supplierIds.map((sid) => (
                   <option key={sid} value={sid}>
                     {supplierLabel(suppliers, sid)}
-                    {sid === p.suggestedSupplierId ? " — wg ZD" : ""}
+                    {sid === p.suggestedSupplierId ? " - wg ZD" : ""}
                   </option>
                 ))}
               </Select>
@@ -458,7 +459,7 @@ function SharedScopeSplitter({
           Zamknij
         </Button>
         {saved && changed.length === 0 ? (
-          <span className="text-xs text-emerald-700">Zapisano — działa przy kolejnym Policz.</span>
+          <span className="text-xs text-emerald-700">Zapisano - działa przy kolejnym Policz.</span>
         ) : null}
       </div>
     </div>
@@ -738,7 +739,7 @@ export function ZdEstimateSupplierScopesModal({
    * Szybkie akcje z podpowiedzi (Przypisz / Dodaj / Zamień) zmieniają mapowanie
    * całego działu jednym kliknięciem — zawsze z potwierdzeniem.
    */
-  const confirmSuggestion = (
+  const confirmSuggestion = async (
     action: "assign" | "add" | "replace",
     supplierId: string,
     sg: ZdScopeSuggestion,
@@ -752,7 +753,13 @@ export function ZdEstimateSupplierScopesModal({
         : action === "add"
           ? `Dodać ${scopeText} jako kolejny zakres dostawcy ${name}?`
           : `Przypisać ${scopeText} dostawcy ${name}?`;
-    if (!window.confirm(`${text}\n\nObejmuje ${sg.supplierHits} towarów z ZD tego dostawcy. Zmiana obowiązuje cały dział.`)) {
+    if (
+      !(await askConfirm({
+        title: text,
+        message: `Obejmuje ${sg.supplierHits} towarów z ZD tego dostawcy. Zmiana obowiązuje cały dział.`,
+        confirmLabel: action === "replace" ? "Zamień" : action === "add" ? "Dodaj" : "Przypisz",
+      }))
+    ) {
       return;
     }
     persistScope({ supplierId, scopeId, mode: sg.mode, id: sg.id, label: sg.name });
@@ -775,14 +782,17 @@ export function ZdEstimateSupplierScopesModal({
     persistScope({ supplierId, scopeId, mode: draft.mode, ...picked }, onDone);
   };
 
-  const removeScope = (row: ZdEstimateSupplierScopeRow, supplierName: string) => {
+  const removeScope = async (row: ZdEstimateSupplierScopeRow, supplierName: string) => {
     const isLast = (scopesBySupplier.get(row.supplierId) ?? []).length <= 1;
     if (
-      !window.confirm(
-        isLast
-          ? `Usunąć jedyny zakres „${row.label}” dostawcy ${supplierName}? Jego towary znikną z Kreatora i panelu Braki.`
-          : `Usunąć zakres „${row.label}” dostawcy ${supplierName}? Jego towary znikną z listy tego dostawcy.`
-      )
+      !(await askConfirm({
+        title: isLast ? "Usunąć jedyny zakres?" : "Usunąć zakres?",
+        message: isLast
+          ? `Zakres „${row.label}” dostawcy ${supplierName}. Jego towary znikną z Kreatora i panelu Braki.`
+          : `Zakres „${row.label}” dostawcy ${supplierName}. Jego towary znikną z listy tego dostawcy.`,
+        confirmLabel: "Usuń",
+        danger: true,
+      }))
     ) {
       return;
     }
@@ -1030,7 +1040,7 @@ export function ZdEstimateSupplierScopesModal({
                 </optgroup>
               ) : null}
               {mappedSuppliers.length ? (
-                <optgroup label="Z zakresem — dodaj kolejny">
+                <optgroup label="Z zakresem - dodaj kolejny">
                   {mappedSuppliers.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name} ({scopesBySupplier.get(s.id)?.length ?? 0})
@@ -1061,8 +1071,8 @@ export function ZdEstimateSupplierScopesModal({
               ) : (
                 <p className="text-[11px] text-slate-500">
                   {order?.indexSyncedAt
-                    ? "Brak podpowiedzi — wyszukaj grupę lub cechę ręcznie."
-                    : "Indeks nie jest zbudowany — wyszukaj ręcznie albo zbuduj indeks."}
+                    ? "Brak podpowiedzi - wyszukaj grupę lub cechę ręcznie."
+                    : "Indeks nie jest zbudowany - wyszukaj ręcznie albo zbuduj indeks."}
                 </p>
               )}
             </div>
@@ -1113,7 +1123,7 @@ export function ZdEstimateSupplierScopesModal({
           <div className="border-b border-sky-200/60 px-4 py-3">
             <p className="text-sm font-semibold text-sky-950">Wspólne zakresy</p>
             <p className="mt-0.5 text-[11px] leading-relaxed text-sky-900/75">
-              Ten sam zakres ma kilku dostawców — jego towary pokazują się u każdego z nich.
+              Ten sam zakres ma kilku dostawców - jego towary pokazują się u każdego z nich.
               Wskaż, u kogo zamawiasz dany towar.
             </p>
           </div>
@@ -1235,7 +1245,7 @@ export function ZdEstimateSupplierScopesModal({
                           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                             <ModeBadge mode={row.mode} />
                             <span className="max-w-full truncate text-[13px] font-medium text-slate-800">
-                              {row.label || "—"}
+                              {row.label || "-"}
                             </span>
                             {scopeNumId != null ? (
                               <span className="text-[11px] tabular-nums text-slate-400">#{scopeNumId}</span>
@@ -1252,9 +1262,9 @@ export function ZdEstimateSupplierScopesModal({
                               hitsFor(row) === 0 ? (
                                 <span
                                   className="rounded bg-red-50 px-1.5 text-[11px] font-semibold text-red-700 ring-1 ring-red-200"
-                                  title="Żaden towar zamawiany u tego dostawcy (historia ZD) nie należy do tego zakresu — sprawdź, czy to właściwa grupa/cecha."
+                                  title="Żaden towar zamawiany u tego dostawcy (historia ZD) nie należy do tego zakresu - sprawdź, czy to właściwa grupa/cecha."
                                 >
-                                  0 towarów z ZD — sprawdź mapowanie
+                                  0 towarów z ZD - sprawdź mapowanie
                                 </span>
                               ) : (
                                 <span className="text-[10px] tabular-nums text-slate-500">
@@ -1314,8 +1324,8 @@ export function ZdEstimateSupplierScopesModal({
                         {editing ? (
                           <div className="space-y-3 border-t border-indigo-100/80 px-4 py-3">
                             <p className="text-xs text-slate-600">
-                              Wyszukaj i wybierz nową {editDraft.mode === "grupa" ? "grupę" : "cechę"} — obecna:{" "}
-                              <span className="font-medium text-slate-800">{row.label || "—"}</span>
+                              Wyszukaj i wybierz nową {editDraft.mode === "grupa" ? "grupę" : "cechę"} - obecna:{" "}
+                              <span className="font-medium text-slate-800">{row.label || "-"}</span>
                             </p>
                             <ScopeEditorForm
                               draft={editDraft}
@@ -1341,7 +1351,7 @@ export function ZdEstimateSupplierScopesModal({
                 {missingSuggestion ? (
                   <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 bg-amber-50/40 px-4 py-2">
                     <span className="text-[11px] text-amber-900">
-                      {insight!.totalProducts - insight!.coveredProducts} towarów z ZD poza zakresami — podpowiedź:
+                      {insight!.totalProducts - insight!.coveredProducts} towarów z ZD poza zakresami - podpowiedź:
                     </span>
                     <SuggestionChip
                       suggestion={missingSuggestion}

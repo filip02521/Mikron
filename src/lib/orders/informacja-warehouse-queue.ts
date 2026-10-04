@@ -28,7 +28,7 @@ export function informacjaWarehouseQueueActionLabel(
   status: IndividualOrder["status"]
 ): string {
   if (status === "Nowe") {
-    return "Na magazynie — wyślij e-mail";
+    return "Na magazynie - wyślij e-mail";
   }
-  return "Dotarło — powiadom handlowca";
+  return "Dotarło - powiadom handlowca";
 }

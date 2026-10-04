@@ -33,12 +33,12 @@ export function teethShortageAvailabilityMessage(
   const name = supplierName.trim() || "dostawcy";
   const kind = classifyTeethShortageAvailability(availableFrom, todayKey);
   if (kind === "undated") {
-    return `Brak u ${name} — termin dostępności nieustalony`;
+    return `Brak u ${name} - termin dostępności nieustalony`;
   }
   if (kind === "past") {
-    return `Brak u ${name} — planowana dostępność ${formatPlDate(availableFrom)} minęła (termin niepotwierdzony)`;
+    return `Brak u ${name} - planowana dostępność ${formatPlDate(availableFrom)} minęła (termin niepotwierdzony)`;
   }
-  return `Brak u ${name} — dostępne od ${formatPlDate(availableFrom)}`;
+  return `Brak u ${name} - dostępne od ${formatPlDate(availableFrom)}`;
 }
 
 export const TEETH_SHORTAGE_BANNER_TITLE =

@@ -190,7 +190,7 @@ describe("editRequestNoteForSave", () => {
 });
 
 describe("normalizeAddIndividualOrdersInput", () => {
-  it("tablica entries — bez stock i ack", () => {
+  it("tablica entries - bez stock i ack", () => {
     const entries: AddIndividualOrdersEntry[] = [
       { salesPersonId: "sp1", product: "A", quantity: "1" },
     ];
@@ -200,7 +200,7 @@ describe("normalizeAddIndividualOrdersInput", () => {
     });
   });
 
-  it("obiekt — przekazuje stockByTwId i acknowledgeSufficientStock", () => {
+  it("obiekt - przekazuje stockByTwId i acknowledgeSufficientStock", () => {
     const stockByTwId = {
       1: { onHand: 5, reserved: 0, available: 5, source: "subiekt" as const },
     };

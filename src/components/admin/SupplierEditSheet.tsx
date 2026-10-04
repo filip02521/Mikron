@@ -5,6 +5,7 @@ import { cn } from "@/lib/cn";
 import { sidePanelBackdropClass, sidePanelCloseButtonClass, sidePanelHeaderClass } from "@/lib/ui/surfaces";
 import { IconX } from "@/components/icons/StrokeIcons";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
+import { useAnimatedClose } from "@/lib/ui/use-animated-close";
 
 export function SupplierEditSheet({
   open,
@@ -24,27 +25,34 @@ export function SupplierEditSheet({
   pending?: boolean;
 }) {
   useBodyScrollLock(open);
+  const { panelRef, backdropRef, requestClose } = useAnimatedClose(onClose);
 
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !pending) onClose();
+      if (e.key === "Escape" && !pending) requestClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose, pending]);
+  }, [open, requestClose, pending]);
 
   if (!open) return null;
 
   return (
     <>
       <button
+        ref={(el) => {
+          backdropRef.current = el;
+        }}
         type="button"
         className={cn(sidePanelBackdropClass, "z-[58]", "panel-slide-backdrop-enter")}
         aria-label="Zamknij edycję"
-        onClick={pending ? undefined : onClose}
+        onClick={pending ? undefined : requestClose}
       />
       <aside
+        ref={(el) => {
+          panelRef.current = el;
+        }}
         className="panel-slide-enter fixed inset-y-0 right-0 z-[60] flex w-full max-w-xl flex-col border-l border-slate-200/80 bg-white shadow-2xl"
         role="dialog"
         aria-modal="true"
@@ -66,7 +74,7 @@ export function SupplierEditSheet({
             <button
               type="button"
               className={sidePanelCloseButtonClass}
-              onClick={onClose}
+              onClick={requestClose}
               disabled={pending}
               aria-label="Zamknij"
             >

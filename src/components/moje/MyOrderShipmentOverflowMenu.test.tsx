@@ -66,13 +66,13 @@ describe("MyOrderShipment overflow shell", () => {
 
   it("standalone overflow opens on click", () => {
     render(<ShellToolbar overflowMenuProps={baseProps} useActionShell={false} />);
-    fireEvent.click(screen.getByRole("button", { name: /Opcje — Test Supplier/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Opcje - Test Supplier/i }));
     expect(screen.getByRole("menuitem", { name: "Przypisz klienta" })).toBeTruthy();
   });
 
   it("segment overflow in action shell opens on click", () => {
     render(<ShellToolbar overflowMenuProps={baseProps} useActionShell={true} />);
-    fireEvent.click(screen.getByRole("button", { name: /Opcje — Test Supplier/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Opcje - Test Supplier/i }));
     expect(screen.getByRole("menuitem", { name: "Przypisz klienta" })).toBeTruthy();
   });
 
@@ -85,7 +85,7 @@ describe("MyOrderShipment overflow shell", () => {
         <ShellToolbar overflowMenuProps={baseProps} useActionShell={true} />
       </div>
     );
-    const trigger = screen.getByRole("button", { name: /Opcje — Test Supplier/i });
+    const trigger = screen.getByRole("button", { name: /Opcje - Test Supplier/i });
     fireEvent.mouseDown(trigger);
     fireEvent.mouseUp(trigger);
     fireEvent.click(trigger);

@@ -131,7 +131,7 @@ export function DailyPanelOnDemandSection({
             className={cn("inline-flex items-center gap-1 text-xs", panelTextLinkClass)}
             onClick={onOpenFullList}
           >
-            + {rest} {rest === 1 ? "dostawca" : "dostawców"} — pokaż wszystkich
+            + {rest} {rest === 1 ? "dostawca" : "dostawców"} - pokaż wszystkich
             <LinkChevron size={12} tone="brand" />
           </button>
         </div>

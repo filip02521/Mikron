@@ -66,7 +66,7 @@ function shiftDateRange(
 function formatRangeLabel(dateFrom: string, dateTo: string): string {
   const from = dateFrom.split("-").reverse().join(".");
   const to = dateTo.split("-").reverse().join(".");
-  return `${from} – ${to}`;
+  return `${from} - ${to}`;
 }
 
 export function UpcomingDeliveriesClient({
@@ -231,7 +231,7 @@ export function UpcomingDeliveriesClient({
       <Card padding={false} className="overflow-hidden">
         <CardHeader
           title="Plan dostaw"
-          description="Centrum dowodzenia — planowi dostawcy i zamówienia ZD"
+          description="Centrum dowodzenia - planowi dostawcy i zamówienia ZD"
           hint="Plan dostawców na podstawie harmonogramu + dokumenty ZD z Subiekta. Odświeża się automatycznie."
           density="compact"
           inset

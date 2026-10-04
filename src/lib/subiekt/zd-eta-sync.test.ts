@@ -127,7 +127,7 @@ describe("isZdEtaSyncEligible", () => {
     ).toBe(false);
   });
 
-  it("odrzuca informację bez ordered_at — nie zamówiono u dostawcy", () => {
+  it("odrzuca informację bez ordered_at - nie zamówiono u dostawcy", () => {
     expect(
       isZdEtaSyncEligible(
         baseOrder({ request_kind: "informacja", status: "Nowe", ordered_at: null })

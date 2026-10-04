@@ -179,7 +179,7 @@ export function TeethSupplierScheduleFields({
     <>
       <SupplierFormSection
         title="Stałe ETA dostawy"
-        description={`Planowany czas dostawy zębów od ${supplierName} — widoczny u handlowca po oznaczeniu zamówienia.`}
+        description={`Planowany czas dostawy zębów od ${supplierName} - widoczny u handlowca po oznaczeniu zamówienia.`}
         defaultOpen
       >
         <div className="space-y-4 sm:col-span-2">
@@ -192,7 +192,7 @@ export function TeethSupplierScheduleFields({
           </div>
           <p className="text-xs leading-relaxed text-slate-600">
             Po oznaczeniu zamówienia handlowiec zobaczy planowaną datę. Puste pole = ETA z historii
-            dostaw zębów u tego dostawcy. Zapis cyklu poniżej nie czyści ETA — użyj „Zapisz ETA”,
+            dostaw zębów u tego dostawcy. Zapis cyklu poniżej nie czyści ETA - użyj „Zapisz ETA”,
             żeby zmienić lub wyczyścić.
           </p>
           <div className="grid max-w-xs gap-4">
@@ -222,7 +222,7 @@ export function TeethSupplierScheduleFields({
 
       <SupplierFormSection
         title="Cykl zębów"
-        description={`Osobny harmonogram toru zębów dla ${supplierName} — niezależny od panelu dziennego.`}
+        description={`Osobny harmonogram toru zębów dla ${supplierName} - niezależny od panelu dziennego.`}
         defaultOpen
       >
         <p className="rounded-md border border-emerald-100 bg-emerald-50/60 px-3 py-2 text-xs leading-relaxed text-emerald-950 sm:col-span-2">
@@ -316,8 +316,8 @@ export function TeethSupplierScheduleFields({
           <div className="space-y-4 sm:col-span-2">
             <p className="text-sm text-slate-600">
               {schedule
-                ? "Cykl wyłączony — ustaw dzień i częstotliwość, aby wrócił do kolejki. Stałe ETA powyżej zostaje zachowane."
-                : "Brak cyklu zębów — ustaw dzień i częstotliwość, aby dostawca pojawiał się w kolejce z cyklicznym zamówieniem."}
+                ? "Cykl wyłączony - ustaw dzień i częstotliwość, aby wrócił do kolejki. Stałe ETA powyżej zostaje zachowane."
+                : "Brak cyklu zębów - ustaw dzień i częstotliwość, aby dostawca pojawiał się w kolejce z cyklicznym zamówieniem."}
             </p>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Dzień zamówienia u dostawcy">

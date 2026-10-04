@@ -30,7 +30,7 @@ export function describeVerificationGaps(order: IndividualOrder): string {
     if (label === "ilość") procurementTodo.push("ilość (szt.)");
   }
 
-  const footer = "Prośba jest zapisana — nie musisz nic uzupełniać.";
+  const footer = "Prośba jest zapisana - nie musisz nic uzupełniać.";
 
   if (procurementTodo.length === 0) {
     const pathNote = verificationInformacjaUiForOrder(order)?.destinationSummary;

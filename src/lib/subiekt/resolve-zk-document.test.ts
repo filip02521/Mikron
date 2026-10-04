@@ -122,7 +122,7 @@ describe("searchZkForAdd", () => {
     }
   });
 
-  it("po rozszerzeniu do 90 dni nadal brak — komunikat z podpowiedzią pełnego numeru", async () => {
+  it("po rozszerzeniu do 90 dni nadal brak - komunikat z podpowiedzią pełnego numeru", async () => {
     searchSubiektZk.mockResolvedValue({ data: [] });
 
     const result = await searchZkForAdd("5779", new Date(2026, 7, 20));

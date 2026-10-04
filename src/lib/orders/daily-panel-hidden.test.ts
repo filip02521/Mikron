@@ -55,7 +55,7 @@ describe("buildDailyPanelHiddenReport", () => {
     expect(report.suppliers[0]?.reason).toBe("missing_last_order");
   });
 
-  it("nie zgłasza dostawcy z terminem w przyszłości — pojawi się w planie", () => {
+  it("nie zgłasza dostawcy z terminem w przyszłości - pojawi się w planie", () => {
     const far = supplier("far", "Daleki", { computed_next_date: "2026-06-15" });
     const ws = buildSummaryWorkspace([far], [], today);
     const report = buildDailyPanelHiddenReport([far], ws);
@@ -70,7 +70,7 @@ describe("buildDailyPanelHiddenReport", () => {
     expect(report.suppliers).toHaveLength(0);
   });
 
-  it("nie zgłasza dostawcy w razie potrzeby — ma osobną sekcję w panelu", () => {
+  it("nie zgłasza dostawcy w razie potrzeby - ma osobną sekcję w panelu", () => {
     const onDemand = supplier("od", "Na żądanie", {
       order_on_demand: true,
       computed_next_date: null,

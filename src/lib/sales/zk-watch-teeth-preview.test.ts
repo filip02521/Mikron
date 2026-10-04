@@ -48,12 +48,12 @@ describe("buildZkTeethPreviewRows", () => {
     expect(rows[0]?.statusTone).toBe("pending");
   });
 
-  it("pokazuje 'Przyjęte — czeka na odbiór' gdy zrealizowane bez ack", () => {
+  it("pokazuje 'Przyjęte - czeka na odbiór' gdy zrealizowane bez ack", () => {
     const rows = buildZkTeethPreviewRows(
       [{ ...baseOrder, status: "Zrealizowane", delivered_quantity: "2" }],
       new Map()
     );
-    expect(rows[0]?.statusLabel).toBe("Przyjęte — czeka na odbiór");
+    expect(rows[0]?.statusLabel).toBe("Przyjęte - czeka na odbiór");
     expect(rows[0]?.statusTone).toBe("delivered");
   });
 

@@ -19,10 +19,10 @@ describe("classifyLoginFormError", () => {
       "banner"
     );
     expect(
-      classifyLoginFormError("Brak profilu użytkownika — skontaktuj się z administratorem.")
+      classifyLoginFormError("Brak profilu użytkownika - skontaktuj się z administratorem.")
     ).toBe("banner");
     expect(classifyLoginFormError(loginServerResponseErrorMessage())).toBe("banner");
     expect(classifyLoginFormError(loginSessionLostMessage())).toBe("banner");
-    expect(classifyLoginFormError("Zbyt wiele prób — spróbuj za chwilę")).toBe("banner");
+    expect(classifyLoginFormError("Zbyt wiele prób - spróbuj za chwilę")).toBe("banner");
   });
 });

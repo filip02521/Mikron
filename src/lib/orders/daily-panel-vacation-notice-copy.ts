@@ -22,7 +22,7 @@ export function dailyPanelVacationNoticeTitle(count: number): string {
 
 /** Krótki dopisek — bez powtórzenia słowa „Urlop”. */
 export function dailyPanelVacationNoticeHint(): string {
-  return "W zaległych lub na dziś — widać przy kartach dostawców.";
+  return "W zaległych lub na dziś - widać przy kartach dostawców.";
 }
 
 export function dailyPanelVacationNoticeCtaLabel(): string {

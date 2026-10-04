@@ -112,7 +112,7 @@ export function ZkWatchTeethDraftModal({
   function openBuilder(candidate: ZkTeethLineCandidate) {
     setError(null);
     if (!candidate.teethProductLine) {
-      setError("Brak linii produktowej w katalogu zębów — uzupełnij w adminie.");
+      setError("Brak linii produktowej w katalogu zębów - uzupełnij w adminie.");
       return;
     }
     if (!candidate.teethKind && !kindOverrides[candidate.lineKey]) {
@@ -158,7 +158,7 @@ export function ZkWatchTeethDraftModal({
       activeCandidate.teethKind != null && activeCandidate.teethKind !== kind;
     if (!resolvedProduct && (kindChangedFromCandidate || !activeCandidate.teethKind)) {
       setError(
-        `Brak towaru w katalogu zębów dla „${TEETH_KIND_LABELS[kind]}” tej linii — uzupełnij wpis w adminie.`
+        `Brak towaru w katalogu zębów dla „${TEETH_KIND_LABELS[kind]}” tej linii - uzupełnij wpis w adminie.`
       );
       return;
     }
@@ -262,7 +262,7 @@ export function ZkWatchTeethDraftModal({
         open={open && !activeLineKey}
         onClose={onClose}
         size="lg"
-        title={`${displayNumber} — listy zębów`}
+        title={`${displayNumber} - listy zębów`}
         description={watch.client_label}
         bodyClassName={ZK_PROSBA_MODAL_BODY_CLASS}
         footer={
@@ -300,7 +300,7 @@ export function ZkWatchTeethDraftModal({
           </p>
           <p className="mt-1 text-xs leading-relaxed text-amber-900/85">
             Dla pozycji zębowych z ZK podaj kolor, wzór i typ (przednie / boczne). Możesz uzupełnić
-            później — wtedy przycisk prośby pozostanie zablokowany.
+            później - wtedy przycisk prośby pozostanie zablokowany.
           </p>
         </ZkProsbaModalCallout>
 
@@ -312,7 +312,7 @@ export function ZkWatchTeethDraftModal({
 
         {catalogUnavailable ? (
           <ZkProsbaModalCallout tone="rose" role="alert">
-            Katalog zębów jest chwilowo niedostępny — odśwież stronę i spróbuj ponownie.
+            Katalog zębów jest chwilowo niedostępny - odśwież stronę i spróbuj ponownie.
           </ZkProsbaModalCallout>
         ) : null}
 
@@ -345,7 +345,7 @@ export function ZkWatchTeethDraftModal({
                         {c.view.product}
                       </p>
                       <p className={cn(salesTypography.rowMeta, "mt-0.5 text-slate-600")}>
-                        {c.view.quantity != null ? `${c.view.quantity} szt.` : "—"}
+                        {c.view.quantity != null ? `${c.view.quantity} szt.` : "-"}
                         {kind ? ` · ${TEETH_KIND_LABELS[kind]}` : " · brak typu"}
                         {ready ? " · lista gotowa" : " · szkic niepełny"}
                       </p>

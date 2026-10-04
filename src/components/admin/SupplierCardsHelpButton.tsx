@@ -17,8 +17,8 @@ export function SupplierCardsHelpButton({ context }: { context: SupplierHubConte
 
   return (
     <HelpPopover
-      label="Pomoc — karty dostawców"
-      title={teethLane ? "Karty dostawców — zęby" : "Karty dostawców"}
+      label="Pomoc - karty dostawców"
+      title={teethLane ? "Karty dostawców - zęby" : "Karty dostawców"}
       shortLabel="Pomoc"
       align="right"
     >
@@ -49,13 +49,13 @@ export function SupplierCardsHelpButton({ context }: { context: SupplierHubConte
             >
               kartę dostawcy
             </Link>{" "}
-            i ustaw sekcję <strong>Cykl zębów</strong> — osobny harmonogram toru zębów,
+            i ustaw sekcję <strong>Cykl zębów</strong> - osobny harmonogram toru zębów,
             niezależny od panelu dziennego.
           </p>
         </HelpBlock>
       ) : (
         <HelpBlock title="Terminy">
-          <p>Konkretne daty w harmonogramie towaru — edycja w zakładce Terminy zamówień.</p>
+          <p>Konkretne daty w harmonogramie towaru - edycja w zakładce Terminy zamówień.</p>
         </HelpBlock>
       )}
 
@@ -63,7 +63,7 @@ export function SupplierCardsHelpButton({ context }: { context: SupplierHubConte
         <ul className="list-disc space-y-1.5 pl-4">
           <li>Kliknij nazwę dostawcy, aby edytować kartę z boku.</li>
           <li>
-            Dostawcy niepowiązani z Subiektem są podświetleni na żółto — powiąż ich w
+            Dostawcy niepowiązani z Subiektem są podświetleni na żółto - powiąż ich w
             formularzu edycji.
           </li>
         </ul>
@@ -72,7 +72,7 @@ export function SupplierCardsHelpButton({ context }: { context: SupplierHubConte
       {context === "admin" ? (
         <HelpBlock title="Wersja dla zakupów">
           <p>
-            Codzienna edycja bez usuwania rekordów —{" "}
+            Codzienna edycja bez usuwania rekordów -{" "}
             <Link
               href={zakupyPaths.cards}
               className="font-medium text-indigo-800 underline underline-offset-2"
@@ -85,7 +85,7 @@ export function SupplierCardsHelpButton({ context }: { context: SupplierHubConte
       ) : role === "admin" ? (
         <HelpBlock title="Wersja administracyjna">
           <p>
-            Wersja z trwałym usuwaniem rekordów —{" "}
+            Wersja z trwałym usuwaniem rekordów -{" "}
             <Link
               href={adminPaths.cards}
               className="font-medium text-indigo-800 underline underline-offset-2"

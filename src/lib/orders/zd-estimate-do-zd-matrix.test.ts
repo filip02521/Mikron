@@ -29,7 +29,7 @@ function soloLine(input: {
     tw_Symbol: `S${tw}`,
     tw_Nazwa: "X",
     tw_IdGrupa: null,
-    grt_Nazwa: "—",
+    grt_Nazwa: "-",
     tw_Stan: input.dostepne + (input.stanRez ?? 0),
     tw_StanRez: input.stanRez ?? 0,
     dostepne: input.dostepne,
@@ -85,7 +85,7 @@ function zdUnits(input: {
   ).zdUnits;
 }
 
-describe("Do ZD macierz — stock / extra / overlap / policy", () => {
+describe("Do ZD macierz - stock / extra / overlap / policy", () => {
   it("tylko stock need", () => {
     expect(
       zdUnits({ cel: 10, dostepne: 3, rawExtra: 0, overlap: 0 })
@@ -221,8 +221,8 @@ describe("Do ZD macierz — stock / extra / overlap / policy", () => {
   });
 });
 
-describe("Do ZD — atrybucja overlap (pula rez.)", () => {
-  it("dwie prośby tego klienta — rez. zużyta raz", () => {
+describe("Do ZD - atrybucja overlap (pula rez.)", () => {
+  it("dwie prośby tego klienta - rez. zużyta raz", () => {
     expect(
       sumProsbaZkReservationOverlapPieces(
         [
@@ -249,7 +249,7 @@ describe("Do ZD — atrybucja overlap (pula rez.)", () => {
   });
 });
 
-describe("Do ZD — kandydaci fetch ZK", () => {
+describe("Do ZD - kandydaci fetch ZK", () => {
   it("wymaga stanRez > 0 oraz tożsamości gdy byTwId podane", () => {
     const byTwId = new Map([
       [
@@ -346,7 +346,7 @@ describe("Do ZD — kandydaci fetch ZK", () => {
   });
 });
 
-describe("Do ZD — własny source_zk nie zeruje prośby", () => {
+describe("Do ZD - własny source_zk nie zeruje prośby", () => {
   it("prośba 3 + rez. 3 na tym samym ZK → effective extra 3", () => {
     const byTw = new Map([
       [
@@ -384,7 +384,7 @@ describe("Do ZD — własny source_zk nie zeruje prośby", () => {
   });
 });
 
-describe("Do ZD — orderable przy full overlap + extraOnly", () => {
+describe("Do ZD - orderable przy full overlap + extraOnly", () => {
   it("linia widoczna i Do ZD = 3 (need=0 → overlap nie zeruje prośby)", () => {
     const lines = [
       soloLine({ twId: 50, cel: 0, dostepne: 7, stanRez: 3 }),

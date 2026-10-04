@@ -76,7 +76,6 @@ src/components/queue/WarehouseInventorySection.tsx
 src/components/operations-notepad/OperationsNotepadClient.tsx
 src/components/operations-notepad/OperationsNotesSection.tsx
 src/components/operations/OperationsUpdatesContext.tsx
-src/components/ui/BrandClockHandsAnimated.tsx
 src/components/ui/HelpPopover.tsx
 src/components/ui/OverflowMenu.tsx
 src/components/targets/LocationScheduleClient.tsx

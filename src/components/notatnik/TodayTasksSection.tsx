@@ -17,19 +17,19 @@ function taskBadge(kind: NotepadTodayTaskKind) {
   switch (kind) {
     case "zk-follow-up":
       return (
-        <Badge variant="purple" className="text-[10px]">
+        <Badge variant="info" className="text-[10px]">
           Przypomnienie
         </Badge>
       );
     case "zk-warehouse-arrival":
       return (
-        <Badge variant="purple" className="text-[10px]">
+        <Badge variant="info" className="text-[10px]">
           Nowy na regale
         </Badge>
       );
     case "note-follow-up":
       return (
-        <Badge variant="purple" className="text-[10px]">
+        <Badge variant="info" className="text-[10px]">
           Notatka
         </Badge>
       );

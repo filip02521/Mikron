@@ -121,7 +121,7 @@ export function ProsbaSupplierLeadTimeMeta({
               ) : null}
               {row.meta.lowConfidence ? (
                 <span
-                  className="text-[10px] font-medium uppercase tracking-wide text-amber-700/80"
+                  className="text-[10px] font-medium text-amber-700/80"
                   title={row.meta.tooltip}
                 >
                   szacunek
@@ -153,7 +153,7 @@ export function ProsbaSupplierLeadTimeMeta({
               ) : null}
               {row.meta.lowConfidence ? (
                 <span
-                  className="text-[10px] font-medium uppercase tracking-wide text-amber-700/90"
+                  className="text-[10px] font-medium text-amber-700/90"
                   title={row.meta.tooltip}
                 >
                   szacunek

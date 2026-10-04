@@ -10,7 +10,7 @@ import type { SubiektKontrahent } from "./types";
 describe("shouldRunSubiektClientSearch", () => {
   it("nie szuka ponownie po wyborze z listy (kh_Id)", () => {
     expect(
-      shouldRunSubiektClientSearch("BASSEM ALI DENTALART — Bassem Ali Dentalart", 42)
+      shouldRunSubiektClientSearch("BASSEM ALI DENTALART - Bassem Ali Dentalart", 42)
     ).toBe(false);
   });
 

@@ -148,7 +148,7 @@ export function TeethOrderFileUpload({
   if (locked) {
     return (
       <span className="text-[11px] text-slate-400" title="Plik niedostępny">
-        —
+        -
       </span>
     );
   }
@@ -169,10 +169,10 @@ export function TeethOrderFileUpload({
         className={cn(
           "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium shadow-sm transition-colors disabled:opacity-50",
           required
-            ? "border-indigo-300 bg-indigo-600 text-white shadow-indigo-600/20 hover:bg-indigo-700"
+            ? "border-indigo-300 bg-indigo-600 text-white hover:bg-indigo-700"
             : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
         )}
-        title="Załącz jeden plik zamówienia (Excel, PDF lub XML) na grupę dostawcy — wymagany przed oznaczeniem"
+        title="Załącz jeden plik zamówienia (Excel, PDF lub XML) na grupę dostawcy - wymagany przed oznaczeniem"
       >
         {pending ? <Spinner size="sm" /> : <IconFilePlus size={13} strokeWidth={2} />}
         {required ? "Wgraj plik zamówienia" : "Załącz plik"}

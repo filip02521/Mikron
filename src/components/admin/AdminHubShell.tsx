@@ -26,11 +26,11 @@ const TAB_TITLE: Record<AdminHubTab, string> = {
 
 const TAB_DESCRIPTION: Record<AdminHubTab, string> = {
   system:
-    "Konfiguracja długoterminowa: status systemu, Subiekt i narzędzia serwisowe. Operacje dzienne — w menu po lewej.",
+    "Konfiguracja długoterminowa: status systemu, Subiekt i narzędzia serwisowe. Operacje dzienne - w menu po lewej.",
   users: "Logowanie do systemu, role i hasła. Handlowiec musi mieć kartę w zakładce Handlowcy.",
   sales:
     "Osoby kontaktowe, powiadomienia e-mail i linki zaproszeń do zakładania kont.",
-  mail: "Status i historia wysyłek Ivoclar (odczyt — bez sterowania z OnTime).",
+  mail: "Status i historia wysyłek Ivoclar (odczyt - bez sterowania z OnTime).",
   wysylki:
     "Podgląd wszystkich maili transakcyjnych wysyłanych przez OnTime (dostawy, magazyn, OTP, tablica).",
 };

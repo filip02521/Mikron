@@ -244,7 +244,7 @@ describe("buildZdEstimateSnapshotLinesFromDoc requirePackaging", () => {
     }
   });
 
-  it("pozycja z szacunku bez opakowania — potwierdzone 1:1", () => {
+  it("pozycja z szacunku bez opakowania - potwierdzone 1:1", () => {
     const r = buildZdEstimateSnapshotLinesFromDocChecked(
       doc([{ twId: 1, qty: 3 }]),
       {
@@ -257,7 +257,7 @@ describe("buildZdEstimateSnapshotLinesFromDoc requirePackaging", () => {
     if (r.ok) expect(r.lines[0]?.qty).toBe(3);
   });
 
-  it("pozycja spoza szacunku bez opakowania — błąd", () => {
+  it("pozycja spoza szacunku bez opakowania - błąd", () => {
     const r = buildZdEstimateSnapshotLinesFromDocChecked(
       doc([{ twId: 99, qty: 2 }]),
       {
@@ -269,7 +269,7 @@ describe("buildZdEstimateSnapshotLinesFromDoc requirePackaging", () => {
     expect(r.ok).toBe(false);
   });
 
-  it("potwierdzone 1:1 — ratioAtLink = 1", () => {
+  it("potwierdzone 1:1 - ratioAtLink = 1", () => {
     const r = buildZdEstimateSnapshotLinesFromDocChecked(
       doc([{ twId: 1, qty: 4 }]),
       {
@@ -281,7 +281,7 @@ describe("buildZdEstimateSnapshotLinesFromDoc requirePackaging", () => {
     if (r.ok) expect(r.lines[0]?.ratioAtLink).toBe(1);
   });
 
-  it("opakowanie units=1 w DB — jawne 1:1", () => {
+  it("opakowanie units=1 w DB - jawne 1:1", () => {
     const r = buildZdEstimateSnapshotLinesFromDocChecked(
       doc([{ twId: 5, qty: 7 }]),
       {
@@ -296,7 +296,7 @@ describe("buildZdEstimateSnapshotLinesFromDoc requirePackaging", () => {
     }
   });
 
-  it("para pack — nie używa confirmed bypass", () => {
+  it("para pack - nie używa confirmed bypass", () => {
     const r = buildZdEstimateSnapshotLinesFromDocChecked(
       doc([{ twId: 10, qty: 2 }]),
       {
@@ -321,7 +321,7 @@ describe("buildZdEstimateSnapshotLinesFromDoc requirePackaging", () => {
     if (!r.ok) expect(r.message).toContain("S42 (42)");
   });
 
-  it("bez requirePackaging — cichy ×1 (legacy)", () => {
+  it("bez requirePackaging - cichy ×1 (legacy)", () => {
     const lines = buildZdEstimateSnapshotLinesFromDoc(
       doc([{ twId: 1, qty: 3 }]),
       {

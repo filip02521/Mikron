@@ -195,14 +195,14 @@ describe("zd-estimate-launch-scroll", () => {
     vi.useRealTimers();
   });
 
-  it("parseCssLengthToPx — px / rem", () => {
+  it("parseCssLengthToPx - px / rem", () => {
     const el = document.createElement("div");
     document.body.appendChild(el);
     expect(parseCssLengthToPx("56px", el)).toBe(56);
     expect(parseCssLengthToPx("3.5rem", el)).toBeCloseTo(56, 0);
   });
 
-  it("getZdEstimateUsefulScrollMax — kończy na sentinel + dock bottom, nie hardMax", () => {
+  it("getZdEstimateUsefulScrollMax - kończy na sentinel + dock bottom, nie hardMax", () => {
     const { main } = mockMainScroll({
       clientHeight: 400,
       scrollHeight: 2000,
@@ -235,7 +235,7 @@ describe("zd-estimate-launch-scroll", () => {
     expect(scrollTo).toHaveBeenCalledWith({ top: 300, behavior: "auto" });
   });
 
-  it("clampZdEstimateScrollSurfaces — main + tabela", () => {
+  it("clampZdEstimateScrollSurfaces - main + tabela", () => {
     const { main } = mockMainScroll({
       clientHeight: 400,
       scrollHeight: 2000,
@@ -291,7 +291,7 @@ describe("zd-estimate-launch-scroll", () => {
     vi.useRealTimers();
   });
 
-  it("scrollZdEstimateTableRowIntoView — nearest w TableScroll", () => {
+  it("scrollZdEstimateTableRowIntoView - nearest w TableScroll", () => {
     const { table, scrollTo } = mockTableScroll({ clientHeight: 200 });
 
     const row = document.createElement("tr");
@@ -317,7 +317,7 @@ describe("zd-estimate-launch-scroll", () => {
     expect(scrollTo).toHaveBeenCalled();
   });
 
-  it("scrollZdEstimateAfterSelectionChange — zaznaczenie → content end", () => {
+  it("scrollZdEstimateAfterSelectionChange - zaznaczenie → content end", () => {
     const { main, scrollTo } = mockMainScroll({
       clientHeight: 400,
       scrollHeight: 2000,
@@ -334,7 +334,7 @@ describe("zd-estimate-launch-scroll", () => {
     cancel();
   });
 
-  it("scrollZdEstimateAfterSelectionChange — cancel kasuje follow-up 260ms", async () => {
+  it("scrollZdEstimateAfterSelectionChange - cancel kasuje follow-up 260ms", async () => {
     vi.useFakeTimers();
     const { main, scrollTo } = mockMainScroll({
       clientHeight: 400,
@@ -354,7 +354,7 @@ describe("zd-estimate-launch-scroll", () => {
     vi.useRealTimers();
   });
 
-  it("scrollZdEstimateAfterSelectionChange — odznaczenie ostatniego → wiersz", () => {
+  it("scrollZdEstimateAfterSelectionChange - odznaczenie ostatniego → wiersz", () => {
     vi.useFakeTimers();
     const { table, scrollTo } = mockTableScroll({ clientHeight: 200 });
 

@@ -40,7 +40,7 @@ export async function runZdEtaSyncForSalesPeople(
   return { updated, processed, cleared };
 }
 
-/** Po oznaczeniu prośb jako Zamowione — sync terminów ZD w tle (live search). */
+/** Po oznaczeniu próśb jako Zamowione — sync terminów ZD w tle (live search). */
 export async function scheduleZdEtaSyncAfterProcurement(
   salesPersonIds: readonly string[]
 ): Promise<void> {

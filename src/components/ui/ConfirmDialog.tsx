@@ -15,6 +15,7 @@ export function ConfirmDialog({
   pending,
   tier = "raised",
   disableBackdropClose,
+  autoFocusConfirm,
   onConfirm,
   onCancel,
 }: {
@@ -30,6 +31,8 @@ export function ConfirmDialog({
   tier?: ModalTier;
   /** Gdy true — klik w tło nie wywołuje onCancel (np. wymuszone wybory). */
   disableBackdropClose?: boolean;
+  /** Fokus na „Potwierdź” (Enter zatwierdza) — dla przepływów z klawiatury; domyślnie bezpieczne „Anuluj”. */
+  autoFocusConfirm?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -61,6 +64,7 @@ export function ConfirmDialog({
             className="min-h-11 w-full sm:w-auto"
             onClick={onConfirm}
             disabled={pending}
+            data-autofocus={autoFocusConfirm || undefined}
           >
             {confirmLabel}
           </Button>

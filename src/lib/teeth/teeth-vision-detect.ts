@@ -55,7 +55,7 @@ function buildDetectPrompt(): string {
     ivoclar_gnathostar: "Fasony D80-D88 (lub same liczby 80-88), 'Gnathostar'; prefix 'ivo' na kartce, często z Ivostar",
     ivoclar_phonares_ii: "Fasony S*/B*/L* (przody), NU/NL/LU/LL (boki), kolory VITA+BL, 'Phonares'",
     ivoclar_vivodent_dcl: "Fasony A1*-A6* + A3-A10 (dolne), 'Vivodent'",
-    ivoclar_orthotyp_dcl: "Fasony N*U/N*L/LU*/LL* (boki), 'Orthotyp' — często z Vivodent",
+    ivoclar_orthotyp_dcl: "Fasony N*U/N*L/LU*/LL* (boki), 'Orthotyp' - często z Vivodent",
     major_super_lux: "Prefiksy 0/1, fasony 0/3-0/11, 50-62, 1/xx, 70N-79N, 'Super Lux'; prefix 'M' na kartce",
     major_composite: "Fasony B/L/M/S + A/T, 'kompozytowe'; prefix 'M' na kartce",
     major_dent: "Fasony 2-cyfrowe + litery (7A, 19A), kolory VITA + 2C-3R, 'Major DENT'; prefix 'M' na kartce",
@@ -73,8 +73,8 @@ function buildDetectPrompt(): string {
   }
 
   parts.push(`\n## Reguły:`);
-  parts.push(`1. Zwróć WSZYSTKIE linie widoczne na kartce. Kartka może zawierać sekcje Ivostar, Wiedent, Major i innych jednocześnie — nie zatrzymuj się na pierwszej.`);
-  parts.push(`2. Jeśli nie pewien — zwróć z confidence < 0.5.`);
+  parts.push(`1. Zwróć WSZYSTKIE linie widoczne na kartce. Kartka może zawierać sekcje Ivostar, Wiedent, Major i innych jednocześnie - nie zatrzymuj się na pierwszej.`);
+  parts.push(`2. Jeśli nie pewien - zwróć z confidence < 0.5.`);
   parts.push(`3. Pary linii: Ivostar+Gnathostar i Vivodent+Orthotyp często występują razem (przody + boki = osobne towary).`);
   parts.push(`4. Rozróżnij linie po KOLORACH i FASONACH:`);
   parts.push(`   - Ivostar Chromascop: kolory z cyfrą i literą (01, 1A, 2A, 2B, 1C, 2C, 3C, 3E, 4A, 4B, 4C, 4D, 6B, 6C, 6D) oraz VITA, fasony 01-45 (przody) i 80-88 (boki).`);
@@ -85,8 +85,8 @@ function buildDetectPrompt(): string {
   parts.push(`   - Dentex AmberLux: kolory A1-R5 (bez sufiksa), fasony 0-48 lub I-X.`);
   parts.push(`   - Dentex AmberLux skala V: kolory z sufiksem V (A1V-D4V).`);
   parts.push(`5. Linie z prefixem "ivo" to Ivoclar; prefix "W" to Wiedent; prefix "M" to Major. Prefix jest najsilniejszym sygnałem, ale zweryfikuj kolor/fasony.`);
-  parts.push(`6. Ignoruj przedrukowany tekst (nagłówki, logo) — rozpoznaj tylko ODRĘCZNE wpisy.`);
-  parts.push(`7. Skreślone pozycje pomiń — rozpoznaj linie na podstawie nieprzekreślonych wpisów.`);
+  parts.push(`6. Ignoruj przedrukowany tekst (nagłówki, logo) - rozpoznaj tylko ODRĘCZNE wpisy.`);
+  parts.push(`7. Skreślone pozycje pomiń - rozpoznaj linie na podstawie nieprzekreślonych wpisów.`);
   parts.push(`8. confidence: 0.0-1.0, gdzie 1.0 = absolutna pewność, 0.5 = prawdopodobne.`);
   parts.push(`\n## Format odpowiedzi:`);
   parts.push(`Zwróć JSON z tablicą "lines", gdzie każdy element ma: productLine (dokładnie jedno z ID powyżej), confidence (liczba 0-1), note (opcjonalny komentarz).`);

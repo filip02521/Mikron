@@ -74,7 +74,7 @@ describe("resolveZkWatchLineUiState", () => {
     ).toBe("in_stock");
   });
 
-  it("wykluczenie z zakresu — osobny stan UI", () => {
+  it("wykluczenie z zakresu - osobny stan UI", () => {
     expect(
       resolveZkWatchLineUiState({
         isNewLine: false,
@@ -86,7 +86,7 @@ describe("resolveZkWatchLineUiState", () => {
 });
 
 describe("deriveZkWatchProsbaCardAction", () => {
-  it("gdy brak zakresu prośby — normalny CTA prośby", () => {
+  it("gdy brak zakresu prośby - normalny CTA prośby", () => {
     expect(
       deriveZkWatchProsbaCardAction({
         lineCount: 3,
@@ -98,7 +98,7 @@ describe("deriveZkWatchProsbaCardAction", () => {
     ).toBe("new_prosba");
   });
 
-  it("gdy wszystko w prośbach — otwórz prośbę", () => {
+  it("gdy wszystko w prośbach - otwórz prośbę", () => {
     expect(
       deriveZkWatchProsbaCardAction({
         lineCount: 3,
@@ -110,7 +110,7 @@ describe("deriveZkWatchProsbaCardAction", () => {
     ).toEqual({ kind: "view_open", label: "Otwórz prośbę" });
   });
 
-  it("tylko nowe pozycje — uzupełnij", () => {
+  it("tylko nowe pozycje - uzupełnij", () => {
     expect(
       deriveZkWatchProsbaCardAction({
         lineCount: 3,
@@ -122,7 +122,7 @@ describe("deriveZkWatchProsbaCardAction", () => {
     ).toMatchObject({ kind: "supplement", label: "Uzupełnij (2)" });
   });
 
-  it("brak prośby — utwórz prośbę", () => {
+  it("brak prośby - utwórz prośbę", () => {
     expect(
       deriveZkWatchProsbaCardAction({
         lineCount: 2,
@@ -134,7 +134,7 @@ describe("deriveZkWatchProsbaCardAction", () => {
     ).toMatchObject({ kind: "new_prosba", label: "Utwórz prośbę" });
   });
 
-  it("część w prośbie — uzupełnij z liczbą", () => {
+  it("część w prośbie - uzupełnij z liczbą", () => {
     expect(
       deriveZkWatchProsbaCardAction({
         lineCount: 3,
@@ -146,7 +146,7 @@ describe("deriveZkWatchProsbaCardAction", () => {
     ).toMatchObject({ kind: "supplement", label: "Uzupełnij (1)" });
   });
 
-  it("częściowa dostawa — nie pokazuj Komplet", () => {
+  it("częściowa dostawa - nie pokazuj Komplet", () => {
     expect(
       deriveZkWatchProsbaCardAction({
         lineCount: 1,
@@ -159,7 +159,7 @@ describe("deriveZkWatchProsbaCardAction", () => {
     ).toEqual({ kind: "view_open", label: "Otwórz prośbę" });
   });
 
-  it("towar na regale bez odbioru — CTA do Moje, nie Komplet", () => {
+  it("towar na regale bez odbioru - CTA do Moje, nie Komplet", () => {
     expect(
       deriveZkWatchProsbaCardAction({
         lineCount: 1,
@@ -172,7 +172,7 @@ describe("deriveZkWatchProsbaCardAction", () => {
     ).toEqual({ kind: "view_open", label: "Odbierz w Moje" });
   });
 
-  it("towar na regale z otwartą prośbą — otwórz prośbę", () => {
+  it("towar na regale z otwartą prośbą - otwórz prośbę", () => {
     expect(
       deriveZkWatchProsbaCardAction({
         lineCount: 1,
@@ -185,7 +185,7 @@ describe("deriveZkWatchProsbaCardAction", () => {
     ).toEqual({ kind: "view_open", label: "Otwórz prośbę" });
   });
 
-  it("wszystkie pozycje pominięte w zakresie — chip Ze stanu", () => {
+  it("wszystkie pozycje pominięte w zakresie - chip Ze stanu", () => {
     expect(
       deriveZkWatchProsbaCardAction({
         lineCount: 2,
@@ -198,7 +198,7 @@ describe("deriveZkWatchProsbaCardAction", () => {
     ).toEqual({ kind: "covered", reason: "scope_excluded" });
   });
 
-  it("pokryte pozycje — chip Obsłużone", () => {
+  it("pokryte pozycje - chip Obsłużone", () => {
     expect(
       deriveZkWatchProsbaCardAction({
         lineCount: 2,
@@ -212,19 +212,19 @@ describe("deriveZkWatchProsbaCardAction", () => {
 });
 
 describe("formatZkWatchProsbaRowMeta", () => {
-  it("covered complete — Prośba: bez otwartej", () => {
+  it("covered complete - Prośba: bez otwartej", () => {
     expect(
       formatZkWatchProsbaRowMeta({ kind: "covered", reason: "complete" })
     ).toBe("Prośba: bez otwartej");
   });
 
-  it("covered scope_excluded — Prośba: ze stanu magazynowego", () => {
+  it("covered scope_excluded - Prośba: ze stanu magazynowego", () => {
     expect(
       formatZkWatchProsbaRowMeta({ kind: "covered", reason: "scope_excluded" })
     ).toBe("Prośba: ze stanu magazynowego");
   });
 
-  it("inna akcja — null", () => {
+  it("inna akcja - null", () => {
     expect(formatZkWatchProsbaRowMeta({ kind: "none" })).toBeNull();
     expect(
       formatZkWatchProsbaRowMeta({ kind: "view_open", label: "Odbierz w Moje" })
@@ -255,7 +255,7 @@ describe("formatZkProsbaCardActionLabelAfterStockFilter", () => {
     ).toBe("Na stanie");
   });
 
-  it("gdy filtr stanu wyklucza wszystko, a jest prośba — otwórz prośbę", () => {
+  it("gdy filtr stanu wyklucza wszystko, a jest prośba - otwórz prośbę", () => {
     expect(
       formatZkProsbaCardActionLabelAfterStockFilter({
         action: { kind: "supplement", label: "Uzupełnij (2)", lineKeys: ["a", "b"] },
@@ -606,7 +606,7 @@ describe("buildZkWatchLineStatusSummary", () => {
     ).toBe("2 zakończone");
   });
 
-  it("odbiór w Moje bez ręcznego zakończenia — in_stock nie zakończone", () => {
+  it("odbiór w Moje bez ręcznego zakończenia - in_stock nie zakończone", () => {
     expect(
       buildZkWatchLineStatusSummary({
         lineViews: [{ key: "b", arrived: true, completed_manually: false }],

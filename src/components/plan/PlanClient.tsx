@@ -157,7 +157,7 @@ function PlanPreviewClient({
 
   const weekTitle = "Plan na ten tydzień";
   const weekDescription =
-    "Pełny harmonogram zakupów — poniedziałek–piątek (tylko podgląd)";
+    "Pełny harmonogram zakupów - poniedziałek-piątek (tylko podgląd)";
 
   return (
     <div className={panelPageShellClass}>
@@ -255,7 +255,7 @@ function PlanPreviewClient({
                               {formatPlDate(row.nextDate)}
                             </span>
                           ) : (
-                            "—"
+                            "-"
                           )}
                         </td>
                         <td className="tabular-nums">{formatPlDate(row.orderDate)}</td>
@@ -264,7 +264,7 @@ function PlanPreviewClient({
                             ? `${insight.weekDayLabel} · ${insight.weekDateLabel}`
                             : row.nextDate
                               ? "Poza tym tygodniem"
-                              : "—"}
+                              : "-"}
                         </td>
                       </tr>
                     );
@@ -291,7 +291,7 @@ function SupplierPlanSearchCard({
   return (
     <li
       className={cn(
-        "rounded-md border border-indigo-200/80 bg-gradient-to-br from-indigo-50/90 to-white shadow-sm",
+        "rounded-md border border-indigo-200/80 bg-indigo-50/90 shadow-sm",
         compact ? "p-3" : "p-4"
       )}
     >
@@ -333,23 +333,23 @@ function SupplierPlanSearchCard({
         )}
       >
         <div>
-          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <dt className="text-xs font-semibold text-slate-500">
             Planowane zamówienie
           </dt>
           <dd className="mt-0.5 text-sm font-semibold tabular-nums text-slate-900">
-            {formatPlDate(insight.nextDate) ?? "—"}
+            {formatPlDate(insight.nextDate) ?? "-"}
           </dd>
         </div>
         <div>
-          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <dt className="text-xs font-semibold text-slate-500">
             Ostatnie zamówienie
           </dt>
           <dd className="mt-0.5 text-sm tabular-nums text-slate-800">
-            {formatPlDate(insight.orderDate) ?? "—"}
+            {formatPlDate(insight.orderDate) ?? "-"}
           </dd>
         </div>
         <div>
-          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <dt className="text-xs font-semibold text-slate-500">
             W kalendarzu tygodnia
           </dt>
           <dd className="mt-0.5 text-sm text-slate-800">
@@ -361,11 +361,11 @@ function SupplierPlanSearchCard({
           </dd>
         </div>
         <div>
-          <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <dt className="text-xs font-semibold text-slate-500">
             Korekta harmonogramu
           </dt>
           <dd className="mt-0.5 text-sm text-slate-800">
-            {insight.vacationNote ?? "—"}
+            {insight.vacationNote ?? "-"}
           </dd>
         </div>
       </dl>

@@ -7,7 +7,7 @@ export const TEETH_MARK_ORDERED_BLOCKED_MESSAGE =
   "Uzupełnij kompletną listę zębów przed oznaczeniem zamówienia u dostawcy.";
 
 export const TEETH_MARK_ORDERED_FILE_REQUIRED_MESSAGE =
-  "Załącz jeden plik zamówienia (Excel, PDF lub XML) na grupę dostawcy — zanim oznaczysz jako zamówione.";
+  "Załącz jeden plik zamówienia (Excel, PDF lub XML) na grupę dostawcy - zanim oznaczysz jako zamówione.";
 
 /** Gdy w Storage jest ścieżka, a w bazie brakuje oryginalnej nazwy. */
 export const TEETH_GROUP_ORDER_FILE_FALLBACK_NAME = "plik zamówienia";
@@ -140,12 +140,12 @@ export function teethMarkOrderedConfirmMessage(
     if (analysis.hasMissingFile) {
       return (
         `${TEETH_MARK_ORDERED_FILE_REQUIRED_MESSAGE}\n\n` +
-        `Jeden plik pokrywa wszystkie prośby u tego dostawcy — wrzuć go przy grupie, wtedy odblokuje się oznaczanie.`
+        `Jeden plik pokrywa wszystkie prośby u tego dostawcy - wrzuć go przy grupie, wtedy odblokuje się oznaczanie.`
       );
     }
     return (
       `${TEETH_MARK_ORDERED_BLOCKED_MESSAGE}\n\n` +
-      `Użyj „Edytuj listę” przy każdej pozycji — kolor, fason, szczęka i typ muszą być kompletne.`
+      `Użyj „Edytuj listę” przy każdej pozycji - kolor, fason, szczęka i typ muszą być kompletne.`
     );
   }
 
@@ -159,7 +159,7 @@ export function teethMarkOrderedConfirmMessage(
   const notes: string[] = [];
   if (analysis.hasMissingSpec) {
     notes.push(
-      `${skippedOrders} ${skippedOrders === 1 ? "zamówienie nie ma" : "zamówień nie ma"} kompletnej listy zębów — ` +
+      `${skippedOrders} ${skippedOrders === 1 ? "zamówienie nie ma" : "zamówień nie ma"} kompletnej listy zębów - ` +
         `pominę je i oznaczę tylko gotowe.`
     );
   }
@@ -167,7 +167,7 @@ export function teethMarkOrderedConfirmMessage(
     notes.push(
       `${skippedFileGroups} ${
         skippedFileGroups === 1 ? "grupa dostawcy nie ma" : "grup dostawcy nie ma"
-      } pliku zamówienia — ` +
+      } pliku zamówienia - ` +
         `pominę te prośby do czasu wrzucenia jednego pliku przy grupie.`
     );
   }

@@ -24,7 +24,7 @@ describe("receive-queue-undo notification queue", () => {
     },
   ];
 
-  it("attachDeliveryNotificationQueueIds — dopina queueId do migawek", () => {
+  it("attachDeliveryNotificationQueueIds - dopina queueId do migawek", () => {
     const attached = attachDeliveryNotificationQueueIds(snapshots, {
       a: "queue-a",
       b: "queue-b",
@@ -33,7 +33,7 @@ describe("receive-queue-undo notification queue", () => {
     expect(attached[1]?.queueId).toBe("queue-b");
   });
 
-  it("collectDeliveryNotificationQueueIds — unikalne id", () => {
+  it("collectDeliveryNotificationQueueIds - unikalne id", () => {
     expect(
       collectDeliveryNotificationQueueIds([
         { ...snapshots[0]!, queueId: "q1" },

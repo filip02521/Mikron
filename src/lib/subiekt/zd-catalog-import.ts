@@ -56,7 +56,7 @@ export async function importZdDocumentToCatalog(
   if (!indexRow?.supplier_id || String(indexRow.supplier_id) !== supplierId) {
     await noteZdCatalogImportSkipped(
       dokId,
-      "Indeks wskazuje innego dostawcę — pominięto import."
+      "Indeks wskazuje innego dostawcę - pominięto import."
     );
     return { ...emptyImportResult(), skipped: true, skipReason: "supplier_mismatch" };
   }
@@ -66,7 +66,7 @@ export async function importZdDocumentToCatalog(
     doc = await getSubiektZdDocumentCached(dokId);
   } catch (e) {
     if (e instanceof SubiektRequestError && e.status === 404) {
-      await noteZdCatalogImportSkipped(dokId, "Brak dokumentu w Subiekcie (404) — pominięto.");
+      await noteZdCatalogImportSkipped(dokId, "Brak dokumentu w Subiekcie (404) - pominięto.");
       return {
         ...emptyImportResult(),
         skipped: true,
@@ -82,7 +82,7 @@ export async function importZdDocumentToCatalog(
   if (indexedKh != null && !khIds.includes(indexedKh)) {
     await noteZdCatalogImportSkipped(
       dokId,
-      `Kontrahent dokumentu nie zgadza się z indeksem (kh ${indexedKh}) — pominięto.`
+      `Kontrahent dokumentu nie zgadza się z indeksem (kh ${indexedKh}) - pominięto.`
     );
     return { ...emptyImportResult(), skipped: true, skipReason: "index_mismatch" };
   }
@@ -101,7 +101,7 @@ export async function importZdDocumentToCatalog(
   if (supplierKh != null && !khIds.includes(supplierKh)) {
     await noteZdCatalogImportSkipped(
       dokId,
-      `Dokument nie należy do dostawcy (kh ${supplierKh}) — pominięto.`
+      `Dokument nie należy do dostawcy (kh ${supplierKh}) - pominięto.`
     );
     return { ...emptyImportResult(), skipped: true, skipReason: "supplier_mismatch" };
   }

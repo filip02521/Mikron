@@ -247,8 +247,8 @@ export async function sendDeliveryNotificationDirect(
   } else if (skipped.length) {
     const skipNote =
       skipped.length === 1
-        ? `${skipped[0]}: brak e-maila — zapisano bez powiadomienia`
-        : `${skipped.length} handlowców bez e-maila — zapisano bez powiadomienia`;
+        ? `${skipped[0]}: brak e-maila - zapisano bez powiadomienia`
+        : `${skipped.length} handlowców bez e-maila - zapisano bez powiadomienia`;
     error = skipNote;
   }
 
@@ -333,14 +333,14 @@ export async function sendPendingDeliveryNotifications(ids: string[]): Promise<{
   if (result.failures.length) {
     error = `${result.failures[0].to}: ${result.failures[0].error}`;
     console.error(
-      "[delivery-notification-queue] SMTP failures — wpisy zostają w kolejce do ponowienia:",
+      "[delivery-notification-queue] SMTP failures - wpisy zostają w kolejce do ponowienia:",
       result.failures
     );
   } else if (settleWithoutMailIds.length && !notifications.size) {
     const skipNote =
       settleWithoutMailIds.length === 1
-        ? `brak e-maila / zamówienia — zapisano bez powiadomienia`
-        : `${settleWithoutMailIds.length} pozycji bez e-maila — zapisano bez powiadomienia`;
+        ? `brak e-maila / zamówienia - zapisano bez powiadomienia`
+        : `${settleWithoutMailIds.length} pozycji bez e-maila - zapisano bez powiadomienia`;
     error = skipNote;
   }
 

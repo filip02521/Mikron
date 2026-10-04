@@ -49,7 +49,7 @@ export function buildTeethOcrProsbaLines(
 
     const lineLabel = teethProductLineLabel(productLine) ?? productLine;
     const kindLabel = TEETH_KIND_LABELS[kind];
-    const product = `${lineLabel} — ${kindLabel}`;
+    const product = `${lineLabel} - ${kindLabel}`;
 
     lines.push({
       id: randomId(),

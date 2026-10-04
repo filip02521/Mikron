@@ -55,9 +55,9 @@ export function mapZdProductPairRow(row: DbRow): ZdProductPairRow {
     subiektKplId:
       row.subiekt_kpl_id != null ? Number(row.subiekt_kpl_id) : null,
     packSymbol: row.pack_symbol?.trim() || null,
-    packNazwa: (row.pack_nazwa ?? "").trim() || "—",
+    packNazwa: (row.pack_nazwa ?? "").trim() || "-",
     pieceSymbol: row.piece_symbol?.trim() || null,
-    pieceNazwa: (row.piece_nazwa ?? "").trim() || "—",
+    pieceNazwa: (row.piece_nazwa ?? "").trim() || "-",
     note: (row.note ?? "").trim(),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -161,7 +161,7 @@ export async function upsertZdProductPair(
     if (samePair) continue;
     if (row.source === "manual" && source === "subiekt_komplet" && !input.forceManual) {
       throw new Error(
-        `Konflikt z ręczną parą ${row.packSymbol ?? row.packTwId} ↔ ${row.pieceSymbol ?? row.pieceTwId} — sync pomija.`
+        `Konflikt z ręczną parą ${row.packSymbol ?? row.packTwId} ↔ ${row.pieceSymbol ?? row.pieceTwId} - sync pomija.`
       );
     }
     if (!samePair) {
@@ -217,9 +217,9 @@ export async function upsertZdProductPair(
       source,
       subiekt_kpl_id: input.subiektKplId ?? null,
       pack_symbol: input.packSymbol?.trim() || null,
-      pack_nazwa: (input.packNazwa ?? "").trim() || "—",
+      pack_nazwa: (input.packNazwa ?? "").trim() || "-",
       piece_symbol: input.pieceSymbol?.trim() || null,
-      piece_nazwa: (input.pieceNazwa ?? "").trim() || "—",
+      piece_nazwa: (input.pieceNazwa ?? "").trim() || "-",
       note: (input.note ?? "").trim().slice(0, 500),
       created_by: input.createdBy ?? null,
       created_at: now,

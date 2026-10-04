@@ -163,14 +163,14 @@ export function ZdEstimateListToolsBar({
     <div
       className={zdEstimateSelectionBarClass}
       role="region"
-      aria-label={`Akcje grupowe — ${selectionLabel}`}
+      aria-label={`Akcje grupowe - ${selectionLabel}`}
     >
       <div className={zdEstimateListToolsRowClass}>
         <div className={zdEstimateListToolsMetaClass}>
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-indigo-950">
             <span className="sr-only">{selectionLabel}</span>
             <span
-              className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-xs font-bold tabular-nums text-white"
+              className="inline-flex h-6 min-w-6 items-center justify-center rounded-md bg-indigo-600 px-1.5 text-xs font-bold tabular-nums text-white"
               aria-hidden
             >
               {selectedCount}

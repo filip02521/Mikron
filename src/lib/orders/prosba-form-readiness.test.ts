@@ -3,14 +3,14 @@ import { buildProsbaFormReadiness } from "./prosba-form-readiness";
 import { planSalesRequestSubmit } from "./sales-request-submit";
 
 describe("buildProsbaFormReadiness", () => {
-  it("pusty formularz — neutralny stan", () => {
+  it("pusty formularz - neutralny stan", () => {
     const view = buildProsbaFormReadiness([], "zamowienie", null);
     expect(view.tone).toBe("neutral");
     expect(view.canSubmit).toBe(false);
     expect(view.steps.find((s) => s.id === "product")?.state).toBe("empty");
   });
 
-  it("produkt bez ilości — blocked", () => {
+  it("produkt bez ilości - blocked", () => {
     const plan = planSalesRequestSubmit({
       symbol: "A",
       product: "Test",
@@ -26,7 +26,7 @@ describe("buildProsbaFormReadiness", () => {
     expect(view.steps.find((s) => s.id === "quantity")?.state).toBe("action");
   });
 
-  it("subiekt bez dostawcy — ready + handoff na dostawcy", () => {
+  it("subiekt bez dostawcy - ready + handoff na dostawcy", () => {
     const plan = planSalesRequestSubmit({
       symbol: "A",
       product: "Test",
@@ -45,7 +45,7 @@ describe("buildProsbaFormReadiness", () => {
     expect(view.steps.find((s) => s.id === "supplier")?.detail).toContain("dopasuje dział zakupów");
   });
 
-  it("subiekt z dopasowanym dostawcą — done", () => {
+  it("subiekt z dopasowanym dostawcą - done", () => {
     const plan = planSalesRequestSubmit({
       symbol: "A",
       product: "Test",
@@ -71,7 +71,7 @@ describe("buildProsbaFormReadiness", () => {
     expect(view.steps.find((s) => s.id === "supplier")?.detail).toContain("panelu dziennego");
   });
 
-  it("zęby z dopasowanym dostawcą — panel zębów", () => {
+  it("zęby z dopasowanym dostawcą - panel zębów", () => {
     const exempt = new Set([42]);
     const plan = planSalesRequestSubmit({
       symbol: "A",
@@ -102,7 +102,7 @@ describe("buildProsbaFormReadiness", () => {
     expect(view.subline).toContain("panelu zębów");
   });
 
-  it("mieszane tory zęby + towar — ostrzeżenie przed wysłaniem", () => {
+  it("mieszane tory zęby + towar - ostrzeżenie przed wysłaniem", () => {
     const exempt = new Set([42]);
     const plan = planSalesRequestSubmit({
       symbol: "A",
@@ -140,7 +140,7 @@ describe("buildProsbaFormReadiness", () => {
     expect(view.subline).toContain("panelu zębów");
   });
 
-  it("informacja stock out — ścieżka w checklistie", () => {
+  it("informacja stock out - ścieżka w checklistie", () => {
     const plan = planSalesRequestSubmit({
       symbol: "A",
       product: "Test",
@@ -156,7 +156,7 @@ describe("buildProsbaFormReadiness", () => {
     expect(view.subline).toContain("Moje zamówienia");
   });
 
-  it("ZK allowlista — blokuje produkt spoza ZK", () => {
+  it("ZK allowlista - blokuje produkt spoza ZK", () => {
     const plan = planSalesRequestSubmit({
       symbol: "A",
       product: "Test",

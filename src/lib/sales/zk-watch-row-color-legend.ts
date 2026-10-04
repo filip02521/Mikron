@@ -19,28 +19,28 @@ export const ZK_WATCH_ROW_COLOR_LEGEND_ITEMS: ZkWatchRowColorLegendItem[] = [
   {
     id: "regal",
     label: "Regal",
-    title: "Fiolet — odbiór w Moje",
-    detail: "Towar czeka na odbiór z regału — potwierdź w Moje zamówienia",
+    title: "Fiolet - odbiór w Moje",
+    detail: "Towar czeka na odbiór z regału - potwierdź w Moje zamówienia",
     core: true,
   },
   {
     id: "ready_to_close",
     label: "Do zamknięcia",
     title: "Zielony rail",
-    detail: "Wszystkie pozycje odhaczone — możesz zamknąć sprawę ZK",
+    detail: "Wszystkie pozycje odhaczone - możesz zamknąć sprawę ZK",
     core: true,
   },
   {
     id: "informacja",
     label: "Dostępne",
     title: "Niebieski",
-    detail: "Magazyn potwierdził dostępność — prośba informacyjna",
+    detail: "Magazyn potwierdził dostępność - prośba informacyjna",
   },
   {
     id: "follow_up",
     label: "Przypomnienie",
     title: "Bursztyn",
-    detail: "Termin przypomnienia minął — sprawdź kalendarz w wierszu",
+    detail: "Termin przypomnienia minął - sprawdź kalendarz w wierszu",
   },
   {
     id: "new_lines",

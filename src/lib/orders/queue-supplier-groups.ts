@@ -2,7 +2,7 @@ import type { IndividualOrder } from "@/types/database";
 import { cn } from "@/lib/cn";
 
 export function supplierKey(order: IndividualOrder): string {
-  return order.supplier?.name?.trim() || "—";
+  return order.supplier?.name?.trim() || "-";
 }
 
 export type SupplierOrderGroup = {

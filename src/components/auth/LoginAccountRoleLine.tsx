@@ -1,9 +1,7 @@
-import { loginAccountRoleDotClass } from "@/components/auth/login-account-picker-layout";
 import { cn } from "@/lib/cn";
 import type { UserRole } from "@/types/database";
 
 export function LoginAccountRoleLine({
-  role,
   roleLabel,
   assignmentLabel,
   compact = false,
@@ -25,14 +23,6 @@ export function LoginAccountRoleLine({
         className
       )}
     >
-      <span
-        className={cn(
-          "shrink-0 self-center rounded-full",
-          compact ? "h-1 w-1" : "h-1.5 w-1.5",
-          loginAccountRoleDotClass(role)
-        )}
-        aria-hidden
-      />
       <span className="inline-flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5 leading-none">
         <span className="truncate">{roleLabel}</span>
         {groups.length > 0 ? (

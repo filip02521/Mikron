@@ -177,19 +177,19 @@ export function TeethOrderDetailDialog({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100">
-                    <th className="px-3 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    <th className="px-3 py-1.5 text-left text-[10px] font-semibold text-slate-400">
                       Specyfikacja
                     </th>
-                    <th className="px-3 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    <th className="px-3 py-1.5 text-center text-[10px] font-semibold text-slate-400">
                       Zam.
                     </th>
-                    <th className="px-3 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    <th className="px-3 py-1.5 text-center text-[10px] font-semibold text-slate-400">
                       Przyj.
                     </th>
-                    <th className="px-3 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    <th className="px-3 py-1.5 text-center text-[10px] font-semibold text-slate-400">
                       Brak
                     </th>
-                    <th className="px-3 py-1.5 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    <th className="px-3 py-1.5 text-center text-[10px] font-semibold text-slate-400">
                       Status
                     </th>
                   </tr>
@@ -207,10 +207,10 @@ export function TeethOrderDetailDialog({
                         {s.ordered}
                       </td>
                       <td className="px-3 py-2 text-center tabular-nums font-semibold text-emerald-700 text-xs">
-                        {s.delivered > 0 ? s.delivered : "—"}
+                        {s.delivered > 0 ? s.delivered : "-"}
                       </td>
                       <td className="px-3 py-2 text-center tabular-nums font-semibold text-amber-700 text-xs">
-                        {s.remaining > 0 ? s.remaining : "—"}
+                        {s.remaining > 0 ? s.remaining : "-"}
                       </td>
                       <td className="px-3 py-2 text-center">
                         <DeliveryBadge delivered={s.delivered} ordered={s.ordered} />
@@ -224,7 +224,7 @@ export function TeethOrderDetailDialog({
 
           {totalRemaining > 0 ? (
             <p className="text-xs leading-relaxed text-slate-500">
-              Brakuje jeszcze {totalRemaining} {totalRemaining === 1 ? "sztuki" : "szt."} — reszta czeka u dostawcy.
+              Brakuje jeszcze {totalRemaining} {totalRemaining === 1 ? "sztuki" : "szt."} - reszta czeka u dostawcy.
               Magazynier przyjmie je w kolejnej dostawie, a status zaktualizuje się automatycznie.
             </p>
           ) : (

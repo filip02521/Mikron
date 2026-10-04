@@ -86,7 +86,7 @@ export function ScheduleSupplierActionBar({
     return (
       <div
         role="group"
-        aria-label={`Akcje harmonogramu — ${supplierName}`}
+        aria-label={`Akcje harmonogramu - ${supplierName}`}
         aria-busy={pending}
         className={cn("flex w-full flex-col gap-1", pending && "opacity-60", className)}
       >
@@ -132,7 +132,7 @@ export function ScheduleSupplierActionBar({
   return (
     <div
       role="group"
-      aria-label={`Akcje harmonogramu — ${supplierName}`}
+      aria-label={`Akcje harmonogramu - ${supplierName}`}
       aria-busy={pending}
       className={cn(
         isFooter ? urgentFooterShellClass(tone) : panelActionBarShellClass,

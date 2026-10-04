@@ -122,7 +122,7 @@ export function SupplierSubiektLinkField({
 
   return (
     <div className="rounded-lg border border-slate-200/70 bg-slate-50/50 p-3.5 space-y-3">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+      <p className="text-[11px] font-semibold text-slate-400">
         Powiązanie z Subiektem
       </p>
       {subiektKhId != null ? (
@@ -142,14 +142,14 @@ export function SupplierSubiektLinkField({
       ) : (
         <p className="text-xs leading-relaxed text-slate-500">
           Wyszukaj kontrahenta po nazwie w Subiekcie i ustaw jako głównego albo dodaj dodatkowego
-          (np. po zmianie firmy) — indeks ZD dopasuje dokumenty z każdej z tych kart do tego
+          (np. po zmianie firmy) - indeks ZD dopasuje dokumenty z każdej z tych kart do tego
           dostawcy.
         </p>
       )}
 
       {aliases.length > 0 ? (
         <div className="space-y-1.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+          <p className="text-[11px] font-semibold text-slate-400">
             Dodatkowi kontrahenci
           </p>
           <ul className="space-y-1">

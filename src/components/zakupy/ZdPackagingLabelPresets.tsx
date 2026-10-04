@@ -37,7 +37,7 @@ export function ZdPackagingLabelPresets({
             disabled={disabled}
             aria-pressed={active}
             title={
-              showCompact ? `${preset} — w tabeli: ${compact}` : preset
+              showCompact ? `${preset} - w tabeli: ${compact}` : preset
             }
             onClick={() => onSelect(preset)}
             className={cn(

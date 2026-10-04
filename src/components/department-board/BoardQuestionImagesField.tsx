@@ -64,33 +64,12 @@ export function BoardQuestionImagesField({
         {DEPARTMENT_BOARD_QUESTIONS_FORM.imagesHint}
       </p>
 
-      {images.length > 0 ? (
-        <ul className="mt-2 flex flex-wrap gap-2">
-          {images.map((img, index) => (
-            <li
-              key={img.key}
-              className="relative h-20 w-20 overflow-hidden rounded-md border border-slate-200 bg-slate-50"
-            >
-              <Image
-                src={img.previewUrl}
-                alt={`Podgląd zdjęcia ${index + 1}`}
-                fill
-                unoptimized
-                className="object-cover"
-              />
-              <button
-                type="button"
-                className="absolute right-0.5 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-slate-900/70 text-white hover:bg-slate-900"
-                onClick={() => onRemove(img.key)}
-                disabled={disabled}
-                aria-label={`Usuń zdjęcie ${index + 1}`}
-              >
-                <IconX size={12} />
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <BoardImageDraftThumbs
+        images={images}
+        disabled={disabled}
+        onRemove={onRemove}
+        className="mt-2"
+      />
 
       <div className="mt-2">
         <input
@@ -124,5 +103,52 @@ export function BoardQuestionImagesField({
 
       {error ? <p className="mt-1.5 text-xs text-red-600">{error}</p> : null}
     </div>
+  );
+}
+
+/** Miniatury szkiców zdjęć z przyciskiem usuwania — formularz pytania i odpowiedzi. */
+export function BoardImageDraftThumbs({
+  images,
+  disabled,
+  onRemove,
+  size = "md",
+  className,
+}: {
+  images: BoardQuestionImageDraft[];
+  disabled?: boolean;
+  onRemove: (key: string) => void;
+  size?: "sm" | "md";
+  className?: string;
+}) {
+  if (!images.length) return null;
+  return (
+    <ul className={cn("flex flex-wrap gap-2", className)}>
+      {images.map((img, index) => (
+        <li
+          key={img.key}
+          className={cn(
+            "relative overflow-hidden rounded-md border border-slate-200 bg-slate-50",
+            size === "sm" ? "h-16 w-16" : "h-20 w-20"
+          )}
+        >
+          <Image
+            src={img.previewUrl}
+            alt={`Podgląd zdjęcia ${index + 1}`}
+            fill
+            unoptimized
+            className="object-cover"
+          />
+          <button
+            type="button"
+            className="absolute right-0.5 top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-slate-900/70 text-white hover:bg-slate-900 disabled:opacity-50"
+            onClick={() => onRemove(img.key)}
+            disabled={disabled}
+            aria-label={`Usuń zdjęcie ${index + 1}`}
+          >
+            <IconX size={12} />
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }

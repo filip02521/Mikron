@@ -52,7 +52,7 @@ describe("supplier-on-demand", () => {
     ).toBe(false);
   });
 
-  it("suggestOrderOnDemandAfterFieldChange — marker zaznacza", () => {
+  it("suggestOrderOnDemandAfterFieldChange - marker zaznacza", () => {
     expect(
       suggestOrderOnDemandAfterFieldChange(false, {
         stock_raw: "W RAZIE POTRZEBY",

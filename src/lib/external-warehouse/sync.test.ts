@@ -142,7 +142,7 @@ describe("external-warehouse sync", () => {
     expect(mocks.getSubiektZk).not.toHaveBeenCalled();
   });
 
-  it("CAS + hash unchanged — update tylko last_synced_at, bez change_log", async () => {
+  it("CAS + hash unchanged - update tylko last_synced_at, bez change_log", async () => {
     const doc = {
       dok_Id: 9,
       dok_NrPelny: "ZK-1",
@@ -175,7 +175,7 @@ describe("external-warehouse sync", () => {
   });
 });
 
-describe("external-warehouse sync — aktualizacja po zmianach w Subiekcie", () => {
+describe("external-warehouse sync - aktualizacja po zmianach w Subiekcie", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.releaseLock.mockResolvedValue(undefined);
@@ -258,7 +258,7 @@ describe("external-warehouse sync — aktualizacja po zmianach w Subiekcie", () 
     expect(update.mock.calls[0]![0].last_snapshot.lines[0].tw_Nazwa).toBe("ECOtray LC PREMIUM");
   });
 
-  it("ZK usunięte w Subiekcie i brak następcy — status missing z czytelnym komunikatem", async () => {
+  it("ZK usunięte w Subiekcie i brak następcy - status missing z czytelnym komunikatem", async () => {
     mocks.getSubiektZk.mockRejectedValue(new SubiektRequestError(404, '{"error":"ZK document 9 not found."}'));
     mocks.searchZkForAdd.mockResolvedValue({ kind: "error", message: "Nie znaleziono" });
     const { update } = mockDb();
@@ -281,7 +281,7 @@ describe("external-warehouse sync — aktualizacja po zmianach w Subiekcie", () 
     expect(result.error!.length).toBeLessThanOrEqual(160);
   });
 
-  it("nieudana próba sprzed chwili — debounce, bez ponownego pytania Subiekta", async () => {
+  it("nieudana próba sprzed chwili - debounce, bez ponownego pytania Subiekta", async () => {
     const now = Date.now();
     const result = await syncExternalWarehouseZkLink(
       {
@@ -301,7 +301,7 @@ describe("external-warehouse sync — aktualizacja po zmianach w Subiekcie", () 
     expect(mocks.getSubiektZk).not.toHaveBeenCalled();
   });
 
-  it("ZK wystawione ponownie pod tym samym numerem — podpina nowy dokument", async () => {
+  it("ZK wystawione ponownie pod tym samym numerem - podpina nowy dokument", async () => {
     const pruned = pruneSubiektZkSnapshot(before);
     mocks.getSubiektZk.mockRejectedValue(new SubiektRequestError(404, "not found"));
     const { mapZkDocument } = await import("@/lib/subiekt/resolve-zk-document");

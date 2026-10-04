@@ -147,7 +147,7 @@ export function parseActiveWarehouseCarrier(
   }
   if (!match.isActive) {
     throw new Error(
-      `Kurier „${match.label}" jest ukryty — wybierz inny z listy.`
+      `Kurier „${match.label}" jest ukryty - wybierz inny z listy.`
     );
   }
   return trimmed;

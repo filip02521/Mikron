@@ -110,7 +110,7 @@ export async function actionDeleteWarehouseCarrier(
   const usage = await countWarehouseCarrierUsage(slug);
   if (usage > 0) {
     return {
-      error: `Nie można usunąć „${carrier.label}" — użyty w ${usage} wpisach lub ustawieniach. Ukryj go zamiast usuwać.`,
+      error: `Nie można usunąć „${carrier.label}" - użyty w ${usage} wpisach lub ustawieniach. Ukryj go zamiast usuwać.`,
     };
   }
 

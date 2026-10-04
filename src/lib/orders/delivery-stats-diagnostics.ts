@@ -140,7 +140,7 @@ function evaluateHealth(
   }
 
   if (totalSamples > 0 && !stored) {
-    notes.push("Są próbki w historii, ale brak wiersza delivery_stats — uruchom przeliczenie");
+    notes.push("Są próbki w historii, ale brak wiersza delivery_stats - uruchom przeliczenie");
     return { health: "missing_row", notes };
   }
 
@@ -153,7 +153,7 @@ function evaluateHealth(
   }
 
   if (totalSamples > 0 && totalSamples < 5) {
-    notes.push("Mniej niż 5 próbek — ETA oznaczone jako szacunek (niska pewność)");
+    notes.push("Mniej niż 5 próbek - ETA oznaczone jako szacunek (niska pewność)");
     return { health: "low_samples", notes };
   }
 
@@ -334,9 +334,9 @@ function totalSamplesFromCounts(stats: {
 export function formatSampleSummary(
   stats: DeliveryStats | AggregatedDeliveryStats | null
 ): string {
-  if (!stats) return "—";
+  if (!stats) return "-";
   const total = totalSamplesFromCounts(stats);
-  if (!total) return "—";
+  if (!total) return "-";
   const parts: string[] = [];
   if (stats.main_count) parts.push(`gł. ${stats.main_avg ?? "?"} d (${stats.main_count})`);
   if (stats.side_count) parts.push(`pob. ${stats.side_avg ?? "?"} d (${stats.side_count})`);
@@ -344,5 +344,5 @@ export function formatSampleSummary(
   if (combined != null && stats.main_count && stats.side_count) {
     parts.push(`łącznie ~${combined} d`);
   }
-  return parts.join(" · ") || "—";
+  return parts.join(" · ") || "-";
 }

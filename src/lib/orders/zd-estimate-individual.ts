@@ -113,7 +113,7 @@ export function mapIndividualOrderToPendingDto(
     id: order.id,
     salesPersonId: order.sales_person_id,
     salesPersonName: (sp?.name ?? "").trim() || "Handlowiec",
-    products: (order.products ?? "").trim() || "—",
+    products: (order.products ?? "").trim() || "-",
     symbol: order.symbol?.trim() && order.symbol.trim() !== "-"
       ? order.symbol.trim()
       : null,

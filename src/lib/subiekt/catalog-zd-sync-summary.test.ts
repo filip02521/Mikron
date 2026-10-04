@@ -50,7 +50,7 @@ describe("resolveCatalogZdSyncStartState", () => {
     expect(next.indexPage).toBe(1);
   });
 
-  it("nowy dzień z nieukończonym poprzednim — kontynuuje od zapisanej strony", () => {
+  it("nowy dzień z nieukończonym poprzednim - kontynuuje od zapisanej strony", () => {
     const prev = baseState({
       runId: "2026-05-27",
       indexProcessed: 42,
@@ -66,7 +66,7 @@ describe("resolveCatalogZdSyncStartState", () => {
     expect(next.status).toBe("running");
   });
 
-  it("nowy dzień z ukończonym poprzednim — świeży stan", () => {
+  it("nowy dzień z ukończonym poprzednim - świeży stan", () => {
     const prev = baseState({
       runId: "2026-05-27",
       indexProcessed: 100,

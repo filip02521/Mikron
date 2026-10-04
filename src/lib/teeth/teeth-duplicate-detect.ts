@@ -22,7 +22,7 @@ export function detectTeethDuplicates(
   for (const group of groups) {
     for (const item of group.items) {
       if (isScheduledItem(item)) continue;
-      const salesName = item.sales_person_name ?? "—";
+      const salesName = item.sales_person_name ?? "-";
       const details = item.teeth_details ?? [];
       if (details.length === 0) continue;
 

@@ -14,7 +14,7 @@ export type DeliveryStatsSampleRow = {
   business_days_first?: number | null;
   order_type: "Glowne" | "Poboczne";
   is_teeth: boolean;
-  source: "receive" | "backfill" | "import";
+  source: "receive" | "backfill" | "import" | "subiekt";
   deleted_at?: string | null;
   created_at?: string;
 };
@@ -29,6 +29,52 @@ export type DeliveryStatsQuantiles = {
   nextMorningShare: number | null;
   hasRecentSample: boolean;
 };
+
+/** Okno statystyk z Subiekta — dostawcy zmieniają się w czasie, 20 lat historii nie może ważyć tyle co ostatnie zamówienia. */
+export const SUBIEKT_STATS_WINDOW_MONTHS = 24;
+/** Gdy w oknie jest mniej zamówień — dobieramy najnowsze starsze. */
+export const SUBIEKT_STATS_MIN_SAMPLES = 5;
+
+/**
+ * Próbki do agregatu/kwantyli. Dostawca z zamówieniami ZD → FZ w oknie liczony wyłącznie
+ * z Subiekta (prawdziwe daty zamiast kliknięć w panelu); bez nich — dotychczasowe źródła,
+ * a gdy brak i tych — najnowsza historia z Subiekta.
+ */
+export function selectSamplesForStats(
+  rows: DeliveryStatsSampleRow[],
+  now: Date = new Date()
+): DeliveryStatsSampleRow[] {
+  const cutoff = new Date(now);
+  cutoff.setMonth(cutoff.getMonth() - SUBIEKT_STATS_WINDOW_MONTHS);
+  const cutoffKey = cutoff.toISOString().slice(0, 10);
+
+  const bySupplier = new Map<string, { subiekt: DeliveryStatsSampleRow[]; other: DeliveryStatsSampleRow[] }>();
+  for (const row of rows) {
+    const entry = bySupplier.get(row.supplier_id) ?? { subiekt: [], other: [] };
+    (row.source === "subiekt" ? entry.subiekt : entry.other).push(row);
+    bySupplier.set(row.supplier_id, entry);
+  }
+
+  const out: DeliveryStatsSampleRow[] = [];
+  for (const { subiekt, other } of bySupplier.values()) {
+    if (!subiekt.length) {
+      out.push(...other);
+      continue;
+    }
+    const newestFirst = [...subiekt].sort((a, b) => b.placement_date.localeCompare(a.placement_date));
+    const inWindow = newestFirst.filter((r) => r.placement_date >= cutoffKey);
+    if (!inWindow.length && other.length) {
+      out.push(...other);
+      continue;
+    }
+    out.push(
+      ...(inWindow.length >= SUBIEKT_STATS_MIN_SAMPLES
+        ? inWindow
+        : newestFirst.slice(0, SUBIEKT_STATS_MIN_SAMPLES))
+    );
+  }
+  return out;
+}
 
 function percentileNearestRank(sortedAsc: number[], p: number): number | null {
   if (!sortedAsc.length) return null;

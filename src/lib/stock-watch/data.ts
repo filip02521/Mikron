@@ -740,6 +740,8 @@ export type StockWatchOffPlanSupplier = {
   /** Towary (Standard), które skończą się przed dostawą zamówienia złożonego dziś. */
   count: number;
   nextOrderDate: string | null;
+  /** Dostawca „na żądanie” — brak daty planu jest wtedy normalny. */
+  onDemand: boolean;
 };
 
 /**
@@ -755,8 +757,10 @@ export async function listStockWatchOffPlanSuppliers(
     name: string;
     n: string;
     next_date: unknown;
+    on_demand: boolean | null;
   }>(
-    `SELECT i.supplier_id, s.name, count(*)::text AS n, ss.computed_next_date AS next_date
+    `SELECT i.supplier_id, s.name, count(*)::text AS n, ss.computed_next_date AS next_date,
+            s.order_on_demand AS on_demand
        FROM stock_watch_items i
        JOIN suppliers s ON s.id = i.supplier_id
        LEFT JOIN supplier_schedules ss ON ss.supplier_id = i.supplier_id
@@ -768,7 +772,7 @@ export async function listStockWatchOffPlanSuppliers(
         AND i.computed_at > now() - interval '2 days'
         AND COALESCE(s.is_active, true)
         AND (ss.computed_next_date IS NULL OR ss.computed_next_date > $1::date)
-      GROUP BY i.supplier_id, s.name, ss.computed_next_date
+      GROUP BY i.supplier_id, s.name, ss.computed_next_date, s.order_on_demand
       ORDER BY count(*) DESC, s.name`,
     [todayKey]
   );
@@ -777,5 +781,6 @@ export async function listStockWatchOffPlanSuppliers(
     supplierName: r.name,
     count: num(r.n),
     nextOrderDate: dateKey(r.next_date),
+    onDemand: r.on_demand === true,
   }));
 }

@@ -60,7 +60,7 @@ function informacja(
 }
 
 describe("sales-cancel", () => {
-  it("resolveSalesCancelPhase — fazy przed, w drodze i na stanie", () => {
+  it("resolveSalesCancelPhase - fazy przed, w drodze i na stanie", () => {
     expect(resolveSalesCancelPhase(order("Nowe"))).toBe("before_order");
     expect(resolveSalesCancelPhase(order("Weryfikacja"))).toBe("before_order");
     expect(resolveSalesCancelPhase(order("Zamowione"))).toBe("in_transit");
@@ -91,36 +91,36 @@ describe("sales-cancel", () => {
     ).toBe(false);
   });
 
-  it("salesCancelLineShortLabel i overflow — faza i rodzaj prośby", () => {
+  it("salesCancelLineShortLabel i overflow - faza i rodzaj prośby", () => {
     expect(salesCancelLineShortLabel("zamowienie")).toBe("Anuluj");
     expect(salesCancelLineShortLabel("informacja")).toBe("Anuluj");
     expect(salesCancelSoleOverflowFullLabel("zamowienie")).toBe("Anuluj prośbę");
     expect(salesCancelSoleOverflowFullLabel("informacja")).toBe("Anuluj informację");
   });
 
-  it("shouldShowRemainderSpecificLabel — tylko częściowa dostawa i reszta > 1", () => {
+  it("shouldShowRemainderSpecificLabel - tylko częściowa dostawa i reszta > 1", () => {
     expect(shouldShowRemainderSpecificLabel(3, 2)).toBe(true);
     expect(shouldShowRemainderSpecificLabel(1, 2)).toBe(false);
     expect(shouldShowRemainderSpecificLabel(3, 0)).toBe(false);
   });
 
-  it("salesCancelLineRemainderLabel — rezygnacja z reszty u dostawcy", () => {
+  it("salesCancelLineRemainderLabel - rezygnacja z reszty u dostawcy", () => {
     expect(salesCancelLineRemainderLabel()).toBe("Rezygnuj z reszty");
     expect(salesCancelLineRemainderLabel(3)).toBe("Rezygnuj z reszty (3 szt.)");
   });
 
-  it("salesCancelLineRemainderAriaLabel — liczba sztuk dla czytników", () => {
+  it("salesCancelLineRemainderAriaLabel - liczba sztuk dla czytników", () => {
     expect(salesCancelLineRemainderAriaLabel(4)).toBe(
       "Rezygnuj z reszty u dostawcy: 4 sztuki"
     );
     expect(salesCancelLineRemainderAriaLabel(1)).toBe("Rezygnuj z reszty u dostawcy");
   });
 
-  it("salesCancelLineCustomQtyLabel — zmiana ilości", () => {
+  it("salesCancelLineCustomQtyLabel - zmiana ilości", () => {
     expect(salesCancelLineCustomQtyLabel()).toBe("Zmień ilość");
   });
 
-  it("showSalesCancelSupplierQuickAction — 1 szt. u dostawcy po częściowej dostawie", () => {
+  it("showSalesCancelSupplierQuickAction - 1 szt. u dostawcy po częściowej dostawie", () => {
     const o = order("Czesciowo_zrealizowane", {
       quantity: "5",
       delivered_quantity: "4",
@@ -131,7 +131,7 @@ describe("sales-cancel", () => {
     expect(salesCancelQuickActionLabel()).toBe("Rezygnuj z reszty");
   });
 
-  it("showSalesCancelRemainderAction — reszta > 1 przy częściowej dostawie", () => {
+  it("showSalesCancelRemainderAction - reszta > 1 przy częściowej dostawie", () => {
     const o = order("Czesciowo_zrealizowane", {
       quantity: "5",
       delivered_quantity: "2",
@@ -180,7 +180,7 @@ describe("sales-cancel", () => {
     ).toBe(false);
   });
 
-  it("mergeSalesCancelUserAutoAck — ukrywa informację po rezygnacji z modala", () => {
+  it("mergeSalesCancelUserAutoAck - ukrywa informację po rezygnacji z modala", () => {
     const before = order("Zamowione", { quantity: "5" });
     const update: Record<string, unknown> = {
       sales_cancelled_at: "2026-06-01T10:00:00Z",
@@ -190,7 +190,7 @@ describe("sales-cancel", () => {
     expect(update.sales_acknowledged_at).toBe("2026-06-01T10:01:00Z");
   });
 
-  it("mergeSalesCancelUserAutoAck — nie archiwizuje częściowej z resztą u dostawcy", () => {
+  it("mergeSalesCancelUserAutoAck - nie archiwizuje częściowej z resztą u dostawcy", () => {
     const before = order("Zamowione", { quantity: "5" });
     const update: Record<string, unknown> = {
       sales_cancelled_at: "2026-06-01T10:00:00Z",
@@ -201,7 +201,7 @@ describe("sales-cancel", () => {
     expect(update.sales_acknowledged_at).toBeUndefined();
   });
 
-  it("mergeAutoFulfillCancelDisposition — in_transit ustawia disposition + fulfilled_at", () => {
+  it("mergeAutoFulfillCancelDisposition - in_transit ustawia disposition + fulfilled_at", () => {
     const update: Record<string, unknown> = {};
     mergeAutoFulfillCancelDisposition(update, "in_transit", "2026-06-01T10:00:00Z");
     expect(update.procurement_cancel_disposition).toBe("to_stock");
@@ -210,14 +210,14 @@ describe("sales-cancel", () => {
     expect(update.warehouse_cancel_fulfilled_at).toBe("2026-06-01T10:00:00Z");
   });
 
-  it("mergeAutoFulfillCancelDisposition — on_stock ustawia disposition + fulfilled_at", () => {
+  it("mergeAutoFulfillCancelDisposition - on_stock ustawia disposition + fulfilled_at", () => {
     const update: Record<string, unknown> = {};
     mergeAutoFulfillCancelDisposition(update, "on_stock", "2026-06-01T10:00:00Z");
     expect(update.procurement_cancel_disposition).toBe("to_stock");
     expect(update.warehouse_cancel_fulfilled_at).toBe("2026-06-01T10:00:00Z");
   });
 
-  it("mergeAutoFulfillCancelDisposition — before_order nie ustawia nic", () => {
+  it("mergeAutoFulfillCancelDisposition - before_order nie ustawia nic", () => {
     const update: Record<string, unknown> = {};
     mergeAutoFulfillCancelDisposition(update, "before_order", "2026-06-01T10:00:00Z");
     expect(update.procurement_cancel_disposition).toBeUndefined();
@@ -230,7 +230,7 @@ describe("sales-cancel", () => {
     expect(salesCancelConfirmCopy("on_stock").title).toContain("Anulować");
   });
 
-  it("salesCancelConfirmCopy — pojedyncza pozycja z nazwą produktu", () => {
+  it("salesCancelConfirmCopy - pojedyncza pozycja z nazwą produktu", () => {
     const copy = salesCancelConfirmCopy("before_order", {
       productName: "Ivoclar Variolink",
     });
@@ -239,7 +239,7 @@ describe("sales-cancel", () => {
     expect(copy.confirmLabel).toBe("Wycofaj pozycję");
   });
 
-  it("salesCancelConfirmForLines — mieszane fazy w grupie", () => {
+  it("salesCancelConfirmForLines - mieszane fazy w grupie", () => {
     const copy = salesCancelConfirmForLines([
       { product: "Produkt A", phase: "before_order" },
       { product: "Produkt B", phase: "in_transit" },
@@ -255,7 +255,7 @@ describe("sales-cancel", () => {
     expect(salesCancelOverflowLabel("informacja", 1)).toBe("Anuluj informację");
   });
 
-  it("effectiveSalesCancelPhase — wywnioskowanie bez kolumny phase", () => {
+  it("effectiveSalesCancelPhase - wywnioskowanie bez kolumny phase", () => {
     expect(
       effectiveSalesCancelPhase({
         ...order("Zamowione"),
@@ -272,13 +272,13 @@ describe("sales-cancel", () => {
     ).toBe("on_stock");
   });
 
-  it("informacja — wycofanie jako before_order (także gdy dostępna)", () => {
+  it("informacja - wycofanie jako before_order (także gdy dostępna)", () => {
     expect(resolveSalesCancelPhase(informacja("Nowe"))).toBe("before_order");
     expect(resolveSalesCancelPhase(informacja("Zrealizowane"))).toBe("before_order");
     expect(resolveSalesCancelPhase(informacja("Weryfikacja"))).toBe("before_order");
   });
 
-  it("informacja — planSalesCancelQuantity bez ilości liczbowej", () => {
+  it("informacja - planSalesCancelQuantity bez ilości liczbowej", () => {
     const o = informacja("Nowe");
     expect(maxSalesCancelQuantity(o)).toBe(1);
     const plan = planSalesCancelQuantity(o);
@@ -288,13 +288,13 @@ describe("sales-cancel", () => {
     expect(plan.keepLineActiveForSales).toBe(false);
   });
 
-  it("informacja — odrzuca częściowe wycofanie", () => {
+  it("informacja - odrzuca częściowe wycofanie", () => {
     expect(() => planSalesCancelQuantity(informacja("Nowe"), 2)).toThrow(
       /tylko w całości/
     );
   });
 
-  it("canSalesCancelOrders — pomija już wycofane w grupie", () => {
+  it("canSalesCancelOrders - pomija już wycofane w grupie", () => {
     expect(
       canSalesCancelOrders([
         order("Zamowione", { sales_cancelled_at: "2026-05-01" }),
@@ -303,7 +303,7 @@ describe("sales-cancel", () => {
     ).toBe(true);
   });
 
-  it("canSalesCancelOrders — częściowo wycofana linia nadal anulowalna", () => {
+  it("canSalesCancelOrders - częściowo wycofana linia nadal anulowalna", () => {
     expect(
       canSalesCancelOrders([
         order("Zamowione", {
@@ -315,7 +315,7 @@ describe("sales-cancel", () => {
     ).toBe(true);
   });
 
-  it("planSalesCancelQuantity — 2+3=5 częściowa dostawa", () => {
+  it("planSalesCancelQuantity - 2+3=5 częściowa dostawa", () => {
     const o = order("Czesciowo_zrealizowane", {
       quantity: "5",
       delivered_quantity: "2",
@@ -331,7 +331,7 @@ describe("sales-cancel", () => {
     expect(plan.keepLineActiveForSales).toBe(true);
   });
 
-  it("planSalesCancelQuantity — przed zamówieniem zostawia aktywną resztę", () => {
+  it("planSalesCancelQuantity - przed zamówieniem zostawia aktywną resztę", () => {
     const o = order("Nowe", { quantity: "5" });
     const plan = planSalesCancelQuantity(o, 2);
     expect(plan.storedCancelledQuantity).toBe("2");
@@ -339,7 +339,7 @@ describe("sales-cancel", () => {
     expect(plan.statusAfter).toBeUndefined();
   });
 
-  it("salesPartialCancelConfirmCopy — częściowa rezygnacja w drodze", () => {
+  it("salesPartialCancelConfirmCopy - częściowa rezygnacja w drodze", () => {
     const copy = salesPartialCancelConfirmCopy(
       "in_transit",
       "Ivoclar Variolink",
@@ -353,7 +353,7 @@ describe("sales-cancel", () => {
     expect(copy.confirmLabel).toBe("Zmień ilość");
   });
 
-  it("salesPartialCancelConfirmCopy — jedna sztuka zostaje w zamówieniu", () => {
+  it("salesPartialCancelConfirmCopy - jedna sztuka zostaje w zamówieniu", () => {
     const copy = salesPartialCancelConfirmCopy(
       "in_transit",
       "Produkt X",
@@ -366,7 +366,7 @@ describe("sales-cancel", () => {
     );
   });
 
-  it("planSalesCancelQuantity — Zamowione 5 szt., rezygnacja z 3, zostają 2 u dostawcy", () => {
+  it("planSalesCancelQuantity - Zamowione 5 szt., rezygnacja z 3, zostają 2 u dostawcy", () => {
     const o = order("Zamowione", { quantity: "5" });
     expect(maxSalesCancelQuantity(o)).toBe(5);
     expect(showSalesCancelRemainderAction(o)).toBe(false);
@@ -377,7 +377,7 @@ describe("sales-cancel", () => {
     expect(plan.keepLineActiveForSales).toBe(true);
   });
 
-  it("planSalesCancelQuantity — pełna rezygnacja przed dostawą zapisuje NULL", () => {
+  it("planSalesCancelQuantity - pełna rezygnacja przed dostawą zapisuje NULL", () => {
     const o = order("Zamowione");
     const plan = planSalesCancelQuantity(o);
     expect(plan.cancelQty).toBe(3);
@@ -385,7 +385,7 @@ describe("sales-cancel", () => {
     expect(plan.keepLineActiveForSales).toBe(false);
   });
 
-  it("planSalesCancelQuantity — pełny magazyn (Zrealizowane)", () => {
+  it("planSalesCancelQuantity - pełny magazyn (Zrealizowane)", () => {
     const o = order("Zrealizowane", {
       quantity: "4",
       delivered_quantity: "4",
@@ -397,7 +397,7 @@ describe("sales-cancel", () => {
     expect(plan.keepLineActiveForSales).toBe(false);
   });
 
-  it("planSalesCancelQuantity — druga rezygnacja na tej samej linii", () => {
+  it("planSalesCancelQuantity - druga rezygnacja na tej samej linii", () => {
     const o = order("Zamowione", {
       quantity: "5",
       sales_cancelled_at: "2026-05-01",
@@ -410,7 +410,7 @@ describe("sales-cancel", () => {
     expect(plan.storedCancelledQuantity).toBe("3");
   });
 
-  it("resolveSalesCancelPhase — częściowa rezygnacja, potem przyjęcie na magazyn", () => {
+  it("resolveSalesCancelPhase - częściowa rezygnacja, potem przyjęcie na magazyn", () => {
     const o = order("Zrealizowane", {
       quantity: "6",
       delivered_quantity: "3",
@@ -423,7 +423,7 @@ describe("sales-cancel", () => {
     expect(canPartialSalesCancel(o)).toBe(true);
   });
 
-  it("isSalesCancelledForQueue — pomija częściową z resztą u dostawcy", () => {
+  it("isSalesCancelledForQueue - pomija częściową z resztą u dostawcy", () => {
     expect(
       isSalesCancelledForQueue({
         ...order("Zamowione"),
@@ -434,7 +434,7 @@ describe("sales-cancel", () => {
     ).toBe(false);
   });
 
-  it("receiveQueueTargetQuantity — aktywne zamówienie po częściowej rezygnacji", () => {
+  it("receiveQueueTargetQuantity - aktywne zamówienie po częściowej rezygnacji", () => {
     expect(
       receiveQueueTargetQuantity({
         ...order("Zamowione", { quantity: "5" }),
@@ -444,7 +444,7 @@ describe("sales-cancel", () => {
     ).toBe(2);
   });
 
-  it("receiveQueueCancelDispositionTotal — pełna ilość rezygnacji, nie reszta", () => {
+  it("receiveQueueCancelDispositionTotal - pełna ilość rezygnacji, nie reszta", () => {
     const cancelledOrder = {
       ...order("Czesciowo_zrealizowane", {
         quantity: "5",
@@ -458,7 +458,7 @@ describe("sales-cancel", () => {
     expect(receiveQueueTargetQuantity(cancelledOrder)).toBe(5);
   });
 
-  it("effectiveSalesCancelledQuantity — jawna ilość z kolumny", () => {
+  it("effectiveSalesCancelledQuantity - jawna ilość z kolumny", () => {
     expect(
       effectiveSalesCancelledQuantity({
         ...order("Zamowione"),

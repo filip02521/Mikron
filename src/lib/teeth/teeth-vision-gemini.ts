@@ -190,7 +190,7 @@ export async function callGeminiWithRetries(
       } catch (error) {
         lastError = error;
         if (isGeminiQuotaExceeded(error)) {
-          console.warn("[teeth-vision-gemini] Gemini quota exceeded — stopping retries.");
+          console.warn("[teeth-vision-gemini] Gemini quota exceeded - stopping retries.");
           throw error;
         }
         const retryable = isRetryableGeminiError(error);
@@ -202,7 +202,7 @@ export async function callGeminiWithRetries(
       }
     }
 
-    console.warn(`[teeth-vision-gemini] Gemini ${model} unavailable — trying fallback model…`);
+    console.warn(`[teeth-vision-gemini] Gemini ${model} unavailable - trying fallback model…`);
   }
 
   throw lastError ?? new Error("Gemini unavailable");

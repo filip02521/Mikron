@@ -38,7 +38,10 @@ export function BoardQuestionProductContext({
   if (!boardQuestionHasProduct(product)) return null;
 
   const label = boardQuestionProductLabel(product);
-  const meta = boardQuestionProductMetaLines(product);
+  // Symbol jest już w nazwie („302801 - …”) — nie powtarzamy go pod spodem.
+  const meta = boardQuestionProductMetaLines(product).filter(
+    (line) => !(line.startsWith("Symbol: ") && label.includes(line.slice("Symbol: ".length)))
+  );
   const href = showQuickProsba ? prosbaHref({ fromBoard: true }) : null;
 
   function persistPrefill() {
@@ -55,7 +58,7 @@ export function BoardQuestionProductContext({
             <IconPackage size={14} aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <p className="text-[11px] font-semibold text-slate-500">
               {DEPARTMENT_BOARD_QUESTIONS_FORM.productContextLabel}
             </p>
             <p className="mt-0.5 text-sm font-medium leading-snug text-slate-900">

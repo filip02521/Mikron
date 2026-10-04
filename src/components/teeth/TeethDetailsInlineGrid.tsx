@@ -109,8 +109,8 @@ export function TeethDetailsInlineGrid({
     return (
       <div className="rounded-md border border-slate-200/80 bg-slate-50/30 p-3 shadow-sm" role="status" aria-live="polite">
         <div className="mb-2 flex items-center gap-2">
-          <span className={cn(panelTypography.rowTitle, "text-sm")}>Ząb — {label}</span>
-          <Badge variant="purple" className="text-[10px]">{label}</Badge>
+          <span className={cn(panelTypography.rowTitle, "text-sm")}>Ząb - {label}</span>
+          <Badge variant="info" className="text-[10px]">{label}</Badge>
         </div>
         <div className="grid gap-2 sm:grid-cols-3">
           <TeethSelect
@@ -139,9 +139,9 @@ export function TeethDetailsInlineGrid({
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className={cn(panelTypography.rowTitle, "text-sm")}>
-            Zęby — {label}
+            Zęby - {label}
           </span>
-          <Badge variant="purple" className="text-[10px]">{label}</Badge>
+          <Badge variant="info" className="text-[10px]">{label}</Badge>
         </div>
         <div className="flex items-center gap-3">
           {!allSame ? (
@@ -275,7 +275,7 @@ function TeethSelect({
         !value && "text-slate-400",
       )}
     >
-      <option value="">— wybierz —</option>
+      <option value="">- wybierz -</option>
       {options.map((opt) => (
         <option key={opt} value={opt}>{opt}</option>
       ))}

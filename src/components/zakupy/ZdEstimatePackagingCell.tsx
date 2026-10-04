@@ -39,10 +39,10 @@ export function ZdEstimatePackagingCell({
     ? [
         formatZdPackHint(qty) ||
           (packagesMode
-            ? `${formatZdPackUnitsPerLabelHint(qty.unitsPerPackage, label)} — na dokumencie ZD wpisujesz paczki`
+            ? `${formatZdPackUnitsPerLabelHint(qty.unitsPerPackage, label)} - na dokumencie ZD wpisujesz paczki`
             : `Dobijanie Do ZD do wielokrotności ${qty.unitsPerPackage} szt`),
         conflict
-          ? "Konflikt z parą montaż/demontaż — ujednolić opakowanie."
+          ? "Konflikt z parą montaż/demontaż - ujednolić opakowanie."
           : null,
         "Kliknij, żeby zmienić opakowanie.",
       ]
@@ -52,7 +52,7 @@ export function ZdEstimatePackagingCell({
 
   const primary = qty.hasPackaging
     ? formatZdEstimateTableQty(qty.unitsPerPackage)
-    : "—";
+    : "-";
   const ratio = qty.hasPackaging
     ? packagesMode
       ? formatZdPackTableRatioLabel(label)

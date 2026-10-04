@@ -10,7 +10,7 @@ describe("glowne-action-ui", () => {
     expect(procurementGlowneButtonTitle({})).toBeUndefined();
   });
 
-  it("dostawca na żądanie — dopisek bez terminu", () => {
+  it("dostawca na żądanie - dopisek bez terminu", () => {
     expect(
       procurementGlowneButtonLabel({ supplierOrderOnDemand: true })
     ).toBe("Główne (bez terminu)");
@@ -22,7 +22,7 @@ describe("glowne-action-ui", () => {
     ).toContain("bez przesunięcia terminu");
   });
 
-  it("info via panel i na żądanie — oba dopiski", () => {
+  it("info via panel i na żądanie - oba dopiski", () => {
     expect(
       procurementGlowneButtonLabel({
         hasInfoViaPanel: true,

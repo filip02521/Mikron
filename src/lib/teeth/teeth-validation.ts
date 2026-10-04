@@ -10,7 +10,7 @@ import { jawRequiredForKind, resolveTeethJaw } from "@/lib/teeth/teeth-mould-sha
 import type { IndividualOrderTeethDetail } from "@/types/database";
 
 export const TEETH_LIST_INCOMPLETE_MESSAGE =
-  "Uzupełnij listę zębów — przy każdej pozycji podaj kolor, fason i typ; u boków także szczękę (chyba że wynika z fasonu, np. N5U/N5L).";
+  "Uzupełnij listę zębów - przy każdej pozycji podaj kolor, fason i typ; u boków także szczękę (chyba że wynika z fasonu, np. N5U/N5L).";
 
 export type TeethLineValidationInput = {
   teethDetails: TeethLineDetail[] | null | undefined;

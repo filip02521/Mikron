@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { IconPin, IconTrash2 } from "@/components/icons/StrokeIcons";
 import { cn } from "@/lib/cn";
 import type { SalesNoteColor } from "@/types/database";
-import { NOTE_COLOR_OPTIONS, NOTE_COLOR_SWATCH } from "./note-styles";
+import { NOTE_COLOR_LABEL, NOTE_COLOR_OPTIONS, NOTE_COLOR_SWATCH } from "./note-styles";
 
 export function NoteColorPicker({
   value,
@@ -34,11 +34,12 @@ export function NoteColorPicker({
             key={color}
             type="button"
             disabled={disabled}
-            aria-label={color}
+            aria-label={NOTE_COLOR_LABEL[color]}
+            title={NOTE_COLOR_LABEL[color]}
             aria-pressed={selected}
             onClick={() => onChange(color)}
             className={cn(
-              "rounded-full border-2 transition-all disabled:opacity-50",
+              "hit-target rounded-full border-2 transition-[border-color,box-shadow,scale] active:scale-90 disabled:opacity-50",
               sm ? "h-[1.125rem] w-[1.125rem]" : "h-6 w-6",
               NOTE_COLOR_SWATCH[color],
               selected

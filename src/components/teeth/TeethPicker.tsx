@@ -101,7 +101,7 @@ export function TeethPicker({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+        <span className="text-[11px] font-semibold text-slate-600">
           {label ?? "Zęby"}
           {safeQty > 1 && (
             <span className="ml-1.5 font-normal normal-case text-slate-400">
@@ -129,7 +129,7 @@ export function TeethPicker({
       {allSame ? (
         <div className="rounded-md border border-slate-200 bg-white p-3">
           {safeQty > 1 ? (
-            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+            <p className="mb-3 text-[11px] font-semibold text-slate-500">
               Wszystkie {safeQty} klapki
             </p>
           ) : null}
@@ -202,7 +202,7 @@ function KlapkaWizard({
                 type="button"
                 disabled={disabled}
                 onClick={() => onActiveChange(i)}
-                aria-label={`Klapka ${i + 1}${complete ? " — gotowa" : " — do uzupełnienia"}`}
+                aria-label={`Klapka ${i + 1}${complete ? " - gotowa" : " - do uzupełnienia"}`}
                 className={cn(
                   "flex size-6 items-center justify-center rounded text-[11px] font-bold tabular-nums transition-colors",
                   isActive
@@ -230,7 +230,7 @@ function KlapkaWizard({
       </div>
 
       <div className="rounded-md border border-slate-200 bg-white p-3">
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <p className="mb-3 text-[11px] font-semibold text-slate-500">
           Klapka {activeKlapka + 1} z {total}
         </p>
         <TeethSpecFields

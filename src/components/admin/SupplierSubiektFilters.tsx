@@ -30,7 +30,7 @@ export function SupplierSubiektFilters({
 }) {
   return (
     <div className={className}>
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <p className="mb-2 text-xs font-semibold text-slate-500">
         Subiekt
       </p>
       <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtr powiązania Subiekt">

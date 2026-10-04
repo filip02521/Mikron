@@ -50,7 +50,7 @@ export async function actionFetchCarrierPhones(
     const user = await getSessionUser();
     if (!user) {
       const copy = userFacingErrorFromUnknown(
-        new Error("Brak sesji — zaloguj się ponownie.")
+        new Error("Brak sesji - zaloguj się ponownie.")
       );
       return {
         ok: false,

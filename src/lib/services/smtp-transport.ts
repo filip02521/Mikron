@@ -64,7 +64,7 @@ export async function sendMailRaw(
   const transport = getTransporter();
   if (!transport) {
     throw new Error(
-      "Brak konfiguracji SMTP / EMAIL_FROM — ustaw SMTP_HOST, SMTP_USER, SMTP_PASS oraz EMAIL_FROM lub EMAIL_DOMAIN"
+      "Brak konfiguracji SMTP / EMAIL_FROM - ustaw SMTP_HOST, SMTP_USER, SMTP_PASS oraz EMAIL_FROM lub EMAIL_DOMAIN"
     );
   }
 

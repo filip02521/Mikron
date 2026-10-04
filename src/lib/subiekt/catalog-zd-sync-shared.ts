@@ -12,7 +12,7 @@ export const CATALOG_ZD_SYNC_CRON_ROUTE_MAX_SEC = 900;
 
 /** Opis harmonogramu w panelu admina (sloty w install-cron.sh / install-cron.ps1). */
 export const CATALOG_ZD_SYNC_CRON_SCHEDULE_LABEL =
-  "codziennie 2:00–4:40 co 20 min (Warszawa)";
+  "codziennie 2:00-4:40 co 20 min (Warszawa)";
 
 export type CatalogZdSyncPhase = "index" | "import";
 

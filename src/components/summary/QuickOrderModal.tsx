@@ -447,7 +447,7 @@ export function QuickOrderModal({
                 disabled={pending || salesPeople.length === 0}
                 onChange={(e) => setSalesPersonId(e.target.value)}
               >
-                <option value="">— wybierz handlowca —</option>
+                <option value="">- wybierz handlowca -</option>
                 {salesPeople.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}

@@ -29,7 +29,7 @@ function notConfiguredAvailability(): SubiektAvailability {
     checkedAt: Date.now(),
     shortLabel: "System magazynowy: wyłączony",
     message:
-      "Połączenie z systemem magazynowym nie jest skonfigurowane — szacunki terminów pochodzą z historii dostaw.",
+      "Połączenie z systemem magazynowym nie jest skonfigurowane - szacunki terminów pochodzą z historii dostaw.",
   };
 }
 
@@ -51,7 +51,7 @@ function onlineAvailability(durationMs?: number): SubiektAvailability {
     reachable: true,
     checkedAt: Date.now(),
     shortLabel: "System magazynowy: połączony",
-    message: `Połączenie działa${ms} — dane produktów odświeżamy co ok. 2 godziny.`,
+    message: `Połączenie działa${ms} - dane produktów odświeżamy co ok. 2 godziny.`,
   };
 }
 
@@ -82,7 +82,7 @@ export async function getSubiektAvailability(options?: {
     ? onlineAvailability(result.durationMs)
     : offlineAvailability(
         result.message ??
-          "System magazynowy niedostępny (poza siecią firmową) — szacunki terminów pochodzą z historii dostaw.",
+          "System magazynowy niedostępny (poza siecią firmową) - szacunki terminów pochodzą z historii dostaw.",
       );
 
   cache = { at: now, value };

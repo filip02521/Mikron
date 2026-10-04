@@ -114,6 +114,9 @@ export function buildDeliveryDateMetaDisplay(
 export const MY_ORDER_HISTORY_ESTIMATE_OVERDUE_LABEL =
   "Brak informacji o planowanej dostawie";
 
+/** Zwinięty wiersz — status „Po przewidywanym terminie” obok mówi resztę. */
+export const MY_ORDER_HISTORY_ESTIMATE_OVERDUE_SHORT_LABEL = "Brak terminu";
+
 /** Meta daty dla szacunku z historii — po terminie bez powtarzania „Po terminie”. */
 export function buildHistoryEstimateDateMetaDisplay(
   expectedDate: Date,
@@ -130,11 +133,12 @@ export function buildHistoryEstimateDateMetaDisplay(
       title: `${MY_ORDER_HISTORY_ESTIMATE_TITLE} · ${display.primaryLabel}`,
     };
   }
+  // W wierszu krótko; pełne „Brak informacji o planowanej dostawie” w podpowiedzi i po rozwinięciu.
   return {
-    primaryLabel: MY_ORDER_HISTORY_ESTIMATE_OVERDUE_LABEL,
+    primaryLabel: MY_ORDER_HISTORY_ESTIMATE_OVERDUE_SHORT_LABEL,
     detailLabel: null,
     overdue: true,
-    title: MY_ORDER_HISTORY_ESTIMATE_OVERDUE_META_TITLE,
+    title: `${MY_ORDER_HISTORY_ESTIMATE_OVERDUE_LABEL}. ${MY_ORDER_HISTORY_ESTIMATE_OVERDUE_META_TITLE}`,
   };
 }
 

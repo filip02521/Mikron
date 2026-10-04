@@ -118,9 +118,9 @@ function SalesCancelledNoticeModal({
                   )}
                 >
                   <span className="font-medium text-slate-900">{line.symbol}</span>
-                  {" — "}
+                  {" - "}
                   {line.products}
-                  {line.quantity && line.quantity !== "—" && line.quantity !== "-" && line.requestKind !== "informacja" ? (
+                  {line.quantity && line.quantity !== "-" && line.quantity !== "-" && line.requestKind !== "informacja" ? (
                     <span className="text-slate-500"> · {line.quantity}</span>
                   ) : null}
                 </li>
@@ -143,7 +143,7 @@ function SalesCancelledNoticeModal({
                 )
               }
             >
-              Zapoznałem się — ukryj
+              Zapoznałem się - ukryj
             </Button>
           </>
         )}
@@ -226,7 +226,7 @@ export function SalesCancelledDailyPanel({
           compact
           description={
             needsAction
-              ? "Handlowiec zrezygnował — kliknij i wybierz: na stan albo zwrot."
+              ? "Handlowiec zrezygnował - kliknij i wybierz: na stan albo zwrot."
               : undefined
           }
         />

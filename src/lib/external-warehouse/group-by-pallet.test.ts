@@ -35,7 +35,7 @@ describe("comparePalletLabels", () => {
 });
 
 describe("groupByPallet", () => {
-  it("sortuje palety A–Z i Bez palety na końcu", () => {
+  it("sortuje palety A-Z i Bez palety na końcu", () => {
     const groups = groupByPallet([
       line("1", "B"),
       line("2", null),

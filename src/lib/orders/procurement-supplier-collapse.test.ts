@@ -70,13 +70,13 @@ describe("procurement-supplier-collapse", () => {
     expect(isProcurementSupplierBlockCollapsed(two, new Map())).toBe(true);
   });
 
-  it("1 grupa — bez nagłówka, nie zwijana", () => {
+  it("1 grupa - bez nagłówka, nie zwijana", () => {
     const b = block("solo", ["Kasia"]);
     expect(shouldDefaultCollapseProcurementBlock(b)).toBe(false);
     expect(isProcurementSupplierBlockCollapsed(b, new Map())).toBe(false);
   });
 
-  it("nowe prośby — zawsze rozwinięte przez forceExpanded (nie sam hasUnseen)", () => {
+  it("nowe prośby - zawsze rozwinięte przez forceExpanded (nie sam hasUnseen)", () => {
     const b = block("c", ["Kasia", "Jan", "Ola", "Piotr"], true);
     // Sam hasUnseen na bloku nie blokuje zwinięcia — tylko live forceExpanded.
     expect(isProcurementSupplierBlockCollapsed(b, new Map([["c", true]]))).toBe(true);
@@ -106,7 +106,7 @@ describe("procurement-supplier-collapse", () => {
     ).toBe(true);
   });
 
-  it("lokalnie nieprzeczytane — wymusza rozwinięcie mimo domyślnego zwinięcia", () => {
+  it("lokalnie nieprzeczytane - wymusza rozwinięcie mimo domyślnego zwinięcia", () => {
     const b = block("g", ["A", "B", "C"]);
     expect(
       isProcurementSupplierBlockCollapsed(b, new Map(), new Set(["g"]))

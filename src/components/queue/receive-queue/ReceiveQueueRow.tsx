@@ -138,7 +138,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
   rowRef?: (element: Element | null) => void;
   dataIndex?: number;
 }) {
-  const personName = order.sales_person?.name?.trim() || "—";
+  const personName = order.sales_person?.name?.trim() || "-";
   const fulfillment = fulfillmentProgressFor(order);
   const targetQty = receiveQueueTargetQuantity(order);
   const ordered = targetQty ?? parseOrderQuantity(order.quantity);
@@ -229,7 +229,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
           </span>
         </div>
         {(salesCancelRow || isPartial) && (
-          <p className="mt-0.5 pl-3 text-[10px] font-bold uppercase tracking-wide text-amber-800">
+          <p className="mt-0.5 pl-3 text-[10px] font-bold text-amber-800">
             {salesCancelRow
               ? fulfillment.cancelled > 0 && (fulfillment.supplierRemaining ?? 0) > 0
                 ? `częściowa · ${fulfillment.supplierRemaining} szt.`
@@ -240,7 +240,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
         {waitingDays != null && waitingDays > 0 ? (
           <span
             className={cn(
-              "mt-0.5 ml-3 inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+              "mt-0.5 ml-3 inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
               waitingDays >= 3
                 ? "bg-rose-100/90 text-rose-700 ring-1 ring-inset ring-rose-200/50"
                 : "bg-slate-100/80 text-slate-600 ring-1 ring-inset ring-slate-200/40",
@@ -253,7 +253,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
         ) : null}
         {isInfo && informacjaStockHint === "auto_ready" ? (
           <span
-            className="mt-0.5 ml-3 inline-flex max-w-full items-center rounded-full bg-emerald-100/90 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200/60"
+            className="mt-0.5 ml-3 inline-flex max-w-full items-center rounded-md bg-emerald-100/90 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200/60"
             title={INFORMACJA_AUTO_STOCK_ROW_DETAIL}
           >
             {INFORMACJA_AUTO_STOCK_ROW_BADGE}
@@ -261,7 +261,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
         ) : null}
         {isInfo && informacjaStockHint === "manual_only" ? (
           <span
-            className="mt-0.5 ml-3 inline-flex max-w-full items-center rounded-full bg-slate-100/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 ring-1 ring-inset ring-slate-200/50"
+            className="mt-0.5 ml-3 inline-flex max-w-full items-center rounded-md bg-slate-100/90 px-1.5 py-0.5 text-[10px] font-medium text-slate-600 ring-1 ring-inset ring-slate-200/50"
             title={INFORMACJA_MANUAL_ONLY_TOOLTIP}
           >
             Tylko ręcznie
@@ -269,10 +269,10 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
         ) : null}
         {isInfo && informacjaStockHint === "teeth" ? (
           <span
-            className="mt-0.5 ml-3 inline-flex max-w-full items-center rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 ring-1 ring-inset ring-amber-200/50"
+            className="mt-0.5 ml-3 inline-flex max-w-full items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-800 ring-1 ring-inset ring-amber-200/50"
             title={INFORMACJA_TEETH_MANUAL_ONLY_HINT}
           >
-            Zęby — ręcznie
+            Zęby - ręcznie
           </span>
         ) : null}
       </td>
@@ -290,7 +290,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
                 as="p"
               />
               {order.is_teeth ? (
-                <span className="shrink-0 rounded-full bg-emerald-100/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-inset ring-emerald-200/50">
+                <span className="shrink-0 rounded-md bg-emerald-100/80 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-200/50">
                   Zęby
                 </span>
               ) : null}
@@ -308,8 +308,8 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
                 type="button"
                 disabled={pending}
                 onClick={onStockBadgeClick}
-                title={`Towar na stanie Subiekta (${stockAvailable} szt.) — kliknij, aby przyjąć ${Math.min(stockAvailable, ordered ?? stockAvailable)} szt.`}
-                className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 ring-1 ring-inset ring-emerald-200/60 transition hover:bg-emerald-200 disabled:opacity-50"
+                title={`Towar na stanie Subiekta (${stockAvailable} szt.) - kliknij, aby przyjąć ${Math.min(stockAvailable, ordered ?? stockAvailable)} szt.`}
+                className="mt-0.5 inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800 ring-1 ring-inset ring-emerald-200/60 transition hover:bg-emerald-200 disabled:opacity-50"
               >
                 <svg aria-hidden viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.75" className="size-3 shrink-0">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 8.5l3 3 7-7" />
@@ -416,7 +416,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
                   className={cn(
                     "inline-flex size-10 items-center justify-center rounded-xl border transition sm:size-8",
                     canSave
-                      ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700 hover:shadow-sm hover:shadow-violet-200/50"
+                      ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700 hover:shadow-sm "
                       : "border-slate-200 bg-slate-50 text-slate-300"
                   )}
                 >
@@ -500,7 +500,7 @@ export const ReceiveQueueRow = memo(function ReceiveQueueRow({
               className={cn(
                 "ml-0.5 inline-flex size-10 items-center justify-center rounded-xl border transition sm:size-8",
                 canSave
-                  ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700 hover:shadow-sm hover:shadow-violet-200/50"
+                  ? "border-violet-200 bg-violet-600 text-white hover:bg-violet-700 hover:shadow-sm "
                   : "border-slate-200 bg-slate-50 text-slate-300"
               )}
             >

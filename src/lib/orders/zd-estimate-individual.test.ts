@@ -211,7 +211,7 @@ describe("buildIndividualEstimateExtras", () => {
     expect(bundle.byTwId.has(99)).toBe(false);
   });
 
-  it("płyn wspólny w 2 zestawach — prośby sumują qty×sztuki", () => {
+  it("płyn wspólny w 2 zestawach - prośby sumują qty×sztuki", () => {
     // Prośba 3× zestaw A (płyn×1) + prośba 2× zestaw B (płyn×2) → płyn 3+4 = 7
     const bundle = buildIndividualEstimateExtras({
       orders: [
@@ -247,7 +247,7 @@ describe("buildIndividualEstimateExtras", () => {
     expect(bundle.byTwId.get(1)?.requests).toHaveLength(2);
   });
 
-  it("nested BOM — prośba na zewnętrzny zestaw schodzi na liście ×qty", () => {
+  it("nested BOM - prośba na zewnętrzny zestaw schodzi na liście ×qty", () => {
     // P×2 → K×1 → A×2  ⇒ A = 2*1*2 = 4
     const bundle = buildIndividualEstimateExtras({
       orders: [pending({ id: "p", subiektTwId: 3, qty: 2 })],
@@ -472,7 +472,7 @@ describe("buildIndividualEstimateExtras", () => {
     expect(bundle.byTwId.get(222)?.extraPieces).toBe(3);
   });
 
-  it("NIE używa firstToken marki bez PLU/symbolu — idzie do usług", () => {
+  it("NIE używa firstToken marki bez PLU/symbolu - idzie do usług", () => {
     const bundle = buildIndividualEstimateExtras({
       orders: [
         pending({

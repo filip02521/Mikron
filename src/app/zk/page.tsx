@@ -113,7 +113,7 @@ export default async function ZkPage({
         access.isTeamPreview
           ? "Podgląd ZK czekających wybranego handlowca. Edycja tylko we własnej zakładce ZK czekające."
           : access.isDelegatePreview
-            ? "Tryb zastępstwa — możesz zamykać ZK. Edycja notatek i dodawanie ZK są wyłączone."
+            ? "Tryb zastępstwa - możesz zamykać ZK. Edycja notatek i dodawanie ZK są wyłączone."
             : undefined
       }
       linkError={

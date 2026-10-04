@@ -1,4 +1,5 @@
 import type { ZkWatchLineCoverage, ZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export function countZkLineCoverage(
   hints: Pick<ZkWatchOrderHints, "lineCoverageByKey">,
@@ -17,17 +18,17 @@ export function formatZkProsbaCoverageSummary(
   const parts: string[] = [];
   if (openCount > 0) {
     parts.push(
-      `${openCount} ${openCount === 1 ? "pozycja w prośbie w toku" : openCount < 5 ? "pozycje w prośbie w toku" : "pozycji w prośbie w toku"}`
+      `${openCount} ${polishPluralWord(openCount, "pozycja w prośbie w toku", "pozycje w prośbie w toku", "pozycji w prośbie w toku")}`
     );
   }
   if (partialCount > 0) {
     parts.push(
-      `${partialCount} ${partialCount === 1 ? "pozycja częściowo dostarczona" : partialCount < 5 ? "pozycje częściowo dostarczone" : "pozycji częściowo dostarczonych"}`
+      `${partialCount} ${polishPluralWord(partialCount, "pozycja częściowo dostarczona", "pozycje częściowo dostarczone", "pozycji częściowo dostarczonych")}`
     );
   }
   if (deliveredCount > 0) {
     parts.push(
-      `${deliveredCount} ${deliveredCount === 1 ? "pozycja dostarczona" : deliveredCount < 5 ? "pozycje dostarczone" : "pozycji dostarczonych"}`
+      `${deliveredCount} ${polishPluralWord(deliveredCount, "pozycja dostarczona", "pozycje dostarczone", "pozycji dostarczonych")}`
     );
   }
 

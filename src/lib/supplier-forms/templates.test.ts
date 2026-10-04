@@ -51,7 +51,7 @@ describe("formularz Wiedent", () => {
     expect(fill.values["EO m"]).toBe("3");
     expect(fill.unmapped.map((l) => l.symbol)).toEqual(["WIEDENT 6SZT.", "ESTETIC H"]);
     expect(fill.values["uwagi zamwiającgo"]).toBe(
-      "Wiedent 6szt.zęby przednie (WIEDENT 6SZT.) — 3; Estetic H zestaw 100g/50ml (ESTETIC H) — 1"
+      "Wiedent 6szt.zęby przednie (WIEDENT 6SZT.) - 3; Estetic H zestaw 100g/50ml (ESTETIC H) - 1"
     );
   });
 
@@ -85,7 +85,7 @@ describe("formularz Dentsply Sirona (dopasowanie po kodzie)", () => {
   });
 });
 
-describe("Renfert — własny arkusz", () => {
+describe("Renfert - własny arkusz", () => {
   it("sortuje jak Excel: bez myślników, ze spacjami, bez wielkości liter", () => {
     const names = [
       "Renfert-O-ring DIN 3771 82x4 NBR 55",

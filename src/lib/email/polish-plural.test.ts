@@ -22,7 +22,7 @@ describe("polishPozycjeLabel", () => {
 });
 
 describe("polishPlural", () => {
-  it("odmienia 1 / 2–4 / 5+ / 12–14 / 22–24", () => {
+  it("odmienia 1 / 2-4 / 5+ / 12-14 / 22-24", () => {
     const f = (n: number) => polishPlural(n, "prośba", "prośby", "próśb");
     expect([1, 2, 4, 5, 11, 12, 14, 21, 22, 24, 25].map(f)).toEqual([
       "1 prośba", "2 prośby", "4 prośby", "5 próśb", "11 próśb", "12 próśb",

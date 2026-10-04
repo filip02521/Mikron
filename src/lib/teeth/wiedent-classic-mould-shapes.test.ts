@@ -7,7 +7,7 @@ import {
 } from "./wiedent-classic-mould-shapes";
 
 describe("wiedent-classic-mould-shapes", () => {
-  it("przody — dolne i górne wg katalogu Classic", () => {
+  it("przody - dolne i górne wg katalogu Classic", () => {
     const groups = wiedentClassicMouldShapeGroups("anterior");
     expect(groups).toHaveLength(2);
     expect(groups.map((g) => g.shapeId)).toEqual(["lower", "upper"]);
@@ -16,7 +16,7 @@ describe("wiedent-classic-mould-shapes", () => {
     expect(groups[1]!.moulds).toEqual(WIEDENT_CLASSIC_UPPER_ANTERIOR);
   });
 
-  it("boki — jedna paleta", () => {
+  it("boki - jedna paleta", () => {
     const groups = wiedentClassicMouldShapeGroups("posterior");
     expect(groups).toHaveLength(1);
     expect(groups[0]!.moulds).toContain("14");

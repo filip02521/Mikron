@@ -404,7 +404,7 @@ export function SubiektProductLineFields({
   const productDisplay = combinedProductSearchDisplay(value);
   const mikranOnlyHint =
     !productDisplay.trim() && value.mikranCode.trim() && !linkedFromSubiekt
-      ? "Kod Mikran wystarczy — opis uzupełni się przy wysłaniu."
+      ? "Kod Mikran wystarczy - opis uzupełni się przy wysłaniu."
       : null;
 
   useEffect(() => {
@@ -900,8 +900,8 @@ export function SubiektProductLineFields({
           <>
             <TypeaheadSectionLabel>
               {visibleItems[0]?._source === "catalog"
-                ? `Lokalna baza — ${typeaheadSectionLabel(activeField)} · ${resultLabel}`
-                : `Subiekt (na żywo) — ${typeaheadSectionLabel(activeField)} · ${resultLabel}`}
+                ? `Lokalna baza - ${typeaheadSectionLabel(activeField)} · ${resultLabel}`
+                : `Subiekt (na żywo) - ${typeaheadSectionLabel(activeField)} · ${resultLabel}`}
             </TypeaheadSectionLabel>
             {visibleItems.map((p, index) => {
               const { title, subtitle, badge } = formatSubiektProductOption(p);
@@ -957,7 +957,7 @@ export function SubiektProductLineFields({
       prosbaMessageItems.push({
         kind: "feedback",
         feedback: productFieldFeedback,
-        fieldLabel: `Subiekt — ${subiektFieldLabel(activeField)}`,
+        fieldLabel: `Subiekt - ${subiektFieldLabel(activeField)}`,
       });
     }
   }
@@ -969,7 +969,7 @@ export function SubiektProductLineFields({
           <span>
             {isInformacja
               ? "Produkt (symbol lub nazwa)"
-              : "Produkt — symbol lub nazwa"}
+              : "Produkt - symbol lub nazwa"}
           </span>
         }
         className={cn("min-w-0 flex-1", productFieldClassName)}
@@ -979,8 +979,8 @@ export function SubiektProductLineFields({
             ? mikranOnlyHint ??
               (typeaheadEnabled && !prosba
                 ? catalogFallback
-                  ? "Wpisz nazwę lub symbol — wyniki z lokalnej bazy"
-                  : "Wpisz nazwę lub symbol — wyniki z Subiekta pojawią się poniżej"
+                  ? "Wpisz nazwę lub symbol - wyniki z lokalnej bazy"
+                  : "Wpisz nazwę lub symbol - wyniki z Subiekta pojawią się poniżej"
                 : !typeaheadEnabled
                   ? "Nazwa lub symbol produktu (wpis ręczny)"
                   : undefined)
@@ -1129,7 +1129,7 @@ export function SubiektProductLineFields({
             isTeethOrderLine
               ? teethQuantityFromList > 0
                 ? "Ilość = liczba pozycji na liście"
-                : "Uzupełnij listę — ilość ustawi się sama"
+                : "Uzupełnij listę - ilość ustawi się sama"
               : prosba && !quantityField.error && !quantityField.state
                 ? "Sztuk"
                 : undefined
@@ -1143,7 +1143,7 @@ export function SubiektProductLineFields({
             disabled={disabled || isTeethOrderLine}
             readOnly={isTeethOrderLine}
             maxLength={MAX_QUANTITY_LEN}
-            placeholder={isTeethOrderLine ? "—" : "1"}
+            placeholder={isTeethOrderLine ? "-" : "1"}
             inputMode="numeric"
             aria-label="Ilość sztuk"
             value={
@@ -1194,7 +1194,7 @@ export function SubiektProductLineFields({
           <p className="mt-1.5 text-xs text-slate-600">
             {teethQuantityFromList > 0
               ? `Ilość = liczba pozycji na liście · ${teethQuantityFromList} szt.`
-              : "Ilość = liczba pozycji na liście — uzupełnij listę zębów."}
+              : "Ilość = liczba pozycji na liście - uzupełnij listę zębów."}
           </p>
         </div>
         {!lockSubiektLink ? (
@@ -1281,7 +1281,7 @@ export function SubiektProductLineFields({
       {isRegistryTeethTw && !resolvedTeethProductLine && requestKind === "zamowienie" ? (
         <div role="status" aria-live="polite">
           <Badge variant="warning" className="text-[10px]">
-            Producent nieustalony — uzupełnij w adminie
+            Producent nieustalony - uzupełnij w adminie
           </Badge>
         </div>
       ) : null}
@@ -1295,8 +1295,8 @@ export function SubiektProductLineFields({
           {!delegateAlerts && !prosba && !visibleFeedback && !resolvingSupplier && !linkedFromSubiekt ? (
             <p className="text-xs text-slate-400">
               {catalogFallback
-                ? "Wpisz nazwę lub symbol w dużym polu — wyniki z lokalnej bazy pojawią się pod produktem."
-                : "Wpisz nazwę lub symbol w dużym polu, kod Mikran i ilość obok — lista z Subiekta pojawi się pod produktem."}
+                ? "Wpisz nazwę lub symbol w dużym polu - wyniki z lokalnej bazy pojawią się pod produktem."
+                : "Wpisz nazwę lub symbol w dużym polu, kod Mikran i ilość obok - lista z Subiekta pojawi się pod produktem."}
             </p>
           ) : null}
 

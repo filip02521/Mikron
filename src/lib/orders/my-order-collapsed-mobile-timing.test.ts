@@ -15,9 +15,7 @@ function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
 
 describe("formatCollapsedDeliveryTimingLabel", () => {
   it("formatuje szacunek jako czytelną etykietę", () => {
-    expect(formatCollapsedDeliveryTimingLabel(row())).toBe(
-      "Brak informacji o planowanej dostawie"
-    );
+    expect(formatCollapsedDeliveryTimingLabel(row())).toBe("Brak terminu");
   });
 
   it("formatuje informację z e-maila", () => {
@@ -61,7 +59,7 @@ describe("myOrderCollapsedMobileTiming", () => {
         showProgress: true,
         collapsedSubline: null,
       })
-    ).toBe("Brak informacji o planowanej dostawie");
+    ).toBe("Brak terminu");
   });
 
   it("nie duplikuje subline", () => {

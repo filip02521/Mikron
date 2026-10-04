@@ -42,7 +42,7 @@ describe("question-product", () => {
     };
 
     expect(boardQuestionHasProduct(thread)).toBe(true);
-    expect(boardQuestionProductLabel(thread)).toBe("SYM-1 — Produkt testowy");
+    expect(boardQuestionProductLabel(thread)).toBe("SYM-1 - Produkt testowy");
     expect(boardQuestionProductSearchText(thread)).toContain("SYM-1");
     expect(boardQuestionProductSearchText(thread)).toContain("555");
   });

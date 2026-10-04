@@ -7,6 +7,7 @@ import { AdminSystemStatus } from "@/components/admin/AdminSystemStatus";
 import { AdminToolsPanel } from "@/components/admin/AdminToolsPanel";
 import { AdminDataShortcuts } from "@/components/admin/AdminDataShortcuts";
 import { DeliveryStatsDiagnosticsPanel } from "@/components/admin/DeliveryStatsDiagnosticsPanel";
+import { SubiektLeadTimesPanel } from "@/components/admin/SubiektLeadTimesPanel";
 import { SubiektIntegrationPanel } from "@/components/admin/SubiektIntegrationPanel";
 import { fetchDeliveryStatsDiagnostics } from "@/lib/data/delivery-stats-diagnostics";
 import { fetchInformacjaStockAutoEnabled } from "@/lib/data/informacja-stock-auto";
@@ -49,6 +50,14 @@ export default async function AdminPage() {
     /* diagnostyka opcjonalna — panel pokaże komunikat */
   }
 
+  let subiektLeadTimes = null;
+  try {
+    const { fetchSubiektLeadTimesReport } = await import("@/lib/data/subiekt-lead-times-report");
+    subiektLeadTimes = await fetchSubiektLeadTimesReport();
+  } catch {
+    /* brak migracji 168 — panel pokaże komunikat */
+  }
+
   let cronMonitor: AdminCronPanelSnapshot = {
     ...buildCronMonitorSnapshot({
       morning_routine: null,
@@ -59,6 +68,7 @@ export default async function AdminPage() {
       informacja_stock_sync: null,
       scheduled_mails: null,
       stock_watch: null,
+      subiekt_lead_times: null,
     } satisfies Record<CronJobId, null>),
     informacjaStockAutoEnabled: true,
   };
@@ -84,6 +94,7 @@ export default async function AdminPage() {
         initialAuthMode={subiektStatus.authMode}
       />
       <DeliveryStatsDiagnosticsPanel initialData={deliveryStatsDiagnostics} />
+      <SubiektLeadTimesPanel initialData={subiektLeadTimes} />
       <AdminToolsPanel />
       <AdminDataShortcuts />
     </AdminHubShell>

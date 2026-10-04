@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import * as XLSX from "xlsx";
 import { describe, expect, it } from "vitest";
 import {
   decodeCsvBytes,
@@ -116,6 +117,51 @@ describe("readSpreadsheetRows", () => {
     expect(isSpreadsheetFile("a.csv", "text/csv")).toBe(true);
     expect(isSpreadsheetFile("a.pdf", "application/pdf")).toBe(false);
     expect(isLegacyXls("a.xls", "")).toBe(true);
+    expect(isSpreadsheetFile("a.xls", "application/vnd.ms-excel")).toBe(true);
+  });
+});
+
+describe("stary Excel .xls (BIFF) i grupy w scalonych komórkach", () => {
+  // Układ packing listy Upcera: DESCRIPTION tylko w pierwszym wierszu grupy, model w P/N.
+  const upceraRows = [
+    ["PACKING LIST"],
+    ["DESCRIPTION", "PACKING NO.", "Lot Number", "P/N", "QTY(PCS)", "N.W.  (KG)"],
+    ["Dental Zirconia Ceramic", 1, "L2260730006-159", "GT(F)P1-M-B1 D98-25", 14, 7.98],
+    [null, null, "L2260730006-135", "GT(F)P1-M-A1 D98-25", 15, 8.55],
+    [null, 2, "L2260730006-284", "S-B1 D98-12", 2, 0.58],
+    ["Dental Lithium Disilicate Glass Ceramic", 3, "L1", "LT VBL2-R(18-15-13)", 100, 3.1],
+    [null, null, "L2", "HT VA1-R(18-15-13)", 50, 1.6],
+    ["Color palette", 4, "/", "/", 20, 8.3],
+    ["TOTAL:", "ONLY 4 CARTONS", null, null, 201, 30.1],
+  ];
+
+  it("czyta .xls i rozpoznaje P/N jako kod, a DESCRIPTION jako grupę przenoszoną w dół", async () => {
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(upceraRows), "PL");
+    const bytes = Buffer.from(XLSX.write(wb, { type: "buffer", bookType: "xls" }) as Buffer);
+    const parsed = parseInvoiceWorkbook(await readSpreadsheetSheets(bytes, "PACKING LIST-upc260650-1.xls"));
+    expect(parsed?.headers.code).toBe("P/N");
+    expect(parsed?.lines.map((l) => [l.supplierArticleCode, l.supplierName, l.quantity, l.invoiceGroup])).toEqual([
+      ["GT(F)P1-M-B1 D98-25", "GT(F)P1-M-B1 D98-25", 14, "Dental Zirconia Ceramic"],
+      ["GT(F)P1-M-A1 D98-25", "GT(F)P1-M-A1 D98-25", 15, "Dental Zirconia Ceramic"],
+      ["S-B1 D98-12", "S-B1 D98-12", 2, "Dental Zirconia Ceramic"],
+      ["LT VBL2-R(18-15-13)", "LT VBL2-R(18-15-13)", 100, "Dental Lithium Disilicate Glass Ceramic"],
+      ["HT VA1-R(18-15-13)", "HT VA1-R(18-15-13)", 50, "Dental Lithium Disilicate Glass Ceramic"],
+      // Kod zastępczy „/” — nazwą zostaje grupa, inaczej karta nie miałaby klucza.
+      ["", "Color palette", 20, "Color palette"],
+    ]);
+  });
+
+  it("zwykła tabela (nazwa w każdym wierszu) — bez grupy", () => {
+    const parsed = parseInvoiceSheet([
+      ["Code", "Description", "Qty", "Price"],
+      ["DE-1196", "Plaster Knife", 10, 4.5],
+      ["DE-1698", "Scalpel Handle # 3", 20, 2.1],
+      ["DE-1412", "Mosquito Forcep curved", 5, 3],
+      ["DE-1189", "Lessmann Fig 2", 5, 3],
+    ]);
+    expect(parsed?.lines.every((l) => l.invoiceGroup === undefined)).toBe(true);
+    expect(parsed?.lines[0]?.supplierName).toBe("Plaster Knife");
   });
 });
 

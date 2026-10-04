@@ -172,7 +172,7 @@ export function QueueClient({
   const goToReceiveForSupplier = useCallback(
     (supplierName: string | null) => {
       let name =
-        supplierName?.trim() && supplierName.trim() !== "—"
+        supplierName?.trim() && supplierName.trim() !== "-"
           ? supplierName.trim()
           : null;
       // Dopasuj klucz filtra 1:1 do chipów w kolejce (nazwa z relacji supplier).

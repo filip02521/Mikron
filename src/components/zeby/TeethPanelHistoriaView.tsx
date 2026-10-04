@@ -71,7 +71,7 @@ function HistoryStateSummary({ items }: { items: TeethQueueItem[] }) {
         <span
           key={state}
           className={cn(
-            "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ring-1 ring-inset",
+            "rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ring-1 ring-inset",
             TEETH_HISTORY_STATE_META[state].badge,
           )}
         >
@@ -412,7 +412,7 @@ export function TeethPanelHistoriaView({
           <IconAlertCircle size={18} className="shrink-0 text-red-600" />
           <span>
             <strong>{delayedItems.length}</strong> {plZamowienie(delayedItems.length)} po terminie
-            dostawy — skontaktuj się z dostawcą albo popraw datę.
+            dostawy - skontaktuj się z dostawcą albo popraw datę.
           </span>
         </div>
       ) : null}

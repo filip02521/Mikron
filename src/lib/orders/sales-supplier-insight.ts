@@ -25,6 +25,7 @@ import type {
   SupplierWithSchedule,
   TeethSupplierSchedule,
 } from "@/types/database";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export type SalesSupplierInsight = SupplierPlanInsight & {
   orderOnDemand: boolean;
@@ -60,14 +61,12 @@ export type BuildSalesSupplierInsightOptions = {
 
 function daysLabel(n: number): string {
   const rounded = Math.round(n);
-  if (rounded === 1) return "dzień roboczy";
-  if (rounded >= 2 && rounded <= 4) return "dni robocze";
-  return "dni roboczych";
+  return polishPluralWord(rounded, "dzień roboczy", "dni robocze", "dni roboczych");
 }
 
 function formatAvgDays(avg: number, count: number): string {
   const deliveries =
-    count === 1 ? "dostawa" : count >= 2 && count <= 4 ? "dostawy" : "dostaw";
+    polishPluralWord(count, "dostawa", "dostawy", "dostaw");
   if (avg === 0) {
     return `tego samego dnia roboczego · ${count} ${deliveries} w historii`;
   }
@@ -94,7 +93,7 @@ export function formatLeadTimeForSales(
     return {
       leadTimeSummary: null,
       leadTimeDetail:
-        "Brak historii dostaw — średni czas realizacji pojawi się po pierwszych przyjęciach.",
+        "Brak historii dostaw - średni czas realizacji pojawi się po pierwszych przyjęciach.",
       leadTimeLowConfidence: true,
       sampleCount: 0,
     };
@@ -110,7 +109,7 @@ export function formatLeadTimeForSales(
       return {
         leadTimeSummary: formatAvgDays(n, sampleCount),
         leadTimeDetail: lowConfidence
-          ? "Mało danych w historii — szacunek jest orientacyjny."
+          ? "Mało danych w historii - szacunek jest orientacyjny."
           : useP50
             ? "Typowy czas (mediana) od złożenia zamówienia u dostawcy do przyjęcia towaru na magazyn."
             : "Średni czas od złożenia zamówienia u dostawcy do przyjęcia towaru na magazyn.",
@@ -238,10 +237,10 @@ export function describeNextOrderForSales(
 
   if (insight.orderOnDemand) {
     return {
-      primary: "Na żądanie — bez stałego dnia w kalendarzu zakupów",
+      primary: "Na żądanie - bez stałego dnia w kalendarzu zakupów",
       secondary: readOnly
         ? `${PROCUREMENT_TEAM_LABEL_TITLE} zamawia, gdy jest to możliwe.`
-        : `Zgłoś prośbę — ${PROCUREMENT_TEAM_LABEL} zamówi, gdy będzie to możliwe.`,
+        : `Zgłoś prośbę - ${PROCUREMENT_TEAM_LABEL} zamówi, gdy będzie to możliwe.`,
     };
   }
 
@@ -258,13 +257,13 @@ export function describeNextOrderForSales(
     return {
       primary: `Planowany termin minął (${formatPlDate(insight.nextDate) ?? insight.nextDate})`,
       secondary:
-        "Zamówienie mogło już zostać złożone — sprawdź status prośby w „Moje zamówienia”.",
+        "Zamówienie mogło już zostać złożone - sprawdź status prośby w „Moje zamówienia”.",
     };
   }
 
   if (insight.weekDayLabel && insight.weekDateLabel) {
     return {
-      primary: `${insight.weekDayLabel} ${insight.weekDateLabel} — planowe zamówienie u dostawcy`,
+      primary: `${insight.weekDayLabel} ${insight.weekDateLabel} - planowe zamówienie u dostawcy`,
       secondary: insight.vacationNote ? `Uwaga: ${insight.vacationNote}` : null,
     };
   }

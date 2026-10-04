@@ -77,12 +77,12 @@ export function MailLogDetailClient({
           <div>
             <dt className="text-slate-500">Okres danych</dt>
             <dd>
-              {log.period_from ?? "—"} – {log.period_to ?? "—"}
+              {log.period_from ?? "-"} - {log.period_to ?? "-"}
             </dd>
           </div>
           <div>
             <dt className="text-slate-500">Zakończono</dt>
-            <dd>{log.finished_at ? formatWarsawDateTime(log.finished_at) : "—"}</dd>
+            <dd>{log.finished_at ? formatWarsawDateTime(log.finished_at) : "-"}</dd>
           </div>
           {log.subject ? (
             <div className="sm:col-span-2">
@@ -142,7 +142,7 @@ export function MailLogDetailClient({
               <li key={i} className={cn(panelTypography.caption, "text-slate-700")}>
                 <span className="text-slate-500">{formatWarsawDateTime(ev.at)}</span> ·{" "}
                 <strong>{ev.kind}</strong>
-                {ev.message ? ` — ${ev.message}` : ""}
+                {ev.message ? ` - ${ev.message}` : ""}
               </li>
             ))
           )}

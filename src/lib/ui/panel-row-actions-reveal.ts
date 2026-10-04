@@ -17,6 +17,17 @@ export function panelRowClearFocusOnLeave(event: MouseEvent<HTMLElement>) {
   }
 }
 
+/**
+ * Klik kończący zaznaczanie tekstu w wierszu (np. kopiowanie symbolu towaru) —
+ * nie traktuj go jako „rozwiń / zwiń” ani „otwórz”.
+ */
+export function isTextSelectionInside(row: Element): boolean {
+  const selection = typeof window === "undefined" ? null : window.getSelection();
+  if (!selection || selection.isCollapsed || !selection.toString().trim()) return false;
+  const node = selection.anchorNode;
+  return node != null && row.contains(node);
+}
+
 type PanelRowActionsRevealOptions = {
   forceVisible?: boolean;
   className?: string;

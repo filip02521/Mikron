@@ -114,7 +114,7 @@ export function ZdEstimateSessionResumeProgressPanel({
         disclaimer={
           forceComplete
             ? null
-            : "Nie liczymy listy od nowa — wczytujemy zapis z poprzedniej sesji."
+            : "Nie liczymy listy od nowa - wczytujemy zapis z poprzedniej sesji."
         }
       />
     </ZdEstimateLoadingWindow>

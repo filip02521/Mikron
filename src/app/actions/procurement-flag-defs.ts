@@ -84,7 +84,7 @@ async function assertLabelAvailable(
   );
   if (clash) {
     throw new Error(
-      "Flaga o takiej nazwie już istnieje (także wśród nieaktywnych) — przywróć ją albo wybierz inną nazwę."
+      "Flaga o takiej nazwie już istnieje (także wśród nieaktywnych) - przywróć ją albo wybierz inną nazwę."
     );
   }
 }
@@ -221,7 +221,7 @@ export async function actionDeleteProcurementFlagDefinition(
   if (wantHard) {
     if (used) {
       throw new Error(
-        "Flaga jest używana na zamówieniach — dezaktywuj ją zamiast usuwać na stałe."
+        "Flaga jest używana na zamówieniach - dezaktywuj ją zamiast usuwać na stałe."
       );
     }
     const { error } = await supabase
@@ -274,7 +274,7 @@ async function persistFlagDefinitionOrder(ids: string[]): Promise<void> {
     throw new Error(fetchError.message);
   }
   if (!rows || rows.length !== uniqueIds.length) {
-    throw new Error("Lista flag jest nieaktualna — odśwież panel i spróbuj ponownie.");
+    throw new Error("Lista flag jest nieaktualna - odśwież panel i spróbuj ponownie.");
   }
 
   for (let i = 0; i < uniqueIds.length; i++) {

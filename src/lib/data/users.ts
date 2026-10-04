@@ -66,7 +66,7 @@ export async function fetchAppUsers(): Promise<AppUserRow[]> {
       : p.sales_people;
     return {
       id: p.id,
-      email: p.email ?? "—",
+      email: p.email ?? "-",
       role: p.role as UserRole,
       salesPersonId: p.sales_person_id,
       salesPersonName: salesPerson?.name ?? null,

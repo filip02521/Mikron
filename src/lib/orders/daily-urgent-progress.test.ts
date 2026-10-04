@@ -40,7 +40,7 @@ describe("daily urgent progress", () => {
     expect(computeDailyUrgentProgress(8, 3).done).toBe(5);
   });
 
-  it("gdy w trakcie przybywa pozycja — baseline rośnie o deltę", () => {
+  it("gdy w trakcie przybywa pozycja - baseline rośnie o deltę", () => {
     expect(mergeUrgentBaseline(5, 4, 2)).toBe(7);
     expect(computeDailyUrgentProgress(7, 4).done).toBe(3);
   });

@@ -71,7 +71,7 @@ export function ZdEstimatePageIntro({
   const flowHint = [
     "Kroki:",
     ...flowSteps.map(
-      (step, index) => `${index + 1}. ${step.label} — ${step.hint}`
+      (step, index) => `${index + 1}. ${step.label} - ${step.hint}`
     ),
   ].join("\n");
 

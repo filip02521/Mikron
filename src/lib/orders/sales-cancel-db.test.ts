@@ -19,7 +19,7 @@ describe("sales-cancel-db", () => {
     ).not.toContain("sales_cancelled_at");
   });
 
-  it("buildSalesCancelUpdate — legacy tylko before_order", () => {
+  it("buildSalesCancelUpdate - legacy tylko before_order", () => {
     expect(
       buildSalesCancelUpdate(
         { hasCancelledAt: false, hasCancelPhase: false, hasCancelledQuantity: false },
@@ -36,7 +36,7 @@ describe("sales-cancel-db", () => {
     ).toBeNull();
   });
 
-  it("buildSalesCancelUpdate — pełny schemat", () => {
+  it("buildSalesCancelUpdate - pełny schemat", () => {
     const u = buildSalesCancelUpdate(
       { hasCancelledAt: true, hasCancelPhase: true, hasCancelledQuantity: true },
       "in_transit",
@@ -48,7 +48,7 @@ describe("sales-cancel-db", () => {
     expect(u?.sales_acknowledged_at).toBe("2026-05-01T00:00:00Z");
   });
 
-  it("buildSalesCancelUpdate — częściowa rezygnacja przed zamówieniem nie anuluje wiersza", () => {
+  it("buildSalesCancelUpdate - częściowa rezygnacja przed zamówieniem nie anuluje wiersza", () => {
     const u = buildSalesCancelUpdate(
       { hasCancelledAt: true, hasCancelPhase: true, hasCancelledQuantity: true },
       "before_order",
@@ -65,7 +65,7 @@ describe("sales-cancel-db", () => {
     expect(u?.sales_cancelled_at).toBe("2026-05-01T00:00:00Z");
   });
 
-  it("buildSalesCancelUpdate — pełna rezygnacja z magazynu trafia do archiwum", () => {
+  it("buildSalesCancelUpdate - pełna rezygnacja z magazynu trafia do archiwum", () => {
     const plan = {
       storedCancelledQuantity: null,
       statusAfter: "Zrealizowane" as const,
@@ -81,7 +81,7 @@ describe("sales-cancel-db", () => {
     expect(u?.status).toBe("Zrealizowane");
   });
 
-  it("buildSalesCancelUpdate — Dentalstore: rezygnacja z reszty bez archiwum", () => {
+  it("buildSalesCancelUpdate - Dentalstore: rezygnacja z reszty bez archiwum", () => {
     const u = buildSalesCancelUpdate(
       { hasCancelledAt: true, hasCancelPhase: true, hasCancelledQuantity: true },
       "on_stock",
@@ -96,7 +96,7 @@ describe("sales-cancel-db", () => {
     expect(u?.sales_acknowledged_at).toBeUndefined();
   });
 
-  it("buildSalesCancelUpdate — informacja z quantity \"-\" bez sales_cancelled_quantity", () => {
+  it("buildSalesCancelUpdate - informacja z quantity \"-\" bez sales_cancelled_quantity", () => {
     const order: IndividualOrder = {
       id: "1",
       supplier_id: "s",
@@ -124,7 +124,7 @@ describe("sales-cancel-db", () => {
     expect(update?.sales_acknowledged_at).toBe("2026-06-01T10:00:00Z");
   });
 
-  it("buildSalesCancelUpdate — każda faza trafia od razu do archiwum", () => {
+  it("buildSalesCancelUpdate - każda faza trafia od razu do archiwum", () => {
     for (const phase of ["before_order", "in_transit", "on_stock"] as const) {
       const u = buildSalesCancelUpdate(
         { hasCancelledAt: true, hasCancelPhase: true, hasCancelledQuantity: true },
@@ -141,7 +141,7 @@ describe("sales-cancel-db", () => {
     expect(before?.status).toBe("Anulowane");
   });
 
-  it("buildSalesCancelUndoUpdate — czyści rezygnację i przywraca status", () => {
+  it("buildSalesCancelUndoUpdate - czyści rezygnację i przywraca status", () => {
     expect(
       buildSalesCancelUndoUpdate(
         { hasCancelledAt: true, hasCancelPhase: true, hasCancelledQuantity: true },
@@ -175,7 +175,7 @@ describe("sales-cancel-db", () => {
     });
   });
 
-  it("buildSalesCancelUndoUpdate — przywraca poprzednią częściową rezygnację", () => {
+  it("buildSalesCancelUndoUpdate - przywraca poprzednią częściową rezygnację", () => {
     expect(
       buildSalesCancelUndoUpdate(
         { hasCancelledAt: true, hasCancelPhase: true, hasCancelledQuantity: true },
@@ -200,7 +200,7 @@ describe("sales-cancel-db", () => {
     });
   });
 
-  it("buildSalesCancelUndoUpdate — czyści auto-fulfill pola po cofnięciu pełnej rezygnacji", () => {
+  it("buildSalesCancelUndoUpdate - czyści auto-fulfill pola po cofnięciu pełnej rezygnacji", () => {
     const restore = {
       sales_cancelled_at: null,
       sales_cancelled_quantity: null,
@@ -222,7 +222,7 @@ describe("sales-cancel-db", () => {
     expect(update.warehouse_cancel_fulfilled_at).toBeNull();
   });
 
-  it("salesCancelUndoRestoreStatus — tylko before_order z Anulowane", () => {
+  it("salesCancelUndoRestoreStatus - tylko before_order z Anulowane", () => {
     expect(
       salesCancelUndoRestoreStatus(
         { status: "Anulowane", request_kind: "zamowienie" },
@@ -237,7 +237,7 @@ describe("sales-cancel-db", () => {
     ).toBeNull();
   });
 
-  it("salesCancelUndoMatchKind — dopasowanie stanu wiersza", () => {
+  it("salesCancelUndoMatchKind - dopasowanie stanu wiersza", () => {
     const caps = { hasCancelledAt: true, hasCancelPhase: true, hasCancelledQuantity: true };
   const legacy = { hasCancelledAt: false, hasCancelPhase: false, hasCancelledQuantity: false };
 

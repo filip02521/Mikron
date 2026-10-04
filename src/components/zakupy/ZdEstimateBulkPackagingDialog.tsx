@@ -148,13 +148,13 @@ export function ZdEstimateBulkPackagingDialog({
         <BulkProductPreview lines={preview} rest={rest} />
         {clearOverLimit ? (
           <p className="text-[11px] font-medium text-amber-800">
-            Limit {ZD_ESTIMATE_BULK_MAX} na jedną akcję — usunę pierwsze{" "}
+            Limit {ZD_ESTIMATE_BULK_MAX} na jedną akcję - usunę pierwsze{" "}
             {ZD_ESTIMATE_BULK_MAX} z {lines.length}.
           </p>
         ) : null}
         <p className="text-sm leading-relaxed text-slate-600">
           Ustawienia opakowań zostaną usunięte. Stany i sprzedaż nadal liczymy w
-          sztukach — w ZD wpiszesz sztuki 1:1.
+          sztukach - w ZD wpiszesz sztuki 1:1.
         </p>
       </ModalShell>
     );
@@ -213,7 +213,7 @@ export function ZdEstimateBulkPackagingDialog({
 
       {overLimit ? (
         <p className="text-[11px] font-medium text-amber-800">
-          Limit {ZD_ESTIMATE_BULK_MAX} na jedną akcję — zapiszę pierwsze{" "}
+          Limit {ZD_ESTIMATE_BULK_MAX} na jedną akcję - zapiszę pierwsze{" "}
           {ZD_ESTIMATE_BULK_MAX} z {lines.length}. Reszta zostanie zaznaczona.
         </p>
       ) : null}
@@ -441,7 +441,7 @@ export function ZdEstimateBulkPackagingDialog({
         <span className="text-xs font-medium text-slate-600">
           Notatka{" "}
           <span className="font-normal text-slate-400">
-            (opcjonalnie — pusta nie zmienia istniejących)
+            (opcjonalnie - pusta nie zmienia istniejących)
           </span>
         </span>
         <textarea
@@ -451,7 +451,7 @@ export function ZdEstimateBulkPackagingDialog({
           rows={2}
           maxLength={500}
           disabled={pending}
-          placeholder="np. Falcon — karton 10 szt"
+          placeholder="np. Falcon - karton 10 szt"
           className={cn(
             "mt-1.5 w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400",
             controlFocusClass

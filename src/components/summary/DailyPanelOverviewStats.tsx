@@ -35,7 +35,7 @@ export function DailyPanelOverviewStats({
         <Divider />
         <Stat
           value={summary.forSomeoneGroupCount}
-          label={unitLabel(summary.forSomeoneGroupCount, "grupa prośb", "grupy prośb", "grup prośb")}
+          label={unitLabel(summary.forSomeoneGroupCount, "grupa próśb", "grupy próśb", "grup próśb")}
         />
         {summary.stockOutGroupCount > 0 ? (
           <>
@@ -61,7 +61,7 @@ export function DailyPanelOverviewStats({
       {showVerification && verificationCount > 0 ? (
         <Link
           href="/weryfikacja"
-          className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-950 hover:bg-amber-200/90"
+          className="ml-auto inline-flex items-center gap-1.5 rounded-md bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-950 hover:bg-amber-200/90"
         >
           <span className="tabular-nums">{verificationCount}</span>
           do uzupełnienia

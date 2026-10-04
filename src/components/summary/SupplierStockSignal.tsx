@@ -58,15 +58,15 @@ export function SupplierStockSignal({
   const { signals, canPrepareZd } = useContext(SupplierStockSignalsContext);
   const s = signals[supplierId];
   if (!s) return null;
-  const asOf = s.dataDo ? `Nocna analiza Braki — sprzedaż do ${shortDate(s.dataDo)}.` : "Nocna analiza Braki.";
+  const asOf = s.dataDo ? `Nocna analiza Braki - sprzedaż do ${shortDate(s.dataDo)}.` : "Nocna analiza Braki.";
 
   if (s.lineCount === 0 && s.criticalCount === 0) {
     return (
       <p
         className={cn("text-[11px] text-slate-500", className)}
-        title={`${asOf} Stan i towar w drodze pokrywają zapas — można przesunąć termin.`}
+        title={`${asOf} Stan i towar w drodze pokrywają zapas - można przesunąć termin.`}
       >
-        Nic do zamówienia — stan wystarcza
+        Nic do zamówienia - stan wystarcza
       </p>
     );
   }
@@ -77,7 +77,7 @@ export function SupplierStockSignal({
       title={`${asOf} Liczba pozycji i wartość jak w Kreatorze ZD (ostatnie ceny z ZD).`}
     >
       {s.criticalCount > 0 ? (
-        <span className="rounded-md bg-red-50 px-1.5 font-semibold text-red-700 ring-1 ring-red-200">
+        <span className="rounded-md bg-red-50 px-1.5 font-medium text-red-800">
           {s.criticalCount} {polishPluralWord(s.criticalCount, "brak", "braki", "braków")}
         </span>
       ) : null}

@@ -60,7 +60,7 @@ export function MailJobAdminClient({
       }
     >
       <p className={cn(panelTypography.sectionDesc, "mb-3")}>
-        Tryb odczytu — bez wysyłki, testów ani edycji odbiorców z OnTime. Generowanie i mail
+        Tryb odczytu - bez wysyłki, testów ani edycji odbiorców z OnTime. Generowanie i mail
         tygodniowy prowadzi OnTime Raporty.
       </p>
 
@@ -69,7 +69,7 @@ export function MailJobAdminClient({
           inset
           density="compact"
           title="Status wysyłki (OnTime Raporty)"
-          description={job.schedule_label || "—"}
+          description={job.schedule_label || "-"}
         />
         <div className="px-3 py-3 text-sm text-slate-600 sm:px-4">
           <Badge variant={sendVariant}>{sendLabel}</Badge>
@@ -108,7 +108,7 @@ export function MailJobAdminClient({
                   <tr key={r.id}>
                     <td>{r.recipient_role.toUpperCase()}</td>
                     <td className="font-mono text-xs">{r.email}</td>
-                    <td>{r.display_name ?? "—"}</td>
+                    <td>{r.display_name ?? "-"}</td>
                     <td>{r.enabled ? "tak" : "nie"}</td>
                   </tr>
                 ))
@@ -157,7 +157,7 @@ export function MailJobAdminClient({
                     </td>
                     <td>{log.attempt_no}</td>
                     <td className="text-xs">
-                      {log.finished_at ? formatWarsawDateTime(log.finished_at) : "—"}
+                      {log.finished_at ? formatWarsawDateTime(log.finished_at) : "-"}
                     </td>
                     <td>
                       <Link

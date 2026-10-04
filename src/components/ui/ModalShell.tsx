@@ -94,6 +94,12 @@ export function ModalShell({
   const focusFirst = useCallback(() => {
     const panel = panelRef.current;
     if (!panel) return;
+    // Jawnie wskazana kontrolka (np. domyślny przycisk potwierdzenia) ma pierwszeństwo.
+    const preferred = panel.querySelector<HTMLElement>("[data-autofocus]");
+    if (preferred) {
+      preferred.focus();
+      return;
+    }
     // Preferuj pierwszą kontrolkę formularza (input/textarea/select) zamiast
     // przycisku w nagłówku (np. HelpHintBubble), którego onFocus pokazuje dymek.
     const formControl = panel.querySelector<HTMLElement>(
@@ -182,11 +188,11 @@ export function ModalShell({
   const shell = (
     <>
       {disableBackdropClose ? (
-        <div className={cn(modalBackdropClass, z.backdrop)} aria-hidden />
+        <div className={cn(modalBackdropClass, "modal-backdrop-enter", z.backdrop)} aria-hidden />
       ) : (
         <button
           type="button"
-          className={cn(modalBackdropClass, z.backdrop)}
+          className={cn(modalBackdropClass, "modal-backdrop-enter", z.backdrop)}
           aria-label="Zamknij"
           onClick={onClose}
         />
@@ -201,7 +207,7 @@ export function ModalShell({
         tabIndex={-1}
         className={cn(
           modalPanelClass,
-          "fixed left-1/2 top-1/2 max-h-[min(calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem),880px)] w-[min(100%-1rem,100%)] -translate-x-1/2 -translate-y-1/2 sm:w-full",
+          "modal-panel-enter fixed left-1/2 top-1/2 max-h-[min(calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-2rem),880px)] w-[min(100%-1rem,100%)] -translate-x-1/2 -translate-y-1/2 sm:w-full",
           sizeClass[size],
           z.panel,
           className

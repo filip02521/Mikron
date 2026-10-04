@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { getSupplierFormTemplate, type SupplierXlsxListTemplate } from "@/lib/supplier-forms/templates";
 import { buildSupplierXlsxList } from "@/lib/supplier-forms/xlsx";
 
-describe("Ivoclar — własny arkusz z Jm", () => {
+describe("Ivoclar - własny arkusz z Jm", () => {
   it("sortuje po nazwie, Jm zawsze szt.", async () => {
     const template = getSupplierFormTemplate("ivoclar-lista") as SupplierXlsxListTemplate;
     const bytes = await buildSupplierXlsxList(

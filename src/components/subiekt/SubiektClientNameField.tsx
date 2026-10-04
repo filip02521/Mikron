@@ -32,7 +32,7 @@ export function SubiektClientNameField({
   onChange,
   disabled,
   maxLength,
-  placeholder = "dla kogo jest ten towar — pojawi się w mailu po dostawie",
+  placeholder = "dla kogo jest ten towar - pojawi się w mailu po dostawie",
 }: {
   value: string;
   clientKhId?: number | null;
@@ -245,7 +245,7 @@ export function SubiektClientNameField({
             {typeaheadListVisible ? (
               <>
                 <TypeaheadSectionLabel>
-                  Subiekt — odbiorcy · {formatClientSearchResultCount(visibleItems.length)}
+                  Subiekt - odbiorcy · {formatClientSearchResultCount(visibleItems.length)}
                 </TypeaheadSectionLabel>
                 {visibleItems.map((k, index) => {
                   const { title, subtitle } = formatSubiektKontrahentOption(k);
@@ -270,7 +270,7 @@ export function SubiektClientNameField({
 
       {enabled ? (
         <p className="text-xs text-slate-500">
-          Wpisz min. {MIN_CLIENT_SEARCH_LENGTH} znaki, aby wyszukać w Subiekcie — lub wpisz dowolną
+          Wpisz min. {MIN_CLIENT_SEARCH_LENGTH} znaki, aby wyszukać w Subiekcie - lub wpisz dowolną
           nazwę ręcznie.
         </p>
       ) : configFeedback ? (

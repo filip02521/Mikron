@@ -63,7 +63,7 @@ export function TeethPanelAuditLog({
         </div>
       ) : rows.length === 0 ? (
         <p className={cn(panelTypography.caption, "text-slate-600")}>
-          Dziennik jest pusty — wpisy pojawią się po oznaczeniu zamówień lub zmianie harmonogramu.
+          Dziennik jest pusty - wpisy pojawią się po oznaczeniu zamówień lub zmianie harmonogramu.
         </p>
       ) : (
         <ul className="divide-y divide-slate-100">

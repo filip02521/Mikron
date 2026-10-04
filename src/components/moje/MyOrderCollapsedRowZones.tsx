@@ -59,7 +59,8 @@ export function MyOrderCollapsedRowZones({
           </span>
         ) : null}
         <MyOrderKindBadge row={row} listKind={listKind} />
-        <MyOrderProductLaneBadge laneKind={displayLaneKind} />
+        {/* „Towar” to typ domyślny — etykieta tylko gdy coś odróżnia (zęby / mieszane). */}
+        {displayLaneKind !== "regular" ? <MyOrderProductLaneBadge laneKind={displayLaneKind} /> : null}
       </div>
 
       {srOnlyHeadline ? <span className="sr-only">{srOnlyHeadline}</span> : null}

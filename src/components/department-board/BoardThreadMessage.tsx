@@ -5,6 +5,7 @@ import {
   IconInbox,
   IconMessageSquare,
 } from "@/components/icons/StrokeIcons";
+import { BoardQuestionAttachmentsGallery } from "@/components/department-board/BoardQuestionAttachmentsGallery";
 import { formatBoardDate } from "@/lib/department-board/format";
 import {
   boardThreadAuthorNameClass,
@@ -12,6 +13,7 @@ import {
   boardThreadMessageShellClass,
   boardThreadRoleBadgeClass,
 } from "@/lib/department-board/department-board-thread-styles";
+import type { DepartmentBoardThreadAttachment } from "@/types/database";
 import { cn } from "@/lib/cn";
 
 export type BoardThreadMessageTone = "question" | "procurement" | "sales";
@@ -35,6 +37,7 @@ export function BoardThreadMessage({
   body,
   createdAt,
   replyKind,
+  attachments,
   className,
 }: {
   tone: BoardThreadMessageTone;
@@ -42,6 +45,7 @@ export function BoardThreadMessage({
   body: string;
   createdAt: string;
   replyKind?: string;
+  attachments?: DepartmentBoardThreadAttachment[];
   className?: string;
 }) {
   const roleLabel = threadRoleLabel(tone, replyKind);
@@ -58,7 +62,12 @@ export function BoardThreadMessage({
             <span className={boardThreadAuthorNameClass(tone)}>{authorLabel}</span>
             <span className="text-[11px] text-slate-400">{formatBoardDate(createdAt)}</span>
           </div>
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{body}</p>
+          {body.trim() ? (
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{body}</p>
+          ) : null}
+          {attachments?.length ? (
+            <BoardQuestionAttachmentsGallery attachments={attachments} />
+          ) : null}
         </div>
       </div>
     </div>

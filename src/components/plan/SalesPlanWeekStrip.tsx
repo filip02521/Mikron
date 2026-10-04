@@ -146,7 +146,7 @@ function DayColumn({
     >
       <header className="border-b border-slate-100 px-2 py-1.5">
         <div className="flex items-center justify-between gap-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          <p className="text-[10px] font-semibold text-slate-500">
             {day.weekdayLabel}
           </p>
           {day.isToday ? (
@@ -160,7 +160,7 @@ function DayColumn({
       <ul className="flex flex-1 flex-col gap-1 p-1.5">
         {!day.items.length ? (
           <li className="flex flex-1 items-center justify-center px-1 py-3 text-center text-[10px] text-slate-400">
-            —
+            -
           </li>
         ) : (
           day.items.map((item) => {

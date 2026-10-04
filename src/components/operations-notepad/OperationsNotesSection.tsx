@@ -874,7 +874,7 @@ export function OperationsNotesSection({
             enableShortcut={enableSearchShortcut && !readOnly}
             showIdleHint={false}
             showActiveDetail={false}
-            emptyMatchHint="Brak dopasowań — sprawdź tytuł lub treść notatki."
+            emptyMatchHint="Brak dopasowań - sprawdź tytuł lub treść notatki."
           />
         </div>
       ) : null}
@@ -883,7 +883,7 @@ export function OperationsNotesSection({
         <p className="inline-flex flex-wrap items-center gap-1 text-[10px] text-slate-400">
           Przeciągnij kartę (
           <DragHandleGlyph />
-          ) w sekcji przypiętych lub zwykłych — między sekcjami nie da się przenieść.
+          ) w sekcji przypiętych lub zwykłych - między sekcjami nie da się przenieść.
         </p>
       ) : null}
 

@@ -264,7 +264,7 @@ export function TeethVerificationInlineRow({
         <td className="py-0.5 px-1">
           {renderCell(
             "color",
-            spec.color || "—",
+            spec.color || "-",
             <select
               ref={(el) => { inputRef.current = el; }}
               value={editValue}
@@ -282,7 +282,7 @@ export function TeethVerificationInlineRow({
         <td className="py-0.5 px-1">
           {renderCell(
             "mould",
-            spec.mould ?? "—",
+            spec.mould ?? "-",
             <select
               ref={(el) => { inputRef.current = el; }}
               value={editValue}
@@ -303,7 +303,7 @@ export function TeethVerificationInlineRow({
           <td className="py-0.5 px-1">
             {renderCell(
               "jaw",
-              spec.jaw ? JAW_LABELS[spec.jaw] ?? spec.jaw : "—",
+              spec.jaw ? JAW_LABELS[spec.jaw] ?? spec.jaw : "-",
               <select
                 ref={(el) => { inputRef.current = el; }}
                 value={editValue}

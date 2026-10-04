@@ -46,7 +46,7 @@ function parseDeliveredQty(value: string | undefined): number | null {
 
 function productsLabel(products: string): string {
   const t = products.trim();
-  return t || "—";
+  return t || "-";
 }
 
 /** Pozycja zamówienia po zapisie realizacji (pełna lub częściowa dostawa). */

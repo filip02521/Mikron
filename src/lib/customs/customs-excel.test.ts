@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildCustomsClearanceWorkbook } from "./customs-excel";
 import { buildCustomsClearanceSummary, buildCustomsLineViews, type CustomsClearanceView } from "./customs-view";
 import { buildDocumentArticleIndex } from "./customs-clearance";
+import { EMPTY_SHIPMENT } from "./customs-shipment";
 
 describe("buildCustomsClearanceWorkbook", () => {
   it("zapisuje pozycje z opisem, CN, VAT i podstawą 8%", async () => {
@@ -20,7 +21,7 @@ describe("buildCustomsClearanceWorkbook", () => {
     const view: CustomsClearanceView = {
       id: "x", supplierId: "s", supplierName: "Aswad", zdNumber: null, invoiceNumber: "AI/3177/26",
       invoiceDate: "2026-04-20", currency: "EUR", shipmentDescription: "przyrządy", invoiceFileName: null,
-      status: "draft", sentAt: null, sentEmailText: null, hasInvoiceFile: false, agencyEmail: null, defaultAgencyEmail: null, lines, documents: [],
+      status: "draft", sentAt: null, sentEmailText: null, hasInvoiceFile: false, agencyEmail: null, defaultAgencyEmail: null, lines, documents: [], shipment: EMPTY_SHIPMENT,
       ...buildCustomsClearanceSummary({ lines, shipmentDescription: "przyrządy" }),
     };
     expect(view.incompleteCount).toBe(1);

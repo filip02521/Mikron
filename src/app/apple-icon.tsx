@@ -4,7 +4,7 @@ import { brandAppIconDataUri } from "@/lib/ui/brand-app-icon-svg";
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
 
-/** Apple touch icon — ten sam znak co AppBrandMark (gradient, tarcza, OT). */
+/** Apple touch icon — ten sam znak co AppBrandMark; pełny kwadrat (maskę nakłada iOS). */
 export default function AppleIcon() {
   return new ImageResponse(
     (
@@ -19,7 +19,7 @@ export default function AppleIcon() {
         }}
       >
         {/* next/og ImageResponse wymaga <img> z data URI */}
-        <img src={brandAppIconDataUri()} width={180} height={180} alt="" />
+        <img src={brandAppIconDataUri({ fullBleed: true })} width={180} height={180} alt="" />
       </div>
     ),
     { ...size }

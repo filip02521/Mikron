@@ -73,6 +73,7 @@ import {
   formatSupplierVacationRangeTitle,
   type SupplierOnVacationWindow,
 } from "@/lib/orders/procurement-supplier-vacation";
+import { useAnimatedClose } from "@/lib/ui/use-animated-close";
 
 type HistoryRow = {
   action_at: string;
@@ -147,6 +148,7 @@ export function SupplierDrawer({
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
+  const { panelRef, backdropRef, requestClose } = useAnimatedClose(onClose);
 
   // Podgląd nad modalem: Escape zamyka tylko podgląd, a Tab nie trafia do pułapki fokusu
   // modalu pod spodem (listenery w fazie przechwytywania, przed modalem).
@@ -157,7 +159,7 @@ export function SupplierDrawer({
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopImmediatePropagation();
-        onCloseRef.current();
+        requestClose();
       } else if (e.key === "Tab") {
         e.stopImmediatePropagation();
       }
@@ -167,7 +169,7 @@ export function SupplierDrawer({
       cancelAnimationFrame(raf);
       window.removeEventListener("keydown", onKey, true);
     };
-  }, [preview, supplierId]);
+  }, [preview, supplierId, requestClose]);
 
   useEffect(() => {
     if (!supplierId) return;
@@ -276,15 +278,21 @@ export function SupplierDrawer({
         onConfirm={confirmMarkOrdered}
       />
       <button
+        ref={(el) => {
+          backdropRef.current = el;
+        }}
         type="button"
         className={cn(sidePanelBackdropClass, "panel-slide-backdrop-enter", preview && "z-[70]")}
         aria-label="Zamknij panel"
         onClick={() => {
           if (markConfirmOpen || rowPending) return;
-          onClose();
+          requestClose();
         }}
       />
       <aside
+        ref={(el) => {
+          panelRef.current = el;
+        }}
         className={cn(sidePanelShellClass, "panel-slide-enter", preview && "z-[71]")}
         aria-labelledby="supplier-drawer-title"
         role={preview ? "dialog" : undefined}
@@ -333,7 +341,7 @@ export function SupplierDrawer({
               onClick={() => {
                 if (rowPending) return;
                 setMarkConfirmForId(null);
-                onClose();
+                requestClose();
               }}
               aria-label="Zamknij"
               disabled={rowPending}
@@ -350,11 +358,11 @@ export function SupplierDrawer({
             )}
           >
             <div className="min-w-0">
-              <p className="text-[11px] font-medium uppercase tracking-wide opacity-75">
+              <p className="text-[11px] font-medium opacity-75">
                 {supplier.order_on_demand ? "Zamówienie na żądanie" : "Następne zamówienie"}
               </p>
               <p className="mt-0.5 text-base font-semibold tabular-nums">
-                {supplier.computed_next_date ? formatPlDate(supplier.computed_next_date) : "—"}
+                {supplier.computed_next_date ? formatPlDate(supplier.computed_next_date) : "-"}
                 {due.relative ? (
                   <span className="ml-2 text-sm font-medium opacity-80">· {due.relative}</span>
                 ) : null}
@@ -481,7 +489,7 @@ export function SupplierDrawer({
           {findSupplierFormTemplate(supplier.name) ? (
             <DrawerSection
               title="Formularz zamówienia"
-              hint={`${findSupplierFormTemplate(supplier.name)!.kind !== "pdf" ? "Arkusz Excel" : "Formularz PDF"} dostawcy wypełniony pozycjami z ZD — gotowy do wysłania`}
+              hint={`${findSupplierFormTemplate(supplier.name)!.kind !== "pdf" ? "Arkusz Excel" : "Formularz PDF"} dostawcy wypełniony pozycjami z ZD - gotowy do wysłania`}
               icon={<IconDownload size={14} />}
             >
               <SupplierOrderFormList supplierId={supplier.id} />
@@ -503,7 +511,7 @@ export function SupplierDrawer({
               <Row label="Ostatnie zamówienie" value={formatPlDate(supplier.order_date)} />
               <Row
                 label="Następne zamówienie"
-                value={supplier.computed_next_date ? formatPlDate(supplier.computed_next_date) : "—"}
+                value={supplier.computed_next_date ? formatPlDate(supplier.computed_next_date) : "-"}
                 strong
               />
               {supplier.shift_date ? (
@@ -543,7 +551,7 @@ export function SupplierDrawer({
                 ) : null}
               </div>
             ) : (
-              <p className="text-sm text-slate-500">Dostawca wysyła sam — bez zlecanego odbioru.</p>
+              <p className="text-sm text-slate-500">Dostawca wysyła sam - bez zlecanego odbioru.</p>
             )}
           </DrawerSection>
 
@@ -710,7 +718,7 @@ function Chip({
     <span
       title={title}
       className={cn(
-        "inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
+        "inline-flex max-w-full items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
         CHIP_TONE[tone],
       )}
     >

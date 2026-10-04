@@ -49,7 +49,7 @@ export function resolveZdEstimateRunScope(input: {
       return {
         ok: false,
         title: "Konflikt zakresu",
-        message: "Podaj albo grupę, albo cechę — nie obie naraz.",
+        message: "Podaj albo grupę, albo cechę - nie obie naraz.",
       };
     }
     return { ok: true, mode: "grupa", grupaId, cechaId: null };
@@ -66,7 +66,7 @@ export function resolveZdEstimateRunScope(input: {
     return {
       ok: false,
       title: "Konflikt zakresu",
-      message: "Podaj albo grupę, albo cechę — nie obie naraz.",
+      message: "Podaj albo grupę, albo cechę - nie obie naraz.",
     };
   }
   return { ok: true, mode: "cecha", grupaId: null, cechaId };
@@ -90,7 +90,7 @@ export function assertZdEstimateFilterEcho(input: {
         ok: false,
         title: "Filtr grupy nie potwierdzony",
         message:
-          "API nie zwróciło parametry.grupaId zgodnego z żądaniem — lista mogłaby być nieprzefiltrowana. Sprawdź SUBIEKT_API_ORDERS_BASE_URL (:5080/:5082).",
+          "API nie zwróciło parametry.grupaId zgodnego z żądaniem - lista mogłaby być nieprzefiltrowana. Sprawdź SUBIEKT_API_ORDERS_BASE_URL (:5080/:5082).",
       };
     }
     return { ok: true };
@@ -102,7 +102,7 @@ export function assertZdEstimateFilterEcho(input: {
       ok: false,
       title: "Filtr cechy nie potwierdzony",
       message:
-        "API nie zwróciło parametry.cechaId zgodnego z żądaniem (stary build albo brak wsparcia). Bez filtra szacunek zwróciłby cały katalog — lista zablokowana.",
+        "API nie zwróciło parametry.cechaId zgodnego z żądaniem (stary build albo brak wsparcia). Bez filtra szacunek zwróciłby cały katalog - lista zablokowana.",
     };
   }
   return { ok: true };

@@ -291,7 +291,7 @@ describe("resolveZdEstimateListToolStates", () => {
 });
 
 describe("zdEstimateSelectionCountLabel", () => {
-  it("odmiana 1 / 2–4 / 5+", () => {
+  it("odmiana 1 / 2-4 / 5+", () => {
     expect(zdEstimateSelectionCountLabel(1)).toBe("1 zaznaczony produkt");
     expect(zdEstimateSelectionCountLabel(2)).toBe("2 zaznaczone produkty");
     expect(zdEstimateSelectionCountLabel(5)).toBe("5 zaznaczonych produktów");

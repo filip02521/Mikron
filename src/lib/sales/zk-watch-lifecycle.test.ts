@@ -28,7 +28,7 @@ function watch(partial: Partial<SalesZkWatch> & Pick<SalesZkWatch, "id">): Sales
   };
 }
 
-describe("ZK czeka na towar — logika notatnika", () => {
+describe("ZK czeka na towar - logika notatnika", () => {
   it("isZkWatchArchived obejmuje closed_at i archived_at", () => {
     expect(isZkWatchArchived(watch({ id: "a" }))).toBe(false);
     expect(isZkWatchArchived(watch({ id: "b", closed_at: "2026-05-10T00:00:00Z" }))).toBe(

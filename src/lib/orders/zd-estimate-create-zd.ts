@@ -158,7 +158,7 @@ export function resolveZdCreateKhId(input: {
   return {
     ok: false,
     message:
-      "Dostawca ma kilka dodatkowych identyfikatorów kontrahenta bez głównego — ustaw główny w Administracji.",
+      "Dostawca ma kilka dodatkowych identyfikatorów kontrahenta bez głównego - ustaw główny w Administracji.",
   };
 }
 
@@ -364,7 +364,7 @@ export function validateZdCreateClientLines(
   if (lines.length > ZD_CREATE_MAX_LINES) {
     return {
       ok: false,
-      message: `Za dużo pozycji (${lines.length}). Maks. ${ZD_CREATE_MAX_LINES} — zawęź zakres lub wyklucz towary.`,
+      message: `Za dużo pozycji (${lines.length}). Maks. ${ZD_CREATE_MAX_LINES} - zawęź zakres lub wyklucz towary.`,
     };
   }
   const seen = new Set<number>();
@@ -663,8 +663,8 @@ export function canCreateZdFromEstimateState(
       ok: false,
       tone: "warning",
       reason: state.createUnconfirmedAttempt
-        ? "Ostatnie tworzenie ZD zakończyło się timeoutem — sprawdź Subiekt / powiąż dokument, przelicz listę albo odblokuj świadomie."
-        : "ZD już utworzone z tej listy — powiąż inne ZD ręcznie, przelicz listę albo odblokuj świadomie.",
+        ? "Ostatnie tworzenie ZD zakończyło się timeoutem - sprawdź Subiekt / powiąż dokument, przelicz listę albo odblokuj świadomie."
+        : "ZD już utworzone z tej listy - powiąż inne ZD ręcznie, przelicz listę albo odblokuj świadomie.",
     };
   }
   if (
@@ -674,7 +674,7 @@ export function canCreateZdFromEstimateState(
     return {
       ok: false,
       tone: "warning",
-      reason: `Konflikt opakowanie ↔ para (${state.packagingPairConflictCount}) — ujednolić przed utworzeniem ZD.`,
+      reason: `Konflikt opakowanie ↔ para (${state.packagingPairConflictCount}) - ujednolić przed utworzeniem ZD.`,
     };
   }
   if (!(state.orderableCount > 0)) {
@@ -730,4 +730,20 @@ export function applyCreatedZdUnitsToOtwarteZd(
     const wkladZk = Math.max(0, (Number(line.doZamowieniaApi) || 0) - doZamowieniaReczne);
     return { ...cleared, otwarteZd, doZamowieniaReczne, wkladZk };
   });
+}
+
+/** Kafelek „Przewidywana dostawa” w podsumowaniu tworzenia ZD. */
+export function zdCreateEtaTile(
+  eta: { status: "loading" | "done"; dateKey: string | null; businessDays: number | null }
+): { value: string; sub: string } {
+  if (eta.status === "loading") return { value: "…", sub: "liczę z historii dostaw" };
+  if (!eta.dateKey) return { value: "-", sub: "brak historii dostaw" };
+  const weekday = new Intl.DateTimeFormat("pl-PL", { weekday: "long", timeZone: "UTC" }).format(
+    new Date(`${eta.dateKey}T12:00:00Z`)
+  );
+  const days =
+    eta.businessDays == null
+      ? ""
+      : ` · ~${eta.businessDays} ${eta.businessDays === 1 ? "dzień rob." : "dni rob."}`;
+  return { value: `ok. ${eta.dateKey.split("-").reverse().join(".")}`, sub: `${weekday}${days}` };
 }

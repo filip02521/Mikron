@@ -20,7 +20,7 @@ export const SALES_SHEET_ALIASES: Record<string, string> = {
   "KAMIL W": "Kamil",
 };
 
-const SKIP_ALIASES = new Set(["", "-", "—"]);
+const SKIP_ALIASES = new Set(["", "-", "-"]);
 
 export function normalizeSalesAlias(raw: string): string | null {
   const trimmed = raw.trim();

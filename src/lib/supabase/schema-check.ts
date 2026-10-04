@@ -216,102 +216,102 @@ export async function runSchemaChecks(
 
   if (!(await hasRequestKindColumn(supabase))) {
     issues.push(
-      "Brak kolumny individual_orders.request_kind — uruchom supabase/migrations/006_request_kind_informacja.sql"
+      "Brak kolumny individual_orders.request_kind - uruchom supabase/migrations/006_request_kind_informacja.sql"
     );
   }
   if (!(await hasOrderedAtColumn(supabase))) {
     issues.push(
-      "Brak kolumny individual_orders.ordered_at — uruchom supabase/migrations/007_ordered_at.sql"
+      "Brak kolumny individual_orders.ordered_at - uruchom supabase/migrations/007_ordered_at.sql"
     );
   }
   if (!(await hasSalesAcknowledgedColumn(supabase))) {
     issues.push(
-      "Brak kolumny individual_orders.sales_acknowledged_at — uruchom supabase/migrations/011_sales_acknowledged.sql"
+      "Brak kolumny individual_orders.sales_acknowledged_at - uruchom supabase/migrations/011_sales_acknowledged.sql"
     );
   }
   if (!(await hasSalesCancelledAtColumn(supabase))) {
     issues.push(
-      "Brak kolumny individual_orders.sales_cancelled_at — uruchom supabase/migrations/014_sales_cancelled_at.sql (lub 018_sales_cancel_bundle.sql)"
+      "Brak kolumny individual_orders.sales_cancelled_at - uruchom supabase/migrations/014_sales_cancelled_at.sql (lub 018_sales_cancel_bundle.sql)"
     );
   }
   if (!(await hasSalesCancelPhaseColumn(supabase))) {
     issues.push(
-      "Brak kolumny individual_orders.sales_cancel_phase — uruchom supabase/migrations/015_sales_cancel_phase.sql"
+      "Brak kolumny individual_orders.sales_cancel_phase - uruchom supabase/migrations/015_sales_cancel_phase.sql"
     );
   }
   if (!(await hasSalesClientNameColumn(supabase))) {
     issues.push(
-      "Brak kolumny individual_orders.sales_client_name — uruchom supabase/migrations/017_sales_client_name.sql"
+      "Brak kolumny individual_orders.sales_client_name - uruchom supabase/migrations/017_sales_client_name.sql"
     );
   }
   if (!(await hasSalesRequestNoteColumn(supabase))) {
     issues.push(
-      "Brak kolumny individual_orders.sales_request_note — uruchom supabase/migrations/058_individual_orders_sales_request_note.sql"
+      "Brak kolumny individual_orders.sales_request_note - uruchom supabase/migrations/058_individual_orders_sales_request_note.sql"
     );
   }
   if (!(await hasZkWatchIncludeNoteInProsbaColumn(supabase))) {
     issues.push(
-      "Brak kolumny sales_zk_watches.include_note_in_prosba — uruchom supabase/migrations/137_zk_watch_include_note_in_prosba.sql"
+      "Brak kolumny sales_zk_watches.include_note_in_prosba - uruchom supabase/migrations/137_zk_watch_include_note_in_prosba.sql"
     );
   }
   if (!(await hasProcurementCancelNoteColumn(supabase))) {
     issues.push(
-      "Brak kolumny individual_orders.procurement_cancel_note — uruchom supabase/migrations/063_procurement_cancel_note.sql"
+      "Brak kolumny individual_orders.procurement_cancel_note - uruchom supabase/migrations/063_procurement_cancel_note.sql"
     );
   }
   if (!(await hasProcurementFlagColumn(supabase))) {
     issues.push(
-      "Brak kolumny individual_orders.procurement_flag — uruchom supabase/migrations/121_individual_orders_procurement_flag.sql"
+      "Brak kolumny individual_orders.procurement_flag - uruchom supabase/migrations/121_individual_orders_procurement_flag.sql"
     );
   }
   if (!(await hasProcurementFlagDefinitionsTable(supabase))) {
     issues.push(
-      "Brak tabeli procurement_flag_definitions — uruchom supabase/migrations/122_procurement_flag_definitions.sql"
+      "Brak tabeli procurement_flag_definitions - uruchom supabase/migrations/122_procurement_flag_definitions.sql"
     );
   }
   if (!(await hasSalesCancelledQuantityColumn(supabase))) {
     issues.push(
-      "Brak kolumny individual_orders.sales_cancelled_quantity — uruchom supabase/migrations/059_individual_orders_sales_cancelled_quantity.sql"
+      "Brak kolumny individual_orders.sales_cancelled_quantity - uruchom supabase/migrations/059_individual_orders_sales_cancelled_quantity.sql"
     );
   }
   if (!(await hasProcurementSalesCancelAckColumn(supabase))) {
     issues.push(
-      "Brak kolumny individual_orders.procurement_sales_cancel_ack_at — uruchom supabase/migrations/019_procurement_sales_cancel_ack.sql"
+      "Brak kolumny individual_orders.procurement_sales_cancel_ack_at - uruchom supabase/migrations/019_procurement_sales_cancel_ack.sql"
     );
   }
   if (!(await hasWarehouseCancelFulfilledColumn(supabase))) {
     issues.push(
-      "Brak kolumny individual_orders.warehouse_cancel_fulfilled_at — uruchom supabase/migrations/062_warehouse_cancel_fulfilled.sql"
+      "Brak kolumny individual_orders.warehouse_cancel_fulfilled_at - uruchom supabase/migrations/062_warehouse_cancel_fulfilled.sql"
     );
   }
   if (!(await hasZdFulfillmentDeadlineChangeColumns(supabase))) {
     issues.push(
-      "Brak kolumn terminów ZD (067) — uruchom supabase/migrations/067_individual_orders_zd_fulfillment_deadline_change.sql"
+      "Brak kolumn terminów ZD (067) - uruchom supabase/migrations/067_individual_orders_zd_fulfillment_deadline_change.sql"
     );
   }
   if (!(await hasJobLockRpc(supabase))) {
     issues.push(
-      "Brak funkcji try_acquire_job_lock — uruchom supabase/migrations/013_job_lock_atomic.sql"
+      "Brak funkcji try_acquire_job_lock - uruchom supabase/migrations/013_job_lock_atomic.sql"
     );
   }
   if (!(await hasTeethOrderDetailsTable(supabase))) {
     issues.push(
-      "Brak tabeli individual_order_teeth_details — uruchom supabase/migrations/079_teeth_order_details.sql"
+      "Brak tabeli individual_order_teeth_details - uruchom supabase/migrations/079_teeth_order_details.sql"
     );
   } else {
     if (!(await hasTeethOrderDetailsJawColumn(supabase))) {
       issues.push(
-        "Brak kolumny individual_order_teeth_details.jaw — uruchom supabase/migrations/080_teeth_jaw.sql"
+        "Brak kolumny individual_order_teeth_details.jaw - uruchom supabase/migrations/080_teeth_jaw.sql"
       );
     }
     if (!(await hasTeethOrderDetailsKindColumn(supabase))) {
       issues.push(
-        "Brak kolumny individual_order_teeth_details.kind — uruchom supabase/migrations/081_teeth_kind.sql"
+        "Brak kolumny individual_order_teeth_details.kind - uruchom supabase/migrations/081_teeth_kind.sql"
       );
     }
     if (!(await hasTeethOrderDetailsOrderedAtColumn(supabase))) {
       issues.push(
-        "Brak kolumny individual_order_teeth_details.ordered_at — uruchom supabase/migrations/087_teeth_detail_ordered_at.sql"
+        "Brak kolumny individual_order_teeth_details.ordered_at - uruchom supabase/migrations/087_teeth_detail_ordered_at.sql"
       );
     }
   }

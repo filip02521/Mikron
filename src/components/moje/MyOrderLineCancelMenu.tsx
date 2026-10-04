@@ -51,7 +51,7 @@ export function MyOrderLineCancelMenu({
 
   return (
     <OverflowMenu
-      label={cancelLineAriaLabel ?? `Anulowanie pozycji — ${product}`}
+      label={cancelLineAriaLabel ?? `Anulowanie pozycji - ${product}`}
       disabled={pending}
       align="end"
       iconOnly

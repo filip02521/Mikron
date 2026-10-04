@@ -126,7 +126,7 @@ export function zdSearchPlacementAt(
   return orderPlacementAt(order) ?? order.action_at ?? null;
 }
 
-/** Najwcześniejsza dolna granica dla wielu prośb (np. cały dostawca w sync). */
+/** Najwcześniejsza dolna granica dla wielu próśb (np. cały dostawca w sync). */
 export function earliestZdContractorExtendedDataOd(
   placements: readonly (string | null | undefined)[],
   at: Date = new Date()

@@ -103,7 +103,7 @@ export default async function MagazynGadkiPage() {
               {
                 zkNumber: "Subiekt",
                 message:
-                  "Synchronizacja przekroczyła limit czasu — pokazano ostatni zapisany snapshot.",
+                  "Synchronizacja przekroczyła limit czasu - pokazano ostatni zapisany snapshot.",
               },
             ],
             locked: true,

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { AUTH_QUOTES, type AuthQuote } from "@/lib/auth-quotes";
 import { AuthCompactQuoteBackdrop } from "@/components/auth/AuthBackgroundArt";
+import { AppBrandMark } from "@/components/ui/AppBrandMark";
 import { isAuthVisualVariant } from "@/components/auth/auth-visual-variant";
 import {
   ONTIME_APP_NAME,
@@ -36,7 +37,7 @@ function QuoteText({
           animClass
         )}
       >
-        „{quote.text}&quot;
+        „{quote.text}”
       </blockquote>
       {quote.attribution ? (
         <p
@@ -48,7 +49,7 @@ function QuoteText({
             animClass
           )}
         >
-          — {quote.attribution}
+          - {quote.attribution}
         </p>
       ) : null}
     </>
@@ -68,6 +69,8 @@ export function AuthQuotePanel({
 
   useEffect(() => {
     const rotateId = window.setInterval(() => {
+      // Nie zmieniaj cytatu, gdy ktoś wpisuje dane w formularzu (ruch obok pola rozprasza).
+      if (document.activeElement?.closest("form")) return;
       setAnimClass("auth-quote-exit");
       window.setTimeout(() => {
         setIndex((i) => (i + 1) % AUTH_QUOTES.length);
@@ -84,25 +87,13 @@ export function AuthQuotePanel({
     return (
       <div
         className={cn(
-          "relative overflow-hidden rounded-lg bg-gradient-to-br from-indigo-700 via-sky-800 to-slate-900 px-4 py-4 shadow-lg shadow-indigo-900/20",
+          "relative overflow-hidden rounded-lg bg-indigo-800 px-4 py-4",
           className
         )}
       >
         {!isAuthVisualVariant("minimal") ? <AuthCompactQuoteBackdrop /> : null}
-        {!isAuthVisualVariant("minimal") ? (
-          <div
-            className="pointer-events-none absolute -right-8 top-0 h-24 w-24 rounded-full bg-indigo-400/20 blur-2xl"
-            aria-hidden
-          />
-        ) : null}
-        <p className="relative text-[10px] font-semibold uppercase tracking-[0.2em] text-indigo-200/80">
-          {ONTIME_COMPANY} · {ONTIME_APP_NAME}
-        </p>
-        <p className="relative mt-0.5 text-xs font-medium text-sky-100/95">{ONTIME_TAGLINE}</p>
+        <p className="relative text-xs font-medium text-sky-100/95">{ONTIME_TAGLINE}</p>
         <QuoteText quote={quote} animClass={animClass} compact />
-        <p className="relative mt-3 text-[10px] tabular-nums text-indigo-200/50">
-          {index + 1} / {AUTH_QUOTES.length}
-        </p>
       </div>
     );
   }
@@ -110,22 +101,23 @@ export function AuthQuotePanel({
   return (
     <div className={cn("flex flex-col justify-between", className)}>
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-200/90">
-          {ONTIME_COMPANY}
-        </p>
-        <p
-          className="mt-2 text-4xl font-semibold tracking-tight text-white xl:text-[2.75rem]"
-          aria-label={ONTIME_APP_NAME}
-        >
-          <span>On</span>
-          <span className="text-sky-200">Time</span>
-        </p>
-        <p className="mt-2 text-sm font-medium text-sky-100/95">{ONTIME_TAGLINE}</p>
+        {/* Logo poziome (znak + nazwa) jak w menu bocznym, wariant na ciemne tło. */}
+        <div className="flex items-center gap-4">
+          <AppBrandMark size="lg" variant="dark" className="ring-1 ring-white/20" />
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-indigo-200/90">{ONTIME_COMPANY}</p>
+            <p
+              className="text-4xl font-semibold leading-none tracking-tight text-white xl:text-[2.75rem]"
+              aria-label={ONTIME_APP_NAME}
+            >
+              <span>On</span>
+              <span className="text-sky-200">Time</span>
+            </p>
+          </div>
+        </div>
+        <p className="mt-3 text-sm font-medium text-sky-100/95">{ONTIME_TAGLINE}</p>
         <QuoteText quote={quote} animClass={animClass} compact={false} />
       </div>
-      <p className="text-xs text-indigo-200/50">
-        {index + 1} / {AUTH_QUOTES.length}
-      </p>
     </div>
   );
 }

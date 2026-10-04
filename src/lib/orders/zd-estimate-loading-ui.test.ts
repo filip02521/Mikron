@@ -12,13 +12,13 @@ import {
 } from "@/lib/orders/zd-estimate-loading-ui";
 
 describe("zd-estimate-loading-ui", () => {
-  it("elapsed compact — sekundy i mm:ss", () => {
+  it("elapsed compact - sekundy i mm:ss", () => {
     expect(formatZdEstimateElapsedCompact(0)).toBe("0s");
     expect(formatZdEstimateElapsedCompact(12_000)).toBe("12s");
     expect(formatZdEstimateElapsedCompact(65_000)).toBe("1:05");
   });
 
-  it("elapsed label — busy vs complete", () => {
+  it("elapsed label - busy vs complete", () => {
     expect(
       zdEstimateLoadingElapsedLabel({
         elapsedMs: 12_000,
@@ -34,7 +34,7 @@ describe("zd-estimate-loading-ui", () => {
     ).toBe("12s · gotowe");
   });
 
-  it("status tone — warning przy failure, complete, busy", () => {
+  it("status tone - warning przy failure, complete, busy", () => {
     expect(
       resolveZdEstimateLoadingStatusTone({ completeFailed: true })
     ).toBe("warning");
@@ -50,7 +50,7 @@ describe("zd-estimate-loading-ui", () => {
     ).toBe("warning");
   });
 
-  it("bar pct — derived, clamp, forceComplete", () => {
+  it("bar pct - derived, clamp, forceComplete", () => {
     expect(
       resolveZdEstimateLoadingBarPct({
         activeStepIndex: 0,
@@ -73,7 +73,7 @@ describe("zd-estimate-loading-ui", () => {
     ).toBe(100);
   });
 
-  it("timed bar pct — monotonic, no jump back on last step wrap", () => {
+  it("timed bar pct - monotonic, no jump back on last step wrap", () => {
     const stepMs = 1100;
     const stepCount = 3;
     const samples = [0, 500, 1100, 2200, 3299, 3300, 4400, 10_000].map(
@@ -108,7 +108,7 @@ describe("zd-estimate-loading-ui", () => {
     expect(wrapPastLast).toBeGreaterThanOrEqual(nearEndOfLast);
   });
 
-  it("step visual — failure tylko na wskazanym kroku przy complete", () => {
+  it("step visual - failure tylko na wskazanym kroku przy complete", () => {
     const ok = resolveZdEstimateLoadingStepVisual({
       index: 0,
       activeStepIndex: 3,

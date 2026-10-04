@@ -70,7 +70,7 @@ function Step({
     <div className="flex min-w-0 gap-2.5">
       <StepMarker tone={tone} index={index} />
       <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{title}</p>
+        <p className="text-[11px] font-semibold text-slate-500">{title}</p>
         <div className="mt-1 min-w-0">{children}</div>
       </div>
     </div>
@@ -181,7 +181,7 @@ export function TeethQueueSupplierCard({
           {schedule?.computed_next_date ? (
             <span
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset",
+                "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset",
                 scheduleOverdue
                   ? "bg-amber-50 text-amber-900 ring-amber-300"
                   : "bg-sky-50 text-sky-800 ring-sky-200",
@@ -201,7 +201,7 @@ export function TeethQueueSupplierCard({
           <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900 ring-1 ring-inset ring-amber-200">
             <p className="font-semibold">Te prośby nie mają dostawcy</p>
             <p className="mt-0.5 text-xs text-amber-800">
-              Kliknij „Uzupełnij” przy prośbie i wybierz dostawcę — prośba przeniesie się do
+              Kliknij „Uzupełnij” przy prośbie i wybierz dostawcę - prośba przeniesie się do
               jego karty, gdzie ją zamówisz.
             </p>
           </div>
@@ -211,7 +211,7 @@ export function TeethQueueSupplierCard({
               {scheduleOverdue
                 ? "Zamówienie z harmonogramu jest zaległe."
                 : "Dziś przypada zamówienie z harmonogramu."}{" "}
-              Złóż je u dostawcy i oznacz — termin przesunie się na kolejny cykl.
+              Złóż je u dostawcy i oznacz - termin przesunie się na kolejny cykl.
             </p>
             <Button size="sm" className="min-h-9 shrink-0" disabled={pending} onClick={onMarkSchedule}>
               <IconTruck size={15} />
@@ -219,7 +219,7 @@ export function TeethQueueSupplierCard({
             </Button>
           </div>
         ) : (
-          <div className="grid gap-4 rounded-lg bg-gradient-to-r from-indigo-50/70 to-sky-50/50 p-3 ring-1 ring-inset ring-indigo-100 sm:grid-cols-3 sm:gap-3">
+          <div className="grid gap-4 rounded-lg bg-indigo-50/70 p-3 ring-1 ring-inset ring-indigo-100 sm:grid-cols-3 sm:gap-3">
             <Step index={1} tone={listTone} title="Lista zębów">
               {needsFixCount > 0 ? (
                 <p className="text-sm font-medium text-amber-800">
@@ -239,7 +239,7 @@ export function TeethQueueSupplierCard({
                   existingFileName={fileName}
                   required={!hasFile}
                   locked={locked}
-                  slotHint={hasFile ? null : "Excel, PDF lub XML — jeden na całego dostawcę"}
+                  slotHint={hasFile ? null : "Excel, PDF lub XML - jeden na całego dostawcę"}
                   onUploaded={() => onFileChanged(true)}
                   onRemoved={() => onFileChanged(false)}
                 />
@@ -258,7 +258,7 @@ export function TeethQueueSupplierCard({
                     : readyCount === 0
                       ? "Żadna prośba nie ma kompletnej listy"
                       : partialSelection
-                        ? "Oznacz tylko zaznaczone zęby — reszta zostanie w kolejce"
+                        ? "Oznacz tylko zaznaczone zęby - reszta zostanie w kolejce"
                         : "Oznacz wszystkie zęby z kompletnych próśb u tego dostawcy"
                 }
               >
@@ -273,7 +273,7 @@ export function TeethQueueSupplierCard({
                 <p className="mt-1 text-[11px] text-amber-700">Najpierw uzupełnij listy.</p>
               ) : partialSelection ? (
                 <p className="mt-1 text-[11px] text-slate-600">
-                  Tylko zaznaczone — {openTeeth - selectedTeethCount}{" "}
+                  Tylko zaznaczone - {openTeeth - selectedTeethCount}{" "}
                   {polishPluralWord(openTeeth - selectedTeethCount, "ząb zostanie", "zęby zostaną", "zębów zostanie")} w
                   kolejce.
                 </p>
@@ -385,7 +385,7 @@ export function TeethQueueSupplierCard({
                     }
                     trailing={
                       sectionNeedsFix > 0 ? (
-                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-inset ring-amber-200">
+                        <span className="rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-inset ring-amber-200">
                           {sectionNeedsFix} do uzupełnienia
                         </span>
                       ) : null

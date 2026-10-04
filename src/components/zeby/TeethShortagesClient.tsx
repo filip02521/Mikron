@@ -267,12 +267,8 @@ export function TeethShortagesClient({
           </div>
 
           {filtered.length === 0 ? (
-            <div className="overflow-hidden rounded-xl border border-indigo-100 bg-gradient-to-b from-indigo-50/70 via-white to-white shadow-sm">
+            <div className="overflow-hidden rounded-xl border border-indigo-100 bg-indigo-50/70 shadow-sm">
               <div className="relative px-4 py-10 text-center sm:px-6 sm:py-12">
-                <span
-                  className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[radial-gradient(ellipse_at_top,_rgba(15, 115, 128,0.10),_transparent_70%)]"
-                  aria-hidden
-                />
                 <div className="relative">
                   <TeethShortageEmptyGraphic className="mb-4" />
                   <p className="text-sm font-semibold text-slate-900">

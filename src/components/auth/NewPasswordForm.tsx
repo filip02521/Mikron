@@ -70,7 +70,7 @@ export function NewPasswordForm({
       <div className="space-y-4">
         <Field
           label="Nowe hasło"
-          hint="Użyj kombinacji liter i cyfr — unikaj haseł powszechnych lub łatwych do odgadnięcia."
+          hint="Użyj kombinacji liter i cyfr - unikaj haseł powszechnych lub łatwych do odgadnięcia."
         >
           <PasswordInput
             value={password}

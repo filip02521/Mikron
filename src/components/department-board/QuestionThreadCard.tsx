@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
 import { Button } from "@/components/ui/Button";
-import { IconChevronDown } from "@/components/icons/StrokeIcons";
+import { IconCamera, IconChevronDown } from "@/components/icons/StrokeIcons";
 import {
   authorLabelFromProfile,
-  boardReplyCountLabel,
   formatBoardDate,
+  formatBoardShortDate,
   isOperationsAuthorRole,
   questionAuthorLabel,
 } from "@/lib/department-board/format";
@@ -16,7 +16,6 @@ import {
   boardAwaitingReplyClass,
   boardQuestionPreviewClass,
   boardQuestionAuthorNameClass,
-  boardQuestionCollapsedMetaClass,
   boardQuestionRowClass,
   boardQuestionRowHeaderExpandedClass,
   boardQuestionStatusBadgeClass,
@@ -29,12 +28,13 @@ import {
   boardQuestionRowHeaderClass,
 } from "@/lib/department-board/department-board-questions-ui";
 import type { DepartmentBoardQuestion } from "@/lib/data/department-board-shared";
-import { NOTATNIK_TEXTAREA_CLASS } from "@/components/notatnik/notatnik-layout";
-import { BoardQuestionProductChip } from "@/components/department-board/BoardQuestionProductChip";
 import { BoardQuestionProductContext } from "@/components/department-board/BoardQuestionProductContext";
 import { BoardThreadMessage } from "@/components/department-board/BoardThreadMessage";
-import { BoardQuestionAttachmentsGallery } from "@/components/department-board/BoardQuestionAttachmentsGallery";
-import { boardQuestionHasProduct } from "@/lib/department-board/question-product";
+import { BoardReplyComposer } from "@/components/department-board/BoardReplyComposer";
+import { useBoardQuestionImages } from "@/components/department-board/useBoardQuestionImages";
+import {
+  boardQuestionHasProduct,
+} from "@/lib/department-board/question-product";
 import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import {
@@ -46,6 +46,20 @@ import {
   actionReplyToQuestion,
 } from "@/app/actions/department-board";
 import { isStaleAnsweredQuestion } from "@/lib/department-board/attention";
+import { askConfirm } from "@/components/ui/ConfirmHost";
+import { polishPluralWord } from "@/lib/email/polish-plural";
+
+function photoLabel(count: number): string {
+  return count === 1 ? "zdjęcie" : `${count} ${polishPluralWord(count, "zdjęcie", "zdjęcia", "zdjęć")}`;
+}
+
+/** Podgląd treści wpisu w zwiniętym wierszu — samo zdjęcie też coś mówi. */
+function postPreviewText(body: string, photoCount: number): string {
+  const text = body.trim();
+  if (!photoCount) return text;
+  const photos = `[${photoLabel(photoCount)}]`;
+  return text ? `${photos} ${text}` : photos;
+}
 
 function procurementReplyLabel(indexAmongProcurement: number): string {
   return indexAmongProcurement === 0 ? "Odpowiedź" : "Doprecyzowanie";
@@ -87,6 +101,15 @@ export function QuestionThreadCard({
   const [locallySeen, setLocallySeen] = useState(!unseenReply);
   const [reply, setReply] = useState("");
   const [busy, setBusy] = useState(false);
+  const {
+    images: replyImages,
+    imagesError: replyImagesError,
+    compressing: replyCompressing,
+    addFiles: addReplyImages,
+    removeImage: removeReplyImage,
+    clearImages: clearReplyImages,
+    imageFiles: replyImageFiles,
+  } = useBoardQuestionImages();
   const [error, setError] = useState<string | null>(null);
   const expandedByUserRef = useRef(false);
   const markSeenRequestedRef = useRef(false);
@@ -95,13 +118,15 @@ export function QuestionThreadCard({
   const author = questionAuthorLabel(question.sales_person, question.author);
   const isOpen = question.status === "open";
   const isClosed = question.archived_at != null;
-  const replyCount = question.posts.length;
   const closedByLabel = question.closed_by_profile
     ? authorLabelFromProfile(question.closed_by_profile)
     : null;
   const showUnseen = unseenReply && !locallySeen;
   const hasProduct = boardQuestionHasProduct(question);
   const stale = isStaleAnsweredQuestion(question);
+  const threadPhotoCount =
+    (question.attachments?.length ?? 0) +
+    question.posts.reduce((sum, post) => sum + (post.attachments?.length ?? 0), 0);
 
   const latestActivityPost = useMemo(() => {
     if (question.posts.length === 0) return null;
@@ -110,15 +135,32 @@ export function QuestionThreadCard({
     );
   }, [question.posts]);
 
-  const previewLine = useMemo(() => {
-    if (expanded) return null;
+  /** Druga linia wiersza jak w czacie: kto napisał ostatni i co. */
+  const preview = useMemo(() => {
     if (latestActivityPost) {
       const fromOps = isOperationsAuthorRole(latestActivityPost.author?.role ?? null);
-      const prefix = fromOps ? "Ostatnia odpowiedź:" : "Ostatnia wiadomość:";
-      return `${prefix} ${latestActivityPost.body}`;
+      return {
+        who: fromOps
+          ? "Zakupy"
+          : questionAuthorLabel(
+              latestActivityPost.author?.sales_person ?? question.sales_person,
+              latestActivityPost.author
+            ),
+        text: postPreviewText(
+          latestActivityPost.body,
+          latestActivityPost.attachments?.length ?? 0
+        ),
+      };
     }
-    return `Pytanie: ${question.body}`;
-  }, [expanded, latestActivityPost, question.body]);
+    // Bez odpowiedzi: autor jest już w pierwszej linii — sama treść.
+    return { who: null, text: question.body };
+  }, [latestActivityPost, question.body, question.sales_person]);
+  const lastActivityAt = latestActivityPost?.created_at ?? question.created_at;
+  /** Produkt w wierszu tylko gdy nie ma go już w tytule. */
+  const productSymbolHint =
+    hasProduct && question.product_symbol?.trim() && !question.title.includes(question.product_symbol.trim())
+      ? question.product_symbol.trim()
+      : null;
 
   let procurementReplyIndex = 0;
 
@@ -167,8 +209,9 @@ export function QuestionThreadCard({
     setBusy(true);
     setError(null);
     try {
-      await actionReplyToQuestion(question.id, reply);
+      await actionReplyToQuestion(question.id, reply, replyImageFiles);
       setReply("");
+      clearReplyImages();
       setInlineReply(false);
       onChanged?.();
     } catch (e) {
@@ -220,9 +263,12 @@ export function QuestionThreadCard({
   async function deleteClosedThread() {
     if (busy) return;
     if (
-      !window.confirm(
-        "Usunąć ten zakończony wątek na stałe? Tej operacji nie można cofnąć."
-      )
+      !(await askConfirm({
+        title: "Usunąć zakończony wątek?",
+        message: "Usunięcie jest trwałe — tej operacji nie można cofnąć.",
+        confirmLabel: "Usuń na stałe",
+        danger: true,
+      }))
     ) {
       return;
     }
@@ -238,15 +284,8 @@ export function QuestionThreadCard({
     }
   }
 
-  const statusLabel = isClosed
-    ? "Zakończone"
-    : isOpen
-      ? "Bez odpowiedzi"
-      : showUnseen
-        ? "Nowa odpowiedź"
-        : replyCount > 0
-          ? boardReplyCountLabel(replyCount)
-          : "Odpowiedziano";
+  // Status w wierszu tylko gdy wymaga uwagi; resztę mówi filtr i pasek po lewej.
+  const statusLabel = isClosed ? null : isOpen ? "Bez odpowiedzi" : showUnseen ? "Nowa odpowiedź" : null;
 
   const replyLabel = audience === "sales"
     ? "Twoja wiadomość"
@@ -255,6 +294,23 @@ export function QuestionThreadCard({
       : "Doprecyzowanie";
 
   const showInlineReplyForm = inlineReply && !expanded && canReply;
+
+  const replyComposer = (id: string) => (
+    <BoardReplyComposer
+      id={id}
+      label={replyLabel}
+      value={reply}
+      onChange={setReply}
+      images={replyImages}
+      imagesError={replyImagesError}
+      compressing={replyCompressing}
+      onAddFiles={addReplyImages}
+      onRemoveImage={removeReplyImage}
+      busy={busy}
+      onSubmit={() => void submitReply()}
+      error={error}
+    />
+  );
   const expandLabel = `Pytanie: ${question.title}`;
 
   return (
@@ -262,6 +318,7 @@ export function QuestionThreadCard({
       ref={cardRef}
       id={`question-${question.id}`}
       className={cn(
+        "group",
         embedded
           ? boardQuestionRowClass({
               unseen: showUnseen,
@@ -299,48 +356,81 @@ export function QuestionThreadCard({
                 expanded && "text-indigo-500"
               )}
             />
-            <span className="min-w-0 flex-1 space-y-1.5">
-              <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="min-w-0 flex-1 space-y-1">
+              <span className="flex min-w-0 items-center gap-2">
                 {showUnseen ? (
                   <span className={boardQuestionUnseenDotClass} aria-hidden />
                 ) : null}
-                <span className={cn(salesTypography.rowTitle, "min-w-0 truncate")}>
+                <span className={cn(salesTypography.rowTitle, "min-w-0 flex-1 truncate")}>
                   {question.title}
                 </span>
-                {hasProduct ? (
-                  <BoardQuestionProductChip product={question} compact className="max-w-[min(100%,14rem)]" />
+                {statusLabel ? (
+                  <span
+                    className={boardQuestionStatusBadgeClass({ unseen: showUnseen, open: isOpen })}
+                  >
+                    {statusLabel}
+                  </span>
+                ) : null}
+                {threadPhotoCount > 0 ? (
+                  <span
+                    className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-slate-500"
+                    title={`W wątku: ${photoLabel(threadPhotoCount)}`}
+                  >
+                    <IconCamera size={12} className="shrink-0" aria-hidden />
+                    <span className="tabular-nums">{threadPhotoCount}</span>
+                    <span className="sr-only">zdjęć w wątku</span>
+                  </span>
+                ) : null}
+                {!expanded ? (
+                  <span className="hidden max-w-[9rem] shrink-0 truncate text-xs font-medium text-slate-600 sm:inline">
+                    {author}
+                  </span>
                 ) : null}
                 <span
-                  className={boardQuestionStatusBadgeClass({ unseen: showUnseen, open: isOpen })}
+                  className="shrink-0 text-[11px] tabular-nums text-slate-500"
+                  title={`Ostatnia aktywność: ${formatBoardDate(lastActivityAt)}`}
                 >
-                  {statusLabel}
+                  {formatBoardShortDate(lastActivityAt)}
                 </span>
               </span>
-              <span
-                className={cn(
-                  salesTypography.rowBody,
-                  "block font-medium",
-                  expanded ? "text-slate-700" : boardQuestionCollapsedMetaClass
-                )}
-              >
-                Dodał/a:{" "}
-                <span className={boardQuestionAuthorNameClass}>{author}</span>
-                <span className="text-slate-400"> · </span>
-                {formatBoardDate(question.created_at)}
-              </span>
-              {previewLine ? (
-                <span className={boardQuestionPreviewClass}>{previewLine}</span>
-              ) : null}
+              {expanded ? (
+                <span className={cn(salesTypography.rowBody, "block text-slate-600")}>
+                  <span className={boardQuestionAuthorNameClass}>{author}</span>
+                  <span className="ml-2 tabular-nums">{formatBoardDate(question.created_at)}</span>
+                </span>
+              ) : (
+                <span className={boardQuestionPreviewClass}>
+                  {productSymbolHint ? (
+                    <span className="mr-2 rounded border border-slate-200 bg-slate-50 px-1 py-px font-mono text-[10.5px] text-slate-600">
+                      {productSymbolHint}
+                    </span>
+                  ) : null}
+                  {/* Telefon: autor tylko tu (w 1. linii brak miejsca). */}
+                  {preview.who ? (
+                    <>
+                      <span className="font-semibold text-slate-700">{preview.who}:</span>{" "}
+                    </>
+                  ) : (
+                    <span className="font-semibold text-slate-700 sm:hidden">{author}: </span>
+                  )}
+                  {preview.text}
+                </span>
+              )}
             </span>
           </span>
         </button>
 
         {canReply && !expanded && !isClosed ? (
+          // Szybka odpowiedź: na komputerze po najechaniu / fokusie; na telefonie — po rozwinięciu.
           <Button
             type="button"
             size="sm"
             variant="secondary"
-            className="mt-3 shrink-0 sm:mt-3.5"
+            className={cn(
+              "mt-3 hidden shrink-0 sm:mt-3.5 sm:inline-flex",
+              !inlineReply &&
+                "sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:focus-visible:opacity-100"
+            )}
             disabled={busy}
             onClick={() => {
               setInlineReply((v) => !v);
@@ -354,24 +444,7 @@ export function QuestionThreadCard({
 
       {showInlineReplyForm ? (
         <div className={boardQuestionInlineReplyShellClass}>
-          <label
-            className={cn(salesTypography.rowMeta, "block font-medium text-indigo-700")}
-            htmlFor={`inline-reply-${question.id}`}
-          >
-            {replyLabel}
-          </label>
-          <textarea
-            id={`inline-reply-${question.id}`}
-            rows={3}
-            value={reply}
-            onChange={(e) => setReply(e.target.value)}
-            placeholder="Treść wiadomości…"
-            className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-sm")}
-          />
-          <Button size="sm" disabled={busy || !reply.trim()} onClick={() => void submitReply()}>
-            {busy ? "Wysyłanie…" : "Wyślij"}
-          </Button>
-          {error ? <p className="text-xs text-red-600">{error}</p> : null}
+          {replyComposer(`inline-reply-${question.id}`)}
         </div>
       ) : null}
 
@@ -390,14 +463,13 @@ export function QuestionThreadCard({
           authorLabel={author}
           body={question.body}
           createdAt={question.created_at}
+          attachments={question.attachments}
         />
 
-        {question.attachments?.length ? (
-          <BoardQuestionAttachmentsGallery attachments={question.attachments} />
-        ) : null}
-
         {question.posts.length === 0 ? (
-          <p className={boardAwaitingReplyClass}>Dział zakupów jeszcze nie odpowiedział.</p>
+          audience === "sales" ? (
+            <p className={boardAwaitingReplyClass}>Dział zakupów jeszcze nie odpowiedział.</p>
+          ) : null
         ) : (
           <div className="space-y-3">
             {question.posts.map((post) => {
@@ -420,6 +492,7 @@ export function QuestionThreadCard({
                   body={post.body}
                   createdAt={post.created_at}
                   replyKind={replyKind}
+                  attachments={post.attachments}
                 />
               );
             })}
@@ -427,28 +500,10 @@ export function QuestionThreadCard({
         )}
 
         {canReply && !isClosed ? (
-          <div className={boardReplyFormShellClass}>
-            <label
-              className={cn(salesTypography.rowMeta, "block font-medium text-indigo-700")}
-              htmlFor={`reply-${question.id}`}
-            >
-              {replyLabel}
-            </label>
-            <textarea
-              id={`reply-${question.id}`}
-              rows={3}
-              value={reply}
-              onChange={(e) => setReply(e.target.value)}
-              placeholder="Treść wiadomości…"
-              className={cn(NOTATNIK_TEXTAREA_CLASS, "w-full text-sm")}
-            />
-            <Button size="sm" disabled={busy || !reply.trim()} onClick={() => void submitReply()}>
-              {busy ? "Wysyłanie…" : "Wyślij"}
-            </Button>
-          </div>
+          <div className={boardReplyFormShellClass}>{replyComposer(`reply-${question.id}`)}</div>
         ) : null}
 
-        {error && !showInlineReplyForm ? (
+        {error && !showInlineReplyForm && !(canReply && !isClosed) ? (
           <p className="text-xs text-red-600">{error}</p>
         ) : null}
 

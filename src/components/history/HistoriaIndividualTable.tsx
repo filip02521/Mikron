@@ -79,10 +79,10 @@ export function HistoriaIndividualTable({
                     >
                       {(o.supplier?.name ?? "?").charAt(0).toUpperCase()}
                     </span>
-                    <span className="truncate">{o.supplier?.name ?? "—"}</span>
+                    <span className="truncate">{o.supplier?.name ?? "-"}</span>
                   </div>
                 </td>
-                <td className="text-slate-700">{o.sales_person?.name ?? "—"}</td>
+                <td className="text-slate-700">{o.sales_person?.name ?? "-"}</td>
                 <td className="max-w-[280px]">
                   <span className="line-clamp-2 text-slate-800">{o.products}</span>
                   {o.symbol ? (
@@ -101,7 +101,7 @@ export function HistoriaIndividualTable({
                 <td className="tabular-nums text-sm text-slate-700">
                   {progress.hasNumericQty
                     ? progress.fractionLabel
-                    : o.delivered_quantity || "—"}
+                    : o.delivered_quantity || "-"}
                 </td>
                 <td>
                   <Badge variant={individualHistoryStatusBadgeVariant(o.status)}>

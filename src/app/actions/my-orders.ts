@@ -168,12 +168,12 @@ export async function actionUpdateSalesClientName(
   if (error) {
     if (error.message?.includes("sales_client_name")) {
       throw new Error(
-        "Brak kolumny sales_client_name — uruchom migrację 017_sales_client_name.sql"
+        "Brak kolumny sales_client_name - uruchom migrację 017_sales_client_name.sql"
       );
     }
     if (error.message?.includes("sales_client_kh_id")) {
       throw new Error(
-        "Brak kolumny sales_client_kh_id — uruchom migrację 052_individual_orders_sales_client_kh_id.sql"
+        "Brak kolumny sales_client_kh_id - uruchom migrację 052_individual_orders_sales_client_kh_id.sql"
       );
     }
     throw new Error(error.message);
@@ -303,7 +303,7 @@ export async function actionSalesCancelOrders(
         throw new Error(error.message);
       }
       if (!updated?.length) {
-        throw new Error("Nie udało się wycofać pozycji — odśwież listę i spróbuj ponownie.");
+        throw new Error("Nie udało się wycofać pozycji - odśwież listę i spróbuj ponownie.");
       }
     }
 
@@ -404,7 +404,7 @@ export async function actionSalesCancelTeethGroups(
 
   const orderedQty = parseOrderQuantity(order.quantity);
   if (orderedQty == null) {
-    throw new Error("Brak ilości liczbowej — możliwa tylko pełna rezygnacja.");
+    throw new Error("Brak ilości liczbowej - możliwa tylko pełna rezygnacja.");
   }
 
   const existingCancelled = (() => {
@@ -462,7 +462,7 @@ export async function actionSalesCancelTeethGroups(
 
   if (updateError) throw new Error(updateError.message);
   if (!updatedRows?.length) {
-    throw new Error("Nie udało się wycofać pozycji — odśwież listę i spróbuj ponownie.");
+    throw new Error("Nie udało się wycofać pozycji - odśwież listę i spróbuj ponownie.");
   }
 
   if (!fullyWithdrawn && remainingGroups.length > 0) {
@@ -636,7 +636,7 @@ export async function actionUnacknowledgeSalesCancel(
   }
 
   if (restoredCount !== rows.length) {
-    throw new Error("Nie udało się cofnąć — odśwież listę i spróbuj ponownie.");
+    throw new Error("Nie udało się cofnąć - odśwież listę i spróbuj ponownie.");
   }
 
   const teethRestore = options?.teethDetailsById;
@@ -825,7 +825,7 @@ export async function actionAcknowledgeAndCloseZkWatch(watchId: string, delegate
   const freshItems = await resolveZkWatchPendingAckItemsForWatch(watch, supabase);
   if (freshItems.length > 0) {
     throw new Error(
-      "Nie wszystkie pozycje udało się potwierdzić — odśwież listę i spróbuj ponownie."
+      "Nie wszystkie pozycje udało się potwierdzić - odśwież listę i spróbuj ponownie."
     );
   }
 

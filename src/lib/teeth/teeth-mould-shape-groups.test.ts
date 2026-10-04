@@ -87,7 +87,7 @@ describe("teeth-mould-shape-groups", () => {
 
 
 
-  it("Phonares boki — Typ i Lingual w 4 kolumnach", () => {
+  it("Phonares boki - Typ i Lingual w 4 kolumnach", () => {
 
     const groups = mouldShapeGroupsFor("ivoclar_phonares_ii", "posterior");
 
@@ -165,7 +165,7 @@ describe("teeth-mould-shape-groups", () => {
 
 
 
-  it("Wiedent estetic — 4 grupy przodów wg katalogu", () => {
+  it("Wiedent estetic - 4 grupy przodów wg katalogu", () => {
 
     const groups = mouldShapeGroupsFor("wiedent_estetic", "anterior");
 
@@ -185,7 +185,7 @@ describe("teeth-mould-shape-groups", () => {
 
 
 
-  it("Wiedent Classic — dolne i górne przody", () => {
+  it("Wiedent Classic - dolne i górne przody", () => {
 
     const groups = mouldShapeGroupsFor("wiedent_classic", "anterior");
 
@@ -199,7 +199,7 @@ describe("teeth-mould-shape-groups", () => {
 
 
 
-  it("Wiedent Almamiss — dolne i górne przody", () => {
+  it("Wiedent Almamiss - dolne i górne przody", () => {
 
     const groups = mouldShapeGroupsFor("wiedent_almamiss", "anterior");
 
@@ -213,7 +213,7 @@ describe("teeth-mould-shape-groups", () => {
 
 
 
-  it("Wiedent Estetic Vita — ten sam podział co skala W", () => {
+  it("Wiedent Estetic Vita - ten sam podział co skala W", () => {
 
     const groups = mouldShapeGroupsFor("wiedent_estetic_vita", "anterior");
 
@@ -225,7 +225,7 @@ describe("teeth-mould-shape-groups", () => {
 
 
 
-  it("Dentex AmberLux — 4 grupy przodów wg katalogu", () => {
+  it("Dentex AmberLux - 4 grupy przodów wg katalogu", () => {
 
     const groups = mouldShapeGroupsFor("dentex_amberlux", "anterior");
 
@@ -239,7 +239,7 @@ describe("teeth-mould-shape-groups", () => {
 
 
 
-  it("Dentex boki — bez IX", () => {
+  it("Dentex boki - bez IX", () => {
 
     const groups = mouldShapeGroupsFor("dentex_amberlux", "posterior");
 
@@ -251,7 +251,7 @@ describe("teeth-mould-shape-groups", () => {
 
 
 
-  it("Major Super Lux — 4 grupy przodów", () => {
+  it("Major Super Lux - 4 grupy przodów", () => {
 
     const groups = mouldShapeGroupsFor("major_super_lux", "anterior");
 
@@ -265,7 +265,7 @@ describe("teeth-mould-shape-groups", () => {
 
 
 
-  it("Major Super Lux — boki L-cusp i N-cusp", () => {
+  it("Major Super Lux - boki L-cusp i N-cusp", () => {
 
     const groups = mouldShapeGroupsFor("major_super_lux", "posterior");
 
@@ -277,7 +277,7 @@ describe("teeth-mould-shape-groups", () => {
 
 
 
-  it("inne linie — kolumny w kolejności trójkątne, kwadratowe, owalne", () => {
+  it("inne linie - kolumny w kolejności trójkątne, kwadratowe, owalne", () => {
 
     const raw = mouldShapeGroupsFor("schottlander_enigmalife", "anterior");
 

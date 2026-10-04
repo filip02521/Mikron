@@ -76,7 +76,7 @@ function GroupFilterChip({
 }
 
 function groupBadgeClass(): string {
-  return "inline-flex max-w-full items-center rounded-full border border-indigo-200/80 bg-indigo-50/90 px-2.5 py-0.5 text-xs font-medium text-indigo-800";
+  return "inline-flex max-w-full items-center rounded-md border border-indigo-200/80 bg-indigo-50/90 px-2.5 py-0.5 text-xs font-medium text-indigo-800";
 }
 
 export function SalesAdminClient({
@@ -192,15 +192,15 @@ export function SalesAdminClient({
       await navigator.clipboard.writeText(r.invite.link);
       setToast({
         text: afterAdd
-          ? "Handlowiec dodany — link zaproszenia skopiowany do schowka."
+          ? "Handlowiec dodany - link zaproszenia skopiowany do schowka."
           : "Link zaproszenia skopiowany do schowka.",
         tone: "success",
       });
     } catch {
       setToast({
         text: afterAdd
-          ? "Handlowiec dodany — skopiuj link z okna."
-          : "Link wygenerowany — skopiuj z okna.",
+          ? "Handlowiec dodany - skopiuj link z okna."
+          : "Link wygenerowany - skopiuj z okna.",
         tone: "success",
       });
     }
@@ -268,7 +268,7 @@ export function SalesAdminClient({
       title={`Handlowcy (${rows.length})`}
       description={
         managerMode
-          ? "Nowy handlowiec dostaje hasło jednorazowe. Dla kont z logowaniem — reset hasła."
+          ? "Nowy handlowiec dostaje hasło jednorazowe. Dla kont z logowaniem - reset hasła."
           : "Link zaproszenia zakłada konto i powiązuje je z kartą handlowca."
       }
       action={
@@ -289,7 +289,7 @@ export function SalesAdminClient({
               size="sm"
               onClick={openCreateForm}
               disabled={createDisabled}
-              title={createDisabled ? "Brak przypisanych grup — poproś administratora" : undefined}
+              title={createDisabled ? "Brak przypisanych grup - poproś administratora" : undefined}
             >
               Dodaj handlowca
             </AddButton>
@@ -383,15 +383,15 @@ export function SalesAdminClient({
                     {p.groupName ? (
                       <span className={groupBadgeClass()}>{p.groupName}</span>
                     ) : (
-                      <span className="text-slate-400">—</span>
+                      <span className="text-slate-400">-</span>
                     )}
                   </td>
-                  <td className="text-slate-700">{p.email || "—"}</td>
+                  <td className="text-slate-700">{p.email || "-"}</td>
                   <td>
                     <SalesPersonAccountCell row={p} />
                   </td>
                   <td className="text-center tabular-nums text-slate-600">
-                    {p.orderCount > 0 ? p.orderCount : "—"}
+                    {p.orderCount > 0 ? p.orderCount : "-"}
                   </td>
                   <td>
                     <div className="flex flex-col items-end gap-1.5">
@@ -462,7 +462,7 @@ export function SalesAdminClient({
                             disabled={p.orderCount > 0 || !!p.linkedUserId}
                             title={
                               p.orderCount > 0
-                                ? "Nie można usunąć — są zamówienia w historii"
+                                ? "Nie można usunąć - są zamówienia w historii"
                                 : p.linkedUserId
                                   ? "Najpierw usuń powiązane konto użytkownika"
                                   : undefined
@@ -540,9 +540,9 @@ export function SalesAdminClient({
             onChange={(e) => setForm({ ...form, groupId: e.target.value })}
           >
                   {!managerMode && !requireGroupOnCreate ? (
-                    <option value="">— Bez grupy —</option>
+                    <option value="">- Bez grupy -</option>
                   ) : (
-                    <option value="">— Wybierz grupę —</option>
+                    <option value="">- Wybierz grupę -</option>
                   )}
             {groups.map((g) => (
               <option key={g.id} value={g.id}>
@@ -607,7 +607,7 @@ export function SalesAdminClient({
         title="Zresetować hasło?"
         message={
           resetTarget
-            ? `Wygenerujesz nowe hasło jednorazowe dla „${resetTarget.name}". Poprzednie hasło przestanie działać — użytkownik przy logowaniu ustawi własne.`
+            ? `Wygenerujesz nowe hasło jednorazowe dla „${resetTarget.name}". Poprzednie hasło przestanie działać - użytkownik przy logowaniu ustawi własne.`
             : ""
         }
         confirmLabel="Resetuj hasło"
@@ -633,7 +633,7 @@ export function SalesAdminClient({
               variant: "reset",
             });
             setToast({
-              text: "Hasło zresetowane — skopiuj dane z okna i przekaż handlowcowi.",
+              text: "Hasło zresetowane - skopiuj dane z okna i przekaż handlowcowi.",
               tone: "success",
             });
             router.refresh();
@@ -646,7 +646,7 @@ export function SalesAdminClient({
         message={
           deleteTarget
             ? deleteTarget.orderCount > 0
-              ? `„${deleteTarget.name}" ma ${deleteTarget.orderCount} zamówień — nie można usunąć.`
+              ? `„${deleteTarget.name}" ma ${deleteTarget.orderCount} zamówień - nie można usunąć.`
               : deleteTarget.linkedUserEmail
                 ? `„${deleteTarget.name}" ma powiązane konto (${deleteTarget.linkedUserEmail}). Najpierw usuń lub zmień użytkownika.`
                 : `Czy na pewno usunąć „${deleteTarget.name}"? Tej operacji nie można cofnąć.`

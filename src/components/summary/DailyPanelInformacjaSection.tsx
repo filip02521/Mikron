@@ -61,7 +61,7 @@ export function DailyPanelInformacjaSection({
                         {line.symbol && line.symbol !== "-" ? (
                           <span className="font-medium text-slate-900">{line.symbol}</span>
                         ) : null}
-                        {line.symbol && line.symbol !== "-" ? " — " : null}
+                        {line.symbol && line.symbol !== "-" ? " - " : null}
                         <span>{line.products}</span>
                       </li>
                     ))}

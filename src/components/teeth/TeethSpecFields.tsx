@@ -356,7 +356,7 @@ export function TeethSpecPreview({
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
-    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+    <p className="mb-1 text-[10px] font-semibold text-slate-500">
       {children}
       {required ? <span className="ml-1 text-rose-500">*</span> : null}
     </p>

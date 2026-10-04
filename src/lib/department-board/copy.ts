@@ -35,12 +35,12 @@ export const DEPARTMENT_BOARD_QUESTIONS_FORM = {
   submit: "Wyślij",
   submitting: "Wysyłanie…",
   successToast: DEPARTMENT_BOARD_SUCCESS_TOAST,
-  introBeforeLink: "Zamówienie towaru —",
+  introBeforeLink: "Zamówienie towaru -",
   introLinkLabel: "Nowa prośba",
   expandHint: "Rozwiń",
   imagesLabel: "Zdjęcia (opcjonalnie)",
   imagesHint:
-    "Do 3 zdjęć — wklej zrzut (Ctrl+V) albo wybierz plik (etykieta, opakowanie, Subiekt).",
+    "Do 3 zdjęć - wklej zrzut (Ctrl+V) albo wybierz plik (etykieta, opakowanie, Subiekt).",
   imagesAdd: "Dodaj zdjęcie",
   imagesAddMore: "Dodaj kolejne",
   imagesCompressing: "Przetwarzanie zdjęć…",
@@ -53,9 +53,24 @@ export const DEPARTMENT_BOARD_QUESTIONS_FORM = {
     "Uzupełniono produkt z pytania na Tablicy. Podaj ilość i dokończ prośbę.",
 };
 
+/** Formularz odpowiedzi w wątku (zakupy ↔ handlowiec). */
+export const DEPARTMENT_BOARD_REPLY_COMPOSER = {
+  placeholder: "Treść wiadomości…",
+  placeholderWithImages: "Dodaj opis do zdjęcia (opcjonalnie)…",
+  attach: "Zdjęcie",
+  attachAriaLabel: "Dodaj zdjęcie do odpowiedzi",
+  hint: "Wklej zrzut (Ctrl+V) lub przeciągnij zdjęcie",
+  dropHere: "Upuść, aby dołączyć zdjęcie",
+  compressing: "Przygotowuję zdjęcie…",
+  send: "Wyślij",
+  sending: "Wysyłanie…",
+  sendingImages: "Wysyłanie zdjęć…",
+  shortcut: "Ctrl+Enter wysyła",
+};
+
 export const DEPARTMENT_BOARD_QUESTIONS_FILTERS = {
   focusDisabledHint:
-    "Filtry są tymczasowo zablokowane — otworzyłeś konkretny wątek z linku.",
+    "Filtry są tymczasowo zablokowane - otworzyłeś konkretny wątek z linku.",
   toolbarLabel: "Filtruj listę",
   /** Krótka etykieta grupy statusu (sales). */
   statusGroupLabel: "Status",
@@ -78,7 +93,7 @@ export const DEPARTMENT_BOARD_QUESTIONS_FILTERS = {
     mine: "Moje",
   },
   chips: {
-    all: "Aktywne pytania zespołu — bez zakończonych.",
+    all: "Aktywne pytania zespołu - bez zakończonych.",
     open: "Czekają na odpowiedź działu zakupów.",
     answered: "Mają już odpowiedź zakupów.",
     closed: "Zakończone przez handlowca lub zakupy.",
@@ -94,10 +109,10 @@ export const DEPARTMENT_BOARD_ANNOUNCEMENTS_SEARCH = {
 };
 
 export const DEPARTMENT_BOARD_NOTES_DISTINCTION_SALES =
-  "To nie jest ZK czekające (Twoje zamówienia z Subiekta) ani wewnętrzne notatki zakupów — tu rozmawiacie z działem zakupów.";
+  "To nie jest ZK czekające (Twoje zamówienia z Subiekta) ani wewnętrzne notatki zakupów - tu rozmawiacie z działem zakupów.";
 
 export const DEPARTMENT_BOARD_NOTES_DISTINCTION_PROCUREMENT =
-  "Wewnętrzne notatki działu (prywatne/wspólne) nadal są w Notatki — ta strona dotyczy komunikacji z handlowcami.";
+  "Wewnętrzne notatki działu (prywatne/wspólne) nadal są w Notatki - ta strona dotyczy komunikacji z handlowcami.";
 
 export function departmentBoardOpenQuestionsLabel(count: number): string {
   if (count <= 0) return "";

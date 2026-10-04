@@ -61,7 +61,7 @@ export function matchSubiektKontrahentToSupplier(
 export function formatSubiektKontrahentLabel(k: SubiektKontrahent): string {
   const name = k.adr_NazwaPelna ?? k.adr_Nazwa ?? k.kh_Symbol ?? "Kontrahent";
   const sym = k.kh_Symbol && k.kh_Symbol !== name ? k.kh_Symbol : null;
-  return sym ? `${sym} — ${name}` : name;
+  return sym ? `${sym} - ${name}` : name;
 }
 
 export function toAppSupplierRefs(

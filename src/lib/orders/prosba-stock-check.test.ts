@@ -79,7 +79,7 @@ describe("assessProsbaLineStock", () => {
     expect(assessProsbaLineStock({ requestedQty: 5, stock })).toBe("sufficient");
   });
 
-  it("insufficient przy częściowym stanie — bez ostrzeżenia w UI", () => {
+  it("insufficient przy częściowym stanie - bez ostrzeżenia w UI", () => {
     expect(assessProsbaLineStock({ requestedQty: 9, stock })).toBe("insufficient");
   });
 
@@ -232,7 +232,7 @@ describe("buildProsbaSubmitStockConfirm", () => {
     expect(result?.message).toContain("•");
   });
 
-  it("intent create — pytanie o utworzenie prośby", () => {
+  it("intent create - pytanie o utworzenie prośby", () => {
     const result = buildProsbaSubmitStockConfirm(
       [
         {
@@ -277,7 +277,7 @@ describe("formatProsbaSufficientStockBanner", () => {
 });
 
 describe("formatZkProsbaScopeLineBadge", () => {
-  it("zaznaczone do zamówienia — etykieta", () => {
+  it("zaznaczone do zamówienia - etykieta", () => {
     expect(
       formatZkProsbaScopeLineBadge({
         sufficient: true,
@@ -288,7 +288,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
     ).toBe("Do zamówienia");
   });
 
-  it("odznaczone na stanie — pokazuje dostępne dla ZK", () => {
+  it("odznaczone na stanie - pokazuje dostępne dla ZK", () => {
     expect(
       formatZkProsbaScopeLineBadge({
         sufficient: true,
@@ -299,7 +299,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
     ).toBe("Dla ZK: 12");
   });
 
-  it("częściowy stan bez zaznaczenia — do zamówienia", () => {
+  it("częściowy stan bez zaznaczenia - do zamówienia", () => {
     expect(
       formatZkProsbaScopeLineBadge({
         sufficient: false,
@@ -310,7 +310,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
     ).toBe("Do zamówienia");
   });
 
-  it("brak pokrycia stanem — do zamówienia", () => {
+  it("brak pokrycia stanem - do zamówienia", () => {
     expect(
       formatZkProsbaScopeLineBadge({
         sufficient: false,
@@ -323,7 +323,7 @@ describe("formatZkProsbaScopeLineBadge", () => {
 });
 
 describe("formatZkProsbaScopeLineStockDetail", () => {
-  it("sufficient z rezerwacją z tego ZK — breakdown", () => {
+  it("sufficient z rezerwacją z tego ZK - breakdown", () => {
     expect(
       formatZkProsbaScopeLineStockDetail({
         sufficient: true,
@@ -336,7 +336,7 @@ describe("formatZkProsbaScopeLineStockDetail", () => {
     ).toBe("Stan 2 · ZK 2 · dla ZK 2");
   });
 
-  it("sufficient z częściową rezerwacją z ZK i innymi rezerwacjami — pełny breakdown", () => {
+  it("sufficient z częściową rezerwacją z ZK i innymi rezerwacjami - pełny breakdown", () => {
     expect(
       formatZkProsbaScopeLineStockDetail({
         sufficient: true,
@@ -375,7 +375,7 @@ describe("formatZkProsbaScopeLineStockDetail", () => {
     ).toBe("Stan 50 · rez. 2 · dla ZK 48");
   });
 
-  it("insufficient z brakami — pokazuje brakuje N", () => {
+  it("insufficient z brakami - pokazuje brakuje N", () => {
     expect(
       formatZkProsbaScopeLineStockDetail({
         sufficient: false,
@@ -401,7 +401,7 @@ describe("formatZkProsbaScopeLineStockDetail", () => {
     ).toBe("Stan 10 · ZK 5 · dla ZK 5 · brakuje 3");
   });
 
-  it("brak onHand — zwraca null", () => {
+  it("brak onHand - zwraca null", () => {
     expect(
       formatZkProsbaScopeLineStockDetail({
         sufficient: false,
@@ -433,7 +433,7 @@ describe("zkProsbaScopeLineNeedsOrdering", () => {
     ).toBe(true);
   });
 
-  it("bez tw_Id lub stanu — wymaga zamówienia", () => {
+  it("bez tw_Id lub stanu - wymaga zamówienia", () => {
     expect(
       zkProsbaScopeLineNeedsOrdering({ key: "c", subiektTwId: null, quantity: 1 }, stock)
     ).toBe(true);
@@ -504,7 +504,7 @@ describe("deriveZkProsbaScopeInStockKeys", () => {
     expect(deriveZkProsbaScopeInStockKeys(lines, stock)).toEqual(["a"]);
   });
 
-  it("bez danych magazynowych — nic nie zaznacza", () => {
+  it("bez danych magazynowych - nic nie zaznacza", () => {
     expect(deriveZkProsbaScopeInStockKeys(lines, {})).toEqual([]);
   });
 });
@@ -523,7 +523,7 @@ describe("deriveZkProsbaScopeSuggestedOrderKeys", () => {
     expect(deriveZkProsbaScopeSuggestedOrderKeys(lines, stock)).toEqual(["b"]);
   });
 
-  it("bez danych magazynowych — nic nie zaznacza", () => {
+  it("bez danych magazynowych - nic nie zaznacza", () => {
     expect(deriveZkProsbaScopeSuggestedOrderKeys(lines, {})).toEqual([]);
   });
 });
@@ -605,7 +605,7 @@ describe("filterZkProsbaScopeLineKeysNeedingOrder", () => {
     ).toEqual(["b"]);
   });
 
-  it("bez danych magazynowych — zostawia wszystkie klucze", () => {
+  it("bez danych magazynowych - zostawia wszystkie klucze", () => {
     expect(
       filterZkProsbaScopeLineKeysNeedingOrder(lines, ["a", "b"], {})
     ).toEqual(["a", "b"]);
@@ -613,7 +613,7 @@ describe("filterZkProsbaScopeLineKeysNeedingOrder", () => {
 });
 
 describe("collectProsbaLineTwIdsMissingStock", () => {
-  it("zbiera wszystkie tw_Id zamówienia — także z już wczytanym stanem (pair-aware refetch)", () => {
+  it("zbiera wszystkie tw_Id zamówienia - także z już wczytanym stanem (pair-aware refetch)", () => {
     const ids = collectProsbaLineTwIdsMissingStock(
       [
         { ...baseLine, id: "1", subiektTwId: 5 },
@@ -758,7 +758,7 @@ describe("isProsbaStockAckRequiredError", () => {
 describe("assessProsbaLineZkQuantity", () => {
   const stock = { onHand: 1, reserved: 0, available: 1, source: "subiekt" as const };
 
-  it("partial stock — reszta ze stanu", () => {
+  it("partial stock - reszta ze stanu", () => {
     expect(
       assessProsbaLineZkQuantity({
         zkQuantity: 3,
@@ -768,7 +768,7 @@ describe("assessProsbaLineZkQuantity", () => {
     ).toBe("partial_stock");
   });
 
-  it("under ZK bez stanu — wymaga potwierdzenia", () => {
+  it("under ZK bez stanu - wymaga potwierdzenia", () => {
     expect(
       assessProsbaLineZkQuantity({
         zkQuantity: 3,
@@ -778,7 +778,7 @@ describe("assessProsbaLineZkQuantity", () => {
     ).toBe("under_zk_no_stock");
   });
 
-  it("buildProsbaSubmitZkQuantityConfirm — partial stock", () => {
+  it("buildProsbaSubmitZkQuantityConfirm - partial stock", () => {
     const confirm = buildProsbaSubmitZkQuantityConfirm(
       [
         {
@@ -860,7 +860,7 @@ describe("adjustStockMapForZkLines", () => {
     expect(adjusted[1]?.available).toBe(10);
   });
 
-  it("pomija linie bez tw_Id lub z zerową ilością — zachowuje passthrough", () => {
+  it("pomija linie bez tw_Id lub z zerową ilością - zachowuje passthrough", () => {
     const weirdLines = [
       { key: "a", subiektTwId: null, quantity: 2 },
       { key: "b", subiektTwId: 1, quantity: 0 },

@@ -354,7 +354,7 @@ export function SuppliersAdminClient({
 
   const sheetTitle = form.id ? form.name || "Edytuj dostawcę" : "Nowy dostawca";
   const sheetDescription = form.id
-    ? "Pola poniżej — zapis na dole panelu. Lista kart zostaje widoczna po lewej."
+    ? "Pola poniżej - zapis na dole panelu. Lista kart zostaje widoczna po lewej."
     : "Zapas = na jaki okres robisz większe zamówienie (np. 2 miesiące).";
 
   const filterActive =
@@ -368,7 +368,7 @@ export function SuppliersAdminClient({
         title="Oznaczyć jako nieaktywnego?"
         message={
           deactivateTarget
-            ? `„${deactivateTarget.name}” zniknie z panelu dziennego i planu tygodnia. Harmonogram i karta pozostaną — przywrócisz w zakładce Nieaktywni.`
+            ? `„${deactivateTarget.name}” zniknie z panelu dziennego i planu tygodnia. Harmonogram i karta pozostaną - przywrócisz w zakładce Nieaktywni.`
             : ""
         }
         confirmLabel="Dezaktywuj"
@@ -534,7 +534,7 @@ export function SuppliersAdminClient({
             <>
               <div
                 className={cn(
-                  "hidden border-b border-slate-100 bg-slate-50/60 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 md:grid md:gap-3 lg:px-5",
+                  "hidden border-b border-slate-100 bg-slate-50/60 px-4 py-2.5 text-[10px] font-semibold text-slate-400 md:grid md:gap-3 lg:px-5",
                   teethLane
                     ? "md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(120px,160px)]"
                     : "md:grid-cols-[minmax(0,1.6fr)_minmax(120px,180px)_minmax(88px,100px)_minmax(120px,160px)]"
@@ -559,7 +559,7 @@ export function SuppliersAdminClient({
                       key={s.id}
                       id={`supplier-row-${s.id}`}
                       className={cn(
-                        "rounded-lg border border-slate-100 bg-white px-3 py-3 transition-all sm:px-4 lg:px-5",
+                        "rounded-lg border border-slate-100 bg-white px-3 py-3 transition sm:px-4 lg:px-5",
                         "hover:border-slate-200 hover:shadow-sm",
                         !isActive && "opacity-70",
                         s.subiekt_kh_id == null && "border-amber-100/60 bg-amber-50/20",
@@ -663,7 +663,7 @@ export function SuppliersAdminClient({
           open={teethPickerOpen}
           onClose={() => { setTeethPickerOpen(false); setTeethPickerSearch(""); }}
           title="Dodaj dostawcę do toru zębów"
-          description="Wybierz istniejącego dostawcę, aby utworzyć dla niego osobny cykl zębów — niezależny od zwykłych produktów."
+          description="Wybierz istniejącego dostawcę, aby utworzyć dla niego osobny cykl zębów - niezależny od zwykłych produktów."
           size="md"
           bodyClassName="p-5 sm:p-6"
         >
@@ -707,7 +707,7 @@ export function SuppliersAdminClient({
                         disabled={pending}
                         onClick={() => addSupplierToTeeth(s.id)}
                         className={cn(
-                          "group flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-white px-3.5 py-3 text-left transition-all",
+                          "group flex w-full items-center gap-3 rounded-xl border border-slate-100 bg-white px-3.5 py-3 text-left transition",
                           "hover:border-indigo-200 hover:bg-indigo-50/40 hover:shadow-sm",
                           "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-100 disabled:hover:bg-white disabled:hover:shadow-none"
                         )}

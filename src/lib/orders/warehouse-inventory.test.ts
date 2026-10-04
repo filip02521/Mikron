@@ -59,7 +59,7 @@ describe("warehouse inventory", () => {
     expect(buildWarehouseInventoryRow({ ...base, status: "Zamowione" })).toBeNull();
   });
 
-  it("pomija zęby — doręczenie osobiste, nie regał", () => {
+  it("pomija zęby - doręczenie osobiste, nie regał", () => {
     expect(buildWarehouseInventoryRow({ ...base, is_teeth: true })).toBeNull();
   });
 

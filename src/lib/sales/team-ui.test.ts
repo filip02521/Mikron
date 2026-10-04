@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { salesTeamPageCopy } from "./team-ui";
 
 describe("salesTeamPageCopy", () => {
-  it("admin może tworzyć grupy — jasny opis", () => {
+  it("admin może tworzyć grupy - jasny opis", () => {
     const copy = salesTeamPageCopy(
       {
         isAdmin: true,
@@ -17,7 +17,7 @@ describe("salesTeamPageCopy", () => {
     expect(copy.description).toContain("Użytkownicy");
   });
 
-  it("kierownik bez scope — komunikat o adminie", () => {
+  it("kierownik bez scope - komunikat o adminie", () => {
     const copy = salesTeamPageCopy(
       {
         isAdmin: false,
@@ -31,7 +31,7 @@ describe("salesTeamPageCopy", () => {
     expect(copy.description).toContain("administratora");
   });
 
-  it("kierownik ze scope — bez obietnicy tworzenia grup", () => {
+  it("kierownik ze scope - bez obietnicy tworzenia grup", () => {
     const copy = salesTeamPageCopy(
       {
         isAdmin: false,

@@ -99,7 +99,7 @@ describe("SubiektProductLineFields", () => {
       />
     );
 
-    expect(screen.getByText("Produkt — symbol lub nazwa")).toBeTruthy();
+    expect(screen.getByText("Produkt - symbol lub nazwa")).toBeTruthy();
     expect(screen.getByPlaceholderText("np. 896")).toBeTruthy();
     expect(screen.queryByLabelText(/^Symbol$/i)).toBeNull();
   });
@@ -277,8 +277,8 @@ describe("SubiektProductLineFields", () => {
     await waitFor(() => {
       expect(actionSuggestProducts).toHaveBeenCalledWith("gum", "combined");
     });
-    expect(screen.getByText(/Subiekt \(na żywo\) — po symbolu i nazwie/)).toBeTruthy();
-    expect(screen.getByText(/4200 — Gumka test/)).toBeTruthy();
+    expect(screen.getByText(/Subiekt \(na żywo\) - po symbolu i nazwie/)).toBeTruthy();
+    expect(screen.getByText(/4200 - Gumka test/)).toBeTruthy();
   });
 
   it("zachowuje ilość po wyborze towaru z Subiekta", async () => {
@@ -317,8 +317,8 @@ describe("SubiektProductLineFields", () => {
       { target: { value: "gum" } }
     );
 
-    await waitFor(() => screen.getByText(/4200 — Gumka test/));
-    fireEvent.click(screen.getByText(/4200 — Gumka test/));
+    await waitFor(() => screen.getByText(/4200 - Gumka test/));
+    fireEvent.click(screen.getByText(/4200 - Gumka test/));
 
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -378,7 +378,7 @@ describe("SubiektProductLineFields", () => {
       expect(actionSubiektSuggestionsEnabled).toHaveBeenCalled()
     );
 
-    expect(screen.queryByText(/Informacje — produkt/i)).toBeNull();
+    expect(screen.queryByText(/Informacje - produkt/i)).toBeNull();
     expect(screen.queryByText(/Kod Mikran i ilość obok/)).toBeNull();
     expect(
       screen.getByPlaceholderText(/Szukaj w Subiekcie/i)
@@ -417,6 +417,6 @@ describe("SubiektProductLineFields", () => {
     await waitFor(() => {
       expect(actionSuggestProducts).toHaveBeenCalledWith("gum", "combined");
     });
-    expect(screen.getByText(/4200 — Gumka test/)).toBeTruthy();
+    expect(screen.getByText(/4200 - Gumka test/)).toBeTruthy();
   });
 });

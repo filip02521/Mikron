@@ -18,7 +18,7 @@ function line(
   return {
     tw_Nazwa: partial.tw_Nazwa ?? partial.tw_Symbol,
     tw_IdGrupa: null,
-    grt_Nazwa: "—",
+    grt_Nazwa: "-",
     tw_Stan: partial.dostepne ?? 0,
     tw_StanRez: 0,
     dostepne: 0,
@@ -170,7 +170,7 @@ describe("applyZdEstimatePairs", () => {
     expect(pack.doZamowieniaReczne).toBe(0);
   });
 
-  it("B6: piece wykluczony — sprzedaż nadal w popycie, piece qty 0", () => {
+  it("B6: piece wykluczony - sprzedaż nadal w popycie, piece qty 0", () => {
     const lines = [
       line({ tw_Id: 10, tw_Symbol: "PACK", dostepne: 0, sprzedazOkres: 0 }),
       line({ tw_Id: 20, tw_Symbol: "PC", dostepne: 0, sprzedazOkres: 90 }),
@@ -242,7 +242,7 @@ describe("applyZdEstimatePairs", () => {
     expect(pack.doZamowieniaReczne).toBe(200);
   });
 
-  it("S5: oba kanały — suma bez podwójnego cover", () => {
+  it("S5: oba kanały - suma bez podwójnego cover", () => {
     const lines = [
       line({ tw_Id: 10, tw_Symbol: "PACK", dostepne: 1, sprzedazOkres: 1 }),
       line({ tw_Id: 20, tw_Symbol: "PC", dostepne: 50, sprzedazOkres: 100 }),

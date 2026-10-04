@@ -86,7 +86,7 @@ export function formatDeliveryEmailLine(
   order: OrderEmailBits,
   statusLabel: string
 ): string {
-  return `${clientPrefix(order)}${order.supplier?.name ?? "Dostawca"}: ${order.products} — ${statusLabel}`;
+  return `${clientPrefix(order)}${order.supplier?.name ?? "Dostawca"}: ${order.products} - ${statusLabel}`;
 }
 
 /** Linia w e-mailu informacyjnym. */

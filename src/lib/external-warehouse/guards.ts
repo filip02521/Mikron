@@ -171,7 +171,7 @@ export function assertOrphanLineKey(
   if (!key) return { ok: false, message: "Brak klucza pozycji" };
   const keys = snapshotLineKeys(parsePrunedSnapshot(lastSnapshot));
   if (keys.has(key)) {
-    return { ok: false, message: "Pozycja nadal jest w ZK — nie można usunąć" };
+    return { ok: false, message: "Pozycja nadal jest w ZK - nie można usunąć" };
   }
   return { ok: true };
 }

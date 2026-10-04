@@ -357,7 +357,7 @@ export async function executeZkWatchPendingAckPlan(
     } catch (rollbackError) {
       console.error("[executeZkWatchPendingAckPlan rollback]", rollbackError);
       throw new Error(
-        "Nie udało się potwierdzić pozycji i cofnąć częściowych zmian — odśwież /moje i spróbuj ponownie."
+        "Nie udało się potwierdzić pozycji i cofnąć częściowych zmian - odśwież /moje i spróbuj ponownie."
       );
     }
     revalidateSalesOrderPaths();

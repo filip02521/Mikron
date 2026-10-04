@@ -186,7 +186,7 @@ export async function tickZdImportAllSuppliersJob(options?: { maxDocs?: number }
 
   try {
     const current = await readZdImportAllSuppliersJobState();
-    if (!current) throw new Error("Brak stanu joba — uruchom Start.");
+    if (!current) throw new Error("Brak stanu joba - uruchom Start.");
     if (current.status !== "running") return current;
 
     if (!(await isSubiektReachable())) {

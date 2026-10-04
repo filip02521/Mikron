@@ -63,7 +63,7 @@ export async function fetchSalesPeopleAdmin(): Promise<SalesPersonAdminRow[]> {
   const linkedBySalesId = new Map(
     (profiles ?? []).map((p) => [
       p.sales_person_id as string,
-      { id: p.id, email: p.email ?? "—", createdAt: (p.created_at as string | null) ?? null },
+      { id: p.id, email: p.email ?? "-", createdAt: (p.created_at as string | null) ?? null },
     ])
   );
 

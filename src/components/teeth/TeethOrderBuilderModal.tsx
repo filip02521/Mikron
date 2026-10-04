@@ -55,6 +55,7 @@ import { TeethShortageWarningBanner } from "@/components/teeth/TeethShortageWarn
 import { useTeethShortageHits } from "@/components/layout/TeethShortagesContext";
 import { cn } from "@/lib/cn";
 import { panelChoiceChipClass, panelChoiceChipIdleClass, panelChoiceChipSelectedClass } from "@/lib/ui/ontime-theme";
+import { askConfirm } from "@/components/ui/ConfirmHost";
 
 const TEETH_MODAL_SHELL_LAYOUT = {
   bodyScroll: false,
@@ -351,8 +352,8 @@ function TeethDualKindOrderBuilderModal({
             </Button>
             <span className="group relative inline-flex">
               <span
-                className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-indigo-400 transition-colors group-hover:bg-indigo-100"
-                aria-label="Funkcja testowa — sczytywanie zębów ze zdjęcia za pomocą AI"
+                className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold text-indigo-400 transition-colors group-hover:bg-indigo-100"
+                aria-label="Funkcja testowa - sczytywanie zębów ze zdjęcia za pomocą AI"
               >
                 Beta
               </span>
@@ -360,7 +361,7 @@ function TeethDualKindOrderBuilderModal({
                 role="tooltip"
                 className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-indigo-200/90 bg-indigo-50/95 px-2.5 py-1.5 text-[11px] font-medium leading-relaxed text-indigo-900 shadow-md group-hover:block group-focus-within:block"
               >
-                To funkcja testowa — sczytywanie listy zębów ze zdjęcia za pomocą AI. Może jeszcze nie działać prawidłowo we wszystkich przypadkach. Wynik zawsze sprawdź przed zapisaniem.
+                To funkcja testowa - sczytywanie listy zębów ze zdjęcia za pomocą AI. Może jeszcze nie działać prawidłowo we wszystkich przypadkach. Wynik zawsze sprawdź przed zapisaniem.
               </span>
             </span>
             <TeethOcrWizard
@@ -501,7 +502,7 @@ function TeethDualKindToggle({
   return (
     <div className="space-y-1.5">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Typ</p>
+        <p className="text-[10px] font-semibold text-slate-500">Typ</p>
         {saveBlockReason ? (
           <span className={teethBuilderAlertClass} role="status">
             <IconAlertCircle size={12} />
@@ -541,7 +542,7 @@ function TeethDualKindToggle({
                 </span>
               ) : null}
               {needsAttention ? (
-                <span className="sr-only"> — wymaga uzupełnienia</span>
+                <span className="sr-only"> - wymaga uzupełnienia</span>
               ) : null}
             </button>
           );
@@ -657,9 +658,18 @@ function TeethSingleKindOrderBuilderModal({
     setDraft(draftFromGroup(group));
   };
 
-  const handleRemove = (id: string) => {
+  const handleRemove = async (id: string) => {
     const group = groups.find((g) => g.id === id);
-    if (group && !confirm(`Usunąć pozycję ${group.color || "?"} ${group.mould ?? ""} (${group.count} szt.)?`)) return;
+    if (
+      group &&
+      !(await askConfirm({
+        title: "Usunąć pozycję?",
+        message: `${group.color || "?"} ${group.mould ?? ""} (${group.count} szt.)`,
+        confirmLabel: "Usuń",
+        danger: true,
+      }))
+    )
+      return;
     setGroups((prev) => prev.filter((g) => g.id !== id));
     if (editingId === id) resetDraft();
   };
@@ -734,8 +744,8 @@ function TeethSingleKindOrderBuilderModal({
             </Button>
             <span className="group relative inline-flex">
               <span
-                className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-indigo-400 transition-colors group-hover:bg-indigo-100"
-                aria-label="Funkcja testowa — sczytywanie zębów ze zdjęcia za pomocą AI"
+                className="cursor-help rounded bg-indigo-50 px-1.5 py-0.5 text-[9px] font-bold text-indigo-400 transition-colors group-hover:bg-indigo-100"
+                aria-label="Funkcja testowa - sczytywanie zębów ze zdjęcia za pomocą AI"
               >
                 Beta
               </span>
@@ -743,7 +753,7 @@ function TeethSingleKindOrderBuilderModal({
                 role="tooltip"
                 className="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 hidden w-max max-w-[min(100vw,18rem)] rounded-md border border-indigo-200/90 bg-indigo-50/95 px-2.5 py-1.5 text-[11px] font-medium leading-relaxed text-indigo-900 shadow-md group-hover:block group-focus-within:block"
               >
-                To funkcja testowa — sczytywanie listy zębów ze zdjęcia za pomocą AI. Może jeszcze nie działać prawidłowo we wszystkich przypadkach. Wynik zawsze sprawdź przed zapisaniem.
+                To funkcja testowa - sczytywanie listy zębów ze zdjęcia za pomocą AI. Może jeszcze nie działać prawidłowo we wszystkich przypadkach. Wynik zawsze sprawdź przed zapisaniem.
               </span>
             </span>
             <TeethOcrWizard

@@ -43,6 +43,6 @@ describe("formatSubiektKontrahentLabel", () => {
         kh_Symbol: "D01",
         adr_NazwaPelna: "Firma X",
       })
-    ).toBe("D01 — Firma X");
+    ).toBe("D01 - Firma X");
   });
 });

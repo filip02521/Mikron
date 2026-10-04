@@ -263,7 +263,7 @@ export function ZkWatchRefreshPromptModal({
         });
         if (!ok) {
           setPrefillError(
-            "Nie udało się przygotować pozycji — uzupełnij listę zębów lub odśwież ZK z Subiekta."
+            "Nie udało się przygotować pozycji - uzupełnij listę zębów lub odśwież ZK z Subiekta."
           );
           return;
         }
@@ -325,7 +325,7 @@ export function ZkWatchRefreshPromptModal({
       open={open}
       onClose={handleLater}
       size="md"
-      title={`${displayNumber} — nowe pozycje w Subiekcie${queueLabel}`}
+      title={`${displayNumber} - nowe pozycje w Subiekcie${queueLabel}`}
       description={watch.client_label}
       bodyClassName={ZK_PROSBA_MODAL_BODY_CLASS}
       footer={
@@ -411,13 +411,13 @@ export function ZkWatchRefreshPromptModal({
 
       {stockFetchTimedOut ? (
         <ZkProsbaModalCallout tone="amber" role="status">
-          Sprawdzanie stanu trwa zbyt długo — zaznacz pozycje ręcznie lub oznacz na stanie.
+          Sprawdzanie stanu trwa zbyt długo - zaznacz pozycje ręcznie lub oznacz na stanie.
         </ZkProsbaModalCallout>
       ) : null}
 
       {stockFetchFailed && !stockFetchTimedOut ? (
         <ZkProsbaModalCallout tone="amber" role="status">
-          Nie udało się pobrać stanu z Subiekta — zaznacz ręcznie pozycje do zamówienia.
+          Nie udało się pobrać stanu z Subiekta - zaznacz ręcznie pozycje do zamówienia.
         </ZkProsbaModalCallout>
       ) : null}
 
@@ -429,14 +429,14 @@ export function ZkWatchRefreshPromptModal({
 
       {allOnStock && linesToAddCount === 0 && !redirectToOpenProsba ? (
         <ZkProsbaModalCallout tone="emerald">
-          Subiekt potwierdza wystarczający stan na wszystkich nowych pozycjach — uzupełnienie
+          Subiekt potwierdza wystarczający stan na wszystkich nowych pozycjach - uzupełnienie
           prośby nie jest potrzebne.
         </ZkProsbaModalCallout>
       ) : null}
 
       {redirectToOpenProsba ? (
         <ZkProsbaModalCallout tone="indigo">
-          Nowe pozycje mają wystarczający stan, ale jest już aktywna prośba powiązana z tym ZK —
+          Nowe pozycje mają wystarczający stan, ale jest już aktywna prośba powiązana z tym ZK -
           przejdź do niej, aby sprawdzić status.
         </ZkProsbaModalCallout>
       ) : null}
@@ -449,7 +449,7 @@ export function ZkWatchRefreshPromptModal({
             "pozycje mają",
             "pozycji ma",
           ])}{" "}
-          zmienioną ilość w Subiekcie — sprawdź, czy dotychczasowe prośby nadal są poprawne.
+          zmienioną ilość w Subiekcie - sprawdź, czy dotychczasowe prośby nadal są poprawne.
         </ZkProsbaModalCallout>
       ) : null}
 
@@ -462,7 +462,7 @@ export function ZkWatchRefreshPromptModal({
       <div className="space-y-1.5">
         <div className="flex items-center justify-between px-0.5">
           <span className={salesTypography.sectionLabel}>
-            Nowe pozycje — zaznacz do prośby
+            Nowe pozycje - zaznacz do prośby
           </span>
           <span className="text-[11px] font-medium text-slate-400">
             {addedCount} {plPozycja(addedCount)}
@@ -475,7 +475,7 @@ export function ZkWatchRefreshPromptModal({
               "pozycje trafią",
               "pozycji trafi",
             ])}{" "}
-            do prośby — pozostałe pominięte.
+            do prośby - pozostałe pominięte.
           </ZkProsbaModalCallout>
         ) : null}
         <ul
@@ -530,8 +530,8 @@ export function ZkWatchRefreshPromptModal({
                     onChange={() => toggleLine(key)}
                     aria-label={
                       markedForOrder
-                        ? `${line.product} — do zamówienia, odznacz aby pominąć`
-                        : `${line.product} — pominięte, zaznacz aby zamówić`
+                        ? `${line.product} - do zamówienia, odznacz aby pominąć`
+                        : `${line.product} - pominięte, zaznacz aby zamówić`
                     }
                     className="mt-0.5 size-4 shrink-0 rounded-md border-slate-300 text-indigo-600 transition-colors focus:ring-2 focus:ring-indigo-500/40 focus:ring-offset-0"
                   />
@@ -556,7 +556,7 @@ export function ZkWatchRefreshPromptModal({
                       <span
                         className={cn(
                           salesTypography.kindTag,
-                          "rounded-full px-2 py-0.5 leading-none",
+                          "rounded-md px-2 py-0.5 leading-none",
                           sufficient && !markedForOrder
                             ? "bg-emerald-100 text-emerald-950 ring-1 ring-emerald-200/80"
                             : "bg-amber-100 text-amber-950 ring-1 ring-amber-200/80"

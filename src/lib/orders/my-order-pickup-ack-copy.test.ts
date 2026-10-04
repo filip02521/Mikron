@@ -8,12 +8,12 @@ import {
 } from "./my-order-pickup-ack-copy";
 
 describe("myOrderPickupAckLabel", () => {
-  it("jedna pozycja — bez licznika", () => {
+  it("jedna pozycja - bez licznika", () => {
     expect(myOrderPickupAckLabel(1)).toBe("Potwierdź odbiór");
     expect(myOrderPickupAckLabel(0)).toBe("Potwierdź odbiór");
   });
 
-  it("wiele pozycji — licznik w nawiasie", () => {
+  it("wiele pozycji - licznik w nawiasie", () => {
     expect(myOrderPickupAckLabel(2)).toBe("Potwierdź odbiór (2)");
     expect(myOrderPickupAckLabel(3)).toBe("Potwierdź odbiór (3)");
   });
@@ -22,7 +22,7 @@ describe("myOrderPickupAckLabel", () => {
     expect(myOrderPickupAckLabel(5, "availability")).toBe("Potwierdź powiadomienie");
   });
 
-  it("compact — krótka etykieta bez licznika (liczba w title)", () => {
+  it("compact - krótka etykieta bez licznika (liczba w title)", () => {
     expect(myOrderPickupAckLabel(1, "pickup", { compact: true })).toBe("Potwierdź odbiór");
     expect(myOrderPickupAckLabel(3, "pickup", { compact: true })).toBe("Potwierdź odbiór");
   });

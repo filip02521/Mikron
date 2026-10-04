@@ -65,7 +65,7 @@ export function DailyPanelActionsBar({
         <ActionLoadingOverlay
           variant="viewport"
           message={pendingMessage}
-          hint="Urlopy i interwały — panel odświeży się automatycznie"
+          hint="Urlopy i interwały - panel odświeży się automatycznie"
         />
       ) : null}
       <div className={panelToolbarRowClass}>

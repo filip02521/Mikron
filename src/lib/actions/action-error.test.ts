@@ -21,11 +21,11 @@ describe("runActionSafely / unwrapActionResult", () => {
 
   it("zamienia throw na wartość z treścią i kodem", async () => {
     const r = await runActionSafely(async () => {
-      throw new CodedError("Towar jest na stanie — potwierdź");
+      throw new CodedError("Towar jest na stanie - potwierdź");
     });
     expect(isActionErrorResult(r)).toBe(true);
     expect(r).toEqual({
-      actionError: "Towar jest na stanie — potwierdź",
+      actionError: "Towar jest na stanie - potwierdź",
       actionErrorCode: "PROSBA_SUFFICIENT_STOCK_ACK_REQUIRED",
     });
   });

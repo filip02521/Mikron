@@ -134,7 +134,7 @@ describe("browseZdDocumentsForKhIds", () => {
     expect(matchDoc).toHaveBeenCalled();
   });
 
-  it("monthChunks — przegląda kolejne miesiące i zatrzymuje się na matchDoc", async () => {
+  it("monthChunks - przegląda kolejne miesiące i zatrzymuje się na matchDoc", async () => {
     searchSubiektZdCachedForEta.mockImplementation(
       (params: { dataOd?: string; status?: number }) => {
         if (params.status != null) return Promise.resolve({ data: [] });

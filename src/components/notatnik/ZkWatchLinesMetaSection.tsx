@@ -85,7 +85,7 @@ export function ZkWatchLinesMetaSection({
 
       {showSubiektRealizedCloseHint && canEdit ? (
         <p className="rounded-md border border-emerald-200/80 bg-emerald-50/70 px-3 py-2 text-xs leading-snug text-emerald-900">
-          Subiekt: Zrealizowane — rozważ zamknięcie sprawy (menu na karcie ZK).
+          Subiekt: Zrealizowane - rozważ zamknięcie sprawy (menu na karcie ZK).
         </p>
       ) : null}
     </ZkWatchModalSection>

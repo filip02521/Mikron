@@ -178,8 +178,8 @@ describe("combined product search", () => {
     ).toEqual({ product: "ABC opis", symbol: "ABC" });
   });
 
-  it("rozpoznaje wklejkę SYMBOL — Nazwa z Subiekta", () => {
-    expect(patchFromCombinedProductInput("SR6 — Śruba M6")).toEqual({
+  it("rozpoznaje wklejkę SYMBOL - Nazwa z Subiekta", () => {
+    expect(patchFromCombinedProductInput("SR6 - Śruba M6")).toEqual({
       symbol: "SR6",
       product: "Śruba M6",
     });
@@ -239,7 +239,7 @@ describe("productSearchParams", () => {
 });
 
 describe("buildProductPickFromSubiekt", () => {
-  it("informacja — bez ilości", () => {
+  it("informacja - bez ilości", () => {
     const pick = buildProductPickFromSubiekt(
       { tw_Id: 1, tw_Symbol: "X1", tw_Nazwa: "Śruba", tw_PLU: "896" },
       "informacja",
@@ -252,7 +252,7 @@ describe("buildProductPickFromSubiekt", () => {
     expect(pick.subiektTwId).toBe(1);
   });
 
-  it("zamówienie — domyślna ilość 1", () => {
+  it("zamówienie - domyślna ilość 1", () => {
     const pick = buildProductPickFromSubiekt(
       { tw_Id: 1, tw_Nazwa: "Tylko nazwa" },
       "zamowienie"
@@ -263,7 +263,7 @@ describe("buildProductPickFromSubiekt", () => {
     expect(pick.mikranCode).toBe("");
   });
 
-  it("zamówienie — zachowuje poprawną ilość", () => {
+  it("zamówienie - zachowuje poprawną ilość", () => {
     const pick = buildProductPickFromSubiekt(
       { tw_Id: 1, tw_Symbol: "A", tw_Nazwa: "B", tw_PLU: "1" },
       "zamowienie",

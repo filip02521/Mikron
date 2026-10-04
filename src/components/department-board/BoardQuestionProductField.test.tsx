@@ -129,14 +129,14 @@ describe("BoardQuestionProductField", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText(/SYM-896 — Produkt po PLU/i)).toBeTruthy();
+      expect(screen.getByText(/SYM-896 - Produkt po PLU/i)).toBeTruthy();
     });
 
-    fireEvent.click(screen.getByText(/SYM-896 — Produkt po PLU/i));
+    fireEvent.click(screen.getByText(/SYM-896 - Produkt po PLU/i));
 
     await waitFor(() => {
       expect(screen.getByText("Wybrano z Subiekta")).toBeTruthy();
-      expect(screen.getByText(/SYM-896 — Produkt po PLU/i)).toBeTruthy();
+      expect(screen.getByText(/SYM-896 - Produkt po PLU/i)).toBeTruthy();
       expect(screen.queryByRole("combobox")).toBeNull();
     });
   });

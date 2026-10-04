@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         ok: false as const,
-        error: "Brak profilu użytkownika — skontaktuj się z administratorem.",
+        error: "Brak profilu użytkownika - skontaktuj się z administratorem.",
       },
       { status: 403 }
     );

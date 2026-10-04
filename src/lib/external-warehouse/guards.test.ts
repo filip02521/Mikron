@@ -18,7 +18,7 @@ const snap = {
 };
 
 describe("external-warehouse guards", () => {
-  it("waliduje UUID (IDOR — odrzuca śmieci z klienta)", () => {
+  it("waliduje UUID (IDOR - odrzuca śmieci z klienta)", () => {
     expect(isExternalWarehouseUuid("11111111-1111-4111-8111-111111111111")).toBe(
       true
     );

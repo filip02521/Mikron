@@ -109,6 +109,8 @@ export function LoginForm({
   const [passwordError, setPasswordError] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetSending, setResetSending] = useState(false);
+  /** Po „Nie pamiętasz hasła?” w trybie e-mail: podpowiedź, że reset działa po wyborze konta. */
+  const [resetPickHint, setResetPickHint] = useState(false);
   const [resetSessionOverride, setResetSessionOverride] = useState<{
     accountId: string;
     maskedEmail: string;
@@ -347,21 +349,56 @@ export function LoginForm({
     });
   }, [canResetPassword, selectedAccountId, resetSending, persistResetSession]);
 
-  const forgotPasswordLink = canResetPassword ? (
-    <div className="space-y-1">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          className={loginAltLinkClass}
-          onClick={() => void startPasswordReset()}
-          disabled={loading || resetSending}
-        >
-          {resetSending ? LOGIN_RESET_LINK_SENDING : LOGIN_RESET_LINK_LABEL}
-        </button>
-      </div>
-      <p className="text-right text-xs text-slate-500">{LOGIN_RESET_LINK_HINT}</p>
-    </div>
+  const resetAction = canResetPassword ? (
+    <button
+      type="button"
+      className={loginAltLinkClass}
+      onClick={() => void startPasswordReset()}
+      disabled={loading || resetSending}
+      title={LOGIN_RESET_LINK_HINT}
+    >
+      {resetSending ? LOGIN_RESET_LINK_SENDING : LOGIN_RESET_LINK_LABEL}
+    </button>
+  ) : useManualEmail ? (
+    // Reset wysyła kod na adres konta z listy; z trybu e-mail prowadzimy tam jednym klikiem.
+    <button
+      type="button"
+      className={loginAltLinkClass}
+      onClick={() => {
+        setResetPickHint(true);
+        switchToAccountPicker();
+      }}
+      disabled={loading}
+    >
+      Nie pamiętasz hasła?
+    </button>
   ) : null;
+
+  const resetHintText = canResetPassword
+    ? LOGIN_RESET_LINK_HINT
+    : resetPickHint && !useManualEmail
+      ? "Wybierz swoje konto z listy, potem kliknij „Reset hasła”."
+      : null;
+
+  /** Jeden rząd akcji drugorzędnych pod przyciskiem (nie między polami). */
+  function secondaryActions(modeSwitch: React.ReactNode) {
+    if (!modeSwitch && !resetAction) return null;
+    return (
+      <div className="space-y-1">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+          {modeSwitch ?? <span />}
+          {resetAction}
+        </div>
+        {resetHintText ? (
+          <p className={cn("text-xs text-slate-500", canResetPassword ? "text-right" : "text-left")}>
+            {resetHintText}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  const forgotPasswordLink = secondaryActions(null);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -580,37 +617,21 @@ export function LoginForm({
               </Field>
             )}
 
-            {!useManualEmail ? (
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  className={loginAltLinkClass}
-                  onClick={switchToManualEmail}
-                  disabled={loading}
-                >
-                  Zaloguj na inny adres e-mail
-                </button>
-              </div>
-            ) : null}
-
-            {useManualEmail ? (
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  className={loginAltLinkClass}
-                  onClick={switchToAccountPicker}
-                  disabled={loading}
-                >
-                  Wybierz konto z listy
-                </button>
-              </div>
-            ) : null}
           </div>
 
           <div className="shrink-0 space-y-3 sm:space-y-4">
             {passwordField}
             {submitBlock}
-            {forgotPasswordLink}
+            {secondaryActions(
+              <button
+                type="button"
+                className={loginAltLinkClass}
+                onClick={useManualEmail ? switchToAccountPicker : switchToManualEmail}
+                disabled={loading}
+              >
+                {useManualEmail ? "Wybierz konto z listy" : "Zaloguj na inny adres e-mail"}
+              </button>
+            )}
           </div>
         </>
       )}

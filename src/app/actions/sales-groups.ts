@@ -103,7 +103,7 @@ export async function actionDeleteSalesGroup(
 
   if ((count ?? 0) > 0) {
     return {
-      error: `Nie można usunąć grupy „${group.name}" — przypisanych jest ${count} handlowców. Najpierw przenieś ich do innej grupy.`,
+      error: `Nie można usunąć grupy „${group.name}" - przypisanych jest ${count} handlowców. Najpierw przenieś ich do innej grupy.`,
     };
   }
 

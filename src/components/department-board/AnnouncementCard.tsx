@@ -103,13 +103,13 @@ export function AnnouncementCard({
         aria-hidden
       />
       {thread.pinned ? (
-        <span className="inline-flex items-center gap-0.5 rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-900">
+        <span className="inline-flex items-center gap-0.5 rounded-md bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-900">
           <IconPin size={10} strokeWidth={2.5} aria-hidden />
           Przypięte
         </span>
       ) : null}
       {showUnread ? (
-        <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-indigo-800">
+        <span className="rounded-md bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-800">
           Nowe
         </span>
       ) : null}

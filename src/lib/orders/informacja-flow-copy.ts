@@ -26,26 +26,26 @@ export const INFORMACJA_FLOW_VIA_PANEL = {
 /** Tylko sygnał dla działu zakupów — bez kolejki magazynu i bez powiadomienia handlowca. */
 export const INFORMACJA_FLOW_STOCK_OUT = {
   id: "stock_out" as const,
-  label: "Brak na stanie — do zamówienia",
+  label: "Brak na stanie - do zamówienia",
   short: "Zgłoś do działu zakupów, że brakuje towaru na stanie.",
-  steps: ["Zgłoszenie", "Panel Dziś — zamówienie u dostawcy"],
+  steps: ["Zgłoszenie", "Panel Dziś - zamówienie u dostawcy"],
 };
 
 export const INFORMACJA_STOCK_OUT_PANEL_BADGE = "Brak na stanie";
 
 export const INFORMACJA_STOCK_OUT_PROCUREMENT_SECTION_HINT =
-  "To nie są prośby klientów — sygnały, że towar się skończył na magazynie. Po Główne pozycja znika z listy.";
+  "To nie są prośby klientów - sygnały, że towar się skończył na magazynie. Po Główne pozycja znika z listy.";
 
 export const INFORMACJA_FLOW_SALES_STOCK_OUT = {
-  statusTitle: "Brak na stanie — zakupy zamówią",
+  statusTitle: "Brak na stanie - zakupy zamówią",
   statusDetail:
-    "To tylko sygnał dla działu zakupów. Nie czekasz na e-mail z magazynu — postęp zobaczysz po zamówieniu u dostawcy.",
+    "To tylko sygnał dla działu zakupów. Nie czekasz na e-mail z magazynu - postęp zobaczysz po zamówieniu u dostawcy.",
 };
 
 export const INFORMACJA_FLOW_SALES_STOCK_OUT_ORDERED = {
   statusTitle: "Zamówione u dostawcy",
   statusDetail:
-    "Zakupy złożyły zamówienie. Nie dostaniesz e-maila z magazynu — to był tylko sygnał o braku stanu.",
+    "Zakupy złożyły zamówienie. Nie dostaniesz e-maila z magazynu - to był tylko sygnał o braku stanu.",
 };
 
 /** Etykieta na pozycji w panelu Dziś (ścieżka: magazyn sprawdza, potem informacja dla handlowca). */
@@ -54,11 +54,11 @@ export const INFORMACJA_VIA_PANEL_BADGE = "Magazyn → info";
 export const INFORMACJA_VIA_PANEL_STATUS_TITLE = INFORMACJA_VIA_PANEL_BADGE;
 
 export const INFORMACJA_FLOW_LEGEND_PANEL =
-  "„Powiadom, gdy będzie na magazynie” — obserwujemy nasz stan magazynowy i wysyłamy e-mail, gdy towar się pojawi (bez zapytania u dostawcy). „Brak na stanie” — tylko Prośby handlowców (zakupy zamawiają u dostawcy, bez e-maila z magazynu).";
+  "„Powiadom, gdy będzie na magazynie” - obserwujemy nasz stan magazynowy i wysyłamy e-mail, gdy towar się pojawi (bez zapytania u dostawcy). „Brak na stanie” - tylko Prośby handlowców (zakupy zamawiają u dostawcy, bez e-maila z magazynu).";
 
 /** Krótki opis pod pozycją w panelu Dziś (szczegóły ścieżki: badge + legenda). */
 export const INFORMACJA_FLOW_PROCUREMENT_GROUP_BANNER =
-  "Prośba informacyjna — najpierw zamów u dostawcy, potem magazyn wyśle e-mail do handlowca.";
+  "Prośba informacyjna - najpierw zamów u dostawcy, potem magazyn wyśle e-mail do handlowca.";
 
 export const INFORMACJA_FLOW_SALES_AWAITING_PROCUREMENT = {
   statusTitle: "Czekamy na zamówienie u dostawcy",
@@ -67,7 +67,7 @@ export const INFORMACJA_FLOW_SALES_AWAITING_PROCUREMENT = {
 };
 
 export const INFORMACJA_FLOW_SALES_AWAITING_WAREHOUSE = {
-  statusTitle: "Zamówione — czekamy na magazyn",
+  statusTitle: "Zamówione - czekamy na magazyn",
   statusDetail:
     "Zamówienie u dostawcy jest złożone. Powiadomimy e-mailem, gdy towar pojawi się na stanie magazynowym.",
 };
@@ -80,11 +80,11 @@ export const INFORMACJA_FLOW_SALES_DIRECT = {
 
 /** Status „Dostępne” — ręczne powiadomienie z magazynu. */
 export const INFORMACJA_FLOW_SALES_READY_MANUAL_DETAIL =
-  "Towar jest na magazynie. Potwierdź, że widziałeś/aś powiadomienie — wpis zniknie z listy.";
+  "Towar jest na magazynie. Potwierdź, że widziałeś/aś powiadomienie - wpis zniknie z listy.";
 
 /** Status „Dostępne” — automatyka ze stanu Subiekta. */
 export const INFORMACJA_FLOW_SALES_AUTO_ARRIVED_DETAIL =
-  "Powiadomienie wysłano automatycznie po wykryciu towaru na stanie w Subiekcie. Potwierdź odczyt — wpis zniknie z listy.";
+  "Powiadomienie wysłano automatycznie po wykryciu towaru na stanie w Subiekcie. Potwierdź odczyt - wpis zniknie z listy.";
 
 /** Nagłówek wiersza, gdy magazyn wysłał e-mail i handlowiec ma potwierdzić odczytanie. */
 export const INFORMACJA_FLOW_SALES_READY_ACK_HEADLINE = "Powiadomienie o dostępności";
@@ -99,16 +99,16 @@ export const INFORMACJA_AUTO_STOCK_QUEUE_HINT =
 export const INFORMACJA_AUTO_STOCK_ROW_BADGE = "Na stanie w Subiekcie";
 
 export const INFORMACJA_AUTO_STOCK_ROW_DETAIL =
-  "Stan dodatni w Subiekcie — powiadomienie wyśle synchronizacja (do ok. godziny) lub po odświeżeniu kolejki.";
+  "Stan dodatni w Subiekcie - powiadomienie wyśle synchronizacja (do ok. godziny) lub po odświeżeniu kolejki.";
 
 export const INFORMACJA_MANUAL_ONLY_ROW_HINT =
-  "Pozycja spoza kartoteki Subiekta — powiadom handlowca ręcznie po sprawdzeniu towaru.";
+  "Pozycja spoza kartoteki Subiekta - powiadom handlowca ręcznie po sprawdzeniu towaru.";
 
 export const INFORMACJA_MANUAL_ONLY_TOOLTIP =
   "Brak powiązania z Subiektem (wpis ręczny). Automatyka stanu nie obejmuje tej pozycji.";
 
 export const INFORMACJA_TEETH_MANUAL_ONLY_HINT =
-  "Prośba zębowa — powiadomienie tylko ręcznie (poza automatyką stanu).";
+  "Prośba zębowa - powiadomienie tylko ręcznie (poza automatyką stanu).";
 
 /** Toast magazynu po auto-sync na /kolejka. */
 export function formatInformacjaAutoArrivedToast(updated: number): {
@@ -121,12 +121,12 @@ export function formatInformacjaAutoArrivedToast(updated: number): {
   if (updated === 1) {
     return {
       title: "Powiadomiono automatycznie",
-      text: "1 pozycja — wykryto stan w Subiekcie.",
+      text: "1 pozycja - wykryto stan w Subiekcie.",
     };
   }
   return {
     title: "Powiadomiono automatycznie",
-    text: `${updated} pozycji — wykryto stan w Subiekcie.`,
+    text: `${updated} pozycji - wykryto stan w Subiekcie.`,
   };
 }
 
@@ -155,13 +155,13 @@ export function informacjaReadyAckSubline(input: {
 }): string {
   const { sourceMix, informacjaPath } = input;
   if (sourceMix === "stock_auto") {
-    return "Powiadomienie wysłano automatycznie (stan w Subiekcie) — potwierdź odczyt";
+    return "Powiadomienie wysłano automatycznie (stan w Subiekcie) - potwierdź odczyt";
   }
   if (sourceMix === "mixed") {
-    return "Powiadomienia o dostępności — potwierdź odczyt";
+    return "Powiadomienia o dostępności - potwierdź odczyt";
   }
   if (informacjaPath === "via_panel") {
-    return "Magazyn potwierdził dostępność — potwierdź odczyt";
+    return "Magazyn potwierdził dostępność - potwierdź odczyt";
   }
   return "Potwierdź, że widziałeś/aś powiadomienie o dostępności";
 }
@@ -174,7 +174,7 @@ export function informacjaReadyDayStartSubtitle(
   }>
 ): string {
   if (!rows.length) {
-    return "Powiadomienie o dostępności — potwierdź odczyt";
+    return "Powiadomienie o dostępności - potwierdź odczyt";
   }
   const sourceMix = resolveInformacjaArrivedSourceMix(
     rows.flatMap((row) => {
@@ -185,17 +185,17 @@ export function informacjaReadyDayStartSubtitle(
     })
   );
   if (sourceMix === "stock_auto") {
-    return "Stan w Subiekcie — potwierdź odczyt powiadomienia";
+    return "Stan w Subiekcie - potwierdź odczyt powiadomienia";
   }
   if (sourceMix === "mixed") {
-    return "Powiadomienia o dostępności — potwierdź odczyt";
+    return "Powiadomienia o dostępności - potwierdź odczyt";
   }
   const paths = rows.map((r) => r.informacjaPath).filter(Boolean);
   const allViaPanel = paths.length > 0 && paths.every((p) => p === "via_panel");
   if (allViaPanel) {
-    return "Magazyn potwierdził dostępność — potwierdź odczyt";
+    return "Magazyn potwierdził dostępność - potwierdź odczyt";
   }
-  return "Powiadomienie o dostępności — potwierdź odczyt";
+  return "Powiadomienie o dostępności - potwierdź odczyt";
 }
 
 /** Tytuł wpisu Start dnia dla informacji do potwierdzenia. */

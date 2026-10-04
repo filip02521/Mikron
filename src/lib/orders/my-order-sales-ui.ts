@@ -77,7 +77,7 @@ export function isProsbaHandoffStatus(statusTitle: string): boolean {
 
 /** Jedna linia pod nagłówkiem — bez powtórzenia statusDetail w rozwinięciu. */
 export function verificationSublineFromDetail(statusDetail: string | null): string {
-  if (!statusDetail?.trim()) return "Zakupy dopracują szczegóły — bez Twojej akcji";
+  if (!statusDetail?.trim()) return "Zakupy dopracują szczegóły - bez Twojej akcji";
   if (
     statusDetail.includes("Szukamy dostawcy") ||
     statusDetail.includes("dopasowuje dostawcę")
@@ -85,23 +85,23 @@ export function verificationSublineFromDetail(statusDetail: string | null): stri
     return "Trwa dopasowanie dostawcy w systemie";
   }
   if (statusDetail.includes("Dział dostaw dopasuje dostawcę")) {
-    return "Zakupy dopasują dostawcę — bez Twojej akcji";
+    return "Zakupy dopasują dostawcę - bez Twojej akcji";
   }
   if (statusDetail.includes("Dział dostaw uzupełni:")) {
     const match = statusDetail.match(/Dział dostaw uzupełni: ([^.]+)/);
     return match ? `Zakupy uzupełnią ${match[1]}` : "Zakupy dopracują szczegóły";
   }
   if (statusDetail.includes("nie musisz")) {
-    return "Prośba zapisana — bez Twojej akcji";
+    return "Prośba zapisana - bez Twojej akcji";
   }
   if (statusDetail.startsWith("Brakuje:")) {
     const missing = statusDetail.slice("Brakuje:".length).split(".")[0]?.trim();
     return missing
       ? `Zakupy uzupełnią ${missing}`
-      : "Zakupy dopracują szczegóły — bez Twojej akcji";
+      : "Zakupy dopracują szczegóły - bez Twojej akcji";
   }
   if (statusDetail.includes("sprawdzają")) return "Zakupy sprawdzają szczegóły przed zamówieniem";
-  return "Zakupy dopracują szczegóły — bez Twojej akcji";
+  return "Zakupy dopracują szczegóły - bez Twojej akcji";
 }
 
 export type MyOrderSalesUi = {
@@ -158,7 +158,7 @@ export function summarizeMyOrdersInbox(rows: MyOrderRow[]): MyOrdersInboxSummary
       row.kind === "informacja" &&
       (isInformacjaAvailabilityPendingStatusTitle(row.statusTitle) ||
         row.statusTitle === "Czekamy na zamówienie u dostawcy" ||
-        row.statusTitle === "Zamówione — czekamy na magazyn")
+        row.statusTitle === "Zamówione - czekamy na magazyn")
     ) {
       s.availabilityPendingCount++;
     }
@@ -201,7 +201,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
       headline:
         n === 1 ? "Zęby gotowe do odbioru" : `Zęby gotowe do odbioru · ${polishPozycjeLabel(n)}`,
       headlineTone: "action",
-      subline: "Doręczenie osobiste — potwierdź odbiór od magazynu",
+      subline: "Doręczenie osobiste - potwierdź odbiór od magazynu",
       sortPriority: 1,
     };
   }
@@ -225,7 +225,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
       );
     }
     return {
-      headline: "Gotowe do odbioru — zęby i towar",
+      headline: "Gotowe do odbioru - zęby i towar",
       headlineTone: "action",
       subline: parts.length ? `Potwierdź osobno: ${parts.join(" · ")}` : null,
       sortPriority: 1,
@@ -325,7 +325,7 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     const hasEstimate = Boolean(row.timingLabel);
     return {
       headline: hasEstimate
-        ? "Zamówione — czekamy na dostawę"
+        ? "Zamówione - czekamy na dostawę"
         : "Zamówione u dostawcy",
       headlineTone: "info",
       subline: !hasEstimate
@@ -357,12 +357,12 @@ export function enrichMyOrderSalesUi(row: MyOrderRow): MyOrderSalesUi {
     return {
       headline: "Powiadomimy, gdy towar przyjedzie",
       headlineTone: "neutral",
-      subline: "Magazyn obserwuje dostępność — bez zamówienia u dostawcy",
+      subline: "Magazyn obserwuje dostępność - bez zamówienia u dostawcy",
       sortPriority: 9,
     };
   }
 
-  if (row.statusTitle === "Zamówione — czekamy na magazyn") {
+  if (row.statusTitle === "Zamówione - czekamy na magazyn") {
     return {
       headline: "Zamówione u dostawcy",
       headlineTone: "info",

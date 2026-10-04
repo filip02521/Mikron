@@ -16,12 +16,12 @@ function reasonLabel(
   if (row.reason === "supplier_exists_reindex") {
     return {
       tone: "amber",
-      text: `„${who}” jest już powiązany z dostawcą „${row.supplierHint}” (główne lub dodatkowe) — uruchom ponowne indeksowanie ZD`,
+      text: `„${who}” jest już powiązany z dostawcą „${row.supplierHint}” (główne lub dodatkowe) - uruchom ponowne indeksowanie ZD`,
     };
   }
   return {
     tone: "red",
-    text: `„${who}” nie ma dostawcy w aplikacji — dodaj powiązanie w Admin → Dostawcy`,
+    text: `„${who}” nie ma dostawcy w aplikacji - dodaj powiązanie w Admin → Dostawcy`,
   };
 }
 
@@ -106,7 +106,7 @@ export function ZdUnmappedKhPanel({
         </p>
       ) : rows.length === 0 ? (
         <p className="mt-3 text-xs text-emerald-800">
-          Brak — każdy zweryfikowany kontrahent z ZD ma przypisanego dostawcę (
+          Brak - każdy zweryfikowany kontrahent z ZD ma przypisanego dostawcę (
           {report.totalUnmappedZd === 0 ? "0 nieprzypisanych ZD" : "stan aktualny"}).
         </p>
       ) : (
@@ -129,7 +129,7 @@ export function ZdUnmappedKhPanel({
           </p>
           <div className="mt-3 max-h-80 overflow-auto rounded-md border border-slate-200 bg-white">
             <table className="w-full min-w-[44rem] text-left text-xs">
-              <thead className="sticky top-0 bg-slate-50 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <thead className="sticky top-0 bg-slate-50 text-[11px] font-semibold text-slate-500">
                 <tr>
                   <th className="px-3 py-2">Kontrahent (Subiekt)</th>
                   <th className="px-3 py-2">ZD</th>
@@ -166,7 +166,7 @@ export function ZdUnmappedKhPanel({
                               <span className="font-medium text-indigo-900">{s.supplierName}</span>
                               <span
                                 className={cn(
-                                  "ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+                                  "ml-1.5 rounded-md px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
                                   s.score >= 80
                                     ? "bg-emerald-100 text-emerald-900"
                                     : "bg-indigo-100 text-indigo-900"
@@ -192,13 +192,13 @@ export function ZdUnmappedKhPanel({
                               </Button>
                             ) : (
                               <p className="text-[11px] text-amber-900">
-                                Powiązanie jest w kartotece — wystarczy reindeks ZD (przycisk wyżej).
+                                Powiązanie jest w kartotece - wystarczy reindeks ZD (przycisk wyżej).
                               </p>
                             )}
                           </div>
                         ) : (
                           <span className="text-[11px] text-slate-500">
-                            Brak pewnej propozycji — sprawdź ręcznie w Dostawcy
+                            Brak pewnej propozycji - sprawdź ręcznie w Dostawcy
                           </span>
                         )}
                       </td>

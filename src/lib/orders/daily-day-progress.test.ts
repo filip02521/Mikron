@@ -3,7 +3,7 @@ import { buildDailyDayProgress, combineDayProgress } from "./daily-day-progress"
 import { computeDailyUrgentProgress } from "./daily-urgent-progress";
 
 describe("daily day progress", () => {
-  it("łączy segmenty harmonogramu i prośb", () => {
+  it("łączy segmenty harmonogramu i próśb", () => {
     const urgent = computeDailyUrgentProgress(4, 1);
     const forSomeone = computeDailyUrgentProgress(2, 2);
     const combined = combineDayProgress(urgent, forSomeone);

@@ -55,19 +55,19 @@ function toneStyles(tone: ProsbaFormReadinessView["tone"]) {
   switch (tone) {
     case "ready":
       return {
-        shell: "border-emerald-200 bg-gradient-to-br from-emerald-50/90 to-white",
+        shell: "border-emerald-200 bg-emerald-50/90",
         headline: "text-emerald-950",
         subline: "text-emerald-800/90",
       };
     case "blocked":
       return {
-        shell: "border-amber-200 bg-gradient-to-br from-amber-50/80 to-white",
+        shell: "border-amber-200 bg-amber-50/80",
         headline: "text-amber-950",
         subline: "text-amber-900/85",
       };
     case "handoff":
       return {
-        shell: "border-indigo-200 bg-gradient-to-br from-indigo-50/70 to-white",
+        shell: "border-indigo-200 bg-indigo-50/70",
         headline: "text-indigo-950",
         subline: "text-indigo-800/90",
       };
@@ -239,7 +239,7 @@ export function ProsbaFormReadiness({
             ) : null}
           </div>
           {view.canSubmit ? (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/80 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-800 ring-1 ring-emerald-200/80">
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-white/80 px-2.5 py-1 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-200/80">
               Wyślij
               <SubmitHintChevron />
             </span>

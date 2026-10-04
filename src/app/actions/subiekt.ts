@@ -123,7 +123,7 @@ export async function actionSubiektSuggestionsEnabled(): Promise<{
       enabled: false,
       catalogFallback: true,
       feedback: getSubiektFeedback("subiekt_unavailable", {
-        hint: "Subiekt offline — wpisz nazwę lub symbol, wyniki pojawią się z lokalnej bazy.",
+        hint: "Subiekt offline - wpisz nazwę lub symbol, wyniki pojawią się z lokalnej bazy.",
       }),
     };
   }
@@ -221,7 +221,7 @@ export async function actionSuggestProducts(
       items: suggestions.map(catalogSuggestionToSubiektProduct),
       totalCount: suggestions.length,
       feedback: getSubiektFeedback("subiekt_unavailable", {
-        hint: "Wyniki z lokalnej bazy — Subiekt offline.",
+        hint: "Wyniki z lokalnej bazy - Subiekt offline.",
       }),
     };
   } catch (e) {
@@ -321,7 +321,7 @@ async function tryCatalogFallback(
       items: suggestions.map(catalogSuggestionToSubiektProduct),
       totalCount: suggestions.length,
       feedback: getSubiektFeedback("subiekt_unavailable", {
-        hint: "Wyniki z lokalnej bazy — API Subiekta zwróciło błąd.",
+        hint: "Wyniki z lokalnej bazy - API Subiekta zwróciło błąd.",
       }),
     };
   } catch {
@@ -355,7 +355,7 @@ export async function actionSubiektSuggestClients(
       ok: true,
       items: [],
       feedback: getSubiektFeedback("subiekt_unavailable", {
-        hint: "Wpisz nazwę klienta ręcznie — pole pozostaje opcjonalne.",
+        hint: "Wpisz nazwę klienta ręcznie - pole pozostaje opcjonalne.",
       }),
     };
   }
@@ -439,7 +439,7 @@ async function lookupSupplierFromCatalogTwId(
     return {
       ok: false,
       feedback: catalogSupplierUnmappedFeedback({
-        message: "Brak ID towaru — wybierz dostawcę ręcznie.",
+        message: "Brak ID towaru - wybierz dostawcę ręcznie.",
       }),
     };
   }
@@ -472,7 +472,7 @@ async function lookupSupplierFromCatalogTwId(
       ok: false,
       feedback: catalogSupplierUnmappedFeedback({
         message:
-          "Brak przypisanego dostawcy dla tego produktu — wybierz dostawcę ręcznie (powstanie powiązanie po zapisie).",
+          "Brak przypisanego dostawcy dla tego produktu - wybierz dostawcę ręcznie (powstanie powiązanie po zapisie).",
       }),
     };
   }
@@ -492,7 +492,7 @@ async function lookupSupplierFromCatalogTwId(
       ok: false,
       feedback: catalogSupplierUnmappedFeedback({
         message:
-          "Dostawca powiązany z produktem nie jest dostępny na liście — wybierz dostawcę ręcznie.",
+          "Dostawca powiązany z produktem nie jest dostępny na liście - wybierz dostawcę ręcznie.",
       }),
     };
   }
@@ -529,7 +529,7 @@ export async function actionSubiektResolveSupplierForProduct(
     return {
       ok: false,
       feedback: catalogSupplierUnmappedFeedback({
-        message: "Brak ID towaru — wybierz dostawcę ręcznie lub zostaw puste.",
+        message: "Brak ID towaru - wybierz dostawcę ręcznie lub zostaw puste.",
       }),
     };
   }
@@ -872,7 +872,7 @@ export async function actionSetSupplierSubiektKhId(
       return {
         ok: false,
         feedback: getSubiektFeedback("unknown", {
-          message: `kh_Id ${subiektKhId} jest już powiązany z innym dostawcą — usuń powiązanie lub dodaj jako dodatkowy kontrahent tam.`,
+          message: `kh_Id ${subiektKhId} jest już powiązany z innym dostawcą - usuń powiązanie lub dodaj jako dodatkowy kontrahent tam.`,
         }),
       };
     }
@@ -896,7 +896,7 @@ export async function actionSetSupplierSubiektKhId(
       return {
         ok: false,
         feedback: getSubiektFeedback("unknown", {
-          message: "Brak kolumny subiekt_kh_id — uruchom migrację 026_supplier_subiekt_kh_id.sql w Supabase.",
+          message: "Brak kolumny subiekt_kh_id - uruchom migrację 026_supplier_subiekt_kh_id.sql w Supabase.",
         }),
       };
     }
@@ -1002,7 +1002,7 @@ export async function actionAddSupplierSubiektKhAlias(
         ok: false,
         feedback: getSubiektFeedback("unknown", {
           message:
-            "Brak tabeli supplier_subiekt_kh_aliases — uruchom migrację 040_supplier_subiekt_kh_aliases.sql w Supabase.",
+            "Brak tabeli supplier_subiekt_kh_aliases - uruchom migrację 040_supplier_subiekt_kh_aliases.sql w Supabase.",
         }),
       };
     }
@@ -1065,7 +1065,7 @@ export async function actionSubiektSuggestSuppliers(
       ok: true,
       suggestions: [],
       subiektWarning: getSubiektFeedback("subiekt_unavailable", {
-        hint: "Wyszukiwanie w systemie działa — Subiekt jest offline.",
+        hint: "Wyszukiwanie w systemie działa - Subiekt jest offline.",
       }),
     };
   }
@@ -1112,7 +1112,7 @@ export async function actionSubiektSuggestSuppliers(
         subiektSuggestions.push({
           supplierId: null,
           label: formatSubiektKontrahentLabel(k),
-          detail: "Brak w bazie aplikacji — wybierz ręcznie lub zostaw puste",
+          detail: "Brak w bazie aplikacji - wybierz ręcznie lub zostaw puste",
           source: "subiekt",
         });
       }

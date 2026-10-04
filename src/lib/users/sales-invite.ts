@@ -55,7 +55,7 @@ export async function generateSalesPersonInviteLink(
 
   const email = person.email?.trim().toLowerCase();
   if (!email) {
-    return { error: "Uzupełnij e-mail handlowca — link wysyłasz na ten adres." };
+    return { error: "Uzupełnij e-mail handlowca - link wysyłasz na ten adres." };
   }
 
   const linkError = await assertUniqueSalesPersonLink(supabase, salesPersonId);

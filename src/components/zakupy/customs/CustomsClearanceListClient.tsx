@@ -17,9 +17,11 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Field, Input, Select, fieldControlClass } from "@/components/ui/Field";
+import { SHIPMENT_STAGE_LABEL, shipmentAlerts, shipmentStage, todayInWarsaw } from "@/lib/customs/customs-shipment";
+import { ALERT_BADGE, STAGE_BADGE } from "./CustomsShipmentCard";
 
 function formatDate(value: string | null): string {
-  if (!value) return "—";
+  if (!value) return "-";
   const [y, m, d] = value.slice(0, 10).split("-");
   return `${d}.${m}.${y}`;
 }
@@ -63,12 +65,23 @@ export function CustomsClearanceListClient({
   );
   const visible = useMemo(() => {
     const q = filterText.trim().toLowerCase();
-    return clearances.filter(
-      (c) =>
-        (!filterSupplier || c.supplierName === filterSupplier) &&
-        (!filterStatus || c.status === filterStatus) &&
-        (!q || `${c.invoiceNumber} ${c.zdNumber ?? ""}`.toLowerCase().includes(q))
-    );
+    const today = todayInWarsaw();
+    return clearances
+      .filter(
+        (c) =>
+          (!filterSupplier || c.supplierName === filterSupplier) &&
+          (!filterStatus || c.status === filterStatus) &&
+          (!q || `${c.invoiceNumber} ${c.zdNumber ?? ""} ${c.shipment.transportRef}`.toLowerCase().includes(q))
+      )
+      .map((c) => ({
+        ...c,
+        // „Należności do zapłaty” mówi już odznaka etapu — na liście nie powtarzamy.
+        alerts: shipmentAlerts(c.shipment, c.status === "sent", today).filter(
+          (a) => !(shipmentStage(c.shipment) === "duties_due" && a.text.startsWith("Należności"))
+        ),
+      }))
+      // Najpierw przesyłki z terminem (najpilniejsze u góry), potem reszta jak dotąd — od najnowszych.
+      .sort((a, b) => (a.alerts[0]?.urgency ?? Infinity) - (b.alerts[0]?.urgency ?? Infinity));
   }, [clearances, filterSupplier, filterStatus, filterText]);
 
   async function readInvoiceFile(file: File) {
@@ -145,7 +158,14 @@ export function CustomsClearanceListClient({
     });
   }
 
-  const canSubmit = Boolean(supplierId && invoiceNumber.trim() && (zdId || pastedLines.trim()));
+  const submitBlocker = !supplierId
+    ? "Wybierz dostawcę."
+    : !invoiceNumber.trim()
+      ? "Wpisz numer faktury."
+      : !(zdId || pastedLines.trim())
+        ? "Wgraj plik faktury, wklej pozycje albo wybierz ZD."
+        : null;
+  const canSubmit = !submitBlocker;
 
   return (
     <div className="space-y-4">
@@ -153,12 +173,41 @@ export function CustomsClearanceListClient({
         <Card>
           <CardHeader
             title="Nowa odprawa"
-            description="Wybierz dostawcę i ZD z Subiekta albo wklej pozycje z faktury. Zatwierdzone wcześniej artykuły uzupełnią się same."
+            description="Wgraj fakturę, wybierz dostawcę (i ZD z Subiekta, jeśli jest). Zatwierdzone wcześniej artykuły uzupełnią się same."
           />
           <div className="grid gap-4 sm:grid-cols-2">
+            <Field
+              label={aiEnabled ? "Plik faktury – Excel, CSV, PDF lub skan" : "Plik faktury – Excel lub CSV"}
+              hint={
+                aiReading
+                  ? "Czytam plik… (PDF / skan przez AI do 2 minut)"
+                  : (aiNote ??
+                    (aiEnabled
+                      ? "Zacznij od pliku: wypełni numer, datę, walutę i pozycje. Excel / CSV czytam po nagłówkach, PDF i skany przez AI."
+                      : "Kolumny rozpoznam po nagłówkach (kod / nazwa / ilość / cena). PDF wymaga włączenia AI."))
+              }
+              state={aiNote ? "success" : "default"}
+              className="sm:col-span-2"
+            >
+              <input
+                type="file"
+                accept={
+                  aiEnabled
+                    ? ".xlsx,.csv,.xls,.tif,.tiff,application/pdf,image/*"
+                    : ".xlsx,.csv,.xls"
+                }
+                disabled={aiReading || pending}
+                className="block w-full min-w-0 pt-1 text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void readInvoiceFile(file);
+                  e.target.value = "";
+                }}
+              />
+            </Field>
             <Field label="Dostawca (import)">
               <Select value={supplierId} onChange={(e) => void onSupplierChange(e.target.value)}>
-                <option value="">— wybierz —</option>
+                <option value="">- wybierz -</option>
                 {suppliers.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
@@ -172,7 +221,7 @@ export function CustomsClearanceListClient({
               state={zdMessage && !zds.length ? "warning" : "default"}
             >
               <Select value={zdId} onChange={(e) => setZdId(e.target.value)} disabled={!zds.length}>
-                <option value="">— bez ZD —</option>
+                <option value="">- bez ZD -</option>
                 {zds.map((z) => (
                   <option key={z.id} value={z.id}>
                     {z.number} · {formatDate(z.date)}
@@ -183,12 +232,18 @@ export function CustomsClearanceListClient({
             <Field label="Numer faktury">
               <Input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="np. AI/3177/26" />
             </Field>
-            <div className="grid grid-cols-[1fr_6rem] gap-3">
-              <Field label="Data faktury">
+            <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-3">
+              <Field label="Data faktury" className="min-w-0">
                 <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
               </Field>
-              <Field label="Waluta">
-                <Input value={currency} onChange={(e) => setCurrency(e.target.value)} maxLength={3} />
+              <Field label="Waluta" className="min-w-0">
+                <Select className="min-w-0" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                  {[...new Set([currency, "EUR", "USD", "GBP", "CNY", "CHF", "JPY", "PLN"])].map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </Select>
               </Field>
             </div>
             <Field
@@ -203,37 +258,8 @@ export function CustomsClearanceListClient({
               />
             </Field>
             <Field
-              label={aiEnabled ? "Plik faktury — Excel, CSV, PDF lub skan" : "Plik faktury — Excel lub CSV"}
-              hint={
-                aiReading
-                  ? "Czytam plik… (PDF / skan przez AI do 2 minut)"
-                  : (aiNote ??
-                    (aiEnabled
-                      ? "Excel / CSV: kolumny rozpoznam po nagłówkach; PDF i skany czyta AI. Pozycje trafią do pola poniżej."
-                      : "Kolumny rozpoznam po nagłówkach (kod / nazwa / ilość / cena). PDF wymaga włączenia AI."))
-              }
-              state={aiNote ? "success" : "default"}
-              className="sm:col-span-2"
-            >
-              <input
-                type="file"
-                accept={
-                  aiEnabled
-                    ? ".xlsx,.csv,.xls,.tif,.tiff,application/pdf,image/*"
-                    : ".xlsx,.csv,.xls"
-                }
-                disabled={aiReading || pending}
-                className="block w-full pt-1 text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void readInvoiceFile(file);
-                  e.target.value = "";
-                }}
-              />
-            </Field>
-            <Field
               label="Pozycje z faktury (opcjonalnie)"
-              hint="Skopiuj z Excela / PDF: kod ⇥ nazwa ⇥ ilość ⇥ cena — jedna pozycja na wiersz. Gdy puste, pozycje bierzemy z ZD."
+              hint="Skopiuj z Excela / PDF: kod ⇥ nazwa ⇥ ilość ⇥ cena - jedna pozycja na wiersz. Gdy puste, pozycje bierzemy z ZD."
               className="sm:col-span-2"
             >
               <textarea
@@ -254,7 +280,10 @@ export function CustomsClearanceListClient({
               {error}
             </Alert>
           ) : null}
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
+          <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+            {submitBlocker && !pending && !aiReading ? (
+              <p className="mr-auto text-sm text-slate-600">{submitBlocker}</p>
+            ) : null}
             {clearances.length ? (
               <Button variant="ghost" onClick={() => setCreating(false)} disabled={pending}>
                 Anuluj
@@ -287,8 +316,8 @@ export function CustomsClearanceListClient({
             aria-label="Status"
           >
             <option value="">Wszystkie statusy</option>
-            <option value="draft">W przygotowaniu</option>
-            <option value="sent">Wysłane</option>
+            <option value="draft">Mail w przygotowaniu</option>
+            <option value="sent">Mail wysłany</option>
           </Select>
           <Input
             value={filterText}
@@ -309,22 +338,32 @@ export function CustomsClearanceListClient({
               <li key={c.id}>
                 <Link
                   href={`/zakupy/odprawy/${c.id}`}
-                  className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3.5 hover:bg-slate-50"
+                  className="flex flex-col gap-1.5 px-5 py-3.5 hover:bg-slate-50 sm:flex-row sm:items-center sm:gap-4"
                 >
-                  <span className="min-w-0 flex-1">
+                  <span className="min-w-0 flex-1 space-y-0.5">
                     <span className="block truncate text-sm font-semibold text-slate-900">
                       {c.supplierName} · {c.invoiceNumber || "bez numeru"}
                     </span>
                     <span className="block text-xs text-slate-500">
-                      Faktura {formatDate(c.invoiceDate)}
-                      {c.zdNumber ? ` · ${c.zdNumber}` : ""} · {c.lineCount} poz.
+                      {[
+                        c.invoiceDate ? `Faktura ${formatDate(c.invoiceDate)}` : null,
+                        c.zdNumber,
+                        `${c.lineCount} poz.`,
+                        [c.shipment.forwarder, c.shipment.transportRef].filter(Boolean).join(" ") || null,
+                        c.status === "sent" ? `mail wysłany ${formatDate(c.sentAt)}` : "mail w przygotowaniu",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </span>
                   </span>
-                  {c.status === "sent" ? (
-                    <Badge variant="success">Wysłane {formatDate(c.sentAt)}</Badge>
-                  ) : (
-                    <Badge variant="warning">W przygotowaniu</Badge>
-                  )}
+                  <span className="flex flex-wrap items-center gap-1.5 sm:max-w-[55%] sm:justify-end">
+                    {c.alerts[0] ? <Badge variant={ALERT_BADGE[c.alerts[0].tone]}>{c.alerts[0].text}</Badge> : null}
+                    {shipmentStage(c.shipment) !== "none" ? (
+                      <Badge variant={STAGE_BADGE[shipmentStage(c.shipment)]}>
+                        {SHIPMENT_STAGE_LABEL[shipmentStage(c.shipment)]}
+                      </Badge>
+                    ) : null}
+                  </span>
                 </Link>
               </li>
             ))}

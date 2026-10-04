@@ -153,7 +153,7 @@ describe("findBestMatchingZdDocument", () => {
     ).toBe(1);
   });
 
-  it("pomija ZD z terminem w przeszłości — wybiera aktywny (DFS 606402)", () => {
+  it("pomija ZD z terminem w przeszłości - wybiera aktywny (DFS 606402)", () => {
     const realized: SubiektDocument = {
       dok_Id: 1740290,
       dok_NrPelny: "ZD 78/M/02/2026",
@@ -346,7 +346,7 @@ describe("findBestMatchingZdDocument", () => {
 });
 
 describe("isConfidentZdMatchForOrder", () => {
-  it("nie ufa luźnemu zapisowi po częściowej dostawie — wymaga dokładnej reszty", () => {
+  it("nie ufa luźnemu zapisowi po częściowej dostawie - wymaga dokładnej reszty", () => {
     const doc: SubiektDocument = {
       dok_Id: 10,
       dok_TerminRealizacji: "2026-08-01",

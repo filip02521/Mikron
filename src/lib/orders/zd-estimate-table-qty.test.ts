@@ -6,8 +6,8 @@ import {
 
 describe("formatZdEstimateTableQty", () => {
   it("returns dash for non-finite", () => {
-    expect(formatZdEstimateTableQty(Number.NaN)).toBe("—");
-    expect(formatZdEstimateTableQty(Number.POSITIVE_INFINITY)).toBe("—");
+    expect(formatZdEstimateTableQty(Number.NaN)).toBe("-");
+    expect(formatZdEstimateTableQty(Number.POSITIVE_INFINITY)).toBe("-");
   });
 
   it("keeps small integers without grouping", () => {

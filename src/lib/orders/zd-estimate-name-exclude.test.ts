@@ -24,7 +24,7 @@ describe("isWycofaneNameToken", () => {
     expect("wycof".length).toBe(ZD_NAME_EXCLUDE_WYCOFANE_MIN_PREFIX);
   });
 
-  it("za krótkie / nieprefiks — bez trafienia", () => {
+  it("za krótkie / nieprefiks - bez trafienia", () => {
     expect(isWycofaneNameToken("wyco")).toBe(false);
     expect(isWycofaneNameToken("wy")).toBe(false);
     expect(isWycofaneNameToken("cofane")).toBe(false);
@@ -67,7 +67,7 @@ describe("matchZdNameAutoExclude", () => {
     ).toBe("outlet");
   });
 
-  it("zwykła nazwa — null", () => {
+  it("zwykła nazwa - null", () => {
     expect(matchZdNameAutoExclude("Freza H364")).toBeNull();
     expect(matchZdNameAutoExclude("")).toBeNull();
     expect(matchZdNameAutoExclude("Produkt wyco")).toBeNull();

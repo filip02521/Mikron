@@ -43,7 +43,7 @@ const TEMPLATES: Record<SubiektErrorCode, FeedbackTemplate> = {
   not_configured: {
     title: "Brak podpowiedzi Subiekt",
     message: "Integracja nie jest skonfigurowana lub jest poza siecią firmową.",
-    hint: "Wyszukiwanie w kartotece nie działa — pola wypełniasz ręcznie.",
+    hint: "Wyszukiwanie w kartotece nie działa - pola wypełniasz ręcznie.",
     tone: "info",
   },
   short_query: {
@@ -59,7 +59,7 @@ const TEMPLATES: Record<SubiektErrorCode, FeedbackTemplate> = {
   not_found_product: {
     title: "Nie znaleziono produktu",
     message: "Brak pozycji pasującej do wpisanej frazy.",
-    hint: "Sprawdź symbol lub wpisz opis produktu ręcznie — prośbę można wysłać bez podpowiedzi.",
+    hint: "Sprawdź symbol lub wpisz opis produktu ręcznie - prośbę można wysłać bez podpowiedzi.",
     tone: "info",
   },
   not_found_supplier: {
@@ -72,7 +72,7 @@ const TEMPLATES: Record<SubiektErrorCode, FeedbackTemplate> = {
     title: "Brak przypisanego dostawcy",
     message:
       "Produkt jest w bazie, ale nie ma jeszcze powiązania z dostawcą.",
-    hint: "Wybierz dostawcę ręcznie — po zapisie powstanie powiązanie.",
+    hint: "Wybierz dostawcę ręcznie - po zapisie powstanie powiązanie.",
     tone: "info",
   },
   not_found_app_supplier: {
@@ -95,7 +95,7 @@ const TEMPLATES: Record<SubiektErrorCode, FeedbackTemplate> = {
   },
   unreachable: {
     title: "Serwer Subiekta niedostępny",
-    message: "Host API nie odpowiada — połączenie zostało odrzucone lub przerwane.",
+    message: "Host API nie odpowiada - połączenie zostało odrzucone lub przerwane.",
     hint: "Na stanowisku pracy: ping do adresu z .env.local, potem curl /api/v1/health. Z domu API zwykle nie działa.",
     tone: "warning",
   },
@@ -114,7 +114,7 @@ const TEMPLATES: Record<SubiektErrorCode, FeedbackTemplate> = {
   server_error: {
     title: "Błąd serwera Subiekta",
     message: "Wewnętrzny błąd usługi REST (SQL lub aplikacja pośrednia).",
-    hint: "Spróbuj za chwilę. Jeśli problem się powtarza — zgłoś do IT / administratora Subiekta.",
+    hint: "Spróbuj za chwilę. Jeśli problem się powtarza - zgłoś do IT / administratora Subiekta.",
     tone: "error",
   },
   invalid_response: {
@@ -126,19 +126,19 @@ const TEMPLATES: Record<SubiektErrorCode, FeedbackTemplate> = {
   health_degraded: {
     title: "Subiekt w stanie obniżonym",
     message: "Usługa działa, ale zgłasza status „degraded”.",
-    hint: "Odczyt z bazy może być niestabilny — podpowiedzi mogą być niepełne.",
+    hint: "Odczyt z bazy może być niestabilny - podpowiedzi mogą być niepełne.",
     tone: "warning",
   },
   sql_not_configured: {
     title: "Brak połączenia SQL",
     message: "API Subiekta nie ma skonfiguowanego połączenia z bazą danych.",
-    hint: "Skonfiguruj MSSQL po stronie usługi REST — bez SQL podpowiedzi nie zadziałają.",
+    hint: "Skonfiguruj MSSQL po stronie usługi REST - bez SQL podpowiedzi nie zadziałają.",
     tone: "error",
   },
   subiekt_unavailable: {
     title: "Subiekt niedostępny",
-    message: "API Subiekta nie odpowiada — np. poza siecią firmową (LAN) lub serwis wyłączony.",
-    hint: "Wpisz nazwę lub symbol produktu — wyniki pojawią się z lokalnej bazy.",
+    message: "API Subiekta nie odpowiada - np. poza siecią firmową (LAN) lub serwis wyłączony.",
+    hint: "Wpisz nazwę lub symbol produktu - wyniki pojawią się z lokalnej bazy.",
     tone: "info",
   },
   unknown: {
@@ -243,7 +243,7 @@ export function notFoundClientFeedback(query: string): SubiektFeedback {
   return getSubiektFeedback("not_found_supplier", {
     title: "Nie znaleziono klienta",
     message: `Brak odbiorcy w Subiekcie dla „${query}”.`,
-    hint: "Możesz wpisać dowolną nazwę ręcznie — pole jest opcjonalne.",
+    hint: "Możesz wpisać dowolną nazwę ręcznie - pole jest opcjonalne.",
   });
 }
 

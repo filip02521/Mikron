@@ -95,7 +95,7 @@ function warsawMonthEnd(key: string): string {
 
 function assertNoError(label: string, error: { message: string } | null): void {
   if (error) {
-    throw new Error(`Podsumowanie miesiąca — ${label}: ${error.message}`);
+    throw new Error(`Podsumowanie miesiąca - ${label}: ${error.message}`);
   }
 }
 

@@ -45,7 +45,7 @@ export async function actionStartZdScopeIndexSync(): Promise<Result<object>> {
   await requireZdEstimateAdmin("mutate");
   const orders = resolveSubiektOrdersConfig();
   if (!orders.ok) return { ok: false, message: orders.message };
-  if (indexSyncRunning) return { ok: false, message: "Indeks już się buduje — poczekaj chwilę." };
+  if (indexSyncRunning) return { ok: false, message: "Indeks już się buduje - poczekaj chwilę." };
   indexSyncRunning = true;
   after(async () => {
     try {

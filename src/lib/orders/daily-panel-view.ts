@@ -23,13 +23,13 @@ export function dailyPanelViewLabel(view: DailyPanelView): string {
 }
 
 const PANEL_INTRO_BY_VIEW: Record<DailyPanelView, string> = {
-  dzis: "Kolejka na dziś — zaległe, prośby handlowców, rezygnacje.",
+  dzis: "Kolejka na dziś - zaległe, prośby handlowców, rezygnacje.",
   tydzien: "Plan zamówień w tygodniu.",
   wyjatki: "Informacja, dostawcy na żądanie i pozycje poza harmonogramem.",
 };
 
 const PANEL_INTRO_SHORTCUTS =
-  "Skróty: / — wyszukaj dostawcę · ↑↓ — grupy prośby · Shift+G / Shift+U — główne / uzupełniające · Ctrl+Z — cofnij.";
+  "Skróty: / - wyszukaj dostawcę · ↑↓ - grupy prośby · Shift+G / Shift+U - główne / uzupełniające · Ctrl+Z - cofnij.";
 
 /** Opis pod nagłówkiem panelu — treść dopasowana do aktywnej zakładki. */
 export function dailyPanelIntroDescription(

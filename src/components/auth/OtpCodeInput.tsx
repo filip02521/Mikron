@@ -115,7 +115,7 @@ export function OtpCodeInput({
         className="flex justify-center gap-2 sm:gap-2.5"
       >
         <span id={`${groupId}-label`} className="sr-only">
-          Kod resetu hasła — 6 cyfr
+          Kod resetu hasła - 6 cyfr
         </span>
         {digits.map((digit, index) => (
           <input

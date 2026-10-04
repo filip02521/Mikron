@@ -179,7 +179,7 @@ export function zkCaseNoteProsbaStatusCopy(
         label: "Dołączana do prośby",
         shortLabel: "Do prośby",
         description:
-          "Przy „Utwórz prośbę” / „Uzupełnij” notatka trafi do uwag pozycji — zakupy ją zobaczą.",
+          "Przy „Utwórz prośbę” / „Uzupełnij” notatka trafi do uwag pozycji - zakupy ją zobaczą.",
         tone: "amber",
       };
     case "planned_pending_attach":
@@ -216,7 +216,7 @@ export function zkCaseNoteProsbaStatusCopy(
         status,
         label: "W prośbie",
         shortLabel: "W prośbie",
-        description: "Ta sama treść jest już w notatce powiązanej prośby — zakupy ją widzą.",
+        description: "Ta sama treść jest już w notatce powiązanej prośby - zakupy ją widzą.",
         tone: "emerald",
       };
   }

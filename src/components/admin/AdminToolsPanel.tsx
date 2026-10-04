@@ -33,10 +33,10 @@ export function AdminToolsPanel() {
           inset
           density="compact"
           title="Narzędzia serwisowe"
-          description="Ręczne operacje na żądanie — większość procesów działa automatycznie w tle."
+          description="Ręczne operacje na żądanie - większość procesów działa automatycznie w tle."
           action={
             <HelpPopover
-              label="Pomoc — narzędzia serwisowe"
+              label="Pomoc - narzędzia serwisowe"
               title="Kiedy używać narzędzi"
               shortLabel="Pomoc"
             >
@@ -49,13 +49,13 @@ export function AdminToolsPanel() {
               <HelpBlock title="Realizacja i ETA">
                 <p>
                   Kolejka dostaw domyka się przy zapisie realizacji i w cronie. Ręczne
-                  przetwarzanie — gdy coś „wisi”. Pełne przeliczenie ETA tylko po korekcie
+                  przetwarzanie - gdy coś „wisi”. Pełne przeliczenie ETA tylko po korekcie
                   historii zamówień.
                 </p>
               </HelpBlock>
               <HelpBlock title="Zadania w tle">
                 <p className="text-xs text-slate-500">
-                  Status automatycznych jobów — w sekcji „Zadania cron” powyżej.
+                  Status automatycznych jobów - w sekcji „Zadania cron” powyżej.
                 </p>
               </HelpBlock>
             </HelpPopover>
@@ -75,7 +75,7 @@ export function AdminToolsPanel() {
               label="Przelicz wszystkie terminy"
               onMessage={notify}
               loadingMessage="Przeliczanie terminów wszystkich dostawców…"
-              loadingHint="Urlopy i interwały — panel dzienny i terminy"
+              loadingHint="Urlopy i interwały - panel dzienny i terminy"
             />
             <p className={cn(panelTypography.caption, "text-slate-500")}>
               Po zapisie urlopu przeliczenie uruchamia się samo.
@@ -106,7 +106,7 @@ export function AdminToolsPanel() {
               />
             </div>
             <p className={cn(panelTypography.caption, "text-slate-500")}>
-              ETA aktualizuje się przy zapisie realizacji — pełne przeliczenie tylko po korekcie
+              ETA aktualizuje się przy zapisie realizacji - pełne przeliczenie tylko po korekcie
               historii.
             </p>
           </div>

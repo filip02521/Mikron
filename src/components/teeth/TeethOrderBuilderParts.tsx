@@ -86,7 +86,7 @@ export function TeethBuilderStepFlow({ steps }: { steps: TeethBuilderStep[] }) {
             type="button"
             onClick={() => handleStepClick(step.stepKey)}
             className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium leading-none transition",
+              "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium leading-none transition",
               "hover:ring-2 hover:ring-indigo-200/50",
               step.done
                 ? "bg-indigo-50 text-indigo-800 ring-1 ring-indigo-200/70"
@@ -171,7 +171,7 @@ export function TeethBuilderGroupList({
   return (
     <section className="space-y-1.5">
       <div className="flex items-center justify-between gap-2 px-0.5">
-        <h3 className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+        <h3 className="text-[10px] font-semibold text-slate-500">
           Lista · {groups.length}
         </h3>
         <div className="flex items-center gap-1.5">
@@ -329,7 +329,7 @@ export function TeethBuilderQuantityRow({
     <div className="space-y-1.5 border-t border-indigo-100/60 pt-2.5">
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+          <span className="text-[10px] font-semibold text-slate-500">
             Ilość
           </span>
           <div className="flex items-center rounded-md ring-1 ring-slate-200/90">

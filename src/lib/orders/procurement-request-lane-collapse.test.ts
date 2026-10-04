@@ -180,7 +180,7 @@ describe("procurement-request-lane-collapse", () => {
     ).toBe("4");
   });
 
-  it("peek partial supplier — Zamów razem tylko nowe", () => {
+  it("peek partial supplier - Zamów razem tylko nowe", () => {
     const groups = [
       group({
         supplierId: "s1",

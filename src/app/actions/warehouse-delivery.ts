@@ -290,7 +290,7 @@ async function loadZdReceiveFilterByDokId(dokId: number): Promise<ZdReceiveFilte
     doc = await getSubiektZdDocumentCached(id);
   } catch (e) {
     if (isSubiektOfflineError(e)) {
-      throw new Error("Subiekt jest niedostępny — spróbuj ponownie za chwilę.");
+      throw new Error("Subiekt jest niedostępny - spróbuj ponownie za chwilę.");
     }
     if (e instanceof SubiektRequestError && e.status === 404) {
       throw new Error("Nie znaleziono dokumentu ZD w Subiekcie.");

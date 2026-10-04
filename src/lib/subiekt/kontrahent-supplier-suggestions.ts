@@ -73,7 +73,7 @@ export function suggestSupplierForUnmappedRow(
       supplierId: ownerId,
       supplierName: row.supplierHint,
       score: 100,
-      reason: "Ten kh_Id jest już w kartotece — wystarczy ponowne indeksowanie ZD",
+      reason: "Ten kh_Id jest już w kartotece - wystarczy ponowne indeksowanie ZD",
       action: "reindex",
     };
   }

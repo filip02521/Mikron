@@ -113,7 +113,7 @@ export function ZkWatchProsbaActions({
         <span
           className={zkWatchRowActionSecondaryClass}
           aria-disabled
-          title="Katalog zębów jest chwilowo niedostępny — odśwież stronę i spróbuj ponownie"
+          title="Katalog zębów jest chwilowo niedostępny - odśwież stronę i spróbuj ponownie"
         >
           Katalog zębów niedostępny
         </span>

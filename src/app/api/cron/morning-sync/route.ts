@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       success: true,
       schedulesProcessed: sync.schedulesProcessed,
       message:
-        "Harmonogramy przeliczone — panel dzienny i lokalizacje pokażą aktualne terminy po odświeżeniu strony.",
+        "Harmonogramy przeliczone - panel dzienny i lokalizacje pokażą aktualne terminy po odświeżeniu strony.",
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Error";

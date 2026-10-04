@@ -20,7 +20,7 @@ export function ProsbaFormHelp({
 }) {
   return (
     <HelpPopover
-      label="Pomoc — jak złożyć prośbę"
+      label="Pomoc - jak złożyć prośbę"
       title="Nowa prośba"
       shortLabel="Pomoc"
       icon={<GuideIcon />}
@@ -28,7 +28,7 @@ export function ProsbaFormHelp({
     >
       <HelpBlock title="Co tu zgłaszasz">
         <p>
-          Formalne zgłoszenie do działu zakupów — zamówienie u dostawcy albo informacja o
+          Formalne zgłoszenie do działu zakupów - zamówienie u dostawcy albo informacja o
           towarze (np. powiadomienie, gdy pojawi się na magazynie). Ogólne pytanie bez zamawiania zadaj na{" "}
           <Link href="/tablica" className="font-medium text-indigo-700 hover:underline">
             Tablicy
@@ -37,7 +37,7 @@ export function ProsbaFormHelp({
         </p>
         <ul className="mt-2 list-disc space-y-1.5 pl-4">
           <li>
-            Jeśli dostawca ma dziś aktywny urlop, zobaczysz subtelną informację —{" "}
+            Jeśli dostawca ma dziś aktywny urlop, zobaczysz subtelną informację -{" "}
             <strong className="font-medium text-slate-800">nie blokuje</strong> wysyłki; zakupy
             zobaczą to przy obsłudze.
           </li>
@@ -47,11 +47,11 @@ export function ProsbaFormHelp({
       <HelpBlock title="Rodzaj prośby">
         <ul className="list-disc space-y-1.5 pl-4">
           <li>
-            <strong className="font-medium text-slate-800">Zamówienie u dostawcy</strong> — składamy
+            <strong className="font-medium text-slate-800">Zamówienie u dostawcy</strong> - składamy
             zamówienie, status śledzisz w „Moje zamówienia”.
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Informacja o towarze</strong> — wariant{" "}
+            <strong className="font-medium text-slate-800">Informacja o towarze</strong> - wariant{" "}
             <span className="font-medium">{INFORMACJA_FLOW_DIRECT.label}</span> (e-mail + wpis u
             Ciebie) albo{" "}
             <span className="font-medium">{INFORMACJA_FLOW_STOCK_OUT.label}</span> (tylko sygnał dla

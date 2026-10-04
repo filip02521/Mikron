@@ -403,7 +403,7 @@ export function SupplierPickerField({
 
         {visibleSubiektRows.length > 0 ? (
           <>
-            <TypeaheadSectionLabel>Subiekt — brak w bazie</TypeaheadSectionLabel>
+            <TypeaheadSectionLabel>Subiekt - brak w bazie</TypeaheadSectionLabel>
             {visibleSubiektRows.map((s, i) => {
               const supplierId = s.supplierId;
               if (!supplierId) {
@@ -413,7 +413,7 @@ export function SupplierPickerField({
                     title={s.label}
                     subtitle={
                       s.detail ??
-                      "Brak w bazie aplikacji — dodaj dostawcę w katalogu lub wybierz z listy „W systemie”."
+                      "Brak w bazie aplikacji - dodaj dostawcę w katalogu lub wybierz z listy „W systemie”."
                     }
                     size={dropdownSize}
                   />

@@ -48,7 +48,7 @@ export const DAILY_PANEL_HIDDEN_REASON_META: Record<
   no_computed_date: {
     sectionTitle: "Brak wyliczonego terminu",
     sectionHint:
-      "Dane są częściowo uzupełnione, ale termin się nie liczy — sprawdź kartę lub użyj „Przelicz terminy”.",
+      "Dane są częściowo uzupełnione, ale termin się nie liczy - sprawdź kartę lub użyj „Przelicz terminy”.",
   },
 };
 

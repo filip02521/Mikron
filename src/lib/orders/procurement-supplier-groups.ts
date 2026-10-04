@@ -7,6 +7,7 @@ import type { SupplierLocation } from "@/types/database";
 import { sortForSomeoneGroups } from "@/lib/orders/procurement-daily-ui";
 import { compareProcurementSubmittedAt } from "@/lib/orders/procurement-request-timing";
 import { groupHighestFlagPriority } from "@/lib/orders/procurement-request-flag";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export type ProcurementSupplierBlock = {
   supplierId: string;
@@ -95,23 +96,17 @@ export function flattenProcurementSupplierBlocks(
 }
 
 export function procurementProductCountLabel(n: number): string {
-  if (n === 1) return "1 produkt";
-  if (n >= 2 && n <= 4) return `${n} produkty`;
-  return `${n} produktów`;
+  return `${n} ${polishPluralWord(n, "produkt", "produkty", "produktów")}`;
 }
 
 /** Etykieta „jeszcze N produktów” przy zwiniętej prośbie wielopozycyjnej. */
 export function procurementMoreProductsLabel(remaining: number): string {
   if (remaining <= 0) return "";
-  if (remaining === 1) return "Jeszcze 1 produkt";
-  if (remaining >= 2 && remaining <= 4) return `Jeszcze ${remaining} produkty`;
-  return `Jeszcze ${remaining} produktów`;
+  return `Jeszcze ${remaining} ${polishPluralWord(remaining, "produkt", "produkty", "produktów")}`;
 }
 
 export function procurementUnseenGroupsLabel(n: number): string {
-  if (n === 1) return "nowa";
-  if (n >= 2 && n <= 4) return "nowe";
-  return "nowych";
+  return polishPluralWord(n, "nowa", "nowe", "nowych");
 }
 
 /** Licznik grup w badge / aria — prośby vs sygnały stock-out. */
@@ -119,14 +114,8 @@ export function procurementBlockGroupCountLabel(
   n: number,
   kind: "request" | "signal" = "request"
 ): string {
-  if (kind === "signal") {
-    if (n === 1) return "1 sygnał";
-    if (n >= 2 && n <= 4) return `${n} sygnały`;
-    return `${n} sygnałów`;
-  }
-  if (n === 1) return "1 prośba";
-  if (n >= 2 && n <= 4) return `${n} prośby`;
-  return `${n} prośb`;
+  if (kind === "signal") return `${n} ${polishPluralWord(n, "sygnał", "sygnały", "sygnałów")}`;
+  return `${n} ${polishPluralWord(n, "prośba", "prośby", "próśb")}`;
 }
 
 /** Forma dopełniacza / biernika w zdaniach („Rozwiń N …”, „Oznaczysz N …”). */
@@ -134,14 +123,8 @@ export function procurementBlockGroupCountPhrase(
   n: number,
   kind: "request" | "signal" = "request"
 ): string {
-  if (kind === "signal") {
-    if (n === 1) return "1 sygnał";
-    if (n >= 2 && n <= 4) return `${n} sygnały`;
-    return `${n} sygnałów`;
-  }
-  if (n === 1) return "1 prośbę";
-  if (n >= 2 && n <= 4) return `${n} prośby`;
-  return `${n} prośb`;
+  if (kind === "signal") return `${n} ${polishPluralWord(n, "sygnał", "sygnały", "sygnałów")}`;
+  return `${n} ${polishPluralWord(n, "prośbę", "prośby", "próśb")}`;
 }
 
 /** Grupy widoczne w UI (pomija zwinięte bloki wieloosobowe u dostawcy). */
@@ -177,7 +160,7 @@ export function formatProcurementSupplierBlockSummary(
 
   const parts = [peoplePart, procurementProductCountLabel(block.lineCount)];
   if (groupCount >= 2) {
-    parts.push(groupCount < 5 ? `${groupCount} grupy` : `${groupCount} grup`);
+    parts.push(`${groupCount} ${polishPluralWord(groupCount, "grupa", "grupy", "grup")}`);
   }
   return parts.join(" · ");
 }
@@ -278,8 +261,8 @@ export function procurementSupplierBlockConfirmCopy(
         ? `${procurementGlowneButtonLabel({
             hasInfoViaPanel: procurementSupplierBlockHasInfoViaPanel(block),
             supplierOrderOnDemand: block.supplierOrderOnDemand,
-          })} · ${groupCount} ${groupCount === 1 ? "osoba" : groupCount < 5 ? "osoby" : "osób"}`
-        : `Uzupełniające · ${groupCount} ${groupCount === 1 ? "osoba" : groupCount < 5 ? "osoby" : "osób"}`,
+          })} · ${groupCount} ${polishPluralWord(groupCount, "osoba", "osoby", "osób")}`
+        : `Uzupełniające · ${groupCount} ${polishPluralWord(groupCount, "osoba", "osoby", "osób")}`,
     people,
   };
 }

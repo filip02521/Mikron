@@ -9,7 +9,7 @@ import {
 } from "./dentex-amberlux-mould-shapes";
 
 describe("dentex-amberlux-mould-shapes", () => {
-  it("przody — 4 sekcje wg katalogu (trójkątne, kwadratowe, owalne, dolne)", () => {
+  it("przody - 4 sekcje wg katalogu (trójkątne, kwadratowe, owalne, dolne)", () => {
     const groups = dentexAmberluxMouldShapeGroups("anterior");
     expect(groups.map((g) => g.shapeId)).toEqual(["triangular", "square", "oval", "lower"]);
     expect(groups[0]!.moulds).toEqual(DENTEX_AMBERLUX_UPPER_TRIANGULAR);
@@ -20,7 +20,7 @@ describe("dentex-amberlux-mould-shapes", () => {
     expect(groups[0]!.moulds).not.toContain("00");
   });
 
-  it("boki — 9 fasonów rzymskich bez IX", () => {
+  it("boki - 9 fasonów rzymskich bez IX", () => {
     const groups = dentexAmberluxMouldShapeGroups("posterior");
     expect(groups[0]!.moulds).toEqual(["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "X"]);
     expect(groups[0]!.moulds).not.toContain("IX");

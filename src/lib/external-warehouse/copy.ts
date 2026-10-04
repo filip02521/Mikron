@@ -93,7 +93,7 @@ export function summarizeSyncResults(results: readonly SyncResultLike[]): {
     ...banner.changes.map((c) => `${c.zkNumber}: ${c.text}`),
   ];
   const busy = results.filter((r) => r.status === "locked" || r.status === "cas_conflict").length;
-  if (busy) items.push(`${busy} ZK odświeża się w innym oknie — wynik pojawi się za chwilę.`);
+  if (busy) items.push(`${busy} ZK odświeża się w innym oknie - wynik pojawi się za chwilę.`);
   if (banner.errors.length) {
     return { tone: "warning", title: "Część ZK nie zsynchronizowała się", items };
   }
@@ -101,6 +101,6 @@ export function summarizeSyncResults(results: readonly SyncResultLike[]): {
   return {
     tone: "success",
     title: "Wszystkie ZK są aktualne",
-    items: busy ? items : [`Sprawdzono ${results.length} ZK — bez zmian w Subiekcie.`],
+    items: busy ? items : [`Sprawdzono ${results.length} ZK - bez zmian w Subiekcie.`],
   };
 }

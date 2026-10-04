@@ -53,7 +53,7 @@ function formatRangeLabel(startDate: string, endDate: string): string {
     const months = ["sty", "lut", "mar", "kwi", "maj", "cze", "lip", "sie", "wrz", "paź", "lis", "gru"];
     return `${day} ${months[m - 1]} ${y}`;
   };
-  return startDate === endDate ? fmt(startDate) : `${fmt(startDate)} – ${fmt(endDate)}`;
+  return startDate === endDate ? fmt(startDate) : `${fmt(startDate)} - ${fmt(endDate)}`;
 }
 
 export function VacationPeriodsSection({

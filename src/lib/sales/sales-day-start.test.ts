@@ -363,7 +363,7 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(item?.href).toContain("focusOrders=o-inf");
   });
 
-  it("informacja stock_auto — subtitle o Subiekcie", () => {
+  it("informacja stock_auto - subtitle o Subiekcie", () => {
     const snapshot = buildSalesDayStartSnapshot({
       rows: [
         row({
@@ -397,7 +397,7 @@ describe("buildSalesDayStartSnapshot", () => {
         row({
           id: "n1",
           supplierName: "Mikran",
-          requestNote: "Pilne — sprawdź termin",
+          requestNote: "Pilne - sprawdź termin",
           requestNoteUnread: true,
           unreadRequestNoteOrderIds: ["o-n1"],
           orderIds: ["o-n1"],
@@ -409,7 +409,7 @@ describe("buildSalesDayStartSnapshot", () => {
     expect(item).toBeDefined();
     expect(item?.count).toBe(1);
     expect(item?.title).toBe("Mikran");
-    expect(item?.subtitle).toBe("Pilne — sprawdź termin");
+    expect(item?.subtitle).toBe("Pilne - sprawdź termin");
     expect(item?.scrollTarget).toBeUndefined();
     expect(item?.ctaLabel).toBe("Zobacz");
     expect(item?.href).toContain("focusOrders=o-n1");
@@ -466,7 +466,7 @@ describe("buildSalesDayStartSnapshot", () => {
           requestNote: "Uwaga",
           requestNoteUnread: true,
           unreadRequestNoteOrderIds: ["o-n5"],
-          procurementCancelNote: "Anulowane — brak na stanie",
+          procurementCancelNote: "Anulowane - brak na stanie",
           orderIds: ["o-n5"],
         }),
       ],
@@ -509,7 +509,7 @@ describe("buildSalesDayStartSnapshot", () => {
 
     const item = snapshot.items.find((i) => i.source === "note_from_procurement");
     expect(item).toBeDefined();
-    expect(item?.subtitle).toBe("Zakupy zaktualizowały uwagi — sprawdź przy pozycji");
+    expect(item?.subtitle).toBe("Zakupy zaktualizowały uwagi - sprawdź przy pozycji");
   });
 });
 

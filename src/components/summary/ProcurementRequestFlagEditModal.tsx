@@ -43,7 +43,7 @@ type ProcurementRequestFlagEditModalProps = {
 function lineLabel(line: ForSomeoneLineFlagFields): string {
   const sym = line.symbol?.trim() && line.symbol !== "-" ? line.symbol : null;
   const prod = line.products?.trim() || "Pozycja";
-  return sym ? `${sym} — ${prod}` : prod;
+  return sym ? `${sym} - ${prod}` : prod;
 }
 
 function ProcurementRequestFlagEditModalForm({
@@ -236,7 +236,7 @@ function ProcurementRequestFlagEditModalForm({
           </legend>
           {selectedIsOrphan ? (
             <p className="mb-2 text-xs text-amber-800">
-              Nieznana flaga — wybierz aktywną albo usuń flagę.
+              Nieznana flaga - wybierz aktywną albo usuń flagę.
             </p>
           ) : null}
           {initialIsInactive && initialDef && keepingInactive ? (
@@ -266,7 +266,7 @@ function ProcurementRequestFlagEditModalForm({
           ) : null}
           {activeDefs.length === 0 && !keepingInactive ? (
             <p className="text-xs text-slate-500">
-              Brak aktywnych flag — dodaj je w „Zarządzaj”.
+              Brak aktywnych flag - dodaj je w „Zarządzaj”.
             </p>
           ) : (
             <div className="flex flex-wrap gap-1.5">
@@ -328,7 +328,7 @@ function ProcurementRequestFlagEditModalForm({
             )}
           />
           <p className={cn(panelTypography.caption, "mt-1")}>
-            Opis widać pod flagą w panelu — krótkie zdanie czyta się najlepiej.
+            Opis widać pod flagą w panelu - krótkie zdanie czyta się najlepiej.
           </p>
         </label>
       </div>

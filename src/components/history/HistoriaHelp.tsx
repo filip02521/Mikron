@@ -7,15 +7,15 @@ import { HISTORY_PREVIEW_COUNT, HISTORY_RETENTION_MONTHS } from "@/lib/orders/hi
 export function HistoriaHelp() {
   return (
     <HelpPopover
-      label="Pomoc — historia zamówień"
+      label="Pomoc - historia zamówień"
       title="Historia zamówień"
       shortLabel="Pomoc"
       icon={<GuideIcon />}
     >
       <HelpBlock title="Dwie sekcje">
         <p>
-          <strong>Indywidualna</strong> — zrealizowane prośby handlowców (bez samych
-          informacji). <strong>Standardowa</strong> — kliknięcia „Zamówione” i przesunięcia
+          <strong>Indywidualna</strong> - zrealizowane prośby handlowców (bez samych
+          informacji). <strong>Standardowa</strong> - kliknięcia „Zamówione” i przesunięcia
           terminów z panelu dziennego.
         </p>
       </HelpBlock>
@@ -23,7 +23,7 @@ export function HistoriaHelp() {
       <HelpBlock title="Lista i wyszukiwanie">
         <p>
           Na ekranie widać {HISTORY_PREVIEW_COUNT} najnowszych wpisów w każdej sekcji. Pełną
-          historię otworzysz przyciskiem „Pokaż pełną historię” — z filtrem tekstowym.
+          historię otworzysz przyciskiem „Pokaż pełną historię” - z filtrem tekstowym.
         </p>
       </HelpBlock>
 
@@ -37,12 +37,12 @@ export function HistoriaHelp() {
       <HelpBlock title="Zamówienia zębowe">
         <p>
           Historia zamówień zębów (oznaczenia w panelu zębów, ETA dostawcy) jest w{" "}
-          <strong>panelu zębów → Historia</strong> — nie w tej sekcji indywidualnej.
+          <strong>panelu zębów → Historia</strong> - nie w tej sekcji indywidualnej.
         </p>
       </HelpBlock>
 
       <HelpBlock title="Administrator">
-        <p>Administrator może ręcznie usunąć pojedynczy wpis — np. po błędnym imporcie.</p>
+        <p>Administrator może ręcznie usunąć pojedynczy wpis - np. po błędnym imporcie.</p>
       </HelpBlock>
     </HelpPopover>
   );

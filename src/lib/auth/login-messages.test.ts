@@ -10,7 +10,7 @@ describe("login-messages", () => {
     vi.unstubAllEnvs();
   });
 
-  it("production — bez wskazówek dev", () => {
+  it("production - bez wskazówek dev", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("VERCEL", "");
     expect(loginSessionLostMessage()).not.toMatch(/\.env|Supabase|192\.168|URL Configuration/i);
@@ -18,7 +18,7 @@ describe("login-messages", () => {
     expect(loginSessionLostMessage()).toContain("Zaloguj się ponownie");
   });
 
-  it("development — podpowiedzi LAN", () => {
+  it("development - podpowiedzi LAN", () => {
     vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "http://192.168.68.51:3000");
     expect(loginSessionLostMessage()).toContain("192.168.68.51:3000");

@@ -26,7 +26,7 @@ export function boardAnnouncementRowClass(opts: {
 }
 
 export function boardAnnouncementRoleBadgeClass(): string {
-  return "inline-flex rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide leading-none text-indigo-900";
+  return "inline-flex rounded-md bg-indigo-100 px-2 py-0.5 text-[10px] font-bold leading-none text-indigo-900";
 }
 
 export function boardAnnouncementAvatarClass(opts: {
@@ -85,9 +85,7 @@ export function boardQuestionRowClass(opts: {
     return cn(
       accent,
       "transition-[background-color,box-shadow,ring-color,border-color] duration-200 ease-out motion-reduce:transition-none",
-      alt
-        ? "bg-amber-50/28 hover:bg-amber-50/38"
-        : "bg-amber-50/14 hover:bg-amber-50/26"
+      alt ? "bg-slate-50/60 hover:bg-slate-100/60" : "bg-white hover:bg-slate-50/90"
     );
   }
 
@@ -112,7 +110,7 @@ export function boardQuestionRowClass(opts: {
 }
 
 export const boardQuestionRowHeaderExpandedClass =
-  "border-b border-indigo-100/70 bg-gradient-to-r from-indigo-50/35 via-white to-white";
+  "border-b border-indigo-100/70 bg-indigo-50/35";
 
 export const boardQuestionUnseenDotClass = "h-2 w-2 shrink-0 rounded-full bg-indigo-500";
 
@@ -121,7 +119,7 @@ export function boardQuestionStatusBadgeClass(opts: {
   open: boolean;
 }): string {
   return cn(
-    "inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide leading-none",
+    "inline-flex shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold leading-none",
     opts.open
       ? "bg-amber-100 text-amber-900 ring-1 ring-amber-200/70"
       : opts.unseen
@@ -138,16 +136,12 @@ export const boardQuestionPreviewClass = cn(
 export const boardQuestionCollapsedMetaClass = "text-slate-600/95";
 
 /** Imię autora pytania — zwykły tekst w kolorze marki. */
-export const boardQuestionAuthorNameClass = "font-semibold text-indigo-700";
+export const boardQuestionAuthorNameClass = "font-semibold text-slate-800";
 
 export function boardThreadAuthorNameClass(tone: BoardThreadMessageTone): string {
   return cn(
     "text-xs font-semibold",
-    tone === "question"
-      ? "text-amber-800"
-      : tone === "procurement"
-        ? "text-indigo-800"
-        : "text-slate-700"
+    tone === "procurement" ? "text-indigo-800" : "text-slate-800"
   );
 }
 
@@ -158,26 +152,26 @@ export const boardQuestionProductContextClass =
   "overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-[inset_0_1px_0_0_rgba(255,255,255,0.9)] ring-1 ring-slate-900/[0.02]";
 
 export const boardQuestionProductContextBodyClass =
-  "bg-gradient-to-br from-slate-50/90 via-white to-white px-3 py-2.5";
+  "bg-slate-50/90 px-3 py-2.5";
 
 export const boardQuestionQuickProsbaStripClass =
-  "flex flex-col gap-2 border-t border-indigo-100/80 bg-gradient-to-r from-indigo-50/55 via-indigo-50/25 to-white px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3";
+  "flex flex-col gap-2 border-t border-indigo-100/80 bg-indigo-50/55 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3";
 
 export const boardQuestionQuickProsbaHintClass =
   "min-w-0 text-[11px] leading-snug text-slate-600 sm:text-xs";
 
 export const boardQuestionQuickProsbaCtaClass =
-  "shrink-0 gap-1.5 border-indigo-200/80 bg-white/90 text-indigo-800 shadow-sm shadow-indigo-900/[0.03] hover:border-indigo-300 hover:bg-indigo-50/80";
+  "shrink-0 gap-1.5 border-indigo-200/80 bg-white/90 text-indigo-800 shadow-sm hover:border-indigo-300 hover:bg-indigo-50/80";
 
 export type BoardThreadMessageTone = "question" | "procurement" | "sales";
 
 export function boardThreadMessageShellClass(tone: BoardThreadMessageTone): string {
   return cn(
-    "rounded-xl border px-3.5 py-3 shadow-sm transition-shadow duration-200",
+    "rounded-xl border px-3.5 py-3",
     tone === "question"
-      ? "border-amber-200/70 bg-gradient-to-br from-amber-50/80 via-white to-white"
+      ? "border-slate-200/90 bg-white"
       : tone === "procurement"
-        ? "border-indigo-200/75 bg-gradient-to-br from-indigo-50/90 via-indigo-50/35 to-white"
+        ? "border-indigo-200/75 bg-indigo-50/70"
         : "border-slate-200/80 bg-slate-50/70"
   );
 }
@@ -186,7 +180,7 @@ export function boardThreadAvatarClass(tone: BoardThreadMessageTone): string {
   return cn(
     "flex size-9 shrink-0 items-center justify-center rounded-full ring-1",
     tone === "question"
-      ? "bg-amber-100 text-amber-800 ring-amber-200/80"
+      ? "bg-slate-100 text-slate-600 ring-slate-200/80"
       : tone === "procurement"
         ? "bg-indigo-100 text-indigo-800 ring-indigo-200/80"
         : "bg-slate-100 text-slate-600 ring-slate-200/80"
@@ -195,12 +189,8 @@ export function boardThreadAvatarClass(tone: BoardThreadMessageTone): string {
 
 export function boardThreadRoleBadgeClass(tone: BoardThreadMessageTone): string {
   return cn(
-    "inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide leading-none",
-    tone === "question"
-      ? "bg-amber-100 text-amber-900"
-      : tone === "procurement"
-        ? "bg-indigo-100 text-indigo-900"
-        : "bg-slate-200/80 text-slate-700"
+    "inline-flex rounded-md px-2 py-0.5 text-[10px] font-bold leading-none",
+    tone === "procurement" ? "bg-indigo-100 text-indigo-900" : "bg-slate-100 text-slate-700"
   );
 }
 
@@ -213,7 +203,7 @@ export const boardAwaitingReplyClass = cn(
 );
 
 export const boardQuestionFabClass =
-  "fixed z-50 flex h-12 min-w-12 items-center justify-center gap-2 rounded-full bg-indigo-600 px-4 text-sm font-semibold text-white shadow-lg transition hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600";
+  "fixed z-50 flex h-12 min-w-12 items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 text-sm font-semibold text-white shadow-lg transition hover:bg-indigo-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600";
 
 /** Licznik na chipie filtra / zakładce tablicy. */
 export function boardChipCountBadgeClass(opts: {
@@ -221,13 +211,13 @@ export function boardChipCountBadgeClass(opts: {
   emphasis?: "default" | "warning" | "action";
 }): string {
   if (opts.active) {
-    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-indigo-600 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-white";
+    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-indigo-600 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-white";
   }
   if (opts.emphasis === "warning") {
-    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-amber-100 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-amber-900";
+    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-amber-100 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-amber-900";
   }
   if (opts.emphasis === "action") {
-    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-indigo-100 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-indigo-900";
+    return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-indigo-100 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-indigo-900";
   }
-  return "inline-flex min-w-[1.15rem] items-center justify-center rounded-full bg-slate-100 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-slate-600";
+  return "inline-flex min-w-[1.15rem] items-center justify-center rounded-md bg-slate-100 px-1.5 py-0.5 tabular-nums text-[10px] font-bold leading-none text-slate-600";
 }

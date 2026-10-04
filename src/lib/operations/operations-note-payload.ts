@@ -30,7 +30,7 @@ export function parseOperationsNoteFollowUpAt(value: string | null | undefined):
 }
 
 export const OPERATIONS_NOTE_CONFLICT_MESSAGE =
-  "Notatka została zmieniona przez kogoś innego — odśwież i spróbuj ponownie.";
+  "Notatka została zmieniona przez kogoś innego - odśwież i spróbuj ponownie.";
 
 export const OPERATIONS_NOTE_ARCHIVED_MUTATE_MESSAGE =
   "Nie można edytować zarchiwizowanej notatki.";

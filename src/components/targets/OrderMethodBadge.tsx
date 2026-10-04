@@ -49,7 +49,7 @@ export function OrderMethodBadge({
   const displayLabel = pressedLabel?.trim() || label;
 
   const shellClass = cn(
-    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
+    "inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium",
     STYLES[kind],
     onClick &&
       "cursor-pointer transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400/40",

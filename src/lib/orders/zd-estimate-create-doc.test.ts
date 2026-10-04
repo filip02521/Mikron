@@ -89,7 +89,7 @@ describe("zdCreateResponseCoversCreateLines", () => {
     ).toBe(true);
   });
 
-  it("legacy coversCreateTwIds — tylko obecność", () => {
+  it("legacy coversCreateTwIds - tylko obecność", () => {
     expect(
       zdCreateResponseCoversCreateTwIds(
         doc({
@@ -103,7 +103,7 @@ describe("zdCreateResponseCoversCreateLines", () => {
 });
 
 describe("resolveDocAfterZdCreate", () => {
-  it("!persistSnapshots — bez getById, source create", async () => {
+  it("!persistSnapshots - bez getById, source create", async () => {
     const getById = vi.fn();
     const created = doc({
       dok_Id: 55,
@@ -126,7 +126,7 @@ describe("resolveDocAfterZdCreate", () => {
     });
   });
 
-  it("pełne pokrycie tw+qty — bez getById", async () => {
+  it("pełne pokrycie tw+qty - bez getById", async () => {
     const getById = vi.fn();
     const created = doc({
       dok_Id: 7,
@@ -151,7 +151,7 @@ describe("resolveDocAfterZdCreate", () => {
     expect(r.source).toBe("create");
   });
 
-  it("qty za niska przy tym samym tw — woła getById", async () => {
+  it("qty za niska przy tym samym tw - woła getById", async () => {
     const reget = doc({
       dok_Id: 7,
       dok_NrPelny: "ZD 7/full",
@@ -179,7 +179,7 @@ describe("resolveDocAfterZdCreate", () => {
     });
   });
 
-  it("mismatch zestawu tw — woła getById", async () => {
+  it("mismatch zestawu tw - woła getById", async () => {
     const reget = doc({
       dok_Id: 7,
       dok_NrPelny: "ZD 7/full",

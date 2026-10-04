@@ -46,6 +46,7 @@ import { IndividualRequestActionBar } from "@/components/summary/IndividualReque
 import { ProcurementProcessLinesModal } from "@/components/summary/ProcurementProcessLinesModal";
 import {
   filterProcessLineIds,
+  processLinesPendingLabel,
   processLinesSuccessToast,
   shouldPickLinesBeforeProcess,
   type ProcurementProcessAction,
@@ -91,7 +92,7 @@ import {
   dailyPanelQueueShellClass,
 } from "@/components/summary/DailyPanelSubsectionBar";
 import { cn } from "@/lib/cn";
-import { panelRowClearFocusOnLeave } from "@/lib/ui/panel-row-actions-reveal";
+import { isTextSelectionInside, panelRowClearFocusOnLeave } from "@/lib/ui/panel-row-actions-reveal";
 import {
   ProcurementRequestCardHeader,
   ProcurementRequestContextBlock,
@@ -167,6 +168,8 @@ import {
   procurementRequestLaneHint,
 } from "@/components/summary/ProcurementRequestLaneHeader";
 import { ProcurementRequestLaneCollapse } from "@/components/summary/ProcurementRequestLaneCollapse";
+import { askConfirm } from "@/components/ui/ConfirmHost";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 function groupHasInformacjaFlow(g: SummaryForSomeoneEnriched): boolean {
   return g.lines.some((l) => l.informacjaViaPanel);
@@ -434,14 +437,16 @@ export function ForSomeoneRequests({
     [todayDateKey]
   );
   const enrichGroup = useCallback(
-    (group: SummaryForSomeoneEnriched) =>
-      isStockOutSection
-        ? enrichStockOutSignalGroup(group)
-        : enrichForSomeoneGroup(group, enrichAt, {
-            supplierMeta: supplierMeta[group.supplierId] ?? null,
-            todayDateKey,
-            weekDays,
-          }),
+    (group: SummaryForSomeoneEnriched) => {
+      const options = {
+        supplierMeta: supplierMeta[group.supplierId] ?? null,
+        todayDateKey,
+        weekDays,
+      };
+      return isStockOutSection
+        ? enrichStockOutSignalGroup(group, enrichAt, options)
+        : enrichForSomeoneGroup(group, enrichAt, options);
+    },
     [enrichAt, isStockOutSection, supplierMeta, todayDateKey, weekDays]
   );
   const unseenVariant: DailyPanelUnseenVariant = isStockOutSection ? "stockOut" : "prosby";
@@ -1065,11 +1070,7 @@ export function ForSomeoneRequests({
       {unseenGroupCount > 0 ? (
         <Badge className={cn("h-7 shrink-0 px-2 text-[11px] font-semibold", dailyPanelUnseenBadgeClass(unseenVariant))}>
           {unseenGroupCount}{" "}
-          {unseenGroupCount === 1
-            ? "nowy"
-            : unseenGroupCount >= 2 && unseenGroupCount <= 4
-              ? "nowe"
-              : "nowych"}
+          {polishPluralWord(unseenGroupCount, "nowy", "nowe", "nowych")}
         </Badge>
       ) : null}
       {collapsibleBlocks.length > 0 && !isStockOutSection ? (
@@ -1162,9 +1163,7 @@ export function ForSomeoneRequests({
               totalCount: group.orderIds.length,
               supplierOrderOnDemand: group.supplierOrderOnDemand,
             }),
-            action === "GLOWNE"
-              ? "Oznaczanie jako główne…"
-              : "Oznaczanie jako uzupełniające…",
+            processLinesPendingLabel(action),
             { scope: key }
           );
           return;
@@ -1173,29 +1172,15 @@ export function ForSomeoneRequests({
         return;
       }
 
-      if (action === "GLOWNE") {
-        run(
-          () => actionProcessIndividual(group.orderIds, "GLOWNE"),
-          processLinesSuccessToast({
-            action: "GLOWNE",
-            selectedCount: group.orderIds.length,
-            totalCount: group.orderIds.length,
-            supplierOrderOnDemand: group.supplierOrderOnDemand,
-          }),
-          "Oznaczanie jako główne…",
-          { scope: key }
-        );
-        return;
-      }
-
       run(
-        () => actionProcessIndividual(group.orderIds, "POBOCZNE"),
+        () => actionProcessIndividual(group.orderIds, action),
         processLinesSuccessToast({
-          action: "POBOCZNE",
+          action,
           selectedCount: group.orderIds.length,
           totalCount: group.orderIds.length,
+          supplierOrderOnDemand: group.supplierOrderOnDemand,
         }),
-        "Oznaczanie jako uzupełniające…",
+        processLinesPendingLabel(action),
         { scope: key }
       );
     },
@@ -1239,6 +1224,8 @@ export function ForSomeoneRequests({
       const root = sectionRootRef.current;
       if (!root) return;
       const target = e.target as Node | null;
+      // Otwarte okno (np. potwierdzenie) przejmuje klawiaturę — skróty listy nie działają pod nim.
+      if (target instanceof Element && target.closest('[aria-modal="true"]')) return;
       const active = document.activeElement;
       const inside =
         (target && root.contains(target)) ||
@@ -1308,9 +1295,15 @@ export function ForSomeoneRequests({
           const glowneConfirm = group.supplierOrderOnDemand
             ? `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako główne bez terminu planowego?`
             : `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako zamówienie główne?`;
-          if (!window.confirm(glowneConfirm)) {
-            return;
-          }
+          void askConfirm({
+            title: "Zamówienie główne?",
+            message: glowneConfirm,
+            confirmLabel: "Oznacz jako główne",
+            defaultConfirm: true,
+          }).then((ok) => {
+            if (ok) requestProcessForGroup(group, "GLOWNE");
+          });
+          return;
         }
         requestProcessForGroup(group, "GLOWNE");
         return;
@@ -1319,13 +1312,15 @@ export function ForSomeoneRequests({
       if ((e.key === "u" || e.key === "U") && e.shiftKey) {
         e.preventDefault();
         if (!shouldPickLinesBeforeProcess(group.lines.length)) {
-          if (
-            !window.confirm(
-              `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako uzupełniające?`
-            )
-          ) {
-            return;
-          }
+          void askConfirm({
+            title: "Zamówienie uzupełniające?",
+            message: `Oznaczyć prośbę u ${group.supplierName} (${group.person}) jako uzupełniające?`,
+            confirmLabel: "Oznacz jako uzupełniające",
+            defaultConfirm: true,
+          }).then((ok) => {
+            if (ok) requestProcessForGroup(group, "POBOCZNE");
+          });
+          return;
         }
         requestProcessForGroup(group, "POBOCZNE");
       }
@@ -1361,7 +1356,7 @@ export function ForSomeoneRequests({
 
   const subsectionHeader = (
     <DailyPanelSubsectionBar
-      title={isStockOutSection ? "Brak na stanie — do zamówienia" : "Prośby handlowców"}
+      title={isStockOutSection ? "Brak na stanie - do zamówienia" : "Prośby handlowców"}
       description={
         isStockOutSection ? INFORMACJA_STOCK_OUT_PROCUREMENT_SECTION_HINT : undefined
       }
@@ -1448,9 +1443,7 @@ export function ForSomeoneRequests({
               totalCount: total,
               supplierOrderOnDemand: processGroup.supplierOrderOnDemand,
             }),
-            action === "GLOWNE"
-              ? "Oznaczanie jako główne…"
-              : "Oznaczanie jako uzupełniające…",
+            processLinesPendingLabel(action),
             {
               scope: key,
               onSuccess: () => setProcessTarget(null),
@@ -1596,7 +1589,7 @@ export function ForSomeoneRequests({
                     const blockScopeKey = procurementSupplierBlockScopeKey(block.supplierId);
                     const blockPending = isScopePending(blockScopeKey);
                     const blockPlannedOrderDate =
-                      showSupplierHeader && !isStockOutSection
+                      showSupplierHeader
                         ? plannedOrderDateForSupplier(supplierMeta[block.supplierId] ?? null, {
                             todayDateKey,
                             weekDays,
@@ -1886,6 +1879,7 @@ export function ForSomeoneRequests({
                                       ) {
                                         return;
                                       }
+                                      if (isTextSelectionInside(e.currentTarget)) return;
                                       scheduleMarkSeen(g);
                                       setFocusedGroupKey(key);
                                       if (hasMultiLine) {

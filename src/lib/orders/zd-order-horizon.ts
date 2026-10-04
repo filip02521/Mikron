@@ -145,17 +145,17 @@ function plDate(key: string): string {
 export function formatZdHorizonBreakdown(h: ZdOrderHorizon): string {
   const lead =
     h.leadSource === "default"
-      ? `dostawa ~${h.leadDays} d (brak historii dostaw — założenie)`
+      ? `dostawa ~${h.leadDays} d (brak historii dostaw - założenie)`
       : `dostawa ~${h.leadDays} d (${h.leadSource === "p90" ? "9 na 10 dostaw" : "mediana"} z ${h.leadSampleCount} dostaw, ${h.leadBusinessDays} dni rob.)`;
   const next =
     h.nextOrderSource === "on_demand"
-      ? "dostawca na żądanie — bez kolejnego zamówienia"
+      ? "dostawca na żądanie - bez kolejnego zamówienia"
       : h.nextOrderDate
         ? `kolejne zamówienie ${plDate(h.nextOrderDate)} (za ${h.nextOrderDays} d)`
         : "brak terminu kolejnego zamówienia";
   const result =
     h.extendedByDays > 0
-      ? `Cel liczony na ${h.horizonDays} dni (${h.nextOrderDays} + ${h.leadDays}) zamiast ${h.stockDays} — zamówienie wystarczy do kolejnej dostawy.`
-      : `Zapas z karty (${h.stockDays} d) pokrywa czas do kolejnej dostawy — ilości bez zmian.`;
+      ? `Cel liczony na ${h.horizonDays} dni (${h.nextOrderDays} + ${h.leadDays}) zamiast ${h.stockDays} - zamówienie wystarczy do kolejnej dostawy.`
+      : `Zapas z karty (${h.stockDays} d) pokrywa czas do kolejnej dostawy - ilości bez zmian.`;
   return `${next}; ${lead}. ${result}`;
 }

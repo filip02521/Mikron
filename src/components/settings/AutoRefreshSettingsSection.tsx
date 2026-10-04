@@ -83,7 +83,7 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
         {showSales ? (
           <label
             className={cn(
-              "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-all",
+              "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-colors",
               salesValue
                 ? "border-indigo-200/80 bg-indigo-50/40"
                 : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
@@ -113,7 +113,7 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
         {showOps ? (
           <label
             className={cn(
-              "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-all",
+              "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-colors",
               opsValue
                 ? "border-indigo-200/80 bg-indigo-50/40"
                 : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"
@@ -143,7 +143,7 @@ export function AutoRefreshSettingsSection({ role }: AutoRefreshSettingsSectionP
         {showTeeth ? (
           <label
             className={cn(
-              "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-all",
+              "flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition-colors",
               teethValue
                 ? "border-indigo-200/80 bg-indigo-50/40"
                 : "border-slate-200/70 bg-white hover:border-slate-300/80 hover:bg-slate-50/40"

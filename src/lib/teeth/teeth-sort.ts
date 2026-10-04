@@ -5,7 +5,7 @@ import { resolveTeethQueueEnteredAt } from "@/lib/teeth/teeth-queue-wait";
 export type TeethSortKey = "supplier" | "created" | "items" | "eta";
 
 export const TEETH_SORT_LABELS: Record<TeethSortKey, string> = {
-  supplier: "Dostawca (A–Z)",
+  supplier: "Dostawca (A-Z)",
   created: "Data prośby (najnowsze)",
   items: "Liczba pozycji (najwięcej)",
   eta: "ETA dostawy (najszybszy)",

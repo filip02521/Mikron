@@ -161,7 +161,7 @@ export function formatZkWatchProsbaScopeSummary(
   const skipped = productLines.filter((line) => needsByKey.get(line.key) === false).length;
   const pending = productLines.length - toOrder - skipped;
 
-  if (toOrder === 0 && pending === 0) return "Bez prośby — nic nie wybrane";
+  if (toOrder === 0 && pending === 0) return "Bez prośby - nic nie wybrane";
   const parts: string[] = [];
   if (toOrder > 0) {
     parts.push(toOrder === 1 ? "1 do zamówienia" : `${toOrder} do zamówienia`);
@@ -200,15 +200,15 @@ export function deriveZkProsbaScopeAutoProsbaGate(
     input.stockLoading;
 
   const hint = input.overBatchLimit
-    ? "Można dodać maks. 30 pozycji naraz — utwórz prośbę z karty ZK."
+    ? "Można dodać maks. 30 pozycji naraz - utwórz prośbę z karty ZK."
     : input.teethCatalogUnavailable
-      ? "Katalog zębów jest chwilowo niedostępny — odśwież stronę i spróbuj ponownie."
+      ? "Katalog zębów jest chwilowo niedostępny - odśwież stronę i spróbuj ponownie."
       : input.stockUnavailable
-        ? "Nie udało się sprawdzić stanu magazynowego — utwórz prośbę później z karty ZK."
+        ? "Nie udało się sprawdzić stanu magazynowego - utwórz prośbę później z karty ZK."
         : input.stockLoading
           ? "Sprawdzam stan magazynowy…"
           : input.teethIncomplete
-            ? "Najpierw uzupełnij listę zębów — prośba powstanie po zapisie."
+            ? "Najpierw uzupełnij listę zębów - prośba powstanie po zapisie."
             : null;
 
   return { disabled, hint };

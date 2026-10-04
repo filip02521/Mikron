@@ -76,9 +76,9 @@ function row(extra: Partial<MyOrderRow> = {}): MyOrderRow {
     salesPersonId: "sp",
     requestKind: "zamowienie",
     canEditBySales: false,
-    headline: "Zamówione — czekamy na dostawę",
+    headline: "Zamówione - czekamy na dostawę",
     headlineTone: "info",
-    subline: "Mało dostaw w historii — termin jest orientacyjny",
+    subline: "Mało dostaw w historii - termin jest orientacyjny",
     requestNote: null,
     procurementCancelNote: null,
     ...extra,
@@ -102,7 +102,7 @@ describe("my-order-row-layout", () => {
     expect(myOrderExpandedNotes(r)).toBeNull();
   });
 
-  it("pokazuje hint przy opóźnieniu i częściowej dostawie — bez produktu w hint", () => {
+  it("pokazuje hint przy opóźnieniu i częściowej dostawie - bez produktu w hint", () => {
     expect(
       myOrderCollapsedStatusHint(
         row({
@@ -125,18 +125,18 @@ describe("my-order-row-layout", () => {
     );
   });
 
-  it("weryfikacja — skrót na liście bez powtórzenia w expanded", () => {
+  it("weryfikacja - skrót na liście bez powtórzenia w expanded", () => {
     const r = row({
       statusTitle: "W dziale dostaw",
       statusDetail:
-        "Dział dostaw dopasuje dostawcę. Prośba jest zapisana — nie musisz nic uzupełniać.",
-      subline: "Zakupy dopasują dostawcę — bez Twojej akcji",
+        "Dział dostaw dopasuje dostawcę. Prośba jest zapisana - nie musisz nic uzupełniać.",
+      subline: "Zakupy dopasują dostawcę - bez Twojej akcji",
     });
     expect(myOrderCollapsedStatusHint(r)).toContain("Zakupy dopasują dostawcę");
     expect(myOrderExpandedNotes(r)).toBeNull();
   });
 
-  it("context line — dostawca i pojedynczy klient", () => {
+  it("context line - dostawca i pojedynczy klient", () => {
     expect(myOrderCollapsedContextLine(row())).toBe("Dostawca");
     expect(
       myOrderCollapsedContextLine(row({ clientLabel: "Klinika Smile" }))
@@ -169,7 +169,7 @@ describe("my-order-row-layout", () => {
     );
   });
 
-  it("informacja „Oczekuje na magazyn” — wyjaśnienie w rozwinięciu, wiersz zwijany", () => {
+  it("informacja „Oczekuje na magazyn” - wyjaśnienie w rozwinięciu, wiersz zwijany", () => {
     const r = row({
       kind: "informacja",
       requestKind: "informacja",
@@ -186,7 +186,7 @@ describe("my-order-row-layout", () => {
     ).toBe(true);
   });
 
-  it("wielu terminów ZD — podpowiedź rozwinięcia z poprawną liczbą", () => {
+  it("wielu terminów ZD - podpowiedź rozwinięcia z poprawną liczbą", () => {
     const r = row({
       zdFulfillment: {
         deadline: "2026-07-15",
@@ -200,11 +200,11 @@ describe("my-order-row-layout", () => {
       },
     });
     expect(myOrderExpandHint(r, { listKind: "zamowienie", showGroupPickup: false })).toBe(
-      "Rozwiń — 2 terminy"
+      "Rozwiń - 2 terminy"
     );
   });
 
-  it("grupa mieszana ZD + brak terminu — podpowiedź o wszystkich terminach", () => {
+  it("grupa mieszana ZD + brak terminu - podpowiedź o wszystkich terminach", () => {
     const r = row({
       zdFulfillment: {
         deadline: "2026-06-24",
@@ -238,7 +238,7 @@ describe("my-order-row-layout", () => {
     );
   });
 
-  it("pojedyncza prośba — skrót bez nazwy produktu na liście", () => {
+  it("pojedyncza prośba - skrót bez nazwy produktu na liście", () => {
     const r = row({ subline: null });
     expect(myOrderCollapsedProductSummary(r, "zamowienie")).toBe("1 produkt");
     expect(myOrderExpandHint(r, { listKind: "zamowienie", showGroupPickup: false })).toBe(
@@ -246,10 +246,10 @@ describe("my-order-row-layout", () => {
     );
   });
 
-  it("„Zamówione” na czas — termin nie w hint (idzie do railu)", () => {
+  it("„Zamówione” na czas - termin nie w hint (idzie do railu)", () => {
     const r = row({
       statusTitle: "Zamówione",
-      headline: "Zamówione — czekamy na dostawę",
+      headline: "Zamówione - czekamy na dostawę",
       headlineTone: "info",
       timingLabel: "ok. 20.06.2026 (~8 dni rob.)",
       subline: null,
@@ -258,7 +258,7 @@ describe("my-order-row-layout", () => {
     expect(myOrderCollapsedStatusHint(r)).toBeNull();
   });
 
-  it("zamowione z ostrzezeniem o historii — produkt w tytule, nie w hint", () => {
+  it("zamowione z ostrzezeniem o historii - produkt w tytule, nie w hint", () => {
     const r = row({
       statusTitle: "Zamówione",
       headlineTone: "info",
@@ -269,7 +269,7 @@ describe("my-order-row-layout", () => {
     expect(myOrderCollapsedStatusHint(r)).toBeNull();
   });
 
-  it("po terminie — produkt w tytule, termin w railu", () => {
+  it("po terminie - produkt w tytule, termin w railu", () => {
     const r = row({
       lineCount: 4,
       lines: Array.from({ length: 4 }, (_, i) => ({

@@ -56,17 +56,17 @@ describe("parseInterval", () => {
     expect(parseInterval("602344121")).toBeNull();
   });
 
-  it("Co pół roku — 6 MIESIĘCY = 6 months", () => {
+  it("Co pół roku - 6 MIESIĘCY = 6 months", () => {
     expect(parseInterval("6 MIESIĘCY")).toEqual({ unit: "months", value: 6 });
     expect(parseInterval("6 miesięcy")).toEqual({ unit: "months", value: 6 });
   });
 
-  it("Co kwartał — 3 MIESIĄCE = 3 months", () => {
+  it("Co kwartał - 3 MIESIĄCE = 3 months", () => {
     expect(parseInterval("3 MIESIĄCE")).toEqual({ unit: "months", value: 3 });
     expect(parseInterval("kwartał")).toEqual({ unit: "months", value: 3 });
   });
 
-  it("Co miesiąc — 1 MIESIĄC = 1 month", () => {
+  it("Co miesiąc - 1 MIESIĄC = 1 month", () => {
     expect(parseInterval("1 MIESIĄC")).toEqual({ unit: "months", value: 1 });
   });
 
@@ -76,7 +76,7 @@ describe("parseInterval", () => {
   });
 });
 
-describe("resolveSupplierInterval — full cycle", () => {
+describe("resolveSupplierInterval - full cycle", () => {
   it("6 MIESIĘCY: interval_weeks=null, resolves from raw", () => {
     const parsed = parseInterval("6 MIESIĘCY");
     const stored = intervalWeeksForStorage("6 MIESIĘCY", parsed);

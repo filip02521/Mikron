@@ -21,7 +21,7 @@ describe("zkWatchRowAttentionBadgeClass", () => {
       const cls = zkWatchRowAttentionBadgeClass(kind);
       expect(cls).toContain("h-5");
       expect(cls).toContain("rounded-md");
-      expect(cls).toContain("ring-1");
+      expect(cls).not.toContain("ring-1");
     }
 
     expect(zkWatchRowInlineBadgeClass).toContain("h-5");

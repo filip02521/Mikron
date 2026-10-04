@@ -50,7 +50,7 @@ describe("sales email templates", () => {
     expect(html).toContain("magazyn potwierdza dostępność");
   });
 
-  it("informacja stock_auto — copy o Subiekcie, nie magazyn potwierdził", () => {
+  it("informacja stock_auto - copy o Subiekcie, nie magazyn potwierdził", () => {
     const { html, subject } = renderInformacjaArrivedEmail({
       recipientName: "Anna",
       items: [

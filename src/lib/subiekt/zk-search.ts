@@ -263,10 +263,10 @@ export function zkSearchNotFoundMessage(
 export function zkSearchChooseHint(query: string, scope: ZkSearchScope, count: number): string {
   const q = normalizeZkQuery(query);
   if (scope.mode === "month") {
-    return `W ${scope.monthLabel} znaleziono ${count} ZK pasujących do „${q}” — wybierz właściwe.`;
+    return `W ${scope.monthLabel} znaleziono ${count} ZK pasujących do „${q}” - wybierz właściwe.`;
   }
   if (scope.mode === "recent") {
-    return `Z ostatnich ${scope.days} dni znaleziono ${count} ZK pasujących do „${q}” — wybierz właściwe.`;
+    return `Z ostatnich ${scope.days} dni znaleziono ${count} ZK pasujących do „${q}” - wybierz właściwe.`;
   }
-  return `Znaleziono ${count} ZK pasujących do „${q}” — wybierz właściwe.`;
+  return `Znaleziono ${count} ZK pasujących do „${q}” - wybierz właściwe.`;
 }

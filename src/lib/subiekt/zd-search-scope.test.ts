@@ -25,14 +25,14 @@ import {
 } from "./zd-search-scope";
 
 describe("zd-search-scope", () => {
-  it("zdContractorInitialDataOd — 30 dni wstecz", () => {
+  it("zdContractorInitialDataOd - 30 dni wstecz", () => {
     expect(ZD_CONTRACTOR_INITIAL_DAYS).toBe(30);
     expect(zdContractorInitialDataOd(new Date("2026-06-18T12:00:00+02:00"))).toBe(
       "2026-05-19"
     );
   });
 
-  it("zdContractorExtendedDataOd — 3 miesiące wstecz", () => {
+  it("zdContractorExtendedDataOd - 3 miesiące wstecz", () => {
     expect(ZD_CONTRACTOR_EXTENDED_MONTHS).toBe(3);
     expect(ZD_CONTRACTOR_RECENT_MONTHS).toBe(3);
     expect(zdContractorExtendedDataOd(new Date("2026-06-18T12:00:00+02:00"))).toBe(
@@ -43,13 +43,13 @@ describe("zd-search-scope", () => {
     );
   });
 
-  it("zdProductSearchDataOd — szerszy zakres bez kh_Id", () => {
+  it("zdProductSearchDataOd - szerszy zakres bez kh_Id", () => {
     const od = zdProductSearchDataOd();
     const contractorOd = zdContractorExtendedDataOd();
     expect(od < contractorOd).toBe(true);
   });
 
-  it("zgłoszenie starsze niż rolling 3m — dataOd sięga okresu zamówienia (np. luty)", () => {
+  it("zgłoszenie starsze niż rolling 3m - dataOd sięga okresu zamówienia (np. luty)", () => {
     const syncAt = new Date("2026-06-18T12:00:00+02:00");
     const februaryPlacement = "2026-02-10";
     const rolling = zdContractorExtendedDataOd(syncAt);
@@ -69,11 +69,11 @@ describe("zd-search-scope", () => {
     expect(fromPlacement < rolling).toBe(true);
   });
 
-  it("zdDataDoFromPlacement — okno po zamówieniu", () => {
+  it("zdDataDoFromPlacement - okno po zamówieniu", () => {
     expect(zdDataDoFromPlacement("2026-02-10")).toBe("2026-06-10");
   });
 
-  it("stare zgłoszenie — okna miesięczne wokół lutego (miesiąc wstecz + 2 naprzód)", () => {
+  it("stare zgłoszenie - okna miesięczne wokół lutego (miesiąc wstecz + 2 naprzód)", () => {
     const syncAt = new Date("2026-06-18T12:00:00+02:00");
     const placement = "2026-02-10";
     expect(placementIsOlderThanRollingWindow(placement, syncAt)).toBe(true);
@@ -98,7 +98,7 @@ describe("zd-search-scope", () => {
     expect(apiWindow).toEqual({ dataOd: "2026-01-01", dataDo: "2026-05-01" });
   });
 
-  it("świeże zgłoszenie — ostatnie 3 miesiące kalendarzowe", () => {
+  it("świeże zgłoszenie - ostatnie 3 miesiące kalendarzowe", () => {
     const syncAt = new Date("2026-06-18T12:00:00+02:00");
     const placement = "2026-06-10";
     expect(placementIsOlderThanRollingWindow(placement, syncAt)).toBe(false);
@@ -110,7 +110,7 @@ describe("zd-search-scope", () => {
     ]);
   });
 
-  it("świeże zgłoszenie na granicy rolling — obejmuje miesiąc prośby (czerwiec przy sync we wrześniu)", () => {
+  it("świeże zgłoszenie na granicy rolling - obejmuje miesiąc prośby (czerwiec przy sync we wrześniu)", () => {
     const syncAt = new Date("2026-09-01T12:00:00+02:00");
     const placement = "2026-06-15";
     expect(placementIsOlderThanRollingWindow(placement, syncAt)).toBe(false);
@@ -120,14 +120,14 @@ describe("zd-search-scope", () => {
     expect(chunks.some((c) => c.dataOd === "2026-09-01")).toBe(true);
   });
 
-  it("buildZdSearchPlacements — prośba + historia dostawcy, bez duplikatów", () => {
+  it("buildZdSearchPlacements - prośba + historia dostawcy, bez duplikatów", () => {
     const syncAt = new Date("2026-06-18T12:00:00+02:00");
     expect(
       buildZdSearchPlacements("2026-05-12", ["2026-04-14", "2026-05-26", "2026-03-10"], syncAt)
     ).toEqual(["2026-05-12", "2026-05-26", "2026-04-14", "2026-03-10"]);
   });
 
-  it("zdMergedPlacementBrowseMonthChunks — łączy okna prośby i zamówień głównych", () => {
+  it("zdMergedPlacementBrowseMonthChunks - łączy okna prośby i zamówień głównych", () => {
     const syncAt = new Date("2026-06-18T12:00:00+02:00");
     const merged = zdMergedPlacementBrowseMonthChunks(
       ["2026-05-12", "2026-04-14"],
@@ -139,13 +139,13 @@ describe("zd-search-scope", () => {
     expect(merged[0]).toEqual({ dataOd: "2026-05-01", dataDo: "2026-06-01" });
   });
 
-  it("zdTwIdListDataOd — od początku roku zamówienia (otwarty ZD z lutego przy prośbie w czerwcu)", () => {
+  it("zdTwIdListDataOd - od początku roku zamówienia (otwarty ZD z lutego przy prośbie w czerwcu)", () => {
     const syncAt = new Date("2026-06-18T12:00:00+02:00");
     expect(zdTwIdListDataOd("2026-06-15", syncAt)).toBe("2026-01-01");
     expect(zdTwIdListDataOd("2026-02-10", syncAt)).toBe("2026-01-01");
   });
 
-  it("zdTwIdBrowseMonthChunks — obejmuje luty przy prośbie w czerwcu", () => {
+  it("zdTwIdBrowseMonthChunks - obejmuje luty przy prośbie w czerwcu", () => {
     const syncAt = new Date("2026-06-18T12:00:00+02:00");
     const chunks = zdTwIdBrowseMonthChunks("2026-06-15", syncAt);
     expect(chunks.some((c) => c.dataOd === "2026-02-01")).toBe(true);

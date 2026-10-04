@@ -13,7 +13,7 @@ export const PROSBA_SUPPLIER_VACATION_COPY = {
   titleOne: "Dostawca na urlopie",
   titleMany: "Dostawcy na urlopie",
   canStillSubmit:
-    "Prośbę możesz wysłać — zakupy zobaczą to przy obsłudze; termin realizacji może się przesunąć.",
+    "Prośbę możesz wysłać - zakupy zobaczą to przy obsłudze; termin realizacji może się przesunąć.",
   differentRanges: "różne okresy",
 } as const;
 
@@ -113,7 +113,7 @@ export function buildProsbaSupplierVacationNoticeModel(
 
   return {
     title: PROSBA_SUPPLIER_VACATION_COPY.titleMany,
-    description: `${names} — urlop ${rangePart}. ${PROSBA_SUPPLIER_VACATION_COPY.canStillSubmit}`,
+    description: `${names} - urlop ${rangePart}. ${PROSBA_SUPPLIER_VACATION_COPY.canStillSubmit}`,
     rangeTitle: allSameRange
       ? formatSupplierVacationRangeTitle(hits[0]!.window)
       : hits

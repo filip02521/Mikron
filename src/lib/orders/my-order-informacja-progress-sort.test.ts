@@ -39,7 +39,7 @@ describe("sortInformacjaProgressRows", () => {
     expect(sorted.map((r) => r.id)).toEqual(["ack", "wait"]);
   });
 
-  it("sortuje potwierdzenia po dacie e-maila — najświeższy u góry", () => {
+  it("sortuje potwierdzenia po dacie e-maila - najświeższy u góry", () => {
     const older = row({
       id: "old",
       acknowledgeMode: "availability",

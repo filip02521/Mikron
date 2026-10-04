@@ -54,7 +54,7 @@ export function ProductCatalogSupplierAssign({
           disabled={disabled}
           className={cn("w-full", compact && "h-8 py-1 text-xs")}
         >
-          <option value="">— dostawca —</option>
+          <option value="">- dostawca -</option>
           {suppliers.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name}
@@ -90,7 +90,7 @@ export function ProductCatalogSupplierAssign({
       <div className="mt-2">{controls}</div>
       {row.topSupplier && unchanged ? (
         <p className="mt-1.5 text-[11px] text-slate-500">
-          Wybierz innego dostawcę z listy — stanie się głównym w katalogu (starsze mapowania
+          Wybierz innego dostawcę z listy - stanie się głównym w katalogu (starsze mapowania
           zostają w historii).
         </p>
       ) : (

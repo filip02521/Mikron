@@ -16,7 +16,7 @@ export function appendMojeFocusOrderIds(href: string, orderIds: string[]): strin
   return next ? `${path}?${next}` : path;
 }
 
-/** Mapuje ID pojedynczych prośb na ID wierszy listy /moje. */
+/** Mapuje ID pojedynczych próśb na ID wierszy listy /moje. */
 export function findMyOrderRowIdsForFocusOrderIds(
   rows: MyOrderRow[],
   focusOrderIds: string[]

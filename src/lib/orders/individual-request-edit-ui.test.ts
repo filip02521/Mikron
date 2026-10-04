@@ -30,7 +30,7 @@ function forSomeoneGroup(
 }
 
 describe("editInitialFromForSomeoneGroup", () => {
-  it("rozpoznaje prośbę informacyjną — brak na stanie", () => {
+  it("rozpoznaje prośbę informacyjną - brak na stanie", () => {
     const initial = editInitialFromForSomeoneGroup(
       forSomeoneGroup([
         {
@@ -94,11 +94,11 @@ describe("editInitialFromForSomeoneGroup", () => {
           quantity: "1",
           fromSubiekt: true,
           submittedAt: "2026-05-01",
-          requestNote: "  pilne — termin piątek  ",
+          requestNote: "  pilne - termin piątek  ",
         },
       ])
     );
-    expect(initial.lines[0]?.requestNote).toBe("pilne — termin piątek");
+    expect(initial.lines[0]?.requestNote).toBe("pilne - termin piątek");
   });
 
   it("zachowuje różne notatki na liniach", () => {

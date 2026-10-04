@@ -200,7 +200,7 @@ export function ZdEstimateNameMetaStack({
           kind="min"
           meta={`${minStockSzt} szt`}
           tone="emerald"
-          title={`Minimum stanów: ${minStockSzt} szt — kreator dobija cel z max(cel ze sprzedaży, ${minStockSzt})`}
+          title={`Minimum stanów: ${minStockSzt} szt - kreator dobija cel z max(cel ze sprzedaży, ${minStockSzt})`}
         />
       ),
     });
@@ -242,7 +242,7 @@ export function ZdEstimateNameMetaStack({
     return (
       <div className="zd-est-status" title="Brak oznaczeń statusu">
         <span className="zd-est-status-empty" aria-hidden>
-          —
+          -
         </span>
       </div>
     );

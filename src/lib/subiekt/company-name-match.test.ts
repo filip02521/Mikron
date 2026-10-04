@@ -11,7 +11,7 @@ describe("stripCompanyLegalForm", () => {
 describe("scoreCompanyNameMatch", () => {
   it("wysoki wynik dla tej samej marki przy innej formie prawnej", () => {
     const r = scoreCompanyNameMatch(
-      "REN — Renfert Polska sp. z o.o.",
+      "REN - Renfert Polska sp. z o.o.",
       "Renfert Polska sp. k."
     );
     expect(r.score).toBeGreaterThanOrEqual(85);

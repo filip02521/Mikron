@@ -267,11 +267,11 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
       <div className="space-y-5">
         <Alert tone="info">
           Produkty z tej listy <strong>nie przechodzą kontroli stanu magazynowego</strong> przy
-          składaniu prośby o zamówienie — bez ostrzeżeń „towar na stanie” i bez blokady zapisu.
+          składaniu prośby o zamówienie - bez ostrzeżeń „towar na stanie” i bez blokady zapisu.
           Identyfikator <code className="text-xs">tw_Id</code> pochodzi z Subiekta.
           <p className="mt-2 text-sm leading-relaxed">
             Aby handlowiec mógł zamawiać przody i boki z jednego okna, zarejestruj oba towary
-            Subiekta tej samej linii produktowej — jeden jako Przednie, drugi jako Boczne.
+            Subiekta tej samej linii produktowej - jeden jako Przednie, drugi jako Boczne.
           </p>
         </Alert>
 
@@ -280,11 +280,11 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
             <div>
               <h2 className={panelTypography.rowTitle}>Dodaj z Subiekta</h2>
               <p className={cn(panelTypography.rowMeta, "mt-1 max-w-2xl")}>
-                Wyszukaj towar po symbolu, nazwie lub kodzie PLU / kreskowym — dane wczytują się
+                Wyszukaj towar po symbolu, nazwie lub kodzie PLU / kreskowym - dane wczytują się
                 bezpośrednio z kartoteki Subiekta.
               </p>
             </div>
-            <Badge variant="purple" className="mt-1 w-fit shrink-0">
+            <Badge variant="info" className="mt-1 w-fit shrink-0">
               {rows.length} na liście
             </Badge>
           </div>
@@ -330,7 +330,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                 <p className="text-sm text-rose-700">{visibleSearchError}</p>
               ) : visibleSearchHits.length === 0 ? (
                 <p className={cn(panelTypography.rowMeta, "text-slate-500")}>
-                  Brak nowych wyników — sprawdź frazę lub czy towar nie jest już na liście.
+                  Brak nowych wyników - sprawdź frazę lub czy towar nie jest już na liście.
                 </p>
               ) : (
                 <ul className="max-h-52 space-y-1 overflow-y-auto">
@@ -375,7 +375,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                     onChange={(event) => setAddManufacturer(event.target.value)}
                     className={fieldControlClass()}
                   >
-                    <option value="">— wybierz —</option>
+                    <option value="">- wybierz -</option>
                     {TEETH_MANUFACTURERS.map((m) => (
                       <option key={m.id} value={m.id}>{m.label}</option>
                     ))}
@@ -387,7 +387,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                     onChange={(event) => setAddKind(event.target.value)}
                     className={fieldControlClass()}
                   >
-                    <option value="">— auto —</option>
+                    <option value="">- auto -</option>
                     <option value="anterior">{TEETH_KIND_LABELS.anterior}</option>
                     <option value="posterior">{TEETH_KIND_LABELS.posterior}</option>
                   </select>
@@ -397,7 +397,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                     </p>
                   ) : null}
                 </Field>
-                <Field label="Notatka (opcjonalnie)" hint="Dla administratora — np. seria, uwagi.">
+                <Field label="Notatka (opcjonalnie)" hint="Dla administratora - np. seria, uwagi.">
                   <textarea
                     value={addNote}
                     onChange={(event) => setAddNote(event.target.value)}
@@ -471,7 +471,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                             <span className="text-xs text-slate-500">{row.plu}</span>
                           ) : null}
                           {row.productLine ? (
-                            <Badge variant="purple" className="text-[10px]">
+                            <Badge variant="info" className="text-[10px]">
                               {teethProductLineLabel(row.productLine)}
                             </Badge>
                           ) : null}
@@ -525,7 +525,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                               onBlur={() => saveManufacturer(row)}
                               className={fieldControlClass()}
                             >
-                              <option value="">— brak —</option>
+                              <option value="">- brak -</option>
                               {TEETH_MANUFACTURERS.map((m) => (
                                 <option key={m.id} value={m.id}>{m.label}</option>
                               ))}
@@ -544,7 +544,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                               className={fieldControlClass()}
                               disabled={!((manufacturerDrafts[row.subiektTwId] ?? row.manufacturer) as string)}
                             >
-                              <option value="">— auto z nazwy —</option>
+                              <option value="">- auto z nazwy -</option>
                               {teethLinesForManufacturer(
                                 (manufacturerDrafts[row.subiektTwId] ?? row.manufacturer ?? "ivoclar") as TeethManufacturer,
                               ).map((line) => (
@@ -564,7 +564,7 @@ export function TeethProductsAdminClient({ initial }: { initial: TeethProductRow
                               onBlur={() => saveKind(row)}
                               className={fieldControlClass()}
                             >
-                              <option value="">— brak —</option>
+                              <option value="">- brak -</option>
                               <option value="anterior">{TEETH_KIND_LABELS.anterior}</option>
                               <option value="posterior">{TEETH_KIND_LABELS.posterior}</option>
                             </select>

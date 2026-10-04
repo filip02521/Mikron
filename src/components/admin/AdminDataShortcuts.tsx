@@ -12,17 +12,17 @@ const shortcuts = [
   {
     href: zakupyPaths.cards,
     title: "Karty dostawców (zakupy)",
-    description: "Codzienna edycja bez usuwania — ten sam widok co dla działu zakupów.",
+    description: "Codzienna edycja bez usuwania - ten sam widok co dla działu zakupów.",
   },
   {
     href: adminPaths.cards,
     title: "Karty dostawców (admin)",
-    description: "Wersja z usuwaniem rekordów — domyślnie w menu Dostawcy dla administratora.",
+    description: "Wersja z usuwaniem rekordów - domyślnie w menu Dostawcy dla administratora.",
   },
   {
     href: adminPaths.schedule("POLSKA"),
     title: "Terminy zamówień",
-    description: "Daty cyklu — Polska, zagranica, import.",
+    description: "Daty cyklu - Polska, zagranica, import.",
   },
   {
     href: adminPaths.vacations,

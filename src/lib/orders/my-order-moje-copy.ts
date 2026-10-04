@@ -17,7 +17,7 @@ export const MOJE_COPY_SUPPLIER_ORDER_TERM = "termin u dostawcy";
 
 export function mojeCopyNotesAckTooltip(readBelow: boolean): string {
   if (readBelow) {
-    return `${MOJE_COPY_DEPARTMENT} zaktualizował uwagi — przeczytaj poniżej i potwierdź ${MOJE_COPY_NOTES_ACK_BUTTON}`;
+    return `${MOJE_COPY_DEPARTMENT} zaktualizował uwagi - przeczytaj poniżej i potwierdź ${MOJE_COPY_NOTES_ACK_BUTTON}`;
   }
-  return `${MOJE_COPY_DEPARTMENT} zaktualizował uwagi — rozwiń, aby przeczytać`;
+  return `${MOJE_COPY_DEPARTMENT} zaktualizował uwagi - rozwiń, aby przeczytać`;
 }

@@ -34,7 +34,7 @@ export function mapZdEstimateExclusionRow(row: DbRow): ZdEstimateExclusionRow {
   return {
     subiektTwId: Number(row.subiekt_tw_id),
     twSymbol: row.tw_symbol?.trim() || null,
-    twNazwa: (row.tw_nazwa ?? "").trim() || "—",
+    twNazwa: (row.tw_nazwa ?? "").trim() || "-",
     grtId: row.grt_id != null ? Number(row.grt_id) : null,
     grtNazwa: row.grt_nazwa?.trim() || null,
     note: (row.note ?? "").trim(),

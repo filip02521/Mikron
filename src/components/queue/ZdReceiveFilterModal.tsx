@@ -380,7 +380,7 @@ export function ZdReceiveFilterModal({
               />
             </div>
             <p className="mt-1 text-[11px] text-slate-500">
-              Krótki kod (min. 2 znaki) pokaże listę ZD z ostatnich 6 miesięcy — wybierz właściwy
+              Krótki kod (min. 2 znaki) pokaże listę ZD z ostatnich 6 miesięcy - wybierz właściwy
               dokument. Pełny numer (np. 123/2026) szuka do 2 lat wstecz.
             </p>
           </div>
@@ -400,8 +400,8 @@ export function ZdReceiveFilterModal({
             </button>
             {helpOpen ? (
               <ul className="mt-2 list-disc space-y-1 pl-5 text-[11px] leading-relaxed text-slate-600">
-                <li>Krótki kod, np. 81 — lista ZD z ostatnich 6 miesięcy (nawet jeden wynik)</li>
-                <li>Pełny numer: 123/2026 — szuka do 2 lat wstecz i zawęża kolejkę, gdy jednoznaczny</li>
+                <li>Krótki kod, np. 81 - lista ZD z ostatnich 6 miesięcy (nawet jeden wynik)</li>
+                <li>Pełny numer: 123/2026 - szuka do 2 lat wstecz i zawęża kolejkę, gdy jednoznaczny</li>
                 <li>Możesz łączyć filtr ZD z wyszukiwarką towaru nad listą</li>
               </ul>
             ) : null}
@@ -455,7 +455,7 @@ export function ZdReceiveFilterModal({
               ) : null}
               {preview.matchCount === 0 ? (
                 <p className="mt-1 text-[11px] text-amber-800">
-                  Na tym ZD nie ma pozycji oczekujących w przyjęciu — możesz anulować lub
+                  Na tym ZD nie ma pozycji oczekujących w przyjęciu - możesz anulować lub
                   sprawdzić inny numer.
                 </p>
               ) : null}

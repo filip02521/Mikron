@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     if (!rate.ok) {
       return NextResponse.json(
         {
-          error: "Auto-sync ZD jest chwilowo wstrzymany — spróbuj za chwilę.",
+          error: "Auto-sync ZD jest chwilowo wstrzymany - spróbuj za chwilę.",
           retryAfterSec: rate.retryAfterSec,
         },
         { status: 429 }

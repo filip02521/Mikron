@@ -376,13 +376,13 @@ export function formatSubiektProductOption(
 
   if (name) {
     return {
-      title: sym ? `${sym} — ${name}` : name,
+      title: sym ? `${sym} - ${name}` : name,
       subtitle: parts.length ? parts.join(" · ") : "Bez symbolu i kodu",
       badge: isCatalog ? "baza" : "Subiekt",
     };
   }
   return {
-    title: sym || plu || "—",
+    title: sym || plu || "-",
     subtitle: parts.length ? parts.join(" · ") : "Bez nazwy w bazie",
     badge: isCatalog ? "baza" : "Subiekt",
   };

@@ -34,7 +34,7 @@ export function computeIvoclarWeeklyPeriod(todayDateKey: string): IvoclarWeeklyP
   const isoYear = getISOWeekYear(dataDoDate);
   const isoWeek = getISOWeek(dataDoDate);
   const periodKey = `${isoYear}-W${String(isoWeek).padStart(2, "0")}`;
-  const periodLabel = `${range.dataOd} – ${range.dataDo} (${periodKey})`;
+  const periodLabel = `${range.dataOd} - ${range.dataDo} (${periodKey})`;
   return {
     periodKey,
     periodLabel,

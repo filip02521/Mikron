@@ -1,5 +1,7 @@
 import type { MyOrderRow } from "@/lib/orders/my-order-presenter";
 import {
+  MY_ORDER_HISTORY_ESTIMATE_OVERDUE_LABEL,
+  MY_ORDER_HISTORY_ESTIMATE_OVERDUE_SHORT_LABEL,
   resolveMyOrderHistoryDeliveryEstimate,
 } from "@/lib/orders/delivery-date-meta-label";
 import {
@@ -67,6 +69,14 @@ export function myOrderCollapsedMobileTiming(
 
   const subline = opts.collapsedSubline?.trim();
   if (subline && (subline.includes(timing) || timing.includes(subline))) return null;
+  // Krótkie „Brak terminu” powtarza pełne „Brak informacji o planowanej dostawie” z subline.
+  if (
+    subline &&
+    timing === MY_ORDER_HISTORY_ESTIMATE_OVERDUE_SHORT_LABEL &&
+    subline.includes(MY_ORDER_HISTORY_ESTIMATE_OVERDUE_LABEL)
+  ) {
+    return null;
+  }
 
   const showTiming =
     row.headlineTone === "warning" ||

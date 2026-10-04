@@ -156,7 +156,7 @@ export function ZdEstimateBomsModal({
     setStockAsCover(nextPreset === "assemble" ? bom.stockAsCover !== false : false);
     setParentTw(String(bom.parentTwId));
     setParentSym(bom.parentSymbol ?? "");
-    setParentNazwa(bom.parentNazwa === "—" ? "" : bom.parentNazwa);
+    setParentNazwa(bom.parentNazwa === "-" ? "" : bom.parentNazwa);
     setLabel(bom.label ?? "");
     setComps(
       bom.components.length
@@ -164,7 +164,7 @@ export function ZdEstimateBomsModal({
             twId: String(c.componentTwId),
             qty: String(normalizeZdBomComponentQty(c.qtyPerParent)),
             symbol: c.componentSymbol ?? "",
-            nazwa: c.componentNazwa === "—" ? "" : c.componentNazwa,
+            nazwa: c.componentNazwa === "-" ? "" : c.componentNazwa,
           }))
         : [emptyDraftComp()]
     );
@@ -367,7 +367,7 @@ export function ZdEstimateBomsModal({
                       !isParent && "hover:bg-slate-50/80"
                     )}
                   >
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    <p className="text-[11px] font-semibold text-slate-500">
                       {isParent ? ZD_BOM_UI.roleZestaw : ZD_BOM_UI.roleSkladnik}
                     </p>
                     <p className="mt-1 truncate text-sm font-semibold text-slate-900">

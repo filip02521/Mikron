@@ -33,7 +33,7 @@ export function ProsbaZkPrefillLoading({
           <p className="text-sm font-semibold text-slate-900">{title}</p>
           <p className="text-xs leading-relaxed text-slate-500">
             Pobieramy listę produktów i stany magazynowe. Przy większej liczbie
-            pozycji może to potrwać kilka sekund — formularz uzupełni się
+            pozycji może to potrwać kilka sekund - formularz uzupełni się
             automatycznie.
           </p>
         </div>

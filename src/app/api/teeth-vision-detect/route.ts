@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
   const result = await analyzeTeethImageForLines(base64, imageFile.type);
 
   if (!result.ok) {
-    console.warn(`[teeth-vision-detect] Result: error — ${result.error}`);
+    console.warn(`[teeth-vision-detect] Result: error - ${result.error}`);
     return NextResponse.json(result, { status: 422 });
   }
 
@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
     };
   });
 
-  console.debug(`[teeth-vision-detect] Result: ok — ${linesWithLabels.length} lines detected`);
+  console.debug(`[teeth-vision-detect] Result: ok - ${linesWithLabels.length} lines detected`);
 
   return NextResponse.json({
     ok: true,

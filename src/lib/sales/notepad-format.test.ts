@@ -30,7 +30,7 @@ describe("formatPln", () => {
   it("formatuje liczbę i string z bazy", () => {
     expect(formatPln(1230)).toContain("1");
     expect(formatPln("1230.50")).toContain("1");
-    expect(formatPln(null)).toBe("—");
+    expect(formatPln(null)).toBe("-");
   });
 });
 

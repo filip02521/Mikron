@@ -19,10 +19,10 @@ function lastResultSummary(): string | null {
   if (last.result.status === "found") {
     const match = last.result.matches[0];
     if (!match) return null;
-    return `${last.productLabel} — dostawa ${formatPlDate(match.deadline)} (${match.dokNr})`;
+    return `${last.productLabel} - dostawa ${formatPlDate(match.deadline)} (${match.dokNr})`;
   }
   if (last.result.status === "no_match") {
-    return `${last.productLabel} — nie znaleźliśmy otwartego ZD u dostawcy`;
+    return `${last.productLabel} - nie znaleźliśmy otwartego ZD u dostawcy`;
   }
   return null;
 }
@@ -50,7 +50,7 @@ export function ProductZdLookupTrigger({
     <>
       <div
         className={cn(
-          "overflow-hidden rounded-xl border border-indigo-200/80 bg-gradient-to-br from-indigo-50/70 to-white shadow-sm shadow-indigo-900/5",
+          "overflow-hidden rounded-xl border border-indigo-200/80 bg-indigo-50/70 shadow-sm ",
           className
         )}
       >

@@ -64,7 +64,7 @@ export function boardQuestionProductLabel(
 ): string {
   const symbol = normalizeBoardQuestionSymbol(thread.product_symbol);
   const name = thread.product_name?.trim();
-  if (symbol && name) return `${symbol} — ${name}`;
+  if (symbol && name) return `${symbol} - ${name}`;
   return name || symbol || thread.mikran_code?.trim() || "Produkt";
 }
 

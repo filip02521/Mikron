@@ -40,7 +40,7 @@ export function ProcurementWorkspaceSwitcher({
 
   return (
     <div className="mb-3">
-      <p className="mb-1.5 px-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+      <p className="mb-1.5 px-3 text-[10px] font-semibold text-slate-400">
         Przełącz obszar
       </p>
       {error ? (
@@ -84,7 +84,7 @@ export function ProcurementWorkspaceSwitcher({
                 });
               }}
               className={cn(
-                "flex items-center gap-2 rounded-lg px-2.5 py-2 text-left transition-all",
+                "flex items-center gap-2 rounded-lg px-2.5 py-2 text-left transition",
                 stacked ? "w-full" : "flex-1 justify-center gap-1.5 text-center",
                 controlFocusClass,
                 isActive

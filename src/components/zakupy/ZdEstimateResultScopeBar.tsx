@@ -61,15 +61,15 @@ export function ZdEstimateResultScopeBar({
     (dataDo != null && String(dataDo).trim() !== "");
   const odLabel = formatPlDate(dataOd);
   const doLabel = formatPlDate(dataDo);
-  const windowLabel = hasWindow ? `${odLabel} – ${doLabel}` : "—";
+  const windowLabel = hasWindow ? `${odLabel} - ${doLabel}` : "-";
   const okresLabel =
     dniOkresu != null && String(dniOkresu).trim() !== ""
       ? `${dniOkresu} dni`
-      : "—";
+      : "-";
   const zapasLabel =
     dniZapasu != null && String(dniZapasu).trim() !== ""
       ? `${dniZapasu} dni`
-      : "—";
+      : "-";
   const visibleLabel = searchActive
     ? `${visibleCount} z ${totalCount} (filtr)`
     : `${visibleCount} z ${totalCount}`;
@@ -113,7 +113,7 @@ export function ZdEstimateResultScopeBar({
         </div>
         {truncated ? (
           <p className="max-w-[14rem] text-[11px] font-medium leading-snug text-amber-800">
-            Lista niepełna — limit stron Subiekta
+            Lista niepełna - limit stron Subiekta
           </p>
         ) : null}
       </div>

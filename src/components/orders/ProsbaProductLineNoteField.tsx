@@ -46,7 +46,7 @@ export function ProsbaProductLineNoteField({
         disabled={disabled}
         rows={2}
         maxLength={MAX_SALES_REQUEST_NOTE_LEN}
-        placeholder="Np. pilne — klient czeka na potwierdzenie terminu w piątek"
+        placeholder="Np. pilne - klient czeka na potwierdzenie terminu w piątek"
         className={fieldControlClass("default", "min-h-[3.25rem] resize-y text-sm leading-snug")}
       />
       {hasNote ? (

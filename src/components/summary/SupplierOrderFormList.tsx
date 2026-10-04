@@ -64,8 +64,8 @@ export function SupplierOrderFormList({ supplierId }: { supplierId: string }) {
             {d.unmapped.length > 0 ? (
               <p className="mt-0.5 text-xs text-amber-800">
                 {fileKind === "xlsx"
-                  ? "Brak w arkuszu dostawcy — nie ma ich w pliku, dopisz ręcznie lub zamów osobno: "
-                  : "Poza formularzem (wpisane w uwagi — sprawdź przed wysłaniem): "}
+                  ? "Brak w arkuszu dostawcy - nie ma ich w pliku, dopisz ręcznie lub zamów osobno: "
+                  : "Poza formularzem (wpisane w uwagi - sprawdź przed wysłaniem): "}
                 {d.unmapped.map((l) => `${l.name} × ${l.qty}`).join(", ")}
               </p>
             ) : null}

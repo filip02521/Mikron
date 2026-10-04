@@ -23,12 +23,12 @@ const FOR_SOMEONE_KEYBOARD_HINTS = [
 
 export function StockOutSectionHelp() {
   return (
-    <HelpPopover label="Pomoc — brak na stanie" title="Brak na stanie" shortLabel="Pomoc">
+    <HelpPopover label="Pomoc - brak na stanie" title="Brak na stanie" shortLabel="Pomoc">
       <HelpBlock title="Co tu jest">
         <p className="inline-flex flex-wrap items-center gap-1.5">
           <PanelQueueStatDot tone="stockOut" />
           <span>
-            Sygnały, że towar skończył się na magazynie — to nie prośby klientów. Handlowiec nie
+            Sygnały, że towar skończył się na magazynie - to nie prośby klientów. Handlowiec nie
             śledzi tych pozycji w Moje zamówienia.
           </span>
         </p>
@@ -37,11 +37,11 @@ export function StockOutSectionHelp() {
       <HelpBlock title="Główne i uzupełniające">
         <ul className="list-disc space-y-1.5 pl-4">
           <li>
-            <strong className="font-medium text-slate-800">Główne</strong> — zamówienie w planie
+            <strong className="font-medium text-slate-800">Główne</strong> - zamówienie w planie
             dostawcy.
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Uzupełniające</strong> — poza planem.
+            <strong className="font-medium text-slate-800">Uzupełniające</strong> - poza planem.
           </li>
           <li>Po Główne pozycja znika z tej listy.</li>
         </ul>
@@ -51,18 +51,18 @@ export function StockOutSectionHelp() {
         <p>
           Badge{" "}
           <strong className="font-medium text-amber-800">{INFORMACJA_STOCK_OUT_PANEL_BADGE}</strong>{" "}
-          — w pasku kontekstu pod tytułem (nie przy produkcie).
+          - w pasku kontekstu pod tytułem (nie przy produkcie).
         </p>
       </HelpBlock>
       <HelpBlock title="Obsługa wiersza">
         <ul className="list-disc space-y-1.5 pl-4">
           <li>
-            Na komputerze — Główne / Uzupełniające po najechaniu na kartę (albo focus).
+            Na komputerze - Główne / Uzupełniające po najechaniu na kartę (albo focus).
           </li>
-          <li>Na tablecie i telefonie — przyciski widoczne cały czas.</li>
+          <li>Na tablecie i telefonie - przyciski widoczne cały czas.</li>
           <li>
-            W bloku wielu osób: klik nagłówek — rozwiń / produkty / zwiń (podpowiedź na hover);
-            Zamów razem; wiersz — Tylko ta osoba.
+            W bloku wielu osób: klik nagłówek - rozwiń / produkty / zwiń (podpowiedź na hover);
+            Zamów razem; wiersz - Tylko ta osoba.
           </li>
           <li>
             Przy wielu produktach: podgląd pierwszej pozycji; klik w kartę (albo Enter) rozwija
@@ -78,7 +78,7 @@ export function StockOutSectionHelp() {
       </HelpBlock>
       <HelpBlock title="Flagi">
         <p>
-          Opcjonalne etykiety na wierszu (menu ⋮) — bez osobnych torów i filtrów. Ta sekcja to jedna
+          Opcjonalne etykiety na wierszu (menu ⋮) - bez osobnych torów i filtrów. Ta sekcja to jedna
           płaska lista sygnałów.
         </p>
       </HelpBlock>
@@ -88,19 +88,19 @@ export function StockOutSectionHelp() {
 
 export function ForSomeoneRequestsSectionHelp() {
   return (
-    <HelpPopover label="Pomoc — prośby handlowców" title="Prośby handlowców" shortLabel="Pomoc">
+    <HelpPopover label="Pomoc - prośby handlowców" title="Prośby handlowców" shortLabel="Pomoc">
       <HelpBlock title="Główne i uzupełniające">
         <ul className="list-disc space-y-1.5 pl-4">
           <li>
-            <strong className="font-medium text-slate-800">Główne</strong> — zamówienie w planie
+            <strong className="font-medium text-slate-800">Główne</strong> - zamówienie w planie
             dostawcy.
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Uzupełniające</strong> — osobne
+            <strong className="font-medium text-slate-800">Uzupełniające</strong> - osobne
             domówienie poza planem.
           </li>
           <li>
-            U dostawcy <strong className="font-medium text-slate-800">na żądanie</strong> —
+            U dostawcy <strong className="font-medium text-slate-800">na żądanie</strong> -
             przycisk <strong className="font-medium text-slate-800">Główne (bez terminu)</strong>:
             prośba jest główna, ale harmonogram tygodnia się nie przesuwa.
           </li>
@@ -110,22 +110,22 @@ export function ForSomeoneRequestsSectionHelp() {
       <HelpBlock title="Obsługa wiersza">
         <ul className="list-disc space-y-1.5 pl-4">
           <li>
-            Na komputerze — przyciski akcji (Główne/Uzupełniające, Pilne, W razie potrzeby) wysuwają się po
-            chwili trzymania wskaźnika na wierszu (albo od razu po focusie klawiaturą) — przy
+            Na komputerze - przyciski akcji (Główne/Uzupełniające, Pilne, W razie potrzeby) wysuwają się po
+            chwili trzymania wskaźnika na wierszu (albo od razu po focusie klawiaturą) - przy
             przesuwaniu myszy lista nie „skacze”.
           </li>
           <li>
-            Na tablecie i telefonie — przyciski widoczne cały czas.
+            Na tablecie i telefonie - przyciski widoczne cały czas.
           </li>
           <li>
-            W bloku wielu osób u dostawcy: klik w nagłówek kolejno — rozwiń grupę i produkty →
+            W bloku wielu osób u dostawcy: klik w nagłówek kolejno - rozwiń grupę i produkty →
             dokończ produkty → zwiń grupę (przy „Nowa” zamiast zwijania bloku zwija produkty). Na
-            hover widać podpowiedź. Najedź —{" "}
-            <strong className="font-medium text-slate-800">Zamów razem</strong>; wiersz osoby —{" "}
+            hover widać podpowiedź. Najedź -{" "}
+            <strong className="font-medium text-slate-800">Zamów razem</strong>; wiersz osoby -{" "}
             <strong className="font-medium text-slate-800">Tylko ta osoba</strong>.
           </li>
           <li>
-            Produkty: jeden produkt widać od razu; przy wielu — podgląd pierwszej pozycji i klik
+            Produkty: jeden produkt widać od razu; przy wielu - podgląd pierwszej pozycji i klik
             w kartę (albo Enter) rozwija resztę. Zwinięty blok dostawcy nie jest w nawigacji
             klawiaturą.
           </li>
@@ -151,12 +151,12 @@ export function ForSomeoneRequestsSectionHelp() {
           <li>
             Tory są <strong className="font-medium text-slate-800">domyślnie zwinięte</strong>. W
             zwiniętym torze widać tylko prośby jeszcze nieprzeczytane na serwerze (badge{" "}
-            <strong className="font-medium text-violet-800">Nowa</strong>) — licznik pokazuje np.{" "}
+            <strong className="font-medium text-violet-800">Nowa</strong>) - licznik pokazuje np.{" "}
             <em>1/5</em>. Rozwiń nagłówek toru albo kliknij tor w pasku „Tory”, by zobaczyć
             wszystkie prośby w tej sekcji.
           </li>
           <li>
-            <strong className="font-medium text-slate-800">Tor ustawia się po fladze</strong> — nie
+            <strong className="font-medium text-slate-800">Tor ustawia się po fladze</strong> - nie
             przesuwasz ręcznie. Menu „Więcej → Flaga: …”, chip albo edytor flagi zapisuje oznaczenie;
             prośba od razu pojawia się w <em>osobnym torze tej flagi</em> (kolor tła = kolor flagi
             z Zarządzaj).
@@ -166,14 +166,14 @@ export function ForSomeoneRequestsSectionHelp() {
             systemowych (Do rozdzielenia / Do zamówienia / Urlop / Magazyn→info).
           </li>
           <li>
-            Badge <strong className="font-medium text-violet-800">Nowa</strong> znika po najechaniu —
+            Badge <strong className="font-medium text-violet-800">Nowa</strong> znika po najechaniu -
             to nie przenosi od razu z „Do rozdzielenia” (dopiero po odświeżeniu danych z serwera).
             Karta zostaje w podglądzie zwiniętego toru do odświeżenia; po odświeżeniu znika z peeka
             (zostaje w pełnym torze po rozwinięciu, jeśli nadal jest w kolejce).
           </li>
           <li>
             „Zamów razem” działa tylko dla osób w <em>tym samym</em> torze u dostawcy. W
-            podglądzie zwiniętego toru obejmuje wyłącznie widoczne (nowe) osoby — rozwiń tor,
+            podglądzie zwiniętego toru obejmuje wyłącznie widoczne (nowe) osoby - rozwiń tor,
             by zamówić wszystkich.
           </li>
         </ul>
@@ -183,24 +183,24 @@ export function ForSomeoneRequestsSectionHelp() {
         <ul className="list-disc space-y-1.5 pl-4">
           <li>
             Tytuł wiersza to zawsze <strong className="font-medium text-slate-800">dostawca</strong>
-            (w bloku wielu osób — handlowiec, bo dostawca jest w nagłówku bloku); pod nim pas
+            (w bloku wielu osób - handlowiec, bo dostawca jest w nagłówku bloku); pod nim pas
             sygnałów: Nowa → Urlop → flaga.
           </li>
           <li>
             Badge <strong className="font-medium text-indigo-800">{INFORMACJA_VIA_PANEL_BADGE}</strong>{" "}
-            — po prawej tylko przy wyjątku Informacji przez panel; w torze „Magazyn → info” gdy bez
+            - po prawej tylko przy wyjątku Informacji przez panel; w torze „Magazyn → info” gdy bez
             silniejszej flagi.
           </li>
           <li>
-            Chip <strong className="font-medium text-amber-900">Urlop</strong> — na nagłówku bloku
-            dostawcy albo w wierszu. Zakres dat w tooltipie — to nie jest flaga zakupów.
+            Chip <strong className="font-medium text-amber-900">Urlop</strong> - na nagłówku bloku
+            dostawcy albo w wierszu. Zakres dat w tooltipie - to nie jest flaga zakupów.
           </li>
           <li>
-            Kolorowe chipy flag — oznaczenia zakupów. Kolejność <strong className="font-medium text-slate-800">wszystkich torów</strong> (także Do zamówienia / Urlop): strzałki ↑↓ na nagłówku toru albo w „Zarządzaj” dla flag. Handlowiec flag nie widzi.
+            Kolorowe chipy flag - oznaczenia zakupów. Kolejność <strong className="font-medium text-slate-800">wszystkich torów</strong> (także Do zamówienia / Urlop): strzałki ↑↓ na nagłówku toru albo w „Zarządzaj” dla flag. Handlowiec flag nie widzi.
           </li>
           <li className="inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
-            Przy produkcie: <ProductSourceBadge fromSubiekt size={12} className="size-5" /> — z
-            bazy Subiekt; <ProductSourceBadge fromSubiekt={false} size={12} className="size-5" /> —
+            Przy produkcie: <ProductSourceBadge fromSubiekt size={12} className="size-5" /> - z
+            bazy Subiekt; <ProductSourceBadge fromSubiekt={false} size={12} className="size-5" /> -
             wpis ręczny.
           </li>
         </ul>
@@ -210,7 +210,7 @@ export function ForSomeoneRequestsSectionHelp() {
         <p>
           Użyj <strong className="font-medium text-slate-800">Zamów razem</strong> (wszyscy w tym
           torze) albo <strong className="font-medium text-slate-800">Tylko ta osoba</strong> w
-          wierszu. Przy dwóch i więcej osobach lista domyślnie jest zwinięta — rozwija się, gdy
+          wierszu. Przy dwóch i więcej osobach lista domyślnie jest zwinięta - rozwija się, gdy
           pojawi się badge Nowa.
         </p>
       </HelpBlock>

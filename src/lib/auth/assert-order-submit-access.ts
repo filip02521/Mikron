@@ -8,7 +8,7 @@ import { canAccessOperations, canAccessTeethPanel, isAdmin, isSales, isSalesMana
 
 type OrderEntry = { salesPersonId?: string | null };
 
-/** Guard składania prośb — role + preview panelu admina + scope kierownika. */
+/** Guard składania próśb — role + preview panelu admina + scope kierownika. */
 export async function assertCanSubmitIndividualOrders(
   user: SessionUser,
   entries: OrderEntry[]
@@ -39,7 +39,7 @@ export async function assertCanSubmitIndividualOrders(
       const allowed = await canAccessSalesPerson(user, entry.salesPersonId);
       if (!allowed) {
         throw new Error(
-          "Nie masz uprawnień do składania prośby dla tego handlowca. Kierownik może składać prośby dla siebie oraz dla osób z przypisanych grup zespołu — poproś administratora o przypisanie grup do Twojego konta."
+          "Nie masz uprawnień do składania prośby dla tego handlowca. Kierownik może składać prośby dla siebie oraz dla osób z przypisanych grup zespołu - poproś administratora o przypisanie grup do Twojego konta."
         );
       }
     }

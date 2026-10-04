@@ -229,7 +229,7 @@ function deriveArchiveRequestProgress(row: MyOrderRow): MyOrderRequestProgressTr
     };
   }
 
-  if (row.statusTitle === "Rezygnacja — towar w drodze") {
+  if (row.statusTitle === "Rezygnacja - towar w drodze") {
     return {
       accent: "archive",
       steps: labels.map((step, i) => ({
@@ -239,7 +239,7 @@ function deriveArchiveRequestProgress(row: MyOrderRow): MyOrderRequestProgressTr
     };
   }
 
-  if (row.statusTitle === "Rezygnacja — towar na magazynie") {
+  if (row.statusTitle === "Rezygnacja - towar na magazynie") {
     return {
       accent: "archive",
       steps: labels.map((step, i) => ({

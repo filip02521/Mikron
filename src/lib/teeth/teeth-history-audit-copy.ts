@@ -1,4 +1,5 @@
 import type { TeethOrderHistoryAction } from "@/lib/data/teeth-order-history";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export const TEETH_ORDER_HISTORY_ACTION_LABELS: Record<TeethOrderHistoryAction, string> = {
   ordered: "Oznaczono zamówione u dostawcy",
@@ -17,7 +18,7 @@ export function teethOrderHistorySummary(
   const base = TEETH_ORDER_HISTORY_ACTION_LABELS[action];
   const countPart =
     orderCount > 0
-      ? ` · ${orderCount} ${orderCount === 1 ? "pozycja" : orderCount < 5 ? "pozycje" : "pozycji"}`
+      ? ` · ${orderCount} ${polishPluralWord(orderCount, "pozycja", "pozycje", "pozycji")}`
       : "";
   const deliveryDate =
     typeof meta?.deliveryDate === "string" && meta.deliveryDate.trim()

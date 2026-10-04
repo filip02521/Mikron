@@ -133,13 +133,6 @@ export function workspaceToneText(ws: ProcurementWorkspace): string {
   return "text-indigo-900";
 }
 
-export function workspaceToneIconBg(ws: ProcurementWorkspace): string {
-  const tone = workspaceTone(ws);
-  if (tone === "sky") return "bg-sky-100 text-sky-900";
-  if (tone === "emerald") return "bg-emerald-100 text-emerald-900";
-  return "bg-indigo-100 text-indigo-900";
-}
-
 export function workspaceToneAccent(ws: ProcurementWorkspace): string {
   const tone = workspaceTone(ws);
   if (tone === "sky") return "text-sky-500";

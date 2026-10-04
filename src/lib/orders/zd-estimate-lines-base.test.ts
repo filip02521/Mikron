@@ -12,7 +12,7 @@ function line(
     tw_Symbol: "X",
     tw_Nazwa: "X",
     tw_IdGrupa: null,
-    grt_Nazwa: "—",
+    grt_Nazwa: "-",
     tw_Stan: 0,
     tw_StanRez: 0,
     dostepne: 0,
@@ -40,7 +40,7 @@ function line(
 }
 
 describe("coerceZdEstimateLinesBase", () => {
-  it("plain lines — kopia bez merge flag", () => {
+  it("plain lines - kopia bez merge flag", () => {
     const rows = [line({ tw_Id: 1, sprzedazOkres: 9 })];
     expect(zdEstimateLinesLookMerged(rows)).toBe(false);
     const out = coerceZdEstimateLinesBase(rows);

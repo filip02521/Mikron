@@ -46,7 +46,7 @@ vi.mock("@/components/orders/SupplierPickerField", () => ({
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
-      <option value="">—</option>
+      <option value="">-</option>
       {suppliers.map((s) => (
         <option key={s.id} value={s.id}>
           {s.name}

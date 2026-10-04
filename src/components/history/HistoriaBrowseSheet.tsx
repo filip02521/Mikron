@@ -24,6 +24,7 @@ import { cn } from "@/lib/cn";
 import { sideSheetWidePanelClass } from "@/lib/ui/surfaces";
 import { controlFocusClass, panelTypography } from "@/lib/ui/ontime-theme";
 import { SCROLL_LOCK_ALLOW_ATTR, useBodyScrollLock } from "@/lib/ui/page-scroll-lock";
+import { useAnimatedClose } from "@/lib/ui/use-animated-close";
 
 export function HistoriaBrowseSheet({
   open,
@@ -66,15 +67,17 @@ export function HistoriaBrowseSheet({
     setQuery("");
     onClose();
   }, [onClose]);
+  const { panelRef, backdropRef, requestClose } = useAnimatedClose(handleClose);
 
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") handleClose();
+      // Escape w otwartym potwierdzeniu (np. „Usunąć wpis?”) zamyka tylko potwierdzenie.
+      if (event.key === "Escape" && !document.querySelector('[role="alertdialog"]')) requestClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, handleClose]);
+  }, [open, requestClose]);
 
   useBodyScrollLock(open);
 
@@ -123,14 +126,20 @@ export function HistoriaBrowseSheet({
       aria-labelledby="historia-sheet-title"
     >
       <button
+        ref={(el) => {
+          backdropRef.current = el;
+        }}
         type="button"
-        className="absolute inset-0 bg-slate-900/30 backdrop-blur-[1px]"
+        className="panel-slide-backdrop-enter absolute inset-0 bg-slate-900/30 backdrop-blur-[1px]"
         aria-label="Zamknij historię"
-        onClick={handleClose}
+        onClick={requestClose}
       />
       <aside
+        ref={(el) => {
+          panelRef.current = el;
+        }}
         className={cn(
-          "absolute inset-y-0 right-0",
+          "panel-slide-enter absolute inset-y-0 right-0",
           sideSheetWidePanelClass
         )}
       >
@@ -170,7 +179,7 @@ export function HistoriaBrowseSheet({
               variant="ghost"
               size="sm"
               className={cn(controlFocusClass, "h-8 w-8 shrink-0 p-0")}
-              onClick={handleClose}
+              onClick={requestClose}
               aria-label="Zamknij"
             >
               <IconX size={16} />

@@ -20,6 +20,7 @@ import {
   buildCollapsedZdPendingOnlyHint,
 } from "@/lib/orders/my-order-zd-eta-copy";
 import { todayInWarsaw } from "@/lib/time/warsaw";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 const URGENCY_RANK: Record<DeliveryUrgency, number> = {
   overdue: 0,
@@ -103,9 +104,9 @@ export function buildCollapsedZdMultiSlotHint(
     extraSlots === 1 ? "1 późniejszy termin" : `${extraSlots} późniejsze terminy`;
 
   if (primaryNames) {
-    return `Najszybsza dostawa: ${primaryNames} — rozwiń po ${extraLabel}`;
+    return `Najszybsza dostawa: ${primaryNames} - rozwiń po ${extraLabel}`;
   }
-  return `${slots.length} terminy u dostawcy — rozwiń po szczegóły`;
+  return `${slots.length} terminy u dostawcy - rozwiń po szczegóły`;
 }
 
 type LineZdTermState = Pick<
@@ -114,9 +115,7 @@ type LineZdTermState = Pick<
 >;
 
 function polishPositionCount(n: number): string {
-  if (n === 1) return "1 pozycja";
-  if (n >= 2 && n <= 4) return `${n} pozycje`;
-  return `${n} pozycji`;
+  return `${n} ${polishPluralWord(n, "pozycja", "pozycje", "pozycji")}`;
 }
 
 export { polishPositionCount as myOrderPositionCountLabel };
@@ -141,9 +140,9 @@ export function buildCollapsedZdMixedNoMatchHint(lines: LineZdTermState[]): stri
     return buildCollapsedZdPendingOnlyHint(withoutZd.length);
   }
   if (withHistory.length) {
-    return `${countLabel} bez terminu u dostawcy — rozwiń po szacunek z historii`;
+    return `${countLabel} bez terminu u dostawcy - rozwiń po szacunek z historii`;
   }
-  return `${countLabel} bez terminu u dostawcy — rozwiń po szczegóły`;
+  return `${countLabel} bez terminu u dostawcy - rozwiń po szczegóły`;
 }
 
 /** Zwinięty wiersz / subline — tylko najwcześniejszy termin ZD. */
@@ -166,7 +165,7 @@ export function zdFulfillmentCollapsedCaption(
   const base = options?.overdue ? "Termin u dostawcy" : ZD_DELIVERY_META_CAPTION;
   if (slotCount <= 1) return base;
   const n = slotCount;
-  const word = n === 2 ? "terminy" : n < 5 ? "terminy" : "terminów";
+  const word = polishPluralWord(n, "termin", "terminy", "terminów");
   return `${base} · ${n} ${word}`;
 }
 

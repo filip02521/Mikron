@@ -10,7 +10,7 @@ import {
 } from "./major-super-lux-mould-shapes";
 
 describe("major-super-lux-mould-shapes", () => {
-  it("przody — trójkątne, kwadratowe, owalne, dolne", () => {
+  it("przody - trójkątne, kwadratowe, owalne, dolne", () => {
     const groups = majorSuperLuxMouldShapeGroups("anterior");
     expect(groups.map((g) => g.shapeId)).toEqual(["triangular", "square", "oval", "lower"]);
     expect(groups[0]!.moulds).toEqual(MAJOR_SUPER_LUX_UPPER_TRIANGULAR);
@@ -19,7 +19,7 @@ describe("major-super-lux-mould-shapes", () => {
     expect(groups[3]!.moulds).toEqual(MAJOR_SUPER_LUX_LOWER_ANTERIOR);
   });
 
-  it("boki — L-cusp wg kształtu + N-cusp", () => {
+  it("boki - L-cusp wg kształtu + N-cusp", () => {
     const groups = majorSuperLuxMouldShapeGroups("posterior");
     expect(groups.map((g) => g.shapeId)).toEqual(["triangular", "oval", "square", "all"]);
     expect(groups[0]!.moulds).toEqual(["1/60"]);

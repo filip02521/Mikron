@@ -76,7 +76,7 @@ describe("resolveClientAutoProsbaStockSnapshot", () => {
     expect(resolveClientAutoProsbaStockSnapshot(undefined)).toBeUndefined();
   });
 
-  it("undefined gdy pusty obiekt — serwer ma pobrać Subiekt", () => {
+  it("undefined gdy pusty obiekt - serwer ma pobrać Subiekt", () => {
     expect(resolveClientAutoProsbaStockSnapshot({})).toBeUndefined();
   });
 
@@ -88,12 +88,12 @@ describe("resolveClientAutoProsbaStockSnapshot", () => {
   });
 });
 
-describe("auto-prośba — spójność klient ↔ serwer (adjusted stock)", () => {
+describe("auto-prośba - spójność klient ↔ serwer (adjusted stock)", () => {
   beforeEach(() => {
     mockFetch.mockReset();
   });
 
-  it("skorygowany stan uwalnia rezerwację ZK — klient i serwer zgadzają się co do ack", async () => {
+  it("skorygowany stan uwalnia rezerwację ZK - klient i serwer zgadzają się co do ack", async () => {
     const productLines = buildZkWatchLineViews(watch);
     const rawStock = rawStockForReservedZk();
     const adjustedStock = adjustStockMapForZkLines(productLines, rawStock);
@@ -142,7 +142,7 @@ describe("auto-prośba — spójność klient ↔ serwer (adjusted stock)", () =
     expect(confirm?.sufficientLines[0]?.subiektTwId).toBe(100);
   });
 
-  it("surowy stan bez korekty ZK nie wymusza ack — adjusted tak (regresja)", () => {
+  it("surowy stan bez korekty ZK nie wymusza ack - adjusted tak (regresja)", () => {
     const productLines = buildZkWatchLineViews(watch);
     const rawStock = rawStockForReservedZk();
 
@@ -164,7 +164,7 @@ describe("auto-prośba — spójność klient ↔ serwer (adjusted stock)", () =
     expect(buildProsbaSubmitStockConfirm(clientAdjusted.lines, "zamowienie")).not.toBeNull();
   });
 
-  it("ten sam snapshot co w modalu — serwer nie nadpisuje fetchiem Subiekta", async () => {
+  it("ten sam snapshot co w modalu - serwer nie nadpisuje fetchiem Subiekta", async () => {
     const productLines = buildZkWatchLineViews(watch);
     const adjustedStock = adjustStockMapForZkLines(productLines, rawStockForReservedZk());
     const entries = buildServerAutoProsbaEntries({
@@ -184,7 +184,7 @@ describe("auto-prośba — spójność klient ↔ serwer (adjusted stock)", () =
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it("pusty snapshot klienta — serwer pobiera Subiekt", async () => {
+  it("pusty snapshot klienta - serwer pobiera Subiekt", async () => {
     mockFetch.mockResolvedValue({});
     const entries = buildServerAutoProsbaEntries({
       watch,

@@ -43,7 +43,7 @@ export function UpcomingDeliveryDayCard({ day }: { day: UpcomingDeliveryDay }) {
               : "border-slate-100 bg-slate-50/30"
         )}
       >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-slate-100 to-slate-50 text-slate-600">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-100 text-slate-600">
           <span className="text-xs font-bold tabular-nums">
             {day.dateKey.split("-")[2]}
           </span>
@@ -61,7 +61,7 @@ export function UpcomingDeliveryDayCard({ day }: { day: UpcomingDeliveryDay }) {
         </div>
         <span
           className={cn(
-            "shrink-0 rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+            "shrink-0 rounded px-2 py-0.5 text-[10px] font-bold",
             dayBadgeClass(day)
           )}
         >

@@ -12,20 +12,20 @@ const ROLE_HELP: { role: UserRole; description: string }[] = [
   },
   {
     role: "zakupy",
-    description: "Panel dzienny, kolejka, harmonogramy — bez administracji.",
+    description: "Panel dzienny, kolejka, harmonogramy - bez administracji.",
   },
   {
     role: "magazyn",
-    description: "Kolejka magazynu i regał — bez panelu zakupów.",
+    description: "Kolejka magazynu i regał - bez panelu zakupów.",
   },
   {
     role: "sales",
-    description: "Moje zamówienia, prośby i podgląd planu — bez zamawiania towaru.",
+    description: "Moje zamówienia, prośby i podgląd planu - bez zamawiania towaru.",
   },
   {
     role: "sales_manager",
     description:
-      "Jak handlowiec plus zespół — przypisz grupy (Sklep/Biuro), żeby widział tylko swoich ludzi.",
+      "Jak handlowiec plus zespół - przypisz grupy (Sklep/Biuro), żeby widział tylko swoich ludzi.",
   },
 ];
 

@@ -169,7 +169,7 @@ export function AdminMigrationsPanel() {
             <div className="rounded-md border border-slate-200/90 bg-slate-50/30 px-3 py-2.5">
               <p className={panelTypography.sectionLabel}>Zastosowane</p>
               <p className="mt-0.5 text-lg font-semibold text-slate-900">
-                {status?.appliedCount ?? "—"}
+                {status?.appliedCount ?? "-"}
               </p>
             </div>
             <div className="rounded-md border border-slate-200/90 bg-slate-50/30 px-3 py-2.5">
@@ -186,7 +186,7 @@ export function AdminMigrationsPanel() {
             <div className="rounded-md border border-slate-200/90 bg-slate-50/30 px-3 py-2.5">
               <p className={panelTypography.sectionLabel}>Pliki w repo</p>
               <p className="mt-0.5 text-lg font-semibold text-slate-900">
-                {status?.totalFiles ?? "—"}
+                {status?.totalFiles ?? "-"}
               </p>
             </div>
           </div>
@@ -196,7 +196,7 @@ export function AdminMigrationsPanel() {
             <div className="rounded-md border border-amber-200/80 bg-amber-50/40 px-3 py-2.5 text-sm text-amber-950">
               <p className="font-medium">Pierwsza konfiguracja na tej bazie</p>
               <p className="mt-0.5 text-amber-800">
-                Jeśli baza została założona ręcznie (migracje 1–150 już są w schemacie),
+                Jeśli baza została założona ręcznie (migracje 1-150 już są w schemacie),
                 oznacz je jako wykonane bez wykonywania SQL. Potem tylko nowe migracje
                 będą faktycznie aplikowane.
               </p>
@@ -207,7 +207,7 @@ export function AdminMigrationsPanel() {
                   disabled={pending}
                   onClick={() => handleMarkUpTo(150)}
                 >
-                  Oznacz 1–150 jako wykonane
+                  Oznacz 1-150 jako wykonane
                 </Button>
                 <Button
                   variant="secondary"
@@ -215,7 +215,7 @@ export function AdminMigrationsPanel() {
                   disabled={pending}
                   onClick={() => handleMarkUpTo(152)}
                 >
-                  Oznacz 1–152 jako wykonane
+                  Oznacz 1-152 jako wykonane
                 </Button>
               </div>
             </div>
@@ -250,7 +250,7 @@ export function AdminMigrationsPanel() {
               <p className="font-medium">Baza jest aktualna</p>
               <p className="mt-0.5 text-emerald-700">
                 Wszystkie migracje z repo są zastosowane. Po nowym pull z GitHub sprawdź
-                ponownie — nowe pliki pojawią się tutaj.
+                ponownie - nowe pliki pojawią się tutaj.
               </p>
             </div>
           ) : null}
@@ -366,7 +366,7 @@ export function AdminMigrationsPanel() {
               </ul>
 
               <p className={cn(panelTypography.caption, "text-slate-500")}>
-                Migracje stosowane są w transakcji — błąd wycofuje zmiany. Plik oznaczony
+                Migracje stosowane są w transakcji - błąd wycofuje zmiany. Plik oznaczony
                 jako błąd można poprawić i zastosować ponownie po usunięciu z
                 schema_migrations.
               </p>

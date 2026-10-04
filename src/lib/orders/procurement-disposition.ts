@@ -40,7 +40,7 @@ export function procurementDispositionSummary(
   const label = procurementDispositionLabel(disposition);
   if (!label) return null;
   const trimmed = note?.trim();
-  return trimmed ? `${label} — ${trimmed}` : label;
+  return trimmed ? `${label} - ${trimmed}` : label;
 }
 
 /** Etykieta na wpisie w kolejce dostaw (tylko po decyzji zakupów). */
@@ -70,18 +70,18 @@ export function procurementDispositionSaveSummary(
   entries: ProcurementCancelDispositionInput[],
   personName: string
 ): string {
-  if (!entries.length) return `Zapisano decyzję — ${personName}`;
+  if (!entries.length) return `Zapisano decyzję - ${personName}`;
   if (entries.length === 1) {
     return entries[0]!.disposition === "to_stock"
-      ? `Rezygnacja ${personName} — na stan magazynu`
-      : `Rezygnacja ${personName} — zwrot do dostawcy`;
+      ? `Rezygnacja ${personName} - na stan magazynu`
+      : `Rezygnacja ${personName} - zwrot do dostawcy`;
   }
   const stock = entries.filter((e) => e.disposition === "to_stock").length;
   const ret = entries.filter((e) => e.disposition === "return").length;
   const parts: string[] = [];
   if (stock > 0) parts.push(`${stock} na stan`);
   if (ret > 0) parts.push(`${ret} do zwrotu`);
-  return `Rezygnacja ${personName} — ${parts.join(", ")}`;
+  return `Rezygnacja ${personName} - ${parts.join(", ")}`;
 }
 
 export function countPendingDispositionChoices(

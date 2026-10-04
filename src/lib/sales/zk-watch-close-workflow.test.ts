@@ -251,7 +251,7 @@ function createAckSupabase(
   return client;
 }
 
-describe("zk-watch-close workflow — audyt poprawek", () => {
+describe("zk-watch-close workflow - audyt poprawek", () => {
   describe("#1 fetch: ZK z kh, prośba bez kh po nazwie", () => {
     it("znajduje prośbę bez sales_client_kh_id dopasowaną po etykiecie", async () => {
       const labelOnlyOrder = pickupOrder({
@@ -370,7 +370,7 @@ describe("zk-watch-close workflow — audyt poprawek", () => {
   });
 });
 
-describe("zk-watch-close workflow — pełny przebieg", () => {
+describe("zk-watch-close workflow - pełny przebieg", () => {
   it("preview → ack plan → brak pending (scenariusz zamknięcia ZK)", async () => {
     const w = watch();
     const explicitPickup = pickupOrder({ id: "explicit-pickup" });

@@ -172,7 +172,7 @@ export async function fetchTeethDetailsForOrders(
 
   if (jawError || kindError) {
     console.warn(
-      "[fetchTeethDetailsForOrders] Częściowy odczyt jaw/kind — uruchom migracje 080/081 jeśli jeszcze nie:",
+      "[fetchTeethDetailsForOrders] Częściowy odczyt jaw/kind - uruchom migracje 080/081 jeśli jeszcze nie:",
       jawError?.message ?? kindError?.message
     );
   }
@@ -242,7 +242,7 @@ async function insertTeethDetailRows(
   if (error) {
     if (isMissingTableError(error)) {
       throw new Error(
-        "Nie zapisano listy zębów — brak tabeli individual_order_teeth_details. " +
+        "Nie zapisano listy zębów - brak tabeli individual_order_teeth_details. " +
           "Uruchom migrację supabase/migrations/079_teeth_order_details.sql."
       );
     }

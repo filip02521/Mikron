@@ -5,13 +5,13 @@ import { buildZkWatchLineViews } from "@/lib/sales/zk-watch-lines";
 import type { SalesZkWatch } from "@/types/database";
 
 export const ZK_PROSBA_LINES_ALREADY_COVERED_MESSAGE =
-  "Te pozycje ZK są już pokryte otwartą prośbą — nic nie dodano. Odśwież kartę ZK.";
+  "Te pozycje ZK są już pokryte otwartą prośbą - nic nie dodano. Odśwież kartę ZK.";
 
 export const ZK_PROSBA_LINES_PARTIAL_COVERED_MESSAGE =
-  "Część pozycji jest już w otwartej prośbie — odśwież kartę ZK i wyślij tylko brakujące.";
+  "Część pozycji jest już w otwartej prośbie - odśwież kartę ZK i wyślij tylko brakujące.";
 
 export const ZK_PROSBA_NO_UNCOVERED_LINES_MESSAGE =
-  "Brak pozycji ZK do zamówienia — odśwież kartę ZK.";
+  "Brak pozycji ZK do zamówienia - odśwież kartę ZK.";
 
 type ZkLinkedEntryLike = {
   requestKind?: string | null;

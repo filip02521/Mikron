@@ -34,40 +34,40 @@ export const ZD_BOM_UI = {
   introBody:
     "Wskaż zestaw, składniki oraz ile sztuk każdego składnika wchodzi w 1 zestaw (np. proszek ×1 + płyn ×2). Po zapisie lista „Do ZD” przelicza się od razu.",
 
-  seedHeading: "Zaznaczone towary — wskaż zestaw i ilości",
+  seedHeading: "Zaznaczone towary - wskaż zestaw i ilości",
   seedQtyHint:
     "Na karcie składnika wpisz, ile sztuk wchodzi w 1 zestaw (np. proszek = 1, płyn = 2). To nie są kilogramy ani jednostki dokumentu ZD.",
-  seedParentQtyHint: "Zestaw — bez osobnej ilości",
+  seedParentQtyHint: "Zestaw - bez osobnej ilości",
   roleZestaw: "Zestaw",
   roleSkladnik: "Składnik",
 
   presetLegend: "Jak kupować zestaw?",
   presetAssemble: "Składamy (tylko składniki)",
   presetAssembleHint:
-    "Zestaw nie trafia na ZD. Sprzedaż zestawu powiększa niedobór składników — zamawiasz części, nie komplet.",
+    "Zestaw nie trafia na ZD. Sprzedaż zestawu powiększa niedobór składników - zamawiasz części, nie komplet.",
   presetBuySeparate: "Kupujemy komplet i części",
   presetBuySeparateHint:
-    "Komplet i składniki zamawiane osobno — każdy według własnej sprzedaży i stanu. Użyj, gdy komplet też bywa sprzedawany jako całość.",
+    "Komplet i składniki zamawiane osobno - każdy według własnej sprzedaży i stanu. Użyj, gdy komplet też bywa sprzedawany jako całość.",
   presetKitOnly: "Tylko komplet (sprzedaż zestawu)",
   presetKitOnlyHint:
-    "Na ZD tylko zestaw — według własnej sprzedaży i stanu kompletu. Składniki są zablokowane; przy ich sprzedaży zobaczysz alert.",
+    "Na ZD tylko zestaw - według własnej sprzedaży i stanu kompletu. Składniki są zablokowane; przy ich sprzedaży zobaczysz alert.",
   presetKitFromComponents: "Komplet ze sprzedaży składników",
   presetKitFromComponentsHint:
     "Na ZD tylko zestaw. Ilość = własna sprzedaż kompletu + maksimum ze sprzedaży składników (sprzedaż ÷ sztuk w zestawie). Prośby na składnikach też trafiają na komplet (maksimum po wariantach). Składniki są zablokowane.",
 
   stockAsCoverLabel: "Wliczaj stan zestawu do pokrycia składników",
   stockAsCoverHintSeed:
-    "Jeśli na magazynie leży osobno zestaw i osobno składniki, pokrycie może się zdublować — wtedy świadomie wyłącz tę opcję.",
+    "Jeśli na magazynie leży osobno zestaw i osobno składniki, pokrycie może się zdublować - wtedy świadomie wyłącz tę opcję.",
   stockAsCoverHintManual:
     "Domyślnie włączone przy „Składamy”. Wyłącz, gdy zestaw i składniki są trzymane osobno na magazynie i nie powinny się wzajemnie pokrywać.",
 
   pieceWarningSeed: (twIds: number[]) =>
-    `Jeden ze składników jest towarem „na sztuki” w parze (id. ${twIds.join(", ")}). Zamówienie i tak przejdzie na paczkę przez parę — lepiej wskazać karton (paczkę) jako składnik.`,
+    `Jeden ze składników jest towarem „na sztuki” w parze (id. ${twIds.join(", ")}). Zamówienie i tak przejdzie na paczkę przez parę - lepiej wskazać karton (paczkę) jako składnik.`,
   pieceWarningManual:
-    "Składnik jest towarem „na sztuki” w parze — lepiej wskazać paczkę (karton).",
+    "Składnik jest towarem „na sztuki” w parze - lepiej wskazać paczkę (karton).",
 
   labelOptional: "Etykieta (opcjonalnie)",
-  labelPlaceholder: "np. Castorit — masa + płyn",
+  labelPlaceholder: "np. Castorit - masa + płyn",
   saveButton: "Zapisz skład",
   addComponent: "Dodaj składnik",
   removeBomTitle: "Usuń skład",
@@ -94,7 +94,7 @@ export const ZD_BOM_UI = {
   listPresetKitFromComponents: "komplet ze składników",
 
   badgeZestawTitle:
-    "Składamy: ten towar nie idzie na ZD — popyt i pokrycie są na składnikach.",
+    "Składamy: ten towar nie idzie na ZD - popyt i pokrycie są na składnikach.",
   badgeZestawRole: "zestaw",
   /** Chip meta — krótkie; pełny sens w title. */
   badgeNieZamawiasz: "nie ZD",
@@ -110,12 +110,12 @@ export const ZD_BOM_UI = {
   badgeSkladnikRole: "składnik",
   badgePurchaseBlockedRole: "blokada",
   badgePurchaseBlockedTitle:
-    "Składnik poza zakupem katalogowym — zamawiaj komplet albo zmień sposób kupowania w składzie.",
+    "Składnik poza zakupem katalogowym - zamawiaj komplet albo zmień sposób kupowania w składzie.",
   /** @deprecated Używaj `badgeMissingChip` w chipie; to zdanie zostaje dla legacy. */
-  badgeMissingShort: "Brak towaru w wyniku — ilość może być niepełna",
+  badgeMissingShort: "Brak towaru w wyniku - ilość może być niepełna",
   badgeMissingChip: "brak",
   badgeMissingTitle:
-    "Brakuje towaru ze składu w wyniku szacunku — kliknij „Policz listę”, aby dociągnąć dane z Subiekta.",
+    "Brakuje towaru ze składu w wyniku szacunku - kliknij „Policz listę”, aby dociągnąć dane z Subiekta.",
   badgeContributionTitle: (parentIds: number[]) =>
     parentIds.length
       ? `Wkład ze składu (id. zestawu: ${parentIds.join(", ")}).`
@@ -140,15 +140,15 @@ export const ZD_BOM_UI = {
         : mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)
           ? "składniki mają"
           : "składników ma";
-    return `${n} ${noun} sprzedaż lub prośbę przy trybie „Tylko komplet (sprzedaż zestawu)” — na ZD nie wejdą jako pozycje katalogowe. Zmień tryb na „Komplet ze sprzedaży składników” (ilość z wariantów + prośby), „Kupujemy komplet i części” albo „Składamy”, albo zamów komplet ręcznie.`;
+    return `${n} ${noun} sprzedaż lub prośbę przy trybie „Tylko komplet (sprzedaż zestawu)” - na ZD nie wejdą jako pozycje katalogowe. Zmień tryb na „Komplet ze sprzedaży składników” (ilość z wariantów + prośby), „Kupujemy komplet i części” albo „Składamy”, albo zamów komplet ręcznie.`;
   },
   alertExplodeIncompleteTitle: "Skład „Składamy” niekompletny",
   alertExplodeIncompleteBody:
-    "Brakuje towarów ze składu „Składamy” w wyniku — „Do ZD” i tworzenie ZD są zablokowane, aż dociągniesz pozycje („Policz listę” ponownie).",
+    "Brakuje towarów ze składu „Składamy” w wyniku - „Do ZD” i tworzenie ZD są zablokowane, aż dociągniesz pozycje („Policz listę” ponownie).",
 
   bulkButton: "Skład",
   bulkTitleReady:
-    "Utwórz skład / komplet z zaznaczenia — wskaż, który towar jest zestawem",
+    "Utwórz skład / komplet z zaznaczenia - wskaż, który towar jest zestawem",
   bulkTitleNeed:
     "Zaznacz co najmniej 2 towary (zestaw i składniki), żeby utworzyć skład",
   selectNeedTwo:
@@ -156,10 +156,10 @@ export const ZD_BOM_UI = {
 
   flashSavedNoList:
     "Zapisano składy. Kliknij „Policz listę”, aby zobaczyć efekt na liście.",
-  flashFetching: "Skład zapisany — dociągam brakujące towary z Subiekta…",
+  flashFetching: "Skład zapisany - dociągam brakujące towary z Subiekta…",
   flashOutsideList:
-    "Skład zapisany, ale towar jest poza listą — kliknij „Policz listę”, aby dociągnąć dane.",
-  flashUpdated: "Składy zaktualizowane — wkład i „Do ZD” przeliczone.",
+    "Skład zapisany, ale towar jest poza listą - kliknij „Policz listę”, aby dociągnąć dane.",
+  flashUpdated: "Składy zaktualizowane - wkład i „Do ZD” przeliczone.",
 
   alertUnavailableTitle: "Składy i komplety niedostępne",
   alertUnavailableBody:
@@ -169,7 +169,7 @@ export const ZD_BOM_UI = {
   alertMissingTitle: "Brak towaru ze składu w szacunku",
   alertMissingBody: (count: number) => {
     const noun = count === 1 ? "towaru" : "towarów";
-    return `Nie udało się dociągnąć ${count} ${noun} ze składu — wkład na składniki może być niepełny.`;
+    return `Nie udało się dociągnąć ${count} ${noun} ze składu - wkład na składniki może być niepełny.`;
   },
 
   refreshFailed: (detail: string) =>
@@ -177,7 +177,7 @@ export const ZD_BOM_UI = {
 
   estimateBlockedTitle: "Składy niedostępne",
   estimateBlockedMessage: (detail: string) =>
-    `Lista nie została pokazana — bez listy składów zestawy mogłyby dostać niewłaściwą ilość na ZD. ${detail}`,
+    `Lista nie została pokazana - bez listy składów zestawy mogłyby dostać niewłaściwą ilość na ZD. ${detail}`,
 
   loadError: "Nie udało się wczytać składów i kompletów.",
   loadErrorShort: "Nie udało się wczytać składów.",
@@ -191,16 +191,16 @@ export const ZD_BOM_UI = {
   errParentIsComponent: "Zestaw nie może być jednocześnie swoim składnikiem.",
   errDuplicateComponent: "Ten składnik jest już dodany do składu.",
   errParentInPair: (packLabel: string, pieceLabel: string) =>
-    `Ten towar jest już w parze komplet (${packLabel} ↔ ${pieceLabel}) — nie może być zestawem w składzie.`,
+    `Ten towar jest już w parze komplet (${packLabel} ↔ ${pieceLabel}) - nie może być zestawem w składzie.`,
   errReadBack: "Nie udało się odczytać zapisanego składu.",
   errPairIsBomParent: (label: string) =>
-    `Towar ${label} jest zestawem w składzie / komplecie — nie może wejść do pary.`,
+    `Towar ${label} jest zestawem w składzie / komplecie - nie może wejść do pary.`,
 
   settingsPart: (detail: string) => `składy (${detail})`,
   settingsNeedAll:
     "Brak wczytanych ustawień szacunku (wykluczenia, opakowania, pary, składy, zęby).",
   settingsFail: (parts: string) =>
-    `Nie można przygotować ZD — ustawienia niedostępne: ${parts}. Odśwież stronę lub otwórz panele Wykluczenia / Opakowania / Pary / Składy.`,
+    `Nie można przygotować ZD - ustawienia niedostępne: ${parts}. Odśwież stronę lub otwórz panele Wykluczenia / Opakowania / Pary / Składy.`,
   settingsEmptyHint:
     "Wczytaj wykluczenia, opakowania, pary, składy i katalog zębów, żeby zobaczyć bezpieczną listę do ZD.",
   copyNeedsSettings:

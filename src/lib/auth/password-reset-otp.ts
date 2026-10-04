@@ -254,7 +254,7 @@ export async function sendPasswordResetOtp(params: {
   const maskedEmail = user ? maskEmailForDisplay(user.email) : maskedFallback;
 
   if (!user) {
-    console.info("[password-reset] send skipped — brak kwalifikującego się konta", {
+    console.info("[password-reset] send skipped - brak kwalifikującego się konta", {
       accountId: params.accountId,
     });
     return {

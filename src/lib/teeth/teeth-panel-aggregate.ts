@@ -110,7 +110,7 @@ export function summarizeTeethOrder(
   };
 }
 
-/** Podsumowanie wielu prośb tego samego dostawcy — do zamówienia telefonicznego u Mikran. */
+/** Podsumowanie wielu próśb tego samego dostawcy — do zamówienia telefonicznego u Mikran. */
 export function buildTeethSupplierBatchSummary(
   orders: Array<{
     id: string;

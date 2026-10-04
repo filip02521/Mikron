@@ -36,7 +36,7 @@ export function mapZdEstimateMinStockRow(row: DbRow): ZdEstimateMinStockRow {
   return {
     subiektTwId: Number(row.subiekt_tw_id),
     twSymbol: row.tw_symbol?.trim() || null,
-    twNazwa: (row.tw_nazwa ?? "").trim() || "—",
+    twNazwa: (row.tw_nazwa ?? "").trim() || "-",
     grtId: row.grt_id != null ? Number(row.grt_id) : null,
     grtNazwa: row.grt_nazwa?.trim() || null,
     minStockSzt: Math.max(0, Math.trunc(Number(row.min_stock_szt))),
@@ -130,7 +130,7 @@ export async function upsertZdEstimateMinStock(input: {
 
   const minStockSzt = Math.max(0, Math.trunc(Number(input.minStockSzt)));
   if (!Number.isFinite(minStockSzt) || minStockSzt > 1_000_000) {
-    throw new Error("Minimum stanów musi być liczbą całkowitą 0–1 000 000.");
+    throw new Error("Minimum stanów musi być liczbą całkowitą 0-1 000 000.");
   }
 
   const twNazwa = input.twNazwa.trim() || `Towar ${subiektTwId}`;
