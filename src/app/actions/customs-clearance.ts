@@ -596,7 +596,11 @@ export async function actionImportCustomsEmailDescriptions(
       if (line.card.descriptionPl.trim().toLowerCase() !== entry.descriptionPl.toLowerCase()) differing.push(line.position);
       continue;
     }
-    const vatRate = entry.vatRate ?? parsed.sharedVatRate ?? line.vat.rate;
+    // Stawka tylko z maila (albo wcześniej podana przez człowieka). Brak w mailu = brak stawki na karcie:
+    // „copied” liczy się jak decyzja człowieka, więc nie utrwalamy stawki wyliczonej przez system —
+    // dopisanie deklaracji dostawcy ma nadal dawać 8% automatycznie.
+    const vatRate =
+      entry.vatRate ?? parsed.sharedVatRate ?? (line.card && line.card.source !== "ai" ? line.card.vatRate : null);
     const saved = await upsertCard(supabase, {
       supplierId: view.supplierId,
       code: line.supplierArticleCode,

@@ -102,7 +102,8 @@ export type ResolvedLineVat = {
 
 /**
  * Stawka VAT pozycji:
- * - karta zatwierdzona lub wpisana ręcznie wygrywa (użytkownik zdecydował), ale rozbieżność
+ * - karta zatwierdzona, wpisana ręcznie albo przeniesiona z maila / historii („copied”) ze stawką
+ *   wygrywa (zdecydował człowiek), ale rozbieżność
  *   z dokumentami dostawcy daje ostrzeżenie,
  * - inaczej (brak karty / propozycja AI): artykuł w dokumencie dostawcy → 8% (wyrób medyczny),
  *   w pozostałych przypadkach 23%.
