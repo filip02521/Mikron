@@ -31,11 +31,30 @@ export function isLegacyXls(name: string, mime: string): boolean {
 }
 
 /** .xls przez SheetJS (exceljs czyta tylko .xlsx); komórki scalone mają wartość tylko w pierwszej. */
+/** Mały plik może zadeklarować ogromny zakres arkusza — faktury i packing listy mieszczą się z zapasem. */
+const MAX_XLS_ROWS = 20_000;
+const MAX_XLS_COLS = 200;
+
 function readLegacyXlsSheets(bytes: Buffer): SheetRows[] {
-  const wb = XLSX.read(bytes, { type: "buffer", cellDates: false, cellFormula: false, cellHTML: false });
-  return wb.SheetNames.map((name) =>
+  const wb = XLSX.read(bytes, {
+    type: "buffer",
+    sheetRows: MAX_XLS_ROWS,
+    cellDates: false,
+    cellFormula: false,
+    cellHTML: false,
+  });
+  return wb.SheetNames.map((name) => {
+    const sheet = wb.Sheets[name]!;
+    if (sheet["!ref"]) {
+      const range = XLSX.utils.decode_range(sheet["!ref"]);
+      range.e.c = Math.min(range.e.c, range.s.c + MAX_XLS_COLS - 1);
+      range.e.r = Math.min(range.e.r, range.s.r + MAX_XLS_ROWS - 1);
+      sheet["!ref"] = XLSX.utils.encode_range(range);
+    }
+    return sheet;
+  }).map((sheet) =>
     XLSX.utils
-      .sheet_to_json<unknown[]>(wb.Sheets[name]!, { header: 1, raw: true, defval: null, blankrows: true })
+      .sheet_to_json<unknown[]>(sheet, { header: 1, raw: true, defval: null, blankrows: true })
       .map((row) => row.map((c): SheetCell => (typeof c === "number" ? c : c == null ? null : String(c))))
   )
     .filter((rows) => rows.length > 0)
