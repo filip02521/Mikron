@@ -391,12 +391,12 @@ export async function actionUpdateCustomsShipment(id: string, input: CustomsShip
   const { error } = await supabase
     .from("customs_clearances")
     .update({
-      forwarder: input.forwarder.trim().slice(0, 120),
-      transport_ref: input.transportRef.trim().slice(0, 120),
+      forwarder: String(input.forwarder ?? "").trim().slice(0, 120),
+      transport_ref: String(input.transportRef ?? "").trim().slice(0, 120),
       ...dates,
       free_storage_days: freeDays,
       duties_amount: duties == null ? null : Math.round(duties * 100) / 100,
-      mrn: input.mrn.trim().toUpperCase().slice(0, 40),
+      mrn: String(input.mrn ?? "").trim().toUpperCase().slice(0, 40),
       updated_at: new Date().toISOString(),
     })
     .eq("id", clearanceId);
