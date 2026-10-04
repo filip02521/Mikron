@@ -150,7 +150,7 @@ export type CardWrite = {
   material: string;
   cn_code: string | null;
   is_medical_device: boolean;
-  vat_rate: number;
+  vat_rate: number | null;
   vat_basis_document_id: string | null;
 };
 
@@ -166,8 +166,9 @@ export async function upsertCard(
     values: CardWrite;
     confirm: boolean;
     /**
-     * „ai” = propozycja AI, „copied” = z wcześniejszego maila do agencji — obie nie nadpisują
-     * stawki z dokumentów dostawcy; domyślnie ręcznie.
+     * „ai” = propozycja AI (nie nadpisuje stawki z dokumentów dostawcy), „copied” = z wcześniejszego
+     * maila do agencji / historii odpraw (stawka, jeśli podana, liczy się jak decyzja człowieka);
+     * domyślnie ręcznie.
      */
     source?: "manual" | "ai" | "copied";
   }

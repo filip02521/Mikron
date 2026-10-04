@@ -26,6 +26,7 @@ import {
 } from "@/lib/customs/customs-lines";
 import { CUSTOMS_AI_MIME, customsFileMime } from "@/lib/customs/customs-ai-input";
 import { createCnLookup, formatCnCode } from "@/lib/customs/cn-nomenclature";
+import { polishPozycjeLabel } from "@/lib/email/polish-plural";
 import { emailRangeConflicts, parseCustomsEmailText } from "@/lib/customs/customs-email-import";
 import { isLineComplete, type CustomsClearanceView } from "@/lib/customs/customs-view";
 import { shipmentFromRow, type CustomsShipment, type CustomsShipmentRow } from "@/lib/customs/customs-shipment";
@@ -130,7 +131,8 @@ export async function actionListSupplierRecentZd(
     zds.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "") || b.id - a.id);
     return { ok: true, zds };
   } catch (e) {
-    return fail(`Nie udało się pobrać ZD z Subiekta: ${errorText(e, "brak połączenia")}`);
+    console.error("[customs] ZD z Subiekta:", errorText(e, "brak połączenia"));
+    return fail("Subiekt jest niedostępny - wgraj plik faktury albo wklej pozycje.");
   }
 }
 
@@ -263,7 +265,8 @@ export async function actionCreateCustomsClearance(
       zdNumber = doc.dok_NrPelny ?? `ZD ${doc.dok_Id}`;
       zdLines = linesFromSubiektZd(doc);
     } catch (e) {
-      return fail(`Nie udało się wczytać ZD z Subiekta: ${errorText(e, "brak połączenia")}`);
+      console.error("[customs] ZD z Subiekta:", errorText(e, "brak połączenia"));
+      return fail("Subiekt jest niedostępny - nie wczytano ZD. Odznacz ZD i wgraj plik faktury albo wklej pozycje.");
     }
   }
 
@@ -362,6 +365,19 @@ export async function actionUpdateCustomsClearanceHeader(
   return { ok: true };
 }
 
+/** Opis kodu CN ze słownika — sprawdzenie w trakcie wpisywania (słownik ~1,6 MB zostaje na serwerze). */
+export async function actionDescribeCnCode(
+  raw: string
+): Promise<{ ok: true; code: string; description: string | null; siblings: string[]; year: number } | { ok: false; error: string }> {
+  await requireOperations("read");
+  const code = String(raw ?? "").replace(/[\s.]/g, "");
+  if (!/^\d{8}$/.test(code)) return fail("Kod CN to 8 cyfr.");
+  const cn = createCnLookup();
+  // Dział spoza 01–97 (albo 77) — kodu nie ma i nie ma czego podpowiadać.
+  const description = normalizeCnCode(code) ? cn.describe(code) : null;
+  return { ok: true, code, description, siblings: description ? [] : cn.siblings(code), year: cn.year };
+}
+
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 function dateOrNull(raw: string | null | undefined): string | null | undefined {
@@ -449,7 +465,13 @@ export async function actionSaveCustomsLine(input: SaveCustomsLineInput): Promis
   if (!code) return fail("Podaj kod artykułu dostawcy.");
   const cnRaw = input.cnCode.trim();
   const cn = normalizeCnCode(cnRaw);
-  if (cnRaw && !cn) return fail("Kod CN musi mieć 8 cyfr (np. 9018 49 90).");
+  if (cnRaw && !cn) {
+    return fail(
+      /^\d{8}$/.test(cnRaw.replace(/[\s.]/g, ""))
+        ? "Nie ma takiego działu CN (dozwolone 01-97) - sprawdź kod."
+        : "Kod CN musi mieć 8 cyfr (np. 9018 49 90)."
+    );
+  }
   if (input.confirm && (!input.descriptionPl.trim() || !cn)) {
     return fail("Do zatwierdzenia potrzebny jest opis PL i kod CN.");
   }
@@ -574,7 +596,11 @@ export async function actionImportCustomsEmailDescriptions(
       if (line.card.descriptionPl.trim().toLowerCase() !== entry.descriptionPl.toLowerCase()) differing.push(line.position);
       continue;
     }
-    const vatRate = entry.vatRate ?? parsed.sharedVatRate ?? line.vat.rate;
+    // Stawka tylko z maila (albo wcześniej podana przez człowieka). Brak w mailu = brak stawki na karcie:
+    // „copied” liczy się jak decyzja człowieka, więc nie utrwalamy stawki wyliczonej przez system —
+    // dopisanie deklaracji dostawcy ma nadal dawać 8% automatycznie.
+    const vatRate =
+      entry.vatRate ?? parsed.sharedVatRate ?? (line.card && line.card.source !== "ai" ? line.card.vatRate : null);
     const saved = await upsertCard(supabase, {
       supplierId: view.supplierId,
       code: line.supplierArticleCode,
@@ -609,7 +635,7 @@ export async function actionImportCustomsEmailDescriptions(
   const warnings: string[] = emailRangeConflicts(parsed.ranges, view.lines);
   if (parsed.maxPosition !== view.lines.length) {
     warnings.push(
-      `Mail ma ${parsed.maxPosition} pozycji, a faktura ${view.lines.length} - sprawdź, czy numeracja się zgadza (opisy przypisano po numerach).`
+      `Numeracja w mailu kończy się na poz. ${parsed.maxPosition}, a faktura ma ${polishPozycjeLabel(view.lines.length)} - sprawdź, czy numeracja się zgadza (opisy przypisano po numerach).`
     );
   }
   const missing = view.lines.filter((l) => !parsed.byPosition.has(l.position)).map((l) => l.position);
@@ -622,7 +648,7 @@ export async function actionImportCustomsEmailDescriptions(
   }).length;
   if (noCn) {
     warnings.push(
-      `${noCn} pozycji bez kodu CN w mailu - uzupełnij kod albo użyj „Zaproponuj opisy (AI)” (opisy z maila zostaną).`
+      `Bez kodu CN w mailu: ${polishPozycjeLabel(noCn)} - uzupełnij kod albo użyj „Zaproponuj opisy (AI)” (opisy z maila zostaną).`
     );
   }
   if (differing.length) {

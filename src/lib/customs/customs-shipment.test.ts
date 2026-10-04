@@ -23,6 +23,12 @@ describe("terminy składowania", () => {
     expect(lastFreeStorageDay(s({ arrivedAt: "2026-10-02", freeStorageDays: 3 }))).toBe("2026-10-04");
   });
 
+  it("0 dni bez składowego — naliczane od dnia przybycia", () => {
+    const zero = s({ arrivedAt: "2026-10-02", freeStorageDays: 0 });
+    expect(lastFreeStorageDay(zero)).toBe("2026-10-01");
+    expect(shipmentAlerts(zero, true, "2026-10-02")[0]).toMatchObject({ tone: "danger", text: "Składowe naliczane od 02.10" });
+  });
+
   it("Upcera przyjęta 02.10: 03.10 jutro ostatni darmowy, 04.10 składowe od jutra, 06.10 naliczane od 05.10", () => {
     const upcera = s({ arrivedAt: "2026-10-02", freeStorageDays: 3 });
     expect(shipmentAlerts(upcera, true, "2026-10-02")[0]).toMatchObject({ tone: "info", text: "Bez składowego do 04.10" });
@@ -50,6 +56,12 @@ describe("terminy składowania", () => {
     );
     expect(shipmentAlerts(s({ eta: "2026-11-19", transportRef: "BL" }), true, "2026-10-04")[0]!.text).toBe("ETA 19.11");
     expect(shipmentAlerts(s({ eta: "2026-10-01", transportRef: "BL" }), true, "2026-10-04")[0]!.tone).toBe("warning");
+  });
+
+  it("należności wpisane przed datą przyjęcia — alarm należności, bez wywrotki na braku daty", () => {
+    const early = s({ forwarder: "DHL", dutiesAmount: 2306 });
+    expect(shipmentStage(early)).toBe("duties_due");
+    expect(shipmentAlerts(early, false, "2026-10-04").map((a) => a.text)).toEqual(["Należności do zapłaty - przekaż Darii"]);
   });
 
   it("odprawiona / dostarczona — bez alarmów", () => {

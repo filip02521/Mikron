@@ -35,7 +35,6 @@ import { cleanUuid, loadClearanceView, upsertCard } from "@/lib/customs/customs-
 import { CUSTOMS_AI_MIME, customsAiInlineData, customsFileMime } from "@/lib/customs/customs-ai-input";
 import { cnDescription, cnLeaves } from "@/lib/customs/cn-nomenclature";
 import {
-  isLegacyXls,
   isSpreadsheetFile,
   parseArticleCodesSheet,
   parseInvoiceWorkbook,
@@ -49,8 +48,6 @@ const AI_MIME = CUSTOMS_AI_MIME;
 const MAX_AI_FILE_SIZE = 14 * 1024 * 1024;
 const MAX_PROPOSAL_LINES = 80;
 const MAX_SHEET_FILE_SIZE = 20 * 1024 * 1024;
-const LEGACY_XLS_MESSAGE =
-  "Stary format .xls nie jest obsługiwany - otwórz plik w Excelu i zapisz jako .xlsx (albo CSV).";
 
 function emptyInvoice(lines: InvoiceExtraction["lines"]): InvoiceExtraction {
   return { invoiceNumber: "", invoiceDate: null, currency: null, total: null, hsCode: null, countryOfOrigin: null, lines };
@@ -79,7 +76,7 @@ export type ReadInvoiceFileResult = Result<{
 
 /**
  * Odczyt faktury / packing listy do formularza nowej odprawy:
- * - Excel (.xlsx) i CSV — kolumny rozpoznane po nagłówkach (PL/EN/DE), bez AI;
+ * - Excel (.xlsx / .xls) i CSV — kolumny rozpoznane po nagłówkach (PL/EN/DE), bez AI;
  *   gdy układ jest nietypowy, a AI jest włączone — AI czyta arkusz jako tekst,
  * - PDF i skany — AI (Gemini).
  */
@@ -88,7 +85,6 @@ export async function actionReadInvoiceFile(formData: FormData): Promise<ReadInv
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return fail("Wybierz plik faktury.");
   const mime = file.type || "application/octet-stream";
-  if (isLegacyXls(file.name, mime)) return fail(LEGACY_XLS_MESSAGE);
 
   if (isSpreadsheetFile(file.name, mime)) {
     if (file.size > MAX_SHEET_FILE_SIZE) return fail("Plik przekracza 20 MB.");
@@ -141,7 +137,7 @@ export async function actionReadInvoiceFile(formData: FormData): Promise<ReadInv
   }
 
   if (!AI_MIME.has(customsFileMime(file.name, mime))) {
-    return fail("Obsługiwane pliki: Excel (.xlsx), CSV, PDF i zdjęcia (JPG, PNG, TIF).");
+    return fail("Obsługiwane pliki: Excel (.xlsx, .xls), CSV, PDF i zdjęcia (JPG, PNG, TIF).");
   }
   if (!isCustomsAiConfigured()) {
     return fail("Odczyt PDF / skanów wymaga AI (GOOGLE_AI_API_KEY). Wgraj Excel / CSV albo wklej pozycje.");
@@ -201,7 +197,6 @@ export async function actionExtractDocumentArticlesWithAi(
     .maybeSingle();
   if (!doc) return fail("Dokument nie istnieje.");
   const row = doc as { storage_path: string; mime_type: string; byte_size: number | null; file_name: string };
-  if (isLegacyXls(row.file_name, row.mime_type)) return fail(LEGACY_XLS_MESSAGE);
   if (isSpreadsheetFile(row.file_name, row.mime_type)) {
     try {
       const sheets = await readSpreadsheetSheets(await readStorageObject(row.storage_path), row.file_name);
@@ -412,9 +407,11 @@ export async function actionProposeCustomsLinesWithAi(
         description_pl: kept?.descriptionPl || p.descriptionPl,
         material: kept?.material || p.material,
         cn_code: p.cnCode,
-        is_medical_device: line.vat.isMedicalDevice,
-        vat_rate: line.vat.rate,
-        vat_basis_document_id: line.vat.basisDocument?.id ?? null,
+        // Karta człowieka zachowuje swoją stawkę (albo jej brak) — nie utrwalamy stawki wyliczonej
+        // z dokumentów, bo „copied” / „manual” wygrywa potem z deklaracją dostawcy.
+        is_medical_device: kept ? kept.isMedicalDevice : line.vat.isMedicalDevice,
+        vat_rate: kept ? kept.vatRate : line.vat.rate,
+        vat_basis_document_id: kept ? kept.vatBasisDocumentId : (line.vat.basisDocument?.id ?? null),
       },
     });
     if ("error" in saved) return fail(saved.error);
