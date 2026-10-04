@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildLineProposalsPrompt,
+  customsMaxOutputTokens,
   documentArticlesToPasteText,
   invoiceLinesToPasteText,
   parseDocumentArticlesExtraction,
@@ -128,5 +129,12 @@ describe("userFacingCustomsAiError", () => {
     expect(userFacingCustomsAiError(new CustomsAiUnavailableError())).toMatch(/Brak klucza/);
     expect(userFacingCustomsAiError(new SyntaxError("x"))).toMatch(/nieczytelną/);
     expect(userFacingCustomsAiError(new Error("other"))).toMatch(/ręcznie/);
+  });
+});
+
+describe("customsMaxOutputTokens", () => {
+  it("daje 2.5 limit na fakturę z setkami pozycji, starszym modelom ich sufit", () => {
+    expect(customsMaxOutputTokens("gemini-2.5-flash")).toBe(65_536);
+    expect(customsMaxOutputTokens("gemini-2.0-flash")).toBe(8_192);
   });
 });
