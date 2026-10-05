@@ -12,7 +12,7 @@ export const appShellClass = "relative z-0 flex h-dvh flex-col overflow-hidden b
 
 /** Obszar treści — jedyny pionowy scroll w AppShell (flex-1 + min-h-0). */
 export const appMainClass =
-  "min-h-0 flex-1 overflow-y-auto scroll-smooth bg-transparent";
+  "min-h-0 flex-1 overflow-y-auto scroll-smooth motion-reduce:scroll-auto bg-transparent";
 
 /** Padding main — bez max-width; szerokość ustawia shell każdej strony. */
 export const appMainInsetClass = "mx-auto w-full px-3 py-5 sm:px-4 sm:py-6 lg:px-5";
@@ -846,7 +846,7 @@ export const panelQueueStepsShellClass = cn(
 export const panelQueueStatButtonClass =
   "inline-flex min-h-9 cursor-pointer items-center gap-1.5 rounded-md px-2 py-1.5 -mx-1 transition-colors hover:bg-slate-100/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/80";
 
-/** Podświetlenie świeżo zsynchronizowanych, nieprzeczytanych prośb. */
+/** Podświetlenie świeżo zsynchronizowanych, nieprzeczytanych próśb. */
 export const dailyPanelFreshHighlightClass =
   "ring-2 ring-inset ring-violet-500/55 shadow-md ";
 

@@ -35,7 +35,7 @@ export function MojeOrdersHelp() {
       <HelpBlock title="Co tu jest">
         <p>
           U góry strony <strong className="font-medium text-slate-800">Start dnia</strong> - jedna
-          kolejka: gotowy towar, przypomnienia ZK i tablica. Poniżej pełna lista prośb u
+          kolejka: gotowy towar, przypomnienia ZK i tablica. Poniżej pełna lista próśb u
           dostawców.
         </p>
       </HelpBlock>
@@ -103,7 +103,7 @@ export function MojeOrdersHelp() {
         </ul>
       </HelpBlock>
 
-      <HelpBlock title="Rodzaje prośb">
+      <HelpBlock title="Rodzaje próśb">
         <ul className="list-disc space-y-1.5 pl-4">
           <li>
             <strong className="font-medium text-slate-800">Zamówienie u dostawcy</strong> - zwykły

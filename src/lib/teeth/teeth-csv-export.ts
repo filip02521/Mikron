@@ -48,10 +48,10 @@ export function teethBatchSummaryToCsv(summary: TeethSupplierBatchSummary): stri
   }
 
   rows.push("");
-  rows.push(csvEscape(`Razem: ${summary.totalPieces} szt. · ${summary.orderCount} prośb`));
+  rows.push(csvEscape(`Razem: ${summary.totalPieces} szt. · ${summary.orderCount} próśb`));
 
   if (summary.ordersMissingSpec > 0) {
-    rows.push(csvEscape(`Brak specyfikacji: ${summary.ordersMissingSpec} prośb`));
+    rows.push(csvEscape(`Brak specyfikacji: ${summary.ordersMissingSpec} próśb`));
   }
 
   return "\uFEFF" + rows.join("\r\n");

@@ -18,7 +18,7 @@ function sortByNextDate(
   });
 }
 
-/** Dostawcy z aktywnych prośb handlowca — bez dopełniania listy harmonogramem firmy. */
+/** Dostawcy z aktywnych próśb handlowca — bez dopełniania listy harmonogramem firmy. */
 export function orderSalesPrioritySuppliers(
   suppliers: SupplierWithSchedule[],
   prioritySupplierIds: string[]

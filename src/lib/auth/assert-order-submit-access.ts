@@ -8,7 +8,7 @@ import { canAccessOperations, canAccessTeethPanel, isAdmin, isSales, isSalesMana
 
 type OrderEntry = { salesPersonId?: string | null };
 
-/** Guard składania prośb — role + preview panelu admina + scope kierownika. */
+/** Guard składania próśb — role + preview panelu admina + scope kierownika. */
 export async function assertCanSubmitIndividualOrders(
   user: SessionUser,
   entries: OrderEntry[]

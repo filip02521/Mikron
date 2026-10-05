@@ -6,7 +6,7 @@ export const PRODUCT_ZD_LOOKUP_MODAL = {
   description:
     "Wyszukaj towar w Subiekcie - sprawdzimy otwarte ZD u dostawcy i pokażemy planowany termin realizacji.",
   titleHint:
-    "Wynik dotyczy zamówień u dostawcy (ZD), nie stanu magazynowego ani Twoich prośb w systemie.",
+    "Wynik dotyczy zamówień u dostawcy (ZD), nie stanu magazynowego ani Twoich próśb w systemie.",
   searchLabel: "Szukaj produktu",
   searchPlaceholder: "Symbol, nazwa lub kod Mikran…",
   searchHint:

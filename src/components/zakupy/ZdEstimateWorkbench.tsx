@@ -532,6 +532,7 @@ type ListFilter = ZdEstimateListFilter;
 const ZD_ESTIMATE_EXTERNAL_SESSION_PERSIST_DEBOUNCE_MS = 600;
 
 import { deleteZdEstimateExternalSessionRecord } from "@/lib/orders/zd-estimate-external-session-actions";
+import { askConfirm } from "@/components/ui/ConfirmHost";
 
 /** Renderuje dzieci dopiero od pierwszego `open` i trzyma je potem zamontowane (stan okna przetrwa zamknięcie). */
 function MountAfterOpen({ open, children }: { open: boolean; children: ReactNode }) {
@@ -7849,14 +7850,17 @@ export function ZdEstimateWorkbench({
               truncatedHint={bulkActionTruncationHint}
               disabled={busy || !selectionToolsOpen}
               onClearSelection={clearSelection}
-              onBulkExclude={() => {
+              onBulkExclude={async () => {
                 const withProsba = excludeEligibleLines.filter((l) =>
                   individualBundle.byTwId.has(l.tw_Id)
                 );
                 if (withProsba.length) {
-                  const ok = window.confirm(
-                    `${withProsba.length} z zaznaczonych pozycji ma prośbę handlowca.\n\nPo wykluczeniu prośba trafi do sekcji „Usługi” i do uwag ZD (bez ilości towaru) - nie zniknie z panelu Dziś do momentu utworzenia ZD.\n\nKontynuować?`
-                  );
+                  const ok = await askConfirm({
+                    title: `${withProsba.length} z zaznaczonych ma prośbę handlowca`,
+                    message:
+                      "Po wykluczeniu prośba trafi do sekcji „Usługi” i do uwag ZD (bez ilości towaru) - nie zniknie z panelu Dziś do momentu utworzenia ZD.",
+                    confirmLabel: "Wyklucz",
+                  });
                   if (!ok) return;
                 }
                 setBulkExcludeOpen(true);

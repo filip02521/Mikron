@@ -213,7 +213,7 @@ export function ZkWatchLinesModal({
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200/80">
                 <div
                   className={cn(
-                    "h-full rounded-full transition-all duration-300",
+                    "h-full rounded-full transition-[width,background-color] duration-300",
                     progressPct === 100 || allScopeExcluded ? "bg-emerald-500" : "bg-indigo-500"
                   )}
                   style={{ width: `${allScopeExcluded ? 100 : progressPct}%` }}

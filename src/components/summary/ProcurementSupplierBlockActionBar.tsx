@@ -25,6 +25,7 @@ import {
   type DailyPanelUnseenVariant,
 } from "@/lib/ui/ontime-theme";
 import { buttonGroupItemClass, panelActionBarFooterShellClass } from "@/lib/ui/surfaces";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 function ActionCount({
   n,
@@ -167,7 +168,7 @@ export function ProcurementSupplierBlockActionBar({
       <div
         className={cn(pending && "opacity-60")}
         role="group"
-        aria-label={`Zamów razem u ${block.supplierName} - ${groupCount} ${groupCount === 1 ? "osoba" : groupCount < 5 ? "osoby" : "osób"}`}
+        aria-label={`Zamów razem u ${block.supplierName} - ${groupCount} ${polishPluralWord(groupCount, "osoba", "osoby", "osób")}`}
       >
         <ButtonGroup
           ariaLabel={`Główne lub uzupełniające - wszystkie grupy, ${block.supplierName}`}

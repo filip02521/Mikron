@@ -1,6 +1,7 @@
 import { fetchSuppliersWithSchedules } from "@/lib/data/queries";
 import { resolveSupplierKhIdsForHistory } from "@/lib/orders/zd-order-engine";
 import { getSubiektOrdersZd } from "@/lib/subiekt/api";
+import type { SubiektDocumentLine } from "@/lib/subiekt/types";
 import {
   findSupplierFormTemplate,
   type SupplierFormLine,
@@ -29,7 +30,23 @@ export type SupplierZd = {
 };
 
 /**
- * ZD z Subiekta dla dostawcy. ZD musi należeć do tego dostawcy
+ * Pozycje ZD w kolejności z dokumentu (ob_Id rośnie przy dodawaniu) — formularz musi
+ * iść 1:1 z ZD, inaczej fakturę wpisuje się na wyrywki.
+ */
+export function zdFormLines(positions: readonly SubiektDocumentLine[] | undefined): SupplierFormLine[] {
+  const order = (p: SubiektDocumentLine) => Number(p.ob_Id) || Number.MAX_SAFE_INTEGER;
+  return [...(positions ?? [])]
+    .sort((a, b) => order(a) - order(b))
+    .map((p) => ({
+      symbol: p.tw_Symbol ?? null,
+      name: String(p.tw_Nazwa ?? "").trim(),
+      qty: Number(p.ob_Ilosc) || 0,
+      twId: Number(p.ob_TowId) || undefined,
+    }));
+}
+
+/**
+ * ZD z Subiekta dla dostawcy (formularz, mail z Gmaila). ZD musi należeć do tego dostawcy
  * (kontrahent ZD = kh dostawcy) — bez tego łatwo wysłać obce pozycje.
  */
 export async function loadSupplierZd(input: {
@@ -56,12 +73,7 @@ export async function loadSupplierZd(input: {
 
   const issued = new Date(String(doc.dok_DataWyst ?? "").slice(0, 10) + "T00:00:00");
   const date = Number.isFinite(issued.getTime()) ? issued : new Date();
-  const lines = (doc.dok_Pozycja ?? []).map((p) => ({
-    symbol: p.tw_Symbol ?? null,
-    name: String(p.tw_Nazwa ?? "").trim(),
-    qty: Number(p.ob_Ilosc) || 0,
-    twId: Number(p.ob_TowId) || undefined,
-  }));
+  const lines = zdFormLines(doc.dok_Pozycja);
   return {
     ok: true,
     supplier: {

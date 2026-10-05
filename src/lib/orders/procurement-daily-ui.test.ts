@@ -225,7 +225,7 @@ describe("procurement-daily-ui", () => {
     expect(ws.informacjaLeft.length).toBe(0);
   });
 
-  it("countDailyPanelNavBadge nie liczy samych prośb informacyjnych", () => {
+  it("countDailyPanelNavBadge nie liczy samych próśb informacyjnych", () => {
     const today = new Date(2026, 4, 15);
     const ws = buildSummaryWorkspace(
       [],

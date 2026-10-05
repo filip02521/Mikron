@@ -1,3 +1,4 @@
+import { polishPluralWord } from "@/lib/email/polish-plural";
 /**
  * Spójne komunikaty UI dla terminów ZD na /moje (sync, pending, brak dopasowania).
  * Używaj tych stałych zamiast lokalnych wariantów w komponentach.
@@ -53,9 +54,6 @@ export const ZD_ETA_LINE_NO_MATCH_LABEL = "Brak terminu u dostawcy";
 
 /** Podpowiedź na zwiniętej karcie grupy — tylko pozycje oczekujące. */
 export function buildCollapsedZdPendingOnlyHint(count: number): string {
-  if (count === 1) return "1 pozycja czeka na termin u dostawcy - rozwiń po szczegóły";
-  if (count >= 2 && count <= 4) {
-    return `${count} pozycje czekają na termin u dostawcy - rozwiń po szczegóły`;
-  }
-  return `${count} pozycji czeka na termin u dostawcy - rozwiń po szczegóły`;
+  const phrase = polishPluralWord(count, "pozycja czeka", "pozycje czekają", "pozycji czeka");
+  return `${count} ${phrase} na termin u dostawcy - rozwiń po szczegóły`;
 }

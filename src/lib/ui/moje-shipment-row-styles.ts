@@ -68,7 +68,7 @@ export function mojeShipmentRowClass({
             ? "border-l-emerald-300"
             : "border-l-slate-200/70";
     return cn(
-      "border-l-[3px] transition-all duration-150",
+      "border-l-[3px] transition duration-150",
       accent,
       expanded ? "bg-slate-50/70" : "bg-slate-50/45 hover:bg-slate-50/65"
     );
@@ -93,7 +93,7 @@ export function mojeShipmentRowClass({
                   : "border-l-slate-200";
 
   return cn(
-    "border-l-[3px] transition-all duration-150",
+    "border-l-[3px] transition duration-150",
     accent,
     isAction && !expanded && "bg-emerald-50/35",
     isInformacjaAck && !expanded && "bg-violet-50/40",

@@ -27,6 +27,7 @@ import { toastError, toastFromError, toastFromUnknown, type ToastNotice } from "
 import { redirectToLoginIfSessionError } from "@/lib/auth/session-login-redirect";
 import { panelTypography } from "@/lib/ui/ontime-theme";
 import { cn } from "@/lib/cn";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 type PhoneFormState = {
   label: string;
@@ -244,7 +245,7 @@ export function CarrierPhonesModal({
         <div className="space-y-3 px-5 py-4 sm:px-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className={cn(panelTypography.caption, "text-slate-500")}>
-              {totalPhones} {totalPhones === 1 ? "numer" : totalPhones >= 2 && totalPhones <= 4 ? "numery" : "numerów"} · {carriers.length} kurierów
+              {totalPhones} {polishPluralWord(totalPhones, "numer", "numery", "numerów")} · {carriers.length} kurierów
             </p>
             <Input
               value={search}
@@ -295,7 +296,7 @@ export function CarrierPhonesModal({
                         <p className="text-[11px] text-slate-400">
                           {carrierPhones.length === 0
                             ? "Brak numerów"
-                            : `${carrierPhones.length} ${carrierPhones.length === 1 ? "numer" : carrierPhones.length >= 2 && carrierPhones.length <= 4 ? "numery" : "numerów"}`}
+                            : `${carrierPhones.length} ${polishPluralWord(carrierPhones.length, "numer", "numery", "numerów")}`}
                         </p>
                       </div>
                       {!carrier.isActive ? (

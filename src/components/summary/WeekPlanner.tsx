@@ -56,6 +56,7 @@ import {
   weekPlannerCardActionsClass,
   weekPlannerCardLayoutClass,
 } from "@/lib/ui/surfaces";
+import { askConfirm } from "@/components/ui/ConfirmHost";
 
 function PlanSectionHelp({ planning }: { planning: boolean }) {
   return (
@@ -218,12 +219,16 @@ export function WeekPlanner({
           ? "h-8 px-2 text-xs"
           : "h-11 min-h-11 w-full sm:h-9 sm:min-h-9 sm:w-auto"
       )}
-      onClick={() => {
+      onClick={async () => {
         if (planningMode) {
           if (pendingChanges.length > 0) {
-            const ok = window.confirm(
-              "Masz niezapisane zmiany w planie. Wyjść z trybu planowania bez zatwierdzania?"
-            );
+            const ok = await askConfirm({
+              title: "Wyjść bez zatwierdzania?",
+              message: "Masz niezapisane zmiany w planie. Po wyjściu z trybu planowania przepadną.",
+              confirmLabel: "Wyjdź",
+              cancelLabel: "Zostań",
+              danger: true,
+            });
             if (!ok) return;
           }
           cancelPlanning();

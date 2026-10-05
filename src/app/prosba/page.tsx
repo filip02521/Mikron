@@ -125,7 +125,7 @@ export default async function ProsbaPage({
         <div className={salesPageShellClass}>
           <PageHeader
             title="Nowa prośba"
-            hint="Podgląd formularza handlowca - składanie prośb jest wyłączone dla administratora."
+            hint="Podgląd formularza handlowca - składanie próśb jest wyłączone dla administratora."
             hintAriaLabel="O podglądzie prośby"
           />
           <Alert tone="info">

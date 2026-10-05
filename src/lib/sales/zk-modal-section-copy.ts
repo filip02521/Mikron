@@ -19,12 +19,12 @@ export const ZK_MODAL_SECTION_HINTS = {
     "Szkice list zębów przygotowane do prośby oraz status zamówień zębowych powiązanych z tym ZK.",
 } as const;
 
-/** Copy sekcji powiązanych prośb w modalu ZK. */
+/** Copy sekcji powiązanych próśb w modalu ZK. */
 export const ZK_MODAL_PROSBA_COPY = {
-  emptyTitle: "Brak powiązanych prośb",
+  emptyTitle: "Brak powiązanych próśb",
   emptyHintPrefix: "Użyj przycisku na karcie ZK:",
   createProsbaAction: "Utwórz prośbę",
   supplementAction: "Uzupełnij",
-  archivedEmpty: "Brak aktywnych prośb.",
+  archivedEmpty: "Brak aktywnych próśb.",
   previewLinkTitle: "Otwórz tę prośbę w Moje zamówienia",
 } as const;

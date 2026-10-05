@@ -777,7 +777,7 @@ function MojeOrdersViewContent({
             density="compact"
             title={pageTitle}
             hint={cardHint}
-            hintAriaLabel="O liście prośb"
+            hintAriaLabel="O liście próśb"
             description={cardDescription}
             action={cardHeaderAction}
             actionAlign="inline"
@@ -804,7 +804,7 @@ function MojeOrdersViewContent({
             title={MICROCOPY.empty.orders.title}
             description={
               hasArchiveData && searchActive && archiveMatchCount > 0
-                ? "Brak aktywnych prośb pasujących do wyszukiwania - zobacz archiwum poniżej."
+                ? "Brak aktywnych próśb pasujących do wyszukiwania - zobacz archiwum poniżej."
                 : SALES_PAGE_HEADER_HINTS.moje
             }
             icon={<IconClipboardList size={28} strokeWidth={1.75} />}
@@ -848,7 +848,7 @@ function MojeOrdersViewContent({
           density="compact"
           title={pageTitle}
           hint={cardHint}
-          hintAriaLabel="O liście prośb"
+          hintAriaLabel="O liście próśb"
           description={cardDescription}
           action={cardHeaderAction}
           actionAlign="inline"

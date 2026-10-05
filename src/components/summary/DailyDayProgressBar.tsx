@@ -48,13 +48,13 @@ export function DailyDayProgressBar({
         <div className="flex h-1.5 min-w-[5rem] flex-1 overflow-hidden rounded-full bg-slate-200/80">
           {urgentDoneWidth > 0 ? (
             <div
-              className={cn("h-full transition-all duration-500", progressFillUrgentClass)}
+              className={cn("h-full transition-[width,background-color] duration-500", progressFillUrgentClass)}
               style={{ width: `${urgentDoneWidth}%` }}
             />
           ) : null}
           {forSomeoneDoneWidth > 0 ? (
             <div
-              className={cn("h-full transition-all duration-500", progressFillForSomeoneClass)}
+              className={cn("h-full transition-[width,background-color] duration-500", progressFillForSomeoneClass)}
               style={{ width: `${forSomeoneDoneWidth}%` }}
             />
           ) : null}
@@ -133,14 +133,14 @@ export function DailyDayProgressBar({
       >
         {urgentDoneWidth > 0 ? (
           <div
-            className={cn("h-full transition-all duration-500", progressFillUrgentClass)}
+            className={cn("h-full transition-[width,background-color] duration-500", progressFillUrgentClass)}
             style={{ width: `${urgentDoneWidth}%` }}
             title={`Harmonogram: ${urgent.done}/${urgent.total}`}
           />
         ) : null}
         {forSomeoneDoneWidth > 0 ? (
           <div
-            className={cn("h-full transition-all duration-500", progressFillForSomeoneClass)}
+            className={cn("h-full transition-[width,background-color] duration-500", progressFillForSomeoneClass)}
             style={{ width: `${forSomeoneDoneWidth}%` }}
             title={`Prośby: ${forSomeone.done}/${forSomeone.total}`}
           />

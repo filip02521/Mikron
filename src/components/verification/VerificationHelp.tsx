@@ -6,7 +6,7 @@ import { HelpBlock } from "@/components/ui/HelpBlock";
 export function VerificationHelp() {
   return (
     <HelpPopover
-      label="Pomoc - weryfikacja prośb"
+      label="Pomoc - weryfikacja próśb"
       title="Weryfikacja zgłoszeń"
       shortLabel="Pomoc"
       icon={<GuideIcon />}

@@ -43,7 +43,7 @@ export function AdminSystemStatus({
           <PanelSummaryMetric
             label="Baza danych"
             value={dbIssue ? "Błąd" : "Połączono"}
-            hint="Supabase - tabele operacyjne"
+            hint="PostgreSQL - tabele operacyjne"
             tone={dbIssue ? "danger" : isHealthy ? "success" : "default"}
           />
         </div>

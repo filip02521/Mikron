@@ -227,7 +227,7 @@ export function UpcomingDeliverySupplierCard({
         <IconChevronRight
           size={16}
           className={cn(
-            "mt-1 shrink-0 rounded-lg p-0.5 text-slate-400 transition-all hover:bg-slate-100",
+            "mt-1 shrink-0 rounded-lg p-0.5 text-slate-400 transition hover:bg-slate-100",
             expanded && "rotate-90"
           )}
         />
@@ -237,7 +237,7 @@ export function UpcomingDeliverySupplierCard({
         <div className={cn(compact ? "px-2.5 pb-1.5" : "px-3 pb-2 sm:px-4")}>
           <div className={cn("h-1 overflow-hidden rounded-full", statusProgressTrack(deliveryStatus))}>
             <div
-              className={cn("h-1 rounded-full transition-all", statusProgressBar(deliveryStatus))}
+              className={cn("h-1 rounded-full transition-[width,background-color]", statusProgressBar(deliveryStatus))}
               style={{ width: `${deliveryProgress}%` }}
             />
           </div>
@@ -272,7 +272,7 @@ export function UpcomingDeliverySupplierCard({
               </div>
               <div className={cn("h-1.5 overflow-hidden rounded-full", statusProgressTrack(deliveryStatus))}>
                 <div
-                  className={cn("h-1.5 rounded-full transition-all", statusProgressBar(deliveryStatus))}
+                  className={cn("h-1.5 rounded-full transition-[width,background-color]", statusProgressBar(deliveryStatus))}
                   style={{ width: `${deliveryProgress}%` }}
                 />
               </div>
