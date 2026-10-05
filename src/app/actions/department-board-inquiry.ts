@@ -7,6 +7,7 @@ import { assertAdminPanelAllowsProcurementBoardMutations } from "@/lib/auth/guar
 import { parseEmailList } from "@/lib/customs/customs-email";
 import {
   buildSupplierInquiryDraft,
+  pendingInquiryToSupplier,
   pendingSupplierInquiry,
   type BoardSupplierInquiry,
   type SupplierInquiryProduct,
@@ -41,6 +42,8 @@ export type SupplierInquiryPrep =
       gmail: { configured: boolean; email: string | null };
       suppliers: InquirySupplierOption[];
       suggestedIds: string[];
+      /** Pytanie bez wybranego produktu — szkic bierze tytuł pytania (często ogólny: „Dostępność”). */
+      productFromTitle: boolean;
       draftPl: { subject: string; body: string };
       draftEn: { subject: string; body: string };
       pending: BoardSupplierInquiry | null;
@@ -63,6 +66,7 @@ export async function actionPrepareSupplierInquiry(threadId: string): Promise<Su
     ok: true,
     gmail: { configured, email: conn?.email ?? null },
     ...options,
+    productFromTitle: !thread.product_name?.trim() && !thread.product_symbol?.trim() && !thread.mikran_code?.trim(),
     draftPl: buildSupplierInquiryDraft({ product: thread, english: false, signature }),
     draftEn: buildSupplierInquiryDraft({ product: thread, english: true, signature }),
     pending: pendingSupplierInquiry(inquiries.get(thread.id)),
@@ -124,8 +128,8 @@ export async function actionSendSupplierInquiry(input: {
     if (!supplier) return { ok: false, message: "Wybierz dostawcę z listy." };
 
     if (!input.resend) {
-      const pending = pendingSupplierInquiry((await listSupplierInquiries([thread.id])).get(thread.id));
-      if (pending && pending.supplierName === supplier.name) {
+      const pending = pendingInquiryToSupplier((await listSupplierInquiries([thread.id])).get(thread.id), supplier.id);
+      if (pending) {
         return { ok: false, message: `Zapytanie do ${supplier.name} już czeka na odpowiedź.`, alreadyPending: pending };
       }
     }

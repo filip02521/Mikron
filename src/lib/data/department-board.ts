@@ -84,7 +84,11 @@ async function autoCloseStaleBoardQuestions(): Promise<void> {
   const supabase = createAdminClient();
   const cutoff = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
   const now = new Date().toISOString();
-  const awaitingSupplier = await threadIdsAwaitingSupplier();
+  // Błąd odczytu nie może zablokować tablicy — wtedy zamykamy jak dotąd (bez wyjątków).
+  const awaitingSupplier = await threadIdsAwaitingSupplier().catch((e) => {
+    console.error("[tablica] supplier_inquiry_emails (auto-close)", e);
+    return [] as string[];
+  });
 
   let staleQuery = supabase
     .from("department_board_threads")

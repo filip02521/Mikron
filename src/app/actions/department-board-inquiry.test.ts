@@ -82,12 +82,21 @@ describe("actionSendSupplierInquiry", () => {
   });
 
   it("zapytanie do tego dostawcy już czeka → bez wysyłki; resend wysyła", async () => {
-    const pending = { id: "i1", supplierName: "DFS", fromAddress: "a", toAddresses: [], sentAt: "2026-10-05T10:00:00.000Z", resolvedAt: null };
+    const pending = { id: "i1", supplierId: "sup-1", supplierName: "DFS", fromAddress: "a", toAddresses: [], sentAt: "2026-10-05T10:00:00.000Z", resolvedAt: null };
     m.listSupplierInquiries.mockResolvedValue(new Map([[THREAD_ID, [pending]]]));
     const res = await actionSendSupplierInquiry(input);
     expect(res).toMatchObject({ ok: false, alreadyPending: pending });
     expect(m.sendGmailAsUser).not.toHaveBeenCalled();
     expect((await actionSendSupplierInquiry({ ...input, resend: true })).ok).toBe(true);
+  });
+
+  it("czekające zapytanie do innego dostawcy nie blokuje; starsze do tego samego — blokuje", async () => {
+    const other = { id: "i2", supplierId: "sup-2", supplierName: "Renfert", fromAddress: "a", toAddresses: [], sentAt: "2026-10-05T11:00:00.000Z", resolvedAt: null };
+    m.listSupplierInquiries.mockResolvedValue(new Map([[THREAD_ID, [other]]]));
+    expect((await actionSendSupplierInquiry(input)).ok).toBe(true);
+    const sameOlder = { ...other, id: "i3", supplierId: "sup-1", supplierName: "DFS (stara nazwa)", sentAt: "2026-10-05T09:00:00.000Z" };
+    m.listSupplierInquiries.mockResolvedValue(new Map([[THREAD_ID, [other, sameOlder]]]));
+    expect(await actionSendSupplierInquiry(input)).toMatchObject({ ok: false, alreadyPending: sameOlder });
   });
 
   it("zamknięty wątek albo nie-pytanie → odmowa", async () => {

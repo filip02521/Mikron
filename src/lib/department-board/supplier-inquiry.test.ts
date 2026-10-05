@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildSupplierInquiryDraft,
+  pendingInquiryToSupplier,
   pendingSupplierInquiry,
   supplierInquiryRef,
   type BoardSupplierInquiry,
@@ -57,9 +58,21 @@ describe("supplierInquiryRef", () => {
   });
 });
 
+describe("pendingInquiryToSupplier", () => {
+  const i = (id: string, supplierId: string | null, resolvedAt: string | null) => ({
+    id, supplierId, supplierName: "x", fromAddress: "a", toAddresses: [], sentAt: "2026-10-05T10:00:00.000Z", resolvedAt,
+  });
+  it("szuka po id dostawcy wśród wszystkich czekających, nie tylko najnowszego", () => {
+    expect(pendingInquiryToSupplier([i("a", "s2", null), i("b", "s1", null)], "s1")?.id).toBe("b");
+    expect(pendingInquiryToSupplier([i("a", "s1", "2026-10-05T12:00:00.000Z")], "s1")).toBeNull();
+    expect(pendingInquiryToSupplier([i("a", null, null)], "s1")).toBeNull();
+  });
+});
+
 describe("pendingSupplierInquiry", () => {
   const base: BoardSupplierInquiry = {
     id: "1",
+    supplierId: "sup-1",
     supplierName: "DFS",
     fromAddress: "a@b.pl",
     toAddresses: ["x@y.de"],

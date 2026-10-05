@@ -103,13 +103,14 @@ export async function listSupplierInquiries(threadIds: readonly string[]): Promi
     const { rows } = await query<{
       id: string;
       thread_id: string;
+      supplier_id: string | null;
       supplier_name: string;
       from_address: string;
       to_addresses: string[];
       sent_at: Date;
       resolved_at: Date | null;
     }>(
-      `SELECT id, thread_id, supplier_name, from_address, to_addresses, sent_at, resolved_at
+      `SELECT id, thread_id, supplier_id, supplier_name, from_address, to_addresses, sent_at, resolved_at
          FROM public.supplier_inquiry_emails
         WHERE thread_id = ANY($1::uuid[])
         ORDER BY sent_at DESC`,
@@ -119,6 +120,7 @@ export async function listSupplierInquiries(threadIds: readonly string[]): Promi
       const list = out.get(r.thread_id) ?? [];
       list.push({
         id: r.id,
+        supplierId: r.supplier_id,
         supplierName: r.supplier_name,
         fromAddress: r.from_address,
         toAddresses: r.to_addresses,

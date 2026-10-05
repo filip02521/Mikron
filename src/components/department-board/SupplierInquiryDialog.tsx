@@ -109,7 +109,7 @@ export function SupplierInquiryDialog({
       open
       onClose={() => !sending && onClose()}
       title="Zapytaj dostawcę"
-      titleHint="Mail o cenę, dostępność i czas realizacji wychodzi z Twojego Gmaila. Odpowiedź dostawcy przyjdzie do Twojej skrzynki — wpisz ją potem w wątku."
+      titleHint="Mail o cenę, dostępność i czas realizacji wychodzi z Twojego Gmaila. Handlowiec od razu widzi w wątku, że czekacie na dostawcę — nie trzeba tego dopisywać. Odpowiedź dostawcy przyjdzie do Twojej skrzynki; wpisz ją w wątku, to zakończy oczekiwanie."
       titleId={`supplier-inquiry-${threadId}`}
       size="md"
       tier="top"
@@ -235,6 +235,11 @@ export function SupplierInquiryDialog({
                   rows={12}
                   className={cn(fieldClass, "font-sans leading-relaxed")}
                 />
+                {prep.productFromTitle ? (
+                  <p className="mt-1 rounded-md bg-amber-50 px-2.5 py-1.5 text-xs text-amber-950 ring-1 ring-amber-200">
+                    Handlowiec nie wybrał produktu — w szkicu jest tytuł pytania. Wpisz nazwę i symbol produktu w temacie i treści.
+                  </p>
+                ) : null}
                 <p className="mt-1 text-xs text-slate-500">
                   Treść pytania handlowca nie trafia do maila — dopisz ilość, jeśli ma znaczenie dla ceny.
                 </p>

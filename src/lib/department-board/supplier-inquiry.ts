@@ -8,6 +8,8 @@ import type { DepartmentBoardThreadRow } from "@/lib/data/department-board-share
 /** Zapytanie wysłane z wątku (tabela supplier_inquiry_emails). */
 export type BoardSupplierInquiry = {
   id: string;
+  /** null — dostawca usunięty z kartoteki (nazwa zostaje w supplierName). */
+  supplierId: string | null;
   supplierName: string;
   fromAddress: string;
   toAddresses: string[];
@@ -83,6 +85,14 @@ export function buildSupplierInquiryDraft(input: {
     subject: `${english ? "Product inquiry" : "Zapytanie o produkt"}: ${label} ${ref}`,
     body: body.join("\n"),
   };
+}
+
+/** Czekające zapytanie do konkretnego dostawcy (nie tylko najnowsze w wątku). */
+export function pendingInquiryToSupplier(
+  inquiries: readonly BoardSupplierInquiry[] | undefined,
+  supplierId: string
+): BoardSupplierInquiry | null {
+  return inquiries?.find((i) => !i.resolvedAt && i.supplierId === supplierId) ?? null;
 }
 
 /** Najnowsze zapytanie, na które zakupy jeszcze nie odpisały w wątku. */
