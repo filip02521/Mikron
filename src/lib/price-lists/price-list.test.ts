@@ -5,6 +5,7 @@ import {
   detectPriceListColumns,
   marginPct,
   parsePriceListRows,
+  priceHardBlock,
 } from "./price-list";
 
 // Nagłówek i wiersze jak w cenniku Ivoclar 01.10.2026.
@@ -86,5 +87,21 @@ describe("cennik", () => {
     expect(ok.flags).toEqual([]);
     const off = comparePrices({ list: { name: "x", purchase: 43.07, retail: 67.3, vat: 8, discount: 30 }, subiekt: sub, thresholdPct: 5 });
     expect(off).toMatchObject({ flags: ["margin"], selected: false });
+  });
+});
+
+describe("priceHardBlock", () => {
+  const base = { oldPurchase: 100, oldRetail: 150, newPurchase: 105, newRetail: 157.5 };
+  it("normalna zmiana przechodzi", () => {
+    expect(priceHardBlock(base)).toBeNull();
+    expect(priceHardBlock({ ...base, newRetail: null })).toBeNull();
+  });
+  it("przesunięty przecinek (×10 / ÷10) i cena ≤ 0 są blokowane", () => {
+    expect(priceHardBlock({ ...base, newPurchase: 1050 })).toMatch(/kartotekowa.*10\.5×/);
+    expect(priceHardBlock({ ...base, newRetail: 15 })).toMatch(/detaliczna.*do 10%/);
+    expect(priceHardBlock({ ...base, newPurchase: 0 })).toMatch(/≤ 0/);
+  });
+  it("brak starej ceny — sprawdzamy tylko > 0", () => {
+    expect(priceHardBlock({ ...base, oldPurchase: null, newPurchase: 99999 })).toBeNull();
   });
 });

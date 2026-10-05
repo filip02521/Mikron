@@ -262,6 +262,14 @@ export async function listPriceListItems(importId: string): Promise<PriceListIte
 }
 
 /** Zaznaczenie tylko dla pozycji jeszcze nie zapisanych. */
+export async function getPriceItems(importId: string, ids: number[]): Promise<PriceListItem[]> {
+  const { rows } = await query<ItemRow>(
+    `SELECT * FROM price_list_items WHERE import_id = $1 AND id = ANY($2::bigint[])`,
+    [importId, ids]
+  );
+  return rows.map(itemFromRow);
+}
+
 export async function setPriceItemsSelected(importId: string, ids: number[], selected: boolean): Promise<void> {
   await query(
     `UPDATE price_list_items SET selected = $3

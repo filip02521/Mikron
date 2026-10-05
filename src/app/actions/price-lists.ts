@@ -1,9 +1,10 @@
 "use server";
 
-// Autoryzacja requireOperations(); zapis cen tylko na hoście SUBIEKT_API_PRICES_BASE_URL.
+// Autoryzacja: podgląd i zaznaczanie — requireOperations(); zapis do Subiekta — tylko admin
+// (requireAdminForMutation). Zapis cen tylko na hoście SUBIEKT_API_PRICES_BASE_URL.
 
 import { revalidatePath } from "next/cache";
-import { requireOperations } from "@/lib/auth";
+import { requireAdminForMutation, requireOperations } from "@/lib/auth";
 import { readSpreadsheetSheets, isSpreadsheetFile } from "@/lib/customs/customs-spreadsheet";
 import {
   comparePrices,
@@ -12,6 +13,7 @@ import {
   normalizeSymbol,
   parsePriceListRows,
   PRICE_LIST_COLUMN_LABEL,
+  priceHardBlock,
   type PriceListRow,
 } from "@/lib/price-lists/price-list";
 import {
@@ -26,6 +28,7 @@ import {
 } from "@/lib/price-lists/subiekt-prices";
 import {
   finishPriceItem,
+  getPriceItems,
   getPriceListImport,
   insertPriceListImport,
   nextSelectedPending,
@@ -76,11 +79,20 @@ export async function actionPreparePriceList(formData: FormData): Promise<Result
 
   const file = formData.get("file");
   const cechaId = Number(formData.get("cechaId"));
-  const cechaName = String(formData.get("cechaName") ?? "").trim();
+  const cechaNameHint = String(formData.get("cechaName") ?? "").trim();
   if (!(file instanceof File) || file.size === 0) return { ok: false, error: "Wybierz plik cennika." };
   if (file.size > MAX_FILE_SIZE) return { ok: false, error: "Plik jest większy niż 10 MB." };
   if (!isSpreadsheetFile(file.name, file.type)) return { ok: false, error: "Cennik musi być plikiem Excel lub CSV." };
-  if (!Number.isInteger(cechaId) || cechaId <= 0 || !cechaName) return { ok: false, error: "Wybierz cechę dostawcy." };
+  if (!Number.isInteger(cechaId) || cechaId <= 0 || !cechaNameHint) return { ok: false, error: "Wybierz cechę dostawcy." };
+  // Nazwa cechy z Subiektu, nie z formularza — do historii trafia to, co naprawdę porównano.
+  let cechaName: string;
+  try {
+    const found = (await searchPriceCechy(cfg, cechaNameHint)).find((c) => c.ctw_Id === cechaId);
+    if (!found) return { ok: false, error: "Wybrana cecha nie istnieje w Subiekcie. Wybierz ją ponownie z listy." };
+    cechaName = String(found.ctw_Nazwa ?? found.ctw_Id);
+  } catch (e) {
+    return { ok: false, error: errorText(e, "Nie udało się sprawdzić cechy w Subiekcie.") };
+  }
 
   let parsed: { rows: PriceListRow[]; validFrom: string | null };
   let columns;
@@ -196,11 +208,24 @@ export async function actionSetPriceItemsSelected(
   importId: string,
   ids: number[],
   selected: boolean
-): Promise<Result> {
+): Promise<Result<{ skipped: { symbol: string; reason: string }[] }>> {
   await requireOperations("mutate");
   try {
-    await setPriceItemsSelected(importId, ids.filter(Number.isInteger), selected);
-    return { ok: true };
+    let valid = Array.isArray(ids) ? ids.filter(Number.isInteger) : [];
+    const skipped: { symbol: string; reason: string }[] = [];
+    if (selected) {
+      const blocked = new Set<number>();
+      for (const item of await getPriceItems(importId, valid)) {
+        const reason = priceHardBlock(item);
+        if (reason) {
+          blocked.add(item.id);
+          skipped.push({ symbol: item.symbol, reason });
+        }
+      }
+      valid = valid.filter((id) => !blocked.has(id));
+    }
+    if (valid.length) await setPriceItemsSelected(importId, valid, selected);
+    return { ok: true, skipped };
   } catch (e) {
     return { ok: false, error: errorText(e, "Nie udało się zmienić zaznaczenia.") };
   }
@@ -224,7 +249,8 @@ export type ApplyChunkResult = Result<{ processed: number; remaining: number; ex
  * → zapis → odczyt kontrolny i porównanie z cennikiem. Klient woła do skutku (`remaining` = 0).
  */
 export async function actionApplyPriceListChunk(importId: string): Promise<ApplyChunkResult> {
-  const user = await requireOperations("mutate");
+  // Masowy zapis do ERP — tylko administrator (podgląd i zaznaczanie zostają dla zakupów).
+  const user = await requireAdminForMutation();
   const host = getPricesHost();
   if (!host.ok) return { ok: false, error: host.error };
   const imp = await getPriceListImport(importId);
@@ -247,6 +273,18 @@ export async function actionApplyPriceListChunk(importId: string): Promise<Apply
     for (const item of items) {
       const target = { purchase: item.newPurchase, retail: item.newRetail };
       const expected = { purchase: item.oldPurchase, retail: item.oldRetail };
+      const block = priceHardBlock(item);
+      if (block) {
+        await finishPriceItem({
+          id: item.id,
+          status: "failed",
+          error: block,
+          afterPurchase: null,
+          afterRetail: null,
+          appliedBy: user.id,
+        });
+        continue;
+      }
       try {
         const now = await readPrices(cfg, item.twId);
         const differs = (a: number | null, b: number | null) =>

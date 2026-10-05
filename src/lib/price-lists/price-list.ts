@@ -216,6 +216,36 @@ const NEEDS_REVIEW: PriceFlag[] = [
   "duplicate",
 ];
 
+/** Zmiana o tyle razy (w górę albo w dół) = prawie na pewno błąd w pliku, np. przesunięty przecinek. */
+export const PRICE_HARD_FACTOR = 5;
+
+/**
+ * Twarda blokada zapisu do Subiekta — niezależnie od tego, co zaznaczy użytkownik
+ * (serwer sprawdza przy zaznaczaniu i jeszcze raz przy zapisie). null = wolno.
+ */
+export function priceHardBlock(item: {
+  oldPurchase: number | null;
+  oldRetail: number | null;
+  newPurchase: number | null;
+  newRetail: number | null;
+}): string | null {
+  const levels: [string, number | null, number | null][] = [
+    ["kartotekowa", item.oldPurchase, item.newPurchase],
+    ["detaliczna", item.oldRetail, item.newRetail],
+  ];
+  for (const [label, oldV, newV] of levels) {
+    if (newV == null) continue;
+    if (!Number.isFinite(newV) || newV <= 0) return `Cena ${label} z cennika ≤ 0 — nie zapisano.`;
+    if (oldV != null && oldV > 0) {
+      const ratio = newV / oldV;
+      if (ratio >= PRICE_HARD_FACTOR || ratio <= 1 / PRICE_HARD_FACTOR) {
+        return `Cena ${label} zmienia się ${ratio >= 1 ? `${ratio.toFixed(1)}×` : `do ${(ratio * 100).toFixed(0)}%`} — sprawdź plik (przecinek, jednostka). Nie zapisano.`;
+      }
+    }
+  }
+  return null;
+}
+
 export function needsReview(flags: readonly string[]): boolean {
   return flags.some((f) => NEEDS_REVIEW.includes(f as PriceFlag));
 }

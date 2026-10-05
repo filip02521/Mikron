@@ -160,11 +160,14 @@ export function PriceListReviewClient({
   items: initialItems,
   hostLabel,
   hostMatches,
+  canApply,
 }: {
   imp: PriceListImport;
   items: PriceListItem[];
   hostLabel: string | null;
   hostMatches: boolean;
+  /** Zapis do Subiekta — tylko administrator. */
+  canApply: boolean;
 }) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
@@ -239,6 +242,16 @@ export function PriceListReviewClient({
     try {
       const res = await actionSetPriceItemsSelected(imp.id, [...editable], selected);
       if (!res.ok) throw new Error(res.error);
+      if (res.skipped.length) {
+        const skippedSymbols = new Set(res.skipped.map((s) => s.symbol));
+        setItems((prev) => prev.map((i) => (skippedSymbols.has(i.symbol) && editable.has(i.id) ? { ...i, selected: false } : i)));
+        setError(
+          `Pominięto ${res.skipped.length}: ${res.skipped
+            .slice(0, 3)
+            .map((s) => `${s.symbol} — ${s.reason}`)
+            .join(" ")}${res.skipped.length > 3 ? " …" : ""}`
+        );
+      }
     } catch (e) {
       setItems(before);
       setError(errorText(e, "Nie udało się zmienić zaznaczenia. Odśwież stronę i spróbuj ponownie."));
@@ -325,6 +338,7 @@ export function PriceListReviewClient({
         activeFilter={activeFilter}
         progress={progress}
         hostMatches={hostMatches}
+        canApply={canApply}
         isLive={imp.hostKind === "live"}
         onApply={() => setConfirming(true)}
         onStop={() => (stopRef.current = true)}
@@ -540,6 +554,7 @@ function StatusPanel({
   activeFilter,
   progress,
   hostMatches,
+  canApply,
   isLive,
   onApply,
   onStop,
@@ -551,6 +566,7 @@ function StatusPanel({
   activeFilter: Filter;
   progress: { done: number; total: number } | null;
   hostMatches: boolean;
+  canApply: boolean;
   isLive: boolean;
   onApply: () => void;
   onStop: () => void;
@@ -669,10 +685,12 @@ function StatusPanel({
               Pokaż problemy
             </Button>
           ) : null}
-          {counts.selected > 0 ? (
+          {counts.selected > 0 && canApply ? (
             <Button variant={isLive ? "danger" : "primary"} onClick={onApply} disabled={!hostMatches}>
               Zapisz {cen(counts.selected)}
             </Button>
+          ) : counts.selected > 0 ? (
+            <p className="text-sm text-slate-600">Zapis do Subiekta wykonuje administrator.</p>
           ) : null}
         </div>
       </div>

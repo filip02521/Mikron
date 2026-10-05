@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { requireOperations } from "@/lib/auth";
+import { isAdmin } from "@/lib/auth-roles";
 import { PriceListReviewClient } from "@/components/zakupy/price-lists/PriceListReviewClient";
 import { getPriceListImport, listPriceListItems } from "@/lib/price-lists/data";
 import { getPricesHost } from "@/lib/price-lists/subiekt-prices";
@@ -13,7 +14,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export default async function PriceListReviewPage({ params }: { params: Promise<{ id: string }> }) {
-  await requireOperations("read");
+  const user = await requireOperations("read");
   const { id } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const imp = await getPriceListImport(id);
@@ -28,6 +29,7 @@ export default async function PriceListReviewPage({ params }: { params: Promise<
         items={items}
         hostLabel={host.ok ? host.host.label : null}
         hostMatches={host.ok && host.host.hostKind === imp.hostKind}
+        canApply={isAdmin(user.role)}
       />
     </div>
   );
