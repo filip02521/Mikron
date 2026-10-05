@@ -54,3 +54,6 @@ next-env.d.ts
 data/cutover/
 data/handoff/
 .storage-dev/
+
+# Skille: dane osobowe i szczegóły spraw tylko lokalnie (repo publiczne)
+.claude/skills/**/*.local.md
