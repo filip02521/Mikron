@@ -171,7 +171,7 @@ export type SupplierFormTemplate =
 
 /**
  * Renfert — własny arkusz (tak przyjmują zamówienia): Lp | Symbol | Nazwa | Ilość,
- * wszystkie pozycje ZD, kolejność jak „Sortuj A→Z” w Excelu po nazwie.
+ * wszystkie pozycje ZD w kolejności z ZD.
  * Sprawdzone na ZD 260/M/09/2026 (118 pozycji) z plikiem „Renfert 29.09”.
  */
 const RENFERT_LIST: SupplierXlsxListTemplate = {
@@ -186,9 +186,7 @@ const RENFERT_LIST: SupplierXlsxListTemplate = {
 
 /**
  * Ivoclar Vivadent — własny arkusz: Lp | Symbol | Nazwa | Ilość | Jm, wszystkie
- * pozycje ZD posortowane jak w Excelu. Porównane z „ivoclar 1.10” (ZD 11/M/10/2026):
- * pozycje, nazwy, symbole i kolejność zgodne; w pliku ręcznie doklejono na końcu
- * pozycje dopisane później do ZD — tu trafiają na swoje miejsce alfabetycznie.
+ * pozycje ZD w kolejności z ZD. Porównane z „ivoclar 1.10” (ZD 11/M/10/2026).
  */
 const IVOCLAR_LIST: SupplierXlsxListTemplate = {
   kind: "xlsx-list",
@@ -201,16 +199,6 @@ const IVOCLAR_LIST: SupplierXlsxListTemplate = {
   columns: { lp: 3, symbol: 9.140625, name: 46.85546875, qty: 5.28515625 },
   unitColumn: { header: "Jm", width: 4 },
 };
-
-/**
- * Sortowanie jak „Sortuj A→Z” w Excelu: bez wielkości liter, myślniki i apostrofy
- * pomijane („O-ring” za „Opal”), spacje liczą się („farb Stain” przed „farbek”).
- */
-const excelCollator = new Intl.Collator("pl", { sensitivity: "base" });
-export function compareExcelText(a: string, b: string): number {
-  const strip = (s: string) => s.trim().replace(/[-'’]/g, "");
-  return excelCollator.compare(strip(a), strip(b));
-}
 
 /** Symbol z samych cyfr (bez zera na początku) → liczba, jak wpisany w Excelu. */
 export function excelSymbolValue(symbol: string | null | undefined): string | number {
