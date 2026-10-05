@@ -227,9 +227,23 @@ export function ZdEstimatePostCreatePanel({
       }
     : null;
 
-  // Status Gmaila: przy otwarciu i po powrocie do karty (łączenie idzie w nowej karcie —
-  // panel po utworzeniu ZD żyje tylko w pamięci strony i zniknąłby przy przejściu do Google).
+  // Status Gmaila przy otwarciu. Łączenie idzie w nowej karcie (panel po utworzeniu ZD żyje tylko
+  // w pamięci strony), więc po powrocie odświeżamy — ale tylko dopóki konto czeka na połączenie.
+  const gmailAwaitingConnect = gmail?.configured === true && !gmail.email;
   useEffect(() => {
+    let cancelled = false;
+    void actionGmailStatus()
+      .then((res) => {
+        if (!cancelled) setGmail(res);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!gmailAwaitingConnect) return;
     let cancelled = false;
     const refresh = () =>
       void actionGmailStatus()
@@ -237,13 +251,12 @@ export function ZdEstimatePostCreatePanel({
           if (!cancelled) setGmail(res);
         })
         .catch(() => undefined);
-    refresh();
     window.addEventListener("focus", refresh);
     return () => {
       cancelled = true;
       window.removeEventListener("focus", refresh);
     };
-  }, []);
+  }, [gmailAwaitingConnect]);
 
   useEffect(() => {
     const dokId = session.dokId;
@@ -1231,7 +1244,11 @@ export function ZdEstimatePostCreatePanel({
                 id={toId}
                 aria-label={ZD_ESTIMATE_UI.postCreateMailComposeTo}
                 value={mailTo}
-                onChange={(e) => setMailTo(e.target.value)}
+                onChange={(e) => {
+                  setMailTo(e.target.value);
+                  // Potwierdzenie „spoza karty” dotyczyło poprzedniego adresu.
+                  setGmailError(null);
+                }}
                 className={cn(
                   controlFocusClass,
                   "mt-1 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"

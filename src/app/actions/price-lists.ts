@@ -208,18 +208,18 @@ export async function actionSetPriceItemsSelected(
   importId: string,
   ids: number[],
   selected: boolean
-): Promise<Result<{ skipped: { symbol: string; reason: string }[] }>> {
+): Promise<Result<{ skipped: { id: number; symbol: string; reason: string }[] }>> {
   await requireOperations("mutate");
   try {
     let valid = Array.isArray(ids) ? ids.filter(Number.isInteger) : [];
-    const skipped: { symbol: string; reason: string }[] = [];
+    const skipped: { id: number; symbol: string; reason: string }[] = [];
     if (selected) {
       const blocked = new Set<number>();
       for (const item of await getPriceItems(importId, valid)) {
         const reason = priceHardBlock(item);
         if (reason) {
           blocked.add(item.id);
-          skipped.push({ symbol: item.symbol, reason });
+          skipped.push({ id: item.id, symbol: item.symbol, reason });
         }
       }
       valid = valid.filter((id) => !blocked.has(id));
@@ -275,6 +275,8 @@ export async function actionApplyPriceListChunk(importId: string): Promise<Apply
       const expected = { purchase: item.oldPurchase, retail: item.oldRetail };
       const block = priceHardBlock(item);
       if (block) {
+        // Odznaczona — „Ponów nieudane” nie wrzuci jej z powrotem do zapisu (serwer i tak nie pozwoli jej zaznaczyć).
+        await setPriceItemsSelected(importId, [item.id], false);
         await finishPriceItem({
           id: item.id,
           status: "failed",

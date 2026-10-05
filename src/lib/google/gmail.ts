@@ -9,7 +9,7 @@
 
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
 import nodemailer from "nodemailer";
-import { getAppUrl } from "@/lib/env/app-config";
+import { getAppUrl, isLoopbackAppUrl } from "@/lib/env/app-config";
 
 export const GMAIL_SEND_SCOPE = "https://www.googleapis.com/auth/gmail.send";
 const SCOPES = ["openid", "email", GMAIL_SEND_SCOPE];
@@ -35,7 +35,14 @@ export function getGmailOAuthConfig(env: NodeJS.ProcessEnv = process.env): Gmail
   if (!clientId || !clientSecret || !keyRaw) return null;
   const tokenKey = Buffer.from(keyRaw, "base64");
   if (tokenKey.length !== 32) return null;
-  return { clientId, clientSecret, redirectUri: `${getAppUrl()}/api/google/callback`, tokenKey };
+  // Google przyjmuje przekierowanie tylko po HTTPS (wyjątek: localhost) — inaczej funkcja wyglądałaby
+  // na włączoną, a logowanie kończyłoby się błędem redirect_uri.
+  const appUrl = getAppUrl();
+  if (!appUrl.startsWith("https://") && !isLoopbackAppUrl(appUrl)) {
+    console.warn("[gmail] NEXT_PUBLIC_APP_URL nie jest HTTPS — wysyłka z Gmaila wyłączona.");
+    return null;
+  }
+  return { clientId, clientSecret, redirectUri: `${appUrl}/api/google/callback`, tokenKey };
 }
 
 export class GmailReconnectRequiredError extends Error {

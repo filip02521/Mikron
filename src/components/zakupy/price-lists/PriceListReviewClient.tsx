@@ -243,8 +243,8 @@ export function PriceListReviewClient({
       const res = await actionSetPriceItemsSelected(imp.id, [...editable], selected);
       if (!res.ok) throw new Error(res.error);
       if (res.skipped.length) {
-        const skippedSymbols = new Set(res.skipped.map((s) => s.symbol));
-        setItems((prev) => prev.map((i) => (skippedSymbols.has(i.symbol) && editable.has(i.id) ? { ...i, selected: false } : i)));
+        const skippedIds = new Set(res.skipped.map((s) => s.id));
+        setItems((prev) => prev.map((i) => (skippedIds.has(i.id) ? { ...i, selected: false } : i)));
         setError(
           `Pominięto ${res.skipped.length}: ${res.skipped
             .slice(0, 3)

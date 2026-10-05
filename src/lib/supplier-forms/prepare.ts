@@ -109,6 +109,7 @@ export async function prepareSupplierFormForZd(input: {
 
 /** Adresy e-mail wyłuskane z dowolnego tekstu karty (małe litery, bez duplikatów). */
 export function emailsInText(text: string): string[] {
-  const found = text.toLowerCase().match(/[^\s@,;<>()"']+@[^\s@,;<>()"']+\.[a-z]{2,}/g) ?? [];
+  // Bez „:” i „/” w części lokalnej — „mailto:jan@x.pl” i „kontakt:jan@x.pl” dają jan@x.pl.
+  const found = text.toLowerCase().match(/[^\s@,;:/<>()"']+@[^\s@,;:/<>()"']+\.[a-z]{2,}/g) ?? [];
   return [...new Set(found)];
 }

@@ -8,17 +8,15 @@
  *   np. Annex A deklaracji zgodności) — podstawa stawki VAT 8% dla wyrobów medycznych.
  */
 
+import { MIKRAN_COMPANY } from "@/lib/company";
+
 export type CustomsVatRate = 0 | 5 | 8 | 23;
 
 export const CUSTOMS_DEFAULT_VAT_RATE: CustomsVatRate = 23;
 export const CUSTOMS_MEDICAL_VAT_RATE: CustomsVatRate = 8;
 
-export const CUSTOMS_IMPORTER = {
-  name: "Mikran sp. z o.o.",
-  street: "ul. Wojskowa 3/L4",
-  postalCity: "60-792 Poznań",
-  nip: "7831008373",
-} as const;
+/** Importer w zgłoszeniu = Mikran (wspólne dane firmy). */
+export const CUSTOMS_IMPORTER = MIKRAN_COMPANY;
 
 export type CustomsDocumentRef = {
   id: string;

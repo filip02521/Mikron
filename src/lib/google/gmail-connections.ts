@@ -4,7 +4,7 @@
  */
 
 import { query } from "@/lib/db/pool";
-import { customsEmailHtml } from "@/lib/customs/customs-email";
+import { plainTextEmailHtml } from "@/lib/email/plain-text-html";
 import { recordTransactionalEmailLog } from "@/lib/services/transactional-email-log";
 import type { TransactionalEmailKind } from "@/types/database";
 import {
@@ -21,13 +21,10 @@ import {
 
 export type GmailConnection = { email: string; connectedAt: string };
 
+/** Połączenie, którego token da się odszyfrować — inaczej traktowane jak brak (UI: „Połącz”). */
 export async function getGmailConnection(userId: string): Promise<GmailConnection | null> {
-  const { rows } = await query<{ google_email: string; connected_at: Date }>(
-    `SELECT google_email, connected_at FROM public.google_mail_connections WHERE user_id = $1`,
-    [userId]
-  );
-  const row = rows[0];
-  return row ? { email: row.google_email, connectedAt: row.connected_at.toISOString() } : null;
+  const stored = await loadRefreshToken(userId);
+  return stored ? { email: stored.email, connectedAt: stored.connectedAt } : null;
 }
 
 export async function saveGmailConnection(input: {
@@ -51,19 +48,36 @@ export async function saveGmailConnection(input: {
   );
 }
 
-async function loadRefreshToken(userId: string): Promise<{ email: string; token: string } | null> {
+/**
+ * Token nieodszyfrowalny (zmieniony GOOGLE_OAUTH_TOKEN_KEY, uszkodzony wpis) = martwe połączenie:
+ * kasujemy je, żeby użytkownik dostał „Połącz z Gmailem”, a nie ogólny błąd przy każdej wysyłce.
+ */
+async function loadRefreshToken(
+  userId: string
+): Promise<{ email: string; token: string; connectedAt: string } | null> {
   const cfg = getGmailOAuthConfig();
   if (!cfg) return null;
-  const { rows } = await query<{ google_email: string; refresh_token_enc: string }>(
-    `SELECT google_email, refresh_token_enc FROM public.google_mail_connections WHERE user_id = $1`,
+  const { rows } = await query<{ google_email: string; refresh_token_enc: string; connected_at: Date }>(
+    `SELECT google_email, refresh_token_enc, connected_at FROM public.google_mail_connections WHERE user_id = $1`,
     [userId]
   );
   const row = rows[0];
-  return row ? { email: row.google_email, token: decryptToken(cfg.tokenKey, row.refresh_token_enc) } : null;
+  if (!row) return null;
+  try {
+    return {
+      email: row.google_email,
+      token: decryptToken(cfg.tokenKey, row.refresh_token_enc),
+      connectedAt: row.connected_at.toISOString(),
+    };
+  } catch (e) {
+    console.error("[gmail] nie odszyfrowano tokenu — usuwam połączenie", e instanceof Error ? e.message : e);
+    await query(`DELETE FROM public.google_mail_connections WHERE user_id = $1`, [userId]);
+    return null;
+  }
 }
 
 export async function deleteGmailConnection(userId: string): Promise<void> {
-  const stored = await loadRefreshToken(userId).catch(() => null);
+  const stored = await loadRefreshToken(userId);
   await query(`DELETE FROM public.google_mail_connections WHERE user_id = $1`, [userId]);
   if (stored) await revokeGmailToken(stored.token);
 }
@@ -85,7 +99,7 @@ export async function sendGmailAsUser(input: {
   const stored = await loadRefreshToken(input.userId);
   if (!stored) return { ok: false, message: "Najpierw połącz swojego Gmaila.", reconnect: true };
 
-  const html = customsEmailHtml(input.text);
+  const html = plainTextEmailHtml(input.text);
   const log = {
     kind: input.kind,
     toAddresses: input.to,
