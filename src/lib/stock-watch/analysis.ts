@@ -16,6 +16,30 @@ import {
   type ZdPackagingDocumentUnitMode,
 } from "@/lib/orders/zd-estimate-units";
 
+/**
+ * Para paczka↔sztuka (Kreator „Pary”): sprzedaż i cel na linii paczki są już w sztukach
+ * (`applyZdEstimatePairs`), więc stan też musi być w sztukach — sztuki + paczki × przelicznik,
+ * a otwarte ZD to reszta pokrycia pary. Linia sztuk ma sprzedaż 0 → „bez sprzedaży”.
+ * Bez pary / bez partnera → null (zwykłe liczenie).
+ */
+export function pairStockPieces(
+  pair:
+    | {
+        role: "pack" | "piece";
+        unitsPerPack: number;
+        coverSzt: number;
+        pieceDostepne: number;
+        packDostepne: number;
+        partnerMissing?: boolean;
+      }
+    | null
+    | undefined
+): { availableQty: number; openZdQty: number } | null {
+  if (!pair || pair.role !== "pack" || pair.partnerMissing) return null;
+  const availableQty = finite(pair.pieceDostepne) + finite(pair.packDostepne) * finite(pair.unitsPerPack);
+  return { availableQty, openZdQty: Math.max(0, finite(pair.coverSzt) - availableQty) };
+}
+
 /** „Krytyczne” = stanu dostępnego starczy na ≤ 48 h. */
 export const STOCK_WATCH_CRITICAL_DAYS = 2;
 

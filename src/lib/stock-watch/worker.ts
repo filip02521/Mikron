@@ -31,7 +31,7 @@ import { loadZdOrderHorizons } from "@/lib/orders/zd-order-horizon-load";
 import { buildZdOrderList } from "@/lib/orders/zd-order-list";
 import { warsawNowParts } from "@/lib/time/warsaw";
 import { userFacingErrorTextFromMessage } from "@/lib/ui/user-facing-error";
-import { analyzeStockWatchItem, unitPricePerPiece } from "@/lib/stock-watch/analysis";
+import { analyzeStockWatchItem, pairStockPieces, unitPricePerPiece } from "@/lib/stock-watch/analysis";
 import {
   createStockWatchRun,
   getLatestStockWatchRun,
@@ -373,13 +373,17 @@ async function computeSupplierOrder(input: {
     const pack = engine.packagingLookup.get(tw) ?? null;
     const unitPrice = unitPricePerPiece(prices.get(tw)?.priceNet ?? null, pack);
     const minStock = engine.minStockByTwId.get(tw) ?? null;
-    const openZdQty = zdDocumentUnitsToPieces(
-      Math.max(0, num(line.otwarteZd)),
-      pack?.unitsPerPackage,
-      pack?.documentUnitMode ?? "packages"
-    );
+    const pairStock = pairStockPieces(line.pair);
+    const availableQty = pairStock?.availableQty ?? num(line.dostepne);
+    const openZdQty =
+      pairStock?.openZdQty ??
+      zdDocumentUnitsToPieces(
+        Math.max(0, num(line.otwarteZd)),
+        pack?.unitsPerPackage,
+        pack?.documentUnitMode ?? "packages"
+      );
     const signal = analyzeStockWatchItem({
-      availableQty: num(line.dostepne),
+      availableQty,
       openZdQty,
       velocityDaily: num(line.sprzedazDziennie),
       targetQty: num(line.celZapasuTracked),
@@ -392,7 +396,7 @@ async function computeSupplierOrder(input: {
     const deliveryRisk =
       horizon && velocity > 0
         ? zdDeliveryRisk({
-            daysOfCoverWithIncoming: (Math.max(0, num(line.dostepne)) + openZdQty) / velocity,
+            daysOfCoverWithIncoming: (Math.max(0, availableQty) + openZdQty) / velocity,
             horizon,
           })
         : null;
@@ -416,7 +420,7 @@ async function computeSupplierOrder(input: {
       scopeId,
       stockQty: num(line.tw_Stan),
       reservedQty: num(line.tw_StanRez),
-      availableQty: num(line.dostepne),
+      availableQty,
       openZdQty: round(openZdQty, 3),
       openZkUnreservedQty: num(line.otwarteZkBezRez),
       salesPeriodQty: num(line.sprzedazOkres),

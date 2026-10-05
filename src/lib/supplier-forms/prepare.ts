@@ -19,22 +19,27 @@ export type PreparedSupplierForm =
     }
   | { ok: false; message: string };
 
+export type SupplierZd = {
+  supplier: { id: string; name: string; location: string | null };
+  lines: SupplierFormLine[];
+  dokNr: string;
+  /** Data wystawienia ZD. */
+  date: Date;
+};
+
 /**
- * ZD z Subiekta → pozycje do formularza dostawcy. ZD musi należeć do tego dostawcy
+ * ZD z Subiekta dla dostawcy. ZD musi należeć do tego dostawcy
  * (kontrahent ZD = kh dostawcy) — bez tego łatwo wysłać obce pozycje.
- * Data formularza = data wystawienia ZD (tak wypełniano ręcznie).
  */
-export async function prepareSupplierFormForZd(input: {
+export async function loadSupplierZd(input: {
   dokId: number;
   supplierId: string;
-}): Promise<PreparedSupplierForm> {
+}): Promise<({ ok: true } & SupplierZd) | { ok: false; message: string }> {
   const [supplier] = await fetchSuppliersWithSchedules(undefined, {
     activeOnly: false,
     supplierIds: [input.supplierId],
   });
   if (!supplier) return { ok: false, message: "Nie znaleziono dostawcy." };
-  const template = findSupplierFormTemplate(supplier.name);
-  if (!template) return { ok: false, message: `Dla „${supplier.name}” nie ma jeszcze formularza.` };
 
   const [doc, kh] = await Promise.all([
     getSubiektOrdersZd(input.dokId),
@@ -58,10 +63,28 @@ export async function prepareSupplierFormForZd(input: {
   }));
   return {
     ok: true,
-    template,
+    supplier: { id: String(supplier.id), name: supplier.name, location: supplier.location ?? null },
     lines,
     date,
     dokNr: String(doc.dok_NrPelny ?? `ZD ${input.dokId}`),
-    supplierName: supplier.name,
+  };
+}
+
+/** ZD → pozycje do formularza dostawcy. Data formularza = data wystawienia ZD (tak wypełniano ręcznie). */
+export async function prepareSupplierFormForZd(input: {
+  dokId: number;
+  supplierId: string;
+}): Promise<PreparedSupplierForm> {
+  const zd = await loadSupplierZd(input);
+  if (!zd.ok) return zd;
+  const template = findSupplierFormTemplate(zd.supplier.name);
+  if (!template) return { ok: false, message: `Dla „${zd.supplier.name}” nie ma jeszcze formularza.` };
+  return {
+    ok: true,
+    template,
+    lines: zd.lines,
+    date: zd.date,
+    dokNr: zd.dokNr,
+    supplierName: zd.supplier.name,
   };
 }

@@ -412,6 +412,15 @@ function operationsOrderingItems(role: UserRole): NavItem[] {
       tier: "primary",
       mobileSlot: "overflow",
     });
+    items.push({
+      href: "/zakupy/cenniki",
+      label: "Cenniki",
+      description: "Ceny z cennika dostawcy do Subiekta",
+      icon: "catalog",
+      tone: "violet",
+      tier: "compact",
+      mobileSlot: "overflow",
+    });
   }
   items.push(
     {
@@ -1059,6 +1068,7 @@ export function pageTitle(pathname: string): string {
   if (pathname.startsWith("/zakupy/odprawy")) return "Odprawy celne";
   if (pathname.startsWith("/zakupy/szacunek")) return "Kreator ZD";
   if (pathname.startsWith("/zakupy/braki")) return "Braki i zamówienia";
+  if (pathname.startsWith("/zakupy/cenniki")) return "Cenniki";
   if (pathname.startsWith("/zakupy/raporty-ivoclar")) return "Raporty Ivoclar (przeniesione)";
   if (pathname === "/urlopy" || pathname.startsWith("/urlopy/")) {
     return "Urlopy działu";

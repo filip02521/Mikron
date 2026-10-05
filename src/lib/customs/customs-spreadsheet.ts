@@ -62,7 +62,7 @@ function readLegacyXlsSheets(bytes: Buffer): SheetRows[] {
 }
 
 /** Tekst nagłówka bez ogonków, kropek i nadmiarowych spacji. */
-function headerKey(cell: SheetCell): string {
+export function headerKey(cell: SheetCell): string {
   return String(cell ?? "")
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
