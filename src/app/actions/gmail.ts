@@ -1,6 +1,7 @@
 "use server";
 
 // Wysyłka z Gmaila zalogowanej osoby (OAuth gmail.send) — zawsze „jako ja”, nigdy w czyimś imieniu.
+import { revalidatePath } from "next/cache";
 import {
   getSessionUser,
   getSessionUserForMutation,
@@ -45,6 +46,7 @@ export async function actionSaveEmailSignature(signature: string): Promise<{ ok:
     return { ok: false, message: `Podpis może mieć najwyżej ${EMAIL_SIGNATURE_MAX} znaków.` };
   }
   await saveEmailSignature(user.id, signature);
+  revalidatePath("/ustawienia");
   return { ok: true };
 }
 
@@ -60,6 +62,7 @@ export async function actionZdSupplierEmailSent(dokId: number): Promise<Supplier
 export async function actionDisconnectGmail(): Promise<{ ok: true }> {
   const user = await getSessionUserForMutation();
   await deleteGmailConnection(user.id);
+  revalidatePath("/ustawienia");
   return { ok: true };
 }
 
@@ -169,6 +172,8 @@ export async function actionSendZdToSupplier(input: {
       attachmentName: attachment.filename,
       gmailMessageId: sent.messageId,
     }).catch((e) => console.error("[gmail] supplier_order_emails", e));
+    // Nowy wpis w logu wysyłek (/admin/wysylki).
+    revalidatePath("/admin/wysylki");
     return {
       ok: true,
       from: sent.from,

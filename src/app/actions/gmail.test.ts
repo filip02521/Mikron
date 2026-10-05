@@ -9,6 +9,7 @@ const m = vi.hoisted(() => ({
   renderSupplierForm: vi.fn(),
 }));
 
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/auth", () => ({
   getSessionUser: vi.fn(),
   requireZdEstimateAdmin: m.requireZdEstimateAdmin,

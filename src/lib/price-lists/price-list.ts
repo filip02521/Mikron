@@ -30,7 +30,8 @@ const PATTERNS: Record<PriceListColumn, { match: RegExp; exclude?: RegExp }> = {
     exclude: /taryf|celn|customs|ean|hierarch|barcode/,
   },
   name: {
-    match: /^(nazwa|name|opis|description|bezeichnung)\b|nazwa|description|bezeichnung/,
+    // „name” / „opis” tylko na początku nagłówka (np. „Name”, „Opis towaru”); nazwa / description / bezeichnung gdziekolwiek.
+    match: /(?:^(?:name|opis)\b|nazwa|description|bezeichnung)/,
     exclude: /\b(kod|code|no|nr|number)$/,
   },
   purchase: {
