@@ -20,7 +20,8 @@ export type PreparedSupplierForm =
   | { ok: false; message: string };
 
 export type SupplierZd = {
-  supplier: { id: string; name: string; location: string | null };
+  /** `cardEmails` — adresy z karty dostawcy (mails / notatki / dodatkowe info). */
+  supplier: { id: string; name: string; location: string | null; cardEmails: string[] };
   lines: SupplierFormLine[];
   dokNr: string;
   /** Data wystawienia ZD. */
@@ -63,7 +64,12 @@ export async function loadSupplierZd(input: {
   }));
   return {
     ok: true,
-    supplier: { id: String(supplier.id), name: supplier.name, location: supplier.location ?? null },
+    supplier: {
+      id: String(supplier.id),
+      name: supplier.name,
+      location: supplier.location ?? null,
+      cardEmails: emailsInText(`${supplier.mails ?? ""} ${supplier.notes ?? ""} ${supplier.extra_info ?? ""}`),
+    },
     lines,
     date,
     dokNr: String(doc.dok_NrPelny ?? `ZD ${input.dokId}`),
@@ -87,4 +93,10 @@ export async function prepareSupplierFormForZd(input: {
     dokNr: zd.dokNr,
     supplierName: zd.supplier.name,
   };
+}
+
+/** Adresy e-mail wyłuskane z dowolnego tekstu karty (małe litery, bez duplikatów). */
+export function emailsInText(text: string): string[] {
+  const found = text.toLowerCase().match(/[^\s@,;<>()"']+@[^\s@,;<>()"']+\.[a-z]{2,}/g) ?? [];
+  return [...new Set(found)];
 }

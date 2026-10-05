@@ -31,7 +31,7 @@ import { actionSendZdToSupplier } from "@/app/actions/gmail";
 
 const zd = (name: string, location: string) => ({
   ok: true,
-  supplier: { id: "sup-1", name, location },
+  supplier: { id: "sup-1", name, location, cardEmails: ["order@renfert.de"] },
   lines: [{ symbol: "7700020", name: "Renfert-EASY blank wax", qty: 1 }],
   date: new Date(2026, 9, 5),
   dokNr: "ZD 45/M/10/2026",
@@ -92,6 +92,14 @@ describe("actionSendZdToSupplier", () => {
     m.loadSupplierZd.mockResolvedValue({ ok: false, message: "ZD 1/26 nie jest wystawione na Renfert" });
     expect(await actionSendZdToSupplier(input)).toEqual({ ok: false, message: "ZD 1/26 nie jest wystawione na Renfert" });
     expect(m.sendGmailAsUser).not.toHaveBeenCalled();
+  });
+
+  it("adres spoza karty dostawcy → wymaga potwierdzenia, potem wysyła", async () => {
+    m.loadSupplierZd.mockResolvedValue(zd("Shenzhen Upcera Dental", "IMPORT"));
+    const res = await actionSendZdToSupplier({ ...input, to: "obcy@example.com" });
+    expect(res).toMatchObject({ ok: false, unknownRecipients: ["obcy@example.com"] });
+    expect(m.sendGmailAsUser).not.toHaveBeenCalled();
+    expect(await actionSendZdToSupplier({ ...input, to: "obcy@example.com", allowUnknownRecipients: true })).toMatchObject({ ok: true });
   });
 
   it("Gmail odrzucił (cofnięta zgoda) → błąd z prośbą o ponowne połączenie, bez śladu wysyłki", async () => {

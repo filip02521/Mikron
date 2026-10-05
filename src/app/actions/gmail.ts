@@ -1,7 +1,12 @@
 "use server";
 
 // Wysyłka z Gmaila zalogowanej osoby (OAuth gmail.send) — zawsze „jako ja”, nigdy w czyimś imieniu.
-import { getSessionUser, requireZdEstimateAdmin, SESSION_REQUIRED_ERROR } from "@/lib/auth";
+import {
+  getSessionUser,
+  getSessionUserForMutation,
+  requireZdEstimateAdmin,
+  SESSION_REQUIRED_ERROR,
+} from "@/lib/auth";
 import { parseEmailList } from "@/lib/customs/customs-email";
 import { getGmailOAuthConfig } from "@/lib/google/gmail";
 import {
@@ -34,8 +39,8 @@ export async function actionGmailStatus(): Promise<GmailStatus> {
 }
 
 export async function actionSaveEmailSignature(signature: string): Promise<{ ok: true } | { ok: false; message: string }> {
-  const user = await getSessionUser();
-  if (!user) throw new Error(SESSION_REQUIRED_ERROR);
+  const user = await getSessionUserForMutation();
+  if (typeof signature !== "string") return { ok: false, message: "Nieprawidłowy podpis." };
   if (signature.length > EMAIL_SIGNATURE_MAX) {
     return { ok: false, message: `Podpis może mieć najwyżej ${EMAIL_SIGNATURE_MAX} znaków.` };
   }
@@ -53,15 +58,26 @@ export async function actionZdSupplierEmailSent(dokId: number): Promise<Supplier
 }
 
 export async function actionDisconnectGmail(): Promise<{ ok: true }> {
-  const user = await getSessionUser();
-  if (!user) throw new Error(SESSION_REQUIRED_ERROR);
+  const user = await getSessionUserForMutation();
   await deleteGmailConnection(user.id);
   return { ok: true };
 }
 
 export type SendZdToSupplierResult =
   | { ok: true; from: string; to: string[]; attachmentName: string; sentAt: string }
-  | { ok: false; message: string; reconnect?: boolean; alreadySent?: SupplierOrderEmail };
+  | {
+      ok: false;
+      message: string;
+      reconnect?: boolean;
+      alreadySent?: SupplierOrderEmail;
+      /** Adresy spoza karty dostawcy — wysyłka dopiero po świadomym potwierdzeniu. */
+      unknownRecipients?: string[];
+    };
+
+const SUBJECT_MAX = 300;
+const BODY_MAX = 20_000;
+/** ponytail: blokada w procesie (jeden serwer OnTime); przy kilku instancjach — lock w bazie. */
+const sendingDokIds = new Set<number>();
 
 /**
  * ZD → mail do dostawcy z Gmaila użytkownika. Załącznik: formularz dostawcy (Wiedent, Sirona…)
@@ -75,8 +91,16 @@ export async function actionSendZdToSupplier(input: {
   body: string;
   /** Świadome ponowne wysłanie ZD, które już poszło. */
   resend?: boolean;
+  /** Świadoma wysyłka na adres spoza karty dostawcy. */
+  allowUnknownRecipients?: boolean;
 }): Promise<SendZdToSupplierResult> {
   const user = await requireZdEstimateAdmin("mutate");
+  if (typeof input.to !== "string" || typeof input.subject !== "string" || typeof input.body !== "string") {
+    return { ok: false, message: "Nieprawidłowe dane wiadomości." };
+  }
+  if (input.subject.length > SUBJECT_MAX || input.body.length > BODY_MAX) {
+    return { ok: false, message: "Temat albo treść są za długie." };
+  }
   const { emails, invalid } = parseEmailList(input.to);
   if (invalid.length) return { ok: false, message: `Błędny adres: ${invalid.join(", ")}` };
   if (!emails.length) return { ok: false, message: "Podaj adres e-mail dostawcy." };
@@ -85,6 +109,8 @@ export async function actionSendZdToSupplier(input: {
   const dokId = Math.trunc(Number(input.dokId));
   if (!(dokId > 0)) return { ok: false, message: "Brak numeru ZD." };
 
+  if (sendingDokIds.has(dokId)) return { ok: false, message: "To zamówienie właśnie się wysyła." };
+  sendingDokIds.add(dokId);
   try {
     if (!input.resend) {
       const previous = await lastSupplierOrderEmail(dokId);
@@ -95,6 +121,14 @@ export async function actionSendZdToSupplier(input: {
     const zd = await loadSupplierZd({ dokId, supplierId: input.supplierId });
     if (!zd.ok) return zd;
     if (!zd.lines.length) return { ok: false, message: `${zd.dokNr} nie ma pozycji.` };
+    const unknownRecipients = emails.filter((e) => !zd.supplier.cardEmails.includes(e));
+    if (unknownRecipients.length && !input.allowUnknownRecipients) {
+      return {
+        ok: false,
+        message: `Adres spoza karty dostawcy ${zd.supplier.name}: ${unknownRecipients.join(", ")}.`,
+        unknownRecipients,
+      };
+    }
 
     const template = findSupplierFormTemplate(zd.supplier.name);
     const english = isZdSupplierAbroad(zd.supplier.location as SupplierLocation | null);
@@ -144,5 +178,7 @@ export async function actionSendZdToSupplier(input: {
     };
   } catch (e) {
     return { ok: false, message: userFacingErrorText(e, "Nie udało się wysłać zamówienia.") };
+  } finally {
+    sendingDokIds.delete(dokId);
   }
 }

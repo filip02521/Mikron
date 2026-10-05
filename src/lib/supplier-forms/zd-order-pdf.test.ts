@@ -1,5 +1,6 @@
 import { PDFDocument } from "pdf-lib";
 import { describe, expect, it } from "vitest";
+import { emailsInText } from "@/lib/supplier-forms/prepare";
 import { formatOrderQty, renderZdOrderPdf, wrapText, zdOrderPdfFileName } from "@/lib/supplier-forms/zd-order-pdf";
 
 describe("zd-order-pdf", () => {
@@ -43,5 +44,15 @@ describe("zd-order-pdf", () => {
     expect(formatOrderQty(2.5)).toBe("2,5");
     expect(zdOrderPdfFileName("ZD 123/26", false)).toBe("Zamowienie ZD 123_26.pdf");
     expect(zdOrderPdfFileName("ZD 123/26", true)).toBe("Purchase order ZD 123_26.pdf");
+  });
+});
+
+
+describe("emailsInText", () => {
+  it("wyłuskuje adresy z karty dostawcy", () => {
+    expect(emailsInText("Zamówienia: Order@Renfert.de; tel. 123, kontakt <jan.kowalski@dental.pl> order@renfert.de")).toEqual([
+      "order@renfert.de",
+      "jan.kowalski@dental.pl",
+    ]);
   });
 });

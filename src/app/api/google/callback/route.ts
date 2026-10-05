@@ -12,7 +12,10 @@ function problem(message: string, status = 400) {
 <body style="font:15px system-ui,sans-serif;max-width:560px;margin:48px auto;padding:0 16px;line-height:1.5">
 <h1 style="font-size:20px">Nie połączono Gmaila</h1><p>${message.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</p>
 <p><a href="/">Wróć do OnTime</a></p></body>`;
-  return new NextResponse(html, { status, headers: { "Content-Type": "text/html; charset=utf-8" } });
+  const response = new NextResponse(html, { status, headers: { "Content-Type": "text/html; charset=utf-8" } });
+  // Stan jednorazowy — także po błędzie, żeby nie dało się go użyć ponownie.
+  response.cookies.delete({ name: GMAIL_OAUTH_COOKIE, path: "/api/google" });
+  return response;
 }
 
 /** Powrót z Google: sprawdza stan, konto (= konto w OnTime), zapisuje zaszyfrowany token. */

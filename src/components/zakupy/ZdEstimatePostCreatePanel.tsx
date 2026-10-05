@@ -124,6 +124,7 @@ export function ZdEstimatePostCreatePanel({
     message: string;
     reconnect: boolean;
     alreadySent: SupplierOrderEmail | null;
+    unknownRecipients: string[] | null;
   } | null>(null);
   /** Wysyłka tego ZD z OnTime sprzed otwarcia panelu (np. przed odświeżeniem strony). */
   const [previousSend, setPreviousSend] = useState<SupplierOrderEmail | null>(null);
@@ -427,7 +428,7 @@ export function ZdEstimatePostCreatePanel({
   const canGmailSend = Boolean(gmailEmail) && canAct && !previewOnly;
   const gmailConnectHref = "/api/google/connect?returnTo=/ustawienia";
 
-  const sendViaGmail = (resend = false) => {
+  const sendViaGmail = (resend = false, allowUnknownRecipients = false) => {
     if (!canGmailSend || session.dokId == null) return;
     setGmailError(null);
     startGmailSend(async () => {
@@ -439,12 +440,14 @@ export function ZdEstimatePostCreatePanel({
           subject: mailSubject,
           body: mailBody,
           resend: resend || previousSend != null,
+          allowUnknownRecipients,
         });
         if (!res.ok) {
           setGmailError({
             message: res.message,
             reconnect: Boolean(res.reconnect),
             alreadySent: res.alreadySent ?? null,
+            unknownRecipients: res.unknownRecipients ?? null,
           });
           if (res.reconnect) setGmail((g) => (g ? { ...g, email: null } : g));
           return;
@@ -459,6 +462,7 @@ export function ZdEstimatePostCreatePanel({
           ),
           reconnect: false,
           alreadySent: null,
+          unknownRecipients: null,
         });
       }
     });
@@ -1245,7 +1249,23 @@ export function ZdEstimatePostCreatePanel({
                 : `Załącznik: PDF zamówienia z pozycji ZD (${location === "POLSKA" ? "PL" : "EN"}).`}
             </p>
           ) : null}
-          {gmailError?.alreadySent ? (
+          {gmailError?.unknownRecipients?.length ? (
+            <div className="space-y-2 rounded-md bg-amber-50 px-3 py-2.5 text-sm text-amber-950 ring-1 ring-amber-200" role="alert">
+              <p>
+                {gmailError.unknownRecipients.join(", ")} nie ma na karcie {session.supplierName}. Sprawdź adres —
+                zamówienie wyjdzie z Twojej skrzynki.
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                className="min-h-10"
+                disabled={gmailSending}
+                onClick={() => sendViaGmail(true, true)}
+              >
+                Wyślij mimo to
+              </Button>
+            </div>
+          ) : gmailError?.alreadySent ? (
             <div className="space-y-2 rounded-md bg-amber-50 px-3 py-2.5 text-sm text-amber-950 ring-1 ring-amber-200" role="alert">
               <p>
                 To ZD wysłano już {formatSentAt(gmailError.alreadySent.sentAt)} z {gmailError.alreadySent.from} do{" "}
