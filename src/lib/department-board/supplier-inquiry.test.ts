@@ -60,7 +60,7 @@ describe("supplierInquiryRef", () => {
 
 describe("pendingInquiryToSupplier", () => {
   const i = (id: string, supplierId: string | null, resolvedAt: string | null) => ({
-    id, supplierId, supplierName: "x", fromAddress: "a", toAddresses: [], sentAt: "2026-10-05T10:00:00.000Z", resolvedAt,
+    id, supplierId, supplierName: "x", sentAt: "2026-10-05T10:00:00.000Z", resolvedAt,
   });
   it("szuka po id dostawcy wśród wszystkich czekających, nie tylko najnowszego", () => {
     expect(pendingInquiryToSupplier([i("a", "s2", null), i("b", "s1", null)], "s1")?.id).toBe("b");
@@ -74,8 +74,7 @@ describe("pendingSupplierInquiry", () => {
     id: "1",
     supplierId: "sup-1",
     supplierName: "DFS",
-    fromAddress: "a@b.pl",
-    toAddresses: ["x@y.de"],
+   
     sentAt: "2026-10-05T10:00:00.000Z",
     resolvedAt: null,
   };

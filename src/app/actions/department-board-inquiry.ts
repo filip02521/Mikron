@@ -87,6 +87,7 @@ export type SendSupplierInquiryResult =
 
 const SUBJECT_MAX = 300;
 const BODY_MAX = 20_000;
+const RECIPIENTS_MAX = 5;
 /** ponytail: blokada w procesie (jeden serwer OnTime); przy kilku instancjach — lock w bazie. */
 const sendingThreadIds = new Set<string>();
 
@@ -115,6 +116,7 @@ export async function actionSendSupplierInquiry(input: {
   const { emails, invalid } = parseEmailList(input.to);
   if (invalid.length) return { ok: false, message: `Błędny adres: ${invalid.join(", ")}` };
   if (!emails.length) return { ok: false, message: "Podaj adres e-mail dostawcy." };
+  if (emails.length > RECIPIENTS_MAX) return { ok: false, message: `Najwyżej ${RECIPIENTS_MAX} adresów w jednym zapytaniu.` };
 
   const thread = await loadQuestionThread(input.threadId);
   if (!thread) return { ok: false, message: "Nie znaleziono pytania." };

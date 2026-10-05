@@ -82,7 +82,7 @@ describe("actionSendSupplierInquiry", () => {
   });
 
   it("zapytanie do tego dostawcy już czeka → bez wysyłki; resend wysyła", async () => {
-    const pending = { id: "i1", supplierId: "sup-1", supplierName: "DFS", fromAddress: "a", toAddresses: [], sentAt: "2026-10-05T10:00:00.000Z", resolvedAt: null };
+    const pending = { id: "i1", supplierId: "sup-1", supplierName: "DFS", sentAt: "2026-10-05T10:00:00.000Z", resolvedAt: null };
     m.listSupplierInquiries.mockResolvedValue(new Map([[THREAD_ID, [pending]]]));
     const res = await actionSendSupplierInquiry(input);
     expect(res).toMatchObject({ ok: false, alreadyPending: pending });
@@ -91,7 +91,7 @@ describe("actionSendSupplierInquiry", () => {
   });
 
   it("czekające zapytanie do innego dostawcy nie blokuje; starsze do tego samego — blokuje", async () => {
-    const other = { id: "i2", supplierId: "sup-2", supplierName: "Renfert", fromAddress: "a", toAddresses: [], sentAt: "2026-10-05T11:00:00.000Z", resolvedAt: null };
+    const other = { id: "i2", supplierId: "sup-2", supplierName: "Renfert", sentAt: "2026-10-05T11:00:00.000Z", resolvedAt: null };
     m.listSupplierInquiries.mockResolvedValue(new Map([[THREAD_ID, [other]]]));
     expect((await actionSendSupplierInquiry(input)).ok).toBe(true);
     const sameOlder = { ...other, id: "i3", supplierId: "sup-1", supplierName: "DFS (stara nazwa)", sentAt: "2026-10-05T09:00:00.000Z" };
@@ -104,6 +104,12 @@ describe("actionSendSupplierInquiry", () => {
     expect(await actionSendSupplierInquiry(input)).toMatchObject({ ok: false });
     m.query.mockResolvedValueOnce({ rows: [{ ...thread, kind: "announcement" }] });
     expect(await actionSendSupplierInquiry(input)).toMatchObject({ ok: false, message: "Nie znaleziono pytania." });
+    expect(m.sendGmailAsUser).not.toHaveBeenCalled();
+  });
+
+  it("więcej niż 5 odbiorców → odmowa", async () => {
+    const to = ["a", "b", "c", "d", "e", "f"].map((x) => `${x}@dfs.de`).join(", ");
+    expect(await actionSendSupplierInquiry({ ...input, to })).toMatchObject({ ok: false });
     expect(m.sendGmailAsUser).not.toHaveBeenCalled();
   });
 

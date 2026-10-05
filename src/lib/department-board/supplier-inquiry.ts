@@ -5,14 +5,15 @@
 
 import type { DepartmentBoardThreadRow } from "@/lib/data/department-board-shared";
 
-/** Zapytanie wysłane z wątku (tabela supplier_inquiry_emails). */
+/**
+ * Zapytanie wysłane z wątku (tabela supplier_inquiry_emails). Trafia też do handlowców —
+ * celowo bez adresów e-mail (nadawcy i dostawcy).
+ */
 export type BoardSupplierInquiry = {
   id: string;
   /** null — dostawca usunięty z kartoteki (nazwa zostaje w supplierName). */
   supplierId: string | null;
   supplierName: string;
-  fromAddress: string;
-  toAddresses: string[];
   sentAt: string;
   /** Zakupy odpisały w wątku po wysłaniu — wątek już nie czeka na dostawcę. */
   resolvedAt: string | null;
