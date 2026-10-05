@@ -72,6 +72,7 @@ import {
 import { zkWatchLineViewToProsbaScopeLine } from "@/lib/orders/prosba-stock-check";
 import { useZkProsbaLineKeysStockFilter } from "@/hooks/useZkProsbaLineKeysStockFilter";
 import { isTextSelectionInside } from "@/lib/ui/panel-row-actions-reveal";
+import { askConfirm } from "@/components/ui/ConfirmHost";
 
 export function ZkWatchCard({
   watch,
@@ -555,7 +556,14 @@ export function ZkWatchCard({
 
   async function removeFromArchive() {
     if (readOnly || tourPreview || deleting || !archived) return;
-    if (!window.confirm("Usunąć ten ZK z archiwum na stałe? Tej operacji nie można cofnąć.")) {
+    if (
+      !(await askConfirm({
+        title: "Usunąć ZK z archiwum?",
+        message: "Usunięcie jest trwałe — tej operacji nie można cofnąć.",
+        confirmLabel: "Usuń na stałe",
+        danger: true,
+      }))
+    ) {
       return;
     }
     setDeleting(true);

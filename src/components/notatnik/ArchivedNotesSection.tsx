@@ -14,6 +14,7 @@ import { NOTATNIK_NOTES_GRID_CLASS, NOTATNIK_NOTES_WALL_CLASS } from "./notatnik
 import { NoteBodyDisplay } from "./NoteBodyDisplay";
 import { NoteDeleteIconButton } from "./NoteColorPicker";
 import { NoteStickyFrame } from "./NoteStickyFrame";
+import { askConfirm } from "@/components/ui/ConfirmHost";
 
 export function ArchivedNotesSection({
   notes,
@@ -110,7 +111,14 @@ function ArchivedNoteCard({
 
   async function remove() {
     if (readOnly || deleting) return;
-    if (!window.confirm("Usunąć notatkę z archiwum na stałe? Tej operacji nie można cofnąć.")) {
+    if (
+      !(await askConfirm({
+        title: "Usunąć notatkę z archiwum?",
+        message: "Usunięcie jest trwałe — tej operacji nie można cofnąć.",
+        confirmLabel: "Usuń na stałe",
+        danger: true,
+      }))
+    ) {
       return;
     }
     setDeleting(true);

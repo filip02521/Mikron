@@ -60,7 +60,7 @@ export function getSalesOnboardingSteps(role: UserRole): SalesOnboardingStep[] {
       href: "/moje",
       title: "Moje zamówienia",
       lead:
-        "Tu sprawdzasz status prośb - co czeka u dostawcy, co możesz odebrać z magazynu i co wymaga Twojej reakcji. Sekcja Start dnia u góry zbiera pilne sprawy.",
+        "Tu sprawdzasz status próśb - co czeka u dostawcy, co możesz odebrać z magazynu i co wymaga Twojej reakcji. Sekcja Start dnia u góry zbiera pilne sprawy.",
       bullets: [
         "Jeden wiersz = jedna prośba u jednego dostawcy. Nagłówek mówi, co się dzieje.",
         "Przy wierszu widać klienta końcowego - łatwiej rozróżnisz sprawy różnych gabinetów.",

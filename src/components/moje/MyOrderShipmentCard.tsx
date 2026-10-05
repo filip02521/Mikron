@@ -113,6 +113,7 @@ import {
   rowSearchHighlightsProductLines,
   searchQueryTokens,
 } from "@/lib/orders/my-order-search";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 function ChevronIcon({ open }: { open?: boolean }) {
   return (
@@ -1235,7 +1236,7 @@ export const MyOrderShipmentCard = memo(function MyOrderShipmentCard({
                         <>
                           <span className="font-medium text-emerald-900">
                             {row.pickupPendingIds.length}{" "}
-                            {row.pickupPendingIds.length < 5 ? "pozycje" : "pozycji"}
+                            {polishPluralWord(row.pickupPendingIds.length, "pozycja", "pozycje", "pozycji")}
                           </span>{" "}
                           czeka na potwierdzenie - pojedynczo po prawej lub wszystkie naraz.
                         </>

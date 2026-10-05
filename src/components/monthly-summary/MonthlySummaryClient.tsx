@@ -10,7 +10,6 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { Card } from "@/components/ui/Card";
-import { Alert } from "@/components/ui/Alert";
 import {
   controlFocusClass,
   buttonPrimaryClass,
@@ -145,11 +144,14 @@ function syncTabInUrl(tab: MonthlySummaryTab) {
   window.history.replaceState(window.history.state, "", `${url.pathname}${qs ? `?${qs}` : ""}`);
 }
 
+/** Jeden komunikat pustego miesiąca: co jest puste + skrót do miesiąca z danymi. */
 function EmptyMonthCta({
+  message,
   availableMonths,
   currentKey,
   onSelect,
 }: {
+  message: string;
   availableMonths: { key: string; label: string }[];
   currentKey: string;
   onSelect: (key: string) => void;
@@ -157,17 +159,18 @@ function EmptyMonthCta({
   const other =
     availableMonths.find((m) => m.key !== currentKey) ??
     availableMonths.find((m) => m.key === previousMonthKeyFromMonthKey(currentKey));
-  if (!other) return null;
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 px-3 py-2.5 ring-1 ring-inset ring-slate-200/80">
-      <p className="text-sm text-slate-600">Ten miesiąc jest pusty w tym widoku.</p>
-      <button
-        type="button"
-        onClick={() => onSelect(other.key)}
-        className={cn(buttonPrimaryClass, "rounded-lg px-3 py-1.5 text-sm font-medium", controlFocusClass)}
-      >
-        Zobacz {other.label}
-      </button>
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2.5 ring-1 ring-inset ring-slate-200/80">
+      <p className="text-sm text-slate-600">{message}</p>
+      {other ? (
+        <button
+          type="button"
+          onClick={() => onSelect(other.key)}
+          className={cn(buttonPrimaryClass, "rounded-lg px-3 py-1.5 text-sm font-medium", controlFocusClass)}
+        >
+          Zobacz {other.label}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -322,7 +325,7 @@ function StickyDepartmentTabs({
               title={meta.hint}
               onClick={() => onChange(tab)}
               className={cn(
-                "group flex flex-col items-stretch gap-1 rounded-lg px-2.5 py-2 text-left transition-all sm:flex-row sm:items-center sm:gap-2",
+                "group flex flex-col items-stretch gap-1 rounded-lg px-2.5 py-2 text-left transition sm:flex-row sm:items-center sm:gap-2",
                 controlFocusClass,
                 isActive
                   ? cn("bg-white shadow-sm ring-2", meta.accentRing, "ring-offset-1")
@@ -488,8 +491,8 @@ function SalesTab({
 
       {!hasActivity ? (
         <>
-          <Alert tone="info">Brak aktywności handlowców w tym miesiącu (bez toru zębów).</Alert>
           <EmptyMonthCta
+            message="Brak aktywności handlowców w tym miesiącu (bez toru zębów)."
             availableMonths={stats.availableMonths}
             currentKey={stats.monthKey}
             onSelect={onMonthSelect}
@@ -758,8 +761,8 @@ function DeliveryTab({
 
       {!hasReceipts ? (
         <>
-          <Alert tone="info">Brak przyjęć towaru w tym miesiącu.</Alert>
           <EmptyMonthCta
+            message="Brak przyjęć towaru w tym miesiącu."
             availableMonths={stats.availableMonths}
             currentKey={stats.monthKey}
             onSelect={onMonthSelect}
@@ -1021,7 +1024,7 @@ function ProcurementTab({
             value={
               procurement.avgDeliveryDays != null
                 ? formatDni(procurement.avgDeliveryDays)
-                : "brak danych"
+                : null
             }
             tone="violet"
             mom={mom.procurement.avgDeliveryDays ?? undefined}
@@ -1036,8 +1039,8 @@ function ProcurementTab({
 
       {!hasActivity ? (
         <>
-          <Alert tone="info">Brak zamówień w tym miesiącu (bez toru zębów).</Alert>
           <EmptyMonthCta
+            message="Brak zamówień w tym miesiącu (bez toru zębów)."
             availableMonths={stats.availableMonths}
             currentKey={stats.monthKey}
             onSelect={onMonthSelect}
@@ -1151,7 +1154,7 @@ function TeethTab({
           />
           <KpiCard
             label="Średni lead time"
-            value={teeth.avgLeadDays != null ? formatDni(teeth.avgLeadDays) : "brak danych"}
+            value={teeth.avgLeadDays != null ? formatDni(teeth.avgLeadDays) : null}
             tone="sky"
             hint={leadHint}
           />
@@ -1161,8 +1164,8 @@ function TeethTab({
 
       {!hasActivity ? (
         <>
-          <Alert tone="info">Brak aktywności toru zębów w tym miesiącu.</Alert>
           <EmptyMonthCta
+            message="Brak aktywności toru zębów w tym miesiącu."
             availableMonths={stats.availableMonths}
             currentKey={stats.monthKey}
             onSelect={onMonthSelect}

@@ -2188,7 +2188,7 @@ export function OrderFormClient({
           <p className="text-xs leading-relaxed text-slate-500">
             {requestKind === "informacja"
               ? informacjaFlags.informacjaStockOutReorder
-                ? "Sygnały „brak na stanie” trafią do Prośb handlowców w panelu Dziś."
+                ? "Sygnały „brak na stanie” trafią do Próśb handlowców w panelu Dziś."
                 : informacjaFlags.informacjaQueueViaDailyPanel
                   ? "Informacja przez panel Dziś - najpierw Główne/Uzupełniające, potem magazyn."
                   : "Powiadomienie o stanie magazynowym trafi od razu do kolejki magazynu."

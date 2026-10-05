@@ -45,6 +45,7 @@ import {
   zdEstimateScopeCoverage,
   type ZdEstimateScopeCoverage,
 } from "@/lib/orders/zd-estimate-scope-coverage";
+import { askConfirm } from "@/components/ui/ConfirmHost";
 
 function supplierLabel(
   suppliers: readonly ZdEstimateSupplierOption[],
@@ -738,7 +739,7 @@ export function ZdEstimateSupplierScopesModal({
    * Szybkie akcje z podpowiedzi (Przypisz / Dodaj / Zamień) zmieniają mapowanie
    * całego działu jednym kliknięciem — zawsze z potwierdzeniem.
    */
-  const confirmSuggestion = (
+  const confirmSuggestion = async (
     action: "assign" | "add" | "replace",
     supplierId: string,
     sg: ZdScopeSuggestion,
@@ -752,7 +753,13 @@ export function ZdEstimateSupplierScopesModal({
         : action === "add"
           ? `Dodać ${scopeText} jako kolejny zakres dostawcy ${name}?`
           : `Przypisać ${scopeText} dostawcy ${name}?`;
-    if (!window.confirm(`${text}\n\nObejmuje ${sg.supplierHits} towarów z ZD tego dostawcy. Zmiana obowiązuje cały dział.`)) {
+    if (
+      !(await askConfirm({
+        title: text,
+        message: `Obejmuje ${sg.supplierHits} towarów z ZD tego dostawcy. Zmiana obowiązuje cały dział.`,
+        confirmLabel: action === "replace" ? "Zamień" : action === "add" ? "Dodaj" : "Przypisz",
+      }))
+    ) {
       return;
     }
     persistScope({ supplierId, scopeId, mode: sg.mode, id: sg.id, label: sg.name });
@@ -775,14 +782,17 @@ export function ZdEstimateSupplierScopesModal({
     persistScope({ supplierId, scopeId, mode: draft.mode, ...picked }, onDone);
   };
 
-  const removeScope = (row: ZdEstimateSupplierScopeRow, supplierName: string) => {
+  const removeScope = async (row: ZdEstimateSupplierScopeRow, supplierName: string) => {
     const isLast = (scopesBySupplier.get(row.supplierId) ?? []).length <= 1;
     if (
-      !window.confirm(
-        isLast
-          ? `Usunąć jedyny zakres „${row.label}” dostawcy ${supplierName}? Jego towary znikną z Kreatora i panelu Braki.`
-          : `Usunąć zakres „${row.label}” dostawcy ${supplierName}? Jego towary znikną z listy tego dostawcy.`
-      )
+      !(await askConfirm({
+        title: isLast ? "Usunąć jedyny zakres?" : "Usunąć zakres?",
+        message: isLast
+          ? `Zakres „${row.label}” dostawcy ${supplierName}. Jego towary znikną z Kreatora i panelu Braki.`
+          : `Zakres „${row.label}” dostawcy ${supplierName}. Jego towary znikną z listy tego dostawcy.`,
+        confirmLabel: "Usuń",
+        danger: true,
+      }))
     ) {
       return;
     }

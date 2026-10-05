@@ -11,7 +11,7 @@ export function ChangelogTriggerButton() {
       type="button"
       onClick={openModal}
       className={cn(
-        "mb-2 flex w-full min-h-9 items-center justify-center gap-2 rounded-md border px-3 text-xs font-medium transition-all",
+        "mb-2 flex w-full min-h-9 items-center justify-center gap-2 rounded-md border px-3 text-xs font-medium transition",
         hasUnseen
           ? "border-indigo-300/80 bg-indigo-50 text-indigo-700 shadow-sm hover:bg-indigo-50 hover:shadow"
           : "border-slate-200 bg-white text-slate-500 hover:border-indigo-200 hover:bg-white hover:text-indigo-600",

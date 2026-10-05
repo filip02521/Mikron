@@ -35,7 +35,7 @@ export function DailyPanelOverviewStats({
         <Divider />
         <Stat
           value={summary.forSomeoneGroupCount}
-          label={unitLabel(summary.forSomeoneGroupCount, "grupa prośb", "grupy prośb", "grup prośb")}
+          label={unitLabel(summary.forSomeoneGroupCount, "grupa próśb", "grupy próśb", "grup próśb")}
         />
         {summary.stockOutGroupCount > 0 ? (
           <>

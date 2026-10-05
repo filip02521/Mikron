@@ -4,6 +4,7 @@ import { cn } from "@/lib/cn";
 import { formatZkUnseenRegalBadge } from "@/lib/sales/zk-page-copy";
 import { brandLinkSubtleClass, salesChromeInsetClass, salesTypography } from "@/lib/ui/ontime-theme";
 import { ZkWatchRowColorLegend } from "./ZkWatchRowColorLegend";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 function ZkListStats({
   watchCount,
@@ -44,7 +45,7 @@ function ZkListStats({
       <div className="inline-flex items-baseline gap-1.5">
         <span className={salesTypography.statValue}>{lineCount}</span>
         <span className={salesTypography.statLabel}>
-          {lineCount === 1 ? "pozycja" : lineCount < 5 ? "pozycje" : "pozycji"}
+          {polishPluralWord(lineCount, "pozycja", "pozycje", "pozycji")}
         </span>
       </div>
       {informacjaReadyLineCount > 0 ? (
@@ -115,11 +116,7 @@ function ZkListMetaActions({
           {followUpCount > 0 ? (
             <Badge variant="warning" className="text-[10px]">
               {followUpCount}{" "}
-              {followUpCount === 1
-                ? "przypomnienie"
-                : followUpCount < 5
-                  ? "przypomnienia"
-                  : "przypomnień"}
+              {polishPluralWord(followUpCount, "przypomnienie", "przypomnienia", "przypomnień")}
             </Badge>
           ) : null}
         </div>

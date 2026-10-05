@@ -20,6 +20,7 @@ import {
   DAILY_PANEL_MARK_ORDERED_PENDING_OVERLAY,
   dailyPanelMarkOrderedToastTitle,
 } from "@/lib/orders/daily-panel-mark-ordered-copy";
+import { useAnimatedClose } from "@/lib/ui/use-animated-close";
 
 export function OnDemandSuppliersSheet({
   open,
@@ -37,18 +38,25 @@ export function OnDemandSuppliersSheet({
   run: DailyPanelRunFn;
 }) {
   useBodyScrollLock(open);
+  const { panelRef, backdropRef, requestClose } = useAnimatedClose(onClose);
 
   if (!open) return null;
 
   return (
     <>
       <button
+        ref={(el) => {
+          backdropRef.current = el;
+        }}
         type="button"
         className={cn(sidePanelBackdropClass, "panel-slide-backdrop-enter")}
         aria-label="Zamknij listę"
-        onClick={onClose}
+        onClick={requestClose}
       />
       <aside
+        ref={(el) => {
+          panelRef.current = el;
+        }}
         className={cn(sidePanelShellClass, "max-w-md", "panel-slide-enter")}
         aria-labelledby="on-demand-sheet-title"
       >
@@ -69,7 +77,7 @@ export function OnDemandSuppliersSheet({
             <button
               type="button"
               className={sidePanelCloseButtonClass}
-              onClick={onClose}
+              onClick={requestClose}
               aria-label="Zamknij"
             >
               <IconX size={18} />

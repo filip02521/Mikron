@@ -36,6 +36,7 @@ import {
   queueToolbarFieldLabelClass,
   queueToolbarShellClass,
 } from "@/lib/ui/queue-panel-styles";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 type SupplierOption = { id: string; name: string; subiektKhId: number | null };
 
@@ -360,7 +361,7 @@ export function DeliveryJournalInsightsPanel({
               {!pending ? (
                 <span className="ml-1.5 font-normal normal-case tracking-normal text-slate-500">
                   · {receipts.length}{" "}
-                  {receipts.length === 1 ? "dostawa" : receipts.length < 5 ? "dostawy" : "dostaw"}
+                  {polishPluralWord(receipts.length, "dostawa", "dostawy", "dostaw")}
                 </span>
               ) : null}
             </h3>

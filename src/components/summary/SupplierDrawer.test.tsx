@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { SupplierSummaryMeta } from "@/lib/orders/summary-workspace";
 
 vi.mock("@/app/actions/admin", () => ({
@@ -61,7 +61,7 @@ describe("SupplierDrawer - tryb podglądu (okno po utworzeniu ZD)", () => {
     expect(screen.getByRole("link", { name: /Karta dostawcy/ })).toBeTruthy();
   });
 
-  it("Escape zamyka tylko podgląd - nie dochodzi do okna pod spodem", () => {
+  it("Escape zamyka tylko podgląd - nie dochodzi do okna pod spodem", async () => {
     const onClose = vi.fn();
     const modalEscape = vi.fn();
     window.addEventListener("keydown", modalEscape);
@@ -69,7 +69,8 @@ describe("SupplierDrawer - tryb podglądu (okno po utworzeniu ZD)", () => {
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
     });
-    expect(onClose).toHaveBeenCalledTimes(1);
+    // Zamknięcie czeka na animację wyjazdu panelu.
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     expect(modalEscape).not.toHaveBeenCalled();
     window.removeEventListener("keydown", modalEscape);
   });

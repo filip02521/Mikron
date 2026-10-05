@@ -349,7 +349,7 @@ export function InactiveSuppliersAdminClient({
                       key={s.id}
                       id={`inactive-supplier-row-${s.id}`}
                       className={cn(
-                        "rounded-lg border border-slate-100 bg-white px-3 py-3 transition-all sm:px-4 lg:px-5",
+                        "rounded-lg border border-slate-100 bg-white px-3 py-3 transition sm:px-4 lg:px-5",
                         "hover:border-slate-200 hover:shadow-sm",
                         inactiveRowClass(isEditing),
                         s.subiekt_kh_id == null && "border-amber-100/60 bg-amber-50/20"

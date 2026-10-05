@@ -47,7 +47,7 @@ export function TeethPanelHowItWorksContent() {
         <p>
           Po kontakcie z dostawcą kliknij{" "}
           <strong className="font-medium text-slate-800">{TEETH_MARK_ORDERED_LABEL}</strong> - dla
-          zaznaczonych prośb handlowców i/lub cyklu z harmonogramu.
+          zaznaczonych próśb handlowców i/lub cyklu z harmonogramu.
         </p>
       </HelpBlock>
 

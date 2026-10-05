@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   actionConfirmAllCustomsLines,
+  actionDescribeCnCode,
   actionDeleteCustomsClearance,
   actionExportCustomsExcel,
   actionGetCustomsInvoiceUrl,
@@ -25,11 +26,22 @@ import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Field, Input, fieldControlClass } from "@/components/ui/Field";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { Field, Input, Select, fieldControlClass } from "@/components/ui/Field";
 import { cn } from "@/lib/cn";
+import { copyTextToClipboard } from "@/lib/ui/copy-text-to-clipboard";
+import { polishPozycjeLabel, polishPluralWord } from "@/lib/email/polish-plural";
+
+/** Biernik: „1 pozycję”, „4 pozycje”, „5 pozycji”. */
+const pozycjeAcc = (n: number) => `${n} ${polishPluralWord(n, "pozycję", "pozycje", "pozycji")}`;
+import { formatCnCode } from "@/lib/customs/customs-clearance";
+import { articleCodesText } from "@/lib/customs/customs-lines";
+import { CustomsShipmentCard } from "./CustomsShipmentCard";
 import type { CustomsLineState } from "@/lib/customs/customs-clearance";
 import {
   CUSTOMS_LINE_STATE_LABEL,
+  isLineComplete,
   type CustomsClearanceView,
   type CustomsLineView,
   type CustomsSupplierDocumentView,
@@ -43,6 +55,18 @@ const STATE_BADGE: Record<CustomsLineState, "success" | "warning" | "info" | "de
 };
 
 const VAT_OPTIONS = [23, 8, 5, 0] as const;
+const CURRENCIES = ["EUR", "USD", "GBP", "CNY", "CHF", "JPY", "PLN"] as const;
+
+type LineFilter = "todo" | "confirmed" | "all";
+type PendingConfirm = "delete" | "markSent" | "send" | "confirmAll" | null;
+
+/** Pierwszy brakujący warunek wysyłki — wyłączony przycisk musi mówić, czego brakuje. */
+function sendBlocker(input: { incomplete: number; hasInvoice: boolean; email: string }): string | null {
+  if (input.incomplete > 0) return `Uzupełnij ${pozycjeAcc(input.incomplete)} (opis PL i poprawny kod CN).`;
+  if (!input.hasInvoice) return "Wgraj plik faktury w sekcji Faktura.";
+  if (!input.email.trim()) return "Wpisz adres agencji celnej.";
+  return null;
+}
 
 type Notice = { tone: "success" | "error" | "warning"; text: string } | null;
 
@@ -85,27 +109,56 @@ function draftFromLine(line: CustomsLineView): LineDraft {
   };
 }
 
+type CnCheck = { code: string; description: string | null; siblings: string[]; year: number } | null;
+
+
+/** Sprawdza wpisywany kod CN w słowniku (z opóźnieniem) — opis i ostrzeżenie dla tego, co jest w polu. */
+function useCnCheck(code: string, savedCode: string, savedDescription: string | null): CnCheck {
+  const digits = code.replace(/[\s.]/g, "");
+  const [check, setCheck] = useState<CnCheck>(null);
+  useEffect(() => {
+    if (!/^\d{8}$/.test(digits) || digits === savedCode) return;
+    let alive = true;
+    const t = setTimeout(async () => {
+      const res = await actionDescribeCnCode(digits);
+      if (alive && res.ok) setCheck(res);
+    }, 300);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [digits, savedCode]);
+  if (digits === savedCode) return savedCode ? { code: savedCode, description: savedDescription, siblings: [], year: 0 } : null;
+  return check?.code === digits ? check : null;
+}
+
 function CustomsLineRow({
   line,
   previous,
   documents,
   readOnly,
-  onNotice,
 }: {
   line: CustomsLineView;
   previous: CustomsLineView | null;
   documents: CustomsSupplierDocumentView[];
   readOnly: boolean;
-  onNotice: (n: Notice) => void;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<LineDraft>(() => draftFromLine(line));
+  const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(line.state !== "confirmed");
   const [pending, startTransition] = useTransition();
   const initial = draftFromLine(line);
   const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
   const qtyMismatch = line.zdQuantity != null && line.zdQuantity !== line.quantity;
+  const cnDigits = draft.cnCode.replace(/[\s.]/g, "");
+  const cnCheck = useCnCheck(draft.cnCode, line.card?.cnCode ?? "", line.cnDescription);
+  const cnFormatError = cnDigits && !/^\d{8}$/.test(cnDigits) ? "Kod CN to 8 cyfr (bez rozszerzenia TARIC)." : null;
+  const cnMissing = cnCheck && !cnCheck.description && cnDigits !== (line.card?.cnCode ?? "");
+  const cnState = cnFormatError || cnMissing || (line.cnInvalid && cnDigits === (line.card?.cnCode ?? "")) ? "warning" : "default";
 
   function set<K extends keyof LineDraft>(key: K, value: LineDraft[K]) {
+    setError(null);
     setDraft((d) => {
       const next = { ...d, [key]: value };
       if (key === "vatRate") {
@@ -118,6 +171,7 @@ function CustomsLineRow({
 
   function copyFromPrevious() {
     if (!previous?.card) return;
+    setError(null);
     setDraft((d) => ({
       ...d,
       descriptionPl: previous.card!.descriptionPl,
@@ -133,12 +187,39 @@ function CustomsLineRow({
     startTransition(async () => {
       const res = await actionSaveCustomsLine({ lineId: line.id, ...draft, confirm });
       if (!res.ok) {
-        onNotice({ tone: "error", text: `Poz. ${line.position}: ${res.error}` });
+        // Błąd przy wierszu, nie u góry strony — przy pozycji 300 komunikat u góry byłby niewidoczny.
+        setError(res.error);
         return;
       }
-      onNotice(null);
+      setError(null);
       router.refresh();
     });
+  }
+
+  const positionLabel = <span className="text-xs font-semibold tabular-nums text-slate-500">{line.position}.</span>;
+
+  // Zatwierdzona pozycja bez zmian — jedna linia; formularz po kliknięciu „Edytuj”.
+  if (!expanded && !dirty && line.state === "confirmed") {
+    return (
+      <li className="flex flex-wrap items-center gap-x-3 gap-y-1 bg-emerald-50/30 px-5 py-2.5">
+        {positionLabel}
+        <span className="min-w-0 flex-1 truncate text-sm text-slate-900" title={line.supplierName}>
+          {line.card?.descriptionPl || line.supplierName}
+          <span className="ml-2 text-xs text-slate-500">{line.supplierName}</span>
+        </span>
+        <span className="font-mono text-xs tabular-nums text-slate-600">{formatCnCode(line.card?.cnCode ?? "")}</span>
+        <span className="text-xs tabular-nums text-slate-600">VAT {line.vat.rate}%</span>
+        {line.cnWarning || line.descriptionWarning ? <Badge variant="warning">Do sprawdzenia</Badge> : null}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setExpanded(true)}
+          aria-label={readOnly ? `Szczegóły pozycji ${line.position}` : `Edytuj pozycję ${line.position}`}
+        >
+          {readOnly ? "Szczegóły" : "Edytuj"}
+        </Button>
+      </li>
+    );
   }
 
   return (
@@ -150,7 +231,7 @@ function CustomsLineRow({
     >
       <div className="min-w-0 space-y-1.5">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold tabular-nums text-slate-400">{line.position}.</span>
+          {positionLabel}
           <Badge variant={STATE_BADGE[line.state]}>
             {line.state === "proposal" && line.card?.source === "ai"
               ? "Propozycja AI"
@@ -158,11 +239,11 @@ function CustomsLineRow({
           </Badge>
         </div>
         {line.card?.status === "confirmed" && line.card.confirmedAt ? (
-          <p className="text-[11px] text-emerald-700">
+          <p className="text-xs text-emerald-700">
             zatwierdzone {new Date(line.card.confirmedAt).toLocaleDateString("pl-PL", { timeZone: "Europe/Warsaw" })}
           </p>
         ) : null}
-        <p className="text-sm leading-snug text-slate-900">{line.supplierName || "-"}</p>
+        <p className="break-words text-sm leading-snug text-slate-900">{line.supplierName || "-"}</p>
         <p className="text-xs text-slate-500">
           {formatQty(line.quantity)} {line.unit}
           {line.unitPrice != null
@@ -172,22 +253,40 @@ function CustomsLineRow({
             <span className="ml-1 font-medium text-amber-700">· w ZD {formatQty(line.zdQuantity!)}</span>
           ) : null}
         </p>
+        {line.invoiceGroup ? (
+          <p className="text-xs text-slate-500" title="Opis grupy produktów z faktury (scalona komórka nad kilkoma pozycjami)">
+            Grupa na fakturze: {line.invoiceGroup}
+          </p>
+        ) : null}
         {line.invoiceHsCode ? (
           <p className="text-xs text-slate-500" title="Kod nadawcy z faktury - tylko podpowiedź, agencji podajemy własny kod CN">
             HS na fakturze: <span className="font-mono">{line.invoiceHsCode}</span>
           </p>
         ) : null}
         {line.vat.warning ? <p className="text-xs leading-snug text-amber-800">{line.vat.warning}</p> : null}
-        {line.cnDescription ? (
-          <p className="text-xs leading-snug text-slate-500">
-            <span className="font-medium text-slate-600">CN {line.card?.cnCode}:</span> {line.cnDescription}
-          </p>
-        ) : null}
         {line.cnWarning ? <p className="text-xs leading-snug text-amber-800">{line.cnWarning}</p> : null}
+        {line.descriptionWarning ? <p className="text-xs leading-snug text-amber-800">{line.descriptionWarning}</p> : null}
       </div>
 
       <div className="grid min-w-0 gap-2.5 sm:grid-cols-6">
-        <Field label="Kod dostawcy" className="sm:col-span-1">
+        <Field label="Opis PL" className="min-w-0 sm:col-span-4">
+          <Input
+            value={draft.descriptionPl}
+            title={draft.descriptionPl}
+            onChange={(e) => set("descriptionPl", e.target.value)}
+            placeholder="np. Nożyk do wosku Lessman 17cm"
+            disabled={readOnly}
+          />
+        </Field>
+        <Field label="Materiał" className="min-w-0 sm:col-span-2">
+          <Input
+            value={draft.material}
+            onChange={(e) => set("material", e.target.value)}
+            placeholder="stal nierdzewna"
+            disabled={readOnly}
+          />
+        </Field>
+        <Field label="Kod dostawcy" className="min-w-0 sm:col-span-2">
           <Input
             value={draft.supplierArticleCode}
             // Bez kodu na fakturze kluczem jest nazwa — pełna wartość w podpowiedzi.
@@ -196,37 +295,17 @@ function CustomsLineRow({
             disabled={readOnly}
           />
         </Field>
-        <Field label="Opis PL" className="sm:col-span-3">
-          <Input
-            value={draft.descriptionPl}
-            onChange={(e) => set("descriptionPl", e.target.value)}
-            placeholder="np. Nożyk do wosku Lessman 17cm"
-            disabled={readOnly}
-          />
-        </Field>
-        <Field label="Materiał" className="sm:col-span-2">
-          <Input
-            value={draft.material}
-            onChange={(e) => set("material", e.target.value)}
-            placeholder="stal nierdzewna"
-            disabled={readOnly}
-          />
-        </Field>
-        <Field
-          label="Kod CN"
-          className="sm:col-span-1"
-          state={line.cnInvalid && draft.cnCode === (line.card?.cnCode ?? "") ? "warning" : "default"}
-        >
+        <Field label="Kod CN" className="min-w-0 sm:col-span-2" state={cnState}>
           <Input
             value={draft.cnCode}
-            title={line.cnDescription ?? undefined}
+            className="font-mono tabular-nums"
             onChange={(e) => set("cnCode", e.target.value)}
-            placeholder="90184990"
+            placeholder="9018 49 90"
             inputMode="numeric"
             disabled={readOnly}
           />
         </Field>
-        <Field label="VAT" className="sm:col-span-1">
+        <Field label="VAT" className="min-w-0 sm:col-span-2">
           <select
             className={fieldControlClass("default")}
             value={draft.vatRate}
@@ -240,48 +319,86 @@ function CustomsLineRow({
             ))}
           </select>
         </Field>
-        <Field label="Podstawa 8%" className="sm:col-span-2">
-          <select
-            className={fieldControlClass(draft.vatRate === 8 && !draft.vatBasisDocumentId ? "warning" : "default")}
-            value={draft.vatBasisDocumentId ?? ""}
-            onChange={(e) => set("vatBasisDocumentId", e.target.value || null)}
-            disabled={readOnly || draft.vatRate !== 8}
+        {draft.vatRate === 8 ? (
+          <Field
+            label="Podstawa 8% (deklaracja zgodności)"
+            className="min-w-0 sm:col-span-6"
+            state={!draft.vatBasisDocumentId ? "warning" : "default"}
+            hint={
+              !draft.vatBasisDocumentId && !line.vat.warning
+                ? "Bez dokumentu agencja nie przyjmie 8% - dodaj deklarację w karcie dostawcy."
+                : undefined
+            }
           >
-            <option value="">{draft.vatRate === 8 ? "- brak dokumentu -" : "nie dotyczy"}</option>
-            {documents.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.fileName}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <label className="flex items-center gap-2 self-end pb-2.5 text-sm text-slate-700 sm:col-span-2">
-          <input
-            type="checkbox"
-            checked={draft.isMedicalDevice}
-            onChange={(e) => set("isMedicalDevice", e.target.checked)}
-            disabled={readOnly}
-          />
-          Wyrób medyczny
-        </label>
-        {!readOnly ? (
-          <div className="flex flex-wrap items-center justify-end gap-2 sm:col-span-6">
-            {previous?.card && !draft.descriptionPl ? (
-              <Button variant="ghost" size="sm" onClick={copyFromPrevious} disabled={pending}>
-                Jak poz. {previous.position}
-              </Button>
-            ) : null}
-            {dirty ? (
-              <Button variant="secondary" size="sm" onClick={() => save(false)} disabled={pending}>
-                Zapisz
-              </Button>
-            ) : null}
-            {dirty || line.state !== "confirmed" ? (
-              <Button size="sm" onClick={() => save(true)} disabled={pending}>
-                {pending ? "Zapisuję…" : "Zatwierdź"}
-              </Button>
-            ) : null}
-          </div>
+            <select
+              className={fieldControlClass(!draft.vatBasisDocumentId ? "warning" : "default")}
+              value={draft.vatBasisDocumentId ?? ""}
+              onChange={(e) => set("vatBasisDocumentId", e.target.value || null)}
+              disabled={readOnly}
+            >
+              <option value="">- brak dokumentu -</option>
+              {documents.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.fileName}
+                </option>
+              ))}
+            </select>
+          </Field>
+        ) : null}
+        <div className="space-y-0.5 sm:col-span-6">
+          {cnFormatError ? <p className="text-xs text-amber-800">{cnFormatError}</p> : null}
+          {cnMissing ? (
+            <p className="text-xs text-amber-800">
+              Kodu {formatCnCode(cnDigits)} nie ma w CN {cnCheck!.year}
+              {cnCheck!.siblings.length ? ` - istniejące w tej grupie: ${cnCheck!.siblings.map(formatCnCode).join(", ")}` : ""}.
+            </p>
+          ) : null}
+          {cnCheck?.description ? (
+            <p className="line-clamp-2 text-xs leading-snug text-slate-500" title={cnCheck.description}>
+              <span className="font-medium text-slate-600">CN {formatCnCode(cnCheck.code)}:</span> {cnCheck.description}
+            </p>
+          ) : null}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 sm:col-span-6">
+          <label className="mr-auto flex min-h-9 items-center gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              className="size-4"
+              checked={draft.isMedicalDevice}
+              onChange={(e) => set("isMedicalDevice", e.target.checked)}
+              disabled={readOnly}
+            />
+            Wyrób medyczny
+          </label>
+          {line.state === "confirmed" && !dirty ? (
+            <Button variant="ghost" size="sm" onClick={() => setExpanded(false)}>
+              Zwiń
+            </Button>
+          ) : null}
+          {!readOnly ? (
+            <>
+              {previous?.card && !draft.descriptionPl ? (
+                <Button variant="ghost" size="sm" onClick={copyFromPrevious} disabled={pending}>
+                  Jak poz. {previous.position}
+                </Button>
+              ) : null}
+              {dirty ? (
+                <Button variant="secondary" size="sm" onClick={() => save(false)} disabled={pending}>
+                  Zapisz
+                </Button>
+              ) : null}
+              {dirty || line.state !== "confirmed" ? (
+                <Button size="sm" onClick={() => save(true)} disabled={pending || Boolean(cnFormatError)}>
+                  {pending ? "Zapisuję…" : "Zatwierdź"}
+                </Button>
+              ) : null}
+            </>
+          ) : null}
+        </div>
+        {error ? (
+          <p role="alert" className="text-sm text-red-700 sm:col-span-6">
+            Nie zapisano: {error}
+          </p>
         ) : null}
       </div>
     </li>
@@ -312,8 +429,10 @@ function ImportEmailDescriptions({
         return;
       }
       const parts = [
-        `Wczytano opisy dla ${res.imported} pozycji jako propozycje - sprawdź i zatwierdź.`,
-        res.skippedConfirmed ? `${res.skippedConfirmed} pozycji było już zatwierdzonych.` : "",
+        res.imported
+          ? `Wczytano opisy dla ${res.imported} pozycji jako propozycje - sprawdź i zatwierdź.`
+          : "Nie wczytano nowych opisów.",
+        res.skippedConfirmed ? `Już zatwierdzone wcześniej (bez zmian): ${res.skippedConfirmed}.` : "",
         ...res.warnings,
       ].filter(Boolean);
       onNotice({ tone: res.warnings.length ? "warning" : "success", text: parts.join(" ") });
@@ -362,7 +481,7 @@ function SupplierDocumentArticles({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [text, setText] = useState(doc.articleCodes.join("\n"));
+  const [text, setText] = useState(articleCodesText(doc.articleCodes));
   const [pending, startTransition] = useTransition();
   const [aiReading, setAiReading] = useState(false);
   const isSheetDoc = /\.(xlsx|csv|xls)$/i.test(doc.fileName);
@@ -428,7 +547,7 @@ function SupplierDocumentArticles({
             className={fieldControlClass("default", "min-h-40 sm:min-h-40 font-mono text-xs")}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={"Kody artykułów z dokumentu (np. Annex A deklaracji) - jeden na wiersz:\nDE-1411\nDE-1412"}
+            placeholder={"Kody artykułów z dokumentu (np. Annex A deklaracji) - jeden na wiersz:\nDE-1411\nDE-1412\nDostawca bez kodów: nazwa z karty, tabulator, opis"}
           />
           <div className="flex justify-end">
             <Button size="sm" onClick={save} disabled={pending}>
@@ -462,6 +581,7 @@ export function CustomsClearanceEditor({
   });
   const [pending, startTransition] = useTransition();
   const [importOpen, setImportOpen] = useState(false);
+  const [confirming, setConfirming] = useState<PendingConfirm>(null);
   const headerDirty =
     header.invoiceNumber !== view.invoiceNumber ||
     header.invoiceDate !== (view.invoiceDate ?? "") ||
@@ -474,10 +594,27 @@ export function CustomsClearanceEditor({
   );
   const emailText = readOnly && view.sentEmailText ? view.sentEmailText : view.emailText;
   const aiProposals = view.lines.filter((l) => l.state === "proposal" && l.card?.source === "ai").length;
+  const todoCount = view.lines.length - counts.confirmed;
+  // Jak w actionConfirmAllCustomsLines: karta niezatwierdzona, opis PL i istniejący kod CN.
+  const completeProposals = view.lines.filter(
+    (l) => l.card && l.card.status !== "confirmed" && isLineComplete(l)
+  ).length;
+  const [lineFilter, setLineFilter] = useState<LineFilter>(todoCount > 0 ? "todo" : "all");
+  const visibleLines = useMemo(
+    () =>
+      view.lines
+        .map((line, i) => ({ line, previous: i > 0 ? view.lines[i - 1]! : null }))
+        .filter(({ line }) =>
+          lineFilter === "all" ? true : lineFilter === "confirmed" ? line.state === "confirmed" : line.state !== "confirmed"
+        ),
+    [view.lines, lineFilter]
+  );
+  const blocker = sendBlocker({ incomplete: view.incompleteCount, hasInvoice: view.hasInvoiceFile, email: agencyEmail });
 
   function run(task: () => Promise<Notice | void>) {
     startTransition(async () => {
       const n = await task();
+      setConfirming(null);
       setNotice(n ?? null);
       router.refresh();
     });
@@ -487,18 +624,22 @@ export function CustomsClearanceEditor({
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
-          <Link href="/zakupy/odprawy" className="text-xs font-medium text-slate-500 hover:text-slate-800">
+          <Link
+            href="/zakupy/odprawy"
+            className="-my-2 inline-flex min-h-10 items-center text-xs font-medium text-slate-500 hover:text-slate-800"
+          >
             ← Odprawy celne
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+          <h1 className="break-words text-2xl font-semibold tracking-tight text-slate-900">
             {view.supplierName} · {view.invoiceNumber || "bez numeru faktury"}
           </h1>
           <p className="text-sm text-slate-600">
-            {view.lines.length} pozycji{view.zdNumber ? ` · ${view.zdNumber}` : ""} ·{" "}
+            {polishPozycjeLabel(view.lines.length)}
+            {view.zdNumber ? ` · ${view.zdNumber}` : ""} ·{" "}
             {readOnly ? (
-              <Badge variant="success">Wysłane</Badge>
+              <Badge variant="success">Mail wysłany</Badge>
             ) : (
-              <Badge variant="warning">W przygotowaniu</Badge>
+              <Badge variant="warning">Mail w przygotowaniu</Badge>
             )}
           </p>
         </div>
@@ -520,14 +661,7 @@ export function CustomsClearanceEditor({
             <Button
               variant="ghost"
               disabled={pending}
-              onClick={() => {
-                if (!window.confirm("Usunąć tę odprawę? Zatwierdzone karty artykułów zostaną.")) return;
-                startTransition(async () => {
-                  const res = await actionDeleteCustomsClearance(view.id);
-                  if (!res.ok) setNotice({ tone: "error", text: res.error });
-                  else router.push("/zakupy/odprawy");
-                });
-              }}
+              onClick={() => setConfirming("delete")}
             >
               Usuń
             </Button>
@@ -537,17 +671,25 @@ export function CustomsClearanceEditor({
 
       {notice ? <Alert tone={notice.tone}>{notice.text}</Alert> : null}
 
+      <CustomsShipmentCard
+        key={JSON.stringify(view.shipment)}
+        clearanceId={view.id}
+        shipment={view.shipment}
+        documentsSent={readOnly}
+        title={`${view.supplierName} · faktura ${view.invoiceNumber || "bez numeru"}`}
+      />
+
       <Card>
         <CardHeader title="Faktura" density="compact" />
         <div className="grid gap-3 sm:grid-cols-4">
-          <Field label="Numer faktury">
+          <Field label="Numer faktury" className="min-w-0">
             <Input
               value={header.invoiceNumber}
               onChange={(e) => setHeader((h) => ({ ...h, invoiceNumber: e.target.value }))}
               disabled={readOnly}
             />
           </Field>
-          <Field label="Data">
+          <Field label="Data" className="min-w-0">
             <Input
               type="date"
               value={header.invoiceDate}
@@ -556,18 +698,24 @@ export function CustomsClearanceEditor({
             />
           </Field>
           <Field label="Waluta">
-            <Input
+            <Select
               value={header.currency}
-              maxLength={3}
               onChange={(e) => setHeader((h) => ({ ...h, currency: e.target.value }))}
               disabled={readOnly}
-            />
+            >
+              {[...new Set([header.currency, ...CURRENCIES])].map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </Select>
           </Field>
-          <Field label="Plik faktury">
+          <Field label="Plik faktury" className="min-w-0">
             {view.invoiceFileName ? (
               <button
                 type="button"
-                className="block truncate pt-2 text-left text-sm font-medium text-indigo-700 hover:underline"
+                title={view.invoiceFileName}
+                className="block w-full max-w-full truncate pt-2 text-left text-sm font-medium text-indigo-700 hover:underline"
                 onClick={async () => {
                   const res = await actionGetCustomsInvoiceUrl(view.id);
                   if (res.ok) window.open(res.url, "_blank", "noopener");
@@ -577,10 +725,10 @@ export function CustomsClearanceEditor({
                 {view.invoiceFileName}
               </button>
             ) : (
-              <span className="block pt-2 text-sm text-slate-400">brak</span>
+              <span className="block pt-2 text-sm text-slate-500">brak - wgraj plik faktury</span>
             )}
           </Field>
-          <Field label="Przesyłka zawiera" className="sm:col-span-3">
+          <Field label="Przesyłka zawiera" className="min-w-0 sm:col-span-3">
             <Input
               value={header.shipmentDescription}
               onChange={(e) => setHeader((h) => ({ ...h, shipmentDescription: e.target.value }))}
@@ -589,11 +737,11 @@ export function CustomsClearanceEditor({
             />
           </Field>
           {!readOnly ? (
-            <Field label={view.invoiceFileName ? "Podmień fakturę" : "Wgraj fakturę"}>
+            <Field label={view.invoiceFileName ? "Podmień fakturę" : "Wgraj fakturę"} className="min-w-0">
               <input
                 type="file"
                 accept="application/pdf,image/*,.tif,.tiff"
-                className="block w-full pt-2 text-xs text-slate-600"
+                className="block w-full min-w-0 pt-1 text-xs text-slate-600 file:mr-2 file:min-h-9 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:text-xs file:font-medium file:text-slate-800 hover:file:bg-slate-200"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
@@ -631,85 +779,9 @@ export function CustomsClearanceEditor({
       </Card>
 
       <Card padding={false}>
-        <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-5 py-3.5">
-          <h2 className="mr-auto text-base font-semibold text-slate-900">Pozycje</h2>
-          {(Object.keys(counts) as CustomsLineState[])
-            .filter((s) => counts[s] > 0)
-            .map((s) => (
-              <Badge key={s} variant={STATE_BADGE[s]}>
-                {CUSTOMS_LINE_STATE_LABEL[s]}: {counts[s]}
-              </Badge>
-            ))}
-          {!readOnly && counts.confirmed < view.lines.length ? (
-            <Button size="sm" variant="ghost" disabled={pending} onClick={() => setImportOpen((o) => !o)}>
-              Opisy z wcześniejszego maila
-            </Button>
-          ) : null}
-          {aiEnabled && !readOnly && (counts.missing > 0 || aiProposals > 0 || view.incompleteCount > 0) ? (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={pending}
-              onClick={() =>
-                run(async () => {
-                  const res = await actionProposeCustomsLinesWithAi(view.id);
-                  if (!res.ok) return { tone: "error", text: res.error };
-                  const parts = [`AI zaproponowało opisy dla ${res.proposed} pozycji - sprawdź i zatwierdź.`];
-                  if (res.uncertain.length) parts.push(`Kod CN do sprawdzenia: ${res.uncertain.join("; ")}.`);
-                  if (res.remaining) parts.push(`Zostało ${res.remaining} pozycji - uruchom ponownie.`);
-                  return { tone: res.uncertain.length || res.remaining ? "warning" : "success", text: parts.join(" ") };
-                })
-              }
-            >
-              {pending ? "Pracuję…" : "Zaproponuj opisy (AI)"}
-            </Button>
-          ) : null}
-          {!readOnly && counts.proposal > 0 ? (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={pending}
-              onClick={() =>
-                run(async () => {
-                  const res = await actionConfirmAllCustomsLines(view.id);
-                  return res.ok
-                    ? { tone: "success", text: `Zatwierdzono ${res.confirmed} pozycji.` }
-                    : { tone: "error", text: res.error };
-                })
-              }
-            >
-              Zatwierdź kompletne propozycje
-            </Button>
-          ) : null}
-        </div>
-        {importOpen && !readOnly ? (
-          <ImportEmailDescriptions
-            clearanceId={view.id}
-            lineCount={view.lines.length}
-            onNotice={setNotice}
-            onClose={() => setImportOpen(false)}
-          />
-        ) : null}
-        <ul className="divide-y divide-slate-100">
-          {view.lines.map((line, i) => (
-            <CustomsLineRow
-              // Nowy klucz = świeży formularz, gdy serwer zmienił wartości (karta, propozycja AI,
-              // opisy z maila, VAT z dokumentów) — inaczej pola pokazywałyby stary szkic.
-              key={[line.id, line.card?.id, line.card?.status, JSON.stringify(draftFromLine(line))].join(":")}
-              line={line}
-              previous={i > 0 ? view.lines[i - 1]! : null}
-              documents={view.documents}
-              readOnly={readOnly}
-              onNotice={setNotice}
-            />
-          ))}
-        </ul>
-      </Card>
-
-      <Card padding={false}>
         <div className="border-b border-slate-100 px-5 py-3.5">
           <h2 className="text-base font-semibold text-slate-900">Dokumenty dostawcy</h2>
-          <p className="text-xs text-slate-500">
+          <p className="max-w-prose text-xs text-slate-500">
             Artykuły z listy dokumentu (np. Annex A deklaracji zgodności) dostają VAT 8% jako wyrób medyczny,
             a dokument trafia do załączników.
           </p>
@@ -728,7 +800,7 @@ export function CustomsClearanceEditor({
             ))}
           </ul>
         ) : (
-          <p className="px-5 py-4 text-sm text-slate-500">
+          <p className="max-w-prose px-5 py-4 text-sm text-slate-500">
             Brak dokumentów w karcie dostawcy - dodaj deklaracje zgodności w{" "}
             <Link href="/zakupy/dostawcy" className="font-medium text-indigo-700 hover:underline">
               kartach dostawców
@@ -738,19 +810,101 @@ export function CustomsClearanceEditor({
         )}
       </Card>
 
+      <Card padding={false}>
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-5 py-3.5">
+          <h2 className="text-base font-semibold text-slate-900">Pozycje</h2>
+          <SegmentedControl<LineFilter>
+            className="mr-auto"
+            density="compact"
+            ariaLabel="Które pozycje pokazać"
+            value={lineFilter}
+            onChange={setLineFilter}
+            options={[
+              { value: "todo", label: `Do zrobienia (${todoCount})` },
+              { value: "confirmed", label: `Zatwierdzone (${counts.confirmed})` },
+              { value: "all", label: `Wszystkie (${view.lines.length})` },
+            ]}
+          />
+          {!readOnly && counts.confirmed < view.lines.length ? (
+            <Button size="sm" variant="ghost" disabled={pending} onClick={() => setImportOpen((o) => !o)}>
+              Opisy z wcześniejszego maila
+            </Button>
+          ) : null}
+          {aiEnabled && !readOnly && (counts.missing > 0 || aiProposals > 0 || view.incompleteCount > 0) ? (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pending}
+              onClick={() =>
+                run(async () => {
+                  const res = await actionProposeCustomsLinesWithAi(view.id);
+                  if (!res.ok) return { tone: "error", text: res.error };
+                  const parts = [`AI zaproponowało opisy dla ${res.proposed} pozycji - sprawdź i zatwierdź.`];
+                  if (res.uncertain.length) parts.push(`Kod CN do sprawdzenia: ${res.uncertain.join("; ")}.`);
+                  if (res.remaining) parts.push(`Pozostało do zaproponowania: ${res.remaining} - uruchom ponownie.`);
+                  return { tone: res.uncertain.length || res.remaining ? "warning" : "success", text: parts.join(" ") };
+                })
+              }
+            >
+              {pending ? "Pracuję…" : "Zaproponuj opisy (AI)"}
+            </Button>
+          ) : null}
+          {!readOnly && completeProposals > 0 ? (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={pending}
+              onClick={() => setConfirming("confirmAll")}
+            >
+              Zatwierdź kompletne propozycje ({completeProposals})
+            </Button>
+          ) : null}
+        </div>
+        {importOpen && !readOnly ? (
+          <ImportEmailDescriptions
+            clearanceId={view.id}
+            lineCount={view.lines.length}
+            onNotice={setNotice}
+            onClose={() => setImportOpen(false)}
+          />
+        ) : null}
+        {visibleLines.length ? (
+          <ul className="divide-y divide-slate-100">
+            {visibleLines.map(({ line, previous }) => (
+              <CustomsLineRow
+                // Nowy klucz = świeży formularz, gdy serwer zmienił wartości (karta, propozycja AI,
+                // opisy z maila, VAT z dokumentów) — inaczej pola pokazywałyby stary szkic.
+                key={[line.id, line.card?.id, line.card?.status, JSON.stringify(draftFromLine(line))].join(":")}
+                line={line}
+                previous={previous}
+                documents={view.documents}
+                readOnly={readOnly}
+              />
+            ))}
+          </ul>
+        ) : (
+          <p className="px-5 py-6 text-sm text-slate-500">
+            {lineFilter === "todo"
+              ? "Wszystkie pozycje zatwierdzone - mail do agencji jest kompletny."
+              : "Brak pozycji w tym widoku."}
+          </p>
+        )}
+      </Card>
+
       <Card>
         <CardHeader title="Mail do agencji celnej" density="compact" />
         {view.incompleteCount > 0 && !readOnly ? (
           <Alert tone="warning" className="mb-3">
-            {`${view.incompleteCount} pozycji bez opisu PL albo z brakującym lub nieistniejącym kodem CN - nie ma ich jeszcze w mailu.`}
+            {`Bez opisu PL albo z brakującym lub nieistniejącym kodem CN: ${polishPozycjeLabel(view.incompleteCount)} - nie ma ich jeszcze w mailu.`}
           </Alert>
         ) : null}
         <textarea
           readOnly
-          className={fieldControlClass("default", "min-h-72 sm:min-h-72 font-mono text-xs")}
+          aria-label="Treść maila do agencji celnej (generowana z pozycji)"
+          className={fieldControlClass("default", "min-h-72 sm:min-h-72 bg-slate-50 font-mono text-xs")}
           value={emailText}
         />
-        <p className="mt-3 text-xs text-slate-500">
+        <p className="mt-3 text-xs text-slate-500 [overflow-wrap:anywhere]">
           Załączniki: {view.hasInvoiceFile ? (view.invoiceFileName ?? "faktura") : "brak faktury (wgraj wyżej)"}
           {view.attachments.length ? `, ${view.attachments.map((a) => a.fileName).join(", ")}` : ""}
           {sendExcel && !readOnly ? ", Excel" : ""}
@@ -774,24 +928,29 @@ export function CustomsClearanceEditor({
               />
             </Field>
             <div className="flex flex-wrap items-center gap-3 pb-1 text-sm text-slate-700 sm:pb-7">
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={copyToMe} onChange={(e) => setCopyToMe(e.target.checked)} />
+              <label className="flex min-h-9 items-center gap-2">
+                <input type="checkbox" className="size-4" checked={copyToMe} onChange={(e) => setCopyToMe(e.target.checked)} />
                 Kopia do mnie
               </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={sendExcel} onChange={(e) => setSendExcel(e.target.checked)} />
+              <label className="flex min-h-9 items-center gap-2">
+                <input type="checkbox" className="size-4" checked={sendExcel} onChange={(e) => setSendExcel(e.target.checked)} />
                 Dołącz Excel
               </label>
             </div>
           </div>
         )}
         <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
+          {!readOnly && blocker ? <p className="mr-auto text-sm text-amber-800">{blocker}</p> : null}
           <Button
             variant="secondary"
             onClick={() =>
-              void navigator.clipboard
-                .writeText(emailText)
-                .then(() => setNotice({ tone: "success", text: "Skopiowano treść maila." }))
+              void copyTextToClipboard(emailText).then((ok) =>
+                setNotice(
+                  ok
+                    ? { tone: "success", text: "Skopiowano treść maila." }
+                    : { tone: "error", text: "Nie udało się skopiować - zaznacz treść maila i skopiuj ręcznie (Ctrl+C)." }
+                )
+              )
             }
           >
             Kopiuj treść
@@ -801,33 +960,13 @@ export function CustomsClearanceEditor({
               <Button
                 variant="ghost"
                 disabled={pending || view.incompleteCount > 0}
-                onClick={() => {
-                  if (!window.confirm("Oznaczyć jako wysłane bez wysyłki z aplikacji (mail wysłany ręcznie)?")) return;
-                  run(async () => {
-                    const res = await actionMarkCustomsClearanceSent(view.id);
-                    return res.ok
-                      ? { tone: "success", text: "Oznaczono jako wysłane - dane zapisane w historii." }
-                      : { tone: "error", text: res.error };
-                  });
-                }}
+                onClick={() => setConfirming("markSent")}
               >
                 Wysłałem ręcznie
               </Button>
               <Button
-                disabled={pending || view.incompleteCount > 0 || !view.hasInvoiceFile || !agencyEmail.trim()}
-                onClick={() => {
-                  if (!window.confirm(`Wysłać mail z załącznikami do: ${agencyEmail.trim()}?`)) return;
-                  run(async () => {
-                    const res = await actionSendCustomsClearanceEmail(view.id, {
-                      to: agencyEmail,
-                      copyToMe,
-                      includeExcel: sendExcel,
-                    });
-                    return res.ok
-                      ? { tone: "success", text: `Wysłano do: ${res.deliveredTo.join(", ")}.` }
-                      : { tone: "error", text: res.error };
-                  });
-                }}
+                disabled={pending || Boolean(blocker)}
+                onClick={() => setConfirming("send")}
               >
                 {pending ? "Wysyłam…" : "Wyślij do agencji"}
               </Button>
@@ -835,6 +974,81 @@ export function CustomsClearanceEditor({
           ) : null}
         </div>
       </Card>
+
+      <ConfirmDialog
+        open={confirming === "delete"}
+        title="Usunąć odprawę?"
+        message="Odprawa i jej pozycje zostaną usunięte. Zatwierdzone karty artykułów zostają i podpowiedzą się przy kolejnej fakturze."
+        confirmLabel="Usuń odprawę"
+        danger
+        pending={pending}
+        onCancel={() => setConfirming(null)}
+        onConfirm={() =>
+          startTransition(async () => {
+            const res = await actionDeleteCustomsClearance(view.id);
+            setConfirming(null);
+            if (!res.ok) setNotice({ tone: "error", text: res.error });
+            else router.push("/zakupy/odprawy");
+          })
+        }
+      />
+      <ConfirmDialog
+        open={confirming === "confirmAll"}
+        title={`Zatwierdzić ${completeProposals} ${polishPluralWord(completeProposals, "propozycję", "propozycje", "propozycji")}?`}
+        message="Zatwierdzone zostaną tylko kompletne propozycje (opis PL i istniejący kod CN). Karty zapamiętają opis, kod i VAT na kolejne faktury - każdą można potem edytować."
+        confirmLabel="Zatwierdź"
+        pending={pending}
+        onCancel={() => setConfirming(null)}
+        onConfirm={() =>
+          run(async () => {
+            const res = await actionConfirmAllCustomsLines(view.id);
+            return res.ok
+              ? { tone: "success", text: `Zatwierdzono ${pozycjeAcc(res.confirmed)}.` }
+              : { tone: "error", text: res.error };
+          })
+        }
+      />
+      <ConfirmDialog
+        open={confirming === "markSent"}
+        title="Oznaczyć jako wysłane?"
+        message="Użyj, gdy mail do agencji wysłałeś ręcznie z poczty. Treść zostanie zapisana w historii, a pozycje zablokowane do edycji."
+        confirmLabel="Oznacz jako wysłane"
+        pending={pending}
+        onCancel={() => setConfirming(null)}
+        onConfirm={() =>
+          run(async () => {
+            const res = await actionMarkCustomsClearanceSent(view.id);
+            return res.ok
+              ? { tone: "success", text: "Oznaczono jako wysłane - dane zapisane w historii." }
+              : { tone: "error", text: res.error };
+          })
+        }
+      />
+      <ConfirmDialog
+        open={confirming === "send"}
+        title="Wysłać do agencji celnej?"
+        summary={agencyEmail.trim()}
+        message={`Załączniki: ${[
+          view.invoiceFileName ?? "faktura",
+          ...view.attachments.map((a) => a.fileName),
+          ...(sendExcel ? ["Excel"] : []),
+        ].join(", ")}.${copyToMe ? " Kopia trafi do Ciebie." : ""}`}
+        confirmLabel="Wyślij"
+        pending={pending}
+        onCancel={() => setConfirming(null)}
+        onConfirm={() =>
+          run(async () => {
+            const res = await actionSendCustomsClearanceEmail(view.id, {
+              to: agencyEmail,
+              copyToMe,
+              includeExcel: sendExcel,
+            });
+            return res.ok
+              ? { tone: "success", text: `Wysłano do: ${res.deliveredTo.join(", ")}.` }
+              : { tone: "error", text: res.error };
+          })
+        }
+      />
     </div>
   );
 }

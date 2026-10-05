@@ -25,6 +25,7 @@ import type {
   SupplierWithSchedule,
   TeethSupplierSchedule,
 } from "@/types/database";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export type SalesSupplierInsight = SupplierPlanInsight & {
   orderOnDemand: boolean;
@@ -60,14 +61,12 @@ export type BuildSalesSupplierInsightOptions = {
 
 function daysLabel(n: number): string {
   const rounded = Math.round(n);
-  if (rounded === 1) return "dzień roboczy";
-  if (rounded >= 2 && rounded <= 4) return "dni robocze";
-  return "dni roboczych";
+  return polishPluralWord(rounded, "dzień roboczy", "dni robocze", "dni roboczych");
 }
 
 function formatAvgDays(avg: number, count: number): string {
   const deliveries =
-    count === 1 ? "dostawa" : count >= 2 && count <= 4 ? "dostawy" : "dostaw";
+    polishPluralWord(count, "dostawa", "dostawy", "dostaw");
   if (avg === 0) {
     return `tego samego dnia roboczego · ${count} ${deliveries} w historii`;
   }

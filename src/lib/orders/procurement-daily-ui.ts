@@ -24,6 +24,7 @@ import {
   type PlannedOrderDateDisplay,
 } from "@/lib/orders/planned-order-date-label";
 import type { SupplierSummaryMeta, WeekDayPlan } from "@/lib/orders/summary-workspace";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export type ProcurementHeadlineTone = MyOrderHeadlineTone;
 
@@ -55,7 +56,7 @@ export type DailyInboxSummary = {
   hiddenScheduleCount: number;
 };
 
-/** Licznik menu: pozycje w kolejce Dziś (zaległe + harmonogram na dziś + grupy prośb + sygnały stanu + rezygnacje). */
+/** Licznik menu: pozycje w kolejce Dziś (zaległe + harmonogram na dziś + grupy próśb + sygnały stanu + rezygnacje). */
 export function countDailyPanelNavBadge(workspace: SummaryWorkspaceData): number {
   const s = summarizeDailyInbox(workspace);
   return (
@@ -210,7 +211,7 @@ export function enrichStockOutSignalGroup(
 ): ProcurementRequestUi {
   const count = group.lines.length;
   const countLabel =
-    count === 1 ? "1 pozycja" : count < 5 ? `${count} pozycje` : `${count} pozycji`;
+    `${count} ${polishPluralWord(count, "pozycja", "pozycje", "pozycji")}`;
   const submittedLabel = formatProcurementGroupSubmittedLabel(
     group.submittedAt,
     group.submittedAtLatest,
@@ -269,7 +270,7 @@ export function enrichForSomeoneGroup(
 ): ProcurementRequestUi {
   const count = group.lines.length;
   const countLabel =
-    count === 1 ? "1 produkt" : count < 5 ? `${count} produkty` : `${count} produktów`;
+    `${count} ${polishPluralWord(count, "produkt", "produkty", "produktów")}`;
   const infoViaPanel = group.lines.some((l) => l.informacjaViaPanel);
   const submittedLabel = formatProcurementGroupSubmittedLabel(
     group.submittedAt,
@@ -303,7 +304,7 @@ export function enrichInformacjaGroup(
 ): ProcurementRequestUi {
   const count = group.lines.length;
   const countLabel =
-    count === 1 ? "1 produkt" : count < 5 ? `${count} produkty` : `${count} produktów`;
+    `${count} ${polishPluralWord(count, "produkt", "produkty", "produktów")}`;
 
   return {
     headline: "Tylko informacja o dostępności",

@@ -5,6 +5,7 @@ import { ZkProsbaLinkChip } from "@/components/orders/ZkProsbaLinkChip";
 import { cn } from "@/lib/cn";
 import { salesTypography } from "@/lib/ui/ontime-theme";
 import { formatProsbaCount } from "@/lib/orders/my-order-plural";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export function MojeClientKhFilterBanner({
   clientLabel,
@@ -29,7 +30,7 @@ export function MojeClientKhFilterBanner({
 
   const matchLabel =
     matched === 0
-      ? "Brak pasujących prośb na liście"
+      ? "Brak pasujących próśb na liście"
       : matched === 1
         ? "1 prośba na liście"
         : formatProsbaCount(matched);
@@ -74,7 +75,7 @@ export function MojeClientKhFilterBanner({
                   {" "}
                   · pełna lista ma{" "}
                   <span className="font-semibold tabular-nums">{totalCount}</span>{" "}
-                  {totalCount === 1 ? "prośbę" : totalCount < 5 ? "prośby" : "prośb"}
+                  {polishPluralWord(totalCount, "prośbę", "prośby", "próśb")}
                 </>
               ) : null}
             </>

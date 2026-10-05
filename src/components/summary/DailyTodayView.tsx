@@ -220,7 +220,7 @@ export function DailyTodayView({
             <EmptyState
               brandAccent
               title="Nic pilnego na dziś"
-              description="Brak prośb i harmonogramu na dziś. Sprawdź zakładkę Tydzień lub terminy w kalendarzu."
+              description="Brak próśb i harmonogramu na dziś. Sprawdź zakładkę Tydzień lub terminy w kalendarzu."
               icon={<DailySectionIcon kind="dzis" size={28} />}
               action={
                 <Button variant="secondary" size="sm" onClick={onOpenWeek}>

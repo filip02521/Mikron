@@ -356,11 +356,11 @@ export function SalesUpdatesBanner() {
 
   const description =
     pathname === "/prosba"
-      ? `${MICROCOPY.notices.updatesAvailable} Odśwież, aby zobaczyć aktualne statusy prośb.`
+      ? `${MICROCOPY.notices.updatesAvailable} Odśwież, aby zobaczyć aktualne statusy próśb.`
       : pathname === "/tablica"
-        ? `${MICROCOPY.notices.updatesAvailable} Szczegóły prośb i terminów sprawdzisz w Moje zamówienia po odświeżeniu.`
+        ? `${MICROCOPY.notices.updatesAvailable} Szczegóły próśb i terminów sprawdzisz w Moje zamówienia po odświeżeniu.`
         : pathname === "/plan"
-          ? `${MICROCOPY.notices.updatesAvailable} Odśwież plan - statusy prośb są w Moje zamówienia.`
+          ? `${MICROCOPY.notices.updatesAvailable} Odśwież plan - statusy próśb są w Moje zamówienia.`
           : `${MICROCOPY.notices.updatesAvailable} Automatyczne odświeżanie włączysz w panelu synchronizacji na Moje zamówienia.`;
 
   return (

@@ -271,7 +271,7 @@ export function SalesOnboardingPanelPreview({ stepId }: { stepId: string }) {
       return (
         <div className="space-y-2">
           <p className="text-[10px] text-slate-500">Przykładowy układ zespołu</p>
-          {["Anna K. · 2 ZK na towar", "Piotr M. · 1 przypomnienie", "Sklep · 5 prośb"].map(
+          {["Anna K. · 2 ZK na towar", "Piotr M. · 1 przypomnienie", "Sklep · 5 próśb"].map(
             (row) => (
               <div
                 key={row}

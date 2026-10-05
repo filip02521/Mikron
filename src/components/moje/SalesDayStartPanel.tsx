@@ -19,6 +19,7 @@ import {
   mojeShipmentSectionShellClass,
 } from "@/lib/ui/moje-shipment-row-styles";
 import { brandLinkClass, sectionIconTileBrandClass } from "@/lib/ui/ontime-theme";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export function SalesDayStartPanel({
   snapshot,
@@ -72,7 +73,7 @@ export function SalesDayStartPanel({
             className={cn("mt-2.5 text-xs font-semibold", brandLinkClass)}
           >
             Pokaż jeszcze {hiddenCount}{" "}
-            {hiddenCount === 1 ? "zadanie" : hiddenCount < 5 ? "zadania" : "zadań"}
+            {polishPluralWord(hiddenCount, "zadanie", "zadania", "zadań")}
           </button>
         ) : null}
       </div>

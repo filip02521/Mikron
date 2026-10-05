@@ -75,7 +75,7 @@ export const MY_ORDER_PROGRESS_SECTION_COPY: Record<
 export const MY_ORDER_PROGRESS_SECTION_EMPTY: Record<MyOrderProgressSectionId, string> = {
   ordered_progress:
     "Obecnie nie masz zamówień u dostawcy - wszystkie prośby są na wcześniejszym etapie.",
-  before_order: "Obecnie nie masz prośb przed zamówieniem u dostawcy.",
+  before_order: "Obecnie nie masz próśb przed zamówieniem u dostawcy.",
 };
 
 /** Czy prośba jest jeszcze przed realnym zamówieniem u dostawcy. */

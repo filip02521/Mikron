@@ -2,6 +2,7 @@ import type { TeethKind, TeethProductLine } from "@/lib/teeth/teeth-catalog";
 import { TEETH_KIND_LABELS, teethProductLineLabel } from "@/lib/teeth/teeth-catalog";
 import type { TeethJawMode } from "@/lib/teeth/teeth-mould-shape-groups";
 import { productLineEncodesJawInMould } from "@/lib/teeth/teeth-mould-shape-groups";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export const TEETH_SECTION_LABELS = TEETH_KIND_LABELS;
 export const TEETH_DUAL_KIND_LABELS = TEETH_KIND_LABELS;
@@ -194,7 +195,7 @@ export function teethDualSavePreviewMessage(
   }
   if (parts.length === 0) return null;
   const positionCount = (anteriorCount > 0 ? 1 : 0) + (posteriorCount > 0 ? 1 : 0);
-  return `Po zapisie powstaną ${positionCount} ${positionCount === 1 ? "pozycja" : positionCount < 5 ? "pozycje" : "pozycji"} w prośbie (${parts.join(", ")}).`;
+  return `Po zapisie powstaną ${positionCount} ${polishPluralWord(positionCount, "pozycja", "pozycje", "pozycji")} w prośbie (${parts.join(", ")}).`;
 }
 
 export function teethDualCommitToastMessage(

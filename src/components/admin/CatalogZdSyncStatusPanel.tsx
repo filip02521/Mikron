@@ -199,7 +199,7 @@ export function CatalogZdSyncStatusPanel({
             </div>
             <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-200/80">
               <div
-                className="h-full rounded-full bg-indigo-500 transition-all"
+                className="h-full rounded-full bg-indigo-500 transition"
                 style={{ width: `${summary.progressPercent}%` }}
               />
             </div>

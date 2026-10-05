@@ -4,6 +4,7 @@ import { formatZkWatchDisplayNumber } from "@/lib/sales/notepad-format";
 import type { AutoProsbaResultCode, AutoProsbaBlockReason } from "@/lib/sales/zk-watch-auto-prosba";
 import type { ZkWatchOrderHints } from "@/lib/sales/zk-watch-order-link";
 import type { SalesZkWatch } from "@/types/database";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export type AutoProsbaToastPayload = {
   code: AutoProsbaResultCode;
@@ -44,7 +45,7 @@ export function formatAutoProsbaSkippedLinesMessage(input: {
   const kLabel =
     skipped === 1
       ? "1 pozycja jest już w prośbie lub czeka na informację o dostępności"
-      : `${skipped} ${plPozycja(skipped)} ${skipped >= 2 && skipped <= 4 ? "są" : "jest"} już w prośbie lub czeka na informację o dostępności`;
+      : `${skipped} ${plPozycja(skipped)} ${polishPluralWord(skipped, "jest", "są", "jest")} już w prośbie lub czeka na informację o dostępności`;
   return `Dodano ${input.effectiveCount} z ${input.selectedCount} zaznaczonych pozycji - ${kLabel}.`;
 }
 

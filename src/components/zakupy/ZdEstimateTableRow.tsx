@@ -37,6 +37,7 @@ import { ZdEstimateRowActions } from "@/components/zakupy/ZdEstimateRowActions";
 import { cn } from "@/lib/cn";
 import { formatZdSalesProfileHint } from "@/lib/orders/zd-sales-profile";
 import { checkboxBrandClass } from "@/lib/ui/ontime-theme";
+import { askConfirm } from "@/components/ui/ConfirmHost";
 
 /** Kolumny przepływu (Dost. → Sprzed. → Cel → Otwarte) — wspólne dla nagłówka i wierszy. */
 /** „Starczy na” — dni do wyczerpania (dostępne / sprzedaż dziennie). */
@@ -102,11 +103,14 @@ function ZdEstimateSalesProfileBadge({
       type="button"
       className="zd-est-profile-badge zd-est-profile-badge--rare"
       title={`${hint} Kliknij, żeby dodać do „Tylko na prośbę”.`}
-      onClick={() => {
+      onClick={async () => {
         if (
-          window.confirm(
-            "Dodać ten towar do „Tylko na prośbę”?\n\nZniknie z listy „Do ZD” - będzie zamawiany tylko pod aktywną prośbę handlowca. Cofniesz to w menu wiersza."
-          )
+          await askConfirm({
+            title: "Dodać do „Tylko na prośbę”?",
+            message:
+              "Zniknie z listy „Do ZD” - będzie zamawiany tylko pod aktywną prośbę handlowca. Cofniesz to w menu wiersza.",
+            confirmLabel: "Dodaj",
+          })
         ) {
           onMarkOnRequest();
         }
@@ -728,11 +732,14 @@ export const ZdEstimateTableRow = memo(function ZdEstimateTableRow({
             pending={rowPending}
             onPackaging={() => onEditPackaging(l)}
             onMinStock={() => onEditMinStock(l)}
-            onExclude={() => {
+            onExclude={async () => {
               if (individualExtra) {
-                const ok = window.confirm(
-                  "Ta pozycja ma prośbę handlowca.\n\nPo wykluczeniu prośba trafi do sekcji „Usługi” i do uwag ZD (bez ilości towaru) - nie zniknie z panelu Dziś do utworzenia ZD.\n\nKontynuować?"
-                );
+                const ok = await askConfirm({
+                  title: "Ta pozycja ma prośbę handlowca",
+                  message:
+                    "Po wykluczeniu prośba trafi do sekcji „Usługi” i do uwag ZD (bez ilości towaru) - nie zniknie z panelu Dziś do utworzenia ZD.",
+                  confirmLabel: "Wyklucz",
+                });
                 if (!ok) return;
               }
               onExclude(l);

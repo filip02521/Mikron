@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createCnLookup } from "./cn-nomenclature";
+import { shipmentFromRow, type CustomsShipmentRow } from "./customs-shipment";
 import {
   buildDocumentArticleIndex,
   normalizeArticleCode,
@@ -64,13 +65,12 @@ export async function loadSupplierDocuments(supabase: Db, supplierId: string) {
 export async function loadClearanceView(supabase: Db, id: string): Promise<CustomsClearanceView | null> {
   const { data: c } = await supabase
     .from("customs_clearances")
-    .select(
-      "id, supplier_id, zd_number, invoice_number, invoice_date, currency, shipment_description, invoice_file_name, invoice_storage_path, status, sent_at, email_text, agency_email"
-    )
+    // „*” zamiast listy: kolumny przesyłki (migracja 171) nie wywracają widoku przed migracją.
+    .select("*")
     .eq("id", id)
     .maybeSingle();
   if (!c) return null;
-  const clearance = c as {
+  const clearance = c as CustomsShipmentRow & {
     id: string;
     supplier_id: string;
     zd_number: string | null;
@@ -119,7 +119,13 @@ export async function loadClearanceView(supabase: Db, id: string): Promise<Custo
     for (const card of (cards ?? []) as CustomsCardRow[]) cardsByCode.set(card.supplier_article_code, card);
   }
 
-  const lineViews = buildCustomsLineViews({ lines, cardsByCode, documentIndex: docs.index, cn: createCnLookup() });
+  const lineViews = buildCustomsLineViews({
+    lines,
+    cardsByCode,
+    documentIndex: docs.index,
+    documents: docs.documents,
+    cn: createCnLookup(),
+  });
   return {
     id: clearance.id,
     supplierId: clearance.supplier_id,
@@ -140,6 +146,7 @@ export async function loadClearanceView(supabase: Db, id: string): Promise<Custo
       (((lastAgency ?? [])[0] as { agency_email?: string | null } | undefined)?.agency_email ?? null),
     lines: lineViews,
     documents: docs.documents,
+    shipment: shipmentFromRow(clearance),
     ...buildCustomsClearanceSummary({ lines: lineViews, shipmentDescription: clearance.shipment_description }),
   };
 }
@@ -149,7 +156,7 @@ export type CardWrite = {
   material: string;
   cn_code: string | null;
   is_medical_device: boolean;
-  vat_rate: number;
+  vat_rate: number | null;
   vat_basis_document_id: string | null;
 };
 
@@ -165,8 +172,9 @@ export async function upsertCard(
     values: CardWrite;
     confirm: boolean;
     /**
-     * „ai” = propozycja AI, „copied” = z wcześniejszego maila do agencji — obie nie nadpisują
-     * stawki z dokumentów dostawcy; domyślnie ręcznie.
+     * „ai” = propozycja AI (nie nadpisuje stawki z dokumentów dostawcy), „copied” = z wcześniejszego
+     * maila do agencji / historii odpraw (stawka, jeśli podana, liczy się jak decyzja człowieka);
+     * domyślnie ręcznie.
      */
     source?: "manual" | "ai" | "copied";
   }

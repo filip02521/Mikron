@@ -115,7 +115,8 @@ html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
   --color-slate-100: #eef0f3;
   --color-slate-200: #e1e4e9;
   --color-slate-300: #c9ced6;
-  --color-slate-400: #8b939f;
+  /* 4.3:1 na bieli — tekst pomocniczy (było #8b939f, 3.1:1). */
+  --color-slate-400: #737b87;
   --color-slate-500: #626a76;
   --color-slate-600: #4a515c;
   --color-slate-700: #363c46;
@@ -313,6 +314,11 @@ html[data-sidebar="collapsed"] .sb-link .sb-link-icon {
   border-radius: 0 3px 3px 0;
   background: var(--color-indigo-600);
 }
+/* Odpowiedź na wciśnięcie (pointer-down), nie dopiero na kliknięcie. */
+.app-sidebar .sb-link:not(.sb-link-active):active {
+  background-color: var(--color-slate-200);
+}
+
 html[data-sidebar="collapsed"] .app-sidebar .sb-link-active::before {
   top: 0.375rem;
   bottom: 0.375rem;
@@ -348,6 +354,14 @@ body {
 ::selection {
   background: var(--primary-muted);
   color: var(--primary-hover);
+}
+
+/* Natywne kontrolki (checkbox, radio, range) w kolorze marki zamiast systemowego niebieskiego. */
+:root {
+  accent-color: var(--primary);
+  caret-color: var(--primary);
+  /* Dziedziczone: spokojne paski przewijania także na Windows (klasyczne szare paski). */
+  scrollbar-color: var(--color-slate-300) transparent;
 }
 
 /* ——— Tryb podglądu/zastępstwa — subtelne oznaczenia ——— */
@@ -3094,20 +3108,12 @@ input[type="checkbox"].toggle-switch:checked::after {
 }
 
 input[type="checkbox"].toggle-switch:focus-visible {
-  outline: 2px solid rgb(56 189 248);
+  outline: 2px solid var(--brand-sky);
   outline-offset: 2px;
-}
-
-input[type="checkbox"].toggle-switch.toggle-amber:checked {
-  background: rgb(217 119 6);
 }
 
 input[type="checkbox"].toggle-switch.toggle-indigo:checked {
   background: var(--color-indigo-600);
-}
-
-input[type="checkbox"].toggle-switch.toggle-sky:checked {
-  background: rgb(2 132 199);
 }
 
 /* ——— Slide-in drawer + backdrop fade (shared by all side panels) ——— */
@@ -3521,4 +3527,94 @@ input[type="checkbox"].toggle-switch.toggle-sky:checked {
 .data-table.zd-estimate-table button.zd-est-profile-badge:focus-visible {
   outline: 2px solid var(--color-indigo-400);
   outline-offset: 1px;
+}
+
+/* Placeholder: Tailwind daje currentColor 50% (~3.3:1) — token pomocniczy, warstwa base (utility wygrywa). */
+@layer base {
+  ::placeholder {
+    color: var(--color-slate-400);
+  }
+}
+
+/* ——— Modal: materializacja zamiast „wyskoczenia” ———
+   Panel używa `translate` (centrowanie), więc animujemy osobne `scale` — bez konfliktu. */
+@keyframes modal-panel-enter {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+@keyframes modal-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+}
+.modal-panel-enter {
+  animation: modal-panel-enter 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.modal-backdrop-enter {
+  animation: modal-backdrop-enter 0.18s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal-panel-enter {
+    animation-name: modal-backdrop-enter;
+  }
+}
+
+/* Ustawienia systemowe: mniej przezroczystości / więcej kontrastu. */
+@media (prefers-reduced-transparency: reduce) {
+  [class*="backdrop-blur"] {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
+@media (prefers-contrast: more) {
+  :root {
+    --card-border: var(--color-slate-400);
+    --muted: var(--color-slate-700);
+  }
+}
+
+/* Cel dotyku ≥ 44 px dla małych kontrolek (ikona pomocy, próbki koloru) — tylko przy palcu,
+   bez zmiany wyglądu i bez nakładania się stref na gęstym desktopie. */
+@layer components {
+  @media (pointer: coarse) {
+    .hit-target {
+      position: relative;
+    }
+    .hit-target::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      translate: -50% -50%;
+    }
+  }
+}
+
+/* Arkusz od dołu: wjeżdża z dołu i tam wraca (zamknięcie animuje JS z prędkością palca).
+   `backwards` — po starcie styl inline z przeciągania nie jest nadpisywany przez wypełnienie. */
+@keyframes sheet-enter {
+  from {
+    transform: translateY(100%);
+  }
+}
+.sheet-enter {
+  animation: sheet-enter 0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet-enter {
+    animation: modal-backdrop-enter 0.18s ease-out backwards;
+  }
+}
+
+/* Palec: natywne pola wyboru 16 px są za małe do trafienia — 20 px, bez zmian na desktopie. */
+@media (pointer: coarse) {
+  input[type="checkbox"]:not(.toggle-switch),
+  input[type="radio"] {
+    width: 1.25rem;
+    height: 1.25rem;
+  }
 }

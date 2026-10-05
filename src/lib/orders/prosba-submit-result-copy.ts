@@ -35,7 +35,7 @@ export function formatSubmitResult(
     return `Przekazano ${verification} pozycji do weryfikacji - ${PROCUREMENT_TEAM_LABEL} uzupełni brakujące dane (dostawca, opis).`;
   }
   if (requestKind === "informacja") {
-    return `Dodano ${complete} prośb(y) informacyjn(e). ${PROCUREMENT_TEAM_LABEL_TITLE} powiadomi Cię e-mailem, gdy towar będzie na magazynie.`;
+    return `Dodano ${complete} próśb(y) informacyjn(e). ${PROCUREMENT_TEAM_LABEL_TITLE} powiadomi Cię e-mailem, gdy towar będzie na magazynie.`;
   }
   return `Dodano ${complete} pozycji do panelu dziennego.`;
 }

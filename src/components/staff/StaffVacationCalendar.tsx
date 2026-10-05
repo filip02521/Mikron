@@ -29,7 +29,6 @@ import { Field, Input, Select } from "@/components/ui/Field";
 import { NoticeToast } from "@/components/ui/NoticeToast";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Badge } from "@/components/ui/Badge";
-import { EmptyState } from "@/components/ui/EmptyState";
 import {
   IconSun,
   IconChevronLeft,
@@ -688,20 +687,13 @@ export function StaffVacationCalendar({
       </div>
 
       {!monthHasPeriods ? (
-        <div className="grid grid-cols-7 border-l border-slate-100 rounded-b-lg overflow-hidden">
-          <div className="col-span-7 border-b border-r border-slate-100 rounded-b-lg">
-            <EmptyState
-              brandAccent
-              icon={<IconSun size={28} />}
-              title="Brak urlopów w tym miesiącu"
-              description={canEdit
-                ? 'Nie masz zaplanowanych urlopów w tym miesiącu. Kliknij „Dodaj mój urlop”, aby zaplanować.'
-                : 'Przejdź do innego miesiąca strzałkami ‹ ›.'
-              }
-            />
-          </div>
-        </div>
-      ) : (
+        <p className="border-b border-l border-r border-slate-100 bg-slate-50/40 px-3 py-2 text-xs text-slate-500">
+          {canEdit
+            ? "Nikt z zespołu nie ma urlopu w tym miesiącu. Swój dodasz przyciskiem „Dodaj mój urlop”."
+            : "Nikt z zespołu nie ma urlopu w tym miesiącu."}
+        </p>
+      ) : null}
+      {(
         <div className="grid grid-cols-7 border-l border-slate-100 rounded-b-lg overflow-hidden">
           {cells.map((cell, i) => {
             const bgClasses = cn(
@@ -721,16 +713,18 @@ export function StaffVacationCalendar({
                 <div className="flex items-center justify-between">
                   <span
                     className={cn(
-                      "text-xs font-semibold",
-                      cell.isCurrentMonth
-                        ? cell.isWeekend ? "text-slate-400" : "text-slate-900"
-                        : "text-slate-300",
+                      "text-xs font-semibold tabular-nums",
+                      cell.isToday
+                        ? "-m-0.5 flex size-5 items-center justify-center rounded-full bg-indigo-600 text-white"
+                        : cell.isCurrentMonth
+                          ? cell.isWeekend ? "text-slate-400" : "text-slate-900"
+                          : "text-slate-300",
                     )}
                   >
                     {cell.dayOfMonth}
                   </span>
                   {cell.isToday ? (
-                    <Badge variant="info" className="text-[9px] uppercase">Dziś</Badge>
+                    <Badge variant="info" className="hidden text-[9px] uppercase sm:inline-flex">Dziś</Badge>
                   ) : null}
                 </div>
                 {cell.isCurrentMonth && cell.periods.length > 0 ? (

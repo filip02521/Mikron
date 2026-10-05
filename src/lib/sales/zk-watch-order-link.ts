@@ -189,11 +189,11 @@ export function isZkLineWaitingOnShelf(
 export type ZkWatchOrderHints = {
   /** Aktywne prośby tego klienta z dopasowanym towarem (w toku). */
   matchingOpenRequestCount: number;
-  /** ID aktywnych prośb powiązanych z tym ZK (do focusu na /moje). */
+  /** ID aktywnych próśb powiązanych z tym ZK (do focusu na /moje). */
   matchingOpenRequestIds: string[];
   /** Pozycje ZK, dla których jest już zrealizowana prośba (do podświetlenia). */
   matchedDeliveredLineKeys: string[];
-  /** Czy wszystkie pozycje towarowe są „na miejscu” wg prośb. */
+  /** Czy wszystkie pozycje towarowe są „na miejscu” wg próśb. */
   allLinesMatchedByOrders: boolean;
   /** Pokrycie każdej pozycji ZK przez prośby. */
   lineCoverageByKey: Record<string, ZkWatchLineCoverage>;
@@ -283,7 +283,7 @@ export function productMatchesZkLine(
   return orderName === lineName;
 }
 
-/** Luźniejsze dopasowanie tylko dla otwartych prośb jawnie powiązanych z tym ZK (legacy / ręczne opisy). */
+/** Luźniejsze dopasowanie tylko dla otwartych próśb jawnie powiązanych z tym ZK (legacy / ręczne opisy). */
 export function productMatchesZkLineForCoverage(
   order: ZkLinkableOrder,
   line: ZkWatchLineView,
@@ -330,7 +330,7 @@ export function isInformacjaWarehouseReadyOrder(
   return false;
 }
 
-/** Suma dostarczonych sztuk z prośb dopasowanych do pozycji ZK. */
+/** Suma dostarczonych sztuk z próśb dopasowanych do pozycji ZK. */
 export function totalDeliveredQtyForZkLineFromOrders(
   orders: ZkLinkableOrder[],
   line: ZkWatchLineView
@@ -364,7 +364,7 @@ function activeOrderedQtyForZkLink(order: ZkLinkableOrder): number {
   return parsed;
 }
 
-/** Suma quantity z prośb dopasowanych do pozycji ZK (w tym zrealizowane — do limitu coverage). */
+/** Suma quantity z próśb dopasowanych do pozycji ZK (w tym zrealizowane — do limitu coverage). */
 export function totalOrderedQtyForZkLineFromOrders(
   orders: ZkLinkableOrder[],
   line: ZkWatchLineView
@@ -380,7 +380,7 @@ export function totalOrderedQtyForZkLineFromOrders(
   return total;
 }
 
-/** Suma quantity z aktywnych (otwartych) prośb — do etykiety „w prośbie X szt.” na liście towaru. */
+/** Suma quantity z aktywnych (otwartych) próśb — do etykiety „w prośbie X szt.” na liście towaru. */
 export function totalOpenOrderedQtyForZkLineFromOrders(
   orders: ZkLinkableOrder[],
   line: ZkWatchLineView
@@ -445,7 +445,7 @@ export function buildZkLineProsbaQuantityMeta(
 }
 
 /**
- * Ile sztuk trzeba domknąć prośbami — suma quantity powiązanych prośb,
+ * Ile sztuk trzeba domknąć prośbami — suma quantity powiązanych próśb,
  * albo pełna ilość ZK gdy brak prośby. Pozycja „na stanie” (needs_prosba: false) → 0.
  */
 export function effectiveRequiredQtyForZkLine(
@@ -482,7 +482,7 @@ function isLineFulfilledFromStockScopeOnly(
   );
 }
 
-/** Czy łączna dostawa prośb pokrywa wymaganą ilość pozycji ZK. */
+/** Czy łączna dostawa próśb pokrywa wymaganą ilość pozycji ZK. */
 export function isZkLineFullyDeliveredByOrders(
   orders: ZkLinkableOrder[],
   line: ZkWatchLineView,
@@ -613,7 +613,7 @@ export function resolveUncoveredLineKeysForProsba(
   return keys;
 }
 
-/** Indeks prośb po handlowcu — mniejszy podzbiór przy liczeniu hintów per ZK. */
+/** Indeks próśb po handlowcu — mniejszy podzbiór przy liczeniu hintów per ZK. */
 export function indexZkLinkableOrdersBySalesPerson(
   orders: ZkLinkableOrder[]
 ): Map<string, ZkLinkableOrder[]> {
@@ -626,7 +626,7 @@ export function indexZkLinkableOrdersBySalesPerson(
   return map;
 }
 
-/** Hinty dla wszystkich ZK — ten sam wynik co pętla z pełną listą prośb, mniej pracy CPU. */
+/** Hinty dla wszystkich ZK — ten sam wynik co pętla z pełną listą próśb, mniej pracy CPU. */
 export function computeAllZkWatchOrderHints(
   watches: SalesZkWatch[],
   orders: ZkLinkableOrder[]

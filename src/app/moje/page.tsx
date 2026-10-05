@@ -89,7 +89,7 @@ export default async function MojePage({
       <div className={salesPageShellClass}>
         <SalesAccountLinkRequired
           title="Moje zamówienia"
-          hint="Tutaj śledzisz status prośb. Konto musi być przypisane do Twojego profilu handlowca."
+          hint="Tutaj śledzisz status próśb. Konto musi być przypisane do Twojego profilu handlowca."
         />
       </div>
     );
@@ -248,7 +248,7 @@ export default async function MojePage({
         <div className="flex justify-end pb-1">
           <Link
             href="/ustawienia"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/80 bg-white/60 px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm transition-all hover:border-slate-300 hover:bg-white hover:text-slate-700 hover:shadow"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/80 bg-white/60 px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm transition hover:border-slate-300 hover:bg-white hover:text-slate-700 hover:shadow"
           >
             <IconSettings size={14} className="shrink-0 text-slate-400" />
             Ustawienia
@@ -260,7 +260,7 @@ export default async function MojePage({
         <SystemNotice
           variant="action"
           className="mb-4"
-          title="Widok wszystkich prośb"
+          title="Widok wszystkich próśb"
           description="To lista operacyjna - nie panel pojedynczego handlowca. Aby zobaczyć konto handlowca, użyj podglądu."
           href="/admin/wybor-handlowca"
           actionLabel="Wybierz handlowca"
@@ -277,7 +277,7 @@ export default async function MojePage({
         pageTitle={isTeamPreview ? `Prośby: ${salesPersonName}` : isDelegatePreview ? `Zastępujesz: ${salesPersonName}` : "Moje zamówienia"}
         pageDescription={
           isTeamPreview
-            ? "Podgląd prośb wybranego handlowca - statusy i odbiór."
+            ? "Podgląd próśb wybranego handlowca - statusy i odbiór."
             : isDelegatePreview
               ? "Tryb zastępstwa - potwierdzenie odbioru i zamknięcie ZK aktywne. Edycja i anulowanie są wyłączone."
               : undefined

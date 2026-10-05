@@ -4,6 +4,8 @@
  */
 
 import type { CnLookup } from "./cn-nomenclature";
+import { customsDescriptionWarning } from "./customs-description-check";
+import type { CustomsShipment } from "./customs-shipment";
 import {
   collectVatBasisDocuments,
   customsArticleKey,
@@ -17,6 +19,7 @@ import {
   type CustomsProductCard,
   type CustomsVatRate,
   type ResolvedLineVat,
+  formatCnCode,
 } from "./customs-clearance";
 
 export type CustomsCardView = CustomsProductCard & {
@@ -37,11 +40,15 @@ export type CustomsLineView = {
   zdQuantity: number | null;
   /** Kod HS nadawcy z faktury — podpowiedź dla CN. */
   invoiceHsCode: string | null;
+  /** Opis grupy z faktury (scalona komórka) — np. „Dental Lithium Disilicate Glass Ceramic”. */
+  invoiceGroup: string | null;
   card: CustomsCardView | null;
   vat: ResolvedLineVat;
   state: CustomsLineState;
   /** Rozbieżność kodu CN do sprawdzenia (HS nadawcy, inny kod przy tym samym opisie, kod spoza CN). */
   cnWarning: string | null;
+  /** Opis PL niezgodny z fakturą (lista kilku pozycji, rozmiar, materiał) — tylko ostrzeżenie. */
+  descriptionWarning: string | null;
   /** Oficjalny opis kodu CN ze słownika (null = brak kodu albo kodu nie ma w CN). */
   cnDescription: string | null;
   /** Kod CN nie istnieje w aktualnej CN — pozycja nie trafia do maila, dopóki się go nie poprawi. */
@@ -70,6 +77,7 @@ export type CustomsClearanceView = {
   defaultAgencyEmail: string | null;
   lines: CustomsLineView[];
   documents: CustomsSupplierDocumentView[];
+  shipment: CustomsShipment;
   attachments: CustomsDocumentRef[];
   emailText: string;
   /** Pozycje bez opisu PL / kodu CN — nie ma ich w mailu, wysyłka zablokowana. */
@@ -88,6 +96,7 @@ export type CustomsLineRow = {
   amount: number | string | null;
   zd_quantity: number | string | null;
   invoice_hs_code?: string | null;
+  invoice_group?: string | null;
 };
 
 export type CustomsCardRow = {
@@ -139,9 +148,6 @@ export function lineArticleKey(row: Pick<CustomsLineRow, "supplier_article_code"
   return customsArticleKey(row.supplier_article_code, row.supplier_name);
 }
 
-function formatCn(cn: string): string {
-  return `${cn.slice(0, 4)} ${cn.slice(4, 6)} ${cn.slice(6)}`;
-}
 
 /**
  * Kontrole kodu CN pozycji (tylko ostrzeżenia — decyzja należy do człowieka):
@@ -167,18 +173,18 @@ export function customsCnWarnings(
     if (dictionary && !dictionary.describe(cn)) {
       const near = dictionary.siblings(cn);
       notes.push(
-        `Kodu ${formatCn(cn)} nie ma w CN ${dictionary.year}${near.length ? ` - istniejące w tej grupie: ${near.map(formatCn).join(", ")}` : ""}.`
+        `Kodu ${formatCnCode(cn)} nie ma w CN ${dictionary.year}${near.length ? ` - istniejące w tej grupie: ${near.map(formatCnCode).join(", ")}` : ""}.`
       );
     }
     const text = `${l.card!.descriptionPl.trim().toLowerCase()}|${l.card!.material.trim().toLowerCase()}`;
     const others = (byText.get(text) ?? []).filter((o) => o.cn !== cn);
     if (others.length) {
       notes.push(
-        `Ten sam opis ma inny kod CN w poz. ${others.map((o) => `${o.position} (${formatCn(o.cn)})`).join(", ")} - ujednolić albo doprecyzować opis.`
+        `Ten sam opis ma inny kod CN w poz. ${others.map((o) => `${o.position} (${formatCnCode(o.cn)})`).join(", ")} - ujednolić albo doprecyzować opis.`
       );
     }
     if (l.invoiceHsCode && l.invoiceHsCode.slice(0, 4) !== cn.slice(0, 4)) {
-      notes.push(`Dostawca podał HS ${l.invoiceHsCode} (pozycja ${l.invoiceHsCode.slice(0, 4)}), a CN to ${formatCn(cn)} - sprawdź.`);
+      notes.push(`Dostawca podał HS ${l.invoiceHsCode} (pozycja ${l.invoiceHsCode.slice(0, 4)}), a CN to ${formatCnCode(cn)} - sprawdź.`);
     }
     if (notes.length) out.set(l.position, notes.join(" "));
   }
@@ -189,6 +195,7 @@ export function buildCustomsLineViews(input: {
   lines: readonly CustomsLineRow[];
   cardsByCode: ReadonlyMap<string, CustomsCardRow>;
   documentIndex: CustomsDocumentArticleIndex;
+  documents?: readonly CustomsDocumentRef[];
   /** Słownik CN (tylko serwer) — bez niego nie sprawdzamy istnienia kodów. */
   cn?: CnLookup;
 }): CustomsLineView[] {
@@ -198,7 +205,7 @@ export function buildCustomsLineViews(input: {
       const code = lineArticleKey(row);
       const cardRow = code ? input.cardsByCode.get(code) : undefined;
       const card = cardRow ? cardFromRow(cardRow) : null;
-      const vat = resolveLineVat({ articleCode: code, card, documentIndex: input.documentIndex });
+      const vat = resolveLineVat({ articleCode: code, card, documentIndex: input.documentIndex, documents: input.documents });
       return {
         id: row.id,
         position: row.position,
@@ -210,16 +217,23 @@ export function buildCustomsLineViews(input: {
         amount: num(row.amount),
         zdQuantity: num(row.zd_quantity),
         invoiceHsCode: row.invoice_hs_code ?? null,
+        invoiceGroup: row.invoice_group ?? null,
         card,
         vat,
         state: customsLineState(card, vat),
         cnWarning: null as string | null,
+        descriptionWarning: null as string | null,
         cnDescription: (card?.cnCode && input.cn?.describe(card.cnCode)) || null,
         cnInvalid: Boolean(card?.cnCode && input.cn?.strict && !input.cn.describe(card.cnCode)),
       };
     });
   const cnWarnings = customsCnWarnings(views, input.cn);
-  for (const v of views) v.cnWarning = cnWarnings.get(v.position) ?? null;
+  for (const v of views) {
+    const invoiceName = [v.invoiceGroup, v.supplierName].filter(Boolean).join(" ");
+    const description = v.card ? customsDescriptionWarning(v.card.descriptionPl, invoiceName) : null;
+    v.cnWarning = cnWarnings.get(v.position) ?? null;
+    v.descriptionWarning = description;
+  }
   return views;
 }
 
