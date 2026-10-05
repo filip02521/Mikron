@@ -1,0 +1,95 @@
+/**
+ * „Zapytaj dostawcę” z wątku tablicy — szkic maila o cenę, dostępność i termin.
+ * Czyste funkcje (bez bazy) — zapis i odczyt w `supplier-inquiry-db.ts`.
+ */
+
+import type { DepartmentBoardThreadRow } from "@/lib/data/department-board-shared";
+
+/** Zapytanie wysłane z wątku (tabela supplier_inquiry_emails). */
+export type BoardSupplierInquiry = {
+  id: string;
+  supplierName: string;
+  fromAddress: string;
+  toAddresses: string[];
+  sentAt: string;
+  /** Zakupy odpisały w wątku po wysłaniu — wątek już nie czeka na dostawcę. */
+  resolvedAt: string | null;
+};
+
+export type SupplierInquiryProduct = Pick<
+  DepartmentBoardThreadRow,
+  "id" | "title" | "product_name" | "product_symbol" | "mikran_code"
+>;
+
+/** Krótki znacznik wątku w temacie — po nim da się później dopasować odpowiedź dostawcy. */
+export function supplierInquiryRef(threadId: string): string {
+  return `[OnTime #${threadId.replace(/-/g, "").slice(0, 8)}]`;
+}
+
+function productLines(product: SupplierInquiryProduct, english: boolean): { label: string; lines: string[] } {
+  const name = product.product_name?.trim() || product.title.trim();
+  const symbol = product.product_symbol?.trim() || product.mikran_code?.trim() || "";
+  const lines = [name];
+  if (symbol && !name.includes(symbol)) lines.push(`${english ? "Product code" : "Symbol / nr katalogowy"}: ${symbol}`);
+  return { label: symbol && !name.includes(symbol) ? `${name} (${symbol})` : name, lines };
+}
+
+/**
+ * Szkic do edycji przed wysyłką. Treść pytania handlowca celowo NIE trafia do maila —
+ * bywają w niej dane klienta i uwagi wewnętrzne.
+ */
+export function buildSupplierInquiryDraft(input: {
+  product: SupplierInquiryProduct;
+  english: boolean;
+  signature?: string;
+}): { subject: string; body: string } {
+  const { english } = input;
+  const { label, lines } = productLines(input.product, english);
+  const ref = supplierInquiryRef(input.product.id);
+  const signature = input.signature?.trim();
+
+  const body = english
+    ? [
+        "Hello,",
+        "",
+        "could you please send us information about the following product:",
+        ...lines,
+        "",
+        "We would like to know:",
+        "- the current net price,",
+        "- availability,",
+        "- lead time from order.",
+        "",
+        "Thank you in advance.",
+        "Kind regards",
+      ]
+    : [
+        "Dzień dobry,",
+        "",
+        "prosimy o informację w sprawie produktu:",
+        ...lines,
+        "",
+        "Prosimy o:",
+        "- aktualną cenę netto,",
+        "- dostępność,",
+        "- czas realizacji od zamówienia.",
+        "",
+        "Z góry dziękujemy.",
+        "Pozdrawiamy",
+      ];
+  if (signature) body.push(signature);
+
+  return {
+    subject: `${english ? "Product inquiry" : "Zapytanie o produkt"}: ${label} ${ref}`,
+    body: body.join("\n"),
+  };
+}
+
+/** Najnowsze zapytanie, na które zakupy jeszcze nie odpisały w wątku. */
+export function pendingSupplierInquiry(
+  inquiries: readonly BoardSupplierInquiry[] | undefined
+): BoardSupplierInquiry | null {
+  if (!inquiries?.length) return null;
+  const latest = inquiries.reduce((a, b) => (b.sentAt > a.sentAt ? b : a));
+  return latest.resolvedAt ? null : latest;
+}

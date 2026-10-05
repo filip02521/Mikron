@@ -12,6 +12,7 @@ import {
   pickUnseenAnswerPreview,
   type UnseenBoardAnswer,
 } from "@/lib/department-board/attention";
+import { listSupplierInquiries, threadIdsAwaitingSupplier } from "@/lib/department-board/supplier-inquiry-db";
 import { sortAnnouncements, sortClosedQuestions, sortQuestions } from "@/lib/department-board/sort";
 import type { DepartmentBoardThread } from "@/types/database";
 import {
@@ -75,13 +76,17 @@ export async function fetchDepartmentBoardThreadKind(
   return data.kind;
 }
 
-/** Zamyka wątki pytań bez aktywności przez 2 dni, jeśli zakupy choć raz odpisały. */
+/**
+ * Zamyka wątki pytań bez aktywności przez 2 dni, jeśli zakupy choć raz odpisały.
+ * Pomija wątki czekające na odpowiedź dostawcy („Zapytaj dostawcę”).
+ */
 async function autoCloseStaleBoardQuestions(): Promise<void> {
   const supabase = createAdminClient();
   const cutoff = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
   const now = new Date().toISOString();
+  const awaitingSupplier = await threadIdsAwaitingSupplier();
 
-  await supabase
+  let staleQuery = supabase
     .from("department_board_threads")
     .update({
       archived_at: now,
@@ -93,6 +98,10 @@ async function autoCloseStaleBoardQuestions(): Promise<void> {
     .is("archived_at", null)
     .not("answered_at", "is", null)
     .lt("updated_at", cutoff);
+  if (awaitingSupplier.length) {
+    staleQuery = staleQuery.not("id", "in", `(${awaitingSupplier.join(",")})`);
+  }
+  await staleQuery;
 }
 
 /** Tylko pytania — dla /tablica handlowca (bez ogłoszeń). */
@@ -168,6 +177,8 @@ export async function fetchDepartmentBoardQuestions(): Promise<DepartmentBoardQu
     }
   }
 
+  const inquiriesByThread = await listSupplierInquiries(allIds);
+
   const postsByThread = new Map<string, DepartmentBoardPostRow[]>();
   for (const post of posts) {
     const list = postsByThread.get(post.thread_id) ?? [];
@@ -181,6 +192,7 @@ export async function fetchDepartmentBoardQuestions(): Promise<DepartmentBoardQu
         ...row,
         posts: postsByThread.get(row.id) ?? [],
         attachments: attachmentsByThread.get(row.id) ?? [],
+        supplierInquiries: inquiriesByThread.get(row.id) ?? [],
       }))
     );
 
@@ -191,6 +203,7 @@ export async function fetchDepartmentBoardQuestions(): Promise<DepartmentBoardQu
         ...row,
         posts: postsByThread.get(row.id) ?? [],
         attachments: attachmentsByThread.get(row.id) ?? [],
+        supplierInquiries: inquiriesByThread.get(row.id) ?? [],
       }))
     ),
   };
