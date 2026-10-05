@@ -25,6 +25,7 @@ import {
   type TeethPanelReadinessContext,
 } from "@/lib/teeth/teeth-panel-order-readiness";
 import type { TeethProductLine } from "@/lib/teeth/teeth-catalog";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export function teethReceiveRowKey(orderId: string, groupKey: string): string {
   return `${orderId}\0${groupKey}`;
@@ -285,7 +286,7 @@ export function formatTeethReceiveProductLineSummary(
 ): string {
   const parts = [
     `${group.orders.length} ${group.orders.length === 1 ? "zamówienie" : "zamówienia"}`,
-    `${lineCount} ${lineCount === 1 ? "linia" : lineCount < 5 ? "linie" : "linii"}`,
+    `${lineCount} ${polishPluralWord(lineCount, "linia", "linie", "linii")}`,
   ];
   if (group.supplierNames.length > 0) {
     parts.push(`dostawca: ${group.supplierNames.join(", ")}`);

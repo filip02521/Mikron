@@ -56,7 +56,7 @@ describe("plan-preview", () => {
     expect(ordered.map((s) => s.id)).toEqual(["prio"]);
   });
 
-  it("pickSalesPlanSupplierIds preferuje dostawców z otwartych prośb", () => {
+  it("pickSalesPlanSupplierIds preferuje dostawców z otwartych próśb", () => {
     const ids = pickSalesPlanSupplierIds(
       [
         supplier("prio", "Priorytet", "2026-06-15"),

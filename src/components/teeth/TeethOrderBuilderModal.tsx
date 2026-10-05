@@ -55,6 +55,7 @@ import { TeethShortageWarningBanner } from "@/components/teeth/TeethShortageWarn
 import { useTeethShortageHits } from "@/components/layout/TeethShortagesContext";
 import { cn } from "@/lib/cn";
 import { panelChoiceChipClass, panelChoiceChipIdleClass, panelChoiceChipSelectedClass } from "@/lib/ui/ontime-theme";
+import { askConfirm } from "@/components/ui/ConfirmHost";
 
 const TEETH_MODAL_SHELL_LAYOUT = {
   bodyScroll: false,
@@ -657,9 +658,18 @@ function TeethSingleKindOrderBuilderModal({
     setDraft(draftFromGroup(group));
   };
 
-  const handleRemove = (id: string) => {
+  const handleRemove = async (id: string) => {
     const group = groups.find((g) => g.id === id);
-    if (group && !confirm(`Usunąć pozycję ${group.color || "?"} ${group.mould ?? ""} (${group.count} szt.)?`)) return;
+    if (
+      group &&
+      !(await askConfirm({
+        title: "Usunąć pozycję?",
+        message: `${group.color || "?"} ${group.mould ?? ""} (${group.count} szt.)`,
+        confirmLabel: "Usuń",
+        danger: true,
+      }))
+    )
+      return;
     setGroups((prev) => prev.filter((g) => g.id !== id));
     if (editingId === id) resetDraft();
   };

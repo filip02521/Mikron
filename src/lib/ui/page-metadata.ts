@@ -58,7 +58,7 @@ export const PAGE_TITLES = {
 } as const;
 
 export const PAGE_DESCRIPTIONS: Partial<Record<keyof typeof PAGE_TITLES, string>> = {
-  moje: "Status Twoich prośb i odbiór dostaw - OnTime · Mikran",
+  moje: "Status Twoich próśb i odbiór dostaw - OnTime · Mikran",
   prosba: "Zgłoś prośbę o zamówienie lub informację o braku na stanie",
   tablica: ONTIME_APP_DESCRIPTION,
   podsumowanie: "Kolejka dnia, prośby handlowców i harmonogram dostawców",

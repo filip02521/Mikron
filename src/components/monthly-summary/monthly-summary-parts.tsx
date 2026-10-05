@@ -133,7 +133,8 @@ export function KpiCard({
   momInvert = false,
 }: {
   label: string;
-  value: string | number;
+  /** `null` — brak danych w miesiącu (cichy podpis zamiast wielkiej liczby). */
+  value: string | number | null;
   hint?: string;
   tone?: StatTone;
   progress?: number;
@@ -152,7 +153,11 @@ export function KpiCard({
       )}
     >
       <p className="text-[10px] font-semibold text-slate-500">{label}</p>
-      <p className={cn("mt-1.5 text-2xl font-bold tabular-nums leading-none", t.text)}>{value}</p>
+      {value == null ? (
+        <p className="mt-1.5 flex h-6 items-end text-sm font-medium text-slate-500">Brak danych</p>
+      ) : (
+        <p className={cn("mt-1.5 text-2xl font-bold tabular-nums leading-none", t.text)}>{value}</p>
+      )}
       {mom && previousLabel ? (
         <div className="mt-2">
           <MomBadge
@@ -167,7 +172,7 @@ export function KpiCard({
       {progress != null ? (
         <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-slate-200/60">
           <div
-            className={cn("h-full rounded-full transition-all duration-500", t.bar)}
+            className={cn("h-full rounded-full transition-[width] duration-500", t.bar)}
             style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
           />
         </div>
@@ -208,7 +213,7 @@ export function ShareBar({
     <div className="mt-1.5 flex items-center gap-2">
       <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
         <div
-          className={cn("h-full rounded-full transition-all duration-500", barClassName)}
+          className={cn("h-full rounded-full transition-[width] duration-500", barClassName)}
           style={{ width: `${Math.min(100, Math.max(0, sharePct))}%` }}
         />
       </div>

@@ -26,8 +26,10 @@ import {
 } from "@/lib/customs/customs-lines";
 import { CUSTOMS_AI_MIME, customsFileMime } from "@/lib/customs/customs-ai-input";
 import { createCnLookup, formatCnCode } from "@/lib/customs/cn-nomenclature";
-import { parseCustomsEmailText } from "@/lib/customs/customs-email-import";
+import { polishPozycjeLabel } from "@/lib/email/polish-plural";
+import { emailRangeConflicts, parseCustomsEmailText } from "@/lib/customs/customs-email-import";
 import { isLineComplete, type CustomsClearanceView } from "@/lib/customs/customs-view";
+import { shipmentFromRow, type CustomsShipment, type CustomsShipmentRow } from "@/lib/customs/customs-shipment";
 import { buildCustomsClearanceWorkbook } from "@/lib/customs/customs-excel";
 import {
   CUSTOMS_EMAIL_MAX_ATTACHMENTS_BYTES,
@@ -129,7 +131,8 @@ export async function actionListSupplierRecentZd(
     zds.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "") || b.id - a.id);
     return { ok: true, zds };
   } catch (e) {
-    return fail(`Nie udało się pobrać ZD z Subiekta: ${errorText(e, "brak połączenia")}`);
+    console.error("[customs] ZD z Subiekta:", errorText(e, "brak połączenia"));
+    return fail("Subiekt jest niedostępny - wgraj plik faktury albo wklej pozycje.");
   }
 }
 
@@ -145,6 +148,7 @@ export type CustomsClearanceListItem = {
   createdAt: string;
   sentAt: string | null;
   lineCount: number;
+  shipment: CustomsShipment;
 };
 
 export async function actionListCustomsClearances(): Promise<CustomsClearanceListItem[]> {
@@ -153,11 +157,12 @@ export async function actionListCustomsClearances(): Promise<CustomsClearanceLis
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("customs_clearances")
-    .select("id, supplier_id, invoice_number, invoice_date, zd_number, status, created_at, sent_at")
+    // „*”: kolumny przesyłki (migracja 171) nie wywracają listy przed migracją.
+    .select("*")
     .order("created_at", { ascending: false })
     .limit(100);
   if (error) throw new Error(error.message);
-  const rows = (data ?? []) as Array<{
+  const rows = (data ?? []) as Array<CustomsShipmentRow & {
     id: string;
     supplier_id: string;
     invoice_number: string;
@@ -192,6 +197,7 @@ export async function actionListCustomsClearances(): Promise<CustomsClearanceLis
     createdAt: r.created_at,
     sentAt: r.sent_at,
     lineCount: counts.get(r.id) ?? 0,
+    shipment: shipmentFromRow(r),
   }));
 }
 
@@ -259,7 +265,8 @@ export async function actionCreateCustomsClearance(
       zdNumber = doc.dok_NrPelny ?? `ZD ${doc.dok_Id}`;
       zdLines = linesFromSubiektZd(doc);
     } catch (e) {
-      return fail(`Nie udało się wczytać ZD z Subiekta: ${errorText(e, "brak połączenia")}`);
+      console.error("[customs] ZD z Subiekta:", errorText(e, "brak połączenia"));
+      return fail("Subiekt jest niedostępny - nie wczytano ZD. Odznacz ZD i wgraj plik faktury albo wklej pozycje.");
     }
   }
 
@@ -314,6 +321,7 @@ export async function actionCreateCustomsClearance(
       subiekt_tw_id: l.subiektTwId,
       // Kolumna z migracji 160 — wysyłana tylko, gdy faktura ma HS przy pozycjach.
       ...(l.invoiceHsCode ? { invoice_hs_code: l.invoiceHsCode } : {}),
+      ...(l.invoiceGroup ? { invoice_group: l.invoiceGroup } : {}),
       zd_quantity: input.zdId ? zdQtyByCode.get(keyOf(l)) ?? 0 : null,
     }))
   );
@@ -354,6 +362,63 @@ export async function actionUpdateCustomsClearanceHeader(
     .eq("id", id);
   if (error) return fail(error.message);
   revalidateClearance(id);
+  return { ok: true };
+}
+
+/** Opis kodu CN ze słownika — sprawdzenie w trakcie wpisywania (słownik ~1,6 MB zostaje na serwerze). */
+export async function actionDescribeCnCode(
+  raw: string
+): Promise<{ ok: true; code: string; description: string | null; siblings: string[]; year: number } | { ok: false; error: string }> {
+  await requireOperations("read");
+  const code = String(raw ?? "").replace(/[\s.]/g, "");
+  if (!/^\d{8}$/.test(code)) return fail("Kod CN to 8 cyfr.");
+  const cn = createCnLookup();
+  // Dział spoza 01–97 (albo 77) — kodu nie ma i nie ma czego podpowiadać.
+  const description = normalizeCnCode(code) ? cn.describe(code) : null;
+  return { ok: true, code, description, siblings: description ? [] : cn.siblings(code), year: cn.year };
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function dateOrNull(raw: string | null | undefined): string | null | undefined {
+  const v = (raw ?? "").trim();
+  if (!v) return null;
+  return ISO_DATE.test(v) && !Number.isNaN(Date.parse(v)) ? v : undefined;
+}
+
+/** Dane przesyłki (spedytor, terminy, należności) — etap i alarmy liczy aplikacja z tych pól. */
+export async function actionUpdateCustomsShipment(id: string, input: CustomsShipment): Promise<Result> {
+  await requireOperations("mutate");
+  const clearanceId = cleanUuid(id);
+  if (!clearanceId) return fail("Odprawa nie istnieje.");
+  const dates = {
+    eta: dateOrNull(input.eta),
+    arrived_at: dateOrNull(input.arrivedAt),
+    duties_paid_at: dateOrNull(input.dutiesPaidAt),
+    delivered_at: dateOrNull(input.deliveredAt),
+  };
+  if (Object.values(dates).some((d) => d === undefined)) return fail("Nieprawidłowa data (format RRRR-MM-DD).");
+  const freeDays = Math.round(Number(input.freeStorageDays));
+  if (!Number.isFinite(freeDays) || freeDays < 0 || freeDays > 60) return fail("Dni bez składowego: 0–60.");
+  const duties = input.dutiesAmount == null ? null : Number(input.dutiesAmount);
+  if (duties != null && (!Number.isFinite(duties) || duties < 0)) return fail("Należności muszą być kwotą ≥ 0.");
+
+  const supabase = createAdminClient();
+  const { error } = await supabase
+    .from("customs_clearances")
+    .update({
+      forwarder: String(input.forwarder ?? "").trim().slice(0, 120),
+      transport_ref: String(input.transportRef ?? "").trim().slice(0, 120),
+      ...dates,
+      free_storage_days: freeDays,
+      duties_amount: duties == null ? null : Math.round(duties * 100) / 100,
+      mrn: String(input.mrn ?? "").trim().toUpperCase().slice(0, 40),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", clearanceId);
+  if (error) return fail(error.message);
+  revalidateClearance(clearanceId);
+  revalidatePath("/zakupy/odprawy");
   return { ok: true };
 }
 
@@ -400,7 +465,13 @@ export async function actionSaveCustomsLine(input: SaveCustomsLineInput): Promis
   if (!code) return fail("Podaj kod artykułu dostawcy.");
   const cnRaw = input.cnCode.trim();
   const cn = normalizeCnCode(cnRaw);
-  if (cnRaw && !cn) return fail("Kod CN musi mieć 8 cyfr (np. 9018 49 90).");
+  if (cnRaw && !cn) {
+    return fail(
+      /^\d{8}$/.test(cnRaw.replace(/[\s.]/g, ""))
+        ? "Nie ma takiego działu CN (dozwolone 01-97) - sprawdź kod."
+        : "Kod CN musi mieć 8 cyfr (np. 9018 49 90)."
+    );
+  }
   if (input.confirm && (!input.descriptionPl.trim() || !cn)) {
     return fail("Do zatwierdzenia potrzebny jest opis PL i kod CN.");
   }
@@ -525,7 +596,11 @@ export async function actionImportCustomsEmailDescriptions(
       if (line.card.descriptionPl.trim().toLowerCase() !== entry.descriptionPl.toLowerCase()) differing.push(line.position);
       continue;
     }
-    const vatRate = entry.vatRate ?? parsed.sharedVatRate ?? line.vat.rate;
+    // Stawka tylko z maila (albo wcześniej podana przez człowieka). Brak w mailu = brak stawki na karcie:
+    // „copied” liczy się jak decyzja człowieka, więc nie utrwalamy stawki wyliczonej przez system —
+    // dopisanie deklaracji dostawcy ma nadal dawać 8% automatycznie.
+    const vatRate =
+      entry.vatRate ?? parsed.sharedVatRate ?? (line.card && line.card.source !== "ai" ? line.card.vatRate : null);
     const saved = await upsertCard(supabase, {
       supplierId: view.supplierId,
       code: line.supplierArticleCode,
@@ -557,10 +632,10 @@ export async function actionImportCustomsEmailDescriptions(
       .eq("id", id);
   }
 
-  const warnings: string[] = [];
+  const warnings: string[] = emailRangeConflicts(parsed.ranges, view.lines);
   if (parsed.maxPosition !== view.lines.length) {
     warnings.push(
-      `Mail ma ${parsed.maxPosition} pozycji, a faktura ${view.lines.length} - sprawdź, czy numeracja się zgadza (opisy przypisano po numerach).`
+      `Numeracja w mailu kończy się na poz. ${parsed.maxPosition}, a faktura ma ${polishPozycjeLabel(view.lines.length)} - sprawdź, czy numeracja się zgadza (opisy przypisano po numerach).`
     );
   }
   const missing = view.lines.filter((l) => !parsed.byPosition.has(l.position)).map((l) => l.position);
@@ -573,7 +648,7 @@ export async function actionImportCustomsEmailDescriptions(
   }).length;
   if (noCn) {
     warnings.push(
-      `${noCn} pozycji bez kodu CN w mailu - uzupełnij kod albo użyj „Zaproponuj opisy (AI)” (opisy z maila zostaną).`
+      `Bez kodu CN w mailu: ${polishPozycjeLabel(noCn)} - uzupełnij kod albo użyj „Zaproponuj opisy (AI)” (opisy z maila zostaną).`
     );
   }
   if (differing.length) {

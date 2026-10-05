@@ -17,6 +17,7 @@ import {
   IconArchive,
 } from "@/components/icons/StrokeIcons";
 import { SectionHeadingIcon } from "@/components/icons/SectionHeadingIcon";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export function MyOrderArchiveSection({
   rowsRecent,
@@ -103,7 +104,7 @@ export function MyOrderArchiveSection({
   const visibleRows = showMore ? filteredExtended : filteredRecent;
 
   const countLabel = (n: number) =>
-    `${n} ${n === 1 ? "wpis" : n < 5 ? "wpisy" : "wpisów"}`;
+    `${n} ${polishPluralWord(n, "wpis", "wpisy", "wpisów")}`;
 
   const totalRecent = rowsRecent.length;
 
@@ -113,7 +114,7 @@ export function MyOrderArchiveSection({
       : hasRecent
         ? `${countLabel(filteredRecent.length)} · ostatnie ${ARCHIVE_RECENT_DAYS} dni`
         : searchActive
-          ? "Brak zakończonych prośb pasujących do wyszukiwania"
+          ? "Brak zakończonych próśb pasujących do wyszukiwania"
           : `Brak wpisów z ostatnich ${ARCHIVE_RECENT_DAYS} dni`
     : searchActive
       ? "Zakończone prośby pasujące do wyszukiwania"
@@ -172,7 +173,7 @@ export function MyOrderArchiveSection({
               </span>
               <p className="text-sm text-slate-500">
                 {searchActive
-                  ? "Brak zakończonych prośb pasujących do wyszukiwania"
+                  ? "Brak zakończonych próśb pasujących do wyszukiwania"
                   : `W ostatnich ${ARCHIVE_RECENT_DAYS} dniach nie ma zakończonych wpisów.`}
               </p>
               {hasMoreToLoad ? (

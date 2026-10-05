@@ -20,6 +20,7 @@ import {
   buildCollapsedZdPendingOnlyHint,
 } from "@/lib/orders/my-order-zd-eta-copy";
 import { todayInWarsaw } from "@/lib/time/warsaw";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 const URGENCY_RANK: Record<DeliveryUrgency, number> = {
   overdue: 0,
@@ -114,9 +115,7 @@ type LineZdTermState = Pick<
 >;
 
 function polishPositionCount(n: number): string {
-  if (n === 1) return "1 pozycja";
-  if (n >= 2 && n <= 4) return `${n} pozycje`;
-  return `${n} pozycji`;
+  return `${n} ${polishPluralWord(n, "pozycja", "pozycje", "pozycji")}`;
 }
 
 export { polishPositionCount as myOrderPositionCountLabel };
@@ -166,7 +165,7 @@ export function zdFulfillmentCollapsedCaption(
   const base = options?.overdue ? "Termin u dostawcy" : ZD_DELIVERY_META_CAPTION;
   if (slotCount <= 1) return base;
   const n = slotCount;
-  const word = n === 2 ? "terminy" : n < 5 ? "terminy" : "terminów";
+  const word = polishPluralWord(n, "termin", "terminy", "terminów");
   return `${base} · ${n} ${word}`;
 }
 

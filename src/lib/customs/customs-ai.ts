@@ -27,6 +27,15 @@ import {
 /** Poniżej maxDuration stron odpraw (300 s). */
 export const CUSTOMS_GEMINI_TIMEOUT_MS = 180_000;
 
+/**
+ * Limit odpowiedzi dla odpraw — faktura Upcera ma 100–500 pozycji, a w modelach 2.5 do limitu
+ * wlicza się też „myślenie”; wspólne 16k z odczytu zębów ucinało JSON w połowie.
+ * Starsze modele (2.0) mają sufit 8192.
+ */
+export function customsMaxOutputTokens(model: string): number {
+  return model.includes("2.5") ? 65_536 : 8_192;
+}
+
 export type GeminiPart = { text: string } | { inlineData: { data: string; mimeType: string } };
 
 export class CustomsAiUnavailableError extends Error {
@@ -52,7 +61,7 @@ export async function callCustomsGemini(parts: GeminiPart[], responseSchema: obj
         genAI.models.generateContent({
           model,
           contents: [{ role: "user", parts }],
-          config: geminiGenerateConfig(model, responseSchema),
+          config: { ...geminiGenerateConfig(model, responseSchema), maxOutputTokens: customsMaxOutputTokens(model) },
         }),
         CUSTOMS_GEMINI_TIMEOUT_MS
       );
@@ -110,6 +119,11 @@ export const INVOICE_EXTRACTION_SCHEMA = {
           unitPrice: { type: Type.NUMBER, nullable: true },
           amount: { type: Type.NUMBER, nullable: true },
           hsCode: { type: Type.STRING, nullable: true, description: "Kod HS / Commodity Code przy pozycji" },
+          group: {
+            type: Type.STRING,
+            nullable: true,
+            description: "Opis grupy produktów ze scalonej komórki obejmującej tę pozycję, np. Dental Lithium Disilicate Glass Ceramic",
+          },
           kind: { type: Type.STRING, enum: ["goods", "charge"] },
         },
         required: ["code", "name", "quantity", "kind"],
@@ -138,6 +152,10 @@ export const INVOICE_EXTRACTION_PROMPT = `Odczytaj fakturę handlową (commercia
 6. quantity — ilość; unitPrice — cena jednostkowa; amount — wartość wiersza.
    Pozycja bez wartości handlowej („N.C.V.”, „free of charge”, „no commercial value”): unitPrice 0, amount 0.
    hsCode pozycji — kod z kolumny Commodity Code / HS Code przy tej pozycji (gdy są dwa, np. „IB:… OB:…”, weź IB).
+   group — opis grupy produktów, gdy tabela ma kolumnę opisu w scalonej komórce obejmującej kilka wierszy
+   (np. „Dental Lithium Disilicate Glass Ceramic” obok modeli „LT VBL2-R(18-15-13)”, „PMMA Block” obok „D98-25 A3”).
+   Wpisz go w group KAŻDEJ pozycji, którą komórka obejmuje — także na kolejnych stronach, dopóki nie zacznie się
+   nowa grupa. Nie doklejaj grupy do name: name to tylko model / specyfikacja z wiersza.
 7. invoiceDate jako YYYY-MM-DD: „April 28, 2026” → 2026-04-28, „2026/08/10” → 2026-08-10,
    „20260327” → 2026-03-27, chiński zapis „26/7/7” (RR/M/D) → 2026-07-07.
 8. currency jako kod ISO (EUR, USD, CNY). total — kwota końcowa faktury (TOTAL / SAY TOTAL / Total Invoice Amount).
@@ -206,6 +224,13 @@ export function normalizeCurrency(raw: string | null | undefined): string | null
   return null;
 }
 
+/** AI bywa niekonsekwentne i dokleja grupę do nazwy — nazwa jest kluczem karty, więc ją odcinamy. */
+function withoutGroupPrefix(name: string, group: string): string {
+  const g = group.trim();
+  if (!g || !name.toLowerCase().startsWith(g.toLowerCase())) return name;
+  return name.slice(g.length).replace(/^[\s:;,–-]+/, "") || name;
+}
+
 export function parseInvoiceExtraction(raw: unknown): InvoiceExtraction {
   const obj = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const rows = asArray(obj.lines)
@@ -216,11 +241,12 @@ export function parseInvoiceExtraction(raw: unknown): InvoiceExtraction {
       const amount = parseLooseNumber(str(l.amount));
       return {
         code: customsArticleKey(code, "") ? code : "",
-        name: str(l.name),
+        name: withoutGroupPrefix(str(l.name), str(l.group)),
         quantity,
         unitPrice,
         amount: amount ?? (unitPrice != null ? Math.round(unitPrice * quantity * 100) / 100 : null),
         hsCode: normalizeInvoiceHsCode(str(l.hsCode)),
+        group: str(l.group).slice(0, 200),
         charge: str(l.kind) === "charge" || (!customsArticleKey(code, "") && isInvoiceChargeName(str(l.name))),
       };
     })
@@ -261,6 +287,7 @@ export function parseInvoiceExtraction(raw: unknown): InvoiceExtraction {
       unitPrice: l.unitPrice,
       subiektTwId: null,
       ...(l.hsCode ? { invoiceHsCode: l.hsCode } : {}),
+      ...(l.group ? { invoiceGroup: l.group } : {}),
     });
   }
 
@@ -321,6 +348,7 @@ export function invoiceLinesToPasteText(lines: readonly CustomsInputLine[]): str
         String(l.quantity).replace(".", ","),
         l.unitPrice != null ? String(l.unitPrice).replace(".", ",") : "",
         l.invoiceHsCode ?? "",
+        (l.invoiceGroup ?? "").replace(/\t/g, " "),
       ]
         .join("\t")
         .replace(/\t+$/, "")
@@ -402,6 +430,8 @@ export type ProposalRequestLine = {
   documentDescription?: string;
   /** Kod HS nadawcy z faktury — wskazówka, nie gotowy kod CN. */
   invoiceHsCode?: string | null;
+  /** Opis grupy z faktury („Dental Lithium Disilicate Glass Ceramic”) — określa materiał. */
+  invoiceGroup?: string | null;
   /** Opis PL już ustalony (np. z wcześniejszego maila) — AI dobiera tylko kod CN i materiał. */
   knownDescriptionPl?: string;
 };
@@ -426,7 +456,7 @@ export function buildLineProposalsPrompt(input: {
   const lines = input.lines
     .map(
       (l) =>
-        `- ref=${l.ref} kod=${l.code || "?"} nazwa="${l.supplierName}"${
+        `- ref=${l.ref} kod=${l.code || "?"} nazwa="${l.supplierName}"${l.invoiceGroup ? ` grupa na fakturze: "${l.invoiceGroup}"` : ""}${
           l.documentDescription ? ` (w deklaracji: "${l.documentDescription}")` : ""
         }${l.invoiceHsCode ? ` HS nadawcy: ${l.invoiceHsCode}` : ""}${
           l.knownDescriptionPl ? ` opis PL ustalony: "${l.knownDescriptionPl}"` : ""

@@ -36,7 +36,7 @@ export function urgentSupplierNameLinkClass(_tone: UrgentCardTone = "today") {
 /** Shell footera — delikatna ramka w tonie karty. */
 export function urgentFooterShellClass(_tone: UrgentCardTone = "today") {
   return cn(
-    "inline-flex h-7 min-h-7 w-full max-w-full items-stretch overflow-hidden rounded-md border bg-white sm:w-full",
+    "inline-flex h-9 min-h-9 w-full max-w-full items-stretch overflow-hidden rounded-md border bg-white sm:h-7 sm:min-h-7 sm:w-full",
     "border-slate-200"
   );
 }

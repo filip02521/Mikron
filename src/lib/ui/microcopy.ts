@@ -16,7 +16,7 @@ export const MICROCOPY = {
   },
   empty: {
     orders: {
-      title: "Brak aktywnych prośb",
+      title: "Brak aktywnych próśb",
       description:
         "Gdy zgłosisz prośbę lub zakupy ją przetworzą, status pojawi się tutaj.",
     },

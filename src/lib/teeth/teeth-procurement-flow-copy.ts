@@ -137,10 +137,10 @@ export function procurementInformacjaSubmitSuccessMessage(
     return `Dodano ${n} sygnał(ów) „brak na stanie” - w panelu Dziś (Prośby handlowców).`;
   }
   if (options.viaDailyPanel) {
-    return `Dodano ${n} prośb(y) informacyjn(e) - najpierw kolejka Dziś (Główne/Uzupełniające).`;
+    return `Dodano ${n} próśb(y) informacyjn(e) - najpierw kolejka Dziś (Główne/Uzupełniające).`;
   }
   if (n > 0) {
-    return `Dodano ${n} prośb(y) informacyjn(e) - od razu do kolejki magazynu.`;
+    return `Dodano ${n} próśb(y) informacyjn(e) - od razu do kolejki magazynu.`;
   }
   return null;
 }

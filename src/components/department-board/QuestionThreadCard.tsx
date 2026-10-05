@@ -46,9 +46,11 @@ import {
   actionReplyToQuestion,
 } from "@/app/actions/department-board";
 import { isStaleAnsweredQuestion } from "@/lib/department-board/attention";
+import { askConfirm } from "@/components/ui/ConfirmHost";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 function photoLabel(count: number): string {
-  return count === 1 ? "zdjęcie" : count < 5 ? `${count} zdjęcia` : `${count} zdjęć`;
+  return count === 1 ? "zdjęcie" : `${count} ${polishPluralWord(count, "zdjęcie", "zdjęcia", "zdjęć")}`;
 }
 
 /** Podgląd treści wpisu w zwiniętym wierszu — samo zdjęcie też coś mówi. */
@@ -261,9 +263,12 @@ export function QuestionThreadCard({
   async function deleteClosedThread() {
     if (busy) return;
     if (
-      !window.confirm(
-        "Usunąć ten zakończony wątek na stałe? Tej operacji nie można cofnąć."
-      )
+      !(await askConfirm({
+        title: "Usunąć zakończony wątek?",
+        message: "Usunięcie jest trwałe — tej operacji nie można cofnąć.",
+        confirmLabel: "Usuń na stałe",
+        danger: true,
+      }))
     ) {
       return;
     }

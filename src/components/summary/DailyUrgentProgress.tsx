@@ -65,7 +65,7 @@ export function DailyUrgentProgressBar({
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
         <div
           className={cn(
-            "h-full rounded-full transition-all duration-500",
+            "h-full rounded-full transition-[width,background-color] duration-500",
             progress.complete ? "bg-emerald-500" : "bg-sky-500"
           )}
           style={{ width: `${progress.complete ? 100 : progress.percent}%` }}

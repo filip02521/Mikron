@@ -134,7 +134,7 @@ export function HelpHintBubble({
         }}
         onBlur={() => setHovered(false)}
         className={cn(
-          "inline-flex shrink-0 items-center justify-center rounded-full transition-colors",
+          "hit-target inline-flex shrink-0 items-center justify-center rounded-full transition-colors",
           buttonSize,
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1",
           toneButtonClass[tone],

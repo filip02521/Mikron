@@ -9,6 +9,7 @@ import {
 import type { IndividualOrder, IndividualOrderStatus } from "@/types/database";
 import { undoWindowBannerDescription } from "@/lib/orders/daily-panel-undo";
 import { polishPlural } from "@/lib/email/polish-plural";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export type SalesCancelPhase = "before_order" | "in_transit" | "on_stock";
 
@@ -536,7 +537,7 @@ export function salesCancelOverflowLabel(
   const base = kind === "informacja" ? "Anuluj informację" : "Anuluj prośbę";
   if (cancellableCount <= 1) return base;
   const n = cancellableCount;
-  const pozycja = n < 5 ? "pozycje" : "pozycji";
+  const pozycja = polishPluralWord(n, "pozycja", "pozycje", "pozycji");
   return `Anuluj wszystkie pozycje (${n} ${pozycja})`;
 }
 

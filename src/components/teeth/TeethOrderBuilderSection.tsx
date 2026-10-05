@@ -37,6 +37,7 @@ import {
 import {
   teethBuilderSteps,
 } from "@/lib/teeth/teeth-builder-copy";
+import { askConfirm } from "@/components/ui/ConfirmHost";
 
 type DraftSpec = TeethBuilderDraftSpec;
 
@@ -191,9 +192,18 @@ export const TeethOrderBuilderSection = forwardRef<
     setDraft(draftFromGroup(group));
   };
 
-  const handleRemove = (id: string) => {
+  const handleRemove = async (id: string) => {
     const group = groups.find((g) => g.id === id);
-    if (group && !confirm(`Usunąć pozycję ${group.color || "?"} ${group.mould ?? ""} (${group.count} szt.)?`)) return;
+    if (
+      group &&
+      !(await askConfirm({
+        title: "Usunąć pozycję?",
+        message: `${group.color || "?"} ${group.mould ?? ""} (${group.count} szt.)`,
+        confirmLabel: "Usuń",
+        danger: true,
+      }))
+    )
+      return;
     setGroups((prev) => prev.filter((g) => g.id !== id));
     if (editingId === id) resetDraft();
   };

@@ -14,6 +14,8 @@ export type CustomsInputLine = {
   subiektTwId: number | null;
   /** Kod HS / commodity code nadawcy przy pozycji (np. „8207909000”) — podpowiedź dla CN. */
   invoiceHsCode?: string | null;
+  /** Opis grupy z faktury (scalona komórka, np. „Dental Lithium Disilicate Glass Ceramic”) — kontekst, nie klucz. */
+  invoiceGroup?: string | null;
 };
 
 /** Kod HS z faktury: same cyfry, 6–10 znaków („8207.90.9000” → „8207909000”), inaczej null. */
@@ -67,7 +69,7 @@ export function parseInvoiceLinesPaste(text: string): {
   rows.forEach((row, index) => {
     if (!row.trim()) return;
     const cols = splitColumns(row).map((c) => c.trim());
-    const [code = "", name = "", qtyRaw = "", priceRaw = "", hsRaw = ""] = cols;
+    const [code = "", name = "", qtyRaw = "", priceRaw = "", hsRaw = "", groupRaw = ""] = cols;
     const quantity = parseLooseNumber(qtyRaw);
     if (quantity == null) {
       // Nagłówek („Kod / Nazwa / Ilość”) albo wiersz bez ilości.
@@ -86,6 +88,7 @@ export function parseInvoiceLinesPaste(text: string): {
       unitPrice: parseLooseNumber(priceRaw),
       subiektTwId: null,
       ...(normalizeInvoiceHsCode(hsRaw) ? { invoiceHsCode: normalizeInvoiceHsCode(hsRaw) } : {}),
+      ...(groupRaw ? { invoiceGroup: groupRaw.slice(0, 200) } : {}),
     });
   });
   return { lines, errors };
@@ -133,7 +136,11 @@ export function parseArticleCodesPaste(text: string): { code: string; descriptio
   for (const row of rows) {
     const trimmed = row.trim();
     if (!trimmed) continue;
-    const match = trimmed.match(/^(\S+)(?:[\t ]+(.*))?$/);
+    // Tabulator oddziela klucz od opisu — klucz może mieć spacje: dostawca bez kodów (Upcera) ma kluczem nazwę z karty.
+    // Końcowy tabulator zostaje — „klucz ze spacjami<TAB>” bez opisu (tak lista wraca do edycji).
+    const line = row.trimStart();
+    const tab = line.indexOf("\t");
+    const match = tab > 0 ? [line, line.slice(0, tab), line.slice(tab + 1)] : trimmed.match(/^(\S+)(?:[\t ]+(.*))?$/);
     if (!match) continue;
     const code = normalizeArticleCode(match[1]);
     if (!code || seen.has(code)) continue;
@@ -141,4 +148,9 @@ export function parseArticleCodesPaste(text: string): { code: string; descriptio
     out.push({ code, description: (match[2] ?? "").trim().slice(0, 300) });
   }
   return out;
+}
+
+/** Zapisana lista z powrotem do edycji — klucz ze spacjami z tabulatorem, żeby ponowny zapis go nie uciął. */
+export function articleCodesText(codes: readonly string[]): string {
+  return codes.map((c) => (/\s/.test(c) ? `${c}\t` : c)).join("\n");
 }

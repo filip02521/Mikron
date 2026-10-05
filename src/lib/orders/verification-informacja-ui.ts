@@ -52,10 +52,10 @@ function pathUi(path: InformacjaFlowPath, pathLocked: boolean): VerificationInfo
         queueHint: "Najpierw zamówienie u dostawcy, potem e-mail z magazynu",
         pathLocked: pathLocked,
         lockedReason: pathLocked
-          ? "Ścieżka „najpierw zamówienie u dostawcy” - po zatwierdzeniu trafi do Prośb handlowców, nie od razu do magazynu."
+          ? "Ścieżka „najpierw zamówienie u dostawcy” - po zatwierdzeniu trafi do Próśb handlowców, nie od razu do magazynu."
           : null,
         completeSuccessMessage:
-          "Uzupełniono - prośba trafi do Prośb handlowców w panelu Dziś (najpierw Główne, potem magazyn).",
+          "Uzupełniono - prośba trafi do Próśb handlowców w panelu Dziś (najpierw Główne, potem magazyn).",
         productSectionHint:
           "Wystarczy nazwa lub symbol - bez ilości. Magazyn wyśle e-mail po zamówieniu u dostawcy.",
         destinationSummary: INFORMACJA_FLOW_VIA_PANEL.short,

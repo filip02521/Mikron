@@ -17,6 +17,7 @@ import {
   resolveProcurementRequestLaneTone,
   type ProcurementRequestLaneTone,
 } from "@/lib/ui/procurement-request-lane-ui";
+import { polishPluralWord } from "@/lib/email/polish-plural";
 
 export function procurementRequestLaneHint(
   laneId: ProcurementRequestLaneId
@@ -122,11 +123,7 @@ export function ProcurementRequestLaneHeader({
             )}
           >
             {peekUnseenCount}{" "}
-            {peekUnseenCount === 1
-              ? "nowa"
-              : peekUnseenCount >= 2 && peekUnseenCount <= 4
-                ? "nowe"
-                : "nowych"}
+            {polishPluralWord(peekUnseenCount, "nowa", "nowe", "nowych")}
           </span>
         ) : null}
         <span className={cn(procurementRequestLaneCountPillClass(resolvedTone))}>

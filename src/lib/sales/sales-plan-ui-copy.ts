@@ -41,7 +41,7 @@ export const SALES_PLAN_COPY = {
   openSectionTitle: "Dostawcy z otwartymi prośbami",
   openSectionHint:
     "Ci sami dostawcy, u których masz otwarte prośby w „Moje zamówienia”. Kliknij wiersz, aby zobaczyć szczegóły.",
-  openEmptyTitle: "Brak otwartych prośb",
+  openEmptyTitle: "Brak otwartych próśb",
   openEmptyBody:
     "Gdy zgłosisz prośbę, dostawca pojawi się tutaj wraz z planowanym terminem zamówienia i szacunkiem daty na magazynie. Innego dostawcę wyszukasz powyżej.",
 

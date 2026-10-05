@@ -40,7 +40,7 @@ export function DailyPanelVerificationBanner({
       )}
       icon={<IconClipboardPen size={17} strokeWidth={2.25} />}
       title={label}
-      hint="brak danych blokuje kolejkę prośb."
+      hint="brak danych blokuje kolejkę próśb."
       actions={
         <>
           <Button variant="primary" size="sm" className="h-8" onClick={onOpenModal}>

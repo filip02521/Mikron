@@ -29,6 +29,7 @@ import {
   panelChoiceChipSelectedClass,
 } from "@/lib/ui/ontime-theme";
 import { userFacingErrorText } from "@/lib/ui/user-facing-error";
+import { askConfirm } from "@/components/ui/ConfirmHost";
 
 const STATUS: Record<
   SubiektLeadTimeSupplierStatus,
@@ -186,12 +187,14 @@ export function SubiektLeadTimesPanel({ initialData }: { initialData: SubiektLea
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tylko start/stop pollingu
   }, [running]);
 
-  function sync(mode: "full" | "incremental") {
+  async function sync(mode: "full" | "incremental") {
     if (
       mode === "full" &&
-      !window.confirm(
-        "Pobrać całą historię ZD i FZ z Subiekta (od 2006)? Trwa ok. 5 minut - Subiekt musi być dostępny w sieci."
-      )
+      !(await askConfirm({
+        title: "Pobrać całą historię?",
+        message: "ZD i FZ z Subiekta od 2006. Trwa ok. 5 minut - Subiekt musi być dostępny w sieci.",
+        confirmLabel: "Pobierz",
+      }))
     ) {
       return;
     }
